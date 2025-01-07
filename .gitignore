@@ -11,6 +11,9 @@
 #PHPStorm
 /.idea
 
+# Database
+/docker/db
+
 
 ###> symfony/phpunit-bridge ###
 .phpunit.result.cache
