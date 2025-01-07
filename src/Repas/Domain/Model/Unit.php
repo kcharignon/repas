@@ -3,13 +3,13 @@
 namespace Repas\Repas\Domain\Model;
 
 
-class Unite
+class Unit
 {
     private string $id;
 
-    private string $nom;
+    private string $name;
 
-    private string $abreviation;
+    private string $abbreviation;
 
     private Conversion $conversions;
 }

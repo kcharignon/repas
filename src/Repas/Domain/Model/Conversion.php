@@ -7,9 +7,9 @@ class Conversion
 {
     private string $id;
 
-    private Unite $uniteDeDepart;
+    private Unit $startUnit;
 
-    private Unite $uniteDArrivee;
+    private Unit $endUnit;
 
     private float $coefficient;
 }

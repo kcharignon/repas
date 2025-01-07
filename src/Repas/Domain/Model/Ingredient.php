@@ -7,11 +7,11 @@ class Ingredient
 {
     private string $id;
 
-    private string $nom;
+    private string $name;
 
     private string $image;
 
-    private Unite $uniteParDefaut;
+    private Unit $defaultUnit;
 
-    private bool $uniteParDefautSecable;
+    private bool $defaultUniteSplittable;
 }

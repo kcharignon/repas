@@ -3,7 +3,7 @@
 namespace Repas\Repas\Domain\Model;
 
 
-class ConversionSpecifique extends Conversion
+class ConversionSpecific extends Conversion
 {
     private Ingredient $ingredient;
 }
