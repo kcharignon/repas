@@ -4,14 +4,24 @@ namespace Repas\User\Domain\Model;
 
 
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
+use Symfony\Component\Security\Core\User\PasswordUpgraderInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
 
-class User implements UserInterface, PasswordAuthenticatedUserInterface
+class User implements UserInterface, PasswordAuthenticatedUserInterface, PasswordUpgraderInterface
 {
     private string $email;
     private array $roles = [];
 
     private string $password;
+
+    public static function load(array $datas): static
+    {
+        $user = new static();
+        $user->email = $datas['email'];
+        $user->roles = $datas['roles'];
+        $user->password = $datas['password'];
+        return $user;
+    }
 
     public function getEmail(): string
     {
@@ -26,6 +36,11 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function getPassword(): ?string
     {
         return $this->password;
+    }
+
+    public function setPassword(string $password): void
+    {
+        $this->password = $password;
     }
 
     public function getRoles(): array
@@ -43,4 +58,8 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         return $this->email;
     }
 
+    public function upgradePassword(PasswordAuthenticatedUserInterface $user, string $newHashedPassword): void
+    {
+        $this->setPassword($newHashedPassword);
+    }
 }

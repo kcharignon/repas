@@ -1,0 +1,21 @@
+#!/bin/bash
+
+echo "php bin_sh"
+
+# Vérifie si Docker Compose est installé
+if ! command -v docker-compose &>/dev/null && ! command -v docker compose &>/dev/null; then
+    echo "Erreur : Docker Compose n'est pas installé ou n'est pas dans le PATH."
+    exit 1
+fi
+
+# Utiliser "docker compose" si disponible, sinon "docker-compose"
+DOCKER_COMPOSE_CMD=$(command -v docker-compose &>/dev/null && echo "docker-compose" || echo "docker compose")
+
+# Crée la commande à exécuter
+COMMAND="$DOCKER_COMPOSE_CMD exec php php $*"
+
+# Affiche la commande en vert
+echo -e "\033[32m$COMMAND\033[0m"
+
+# Exécute la commande
+$COMMAND

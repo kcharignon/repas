@@ -1,0 +1,9 @@
+twig:
+    paths:
+        '%kernel.project_dir%/src/User/Infrastructure/View': user
+        '%kernel.project_dir%/src/Shared/Infrastructure/View': shared
+    file_name_pattern: '*.twig'
+
+when@test:
+    twig:
+        strict_variables: true
