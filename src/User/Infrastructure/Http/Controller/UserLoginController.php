@@ -1,6 +1,6 @@
 <?php
 
-namespace Repas\User\Infrastructure\Controller;
+namespace Repas\User\Infrastructure\Http\Controller;
 
 
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;

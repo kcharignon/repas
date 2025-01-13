@@ -20,8 +20,9 @@ services:
             - '../src/Entity/'
             - '../src/Kernel.php'
 
-    Repas\User\Infrastructure\Controller\:
-        resource: '../src/User/Infrastructure/Controller/'
+    Repas\User\Infrastructure\Http\Controller\:
+        resource: '../src/User/Infrastructure/Http/Controller/'
         tags: [ 'controller.service_arguments' ]
-    # add more service definitions when explicit configuration is needed
-    # please note that last definitions always *replace* previous ones
+    
+    Repas\Command\ResetDatabaseCommand:
+        tags: ['console.command']

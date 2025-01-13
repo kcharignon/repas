@@ -1,5 +1,11 @@
 user_controllers:
     resource:
-        path: ../src/User/Infrastructure/Controller/
-        namespace: Repas\User\Infrastructure\Controller
+        path: ../src/User/Infrastructure/Http/Controller/
+        namespace: Repas\User\Infrastructure\Http\Controller
+    type: attribute
+    
+repas_controllers:
+    resource:
+        path: ../src/Repas/Infrastructure/Http/Controller/
+        namespace: Repas\Repas\Infrastructure\Http\Controller
     type: attribute

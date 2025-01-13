@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Repas\User\Infrastructure\Controller;
+namespace Repas\User\Infrastructure\Http\Controller;
 
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;

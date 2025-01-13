@@ -1,9 +1,10 @@
 <?php
 
-namespace Repas\User\Infrastructure\Controller;
+namespace Repas\User\Infrastructure\Http\Controller;
 
 
-use Builder\UserBuilder;
+
+use Repas\Tests\Builder\UserBuilder;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
