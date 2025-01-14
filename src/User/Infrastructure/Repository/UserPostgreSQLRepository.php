@@ -27,7 +27,7 @@ class UserPostgreSQLRepository extends ServiceEntityRepository implements UserRe
 //        $this->findOneBy($criteria);
 //        $this->matching($criteria);
 
-        return (new UserBuilder())
+        return new UserBuilder()
             ->withEmail('kantincharignon@gmail.com')
             ->build();
     }
