@@ -15,7 +15,12 @@ class StringTool
 
     public static function slugify(string $text): string
     {
-        $slugger = new AsciiSlugger();
+        $symboleMap = ['fr' => [
+            '&' => 'et',
+            '@' => 'at',
+        ]];
+
+        $slugger = new AsciiSlugger('fr_FR', $symboleMap);
         return strtolower($slugger->slug($text));
     }
 }

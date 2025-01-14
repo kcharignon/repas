@@ -8,11 +8,12 @@ use Repas\Shared\Domain\Tool\StringTool;
 class Ingredient
 {
     public function __construct(
-        private string $slug,
-        private string $name,
-        private string $image,
-        private Unit   $defaultCookingUnit,
-        private Unit   $defaultPurchaseUnit,
+        private string     $slug,
+        private string     $name,
+        private string     $image,
+        private Department $department,
+        private Unit       $defaultCookingUnit,
+        private Unit       $defaultPurchaseUnit,
     ) {
     }
 
@@ -39,11 +40,19 @@ class Ingredient
     public static function create(
         string $name,
         string $image,
+        Department $department,
         Unit $defaultCookingUnit,
         Unit $defaultPurchaseUnit,
     ): self {
         $slug = StringTool::slugify($name);
-        return new self($slug, $name, $image, $defaultCookingUnit, $defaultPurchaseUnit);
+        return new self(
+            $slug,
+            $name,
+            $image,
+            $department,
+            $defaultCookingUnit,
+            $defaultPurchaseUnit
+        );
     }
 
     public static function load(array $ingredientData): self
@@ -52,6 +61,7 @@ class Ingredient
             $ingredientData['slug'],
             $ingredientData['name'],
             $ingredientData['image'],
+            $ingredientData['department'],
             $ingredientData['defaultCookingUnit'],
             $ingredientData['defaultPurchaseUnit'],
         );
@@ -63,6 +73,7 @@ class Ingredient
             'slug' => $this->slug,
             'name' => $this->name,
             'image' => $this->image,
+            'department' => $this->department->toArray(),
             'defaultCookingUnit' => $this->defaultCookingUnit->toArray(),
             'defaultPurchaseUnit' => $this->defaultPurchaseUnit->toArray(),
         ];

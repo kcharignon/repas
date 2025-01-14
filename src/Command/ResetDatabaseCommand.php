@@ -31,41 +31,27 @@ class ResetDatabaseCommand extends Command
         shell_exec('rm -rf migrations/*.php');
 
         $commands = [
-            'Supprimer la base de données' => ['tool' => 'process', 'cmd' => ['php', 'bin/console', 'doctrine:database:drop', '--force']],
-            'Créer la base de données' => ['tool' => 'process', 'cmd' => ['php', 'bin/console', 'doctrine:database:create']],
-            'Supprimer les migrations' => ['tool' => 'process', 'cmd' => ['rm', '-rf', 'migrations/*']],
-            'Générer une nouvelle migration' => ['tool' => 'process', 'cmd' => ['php', 'bin/console', 'doctrine:migrations:diff']],
-            'Appliquer les migrations' => ['tool' => 'process', 'cmd' => ['php', 'bin/console', 'doctrine:migrations:migrate', '--no-interaction']],
-            'Charger les fixtures' => ['tool' => 'process', 'cmd' => ['php', 'bin/console', 'doctrine:fixtures:load', '--no-interaction']],
+            'Supprimer la base de données' => ['php', 'bin/console', 'doctrine:database:drop', '--force'],
+            'Créer la base de données' => ['php', 'bin/console', 'doctrine:database:create'],
+            'Supprimer les migrations' => ['rm', '-rf', 'migrations/*'],
+            'Générer une nouvelle migration' => ['php', 'bin/console', 'doctrine:migrations:diff'],
+            'Appliquer les migrations' => ['php', 'bin/console', 'doctrine:migrations:migrate', '--no-interaction'],
+            'Charger les fixtures' => ['php', 'bin/console', 'doctrine:fixtures:load', '--no-interaction'],
         ];
 
         foreach ($commands as $description => $command) {
             $io->section($description);
-            if ($command['tool'] == 'process') {
-                $command = $command['cmd'];
-                $process = new Process($command);
-                $process->setTimeout(3600); // Timeout de 1 heure
+            $process = new Process($command);
+            $process->setTimeout(60); // Timeout de 10 minutes
 
-                try {
-                    $io->comment($process->getCommandLine());
-                    $process->mustRun();
-                    $io->success($description . ' : Succès');
-                } catch (ProcessFailedException $exception) {
-                    $io->error($description . ' : Échec');
-                    $io->error($exception->getMessage());
-                    return Command::FAILURE;
-                }
-            } else {
-                $command = $command['cmd'];
-                try {
-                    $io->comment($process->getCommandLine());
-                    shell_exec(implode(' ', $command));
-                    $io->success($description . ' : Succès');
-                } catch (ProcessFailedException $exception) {
-                    $io->error($description . ' : Échec');
-                    $io->error($exception->getMessage());
-                    return Command::FAILURE;
-                }
+            try {
+                $io->info(implode(' ', $command));
+                $process->mustRun();
+                $io->success($description . ' : Succès');
+            } catch (ProcessFailedException $exception) {
+                $io->error($description . ' : Échec');
+                $io->error($exception->getMessage());
+                return Command::FAILURE;
             }
         }
 

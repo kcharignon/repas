@@ -18,6 +18,10 @@ class Ingredient
     private ?string $name = null;
 
     #[ORM\ManyToOne]
+    #[ORM\JoinColumn(name: 'department', referencedColumnName: 'slug', nullable: false)]
+    private ?Department $department = null;
+
+    #[ORM\ManyToOne]
     #[ORM\JoinColumn(name: 'default_cooking_unit', referencedColumnName: 'slug', nullable: false)]
     private ?Unit $defaultCookingUnit = null;
 
@@ -28,11 +32,13 @@ class Ingredient
     public function __construct(
         ?string $slug,
         ?string $name,
+        ?Department $department,
         ?Unit $defaultCookingUnit,
         ?Unit $defaultPurchaseUnit,
     ) {
         $this->slug = $slug;
         $this->name = $name;
+        $this->department = $department;
         $this->defaultCookingUnit = $defaultCookingUnit;
         $this->defaultPurchaseUnit = $defaultPurchaseUnit;
     }
@@ -60,6 +66,16 @@ class Ingredient
         $this->name = $name;
 
         return $this;
+    }
+
+    public function getDepartment(): ?Department
+    {
+        return $this->department;
+    }
+
+    public function setDepartment(?Department $department): void
+    {
+        $this->department = $department;
     }
 
     public function getDefaultCookingUnit(): ?Unit
@@ -95,6 +111,7 @@ class Ingredient
         return new static(
             $datas['slug'],
             $datas['name'],
+            Department::fromData($datas['department']),
             Unit::fromData($datas['defaultCookingUnit']),
             Unit::fromData($datas['defaultPurchaseUnit']),
         );

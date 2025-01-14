@@ -12,6 +12,7 @@ class StringToolTest extends TestCase
     public function stringToolSlugifyDataProvider(): array
     {
         return [
+            "& @" => ["& @", "et-at"],
             "Viande Surgelée" => ["Viande Surgelée", "viande-surgelee"],
             "Soupe 2 pâte" => ["Soupe 2 pâte", "soupe-2-pate"],
             "œuf" => ["œuf", "oeuf"],
