@@ -8,7 +8,7 @@ use Doctrine\Persistence\ObjectManager;
 use Repas\Shared\Domain\Tool\UuidGenerator;
 use Repas\User\Domain\Model\User;
 use Repas\User\Infrastructure\Entity\User as UserEntity;
-use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
+use Symfony\Component\PasswordHasher\Hasher\PasswordHasherFactoryInterface;
 
 class UserFixture extends Fixture
 {
@@ -30,7 +30,7 @@ class UserFixture extends Fixture
     ];
 
     public function __construct(
-        private UserPasswordHasherInterface $hasher,
+        private PasswordHasherFactoryInterface $passwordHasherFactory,
     ) {
     }
 
@@ -38,15 +38,18 @@ class UserFixture extends Fixture
     public function load(ObjectManager $manager): void
     {
         foreach (self::USERS as $user) {
+            $passwordHashed = $this
+                ->passwordHasherFactory
+                ->getPasswordHasher(User::class)
+                ->hash($user['password'])
+            ;
+
             $userModel = User::create(
                 UuidGenerator::new(),
                 $user['email'],
                 $user['roles'],
-                $user['password'],
+                $passwordHashed
             );
-
-            $passwordHashed = $this->hasher->hashPassword($userModel, $user['password']);
-            $userModel->setPassword($passwordHashed);
 
             $userEntity = UserEntity::fromModel($userModel);
             $manager->persist($userEntity);

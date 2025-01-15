@@ -83,6 +83,7 @@ class User
         assert(null !== $this->password);
 
         return UserModel::load([
+            'id' => $this->id,
             'email' => $this->email,
             'password' => $this->password,
             'roles' => $this->roles ?? [],

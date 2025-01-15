@@ -7,7 +7,6 @@ use Repas\Tests\Builder\UserBuilder;
 use Repas\Tests\Helper\DatabaseTestCase;
 use Repas\User\Domain\Interface\UserRepository;
 use Repas\User\Infrastructure\Repository\UserPostgreSQLRepository;
-use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
 class UserRepositoryTest extends DatabaseTestCase
 {
@@ -16,7 +15,10 @@ class UserRepositoryTest extends DatabaseTestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->userRepository = new UserPostgreSQLRepository($this->entityManager);
+
+        $managerRegistry = static::getContainer()->get('doctrine');
+
+        $this->userRepository = new UserPostgreSQLRepository($managerRegistry);
     }
 
 
