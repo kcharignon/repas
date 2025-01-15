@@ -100,4 +100,11 @@ class User
             roles: $datas['roles'],
         );
     }
+
+    public function updateFromModel(UserModel $user): void
+    {
+        $this->email = $user->getEmail();
+        $this->password = $user->getPassword();
+        $this->roles = $user->getRoles();
+    }
 }

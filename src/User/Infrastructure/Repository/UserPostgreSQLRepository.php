@@ -33,7 +33,22 @@ class UserPostgreSQLRepository extends ServiceEntityRepository implements UserRe
 
     public function save(User $user): void
     {
-        $entity = UserEntity::fromModel($user);
-        $this->getEntityManager()->persist($entity);
+        // Récupérer l'EntityManager
+        $entityManager = $this->getEntityManager();
+
+        // Vérifiez si un utilisateur avec le même id existe déjà
+        $existingUserEntity = $this->find($user->getId());
+
+        if ($existingUserEntity instanceof UserEntity) {
+            // Mise à jour de l'utilisateur existant
+            $existingUserEntity->updateFromModel($user);
+        } else {
+            // Création d'un nouvel utilisateur
+            $newUserEntity = UserEntity::fromModel($user);
+            $entityManager->persist($newUserEntity);
+        }
+
+        // Sauvegarder les changements dans la base de données
+        $entityManager->flush();
     }
 }
