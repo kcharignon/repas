@@ -98,7 +98,6 @@ class UnitFixture extends Fixture
             $unitEntity = UnitEntity::fromModel($unitModel);
             $manager->persist($unitEntity);
 
-            // Ajouter une référence pour l'utiliser dans d'autres fixtures
             $this->addReference($unitEntity->getSlug(), $unitEntity);
         }
 

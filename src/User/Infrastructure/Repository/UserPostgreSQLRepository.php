@@ -5,30 +5,35 @@ namespace Repas\User\Infrastructure\Repository;
 
 
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
-use Doctrine\Common\Collections\Criteria;
 use Doctrine\Persistence\ManagerRegistry;
-use Repas\Tests\Builder\UserBuilder;
+use Repas\User\Domain\Exception\UserException;
 use Repas\User\Domain\Interface\UserRepository;
 use Repas\User\Domain\Model\User;
+use Repas\User\Infrastructure\Entity\User as UserEntity;
 
 class UserPostgreSQLRepository extends ServiceEntityRepository implements UserRepository
 {
-
-
-    public function __construct(
-        private readonly ManagerRegistry $managerRegistry
-    ) {
-        parent::__construct($this->managerRegistry, User::class);
+    public function __construct(ManagerRegistry $managerRegistry) {
+        parent::__construct($managerRegistry, UserEntity::class);
     }
 
+    /**
+     * @throws UserException
+     */
     public function getUserByEmail(string $email): User
     {
-//        $criteria = new Criteria(['email' => $email]);
-//        $this->findOneBy($criteria);
-//        $this->matching($criteria);
+        $userEntity = $this->findOneBy(['email' => $email]);
 
-        return new UserBuilder()
-            ->withEmail('kantincharignon@gmail.com')
-            ->build();
+        if (!$userEntity instanceof UserEntity) {
+            throw UserException::NotFound();
+        }
+
+        return $userEntity->toModel();
+    }
+
+    public function save(User $user): void
+    {
+        $entity = UserEntity::fromModel($user);
+        $this->getEntityManager()->persist($entity);
     }
 }

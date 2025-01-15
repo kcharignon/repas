@@ -3,6 +3,7 @@
 namespace Repas\Tests\Builder;
 
 
+use Repas\Shared\Domain\Tool\UuidGenerator;
 use Repas\User\Domain\Model\User;
 
 class UserBuilder implements Builder
@@ -10,9 +11,11 @@ class UserBuilder implements Builder
     private string $email;
     private array $roles;
     private string $password;
+    private string $id;
 
     private function initialize(): void
     {
+        $this->id ??= UuidGenerator::new();
         $this->email ??= "johndoe@example.com";
         $this->roles ??= [];
         // Password hashed : Test
@@ -23,6 +26,7 @@ class UserBuilder implements Builder
     {
         $this->initialize();
         return User::load([
+            'id' => $this->id,
             'email' => $this->email,
             'roles' => $this->roles,
             'password' => $this->password

@@ -14,8 +14,7 @@ class User
     #[ORM\Column(type: 'string', length: 36, unique: true)]
     private ?string $id = null;
 
-    #[ORM\Id]
-    #[ORM\Column(length: 255)]
+    #[ORM\Column(length: 255, unique: true)]
     private ?string $email = null;
 
     #[ORM\Column(length: 255)]
@@ -37,7 +36,7 @@ class User
     }
 
 
-    public function getId(): ?int
+    public function getId(): ?string
     {
         return $this->id;
     }

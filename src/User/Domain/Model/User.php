@@ -9,19 +9,32 @@ use Symfony\Component\Security\Core\User\UserInterface;
 
 class User implements UserInterface, PasswordAuthenticatedUserInterface, PasswordUpgraderInterface
 {
-    private string $id;
-    private string $email;
-    private array $roles = [];
-    private string $password;
+    private function __construct(
+        private string $id,
+        private string $email,
+        private array $roles,
+        private string $password,
+    ) {
+    }
+
+    public static function create(string $id, string $email, array $roles, string $password): static
+    {
+        return new static(
+            $id,
+            $email,
+            $roles,
+            $password,
+        );
+    }
 
     public static function load(array $datas): static
     {
-        $user = new static();
-        $user->id = $datas['id'];
-        $user->email = $datas['email'];
-        $user->roles = $datas['roles'];
-        $user->password = $datas['password'];
-        return $user;
+        return new static(
+            $datas['id'],
+            $datas['email'],
+            $datas['roles'],
+            $datas['password'],
+        );
     }
 
     public function getEmail(): string

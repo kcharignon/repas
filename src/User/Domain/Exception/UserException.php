@@ -9,11 +9,11 @@ class UserException extends DomainException
 {
     public static function NotFound(): static
     {
-        return new static(404, "USER_NOT_FOUND");
+        return new static('USER_NOT_FOUND', 404);
     }
 
     public static function Banned(): static
     {
-        return new static(403, "USER_BANNED");
+        return new static('USER_BANNED', 403);
     }
 }
