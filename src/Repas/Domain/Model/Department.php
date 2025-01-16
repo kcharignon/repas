@@ -11,7 +11,6 @@ class Department
         private string $slug,
         private string $name,
         private string $image,
-        private array $ingredients,
     ) {
     }
 
@@ -45,29 +44,12 @@ class Department
         $this->image = $image;
     }
 
-    /**
-     * @return array<Ingredient>
-     */
-    public function getIngredients(): array
-    {
-        return $this->ingredients;
-    }
-
-    /**
-     * @param array<Ingredient> $ingredients
-     */
-    public function setIngredients(array $ingredients): void
-    {
-        $this->ingredients = $ingredients;
-    }
-
     public function toArray(): array
     {
         return [
             'slug' => $this->slug,
             'name' => $this->name,
             'image' => $this->image,
-            'ingredients' => array_map(fn(Ingredient $ingredient) => $ingredient->toArray(), $this->ingredients),
         ];
     }
 
@@ -77,7 +59,6 @@ class Department
             $datas['slug'],
             $datas['name'],
             $datas['image'],
-            array_map(fn(array $ingredientData) => Ingredient::load($ingredientData), $datas['ingredients']),
         );
     }
 
@@ -87,7 +68,6 @@ class Department
             StringTool::slugify($name),
             $name,
             $image,
-            [],
         );
     }
 }

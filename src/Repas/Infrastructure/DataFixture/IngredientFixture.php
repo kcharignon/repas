@@ -13,7 +13,7 @@ use Repas\Repas\Infrastructure\Entity\Unit as UnitEntity;
 
 class IngredientFixture extends Fixture implements DependentFixtureInterface
 {
-    const INGREDIENTS = [
+    private const array INGREDIENTS = [
         [
             "name" => "aubergine",
             "defaultCookingUnit" => "piece",

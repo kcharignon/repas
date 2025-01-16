@@ -17,6 +17,9 @@ class Ingredient
     #[ORM\Column(length: 255)]
     private ?string $name = null;
 
+    #[ORM\Column(length: 2048)]
+    private ?string $image = null;
+
     #[ORM\ManyToOne]
     #[ORM\JoinColumn(name: 'department', referencedColumnName: 'slug', nullable: false)]
     private ?Department $department = null;
@@ -32,12 +35,14 @@ class Ingredient
     public function __construct(
         ?string $slug,
         ?string $name,
+        ?string $image,
         ?Department $department,
         ?Unit $defaultCookingUnit,
         ?Unit $defaultPurchaseUnit,
     ) {
         $this->slug = $slug;
         $this->name = $name;
+        $this->image = $image;
         $this->department = $department;
         $this->defaultCookingUnit = $defaultCookingUnit;
         $this->defaultPurchaseUnit = $defaultPurchaseUnit;
@@ -66,6 +71,16 @@ class Ingredient
         $this->name = $name;
 
         return $this;
+    }
+
+    public function getImage(): ?string
+    {
+        return $this->image;
+    }
+
+    public function setImage(?string $image): void
+    {
+        $this->image = $image;
     }
 
     public function getDepartment(): ?Department
@@ -106,11 +121,24 @@ class Ingredient
         return Ingredient::fromData($datas);
     }
 
+    public function getModel(): IngredientModel
+    {
+        return IngredientModel::load([
+            'slug' => $this->slug,
+            'name' => $this->name,
+            'image' => $this->image,
+            'department' => $this->department,
+            'defaultCookingUnit' => $this->defaultCookingUnit,
+            'defaultPurchaseUnit' => $this->defaultPurchaseUnit,
+        ]);
+    }
+
     public static function fromData(array $datas): static
     {
         return new static(
             $datas['slug'],
             $datas['name'],
+            $datas['image'],
             Department::fromData($datas['department']),
             Unit::fromData($datas['defaultCookingUnit']),
             Unit::fromData($datas['defaultPurchaseUnit']),

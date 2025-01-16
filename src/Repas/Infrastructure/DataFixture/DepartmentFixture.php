@@ -10,7 +10,7 @@ use Repas\Repas\Infrastructure\Entity\Department as DepartmentEntity;
 
 class DepartmentFixture extends Fixture
 {
-    const DEPARTMENTS = [
+    private const array DEPARTMENTS = [
         [
             "name" => "fruit & légume",
             "image" => "https://cdn-icons-png.flaticon.com/128/1147/1147832.png",

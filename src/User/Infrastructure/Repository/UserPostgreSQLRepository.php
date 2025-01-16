@@ -28,7 +28,7 @@ class UserPostgreSQLRepository extends ServiceEntityRepository implements UserRe
             throw UserException::NotFound();
         }
 
-        return $userEntity->toModel();
+        return $userEntity->getModel();
     }
 
     public function save(User $user): void

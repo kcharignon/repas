@@ -8,6 +8,7 @@ use Doctrine\Persistence\ObjectManager;
 use Repas\Shared\Domain\Tool\UuidGenerator;
 use Repas\User\Domain\Model\User;
 use Repas\User\Infrastructure\Entity\User as UserEntity;
+use Symfony\Component\DependencyInjection\ParameterBag\ContainerBagInterface;
 use Symfony\Component\PasswordHasher\Hasher\PasswordHasherFactoryInterface;
 
 class UserFixture extends Fixture
@@ -16,14 +17,14 @@ class UserFixture extends Fixture
         [
             "email" => "alexiane.sichi@gmail.com",
             "roles" => ["ROLE_USER"],
-            "password" => "test",
+            "password" => "logan",
             "fullname" => "Alexiane Sichi",
             "recipes" => [],
         ],
         [
             "email" => "kantincharignon@gmail.com",
             "roles" => ["ROLE_ADMIN"],
-            "password" => "test",
+            "password" => null,
             "fullname" => "Kantin C.",
             "recipes" => [],
         ],
@@ -31,6 +32,7 @@ class UserFixture extends Fixture
 
     public function __construct(
         private PasswordHasherFactoryInterface $passwordHasherFactory,
+        private ContainerBagInterface $containerBag,
     ) {
     }
 
@@ -38,11 +40,7 @@ class UserFixture extends Fixture
     public function load(ObjectManager $manager): void
     {
         foreach (self::USERS as $user) {
-            $passwordHashed = $this
-                ->passwordHasherFactory
-                ->getPasswordHasher(User::class)
-                ->hash($user['password'])
-            ;
+            $passwordHashed = $this->getPasswordHashed($user['password']);
 
             $userModel = User::create(
                 UuidGenerator::new(),
@@ -54,10 +52,21 @@ class UserFixture extends Fixture
             $userEntity = UserEntity::fromModel($userModel);
             $manager->persist($userEntity);
 
-            $this->addReference($userEntity->getId(), $userEntity);
+            $this->addReference($userEntity->getEmail(), $userEntity);
         }
 
         $manager->flush();
+    }
+
+    private function getPasswordHashed(?string $password): string
+    {
+        $password ??= $this->containerBag->get('env(ADMIN_PASSWORD)');
+
+        return $this
+            ->passwordHasherFactory
+            ->getPasswordHasher(User::class)
+            ->hash($password)
+        ;
     }
 
 }

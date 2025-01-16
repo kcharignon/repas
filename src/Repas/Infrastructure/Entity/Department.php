@@ -38,7 +38,6 @@ class Department
             'slug' => $this->slug,
             'name' => $this->name,
             'image' => $this->image,
-            'ingredients' => [],
         ]);
     }
 

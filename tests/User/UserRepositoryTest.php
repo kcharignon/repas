@@ -2,7 +2,6 @@
 
 namespace Repas\Tests\User;
 
-
 use Repas\Tests\Builder\UserBuilder;
 use Repas\Tests\Helper\DatabaseTestCase;
 use Repas\User\Domain\Exception\UserException;

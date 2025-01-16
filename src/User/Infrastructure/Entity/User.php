@@ -3,7 +3,7 @@
 namespace Repas\User\Infrastructure\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
-use Repas\Repository\UserRepository;
+use Repas\User\Domain\Interface\UserRepository;
 use Repas\User\Domain\Model\User as UserModel;
 
 #[ORM\Entity(repositoryClass: UserRepository::class)]
@@ -77,7 +77,7 @@ class User
         return $this;
     }
 
-    public function toModel(): UserModel
+    public function getModel(): UserModel
     {
         assert(null !== $this->email);
         assert(null !== $this->password);
@@ -103,6 +103,7 @@ class User
 
     public function updateFromModel(UserModel $user): void
     {
+        $this->id = $user->getId();
         $this->email = $user->getEmail();
         $this->password = $user->getPassword();
         $this->roles = $user->getRoles();

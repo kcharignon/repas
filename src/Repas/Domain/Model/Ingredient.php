@@ -61,9 +61,9 @@ class Ingredient
             $ingredientData['slug'],
             $ingredientData['name'],
             $ingredientData['image'],
-            $ingredientData['department'],
-            $ingredientData['defaultCookingUnit'],
-            $ingredientData['defaultPurchaseUnit'],
+            Department::load($ingredientData['department']),
+            Unit::load($ingredientData['defaultCookingUnit']),
+            Unit::load($ingredientData['defaultPurchaseUnit']),
         );
     }
 
@@ -78,6 +78,4 @@ class Ingredient
             'defaultPurchaseUnit' => $this->defaultPurchaseUnit->toArray(),
         ];
     }
-
-
 }
