@@ -60,7 +60,7 @@ class TabTest extends TestCase
         $tab->add('string');
     }
 
-    public function testMap(): voi
+    public function testMap(): void
     {
         //Arrange
         $tab = new Tab('test', 'with', 'map');

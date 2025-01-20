@@ -18,10 +18,10 @@ VOLUME /app/var/
 # persistent / runtime deps
 # hadolint ignore=DL3008
 RUN apt-get update && apt-get install -y --no-install-recommends \
-	acl \
-	file \
-	gettext \
-	git \
+	acl=2.3.1-3 \
+	file=1:5.44-3 \
+	gettext=0.21-12 \
+	git=1:2.39.5-0+deb12u1 \
 	&& rm -rf /var/lib/apt/lists/*
 
 RUN set -eux; \
@@ -41,7 +41,7 @@ ENV PHP_INI_SCAN_DIR=":$PHP_INI_DIR/app.conf.d"
 ###> recipes ###
 ###> doctrine/doctrine-bundle ###
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        libpq-dev \
+        libpq-dev=15.10-0+deb12u1 \
         && install-php-extensions pdo_pgsql \
         && rm -rf /var/lib/apt/lists/*
 ###< doctrine/doctrine-bundle ###
