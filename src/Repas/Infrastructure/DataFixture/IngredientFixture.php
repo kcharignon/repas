@@ -582,7 +582,7 @@ class IngredientFixture extends Fixture implements DependentFixtureInterface
             "department" => "viande",
         ],
         [
-            "name" => "chorizzo",
+            "name" => "chorizo",
             "defaultCookingUnit" => "gramme",
             "defaultPurchaseUnit" => "gramme",
             "department" => "viande",
@@ -1513,6 +1513,12 @@ class IngredientFixture extends Fixture implements DependentFixtureInterface
             "department" => "cuisine-du-monde",
             "defaultCookingUnit" => "paquet",
             "defaultPurchaseUnit" => "paquet",
+        ],
+        [
+            "name" => "feuille-gelatine",
+            "department" => "aide-patissier",
+            "defaultCookingUnit" => "piece",
+            "defaultPurchaseUnit" => "piece",
         ],
     ];
 

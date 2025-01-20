@@ -76,10 +76,15 @@ class Unit
 
     public function getModel(): UnitModel
     {
-        return UnitModel::load([
-           'slug' => $this->slug,
-           'name' => $this->name,
-           'symbol' => $this->symbol,
-        ]);
+        return UnitModel::load($this->toArray());
+    }
+
+    public function toArray(): array
+    {
+        return [
+            'slug' => $this->slug,
+            'name' => $this->name,
+            'symbol' => $this->symbol,
+        ];
     }
 }

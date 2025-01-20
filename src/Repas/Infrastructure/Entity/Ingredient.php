@@ -127,9 +127,9 @@ class Ingredient
             'slug' => $this->slug,
             'name' => $this->name,
             'image' => $this->image,
-            'department' => $this->department,
-            'defaultCookingUnit' => $this->defaultCookingUnit,
-            'defaultPurchaseUnit' => $this->defaultPurchaseUnit,
+            'department' => $this->department->toArray(),
+            'defaultCookingUnit' => $this->defaultCookingUnit->toArray(),
+            'defaultPurchaseUnit' => $this->defaultPurchaseUnit->toArray(),
         ]);
     }
 

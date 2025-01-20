@@ -3,6 +3,7 @@
 namespace Repas\Repas\Infrastructure\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
+use Repas\Repas\Domain\Model\Recipe as RecipeModel;
 use Repas\Repas\Domain\Model\RecipeRow as RecipeRowModel;
 use Repas\Repository\Repas\Repas\Infrastructure\Entity\RecipeRowRepository;
 
@@ -11,7 +12,7 @@ class RecipeRow
 {
     #[ORM\Id]
     #[ORM\Column(type: 'string', length: 36, unique: true)]
-    private ?int $id = null;
+    private ?string $id = null;
 
     #[ORM\ManyToOne(targetEntity: Ingredient::class)]
     #[ORM\JoinColumn(name: "ingredient", referencedColumnName: "slug", nullable: false)]
@@ -28,12 +29,27 @@ class RecipeRow
     #[ORM\JoinColumn(nullable: false)]
     private ?Recipe $recipe = null;
 
-    public static function fromModel(RecipeRowModel $recipeRow)
+    public function __construct(?string $id, ?Ingredient $ingredient, ?float $quantity, ?Unit $unit, ?Recipe $recipe)
     {
-
+        $this->id = $id;
+        $this->ingredient = $ingredient;
+        $this->quantity = $quantity;
+        $this->unit = $unit;
+        $this->recipe = $recipe;
     }
 
-    public function getId(): ?int
+    public static function fromModel(RecipeRowModel $recipeRow, RecipeModel $recipe): static
+    {
+        return new static(
+            $recipeRow->getId(),
+            Ingredient::fromModel($recipeRow->getIngredient()),
+            $recipeRow->getQuantity(),
+            Unit::fromModel($recipeRow->getUnit()),
+            Recipe::fromModel($recipe),
+        );
+    }
+
+    public function getId(): ?string
     {
         return $this->id;
     }

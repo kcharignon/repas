@@ -10,6 +10,7 @@ use Repas\Repas\Domain\Model\Recipe as RecipeModel;
 use Repas\Repas\Domain\Model\RecipeRow as RecipeRowModel;
 use Repas\Repas\Infrastructure\Entity\Ingredient as IngredientEntity;
 use Repas\Repas\Infrastructure\Entity\Recipe as RecipeEntity;
+use Repas\Repas\Infrastructure\Entity\RecipeRow as RecipeRowEntity;
 use Repas\Repas\Infrastructure\Entity\RecipeType as RecipeTypeEntity;
 use Repas\Repas\Infrastructure\Entity\Unit as UnitEntity;
 use Repas\Shared\Domain\Tool\UuidGenerator;
@@ -972,7 +973,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface
                 [
                     "slug" => "huile-d-olive",
                     "quantity" => 3,
-                    "unit" => "cuillère à soupe",
+                    "unit" => "cuillere-a-soupe",
                 ],
                 [
                     "slug" => "oignon",
@@ -981,8 +982,8 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface
                 ],
                 [
                     "slug" => "ail",
-                    "quantity" => 2,
-                    "unit" => "gousse",
+                    "quantity" => 1,
+                    "unit" => "piece",
                 ],
                 [
                     "slug" => "riz",
@@ -1065,8 +1066,8 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface
                 ],
                 [
                     "slug" => "ail",
-                    "quantity" => 2,
-                    "unit" => "gousse",
+                    "quantity" => 1,
+                    "unit" => "piece",
                 ],
                 [
                     "slug" => "epice",
@@ -1126,8 +1127,8 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface
                 ],
                 [
                     "slug" => "ail",
-                    "quantity" => 2,
-                    "unit" => "gousse",
+                    "quantity" => 1,
+                    "unit" => "piece",
                 ],
                 [
                     "slug" => "tomate",
@@ -1264,7 +1265,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface
                 [
                     "slug" => "huile-d-olive",
                     "quantity" => 3,
-                    "unit" => "cuillère à soupe",
+                    "unit" => "cuillere-a-soupe",
                 ],
                 [
                     "slug" => "chevre",
@@ -1503,7 +1504,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface
                 [
                     "slug" => "huile-d-olive",
                     "quantity" => 3,
-                    "unit" => "cuillère à soupe",
+                    "unit" => "cuillere-a-soupe",
                 ],
                 [
                     "slug" => "citron",
@@ -1550,13 +1551,13 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface
                 ],
                 [
                     "slug" => "ail",
-                    "quantity" => 2,
-                    "unit" => "gousse",
+                    "quantity" => 1,
+                    "unit" => "piece",
                 ],
                 [
                     "slug" => "huile-d-olive",
                     "quantity" => 3,
-                    "unit" => "cuillère à soupe",
+                    "unit" => "cuillere-a-soupe",
                 ],
                 [
                     "slug" => "bouquet-garni",
@@ -1616,8 +1617,8 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface
                 ],
                 [
                     "slug" => "ail",
-                    "quantity" => 2,
-                    "unit" => "gousse",
+                    "quantity" => 1,
+                    "unit" => "piece",
                 ],
                 [
                     "slug" => "concentre-de-tomate",
@@ -1627,7 +1628,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface
                 [
                     "slug" => "huile-d-olive",
                     "quantity" => 3,
-                    "unit" => "cuillère à soupe",
+                    "unit" => "cuillere-a-soupe",
                 ],
                 [
                     "slug" => "viande-hachee",
@@ -1841,8 +1842,8 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface
                 ],
                 [
                     "slug" => "ail",
-                    "quantity" => 2,
-                    "unit" => "gousse",
+                    "quantity" => 1,
+                    "unit" => "piece",
                 ],
                 [
                     "slug" => "farine",
@@ -1890,7 +1891,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface
                 [
                     "slug" => "huile-d-olive",
                     "quantity" => 3,
-                    "unit" => "cuillère à soupe",
+                    "unit" => "cuillere-a-soupe",
                 ],
                 [
                     "slug" => "tomate",
@@ -1915,7 +1916,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface
                 [
                     "slug" => "vinaigre-balsamique",
                     "quantity" => 2,
-                    "unit" => "cuillère à soupe",
+                    "unit" => "cuillere-a-soupe",
                 ],
             ],
         ],
@@ -2119,7 +2120,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface
                 [
                     "slug" => "huile-d-olive",
                     "quantity" => 3,
-                    "unit" => "cuillère à soupe",
+                    "unit" => "cuillere-a-soupe",
                 ],
                 [
                     "slug" => "citron",
@@ -2203,9 +2204,9 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface
                     "unit" => "gramme",
                 ],
                 [
-                    "slug" => "gelatine",
+                    "slug" => "feuille-gelatine",
                     "quantity" => 4,
-                    "unit" => "feuille",
+                    "unit" => "piece",
                 ],
             ],
         ],
@@ -2271,7 +2272,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface
                 [
                     "slug" => "yaourt-nature",
                     "quantity" => 1,
-                    "unit" => "pot",
+                    "unit" => "piece",
                 ],
                 [
                     "slug" => "citron",
@@ -2319,7 +2320,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface
                 [
                     "slug" => "vanille",
                     "quantity" => 1,
-                    "unit" => "gousse",
+                    "unit" => "piece",
                 ],
                 [
                     "slug" => "pepite-de-chocolat",
@@ -2362,7 +2363,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface
                 [
                     "slug" => "vanille",
                     "quantity" => 1,
-                    "unit" => "gousse",
+                    "unit" => "piece",
                 ],
                 [
                     "slug" => "pepite-de-chocolat",
@@ -2410,7 +2411,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface
                 [
                     "slug" => "bicarbonate",
                     "quantity" => 1,
-                    "unit" => "cuillère à café",
+                    "unit" => "cuillere-a-cafe",
                 ],
                 [
                     "slug" => "sel",
@@ -2506,7 +2507,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface
                 [
                     "slug" => "vanille",
                     "quantity" => 1,
-                    "unit" => "gousse",
+                    "unit" => "piece",
                 ],
                 [
                     "slug" => "chocolat-en-poudre",
@@ -2564,36 +2565,53 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface
     public function load(ObjectManager $manager): void
     {
         foreach (self::RECIPES as $recipeDatas) {
-            $id = UuidGenerator::new();
-            $recipeModel = RecipeModel::create(
-                id: $id,
-                name: $recipeDatas['name'],
-                peopleNumber: $recipeDatas['people'],
-                author: $this->getReference($recipeDatas['owner'], UserEntity::class)->getModel(),
-                recipeType: $this->getReference($recipeDatas['type'], RecipeTypeEntity::class)->getModel(),
-                rows: []//array_map(fn(array $rowData) => $this->getRecipeRow($rowData), $recipeDatas['ingredients']),
-            );
+            try {
+                $authorEntity = $this->getReference($recipeDatas['owner'], UserEntity::class);
+                $recipeType = $this->getReference($recipeDatas['type'], RecipeTypeEntity::class);
 
-            $recipeEntity = RecipeEntity::fromModel($recipeModel);
-            dump($recipeEntity);
-            $manager->persist($recipeEntity);
+                $id = UuidGenerator::new();
+                $recipeModel = RecipeModel::create(
+                    id: $id,
+                    name: $recipeDatas['name'],
+                    peopleNumber: $recipeDatas['people'],
+                    author: $authorEntity->getModel(),
+                    recipeType: $recipeType->getModel(),
+                    rows: []//array_map(fn(array $rowData) => $this->getRecipeRow($rowData), $recipeDatas['ingredients']),
+                );
 
-            $this->addReference($recipeEntity->id, $recipeEntity);
-            break;
+                $recipeEntity = RecipeEntity::fromModel($recipeModel);
+                $recipeEntity->setAuthor($authorEntity);
+                $recipeEntity->setType($recipeType);
+
+                foreach ($recipeDatas['ingredients'] as $recipeRowData) {
+                    $recipeRowEntity = $this->getRecipeRow($recipeRowData, $recipeModel);
+                    $recipeEntity->addRow($recipeRowEntity);
+                }
+
+                $manager->persist($recipeEntity);
+                $this->addReference($recipeEntity->id, $recipeEntity);
+            } catch(\Exception $e) {
+                dump($recipeDatas);
+                throw $e;
+            }
         }
 
         $manager->flush();
     }
 
-    private function getRecipeRow(array $data): RecipeRowModel
+    private function getRecipeRow(array $data, RecipeModel $recipeModel): RecipeRowEntity
     {
-        $ingredient = $this->getReference($data['slug'], IngredientEntity::class)->getModel();
-        $unit = $this->getReference($data['unit'], UnitEntity::class)->getModel();
-        return RecipeRowModel::create(
+        $ingredient = $this->getReference($data['slug'], IngredientEntity::class);
+        $unit = $this->getReference($data['unit'], UnitEntity::class);
+        $recipeRowEntity = RecipeRowEntity::fromModel(RecipeRowModel::create(
             id: UuidGenerator::new(),
-            ingredient: $ingredient,
+            ingredient: $ingredient->getModel(),
             quantity: $data['quantity'],
-            unit: $unit,
-        );
+            unit: $unit->getModel(),
+        ), $recipeModel);
+        $recipeRowEntity->setIngredient($ingredient);
+        $recipeRowEntity->setUnit($unit);
+
+        return $recipeRowEntity;
     }
 }

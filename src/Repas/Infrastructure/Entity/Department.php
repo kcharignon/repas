@@ -34,11 +34,7 @@ class Department
 
     public function getModel(): DepartmentModel
     {
-        return DepartmentModel::load([
-            'slug' => $this->slug,
-            'name' => $this->name,
-            'image' => $this->image,
-        ]);
+        return DepartmentModel::load($this->toArray());
     }
 
     public static function fromData(array $departmentData): self
@@ -80,5 +76,14 @@ class Department
         $this->image = $image;
 
         return $this;
+    }
+
+    public function toArray(): array
+    {
+        return [
+            'slug' => $this->slug,
+            'name' => $this->name,
+            'image' => $this->image,
+        ];
     }
 }

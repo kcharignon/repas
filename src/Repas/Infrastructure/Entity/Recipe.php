@@ -117,7 +117,7 @@ class Recipe
             $recipe->getPeopleNumber(),
             User::fromModel($recipe->getAuthor()),
             RecipeType::fromModel($recipe->getType()),
-            array_map(fn(RecipeRowModel $recipeRow) => RecipeRow::fromModel($recipeRow), $recipe->getRows())
+            array_map(fn(RecipeRowModel $recipeRow) => RecipeRow::fromModel($recipeRow, $recipe), $recipe->getRows())
         );
     }
 
