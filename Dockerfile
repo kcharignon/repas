@@ -22,6 +22,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 	file=1:5.44-3 \
 	gettext=0.21-12 \
 	git=1:2.39.5-0+deb12u1 \
+    ###> doctrine/doctrine-bundle ###
+    libpq-dev=15.10-0+deb12u1 \
 	&& rm -rf /var/lib/apt/lists/*
 
 RUN set -eux; \
@@ -31,21 +33,13 @@ RUN set -eux; \
 		intl \
 		opcache \
 		zip \
+        pdo_pgsql \
 	;
 
 # https://getcomposer.org/doc/03-cli.md#composer-allow-superuser
 ENV COMPOSER_ALLOW_SUPERUSER=1
 
 ENV PHP_INI_SCAN_DIR=":$PHP_INI_DIR/app.conf.d"
-
-###> recipes ###
-###> doctrine/doctrine-bundle ###
-RUN apt-get update && apt-get install -y --no-install-recommends \
-        libpq-dev=15.10-0+deb12u1 \
-        && install-php-extensions pdo_pgsql \
-        && rm -rf /var/lib/apt/lists/*
-###< doctrine/doctrine-bundle ###
-###< recipes ###
 
 COPY --link frankenphp/conf.d/10-app.ini $PHP_INI_DIR/app.conf.d/
 COPY --link --chmod=755 frankenphp/docker-entrypoint.sh /usr/local/bin/docker-entrypoint
