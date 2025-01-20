@@ -42,7 +42,8 @@ ENV PHP_INI_SCAN_DIR=":$PHP_INI_DIR/app.conf.d"
 ###> doctrine/doctrine-bundle ###
 RUN apt-get update && apt-get install -y --no-install-recommends \
         libpq-dev \
-        && install-php-extensions pdo_pgsql
+        && install-php-extensions pdo_pgsql \
+        && rm -rf /var/lib/apt/lists/*
 ###< doctrine/doctrine-bundle ###
 ###< recipes ###
 
