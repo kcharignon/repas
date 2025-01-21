@@ -128,8 +128,8 @@ class Ingredient
             'name' => $this->name,
             'image' => $this->image,
             'department' => $this->department->toArray(),
-            'defaultCookingUnit' => $this->defaultCookingUnit->toArray(),
-            'defaultPurchaseUnit' => $this->defaultPurchaseUnit->toArray(),
+            'default_cooking_unit' => $this->defaultCookingUnit->toArray(),
+            'default_purchase_unit' => $this->defaultPurchaseUnit->toArray(),
         ]);
     }
 
@@ -140,8 +140,8 @@ class Ingredient
             $datas['name'],
             $datas['image'],
             Department::fromData($datas['department']),
-            Unit::fromData($datas['defaultCookingUnit']),
-            Unit::fromData($datas['defaultPurchaseUnit']),
+            Unit::fromData($datas['default_cooking_unit']),
+            Unit::fromData($datas['default_purchase_unit']),
         );
     }
 }

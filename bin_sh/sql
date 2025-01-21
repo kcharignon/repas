@@ -11,8 +11,24 @@ fi
 # Utiliser "docker compose" si disponible, sinon "docker-compose"
 DOCKER_COMPOSE_CMD=$(command -v docker-compose &>/dev/null && echo "docker-compose" || echo "docker compose")
 
+# Base de données par défaut
+DATABASE="repas"
+
+# Parse les arguments
+while getopts "d:" opt; do
+  case $opt in
+    d)
+      DATABASE=$OPTARG
+      ;;
+    *)
+      echo "Usage: $0 [-d database_name]"
+      exit 1
+      ;;
+  esac
+done
+
 # Crée la commande à exécuter
-COMMAND="$DOCKER_COMPOSE_CMD exec database psql -U app -d repas $*"
+COMMAND="$DOCKER_COMPOSE_CMD exec database psql -U app -d $DATABASE"
 
 # Affiche la commande en vert
 echo -e "\033[32m$COMMAND\033[0m"

@@ -11,8 +11,8 @@ use Symfony\Component\Process\Process;
 
 class ResetDatabaseCommand extends Command
 {
-    protected static string $defaultName = 'repas:reset-database';
-    protected static string $defaultDescription = 'Réinitialise complètement la base de données, recrée les migrations et recharge les fixtures';
+    protected static $defaultName = 'repas:reset-database';
+    protected static $defaultDescription = 'Réinitialise complètement la base de données, recrée les migrations et recharge les fixtures';
 
     protected function configure(): void
     {

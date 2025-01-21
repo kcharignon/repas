@@ -47,15 +47,16 @@ class TabTest extends TestCase
         $this->assertEquals([1, 2, 3], $tab->all());
     }
 
-    public function testNewType(): void
+    public function testNewEmpty(): void
     {
         //Arrange
-        $tab = Tab::newTyped('integer');
+        $tab = Tab::newEmpty('integer');
 
         //Act
         $tab[] = 2;
 
         //Assert
+        $this->assertCount(1, $tab);
         $this->expectException(InvalidArgumentException::class);
         $tab->add('string');
     }

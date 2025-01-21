@@ -42,7 +42,7 @@ class Tab implements ArrayAccess, IteratorAggregate, Countable
         }
     }
 
-    public static function newTyped(string $type): Tab
+    public static function newEmpty(string $type): Tab
     {
         $tab = new self([]);
         $tab->type = $type;

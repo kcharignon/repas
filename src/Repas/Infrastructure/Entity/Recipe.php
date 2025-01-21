@@ -28,11 +28,11 @@ class Recipe
     private ?int $peopleNumber = null;
 
     #[ORM\ManyToOne]
-    #[ORM\JoinColumn(nullable: false)]
+    #[ORM\JoinColumn(name: 'author', nullable: false)]
     private ?User $author = null;
 
     #[ORM\ManyToOne(targetEntity: RecipeType::class)]
-    #[ORM\JoinColumn(name: "recipe_type", referencedColumnName: "slug", nullable: false)]
+    #[ORM\JoinColumn(name: "type", referencedColumnName: "slug", nullable: false)]
     private ?RecipeType $type = null;
 
     /**

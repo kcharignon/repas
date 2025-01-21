@@ -26,7 +26,7 @@ class RecipeRow
     private ?Unit $unit = null;
 
     #[ORM\ManyToOne(inversedBy: 'rows')]
-    #[ORM\JoinColumn(nullable: false)]
+    #[ORM\JoinColumn(name: 'recipe', nullable: false)]
     private ?Recipe $recipe = null;
 
     public function __construct(?string $id, ?Ingredient $ingredient, ?float $quantity, ?Unit $unit, ?Recipe $recipe)
