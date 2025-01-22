@@ -36,7 +36,7 @@ class ResetDatabaseCommand extends Command
             'Supprimer les migrations' => ['rm', '-rf', 'migrations/*'],
             'Générer une nouvelle migration' => ['php', 'bin/console', 'doctrine:migrations:diff'],
             'Appliquer les migrations' => ['php', 'bin/console', 'doctrine:migrations:migrate', '--no-interaction'],
-            'Charger les fixtures' => ['php', 'bin/console', 'doctrine:fixtures:load', '--no-interaction'],
+            'Charger les fixtures' => ['php', 'bin/console', 'doctrine:fixtures:load', '--no-interaction', '--group=dev'],
         ];
 
         foreach ($commands as $description => $command) {

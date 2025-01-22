@@ -35,6 +35,11 @@ class User
         $this->roles = $roles;
     }
 
+    public static function fromData(array $datas): static
+    {
+        return new self($datas['id'], $datas['email'], $datas['password'], $datas['roles']);
+    }
+
 
     public function getId(): ?string
     {

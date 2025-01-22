@@ -4,6 +4,7 @@ namespace Repas\Repas\Infrastructure\DataFixture;
 
 
 use Doctrine\Bundle\FixturesBundle\Fixture;
+use Doctrine\Bundle\FixturesBundle\FixtureGroupInterface;
 use Doctrine\Common\DataFixtures\DependentFixtureInterface;
 use Doctrine\Persistence\ObjectManager;
 use Repas\Repas\Domain\Model\Recipe as RecipeModel;
@@ -17,10 +18,11 @@ use Repas\Shared\Domain\Tool\UuidGenerator;
 use Repas\User\Infrastructure\DataFixture\UserFixture;
 use Repas\User\Infrastructure\Entity\User as UserEntity;
 
-class RecipeFixture extends Fixture implements DependentFixtureInterface
+class RecipeFixture extends Fixture implements DependentFixtureInterface, FixtureGroupInterface
 {
-    public const array RECIPES = [
+    private const array RECIPES = [
         [
+            "id" => "f1e56ce1-385d-42e6-9c0b-b70444ef0147",
             "name" => "pates carbonara",
             "owner" => "alexiane.sichi@gmail.com",
             "type" => "plat",
@@ -55,6 +57,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface
             ]
         ],
         [
+            "id" => "d0f0e758-2f9b-483f-9bca-c54885fe67f4",
             "name" => "fajitas",
             "owner" => "alexiane.sichi@gmail.com",
             "type" => "plat",
@@ -113,6 +116,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface
             ],
         ],
         [
+            "id" => "3b186375-cae8-4cd1-8a62-78aef2325570",
             "name" => "œufs à la coque",
             "owner" => "alexiane.sichi@gmail.com",
             "type" => "plat",
@@ -131,6 +135,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface
             ]
         ],
         [
+            "id" => "fce91ff0-d01d-4f1c-96c6-801e7c5e2c1b",
             "name" => "burger",
             "owner" => "alexiane.sichi@gmail.com",
             "type" => "plat",
@@ -2561,6 +2566,10 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface
         ];
     }
 
+    public static function getGroups(): array
+    {
+        return ['prod', 'test', 'dev'];
+    }
 
     public function load(ObjectManager $manager): void
     {
@@ -2569,14 +2578,14 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface
                 $authorEntity = $this->getReference($recipeDatas['owner'], UserEntity::class);
                 $recipeType = $this->getReference($recipeDatas['type'], RecipeTypeEntity::class);
 
-                $id = UuidGenerator::new();
+                $id = /*$recipeDatas['id'] ??*/ UuidGenerator::new();
                 $recipeModel = RecipeModel::create(
                     id: $id,
                     name: $recipeDatas['name'],
-                    peopleNumber: $recipeDatas['people'],
+                    servings: $recipeDatas['people'],
                     author: $authorEntity->getModel(),
                     recipeType: $recipeType->getModel(),
-                    rows: []//array_map(fn(array $rowData) => $this->getRecipeRow($rowData), $recipeDatas['ingredients']),
+                    rows: []
                 );
 
                 $recipeEntity = RecipeEntity::fromModel($recipeModel);

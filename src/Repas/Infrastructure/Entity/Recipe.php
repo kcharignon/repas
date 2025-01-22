@@ -11,6 +11,7 @@ use Repas\Repository\RecipeRepository;
 use Repas\User\Infrastructure\Entity\User;
 
 #[ORM\Entity(repositoryClass: RecipeRepository::class)]
+#[ORM\Table(name: 'recipe')]
 class Recipe
 {
     #[ORM\Id]
@@ -114,7 +115,7 @@ class Recipe
         return new static(
             $recipe->getId(),
             $recipe->getName(),
-            $recipe->getPeopleNumber(),
+            $recipe->getServings(),
             User::fromModel($recipe->getAuthor()),
             RecipeType::fromModel($recipe->getType()),
             array_map(fn(RecipeRowModel $recipeRow) => RecipeRow::fromModel($recipeRow, $recipe), $recipe->getRows())

@@ -8,6 +8,7 @@ use Repas\Repas\Domain\Model\RecipeRow as RecipeRowModel;
 use Repas\Repository\Repas\Repas\Infrastructure\Entity\RecipeRowRepository;
 
 #[ORM\Entity(repositoryClass: RecipeRowRepository::class)]
+#[ORM\Table(name: 'recipe_row')]
 class RecipeRow
 {
     #[ORM\Id]

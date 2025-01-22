@@ -4,11 +4,12 @@ namespace Repas\Repas\Infrastructure\DataFixture;
 
 
 use Doctrine\Bundle\FixturesBundle\Fixture;
+use Doctrine\Bundle\FixturesBundle\FixtureGroupInterface;
 use Doctrine\Persistence\ObjectManager;
 use Repas\Repas\Domain\Model\Department;
 use Repas\Repas\Infrastructure\Entity\Department as DepartmentEntity;
 
-class DepartmentFixture extends Fixture
+class DepartmentFixture extends Fixture implements FixtureGroupInterface
 {
     private const array DEPARTMENTS = [
         [
@@ -92,6 +93,11 @@ class DepartmentFixture extends Fixture
             "image" => "https://cdn-icons-png.flaticon.com/128/1717/1717511.png",
         ],
     ];
+
+    public static function getGroups(): array
+    {
+        return ['prod', 'test', 'dev'];
+    }
 
     public function load(ObjectManager $manager): void
     {

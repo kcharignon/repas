@@ -4,11 +4,12 @@ namespace Repas\Repas\Infrastructure\DataFixture;
 
 
 use Doctrine\Bundle\FixturesBundle\Fixture;
+use Doctrine\Bundle\FixturesBundle\FixtureGroupInterface;
 use Doctrine\Persistence\ObjectManager;
 use Repas\Repas\Domain\Model\Unit;
 use Repas\Repas\Infrastructure\Entity\Unit as UnitEntity;
 
-class UnitFixture extends Fixture
+class UnitFixture extends Fixture implements FixtureGroupInterface
 {
     const array UNITS = [
         [
@@ -89,6 +90,10 @@ class UnitFixture extends Fixture
         ],
     ];
 
+    public static function getGroups(): array
+    {
+        return ['prod', 'test', 'dev'];
+    }
 
     public function load(ObjectManager $manager): void
     {

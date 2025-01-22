@@ -21,21 +21,20 @@ class Tab implements ArrayAccess, IteratorAggregate, Countable
     private array $items = [];
 
     /**
-     * @var string|null
+     * @var string
      */
-    private ?string $type = null;
+    private string $type;
 
     /**
      * Tab constructor.
      *
-     * @param T[]|T $elements
+     * @param string $type
+     * @param T[] $elements
      * @throws InvalidArgumentException
      */
-    public function __construct(...$elements)
+    public function __construct(string $type, array $elements)
     {
-        if (count($elements) === 1 && is_array($elements[0])) {
-            $elements = $elements[0];
-        }
+        $this->type = $type;
 
         foreach ($elements as $key => $element) {
             $this->add($element, $key);
@@ -44,9 +43,22 @@ class Tab implements ArrayAccess, IteratorAggregate, Countable
 
     public static function newEmpty(string $type): Tab
     {
-        $tab = new self([]);
-        $tab->type = $type;
-        return $tab;
+        return new self($type, []);
+    }
+
+    /**
+     * @param T[]|T $elements
+     * @return Tab
+     */
+    public static function fromArray(...$elements): Tab
+    {
+        if (count($elements) === 1 && is_array($elements[0])) {
+            $elements = $elements[0];
+        }
+
+        $type = gettype(current($elements));
+
+        return new self($type, $elements);
     }
 
     /**
@@ -71,7 +83,7 @@ class Tab implements ArrayAccess, IteratorAggregate, Countable
      *
      * @return T[]
      */
-    public function all(): array
+    public function toArray(): array
     {
         return $this->items;
     }
@@ -85,7 +97,7 @@ class Tab implements ArrayAccess, IteratorAggregate, Countable
     public function map(callable $callback): Tab
     {
         $newItems = array_map($callback, $this->items);
-        return new self($newItems);
+        return new self($this->type, $newItems);
     }
 
     /**
@@ -98,7 +110,7 @@ class Tab implements ArrayAccess, IteratorAggregate, Countable
     public function filter(callable $callback, int $mode = 0): Tab
     {
         $filteredItems = array_filter($this->items, $callback, $mode);
-        return new self($filteredItems);
+        return new self($this->type, $filteredItems);
     }
 
     /**
@@ -133,7 +145,7 @@ class Tab implements ArrayAccess, IteratorAggregate, Countable
      */
     public function slice(int $offset, ?int $length = null, bool $preserveKeys = false): Tab
     {
-        return new self(array_slice($this->items, $offset, $length, $preserveKeys));
+        return new self($this->type, array_slice($this->items, $offset, $length, $preserveKeys));
     }
 
     public function implode(string $glue): string
@@ -166,7 +178,7 @@ class Tab implements ArrayAccess, IteratorAggregate, Countable
      */
     public static function explode(string $delimiter, string $string): Tab
     {
-        return new self(explode($delimiter, $string));
+        return self::fromArray(explode($delimiter, $string));
     }
 
     /**
@@ -246,10 +258,6 @@ class Tab implements ArrayAccess, IteratorAggregate, Countable
      */
     private function validateType($item): void
     {
-        if ($this->type === null) {
-            $this->type = gettype($item);
-        }
-
         if (gettype($item) !== $this->type) {
             throw new InvalidArgumentException(sprintf(
                 'Expected type %s, got %s.',
@@ -257,6 +265,11 @@ class Tab implements ArrayAccess, IteratorAggregate, Countable
                 gettype($item)
             ));
         }
+    }
+
+    public function getType(): string
+    {
+        return $this->type;
     }
 }
 

@@ -2,8 +2,13 @@
 
 namespace Repas\Repas\Domain\Model;
 
-class RecipeRow
+use Repas\Shared\Domain\Model\ModelInterface;
+use Repas\Shared\Domain\Model\ModelTrait;
+
+class RecipeRow implements ModelInterface
 {
+    use ModelTrait;
+
     private function __construct(
         private string $id,
         private Ingredient $ingredient,
@@ -52,7 +57,7 @@ class RecipeRow
         $this->unit = $unit;
     }
 
-    public static function load(array $datas): self
+    public static function load(array $datas): static
     {
         return new self(
             $datas['id'],
@@ -65,15 +70,5 @@ class RecipeRow
     public static function create(string $id, Ingredient $ingredient, float $quantity, Unit $unit): self
     {
         return new self($id, $ingredient, $quantity, $unit);
-    }
-
-    public function toArray(): array
-    {
-        return [
-            'id' => $this->id,
-            'ingredient' => $this->ingredient->toArray(),
-            'quantity' => $this->quantity,
-            'unit' => $this->unit->toArray(),
-        ];
     }
 }

@@ -3,12 +3,17 @@
 namespace Repas\User\Domain\Model;
 
 
+use Repas\Shared\Domain\Model\ModelInterface;
+use Repas\Shared\Domain\Model\ModelTrait;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use Symfony\Component\Security\Core\User\PasswordUpgraderInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
 
-class User implements UserInterface, PasswordAuthenticatedUserInterface, PasswordUpgraderInterface
+class User implements UserInterface, PasswordAuthenticatedUserInterface, PasswordUpgraderInterface, ModelInterface
 {
+
+    use ModelTrait;
+
     private function __construct(
         private string $id,
         private string $email,
@@ -80,15 +85,5 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, Passwor
     public function upgradePassword(PasswordAuthenticatedUserInterface $user, string $newHashedPassword): void
     {
         $this->setPassword($newHashedPassword);
-    }
-
-    public function toArray(): array
-    {
-        return [
-            'id' => $this->id,
-            'email' => $this->email,
-            'roles' => $this->roles,
-            'password' => $this->password,
-        ];
     }
 }

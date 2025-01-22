@@ -4,6 +4,7 @@ namespace Repas\Repas\Infrastructure\DataFixture;
 
 
 use Doctrine\Bundle\FixturesBundle\Fixture;
+use Doctrine\Bundle\FixturesBundle\FixtureGroupInterface;
 use Doctrine\Common\DataFixtures\DependentFixtureInterface;
 use Doctrine\Persistence\ObjectManager;
 use Repas\Repas\Domain\Model\Conversion;
@@ -12,7 +13,7 @@ use Repas\Repas\Infrastructure\Entity\Conversion as ConversionEntity;
 use Repas\Repas\Infrastructure\Entity\Ingredient;
 use Repas\Repas\Infrastructure\Entity\Unit;
 
-class ConversionFixture extends Fixture implements DependentFixtureInterface
+class ConversionFixture extends Fixture implements DependentFixtureInterface, FixtureGroupInterface
 {
     private const array CONVERSIONS = [
         [
@@ -82,6 +83,10 @@ class ConversionFixture extends Fixture implements DependentFixtureInterface
         ];
     }
 
+    public static function getGroups(): array
+    {
+        return ['prod', 'test', 'dev'];
+    }
 
     public function load(ObjectManager $manager): void
     {

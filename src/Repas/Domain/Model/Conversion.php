@@ -3,8 +3,13 @@
 namespace Repas\Repas\Domain\Model;
 
 
-class Conversion
+use Repas\Shared\Domain\Model\ModelInterface;
+use Repas\Shared\Domain\Model\ModelTrait;
+
+class Conversion implements ModelInterface
 {
+    use ModelTrait;
+
     protected function __construct(
         private string      $slug,
         private Unit        $startUnit,
@@ -43,16 +48,5 @@ class Conversion
     private static function generateSlug(?Ingredient $ingredient, Unit $startUnit, Unit $endUnit): string
     {
         return trim($ingredient?->getSlug() . '-' . $startUnit->getSlug() . '-' . $endUnit->getSlug(), '-');
-    }
-
-    public function toArray(): array
-    {
-        return [
-            'slug' => $this->slug,
-            'start_unit' => $this->startUnit->toArray(),
-            'end_unit' => $this->endUnit->toArray(),
-            'coefficient' => $this->coefficient,
-            'ingredient' => $this->ingredient?->toArray(),
-        ];
     }
 }

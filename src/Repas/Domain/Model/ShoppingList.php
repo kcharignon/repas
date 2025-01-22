@@ -4,16 +4,22 @@ namespace Repas\Repas\Domain\Model;
 
 
 use DateTimeImmutable;
+use Repas\Shared\Domain\Model\ModelInterface;
+use Repas\Shared\Domain\Model\ModelTrait;
 use Repas\Shared\Domain\Tool\Tab;
+use Repas\User\Domain\Model\User;
 
-class ShoppingList
+class ShoppingList implements ModelInterface
 {
+
+    use ModelTrait;
 
     /**
      * @param Tab<Recipe> $recipes
      */
     private function __construct(
         private string $id,
+        private User $owner,
         private DateTimeImmutable $date,
         private bool $locked,
         private Tab $recipes,
@@ -22,35 +28,28 @@ class ShoppingList
 
     public static function create(
         string $id,
+        User $owner,
         DateTimeImmutable $date,
         bool $locked,
         Tab $recipes,
     ): ShoppingList {
         return new ShoppingList(
             id: $id,
+            owner: $owner,
             date: $date,
             locked: $locked,
             recipes: $recipes
         );
     }
 
-    public static function load(array $data): ShoppingList
+    public static function load(array $datas): static
     {
         return new static(
-            id: $data['id'],
-            date: DateTimeImmutable::createFromFormat(DATE_ATOM, $data['date']),
-            locked: $data['locked'],
-            recipes: new Tab($data['recipes'])->map(fn (array $recipe) => Recipe::load($recipe)),
+            id: $datas['id'],
+            owner: User::load($datas['owner']),
+            date: DateTimeImmutable::createFromFormat(DATE_ATOM, $datas['date']),
+            locked: $datas['locked'],
+            recipes: new Tab($datas['recipes'])->map(fn (array $recipe) => RecipeInShoppingList::load($recipe)),
         );
-    }
-
-    public function toArray(): array
-    {
-        return [
-            'id' => $this->id,
-            'date' => $this->date->format(DATE_ATOM),
-            'locked' => $this->locked,
-            'recipe' => $this->recipes->map(fn(Recipe $recipe) => $recipe->toArray())->all(),
-        ];
     }
 }

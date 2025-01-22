@@ -2,6 +2,7 @@
 
 namespace Repas\Tests\Helper;
 
+use Doctrine\DBAL\Exception;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Tools\SchemaTool;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
@@ -10,6 +11,9 @@ abstract class DatabaseTestCase extends KernelTestCase
 {
     protected EntityManagerInterface $entityManager;
 
+    /**
+     * @throws Exception
+     */
     protected function setUp(): void
     {
         parent::setUp();
@@ -24,14 +28,17 @@ abstract class DatabaseTestCase extends KernelTestCase
         $this->resetDatabaseSchema();
     }
 
+    /**
+     * @throws Exception
+     */
     private function resetDatabaseSchema(): void
     {
+        $connection = $this->entityManager->getConnection();
         $schemaTool = new SchemaTool($this->entityManager);
 
-        // Drop the existing schema
-        $schemaTool->dropSchema(
-            $this->entityManager->getMetadataFactory()->getAllMetadata()
-        );
+        // Drop the database (this will remove all tables)
+        $connection->executeStatement('DROP SCHEMA public CASCADE;');
+        $connection->executeStatement('CREATE SCHEMA public;');
 
         // Create the schema again
         $schemaTool->createSchema(

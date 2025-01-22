@@ -7,7 +7,7 @@ use Repas\Repas\Domain\Model\Ingredient as IngredientModel;
 use Repas\Repository\IngredientRepository;
 
 #[ORM\Entity(repositoryClass: IngredientRepository::class)]
-#[ORM\Table('`ingredient`')]
+#[ORM\Table(name: 'ingredient')]
 class Ingredient
 {
     #[ORM\Id]

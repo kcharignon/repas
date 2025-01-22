@@ -4,6 +4,7 @@ namespace Repas\User\Infrastructure\DataFixture;
 
 
 use Doctrine\Bundle\FixturesBundle\Fixture;
+use Doctrine\Bundle\FixturesBundle\FixtureGroupInterface;
 use Doctrine\Persistence\ObjectManager;
 use Repas\Shared\Domain\Tool\UuidGenerator;
 use Repas\User\Domain\Model\User;
@@ -11,9 +12,9 @@ use Repas\User\Infrastructure\Entity\User as UserEntity;
 use Symfony\Component\DependencyInjection\ParameterBag\ContainerBagInterface;
 use Symfony\Component\PasswordHasher\Hasher\PasswordHasherFactoryInterface;
 
-class UserFixture extends Fixture
+class UserFixture extends Fixture implements FixtureGroupInterface
 {
-    const array USERS = [
+    private const array USERS = [
         [
             "email" => "alexiane.sichi@gmail.com",
             "roles" => ["ROLE_USER"],
@@ -29,6 +30,11 @@ class UserFixture extends Fixture
             "recipes" => [],
         ],
     ];
+
+    public static function getGroups(): array
+    {
+        return ['prod', 'test', 'dev'];
+    }
 
     public function __construct(
         private PasswordHasherFactoryInterface $passwordHasherFactory,

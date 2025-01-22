@@ -4,6 +4,7 @@ namespace Repas\Repas\Infrastructure\DataFixture;
 
 
 use Doctrine\Bundle\FixturesBundle\Fixture;
+use Doctrine\Bundle\FixturesBundle\FixtureGroupInterface;
 use Doctrine\Common\DataFixtures\DependentFixtureInterface;
 use Doctrine\Persistence\ObjectManager;
 use Repas\Repas\Domain\Model\Ingredient;
@@ -11,7 +12,7 @@ use Repas\Repas\Infrastructure\Entity\Department as DepartmentEntity;
 use Repas\Repas\Infrastructure\Entity\Ingredient as IngredientEntity;
 use Repas\Repas\Infrastructure\Entity\Unit as UnitEntity;
 
-class IngredientFixture extends Fixture implements DependentFixtureInterface
+class IngredientFixture extends Fixture implements DependentFixtureInterface, FixtureGroupInterface
 {
     private const array INGREDIENTS = [
         [
@@ -1528,6 +1529,11 @@ class IngredientFixture extends Fixture implements DependentFixtureInterface
             UnitFixture::class,
             DepartmentFixture::class,
         ];
+    }
+
+    public static function getGroups(): array
+    {
+        return ['prod', 'test', 'dev'];
     }
 
     public function load(ObjectManager $manager): void

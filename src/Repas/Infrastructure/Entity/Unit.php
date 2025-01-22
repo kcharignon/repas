@@ -7,7 +7,7 @@ use Repas\Repository\UnitRepository;
 use Repas\Repas\Domain\Model\Unit as UnitModel;
 
 #[ORM\Entity(repositoryClass: UnitRepository::class)]
-#[ORM\Table(name: '`unit`')]
+#[ORM\Table(name: 'unit')]
 class Unit
 {
     #[ORM\Id]

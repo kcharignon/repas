@@ -3,18 +3,22 @@
 namespace Repas\Repas\Domain\Model;
 
 
+use Repas\Shared\Domain\Model\ModelInterface;
+use Repas\Shared\Domain\Model\ModelTrait;
 use Repas\User\Domain\Model\User;
 
-final class Recipe
+class Recipe implements ModelInterface
 {
 
+    use ModelTrait;
+
     private function __construct(
-        private string $id,
-        private string $name,
-        private int $peopleNumber,
-        private User $author,
+        private string     $id,
+        private string     $name,
+        private int        $servings,
+        private User       $author,
         private RecipeType $type,
-        private array $rows,
+        private array      $rows,
     ) {
     }
 
@@ -28,9 +32,9 @@ final class Recipe
         return $this->name;
     }
 
-    public function getPeopleNumber(): int
+    public function getServings(): int
     {
-        return $this->peopleNumber;
+        return $this->servings;
     }
 
     public function getAuthor(): User
@@ -51,37 +55,27 @@ final class Recipe
         return $this->rows;
     }
 
-    public static function load(array $data): self {
+    public static function load(array $datas): static
+    {
         return new self(
-            $data['id'],
-            $data['name'],
-            $data['peopleNumber'],
-            User::load($data['author']),
-            RecipeType::load($data['type']),
-            $data['rows']
+            $datas['id'],
+            $datas['name'],
+            $datas['servings'],
+            User::load($datas['author']),
+            RecipeType::load($datas['type']),
+            $datas['rows']
         );
     }
 
     public static function create(
-        string $id,
-        string $name,
-        int $peopleNumber,
-        User $author,
+        string     $id,
+        string     $name,
+        int        $servings,
+        User       $author,
         RecipeType $recipeType,
-        array $rows,
+        array      $rows,
     ): self {
-        return new self($id, $name, $peopleNumber, $author, $recipeType, $rows);
+        return new self($id, $name, $servings, $author, $recipeType, $rows);
     }
 
-    public function toArray(): array
-    {
-        return [
-            'id' => $this->id,
-            'name' => $this->name,
-            'peopleNumber' => $this->peopleNumber,
-            'author' => $this->author->toArray(),
-            'type' => $this->type->toArray(),
-            'rows' => array_map(fn(RecipeRow $row) => $row->toArray(), $this->rows),
-        ];
-    }
 }

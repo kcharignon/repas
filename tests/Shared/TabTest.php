@@ -30,9 +30,11 @@ class TabTest extends TestCase
     public function testCreateWithArray(array $datas): void
     {
         //Act
-        $tab = new Tab($datas);
+        $tab = Tab::fromArray($datas);
 
         //Assert
+        $expectedType = gettype(current($datas));
+        $this->assertEquals($expectedType, $tab->getType());
         foreach ($tab as $key => $value) {
             $this->assertEquals($value, $datas[$key]);
         }
@@ -41,10 +43,10 @@ class TabTest extends TestCase
     public function testCreateWithElements(): void
     {
         //Act
-        $tab = new Tab(1, 2, 3);
+        $tab = Tab::fromArray(1, 2, 3);
 
         //Assert
-        $this->assertEquals([1, 2, 3], $tab->all());
+        $this->assertEquals([1, 2, 3], $tab->toArray());
     }
 
     public function testNewEmpty(): void
@@ -64,20 +66,20 @@ class TabTest extends TestCase
     public function testMap(): void
     {
         //Arrange
-        $tab = new Tab('test', 'with', 'map');
+        $tab = Tab::fromArray('test', 'with', 'map');
 
         //Act
         $actual = $tab->map(fn(string $item) => "prefix-{$item}");
 
         //Assert
-        $this->assertEquals(['prefix-test', 'prefix-with', 'prefix-map'], $actual->all());
+        $this->assertEquals(['prefix-test', 'prefix-with', 'prefix-map'], $actual->toArray());
     }
 
     public function testFilter(): void
     {
         // Arrange
         $array = [1, 2, 3, 4, 5];
-        $tab = new Tab(1, 2, 3, 4, 5);
+        $tab = Tab::fromArray(1, 2, 3, 4, 5);
         $closure = fn(int $item) => $item % 2 === 0;
 
         // Act
@@ -85,7 +87,7 @@ class TabTest extends TestCase
         $filteredArray = array_filter($array, $closure);
 
         // Assert
-        $this->assertEquals($filteredArray, $filteredTab->all());
+        $this->assertEquals($filteredArray, $filteredTab->toArray());
     }
 
     public function testFind(): void
@@ -93,7 +95,7 @@ class TabTest extends TestCase
         // Arrange
         $closure = fn(int $item) => $item === 2;
         $array = ['a' => 1, 'b' => 2, 'c' => 3];
-        $tab = new Tab($array);
+        $tab = Tab::fromArray($array);
 
         // Act
         $itemTab = $tab->find($closure);
@@ -108,7 +110,7 @@ class TabTest extends TestCase
         // Arrange
         $closure = fn(int $item) => $item === 2;
         $array = ['a' => 1, 'b' => 2, 'c' => 3];
-        $tab = new Tab($array);
+        $tab = Tab::fromArray($array);
 
         // Act
         $keyTab = $tab->findKey(fn(int $item) => $item === 2);
@@ -136,21 +138,21 @@ class TabTest extends TestCase
     public function testSlice(array $array, int $offset, ?int $length, bool $preserveKey): void
     {
         // Arrange
-        $tab = new Tab($array);
+        $tab = Tab::fromArray($array);
 
         // Act
         $slicedTab = $tab->slice($offset, $length, $preserveKey);
         $slicedArray  = array_slice($array, $offset, $length, $preserveKey);
 
         // Assert
-        $this->assertEquals($slicedArray, $slicedTab->all());
+        $this->assertEquals($slicedArray, $slicedTab->toArray());
     }
 
     public function testImplode(): void
     {
         // Arrange
         $array = ['une', 'petite', 'phrase.'];
-        $tab = new Tab($array);
+        $tab = Tab::fromArray($array);
 
         // Act
         $implodedTab = $tab->implode('-');
@@ -166,13 +168,13 @@ class TabTest extends TestCase
         $tab = Tab::explode(', ', 'a, b, c');
 
         // Assert
-        $this->assertEquals(['a', 'b', 'c'], $tab->all());
+        $this->assertEquals(['a', 'b', 'c'], $tab->toArray());
     }
 
     public function testAddThrowsExceptionForInvalidType(): void
     {
         // Arrange
-        $tab = new Tab(1, 2, 3);
+        $tab = Tab::fromArray(1, 2, 3);
 
         // Expect Exception
         $this->expectException(InvalidArgumentException::class);
@@ -184,7 +186,7 @@ class TabTest extends TestCase
     public function testOffsetAccess(): void
     {
         // Arrange
-        $tab = new Tab(1, 2, 3);
+        $tab = Tab::fromArray(1, 2, 3);
 
         // Act
         $tab[1] = 4;
@@ -199,7 +201,7 @@ class TabTest extends TestCase
     {
         //Arrange
         $array = ['test' => 1, 2, 5 => 3, 4, '0' => 5, 6];
-        $tab = new Tab($array);
+        $tab = Tab::fromArray($array);
 
         //Act
         $tabKeys = $tab->values();
@@ -213,7 +215,7 @@ class TabTest extends TestCase
     {
         //Arrange
         $array = ['test' => 1, 2, 5 => 3, 4, '0' => 5, 6];
-        $tab = new Tab($array);
+        $tab = Tab::fromArray($array);
 
         //Act
         $tabKeys = $tab->keys();

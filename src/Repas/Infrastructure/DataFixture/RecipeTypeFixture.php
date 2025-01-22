@@ -4,13 +4,14 @@ namespace Repas\Repas\Infrastructure\DataFixture;
 
 
 use Doctrine\Bundle\FixturesBundle\Fixture;
+use Doctrine\Bundle\FixturesBundle\FixtureGroupInterface;
 use Doctrine\Persistence\ObjectManager;
 use Repas\Repas\Domain\Model\RecipeType;
 use Repas\Repas\Infrastructure\Entity\RecipeType as RecipeTypeEntity;
 
-class RecipeTypeFixture extends Fixture
+class RecipeTypeFixture extends Fixture implements FixtureGroupInterface
 {
-    const RECIPE_TYPES = [
+    private const array RECIPE_TYPES = [
         [
             "name" => "plat",
             "image" => "images/recipe/type/meal.svg",
@@ -27,6 +28,11 @@ class RecipeTypeFixture extends Fixture
             "order" => 1,
         ],
     ];
+
+    public static function getGroups(): array
+    {
+        return ['prod', 'test', 'dev'];
+    }
 
     public function load(ObjectManager $manager): void
     {

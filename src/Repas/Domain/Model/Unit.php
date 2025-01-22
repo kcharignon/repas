@@ -3,11 +3,13 @@
 namespace Repas\Repas\Domain\Model;
 
 
+use Repas\Shared\Domain\Model\ModelInterface;
+use Repas\Shared\Domain\Model\ModelTrait;
 use Repas\Shared\Domain\Tool\StringTool;
 
-final readonly class Unit
+readonly class Unit implements ModelInterface
 {
-    private Conversion $conversions;
+    use ModelTrait;
 
     private function __construct(
         private string $slug,
@@ -43,21 +45,12 @@ final readonly class Unit
         );
     }
 
-    public static function load(array $data): self
+    public static function load(array $datas): static
     {
         return new self(
-            $data['slug'],
-            $data['name'],
-            $data['symbol'],
+            $datas['slug'],
+            $datas['name'],
+            $datas['symbol'],
         );
-    }
-
-    public function toArray(): array
-    {
-        return [
-            'slug' => $this->slug,
-            'name' => $this->name,
-            'symbol' => $this->symbol,
-        ];
     }
 }

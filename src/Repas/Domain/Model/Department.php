@@ -3,10 +3,14 @@
 namespace Repas\Repas\Domain\Model;
 
 
+use Repas\Shared\Domain\Model\ModelInterface;
+use Repas\Shared\Domain\Model\ModelTrait;
 use Repas\Shared\Domain\Tool\StringTool;
 
-class Department
+class Department implements ModelInterface
 {
+    use ModelTrait;
+
     private function __construct(
         private string $slug,
         private string $name,
@@ -44,16 +48,7 @@ class Department
         $this->image = $image;
     }
 
-    public function toArray(): array
-    {
-        return [
-            'slug' => $this->slug,
-            'name' => $this->name,
-            'image' => $this->image,
-        ];
-    }
-
-    public static function load(array $datas): self
+    public static function load(array $datas): static
     {
         return new self(
             $datas['slug'],

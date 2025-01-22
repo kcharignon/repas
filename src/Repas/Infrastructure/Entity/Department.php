@@ -7,6 +7,7 @@ use Repas\Repas\Domain\Model\Department as DepartmentModel;
 use Repas\Repository\DepartmentRepository;
 
 #[ORM\Entity(repositoryClass: DepartmentRepository::class)]
+#[ORM\Table(name: "department")]
 class Department
 {
     #[ORM\Id]

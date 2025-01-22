@@ -3,10 +3,14 @@
 namespace Repas\Repas\Domain\Model;
 
 
+use Repas\Shared\Domain\Model\ModelInterface;
+use Repas\Shared\Domain\Model\ModelTrait;
 use Repas\Shared\Domain\Tool\StringTool;
 
-class RecipeType
+class RecipeType implements ModelInterface
 {
+    use ModelTrait;
+
     private function __construct(
         private string $slug,
         private string $name,
@@ -61,7 +65,7 @@ class RecipeType
         return new self($slug, $name, $image, $sequence);
     }
 
-    public static function load(array $datas): self
+    public static function load(array $datas): static
     {
         return new self(
             $datas['slug'],
@@ -69,15 +73,5 @@ class RecipeType
             $datas['image'],
             $datas['order'],
         );
-    }
-
-    public function toArray(): array
-    {
-        return [
-            'slug' => $this->slug,
-            'name' => $this->name,
-            'image' => $this->image,
-            'order' => $this->order,
-        ];
     }
 }

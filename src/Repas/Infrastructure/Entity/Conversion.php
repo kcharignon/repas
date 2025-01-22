@@ -7,6 +7,7 @@ use Repas\Repas\Domain\Model\Conversion as ConversionModel;
 use Repas\Repository\ConversionRepository;
 
 #[ORM\Entity(repositoryClass: ConversionRepository::class)]
+#[ORM\Table(name: 'conversion')]
 class Conversion
 {
     #[ORM\Id]
