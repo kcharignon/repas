@@ -10,6 +10,8 @@ use Doctrine\Common\DataFixtures\DependentFixtureInterface;
 use Doctrine\Persistence\ObjectManager;
 use Repas\Repas\Domain\Model\Recipe;
 use Repas\Repas\Domain\Model\ShoppingList as ShoppingListModel;
+use Repas\Repas\Infrastructure\Entity\Recipe as RecipeEntity;
+use Repas\Repas\Infrastructure\Entity\RecipeInShoppingList;
 use Repas\Repas\Infrastructure\Entity\ShoppingList as ShoppingListEntity;
 use Repas\Shared\Domain\Tool\Tab;
 use Repas\Shared\Domain\Tool\UuidGenerator;
@@ -21,12 +23,23 @@ class ShoppingListFixture extends Fixture implements DependentFixtureInterface, 
         [
             'user' => 'alexiane.sichi@gmail.com',
             'date' => '2024-12-05T09:35:05+01:00',
+            'locked' => true,
         ],
         [
             'user' => 'alexiane.sichi@gmail.com',
             'date' => '2024-12-22T19:31:05+01:00',
+            'locked' => true,
         ],
-
+        [
+            'user' => 'alexiane.sichi@gmail.com',
+            'date' => '2025-01-05T18:21:12+01:00',
+            'locked' => true,
+        ],
+        [
+            'user' => 'alexiane.sichi@gmail.com',
+            'date' => '2025-01-20T10:56:23+01:00',
+            'locked' => false,
+        ],
     ];
 
     public function getDependencies(): array
@@ -55,9 +68,45 @@ class ShoppingListFixture extends Fixture implements DependentFixtureInterface, 
             $shoppingListEntity = ShoppingListEntity::fromModel($shoppingListModel);
             $shoppingListEntity->setOwner($userEntity);
 
-            $manager->persist($userEntity);
+            //On ajoute entre 5 et 20 des recettes aléatoires
+            $recipes = $this->getRandomRecipes(rand(5, 20));
+            foreach ($recipes as $recipeEntity) {
+                $recipeInShoppingListEntity = new RecipeInShoppingList(
+                    id: UuidGenerator::new(),
+                    shoppingList: $shoppingListEntity,
+                    recipe: $recipeEntity,
+                    serving: $recipeEntity->getServing(),
+                );
+                $manager->persist($recipeInShoppingListEntity);
+                $shoppingListEntity->addRecipe($recipeInShoppingListEntity);
+            }
+
+            $manager->persist($shoppingListEntity);
         }
 
         $manager->flush();
+    }
+
+    /**
+     * @return array<RecipeEntity>
+     */
+    private function getRandomRecipes(int $quantity): array
+    {
+        $res = [];
+        for (;$quantity > 0; $quantity--) {
+            $res[] = $this->getRandomRecipe();
+        }
+        return $res;
+    }
+
+    private function getRandomRecipe(): RecipeEntity
+    {
+        static $recipes = null;
+        if (null === $recipes) {
+            $recipes = RecipeFixture::getRecipesIds();
+        }
+
+        $recipeId = $recipes[array_rand($recipes)];
+        return $this->getReference($recipeId, RecipeEntity::class);
     }
 }

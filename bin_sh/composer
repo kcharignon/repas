@@ -3,19 +3,20 @@
 echo "composer bin_sh"
 
 # Vérifie si Docker Compose est installé
-if ! command -v docker-compose &>/dev/null && ! command -v docker compose &>/dev/null; then
+if ! command -v docker compose &>/dev/null; then
     echo "Erreur : Docker Compose n'est pas installé ou n'est pas dans le PATH."
     exit 1
 fi
 
-# Utiliser "docker compose" si disponible, sinon "docker-compose"
-DOCKER_COMPOSE_CMD=$(command -v docker-compose &>/dev/null && echo "docker-compose" || echo "docker compose")
+# Utilisation d'un tableau pour construire la commande
+COMMAND=("docker" "compose" "exec" "php" "composer")
 
-# Crée la commande à exécuter
-COMMAND="$DOCKER_COMPOSE_CMD exec php composer $*"
+# Ajoute les arguments à partir de $@ (qui préserve les guillemets)
+COMMAND+=("$@")
 
-# Affiche la commande en vert
-echo -e "\033[32m$COMMAND\033[0m"
+# Affiche la commande en vert (pour le débogage)
+printf -v command_string "%q " "${COMMAND[@]}"
+echo -e "\033[32m$command_string\033[0m"
 
-# Exécute la commande
-$COMMAND
+# Exécute la commande en utilisant l'expansion du tableau
+"${COMMAND[@]}"

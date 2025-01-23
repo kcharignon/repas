@@ -10,7 +10,7 @@ use Doctrine\Migrations\AbstractMigration;
 /**
  * Auto-generated Migration: Please modify to your needs!
  */
-final class Version20250122180459 extends AbstractMigration
+final class Version20250123125307 extends AbstractMigration
 {
     public function getDescription(): string
     {
@@ -29,7 +29,7 @@ final class Version20250122180459 extends AbstractMigration
         $this->addSql('CREATE INDEX IDX_6BAF7870CD1DE18A ON ingredient (department)');
         $this->addSql('CREATE INDEX IDX_6BAF78707D5987D8 ON ingredient (default_cooking_unit)');
         $this->addSql('CREATE INDEX IDX_6BAF78709A295823 ON ingredient (default_purchase_unit)');
-        $this->addSql('CREATE TABLE recipe (id VARCHAR(36) NOT NULL, author VARCHAR(36) NOT NULL, type VARCHAR(255) NOT NULL, name VARCHAR(255) NOT NULL, people_number INT NOT NULL, PRIMARY KEY(id))');
+        $this->addSql('CREATE TABLE recipe (id VARCHAR(36) NOT NULL, author VARCHAR(36) NOT NULL, type VARCHAR(255) NOT NULL, name VARCHAR(255) NOT NULL, serving INT NOT NULL, PRIMARY KEY(id))');
         $this->addSql('CREATE INDEX IDX_DA88B137BDAFD8C8 ON recipe (author)');
         $this->addSql('CREATE INDEX IDX_DA88B1378CDE5729 ON recipe (type)');
         $this->addSql('CREATE TABLE recipe_in_shopping_list (id VARCHAR(255) NOT NULL, shopping_list VARCHAR(255) NOT NULL, recipe VARCHAR(36) NOT NULL, serving INT NOT NULL, PRIMARY KEY(id))');

@@ -24,6 +24,20 @@ class RecipeInShoppingList
     #[ORM\Column]
     private ?int $serving = null;
 
+    /**
+     * @param string|null $id
+     * @param ShoppingList|null $shoppingList
+     * @param Recipe|null $recipe
+     * @param int|null $serving
+     */
+    public function __construct(?string $id, ?ShoppingList $shoppingList, ?Recipe $recipe, ?int $serving)
+    {
+        $this->id = $id;
+        $this->shoppingList = $shoppingList;
+        $this->recipe = $recipe;
+        $this->serving = $serving;
+    }
+
     public function getId(): ?string
     {
         return $this->id;

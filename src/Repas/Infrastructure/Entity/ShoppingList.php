@@ -94,14 +94,14 @@ class ShoppingList
     }
 
     /**
-     * @return Collection<int, Recipe>
+     * @return Collection<int, RecipeInShoppingList>
      */
     public function getRecipes(): Collection
     {
         return $this->recipes;
     }
 
-    public function addRecipe(Recipe $recipe): static
+    public function addRecipe(RecipeInShoppingList $recipe): static
     {
         if (!$this->recipes->contains($recipe)) {
             $this->recipes->add($recipe);
@@ -110,7 +110,7 @@ class ShoppingList
         return $this;
     }
 
-    public function removeRecipe(Recipe $recipe): static
+    public function removeRecipe(RecipeInShoppingList $recipe): static
     {
         $this->recipes->removeElement($recipe);
 

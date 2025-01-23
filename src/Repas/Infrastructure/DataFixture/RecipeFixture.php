@@ -22,7 +22,6 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
 {
     private const array RECIPES = [
         [
-            "id" => "f1e56ce1-385d-42e6-9c0b-b70444ef0147",
             "name" => "pates carbonara",
             "owner" => "alexiane.sichi@gmail.com",
             "type" => "plat",
@@ -57,7 +56,6 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
             ]
         ],
         [
-            "id" => "d0f0e758-2f9b-483f-9bca-c54885fe67f4",
             "name" => "fajitas",
             "owner" => "alexiane.sichi@gmail.com",
             "type" => "plat",
@@ -116,7 +114,6 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
             ],
         ],
         [
-            "id" => "3b186375-cae8-4cd1-8a62-78aef2325570",
             "name" => "œufs à la coque",
             "owner" => "alexiane.sichi@gmail.com",
             "type" => "plat",
@@ -135,7 +132,6 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
             ]
         ],
         [
-            "id" => "fce91ff0-d01d-4f1c-96c6-801e7c5e2c1b",
             "name" => "burger",
             "owner" => "alexiane.sichi@gmail.com",
             "type" => "plat",
@@ -2555,6 +2551,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
             ],
         ],
     ];
+    private static array $recipesIds = [];
 
     public function getDependencies(): array
     {
@@ -2578,7 +2575,8 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
                 $authorEntity = $this->getReference($recipeDatas['owner'], UserEntity::class);
                 $recipeType = $this->getReference($recipeDatas['type'], RecipeTypeEntity::class);
 
-                $id = /*$recipeDatas['id'] ??*/ UuidGenerator::new();
+                $id = UuidGenerator::new();
+                // Creation du model pour appliquer les regles metiers
                 $recipeModel = RecipeModel::create(
                     id: $id,
                     name: $recipeDatas['name'],
@@ -2588,17 +2586,21 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
                     rows: []
                 );
 
+                // On recupere l'entite
                 $recipeEntity = RecipeEntity::fromModel($recipeModel);
+
+                // On set les entites pour que Doctrine les reconnaissent
                 $recipeEntity->setAuthor($authorEntity);
                 $recipeEntity->setType($recipeType);
-
                 foreach ($recipeDatas['ingredients'] as $recipeRowData) {
                     $recipeRowEntity = $this->getRecipeRow($recipeRowData, $recipeModel);
                     $recipeEntity->addRow($recipeRowEntity);
                 }
 
-                $manager->persist($recipeEntity);
+                self::$recipesIds[] = $recipeEntity->id;
                 $this->addReference($recipeEntity->id, $recipeEntity);
+
+                $manager->persist($recipeEntity);
             } catch(\Exception $e) {
                 dump($recipeDatas);
                 throw $e;
@@ -2622,5 +2624,10 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
         $recipeRowEntity->setUnit($unit);
 
         return $recipeRowEntity;
+    }
+
+    public static function getRecipesIds(): array
+    {
+        return self::$recipesIds;
     }
 }

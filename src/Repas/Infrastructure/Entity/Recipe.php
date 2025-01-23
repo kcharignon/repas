@@ -16,17 +16,13 @@ class Recipe
 {
     #[ORM\Id]
     #[ORM\Column(type: 'string', length: 36, unique: true)]
-    public ?string $id = null {
-        get {
-            return $this->id;
-        }
-    }
+    public ?string $id = null;
 
     #[ORM\Column(length: 255)]
     private ?string $name = null;
 
     #[ORM\Column]
-    private ?int $peopleNumber = null;
+    private ?int $serving = null;
 
     #[ORM\ManyToOne]
     #[ORM\JoinColumn(name: 'author', nullable: false)]
@@ -40,26 +36,27 @@ class Recipe
      * @var Collection<int, RecipeRow>
      */
     #[ORM\OneToMany(targetEntity: RecipeRow::class, mappedBy: 'recipe', cascade: ['persist', 'remove'], orphanRemoval: true)]
-    private Collection $rows {
-        get {
-            return $this->rows;
-        }
-    }
+    private Collection $rows;
 
     public function __construct(
-        ?string $id,
-        ?string $name,
-        ?int $peopleNumber,
-        ?User $author,
+        ?string     $id,
+        ?string     $name,
+        ?int        $serving,
+        ?User       $author,
         ?RecipeType $type,
-        array $rows
+        array       $rows
     ) {
         $this->id = $id;
         $this->name = $name;
-        $this->peopleNumber = $peopleNumber;
+        $this->serving = $serving;
         $this->author = $author;
         $this->type = $type;
         $this->rows = new ArrayCollection($rows);
+    }
+
+    public function getId(): ?string
+    {
+        return $this->id;
     }
 
     public function getName(): ?string
@@ -74,14 +71,14 @@ class Recipe
         return $this;
     }
 
-    public function getPeopleNumber(): ?int
+    public function getServing(): ?int
     {
-        return $this->peopleNumber;
+        return $this->serving;
     }
 
-    public function setPeopleNumber(int $peopleNumber): static
+    public function setServing(int $serving): static
     {
-        $this->peopleNumber = $peopleNumber;
+        $this->serving = $serving;
 
         return $this;
     }
@@ -120,6 +117,11 @@ class Recipe
             RecipeType::fromModel($recipe->getType()),
             array_map(fn(RecipeRowModel $recipeRow) => RecipeRow::fromModel($recipeRow, $recipe), $recipe->getRows())
         );
+    }
+
+    public function getRows(): Collection
+    {
+        return $this->rows;
     }
 
     public function addRow(RecipeRow $row): static
