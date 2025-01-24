@@ -14,14 +14,14 @@ class ShoppingList implements ModelInterface
     use ModelTrait;
 
     /**
-     * @param Tab<Recipe> $recipes
+     * @param Tab<Recipe> $meals
      */
     private function __construct(
         private string            $id,
         private User              $owner,
         private DateTimeImmutable $createdAt,
         private bool              $locked,
-        private Tab               $recipes,
+        private Tab               $meals,
     ) {
     }
 
@@ -45,9 +45,9 @@ class ShoppingList implements ModelInterface
         return $this->locked;
     }
 
-    public function getRecipes(): Tab
+    public function getMeals(): Tab
     {
-        return $this->recipes;
+        return $this->meals;
     }
 
     public static function create(
@@ -62,7 +62,7 @@ class ShoppingList implements ModelInterface
             owner: $owner,
             createdAt: $createdAt,
             locked: $locked,
-            recipes: $recipes
+            meals: $recipes
         );
     }
 
@@ -73,7 +73,7 @@ class ShoppingList implements ModelInterface
             owner: static::loadModel($datas['owner'], User::class),
             createdAt: static::loadDateTime($datas['created_at'], DateTimeImmutable::class),
             locked: $datas['locked'],
-            recipes: Tab::fromArray($datas['recipes'])
+            meals: Tab::fromArray($datas['meals'])
                 ->map(fn($recipe) => static::loadModel($recipe, Meal::class))
             ,
         );
@@ -81,6 +81,6 @@ class ShoppingList implements ModelInterface
 
     public function numberOfTypeRecipes(RecipeType $type): int
     {
-        return $this->recipes->filter(fn(Meal $meal) => $meal->typeIs($type))->count();
+        return $this->meals->filter(fn(Meal $meal) => $meal->typeIs($type))->count();
     }
 }

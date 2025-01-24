@@ -55,14 +55,14 @@ class ShoppingList
             'owner' => $this->owner->getModel(),
             'created_at' => $this->createdAt,
             'locked' => $this->locked,
-            'recipes' => $this->meals->map(fn(Meal $item) => $item->getModel())->toArray(),
+            'meals' => $this->meals->map(fn(Meal $item) => $item->getModel())->toArray(),
         ]);
     }
 
     public static function fromModel(ShoppingListModel $shoppingListModel): static
     {
         $datas = $shoppingListModel->toArray();
-        $datas['recipes_in_shoppings_list'] = $datas['recipes'];
+        $datas['recipes_in_shoppings_list'] = $datas['meals'];
         return self::fromData($datas);
     }
 
