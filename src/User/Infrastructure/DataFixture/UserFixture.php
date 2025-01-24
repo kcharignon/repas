@@ -24,7 +24,7 @@ class UserFixture extends Fixture implements FixtureGroupInterface
         ],
         [
             "email" => "kantincharignon@gmail.com",
-            "roles" => ["ROLE_ADMIN"],
+            "roles" => ["ROLE_USER", "ROLE_ADMIN"],
             "password" => null,
             "fullname" => "Kantin C.",
             "recipes" => [],

@@ -3,17 +3,18 @@
 namespace Repas\Repas\Infrastructure\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
-use Repas\Repository\RecipeInShoppingListRepository;
+use Repas\Repas\Domain\Model\Meal as RecipeInShoppingListModel;
+use Repas\Repository\MealRepository;
 
-#[ORM\Entity(repositoryClass: RecipeInShoppingListRepository::class)]
-#[ORM\Table(name: 'recipe_in_shopping_list')]
-class RecipeInShoppingList
+#[ORM\Entity(repositoryClass: MealRepository::class)]
+#[ORM\Table(name: 'meal')]
+class Meal
 {
     #[ORM\Id]
     #[ORM\Column(length: 255, unique: true)]
     private ?string $id = null;
 
-    #[ORM\ManyToOne(inversedBy: 'recipes')]
+    #[ORM\ManyToOne(inversedBy: 'meals')]
     #[ORM\JoinColumn(name: 'shopping_list', nullable: false)]
     private ?ShoppingList $shoppingList = null;
 
@@ -36,6 +37,16 @@ class RecipeInShoppingList
         $this->shoppingList = $shoppingList;
         $this->recipe = $recipe;
         $this->serving = $serving;
+    }
+
+    public function getModel(): RecipeInShoppingListModel
+    {
+        return RecipeInShoppingListModel::load([
+            'id' => $this->id,
+            'shopping_list_id' => $this->shoppingList->getId(),
+            'recipe' => $this->recipe->getModel(),
+            'serving' => $this->serving
+        ]);
     }
 
     public function getId(): ?string

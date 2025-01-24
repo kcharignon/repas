@@ -112,11 +112,23 @@ class Recipe
         return new static(
             $recipe->getId(),
             $recipe->getName(),
-            $recipe->getServings(),
+            $recipe->getServing(),
             User::fromModel($recipe->getAuthor()),
             RecipeType::fromModel($recipe->getType()),
             array_map(fn(RecipeRowModel $recipeRow) => RecipeRow::fromModel($recipeRow, $recipe), $recipe->getRows())
         );
+    }
+
+    public function getModel(): RecipeModel
+    {
+        return RecipeModel::load([
+            'id' => $this->id,
+            'name' => $this->name,
+            'serving' => $this->serving,
+            'author' => $this->author->getModel(),
+            'type' => $this->type->getModel(),
+            'rows' => array_map(fn(RecipeRow $recipeRow) => $recipeRow->getModel(), $this->rows->toArray()),
+        ]);
     }
 
     public function getRows(): Collection

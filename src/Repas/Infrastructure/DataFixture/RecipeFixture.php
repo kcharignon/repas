@@ -2597,7 +2597,8 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
                     $recipeEntity->addRow($recipeRowEntity);
                 }
 
-                self::$recipesIds[] = $recipeEntity->id;
+                self::$recipesIds[$authorEntity->getId()] ??= [];
+                self::$recipesIds[$authorEntity->getId()][] = $recipeEntity->id;
                 $this->addReference($recipeEntity->id, $recipeEntity);
 
                 $manager->persist($recipeEntity);
@@ -2626,8 +2627,8 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
         return $recipeRowEntity;
     }
 
-    public static function getRecipesIds(): array
+    public static function getRecipesIds(string $ownerId): array
     {
-        return self::$recipesIds;
+        return self::$recipesIds[$ownerId] ?? [];
     }
 }

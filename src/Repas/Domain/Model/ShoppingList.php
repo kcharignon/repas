@@ -11,32 +11,56 @@ use Repas\User\Domain\Model\User;
 
 class ShoppingList implements ModelInterface
 {
-
     use ModelTrait;
 
     /**
      * @param Tab<Recipe> $recipes
      */
     private function __construct(
-        private string $id,
-        private User $owner,
-        private DateTimeImmutable $date,
-        private bool $locked,
-        private Tab $recipes,
+        private string            $id,
+        private User              $owner,
+        private DateTimeImmutable $createdAt,
+        private bool              $locked,
+        private Tab               $recipes,
     ) {
     }
 
+    public function getId(): string
+    {
+        return $this->id;
+    }
+
+    public function getOwner(): User
+    {
+        return $this->owner;
+    }
+
+    public function getCreatedAt(): DateTimeImmutable
+    {
+        return $this->createdAt;
+    }
+
+    public function isLocked(): bool
+    {
+        return $this->locked;
+    }
+
+    public function getRecipes(): Tab
+    {
+        return $this->recipes;
+    }
+
     public static function create(
-        string $id,
-        User $owner,
-        DateTimeImmutable $date,
-        bool $locked,
-        Tab $recipes,
+        string            $id,
+        User              $owner,
+        DateTimeImmutable $createdAt,
+        bool              $locked,
+        Tab               $recipes,
     ): ShoppingList {
         return new ShoppingList(
             id: $id,
             owner: $owner,
-            date: $date,
+            createdAt: $createdAt,
             locked: $locked,
             recipes: $recipes
         );
@@ -46,10 +70,12 @@ class ShoppingList implements ModelInterface
     {
         return new static(
             id: $datas['id'],
-            owner: User::load($datas['owner']),
-            date: DateTimeImmutable::createFromFormat(DATE_ATOM, $datas['date']),
+            owner: static::loadModel($datas['owner'], User::class),
+            createdAt: static::loadDateTime($datas['created_at'], DateTimeImmutable::class),
             locked: $datas['locked'],
-            recipes: new Tab($datas['recipes'])->map(fn (array $recipe) => RecipeInShoppingList::load($recipe)),
+            recipes: Tab::fromArray($datas['recipes'])
+                ->map(fn($recipe) => static::loadModel($recipe, Meal::class))
+            ,
         );
     }
 }

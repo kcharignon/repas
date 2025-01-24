@@ -51,9 +51,9 @@ class Department implements ModelInterface
     public static function load(array $datas): static
     {
         return new self(
-            $datas['slug'],
-            $datas['name'],
-            $datas['image'],
+            slug: $datas['slug'],
+            name: $datas['name'],
+            image: $datas['image'],
         );
     }
 

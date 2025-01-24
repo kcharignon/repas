@@ -22,45 +22,58 @@ class ShoppingList
     #[ORM\JoinColumn(nullable: false)]
     private ?User $owner = null;
 
-    #[ORM\Column]
-    private ?DateTimeImmutable $date = null;
+    #[ORM\Column(name: 'created_at')]
+    private ?DateTimeImmutable $createdAt = null;
 
     #[ORM\Column]
     private ?bool $locked = null;
 
     /**
-     * @var Collection<int, RecipeInShoppingList>
+     * @var Collection<int, Meal>
      */
-    #[ORM\OneToMany(targetEntity: RecipeInShoppingList::class, mappedBy: 'shoppingList', orphanRemoval: true)]
-    private Collection $recipes;
+    #[ORM\OneToMany(targetEntity: Meal::class, mappedBy: 'shoppingList', orphanRemoval: true)]
+    private Collection $meals;
 
     public function __construct(
-        string $id,
-        User $owner,
-        DateTimeImmutable $date,
-        bool $locked,
-        array $recipes,
+        string            $id,
+        User              $owner,
+        DateTimeImmutable $createdAt,
+        bool              $locked,
+        array             $recipesInShoppingList,
     ) {
         $this->id = $id;
         $this->owner = $owner;
-        $this->date = $date;
+        $this->createdAt = $createdAt;
         $this->locked = $locked;
-        $this->recipes = new ArrayCollection($recipes);
+        $this->meals = new ArrayCollection($recipesInShoppingList);
+    }
+
+    public function getModel(): ShoppingListModel
+    {
+        return ShoppingListModel::load([
+            'id' => $this->id,
+            'owner' => $this->owner->getModel(),
+            'created_at' => $this->createdAt,
+            'locked' => $this->locked,
+            'recipes' => $this->meals->map(fn(Meal $item) => $item->getModel())->toArray(),
+        ]);
     }
 
     public static function fromModel(ShoppingListModel $shoppingListModel): static
     {
-        return self::fromData($shoppingListModel->toArray());
+        $datas = $shoppingListModel->toArray();
+        $datas['recipes_in_shoppings_list'] = $datas['recipes'];
+        return self::fromData($datas);
     }
 
     private static function fromData(array $datas): static
     {
         return new self(
-            $datas['id'],
-            User::fromData($datas['owner']),
-            DateTimeImmutable::createFromFormat(DATE_ATOM, $datas['date']),
-            $datas['locked'],
-            $datas['recipes']
+            id: $datas['id'],
+            owner: User::fromData($datas['owner']),
+            createdAt: DateTimeImmutable::createFromFormat(DATE_ATOM, $datas['created_at']),
+            locked: $datas['locked'],
+            recipesInShoppingList: $datas['recipes_in_shoppings_list'],
         );
     }
 
@@ -69,14 +82,14 @@ class ShoppingList
         return $this->id;
     }
 
-    public function getDate(): ?\DateTimeImmutable
+    public function getCreatedAt(): ?DateTimeImmutable
     {
-        return $this->date;
+        return $this->createdAt;
     }
 
-    public function setDate(\DateTimeImmutable $date): static
+    public function setCreatedAt(DateTimeImmutable $createdAt): static
     {
-        $this->date = $date;
+        $this->createdAt = $createdAt;
 
         return $this;
     }
@@ -94,25 +107,25 @@ class ShoppingList
     }
 
     /**
-     * @return Collection<int, RecipeInShoppingList>
+     * @return Collection<int, Meal>
      */
-    public function getRecipes(): Collection
+    public function getMeals(): Collection
     {
-        return $this->recipes;
+        return $this->meals;
     }
 
-    public function addRecipe(RecipeInShoppingList $recipe): static
+    public function addRecipe(Meal $recipe): static
     {
-        if (!$this->recipes->contains($recipe)) {
-            $this->recipes->add($recipe);
+        if (!$this->meals->contains($recipe)) {
+            $this->meals->add($recipe);
         }
 
         return $this;
     }
 
-    public function removeRecipe(RecipeInShoppingList $recipe): static
+    public function removeRecipe(Meal $recipe): static
     {
-        $this->recipes->removeElement($recipe);
+        $this->meals->removeElement($recipe);
 
         return $this;
     }

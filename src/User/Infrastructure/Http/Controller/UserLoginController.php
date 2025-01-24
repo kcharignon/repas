@@ -27,7 +27,7 @@ class UserLoginController extends AbstractController
 
         $csrfToken = $this->csrfTokenManager->getToken('authenticate')->getValue();
 
-        return $this->render('@user/login.html.twig', [
+        return $this->render('@User/login.html.twig', [
             'error' => $error,
             'identifier' => $identifier,
             'csrfToken' => $csrfToken,

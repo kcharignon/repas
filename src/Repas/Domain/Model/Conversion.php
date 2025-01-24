@@ -21,11 +21,11 @@ class Conversion implements ModelInterface
 
     public static function load(array $datas): static {
         return new static(
-            $datas['slug'],
-            Unit::load($datas['start_unit']),
-            Unit::load($datas['end_unit']),
-            $datas['coefficient'],
-            $datas['ingredient'] ? Unit::load($datas['ingredient']) : null,
+            slug: $datas['slug'],
+            startUnit: static::loadModel($datas['start_unit'], Unit::class),
+            endUnit: static::loadModel($datas['end_unit'], Unit::class),
+            coefficient: $datas['coefficient'],
+            ingredient: static::loadModel($datas['ingredient'], Ingredient::class),
         );
     }
 

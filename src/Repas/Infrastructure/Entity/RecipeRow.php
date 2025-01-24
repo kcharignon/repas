@@ -50,6 +50,16 @@ class RecipeRow
         );
     }
 
+    public function getModel(): RecipeRowModel
+    {
+        return RecipeRowModel::load([
+            'id' => $this->id,
+            'ingredient' => $this->ingredient->getModel(),
+            'quantity' => $this->quantity,
+            'unit' => $this->unit->getModel(),
+        ]);
+    }
+
     public function getId(): ?string
     {
         return $this->id;

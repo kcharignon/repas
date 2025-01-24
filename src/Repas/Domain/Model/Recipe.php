@@ -15,7 +15,7 @@ class Recipe implements ModelInterface
     private function __construct(
         private string     $id,
         private string     $name,
-        private int        $servings,
+        private int        $serving,
         private User       $author,
         private RecipeType $type,
         private array      $rows,
@@ -32,9 +32,9 @@ class Recipe implements ModelInterface
         return $this->name;
     }
 
-    public function getServings(): int
+    public function getServing(): int
     {
-        return $this->servings;
+        return $this->serving;
     }
 
     public function getAuthor(): User
@@ -58,12 +58,12 @@ class Recipe implements ModelInterface
     public static function load(array $datas): static
     {
         return new self(
-            $datas['id'],
-            $datas['name'],
-            $datas['servings'],
-            User::load($datas['author']),
-            RecipeType::load($datas['type']),
-            $datas['rows']
+            id: $datas['id'],
+            name: $datas['name'],
+            serving: $datas['serving'],
+            author: static::loadModel($datas['author'], User::class),
+            type: static::loadModel($datas['type'], RecipeType::class),
+            rows: array_map(fn($recipeRow) => static::loadModel($recipeRow, RecipeRow::class) , $datas['rows'])
         );
     }
 

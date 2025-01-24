@@ -5,8 +5,8 @@ framework:
     # Note that the session will be started ONLY if you read or write from it.
     session: true
 
-    #esi: true
-    #fragments: true
+    profiler:
+        enabled: true
 
 when@test:
     framework:

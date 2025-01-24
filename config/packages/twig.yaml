@@ -1,8 +1,8 @@
 twig:
     paths:
-        '%kernel.project_dir%/src/Shared/Infrastructure/Http/View': shared
-        '%kernel.project_dir%/src/User/Infrastructure/Http/View': user
-#        '%kernel.project_dir%/src/Repas/Infrastructure/Http/View': repas
+        '%kernel.project_dir%/src/Shared/Infrastructure/Http/View': Shared
+        '%kernel.project_dir%/src/User/Infrastructure/Http/View': User
+        '%kernel.project_dir%/src/Repas/Infrastructure/Http/View': Repas
     file_name_pattern: '*.twig'
 
 when@test:

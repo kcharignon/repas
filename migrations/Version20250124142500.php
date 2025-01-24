@@ -10,7 +10,7 @@ use Doctrine\Migrations\AbstractMigration;
 /**
  * Auto-generated Migration: Please modify to your needs!
  */
-final class Version20250123125307 extends AbstractMigration
+final class Version20250124142500 extends AbstractMigration
 {
     public function getDescription(): string
     {
@@ -29,20 +29,20 @@ final class Version20250123125307 extends AbstractMigration
         $this->addSql('CREATE INDEX IDX_6BAF7870CD1DE18A ON ingredient (department)');
         $this->addSql('CREATE INDEX IDX_6BAF78707D5987D8 ON ingredient (default_cooking_unit)');
         $this->addSql('CREATE INDEX IDX_6BAF78709A295823 ON ingredient (default_purchase_unit)');
+        $this->addSql('CREATE TABLE meal (id VARCHAR(255) NOT NULL, shopping_list VARCHAR(255) NOT NULL, recipe VARCHAR(36) NOT NULL, serving INT NOT NULL, PRIMARY KEY(id))');
+        $this->addSql('CREATE INDEX IDX_9EF68E9C3DC1A459 ON meal (shopping_list)');
+        $this->addSql('CREATE INDEX IDX_9EF68E9CDA88B137 ON meal (recipe)');
         $this->addSql('CREATE TABLE recipe (id VARCHAR(36) NOT NULL, author VARCHAR(36) NOT NULL, type VARCHAR(255) NOT NULL, name VARCHAR(255) NOT NULL, serving INT NOT NULL, PRIMARY KEY(id))');
         $this->addSql('CREATE INDEX IDX_DA88B137BDAFD8C8 ON recipe (author)');
         $this->addSql('CREATE INDEX IDX_DA88B1378CDE5729 ON recipe (type)');
-        $this->addSql('CREATE TABLE recipe_in_shopping_list (id VARCHAR(255) NOT NULL, shopping_list VARCHAR(255) NOT NULL, recipe VARCHAR(36) NOT NULL, serving INT NOT NULL, PRIMARY KEY(id))');
-        $this->addSql('CREATE INDEX IDX_A08B510C3DC1A459 ON recipe_in_shopping_list (shopping_list)');
-        $this->addSql('CREATE INDEX IDX_A08B510CDA88B137 ON recipe_in_shopping_list (recipe)');
         $this->addSql('CREATE TABLE recipe_row (id VARCHAR(36) NOT NULL, ingredient VARCHAR(255) NOT NULL, unit VARCHAR(255) NOT NULL, recipe VARCHAR(36) NOT NULL, quantity DOUBLE PRECISION NOT NULL, PRIMARY KEY(id))');
         $this->addSql('CREATE INDEX IDX_F56792976BAF7870 ON recipe_row (ingredient)');
         $this->addSql('CREATE INDEX IDX_F5679297DCBB0C53 ON recipe_row (unit)');
         $this->addSql('CREATE INDEX IDX_F5679297DA88B137 ON recipe_row (recipe)');
         $this->addSql('CREATE TABLE recipe_type (slug VARCHAR(255) NOT NULL, name VARCHAR(255) NOT NULL, image VARCHAR(2048) NOT NULL, sequence INT NOT NULL, PRIMARY KEY(slug))');
-        $this->addSql('CREATE TABLE shopping_list (id VARCHAR(255) NOT NULL, owner_id VARCHAR(36) NOT NULL, date TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL, locked BOOLEAN NOT NULL, PRIMARY KEY(id))');
+        $this->addSql('CREATE TABLE shopping_list (id VARCHAR(255) NOT NULL, owner_id VARCHAR(36) NOT NULL, created_at TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL, locked BOOLEAN NOT NULL, PRIMARY KEY(id))');
         $this->addSql('CREATE INDEX IDX_3DC1A4597E3C61F9 ON shopping_list (owner_id)');
-        $this->addSql('COMMENT ON COLUMN shopping_list.date IS \'(DC2Type:datetime_immutable)\'');
+        $this->addSql('COMMENT ON COLUMN shopping_list.created_at IS \'(DC2Type:datetime_immutable)\'');
         $this->addSql('CREATE TABLE unit (slug VARCHAR(255) NOT NULL, name VARCHAR(255) NOT NULL, symbol VARCHAR(255) NOT NULL, PRIMARY KEY(slug))');
         $this->addSql('CREATE TABLE "user" (id VARCHAR(36) NOT NULL, email VARCHAR(255) NOT NULL, password VARCHAR(255) NOT NULL, roles JSON NOT NULL, PRIMARY KEY(id))');
         $this->addSql('CREATE UNIQUE INDEX UNIQ_8D93D649E7927C74 ON "user" (email)');
@@ -52,10 +52,10 @@ final class Version20250123125307 extends AbstractMigration
         $this->addSql('ALTER TABLE ingredient ADD CONSTRAINT FK_6BAF7870CD1DE18A FOREIGN KEY (department) REFERENCES department (slug) NOT DEFERRABLE INITIALLY IMMEDIATE');
         $this->addSql('ALTER TABLE ingredient ADD CONSTRAINT FK_6BAF78707D5987D8 FOREIGN KEY (default_cooking_unit) REFERENCES unit (slug) NOT DEFERRABLE INITIALLY IMMEDIATE');
         $this->addSql('ALTER TABLE ingredient ADD CONSTRAINT FK_6BAF78709A295823 FOREIGN KEY (default_purchase_unit) REFERENCES unit (slug) NOT DEFERRABLE INITIALLY IMMEDIATE');
+        $this->addSql('ALTER TABLE meal ADD CONSTRAINT FK_9EF68E9C3DC1A459 FOREIGN KEY (shopping_list) REFERENCES shopping_list (id) NOT DEFERRABLE INITIALLY IMMEDIATE');
+        $this->addSql('ALTER TABLE meal ADD CONSTRAINT FK_9EF68E9CDA88B137 FOREIGN KEY (recipe) REFERENCES recipe (id) NOT DEFERRABLE INITIALLY IMMEDIATE');
         $this->addSql('ALTER TABLE recipe ADD CONSTRAINT FK_DA88B137BDAFD8C8 FOREIGN KEY (author) REFERENCES "user" (id) NOT DEFERRABLE INITIALLY IMMEDIATE');
         $this->addSql('ALTER TABLE recipe ADD CONSTRAINT FK_DA88B1378CDE5729 FOREIGN KEY (type) REFERENCES recipe_type (slug) NOT DEFERRABLE INITIALLY IMMEDIATE');
-        $this->addSql('ALTER TABLE recipe_in_shopping_list ADD CONSTRAINT FK_A08B510C3DC1A459 FOREIGN KEY (shopping_list) REFERENCES shopping_list (id) NOT DEFERRABLE INITIALLY IMMEDIATE');
-        $this->addSql('ALTER TABLE recipe_in_shopping_list ADD CONSTRAINT FK_A08B510CDA88B137 FOREIGN KEY (recipe) REFERENCES recipe (id) NOT DEFERRABLE INITIALLY IMMEDIATE');
         $this->addSql('ALTER TABLE recipe_row ADD CONSTRAINT FK_F56792976BAF7870 FOREIGN KEY (ingredient) REFERENCES ingredient (slug) NOT DEFERRABLE INITIALLY IMMEDIATE');
         $this->addSql('ALTER TABLE recipe_row ADD CONSTRAINT FK_F5679297DCBB0C53 FOREIGN KEY (unit) REFERENCES unit (slug) NOT DEFERRABLE INITIALLY IMMEDIATE');
         $this->addSql('ALTER TABLE recipe_row ADD CONSTRAINT FK_F5679297DA88B137 FOREIGN KEY (recipe) REFERENCES recipe (id) NOT DEFERRABLE INITIALLY IMMEDIATE');
@@ -72,10 +72,10 @@ final class Version20250123125307 extends AbstractMigration
         $this->addSql('ALTER TABLE ingredient DROP CONSTRAINT FK_6BAF7870CD1DE18A');
         $this->addSql('ALTER TABLE ingredient DROP CONSTRAINT FK_6BAF78707D5987D8');
         $this->addSql('ALTER TABLE ingredient DROP CONSTRAINT FK_6BAF78709A295823');
+        $this->addSql('ALTER TABLE meal DROP CONSTRAINT FK_9EF68E9C3DC1A459');
+        $this->addSql('ALTER TABLE meal DROP CONSTRAINT FK_9EF68E9CDA88B137');
         $this->addSql('ALTER TABLE recipe DROP CONSTRAINT FK_DA88B137BDAFD8C8');
         $this->addSql('ALTER TABLE recipe DROP CONSTRAINT FK_DA88B1378CDE5729');
-        $this->addSql('ALTER TABLE recipe_in_shopping_list DROP CONSTRAINT FK_A08B510C3DC1A459');
-        $this->addSql('ALTER TABLE recipe_in_shopping_list DROP CONSTRAINT FK_A08B510CDA88B137');
         $this->addSql('ALTER TABLE recipe_row DROP CONSTRAINT FK_F56792976BAF7870');
         $this->addSql('ALTER TABLE recipe_row DROP CONSTRAINT FK_F5679297DCBB0C53');
         $this->addSql('ALTER TABLE recipe_row DROP CONSTRAINT FK_F5679297DA88B137');
@@ -83,8 +83,8 @@ final class Version20250123125307 extends AbstractMigration
         $this->addSql('DROP TABLE conversion');
         $this->addSql('DROP TABLE department');
         $this->addSql('DROP TABLE ingredient');
+        $this->addSql('DROP TABLE meal');
         $this->addSql('DROP TABLE recipe');
-        $this->addSql('DROP TABLE recipe_in_shopping_list');
         $this->addSql('DROP TABLE recipe_row');
         $this->addSql('DROP TABLE recipe_type');
         $this->addSql('DROP TABLE shopping_list');

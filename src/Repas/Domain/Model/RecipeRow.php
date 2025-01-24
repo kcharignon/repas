@@ -60,10 +60,10 @@ class RecipeRow implements ModelInterface
     public static function load(array $datas): static
     {
         return new self(
-            $datas['id'],
-            Ingredient::load($datas['ingredient']),
-            $datas['quantity'],
-            Unit::load($datas['unit']),
+            id: $datas['id'],
+            ingredient: static::loadModel($datas['ingredient'], Ingredient::class),
+            quantity: $datas['quantity'],
+            unit: static::loadModel($datas['unit'], Unit::class),
         );
     }
 

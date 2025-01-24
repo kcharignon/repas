@@ -4,10 +4,11 @@ namespace Repas\User\Infrastructure\Http\Controller;
 
 
 use Psr\Log\LoggerInterface;
+use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
 
-class HomeController
+class HomeController extends AbstractController
 {
     public function __construct(
         private LoggerInterface $logger
@@ -18,6 +19,7 @@ class HomeController
     public function __invoke(): Response
     {
         $this->logger->info("HomeController invoked");
-        return new Response("Bienvenue dans Repas");
+        return $this->render("@User/home.html.twig");
+//        return new Response("Bienvenue dans Repas");
     }
 }

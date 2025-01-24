@@ -11,6 +11,10 @@ services:
     _defaults:
         autowire: true      # Automatically injects dependencies in your services.
         autoconfigure: true # Automatically registers your services as commands, event subscribers, etc.
+        
+    twig.extension.intl:
+        class: Twig\Extra\Intl\IntlExtension
+        tags: [ 'twig.extension' ]
 
     # makes classes in src/ available to be used as services
     # this creates a service per class whose id is the fully-qualified class name
@@ -27,3 +31,7 @@ services:
     
     Repas\Command\ResetDatabaseCommand:
         tags: ['console.command']
+        
+    Repas\Shared\Application\Service\QueryBus:
+        arguments:
+            $messageBus: '@messenger.bus.default'

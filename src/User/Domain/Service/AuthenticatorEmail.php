@@ -3,6 +3,7 @@
 namespace Repas\User\Domain\Service;
 
 
+use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\RouterInterface;
@@ -48,6 +49,6 @@ class AuthenticatorEmail extends AbstractLoginFormAuthenticator
 
     public function onAuthenticationSuccess(Request $request, TokenInterface $token, string $firewallName): ?Response
     {
-        return new Response('Authentification réussie');
+        return new RedirectResponse($this->router->generate('view_home'));
     }
 }

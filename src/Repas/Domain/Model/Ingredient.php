@@ -62,12 +62,12 @@ class Ingredient implements ModelInterface
     public static function load(array $datas): static
     {
         return new Ingredient(
-            $datas['slug'],
-            $datas['name'],
-            $datas['image'],
-            Department::load($datas['department']),
-            Unit::load($datas['default_cooking_unit']),
-            Unit::load($datas['default_purchase_unit']),
+            slug: $datas['slug'],
+            name: $datas['name'],
+            image: $datas['image'],
+            department: static::loadModel($datas['department'], Department::class),
+            defaultCookingUnit: static::loadModel($datas['default_cooking_unit'], Unit::class),
+            defaultPurchaseUnit: static::loadModel($datas['default_purchase_unit'], Unit::class),
         );
     }
 }
