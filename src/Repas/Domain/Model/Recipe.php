@@ -78,4 +78,9 @@ class Recipe implements ModelInterface
         return new self($id, $name, $servings, $author, $recipeType, $rows);
     }
 
+    public function isType(RecipeType $type): bool
+    {
+        return $this->type->isEqual($type);
+    }
+
 }

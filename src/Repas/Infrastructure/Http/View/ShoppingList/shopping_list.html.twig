@@ -19,7 +19,7 @@
                 <span style="width: 10em">{{ shoppingList.createdAt|format_datetime(locale="fr_FR", pattern="dd MMMM YYYY") }}</span>
                 {% for recipeType in recipeTypes %}
                     <span class="me-3">
-                        {{ shoppingList.typeNumber(recipeType) }}
+                        {{ shoppingList.numberOfTypeRecipes(recipeType) }}
                     <img style="height: 1.5em" src="{{ absolute_url(asset(recipeType.image)) }}" alt="{{ recipeType.name }}">
                 </span>
                 {% endfor %}

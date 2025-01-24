@@ -78,4 +78,9 @@ class ShoppingList implements ModelInterface
             ,
         );
     }
+
+    public function numberOfTypeRecipes(RecipeType $type): int
+    {
+        return $this->recipes->filter(fn(Meal $meal) => $meal->typeIs($type))->count();
+    }
 }

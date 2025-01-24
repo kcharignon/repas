@@ -12,7 +12,7 @@
                 <span class="small text-secondary ms-2">
                     {% for recipeType in recipeTypeRepository.findBy({}, {"sequence": "ASC"}) %}
                         <span class="me-3">
-                            {{ shoppingList.typeNumber(recipeType) }}
+                            {{ shoppingList.numberOfTypeRecipes(recipeType) }}
                             <img style="height: 1.5em" src="{{ absolute_url(asset(recipeType.image)) }}" alt="{{ recipeType.name }}">
                         </span>
                     {% endfor %}

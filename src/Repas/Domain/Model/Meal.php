@@ -32,4 +32,9 @@ class Meal implements ModelInterface
             serving: $datas['serving']
         );
     }
+
+    public function typeIs(RecipeType $recipeType): bool
+    {
+        return $this->recipe->isType($recipeType);
+    }
 }

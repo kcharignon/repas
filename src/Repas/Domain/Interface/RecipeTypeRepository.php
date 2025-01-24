@@ -4,11 +4,12 @@ namespace Repas\Repas\Domain\Interface;
 
 
 use Repas\Repas\Domain\Model\RecipeType;
+use Repas\Shared\Domain\Tool\Tab;
 
 interface RecipeTypeRepository
 {
     /**
-     * @return array<RecipeType>
+     * @return Tab<RecipeType>
      */
-    public function getAll(): array;
+    public function getAll(): Tab;
 }

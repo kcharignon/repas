@@ -4,6 +4,7 @@ namespace Repas\Repas\Application\GetAllRecipeType;
 
 use Repas\Repas\Domain\Interface\RecipeTypeRepository;
 use Repas\Repas\Domain\Model\RecipeType;
+use Repas\Shared\Domain\Tool\Tab;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 #[AsMessageHandler]
@@ -17,9 +18,9 @@ readonly class GetAllRecipeTypeHandler
     }
 
     /**
-     * @return RecipeType[]
+     * @return Tab<RecipeType>
      */
-    public function __invoke(GetAllRecipeTypeQuery $query): array
+    public function __invoke(GetAllRecipeTypeQuery $query): Tab
     {
         return $this->recipeTypeRepository->getAll();
     }
