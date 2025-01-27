@@ -20,11 +20,7 @@ class Tab implements ArrayAccess, IteratorAggregate, Countable
      */
     private array $items = [];
 
-    /**
-     * @var string
-     */
     private string $type;
-
     /**
      * Tab constructor.
      *
@@ -56,7 +52,7 @@ class Tab implements ArrayAccess, IteratorAggregate, Countable
             $elements = $elements[0];
         }
 
-        $type = gettype(current($elements));
+        $type = is_object(current($elements)) ? get_class(current($elements)) : gettype(current($elements));
 
         return new self($type, $elements);
     }
@@ -256,20 +252,51 @@ class Tab implements ArrayAccess, IteratorAggregate, Countable
      * @param mixed $item
      * @throws InvalidArgumentException
      */
-    private function validateType($item): void
+    private function validateType(mixed $item): void
     {
-        if (gettype($item) !== $this->type) {
-            throw new InvalidArgumentException(sprintf(
-                'Expected type %s, got %s.',
-                $this->type,
-                gettype($item)
-            ));
+        // Gestion des objets avec type spécifique (classe ou interface)
+        if (class_exists($this->type) || interface_exists($this->type)) {
+            if (!($item instanceof $this->type)) {
+                throw new InvalidArgumentException(sprintf(
+                    'Expected an instance of %s, got %s.',
+                    $this->type,
+                    is_object($item) ? get_class($item) : gettype($item)
+                ));
+            }
+        } elseif ($this->type === 'object') {
+            // Vérifie uniquement que c'est un objet
+            if (!is_object($item)) {
+                throw new InvalidArgumentException(sprintf(
+                    'Expected an object, got %s.',
+                    gettype($item)
+                ));
+            }
+        } else {
+            // Vérifie les types primitifs (string, int, etc.)
+            if (gettype($item) !== $this->type) {
+                throw new InvalidArgumentException(sprintf(
+                    'Expected type %s, got %s.',
+                    $this->type,
+                    gettype($item)
+                ));
+            }
         }
     }
 
     public function getType(): string
     {
         return $this->type;
+    }
+
+    public function merge(Tab ...$tabs): Tab
+    {
+        foreach ($tabs as $tab) {
+            if ($tab->type !== $this->type) {
+                throw new InvalidArgumentException(sprintf("Cannot merge Tab<%s>, with Tab<%s>.", $this->type, $tab->type));
+            }
+        }
+        $arrayTabs = array_map(fn($tab) => $tab->items, $tabs);
+        return static::fromArray(array_merge($this->items, ...$arrayTabs));
     }
 }
 

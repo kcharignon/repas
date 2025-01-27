@@ -28,4 +28,9 @@ class ShoppingListPostgreSQLRepository extends ServiceEntityRepository implement
         return array_map(fn(ShoppingListEntity $entity) => $entity->getModel(), $shoppingListEntities);
     }
 
+    public function findById(string $id): ?ShoppingList
+    {
+        $shoppingListEntity = $this->find($id);
+        return $shoppingListEntity?->getModel();
+    }
 }

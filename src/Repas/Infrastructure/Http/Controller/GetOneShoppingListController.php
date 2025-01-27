@@ -13,7 +13,7 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 class GetOneShoppingListController extends AbstractController
 {
     public function __construct(
-        private QueryBusInterface $queryBus,
+        private readonly QueryBusInterface $queryBus,
     ) {
     }
 
@@ -23,7 +23,7 @@ class GetOneShoppingListController extends AbstractController
     {
         $shoppingList = $this->queryBus->ask(new GetOneShoppingListQuery($id));
 
-        return $this->render('@Repas/shoppingList/show.html.twig', [
+        return $this->render('@Repas/ShoppingList/show.html.twig', [
             'shoppingList' => $shoppingList,
         ]);
     }

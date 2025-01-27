@@ -20,7 +20,6 @@ readonly class AddNewUnitHandler
     public function __invoke(AddNewUnitCommand $command): void
     {
         $unit = Unit::create(
-            id: $command->id,
             name: $command->name,
             symbol: $command->abbreviation
         );

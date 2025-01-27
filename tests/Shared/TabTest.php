@@ -7,37 +7,61 @@ use InvalidArgumentException;
 use PHPUnit\Framework\TestCase;
 use Repas\Shared\Domain\Tool\Tab;
 use Repas\Tests\Builder\UserBuilder;
+use Repas\User\Domain\Model\User;
+use stdClass;
 
 class TabTest extends TestCase
 {
     public function goodArrayDataProvider(): array
     {
         return [
-            "integer" => [[1, 2, 3]],
-            "string" => [['a', 'b', 'c']],
-            "integer with string key" => [['a' => 1, 'b' => 2, 'c' => 3]],
+            "integer" => [[1, 2, 3], 'integer'],
+            "string" => [['a', 'b', 'c'], 'string'],
+            "integer with string key" => [['a' => 1, 'b' => 2, 'c' => 3], 'integer'],
             "Object (User)" => [[
                 new UserBuilder()->withEmail('un@fake.com')->build(),
                 new UserBuilder()->withEmail('deux@fake.com')->build(),
                 new UserBuilder()->withEmail('trois@fake.com')->build(),
-            ]],
+            ], User::class],
+            "StdClass" => [[new StdClass()], 'stdClass'],
         ];
     }
 
     /**
      * @dataProvider goodArrayDataProvider
      */
-    public function testCreateWithArray(array $datas): void
+    public function testCreateWithArrayThenSuccess(array $datas, string $expectedType): void
     {
         //Act
         $tab = Tab::fromArray($datas);
 
         //Assert
-        $expectedType = gettype(current($datas));
         $this->assertEquals($expectedType, $tab->getType());
         foreach ($tab as $key => $value) {
             $this->assertEquals($value, $datas[$key]);
         }
+    }
+
+    public function wrongArrayDataProvider(): array
+    {
+        return [
+            'integer with string' => [['1', 2]],
+            'differents class objects' => [[new UserBuilder()->build(), new StdClass()]],
+            'boolean' => [[true, 1]],
+            'null is forbidden' => [[2, null]],
+        ];
+    }
+
+    /**
+     * @dataProvider wrongArrayDataProvider
+     */
+    public function testCreateWithArrayThenFailed(array $datas): void
+    {
+        //Assert
+        $this->expectException(InvalidArgumentException::class);
+
+        //Act
+        Tab::fromArray($datas);
     }
 
     public function testCreateWithElements(): void
@@ -223,5 +247,45 @@ class TabTest extends TestCase
 
         //Assert
         $this->assertEquals($arrayKeys, $tabKeys);
+    }
+
+    public function goodArrayMergeDataProvider(): array
+    {
+        return [
+            'integer no key' => [[1, 2, 3, 4, 5, 6, 6, 7], [1, 2, 3], [4, 5, 6], [6, 7]],
+            'integer with key' => [['one' => 1, 'two' => 2, 'three' => 3, 'four' => 4], ['one' => 1, 'two' => 2, 'three' => 333], ['three' => 3, 'four' => 4]],
+        ];
+    }
+
+    /**
+     * @dataProvider goodArrayMergeDataProvider
+     */
+    public function testMergeTabThenSuccess(array $expected, array ...$arrays): void
+    {
+        //Arrange
+        $tab1 = Tab::fromArray(1, 2, 3);
+        $tab2 = Tab::fromArray([4, 5, 6]);
+
+        //Act
+        $res = $tab1->merge($tab2);
+
+        //Assert
+        $this->assertEquals([1, 2, 3, 4, 5, 6], $res->toArray());
+        $this->assertEquals([1, 2, 3], $tab1->toArray());
+        $this->assertEquals([4, 5, 6], $tab2->toArray());
+    }
+
+
+    public function testMergeTabThenFail(): void
+    {
+        //Arrange
+        $tab1 = Tab::fromArray(1, 2, 3);
+        $tab2 = Tab::fromArray(['4', '5', '6']);
+
+        //Assert
+        $this->expectExceptionObject(new InvalidArgumentException('Cannot merge Tab<integer>, with Tab<string>.'));
+
+        //Act
+        $res = $tab1->merge($tab2);
     }
 }

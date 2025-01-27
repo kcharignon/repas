@@ -12,4 +12,6 @@ interface ShoppingListRepository
      * @return array<ShoppingList>
      */
     public function findByOwner(User $owner): array;
+
+    public function findById(string $id): ?ShoppingList;
 }

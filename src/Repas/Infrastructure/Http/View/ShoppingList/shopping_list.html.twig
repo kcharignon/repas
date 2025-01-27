@@ -17,7 +17,7 @@
                 href="{{ path("view_one_shopping_list", {"id": shoppingList.id}) }}"
                 class="list-group-item d-flex align-items-center">
                 <span style="width: 10em">{{ shoppingList.createdAt|format_datetime(locale="fr_FR", pattern="dd MMMM YYYY") }}</span>
-                {% for recipeType in recipeTypes %}
+                {% for recipeType in shoppingList.recipeTypePresent %}
                     <span class="me-3">
                         {{ shoppingList.numberOfTypeRecipes(recipeType) }}
                     <img style="height: 1.5em" src="{{ absolute_url(asset(recipeType.image)) }}" alt="{{ recipeType.name }}">

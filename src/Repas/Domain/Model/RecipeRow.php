@@ -71,4 +71,9 @@ class RecipeRow implements ModelInterface
     {
         return new self($id, $ingredient, $quantity, $unit);
     }
+
+    public function getDepartment(): Department
+    {
+        return $this->ingredient->getDepartment();
+    }
 }

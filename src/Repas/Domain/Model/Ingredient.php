@@ -36,6 +36,16 @@ class Ingredient implements ModelInterface
         return $this->image;
     }
 
+    public function getDepartment(): Department
+    {
+        return $this->department;
+    }
+
+    public function getDefaultPurchaseUnit(): Unit
+    {
+        return $this->defaultPurchaseUnit;
+    }
+
     public function getDefaultCookingUnit(): Unit
     {
         return $this->defaultCookingUnit;

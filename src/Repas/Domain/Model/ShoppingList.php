@@ -13,8 +13,11 @@ class ShoppingList implements ModelInterface
 {
     use ModelTrait;
 
+    /** @var Tab<RecipeType>|null  */
+    private ?Tab $recipeTypes = null;
+
     /**
-     * @param Tab<Recipe> $meals
+     * @param Tab<Meal> $meals
      */
     private function __construct(
         private string            $id,
@@ -55,14 +58,14 @@ class ShoppingList implements ModelInterface
         User              $owner,
         DateTimeImmutable $createdAt,
         bool              $locked,
-        Tab               $recipes,
+        Tab               $meals,
     ): ShoppingList {
         return new ShoppingList(
             id: $id,
             owner: $owner,
             createdAt: $createdAt,
             locked: $locked,
-            meals: $recipes
+            meals: $meals
         );
     }
 
@@ -79,8 +82,60 @@ class ShoppingList implements ModelInterface
         );
     }
 
+    /**
+     * @return Tab<RecipeType>
+     */
+    public function recipeTypePresent(): Tab
+    {
+        if (null === $this->recipeTypes) {
+            $this->recipeTypes = Tab::newEmpty(RecipeType::class);
+            foreach ($this->meals as $meal) {
+                $mealRecipeType = $meal->getRecipeType();
+                if (!isset($this->recipeTypes[$mealRecipeType->getSlug()])) {
+                    $this->recipeTypes[$mealRecipeType->getSlug()] = $mealRecipeType;
+                }
+            }
+        }
+        return $this->recipeTypes;
+    }
+
+    /**
+     * @param RecipeType $recipeType
+     * @return Tab<Recipe>
+     */
+    public function getRecipesByType(RecipeType $recipeType): Tab
+    {
+        $res = Tab::newEmpty(Recipe::class);
+
+        foreach ($this->meals as $meal) {
+            if ($meal->getRecipeType()->isEqual($recipeType)) {
+                $res[] = $meal->getRecipe();
+            }
+        }
+
+        return $res;
+    }
+
+    /**
+     * @return Tab<Department>
+     */
+    public function departmentPresent(): Tab
+    {
+        $res = Tab::newEmpty(Department::class);
+        foreach ($this->meals as $meal) {
+            $res = $res->merge($meal->departmentPresent());
+        }
+        return $res;
+    }
+
     public function numberOfTypeRecipes(RecipeType $type): int
     {
         return $this->meals->filter(fn(Meal $meal) => $meal->typeIs($type))->count();
+    }
+
+
+    public function getShoppingListRow(): array
+    {
+        return [];
     }
 }

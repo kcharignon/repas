@@ -5,6 +5,7 @@ namespace Repas\Repas\Domain\Model;
 
 use Repas\Shared\Domain\Model\ModelInterface;
 use Repas\Shared\Domain\Model\ModelTrait;
+use Repas\Shared\Domain\Tool\Tab;
 
 class Meal implements ModelInterface
 {
@@ -31,6 +32,39 @@ class Meal implements ModelInterface
             recipe: static::loadModel($datas['recipe'], Recipe::class),
             serving: $datas['serving']
         );
+    }
+
+    public function getId(): string
+    {
+        return $this->id;
+    }
+
+    public function getShoppingListId(): string
+    {
+        return $this->shoppingListId;
+    }
+
+    public function getRecipe(): Recipe
+    {
+        return $this->recipe;
+    }
+
+    public function getServing(): int
+    {
+        return $this->serving;
+    }
+
+    public function getRecipeType(): RecipeType
+    {
+        return $this->recipe->getType();
+    }
+
+    /**
+     * @return Tab<Department>
+     */
+    public function departmentPresent(): Tab
+    {
+        return $this->recipe->departmentPresent();
     }
 
     public function typeIs(RecipeType $recipeType): bool

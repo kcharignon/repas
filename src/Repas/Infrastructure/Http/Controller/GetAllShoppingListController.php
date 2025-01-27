@@ -28,11 +28,8 @@ class GetAllShoppingListController extends AbstractController
         assert($currentUser instanceof User);
         $shoppingLists = $this->queryBus->ask(new GetAllShoppingListQuery($currentUser));
 
-        $recipeTypes = $this->queryBus->ask(new GetAllRecipeTypeQuery());
-
         return $this->render('@Repas/ShoppingList/shopping_list.html.twig', [
             'shoppingLists' => $shoppingLists,
-            'recipeTypes' => $recipeTypes,
         ]);
     }
 }

@@ -5,6 +5,7 @@ namespace Repas\Repas\Domain\Model;
 
 use Repas\Shared\Domain\Model\ModelInterface;
 use Repas\Shared\Domain\Model\ModelTrait;
+use Repas\Shared\Domain\Tool\Tab;
 use Repas\User\Domain\Model\User;
 
 class Recipe implements ModelInterface
@@ -83,4 +84,19 @@ class Recipe implements ModelInterface
         return $this->type->isEqual($type);
     }
 
+    /**
+     * @return Tab<Department>
+     */
+    public function departmentPresent(): Tab
+    {
+        $res = Tab::newEmpty(Department::class);
+        /** @var RecipeRow $row */
+        foreach ($this->rows as $row) {
+            $department = $row->getDepartment();
+            if (!isset($res[$department->getSlug()])) {
+                $res[$department->getSlug()] = $department;
+            }
+        }
+        return $res;
+    }
 }
