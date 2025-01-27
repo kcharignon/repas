@@ -4,6 +4,8 @@ twig:
         '%kernel.project_dir%/src/User/Infrastructure/Http/View': User
         '%kernel.project_dir%/src/Repas/Infrastructure/Http/View': Repas
     file_name_pattern: '*.twig'
+    globals:
+        javascripts_dir: '/js/'
 
 when@test:
     twig:

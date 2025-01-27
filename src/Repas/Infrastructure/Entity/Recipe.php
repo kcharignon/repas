@@ -119,6 +119,17 @@ class Recipe
         );
     }
 
+    public static function fromData(array $datas)
+    {
+        return new static(
+            id: $datas['id'],
+            name: $datas['name'],
+            serving: $datas['serving'],
+            author: User::fromData($datas['author']),
+            type: RecipeType::fromData($datas['type']),
+        );
+    }
+
     public function getModel(): RecipeModel
     {
         return RecipeModel::load([

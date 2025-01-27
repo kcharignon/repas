@@ -13,5 +13,7 @@ interface ShoppingListRepository
      */
     public function findByOwner(User $owner): array;
 
-    public function findById(string $id): ?ShoppingList;
+    public function findById(string $id): ShoppingList;
+
+    public function save(ShoppingList $shoppingList): void;
 }

@@ -252,8 +252,14 @@ class TabTest extends TestCase
     public function goodArrayMergeDataProvider(): array
     {
         return [
-            'integer no key' => [[1, 2, 3, 4, 5, 6, 6, 7], [1, 2, 3], [4, 5, 6], [6, 7]],
-            'integer with key' => [['one' => 1, 'two' => 2, 'three' => 3, 'four' => 4], ['one' => 1, 'two' => 2, 'three' => 333], ['three' => 3, 'four' => 4]],
+            'integer no key' => [
+                [1, 2, 3, 4, 5, 6, 6, 7],
+                [1, 2, 3], [4, 5, 6], [6, 7]
+            ],
+            'integer with key' => [
+                ['one' => 1, 'two' => 2, 'three' => 3, 'four' => 4],
+                ['one' => 1, 'two' => 2, 'three' => 333], ['three' => 3, 'four' => 4]
+            ],
         ];
     }
 
@@ -263,16 +269,14 @@ class TabTest extends TestCase
     public function testMergeTabThenSuccess(array $expected, array ...$arrays): void
     {
         //Arrange
-        $tab1 = Tab::fromArray(1, 2, 3);
-        $tab2 = Tab::fromArray([4, 5, 6]);
+        $tab = Tab::fromArray(array_shift($arrays));
+        $tabs = array_map(fn(array $array) => Tab::fromArray($array), $arrays);
 
         //Act
-        $res = $tab1->merge($tab2);
+        $res = $tab->merge(...$tabs);
 
         //Assert
-        $this->assertEquals([1, 2, 3, 4, 5, 6], $res->toArray());
-        $this->assertEquals([1, 2, 3], $tab1->toArray());
-        $this->assertEquals([4, 5, 6], $tab2->toArray());
+        $this->assertEquals($expected, $res->toArray());
     }
 
 
@@ -286,6 +290,6 @@ class TabTest extends TestCase
         $this->expectExceptionObject(new InvalidArgumentException('Cannot merge Tab<integer>, with Tab<string>.'));
 
         //Act
-        $res = $tab1->merge($tab2);
+        $tab1->merge($tab2);
     }
 }

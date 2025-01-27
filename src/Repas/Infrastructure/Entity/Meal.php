@@ -3,7 +3,8 @@
 namespace Repas\Repas\Infrastructure\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
-use Repas\Repas\Domain\Model\Meal as RecipeInShoppingListModel;
+use Repas\Repas\Domain\Model\Meal as MealModel;
+use Repas\Repas\Domain\Model\ShoppingList as ShoppingListModel;
 use Repas\Repository\MealRepository;
 
 #[ORM\Entity(repositoryClass: MealRepository::class)]
@@ -39,9 +40,29 @@ class Meal
         $this->serving = $serving;
     }
 
-    public function getModel(): RecipeInShoppingListModel
+    public static function fromData(array $datas, ?ShoppingList $shoppingList = null): static
     {
-        return RecipeInShoppingListModel::load([
+        return new self(
+            id: $datas['id'],
+            shoppingList: $shoppingList ?: ShoppingList::fromData($datas['shopping_list']),
+            recipe: Recipe::fromData($datas['recipe']),
+            serving: $datas['serving']
+        );
+    }
+
+    public static function fromModel(MealModel $meal, ShoppingList $shoppingList): static
+    {
+        return new self(
+            id: $meal->getId(),
+            shoppingList: $shoppingList,
+            recipe: Recipe::fromModel($meal->getRecipe()),
+            serving: $meal->getServing(),
+        );
+    }
+
+    public function getModel(): MealModel
+    {
+        return MealModel::load([
             'id' => $this->id,
             'shopping_list_id' => $this->shoppingList->getId(),
             'recipe' => $this->recipe->getModel(),

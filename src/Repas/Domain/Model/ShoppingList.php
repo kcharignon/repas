@@ -138,4 +138,14 @@ class ShoppingList implements ModelInterface
     {
         return [];
     }
+
+    public function lock(): void
+    {
+        $this->locked = true;
+    }
+
+    public function unlock(): void
+    {
+        $this->locked = false;
+    }
 }

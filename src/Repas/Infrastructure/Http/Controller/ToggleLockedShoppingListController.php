@@ -3,18 +3,48 @@
 namespace Repas\Repas\Infrastructure\Http\Controller;
 
 
+use Repas\Repas\Application\LockedShoppingList\LockedShoppingListCommand;
+use Repas\Repas\Application\UnlockShoppingList\UnlockShoppingListCommand;
+use Repas\Shared\Application\Interface\CommandBusInterface;
+use Repas\User\Domain\Model\User;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 class ToggleLockedShoppingListController extends AbstractController
 {
+
+
+    public function __construct(
+        private readonly CommandBusInterface $commandBus,
+    )
+    {
+    }
+
     #[Route(path: 'shopping-list/{id}/locked/{isLocked}', name: 'shopping_list_locked')]
     #[isGranted('ROLE_USER')]
-    public function __invoke(): Response
+    public function __invoke(string $id, bool $isLocked): Response
     {
-        return new Response('Under construction');
+        if ($isLocked) {
+            $command = new LockedShoppingListCommand($id);
+        } else {
+            /** @var User $connectedUser */
+            $connectedUser = $this->getUser();
+            $command = new UnlockShoppingListCommand($connectedUser, $id);
+        }
+
+        $shoppingList = $this->commandBus->dispatch($command);
+        $html = $this->renderView("@Repas/ShoppingList/_switch_locked.html.twig", ["shoppingList" => $shoppingList]);
+
+        return new JsonResponse([
+            'status' => 'success',
+            'views' => [
+                'selector' => '#switchShoppingListActiveGroup',
+                'html' => $html,
+            ]
+        ]);
     }
 
 }

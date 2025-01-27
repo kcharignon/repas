@@ -24,7 +24,7 @@
                 </span>
                 {% endfor %}
                 <span class="flex-fill"></span>
-                {% if not shoppingList.locked %}
+                {% if not shoppingList.isLocked %}
                     <span class="badge float-end bg-primary rounded-pill me-1">active</span>
                 {% endif %}
             </a>

@@ -258,7 +258,7 @@ class Tab implements ArrayAccess, IteratorAggregate, Countable
         if (class_exists($this->type) || interface_exists($this->type)) {
             if (!($item instanceof $this->type)) {
                 throw new InvalidArgumentException(sprintf(
-                    'Expected an instance of %s, got %s.',
+                    'Tab expected an instance of %s, got %s.',
                     $this->type,
                     is_object($item) ? get_class($item) : gettype($item)
                 ));
@@ -267,7 +267,7 @@ class Tab implements ArrayAccess, IteratorAggregate, Countable
             // Vérifie uniquement que c'est un objet
             if (!is_object($item)) {
                 throw new InvalidArgumentException(sprintf(
-                    'Expected an object, got %s.',
+                    'Tab expected an object, got %s.',
                     gettype($item)
                 ));
             }
@@ -275,7 +275,7 @@ class Tab implements ArrayAccess, IteratorAggregate, Countable
             // Vérifie les types primitifs (string, int, etc.)
             if (gettype($item) !== $this->type) {
                 throw new InvalidArgumentException(sprintf(
-                    'Expected type %s, got %s.',
+                    'Tab expected type %s, got %s.',
                     $this->type,
                     gettype($item)
                 ));

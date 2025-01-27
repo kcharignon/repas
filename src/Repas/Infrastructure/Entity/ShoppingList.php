@@ -6,8 +6,9 @@ use DateTimeImmutable;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
+use Repas\Repas\Domain\Interface\ShoppingListRepository;
+use Repas\Repas\Domain\Model\Meal as MealModel;
 use Repas\Repas\Domain\Model\ShoppingList as ShoppingListModel;
-use Repas\Repository\ShoppingListRepository;
 use Repas\User\Infrastructure\Entity\User;
 
 #[ORM\Entity(repositoryClass: ShoppingListRepository::class)]
@@ -39,13 +40,13 @@ class ShoppingList
         User              $owner,
         DateTimeImmutable $createdAt,
         bool              $locked,
-        array             $recipesInShoppingList,
+        array             $meals,
     ) {
         $this->id = $id;
         $this->owner = $owner;
         $this->createdAt = $createdAt;
         $this->locked = $locked;
-        $this->meals = new ArrayCollection($recipesInShoppingList);
+        $this->meals = new ArrayCollection($meals);
     }
 
     public function getModel(): ShoppingListModel
@@ -61,20 +62,36 @@ class ShoppingList
 
     public static function fromModel(ShoppingListModel $shoppingListModel): static
     {
-        $datas = $shoppingListModel->toArray();
-        $datas['recipes_in_shoppings_list'] = $datas['meals'];
-        return self::fromData($datas);
+        $shoppingList = new self (
+            id: $shoppingListModel->getId(),
+            owner: User::fromModel($shoppingListModel->getOwner()),
+            createdAt: $shoppingListModel->getCreatedAt(),
+            locked: $shoppingListModel->isLocked(),
+            meals: [],
+        );
+
+        $shoppingList->meals = new ArrayCollection($shoppingListModel
+            ->getMeals()
+            ->map(fn(MealModel $meal) => Meal::fromModel($meal, $shoppingList))
+            ->toArray()
+        );
+
+        return $shoppingList;
     }
 
-    private static function fromData(array $datas): static
+    public static function fromData(array $datas): static
     {
-        return new self(
+        $shoppingList = new self(
             id: $datas['id'],
             owner: User::fromData($datas['owner']),
             createdAt: DateTimeImmutable::createFromFormat(DATE_ATOM, $datas['created_at']),
             locked: $datas['locked'],
-            recipesInShoppingList: $datas['recipes_in_shoppings_list'],
+            meals: [],
         );
+
+        $shoppingList->meals = new ArrayCollection(array_map(fn($data) => Meal::fromData($data, shoppingList: $shoppingList), $datas['meals']));
+
+        return $shoppingList;
     }
 
     public function getId(): ?string

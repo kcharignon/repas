@@ -61,7 +61,7 @@ class ShoppingListFixture extends Fixture implements DependentFixtureInterface, 
                 id: UuidGenerator::new(),
                 owner: $userEntity->getModel(),
                 createdAt: DateTimeImmutable::createFromFormat(DATE_ATOM, $shoppingList['createdAt']),
-                locked: true,
+                locked: $shoppingList['locked'],
                 meals: Tab::newEmpty(Recipe::class),
             );
 
