@@ -1,0 +1,22 @@
+#!/bin/bash
+
+echo "bash bin_sh"
+
+# Vérifie si Docker Compose est installé
+if ! command -v docker compose &>/dev/null; then
+    echo "Erreur : Docker Compose n'est pas installé ou n'est pas dans le PATH."
+    exit 1
+fi
+
+# Utilisation d'un tableau pour construire la commande
+COMMAND=("docker" "compose" "exec" "php" "bash")
+
+# Ajoute les arguments à partir de $@ (qui préserve les guillemets)
+COMMAND+=("$@")
+
+# Affiche la commande en vert (pour le débogage)
+printf -v command_string "%q " "${COMMAND[@]}"
+echo -e "\033[32m$command_string\033[0m"
+
+# Exécute la commande en utilisant l'expansion du tableau
+"${COMMAND[@]}"
