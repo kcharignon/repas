@@ -3,9 +3,8 @@
 namespace Repas\Repas\Infrastructure\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
+use Repas\Repas\Domain\Interface\MealRepository;
 use Repas\Repas\Domain\Model\Meal as MealModel;
-use Repas\Repas\Domain\Model\ShoppingList as ShoppingListModel;
-use Repas\Repository\MealRepository;
 
 #[ORM\Entity(repositoryClass: MealRepository::class)]
 #[ORM\Table(name: 'meal')]
@@ -15,59 +14,36 @@ class Meal
     #[ORM\Column(length: 255, unique: true)]
     private ?string $id = null;
 
-    #[ORM\ManyToOne(inversedBy: 'meals')]
-    #[ORM\JoinColumn(name: 'shopping_list', nullable: false)]
-    private ?ShoppingList $shoppingList = null;
 
-    #[ORM\ManyToOne]
-    #[ORM\JoinColumn(name: 'recipe', nullable: false)]
-    private ?Recipe $recipe = null;
+    #[ORM\Column(name: 'shopping_list', nullable: false)]
+    private ?string $shoppingListId = null;
+
+    #[ORM\Column(name: 'recipe', nullable: false)]
+    private ?string $recipeId = null;
 
     #[ORM\Column]
     private ?int $serving = null;
 
-    /**
-     * @param string|null $id
-     * @param ShoppingList|null $shoppingList
-     * @param Recipe|null $recipe
-     * @param int|null $serving
-     */
-    public function __construct(?string $id, ?ShoppingList $shoppingList, ?Recipe $recipe, ?int $serving)
-    {
+    public function __construct(
+        ?string $id,
+        ?string $shoppingListId,
+        ?string $recipeId,
+        ?int $serving
+    ) {
         $this->id = $id;
-        $this->shoppingList = $shoppingList;
-        $this->recipe = $recipe;
+        $this->shoppingListId = $shoppingListId;
+        $this->recipeId = $recipeId;
         $this->serving = $serving;
     }
 
-    public static function fromData(array $datas, ?ShoppingList $shoppingList = null): static
-    {
-        return new self(
-            id: $datas['id'],
-            shoppingList: $shoppingList ?: ShoppingList::fromData($datas['shopping_list']),
-            recipe: Recipe::fromData($datas['recipe']),
-            serving: $datas['serving']
-        );
-    }
-
-    public static function fromModel(MealModel $meal, ShoppingList $shoppingList): static
+    public static function fromModel(MealModel $meal): static
     {
         return new self(
             id: $meal->getId(),
-            shoppingList: $shoppingList,
-            recipe: Recipe::fromModel($meal->getRecipe()),
+            shoppingListId: $meal->getShoppingListId(),
+            recipeId: $meal->getRecipe()->getId(),
             serving: $meal->getServing(),
         );
-    }
-
-    public function getModel(): MealModel
-    {
-        return MealModel::load([
-            'id' => $this->id,
-            'shopping_list_id' => $this->shoppingList->getId(),
-            'recipe' => $this->recipe->getModel(),
-            'serving' => $this->serving
-        ]);
     }
 
     public function getId(): ?string
@@ -75,26 +51,26 @@ class Meal
         return $this->id;
     }
 
-    public function getShoppingList(): ?ShoppingList
+    public function getShoppingListId(): ?string
     {
-        return $this->shoppingList;
+        return $this->shoppingListId;
     }
 
-    public function setShoppingList(?ShoppingList $shoppingList): static
+    public function setShoppingListId(?string $shoppingListId): static
     {
-        $this->shoppingList = $shoppingList;
+        $this->shoppingListId = $shoppingListId;
 
         return $this;
     }
 
-    public function getRecipe(): ?Recipe
+    public function getRecipeId(): ?string
     {
-        return $this->recipe;
+        return $this->recipeId;
     }
 
-    public function setRecipe(?Recipe $recipe): static
+    public function setRecipeId(?string $recipeId): static
     {
-        $this->recipe = $recipe;
+        $this->recipeId = $recipeId;
 
         return $this;
     }

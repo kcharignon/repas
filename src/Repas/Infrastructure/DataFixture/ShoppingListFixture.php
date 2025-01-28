@@ -8,12 +8,9 @@ use Doctrine\Bundle\FixturesBundle\Fixture;
 use Doctrine\Bundle\FixturesBundle\FixtureGroupInterface;
 use Doctrine\Common\DataFixtures\DependentFixtureInterface;
 use Doctrine\Persistence\ObjectManager;
-use Repas\Repas\Domain\Model\Recipe;
-use Repas\Repas\Domain\Model\ShoppingList as ShoppingListModel;
 use Repas\Repas\Infrastructure\Entity\Recipe as RecipeEntity;
-use Repas\Repas\Infrastructure\Entity\Meal;
+use Repas\Repas\Infrastructure\Entity\Meal as MealEntity;
 use Repas\Repas\Infrastructure\Entity\ShoppingList as ShoppingListEntity;
-use Repas\Shared\Domain\Tool\Tab;
 use Repas\Shared\Domain\Tool\UuidGenerator;
 use Repas\User\Infrastructure\Entity\User;
 
@@ -57,31 +54,26 @@ class ShoppingListFixture extends Fixture implements DependentFixtureInterface, 
         foreach (self::SHOPPING_LIST as $shoppingList) {
             $userEntity = $this->getReference($shoppingList['user'], User::class);
 
-            $shoppingListModel = ShoppingListModel::create(
+            $shoppingListEntity = new ShoppingListEntity(
                 id: UuidGenerator::new(),
-                owner: $userEntity->getModel(),
+                ownerId: $userEntity->getId(),
                 createdAt: DateTimeImmutable::createFromFormat(DATE_ATOM, $shoppingList['createdAt']),
                 locked: $shoppingList['locked'],
-                meals: Tab::newEmpty(Recipe::class),
             );
 
-            $shoppingListEntity = ShoppingListEntity::fromModel($shoppingListModel);
-            $shoppingListEntity->setOwner($userEntity);
+            $manager->persist($shoppingListEntity);
 
-            //On ajoute entre 5 et 20 des recettes aléatoires
+            // On ajoute entre 5 et 20 des recettes aléatoires (dans la quantité par défaut de la recette)
             $recipes = $this->getRandomRecipes($userEntity->getId(), rand(5, 20));
             foreach ($recipes as $recipeEntity) {
-                $recipeInShoppingListEntity = new Meal(
+                $recipeInShoppingListEntity = new MealEntity(
                     id: UuidGenerator::new(),
-                    shoppingList: $shoppingListEntity,
-                    recipe: $recipeEntity,
+                    shoppingListId: $shoppingListEntity->getId(),
+                    recipeId: $recipeEntity->getId(),
                     serving: $recipeEntity->getServing(),
                 );
                 $manager->persist($recipeInShoppingListEntity);
-                $shoppingListEntity->addRecipe($recipeInShoppingListEntity);
             }
-
-            $manager->persist($shoppingListEntity);
         }
 
         $manager->flush();

@@ -3,13 +3,9 @@
 namespace Repas\Repas\Infrastructure\Entity;
 
 use DateTimeImmutable;
-use Doctrine\Common\Collections\ArrayCollection;
-use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
-use Repas\Repas\Domain\Model\Meal as MealModel;
 use Repas\Repas\Domain\Model\ShoppingList as ShoppingListModel;
-use Repas\User\Infrastructure\Entity\User;
 
 #[ORM\Entity(repositoryClass: ShoppingListRepository::class)]
 #[ORM\Table(name: 'shopping_list')]
@@ -19,9 +15,8 @@ class ShoppingList
     #[ORM\Column(length: 255)]
     private ?string $id = null;
 
-    #[ORM\ManyToOne]
-    #[ORM\JoinColumn(nullable: false)]
-    private ?User $owner = null;
+    #[ORM\Column(name: 'owner', nullable: false)]
+    private ?string $ownerId = null;
 
     #[ORM\Column(name: 'created_at')]
     private ?DateTimeImmutable $createdAt = null;
@@ -29,69 +24,26 @@ class ShoppingList
     #[ORM\Column]
     private ?bool $locked = null;
 
-    /**
-     * @var Collection<int, Meal>
-     */
-    #[ORM\OneToMany(targetEntity: Meal::class, mappedBy: 'shoppingList', orphanRemoval: true)]
-    private Collection $meals;
-
     public function __construct(
         string            $id,
-        User              $owner,
+        string            $ownerId,
         DateTimeImmutable $createdAt,
         bool              $locked,
-        array             $meals,
     ) {
         $this->id = $id;
-        $this->owner = $owner;
+        $this->ownerId = $ownerId;
         $this->createdAt = $createdAt;
         $this->locked = $locked;
-        $this->meals = new ArrayCollection($meals);
-    }
-
-    public function getModel(): ShoppingListModel
-    {
-        return ShoppingListModel::load([
-            'id' => $this->id,
-            'owner' => $this->owner->getModel(),
-            'created_at' => $this->createdAt,
-            'locked' => $this->locked,
-            'meals' => $this->meals->map(fn(Meal $item) => $item->getModel())->toArray(),
-        ]);
     }
 
     public static function fromModel(ShoppingListModel $shoppingListModel): static
     {
-        $shoppingList = new self (
+        return new static (
             id: $shoppingListModel->getId(),
-            owner: User::fromModel($shoppingListModel->getOwner()),
+            ownerId: $shoppingListModel->getOwner()->getId(),
             createdAt: $shoppingListModel->getCreatedAt(),
             locked: $shoppingListModel->isLocked(),
-            meals: [],
         );
-
-        $shoppingList->meals = new ArrayCollection($shoppingListModel
-            ->getMeals()
-            ->map(fn(MealModel $meal) => Meal::fromModel($meal, $shoppingList))
-            ->toArray()
-        );
-
-        return $shoppingList;
-    }
-
-    public static function fromData(array $datas): static
-    {
-        $shoppingList = new self(
-            id: $datas['id'],
-            owner: User::fromData($datas['owner']),
-            createdAt: DateTimeImmutable::createFromFormat(DATE_ATOM, $datas['created_at']),
-            locked: $datas['locked'],
-            meals: [],
-        );
-
-        $shoppingList->meals = new ArrayCollection(array_map(fn($data) => Meal::fromData($data, shoppingList: $shoppingList), $datas['meals']));
-
-        return $shoppingList;
     }
 
     public function getId(): ?string
@@ -123,38 +75,14 @@ class ShoppingList
         return $this;
     }
 
-    /**
-     * @return Collection<int, Meal>
-     */
-    public function getMeals(): Collection
+    public function getOwnerId(): ?string
     {
-        return $this->meals;
+        return $this->ownerId;
     }
 
-    public function addRecipe(Meal $recipe): static
+    public function setOwnerId(?string $ownerId): static
     {
-        if (!$this->meals->contains($recipe)) {
-            $this->meals->add($recipe);
-        }
-
-        return $this;
-    }
-
-    public function removeRecipe(Meal $recipe): static
-    {
-        $this->meals->removeElement($recipe);
-
-        return $this;
-    }
-
-    public function getOwner(): ?User
-    {
-        return $this->owner;
-    }
-
-    public function setOwner(?User $owner): static
-    {
-        $this->owner = $owner;
+        $this->ownerId = $ownerId;
 
         return $this;
     }
