@@ -3,7 +3,10 @@
 namespace Repas\Repas\Infrastructure\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
+use Exception;
+use Repas\Repas\Domain\Model\Department as DepartmentModel;
 use Repas\Repas\Domain\Model\Ingredient as IngredientModel;
+use Repas\Repas\Infrastructure\Repository\ModelCache;
 use Repas\Repository\IngredientRepository;
 
 #[ORM\Entity(repositoryClass: IngredientRepository::class)]
@@ -20,45 +23,35 @@ class Ingredient
     #[ORM\Column(length: 2048)]
     private ?string $image = null;
 
-    #[ORM\ManyToOne]
-    #[ORM\JoinColumn(name: 'department', referencedColumnName: 'slug', nullable: false)]
-    private ?Department $department = null;
+    #[ORM\Column(name: 'department', nullable: false)]
+    private ?string $departmentSlug = null;
 
-    #[ORM\ManyToOne]
-    #[ORM\JoinColumn(name: 'default_cooking_unit', referencedColumnName: 'slug', nullable: false)]
-    private ?Unit $defaultCookingUnit = null;
+    #[ORM\Column(name: 'default_cooking_unit', nullable: false)]
+    private ?string $defaultCookingUnitSlug = null;
 
-    #[ORM\ManyToOne]
-    #[ORM\JoinColumn(name: 'default_purchase_unit', referencedColumnName: 'slug', nullable: false)]
-    private ?Unit $defaultPurchaseUnit = null;
+    #[ORM\Column(name: 'default_purchase_unit', nullable: false)]
+    private ?string $defaultPurchaseUnitSlug = null;
 
     public function __construct(
         ?string $slug,
         ?string $name,
         ?string $image,
-        ?Department $department,
-        ?Unit $defaultCookingUnit,
-        ?Unit $defaultPurchaseUnit,
+        ?string $department,
+        ?string $defaultCookingUnit,
+        ?string $defaultPurchaseUnit,
     ) {
         $this->slug = $slug;
         $this->name = $name;
         $this->image = $image;
-        $this->department = $department;
-        $this->defaultCookingUnit = $defaultCookingUnit;
-        $this->defaultPurchaseUnit = $defaultPurchaseUnit;
+        $this->departmentSlug = $department;
+        $this->defaultCookingUnitSlug = $defaultCookingUnit;
+        $this->defaultPurchaseUnitSlug = $defaultPurchaseUnit;
     }
 
 
     public function getSlug(): ?string
     {
         return $this->slug;
-    }
-
-    public function setSlug(string $slug): static
-    {
-        $this->slug = $slug;
-
-        return $this;
     }
 
     public function getName(): ?string
@@ -78,70 +71,54 @@ class Ingredient
         return $this->image;
     }
 
-    public function setImage(?string $image): void
+    public function getDepartmentSlug(): ?string
+    {
+        return $this->departmentSlug;
+    }
+
+    public function getDefaultCookingUnitSlug(): ?string
+    {
+        return $this->defaultCookingUnitSlug;
+    }
+
+    public function getDefaultPurchaseUnitSlug(): ?string
+    {
+        return $this->defaultPurchaseUnitSlug;
+    }
+
+    public function setImage(?string $image): Ingredient
     {
         $this->image = $image;
-    }
-
-    public function getDepartment(): ?Department
-    {
-        return $this->department;
-    }
-
-    public function setDepartment(?Department $department): void
-    {
-        $this->department = $department;
-    }
-
-    public function getDefaultCookingUnit(): ?Unit
-    {
-        return $this->defaultCookingUnit;
-    }
-
-    public function setDefaultCookingUnit(?Unit $defaultCookingUnit): static
-    {
-        $this->defaultCookingUnit = $defaultCookingUnit;
-
         return $this;
     }
 
-    public function getDefaultPurchaseUnit(): ?Unit
+    public function setDepartmentSlug(?string $departmentSlug): Ingredient
     {
-        return $this->defaultPurchaseUnit;
+        $this->departmentSlug = $departmentSlug;
+        return $this;
     }
 
-    public function setDefaultPurchaseUnit(?Unit $defaultPurchaseUnit): void
+    public function setDefaultCookingUnitSlug(?string $defaultCookingUnitSlug): Ingredient
     {
-        $this->defaultPurchaseUnit = $defaultPurchaseUnit;
+        $this->defaultCookingUnitSlug = $defaultCookingUnitSlug;
+        return $this;
+    }
+
+    public function setDefaultPurchaseUnitSlug(?string $defaultPurchaseUnitSlug): Ingredient
+    {
+        $this->defaultPurchaseUnitSlug = $defaultPurchaseUnitSlug;
+        return $this;
     }
 
     public static function fromModel(IngredientModel $ingredient): static
     {
-        $datas = $ingredient->toArray();
-        return Ingredient::fromData($datas);
-    }
-
-    public function getModel(): IngredientModel
-    {
-        return IngredientModel::load([
-            'slug' => $this->slug,
-            'name' => $this->name,
-            'image' => $this->image,
-            'department' => $this->department->toArray(),
-            'default_cooking_unit' => $this->defaultCookingUnit->toArray(),
-            'default_purchase_unit' => $this->defaultPurchaseUnit->toArray(),
-        ]);
-    }
-
-    public static function fromData(array $datas): static
-    {
         return new static(
-            $datas['slug'],
-            $datas['name'],
-            $datas['image'],
-            Department::fromData($datas['department']),
-            Unit::fromData($datas['default_cooking_unit']),
-            Unit::fromData($datas['default_purchase_unit']),
+            $ingredient->getSlug(),
+            $ingredient->getName(),
+            $ingredient->getImage(),
+            $ingredient->getDepartment()->getSlug(),
+            $ingredient->getDefaultCookingUnit()->getSlug(),
+            $ingredient->getDefaultPurchaseUnit()->getSlug(),
         );
     }
 }

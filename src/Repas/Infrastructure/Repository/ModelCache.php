@@ -46,4 +46,9 @@ class ModelCache
     {
         unset($this->models[$model::class][$model->getId()]);
     }
+
+    public function reset(): void
+    {
+        $this->models = [];
+    }
 }

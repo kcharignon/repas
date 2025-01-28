@@ -7,7 +7,7 @@ use Repas\Repas\Domain\Model\Department;
 
 interface DepartmentRepository
 {
-    public function findBySlug(string $slug): Department;
-
     public function save(Department $department): void;
+
+    public function findBySlug(string $slug): Department;
 }

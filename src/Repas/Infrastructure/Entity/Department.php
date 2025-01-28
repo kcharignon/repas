@@ -4,9 +4,9 @@ namespace Repas\Repas\Infrastructure\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
 use Repas\Repas\Domain\Model\Department as DepartmentModel;
-use Repas\Repository\DepartmentRepository;
+use Repas\Repas\Infrastructure\Repository\DepartmentPostgreSQLRepository;
 
-#[ORM\Entity(repositoryClass: DepartmentRepository::class)]
+#[ORM\Entity(repositoryClass: DepartmentPostgreSQLRepository::class)]
 #[ORM\Table(name: "department")]
 class Department
 {
@@ -28,19 +28,13 @@ class Department
     }
 
 
-    public static function fromModel(DepartmentModel $departmentModel): self
+    public static function fromModel(DepartmentModel $departmentModel): static
     {
-        return self::fromData($departmentModel->toArray());
-    }
-
-    public function getModel(): DepartmentModel
-    {
-        return DepartmentModel::load($this->toArray());
-    }
-
-    public static function fromData(array $departmentData): self
-    {
-        return new self($departmentData['slug'], $departmentData['name'], $departmentData['image']);
+        return new static(
+            slug: $departmentModel->getSlug(),
+            name: $departmentModel->getName(),
+            image: $departmentModel->getImage()
+        );
     }
 
     public function getSlug(): ?string
@@ -77,14 +71,5 @@ class Department
         $this->image = $image;
 
         return $this;
-    }
-
-    public function toArray(): array
-    {
-        return [
-            'slug' => $this->slug,
-            'name' => $this->name,
-            'image' => $this->image,
-        ];
     }
 }

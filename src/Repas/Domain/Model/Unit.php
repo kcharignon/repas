@@ -7,7 +7,7 @@ use Repas\Shared\Domain\Model\ModelInterface;
 use Repas\Shared\Domain\Model\ModelTrait;
 use Repas\Shared\Domain\Tool\StringTool;
 
-readonly class Unit implements ModelInterface
+class Unit implements ModelInterface
 {
     use ModelTrait;
 

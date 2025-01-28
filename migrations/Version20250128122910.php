@@ -10,7 +10,7 @@ use Doctrine\Migrations\AbstractMigration;
 /**
  * Auto-generated Migration: Please modify to your needs!
  */
-final class Version20250127152259 extends AbstractMigration
+final class Version20250128122910 extends AbstractMigration
 {
     public function getDescription(): string
     {
@@ -25,10 +25,7 @@ final class Version20250127152259 extends AbstractMigration
         $this->addSql('CREATE INDEX IDX_BD912744F2798017 ON conversion (end_unit)');
         $this->addSql('CREATE INDEX IDX_BD9127446BAF7870 ON conversion (ingredient)');
         $this->addSql('CREATE TABLE department (slug VARCHAR(255) NOT NULL, name VARCHAR(255) NOT NULL, image VARCHAR(2048) NOT NULL, PRIMARY KEY(slug))');
-        $this->addSql('CREATE TABLE ingredient (slug VARCHAR(255) NOT NULL, department VARCHAR(255) NOT NULL, default_cooking_unit VARCHAR(255) NOT NULL, default_purchase_unit VARCHAR(255) NOT NULL, name VARCHAR(255) NOT NULL, image VARCHAR(2048) NOT NULL, PRIMARY KEY(slug))');
-        $this->addSql('CREATE INDEX IDX_6BAF7870CD1DE18A ON ingredient (department)');
-        $this->addSql('CREATE INDEX IDX_6BAF78707D5987D8 ON ingredient (default_cooking_unit)');
-        $this->addSql('CREATE INDEX IDX_6BAF78709A295823 ON ingredient (default_purchase_unit)');
+        $this->addSql('CREATE TABLE ingredient (slug VARCHAR(255) NOT NULL, name VARCHAR(255) NOT NULL, image VARCHAR(2048) NOT NULL, department VARCHAR(255) NOT NULL, default_cooking_unit VARCHAR(255) NOT NULL, default_purchase_unit VARCHAR(255) NOT NULL, PRIMARY KEY(slug))');
         $this->addSql('CREATE TABLE meal (id VARCHAR(255) NOT NULL, shopping_list VARCHAR(255) NOT NULL, recipe VARCHAR(36) NOT NULL, serving INT NOT NULL, PRIMARY KEY(id))');
         $this->addSql('CREATE INDEX IDX_9EF68E9C3DC1A459 ON meal (shopping_list)');
         $this->addSql('CREATE INDEX IDX_9EF68E9CDA88B137 ON meal (recipe)');
@@ -49,9 +46,6 @@ final class Version20250127152259 extends AbstractMigration
         $this->addSql('ALTER TABLE conversion ADD CONSTRAINT FK_BD912744E3026191 FOREIGN KEY (start_unit) REFERENCES unit (slug) NOT DEFERRABLE INITIALLY IMMEDIATE');
         $this->addSql('ALTER TABLE conversion ADD CONSTRAINT FK_BD912744F2798017 FOREIGN KEY (end_unit) REFERENCES unit (slug) NOT DEFERRABLE INITIALLY IMMEDIATE');
         $this->addSql('ALTER TABLE conversion ADD CONSTRAINT FK_BD9127446BAF7870 FOREIGN KEY (ingredient) REFERENCES ingredient (slug) NOT DEFERRABLE INITIALLY IMMEDIATE');
-        $this->addSql('ALTER TABLE ingredient ADD CONSTRAINT FK_6BAF7870CD1DE18A FOREIGN KEY (department) REFERENCES department (slug) NOT DEFERRABLE INITIALLY IMMEDIATE');
-        $this->addSql('ALTER TABLE ingredient ADD CONSTRAINT FK_6BAF78707D5987D8 FOREIGN KEY (default_cooking_unit) REFERENCES unit (slug) NOT DEFERRABLE INITIALLY IMMEDIATE');
-        $this->addSql('ALTER TABLE ingredient ADD CONSTRAINT FK_6BAF78709A295823 FOREIGN KEY (default_purchase_unit) REFERENCES unit (slug) NOT DEFERRABLE INITIALLY IMMEDIATE');
         $this->addSql('ALTER TABLE meal ADD CONSTRAINT FK_9EF68E9C3DC1A459 FOREIGN KEY (shopping_list) REFERENCES shopping_list (id) NOT DEFERRABLE INITIALLY IMMEDIATE');
         $this->addSql('ALTER TABLE meal ADD CONSTRAINT FK_9EF68E9CDA88B137 FOREIGN KEY (recipe) REFERENCES recipe (id) NOT DEFERRABLE INITIALLY IMMEDIATE');
         $this->addSql('ALTER TABLE recipe ADD CONSTRAINT FK_DA88B137BDAFD8C8 FOREIGN KEY (author) REFERENCES "user" (id) NOT DEFERRABLE INITIALLY IMMEDIATE');
@@ -69,9 +63,6 @@ final class Version20250127152259 extends AbstractMigration
         $this->addSql('ALTER TABLE conversion DROP CONSTRAINT FK_BD912744E3026191');
         $this->addSql('ALTER TABLE conversion DROP CONSTRAINT FK_BD912744F2798017');
         $this->addSql('ALTER TABLE conversion DROP CONSTRAINT FK_BD9127446BAF7870');
-        $this->addSql('ALTER TABLE ingredient DROP CONSTRAINT FK_6BAF7870CD1DE18A');
-        $this->addSql('ALTER TABLE ingredient DROP CONSTRAINT FK_6BAF78707D5987D8');
-        $this->addSql('ALTER TABLE ingredient DROP CONSTRAINT FK_6BAF78709A295823');
         $this->addSql('ALTER TABLE meal DROP CONSTRAINT FK_9EF68E9C3DC1A459');
         $this->addSql('ALTER TABLE meal DROP CONSTRAINT FK_9EF68E9CDA88B137');
         $this->addSql('ALTER TABLE recipe DROP CONSTRAINT FK_DA88B137BDAFD8C8');

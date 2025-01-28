@@ -3,15 +3,15 @@
 namespace Repas\Repas\Infrastructure\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
-use Repas\Repository\UnitRepository;
 use Repas\Repas\Domain\Model\Unit as UnitModel;
+use Repas\Repas\Infrastructure\Repository\UnitPostgreSQLRepository;
 
-#[ORM\Entity(repositoryClass: UnitRepository::class)]
+#[ORM\Entity(repositoryClass: UnitPostgreSQLRepository::class)]
 #[ORM\Table(name: 'unit')]
 class Unit
 {
     #[ORM\Id]
-    #[ORM\Column(name: 'slug', length: 255)]
+    #[ORM\Column(length: 255)]
     private ?string $slug = null;
 
     #[ORM\Column(length: 255)]
@@ -61,30 +61,10 @@ class Unit
 
     public static function fromModel(UnitModel $unit): static
     {
-        $datas = $unit->toArray();
-        return static::fromData($datas);
-    }
-
-    public static function fromData(array $datas): static
-    {
         return new static(
-            slug: $datas['slug'],
-            name: $datas['name'],
-            symbol: $datas['symbol'],
+            $unit->getSlug(),
+            $unit->getName(),
+            $unit->getSymbol(),
         );
-    }
-
-    public function getModel(): UnitModel
-    {
-        return UnitModel::load($this->toArray());
-    }
-
-    public function toArray(): array
-    {
-        return [
-            'slug' => $this->slug,
-            'name' => $this->name,
-            'symbol' => $this->symbol,
-        ];
     }
 }

@@ -1553,9 +1553,9 @@ class IngredientFixture extends Fixture implements DependentFixtureInterface, Fi
 
             // On modifie manuellement pour avoir un entite manager par doctrine
             $ingredientEntity = IngredientEntity::fromModel($ingredientModel);
-            $ingredientEntity->setDefaultCookingUnit($defaultCookingUnit);
-            $ingredientEntity->setDefaultPurchaseUnit($defaultPurchaseUnit);
-            $ingredientEntity->setDepartment($department);
+            $ingredientEntity->setDefaultCookingUnitSlug($defaultCookingUnit);
+            $ingredientEntity->setDefaultPurchaseUnitSlug($defaultPurchaseUnit);
+            $ingredientEntity->setDepartmentSlug($department);
             $manager->persist($ingredientEntity);
 
             $this->addReference($ingredientEntity->getSlug(), $ingredientEntity);

@@ -97,7 +97,6 @@ class UnitFixture extends Fixture implements FixtureGroupInterface
 
     public function load(ObjectManager $manager): void
     {
-
         foreach (self::UNITS as $unitData) {
             $unitModel = Unit::create($unitData["name"], $unitData["symbol"]);
             $unitEntity = UnitEntity::fromModel($unitModel);

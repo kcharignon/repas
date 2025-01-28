@@ -10,7 +10,7 @@ use Repas\Tests\Helper\DatabaseTestCase;
 
 class UnitRepositoryTest extends DatabaseTestCase
 {
-    private UnitRepository $unitRepository;
+    private readonly UnitRepository $unitRepository;
 
     protected function setUp(): void
     {
@@ -29,7 +29,7 @@ class UnitRepositoryTest extends DatabaseTestCase
 
         //Assert
         $loaded = $this->unitRepository->findBySlug($unit->getSlug());
-        $this->assertEquals($unit->toArray(), $loaded->toArray());
+        $this->assertEquals($unit, $loaded);
 
         //Act
         $this->unitRepository->delete($unit);
