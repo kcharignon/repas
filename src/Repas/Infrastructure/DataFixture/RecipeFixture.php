@@ -7,13 +7,9 @@ use Doctrine\Bundle\FixturesBundle\Fixture;
 use Doctrine\Bundle\FixturesBundle\FixtureGroupInterface;
 use Doctrine\Common\DataFixtures\DependentFixtureInterface;
 use Doctrine\Persistence\ObjectManager;
-use Repas\Repas\Domain\Model\Recipe as RecipeModel;
-use Repas\Repas\Domain\Model\RecipeRow as RecipeRowModel;
 use Repas\Repas\Infrastructure\Entity\Ingredient as IngredientEntity;
 use Repas\Repas\Infrastructure\Entity\Recipe as RecipeEntity;
 use Repas\Repas\Infrastructure\Entity\RecipeRow as RecipeRowEntity;
-use Repas\Repas\Infrastructure\Entity\RecipeType as RecipeTypeEntity;
-use Repas\Repas\Infrastructure\Entity\Unit as UnitEntity;
 use Repas\Shared\Domain\Tool\UuidGenerator;
 use Repas\User\Infrastructure\DataFixture\UserFixture;
 use Repas\User\Infrastructure\Entity\User as UserEntity;
@@ -2573,28 +2569,25 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
         foreach (self::RECIPES as $recipeDatas) {
             try {
                 $authorEntity = $this->getReference($recipeDatas['owner'], UserEntity::class);
-                $recipeType = $this->getReference($recipeDatas['type'], RecipeTypeEntity::class);
 
-                $id = UuidGenerator::new();
-                // Creation du model pour appliquer les regles metiers
-                $recipeModel = RecipeModel::create(
-                    id: $id,
+                $recipeEntity = new RecipeEntity(
+                    id: UuidGenerator::new(),
                     name: $recipeDatas['name'],
-                    servings: $recipeDatas['people'],
-                    author: $authorEntity->getModel(),
-                    recipeType: $recipeType->getModel(),
-                    rows: []
+                    serving: $recipeDatas['people'],
+                    authorId: $authorEntity->getId(),
+                    typeSlug: $recipeDatas['type'],
                 );
+                $manager->persist($recipeEntity);
 
-                // On recupere l'entite
-                $recipeEntity = RecipeEntity::fromModel($recipeModel);
-
-                // On set les entites pour que Doctrine les reconnaissent
-                $recipeEntity->setAuthor($authorEntity);
-                $recipeEntity->setType($recipeType);
                 foreach ($recipeDatas['ingredients'] as $recipeRowData) {
-                    $recipeRowEntity = $this->getRecipeRow($recipeRowData, $recipeModel);
-                    $recipeEntity->addRow($recipeRowEntity);
+                    $recipeRowEntity = new RecipeRowEntity(
+                        id: UuidGenerator::new(),
+                        ingredientSlug: $recipeRowData['slug'],
+                        quantity: $recipeRowData['quantity'],
+                        unitSlug: $recipeRowData['unit'],
+                        recipeId: $recipeEntity->getId(),
+                    );
+                    $manager->persist($recipeRowEntity);
                 }
 
                 self::$recipesIds[$authorEntity->getId()] ??= [];
@@ -2609,22 +2602,6 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
         }
 
         $manager->flush();
-    }
-
-    private function getRecipeRow(array $data, RecipeModel $recipeModel): RecipeRowEntity
-    {
-        $ingredient = $this->getReference($data['slug'], IngredientEntity::class);
-        $unit = $this->getReference($data['unit'], UnitEntity::class);
-        $recipeRowEntity = RecipeRowEntity::fromModel(RecipeRowModel::create(
-            id: UuidGenerator::new(),
-            ingredient: $ingredient->getModel(),
-            quantity: $data['quantity'],
-            unit: $unit->getModel(),
-        ), $recipeModel);
-        $recipeRowEntity->setIngredient($ingredient);
-        $recipeRowEntity->setUnit($unit);
-
-        return $recipeRowEntity;
     }
 
     public static function getRecipesIds(string $ownerId): array

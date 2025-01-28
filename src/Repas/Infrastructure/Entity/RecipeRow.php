@@ -5,7 +5,6 @@ namespace Repas\Repas\Infrastructure\Entity;
 use Doctrine\ORM\Mapping as ORM;
 use Repas\Repas\Domain\Model\Recipe as RecipeModel;
 use Repas\Repas\Domain\Model\RecipeRow as RecipeRowModel;
-use Repas\Repository\Repas\Repas\Infrastructure\Entity\RecipeRowRepository;
 
 #[ORM\Entity(repositoryClass: RecipeRowRepository::class)]
 #[ORM\Table(name: 'recipe_row')]
@@ -15,49 +14,41 @@ class RecipeRow
     #[ORM\Column(type: 'string', length: 36, unique: true)]
     private ?string $id = null;
 
-    #[ORM\ManyToOne(targetEntity: Ingredient::class)]
-    #[ORM\JoinColumn(name: "ingredient", referencedColumnName: "slug", nullable: false)]
-    private ?Ingredient $ingredient = null;
+    #[ORM\Column(name: "ingredient", nullable: false)]
+    private ?string $ingredientSlug = null;
 
     #[ORM\Column]
     private ?float $quantity = null;
 
-    #[ORM\ManyToOne(targetEntity: Unit::class)]
-    #[ORM\JoinColumn(name: "unit", referencedColumnName: "slug", nullable: false)]
-    private ?Unit $unit = null;
+    #[ORM\Column(name: "unit", nullable: false)]
+    private ?string $unitSlug = null;
 
-    #[ORM\ManyToOne(inversedBy: 'rows')]
-    #[ORM\JoinColumn(name: 'recipe', nullable: false)]
-    private ?Recipe $recipe = null;
+    #[ORM\Column(name: 'recipe', nullable: false)]
+    private ?string $recipeId = null;
 
-    public function __construct(?string $id, ?Ingredient $ingredient, ?float $quantity, ?Unit $unit, ?Recipe $recipe)
-    {
+    public function __construct(
+        ?string $id,
+        ?string $ingredientSlug,
+        ?float  $quantity,
+        ?string $unitSlug,
+        ?string $recipeId
+    ) {
         $this->id = $id;
-        $this->ingredient = $ingredient;
+        $this->ingredientSlug = $ingredientSlug;
         $this->quantity = $quantity;
-        $this->unit = $unit;
-        $this->recipe = $recipe;
+        $this->unitSlug = $unitSlug;
+        $this->recipeId = $recipeId;
     }
 
     public static function fromModel(RecipeRowModel $recipeRow, RecipeModel $recipe): static
     {
         return new static(
             $recipeRow->getId(),
-            Ingredient::fromModel($recipeRow->getIngredient()),
+            $recipeRow->getIngredient()->getSlug(),
             $recipeRow->getQuantity(),
-            Unit::fromModel($recipeRow->getUnit()),
-            Recipe::fromModel($recipe),
+            $recipeRow->getUnit()->getSlug(),
+            $recipe->getId(),
         );
-    }
-
-    public function getModel(): RecipeRowModel
-    {
-        return RecipeRowModel::load([
-            'id' => $this->id,
-            'ingredient' => $this->ingredient->getModel(),
-            'quantity' => $this->quantity,
-            'unit' => $this->unit->getModel(),
-        ]);
     }
 
     public function getId(): ?string
@@ -65,14 +56,14 @@ class RecipeRow
         return $this->id;
     }
 
-    public function getIngredient(): ?Ingredient
+    public function getIngredientSlug(): ?string
     {
-        return $this->ingredient;
+        return $this->ingredientSlug;
     }
 
-    public function setIngredient(?Ingredient $ingredient): static
+    public function setIngredientSlug(?string $ingredientSlug): static
     {
-        $this->ingredient = $ingredient;
+        $this->ingredientSlug = $ingredientSlug;
 
         return $this;
     }
@@ -89,26 +80,26 @@ class RecipeRow
         return $this;
     }
 
-    public function getUnit(): ?Unit
+    public function getUnitSlug(): ?string
     {
-        return $this->unit;
+        return $this->unitSlug;
     }
 
-    public function setUnit(?Unit $unit): static
+    public function setUnitSlug(?string $unitSlug): static
     {
-        $this->unit = $unit;
+        $this->unitSlug = $unitSlug;
 
         return $this;
     }
 
-    public function getRecipe(): ?Recipe
+    public function getRecipeId(): ?string
     {
-        return $this->recipe;
+        return $this->recipeId;
     }
 
-    public function setRecipe(?Recipe $recipe): static
+    public function setRecipeId(?string $recipeId): static
     {
-        $this->recipe = $recipe;
+        $this->recipeId = $recipeId;
 
         return $this;
     }

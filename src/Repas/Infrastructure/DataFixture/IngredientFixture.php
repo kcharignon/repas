@@ -7,10 +7,8 @@ use Doctrine\Bundle\FixturesBundle\Fixture;
 use Doctrine\Bundle\FixturesBundle\FixtureGroupInterface;
 use Doctrine\Common\DataFixtures\DependentFixtureInterface;
 use Doctrine\Persistence\ObjectManager;
-use Repas\Repas\Domain\Model\Ingredient;
-use Repas\Repas\Infrastructure\Entity\Department as DepartmentEntity;
 use Repas\Repas\Infrastructure\Entity\Ingredient as IngredientEntity;
-use Repas\Repas\Infrastructure\Entity\Unit as UnitEntity;
+use Repas\Shared\Domain\Tool\StringTool;
 
 class IngredientFixture extends Fixture implements DependentFixtureInterface, FixtureGroupInterface
 {
@@ -1539,23 +1537,14 @@ class IngredientFixture extends Fixture implements DependentFixtureInterface, Fi
     public function load(ObjectManager $manager): void
     {
         foreach (self::INGREDIENTS as $ingredientData) {
-            $defaultCookingUnit = $this->getReference($ingredientData['defaultCookingUnit'], UnitEntity::class);
-            $defaultPurchaseUnit = $this->getReference($ingredientData['defaultPurchaseUnit'], UnitEntity::class);
-            $department = $this->getReference($ingredientData['department'], DepartmentEntity::class);
-
-            $ingredientModel = Ingredient::create(
-                $ingredientData['name'],
-                $ingredientData['image'] ?? '',
-                $department->getModel(),
-                $defaultCookingUnit->getModel(),
-                $defaultPurchaseUnit->getModel(),
+            $ingredientEntity = new IngredientEntity(
+                slug: StringTool::slugify($ingredientData['name']),
+                name: $ingredientData['name'],
+                image: $ingredientData['image'] ?? '',
+                department: $ingredientData['department'],
+                defaultCookingUnit: $ingredientData['defaultCookingUnit'],
+                defaultPurchaseUnit: $ingredientData['defaultPurchaseUnit'],
             );
-
-            // On modifie manuellement pour avoir un entite manager par doctrine
-            $ingredientEntity = IngredientEntity::fromModel($ingredientModel);
-            $ingredientEntity->setDefaultCookingUnitSlug($defaultCookingUnit);
-            $ingredientEntity->setDefaultPurchaseUnitSlug($defaultPurchaseUnit);
-            $ingredientEntity->setDepartmentSlug($department);
             $manager->persist($ingredientEntity);
 
             $this->addReference($ingredientEntity->getSlug(), $ingredientEntity);

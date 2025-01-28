@@ -3,8 +3,8 @@
 namespace Repas\Repas\Infrastructure\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
+use Repas\Repas\Domain\Interface\ConversionRepository;
 use Repas\Repas\Domain\Model\Conversion as ConversionModel;
-use Repas\Repository\ConversionRepository;
 
 #[ORM\Entity(repositoryClass: ConversionRepository::class)]
 #[ORM\Table(name: 'conversion')]
@@ -14,49 +14,41 @@ class Conversion
     #[ORM\Column(type: 'string', length: 767, unique: true)]
     private ?string $slug = null;
 
-    #[ORM\ManyToOne]
-    #[ORM\JoinColumn(name: 'start_unit', referencedColumnName: 'slug', nullable: false)]
-    private ?Unit $startUnit = null;
+    #[ORM\JoinColumn(name: 'start_unit', nullable: false)]
+    private ?string $startUnitSlug = null;
 
-    #[ORM\ManyToOne]
-    #[ORM\JoinColumn(name: 'end_unit', referencedColumnName: 'slug', nullable: false)]
-    private ?Unit $endUnit = null;
+    #[ORM\JoinColumn(name: 'end_unit', nullable: false)]
+    private ?string $endUnitSlug = null;
 
     #[ORM\Column]
     private ?float $coefficient = null;
 
-    #[ORM\ManyToOne]
-    #[ORM\JoinColumn(name: 'ingredient', referencedColumnName: 'slug', nullable: true)]
-    private ?Ingredient $ingredient = null;
+    #[ORM\Column(name: 'ingredient', nullable: true)]
+    private ?string $ingredientSlug = null;
 
     public function __construct(
         ?string $id,
-        ?Unit $startUnit,
-        ?Unit $endUnit,
+        ?string $startUnitSlug,
+        ?string $endUnitSlug,
         ?float $coefficient,
-        ?Ingredient $ingredient
+        ?string $ingredientSlug,
     ) {
         $this->slug = $id;
-        $this->startUnit = $startUnit;
-        $this->endUnit = $endUnit;
+        $this->startUnitSlug = $startUnitSlug;
+        $this->endUnitSlug = $endUnitSlug;
         $this->coefficient = $coefficient;
-        $this->ingredient = $ingredient;
+        $this->ingredientSlug = $ingredientSlug;
     }
 
 
     public static function fromModel(ConversionModel $conversionModel): static
     {
-        return static::fromData($conversionModel->toArray());
-    }
-
-    public static function fromData(array $data): static
-    {
         return new static(
-            $data['slug'],
-            Unit::fromData($data['start_unit']),
-            Unit::fromData($data['end_unit']),
-            $data['coefficient'],
-            $data['ingredient'] ? Ingredient::fromData($data['ingredient']) : null,
+            id: $conversionModel->getId(),
+            startUnitSlug: $conversionModel->getStartUnit()->getSlug(),
+            endUnitSlug: $conversionModel->getEndUnit()->getSlug(),
+            coefficient: $conversionModel->getCoefficient(),
+            ingredientSlug: $conversionModel->getIngredient()->getSlug(),
         );
     }
 
@@ -65,26 +57,26 @@ class Conversion
         return $this->slug;
     }
 
-    public function getStartUnit(): ?Unit
+    public function getStartUnitSlug(): ?string
     {
-        return $this->startUnit;
+        return $this->startUnitSlug;
     }
 
-    public function setStartUnit(?Unit $startUnit): static
+    public function setStartUnitSlug(?string $startUnitSlug): static
     {
-        $this->startUnit = $startUnit;
+        $this->startUnitSlug = $startUnitSlug;
 
         return $this;
     }
 
-    public function getEndUnit(): ?Unit
+    public function getEndUnitSlug(): ?string
     {
-        return $this->endUnit;
+        return $this->endUnitSlug;
     }
 
-    public function setEndUnit(?Unit $endUnit): static
+    public function setEndUnitSlug(?string $endUnitSlug): static
     {
-        $this->endUnit = $endUnit;
+        $this->endUnitSlug = $endUnitSlug;
 
         return $this;
     }
@@ -101,14 +93,14 @@ class Conversion
         return $this;
     }
 
-    public function getIngredient(): ?Ingredient
+    public function getIngredientSlug(): ?string
     {
-        return $this->ingredient;
+        return $this->ingredientSlug;
     }
 
-    public function setIngredient(?Ingredient $ingredient): static
+    public function setIngredientSlug(?string $ingredientSlug): static
     {
-        $this->ingredient = $ingredient;
+        $this->ingredientSlug = $ingredientSlug;
 
         return $this;
     }

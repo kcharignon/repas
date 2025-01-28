@@ -56,6 +56,36 @@ class Ingredient implements ModelInterface
         return $this->defaultCookingUnit;
     }
 
+    public function setName(string $name): Ingredient
+    {
+        $this->name = $name;
+        return $this;
+    }
+
+    public function setImage(string $image): Ingredient
+    {
+        $this->image = $image;
+        return $this;
+    }
+
+    public function setDepartment(Department $department): Ingredient
+    {
+        $this->department = $department;
+        return $this;
+    }
+
+    public function setDefaultCookingUnit(Unit $defaultCookingUnit): Ingredient
+    {
+        $this->defaultCookingUnit = $defaultCookingUnit;
+        return $this;
+    }
+
+    public function setDefaultPurchaseUnit(Unit $defaultPurchaseUnit): Ingredient
+    {
+        $this->defaultPurchaseUnit = $defaultPurchaseUnit;
+        return $this;
+    }
+
     public static function create(
         string $name,
         string $image,

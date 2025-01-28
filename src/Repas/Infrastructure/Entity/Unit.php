@@ -3,10 +3,10 @@
 namespace Repas\Repas\Infrastructure\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
+use Repas\Repas\Domain\Interface\UnitRepository;
 use Repas\Repas\Domain\Model\Unit as UnitModel;
-use Repas\Repas\Infrastructure\Repository\UnitPostgreSQLRepository;
 
-#[ORM\Entity(repositoryClass: UnitPostgreSQLRepository::class)]
+#[ORM\Entity(repositoryClass: UnitRepository::class)]
 #[ORM\Table(name: 'unit')]
 class Unit
 {

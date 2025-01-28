@@ -5,7 +5,9 @@ namespace Repas\Repas\Infrastructure\Repository;
 
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
+use Repas\Repas\Domain\Exception\DepartmentException;
 use Repas\Repas\Domain\Exception\IngredientException;
+use Repas\Repas\Domain\Exception\UnitException;
 use Repas\Repas\Domain\Interface\DepartmentRepository;
 use Repas\Repas\Domain\Interface\IngredientRepository;
 use Repas\Repas\Domain\Interface\UnitRepository;
@@ -76,15 +78,22 @@ class IngredientPostgreSQLRepository extends ServiceEntityRepository implements 
         ;
     }
 
+    /**
+     * @throws IngredientException
+     */
     private function convertEntityToModel(IngredientEntity $ingredientEntity): IngredientModel
     {
-        return IngredientModel::load([
-            "slug" => $ingredientEntity->getSlug(),
-            "name" => $ingredientEntity->getName(),
-            "image" => $ingredientEntity->getImage(),
-            "department" => $this->departmentRepository->findBySlug($ingredientEntity->getDepartmentSlug()),
-            "default_cooking_unit" => $this->unitRepository->findBySlug($ingredientEntity->getDefaultCookingUnitSlug()),
-            "default_purchase_unit" => $this->unitRepository->findBySlug($ingredientEntity->getDefaultPurchaseUnitSlug()),
-        ]);
+        try {
+            return IngredientModel::load([
+                "slug" => $ingredientEntity->getSlug(),
+                "name" => $ingredientEntity->getName(),
+                "image" => $ingredientEntity->getImage(),
+                "department" => $this->departmentRepository->findBySlug($ingredientEntity->getDepartmentSlug()),
+                "default_cooking_unit" => $this->unitRepository->findBySlug($ingredientEntity->getDefaultCookingUnitSlug()),
+                "default_purchase_unit" => $this->unitRepository->findBySlug($ingredientEntity->getDefaultPurchaseUnitSlug()),
+            ]);
+        } catch (DepartmentException|UnitException) {
+            throw IngredientException::subModelNotFound();
+        }
     }
 }

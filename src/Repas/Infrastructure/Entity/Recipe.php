@@ -2,13 +2,9 @@
 
 namespace Repas\Repas\Infrastructure\Entity;
 
-use Doctrine\Common\Collections\ArrayCollection;
-use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
+use Repas\Repas\Domain\Interface\RecipeRepository;
 use Repas\Repas\Domain\Model\Recipe as RecipeModel;
-use Repas\Repas\Domain\Model\RecipeRow as RecipeRowModel;
-use Repas\Repository\RecipeRepository;
-use Repas\User\Infrastructure\Entity\User;
 
 #[ORM\Entity(repositoryClass: RecipeRepository::class)]
 #[ORM\Table(name: 'recipe')]
@@ -24,34 +20,24 @@ class Recipe
     #[ORM\Column]
     private ?int $serving = null;
 
-    #[ORM\ManyToOne]
-    #[ORM\JoinColumn(name: 'author', nullable: false)]
-    private ?User $author = null;
+    #[ORM\Column(name: 'author', nullable: false)]
+    private ?string $authorId = null;
 
-    #[ORM\ManyToOne(targetEntity: RecipeType::class)]
-    #[ORM\JoinColumn(name: "type", referencedColumnName: "slug", nullable: false)]
-    private ?RecipeType $type = null;
-
-    /**
-     * @var Collection<int, RecipeRow>
-     */
-    #[ORM\OneToMany(targetEntity: RecipeRow::class, mappedBy: 'recipe', cascade: ['persist', 'remove'], orphanRemoval: true)]
-    private Collection $rows;
+    #[ORM\Column(name: "type", nullable: false)]
+    private ?string $typeSlug = null;
 
     public function __construct(
-        ?string     $id,
-        ?string     $name,
-        ?int        $serving,
-        ?User       $author,
-        ?RecipeType $type,
-        array       $rows
+        ?string $id,
+        ?string $name,
+        ?int    $serving,
+        ?string $authorId,
+        ?string $typeSlug,
     ) {
         $this->id = $id;
         $this->name = $name;
         $this->serving = $serving;
-        $this->author = $author;
-        $this->type = $type;
-        $this->rows = new ArrayCollection($rows);
+        $this->authorId = $authorId;
+        $this->typeSlug = $typeSlug;
     }
 
     public function getId(): ?string
@@ -83,26 +69,26 @@ class Recipe
         return $this;
     }
 
-    public function getAuthor(): ?User
+    public function getAuthorId(): ?string
     {
-        return $this->author;
+        return $this->authorId;
     }
 
-    public function setAuthor(?User $author): static
+    public function setAuthorId(?string $authorId): static
     {
-        $this->author = $author;
+        $this->authorId = $authorId;
 
         return $this;
     }
 
-    public function getType(): ?RecipeType
+    public function getTypeSlug(): ?string
     {
-        return $this->type;
+        return $this->typeSlug;
     }
 
-    public function setType(?RecipeType $type): static
+    public function setTypeSlug(?string $typeSlug): static
     {
-        $this->type = $type;
+        $this->typeSlug = $typeSlug;
 
         return $this;
     }
@@ -113,59 +99,8 @@ class Recipe
             $recipe->getId(),
             $recipe->getName(),
             $recipe->getServing(),
-            User::fromModel($recipe->getAuthor()),
-            RecipeType::fromModel($recipe->getType()),
-            array_map(fn(RecipeRowModel $recipeRow) => RecipeRow::fromModel($recipeRow, $recipe), $recipe->getRows())
+            $recipe->getAuthor()->getId(),
+            $recipe->getType()->getSlug(),
         );
-    }
-
-    public static function fromData(array $datas)
-    {
-        return new static(
-            id: $datas['id'],
-            name: $datas['name'],
-            serving: $datas['serving'],
-            author: User::fromData($datas['author']),
-            type: RecipeType::fromData($datas['type']),
-        );
-    }
-
-    public function getModel(): RecipeModel
-    {
-        return RecipeModel::load([
-            'id' => $this->id,
-            'name' => $this->name,
-            'serving' => $this->serving,
-            'author' => $this->author->getModel(),
-            'type' => $this->type->getModel(),
-            'rows' => array_map(fn(RecipeRow $recipeRow) => $recipeRow->getModel(), $this->rows->toArray()),
-        ]);
-    }
-
-    public function getRows(): Collection
-    {
-        return $this->rows;
-    }
-
-    public function addRow(RecipeRow $row): static
-    {
-        if (!$this->rows->contains($row)) {
-            $this->rows->add($row);
-            $row->setRecipe($this);
-        }
-
-        return $this;
-    }
-
-    public function removeRow(RecipeRow $row): static
-    {
-        if ($this->rows->removeElement($row)) {
-            // set the owning side to null (unless already changed)
-            if ($row->getRecipe() === $this) {
-                $row->setRecipe(null);
-            }
-        }
-
-        return $this;
     }
 }

@@ -7,11 +7,8 @@ use Doctrine\Bundle\FixturesBundle\Fixture;
 use Doctrine\Bundle\FixturesBundle\FixtureGroupInterface;
 use Doctrine\Common\DataFixtures\DependentFixtureInterface;
 use Doctrine\Persistence\ObjectManager;
-use Repas\Repas\Domain\Model\Conversion;
-use Repas\Repas\Domain\Model\ConversionSpecific;
 use Repas\Repas\Infrastructure\Entity\Conversion as ConversionEntity;
-use Repas\Repas\Infrastructure\Entity\Ingredient;
-use Repas\Repas\Infrastructure\Entity\Unit;
+use Repas\Shared\Domain\Tool\UuidGenerator;
 
 class ConversionFixture extends Fixture implements DependentFixtureInterface, FixtureGroupInterface
 {
@@ -91,20 +88,13 @@ class ConversionFixture extends Fixture implements DependentFixtureInterface, Fi
     public function load(ObjectManager $manager): void
     {
         foreach (self::CONVERSIONS as $conversion) {
-            $startUnitEntity = $this->getReference($conversion["startUnit"], Unit::class);
-            $endUnitEntity = $this->getReference($conversion["endUnit"], Unit::class);
-            $ingredientEntity = ($conversion["ingredient"] ?? null) ? $this->getReference($conversion["ingredient"], Ingredient::class) : null;
-            $conversionModel = Conversion::create(
-                $startUnitEntity->getModel(),
-                $endUnitEntity->getModel(),
-                $conversion["coefficient"],
-                $ingredientEntity?->getModel(),
+            $conversionEntity = new ConversionEntity(
+                id: UuidGenerator::new(),
+                startUnitSlug: $conversion["startUnit"],
+                endUnitSlug: $conversion["endUnit"],
+                coefficient: $conversion["coefficient"],
+                ingredientSlug: $conversion["ingredient"] ?? null,
             );
-
-            $conversionEntity = ConversionEntity::fromModel($conversionModel);
-            $conversionEntity->setStartUnit($startUnitEntity);
-            $conversionEntity->setEndUnit($endUnitEntity);
-            $conversionEntity->setIngredient($ingredientEntity);
 
             $manager->persist($conversionEntity);
         }
