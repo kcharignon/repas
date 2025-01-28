@@ -19,6 +19,36 @@ class Conversion implements ModelInterface
     ) {
     }
 
+    public function getSlug(): string
+    {
+        return $this->slug;
+    }
+
+    public function getStartUnit(): Unit
+    {
+        return $this->startUnit;
+    }
+
+    public function getEndUnit(): Unit
+    {
+        return $this->endUnit;
+    }
+
+    public function getCoefficient(): float
+    {
+        return $this->coefficient;
+    }
+
+    public function getIngredient(): ?Ingredient
+    {
+        return $this->ingredient;
+    }
+
+    public function getId(): string
+    {
+        return $this->slug;
+    }
+
     public static function load(array $datas): static {
         return new static(
             slug: $datas['slug'],

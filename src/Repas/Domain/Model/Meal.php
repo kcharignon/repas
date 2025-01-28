@@ -19,6 +19,8 @@ class Meal implements ModelInterface
     ) {
     }
 
+
+
     public static function create(string $id, string $shoppingListId, Recipe $recipe, int $servings): static
     {
         return new self($id, $shoppingListId, $recipe, $servings);

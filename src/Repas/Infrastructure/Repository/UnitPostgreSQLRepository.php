@@ -15,9 +15,9 @@ class UnitPostgreSQLRepository extends ServiceEntityRepository implements UnitRe
 
 
     public function __construct(
-        private readonly ManagerRegistry $managerRegistry
+        ManagerRegistry $managerRegistry,
     ) {
-        parent::__construct($this->managerRegistry, UnitEntity::class);
+        parent::__construct($managerRegistry, UnitEntity::class);
     }
 
     public function save(UnitModel $unit): void
@@ -39,7 +39,8 @@ class UnitPostgreSQLRepository extends ServiceEntityRepository implements UnitRe
      */
     public function findBySlug(string $slug): UnitModel
     {
-        return $this->find($slug)?->getModel() ?? throw UnitException::notFound();
+        return $this->find($slug)?->getModel()
+            ?? throw UnitException::notFound();
     }
 
     public function delete(UnitModel $unit): void

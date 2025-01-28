@@ -21,6 +21,11 @@ class Ingredient implements ModelInterface
     ) {
     }
 
+    public function getId(): string
+    {
+        return $this->slug;
+    }
+
     public function getSlug(): string
     {
         return $this->slug;

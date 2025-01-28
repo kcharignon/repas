@@ -1,6 +1,6 @@
 <?php
 
-namespace Repas;
+namespace Repas\Tests\Repas;
 
 
 use Repas\Repas\Domain\Interface\ShoppingListRepository as ShoppingListRepositoryInterface;

@@ -23,6 +23,11 @@ readonly class Unit implements ModelInterface
         return $this->slug;
     }
 
+    public function getId(): string
+    {
+        return $this->slug;
+    }
+
     public function getName(): string
     {
         return $this->name;

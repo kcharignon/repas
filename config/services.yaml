@@ -35,3 +35,7 @@ services:
     Repas\Shared\Application\Service\QueryBus:
         arguments:
             $messageBus: '@messenger.bus.default'
+
+    Repas\Shared\Domain\Tool\ModelCache:
+        class: Repas\Shared\Domain\Tool\ModelCache
+    

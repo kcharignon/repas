@@ -23,9 +23,9 @@ class Department implements ModelInterface
         return $this->slug;
     }
 
-    public function setSlug(string $slug): void
+    public function getId(): string
     {
-        $this->slug = $slug;
+        return $this->slug;
     }
 
     public function getName(): string

@@ -1,12 +1,11 @@
 <?php
 
-namespace Repas;
+namespace Repas\Tests\Repas;
 
 
 use Repas\Repas\Domain\Exception\UnitException;
 use Repas\Repas\Domain\Interface\UnitRepository;
-use Repas\Repas\Domain\Model\Unit;
-use Repas\Repas\Infrastructure\Repository\UnitPostgreSQLRepository;
+use Repas\Tests\Builder\UnitBuilder;
 use Repas\Tests\Helper\DatabaseTestCase;
 
 class UnitRepositoryTest extends DatabaseTestCase
@@ -17,15 +16,13 @@ class UnitRepositoryTest extends DatabaseTestCase
     {
         parent::setUp();
 
-        $managerRegistry = static::getContainer()->get('doctrine');
-
-        $this->unitRepository = new UnitPostgreSQLRepository($managerRegistry);
+        $this->unitRepository = static::getContainer()->get(UnitRepository::class);
     }
 
-    public function testInsert(): void
+    public function testInsertAndFindBySlugAndRemove(): void
     {
         //Arrange
-        $unit = Unit::create("new unit","nu");
+        $unit = new UnitBuilder()->setName('New unit')->build();
 
         //Act
         $this->unitRepository->save($unit);
@@ -33,6 +30,13 @@ class UnitRepositoryTest extends DatabaseTestCase
         //Assert
         $loaded = $this->unitRepository->findBySlug($unit->getSlug());
         $this->assertEquals($unit->toArray(), $loaded->toArray());
+
+        //Act
+        $this->unitRepository->delete($unit);
+
+        //Assert
+        $this->expectExceptionObject(UnitException::notFound());
+        $this->unitRepository->findBySlug($unit->getSlug());
     }
 
     public function testLoadNonExistent(): void
@@ -43,5 +47,4 @@ class UnitRepositoryTest extends DatabaseTestCase
         //Act
         $this->unitRepository->findBySlug("non-existent");
     }
-
 }
