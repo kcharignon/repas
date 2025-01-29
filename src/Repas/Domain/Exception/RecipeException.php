@@ -16,4 +16,9 @@ class RecipeException extends DomainException
     {
         return new static("RECIPE_TYPE_NOT_FOUND", 404);
     }
+
+    public static function rowSubModelNotFound(): static
+    {
+        return new static("RECIPE_ROW_SUB_MODEL_NOT_FOUND", 404);
+    }
 }

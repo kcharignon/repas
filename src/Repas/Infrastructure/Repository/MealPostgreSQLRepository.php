@@ -68,4 +68,19 @@ class MealPostgreSQLRepository extends ServiceEntityRepository
             'serving' => $meal->getServing(),
         ]);
     }
+
+    /**
+     * @param Tab<string> $mealIds
+     */
+    public function deleteByShoppingListIdExceptIds(string $shoppingListId, Tab $mealIds): void
+    {
+        $this->createQueryBuilder('m')
+            ->delete()
+            ->where('m.shoppingListId = :shoppingListId')
+            ->setParameter('shoppingListId', $shoppingListId)
+            ->andWhere('m.id not in (:mealIds)')
+            ->setParameter('mealIds', $mealIds->toArray())
+            ->getQuery()
+            ->execute();
+    }
 }

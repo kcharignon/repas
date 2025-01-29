@@ -43,7 +43,7 @@ class UserPostgreSQLRepository extends ServiceEntityRepository implements UserRe
      */
     public function findOneByEmail(string $email): User
     {
-        if (($userEntity = $this->findOneBy(['email' => $email])) !== null) {
+        if (($userEntity = $this->getOneActiveByOwner(['email' => $email])) !== null) {
             $userModel = $this->convertEntityToModel($userEntity);
             $this->modelCache->setModelCache($userModel);
             return $userModel;

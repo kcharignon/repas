@@ -11,6 +11,7 @@ class RecipeRow implements ModelInterface
 
     private function __construct(
         private string $id,
+        private string $recipeId,
         private Ingredient $ingredient,
         private float $quantity,
         private Unit $unit,
@@ -61,15 +62,21 @@ class RecipeRow implements ModelInterface
     {
         return new self(
             id: $datas['id'],
-            ingredient: static::loadModel($datas['ingredient'], Ingredient::class),
+            recipeId: $datas['recipe_id'],
+            ingredient: $datas['ingredient'],
             quantity: $datas['quantity'],
-            unit: static::loadModel($datas['unit'], Unit::class),
+            unit: $datas['unit'],
         );
     }
 
-    public static function create(string $id, Ingredient $ingredient, float $quantity, Unit $unit): self
-    {
-        return new self($id, $ingredient, $quantity, $unit);
+    public static function create(
+        string $id,
+        string $recipeId,
+        Ingredient $ingredient,
+        float $quantity,
+        Unit $unit
+    ): self {
+        return new self($id, $recipeId, $ingredient, $quantity, $unit);
     }
 
     public function getDepartment(): Department

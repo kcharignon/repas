@@ -45,7 +45,7 @@ class UnitPostgreSQLRepository extends ServiceEntityRepository implements UnitRe
     /**
      * @throws UnitException
      */
-    public function findBySlug(string $slug): UnitModel
+    public function getOneBySlug(string $slug): UnitModel
     {
         // On cherche dans le cache
         if (($model = $this->modelCache->getModelCache(UnitModel::class, $slug)) !== null) {

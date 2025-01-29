@@ -46,6 +46,11 @@ class ShoppingList
         );
     }
 
+    public function updateFromModel(ShoppingListModel $shoppingListModel): void
+    {
+        $this->locked = $shoppingListModel->isLocked();
+    }
+
     public function getId(): ?string
     {
         return $this->id;

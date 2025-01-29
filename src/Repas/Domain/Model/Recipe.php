@@ -13,13 +13,16 @@ class Recipe implements ModelInterface
 
     use ModelTrait;
 
+    /**
+     * @param Tab<RecipeRow> $rows
+     */
     private function __construct(
         private string     $id,
         private string     $name,
         private int        $serving,
         private User       $author,
         private RecipeType $type,
-        private array      $rows,
+        private Tab        $rows,
     ) {
     }
 
@@ -49,9 +52,9 @@ class Recipe implements ModelInterface
     }
 
     /**
-     * @return array<RecipeRow>
+     * @return Tab<RecipeRow>
      */
-    public function getRows(): array
+    public function getRows(): Tab
     {
         return $this->rows;
     }
@@ -62,9 +65,9 @@ class Recipe implements ModelInterface
             id: $datas['id'],
             name: $datas['name'],
             serving: $datas['serving'],
-            author: static::loadModel($datas['author'], User::class),
-            type: static::loadModel($datas['type'], RecipeType::class),
-            rows: array_map(fn($recipeRow) => static::loadModel($recipeRow, RecipeRow::class) , $datas['rows'])
+            author: $datas['author'],
+            type: $datas['type'],
+            rows: $datas['rows'],
         );
     }
 
@@ -74,7 +77,7 @@ class Recipe implements ModelInterface
         int        $servings,
         User       $author,
         RecipeType $recipeType,
-        array      $rows,
+        Tab      $rows,
     ): self {
         return new self($id, $name, $servings, $author, $recipeType, $rows);
     }

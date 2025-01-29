@@ -27,7 +27,7 @@ class IngredientRepositoryTest extends DatabaseTestCase
         $this->ingredientRepository->save($ingredient);
 
         // Assert
-        $loadedIngredient = $this->ingredientRepository->findBySlug($ingredient->getSlug());
+        $loadedIngredient = $this->ingredientRepository->getOneBySlug($ingredient->getSlug());
         $this->assertEquals($ingredient, $loadedIngredient);
     }
 

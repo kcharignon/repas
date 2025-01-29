@@ -9,6 +9,7 @@ use Repas\Repas\Domain\Exception\RecipeException;
 use Repas\Repas\Domain\Interface\RecipeRepository;
 use Repas\Repas\Domain\Interface\RecipeTypeRepository;
 use Repas\Repas\Domain\Model\Recipe;
+use Repas\Repas\Domain\Model\RecipeRow;
 use Repas\Repas\Infrastructure\Entity\Recipe as RecipeEntity;
 use Repas\Repas\Infrastructure\Entity\Unit as UnitEntity;
 use Repas\Shared\Infrastructure\Repository\ModelCache;
@@ -21,6 +22,7 @@ class RecipePostgreSQLRepository  extends ServiceEntityRepository implements Rec
         private readonly ModelCache $modelCache,
         private readonly UserRepository $userRepository,
         private readonly RecipeTypeRepository $recipeTypeRepository,
+        private readonly RecipeRowPostgreSQLRepository $recipeRowRepository,
     ) {
         parent::__construct($managerRegistry, UnitEntity::class);
     }
@@ -43,20 +45,28 @@ class RecipePostgreSQLRepository  extends ServiceEntityRepository implements Rec
         throw RecipeException::notFound();
     }
 
-
-
-
     public function save(Recipe $recipe): void
     {
+        $this->modelCache->setModelCache($recipe);
         $recipeEntity = $this->find($recipe->getId());
         if ($recipeEntity === null) {
             $recipeEntity = RecipeEntity::fromModel($recipe);
             $this->getEntityManager()->persist($recipeEntity);
         } else {
             $recipeEntity->updateFromModel($recipe);
+            // Supprime les anciennes lignes de la recette
+            $this->recipeRowRepository->deleteByRecipeIdExceptIds(
+                $recipeEntity->getId(),
+                $recipe->getRows()->map(fn(RecipeRow $item) => $item->getId())
+            );
+        }
+        // Ajoute les nouvelles lignes ou modifie les lignes existantes
+        foreach ($recipe->getRows() as $row) {
+            $this->recipeRowRepository->save($row);
         }
 
         $this->getEntityManager()->flush();
+        $this->modelCache->setModelCache($recipe);
     }
 
     private function convertEntityToModel(RecipeEntity $entity): Recipe
@@ -66,7 +76,7 @@ class RecipePostgreSQLRepository  extends ServiceEntityRepository implements Rec
             'name' => $entity->getName(),
             'serving' => $entity->getServing(),
             'author' => $this->userRepository->findOneById($entity->getAuthorId()),
-            'type' => $this->recipeTypeRepository->findOneBySlug($entity->getTypeSlug()),
+            'type' => $this->recipeTypeRepository->getOneBySlug($entity->getTypeSlug()),
         ]);
     }
 }

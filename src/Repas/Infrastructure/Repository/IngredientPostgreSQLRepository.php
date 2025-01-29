@@ -30,7 +30,7 @@ class IngredientPostgreSQLRepository extends ServiceEntityRepository implements 
     /**
      * @throws IngredientException
      */
-    public function findBySlug(string $slug): IngredientModel
+    public function getOneBySlug(string $slug): IngredientModel
     {
         // On cherche das le cache
         if (($model = $this->modelCache->getModelCache(IngredientModel::class, $slug)) !== null) {
@@ -38,7 +38,7 @@ class IngredientPostgreSQLRepository extends ServiceEntityRepository implements 
         }
 
         // On cherche en base de donnée
-        if (($entity = $this->findOneBy(['slug' => $slug])) !== null) {
+        if (($entity = $this->getOneActiveByOwner(['slug' => $slug])) !== null) {
             $model = $this->convertEntityToModel($entity);
             // On stock en cache
             $this->modelCache->setModelCache($model);
@@ -48,7 +48,7 @@ class IngredientPostgreSQLRepository extends ServiceEntityRepository implements 
         throw IngredientException::notFound();
     }
 
-    public function findByDepartment(string $department): Tab
+    public function getByDepartment(string $department): Tab
     {
         throw new \Exception('Not implemented');
     }
@@ -89,9 +89,9 @@ class IngredientPostgreSQLRepository extends ServiceEntityRepository implements 
                 "slug" => $ingredientEntity->getSlug(),
                 "name" => $ingredientEntity->getName(),
                 "image" => $ingredientEntity->getImage(),
-                "department" => $this->departmentRepository->findBySlug($ingredientEntity->getDepartmentSlug()),
-                "default_cooking_unit" => $this->unitRepository->findBySlug($ingredientEntity->getDefaultCookingUnitSlug()),
-                "default_purchase_unit" => $this->unitRepository->findBySlug($ingredientEntity->getDefaultPurchaseUnitSlug()),
+                "department" => $this->departmentRepository->getOneBySlug($ingredientEntity->getDepartmentSlug()),
+                "default_cooking_unit" => $this->unitRepository->getOneBySlug($ingredientEntity->getDefaultCookingUnitSlug()),
+                "default_purchase_unit" => $this->unitRepository->getOneBySlug($ingredientEntity->getDefaultPurchaseUnitSlug()),
             ]);
         } catch (DepartmentException|UnitException) {
             throw IngredientException::subModelNotFound();

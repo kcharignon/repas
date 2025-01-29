@@ -28,7 +28,7 @@ class DepartmentRepositoryTest extends DatabaseTestCase
         $this->repository->save($department);
 
         //Assert
-        $loadedDepartment = $this->repository->findBySlug($department->getSlug());
+        $loadedDepartment = $this->repository->getOneBySlug($department->getSlug());
         $this->assertEquals([
             'slug' => 'maxi-outils',
             'name' => 'Maxi Outils',
@@ -43,7 +43,7 @@ class DepartmentRepositoryTest extends DatabaseTestCase
         $this->repository->save($department);
 
         //Assert
-        $loadedDepartment = $this->repository->findBySlug($department->getSlug());
+        $loadedDepartment = $this->repository->getOneBySlug($department->getSlug());
         $this->assertEquals([
             'slug' => 'maxi-outils',
             'name' => 'Mega Outils',
@@ -57,7 +57,7 @@ class DepartmentRepositoryTest extends DatabaseTestCase
         $this->expectExceptionObject(DepartmentException::notFound());
 
         //Act
-        $this->repository->findBySlug('not-found');
+        $this->repository->getOneBySlug('not-found');
 
     }
 

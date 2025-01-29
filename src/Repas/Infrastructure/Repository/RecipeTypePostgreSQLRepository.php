@@ -27,7 +27,7 @@ class RecipeTypePostgreSQLRepository extends ServiceEntityRepository implements 
     /**
      * @return Tab<RecipeTypeModel>
      */
-    public function findAll(): Tab
+    public function getAll(): Tab
     {
         return Tab::fromArray($this->findBy([], ['sequence' => 'ASC']))
             ->map(function (RecipeTypeEntity $entity) {
@@ -44,7 +44,7 @@ class RecipeTypePostgreSQLRepository extends ServiceEntityRepository implements 
     /**
      * @throws RecipeException
      */
-    public function findOneBySlug(string $slug): RecipeTypeModel
+    public function getOneBySlug(string $slug): RecipeTypeModel
     {
         if (($model = $this->modelCache->getModelCache(Recipe::class, $slug)) !== null) {
             return $model;

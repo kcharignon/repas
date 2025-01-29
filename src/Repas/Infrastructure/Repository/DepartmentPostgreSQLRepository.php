@@ -23,7 +23,7 @@ class DepartmentPostgreSQLRepository extends ServiceEntityRepository implements 
     /**
      * @throws DepartmentException
      */
-    public function findBySlug(string $slug): DepartmentModel
+    public function getOneBySlug(string $slug): DepartmentModel
     {
         // On cherche dans le cache
         if (($model = $this->modelCache->getModelCache(DepartmentModel::class, $slug)) !== null) {

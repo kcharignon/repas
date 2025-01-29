@@ -17,14 +17,14 @@ readonly class UnlockShoppingListHandler
     public function __invoke(UnlockShoppingListCommand $command): ShoppingList
     {
         // Recuperation de la liste de course active
-        $shoppingListUnlocked = $this->shoppingListRepository->findOneBy(['owner' => $command->owner, 'locked' => false]);
+        $shoppingListUnlocked = $this->shoppingListRepository->getOneActiveByOwner($command->owner);
         // Verrouille la liste de course active si elle existe
         if ($shoppingListUnlocked instanceof ShoppingList) {
             $shoppingListUnlocked->lock();
             $this->shoppingListRepository->save($shoppingListUnlocked);
         }
         // Recuperation la liste de course
-        $shoppingListLocked = $this->shoppingListRepository->findById($command->shoppingListId);
+        $shoppingListLocked = $this->shoppingListRepository->getOneById($command->shoppingListId);
         // Deverrouille la liste de course
         $shoppingListLocked->unlock();
         $this->shoppingListRepository->save($shoppingListLocked);

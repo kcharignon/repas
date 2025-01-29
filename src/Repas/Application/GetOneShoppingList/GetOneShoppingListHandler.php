@@ -16,7 +16,7 @@ readonly class GetOneShoppingListHandler
 
     public function __invoke(GetOneShoppingListQuery $query): ShoppingList
     {
-        return $this->shoppingListRepository->findById($query->shoppingListId);
+        return $this->shoppingListRepository->getOneById($query->shoppingListId);
     }
 
 }

@@ -73,12 +73,10 @@ class ShoppingList implements ModelInterface
     {
         return new static(
             id: $datas['id'],
-            owner: static::loadModel($datas['owner'], User::class),
-            createdAt: static::loadDateTime($datas['created_at'], DateTimeImmutable::class),
+            owner: $datas['owner'],
+            createdAt: $datas['created_at'],
             locked: $datas['locked'],
-            meals: Tab::fromArray($datas['meals'])
-                ->map(fn($recipe) => static::loadModel($recipe, Meal::class))
-            ,
+            meals: $datas['meals'],
         );
     }
 

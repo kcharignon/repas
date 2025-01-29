@@ -13,5 +13,5 @@ interface DepartmentRepository
     /**
      * @throws DepartmentException
      */
-    public function findBySlug(string $slug): Department;
+    public function getOneBySlug(string $slug): Department;
 }
