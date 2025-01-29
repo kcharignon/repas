@@ -33,6 +33,22 @@ class UnitBuilder implements Builder
         return $this;
     }
 
+    public function isGramme(): UnitBuilder
+    {
+        $this->name = 'gramme';
+        $this->slug = 'gramme';
+        $this->symbol = 'g';
+        return $this;
+    }
+
+    public function isPiece(): UnitBuilder
+    {
+        $this->name = 'piece';
+        $this->slug = 'piece';
+        $this->symbol = '';
+        return $this;
+    }
+
     public function setSymbol(?string $symbol): UnitBuilder
     {
         $this->symbol = $symbol;

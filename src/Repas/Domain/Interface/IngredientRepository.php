@@ -16,9 +16,9 @@ interface IngredientRepository
     public function getOneBySlug(string $slug): Ingredient;
 
     /**
-     * @return Tab<Department>
+     * @return Tab<Ingredient>
      */
-    public function getByDepartment(string $department): Tab;
+    public function getByDepartment(Department $department): Tab;
 
     public function save(Ingredient $ingredient): void;
 }

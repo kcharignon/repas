@@ -4,7 +4,9 @@ namespace Repas;
 
 
 use Repas\Repas\Domain\Interface\IngredientRepository;
+use Repas\Tests\Builder\DepartmentBuilder;
 use Repas\Tests\Builder\IngredientBuilder;
+use Repas\Tests\Builder\UnitBuilder;
 use Repas\Tests\Helper\DatabaseTestCase;
 
 class IngredientRepositoryTest extends DatabaseTestCase
@@ -18,7 +20,7 @@ class IngredientRepositoryTest extends DatabaseTestCase
         $this->ingredientRepository = static::getContainer()->get(IngredientRepository::class);
     }
 
-    public function testInsertAndUpdateAndFindBySlug(): void
+    public function testCRUD(): void
     {
         // Arrange
         $ingredient = new IngredientBuilder()->build();
@@ -28,8 +30,50 @@ class IngredientRepositoryTest extends DatabaseTestCase
 
         // Assert
         $loadedIngredient = $this->ingredientRepository->getOneBySlug($ingredient->getSlug());
-        $this->assertEquals($ingredient, $loadedIngredient);
+        $this->assertEquals('un-truc-immangeable', $loadedIngredient->getSlug());
+        $this->assertEquals('Un truc immangeable', $loadedIngredient->getName());
+        $this->assertEquals('file://images/default.jpg', $loadedIngredient->getImage());
+        $this->assertEquals(new DepartmentBuilder()->isConserve()->build(), $loadedIngredient->getDepartment());
+        $this->assertEquals(new UnitBuilder()->isPiece()->build(), $loadedIngredient->getDefaultCookingUnit());
+        $this->assertEquals(new UnitBuilder()->isPiece()->build(), $loadedIngredient->getDefaultPurchaseUnit());
+
+        // Arrange
+        $baby = new DepartmentBuilder()->isBaby()->build();
+        $gramme = new UnitBuilder()->isGramme()->build();
+        $ingredient->setName('nouveau nom');
+        $ingredient->setImage('file://image/nouvelle/nouveau.jpg');
+        $ingredient->setDepartment($baby);
+        $ingredient->setDefaultCookingUnit($gramme);
+        $ingredient->setDefaultPurchaseUnit($gramme);
+
+        // Act
+        $this->ingredientRepository->save($ingredient);
+
+        // Assert
+        $loadedIngredient = $this->ingredientRepository->getOneBySlug($ingredient->getSlug());
+        $this->assertEquals('un-truc-immangeable', $loadedIngredient->getSlug());
+        $this->assertEquals('nouveau nom', $loadedIngredient->getName());
+        $this->assertEquals('file://image/nouvelle/nouveau.jpg', $loadedIngredient->getImage());
+        $this->assertEquals($baby, $loadedIngredient->getDepartment());
+        $this->assertEquals($gramme, $loadedIngredient->getDefaultCookingUnit());
+        $this->assertEquals($gramme, $loadedIngredient->getDefaultPurchaseUnit());
     }
 
+    public function testGetByDepartment(): void
+    {
+        // Arrange
+        // Compte le nombre d'ingrédients au rayon bebe
+        $babyDepartmentBuilder = new DepartmentBuilder()->isBaby();
+        $before = $this->ingredientRepository->getByDepartment($babyDepartmentBuilder->build());
+        $count = $before->count();
+        // Ajoute un ingredient au rayon bébé
+        $ingredient = new IngredientBuilder()->setDepartment($babyDepartmentBuilder)->build();
+        $this->ingredientRepository->save($ingredient);
 
+        // Act
+        $actual = $this->ingredientRepository->getByDepartment($babyDepartmentBuilder->build());
+
+        // Assert
+        $this->assertEquals($count + 1, $actual->count());
+    }
 }

@@ -10,6 +10,7 @@ use Repas\Repas\Domain\Exception\UnitException;
 use Repas\Repas\Domain\Interface\DepartmentRepository;
 use Repas\Repas\Domain\Interface\IngredientRepository;
 use Repas\Repas\Domain\Interface\UnitRepository;
+use Repas\Repas\Domain\Model\Department;
 use Repas\Repas\Domain\Model\Ingredient as IngredientModel;
 use Repas\Repas\Infrastructure\Entity\Ingredient as IngredientEntity;
 use Repas\Shared\Domain\Tool\Tab;
@@ -47,9 +48,18 @@ readonly class IngredientPostgreSQLRepository extends PostgreSQLRepository imple
         throw IngredientException::notFound();
     }
 
-    public function getByDepartment(string $department): Tab
+    public function getByDepartment(Department $department): Tab
     {
-        throw new \Exception('Not implemented');
+        $ingredients = new Tab($this->entityRepository->findBy(['departmentSlug' => $department->getId()]), IngredientEntity::class);
+        return $ingredients->map(function (IngredientEntity $ingredient) {
+            if (($model = $this->modelCache->getModelCache(IngredientModel::class, $ingredient->getSlug())) !== null) {
+                return $model;
+            }
+
+            $model = $this->convertEntityToModel($ingredient);
+            $this->modelCache->setModelCache($model);
+            return $model;
+        });
     }
 
     public function save(IngredientModel $ingredient): void

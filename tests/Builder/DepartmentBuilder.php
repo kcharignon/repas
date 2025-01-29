@@ -33,6 +33,22 @@ class DepartmentBuilder implements Builder
         return $this;
     }
 
+    public function isBaby(): DepartmentBuilder
+    {
+        $this->name = 'bébé';
+        $this->slug ??= StringTool::slugify($this->name);
+        $this->image ??= "images/department/bebe.png";
+        return $this;
+    }
+
+    public function isConserve(): DepartmentBuilder
+    {
+        $this->name = 'conserve';
+        $this->slug ??= StringTool::slugify($this->name);
+        $this->image ??= "https://cdn-icons-png.flaticon.com/128/2916/2916046.png";
+        return $this;
+    }
+
     public function setImage(string $image): DepartmentBuilder
     {
         $this->image = $image;
@@ -47,5 +63,13 @@ class DepartmentBuilder implements Builder
             "name" => $this->name,
             "image" => $this->image,
         ]);
+    }
+
+    public function isCereal(): self
+    {
+        $this->name = 'céréale';
+        $this->slug ??= StringTool::slugify($this->name);
+        $this->image ??= "https://cdn-icons-png.flaticon.com/128/5009/5009812.png";
+        return $this;
     }
 }

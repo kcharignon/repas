@@ -31,17 +31,17 @@ readonly class RecipePostgreSQLRepository  extends PostgreSQLRepository implemen
      */
     public function findOneById(string $id): Recipe
     {
-        if (($model = $this->modelCache->getModelCache(Recipe::class, $id)) === null) {
+        if (($model = $this->modelCache->getModelCache(Recipe::class, $id)) !== null) {
             return $model;
         }
 
-        if (($entity = $this->entityRepository->find($id)) === null) {
+        if (($entity = $this->entityRepository->find($id)) !== null) {
             $model = $this->convertEntityToModel($entity);
             $this->modelCache->setModelCache($model);
             return $model;
         }
 
-        throw RecipeException::notFound();
+        throw RecipeException::notFound($id);
     }
 
     public function save(Recipe $recipe): void

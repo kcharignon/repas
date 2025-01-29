@@ -7,9 +7,9 @@ use Repas\Shared\Domain\Exception\DomainException;
 
 class RecipeException extends DomainException
 {
-    public static function notFound(): static
+    public static function notFound(string $id): static
     {
-        return new static("RECIPE_NOT_FOUND", 404);
+        return new static(sprintf('Recipe id %s not found', $id), 404);
     }
 
     public static function typeNotFound(): static

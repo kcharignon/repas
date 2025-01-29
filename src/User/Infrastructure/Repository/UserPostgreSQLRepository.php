@@ -30,7 +30,7 @@ readonly class UserPostgreSQLRepository extends PostgreSQLRepository implements 
             return $model;
         }
 
-        if (($entity = $this->entityRepository->find($id)) === null) {
+        if (($entity = $this->entityRepository->find($id)) !== null) {
             $model = $this->convertEntityToModel($entity);
             $this->modelCache->setModelCache($model);
             return $model;

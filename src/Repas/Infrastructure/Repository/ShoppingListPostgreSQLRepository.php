@@ -32,7 +32,7 @@ readonly class ShoppingListPostgreSQLRepository extends PostgreSQLRepository imp
      */
     public function getByOwner(User $owner): Tab
     {
-        $shoppingListEntities = Tab::fromArray($this->entityRepository->findBy(['owner' => $owner->getId()], ['createdAt' => 'DESC']));
+        $shoppingListEntities = Tab::fromArray($this->entityRepository->findBy(['ownerId' => $owner->getId()], ['createdAt' => 'DESC']));
         return $shoppingListEntities->map(fn(ShoppingListEntity $entity) => $this->convertEntityToModel($entity));
     }
 

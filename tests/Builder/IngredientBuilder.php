@@ -3,7 +3,9 @@
 namespace Repas\Tests\Builder;
 
 
+use Repas\Repas\Domain\Model\Department;
 use Repas\Repas\Domain\Model\Ingredient;
+use Repas\Shared\Domain\Tool\StringTool;
 
 class IngredientBuilder implements Builder
 {
@@ -19,9 +21,17 @@ class IngredientBuilder implements Builder
         $this->slug ??= 'un-truc-immangeable';
         $this->name ??= 'Un truc immangeable';
         $this->image ??= 'file://images/default.jpg';
-        $this->departmentBuilder ??= new DepartmentBuilder()->setName('Conserve');
-        $this->defaultCookingUnitBuilder ??= new UnitBuilder()->setName('piece');
-        $this->defaultPurchaseUnitBuilder ??= new UnitBuilder()->setName('piece');
+        $this->departmentBuilder ??= new DepartmentBuilder()->isConserve();
+        $this->defaultCookingUnitBuilder ??= new UnitBuilder()->isPiece();
+        $this->defaultPurchaseUnitBuilder ??= new UnitBuilder()->isPiece();
+    }
+
+    public function setName(string $name): self
+    {
+        $this->name = $name;
+        $this->slug ??= StringTool::slugify($name);
+        $this->image ??= "file://images/$this->slug.jpg";
+        return $this;
     }
 
     public function build(): Ingredient
@@ -35,6 +45,23 @@ class IngredientBuilder implements Builder
             'default_cooking_unit' => $this->defaultCookingUnitBuilder->build(),
             'default_purchase_unit' => $this->defaultPurchaseUnitBuilder->build(),
         ]);
+    }
+
+    public function setDepartment(DepartmentBuilder $departmentBuilder): self
+    {
+        $this->departmentBuilder = $departmentBuilder;
+        return $this;
+    }
+
+    public function isPasta(): self
+    {
+        $this->slug = 'pate';
+        $this->name = 'pate';
+        $this->image = 'image/pate.jpg';
+        $this->departmentBuilder->isCereal();
+        $this->defaultCookingUnitBuilder->isGramme();
+        $this->defaultPurchaseUnitBuilder->isGramme();
+        return $this;
     }
 
 }

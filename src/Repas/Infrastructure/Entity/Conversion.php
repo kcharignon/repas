@@ -3,10 +3,9 @@
 namespace Repas\Repas\Infrastructure\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
-use Repas\Repas\Domain\Interface\ConversionRepository;
 use Repas\Repas\Domain\Model\Conversion as ConversionModel;
 
-#[ORM\Entity(repositoryClass: ConversionRepository::class)]
+#[ORM\Entity]
 #[ORM\Table(name: 'conversion')]
 class Conversion
 {
