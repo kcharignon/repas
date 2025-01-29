@@ -3,10 +3,9 @@
 namespace Repas\Repas\Infrastructure\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
-use Repas\Repas\Domain\Interface\UnitRepository;
 use Repas\Repas\Domain\Model\Unit as UnitModel;
 
-#[ORM\Entity(repositoryClass: UnitRepository::class)]
+#[ORM\Entity]
 #[ORM\Table(name: 'unit')]
 class Unit
 {

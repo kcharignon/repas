@@ -4,20 +4,30 @@ namespace Repas\Repas\Infrastructure\Repository;
 
 
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
+use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\Persistence\ManagerRegistry;
+use Doctrine\Persistence\ObjectRepository;
 use Repas\Repas\Domain\Exception\UnitException;
 use Repas\Repas\Domain\Interface\UnitRepository;
 use Repas\Repas\Domain\Model\Unit as UnitModel;
 use Repas\Repas\Infrastructure\Entity\Unit as UnitEntity;
 use Repas\Shared\Infrastructure\Repository\ModelCache;
 
-class UnitPostgreSQLRepository extends ServiceEntityRepository implements UnitRepository
+class UnitPostgreSQLRepository implements UnitRepository
 {
+    private EntityManagerInterface $entityManager;
+    private ObjectRepository $unitRepository;
+
     public function __construct(
         ManagerRegistry $managerRegistry,
         private ModelCache $modelCache,
     ) {
-        parent::__construct($managerRegistry, UnitEntity::class);
+        $entityManager = $managerRegistry->getManager();
+        if (!$entityManager instanceof EntityManagerInterface) {
+            throw new \RuntimeException('Expected EntityManagerInterface, got ' . get_class($entityManager));
+        }
+        $this->entityManager = $entityManager;
+        $this->unitRepository = $entityManager->getRepository(UnitEntity::class);
     }
 
     public function save(UnitModel $unit): void
@@ -26,7 +36,7 @@ class UnitPostgreSQLRepository extends ServiceEntityRepository implements UnitRe
         $this->modelCache->removeModelCache($unit);
 
         // On recupere l'entity
-        $unitEntity = $this->find($unit->getSlug());
+        $unitEntity = $this->unitRepository->find($unit->getSlug());
         if ($unitEntity) {
             $this->updateEntity($unitEntity, $unit);
         } else {
@@ -34,8 +44,8 @@ class UnitPostgreSQLRepository extends ServiceEntityRepository implements UnitRe
         }
 
         // On persiste les changement
-        $this->getEntityManager()->persist($unitEntity);
-        $this->getEntityManager()->flush();
+        $this->entityManager->persist($unitEntity);
+        $this->entityManager->flush();
 
         // On met le model en cache
         $this->modelCache->setModelCache($unit);
@@ -53,7 +63,7 @@ class UnitPostgreSQLRepository extends ServiceEntityRepository implements UnitRe
         }
 
         // On cherche en BDD
-        if (($entity = $this->find($slug)) !== null) {
+        if (($entity = $this->unitRepository->find($slug)) !== null) {
             $model = $this->convertEntityToModel($entity);
             // On stock model en cache
             $this->modelCache->setModelCache($model);
@@ -66,13 +76,15 @@ class UnitPostgreSQLRepository extends ServiceEntityRepository implements UnitRe
     public function delete(UnitModel $unit): void
     {
         $this->modelCache->removeModelCache($unit);
-        $entityManager = $this->getEntityManager();
 
-        $unitEntity = $this->find($unit->getSlug());
-        if ($unitEntity) {
-            $entityManager->remove($unitEntity);
-            $entityManager->flush();
-        }
+        $this->unitRepository->createQueryBuilder('u')
+            ->delete()
+            ->where('u.slug = :slug')
+            ->setParameter('slug', $unit->getSlug())
+            ->getQuery()
+            ->execute()
+        ;
+        $this->entityManager->clear();
     }
 
     /**

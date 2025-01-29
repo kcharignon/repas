@@ -9,7 +9,6 @@ use Repas\Repas\Domain\Exception\MealException;
 use Repas\Repas\Domain\Interface\MealRepository;
 use Repas\Repas\Domain\Interface\RecipeRepository;
 use Repas\Repas\Domain\Model\Meal;
-use Repas\Repas\Domain\Model\Recipe;
 use Repas\Repas\Infrastructure\Entity\Meal as MealEntity;
 use Repas\Shared\Domain\Tool\Tab;
 
