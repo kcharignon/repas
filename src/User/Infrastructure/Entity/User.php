@@ -3,10 +3,9 @@
 namespace Repas\User\Infrastructure\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
-use Repas\User\Domain\Interface\UserRepository;
 use Repas\User\Domain\Model\User as UserModel;
 
-#[ORM\Entity(repositoryClass: UserRepository::class)]
+#[ORM\Entity]
 #[ORM\Table(name: '`user`')]
 class User
 {

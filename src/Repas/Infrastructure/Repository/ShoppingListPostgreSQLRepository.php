@@ -75,9 +75,9 @@ readonly class ShoppingListPostgreSQLRepository extends PostgreSQLRepository imp
 
     public function getOneActiveByOwner(User $owner): ?ShoppingList
     {
-        if (count($shoppingListEntity = $this->entityRepository->findBy(['owner' => $owner->getId(), 'locked' => false])) === 1)
+        if (($shoppingListEntity = $this->entityRepository->findOneBy(['owner' => $owner->getId(), 'locked' => false])) !== null)
         {
-            $shoppingListModel = $this->convertEntityToModel(current($shoppingListEntity));
+            $shoppingListModel = $this->convertEntityToModel($shoppingListEntity);
             $this->modelCache->setModelCache($shoppingListModel);
             return $shoppingListModel;
         }

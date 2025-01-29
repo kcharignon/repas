@@ -4,19 +4,19 @@ namespace Repas\User\Infrastructure\Repository;
 
 
 
-use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
+use Repas\Repas\Infrastructure\Repository\PostgreSQLRepository;
 use Repas\Shared\Infrastructure\Repository\ModelCache;
 use Repas\User\Domain\Exception\UserException;
 use Repas\User\Domain\Interface\UserRepository;
 use Repas\User\Domain\Model\User;
 use Repas\User\Infrastructure\Entity\User as UserEntity;
 
-class UserPostgreSQLRepository extends ServiceEntityRepository implements UserRepository
+readonly class UserPostgreSQLRepository extends PostgreSQLRepository implements UserRepository
 {
     public function __construct(
         ManagerRegistry $managerRegistry,
-        private readonly ModelCache $modelCache,
+        private ModelCache $modelCache,
     ) {
         parent::__construct($managerRegistry, UserEntity::class);
     }
@@ -30,7 +30,7 @@ class UserPostgreSQLRepository extends ServiceEntityRepository implements UserRe
             return $model;
         }
 
-        if (($entity = $this->find($id)) === null) {
+        if (($entity = $this->entityRepository->find($id)) === null) {
             $model = $this->convertEntityToModel($entity);
             $this->modelCache->setModelCache($model);
             return $model;
@@ -43,7 +43,7 @@ class UserPostgreSQLRepository extends ServiceEntityRepository implements UserRe
      */
     public function findOneByEmail(string $email): User
     {
-        if (($userEntity = $this->getOneActiveByOwner(['email' => $email])) !== null) {
+        if (($userEntity = $this->entityRepository->findOneBy(['email' => $email])) !== null) {
             $userModel = $this->convertEntityToModel($userEntity);
             $this->modelCache->setModelCache($userModel);
             return $userModel;
@@ -53,9 +53,7 @@ class UserPostgreSQLRepository extends ServiceEntityRepository implements UserRe
 
     public function save(User $user): void
     {
-        $entityManager = $this->getEntityManager();
-
-        $existingUserEntity = $this->find($user->getId());
+        $existingUserEntity = $this->entityRepository->find($user->getId());
 
         if ($existingUserEntity instanceof UserEntity) {
             // Mise à jour de l'utilisateur existant
@@ -63,11 +61,11 @@ class UserPostgreSQLRepository extends ServiceEntityRepository implements UserRe
         } else {
             // Création d'un nouvel utilisateur
             $newUserEntity = UserEntity::fromModel($user);
-            $entityManager->persist($newUserEntity);
+            $this->entityManager->persist($newUserEntity);
         }
 
         $this->modelCache->setModelCache($user);
-        $entityManager->flush();
+        $this->entityManager->flush();
 
     }
 
