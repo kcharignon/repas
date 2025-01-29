@@ -3,10 +3,9 @@
 namespace Repas\Repas\Infrastructure\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
-use Repas\Repas\Domain\Interface\RecipeRepository;
 use Repas\Repas\Domain\Model\Recipe as RecipeModel;
 
-#[ORM\Entity(repositoryClass: RecipeRepository::class)]
+#[ORM\Entity]
 #[ORM\Table(name: 'recipe')]
 class Recipe
 {

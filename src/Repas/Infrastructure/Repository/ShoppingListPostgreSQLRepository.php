@@ -3,7 +3,6 @@
 namespace Repas\Repas\Infrastructure\Repository;
 
 
-use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 use Repas\Repas\Domain\Exception\ShoppingListException;
 use Repas\Repas\Domain\Interface\MealRepository;
@@ -14,21 +13,18 @@ use Repas\Repas\Infrastructure\Entity\ShoppingList as ShoppingListEntity;
 use Repas\Shared\Domain\Exception\SharedException;
 use Repas\Shared\Domain\Tool\Tab;
 use Repas\Shared\Infrastructure\Repository\ModelCache;
-use Repas\Shared\Infrastructure\Repository\RepositoryTrait;
 use Repas\User\Domain\Interface\UserRepository;
 use Repas\User\Domain\Model\User;
 
-class ShoppingListPostgreSQLRepository extends ServiceEntityRepository implements ShoppingListRepository
+readonly class ShoppingListPostgreSQLRepository extends PostgreSQLRepository implements ShoppingListRepository
 {
-    use RepositoryTrait;
-
     public function __construct(
-        ManagerRegistry $registry,
-        private readonly ModelCache $modelCache,
-        private readonly UserRepository $userRepository,
-        private readonly MealPostgreSQLRepository $mealRepository,
+        ManagerRegistry $managerRegistry,
+        private ModelCache $modelCache,
+        private UserRepository $userRepository,
+        private MealPostgreSQLRepository $mealRepository,
     ) {
-        parent::__construct($registry, ShoppingListEntity::class);
+        parent::__construct($managerRegistry, ShoppingListEntity::class);
     }
 
     /**
@@ -36,7 +32,7 @@ class ShoppingListPostgreSQLRepository extends ServiceEntityRepository implement
      */
     public function getByOwner(User $owner): Tab
     {
-        $shoppingListEntities = Tab::fromArray($this->findBy(['owner' => $owner->getId()], ['createdAt' => 'DESC']));
+        $shoppingListEntities = Tab::fromArray($this->entityRepository->findBy(['owner' => $owner->getId()], ['createdAt' => 'DESC']));
         return $shoppingListEntities->map(fn(ShoppingListEntity $entity) => $this->convertEntityToModel($entity));
     }
 
@@ -45,22 +41,22 @@ class ShoppingListPostgreSQLRepository extends ServiceEntityRepository implement
      */
     public function getOneById(string $id): ShoppingList
     {
-        $shoppingListEntity = $this->find($id);
+        $shoppingListEntity = $this->entityRepository->find($id);
 
         if (null === $shoppingListEntity) {
             throw ShoppingListException::shoppingListNotFound();
         }
 
-        return $shoppingListEntity?->getModel();
+        return $this->convertEntityToModel($shoppingListEntity);
     }
 
     public function save(ShoppingList $shoppingList): void
     {
         $this->modelCache->removeModelCache($shoppingList);
-        $shoppingListEntity = $this->find($shoppingList->getId());
+        $shoppingListEntity = $this->entityRepository->find($shoppingList->getId());
         if (null === $shoppingListEntity) {
             ShoppingListEntity::fromModel($shoppingList);
-            $this->getEntityManager()->persist($shoppingList);
+            $this->entityManager->persist($shoppingList);
         } else {
             $shoppingListEntity->updateFromModel($shoppingList);
             // On supprime les anciens repas
@@ -73,13 +69,13 @@ class ShoppingListPostgreSQLRepository extends ServiceEntityRepository implement
         foreach ($shoppingList->getMeals() as $meal) {
             $this->mealRepository->save($meal);
         }
-        $this->getEntityManager()->flush();
+        $this->entityManager->flush();
         $this->modelCache->setModelCache($shoppingList);
     }
 
     public function getOneActiveByOwner(User $owner): ?ShoppingList
     {
-        if (count($shoppingListEntity = $this->findBy(['owner' => $owner->getId(), 'locked' => false])) === 1)
+        if (count($shoppingListEntity = $this->entityRepository->findBy(['owner' => $owner->getId(), 'locked' => false])) === 1)
         {
             $shoppingListModel = $this->convertEntityToModel(current($shoppingListEntity));
             $this->modelCache->setModelCache($shoppingListModel);

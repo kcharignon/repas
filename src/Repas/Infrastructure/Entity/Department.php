@@ -3,10 +3,9 @@
 namespace Repas\Repas\Infrastructure\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
-use Repas\Repas\Domain\Interface\DepartmentRepository;
 use Repas\Repas\Domain\Model\Department as DepartmentModel;
 
-#[ORM\Entity(repositoryClass: DepartmentRepository::class)]
+#[ORM\Entity]
 #[ORM\Table(name: "department")]
 class Department
 {

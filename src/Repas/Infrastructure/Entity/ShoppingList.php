@@ -4,10 +4,9 @@ namespace Repas\Repas\Infrastructure\Entity;
 
 use DateTimeImmutable;
 use Doctrine\ORM\Mapping as ORM;
-use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Repas\Domain\Model\ShoppingList as ShoppingListModel;
 
-#[ORM\Entity(repositoryClass: ShoppingListRepository::class)]
+#[ORM\Entity]
 #[ORM\Table(name: 'shopping_list')]
 class ShoppingList
 {

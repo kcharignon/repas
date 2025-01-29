@@ -3,7 +3,6 @@
 namespace Repas\Repas\Infrastructure\Repository;
 
 
-use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 use Repas\Repas\Domain\Exception\DepartmentException;
 use Repas\Repas\Domain\Exception\IngredientException;
@@ -16,13 +15,13 @@ use Repas\Repas\Infrastructure\Entity\Ingredient as IngredientEntity;
 use Repas\Shared\Domain\Tool\Tab;
 use Repas\Shared\Infrastructure\Repository\ModelCache;
 
-class IngredientPostgreSQLRepository extends ServiceEntityRepository implements IngredientRepository
+readonly class IngredientPostgreSQLRepository extends PostgreSQLRepository implements IngredientRepository
 {
     public function __construct(
         ManagerRegistry $managerRegistry,
-        private readonly ModelCache $modelCache,
-        private readonly UnitRepository $unitRepository,
-        private readonly DepartmentRepository $departmentRepository,
+        private ModelCache $modelCache,
+        private UnitRepository $unitRepository,
+        private DepartmentRepository $departmentRepository,
     ) {
         parent::__construct($managerRegistry, IngredientEntity::class);
     }
@@ -38,7 +37,7 @@ class IngredientPostgreSQLRepository extends ServiceEntityRepository implements 
         }
 
         // On cherche en base de donnée
-        if (($entity = $this->getOneActiveByOwner(['slug' => $slug])) !== null) {
+        if (($entity = $this->entityRepository->find($slug)) !== null) {
             $model = $this->convertEntityToModel($entity);
             // On stock en cache
             $this->modelCache->setModelCache($model);
@@ -56,15 +55,15 @@ class IngredientPostgreSQLRepository extends ServiceEntityRepository implements 
     public function save(IngredientModel $ingredient): void
     {
         $this->modelCache->removeModelCache($ingredient);
-        $ingredientEntity = $this->find($ingredient->getSlug());
+        $ingredientEntity = $this->entityRepository->find($ingredient->getSlug());
         if ($ingredientEntity) {
             $this->updateEntity($ingredientEntity, $ingredient);
         } else {
             $ingredientEntity = IngredientEntity::fromModel($ingredient);
         }
 
-        $this->getEntityManager()->persist($ingredientEntity);
-        $this->getEntityManager()->flush();
+        $this->entityManager->persist($ingredientEntity);
+        $this->entityManager->flush();
         $this->modelCache->setModelCache($ingredient);
     }
 

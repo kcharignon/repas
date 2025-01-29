@@ -7,7 +7,7 @@ use Repas\Repas\Domain\Interface\ShoppingListRepository as ShoppingListRepositor
 use Repas\Repas\Infrastructure\Repository\ShoppingListPostgreSQLRepository;
 use Repas\Tests\Helper\DatabaseTestCase;
 
-class ShoppingListRepository extends DatabaseTestCase
+class ShoppingListRepositoryTest extends DatabaseTestCase
 {
     private ShoppingListRepositoryInterface $shoppingListRepository;
 

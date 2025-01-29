@@ -6,7 +6,7 @@ use Doctrine\ORM\Mapping as ORM;
 use Repas\Repas\Domain\Model\Recipe as RecipeModel;
 use Repas\Repas\Domain\Model\RecipeRow as RecipeRowModel;
 
-#[ORM\Entity(repositoryClass: RecipeRowRepository::class)]
+#[ORM\Entity]
 #[ORM\Table(name: 'recipe_row')]
 class RecipeRow
 {

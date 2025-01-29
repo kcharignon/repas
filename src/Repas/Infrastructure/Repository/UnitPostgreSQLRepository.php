@@ -13,21 +13,13 @@ use Repas\Repas\Domain\Model\Unit as UnitModel;
 use Repas\Repas\Infrastructure\Entity\Unit as UnitEntity;
 use Repas\Shared\Infrastructure\Repository\ModelCache;
 
-class UnitPostgreSQLRepository implements UnitRepository
+readonly class UnitPostgreSQLRepository extends PostgreSQLRepository implements UnitRepository
 {
-    private EntityManagerInterface $entityManager;
-    private ObjectRepository $unitRepository;
-
     public function __construct(
         ManagerRegistry $managerRegistry,
         private ModelCache $modelCache,
     ) {
-        $entityManager = $managerRegistry->getManager();
-        if (!$entityManager instanceof EntityManagerInterface) {
-            throw new \RuntimeException('Expected EntityManagerInterface, got ' . get_class($entityManager));
-        }
-        $this->entityManager = $entityManager;
-        $this->unitRepository = $entityManager->getRepository(UnitEntity::class);
+        parent::__construct($managerRegistry, UnitEntity::class);
     }
 
     public function save(UnitModel $unit): void
@@ -36,7 +28,7 @@ class UnitPostgreSQLRepository implements UnitRepository
         $this->modelCache->removeModelCache($unit);
 
         // On recupere l'entity
-        $unitEntity = $this->unitRepository->find($unit->getSlug());
+        $unitEntity = $this->entityRepository->find($unit->getSlug());
         if ($unitEntity) {
             $this->updateEntity($unitEntity, $unit);
         } else {
@@ -63,7 +55,7 @@ class UnitPostgreSQLRepository implements UnitRepository
         }
 
         // On cherche en BDD
-        if (($entity = $this->unitRepository->find($slug)) !== null) {
+        if (($entity = $this->entityRepository->find($slug)) !== null) {
             $model = $this->convertEntityToModel($entity);
             // On stock model en cache
             $this->modelCache->setModelCache($model);
@@ -77,7 +69,7 @@ class UnitPostgreSQLRepository implements UnitRepository
     {
         $this->modelCache->removeModelCache($unit);
 
-        $this->unitRepository->createQueryBuilder('u')
+        $this->entityRepository->createQueryBuilder('u')
             ->delete()
             ->where('u.slug = :slug')
             ->setParameter('slug', $unit->getSlug())

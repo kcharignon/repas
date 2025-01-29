@@ -2,7 +2,6 @@
 
 namespace Repas\Repas\Infrastructure\Repository;
 
-use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 use Repas\Repas\Domain\Exception\RecipeException;
 use Repas\Repas\Domain\Interface\RecipeTypeRepository;
@@ -12,16 +11,13 @@ use Repas\Repas\Infrastructure\Entity\RecipeType as RecipeTypeEntity;
 use Repas\Shared\Domain\Tool\Tab;
 use Repas\Shared\Infrastructure\Repository\ModelCache;
 
-/**
- * @extends ServiceEntityRepository<RecipeTypeEntity>
- */
-class RecipeTypePostgreSQLRepository extends ServiceEntityRepository implements RecipeTypeRepository
+readonly class RecipeTypePostgreSQLRepository extends PostgreSQLRepository implements RecipeTypeRepository
 {
     public function __construct(
-        ManagerRegistry $registry,
-        private readonly ModelCache $modelCache,
+        ManagerRegistry $managerRegistry,
+        private ModelCache $modelCache,
     ) {
-        parent::__construct($registry, RecipeTypeEntity::class);
+        parent::__construct($managerRegistry, RecipeTypeEntity::class);
     }
 
     /**
@@ -29,7 +25,7 @@ class RecipeTypePostgreSQLRepository extends ServiceEntityRepository implements 
      */
     public function getAll(): Tab
     {
-        return Tab::fromArray($this->findBy([], ['sequence' => 'ASC']))
+        return Tab::fromArray($this->entityRepository->findBy([], ['sequence' => 'ASC']))
             ->map(function (RecipeTypeEntity $entity) {
                 if (($model = $this->modelCache->getModelCache(RecipeTypeModel::class, $entity->getSlug())) !== null) {
                     return $model;
@@ -50,7 +46,7 @@ class RecipeTypePostgreSQLRepository extends ServiceEntityRepository implements 
             return $model;
         }
 
-        if (($entity = $this->find($slug)) !== null) {
+        if (($entity = $this->entityRepository->find($slug)) !== null) {
             $model = $this->convertEntityToModel($entity);
             $this->modelCache->setModelCache($model);
             return $model;

@@ -4,9 +4,8 @@ namespace Repas\Repas\Infrastructure\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
 use Repas\Repas\Domain\Model\RecipeType as RecipeTypeModel;
-use Repas\Repas\Infrastructure\Repository\RecipeTypePostgreSQLRepository;
 
-#[ORM\Entity(repositoryClass: RecipeTypePostgreSQLRepository::class)]
+#[ORM\Entity]
 #[ORM\Table(name: "recipe_type")]
 class RecipeType
 {

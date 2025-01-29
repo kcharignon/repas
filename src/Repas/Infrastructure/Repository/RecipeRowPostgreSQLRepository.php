@@ -3,7 +3,6 @@
 namespace Repas\Repas\Infrastructure\Repository;
 
 
-use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 use Repas\Repas\Domain\Exception\IngredientException;
 use Repas\Repas\Domain\Exception\RecipeException;
@@ -14,13 +13,13 @@ use Repas\Repas\Domain\Model\RecipeRow as RecipeRowModel;
 use Repas\Repas\Infrastructure\Entity\RecipeRow as RecipeRowEntity;
 use Repas\Shared\Domain\Tool\Tab;
 
-class RecipeRowPostgreSQLRepository extends ServiceEntityRepository
+readonly class RecipeRowPostgreSQLRepository extends PostgreSQLRepository
 {
 
     public function __construct(
         ManagerRegistry $managerRegistry,
-        private readonly IngredientRepository $ingredientRepository,
-        private readonly UnitRepository $unitRepository,
+        private IngredientRepository $ingredientRepository,
+        private UnitRepository $unitRepository,
     ) {
         parent::__construct($managerRegistry, RecipeRowEntity::class);
     }
@@ -30,7 +29,7 @@ class RecipeRowPostgreSQLRepository extends ServiceEntityRepository
      */
     public function findByRecipeId(string $recipeId): Tab
     {
-        $recipeRows = new Tab($this->findBy(['recipeId' => $recipeId]), RecipeRowEntity::class);
+        $recipeRows = new Tab($this->entityRepository->findBy(['recipeId' => $recipeId]), RecipeRowEntity::class);
 
         return $recipeRows->map(fn(RecipeRowEntity $recipeRow) => $this->convertEntityToModel($recipeRow));
     }
@@ -45,7 +44,7 @@ class RecipeRowPostgreSQLRepository extends ServiceEntityRepository
      */
     public function deleteByRecipeIdExceptIds(string $recipeId, Tab $ids): void
     {
-        $this->createQueryBuilder('rw')
+        $this->entityRepository->createQueryBuilder('rw')
             ->delete()
             ->where('rw.recipeId = :recipeId')
             ->setParameter('recipeId', $recipeId)

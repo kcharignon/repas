@@ -3,7 +3,6 @@
 namespace Repas\Repas\Infrastructure\Repository;
 
 
-use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 use Repas\Repas\Domain\Exception\DepartmentException;
 use Repas\Repas\Domain\Interface\DepartmentRepository;
@@ -11,7 +10,7 @@ use Repas\Repas\Domain\Model\Department as DepartmentModel;
 use Repas\Repas\Infrastructure\Entity\Department as DepartmentEntity;
 use Repas\Shared\Infrastructure\Repository\ModelCache;
 
-class DepartmentPostgreSQLRepository extends ServiceEntityRepository implements DepartmentRepository
+readonly class DepartmentPostgreSQLRepository extends PostgreSQLRepository implements DepartmentRepository
 {
     public function __construct(
         ManagerRegistry $registry,
@@ -31,7 +30,7 @@ class DepartmentPostgreSQLRepository extends ServiceEntityRepository implements 
         }
 
         // On cherche en BDD
-        if (($entity = $this->find($slug)) !== null) {
+        if (($entity = $this->entityRepository->find($slug)) !== null) {
             $model = $this->convertEntityToModel($entity);
 
             // On stock dans le cache
@@ -45,15 +44,15 @@ class DepartmentPostgreSQLRepository extends ServiceEntityRepository implements 
     public function save(DepartmentModel $department): void
     {
         $this->modelCache->removeModelCache($department);
-        $departmentEntity = $this->find($department->getSlug());
+        $departmentEntity = $this->entityRepository->find($department->getSlug());
         if ($departmentEntity) {
             $this->updateEntity($departmentEntity, $department);
         } else {
             $departmentEntity = DepartmentEntity::fromModel($department);
         }
 
-        $this->getEntityManager()->persist($departmentEntity);
-        $this->getEntityManager()->flush();
+        $this->entityManager->persist($departmentEntity);
+        $this->entityManager->flush();
         $this->modelCache->setModelCache($department);
     }
 

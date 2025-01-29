@@ -3,7 +3,6 @@
 namespace Repas\Repas\Infrastructure\Repository;
 
 
-use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 use Repas\Repas\Domain\Exception\MealException;
 use Repas\Repas\Domain\Interface\MealRepository;
@@ -12,28 +11,26 @@ use Repas\Repas\Domain\Model\Meal;
 use Repas\Repas\Infrastructure\Entity\Meal as MealEntity;
 use Repas\Shared\Domain\Tool\Tab;
 
-class MealPostgreSQLRepository extends ServiceEntityRepository
+readonly class MealPostgreSQLRepository extends PostgreSQLRepository
 {
-
-
     public function __construct(
         ManagerRegistry $managerRegistry,
-        private readonly RecipeRepository $recipeRepository,
+        private RecipeRepository $recipeRepository,
     ) {
         parent::__construct($managerRegistry, MealEntity::class);
     }
 
     public function save(Meal $meal): void
     {
-        $mealEntity = $this->find($meal->getId());
+        $mealEntity = $this->entityRepository->find($meal->getId());
         if (null === $mealEntity) {
             $mealEntity = MealEntity::fromModel($meal);
-            $this->getEntityManager()->persist($mealEntity);
+            $this->entityManager->persist($mealEntity);
         } else {
             $mealEntity->updateFromModel($meal);
         }
 
-        $this->getEntityManager()->flush();
+        $this->entityManager->flush();
     }
 
 
@@ -42,7 +39,7 @@ class MealPostgreSQLRepository extends ServiceEntityRepository
      */
     public function findOneById(string $id): Meal
     {
-        if (($entity = $this->find($id)) !== null) {
+        if (($entity = $this->entityRepository->find($id)) !== null) {
             return $this->convertEntityToModel($entity);
         }
 
@@ -54,7 +51,7 @@ class MealPostgreSQLRepository extends ServiceEntityRepository
      */
     public function findByShoppingListId(string $shoppingListId): Tab
     {
-        $meals = new Tab($this->findBy(['shoppingListId' => $shoppingListId]));
+        $meals = new Tab($this->entityRepository->findBy(['shoppingListId' => $shoppingListId]));
         return $meals->map(fn(MealEntity $meal) => $this->convertEntityToModel($meal));
     }
 
@@ -73,7 +70,7 @@ class MealPostgreSQLRepository extends ServiceEntityRepository
      */
     public function deleteByShoppingListIdExceptIds(string $shoppingListId, Tab $mealIds): void
     {
-        $this->createQueryBuilder('m')
+        $this->entityRepository->createQueryBuilder('m')
             ->delete()
             ->where('m.shoppingListId = :shoppingListId')
             ->setParameter('shoppingListId', $shoppingListId)

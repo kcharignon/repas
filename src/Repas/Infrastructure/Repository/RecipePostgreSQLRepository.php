@@ -3,7 +3,6 @@
 namespace Repas\Repas\Infrastructure\Repository;
 
 
-use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 use Repas\Repas\Domain\Exception\RecipeException;
 use Repas\Repas\Domain\Interface\RecipeRepository;
@@ -15,14 +14,14 @@ use Repas\Repas\Infrastructure\Entity\Unit as UnitEntity;
 use Repas\Shared\Infrastructure\Repository\ModelCache;
 use Repas\User\Domain\Interface\UserRepository;
 
-class RecipePostgreSQLRepository  extends ServiceEntityRepository implements RecipeRepository
+readonly class RecipePostgreSQLRepository  extends PostgreSQLRepository implements RecipeRepository
 {
     public function __construct(
         ManagerRegistry $managerRegistry,
-        private readonly ModelCache $modelCache,
-        private readonly UserRepository $userRepository,
-        private readonly RecipeTypeRepository $recipeTypeRepository,
-        private readonly RecipeRowPostgreSQLRepository $recipeRowRepository,
+        private ModelCache $modelCache,
+        private UserRepository $userRepository,
+        private RecipeTypeRepository $recipeTypeRepository,
+        private RecipeRowPostgreSQLRepository $recipeRowRepository,
     ) {
         parent::__construct($managerRegistry, UnitEntity::class);
     }
@@ -36,7 +35,7 @@ class RecipePostgreSQLRepository  extends ServiceEntityRepository implements Rec
             return $model;
         }
 
-        if (($entity = $this->find($id)) === null) {
+        if (($entity = $this->entityRepository->find($id)) === null) {
             $model = $this->convertEntityToModel($entity);
             $this->modelCache->setModelCache($model);
             return $model;
@@ -48,10 +47,10 @@ class RecipePostgreSQLRepository  extends ServiceEntityRepository implements Rec
     public function save(Recipe $recipe): void
     {
         $this->modelCache->setModelCache($recipe);
-        $recipeEntity = $this->find($recipe->getId());
+        $recipeEntity = $this->entityRepository->find($recipe->getId());
         if ($recipeEntity === null) {
             $recipeEntity = RecipeEntity::fromModel($recipe);
-            $this->getEntityManager()->persist($recipeEntity);
+            $this->entityManager->persist($recipeEntity);
         } else {
             $recipeEntity->updateFromModel($recipe);
             // Supprime les anciennes lignes de la recette
@@ -65,7 +64,7 @@ class RecipePostgreSQLRepository  extends ServiceEntityRepository implements Rec
             $this->recipeRowRepository->save($row);
         }
 
-        $this->getEntityManager()->flush();
+        $this->entityManager->flush();
         $this->modelCache->setModelCache($recipe);
     }
 
