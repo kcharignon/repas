@@ -113,7 +113,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
             "name" => "œufs à la coque",
             "owner" => "alexiane.sichi@gmail.com",
             "type" => "plat",
-            "people" => 4,
+            "people" => 2,
             "ingredients" => [
                 [
                     "slug" => "oeuf",

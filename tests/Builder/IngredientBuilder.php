@@ -55,12 +55,67 @@ class IngredientBuilder implements Builder
 
     public function isPasta(): self
     {
-        $this->slug = 'pate';
         $this->name = 'pate';
+        $this->slug = StringTool::slugify($this->name);
         $this->image = 'image/pate.jpg';
-        $this->departmentBuilder->isCereal();
-        $this->defaultCookingUnitBuilder->isGramme();
-        $this->defaultPurchaseUnitBuilder->isGramme();
+        $this->departmentBuilder = new DepartmentBuilder()->isCereal();
+        $this->defaultCookingUnitBuilder = new UnitBuilder()->isGramme();
+        $this->defaultPurchaseUnitBuilder = new UnitBuilder()->isGramme();
+        return $this;
+    }
+
+    public function isEgg(): self
+    {
+        $this->name = 'œuf';
+        $this->slug = StringTool::slugify($this->name);
+        $this->image = 'image/oeuf.jpg';
+        $this->departmentBuilder = new DepartmentBuilder()->isMiscellaneous();
+        $this->defaultCookingUnitBuilder = new UnitBuilder()->isGramme();
+        $this->defaultPurchaseUnitBuilder = new UnitBuilder()->isGramme();
+        return $this;
+    }
+
+    public function isThickCremeFraiche(): self
+    {
+        $this->name = 'crème fraiche épaisse';
+        $this->slug = StringTool::slugify($this->name);
+        $this->image = 'image/creme-fraiche-epaisse.jpg';
+        $this->departmentBuilder = new DepartmentBuilder()->isMiscellaneous();
+        $this->defaultCookingUnitBuilder = new UnitBuilder()->isGramme();
+        $this->defaultPurchaseUnitBuilder = new UnitBuilder()->isGramme();
+        return $this;
+    }
+
+    public function isDicedBacon(): self
+    {
+        $this->name = 'lardon';
+        $this->slug = StringTool::slugify($this->name);
+        $this->image = 'image/lardon.jpg';
+        $this->departmentBuilder = new DepartmentBuilder()->isMeat();
+        $this->defaultCookingUnitBuilder = new UnitBuilder()->isGramme();
+        $this->defaultPurchaseUnitBuilder = new UnitBuilder()->isGramme();
+        return $this;
+    }
+
+    public function isParmesan(): self
+    {
+        $this->name = 'parmesan';
+        $this->slug = StringTool::slugify($this->name);
+        $this->image = 'image/parmesan.jpg';
+        $this->departmentBuilder = new DepartmentBuilder()->isCheese();
+        $this->defaultCookingUnitBuilder = new UnitBuilder()->isGramme();
+        $this->defaultPurchaseUnitBuilder = new UnitBuilder()->isGramme();
+        return $this;
+    }
+
+    public function isBread(): self
+    {
+        $this->name = 'pain';
+        $this->slug = StringTool::slugify($this->name);
+        $this->image = 'image/pain.jpg';
+        $this->departmentBuilder = new DepartmentBuilder()->isBakery();
+        $this->defaultCookingUnitBuilder = new UnitBuilder()->isPiece();
+        $this->defaultPurchaseUnitBuilder = new UnitBuilder()->isPiece();
         return $this;
     }
 

@@ -64,4 +64,12 @@ class UnitBuilder implements Builder
             'symbol' => $this->symbol,
         ]);
     }
+
+    public function isBox(): self
+    {
+        $this->name = 'boîte';
+        $this->slug = 'boite';
+        $this->symbol = 'boîte';
+        return $this;
+    }
 }

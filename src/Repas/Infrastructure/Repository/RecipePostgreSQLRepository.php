@@ -10,7 +10,6 @@ use Repas\Repas\Domain\Interface\RecipeTypeRepository;
 use Repas\Repas\Domain\Model\Recipe;
 use Repas\Repas\Domain\Model\RecipeRow;
 use Repas\Repas\Infrastructure\Entity\Recipe as RecipeEntity;
-use Repas\Repas\Infrastructure\Entity\Unit as UnitEntity;
 use Repas\Shared\Infrastructure\Repository\ModelCache;
 use Repas\User\Domain\Interface\UserRepository;
 
@@ -23,7 +22,7 @@ readonly class RecipePostgreSQLRepository  extends PostgreSQLRepository implemen
         private RecipeTypeRepository $recipeTypeRepository,
         private RecipeRowPostgreSQLRepository $recipeRowRepository,
     ) {
-        parent::__construct($managerRegistry, UnitEntity::class);
+        parent::__construct($managerRegistry, RecipeEntity::class);
     }
 
     /**

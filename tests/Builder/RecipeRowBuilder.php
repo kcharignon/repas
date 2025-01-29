@@ -49,7 +49,7 @@ class RecipeRowBuilder implements Builder
         $this->initialize();
         return RecipeRow::load([
             'id' => $this->id,
-            'recipeId' => $this->recipeId,
+            'recipe_id' => $this->recipeId,
             'ingredient' => $this->ingredientBuilder->build(),
             'quantity' => $this->quantity,
             'unit' => $this->unitBuilder->build(),

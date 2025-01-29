@@ -72,4 +72,36 @@ class DepartmentBuilder implements Builder
         $this->image ??= "https://cdn-icons-png.flaticon.com/128/5009/5009812.png";
         return $this;
     }
+
+    public function isMiscellaneous(): self
+    {
+        $this->name = 'divers';
+        $this->slug ??= StringTool::slugify($this->name);
+        $this->image ??= "https://cdn-icons-png.flaticon.com/128/699/699044.png";
+        return $this;
+    }
+
+    public function isMeat(): self
+    {
+        $this->name = 'viande';
+        $this->slug ??= StringTool::slugify($this->name);
+        $this->image ??= "https://cdn-icons-png.flaticon.com/128/1134/1134447.png";
+        return $this;
+    }
+
+    public function isCheese(): self
+    {
+        $this->name = 'fromage';
+        $this->slug ??= StringTool::slugify($this->name);
+        $this->image ??= "https://cdn-icons-png.flaticon.com/128/3753/3753482.png";
+        return $this;
+    }
+
+    public function isBakery(): self
+    {
+        $this->name = 'boulangerie';
+        $this->slug ??= StringTool::slugify($this->name);
+        $this->image ??= "https://cdn-icons-png.flaticon.com/128/3081/3081918.png";
+        return $this;
+    }
 }

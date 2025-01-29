@@ -1,17 +1,11 @@
 <?php
 
-namespace Builder;
+namespace Repas\Tests\Builder;
 
 
 use Repas\Repas\Domain\Model\Recipe;
 use Repas\Shared\Domain\Tool\Tab;
 use Repas\Shared\Domain\Tool\UuidGenerator;
-use Repas\Tests\Builder\Builder;
-use Repas\Tests\Builder\IngredientBuilder;
-use Repas\Tests\Builder\RecipeRowBuilder;
-use Repas\Tests\Builder\RecipeTypeBuilder;
-use Repas\Tests\Builder\UnitBuilder;
-use Repas\Tests\Builder\UserBuilder;
 
 class RecipeBuilder implements Builder
 {
@@ -44,13 +38,56 @@ class RecipeBuilder implements Builder
         $this->serving ??= 4;
         $this->authorBuilder ??= new UserBuilder();
         $this->typeBuilder ??= new RecipeTypeBuilder()->isMeal();
-        $this->rows ??= [
+        $this->rows ??= Tab::fromArray(
             new RecipeRowBuilder()
                 ->setRecipeId($this->id)
                 ->setIngredientBuilder(new IngredientBuilder()->isPasta())
                 ->setUnitBuilder(new UnitBuilder()->isGramme())
                 ->setQuantity(500),
-        ];
+            new RecipeRowBuilder()
+                ->setRecipeId($this->id)
+                ->setIngredientBuilder(new IngredientBuilder()->isEgg())
+                ->setUnitBuilder(new UnitBuilder()->isPiece())
+                ->setQuantity(1),
+            new RecipeRowBuilder()
+                ->setRecipeId($this->id)
+                ->setIngredientBuilder(new IngredientBuilder()->isThickCremeFraiche())
+                ->setUnitBuilder(new UnitBuilder()->isGramme())
+                ->setQuantity(250),
+            new RecipeRowBuilder()
+                ->setRecipeId($this->id)
+                ->setIngredientBuilder(new IngredientBuilder()->isDicedBacon())
+                ->setUnitBuilder(new UnitBuilder()->isGramme())
+                ->setQuantity(250),
+            new RecipeRowBuilder()
+                ->setRecipeId($this->id)
+                ->setIngredientBuilder(new IngredientBuilder()->isParmesan())
+                ->setUnitBuilder(new UnitBuilder()->isGramme())
+                ->setQuantity(100),
+        );
+
+        return $this;
+    }
+
+    public function isSoftBoiledEggs(): self
+    {
+        $this->id ??= UuidGenerator::new();
+        $this->name ??= 'œufs à la coque';
+        $this->serving ??= 2;
+        $this->authorBuilder ??= new UserBuilder();
+        $this->typeBuilder ??= new RecipeTypeBuilder()->isMeal();
+        $this->rows ??= Tab::fromArray(
+            new RecipeRowBuilder()
+                ->setRecipeId($this->id)
+                ->setIngredientBuilder(new IngredientBuilder()->isEgg())
+                ->setUnitBuilder(new UnitBuilder()->isPiece())
+                ->setQuantity(4),
+            new RecipeRowBuilder()
+                ->setRecipeId($this->id)
+                ->setIngredientBuilder(new IngredientBuilder()->isBread())
+                ->setUnitBuilder(new UnitBuilder()->isPiece())
+                ->setQuantity(1),
+        );
 
         return $this;
     }

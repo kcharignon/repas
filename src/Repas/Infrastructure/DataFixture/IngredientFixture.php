@@ -331,8 +331,8 @@ class IngredientFixture extends Fixture implements DependentFixtureInterface, Fi
         [
             "name" => "crème fraiche épaisse",
             "department" => "fromage",
-            "defaultCookingUnit" => "millilitre",
-            "defaultPurchaseUnit" => "boite",
+            "defaultCookingUnit" => "centilitre",
+            "defaultPurchaseUnit" => "gramme",
         ],
         [
             "name" => "crème fraiche liquide",
