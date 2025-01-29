@@ -8,6 +8,7 @@ use Repas\Tests\Builder\DepartmentBuilder;
 use Repas\Tests\Builder\IngredientBuilder;
 use Repas\Tests\Builder\UnitBuilder;
 use Repas\Tests\Helper\DatabaseTestCase;
+use Repas\Tests\Helper\RepasAssert;
 
 class IngredientRepositoryTest extends DatabaseTestCase
 {
@@ -30,12 +31,7 @@ class IngredientRepositoryTest extends DatabaseTestCase
 
         // Assert
         $loadedIngredient = $this->ingredientRepository->getOneBySlug($ingredient->getSlug());
-        $this->assertEquals('un-truc-immangeable', $loadedIngredient->getSlug());
-        $this->assertEquals('Un truc immangeable', $loadedIngredient->getName());
-        $this->assertEquals('file://images/default.jpg', $loadedIngredient->getImage());
-        $this->assertEquals(new DepartmentBuilder()->isConserve()->build(), $loadedIngredient->getDepartment());
-        $this->assertEquals(new UnitBuilder()->isPiece()->build(), $loadedIngredient->getDefaultCookingUnit());
-        $this->assertEquals(new UnitBuilder()->isPiece()->build(), $loadedIngredient->getDefaultPurchaseUnit());
+        RepasAssert::assertIngredient($ingredient, $loadedIngredient);
 
         // Arrange
         $baby = new DepartmentBuilder()->isBaby()->build();
@@ -51,12 +47,7 @@ class IngredientRepositoryTest extends DatabaseTestCase
 
         // Assert
         $loadedIngredient = $this->ingredientRepository->getOneBySlug($ingredient->getSlug());
-        $this->assertEquals('un-truc-immangeable', $loadedIngredient->getSlug());
-        $this->assertEquals('nouveau nom', $loadedIngredient->getName());
-        $this->assertEquals('file://image/nouvelle/nouveau.jpg', $loadedIngredient->getImage());
-        $this->assertEquals($baby, $loadedIngredient->getDepartment());
-        $this->assertEquals($gramme, $loadedIngredient->getDefaultCookingUnit());
-        $this->assertEquals($gramme, $loadedIngredient->getDefaultPurchaseUnit());
+        RepasAssert::assertIngredient($ingredient, $loadedIngredient);
     }
 
     public function testGetByDepartment(): void

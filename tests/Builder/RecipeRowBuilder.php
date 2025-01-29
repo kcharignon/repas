@@ -59,5 +59,8 @@ class RecipeRowBuilder implements Builder
     private function initialize(): void
     {
         $this->id ??= UuidGenerator::new();
+        $this->ingredientBuilder ??= new IngredientBuilder()->isEgg();
+        $this->quantity ??= 4;
+        $this->unitBuilder ??= new UnitBuilder()->isPiece();
     }
 }

@@ -302,6 +302,11 @@ class Tab implements ArrayAccess, IteratorAggregate, Countable
         return static::fromArray(array_merge($this->items, ...$arrayTabs));
     }
 
+    public function usort(callable $callback): void
+    {
+        usort($this->items, $callback);
+    }
+
     private function initializeType(mixed $item): void
     {
         $this->type = is_object($item) ? get_class($item) : gettype($item);

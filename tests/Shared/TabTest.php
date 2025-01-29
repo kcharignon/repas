@@ -321,4 +321,16 @@ class TabTest extends TestCase
         //Act
         $tab1->merge($tab2);
     }
+
+    public function testUsort(): void
+    {
+        // Arrange
+        $tab = Tab::fromArray([5, '6' => 2, 1, 3]);
+
+        // Act
+        $tab->usort(fn(int $a, int $b) => $a <=> $b);
+
+        // Assert
+        $this->assertEquals([1, 2, 3, 5], $tab->toArray());
+    }
 }

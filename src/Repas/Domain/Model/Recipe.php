@@ -59,6 +59,30 @@ class Recipe implements ModelInterface
         return $this->rows;
     }
 
+    public function setName(string $name): Recipe
+    {
+        $this->name = $name;
+        return $this;
+    }
+
+    public function setServing(int $serving): Recipe
+    {
+        $this->serving = $serving;
+        return $this;
+    }
+
+    public function setType(RecipeType $type): Recipe
+    {
+        $this->type = $type;
+        return $this;
+    }
+
+    public function setRows(Tab $rows): Recipe
+    {
+        $this->rows = $rows;
+        return $this;
+    }
+
     public static function load(array $datas): static
     {
         return new self(

@@ -58,6 +58,11 @@ class RecipeRow implements ModelInterface
         $this->unit = $unit;
     }
 
+    public function getRecipeId(): string
+    {
+        return $this->recipeId;
+    }
+
     public static function load(array $datas): static
     {
         return new self(
