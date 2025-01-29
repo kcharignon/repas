@@ -9,6 +9,7 @@ use Repas\Repas\Domain\Exception\UnitException;
 use Repas\Repas\Domain\Interface\UnitRepository;
 use Repas\Repas\Domain\Model\Unit as UnitModel;
 use Repas\Repas\Infrastructure\Entity\Unit as UnitEntity;
+use Repas\Shared\Infrastructure\Repository\ModelCache;
 
 class UnitPostgreSQLRepository extends ServiceEntityRepository implements UnitRepository
 {

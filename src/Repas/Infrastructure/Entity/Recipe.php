@@ -96,11 +96,18 @@ class Recipe
     public static function fromModel(RecipeModel $recipe): static
     {
         return new static(
-            $recipe->getId(),
-            $recipe->getName(),
-            $recipe->getServing(),
-            $recipe->getAuthor()->getId(),
-            $recipe->getType()->getSlug(),
+            id: $recipe->getId(),
+            name: $recipe->getName(),
+            serving: $recipe->getServing(),
+            authorId: $recipe->getAuthor()->getId(),
+            typeSlug: $recipe->getType()->getSlug(),
         );
+    }
+
+    public function updateFromModel(RecipeModel $recipe): void
+    {
+        $this->setName($recipe->getName());
+        $this->setServing($recipe->getServing());
+        $this->setTypeSlug($recipe->getType()->getSlug());
     }
 }

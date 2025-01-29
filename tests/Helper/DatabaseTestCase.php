@@ -5,7 +5,7 @@ namespace Repas\Tests\Helper;
 use Doctrine\DBAL\Exception;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Tools\SchemaTool;
-use Repas\Repas\Infrastructure\Repository\ModelCache;
+use Repas\Shared\Infrastructure\Repository\ModelCache;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
 abstract class DatabaseTestCase extends KernelTestCase

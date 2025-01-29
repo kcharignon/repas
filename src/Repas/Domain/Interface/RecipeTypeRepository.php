@@ -11,5 +11,7 @@ interface RecipeTypeRepository
     /**
      * @return Tab<RecipeType>
      */
-    public function getAll(): Tab;
+    public function findAll(): Tab;
+
+    public function findOneBySlug(string $slug): RecipeType;
 }

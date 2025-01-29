@@ -9,6 +9,7 @@ use Repas\Repas\Domain\Exception\DepartmentException;
 use Repas\Repas\Domain\Interface\DepartmentRepository;
 use Repas\Repas\Domain\Model\Department as DepartmentModel;
 use Repas\Repas\Infrastructure\Entity\Department as DepartmentEntity;
+use Repas\Shared\Infrastructure\Repository\ModelCache;
 
 class DepartmentPostgreSQLRepository extends ServiceEntityRepository implements DepartmentRepository
 {

@@ -1,6 +1,6 @@
 <?php
 
-namespace Repas\Repas\Infrastructure\Repository;
+namespace Repas\Shared\Infrastructure\Repository;
 
 use Repas\Shared\Domain\Model\ModelInterface;
 
@@ -9,9 +9,6 @@ use Repas\Shared\Domain\Model\ModelInterface;
  */
 class ModelCache
 {
-    /**
-     * @var array<class-string<T>, array<string, T>> Cache of models.
-     */
     private array $models = [];
 
     /**
@@ -29,7 +26,7 @@ class ModelCache
     /**
      * Add a model to the cache.
      *
-     * @param T $model The model to cache.
+     * @param ModelInterface $model The model to cache.
      */
     public function setModelCache(ModelInterface $model): void
     {
@@ -40,7 +37,7 @@ class ModelCache
     /**
      * Add a model to the cache.
      *
-     * @param T $model The model to cache.
+     * @param ModelInterface $model The model to cache.
      */
     public function removeModelCache(ModelInterface $model): void
     {

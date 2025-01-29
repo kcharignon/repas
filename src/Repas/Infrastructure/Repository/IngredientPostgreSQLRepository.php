@@ -14,6 +14,7 @@ use Repas\Repas\Domain\Interface\UnitRepository;
 use Repas\Repas\Domain\Model\Ingredient as IngredientModel;
 use Repas\Repas\Infrastructure\Entity\Ingredient as IngredientEntity;
 use Repas\Shared\Domain\Tool\Tab;
+use Repas\Shared\Infrastructure\Repository\ModelCache;
 
 class IngredientPostgreSQLRepository extends ServiceEntityRepository implements IngredientRepository
 {

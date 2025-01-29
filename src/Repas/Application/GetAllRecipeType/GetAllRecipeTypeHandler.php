@@ -22,6 +22,6 @@ readonly class GetAllRecipeTypeHandler
      */
     public function __invoke(GetAllRecipeTypeQuery $query): Tab
     {
-        return $this->recipeTypeRepository->getAll();
+        return $this->recipeTypeRepository->getAllInOrder();
     }
 }

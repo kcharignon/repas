@@ -3,6 +3,7 @@
 namespace Repas\Tests\Shared;
 
 
+use Closure;
 use InvalidArgumentException;
 use PHPUnit\Framework\TestCase;
 use Repas\Shared\Domain\Tool\Tab;
@@ -76,7 +77,7 @@ class TabTest extends TestCase
     public function testNewEmpty(): void
     {
         //Arrange
-        $tab = Tab::newEmpty('integer');
+        $tab = Tab::newEmptyTyped('integer');
 
         //Act
         $tab[] = 2;
@@ -87,16 +88,44 @@ class TabTest extends TestCase
         $tab->add('string');
     }
 
-    public function testMap(): void
+    public function mapDataProvider(): array
+    {
+        return [
+            'add prefix' => [
+                ['test', 'with', 'map'],
+                fn(string $item) => "prefix-{$item}",
+                ['prefix-test', 'prefix-with', 'prefix-map'],
+                'string',
+            ],
+            'convert to int' => [
+                ['0', '45', '12'],
+                fn(string $item) => (int) $item,
+                [0, 45, 12],
+                'integer'
+            ],
+            'empty' => [
+                [],
+                fn(int $item) => $item + 10,
+                [],
+                'mixed',
+            ]
+        ];
+    }
+
+    /**
+     * @dataProvider mapDataProvider
+     */
+    public function testMap(array $initial, Closure $callback, array $expectedValues, string $expectedType): void
     {
         //Arrange
-        $tab = Tab::fromArray('test', 'with', 'map');
+        $tab = Tab::fromArray($initial);
 
         //Act
-        $actual = $tab->map(fn(string $item) => "prefix-{$item}");
+        $actual = $tab->map($callback);
 
         //Assert
-        $this->assertEquals(['prefix-test', 'prefix-with', 'prefix-map'], $actual->toArray());
+        $this->assertEquals($expectedValues, $actual->toArray());
+        $this->assertEquals($expectedType, $actual->getType());
     }
 
     public function testFilter(): void

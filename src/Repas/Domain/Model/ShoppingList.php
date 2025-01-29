@@ -88,7 +88,7 @@ class ShoppingList implements ModelInterface
     public function recipeTypePresent(): Tab
     {
         if (null === $this->recipeTypes) {
-            $this->recipeTypes = Tab::newEmpty(RecipeType::class);
+            $this->recipeTypes = Tab::newEmptyTyped(RecipeType::class);
             foreach ($this->meals as $meal) {
                 $mealRecipeType = $meal->getRecipeType();
                 if (!isset($this->recipeTypes[$mealRecipeType->getSlug()])) {
@@ -105,7 +105,7 @@ class ShoppingList implements ModelInterface
      */
     public function getRecipesByType(RecipeType $recipeType): Tab
     {
-        $res = Tab::newEmpty(Recipe::class);
+        $res = Tab::newEmptyTyped(Recipe::class);
 
         foreach ($this->meals as $meal) {
             if ($meal->getRecipeType()->isEqual($recipeType)) {
@@ -121,7 +121,7 @@ class ShoppingList implements ModelInterface
      */
     public function departmentPresent(): Tab
     {
-        $res = Tab::newEmpty(Department::class);
+        $res = Tab::newEmptyTyped(Department::class);
         foreach ($this->meals as $meal) {
             $res = $res->merge($meal->departmentPresent());
         }

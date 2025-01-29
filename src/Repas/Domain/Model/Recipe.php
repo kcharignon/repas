@@ -89,7 +89,7 @@ class Recipe implements ModelInterface
      */
     public function departmentPresent(): Tab
     {
-        $res = Tab::newEmpty(Department::class);
+        $res = Tab::newEmptyTyped(Department::class);
         /** @var RecipeRow $row */
         foreach ($this->rows as $row) {
             $department = $row->getDepartment();

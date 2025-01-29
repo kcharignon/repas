@@ -82,27 +82,13 @@ class User
         return $this;
     }
 
-    public function getModel(): UserModel
-    {
-        assert(null !== $this->email);
-        assert(null !== $this->password);
-
-        return UserModel::load([
-            'id' => $this->id,
-            'email' => $this->email,
-            'password' => $this->password,
-            'roles' => $this->roles ?? [],
-        ]);
-    }
-
     public static function fromModel(UserModel $user): static
     {
-        $datas = $user->toArray();
         return new self(
-            id: $datas['id'],
-            email: $datas['email'],
-            password: $datas['password'],
-            roles: $datas['roles'],
+            id: $user->getId(),
+            email: $user->getEmail(),
+            password: $user->getPassword(),
+            roles: $user->getRoles(),
         );
     }
 

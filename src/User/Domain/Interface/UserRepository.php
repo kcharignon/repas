@@ -6,7 +6,9 @@ use Repas\User\Domain\Model\User;
 
 interface UserRepository
 {
-    public function getUserByEmail(string $email): User;
+    public function findOneById(string $id): User;
+
+    public function findOneByEmail(string $email): User;
 
     public function save(User $user): void;
 }

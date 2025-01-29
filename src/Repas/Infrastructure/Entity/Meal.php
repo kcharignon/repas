@@ -46,6 +46,11 @@ class Meal
         );
     }
 
+    public function updateFromModel(MealModel $mealModel): void
+    {
+        $this->serving = $mealModel->getServing();
+    }
+
     public function getId(): ?string
     {
         return $this->id;

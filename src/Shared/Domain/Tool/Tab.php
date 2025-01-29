@@ -20,26 +20,27 @@ class Tab implements ArrayAccess, IteratorAggregate, Countable
      */
     private array $items = [];
 
-    private string $type;
+    private ?string $type = null;
     /**
      * Tab constructor.
      *
-     * @param string $type
      * @param T[] $elements
      * @throws InvalidArgumentException
      */
-    public function __construct(string $type, array $elements)
+    public function __construct(array $elements, ?string $type = null)
     {
-        $this->type = $type;
+        if ($type !== null) {
+            $this->type = $type;
+        }
 
         foreach ($elements as $key => $element) {
             $this->add($element, $key);
         }
     }
 
-    public static function newEmpty(string $type): Tab
+    public static function newEmptyTyped(string $type): Tab
     {
-        return new self($type, []);
+        return new self([], $type);
     }
 
     /**
@@ -52,9 +53,7 @@ class Tab implements ArrayAccess, IteratorAggregate, Countable
             $elements = $elements[0];
         }
 
-        $type = is_object(current($elements)) ? get_class(current($elements)) : gettype(current($elements));
-
-        return new self($type, $elements);
+        return new self($elements);
     }
 
     /**
@@ -93,7 +92,7 @@ class Tab implements ArrayAccess, IteratorAggregate, Countable
     public function map(callable $callback): Tab
     {
         $newItems = array_map($callback, $this->items);
-        return new self($this->type, $newItems);
+        return self::fromArray($newItems);
     }
 
     /**
@@ -106,7 +105,7 @@ class Tab implements ArrayAccess, IteratorAggregate, Countable
     public function filter(callable $callback, int $mode = 0): Tab
     {
         $filteredItems = array_filter($this->items, $callback, $mode);
-        return new self($this->type, $filteredItems);
+        return new self($filteredItems, $this->type);
     }
 
     /**
@@ -141,7 +140,7 @@ class Tab implements ArrayAccess, IteratorAggregate, Countable
      */
     public function slice(int $offset, ?int $length = null, bool $preserveKeys = false): Tab
     {
-        return new self($this->type, array_slice($this->items, $offset, $length, $preserveKeys));
+        return new self(array_slice($this->items, $offset, $length, $preserveKeys), $this->type);
     }
 
     public function implode(string $glue): string
@@ -254,6 +253,10 @@ class Tab implements ArrayAccess, IteratorAggregate, Countable
      */
     private function validateType(mixed $item): void
     {
+        if ($this->type === null) {
+            $this->initializeType($item);
+        }
+
         // Gestion des objets avec type spécifique (classe ou interface)
         if (class_exists($this->type) || interface_exists($this->type)) {
             if (!($item instanceof $this->type)) {
@@ -285,7 +288,7 @@ class Tab implements ArrayAccess, IteratorAggregate, Countable
 
     public function getType(): string
     {
-        return $this->type;
+        return $this->type ?? 'mixed';
     }
 
     public function merge(Tab ...$tabs): Tab
@@ -297,6 +300,11 @@ class Tab implements ArrayAccess, IteratorAggregate, Countable
         }
         $arrayTabs = array_map(fn($tab) => $tab->items, $tabs);
         return static::fromArray(array_merge($this->items, ...$arrayTabs));
+    }
+
+    private function initializeType(mixed $item): void
+    {
+        $this->type = is_object($item) ? get_class($item) : gettype($item);
     }
 }
 

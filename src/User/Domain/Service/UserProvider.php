@@ -35,7 +35,7 @@ readonly class UserProvider implements UserProviderInterface, PasswordUpgraderIn
             throw new UnsupportedUserException();
         }
 
-        return $this->userRepository->getUserByEmail($user->getEmail());
+        return $this->userRepository->findOneByEmail($user->getEmail());
     }
 
     public function supportsClass(string $class): bool
@@ -45,7 +45,7 @@ readonly class UserProvider implements UserProviderInterface, PasswordUpgraderIn
 
     public function loadUserByIdentifier(string $identifier): UserInterface
     {
-        return $this->userRepository->getUserByEmail($identifier);
+        return $this->userRepository->findOneByEmail($identifier);
     }
 
 }

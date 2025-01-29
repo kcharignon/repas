@@ -34,7 +34,7 @@ class UserRepositoryTest extends DatabaseTestCase
         $this->entityManager->flush();
 
         //Assert
-        $actual = $this->userRepository->getUserByEmail($user->getEmail());
+        $actual = $this->userRepository->findOneByEmail($user->getEmail());
         $this->assertEqualsCanonicalizing($user, $actual);
 
         //Act
@@ -42,7 +42,7 @@ class UserRepositoryTest extends DatabaseTestCase
         $this->userRepository->save($user);
 
         //Assert
-        $actual = $this->userRepository->getUserByEmail($user->getEmail());
+        $actual = $this->userRepository->findOneByEmail($user->getEmail());
         $this->assertEqualsCanonicalizing($user, $actual);
     }
 
@@ -53,6 +53,6 @@ class UserRepositoryTest extends DatabaseTestCase
         $this->expectExceptionObject(UserException::NotFound());
 
         //Act
-        $this->userRepository->getUserByEmail('unknown@test.com');
+        $this->userRepository->findOneByEmail('unknown@test.com');
     }
 }

@@ -3,10 +3,7 @@
 namespace Repas\Repas\Infrastructure\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
-use Exception;
-use Repas\Repas\Domain\Model\Department as DepartmentModel;
 use Repas\Repas\Domain\Model\Ingredient as IngredientModel;
-use Repas\Repas\Infrastructure\Repository\ModelCache;
 use Repas\Repository\IngredientRepository;
 
 #[ORM\Entity(repositoryClass: IngredientRepository::class)]

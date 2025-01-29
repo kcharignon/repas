@@ -81,21 +81,11 @@ class RecipeType
 
     public static function fromModel(RecipeTypeModel $recipeType): self
     {
-        return self::fromData($recipeType->toArray());
-    }
-
-    public function getModel(): RecipeTypeModel
-    {
-        return RecipeTypeModel::load([
-            'slug' => $this->slug,
-            'name' => $this->name,
-            'image' => $this->image,
-            'order' => $this->sequence,
-        ]);
-    }
-
-    public static function fromData(array $datas): self
-    {
-        return new self($datas['slug'], $datas['name'], $datas['image'], $datas['order']);
+        return new self(
+            slug: $recipeType->getSlug(),
+            name: $recipeType->getName(),
+            image: $recipeType->getImage(),
+            sequence: $recipeType->getOrder(),
+        );
     }
 }
