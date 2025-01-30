@@ -14,7 +14,6 @@ use Repas\Repas\Infrastructure\Entity\Meal as MealEntity;
 use Repas\Repas\Infrastructure\Entity\ShoppingList as ShoppingListEntity;
 use Repas\Shared\Domain\Tool\UuidGenerator;
 use Repas\User\Infrastructure\Entity\User;
-use Throwable;
 
 class ShoppingListFixture extends Fixture implements DependentFixtureInterface, FixtureGroupInterface
 {
@@ -36,6 +35,11 @@ class ShoppingListFixture extends Fixture implements DependentFixtureInterface, 
         ],
         [
             'user' => 'alexiane.sichi@gmail.com',
+            'createdAt' => '2025-01-20T10:56:23+01:00',
+            'locked' => false,
+        ],
+        [
+            'user' => 'kantincharignon@gmail.com',
             'createdAt' => '2025-01-20T10:56:23+01:00',
             'locked' => false,
         ],
@@ -66,16 +70,19 @@ class ShoppingListFixture extends Fixture implements DependentFixtureInterface, 
 
                 $manager->persist($shoppingListEntity);
 
-                // On ajoute entre 5 et 20 des recettes aléatoires (dans la quantité par défaut de la recette)
-                $recipes = $this->getRandomRecipes($userEntity->getId(), rand(5, 20));
-                foreach ($recipes as $recipeEntity) {
-                    $recipeInShoppingListEntity = new MealEntity(
-                        id: UuidGenerator::new(),
-                        shoppingListId: $shoppingListEntity->getId(),
-                        recipeId: $recipeEntity->getId(),
-                        serving: $recipeEntity->getServing(),
-                    );
-                    $manager->persist($recipeInShoppingListEntity);
+                // Si Bich
+                if ($userEntity->getEmail() === 'alexiane.sichi@gmail.com') {
+                    // Ajoute entre 5 et 20 des recettes aléatoires (dans la quantité par défaut de la recette)
+                    $recipes = $this->getRandomRecipes($userEntity->getId(), rand(5, 20));
+                    foreach ($recipes as $recipeEntity) {
+                        $recipeInShoppingListEntity = new MealEntity(
+                            id: UuidGenerator::new(),
+                            shoppingListId: $shoppingListEntity->getId(),
+                            recipeId: $recipeEntity->getId(),
+                            serving: $recipeEntity->getServing(),
+                        );
+                        $manager->persist($recipeInShoppingListEntity);
+                    }
                 }
             }
 

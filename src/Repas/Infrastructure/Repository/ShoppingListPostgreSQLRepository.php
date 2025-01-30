@@ -30,7 +30,7 @@ readonly class ShoppingListPostgreSQLRepository extends PostgreSQLRepository imp
     /**
      * @return Tab<ShoppingList>
      */
-    public function getByOwner(User $owner): Tab
+    public function findByOwner(User $owner): Tab
     {
         $shoppingListEntities = Tab::fromArray($this->entityRepository->findBy(['ownerId' => $owner->getId()], ['createdAt' => 'DESC']));
         return $shoppingListEntities->map(fn(ShoppingListEntity $entity) => $this->convertEntityToModel($entity));
@@ -39,7 +39,7 @@ readonly class ShoppingListPostgreSQLRepository extends PostgreSQLRepository imp
     /**
      * @throws ShoppingListException
      */
-    public function getOneById(string $id): ShoppingList
+    public function findOneById(string $id): ShoppingList
     {
         $shoppingListEntity = $this->entityRepository->find($id);
 
@@ -73,9 +73,9 @@ readonly class ShoppingListPostgreSQLRepository extends PostgreSQLRepository imp
         $this->modelCache->setModelCache($shoppingList);
     }
 
-    public function getOneActiveByOwner(User $owner): ?ShoppingList
+    public function findOneActiveByOwner(User $owner): ?ShoppingList
     {
-        if (($shoppingListEntity = $this->entityRepository->findOneBy(['owner' => $owner->getId(), 'locked' => false])) !== null)
+        if (($shoppingListEntity = $this->entityRepository->findOneBy(['ownerId' => $owner->getId(), 'locked' => false])) !== null)
         {
             $shoppingListModel = $this->convertEntityToModel($shoppingListEntity);
             $this->modelCache->setModelCache($shoppingListModel);

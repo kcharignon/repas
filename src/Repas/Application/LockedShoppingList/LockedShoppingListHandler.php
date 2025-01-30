@@ -19,7 +19,7 @@ readonly class LockedShoppingListHandler
     public function __invoke(LockedShoppingListCommand $command): ShoppingList
     {
         // Recuperation de la liste de course si elle existe
-        $shoppingList = $this->shoppingListRepository->getOneById($command->shoppingListId);
+        $shoppingList = $this->shoppingListRepository->findOneById($command->shoppingListId);
         // Verrouille la liste de course
         $shoppingList->lock();
         $this->shoppingListRepository->save($shoppingList);

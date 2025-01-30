@@ -12,11 +12,11 @@ interface ShoppingListRepository
     /**
      * @return Tab<ShoppingList>
      */
-    public function getByOwner(User $owner): Tab;
+    public function findByOwner(User $owner): Tab;
 
-    public function getOneById(string $id): ShoppingList;
+    public function findOneById(string $id): ShoppingList;
 
-    public function getOneActiveByOwner(User $owner): ?ShoppingList;
+    public function findOneActiveByOwner(User $owner): ?ShoppingList;
 
     public function save(ShoppingList $shoppingList): void;
 }

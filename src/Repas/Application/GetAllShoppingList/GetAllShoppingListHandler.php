@@ -16,6 +16,6 @@ readonly class GetAllShoppingListHandler
 
     public function __invoke(GetAllShoppingListQuery $query): array
     {
-        return $this->shoppingListRepository->getByOwner($query->owner)->toArray();
+        return $this->shoppingListRepository->findByOwner($query->owner)->toArray();
     }
 }
