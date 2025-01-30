@@ -55,8 +55,8 @@ readonly class ShoppingListPostgreSQLRepository extends PostgreSQLRepository imp
         $this->modelCache->removeModelCache($shoppingList);
         $shoppingListEntity = $this->entityRepository->find($shoppingList->getId());
         if (null === $shoppingListEntity) {
-            ShoppingListEntity::fromModel($shoppingList);
-            $this->entityManager->persist($shoppingList);
+            $shoppingListEntity = ShoppingListEntity::fromModel($shoppingList);
+            $this->entityManager->persist($shoppingListEntity);
         } else {
             $shoppingListEntity->updateFromModel($shoppingList);
             // On supprime les anciens repas

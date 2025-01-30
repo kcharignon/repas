@@ -132,9 +132,9 @@ class ShoppingList implements ModelInterface
     }
 
 
-    public function getShoppingListRow(): array
+    public function getShoppingListRow(): Tab
     {
-        return [];
+        return Tab::fromArray([]);
     }
 
     public function lock(): void

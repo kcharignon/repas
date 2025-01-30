@@ -38,4 +38,13 @@ class UserBuilder implements Builder
         $this->email = $email;
         return $this;
     }
+
+    public function fromModel(User $user): self
+    {
+        $this->id = $user->getId();
+        $this->email = $user->getEmail();
+        $this->roles = $user->getRoles();
+        $this->password = $user->getPassword();
+        return $this;
+    }
 }
