@@ -57,15 +57,13 @@ class ShoppingList implements ModelInterface
         string            $id,
         User              $owner,
         DateTimeImmutable $createdAt,
-        bool              $locked,
-        Tab               $meals,
     ): ShoppingList {
         return new ShoppingList(
             id: $id,
             owner: $owner,
             createdAt: $createdAt,
-            locked: $locked,
-            meals: $meals
+            locked: false,
+            meals: Tab::newEmptyTyped(Meal::class),
         );
     }
 

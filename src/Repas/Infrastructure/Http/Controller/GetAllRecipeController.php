@@ -19,7 +19,7 @@ class GetAllRecipeController extends AbstractController
     ) {
     }
 
-    #[Route(path: '/recipes', name: 'view_recipe', methods: ['GET'])]
+    #[Route(path: '/recipes', name: 'view_recipes', methods: ['GET'])]
     #[isGranted('ROLE_USER')]
     public function __invoke(): Response
     {

@@ -7,7 +7,7 @@
 
 {% block body %}
     <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a href="{{ path("view_recipe") }}">Recettes</a></li>
+        <li class="breadcrumb-item"><a href="{{ path("view_recipes") }}">Recettes</a></li>
         <li class="breadcrumb-item"><a href="{{ path("view_one_recipe_type", {"slug":recipe.type.slug}) }}">{{ recipe.type.name|capitalize }}</a></li>
         <li class="breadcrumb-item active"><a href="#">{{ recipe.name|capitalize }}</a></li>
     </ol>

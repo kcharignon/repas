@@ -16,7 +16,7 @@ class GetOneRecipeController extends AbstractController
     ) {
     }
 
-    #[Route(path: '/recipe/{id}', name: 'view_one_recipe', methods: ['GET'])]
+    #[Route(path: '/recipe/{id}', name: 'view_recipe', methods: ['GET'])]
     #[isGranted('ROLE_USER')]
     public function __invoke(string $id): Response
     {

@@ -7,11 +7,11 @@
 
 {% block body %}
     <ul class="list-group">
-        <a
-            class="list-group-item d-flex justify-content-between align-items-center active"
-            href="{{ path("view_shopping_list_create") }}">
-            Nouvelle liste
-        </a>
+        <form action="{{ path('view_shopping_list_create') }}" method="post" style="width: 100%;" class="list-group-item d-flex justify-content-between align-items-center active">
+            <button type="submit" class="text-white text-start" style="border: none; background: none; text-decoration: none; cursor: pointer; width: 100%;">
+                Nouvelle liste
+            </button>
+        </form>
         {% for shoppingList in shoppingLists %}
             <a
                 href="{{ path("view_one_shopping_list", {"id": shoppingList.id}) }}"
