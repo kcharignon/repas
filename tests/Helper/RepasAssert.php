@@ -18,12 +18,12 @@ use Repas\User\Domain\Model\User;
 
 class RepasAssert
 {
-    public static function assertUnit(Unit $expected, mixed $actual): void
+    public static function assertUnit(Unit $expected, mixed $actual, string $message = ''): void
     {
         Assert::assertInstanceOf(Unit::class, $actual);
-        Assert::assertEquals($expected->getSlug(), $actual->getSlug());
-        Assert::assertEquals($expected->getName(), $actual->getName());
-        Assert::assertEquals($expected->getSymbol(), $actual->getSymbol());
+        Assert::assertEquals($expected->getSlug(), $actual->getSlug(), $message);
+        Assert::assertEquals($expected->getName(), $actual->getName(), $message);
+        Assert::assertEquals($expected->getSymbol(), $actual->getSymbol(), $message);
     }
 
     public static function assertDepartment(Department $expected, mixed $actual): void
@@ -40,8 +40,8 @@ class RepasAssert
         Assert::assertEquals($expected->getSlug(), $actual->getSlug());
         Assert::assertEquals($expected->getName(), $actual->getName());
         Assert::assertEquals($expected->getImage(), $actual->getImage());
-        self::assertUnit($expected->getDefaultCookingUnit(), $actual->getDefaultCookingUnit());
-        self::assertUnit($expected->getDefaultPurchaseUnit(), $actual->getDefaultPurchaseUnit());
+        self::assertUnit($expected->getDefaultCookingUnit(), $actual->getDefaultCookingUnit(), sprintf("Ingredient %s, have wrong default cooking unit", $expected->getSlug()));
+        self::assertUnit($expected->getDefaultPurchaseUnit(), $actual->getDefaultPurchaseUnit(), sprintf("Ingredient %s, have wrong default purchase unit", $expected->getSlug()));
     }
 
     public static function assertRecipeRow(RecipeRow $expected, mixed $actual): void

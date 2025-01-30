@@ -311,5 +311,13 @@ class Tab implements ArrayAccess, IteratorAggregate, Countable
     {
         $this->type = is_object($item) ? get_class($item) : gettype($item);
     }
+
+    /**
+     * @return T|null
+     */
+    public function shift(): mixed
+    {
+        return array_shift($this->items);
+    }
 }
 

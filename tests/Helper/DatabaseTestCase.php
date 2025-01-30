@@ -6,15 +6,16 @@ use Doctrine\DBAL\Exception;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Tools\SchemaTool;
 use Repas\Shared\Infrastructure\Repository\ModelCache;
+use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
+use Symfony\Component\Console\Input\ArrayInput;
+use Symfony\Component\Console\Output\NullOutput;
 
 abstract class DatabaseTestCase extends KernelTestCase
 {
-    protected EntityManagerInterface $entityManager;
+    protected ?EntityManagerInterface $entityManager;
+    protected ModelCache $modelCacheMock;
 
-    /**
-     * @throws Exception
-     */
     protected function setUp(): void
     {
         parent::setUp();
@@ -24,28 +25,47 @@ abstract class DatabaseTestCase extends KernelTestCase
 
         // Get the EntityManager
         $this->entityManager = self::getContainer()->get(EntityManagerInterface::class);
-        $modelCache = self::getContainer()->get(ModelCache::class);
-        $modelCache->reset();
+        $this->modelCacheMock = $this->createMock(ModelCache::class);
+        // Remplacer le service dans le conteneur
+        self::getContainer()->set(ModelCache::class, $this->modelCacheMock);
+//        $modelCache = self::getContainer()->get(ModelCache::class);
+//        $modelCache->reset();
 
         // Reset the database schema
         $this->resetDatabaseSchema();
+
+        $this->loadFixtures();
     }
 
-    /**
-     * @throws Exception
-     */
-    private function resetDatabaseSchema(): void
+    private function resetDataBaseSchema(): void
     {
-        $connection = $this->entityManager->getConnection();
         $schemaTool = new SchemaTool($this->entityManager);
+        $metadata = $this->entityManager->getMetadataFactory()->getAllMetadata();
 
-        // Drop the database (this will remove all tables)
-        $connection->executeStatement('DROP SCHEMA public CASCADE;');
-        $connection->executeStatement('CREATE SCHEMA public;');
+        $schemaTool->dropSchema($metadata);
+        $schemaTool->createSchema($metadata);
+    }
 
-        // Create the schema again
-        $schemaTool->createSchema(
-            $this->entityManager->getMetadataFactory()->getAllMetadata()
-        );
+    private function loadFixtures(): void
+    {
+        $application = new Application(self::$kernel);
+        $application->setAutoExit(false);
+
+        $input = new ArrayInput([
+            'command' => 'doctrine:fixtures:load',
+            '--env' => 'test',
+            '--purge-with-truncate' => true,
+            '--no-interaction' => true,
+        ]);
+
+        $output = new NullOutput();
+        $application->run($input, $output);
+    }
+
+    protected function tearDown(): void
+    {
+        parent::tearDown();
+        $this->entityManager->close();
+        $this->entityManager = null;
     }
 }

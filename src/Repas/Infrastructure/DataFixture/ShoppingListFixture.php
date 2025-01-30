@@ -8,11 +8,13 @@ use Doctrine\Bundle\FixturesBundle\Fixture;
 use Doctrine\Bundle\FixturesBundle\FixtureGroupInterface;
 use Doctrine\Common\DataFixtures\DependentFixtureInterface;
 use Doctrine\Persistence\ObjectManager;
+use Exception;
 use Repas\Repas\Infrastructure\Entity\Recipe as RecipeEntity;
 use Repas\Repas\Infrastructure\Entity\Meal as MealEntity;
 use Repas\Repas\Infrastructure\Entity\ShoppingList as ShoppingListEntity;
 use Repas\Shared\Domain\Tool\UuidGenerator;
 use Repas\User\Infrastructure\Entity\User;
+use Throwable;
 
 class ShoppingListFixture extends Fixture implements DependentFixtureInterface, FixtureGroupInterface
 {
@@ -51,32 +53,37 @@ class ShoppingListFixture extends Fixture implements DependentFixtureInterface, 
 
     public function load(ObjectManager $manager): void
     {
-        foreach (self::SHOPPING_LIST as $shoppingList) {
-            $userEntity = $this->getReference($shoppingList['user'], User::class);
+        try {
+            foreach (self::SHOPPING_LIST as $shoppingList) {
+                $userEntity = $this->getReference($shoppingList['user'], User::class);
 
-            $shoppingListEntity = new ShoppingListEntity(
-                id: UuidGenerator::new(),
-                ownerId: $userEntity->getId(),
-                createdAt: DateTimeImmutable::createFromFormat(DATE_ATOM, $shoppingList['createdAt']),
-                locked: $shoppingList['locked'],
-            );
-
-            $manager->persist($shoppingListEntity);
-
-            // On ajoute entre 5 et 20 des recettes aléatoires (dans la quantité par défaut de la recette)
-            $recipes = $this->getRandomRecipes($userEntity->getId(), rand(5, 20));
-            foreach ($recipes as $recipeEntity) {
-                $recipeInShoppingListEntity = new MealEntity(
+                $shoppingListEntity = new ShoppingListEntity(
                     id: UuidGenerator::new(),
-                    shoppingListId: $shoppingListEntity->getId(),
-                    recipeId: $recipeEntity->getId(),
-                    serving: $recipeEntity->getServing(),
+                    ownerId: $userEntity->getId(),
+                    createdAt: DateTimeImmutable::createFromFormat(DATE_ATOM, $shoppingList['createdAt']),
+                    locked: $shoppingList['locked'],
                 );
-                $manager->persist($recipeInShoppingListEntity);
-            }
-        }
 
-        $manager->flush();
+                $manager->persist($shoppingListEntity);
+
+                // On ajoute entre 5 et 20 des recettes aléatoires (dans la quantité par défaut de la recette)
+                $recipes = $this->getRandomRecipes($userEntity->getId(), rand(5, 20));
+                foreach ($recipes as $recipeEntity) {
+                    $recipeInShoppingListEntity = new MealEntity(
+                        id: UuidGenerator::new(),
+                        shoppingListId: $shoppingListEntity->getId(),
+                        recipeId: $recipeEntity->getId(),
+                        serving: $recipeEntity->getServing(),
+                    );
+                    $manager->persist($recipeInShoppingListEntity);
+                }
+            }
+
+            $manager->flush();
+        } catch (Exception $e) {
+            dump(sprintf("Failed to create ShoppingList of: %s", $shoppingList["user"] ?? 'Unknown'));
+            throw $e;
+        }
     }
 
     /**
@@ -93,12 +100,13 @@ class ShoppingListFixture extends Fixture implements DependentFixtureInterface, 
 
     private function getRandomRecipe(string $ownerId): RecipeEntity
     {
-        static $recipes = null;
-        if (null === $recipes) {
-            $recipes = RecipeFixture::getRecipesIds($ownerId);
-        }
+        // Charge les recettes de l'utilisateur
+        $recipes = RecipeFixture::getRecipesIds($ownerId);
 
+        // Récupère un id parmi les recettes ids de l'utilisateur
         $recipeId = $recipes[array_rand($recipes)];
+
+        // Retourne la reference de la recette via son id
         return $this->getReference($recipeId, RecipeEntity::class);
     }
 }

@@ -4,14 +4,16 @@ namespace Repas\Tests\Builder;
 
 
 use DateTimeImmutable;
+use Repas\Repas\Domain\Model\Recipe;
 use Repas\Repas\Domain\Model\ShoppingList;
 use Repas\Shared\Domain\Tool\Tab;
 use Repas\Shared\Domain\Tool\UuidGenerator;
+use Repas\User\Domain\Model\User;
 
 class ShoppingListBuilder implements Builder
 {
     private ?string $id = null;
-    private ?UserBuilder $owner = null;
+    private UserBuilder|User|null $owner = null;
     private ?DateTimeImmutable $createdAt = null;
     private ?bool $locked = null;
     /** @var Tab<MealBuilder>|null  */
@@ -20,27 +22,31 @@ class ShoppingListBuilder implements Builder
     public function build(): ShoppingList
     {
         $this->initialize();
+        $owner = $this->owner instanceof User ? $this->owner : $this->owner->build();
         return ShoppingList::load([
             'id' => $this->id,
-            'owner' => $this->owner->build(),
+            'owner' => $owner,
             'created_at' => $this->createdAt,
             'locked' => $this->locked,
             'meals' => $this->meals->map(fn(MealBuilder $builder) => $builder->build()),
         ]);
     }
 
-    public function withOwner(UserBuilder $owner): self
+    public function withOwner(UserBuilder|User $owner): self
     {
         $this->owner = $owner;
         return $this;
     }
 
-    public function addRecipe(RecipeBuilder $recipeBuilder, ?int $serving = null): self
+    public function addRecipe(RecipeBuilder|Recipe $recipe, ?int $serving = null): self
     {
-        $recipe = $recipeBuilder->build();
+        if ($recipe instanceof RecipeBuilder) {
+            $recipe = $recipe->build();
+        }
+
         $this->id ??= UuidGenerator::new();
         $mealBuilder = new MealBuilder()
-            ->setRecipeBuilder($recipeBuilder)
+            ->setRecipe($recipe)
             ->setServing($serving ?? $recipe->getServing())
             ->setShoppingListId($this->id);
 

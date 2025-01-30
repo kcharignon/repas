@@ -259,7 +259,7 @@ class IngredientFixture extends Fixture implements DependentFixtureInterface, Fi
             "name" => "parmesan",
             "department" => "fromage",
             "defaultCookingUnit" => "gramme",
-            "defaultPurchaseUnit" => "piece",
+            "defaultPurchaseUnit" => "gramme",
         ],
         [
             "name" => "vache qui rit",

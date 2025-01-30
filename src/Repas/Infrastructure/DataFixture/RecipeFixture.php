@@ -7,7 +7,7 @@ use Doctrine\Bundle\FixturesBundle\Fixture;
 use Doctrine\Bundle\FixturesBundle\FixtureGroupInterface;
 use Doctrine\Common\DataFixtures\DependentFixtureInterface;
 use Doctrine\Persistence\ObjectManager;
-use Repas\Repas\Infrastructure\Entity\Ingredient as IngredientEntity;
+use Exception;
 use Repas\Repas\Infrastructure\Entity\Recipe as RecipeEntity;
 use Repas\Repas\Infrastructure\Entity\RecipeRow as RecipeRowEntity;
 use Repas\Shared\Domain\Tool\UuidGenerator;
@@ -2566,8 +2566,9 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
 
     public function load(ObjectManager $manager): void
     {
-        foreach (self::RECIPES as $recipeDatas) {
-            try {
+        try {
+            foreach (self::RECIPES as $recipeDatas) {
+
                 $authorEntity = $this->getReference($recipeDatas['owner'], UserEntity::class);
 
                 $recipeEntity = new RecipeEntity(
@@ -2591,17 +2592,17 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
                 }
 
                 self::$recipesIds[$authorEntity->getId()] ??= [];
-                self::$recipesIds[$authorEntity->getId()][] = $recipeEntity->id;
-                $this->addReference($recipeEntity->id, $recipeEntity);
-
+                self::$recipesIds[$authorEntity->getId()][] = $recipeEntity->getId();
                 $manager->persist($recipeEntity);
-            } catch(\Exception $e) {
-                dump($recipeDatas);
-                throw $e;
-            }
-        }
+                $this->addReference($recipeEntity->getId(), $recipeEntity);
 
-        $manager->flush();
+            }
+
+            $manager->flush();
+        } catch (Exception $e) {
+            dump(sprintf("Failed to create Recipe: %s", $recipeDatas["name"] ?? 'Unknown'));
+            throw $e;
+        }
     }
 
     public static function getRecipesIds(string $ownerId): array

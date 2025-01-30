@@ -6,6 +6,7 @@ namespace Repas\Repas\Infrastructure\DataFixture;
 use Doctrine\Bundle\FixturesBundle\Fixture;
 use Doctrine\Bundle\FixturesBundle\FixtureGroupInterface;
 use Doctrine\Persistence\ObjectManager;
+use Exception;
 use Repas\Repas\Domain\Model\Unit;
 use Repas\Repas\Infrastructure\Entity\Unit as UnitEntity;
 
@@ -97,14 +98,20 @@ class UnitFixture extends Fixture implements FixtureGroupInterface
 
     public function load(ObjectManager $manager): void
     {
-        foreach (self::UNITS as $unitData) {
-            $unitModel = Unit::create($unitData["name"], $unitData["symbol"]);
-            $unitEntity = UnitEntity::fromModel($unitModel);
-            $manager->persist($unitEntity);
+        try {
+            foreach (self::UNITS as $unitData) {
+                $unitModel = Unit::create($unitData["name"], $unitData["symbol"]);
+                $unitEntity = UnitEntity::fromModel($unitModel);
+                $manager->persist($unitEntity);
 
-            $this->addReference($unitEntity->getSlug(), $unitEntity);
+                $this->addReference($unitEntity->getSlug(), $unitEntity);
+            }
+
+            $manager->flush();
+        } catch (Exception $e) {
+            dump(sprintf("Failed to create Unit: %s", $unitData["name"] ?? 'Unknown'));
+            throw $e;
         }
 
-        $manager->flush();
     }
 }

@@ -72,4 +72,12 @@ class UnitBuilder implements Builder
         $this->symbol = 'boîte';
         return $this;
     }
+
+    public function isCentilitre(): self
+    {
+        $this->name = 'centilitre';
+        $this->slug = 'centilitre';
+        $this->symbol = 'cl';
+        return $this;
+    }
 }

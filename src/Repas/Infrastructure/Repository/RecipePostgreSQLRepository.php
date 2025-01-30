@@ -10,8 +10,10 @@ use Repas\Repas\Domain\Interface\RecipeTypeRepository;
 use Repas\Repas\Domain\Model\Recipe;
 use Repas\Repas\Domain\Model\RecipeRow;
 use Repas\Repas\Infrastructure\Entity\Recipe as RecipeEntity;
+use Repas\Shared\Domain\Tool\Tab;
 use Repas\Shared\Infrastructure\Repository\ModelCache;
 use Repas\User\Domain\Interface\UserRepository;
+use Repas\User\Domain\Model\User;
 
 readonly class RecipePostgreSQLRepository  extends PostgreSQLRepository implements RecipeRepository
 {
@@ -42,6 +44,21 @@ readonly class RecipePostgreSQLRepository  extends PostgreSQLRepository implemen
 
         throw RecipeException::notFound($id);
     }
+
+    public function findByAuthor(User $author): Tab
+    {
+        $recipes = Tab::fromArray($this->entityRepository->findBy(['authorId' => $author->getId()]));
+        return $recipes->map(function (RecipeEntity $entity) {
+            if (($model = $this->modelCache->getModelCache(Recipe::class, $entity->getId())) !== null) {
+                return $model;
+            }
+
+            $model = $this->convertEntityToModel($entity);
+            $this->modelCache->setModelCache($model);
+            return $model;
+        });
+    }
+
 
     public function save(Recipe $recipe): void
     {
@@ -75,6 +92,7 @@ readonly class RecipePostgreSQLRepository  extends PostgreSQLRepository implemen
             'serving' => $entity->getServing(),
             'author' => $this->userRepository->findOneById($entity->getAuthorId()),
             'type' => $this->recipeTypeRepository->getOneBySlug($entity->getTypeSlug()),
+            'rows' => $this->recipeRowRepository->findByRecipeId($entity->getId()),
         ]);
     }
 }

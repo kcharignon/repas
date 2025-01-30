@@ -16,9 +16,7 @@ class UserRepositoryTest extends DatabaseTestCase
     {
         parent::setUp();
 
-        $managerRegistry = static::getContainer()->get('doctrine');
-
-        $this->userRepository = new UserPostgreSQLRepository($managerRegistry);
+        $this->userRepository = static::getContainer()->get(UserRepository::class);
     }
 
 

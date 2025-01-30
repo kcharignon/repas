@@ -57,7 +57,7 @@ class IngredientBuilder implements Builder
     {
         $this->name = 'pate';
         $this->slug = StringTool::slugify($this->name);
-        $this->image = 'image/pate.jpg';
+        $this->image = '';
         $this->departmentBuilder = new DepartmentBuilder()->isCereal();
         $this->defaultCookingUnitBuilder = new UnitBuilder()->isGramme();
         $this->defaultPurchaseUnitBuilder = new UnitBuilder()->isGramme();
@@ -68,10 +68,10 @@ class IngredientBuilder implements Builder
     {
         $this->name = 'œuf';
         $this->slug = StringTool::slugify($this->name);
-        $this->image = 'image/oeuf.jpg';
+        $this->image = '';
         $this->departmentBuilder = new DepartmentBuilder()->isMiscellaneous();
-        $this->defaultCookingUnitBuilder = new UnitBuilder()->isGramme();
-        $this->defaultPurchaseUnitBuilder = new UnitBuilder()->isGramme();
+        $this->defaultCookingUnitBuilder = new UnitBuilder()->isPiece();
+        $this->defaultPurchaseUnitBuilder = new UnitBuilder()->isPiece();
         return $this;
     }
 
@@ -79,9 +79,9 @@ class IngredientBuilder implements Builder
     {
         $this->name = 'crème fraiche épaisse';
         $this->slug = StringTool::slugify($this->name);
-        $this->image = 'image/creme-fraiche-epaisse.jpg';
+        $this->image = '';
         $this->departmentBuilder = new DepartmentBuilder()->isMiscellaneous();
-        $this->defaultCookingUnitBuilder = new UnitBuilder()->isGramme();
+        $this->defaultCookingUnitBuilder = new UnitBuilder()->isCentilitre();
         $this->defaultPurchaseUnitBuilder = new UnitBuilder()->isGramme();
         return $this;
     }
@@ -90,7 +90,7 @@ class IngredientBuilder implements Builder
     {
         $this->name = 'lardon';
         $this->slug = StringTool::slugify($this->name);
-        $this->image = 'image/lardon.jpg';
+        $this->image = '';
         $this->departmentBuilder = new DepartmentBuilder()->isMeat();
         $this->defaultCookingUnitBuilder = new UnitBuilder()->isGramme();
         $this->defaultPurchaseUnitBuilder = new UnitBuilder()->isGramme();
@@ -101,7 +101,7 @@ class IngredientBuilder implements Builder
     {
         $this->name = 'parmesan';
         $this->slug = StringTool::slugify($this->name);
-        $this->image = 'image/parmesan.jpg';
+        $this->image = '';
         $this->departmentBuilder = new DepartmentBuilder()->isCheese();
         $this->defaultCookingUnitBuilder = new UnitBuilder()->isGramme();
         $this->defaultPurchaseUnitBuilder = new UnitBuilder()->isGramme();

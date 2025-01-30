@@ -40,15 +40,22 @@ class RecipeRow
         $this->recipeId = $recipeId;
     }
 
-    public static function fromModel(RecipeRowModel $recipeRow, RecipeModel $recipe): static
+    public static function fromModel(RecipeRowModel $recipeRow): static
     {
         return new static(
             $recipeRow->getId(),
             $recipeRow->getIngredient()->getSlug(),
             $recipeRow->getQuantity(),
             $recipeRow->getUnit()->getSlug(),
-            $recipe->getId(),
+            $recipeRow->getRecipeId(),
         );
+    }
+
+    public function updateFromModel(RecipeRowModel $recipeRowModel): void
+    {
+        $this->ingredientSlug = $recipeRowModel->getIngredient()->getSlug();
+        $this->quantity = $recipeRowModel->getQuantity();
+        $this->unitSlug = $recipeRowModel->getUnit()->getSlug();
     }
 
     public function getId(): ?string

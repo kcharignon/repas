@@ -6,13 +6,14 @@ namespace Repas\Tests\Builder;
 use Repas\Repas\Domain\Model\Recipe;
 use Repas\Shared\Domain\Tool\Tab;
 use Repas\Shared\Domain\Tool\UuidGenerator;
+use Repas\User\Domain\Model\User;
 
 class RecipeBuilder implements Builder
 {
     private ?string $id = null;
     private ?string $name = null;
     private ?int $serving = null;
-    private ?UserBuilder $authorBuilder = null;
+    private UserBuilder|User|null $author = null;
     private ?RecipeTypeBuilder $typeBuilder = null;
     /** @var Tab<RecipeRowBuilder>|null  */
     private ?Tab $rows = null;
@@ -21,11 +22,12 @@ class RecipeBuilder implements Builder
     public function build(): Recipe
     {
         $this->initialize();
+        $author = $this->author instanceof User ? $this->author : $this->author->build();
         return Recipe::load([
             'id' => $this->id,
             'name' => $this->name,
             'serving' => $this->serving,
-            'author' => $this->authorBuilder->build(),
+            'author' => $author,
             'type' => $this->typeBuilder->build(),
             'rows' => $this->rows->map(fn(RecipeRowBuilder $row) => $row->build()),
         ]);
@@ -34,11 +36,10 @@ class RecipeBuilder implements Builder
     public function isPastaCarbonara(): self
     {
         $this->id ??= UuidGenerator::new();
-        $this->name ??= 'pates carbonara';
-        $this->serving ??= 4;
-        $this->authorBuilder ??= new UserBuilder();
-        $this->typeBuilder ??= new RecipeTypeBuilder()->isMeal();
-        $this->rows ??= Tab::fromArray(
+        $this->name = 'pates carbonara';
+        $this->serving = 4;
+        $this->typeBuilder = new RecipeTypeBuilder()->isMeal();
+        $this->rows = Tab::fromArray(
             new RecipeRowBuilder()
                 ->setRecipeId($this->id)
                 ->setIngredientBuilder(new IngredientBuilder()->isPasta())
@@ -71,12 +72,11 @@ class RecipeBuilder implements Builder
 
     public function isSoftBoiledEggs(): self
     {
-        $this->id ??= UuidGenerator::new();
-        $this->name ??= 'œufs à la coque';
-        $this->serving ??= 2;
-        $this->authorBuilder ??= new UserBuilder();
-        $this->typeBuilder ??= new RecipeTypeBuilder()->isMeal();
-        $this->rows ??= Tab::fromArray(
+        $this->id = UuidGenerator::new();
+        $this->name = 'œufs à la coque';
+        $this->serving = 2;
+        $this->typeBuilder = new RecipeTypeBuilder()->isMeal();
+        $this->rows = Tab::fromArray(
             new RecipeRowBuilder()
                 ->setRecipeId($this->id)
                 ->setIngredientBuilder(new IngredientBuilder()->isEgg())
@@ -97,8 +97,14 @@ class RecipeBuilder implements Builder
         $this->id ??= UuidGenerator::new();
         $this->name ??= 'Gloubiboulga';
         $this->serving ??= 2;
-        $this->authorBuilder ??= new UserBuilder();
+        $this->author ??= new UserBuilder();
         $this->typeBuilder ??= new RecipeTypeBuilder();
         $this->rows ??= [];
+    }
+
+    public function withAuthor(UserBuilder|User $author): self
+    {
+        $this->author = $author;
+        return $this;
     }
 }

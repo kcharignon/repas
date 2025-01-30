@@ -30,13 +30,19 @@ readonly class RecipeRowPostgreSQLRepository extends PostgreSQLRepository
     public function findByRecipeId(string $recipeId): Tab
     {
         $recipeRows = new Tab($this->entityRepository->findBy(['recipeId' => $recipeId]), RecipeRowEntity::class);
-
         return $recipeRows->map(fn(RecipeRowEntity $recipeRow) => $this->convertEntityToModel($recipeRow));
     }
 
     public function save(RecipeRowModel $recipeRow): void
     {
-
+        $recipeRowEntity = $this->entityRepository->find($recipeRow->getId());
+        if ($recipeRowEntity instanceof RecipeRowEntity) {
+            $recipeRowEntity->updateFromModel($recipeRow);
+        } else {
+            $recipeRowEntity = RecipeRowEntity::fromModel($recipeRow);
+            $this->entityManager->persist($recipeRowEntity);
+        }
+        $this->entityManager->flush();
     }
 
     /**

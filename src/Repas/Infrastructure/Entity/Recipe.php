@@ -11,7 +11,7 @@ class Recipe
 {
     #[ORM\Id]
     #[ORM\Column(type: 'string', length: 36, unique: true)]
-    public ?string $id = null;
+    private ?string $id = null;
 
     #[ORM\Column(length: 255)]
     private ?string $name = null;

@@ -4,13 +4,14 @@ namespace Repas\Tests\Builder;
 
 
 use Repas\Repas\Domain\Model\Meal;
+use Repas\Repas\Domain\Model\Recipe;
 use Repas\Shared\Domain\Tool\UuidGenerator;
 
 class MealBuilder implements Builder
 {
     private ?string $id = null;
     private ?string $shoppingListId = null;
-    private ?RecipeBuilder $recipeBuilder = null;
+    private RecipeBuilder|Recipe|null $recipe = null;
     private ?int $serving = null;
 
     public function setId(?string $id): MealBuilder
@@ -25,9 +26,9 @@ class MealBuilder implements Builder
         return $this;
     }
 
-    public function setRecipeBuilder(?RecipeBuilder $recipeBuilder): MealBuilder
+    public function setRecipe(RecipeBuilder|Recipe $recipe): MealBuilder
     {
-        $this->recipeBuilder = $recipeBuilder;
+        $this->recipe = $recipe;
         return $this;
     }
 
@@ -40,10 +41,11 @@ class MealBuilder implements Builder
     public function build(): Meal
     {
         $this->initialize();
+        $recipe = $this->recipe instanceof Recipe ? $this->recipe : $this->recipe->build();
         return Meal::load([
             'id' => $this->id,
             'shopping_list_id' => $this->shoppingListId,
-            'recipe' => $this->recipeBuilder->build(),
+            'recipe' => $recipe,
             'serving' => $this->serving,
         ]);
     }

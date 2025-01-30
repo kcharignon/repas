@@ -333,4 +333,19 @@ class TabTest extends TestCase
         // Assert
         $this->assertEquals([1, 2, 3, 5], $tab->toArray());
     }
+
+    public function testCurrent(): void
+    {
+        // Arrange
+        $array = [5, '6' => 2, 1, 3];
+        $tab = Tab::fromArray([5, '6' => 2, 1, 3]);
+
+        // Act
+        $expectedElement = array_shift($array);
+        $actualElement = $tab->shift();
+
+        // Assert
+        $this->assertEquals($expectedElement, $actualElement);
+        $this->assertEquals($array, $tab->toArray());
+    }
 }
