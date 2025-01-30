@@ -1,0 +1,12 @@
+<div class="col">
+    <div class="card bg-light mb-3" style="max-width: 20rem;">
+        <a style="text-decoration: none; color: inherit" href="{{ path("view_one_recipe_type", {"slug": recipeType.slug, "activeSection":active}) }}">
+            <div class="card-header">
+                {{ recipeType.name|capitalize }}
+            </div>
+            <div class="card-body">
+                <img class="img-fluid" src="{{ absolute_url(asset(recipeType.image)) }}" alt="{{ recipeType.name }}">
+            </div>
+        </a>
+    </div>
+</div>

@@ -69,9 +69,9 @@ readonly class RecipeRowPostgreSQLRepository extends PostgreSQLRepository
             return RecipeRowModel::load([
                 'id' => $entity->getId(),
                 'recipe_id' => $entity->getRecipeId(),
-                'ingredient' => $this->ingredientRepository->getOneBySlug($entity->getIngredientSlug()),
+                'ingredient' => $this->ingredientRepository->findOneBySlug($entity->getIngredientSlug()),
                 'quantity' => $entity->getQuantity(),
-                'unit' => $this->unitRepository->getOneBySlug($entity->getUnitSlug()),
+                'unit' => $this->unitRepository->findOneBySlug($entity->getUnitSlug()),
             ]);
         } catch (IngredientException|UnitException) {
             throw RecipeException::rowSubModelNotFound();

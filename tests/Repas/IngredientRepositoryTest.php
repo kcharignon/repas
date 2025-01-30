@@ -12,7 +12,7 @@ use Repas\Tests\Helper\RepasAssert;
 
 class IngredientRepositoryTest extends DatabaseTestCase
 {
-    private IngredientRepository $ingredientRepository;
+    private readonly IngredientRepository $ingredientRepository;
 
     protected function setUp(): void
     {
@@ -30,7 +30,7 @@ class IngredientRepositoryTest extends DatabaseTestCase
         $this->ingredientRepository->save($ingredient);
 
         // Assert
-        $loadedIngredient = $this->ingredientRepository->getOneBySlug($ingredient->getSlug());
+        $loadedIngredient = $this->ingredientRepository->findOneBySlug($ingredient->getSlug());
         RepasAssert::assertIngredient($ingredient, $loadedIngredient);
 
         // Arrange
@@ -46,7 +46,7 @@ class IngredientRepositoryTest extends DatabaseTestCase
         $this->ingredientRepository->save($ingredient);
 
         // Assert
-        $loadedIngredient = $this->ingredientRepository->getOneBySlug($ingredient->getSlug());
+        $loadedIngredient = $this->ingredientRepository->findOneBySlug($ingredient->getSlug());
         RepasAssert::assertIngredient($ingredient, $loadedIngredient);
     }
 
@@ -55,14 +55,14 @@ class IngredientRepositoryTest extends DatabaseTestCase
         // Arrange
         // Compte le nombre d'ingrédients au rayon bebe
         $babyDepartmentBuilder = new DepartmentBuilder()->isBaby();
-        $before = $this->ingredientRepository->getByDepartment($babyDepartmentBuilder->build());
+        $before = $this->ingredientRepository->findByDepartment($babyDepartmentBuilder->build());
         $count = $before->count();
         // Ajoute un ingredient au rayon bébé
         $ingredient = new IngredientBuilder()->setDepartment($babyDepartmentBuilder)->build();
         $this->ingredientRepository->save($ingredient);
 
         // Act
-        $actual = $this->ingredientRepository->getByDepartment($babyDepartmentBuilder->build());
+        $actual = $this->ingredientRepository->findByDepartment($babyDepartmentBuilder->build());
 
         // Assert
         $this->assertEquals($count + 1, $actual->count());

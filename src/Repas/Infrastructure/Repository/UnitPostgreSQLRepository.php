@@ -47,7 +47,7 @@ readonly class UnitPostgreSQLRepository extends PostgreSQLRepository implements 
     /**
      * @throws UnitException
      */
-    public function getOneBySlug(string $slug): UnitModel
+    public function findOneBySlug(string $slug): UnitModel
     {
         // On cherche dans le cache
         if (($model = $this->modelCache->getModelCache(UnitModel::class, $slug)) !== null) {

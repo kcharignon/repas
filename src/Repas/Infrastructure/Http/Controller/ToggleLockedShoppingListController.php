@@ -23,7 +23,7 @@ class ToggleLockedShoppingListController extends AbstractController
     {
     }
 
-    #[Route(path: 'shopping-list/{id}/locked/{isLocked}', name: 'shopping_list_locked')]
+    #[Route(path: 'shopping-list/{id}/locked/{isLocked}', name: 'view_shopping_list_locked')]
     #[isGranted('ROLE_USER')]
     public function __invoke(string $id, bool $isLocked): Response
     {

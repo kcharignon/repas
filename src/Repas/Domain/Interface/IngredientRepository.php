@@ -13,12 +13,12 @@ interface IngredientRepository
     /**
      * @throws IngredientException
      */
-    public function getOneBySlug(string $slug): Ingredient;
+    public function findOneBySlug(string $slug): Ingredient;
 
     /**
      * @return Tab<Ingredient>
      */
-    public function getByDepartment(Department $department): Tab;
+    public function findByDepartment(Department $department): Tab;
 
     public function save(Ingredient $ingredient): void;
 }

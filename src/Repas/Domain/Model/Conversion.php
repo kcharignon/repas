@@ -52,10 +52,10 @@ class Conversion implements ModelInterface
     public static function load(array $datas): static {
         return new static(
             slug: $datas['slug'],
-            startUnit: static::loadModel($datas['start_unit'], Unit::class),
-            endUnit: static::loadModel($datas['end_unit'], Unit::class),
+            startUnit: $datas['start_unit'],
+            endUnit: $datas['end_unit'],
             coefficient: $datas['coefficient'],
-            ingredient: static::loadModel($datas['ingredient'], Ingredient::class),
+            ingredient: $datas['ingredient'],
         );
     }
 

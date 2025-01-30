@@ -28,7 +28,7 @@ class UnitRepositoryTest extends DatabaseTestCase
         $this->unitRepository->save($unit);
 
         //Assert
-        $loaded = $this->unitRepository->getOneBySlug($unit->getSlug());
+        $loaded = $this->unitRepository->findOneBySlug($unit->getSlug());
         $this->assertEquals($unit, $loaded);
 
         //Act
@@ -36,7 +36,7 @@ class UnitRepositoryTest extends DatabaseTestCase
 
         //Assert
         $this->expectExceptionObject(UnitException::notFound());
-        $this->unitRepository->getOneBySlug($unit->getSlug());
+        $this->unitRepository->findOneBySlug($unit->getSlug());
     }
 
     public function testLoadNonExistent(): void
@@ -45,6 +45,6 @@ class UnitRepositoryTest extends DatabaseTestCase
         $this->expectExceptionObject(UnitException::notFound());
 
         //Act
-        $this->unitRepository->getOneBySlug("non-existent");
+        $this->unitRepository->findOneBySlug("non-existent");
     }
 }

@@ -8,7 +8,7 @@
     <div class="collapse navbar-collapse" id="navbarColor02">
       <ul class="navbar-nav me-auto">
         <li class="nav-item">
-          <a class="nav-link {{ ((active ?? "") == "recipe") ? "active" : "" }}" href="#">Recettes</a>
+          <a class="nav-link {{ ((active ?? "") == "recipe") ? "active" : "" }}" href="{{ path("view_recipe") }}">Recettes</a>
         </li>
         <li class="nav-item">
           <a class="nav-link {{ ((active ?? "") == "department") ? "active" : "" }}" href="#">Rayons</a>

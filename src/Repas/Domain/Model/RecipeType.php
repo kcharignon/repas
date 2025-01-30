@@ -79,9 +79,4 @@ class RecipeType implements ModelInterface
             order: $datas['order'],
         );
     }
-
-    public function isEqual(RecipeType $type): bool
-    {
-        return $this->slug === $type->getSlug();
-    }
 }

@@ -1,7 +1,7 @@
 <div class="form-check form-switch float-end" id="switchShoppingListActiveGroup">
     <input
         data-action="btn-ajax"
-        data-url="{{ path("shopping_list_locked", {"id" : shoppingList.id, "isLocked" : (shoppingList.locked ? "0" : "1")}) }}"
+        data-url="{{ path("view_shopping_list_locked", {"id" : shoppingList.id, "isLocked" : (shoppingList.locked ? "0" : "1")}) }}"
         class="form-check-input"
         type="checkbox"
         id="switchShoppingListActive" {{ shoppingList.locked ? "" : 'checked'}}>

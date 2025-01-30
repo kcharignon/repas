@@ -30,7 +30,7 @@ readonly class IngredientPostgreSQLRepository extends PostgreSQLRepository imple
     /**
      * @throws IngredientException
      */
-    public function getOneBySlug(string $slug): IngredientModel
+    public function findOneBySlug(string $slug): IngredientModel
     {
         // On cherche das le cache
         if (($model = $this->modelCache->getModelCache(IngredientModel::class, $slug)) !== null) {
@@ -48,7 +48,7 @@ readonly class IngredientPostgreSQLRepository extends PostgreSQLRepository imple
         throw IngredientException::notFound();
     }
 
-    public function getByDepartment(Department $department): Tab
+    public function findByDepartment(Department $department): Tab
     {
         $ingredients = new Tab($this->entityRepository->findBy(['departmentSlug' => $department->getId()]), IngredientEntity::class);
         return $ingredients->map(function (IngredientEntity $ingredient) {
@@ -99,8 +99,8 @@ readonly class IngredientPostgreSQLRepository extends PostgreSQLRepository imple
                 "name" => $ingredientEntity->getName(),
                 "image" => $ingredientEntity->getImage(),
                 "department" => $this->departmentRepository->getOneBySlug($ingredientEntity->getDepartmentSlug()),
-                "default_cooking_unit" => $this->unitRepository->getOneBySlug($ingredientEntity->getDefaultCookingUnitSlug()),
-                "default_purchase_unit" => $this->unitRepository->getOneBySlug($ingredientEntity->getDefaultPurchaseUnitSlug()),
+                "default_cooking_unit" => $this->unitRepository->findOneBySlug($ingredientEntity->getDefaultCookingUnitSlug()),
+                "default_purchase_unit" => $this->unitRepository->findOneBySlug($ingredientEntity->getDefaultPurchaseUnitSlug()),
             ]);
         } catch (DepartmentException|UnitException) {
             throw IngredientException::subModelNotFound();

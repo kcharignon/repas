@@ -3,7 +3,6 @@
 namespace Repas\Repas\Infrastructure\Http\Controller;
 
 
-use Repas\Repas\Application\GetAllRecipeType\GetAllRecipeTypeQuery;
 use Repas\Repas\Application\GetAllShoppingList\GetAllShoppingListQuery;
 use Repas\Shared\Application\Interface\QueryBusInterface;
 use Repas\User\Domain\Model\User;
@@ -20,7 +19,7 @@ class GetAllShoppingListController extends AbstractController
     }
 
 
-    #[Route('/shopping-list', name: 'view_shopping_list', methods: ['GET'])]
+    #[Route('/shopping-lists', name: 'view_shopping_list', methods: ['GET'])]
     #[IsGranted('ROLE_USER')]
     public function __invoke(): Response
     {

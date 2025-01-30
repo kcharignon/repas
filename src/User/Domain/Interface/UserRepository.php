@@ -2,10 +2,14 @@
 
 namespace Repas\User\Domain\Interface;
 
+use Repas\User\Domain\Exception\UserException;
 use Repas\User\Domain\Model\User;
 
 interface UserRepository
 {
+    /**
+     * @throws UserException
+     */
     public function findOneById(string $id): User;
 
     public function findOneByEmail(string $email): User;

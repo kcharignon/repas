@@ -1,0 +1,42 @@
+{% set active = "recipe" %}
+{% extends "@Shared/base.html.twig" %}
+
+{% block title %}
+    Recette : {{ recipe.name }}
+{% endblock %}
+
+{% block body %}
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{{ path("view_recipe") }}">Recettes</a></li>
+        <li class="breadcrumb-item"><a href="{{ path("view_one_recipe_type", {"slug":recipe.type.slug}) }}">{{ recipe.type.name|capitalize }}</a></li>
+        <li class="breadcrumb-item active"><a href="#">{{ recipe.name|capitalize }}</a></li>
+    </ol>
+
+    <h1>{{ recipe.name|capitalize }}</h1>
+    <h2>Ingrédients</h2>
+    <div class="row">
+        <div class="col-lg-4">
+            <ul class="list-group">
+                {% for row in recipe.rows %}
+                    <li class="list-group-item d-flex align-item-center" style="height: 42px">
+                        {% if row.unit is not null%}
+                            <span class="me-1">
+                                    {{ row.quantity ~ row.unit.symbol }}
+                                {% if row.unit.symbol != "" %}de{% endif %}
+                                </span>
+                        {% else %}
+                            {{ row.quantity }}
+                        {% endif %}
+                        <strong>{{ row.ingredient.name|capitalize }}</strong>
+                        <span class="flex-fill"></span>
+                        <img
+                            class="align-self-center"
+                            style="height: 32px"
+                            src="{{ absolute_url(asset(row.ingredient.image)) }}"
+                            alt="row.ingredient.name">
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+{% endblock %}

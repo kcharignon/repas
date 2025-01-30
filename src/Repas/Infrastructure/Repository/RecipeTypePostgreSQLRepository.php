@@ -23,7 +23,7 @@ readonly class RecipeTypePostgreSQLRepository extends PostgreSQLRepository imple
     /**
      * @return Tab<RecipeTypeModel>
      */
-    public function getAll(): Tab
+    public function findAll(): Tab
     {
         return Tab::fromArray($this->entityRepository->findBy([], ['sequence' => 'ASC']))
             ->map(function (RecipeTypeEntity $entity) {
@@ -40,7 +40,7 @@ readonly class RecipeTypePostgreSQLRepository extends PostgreSQLRepository imple
     /**
      * @throws RecipeException
      */
-    public function getOneBySlug(string $slug): RecipeTypeModel
+    public function findOneBySlug(string $slug): RecipeTypeModel
     {
         if (($model = $this->modelCache->getModelCache(Recipe::class, $slug)) !== null) {
             return $model;

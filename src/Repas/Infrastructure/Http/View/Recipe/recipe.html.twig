@@ -1,0 +1,12 @@
+{% set active = "recipe" %}
+{% extends '@Shared/base.html.twig' %}
+
+{% block title %}Recettes{% endblock %}
+
+{% block body %}
+    <div class="row">
+        {% for recipeType in recipeTypes %}
+            {% include "@Repas/Recipe/_recipetype_card.html.twig" %}
+        {% endfor %}
+    </div>
+{% endblock %}

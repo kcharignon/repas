@@ -31,7 +31,7 @@ class Meal implements ModelInterface
         return new self(
             id: $datas['id'],
             shoppingListId: $datas['shopping_list_id'],
-            recipe: static::loadModel($datas['recipe'], Recipe::class),
+            recipe: $datas['recipe'],
             serving: $datas['serving']
         );
     }
@@ -72,5 +72,10 @@ class Meal implements ModelInterface
     public function typeIs(RecipeType $recipeType): bool
     {
         return $this->recipe->isType($recipeType);
+    }
+
+    public function hasRecipe(Recipe $recipe): bool
+    {
+        return $this->recipe->isEqual($recipe);
     }
 }

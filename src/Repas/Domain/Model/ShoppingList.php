@@ -146,4 +146,9 @@ class ShoppingList implements ModelInterface
     {
         $this->locked = false;
     }
+
+    public function hasRecipe(Recipe $recipe): bool
+    {
+        return $this->meals->find(fn(Meal $meal) => $meal->hasRecipe($recipe)) !== null;
+    }
 }

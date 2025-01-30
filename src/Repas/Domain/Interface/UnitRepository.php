@@ -13,7 +13,7 @@ interface UnitRepository
     /**
      * @throws UnitException
      */
-    public function getOneBySlug(string $slug): Unit;
+    public function findOneBySlug(string $slug): Unit;
 
     public function delete(Unit $unit): void;
 }
