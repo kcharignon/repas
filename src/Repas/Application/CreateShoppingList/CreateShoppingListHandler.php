@@ -1,6 +1,6 @@
 <?php
 
-namespace Repas\Repas\Application\CreateNewShoppingList;
+namespace Repas\Repas\Application\CreateShoppingList;
 
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Repas\Domain\Model\ShoppingList;
@@ -10,7 +10,7 @@ use Repas\User\Domain\Interface\UserRepository;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 #[AsMessageHandler]
-readonly class CreateNewShoppingListHandler
+readonly class CreateShoppingListHandler
 {
     public function __construct(
         private UserRepository $userRepository,
@@ -22,7 +22,7 @@ readonly class CreateNewShoppingListHandler
     /**
      * @throws UserException
      */
-    public function __invoke(CreateNewShoppingListCommand $query): void
+    public function __invoke(CreateShoppingListCommand $query): void
     {
         $owner = $this->userRepository->findOneById($query->ownerId);
         // Désactivation de la liste active si elle existe

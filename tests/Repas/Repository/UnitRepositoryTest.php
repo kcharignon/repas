@@ -1,6 +1,6 @@
 <?php
 
-namespace Repas\Tests\Repas;
+namespace Repas\Tests\Repas\Repository;
 
 
 use Repas\Repas\Domain\Exception\UnitException;

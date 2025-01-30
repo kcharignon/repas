@@ -1,6 +1,6 @@
 <?php
 
-namespace Repas\Tests\Repas;
+namespace Repas\Tests\Repas\Controller;
 
 
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;

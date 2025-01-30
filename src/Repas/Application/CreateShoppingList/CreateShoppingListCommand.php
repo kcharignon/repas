@@ -1,9 +1,9 @@
 <?php
 
-namespace Repas\Repas\Application\CreateNewShoppingList;
+namespace Repas\Repas\Application\CreateShoppingList;
 
 
-class CreateNewShoppingListCommand
+class CreateShoppingListCommand
 {
 
     public function __construct(

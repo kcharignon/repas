@@ -9,12 +9,13 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 
 
-class AddNewUnitController extends AbstractController
+class CreateUnitController extends AbstractController
 {
-    #[Route('addNewUnit', name: 'addNewUnit')]
+    #[Route('/unit', name: 'view_unit_add', methods: ['POST'])]
     public function __invoke(Request $request): Response
     {
-
+        //TODO: implement AddNewUnitController::__invoke() method
+        return new Response();
     }
 
 }

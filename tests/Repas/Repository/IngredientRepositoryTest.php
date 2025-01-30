@@ -1,6 +1,6 @@
 <?php
 
-namespace Repas;
+namespace Repas\Tests\Repas\Repository;
 
 
 use Repas\Repas\Domain\Interface\IngredientRepository;
