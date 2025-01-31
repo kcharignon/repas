@@ -355,4 +355,42 @@ class TabTest extends TestCase
         $this->assertEquals($expectedElement, $actualElement);
         $this->assertEquals($array, $tab->toArray());
     }
+
+    public function uniqueDataProvider(): array
+    {
+        return [
+            "int SORT_NUMERIC" => [[1, 5, 4, 2, 1, 5, 5], SORT_NUMERIC],
+            "int SORT_STRING" => [[1, 5, 2, 3, 4, 5], SORT_STRING],
+            "string SORT_STRING" => [["a", "b", "b", "a", "c", "b"], SORT_STRING],
+        ];
+    }
+
+    /**
+     * @dataProvider uniqueDataProvider
+     */
+    public function testUnique(array $in, int $flags): void
+    {
+        // Arrange
+        $tab = Tab::fromArray($in);
+
+        // Act
+        $expected = array_unique($in, $flags);
+        $actual = $tab->unique($flags);
+
+        // Assert
+        $this->assertEquals($expected, $actual->toArray());
+    }
+
+
+    public function testReduce(): void
+    {
+        // Arrange
+        $tab = Tab::fromArray(5, 8, 6);
+
+        // Act
+        $actual = $tab->reduce(fn(int $carry, int $b) => $carry + $b, 10);
+
+        // Assert
+        $this->assertEquals(29, $actual);
+    }
 }

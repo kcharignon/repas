@@ -44,6 +44,16 @@ class ModelCache
         unset($this->models[$model::class][$model->getId()]);
     }
 
+    /**
+     * @param string $className
+     * @param string $identifier
+     * @return bool
+     */
+    public function isCachedExists(string $className, string $identifier): bool
+    {
+        return isset($this->models[$className][$identifier]);
+    }
+
     public function reset(): void
     {
         $this->models = [];

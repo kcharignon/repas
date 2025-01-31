@@ -8,6 +8,7 @@ use Repas\Repas\Domain\Exception\DepartmentException;
 use Repas\Repas\Domain\Interface\DepartmentRepository;
 use Repas\Repas\Domain\Model\Department as DepartmentModel;
 use Repas\Repas\Infrastructure\Entity\Department as DepartmentEntity;
+use Repas\Shared\Domain\Tool\Tab;
 use Repas\Shared\Infrastructure\Repository\ModelCache;
 
 readonly class DepartmentPostgreSQLRepository extends PostgreSQLRepository implements DepartmentRepository
@@ -22,7 +23,7 @@ readonly class DepartmentPostgreSQLRepository extends PostgreSQLRepository imple
     /**
      * @throws DepartmentException
      */
-    public function getOneBySlug(string $slug): DepartmentModel
+    public function findOneBySlug(string $slug): DepartmentModel
     {
         // On cherche dans le cache
         if (($model = $this->modelCache->getModelCache(DepartmentModel::class, $slug)) !== null) {
@@ -69,5 +70,40 @@ readonly class DepartmentPostgreSQLRepository extends PostgreSQLRepository imple
             'name' => $departmentEntity->getName(),
             'image' => $departmentEntity->getImage(),
         ]);
+    }
+
+    /**
+     * @param Tab<string> $slugs
+     * @return Tab<DepartmentModel>
+     */
+    public function findBySlugs(Tab $slugs): Tab
+    {
+
+        // Si on ne trouve aucun element qui n'est pas en cache
+        if ($slugs->find(fn(string $slug) => !$this->modelCache->isCachedExists(DepartmentModel::class, $slug)) === null) {
+            return $slugs->map(fn(string $slug) => $this->modelCache->getModelCache(DepartmentModel::class, $slug));
+        }
+
+        /** @var DepartmentEntity[] $departmentsEntities */
+        $departmentsEntities = $this->entityManager->createQueryBuilder()
+            ->select('d')
+            ->from(DepartmentEntity::class, 'd')
+            ->where('d.slug IN (:slugs)')
+            ->setParameter('slugs', $slugs->toArray())
+            ->getQuery()
+            ->getResult();
+
+        $models = Tab::newEmptyTyped(DepartmentModel::class);
+        foreach ($departmentsEntities as $departmentEntity) {
+            if (($model = $this->modelCache->getModelCache(DepartmentModel::class, $departmentEntity->getSlug())) !== null) {
+                $models[] = $model;
+            } else {
+                $model = $this->convertEntityToModel($departmentEntity);
+                $this->modelCache->setModelCache($model);
+                $models[] = $model;
+            }
+        }
+
+        return $models;
     }
 }

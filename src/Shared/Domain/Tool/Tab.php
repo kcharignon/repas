@@ -87,7 +87,7 @@ class Tab implements ArrayAccess, IteratorAggregate, Countable
      * Map each item to a new value.
      *
      * @param callable(T): T $callback
-     * @return Tab<T>
+     * @return Tab
      */
     public function map(callable $callback): Tab
     {
@@ -280,7 +280,7 @@ class Tab implements ArrayAccess, IteratorAggregate, Countable
                 throw new InvalidArgumentException(sprintf(
                     'Tab expected type %s, got %s.',
                     $this->type,
-                    gettype($item)
+                    is_object($item) ? get_class($item) : gettype($item)
                 ));
             }
         }
@@ -318,6 +318,30 @@ class Tab implements ArrayAccess, IteratorAggregate, Countable
     public function shift(): mixed
     {
         return array_shift($this->items);
+    }
+
+    /**
+     * @param int $flags :
+     *  - `SORT_REGULAR` (0) : Compare items normally (don't change types).
+     *  - `SORT_NUMERIC` (1) : Compare items numerically.
+     *  - `SORT_STRING` (2) : Compare items as strings (default).
+     *  - `SORT_LOCALE_STRING` (5) : Compare items as strings, based on the current locale.
+     *
+     * @return Tab<T>
+     */
+    public function unique(int $flags = SORT_STRING): Tab
+    {
+        return self::fromArray(array_unique($this->items, $flags));
+    }
+
+    /**
+     * @param callable(T, mixed): mixed $callback
+     * @param $initial
+     * @return mixed
+     */
+    public function reduce(callable $callback, $initial = null): mixed
+    {
+        return array_reduce($this->items, $callback, $initial);
     }
 }
 

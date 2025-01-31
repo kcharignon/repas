@@ -5,6 +5,7 @@ namespace Repas\Repas\Infrastructure\Repository;
 
 use Doctrine\Persistence\ManagerRegistry;
 use Repas\Repas\Domain\Exception\RecipeException;
+use Repas\Repas\Domain\Interface\IngredientRepository;
 use Repas\Repas\Domain\Interface\RecipeRepository;
 use Repas\Repas\Domain\Interface\RecipeTypeRepository;
 use Repas\Repas\Domain\Model\Recipe;
@@ -13,6 +14,7 @@ use Repas\Repas\Domain\Model\RecipeType;
 use Repas\Repas\Infrastructure\Entity\Recipe as RecipeEntity;
 use Repas\Shared\Domain\Tool\Tab;
 use Repas\Shared\Infrastructure\Repository\ModelCache;
+use Repas\User\Domain\Exception\UserException;
 use Repas\User\Domain\Interface\UserRepository;
 use Repas\User\Domain\Model\User;
 
@@ -24,12 +26,14 @@ readonly class RecipePostgreSQLRepository  extends PostgreSQLRepository implemen
         private UserRepository $userRepository,
         private RecipeTypeRepository $recipeTypeRepository,
         private RecipeRowPostgreSQLRepository $recipeRowRepository,
+        private IngredientRepository $ingredientRepository,
     ) {
         parent::__construct($managerRegistry, RecipeEntity::class);
     }
 
     /**
      * @throws RecipeException
+     * @throws UserException
      */
     public function findOneById(string $id): Recipe
     {
@@ -99,8 +103,13 @@ readonly class RecipePostgreSQLRepository  extends PostgreSQLRepository implemen
         $this->modelCache->setModelCache($recipe);
     }
 
+    /**
+     * @throws UserException
+     * @throws RecipeException
+     */
     private function convertEntityToModel(RecipeEntity $entity): Recipe
     {
+        $this->ingredientRepository->cachedByRecipe($entity->getId());
         return Recipe::load([
             'id' => $entity->getId(),
             'name' => $entity->getName(),

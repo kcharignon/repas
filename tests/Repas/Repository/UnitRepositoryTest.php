@@ -19,7 +19,7 @@ class UnitRepositoryTest extends DatabaseTestCase
         $this->unitRepository = static::getContainer()->get(UnitRepository::class);
     }
 
-    public function testSaveAndGetOneBySlugAndDelete(): void
+    public function testSaveAndFindOneBySlugAndDelete(): void
     {
         //Arrange
         $unit = new UnitBuilder()->setName('New unit')->build();

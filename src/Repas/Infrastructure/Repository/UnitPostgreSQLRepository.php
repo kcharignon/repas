@@ -11,6 +11,7 @@ use Repas\Repas\Domain\Exception\UnitException;
 use Repas\Repas\Domain\Interface\UnitRepository;
 use Repas\Repas\Domain\Model\Unit as UnitModel;
 use Repas\Repas\Infrastructure\Entity\Unit as UnitEntity;
+use Repas\Shared\Domain\Tool\Tab;
 use Repas\Shared\Infrastructure\Repository\ModelCache;
 
 readonly class UnitPostgreSQLRepository extends PostgreSQLRepository implements UnitRepository
@@ -95,5 +96,40 @@ readonly class UnitPostgreSQLRepository extends PostgreSQLRepository implements 
             'name' => $entity->getName(),
             'symbol' => $entity->getSymbol(),
         ]);
+    }
+
+    /**
+     * @param Tab<string> $slugs
+     * @return Tab<UnitModel>
+     */
+    public function findBySlugs(Tab $slugs): Tab
+    {
+        // Si on ne trouve aucune unit qui n'est pas en cache
+        if ($slugs->find(fn(string $slug) => !$this->modelCache->isCachedExists(UnitModel::class, $slug)) === null) {
+            return $slugs->map(fn(string $slug) => $this->modelCache->getModelCache(UnitModel::class, $slug));
+        }
+
+
+        /** @var UnitEntity[] $unitEntities */
+        $unitEntities = $this->entityManager->createQueryBuilder()
+            ->select('u')
+            ->from(UnitEntity::class, 'u')
+            ->where('u.slug IN (:slugs)')
+            ->setParameter('slugs', $slugs)
+            ->getQuery()
+            ->getResult();
+
+        $models = Tab::newEmptyTyped(UnitModel::class);
+        foreach ($unitEntities as $unitEntity) {
+            if (($model = $this->modelCache->getModelCache(UnitEntity::class, $unitEntity->getSlug())) !== null) {
+                $models[] = $model;
+            } else {
+                $model = $this->convertEntityToModel($unitEntity);
+                $this->modelCache->setModelCache($model);
+                $models[] = $model;
+            }
+        }
+
+        return $models;
     }
 }

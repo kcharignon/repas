@@ -12,7 +12,9 @@ use Repas\Repas\Domain\Interface\IngredientRepository;
 use Repas\Repas\Domain\Interface\UnitRepository;
 use Repas\Repas\Domain\Model\Department;
 use Repas\Repas\Domain\Model\Ingredient as IngredientModel;
+use Repas\Repas\Domain\Model\Recipe;
 use Repas\Repas\Infrastructure\Entity\Ingredient as IngredientEntity;
+use Repas\Repas\Infrastructure\Entity\RecipeRow;
 use Repas\Shared\Domain\Tool\Tab;
 use Repas\Shared\Infrastructure\Repository\ModelCache;
 
@@ -98,12 +100,92 @@ readonly class IngredientPostgreSQLRepository extends PostgreSQLRepository imple
                 "slug" => $ingredientEntity->getSlug(),
                 "name" => $ingredientEntity->getName(),
                 "image" => $ingredientEntity->getImage(),
-                "department" => $this->departmentRepository->getOneBySlug($ingredientEntity->getDepartmentSlug()),
+                "department" => $this->departmentRepository->findOneBySlug($ingredientEntity->getDepartmentSlug()),
                 "default_cooking_unit" => $this->unitRepository->findOneBySlug($ingredientEntity->getDefaultCookingUnitSlug()),
                 "default_purchase_unit" => $this->unitRepository->findOneBySlug($ingredientEntity->getDefaultPurchaseUnitSlug()),
             ]);
         } catch (DepartmentException|UnitException) {
             throw IngredientException::subModelNotFound();
+        }
+    }
+
+    public function cachedByRecipe(string $recipeId): void
+    {
+        // Si la recette est deja en cache
+        if ($this->modelCache->isCachedExists(Recipe::class, $recipeId)) {
+            return ;
+        }
+
+        // Récupérer les ingrédients liés à la recette
+        $ingredientEntities = $this->entityManager->createQueryBuilder()
+            ->select('i')
+            ->from(IngredientEntity::class, 'i')
+            ->innerJoin(RecipeRow::class, 'rr', 'WITH', 'rr.ingredientSlug = i.slug')
+            ->where('rr.recipeId = :recipeId')
+            ->setParameter('recipeId', $recipeId)
+            ->getQuery()
+            ->getResult();
+
+        if (empty($ingredientEntities)) {
+            return; // Aucun ingrédient à mettre en cache
+        }
+
+        // Extraire tous les slugs de départements et unités à récupérer
+        $departmentSlugs = Tab::newEmptyTyped('string');
+        $unitSlugs = Tab::newEmptyTyped('string');;
+
+        foreach ($ingredientEntities as $ingredient) {
+            $departmentSlugs[] = $ingredient->getDepartmentSlug();
+            $unitSlugs[] = $ingredient->getDefaultCookingUnitSlug();
+            $unitSlugs[] = $ingredient->getDefaultPurchaseUnitSlug();
+        }
+
+        // Charger tous les départements nécessaires en une seule requête
+        $departments = $this->departmentRepository->findBySlugs($departmentSlugs->unique());
+
+        // Charger toutes les unités nécessaires en une seule requête
+        $units = $this->unitRepository->findBySlugs($unitSlugs->unique());
+
+        // Mapper les résultats pour un accès rapide
+        $departmentMap = [];
+        foreach ($departments as $department) {
+            $departmentMap[$department->getSlug()] = $department;
+        }
+
+        $unitMap = [];
+        foreach ($units as $unit) {
+            $unitMap[$unit->getSlug()] = $unit;
+        }
+
+        // Convertir chaque ingrédient en modèle et le stocker en cache
+        foreach ($ingredientEntities as $ingredientEntity) {
+            $slug = $ingredientEntity->getSlug();
+
+            if ($this->modelCache->getModelCache(IngredientModel::class, $slug) !== null) {
+                continue; // L'ingrédient est déjà en cache, on l'ignore
+            }
+
+            // Récupérer les entités associées depuis les maps
+            $department = $departmentMap[$ingredientEntity->getDepartmentSlug()] ?? null;
+            $defaultCookingUnit = $unitMap[$ingredientEntity->getDefaultCookingUnitSlug()] ?? null;
+            $defaultPurchaseUnit = $unitMap[$ingredientEntity->getDefaultPurchaseUnitSlug()] ?? null;
+
+            if (!$department || !$defaultCookingUnit || !$defaultPurchaseUnit) {
+                continue; // Éviter les erreurs si une entité liée est manquante
+            }
+
+            // Convertir en modèle
+            $model = IngredientModel::load([
+                "slug" => $slug,
+                "name" => $ingredientEntity->getName(),
+                "image" => $ingredientEntity->getImage(),
+                "department" => $department,
+                "default_cooking_unit" => $defaultCookingUnit,
+                "default_purchase_unit" => $defaultPurchaseUnit,
+            ]);
+
+            // Stocker en cache
+            $this->modelCache->setModelCache($model);
         }
     }
 }
