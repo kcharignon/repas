@@ -10,7 +10,7 @@ use Symfony\Component\Routing\Attribute\Route;
 
 class LoginCheckController extends AbstractController
 {
-    #[Route('/login-check')]
+    #[Route(path:'/login-check', name: 'view_login_check')]
     public function __invoke(): Response
     {
         return $this->render('login_check/index.html.twig');

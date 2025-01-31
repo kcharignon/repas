@@ -239,15 +239,22 @@ class TabTest extends TestCase
     public function testOffsetAccess(): void
     {
         // Arrange
+        $array = [1, 2, 3];
         $tab = Tab::fromArray(1, 2, 3);
 
         // Act
+        $array[1] = 4;
         $tab[1] = 4;
 
         // Assert
-        $this->assertEquals(4, $tab[1]);
+        $this->assertEquals($array[1], $tab[1]);
+
+        // Act
+        unset($array[1]);
         unset($tab[1]);
-        $this->assertFalse(isset($tab[1]));
+
+        // Assert
+        $this->assertEquals($array, $tab->toArray());
     }
 
     public function testValues(): void

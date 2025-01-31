@@ -4,6 +4,7 @@ $(document).ready(function(){
   $(document).on("click", "[data-action='btn-ajax']", function(event) {
     var loader = $(this).find("i[data-loader]");
     console.log(loader);
+    // On affiche le loader
     switch (loader.data("loader")) {
       case "replace":
         loader.replaceWith("<i class='fas fa-spinner fa-spin'></i>");
@@ -14,14 +15,18 @@ $(document).ready(function(){
       default:
         break;
     }
-    console.log("route call : " + $(this).data("url"));
+    console.log("Route call : " + $(this).data("url"));
+    // On appele la route
     $.ajax({
       url: $(this).data("url"),
+      method: $(this).data("method"),
     }).done(function(data) {
-      console.log(data);
+      //On affiche les alerte et la vue
+      console.log("Done : ", data);
       showAlerts(data);
       showViews(data, event.target);
     }).fail(function() {
+      console.log("Fail : ", data);
       showAlerts({"alerts":[{"status":"error", "message":"Une erreur est survenue"}]});
     });
   });
@@ -55,6 +60,7 @@ $(document).ready(function(){
   }
 
   function showViews(data, item) {
+    console.log("showViews", data, item);
     if ("views" in data) {
       for (const view of data["views"]) {
         showView(view["selector"], view["html"], item);
@@ -63,10 +69,15 @@ $(document).ready(function(){
   }
 
   function showView(selector, html, item) {
-    if (selector === "this") {
-      $(item).replaceWith(html);
-    } else {
-      $(selector)?.replaceWith(html);
+    console.log("showView", selector, html, item);
+    const target = (selector === "this") ? $(item) : $(selector);
+
+    if (target.length === 0) {
+      console.error("⚠️ Aucun élément trouvé pour le sélecteur:", selector);
+      return;
     }
+
+    console.log("✅ Élément trouvé, remplacement en cours...");
+    target.replaceWith(html);
   }
 });

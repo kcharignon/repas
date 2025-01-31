@@ -1,18 +1,16 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Login</title>
-</head>
-<body>
-<h1>Connexion</h1>
-<form method="POST" action="/login">
-    <input type="hidden" name="_csrf_token" value="{{ csrfToken }}">
-    <input type="text" name="email" placeholder="Email" value="{{ identifier }}" required>
-    <input type="password" name="password" placeholder="Mot de passe" required>
-    <button type="submit">Se connecter</button>
-</form>
-{% if error %}
-    <div style="color: #b13220;">{{ error.messageKey|trans(error.messageData, 'security') }}</div>
-{% endif %}
-</body>
-</html>
+{% extends '@Shared/base.html.twig' %}
+
+{% block title %} Repas : Connexion {% endblock %}
+
+{% block body %}
+    <h1>Connexion</h1>
+    <form method="POST" action="/login">
+        <input type="hidden" name="_csrf_token" value="{{ csrfToken }}">
+        <input type="text" name="email" placeholder="Email" value="{{ identifier }}" required>
+        <input type="password" name="password" placeholder="Mot de passe" required>
+        <button type="submit">Se connecter</button>
+    </form>
+    {% if error %}
+        <div style="color: #b13220;">{{ error.messageKey|trans(error.messageData, 'security') }}</div>
+    {% endif %}
+{% endblock %}

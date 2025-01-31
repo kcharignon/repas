@@ -4,9 +4,11 @@ namespace Repas\Repas\Domain\Model;
 
 
 use DateTimeImmutable;
+use Repas\Repas\Domain\Exception\ShoppingListException;
 use Repas\Shared\Domain\Model\ModelInterface;
 use Repas\Shared\Domain\Model\ModelTrait;
 use Repas\Shared\Domain\Tool\Tab;
+use Repas\Shared\Domain\Tool\UuidGenerator;
 use Repas\User\Domain\Model\User;
 
 class ShoppingList implements ModelInterface
@@ -148,5 +150,53 @@ class ShoppingList implements ModelInterface
     public function hasRecipe(Recipe $recipe): bool
     {
         return $this->meals->find(fn(Meal $meal) => $meal->hasRecipe($recipe)) !== null;
+    }
+
+    /**
+     * @throws ShoppingListException
+     */
+    public function addRecipe(Recipe $recipe): void
+    {
+        if ($this->locked) {
+            throw ShoppingListException::cantAddRecipeInLockedList($this->id);
+        }
+
+        // Impossible de mettre la même recette deux fois dans une liste
+        if ($this->hasRecipe($recipe)) {
+            throw ShoppingListException::recipeAlreadyInList($recipe->getName());
+        }
+
+        // Ajoute à la liste des recettes
+        $this->meals->add(Meal::create(
+            id: UuidGenerator::new(),
+            shoppingListId: $this->id,
+            recipe: $recipe,
+            servings: $recipe->getServing(),
+        ));
+
+        // Ajoutes les ingredients de la recette
+        // TODO: implement this part
+    }
+
+    /**
+     * @throws ShoppingListException
+     */
+    public function removeMeal(Recipe $recipe): void
+    {
+        if ($this->locked) {
+            throw ShoppingListException::cantRemoveRecipeInLockedList($this->id);
+        }
+
+        $mealKey = $this->meals->findKey(fn(Meal $meal) => $meal->hasRecipe($recipe));
+
+        if ($mealKey === null) {
+            // Le repas n'est déjà pas/plus présent dans la liste
+            return ;
+        }
+
+        unset($this->meals[$mealKey]);
+
+        // Supprime les ingredients de la recette
+        // TODO: implement this part
     }
 }

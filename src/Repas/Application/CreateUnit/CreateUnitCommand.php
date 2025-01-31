@@ -1,11 +1,11 @@
 <?php
 
-namespace Repas\Repas\Application\AddNewUnit;
+namespace Repas\Repas\Application\CreateUnit;
 
 use Symfony\Component\Messenger\Attribute\AsMessage;
 
 #[AsMessage]
-final readonly class AddNewUnitCommand
+final readonly class CreateUnitCommand
 {
     public function __construct(
         public string $name,

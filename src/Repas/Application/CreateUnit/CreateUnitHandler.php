@@ -1,6 +1,6 @@
 <?php
 
-namespace Repas\Repas\Application\AddNewUnit;
+namespace Repas\Repas\Application\CreateUnit;
 
 
 use Repas\Repas\Domain\Interface\UnitRepository;
@@ -8,7 +8,7 @@ use Repas\Repas\Domain\Model\Unit;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 #[AsMessageHandler]
-readonly class AddNewUnitHandler
+readonly class CreateUnitHandler
 {
 
 
@@ -17,7 +17,7 @@ readonly class AddNewUnitHandler
     ) {
     }
 
-    public function __invoke(AddNewUnitCommand $command): void
+    public function __invoke(CreateUnitCommand $command): void
     {
         $unit = Unit::create(
             name: $command->name,

@@ -1,7 +1,7 @@
 {% if shoppingList is null or not shoppingList.hasRecipe(recipe) %}
-    {% set url = path("view_shopping_list_add_recipe", {"id_recipe" : recipe.id}) %}
+    {% set url = path("view_shopping_list_add_recipe", {"id" : recipe.id}) %}
 {% elseif shoppingList.hasRecipe(recipe) %}
-    {% set url = path("view_shopping_list_remove_recipe", {"id_recipe" : recipe.id}) %}
+    {% set url = path("view_shopping_list_remove_recipe", {"id" : recipe.id}) %}
 {% endif %}
 <li
     id="recipe_{{ recipe.id }}"
@@ -10,7 +10,8 @@
         role="button"
         class="flex-fill"
         data-action="btn-ajax"
-        data-url="{{ url }}">
+        data-url="{{ url }}"
+        data-method="post">
         {% if shoppingList is null or not shoppingList.hasRecipe(recipe) %}
             <i data-loader="replace" class="far fa-square me-1"></i>
         {% elseif shoppingList.hasRecipe(recipe) %}
