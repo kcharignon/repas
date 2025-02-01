@@ -168,6 +168,11 @@ final class ShoppingList implements ModelInterface
         return $this->status === Status::SHOPPING;
     }
 
+    public function isCompleted(): bool
+    {
+        return $this->status === Status::COMPLETED;
+    }
+
     /**
      * @throws ShoppingListException
      */

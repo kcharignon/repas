@@ -25,7 +25,13 @@
                 {% endfor %}
                 <span class="flex-fill"></span>
                 {% if shoppingList.isPlanning %}
-                    <span class="badge float-end bg-primary rounded-pill me-1">active</span>
+                    <span class="badge float-end bg-primary rounded-pill me-1">En préparation</span>
+                {% endif %}
+                {% if shoppingList.isShopping %}
+                    <span class="badge float-end bg-success rounded-pill me-1">Courses en cours</span>
+                {% endif %}
+                {% if shoppingList.isCompleted %}
+                    <span class="badge float-end bg-secondary rounded-pill me-1">Terminée</span>
                 {% endif %}
             </a>
         {% endfor %}

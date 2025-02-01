@@ -30,13 +30,15 @@ class AdvanceShoppingListToShoppingController extends AbstractController
         $command = new AdvanceShoppingListToShoppingCommand($id);
 
         $shoppingList = $this->commandBus->dispatch($command);
-        $html = $this->renderView("@Repas/ShoppingList/_switch_locked.html.twig", ["shoppingList" => $shoppingList]);
+        $html = $this->renderView("@Repas/ShoppingList/_shopping_list_actions.html.twig", ["shoppingList" => $shoppingList]);
 
         return new JsonResponse([
             'status' => 'success',
             'views' => [
-                'selector' => '#switchShoppingListActiveGroup',
-                'html' => $html,
+                [
+                    'selector' => '#shoppingListActions',
+                    'html' => $html,
+                ],
             ]
         ]);
     }
