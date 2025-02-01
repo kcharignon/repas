@@ -54,7 +54,7 @@ readonly class ShoppingListIngredientPostgreSQLRepository extends PostgreSQLRepo
     {
         return ShopListIngModel::load([
             'id' => $entity->getId(),
-            'shoppingListId' => $entity->getShoppingListId(),
+            'shopping_list_id' => $entity->getShoppingListId(),
             'ingredient' => $this->ingredientRepository->findOneBySlug($entity->getIngredientSlug()),
             'quantity' => $entity->getQuantity(),
             'unit' => $this->unitRepository->findOneBySlug($entity->getUnitSlug()),

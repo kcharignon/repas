@@ -7,6 +7,7 @@ use Repas\Shared\Domain\Model\ModelInterface;
 use Repas\Shared\Domain\Model\ModelTrait;
 use Repas\Shared\Domain\Tool\Tab;
 use Repas\User\Domain\Model\User;
+use Repas\Repas\Domain\Model\RecipeType as Type;
 
 final class Recipe implements ModelInterface
 {
@@ -17,12 +18,12 @@ final class Recipe implements ModelInterface
      * @param Tab<RecipeRow> $rows
      */
     private function __construct(
-        private string     $id,
-        private string     $name,
-        private int        $serving,
-        private User       $author,
-        private RecipeType $type,
-        private Tab        $rows,
+        private string $id,
+        private string $name,
+        private int    $serving,
+        private User   $author,
+        private Type   $type,
+        private Tab    $rows,
     ) {
     }
 
@@ -46,7 +47,7 @@ final class Recipe implements ModelInterface
         return $this->author;
     }
 
-    public function getType(): RecipeType
+    public function getType(): Type
     {
         return $this->type;
     }
@@ -71,7 +72,7 @@ final class Recipe implements ModelInterface
         return $this;
     }
 
-    public function setType(RecipeType $type): Recipe
+    public function setType(Type $type): Recipe
     {
         $this->type = $type;
         return $this;
@@ -96,17 +97,17 @@ final class Recipe implements ModelInterface
     }
 
     public static function create(
-        string     $id,
-        string     $name,
-        int        $servings,
-        User       $author,
-        RecipeType $recipeType,
-        Tab      $rows,
+        string $id,
+        string $name,
+        int    $servings,
+        User   $author,
+        Type   $recipeType,
+        Tab    $rows,
     ): self {
         return new self($id, $name, $servings, $author, $recipeType, $rows);
     }
 
-    public function isType(RecipeType $type): bool
+    public function isType(Type $type): bool
     {
         return $this->type->isEqual($type);
     }

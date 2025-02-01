@@ -16,10 +16,10 @@ class ShoppingListIngredient
     #[ORM\Column(length: 255)]
     private ?string $shoppingListId = null;
 
-    #[ORM\Column(length: 255)]
+    #[ORM\Column(name:'ingredient', length: 255)]
     private ?string $ingredientSlug = null;
 
-    #[ORM\Column(length: 255)]
+    #[ORM\Column(name: 'unit', length: 255)]
     private ?string $unitSlug = null;
 
     #[ORM\Column]

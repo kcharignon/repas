@@ -21,6 +21,7 @@ final class ShoppingList implements ModelInterface
     /**
      * @param Tab<Meal> $meals
      * @param Tab<ShoppingListIngredient> $ingredients
+     * @param Tab<ShoppingListRow> $rows
      */
     private function __construct(
         private string            $id,
@@ -29,6 +30,7 @@ final class ShoppingList implements ModelInterface
         private bool              $locked,
         private Tab               $meals,
         private Tab               $ingredients,
+        private Tab               $rows,
     ) {
     }
 
@@ -66,6 +68,11 @@ final class ShoppingList implements ModelInterface
     public function getIngredients(): Tab
     {
         return $this->ingredients;
+    }
+
+    public function getRows(): Tab
+    {
+        return new Tab([]);
     }
 
     public static function create(

@@ -40,7 +40,7 @@ final class ShoppingListIngredient implements ModelInterface
     {
         return new self(
             id : $datas['id'],
-            shoppingListId : $datas['shoppingListId'],
+            shoppingListId : $datas['shopping_list_id'],
             ingredient : $datas['ingredient'],
             unit : $datas['unit'],
             quantity : $datas['quantity'],
