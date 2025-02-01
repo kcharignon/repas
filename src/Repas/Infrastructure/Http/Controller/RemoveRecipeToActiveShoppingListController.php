@@ -3,7 +3,7 @@
 namespace Repas\Repas\Infrastructure\Http\Controller;
 
 
-use Repas\Repas\Application\RemoveRecipeToActiveShoppingList\RemoveRecipeToActiveShoppingListCommand;
+use Repas\Repas\Application\RemoveMealFromPlan\removeMealFromPlanCommand;
 use Repas\Repas\Domain\Interface\RecipeRepository;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Shared\Application\Interface\CommandBusInterface;
@@ -27,7 +27,7 @@ class RemoveRecipeToActiveShoppingListController extends AbstractController
         $connectedUser = $this->getUser();
         assert($connectedUser instanceof User);
 
-        $command = new RemoveRecipeToActiveShoppingListCommand(
+        $command = new removeMealFromPlanCommand(
             $connectedUser->getId(),
             $id
         );

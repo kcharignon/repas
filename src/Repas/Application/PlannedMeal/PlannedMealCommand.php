@@ -1,9 +1,9 @@
 <?php
 
-namespace Repas\Repas\Application\RemoveRecipeToActiveShoppingList;
+namespace Repas\Repas\Application\PlannedMeal;
 
 
-readonly class RemoveRecipeToActiveShoppingListCommand
+readonly class PlannedMealCommand
 {
 
     public function __construct(

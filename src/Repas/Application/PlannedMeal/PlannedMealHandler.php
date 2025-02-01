@@ -1,6 +1,6 @@
 <?php
 
-namespace Repas\Repas\Application\RemoveRecipeToActiveShoppingList;
+namespace Repas\Repas\Application\PlannedMeal;
 
 
 use Repas\Repas\Domain\Exception\ShoppingListException;
@@ -12,7 +12,7 @@ use Repas\User\Domain\Interface\UserRepository;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 #[AsMessageHandler]
-readonly class RemoveRecipeToActiveShoppingListHandler
+readonly class PlannedMealHandler
 {
     public function __construct(
         private UserRepository $userRepository,
@@ -25,19 +25,20 @@ readonly class RemoveRecipeToActiveShoppingListHandler
      * @throws ShoppingListException
      * @throws UserException
      */
-    public function __invoke(RemoveRecipeToActiveShoppingListCommand $command): void
+    public function __invoke(PlannedMealCommand $command): void
     {
         $owner = $this->userRepository->findOneById($command->ownerId);
+        $shoppingList = $this->shoppingListRepository->findOnePlanningByOwner($owner);
 
-        $activeShoppingList = $this->shoppingListRepository->findOnePlanningByOwner($owner);
-        if (!$activeShoppingList instanceof ShoppingList) {
+        // Si aucune liste active on ne peut pas ajouter de repas
+        if (!$shoppingList instanceof ShoppingList) {
             throw ShoppingListException::activeShoppingListNotFound();
         }
 
         $recipe = $this->recipeRepository->findOneById($command->recipeId);
 
-        $activeShoppingList->removeMeal($recipe);
-        $this->shoppingListRepository->save($activeShoppingList);
+        $shoppingList->addMeal($recipe);
 
+        $this->shoppingListRepository->save($shoppingList);
     }
 }

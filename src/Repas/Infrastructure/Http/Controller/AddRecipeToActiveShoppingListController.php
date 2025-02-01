@@ -3,7 +3,7 @@
 namespace Repas\Repas\Infrastructure\Http\Controller;
 
 
-use Repas\Repas\Application\AddRecipeToActiveShoppingList\AddRecipeToActiveShoppingListCommand;
+use Repas\Repas\Application\PlannedMeal\PlannedMealCommand;
 use Repas\Repas\Application\CreateShoppingList\CreateShoppingListCommand;
 use Repas\Repas\Domain\Interface\RecipeRepository;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
@@ -46,7 +46,7 @@ class AddRecipeToActiveShoppingListController extends AbstractController
         }
 
         // Ajout de la recette dans la liste active
-        $command = new AddRecipeToActiveShoppingListCommand(
+        $command = new PlannedMealCommand(
             $connectedUser->getId(),
             $id
         );

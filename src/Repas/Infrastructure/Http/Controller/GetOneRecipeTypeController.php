@@ -3,7 +3,6 @@
 namespace Repas\Repas\Infrastructure\Http\Controller;
 
 
-use Repas\Repas\Application\GetAllRecipesByAuthorAndType\GetAllRecipesByAuthorAndTypeQuery;
 use Repas\Repas\Domain\Interface\RecipeRepository;
 use Repas\Repas\Domain\Interface\RecipeTypeRepository;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
