@@ -335,10 +335,11 @@ class TabTest extends TestCase
         $tab = Tab::fromArray([5, '6' => 2, 1, 3]);
 
         // Act
-        $tab->usort(fn(int $a, int $b) => $a <=> $b);
+        $return = $tab->usort(fn(int $a, int $b) => $a <=> $b);
 
         // Assert
         $this->assertEquals([1, 2, 3, 5], $tab->toArray());
+        $this->assertEquals($tab, $return);
     }
 
     public function testCurrent(): void

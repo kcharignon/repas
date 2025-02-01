@@ -10,13 +10,13 @@ use Repas\Tests\Helper\DatabaseTestCase;
 
 class DepartmentRepositoryTest extends DatabaseTestCase
 {
-    private readonly DepartmentRepository $repository;
+    private readonly DepartmentRepository $departmentRepository;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        $this->repository = static::getContainer()->get(DepartmentRepository::class);
+        $this->departmentRepository = static::getContainer()->get(DepartmentRepository::class);
     }
 
     public function testInsertAndUpdateAndFindBySlug(): void
@@ -25,10 +25,10 @@ class DepartmentRepositoryTest extends DatabaseTestCase
         $department = new DepartmentBuilder()->build();
 
         //Act
-        $this->repository->save($department);
+        $this->departmentRepository->save($department);
 
         //Assert
-        $loadedDepartment = $this->repository->findOneBySlug($department->getSlug());
+        $loadedDepartment = $this->departmentRepository->findOneBySlug($department->getSlug());
         $this->assertEquals([
             'slug' => 'maxi-outils',
             'name' => 'Maxi Outils',
@@ -40,10 +40,10 @@ class DepartmentRepositoryTest extends DatabaseTestCase
         $department->setImage('file://images/mega-outils.jpg');
 
         //Act
-        $this->repository->save($department);
+        $this->departmentRepository->save($department);
 
         //Assert
-        $loadedDepartment = $this->repository->findOneBySlug($department->getSlug());
+        $loadedDepartment = $this->departmentRepository->findOneBySlug($department->getSlug());
         $this->assertEquals([
             'slug' => 'maxi-outils',
             'name' => 'Mega Outils',
@@ -57,7 +57,7 @@ class DepartmentRepositoryTest extends DatabaseTestCase
         $this->expectExceptionObject(DepartmentException::notFound());
 
         //Act
-        $this->repository->findOneBySlug('not-found');
+        $this->departmentRepository->findOneBySlug('not-found');
 
     }
 

@@ -9,6 +9,7 @@ use Repas\Repas\Domain\Exception\UnitException;
 use Repas\Repas\Domain\Interface\ConversionRepository;
 use Repas\Repas\Domain\Interface\IngredientRepository;
 use Repas\Repas\Domain\Interface\UnitRepository;
+use Repas\Repas\Domain\Model\Conversion;
 use Repas\Repas\Domain\Model\Conversion as ConversionModel;
 use Repas\Repas\Domain\Model\Ingredient;
 use Repas\Repas\Infrastructure\Entity\Conversion as ConversionEntity;
@@ -38,15 +39,29 @@ readonly class ConversionPostgreSQLRepository extends PostgreSQLRepository imple
         return $conversionEntities->map(fn(ConversionEntity $conversion) => $this->convertEntityToModel($conversion));
     }
 
+    public function save(Conversion $conversion): void
+    {
+        $entity = $this->entityRepository->find($conversion->getId());
+        if ($entity instanceof ConversionEntity) {
+            $entity->updateFromModel($conversion);
+        } else {
+            $entity = ConversionEntity::fromModel($conversion);
+            $this->entityManager->persist($entity);
+        }
+
+        $this->entityManager->flush();
+    }
+
     /**
      * @throws UnitException
      * @throws IngredientException
      */
     private function convertEntityToModel(ConversionEntity $conversion): ConversionModel
     {
+        $ingredient = $conversion->getIngredientSlug() ? $this->ingredientRepository->findOneBySlug($conversion->getIngredientSlug()) : null;
         return ConversionModel::load([
             'id' => $conversion->getId(),
-            'ingredient' => $this->ingredientRepository->findOneBySlug($conversion->getIngredientSlug()),
+            'ingredient' => $ingredient,
             'start_unit' => $this->unitRepository->findOneBySlug($conversion->getStartUnitSlug()),
             'end_unit' => $this->unitRepository->findOneBySlug($conversion->getEndUnitSlug()),
             'coefficient' => $conversion->getCoefficient(),

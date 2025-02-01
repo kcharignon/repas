@@ -87,6 +87,7 @@ final class ShoppingList implements ModelInterface
             locked: false,
             meals: Tab::newEmptyTyped(Meal::class),
             ingredients: Tab::newEmptyTyped(ShoppingListIngredient::class),
+            rows: Tab::newEmptyTyped(ShoppingListRow::class),
         );
     }
 
@@ -99,6 +100,7 @@ final class ShoppingList implements ModelInterface
             locked: $datas['locked'],
             meals: $datas['meals'],
             ingredients: $datas['ingredients'],
+            rows: $datas['rows'],
         );
     }
 
@@ -116,7 +118,10 @@ final class ShoppingList implements ModelInterface
                 }
             }
         }
-        return $this->recipeTypes;
+
+        // Tri des types par ordre de séquence
+        return $this->recipeTypes
+            ->usort(fn(RecipeType $type1, RecipeType $type2) =>  $type1->getOrder() <=> $type2->getOrder());
     }
 
     /**

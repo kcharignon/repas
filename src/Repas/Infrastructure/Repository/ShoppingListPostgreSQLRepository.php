@@ -115,6 +115,7 @@ readonly class ShoppingListPostgreSQLRepository extends PostgreSQLRepository imp
             'locked' => $shoppingListEntity->isLocked(),
             'meals' => $this->mealRepository->findByShoppingListId($shoppingListEntity->getId()),
             'ingredients' => $this->shopListIngredientRepository->findByShoppingListId($shoppingListEntity->getId()),
+            'rows' => Tab::fromArray([]),
         ]);
     }
 }

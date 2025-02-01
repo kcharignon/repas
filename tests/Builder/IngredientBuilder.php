@@ -119,4 +119,15 @@ class IngredientBuilder implements Builder
         return $this;
     }
 
+    public function isMilk(): self
+    {
+        $this->name = 'lait';
+        $this->slug = StringTool::slugify($this->name);
+        $this->image = '';
+        $this->departmentBuilder = new DepartmentBuilder()->isMiscellaneous();
+        $this->defaultCookingUnitBuilder = new UnitBuilder()->isLiter();
+        $this->defaultPurchaseUnitBuilder = new UnitBuilder()->isLiter();
+        return $this;
+    }
+
 }

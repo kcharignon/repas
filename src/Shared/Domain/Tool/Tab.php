@@ -320,9 +320,10 @@ class Tab implements ArrayAccess, IteratorAggregate, Countable
      *
      * @param callable(T, T): int $callback
      */
-    public function usort(callable $callback): true
+    public function usort(callable $callback): self
     {
-        return usort($this->items, $callback);
+        usort($this->items, $callback);
+        return $this;
     }
 
     private function initializeType(mixed $item): void

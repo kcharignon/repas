@@ -8,6 +8,7 @@ use Repas\Repas\Domain\Model\Meal;
 use Repas\Repas\Domain\Model\Recipe;
 use Repas\Repas\Domain\Model\ShoppingList;
 use Repas\Repas\Domain\Model\ShoppingListIngredient;
+use Repas\Repas\Domain\Model\ShoppingListRow;
 use Repas\Shared\Domain\Tool\Tab;
 use Repas\Shared\Domain\Tool\UuidGenerator;
 use Repas\User\Domain\Model\User;
@@ -32,6 +33,7 @@ class ShoppingListBuilder implements Builder
             'locked' => $this->locked,
             'meals' => Tab::newEmptyTyped(Meal::class),
             'ingredients' => Tab::newEmptyTyped(ShoppingListIngredient::class),
+            'rows' => Tab::newEmptyTyped(ShoppingListRow::class),
         ]);
 
         // On ajoute les repas(recette)

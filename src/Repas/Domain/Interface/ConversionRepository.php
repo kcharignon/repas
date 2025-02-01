@@ -13,4 +13,6 @@ interface ConversionRepository
      * @return Tab<Conversion>
      */
     public function findByIngredient(Ingredient $ingredient): Tab;
+
+    public function save(Conversion $conversion): void;
 }

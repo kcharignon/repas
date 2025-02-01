@@ -5,13 +5,14 @@ namespace Repas\Repas\Domain\Model;
 
 use Repas\Shared\Domain\Model\ModelInterface;
 use Repas\Shared\Domain\Model\ModelTrait;
+use Repas\Shared\Domain\Tool\UuidGenerator;
 
 final class Conversion implements ModelInterface
 {
     use ModelTrait;
 
     protected function __construct(
-        private string      $slug,
+        private string      $id,
         private Unit        $startUnit,
         private Unit        $endUnit,
         private float       $coefficient,
@@ -19,9 +20,9 @@ final class Conversion implements ModelInterface
     ) {
     }
 
-    public function getSlug(): string
+    public function getId(): string
     {
-        return $this->slug;
+        return $this->id;
     }
 
     public function getStartUnit(): Unit
@@ -44,14 +45,9 @@ final class Conversion implements ModelInterface
         return $this->ingredient;
     }
 
-    public function getId(): string
-    {
-        return $this->slug;
-    }
-
     public static function load(array $datas): self {
         return new self(
-            slug: $datas['slug'],
+            id: $datas['id'],
             startUnit: $datas['start_unit'],
             endUnit: $datas['end_unit'],
             coefficient: $datas['coefficient'],
@@ -65,9 +61,8 @@ final class Conversion implements ModelInterface
         float $coefficient,
         ?Ingredient $ingredient,
     ): self {
-        $slug = self::generateSlug($ingredient, $startUnit, $endUnit);
         return new self(
-            $slug,
+            UuidGenerator::new(),
             $startUnit,
             $endUnit,
             $coefficient,
@@ -75,8 +70,15 @@ final class Conversion implements ModelInterface
         );
     }
 
-    private static function generateSlug(?Ingredient $ingredient, Unit $startUnit, Unit $endUnit): string
-    {
-        return trim($ingredient?->getSlug() . '-' . $startUnit->getSlug() . '-' . $endUnit->getSlug(), '-');
+    public function update(
+        Unit $startUnit,
+        Unit $endUnit,
+        float $coefficient,
+        ?Ingredient $ingredient = null,
+    ): void {
+        $this->startUnit = $startUnit;
+        $this->endUnit = $endUnit;
+        $this->coefficient = $coefficient;
+        $this->ingredient = $ingredient;
     }
 }

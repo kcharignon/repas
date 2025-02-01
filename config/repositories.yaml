@@ -1,0 +1,29 @@
+# config/repository.yaml
+services:
+    Repas\Repas\Domain\Interface\ConversionRepository:
+        alias: 'Repas\Repas\Infrastructure\Repository\ConversionPostgreSQLRepository'
+        public: true
+
+    Repas\Repas\Domain\Interface\DepartmentRepository:
+        alias: 'Repas\Repas\Infrastructure\Repository\DepartmentPostgreSQLRepository'
+        public: true
+
+    Repas\Repas\Domain\Interface\IngredientRepository:
+        alias: 'Repas\Repas\Infrastructure\Repository\IngredientPostgreSQLRepository'
+        public: true
+
+    Repas\Repas\Domain\Interface\RecipeRepository:
+        alias: 'Repas\Repas\Infrastructure\Repository\RecipePostgreSQLRepository'
+        public: true
+        
+    Repas\Repas\Domain\Interface\RecipeTypeRepository:
+        alias: 'Repas\Repas\Infrastructure\Repository\RecipeTypePostgreSQLRepository'
+        public: true
+    
+    Repas\Repas\Domain\Interface\ShoppingListRepository:
+        alias: 'Repas\Repas\Infrastructure\Repository\ShoppingListPostgreSQLRepository'
+        public: true
+        
+    Repas\Repas\Domain\Interface\UnitRepository:
+        alias: 'Repas\Repas\Infrastructure\Repository\UnitPostgreSQLRepository'
+        public: true

@@ -5,6 +5,7 @@ namespace Repas\Tests\Helper;
 
 use Closure;
 use PHPUnit\Framework\Assert;
+use Repas\Repas\Domain\Model\Conversion;
 use Repas\Repas\Domain\Model\Department;
 use Repas\Repas\Domain\Model\Ingredient;
 use Repas\Repas\Domain\Model\Meal;
@@ -147,5 +148,15 @@ class RepasAssert
         Assert::assertEquals($expected->getCreatedAt()->format(DATE_ATOM), $actual->getCreatedAt()->format(DATE_ATOM));
         self::assertUser($expected->getOwner(), $actual->getOwner());
         self::assertMeals($expected->getMeals(), $actual->getMeals());
+    }
+
+    public static function assertConversion(Conversion $expected, mixed $actual): void
+    {
+        Assert::assertInstanceOf(Conversion::class, $actual);
+        Assert::assertEquals($expected->getId(), $actual->getId());
+        Assert::assertEquals($expected->getCoefficient(), $actual->getCoefficient());
+        self::assertUnit($expected->getStartUnit(), $actual->getStartUnit());
+        self::assertUnit($expected->getEndUnit(), $actual->getEndUnit());
+        self::assertIngredient($expected->getIngredient(), $actual->getIngredient());
     }
 }

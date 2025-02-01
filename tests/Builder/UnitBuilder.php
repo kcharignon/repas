@@ -41,6 +41,14 @@ class UnitBuilder implements Builder
         return $this;
     }
 
+    public function isKilo(): UnitBuilder
+    {
+        $this->name = 'kilo';
+        $this->slug = 'kilo';
+        $this->symbol = 'kg';
+        return $this;
+    }
+
     public function isPiece(): UnitBuilder
     {
         $this->name = 'piece';
@@ -78,6 +86,14 @@ class UnitBuilder implements Builder
         $this->name = 'centilitre';
         $this->slug = 'centilitre';
         $this->symbol = 'cl';
+        return $this;
+    }
+
+    public function isLiter(): self
+    {
+        $this->name = 'litre';
+        $this->slug = 'litre';
+        $this->symbol = 'l';
         return $this;
     }
 }

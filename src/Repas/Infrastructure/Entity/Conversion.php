@@ -51,6 +51,14 @@ class Conversion
         );
     }
 
+    public function updateFromModel(ConversionModel $conversion): void
+    {
+        $this->startUnitSlug = $conversion->getStartUnit()->getSlug();
+        $this->endUnitSlug = $conversion->getEndUnit()->getSlug();
+        $this->coefficient = $conversion->getCoefficient();
+        $this->ingredientSlug = $conversion->getIngredient()->getSlug();
+    }
+
     public function getId(): ?string
     {
         return $this->id;
@@ -103,4 +111,5 @@ class Conversion
 
         return $this;
     }
+
 }
