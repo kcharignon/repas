@@ -238,7 +238,7 @@ final class ShoppingList implements ModelInterface
             throw ShoppingListException::shoppingListShouldBeOnShoppingBeforeRevertToPlanning($this->id, $this->status);
         }
 
-        $this->status = Status::SHOPPING;
+        $this->status = Status::PLANNING;
     }
 
     private function foundRowByIngredientAndUnit(Ingredient $ingredient, Unit $unit): ?ShoppingListIngredient

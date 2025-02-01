@@ -20,10 +20,10 @@ readonly class RevertShoppingListToPlanningHandler
      */
     public function __invoke(RevertShoppingListToPlanningCommand $command): ShoppingList
     {
-        // Recuperation de la liste de course active
+        // S'il existe déjà une liste en cours de planification
         $shoppingListUnlocked = $this->shoppingListRepository->findOnePlanningByOwner($command->owner);
-        // Passe la liste de course à SHOPPING si elle existe
         if ($shoppingListUnlocked instanceof ShoppingList) {
+            // Passe la liste à SHOPPING
             $shoppingListUnlocked->toShopping();
             $this->shoppingListRepository->save($shoppingListUnlocked);
         }
