@@ -8,7 +8,7 @@ use Repas\Shared\Domain\Model\ModelTrait;
 use Repas\Shared\Domain\Tool\Tab;
 use Repas\User\Domain\Model\User;
 
-class Recipe implements ModelInterface
+final class Recipe implements ModelInterface
 {
 
     use ModelTrait;
@@ -83,7 +83,7 @@ class Recipe implements ModelInterface
         return $this;
     }
 
-    public static function load(array $datas): static
+    public static function load(array $datas): self
     {
         return new self(
             id: $datas['id'],

@@ -5,6 +5,7 @@ namespace Repas\Tests\Repas\Repository;
 
 use Repas\Repas\Domain\Interface\RecipeRepository;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
+use Repas\Repas\Domain\Model\RecipeRow;
 use Repas\Repas\Domain\Model\ShoppingList;
 use Repas\Shared\Domain\Tool\Tab;
 use Repas\Tests\Builder\ShoppingListBuilder;
@@ -34,11 +35,14 @@ class ShoppingListRepositoryTest extends DatabaseTestCase
         $user = $this->userRepository->findOneByEmail('alexiane.sichi@gmail.com');
         // Récupère toutes les recettes de l'utilisateur
         $recipes = $this->recipeRepository->findByAuthor($user);
-        $shoppingListBuilder = new ShoppingListBuilder()
+        $firstRecipe = $recipes->shift();
+        dump($firstRecipe->getRows()->map(fn(RecipeRow $row) => sprintf("%s : %d %s", $row->getIngredient()->getSlug(), (int)$row->getQuantity(), $row->getUnit()->getSymbol())));
+        $shoppingList = new ShoppingListBuilder()
             ->withOwner($user)
-            ->addRecipe($recipes->shift())
+            ->unLocked()
+            ->addRecipe($firstRecipe)
+            ->build()
         ;
-        $shoppingList = $shoppingListBuilder->build();
 
         // Act
         $this->shoppingListRepository->save($shoppingList);
@@ -48,7 +52,9 @@ class ShoppingListRepositoryTest extends DatabaseTestCase
         RepasAssert::assertShoppingList($shoppingList, $actual);
 
         // Arrange
-        $shoppingListBuilder->addRecipe($recipes->shift());
+        $secondRecipe = $recipes->shift();
+        dump($secondRecipe->getRows()->map(fn(RecipeRow $row) => sprintf("%s : %d %s", $row->getIngredient()->getSlug(), (int)$row->getQuantity(), $row->getUnit()->getSymbol())));
+        $shoppingList->addMeal($secondRecipe);
 
         // Act
         $this->shoppingListRepository->save($shoppingList);
@@ -56,6 +62,18 @@ class ShoppingListRepositoryTest extends DatabaseTestCase
         //Assert
         $actual = $this->shoppingListRepository->findOneById($shoppingList->getId());
         RepasAssert::assertShoppingList($shoppingList, $actual);
+
+        // Arrange
+        $shoppingList->removeMeal($firstRecipe);
+
+        // Act
+        $this->shoppingListRepository->save($shoppingList);
+
+        // Assert
+        $actual = $this->shoppingListRepository->findOneById($shoppingList->getId());
+        RepasAssert::assertShoppingList($shoppingList, $actual);
+
+
     }
 
     public function testFindByOwner(): void

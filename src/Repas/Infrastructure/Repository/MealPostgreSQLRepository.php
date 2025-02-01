@@ -51,8 +51,8 @@ readonly class MealPostgreSQLRepository extends PostgreSQLRepository
      */
     public function findByShoppingListId(string $shoppingListId): Tab
     {
-        $meals = new Tab($this->entityRepository->findBy(['shoppingListId' => $shoppingListId]));
-        return $meals->map(fn(MealEntity $meal) => $this->convertEntityToModel($meal));
+        return new Tab($this->entityRepository->findBy(['shoppingListId' => $shoppingListId]))
+            ->map(fn(MealEntity $meal) => $this->convertEntityToModel($meal));
     }
 
     private function convertEntityToModel(MealEntity $meal): Meal

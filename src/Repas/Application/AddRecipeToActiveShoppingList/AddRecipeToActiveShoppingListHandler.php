@@ -37,7 +37,7 @@ readonly class AddRecipeToActiveShoppingListHandler
 
         $recipe = $this->recipeRepository->findOneById($command->recipeId);
 
-        $shoppingList->addRecipe($recipe);
+        $shoppingList->addMeal($recipe);
 
         $this->shoppingListRepository->save($shoppingList);
     }

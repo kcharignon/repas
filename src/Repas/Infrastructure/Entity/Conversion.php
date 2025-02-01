@@ -11,12 +11,12 @@ class Conversion
 {
     #[ORM\Id]
     #[ORM\Column(type: 'string', length: 767, unique: true)]
-    private ?string $slug = null;
+    private ?string $id = null;
 
-    #[ORM\JoinColumn(name: 'start_unit', nullable: false)]
+    #[ORM\Column(name: 'start_unit', nullable: false)]
     private ?string $startUnitSlug = null;
 
-    #[ORM\JoinColumn(name: 'end_unit', nullable: false)]
+    #[ORM\Column(name: 'end_unit', nullable: false)]
     private ?string $endUnitSlug = null;
 
     #[ORM\Column]
@@ -32,7 +32,7 @@ class Conversion
         ?float $coefficient,
         ?string $ingredientSlug,
     ) {
-        $this->slug = $id;
+        $this->id = $id;
         $this->startUnitSlug = $startUnitSlug;
         $this->endUnitSlug = $endUnitSlug;
         $this->coefficient = $coefficient;
@@ -51,9 +51,9 @@ class Conversion
         );
     }
 
-    public function getSlug(): ?string
+    public function getId(): ?string
     {
-        return $this->slug;
+        return $this->id;
     }
 
     public function getStartUnitSlug(): ?string

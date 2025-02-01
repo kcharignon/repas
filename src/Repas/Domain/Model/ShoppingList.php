@@ -11,7 +11,7 @@ use Repas\Shared\Domain\Tool\Tab;
 use Repas\Shared\Domain\Tool\UuidGenerator;
 use Repas\User\Domain\Model\User;
 
-class ShoppingList implements ModelInterface
+final class ShoppingList implements ModelInterface
 {
     use ModelTrait;
 
@@ -20,6 +20,7 @@ class ShoppingList implements ModelInterface
 
     /**
      * @param Tab<Meal> $meals
+     * @param Tab<ShoppingListIngredient> $ingredients
      */
     private function __construct(
         private string            $id,
@@ -27,6 +28,7 @@ class ShoppingList implements ModelInterface
         private DateTimeImmutable $createdAt,
         private bool              $locked,
         private Tab               $meals,
+        private Tab               $ingredients,
     ) {
     }
 
@@ -50,9 +52,20 @@ class ShoppingList implements ModelInterface
         return $this->locked;
     }
 
+    /**
+     * @return Tab<Meal>
+     */
     public function getMeals(): Tab
     {
         return $this->meals;
+    }
+
+    /**
+     * @return Tab<ShoppingListIngredient>
+     */
+    public function getIngredients(): Tab
+    {
+        return $this->ingredients;
     }
 
     public static function create(
@@ -66,17 +79,19 @@ class ShoppingList implements ModelInterface
             createdAt: $createdAt,
             locked: false,
             meals: Tab::newEmptyTyped(Meal::class),
+            ingredients: Tab::newEmptyTyped(ShoppingListIngredient::class),
         );
     }
 
-    public static function load(array $datas): static
+    public static function load(array $datas): self
     {
-        return new static(
+        return new self(
             id: $datas['id'],
             owner: $datas['owner'],
             createdAt: $datas['created_at'],
             locked: $datas['locked'],
             meals: $datas['meals'],
+            ingredients: $datas['ingredients'],
         );
     }
 
@@ -132,11 +147,6 @@ class ShoppingList implements ModelInterface
     }
 
 
-    public function getShoppingListRow(): Tab
-    {
-        return Tab::fromArray([]);
-    }
-
     public function lock(): void
     {
         $this->locked = true;
@@ -155,7 +165,7 @@ class ShoppingList implements ModelInterface
     /**
      * @throws ShoppingListException
      */
-    public function addRecipe(Recipe $recipe): void
+    public function addMeal(Recipe $recipe): void
     {
         if ($this->locked) {
             throw ShoppingListException::cantAddRecipeInLockedList($this->id);
@@ -167,15 +177,33 @@ class ShoppingList implements ModelInterface
         }
 
         // Ajoute à la liste des recettes
-        $this->meals->add(Meal::create(
-            id: UuidGenerator::new(),
+        $this->meals[] = Meal::create(
             shoppingListId: $this->id,
             recipe: $recipe,
             servings: $recipe->getServing(),
-        ));
+        );
 
-        // Ajoutes les ingredients de la recette
-        // TODO: implement this part
+        // Ajoutes les ingredients de la recette à la liste de course
+        foreach ($recipe->getRows() as $recipeRow) {
+            $callback = fn(ShoppingListIngredient $spi) => $spi->hasIngredientInUnit($recipeRow->getIngredient(), $recipeRow->getUnit());
+            if (($shoppingListIngredient = $this->ingredients->find($callback)) !== null) {
+                // Si un couple ingredient-unité existe, on les additionne
+                $shoppingListIngredient->addQuantity($recipeRow->getQuantity());
+            } else {
+                // Ajoute un nouveau couple ingredient-unité
+                $this->ingredients[] = ShoppingListIngredient::create(
+                    shoppingListId: $this->id,
+                    ingredient: $recipeRow->getIngredient(),
+                    unit: $recipeRow->getUnit(),
+                    quantity: $recipeRow->getQuantity(),
+                );
+            }
+        }
+    }
+
+    private function foundRowByIngredientAndUnit(Ingredient $ingredient, Unit $unit): ?ShoppingListIngredient
+    {
+        return $this->ingredients->find(fn(ShoppingListIngredient $row) => $row->hasIngredientInUnit($ingredient, $unit));
     }
 
     /**
@@ -197,6 +225,17 @@ class ShoppingList implements ModelInterface
         unset($this->meals[$mealKey]);
 
         // Supprime les ingredients de la recette
-        // TODO: implement this part
+        foreach ($recipe->getRows() as $recipeRow) {
+            $callback = fn(ShoppingListIngredient $spi) => $spi->hasIngredientInUnit($recipeRow->getIngredient(), $recipeRow->getUnit());
+            if (($listIngredientKey = $this->ingredients->findKey($callback)) !== null) {
+                if ($this->ingredients[$listIngredientKey]->getQuantity() === $recipeRow->getQuantity()) {
+                    // Si la quantité est égale, alors on supprime l'ingrédient
+                    unset($this->ingredients[$listIngredientKey]);
+                } else {
+                    // Si la quantité est supérieur, alors on soustrait la quantité
+                    $this->ingredients[$listIngredientKey]->subtractQuantity($recipeRow->getQuantity());
+                }
+            }
+        }
     }
 }

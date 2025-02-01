@@ -9,20 +9,23 @@ use Repas\Repas\Domain\Interface\MealRepository;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Repas\Domain\Model\Meal as MealModel;
 use Repas\Repas\Domain\Model\ShoppingList;
+use Repas\Repas\Domain\Model\ShoppingListIngredient;
 use Repas\Repas\Infrastructure\Entity\ShoppingList as ShoppingListEntity;
 use Repas\Shared\Domain\Exception\SharedException;
 use Repas\Shared\Domain\Tool\Tab;
 use Repas\Shared\Infrastructure\Repository\ModelCache;
+use Repas\User\Domain\Exception\UserException;
 use Repas\User\Domain\Interface\UserRepository;
 use Repas\User\Domain\Model\User;
 
 readonly class ShoppingListPostgreSQLRepository extends PostgreSQLRepository implements ShoppingListRepository
 {
     public function __construct(
-        ManagerRegistry $managerRegistry,
-        private ModelCache $modelCache,
-        private UserRepository $userRepository,
-        private MealPostgreSQLRepository $mealRepository,
+        ManagerRegistry                                    $managerRegistry,
+        private ModelCache                                 $modelCache,
+        private UserRepository                             $userRepository,
+        private MealPostgreSQLRepository                   $mealRepository,
+        private ShoppingListIngredientPostgreSQLRepository $shopListIngredientRepository,
     ) {
         parent::__construct($managerRegistry, ShoppingListEntity::class);
     }
@@ -38,6 +41,7 @@ readonly class ShoppingListPostgreSQLRepository extends PostgreSQLRepository imp
 
     /**
      * @throws ShoppingListException
+     * @throws UserException
      */
     public function findOneById(string $id): ShoppingList
     {
@@ -59,20 +63,34 @@ readonly class ShoppingListPostgreSQLRepository extends PostgreSQLRepository imp
             $this->entityManager->persist($shoppingListEntity);
         } else {
             $shoppingListEntity->updateFromModel($shoppingList);
-            // On supprime les anciens repas
+            // Suppression des anciens repas
             $this->mealRepository->deleteByShoppingListIdExceptIds(
                 $shoppingListEntity->getId(),
                 $shoppingList->getMeals()->map(fn(MealModel $meal) => $meal->getId())
             );
+
+            // Suppression des anciens ingredients
+            $this->shopListIngredientRepository->deleteByShoppingListIdExceptIds(
+                $shoppingListEntity->getId(),
+                $shoppingList->getIngredients()->map(fn(ShoppingListIngredient $ingredient) => $ingredient->getId())
+            );
         }
-        // On sauvegarde les nouveaux repas et modifie les autres
+        // Ajout des nouveaux repas et mise à jour des autres
         foreach ($shoppingList->getMeals() as $meal) {
             $this->mealRepository->save($meal);
         }
+        // Ajout des nouveaux ingredients et mise à jour des autres
+        foreach ($shoppingList->getIngredients() as $shopListIngredient) {
+            $this->shopListIngredientRepository->save($shopListIngredient);
+        }
+
         $this->entityManager->flush();
         $this->modelCache->setModelCache($shoppingList);
     }
 
+    /**
+     * @throws UserException
+     */
     public function findOneActiveByOwner(User $owner): ?ShoppingList
     {
         if (($shoppingListEntity = $this->entityRepository->findOneBy(['ownerId' => $owner->getId(), 'locked' => false])) !== null)
@@ -85,6 +103,9 @@ readonly class ShoppingListPostgreSQLRepository extends PostgreSQLRepository imp
         return null;
     }
 
+    /**
+     * @throws UserException
+     */
     public function convertEntityToModel(ShoppingListEntity $shoppingListEntity): ShoppingList
     {
         return ShoppingList::load([
@@ -93,6 +114,7 @@ readonly class ShoppingListPostgreSQLRepository extends PostgreSQLRepository imp
             'created_at' => $shoppingListEntity->getCreatedAt(),
             'locked' => $shoppingListEntity->isLocked(),
             'meals' => $this->mealRepository->findByShoppingListId($shoppingListEntity->getId()),
+            'ingredients' => $this->shopListIngredientRepository->findByShoppingListId($shoppingListEntity->getId()),
         ]);
     }
 }

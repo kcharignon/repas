@@ -5,7 +5,7 @@ namespace Repas\Repas\Domain\Model;
 use Repas\Shared\Domain\Model\ModelInterface;
 use Repas\Shared\Domain\Model\ModelTrait;
 
-class RecipeRow implements ModelInterface
+final class RecipeRow implements ModelInterface
 {
     use ModelTrait;
 
@@ -63,7 +63,7 @@ class RecipeRow implements ModelInterface
         return $this->recipeId;
     }
 
-    public static function load(array $datas): static
+    public static function load(array $datas): self
     {
         return new self(
             id: $datas['id'],

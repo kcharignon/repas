@@ -30,7 +30,7 @@ readonly class UnitPostgreSQLRepository extends PostgreSQLRepository implements 
 
         // On recupere l'entity
         $unitEntity = $this->entityRepository->find($unit->getSlug());
-        if ($unitEntity) {
+        if ($unitEntity instanceof UnitEntity) {
             $this->updateEntity($unitEntity, $unit);
         } else {
             $unitEntity = UnitEntity::fromModel($unit);
@@ -63,7 +63,7 @@ readonly class UnitPostgreSQLRepository extends PostgreSQLRepository implements 
             return $model;
         }
 
-        throw UnitException::notFound();
+        throw UnitException::notFound($slug);
     }
 
     public function delete(UnitModel $unit): void

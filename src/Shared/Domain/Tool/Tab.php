@@ -132,6 +132,7 @@ class Tab implements ArrayAccess, IteratorAggregate, Countable
 
     /**
      * Slice the Tab.
+     * @see array_slice()
      *
      * @param int $offset
      * @param int|null $length
@@ -286,11 +287,23 @@ class Tab implements ArrayAccess, IteratorAggregate, Countable
         }
     }
 
+    /**
+     * Returns the type of elements stored in the collection.
+     *
+     * @return string The type of elements, or "mixed" if not set.
+     */
     public function getType(): string
     {
         return $this->type ?? 'mixed';
     }
 
+    /**
+     * @see array_merge()
+     *
+     * @param Tab<T> ...$tabs The Tabs to merge.
+     * @return Tab<T>
+     * @throws InvalidArgumentException If the types do not match.
+     */
     public function merge(Tab ...$tabs): Tab
     {
         foreach ($tabs as $tab) {
@@ -302,9 +315,14 @@ class Tab implements ArrayAccess, IteratorAggregate, Countable
         return static::fromArray(array_merge($this->items, ...$arrayTabs));
     }
 
-    public function usort(callable $callback): void
+    /**
+     * @see usort()
+     *
+     * @param callable(T, T): int $callback
+     */
+    public function usort(callable $callback): true
     {
-        usort($this->items, $callback);
+        return usort($this->items, $callback);
     }
 
     private function initializeType(mixed $item): void
@@ -313,6 +331,8 @@ class Tab implements ArrayAccess, IteratorAggregate, Countable
     }
 
     /**
+     * @see array_shift()
+     *
      * @return T|null
      */
     public function shift(): mixed
@@ -321,6 +341,8 @@ class Tab implements ArrayAccess, IteratorAggregate, Countable
     }
 
     /**
+     * @see array_unique()
+     *
      * @param int $flags :
      *  - `SORT_REGULAR` (0) : Compare items normally (don't change types).
      *  - `SORT_NUMERIC` (1) : Compare items numerically.
@@ -335,6 +357,8 @@ class Tab implements ArrayAccess, IteratorAggregate, Countable
     }
 
     /**
+     *
+     * @see array_reduce()
      * @param callable(T, mixed): mixed $callback
      * @param $initial
      * @return mixed

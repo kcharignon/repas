@@ -7,7 +7,7 @@ use Repas\Shared\Domain\Model\ModelInterface;
 use Repas\Shared\Domain\Model\ModelTrait;
 use Repas\Shared\Domain\Tool\StringTool;
 
-class Ingredient implements ModelInterface
+final class Ingredient implements ModelInterface
 {
     use ModelTrait;
 
@@ -104,7 +104,7 @@ class Ingredient implements ModelInterface
         );
     }
 
-    public static function load(array $datas): static
+    public static function load(array $datas): self
     {
         return new Ingredient(
             slug: $datas['slug'],

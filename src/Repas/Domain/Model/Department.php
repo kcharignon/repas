@@ -7,7 +7,7 @@ use Repas\Shared\Domain\Model\ModelInterface;
 use Repas\Shared\Domain\Model\ModelTrait;
 use Repas\Shared\Domain\Tool\StringTool;
 
-class Department implements ModelInterface
+final class Department implements ModelInterface
 {
     use ModelTrait;
 
@@ -48,7 +48,7 @@ class Department implements ModelInterface
         $this->image = $image;
     }
 
-    public static function load(array $datas): static
+    public static function load(array $datas): self
     {
         return new self(
             slug: $datas['slug'],

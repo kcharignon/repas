@@ -6,7 +6,7 @@ namespace Repas\Repas\Domain\Model;
 use Repas\Shared\Domain\Model\ModelInterface;
 use Repas\Shared\Domain\Model\ModelTrait;
 
-class Conversion implements ModelInterface
+final class Conversion implements ModelInterface
 {
     use ModelTrait;
 
@@ -49,8 +49,8 @@ class Conversion implements ModelInterface
         return $this->slug;
     }
 
-    public static function load(array $datas): static {
-        return new static(
+    public static function load(array $datas): self {
+        return new self(
             slug: $datas['slug'],
             startUnit: $datas['start_unit'],
             endUnit: $datas['end_unit'],
@@ -64,9 +64,9 @@ class Conversion implements ModelInterface
         Unit $endUnit,
         float $coefficient,
         ?Ingredient $ingredient,
-    ): static {
+    ): self {
         $slug = self::generateSlug($ingredient, $startUnit, $endUnit);
-        return new static(
+        return new self(
             $slug,
             $startUnit,
             $endUnit,

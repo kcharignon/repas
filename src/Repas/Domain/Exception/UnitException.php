@@ -7,8 +7,8 @@ use Repas\Shared\Domain\Exception\DomainException;
 
 class UnitException extends DomainException
 {
-    public static function notFound(): static
+    public static function notFound(string $slug): static
     {
-        return new static("UNIT_NOT_FOUND", 404);
+        return new static(sprintf("Unit %s not found.", $slug), 404);
     }
 }

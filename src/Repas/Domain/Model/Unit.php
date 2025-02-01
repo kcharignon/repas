@@ -7,7 +7,7 @@ use Repas\Shared\Domain\Model\ModelInterface;
 use Repas\Shared\Domain\Model\ModelTrait;
 use Repas\Shared\Domain\Tool\StringTool;
 
-class Unit implements ModelInterface
+final class Unit implements ModelInterface
 {
     use ModelTrait;
 
@@ -50,7 +50,7 @@ class Unit implements ModelInterface
         );
     }
 
-    public static function load(array $datas): static
+    public static function load(array $datas): self
     {
         return new self(
             $datas['slug'],

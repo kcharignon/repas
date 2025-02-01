@@ -35,14 +35,14 @@ class UnitRepositoryTest extends DatabaseTestCase
         $this->unitRepository->delete($unit);
 
         //Assert
-        $this->expectExceptionObject(UnitException::notFound());
+        $this->expectExceptionObject(UnitException::notFound($unit->getSlug()));
         $this->unitRepository->findOneBySlug($unit->getSlug());
     }
 
     public function testLoadNonExistent(): void
     {
         //Assert
-        $this->expectExceptionObject(UnitException::notFound());
+        $this->expectExceptionObject(UnitException::notFound("non-existent"));
 
         //Act
         $this->unitRepository->findOneBySlug("non-existent");

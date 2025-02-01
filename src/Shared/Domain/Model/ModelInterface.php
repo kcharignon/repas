@@ -7,7 +7,7 @@ interface ModelInterface
 {
     public function getId(): string;
 
-    public static function load(array $datas): static;
+    public static function load(array $datas): ModelInterface;
 
     public function toArray(): array;
 }
