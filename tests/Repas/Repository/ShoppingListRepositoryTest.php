@@ -7,6 +7,7 @@ use Repas\Repas\Domain\Interface\RecipeRepository;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Repas\Domain\Model\RecipeRow;
 use Repas\Repas\Domain\Model\ShoppingList;
+use Repas\Repas\Domain\Model\ShoppingListStatus;
 use Repas\Shared\Domain\Tool\Tab;
 use Repas\Tests\Builder\ShoppingListBuilder;
 use Repas\Tests\Helper\DatabaseTestCase;
@@ -36,10 +37,8 @@ class ShoppingListRepositoryTest extends DatabaseTestCase
         // Récupère toutes les recettes de l'utilisateur
         $recipes = $this->recipeRepository->findByAuthor($user);
         $firstRecipe = $recipes->shift();
-        dump($firstRecipe->getRows()->map(fn(RecipeRow $row) => sprintf("%s : %d %s", $row->getIngredient()->getSlug(), (int)$row->getQuantity(), $row->getUnit()->getSymbol())));
         $shoppingList = new ShoppingListBuilder()
             ->withOwner($user)
-            ->unLocked()
             ->addRecipe($firstRecipe)
             ->build()
         ;
@@ -53,7 +52,6 @@ class ShoppingListRepositoryTest extends DatabaseTestCase
 
         // Arrange
         $secondRecipe = $recipes->shift();
-        dump($secondRecipe->getRows()->map(fn(RecipeRow $row) => sprintf("%s : %d %s", $row->getIngredient()->getSlug(), (int)$row->getQuantity(), $row->getUnit()->getSymbol())));
         $shoppingList->addMeal($secondRecipe);
 
         // Act
@@ -85,24 +83,24 @@ class ShoppingListRepositoryTest extends DatabaseTestCase
         $shoppingLists = $this->shoppingListRepository->findByOwner($user);
 
         // Assert
-        RepasAssert::assertTab(Tab::newEmptyTyped(ShoppingList::class), $shoppingLists);
+        RepasAssert::assertTabType(Tab::newEmptyTyped(ShoppingList::class), $shoppingLists);
         $this->assertCount(4, $shoppingLists);
         foreach ($shoppingLists as $shoppingList) {
             RepasAssert::assertUser($shoppingList->getOwner(), $user);
         }
     }
 
-    public function testFindOneActiveByOwner(): void
+    public function testFindOnePlanningByOwner(): void
     {
         // Arrange
         $user = $this->userRepository->findOneByEmail('alexiane.sichi@gmail.com');
 
         // Act
-        $shoppingList = $this->shoppingListRepository->findOneActiveByOwner($user);
+        $shoppingList = $this->shoppingListRepository->findOnePlanningByOwner($user);
 
         // Assert
         $this->assertInstanceOf(ShoppingList::class, $shoppingList);
-        $this->assertFalse($shoppingList->isLocked());
+        $this->assertEquals(ShoppingListStatus::PLANNING, $shoppingList->getStatus());
         RepasAssert::assertUser($shoppingList->getOwner(), $user);
     }
 }

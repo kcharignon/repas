@@ -10,6 +10,7 @@ use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Repas\Domain\Model\Meal as MealModel;
 use Repas\Repas\Domain\Model\ShoppingList;
 use Repas\Repas\Domain\Model\ShoppingListIngredient;
+use Repas\Repas\Domain\Model\ShoppingListStatus;
 use Repas\Repas\Infrastructure\Entity\ShoppingList as ShoppingListEntity;
 use Repas\Shared\Domain\Exception\SharedException;
 use Repas\Shared\Domain\Tool\Tab;
@@ -58,7 +59,7 @@ readonly class ShoppingListPostgreSQLRepository extends PostgreSQLRepository imp
     {
         $this->modelCache->removeModelCache($shoppingList);
         $shoppingListEntity = $this->entityRepository->find($shoppingList->getId());
-        if (null === $shoppingListEntity) {
+        if (!$shoppingListEntity instanceof ShoppingListEntity) {
             $shoppingListEntity = ShoppingListEntity::fromModel($shoppingList);
             $this->entityManager->persist($shoppingListEntity);
         } else {
@@ -91,9 +92,9 @@ readonly class ShoppingListPostgreSQLRepository extends PostgreSQLRepository imp
     /**
      * @throws UserException
      */
-    public function findOneActiveByOwner(User $owner): ?ShoppingList
+    public function findOnePlanningByOwner(User $owner): ?ShoppingList
     {
-        if (($shoppingListEntity = $this->entityRepository->findOneBy(['ownerId' => $owner->getId(), 'locked' => false])) !== null)
+        if (($shoppingListEntity = $this->entityRepository->findOneBy(['ownerId' => $owner->getId(), 'status' => ShoppingListStatus::PLANNING])) !== null)
         {
             $shoppingListModel = $this->convertEntityToModel($shoppingListEntity);
             $this->modelCache->setModelCache($shoppingListModel);
@@ -112,7 +113,7 @@ readonly class ShoppingListPostgreSQLRepository extends PostgreSQLRepository imp
             'id' => $shoppingListEntity->getId(),
             'owner' => $this->userRepository->findOneById($shoppingListEntity->getOwnerId()),
             'created_at' => $shoppingListEntity->getCreatedAt(),
-            'locked' => $shoppingListEntity->isLocked(),
+            'status' => $shoppingListEntity->getStatus(),
             'meals' => $this->mealRepository->findByShoppingListId($shoppingListEntity->getId()),
             'ingredients' => $this->shopListIngredientRepository->findByShoppingListId($shoppingListEntity->getId()),
             'rows' => Tab::fromArray([]),

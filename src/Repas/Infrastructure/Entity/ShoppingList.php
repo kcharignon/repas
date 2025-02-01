@@ -5,6 +5,7 @@ namespace Repas\Repas\Infrastructure\Entity;
 use DateTimeImmutable;
 use Doctrine\ORM\Mapping as ORM;
 use Repas\Repas\Domain\Model\ShoppingList as ShoppingListModel;
+use Repas\Repas\Domain\Model\ShoppingListStatus as Status;
 
 #[ORM\Entity]
 #[ORM\Table(name: 'shopping_list')]
@@ -20,19 +21,19 @@ class ShoppingList
     #[ORM\Column(name: 'created_at')]
     private ?DateTimeImmutable $createdAt = null;
 
-    #[ORM\Column]
-    private ?bool $locked = null;
+    #[ORM\Column(type: 'string', enumType: Status::class)]
+    private ?Status $status = null;
 
     public function __construct(
         string            $id,
         string            $ownerId,
         DateTimeImmutable $createdAt,
-        bool              $locked,
+        Status            $status,
     ) {
         $this->id = $id;
         $this->ownerId = $ownerId;
         $this->createdAt = $createdAt;
-        $this->locked = $locked;
+        $this->status = $status;
     }
 
     public static function fromModel(ShoppingListModel $shoppingListModel): static
@@ -41,13 +42,13 @@ class ShoppingList
             id: $shoppingListModel->getId(),
             ownerId: $shoppingListModel->getOwner()->getId(),
             createdAt: $shoppingListModel->getCreatedAt(),
-            locked: $shoppingListModel->isLocked(),
+            status: $shoppingListModel->getStatus(),
         );
     }
 
     public function updateFromModel(ShoppingListModel $shoppingListModel): void
     {
-        $this->locked = $shoppingListModel->isLocked();
+        $this->status = $shoppingListModel->getStatus();
     }
 
     public function getId(): ?string
@@ -67,15 +68,14 @@ class ShoppingList
         return $this;
     }
 
-    public function isLocked(): ?bool
+    public function getStatus(): ?Status
     {
-        return $this->locked;
+        return $this->status;
     }
 
-    public function setLocked(bool $locked): static
+    public function setStatus(?Status $status): ShoppingList
     {
-        $this->locked = $locked;
-
+        $this->status = $status;
         return $this;
     }
 

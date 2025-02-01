@@ -8,8 +8,8 @@ use Repas\Repas\Domain\Exception\ShoppingListException;
 use Repas\Shared\Domain\Model\ModelInterface;
 use Repas\Shared\Domain\Model\ModelTrait;
 use Repas\Shared\Domain\Tool\Tab;
-use Repas\Shared\Domain\Tool\UuidGenerator;
 use Repas\User\Domain\Model\User;
+use Repas\Repas\Domain\Model\ShoppingListStatus as Status;
 
 final class ShoppingList implements ModelInterface
 {
@@ -27,7 +27,7 @@ final class ShoppingList implements ModelInterface
         private string            $id,
         private User              $owner,
         private DateTimeImmutable $createdAt,
-        private bool              $locked,
+        private Status            $status,
         private Tab               $meals,
         private Tab               $ingredients,
         private Tab               $rows,
@@ -47,11 +47,6 @@ final class ShoppingList implements ModelInterface
     public function getCreatedAt(): DateTimeImmutable
     {
         return $this->createdAt;
-    }
-
-    public function isLocked(): bool
-    {
-        return $this->locked;
     }
 
     /**
@@ -84,7 +79,7 @@ final class ShoppingList implements ModelInterface
             id: $id,
             owner: $owner,
             createdAt: $createdAt,
-            locked: false,
+            status: Status::PLANNING,
             meals: Tab::newEmptyTyped(Meal::class),
             ingredients: Tab::newEmptyTyped(ShoppingListIngredient::class),
             rows: Tab::newEmptyTyped(ShoppingListRow::class),
@@ -97,7 +92,7 @@ final class ShoppingList implements ModelInterface
             id: $datas['id'],
             owner: $datas['owner'],
             createdAt: $datas['created_at'],
-            locked: $datas['locked'],
+            status: $datas['status'],
             meals: $datas['meals'],
             ingredients: $datas['ingredients'],
             rows: $datas['rows'],
@@ -158,20 +153,19 @@ final class ShoppingList implements ModelInterface
         return $this->meals->filter(fn(Meal $meal) => $meal->typeIs($type))->count();
     }
 
-
-    public function lock(): void
-    {
-        $this->locked = true;
-    }
-
-    public function unlock(): void
-    {
-        $this->locked = false;
-    }
-
     public function hasRecipe(Recipe $recipe): bool
     {
         return $this->meals->find(fn(Meal $meal) => $meal->hasRecipe($recipe)) !== null;
+    }
+
+    public function isPlanning(): bool
+    {
+        return $this->status === Status::PLANNING;
+    }
+
+    public function isShopping(): bool
+    {
+        return $this->status === Status::SHOPPING;
     }
 
     /**
@@ -179,8 +173,8 @@ final class ShoppingList implements ModelInterface
      */
     public function addMeal(Recipe $recipe): void
     {
-        if ($this->locked) {
-            throw ShoppingListException::cantAddRecipeInLockedList($this->id);
+        if (!$this->isPlanning()) {
+            throw ShoppingListException::cannotAddRecipeToShoppingListUnlessPlanning($this->id);
         }
 
         // Impossible de mettre la même recette deux fois dans une liste
@@ -213,6 +207,40 @@ final class ShoppingList implements ModelInterface
         }
     }
 
+    public function setStatus(?Status $status): void
+    {
+        $this->status = $status;
+    }
+
+    public function getStatus(): Status
+    {
+        return $this->status;
+    }
+
+    /**
+     * @throws ShoppingListException
+     */
+    public function toShopping(): void
+    {
+        if (!$this->isPlanning()) {
+            throw ShoppingListException::shoppingListShouldBeOnPlanningBeforeShopping($this->id, $this->status);
+        }
+
+        $this->status = Status::SHOPPING;
+    }
+
+    /**
+     * @throws ShoppingListException
+     */
+    public function toPlanning(): void
+    {
+        if (!$this->isShopping()) {
+            throw ShoppingListException::shoppingListShouldBeOnShoppingBeforeRevertToPlanning($this->id, $this->status);
+        }
+
+        $this->status = Status::SHOPPING;
+    }
+
     private function foundRowByIngredientAndUnit(Ingredient $ingredient, Unit $unit): ?ShoppingListIngredient
     {
         return $this->ingredients->find(fn(ShoppingListIngredient $row) => $row->hasIngredientInUnit($ingredient, $unit));
@@ -223,8 +251,8 @@ final class ShoppingList implements ModelInterface
      */
     public function removeMeal(Recipe $recipe): void
     {
-        if ($this->locked) {
-            throw ShoppingListException::cantRemoveRecipeInLockedList($this->id);
+        if (!$this->isPlanning()) {
+            throw ShoppingListException::cannotRemoveRecipeToShoppingListUnlessPlanning($this->id);
         }
 
         $mealKey = $this->meals->findKey(fn(Meal $meal) => $meal->hasRecipe($recipe));

@@ -1,11 +1,11 @@
 <?php
 
-namespace Repas\Repas\Application\UnlockShoppingList;
+namespace Repas\Repas\Application\RevertShoppingListToPlanning;
 
 
 use Repas\User\Domain\Model\User;
 
-readonly class UnlockShoppingListCommand
+readonly class RevertShoppingListToPlanningCommand
 {
 
     public function __construct(

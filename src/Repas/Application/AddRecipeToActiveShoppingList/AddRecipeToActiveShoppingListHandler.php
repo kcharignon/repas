@@ -28,7 +28,7 @@ readonly class AddRecipeToActiveShoppingListHandler
     public function __invoke(AddRecipeToActiveShoppingListCommand $command): void
     {
         $owner = $this->userRepository->findOneById($command->ownerId);
-        $shoppingList = $this->shoppingListRepository->findOneActiveByOwner($owner);
+        $shoppingList = $this->shoppingListRepository->findOnePlanningByOwner($owner);
 
         // Si aucune liste active on ne peut pas ajouter de repas
         if (!$shoppingList instanceof ShoppingList) {

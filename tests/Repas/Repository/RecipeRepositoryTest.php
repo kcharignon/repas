@@ -63,6 +63,6 @@ class RecipeRepositoryTest extends DatabaseTestCase
 
         // Assert
         $this->assertCount(71, $recipes);
-        RepasAssert::assertTab(Tab::newEmptyTyped(Recipe::class), $recipes);
+        RepasAssert::assertTabType(Tab::newEmptyTyped(Recipe::class), $recipes);
     }
 }

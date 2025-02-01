@@ -34,7 +34,7 @@ class RemoveRecipeToActiveShoppingListController extends AbstractController
         $this->commandBus->dispatch($command);
 
         // Chargement des données pour générer une vue à jours
-        $activeShoppingList = $this->shoppingListRepository->findOneActiveByOwner($connectedUser);
+        $activeShoppingList = $this->shoppingListRepository->findOnePlanningByOwner($connectedUser);
         $recipe = $this->recipeRepository->findOneById($id);
         return new JsonResponse([
             "views" => [

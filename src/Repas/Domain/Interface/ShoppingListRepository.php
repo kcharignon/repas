@@ -16,7 +16,7 @@ interface ShoppingListRepository
 
     public function findOneById(string $id): ShoppingList;
 
-    public function findOneActiveByOwner(User $owner): ?ShoppingList;
+    public function findOnePlanningByOwner(User $owner): ?ShoppingList;
 
     public function save(ShoppingList $shoppingList): void;
 }

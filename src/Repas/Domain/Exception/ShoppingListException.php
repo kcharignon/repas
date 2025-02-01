@@ -3,6 +3,7 @@
 namespace Repas\Repas\Domain\Exception;
 
 
+use Repas\Repas\Domain\Model\ShoppingListStatus;
 use Repas\Shared\Domain\Exception\DomainException;
 
 class ShoppingListException extends DomainException
@@ -18,9 +19,9 @@ class ShoppingListException extends DomainException
         return new self(sprintf("Recipe (%s) already present in list", $recipe), 403);
     }
 
-    public static function cantAddRecipeInLockedList(string $shoppingList): static
+    public static function cannotAddRecipeToShoppingListUnlessPlanning(string $shoppingList): static
     {
-        return new self(sprintf("Forbidden to add recipe in locked shopping list (%s).", $shoppingList), 403);
+        return new self(sprintf("Forbidden to add recipe when shopping list is not in planning step (%s).", $shoppingList), 403);
     }
 
     public static function activeShoppingListNotFound(): static
@@ -28,8 +29,18 @@ class ShoppingListException extends DomainException
         return new self("No active shopping list found.", 403);
     }
 
-    public static function cantRemoveRecipeInLockedList(string $shoppingList): static
+    public static function cannotRemoveRecipeToShoppingListUnlessPlanning(string $shoppingList): static
     {
-        return new self(sprintf("Forbidden to remove recipe in locked shopping list (%s).", $shoppingList), 403);
+        return new self(sprintf("Forbidden to remove recipe when shopping list is not in planning step (%s).", $shoppingList), 403);
+    }
+
+    public static function shoppingListShouldBeOnPlanningBeforeShopping(string $id, ShoppingListStatus $status): static
+    {
+        return new self(sprintf("Shopping list (%s) should be on status PLANNING (actual : %s) before SHOPPING", $id, $status->value), 403);
+    }
+
+    public static function shoppingListShouldBeOnShoppingBeforeRevertToPlanning(string $id, ShoppingListStatus $status): static
+    {
+        return new self(sprintf("Shopping list (%s) should be on status SHOPPING (actual : %s) before revert to PLANNING", $id, $status->value), 403);
     }
 }

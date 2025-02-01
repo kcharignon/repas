@@ -9,6 +9,7 @@ use Doctrine\Bundle\FixturesBundle\FixtureGroupInterface;
 use Doctrine\Common\DataFixtures\DependentFixtureInterface;
 use Doctrine\Persistence\ObjectManager;
 use Exception;
+use Repas\Repas\Domain\Model\ShoppingListStatus;
 use Repas\Repas\Infrastructure\Entity\Recipe as RecipeEntity;
 use Repas\Repas\Infrastructure\Entity\Meal as MealEntity;
 use Repas\Repas\Infrastructure\Entity\ShoppingList as ShoppingListEntity;
@@ -21,27 +22,27 @@ class ShoppingListFixture extends Fixture implements DependentFixtureInterface, 
         [
             'user' => 'alexiane.sichi@gmail.com',
             'createdAt' => '2024-12-05T09:35:05+01:00',
-            'locked' => true,
+            'status' => ShoppingListStatus::COMPLETED,
         ],
         [
             'user' => 'alexiane.sichi@gmail.com',
             'createdAt' => '2024-12-22T19:31:05+01:00',
-            'locked' => true,
+            'status' => ShoppingListStatus::COMPLETED,
         ],
         [
             'user' => 'alexiane.sichi@gmail.com',
             'createdAt' => '2025-01-05T18:21:12+01:00',
-            'locked' => true,
+            'status' => ShoppingListStatus::SHOPPING,
         ],
         [
             'user' => 'alexiane.sichi@gmail.com',
             'createdAt' => '2025-01-20T10:56:23+01:00',
-            'locked' => false,
+            'status' => ShoppingListStatus::PLANNING,
         ],
         [
             'user' => 'kantincharignon@gmail.com',
             'createdAt' => '2025-01-20T10:56:23+01:00',
-            'locked' => false,
+            'status' => ShoppingListStatus::PLANNING,
         ],
     ];
 
@@ -65,7 +66,7 @@ class ShoppingListFixture extends Fixture implements DependentFixtureInterface, 
                     id: UuidGenerator::new(),
                     ownerId: $userEntity->getId(),
                     createdAt: DateTimeImmutable::createFromFormat(DATE_ATOM, $shoppingList['createdAt']),
-                    locked: $shoppingList['locked'],
+                    status: $shoppingList['status'],
                 );
 
                 $manager->persist($shoppingListEntity);

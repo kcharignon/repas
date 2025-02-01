@@ -3,8 +3,8 @@
 namespace Repas\Repas\Infrastructure\Http\Controller;
 
 
-use Repas\Repas\Application\LockedShoppingList\LockedShoppingListCommand;
-use Repas\Repas\Application\UnlockShoppingList\UnlockShoppingListCommand;
+use Repas\Repas\Application\AdvanceShoppingListToShopping\AdvanceShoppingListToShoppingCommand;
+use Repas\Repas\Application\RevertShoppingListToPlanning\RevertShoppingListToPlanningCommand;
 use Repas\Shared\Application\Interface\CommandBusInterface;
 use Repas\User\Domain\Model\User;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -28,11 +28,11 @@ class ToggleLockedShoppingListController extends AbstractController
     public function __invoke(string $id, bool $isLocked): Response
     {
         if ($isLocked) {
-            $command = new LockedShoppingListCommand($id);
+            $command = new AdvanceShoppingListToShoppingCommand($id);
         } else {
             /** @var User $connectedUser */
             $connectedUser = $this->getUser();
-            $command = new UnlockShoppingListCommand($connectedUser, $id);
+            $command = new RevertShoppingListToPlanningCommand($connectedUser, $id);
         }
 
         $shoppingList = $this->commandBus->dispatch($command);

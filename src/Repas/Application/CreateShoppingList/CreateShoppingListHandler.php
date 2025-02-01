@@ -2,6 +2,7 @@
 
 namespace Repas\Repas\Application\CreateShoppingList;
 
+use Repas\Repas\Domain\Exception\ShoppingListException;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Repas\Domain\Model\ShoppingList;
 use Repas\Shared\Domain\Clock;
@@ -21,14 +22,15 @@ readonly class CreateShoppingListHandler
 
     /**
      * @throws UserException
+     * @throws ShoppingListException
      */
     public function __invoke(CreateShoppingListCommand $query): void
     {
         $owner = $this->userRepository->findOneById($query->ownerId);
-        // Désactivation de la liste active si elle existe
-        $activateShoppingList = $this->shoppingListRepository->findOneActiveByOwner($owner);
+        // Passe la liste en SHOPPING si elle existe
+        $activateShoppingList = $this->shoppingListRepository->findOnePlanningByOwner($owner);
         if ($activateShoppingList instanceof ShoppingList) {
-            $activateShoppingList->lock();
+            $activateShoppingList->toShopping();
             $this->shoppingListRepository->save($activateShoppingList);
         }
 

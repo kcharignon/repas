@@ -29,7 +29,7 @@ readonly class RemoveRecipeToActiveShoppingListHandler
     {
         $owner = $this->userRepository->findOneById($command->ownerId);
 
-        $activeShoppingList = $this->shoppingListRepository->findOneActiveByOwner($owner);
+        $activeShoppingList = $this->shoppingListRepository->findOnePlanningByOwner($owner);
         if (!$activeShoppingList instanceof ShoppingList) {
             throw ShoppingListException::activeShoppingListNotFound();
         }

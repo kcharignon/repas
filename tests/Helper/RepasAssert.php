@@ -13,6 +13,7 @@ use Repas\Repas\Domain\Model\Recipe;
 use Repas\Repas\Domain\Model\RecipeRow;
 use Repas\Repas\Domain\Model\RecipeType;
 use Repas\Repas\Domain\Model\ShoppingList;
+use Repas\Repas\Domain\Model\ShoppingListIngredient;
 use Repas\Repas\Domain\Model\Unit;
 use Repas\Shared\Domain\Tool\Tab;
 use Repas\User\Domain\Model\User;
@@ -83,7 +84,7 @@ class RepasAssert
         Assert::assertEquals($expected->getImage(), $actual->getImage());
     }
 
-    public static function assertTab(Tab $expected, mixed $actual): void
+    public static function assertTabType(Tab $expected, mixed $actual): void
     {
         Assert::assertInstanceOf(Tab::class, $actual);
         Assert::assertEquals($expected->getType(), $actual->getType());
@@ -95,20 +96,12 @@ class RepasAssert
      */
     public static function assertRecipeRows(Tab $expected, mixed $actual): void
     {
-        // Comparaison type
-        self::assertTab($expected, $actual);
-
-        // Comparaison taille
-        Assert::assertCount($expected->count(), $actual);
-
-        // Tri des tableaux pour comparer element par element
-        $expected->usort(fn($a, $b) => $a->getId() <=> $b->getId());
-        $actual->usort(fn($a, $b) => $a->getId() <=> $b->getId());
-
-        // Comparaison par element
-        for ($i = 0; $expected->count() > $i; ++$i) {
-            self::assertRecipeRow($expected[$i], $actual[$i]);
-        }
+        self::assertTab(
+            $expected,
+            $actual,
+            fn($a, $b) => $a->getId() <=> $b->getId(),
+            fn($a, $b) => self::assertRecipeRow($a, $b),
+        );
     }
 
     public static function assertMeal(Meal $expected, mixed $actual): void
@@ -125,19 +118,36 @@ class RepasAssert
      */
     public static function assertMeals(Tab $expected, mixed $actual): void
     {
+        self::assertTab(
+            $expected,
+            $actual,
+            fn($a, $b) => $a->getId() <=> $b->getId(),
+            fn($a, $b) => self::assertMeal($a, $b),
+        );
+    }
+
+    /**
+     * @param Tab<Meal> $expected
+     */
+    public static function assertTab(
+        Tab $expected,
+        mixed $actual,
+        Closure $sortCallback,
+        Closure $assertCallback,
+    ): void {
         // Comparaison type
-        self::assertTab($expected, $actual);
+        self::assertTabType($expected, $actual);
 
         // Comparaison taille
         Assert::assertCount($expected->count(), $actual);
 
         // Tri des tableaux pour comparer element par element
-        $expected->usort(fn($a, $b) => $a->getId() <=> $b->getId());
-        $actual->usort(fn($a, $b) => $a->getId() <=> $b->getId());
+        $expected->usort($sortCallback);
+        $actual->usort($sortCallback);
 
         // Comparaison par element
         for ($i = 0; $expected->count() > $i; ++$i) {
-            self::assertMeal($expected[$i], $actual[$i]);
+            $assertCallback($expected[$i], $actual[$i]);
         }
     }
 
@@ -146,8 +156,30 @@ class RepasAssert
         Assert::assertInstanceOf(ShoppingList::class, $actual);
         Assert::assertEquals($expected->getId(), $actual->getId());
         Assert::assertEquals($expected->getCreatedAt()->format(DATE_ATOM), $actual->getCreatedAt()->format(DATE_ATOM));
+        Assert::assertEquals($expected->getStatus(), $actual->getStatus());
         self::assertUser($expected->getOwner(), $actual->getOwner());
         self::assertMeals($expected->getMeals(), $actual->getMeals());
+        self::assertShoppingListIngredients($expected->getIngredients(), $actual->getIngredients());
+    }
+
+    public static function assertShoppingListIngredients(Tab $expected, mixed $actual): void
+    {
+        self::assertTab(
+            $expected,
+            $actual,
+            fn($a, $b) => $a->getId() <=> $b->getId(),
+            fn($a, $b) => self::assertShoppingListIngredient($a, $b),
+        );
+    }
+
+    public static function assertShoppingListIngredient(ShoppingListIngredient $expected, mixed $actual): void
+    {
+        Assert::assertInstanceOf(ShoppingListIngredient::class, $actual);
+        Assert::assertEquals($expected->getId(), $actual->getId());
+        Assert::assertEquals($expected->getShoppingListId(), $actual->getShoppingListId());
+        Assert::assertEquals($expected->getQuantity(), $actual->getQuantity());
+        self::assertUnit($expected->getUnit(), $actual->getUnit());
+        self::assertIngredient($expected->getIngredient(), $actual->getIngredient());
     }
 
     public static function assertConversion(Conversion $expected, mixed $actual): void

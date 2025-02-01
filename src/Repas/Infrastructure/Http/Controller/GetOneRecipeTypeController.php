@@ -30,7 +30,7 @@ class GetOneRecipeTypeController extends AbstractController
         assert($userConnected instanceof User);
         $type = $this->recipeTypeRepository->findOneBySlug($slug);
         $recipes = $this->recipeRepository->findByAuthorAndType($userConnected, $type);
-        $shoppingList = $this->shoppingListRepository->findOneActiveByOwner($userConnected);
+        $shoppingList = $this->shoppingListRepository->findOnePlanningByOwner($userConnected);
         return $this->render('@Repas/Recipe/type.html.twig', [
             'recipeType' => $type,
             'recipes' => $recipes,
