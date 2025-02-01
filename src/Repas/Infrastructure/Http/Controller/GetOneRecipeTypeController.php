@@ -13,8 +13,6 @@ use Symfony\Component\Routing\Attribute\Route;
 
 class GetOneRecipeTypeController extends AbstractController
 {
-
-
     public function __construct(
         private readonly RecipeRepository $recipeRepository,
         private readonly RecipeTypeRepository $recipeTypeRepository,

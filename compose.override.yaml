@@ -9,6 +9,10 @@ services:
       - ./frankenphp/Caddyfile:/etc/caddy/Caddyfile:ro
       - ./frankenphp/conf.d/20-app.dev.ini:/usr/local/etc/php/app.conf.d/20-app.dev.ini:ro
       - /app/vendor
+      # Pour que le certificat ne soit pas regeneré a chaque reboot
+      - ./docker/caddy_data:/data
+      - ./docker/caddy_config:/config
+
     environment:
       MERCURE_EXTRA_DIRECTIVES: demo
       # See https://xdebug.org/docs/all_settings#mode
