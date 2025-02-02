@@ -21,7 +21,6 @@ class GetOneShoppingListController extends AbstractController
     public function __invoke(string $id): Response
     {
         $shoppingList = $this->shoppingListRepository->findOneById($id);
-        dump($shoppingList);
         return $this->render('@Repas/ShoppingList/shopping_list.html.twig', [
             'shoppingList' => $shoppingList,
         ]);
