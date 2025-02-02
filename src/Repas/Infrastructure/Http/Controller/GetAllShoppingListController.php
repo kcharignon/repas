@@ -26,7 +26,7 @@ class GetAllShoppingListController extends AbstractController
         assert($currentUser instanceof User);
         $shoppingLists = $this->shoppingListRepository->findByOwner($currentUser);
 
-        return $this->render('@Repas/ShoppingList/shopping_list.html.twig', [
+        return $this->render('@Repas/ShoppingList/shopping_lists.html.twig', [
             'shoppingLists' => $shoppingLists,
         ]);
     }

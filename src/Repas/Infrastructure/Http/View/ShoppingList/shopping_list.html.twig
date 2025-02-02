@@ -2,38 +2,56 @@
 {% extends '@Shared/base.html.twig' %}
 
 {% block title %}
-    Mes Listes
 {% endblock %}
 
 {% block body %}
-    <ul class="list-group">
-        <form action="{{ path('view_shopping_list_create') }}" method="post" style="width: 100%;" class="list-group-item d-flex justify-content-between align-items-center active">
-            <button type="submit" class="text-white text-start" style="border: none; background: none; text-decoration: none; cursor: pointer; width: 100%;">
-                Nouvelle liste
-            </button>
-        </form>
-        {% for shoppingList in shoppingLists %}
-            <a
-                href="{{ path("view_one_shopping_list", {"id": shoppingList.id}) }}"
-                class="list-group-item d-flex align-items-center">
-                <span style="width: 10em">{{ shoppingList.createdAt|format_datetime(locale="fr_FR", pattern="dd MMMM YYYY") }}</span>
-                {% for recipeType in shoppingList.recipeTypePresent %}
-                    <span class="me-3">
-                        {{ shoppingList.numberOfTypeRecipes(recipeType) }}
-                    <img style="height: 1.5em" src="{{ absolute_url(asset(recipeType.image)) }}" alt="{{ recipeType.name }}">
+    {% if shoppingList is not null %}
+        <div class="card bg-light" style="max-width: 100rem;">
+            <h3 class="card-header">
+                {{ "Liste du " ~ shoppingList.createdAt|format_datetime(locale='fr_FR', pattern="dd MMMM YYYY") }} :
+                <span class="small text-secondary ms-2">
+                    {% for recipeType in shoppingList.recipeTypePresent %}
+                        <span class="me-3">
+                            {{ shoppingList.numberOfTypeRecipes(recipeType) }}
+                            <img style="height: 1.5em" src="{{ absolute_url(asset(recipeType.image)) }}" alt="{{ recipeType.name }}">
+                        </span>
+                    {% endfor %}
                 </span>
-                {% endfor %}
-                <span class="flex-fill"></span>
-                {% if shoppingList.isPlanning %}
-                    <span class="badge float-end bg-primary rounded-pill me-1">En préparation</span>
-                {% endif %}
-                {% if shoppingList.isShopping %}
-                    <span class="badge float-end bg-success rounded-pill me-1">Courses en cours</span>
-                {% endif %}
-                {% if shoppingList.isCompleted %}
-                    <span class="badge float-end bg-secondary rounded-pill me-1">Terminée</span>
-                {% endif %}
-            </a>
-        {% endfor %}
-    </ul>
+                {% include('@Repas/ShoppingList/_shopping_list_actions.html.twig') %}
+            </h3>
+            <div class="card-body">
+                <div class="row">
+                    {% include "@Repas/ShoppingList/_ingredients_column.html.twig" %}
+                    <div class="col">
+                        <h2>Recettes</h2>
+                        {% for recipeType in shoppingList.recipeTypePresent %}
+                            {% set recipes = shoppingList.getRecipesByType(recipeType) %}
+                            {% set meals = shoppingList.getMealByType(recipeType) %}
+                            {% if meals is not empty %}
+                                <ul class="list-group mb-1">
+                                    <li class="d-flex list-group-item justify-content-start align-items-center active">
+                                        <img src="{{ absolute_url(asset(recipeType.image)) }}" alt="{{ recipeType.name }}" style="height: 1.5em">
+                                        <span class="ms-1">{{ recipeType.name|capitalize }}</span>
+                                    </li>
+                                    {% for meal in meals %}
+                                        <li class="list-group-item d-flex justify-content-start align-items-center">
+                                            <span class="ms-1">
+                                                {{ meal.recipe.name|capitalize }}
+                                            </span>
+                                            <div class="ms-auto d-flex align-items-center">
+                                                <span>
+                                                    {{ meal.serving }}
+                                                </span>
+                                                <img class="ms-1" src="https://cdn-icons-png.flaticon.com/128/5187/5187868.png" alt="serving" style="height: 1.5em">
+                                            </div>
+                                        </li>
+                                    {% endfor %}
+                                </ul>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endif %}
 {% endblock %}

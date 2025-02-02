@@ -22,7 +22,7 @@ class GetOneShoppingListController extends AbstractController
     {
         $shoppingList = $this->shoppingListRepository->findOneById($id);
         dump($shoppingList);
-        return $this->render('@Repas/ShoppingList/show.html.twig', [
+        return $this->render('@Repas/ShoppingList/shopping_list.html.twig', [
             'shoppingList' => $shoppingList,
         ]);
     }

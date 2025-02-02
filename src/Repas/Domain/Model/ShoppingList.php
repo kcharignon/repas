@@ -138,6 +138,15 @@ final class ShoppingList implements ModelInterface
     }
 
     /**
+     * @param RecipeType $recipeType
+     * @return Tab<Meal>
+     */
+    public function getMealByType(RecipeType $recipeType): Tab
+    {
+        return $this->meals->filter(fn(Meal $meal) => $meal->getRecipeType()->isEqual($recipeType));
+    }
+
+    /**
      * @return Tab<Department>
      */
     public function departmentPresent(): Tab

@@ -37,7 +37,7 @@ class ShoppingListFixture extends Fixture implements DependentFixtureInterface, 
         [
             'user' => 'alexiane.sichi@gmail.com',
             'createdAt' => '2025-01-20T10:56:23+01:00',
-            'status' => ShoppingListStatus::SHOPPING,
+            'status' => ShoppingListStatus::PLANNING,
         ],
         [
             'user' => 'kantincharignon@gmail.com',
