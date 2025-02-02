@@ -88,6 +88,24 @@ class ConversionFixture extends Fixture implements DependentFixtureInterface, Fi
             "endUnit" => "tranche",
             "coefficient" => 1
         ],
+        [
+            "ingredient" => "ketchup",
+            "startUnit" => "centilitre",
+            "endUnit" => "gramme",
+            "coefficient" => 11.375
+        ],
+        [
+            "ingredient" => "bearnaise",
+            "startUnit" => "centilitre",
+            "endUnit" => "gramme",
+            "coefficient" => 9.875
+        ],
+        [
+            "ingredient" => "mayonnaise",
+            "startUnit" => "centilitre",
+            "endUnit" => "gramme",
+            "coefficient" => 9.875
+        ],
     ];
 
     public function getDependencies(): array

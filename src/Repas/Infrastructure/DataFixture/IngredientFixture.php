@@ -54,7 +54,7 @@ class IngredientFixture extends Fixture implements DependentFixtureInterface, Fi
         ],
         [
             "name" => "ail",
-            "image" => "images/ingredient/ail.png",
+            "image" => "images/ingredient/garlic.png",
             "defaultCookingUnit" => "piece",
             "defaultPurchaseUnit" => "piece",
             "department" => "fruit-et-legume",
@@ -176,12 +176,14 @@ class IngredientFixture extends Fixture implements DependentFixtureInterface, Fi
         ],
         [
             "name" => "poivron",
+            "image" => "images/ingredient/bell-pepper.png",
             "defaultCookingUnit" => "piece",
             "defaultPurchaseUnit" => "piece",
             "department" => "fruit-et-legume",
         ],
         [
             "name" => "pomme de terre",
+            "image" => "images/ingredient/potato.png",
             "defaultCookingUnit" => "piece",
             "defaultPurchaseUnit" => "piece",
             "department" => "fruit-et-legume",
@@ -195,12 +197,14 @@ class IngredientFixture extends Fixture implements DependentFixtureInterface, Fi
         ],
         [
             "name" => "pomme golden",
+            "image" => "images/ingredient/golden-apple.png",
             "defaultCookingUnit" => "piece",
             "defaultPurchaseUnit" => "piece",
             "department" => "fruit-et-legume",
         ],
         [
             "name" => "betternut",
+            "image" => "images/ingredient/butternut-squash.png",
             "defaultCookingUnit" => "piece",
             "defaultPurchaseUnit" => "piece",
             "department" => "fruit-et-legume",
@@ -213,18 +217,21 @@ class IngredientFixture extends Fixture implements DependentFixtureInterface, Fi
         ],
         [
             "name" => "melon",
+            "image" => "images/ingredient/melon.png",
             "defaultCookingUnit" => "piece",
             "defaultPurchaseUnit" => "piece",
             "department" => "fruit-et-legume",
         ],
         [
             "name" => "poireau",
+            "image" => "images/ingredient/leek.png",
             "defaultCookingUnit" => "piece",
             "defaultPurchaseUnit" => "piece",
             "department" => "fruit-et-legume",
         ],
         [
             "name" => "citron",
+            "image" => "images/ingredient/lemon.png",
             "defaultCookingUnit" => "piece",
             "defaultPurchaseUnit" => "piece",
             "department" => "fruit-et-legume",
@@ -237,18 +244,21 @@ class IngredientFixture extends Fixture implements DependentFixtureInterface, Fi
         ],
         [
             "name" => "oignon",
+            "image" => "images/ingredient/onion.png",
             "defaultCookingUnit" => "piece",
             "defaultPurchaseUnit" => "piece",
             "department" => "fruit-et-legume",
         ],
         [
             "name" => "oignon rouge",
+            "image" => "images/ingredient/onion-red.png",
             "defaultCookingUnit" => "piece",
             "defaultPurchaseUnit" => "piece",
             "department" => "fruit-et-legume",
         ],
         [
             "name" => "oignon blanc",
+            "image" => "images/ingredient/onion-white.png",
             "defaultCookingUnit" => "piece",
             "defaultPurchaseUnit" => "piece",
             "department" => "fruit-et-legume",
@@ -261,6 +271,7 @@ class IngredientFixture extends Fixture implements DependentFixtureInterface, Fi
         ],
         [
             "name" => "tomate cerise",
+            "image" => "images/ingredient/cherry-tomato.png",
             "defaultCookingUnit" => "piece",
             "defaultPurchaseUnit" => "piece",
             "department" => "fruit-et-legume",
@@ -395,7 +406,7 @@ class IngredientFixture extends Fixture implements DependentFixtureInterface, Fi
         ],
         [
             "name" => "beurre",
-            "image" => 'images/ingredient/butter.png',
+            "image" => 'images/ingredient/spread.png',
             "department" => "fromage",
             "defaultCookingUnit" => "gramme",
             "defaultPurchaseUnit" => "plaquette",
@@ -522,6 +533,7 @@ class IngredientFixture extends Fixture implements DependentFixtureInterface, Fi
         ],
         [
             "name" => "couche",
+            "image" => "images/ingredient/baby-diaper.png",
             "defaultCookingUnit" => "paquet",
             "defaultPurchaseUnit" => "paquet",
             "department" => "bebe",
@@ -534,6 +546,7 @@ class IngredientFixture extends Fixture implements DependentFixtureInterface, Fi
         ],
         [
             "name" => "chips",
+            "image" => "images/ingredient/chips.png",
             "defaultCookingUnit" => "paquet",
             "defaultPurchaseUnit" => "paquet",
             "department" => "aperitif",
@@ -1368,22 +1381,22 @@ class IngredientFixture extends Fixture implements DependentFixtureInterface, Fi
         [
             "name" => "béarnaise",
             "department" => "sauce",
-            "defaultCookingUnit" => "piece",
-            "defaultPurchaseUnit" => "piece",
+            "defaultCookingUnit" => "gramme",
+            "defaultPurchaseUnit" => "gramme",
 
         ],
         [
             "name" => "ketchup",
             "department" => "sauce",
-            "defaultCookingUnit" => "piece",
-            "defaultPurchaseUnit" => "piece",
+            "defaultCookingUnit" => "gramme",
+            "defaultPurchaseUnit" => "gramme",
 
         ],
         [
             "name" => "mayonnaise",
             "department" => "sauce",
-            "defaultCookingUnit" => "piece",
-            "defaultPurchaseUnit" => "piece",
+            "defaultCookingUnit" => "gramme",
+            "defaultPurchaseUnit" => "gramme",
 
         ],
         [
@@ -1473,6 +1486,7 @@ class IngredientFixture extends Fixture implements DependentFixtureInterface, Fi
         ],
         [
             "name" => "lait",
+            "image" => "images/ingredient/milk.png",
             "department" => "divers",
             "defaultCookingUnit" => "litre",
             "defaultPurchaseUnit" => "litre",
@@ -1500,6 +1514,7 @@ class IngredientFixture extends Fixture implements DependentFixtureInterface, Fi
         ],
         [
             "name" => "miel",
+            "image" => "images/ingredient/honey.png",
             "department" => "divers",
             "defaultCookingUnit" => "piece",
             "defaultPurchaseUnit" => "piece",
@@ -1507,6 +1522,7 @@ class IngredientFixture extends Fixture implements DependentFixtureInterface, Fi
         ],
         [
             "name" => "sel",
+            "image" => "images/ingredient/salt.png",
             "department" => "divers",
             "defaultCookingUnit" => "gramme",
             "defaultPurchaseUnit" => "gramme",

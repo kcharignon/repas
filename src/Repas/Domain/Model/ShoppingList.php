@@ -197,26 +197,29 @@ final class ShoppingList implements ModelInterface
             throw ShoppingListException::recipeAlreadyInList($recipe->getName());
         }
 
-        // Ajoute à la liste des recettes
+        // Ajoute à la liste des recettes avec le nombre de personnes de l'auteur
         $this->meals[] = Meal::create(
             shoppingListId: $this->id,
             recipe: $recipe,
-            servings: $recipe->getServing(),
+            servings: $this->owner->getDefaultServing(),
         );
 
         // Ajoutes les ingredients de la recette à la liste de course
+        // en prenant en compte les bonnes quantités : Coefficient = owner.defaultServing / recipe.serving
+        $coefficient = $this->owner->getDefaultServing() / $recipe->getServing();
         foreach ($recipe->getRows() as $recipeRow) {
             $callback = fn(ShoppingListIngredient $spi) => $spi->hasIngredientInUnit($recipeRow->getIngredient(), $recipeRow->getUnit());
+            $quantity = $recipeRow->getQuantity() * $coefficient;
             if (($shoppingListIngredient = $this->ingredients->find($callback)) !== null) {
                 // Si un couple ingredient-unité existe, on les additionne
-                $shoppingListIngredient->addQuantity($recipeRow->getQuantity());
+                $shoppingListIngredient->addQuantity($quantity);
             } else {
                 // Ajoute un nouveau couple ingredient-unité
                 $this->ingredients[] = ShoppingListIngredient::create(
                     shoppingListId: $this->id,
                     ingredient: $recipeRow->getIngredient(),
                     unit: $recipeRow->getUnit(),
-                    quantity: $recipeRow->getQuantity(),
+                    quantity: $quantity,
                 );
             }
         }

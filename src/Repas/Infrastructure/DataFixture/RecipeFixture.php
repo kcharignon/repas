@@ -160,23 +160,23 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
                 ],
                 [
                     "slug" => "bearnaise",
-                    "quantity" => 1,
-                    "unit" => "piece"
+                    "quantity" => 10,
+                    "unit" => "millilitre"
                 ],
                 [
                     "slug" => "ketchup",
-                    "quantity" => 1,
-                    "unit" => "piece"
+                    "quantity" => 10,
+                    "unit" => "millilitre"
                 ],
                 [
                     "slug" => "mayonnaise",
-                    "quantity" => 1,
-                    "unit" => "piece"
+                    "quantity" => 10,
+                    "unit" => "millilitre"
                 ],
                 [
                     "slug" => "salade-verte",
-                    "quantity" => 1,
-                    "unit" => "piece"
+                    "quantity" => 100,
+                    "unit" => "gramme"
                 ],
             ],
         ],
