@@ -38,9 +38,7 @@ readonly class removeMealFromPlanHandler
         $recipe = $this->recipeRepository->findOneById($command->recipeId);
 
         $activeShoppingList->removeMeal($recipe);
-        dump($activeShoppingList);
-        $this->shoppingListRepository->save($activeShoppingList);
 
-        dump($this->shoppingListRepository->findOneById($activeShoppingList->getId()));
+        $this->shoppingListRepository->save($activeShoppingList);
     }
 }
