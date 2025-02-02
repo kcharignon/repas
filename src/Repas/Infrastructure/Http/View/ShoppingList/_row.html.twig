@@ -1,0 +1,18 @@
+<li
+    id="shopping_list_row_{{ row.id }}"
+    role="button"
+    data-action="btn-ajax"
+{#    data-url="{{ path("shopping_list_row_bought", {"id" : row.id, "isBought": (row.bought ? "0" : "1")}) }}"#}
+    class="list-group-item d-flex justify-content-end align-items-center">
+    <i data-loader="replace" class="far {{ (row.checked ? "fa-check-square" : "fa-square") }} "></i>
+    <span class="ms-1 {{ (row.checked) ? "text-decoration-line-through" : "" }}">
+        {{ row.ingredient.name|capitalize }}
+    </span>
+    <span style="flex: 1"></span>
+    {% if row.quantity is not null %}
+        <span class="badge float-end bg-primary rounded-pill me-1">
+            {{ row.quantity }}
+            {{ row.unit.symbol }}
+        </span>
+    {% endif %}
+</li>

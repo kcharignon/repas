@@ -68,7 +68,7 @@ class IngredientBuilder implements Builder
     {
         $this->name = 'œuf';
         $this->slug = StringTool::slugify($this->name);
-        $this->image = '';
+        $this->image = 'images/ingredient/egg.png';
         $this->departmentBuilder = new DepartmentBuilder()->isMiscellaneous();
         $this->defaultCookingUnitBuilder = new UnitBuilder()->isPiece();
         $this->defaultPurchaseUnitBuilder = new UnitBuilder()->isPiece();

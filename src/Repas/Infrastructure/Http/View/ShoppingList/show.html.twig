@@ -32,7 +32,9 @@
                                         <span class="ms-1">{{ department.name|capitalize }}</span>
                                     </li>
                                     {% for row in rows %}
-                                        {% include "desktop/shopping_list/shared/_row.html.twig" %}
+                                        {% if row.ingredient.department.isEqual(department) %}
+                                            {% include "@Repas/ShoppingList/_row.html.twig" %}
+                                        {% endif %}
                                     {% endfor %}
                                 </ul>
                             {% endif %}

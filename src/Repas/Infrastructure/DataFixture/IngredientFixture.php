@@ -354,7 +354,7 @@ class IngredientFixture extends Fixture implements DependentFixtureInterface, Fi
             "name" => "fromage frais",
             "department" => "fromage",
             "defaultCookingUnit" => "gramme",
-            "defaultPurchaseUnit" => "boite",
+            "defaultPurchaseUnit" => "gramme",
         ],
         [
             "name" => "mozzarella",
@@ -373,7 +373,7 @@ class IngredientFixture extends Fixture implements DependentFixtureInterface, Fi
             "name" => "cheddar en tranche",
             "department" => "fromage",
             "defaultCookingUnit" => "tranche",
-            "defaultPurchaseUnit" => "paquet",
+            "defaultPurchaseUnit" => "tranche",
         ],
         [
             "name" => "crème fraiche épaisse",
@@ -793,8 +793,8 @@ class IngredientFixture extends Fixture implements DependentFixtureInterface, Fi
         [
             "name" => "steack haché",
             "department" => "surgele",
-            "defaultCookingUnit" => "gramme",
-            "defaultPurchaseUnit" => "gramme",
+            "defaultCookingUnit" => "piece",
+            "defaultPurchaseUnit" => "piece",
         ],
         [
             "name" => "viande hachée",
@@ -1302,8 +1302,8 @@ class IngredientFixture extends Fixture implements DependentFixtureInterface, Fi
         [
             "name" => "pain baggle",
             "department" => "boulangerie",
-            "defaultCookingUnit" => "paquet",
-            "defaultPurchaseUnit" => "paquet",
+            "defaultCookingUnit" => "piece",
+            "defaultPurchaseUnit" => "piece",
         ],
         [
             "name" => "pain à burger",
@@ -1508,8 +1508,8 @@ class IngredientFixture extends Fixture implements DependentFixtureInterface, Fi
         [
             "name" => "sel",
             "department" => "divers",
-            "defaultCookingUnit" => "piece",
-            "defaultPurchaseUnit" => "piece",
+            "defaultCookingUnit" => "gramme",
+            "defaultPurchaseUnit" => "gramme",
 
         ],
         [

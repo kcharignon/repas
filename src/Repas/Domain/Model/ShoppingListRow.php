@@ -5,7 +5,6 @@ namespace Repas\Repas\Domain\Model;
 
 use Repas\Shared\Domain\Model\ModelInterface;
 use Repas\Shared\Domain\Model\ModelTrait;
-use Repas\Repas\Domain\Model\ShoppingListRowStatus as Status;
 use Repas\Shared\Domain\Tool\UuidGenerator;
 
 final class ShoppingListRow implements ModelInterface
@@ -18,7 +17,7 @@ final class ShoppingListRow implements ModelInterface
         private Ingredient $ingredient,
         private float      $quantity,
         private Unit       $unit,
-        private Status     $status,
+        private bool       $checked,
     ) {
     }
 
@@ -33,7 +32,7 @@ final class ShoppingListRow implements ModelInterface
             ingredient: $ingredient,
             quantity: $quantity,
             unit: $ingredient->getDefaultPurchaseUnit(),
-            status: Status::UNCHECKED,
+            checked: false,
         );
     }
 
@@ -62,9 +61,9 @@ final class ShoppingListRow implements ModelInterface
         return $this->unit;
     }
 
-    public function getStatus(): Status
+    public function isChecked(): bool
     {
-        return $this->status;
+        return $this->checked;
     }
 
     public static function load(array $datas): self
@@ -75,7 +74,7 @@ final class ShoppingListRow implements ModelInterface
             ingredient: $datas['ingredient'],
             quantity: $datas['quantity'],
             unit: $datas['unit'],
-            status: $datas['status'],
+            checked: $datas['checked'],
         );
     }
 

@@ -86,13 +86,16 @@ class Tab implements ArrayAccess, IteratorAggregate, Countable
     /**
      * Map each item to a new value.
      *
+     * You can force the typing of the Tab resulting from the map. This is useful if Tab is empty.
+     *
      * @param callable(T): T $callback
+     * @param string|null $type
      * @return Tab
      */
-    public function map(callable $callback): Tab
+    public function map(callable $callback, ?string $type = null): Tab
     {
         $newItems = array_map($callback, $this->items);
-        return self::fromArray($newItems);
+        return new self($newItems, $type);
     }
 
     /**

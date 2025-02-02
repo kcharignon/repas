@@ -71,6 +71,18 @@ class ShoppingListRepositoryTest extends DatabaseTestCase
         $actual = $this->shoppingListRepository->findOneById($shoppingList->getId());
         RepasAssert::assertShoppingList($shoppingList, $actual);
 
+        // Arrange
+        $shoppingList->toShopping();
+        foreach ($shoppingList->getIngredients() as $shopListIngredient) {
+            $shoppingList->addRow($shopListIngredient->getIngredient(), $shopListIngredient->getQuantity());
+        }
+
+        // Act
+        $this->shoppingListRepository->save($shoppingList);
+
+        // Assert
+        $actual = $this->shoppingListRepository->findOneById($shoppingList->getId());
+        RepasAssert::assertShoppingList($shoppingList, $actual);
 
     }
 

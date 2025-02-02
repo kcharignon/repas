@@ -10,7 +10,7 @@ use Doctrine\Migrations\AbstractMigration;
 /**
  * Auto-generated Migration: Please modify to your needs!
  */
-final class Version20250202110327 extends AbstractMigration
+final class Version20250202144822 extends AbstractMigration
 {
     public function getDescription(): string
     {
@@ -30,6 +30,7 @@ final class Version20250202110327 extends AbstractMigration
         $this->addSql('CREATE TABLE shopping_list (id VARCHAR(255) NOT NULL, owner VARCHAR(255) NOT NULL, created_at TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL, status VARCHAR(255) NOT NULL, PRIMARY KEY(id))');
         $this->addSql('COMMENT ON COLUMN shopping_list.created_at IS \'(DC2Type:datetime_immutable)\'');
         $this->addSql('CREATE TABLE shopping_list_ingredient (id VARCHAR(255) NOT NULL, shopping_list_id VARCHAR(255) NOT NULL, ingredient VARCHAR(255) NOT NULL, unit VARCHAR(255) NOT NULL, quantity DOUBLE PRECISION NOT NULL, PRIMARY KEY(id))');
+        $this->addSql('CREATE TABLE shopping_list_row (id VARCHAR(255) NOT NULL, shopping_list VARCHAR(255) NOT NULL, ingredient VARCHAR(255) NOT NULL, quantity DOUBLE PRECISION NOT NULL, unit VARCHAR(255) NOT NULL, checked BOOLEAN NOT NULL, PRIMARY KEY(id))');
         $this->addSql('CREATE TABLE unit (slug VARCHAR(255) NOT NULL, name VARCHAR(255) NOT NULL, symbol VARCHAR(255) NOT NULL, PRIMARY KEY(slug))');
         $this->addSql('CREATE TABLE "user" (id VARCHAR(36) NOT NULL, email VARCHAR(255) NOT NULL, password VARCHAR(255) NOT NULL, roles JSON NOT NULL, PRIMARY KEY(id))');
         $this->addSql('CREATE UNIQUE INDEX UNIQ_8D93D649E7927C74 ON "user" (email)');
@@ -48,6 +49,7 @@ final class Version20250202110327 extends AbstractMigration
         $this->addSql('DROP TABLE recipe_type');
         $this->addSql('DROP TABLE shopping_list');
         $this->addSql('DROP TABLE shopping_list_ingredient');
+        $this->addSql('DROP TABLE shopping_list_row');
         $this->addSql('DROP TABLE unit');
         $this->addSql('DROP TABLE "user"');
     }

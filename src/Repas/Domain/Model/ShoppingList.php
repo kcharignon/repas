@@ -68,7 +68,7 @@ final class ShoppingList implements ModelInterface
 
     public function getRows(): Tab
     {
-        return new Tab([]);
+        return $this->rows;
     }
 
     public static function create(

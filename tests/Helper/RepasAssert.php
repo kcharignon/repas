@@ -14,6 +14,7 @@ use Repas\Repas\Domain\Model\RecipeRow;
 use Repas\Repas\Domain\Model\RecipeType;
 use Repas\Repas\Domain\Model\ShoppingList;
 use Repas\Repas\Domain\Model\ShoppingListIngredient;
+use Repas\Repas\Domain\Model\ShoppingListRow;
 use Repas\Repas\Domain\Model\Unit;
 use Repas\Shared\Domain\Tool\Tab;
 use Repas\User\Domain\Model\User;
@@ -160,6 +161,17 @@ class RepasAssert
         self::assertUser($expected->getOwner(), $actual->getOwner());
         self::assertMeals($expected->getMeals(), $actual->getMeals());
         self::assertShoppingListIngredients($expected->getIngredients(), $actual->getIngredients());
+        self::assertShoppingListRows($expected->getRows(), $actual->getRows());
+    }
+
+    public static function assertShoppingListRows(Tab $expected, mixed $actual): void
+    {
+        self::assertTab(
+            $expected,
+            $actual,
+            fn($a, $b) => $a->getId() <=> $b->getId(),
+            fn($a, $b) => self::assertShoppingListRow($a, $b)
+        );
     }
 
     public static function assertShoppingListIngredients(Tab $expected, mixed $actual): void
@@ -189,6 +201,17 @@ class RepasAssert
         Assert::assertEquals($expected->getCoefficient(), $actual->getCoefficient());
         self::assertUnit($expected->getStartUnit(), $actual->getStartUnit());
         self::assertUnit($expected->getEndUnit(), $actual->getEndUnit());
+        self::assertIngredient($expected->getIngredient(), $actual->getIngredient());
+    }
+
+    private static function assertShoppingListRow(ShoppingListRow $expected, mixed $actual): void
+    {
+        Assert::assertInstanceOf(ShoppingListRow::class, $actual);
+        Assert::assertEquals($expected->getId(), $actual->getId());
+        Assert::assertEquals($expected->isChecked(), $actual->isChecked());
+        Assert::assertEquals($expected->getShoppingListId(), $actual->getShoppingListId());
+        Assert::assertEquals($expected->getQuantity(), $actual->getQuantity());
+        self::assertUnit($expected->getUnit(), $actual->getUnit());
         self::assertIngredient($expected->getIngredient(), $actual->getIngredient());
     }
 }

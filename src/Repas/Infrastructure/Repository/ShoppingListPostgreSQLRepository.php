@@ -5,14 +5,14 @@ namespace Repas\Repas\Infrastructure\Repository;
 
 use Doctrine\Persistence\ManagerRegistry;
 use Repas\Repas\Domain\Exception\ShoppingListException;
-use Repas\Repas\Domain\Interface\MealRepository;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Repas\Domain\Model\Meal as MealModel;
 use Repas\Repas\Domain\Model\ShoppingList;
-use Repas\Repas\Domain\Model\ShoppingListIngredient;
+use Repas\Repas\Domain\Model\ShoppingListIngredient as ShoppingListIngredientModel;
+use Repas\Repas\Domain\Model\ShoppingListRow as ShoppingListRowModel;
 use Repas\Repas\Domain\Model\ShoppingListStatus;
 use Repas\Repas\Infrastructure\Entity\ShoppingList as ShoppingListEntity;
-use Repas\Shared\Domain\Exception\SharedException;
+use Repas\Repas\Infrastructure\Entity\ShoppingListRow;
 use Repas\Shared\Domain\Tool\Tab;
 use Repas\Shared\Infrastructure\Repository\ModelCache;
 use Repas\User\Domain\Exception\UserException;
@@ -27,6 +27,7 @@ readonly class ShoppingListPostgreSQLRepository extends PostgreSQLRepository imp
         private UserRepository                             $userRepository,
         private MealPostgreSQLRepository                   $mealRepository,
         private ShoppingListIngredientPostgreSQLRepository $shopListIngredientRepository,
+        private ShoppingListRowPostgreSQLRepository        $shopListRowRepository,
     ) {
         parent::__construct($managerRegistry, ShoppingListEntity::class);
     }
@@ -67,22 +68,32 @@ readonly class ShoppingListPostgreSQLRepository extends PostgreSQLRepository imp
             // Suppression des anciens repas
             $this->mealRepository->deleteByShoppingListIdExceptIds(
                 $shoppingListEntity->getId(),
-                $shoppingList->getMeals()->map(fn(MealModel $meal) => $meal->getId())
+                $shoppingList->getMeals()->map(fn(MealModel $meal): string => $meal->getId())
             );
 
             // Suppression des anciens ingredients
             $this->shopListIngredientRepository->deleteByShoppingListIdExceptIds(
                 $shoppingListEntity->getId(),
-                $shoppingList->getIngredients()->map(fn(ShoppingListIngredient $ingredient) => $ingredient->getId())
+                $shoppingList->getIngredients()->map(fn(ShoppingListIngredientModel $ingredient): string => $ingredient->getId())
+            );
+
+            // Suppression des anciennes lignes de course
+            $this->shopListRowRepository->deleteByShoppingListIdExceptIds(
+                $shoppingListEntity->getId(),
+                $shoppingList->getRows()->map(fn(ShoppingListRowModel $row): string => $row->getId())
             );
         }
-        // Ajout des nouveaux repas et mise à jour des autres
+        // Ajoute des nouveaux repas et mise à jour des autres
         foreach ($shoppingList->getMeals() as $meal) {
             $this->mealRepository->save($meal);
         }
-        // Ajout des nouveaux ingredients et mise à jour des autres
+        // Ajoute des nouveaux ingredients et mise à jour des autres
         foreach ($shoppingList->getIngredients() as $shopListIngredient) {
             $this->shopListIngredientRepository->save($shopListIngredient);
+        }
+        // Ajoute de nouvelles lignes et mise à jour des autres
+        foreach ($shoppingList->getRows() as $shoppingListRow) {
+            $this->shopListRowRepository->save($shoppingListRow);
         }
 
         $this->entityManager->flush();
@@ -116,7 +127,7 @@ readonly class ShoppingListPostgreSQLRepository extends PostgreSQLRepository imp
             'status' => $shoppingListEntity->getStatus(),
             'meals' => $this->mealRepository->findByShoppingListId($shoppingListEntity->getId()),
             'ingredients' => $this->shopListIngredientRepository->findByShoppingListId($shoppingListEntity->getId()),
-            'rows' => Tab::fromArray([]),
+            'rows' => $this->shopListRowRepository->findByShoppingListId($shoppingListEntity->getId()),
         ]);
     }
 }
