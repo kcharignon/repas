@@ -4,6 +4,7 @@ namespace Repas\Tests\Repas\Service;
 
 
 use PHPUnit\Framework\TestCase;
+use Repas\Repas\Domain\Exception\IngredientException;
 use Repas\Repas\Domain\Model\Conversion;
 use Repas\Repas\Domain\Model\Ingredient;
 use Repas\Repas\Domain\Model\Unit;
@@ -27,25 +28,27 @@ class ConversionServiceTest extends TestCase
         $this->conversionService = new ConversionService($conversionRepository);
     }
 
-    public function rightDataProvider(): array
+    public function convertToPurchaseUnitSuccessDataProvider(): array
     {
         $egg = new IngredientBuilder()->isEgg()->build();
         $box = new UnitBuilder()->isBox()->build();
         $gramme = new UnitBuilder()->isGramme()->build();
         $piece = new UnitBuilder()->isPiece()->build();
         $millilitre = new UnitBuilder()->isMillilitre()->build();
+        $centilitre = new UnitBuilder()->isCentilitre()->build();
         return [
             "0 step same unit" => [$egg, 5, $piece, 5],
             "1 step Box =(simple)=> Piece" => [$egg, 3, $box, 36],
             "1 step Gramme =(reverse)=> Piece" => [$egg, 240, $gramme, 4],
             "2 steps Millilitre =(simple)=> Gramme =(reverse)=> Piece" => [$egg, 400, $millilitre, 10],
+            "3 steps Centilitre =(simple)=> Millilitre =(simple)=> Gramme =(reverse)=> Piece" => [$egg, 40, $centilitre, 10],
         ];
     }
 
     /**
-     * @dataProvider rightDataProvider
+     * @dataProvider convertToPurchaseUnitSuccessDataProvider
      */
-    public function testRight(Ingredient $ingredient, float $quantity, Unit $unit, float $expected): void
+    public function testConvertToPurchaseUnitSuccess(Ingredient $ingredient, float $quantity, Unit $unit, float $expected): void
     {
         // Act
         $actual = $this->conversionService->convertToPurchaseUnit($ingredient, $quantity, $unit);
@@ -54,48 +57,57 @@ class ConversionServiceTest extends TestCase
         $this->assertEquals($expected, $actual);
     }
 
+    public function testConvertToPurchaseUnitFailed(): void
+    {
+        // Arrange
+        $egg = new IngredientBuilder()->isEgg()->build();
+        $unit = new UnitBuilder()->isKilo()->build();
+
+        // Assert
+        $this->expectExceptionObject(IngredientException::cannotConvertToUnit($egg, $unit, $egg->getDefaultPurchaseUnit()));
+
+        // Act
+        $actual = $this->conversionService->convertToPurchaseUnit($egg, 25, $unit);
+    }
+
 
     /**
      * @return Tab<Conversion>
      */
     private function generateConversionTab(): Tab
     {
-
-
         $egg = new IngredientBuilder()->isEgg()->build();
         $milk = new IngredientBuilder()->isMilk()->build();
         return Tab::fromArray([
-            // Conversion simple Box -> Piece
             new ConversionBuilder()
-            ->setIngredient($egg)
-            ->setStartUnit(new UnitBuilder()->isBox()->build())
-            ->setEndUnit(new UnitBuilder()->isPiece()->build())
-            ->setCoefficient(12)
-            ->build(),
-
-
-            // Conversion inverse Gramme ->(rev) Piece
+                ->setIngredient($egg)
+                ->setStartUnit(new UnitBuilder()->isBox()->build())
+                ->setEndUnit(new UnitBuilder()->isPiece()->build())
+                ->setCoefficient(12)
+                ->build(),
             new ConversionBuilder()
-            ->setIngredient($egg)
-            ->setStartUnit(new UnitBuilder()->isPiece()->build())
-            ->setEndUnit(new UnitBuilder()->isGramme()->build())
-            ->setCoefficient(60)
-            ->build(),
-
-            // Conversion complexe Millilitre -> Gramme ->(rev) Piece
+                ->setIngredient($egg)
+                ->setStartUnit(new UnitBuilder()->isPiece()->build())
+                ->setEndUnit(new UnitBuilder()->isGramme()->build())
+                ->setCoefficient(60)
+                ->build(),
             new ConversionBuilder()
-            ->setIngredient($egg)
-            ->setStartUnit(new UnitBuilder()->isMillilitre()->build())
-            ->setEndUnit(new UnitBuilder()->isGramme()->build())
-            ->setCoefficient(1.5)
-            ->build(),
-
+                ->setIngredient($egg)
+                ->setStartUnit(new UnitBuilder()->isMillilitre()->build())
+                ->setEndUnit(new UnitBuilder()->isGramme()->build())
+                ->setCoefficient(1.5)
+                ->build(),
             new ConversionBuilder()
-            ->setIngredient($milk)
-            ->setStartUnit(new UnitBuilder()->isMillilitre()->build())
-            ->setEndUnit(new UnitBuilder()->isPiece()->build())
-            ->setCoefficient(400)
-            ->build(),
+                ->setStartUnit(new UnitBuilder()->isCentilitre()->build())
+                ->setEndUnit(new UnitBuilder()->isMillilitre()->build())
+                ->setCoefficient(10)
+                ->build(),
+            new ConversionBuilder()
+                ->setIngredient($milk)
+                ->setStartUnit(new UnitBuilder()->isMillilitre()->build())
+                ->setEndUnit(new UnitBuilder()->isPiece()->build())
+                ->setCoefficient(400)
+                ->build(),
         ]);
     }
 }

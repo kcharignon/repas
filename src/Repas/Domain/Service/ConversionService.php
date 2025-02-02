@@ -3,11 +3,12 @@
 namespace Repas\Repas\Domain\Service;
 
 use Repas\Repas\Domain\Exception\ConversionException; // à personnaliser si besoin
+use Repas\Repas\Domain\Exception\IngredientException;
 use Repas\Repas\Domain\Interface\ConversionRepository;
 use Repas\Repas\Domain\Model\Ingredient;
 use Repas\Repas\Domain\Model\Unit;
 
-class ConversionService
+readonly class ConversionService
 {
     public function __construct(
         private ConversionRepository $conversionRepository
@@ -19,7 +20,7 @@ class ConversionService
      * La conversion peut nécessiter plusieurs étapes, y compris des conversions inverses.
      * Utilise le parcours en largeur (BFS) pour trouver le chemin avec le moins d'étapes.
      *
-     * @throws \RuntimeException si aucun chemin de conversion n'est trouvé
+     * @throws IngredientException si aucun chemin de conversion n'est trouvé
      */
     public function convertToPurchaseUnit(Ingredient $ingredient, float $quantity, Unit $unit): float
     {
@@ -50,11 +51,7 @@ class ConversionService
         // Utiliser BFS pour trouver le chemin de conversion avec le moins d'étapes
         $totalCoefficient = $this->findConversionCoefficientBFS($unit->getId(), $purchaseUnit->getId(), $graph);
         if ($totalCoefficient === null) {
-            throw new \RuntimeException(sprintf(
-                "No conversion path found from unit '%s' to purchase unit '%s'.",
-                $unit->getId(),
-                $purchaseUnit->getId()
-            ));
+            throw IngredientException::cannotConvertToUnit($ingredient, $unit, $purchaseUnit);
         }
 
         return $quantity * $totalCoefficient;
