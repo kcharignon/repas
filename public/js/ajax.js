@@ -47,9 +47,11 @@ $(document).ready(function(){
 
   function showAlert(status, message, timeout=1000) {
     const html = "" +
+      "<div class='position-fixed top-0 start-50 translate-middle-x p-3' style='z-index: 9999'>"+
       "<div class='alert alert-dismissible alert-" + status + "'>" +
       "<button type='button' class='btn-close' data-bs-dismiss='alert'></button>" +
       message +
+      "</div>" +
       "</div>";
     $(".container").prepend(html);
     setTimeout(function(){
