@@ -2546,6 +2546,24 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
                 ],
             ],
         ],
+        [
+            "name" => "guacamole",
+            "owner" => "alexiane.sichi@gmail.com",
+            "type" => "entree",
+            "people" => 4,
+            "ingredients" => [
+                [
+                    "slug" => "avocat",
+                    "quantity" => 2,
+                    "unit" => "piece",
+                ],
+                [
+                    "slug" => "epice-guacamole",
+                    "quantity" => 0.5,
+                    "unit" => "sachet",
+                ],
+            ],
+        ],
     ];
     private static array $recipesIds = [];
 

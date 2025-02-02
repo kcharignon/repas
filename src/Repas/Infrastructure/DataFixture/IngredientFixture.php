@@ -305,13 +305,13 @@ class IngredientFixture extends Fixture implements DependentFixtureInterface, Fi
             "name" => "emmental rapé",
             "department" => "fromage",
             "defaultCookingUnit" => "gramme",
-            "defaultPurchaseUnit" => "sachet",
+            "defaultPurchaseUnit" => "gramme",
         ],
         [
             "name" => "comté",
             "department" => "fromage",
             "defaultCookingUnit" => "gramme",
-            "defaultPurchaseUnit" => "piece",
+            "defaultPurchaseUnit" => "gramme",
         ],
         [
             "name" => "parmesan",
@@ -347,7 +347,7 @@ class IngredientFixture extends Fixture implements DependentFixtureInterface, Fi
             "name" => "mascarpone",
             "department" => "fromage",
             "defaultCookingUnit" => "gramme",
-            "defaultPurchaseUnit" => "boite",
+            "defaultPurchaseUnit" => "gramme",
         ],
         [
             "name" => "reblochon",
@@ -855,8 +855,8 @@ class IngredientFixture extends Fixture implements DependentFixtureInterface, Fi
         [
             "name" => "maïs",
             "department" => "conserve",
-            "defaultCookingUnit" => "boite",
-            "defaultPurchaseUnit" => "boite",
+            "defaultCookingUnit" => "gramme",
+            "defaultPurchaseUnit" => "gramme",
         ],
         [
             "name" => "petit pois carotte",
@@ -1550,14 +1550,14 @@ class IngredientFixture extends Fixture implements DependentFixtureInterface, Fi
         [
             "name" => "épice guacamole",
             "department" => "cuisine-du-monde",
-            "defaultCookingUnit" => "piece",
-            "defaultPurchaseUnit" => "piece",
+            "defaultCookingUnit" => "sachet",
+            "defaultPurchaseUnit" => "sachet",
         ],
         [
             "name" => "épice viande",
             "department" => "cuisine-du-monde",
-            "defaultCookingUnit" => "piece",
-            "defaultPurchaseUnit" => "piece",
+            "defaultCookingUnit" => "sachet",
+            "defaultPurchaseUnit" => "sachet",
 
         ],
         [
