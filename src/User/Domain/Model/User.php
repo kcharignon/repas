@@ -19,16 +19,23 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, Passwor
         private string $email,
         private array $roles,
         private string $password,
+        private int $defaultServing
     ) {
     }
 
-    public static function create(string $id, string $email, array $roles, string $password): static
-    {
+    public static function create(
+        string $id,
+        string $email,
+        array $roles,
+        string $password,
+        int $defaultServing
+    ): static {
         return new static(
             $id,
             $email,
             $roles,
             $password,
+            $defaultServing
         );
     }
 
@@ -39,6 +46,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, Passwor
             $datas['email'],
             $datas['roles'],
             $datas['password'],
+            $datas['default_serving'],
         );
     }
 
@@ -70,6 +78,17 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, Passwor
     public function getRoles(): array
     {
         return $this->roles;
+    }
+
+    public function getDefaultServing(): int
+    {
+        return $this->defaultServing;
+    }
+
+    public function setDefaultServing(int $defaultServing): User
+    {
+        $this->defaultServing = $defaultServing;
+        return $this;
     }
 
     public function eraseCredentials(): void

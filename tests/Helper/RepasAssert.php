@@ -64,6 +64,7 @@ class RepasAssert
         Assert::assertEquals($expected->getEmail(), $actual->getEmail());
         Assert::assertEquals($expected->getPassword(), $actual->getPassword());
         Assert::assertEquals($expected->getRoles(), $actual->getRoles());
+        Assert::assertEquals($expected->getDefaultServing(), $actual->getDefaultServing());
     }
 
     public static function assertRecipe(Recipe $expected, mixed $actual): void

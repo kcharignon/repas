@@ -76,6 +76,7 @@ readonly class UserPostgreSQLRepository extends PostgreSQLRepository implements 
             'email' => $entity->getEmail(),
             'roles' => $entity->getRoles(),
             'password' => $entity->getPassword(),
+            'default_serving' => $entity->getDefaultServing()
         ]);
     }
 }

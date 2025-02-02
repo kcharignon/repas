@@ -22,23 +22,22 @@ class User
     #[ORM\Column]
     private array $roles = [];
 
+    #[ORM\Column( nullable: false)]
+    private ?int $defaultServing = null;
+
     public function __construct(
         string $id,
         string $email,
         string $password,
-        array $roles = [],
+        array $roles,
+        int $defaultServing,
     ) {
         $this->id = $id;
         $this->email = $email;
         $this->password = $password;
         $this->roles = $roles;
+        $this->defaultServing = $defaultServing;
     }
-
-    public static function fromData(array $datas): static
-    {
-        return new self($datas['id'], $datas['email'], $datas['password'], $datas['roles']);
-    }
-
 
     public function getId(): ?string
     {
@@ -81,6 +80,17 @@ class User
         return $this;
     }
 
+    public function getDefaultServing(): ?int
+    {
+        return $this->defaultServing;
+    }
+
+    public function setDefaultServing(?int $defaultServing): User
+    {
+        $this->defaultServing = $defaultServing;
+        return $this;
+    }
+
     public static function fromModel(UserModel $user): static
     {
         return new self(
@@ -88,6 +98,7 @@ class User
             email: $user->getEmail(),
             password: $user->getPassword(),
             roles: $user->getRoles(),
+            defaultServing: $user->getDefaultServing(),
         );
     }
 
@@ -97,5 +108,6 @@ class User
         $this->email = $user->getEmail();
         $this->password = $user->getPassword();
         $this->roles = $user->getRoles();
+        $this->defaultServing = $user->getDefaultServing();
     }
 }

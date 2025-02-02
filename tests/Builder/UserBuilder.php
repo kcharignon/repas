@@ -12,6 +12,7 @@ class UserBuilder implements Builder
     private array $roles;
     private string $password;
     private string $id;
+    private int $defaultServing;
 
     private function initialize(): void
     {
@@ -20,6 +21,7 @@ class UserBuilder implements Builder
         $this->roles ??= [];
         // Password hashed : Test
         $this->password ??= '$2y$13$0LFXi/NjQ/Ic36vx5MLGqu5kidPlsWf.xctG6xXNs1YYFiMLLLMym';
+        $this->defaultServing ??= 4;
     }
 
     public function build(): User
@@ -29,22 +31,14 @@ class UserBuilder implements Builder
             'id' => $this->id,
             'email' => $this->email,
             'roles' => $this->roles,
-            'password' => $this->password
+            'password' => $this->password,
+            'default_serving' => $this->defaultServing,
         ]);
     }
 
     public function withEmail(string $email): static
     {
         $this->email = $email;
-        return $this;
-    }
-
-    public function fromModel(User $user): self
-    {
-        $this->id = $user->getId();
-        $this->email = $user->getEmail();
-        $this->roles = $user->getRoles();
-        $this->password = $user->getPassword();
         return $this;
     }
 }

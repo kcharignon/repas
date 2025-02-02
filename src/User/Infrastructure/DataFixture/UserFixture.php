@@ -21,6 +21,7 @@ class UserFixture extends Fixture implements FixtureGroupInterface
             "password" => "logan",
             "fullname" => "Alexiane Sichi",
             "recipes" => [],
+            "default_serving" => 4,
         ],
         [
             "email" => "kantincharignon@gmail.com",
@@ -28,6 +29,7 @@ class UserFixture extends Fixture implements FixtureGroupInterface
             "password" => null,
             "fullname" => "Kantin C.",
             "recipes" => [],
+            "default_serving" => 5,
         ],
     ];
 
@@ -52,7 +54,8 @@ class UserFixture extends Fixture implements FixtureGroupInterface
                 UuidGenerator::new(),
                 $user['email'],
                 $user['roles'],
-                $passwordHashed
+                $passwordHashed,
+                $user['default_serving'],
             );
 
             $userEntity = UserEntity::fromModel($userModel);
