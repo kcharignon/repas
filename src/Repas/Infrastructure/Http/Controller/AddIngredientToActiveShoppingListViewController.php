@@ -59,7 +59,7 @@ class AddIngredientToActiveShoppingListViewController extends AbstractController
             "alerts" => [
                 [
                     "status" => "success",
-                    "message" => $ingredient->getName()." ajouté avec succès.",
+                    "message" => $ingredient->getName()." a été ajouté.",
                 ]
             ]
         ]);

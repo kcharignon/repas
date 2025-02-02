@@ -289,7 +289,24 @@ final class ShoppingList implements ModelInterface
                 quantity: 1
             );
         }
+    }
 
+    public function removeIngredient(Ingredient $ingredient): void
+    {
+        $ingredientKey = $this->ingredients->findKey(fn(ShoppingListIngredient $sli) => $sli->getIngredient()->isEqual($ingredient) && $sli->getUnit()->isEqual($ingredient->getDefaultPurchaseUnit()));
+
+        // Si on ne retrouve pas l'ingrédient, il n'est deja plus present dans la liste
+        if ($ingredientKey === null) {
+            return;
+        }
+
+        // On soustrait 1 a la quantité
+        $this->ingredients[$ingredientKey]->subtractQuantity(1);
+
+        // Si la quantité est inférieur ou égal à zéro, alors on supprime l'ingrédient
+        if ($this->ingredients[$ingredientKey]->getQuantity() <= 0) {
+            unset($this->ingredients[$ingredientKey]);
+        }
     }
 
     private function foundRowByIngredientAndUnit(Ingredient $ingredient, Unit $unit): ?ShoppingListIngredient
