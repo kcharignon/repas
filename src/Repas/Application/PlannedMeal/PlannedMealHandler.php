@@ -39,6 +39,7 @@ readonly class PlannedMealHandler
 
         $shoppingList->addMeal($recipe);
 
+        dump($shoppingList);
         $this->shoppingListRepository->save($shoppingList);
     }
 }

@@ -30,6 +30,7 @@ readonly class removeMealFromPlanHandler
         $owner = $this->userRepository->findOneById($command->ownerId);
 
         $activeShoppingList = $this->shoppingListRepository->findOnePlanningByOwner($owner);
+
         if (!$activeShoppingList instanceof ShoppingList) {
             throw ShoppingListException::activeShoppingListNotFound();
         }
@@ -37,7 +38,9 @@ readonly class removeMealFromPlanHandler
         $recipe = $this->recipeRepository->findOneById($command->recipeId);
 
         $activeShoppingList->removeMeal($recipe);
+        dump($activeShoppingList);
         $this->shoppingListRepository->save($activeShoppingList);
 
+        dump($this->shoppingListRepository->findOneById($activeShoppingList->getId()));
     }
 }

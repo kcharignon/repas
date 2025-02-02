@@ -70,13 +70,15 @@ readonly class MealPostgreSQLRepository extends PostgreSQLRepository
      */
     public function deleteByShoppingListIdExceptIds(string $shoppingListId, Tab $mealIds): void
     {
-        $this->entityRepository->createQueryBuilder('m')
+        $qb = $this->entityRepository->createQueryBuilder('m')
             ->delete()
             ->where('m.shoppingListId = :shoppingListId')
-            ->setParameter('shoppingListId', $shoppingListId)
-            ->andWhere('m.id not in (:mealIds)')
-            ->setParameter('mealIds', $mealIds->toArray())
-            ->getQuery()
+            ->setParameter('shoppingListId', $shoppingListId);
+        if ($mealIds->count() > 0) {
+            $qb->andWhere('m.id not in (:mealIds)')
+                ->setParameter('mealIds', $mealIds->toArray());
+        }
+        $qb->getQuery()
             ->execute();
     }
 }

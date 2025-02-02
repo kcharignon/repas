@@ -123,7 +123,7 @@ class IngredientBuilder implements Builder
     {
         $this->name = 'lait';
         $this->slug = StringTool::slugify($this->name);
-        $this->image = '';
+        $this->image = 'images/ingredient/milk.png';
         $this->departmentBuilder = new DepartmentBuilder()->isMiscellaneous();
         $this->defaultCookingUnitBuilder = new UnitBuilder()->isLiter();
         $this->defaultPurchaseUnitBuilder = new UnitBuilder()->isLiter();

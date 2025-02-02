@@ -273,6 +273,24 @@ final class ShoppingList implements ModelInterface
         $this->rows = Tab::newEmptyTyped(Row::class);
     }
 
+    public function addIngredient(Ingredient $ingredient): void
+    {
+        // Recherche de l'ingrédient dans l'unité d'achat dans la liste
+        if (($shopListIngredient = $this->ingredients->find(fn(ShoppingListIngredient $sli) => $sli->getIngredient()->isEqual($ingredient) && $sli->getUnit()->isEqual($ingredient->getDefaultPurchaseUnit()))) !== null) {
+            // Si on le trouve on incrémente de 1 la quantité
+            $shopListIngredient->addQuantity(1);
+        } else {
+            // Sinon on le créer avec une quantité de 1
+            $this->ingredients[] = ShoppingListIngredient::create(
+                shoppingListId: $this->id,
+                ingredient: $ingredient,
+                unit: $ingredient->getDefaultPurchaseUnit(),
+                quantity: 1
+            );
+        }
+
+    }
+
     private function foundRowByIngredientAndUnit(Ingredient $ingredient, Unit $unit): ?ShoppingListIngredient
     {
         return $this->ingredients->find(fn(ShoppingListIngredient $row) => $row->hasIngredientInUnit($ingredient, $unit));
@@ -294,18 +312,21 @@ final class ShoppingList implements ModelInterface
             return ;
         }
 
+        // On trouve le coefficient grace au serving
+        $coefficient = $this->meals[$mealKey]->getServing() / $recipe->getServing();
         unset($this->meals[$mealKey]);
 
         // Supprime les ingredients de la recette
         foreach ($recipe->getRows() as $recipeRow) {
             $callback = fn(ShoppingListIngredient $spi) => $spi->hasIngredientInUnit($recipeRow->getIngredient(), $recipeRow->getUnit());
+            $quantity = $recipeRow->getQuantity() * $coefficient;
             if (($listIngredientKey = $this->ingredients->findKey($callback)) !== null) {
-                if ($this->ingredients[$listIngredientKey]->getQuantity() === $recipeRow->getQuantity()) {
+                if ($this->ingredients[$listIngredientKey]->getQuantity() === $quantity) {
                     // Si la quantité est égale, alors on supprime l'ingrédient
                     unset($this->ingredients[$listIngredientKey]);
                 } else {
                     // Si la quantité est supérieur, alors on soustrait la quantité
-                    $this->ingredients[$listIngredientKey]->subtractQuantity($recipeRow->getQuantity());
+                    $this->ingredients[$listIngredientKey]->subtractQuantity($quantity);
                 }
             }
         }

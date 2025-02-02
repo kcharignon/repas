@@ -29,8 +29,8 @@
                     type="button"
                     class="btn btn-success btn-sm float-end me-1"
                     data-action="btn-ajax"
-{#                    data-url="{{ path("shopping_list_add_ingredient", {"id_ingredient" : ingredient.id}) }}"#}
-                >
+                    data-method="post"
+                    data-url="{{ path("view_shopping_list_add_ingredient", {"slug" : ingredient.slug}) }}">
                     <i class="fas fa-plus-circle">
                         <span class="ps-2" style="font-family: 'Source Sans Pro'">Ajouter</span>
                     </i>
