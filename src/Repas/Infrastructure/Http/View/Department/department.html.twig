@@ -1,0 +1,44 @@
+{% set active = "department" %}
+{% extends '@Shared/base.html.twig' %}
+
+{% block title %}
+    Rayon : {{ department.name }}
+{% endblock %}
+
+{% block body %}
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{{ path("view_departments") }}">Rayon</a></li>
+        <li class="breadcrumb-item active">{{ department.name }}</li>
+    </ol>
+
+    <ul class="list-group">
+        {% for ingredient in ingredients %}
+            <li class="list-group-item justify-content-between align-items-center">
+                {{ ingredient.name }}
+                <button
+                    type="button"
+                    class="btn btn-danger btn-sm float-end"
+                    data-action="btn-ajax"
+{#                    data-url="{{ path("shopping_list_remove_ingredient", {"id_ingredient" : ingredient.id}) }}"#}
+                >
+                    <i class="fas fa-trash-alt">
+                        <span class="ps-2" style="font-family: 'Source Sans Pro'">Enlever</span>
+                    </i>
+                </button>
+                <button
+                    type="button"
+                    class="btn btn-success btn-sm float-end me-1"
+                    data-action="btn-ajax"
+{#                    data-url="{{ path("shopping_list_add_ingredient", {"id_ingredient" : ingredient.id}) }}"#}
+                >
+                    <i class="fas fa-plus-circle">
+                        <span class="ps-2" style="font-family: 'Source Sans Pro'">Ajouter</span>
+                    </i>
+                </button>
+            </li>
+        {% endfor %}
+        <a class="list-group-item d-flex justify-content-between align-items-center active" href="#" alt="bouton ajouter">
+            Ajouter un ingredient
+        </a>
+    </ul>
+{% endblock %}

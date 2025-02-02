@@ -5,8 +5,11 @@ namespace Repas\Repository;
 
 use Repas\Repas\Domain\Exception\DepartmentException;
 use Repas\Repas\Domain\Interface\DepartmentRepository;
+use Repas\Repas\Domain\Model\Department;
+use Repas\Shared\Domain\Tool\Tab;
 use Repas\Tests\Builder\DepartmentBuilder;
 use Repas\Tests\Helper\DatabaseTestCase;
+use Repas\Tests\Helper\RepasAssert;
 
 class DepartmentRepositoryTest extends DatabaseTestCase
 {
@@ -61,5 +64,13 @@ class DepartmentRepositoryTest extends DatabaseTestCase
 
     }
 
+    public function testFindAll(): void
+    {
+        // Act
+        $departments = $this->departmentRepository->findAll();
 
+        // Assert
+        $this->assertCount(20, $departments);
+        RepasAssert::assertTabType(Tab::newEmptyTyped(Department::class), $departments);
+    }
 }

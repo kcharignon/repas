@@ -11,6 +11,7 @@ use Repas\User\Domain\Model\User;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 class RemoveRecipeToActiveShoppingListViewController extends AbstractController
 {
@@ -22,6 +23,7 @@ class RemoveRecipeToActiveShoppingListViewController extends AbstractController
     }
 
     #[Route(path: '/shopping-list/active/recipe/{id}/remove', name: 'view_shopping_list_remove_recipe', methods: ['POST'])]
+    #[IsGranted('ROLE_USER')]
     public function __invoke(string $id): JsonResponse
     {
         $connectedUser = $this->getUser();

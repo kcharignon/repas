@@ -24,7 +24,7 @@ class AdvanceShoppingListToShoppingViewController extends AbstractController
     }
 
     #[Route(path: 'shopping-list/{id}/status/shopping', name: 'view_shopping_list_shopping')]
-    #[isGranted('ROLE_USER')]
+    #[IsGranted('ROLE_USER')]
     public function __invoke(string $id): Response
     {
         $command = new AdvanceShoppingListToShoppingCommand($id);

@@ -15,6 +15,7 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 class AddRecipeToActiveShoppingListViewController extends AbstractController
 {
@@ -26,6 +27,7 @@ class AddRecipeToActiveShoppingListViewController extends AbstractController
     }
 
     #[Route(path: '/shopping-list/active/recipe/{id}/add', name: 'view_shopping_list_add_recipe', methods: ['POST'])]
+    #[IsGranted('ROLE_USER')]
     public function __invoke(string $id): Response
     {
         $connectedUser = $this->getUser();

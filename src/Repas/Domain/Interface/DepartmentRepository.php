@@ -21,4 +21,9 @@ interface DepartmentRepository
      * @return Tab<Department>
      */
     public function findBySlugs(Tab $slugs): Tab;
+
+    /**
+     * @return Tab<Department>
+     */
+    public function findAll(): Tab;
 }

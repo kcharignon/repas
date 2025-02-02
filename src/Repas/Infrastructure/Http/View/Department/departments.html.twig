@@ -1,0 +1,14 @@
+{% set active = "department" %}
+{% extends '@Shared/base.html.twig' %}
+
+{% block title %}
+    Rayons
+{% endblock %}
+
+{% block body %}
+    <div class="row">
+        {% for department in departments %}
+            {% include "@Repas/Department/_department_card.html.twig" %}
+        {% endfor %}
+    </div>
+{% endblock %}

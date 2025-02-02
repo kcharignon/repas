@@ -21,7 +21,7 @@ class RevertShoppingListToPlanningViewController extends AbstractController
     }
 
     #[Route(path: 'shopping-list/{id}/status/planning', name: 'view_shopping_list_planning')]
-    #[isGranted('ROLE_USER')]
+    #[IsGranted('ROLE_USER')]
     public function __invoke(string $id): Response
     {
         /** @var User $connectedUser */

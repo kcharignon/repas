@@ -14,7 +14,7 @@ class UncheckLineOnShoppingListViewController extends AbstractController
     }
 
     #[Route(path: '/shopping-list/{id}/line/{line}/uncheck', name: 'view_shopping_list_row_uncheck', methods: ['POST'])]
-    #[isGranted('ROLE_USER')]
+    #[IsGranted('ROLE_USER')]
     public function __invoke()
     {
         // TODO: Implement __invoke() method.

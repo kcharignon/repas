@@ -20,7 +20,7 @@ class GetAllRecipeViewController extends AbstractController
     }
 
     #[Route(path: '/recipes', name: 'view_recipes', methods: ['GET'])]
-    #[isGranted('ROLE_USER')]
+    #[IsGranted('ROLE_USER')]
     public function __invoke(): Response
     {
         $connectedUser = $this->getUser();

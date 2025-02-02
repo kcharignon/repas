@@ -20,6 +20,21 @@ readonly class DepartmentPostgreSQLRepository extends PostgreSQLRepository imple
         parent::__construct($registry, DepartmentEntity::class);
     }
 
+    public function findAll(): Tab
+    {
+        $entities = new Tab($this->entityRepository->findAll(), DepartmentEntity::class);
+        return $entities->map(function (DepartmentEntity $entity) {
+            if (($model = $this->modelCache->getModelCache(DepartmentModel::class, $entity->getSlug())) !== null) {
+                return $model;
+            }
+
+            $model = $this->convertEntityToModel($entity);
+            $this->modelCache->setModelCache($model);
+            return $model;
+        });
+    }
+
+
     /**
      * @throws DepartmentException
      */

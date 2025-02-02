@@ -1,0 +1,12 @@
+<div class="col">
+    <div class="card bg-light mb-3" style="max-width: 20rem;">
+        <a style="text-decoration: none; color: inherit" href="{{ path("view_department", {"slug": department.slug}) }}">
+            <div class="card-header">
+                {{ department.name }}
+            </div>
+            <div class="card-body">
+                <img src="{{ absolute_url(asset(department.image)) }}" alt="{{ department.name }}">
+            </div>
+        </a>
+    </div>
+</div>

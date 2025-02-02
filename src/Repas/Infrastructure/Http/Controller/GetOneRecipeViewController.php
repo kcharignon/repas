@@ -17,7 +17,7 @@ class GetOneRecipeViewController extends AbstractController
     }
 
     #[Route(path: '/recipe/{id}', name: 'view_recipe', methods: ['GET'])]
-    #[isGranted('ROLE_USER')]
+    #[IsGranted('ROLE_USER')]
     public function __invoke(string $id): Response
     {
         $recipe = $this->recipeRepository->findOneById($id);

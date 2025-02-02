@@ -14,7 +14,7 @@ class TickLineOnShoppingListViewController extends AbstractController
     }
 
     #[Route(path: '/shopping-list/{id}/line/{line}/tick', name: 'view_shopping_list_row_tick', methods: ['POST'])]
-    #[isGranted('ROLE_USER')]
+    #[IsGranted('ROLE_USER')]
     public function __invoke()
     {
         // TODO: Implement __invoke() method.
