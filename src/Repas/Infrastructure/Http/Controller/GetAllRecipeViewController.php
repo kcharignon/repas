@@ -11,7 +11,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
-class GetAllRecipeController extends AbstractController
+class GetAllRecipeViewController extends AbstractController
 {
     public function __construct(
         private readonly RecipeRepository $recipeRepository,

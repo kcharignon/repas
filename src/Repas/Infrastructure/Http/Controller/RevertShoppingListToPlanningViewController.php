@@ -13,14 +13,11 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
-class RevertShoppingListToPlanningController extends AbstractController
+class RevertShoppingListToPlanningViewController extends AbstractController
 {
-
-
     public function __construct(
         private readonly CommandBusInterface $commandBus,
-    )
-    {
+    ) {
     }
 
     #[Route(path: 'shopping-list/{id}/status/planning', name: 'view_shopping_list_planning')]

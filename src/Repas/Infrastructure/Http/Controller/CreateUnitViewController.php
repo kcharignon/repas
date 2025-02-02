@@ -9,7 +9,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 
 
-class CreateUnitController extends AbstractController
+class CreateUnitViewController extends AbstractController
 {
     #[Route('/unit', name: 'view_unit_add', methods: ['POST'])]
     public function __invoke(Request $request): Response

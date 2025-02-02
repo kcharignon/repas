@@ -9,7 +9,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
-class GetOneRecipeController extends AbstractController
+class GetOneRecipeViewController extends AbstractController
 {
     public function __construct(
         private readonly RecipeRepository $recipeRepository,
