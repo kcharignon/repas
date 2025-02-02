@@ -10,6 +10,7 @@ use Repas\Shared\Domain\Model\ModelTrait;
 use Repas\Shared\Domain\Tool\Tab;
 use Repas\User\Domain\Model\User;
 use Repas\Repas\Domain\Model\ShoppingListStatus as Status;
+use Repas\Repas\Domain\Model\ShoppingListRow as Row;
 
 final class ShoppingList implements ModelInterface
 {
@@ -21,7 +22,7 @@ final class ShoppingList implements ModelInterface
     /**
      * @param Tab<Meal> $meals
      * @param Tab<ShoppingListIngredient> $ingredients
-     * @param Tab<ShoppingListRow> $rows
+     * @param Tab<Row> $rows
      */
     private function __construct(
         private string            $id,
@@ -82,7 +83,7 @@ final class ShoppingList implements ModelInterface
             status: Status::PLANNING,
             meals: Tab::newEmptyTyped(Meal::class),
             ingredients: Tab::newEmptyTyped(ShoppingListIngredient::class),
-            rows: Tab::newEmptyTyped(ShoppingListRow::class),
+            rows: Tab::newEmptyTyped(Row::class),
         );
     }
 
@@ -212,6 +213,17 @@ final class ShoppingList implements ModelInterface
         }
     }
 
+    public function addRow(Ingredient $ingredient, float $quantity): void
+    {
+        // Cherche si la ligne avec l'ingrédient est déjà present dans la liste
+        if (($row = $this->rows->find(fn(Row $row) => $row->getIngredient()->isEqual($ingredient))) !== null) {
+            $row->addQuantity($quantity);
+        } else {
+            //Sinon on créer la ligne
+            $this->rows[] = Row::create($this->id, $ingredient, $quantity);
+        }
+    }
+
     public function setStatus(?Status $status): void
     {
         $this->status = $status;
@@ -244,6 +256,9 @@ final class ShoppingList implements ModelInterface
         }
 
         $this->status = Status::PLANNING;
+
+        // On reset les lignes
+        $this->rows = Tab::newEmptyTyped(Row::class);
     }
 
     private function foundRowByIngredientAndUnit(Ingredient $ingredient, Unit $unit): ?ShoppingListIngredient

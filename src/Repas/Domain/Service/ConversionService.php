@@ -2,17 +2,20 @@
 
 namespace Repas\Repas\Domain\Service;
 
-use Repas\Repas\Domain\Exception\ConversionException; // à personnaliser si besoin
 use Repas\Repas\Domain\Exception\IngredientException;
 use Repas\Repas\Domain\Interface\ConversionRepository;
 use Repas\Repas\Domain\Model\Ingredient;
 use Repas\Repas\Domain\Model\Unit;
+use Repas\Shared\Domain\Tool\Tab;
 
 readonly class ConversionService
 {
+    private Tab $graphs;
+
     public function __construct(
         private ConversionRepository $conversionRepository
     ) {
+        $this->graphs = Tab::newEmptyTyped('array');
     }
 
     /**
@@ -31,22 +34,8 @@ readonly class ConversionService
             return $quantity;
         }
 
-        // Récupérer toutes les conversions associées à l'ingrédient.
-        $conversions = $this->conversionRepository->findByIngredient($ingredient);
-
-        // Construire un graphe bidirectionnel des conversions.
-        // Pour chaque conversion, on ajoute deux arêtes :
-        // - De startUnit à endUnit avec un poids égal au coefficient.
-        // - De endUnit à startUnit avec un poids égal à 1/coefficient.
-        $graph = [];
-        foreach ($conversions->toArray() as $conversion) {
-            $startId = $conversion->getStartUnit()->getId();
-            $endId   = $conversion->getEndUnit()->getId();
-            $coef    = $conversion->getCoefficient();
-
-            $graph[$startId][] = ['to' => $endId, 'weight' => $coef];
-            $graph[$endId][]   = ['to' => $startId, 'weight' => 1 / $coef];
-        }
+        // Récupérer le graph des conversions pour un ingredient
+        $graph = $this->generateGraph($ingredient);
 
         // Utiliser BFS pour trouver le chemin de conversion avec le moins d'étapes
         $totalCoefficient = $this->findConversionCoefficientBFS($unit->getId(), $purchaseUnit->getId(), $graph);
@@ -97,5 +86,31 @@ readonly class ConversionService
         }
 
         return null;
+    }
+
+    private function generateGraph(Ingredient $ingredient): array
+    {
+        if (!isset($this->graphs[$ingredient->getSlug()])) {
+            // Recuperation de toutes les conversions d'un ingredient
+            $conversions = $this->conversionRepository->findByIngredient($ingredient);
+
+            // Construire un graphe bidirectionnel des conversions.
+            // Pour chaque conversion, on ajoute deux arêtes :
+            // - De startUnit à endUnit avec un poids égal au coefficient.
+            // - De endUnit à startUnit avec un poids égal à 1/coefficient.
+            $graph = [];
+            foreach ($conversions->toArray() as $conversion) {
+                $startSlug = $conversion->getStartUnit()->getSlug();
+                $endSlug   = $conversion->getEndUnit()->getSlug();
+                $coef    = $conversion->getCoefficient();
+
+                $graph[$startSlug][] = ['to' => $endSlug, 'weight' => $coef];
+                $graph[$endSlug][]   = ['to' => $startSlug, 'weight' => 1 / $coef];
+            }
+
+            $this->graphs->add($graph, $ingredient->getSlug());
+        }
+
+        return $this->graphs[$ingredient->getSlug()];
     }
 }

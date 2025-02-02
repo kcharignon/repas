@@ -12,15 +12,49 @@ use Repas\Shared\Domain\Tool\StringTool;
 
 class IngredientFixture extends Fixture implements DependentFixtureInterface, FixtureGroupInterface
 {
+    public function getDependencies(): array
+    {
+        return [
+            UnitFixture::class,
+            DepartmentFixture::class,
+        ];
+    }
+
+    public static function getGroups(): array
+    {
+        return ['prod', 'test', 'dev'];
+    }
+
+    public function load(ObjectManager $manager): void
+    {
+        foreach (self::INGREDIENTS as $ingredientData) {
+            $ingredientEntity = new IngredientEntity(
+                slug: StringTool::slugify($ingredientData['name']),
+                name: $ingredientData['name'],
+                image: $ingredientData['image'] ?? '',
+                department: $ingredientData['department'],
+                defaultCookingUnit: $ingredientData['defaultCookingUnit'],
+                defaultPurchaseUnit: $ingredientData['defaultPurchaseUnit'],
+            );
+            $manager->persist($ingredientEntity);
+
+            $this->addReference($ingredientEntity->getSlug(), $ingredientEntity);
+        }
+
+        $manager->flush();
+    }
+
     private const array INGREDIENTS = [
         [
             "name" => "aubergine",
+            "image" => "images/ingredient/eggplant.png",
             "defaultCookingUnit" => "piece",
             "defaultPurchaseUnit" => "piece",
             "department" => "fruit-et-legume",
         ],
         [
             "name" => "ail",
+            "image" => "images/ingredient/ail.png",
             "defaultCookingUnit" => "piece",
             "defaultPurchaseUnit" => "piece",
             "department" => "fruit-et-legume",
@@ -34,42 +68,49 @@ class IngredientFixture extends Fixture implements DependentFixtureInterface, Fi
         ],
         [
             "name" => "bettrave",
+            "image" => "images/ingredient/beetroot.png",
             "defaultCookingUnit" => "piece",
             "defaultPurchaseUnit" => "piece",
             "department" => "fruit-et-legume",
         ],
         [
             "name" => "brocoli",
+            "image" => "images/ingredient/broccoli.png",
             "defaultCookingUnit" => "piece",
             "defaultPurchaseUnit" => "piece",
             "department" => "fruit-et-legume",
         ],
         [
             "name" => "banane",
+            "image" => "images/ingredient/banane.png",
             "defaultCookingUnit" => "piece",
             "defaultPurchaseUnit" => "piece",
             "department" => "fruit-et-legume",
         ],
         [
             "name" => "épinard",
+            "image" => "images/ingredient/spinach.png",
             "defaultCookingUnit" => "gramme",
             "defaultPurchaseUnit" => "sachet",
             "department" => "fruit-et-legume",
         ],
         [
             "name" => "carotte",
+            "image" => "images/ingredient/carrot.png",
             "defaultCookingUnit" => "piece",
             "defaultPurchaseUnit" => "piece",
             "department" => "fruit-et-legume",
         ],
         [
             "name" => "ananas",
+            "image" => "images/ingredient/pineapple.png",
             "defaultCookingUnit" => "piece",
             "defaultPurchaseUnit" => "piece",
             "department" => "fruit-et-legume",
         ],
         [
             "name" => "chou",
+            "image" => "images/ingredient/cabbage.png",
             "defaultCookingUnit" => "piece",
             "defaultPurchaseUnit" => "piece",
             "department" => "fruit-et-legume",
@@ -88,18 +129,21 @@ class IngredientFixture extends Fixture implements DependentFixtureInterface, Fi
         ],
         [
             "name" => "concombre",
+            "image" => "images/ingredient/cucumber.png",
             "defaultCookingUnit" => "piece",
             "defaultPurchaseUnit" => "piece",
             "department" => "fruit-et-legume",
         ],
         [
             "name" => "champignon",
+            "image" => "images/ingredient/mushroom.png",
             "defaultCookingUnit" => "piece",
             "defaultPurchaseUnit" => "piece",
             "department" => "fruit-et-legume",
         ],
         [
             "name" => "haricot rouge",
+            "image" => "images/ingredient/kidney.png",
             "defaultCookingUnit" => "piece",
             "defaultPurchaseUnit" => "piece",
             "department" => "fruit-et-legume",
@@ -118,12 +162,14 @@ class IngredientFixture extends Fixture implements DependentFixtureInterface, Fi
         ],
         [
             "name" => "salade",
+            "image" => "images/ingredient/salad.png",
             "defaultCookingUnit" => "piece",
             "defaultPurchaseUnit" => "piece",
             "department" => "fruit-et-legume",
         ],
         [
             "name" => "salade verte",
+            "image" => "images/ingredient/salad.png",
             "defaultCookingUnit" => "piece",
             "defaultPurchaseUnit" => "piece",
             "department" => "fruit-et-legume",
@@ -142,6 +188,7 @@ class IngredientFixture extends Fixture implements DependentFixtureInterface, Fi
         ],
         [
             "name" => "pomme",
+            "image" => "images/ingredient/apple.png",
             "defaultCookingUnit" => "piece",
             "defaultPurchaseUnit" => "piece",
             "department" => "fruit-et-legume",
@@ -348,6 +395,7 @@ class IngredientFixture extends Fixture implements DependentFixtureInterface, Fi
         ],
         [
             "name" => "beurre",
+            "image" => 'images/ingredient/butter.png',
             "department" => "fromage",
             "defaultCookingUnit" => "gramme",
             "defaultPurchaseUnit" => "plaquette",
@@ -872,6 +920,7 @@ class IngredientFixture extends Fixture implements DependentFixtureInterface, Fi
         ],
         [
             "name" => "farine",
+            "image" => "images/ingredient/flour.png",
             "department" => "aide-patissier",
             "defaultCookingUnit" => "gramme",
             "defaultPurchaseUnit" => "gramme",
@@ -890,6 +939,7 @@ class IngredientFixture extends Fixture implements DependentFixtureInterface, Fi
         ],
         [
             "name" => "sucre",
+            "image" => "images/ingredient/sugar.png",
             "department" => "aide-patissier",
             "defaultCookingUnit" => "gramme",
             "defaultPurchaseUnit" => "gramme",
@@ -1415,6 +1465,7 @@ class IngredientFixture extends Fixture implements DependentFixtureInterface, Fi
         ],
         [
             "name" => "œuf",
+            "image" => "images/ingredient/egg.png",
             "department" => "divers",
             "defaultCookingUnit" => "piece",
             "defaultPurchaseUnit" => "piece",
@@ -1520,36 +1571,4 @@ class IngredientFixture extends Fixture implements DependentFixtureInterface, Fi
             "defaultPurchaseUnit" => "piece",
         ],
     ];
-
-    public function getDependencies(): array
-    {
-        return [
-            UnitFixture::class,
-            DepartmentFixture::class,
-        ];
-    }
-
-    public static function getGroups(): array
-    {
-        return ['prod', 'test', 'dev'];
-    }
-
-    public function load(ObjectManager $manager): void
-    {
-        foreach (self::INGREDIENTS as $ingredientData) {
-            $ingredientEntity = new IngredientEntity(
-                slug: StringTool::slugify($ingredientData['name']),
-                name: $ingredientData['name'],
-                image: $ingredientData['image'] ?? '',
-                department: $ingredientData['department'],
-                defaultCookingUnit: $ingredientData['defaultCookingUnit'],
-                defaultPurchaseUnit: $ingredientData['defaultPurchaseUnit'],
-            );
-            $manager->persist($ingredientEntity);
-
-            $this->addReference($ingredientEntity->getSlug(), $ingredientEntity);
-        }
-
-        $manager->flush();
-    }
 }

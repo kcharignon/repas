@@ -6,6 +6,7 @@ namespace Repas\Repas\Domain\Model;
 use Repas\Shared\Domain\Model\ModelInterface;
 use Repas\Shared\Domain\Model\ModelTrait;
 use Repas\Repas\Domain\Model\ShoppingListRowStatus as Status;
+use Repas\Shared\Domain\Tool\UuidGenerator;
 
 final class ShoppingListRow implements ModelInterface
 {
@@ -19,6 +20,21 @@ final class ShoppingListRow implements ModelInterface
         private Unit       $unit,
         private Status     $status,
     ) {
+    }
+
+    public static function create(
+        string $shoppingListId,
+        Ingredient $ingredient,
+        float      $quantity,
+    ): self {
+        return new self(
+            id: UuidGenerator::new(),
+            shoppingListId: $shoppingListId,
+            ingredient: $ingredient,
+            quantity: $quantity,
+            unit: $ingredient->getDefaultPurchaseUnit(),
+            status: Status::UNCHECKED,
+        );
     }
 
     public function getId(): string
@@ -61,5 +77,10 @@ final class ShoppingListRow implements ModelInterface
             unit: $datas['unit'],
             status: $datas['status'],
         );
+    }
+
+    public function addQuantity(float $quantity): void
+    {
+        $this->quantity += $quantity;
     }
 }
