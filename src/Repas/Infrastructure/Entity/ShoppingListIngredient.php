@@ -13,7 +13,7 @@ class ShoppingListIngredient
     #[ORM\Column]
     private ?string $id = null;
 
-    #[ORM\Column(length: 255)]
+    #[ORM\Column(name:'shopping_list', length: 255)]
     private ?string $shoppingListId = null;
 
     #[ORM\Column(name:'ingredient', length: 255)]

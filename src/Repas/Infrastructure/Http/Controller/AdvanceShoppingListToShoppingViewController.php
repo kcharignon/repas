@@ -5,7 +5,9 @@ namespace Repas\Repas\Infrastructure\Http\Controller;
 
 use Repas\Repas\Application\AdvanceShoppingListToShopping\AdvanceShoppingListToShoppingCommand;
 use Repas\Repas\Application\RevertShoppingListToPlanning\RevertShoppingListToPlanningCommand;
+use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Shared\Application\Interface\CommandBusInterface;
+use Repas\User\Domain\Interface\UserRepository;
 use Repas\User\Domain\Model\User;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -19,6 +21,7 @@ class AdvanceShoppingListToShoppingViewController extends AbstractController
 
     public function __construct(
         private readonly CommandBusInterface $commandBus,
+        private readonly ShoppingListRepository $shoppingListRepository,
     )
     {
     }
@@ -29,7 +32,10 @@ class AdvanceShoppingListToShoppingViewController extends AbstractController
     {
         $command = new AdvanceShoppingListToShoppingCommand($id);
 
-        $shoppingList = $this->commandBus->dispatch($command);
+        $this->commandBus->dispatch($command);
+
+        $shoppingList = $this->shoppingListRepository->findOneById($id);
+
         $htmlActionButtons = $this->renderView(
             "@Repas/ShoppingList/_shopping_list_actions.html.twig",
             ["shoppingList" => $shoppingList],

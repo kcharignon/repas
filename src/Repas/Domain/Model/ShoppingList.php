@@ -149,11 +149,12 @@ final class ShoppingList implements ModelInterface
     /**
      * @return Tab<Department>
      */
-    public function departmentPresent(): Tab
+    public function getDepartments(): Tab
     {
         $res = Tab::newEmptyTyped(Department::class);
-        foreach ($this->meals as $meal) {
-            $res = $res->merge($meal->departmentPresent());
+        foreach ($this->ingredients as $shopListIngredient) {
+            $department = $shopListIngredient->getDepartment();
+            $res[$department->getSlug()] = $department;
         }
         return $res;
     }

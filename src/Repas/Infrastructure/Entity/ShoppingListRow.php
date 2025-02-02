@@ -25,7 +25,7 @@ class ShoppingListRow
     #[ORM\Column(name: 'unit', nullable: false)]
     private ?string $unitSlug = null;
 
-    #[ORM\Column]
+    #[ORM\Column(name: 'checked', nullable: false)]
     private ?bool $checked = null;
 
     public function __construct(

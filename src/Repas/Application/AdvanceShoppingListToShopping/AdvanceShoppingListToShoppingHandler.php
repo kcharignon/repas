@@ -2,6 +2,7 @@
 
 namespace Repas\Repas\Application\AdvanceShoppingListToShopping;
 
+use Repas\Repas\Domain\Exception\IngredientException;
 use Repas\Repas\Domain\Exception\ShoppingListException;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Repas\Domain\Model\ShoppingList;
@@ -21,8 +22,9 @@ readonly class AdvanceShoppingListToShoppingHandler
 
     /**
      * @throws ShoppingListException
+     * @throws IngredientException
      */
-    public function __invoke(AdvanceShoppingListToShoppingCommand $command): ShoppingList
+    public function __invoke(AdvanceShoppingListToShoppingCommand $command): void
     {
         // Recuperation de la liste de course si elle existe
         $shoppingList = $this->shoppingListRepository->findOneById($command->shoppingListId);
@@ -36,11 +38,9 @@ readonly class AdvanceShoppingListToShoppingHandler
                 quantity: $shopListIngredient->getQuantity(),
                 unit: $shopListIngredient->getUnit(),
             );
-
             $shoppingList->addRow($ingredient, $quantityInPurchaseUnit);
         }
 
         $this->shoppingListRepository->save($shoppingList);
-        return $shoppingList;
     }
 }

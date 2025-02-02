@@ -1,6 +1,6 @@
 <div class="col" id="shoppingListIngredientsColumn">
     <h2>Ingredients</h2>
-    {% for department in shoppingList.departmentPresent %}
+    {% for department in shoppingList.departments %}
         {% set rows = shoppingList.rows %}
         {% if rows is not empty %}
             <ul class="list-group mb-1" id="shoppingListRows">

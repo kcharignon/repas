@@ -72,6 +72,11 @@ final class ShoppingListIngredient implements ModelInterface
         return $this->quantity;
     }
 
+    public function getDepartment(): Department
+    {
+        return $this->getIngredient()->getDepartment();
+    }
+
     public function hasIngredientInUnit(Ingredient $ingredient, Unit $unit): bool
     {
         return $this->ingredient->isEqual($ingredient) && $this->unit->isEqual($unit);
