@@ -11,7 +11,7 @@
     <span style="flex: 1"></span>
     {% if row.quantity is not null %}
         <span class="badge float-end bg-primary rounded-pill me-1">
-            {{ row.quantity }}
+            {{ row.quantity|round(0, 'ceil') }}
             {{ row.unit.symbol }}
         </span>
     {% endif %}

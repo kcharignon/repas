@@ -21,15 +21,7 @@
             </h3>
             <div class="card-body">
                 <div class="row">
-                    <div class="col">
-                        <h2>Ingredients</h2>
-                        {% for department in shoppingList.departmentPresent %}
-                            {% set rows = shoppingList.rows %}
-                            {% if rows is not empty %}
-                                {% include "@Repas/ShoppingList/_list_rows.html.twig" %}
-                            {% endif %}
-                        {% endfor %}
-                    </div>
+                    {% include "@Repas/ShoppingList/_ingredients_column.html.twig" %}
                     <div class="col">
                         <h2>Recettes</h2>
                         {% for recipeType in shoppingList.recipeTypePresent %}

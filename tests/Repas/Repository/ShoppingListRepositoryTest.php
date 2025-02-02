@@ -84,6 +84,15 @@ class ShoppingListRepositoryTest extends DatabaseTestCase
         $actual = $this->shoppingListRepository->findOneById($shoppingList->getId());
         RepasAssert::assertShoppingList($shoppingList, $actual);
 
+        // Arrange
+        $shoppingList->toPlanning();
+
+        // Act
+        $this->shoppingListRepository->save($shoppingList);
+
+        // Assert
+        $actual = $this->shoppingListRepository->findOneById($shoppingList->getId());
+        RepasAssert::assertShoppingList($shoppingList, $actual);
     }
 
     public function testFindByOwner(): void

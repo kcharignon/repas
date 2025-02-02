@@ -854,7 +854,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
                     "unit" => "gramme",
                 ],
                 [
-                    "slug" => "salade",
+                    "slug" => "salade-verte",
                     "quantity" => 100,
                     "unit" => "gramme",
                 ],

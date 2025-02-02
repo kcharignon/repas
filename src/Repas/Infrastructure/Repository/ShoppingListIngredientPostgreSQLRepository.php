@@ -66,13 +66,17 @@ readonly class ShoppingListIngredientPostgreSQLRepository extends PostgreSQLRepo
      */
     public function deleteByShoppingListIdExceptIds(string $shoppingListId, Tab $ids): void
     {
-        $this->entityRepository->createQueryBuilder('sli')
+        $qb = $this->entityRepository->createQueryBuilder('sli')
             ->delete()
             ->where('sli.shoppingListId = :shoppingListId')
-            ->setParameter('shoppingListId', $shoppingListId)
-            ->andWhere('sli.id not in (:ids)')
-            ->setParameter('ids', $ids->toArray())
-            ->getQuery()
+            ->setParameter('shoppingListId', $shoppingListId);
+
+        if ($ids->count() > 0) {
+            $qb->andWhere('sli.id not in (:ids)')
+                ->setParameter('ids', $ids->toArray());
+        }
+
+        $qb->getQuery()
             ->execute();
     }
 }

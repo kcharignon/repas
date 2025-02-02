@@ -77,6 +77,12 @@ class ConversionFixture extends Fixture implements DependentFixtureInterface, Fi
             "coefficient" => 289
         ],
         [
+            "ingredient" => "salade-verte",
+            "startUnit" => "piece",
+            "endUnit" => "gramme",
+            "coefficient" => 289
+        ],
+        [
             "ingredient" => "cheddar-en-tranche",
             "startUnit" => "piece",
             "endUnit" => "tranche",
