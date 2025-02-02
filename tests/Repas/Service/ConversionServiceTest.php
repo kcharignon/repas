@@ -1,0 +1,101 @@
+<?php
+
+namespace Repas\Tests\Repas\Service;
+
+
+use PHPUnit\Framework\TestCase;
+use Repas\Repas\Domain\Model\Conversion;
+use Repas\Repas\Domain\Model\Ingredient;
+use Repas\Repas\Domain\Model\Unit;
+use Repas\Repas\Domain\Service\ConversionService;
+use Repas\Shared\Domain\Tool\Tab;
+use Repas\Tests\Builder\ConversionBuilder;
+use Repas\Tests\Builder\IngredientBuilder;
+use Repas\Tests\Builder\UnitBuilder;
+use Repas\Tests\Helper\InMemoryRepository\ConversionInMemoryRepository;
+
+class ConversionServiceTest extends TestCase
+{
+    private ConversionService $conversionService;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $conversions = $this->generateConversionTab();
+        $conversionRepository = new ConversionInMemoryRepository($conversions);
+        $this->conversionService = new ConversionService($conversionRepository);
+    }
+
+    public function rightDataProvider(): array
+    {
+        $egg = new IngredientBuilder()->isEgg()->build();
+        $box = new UnitBuilder()->isBox()->build();
+        $gramme = new UnitBuilder()->isGramme()->build();
+        $piece = new UnitBuilder()->isPiece()->build();
+        $millilitre = new UnitBuilder()->isMillilitre()->build();
+        return [
+            "0 step same unit" => [$egg, 5, $piece, 5],
+            "1 step Box =(simple)=> Piece" => [$egg, 3, $box, 36],
+            "1 step Gramme =(reverse)=> Piece" => [$egg, 240, $gramme, 4],
+            "2 steps Millilitre =(simple)=> Gramme =(reverse)=> Piece" => [$egg, 400, $millilitre, 10],
+        ];
+    }
+
+    /**
+     * @dataProvider rightDataProvider
+     */
+    public function testRight(Ingredient $ingredient, float $quantity, Unit $unit, float $expected): void
+    {
+        // Act
+        $actual = $this->conversionService->convertToPurchaseUnit($ingredient, $quantity, $unit);
+
+        // Assert
+        $this->assertEquals($expected, $actual);
+    }
+
+
+    /**
+     * @return Tab<Conversion>
+     */
+    private function generateConversionTab(): Tab
+    {
+
+
+        $egg = new IngredientBuilder()->isEgg()->build();
+        $milk = new IngredientBuilder()->isMilk()->build();
+        return Tab::fromArray([
+            // Conversion simple Box -> Piece
+            new ConversionBuilder()
+            ->setIngredient($egg)
+            ->setStartUnit(new UnitBuilder()->isBox()->build())
+            ->setEndUnit(new UnitBuilder()->isPiece()->build())
+            ->setCoefficient(12)
+            ->build(),
+
+
+            // Conversion inverse Gramme ->(rev) Piece
+            new ConversionBuilder()
+            ->setIngredient($egg)
+            ->setStartUnit(new UnitBuilder()->isPiece()->build())
+            ->setEndUnit(new UnitBuilder()->isGramme()->build())
+            ->setCoefficient(60)
+            ->build(),
+
+            // Conversion complexe Millilitre -> Gramme ->(rev) Piece
+            new ConversionBuilder()
+            ->setIngredient($egg)
+            ->setStartUnit(new UnitBuilder()->isMillilitre()->build())
+            ->setEndUnit(new UnitBuilder()->isGramme()->build())
+            ->setCoefficient(1.5)
+            ->build(),
+
+            new ConversionBuilder()
+            ->setIngredient($milk)
+            ->setStartUnit(new UnitBuilder()->isMillilitre()->build())
+            ->setEndUnit(new UnitBuilder()->isPiece()->build())
+            ->setCoefficient(400)
+            ->build(),
+        ]);
+    }
+}

@@ -89,6 +89,14 @@ class UnitBuilder implements Builder
         return $this;
     }
 
+    public function isMillilitre(): self
+    {
+        $this->name = 'millilitre';
+        $this->slug = 'millilitre';
+        $this->symbol = 'ml';
+        return $this;
+    }
+
     public function isLiter(): self
     {
         $this->name = 'litre';

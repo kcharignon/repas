@@ -29,6 +29,30 @@ class ConversionBuilder implements Builder
         ]);
     }
 
+    public function setStartUnit(Unit|UnitBuilder $startUnit): ConversionBuilder
+    {
+        $this->startUnit = $startUnit;
+        return $this;
+    }
+
+    public function setEndUnit(Unit|UnitBuilder $endUnit): ConversionBuilder
+    {
+        $this->endUnit = $endUnit;
+        return $this;
+    }
+
+    public function setCoefficient(float $coefficient): ConversionBuilder
+    {
+        $this->coefficient = $coefficient;
+        return $this;
+    }
+
+    public function setIngredient(IngredientBuilder|Ingredient $ingredient): ConversionBuilder
+    {
+        $this->ingredient = $ingredient;
+        return $this;
+    }
+
     private function initialize(): void
     {
         $this->id ??= UuidGenerator::new();
