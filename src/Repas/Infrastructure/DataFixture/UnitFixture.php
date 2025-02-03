@@ -105,6 +105,10 @@ class UnitFixture extends Fixture implements FixtureGroupInterface
             "name" => "pot",
             "symbol" => "pot"
         ],
+        [
+            "name" => "gousse",
+            "symbol" => "gousse"
+        ],
     ];
 
     public static function getGroups(): array

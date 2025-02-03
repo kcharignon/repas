@@ -209,7 +209,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
                 [
                     "slug" => "sucre-vanille",
                     "quantity" => 2,
-                    "unit" => "piece"
+                    "unit" => "sachet"
                 ],
             ],
         ],
@@ -2317,7 +2317,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
                 [
                     "slug" => "vanille",
                     "quantity" => 1,
-                    "unit" => "piece",
+                    "unit" => "gousse",
                 ],
                 [
                     "slug" => "pepite-de-chocolat",
@@ -2360,7 +2360,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
                 [
                     "slug" => "vanille",
                     "quantity" => 1,
-                    "unit" => "piece",
+                    "unit" => "gousse",
                 ],
                 [
                     "slug" => "pepite-de-chocolat",
@@ -2504,7 +2504,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
                 [
                     "slug" => "vanille",
                     "quantity" => 1,
-                    "unit" => "piece",
+                    "unit" => "gousse",
                 ],
                 [
                     "slug" => "chocolat-en-poudre",

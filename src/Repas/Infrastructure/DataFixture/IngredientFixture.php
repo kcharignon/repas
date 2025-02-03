@@ -1021,8 +1021,8 @@ class IngredientFixture extends Fixture implements DependentFixtureInterface, Fi
         [
             "name" => "vanille",
             "department" => "aide-patissier",
-            "defaultCookingUnit" => "gramme",
-            "defaultPurchaseUnit" => "gramme",
+            "defaultCookingUnit" => "gousse",
+            "defaultPurchaseUnit" => "gousse",
         ],
         [
             "name" => "chocolat",
@@ -1300,10 +1300,17 @@ class IngredientFixture extends Fixture implements DependentFixtureInterface, Fi
 
         ],
         [
-            "name" => "bicarbonate",
+            "name" => "bicarbonate ménager",
             "department" => "produit-menager",
             "defaultCookingUnit" => "paquet",
             "defaultPurchaseUnit" => "paquet",
+
+        ],
+        [
+            "name" => "bicarbonate",
+            "department" => "aide-patissier",
+            "defaultCookingUnit" => "gramme",
+            "defaultPurchaseUnit" => "gramme",
 
         ],
         [

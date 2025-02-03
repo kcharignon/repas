@@ -360,6 +360,48 @@ class ConversionFixture extends Fixture implements DependentFixtureInterface, Fi
             "endUnit" => "gramme",
             "coefficient" => 980,
         ],
+        [
+            "ingredient" => "bicarbonate",
+            "startUnit" => "cuillere-a-cafe",
+            "endUnit" => "gramme",
+            "coefficient" => 5,
+        ],
+        [
+            "ingredient" => "vanille",
+            "startUnit" => "gousse",
+            "endUnit" => "gramme",
+            "coefficient" => 5,
+        ],
+        [
+            "ingredient" => "sucre-vanille",
+            "startUnit" => "sachet",
+            "endUnit" => "piece",
+            "coefficient" => 1,
+        ],
+        [
+            "ingredient" => "yaourt-nature",
+            "startUnit" => "paquet",
+            "endUnit" => "piece",
+            "coefficient" => 8,
+        ],
+        [
+            "ingredient" => "yaourt-nature",
+            "startUnit" => "pot",
+            "endUnit" => "piece",
+            "coefficient" => 1,
+        ],
+        [
+            "ingredient" => "chocolat-en-poudre",
+            "startUnit" => "paquet",
+            "endUnit" => "gramme",
+            "coefficient" => 500,
+        ],
+        [
+            "ingredient" => "levure-patissiere",
+            "startUnit" => "sachet",
+            "endUnit" => "gramme",
+            "coefficient" => 11,
+        ],
     ];
 
     public function getDependencies(): array
