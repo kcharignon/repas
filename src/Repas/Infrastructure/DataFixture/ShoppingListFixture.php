@@ -53,7 +53,7 @@ class ShoppingListFixture extends Fixture implements DependentFixtureInterface, 
 
     public static function getGroups(): array
     {
-        return ['test', 'dev'];
+        return ['test'];
     }
 
     public function load(ObjectManager $manager): void

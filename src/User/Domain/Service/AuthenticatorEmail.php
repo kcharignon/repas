@@ -49,6 +49,6 @@ class AuthenticatorEmail extends AbstractLoginFormAuthenticator
 
     public function onAuthenticationSuccess(Request $request, TokenInterface $token, string $firewallName): ?Response
     {
-        return new RedirectResponse($this->router->generate('view_home'));
+        return new RedirectResponse($this->router->generate('view_departments'));
     }
 }
