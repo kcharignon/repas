@@ -1,4 +1,5 @@
 twig:
+    form_themes: ['bootstrap_5_layout.html.twig']
     paths:
         '%kernel.project_dir%/src/Shared/Infrastructure/Http/View': Shared
         '%kernel.project_dir%/src/User/Infrastructure/Http/View': User

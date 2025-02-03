@@ -12,6 +12,9 @@ interface UserRepository
      */
     public function findOneById(string $id): User;
 
+    /**
+     * @throws UserException
+     */
     public function findOneByEmail(string $email): User;
 
     public function save(User $user): void;

@@ -50,7 +50,7 @@ class UserRepositoryTest extends DatabaseTestCase
     public function testUserNotFound(): void
     {
         //Assert
-        $this->expectExceptionObject(UserException::NotFound());
+        $this->expectExceptionObject(UserException::NotFound('unknown@test.com'));
 
         //Act
         $this->userRepository->findOneByEmail('unknown@test.com');

@@ -7,9 +7,9 @@ use Repas\Shared\Domain\Exception\DomainException;
 
 class UserException extends DomainException
 {
-    public static function NotFound(): static
+    public static function NotFound(string $user): static
     {
-        return new static('USER_NOT_FOUND', 404);
+        return new static(sprintf("User '%s' not found", $user), 404);
     }
 
     public static function Banned(): static

@@ -1,16 +1,59 @@
 {% extends '@Shared/base.html.twig' %}
-
-{% block title %} Repas : Connexion {% endblock %}
+{% block title %}Repas : Connexion{% endblock %}
 
 {% block body %}
-    <h1>Connexion</h1>
-    <form method="POST" action="/login">
-        <input type="hidden" name="_csrf_token" value="{{ csrfToken }}">
-        <input type="text" name="email" placeholder="Email" value="{{ identifier }}" required>
-        <input type="password" name="password" placeholder="Mot de passe" required>
-        <button type="submit">Se connecter</button>
-    </form>
-    {% if error %}
-        <div style="color: #b13220;">{{ error.messageKey|trans(error.messageData, 'security') }}</div>
-    {% endif %}
+    <div class="container py-5">
+        <div class="row justify-content-center">
+            <div class="col-md-6">
+                <h1 class="mb-4">Connexion</h1>
+
+                <form method="POST" action="{{ path('view_login_email') }}">
+                    <input type="hidden" name="_csrf_token" value="{{ csrfToken }}">
+
+                    {# Champ Email #}
+                    <div class="mb-3">
+                        <label for="loginEmail" class="form-label">Adresse email</label>
+                        <input
+                            type="text"
+                            name="email"
+                            id="loginEmail"
+                            class="form-control {% if error %}is-invalid{% endif %}"
+                            value="{{ identifier }}"
+                            required
+                            autofocus
+                        >
+                        {% if error %}
+                            <div class="invalid-feedback">
+                                {# On peut réutiliser le message d'erreur global ici #}
+                                {{ error.messageKey|trans(error.messageData, 'security') }}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    {# Champ Password #}
+                    <div class="mb-3">
+                        <label for="loginPassword" class="form-label">Mot de passe</label>
+                        <input
+                            type="password"
+                            name="password"
+                            id="loginPassword"
+                            class="form-control {% if error %}is-invalid{% endif %}"
+                            required
+                        >
+                        {% if error %}
+                            <div class="invalid-feedback">
+                                {# Le même message ou un message distinct #}
+                                {{ error.messageKey|trans(error.messageData, 'security') }}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    {# Bouton #}
+                    <button type="submit" class="btn btn-primary w-100">
+                        Se connecter
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
 {% endblock %}

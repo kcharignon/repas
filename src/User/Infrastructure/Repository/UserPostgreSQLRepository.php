@@ -35,7 +35,7 @@ readonly class UserPostgreSQLRepository extends PostgreSQLRepository implements 
             $this->modelCache->setModelCache($model);
             return $model;
         }
-        throw UserException::NotFound();
+        throw UserException::NotFound($id);
     }
 
     /**
@@ -48,7 +48,7 @@ readonly class UserPostgreSQLRepository extends PostgreSQLRepository implements 
             $this->modelCache->setModelCache($userModel);
             return $userModel;
         }
-        throw UserException::NotFound();
+        throw UserException::NotFound($email);
     }
 
     public function save(User $user): void

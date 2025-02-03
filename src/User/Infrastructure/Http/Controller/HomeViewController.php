@@ -8,7 +8,7 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
 
-class HomeController extends AbstractController
+class HomeViewController extends AbstractController
 {
     public function __construct(
         private LoggerInterface $logger
@@ -20,6 +20,5 @@ class HomeController extends AbstractController
     {
         $this->logger->info("HomeController invoked");
         return $this->render("@User/home.html.twig");
-//        return new Response("Bienvenue dans Repas");
     }
 }

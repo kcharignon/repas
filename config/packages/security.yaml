@@ -15,6 +15,8 @@ security:
             provider: user_model_provider
             custom_authenticators:
                 - Repas\User\Domain\Service\AuthenticatorEmail
+            logout:
+                path: /logout
 
 when@test:
     security:
