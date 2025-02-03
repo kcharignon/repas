@@ -560,8 +560,8 @@ class IngredientFixture extends Fixture implements DependentFixtureInterface, Fi
         ],
         [
             "name" => "cacahuète",
-            "defaultCookingUnit" => "paquet",
-            "defaultPurchaseUnit" => "paquet",
+            "defaultCookingUnit" => "gramme",
+            "defaultPurchaseUnit" => "gramme",
             "department" => "aperitif",
         ],
         [
