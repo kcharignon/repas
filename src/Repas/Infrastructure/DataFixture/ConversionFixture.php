@@ -124,6 +124,188 @@ class ConversionFixture extends Fixture implements DependentFixtureInterface, Fi
             "endUnit" => "piece",
             "coefficient" => 36
         ],
+        [
+            "ingredient" => "bouillon-de-legume",
+            "startUnit" => "cube",
+            "endUnit" => "gramme",
+            "coefficient" => 10
+        ],
+        [
+            "ingredient" => "bouillon-de-boeuf",
+            "startUnit" => "cube",
+            "endUnit" => "piece",
+            "coefficient" => 1
+        ],
+        [
+            "ingredient" => "feuille-de-brique",
+            "startUnit" => "paquet",
+            "endUnit" => "piece",
+            "coefficient" => 10
+        ],
+        [
+            "ingredient" => "chevre",
+            "startUnit" => "buche",
+            "endUnit" => "gramme",
+            "coefficient" => 180
+        ],
+        [
+            "ingredient" => "miel",
+            "startUnit" => "litre",
+            "endUnit" => "gramme",
+            "coefficient" => 1420
+        ],
+        [
+            "ingredient" => "steack-hache",
+            "startUnit" => "piece",
+            "endUnit" => "gramme",
+            "coefficient" => 100,
+        ],
+        [
+            "ingredient" => "pomme-de-terre",
+            "startUnit" => "piece",
+            "endUnit" => "gramme",
+            "coefficient" => 160,
+        ],
+        [
+            "ingredient" => "pomme",
+            "startUnit" => "piece",
+            "endUnit" => "gramme",
+            "coefficient" => 125,
+        ],
+        [
+            "ingredient" => "pomme-golden",
+            "startUnit" => "piece",
+            "endUnit" => "gramme",
+            "coefficient" => 200,
+        ],
+        [
+            "ingredient" => "mozzarella",
+            "startUnit" => "piece",
+            "endUnit" => "gramme",
+            "coefficient" => 125,
+        ],
+        [
+            "ingredient" => "nutella",
+            "startUnit" => "kilo",
+            "endUnit" => "pot",
+            "coefficient" => 1,
+        ],
+        [
+            "ingredient" => "soupe",
+            "startUnit" => "brique",
+            "endUnit" => "litre",
+            "coefficient" => 1,
+        ],
+        [
+            "ingredient" => "quenelle",
+            "startUnit" => "paquet",
+            "endUnit" => "piece",
+            "coefficient" => 6,
+        ],
+        [
+            "ingredient" => "courgette",
+            "startUnit" => "piece",
+            "endUnit" => "gramme",
+            "coefficient" => 250,
+        ],
+        [
+            "ingredient" => "avocat",
+            "startUnit" => "piece",
+            "endUnit" => "gramme",
+            "coefficient" => 200,
+        ],
+        [
+            "ingredient" => "bettrave",
+            "startUnit" => "piece",
+            "endUnit" => "gramme",
+            "coefficient" => 300,
+        ],
+        [
+            "ingredient" => "brocoli",
+            "startUnit" => "piece",
+            "endUnit" => "gramme",
+            "coefficient" => 300,
+        ],
+        [
+            "ingredient" => "chou-blanc",
+            "startUnit" => "piece",
+            "endUnit" => "gramme",
+            "coefficient" => 700,
+        ],
+        [
+            "ingredient" => "chou-rouge",
+            "startUnit" => "piece",
+            "endUnit" => "gramme",
+            "coefficient" => 1250,
+        ],
+        [
+            "ingredient" => "choux-fleur",
+            "startUnit" => "piece",
+            "endUnit" => "gramme",
+            "coefficient" => 850,
+        ],
+        [
+            "ingredient" => "courge",
+            "startUnit" => "piece",
+            "endUnit" => "gramme",
+            "coefficient" => 1500,
+        ],
+        [
+            "ingredient" => "échalote",
+            "startUnit" => "piece",
+            "endUnit" => "gramme",
+            "coefficient" => 30,
+        ],
+        [
+            "ingredient" => "concombre",
+            "startUnit" => "piece",
+            "endUnit" => "gramme",
+            "coefficient" => 450,
+        ],
+        [
+            "startUnit" => "sachet",
+            "endUnit" => "paquet",
+            "coefficient" => 1,
+        ],
+        [
+            "startUnit" => "boite",
+            "endUnit" => "paquet",
+            "coefficient" => 1,
+        ],
+        [
+            "startUnit" => "conserve",
+            "endUnit" => "boite",
+            "coefficient" => 1,
+        ],
+        [
+            "startUnit" => "pot",
+            "endUnit" => "boite",
+            "coefficient" => 1,
+        ],
+        [
+            "ingredient" => "jambon-blanc",
+            "startUnit" => "tranche",
+            "endUnit" => "gramme",
+            "coefficient" => 35,
+        ],
+        [
+            "ingredient" => "jambon-cru",
+            "startUnit" => "tranche",
+            "endUnit" => "gramme",
+            "coefficient" => 20,
+        ],
+        [
+            "ingredient" => "pain",
+            "startUnit" => "piece",
+            "endUnit" => "gramme",
+            "coefficient" => 200,
+        ],
+        [
+            "ingredient" => "carotte",
+            "startUnit" => "piece",
+            "endUnit" => "gramme",
+            "coefficient" => 125,
+        ],
     ];
 
     public function getDependencies(): array

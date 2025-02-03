@@ -95,18 +95,14 @@ readonly class IngredientPostgreSQLRepository extends PostgreSQLRepository imple
      */
     private function convertEntityToModel(IngredientEntity $ingredientEntity): IngredientModel
     {
-        try {
-            return IngredientModel::load([
-                "slug" => $ingredientEntity->getSlug(),
-                "name" => $ingredientEntity->getName(),
-                "image" => $ingredientEntity->getImage(),
-                "department" => $this->departmentRepository->findOneBySlug($ingredientEntity->getDepartmentSlug()),
-                "default_cooking_unit" => $this->unitRepository->findOneBySlug($ingredientEntity->getDefaultCookingUnitSlug()),
-                "default_purchase_unit" => $this->unitRepository->findOneBySlug($ingredientEntity->getDefaultPurchaseUnitSlug()),
-            ]);
-        } catch (DepartmentException|UnitException) {
-            throw IngredientException::subModelNotFound();
-        }
+        return IngredientModel::load([
+            "slug" => $ingredientEntity->getSlug(),
+            "name" => $ingredientEntity->getName(),
+            "image" => $ingredientEntity->getImage(),
+            "department" => $this->departmentRepository->findOneBySlug($ingredientEntity->getDepartmentSlug()),
+            "default_cooking_unit" => $this->unitRepository->findOneBySlug($ingredientEntity->getDefaultCookingUnitSlug()),
+            "default_purchase_unit" => $this->unitRepository->findOneBySlug($ingredientEntity->getDefaultPurchaseUnitSlug()),
+        ]);
     }
 
     public function cachedByRecipe(string $recipeId): void

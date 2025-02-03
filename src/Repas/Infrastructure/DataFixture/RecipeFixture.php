@@ -1053,8 +1053,8 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
                 ],
                 [
                     "slug" => "bouillon-de-boeuf",
-                    "quantity" => 500,
-                    "unit" => "millilitre",
+                    "quantity" => 1,
+                    "unit" => "cube",
                 ],
                 [
                     "slug" => "concentre-de-tomate",
@@ -1428,7 +1428,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
                     "unit" => "gramme",
                 ],
                 [
-                    "slug" => "echalotte",
+                    "slug" => "echalote",
                     "quantity" => 2,
                     "unit" => "piece",
                 ],
@@ -1766,8 +1766,8 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
             "ingredients" => [
                 [
                     "slug" => "bouillon-de-legume",
-                    "quantity" => 500,
-                    "unit" => "millilitre",
+                    "quantity" => 1,
+                    "unit" => "cube",
                 ],
                 [
                     "slug" => "carotte",

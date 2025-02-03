@@ -91,14 +91,14 @@ class IngredientFixture extends Fixture implements DependentFixtureInterface, Fi
             "name" => "épinard",
             "image" => "images/ingredient/spinach.png",
             "defaultCookingUnit" => "gramme",
-            "defaultPurchaseUnit" => "sachet",
+            "defaultPurchaseUnit" => "gramme",
             "department" => "fruit-et-legume",
         ],
         [
             "name" => "carotte",
             "image" => "images/ingredient/carrot.png",
-            "defaultCookingUnit" => "piece",
-            "defaultPurchaseUnit" => "piece",
+            "defaultCookingUnit" => "gramme",
+            "defaultPurchaseUnit" => "gramme",
             "department" => "fruit-et-legume",
         ],
         [
@@ -109,7 +109,14 @@ class IngredientFixture extends Fixture implements DependentFixtureInterface, Fi
             "department" => "fruit-et-legume",
         ],
         [
-            "name" => "chou",
+            "name" => "chou blanc",
+            "image" => "images/ingredient/cabbage.png",
+            "defaultCookingUnit" => "piece",
+            "defaultPurchaseUnit" => "piece",
+            "department" => "fruit-et-legume",
+        ],
+        [
+            "name" => "chou rouge",
             "image" => "images/ingredient/cabbage.png",
             "defaultCookingUnit" => "piece",
             "defaultPurchaseUnit" => "piece",
@@ -122,7 +129,7 @@ class IngredientFixture extends Fixture implements DependentFixtureInterface, Fi
             "department" => "fruit-et-legume",
         ],
         [
-            "name" => "échalotte",
+            "name" => "échalote",
             "defaultCookingUnit" => "piece",
             "defaultPurchaseUnit" => "piece",
             "department" => "fruit-et-legume",
@@ -137,15 +144,15 @@ class IngredientFixture extends Fixture implements DependentFixtureInterface, Fi
         [
             "name" => "champignon",
             "image" => "images/ingredient/mushroom.png",
-            "defaultCookingUnit" => "piece",
-            "defaultPurchaseUnit" => "piece",
+            "defaultCookingUnit" => "gramme",
+            "defaultPurchaseUnit" => "gramme",
             "department" => "fruit-et-legume",
         ],
         [
             "name" => "haricot rouge",
             "image" => "images/ingredient/kidney.png",
-            "defaultCookingUnit" => "piece",
-            "defaultPurchaseUnit" => "piece",
+            "defaultCookingUnit" => "gramme",
+            "defaultPurchaseUnit" => "gramme",
             "department" => "fruit-et-legume",
         ],
         [
@@ -238,8 +245,8 @@ class IngredientFixture extends Fixture implements DependentFixtureInterface, Fi
         ],
         [
             "name" => "persil",
-            "defaultCookingUnit" => "piece",
-            "defaultPurchaseUnit" => "piece",
+            "defaultCookingUnit" => "gramme",
+            "defaultPurchaseUnit" => "gramme",
             "department" => "fruit-et-legume",
         ],
         [
@@ -266,14 +273,14 @@ class IngredientFixture extends Fixture implements DependentFixtureInterface, Fi
         [
             "name" => "petit pois",
             "defaultCookingUnit" => "gramme",
-            "defaultPurchaseUnit" => "conserve",
+            "defaultPurchaseUnit" => "gramme",
             "department" => "conserve",
         ],
         [
             "name" => "tomate cerise",
             "image" => "images/ingredient/cherry-tomato.png",
-            "defaultCookingUnit" => "piece",
-            "defaultPurchaseUnit" => "piece",
+            "defaultCookingUnit" => "gramme",
+            "defaultPurchaseUnit" => "gramme",
             "department" => "fruit-et-legume",
         ],
         [
@@ -335,13 +342,13 @@ class IngredientFixture extends Fixture implements DependentFixtureInterface, Fi
             "name" => "raclette",
             "department" => "fromage",
             "defaultCookingUnit" => "gramme",
-            "defaultPurchaseUnit" => "boite",
+            "defaultPurchaseUnit" => "gramme",
         ],
         [
             "name" => "fromage fondue",
             "department" => "fromage",
-            "defaultCookingUnit" => "sachet",
-            "defaultPurchaseUnit" => "sachet",
+            "defaultCookingUnit" => "gramme",
+            "defaultPurchaseUnit" => "gramme",
         ],
         [
             "name" => "mascarpone",
@@ -352,14 +359,14 @@ class IngredientFixture extends Fixture implements DependentFixtureInterface, Fi
         [
             "name" => "reblochon",
             "department" => "fromage",
-            "defaultCookingUnit" => "piece",
-            "defaultPurchaseUnit" => "piece",
+            "defaultCookingUnit" => "gramme",
+            "defaultPurchaseUnit" => "gramme",
         ],
         [
             "name" => "chèvre",
             "department" => "fromage",
             "defaultCookingUnit" => "gramme",
-            "defaultPurchaseUnit" => "piece",
+            "defaultPurchaseUnit" => "buche",
         ],
         [
             "name" => "fromage frais",
@@ -378,7 +385,7 @@ class IngredientFixture extends Fixture implements DependentFixtureInterface, Fi
             "name" => "fromage à croc monssieur",
             "department" => "fromage",
             "defaultCookingUnit" => "tranche",
-            "defaultPurchaseUnit" => "paquet",
+            "defaultPurchaseUnit" => "tranche",
         ],
         [
             "name" => "cheddar en tranche",
@@ -753,55 +760,55 @@ class IngredientFixture extends Fixture implements DependentFixtureInterface, Fi
             "name" => "bière blonde",
             "department" => "alcool",
             "defaultCookingUnit" => "millilitre",
-            "defaultPurchaseUnit" => "millilitre",
+            "defaultPurchaseUnit" => "centilitre",
         ],
         [
             "name" => "bière artisinale",
             "department" => "alcool",
             "defaultCookingUnit" => "millilitre",
-            "defaultPurchaseUnit" => "millilitre",
+            "defaultPurchaseUnit" => "centilitre",
         ],
         [
             "name" => "vin blanc cuisine",
             "department" => "alcool",
             "defaultCookingUnit" => "millilitre",
-            "defaultPurchaseUnit" => "millilitre",
+            "defaultPurchaseUnit" => "centilitre",
         ],
         [
             "name" => "vin blanc table",
             "department" => "alcool",
             "defaultCookingUnit" => "millilitre",
-            "defaultPurchaseUnit" => "millilitre",
+            "defaultPurchaseUnit" => "centilitre",
         ],
         [
             "name" => "vin rouge cuisine",
             "department" => "alcool",
             "defaultCookingUnit" => "millilitre",
-            "defaultPurchaseUnit" => "millilitre",
+            "defaultPurchaseUnit" => "centilitre",
         ],
         [
             "name" => "vin rouge table",
             "department" => "alcool",
             "defaultCookingUnit" => "millilitre",
-            "defaultPurchaseUnit" => "millilitre",
+            "defaultPurchaseUnit" => "centilitre",
         ],
         [
             "name" => "schweps tonic",
             "department" => "boisson",
             "defaultCookingUnit" => "millilitre",
-            "defaultPurchaseUnit" => "millilitre",
+            "defaultPurchaseUnit" => "centilitre",
         ],
         [
             "name" => "sirop fruit rouge",
             "department" => "boisson",
             "defaultCookingUnit" => "millilitre",
-            "defaultPurchaseUnit" => "millilitre",
+            "defaultPurchaseUnit" => "centilitre",
         ],
         [
             "name" => "ice tea green",
             "department" => "boisson",
             "defaultCookingUnit" => "millilitre",
-            "defaultPurchaseUnit" => "millilitre",
+            "defaultPurchaseUnit" => "centilitre",
         ],
         [
             "name" => "steack haché",
@@ -861,44 +868,44 @@ class IngredientFixture extends Fixture implements DependentFixtureInterface, Fi
         [
             "name" => "petit pois carotte",
             "department" => "conserve",
-            "defaultCookingUnit" => "boite",
-            "defaultPurchaseUnit" => "boite",
+            "defaultCookingUnit" => "gramme",
+            "defaultPurchaseUnit" => "gramme",
         ],
         [
             "name" => "haricot",
             "department" => "conserve",
-            "defaultCookingUnit" => "boite",
-            "defaultPurchaseUnit" => "boite",
+            "defaultCookingUnit" => "gramme",
+            "defaultPurchaseUnit" => "gramme",
         ],
         [
             "name" => "olive",
             "department" => "conserve",
-            "defaultCookingUnit" => "boite",
-            "defaultPurchaseUnit" => "boite",
+            "defaultCookingUnit" => "gramme",
+            "defaultPurchaseUnit" => "gramme",
         ],
         [
             "name" => "capre",
             "department" => "conserve",
-            "defaultCookingUnit" => "boite",
-            "defaultPurchaseUnit" => "boite",
+            "defaultCookingUnit" => "gramme",
+            "defaultPurchaseUnit" => "gramme",
         ],
         [
             "name" => "olive verte",
             "department" => "conserve",
-            "defaultCookingUnit" => "boite",
-            "defaultPurchaseUnit" => "boite",
+            "defaultCookingUnit" => "gramme",
+            "defaultPurchaseUnit" => "gramme",
         ],
         [
             "name" => "concentré de tomate",
             "department" => "conserve",
-            "defaultCookingUnit" => "boite",
-            "defaultPurchaseUnit" => "boite",
+            "defaultCookingUnit" => "gramme",
+            "defaultPurchaseUnit" => "gramme",
         ],
         [
             "name" => "olive noir",
             "department" => "conserve",
-            "defaultCookingUnit" => "boite",
-            "defaultPurchaseUnit" => "boite",
+            "defaultCookingUnit" => "gramme",
+            "defaultPurchaseUnit" => "gramme",
         ],
         [
             "name" => "gratin daufinois",
@@ -907,17 +914,35 @@ class IngredientFixture extends Fixture implements DependentFixtureInterface, Fi
             "defaultPurchaseUnit" => "boite",
         ],
         [
-            "name" => "confiture",
+            "name" => "confiture abricot",
             "department" => "conserve",
-            "defaultCookingUnit" => "boite",
-            "defaultPurchaseUnit" => "boite",
+            "defaultCookingUnit" => "pot",
+            "defaultPurchaseUnit" => "pot",
+        ],
+        [
+            "name" => "confiture fraise",
+            "department" => "conserve",
+            "defaultCookingUnit" => "pot",
+            "defaultPurchaseUnit" => "pot",
+        ],
+        [
+            "name" => "confiture framboise",
+            "department" => "conserve",
+            "defaultCookingUnit" => "pot",
+            "defaultPurchaseUnit" => "pot",
+        ],
+        [
+            "name" => "confiture myrtille",
+            "department" => "conserve",
+            "defaultCookingUnit" => "pot",
+            "defaultPurchaseUnit" => "pot",
         ],
         [
             "name" => "nutella",
             "image" => "https://cdn-icons-png.flaticon.com/64/135/135605.png",
             "department" => "conserve",
-            "defaultCookingUnit" => "boite",
-            "defaultPurchaseUnit" => "boite",
+            "defaultCookingUnit" => "pot",
+            "defaultPurchaseUnit" => "pot",
         ],
         [
             "name" => "salade de fruit",
@@ -942,20 +967,20 @@ class IngredientFixture extends Fixture implements DependentFixtureInterface, Fi
             "name" => "farine pain",
             "department" => "aide-patissier",
             "defaultCookingUnit" => "gramme",
-            "defaultPurchaseUnit" => "gramme",
+            "defaultPurchaseUnit" => "kilo",
         ],
         [
             "name" => "farine brioche",
             "department" => "aide-patissier",
             "defaultCookingUnit" => "gramme",
-            "defaultPurchaseUnit" => "gramme",
+            "defaultPurchaseUnit" => "kilo",
         ],
         [
             "name" => "sucre",
             "image" => "images/ingredient/sugar.png",
             "department" => "aide-patissier",
             "defaultCookingUnit" => "gramme",
-            "defaultPurchaseUnit" => "gramme",
+            "defaultPurchaseUnit" => "kilo",
         ],
         [
             "name" => "maïzena",
@@ -1153,8 +1178,8 @@ class IngredientFixture extends Fixture implements DependentFixtureInterface, Fi
         [
             "name" => "soupe",
             "department" => "traiteur",
-            "defaultCookingUnit" => "boite",
-            "defaultPurchaseUnit" => "boite",
+            "defaultCookingUnit" => "brique",
+            "defaultPurchaseUnit" => "brique",
         ],
         [
             "name" => "galette",
@@ -1205,8 +1230,8 @@ class IngredientFixture extends Fixture implements DependentFixtureInterface, Fi
         [
             "name" => "quenelle",
             "department" => "traiteur",
-            "defaultCookingUnit" => "paquet",
-            "defaultPurchaseUnit" => "paquet",
+            "defaultCookingUnit" => "piece",
+            "defaultPurchaseUnit" => "piece",
         ],
         [
             "name" => "hachis parmentier",
@@ -1232,29 +1257,29 @@ class IngredientFixture extends Fixture implements DependentFixtureInterface, Fi
         [
             "name" => "nem",
             "department" => "traiteur",
-            "defaultCookingUnit" => "paquet",
-            "defaultPurchaseUnit" => "paquet",
+            "defaultCookingUnit" => "piece",
+            "defaultPurchaseUnit" => "piece",
         ],
         [
             "name" => "bouillon",
             "department" => "traiteur",
-            "defaultCookingUnit" => "paquet",
-            "defaultPurchaseUnit" => "paquet",
+            "defaultCookingUnit" => "cube",
+            "defaultPurchaseUnit" => "cube",
         ],
         [
             "name" => "bouillon de bœuf",
             "department" => "traiteur",
-            "defaultCookingUnit" => "paquet",
-            "defaultPurchaseUnit" => "paquet",
+            "defaultCookingUnit" => "cube",
+            "defaultPurchaseUnit" => "cube",
         ],
         [
             "name" => "bouillon de légume",
             "department" => "traiteur",
-            "defaultCookingUnit" => "paquet",
-            "defaultPurchaseUnit" => "paquet",
+            "defaultCookingUnit" => "cube",
+            "defaultPurchaseUnit" => "cube",
         ],
         [
-            "name" => "sol",
+            "name" => "produit pour les sols",
             "department" => "produit-menager",
             "defaultCookingUnit" => "piece",
             "defaultPurchaseUnit" => "piece",
@@ -1268,7 +1293,7 @@ class IngredientFixture extends Fixture implements DependentFixtureInterface, Fi
 
         ],
         [
-            "name" => "vitre",
+            "name" => "produit pour les vitres",
             "department" => "produit-menager",
             "defaultCookingUnit" => "piece",
             "defaultPurchaseUnit" => "piece",
@@ -1277,8 +1302,8 @@ class IngredientFixture extends Fixture implements DependentFixtureInterface, Fi
         [
             "name" => "bicarbonate",
             "department" => "produit-menager",
-            "defaultCookingUnit" => "piece",
-            "defaultPurchaseUnit" => "piece",
+            "defaultCookingUnit" => "paquet",
+            "defaultPurchaseUnit" => "paquet",
 
         ],
         [
@@ -1297,20 +1322,20 @@ class IngredientFixture extends Fixture implements DependentFixtureInterface, Fi
         [
             "name" => "pain de mie",
             "department" => "boulangerie",
-            "defaultCookingUnit" => "paquet",
-            "defaultPurchaseUnit" => "paquet",
+            "defaultCookingUnit" => "tranche",
+            "defaultPurchaseUnit" => "tranche",
         ],
         [
             "name" => "pain panini",
             "department" => "boulangerie",
-            "defaultCookingUnit" => "paquet",
-            "defaultPurchaseUnit" => "paquet",
+            "defaultCookingUnit" => "piece",
+            "defaultPurchaseUnit" => "piece",
         ],
         [
             "name" => "pain tartine",
             "department" => "boulangerie",
-            "defaultCookingUnit" => "paquet",
-            "defaultPurchaseUnit" => "paquet",
+            "defaultCookingUnit" => "piece",
+            "defaultPurchaseUnit" => "piece",
         ],
         [
             "name" => "pain baggle",
@@ -1333,13 +1358,13 @@ class IngredientFixture extends Fixture implements DependentFixtureInterface, Fi
         [
             "name" => "biscotte",
             "department" => "boulangerie",
-            "defaultCookingUnit" => "paquet",
+            "defaultCookingUnit" => "piece",
             "defaultPurchaseUnit" => "paquet",
         ],
         [
             "name" => "cracotte",
             "department" => "boulangerie",
-            "defaultCookingUnit" => "paquet",
+            "defaultCookingUnit" => "piece",
             "defaultPurchaseUnit" => "paquet",
         ],
         [
@@ -1352,31 +1377,31 @@ class IngredientFixture extends Fixture implements DependentFixtureInterface, Fi
             "name" => "vinaigre",
             "department" => "sauce",
             "defaultCookingUnit" => "cuillere-a-soupe",
-            "defaultPurchaseUnit" => "cuillere-a-soupe",
+            "defaultPurchaseUnit" => "centilitre",
         ],
         [
             "name" => "vinaigre balsamique",
             "department" => "sauce",
             "defaultCookingUnit" => "cuillere-a-soupe",
-            "defaultPurchaseUnit" => "bouteille",
+            "defaultPurchaseUnit" => "centilitre",
         ],
         [
             "name" => "vinaigre xérès",
             "department" => "sauce",
             "defaultCookingUnit" => "cuillere-a-soupe",
-            "defaultPurchaseUnit" => "bouteille",
+            "defaultPurchaseUnit" => "centilitre",
         ],
         [
             "name" => "huile",
             "department" => "sauce",
             "defaultCookingUnit" => "cuillere-a-soupe",
-            "defaultPurchaseUnit" => "bouteille",
+            "defaultPurchaseUnit" => "centilitre",
         ],
         [
             "name" => "huile d'olive",
             "department" => "sauce",
             "defaultCookingUnit" => "cuillere-a-soupe",
-            "defaultPurchaseUnit" => "bouteille",
+            "defaultPurchaseUnit" => "centilitre",
         ],
         [
             "name" => "béarnaise",
@@ -1402,78 +1427,78 @@ class IngredientFixture extends Fixture implements DependentFixtureInterface, Fi
         [
             "name" => "bolognaise",
             "department" => "sauce",
-            "defaultCookingUnit" => "piece",
-            "defaultPurchaseUnit" => "piece",
+            "defaultCookingUnit" => "gramme",
+            "defaultPurchaseUnit" => "gramme",
 
         ],
         [
             "name" => "sauce 4 fromages",
             "department" => "sauce",
-            "defaultCookingUnit" => "piece",
-            "defaultPurchaseUnit" => "piece",
+            "defaultCookingUnit" => "gramme",
+            "defaultPurchaseUnit" => "gramme",
 
         ],
         [
             "name" => "pesto",
             "department" => "sauce",
-            "defaultCookingUnit" => "piece",
-            "defaultPurchaseUnit" => "piece",
+            "defaultCookingUnit" => "gramme",
+            "defaultPurchaseUnit" => "gramme",
 
         ],
         [
             "name" => "tartare",
             "department" => "sauce",
-            "defaultCookingUnit" => "piece",
-            "defaultPurchaseUnit" => "piece",
+            "defaultCookingUnit" => "gramme",
+            "defaultPurchaseUnit" => "gramme",
 
         ],
         [
             "name" => "bbq",
             "department" => "sauce",
-            "defaultCookingUnit" => "piece",
-            "defaultPurchaseUnit" => "piece",
+            "defaultCookingUnit" => "gramme",
+            "defaultPurchaseUnit" => "gramme",
 
         ],
         [
             "name" => "sauce soja",
             "department" => "sauce",
-            "defaultCookingUnit" => "piece",
-            "defaultPurchaseUnit" => "piece",
+            "defaultCookingUnit" => "gramme",
+            "defaultPurchaseUnit" => "gramme",
 
         ],
         [
             "name" => "sauce napolitaine",
             "department" => "sauce",
-            "defaultCookingUnit" => "piece",
-            "defaultPurchaseUnit" => "piece",
+            "defaultCookingUnit" => "gramme",
+            "defaultPurchaseUnit" => "gramme",
 
         ],
         [
             "name" => "sauce tomate",
             "department" => "sauce",
-            "defaultCookingUnit" => "piece",
-            "defaultPurchaseUnit" => "piece",
+            "defaultCookingUnit" => "gramme",
+            "defaultPurchaseUnit" => "gramme",
 
         ],
         [
             "name" => "sauce nuoc man",
             "department" => "sauce",
-            "defaultCookingUnit" => "piece",
-            "defaultPurchaseUnit" => "piece",
+            "defaultCookingUnit" => "gramme",
+            "defaultPurchaseUnit" => "gramme",
 
         ],
         [
             "name" => "croquette",
             "department" => "animal",
-            "defaultCookingUnit" => "piece",
-            "defaultPurchaseUnit" => "piece",
+            "defaultCookingUnit" => "paquet",
+            "defaultPurchaseUnit" => "paquet",
 
         ],
         [
             "name" => "litière",
             "department" => "animal",
-            "defaultCookingUnit" => "piece",
-            "defaultPurchaseUnit" => "piece",
+            "defaultCookingUnit" => "paquet",
+            "defaultPurchaseUnit" => "paquet",
 
         ],
         [
@@ -1494,30 +1519,30 @@ class IngredientFixture extends Fixture implements DependentFixtureInterface, Fi
         [
             "name" => "poivre",
             "department" => "divers",
-            "defaultCookingUnit" => "piece",
-            "defaultPurchaseUnit" => "piece",
+            "defaultCookingUnit" => "gramme",
+            "defaultPurchaseUnit" => "gramme",
 
         ],
         [
             "name" => "cornichon",
             "department" => "divers",
-            "defaultCookingUnit" => "piece",
-            "defaultPurchaseUnit" => "piece",
+            "defaultCookingUnit" => "gramme",
+            "defaultPurchaseUnit" => "gramme",
 
         ],
         [
             "name" => "chocolat en poudre",
             "department" => "divers",
-            "defaultCookingUnit" => "piece",
-            "defaultPurchaseUnit" => "piece",
+            "defaultCookingUnit" => "gramme",
+            "defaultPurchaseUnit" => "paquet",
 
         ],
         [
             "name" => "miel",
             "image" => "images/ingredient/honey.png",
             "department" => "divers",
-            "defaultCookingUnit" => "piece",
-            "defaultPurchaseUnit" => "piece",
+            "defaultCookingUnit" => "gramme",
+            "defaultPurchaseUnit" => "gramme",
 
         ],
         [
@@ -1538,7 +1563,7 @@ class IngredientFixture extends Fixture implements DependentFixtureInterface, Fi
         [
             "name" => "tortilla",
             "department" => "cuisine-du-monde",
-            "defaultCookingUnit" => "paquet",
+            "defaultCookingUnit" => "piece",
             "defaultPurchaseUnit" => "paquet",
         ],
         [
@@ -1563,22 +1588,22 @@ class IngredientFixture extends Fixture implements DependentFixtureInterface, Fi
         [
             "name" => "épice",
             "department" => "cuisine-du-monde",
-            "defaultCookingUnit" => "piece",
-            "defaultPurchaseUnit" => "piece",
+            "defaultCookingUnit" => "gramme",
+            "defaultPurchaseUnit" => "gramme",
 
         ],
         [
             "name" => "curry",
             "department" => "cuisine-du-monde",
-            "defaultCookingUnit" => "piece",
-            "defaultPurchaseUnit" => "piece",
+            "defaultCookingUnit" => "gramme",
+            "defaultPurchaseUnit" => "gramme",
 
         ],
         [
             "name" => "ramen",
             "department" => "cuisine-du-monde",
-            "defaultCookingUnit" => "paquet",
-            "defaultPurchaseUnit" => "paquet",
+            "defaultCookingUnit" => "gramme",
+            "defaultPurchaseUnit" => "gramme",
         ],
         [
             "name" => "feuille-gelatine",
