@@ -2102,7 +2102,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
                 [
                     "slug" => "saumon",
                     "quantity" => 4,
-                    "unit" => "piece",
+                    "unit" => "tranche",
                 ],
                 [
                     "slug" => "poivron",
@@ -2139,7 +2139,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
         [
             "name" => "tarte au pomme",
             "owner" => "alexiane.sichi@gmail.com",
-            "type" => "plat",
+            "type" => "dessert",
             "people" => 4,
             "ingredients" => [
                 [

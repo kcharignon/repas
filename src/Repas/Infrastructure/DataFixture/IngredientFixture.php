@@ -359,8 +359,8 @@ class IngredientFixture extends Fixture implements DependentFixtureInterface, Fi
         [
             "name" => "reblochon",
             "department" => "fromage",
-            "defaultCookingUnit" => "gramme",
-            "defaultPurchaseUnit" => "gramme",
+            "defaultCookingUnit" => "piece",
+            "defaultPurchaseUnit" => "piece",
         ],
         [
             "name" => "chèvre",
@@ -397,13 +397,13 @@ class IngredientFixture extends Fixture implements DependentFixtureInterface, Fi
             "name" => "crème fraiche épaisse",
             "department" => "fromage",
             "defaultCookingUnit" => "centilitre",
-            "defaultPurchaseUnit" => "gramme",
+            "defaultPurchaseUnit" => "centilitre",
         ],
         [
             "name" => "crème fraiche liquide",
             "department" => "fromage",
             "defaultCookingUnit" => "millilitre",
-            "defaultPurchaseUnit" => "bouteille",
+            "defaultPurchaseUnit" => "centilitre",
         ],
         [
             "name" => "divers",
@@ -463,8 +463,8 @@ class IngredientFixture extends Fixture implements DependentFixtureInterface, Fi
         [
             "name" => "compote",
             "department" => "yaourt",
-            "defaultCookingUnit" => "piece",
-            "defaultPurchaseUnit" => "paquet",
+            "defaultCookingUnit" => "gramme",
+            "defaultPurchaseUnit" => "gramme",
         ],
         [
             "name" => "figolu",
@@ -716,8 +716,8 @@ class IngredientFixture extends Fixture implements DependentFixtureInterface, Fi
         ],
         [
             "name" => "saucisse",
-            "defaultCookingUnit" => "gramme",
-            "defaultPurchaseUnit" => "gramme",
+            "defaultCookingUnit" => "piece",
+            "defaultPurchaseUnit" => "piece",
             "department" => "viande",
         ],
         [
@@ -1153,8 +1153,8 @@ class IngredientFixture extends Fixture implements DependentFixtureInterface, Fi
         [
             "name" => "raviole",
             "department" => "cereale",
-            "defaultCookingUnit" => "gramme",
-            "defaultPurchaseUnit" => "gramme",
+            "defaultCookingUnit" => "sachet",
+            "defaultPurchaseUnit" => "sachet",
         ],
         [
             "name" => "purée",
@@ -1204,8 +1204,8 @@ class IngredientFixture extends Fixture implements DependentFixtureInterface, Fi
         [
             "name" => "riste aubergine",
             "department" => "traiteur",
-            "defaultCookingUnit" => "boite",
-            "defaultPurchaseUnit" => "boite",
+            "defaultCookingUnit" => "gramme",
+            "defaultPurchaseUnit" => "gramme",
         ],
         [
             "name" => "pate brisée",
