@@ -156,7 +156,7 @@ final class ShoppingList implements ModelInterface
             $department = $shopListIngredient->getDepartment();
             $res[$department->getSlug()] = $department;
         }
-        return $res;
+        return $res->usort(fn(Department $a, Department $b) => $a->getSlug() <=> $b->getSlug());
     }
 
     public function numberOfTypeRecipes(RecipeType $type): int
