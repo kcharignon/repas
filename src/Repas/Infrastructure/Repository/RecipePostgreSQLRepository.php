@@ -59,7 +59,7 @@ readonly class RecipePostgreSQLRepository  extends PostgreSQLRepository implemen
     {
         return $this->findBy(
             ['authorId' => $author->getId(), 'typeSlug' => $type->getSlug()],
-            ['name' => 'ASC']
+            ['slug' => 'ASC']
         );
     }
 

@@ -5,6 +5,10 @@
 {% endblock %}
 
 {% block body %}
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{{ path("view_shopping_list") }}">Listes</a></li>
+        <li class="breadcrumb-item active">{{ shoppingList.createdAt|format_datetime(locale='fr_FR', pattern="dd MMMM YYYY") }}</li>
+    </ol>
     {% if shoppingList is not null %}
         <div class="card bg-light" style="max-width: 100rem;">
             <h3 class="card-header">

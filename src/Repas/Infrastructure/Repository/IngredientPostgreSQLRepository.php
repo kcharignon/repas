@@ -52,7 +52,7 @@ readonly class IngredientPostgreSQLRepository extends PostgreSQLRepository imple
 
     public function findByDepartment(Department $department): Tab
     {
-        $ingredients = new Tab($this->entityRepository->findBy(['departmentSlug' => $department->getId()]), IngredientEntity::class);
+        $ingredients = new Tab($this->entityRepository->findBy(['departmentSlug' => $department->getId()], ['slug' => 'ASC']), IngredientEntity::class);
         return $ingredients->map(function (IngredientEntity $ingredient) {
             if (($model = $this->modelCache->getModelCache(IngredientModel::class, $ingredient->getSlug())) !== null) {
                 return $model;

@@ -29,11 +29,13 @@
                         {% endif %}
                         <strong>{{ row.ingredient.name|capitalize }}</strong>
                         <span class="flex-fill"></span>
+                        {% if row.ingredient.image|length > 0 %}
                         <img
                             class="align-self-center"
                             style="height: 32px"
                             src="{{ absolute_url(asset(row.ingredient.image)) }}"
                             alt="row.ingredient.name">
+                        {% endif %}
                     </li>
                 {% endfor %}
             </ul>

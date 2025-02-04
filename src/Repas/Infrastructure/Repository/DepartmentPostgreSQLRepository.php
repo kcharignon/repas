@@ -22,7 +22,7 @@ readonly class DepartmentPostgreSQLRepository extends PostgreSQLRepository imple
 
     public function findAll(): Tab
     {
-        $entities = new Tab($this->entityRepository->findAll(), DepartmentEntity::class);
+        $entities = new Tab($this->entityRepository->findBy([], ['slug' => 'ASC']), DepartmentEntity::class);
         return $entities->map(function (DepartmentEntity $entity) {
             if (($model = $this->modelCache->getModelCache(DepartmentModel::class, $entity->getSlug())) !== null) {
                 return $model;

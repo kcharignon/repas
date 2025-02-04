@@ -4,6 +4,7 @@ namespace Repas\Repas\Infrastructure\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
 use Repas\Repas\Domain\Model\Recipe as RecipeModel;
+use Repas\Shared\Domain\Tool\StringTool;
 
 #[ORM\Entity]
 #[ORM\Table(name: 'recipe')]
@@ -15,6 +16,9 @@ class Recipe
 
     #[ORM\Column(length: 255)]
     private ?string $name = null;
+
+    #[ORM\Column(length: 255)]
+    private ?string $slug = null;
 
     #[ORM\Column]
     private ?int $serving = null;
@@ -34,6 +38,7 @@ class Recipe
     ) {
         $this->id = $id;
         $this->name = $name;
+        $this->slug = StringTool::slugify($name);
         $this->serving = $serving;
         $this->authorId = $authorId;
         $this->typeSlug = $typeSlug;
@@ -53,6 +58,17 @@ class Recipe
     {
         $this->name = $name;
 
+        return $this;
+    }
+
+    public function getSlug(): ?string
+    {
+        return $this->slug;
+    }
+
+    public function setSlug(?string $slug): Recipe
+    {
+        $this->slug = $slug;
         return $this;
     }
 

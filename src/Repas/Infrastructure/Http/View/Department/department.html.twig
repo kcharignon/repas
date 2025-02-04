@@ -8,13 +8,13 @@
 {% block body %}
     <ol class="breadcrumb">
         <li class="breadcrumb-item"><a href="{{ path("view_departments") }}">Rayon</a></li>
-        <li class="breadcrumb-item active">{{ department.name }}</li>
+        <li class="breadcrumb-item active">{{ department.name|capitalize }}</li>
     </ol>
 
     <ul class="list-group">
         {% for ingredient in ingredients %}
             <li class="list-group-item justify-content-between align-items-center">
-                {{ ingredient.name }}
+                {{ ingredient.name|capitalize }}
                 <button
                     type="button"
                     class="btn btn-danger btn-sm float-end"

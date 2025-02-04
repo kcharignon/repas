@@ -10,7 +10,7 @@ use Doctrine\Migrations\AbstractMigration;
 /**
  * Auto-generated Migration: Please modify to your needs!
  */
-final class Version20250203205407 extends AbstractMigration
+final class Version20250204220752 extends AbstractMigration
 {
     public function getDescription(): string
     {
@@ -24,7 +24,7 @@ final class Version20250203205407 extends AbstractMigration
         $this->addSql('CREATE TABLE department (slug VARCHAR(255) NOT NULL, name VARCHAR(255) NOT NULL, image VARCHAR(2048) NOT NULL, PRIMARY KEY(slug))');
         $this->addSql('CREATE TABLE ingredient (slug VARCHAR(255) NOT NULL, name VARCHAR(255) NOT NULL, image VARCHAR(2048) NOT NULL, department VARCHAR(255) NOT NULL, default_cooking_unit VARCHAR(255) NOT NULL, default_purchase_unit VARCHAR(255) NOT NULL, PRIMARY KEY(slug))');
         $this->addSql('CREATE TABLE meal (id VARCHAR(255) NOT NULL, shopping_list VARCHAR(255) NOT NULL, recipe VARCHAR(255) NOT NULL, serving INT NOT NULL, PRIMARY KEY(id))');
-        $this->addSql('CREATE TABLE recipe (id VARCHAR(36) NOT NULL, name VARCHAR(255) NOT NULL, serving INT NOT NULL, author VARCHAR(255) NOT NULL, type VARCHAR(255) NOT NULL, PRIMARY KEY(id))');
+        $this->addSql('CREATE TABLE recipe (id VARCHAR(36) NOT NULL, name VARCHAR(255) NOT NULL, slug VARCHAR(255) NOT NULL, serving INT NOT NULL, author VARCHAR(255) NOT NULL, type VARCHAR(255) NOT NULL, PRIMARY KEY(id))');
         $this->addSql('CREATE TABLE recipe_row (id VARCHAR(36) NOT NULL, ingredient VARCHAR(255) NOT NULL, quantity DOUBLE PRECISION NOT NULL, unit VARCHAR(255) NOT NULL, recipe VARCHAR(255) NOT NULL, PRIMARY KEY(id))');
         $this->addSql('CREATE TABLE recipe_type (slug VARCHAR(255) NOT NULL, name VARCHAR(255) NOT NULL, image VARCHAR(2048) NOT NULL, sequence INT NOT NULL, PRIMARY KEY(slug))');
         $this->addSql('CREATE TABLE shopping_list (id VARCHAR(255) NOT NULL, owner VARCHAR(255) NOT NULL, created_at TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL, status VARCHAR(255) NOT NULL, PRIMARY KEY(id))');
