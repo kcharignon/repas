@@ -68,7 +68,7 @@ final class ShoppingList implements ModelInterface
 
     public function getRows(): Tab
     {
-        return $this->rows;
+        return $this->rows->usort(fn(Row $a, Row $b) => $a->getIngredient()->getSlug() <=> $b->getIngredient()->getSlug());
     }
 
     public static function create(

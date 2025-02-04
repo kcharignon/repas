@@ -27,3 +27,7 @@ services:
     Repas\Repas\Domain\Interface\UnitRepository:
         alias: 'Repas\Repas\Infrastructure\Repository\UnitPostgreSQLRepository'
         public: true
+        
+    Repas\Repas\Domain\Interface\ShoppingListRowRepository:
+        alias: 'Repas\Repas\Infrastructure\Repository\ShoppingListRowPostgreSQLRepository'
+        public: true

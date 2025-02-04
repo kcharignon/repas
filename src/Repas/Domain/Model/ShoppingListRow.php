@@ -82,4 +82,14 @@ final class ShoppingListRow implements ModelInterface
     {
         $this->quantity += $quantity;
     }
+
+    public function tick(): void
+    {
+        $this->checked = true;
+    }
+
+    public function uncheck(): void
+    {
+        $this->checked = false;
+    }
 }
