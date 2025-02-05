@@ -1,0 +1,36 @@
+{% extends '@Shared/base.html.twig' %}
+
+{% block title %}
+    Nouvel Ingrédient
+{% endblock %}
+
+{% block body %}
+    <div class="container my-5">
+        <h1>Nouvel Ingrédient</h1>
+
+        {# Affichage du formulaire Symfony #}
+        {{ form_start(form, {'attr': {'id': 'ingredient-form'}}) }}
+        <div class="mb-3">
+            {{ form_label(form.name) }}
+            {{ form_widget(form.name, {'attr': {'class': 'form-control'}}) }}
+            {{ form_errors(form.name) }}
+        </div>
+        <div class="mb-3">
+            {{ form_label(form.department) }}
+            {{ form_widget(form.department, {'attr': {'class': 'form-control'}}) }}
+            {{ form_errors(form.department) }}
+        </div>
+        <div class="mb-3">
+            {{ form_label(form.defaultCookingUnit) }}
+            {{ form_widget(form.defaultCookingUnit, {'attr': {'class': 'form-control'}}) }}
+            {{ form_errors(form.defaultCookingUnit) }}
+        </div>
+        <div class="mb-3">
+            {{ form_label(form.defaultPurchaseUnit) }}
+            {{ form_widget(form.defaultPurchaseUnit, {'attr': {'class': 'form-control'}}) }}
+            {{ form_errors(form.defaultPurchaseUnit) }}
+        </div>
+        <button type="submit" class="btn btn-primary">Ajouter</button>
+        {{ form_end(form) }}
+    </div>
+{% endblock %}

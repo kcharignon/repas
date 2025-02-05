@@ -1,7 +1,7 @@
 [
     {
         "slug": "piece",
-        "name": "piece",
+        "name": "pièce",
         "symbol": ""
     },
     {
@@ -118,5 +118,10 @@
         "slug": "gousse",
         "name": "gousse",
         "symbol": "gousse"
-    }
+    },
+  {
+    "slug": "flacon",
+    "name": "flacon",
+    "symbol": "flacon"
+  }
 ]

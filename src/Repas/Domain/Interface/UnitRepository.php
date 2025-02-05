@@ -12,6 +12,11 @@ interface UnitRepository
     public function save(Unit $unit): void;
 
     /**
+     * @return Tab<Unit>
+     */
+    public function findAll(): Tab;
+
+    /**
      * @throws UnitException
      */
     public function findOneBySlug(string $slug): Unit;

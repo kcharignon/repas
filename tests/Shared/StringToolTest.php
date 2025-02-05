@@ -21,6 +21,7 @@ class StringToolTest extends TestCase
             "Chiffre" => ["0123456789", "0123456789"],
             "Accents minuscules" => ["âàéèêëîïôöûüç", "aaeeeeiioouuc"],
             "Accents majuscules" => ["ÂÀÉÈÊËÎÏÔÖÛÜÇ", "aaeeeeiioouuc"],
+            "Parentheses" => ["avec des (paretnhese)", "avec-des-paretnhese"],
         ];
     }
 

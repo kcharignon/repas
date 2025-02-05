@@ -1,1994 +1,2042 @@
 [
-    {
-        "slug": "aubergine",
-        "name": "aubergine",
-        "image": "images\/ingredient\/eggplant.png",
-        "department": "fruit-et-legume",
-        "default_cooking_unit": "piece",
-        "default_purchase_unit": "piece"
-    },
-    {
-        "slug": "ail",
-        "name": "ail",
-        "image": "images\/ingredient\/garlic.png",
-        "department": "fruit-et-legume",
-        "default_cooking_unit": "piece",
-        "default_purchase_unit": "piece"
-    },
-    {
-        "slug": "avocat",
-        "name": "avocat",
-        "image": "https:\/\/cdn-icons-png.flaticon.com\/64\/135\/135609.png",
-        "department": "fruit-et-legume",
-        "default_cooking_unit": "piece",
-        "default_purchase_unit": "piece"
-    },
-    {
-        "slug": "bettrave",
-        "name": "bettrave",
-        "image": "images\/ingredient\/beetroot.png",
-        "department": "fruit-et-legume",
-        "default_cooking_unit": "piece",
-        "default_purchase_unit": "piece"
-    },
-    {
-        "slug": "brocoli",
-        "name": "brocoli",
-        "image": "images\/ingredient\/broccoli.png",
-        "department": "fruit-et-legume",
-        "default_cooking_unit": "piece",
-        "default_purchase_unit": "piece"
-    },
-    {
-        "slug": "banane",
-        "name": "banane",
-        "image": "images\/ingredient\/banane.png",
-        "department": "fruit-et-legume",
-        "default_cooking_unit": "piece",
-        "default_purchase_unit": "piece"
-    },
-    {
-        "slug": "epinard",
-        "name": "épinard",
-        "image": "images\/ingredient\/spinach.png",
-        "department": "fruit-et-legume",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "carotte",
-        "name": "carotte",
-        "image": "images\/ingredient\/carrot.png",
-        "department": "fruit-et-legume",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "ananas",
-        "name": "ananas",
-        "image": "images\/ingredient\/pineapple.png",
-        "department": "fruit-et-legume",
-        "default_cooking_unit": "piece",
-        "default_purchase_unit": "piece"
-    },
-    {
-        "slug": "chou-blanc",
-        "name": "chou blanc",
-        "image": "images\/ingredient\/cabbage.png",
-        "department": "fruit-et-legume",
-        "default_cooking_unit": "piece",
-        "default_purchase_unit": "piece"
-    },
-    {
-        "slug": "chou-rouge",
-        "name": "chou rouge",
-        "image": "images\/ingredient\/cabbage.png",
-        "department": "fruit-et-legume",
-        "default_cooking_unit": "piece",
-        "default_purchase_unit": "piece"
-    },
-    {
-        "slug": "courge",
-        "name": "courge",
-        "image": "",
-        "department": "fruit-et-legume",
-        "default_cooking_unit": "piece",
-        "default_purchase_unit": "piece"
-    },
-    {
-        "slug": "echalote",
-        "name": "échalote",
-        "image": "",
-        "department": "fruit-et-legume",
-        "default_cooking_unit": "piece",
-        "default_purchase_unit": "piece"
-    },
-    {
-        "slug": "concombre",
-        "name": "concombre",
-        "image": "images\/ingredient\/cucumber.png",
-        "department": "fruit-et-legume",
-        "default_cooking_unit": "piece",
-        "default_purchase_unit": "piece"
-    },
-    {
-        "slug": "champignon",
-        "name": "champignon",
-        "image": "images\/ingredient\/mushroom.png",
-        "department": "fruit-et-legume",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "haricot-rouge",
-        "name": "haricot rouge",
-        "image": "images\/ingredient\/kidney.png",
-        "department": "fruit-et-legume",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "endive",
-        "name": "endive",
-        "image": "",
-        "department": "fruit-et-legume",
-        "default_cooking_unit": "piece",
-        "default_purchase_unit": "piece"
-    },
-    {
-        "slug": "haricot-frais",
-        "name": "haricot frais",
-        "image": "",
-        "department": "fruit-et-legume",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "salade",
-        "name": "salade",
-        "image": "images\/ingredient\/salad.png",
-        "department": "fruit-et-legume",
-        "default_cooking_unit": "piece",
-        "default_purchase_unit": "piece"
-    },
-    {
-        "slug": "salade-verte",
-        "name": "salade verte",
-        "image": "images\/ingredient\/salad.png",
-        "department": "fruit-et-legume",
-        "default_cooking_unit": "piece",
-        "default_purchase_unit": "piece"
-    },
-    {
-        "slug": "poivron",
-        "name": "poivron",
-        "image": "images\/ingredient\/bell-pepper.png",
-        "department": "fruit-et-legume",
-        "default_cooking_unit": "piece",
-        "default_purchase_unit": "piece"
-    },
-    {
-        "slug": "pomme-de-terre",
-        "name": "pomme de terre",
-        "image": "images\/ingredient\/potato.png",
-        "department": "fruit-et-legume",
-        "default_cooking_unit": "piece",
-        "default_purchase_unit": "piece"
-    },
-    {
-        "slug": "pomme",
-        "name": "pomme",
-        "image": "images\/ingredient\/apple.png",
-        "department": "fruit-et-legume",
-        "default_cooking_unit": "piece",
-        "default_purchase_unit": "piece"
-    },
-    {
-        "slug": "pomme-golden",
-        "name": "pomme golden",
-        "image": "images\/ingredient\/golden-apple.png",
-        "department": "fruit-et-legume",
-        "default_cooking_unit": "piece",
-        "default_purchase_unit": "piece"
-    },
-    {
-        "slug": "betternut",
-        "name": "betternut",
-        "image": "images\/ingredient\/butternut-squash.png",
-        "department": "fruit-et-legume",
-        "default_cooking_unit": "piece",
-        "default_purchase_unit": "piece"
-    },
-    {
-        "slug": "choux-fleur",
-        "name": "choux fleur",
-        "image": "",
-        "department": "fruit-et-legume",
-        "default_cooking_unit": "piece",
-        "default_purchase_unit": "piece"
-    },
-    {
-        "slug": "melon",
-        "name": "melon",
-        "image": "images\/ingredient\/melon.png",
-        "department": "fruit-et-legume",
-        "default_cooking_unit": "piece",
-        "default_purchase_unit": "piece"
-    },
-    {
-        "slug": "poireau",
-        "name": "poireau",
-        "image": "images\/ingredient\/leek.png",
-        "department": "fruit-et-legume",
-        "default_cooking_unit": "piece",
-        "default_purchase_unit": "piece"
-    },
-    {
-        "slug": "citron",
-        "name": "citron",
-        "image": "images\/ingredient\/lemon.png",
-        "department": "fruit-et-legume",
-        "default_cooking_unit": "piece",
-        "default_purchase_unit": "piece"
-    },
-    {
-        "slug": "persil",
-        "name": "persil",
-        "image": "",
-        "department": "fruit-et-legume",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "oignon",
-        "name": "oignon",
-        "image": "images\/ingredient\/onion.png",
-        "department": "fruit-et-legume",
-        "default_cooking_unit": "piece",
-        "default_purchase_unit": "piece"
-    },
-    {
-        "slug": "oignon-rouge",
-        "name": "oignon rouge",
-        "image": "images\/ingredient\/onion-red.png",
-        "department": "fruit-et-legume",
-        "default_cooking_unit": "piece",
-        "default_purchase_unit": "piece"
-    },
-    {
-        "slug": "oignon-blanc",
-        "name": "oignon blanc",
-        "image": "images\/ingredient\/onion-white.png",
-        "department": "fruit-et-legume",
-        "default_cooking_unit": "piece",
-        "default_purchase_unit": "piece"
-    },
-    {
-        "slug": "petit-pois",
-        "name": "petit pois",
-        "image": "",
-        "department": "conserve",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "tomate-cerise",
-        "name": "tomate cerise",
-        "image": "images\/ingredient\/cherry-tomato.png",
-        "department": "fruit-et-legume",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "tomate-a-farcir",
-        "name": "tomate à farcir",
-        "image": "",
-        "department": "fruit-et-legume",
-        "default_cooking_unit": "piece",
-        "default_purchase_unit": "piece"
-    },
-    {
-        "slug": "courgette-a-farcir",
-        "name": "courgette à farcir",
-        "image": "",
-        "department": "fruit-et-legume",
-        "default_cooking_unit": "piece",
-        "default_purchase_unit": "piece"
-    },
-    {
-        "slug": "tomate",
-        "name": "tomate",
-        "image": "https:\/\/cdn-icons-png.flaticon.com\/64\/135\/135702.png",
-        "department": "fruit-et-legume",
-        "default_cooking_unit": "piece",
-        "default_purchase_unit": "piece"
-    },
-    {
-        "slug": "courgette",
-        "name": "courgette",
-        "image": "",
-        "department": "fruit-et-legume",
-        "default_cooking_unit": "piece",
-        "default_purchase_unit": "piece"
-    },
-    {
-        "slug": "emmental-rape",
-        "name": "emmental rapé",
-        "image": "",
-        "department": "fromage",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "comte",
-        "name": "comté",
-        "image": "",
-        "department": "fromage",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "parmesan",
-        "name": "parmesan",
-        "image": "",
-        "department": "fromage",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "vache-qui-rit",
-        "name": "vache qui rit",
-        "image": "",
-        "department": "fromage",
-        "default_cooking_unit": "boite",
-        "default_purchase_unit": "boite"
-    },
-    {
-        "slug": "kiri",
-        "name": "kiri",
-        "image": "",
-        "department": "fromage",
-        "default_cooking_unit": "boite",
-        "default_purchase_unit": "boite"
-    },
-    {
-        "slug": "raclette",
-        "name": "raclette",
-        "image": "",
-        "department": "fromage",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "fromage-fondue",
-        "name": "fromage fondue",
-        "image": "",
-        "department": "fromage",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "mascarpone",
-        "name": "mascarpone",
-        "image": "",
-        "department": "fromage",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "reblochon",
-        "name": "reblochon",
-        "image": "",
-        "department": "fromage",
-        "default_cooking_unit": "piece",
-        "default_purchase_unit": "piece"
-    },
-    {
-        "slug": "chevre",
-        "name": "chèvre",
-        "image": "",
-        "department": "fromage",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "buche"
-    },
-    {
-        "slug": "fromage-frais",
-        "name": "fromage frais",
-        "image": "",
-        "department": "fromage",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "mozzarella",
-        "name": "mozzarella",
-        "image": "",
-        "department": "fromage",
-        "default_cooking_unit": "piece",
-        "default_purchase_unit": "piece"
-    },
-    {
-        "slug": "fromage-a-croc-monssieur",
-        "name": "fromage à croc monssieur",
-        "image": "",
-        "department": "fromage",
-        "default_cooking_unit": "tranche",
-        "default_purchase_unit": "tranche"
-    },
-    {
-        "slug": "cheddar-en-tranche",
-        "name": "cheddar en tranche",
-        "image": "",
-        "department": "fromage",
-        "default_cooking_unit": "tranche",
-        "default_purchase_unit": "tranche"
-    },
-    {
-        "slug": "creme-fraiche-epaisse",
-        "name": "crème fraiche épaisse",
-        "image": "",
-        "department": "fromage",
-        "default_cooking_unit": "centilitre",
-        "default_purchase_unit": "centilitre"
-    },
-    {
-        "slug": "creme-fraiche-liquide",
-        "name": "crème fraiche liquide",
-        "image": "",
-        "department": "fromage",
-        "default_cooking_unit": "millilitre",
-        "default_purchase_unit": "centilitre"
-    },
-    {
-        "slug": "divers",
-        "name": "divers",
-        "image": "",
-        "department": "fromage",
-        "default_cooking_unit": "boite",
-        "default_purchase_unit": "boite"
-    },
-    {
-        "slug": "beurre",
-        "name": "beurre",
-        "image": "images\/ingredient\/spread.png",
-        "department": "fromage",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "plaquette"
-    },
-    {
-        "slug": "perle-de-lait",
-        "name": "perle de lait",
-        "image": "",
-        "department": "yaourt",
-        "default_cooking_unit": "piece",
-        "default_purchase_unit": "paquet"
-    },
-    {
-        "slug": "pat-patrouille",
-        "name": "pat patrouille",
-        "image": "",
-        "department": "yaourt",
-        "default_cooking_unit": "paquet",
-        "default_purchase_unit": "paquet"
-    },
-    {
-        "slug": "la-laitiere",
-        "name": "la laitière",
-        "image": "",
-        "department": "yaourt",
-        "default_cooking_unit": "piece",
-        "default_purchase_unit": "paquet"
-    },
-    {
-        "slug": "veloute",
-        "name": "velouté",
-        "image": "",
-        "department": "yaourt",
-        "default_cooking_unit": "piece",
-        "default_purchase_unit": "paquet"
-    },
-    {
-        "slug": "yaourt-nature",
-        "name": "yaourt nature",
-        "image": "",
-        "department": "yaourt",
-        "default_cooking_unit": "piece",
-        "default_purchase_unit": "paquet"
-    },
-    {
-        "slug": "compote-en-pot",
-        "name": "compote en pot",
-        "image": "",
-        "department": "yaourt",
-        "default_cooking_unit": "piece",
-        "default_purchase_unit": "paquet"
-    },
-    {
-        "slug": "compote-a-boire",
-        "name": "compote à boire",
-        "image": "",
-        "department": "yaourt",
-        "default_cooking_unit": "piece",
-        "default_purchase_unit": "paquet"
-    },
-    {
-        "slug": "compote",
-        "name": "compote",
-        "image": "",
-        "department": "yaourt",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "figolu",
-        "name": "figolu",
-        "image": "",
-        "department": "gateau",
-        "default_cooking_unit": "paquet",
-        "default_purchase_unit": "paquet"
-    },
-    {
-        "slug": "bn",
-        "name": "bn",
-        "image": "",
-        "department": "gateau",
-        "default_cooking_unit": "paquet",
-        "default_purchase_unit": "paquet"
-    },
-    {
-        "slug": "chamonix",
-        "name": "chamonix",
-        "image": "",
-        "department": "gateau",
-        "default_cooking_unit": "paquet",
-        "default_purchase_unit": "paquet"
-    },
-    {
-        "slug": "barquette-chocolat",
-        "name": "barquette chocolat",
-        "image": "",
-        "department": "gateau",
-        "default_cooking_unit": "paquet",
-        "default_purchase_unit": "paquet"
-    },
-    {
-        "slug": "barquette-fraise",
-        "name": "barquette fraise",
-        "image": "",
-        "department": "gateau",
-        "default_cooking_unit": "paquet",
-        "default_purchase_unit": "paquet"
-    },
-    {
-        "slug": "the-lu",
-        "name": "the lu",
-        "image": "",
-        "department": "gateau",
-        "default_cooking_unit": "paquet",
-        "default_purchase_unit": "paquet"
-    },
-    {
-        "slug": "boudoire",
-        "name": "boudoire",
-        "image": "",
-        "department": "gateau",
-        "default_cooking_unit": "paquet",
-        "default_purchase_unit": "paquet"
-    },
-    {
-        "slug": "biscuit-cuillere",
-        "name": "biscuit cuillère",
-        "image": "",
-        "department": "gateau",
-        "default_cooking_unit": "paquet",
-        "default_purchase_unit": "paquet"
-    },
-    {
-        "slug": "speculos",
-        "name": "speculos",
-        "image": "",
-        "department": "gateau",
-        "default_cooking_unit": "paquet",
-        "default_purchase_unit": "paquet"
-    },
-    {
-        "slug": "lait-1er-age",
-        "name": "lait 1er âge",
-        "image": "",
-        "department": "bebe",
-        "default_cooking_unit": "boite",
-        "default_purchase_unit": "boite"
-    },
-    {
-        "slug": "lait-2e-age",
-        "name": "lait 2e âge",
-        "image": "",
-        "department": "bebe",
-        "default_cooking_unit": "boite",
-        "default_purchase_unit": "boite"
-    },
-    {
-        "slug": "lait-3e-age",
-        "name": "lait 3e âge",
-        "image": "",
-        "department": "bebe",
-        "default_cooking_unit": "boite",
-        "default_purchase_unit": "boite"
-    },
-    {
-        "slug": "couche",
-        "name": "couche",
-        "image": "images\/ingredient\/baby-diaper.png",
-        "department": "bebe",
-        "default_cooking_unit": "paquet",
-        "default_purchase_unit": "paquet"
-    },
-    {
-        "slug": "lingettes-pour-bebe",
-        "name": "lingettes pour bébé",
-        "image": "",
-        "department": "bebe",
-        "default_cooking_unit": "paquet",
-        "default_purchase_unit": "paquet"
-    },
-    {
-        "slug": "chips",
-        "name": "chips",
-        "image": "images\/ingredient\/chips.png",
-        "department": "aperitif",
-        "default_cooking_unit": "paquet",
-        "default_purchase_unit": "paquet"
-    },
-    {
-        "slug": "cacahuete",
-        "name": "cacahuète",
-        "image": "",
-        "department": "aperitif",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "chips-ondule",
-        "name": "chips ondulé",
-        "image": "",
-        "department": "aperitif",
-        "default_cooking_unit": "paquet",
-        "default_purchase_unit": "paquet"
-    },
-    {
-        "slug": "chips-aux-vinaigre",
-        "name": "chips aux vinaigre",
-        "image": "",
-        "department": "aperitif",
-        "default_cooking_unit": "paquet",
-        "default_purchase_unit": "paquet"
-    },
-    {
-        "slug": "chipster",
-        "name": "chipster",
-        "image": "",
-        "department": "aperitif",
-        "default_cooking_unit": "paquet",
-        "default_purchase_unit": "paquet"
-    },
-    {
-        "slug": "mini-pizza",
-        "name": "mini pizza",
-        "image": "",
-        "department": "aperitif",
-        "default_cooking_unit": "paquet",
-        "default_purchase_unit": "paquet"
-    },
-    {
-        "slug": "cone-3d",
-        "name": "cone 3d",
-        "image": "",
-        "department": "aperitif",
-        "default_cooking_unit": "paquet",
-        "default_purchase_unit": "paquet"
-    },
-    {
-        "slug": "springle",
-        "name": "springle",
-        "image": "",
-        "department": "aperitif",
-        "default_cooking_unit": "paquet",
-        "default_purchase_unit": "paquet"
-    },
-    {
-        "slug": "aiguilette-de-poulet",
-        "name": "aiguilette de poulet",
-        "image": "",
-        "department": "viande",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "cuisse-de-poulet",
-        "name": "cuisse de poulet",
-        "image": "",
-        "department": "viande",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "steack",
-        "name": "steack",
-        "image": "",
-        "department": "viande",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "dinde",
-        "name": "dinde",
-        "image": "",
-        "department": "viande",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "poulet",
-        "name": "poulet",
-        "image": "",
-        "department": "viande",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "saumon",
-        "name": "saumon",
-        "image": "",
-        "department": "viande",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "poisson",
-        "name": "poisson",
-        "image": "",
-        "department": "viande",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "knacki",
-        "name": "knacki",
-        "image": "",
-        "department": "viande",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "chorizo",
-        "name": "chorizo",
-        "image": "",
-        "department": "viande",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "jambon-cru",
-        "name": "jambon cru",
-        "image": "",
-        "department": "viande",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "jambon-blanc",
-        "name": "jambon blanc",
-        "image": "",
-        "department": "viande",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "boeuf",
-        "name": "bœuf",
-        "image": "",
-        "department": "viande",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "boeuf-bourguignon",
-        "name": "bœuf bourguignon",
-        "image": "",
-        "department": "viande",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "jambon",
-        "name": "jambon",
-        "image": "",
-        "department": "viande",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "blanquette-de-veau",
-        "name": "blanquette de veau",
-        "image": "",
-        "department": "viande",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "chair-a-saucisse",
-        "name": "chair à saucisse",
-        "image": "",
-        "department": "viande",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "cote-de-porc",
-        "name": "cote de porc",
-        "image": "",
-        "department": "viande",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "agneau",
-        "name": "agneau",
-        "image": "",
-        "department": "viande",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "veau",
-        "name": "veau",
-        "image": "",
-        "department": "viande",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "saucisse",
-        "name": "saucisse",
-        "image": "",
-        "department": "viande",
-        "default_cooking_unit": "piece",
-        "default_purchase_unit": "piece"
-    },
-    {
-        "slug": "saucisson",
-        "name": "saucisson",
-        "image": "",
-        "department": "viande",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "saucisson-fouet",
-        "name": "saucisson fouet",
-        "image": "",
-        "department": "viande",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "saucisson-st-agaune",
-        "name": "saucisson st agaune",
-        "image": "",
-        "department": "viande",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "merguez",
-        "name": "merguez",
-        "image": "",
-        "department": "viande",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "charcuterie",
-        "name": "charcuterie",
-        "image": "",
-        "department": "viande",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "lardon",
-        "name": "lardon",
-        "image": "",
-        "department": "viande",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "biere-blonde",
-        "name": "bière blonde",
-        "image": "",
-        "department": "alcool",
-        "default_cooking_unit": "millilitre",
-        "default_purchase_unit": "centilitre"
-    },
-    {
-        "slug": "biere-artisinale",
-        "name": "bière artisinale",
-        "image": "",
-        "department": "alcool",
-        "default_cooking_unit": "millilitre",
-        "default_purchase_unit": "centilitre"
-    },
-    {
-        "slug": "vin-blanc-cuisine",
-        "name": "vin blanc cuisine",
-        "image": "",
-        "department": "alcool",
-        "default_cooking_unit": "millilitre",
-        "default_purchase_unit": "centilitre"
-    },
-    {
-        "slug": "vin-blanc-table",
-        "name": "vin blanc table",
-        "image": "",
-        "department": "alcool",
-        "default_cooking_unit": "millilitre",
-        "default_purchase_unit": "centilitre"
-    },
-    {
-        "slug": "vin-rouge-cuisine",
-        "name": "vin rouge cuisine",
-        "image": "",
-        "department": "alcool",
-        "default_cooking_unit": "millilitre",
-        "default_purchase_unit": "centilitre"
-    },
-    {
-        "slug": "vin-rouge-table",
-        "name": "vin rouge table",
-        "image": "",
-        "department": "alcool",
-        "default_cooking_unit": "millilitre",
-        "default_purchase_unit": "centilitre"
-    },
-    {
-        "slug": "schweps-tonic",
-        "name": "schweps tonic",
-        "image": "",
-        "department": "boisson",
-        "default_cooking_unit": "millilitre",
-        "default_purchase_unit": "centilitre"
-    },
-    {
-        "slug": "sirop-fruit-rouge",
-        "name": "sirop fruit rouge",
-        "image": "",
-        "department": "boisson",
-        "default_cooking_unit": "millilitre",
-        "default_purchase_unit": "centilitre"
-    },
-    {
-        "slug": "ice-tea-green",
-        "name": "ice tea green",
-        "image": "",
-        "department": "boisson",
-        "default_cooking_unit": "millilitre",
-        "default_purchase_unit": "centilitre"
-    },
-    {
-        "slug": "steack-hache",
-        "name": "steack haché",
-        "image": "",
-        "department": "surgele",
-        "default_cooking_unit": "piece",
-        "default_purchase_unit": "piece"
-    },
-    {
-        "slug": "viande-hachee",
-        "name": "viande hachée",
-        "image": "",
-        "department": "surgele",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "petit-pois-surgele",
-        "name": "petit pois surgelé",
-        "image": "",
-        "department": "surgele",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "epinard-surgele",
-        "name": "épinard surgelé",
-        "image": "",
-        "department": "surgele",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "framboise-surgelee",
-        "name": "framboise surgelée",
-        "image": "",
-        "department": "surgele",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "nuggets",
-        "name": "nuggets",
-        "image": "",
-        "department": "surgele",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "cordon-bleu",
-        "name": "cordon bleu",
-        "image": "",
-        "department": "surgele",
-        "default_cooking_unit": "piece",
-        "default_purchase_unit": "piece"
-    },
-    {
-        "slug": "frite",
-        "name": "frite",
-        "image": "",
-        "department": "surgele",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "mais",
-        "name": "maïs",
-        "image": "",
-        "department": "conserve",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "petit-pois-carotte",
-        "name": "petit pois carotte",
-        "image": "",
-        "department": "conserve",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "haricot",
-        "name": "haricot",
-        "image": "",
-        "department": "conserve",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "olive",
-        "name": "olive",
-        "image": "",
-        "department": "conserve",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "capre",
-        "name": "capre",
-        "image": "",
-        "department": "conserve",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "olive-verte",
-        "name": "olive verte",
-        "image": "",
-        "department": "conserve",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "concentre-de-tomate",
-        "name": "concentré de tomate",
-        "image": "",
-        "department": "conserve",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "olive-noir",
-        "name": "olive noir",
-        "image": "",
-        "department": "conserve",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "gratin-daufinois",
-        "name": "gratin daufinois",
-        "image": "",
-        "department": "conserve",
-        "default_cooking_unit": "boite",
-        "default_purchase_unit": "boite"
-    },
-    {
-        "slug": "confiture-abricot",
-        "name": "confiture abricot",
-        "image": "",
-        "department": "conserve",
-        "default_cooking_unit": "pot",
-        "default_purchase_unit": "pot"
-    },
-    {
-        "slug": "confiture-fraise",
-        "name": "confiture fraise",
-        "image": "",
-        "department": "conserve",
-        "default_cooking_unit": "pot",
-        "default_purchase_unit": "pot"
-    },
-    {
-        "slug": "confiture-framboise",
-        "name": "confiture framboise",
-        "image": "",
-        "department": "conserve",
-        "default_cooking_unit": "pot",
-        "default_purchase_unit": "pot"
-    },
-    {
-        "slug": "confiture-myrtille",
-        "name": "confiture myrtille",
-        "image": "",
-        "department": "conserve",
-        "default_cooking_unit": "pot",
-        "default_purchase_unit": "pot"
-    },
-    {
-        "slug": "nutella",
-        "name": "nutella",
-        "image": "https:\/\/cdn-icons-png.flaticon.com\/64\/135\/135605.png",
-        "department": "conserve",
-        "default_cooking_unit": "pot",
-        "default_purchase_unit": "pot"
-    },
-    {
-        "slug": "salade-de-fruit",
-        "name": "salade de fruit",
-        "image": "",
-        "department": "conserve",
-        "default_cooking_unit": "boite",
-        "default_purchase_unit": "boite"
-    },
-    {
-        "slug": "compote-en-bocal",
-        "name": "compote en bocal",
-        "image": "",
-        "department": "conserve",
-        "default_cooking_unit": "boite",
-        "default_purchase_unit": "boite"
-    },
-    {
-        "slug": "farine",
-        "name": "farine",
-        "image": "images\/ingredient\/flour.png",
-        "department": "aide-patissier",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "farine-pain",
-        "name": "farine pain",
-        "image": "",
-        "department": "aide-patissier",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "kilo"
-    },
-    {
-        "slug": "farine-brioche",
-        "name": "farine brioche",
-        "image": "",
-        "department": "aide-patissier",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "kilo"
-    },
-    {
-        "slug": "sucre",
-        "name": "sucre",
-        "image": "images\/ingredient\/sugar.png",
-        "department": "aide-patissier",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "kilo"
-    },
-    {
-        "slug": "maizena",
-        "name": "maïzena",
-        "image": "",
-        "department": "aide-patissier",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "pepite-de-chocolat",
-        "name": "pépite de chocolat",
-        "image": "",
-        "department": "aide-patissier",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "sucre-roux",
-        "name": "sucre roux",
-        "image": "",
-        "department": "aide-patissier",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "sucre-vanille",
-        "name": "sucre vanillé",
-        "image": "",
-        "department": "aide-patissier",
-        "default_cooking_unit": "sachet",
-        "default_purchase_unit": "sachet"
-    },
-    {
-        "slug": "levure-patissiere",
-        "name": "levure patissière",
-        "image": "",
-        "department": "aide-patissier",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "levure-boulangere",
-        "name": "levure boulangère",
-        "image": "",
-        "department": "aide-patissier",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "vanille",
-        "name": "vanille",
-        "image": "",
-        "department": "aide-patissier",
-        "default_cooking_unit": "gousse",
-        "default_purchase_unit": "gousse"
-    },
-    {
-        "slug": "chocolat",
-        "name": "chocolat",
-        "image": "",
-        "department": "aide-patissier",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "chocolat-liquide",
-        "name": "chocolat liquide",
-        "image": "",
-        "department": "aide-patissier",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "caramel",
-        "name": "caramel",
-        "image": "",
-        "department": "aide-patissier",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "gelatine",
-        "name": "gélatine",
-        "image": "",
-        "department": "aide-patissier",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "agaragar",
-        "name": "agaragar",
-        "image": "",
-        "department": "aide-patissier",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "caramel-liquide",
-        "name": "caramel liquide",
-        "image": "",
-        "department": "aide-patissier",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "riz",
-        "name": "riz",
-        "image": "",
-        "department": "cereale",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "ble",
-        "name": "blé",
-        "image": "",
-        "department": "cereale",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "boulgour",
-        "name": "boulgour",
-        "image": "",
-        "department": "cereale",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "quinoa",
-        "name": "quinoa",
-        "image": "",
-        "department": "cereale",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "lentille",
-        "name": "lentille",
-        "image": "",
-        "department": "cereale",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "risotto",
-        "name": "risotto",
-        "image": "",
-        "department": "cereale",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "boulgoure-fin",
-        "name": "boulgoure fin",
-        "image": "",
-        "department": "cereale",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "nouille",
-        "name": "nouille",
-        "image": "",
-        "department": "cereale",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "pate",
-        "name": "pate",
-        "image": "",
-        "department": "cereale",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "pate-lasagne",
-        "name": "pate lasagne",
-        "image": "",
-        "department": "cereale",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "pate-ramen",
-        "name": "pate ramen",
-        "image": "",
-        "department": "cereale",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "coquilette",
-        "name": "coquilette",
-        "image": "",
-        "department": "cereale",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "spaguetti",
-        "name": "spaguetti",
-        "image": "",
-        "department": "cereale",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "nouille-chinoise",
-        "name": "nouille chinoise",
-        "image": "",
-        "department": "cereale",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "soja",
-        "name": "soja",
-        "image": "",
-        "department": "cereale",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "raviole",
-        "name": "raviole",
-        "image": "",
-        "department": "cereale",
-        "default_cooking_unit": "sachet",
-        "default_purchase_unit": "sachet"
-    },
-    {
-        "slug": "puree",
-        "name": "purée",
-        "image": "",
-        "department": "cereale",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "vermicelle",
-        "name": "vermicelle",
-        "image": "",
-        "department": "cereale",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "pizza",
-        "name": "pizza",
-        "image": "",
-        "department": "traiteur",
-        "default_cooking_unit": "piece",
-        "default_purchase_unit": "piece"
-    },
-    {
-        "slug": "soupe",
-        "name": "soupe",
-        "image": "",
-        "department": "traiteur",
-        "default_cooking_unit": "brique",
-        "default_purchase_unit": "brique"
-    },
-    {
-        "slug": "galette",
-        "name": "galette",
-        "image": "",
-        "department": "traiteur",
-        "default_cooking_unit": "piece",
-        "default_purchase_unit": "piece"
-    },
-    {
-        "slug": "pate-pizza",
-        "name": "pate pizza",
-        "image": "",
-        "department": "traiteur",
-        "default_cooking_unit": "piece",
-        "default_purchase_unit": "piece"
-    },
-    {
-        "slug": "pate-feuilletee",
-        "name": "pate feuilletée",
-        "image": "",
-        "department": "traiteur",
-        "default_cooking_unit": "piece",
-        "default_purchase_unit": "piece"
-    },
-    {
-        "slug": "riste-aubergine",
-        "name": "riste aubergine",
-        "image": "",
-        "department": "traiteur",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "pate-brisee",
-        "name": "pate brisée",
-        "image": "",
-        "department": "traiteur",
-        "default_cooking_unit": "piece",
-        "default_purchase_unit": "piece"
-    },
-    {
-        "slug": "pate-sablee",
-        "name": "pate sablée",
-        "image": "",
-        "department": "traiteur",
-        "default_cooking_unit": "piece",
-        "default_purchase_unit": "piece"
-    },
-    {
-        "slug": "gnocci",
-        "name": "gnocci",
-        "image": "",
-        "department": "traiteur",
-        "default_cooking_unit": "paquet",
-        "default_purchase_unit": "paquet"
-    },
-    {
-        "slug": "quenelle",
-        "name": "quenelle",
-        "image": "",
-        "department": "traiteur",
-        "default_cooking_unit": "piece",
-        "default_purchase_unit": "piece"
-    },
-    {
-        "slug": "hachis-parmentier",
-        "name": "hachis parmentier",
-        "image": "",
-        "department": "traiteur",
-        "default_cooking_unit": "piece",
-        "default_purchase_unit": "piece"
-    },
-    {
-        "slug": "lasagne",
-        "name": "lasagne",
-        "image": "",
-        "department": "traiteur",
-        "default_cooking_unit": "piece",
-        "default_purchase_unit": "piece"
-    },
-    {
-        "slug": "poisson-pane",
-        "name": "poisson pané",
-        "image": "",
-        "department": "traiteur",
-        "default_cooking_unit": "piece",
-        "default_purchase_unit": "piece"
-    },
-    {
-        "slug": "nem",
-        "name": "nem",
-        "image": "",
-        "department": "traiteur",
-        "default_cooking_unit": "piece",
-        "default_purchase_unit": "piece"
-    },
-    {
-        "slug": "bouillon",
-        "name": "bouillon",
-        "image": "",
-        "department": "traiteur",
-        "default_cooking_unit": "cube",
-        "default_purchase_unit": "cube"
-    },
-    {
-        "slug": "bouillon-de-boeuf",
-        "name": "bouillon de bœuf",
-        "image": "",
-        "department": "traiteur",
-        "default_cooking_unit": "cube",
-        "default_purchase_unit": "cube"
-    },
-    {
-        "slug": "bouillon-de-legume",
-        "name": "bouillon de légume",
-        "image": "",
-        "department": "traiteur",
-        "default_cooking_unit": "cube",
-        "default_purchase_unit": "cube"
-    },
-    {
-        "slug": "produit-pour-les-sols",
-        "name": "produit pour les sols",
-        "image": "",
-        "department": "produit-menager",
-        "default_cooking_unit": "piece",
-        "default_purchase_unit": "piece"
-    },
-    {
-        "slug": "javel",
-        "name": "javel",
-        "image": "",
-        "department": "produit-menager",
-        "default_cooking_unit": "piece",
-        "default_purchase_unit": "piece"
-    },
-    {
-        "slug": "produit-pour-les-vitres",
-        "name": "produit pour les vitres",
-        "image": "",
-        "department": "produit-menager",
-        "default_cooking_unit": "piece",
-        "default_purchase_unit": "piece"
-    },
-    {
-        "slug": "bicarbonate-menager",
-        "name": "bicarbonate ménager",
-        "image": "",
-        "department": "produit-menager",
-        "default_cooking_unit": "paquet",
-        "default_purchase_unit": "paquet"
-    },
-    {
-        "slug": "bicarbonate",
-        "name": "bicarbonate",
-        "image": "",
-        "department": "aide-patissier",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "lingette-menagere",
-        "name": "lingette ménagère",
-        "image": "",
-        "department": "produit-menager",
-        "default_cooking_unit": "paquet",
-        "default_purchase_unit": "paquet"
-    },
-    {
-        "slug": "pain",
-        "name": "pain",
-        "image": "",
-        "department": "boulangerie",
-        "default_cooking_unit": "piece",
-        "default_purchase_unit": "piece"
-    },
-    {
-        "slug": "pain-de-mie",
-        "name": "pain de mie",
-        "image": "",
-        "department": "boulangerie",
-        "default_cooking_unit": "tranche",
-        "default_purchase_unit": "tranche"
-    },
-    {
-        "slug": "pain-panini",
-        "name": "pain panini",
-        "image": "",
-        "department": "boulangerie",
-        "default_cooking_unit": "piece",
-        "default_purchase_unit": "piece"
-    },
-    {
-        "slug": "pain-tartine",
-        "name": "pain tartine",
-        "image": "",
-        "department": "boulangerie",
-        "default_cooking_unit": "piece",
-        "default_purchase_unit": "piece"
-    },
-    {
-        "slug": "pain-baggle",
-        "name": "pain baggle",
-        "image": "",
-        "department": "boulangerie",
-        "default_cooking_unit": "piece",
-        "default_purchase_unit": "piece"
-    },
-    {
-        "slug": "pain-a-burger",
-        "name": "pain à burger",
-        "image": "",
-        "department": "boulangerie",
-        "default_cooking_unit": "paquet",
-        "default_purchase_unit": "paquet"
-    },
-    {
-        "slug": "brioche",
-        "name": "brioche",
-        "image": "",
-        "department": "boulangerie",
-        "default_cooking_unit": "paquet",
-        "default_purchase_unit": "paquet"
-    },
-    {
-        "slug": "biscotte",
-        "name": "biscotte",
-        "image": "",
-        "department": "boulangerie",
-        "default_cooking_unit": "piece",
-        "default_purchase_unit": "paquet"
-    },
-    {
-        "slug": "cracotte",
-        "name": "cracotte",
-        "image": "",
-        "department": "boulangerie",
-        "default_cooking_unit": "piece",
-        "default_purchase_unit": "paquet"
-    },
-    {
-        "slug": "pain-au-lait",
-        "name": "pain au lait",
-        "image": "",
-        "department": "boulangerie",
-        "default_cooking_unit": "paquet",
-        "default_purchase_unit": "paquet"
-    },
-    {
-        "slug": "vinaigre",
-        "name": "vinaigre",
-        "image": "",
-        "department": "sauce",
-        "default_cooking_unit": "cuillere-a-soupe",
-        "default_purchase_unit": "centilitre"
-    },
-    {
-        "slug": "vinaigre-balsamique",
-        "name": "vinaigre balsamique",
-        "image": "",
-        "department": "sauce",
-        "default_cooking_unit": "cuillere-a-soupe",
-        "default_purchase_unit": "centilitre"
-    },
-    {
-        "slug": "vinaigre-xeres",
-        "name": "vinaigre xérès",
-        "image": "",
-        "department": "sauce",
-        "default_cooking_unit": "cuillere-a-soupe",
-        "default_purchase_unit": "centilitre"
-    },
-    {
-        "slug": "huile",
-        "name": "huile",
-        "image": "",
-        "department": "sauce",
-        "default_cooking_unit": "cuillere-a-soupe",
-        "default_purchase_unit": "centilitre"
-    },
-    {
-        "slug": "huile-d-olive",
-        "name": "huile d'olive",
-        "image": "",
-        "department": "sauce",
-        "default_cooking_unit": "cuillere-a-soupe",
-        "default_purchase_unit": "centilitre"
-    },
-    {
-        "slug": "bearnaise",
-        "name": "béarnaise",
-        "image": "",
-        "department": "sauce",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "ketchup",
-        "name": "ketchup",
-        "image": "",
-        "department": "sauce",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "mayonnaise",
-        "name": "mayonnaise",
-        "image": "",
-        "department": "sauce",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "bolognaise",
-        "name": "bolognaise",
-        "image": "",
-        "department": "sauce",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "sauce-4-fromages",
-        "name": "sauce 4 fromages",
-        "image": "",
-        "department": "sauce",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "pesto",
-        "name": "pesto",
-        "image": "",
-        "department": "sauce",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "tartare",
-        "name": "tartare",
-        "image": "",
-        "department": "sauce",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "bbq",
-        "name": "bbq",
-        "image": "",
-        "department": "sauce",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "sauce-soja",
-        "name": "sauce soja",
-        "image": "",
-        "department": "sauce",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "sauce-napolitaine",
-        "name": "sauce napolitaine",
-        "image": "",
-        "department": "sauce",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "sauce-tomate",
-        "name": "sauce tomate",
-        "image": "",
-        "department": "sauce",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "sauce-nuoc-man",
-        "name": "sauce nuoc man",
-        "image": "",
-        "department": "sauce",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "croquette",
-        "name": "croquette",
-        "image": "",
-        "department": "animal",
-        "default_cooking_unit": "paquet",
-        "default_purchase_unit": "paquet"
-    },
-    {
-        "slug": "litiere",
-        "name": "litière",
-        "image": "",
-        "department": "animal",
-        "default_cooking_unit": "paquet",
-        "default_purchase_unit": "paquet"
-    },
-    {
-        "slug": "oeuf",
-        "name": "œuf",
-        "image": "images\/ingredient\/egg.png",
-        "department": "divers",
-        "default_cooking_unit": "piece",
-        "default_purchase_unit": "piece"
-    },
-    {
-        "slug": "lait",
-        "name": "lait",
-        "image": "images\/ingredient\/milk.png",
-        "department": "divers",
-        "default_cooking_unit": "litre",
-        "default_purchase_unit": "litre"
-    },
-    {
-        "slug": "poivre",
-        "name": "poivre",
-        "image": "",
-        "department": "divers",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "cornichon",
-        "name": "cornichon",
-        "image": "",
-        "department": "divers",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "chocolat-en-poudre",
-        "name": "chocolat en poudre",
-        "image": "",
-        "department": "divers",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "paquet"
-    },
-    {
-        "slug": "miel",
-        "name": "miel",
-        "image": "images\/ingredient\/honey.png",
-        "department": "divers",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "sel",
-        "name": "sel",
-        "image": "images\/ingredient\/salt.png",
-        "department": "divers",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "bouquet-garni",
-        "name": "bouquet garni",
-        "image": "",
-        "department": "divers",
-        "default_cooking_unit": "piece",
-        "default_purchase_unit": "piece"
-    },
-    {
-        "slug": "tortilla",
-        "name": "tortilla",
-        "image": "",
-        "department": "cuisine-du-monde",
-        "default_cooking_unit": "piece",
-        "default_purchase_unit": "paquet"
-    },
-    {
-        "slug": "feuille-de-brique",
-        "name": "feuille de brique",
-        "image": "",
-        "department": "cuisine-du-monde",
-        "default_cooking_unit": "paquet",
-        "default_purchase_unit": "paquet"
-    },
-    {
-        "slug": "epice-guacamole",
-        "name": "épice guacamole",
-        "image": "",
-        "department": "cuisine-du-monde",
-        "default_cooking_unit": "sachet",
-        "default_purchase_unit": "sachet"
-    },
-    {
-        "slug": "epice-viande",
-        "name": "épice viande",
-        "image": "",
-        "department": "cuisine-du-monde",
-        "default_cooking_unit": "sachet",
-        "default_purchase_unit": "sachet"
-    },
-    {
-        "slug": "epice",
-        "name": "épice",
-        "image": "",
-        "department": "cuisine-du-monde",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "curry",
-        "name": "curry",
-        "image": "",
-        "department": "cuisine-du-monde",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "ramen",
-        "name": "ramen",
-        "image": "",
-        "department": "cuisine-du-monde",
-        "default_cooking_unit": "gramme",
-        "default_purchase_unit": "gramme"
-    },
-    {
-        "slug": "feuille-gelatine",
-        "name": "feuille-gelatine",
-        "image": "",
-        "department": "aide-patissier",
-        "default_cooking_unit": "piece",
-        "default_purchase_unit": "piece"
-    }
+  {
+    "slug": "aubergine",
+    "name": "aubergine",
+    "image": "images\/ingredient\/eggplant.png",
+    "department": "fruit-et-legume",
+    "default_cooking_unit": "piece",
+    "default_purchase_unit": "piece"
+  },
+  {
+    "slug": "ail",
+    "name": "ail",
+    "image": "images\/ingredient\/garlic.png",
+    "department": "fruit-et-legume",
+    "default_cooking_unit": "piece",
+    "default_purchase_unit": "piece"
+  },
+  {
+    "slug": "avocat",
+    "name": "avocat",
+    "image": "https:\/\/cdn-icons-png.flaticon.com\/64\/135\/135609.png",
+    "department": "fruit-et-legume",
+    "default_cooking_unit": "piece",
+    "default_purchase_unit": "piece"
+  },
+  {
+    "slug": "bettrave",
+    "name": "bettrave",
+    "image": "images\/ingredient\/beetroot.png",
+    "department": "fruit-et-legume",
+    "default_cooking_unit": "piece",
+    "default_purchase_unit": "piece"
+  },
+  {
+    "slug": "brocoli",
+    "name": "brocoli",
+    "image": "images\/ingredient\/broccoli.png",
+    "department": "fruit-et-legume",
+    "default_cooking_unit": "piece",
+    "default_purchase_unit": "piece"
+  },
+  {
+    "slug": "banane",
+    "name": "banane",
+    "image": "images\/ingredient\/banane.png",
+    "department": "fruit-et-legume",
+    "default_cooking_unit": "piece",
+    "default_purchase_unit": "piece"
+  },
+  {
+    "slug": "epinard",
+    "name": "épinard",
+    "image": "images\/ingredient\/spinach.png",
+    "department": "fruit-et-legume",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "carotte",
+    "name": "carotte",
+    "image": "images\/ingredient\/carrot.png",
+    "department": "fruit-et-legume",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "ananas",
+    "name": "ananas",
+    "image": "images\/ingredient\/pineapple.png",
+    "department": "fruit-et-legume",
+    "default_cooking_unit": "piece",
+    "default_purchase_unit": "piece"
+  },
+  {
+    "slug": "chou-blanc",
+    "name": "chou blanc",
+    "image": "images\/ingredient\/cabbage.png",
+    "department": "fruit-et-legume",
+    "default_cooking_unit": "piece",
+    "default_purchase_unit": "piece"
+  },
+  {
+    "slug": "chou-rouge",
+    "name": "chou rouge",
+    "image": "images\/ingredient\/cabbage.png",
+    "department": "fruit-et-legume",
+    "default_cooking_unit": "piece",
+    "default_purchase_unit": "piece"
+  },
+  {
+    "slug": "courge",
+    "name": "courge",
+    "image": "",
+    "department": "fruit-et-legume",
+    "default_cooking_unit": "piece",
+    "default_purchase_unit": "piece"
+  },
+  {
+    "slug": "echalote",
+    "name": "échalote",
+    "image": "",
+    "department": "fruit-et-legume",
+    "default_cooking_unit": "piece",
+    "default_purchase_unit": "piece"
+  },
+  {
+    "slug": "concombre",
+    "name": "concombre",
+    "image": "images\/ingredient\/cucumber.png",
+    "department": "fruit-et-legume",
+    "default_cooking_unit": "piece",
+    "default_purchase_unit": "piece"
+  },
+  {
+    "slug": "champignon",
+    "name": "champignon",
+    "image": "images\/ingredient\/mushroom.png",
+    "department": "fruit-et-legume",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "haricot-rouge",
+    "name": "haricot rouge",
+    "image": "images\/ingredient\/kidney.png",
+    "department": "fruit-et-legume",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "endive",
+    "name": "endive",
+    "image": "",
+    "department": "fruit-et-legume",
+    "default_cooking_unit": "piece",
+    "default_purchase_unit": "piece"
+  },
+  {
+    "slug": "haricot-frais",
+    "name": "haricot frais",
+    "image": "",
+    "department": "fruit-et-legume",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "salade",
+    "name": "salade",
+    "image": "images\/ingredient\/salad.png",
+    "department": "fruit-et-legume",
+    "default_cooking_unit": "piece",
+    "default_purchase_unit": "piece"
+  },
+  {
+    "slug": "salade-verte",
+    "name": "salade verte",
+    "image": "images\/ingredient\/salad.png",
+    "department": "fruit-et-legume",
+    "default_cooking_unit": "piece",
+    "default_purchase_unit": "piece"
+  },
+  {
+    "slug": "poivron",
+    "name": "poivron",
+    "image": "images\/ingredient\/bell-pepper.png",
+    "department": "fruit-et-legume",
+    "default_cooking_unit": "piece",
+    "default_purchase_unit": "piece"
+  },
+  {
+    "slug": "pomme-de-terre",
+    "name": "pomme de terre",
+    "image": "images\/ingredient\/potato.png",
+    "department": "fruit-et-legume",
+    "default_cooking_unit": "piece",
+    "default_purchase_unit": "piece"
+  },
+  {
+    "slug": "pomme",
+    "name": "pomme",
+    "image": "images\/ingredient\/apple.png",
+    "department": "fruit-et-legume",
+    "default_cooking_unit": "piece",
+    "default_purchase_unit": "piece"
+  },
+  {
+    "slug": "pomme-golden",
+    "name": "pomme golden",
+    "image": "images\/ingredient\/golden-apple.png",
+    "department": "fruit-et-legume",
+    "default_cooking_unit": "piece",
+    "default_purchase_unit": "piece"
+  },
+  {
+    "slug": "betternut",
+    "name": "betternut",
+    "image": "images\/ingredient\/butternut-squash.png",
+    "department": "fruit-et-legume",
+    "default_cooking_unit": "piece",
+    "default_purchase_unit": "piece"
+  },
+  {
+    "slug": "choux-fleur",
+    "name": "choux fleur",
+    "image": "",
+    "department": "fruit-et-legume",
+    "default_cooking_unit": "piece",
+    "default_purchase_unit": "piece"
+  },
+  {
+    "slug": "melon",
+    "name": "melon",
+    "image": "images\/ingredient\/melon.png",
+    "department": "fruit-et-legume",
+    "default_cooking_unit": "piece",
+    "default_purchase_unit": "piece"
+  },
+  {
+    "slug": "poireau",
+    "name": "poireau",
+    "image": "images\/ingredient\/leek.png",
+    "department": "fruit-et-legume",
+    "default_cooking_unit": "piece",
+    "default_purchase_unit": "piece"
+  },
+  {
+    "slug": "citron",
+    "name": "citron",
+    "image": "images\/ingredient\/lemon.png",
+    "department": "fruit-et-legume",
+    "default_cooking_unit": "piece",
+    "default_purchase_unit": "piece"
+  },
+  {
+    "slug": "persil",
+    "name": "persil",
+    "image": "",
+    "department": "fruit-et-legume",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "oignon",
+    "name": "oignon",
+    "image": "images\/ingredient\/onion.png",
+    "department": "fruit-et-legume",
+    "default_cooking_unit": "piece",
+    "default_purchase_unit": "piece"
+  },
+  {
+    "slug": "oignon-rouge",
+    "name": "oignon rouge",
+    "image": "images\/ingredient\/onion-red.png",
+    "department": "fruit-et-legume",
+    "default_cooking_unit": "piece",
+    "default_purchase_unit": "piece"
+  },
+  {
+    "slug": "oignon-blanc",
+    "name": "oignon blanc",
+    "image": "images\/ingredient\/onion-white.png",
+    "department": "fruit-et-legume",
+    "default_cooking_unit": "piece",
+    "default_purchase_unit": "piece"
+  },
+  {
+    "slug": "petit-pois",
+    "name": "petit pois",
+    "image": "",
+    "department": "conserve",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "tomate-cerise",
+    "name": "tomate cerise",
+    "image": "images\/ingredient\/cherry-tomato.png",
+    "department": "fruit-et-legume",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "tomate-a-farcir",
+    "name": "tomate à farcir",
+    "image": "",
+    "department": "fruit-et-legume",
+    "default_cooking_unit": "piece",
+    "default_purchase_unit": "piece"
+  },
+  {
+    "slug": "courgette-a-farcir",
+    "name": "courgette à farcir",
+    "image": "",
+    "department": "fruit-et-legume",
+    "default_cooking_unit": "piece",
+    "default_purchase_unit": "piece"
+  },
+  {
+    "slug": "tomate",
+    "name": "tomate",
+    "image": "https:\/\/cdn-icons-png.flaticon.com\/64\/135\/135702.png",
+    "department": "fruit-et-legume",
+    "default_cooking_unit": "piece",
+    "default_purchase_unit": "piece"
+  },
+  {
+    "slug": "courgette",
+    "name": "courgette",
+    "image": "",
+    "department": "fruit-et-legume",
+    "default_cooking_unit": "piece",
+    "default_purchase_unit": "piece"
+  },
+  {
+    "slug": "emmental-rape",
+    "name": "emmental rapé",
+    "image": "",
+    "department": "fromage",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "comte",
+    "name": "comté",
+    "image": "",
+    "department": "fromage",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "parmesan",
+    "name": "parmesan",
+    "image": "",
+    "department": "fromage",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "vache-qui-rit",
+    "name": "vache qui rit",
+    "image": "",
+    "department": "fromage",
+    "default_cooking_unit": "boite",
+    "default_purchase_unit": "boite"
+  },
+  {
+    "slug": "kiri",
+    "name": "kiri",
+    "image": "",
+    "department": "fromage",
+    "default_cooking_unit": "boite",
+    "default_purchase_unit": "boite"
+  },
+  {
+    "slug": "raclette",
+    "name": "raclette",
+    "image": "",
+    "department": "fromage",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "fromage-fondue",
+    "name": "fromage fondue",
+    "image": "",
+    "department": "fromage",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "mascarpone",
+    "name": "mascarpone",
+    "image": "",
+    "department": "fromage",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "reblochon",
+    "name": "reblochon",
+    "image": "",
+    "department": "fromage",
+    "default_cooking_unit": "piece",
+    "default_purchase_unit": "piece"
+  },
+  {
+    "slug": "chevre",
+    "name": "chèvre",
+    "image": "",
+    "department": "fromage",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "buche"
+  },
+  {
+    "slug": "fromage-frais",
+    "name": "fromage frais",
+    "image": "",
+    "department": "fromage",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "mozzarella",
+    "name": "mozzarella",
+    "image": "",
+    "department": "fromage",
+    "default_cooking_unit": "piece",
+    "default_purchase_unit": "piece"
+  },
+  {
+    "slug": "fromage-a-croc-monssieur",
+    "name": "fromage à croc monssieur",
+    "image": "",
+    "department": "fromage",
+    "default_cooking_unit": "tranche",
+    "default_purchase_unit": "tranche"
+  },
+  {
+    "slug": "cheddar-en-tranche",
+    "name": "cheddar en tranche",
+    "image": "",
+    "department": "fromage",
+    "default_cooking_unit": "tranche",
+    "default_purchase_unit": "tranche"
+  },
+  {
+    "slug": "creme-fraiche-epaisse",
+    "name": "crème fraiche épaisse",
+    "image": "",
+    "department": "fromage",
+    "default_cooking_unit": "centilitre",
+    "default_purchase_unit": "centilitre"
+  },
+  {
+    "slug": "creme-fraiche-liquide",
+    "name": "crème fraiche liquide",
+    "image": "",
+    "department": "fromage",
+    "default_cooking_unit": "millilitre",
+    "default_purchase_unit": "centilitre"
+  },
+  {
+    "slug": "divers",
+    "name": "divers",
+    "image": "",
+    "department": "fromage",
+    "default_cooking_unit": "boite",
+    "default_purchase_unit": "boite"
+  },
+  {
+    "slug": "beurre",
+    "name": "beurre",
+    "image": "images\/ingredient\/spread.png",
+    "department": "fromage",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "plaquette"
+  },
+  {
+    "slug": "perle-de-lait",
+    "name": "perle de lait",
+    "image": "",
+    "department": "yaourt",
+    "default_cooking_unit": "piece",
+    "default_purchase_unit": "paquet"
+  },
+  {
+    "slug": "pat-patrouille",
+    "name": "pat patrouille",
+    "image": "",
+    "department": "yaourt",
+    "default_cooking_unit": "paquet",
+    "default_purchase_unit": "paquet"
+  },
+  {
+    "slug": "la-laitiere",
+    "name": "la laitière",
+    "image": "",
+    "department": "yaourt",
+    "default_cooking_unit": "piece",
+    "default_purchase_unit": "paquet"
+  },
+  {
+    "slug": "veloute",
+    "name": "velouté",
+    "image": "",
+    "department": "yaourt",
+    "default_cooking_unit": "piece",
+    "default_purchase_unit": "paquet"
+  },
+  {
+    "slug": "yaourt-nature",
+    "name": "yaourt nature",
+    "image": "",
+    "department": "yaourt",
+    "default_cooking_unit": "piece",
+    "default_purchase_unit": "paquet"
+  },
+  {
+    "slug": "compote-en-pot",
+    "name": "compote en pot",
+    "image": "",
+    "department": "yaourt",
+    "default_cooking_unit": "piece",
+    "default_purchase_unit": "paquet"
+  },
+  {
+    "slug": "compote-a-boire",
+    "name": "compote à boire",
+    "image": "",
+    "department": "yaourt",
+    "default_cooking_unit": "piece",
+    "default_purchase_unit": "paquet"
+  },
+  {
+    "slug": "compote",
+    "name": "compote",
+    "image": "",
+    "department": "yaourt",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "figolu",
+    "name": "figolu",
+    "image": "",
+    "department": "gateau",
+    "default_cooking_unit": "paquet",
+    "default_purchase_unit": "paquet"
+  },
+  {
+    "slug": "bn",
+    "name": "bn",
+    "image": "",
+    "department": "gateau",
+    "default_cooking_unit": "paquet",
+    "default_purchase_unit": "paquet"
+  },
+  {
+    "slug": "chamonix",
+    "name": "chamonix",
+    "image": "",
+    "department": "gateau",
+    "default_cooking_unit": "paquet",
+    "default_purchase_unit": "paquet"
+  },
+  {
+    "slug": "barquette-chocolat",
+    "name": "barquette chocolat",
+    "image": "",
+    "department": "gateau",
+    "default_cooking_unit": "paquet",
+    "default_purchase_unit": "paquet"
+  },
+  {
+    "slug": "barquette-fraise",
+    "name": "barquette fraise",
+    "image": "",
+    "department": "gateau",
+    "default_cooking_unit": "paquet",
+    "default_purchase_unit": "paquet"
+  },
+  {
+    "slug": "the-lu",
+    "name": "the lu",
+    "image": "",
+    "department": "gateau",
+    "default_cooking_unit": "paquet",
+    "default_purchase_unit": "paquet"
+  },
+  {
+    "slug": "boudoire",
+    "name": "boudoire",
+    "image": "",
+    "department": "gateau",
+    "default_cooking_unit": "paquet",
+    "default_purchase_unit": "paquet"
+  },
+  {
+    "slug": "biscuit-cuillere",
+    "name": "biscuit cuillère",
+    "image": "",
+    "department": "gateau",
+    "default_cooking_unit": "paquet",
+    "default_purchase_unit": "paquet"
+  },
+  {
+    "slug": "speculos",
+    "name": "speculos",
+    "image": "",
+    "department": "gateau",
+    "default_cooking_unit": "paquet",
+    "default_purchase_unit": "paquet"
+  },
+  {
+    "slug": "lait-1er-age",
+    "name": "lait 1er âge",
+    "image": "",
+    "department": "bebe",
+    "default_cooking_unit": "boite",
+    "default_purchase_unit": "boite"
+  },
+  {
+    "slug": "lait-2e-age",
+    "name": "lait 2e âge",
+    "image": "",
+    "department": "bebe",
+    "default_cooking_unit": "boite",
+    "default_purchase_unit": "boite"
+  },
+  {
+    "slug": "lait-3e-age",
+    "name": "lait 3e âge",
+    "image": "",
+    "department": "bebe",
+    "default_cooking_unit": "boite",
+    "default_purchase_unit": "boite"
+  },
+  {
+    "slug": "couche",
+    "name": "couche",
+    "image": "images\/ingredient\/baby-diaper.png",
+    "department": "bebe",
+    "default_cooking_unit": "paquet",
+    "default_purchase_unit": "paquet"
+  },
+  {
+    "slug": "couche-taille-3",
+    "name": "couche (taille 3)",
+    "image": "images\/ingredient\/baby-diaper.png",
+    "department": "bebe",
+    "default_cooking_unit": "paquet",
+    "default_purchase_unit": "paquet"
+  },
+  {
+    "slug": "couche-taille-4",
+    "name": "couche (taille 4)",
+    "image": "images\/ingredient\/baby-diaper.png",
+    "department": "bebe",
+    "default_cooking_unit": "paquet",
+    "default_purchase_unit": "paquet"
+  },
+  {
+    "slug": "couche-taille-5",
+    "name": "couche (taille 5)",
+    "image": "images\/ingredient\/baby-diaper.png",
+    "department": "bebe",
+    "default_cooking_unit": "paquet",
+    "default_purchase_unit": "paquet"
+  },
+  {
+    "slug": "couche-taille-6",
+    "name": "couche (taille 6)",
+    "image": "images\/ingredient\/baby-diaper.png",
+    "department": "bebe",
+    "default_cooking_unit": "paquet",
+    "default_purchase_unit": "paquet"
+  },
+  {
+    "slug": "lingettes-pour-bebe",
+    "name": "lingettes pour bébé",
+    "image": "",
+    "department": "bebe",
+    "default_cooking_unit": "paquet",
+    "default_purchase_unit": "paquet"
+  },
+  {
+    "slug": "chips",
+    "name": "chips",
+    "image": "images\/ingredient\/chips.png",
+    "department": "aperitif",
+    "default_cooking_unit": "paquet",
+    "default_purchase_unit": "paquet"
+  },
+  {
+    "slug": "cacahuete",
+    "name": "cacahuète",
+    "image": "",
+    "department": "aperitif",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "chips-ondule",
+    "name": "chips ondulé",
+    "image": "",
+    "department": "aperitif",
+    "default_cooking_unit": "paquet",
+    "default_purchase_unit": "paquet"
+  },
+  {
+    "slug": "chips-aux-vinaigre",
+    "name": "chips aux vinaigre",
+    "image": "",
+    "department": "aperitif",
+    "default_cooking_unit": "paquet",
+    "default_purchase_unit": "paquet"
+  },
+  {
+    "slug": "chipster",
+    "name": "chipster",
+    "image": "",
+    "department": "aperitif",
+    "default_cooking_unit": "paquet",
+    "default_purchase_unit": "paquet"
+  },
+  {
+    "slug": "mini-pizza",
+    "name": "mini pizza",
+    "image": "",
+    "department": "aperitif",
+    "default_cooking_unit": "paquet",
+    "default_purchase_unit": "paquet"
+  },
+  {
+    "slug": "cone-3d",
+    "name": "cone 3d",
+    "image": "",
+    "department": "aperitif",
+    "default_cooking_unit": "paquet",
+    "default_purchase_unit": "paquet"
+  },
+  {
+    "slug": "springle",
+    "name": "springle",
+    "image": "",
+    "department": "aperitif",
+    "default_cooking_unit": "paquet",
+    "default_purchase_unit": "paquet"
+  },
+  {
+    "slug": "aiguilette-de-poulet",
+    "name": "aiguilette de poulet",
+    "image": "",
+    "department": "boucherie",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "cuisse-de-poulet",
+    "name": "cuisse de poulet",
+    "image": "",
+    "department": "boucherie",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "steack",
+    "name": "steack",
+    "image": "",
+    "department": "boucherie",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "dinde",
+    "name": "dinde",
+    "image": "",
+    "department": "boucherie",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "poulet",
+    "name": "poulet",
+    "image": "",
+    "department": "boucherie",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "saumon",
+    "name": "saumon",
+    "image": "",
+    "department": "boucherie",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "poisson",
+    "name": "poisson",
+    "image": "",
+    "department": "boucherie",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "knacki",
+    "name": "knacki",
+    "image": "",
+    "department": "boucherie",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "chorizo",
+    "name": "chorizo",
+    "image": "",
+    "department": "boucherie",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "jambon-cru",
+    "name": "jambon cru",
+    "image": "",
+    "department": "boucherie",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "jambon-blanc",
+    "name": "jambon blanc",
+    "image": "",
+    "department": "boucherie",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "boeuf",
+    "name": "bœuf",
+    "image": "",
+    "department": "boucherie",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "boeuf-bourguignon",
+    "name": "bœuf bourguignon",
+    "image": "",
+    "department": "boucherie",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "jambon",
+    "name": "jambon",
+    "image": "",
+    "department": "boucherie",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "blanquette-de-veau",
+    "name": "blanquette de veau",
+    "image": "",
+    "department": "boucherie",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "chair-a-saucisse",
+    "name": "chair à saucisse",
+    "image": "",
+    "department": "boucherie",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "cote-de-porc",
+    "name": "cote de porc",
+    "image": "",
+    "department": "boucherie",
+    "default_cooking_unit": "piece",
+    "default_purchase_unit": "piece"
+  },
+  {
+    "slug": "agneau",
+    "name": "agneau",
+    "image": "",
+    "department": "boucherie",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "veau",
+    "name": "veau",
+    "image": "",
+    "department": "boucherie",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "saucisse",
+    "name": "saucisse",
+    "image": "",
+    "department": "boucherie",
+    "default_cooking_unit": "piece",
+    "default_purchase_unit": "piece"
+  },
+  {
+    "slug": "saucisson",
+    "name": "saucisson",
+    "image": "",
+    "department": "boucherie",
+    "default_cooking_unit": "piece",
+    "default_purchase_unit": "piece"
+  },
+  {
+    "slug": "saucisson-fouet",
+    "name": "saucisson fouet",
+    "image": "",
+    "department": "boucherie",
+    "default_cooking_unit": "piece",
+    "default_purchase_unit": "piece"
+  },
+  {
+    "slug": "saucisson-st-agaune",
+    "name": "saucisson st agaune",
+    "image": "",
+    "department": "boucherie",
+    "default_cooking_unit": "piece",
+    "default_purchase_unit": "piece"
+  },
+  {
+    "slug": "merguez",
+    "name": "merguez",
+    "image": "",
+    "department": "boucherie",
+    "default_cooking_unit": "piece",
+    "default_purchase_unit": "piece"
+  },
+  {
+    "slug": "charcuterie",
+    "name": "charcuterie",
+    "image": "",
+    "department": "boucherie",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "lardon",
+    "name": "lardon",
+    "image": "",
+    "department": "boucherie",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "biere-blonde",
+    "name": "bière blonde",
+    "image": "",
+    "department": "alcool",
+    "default_cooking_unit": "millilitre",
+    "default_purchase_unit": "centilitre"
+  },
+  {
+    "slug": "biere-artisinale",
+    "name": "bière artisinale",
+    "image": "",
+    "department": "alcool",
+    "default_cooking_unit": "millilitre",
+    "default_purchase_unit": "centilitre"
+  },
+  {
+    "slug": "vin-blanc-cuisine",
+    "name": "vin blanc cuisine",
+    "image": "",
+    "department": "alcool",
+    "default_cooking_unit": "millilitre",
+    "default_purchase_unit": "centilitre"
+  },
+  {
+    "slug": "vin-blanc-table",
+    "name": "vin blanc table",
+    "image": "",
+    "department": "alcool",
+    "default_cooking_unit": "millilitre",
+    "default_purchase_unit": "centilitre"
+  },
+  {
+    "slug": "vin-rouge-cuisine",
+    "name": "vin rouge cuisine",
+    "image": "",
+    "department": "alcool",
+    "default_cooking_unit": "millilitre",
+    "default_purchase_unit": "centilitre"
+  },
+  {
+    "slug": "vin-rouge-table",
+    "name": "vin rouge table",
+    "image": "",
+    "department": "alcool",
+    "default_cooking_unit": "millilitre",
+    "default_purchase_unit": "centilitre"
+  },
+  {
+    "slug": "schweps-tonic",
+    "name": "schweps tonic",
+    "image": "",
+    "department": "boisson",
+    "default_cooking_unit": "millilitre",
+    "default_purchase_unit": "centilitre"
+  },
+  {
+    "slug": "sirop-fruit-rouge",
+    "name": "sirop fruit rouge",
+    "image": "",
+    "department": "boisson",
+    "default_cooking_unit": "millilitre",
+    "default_purchase_unit": "centilitre"
+  },
+  {
+    "slug": "ice-tea-green",
+    "name": "ice tea green",
+    "image": "",
+    "department": "boisson",
+    "default_cooking_unit": "millilitre",
+    "default_purchase_unit": "centilitre"
+  },
+  {
+    "slug": "steack-hache",
+    "name": "steack haché",
+    "image": "",
+    "department": "surgele",
+    "default_cooking_unit": "piece",
+    "default_purchase_unit": "piece"
+  },
+  {
+    "slug": "viande-hachee",
+    "name": "viande hachée",
+    "image": "",
+    "department": "surgele",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "petit-pois-surgele",
+    "name": "petit pois surgelé",
+    "image": "",
+    "department": "surgele",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "epinard-surgele",
+    "name": "épinard surgelé",
+    "image": "",
+    "department": "surgele",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "framboise-surgelee",
+    "name": "framboise surgelée",
+    "image": "",
+    "department": "surgele",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "nuggets",
+    "name": "nuggets",
+    "image": "",
+    "department": "surgele",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "cordon-bleu",
+    "name": "cordon bleu",
+    "image": "",
+    "department": "surgele",
+    "default_cooking_unit": "piece",
+    "default_purchase_unit": "piece"
+  },
+  {
+    "slug": "frite",
+    "name": "frite",
+    "image": "",
+    "department": "surgele",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "mais",
+    "name": "maïs",
+    "image": "",
+    "department": "conserve",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "petit-pois-carotte",
+    "name": "petit pois carotte",
+    "image": "",
+    "department": "conserve",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "haricot",
+    "name": "haricot",
+    "image": "",
+    "department": "conserve",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "olive",
+    "name": "olive",
+    "image": "",
+    "department": "conserve",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "capre",
+    "name": "capre",
+    "image": "",
+    "department": "conserve",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "olive-verte",
+    "name": "olive verte",
+    "image": "",
+    "department": "conserve",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "concentre-de-tomate",
+    "name": "concentré de tomate",
+    "image": "",
+    "department": "conserve",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "olive-noir",
+    "name": "olive noir",
+    "image": "",
+    "department": "conserve",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "gratin-daufinois",
+    "name": "gratin daufinois",
+    "image": "",
+    "department": "conserve",
+    "default_cooking_unit": "boite",
+    "default_purchase_unit": "boite"
+  },
+  {
+    "slug": "confiture-abricot",
+    "name": "confiture abricot",
+    "image": "",
+    "department": "conserve",
+    "default_cooking_unit": "pot",
+    "default_purchase_unit": "pot"
+  },
+  {
+    "slug": "confiture-fraise",
+    "name": "confiture fraise",
+    "image": "",
+    "department": "conserve",
+    "default_cooking_unit": "pot",
+    "default_purchase_unit": "pot"
+  },
+  {
+    "slug": "confiture-framboise",
+    "name": "confiture framboise",
+    "image": "",
+    "department": "conserve",
+    "default_cooking_unit": "pot",
+    "default_purchase_unit": "pot"
+  },
+  {
+    "slug": "confiture-myrtille",
+    "name": "confiture myrtille",
+    "image": "",
+    "department": "conserve",
+    "default_cooking_unit": "pot",
+    "default_purchase_unit": "pot"
+  },
+  {
+    "slug": "nutella",
+    "name": "nutella",
+    "image": "https:\/\/cdn-icons-png.flaticon.com\/64\/135\/135605.png",
+    "department": "conserve",
+    "default_cooking_unit": "pot",
+    "default_purchase_unit": "pot"
+  },
+  {
+    "slug": "salade-de-fruit",
+    "name": "salade de fruit",
+    "image": "",
+    "department": "conserve",
+    "default_cooking_unit": "boite",
+    "default_purchase_unit": "boite"
+  },
+  {
+    "slug": "compote-en-bocal",
+    "name": "compote en bocal",
+    "image": "",
+    "department": "conserve",
+    "default_cooking_unit": "boite",
+    "default_purchase_unit": "boite"
+  },
+  {
+    "slug": "farine",
+    "name": "farine",
+    "image": "images\/ingredient\/flour.png",
+    "department": "aide-patissier",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "farine-pain",
+    "name": "farine pain",
+    "image": "",
+    "department": "aide-patissier",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "kilo"
+  },
+  {
+    "slug": "farine-brioche",
+    "name": "farine brioche",
+    "image": "",
+    "department": "aide-patissier",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "kilo"
+  },
+  {
+    "slug": "sucre",
+    "name": "sucre",
+    "image": "images\/ingredient\/sugar.png",
+    "department": "aide-patissier",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "kilo"
+  },
+  {
+    "slug": "maizena",
+    "name": "maïzena",
+    "image": "",
+    "department": "aide-patissier",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "pepite-de-chocolat",
+    "name": "pépite de chocolat",
+    "image": "",
+    "department": "aide-patissier",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "sucre-roux",
+    "name": "sucre roux",
+    "image": "",
+    "department": "aide-patissier",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "sucre-vanille",
+    "name": "sucre vanillé",
+    "image": "",
+    "department": "aide-patissier",
+    "default_cooking_unit": "sachet",
+    "default_purchase_unit": "sachet"
+  },
+  {
+    "slug": "levure-patissiere",
+    "name": "levure patissière",
+    "image": "",
+    "department": "aide-patissier",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "levure-boulangere",
+    "name": "levure boulangère",
+    "image": "",
+    "department": "aide-patissier",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "vanille",
+    "name": "vanille",
+    "image": "",
+    "department": "aide-patissier",
+    "default_cooking_unit": "gousse",
+    "default_purchase_unit": "gousse"
+  },
+  {
+    "slug": "chocolat",
+    "name": "chocolat",
+    "image": "",
+    "department": "aide-patissier",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "chocolat-liquide",
+    "name": "chocolat liquide",
+    "image": "",
+    "department": "aide-patissier",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "caramel",
+    "name": "caramel",
+    "image": "",
+    "department": "aide-patissier",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "gelatine",
+    "name": "gélatine",
+    "image": "",
+    "department": "aide-patissier",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "agaragar",
+    "name": "agaragar",
+    "image": "",
+    "department": "aide-patissier",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "caramel-liquide",
+    "name": "caramel liquide",
+    "image": "",
+    "department": "aide-patissier",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "riz",
+    "name": "riz",
+    "image": "",
+    "department": "cereale",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "ble",
+    "name": "blé",
+    "image": "",
+    "department": "cereale",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "boulgour",
+    "name": "boulgour",
+    "image": "",
+    "department": "cereale",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "quinoa",
+    "name": "quinoa",
+    "image": "",
+    "department": "cereale",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "lentille",
+    "name": "lentille",
+    "image": "",
+    "department": "cereale",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "risotto",
+    "name": "risotto",
+    "image": "",
+    "department": "cereale",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "boulgoure-fin",
+    "name": "boulgoure fin",
+    "image": "",
+    "department": "cereale",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "nouille",
+    "name": "nouille",
+    "image": "",
+    "department": "cereale",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "pate",
+    "name": "pate",
+    "image": "",
+    "department": "cereale",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "pate-lasagne",
+    "name": "pate lasagne",
+    "image": "",
+    "department": "cereale",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "pate-ramen",
+    "name": "pate ramen",
+    "image": "",
+    "department": "cereale",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "coquilette",
+    "name": "coquilette",
+    "image": "",
+    "department": "cereale",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "spaguetti",
+    "name": "spaguetti",
+    "image": "",
+    "department": "cereale",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "nouille-chinoise",
+    "name": "nouille chinoise",
+    "image": "",
+    "department": "cereale",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "soja",
+    "name": "soja",
+    "image": "",
+    "department": "cereale",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "raviole",
+    "name": "raviole",
+    "image": "",
+    "department": "cereale",
+    "default_cooking_unit": "sachet",
+    "default_purchase_unit": "sachet"
+  },
+  {
+    "slug": "puree",
+    "name": "purée",
+    "image": "",
+    "department": "cereale",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "vermicelle",
+    "name": "vermicelle",
+    "image": "",
+    "department": "cereale",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "pizza",
+    "name": "pizza",
+    "image": "",
+    "department": "traiteur",
+    "default_cooking_unit": "piece",
+    "default_purchase_unit": "piece"
+  },
+  {
+    "slug": "soupe",
+    "name": "soupe",
+    "image": "",
+    "department": "traiteur",
+    "default_cooking_unit": "brique",
+    "default_purchase_unit": "brique"
+  },
+  {
+    "slug": "galette",
+    "name": "galette",
+    "image": "",
+    "department": "traiteur",
+    "default_cooking_unit": "piece",
+    "default_purchase_unit": "piece"
+  },
+  {
+    "slug": "pate-pizza",
+    "name": "pate pizza",
+    "image": "",
+    "department": "traiteur",
+    "default_cooking_unit": "piece",
+    "default_purchase_unit": "piece"
+  },
+  {
+    "slug": "pate-feuilletee",
+    "name": "pate feuilletée",
+    "image": "",
+    "department": "traiteur",
+    "default_cooking_unit": "piece",
+    "default_purchase_unit": "piece"
+  },
+  {
+    "slug": "riste-aubergine",
+    "name": "riste aubergine",
+    "image": "",
+    "department": "traiteur",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "pate-brisee",
+    "name": "pate brisée",
+    "image": "",
+    "department": "traiteur",
+    "default_cooking_unit": "piece",
+    "default_purchase_unit": "piece"
+  },
+  {
+    "slug": "pate-sablee",
+    "name": "pate sablée",
+    "image": "",
+    "department": "traiteur",
+    "default_cooking_unit": "piece",
+    "default_purchase_unit": "piece"
+  },
+  {
+    "slug": "gnocci",
+    "name": "gnocci",
+    "image": "",
+    "department": "traiteur",
+    "default_cooking_unit": "paquet",
+    "default_purchase_unit": "paquet"
+  },
+  {
+    "slug": "quenelle",
+    "name": "quenelle",
+    "image": "",
+    "department": "traiteur",
+    "default_cooking_unit": "piece",
+    "default_purchase_unit": "piece"
+  },
+  {
+    "slug": "hachis-parmentier",
+    "name": "hachis parmentier",
+    "image": "",
+    "department": "traiteur",
+    "default_cooking_unit": "piece",
+    "default_purchase_unit": "piece"
+  },
+  {
+    "slug": "lasagne",
+    "name": "lasagne",
+    "image": "",
+    "department": "traiteur",
+    "default_cooking_unit": "piece",
+    "default_purchase_unit": "piece"
+  },
+  {
+    "slug": "poisson-pane",
+    "name": "poisson pané",
+    "image": "",
+    "department": "traiteur",
+    "default_cooking_unit": "piece",
+    "default_purchase_unit": "piece"
+  },
+  {
+    "slug": "nem",
+    "name": "nem",
+    "image": "",
+    "department": "traiteur",
+    "default_cooking_unit": "piece",
+    "default_purchase_unit": "piece"
+  },
+  {
+    "slug": "bouillon",
+    "name": "bouillon",
+    "image": "",
+    "department": "traiteur",
+    "default_cooking_unit": "cube",
+    "default_purchase_unit": "cube"
+  },
+  {
+    "slug": "bouillon-de-boeuf",
+    "name": "bouillon de bœuf",
+    "image": "",
+    "department": "traiteur",
+    "default_cooking_unit": "cube",
+    "default_purchase_unit": "cube"
+  },
+  {
+    "slug": "bouillon-de-legume",
+    "name": "bouillon de légume",
+    "image": "",
+    "department": "traiteur",
+    "default_cooking_unit": "cube",
+    "default_purchase_unit": "cube"
+  },
+  {
+    "slug": "produit-pour-les-sols",
+    "name": "produit pour les sols",
+    "image": "",
+    "department": "produit-menager",
+    "default_cooking_unit": "flacon",
+    "default_purchase_unit": "flacon"
+  },
+  {
+    "slug": "javel",
+    "name": "javel",
+    "image": "",
+    "department": "produit-menager",
+    "default_cooking_unit": "flacon",
+    "default_purchase_unit": "flacon"
+  },
+  {
+    "slug": "produit-pour-les-vitres",
+    "name": "produit pour les vitres",
+    "image": "",
+    "department": "produit-menager",
+    "default_cooking_unit": "flacon",
+    "default_purchase_unit": "flacon"
+  },
+  {
+    "slug": "bicarbonate-menager",
+    "name": "bicarbonate ménager",
+    "image": "",
+    "department": "produit-menager",
+    "default_cooking_unit": "paquet",
+    "default_purchase_unit": "paquet"
+  },
+  {
+    "slug": "bicarbonate",
+    "name": "bicarbonate",
+    "image": "",
+    "department": "aide-patissier",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "lingette-menagere",
+    "name": "lingette ménagère",
+    "image": "",
+    "department": "produit-menager",
+    "default_cooking_unit": "paquet",
+    "default_purchase_unit": "paquet"
+  },
+  {
+    "slug": "pain",
+    "name": "pain",
+    "image": "",
+    "department": "boulangerie",
+    "default_cooking_unit": "piece",
+    "default_purchase_unit": "piece"
+  },
+  {
+    "slug": "pain-de-mie",
+    "name": "pain de mie",
+    "image": "",
+    "department": "boulangerie",
+    "default_cooking_unit": "tranche",
+    "default_purchase_unit": "tranche"
+  },
+  {
+    "slug": "pain-panini",
+    "name": "pain panini",
+    "image": "",
+    "department": "boulangerie",
+    "default_cooking_unit": "piece",
+    "default_purchase_unit": "piece"
+  },
+  {
+    "slug": "pain-tartine",
+    "name": "pain tartine",
+    "image": "",
+    "department": "boulangerie",
+    "default_cooking_unit": "piece",
+    "default_purchase_unit": "piece"
+  },
+  {
+    "slug": "pain-baggle",
+    "name": "pain baggle",
+    "image": "",
+    "department": "boulangerie",
+    "default_cooking_unit": "piece",
+    "default_purchase_unit": "piece"
+  },
+  {
+    "slug": "pain-a-burger",
+    "name": "pain à burger",
+    "image": "",
+    "department": "boulangerie",
+    "default_cooking_unit": "paquet",
+    "default_purchase_unit": "paquet"
+  },
+  {
+    "slug": "brioche",
+    "name": "brioche",
+    "image": "",
+    "department": "boulangerie",
+    "default_cooking_unit": "paquet",
+    "default_purchase_unit": "paquet"
+  },
+  {
+    "slug": "biscotte",
+    "name": "biscotte",
+    "image": "",
+    "department": "boulangerie",
+    "default_cooking_unit": "piece",
+    "default_purchase_unit": "paquet"
+  },
+  {
+    "slug": "cracotte",
+    "name": "cracotte",
+    "image": "",
+    "department": "boulangerie",
+    "default_cooking_unit": "piece",
+    "default_purchase_unit": "paquet"
+  },
+  {
+    "slug": "pain-au-lait",
+    "name": "pain au lait",
+    "image": "",
+    "department": "boulangerie",
+    "default_cooking_unit": "paquet",
+    "default_purchase_unit": "paquet"
+  },
+  {
+    "slug": "vinaigre",
+    "name": "vinaigre",
+    "image": "",
+    "department": "sauce",
+    "default_cooking_unit": "cuillere-a-soupe",
+    "default_purchase_unit": "centilitre"
+  },
+  {
+    "slug": "vinaigre-balsamique",
+    "name": "vinaigre balsamique",
+    "image": "",
+    "department": "sauce",
+    "default_cooking_unit": "cuillere-a-soupe",
+    "default_purchase_unit": "centilitre"
+  },
+  {
+    "slug": "vinaigre-xeres",
+    "name": "vinaigre xérès",
+    "image": "",
+    "department": "sauce",
+    "default_cooking_unit": "cuillere-a-soupe",
+    "default_purchase_unit": "centilitre"
+  },
+  {
+    "slug": "huile",
+    "name": "huile",
+    "image": "",
+    "department": "sauce",
+    "default_cooking_unit": "cuillere-a-soupe",
+    "default_purchase_unit": "centilitre"
+  },
+  {
+    "slug": "huile-d-olive",
+    "name": "huile d'olive",
+    "image": "",
+    "department": "sauce",
+    "default_cooking_unit": "cuillere-a-soupe",
+    "default_purchase_unit": "centilitre"
+  },
+  {
+    "slug": "bearnaise",
+    "name": "béarnaise",
+    "image": "",
+    "department": "sauce",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "ketchup",
+    "name": "ketchup",
+    "image": "",
+    "department": "sauce",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "mayonnaise",
+    "name": "mayonnaise",
+    "image": "",
+    "department": "sauce",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "bolognaise",
+    "name": "bolognaise",
+    "image": "",
+    "department": "sauce",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "sauce-4-fromages",
+    "name": "sauce 4 fromages",
+    "image": "",
+    "department": "sauce",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "pesto",
+    "name": "pesto",
+    "image": "",
+    "department": "sauce",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "tartare",
+    "name": "tartare",
+    "image": "",
+    "department": "sauce",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "bbq",
+    "name": "bbq",
+    "image": "",
+    "department": "sauce",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "sauce-soja",
+    "name": "sauce soja",
+    "image": "",
+    "department": "sauce",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "sauce-napolitaine",
+    "name": "sauce napolitaine",
+    "image": "",
+    "department": "sauce",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "sauce-tomate",
+    "name": "sauce tomate",
+    "image": "",
+    "department": "sauce",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "sauce-nuoc-man",
+    "name": "sauce nuoc man",
+    "image": "",
+    "department": "sauce",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "croquette",
+    "name": "croquette",
+    "image": "",
+    "department": "animal",
+    "default_cooking_unit": "paquet",
+    "default_purchase_unit": "paquet"
+  },
+  {
+    "slug": "litiere",
+    "name": "litière",
+    "image": "",
+    "department": "animal",
+    "default_cooking_unit": "paquet",
+    "default_purchase_unit": "paquet"
+  },
+  {
+    "slug": "oeuf",
+    "name": "œuf",
+    "image": "images\/ingredient\/egg.png",
+    "department": "divers",
+    "default_cooking_unit": "piece",
+    "default_purchase_unit": "piece"
+  },
+  {
+    "slug": "lait",
+    "name": "lait",
+    "image": "images\/ingredient\/milk.png",
+    "department": "divers",
+    "default_cooking_unit": "litre",
+    "default_purchase_unit": "litre"
+  },
+  {
+    "slug": "poivre",
+    "name": "poivre",
+    "image": "",
+    "department": "divers",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "cornichon",
+    "name": "cornichon",
+    "image": "",
+    "department": "divers",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "chocolat-en-poudre",
+    "name": "chocolat en poudre",
+    "image": "",
+    "department": "divers",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "paquet"
+  },
+  {
+    "slug": "miel",
+    "name": "miel",
+    "image": "images\/ingredient\/honey.png",
+    "department": "divers",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "sel",
+    "name": "sel",
+    "image": "images\/ingredient\/salt.png",
+    "department": "divers",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "bouquet-garni",
+    "name": "bouquet garni",
+    "image": "",
+    "department": "divers",
+    "default_cooking_unit": "piece",
+    "default_purchase_unit": "piece"
+  },
+  {
+    "slug": "tortilla",
+    "name": "tortilla",
+    "image": "",
+    "department": "cuisine-du-monde",
+    "default_cooking_unit": "piece",
+    "default_purchase_unit": "paquet"
+  },
+  {
+    "slug": "feuille-de-brique",
+    "name": "feuille de brique",
+    "image": "",
+    "department": "cuisine-du-monde",
+    "default_cooking_unit": "paquet",
+    "default_purchase_unit": "paquet"
+  },
+  {
+    "slug": "epice-guacamole",
+    "name": "épice guacamole",
+    "image": "",
+    "department": "cuisine-du-monde",
+    "default_cooking_unit": "sachet",
+    "default_purchase_unit": "sachet"
+  },
+  {
+    "slug": "epice-viande",
+    "name": "épice viande",
+    "image": "",
+    "department": "cuisine-du-monde",
+    "default_cooking_unit": "sachet",
+    "default_purchase_unit": "sachet"
+  },
+  {
+    "slug": "epice",
+    "name": "épice",
+    "image": "",
+    "department": "cuisine-du-monde",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "curry",
+    "name": "curry",
+    "image": "",
+    "department": "cuisine-du-monde",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "ramen",
+    "name": "ramen",
+    "image": "",
+    "department": "cuisine-du-monde",
+    "default_cooking_unit": "gramme",
+    "default_purchase_unit": "gramme"
+  },
+  {
+    "slug": "feuille-gelatine",
+    "name": "feuille-gelatine",
+    "image": "",
+    "department": "aide-patissier",
+    "default_cooking_unit": "piece",
+    "default_purchase_unit": "piece"
+  },
+  {
+    "slug": "savon-noir",
+    "name": "savon noir",
+    "image": "",
+    "department": "produit-menager",
+    "default_cooking_unit": "flacon",
+    "default_purchase_unit": "flacon"
+  },
+  {
+    "slug": "produit-wc",
+    "name": "produit WC",
+    "image": "",
+    "department": "produit-menager",
+    "default_cooking_unit": "flacon",
+    "default_purchase_unit": "flacon"
+  }
 ]

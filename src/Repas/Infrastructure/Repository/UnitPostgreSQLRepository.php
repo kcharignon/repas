@@ -23,6 +23,21 @@ readonly class UnitPostgreSQLRepository extends PostgreSQLRepository implements 
         parent::__construct($managerRegistry, UnitEntity::class);
     }
 
+    public function findAll(): Tab
+    {
+        $units = new Tab($this->entityRepository->findBy([], ['slug' => 'ASC']), UnitEntity::class);
+        return $units->map(function (UnitEntity $entity) {
+            if (($model = $this->modelCache->getModelCache(UnitModel::class, $entity->getSlug())) !== null) {
+                return $model;
+            }
+
+            $model = $this->convertEntityToModel($entity);
+            $this->modelCache->setModelCache($model);
+            return $model;
+            }, UnitModel::class);
+    }
+
+
     public function save(UnitModel $unit): void
     {
         // On supprime le model du cache

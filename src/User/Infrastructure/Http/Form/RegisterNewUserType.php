@@ -21,7 +21,7 @@ class RegisterNewUserType extends AbstractType implements DataMapperInterface
 
 
     public function __construct(
-        private UserRepository $userRepository,
+        private readonly UserRepository $userRepository,
     ) {
     }
 
