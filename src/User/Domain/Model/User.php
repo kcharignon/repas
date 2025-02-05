@@ -105,4 +105,9 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, Passwor
     {
         $this->setPassword($newHashedPassword);
     }
+
+    public function isAdmin(): bool
+    {
+        return in_array('ROLE_ADMIN', $this->roles ?? [], true);
+    }
 }

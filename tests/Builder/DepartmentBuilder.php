@@ -41,6 +41,14 @@ class DepartmentBuilder implements Builder
         return $this;
     }
 
+    public function isAnimal(): DepartmentBuilder
+    {
+        $this->name = 'animal';
+        $this->slug ??= StringTool::slugify($this->name);
+        $this->image ??= "https://cdn-icons-png.flaticon.com/128/2619/2619232.png";
+        return $this;
+    }
+
     public function isConserve(): DepartmentBuilder
     {
         $this->name = 'conserve';

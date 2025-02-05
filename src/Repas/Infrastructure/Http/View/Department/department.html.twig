@@ -13,29 +13,7 @@
 
     <ul class="list-group">
         {% for ingredient in ingredients %}
-            <li class="list-group-item justify-content-between align-items-center">
-                {{ ingredient.name|capitalize }}
-                <button
-                    type="button"
-                    class="btn btn-danger btn-sm float-end"
-                    data-action="btn-ajax"
-                    data-method="post"
-                    data-url="{{ path("view_shopping_list_remove_ingredient", {"slug" : ingredient.slug}) }}">
-                    <i class="fas fa-trash-alt">
-                        <span class="ps-2" style="font-family: 'Source Sans Pro'">Enlever 1 {{ ingredient.defaultPurchaseUnit.name }}</span>
-                    </i>
-                </button>
-                <button
-                    type="button"
-                    class="btn btn-success btn-sm float-end me-1"
-                    data-action="btn-ajax"
-                    data-method="post"
-                    data-url="{{ path("view_shopping_list_add_ingredient", {"slug" : ingredient.slug}) }}">
-                    <i class="fas fa-plus-circle">
-                        <span class="ps-2" style="font-family: 'Source Sans Pro'">Ajouter 1 {{ ingredient.defaultPurchaseUnit.name }}</span>
-                    </i>
-                </button>
-            </li>
+            {% include('@Repas/Department/_ingredient_row.html.twig') %}
         {% endfor %}
         <a class="list-group-item d-flex justify-content-between align-items-center active" href="{{ path("view_ingredient_create") }}" alt="bouton ajouter">
             Ajouter un ingredient

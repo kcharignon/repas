@@ -15,6 +15,13 @@ abstract class DatabaseTestCase extends KernelTestCase
 {
     protected ?EntityManagerInterface $entityManager;
     protected ModelCache $modelCacheMock;
+    protected array $backupServices = [];
+
+    protected function mockService(string $id, ?object $mock): void
+    {
+        $this->backupServices[$id] = static::getContainer()->get($id);
+        static::getContainer()->set($id, $mock);
+    }
 
     protected function setUp(): void
     {
@@ -67,5 +74,10 @@ abstract class DatabaseTestCase extends KernelTestCase
         parent::tearDown();
         $this->entityManager->close();
         $this->entityManager = null;
+
+        // On restore les services
+        foreach ($this->backupServices as $id => $service) {
+            static::getContainer()->set($id, $service);
+        }
     }
 }

@@ -5,6 +5,7 @@ namespace Repas\Repas\Infrastructure\Http\Controller;
 
 use Repas\Repas\Domain\Interface\DepartmentRepository;
 use Repas\Repas\Domain\Interface\IngredientRepository;
+use Repas\User\Domain\Model\User;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
@@ -22,8 +23,10 @@ class GetOneDepartmentViewController extends AbstractController
     #[IsGranted('ROLE_USER')]
     public function __invoke(string $slug): Response
     {
+        $connectedUser = $this->getUser();
+        assert($connectedUser instanceof User);
         $department = $this->departmentRepository->findOneBySlug($slug);
-        $ingredients = $this->ingredientRepository->findByDepartment($department);
+        $ingredients = $this->ingredientRepository->findByDepartmentAndOwner($department, $connectedUser);
 
         return $this->render('@Repas/Department/department.html.twig', [
             'department' => $department,

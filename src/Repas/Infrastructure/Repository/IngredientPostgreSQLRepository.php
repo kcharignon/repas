@@ -34,7 +34,10 @@ readonly class IngredientPostgreSQLRepository extends PostgreSQLRepository imple
     }
 
     /**
+     * @throws DepartmentException
+     * @throws UnitException
      * @throws IngredientException
+     * @throws UserException
      */
     public function findOneBySlug(string $slug): IngredientModel
     {
@@ -54,9 +57,18 @@ readonly class IngredientPostgreSQLRepository extends PostgreSQLRepository imple
         throw IngredientException::notFound();
     }
 
-    public function findByDepartment(Department $department): Tab
+    public function findByDepartmentAndOwner(Department $department, User $owner): Tab
     {
-        $ingredients = new Tab($this->entityRepository->findBy(['departmentSlug' => $department->getId()], ['slug' => 'ASC']), IngredientEntity::class);
+        $entities = $this->entityRepository->createQueryBuilder('i')
+            ->where('i.departmentSlug = :department')
+            ->andWhere('i.creatorId = :owner or i.creatorId is null')
+            ->setParameter('department', $department->getId())
+            ->setParameter('owner', $owner->getId())
+            ->orderBy('i.slug', 'ASC')
+            ->getQuery()
+            ->getResult();
+
+        $ingredients = new Tab($entities, IngredientEntity::class);
         return $ingredients->map(function (IngredientEntity $ingredient) {
             if (($model = $this->modelCache->getModelCache(IngredientModel::class, $ingredient->getSlug())) !== null) {
                 return $model;

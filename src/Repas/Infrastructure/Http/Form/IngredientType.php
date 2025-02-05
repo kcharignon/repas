@@ -5,7 +5,10 @@ namespace Repas\Repas\Infrastructure\Http\Form;
 
 use Repas\Repas\Application\CreateIngredient\CreateIngredientCommand;
 use Repas\Repas\Domain\Interface\DepartmentRepository;
+use Repas\Repas\Domain\Interface\IngredientRepository;
 use Repas\Repas\Domain\Interface\UnitRepository;
+use Repas\User\Domain\Model\User;
+use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\DataMapperInterface;
 use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
@@ -16,10 +19,16 @@ use Traversable;
 
 class IngredientType extends AbstractType implements DataMapperInterface
 {
+    private User $creator;
+
     public function __construct(
         private readonly DepartmentRepository $departmentRepository,
         private readonly UnitRepository $unitRepository,
+        readonly Security $security,
     ) {
+        $connectedUser = $security->getUser();
+        assert($connectedUser instanceof User);
+        $this->creator = $connectedUser;
     }
 
     public function buildForm(FormBuilderInterface $builder, array $options): void
@@ -77,6 +86,7 @@ class IngredientType extends AbstractType implements DataMapperInterface
             departmentSlug: $forms['department']->getData(),
             defaultCookingUnitSlug: $forms['defaultCookingUnit']->getData(),
             defaultPurchaseUnitSlug: $forms['defaultPurchaseUnit']->getData(),
+            ownerId: $this->creator->isAdmin() ? null : $this->creator->getId(),
         );
     }
 }

@@ -7,6 +7,8 @@ twig:
     file_name_pattern: '*.twig'
     globals:
         javascripts_dir: '/js/'
+        current_user: '@security.helper'
+        
 
 when@test:
     twig:

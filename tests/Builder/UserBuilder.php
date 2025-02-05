@@ -17,8 +17,8 @@ class UserBuilder implements Builder
     private function initialize(): void
     {
         $this->id ??= UuidGenerator::new();
-        $this->email ??= "johndoe@example.com";
-        $this->roles ??= [];
+        $this->email ??= UuidGenerator::new()."@example.com";
+        $this->roles ??= ['ROLE_USER'];
         // Password hashed : Test
         $this->password ??= '$2y$13$0LFXi/NjQ/Ic36vx5MLGqu5kidPlsWf.xctG6xXNs1YYFiMLLLMym';
         $this->defaultServing ??= 4;
@@ -39,6 +39,12 @@ class UserBuilder implements Builder
     public function withEmail(string $email): static
     {
         $this->email = $email;
+        return $this;
+    }
+
+    public function isAdmin(): static
+    {
+        $this->roles = ['ROLE_USER', 'ROLE_ADMIN'];
         return $this;
     }
 }

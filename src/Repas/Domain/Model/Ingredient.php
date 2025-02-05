@@ -105,9 +105,9 @@ final class Ingredient implements ModelInterface
         Department $department,
         Unit $defaultCookingUnit,
         Unit $defaultPurchaseUnit,
-        User $creator,
+        ?User $creator,
     ): self {
-        $slug = StringTool::slugify($name);
+        $slug = StringTool::slugify($creator->getId().$name);
         return new self(
             $slug,
             $name,

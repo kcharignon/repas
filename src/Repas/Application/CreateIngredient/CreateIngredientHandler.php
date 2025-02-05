@@ -9,6 +9,8 @@ use Repas\Repas\Domain\Interface\DepartmentRepository;
 use Repas\Repas\Domain\Interface\IngredientRepository;
 use Repas\Repas\Domain\Interface\UnitRepository;
 use Repas\Repas\Domain\Model\Ingredient;
+use Repas\User\Domain\Exception\UserException;
+use Repas\User\Domain\Interface\UserRepository;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 
@@ -19,12 +21,14 @@ readonly class CreateIngredientHandler
         private DepartmentRepository $departmentRepository,
         private UnitRepository $unitRepository,
         private IngredientRepository $ingredientRepository,
+        private UserRepository $userRepository,
     ) {
     }
 
     /**
      * @throws DepartmentException
      * @throws UnitException
+     * @throws UserException
      */
     public function __invoke(CreateIngredientCommand $command): void
     {
@@ -34,9 +38,9 @@ readonly class CreateIngredientHandler
             department: $this->departmentRepository->findOneBySlug($command->departmentSlug),
             defaultCookingUnit: $this->unitRepository->findOneBySlug($command->defaultCookingUnitSlug),
             defaultPurchaseUnit: $this->unitRepository->findOneBySlug($command->defaultPurchaseUnitSlug),
+            creator: $command->ownerId !== null ? $this->userRepository->findOneById($command->ownerId) : null,
         );
 
         $this->ingredientRepository->save($ingredient);
     }
-
 }

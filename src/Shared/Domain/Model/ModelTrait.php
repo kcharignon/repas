@@ -34,8 +34,11 @@ trait ModelTrait
         }
     }
 
-    public function isEqual(ModelInterface $model): bool
+    public function isEqual(mixed $model): bool
     {
+        if (!$model instanceof ModelInterface) {
+            return false;
+        }
         return $this::class === $model::class && $this->getId() === $model->getId();
     }
 }

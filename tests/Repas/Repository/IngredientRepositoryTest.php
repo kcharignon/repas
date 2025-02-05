@@ -7,18 +7,24 @@ use Repas\Repas\Domain\Interface\IngredientRepository;
 use Repas\Tests\Builder\DepartmentBuilder;
 use Repas\Tests\Builder\IngredientBuilder;
 use Repas\Tests\Builder\UnitBuilder;
+use Repas\Tests\Builder\UserBuilder;
 use Repas\Tests\Helper\DatabaseTestCase;
+use Repas\Tests\Helper\InMemoryRepository\UserInMemoryRepository;
 use Repas\Tests\Helper\RepasAssert;
+use Repas\User\Domain\Interface\UserRepository;
+use Repas\User\Domain\Model\User;
 
 class IngredientRepositoryTest extends DatabaseTestCase
 {
     private readonly IngredientRepository $ingredientRepository;
+    private readonly UserRepository $userRepository;
 
     protected function setUp(): void
     {
         parent::setUp();
 
         $this->ingredientRepository = static::getContainer()->get(IngredientRepository::class);
+        $this->userRepository = static::getContainer()->get(UserRepository::class);
     }
 
     public function testCRUD(): void
@@ -50,21 +56,46 @@ class IngredientRepositoryTest extends DatabaseTestCase
         RepasAssert::assertIngredient($ingredient, $loadedIngredient);
     }
 
-    public function testGetByDepartment(): void
+    public function getByDepartmentDataProvider(): array
+    {
+        $creator = new UserBuilder()->build();
+        $admin = new UserBuilder()->isAdmin()->build();
+        $otherUser = new UserBuilder()->build();
+
+        return [
+            'with creator and called by admin' => [$creator, $admin, false],
+            'with creator and called by other user' => [$creator, $otherUser, false],
+            'with creator and called by himself' => [$creator, $creator, true],
+            'without creator and called by user' => [null, $otherUser, true],
+            'without creator and called admin' => [null, $admin, true],
+        ];
+    }
+
+    /**
+     * @dataProvider getByDepartmentDataProvider
+     */
+    public function testGetByDepartment(?User $creator, User $user, bool $see): void
     {
         // Arrange
+        if ($creator) {
+            $this->userRepository->save($creator);
+        }
+        $this->userRepository->save($user);
         // Compte le nombre d'ingrédients au rayon bebe
-        $babyDepartmentBuilder = new DepartmentBuilder()->isBaby();
-        $before = $this->ingredientRepository->findByDepartment($babyDepartmentBuilder->build());
+        $babyDepartment = new DepartmentBuilder()->isBaby()->build();
+        $before = $this->ingredientRepository->findByDepartmentAndOwner($babyDepartment, $user);
         $count = $before->count();
         // Ajoute un ingredient au rayon bébé
-        $ingredient = new IngredientBuilder()->setDepartment($babyDepartmentBuilder)->build();
+        $ingredient = new IngredientBuilder()
+            ->onBabyDepartment()
+            ->withCreator($creator)
+            ->build();
         $this->ingredientRepository->save($ingredient);
 
         // Act
-        $actual = $this->ingredientRepository->findByDepartment($babyDepartmentBuilder->build());
+        $actual = $this->ingredientRepository->findByDepartmentAndOwner($babyDepartment, $user);
 
         // Assert
-        $this->assertEquals($count + 1, $actual->count());
+        $this->assertEquals($see ? ++$count : $count, $actual->count());
     }
 }

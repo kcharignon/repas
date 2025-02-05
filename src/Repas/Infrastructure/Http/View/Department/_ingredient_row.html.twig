@@ -1,0 +1,37 @@
+<li class="list-group-item justify-content-between align-items-center">
+    {{ ingredient.name|capitalize }}
+    <button
+        type="button"
+        class="btn btn-danger btn-sm float-end"
+        data-action="btn-ajax"
+        data-method="post"
+        data-url="{{ path("view_shopping_list_remove_ingredient", {"slug" : ingredient.slug}) }}">
+        <i class="fas fa-trash-alt">
+            <span class="ps-2" style="font-family: 'Source Sans Pro'">Enlever 1 {{ ingredient.defaultPurchaseUnit.name }}</span>
+        </i>
+    </button>
+    <button
+        type="button"
+        class="btn btn-success btn-sm float-end me-1"
+        data-action="btn-ajax"
+        data-method="post"
+        data-url="{{ path("view_shopping_list_add_ingredient", {"slug" : ingredient.slug}) }}">
+        <i class="fas fa-plus-circle">
+            <span class="ps-2" style="font-family: 'Source Sans Pro'">Ajouter 1 {{ ingredient.defaultPurchaseUnit.name }}</span>
+        </i>
+    </button>
+    {% if current_user.getUser().isEqual(ingredient.creator)
+        or (current_user.getUser().isAdmin() and ingredient.creator is null) %}
+        <button
+            type="button"
+            class="btn btn-secondary btn-sm float-end me-1"
+            data-action="btn-ajax"
+            data-method="post"
+{#            data-url="{{ path("view_shopping_list_add_ingredient", {"slug" : ingredient.slug}) }}"#}
+        >
+            <i class="fas fa-pen"></i>
+                <span class="ps-2" style="font-family: 'Source Sans Pro'">Modifier</span>
+            </i>
+        </button>
+    {% endif %}
+</li>

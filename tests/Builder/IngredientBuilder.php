@@ -6,6 +6,7 @@ namespace Repas\Tests\Builder;
 use Repas\Repas\Domain\Model\Department;
 use Repas\Repas\Domain\Model\Ingredient;
 use Repas\Shared\Domain\Tool\StringTool;
+use Repas\User\Domain\Model\User;
 
 class IngredientBuilder implements Builder
 {
@@ -15,7 +16,7 @@ class IngredientBuilder implements Builder
     private DepartmentBuilder $departmentBuilder;
     private UnitBuilder $defaultCookingUnitBuilder;
     private UnitBuilder $defaultPurchaseUnitBuilder;
-    private ?UserBuilder $userBuilder;
+    private UserBuilder|User|null $creator;
 
     private function initialize(): void
     {
@@ -25,7 +26,7 @@ class IngredientBuilder implements Builder
         $this->departmentBuilder ??= new DepartmentBuilder()->isConserve();
         $this->defaultCookingUnitBuilder ??= new UnitBuilder()->isPiece();
         $this->defaultPurchaseUnitBuilder ??= new UnitBuilder()->isPiece();
-        $this->userBuilder ??= null;
+        $this->creator ??= null;
     }
 
     public function setName(string $name): self
@@ -46,13 +47,20 @@ class IngredientBuilder implements Builder
             'department' => $this->departmentBuilder->build(),
             'default_cooking_unit' => $this->defaultCookingUnitBuilder->build(),
             'default_purchase_unit' => $this->defaultPurchaseUnitBuilder->build(),
-            'creator' => $this->userBuilder?->build(),
+            'creator' => $this->creator instanceof UserBuilder ? $this->creator->build() : $this->creator,
         ]);
     }
 
     public function setDepartment(DepartmentBuilder $departmentBuilder): self
     {
         $this->departmentBuilder = $departmentBuilder;
+        return $this;
+    }
+
+    public function onBabyDepartment(): self
+    {
+        $this->departmentBuilder ??= new DepartmentBuilder();
+        $this->departmentBuilder->isBaby();
         return $this;
     }
 
@@ -130,6 +138,12 @@ class IngredientBuilder implements Builder
         $this->departmentBuilder = new DepartmentBuilder()->isMiscellaneous();
         $this->defaultCookingUnitBuilder = new UnitBuilder()->isLiter();
         $this->defaultPurchaseUnitBuilder = new UnitBuilder()->isLiter();
+        return $this;
+    }
+
+    public function withCreator(User|UserBuilder|null $creator): static
+    {
+        $this->creator = $creator;
         return $this;
     }
 

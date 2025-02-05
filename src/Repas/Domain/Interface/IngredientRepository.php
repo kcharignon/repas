@@ -8,6 +8,7 @@ use Repas\Repas\Domain\Model\Department;
 use Repas\Repas\Domain\Model\Ingredient;
 use Repas\Repas\Domain\Model\Recipe;
 use Repas\Shared\Domain\Tool\Tab;
+use Repas\User\Domain\Model\User;
 
 interface IngredientRepository
 {
@@ -19,7 +20,7 @@ interface IngredientRepository
     /**
      * @return Tab<Ingredient>
      */
-    public function findByDepartment(Department $department): Tab;
+    public function findByDepartmentAndOwner(Department $department, User $owner): Tab;
 
     public function save(Ingredient $ingredient): void;
 
