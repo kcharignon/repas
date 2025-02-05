@@ -1,4 +1,10 @@
-<div class="col" id="shoppingListIngredientsColumn">
+<div
+    id="shoppingListIngredientsColumn"
+    class="col"
+    {% if shoppingList.isPlanning %}
+        style="display: none;"
+    {% endif %}
+>
     <h2>Ingredients</h2>
     {% for department in shoppingList.departments %}
         {% set rows = shoppingList.rows %}

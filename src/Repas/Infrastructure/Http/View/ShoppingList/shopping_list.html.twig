@@ -2,6 +2,11 @@
 {% extends '@Shared/base.html.twig' %}
 
 {% block title %}
+    {{ shoppingList.createdAt|format_datetime(locale='fr_FR', pattern="dd MMMM YYYY") }}
+{% endblock %}
+
+{% block javascripts %}
+    <script src="{{ javascripts_dir ~ "repas_shopping_list.js" }}"></script>
 {% endblock %}
 
 {% block body %}
@@ -9,8 +14,9 @@
         <li class="breadcrumb-item"><a href="{{ path("view_shopping_list") }}">Listes</a></li>
         <li class="breadcrumb-item active">{{ shoppingList.createdAt|format_datetime(locale='fr_FR', pattern="dd MMMM YYYY") }}</li>
     </ol>
+
     {% if shoppingList is not null %}
-        <div class="card bg-light" style="max-width: 100rem;">
+        <div id="shopping-list-card" data-status="{{ shoppingList.status.value|lower }}" class="card bg-light" style="max-width: 100rem;">
             <h3 class="card-header">
                 {{ "Liste du " ~ shoppingList.createdAt|format_datetime(locale='fr_FR', pattern="dd MMMM YYYY") }} :
                 <span class="small text-secondary ms-2">
@@ -24,9 +30,18 @@
                 {% include('@Repas/ShoppingList/_shopping_list_actions.html.twig') %}
             </h3>
             <div class="card-body">
+
+                <!-- Boutons pour basculer entre les vues en mode mobile -->
+                <div id="shopping-list-button-switch-ingredient-recipe" class="text-center mb-3">
+                    <button class="btn btn-primary me-2" id="button-show-ingredients">Ingrédients</button>
+                    <button class="btn btn-secondary" id="button-show-recipes">Recettes</button>
+                </div>
+
                 <div class="row">
+                    <!-- Conteneur avec affichage conditionnel -->
                     {% include "@Repas/ShoppingList/_ingredients_column.html.twig" %}
-                    <div class="col">
+
+                    <div id="shopping-list-recipes-column" class="col">
                         <h2>Recettes</h2>
                         {% for recipeType in shoppingList.recipeTypePresent %}
                             {% set recipes = shoppingList.getRecipesByType(recipeType) %}
