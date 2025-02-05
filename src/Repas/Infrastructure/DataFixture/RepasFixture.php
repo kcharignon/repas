@@ -25,27 +25,31 @@ abstract class RepasFixture extends Fixture
         }
 
         $buffer = '';
-        $insideArray = false;
+        $insideObject = false; // Pour savoir si on est en train de lire un objet JSON
 
         while (($char = fgetc($handle)) !== false) {
-            // Ignorer uniquement le premier '['
-            if ($char === '[' && !$insideArray) {
-                $insideArray = true;
-                continue;
+            if ($char === '[') {
+                continue; // On ignore le début du tableau
+            }
+            if ($char === ']') {
+                break; // Fin du tableau, on stoppe la lecture
+            }
+            if ($char === '{') {
+                $insideObject = true;
             }
 
-            // Ignorer uniquement le dernier ']'
-            if ($char === ']' && feof($handle)) {
-                continue;
+            if ($insideObject) {
+                $buffer .= $char;
             }
 
-            // Ajouter le caractère au buffer
-            $buffer .= $char;
-
-            // Détecter la fin d'un objet JSON
-            if ($char === '}' && json_decode($buffer) !== null) {
-                yield json_decode($buffer, true);
-                $buffer = ''; // Réinitialiser le buffer après chaque objet JSON
+            // Quand on trouve `}`, on vérifie si l'objet JSON est complet
+            if ($char === '}') {
+                $decodedObject = json_decode($buffer, true);
+                if ($decodedObject !== null) {
+                    yield $decodedObject;
+                    $buffer = ''; // Réinitialisation du buffer
+                    $insideObject = false; // On attend le prochain objet JSON
+                }
             }
         }
 
