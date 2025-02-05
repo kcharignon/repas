@@ -1,0 +1,20 @@
+[
+    {
+        "slug": "plat",
+        "name": "plat",
+        "image": "images\/recipe\/type\/meal.svg",
+        "sequence": 2
+    },
+    {
+        "slug": "dessert",
+        "name": "dessert",
+        "image": "images\/recipe\/type\/dessert.svg",
+        "sequence": 3
+    },
+    {
+        "slug": "entree",
+        "name": "entrée",
+        "image": "images\/recipe\/type\/starter.svg",
+        "sequence": 1
+    }
+]

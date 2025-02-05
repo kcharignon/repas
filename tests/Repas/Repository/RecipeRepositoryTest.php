@@ -62,7 +62,7 @@ class RecipeRepositoryTest extends DatabaseTestCase
         $recipes = $this->recipeRepository->findByAuthor($author);
 
         // Assert
-        $this->assertCount(71, $recipes);
+        $this->assertCount(72, $recipes);
         RepasAssert::assertTabType(Tab::newEmptyTyped(Recipe::class), $recipes);
     }
 }

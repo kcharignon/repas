@@ -82,7 +82,7 @@ class IngredientBuilder implements Builder
         $this->image = '';
         $this->departmentBuilder = new DepartmentBuilder()->isMiscellaneous();
         $this->defaultCookingUnitBuilder = new UnitBuilder()->isCentilitre();
-        $this->defaultPurchaseUnitBuilder = new UnitBuilder()->isGramme();
+        $this->defaultPurchaseUnitBuilder = new UnitBuilder()->isCentilitre();
         return $this;
     }
 

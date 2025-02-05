@@ -3,52 +3,43 @@
 namespace Repas\Repas\Infrastructure\DataFixture;
 
 
-use Doctrine\Bundle\FixturesBundle\Fixture;
 use Doctrine\Bundle\FixturesBundle\FixtureGroupInterface;
 use Doctrine\Persistence\ObjectManager;
-use Repas\Repas\Domain\Model\RecipeType;
+use Exception;
 use Repas\Repas\Infrastructure\Entity\RecipeType as RecipeTypeEntity;
 
-class RecipeTypeFixture extends Fixture implements FixtureGroupInterface
+class RecipeTypeFixture extends RepasFixture implements FixtureGroupInterface
 {
-    private const array RECIPE_TYPES = [
-        [
-            "name" => "plat",
-            "image" => "images/recipe/type/meal.svg",
-            "order" => 2,
-        ],
-        [
-            "name" => "dessert",
-            "image" => "images/recipe/type/dessert.svg",
-            "order" => 3,
-        ],
-        [
-            "name" => "entrée",
-            "image" => "images/recipe/type/starter.svg",
-            "order" => 1,
-        ],
-    ];
+    const string FILE_NAME = "recipe_type.json";
 
     public static function getGroups(): array
     {
         return ['prod', 'test', 'dev'];
     }
 
+    /**
+     * @throws Exception
+     */
     public function load(ObjectManager $manager): void
     {
-        foreach (self::RECIPE_TYPES as $recipeTypeData) {
-            $recipeTypeModel = RecipeType::create(
-                $recipeTypeData['name'],
-                $recipeTypeData['image'],
-                $recipeTypeData['order'],
-            );
+        $filePath = $this->getFilePath(self::FILE_NAME);
+        try {
+            foreach ($this->readFileObjectByObject($filePath) as $recipeTypeData) {
+                $recipeTypeEntity = new RecipeTypeEntity(
+                    slug: $recipeTypeData['slug'],
+                    name: $recipeTypeData['name'],
+                    image: $recipeTypeData['image'],
+                    sequence: $recipeTypeData['sequence'],
+                );
+                $manager->persist($recipeTypeEntity);
 
-            $recipeTypeEntity = RecipeTypeEntity::fromModel($recipeTypeModel);
-            $manager->persist($recipeTypeEntity);
+                $this->addReference($recipeTypeEntity->getSlug(), $recipeTypeEntity);
+            }
 
-            $this->addReference($recipeTypeEntity->getSlug(), $recipeTypeEntity);
+            $manager->flush();
+        } catch (Exception $e) {
+            dump(sprintf("Failed to create RecipeType: %s", $recipeTypeData["slug"] ?? 'Unknown'));
+            throw $e;
         }
-
-        $manager->flush();
     }
 }
