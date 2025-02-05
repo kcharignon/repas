@@ -43,6 +43,7 @@ class IngredientFixture extends RepasFixture implements DependentFixtureInterfac
                     department: $ingredientData['department'],
                     defaultCookingUnit: $ingredientData['default_cooking_unit'],
                     defaultPurchaseUnit: $ingredientData['default_purchase_unit'],
+                    creatorId: $ingredientData['creator'] ?? null,
                 );
                 $manager->persist($ingredientEntity);
 

@@ -28,6 +28,9 @@ class Ingredient
     #[ORM\Column(name: 'default_purchase_unit', nullable: false)]
     private ?string $defaultPurchaseUnitSlug = null;
 
+    #[ORM\Column(name: 'creator', nullable: true)]
+    private ?string $creatorId = null;
+
     public function __construct(
         ?string $slug,
         ?string $name,
@@ -35,6 +38,7 @@ class Ingredient
         ?string $department,
         ?string $defaultCookingUnit,
         ?string $defaultPurchaseUnit,
+        ?string $creatorId,
     ) {
         $this->slug = $slug;
         $this->name = $name;
@@ -42,6 +46,7 @@ class Ingredient
         $this->departmentSlug = $department;
         $this->defaultCookingUnitSlug = $defaultCookingUnit;
         $this->defaultPurchaseUnitSlug = $defaultPurchaseUnit;
+        $this->creatorId = $creatorId;
     }
 
 
@@ -106,6 +111,17 @@ class Ingredient
         return $this;
     }
 
+    public function getCreatorId(): ?string
+    {
+        return $this->creatorId;
+    }
+
+    public function setCreatorId(?string $creatorId): Ingredient
+    {
+        $this->creatorId = $creatorId;
+        return $this;
+    }
+
     public static function fromModel(IngredientModel $ingredient): static
     {
         return new static(
@@ -115,6 +131,7 @@ class Ingredient
             $ingredient->getDepartment()->getSlug(),
             $ingredient->getDefaultCookingUnit()->getSlug(),
             $ingredient->getDefaultPurchaseUnit()->getSlug(),
+            $ingredient->getCreator()?->getId()
         );
     }
 }

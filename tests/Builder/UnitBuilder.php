@@ -51,7 +51,7 @@ class UnitBuilder implements Builder
 
     public function isPiece(): UnitBuilder
     {
-        $this->name = 'piece';
+        $this->name = 'pièce';
         $this->slug = 'piece';
         $this->symbol = '';
         return $this;

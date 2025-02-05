@@ -17,6 +17,9 @@ use Repas\Repas\Infrastructure\Entity\Ingredient as IngredientEntity;
 use Repas\Repas\Infrastructure\Entity\RecipeRow;
 use Repas\Shared\Domain\Tool\Tab;
 use Repas\Shared\Infrastructure\Repository\ModelCache;
+use Repas\User\Domain\Exception\UserException;
+use Repas\User\Domain\Interface\UserRepository;
+use Repas\User\Domain\Model\User;
 
 readonly class IngredientPostgreSQLRepository extends PostgreSQLRepository implements IngredientRepository
 {
@@ -25,6 +28,7 @@ readonly class IngredientPostgreSQLRepository extends PostgreSQLRepository imple
         private ModelCache $modelCache,
         private UnitRepository $unitRepository,
         private DepartmentRepository $departmentRepository,
+        private UserRepository $userRepository,
     ) {
         parent::__construct($managerRegistry, IngredientEntity::class);
     }
@@ -91,7 +95,9 @@ readonly class IngredientPostgreSQLRepository extends PostgreSQLRepository imple
     }
 
     /**
-     * @throws IngredientException
+     * @throws UnitException
+     * @throws UserException
+     * @throws DepartmentException
      */
     private function convertEntityToModel(IngredientEntity $ingredientEntity): IngredientModel
     {
@@ -102,9 +108,13 @@ readonly class IngredientPostgreSQLRepository extends PostgreSQLRepository imple
             "department" => $this->departmentRepository->findOneBySlug($ingredientEntity->getDepartmentSlug()),
             "default_cooking_unit" => $this->unitRepository->findOneBySlug($ingredientEntity->getDefaultCookingUnitSlug()),
             "default_purchase_unit" => $this->unitRepository->findOneBySlug($ingredientEntity->getDefaultPurchaseUnitSlug()),
+            "creator" => $this->findOneCreatorById($ingredientEntity->getCreatorId()),
         ]);
     }
 
+    /**
+     * @throws UserException
+     */
     public function cachedByRecipe(string $recipeId): void
     {
         // Si la recette est deja en cache
@@ -178,10 +188,22 @@ readonly class IngredientPostgreSQLRepository extends PostgreSQLRepository imple
                 "department" => $department,
                 "default_cooking_unit" => $defaultCookingUnit,
                 "default_purchase_unit" => $defaultPurchaseUnit,
+                "creator" => $this->findOneCreatorById($ingredientEntity->getCreatorId()),
             ]);
 
             // Stocker en cache
             $this->modelCache->setModelCache($model);
         }
+    }
+
+    /**
+     * @throws UserException
+     */
+    private function findOneCreatorById(?string $id): ?User
+    {
+        if ($id === null) {
+            return null;
+        }
+        return $this->userRepository->findOneById($id);
     }
 }

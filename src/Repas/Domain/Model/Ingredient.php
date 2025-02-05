@@ -6,6 +6,7 @@ namespace Repas\Repas\Domain\Model;
 use Repas\Shared\Domain\Model\ModelInterface;
 use Repas\Shared\Domain\Model\ModelTrait;
 use Repas\Shared\Domain\Tool\StringTool;
+use Repas\User\Domain\Model\User;
 
 final class Ingredient implements ModelInterface
 {
@@ -18,6 +19,7 @@ final class Ingredient implements ModelInterface
         private Department $department,
         private Unit       $defaultCookingUnit,
         private Unit       $defaultPurchaseUnit,
+        private ?User      $creator,
     ) {
     }
 
@@ -86,12 +88,24 @@ final class Ingredient implements ModelInterface
         return $this;
     }
 
+    public function getCreator(): ?User
+    {
+        return $this->creator;
+    }
+
+    public function setCreator(?User $creator): Ingredient
+    {
+        $this->creator = $creator;
+        return $this;
+    }
+
     public static function create(
         string $name,
         string $image,
         Department $department,
         Unit $defaultCookingUnit,
         Unit $defaultPurchaseUnit,
+        User $creator,
     ): self {
         $slug = StringTool::slugify($name);
         return new self(
@@ -100,7 +114,8 @@ final class Ingredient implements ModelInterface
             $image,
             $department,
             $defaultCookingUnit,
-            $defaultPurchaseUnit
+            $defaultPurchaseUnit,
+            $creator,
         );
     }
 
@@ -113,6 +128,7 @@ final class Ingredient implements ModelInterface
             department: $datas['department'],
             defaultCookingUnit: $datas['default_cooking_unit'],
             defaultPurchaseUnit: $datas['default_purchase_unit'],
+            creator: $datas['creator'],
         );
     }
 }

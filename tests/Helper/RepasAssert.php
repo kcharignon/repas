@@ -43,6 +43,11 @@ class RepasAssert
         Assert::assertEquals($expected->getSlug(), $actual->getSlug());
         Assert::assertEquals($expected->getName(), $actual->getName());
         Assert::assertEquals($expected->getImage(), $actual->getImage());
+        if ($expected->getCreator() === null) {
+            Assert::assertNull($actual->getCreator());
+        } else {
+            self::assertUser($expected->getCreator(), $actual->getCreator());
+        }
         self::assertUnit($expected->getDefaultCookingUnit(), $actual->getDefaultCookingUnit(), sprintf("Ingredient %s, have wrong default cooking unit", $expected->getSlug()));
         self::assertUnit($expected->getDefaultPurchaseUnit(), $actual->getDefaultPurchaseUnit(), sprintf("Ingredient %s, have wrong default purchase unit", $expected->getSlug()));
     }

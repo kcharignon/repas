@@ -15,6 +15,7 @@ class IngredientBuilder implements Builder
     private DepartmentBuilder $departmentBuilder;
     private UnitBuilder $defaultCookingUnitBuilder;
     private UnitBuilder $defaultPurchaseUnitBuilder;
+    private ?UserBuilder $userBuilder;
 
     private function initialize(): void
     {
@@ -24,6 +25,7 @@ class IngredientBuilder implements Builder
         $this->departmentBuilder ??= new DepartmentBuilder()->isConserve();
         $this->defaultCookingUnitBuilder ??= new UnitBuilder()->isPiece();
         $this->defaultPurchaseUnitBuilder ??= new UnitBuilder()->isPiece();
+        $this->userBuilder ??= null;
     }
 
     public function setName(string $name): self
@@ -44,6 +46,7 @@ class IngredientBuilder implements Builder
             'department' => $this->departmentBuilder->build(),
             'default_cooking_unit' => $this->defaultCookingUnitBuilder->build(),
             'default_purchase_unit' => $this->defaultPurchaseUnitBuilder->build(),
+            'creator' => $this->userBuilder?->build(),
         ]);
     }
 
