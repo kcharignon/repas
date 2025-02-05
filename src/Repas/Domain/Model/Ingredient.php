@@ -131,4 +131,18 @@ final class Ingredient implements ModelInterface
             creator: $datas['creator'],
         );
     }
+
+    public function update(
+        string $name,
+        string $image,
+        Department $department,
+        Unit $defaultCookingUnit,
+        Unit $defaultPurchaseUnit,
+    ): void {
+        $this->name = $name;
+        $this->image = $image;
+        $this->department = $department;
+        $this->defaultCookingUnit = $defaultCookingUnit;
+        $this->defaultPurchaseUnit = $defaultPurchaseUnit;
+    }
 }

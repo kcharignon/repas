@@ -5,7 +5,7 @@ namespace Repas\Repas\Infrastructure\Http\Controller;
 
 use Repas\Repas\Application\CreateIngredient\CreateIngredientCommand;
 use Repas\Repas\Domain\Interface\DepartmentRepository;
-use Repas\Repas\Infrastructure\Http\Form\IngredientType;
+use Repas\Repas\Infrastructure\Http\Form\CreateIngredientType;
 use Repas\Shared\Application\Interface\CommandBusInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -22,14 +22,13 @@ class CreateIngredientViewController extends AbstractController
     #[Route(path: '/ingredient', name: 'view_ingredient_create', methods: ['GET', 'POST'])]
     public function __invoke(Request $request): Response
     {
-        $form = $this->createForm(IngredientType::class);
+        $form = $this->createForm(CreateIngredientType::class);
 
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
             /** @var CreateIngredientCommand $command */
             $command = $form->getData();
-            dump($command);
             $this->commandBus->dispatch($command);
 
             return $this->redirectToRoute('view_department', ['slug' => $command->departmentSlug]);

@@ -22,16 +22,16 @@
     </button>
     {% if current_user.getUser().isEqual(ingredient.creator)
         or (current_user.getUser().isAdmin() and ingredient.creator is null) %}
-        <button
+        <a
             type="button"
             class="btn btn-secondary btn-sm float-end me-1"
-            data-action="btn-ajax"
-            data-method="post"
-{#            data-url="{{ path("view_shopping_list_add_ingredient", {"slug" : ingredient.slug}) }}"#}
+{#            data-action="btn-ajax"#}
+{#            data-method="post"#}
+            href="{{ path("view_ingredient_update", {"slug" : ingredient.slug}) }}"
         >
             <i class="fas fa-pen"></i>
                 <span class="ps-2" style="font-family: 'Source Sans Pro'">Modifier</span>
             </i>
-        </button>
+        </a>
     {% endif %}
 </li>

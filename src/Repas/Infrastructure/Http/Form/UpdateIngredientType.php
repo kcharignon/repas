@@ -4,6 +4,7 @@ namespace Repas\Repas\Infrastructure\Http\Form;
 
 
 use Repas\Repas\Application\CreateIngredient\CreateIngredientCommand;
+use Repas\Repas\Application\UpdateIngredient\UpdateIngredientCommand;
 use Repas\Repas\Domain\Interface\DepartmentRepository;
 use Repas\Repas\Domain\Interface\IngredientRepository;
 use Repas\Repas\Domain\Interface\UnitRepository;
@@ -17,7 +18,7 @@ use Symfony\Component\Form\FormBuilderInterface;
 use Symfony\Component\OptionsResolver\OptionsResolver;
 use Traversable;
 
-class IngredientType extends AbstractType implements DataMapperInterface
+class UpdateIngredientType extends AbstractType implements DataMapperInterface
 {
     private User $creator;
 
@@ -71,22 +72,39 @@ class IngredientType extends AbstractType implements DataMapperInterface
         ]);
     }
 
+    /**
+     * @param mixed $viewData
+     * @param Traversable $forms
+     * @return void
+     */
     public function mapDataToForms(mixed $viewData, Traversable $forms): void
     {
-        // TODO: Implement mapDataToForms() method.
+        if (!$viewData instanceof UpdateIngredientCommand) {
+            return;
+        }
+
+        $forms = iterator_to_array($forms);
+
+        $forms['name']->setData($viewData->name);
+        $forms['department']->setData($viewData->departmentSlug);
+        $forms['defaultCookingUnit']->setData($viewData->defaultCookingUnitSlug);
+        $forms['defaultPurchaseUnit']->setData($viewData->defaultPurchaseUnitSlug);
     }
 
+    /**
+     * @param UpdateIngredientCommand $viewData
+     */
     public function mapFormsToData(Traversable $forms, mixed &$viewData): void
     {
         $forms = iterator_to_array($forms);
 
-        $viewData = new CreateIngredientCommand(
+        $viewData = new UpdateIngredientCommand(
+            slug: $viewData->slug,
             name: $forms['name']->getData(),
             image: '',
             departmentSlug: $forms['department']->getData(),
             defaultCookingUnitSlug: $forms['defaultCookingUnit']->getData(),
             defaultPurchaseUnitSlug: $forms['defaultPurchaseUnit']->getData(),
-            ownerId: $this->creator->isAdmin() ? null : $this->creator->getId(),
         );
     }
 }
