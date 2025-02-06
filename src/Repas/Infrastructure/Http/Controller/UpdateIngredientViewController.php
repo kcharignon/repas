@@ -3,11 +3,9 @@
 namespace Repas\Repas\Infrastructure\Http\Controller;
 
 
-use Repas\Repas\Application\CreateIngredient\CreateIngredientCommand;
 use Repas\Repas\Application\UpdateIngredient\UpdateIngredientCommand;
 use Repas\Repas\Domain\Interface\IngredientRepository;
 use Repas\Repas\Domain\Model\Ingredient;
-use Repas\Repas\Infrastructure\Http\Form\CreateIngredientType;
 use Repas\Repas\Infrastructure\Http\Form\UpdateIngredientType;
 use Repas\Shared\Application\Interface\CommandBusInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
