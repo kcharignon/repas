@@ -8,6 +8,7 @@ use Repas\Repas\Application\UpdateIngredient\UpdateIngredientCommand;
 use Repas\Repas\Domain\Interface\DepartmentRepository;
 use Repas\Repas\Domain\Interface\IngredientRepository;
 use Repas\Repas\Domain\Interface\UnitRepository;
+use Repas\Repas\Domain\Model\Ingredient;
 use Repas\User\Domain\Model\User;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\Form\AbstractType;
@@ -79,16 +80,16 @@ class UpdateIngredientType extends AbstractType implements DataMapperInterface
      */
     public function mapDataToForms(mixed $viewData, Traversable $forms): void
     {
-        if (!$viewData instanceof UpdateIngredientCommand) {
+        if (!$viewData instanceof Ingredient) {
             return;
         }
 
         $forms = iterator_to_array($forms);
 
-        $forms['name']->setData($viewData->name);
-        $forms['department']->setData($viewData->departmentSlug);
-        $forms['defaultCookingUnit']->setData($viewData->defaultCookingUnitSlug);
-        $forms['defaultPurchaseUnit']->setData($viewData->defaultPurchaseUnitSlug);
+        $forms['name']->setData($viewData->getName());
+        $forms['department']->setData($viewData->getDepartment()->getSlug());
+        $forms['defaultCookingUnit']->setData($viewData->getDefaultCookingUnit()->getSlug());
+        $forms['defaultPurchaseUnit']->setData($viewData->getDefaultPurchaseUnit()->getSlug());
     }
 
     /**
@@ -96,10 +97,14 @@ class UpdateIngredientType extends AbstractType implements DataMapperInterface
      */
     public function mapFormsToData(Traversable $forms, mixed &$viewData): void
     {
+        if (!$viewData instanceof Ingredient) {
+            return;
+        }
+
         $forms = iterator_to_array($forms);
 
         $viewData = new UpdateIngredientCommand(
-            slug: $viewData->slug,
+            slug: $viewData->getSlug(),
             name: $forms['name']->getData(),
             image: '',
             departmentSlug: $forms['department']->getData(),
