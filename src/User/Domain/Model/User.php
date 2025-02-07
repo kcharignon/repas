@@ -110,4 +110,14 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, Passwor
     {
         return in_array('ROLE_ADMIN', $this->roles ?? [], true);
     }
+
+    public function update(string $defaultServing): void
+    {
+        $this->defaultServing = $defaultServing;
+    }
+
+    public function passwordMatch(string $password): bool
+    {
+        return password_verify($password, $this->password);
+    }
 }

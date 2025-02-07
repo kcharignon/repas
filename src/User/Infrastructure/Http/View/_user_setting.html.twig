@@ -1,0 +1,36 @@
+{% extends '@Shared/base.html.twig' %}
+
+{% block title %}
+    Inscription
+{% endblock %}
+
+{% block body %}
+    <div class="container my-5">
+        <h1>Inscription</h1>
+
+        {# Affichage du formulaire Symfony #}
+        {{ form_start(form, {'attr': {'id': 'registration-form'}}) }}
+        <div class="mb-3">
+            {{ form_label(form.actualPassword) }}
+            {{ form_widget(form.actualPassword, {'attr': {'class': 'form-control'}}) }}
+            {{ form_errors(form.actualPassword) }}
+        </div>
+        <div class="mb-3">
+            {{ form_label(form.newPassword) }}
+            {{ form_widget(form.newPassword, {'attr': {'class': 'form-control'}}) }}
+            {{ form_errors(form.newPassword) }}
+        </div>
+        <div class="mb-3">
+            {{ form_label(form.newPasswordRepeat) }}
+            {{ form_widget(form.newPasswordRepeat, {'attr': {'class': 'form-control'}}) }}
+            {{ form_errors(form.newPasswordRepeat) }}
+        </div>
+        <div class="mb-3">
+            {{ form_label(form.defaultServing) }}
+            {{ form_widget(form.defaultServing, {'attr': {'class': 'form-control'}}) }}
+            {{ form_errors(form.defaultServing) }}
+        </div>
+        <button type="submit" class="btn btn-primary">Modifier</button>
+        {{ form_end(form) }}
+    </div>
+{% endblock %}
