@@ -4,7 +4,6 @@ namespace Repas\User\Infrastructure\Http\Form;
 
 
 use Repas\User\Application\UpdateUserSettings\UpdateUserSettingsCommand;
-use Repas\User\Domain\Interface\UserRepository;
 use Repas\User\Domain\Model\User;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\DataMapperInterface;
@@ -16,7 +15,7 @@ use Symfony\Component\OptionsResolver\OptionsResolver;
 
 class UserSettingType extends AbstractType implements DataMapperInterface
 {
-    public function buildForm(FormBuilderInterface $builder, array $options)
+    public function buildForm(FormBuilderInterface $builder, array $options): void
     {
 
         $builder
