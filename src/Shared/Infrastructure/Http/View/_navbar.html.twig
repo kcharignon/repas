@@ -1,39 +1,33 @@
-<nav class="navbar navbar-expand-lg navbar-dark bg-dark" style="position: fixed; width: 100%; z-index: 10;">
-  <div class="container-fluid">
-    <a class="navbar-brand" href="#"><img src="{{ absolute_url(asset("images/logo.png")) }}" alt="logo de repas" style="height: 1.5em;"></a>
-    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarColor02" aria-controls="navbarColor02" aria-expanded="false" aria-label="Toggle navigation">
-      <span class="navbar-toggler-icon"></span>
-    </button>
-
-    <div class="collapse navbar-collapse" id="navbarColor02">
-      <ul class="navbar-nav me-auto">
-        <li class="nav-item">
-          <a class="nav-link {{ ((active ?? "") == "recipe") ? "active" : "" }}" href="{{ path("view_recipes") }}">Recettes</a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link {{ ((active ?? "") == "department") ? "active" : "" }}" href="{{ path("view_departments") }}">Rayons</a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link {{ ((active ?? "") == "shoppingList") ? "active" : "" }}" href="{{ path("view_shopping_list") }}">Listes</a>
-        </li>
-      </ul>
-      <ul class="navbar-nav">
-        {% if app.user %}
-        <li class="nav-item dropdown">
-            <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                <i class="fas fa-user-circle"></i>
-            </a>
-            <ul class="dropdown-menu dropdown-menu-end">
-                <li><a class="dropdown-item" href="{{ path("view_user_settings", {id: current_user.getUser().id}) }}">Parametres</a></li>
-                <li><hr class="dropdown-divider"></li>
-                <li><a class="dropdown-item" href="/logout">Déconnexion</a></li>
+<nav class="navbar navbar-expand navbar-dark bg-dark" style="position: fixed; width: 100%; z-index: 10;">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="#"><img src="{{ absolute_url(asset("images/logo.png")) }}" alt="logo de repas" style="height: 1.5em;"></a>
+        {# Bouton toggler supprimé car inutile si le menu est toujours affiché #}
+        <div class="navbar-collapse">
+            <ul class="navbar-nav me-auto">
+                <li class="nav-item">
+                    <a class="nav-link {{ ((active ?? '') == 'recipe') ? 'active' : '' }}" href="{{ path('view_recipes') }}">Recettes</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {{ ((active ?? '') == 'department') ? 'active' : '' }}" href="{{ path('view_departments') }}">Rayons</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {{ ((active ?? '') == 'shoppingList') ? 'active' : '' }}" href="{{ path('view_shopping_list') }}">Listes</a>
+                </li>
             </ul>
-        </li>
-        {% else %}
-        <li class="nav-item"><a href="{{ path("view_registration") }}" class="nav-link">Inscription</a></li>
-        <li class="nav-item"><a href="{{ path("view_login_email") }}" class="btn btn-success">Login</a></li>
-        {% endif %}
-      </ul>
+            <ul class="navbar-nav">
+                {% if app.user %}
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fas fa-user-circle"></i>
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" href="{{ path('view_user_settings', {id: current_user.getUser().id}) }}">Parametres</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="/logout">Déconnexion</a></li>
+                        </ul>
+                    </li>
+                {% endif %}
+            </ul>
+        </div>
     </div>
-  </div>
 </nav>

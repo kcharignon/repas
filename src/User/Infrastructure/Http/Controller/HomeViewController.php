@@ -7,6 +7,7 @@ use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
+use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 class HomeViewController extends AbstractController
 {
@@ -16,6 +17,7 @@ class HomeViewController extends AbstractController
     }
 
     #[Route("/", name: "view_home", methods: ["GET"])]
+    #[IsGranted("ROLE_USER")]
     public function __invoke(): Response
     {
         $this->logger->info("HomeController invoked");
