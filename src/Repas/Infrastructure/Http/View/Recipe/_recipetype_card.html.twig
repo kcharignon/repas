@@ -1,5 +1,8 @@
-<div class="col">
-    <div class="card bg-light mb-3" style="max-width: 20rem;">
+{% block css %}
+    <link rel="stylesheet" href="{{ css_dir ~ "recipe.css" }}">
+{% endblock %}
+<div class="col-12 col-md-4">
+    <div class="card bg-light mx-auto mb-3 recipe-card" >
         <a style="text-decoration: none; color: inherit" href="{{ path("view_one_recipe_type", {"slug": recipeType.slug, "activeSection":active}) }}">
             <div class="card-header">
                 {{ recipeType.name|capitalize }}

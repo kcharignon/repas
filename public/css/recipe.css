@@ -1,0 +1,9 @@
+.recipe-card {
+    max-width: 20rem;
+}
+
+@media (max-width: 576px) {
+    .recipe-card {
+        max-width: 15rem; /* Ajustez la valeur pour obtenir la taille souhaitée sur mobile */
+    }
+}
