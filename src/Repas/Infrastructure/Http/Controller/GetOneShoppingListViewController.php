@@ -18,6 +18,7 @@ class GetOneShoppingListViewController extends AbstractController
 
     #[Route('/shopping-list/{id}', name: 'view_one_shopping_list', methods: ['GET'])]
     #[IsGranted('ROLE_USER')]
+    #[IsGranted('SHOPPING_LIST_OWNER', 'id')]
     public function __invoke(string $id): Response
     {
         $shoppingList = $this->shoppingListRepository->findOneById($id);

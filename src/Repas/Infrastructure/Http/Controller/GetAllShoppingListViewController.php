@@ -18,16 +18,16 @@ class GetAllShoppingListViewController extends AbstractController
     }
 
 
-    #[Route('/shopping-lists', name: 'view_shopping_list', methods: ['GET'])]
+    #[Route('/shopping-list/active', name: 'view_shopping_list', methods: ['GET'])]
     #[IsGranted('ROLE_USER')]
     public function __invoke(): Response
     {
         $currentUser = $this->getUser();
         assert($currentUser instanceof User);
-        $shoppingLists = $this->shoppingListRepository->findByOwner($currentUser);
+        $shoppingList = $this->shoppingListRepository->findOneActivateByOwner($currentUser);
 
-        return $this->render('@Repas/ShoppingList/shopping_lists.html.twig', [
-            'shoppingLists' => $shoppingLists,
+        return $this->render('@Repas/ShoppingList/shopping_list.html.twig', [
+            'shoppingList' => $shoppingList,
         ]);
     }
 }
