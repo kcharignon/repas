@@ -20,14 +20,12 @@ readonly class TickLineOnShoppingListHandler
         $row = $this->shoppingListRowRepository->findOneById($command->shoppingListRowId);
 
         $row->tick();
-
         $this->shoppingListRowRepository->save($row);
 
+        // Si on a coché toute la liste, on la passe au status terminé.
         $shoppingList = $this->shoppingListRepository->findOneById($row->getShoppingListId());
-
         if ($shoppingList->allLineTicked()) {
             $shoppingList->completed();
-
             $this->shoppingListRepository->save($shoppingList);
         }
     }

@@ -152,8 +152,8 @@ final class ShoppingList implements ModelInterface
     public function getDepartments(): Tab
     {
         $res = Tab::newEmptyTyped(Department::class);
-        foreach ($this->ingredients as $shopListIngredient) {
-            $department = $shopListIngredient->getDepartment();
+        foreach ($this->rows as $row) {
+            $department = $row->getDepartment();
             $res[$department->getSlug()] = $department;
         }
         return $res->usort(fn(Department $a, Department $b) => $a->getSlug() <=> $b->getSlug());
@@ -237,9 +237,12 @@ final class ShoppingList implements ModelInterface
     {
         // Cherche si la ligne avec l'ingrédient est déjà present dans la liste
         if (($rowKey = $this->rows->findKey(fn(Row $row) => $row->getIngredient()->isEqual($ingredient))) !== null) {
+            dump("BEFORE:",$this->rows[$rowKey]);
             $this->rows[$rowKey]->subtractQuantity($quantity);
+            dump("AFTER:",$this->rows[$rowKey]);
             // si la quantité passe à zero ou moins, on supprime la row
             if ($this->rows[$rowKey]->getQuantity() <= 0) {
+                dump("DELETE");
                 unset($this->rows[$rowKey]);
             }
         }
@@ -322,6 +325,11 @@ final class ShoppingList implements ModelInterface
     public function completed(): void
     {
         $this->status = Status::COMPLETED;
+    }
+
+    public function activated(): void
+    {
+        $this->status = Status::ACTIVE;
     }
 
     private function foundRowByIngredientAndUnit(Ingredient $ingredient, Unit $unit): ?ShoppingListIngredient

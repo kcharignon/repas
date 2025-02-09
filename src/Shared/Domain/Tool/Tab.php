@@ -371,5 +371,15 @@ class Tab implements ArrayAccess, IteratorAggregate, Countable
     {
         return array_reduce($this->items, $callback, $initial);
     }
+
+    /**
+     * Get an item by its offset.
+     *
+     * @return T|null
+     */
+    public function reset(): mixed
+    {
+        return reset($this->items);
+    }
 }
 

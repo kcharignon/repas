@@ -85,7 +85,7 @@ final class ShoppingListRow implements ModelInterface
 
     public function subtractQuantity(float $quantity): void
     {
-        $this->quantity += $quantity;
+        $this->quantity -= $quantity;
     }
 
     public function tick(): void
@@ -96,5 +96,10 @@ final class ShoppingListRow implements ModelInterface
     public function uncheck(): void
     {
         $this->checked = false;
+    }
+
+    public function getDepartment(): Department
+    {
+        return $this->ingredient->getDepartment();
     }
 }
