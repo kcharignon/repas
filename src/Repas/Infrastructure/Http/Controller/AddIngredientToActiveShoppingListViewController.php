@@ -33,7 +33,7 @@ class AddIngredientToActiveShoppingListViewController extends AbstractController
         assert($connectedUser instanceof User);
 
         // Recuperation de la liste active ou creation d'une nouvelle liste (active)
-        $activeShoppingList = $this->shoppingListRepository->findOnePlanningByOwner($connectedUser);
+        $activeShoppingList = $this->shoppingListRepository->findOneActivateByOwner($connectedUser);
         if (!$activeShoppingList instanceof ShoppingList) {
             // Creation d'une nouvelle liste active
             $activeShoppingListId = UuidGenerator::new();

@@ -30,7 +30,7 @@ readonly class RemoveIngredientToShoppingListHandler
     {
         $owner = $this->userRepository->findOneById($command->ownerId);
 
-        $activeShoppingList = $this->shoppingListRepository->findOnePlanningByOwner($owner);
+        $activeShoppingList = $this->shoppingListRepository->findOneActivateByOwner($owner);
         if (!$activeShoppingList instanceof ShoppingList) {
             throw ShoppingListException::activeShoppingListNotFound();
         }
@@ -38,6 +38,9 @@ readonly class RemoveIngredientToShoppingListHandler
         $ingredient = $this->ingredientRepository->findOneBySlug($command->ingredientSlug);
 
         $activeShoppingList->removeIngredient($ingredient);
+
+        // On ajoute une quantité d'achat
+        $activeShoppingList->subtractRow($ingredient, 1);
 
         $this->shoppingListRepository->save($activeShoppingList);
     }

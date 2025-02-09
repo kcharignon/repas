@@ -127,4 +127,15 @@ final class Recipe implements ModelInterface
         }
         return $res;
     }
+
+    /**
+     * On retourne les lignes d'ingrédient de recettes avec leur
+     * quantité * (nombre de personnes voulu / nombre de personnes dans la recette).
+     *
+     * @return Tab<RecipeRow>
+     */
+    public function getRowForServing(int $serving): Tab
+    {
+        return $this->rows->map(fn(RecipeRow $row) => $row->multiplyQuantityBy($serving/$this->serving));
+    }
 }

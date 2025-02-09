@@ -48,6 +48,12 @@ final class RecipeRow implements ModelInterface
         $this->quantity = $quantity;
     }
 
+    public function multiplyQuantityBy(float $coefficient): self
+    {
+        $this->quantity *= $coefficient;
+        return $this;
+    }
+
     public function getUnit(): Unit
     {
         return $this->unit;

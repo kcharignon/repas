@@ -83,6 +83,11 @@ final class ShoppingListRow implements ModelInterface
         $this->quantity += $quantity;
     }
 
+    public function subtractQuantity(float $quantity): void
+    {
+        $this->quantity += $quantity;
+    }
+
     public function tick(): void
     {
         $this->checked = true;

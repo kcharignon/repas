@@ -80,7 +80,7 @@ final class ShoppingList implements ModelInterface
             id: $id,
             owner: $owner,
             createdAt: $createdAt,
-            status: Status::PLANNING,
+            status: Status::ACTIVE,
             meals: Tab::newEmptyTyped(Meal::class),
             ingredients: Tab::newEmptyTyped(ShoppingListIngredient::class),
             rows: Tab::newEmptyTyped(Row::class),
@@ -189,10 +189,6 @@ final class ShoppingList implements ModelInterface
      */
     public function addMeal(Recipe $recipe): void
     {
-        if (!$this->isPlanning()) {
-            throw ShoppingListException::cannotAddRecipeToShoppingListUnlessPlanning($this->id);
-        }
-
         // Impossible de mettre la même recette deux fois dans une liste
         if ($this->hasRecipe($recipe)) {
             throw ShoppingListException::recipeAlreadyInList($recipe->getName());
@@ -237,6 +233,18 @@ final class ShoppingList implements ModelInterface
         }
     }
 
+    public function subtractRow(Ingredient $ingredient, float $quantity): void
+    {
+        // Cherche si la ligne avec l'ingrédient est déjà present dans la liste
+        if (($rowKey = $this->rows->findKey(fn(Row $row) => $row->getIngredient()->isEqual($ingredient))) !== null) {
+            $this->rows[$rowKey]->subtractQuantity($quantity);
+            // si la quantité passe à zero ou moins, on supprime la row
+            if ($this->rows[$rowKey]->getQuantity() <= 0) {
+                unset($this->rows[$rowKey]);
+            }
+        }
+    }
+
     public function setStatus(?Status $status): void
     {
         $this->status = $status;
@@ -269,9 +277,6 @@ final class ShoppingList implements ModelInterface
         }
 
         $this->status = Status::PLANNING;
-
-        // On reset les lignes
-        $this->rows = Tab::newEmptyTyped(Row::class);
     }
 
     public function addIngredient(Ingredient $ingredient): void

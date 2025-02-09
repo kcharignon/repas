@@ -3,7 +3,6 @@
 namespace Repas\Repas\Application\CreateShoppingList;
 
 use Repas\Repas\Domain\Event\NewShoppingListCreatedEvent;
-use Repas\Repas\Domain\Exception\ShoppingListException;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Repas\Domain\Model\ShoppingList;
 use Repas\Shared\Domain\Clock;
@@ -25,13 +24,12 @@ readonly class CreateShoppingListHandler
 
     /**
      * @throws UserException
-     * @throws ShoppingListException
      */
     public function __invoke(CreateShoppingListCommand $query): void
     {
         $owner = $this->userRepository->findOneById($query->ownerId);
         // Supprime la liste si elle existe
-        $activateShoppingList = $this->shoppingListRepository->findOnePlanningByOwner($owner);
+        $activateShoppingList = $this->shoppingListRepository->findOneActivateByOwner($owner);
         if ($activateShoppingList instanceof ShoppingList) {
             $this->shoppingListRepository->delete($activateShoppingList);
         }

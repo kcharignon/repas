@@ -102,9 +102,9 @@ readonly class ShoppingListPostgreSQLRepository extends PostgreSQLRepository imp
     /**
      * @throws UserException
      */
-    public function findOnePlanningByOwner(User $owner): ?ShoppingList
+    public function findOneActivateByOwner(User $owner): ?ShoppingList
     {
-        if (($shoppingListEntity = $this->entityRepository->findOneBy(['ownerId' => $owner->getId(), 'status' => ShoppingListStatus::PLANNING])) !== null)
+        if (($shoppingListEntity = $this->entityRepository->findOneBy(['ownerId' => $owner->getId(), 'status' => ShoppingListStatus::ACTIVE])) !== null)
         {
             $shoppingListModel = $this->convertEntityToModel($shoppingListEntity);
             $this->modelCache->setModelCache($shoppingListModel);

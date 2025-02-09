@@ -16,7 +16,7 @@
     </ol>
 
     {% if shoppingList is not null %}
-        <div id="shopping-list-card" data-status="{{ shoppingList.status.value|lower }}" class="card bg-light" style="max-width: 100rem;">
+        <div id="shopping-list-card" class="card bg-light" style="max-width: 100rem;">
             <h3 class="card-header">
                 {{ "Liste du " ~ shoppingList.createdAt|format_datetime(locale='fr_FR', pattern="dd MMMM YYYY") }} :
                 <span class="small text-secondary ms-2">
@@ -27,7 +27,6 @@
                         </span>
                     {% endfor %}
                 </span>
-                {% include('@Repas/ShoppingList/_shopping_list_actions.html.twig') %}
             </h3>
             <div class="card-body">
 

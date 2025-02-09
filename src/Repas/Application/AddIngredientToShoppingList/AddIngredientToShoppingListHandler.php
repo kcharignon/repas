@@ -29,13 +29,15 @@ readonly class AddIngredientToShoppingListHandler
     public function __invoke(AddIngredientToShoppingListCommand $command): void
     {
         $owner = $this->userRepository->findOneById($command->ownerId);
-        $shoppingListActive = $this->shoppingListRepository->findOnePlanningByOwner($owner);
+        $shoppingListActive = $this->shoppingListRepository->findOneActivateByOwner($owner);
         if (!$shoppingListActive instanceof ShoppingList) {
             throw ShoppingListException::activeShoppingListNotFound();
         }
 
         $ingredient = $this->ingredientRepository->findOneBySlug($command->ingredientSlug);
         $shoppingListActive->addIngredient($ingredient);
+
+        $shoppingListActive->addRow($ingredient, 1);
 
         $this->shoppingListRepository->save($shoppingListActive);
     }

@@ -1,15 +1,8 @@
 $(document).ready(function(){
 
-  function isPlanning() {
-    return $('#shopping-list-card').data("status") === 'planning';
-  }
-
   function checkShoppingListStatus()
   {
-    if (isPlanning()) {
-      hideButtons();
-      showRecipes();
-    } else if (isMobile()) {
+    if (isMobile()) {
       showButton();
       showIngredients();
     } else {

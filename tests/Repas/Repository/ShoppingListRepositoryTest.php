@@ -117,7 +117,7 @@ class ShoppingListRepositoryTest extends DatabaseTestCase
         $user = $this->userRepository->findOneByEmail('alexiane.sichi@gmail.com');
 
         // Act
-        $shoppingList = $this->shoppingListRepository->findOnePlanningByOwner($user);
+        $shoppingList = $this->shoppingListRepository->findOneActivateByOwner($user);
 
         // Assert
         $this->assertInstanceOf(ShoppingList::class, $shoppingList);
