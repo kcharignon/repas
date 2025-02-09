@@ -4,8 +4,7 @@ $(document).ready(function(){
   $(document).on("click", "[data-action='btn-ajax']", function(event) {
 
     confirmMessage = $(this).data("confirm")
-    console.log(confirmMessage)
-    if (confirmMessage.length > 0 && !confirm(confirmMessage)) {
+    if (typeof confirmMessage !== 'undefined' && !confirm(confirmMessage)) {
       return;
     }
     var loader = $(this).find("i[data-loader]");
