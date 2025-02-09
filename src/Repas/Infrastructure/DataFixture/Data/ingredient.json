@@ -1205,7 +1205,7 @@
     "image": "images\/ingredient\/flour.png",
     "department": "aide-patissier",
     "default_cooking_unit": "gramme",
-    "default_purchase_unit": "gramme"
+    "default_purchase_unit": "kilo"
   },
   {
     "slug": "farine-pain",
