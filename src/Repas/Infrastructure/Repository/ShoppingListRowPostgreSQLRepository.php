@@ -10,10 +10,12 @@ use Repas\Repas\Domain\Exception\UnitException;
 use Repas\Repas\Domain\Interface\IngredientRepository;
 use Repas\Repas\Domain\Interface\ShoppingListRowRepository;
 use Repas\Repas\Domain\Interface\UnitRepository;
+use Repas\Repas\Domain\Model\ShoppingList;
 use Repas\Repas\Domain\Model\ShoppingListRow;
 use Repas\Repas\Domain\Model\ShoppingListRow as ShoppingListRowModel;
 use Repas\Repas\Infrastructure\Entity\ShoppingListRow as ShoppingListRowEntity;
 use Repas\Shared\Domain\Tool\Tab;
+use Repas\Shared\Infrastructure\Repository\ModelCache;
 
 readonly class ShoppingListRowPostgreSQLRepository extends PostgreSQLRepository implements ShoppingListRowRepository
 {
@@ -21,6 +23,7 @@ readonly class ShoppingListRowPostgreSQLRepository extends PostgreSQLRepository 
         ManagerRegistry $managerRegistry,
         private IngredientRepository $ingredientRepository,
         private UnitRepository $unitRepository,
+        private ModelCache $modelCache,
     ) {
         parent::__construct($managerRegistry, ShoppingListRowEntity::class);
     }
@@ -79,6 +82,7 @@ readonly class ShoppingListRowPostgreSQLRepository extends PostgreSQLRepository 
 
     public function save(ShoppingListRowModel $shoppingListRow): void
     {
+        $this->modelCache->removeModelCacheById(ShoppingList::class, $shoppingListRow->getShoppingListId());
         $entity = $this->entityRepository->find($shoppingListRow->getId());
         if ($entity instanceof ShoppingListRowEntity) {
             $entity->updateFromModel($shoppingListRow);

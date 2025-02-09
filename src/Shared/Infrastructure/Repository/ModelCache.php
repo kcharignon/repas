@@ -35,13 +35,22 @@ class ModelCache
     }
 
     /**
-     * Add a model to the cache.
+     * Remove a model to the cache.
      *
      * @param ModelInterface $model The model to cache.
      */
     public function removeModelCache(ModelInterface $model): void
     {
         unset($this->models[$model::class][$model->getId()]);
+    }
+
+
+    /**
+     * Remove a model to the cache.
+     */
+    public function removeModelCacheById(string $className, string $id): void
+    {
+        unset($this->models[$className][$id]);
     }
 
     /**

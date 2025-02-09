@@ -309,6 +309,16 @@ final class ShoppingList implements ModelInterface
         }
     }
 
+    public function allLineTicked(): bool
+    {
+        return $this->rows->find(fn(ShoppingListRow $row) => !$row->isChecked()) === null;
+    }
+
+    public function completed(): void
+    {
+        $this->status = Status::COMPLETED;
+    }
+
     private function foundRowByIngredientAndUnit(Ingredient $ingredient, Unit $unit): ?ShoppingListIngredient
     {
         return $this->ingredients->find(fn(ShoppingListIngredient $row) => $row->hasIngredientInUnit($ingredient, $unit));
