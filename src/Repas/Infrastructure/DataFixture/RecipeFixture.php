@@ -2550,7 +2550,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
             "name" => "guacamole",
             "owner" => "alexiane.sichi@gmail.com",
             "type" => "entree",
-            "people" => 4,
+            "people" => 2,
             "ingredients" => [
                 [
                     "slug" => "avocat",
