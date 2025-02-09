@@ -2,12 +2,14 @@
 
 namespace Repas\Repas\Application\CreateShoppingList;
 
+use Repas\Repas\Domain\Event\NewShoppingListCreatedEvent;
 use Repas\Repas\Domain\Exception\ShoppingListException;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Repas\Domain\Model\ShoppingList;
 use Repas\Shared\Domain\Clock;
 use Repas\User\Domain\Exception\UserException;
 use Repas\User\Domain\Interface\UserRepository;
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 #[AsMessageHandler]
@@ -16,6 +18,7 @@ readonly class CreateShoppingListHandler
     public function __construct(
         private UserRepository $userRepository,
         private ShoppingListRepository $shoppingListRepository,
+        private EventDispatcherInterface $eventDispatcher,
         private Clock $clock,
     ) {
     }
@@ -27,11 +30,10 @@ readonly class CreateShoppingListHandler
     public function __invoke(CreateShoppingListCommand $query): void
     {
         $owner = $this->userRepository->findOneById($query->ownerId);
-        // Passe la liste en SHOPPING si elle existe
+        // Supprime la liste si elle existe
         $activateShoppingList = $this->shoppingListRepository->findOnePlanningByOwner($owner);
         if ($activateShoppingList instanceof ShoppingList) {
-            $activateShoppingList->toShopping();
-            $this->shoppingListRepository->save($activateShoppingList);
+            $this->shoppingListRepository->delete($activateShoppingList);
         }
 
         // Création d'une nouvelle liste (active)
@@ -42,5 +44,8 @@ readonly class CreateShoppingListHandler
         );
 
         $this->shoppingListRepository->save($shoppingList);
+
+        // Cet event est écouté par un eventListener qui supprime les listes terminées
+        $this->eventDispatcher->dispatch(new NewShoppingListCreatedEvent($shoppingList->getId()));
     }
 }

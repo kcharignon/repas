@@ -136,6 +136,15 @@ readonly class ShoppingListPostgreSQLRepository extends PostgreSQLRepository imp
             ->execute();
     }
 
+    /**
+     * @return Tab<ShoppingList>
+     */
+    public function findByOwnerAndStatus(User $owner, ShoppingListStatus $status): Tab
+    {
+        return new Tab($this->entityRepository->findBy(['ownerId' => $owner->getId(), 'status' => $status]), ShoppingListEntity::class)
+            ->map(fn(ShoppingListEntity $entity) => $this->convertEntityToModel($entity));
+    }
+
 
     /**
      * @throws UserException

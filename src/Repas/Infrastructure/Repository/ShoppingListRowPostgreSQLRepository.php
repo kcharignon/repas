@@ -13,9 +13,11 @@ use Repas\Repas\Domain\Interface\UnitRepository;
 use Repas\Repas\Domain\Model\ShoppingList;
 use Repas\Repas\Domain\Model\ShoppingListRow;
 use Repas\Repas\Domain\Model\ShoppingListRow as ShoppingListRowModel;
+use Repas\Repas\Domain\Model\ShoppingListStatus;
 use Repas\Repas\Infrastructure\Entity\ShoppingListRow as ShoppingListRowEntity;
 use Repas\Shared\Domain\Tool\Tab;
 use Repas\Shared\Infrastructure\Repository\ModelCache;
+use Repas\User\Domain\Model\User;
 
 readonly class ShoppingListRowPostgreSQLRepository extends PostgreSQLRepository implements ShoppingListRowRepository
 {
