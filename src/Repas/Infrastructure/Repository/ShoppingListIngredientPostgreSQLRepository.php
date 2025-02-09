@@ -79,4 +79,9 @@ readonly class ShoppingListIngredientPostgreSQLRepository extends PostgreSQLRepo
         $qb->getQuery()
             ->execute();
     }
+
+    public function deleteByShoppingListId(string $shoppingListId): void
+    {
+        $this->deleteByShoppingListIdExceptIds($shoppingListId, new Tab([]));
+    }
 }

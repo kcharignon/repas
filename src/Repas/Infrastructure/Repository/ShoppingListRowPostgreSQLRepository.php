@@ -71,6 +71,12 @@ readonly class ShoppingListRowPostgreSQLRepository extends PostgreSQLRepository 
             ->execute();
     }
 
+    public function deleteByShoppingListId(string $shoppingListId): void
+    {
+        $this->deleteByShoppingListIdExceptIds($shoppingListId, new Tab([]));
+    }
+
+
     public function save(ShoppingListRowModel $shoppingListRow): void
     {
         $entity = $this->entityRepository->find($shoppingListRow->getId());

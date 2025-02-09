@@ -81,4 +81,9 @@ readonly class MealPostgreSQLRepository extends PostgreSQLRepository
         $qb->getQuery()
             ->execute();
     }
+
+    public function deleteByShoppingListId(string $shoppingListId): void
+    {
+        $this->deleteByShoppingListIdExceptIds($shoppingListId, new Tab([]));
+    }
 }

@@ -12,7 +12,6 @@ use Repas\Repas\Domain\Model\ShoppingListIngredient as ShoppingListIngredientMod
 use Repas\Repas\Domain\Model\ShoppingListRow as ShoppingListRowModel;
 use Repas\Repas\Domain\Model\ShoppingListStatus;
 use Repas\Repas\Infrastructure\Entity\ShoppingList as ShoppingListEntity;
-use Repas\Repas\Infrastructure\Entity\ShoppingListRow;
 use Repas\Shared\Domain\Tool\Tab;
 use Repas\Shared\Infrastructure\Repository\ModelCache;
 use Repas\User\Domain\Exception\UserException;
@@ -115,10 +114,33 @@ readonly class ShoppingListPostgreSQLRepository extends PostgreSQLRepository imp
         return null;
     }
 
+    public function delete(ShoppingList $shoppingList): void
+    {
+        $this->modelCache->removeModelCache($shoppingList);
+
+        // Suppression des lignes
+        $this->shopListRowRepository->deleteByShoppingListId($shoppingList->getId());
+
+        // Suppression des ingredients
+        $this->shopListIngredientRepository->deleteByShoppingListId($shoppingList->getId());
+
+        // Suppression des repas
+        $this->mealRepository->deleteByShoppingListId($shoppingList->getId());
+
+        // Suppression de la liste
+        $this->entityRepository->createQueryBuilder('sl')
+            ->delete(ShoppingListEntity::class, 'sl')
+            ->where('sl.id = :shoppingListId')
+            ->setParameter('shoppingListId', $shoppingList->getId())
+            ->getQuery()
+            ->execute();
+    }
+
+
     /**
      * @throws UserException
      */
-    public function convertEntityToModel(ShoppingListEntity $shoppingListEntity): ShoppingList
+    private function convertEntityToModel(ShoppingListEntity $shoppingListEntity): ShoppingList
     {
         return ShoppingList::load([
             'id' => $shoppingListEntity->getId(),

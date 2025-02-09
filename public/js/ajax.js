@@ -2,6 +2,12 @@ $(document).ready(function(){
   console.log("File ajax.js loaded");
 
   $(document).on("click", "[data-action='btn-ajax']", function(event) {
+
+    confirmMessage = $(this).data("confirm")
+    console.log(confirmMessage)
+    if (confirmMessage.length > 0 && !confirm(confirmMessage)) {
+      return;
+    }
     var loader = $(this).find("i[data-loader]");
     console.log(loader);
     // On affiche le loader
@@ -15,7 +21,7 @@ $(document).ready(function(){
       default:
         break;
     }
-    console.log("Route call : " + $(this).data("url"));
+    console.log("Route call : ("+ $(this).data("method") +")" + $(this).data("url"));
     // On appele la route
     $.ajax({
       url: $(this).data("url"),
@@ -38,7 +44,7 @@ $(document).ready(function(){
   });
 
   function showAlerts(data) {
-    if ("alerts" in data) {
+    if (typeof data !== 'undefined' && "alerts" in data) {
       for (const alert of data["alerts"]) {
         showAlert(alert["status"], alert["message"]);
       }
@@ -63,7 +69,7 @@ $(document).ready(function(){
 
   function showViews(data, item) {
     console.log("showViews", data, item);
-    if ("views" in data) {
+    if (typeof data !== 'undefined' && "views" in data) {
       for (const view of data["views"]) {
         showView(view["selector"], view["html"], item);
       }
@@ -80,6 +86,10 @@ $(document).ready(function(){
     }
 
     console.log("✅ Élément trouvé, remplacement en cours...");
-    target.replaceWith(html);
+    if (html.length === 0) {
+      target.fadeOut(300, function() { $(this).remove(); });
+    } else {
+      target.replaceWith(html);
+    }
   }
 });

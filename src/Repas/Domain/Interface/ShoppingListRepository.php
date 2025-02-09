@@ -19,4 +19,6 @@ interface ShoppingListRepository
     public function findOnePlanningByOwner(User $owner): ?ShoppingList;
 
     public function save(ShoppingList $shoppingList): void;
+
+    public function delete(ShoppingList $shoppingList): void;
 }
