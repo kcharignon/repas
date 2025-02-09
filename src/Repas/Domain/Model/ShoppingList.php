@@ -337,15 +337,8 @@ final class ShoppingList implements ModelInterface
         return $this->ingredients->find(fn(ShoppingListIngredient $row) => $row->hasIngredientInUnit($ingredient, $unit));
     }
 
-    /**
-     * @throws ShoppingListException
-     */
     public function removeMeal(Recipe $recipe): void
     {
-        if (!$this->isPlanning()) {
-            throw ShoppingListException::cannotRemoveRecipeToShoppingListUnlessPlanning($this->id);
-        }
-
         $mealKey = $this->meals->findKey(fn(Meal $meal) => $meal->hasRecipe($recipe));
 
         if ($mealKey === null) {

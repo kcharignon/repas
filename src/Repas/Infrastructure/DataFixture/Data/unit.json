@@ -1,124 +1,124 @@
 [
-    {
-        "slug": "piece",
-        "name": "pièce",
-        "symbol": ""
-    },
-    {
-        "slug": "kilo",
-        "name": "kilo",
-        "symbol": "kg"
-    },
-    {
-        "slug": "gramme",
-        "name": "gramme",
-        "symbol": "g"
-    },
-    {
-        "slug": "litre",
-        "name": "litre",
-        "symbol": "l"
-    },
-    {
-        "slug": "millilitre",
-        "name": "millilitre",
-        "symbol": "ml"
-    },
-    {
-        "slug": "centilitre",
-        "name": "centilitre",
-        "symbol": "cl"
-    },
-    {
-        "slug": "cuillere-a-soupe",
-        "name": "cuillère à soupe",
-        "symbol": "cuillère à soupe"
-    },
-    {
-        "slug": "cuillere-a-cafe",
-        "name": "cuillère à café",
-        "symbol": "cuillère à café"
-    },
-    {
-        "slug": "tasse-a-cafe",
-        "name": "tasse à café",
-        "symbol": "tasse à café"
-    },
-    {
-        "slug": "verre",
-        "name": "verre",
-        "symbol": "verre"
-    },
-    {
-        "slug": "bol",
-        "name": "bol",
-        "symbol": "bol"
-    },
-    {
-        "slug": "plaquette",
-        "name": "plaquette",
-        "symbol": "plaquette"
-    },
-    {
-        "slug": "tablette",
-        "name": "tablette",
-        "symbol": "tablette"
-    },
-    {
-        "slug": "tranche",
-        "name": "tranche",
-        "symbol": "tranche"
-    },
-    {
-        "slug": "paquet",
-        "name": "paquet",
-        "symbol": "paquet"
-    },
-    {
-        "slug": "boite",
-        "name": "boîte",
-        "symbol": "boîte"
-    },
-    {
-        "slug": "sachet",
-        "name": "sachet",
-        "symbol": "sachet"
-    },
-    {
-        "slug": "bouteille",
-        "name": "bouteille",
-        "symbol": "bouteille"
-    },
-    {
-        "slug": "conserve",
-        "name": "conserve",
-        "symbol": "conserve"
-    },
-    {
-        "slug": "cube",
-        "name": "cube",
-        "symbol": "cube"
-    },
-    {
-        "slug": "buche",
-        "name": "bûche",
-        "symbol": "buche"
-    },
-    {
-        "slug": "brique",
-        "name": "brique",
-        "symbol": "brique"
-    },
-    {
-        "slug": "pot",
-        "name": "pot",
-        "symbol": "pot"
-    },
-    {
-        "slug": "gousse",
-        "name": "gousse",
-        "symbol": "gousse"
-    },
+  {
+    "slug": "piece",
+    "name": "pièce",
+    "symbol": ""
+  },
+  {
+    "slug": "kilo",
+    "name": "kilo",
+    "symbol": "kg"
+  },
+  {
+    "slug": "gramme",
+    "name": "gramme",
+    "symbol": "g"
+  },
+  {
+    "slug": "litre",
+    "name": "litre",
+    "symbol": "l"
+  },
+  {
+    "slug": "millilitre",
+    "name": "millilitre",
+    "symbol": "ml"
+  },
+  {
+    "slug": "centilitre",
+    "name": "centilitre",
+    "symbol": "cl"
+  },
+  {
+    "slug": "cuillere-a-soupe",
+    "name": "cuillère à soupe",
+    "symbol": "cuillère à soupe"
+  },
+  {
+    "slug": "cuillere-a-cafe",
+    "name": "cuillère à café",
+    "symbol": "cuillère à café"
+  },
+  {
+    "slug": "tasse-a-cafe",
+    "name": "tasse à café",
+    "symbol": "tasse à café"
+  },
+  {
+    "slug": "verre",
+    "name": "verre",
+    "symbol": "verre"
+  },
+  {
+    "slug": "bol",
+    "name": "bol",
+    "symbol": "bol"
+  },
+  {
+    "slug": "plaquette",
+    "name": "plaquette",
+    "symbol": "plaquette"
+  },
+  {
+    "slug": "tablette",
+    "name": "tablette",
+    "symbol": "tablette"
+  },
+  {
+    "slug": "tranche",
+    "name": "tranche",
+    "symbol": "tranche"
+  },
+  {
+    "slug": "paquet",
+    "name": "paquet",
+    "symbol": "paquet"
+  },
+  {
+    "slug": "boite",
+    "name": "boîte",
+    "symbol": "boîte"
+  },
+  {
+    "slug": "sachet",
+    "name": "sachet",
+    "symbol": "sachet"
+  },
+  {
+    "slug": "bouteille",
+    "name": "bouteille",
+    "symbol": "bouteille"
+  },
+  {
+    "slug": "conserve",
+    "name": "conserve",
+    "symbol": "conserve"
+  },
+  {
+    "slug": "cube",
+    "name": "cube",
+    "symbol": "cube"
+  },
+  {
+    "slug": "buche",
+    "name": "bûche",
+    "symbol": "buche"
+  },
+  {
+    "slug": "brique",
+    "name": "brique",
+    "symbol": "brique"
+  },
+  {
+    "slug": "pot",
+    "name": "pot",
+    "symbol": "pot"
+  },
+  {
+    "slug": "gousse",
+    "name": "gousse",
+    "symbol": "gousse"
+  },
   {
     "slug": "flacon",
     "name": "flacon",

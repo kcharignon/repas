@@ -2038,5 +2038,13 @@
     "department": "produit-menager",
     "default_cooking_unit": "flacon",
     "default_purchase_unit": "flacon"
+  },
+  {
+    "slug": "eau-micellaire",
+    "name": "eau micellaire",
+    "image": "",
+    "department": "bebe",
+    "default_cooking_unit": "flacon",
+    "default_purchase_unit": "flacon"
   }
 ]
