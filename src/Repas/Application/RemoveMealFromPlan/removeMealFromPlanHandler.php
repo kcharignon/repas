@@ -7,6 +7,7 @@ use Repas\Repas\Domain\Exception\IngredientException;
 use Repas\Repas\Domain\Exception\ShoppingListException;
 use Repas\Repas\Domain\Interface\RecipeRepository;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
+use Repas\Repas\Domain\Model\Meal;
 use Repas\Repas\Domain\Model\RecipeRow;
 use Repas\Repas\Domain\Model\ShoppingList;
 use Repas\Repas\Domain\Service\ConversionService;
@@ -41,11 +42,11 @@ readonly class removeMealFromPlanHandler
         }
 
         $recipe = $this->recipeRepository->findOneById($command->recipeId);
+        $meal = $activeShoppingList->getMeals()->find(fn(Meal $meal) => $meal->hasRecipe($recipe));
 
-        $activeShoppingList->removeMeal($recipe);
 
         // On récupere les Ingredients de la recette dans les bonnes proportions
-        $rows = $recipe->getRowForServing($owner->getDefaultServing());
+        $rows = $recipe->getRowForServing($meal->getServing());
 
         foreach ($rows as $row) {
             // On calcule la quantité dans l'unité d'achat
@@ -53,6 +54,8 @@ readonly class removeMealFromPlanHandler
             // On enleve cette quantité dans la liste d'achat
             $activeShoppingList->subtractRow($row->getIngredient(), $quantity);
         }
+
+        $activeShoppingList->removeMeal($recipe);
 
         $this->shoppingListRepository->save($activeShoppingList);
     }
