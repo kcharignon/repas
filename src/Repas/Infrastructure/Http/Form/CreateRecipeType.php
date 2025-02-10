@@ -58,4 +58,9 @@ class CreateRecipeType extends AbstractRecipeType
     {
         return CreateRecipeRowType::class;
     }
+
+    protected function getButtonSaveLabel(): string
+    {
+        return 'Créer la recette';
+    }
 }

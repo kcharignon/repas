@@ -73,5 +73,8 @@ class UpdateRecipeType extends AbstractRecipeType
         return UpdateRecipeRowType::class;
     }
 
-
+    protected function getButtonSaveLabel(): string
+    {
+        return 'Modifier la recette';
+    }
 }

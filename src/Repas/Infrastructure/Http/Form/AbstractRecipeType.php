@@ -60,7 +60,7 @@ abstract class AbstractRecipeType extends AbstractType implements DataMapperInte
                 'prototype_name' => '__name__',
             ])
             ->add('save', SubmitType::class, [
-                'label' => 'Créer la recette',
+                'label' => $this->getButtonSaveLabel(),
             ])
             ->setDataMapper($this);
     }
@@ -73,4 +73,6 @@ abstract class AbstractRecipeType extends AbstractType implements DataMapperInte
     }
 
     abstract protected function getRecipeRowTypeClass(): string;
+
+    abstract protected function getButtonSaveLabel(): string;
 }
