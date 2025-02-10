@@ -18,7 +18,7 @@ use Repas\User\Domain\Exception\UserException;
 use Repas\User\Domain\Interface\UserRepository;
 use Repas\User\Domain\Model\User;
 
-readonly class RecipePostgreSQLRepository  extends PostgreSQLRepository implements RecipeRepository
+readonly class RecipePostgreSQLRepository extends PostgreSQLRepository implements RecipeRepository
 {
     public function __construct(
         ManagerRegistry $managerRegistry,
