@@ -19,7 +19,13 @@ $(function () {
     let index = collectionHolder.children().length; // Compte les éléments existants
     let newForm = prototype.replace(/__name__/g, index); // Remplace le placeholder
 
-    let newElement = $('<li></li>').html(newForm); // Crée un nouvel élément <li>
+    let newElement = $('<li class="mb-2">' +
+        '<div class="mb-2">' + $(newForm).find('[name$="[ingredientSlug]"]').parent().html() + '</div>' +
+        '<div class="d-flex gap-2">' +
+          '<div style="flex: 1">' + $(newForm).find('[name$="[quantity]"]').parent().html() + '</div>' +
+          '<div style="flex: 2">' + $(newForm).find('[name$="[unitSlug]"]').parent().html() + '</div>' +
+        '</div>' +
+      '</li>');
     collectionHolder.append(newElement); // Ajoute à la liste
   });
 });

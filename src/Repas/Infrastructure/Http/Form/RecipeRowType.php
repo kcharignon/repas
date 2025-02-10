@@ -41,15 +41,15 @@ class RecipeRowType extends AbstractType implements DataTransformerInterface
 
         $builder
             ->add('ingredientSlug', ChoiceType::class, [
-                'label' => 'Ingrédient',
+                'label' => false,
                 'choices' => $ingredientChoices,
             ])
             ->add('unitSlug', ChoiceType::class, [
-                'label' => 'Unité',
+                'label' => false,
                 'choices' => $unitChoices,
             ])
             ->add('quantity', NumberType::class, [
-                'label' => 'Quantité',
+                'label' => false,
             ])
             ->addModelTransformer($this);
     }

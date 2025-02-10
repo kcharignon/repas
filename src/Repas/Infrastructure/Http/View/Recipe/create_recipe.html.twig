@@ -17,7 +17,22 @@
         <div id="recipe-rows">
             <ul data-prototype="{{ form_widget(form.rows.vars.prototype) | e }}">
                 {% for row in form.rows %}
-                    <li>{{ form_row(row) }}</li>
+                    <li class="mb-2">
+                        <!-- Ingrédient (ligne complète) -->
+                        <div class="mb-2">
+                            {{ form_row(row.ingredientSlug) }}
+                        </div>
+
+                        <!-- Quantité et Unité (toujours côte à côte sur mobile et desktop) -->
+                        <div class="d-flex gap-2">
+                            <div class="flex-grow-1">
+                                {{ form_row(row.quantity) }}
+                            </div>
+                            <div class="flex-grow-2">
+                                {{ form_row(row.unitSlug) }}
+                            </div>
+                        </div>
+                    </li
                 {% endfor %}
             </ul>
         </div>
