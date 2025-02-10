@@ -1269,7 +1269,7 @@
     "image": "",
     "department": "aide-patissier",
     "default_cooking_unit": "gramme",
-    "default_purchase_unit": "gramme"
+    "default_purchase_unit": "sachet"
   },
   {
     "slug": "levure-boulangere",

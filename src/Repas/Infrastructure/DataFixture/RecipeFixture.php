@@ -2469,7 +2469,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
             "name" => "marbré",
             "owner" => "alexiane.sichi@gmail.com",
             "type" => "dessert",
-            "people" => 4,
+            "people" => 6,
             "ingredients" => [
                 [
                     "slug" => "beurre",
@@ -2517,7 +2517,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
             "name" => "tiramisu citron",
             "owner" => "alexiane.sichi@gmail.com",
             "type" => "dessert",
-            "people" => 4,
+            "people" => 6,
             "ingredients" => [
                 [
                     "slug" => "sucre",
@@ -2543,6 +2543,44 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
                     "slug" => "mascarpone",
                     "quantity" => 250,
                     "unit" => "gramme",
+                ],
+            ],
+        ],
+        [
+            "name" => "gâteau basque",
+            "owner" => "alexiane.sichi@gmail.com",
+            "type" => "dessert",
+            "people" => 6,
+            "ingredients" => [
+                [
+                    "slug" => "sucre",
+                    "quantity" => 250,
+                    "unit" => "gramme",
+                ],
+                [
+                    "slug" => "sucre-vanille",
+                    "quantity" => 1,
+                    "unit" => "sachet",
+                ],
+                [
+                    "slug" => "farine",
+                    "quantity" => 250,
+                    "unit" => "gramme",
+                ],
+                [
+                    "slug" => "oeuf",
+                    "quantity" => 2,
+                    "unit" => "unite",
+                ],
+                [
+                    "slug" => "beurre",
+                    "quantity" => 125,
+                    "unit" => "gramme",
+                ],
+                [
+                    "slug" => "levure-patissiere",
+                    "quantity" => 0.5,
+                    "unit" => "sachet",
                 ],
             ],
         ],

@@ -21,7 +21,7 @@ class UserFixture extends Fixture implements FixtureGroupInterface
             "password" => "logan",
             "fullname" => "Alexiane Sichi",
             "recipes" => [],
-            "default_serving" => 4,
+            "default_serving" => 2,
         ],
         [
             "email" => "kantincharignon@gmail.com",
