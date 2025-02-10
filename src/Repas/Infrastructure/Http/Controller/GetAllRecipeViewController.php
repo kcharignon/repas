@@ -14,7 +14,6 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 class GetAllRecipeViewController extends AbstractController
 {
     public function __construct(
-        private readonly RecipeRepository $recipeRepository,
         private readonly RecipeTypeRepository $recipeTypeRepository,
     ) {
     }
@@ -26,12 +25,9 @@ class GetAllRecipeViewController extends AbstractController
         $connectedUser = $this->getUser();
         assert($connectedUser instanceof User);
 
-        $recipes = $this->recipeRepository->findByAuthor($connectedUser);
-
         $recipeTypes = $this->recipeTypeRepository->findAll();
 
         return $this->render('@Repas/Recipe/recipe_types.html.twig', [
-            'recipes' => $recipes,
             'recipeTypes' => $recipeTypes,
         ]);
     }
