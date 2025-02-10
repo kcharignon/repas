@@ -1,0 +1,23 @@
+{% if recipeType is defined %}
+    {% set url = path("view_one_recipe_type", {"slug": recipeType.slug, "activeSection":active}) %}
+    {% set title = recipeType.name|capitalize %}
+    {% set sourceImage = absolute_url(asset(recipeType.image)) %}
+    {% set altImage = recipeType.name %}
+{% else %}
+    {% set url = path("view_create_recipe") %}
+    {% set title = "Nouvelle recette" %}
+    {% set sourceImage = absolute_url(asset("/images/recipe/plus.svg")) %}
+    {% set altImage = "Recette" %}
+{% endif %}
+<div class="col">
+    <div class="card bg-light mb-3" style="max-width: 20rem;">
+        <a style="text-decoration: none; color: inherit" href="{{ url }}">
+            <div class="card-header">
+                {{ title }}
+            </div>
+            <div class="card-body">
+                <img class="img-fluid" style="min-width: 128px" src="{{ sourceImage }}" alt="{{ altImage }}">
+            </div>
+        </a>
+    </div>
+</div>

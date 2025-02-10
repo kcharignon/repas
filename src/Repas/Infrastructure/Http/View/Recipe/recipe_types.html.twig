@@ -6,7 +6,8 @@
 {% block body %}
     <div class="row">
         {% for recipeType in recipeTypes %}
-            {% include "@Repas/Recipe/_recipetype_card.html.twig" %}
+            {% include "@Repas/Recipe/_recipe_type_card.html.twig" %}
         {% endfor %}
+        {% include "@Repas/Recipe/_recipe_type_card.html.twig" %}
     </div>
 {% endblock %}

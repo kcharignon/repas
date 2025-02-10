@@ -30,7 +30,7 @@ class GetAllRecipeViewController extends AbstractController
 
         $recipeTypes = $this->recipeTypeRepository->findAll();
 
-        return $this->render('@Repas/Recipe/recipe.html.twig', [
+        return $this->render('@Repas/Recipe/recipe_types.html.twig', [
             'recipes' => $recipes,
             'recipeTypes' => $recipeTypes,
         ]);
