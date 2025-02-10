@@ -3,6 +3,7 @@
 namespace Repas\User\Infrastructure\Security;
 
 
+use Repas\Repas\Domain\Interface\RecipeRepository;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\User\Domain\Model\User;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
@@ -14,10 +15,12 @@ class OwnerVoter extends Voter
     public const string HIMSELF = 'HIMSELF';
     public const string INGREDIENT_OWNER = 'INGREDIENT_OWNER';
     public const string SHOPPING_LIST_OWNER = 'SHOPPING_LIST_OWNER';
+    public const string RECIPE_OWNER = 'RECIPE_OWNER';
 
     public function __construct(
         private readonly AccessDecisionManagerInterface $accessDecisionManager,
         private readonly ShoppingListRepository $shoppingListRepository,
+        private readonly RecipeRepository $recipeRepository,
     ) {
     }
 
@@ -28,6 +31,7 @@ class OwnerVoter extends Voter
                 self::HIMSELF,
                 self::INGREDIENT_OWNER,
                 self::SHOPPING_LIST_OWNER,
+                self::RECIPE_OWNER,
             ]) && is_string($subject);
     }
 
@@ -51,6 +55,9 @@ class OwnerVoter extends Voter
             case self::SHOPPING_LIST_OWNER:
                 $shoppingList = $this->shoppingListRepository->findOneById($subject);
                 return $shoppingList->getOwner()->isEqual($user);
+            case self::RECIPE_OWNER:
+                $recipe = $this->recipeRepository->findOneById($subject);
+                return $recipe->getAuthor()->isEqual($user);
             default:
                 return false;
         }

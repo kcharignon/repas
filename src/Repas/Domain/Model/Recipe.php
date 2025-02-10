@@ -6,6 +6,7 @@ namespace Repas\Repas\Domain\Model;
 use Repas\Shared\Domain\Model\ModelInterface;
 use Repas\Shared\Domain\Model\ModelTrait;
 use Repas\Shared\Domain\Tool\Tab;
+use Repas\Shared\Domain\Tool\UuidGenerator;
 use Repas\User\Domain\Model\User;
 use Repas\Repas\Domain\Model\RecipeType as Type;
 
@@ -137,5 +138,24 @@ final class Recipe implements ModelInterface
     public function getRowForServing(int $serving): Tab
     {
         return $this->rows->map(fn(RecipeRow $row) => $row->multiplyQuantityBy($serving/$this->serving));
+    }
+
+    public function update(string $name, RecipeType $type, int $serving): void
+    {
+        $this->name = $name;
+        $this->type = $type;
+        $this->serving = $serving;
+    }
+
+    public function addRow(Ingredient $ingredient, Unit $unit, float $quantity): void
+    {
+        $row = RecipeRow::create(
+            id: UuidGenerator::new(),
+            recipeId: $this->id,
+            ingredient: $ingredient,
+            quantity: $quantity,
+            unit: $unit
+        );
+        $this->rows[] = $row;
     }
 }

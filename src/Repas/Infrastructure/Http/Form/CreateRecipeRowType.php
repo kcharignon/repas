@@ -15,7 +15,7 @@ use Symfony\Component\Form\Extension\Core\Type\NumberType;
 use Symfony\Component\Form\FormBuilderInterface;
 use Symfony\Component\OptionsResolver\OptionsResolver;
 
-class RecipeRowType extends AbstractType implements DataTransformerInterface
+class CreateRecipeRowType extends AbstractType implements DataTransformerInterface
 {
     public function __construct(
         private readonly UnitRepository $unitRepository,

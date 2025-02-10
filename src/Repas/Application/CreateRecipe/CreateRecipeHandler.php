@@ -32,7 +32,6 @@ readonly class CreateRecipeHandler
      */
     public function __invoke(CreateRecipeCommand $command): void
     {
-        dump($command);
         $author = $this->userRepository->findOneById($command->authorId);
         $type = $this->typeRepository->findOneBySlug($command->typeSlug);
 

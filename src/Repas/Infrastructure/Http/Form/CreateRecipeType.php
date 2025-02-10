@@ -21,7 +21,7 @@ use Symfony\Component\Form\FormInterface;
 use Symfony\Component\OptionsResolver\OptionsResolver;
 use Traversable;
 
-class RecipeType extends AbstractType implements DataMapperInterface
+class CreateRecipeType extends AbstractType implements DataMapperInterface
 {
     public function __construct(
         private readonly RecipeTypeRepository $recipeTypeRepository,
@@ -52,7 +52,7 @@ class RecipeType extends AbstractType implements DataMapperInterface
                 'choices' => $typeChoices,
             ])
             ->add('rows', CollectionType::class, [
-                'entry_type' => RecipeRowType::class,
+                'entry_type' => CreateRecipeRowType::class,
                 'allow_add' => true,
                 'allow_delete' => true,
                 'by_reference' => false,
@@ -112,7 +112,6 @@ class RecipeType extends AbstractType implements DataMapperInterface
             }
         }
 
-        dump($forms, $forms['typeSlug']->getData());
         // Mise à jour du viewData (CreateRecipeCommand)
         $viewData = new CreateRecipeCommand(
             id: $viewData->id,
@@ -122,7 +121,5 @@ class RecipeType extends AbstractType implements DataMapperInterface
             rows: $rows,
             typeSlug: $forms['typeSlug']->getData()
         );
-
-        dump($viewData);
     }
 }

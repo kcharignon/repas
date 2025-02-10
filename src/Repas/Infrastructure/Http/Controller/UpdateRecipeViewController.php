@@ -7,6 +7,7 @@ use Repas\Repas\Application\CreateRecipe\CreateRecipeCommand;
 use Repas\Repas\Application\CreateRecipe\CreateRecipeRowSubCommand;
 use Repas\Repas\Domain\Interface\RecipeRepository;
 use Repas\Repas\Infrastructure\Http\Form\CreateRecipeType;
+use Repas\Repas\Infrastructure\Http\Form\UpdateRecipeType;
 use Repas\Shared\Application\Interface\CommandBusInterface;
 use Repas\Shared\Domain\Tool\Tab;
 use Repas\Shared\Domain\Tool\UuidGenerator;
@@ -17,30 +18,24 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
-class CreateRecipeViewController extends AbstractController
+class UpdateRecipeViewController extends AbstractController
 {
     public function __construct(
         private readonly CommandBusInterface $commandBus,
         private readonly RecipeRepository $recipeRepository,
     ) {}
 
-    #[Route(path: '/recipe', name: 'view_create_recipe', methods: ['GET', 'POST'])]
+    #[Route(path: '/recipe/{id}/update', name: 'view_update_recipe', methods: ['GET', 'POST'])]
     #[IsGranted("ROLE_USER")]
-    public function __invoke(Request $request): Response
+    #[IsGranted('RECIPE_OWNER', 'id')]
+    public function __invoke(string $id, Request $request): Response
     {
         $connectedUser = $this->getUser();
         assert($connectedUser instanceof User);
 
-        $command = new CreateRecipeCommand(
-            id: UuidGenerator::new(),
-            name: '',
-            serving: 1,
-            authorId: $connectedUser->getId(),
-            rows: Tab::newEmptyTyped(CreateRecipeRowSubCommand::class),
-            typeSlug: ''
-        );
+        $recipe = $this->recipeRepository->findOneById($id);
 
-        $form = $this->createForm(CreateRecipeType::class, $command);
+        $form = $this->createForm(UpdateRecipeType::class, $recipe);
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {

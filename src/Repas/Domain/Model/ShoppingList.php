@@ -237,12 +237,9 @@ final class ShoppingList implements ModelInterface
     {
         // Cherche si la ligne avec l'ingrédient est déjà present dans la liste
         if (($rowKey = $this->rows->findKey(fn(Row $row) => $row->getIngredient()->isEqual($ingredient))) !== null) {
-            dump("BEFORE:",$this->rows[$rowKey]);
             $this->rows[$rowKey]->subtractQuantity($quantity);
-            dump("AFTER:",$this->rows[$rowKey]);
             // si la quantité passe à zero ou moins, on supprime la row
             if ($this->rows[$rowKey]->getQuantity() <= 0) {
-                dump("DELETE");
                 unset($this->rows[$rowKey]);
             }
         }
