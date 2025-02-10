@@ -104,17 +104,33 @@ $(document).ready(function(){
     }
 
     // Convertir la valeur en booléen correctement
-    let hide = $(item).data('hide') === true || $(item).data('hide') === "true";
-    console.log("hide:", hide, " | Raw data-hide:", $(item).data('hide'));
+    let hide = $(item).data('hide');
+    console.log("hide:", hide);
 
     console.log("✅ Élément trouvé, remplacement en cours...");
     if (html.length === 0) {
       target.fadeOut(300, function() { $(this).remove(); });
     } else {
       target.replaceWith(html);
-      if (hide) {
+      if (shouldHide(hide)) {
         $(selector).hide();
       }
     }
+  }
+
+  function shouldHide(device) {
+    if (!device ?? null) {
+      return false;
+    }
+
+    if (device === 'both') {
+      return true;
+    }
+
+    if ((device === 'mobile' && isMobile()) || (device === 'desktop' && !isMobile())) {
+      return true;
+    }
+
+    return false;
   }
 });
