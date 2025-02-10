@@ -28,19 +28,8 @@ class CreateRecipeViewController extends AbstractController
     #[IsGranted("ROLE_USER")]
     public function __invoke(Request $request): Response
     {
-        $connectedUser = $this->getUser();
-        assert($connectedUser instanceof User);
-
-        $command = new CreateRecipeCommand(
-            id: UuidGenerator::new(),
-            name: '',
-            serving: 1,
-            authorId: $connectedUser->getId(),
-            rows: Tab::newEmptyTyped(CreateRecipeRowSubCommand::class),
-            typeSlug: ''
-        );
-
-        $form = $this->createForm(CreateRecipeType::class, $command);
+        $id = UuidGenerator::new();
+        $form = $this->createForm(CreateRecipeType::class, $id);
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
