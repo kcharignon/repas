@@ -5,6 +5,7 @@ namespace Repas\Repas\Domain\Service;
 use Repas\Repas\Domain\Exception\IngredientException;
 use Repas\Repas\Domain\Interface\ConversionRepository;
 use Repas\Repas\Domain\Model\Ingredient;
+use Repas\Repas\Domain\Model\RecipeRow;
 use Repas\Repas\Domain\Model\Unit;
 use Repas\Shared\Domain\Tool\Tab;
 
@@ -112,5 +113,17 @@ readonly class ConversionService
         }
 
         return $this->graphs[$ingredient->getSlug()];
+    }
+
+    /**
+     * @throws IngredientException
+     */
+    public function convertRecipeRowToPurchaseUnit(RecipeRow $row): float
+    {
+        return $this->convertToPurchaseUnit(
+            $row->getIngredient(),
+            $row->getQuantity(),
+            $row->getUnit(),
+        );
     }
 }

@@ -3,6 +3,7 @@
 namespace Repas\User\Infrastructure\Security;
 
 
+use Repas\Repas\Domain\Interface\IngredientRepository;
 use Repas\Repas\Domain\Interface\RecipeRepository;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\User\Domain\Model\User;
@@ -16,11 +17,13 @@ class OwnerVoter extends Voter
     public const string INGREDIENT_OWNER = 'INGREDIENT_OWNER';
     public const string SHOPPING_LIST_OWNER = 'SHOPPING_LIST_OWNER';
     public const string RECIPE_OWNER = 'RECIPE_OWNER';
+    public const string MEAL_OWNER = 'MEAL_OWNER';
 
     public function __construct(
         private readonly AccessDecisionManagerInterface $accessDecisionManager,
         private readonly ShoppingListRepository $shoppingListRepository,
         private readonly RecipeRepository $recipeRepository,
+        private readonly IngredientRepository $ingredientRepository,
     ) {
     }
 
@@ -32,6 +35,7 @@ class OwnerVoter extends Voter
                 self::INGREDIENT_OWNER,
                 self::SHOPPING_LIST_OWNER,
                 self::RECIPE_OWNER,
+                self::MEAL_OWNER,
             ]) && is_string($subject);
     }
 
@@ -51,13 +55,17 @@ class OwnerVoter extends Voter
             case self::HIMSELF:
                 return $user->getId() === $subject;
             case self::INGREDIENT_OWNER:
-                return str_starts_with($subject, $user->getId());
+                $ingredient = $this->ingredientRepository->findOneBySlug($subject);
+                return $ingredient->getCreator()?->isEqual($user);
             case self::SHOPPING_LIST_OWNER:
                 $shoppingList = $this->shoppingListRepository->findOneById($subject);
                 return $shoppingList->getOwner()->isEqual($user);
             case self::RECIPE_OWNER:
                 $recipe = $this->recipeRepository->findOneById($subject);
                 return $recipe->getAuthor()->isEqual($user);
+            case self::MEAL_OWNER:
+                $shoppingList = $this->shoppingListRepository->findOneByMealId($subject);
+                return $shoppingList->getOwner()->isEqual($user);
             default:
                 return false;
         }

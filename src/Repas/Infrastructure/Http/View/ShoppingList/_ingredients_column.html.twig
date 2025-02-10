@@ -1,10 +1,4 @@
-<div
-    id="shoppingListIngredientsColumn"
-    class="col"
-    {% if shoppingList.isPlanning %}
-        style="display: none;"
-    {% endif %}
->
+<div id="shoppingListIngredientsColumn" class="col">
     <h2>Ingredients</h2>
     {% for department in shoppingList.departments %}
         {% set rows = shoppingList.rows %}

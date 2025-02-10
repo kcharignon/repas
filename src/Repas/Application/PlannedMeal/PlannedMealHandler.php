@@ -49,24 +49,11 @@ readonly class PlannedMealHandler
 
         foreach ($rows as $row) {
             // On calcule la quantité dans l'unité d'achat
-            $quantity = $this->convertToPurchaseUnit($row);
+            $quantity = $this->conversionService->convertRecipeRowToPurchaseUnit($row);
             // On ajoute cette quantité dans la liste d'achat
             $shoppingList->addRow($row->getIngredient(), $quantity);
         }
 
         $this->shoppingListRepository->save($shoppingList);
-    }
-
-
-    /**
-     * @throws IngredientException
-     */
-    private function convertToPurchaseUnit(RecipeRow $row): float
-    {
-        return $this->conversionService->convertToPurchaseUnit(
-            $row->getIngredient(),
-            $row->getQuantity(),
-            $row->getUnit(),
-        );
     }
 }

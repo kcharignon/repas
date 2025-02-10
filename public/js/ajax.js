@@ -2,14 +2,24 @@ $(document).ready(function(){
   console.log("File ajax.js loaded");
 
   $(document).on("click", "[data-action='btn-ajax']", function(event) {
+    handleAjaxAction(this);
+  });
 
-    confirmMessage = $(this).data("confirm")
+  $(document).on("change", "[data-action='input-ajax']", function(event) {
+    handleAjaxAction(this);
+  });
+
+  function handleAjaxAction(element) {
+    let confirmMessage = $(element).data("confirm");
+
+    // Si un message de confirmation est défini, demander à l'utilisateur
     if (typeof confirmMessage !== 'undefined' && !confirm(confirmMessage)) {
       return;
     }
-    var loader = $(this).find("i[data-loader]");
-    console.log(loader);
-    // On affiche le loader
+
+    let loader = $(element).find("i[data-loader]");
+
+    // Affichage du loader
     switch (loader.data("loader")) {
       case "replace":
         loader.replaceWith("<i class='fas fa-spinner fa-spin'></i>");
@@ -20,21 +30,30 @@ $(document).ready(function(){
       default:
         break;
     }
-    console.log("Route call : ("+ $(this).data("method") +")" + $(this).data("url"));
-    // On appele la route
+
+    let url = $(element).data("url");
+    let replace = $(element).data("url-value");
+    if (typeof replace !== 'undefined') {
+      let inputValue = $(element).val();
+      console.log("replace: "+replace+" by "+inputValue);
+      url = url.replace(new RegExp(`${replace}`, 'g'), inputValue);
+    }
+
+    console.log("Route call : ("+ $(element).data("method") +")" + url);
+
+    // Exécution de la requête AJAX
     $.ajax({
-      url: $(this).data("url"),
-      method: $(this).data("method"),
+      url: url,
+      method: $(element).data("method"),
     }).done(function(data) {
-      //On affiche les alerte et la vue
       console.log("Done : ", data);
       showAlerts(data);
-      showViews(data, event.target);
+      showViews(data, element);
     }).fail(function() {
-      console.log("Fail : ", data);
+      console.log("Fail");
       showAlerts({"alerts":[{"status":"error", "message":"Une erreur est survenue"}]});
     });
-  });
+  }
 
   $(document).on("click", "[data-action='link']", function(event) {
     var url = $(this).data("url");
@@ -84,11 +103,18 @@ $(document).ready(function(){
       return;
     }
 
+    // Convertir la valeur en booléen correctement
+    let hide = $(item).data('hide') === true || $(item).data('hide') === "true";
+    console.log("hide:", hide, " | Raw data-hide:", $(item).data('hide'));
+
     console.log("✅ Élément trouvé, remplacement en cours...");
     if (html.length === 0) {
       target.fadeOut(300, function() { $(this).remove(); });
     } else {
       target.replaceWith(html);
+      if (hide) {
+        $(selector).hide();
+      }
     }
   }
 });

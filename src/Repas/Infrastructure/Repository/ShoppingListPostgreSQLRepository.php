@@ -4,6 +4,7 @@ namespace Repas\Repas\Infrastructure\Repository;
 
 
 use Doctrine\Persistence\ManagerRegistry;
+use Repas\Repas\Domain\Exception\MealException;
 use Repas\Repas\Domain\Exception\ShoppingListException;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Repas\Domain\Model\Meal as MealModel;
@@ -54,6 +55,18 @@ readonly class ShoppingListPostgreSQLRepository extends PostgreSQLRepository imp
 
         return $this->convertEntityToModel($shoppingListEntity);
     }
+
+    /**
+     * @throws ShoppingListException
+     * @throws MealException
+     * @throws UserException
+     */
+    public function findOneByMealId(string $mealId): ShoppingList
+    {
+        $meal = $this->mealRepository->findOneById($mealId);
+        return $this->findOneById($meal->getShoppingListId());
+    }
+
 
     public function save(ShoppingList $shoppingList): void
     {

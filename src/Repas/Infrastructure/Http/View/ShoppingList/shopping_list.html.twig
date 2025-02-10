@@ -52,10 +52,23 @@
                                                 {{ meal.recipe.name|capitalize }}
                                             </span>
                                             <div class="ms-auto d-flex align-items-center">
-                                                <span>
-                                                    {{ meal.serving }}
-                                                </span>
-                                                <img class="ms-1" src="https://cdn-icons-png.flaticon.com/128/5187/5187868.png" alt="serving" style="height: 1.5em">
+                                                <div class="input-group input-group-sm">
+                                                    <input
+                                                        id="{{ meal.id }}"
+                                                        type="integer"
+                                                        style="max-width: 3em"
+                                                        class="form-control"
+                                                        value="{{ meal.serving }}"
+                                                        data-action="input-ajax"
+                                                        data-method="put"
+                                                        data-url-value="__serving__"
+                                                        data-hide="true"
+                                                        data-url="{{ path("view_update_serving_meal", {"id": meal.id, "serving":"__serving__"}) }}"
+                                                    ></input>
+                                                    <label class="input-group-text" for="{{ meal.id }}">
+                                                        <img class="ms-1" src="https://cdn-icons-png.flaticon.com/128/5187/5187868.png" alt="serving" style="height: 1.5em">
+                                                    </label>
+                                                </div>
                                             </div>
                                         </li>
                                     {% endfor %}

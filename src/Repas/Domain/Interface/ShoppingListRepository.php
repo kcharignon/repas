@@ -27,4 +27,6 @@ interface ShoppingListRepository
      * @return Tab<ShoppingList>
      */
     public function findByOwnerAndStatus(User $owner, ShoppingListStatus $status): Tab;
+
+    public function findOneByMealId(string $mealId): ShoppingList;
 }

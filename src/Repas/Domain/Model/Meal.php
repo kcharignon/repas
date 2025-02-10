@@ -84,4 +84,9 @@ final class Meal implements ModelInterface
     {
         return $this->recipe->isEqual($recipe);
     }
+
+    public function setServing(int $serving): void
+    {
+        $this->serving = $serving;
+    }
 }
