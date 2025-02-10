@@ -2,8 +2,6 @@
 
 namespace Repas\Repas\Infrastructure\Http\Form;
 
-use Repas\Repas\Application\CreateRecipe\CreateRecipeRowSubCommand;
-use Repas\Repas\Application\UpdateRecipe\UpdateRecipeCommand;
 use Repas\Repas\Application\UpdateRecipe\UpdateRecipeRowSubCommand;
 use Repas\Repas\Domain\Interface\IngredientRepository;
 use Repas\Repas\Domain\Interface\UnitRepository;
@@ -11,14 +9,14 @@ use Repas\Repas\Domain\Model\RecipeRow;
 use Repas\User\Domain\Model\User;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\Form\AbstractType;
-use Symfony\Component\Form\DataTransformerInterface;
-use Symfony\Component\Form\Exception\TransformationFailedException;
+use Symfony\Component\Form\DataMapperInterface;
 use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
 use Symfony\Component\Form\Extension\Core\Type\NumberType;
 use Symfony\Component\Form\FormBuilderInterface;
+use Symfony\Component\Form\FormInterface;
 use Symfony\Component\OptionsResolver\OptionsResolver;
 
-class UpdateRecipeRowType extends AbstractType implements DataTransformerInterface
+class UpdateRecipeRowType extends AbstractType implements DataMapperInterface
 {
     public function __construct(
         private readonly UnitRepository $unitRepository,
@@ -54,7 +52,7 @@ class UpdateRecipeRowType extends AbstractType implements DataTransformerInterfa
             ->add('quantity', NumberType::class, [
                 'label' => false,
             ])
-            ->addModelTransformer($this);
+            ->setDataMapper($this);
     }
 
     public function configureOptions(OptionsResolver $resolver): void
@@ -64,33 +62,31 @@ class UpdateRecipeRowType extends AbstractType implements DataTransformerInterfa
         ]);
     }
 
-    public function transform($value): array
+    public function mapDataToForms(mixed $viewData, \Traversable $forms): void
     {
-        if (!$value instanceof RecipeRow) {
-            return [
-                'ingredientSlug' => '',
-                'unitSlug' => '',
-                'quantity' => 0,
-            ];
+        if (!$viewData instanceof RecipeRow) {
+            return;
         }
 
-        return [
-            'ingredientSlug' => $value->getIngredient()->getSlug(),
-            'unitSlug' => $value->getUnit()->getSlug(),
-            'quantity' => $value->getQuantity(),
-        ];
+        /** @var FormInterface[] $forms */
+        $forms = iterator_to_array($forms);
+
+        $forms['ingredientSlug']->setData($viewData->getIngredient()->getSlug());
+        $forms['unitSlug']->setData($viewData->getUnit()->getSlug());
+        $forms['quantity']->setData($viewData->getQuantity());
     }
 
-    public function reverseTransform($value): UpdateRecipeRowSubCommand
+    public function mapFormsToData(\Traversable $forms, mixed &$viewData): void
     {
-        if (!is_array($value)) {
-            throw new TransformationFailedException("Expected an array.");
-        }
+        /** @var FormInterface[] $forms */
+        $forms = iterator_to_array($forms);
 
-        return new UpdateRecipeRowSubCommand(
-            ingredientSlug: $value['ingredientSlug'] ?? '',
-            unitSlug: $value['unitSlug'] ?? '',
-            quantity: $value['quantity'] ?? 0
+        $viewData = new UpdateRecipeRowSubCommand(
+            ingredientSlug: $forms['ingredientSlug']->getData(),
+            unitSlug: $forms['unitSlug']->getData(),
+            quantity: $forms['quantity']->getData(),
         );
     }
+
+
 }
