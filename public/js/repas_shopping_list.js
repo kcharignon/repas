@@ -1,4 +1,5 @@
 $(document).ready(function(){
+  console.log("File repas_shopping_list.js loaded");
 
   function checkShoppingListStatus()
   {

@@ -1,0 +1,36 @@
+{% extends '@Shared/base.html.twig' %}
+
+{% block title %}Créer une Recette{% endblock %}
+
+{% block body %}
+    <div class="container mt-4">
+        <h2>Créer une nouvelle recette</h2>
+
+        {{ form_start(form) }}
+        <div class="mb-3">
+            {{ form_row(form.name) }}
+            {{ form_row(form.serving) }}
+            {{ form_row(form.typeSlug) }}
+        </div>
+
+        <h4>Ingrédients</h4>
+        <div id="recipe-rows">
+            <ul data-prototype="{{ form_widget(form.rows.vars.prototype) | e }}">
+                {% for row in form.rows %}
+                    <li>{{ form_row(row) }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+
+        <button type="button" class="btn btn-info" id="add-row">Ajouter un ingrédient</button>
+
+        <div class="mt-3">
+            {{ form_row(form.save) }}
+        </div>
+        {{ form_end(form) }}
+    </div>
+{% endblock %}
+
+{% block javascript_custom %}
+    <script src="{{ javascripts_dir ~ "create_recipe.js" }}"></script>
+{% endblock %}

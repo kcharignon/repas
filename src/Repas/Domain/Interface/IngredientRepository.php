@@ -22,7 +22,13 @@ interface IngredientRepository
      */
     public function findByDepartmentAndOwner(Department $department, User $owner): Tab;
 
+    /**
+     * @return Tab<Ingredient>
+     */
+    public function findByOwner(User $owner): Tab;
+
     public function save(Ingredient $ingredient): void;
 
     public function cachedByRecipe(string $recipeId): void;
+
 }

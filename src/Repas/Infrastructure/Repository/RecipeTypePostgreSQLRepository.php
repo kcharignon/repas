@@ -52,7 +52,7 @@ readonly class RecipeTypePostgreSQLRepository extends PostgreSQLRepository imple
             return $model;
         }
 
-        throw RecipeException::typeNotFound();
+        throw RecipeException::typeNotFound($slug);
     }
 
     private function convertEntityToModel(RecipeTypeEntity $entity): RecipeTypeModel

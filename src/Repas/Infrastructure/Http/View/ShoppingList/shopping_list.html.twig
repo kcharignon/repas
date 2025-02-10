@@ -5,7 +5,7 @@
     {{ shoppingList.createdAt|format_datetime(locale='fr_FR', pattern="dd MMMM YYYY") }}
 {% endblock %}
 
-{% block javascripts %}
+{% block javascript_custom %}
     <script src="{{ javascripts_dir ~ "repas_shopping_list.js" }}"></script>
 {% endblock %}
 

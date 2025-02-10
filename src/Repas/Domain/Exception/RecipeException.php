@@ -12,9 +12,9 @@ class RecipeException extends DomainException
         return new static(sprintf('Recipe id %s not found', $id), 404);
     }
 
-    public static function typeNotFound(): static
+    public static function typeNotFound(string $type): static
     {
-        return new static("RECIPE_TYPE_NOT_FOUND", 404);
+        return new static(sprintf("Recipe type '%s' not found", $type), 404);
     }
 
     public static function rowSubModelNotFound(string $recipe): static

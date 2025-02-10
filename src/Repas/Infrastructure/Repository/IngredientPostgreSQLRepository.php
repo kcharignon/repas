@@ -80,6 +80,27 @@ readonly class IngredientPostgreSQLRepository extends PostgreSQLRepository imple
         });
     }
 
+    public function findByOwner(User $owner): Tab
+    {
+        $entities = $this->entityRepository->createQueryBuilder('i')
+            ->andWhere('i.creatorId = :owner or i.creatorId is null')
+            ->setParameter('owner', $owner->getId())
+            ->orderBy('i.slug', 'ASC')
+            ->getQuery()
+            ->getResult();
+
+        $ingredients = new Tab($entities, IngredientEntity::class);
+        return $ingredients->map(function (IngredientEntity $ingredient) {
+            if (($model = $this->modelCache->getModelCache(IngredientModel::class, $ingredient->getSlug())) !== null) {
+                return $model;
+            }
+
+            $model = $this->convertEntityToModel($ingredient);
+            $this->modelCache->setModelCache($model);
+            return $model;
+        });
+    }
+
     public function save(IngredientModel $ingredient): void
     {
         $this->modelCache->removeModelCache($ingredient);

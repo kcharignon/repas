@@ -1,3 +1,7 @@
+$(function() {
+  console.log("File mobile.js loaded");
+});
+
 function isMobileDevice() {
   return /Android|iPhone|iPad|iPod|Opera Mini|IEMobile|WPDesktop|webOS/i.test(navigator.userAgent);
 }
