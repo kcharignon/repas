@@ -77,4 +77,8 @@ class StringTool
         return $randomString;
     }
 
+    static function upperCaseFirst($string): string
+    {
+        return mb_strtoupper(mb_substr($string, 0, 1), 'UTF-8').mb_substr($string, 1);
+    }
 }

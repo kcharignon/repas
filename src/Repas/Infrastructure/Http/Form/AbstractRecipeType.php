@@ -3,6 +3,7 @@
 namespace Repas\Repas\Infrastructure\Http\Form;
 
 use Repas\Repas\Domain\Interface\RecipeTypeRepository;
+use Repas\Shared\Domain\Tool\StringTool;
 use Repas\User\Domain\Model\User;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\Form\AbstractType;
@@ -35,7 +36,7 @@ abstract class AbstractRecipeType extends AbstractType implements DataMapperInte
 
         $typeChoices = [];
         foreach ($this->recipeTypeRepository->findAll() as $recipeType) {
-            $typeChoices[ucfirst($recipeType->getName())] = $recipeType->getSlug();
+            $typeChoices[StringTool::upperCaseFirst($recipeType->getName())] = $recipeType->getSlug();
         }
         $builder
             ->add('name', TextType::class, [

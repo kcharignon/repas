@@ -49,6 +49,28 @@ class StringToolTest extends TestCase
         $this->assertSame($expected, $actual);
     }
 
+    public function upperCaseFirstDataProvider(): array
+    {
+        return [
+            "simple" => ["simple", "Simple"],
+            "œuf" => ["œuf", "Œuf"],
+            "accent" => ["épice", "Épice"],
+            "espace" => [" espace", " espace"],
+        ];
+    }
+
+    /**
+     * @dataProvider upperCaseFirstDataProvider
+     */
+    public function testUpperCaseFirst(string $initial, string $expected): void
+    {
+        //Act
+        $actual = StringTool::upperCaseFirst($initial);
+
+        //Assert
+        $this->assertSame($expected, $actual);
+    }
+
     public function generateRandomStringDataProvider(): array
     {
         return [

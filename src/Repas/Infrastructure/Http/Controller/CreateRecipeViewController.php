@@ -3,14 +3,9 @@
 namespace Repas\Repas\Infrastructure\Http\Controller;
 
 
-use Repas\Repas\Application\CreateRecipe\CreateRecipeCommand;
-use Repas\Repas\Application\CreateRecipe\CreateRecipeRowSubCommand;
 use Repas\Repas\Domain\Interface\RecipeRepository;
 use Repas\Repas\Infrastructure\Http\Form\CreateRecipeType;
 use Repas\Shared\Application\Interface\CommandBusInterface;
-use Repas\Shared\Domain\Tool\Tab;
-use Repas\Shared\Domain\Tool\UuidGenerator;
-use Repas\User\Domain\Model\User;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -28,8 +23,7 @@ class CreateRecipeViewController extends AbstractController
     #[IsGranted("ROLE_USER")]
     public function __invoke(Request $request): Response
     {
-        $id = UuidGenerator::new();
-        $form = $this->createForm(CreateRecipeType::class, $id);
+        $form = $this->createForm(CreateRecipeType::class);
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
@@ -43,7 +37,7 @@ class CreateRecipeViewController extends AbstractController
             ]);
         }
 
-        return $this->render('@Repas/Recipe/create_recipe.html.twig', [
+        return $this->render('@Repas/Recipe/form_recipe.html.twig', [
             'form' => $form->createView(),
         ]);
     }

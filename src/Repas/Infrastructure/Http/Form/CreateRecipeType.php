@@ -5,6 +5,7 @@ namespace Repas\Repas\Infrastructure\Http\Form;
 use Repas\Repas\Application\CreateRecipe\CreateRecipeCommand;
 use Repas\Repas\Application\CreateRecipe\CreateRecipeRowSubCommand;
 use Repas\Shared\Domain\Tool\Tab;
+use Repas\Shared\Domain\Tool\UuidGenerator;
 use Symfony\Component\Form\FormInterface;
 use Symfony\Component\OptionsResolver\OptionsResolver;
 use Traversable;
@@ -44,7 +45,7 @@ class CreateRecipeType extends AbstractRecipeType
         }
         // Mise à jour du viewData (CreateRecipeCommand)
         $viewData = new CreateRecipeCommand(
-            id: (string) $viewData,
+            id: UuidGenerator::new(),
             name: $forms['name']->getData(),
             serving: $forms['serving']->getData(),
             authorId: $this->user->getId(),

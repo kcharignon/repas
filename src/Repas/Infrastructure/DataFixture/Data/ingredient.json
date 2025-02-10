@@ -4,48 +4,48 @@
     "name": "aubergine",
     "image": "images\/ingredient\/eggplant.png",
     "department": "fruit-et-legume",
-    "default_cooking_unit": "piece",
-    "default_purchase_unit": "piece"
+    "default_cooking_unit": "unite",
+    "default_purchase_unit": "unite"
   },
   {
     "slug": "ail",
     "name": "ail",
     "image": "images\/ingredient\/garlic.png",
     "department": "fruit-et-legume",
-    "default_cooking_unit": "piece",
-    "default_purchase_unit": "piece"
+    "default_cooking_unit": "unite",
+    "default_purchase_unit": "unite"
   },
   {
     "slug": "avocat",
     "name": "avocat",
     "image": "https:\/\/cdn-icons-png.flaticon.com\/64\/135\/135609.png",
     "department": "fruit-et-legume",
-    "default_cooking_unit": "piece",
-    "default_purchase_unit": "piece"
+    "default_cooking_unit": "unite",
+    "default_purchase_unit": "unite"
   },
   {
     "slug": "bettrave",
     "name": "bettrave",
     "image": "images\/ingredient\/beetroot.png",
     "department": "fruit-et-legume",
-    "default_cooking_unit": "piece",
-    "default_purchase_unit": "piece"
+    "default_cooking_unit": "unite",
+    "default_purchase_unit": "unite"
   },
   {
     "slug": "brocoli",
     "name": "brocoli",
     "image": "images\/ingredient\/broccoli.png",
     "department": "fruit-et-legume",
-    "default_cooking_unit": "piece",
-    "default_purchase_unit": "piece"
+    "default_cooking_unit": "unite",
+    "default_purchase_unit": "unite"
   },
   {
     "slug": "banane",
     "name": "banane",
     "image": "images\/ingredient\/banane.png",
     "department": "fruit-et-legume",
-    "default_cooking_unit": "piece",
-    "default_purchase_unit": "piece"
+    "default_cooking_unit": "unite",
+    "default_purchase_unit": "unite"
   },
   {
     "slug": "epinard",
@@ -68,48 +68,48 @@
     "name": "ananas",
     "image": "images\/ingredient\/pineapple.png",
     "department": "fruit-et-legume",
-    "default_cooking_unit": "piece",
-    "default_purchase_unit": "piece"
+    "default_cooking_unit": "unite",
+    "default_purchase_unit": "unite"
   },
   {
     "slug": "chou-blanc",
     "name": "chou blanc",
     "image": "images\/ingredient\/cabbage.png",
     "department": "fruit-et-legume",
-    "default_cooking_unit": "piece",
-    "default_purchase_unit": "piece"
+    "default_cooking_unit": "unite",
+    "default_purchase_unit": "unite"
   },
   {
     "slug": "chou-rouge",
     "name": "chou rouge",
     "image": "images\/ingredient\/cabbage.png",
     "department": "fruit-et-legume",
-    "default_cooking_unit": "piece",
-    "default_purchase_unit": "piece"
+    "default_cooking_unit": "unite",
+    "default_purchase_unit": "unite"
   },
   {
     "slug": "courge",
     "name": "courge",
     "image": "",
     "department": "fruit-et-legume",
-    "default_cooking_unit": "piece",
-    "default_purchase_unit": "piece"
+    "default_cooking_unit": "unite",
+    "default_purchase_unit": "unite"
   },
   {
     "slug": "echalote",
     "name": "échalote",
     "image": "",
     "department": "fruit-et-legume",
-    "default_cooking_unit": "piece",
-    "default_purchase_unit": "piece"
+    "default_cooking_unit": "unite",
+    "default_purchase_unit": "unite"
   },
   {
     "slug": "concombre",
     "name": "concombre",
     "image": "images\/ingredient\/cucumber.png",
     "department": "fruit-et-legume",
-    "default_cooking_unit": "piece",
-    "default_purchase_unit": "piece"
+    "default_cooking_unit": "unite",
+    "default_purchase_unit": "unite"
   },
   {
     "slug": "champignon",
@@ -132,8 +132,8 @@
     "name": "endive",
     "image": "",
     "department": "fruit-et-legume",
-    "default_cooking_unit": "piece",
-    "default_purchase_unit": "piece"
+    "default_cooking_unit": "unite",
+    "default_purchase_unit": "unite"
   },
   {
     "slug": "haricot-frais",
@@ -148,88 +148,88 @@
     "name": "salade",
     "image": "images\/ingredient\/salad.png",
     "department": "fruit-et-legume",
-    "default_cooking_unit": "piece",
-    "default_purchase_unit": "piece"
+    "default_cooking_unit": "unite",
+    "default_purchase_unit": "unite"
   },
   {
     "slug": "salade-verte",
     "name": "salade verte",
     "image": "images\/ingredient\/salad.png",
     "department": "fruit-et-legume",
-    "default_cooking_unit": "piece",
-    "default_purchase_unit": "piece"
+    "default_cooking_unit": "unite",
+    "default_purchase_unit": "unite"
   },
   {
     "slug": "poivron",
     "name": "poivron",
     "image": "images\/ingredient\/bell-pepper.png",
     "department": "fruit-et-legume",
-    "default_cooking_unit": "piece",
-    "default_purchase_unit": "piece"
+    "default_cooking_unit": "unite",
+    "default_purchase_unit": "unite"
   },
   {
     "slug": "pomme-de-terre",
     "name": "pomme de terre",
     "image": "images\/ingredient\/potato.png",
     "department": "fruit-et-legume",
-    "default_cooking_unit": "piece",
-    "default_purchase_unit": "piece"
+    "default_cooking_unit": "unite",
+    "default_purchase_unit": "unite"
   },
   {
     "slug": "pomme",
     "name": "pomme",
     "image": "images\/ingredient\/apple.png",
     "department": "fruit-et-legume",
-    "default_cooking_unit": "piece",
-    "default_purchase_unit": "piece"
+    "default_cooking_unit": "unite",
+    "default_purchase_unit": "unite"
   },
   {
     "slug": "pomme-golden",
     "name": "pomme golden",
     "image": "images\/ingredient\/golden-apple.png",
     "department": "fruit-et-legume",
-    "default_cooking_unit": "piece",
-    "default_purchase_unit": "piece"
+    "default_cooking_unit": "unite",
+    "default_purchase_unit": "unite"
   },
   {
     "slug": "betternut",
     "name": "betternut",
     "image": "images\/ingredient\/butternut-squash.png",
     "department": "fruit-et-legume",
-    "default_cooking_unit": "piece",
-    "default_purchase_unit": "piece"
+    "default_cooking_unit": "unite",
+    "default_purchase_unit": "unite"
   },
   {
     "slug": "choux-fleur",
     "name": "choux fleur",
     "image": "",
     "department": "fruit-et-legume",
-    "default_cooking_unit": "piece",
-    "default_purchase_unit": "piece"
+    "default_cooking_unit": "unite",
+    "default_purchase_unit": "unite"
   },
   {
     "slug": "melon",
     "name": "melon",
     "image": "images\/ingredient\/melon.png",
     "department": "fruit-et-legume",
-    "default_cooking_unit": "piece",
-    "default_purchase_unit": "piece"
+    "default_cooking_unit": "unite",
+    "default_purchase_unit": "unite"
   },
   {
     "slug": "poireau",
     "name": "poireau",
     "image": "images\/ingredient\/leek.png",
     "department": "fruit-et-legume",
-    "default_cooking_unit": "piece",
-    "default_purchase_unit": "piece"
+    "default_cooking_unit": "unite",
+    "default_purchase_unit": "unite"
   },
   {
     "slug": "citron",
     "name": "citron",
     "image": "images\/ingredient\/lemon.png",
     "department": "fruit-et-legume",
-    "default_cooking_unit": "piece",
-    "default_purchase_unit": "piece"
+    "default_cooking_unit": "unite",
+    "default_purchase_unit": "unite"
   },
   {
     "slug": "persil",
@@ -244,24 +244,24 @@
     "name": "oignon",
     "image": "images\/ingredient\/onion.png",
     "department": "fruit-et-legume",
-    "default_cooking_unit": "piece",
-    "default_purchase_unit": "piece"
+    "default_cooking_unit": "unite",
+    "default_purchase_unit": "unite"
   },
   {
     "slug": "oignon-rouge",
     "name": "oignon rouge",
     "image": "images\/ingredient\/onion-red.png",
     "department": "fruit-et-legume",
-    "default_cooking_unit": "piece",
-    "default_purchase_unit": "piece"
+    "default_cooking_unit": "unite",
+    "default_purchase_unit": "unite"
   },
   {
     "slug": "oignon-blanc",
     "name": "oignon blanc",
     "image": "images\/ingredient\/onion-white.png",
     "department": "fruit-et-legume",
-    "default_cooking_unit": "piece",
-    "default_purchase_unit": "piece"
+    "default_cooking_unit": "unite",
+    "default_purchase_unit": "unite"
   },
   {
     "slug": "petit-pois",
@@ -284,32 +284,32 @@
     "name": "tomate à farcir",
     "image": "",
     "department": "fruit-et-legume",
-    "default_cooking_unit": "piece",
-    "default_purchase_unit": "piece"
+    "default_cooking_unit": "unite",
+    "default_purchase_unit": "unite"
   },
   {
     "slug": "courgette-a-farcir",
     "name": "courgette à farcir",
     "image": "",
     "department": "fruit-et-legume",
-    "default_cooking_unit": "piece",
-    "default_purchase_unit": "piece"
+    "default_cooking_unit": "unite",
+    "default_purchase_unit": "unite"
   },
   {
     "slug": "tomate",
     "name": "tomate",
     "image": "https:\/\/cdn-icons-png.flaticon.com\/64\/135\/135702.png",
     "department": "fruit-et-legume",
-    "default_cooking_unit": "piece",
-    "default_purchase_unit": "piece"
+    "default_cooking_unit": "unite",
+    "default_purchase_unit": "unite"
   },
   {
     "slug": "courgette",
     "name": "courgette",
     "image": "",
     "department": "fruit-et-legume",
-    "default_cooking_unit": "piece",
-    "default_purchase_unit": "piece"
+    "default_cooking_unit": "unite",
+    "default_purchase_unit": "unite"
   },
   {
     "slug": "emmental-rape",
@@ -380,8 +380,8 @@
     "name": "reblochon",
     "image": "",
     "department": "fromage",
-    "default_cooking_unit": "piece",
-    "default_purchase_unit": "piece"
+    "default_cooking_unit": "unite",
+    "default_purchase_unit": "unite"
   },
   {
     "slug": "chevre",
@@ -404,8 +404,8 @@
     "name": "mozzarella",
     "image": "",
     "department": "fromage",
-    "default_cooking_unit": "piece",
-    "default_purchase_unit": "piece"
+    "default_cooking_unit": "unite",
+    "default_purchase_unit": "unite"
   },
   {
     "slug": "fromage-a-croc-monssieur",
@@ -460,7 +460,7 @@
     "name": "perle de lait",
     "image": "",
     "department": "yaourt",
-    "default_cooking_unit": "piece",
+    "default_cooking_unit": "unite",
     "default_purchase_unit": "paquet"
   },
   {
@@ -476,7 +476,7 @@
     "name": "la laitière",
     "image": "",
     "department": "yaourt",
-    "default_cooking_unit": "piece",
+    "default_cooking_unit": "unite",
     "default_purchase_unit": "paquet"
   },
   {
@@ -484,7 +484,7 @@
     "name": "velouté",
     "image": "",
     "department": "yaourt",
-    "default_cooking_unit": "piece",
+    "default_cooking_unit": "unite",
     "default_purchase_unit": "paquet"
   },
   {
@@ -492,7 +492,7 @@
     "name": "yaourt nature",
     "image": "",
     "department": "yaourt",
-    "default_cooking_unit": "piece",
+    "default_cooking_unit": "unite",
     "default_purchase_unit": "paquet"
   },
   {
@@ -500,7 +500,7 @@
     "name": "compote en pot",
     "image": "",
     "department": "yaourt",
-    "default_cooking_unit": "piece",
+    "default_cooking_unit": "unite",
     "default_purchase_unit": "paquet"
   },
   {
@@ -508,7 +508,7 @@
     "name": "compote à boire",
     "image": "",
     "department": "yaourt",
-    "default_cooking_unit": "piece",
+    "default_cooking_unit": "unite",
     "default_purchase_unit": "paquet"
   },
   {
@@ -860,8 +860,8 @@
     "name": "cote de porc",
     "image": "",
     "department": "boucherie",
-    "default_cooking_unit": "piece",
-    "default_purchase_unit": "piece"
+    "default_cooking_unit": "unite",
+    "default_purchase_unit": "unite"
   },
   {
     "slug": "agneau",
@@ -884,40 +884,40 @@
     "name": "saucisse",
     "image": "",
     "department": "boucherie",
-    "default_cooking_unit": "piece",
-    "default_purchase_unit": "piece"
+    "default_cooking_unit": "unite",
+    "default_purchase_unit": "unite"
   },
   {
     "slug": "saucisson",
     "name": "saucisson",
     "image": "",
     "department": "boucherie",
-    "default_cooking_unit": "piece",
-    "default_purchase_unit": "piece"
+    "default_cooking_unit": "unite",
+    "default_purchase_unit": "unite"
   },
   {
     "slug": "saucisson-fouet",
     "name": "saucisson fouet",
     "image": "",
     "department": "boucherie",
-    "default_cooking_unit": "piece",
-    "default_purchase_unit": "piece"
+    "default_cooking_unit": "unite",
+    "default_purchase_unit": "unite"
   },
   {
     "slug": "saucisson-st-agaune",
     "name": "saucisson st agaune",
     "image": "",
     "department": "boucherie",
-    "default_cooking_unit": "piece",
-    "default_purchase_unit": "piece"
+    "default_cooking_unit": "unite",
+    "default_purchase_unit": "unite"
   },
   {
     "slug": "merguez",
     "name": "merguez",
     "image": "",
     "department": "boucherie",
-    "default_cooking_unit": "piece",
-    "default_purchase_unit": "piece"
+    "default_cooking_unit": "unite",
+    "default_purchase_unit": "unite"
   },
   {
     "slug": "charcuterie",
@@ -1012,8 +1012,8 @@
     "name": "steack haché",
     "image": "",
     "department": "surgele",
-    "default_cooking_unit": "piece",
-    "default_purchase_unit": "piece"
+    "default_cooking_unit": "unite",
+    "default_purchase_unit": "unite"
   },
   {
     "slug": "viande-hachee",
@@ -1060,8 +1060,8 @@
     "name": "cordon bleu",
     "image": "",
     "department": "surgele",
-    "default_cooking_unit": "piece",
-    "default_purchase_unit": "piece"
+    "default_cooking_unit": "unite",
+    "default_purchase_unit": "unite"
   },
   {
     "slug": "frite",
@@ -1484,8 +1484,8 @@
     "name": "pizza",
     "image": "",
     "department": "traiteur",
-    "default_cooking_unit": "piece",
-    "default_purchase_unit": "piece"
+    "default_cooking_unit": "unite",
+    "default_purchase_unit": "unite"
   },
   {
     "slug": "soupe",
@@ -1500,24 +1500,24 @@
     "name": "galette",
     "image": "",
     "department": "traiteur",
-    "default_cooking_unit": "piece",
-    "default_purchase_unit": "piece"
+    "default_cooking_unit": "unite",
+    "default_purchase_unit": "unite"
   },
   {
     "slug": "pate-pizza",
     "name": "pate pizza",
     "image": "",
     "department": "traiteur",
-    "default_cooking_unit": "piece",
-    "default_purchase_unit": "piece"
+    "default_cooking_unit": "unite",
+    "default_purchase_unit": "unite"
   },
   {
     "slug": "pate-feuilletee",
     "name": "pate feuilletée",
     "image": "",
     "department": "traiteur",
-    "default_cooking_unit": "piece",
-    "default_purchase_unit": "piece"
+    "default_cooking_unit": "unite",
+    "default_purchase_unit": "unite"
   },
   {
     "slug": "riste-aubergine",
@@ -1532,16 +1532,16 @@
     "name": "pate brisée",
     "image": "",
     "department": "traiteur",
-    "default_cooking_unit": "piece",
-    "default_purchase_unit": "piece"
+    "default_cooking_unit": "unite",
+    "default_purchase_unit": "unite"
   },
   {
     "slug": "pate-sablee",
     "name": "pate sablée",
     "image": "",
     "department": "traiteur",
-    "default_cooking_unit": "piece",
-    "default_purchase_unit": "piece"
+    "default_cooking_unit": "unite",
+    "default_purchase_unit": "unite"
   },
   {
     "slug": "gnocci",
@@ -1556,40 +1556,40 @@
     "name": "quenelle",
     "image": "",
     "department": "traiteur",
-    "default_cooking_unit": "piece",
-    "default_purchase_unit": "piece"
+    "default_cooking_unit": "unite",
+    "default_purchase_unit": "unite"
   },
   {
     "slug": "hachis-parmentier",
     "name": "hachis parmentier",
     "image": "",
     "department": "traiteur",
-    "default_cooking_unit": "piece",
-    "default_purchase_unit": "piece"
+    "default_cooking_unit": "unite",
+    "default_purchase_unit": "unite"
   },
   {
     "slug": "lasagne",
     "name": "lasagne",
     "image": "",
     "department": "traiteur",
-    "default_cooking_unit": "piece",
-    "default_purchase_unit": "piece"
+    "default_cooking_unit": "unite",
+    "default_purchase_unit": "unite"
   },
   {
     "slug": "poisson-pane",
     "name": "poisson pané",
     "image": "",
     "department": "traiteur",
-    "default_cooking_unit": "piece",
-    "default_purchase_unit": "piece"
+    "default_cooking_unit": "unite",
+    "default_purchase_unit": "unite"
   },
   {
     "slug": "nem",
     "name": "nem",
     "image": "",
     "department": "traiteur",
-    "default_cooking_unit": "piece",
-    "default_purchase_unit": "piece"
+    "default_cooking_unit": "unite",
+    "default_purchase_unit": "unite"
   },
   {
     "slug": "bouillon",
@@ -1668,8 +1668,8 @@
     "name": "pain",
     "image": "",
     "department": "boulangerie",
-    "default_cooking_unit": "piece",
-    "default_purchase_unit": "piece"
+    "default_cooking_unit": "unite",
+    "default_purchase_unit": "unite"
   },
   {
     "slug": "pain-de-mie",
@@ -1684,24 +1684,24 @@
     "name": "pain panini",
     "image": "",
     "department": "boulangerie",
-    "default_cooking_unit": "piece",
-    "default_purchase_unit": "piece"
+    "default_cooking_unit": "unite",
+    "default_purchase_unit": "unite"
   },
   {
     "slug": "pain-tartine",
     "name": "pain tartine",
     "image": "",
     "department": "boulangerie",
-    "default_cooking_unit": "piece",
-    "default_purchase_unit": "piece"
+    "default_cooking_unit": "unite",
+    "default_purchase_unit": "unite"
   },
   {
     "slug": "pain-baggle",
     "name": "pain baggle",
     "image": "",
     "department": "boulangerie",
-    "default_cooking_unit": "piece",
-    "default_purchase_unit": "piece"
+    "default_cooking_unit": "unite",
+    "default_purchase_unit": "unite"
   },
   {
     "slug": "pain-a-burger",
@@ -1724,7 +1724,7 @@
     "name": "biscotte",
     "image": "",
     "department": "boulangerie",
-    "default_cooking_unit": "piece",
+    "default_cooking_unit": "unite",
     "default_purchase_unit": "paquet"
   },
   {
@@ -1732,7 +1732,7 @@
     "name": "cracotte",
     "image": "",
     "department": "boulangerie",
-    "default_cooking_unit": "piece",
+    "default_cooking_unit": "unite",
     "default_purchase_unit": "paquet"
   },
   {
@@ -1900,8 +1900,8 @@
     "name": "œuf",
     "image": "images\/ingredient\/egg.png",
     "department": "divers",
-    "default_cooking_unit": "piece",
-    "default_purchase_unit": "piece"
+    "default_cooking_unit": "unite",
+    "default_purchase_unit": "unite"
   },
   {
     "slug": "lait",
@@ -1956,15 +1956,15 @@
     "name": "bouquet garni",
     "image": "",
     "department": "divers",
-    "default_cooking_unit": "piece",
-    "default_purchase_unit": "piece"
+    "default_cooking_unit": "unite",
+    "default_purchase_unit": "unite"
   },
   {
     "slug": "tortilla",
     "name": "tortilla",
     "image": "",
     "department": "cuisine-du-monde",
-    "default_cooking_unit": "piece",
+    "default_cooking_unit": "unite",
     "default_purchase_unit": "paquet"
   },
   {
@@ -2020,8 +2020,8 @@
     "name": "feuille-gelatine",
     "image": "",
     "department": "aide-patissier",
-    "default_cooking_unit": "piece",
-    "default_purchase_unit": "piece"
+    "default_cooking_unit": "unite",
+    "default_purchase_unit": "unite"
   },
   {
     "slug": "savon-noir",

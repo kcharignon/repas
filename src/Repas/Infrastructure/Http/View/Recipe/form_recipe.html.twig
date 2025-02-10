@@ -4,7 +4,11 @@
 
 {% block body %}
     <div class="container mt-4">
-        <h2>Créer une nouvelle recette</h2>
+        {% if recipe is not defined %}
+            <h2>Créer une nouvelle recette</h2>
+        {% else %}
+            <h2>{{ recipe.name|capitalize }}</h2>
+        {% endif %}
 
         {{ form_start(form) }}
         <div class="mb-3">

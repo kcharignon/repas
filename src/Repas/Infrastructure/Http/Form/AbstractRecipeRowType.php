@@ -4,6 +4,7 @@ namespace Repas\Repas\Infrastructure\Http\Form;
 
 use Repas\Repas\Domain\Interface\IngredientRepository;
 use Repas\Repas\Domain\Interface\UnitRepository;
+use Repas\Shared\Domain\Tool\StringTool;
 use Repas\User\Domain\Model\User;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\Form\AbstractType;
@@ -28,12 +29,12 @@ abstract class AbstractRecipeRowType extends AbstractType implements DataMapperI
 
         $ingredientChoices = [];
         foreach ($this->ingredientRepository->findByOwner($user) as $ingredient) {
-            $ingredientChoices[ucfirst($ingredient->getName())] = $ingredient->getSlug();
+            $ingredientChoices[StringTool::upperCaseFirst($ingredient->getName())] = $ingredient->getSlug();
         }
 
         $unitChoices = [];
         foreach ($this->unitRepository->findAll() as $unit) {
-            $unitChoices[ucfirst($unit->getName())] = $unit->getSlug();
+            $unitChoices[StringTool::upperCaseFirst($unit->getName())] = $unit->getSlug();
         }
 
         $builder

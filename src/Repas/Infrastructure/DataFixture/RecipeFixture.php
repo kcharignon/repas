@@ -31,7 +31,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
                 [
                     "slug" => "oeuf",
                     "quantity" => 1,
-                    "unit" => "piece"
+                    "unit" => "unite"
                 ],
                 [
                     "slug" => "creme-fraiche-epaisse",
@@ -60,7 +60,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
                 [
                     "slug" => "tomate",
                     "quantity" => 2,
-                    "unit" => "piece"
+                    "unit" => "unite"
                 ],
                 [
                     "slug" => "mais",
@@ -85,7 +85,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
                 [
                     "slug" => "avocat",
                     "quantity" => 2,
-                    "unit" => "piece"
+                    "unit" => "unite"
                 ],
                 [
                     "slug" => "ail",
@@ -105,7 +105,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
                 [
                     "slug" => "tortilla",
                     "quantity" => 8,
-                    "unit" => "piece"
+                    "unit" => "unite"
                 ],
             ],
         ],
@@ -118,12 +118,12 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
                 [
                     "slug" => "oeuf",
                     "quantity" => 4,
-                    "unit" => "piece"
+                    "unit" => "unite"
                 ],
                 [
                     "slug" => "pain",
                     "quantity" => 1,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
             ]
         ],
@@ -136,27 +136,27 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
                 [
                     "slug" => "pain-a-burger",
                     "quantity" => 2,
-                    "unit" => "piece"
+                    "unit" => "unite"
                 ],
                 [
                     "slug" => "tomate",
                     "quantity" => 1,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
                 [
                     "slug" => "steack-hache",
                     "quantity" => 2,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
                 [
                     "slug" => "oignon-rouge",
                     "quantity" => 1,
-                    "unit" => "piece"
+                    "unit" => "unite"
                 ],
                 [
                     "slug" => "cheddar-en-tranche",
                     "quantity" => 4,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
                 [
                     "slug" => "bearnaise",
@@ -194,12 +194,12 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
                 [
                     "slug" => "pomme-golden",
                     "quantity" => 8,
-                    "unit" => "piece"
+                    "unit" => "unite"
                 ],
                 [
                     "slug" => "pate-feuilletee",
                     "quantity" => 1,
-                    "unit" => "piece"
+                    "unit" => "unite"
                 ],
                 [
                     "slug" => "sucre",
@@ -245,7 +245,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
                 [
                     "slug" => "salade-verte",
                     "quantity" => 1,
-                    "unit" => "piece"
+                    "unit" => "unite"
                 ],
                 [
                     "slug" => "parmesan",
@@ -255,7 +255,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
                 [
                     "slug" => "pain",
                     "quantity" => 1,
-                    "unit" => "piece"
+                    "unit" => "unite"
                 ],
             ],
         ],
@@ -268,22 +268,22 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
                 [
                     "slug" => "tomate",
                     "quantity" => 4,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
                 [
                     "slug" => "poivron",
                     "quantity" => 1,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
                 [
                     "slug" => "concombre",
                     "quantity" => 1,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
                 [
                     "slug" => "melon",
                     "quantity" => 0.5,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
                 [
                     "slug" => "huile-d-olive",
@@ -311,12 +311,12 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
                 [
                     "slug" => "oignon",
                     "quantity" => 1,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
                 [
                     "slug" => "poivron",
                     "quantity" => 1,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
                 [
                     "slug" => "cacahuete",
@@ -382,12 +382,12 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
                 [
                     "slug" => "tomate",
                     "quantity" => 2,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
                 [
                     "slug" => "concombre",
                     "quantity" => 1,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
                 [
                     "slug" => "mais",
@@ -423,7 +423,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
                 [
                     "slug" => "saucisse",
                     "quantity" => 4,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
                 [
                     "slug" => "lentille",
@@ -433,12 +433,12 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
                 [
                     "slug" => "oignon",
                     "quantity" => 1,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
                 [
                     "slug" => "carotte",
                     "quantity" => 2,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
             ],
         ],
@@ -474,7 +474,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
                 [
                     "slug" => "poireau",
                     "quantity" => 2,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
                 [
                     "slug" => "bouillon",
@@ -679,7 +679,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
                 [
                     "slug" => "quenelle",
                     "quantity" => 4,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
                 [
                     "slug" => "beurre",
@@ -775,7 +775,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
                 [
                     "slug" => "pate-pizza",
                     "quantity" => 3,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
                 [
                     "slug" => "sauce-tomate",
@@ -808,12 +808,12 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
                 [
                     "slug" => "pate-pizza",
                     "quantity" => 2,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
                 [
                     "slug" => "pomme",
                     "quantity" => 4,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
                 [
                     "slug" => "raclette",
@@ -841,7 +841,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
                 [
                     "slug" => "pain-baggle",
                     "quantity" => 4,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
                 [
                     "slug" => "fromage-frais",
@@ -884,22 +884,22 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
                 [
                     "slug" => "concombre",
                     "quantity" => 1,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
                 [
                     "slug" => "avocat",
                     "quantity" => 2,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
                 [
                     "slug" => "tomate",
                     "quantity" => 2,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
                 [
                     "slug" => "nem",
                     "quantity" => 4,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
             ],
         ],
@@ -922,7 +922,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
                 [
                     "slug" => "oeuf",
                     "quantity" => 3,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
                 [
                     "slug" => "lardon",
@@ -940,17 +940,17 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
                 [
                     "slug" => "tomate-a-farcir",
                     "quantity" => 4,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
                 [
                     "slug" => "courgette-a-farcir",
                     "quantity" => 2,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
                 [
                     "slug" => "poivron",
                     "quantity" => 2,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
                 [
                     "slug" => "chair-a-saucisse",
@@ -965,7 +965,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
                 [
                     "slug" => "oeuf",
                     "quantity" => 2,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
                 [
                     "slug" => "huile-d-olive",
@@ -975,12 +975,12 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
                 [
                     "slug" => "oignon",
                     "quantity" => 1,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
                 [
                     "slug" => "ail",
                     "quantity" => 1,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
                 [
                     "slug" => "riz",
@@ -1003,7 +1003,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
                 [
                     "slug" => "oeuf",
                     "quantity" => 8,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
                 [
                     "slug" => "emmental-rape",
@@ -1021,7 +1021,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
                 [
                     "slug" => "oeuf",
                     "quantity" => 8,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
             ],
         ],
@@ -1044,7 +1044,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
                 [
                     "slug" => "oignon",
                     "quantity" => 1,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
                 [
                     "slug" => "beurre",
@@ -1064,7 +1064,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
                 [
                     "slug" => "ail",
                     "quantity" => 1,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
                 [
                     "slug" => "epice",
@@ -1087,7 +1087,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
                 [
                     "slug" => "pain-panini",
                     "quantity" => 4,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
                 [
                     "slug" => "cheddar-en-tranche",
@@ -1125,12 +1125,12 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
                 [
                     "slug" => "ail",
                     "quantity" => 1,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
                 [
                     "slug" => "tomate",
                     "quantity" => 2,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
                 [
                     "slug" => "charcuterie",
@@ -1183,7 +1183,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
                 [
                     "slug" => "oeuf",
                     "quantity" => 4,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
             ],
         ],
@@ -1196,7 +1196,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
                 [
                     "slug" => "galette",
                     "quantity" => 4,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
                 [
                     "slug" => "charcuterie",
@@ -1211,7 +1211,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
                 [
                     "slug" => "oeuf",
                     "quantity" => 4,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
             ],
         ],
@@ -1247,7 +1247,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
                 [
                     "slug" => "feuille-de-brique",
                     "quantity" => 8,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
                 [
                     "slug" => "jambon-cru",
@@ -1257,7 +1257,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
                 [
                     "slug" => "tomate",
                     "quantity" => 2,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
                 [
                     "slug" => "huile-d-olive",
@@ -1349,7 +1349,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
                 [
                     "slug" => "endive",
                     "quantity" => 8,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
                 [
                     "slug" => "jambon-blanc",
@@ -1397,7 +1397,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
                 [
                     "slug" => "tortilla",
                     "quantity" => 4,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
                 [
                     "slug" => "poulet",
@@ -1430,7 +1430,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
                 [
                     "slug" => "echalote",
                     "quantity" => 2,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
                 [
                     "slug" => "capre",
@@ -1458,7 +1458,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
                 [
                     "slug" => "oeuf",
                     "quantity" => 4,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
                 [
                     "slug" => "sel",
@@ -1491,12 +1491,12 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
                 [
                     "slug" => "tomate",
                     "quantity" => 2,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
                 [
                     "slug" => "salade-verte",
                     "quantity" => 1,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
                 [
                     "slug" => "huile-d-olive",
@@ -1506,7 +1506,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
                 [
                     "slug" => "citron",
                     "quantity" => 1,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
                 [
                     "slug" => "persil",
@@ -1516,7 +1516,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
                 [
                     "slug" => "oignon",
                     "quantity" => 1,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
             ],
         ],
@@ -1534,22 +1534,22 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
                 [
                     "slug" => "oignon",
                     "quantity" => 2,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
                 [
                     "slug" => "tomate",
                     "quantity" => 4,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
                 [
                     "slug" => "poivron",
                     "quantity" => 2,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
                 [
                     "slug" => "ail",
                     "quantity" => 1,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
                 [
                     "slug" => "huile-d-olive",
@@ -1559,7 +1559,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
                 [
                     "slug" => "bouquet-garni",
                     "quantity" => 1,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
             ],
         ],
@@ -1572,7 +1572,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
                 [
                     "slug" => "pate-feuilletee",
                     "quantity" => 1,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
                 [
                     "slug" => "mozzarella",
@@ -1582,12 +1582,12 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
                 [
                     "slug" => "tomate",
                     "quantity" => 3,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
                 [
                     "slug" => "oignon-rouge",
                     "quantity" => 1,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
             ],
         ],
@@ -1600,22 +1600,22 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
                 [
                     "slug" => "aubergine",
                     "quantity" => 2,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
                 [
                     "slug" => "courgette",
                     "quantity" => 2,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
                 [
                     "slug" => "tomate",
                     "quantity" => 4,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
                 [
                     "slug" => "ail",
                     "quantity" => 1,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
                 [
                     "slug" => "concentre-de-tomate",
@@ -1635,7 +1635,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
                 [
                     "slug" => "oignon",
                     "quantity" => 2,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
                 [
                     "slug" => "farine",
@@ -1678,7 +1678,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
                 [
                     "slug" => "pate-feuilletee",
                     "quantity" => 2,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
                 [
                     "slug" => "epinard",
@@ -1711,12 +1711,12 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
                 [
                     "slug" => "reblochon",
                     "quantity" => 1,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
                 [
                     "slug" => "oignon",
                     "quantity" => 2,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
                 [
                     "slug" => "creme-fraiche-epaisse",
@@ -1739,7 +1739,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
                 [
                     "slug" => "pate-feuilletee",
                     "quantity" => 1,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
                 [
                     "slug" => "lardon",
@@ -1754,7 +1754,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
                 [
                     "slug" => "oignon",
                     "quantity" => 2,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
             ],
         ],
@@ -1772,7 +1772,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
                 [
                     "slug" => "carotte",
                     "quantity" => 4,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
                 [
                     "slug" => "champignon",
@@ -1782,7 +1782,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
                 [
                     "slug" => "citron",
                     "quantity" => 1,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
                 [
                     "slug" => "farine",
@@ -1797,7 +1797,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
                 [
                     "slug" => "oignon",
                     "quantity" => 2,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
                 [
                     "slug" => "creme-fraiche-epaisse",
@@ -1830,7 +1830,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
                 [
                     "slug" => "oignon",
                     "quantity" => 2,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
                 [
                     "slug" => "champignon",
@@ -1840,7 +1840,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
                 [
                     "slug" => "ail",
                     "quantity" => 1,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
                 [
                     "slug" => "farine",
@@ -1850,7 +1850,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
                 [
                     "slug" => "bouquet-garni",
                     "quantity" => 1,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
                 [
                     "slug" => "beurre",
@@ -1893,17 +1893,17 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
                 [
                     "slug" => "tomate",
                     "quantity" => 2,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
                 [
                     "slug" => "concombre",
                     "quantity" => 1,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
                 [
                     "slug" => "carotte",
                     "quantity" => 2,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
                 [
                     "slug" => "cacahuete",
@@ -1967,7 +1967,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
                 [
                     "slug" => "saucisse",
                     "quantity" => 4,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
                 [
                     "slug" => "beurre",
@@ -1995,12 +1995,12 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
                 [
                     "slug" => "poisson-pane",
                     "quantity" => 4,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
                 [
                     "slug" => "carotte",
                     "quantity" => 2,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
                 [
                     "slug" => "pomme-de-terre",
@@ -2028,7 +2028,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
                 [
                     "slug" => "nuggets",
                     "quantity" => 12,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
                 [
                     "slug" => "frite",
@@ -2056,7 +2056,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
                 [
                     "slug" => "cordon-bleu",
                     "quantity" => 4,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
             ],
         ],
@@ -2107,12 +2107,12 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
                 [
                     "slug" => "poivron",
                     "quantity" => 2,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
                 [
                     "slug" => "tomate",
                     "quantity" => 2,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
                 [
                     "slug" => "huile-d-olive",
@@ -2122,7 +2122,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
                 [
                     "slug" => "citron",
                     "quantity" => 1,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
                 [
                     "slug" => "riz",
@@ -2145,12 +2145,12 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
                 [
                     "slug" => "pate-sablee",
                     "quantity" => 1,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
                 [
                     "slug" => "pomme",
                     "quantity" => 4,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
                 [
                     "slug" => "compote",
@@ -2168,7 +2168,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
                 [
                     "slug" => "biscuit-cuillere",
                     "quantity" => 20,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
                 [
                     "slug" => "framboise-surgelee",
@@ -2183,7 +2183,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
                 [
                     "slug" => "citron",
                     "quantity" => 1,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
                 [
                     "slug" => "sucre",
@@ -2203,7 +2203,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
                 [
                     "slug" => "feuille-gelatine",
                     "quantity" => 4,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
             ],
         ],
@@ -2236,7 +2236,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
                 [
                     "slug" => "oeuf",
                     "quantity" => 4,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
                 [
                     "slug" => "levure-patissiere",
@@ -2264,17 +2264,17 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
                 [
                     "slug" => "oeuf",
                     "quantity" => 3,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
                 [
                     "slug" => "yaourt-nature",
                     "quantity" => 1,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
                 [
                     "slug" => "citron",
                     "quantity" => 1,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
                 [
                     "slug" => "huile",
@@ -2332,7 +2332,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
                 [
                     "slug" => "oeuf",
                     "quantity" => 1,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
             ],
         ],
@@ -2370,7 +2370,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
                 [
                     "slug" => "oeuf",
                     "quantity" => 2,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
                 [
                     "slug" => "beurre",
@@ -2418,7 +2418,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
                 [
                     "slug" => "banane",
                     "quantity" => 3,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
                 [
                     "slug" => "lait",
@@ -2433,7 +2433,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
                 [
                     "slug" => "oeuf",
                     "quantity" => 2,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
             ],
         ],
@@ -2456,7 +2456,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
                 [
                     "slug" => "oeuf",
                     "quantity" => 1,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
                 [
                     "slug" => "farine",
@@ -2479,7 +2479,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
                 [
                     "slug" => "oeuf",
                     "quantity" => 3,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
                 [
                     "slug" => "sucre",
@@ -2527,17 +2527,17 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
                 [
                     "slug" => "citron",
                     "quantity" => 2,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
                 [
                     "slug" => "biscuit-cuillere",
                     "quantity" => 20,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
                 [
                     "slug" => "oeuf",
                     "quantity" => 3,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
                 [
                     "slug" => "mascarpone",
@@ -2555,7 +2555,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
                 [
                     "slug" => "avocat",
                     "quantity" => 2,
-                    "unit" => "piece",
+                    "unit" => "unite",
                 ],
                 [
                     "slug" => "epice-guacamole",

@@ -19,7 +19,7 @@ class CreateShoppingListViewController extends AbstractController
     ) {
     }
 
-    #[Route(path: '/shopping-list', name: 'view_shopping_list_create', methods: ['POST'])]
+    #[Route(path: '/shopping-list/create', name: 'view_shopping_list_create', methods: ['GET','POST'])]
     #[IsGranted('ROLE_USER')]
     public function __invoke(): Response
     {

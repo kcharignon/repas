@@ -49,8 +49,9 @@ class UpdateRecipeViewController extends AbstractController
             ]);
         }
 
-        return $this->render('@Repas/Recipe/create_recipe.html.twig', [
+        return $this->render('@Repas/Recipe/form_recipe.html.twig', [
             'form' => $form->createView(),
+            'recipe' => $recipe,
         ]);
     }
 }
