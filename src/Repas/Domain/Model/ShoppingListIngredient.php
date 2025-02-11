@@ -91,4 +91,9 @@ final class ShoppingListIngredient implements ModelInterface
     {
         $this->quantity -= $getQuantity;
     }
+
+    public function hasIngredient(Ingredient $ingredient): bool
+    {
+        return $this->ingredient->isEqual($ingredient);
+    }
 }

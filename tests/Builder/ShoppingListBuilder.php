@@ -9,6 +9,7 @@ use Repas\Repas\Domain\Model\Recipe;
 use Repas\Repas\Domain\Model\ShoppingList;
 use Repas\Repas\Domain\Model\ShoppingListIngredient;
 use Repas\Repas\Domain\Model\ShoppingListRow;
+use Repas\Repas\Domain\Model\ShoppingListStatus;
 use Repas\Repas\Domain\Model\ShoppingListStatus as Status;
 use Repas\Shared\Domain\Tool\Tab;
 use Repas\Shared\Domain\Tool\UuidGenerator;
@@ -31,7 +32,7 @@ class ShoppingListBuilder implements Builder
             'id' => $this->id,
             'owner' => $owner,
             'created_at' => $this->createdAt,
-            'status' => Status::PLANNING, // On met au status PLANNING pour pouvoir ajouter les recettes
+            'status' => Status::ACTIVE, // On met au status ACTIVE pour pouvoir ajouter les recettes
             'meals' => Tab::newEmptyTyped(Meal::class),
             'ingredients' => Tab::newEmptyTyped(ShoppingListIngredient::class),
             'rows' => Tab::newEmptyTyped(ShoppingListRow::class),
@@ -44,7 +45,7 @@ class ShoppingListBuilder implements Builder
         }
 
         // On passe au status demandé
-        if ($this->status !== Status::PLANNING) {
+        if ($this->status !== Status::ACTIVE) {
             $shoppingList->setStatus($this->status);
         }
 
@@ -73,7 +74,7 @@ class ShoppingListBuilder implements Builder
         $this->id ??= UuidGenerator::new();
         $this->owner ??= new UserBuilder();
         $this->createdAt ??= new DateTimeImmutable();
-        $this->status ??= Status::PLANNING;
+        $this->status ??= Status::ACTIVE;
         $this->recipes ??= Tab::newEmptyTyped(Recipe::class);
     }
 }

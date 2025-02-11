@@ -47,4 +47,10 @@ class UserBuilder implements Builder
         $this->roles = ['ROLE_USER', 'ROLE_ADMIN'];
         return $this;
     }
+
+    public function withId(string $id): static
+    {
+        $this->id = $id;
+        return $this;
+    }
 }

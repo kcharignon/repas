@@ -336,4 +336,9 @@ final class ShoppingList implements ModelInterface
     {
         return $this->rows->find(fn(Row $row) => $row->getIngredient()->isEqual($ingredient))?->getQuantity();
     }
+
+    public function isActivate(): bool
+    {
+        return $this->status === Status::ACTIVE;
+    }
 }
