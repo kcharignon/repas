@@ -33,7 +33,7 @@ class ConversionServiceTest extends TestCase
         $egg = new IngredientBuilder()->isEgg()->build();
         $box = new UnitBuilder()->isBox()->build();
         $gramme = new UnitBuilder()->isGramme()->build();
-        $piece = new UnitBuilder()->isPiece()->build();
+        $piece = new UnitBuilder()->isUnite()->build();
         $millilitre = new UnitBuilder()->isMillilitre()->build();
         $centilitre = new UnitBuilder()->isCentilitre()->build();
         return [
@@ -82,12 +82,12 @@ class ConversionServiceTest extends TestCase
             new ConversionBuilder()
                 ->setIngredient($egg)
                 ->setStartUnit(new UnitBuilder()->isBox()->build())
-                ->setEndUnit(new UnitBuilder()->isPiece()->build())
+                ->setEndUnit(new UnitBuilder()->isUnite()->build())
                 ->setCoefficient(12)
                 ->build(),
             new ConversionBuilder()
                 ->setIngredient($egg)
-                ->setStartUnit(new UnitBuilder()->isPiece()->build())
+                ->setStartUnit(new UnitBuilder()->isUnite()->build())
                 ->setEndUnit(new UnitBuilder()->isGramme()->build())
                 ->setCoefficient(60)
                 ->build(),
@@ -105,7 +105,7 @@ class ConversionServiceTest extends TestCase
             new ConversionBuilder()
                 ->setIngredient($milk)
                 ->setStartUnit(new UnitBuilder()->isMillilitre()->build())
-                ->setEndUnit(new UnitBuilder()->isPiece()->build())
+                ->setEndUnit(new UnitBuilder()->isUnite()->build())
                 ->setCoefficient(400)
                 ->build(),
         ]);

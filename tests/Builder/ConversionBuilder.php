@@ -57,14 +57,14 @@ class ConversionBuilder implements Builder
     {
         $this->id ??= UuidGenerator::new();
         $this->startUnit ??= new UnitBuilder()->isBox();
-        $this->endUnit ??= new UnitBuilder()->isPiece();
+        $this->endUnit ??= new UnitBuilder()->isUnite();
         $this->coefficient ??= 12;
         $this->ingredient ??= new IngredientBuilder()->isEgg();
     }
 
     public function isPieceToGrammeForEgg(): self
     {
-        $this->startUnit = new UnitBuilder()->isPiece();
+        $this->startUnit = new UnitBuilder()->isUnite();
         $this->endUnit = new UnitBuilder()->isGramme();
         $this->coefficient = 60;
         $this->ingredient = new IngredientBuilder()->isEgg();

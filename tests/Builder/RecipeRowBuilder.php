@@ -61,6 +61,6 @@ class RecipeRowBuilder implements Builder
         $this->id ??= UuidGenerator::new();
         $this->ingredientBuilder ??= new IngredientBuilder()->isEgg();
         $this->quantity ??= 4;
-        $this->unitBuilder ??= new UnitBuilder()->isPiece();
+        $this->unitBuilder ??= new UnitBuilder()->isUnite();
     }
 }

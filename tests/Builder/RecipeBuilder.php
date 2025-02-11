@@ -48,7 +48,7 @@ class RecipeBuilder implements Builder
             new RecipeRowBuilder()
                 ->setRecipeId($this->id)
                 ->setIngredientBuilder(new IngredientBuilder()->isEgg())
-                ->setUnitBuilder(new UnitBuilder()->isPiece())
+                ->setUnitBuilder(new UnitBuilder()->isUnite())
                 ->setQuantity(1),
             new RecipeRowBuilder()
                 ->setRecipeId($this->id)
@@ -80,12 +80,12 @@ class RecipeBuilder implements Builder
             new RecipeRowBuilder()
                 ->setRecipeId($this->id)
                 ->setIngredientBuilder(new IngredientBuilder()->isEgg())
-                ->setUnitBuilder(new UnitBuilder()->isPiece())
+                ->setUnitBuilder(new UnitBuilder()->isUnite())
                 ->setQuantity(4),
             new RecipeRowBuilder()
                 ->setRecipeId($this->id)
                 ->setIngredientBuilder(new IngredientBuilder()->isBread())
-                ->setUnitBuilder(new UnitBuilder()->isPiece())
+                ->setUnitBuilder(new UnitBuilder()->isUnite())
                 ->setQuantity(1),
         );
 

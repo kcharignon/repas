@@ -49,10 +49,10 @@ class UnitBuilder implements Builder
         return $this;
     }
 
-    public function isPiece(): UnitBuilder
+    public function isUnite(): UnitBuilder
     {
-        $this->name = 'pièce';
-        $this->slug = 'piece';
+        $this->name = 'unité';
+        $this->slug = 'unite';
         $this->symbol = '';
         return $this;
     }

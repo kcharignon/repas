@@ -24,8 +24,8 @@ class IngredientBuilder implements Builder
         $this->name ??= 'Un truc immangeable';
         $this->image ??= 'file://images/default.jpg';
         $this->departmentBuilder ??= new DepartmentBuilder()->isConserve();
-        $this->defaultCookingUnitBuilder ??= new UnitBuilder()->isPiece();
-        $this->defaultPurchaseUnitBuilder ??= new UnitBuilder()->isPiece();
+        $this->defaultCookingUnitBuilder ??= new UnitBuilder()->isUnite();
+        $this->defaultPurchaseUnitBuilder ??= new UnitBuilder()->isUnite();
         $this->creator ??= null;
     }
 
@@ -81,8 +81,8 @@ class IngredientBuilder implements Builder
         $this->slug = StringTool::slugify($this->name);
         $this->image = 'images/ingredient/egg.png';
         $this->departmentBuilder = new DepartmentBuilder()->isMiscellaneous();
-        $this->defaultCookingUnitBuilder = new UnitBuilder()->isPiece();
-        $this->defaultPurchaseUnitBuilder = new UnitBuilder()->isPiece();
+        $this->defaultCookingUnitBuilder = new UnitBuilder()->isUnite();
+        $this->defaultPurchaseUnitBuilder = new UnitBuilder()->isUnite();
         return $this;
     }
 
@@ -125,8 +125,8 @@ class IngredientBuilder implements Builder
         $this->slug = StringTool::slugify($this->name);
         $this->image = 'image/pain.jpg';
         $this->departmentBuilder = new DepartmentBuilder()->isBakery();
-        $this->defaultCookingUnitBuilder = new UnitBuilder()->isPiece();
-        $this->defaultPurchaseUnitBuilder = new UnitBuilder()->isPiece();
+        $this->defaultCookingUnitBuilder = new UnitBuilder()->isUnite();
+        $this->defaultPurchaseUnitBuilder = new UnitBuilder()->isUnite();
         return $this;
     }
 

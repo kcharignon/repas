@@ -105,13 +105,13 @@ class ShoppingListRepositoryTest extends DatabaseTestCase
 
         // Assert
         RepasAssert::assertTabType(Tab::newEmptyTyped(ShoppingList::class), $shoppingLists);
-        $this->assertCount(4, $shoppingLists);
+        $this->assertCount(2, $shoppingLists);
         foreach ($shoppingLists as $shoppingList) {
             RepasAssert::assertUser($shoppingList->getOwner(), $user);
         }
     }
 
-    public function testFindOnePlanningByOwner(): void
+    public function testFindOneActivateByOwner(): void
     {
         // Arrange
         $user = $this->userRepository->findOneByEmail('alexiane.sichi@gmail.com');
@@ -121,7 +121,7 @@ class ShoppingListRepositoryTest extends DatabaseTestCase
 
         // Assert
         $this->assertInstanceOf(ShoppingList::class, $shoppingList);
-        $this->assertEquals(ShoppingListStatus::PLANNING, $shoppingList->getStatus());
+        $this->assertEquals(ShoppingListStatus::ACTIVE, $shoppingList->getStatus());
         RepasAssert::assertUser($shoppingList->getOwner(), $user);
     }
 }
