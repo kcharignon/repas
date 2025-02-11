@@ -2,7 +2,6 @@
 
 namespace Repas\Tests\Repas\Application;
 
-use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\TestCase;
 use Repas\Repas\Application\AddIngredientToShoppingList\AddIngredientToShoppingListCommand;
 use Repas\Repas\Application\AddIngredientToShoppingList\AddIngredientToShoppingListHandler;
@@ -57,10 +56,10 @@ class AddIngredientToShoppingListHandlerTest extends TestCase
         ($this->handler)($command);
 
         //Assert
-        Assert::assertCount(1, $shoppingList->getIngredients());
-        Assert::assertCount(1, $shoppingList->getRows());
-        Assert::assertNotNull($shoppingList->getIngredients()->find(fn(ShoppingListIngredient $sli) => $sli->hasIngredient($egg)));
-        Assert::assertEquals(1, $shoppingList->getIngredients()->find(fn(ShoppingListIngredient $sli) => $sli->hasIngredient($egg))?->getQuantity());
+        $this->assertCount(1, $shoppingList->getIngredients());
+        $this->assertCount(1, $shoppingList->getRows());
+        $this->assertNotNull($shoppingList->getIngredients()->find(fn(ShoppingListIngredient $sli) => $sli->hasIngredient($egg)));
+        $this->assertEquals(1, $shoppingList->getIngredients()->find(fn(ShoppingListIngredient $sli) => $sli->hasIngredient($egg))?->getQuantity());
     }
 
     public function testHandleAddsIngredientToShoppingListWithUnknownUser(): void

@@ -238,18 +238,6 @@ final class ShoppingList implements ModelInterface
     /**
      * @throws ShoppingListException
      */
-    public function toShopping(): void
-    {
-        if (!$this->isPlanning()) {
-            throw ShoppingListException::shoppingListShouldBeOnPlanningBeforeShopping($this->id, $this->status);
-        }
-
-        $this->status = Status::SHOPPING;
-    }
-
-    /**
-     * @throws ShoppingListException
-     */
     public function toPlanning(): void
     {
         if (!$this->isShopping()) {
