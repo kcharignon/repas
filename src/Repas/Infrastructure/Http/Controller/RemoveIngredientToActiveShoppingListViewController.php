@@ -18,6 +18,7 @@ class RemoveIngredientToActiveShoppingListViewController extends AbstractControl
     public function __construct(
         private readonly CommandBusInterface $commandBus,
         private readonly IngredientRepository $ingredientRepository,
+        private readonly ShoppingListRepository $shoppingListRepository,
     ) {
     }
 
@@ -36,11 +37,17 @@ class RemoveIngredientToActiveShoppingListViewController extends AbstractControl
 
         $ingredient = $this->ingredientRepository->findOneBySlug($slug);
 
+        $activeShoppingList = $this->shoppingListRepository->findOneActivateByOwner($connectedUser);
+        $html = $this->renderView('@Repas/Department/_ingredient_row.html.twig', [
+            'ingredient' => $ingredient,
+            'shoppingList' => $activeShoppingList,
+        ]);
+
         return new JsonResponse([
-            "alerts" => [
+            "views" => [
                 [
-                    "status" => "info",
-                    "message" => $ingredient->getName()." a été déduit.",
+                    "selector" => "#ingredient-row-{$ingredient->getSlug()}",
+                    "html" => $html,
                 ]
             ]
         ]);

@@ -54,12 +54,18 @@ class AddIngredientToActiveShoppingListViewController extends AbstractController
         $this->commandBus->dispatch($command);
 
         $ingredient = $this->ingredientRepository->findOneBySlug($slug);
+        $activeShoppingList = $this->shoppingListRepository->findOneActivateByOwner($connectedUser);
+
+        $html = $this->renderView('@Repas/Department/_ingredient_row.html.twig', [
+            'ingredient' => $ingredient,
+            'shoppingList' => $activeShoppingList,
+        ]);
 
         return new JsonResponse([
-            "alerts" => [
+            "views" => [
                 [
-                    "status" => "success",
-                    "message" => $ingredient->getName()." a été ajouté.",
+                    "selector" => "#ingredient-row-{$ingredient->getSlug()}",
+                    "html" => $html,
                 ]
             ]
         ]);

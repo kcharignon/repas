@@ -5,6 +5,7 @@ namespace Repas\Repas\Infrastructure\Http\Controller;
 
 use Repas\Repas\Domain\Interface\DepartmentRepository;
 use Repas\Repas\Domain\Interface\IngredientRepository;
+use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\User\Domain\Model\User;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
@@ -16,6 +17,7 @@ class GetOneDepartmentViewController extends AbstractController
     public function __construct(
         private readonly DepartmentRepository $departmentRepository,
         private readonly IngredientRepository $ingredientRepository,
+        private readonly ShoppingListRepository $shoppingListRepository,
     ) {
     }
 
@@ -27,10 +29,12 @@ class GetOneDepartmentViewController extends AbstractController
         assert($connectedUser instanceof User);
         $department = $this->departmentRepository->findOneBySlug($slug);
         $ingredients = $this->ingredientRepository->findByDepartmentAndOwner($department, $connectedUser);
+        $shoppingList = $this->shoppingListRepository->findOneActivateByOwner($connectedUser);
 
         return $this->render('@Repas/Department/department.html.twig', [
             'department' => $department,
             'ingredients' => $ingredients,
+            'shoppingList' => $shoppingList,
         ]);
     }
 

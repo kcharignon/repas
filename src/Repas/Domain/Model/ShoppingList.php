@@ -331,4 +331,9 @@ final class ShoppingList implements ModelInterface
     {
         return $this->meals->count();
     }
+
+    public function getIngredientQuantity(Ingredient $ingredient): ?float
+    {
+        return $this->rows->find(fn(Row $row) => $row->getIngredient()->isEqual($ingredient))?->getQuantity();
+    }
 }
