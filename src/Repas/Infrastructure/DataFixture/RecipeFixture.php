@@ -415,7 +415,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
             ],
         ],
         [
-            "name" => "sauce lentille",
+            "name" => "saucisse lentille",
             "owner" => "alexiane.sichi@gmail.com",
             "type" => "plat",
             "people" => 4,

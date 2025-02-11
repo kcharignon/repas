@@ -27,8 +27,8 @@
 
                 <!-- Boutons pour basculer entre les vues en mode mobile -->
                 <div id="shopping-list-button-switch-ingredient-recipe" class="text-center mb-3">
-                    <button class="btn btn-primary me-2" id="button-show-ingredients">Ingrédients</button>
-                    <button class="btn btn-secondary" id="button-show-recipes">Recettes</button>
+                    <button class="btn btn-primary me-2" id="button-show-ingredients">{{ shoppingList.countRows }} Ingrédients</button>
+                    <button class="btn btn-secondary" id="button-show-recipes">{{ shoppingList.countRecipes }} Recettes</button>
                 </div>
 
                 <div class="row">
@@ -36,7 +36,7 @@
                     {% include "@Repas/ShoppingList/_ingredients_column.html.twig" %}
 
                     <div id="shopping-list-recipes-column" class="col">
-                        <h2>Recettes</h2>
+                        <h2> {{ shoppingList.countRecipes }} Recettes</h2>
                         {% for recipeType in shoppingList.recipeTypePresent %}
                             {% set recipes = shoppingList.getRecipesByType(recipeType) %}
                             {% set meals = shoppingList.getMealByType(recipeType) %}

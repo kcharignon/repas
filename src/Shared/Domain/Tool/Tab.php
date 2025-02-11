@@ -363,7 +363,7 @@ class Tab implements ArrayAccess, IteratorAggregate, Countable
     /**
      *
      * @see array_reduce()
-     * @param callable(T, mixed): mixed $callback
+     * @param callable(mixed $carry, T $item): mixed $callback
      * @param $initial
      * @return mixed
      */

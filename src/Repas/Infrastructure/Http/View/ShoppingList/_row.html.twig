@@ -9,8 +9,8 @@
         data-url="{{ path("view_shopping_list_row_tick", {"id" : row.id}) }}"
     {% endif %}
     class="list-group-item d-flex justify-content-end align-items-center">
-    <i data-loader="replace" class="far {{ (row.checked ? "fa-check-square" : "fa-square") }} "></i>
-    <span class="ms-1 {{ (row.checked) ? "text-decoration-line-through" : "" }}">
+    <i data-loader="replace" class="far {{ (row.checked ? "fa-check-square" : "fa-square") }}" style="{{ (row.checked) ? "color:grey" : "" }}"></i>
+    <span class="ms-1 {{ (row.checked) ? "text-decoration-line-through" : "" }}" style="{{ (row.checked) ? "color:grey" : "" }}">
         {{ row.ingredient.name|capitalize }}
     </span>
     <span style="flex: 1"></span>

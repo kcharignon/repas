@@ -309,11 +309,6 @@ final class ShoppingList implements ModelInterface
         $this->status = Status::ACTIVE;
     }
 
-    private function foundRowByIngredientAndUnit(Ingredient $ingredient, Unit $unit): ?ShoppingListIngredient
-    {
-        return $this->ingredients->find(fn(ShoppingListIngredient $row) => $row->hasIngredientInUnit($ingredient, $unit));
-    }
-
     public function removeMeal(Recipe $recipe): void
     {
         $mealKey = $this->meals->findKey(fn(Meal $meal) => $meal->hasRecipe($recipe));
@@ -325,5 +320,15 @@ final class ShoppingList implements ModelInterface
 
         // On trouve le coefficient grace au serving
         unset($this->meals[$mealKey]);
+    }
+
+    public function countRows(): int
+    {
+        return $this->rows->count();
+    }
+
+    public function countRecipes(): int
+    {
+        return $this->meals->count();
     }
 }
