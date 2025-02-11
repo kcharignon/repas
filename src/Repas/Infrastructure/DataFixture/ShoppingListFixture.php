@@ -22,7 +22,7 @@ class ShoppingListFixture extends Fixture implements DependentFixtureInterface, 
         [
             'user' => 'alexiane.sichi@gmail.com',
             'createdAt' => '2024-12-05T09:35:05+01:00',
-            'status' => ShoppingListStatus::COMPLETED,
+            'status' => ShoppingListStatus::ACTIVE,
         ],
         [
             'user' => 'alexiane.sichi@gmail.com',
@@ -30,19 +30,9 @@ class ShoppingListFixture extends Fixture implements DependentFixtureInterface, 
             'status' => ShoppingListStatus::COMPLETED,
         ],
         [
-            'user' => 'alexiane.sichi@gmail.com',
-            'createdAt' => '2025-01-05T18:21:12+01:00',
-            'status' => ShoppingListStatus::SHOPPING,
-        ],
-        [
-            'user' => 'alexiane.sichi@gmail.com',
-            'createdAt' => '2025-01-20T10:56:23+01:00',
-            'status' => ShoppingListStatus::PLANNING,
-        ],
-        [
             'user' => 'kantincharignon@gmail.com',
             'createdAt' => '2025-01-20T10:56:23+01:00',
-            'status' => ShoppingListStatus::PLANNING,
+            'status' => ShoppingListStatus::COMPLETED,
         ],
     ];
 

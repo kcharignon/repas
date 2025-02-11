@@ -31,7 +31,7 @@ readonly class ShoppingListIngredientPostgreSQLRepository extends PostgreSQLRepo
     public function findByShoppingListId(string $shoppingListId): Tab
     {
         return new Tab($this->entityRepository->findBy(['shoppingListId' => $shoppingListId]), ShopListIngEntity::class)
-            ->map(fn (ShopListIngEntity $entity) => $this->convertEntityToModel($entity));
+            ->map(fn (ShopListIngEntity $entity) => $this->convertEntityToModel($entity), ShoppingListIngredient::class);
     }
 
     public function save(ShoppingListIngredient $shoppingListIngredient): void
