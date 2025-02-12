@@ -8,34 +8,21 @@ use Repas\Repas\Domain\Model\Conversion;
 use Repas\Repas\Domain\Model\Ingredient;
 use Repas\Shared\Domain\Tool\Tab;
 
-class ConversionInMemoryRepository implements ConversionRepository
+class ConversionInMemoryRepository extends AbstractInMemoryRepository implements ConversionRepository
 {
-    /**
-     * @var Tab<string, Conversion>
-     */
-    private Tab $conversions;
-
-    /**
-     * @param ?Tab<Conversion> $conversions
-     */
-    public function __construct(?Tab $conversions = null)
+    protected static function getClassName(): string
     {
-        $conversions ??= Tab::newEmptyTyped(Conversion::class);
-        $this->conversions = Tab::newEmptyTyped(Conversion::class);
-        foreach ($conversions as $conversion) {
-            $this->save($conversion);
-        }
+        return Conversion::class;
     }
-
 
     public function findByIngredient(Ingredient $ingredient): Tab
     {
-        return $this->conversions->filter(fn (Conversion $conversion) => $conversion->getIngredient()->isEqual($ingredient) || $conversion->getIngredient() === null);
+        return $this->models->filter(fn (Conversion $conversion) => $conversion->getIngredient()->isEqual($ingredient) || $conversion->getIngredient() === null);
     }
 
     public function save(Conversion $conversion): void
     {
-        $this->conversions[$conversion->getId()] = $conversion;
+        $this->models[$conversion->getId()] = $conversion;
     }
 
 }

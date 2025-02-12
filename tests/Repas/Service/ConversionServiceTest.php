@@ -80,33 +80,33 @@ class ConversionServiceTest extends TestCase
         $milk = new IngredientBuilder()->isMilk()->build();
         return Tab::fromArray([
             new ConversionBuilder()
-                ->setIngredient($egg)
-                ->setStartUnit(new UnitBuilder()->isBox()->build())
-                ->setEndUnit(new UnitBuilder()->isUnite()->build())
-                ->setCoefficient(12)
+                ->withIngredient($egg)
+                ->withStartUnit(new UnitBuilder()->isBox()->build())
+                ->withEndUnit(new UnitBuilder()->isUnite()->build())
+                ->withCoefficient(12)
                 ->build(),
             new ConversionBuilder()
-                ->setIngredient($egg)
-                ->setStartUnit(new UnitBuilder()->isUnite()->build())
-                ->setEndUnit(new UnitBuilder()->isGramme()->build())
-                ->setCoefficient(60)
+                ->withIngredient($egg)
+                ->withStartUnit(new UnitBuilder()->isUnite()->build())
+                ->withEndUnit(new UnitBuilder()->isGramme()->build())
+                ->withCoefficient(60)
                 ->build(),
             new ConversionBuilder()
-                ->setIngredient($egg)
-                ->setStartUnit(new UnitBuilder()->isMillilitre()->build())
-                ->setEndUnit(new UnitBuilder()->isGramme()->build())
-                ->setCoefficient(1.5)
+                ->withIngredient($egg)
+                ->withStartUnit(new UnitBuilder()->isMillilitre()->build())
+                ->withEndUnit(new UnitBuilder()->isGramme()->build())
+                ->withCoefficient(1.5)
                 ->build(),
             new ConversionBuilder()
-                ->setStartUnit(new UnitBuilder()->isCentilitre()->build())
-                ->setEndUnit(new UnitBuilder()->isMillilitre()->build())
-                ->setCoefficient(10)
+                ->withStartUnit(new UnitBuilder()->isCentilitre()->build())
+                ->withEndUnit(new UnitBuilder()->isMillilitre()->build())
+                ->withCoefficient(10)
                 ->build(),
             new ConversionBuilder()
-                ->setIngredient($milk)
-                ->setStartUnit(new UnitBuilder()->isMillilitre()->build())
-                ->setEndUnit(new UnitBuilder()->isUnite()->build())
-                ->setCoefficient(400)
+                ->withIngredient($milk)
+                ->withStartUnit(new UnitBuilder()->isMillilitre()->build())
+                ->withEndUnit(new UnitBuilder()->isUnite()->build())
+                ->withCoefficient(400)
                 ->build(),
         ]);
     }

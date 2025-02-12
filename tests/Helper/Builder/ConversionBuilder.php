@@ -29,25 +29,25 @@ class ConversionBuilder implements Builder
         ]);
     }
 
-    public function setStartUnit(Unit|UnitBuilder $startUnit): ConversionBuilder
+    public function withStartUnit(Unit|UnitBuilder $startUnit): ConversionBuilder
     {
         $this->startUnit = $startUnit;
         return $this;
     }
 
-    public function setEndUnit(Unit|UnitBuilder $endUnit): ConversionBuilder
+    public function withEndUnit(Unit|UnitBuilder $endUnit): ConversionBuilder
     {
         $this->endUnit = $endUnit;
         return $this;
     }
 
-    public function setCoefficient(float $coefficient): ConversionBuilder
+    public function withCoefficient(float $coefficient): ConversionBuilder
     {
         $this->coefficient = $coefficient;
         return $this;
     }
 
-    public function setIngredient(IngredientBuilder|Ingredient $ingredient): ConversionBuilder
+    public function withIngredient(IngredientBuilder|Ingredient $ingredient): ConversionBuilder
     {
         $this->ingredient = $ingredient;
         return $this;
