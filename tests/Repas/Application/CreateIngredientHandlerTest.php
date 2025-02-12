@@ -22,7 +22,6 @@ use Repas\Tests\Helper\InMemoryRepository\UserInMemoryRepository;
 use Repas\Tests\Helper\RepasAssert;
 use Repas\User\Domain\Exception\UserException;
 use Repas\User\Domain\Interface\UserRepository;
-use Symfony\Component\Security\Core\Exception\UserNotFoundException;
 
 class CreateIngredientHandlerTest extends TestCase
 {

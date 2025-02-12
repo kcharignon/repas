@@ -4,6 +4,8 @@ namespace Repas\Tests\Builder;
 
 
 use Repas\Repas\Domain\Model\Recipe;
+use Repas\Repas\Domain\Model\RecipeRow;
+use Repas\Repas\Domain\Model\RecipeType;
 use Repas\Shared\Domain\Tool\Tab;
 use Repas\Shared\Domain\Tool\UuidGenerator;
 use Repas\User\Domain\Model\User;
@@ -14,7 +16,7 @@ class RecipeBuilder implements Builder
     private ?string $name = null;
     private ?int $serving = null;
     private UserBuilder|User|null $author = null;
-    private ?RecipeTypeBuilder $typeBuilder = null;
+    private RecipeTypeBuilder|RecipeType|null $type = null;
     /** @var Tab<RecipeRowBuilder>|null  */
     private ?Tab $rows = null;
 
@@ -28,7 +30,7 @@ class RecipeBuilder implements Builder
             'name' => $this->name,
             'serving' => $this->serving,
             'author' => $author,
-            'type' => $this->typeBuilder->build(),
+            'type' => $this->type instanceof RecipeType ? $this->type : $this->type->build(),
             'rows' => $this->rows->map(fn(RecipeRowBuilder $row) => $row->build()),
         ]);
     }
@@ -38,33 +40,33 @@ class RecipeBuilder implements Builder
         $this->id ??= UuidGenerator::new();
         $this->name = 'pates carbonara';
         $this->serving = 4;
-        $this->typeBuilder = new RecipeTypeBuilder()->isMeal();
+        $this->type = new RecipeTypeBuilder()->isMeal();
         $this->rows = Tab::fromArray(
             new RecipeRowBuilder()
-                ->setRecipeId($this->id)
-                ->setIngredientBuilder(new IngredientBuilder()->isPasta())
-                ->setUnitBuilder(new UnitBuilder()->isGramme())
-                ->setQuantity(500),
+                ->withRecipeId($this->id)
+                ->withIngredient(new IngredientBuilder()->isPasta())
+                ->withUnit(new UnitBuilder()->isGramme())
+                ->withQuantity(500),
             new RecipeRowBuilder()
-                ->setRecipeId($this->id)
-                ->setIngredientBuilder(new IngredientBuilder()->isEgg())
-                ->setUnitBuilder(new UnitBuilder()->isUnite())
-                ->setQuantity(1),
+                ->withRecipeId($this->id)
+                ->withIngredient(new IngredientBuilder()->isEgg())
+                ->withUnit(new UnitBuilder()->isUnite())
+                ->withQuantity(1),
             new RecipeRowBuilder()
-                ->setRecipeId($this->id)
-                ->setIngredientBuilder(new IngredientBuilder()->isThickCremeFraiche())
-                ->setUnitBuilder(new UnitBuilder()->isGramme())
-                ->setQuantity(250),
+                ->withRecipeId($this->id)
+                ->withIngredient(new IngredientBuilder()->isThickCremeFraiche())
+                ->withUnit(new UnitBuilder()->isGramme())
+                ->withQuantity(250),
             new RecipeRowBuilder()
-                ->setRecipeId($this->id)
-                ->setIngredientBuilder(new IngredientBuilder()->isDicedBacon())
-                ->setUnitBuilder(new UnitBuilder()->isGramme())
-                ->setQuantity(250),
+                ->withRecipeId($this->id)
+                ->withIngredient(new IngredientBuilder()->isDicedBacon())
+                ->withUnit(new UnitBuilder()->isGramme())
+                ->withQuantity(250),
             new RecipeRowBuilder()
-                ->setRecipeId($this->id)
-                ->setIngredientBuilder(new IngredientBuilder()->isParmesan())
-                ->setUnitBuilder(new UnitBuilder()->isGramme())
-                ->setQuantity(100),
+                ->withRecipeId($this->id)
+                ->withIngredient(new IngredientBuilder()->isParmesan())
+                ->withUnit(new UnitBuilder()->isGramme())
+                ->withQuantity(100),
         );
 
         return $this;
@@ -75,18 +77,18 @@ class RecipeBuilder implements Builder
         $this->id = UuidGenerator::new();
         $this->name = 'œufs à la coque';
         $this->serving = 2;
-        $this->typeBuilder = new RecipeTypeBuilder()->isMeal();
+        $this->type = new RecipeTypeBuilder()->isMeal();
         $this->rows = Tab::fromArray(
             new RecipeRowBuilder()
-                ->setRecipeId($this->id)
-                ->setIngredientBuilder(new IngredientBuilder()->isEgg())
-                ->setUnitBuilder(new UnitBuilder()->isUnite())
-                ->setQuantity(4),
+                ->withRecipeId($this->id)
+                ->withIngredient(new IngredientBuilder()->isEgg())
+                ->withUnit(new UnitBuilder()->isUnite())
+                ->withQuantity(4),
             new RecipeRowBuilder()
-                ->setRecipeId($this->id)
-                ->setIngredientBuilder(new IngredientBuilder()->isBread())
-                ->setUnitBuilder(new UnitBuilder()->isUnite())
-                ->setQuantity(1),
+                ->withRecipeId($this->id)
+                ->withIngredient(new IngredientBuilder()->isBread())
+                ->withUnit(new UnitBuilder()->isUnite())
+                ->withQuantity(1),
         );
 
         return $this;
@@ -98,13 +100,44 @@ class RecipeBuilder implements Builder
         $this->name ??= 'Gloubiboulga';
         $this->serving ??= 2;
         $this->author ??= new UserBuilder();
-        $this->typeBuilder ??= new RecipeTypeBuilder();
+        $this->type ??= new RecipeTypeBuilder();
         $this->rows ??= [];
     }
 
     public function withAuthor(UserBuilder|User $author): self
     {
         $this->author = $author;
+        return $this;
+    }
+
+    public function withId(string $id): self
+    {
+        $this->id = $id;
+        return $this;
+    }
+
+    public function withName(string $name): self
+    {
+        $this->name = $name;
+        return $this;
+    }
+
+    public function withServing(int $serving): self
+    {
+        $this->serving = $serving;
+        return $this;
+    }
+
+    public function addRow(RecipeRowBuilder $row): self
+    {
+        $this->rows ??= Tab::newEmptyTyped(RecipeRowBuilder::class);
+        $this->rows[] = $row;
+        return $this;
+    }
+
+    public function withRecipeType(RecipeType $recipeType): self
+    {
+        $this->type = $recipeType;
         return $this;
     }
 }

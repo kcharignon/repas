@@ -43,7 +43,7 @@ class RecipeRepositoryTest extends DatabaseTestCase
         $recipe->setServing(10);
         $recipe->setName("nouveau petit nom");
         $recipe->setType(new RecipeTypeBuilder()->isDessert()->build());
-        $recipe->setRows(Tab::fromArray(new RecipeRowBuilder()->setRecipeId($recipe->getId())->build()));
+        $recipe->setRows(Tab::fromArray(new RecipeRowBuilder()->withRecipeId($recipe->getId())->build()));
 
         // Act
         $this->recipeRepository->save($recipe);

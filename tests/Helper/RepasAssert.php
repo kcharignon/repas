@@ -52,10 +52,12 @@ class RepasAssert
         self::assertUnit($expected->getDefaultPurchaseUnit(), $actual->getDefaultPurchaseUnit(), sprintf("Ingredient %s, have wrong default purchase unit", $expected->getSlug()));
     }
 
-    public static function assertRecipeRow(RecipeRow $expected, mixed $actual): void
+    public static function assertRecipeRow(RecipeRow $expected, mixed $actual, array $excluded = []): void
     {
         Assert::assertInstanceOf(RecipeRow::class, $actual);
-        Assert::assertEquals($expected->getId(), $actual->getId());
+        if (!in_array("id", $excluded, true)) {
+            Assert::assertEquals($expected->getId(), $actual->getId());
+        }
         Assert::assertEquals($expected->getQuantity(), $actual->getQuantity());
         Assert::assertEquals($expected->getRecipeId(), $actual->getRecipeId());
         self::assertIngredient($expected->getIngredient(), $actual->getIngredient());
@@ -65,14 +67,14 @@ class RepasAssert
     public static function assertUser(User $expected, mixed $actual): void
     {
         Assert::assertInstanceOf(User::class, $actual);
-        Assert::assertEquals($expected->getId(), $actual->getId());
-        Assert::assertEquals($expected->getEmail(), $actual->getEmail());
-        Assert::assertEquals($expected->getPassword(), $actual->getPassword());
-        Assert::assertEquals($expected->getRoles(), $actual->getRoles());
+        Assert::assertEquals($expected->getId(), $actual->getId(), "Users ids are different");
+        Assert::assertEquals($expected->getEmail(), $actual->getEmail(), "Users emails are different");
+        Assert::assertEquals($expected->getPassword(), $actual->getPassword(), "Users password are different");
+        Assert::assertEquals($expected->getRoles(), $actual->getRoles(), "Users roles are different");
         Assert::assertEquals($expected->getDefaultServing(), $actual->getDefaultServing());
     }
 
-    public static function assertRecipe(Recipe $expected, mixed $actual): void
+    public static function assertRecipe(Recipe $expected, mixed $actual, array $excluded = []): void
     {
         Assert::assertInstanceOf(Recipe::class, $actual);
         Assert::assertEquals($expected->getId(), $actual->getId());
@@ -80,7 +82,7 @@ class RepasAssert
         Assert::assertEquals($expected->getServing(), $actual->getServing());
         self::assertRecipeType($expected->getType(), $actual->getType());
         self::assertUser($expected->getAuthor(), $actual->getAuthor());
-        self::assertRecipeRows($expected->getRows(), $actual->getRows());
+        self::assertRecipeRows($expected->getRows(), $actual->getRows(), $excluded['RecipeRow'] ?? []);
     }
 
     public static function assertRecipeType(RecipeType $expected, mixed $actual): void
@@ -101,13 +103,13 @@ class RepasAssert
     /**
      * @param Tab<RecipeRow> $expected
      */
-    public static function assertRecipeRows(Tab $expected, mixed $actual): void
+    public static function assertRecipeRows(Tab $expected, mixed $actual, array $excluded = []): void
     {
         self::assertTab(
             $expected,
             $actual,
             fn($a, $b) => $a->getId() <=> $b->getId(),
-            fn($a, $b) => self::assertRecipeRow($a, $b),
+            fn($a, $b) => self::assertRecipeRow($a, $b, $excluded),
         );
     }
 
