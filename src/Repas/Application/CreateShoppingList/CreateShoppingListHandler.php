@@ -43,7 +43,7 @@ readonly class CreateShoppingListHandler
 
         $this->shoppingListRepository->save($shoppingList);
 
-        // Cet event est écouté par un eventListener qui supprime les listes terminées
+        // Cet event est écouté par un eventListener qu'il supprime les listes terminées
         $this->eventDispatcher->dispatch(new NewShoppingListCreatedEvent($shoppingList->getId()));
     }
 }

@@ -76,4 +76,10 @@ class ShoppingListBuilder implements Builder
         $this->status ??= ShoppingListStatus::ACTIVE;
         $this->recipes ??= Tab::newEmptyTyped(Recipe::class);
     }
+
+    public function withId(string $id): self
+    {
+        $this->id = $id;
+        return $this;
+    }
 }
