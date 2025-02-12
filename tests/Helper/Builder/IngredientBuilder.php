@@ -1,9 +1,8 @@
 <?php
 
-namespace Repas\Tests\Builder;
+namespace Repas\Tests\Helper\Builder;
 
 
-use Repas\Repas\Domain\Model\Department;
 use Repas\Repas\Domain\Model\Ingredient;
 use Repas\Shared\Domain\Tool\StringTool;
 use Repas\User\Domain\Model\User;

@@ -5,11 +5,10 @@ namespace Repas\Tests\Repas\Repository;
 
 use Repas\Repas\Domain\Interface\RecipeRepository;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
-use Repas\Repas\Domain\Model\RecipeRow;
 use Repas\Repas\Domain\Model\ShoppingList;
 use Repas\Repas\Domain\Model\ShoppingListStatus;
 use Repas\Shared\Domain\Tool\Tab;
-use Repas\Tests\Builder\ShoppingListBuilder;
+use Repas\Tests\Helper\Builder\ShoppingListBuilder;
 use Repas\Tests\Helper\DatabaseTestCase;
 use Repas\Tests\Helper\RepasAssert;
 use Repas\User\Domain\Interface\UserRepository;

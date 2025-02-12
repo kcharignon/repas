@@ -7,7 +7,7 @@ use Closure;
 use InvalidArgumentException;
 use PHPUnit\Framework\TestCase;
 use Repas\Shared\Domain\Tool\Tab;
-use Repas\Tests\Builder\UserBuilder;
+use Repas\Tests\Helper\Builder\UserBuilder;
 use Repas\User\Domain\Model\User;
 use stdClass;
 

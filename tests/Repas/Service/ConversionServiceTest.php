@@ -10,9 +10,9 @@ use Repas\Repas\Domain\Model\Ingredient;
 use Repas\Repas\Domain\Model\Unit;
 use Repas\Repas\Domain\Service\ConversionService;
 use Repas\Shared\Domain\Tool\Tab;
-use Repas\Tests\Builder\ConversionBuilder;
-use Repas\Tests\Builder\IngredientBuilder;
-use Repas\Tests\Builder\UnitBuilder;
+use Repas\Tests\Helper\Builder\ConversionBuilder;
+use Repas\Tests\Helper\Builder\IngredientBuilder;
+use Repas\Tests\Helper\Builder\UnitBuilder;
 use Repas\Tests\Helper\InMemoryRepository\ConversionInMemoryRepository;
 
 class ConversionServiceTest extends TestCase

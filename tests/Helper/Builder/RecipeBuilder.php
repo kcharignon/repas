@@ -1,10 +1,9 @@
 <?php
 
-namespace Repas\Tests\Builder;
+namespace Repas\Tests\Helper\Builder;
 
 
 use Repas\Repas\Domain\Model\Recipe;
-use Repas\Repas\Domain\Model\RecipeRow;
 use Repas\Repas\Domain\Model\RecipeType;
 use Repas\Shared\Domain\Tool\Tab;
 use Repas\Shared\Domain\Tool\UuidGenerator;

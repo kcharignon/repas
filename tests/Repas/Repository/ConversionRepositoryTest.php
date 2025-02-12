@@ -5,9 +5,9 @@ namespace Repas\Tests\Repas\Repository;
 
 use Repas\Repas\Domain\Interface\ConversionRepository;
 use Repas\Repas\Domain\Model\Conversion;
-use Repas\Tests\Builder\ConversionBuilder;
-use Repas\Tests\Builder\IngredientBuilder;
-use Repas\Tests\Builder\UnitBuilder;
+use Repas\Tests\Helper\Builder\ConversionBuilder;
+use Repas\Tests\Helper\Builder\IngredientBuilder;
+use Repas\Tests\Helper\Builder\UnitBuilder;
 use Repas\Tests\Helper\DatabaseTestCase;
 use Repas\Tests\Helper\RepasAssert;
 

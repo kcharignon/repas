@@ -7,7 +7,7 @@ use Repas\Repas\Domain\Exception\DepartmentException;
 use Repas\Repas\Domain\Interface\DepartmentRepository;
 use Repas\Repas\Domain\Model\Department;
 use Repas\Shared\Domain\Tool\Tab;
-use Repas\Tests\Builder\DepartmentBuilder;
+use Repas\Tests\Helper\Builder\DepartmentBuilder;
 use Repas\Tests\Helper\DatabaseTestCase;
 use Repas\Tests\Helper\RepasAssert;
 

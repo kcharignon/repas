@@ -4,12 +4,11 @@ namespace Repas\Tests\Repas\Repository;
 
 
 use Repas\Repas\Domain\Interface\IngredientRepository;
-use Repas\Tests\Builder\DepartmentBuilder;
-use Repas\Tests\Builder\IngredientBuilder;
-use Repas\Tests\Builder\UnitBuilder;
-use Repas\Tests\Builder\UserBuilder;
+use Repas\Tests\Helper\Builder\DepartmentBuilder;
+use Repas\Tests\Helper\Builder\IngredientBuilder;
+use Repas\Tests\Helper\Builder\UnitBuilder;
+use Repas\Tests\Helper\Builder\UserBuilder;
 use Repas\Tests\Helper\DatabaseTestCase;
-use Repas\Tests\Helper\InMemoryRepository\UserInMemoryRepository;
 use Repas\Tests\Helper\RepasAssert;
 use Repas\User\Domain\Interface\UserRepository;
 use Repas\User\Domain\Model\User;

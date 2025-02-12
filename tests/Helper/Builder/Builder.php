@@ -1,6 +1,6 @@
 <?php
 
-namespace Repas\Tests\Builder;
+namespace Repas\Tests\Helper\Builder;
 
 
 interface Builder

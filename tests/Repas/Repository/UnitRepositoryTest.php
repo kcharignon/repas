@@ -5,7 +5,7 @@ namespace Repas\Tests\Repas\Repository;
 
 use Repas\Repas\Domain\Exception\UnitException;
 use Repas\Repas\Domain\Interface\UnitRepository;
-use Repas\Tests\Builder\UnitBuilder;
+use Repas\Tests\Helper\Builder\UnitBuilder;
 use Repas\Tests\Helper\DatabaseTestCase;
 
 class UnitRepositoryTest extends DatabaseTestCase
