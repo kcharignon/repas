@@ -24,7 +24,7 @@ class ConversionServiceTest extends TestCase
         parent::setUp();
 
         $conversions = $this->generateConversionTab();
-        $conversionRepository = new ConversionInMemoryRepository($conversions);
+        $conversionRepository = new ConversionInMemoryRepository($conversions->toArray());
         $this->conversionService = new ConversionService($conversionRepository);
     }
 
