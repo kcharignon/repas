@@ -21,10 +21,10 @@ use Repas\User\Domain\Interface\UserRepository;
 
 class AddIngredientToShoppingListHandlerTest extends TestCase
 {
-    private AddIngredientToShoppingListHandler $handler;
-    private UserRepository $userRepository;
-    private IngredientRepository $ingredientRepository;
-    private ShoppingListRepository $shoppingListRepository;
+    private readonly AddIngredientToShoppingListHandler $handler;
+    private readonly UserRepository $userRepository;
+    private readonly IngredientRepository $ingredientRepository;
+    private readonly ShoppingListRepository $shoppingListRepository;
 
     protected function setUp(): void
     {

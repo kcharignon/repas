@@ -20,20 +20,20 @@ class IngredientBuilder implements Builder
 
     private function initialize(): void
     {
-        $this->slug ??= 'un-truc-immangeable';
         $this->name ??= 'Un truc immangeable';
-        $this->image ??= 'file://images/default.jpg';
         $this->departmentBuilder ??= new DepartmentBuilder()->isConserve();
         $this->defaultCookingUnitBuilder ??= new UnitBuilder()->isUnite();
         $this->defaultPurchaseUnitBuilder ??= new UnitBuilder()->isUnite();
         $this->creator ??= null;
+        $this->slug ??= $this->calculateSlug();
+        $this->image ??= "file://images/$this->slug.jpg";
     }
 
-    public function setName(string $name): self
+
+
+    public function withName(string $name): self
     {
         $this->name = $name;
-        $this->slug ??= StringTool::slugify($name);
-        $this->image ??= "file://images/$this->slug.jpg";
         return $this;
     }
 
@@ -51,7 +51,7 @@ class IngredientBuilder implements Builder
         ]);
     }
 
-    public function setDepartment(DepartmentBuilder $departmentBuilder): self
+    public function withDepartment(DepartmentBuilder $departmentBuilder): self
     {
         $this->departmentBuilder = $departmentBuilder;
         return $this;
@@ -141,10 +141,35 @@ class IngredientBuilder implements Builder
         return $this;
     }
 
-    public function withCreator(User|UserBuilder|null $creator): static
+    public function withCreator(User|UserBuilder|null $creator): self
     {
         $this->creator = $creator;
         return $this;
     }
 
+    public function withImage(string $image): self
+    {
+        $this->image = $image;
+        return $this;
+    }
+
+    public function withDefaultCookingUnit(UnitBuilder $isUnite): self
+    {
+        $this->defaultCookingUnitBuilder = $isUnite;
+        return $this;
+    }
+
+    public function withDefaultPurchaseUnit(UnitBuilder $isUnite): self
+    {
+        $this->defaultPurchaseUnitBuilder = $isUnite;
+        return $this;
+    }
+
+    private function calculateSlug(): string
+    {
+        if ($this->creator ?? false) {
+            return StringTool::slugify($this->name.$this->creator->getId());
+        }
+        return StringTool::slugify($this->name);
+    }
 }
