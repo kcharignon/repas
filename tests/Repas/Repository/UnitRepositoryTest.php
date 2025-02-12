@@ -22,7 +22,7 @@ class UnitRepositoryTest extends DatabaseTestCase
     public function testSaveAndFindOneBySlugAndDelete(): void
     {
         //Arrange
-        $unit = new UnitBuilder()->setName('New unit')->build();
+        $unit = new UnitBuilder()->withName('New unit')->build();
 
         //Act
         $this->unitRepository->save($unit);

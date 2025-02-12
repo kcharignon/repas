@@ -19,13 +19,13 @@ class UnitBuilder implements Builder
         $this->symbol ??= "Pa";
     }
 
-    public function setSlug(?string $slug): UnitBuilder
+    public function withSlug(?string $slug): UnitBuilder
     {
         $this->slug = $slug;
         return $this;
     }
 
-    public function setName(?string $name): UnitBuilder
+    public function withName(?string $name): UnitBuilder
     {
         $this->name = $name;
         $this->slug ??= StringTool::slugify($name);
@@ -57,7 +57,7 @@ class UnitBuilder implements Builder
         return $this;
     }
 
-    public function setSymbol(?string $symbol): UnitBuilder
+    public function withSymbol(?string $symbol): UnitBuilder
     {
         $this->symbol = $symbol;
         return $this;

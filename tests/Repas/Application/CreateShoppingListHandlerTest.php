@@ -75,5 +75,4 @@ class CreateShoppingListHandlerTest extends TestCase
         // Act
         ($this->handler)($command);
     }
-
 }
