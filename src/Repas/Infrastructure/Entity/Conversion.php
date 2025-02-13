@@ -56,7 +56,7 @@ class Conversion
         $this->startUnitSlug = $conversion->getStartUnit()->getSlug();
         $this->endUnitSlug = $conversion->getEndUnit()->getSlug();
         $this->coefficient = $conversion->getCoefficient();
-        $this->ingredientSlug = $conversion->getIngredient()->getSlug();
+        $this->ingredientSlug = $conversion->getIngredient()?->getSlug();
     }
 
     public function getId(): ?string
