@@ -1,0 +1,38 @@
+{% set active = "admin" %}
+{% extends '@Shared/base.html.twig' %}
+
+{% block title %}
+    Conversions
+{% endblock %}
+
+{% block body %}
+
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item active">Conversions</li>
+    </ol>
+
+    <table class="table">
+        {# Nouvelle conversion #}
+        <thead>
+            <th scope="col">Début</th>
+            <th scope="col">Fin</th>
+            <th scope="col">Coef</th>
+            <th scope="col">Ingredient</th>
+            <th scope="col">
+                <a
+                    type="button"
+                    class="btn btn-secondary btn-sm float-end me-1"
+                    href="#">
+                    <i class="fas fa-plus-circle"></i>
+                </a>
+            </th>
+        </thead>
+
+        {# Conversions existantes #}
+        <tbody>
+            {% for conversion in conversions %}
+                {% include "@Repas/Conversion/_admin_conversion_row.html.twig" %}
+            {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}

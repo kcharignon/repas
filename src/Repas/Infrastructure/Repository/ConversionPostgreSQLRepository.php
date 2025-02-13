@@ -52,6 +52,13 @@ readonly class ConversionPostgreSQLRepository extends PostgreSQLRepository imple
         $this->entityManager->flush();
     }
 
+    public function findAll(): Tab
+    {
+        $entities = new Tab($this->entityRepository->findBy([], ["ingredientSlug" => "ASC", "startUnitSlug" => "ASC"]), ConversionEntity::class);
+        return $entities->map(fn(ConversionEntity $entity) => $this->convertEntityToModel($entity));
+    }
+
+
     /**
      * @throws UnitException
      * @throws IngredientException

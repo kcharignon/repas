@@ -106,7 +106,7 @@ class AddIngredientToShoppingListHandlerTest extends TestCase
         $command = new AddIngredientToShoppingListCommand($user->getId(), $egg->getSlug());
 
         // Assert
-        $this->expectExceptionObject(IngredientException::notFound());
+        $this->expectExceptionObject(IngredientException::notFound($egg->getSlug()));
 
         // Act
         ($this->handler)($command);

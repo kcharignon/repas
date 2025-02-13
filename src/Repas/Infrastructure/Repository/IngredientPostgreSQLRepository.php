@@ -54,7 +54,7 @@ readonly class IngredientPostgreSQLRepository extends PostgreSQLRepository imple
             return $model;
         }
 
-        throw IngredientException::notFound();
+        throw IngredientException::notFound($slug);
     }
 
     public function findByDepartmentAndOwner(Department $department, User $owner): Tab

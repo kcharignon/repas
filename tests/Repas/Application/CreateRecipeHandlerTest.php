@@ -168,7 +168,7 @@ class CreateRecipeHandlerTest extends TestCase
         );
 
         // Assert
-        $this->expectExceptionObject(IngredientException::NotFound());
+        $this->expectExceptionObject(IngredientException::NotFound($pasta->getSlug()));
 
         // Act
         ($this->handler)($command);

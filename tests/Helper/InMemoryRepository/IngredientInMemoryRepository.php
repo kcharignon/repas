@@ -20,7 +20,7 @@ class IngredientInMemoryRepository extends AbstractInMemoryRepository implements
 
     public function findOneBySlug(string $slug): Ingredient
     {
-        return $this->models->find(fn(Ingredient $ingredient) => $ingredient->getSlug() === $slug) ?? throw IngredientException::notFound();
+        return $this->models->find(fn(Ingredient $ingredient) => $ingredient->getSlug() === $slug) ?? throw IngredientException::notFound($slug);
     }
 
     public function findByDepartmentAndOwner(Department $department, User $owner): Tab

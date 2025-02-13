@@ -1,0 +1,14 @@
+<tr>
+    <td>{{ conversion.ingredient.name|default("")|capitalize }}</td>
+    <td>{{ conversion.startUnit.name|capitalize }}</td>
+    <td>{{ conversion.endUnit.name|capitalize }}</td>
+    <td>{{ conversion.coefficient }}</td>
+    <td>
+        <a
+            type="button"
+            class="btn btn-secondary btn-sm float-end me-1"
+            href="#">
+            <i class="fas fa-pen"></i>
+        </a>
+    </td>
+</tr>

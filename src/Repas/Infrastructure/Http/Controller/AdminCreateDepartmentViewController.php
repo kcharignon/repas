@@ -11,7 +11,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
-class CreateDepartmentViewController extends AbstractController
+class AdminCreateDepartmentViewController extends AbstractController
 {
     public function __construct(
         private readonly CommandBusInterface $commandBus,
