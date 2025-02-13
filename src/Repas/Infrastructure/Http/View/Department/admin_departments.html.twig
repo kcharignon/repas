@@ -1,0 +1,31 @@
+{% set active = "admin" %}
+{% extends '@Shared/base.html.twig' %}
+
+{% block title %}
+    Rayons
+{% endblock %}
+
+{% block body %}
+
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item active">Rayons</li>
+    </ol>
+
+    <ul class="list-group">
+        {# Nouveau rayon #}
+        <li class="list-group-item active">
+            <span>Rayons</span>
+            <a
+                type="button"
+                class="btn btn-secondary btn-sm float-end me-1"
+                href="{{ path('view_admin_department_create') }}">
+                <i class="fas fa-plus-circle"></i>
+            </a>
+        </li>
+
+        {# Rayons existants #}
+        {% for department in departments %}
+            {% include "@Repas/Department/_admin_department_row.html.twig" %}
+        {% endfor %}
+    </ul>
+{% endblock %}

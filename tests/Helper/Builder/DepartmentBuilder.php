@@ -19,13 +19,13 @@ class DepartmentBuilder implements Builder
         $this->image ??= 'file://images/maxi-outils.jpg';
     }
 
-    public function setSlug(string $slug): DepartmentBuilder
+    public function withSlug(string $slug): DepartmentBuilder
     {
         $this->slug = $slug;
         return $this;
     }
 
-    public function setName(string $name): DepartmentBuilder
+    public function withName(string $name): DepartmentBuilder
     {
         $this->name = $name;
         $this->slug ??= StringTool::slugify($name);
@@ -57,7 +57,7 @@ class DepartmentBuilder implements Builder
         return $this;
     }
 
-    public function setImage(string $image): DepartmentBuilder
+    public function withImage(string $image): DepartmentBuilder
     {
         $this->image = $image;
         return $this;

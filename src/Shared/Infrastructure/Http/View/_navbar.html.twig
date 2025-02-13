@@ -13,6 +13,18 @@
                 <li class="nav-item">
                     <a class="nav-link {{ ((active ?? '') == 'shoppingList') ? 'active' : '' }}" href="{{ path('view_shopping_list') }}">Liste</a>
                 </li>
+                {% if app.user.isAdmin %}
+                <li class="nav-item">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            Admin
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" href="{{ path('view_admin_departments') }}">Rayons</a></li>
+                        </ul>
+                    </li>
+                </li>
+                {% endif %}
             </ul>
             <ul class="navbar-nav">
                 {% if app.user %}

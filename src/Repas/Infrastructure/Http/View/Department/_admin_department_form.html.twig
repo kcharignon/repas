@@ -1,0 +1,31 @@
+{% extends '@Shared/base.html.twig' %}
+{% set title = (department|default(null) is not null) ? 'Modification de ' ~ department.name : 'Nouveau rayon' %}
+{% block title %}
+    {{ title }}
+{% endblock %}
+
+{% block body %}
+    <div class="container my-5">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ path("view_admin_departments") }}">Rayons</a></li>
+            <li class="breadcrumb-item active">Rayons</li>
+        </ol>
+
+        <h1>{{ title }}</h1>
+
+        {# Affichage du formulaire Symfony #}
+        {{ form_start(form, {'attr': {'id': 'department-form'}}) }}
+        <div class="mb-3">
+            {{ form_label(form.name) }}
+            {{ form_widget(form.name, {'attr': {'class': 'form-control'}}) }}
+            {{ form_errors(form.name) }}
+        </div>
+        <div class="mb-3">
+            {{ form_label(form.image) }}
+            {{ form_widget(form.image, {'attr': {'class': 'form-control'}}) }}
+            {{ form_errors(form.image) }}
+        </div>
+        <button type="submit" class="btn btn-primary">{{ (department|default(null) is not null) ? 'Modifier' : 'Ajouter' }}</button>
+        {{ form_end(form) }}
+    </div>
+{% endblock %}

@@ -3,39 +3,38 @@
 namespace Repas\Repas\Infrastructure\Http\Controller;
 
 
-use Repas\Repas\Application\CreateIngredient\CreateIngredientCommand;
-use Repas\Repas\Domain\Interface\DepartmentRepository;
-use Repas\Repas\Infrastructure\Http\Form\CreateIngredientType;
+use Repas\Repas\Infrastructure\Http\Form\CreateDepartmentType;
 use Repas\Shared\Application\Interface\CommandBusInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Security\Http\Attribute\IsGranted;
 
-class CreateIngredientViewController extends AbstractController
+class CreateDepartmentViewController extends AbstractController
 {
     public function __construct(
         private readonly CommandBusInterface $commandBus,
     ) {
     }
 
-    #[Route(path: '/ingredient', name: 'view_ingredient_create', methods: ['GET', 'POST'])]
+    #[Route(path: '/admin/department/create', name: 'view_admin_department_create', methods: ['GET', 'POST'])]
+    #[IsGranted("ROLE_ADMIN")]
     public function __invoke(Request $request): Response
     {
-        $form = $this->createForm(CreateIngredientType::class);
-
+        $form = $this->createForm(CreateDepartmentType::class);
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
-            /** @var CreateIngredientCommand $command */
             $command = $form->getData();
             $this->commandBus->dispatch($command);
-
-            return $this->redirectToRoute('view_department', ['slug' => $command->departmentSlug]);
+            return $this->redirectToRoute('view_admin_departments');
         }
 
-        return $this->render('@Repas/Ingredient/_ingredient_form.html.twig', [
+        return $this->render('@Repas/Department/_admin_department_form.html.twig', [
             'form' => $form->createView(),
+            "department" => null,
         ]);
     }
+
 }
