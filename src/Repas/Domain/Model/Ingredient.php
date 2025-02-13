@@ -107,7 +107,7 @@ final class Ingredient implements ModelInterface
         Unit $defaultPurchaseUnit,
         ?User $creator,
     ): self {
-        $slug = StringTool::slugify($name.$creator->getId());
+        $slug = StringTool::slugify($name.($creator?->getId() ?? ''));
         return new self(
             $slug,
             $name,

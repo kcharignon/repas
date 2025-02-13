@@ -79,6 +79,33 @@ class CreateIngredientHandlerTest extends TestCase
         RepasAssert::assertIngredient($expected, $actual);
     }
 
+    public function testHandleSuccessfullyCreateIngredientByAdmin(): void
+    {
+        // Arrange
+        $command = new CreateIngredientCommand(
+            name: "nom de l'ingredient",
+            image: "super-image.jpg",
+            departmentSlug:  "bebe",
+            defaultCookingUnitSlug: "unite",
+            defaultPurchaseUnitSlug: "unite",
+            ownerId: null,
+        );
+
+        // Act
+        ($this->handler)($command);
+
+        // Assert
+        $expected = new IngredientBuilder()
+            ->withName("nom de l'ingredient")
+            ->withImage("super-image.jpg")
+            ->withDepartment(new DepartmentBuilder()->isBaby())
+            ->withDefaultCookingUnit(new UnitBuilder()->isUnite())
+            ->withDefaultPurchaseUnit(new UnitBuilder()->isUnite())
+            ->build();
+        $actual = $this->ingredientRepository->findOneBySlug($expected->getSlug());
+        RepasAssert::assertIngredient($expected, $actual);
+    }
+
 
     public function testHandleCreateIngredientFailedUserNotFound(): void
     {

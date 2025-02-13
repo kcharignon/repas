@@ -80,6 +80,7 @@ class CreateIngredientType extends AbstractType implements DataMapperInterface
     {
         $forms = iterator_to_array($forms);
 
+        // Un admin creer des ingredients communs ( accessible a tous)
         $viewData = new CreateIngredientCommand(
             name: $forms['name']->getData(),
             image: '',
