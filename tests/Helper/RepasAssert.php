@@ -209,7 +209,11 @@ class RepasAssert
         Assert::assertEquals($expected->getCoefficient(), $actual->getCoefficient());
         self::assertUnit($expected->getStartUnit(), $actual->getStartUnit());
         self::assertUnit($expected->getEndUnit(), $actual->getEndUnit());
-        self::assertIngredient($expected->getIngredient(), $actual->getIngredient());
+        if ($expected->getIngredient() === null) {
+            Assert::assertNull($actual->getIngredient());
+        } else {
+            self::assertIngredient($expected->getIngredient(), $actual->getIngredient());
+        }
     }
 
     private static function assertShoppingListRow(ShoppingListRow $expected, mixed $actual): void

@@ -25,4 +25,8 @@ class ConversionInMemoryRepository extends AbstractInMemoryRepository implements
         $this->models[$conversion->getId()] = $conversion;
     }
 
+    public function findAll(): Tab
+    {
+        return $this->models;
+    }
 }

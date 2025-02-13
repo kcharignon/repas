@@ -5,7 +5,6 @@ namespace Repas\Repas\Domain\Model;
 
 use Repas\Shared\Domain\Model\ModelInterface;
 use Repas\Shared\Domain\Model\ModelTrait;
-use Repas\Shared\Domain\Tool\UuidGenerator;
 
 final class Conversion implements ModelInterface
 {
@@ -56,13 +55,14 @@ final class Conversion implements ModelInterface
     }
 
     public static function create(
+        string $id,
         Unit $startUnit,
         Unit $endUnit,
         float $coefficient,
         ?Ingredient $ingredient,
     ): self {
         return new self(
-            UuidGenerator::new(),
+            $id,
             $startUnit,
             $endUnit,
             $coefficient,

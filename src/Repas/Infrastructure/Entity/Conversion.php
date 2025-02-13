@@ -47,7 +47,7 @@ class Conversion
             startUnitSlug: $conversionModel->getStartUnit()->getSlug(),
             endUnitSlug: $conversionModel->getEndUnit()->getSlug(),
             coefficient: $conversionModel->getCoefficient(),
-            ingredientSlug: $conversionModel->getIngredient()->getSlug(),
+            ingredientSlug: $conversionModel->getIngredient()?->getSlug(),
         );
     }
 

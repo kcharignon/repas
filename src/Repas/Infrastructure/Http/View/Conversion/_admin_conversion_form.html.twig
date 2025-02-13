@@ -1,0 +1,41 @@
+{% extends '@Shared/base.html.twig' %}
+{% set title = (conversion|default(null) is not null) ? 'Modification de conversion - ' ~ conversion.ingredient.name|default("Commune") : 'Nouvelle conversion' %}
+{% block title %}
+    {{ title }}
+{% endblock %}
+
+{% block body %}
+    <div class="container my-5">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ path("view_admin_conversions") }}">Conversions</a></li>
+            <li class="breadcrumb-item active">{{ title }}</li>
+        </ol>
+
+        <h1>{{ title }}</h1>
+
+        {# Affichage du formulaire Symfony #}
+        {{ form_start(form, {'attr': {'id': 'conversion-form'}}) }}
+        <div class="mb-3">
+            {{ form_label(form.startUnit) }}
+            {{ form_widget(form.startUnit, {'attr': {'class': 'form-control'}}) }}
+            {{ form_errors(form.startUnit) }}
+        </div>
+        <div class="mb-3">
+            {{ form_label(form.endUnit) }}
+            {{ form_widget(form.endUnit, {'attr': {'class': 'form-control'}}) }}
+            {{ form_errors(form.endUnit) }}
+        </div>
+        <div class="mb-3">
+            {{ form_label(form.coefficient) }}
+            {{ form_widget(form.coefficient, {'attr': {'class': 'form-control'}}) }}
+            {{ form_errors(form.coefficient) }}
+        </div>
+        <div class="mb-3">
+            {{ form_label(form.ingredient) }}
+            {{ form_widget(form.ingredient, {'attr': {'class': 'form-control'}}) }}
+            {{ form_errors(form.ingredient) }}
+        </div>
+        <button type="submit" class="btn btn-primary">{{ (conversion|default(null) is not null) ? 'Modifier' : 'Ajouter' }}</button>
+        {{ form_end(form) }}
+    </div>
+{% endblock %}

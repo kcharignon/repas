@@ -15,6 +15,7 @@ class ConversionBuilder implements Builder
     private Unit|UnitBuilder|null             $endUnit = null;
     private ?float                            $coefficient = null;
     private Ingredient|IngredientBuilder|null $ingredient = null;
+    private ?bool                             $isIngredientNull = null;
 
 
     public function build(): Conversion
@@ -47,9 +48,17 @@ class ConversionBuilder implements Builder
         return $this;
     }
 
-    public function withIngredient(IngredientBuilder|Ingredient $ingredient): ConversionBuilder
+    public function withIngredient(IngredientBuilder|Ingredient|null $ingredient): ConversionBuilder
     {
         $this->ingredient = $ingredient;
+        $this->isIngredientNull = $ingredient === null;
+        return $this;
+    }
+
+    public function withoutIngredient(): ConversionBuilder
+    {
+        $this->ingredient = null;
+        $this->isIngredientNull = true;
         return $this;
     }
 
@@ -59,7 +68,9 @@ class ConversionBuilder implements Builder
         $this->startUnit ??= new UnitBuilder()->isBox();
         $this->endUnit ??= new UnitBuilder()->isUnite();
         $this->coefficient ??= 12;
-        $this->ingredient ??= new IngredientBuilder()->isEgg();
+        if ($this->isIngredientNull !== true) {
+            $this->ingredient ??= new IngredientBuilder()->isEgg();
+        }
     }
 
     public function isPieceToGrammeForEgg(): self
@@ -68,6 +79,12 @@ class ConversionBuilder implements Builder
         $this->endUnit = new UnitBuilder()->isGramme();
         $this->coefficient = 60;
         $this->ingredient = new IngredientBuilder()->isEgg();
+        return $this;
+    }
+
+    public function withId(string $id): self
+    {
+        $this->id = $id;
         return $this;
     }
 }
