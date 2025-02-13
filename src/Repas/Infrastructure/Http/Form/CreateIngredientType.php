@@ -49,14 +49,17 @@ class CreateIngredientType extends AbstractType implements DataMapperInterface
                 'label' => 'Nom',
             ])
             ->add('department', ChoiceType::class, [
+                'label' => 'Rayon',
                 'required' => true,
                 'choices' => $departmentChoices,
             ])
             ->add('defaultCookingUnit', ChoiceType::class, [
+                'label' => 'Unité dans les recettes',
                 'required' => true,
                 'choices' => $unitChoices,
             ])
             ->add('defaultPurchaseUnit', ChoiceType::class, [
+                'label' => "Unité à l'achat",
                 'required' => true,
                 'choices' => $unitChoices,
             ])

@@ -9,6 +9,8 @@ use Repas\Shared\Domain\Tool\Tab;
 
 interface ConversionRepository
 {
+    public function findById(string $id): ?Conversion;
+
     /**
      * @return Tab<Conversion>
      */

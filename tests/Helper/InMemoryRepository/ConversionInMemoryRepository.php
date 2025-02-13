@@ -3,6 +3,7 @@
 namespace Repas\Tests\Helper\InMemoryRepository;
 
 
+use Repas\Repas\Domain\Exception\ConversionException;
 use Repas\Repas\Domain\Interface\ConversionRepository;
 use Repas\Repas\Domain\Model\Conversion;
 use Repas\Repas\Domain\Model\Ingredient;
@@ -28,5 +29,13 @@ class ConversionInMemoryRepository extends AbstractInMemoryRepository implements
     public function findAll(): Tab
     {
         return $this->models;
+    }
+
+    /**
+     * @throws ConversionException
+     */
+    public function findById(string $id): ?Conversion
+    {
+        return $this->models[$id] ?? throw ConversionException::notFound($id);
     }
 }

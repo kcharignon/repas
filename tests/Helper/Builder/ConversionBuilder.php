@@ -73,7 +73,7 @@ class ConversionBuilder implements Builder
         }
     }
 
-    public function isPieceToGrammeForEgg(): self
+    public function isUnitToGrammeForEgg(): self
     {
         $this->startUnit = new UnitBuilder()->isUnite();
         $this->endUnit = new UnitBuilder()->isGramme();

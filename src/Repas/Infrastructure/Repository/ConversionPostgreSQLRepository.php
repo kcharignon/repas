@@ -4,6 +4,7 @@ namespace Repas\Repas\Infrastructure\Repository;
 
 
 use Doctrine\Persistence\ManagerRegistry;
+use Repas\Repas\Domain\Exception\ConversionException;
 use Repas\Repas\Domain\Exception\IngredientException;
 use Repas\Repas\Domain\Exception\UnitException;
 use Repas\Repas\Domain\Interface\ConversionRepository;
@@ -23,6 +24,17 @@ readonly class ConversionPostgreSQLRepository extends PostgreSQLRepository imple
         private UnitRepository $unitRepository,
     ) {
         parent::__construct($registry, ConversionEntity::class);
+    }
+
+    /**
+     * @throws UnitException
+     * @throws IngredientException
+     * @throws ConversionException
+     */
+    public function findById(string $id): ?Conversion
+    {
+        $entity = $this->entityRepository->find($id) ?? throw ConversionException::notFound($id);
+        return $this->convertEntityToModel($entity);
     }
 
 
