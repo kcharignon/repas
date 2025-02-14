@@ -14,6 +14,8 @@ use Repas\Tests\Helper\Builder\ConversionBuilder;
 use Repas\Tests\Helper\Builder\IngredientBuilder;
 use Repas\Tests\Helper\Builder\UnitBuilder;
 use Repas\Tests\Helper\InMemoryRepository\ConversionInMemoryRepository;
+use Repas\Tests\Helper\InMemoryRepository\UnitInMemoryRepository;
+use Repas\Tests\Helper\RepasAssert;
 
 class ConversionServiceTest extends TestCase
 {
@@ -23,9 +25,11 @@ class ConversionServiceTest extends TestCase
     {
         parent::setUp();
 
-        $conversions = $this->generateConversionTab();
-        $conversionRepository = new ConversionInMemoryRepository($conversions->toArray());
-        $this->conversionService = new ConversionService($conversionRepository);
+        $conversions = $this->generateConversions();
+        $conversionRepository = new ConversionInMemoryRepository($conversions);
+        $units = $this->generateUnits();
+        $unitRepository = new UnitInMemoryRepository($units);
+        $this->conversionService = new ConversionService($conversionRepository, $unitRepository);
     }
 
     public function convertToPurchaseUnitSuccessDataProvider(): array
@@ -70,15 +74,49 @@ class ConversionServiceTest extends TestCase
         $actual = $this->conversionService->convertToPurchaseUnit($egg, 25, $unit);
     }
 
+    public function getConvertibleUnitDataProvider(): array
+    {
+        $egg = new IngredientBuilder()->isEgg()->build();
+        $kilo  = new UnitBuilder()->isKilo()->build();
+        $box = new UnitBuilder()->isBox()->build();
+        $gramme = new UnitBuilder()->isGramme()->build();
+        $piece = new UnitBuilder()->isUnite()->build();
+        $millilitre = new UnitBuilder()->isMillilitre()->build();
+        $centilitre = new UnitBuilder()->isCentilitre()->build();
+        return [
+            "unit without conversion" => [$egg, $kilo, Tab::fromArray($kilo)],
+            "unit with conversion" => [$egg, $centilitre, Tab::fromArray($box, $gramme, $piece, $millilitre, $centilitre)],
+        ];
+    }
 
     /**
-     * @return Tab<Conversion>
+     * @dataProvider getConvertibleUnitDataProvider
+     * @param Tab<Unit> $expected
      */
-    private function generateConversionTab(): Tab
+    public function testGetConvertibleUnits(Ingredient $ingredient, Unit $unit, Tab $expected): void
+    {
+        // Act
+        $actual = $this->conversionService->getConvertibleUnits($ingredient, $unit);
+
+        // Expected
+        RepasAssert::assertTab(
+            $expected,
+            $actual,
+            fn(Unit $a, Unit $b) => $a->getSlug() <=> $b->getSlug(),
+            function ($expected, $actual) {
+                RepasAssert::assertUnit($expected, $actual);
+            }
+        );
+    }
+
+    /**
+     * @return array<Conversion>
+     */
+    private function generateConversions(): array
     {
         $egg = new IngredientBuilder()->isEgg()->build();
         $milk = new IngredientBuilder()->isMilk()->build();
-        return Tab::fromArray([
+        return [
             new ConversionBuilder()
                 ->withIngredient($egg)
                 ->withStartUnit(new UnitBuilder()->isBox()->build())
@@ -108,6 +146,21 @@ class ConversionServiceTest extends TestCase
                 ->withEndUnit(new UnitBuilder()->isUnite()->build())
                 ->withCoefficient(400)
                 ->build(),
-        ]);
+        ];
+    }
+
+    /**
+     * @return array<Unit>
+     */
+    private function generateUnits(): array
+    {
+        return [
+            new UnitBuilder()->isBox()->build(),
+            new UnitBuilder()->isGramme()->build(),
+            new UnitBuilder()->isUnite()->build(),
+            new UnitBuilder()->isMillilitre()->build(),
+            new UnitBuilder()->isCentilitre()->build(),
+            new UnitBuilder()->isKilo()->build(),
+        ];
     }
 }

@@ -4,6 +4,7 @@ namespace Repas\Repas\Domain\Service;
 
 use Repas\Repas\Domain\Exception\IngredientException;
 use Repas\Repas\Domain\Interface\ConversionRepository;
+use Repas\Repas\Domain\Interface\UnitRepository;
 use Repas\Repas\Domain\Model\Ingredient;
 use Repas\Repas\Domain\Model\RecipeRow;
 use Repas\Repas\Domain\Model\Unit;
@@ -14,9 +15,69 @@ readonly class ConversionService
     private Tab $graphs;
 
     public function __construct(
-        private ConversionRepository $conversionRepository
+        private ConversionRepository $conversionRepository,
+        private UnitRepository $unitRepository,
     ) {
         $this->graphs = Tab::newEmptyTyped('array');
+    }
+
+    public function canConvertToPurchaseUnit(Ingredient $ingredient): bool
+    {
+        try {
+            $this->convertToPurchaseUnit($ingredient, 1, $ingredient->getDefaultCookingUnit());
+        } catch (IngredientException $e) {
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * Récupère toutes les unités vers lesquelles un ingrédient peut être converti à partir d'une unité donnée.
+     *
+     * @param Ingredient $ingredient L'ingrédient concerné.
+     * @param Unit $startingUnit L'unité de départ.
+     *
+     * @return Tab<Unit> Liste des unités accessibles.
+     */
+    public function getConvertibleUnits(Ingredient $ingredient, Unit $startingUnit): Tab
+    {
+        // Récupérer le graph des conversions pour cet ingrédient
+        $graph = $this->generateGraph($ingredient);
+
+        // Initialiser la liste des unités trouvées (avec l'unité de départ)
+        $units = Tab::fromArray($startingUnit);
+
+        // Vérifier si l'unité de départ existe dans le graphe
+        if (!isset($graph[$startingUnit->getSlug()])) {
+            return $units;
+        }
+
+        $queue = [$startingUnit->getSlug()];
+        $visited = [$startingUnit->getSlug() => true];
+
+        // BFS pour explorer toutes les unités atteignables
+        while (!empty($queue)) {
+            $current = array_shift($queue);
+
+            if (!isset($graph[$current])) {
+                continue;
+            }
+
+            foreach ($graph[$current] as $edge) {
+                $next = $edge['to'];
+
+                if (!isset($visited[$next])) {
+                    $visited[$next] = true;
+                    $queue[] = $next;
+
+                    // Récupérer l'entité de l'unité correspondante
+                    $unit = $this->unitRepository->findOneBySlug($next);
+                    $units[] = $unit;
+                }
+            }
+        }
+
+        return $units;
     }
 
     /**
