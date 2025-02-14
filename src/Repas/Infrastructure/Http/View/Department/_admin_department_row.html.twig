@@ -1,11 +1,11 @@
-<li class="list-group-item">
-    <span>
-        {{ department.name|capitalize }}
-    </span>
-    <a
-        type="button"
-        class="btn btn-secondary btn-sm float-end me-1"
-        href="{{ path("view_admin_department_update", {slug: department.slug}) }}">
-        <i class="fas fa-pen"></i>
-    </a>
-</li>
+<tr id="department-{{department.slug }}">
+    <td>{{ department.name|capitalize }}</td>
+    <td>
+        <a
+            type="button"
+            class="btn btn-secondary btn-sm float-end me-1"
+            href="{{ path("view_admin_department_update", {slug: department.slug}) }}">
+            <i class="fas fa-pen"></i>
+        </a>
+    </td>
+</tr>
