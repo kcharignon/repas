@@ -89,10 +89,13 @@ readonly class ConversionService
      */
     public function convertToPurchaseUnit(Ingredient $ingredient, float $quantity, Unit $unit): float
     {
-        $purchaseUnit = $ingredient->getDefaultPurchaseUnit();
+        return $this->convertTo($ingredient, $quantity, $unit, $ingredient->getDefaultPurchaseUnit());
+    }
 
+    public function convertTo(Ingredient $ingredient, float $quantity, Unit $startUnit, Unit $endUnit): float
+    {
         // Si l'unité fournie est déjà l'unité d'achat, aucun calcul n'est nécessaire.
-        if ($unit->getId() === $purchaseUnit->getId()) {
+        if ($startUnit->getId() === $endUnit->getId()) {
             return $quantity;
         }
 
@@ -100,9 +103,9 @@ readonly class ConversionService
         $graph = $this->generateGraph($ingredient);
 
         // Utiliser BFS pour trouver le chemin de conversion avec le moins d'étapes
-        $totalCoefficient = $this->findConversionCoefficientBFS($unit->getId(), $purchaseUnit->getId(), $graph);
+        $totalCoefficient = $this->findConversionCoefficientBFS($startUnit->getId(), $endUnit->getId(), $graph);
         if ($totalCoefficient === null) {
-            throw IngredientException::cannotConvertToUnit($ingredient, $unit, $purchaseUnit);
+            throw IngredientException::cannotConvertToUnit($ingredient, $startUnit, $endUnit);
         }
 
         return $quantity * $totalCoefficient;
