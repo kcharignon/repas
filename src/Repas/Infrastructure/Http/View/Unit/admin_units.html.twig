@@ -1,0 +1,36 @@
+{% set active = "admin" %}
+{% extends '@Shared/base.html.twig' %}
+
+{% block title %}
+    Unités
+{% endblock %}
+
+{% block body %}
+
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item active">Units</li>
+    </ol>
+
+    <table class="table table-sm">
+        {# Nouvelle unité #}
+        <thead>
+        <th scope="col">Nom</th>
+        <th scope="col">Symbol</th>
+        <th scope="col">
+            <a
+                type="button"
+                class="btn btn-success btn-sm float-end me-1"
+                href="#">
+                <i class="fas fa-plus-circle"></i>
+            </a>
+        </th>
+        </thead>
+
+        {# Unités existantes #}
+        <tbody>
+        {% for unit in units %}
+            {% include "@Repas/Unit/_admin_unit_row.html.twig" %}
+        {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}
