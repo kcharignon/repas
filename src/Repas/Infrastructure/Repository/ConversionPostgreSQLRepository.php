@@ -13,6 +13,7 @@ use Repas\Repas\Domain\Interface\UnitRepository;
 use Repas\Repas\Domain\Model\Conversion;
 use Repas\Repas\Domain\Model\Conversion as ConversionModel;
 use Repas\Repas\Domain\Model\Ingredient;
+use Repas\Repas\Domain\Model\Unit;
 use Repas\Repas\Infrastructure\Entity\Conversion as ConversionEntity;
 use Repas\Shared\Domain\Tool\Tab;
 
@@ -49,6 +50,24 @@ readonly class ConversionPostgreSQLRepository extends PostgreSQLRepository imple
 
         $conversionEntities = Tab::fromArray($conversionEntities);
         return $conversionEntities->map(fn(ConversionEntity $conversion) => $this->convertEntityToModel($conversion));
+    }
+
+    public function findByIngredientAndStartUnitAndEndUnit(Ingredient $ingredient, Unit $startUnit, Unit $endUnit): ?Conversion
+    {
+        $conversionEntity = $this->entityRepository->createQueryBuilder('c')
+            ->where('c.ingredientSlug = :ingredientSlug OR c.ingredientSlug is NULL')
+            ->setParameter('ingredientSlug', $ingredient->getSlug())
+            ->andWhere('c.startUnitSlug = :startUnit')
+            ->setParameter('startUnit', $startUnit->getSlug())
+            ->andWhere('c.endUnitSlug = :endUnit')
+            ->setParameter('endUnit', $endUnit->getSlug())
+            ->getQuery()
+            ->getOneOrNullResult();
+
+        if ($conversionEntity instanceof ConversionEntity) {
+            return $this->convertEntityToModel($conversionEntity);
+        }
+        return null;
     }
 
     public function save(Conversion $conversion): void

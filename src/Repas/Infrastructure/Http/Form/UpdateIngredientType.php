@@ -3,77 +3,18 @@
 namespace Repas\Repas\Infrastructure\Http\Form;
 
 
-use Repas\Repas\Application\CreateIngredient\CreateIngredientCommand;
 use Repas\Repas\Application\UpdateIngredient\UpdateIngredientCommand;
-use Repas\Repas\Domain\Interface\DepartmentRepository;
-use Repas\Repas\Domain\Interface\IngredientRepository;
-use Repas\Repas\Domain\Interface\UnitRepository;
+use Repas\Repas\Domain\Interface\ConversionRepository;
 use Repas\Repas\Domain\Model\Ingredient;
-use Repas\User\Domain\Model\User;
-use Symfony\Bundle\SecurityBundle\Security;
-use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\DataMapperInterface;
-use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
-use Symfony\Component\Form\Extension\Core\Type\TextType;
-use Symfony\Component\Form\FormBuilderInterface;
-use Symfony\Component\OptionsResolver\OptionsResolver;
+use Symfony\Component\Form\FormInterface;
 use Traversable;
 
-class UpdateIngredientType extends AbstractType implements DataMapperInterface
+class UpdateIngredientType extends AbstractIngredientType implements DataMapperInterface
 {
-    private User $creator;
-
     public function __construct(
-        private readonly DepartmentRepository $departmentRepository,
-        private readonly UnitRepository $unitRepository,
-        readonly Security $security,
+        readonly ConversionRepository $conversionRepository,
     ) {
-        $connectedUser = $security->getUser();
-        assert($connectedUser instanceof User);
-        $this->creator = $connectedUser;
-    }
-
-    public function buildForm(FormBuilderInterface $builder, array $options): void
-    {
-        $unitChoices = [];
-        foreach ($this->unitRepository->findAll() as $unit) {
-            $unitChoices[ucfirst($unit->getName())] = $unit->getSlug();
-        }
-
-        $departmentChoices = [];
-        foreach ($this->departmentRepository->findAll() as $department) {
-            $departmentChoices[ucfirst($department->getName())] = $department->getId();
-        }
-
-        $builder
-            ->add('name', TextType::class, [
-                'required' => true,
-                'label' => 'Nom',
-            ])
-            ->add('department', ChoiceType::class, [
-                'label' => 'Rayon',
-                'required' => true,
-                'choices' => $departmentChoices,
-            ])
-            ->add('defaultCookingUnit', ChoiceType::class, [
-                'label' => 'Unité dans les recettes',
-                'required' => true,
-                'choices' => $unitChoices,
-            ])
-            ->add('defaultPurchaseUnit', ChoiceType::class, [
-                'label' => "Unité à l'achat",
-                'required' => true,
-                'choices' => $unitChoices,
-            ])
-            ->setDataMapper($this)
-        ;
-    }
-
-    public function configureOptions(OptionsResolver $resolver): void
-    {
-        $resolver->setDefaults([
-            'empty_data' => null,
-        ]);
     }
 
     /**
@@ -86,13 +27,18 @@ class UpdateIngredientType extends AbstractType implements DataMapperInterface
         if (!$viewData instanceof Ingredient) {
             return;
         }
+        $ingredient = $viewData;
 
+        /** @var FormInterface[] $forms */
         $forms = iterator_to_array($forms);
 
-        $forms['name']->setData($viewData->getName());
-        $forms['department']->setData($viewData->getDepartment()->getSlug());
-        $forms['defaultCookingUnit']->setData($viewData->getDefaultCookingUnit()->getSlug());
-        $forms['defaultPurchaseUnit']->setData($viewData->getDefaultPurchaseUnit()->getSlug());
+        $forms['name']->setData($ingredient->getName());
+        $forms['department']->setData($ingredient->getDepartment()->getSlug());
+        $forms['defaultCookingUnit']->setData($ingredient->getDefaultCookingUnit()->getSlug());
+        $forms['defaultPurchaseUnit']->setData($ingredient->getDefaultPurchaseUnit()->getSlug());
+        if (!$ingredient->hasSameUnitInCookingAndPurchase()) {
+            $forms['coefficient']->setData($this->findCoefficient($ingredient));
+        }
     }
 
     /**
@@ -113,6 +59,16 @@ class UpdateIngredientType extends AbstractType implements DataMapperInterface
             departmentSlug: $forms['department']->getData(),
             defaultCookingUnitSlug: $forms['defaultCookingUnit']->getData(),
             defaultPurchaseUnitSlug: $forms['defaultPurchaseUnit']->getData(),
+            coefficient: $forms['coefficient']->getData(),
         );
+    }
+
+    private function findCoefficient(Ingredient $ingredient): float
+    {
+        return $this->conversionRepository->findByIngredientAndStartUnitAndEndUnit(
+            $ingredient,
+            $ingredient->getDefaultPurchaseUnit(),
+            $ingredient->getDefaultCookingUnit()
+        )?->getCoefficient();
     }
 }

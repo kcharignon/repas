@@ -91,8 +91,8 @@ class IngredientBuilder implements Builder
         $this->slug = StringTool::slugify($this->name);
         $this->image = '';
         $this->departmentBuilder = new DepartmentBuilder()->isMiscellaneous();
-        $this->defaultCookingUnitBuilder = new UnitBuilder()->isCentilitre();
-        $this->defaultPurchaseUnitBuilder = new UnitBuilder()->isCentilitre();
+        $this->defaultCookingUnitBuilder = new UnitBuilder()->isCentiliter();
+        $this->defaultPurchaseUnitBuilder = new UnitBuilder()->isCentiliter();
         return $this;
     }
 

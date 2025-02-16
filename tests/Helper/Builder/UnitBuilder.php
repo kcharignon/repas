@@ -81,7 +81,7 @@ class UnitBuilder implements Builder
         return $this;
     }
 
-    public function isCentilitre(): self
+    public function isCentiliter(): self
     {
         $this->name = 'centilitre';
         $this->slug = 'centilitre';

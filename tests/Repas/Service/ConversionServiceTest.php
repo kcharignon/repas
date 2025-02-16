@@ -39,7 +39,7 @@ class ConversionServiceTest extends TestCase
         $gramme = new UnitBuilder()->isGramme()->build();
         $piece = new UnitBuilder()->isUnite()->build();
         $millilitre = new UnitBuilder()->isMillilitre()->build();
-        $centilitre = new UnitBuilder()->isCentilitre()->build();
+        $centilitre = new UnitBuilder()->isCentiliter()->build();
         return [
             "0 step same unit" => [$egg, 5, $piece, 5],
             "1 step Box =(simple)=> Piece" => [$egg, 3, $box, 36],
@@ -82,7 +82,7 @@ class ConversionServiceTest extends TestCase
         $gramme = new UnitBuilder()->isGramme()->build();
         $piece = new UnitBuilder()->isUnite()->build();
         $millilitre = new UnitBuilder()->isMillilitre()->build();
-        $centilitre = new UnitBuilder()->isCentilitre()->build();
+        $centilitre = new UnitBuilder()->isCentiliter()->build();
         return [
             "unit without conversion" => [$egg, $kilo, Tab::fromArray($kilo)],
             "unit with conversion" => [$egg, $centilitre, Tab::fromArray($box, $gramme, $piece, $millilitre, $centilitre)],
@@ -136,7 +136,7 @@ class ConversionServiceTest extends TestCase
                 ->withCoefficient(1.5)
                 ->build(),
             new ConversionBuilder()
-                ->withStartUnit(new UnitBuilder()->isCentilitre()->build())
+                ->withStartUnit(new UnitBuilder()->isCentiliter()->build())
                 ->withEndUnit(new UnitBuilder()->isMillilitre()->build())
                 ->withCoefficient(10)
                 ->build(),
@@ -159,7 +159,7 @@ class ConversionServiceTest extends TestCase
             new UnitBuilder()->isGramme()->build(),
             new UnitBuilder()->isUnite()->build(),
             new UnitBuilder()->isMillilitre()->build(),
-            new UnitBuilder()->isCentilitre()->build(),
+            new UnitBuilder()->isCentiliter()->build(),
             new UnitBuilder()->isKilo()->build(),
         ];
     }

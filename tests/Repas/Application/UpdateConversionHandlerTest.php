@@ -27,7 +27,7 @@ class UpdateConversionHandlerTest extends TestCase
     protected function setUp(): void
     {
         $liter = new UnitBuilder()->isLiter()->build();
-        $centiliter = new UnitBuilder()->isCentilitre()->build();
+        $centiliter = new UnitBuilder()->isCentiliter()->build();
         $this->conversionRepository = new ConversionInMemoryRepository([
             new ConversionBuilder()
                 ->withId("unique-id-with-ingredient")

@@ -5,6 +5,7 @@ namespace Repas\Repas\Application\UpdateIngredient;
 use Repas\Repas\Domain\Exception\DepartmentException;
 use Repas\Repas\Domain\Exception\IngredientException;
 use Repas\Repas\Domain\Exception\UnitException;
+use Repas\Repas\Domain\Interface\ConversionRepository;
 use Repas\Repas\Domain\Interface\DepartmentRepository;
 use Repas\Repas\Domain\Interface\IngredientRepository;
 use Repas\Repas\Domain\Interface\UnitRepository;
@@ -17,6 +18,7 @@ readonly class UpdateIngredientHandler
         private DepartmentRepository $departmentRepository,
         private UnitRepository $unitRepository,
         private IngredientRepository $ingredientRepository,
+        private ConversionRepository $conversionRepository,
     ) {
     }
 
@@ -28,6 +30,22 @@ readonly class UpdateIngredientHandler
     public function __invoke(UpdateIngredientCommand $command): void
     {
         $ingredient = $this->ingredientRepository->findOneBySlug($command->slug);
+
+        if (!$ingredient->getDefaultCookingUnit()->isEqual($ingredient->getDefaultPurchaseUnit())) {
+            $conversion = $this->conversionRepository->findByIngredientAndStartUnitAndEndUnit(
+                $ingredient,
+                $ingredient->getDefaultPurchaseUnit(),
+                $ingredient->getDefaultCookingUnit(),
+            );
+
+            $conversion->update(
+                startUnit: $ingredient->getDefaultPurchaseUnit(),
+                endUnit: $ingredient->getDefaultCookingUnit(),
+                coefficient: $command->coefficient,
+                ingredient: $ingredient,
+            );
+            $this->conversionRepository->save($conversion);
+        }
 
         $ingredient->update(
             name: $command->name,

@@ -99,6 +99,11 @@ final class Ingredient implements ModelInterface
         return $this;
     }
 
+    public function hasSameUnitInCookingAndPurchase(): bool
+    {
+        return $this->defaultCookingUnit->isEqual($this->defaultPurchaseUnit);
+    }
+
     public static function create(
         string $name,
         string $image,

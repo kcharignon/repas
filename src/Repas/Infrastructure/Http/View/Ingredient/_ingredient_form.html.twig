@@ -7,7 +7,6 @@
 {% block body %}
     <div class="container my-5">
         <h1>{{ (ingredient|default(null) is not null) ? 'Modification de ' ~ ingredient.name : 'Nouvel Ingrédient' }}</h1>
-
         {# Affichage du formulaire Symfony #}
         {{ form_start(form, {'attr': {'id': 'ingredient-form'}}) }}
         <div class="mb-3">
@@ -30,7 +29,26 @@
             {{ form_widget(form.defaultPurchaseUnit, {'attr': {'class': 'form-control'}}) }}
             {{ form_errors(form.defaultPurchaseUnit) }}
         </div>
+        {%  set hidden = ingredient is not defined or (ingredient is defined and ingredient.hasSameUnitInCookingAndPurchase) %}
+        <div
+            class="mb-3"
+            id="coefficient-group"
+            style="{{ hidden ? 'display: none;' : '' }}"
+        >
+            <label id="coefficient-label" for="create_ingredient_coefficient">
+                {% if not hidden %}
+                    {{ "1 " ~ ingredient.defaultPurchaseUnit.name ~ " contient combien de " ~ ingredient.defaultCookingUnit.name ~ " ?" }}
+                {% endif %}
+            </label>
+            {{ form_widget(form.coefficient, {'attr': {'class': 'form-control', 'id': 'coefficient'}}) }}
+            {{ form_errors(form.coefficient) }}
+        </div>
+
         <button type="submit" class="btn btn-primary">{{ (ingredient|default(null) is not null) ? 'Modifier' : 'Ajouter' }}</button>
         {{ form_end(form) }}
     </div>
+{% endblock %}
+
+{% block javascript_custom %}
+    <script src="{{ javascripts_dir ~ "ingredient_form.js" }}"></script>
 {% endblock %}

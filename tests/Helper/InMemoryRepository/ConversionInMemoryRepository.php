@@ -7,6 +7,7 @@ use Repas\Repas\Domain\Exception\ConversionException;
 use Repas\Repas\Domain\Interface\ConversionRepository;
 use Repas\Repas\Domain\Model\Conversion;
 use Repas\Repas\Domain\Model\Ingredient;
+use Repas\Repas\Domain\Model\Unit;
 use Repas\Shared\Domain\Tool\Tab;
 
 class ConversionInMemoryRepository extends AbstractInMemoryRepository implements ConversionRepository
@@ -18,7 +19,7 @@ class ConversionInMemoryRepository extends AbstractInMemoryRepository implements
 
     public function findByIngredient(Ingredient $ingredient): Tab
     {
-        return $this->models->filter(fn (Conversion $conversion) => $conversion->getIngredient()->isEqual($ingredient) || $conversion->getIngredient() === null);
+        return $this->models->filter(fn (Conversion $conversion) => $conversion->getIngredient() === null || $conversion->getIngredient()->isEqual($ingredient));
     }
 
     public function save(Conversion $conversion): void
@@ -37,5 +38,14 @@ class ConversionInMemoryRepository extends AbstractInMemoryRepository implements
     public function findById(string $id): ?Conversion
     {
         return $this->models[$id] ?? throw ConversionException::notFound($id);
+    }
+
+    public function findByIngredientAndStartUnitAndEndUnit(Ingredient $ingredient, Unit $startUnit, Unit $endUnit): ?Conversion
+    {
+        return $this->models->find(fn(Conversion $conversion) =>
+        ($conversion->getIngredient() === null || $conversion->getIngredient()->isEqual($ingredient))
+            && $conversion->getStartUnit()->isEqual($startUnit)
+            && $conversion->getEndUnit()->isEqual($endUnit)
+        );
     }
 }

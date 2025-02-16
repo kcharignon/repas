@@ -12,6 +12,7 @@ readonly class UpdateIngredientCommand
         public string  $departmentSlug,
         public string  $defaultCookingUnitSlug,
         public string  $defaultPurchaseUnitSlug,
+        public ?float  $coefficient,
     ) {
     }
 

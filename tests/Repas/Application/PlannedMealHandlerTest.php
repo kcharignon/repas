@@ -47,7 +47,7 @@ class PlannedMealHandlerTest extends TestCase
             new ConversionBuilder()
                 ->withIngredient(new IngredientBuilder()->isThickCremeFraiche())
                 ->withStartUnit(new UnitBuilder()->isGramme())
-                ->withEndUnit(new UnitBuilder()->isCentilitre())
+                ->withEndUnit(new UnitBuilder()->isCentiliter())
                 ->withCoefficient(5)
                 ->build(),
         ]);

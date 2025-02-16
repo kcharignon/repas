@@ -40,7 +40,7 @@ class ConversionRepositoryTest extends DatabaseTestCase
         $milk = new IngredientBuilder()->isMilk()->build();
         $conversion->update(
             startUnit: new UnitBuilder()->isKilo()->build(),
-            endUnit: new UnitBuilder()->isCentilitre()->build(),
+            endUnit: new UnitBuilder()->isCentiliter()->build(),
             coefficient: 100,
             ingredient: $milk,
         );
