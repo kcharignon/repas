@@ -58,4 +58,10 @@ final class Unit implements ModelInterface
             $datas['symbol'],
         );
     }
+
+    public function update(string $name, string $symbol): void
+    {
+        $this->name = $name;
+        $this->symbol = $symbol;
+    }
 }
