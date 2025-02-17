@@ -21,7 +21,7 @@ readonly class CreateUnitHandler
     {
         $unit = Unit::create(
             name: $command->name,
-            symbol: $command->abbreviation
+            symbol: $command->symbol
         );
 
         $this->unitRepository->save($unit);

@@ -1,0 +1,31 @@
+{% extends '@Shared/base.html.twig' %}
+{% set title = (unit|default(null) is not null) ? 'Modification de' ~ unit.name : 'Nouvelle unité' %}
+{% block title %}
+    {{ title }}
+{% endblock %}
+
+{% block body %}
+    <div class="container my-5">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ path("view_admin_units") }}">Unités</a></li>
+            <li class="breadcrumb-item active">{{ title }}</li>
+        </ol>
+
+        <h1>{{ title }}</h1>
+
+        {# Affichage du formulaire Symfony #}
+        {{ form_start(form, {'attr': {'id': 'conversion-form'}}) }}
+        <div class="mb-3">
+            {{ form_label(form.name) }}
+            {{ form_widget(form.name, {'attr': {'class': 'form-control'}}) }}
+            {{ form_errors(form.name) }}
+        </div>
+        <div class="mb-3">
+            {{ form_label(form.symbol) }}
+            {{ form_widget(form.symbol, {'attr': {'class': 'form-control'}}) }}
+            {{ form_errors(form.symbol) }}
+        </div>
+        <button type="submit" class="btn btn-primary">{{ (unit|default(null) is not null) ? 'Modifier' : 'Ajouter' }}</button>
+        {{ form_end(form) }}
+    </div>
+{% endblock %}
