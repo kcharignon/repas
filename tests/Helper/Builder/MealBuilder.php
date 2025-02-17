@@ -20,19 +20,19 @@ class MealBuilder implements Builder
         return $this;
     }
 
-    public function setShoppingListId(?string $shoppingListId): MealBuilder
+    public function withShoppingListId(?string $shoppingListId): MealBuilder
     {
         $this->shoppingListId = $shoppingListId;
         return $this;
     }
 
-    public function setRecipe(RecipeBuilder|Recipe $recipe): MealBuilder
+    public function withRecipe(RecipeBuilder|Recipe $recipe): MealBuilder
     {
         $this->recipe = $recipe;
         return $this;
     }
 
-    public function setServing(?int $serving): MealBuilder
+    public function withServing(?int $serving): MealBuilder
     {
         $this->serving = $serving;
         return $this;

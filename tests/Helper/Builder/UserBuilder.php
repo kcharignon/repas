@@ -53,4 +53,10 @@ class UserBuilder implements Builder
         $this->id = $id;
         return $this;
     }
+
+    public function withServing(int $serving): self
+    {
+        $this->defaultServing = $serving;
+        return $this;
+    }
 }

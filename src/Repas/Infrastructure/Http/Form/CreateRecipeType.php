@@ -30,14 +30,11 @@ class CreateRecipeType extends AbstractRecipeType
 
     public function mapFormsToData(Traversable $forms, &$viewData): void
     {
-        dump($viewData);
         /** @var FormInterface[] $forms */
         $forms = iterator_to_array($forms);
 
         $rows = Tab::newEmptyTyped(CreateRecipeRowSubCommand::class);
 
-        dump($forms);
-        dump($forms['rows']->getData());
         foreach ($forms['rows']->getData() as $rowData) {
             if ($rowData instanceof CreateRecipeRowSubCommand) {
                 $rows[] = $rowData;

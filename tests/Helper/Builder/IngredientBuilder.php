@@ -171,4 +171,40 @@ class IngredientBuilder implements Builder
         }
         return StringTool::slugify($this->name);
     }
+
+    public function isFloor(): self
+    {
+        $this->name = 'farine';
+        $this->slug = StringTool::slugify($this->name);
+        $this->image = '';
+
+        $this->departmentBuilder = new DepartmentBuilder()->isBakery();
+        $this->defaultCookingUnitBuilder = new UnitBuilder()->isGramme();
+        $this->defaultPurchaseUnitBuilder = new UnitBuilder()->isKilo();
+        return $this;
+    }
+
+    public function isSugar(): self
+    {
+        $this->name = 'sucre';
+        $this->slug = StringTool::slugify($this->name);
+        $this->image = '';
+
+        $this->departmentBuilder = new DepartmentBuilder()->isBakery();
+        $this->defaultCookingUnitBuilder = new UnitBuilder()->isGramme();
+        $this->defaultPurchaseUnitBuilder = new UnitBuilder()->isKilo();
+        return $this;
+    }
+
+    public function isButter(): self
+    {
+        $this->name = 'beurre';
+        $this->slug = StringTool::slugify($this->name);
+        $this->image = '';
+
+        $this->departmentBuilder = new DepartmentBuilder()->isCheese();
+        $this->defaultCookingUnitBuilder = new UnitBuilder()->isGramme();
+        $this->defaultPurchaseUnitBuilder = new UnitBuilder()->isPlate();
+        return $this;
+    }
 }

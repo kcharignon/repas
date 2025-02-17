@@ -139,4 +139,34 @@ class RecipeBuilder implements Builder
         $this->type = $recipeType;
         return $this;
     }
+
+    public function isBasqueCake(): self
+    {
+        $this->id = UuidGenerator::new();
+        $this->type = new RecipeTypeBuilder()->isDessert();
+        $this->serving = 6;
+        $this->rows = Tab::fromArray([
+            new RecipeRowBuilder()
+            ->withRecipeId($this->id)
+            ->withIngredient(new IngredientBuilder()->isFloor())
+            ->withUnit(new UnitBuilder()->isGramme())
+            ->withQuantity(250),
+            new RecipeRowBuilder()
+            ->withRecipeId($this->id)
+            ->withIngredient(new IngredientBuilder()->isSugar())
+            ->withUnit(new UnitBuilder()->isGramme())
+            ->withQuantity(250),
+            new RecipeRowBuilder()
+                ->withRecipeId($this->id)
+                ->withIngredient(new IngredientBuilder()->isButter())
+                ->withUnit(new UnitBuilder()->isGramme())
+                ->withQuantity(125),
+            new RecipeRowBuilder()
+            ->withRecipeId($this->id)
+            ->withIngredient(new IngredientBuilder()->isEgg())
+            ->withUnit(new UnitBuilder()->isUnite())
+            ->withQuantity(2),
+        ]);
+        return $this;
+    }
 }

@@ -5,6 +5,7 @@ namespace Repas\Tests\Helper\InMemoryRepository;
 
 use Repas\Repas\Domain\Exception\ShoppingListException;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
+use Repas\Repas\Domain\Model\Meal;
 use Repas\Repas\Domain\Model\ShoppingList;
 use Repas\Repas\Domain\Model\ShoppingListStatus;
 use Repas\Shared\Domain\Tool\Tab;
@@ -52,7 +53,7 @@ class ShoppingListInMemoryRepository extends AbstractInMemoryRepository implemen
 
     public function findOneByMealId(string $mealId): ShoppingList
     {
-        return $this->models->find(fn(ShoppingList $sl) => $sl->getMeals()->find($mealId));
+        return $this->models->find(fn(ShoppingList $sl) => $sl->getMeals()->find(fn(Meal $meal) => $meal->getId() === $mealId));
     }
 
 }

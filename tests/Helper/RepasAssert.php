@@ -113,10 +113,12 @@ class RepasAssert
         );
     }
 
-    public static function assertMeal(Meal $expected, mixed $actual): void
+    public static function assertMeal(Meal $expected, mixed $actual, array $excluded = []): void
     {
         Assert::assertInstanceOf(Meal::class, $actual);
-        Assert::assertEquals($expected->getId(), $actual->getId());
+        if (!in_array("id", $excluded, true)) {
+            Assert::assertEquals($expected->getId(), $actual->getId());
+        }
         self::assertRecipe($expected->getRecipe(), $actual->getRecipe());
         Assert::assertEquals($expected->getServing(), $actual->getServing());
         Assert::assertEquals($expected->getShoppingListId(), $actual->getShoppingListId());

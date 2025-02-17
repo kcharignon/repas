@@ -104,4 +104,12 @@ class UnitBuilder implements Builder
         $this->symbol = 'l';
         return $this;
     }
+
+    public function isPlate(): self
+    {
+        $this->name = 'plaquette';
+        $this->slug = 'plaquette';
+        $this->symbol = 'plaquette';
+        return $this;
+    }
 }
