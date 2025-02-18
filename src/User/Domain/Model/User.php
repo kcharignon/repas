@@ -111,6 +111,15 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, Passwor
         return in_array('ROLE_ADMIN', $this->roles ?? [], true);
     }
 
+    public function highestRole(): string
+    {
+        if ($this->isAdmin()) {
+            return 'ROLE_ADMIN';
+        } else {
+            return 'ROLE_USER';
+        }
+    }
+
     public function update(string $defaultServing): void
     {
         $this->defaultServing = $defaultServing;

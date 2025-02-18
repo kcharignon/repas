@@ -1,0 +1,8 @@
+# config/eventListeners.yaml
+services:
+    Repas\User\Infrastructure\EventListener\LogoutListener:
+        arguments:
+            $tokenStorage: '@security.token_storage'
+            $rememberMeHandler: '@security.remember_me.handler.main'
+        tags:
+            - { name: kernel.event_listener, event: security.logout }

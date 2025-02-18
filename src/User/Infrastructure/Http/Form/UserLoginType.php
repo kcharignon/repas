@@ -5,7 +5,6 @@ namespace Repas\User\Infrastructure\Http\Form;
 
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\DataMapperInterface;
-use Symfony\Component\Form\Exception;
 use Symfony\Component\Form\Extension\Core\Type\EmailType;
 use Symfony\Component\Form\Extension\Core\Type\PasswordType;
 use Symfony\Component\Form\FormBuilderInterface;
@@ -21,9 +20,14 @@ class UserLoginType extends AbstractType implements DataMapperInterface
                 'required' => true,
                 'label'    => 'Adresse email',
             ])
-            ->add('plainPassword', PasswordType::class, [
+            ->add('password', PasswordType::class, [
                 'required' => true,
                 'label'    => 'Mot de passe',
+            ])
+            ->add('rememberMe', PasswordType::class, [
+                'label'    => 'Se souvenir de moi',
+                'mapped' => false,
+                'required' => true,
             ])
         ;
     }

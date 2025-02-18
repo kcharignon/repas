@@ -1,6 +1,7 @@
 #config/services.yaml
 imports:
     - { resource: repositories.yaml }
+    - { resource: eventListeners.yaml }
 
 parameters:
     env(ADMIN_PASSWORD): '%env(ADMIN_PASSWORD)%'
@@ -35,4 +36,5 @@ services:
         arguments:
             $messageBus: '@messenger.bus.default'
 
+    Repas\User\Domain\Service\UserChecker: ~
     

@@ -1,3 +1,4 @@
+#packages\security.yaml
 security:
     # https://symfony.com/doc/current/security.html#registering-the-user-hashing-passwords
     password_hashers:
@@ -15,6 +16,13 @@ security:
             provider: user_model_provider
             custom_authenticators:
                 - Repas\User\Domain\Service\AuthenticatorEmail
+            remember_me:
+                secret: "%kernel.secret%"
+                lifetime: 604800
+                path: /
+                always_remember_me: false
+                signature_properties: ['email', 'password', 'highestRole']
+            user_checker: Repas\User\Domain\Service\UserChecker
             logout:
                 path: /logout
 
