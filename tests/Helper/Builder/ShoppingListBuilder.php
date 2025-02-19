@@ -4,6 +4,7 @@ namespace Repas\Tests\Helper\Builder;
 
 
 use DateTimeImmutable;
+use Repas\Repas\Domain\Model\Ingredient;
 use Repas\Repas\Domain\Model\Meal;
 use Repas\Repas\Domain\Model\Recipe;
 use Repas\Repas\Domain\Model\ShoppingList;
@@ -22,6 +23,8 @@ class ShoppingListBuilder implements Builder
     private ?ShoppingListStatus $status = null;
     /** @var Tab<Recipe>|null  */
     private ?Tab $recipes = null;
+    /** @var Tab<Ingredient>|null  */
+    private ?Tab $ingredients = null;
 
     public function build(): ShoppingList
     {
@@ -46,6 +49,11 @@ class ShoppingListBuilder implements Builder
         // On passe au status demandé
         if ($this->status !== ShoppingListStatus::ACTIVE) {
             $shoppingList->setStatus($this->status);
+        }
+
+        foreach ($this->ingredients as $ingredient) {
+            $shoppingList->addIngredient($ingredient);
+            $shoppingList->addRow($ingredient, 1);
         }
 
         return $shoppingList;
@@ -75,11 +83,20 @@ class ShoppingListBuilder implements Builder
         $this->createdAt ??= new DateTimeImmutable();
         $this->status ??= ShoppingListStatus::ACTIVE;
         $this->recipes ??= Tab::newEmptyTyped(Recipe::class);
+        $this->ingredients ??= Tab::newEmptyTyped(Ingredient::class);
     }
 
     public function withId(string $id): self
     {
         $this->id = $id;
+        return $this;
+    }
+
+    public function addIngredient(Ingredient|IngredientBuilder $ingredient): self
+    {
+        $this->ingredients ??= Tab::newEmptyTyped(Ingredient::class);
+        $this->ingredients[] = $ingredient instanceof IngredientBuilder ? $ingredient->build() : $ingredient;
+
         return $this;
     }
 }
