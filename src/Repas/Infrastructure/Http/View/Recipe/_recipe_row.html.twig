@@ -24,15 +24,15 @@
         style="line-height: inherit;"
         data-action="link"
         data-url="{{ path("view_recipe", {"id" : recipe.id}) }}"
-        class="badge float-end bg-primary rounded-pill me-1">
-        details
+        class="badge float-end bg-primary me-1">
+        <i class="fas fa-info-circle"></i>
     </span>
     <span
         role="button"
         style="line-height: inherit;"
         data-action="link"
         data-url="{{ path("view_update_recipe", {"id" : recipe.id}) }}"
-        class="badge float-end bg-secondary rounded-pill me-1">
-        modifier
+        class="badge float-end bg-secondary me-1">
+        <i class="fas fa-pencil-alt"></i>
     </span>
 </li>
