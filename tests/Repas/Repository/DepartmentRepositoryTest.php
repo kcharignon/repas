@@ -70,7 +70,7 @@ class DepartmentRepositoryTest extends DatabaseTestCase
         $departments = $this->departmentRepository->findAll();
 
         // Assert
-        $this->assertCount(20, $departments);
+        $this->assertCount(21, $departments);
         RepasAssert::assertTabType(Tab::newEmptyTyped(Department::class), $departments);
     }
 }

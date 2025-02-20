@@ -4,6 +4,7 @@ namespace Repas\Shared\Domain\Tool;
 
 use ArrayAccess;
 use ArrayIterator;
+use Closure;
 use Countable;
 use InvalidArgumentException;
 use IteratorAggregate;
@@ -361,6 +362,27 @@ class Tab implements ArrayAccess, IteratorAggregate, Countable
     }
 
     /**
+     * @param callable $toString
+     * user methode for compareTwoObject
+     *
+     * @return Tab<T>
+     *@see array_unique()
+     *
+     */
+    public function uniqueObject(callable $toString): Tab
+    {
+        $exist = [];
+        $result = [];
+        foreach ($this->items as $item) {
+            if (!in_array($toString($item), $exist, true)) {
+                $result[] = $item;
+                $exist[] = $toString($item);
+            }
+        }
+        return new self($result, $this->type);
+    }
+
+    /**
      *
      * @see array_reduce()
      * @param callable(mixed $carry, T $item): mixed $callback
@@ -380,6 +402,30 @@ class Tab implements ArrayAccess, IteratorAggregate, Countable
     public function reset(): mixed
     {
         return reset($this->items);
+    }
+
+    /**
+     * Compare deux Tab pour vérifier s'ils contiennent les mêmes éléments, indépendamment de l'ordre.
+     *
+     * @param Tab<T> $other
+     * @param callable(T): string $transform
+     * @return bool
+     */
+    public function equalsCanonical(Tab $other, callable $transform): bool
+    {
+        // Vérification rapide si les tailles sont différentes
+        if ($this->count() !== $other->count()) {
+            return false;
+        }
+
+        $thisItems = $this->map($transform)->toArray();
+        $otherItems = $other->map($transform)->toArray();
+
+        // Tri des tableaux pour comparaison indépendante de l'ordre
+        sort($thisItems);
+        sort($otherItems);
+
+        return $thisItems === $otherItems;
     }
 }
 

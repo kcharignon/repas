@@ -6,12 +6,16 @@ namespace Repas\Repas\Domain\Model;
 use Repas\Shared\Domain\Model\ModelInterface;
 use Repas\Shared\Domain\Model\ModelTrait;
 use Repas\Shared\Domain\Tool\StringTool;
+use Repas\Shared\Domain\Tool\Tab;
 use Repas\User\Domain\Model\User;
 
 final class Ingredient implements ModelInterface
 {
     use ModelTrait;
 
+    /**
+     * @param Tab<Unit> $compatibleUnits
+     */
     public function __construct(
         private string     $slug,
         private string     $name,
@@ -20,6 +24,7 @@ final class Ingredient implements ModelInterface
         private Unit       $defaultCookingUnit,
         private Unit       $defaultPurchaseUnit,
         private ?User      $creator,
+        private Tab        $compatibleUnits,
     ) {
     }
 
@@ -104,6 +109,23 @@ final class Ingredient implements ModelInterface
         return $this->defaultCookingUnit->isEqual($this->defaultPurchaseUnit);
     }
 
+    /**
+     * @return Tab<Unit>
+     */
+    public function getCompatibleUnits(): Tab
+    {
+        return $this->compatibleUnits;
+    }
+
+    /**
+     * @param Tab<Unit> $compatibleUnits
+     */
+    public function setCompatibleUnits(Tab $compatibleUnits): Ingredient
+    {
+        $this->compatibleUnits = $compatibleUnits;
+        return $this;
+    }
+
     public static function create(
         string $name,
         string $image,
@@ -121,6 +143,7 @@ final class Ingredient implements ModelInterface
             $defaultCookingUnit,
             $defaultPurchaseUnit,
             $creator,
+            Tab::newEmptyTyped(Unit::class),
         );
     }
 
@@ -134,20 +157,26 @@ final class Ingredient implements ModelInterface
             defaultCookingUnit: $datas['default_cooking_unit'],
             defaultPurchaseUnit: $datas['default_purchase_unit'],
             creator: $datas['creator'],
+            compatibleUnits: $datas['compatible_units'],
         );
     }
 
+    /**
+     * @param Tab<Unit> $compatibleUnits
+     */
     public function update(
         string $name,
         string $image,
         Department $department,
         Unit $defaultCookingUnit,
         Unit $defaultPurchaseUnit,
+        Tab $compatibleUnits,
     ): void {
         $this->name = $name;
         $this->image = $image;
         $this->department = $department;
         $this->defaultCookingUnit = $defaultCookingUnit;
         $this->defaultPurchaseUnit = $defaultPurchaseUnit;
+        $this->compatibleUnits = $compatibleUnits;
     }
 }

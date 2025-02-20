@@ -42,4 +42,14 @@ class IngredientInMemoryRepository extends AbstractInMemoryRepository implements
     {
         // TODO: Implement cachedByRecipe() method.
     }
+
+    /**
+     * @return Tab<Ingredient>
+     */
+    public function findAll(): Tab
+    {
+        return $this->models;
+    }
+
+
 }

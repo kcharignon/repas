@@ -47,6 +47,14 @@ class ExportTableJsonCommand extends Command
         $sql = "SELECT * FROM $tableName";
         $data = $this->connection->fetchAllAssociative($sql);
 
+        foreach ($data as $rowKey => $row) {
+            foreach ($row as $valueKey => $value) {
+                if (json_validate($value)) {
+                    $data[$rowKey][$valueKey] = json_decode($value, true);
+                }
+            }
+        }
+
         if (empty($data)) {
             $output->writeln("<comment>Aucune donnée trouvée dans la table '$tableName'.</comment>");
             return Command::SUCCESS;

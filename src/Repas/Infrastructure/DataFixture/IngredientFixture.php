@@ -3,13 +3,11 @@
 namespace Repas\Repas\Infrastructure\DataFixture;
 
 
-use Doctrine\Bundle\FixturesBundle\Fixture;
 use Doctrine\Bundle\FixturesBundle\FixtureGroupInterface;
 use Doctrine\Common\DataFixtures\DependentFixtureInterface;
 use Doctrine\Persistence\ObjectManager;
 use Exception;
-use Repas\Repas\Infrastructure\Entity\Ingredient as IngredientEntity;
-use Repas\Shared\Domain\Tool\StringTool;
+use Repas\Repas\Infrastructure\Entity\Ingredient;
 
 class IngredientFixture extends RepasFixture implements DependentFixtureInterface, FixtureGroupInterface
 {
@@ -36,7 +34,7 @@ class IngredientFixture extends RepasFixture implements DependentFixtureInterfac
         $filePath = $this->getFilePath(self::FILE_NAME);
         try {
             foreach ($this->readFileObjectByObject($filePath) as $ingredientData) {
-                $ingredientEntity = new IngredientEntity(
+                $ingredientEntity = new Ingredient(
                     slug: $ingredientData['slug'],
                     name: $ingredientData['name'],
                     image: $ingredientData['image'] ?? '',
@@ -44,6 +42,7 @@ class IngredientFixture extends RepasFixture implements DependentFixtureInterfac
                     defaultCookingUnit: $ingredientData['default_cooking_unit'],
                     defaultPurchaseUnit: $ingredientData['default_purchase_unit'],
                     creatorId: $ingredientData['creator'] ?? null,
+                    compatibleUnitSlugs: $ingredientData['compatible_units'] ?? array_unique([$ingredientData['default_cooking_unit'], $ingredientData['default_purchase_unit']]),
                 );
                 $manager->persist($ingredientEntity);
 

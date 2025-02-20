@@ -28,10 +28,10 @@ abstract class RepasFixture extends Fixture
         $insideObject = false; // Pour savoir si on est en train de lire un objet JSON
 
         while (($char = fgetc($handle)) !== false) {
-            if ($char === '[') {
+            if ($char === '[' && !$insideObject) {
                 continue; // On ignore le début du tableau
             }
-            if ($char === ']') {
+            if ($char === ']' && !$insideObject) {
                 break; // Fin du tableau, on stoppe la lecture
             }
             if ($char === '{') {

@@ -4,6 +4,7 @@ namespace Repas\Repas\Infrastructure\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
 use Repas\Repas\Domain\Model\Ingredient as IngredientModel;
+use Repas\Repas\Domain\Model\Unit as UnitModel;
 
 #[ORM\Entity]
 #[ORM\Table(name: 'ingredient')]
@@ -31,6 +32,13 @@ class Ingredient
     #[ORM\Column(name: 'creator', nullable: true)]
     private ?string $creatorId = null;
 
+    /** @var array<string>  */
+    #[ORM\Column(name: 'compatible_units', type: 'json', nullable: false)]
+    private array $compatibleUnitSlugs = [];
+
+    /**
+     * @param array<string> $compatibleUnitSlugs
+     */
     public function __construct(
         ?string $slug,
         ?string $name,
@@ -39,6 +47,7 @@ class Ingredient
         ?string $defaultCookingUnit,
         ?string $defaultPurchaseUnit,
         ?string $creatorId,
+        array $compatibleUnitSlugs
     ) {
         $this->slug = $slug;
         $this->name = $name;
@@ -47,6 +56,7 @@ class Ingredient
         $this->defaultCookingUnitSlug = $defaultCookingUnit;
         $this->defaultPurchaseUnitSlug = $defaultPurchaseUnit;
         $this->creatorId = $creatorId;
+        $this->compatibleUnitSlugs = $compatibleUnitSlugs;
     }
 
 
@@ -122,16 +132,31 @@ class Ingredient
         return $this;
     }
 
+    public function getCompatibleUnitSlugs(): array
+    {
+        return $this->compatibleUnitSlugs;
+    }
+
+    /**
+     * @param array<string> $compatibleUnitSlugs
+     */
+    public function setCompatibleUnitSlugs(array $compatibleUnitSlugs): Ingredient
+    {
+        $this->compatibleUnitSlugs = $compatibleUnitSlugs;
+        return $this;
+    }
+
     public static function fromModel(IngredientModel $ingredient): static
     {
         return new static(
-            $ingredient->getSlug(),
-            $ingredient->getName(),
-            $ingredient->getImage(),
-            $ingredient->getDepartment()->getSlug(),
-            $ingredient->getDefaultCookingUnit()->getSlug(),
-            $ingredient->getDefaultPurchaseUnit()->getSlug(),
-            $ingredient->getCreator()?->getId()
+            slug: $ingredient->getSlug(),
+            name: $ingredient->getName(),
+            image: $ingredient->getImage(),
+            department: $ingredient->getDepartment()->getSlug(),
+            defaultCookingUnit: $ingredient->getDefaultCookingUnit()->getSlug(),
+            defaultPurchaseUnit: $ingredient->getDefaultPurchaseUnit()->getSlug(),
+            creatorId: $ingredient->getCreator()?->getId(),
+            compatibleUnitSlugs: $ingredient->getCompatibleUnits()->map(fn(UnitModel $unit) => $unit->getSlug())->toArray(),
         );
     }
 }

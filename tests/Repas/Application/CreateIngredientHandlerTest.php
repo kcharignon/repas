@@ -163,6 +163,11 @@ class CreateIngredientHandlerTest extends TestCase
             ->withDepartment(new DepartmentBuilder()->isBaby())
             ->withDefaultCookingUnit(new UnitBuilder()->isUnite())
             ->withDefaultPurchaseUnit(new UnitBuilder()->isCentiliter())
+            ->withCompatibleUnits([
+                new UnitBuilder()->isUnite(),
+                new UnitBuilder()->isCentiliter(),
+                new UnitBuilder()->isLiter(),
+            ])
             ->withCreator($user)
             ->build();
 

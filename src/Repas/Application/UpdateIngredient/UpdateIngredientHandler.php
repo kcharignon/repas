@@ -9,6 +9,10 @@ use Repas\Repas\Domain\Interface\ConversionRepository;
 use Repas\Repas\Domain\Interface\DepartmentRepository;
 use Repas\Repas\Domain\Interface\IngredientRepository;
 use Repas\Repas\Domain\Interface\UnitRepository;
+use Repas\Repas\Domain\Model\Ingredient;
+use Repas\Repas\Domain\Model\Unit;
+use Repas\Repas\Domain\Service\ConversionService;
+use Repas\Shared\Domain\Tool\Tab;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 #[AsMessageHandler]
@@ -19,6 +23,7 @@ readonly class UpdateIngredientHandler
         private UnitRepository $unitRepository,
         private IngredientRepository $ingredientRepository,
         private ConversionRepository $conversionRepository,
+        private ConversionService $conversionService,
     ) {
     }
 
@@ -53,8 +58,19 @@ readonly class UpdateIngredientHandler
             department: $this->departmentRepository->findOneBySlug($command->departmentSlug),
             defaultCookingUnit: $this->unitRepository->findOneBySlug($command->defaultCookingUnitSlug),
             defaultPurchaseUnit: $this->unitRepository->findOneBySlug($command->defaultPurchaseUnitSlug),
+            compatibleUnits: $this->getCompatibleUnit($ingredient),
         );
 
         $this->ingredientRepository->save($ingredient);
+    }
+
+    /**
+     * @return Tab<Unit>
+     */
+    private function getCompatibleUnit(Ingredient $ingredient): Tab
+    {
+        // Récupération des unités compatibles à partir des unités de cuisine (et d'achat)
+        // Comme une conversion existe entre unite de cuisine et d'achat alors inutile de faire la recherche depuis les deux
+        return $this->conversionService->getConvertibleUnits($ingredient, $ingredient->getDefaultCookingUnit());
     }
 }

@@ -112,4 +112,44 @@ class UnitBuilder implements Builder
         $this->symbol = 'plaquette';
         return $this;
     }
+
+    public function isSoupSpoon(): self
+    {
+        $this->name = 'cuillère à soupe';
+        $this->slug = 'cuillere-a-soupe';
+        $this->symbol = 'cuillère à soupe';
+        return $this;
+    }
+
+    public function isCoffeeSpoon(): self
+    {
+        $this->name = 'cuillère à café';
+        $this->slug = 'cuillere-a-cafe';
+        $this->symbol = 'cuillère à café';
+        return $this;
+    }
+
+    public function isGlass(): self
+    {
+        $this->name = 'verre';
+        $this->slug = 'verre';
+        $this->symbol = 'verre';
+        return $this;
+    }
+
+    public function isBowl(): self
+    {
+        $this->name = 'bol';
+        $this->slug = 'bol';
+        $this->symbol = 'bol';
+        return $this;
+    }
+
+    public function isCoffeeCup(): self
+    {
+        $this->name = 'tasse à café';
+        $this->slug = 'tasse-a-cafe';
+        $this->symbol = 'tasse à café';
+        return $this;
+    }
 }

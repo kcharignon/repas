@@ -50,6 +50,13 @@ class RepasAssert
         }
         self::assertUnit($expected->getDefaultCookingUnit(), $actual->getDefaultCookingUnit(), sprintf("Ingredient %s, have wrong default cooking unit", $expected->getSlug()));
         self::assertUnit($expected->getDefaultPurchaseUnit(), $actual->getDefaultPurchaseUnit(), sprintf("Ingredient %s, have wrong default purchase unit", $expected->getSlug()));
+        self::assertTab(
+            $expected->getCompatibleUnits(),
+            $actual->getCompatibleUnits(),
+            fn(Unit $a, Unit $b) => $a->getSlug() <=> $b->getSlug(),
+            fn(Unit $expected, mixed $actual, string $message) => self::assertUnit($expected, $actual, $message),
+            sprintf("Ingredient %s, have wrong compatible units", $expected->getSlug())
+        );
     }
 
     public static function assertRecipeRow(RecipeRow $expected, mixed $actual, array $excluded = []): void
@@ -93,10 +100,10 @@ class RepasAssert
         Assert::assertEquals($expected->getImage(), $actual->getImage());
     }
 
-    public static function assertTabType(Tab $expected, mixed $actual): void
+    public static function assertTabType(Tab $expected, mixed $actual, string $message = ''): void
     {
-        Assert::assertInstanceOf(Tab::class, $actual);
-        Assert::assertEquals($expected->getType(), $actual->getType());
+        Assert::assertInstanceOf(Tab::class, $actual, $message);
+        Assert::assertEquals($expected->getType(), $actual->getType(), $message);
     }
 
 
@@ -145,12 +152,13 @@ class RepasAssert
         mixed $actual,
         Closure $sortCallback,
         Closure $assertCallback,
+        string $message = '',
     ): void {
         // Comparaison type
-        self::assertTabType($expected, $actual);
+        self::assertTabType($expected, $actual, $message);
 
         // Comparaison taille
-        Assert::assertCount($expected->count(), $actual);
+        Assert::assertCount($expected->count(), $actual, $message);
 
         // Tri des tableaux pour comparer element par element
         $expected->usort($sortCallback);
@@ -158,7 +166,7 @@ class RepasAssert
 
         // Comparaison par element
         for ($i = 0; $expected->count() > $i; ++$i) {
-            $assertCallback($expected[$i], $actual[$i]);
+            $assertCallback($expected[$i], $actual[$i], $message);
         }
     }
 

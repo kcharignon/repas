@@ -31,4 +31,9 @@ interface IngredientRepository
 
     public function cachedByRecipe(string $recipeId): void;
 
+    /**
+     * @return Tab<Ingredient>
+     */
+    public function findAll(): Tab;
+
 }

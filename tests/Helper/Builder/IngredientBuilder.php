@@ -4,7 +4,9 @@ namespace Repas\Tests\Helper\Builder;
 
 
 use Repas\Repas\Domain\Model\Ingredient;
+use Repas\Repas\Domain\Model\Unit;
 use Repas\Shared\Domain\Tool\StringTool;
+use Repas\Shared\Domain\Tool\Tab;
 use Repas\User\Domain\Model\User;
 
 class IngredientBuilder implements Builder
@@ -16,6 +18,24 @@ class IngredientBuilder implements Builder
     private UnitBuilder $defaultCookingUnitBuilder;
     private UnitBuilder $defaultPurchaseUnitBuilder;
     private UserBuilder|User|null $creator;
+    /** @var Tab<Unit>  */
+    private Tab $compatibleUnits;
+
+    /**
+     * @param array<Unit|UnitBuilder> $units
+     */
+    public function withCompatibleUnits(array $units): self
+    {
+        $this->compatibleUnits ??= Tab::newEmptyTyped(Unit::class);
+        foreach ($units as $unit) {
+            $unit = ($unit instanceof UnitBuilder) ? $unit->build() : $unit;
+
+            if (!$this->compatibleUnits->find(fn(Unit $u) => $u->isEqual($unit))) {
+                $this->compatibleUnits[] = $unit;
+            }
+        }
+        return $this;
+    }
 
     private function initialize(): void
     {
@@ -26,6 +46,13 @@ class IngredientBuilder implements Builder
         $this->creator ??= null;
         $this->slug ??= $this->calculateSlug();
         $this->image ??= "file://images/$this->slug.jpg";
+        if ($this->defaultCookingUnitBuilder->build()->isEqual($this->defaultPurchaseUnitBuilder->build())) {
+            // Si les unités de cuisine et d'achat sont identiques
+            $this->compatibleUnits ??= Tab::fromArray($this->defaultCookingUnitBuilder->build());
+        } else {
+            // Si les unités de cuisine et d'achat sont différentes
+            $this->compatibleUnits ??= Tab::fromArray($this->defaultCookingUnitBuilder->build(), $this->defaultPurchaseUnitBuilder->build());
+        }
     }
 
 
@@ -47,6 +74,7 @@ class IngredientBuilder implements Builder
             'default_cooking_unit' => $this->defaultCookingUnitBuilder->build(),
             'default_purchase_unit' => $this->defaultPurchaseUnitBuilder->build(),
             'creator' => $this->creator instanceof UserBuilder ? $this->creator->build() : $this->creator,
+            'compatible_units' => $this->compatibleUnits,
         ]);
     }
 
@@ -71,6 +99,10 @@ class IngredientBuilder implements Builder
         $this->departmentBuilder = new DepartmentBuilder()->isCereal();
         $this->defaultCookingUnitBuilder = new UnitBuilder()->isGramme();
         $this->defaultPurchaseUnitBuilder = new UnitBuilder()->isGramme();
+        $this->compatibleUnits = Tab::fromArray(
+            new UnitBuilder()->isGramme()->build(),
+            new UnitBuilder()->isKilo()->build(),
+        );
         return $this;
     }
 
@@ -93,6 +125,18 @@ class IngredientBuilder implements Builder
         $this->departmentBuilder = new DepartmentBuilder()->isMiscellaneous();
         $this->defaultCookingUnitBuilder = new UnitBuilder()->isCentiliter();
         $this->defaultPurchaseUnitBuilder = new UnitBuilder()->isCentiliter();
+        $this->compatibleUnits = Tab::fromArray(
+            new UnitBuilder()->isLiter()->build(),
+            new UnitBuilder()->isMillilitre()->build(),
+            new UnitBuilder()->isCentiliter()->build(),
+            new UnitBuilder()->isSoupSpoon()->build(),
+            new UnitBuilder()->isCoffeeSpoon()->build(),
+            new UnitBuilder()->isCoffeeCup()->build(),
+            new UnitBuilder()->isGlass()->build(),
+            new UnitBuilder()->isBowl()->build(),
+            new UnitBuilder()->isGramme()->build(),
+            new UnitBuilder()->isKilo()->build(),
+        );
         return $this;
     }
 
@@ -104,6 +148,10 @@ class IngredientBuilder implements Builder
         $this->departmentBuilder = new DepartmentBuilder()->isMeat();
         $this->defaultCookingUnitBuilder = new UnitBuilder()->isGramme();
         $this->defaultPurchaseUnitBuilder = new UnitBuilder()->isGramme();
+        $this->compatibleUnits = Tab::fromArray(
+            new UnitBuilder()->isGramme()->build(),
+            new UnitBuilder()->isKilo()->build(),
+        );
         return $this;
     }
 
@@ -115,6 +163,10 @@ class IngredientBuilder implements Builder
         $this->departmentBuilder = new DepartmentBuilder()->isCheese();
         $this->defaultCookingUnitBuilder = new UnitBuilder()->isGramme();
         $this->defaultPurchaseUnitBuilder = new UnitBuilder()->isGramme();
+        $this->compatibleUnits = Tab::fromArray(
+            new UnitBuilder()->isGramme()->build(),
+            new UnitBuilder()->isKilo()->build(),
+        );
         return $this;
     }
 
@@ -137,6 +189,16 @@ class IngredientBuilder implements Builder
         $this->departmentBuilder = new DepartmentBuilder()->isMiscellaneous();
         $this->defaultCookingUnitBuilder = new UnitBuilder()->isLiter();
         $this->defaultPurchaseUnitBuilder = new UnitBuilder()->isLiter();
+        $this->compatibleUnits = Tab::fromArray(
+            new UnitBuilder()->isLiter()->build(),
+            new UnitBuilder()->isMillilitre()->build(),
+            new UnitBuilder()->isCentiliter()->build(),
+            new UnitBuilder()->isSoupSpoon()->build(),
+            new UnitBuilder()->isCoffeeSpoon()->build(),
+            new UnitBuilder()->isCoffeeCup()->build(),
+            new UnitBuilder()->isGlass()->build(),
+            new UnitBuilder()->isBowl()->build(),
+        );
         return $this;
     }
 
