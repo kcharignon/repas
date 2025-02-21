@@ -7,17 +7,10 @@ use Repas\Repas\Application\UpdateRecipe\UpdateRecipeRowSubCommand;
 use Repas\Repas\Domain\Model\Recipe;
 use Repas\Shared\Domain\Tool\Tab;
 use Symfony\Component\Form\FormInterface;
-use Symfony\Component\OptionsResolver\OptionsResolver;
 use Traversable;
 
 class UpdateRecipeType extends AbstractRecipeType
 {
-    public function configureOptions(OptionsResolver $resolver): void
-    {
-        $resolver->setDefaults([
-            'data_class' => null,
-        ]);
-    }
 
     public function mapDataToForms($viewData, Traversable $forms): void
     {

@@ -13,13 +13,6 @@ use Traversable;
 class CreateRecipeType extends AbstractRecipeType
 {
 
-    public function configureOptions(OptionsResolver $resolver): void
-    {
-        $resolver->setDefaults([
-            'data_class' => null,
-        ]);
-    }
-
     public function mapDataToForms($viewData, Traversable $forms): void
     {
         /** @var FormInterface[] $forms */
