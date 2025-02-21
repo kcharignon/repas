@@ -51,12 +51,8 @@ class AuthenticatorEmail extends AbstractLoginFormAuthenticator
                 // On ne peut pas se souvenir d'un admin
                 if (!$user->isAdmin()) {
                     $badges[] = new RememberMeBadge();
-                    dump("✅ RememberMeBadge ajouté pour " . $email);
-                } else {
-                    dump("❌ RememberMeBadge ignoré car admin: " . $email);
                 }
             } catch (UserException) {
-                dump("❌ Impossible de récupérer l'utilisateur pour Remember Me.");
             }
         }
 
