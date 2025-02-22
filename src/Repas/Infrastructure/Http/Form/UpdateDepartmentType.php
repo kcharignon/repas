@@ -26,11 +26,16 @@ class UpdateDepartmentType extends AbstractDepartmentType
 
     public function mapFormsToData(Traversable $forms, mixed &$viewData): void
     {
+
+        if (!$viewData instanceof Department) {
+            return;
+        }
+
         /** @var FormInterface[] $forms */
         $forms = iterator_to_array($forms);
 
         $viewData = new UpdateDepartmentCommand(
-            slug: $viewData,
+            slug: $viewData->getSlug(),
             name: $forms['name']->getData(),
             image: $forms['image']->getData(),
         );
