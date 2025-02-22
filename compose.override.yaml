@@ -1,12 +1,6 @@
 # Development environment override
 services:
   php:
-    healthcheck:
-      test: [ "CMD", "php", "-r", "echo 1;" ]
-      interval: 10s
-      timeout: 10s
-      retries: 5
-      start_period: 30s
     build:
       context: .
       target: frankenphp_dev

@@ -48,15 +48,6 @@ jobs:
       -
         name: Check Mercure reachability
         run: curl -vkI --fail-with-body https://localhost/.well-known/mercure?topic=test
-      -  
-        name: Wait for database
-        run: |
-          echo "Waiting for database to be ready..."
-          until docker compose exec -T database mysqladmin ping -h "127.0.0.1" --silent; do
-            echo "Waiting for database..."
-            sleep 2
-          done
-          echo "Database is ready!"
       -
         name: Create test database
         run: docker compose exec -T php bin/console -e test doctrine:database:create
