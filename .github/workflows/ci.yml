@@ -36,21 +36,6 @@ jobs:
             *.cache-from=type=gha,scope=refs/heads/main
             *.cache-to=type=gha,scope=${{github.ref}},mode=max
       -
-        name: Wait for PHP to be healthy
-        run: |
-          echo "Waiting for PHP container to be healthy..."
-          for i in {1..30}; do
-            STATUS=$(docker inspect --format='{{.State.Health.Status}}' repas-php-1)
-            if [ "$STATUS" == "healthy" ]; then
-              echo "PHP container is healthy!"
-              exit 0
-            fi
-            echo "Still waiting..."
-            sleep 2
-          done
-          echo "Timeout: PHP container did not become healthy"
-          exit 1   
-      -
         name: Start services
         run: docker compose up --wait --no-build
       -
