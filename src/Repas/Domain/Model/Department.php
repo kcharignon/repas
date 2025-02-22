@@ -48,6 +48,12 @@ final class Department implements ModelInterface
         $this->image = $image;
     }
 
+    public function update(string $name, string $image): void
+    {
+        $this->name = $name;
+        $this->image = $image;
+    }
+
     public static function load(array $datas): self
     {
         return new self(
