@@ -181,7 +181,7 @@ class CreateRecipeHandlerTest extends TestCase
         $this->userRepository->save($user);
         $pasta = new IngredientBuilder()->isPasta()->build();
         $this->ingredientRepository->save($pasta);
-        $recipeType = new RecipeTypeBuilder()->isStarter()->build();
+        $recipeType = new RecipeTypeBuilder()->isBreakfast()->build();
 
         $rows = new Tab([], CreateRecipeRowSubCommand::class);
         $command = new CreateRecipeCommand(
