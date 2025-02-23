@@ -39,4 +39,9 @@ class UserInMemoryRepository implements UserRepository
     {
         $this->users[$user->getId()] = $user;
     }
+
+    public function findAll(): Tab
+    {
+        return $this->users;
+    }
 }

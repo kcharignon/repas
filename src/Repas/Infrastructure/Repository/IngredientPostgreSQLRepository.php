@@ -43,7 +43,7 @@ readonly class IngredientPostgreSQLRepository extends PostgreSQLRepository imple
      */
     public function findOneBySlug(string $slug): IngredientModel
     {
-        // On cherche das le cache
+        // On cherche dans le cache
         if (($model = $this->modelCache->getModelCache(IngredientModel::class, $slug)) !== null) {
             return $model;
         }

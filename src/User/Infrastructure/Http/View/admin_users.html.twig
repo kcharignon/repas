@@ -1,0 +1,25 @@
+{% set active = "admin" %}
+{% extends '@Shared/base.html.twig' %}
+
+{% block title %}
+    Utilisateurs
+{% endblock %}
+
+{% block body %}
+
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item active">Utilisateurs</li>
+    </ol>
+
+    <table class="table table-sm">
+        <thead>
+        <th scope="col">Email</th>
+        <th scope="col">Personnes</th>
+        </thead>
+        <tbody>
+        {% for user in users %}
+            {% include "@User/_admin_user_row.html.twig" %}
+        {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}

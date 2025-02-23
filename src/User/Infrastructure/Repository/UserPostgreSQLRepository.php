@@ -6,6 +6,7 @@ namespace Repas\User\Infrastructure\Repository;
 
 use Doctrine\Persistence\ManagerRegistry;
 use Repas\Repas\Infrastructure\Repository\PostgreSQLRepository;
+use Repas\Shared\Domain\Tool\Tab;
 use Repas\Shared\Infrastructure\Repository\ModelCache;
 use Repas\User\Domain\Exception\UserException;
 use Repas\User\Domain\Interface\UserRepository;
@@ -51,6 +52,13 @@ readonly class UserPostgreSQLRepository extends PostgreSQLRepository implements 
         throw UserException::NotFound($email);
     }
 
+    public function findAll(): Tab
+    {
+        $entities = new Tab($this->entityRepository->findBy([], ['email' => 'ASC']), UserEntity::class);
+
+        return $this->convertEntitiesToModels($entities);
+    }
+
     public function save(User $user): void
     {
         $existingUserEntity = $this->entityRepository->find($user->getId());
@@ -71,12 +79,26 @@ readonly class UserPostgreSQLRepository extends PostgreSQLRepository implements 
 
     private function convertEntityToModel(UserEntity $entity): User
     {
-        return User::load([
+        if (($model = $this->modelCache->getModelCache(User::class, $entity->getId())) !== null) {
+            return $model;
+        }
+
+        $model = User::load([
             'id' => $entity->getId(),
             'email' => $entity->getEmail(),
             'roles' => $entity->getRoles(),
             'password' => $entity->getPassword(),
             'default_serving' => $entity->getDefaultServing()
         ]);
+
+        $this->modelCache->setModelCache($model);
+        return $model;
+    }
+
+    private function convertEntitiesToModels(Tab $entities): Tab
+    {
+        return $entities->map(function (UserEntity $user) {
+            return $this->convertEntityToModel($user);
+        });
     }
 }
