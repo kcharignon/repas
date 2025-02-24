@@ -10,13 +10,13 @@
     {% set altImage = "Recette" %}
 {% endif %}
 <div class="col">
-    <div class="card bg-light mb-3" style="max-width: 20rem;">
+    <div class="card bg-light mb-3" style="min-width: 10rem;max-width: 20rem;">
         <a style="text-decoration: none; color: inherit" href="{{ url }}">
             <div class="card-header">
                 {{ title }}
             </div>
             <div class="card-body">
-                <img class="img-fluid" style="min-width: 128px" src="{{ sourceImage }}" alt="{{ altImage }}">
+                <img class="img-fluid" style="min-width: 128px" src="{{ sourceImage }}" alt="{{ altImage }}" style="max-height: 150px; object-fit: contain;">
             </div>
         </a>
     </div>
