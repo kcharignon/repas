@@ -11,24 +11,43 @@ fi
 # Utiliser "docker compose" si disponible, sinon "docker-compose"
 DOCKER_COMPOSE_CMD=$(command -v docker compose &>/dev/null && echo "docker compose" || echo "docker-compose")
 
-# Vérifie si un argument a été passé
-if [ $# -lt 1 ]; then
+# Vérifie si l'option --coverage est passée
+COVERAGE_MODE=false
+ARGS=()
+
+for arg in "$@"; do
+    if [ "$arg" == "--coverage" ]; then
+        COVERAGE_MODE=true
+    else
+        ARGS+=("$arg")
+    fi
+done
+
+# Vérifie si des arguments restent après le filtrage
+if [ ${#ARGS[@]} -lt 1 ]; then
     # Aucun argument passé, on lance PHPUnit sans arguments
-    COMMAND="$DOCKER_COMPOSE_CMD exec php php bin/phpunit"
+    COMMAND="$DOCKER_COMPOSE_CMD exec"
 else
-    # Si un argument est passé, on ajoute "tests/" en préfixe si nécessaire
-    INPUT_PATH="$1"
+    # Vérifie si le premier argument est un chemin de test
+    INPUT_PATH="${ARGS[0]}"
     if [[ "$INPUT_PATH" != tests/* ]]; then
         INPUT_PATH="tests/$INPUT_PATH"
     fi
 
-    # Supprime le premier argument pour reconstruire la commande avec les autres (si nécessaires)
-    shift
-    ADDITIONAL_ARGS="$@"
+    # Supprime le premier argument et récupère les autres arguments
+    ADDITIONAL_ARGS="${ARGS[@]:1}"
 
-    # Crée la commande à exécuter
-    COMMAND="$DOCKER_COMPOSE_CMD exec php php bin/phpunit $INPUT_PATH $ADDITIONAL_ARGS"
+    # Crée la commande
+    COMMAND="$DOCKER_COMPOSE_CMD exec"
 fi
+
+# Ajoute XDEBUG_MODE=coverage si l'option --coverage est activée
+if [ "$COVERAGE_MODE" = true ]; then
+    COMMAND="$COMMAND -e XDEBUG_MODE=coverage"
+fi
+
+# Finalise la commande
+COMMAND="$COMMAND php php bin/phpunit $INPUT_PATH $ADDITIONAL_ARGS"
 
 # Affiche la commande en vert
 echo -e "\033[32m$COMMAND\033[0m"
