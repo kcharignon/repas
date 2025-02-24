@@ -266,7 +266,7 @@ class IngredientBuilder implements Builder
 
         $this->departmentBuilder = new DepartmentBuilder()->isCheese();
         $this->defaultCookingUnitBuilder = new UnitBuilder()->isGramme();
-        $this->defaultPurchaseUnitBuilder = new UnitBuilder()->isPlate();
+        $this->defaultPurchaseUnitBuilder = new UnitBuilder()->isBlock();
         return $this;
     }
 }

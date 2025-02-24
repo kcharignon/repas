@@ -73,7 +73,7 @@ class RecipeBuilder implements Builder
 
     public function isSoftBoiledEggs(): self
     {
-        $this->id = UuidGenerator::new();
+        $this->id ??= UuidGenerator::new();
         $this->name = 'œufs à la coque';
         $this->serving = 2;
         $this->type = new RecipeTypeBuilder()->isMeal();
@@ -100,7 +100,7 @@ class RecipeBuilder implements Builder
         $this->serving ??= 2;
         $this->author ??= new UserBuilder();
         $this->type ??= new RecipeTypeBuilder();
-        $this->rows ??= [];
+        $this->rows ??= Tab::newEmptyTyped(RecipeRowBuilder::class);
     }
 
     public function withAuthor(UserBuilder|User $author): self
@@ -112,6 +112,9 @@ class RecipeBuilder implements Builder
     public function withId(string $id): self
     {
         $this->id = $id;
+        // On change l'id pour les rows déjà existantes
+        $this->rows ??= Tab::newEmptyTyped(RecipeRowBuilder::class);
+        $this->rows->map(fn(RecipeRowBuilder $row) => $row->withRecipeId($this->id));
         return $this;
     }
 
@@ -142,7 +145,7 @@ class RecipeBuilder implements Builder
 
     public function isBasqueCake(): self
     {
-        $this->id = UuidGenerator::new();
+        $this->id ??= UuidGenerator::new();
         $this->type = new RecipeTypeBuilder()->isDessert();
         $this->serving = 6;
         $this->rows = Tab::fromArray([

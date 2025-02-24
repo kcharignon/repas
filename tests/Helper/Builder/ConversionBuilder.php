@@ -82,9 +82,27 @@ class ConversionBuilder implements Builder
         return $this;
     }
 
+    public function isKiloToGramme(): self
+    {
+        $this->startUnit = new UnitBuilder()->isKilo();
+        $this->endUnit = new UnitBuilder()->isGramme();
+        $this->coefficient = 1000;
+        $this->withoutIngredient();
+        return $this;
+    }
+
     public function withId(string $id): self
     {
         $this->id = $id;
+        return $this;
+    }
+
+    public function isBlockToGrammeForButter(): self
+    {
+        $this->startUnit = new UnitBuilder()->isBlock();
+        $this->endUnit = new UnitBuilder()->isGramme();
+        $this->coefficient = 250;
+        $this->ingredient = new IngredientBuilder()->isButter();
         return $this;
     }
 }

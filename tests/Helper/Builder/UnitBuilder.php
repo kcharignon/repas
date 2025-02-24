@@ -105,7 +105,7 @@ class UnitBuilder implements Builder
         return $this;
     }
 
-    public function isPlate(): self
+    public function isBlock(): self
     {
         $this->name = 'plaquette';
         $this->slug = 'plaquette';

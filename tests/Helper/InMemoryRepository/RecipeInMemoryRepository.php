@@ -23,7 +23,7 @@ class RecipeInMemoryRepository extends AbstractInMemoryRepository implements Rec
      */
     public function findOneById(string $id): Recipe
     {
-        return $this->models->find(fn(Recipe $recipe) => $recipe->getId() === $id) ?? throw RecipeException::notFound($id);
+        return $this->models[$id] ?? throw RecipeException::notFound($id);
     }
 
     public function findByAuthor(User $author): Tab

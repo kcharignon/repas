@@ -44,6 +44,10 @@ readonly class removeMealFromPlanHandler
         $recipe = $this->recipeRepository->findOneById($command->recipeId);
         $meal = $activeShoppingList->getMeals()->find(fn(Meal $meal) => $meal->hasRecipe($recipe));
 
+        // Si meal n'est pas trouvé le repas est déjà supprimé de la liste
+        if (!$meal instanceof Meal) {
+            return;
+        }
 
         // On récupere les Ingredients de la recette dans les bonnes proportions
         $rows = $recipe->getRowForServing($meal->getServing());

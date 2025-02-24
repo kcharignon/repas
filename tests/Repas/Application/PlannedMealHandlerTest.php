@@ -55,7 +55,7 @@ class PlannedMealHandlerTest extends TestCase
                 ->build(),
             new ConversionBuilder()
                 ->withIngredient(new IngredientBuilder()->isButter())
-                ->withStartUnit(new UnitBuilder()->isPlate())
+                ->withStartUnit(new UnitBuilder()->isBlock())
                 ->withEndUnit(new UnitBuilder()->isGramme())
                 ->withCoefficient(250)
                 ->build(),
