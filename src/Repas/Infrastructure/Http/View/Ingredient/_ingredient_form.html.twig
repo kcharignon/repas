@@ -57,7 +57,6 @@
                 let cookingUnit = $("select[id$='_defaultCookingUnit']").find("option:selected").text();
                 let purchaseUnit = $("select[id$='_defaultPurchaseUnit']").find("option:selected").text();
 
-                console.log(cookingUnit, purchaseUnit);
                 if (cookingUnit !== purchaseUnit) {
                     $("#coefficient-label").text(`1 ${purchaseUnit} contient combien de ${cookingUnit} ?`);
                     $("#coefficient-group").show();
