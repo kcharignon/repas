@@ -5,6 +5,7 @@ namespace Repas\Tests\Helper\Builder;
 
 use Repas\Shared\Domain\Tool\UuidGenerator;
 use Repas\User\Domain\Model\User;
+use Repas\User\Domain\Model\UserStatus as Status;
 
 class UserBuilder implements Builder
 {
@@ -13,15 +14,16 @@ class UserBuilder implements Builder
     private string $password;
     private string $id;
     private int $defaultServing;
+    private Status $status;
 
     private function initialize(): void
     {
         $this->id ??= UuidGenerator::new();
-        $this->email ??= UuidGenerator::new()."@example.com";
+        $this->email ??= "{$this->id}@example.com";
         $this->roles ??= ['ROLE_USER'];
-        // Password hashed : Test
-        $this->password ??= '$2y$13$0LFXi/NjQ/Ic36vx5MLGqu5kidPlsWf.xctG6xXNs1YYFiMLLLMym';
+        $this->password ??= '$2y$13$0LFXi/NjQ/Ic36vx5MLGqu5kidPlsWf.xctG6xXNs1YYFiMLLLMym';// Password hashed : Test
         $this->defaultServing ??= 4;
+        $this->status ??= Status::ACTIVE;
     }
 
     public function build(): User
@@ -33,6 +35,7 @@ class UserBuilder implements Builder
             'roles' => $this->roles,
             'password' => $this->password,
             'default_serving' => $this->defaultServing,
+            'status' => $this->status,
         ]);
     }
 

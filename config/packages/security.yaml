@@ -21,7 +21,7 @@ security:
                 lifetime: 604800
                 path: /
                 always_remember_me: false
-                signature_properties: ['email', 'password', 'highestRole']
+                signature_properties: ['email', 'password', 'highestRole', 'statusValue']
             user_checker: Repas\User\Domain\Service\UserChecker
             logout:
                 path: /logout

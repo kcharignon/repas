@@ -2,6 +2,7 @@
 
 namespace Repas\User\Infrastructure\Entity;
 
+use Repas\User\Domain\Model\UserStatus as Status;
 use Doctrine\ORM\Mapping as ORM;
 use Repas\User\Domain\Model\User as UserModel;
 
@@ -25,18 +26,23 @@ class User
     #[ORM\Column( nullable: false)]
     private ?int $defaultServing = null;
 
+    #[ORM\Column(type: 'string', enumType: Status::class)]
+    private ?Status $status = null;
+
     public function __construct(
         string $id,
         string $email,
         string $password,
         array $roles,
         int $defaultServing,
+        Status $status,
     ) {
         $this->id = $id;
         $this->email = $email;
         $this->password = $password;
         $this->roles = $roles;
         $this->defaultServing = $defaultServing;
+        $this->status = $status;
     }
 
     public function getId(): ?string
@@ -91,6 +97,17 @@ class User
         return $this;
     }
 
+    public function getStatus(): ?Status
+    {
+        return $this->status;
+    }
+
+    public function setStatus(?Status $status): User
+    {
+        $this->status = $status;
+        return $this;
+    }
+
     public static function fromModel(UserModel $user): static
     {
         return new self(
@@ -99,6 +116,7 @@ class User
             password: $user->getPassword(),
             roles: $user->getRoles(),
             defaultServing: $user->getDefaultServing(),
+            status: $user->getStatus(),
         );
     }
 
@@ -109,5 +127,6 @@ class User
         $this->password = $user->getPassword();
         $this->roles = $user->getRoles();
         $this->defaultServing = $user->getDefaultServing();
+        $this->status = $user->getStatus();
     }
 }

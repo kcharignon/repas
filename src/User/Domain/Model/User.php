@@ -8,6 +8,7 @@ use Repas\Shared\Domain\Model\ModelTrait;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use Symfony\Component\Security\Core\User\PasswordUpgraderInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
+use Repas\User\Domain\Model\UserStatus as Status;
 
 class User implements UserInterface, PasswordAuthenticatedUserInterface, PasswordUpgraderInterface, ModelInterface
 {
@@ -17,9 +18,10 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, Passwor
     private function __construct(
         private string $id,
         private string $email,
-        private array $roles,
+        private array  $roles,
         private string $password,
-        private int $defaultServing
+        private int    $defaultServing,
+        private Status $status,
     ) {
     }
 
@@ -35,7 +37,8 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, Passwor
             $email,
             $roles,
             $password,
-            $defaultServing
+            $defaultServing,
+            Status::ACTIVE,
         );
     }
 
@@ -47,6 +50,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, Passwor
             $datas['roles'],
             $datas['password'],
             $datas['default_serving'],
+            $datas['status'],
         );
     }
 
@@ -91,6 +95,17 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, Passwor
         return $this;
     }
 
+    public function getStatus(): Status
+    {
+        return $this->status;
+    }
+
+    public function setStatus(Status $status): User
+    {
+        $this->status = $status;
+        return $this;
+    }
+
     public function eraseCredentials(): void
     {
         // TODO: Implement eraseCredentials() method.
@@ -120,6 +135,11 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, Passwor
         }
     }
 
+    public function statusValue(): string
+    {
+        return $this->status->value;
+    }
+
     public function update(string $defaultServing): void
     {
         $this->defaultServing = $defaultServing;
@@ -128,5 +148,10 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, Passwor
     public function passwordMatch(string $password): bool
     {
         return password_verify($password, $this->password);
+    }
+
+    public function isDisabled(): bool
+    {
+        return $this->status === Status::DISABLED;
     }
 }

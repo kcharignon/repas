@@ -47,7 +47,7 @@ class OwnerVoter extends Voter
 
         $user = $token->getUser();
 
-        if (!$user instanceof User) {
+        if (!$user instanceof User || $user->isDisabled()) {
             return false;
         }
 

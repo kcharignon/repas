@@ -8,6 +8,7 @@ use Doctrine\Bundle\FixturesBundle\FixtureGroupInterface;
 use Doctrine\Persistence\ObjectManager;
 use Repas\Shared\Domain\Tool\UuidGenerator;
 use Repas\User\Domain\Model\User;
+use Repas\User\Domain\Model\UserStatus;
 use Repas\User\Infrastructure\Entity\User as UserEntity;
 use Symfony\Component\DependencyInjection\ParameterBag\ContainerBagInterface;
 use Symfony\Component\PasswordHasher\Hasher\PasswordHasherFactoryInterface;
@@ -22,6 +23,7 @@ class UserFixture extends Fixture implements FixtureGroupInterface
             "fullname" => "Alexiane Sichi",
             "recipes" => [],
             "default_serving" => 2,
+            "status" => UserStatus::ACTIVE,
         ],
         [
             "email" => "kantincharignon@gmail.com",
@@ -30,6 +32,16 @@ class UserFixture extends Fixture implements FixtureGroupInterface
             "fullname" => "Kantin C.",
             "recipes" => [],
             "default_serving" => 5,
+            "status" => UserStatus::ACTIVE,
+        ],
+        [
+            "email" => "john.doe@gmail.com",
+            "roles" => ["ROLE_USER"],
+            "password" => "hjfauendfiwp",
+            "fullname" => "John Doe",
+            "recipes" => [],
+            "default_serving" => 2,
+            "status" => UserStatus::DISABLED,
         ],
     ];
 
@@ -58,6 +70,7 @@ class UserFixture extends Fixture implements FixtureGroupInterface
                 $user['default_serving'],
             );
 
+            $userModel->setStatus($user['status']);
             $userEntity = UserEntity::fromModel($userModel);
             $manager->persist($userEntity);
 

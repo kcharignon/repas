@@ -1,4 +1,6 @@
 <tr id="user-{{ user.id }}">
     <td>{{ user.email }}</td>
     <td>{{ user.defaultServing }}</td>
+    <td>{{ user.isDisabled ? "inactif" : "actif" }}</td>
+    <td>{{ user.isAdmin ? "Administrateur" : "Utilisateur" }}</td>
 </tr>
