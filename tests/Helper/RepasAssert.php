@@ -226,7 +226,7 @@ class RepasAssert
         }
     }
 
-    private static function assertShoppingListRow(ShoppingListRow $expected, mixed $actual): void
+    public static function assertShoppingListRow(ShoppingListRow $expected, mixed $actual): void
     {
         Assert::assertInstanceOf(ShoppingListRow::class, $actual);
         Assert::assertEquals($expected->getId(), $actual->getId());
