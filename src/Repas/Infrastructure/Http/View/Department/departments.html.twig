@@ -1,3 +1,4 @@
+{# department.html.twig #}
 {% set active = "department" %}
 {% extends '@Shared/base.html.twig' %}
 
@@ -6,9 +7,17 @@
 {% endblock %}
 
 {% block body %}
-    <div class="row">
-        {% for department in departments %}
-            {% include "@Repas/Department/_department_card.html.twig" %}
-        {% endfor %}
+    <div class="container-fluid px-0 mb-4">
+        <div class="row row-cols-2 row-cols-md-3 row-cols-lg-6 g-2">
+            {% for department in departments %}
+                <div class="col d-flex">
+                    {% include "@Repas/Department/_department_card.html.twig" %}
+                </div>
+            {% endfor %}
+            <div class="col d-flex">
+                {% include "@Repas/Department/_department_card.html.twig" %}
+            </div>
+        </div>
     </div>
+
 {% endblock %}
