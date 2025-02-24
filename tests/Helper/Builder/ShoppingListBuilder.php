@@ -99,4 +99,10 @@ class ShoppingListBuilder implements Builder
 
         return $this;
     }
+
+    public function withStatus(ShoppingListStatus $status): self
+    {
+        $this->status = $status;
+        return $this;
+    }
 }
