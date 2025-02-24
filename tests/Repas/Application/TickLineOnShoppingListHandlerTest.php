@@ -16,22 +16,27 @@ use Repas\Tests\Helper\Builder\ShoppingListBuilder;
 use Repas\Tests\Helper\Builder\ShoppingListRowBuilder;
 use Repas\Tests\Helper\InMemoryRepository\ShoppingListInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\ShoppingListRowInMemoryRepository;
+use Repas\Tests\Helper\InMemoryRepository\UserInMemoryRepository;
 use Repas\Tests\Helper\RepasAssert;
+use Repas\User\Domain\Interface\UserRepository;
 
 class TickLineOnShoppingListHandlerTest extends TestCase
 {
     private readonly TickLineOnShoppingListHandler $handler;
     private readonly ShoppingListRowRepository $shoppingListRowRepository;
     private readonly ShoppingListRepository $shoppingListRepository;
+    private readonly UserRepository $userRepository;
 
     protected function setUp(): void
     {
         $this->shoppingListRowRepository = new ShoppingListRowInMemoryRepository();
         $this->shoppingListRepository = new ShoppingListInMemoryRepository();
+        $this->userRepository = new UserInMemoryRepository();
 
         $this->handler = new TickLineOnShoppingListHandler(
             $this->shoppingListRowRepository,
             $this->shoppingListRepository,
+            $this->userRepository,
         );
 
         $shoppingListRow = new ShoppingListRowBuilder()
@@ -49,6 +54,7 @@ class TickLineOnShoppingListHandlerTest extends TestCase
             ->addIngredient(new IngredientBuilder()->isPasta())
             ->build();
         $this->shoppingListRepository->save($shoppingList);
+        $this->userRepository->save($shoppingList->getOwner());
         $command = new TickLineOnShoppingListCommand('shopping-list-row-id');
 
         // Act
@@ -62,8 +68,12 @@ class TickLineOnShoppingListHandlerTest extends TestCase
             ->build();
         $actual = $this->shoppingListRowRepository->findOneById('shopping-list-row-id');
         RepasAssert::assertShoppingListRow($expected, $actual);
+
         $shoppingList = $this->shoppingListRepository->findOneById('shopping-list-id');
         $this->assertEquals(ShoppingListStatus::ACTIVE, $shoppingList->getStatus());
+
+        $actualUser = $this->userRepository->findOneById($shoppingList->getOwner()->getId());
+        $this->assertCount(0, $actualUser->getShoppingListStats());
     }
 
 
@@ -74,6 +84,7 @@ class TickLineOnShoppingListHandlerTest extends TestCase
             ->withId('shopping-list-id')
             ->build();
         $this->shoppingListRepository->save($shoppingList);
+        $this->userRepository->save($shoppingList->getOwner());
         $command = new TickLineOnShoppingListCommand('shopping-list-row-id');
 
         // Act
@@ -87,8 +98,12 @@ class TickLineOnShoppingListHandlerTest extends TestCase
             ->build();
         $actual = $this->shoppingListRowRepository->findOneById('shopping-list-row-id');
         RepasAssert::assertShoppingListRow($expected, $actual);
+
         $shoppingList = $this->shoppingListRepository->findOneById('shopping-list-id');
         $this->assertEquals(ShoppingListStatus::COMPLETED, $shoppingList->getStatus());
+
+        $actualUser = $this->userRepository->findOneById($shoppingList->getOwner()->getId());
+        $this->assertCount(1, $actualUser->getShoppingListStats());
     }
 
     public function testHandleFailedTickLineOnShoppingUnknownRow(): void

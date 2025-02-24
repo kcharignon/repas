@@ -51,5 +51,8 @@ readonly class CreateRecipeHandler
         );
 
         $this->recipeRepository->save($recipe);
+
+        $author->createRecipe();
+        $this->userRepository->save($author);
     }
 }

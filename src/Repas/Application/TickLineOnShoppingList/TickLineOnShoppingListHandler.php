@@ -4,6 +4,7 @@ namespace Repas\Repas\Application\TickLineOnShoppingList;
 
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Repas\Domain\Interface\ShoppingListRowRepository;
+use Repas\User\Domain\Interface\UserRepository;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 #[AsMessageHandler]
@@ -12,6 +13,7 @@ readonly class TickLineOnShoppingListHandler
     public function __construct(
         private ShoppingListRowRepository $shoppingListRowRepository,
         private ShoppingListRepository $shoppingListRepository,
+        private UserRepository $userRepository,
     ) {
     }
 
@@ -27,6 +29,10 @@ readonly class TickLineOnShoppingListHandler
         if ($shoppingList->allLineTicked()) {
             $shoppingList->completed();
             $this->shoppingListRepository->save($shoppingList);
+
+            $owner = $shoppingList->getOwner();
+            $owner->completedShoppingList($shoppingList);
+            $this->userRepository->save($owner);
         }
     }
 }

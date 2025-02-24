@@ -106,6 +106,9 @@ class CreateIngredientHandlerTest extends TestCase
             ->build();
         $actual = $this->ingredientRepository->findOneBySlug($expected->getSlug());
         RepasAssert::assertIngredient($expected, $actual);
+
+        $actualUser = $this->userRepository->findOneById($user->getId());
+        $this->assertEquals(1, $actualUser->getIngredientStats());
     }
 
     public function testHandleSuccessfullyCreateIngredientWithDifferentUnitConvertible(): void
@@ -140,6 +143,9 @@ class CreateIngredientHandlerTest extends TestCase
             ->build();
         $actual = $this->ingredientRepository->findOneBySlug($expected->getSlug());
         RepasAssert::assertIngredient($expected, $actual);
+
+        $actualUser = $this->userRepository->findOneById($user->getId());
+        $this->assertEquals(1, $actualUser->getIngredientStats());
     }
 
     public function testHandleSuccessfullyCreateIngredientWithDifferentUnitNotConvertible(): void
@@ -183,6 +189,9 @@ class CreateIngredientHandlerTest extends TestCase
         // Assert
         $actual = $this->ingredientRepository->findOneBySlug($expected->getSlug());
         RepasAssert::assertIngredient($expected, $actual);
+
+        $actualUser = $this->userRepository->findOneById($user->getId());
+        $this->assertEquals(1, $actualUser->getIngredientStats());
     }
 
     public function testHandleSuccessfullyCreateIngredientByAdmin(): void

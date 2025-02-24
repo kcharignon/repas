@@ -2,6 +2,9 @@
 
 namespace Repas\User\Infrastructure\Entity;
 
+use DateTimeImmutable;
+use DateTimeZone;
+use Exception;
 use Repas\User\Domain\Model\UserStatus as Status;
 use Doctrine\ORM\Mapping as ORM;
 use Repas\User\Domain\Model\User as UserModel;
@@ -29,6 +32,9 @@ class User
     #[ORM\Column(type: 'string', enumType: Status::class)]
     private ?Status $status = null;
 
+    #[ORM\Column(name: 'statistics', type: 'json', nullable: false)]
+    private ?array $statistics = [];
+
     public function __construct(
         string $id,
         string $email,
@@ -36,6 +42,7 @@ class User
         array $roles,
         int $defaultServing,
         Status $status,
+        array $statistics,
     ) {
         $this->id = $id;
         $this->email = $email;
@@ -43,6 +50,7 @@ class User
         $this->roles = $roles;
         $this->defaultServing = $defaultServing;
         $this->status = $status;
+        $this->statistics = $statistics;
     }
 
     public function getId(): ?string
@@ -108,6 +116,36 @@ class User
         return $this;
     }
 
+    public function getStatistics(): array
+    {
+        return $this->convertDateTimeArray($this->statistics ?? []);
+    }
+
+    public function setStatistics(array $statistics): User
+    {
+        $this->statistics = $statistics;
+        return $this;
+    }
+
+    private function convertDateTimeArray(array $data): array {
+        foreach ($data as $key => $value) {
+            if (is_array($value)) {
+                // Vérifie si l'array correspond à une structure DateTime
+                if (isset($value['date'], $value['timezone_type'], $value['timezone'])) {
+                    try {
+                        $data[$key] = new DateTimeImmutable($value['date'], new DateTimeZone($value['timezone']));
+                    } catch (Exception) {
+                        // En cas d'erreur, on garde la valeur inchangée
+                    }
+                } else {
+                    // Applique récursivement la fonction
+                    $data[$key] = $this->convertDateTimeArray($value);
+                }
+            }
+        }
+        return $data;
+    }
+
     public static function fromModel(UserModel $user): static
     {
         return new self(
@@ -117,6 +155,7 @@ class User
             roles: $user->getRoles(),
             defaultServing: $user->getDefaultServing(),
             status: $user->getStatus(),
+            statistics: $user->getStatistics(),
         );
     }
 
@@ -128,5 +167,6 @@ class User
         $this->roles = $user->getRoles();
         $this->defaultServing = $user->getDefaultServing();
         $this->status = $user->getStatus();
+        $this->statistics = $user->getStatistics();
     }
 }

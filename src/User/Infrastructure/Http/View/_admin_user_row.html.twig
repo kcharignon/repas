@@ -1,6 +1,10 @@
 <tr id="user-{{ user.id }}">
     <td>{{ user.email }}</td>
     <td>{{ user.defaultServing }}</td>
+    <td>{{ user.getRecipeStats }}</td>
+    <td>{{ user.getIngredientStats }}</td>
+    <td>{{ user.getShoppingListStats|length }}</td>
+    <td>{{ user.getCreatedAt }}</td>
     <td>{{ user.isDisabled ? "inactif" : "actif" }}</td>
     <td>{{ user.isAdmin ? "Administrateur" : "Utilisateur" }}</td>
 </tr>

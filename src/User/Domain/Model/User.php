@@ -3,6 +3,8 @@
 namespace Repas\User\Domain\Model;
 
 
+use DateTimeImmutable;
+use Repas\Repas\Domain\Model\ShoppingList;
 use Repas\Shared\Domain\Model\ModelInterface;
 use Repas\Shared\Domain\Model\ModelTrait;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
@@ -22,6 +24,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, Passwor
         private string $password,
         private int    $defaultServing,
         private Status $status,
+        private array  $statistics,
     ) {
     }
 
@@ -30,7 +33,8 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, Passwor
         string $email,
         array $roles,
         string $password,
-        int $defaultServing
+        int $defaultServing,
+        DateTimeImmutable $createdAt,
     ): static {
         return new static(
             $id,
@@ -39,6 +43,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, Passwor
             $password,
             $defaultServing,
             Status::ACTIVE,
+            ['createdAt' => $createdAt],
         );
     }
 
@@ -51,6 +56,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, Passwor
             $datas['password'],
             $datas['default_serving'],
             $datas['status'],
+            $datas['statistics'],
         );
     }
 
@@ -103,6 +109,63 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, Passwor
     public function setStatus(Status $status): User
     {
         $this->status = $status;
+        return $this;
+    }
+
+    public function getStatistics(): array
+    {
+        return $this->statistics;
+    }
+
+    public function createRecipe(): User
+    {
+        $this->statistics['recipes'] ??= 0;
+        $this->statistics['recipes']++;
+        return $this;
+    }
+
+    public function createIngredient(): User
+    {
+        $this->statistics['ingredient'] ??= 0;
+        $this->statistics['ingredient']++;
+        return $this;
+    }
+
+    public function completedShoppingList(ShoppingList $shoppingList): User
+    {
+        $this->statistics['shoppingLists'] ??= [];
+        $this->statistics['shoppingLists'][$shoppingList->getId()] = [
+            'createdAt' => $shoppingList->getCreatedAt(),
+            'meal' => $shoppingList->getMeals()->count(),
+            'ingredient' => $shoppingList->getIngredients()->count(),
+            'rows' => $shoppingList->getRows()->count(),
+        ];
+        return $this;
+    }
+
+    public function getShoppingListStats(): array
+    {
+        return $this->statistics['shoppingLists'] ?? [];
+    }
+
+    public function getRecipeStats(): int
+    {
+        return $this->statistics['recipes'] ?? 0;
+    }
+
+    public function getIngredientStats(): int
+    {
+        return $this->statistics['ingredient'] ?? 0;
+    }
+
+    public function getCreatedAt(): string
+    {
+        return $this->statistics['createdAt']->format('Y-m-d');
+    }
+
+    public function setStatistics(array $statistics): User
+    {
+        $this->statistics = $statistics;
         return $this;
     }
 

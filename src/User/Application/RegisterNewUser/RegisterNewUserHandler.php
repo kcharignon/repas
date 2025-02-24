@@ -2,6 +2,7 @@
 
 namespace Repas\User\Application\RegisterNewUser;
 
+use Repas\Shared\Domain\Clock;
 use Repas\Shared\Domain\Tool\UuidGenerator;
 use Repas\User\Domain\Interface\UserRepository;
 use Repas\User\Domain\Model\User;
@@ -14,6 +15,7 @@ readonly class RegisterNewUserHandler
     public function __construct(
         private PasswordHasherFactoryInterface $passwordHasherFactory,
         private UserRepository $userRepository,
+        private Clock $clock,
     ) {
     }
 
@@ -28,6 +30,7 @@ readonly class RegisterNewUserHandler
             roles: ['ROLE_USER'],
             password: $passwordHashed,
             defaultServing: $command->defaultServing,
+            createdAt: $this->clock->now(),
         );
 
         $this->userRepository->save($user);

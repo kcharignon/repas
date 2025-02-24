@@ -109,6 +109,9 @@ class CreateRecipeHandlerTest extends TestCase
             ->build();
         $actual = $this->recipeRepository->findOneById("unique_id");
         RepasAssert::assertRecipe($expected, $actual, ["RecipeRow" => ["id"]]);
+
+        $actualUser = $this->userRepository->findOneById($user->getId());
+        $this->assertEquals(1, $actualUser->getRecipeStats());
     }
 
 

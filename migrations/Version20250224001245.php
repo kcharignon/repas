@@ -8,9 +8,6 @@ use Doctrine\DBAL\Schema\Schema;
 use Doctrine\Migrations\AbstractMigration;
 use Repas\User\Domain\Model\UserStatus;
 
-/**
- * Auto-generated Migration: Please modify to your needs!
- */
 final class Version20250224001245 extends AbstractMigration
 {
     public function getDescription(): string

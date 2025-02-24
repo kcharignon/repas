@@ -15,6 +15,7 @@ use Repas\Repas\Domain\Service\ConversionService;
 use Repas\Shared\Domain\Tool\Tab;
 use Repas\User\Domain\Exception\UserException;
 use Repas\User\Domain\Interface\UserRepository;
+use Repas\User\Domain\Model\User;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
@@ -41,6 +42,7 @@ readonly class CreateIngredientHandler
     {
         $cookingUnit = $this->unitRepository->findOneBySlug($command->defaultCookingUnitSlug);
         $purchaseUnit = $this->unitRepository->findOneBySlug($command->defaultPurchaseUnitSlug);
+        $owner = $command->ownerId !== null ? $this->userRepository->findOneById($command->ownerId) : null;
 
         $ingredient = Ingredient::create(
             name: $command->name,
@@ -52,6 +54,11 @@ readonly class CreateIngredientHandler
         );
 
         $this->ingredientRepository->save($ingredient);
+
+        if ($owner instanceof User) {
+            $owner->createIngredient();
+            $this->userRepository->save($owner);
+        }
 
         // On récupère les unités compatibles à la conversion après la création de l'ingrédient
         $compatibleUnit = $this->getCompatibleUnit($ingredient);

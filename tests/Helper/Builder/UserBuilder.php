@@ -3,6 +3,7 @@
 namespace Repas\Tests\Helper\Builder;
 
 
+use DateTimeImmutable;
 use Repas\Shared\Domain\Tool\UuidGenerator;
 use Repas\User\Domain\Model\User;
 use Repas\User\Domain\Model\UserStatus as Status;
@@ -15,6 +16,7 @@ class UserBuilder implements Builder
     private string $id;
     private int $defaultServing;
     private Status $status;
+    private array $statistics;
 
     private function initialize(): void
     {
@@ -24,6 +26,7 @@ class UserBuilder implements Builder
         $this->password ??= '$2y$13$0LFXi/NjQ/Ic36vx5MLGqu5kidPlsWf.xctG6xXNs1YYFiMLLLMym';// Password hashed : Test
         $this->defaultServing ??= 4;
         $this->status ??= Status::ACTIVE;
+        $this->statistics ??= ['createdAt' => new DateTimeImmutable()];
     }
 
     public function build(): User
@@ -36,6 +39,7 @@ class UserBuilder implements Builder
             'password' => $this->password,
             'default_serving' => $this->defaultServing,
             'status' => $this->status,
+            'statistics' => $this->statistics,
         ]);
     }
 

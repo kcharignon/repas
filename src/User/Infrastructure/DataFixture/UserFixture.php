@@ -3,6 +3,7 @@
 namespace Repas\User\Infrastructure\DataFixture;
 
 
+use DateTimeImmutable;
 use Doctrine\Bundle\FixturesBundle\Fixture;
 use Doctrine\Bundle\FixturesBundle\FixtureGroupInterface;
 use Doctrine\Persistence\ObjectManager;
@@ -68,6 +69,7 @@ class UserFixture extends Fixture implements FixtureGroupInterface
                 $user['roles'],
                 $passwordHashed,
                 $user['default_serving'],
+                new DateTimeImmutable(),
             );
 
             $userModel->setStatus($user['status']);

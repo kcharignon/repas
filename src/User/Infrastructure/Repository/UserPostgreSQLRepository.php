@@ -90,6 +90,7 @@ readonly class UserPostgreSQLRepository extends PostgreSQLRepository implements 
             'password' => $entity->getPassword(),
             'default_serving' => $entity->getDefaultServing(),
             'status' => $entity->getStatus(),
+            'statistics' => $entity->getStatistics(),
         ]);
 
         $this->modelCache->setModelCache($model);
