@@ -23,8 +23,13 @@
                 {% for row in form.rows %}
                     <li class="mb-2">
                         <!-- Ingrédient (ligne complète) -->
-                        <div class="mb-2">
-                            {{ form_row(row.ingredientSlug) }}
+                        <div class="d-flex gap-2 mb-2">
+                            {{ form_widget(row.ingredientSlug) }}
+                            <button
+                                class="btn btn-danger"
+                                data-action="remove">
+                                <i class="fas fa-trash"></i>
+                            </button>
                         </div>
 
                         <!-- Quantité et Unité (toujours côte à côte sur mobile et desktop) -->
@@ -54,6 +59,14 @@
     <script>
         $(function () {
             console.log("File form_recipe.html.twig loaded");
+
+            $(document).on("click", "[data-action='remove']", function (event) {
+                event.preventDefault();
+                let row = $(this).closest("li"); // Trouve l'élément parent <li>
+                row.remove(); // Supprime l'élément
+            });
+
+
             let collectionHolder = $('#recipe-rows ul'); // Sélectionne la liste des ingrédients
             let addButton = $('#add-row'); // Sélectionne le bouton d'ajout
 
@@ -73,7 +86,12 @@
                 let newForm = prototype.replace(/__name__/g, index); // Remplace le placeholder
 
                 let newElement = $('<li class="mb-2">' +
-                    '<div class="mb-2">' + $(newForm).find('[name$="[ingredientSlug]"]').parent().html() + '</div>' +
+                    '<div class="d-flex gap-2 mb-2">' +
+                    $(newForm).find('[name$="[ingredientSlug]"]').parent().html() +
+                    '<button class="btn btn-danger" data-action="remove">' +
+                        '<i class="fas fa-trash"></i>' +
+                    '</button>' +
+                    '</div>' +
                     '<div class="d-flex gap-2">' +
                     '<div style="flex: 1">' + $(newForm).find('[name$="[quantity]"]').parent().html() + '</div>' +
                     '<div style="flex: 2">' + $(newForm).find('[name$="[unitSlug]"]').parent().html() + '</div>' +
