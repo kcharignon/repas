@@ -5,7 +5,7 @@
 {% endblock %}
 
 {% block body %}
-    <div class="container my-5">
+    <div class="container">
         <h1>{{ (ingredient|default(null) is not null) ? 'Modification de ' ~ ingredient.name : 'Nouvel Ingrédient' }}</h1>
         {# Affichage du formulaire Symfony #}
         {{ form_start(form, {'attr': {'id': 'ingredient-form'}}) }}
