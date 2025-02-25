@@ -128,7 +128,7 @@ class TickLineOnShoppingListHandlerTest extends TestCase
         $command = new TickLineOnShoppingListCommand('shopping-list-row-id');
 
         // Assert
-        $this->expectExceptionObject(ShoppingListException::shoppingListNotFound());
+        $this->expectExceptionObject(ShoppingListException::shoppingListNotFound('shopping-list-id'));
 
         // Act
         ($this->handler)($command);

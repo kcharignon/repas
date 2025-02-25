@@ -50,7 +50,7 @@ readonly class ShoppingListPostgreSQLRepository extends PostgreSQLRepository imp
         $shoppingListEntity = $this->entityRepository->find($id);
 
         if (null === $shoppingListEntity) {
-            throw ShoppingListException::shoppingListNotFound();
+            throw ShoppingListException::shoppingListNotFound($id);
         }
 
         return $this->convertEntityToModel($shoppingListEntity);

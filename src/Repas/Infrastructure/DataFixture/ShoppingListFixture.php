@@ -21,12 +21,17 @@ class ShoppingListFixture extends Fixture implements DependentFixtureInterface, 
     private const array SHOPPING_LIST = [
         [
             'user' => 'alexiane.sichi@gmail.com',
-            'createdAt' => '2024-12-05T09:35:05+01:00',
+            'createdAt' => '2025-01-05T09:35:05+01:00',
             'status' => ShoppingListStatus::ACTIVE,
         ],
         [
             'user' => 'alexiane.sichi@gmail.com',
             'createdAt' => '2024-12-22T19:31:05+01:00',
+            'status' => ShoppingListStatus::PAUSED,
+        ],
+        [
+            'user' => 'alexiane.sichi@gmail.com',
+            'createdAt' => '2024-12-20T19:31:05+01:00',
             'status' => ShoppingListStatus::COMPLETED,
         ],
         [
@@ -43,7 +48,7 @@ class ShoppingListFixture extends Fixture implements DependentFixtureInterface, 
 
     public static function getGroups(): array
     {
-        return ['test'];
+        return ['test', 'dev'];
     }
 
     public function load(ObjectManager $manager): void

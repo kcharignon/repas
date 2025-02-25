@@ -9,6 +9,7 @@ use Repas\Repas\Application\CreateShoppingList\CreateShoppingListCommand;
 use Repas\Repas\Application\CreateShoppingList\CreateShoppingListHandler;
 use Repas\Repas\Domain\Event\NewShoppingListCreatedEvent;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
+use Repas\Repas\Domain\Model\ShoppingListStatus;
 use Repas\Shared\Domain\Clock;
 use Repas\Tests\Helper\Builder\ShoppingListBuilder;
 use Repas\Tests\Helper\Builder\UserBuilder;
@@ -48,6 +49,8 @@ class CreateShoppingListHandlerTest extends TestCase
         // Arrange
         $user = new UserBuilder()->build();
         $this->userRepository->save($user);
+        $shoppingList = new ShoppingListBuilder()->withOwner($user)->withId('shopping-list-id')->build();
+        $this->shoppingListRepository->save($shoppingList);
         $command = new CreateShoppingListCommand("unique_id", $user->getId());
 
         // Assert
@@ -60,6 +63,9 @@ class CreateShoppingListHandlerTest extends TestCase
         $expected = new ShoppingListBuilder()->withId("unique_id")->withOwner($user)->build();
         $actual = $this->shoppingListRepository->findOneById("unique_id");
         RepasAssert::assertShoppingList($expected, $actual);
+
+        $actualShoppingList = $this->shoppingListRepository->findOneById("shopping-list-id");
+        $this->assertEquals(ShoppingListStatus::PAUSED, $actualShoppingList->getStatus());
     }
 
     public function testHandleFailedCreateShoppingListUnknownUser(): void

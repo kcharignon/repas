@@ -80,7 +80,7 @@ class UncheckLineOnShoppingListHandlerTest extends TestCase
         $command = new UncheckLineOnShoppingListCommand('shopping-list-row-id');
 
         // Assert
-        $this->expectExceptionObject(ShoppingListException::shoppingListNotFound());
+        $this->expectExceptionObject(ShoppingListException::shoppingListNotFound('shopping-list-id'));
 
         // Act
         ($this->handler)($command);

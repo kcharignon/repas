@@ -28,7 +28,7 @@ class ShoppingListInMemoryRepository extends AbstractInMemoryRepository implemen
      */
     public function findOneById(string $id): ShoppingList
     {
-        return $this->models[$id] ?? throw ShoppingListException::shoppingListNotFound();
+        return $this->models[$id] ?? throw ShoppingListException::shoppingListNotFound($id);
     }
 
     public function findOneActivateByOwner(User $owner): ?ShoppingList

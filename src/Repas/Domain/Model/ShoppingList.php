@@ -169,6 +169,16 @@ final class ShoppingList implements ModelInterface
         return $this->meals->find(fn(Meal $meal) => $meal->hasRecipe($recipe)) !== null;
     }
 
+    public function isActive(): bool
+    {
+        return $this->status === Status::ACTIVE;
+    }
+
+    public function isPaused(): bool
+    {
+        return $this->status === Status::PAUSED;
+    }
+
     public function isPlanning(): bool
     {
         return $this->status === Status::PLANNING;
@@ -328,5 +338,10 @@ final class ShoppingList implements ModelInterface
     public function isActivate(): bool
     {
         return $this->status === Status::ACTIVE;
+    }
+
+    public function pause(): void
+    {
+        $this->status = Status::PAUSED;
     }
 }

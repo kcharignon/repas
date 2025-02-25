@@ -35,7 +35,7 @@ class RemoveShoppingListHandlerTest extends TestCase
         ($this->handler)($command);
 
         // Assert
-        $this->expectExceptionObject(ShoppingListException::shoppingListNotFound());
+        $this->expectExceptionObject(ShoppingListException::shoppingListNotFound('shopping-list-id'));
         $this->shoppingListRepository->findOneById('shopping-list-id');
     }
 
@@ -45,7 +45,7 @@ class RemoveShoppingListHandlerTest extends TestCase
         $command = new RemoveShoppingListCommand('shopping-list-id');
 
         // Assert
-        $this->expectExceptionObject(ShoppingListException::shoppingListNotFound());
+        $this->expectExceptionObject(ShoppingListException::shoppingListNotFound('shopping-list-id'));
 
         // Act
         ($this->handler)($command);

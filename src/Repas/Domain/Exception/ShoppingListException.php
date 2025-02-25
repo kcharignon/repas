@@ -9,9 +9,9 @@ use Repas\Shared\Domain\Exception\DomainException;
 class ShoppingListException extends DomainException
 {
 
-    public static function shoppingListNotFound(): static
+    public static function shoppingListNotFound(string $id): static
     {
-        return new self("SHOPPING_LIST_NOT_FOUND", 404);
+        return new self(sprintf("Shopping list '%s' not founded", $id), 404);
     }
 
     public static function recipeAlreadyInList(string $recipe): static

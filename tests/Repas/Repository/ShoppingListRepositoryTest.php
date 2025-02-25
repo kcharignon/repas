@@ -93,7 +93,7 @@ class ShoppingListRepositoryTest extends DatabaseTestCase
 
         // Assert
         RepasAssert::assertTabType(Tab::newEmptyTyped(ShoppingList::class), $shoppingLists);
-        $this->assertCount(2, $shoppingLists);
+        $this->assertCount(3, $shoppingLists);
         foreach ($shoppingLists as $shoppingList) {
             RepasAssert::assertUser($shoppingList->getOwner(), $user);
         }

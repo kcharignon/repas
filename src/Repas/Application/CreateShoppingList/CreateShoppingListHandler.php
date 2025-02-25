@@ -28,10 +28,11 @@ readonly class CreateShoppingListHandler
     public function __invoke(CreateShoppingListCommand $query): void
     {
         $owner = $this->userRepository->findOneById($query->ownerId);
-        // Supprime la liste si elle existe
+        // Met en pause la liste si elle existe
         $activateShoppingList = $this->shoppingListRepository->findOneActivateByOwner($owner);
         if ($activateShoppingList instanceof ShoppingList) {
-            $this->shoppingListRepository->delete($activateShoppingList);
+            $activateShoppingList->pause();
+            $this->shoppingListRepository->save($activateShoppingList);
         }
 
         // Création d'une nouvelle liste (active)

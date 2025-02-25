@@ -1,0 +1,65 @@
+<ul id= "shopping-list-list" class="list-group">
+    <form action="{{ path('view_shopping_list_create') }}" method="post" style="width: 100%;" class="list-group-item d-flex justify-content-between align-items-center bg-success">
+        <button type="submit" class="text-white text-start" style="border: none; background: none; text-decoration: none; cursor: pointer; width: 100%;">
+            Nouvelle liste
+        </button>
+    </form>
+    {% for shoppingList in shoppingLists %}
+        <li
+            id="shopping-list-{{ shoppingList.id }}"
+            class="list-group-item d-flex align-items-center shopping-list-item {{ shoppingList.isCompleted ? "list-group-item-dark" : "" }}"
+            data-id="{{ shoppingList.id }}"
+            style="position: relative;">
+            <a
+                href="{{ path("view_one_shopping_list", {"id": shoppingList.id}) }}"
+                class="d-flex align-items-center flex-grow-1 text-decoration-none text-dark">
+                <span style="width: 10em">{{ shoppingList.createdAt|format_datetime(locale="fr_FR", pattern="dd MMMM YYYY") }}</span>
+                {% if shoppingList.isActive %}
+                    <span class="badge bg-primary rounded-pill pt-1">Active</span>
+                {% endif %}
+                {% if shoppingList.isPaused %}
+                    <span class="badge bg-secondary rounded-pill pt-1">En pause</span>
+                {% endif %}
+                {% if shoppingList.isCompleted %}
+                    <span class="badge bg-secondary rounded-pill pt-1">Terminée</span>
+                {% endif %}
+            </a>
+
+            {% if shoppingList.isPaused or shoppingList.isCompleted %}
+                <button
+                    class="btn btn-primary btn-sm me-1"
+                    data-action="btn-ajax"
+                    data-method="post"
+                    data-url="{{ path('view_shopping_list_activated', {'id': shoppingList.id}) }}">
+                    <i class="fas fa-play"></i>
+                </button>
+            {% endif %}
+            {% if shoppingList.isActive %}
+                <button
+                    class="btn btn-secondary btn-sm me-1"
+                    data-action="btn-ajax"
+                    data-method="post"
+                    data-url="{{ path('view_shopping_list_paused', {'id': shoppingList.id}) }}">
+                    <i class="fas fa-pause"></i>
+                </button>
+            {% endif %}
+            {% if shoppingList.isActive or shoppingList.isPaused %}
+                <button
+                    class="btn btn-secondary btn-sm me-1"
+                    data-action="btn-ajax"
+                    data-method="post"
+                    data-url="{{ path('view_shopping_list_stopped', {'id': shoppingList.id}) }}">
+                    <i class="fas fa-stop"></i>
+                </button>
+            {% endif %}
+            <button
+                class="btn btn-danger btn-sm me-1"
+                data-confirm="Voulez-vous vraiment supprimer cette liste ?"
+                data-action="btn-ajax"
+                data-method="delete"
+                data-url="{{ path('view_shopping_list_remove', {'id': shoppingList.id}) }}">
+                <i class="fas fa-trash-alt"></i>
+            </button>
+        </li>
+    {% endfor %}
+</ul>
