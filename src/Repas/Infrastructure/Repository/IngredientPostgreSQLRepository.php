@@ -80,7 +80,7 @@ readonly class IngredientPostgreSQLRepository extends PostgreSQLRepository imple
     public function findByOwner(User $owner): Tab
     {
         $entities = $this->entityRepository->createQueryBuilder('i')
-            ->andWhere('i.creatorId = :owner or i.creatorId is null')
+            ->where('i.creatorId = :owner or i.creatorId is null')
             ->setParameter('owner', $owner->getId())
             ->orderBy('i.slug', 'ASC')
             ->getQuery()

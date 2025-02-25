@@ -36,10 +36,12 @@ class UpdateUserStatisticsCommand extends Command
             // Recuperation des Ingredient de l'utilisateur
             $ingredients = $this->ingredientRepository->findByOwner($user)->filter(fn(Ingredient $ingredient) => $user->isEqual($ingredient->getCreator()))->count();
             $recipes = $this->recipeRepository->findByAuthor($user)->count();
+            $io->info("{$user->getEmail()} : {$ingredients} ingredient(s) et {$recipes} recipes");
 
             $statistics = $user->getStatistics();
             $statistics['ingredients'] = $ingredients;
             $statistics['recipes'] = $recipes;
+
 
             $user->setStatistics($statistics);
 

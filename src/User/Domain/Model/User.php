@@ -126,8 +126,8 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, Passwor
 
     public function createIngredient(): User
     {
-        $this->statistics['ingredient'] ??= 0;
-        $this->statistics['ingredient']++;
+        $this->statistics['ingredients'] ??= 0;
+        $this->statistics['ingredients']++;
         return $this;
     }
 
@@ -136,8 +136,8 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, Passwor
         $this->statistics['shoppingLists'] ??= [];
         $this->statistics['shoppingLists'][$shoppingList->getId()] = [
             'createdAt' => $shoppingList->getCreatedAt(),
-            'meal' => $shoppingList->getMeals()->count(),
-            'ingredient' => $shoppingList->getIngredients()->count(),
+            'meals' => $shoppingList->getMeals()->count(),
+            'ingredients' => $shoppingList->getIngredients()->count(),
             'rows' => $shoppingList->getRows()->count(),
         ];
         return $this;
@@ -155,7 +155,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, Passwor
 
     public function getIngredientStats(): int
     {
-        return $this->statistics['ingredient'] ?? 0;
+        return $this->statistics['ingredients'] ?? 0;
     }
 
     public function getCreatedAt(): string
