@@ -269,4 +269,10 @@ class IngredientBuilder implements Builder
         $this->defaultPurchaseUnitBuilder = new UnitBuilder()->isBlock();
         return $this;
     }
+
+    public function withSlug(string $slug): self
+    {
+        $this->slug = $slug;
+        return $this;
+    }
 }

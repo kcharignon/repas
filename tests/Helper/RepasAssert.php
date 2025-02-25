@@ -46,7 +46,7 @@ class RepasAssert
         if ($expected->getCreator() === null) {
             Assert::assertNull($actual->getCreator());
         } else {
-            self::assertUser($expected->getCreator(), $actual->getCreator());
+            self::assertUser($expected->getCreator(), $actual->getCreator(), "Ingredient {$expected->getSlug()}, have wrong owner");
         }
         self::assertUnit($expected->getDefaultCookingUnit(), $actual->getDefaultCookingUnit(), sprintf("Ingredient %s, have wrong default cooking unit", $expected->getSlug()));
         self::assertUnit($expected->getDefaultPurchaseUnit(), $actual->getDefaultPurchaseUnit(), sprintf("Ingredient %s, have wrong default purchase unit", $expected->getSlug()));
@@ -71,13 +71,13 @@ class RepasAssert
         self::assertUnit($expected->getUnit(), $actual->getUnit());
     }
 
-    public static function assertUser(User $expected, mixed $actual): void
+    public static function assertUser(User $expected, mixed $actual, ?string $message = null): void
     {
-        Assert::assertInstanceOf(User::class, $actual);
-        Assert::assertEquals($expected->getId(), $actual->getId(), "Users ids are different");
-        Assert::assertEquals($expected->getEmail(), $actual->getEmail(), "Users emails are different");
-        Assert::assertEquals($expected->getPassword(), $actual->getPassword(), "Users password are different");
-        Assert::assertEquals($expected->getRoles(), $actual->getRoles(), "Users roles are different");
+        Assert::assertInstanceOf(User::class, $actual, $message ?? '');
+        Assert::assertEquals($expected->getId(), $actual->getId(), $message ?? "Users ids are different");
+        Assert::assertEquals($expected->getEmail(), $actual->getEmail(), $message ?? "Users emails are different");
+        Assert::assertEquals($expected->getPassword(), $actual->getPassword(), $message ?? "Users password are different");
+        Assert::assertEquals($expected->getRoles(), $actual->getRoles(), $message ?? "Users roles are different");
         Assert::assertEquals($expected->getDefaultServing(), $actual->getDefaultServing());
     }
 
@@ -212,17 +212,21 @@ class RepasAssert
         self::assertIngredient($expected->getIngredient(), $actual->getIngredient());
     }
 
-    public static function assertConversion(Conversion $expected, mixed $actual): void
+    public static function assertConversion(Conversion $expected, mixed $actual, array $excluded = []): void
     {
         Assert::assertInstanceOf(Conversion::class, $actual);
-        Assert::assertEquals($expected->getId(), $actual->getId());
+        if (!in_array('id', $excluded, true)) {
+            Assert::assertEquals($expected->getId(), $actual->getId());
+        }
         Assert::assertEquals($expected->getCoefficient(), $actual->getCoefficient());
         self::assertUnit($expected->getStartUnit(), $actual->getStartUnit());
         self::assertUnit($expected->getEndUnit(), $actual->getEndUnit());
-        if ($expected->getIngredient() === null) {
-            Assert::assertNull($actual->getIngredient());
-        } else {
-            self::assertIngredient($expected->getIngredient(), $actual->getIngredient());
+        if (!in_array('ingredient', $excluded)) {
+            if ($expected->getIngredient() === null) {
+                Assert::assertNull($actual->getIngredient());
+            } else {
+                self::assertIngredient($expected->getIngredient(), $actual->getIngredient());
+            }
         }
     }
 

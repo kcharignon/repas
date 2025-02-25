@@ -9,10 +9,13 @@ use Repas\Repas\Domain\Interface\ConversionRepository;
 use Repas\Repas\Domain\Interface\DepartmentRepository;
 use Repas\Repas\Domain\Interface\IngredientRepository;
 use Repas\Repas\Domain\Interface\UnitRepository;
+use Repas\Repas\Domain\Model\Conversion;
 use Repas\Repas\Domain\Model\Ingredient;
 use Repas\Repas\Domain\Model\Unit;
 use Repas\Repas\Domain\Service\ConversionService;
 use Repas\Shared\Domain\Tool\Tab;
+use Repas\Shared\Domain\Tool\UuidGenerator;
+use Repas\Tests\Helper\InMemoryRepository\UnitInMemoryRepository;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 #[AsMessageHandler]
@@ -35,20 +38,36 @@ readonly class UpdateIngredientHandler
     public function __invoke(UpdateIngredientCommand $command): void
     {
         $ingredient = $this->ingredientRepository->findOneBySlug($command->slug);
+        $newCookingUnit = $this->unitRepository->findOneBySlug($command->defaultCookingUnitSlug);
+        $newPurchaseUnit = $this->unitRepository->findOneBySlug($command->defaultPurchaseUnitSlug);
 
-        if (!$ingredient->getDefaultCookingUnit()->isEqual($ingredient->getDefaultPurchaseUnit())) {
+        // On recupere l'ancienne conversion
+        $conversion = null;
+        if (!$ingredient->hasSameUnitInCookingAndPurchase()) {
             $conversion = $this->conversionRepository->findByIngredientAndStartUnitAndEndUnit(
                 $ingredient,
                 $ingredient->getDefaultPurchaseUnit(),
                 $ingredient->getDefaultCookingUnit(),
             );
+        }
 
-            $conversion->update(
-                startUnit: $ingredient->getDefaultPurchaseUnit(),
-                endUnit: $ingredient->getDefaultCookingUnit(),
-                coefficient: $command->coefficient,
-                ingredient: $ingredient,
-            );
+        if (!$newCookingUnit->isEqual($newPurchaseUnit)) {
+            if ($conversion instanceof Conversion) { // Met à jour la conversion existante
+                $conversion->update(
+                    startUnit: $newPurchaseUnit,
+                    endUnit: $newCookingUnit,
+                    coefficient: $command->coefficient,
+                    ingredient: $ingredient,
+                );
+            } else { // Créer une nouvelle conversion
+                $conversion = Conversion::create(
+                    UuidGenerator::new(),
+                    $newPurchaseUnit,
+                    $newCookingUnit,
+                    $command->coefficient,
+                    $ingredient,
+                );
+            }
             $this->conversionRepository->save($conversion);
         }
 
@@ -56,21 +75,20 @@ readonly class UpdateIngredientHandler
             name: $command->name,
             image: $command->image,
             department: $this->departmentRepository->findOneBySlug($command->departmentSlug),
-            defaultCookingUnit: $this->unitRepository->findOneBySlug($command->defaultCookingUnitSlug),
-            defaultPurchaseUnit: $this->unitRepository->findOneBySlug($command->defaultPurchaseUnitSlug),
-            compatibleUnits: $this->getCompatibleUnit($ingredient),
+            defaultCookingUnit: $newCookingUnit,
+            defaultPurchaseUnit: $newPurchaseUnit,
+            compatibleUnits: $this->getCompatibleUnit($ingredient, $newCookingUnit),
         );
-
         $this->ingredientRepository->save($ingredient);
     }
 
     /**
      * @return Tab<Unit>
      */
-    private function getCompatibleUnit(Ingredient $ingredient): Tab
+    private function getCompatibleUnit(Ingredient $ingredient, Unit $cookingUnit): Tab
     {
         // Récupération des unités compatibles à partir des unités de cuisine (et d'achat)
         // Comme une conversion existe entre unite de cuisine et d'achat alors inutile de faire la recherche depuis les deux
-        return $this->conversionService->getConvertibleUnits($ingredient, $ingredient->getDefaultCookingUnit());
+        return $this->conversionService->getConvertibleUnits($ingredient, $cookingUnit);
     }
 }

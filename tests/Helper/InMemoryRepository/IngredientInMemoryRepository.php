@@ -12,11 +12,12 @@ use Repas\User\Domain\Model\User;
 
 class IngredientInMemoryRepository extends AbstractInMemoryRepository implements IngredientRepository
 {
+    use SaveModelTrait;
+
     protected static function getClassName(): string
     {
         return Ingredient::class;
     }
-
 
     public function findOneBySlug(string $slug): Ingredient
     {
@@ -31,11 +32,6 @@ class IngredientInMemoryRepository extends AbstractInMemoryRepository implements
     public function findByOwner(User $owner): Tab
     {
         return $this->models->filter(fn(Ingredient $ingredient) => $ingredient->getCreator()->isEqual($owner));
-    }
-
-    public function save(Ingredient $ingredient): void
-    {
-        $this->models[$ingredient->getSlug()] = $ingredient;
     }
 
     public function cachedByRecipe(string $recipeId): void

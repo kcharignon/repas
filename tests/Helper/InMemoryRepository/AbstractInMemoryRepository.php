@@ -24,7 +24,7 @@ abstract class AbstractInMemoryRepository
 
         foreach ($models as $model) {
             assert($model instanceof ModelInterface);
-            $this->models[$model->getId()] = $model;
+            $this->models[$model->getId()] = clone $model;
         }
     }
 
