@@ -137,7 +137,7 @@ class RecipeBuilder implements Builder
         return $this;
     }
 
-    public function withRecipeType(RecipeType $recipeType): self
+    public function withRecipeType(RecipeType|RecipeTypeBuilder $recipeType): self
     {
         $this->type = $recipeType;
         return $this;

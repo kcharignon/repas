@@ -55,7 +55,6 @@ class UpdateRecipeType extends AbstractRecipeType
             id: $viewData->getId(),
             name: $forms['name']->getData(),
             serving: $forms['serving']->getData(),
-            authorId: $viewData->getAuthor()->getId(),
             rows: $rows,
             typeSlug: $forms['typeSlug']->getData()
         );

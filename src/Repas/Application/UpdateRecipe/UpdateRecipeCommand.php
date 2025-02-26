@@ -14,7 +14,6 @@ class UpdateRecipeCommand
         public string $id,
         public string $name,
         public int $serving,
-        public string $authorId,
         public Tab $rows,
         public string $typeSlug
     ) {

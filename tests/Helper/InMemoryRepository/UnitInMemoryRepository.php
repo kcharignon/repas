@@ -10,14 +10,11 @@ use Repas\Shared\Domain\Tool\Tab;
 
 class UnitInMemoryRepository extends AbstractInMemoryRepository implements UnitRepository
 {
+    use SaveModelTrait;
+
     protected static function getClassName(): string
     {
         return Unit::class;
-    }
-
-    public function save(Unit $unit): void
-    {
-        $this->models[$unit->getId()] = $unit;
     }
 
     public function findAll(): Tab

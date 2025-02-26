@@ -115,8 +115,8 @@ class RepasAssert
         self::assertTab(
             $expected,
             $actual,
-            fn($a, $b) => $a->getId() <=> $b->getId(),
-            fn($a, $b) => self::assertRecipeRow($a, $b, $excluded),
+            fn(RecipeRow $a, RecipeRow $b) => $a->getIngredient()->getId() <=> $b->getIngredient()->getId(),
+            fn(RecipeRow $a, mixed $b) => self::assertRecipeRow($a, $b, $excluded),
         );
     }
 

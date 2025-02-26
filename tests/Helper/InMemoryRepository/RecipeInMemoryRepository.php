@@ -13,6 +13,8 @@ use Repas\User\Domain\Model\User;
 
 class RecipeInMemoryRepository extends AbstractInMemoryRepository implements RecipeRepository
 {
+    use SaveModelTrait;
+
     protected static function getClassName(): string
     {
         return Recipe::class;
@@ -40,10 +42,4 @@ class RecipeInMemoryRepository extends AbstractInMemoryRepository implements Rec
     {
         throw new Exception("Not implemented");
     }
-
-    public function save(Recipe $recipe): void
-    {
-        $this->models[$recipe->getId()] = $recipe;
-    }
-
 }
