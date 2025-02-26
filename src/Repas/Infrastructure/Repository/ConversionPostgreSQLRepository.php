@@ -105,4 +105,14 @@ readonly class ConversionPostgreSQLRepository extends PostgreSQLRepository imple
             'coefficient' => $conversion->getCoefficient(),
         ]);
     }
+
+    public function deleteByIngredient(Ingredient $ingredient): void
+    {
+        $this->entityRepository->createQueryBuilder('c')
+            ->delete()
+            ->where('c.ingredientSlug = :ingredientSlug')
+            ->setParameter('ingredientSlug', $ingredient->getSlug())
+            ->getQuery()
+            ->execute();
+    }
 }

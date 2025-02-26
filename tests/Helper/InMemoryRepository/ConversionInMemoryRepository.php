@@ -48,4 +48,9 @@ class ConversionInMemoryRepository extends AbstractInMemoryRepository implements
             && $conversion->getEndUnit()->isEqual($endUnit)
         );
     }
+
+    public function deleteByIngredient(Ingredient $ingredient): void
+    {
+        $this->models = $this->models->filter(fn (Conversion $conversion) => !$ingredient->isEqual($conversion->getIngredient()));
+    }
 }

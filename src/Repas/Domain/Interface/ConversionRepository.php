@@ -25,4 +25,6 @@ interface ConversionRepository
     public function findAll(): Tab;
 
     public function save(Conversion $conversion): void;
+
+    public function deleteByIngredient(Ingredient $ingredient): void;
 }

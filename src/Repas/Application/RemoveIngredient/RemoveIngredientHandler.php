@@ -3,6 +3,7 @@
 namespace Repas\Repas\Application\RemoveIngredient;
 
 use Repas\Repas\Domain\Exception\IngredientException;
+use Repas\Repas\Domain\Interface\ConversionRepository;
 use Repas\Repas\Domain\Interface\IngredientRepository;
 use Repas\Repas\Domain\Interface\RecipeRepository;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
@@ -16,6 +17,7 @@ readonly class RemoveIngredientHandler
         private IngredientRepository $ingredientRepository,
         private RecipeRepository $recipeRepository,
         private ShoppingListRepository $shoppingListRepository,
+        private ConversionRepository $conversionRepository,
     ) {
     }
 
@@ -38,6 +40,7 @@ readonly class RemoveIngredientHandler
             throw IngredientException::cannotBeRemoveExistInShoppingList($ingredient->getId());
         }
 
+        $this->conversionRepository->deleteByIngredient($ingredient);
         $this->ingredientRepository->delete($ingredient);
     }
 }

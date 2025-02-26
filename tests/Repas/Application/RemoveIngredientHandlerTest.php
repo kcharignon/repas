@@ -7,12 +7,17 @@ use PHPUnit\Framework\TestCase;
 use Repas\Repas\Application\RemoveIngredient\RemoveIngredientCommand;
 use Repas\Repas\Application\RemoveIngredient\RemoveIngredientHandler;
 use Repas\Repas\Domain\Exception\IngredientException;
+use Repas\Repas\Domain\Interface\ConversionRepository;
 use Repas\Repas\Domain\Interface\IngredientRepository;
 use Repas\Repas\Domain\Interface\RecipeRepository;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
+use Repas\Repas\Domain\Model\Conversion;
+use Repas\Tests\Helper\Builder\ConversionBuilder;
 use Repas\Tests\Helper\Builder\IngredientBuilder;
 use Repas\Tests\Helper\Builder\RecipeBuilder;
 use Repas\Tests\Helper\Builder\ShoppingListBuilder;
+use Repas\Tests\Helper\Builder\UnitBuilder;
+use Repas\Tests\Helper\InMemoryRepository\ConversionInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\IngredientInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\RecipeInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\ShoppingListInMemoryRepository;
@@ -23,6 +28,7 @@ class RemoveIngredientHandlerTest extends TestCase
     private readonly IngredientRepository $ingredientRepository;
     private readonly RecipeRepository $recipeRepository;
     private readonly ShoppingListRepository $shoppingListRepository;
+    private readonly ConversionRepository $conversionRepository;
 
 
     protected function setUp(): void
@@ -38,10 +44,19 @@ class RemoveIngredientHandlerTest extends TestCase
         $this->shoppingListRepository = new ShoppingListInMemoryRepository([
             new ShoppingListBuilder()->addIngredient(new IngredientBuilder()->isFloor())->build()
         ]);
+        $this->conversionRepository = new ConversionInMemoryRepository([
+           new ConversionBuilder()
+               ->withIngredient(new IngredientBuilder()->isSugar())
+               ->withStartUnit(new UnitBuilder()->isBox()->build())
+               ->withEndUnit(new UnitBuilder()->isGramme()->build())
+               ->withCoefficient(1000)
+               ->build(),
+        ]);
         $this->handler = new RemoveIngredientHandler(
             $this->ingredientRepository,
             $this->recipeRepository,
-            $this->shoppingListRepository
+            $this->shoppingListRepository,
+            $this->conversionRepository,
         );
     }
 
@@ -55,6 +70,9 @@ class RemoveIngredientHandlerTest extends TestCase
         ($this->handler)($command);
 
         // Assert
+        $conversions = $this->conversionRepository->findByIngredient(new IngredientBuilder()->isSugar()->build())->filter(fn(Conversion $conversion) => $conversion->getIngredient() !== null);
+        $this->assertCount(0, $conversions);
+
         $this->expectExceptionObject(IngredientException::notFound('sucre'));
         $this->ingredientRepository->findOneBySlug('sucre');
     }
