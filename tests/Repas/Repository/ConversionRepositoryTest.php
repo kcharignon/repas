@@ -84,4 +84,16 @@ class ConversionRepositoryTest extends DatabaseTestCase
             ->build();
         RepasAssert::assertConversion($expected, $actual);
     }
+
+    public function testFindById(): void
+    {
+        // Act
+        $actual = $this->conversionRepository->findById("9967014a-7c8b-423f-9b96-04fc13943a05");
+
+        // Assert
+        $expected = new ConversionBuilder()
+            ->isBlockToGrammeForButter()
+            ->build();
+        RepasAssert::assertConversion($expected, $actual);
+    }
 }

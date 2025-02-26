@@ -4,6 +4,8 @@ namespace Repas\Tests\Repas\Repository;
 
 
 use Repas\Repas\Domain\Interface\IngredientRepository;
+use Repas\Repas\Domain\Model\Ingredient;
+use Repas\Shared\Domain\Tool\Tab;
 use Repas\Tests\Helper\Builder\DepartmentBuilder;
 use Repas\Tests\Helper\Builder\IngredientBuilder;
 use Repas\Tests\Helper\Builder\UnitBuilder;
@@ -96,5 +98,25 @@ class IngredientRepositoryTest extends DatabaseTestCase
 
         // Assert
         $this->assertEquals($see ? ++$count : $count, $actual->count());
+    }
+
+    public function testFindAll(): void
+    {
+        // Act
+        $actual = $this->ingredientRepository->findAll();
+
+        // Assert
+        $this->assertCount(256, $actual);
+        RepasAssert::assertTabType(Tab::newEmptyTyped(Ingredient::class), $actual);
+    }
+
+    public function testFindByOwner(): void
+    {
+        // Act
+        $actual = $this->ingredientRepository->findByOwner(new UserBuilder()->build());
+
+        // Assert
+        $this->assertCount(256, $actual);
+        RepasAssert::assertTabType(Tab::newEmptyTyped(Ingredient::class), $actual);
     }
 }
