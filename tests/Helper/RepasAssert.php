@@ -71,14 +71,17 @@ class RepasAssert
         self::assertUnit($expected->getUnit(), $actual->getUnit());
     }
 
-    public static function assertUser(User $expected, mixed $actual, ?string $message = null): void
+    public static function assertUser(User $expected, mixed $actual, ?string $message = null, array $excluded = []): void
     {
         Assert::assertInstanceOf(User::class, $actual, $message ?? '');
-        Assert::assertEquals($expected->getId(), $actual->getId(), $message ?? "Users ids are different");
+        if (!in_array("id", $excluded, true)) {
+            Assert::assertEquals($expected->getId(), $actual->getId(), $message ?? "Users ids are different");
+        }
         Assert::assertEquals($expected->getEmail(), $actual->getEmail(), $message ?? "Users emails are different");
         Assert::assertEquals($expected->getPassword(), $actual->getPassword(), $message ?? "Users password are different");
         Assert::assertEquals($expected->getRoles(), $actual->getRoles(), $message ?? "Users roles are different");
         Assert::assertEquals($expected->getDefaultServing(), $actual->getDefaultServing());
+        Assert::assertEquals($expected->getStatistics(), $actual->getStatistics());
     }
 
     public static function assertRecipe(Recipe $expected, mixed $actual, array $excluded = []): void

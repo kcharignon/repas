@@ -3,16 +3,13 @@
 namespace Repas\Shared\Domain\Tool;
 
 
-use DateMalformedStringException;
 use DateTimeImmutable;
+use Psr\Clock\ClockInterface;
 
-class Clock implements \Repas\Shared\Domain\Clock
+class Clock implements ClockInterface
 {
-    /**
-     * @throws DateMalformedStringException
-     */
-    public function now(string $datetime = 'now'): DateTimeImmutable
+    public function now(): DateTimeImmutable
     {
-        return new DateTimeImmutable($datetime);
+        return new DateTimeImmutable();
     }
 }

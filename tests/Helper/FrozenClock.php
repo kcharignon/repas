@@ -4,15 +4,15 @@ namespace Repas\Tests\Helper;
 
 
 use DateTimeImmutable;
-use Repas\Shared\Domain\Clock;
+use Psr\Clock\ClockInterface;
 
-readonly class FrozenClock implements Clock
+readonly class FrozenClock implements ClockInterface
 {
     public function __construct(private DateTimeImmutable $now)
     {
     }
 
-    public function now(string $datetime = ""): DateTimeImmutable
+    public function now(): DateTimeImmutable
     {
         return $this->now;
     }

@@ -2,10 +2,10 @@
 
 namespace Repas\Repas\Application\CreateShoppingList;
 
+use Psr\Clock\ClockInterface;
 use Repas\Repas\Domain\Event\NewShoppingListCreatedEvent;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Repas\Domain\Model\ShoppingList;
-use Repas\Shared\Domain\Clock;
 use Repas\User\Domain\Exception\UserException;
 use Repas\User\Domain\Interface\UserRepository;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
@@ -18,7 +18,7 @@ readonly class CreateShoppingListHandler
         private UserRepository $userRepository,
         private ShoppingListRepository $shoppingListRepository,
         private EventDispatcherInterface $eventDispatcher,
-        private Clock $clock,
+        private ClockInterface $clock,
     ) {
     }
 

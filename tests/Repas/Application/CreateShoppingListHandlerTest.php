@@ -5,12 +5,12 @@ namespace Repas\Application;
 
 use DateTimeImmutable;
 use PHPUnit\Framework\TestCase;
+use Psr\Clock\ClockInterface;
 use Repas\Repas\Application\CreateShoppingList\CreateShoppingListCommand;
 use Repas\Repas\Application\CreateShoppingList\CreateShoppingListHandler;
 use Repas\Repas\Domain\Event\NewShoppingListCreatedEvent;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Repas\Domain\Model\ShoppingListStatus;
-use Repas\Shared\Domain\Clock;
 use Repas\Tests\Helper\Builder\ShoppingListBuilder;
 use Repas\Tests\Helper\Builder\UserBuilder;
 use Repas\Tests\Helper\FrozenClock;
@@ -27,7 +27,7 @@ class CreateShoppingListHandlerTest extends TestCase
     private readonly UserRepository $userRepository;
     private readonly ShoppingListRepository $shoppingListRepository;
     private readonly EventDispatcherInterface $eventDispatcher;
-    private readonly Clock $clock;
+    private readonly ClockInterface $clock;
 
     protected function setUp(): void
     {

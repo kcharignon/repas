@@ -66,4 +66,17 @@ class UserBuilder implements Builder
         $this->defaultServing = $serving;
         return $this;
     }
+
+    public function withPassword(string $password): self
+    {
+        $this->password = $password;
+        return $this;
+    }
+
+    public function withCreatedAt(DateTimeImmutable $now): self
+    {
+        $this->statistics ??= [];
+        $this->statistics['createdAt'] = $now;
+        return $this;
+    }
 }

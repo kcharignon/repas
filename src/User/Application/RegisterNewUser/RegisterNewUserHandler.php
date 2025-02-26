@@ -2,7 +2,7 @@
 
 namespace Repas\User\Application\RegisterNewUser;
 
-use Repas\Shared\Domain\Clock;
+use Psr\Clock\ClockInterface;
 use Repas\Shared\Domain\Tool\UuidGenerator;
 use Repas\User\Domain\Interface\UserRepository;
 use Repas\User\Domain\Model\User;
@@ -15,7 +15,7 @@ readonly class RegisterNewUserHandler
     public function __construct(
         private PasswordHasherFactoryInterface $passwordHasherFactory,
         private UserRepository $userRepository,
-        private Clock $clock,
+        private ClockInterface $clock,
     ) {
     }
 
