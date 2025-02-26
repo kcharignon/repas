@@ -3,6 +3,7 @@
 namespace Repas\Repas\Domain\Interface;
 
 
+use Repas\Repas\Domain\Model\Ingredient;
 use Repas\Repas\Domain\Model\Recipe;
 use Repas\Repas\Domain\Model\RecipeType;
 use Repas\Shared\Domain\Tool\Tab;
@@ -28,4 +29,9 @@ interface RecipeRepository
     public function findBy(array $criteria, ?array $orderBy = null): Tab;
 
     public function save(Recipe $recipe): void;
+
+    /**
+     * @return Tab<Recipe>
+     */
+    public function findByIngredient(Ingredient $ingredient): Tab;
 }

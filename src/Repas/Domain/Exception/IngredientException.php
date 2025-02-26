@@ -28,4 +28,14 @@ class IngredientException extends DomainException
             $ingredient->getName(),
         ), 403);
     }
+
+    public static function cannotBeRemoveExistInRecipe(string $ingredientId): static
+    {
+        return new static(sprintf("Cannot remove ingredient '%s', exist in recipe", $ingredientId), 403);
+    }
+
+    public static function cannotBeRemoveExistInShoppingList(string $ingredientId): static
+    {
+        return new static(sprintf("Cannot remove ingredient '%s', exist in shopping list", $ingredientId), 403);
+    }
 }

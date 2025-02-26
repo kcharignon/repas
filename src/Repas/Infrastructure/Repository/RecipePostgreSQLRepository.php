@@ -8,10 +8,12 @@ use Repas\Repas\Domain\Exception\RecipeException;
 use Repas\Repas\Domain\Interface\IngredientRepository;
 use Repas\Repas\Domain\Interface\RecipeRepository;
 use Repas\Repas\Domain\Interface\RecipeTypeRepository;
+use Repas\Repas\Domain\Model\Ingredient;
 use Repas\Repas\Domain\Model\Recipe;
 use Repas\Repas\Domain\Model\RecipeRow;
 use Repas\Repas\Domain\Model\RecipeType;
 use Repas\Repas\Infrastructure\Entity\Recipe as RecipeEntity;
+use Repas\Repas\Infrastructure\Entity\RecipeRow as RecipeRowEntity;
 use Repas\Shared\Domain\Tool\Tab;
 use Repas\Shared\Infrastructure\Repository\ModelCache;
 use Repas\User\Domain\Exception\UserException;
@@ -42,9 +44,7 @@ readonly class RecipePostgreSQLRepository extends PostgreSQLRepository implement
         }
 
         if (($entity = $this->entityRepository->find($id)) !== null) {
-            $model = $this->convertEntityToModel($entity);
-            $this->modelCache->setModelCache($model);
-            return $model;
+            return $this->convertEntityToModel($entity);
         }
 
         throw RecipeException::notFound($id);
@@ -66,16 +66,8 @@ readonly class RecipePostgreSQLRepository extends PostgreSQLRepository implement
 
     public function findBy(array $criteria, ?array $orderBy = null): Tab
     {
-        $recipes = Tab::fromArray($this->entityRepository->findBy($criteria, $orderBy));
-        return $recipes->map(function (RecipeEntity $entity) {
-            if (($model = $this->modelCache->getModelCache(Recipe::class, $entity->getId())) !== null) {
-                return $model;
-            }
-
-            $model = $this->convertEntityToModel($entity);
-            $this->modelCache->setModelCache($model);
-            return $model;
-        });
+        $entities = new Tab($this->entityRepository->findBy($criteria, $orderBy), RecipeEntity::class);
+        return $this->convertEntitiesToModels($entities);
     }
 
 
@@ -109,8 +101,12 @@ readonly class RecipePostgreSQLRepository extends PostgreSQLRepository implement
      */
     private function convertEntityToModel(RecipeEntity $entity): Recipe
     {
+        if (($model = $this->modelCache->getModelCache(Recipe::class, $entity->getSlug())) !== null) {
+            return $model;
+        }
+
         $this->ingredientRepository->cachedByRecipe($entity->getId());
-        return Recipe::load([
+        $model = Recipe::load([
             'id' => $entity->getId(),
             'name' => $entity->getName(),
             'serving' => $entity->getServing(),
@@ -118,5 +114,42 @@ readonly class RecipePostgreSQLRepository extends PostgreSQLRepository implement
             'type' => $this->recipeTypeRepository->findOneBySlug($entity->getTypeSlug()),
             'rows' => $this->recipeRowRepository->findByRecipeId($entity->getId()),
         ]);
+
+        $this->modelCache->setModelCache($model);
+        return $model;
+    }
+
+    public function findByIngredient(Ingredient $ingredient): Tab
+    {
+        $ids = new Tab($this->entityManager->createQueryBuilder()
+            ->select('rr.recipeId')
+            ->from(RecipeRowEntity::class, 'rr')
+            ->where('rr.ingredientSlug = :ingredient')
+            ->setParameter('ingredient', $ingredient->getId())
+            ->getQuery()
+            ->getResult()
+        )->map(fn(array $item) => $item['recipeId']);
+
+        return $this->findByIds($ids);
+    }
+
+
+    private function findByIds(Tab $ids): Tab
+    {
+        $entities = new Tab(
+            $this->entityRepository->createQueryBuilder('r')
+                ->where('r.id IN (:ids)')
+                ->setParameter('ids', $ids->toArray())
+                ->getQuery()
+                ->getResult(),
+            RecipeEntity::class
+        );
+
+        return $this->convertEntitiesToModels($entities);
+    }
+
+    private function convertEntitiesToModels(Tab $entities): Tab
+    {
+        return $entities->map(fn(RecipeEntity $entity) => $this->convertEntityToModel($entity));
     }
 }

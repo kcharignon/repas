@@ -3,16 +3,18 @@
     {% set title = recipeType.name|capitalize %}
     {% set sourceImage = absolute_url(asset(recipeType.image)) %}
     {% set altImage = recipeType.name %}
+    {% set new = false %}
 {% else %}
     {% set url = path("view_create_recipe") %}
     {% set title = "Nouvelle recette" %}
     {% set sourceImage = absolute_url(asset("/images/recipe/plus.svg")) %}
     {% set altImage = "Recette" %}
+    {% set new = true %}
 {% endif %}
 <div class="col">
     <div class="card bg-light mb-3" style="min-width: 10rem;max-width: 20rem;">
         <a style="text-decoration: none; color: inherit" href="{{ url }}">
-            <div class="card-header">
+            <div class="card-header {{ new ? "bg-success text-white" : "" }}">
                 {{ title }}
             </div>
             <div class="card-body">

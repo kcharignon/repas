@@ -16,6 +16,22 @@
     <body>
         {% include "@Shared/_navbar.html.twig" %}
         <div class="container" style=" padding-top: 5rem;">
+            {% for message in app.flashes('error') %}
+                <div data-temporary="2" class="position-fixed top-0 start-50 translate-middle-x -p-3" style="z-index: 9999">
+                    <div class="alert alert-danger">
+                        {{ message }}
+                    </div>
+                </div>
+            {% endfor %}
+            {% for message in app.flashes('success') %}
+                <div data-temporary="2" class="position-fixed top-0 start-50 translate-middle-x -p-3" style="z-index: 9999">
+                    <div class="alert alert-success">
+                        {{ message }}
+                    </div>
+                </div>
+            {% endfor %}
+
+
             {% block body %}{% endblock %}
         </div>
         {# javascript #}
@@ -23,6 +39,21 @@
         <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
         <script src="{{ javascripts_dir ~ "ajax.js" }}"></script>
         <script src="{{ javascripts_dir ~ "mobile.js" }}"></script>
+        <script>
+            $(document).ready(function() {
+                $("[data-temporary]").each(function() {
+                    var $element = $(this);
+                    var delay = parseInt($element.attr("data-temporary"), 10) * 1000;
+
+                    if (!isNaN(delay)) {
+                        setTimeout(function() {
+                            $element.remove();
+                        }, delay);
+                    }
+                });
+            });
+
+        </script>
         {# javascript custom #}
         {% block javascript_custom %}{% endblock %}
     </body>

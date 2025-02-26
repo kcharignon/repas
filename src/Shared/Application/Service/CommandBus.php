@@ -4,9 +4,12 @@ namespace Repas\Shared\Application\Service;
 
 
 use Repas\Shared\Application\Interface\CommandBusInterface;
+use Repas\Shared\Domain\Exception\DomainException;
 use Symfony\Component\Messenger\Exception\ExceptionInterface;
+use Symfony\Component\Messenger\Exception\HandlerFailedException;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Messenger\Stamp\HandledStamp;
+use Throwable;
 
 class CommandBus implements CommandBusInterface
 {
@@ -20,11 +23,21 @@ class CommandBus implements CommandBusInterface
 
     /**
      * @throws ExceptionInterface
+     * @throws DomainException
      */
     public function dispatch(object $command): mixed
     {
         // Utilise le bus Symfony pour dispatcher la requête
-        $envelope = $this->messageBus->dispatch($command);
+        try {
+            $envelope = $this->messageBus->dispatch($command);
+        } catch (HandlerFailedException $e) {
+            $previous = $e->getPrevious();
+            if ($previous instanceof DomainException) {
+                throw $previous;
+            } else {
+                throw $e;
+            }
+        }
 
         // Extrait le résultat du HandledStamp
         /** @var HandledStamp|null $handledStamp */

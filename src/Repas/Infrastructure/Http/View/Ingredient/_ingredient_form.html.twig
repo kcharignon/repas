@@ -45,6 +45,15 @@
         </div>
 
         <button type="submit" class="btn btn-primary">{{ (ingredient|default(null) is not null) ? 'Modifier' : 'Ajouter' }}</button>
+        {% if ingredient|default(null) is not null %}
+        <a
+            type="button"
+            class="btn btn-danger float-end"
+            href="{{ path('view_ingredient_remove', {slug: ingredient.slug}) }}"
+        >
+            Supprimer
+        </a>
+        {% endif %}
         {{ form_end(form) }}
     </div>
 {% endblock %}

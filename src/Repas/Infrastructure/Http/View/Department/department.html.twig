@@ -16,7 +16,7 @@
         {% for ingredient in ingredients %}
             {% include('@Repas/Department/_ingredient_row.html.twig') %}
         {% endfor %}
-        <a class="list-group-item d-flex justify-content-between align-items-center active" href="{{ path("view_ingredient_create") }}" alt="bouton ajouter">
+        <a class="text-decoration-none text-white list-group-item d-flex justify-content-between align-items-center bg-success" href="{{ path("view_ingredient_create") }}" alt="bouton ajouter">
             Ajouter un ingredient
         </a>
     </ul>

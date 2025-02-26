@@ -8,6 +8,7 @@ use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Repas\Domain\Model\ShoppingList;
 use Repas\Repas\Domain\Model\ShoppingListStatus;
 use Repas\Shared\Domain\Tool\Tab;
+use Repas\Tests\Helper\Builder\IngredientBuilder;
 use Repas\Tests\Helper\Builder\ShoppingListBuilder;
 use Repas\Tests\Helper\DatabaseTestCase;
 use Repas\Tests\Helper\RepasAssert;
@@ -111,5 +112,14 @@ class ShoppingListRepositoryTest extends DatabaseTestCase
         $this->assertInstanceOf(ShoppingList::class, $shoppingList);
         $this->assertEquals(ShoppingListStatus::ACTIVE, $shoppingList->getStatus());
         RepasAssert::assertUser($shoppingList->getOwner(), $user);
+    }
+
+    public function testFindByIngredient(): void
+    {
+        // Act
+        $actual = $this->shoppingListRepository->findByIngredient(new IngredientBuilder()->isPasta()->build());
+
+        // Arrange
+        $this->assertCount(0, $actual);
     }
 }

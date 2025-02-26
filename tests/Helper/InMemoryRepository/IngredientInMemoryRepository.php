@@ -47,5 +47,8 @@ class IngredientInMemoryRepository extends AbstractInMemoryRepository implements
         return $this->models;
     }
 
-
+    public function delete(Ingredient $ingredient): void
+    {
+        unset($this->models[$ingredient->getId()]);
+    }
 }

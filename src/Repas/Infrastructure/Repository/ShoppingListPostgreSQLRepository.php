@@ -7,12 +7,15 @@ use Doctrine\Persistence\ManagerRegistry;
 use Repas\Repas\Domain\Exception\MealException;
 use Repas\Repas\Domain\Exception\ShoppingListException;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
+use Repas\Repas\Domain\Model\Ingredient;
 use Repas\Repas\Domain\Model\Meal as MealModel;
 use Repas\Repas\Domain\Model\ShoppingList;
 use Repas\Repas\Domain\Model\ShoppingListIngredient as ShoppingListIngredientModel;
 use Repas\Repas\Domain\Model\ShoppingListRow as ShoppingListRowModel;
 use Repas\Repas\Domain\Model\ShoppingListStatus;
+use Repas\Repas\Infrastructure\Entity\Recipe as RecipeEntity;
 use Repas\Repas\Infrastructure\Entity\ShoppingList as ShoppingListEntity;
+use Repas\Repas\Infrastructure\Entity\ShoppingListIngredient;
 use Repas\Shared\Domain\Tool\Tab;
 use Repas\Shared\Infrastructure\Repository\ModelCache;
 use Repas\User\Domain\Exception\UserException;
@@ -38,7 +41,7 @@ readonly class ShoppingListPostgreSQLRepository extends PostgreSQLRepository imp
     public function findByOwner(User $owner): Tab
     {
         $shoppingListEntities = Tab::fromArray($this->entityRepository->findBy(['ownerId' => $owner->getId()], ['createdAt' => 'DESC']));
-        return $shoppingListEntities->map(fn(ShoppingListEntity $entity) => $this->convertEntityToModel($entity));
+        return $this->convertEntitiesToModels($shoppingListEntities);
     }
 
     /**
@@ -117,11 +120,8 @@ readonly class ShoppingListPostgreSQLRepository extends PostgreSQLRepository imp
      */
     public function findOneActivateByOwner(User $owner): ?ShoppingList
     {
-        if (($shoppingListEntity = $this->entityRepository->findOneBy(['ownerId' => $owner->getId(), 'status' => ShoppingListStatus::ACTIVE])) !== null)
-        {
-            $shoppingListModel = $this->convertEntityToModel($shoppingListEntity);
-            $this->modelCache->setModelCache($shoppingListModel);
-            return $shoppingListModel;
+        if (($shoppingListEntity = $this->entityRepository->findOneBy(['ownerId' => $owner->getId(), 'status' => ShoppingListStatus::ACTIVE])) !== null) {
+            return $this->convertEntityToModel($shoppingListEntity);
         }
 
         return null;
@@ -164,7 +164,11 @@ readonly class ShoppingListPostgreSQLRepository extends PostgreSQLRepository imp
      */
     private function convertEntityToModel(ShoppingListEntity $shoppingListEntity): ShoppingList
     {
-        return ShoppingList::load([
+        if (($model = $this->modelCache->getModelCache(ShoppingList::class, $shoppingListEntity->getId())) !== null) {
+            return $model;
+        }
+
+        $model = ShoppingList::load([
             'id' => $shoppingListEntity->getId(),
             'owner' => $this->userRepository->findOneById($shoppingListEntity->getOwnerId()),
             'created_at' => $shoppingListEntity->getCreatedAt(),
@@ -173,5 +177,41 @@ readonly class ShoppingListPostgreSQLRepository extends PostgreSQLRepository imp
             'ingredients' => $this->shopListIngredientRepository->findByShoppingListId($shoppingListEntity->getId()),
             'rows' => $this->shopListRowRepository->findByShoppingListId($shoppingListEntity->getId()),
         ]);
+
+        $this->modelCache->setModelCache($model);
+        return $model;
+    }
+
+    private function convertEntitiesToModels(Tab $entities): Tab
+    {
+        return $entities->map(fn(ShoppingListEntity $entity) => $this->convertEntityToModel($entity));
+    }
+
+    public function findByIngredient(Ingredient $ingredient): Tab
+    {
+        $ids = new Tab($this->entityManager->createQueryBuilder()
+            ->select('sli.shoppingListId')
+            ->from(ShoppingListIngredient::class, 'sli')
+            ->where('sli.ingredientSlug = :ingredientId')
+            ->setParameter('ingredientId', $ingredient->getId())
+            ->getQuery()
+            ->getResult()
+        )->map(fn(array $item) => $item['shoppingListId']);
+
+        return $this->findByIds($ids);
+    }
+
+    private function findByIds(Tab $ids): Tab
+    {
+        $entities = new Tab(
+            $this->entityRepository->createQueryBuilder('sl')
+                ->where('sl.id IN (:ids)')
+                ->setParameter('ids', $ids->toArray())
+                ->getQuery()
+                ->getResult(),
+            ShoppingListEntity::class
+        );
+
+        return $this->convertEntitiesToModels($entities);
     }
 }

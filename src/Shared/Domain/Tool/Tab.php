@@ -427,5 +427,10 @@ class Tab implements ArrayAccess, IteratorAggregate, Countable
 
         return $thisItems === $otherItems;
     }
+
+    public function empty(): bool
+    {
+        return empty($this->items);
+    }
 }
 

@@ -4,15 +4,17 @@
     {% set title = department.name|capitalize %}
     {% set sourceImage = absolute_url(asset(department.image)) %}
     {% set altImage = department.name %}
+    {% set new = false %}
 {% else %}
     {% set url = path("view_ingredient_create") %}
     {% set title = "Nouvel ingredient" %}
     {% set sourceImage = absolute_url(asset("/images/recipe/plus.svg")) %}
     {% set altImage = "Ingredient" %}
+    {% set new = true %}
 {% endif %}
 <div class="card flex-fill text-center shadow-sm" style="min-width: 10rem; max-width: 20rem;">
     <a style="text-decoration: none; color: inherit" href="{{ url }}">
-        <div class="card-header text-truncate" style="white-space: nowrap; overflow: hidden;">
+        <div class="card-header text-truncate {{ new ? "bg-success text-white" : "" }}" style="white-space: nowrap; overflow: hidden;">
             {{ title }}
         </div>
         <div class="card-body d-flex align-items-center justify-content-center">

@@ -6,6 +6,7 @@ namespace Repas\Tests\Repas\Repository;
 use Repas\Repas\Domain\Interface\RecipeRepository;
 use Repas\Repas\Domain\Model\Recipe;
 use Repas\Shared\Domain\Tool\Tab;
+use Repas\Tests\Helper\Builder\IngredientBuilder;
 use Repas\Tests\Helper\Builder\RecipeBuilder;
 use Repas\Tests\Helper\Builder\RecipeRowBuilder;
 use Repas\Tests\Helper\Builder\RecipeTypeBuilder;
@@ -64,5 +65,15 @@ class RecipeRepositoryTest extends DatabaseTestCase
         // Assert
         $this->assertCount(73, $recipes);
         RepasAssert::assertTabType(Tab::newEmptyTyped(Recipe::class), $recipes);
+    }
+
+    public function testFindByIngredient(): void
+    {
+        // Act
+        $actual = $this->recipeRepository->findByIngredient(new IngredientBuilder()->isPasta()->build());
+
+        // Assert
+        $this->assertCount(4, $actual);
+        RepasAssert::assertTabType(Tab::newEmptyTyped(Recipe::class), $actual);
     }
 }

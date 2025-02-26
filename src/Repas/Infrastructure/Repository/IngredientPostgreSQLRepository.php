@@ -14,7 +14,6 @@ use Repas\Repas\Domain\Model\Department;
 use Repas\Repas\Domain\Model\Ingredient as IngredientModel;
 use Repas\Repas\Domain\Model\Recipe;
 use Repas\Repas\Domain\Model\Unit;
-use Repas\Repas\Infrastructure\Entity\Ingredient;
 use Repas\Repas\Infrastructure\Entity\Ingredient as IngredientEntity;
 use Repas\Repas\Infrastructure\Entity\RecipeRow;
 use Repas\Shared\Domain\Tool\Tab;
@@ -203,5 +202,18 @@ readonly class IngredientPostgreSQLRepository extends PostgreSQLRepository imple
             return null;
         }
         return $this->userRepository->findOneById($id);
+    }
+
+    public function delete(IngredientModel $ingredient): void
+    {
+        $this->modelCache->removeModelCache($ingredient);
+
+        // Suppression de la liste
+        $this->entityRepository->createQueryBuilder('i')
+            ->delete(IngredientEntity::class, 'i')
+            ->where('i.slug = :ingredientId')
+            ->setParameter('ingredientId', $ingredient->getId())
+            ->getQuery()
+            ->execute();
     }
 }

@@ -36,4 +36,5 @@ interface IngredientRepository
      */
     public function findAll(): Tab;
 
+    public function delete(Ingredient $ingredient): void;
 }
