@@ -5,6 +5,7 @@ namespace Repas\Tests\Repas\Repository;
 
 use Repas\Repas\Domain\Interface\ConversionRepository;
 use Repas\Repas\Domain\Model\Conversion;
+use Repas\Shared\Domain\Tool\Tab;
 use Repas\Tests\Helper\Builder\ConversionBuilder;
 use Repas\Tests\Helper\Builder\IngredientBuilder;
 use Repas\Tests\Helper\Builder\UnitBuilder;
@@ -56,5 +57,31 @@ class ConversionRepositoryTest extends DatabaseTestCase
         $milkConversions = $this->conversionRepository->findByIngredient($milk);
         $actual = $milkConversions->find(fn(Conversion $c) =>  $c->isEqual($conversion));
         RepasAssert::assertConversion($conversion, $actual);
+    }
+
+    public function testFindAll(): void
+    {
+        // Act
+        $conversions = $this->conversionRepository->findAll();
+
+        // Arrange
+        $this->assertCount(67, $conversions);
+        RepasAssert::assertTabType(Tab::newEmptyTyped(Conversion::class), $conversions);
+    }
+
+    public function testFindByIngredientAndStartUnitAndEndUnit(): void
+    {
+        // Act
+        $actual = $this->conversionRepository->findByIngredientAndStartUnitAndEndUnit(
+            new IngredientBuilder()->isButter()->build(),
+            new UnitBuilder()->isBlock()->build(),
+            new UnitBuilder()->isGramme()->build(),
+        );
+
+        // Assert
+        $expected = new ConversionBuilder()
+            ->isBlockToGrammeForButter()
+            ->build();
+        RepasAssert::assertConversion($expected, $actual);
     }
 }

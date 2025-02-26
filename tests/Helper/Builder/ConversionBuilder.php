@@ -99,6 +99,7 @@ class ConversionBuilder implements Builder
 
     public function isBlockToGrammeForButter(): self
     {
+        $this->id = '9967014a-7c8b-423f-9b96-04fc13943a05';
         $this->startUnit = new UnitBuilder()->isBlock();
         $this->endUnit = new UnitBuilder()->isGramme();
         $this->coefficient = 250;

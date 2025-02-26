@@ -262,11 +262,16 @@ class IngredientBuilder implements Builder
     {
         $this->name = 'beurre';
         $this->slug = StringTool::slugify($this->name);
-        $this->image = '';
+        $this->image = 'images/ingredient/spread.png';
 
         $this->departmentBuilder = new DepartmentBuilder()->isCheese();
         $this->defaultCookingUnitBuilder = new UnitBuilder()->isGramme();
         $this->defaultPurchaseUnitBuilder = new UnitBuilder()->isBlock();
+        $this->compatibleUnits = Tab::fromArray(
+            new UnitBuilder()->isBlock()->build(),
+            new UnitBuilder()->isGramme()->build(),
+            new UnitBuilder()->isKilo()->build(),
+        );
         return $this;
     }
 
