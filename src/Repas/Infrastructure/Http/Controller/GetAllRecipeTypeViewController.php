@@ -11,14 +11,14 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
-class GetAllRecipeViewController extends AbstractController
+class GetAllRecipeTypeViewController extends AbstractController
 {
     public function __construct(
         private readonly RecipeTypeRepository $recipeTypeRepository,
     ) {
     }
 
-    #[Route(path: '/recipes', name: 'view_recipes', methods: ['GET'])]
+    #[Route(path: '/recipes', name: 'view_recipe_types', methods: ['GET'])]
     #[IsGranted('ROLE_USER')]
     public function __invoke(): Response
     {

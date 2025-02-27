@@ -87,7 +87,9 @@ class RepasAssert
     public static function assertRecipe(Recipe $expected, mixed $actual, array $excluded = []): void
     {
         Assert::assertInstanceOf(Recipe::class, $actual);
-        Assert::assertEquals($expected->getId(), $actual->getId());
+        if (!in_array("id", $excluded, true)) {
+            Assert::assertEquals($expected->getId(), $actual->getId());
+        }
         Assert::assertEquals($expected->getName(), $actual->getName());
         Assert::assertEquals($expected->getServing(), $actual->getServing());
         self::assertRecipeType($expected->getType(), $actual->getType());

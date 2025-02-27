@@ -69,6 +69,12 @@ final class RecipeRow implements ModelInterface
         return $this->recipeId;
     }
 
+    public function setRecipeId(string $recipeId): RecipeRow
+    {
+        $this->recipeId = $recipeId;
+        return $this;
+    }
+
     public static function load(array $datas): self
     {
         return new self(
@@ -88,6 +94,20 @@ final class RecipeRow implements ModelInterface
         Unit $unit
     ): self {
         return new self($id, $recipeId, $ingredient, $quantity, $unit);
+    }
+
+    public static function copyFromOriginal(
+        string $id,
+        RecipeRow $originalRow,
+        string $recipeId,
+    ): self {
+        return new self(
+            id: $id,
+            recipeId: $recipeId,
+            ingredient: $originalRow->getIngredient(),
+            quantity: $originalRow->getQuantity(),
+            unit: $originalRow->getUnit(),
+        );
     }
 
     public function getDepartment(): Department

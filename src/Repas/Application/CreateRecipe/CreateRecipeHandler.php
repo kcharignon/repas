@@ -48,6 +48,7 @@ readonly class CreateRecipeHandler
                 quantity: $subCmd->quantity,
                 unit: $this->unitRepository->findOneBySlug($subCmd->unitSlug),
             )),
+            originalId: null,
         );
 
         $this->recipeRepository->save($recipe);

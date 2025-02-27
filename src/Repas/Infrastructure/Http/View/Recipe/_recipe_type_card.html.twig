@@ -5,7 +5,7 @@
     {% set altImage = recipeType.name %}
     {% set new = false %}
 {% else %}
-    {% set url = path("view_create_recipe") %}
+    {% set url = path("view_other_people_recipes") %}
     {% set title = "Nouvelle recette" %}
     {% set sourceImage = absolute_url(asset("/images/recipe/plus.svg")) %}
     {% set altImage = "Recette" %}

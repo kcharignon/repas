@@ -10,9 +10,11 @@ use Repas\Tests\Helper\Builder\IngredientBuilder;
 use Repas\Tests\Helper\Builder\RecipeBuilder;
 use Repas\Tests\Helper\Builder\RecipeRowBuilder;
 use Repas\Tests\Helper\Builder\RecipeTypeBuilder;
+use Repas\Tests\Helper\Builder\UserBuilder;
 use Repas\Tests\Helper\DatabaseTestCase;
 use Repas\Tests\Helper\RepasAssert;
 use Repas\User\Domain\Interface\UserRepository;
+use Repas\User\Infrastructure\Entity\User;
 
 class RecipeRepositoryTest extends DatabaseTestCase
 {
@@ -74,6 +76,29 @@ class RecipeRepositoryTest extends DatabaseTestCase
 
         // Assert
         $this->assertCount(4, $actual);
+        RepasAssert::assertTabType(Tab::newEmptyTyped(Recipe::class), $actual);
+    }
+
+
+    public function findByNotAuthorAndNotCopyDataProvider(): array
+    {
+        return [
+            "alexiane.sichi@gmail.com" => ['alexiane.sichi@gmail.com', 0],
+            "john.doe@gmail.com" => ['john.doe@gmail.com', 73],
+        ];
+    }
+
+    /**
+     * @dataProvider findByNotAuthorAndNotCopyDataProvider
+     */
+    public function testFindByNotAuthorAndNotCopy(string $authorEmail, int $expectedCount): void
+    {
+        // Act
+        $user = $this->userRepository->findOneByEmail($authorEmail);
+        $actual = $this->recipeRepository->findByNotAuthorAndNotCopy($user);
+
+        // Assert
+        $this->assertCount($expectedCount, $actual);
         RepasAssert::assertTabType(Tab::newEmptyTyped(Recipe::class), $actual);
     }
 }

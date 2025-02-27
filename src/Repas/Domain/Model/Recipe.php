@@ -19,12 +19,13 @@ final class Recipe implements ModelInterface
      * @param Tab<RecipeRow> $rows
      */
     private function __construct(
-        private string $id,
-        private string $name,
-        private int    $serving,
-        private User   $author,
-        private Type   $type,
-        private Tab    $rows,
+        private string  $id,
+        private string  $name,
+        private int     $serving,
+        private User    $author,
+        private Type    $type,
+        private Tab     $rows,
+        private ?string $originalId,
     ) {
     }
 
@@ -85,6 +86,17 @@ final class Recipe implements ModelInterface
         return $this;
     }
 
+    public function getOriginalId(): string
+    {
+        return $this->originalId;
+    }
+
+    public function setOriginalId(string $originalId): Recipe
+    {
+        $this->originalId = $originalId;
+        return $this;
+    }
+
     public static function load(array $datas): self
     {
         return new self(
@@ -94,18 +106,40 @@ final class Recipe implements ModelInterface
             author: $datas['author'],
             type: $datas['type'],
             rows: $datas['rows'],
+            originalId: $datas['original_id'],
         );
     }
 
     public static function create(
-        string $id,
-        string $name,
-        int    $servings,
-        User   $author,
-        Type   $recipeType,
-        Tab    $rows,
+        string  $id,
+        string  $name,
+        int     $servings,
+        User    $author,
+        Type    $recipeType,
+        Tab     $rows,
+        ?string $originalId,
     ): self {
-        return new self($id, $name, $servings, $author, $recipeType, $rows);
+        return new self($id, $name, $servings, $author, $recipeType, $rows, $originalId);
+    }
+
+    public static function copyFromOriginal(
+        string $id,
+        Recipe $original,
+        User   $author,
+    ): self {
+        return new self(
+            id: $id,
+            name: $original->getName(),
+            serving: $original->getServing(),
+            author: $author,
+            type: $original->getType(),
+            rows: $original->getRows()->map(fn(RecipeRow $row) => RecipeRow::copyFromOriginal(
+                UuidGenerator::new(),
+                $row,
+                $id
+            )),
+            originalId: $original->getId()
+        );
     }
 
     public function isType(Type $type): bool
@@ -157,5 +191,10 @@ final class Recipe implements ModelInterface
             unit: $unit
         );
         $this->rows[] = $row;
+    }
+
+    public function isOriginal(): bool
+    {
+        return $this->originalId === null;
     }
 }

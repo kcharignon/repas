@@ -70,6 +70,33 @@ readonly class RecipePostgreSQLRepository extends PostgreSQLRepository implement
         return $this->convertEntitiesToModels($entities);
     }
 
+    public function findByNotAuthorAndNotCopy(User $author): Tab
+    {
+        // On récupère les IDs des recettes déjà copiées par l'auteur
+        $ids = $this->entityRepository->createQueryBuilder('r')
+            ->select('r.originalId')
+            ->where('r.authorId = :authorId AND r.originalId IS NOT NULL')
+            ->setParameter('authorId', $author->getId())
+            ->getQuery()
+            ->getSingleColumnResult();
+
+        // On récupère les recettes originales des autres utilisateurs non encore copiées
+        $qb = $this->entityRepository->createQueryBuilder('r')
+            ->where('r.authorId != :authorId AND r.originalId IS NULL')
+            ->setParameter('authorId', $author->getId());
+
+        if (!empty($ids)) {
+            $qb->andWhere("r.id NOT IN (:ids)")
+                ->setParameter('ids', $ids);
+        }
+
+        $entities = $qb->orderBy('r.slug', 'ASC')
+            ->getQuery()
+            ->getResult();
+
+        return $this->convertEntitiesToModels(new Tab($entities, RecipeEntity::class));
+    }
+
 
     public function save(Recipe $recipe): void
     {
@@ -113,6 +140,7 @@ readonly class RecipePostgreSQLRepository extends PostgreSQLRepository implement
             'author' => $this->userRepository->findOneById($entity->getAuthorId()),
             'type' => $this->recipeTypeRepository->findOneBySlug($entity->getTypeSlug()),
             'rows' => $this->recipeRowRepository->findByRecipeId($entity->getId()),
+            'original_id' => $entity->getOriginalId(),
         ]);
 
         $this->modelCache->setModelCache($model);
@@ -150,6 +178,6 @@ readonly class RecipePostgreSQLRepository extends PostgreSQLRepository implement
 
     private function convertEntitiesToModels(Tab $entities): Tab
     {
-        return $entities->map(fn(RecipeEntity $entity) => $this->convertEntityToModel($entity));
+        return $entities->map(fn(RecipeEntity $entity) => $this->convertEntityToModel($entity), Recipe::class);
     }
 }

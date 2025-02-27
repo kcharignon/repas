@@ -57,6 +57,7 @@ readonly class RecipeLoader extends PostgreSQLRepository
             'author' => $this->userRepository->findOneById($entity->getAuthorId()),
             'type' => $this->recipeTypeRepository->findOneBySlug($entity->getTypeSlug()),
             'rows' => Tab::newEmptyTyped(RecipeRow::class), // On ne charge pas inutilement le reste
+            'original_id' => $entity->getOriginalId(),
         ]);
     }
 }

@@ -32,8 +32,14 @@ class RecipeInMemoryRepository extends AbstractInMemoryRepository implements Rec
 
     public function findByAuthor(User $author): Tab
     {
-        return $this->models->filter(fn(Recipe $recipe) => $recipe->getAuthor()->isEqual($author));
+        return $this->models->filter(fn(Recipe $recipe) => $author->isEqual($recipe->getAuthor()));
     }
+
+    public function findByNotAuthorAndNotCopy(User $author): Tab
+    {
+        return $this->models->filter(fn(Recipe $recipe) => !$author->isEqual($recipe->getAuthor()));
+    }
+
 
     public function findByAuthorAndType(User $author, RecipeType $type): Tab
     {

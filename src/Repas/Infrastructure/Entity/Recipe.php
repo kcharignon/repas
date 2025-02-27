@@ -29,12 +29,16 @@ class Recipe
     #[ORM\Column(name: "type", nullable: false)]
     private ?string $typeSlug = null;
 
+    #[ORM\Column(name: "orignal", nullable: true)]
+    private ?string $originalId = null;
+
     public function __construct(
         ?string $id,
         ?string $name,
         ?int    $serving,
         ?string $authorId,
         ?string $typeSlug,
+        ?string $original,
     ) {
         $this->id = $id;
         $this->name = $name;
@@ -42,6 +46,7 @@ class Recipe
         $this->serving = $serving;
         $this->authorId = $authorId;
         $this->typeSlug = $typeSlug;
+        $this->originalId = $original;
     }
 
     public function getId(): ?string
@@ -108,6 +113,17 @@ class Recipe
         return $this;
     }
 
+    public function getOriginalId(): ?string
+    {
+        return $this->originalId;
+    }
+
+    public function setOriginalId(?string $originalId): Recipe
+    {
+        $this->originalId = $originalId;
+        return $this;
+    }
+
     public static function fromModel(RecipeModel $recipe): static
     {
         return new static(
@@ -116,6 +132,7 @@ class Recipe
             serving: $recipe->getServing(),
             authorId: $recipe->getAuthor()->getId(),
             typeSlug: $recipe->getType()->getSlug(),
+            original: $recipe->getOriginalId(),
         );
     }
 

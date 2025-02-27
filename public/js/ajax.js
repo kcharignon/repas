@@ -69,21 +69,27 @@ $(document).ready(function(){
     }
   }
 
-  function showAlert(status, message, timeout=1000) {
-    const html = "" +
-      "<div class='position-fixed top-0 start-50 translate-middle-x p-3' style='z-index: 9999'>"+
-      "<div class='alert alert-dismissible alert-" + status + "'>" +
-      "<button type='button' class='btn-close' data-bs-dismiss='alert'></button>" +
-      message +
-      "</div>" +
-      "</div>";
-    $(".container").prepend(html);
-    setTimeout(function(){
+  function showAlert(status, message, timeout = 1000) {
+    const html = `
+    <div class="position-fixed top-0 start-50 translate-middle-x p-3" style="z-index: 9999;">
+      <div class="flash-alert alert alert-${status}" style="display: none;">
+        ${message}
+      </div>
+    </div>`;
+
+    const $alert = $(html);
+
+    $(".container").prepend($alert);
+    $alert.find(".flash-alert").fadeIn(250); // FadeIn en 500ms
+
+    setTimeout(function () {
       console.log("remove alert");
-      console.log($(".alert .alert-dismissible"));
-      $(".alert.alert-dismissible").remove();
+      $alert.find(".flash-alert").fadeOut(250, function () {
+        $(this).parent().remove(); // Supprime complètement l'alerte après le fadeOut
+      });
     }, timeout);
   }
+
 
   function showViews(data, item) {
     console.log("showViews", data, item);

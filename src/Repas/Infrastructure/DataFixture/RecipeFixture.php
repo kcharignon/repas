@@ -2633,6 +2633,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
                     serving: $recipeDatas['people'],
                     authorId: $authorEntity->getId(),
                     typeSlug: $recipeDatas['type'],
+                    original: null,
                 );
                 $manager->persist($recipeEntity);
 

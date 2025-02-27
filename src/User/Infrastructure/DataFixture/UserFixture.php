@@ -25,6 +25,10 @@ class UserFixture extends Fixture implements FixtureGroupInterface
             "recipes" => [],
             "default_serving" => 2,
             "status" => UserStatus::ACTIVE,
+            "statistics" => [
+                "recipes" => 73,
+                "ingredients" => 15,
+            ]
         ],
         [
             "email" => "kantincharignon@gmail.com",
@@ -34,6 +38,10 @@ class UserFixture extends Fixture implements FixtureGroupInterface
             "recipes" => [],
             "default_serving" => 5,
             "status" => UserStatus::ACTIVE,
+            "statistics" => [
+                "recipes" => 0,
+                "ingredients" => 0,
+            ]
         ],
         [
             "email" => "john.doe@gmail.com",
@@ -43,6 +51,10 @@ class UserFixture extends Fixture implements FixtureGroupInterface
             "recipes" => [],
             "default_serving" => 2,
             "status" => UserStatus::DISABLED,
+            "statistics" => [
+                "recipes" => 486,
+                "ingredients" => 311,
+            ]
         ],
     ];
 
@@ -73,6 +85,12 @@ class UserFixture extends Fixture implements FixtureGroupInterface
             );
 
             $userModel->setStatus($user['status']);
+
+            $userModel->setStatistics([
+                'createdAt' => $userModel->getStatistics()['createdAt'],
+                'recipes' => $user['statistics']['recipes'],
+                'ingredients' => $user['statistics']['ingredients'],
+            ]);
             $userEntity = UserEntity::fromModel($userModel);
             $manager->persist($userEntity);
 

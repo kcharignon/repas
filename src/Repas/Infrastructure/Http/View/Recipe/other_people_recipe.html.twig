@@ -1,0 +1,43 @@
+{% set active = "recipe" %}
+{% extends '@Shared/base.html.twig' %}
+
+{% block title %}Recettes des autres{% endblock %}
+
+{% block body %}
+    <div class="container-fluid px-0 mb-4">
+        <div class="row row-cols-2 row-cols-md-2 row-cols-lg-4 g-2">
+            <table class="table table-sm">
+                <thead>
+                    <th scope="col">Nom</th>
+                    <th scope="col">Type</th>
+                    <th scope="col">
+                        <a
+                            type="button"
+                            class="btn btn-success btn-sm float-end me-1"
+                            href="{{ path("view_create_recipe") }}">
+                            Votre recette
+                        </a>
+                    </th>
+                </thead>
+                <tbody>
+                {% for recipe in recipes %}
+                    <tr id="recipe-{{ recipe.id }}">
+                        <td>{{ recipe.name|capitalize }}</td>
+                        <td>{{ recipe.type.name|capitalize }}</td>
+                        <td>
+                            <button
+                                type="button"
+                                class="btn btn-success btn-sm float-end me-1"
+                                data-action="btn-ajax"
+                                data-method="POST"
+                                data-url="{{ path("view_recipe_copy", {id: recipe.id}) }}">
+                                <i class="fas fa-plus-circle"></i>
+                            </button>
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+{% endblock %}
