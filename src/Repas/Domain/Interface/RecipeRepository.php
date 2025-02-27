@@ -34,9 +34,4 @@ interface RecipeRepository
      * @return Tab<Recipe>
      */
     public function findByIngredient(Ingredient $ingredient): Tab;
-
-    /**
-     * @return Tab<Recipe>
-     */
-    public function findByNotAuthorAndNotCopy(User $author): Tab;
 }

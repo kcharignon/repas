@@ -3,7 +3,7 @@
 namespace Repas\Repas\Infrastructure\Http\Controller;
 
 
-use Repas\Repas\Domain\Interface\RecipeRepository;
+use Repas\Repas\Infrastructure\Loader\RecipeLoader;
 use Repas\User\Domain\Model\User;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
@@ -13,7 +13,7 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 class GetAllOtherPeopleRecipesViewController extends AbstractController
 {
     public function __construct(
-        private readonly RecipeRepository $recipeRepository,
+        private readonly RecipeLoader $recipeLoader,
     ) {
     }
 
@@ -24,7 +24,7 @@ class GetAllOtherPeopleRecipesViewController extends AbstractController
         $currentUser = $this->getUser();
         assert($currentUser instanceof User);
 
-        $recipes = $this->recipeRepository->findByNotAuthorAndNotCopy($currentUser);
+        $recipes = $this->recipeLoader->findByNotAuthorAndNotCopy($currentUser);
 
         return $this->render('@Repas/Recipe/other_people_recipe.html.twig', [
             'recipes' => $recipes,

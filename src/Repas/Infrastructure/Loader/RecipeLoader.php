@@ -41,7 +41,37 @@ readonly class RecipeLoader extends PostgreSQLRepository
     public function findBy(array $criteria, ?array $orderBy = null): Tab
     {
         $recipes = Tab::fromArray($this->entityRepository->findBy($criteria, $orderBy));
-        return $recipes->map(fn (RecipeEntity $entity) => $this->convertEntityToModel($entity));
+        return $this->convertEntitiesToModels($recipes);
+    }
+
+    /**
+     * @return Tab<Recipe>
+     */
+    public function findByNotAuthorAndNotCopy(User $author): Tab
+    {
+        // On récupère les IDs des recettes déjà copiées par l'auteur
+        $ids = $this->entityRepository->createQueryBuilder('r')
+            ->select('r.originalId')
+            ->where('r.authorId = :authorId AND r.originalId IS NOT NULL')
+            ->setParameter('authorId', $author->getId())
+            ->getQuery()
+            ->getSingleColumnResult();
+
+        // On récupère les recettes originales des autres utilisateurs non encore copiées
+        $qb = $this->entityRepository->createQueryBuilder('r')
+            ->where('r.authorId != :authorId AND r.originalId IS NULL')
+            ->setParameter('authorId', $author->getId());
+
+        if (!empty($ids)) {
+            $qb->andWhere("r.id NOT IN (:ids)")
+                ->setParameter('ids', $ids);
+        }
+
+        $entities = $qb->orderBy('r.slug', 'ASC')
+            ->getQuery()
+            ->getResult();
+
+        return $this->convertEntitiesToModels(new Tab($entities, RecipeEntity::class));
     }
 
     /**
@@ -59,5 +89,14 @@ readonly class RecipeLoader extends PostgreSQLRepository
             'rows' => Tab::newEmptyTyped(RecipeRow::class), // On ne charge pas inutilement le reste
             'original_id' => $entity->getOriginalId(),
         ]);
+    }
+
+    /**
+     * @param Tab<RecipeEntity> $entities
+     * @return Tab<Recipe>
+     */
+    private function convertEntitiesToModels(Tab $entities): Tab
+    {
+        return $entities->map(fn (RecipeEntity $entity) => $this->convertEntityToModel($entity));
     }
 }

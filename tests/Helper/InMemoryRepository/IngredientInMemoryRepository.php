@@ -36,7 +36,7 @@ class IngredientInMemoryRepository extends AbstractInMemoryRepository implements
 
     public function cachedByRecipe(string $recipeId): void
     {
-        // TODO: Implement cachedByRecipe() method.
+        // don't need to implement cachedByRecipe() method.
     }
 
     /**
