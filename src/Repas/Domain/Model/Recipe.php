@@ -86,12 +86,12 @@ final class Recipe implements ModelInterface
         return $this;
     }
 
-    public function getOriginalId(): string
+    public function getOriginalId(): ?string
     {
         return $this->originalId;
     }
 
-    public function setOriginalId(string $originalId): Recipe
+    public function setOriginalId(?string $originalId): Recipe
     {
         $this->originalId = $originalId;
         return $this;
