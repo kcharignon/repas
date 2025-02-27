@@ -7,9 +7,17 @@ use PHPUnit\Framework\TestCase;
 use Repas\Repas\Application\CopyRecipe\CopyRecipeCommand;
 use Repas\Repas\Application\CopyRecipe\CopyRecipeHandler;
 use Repas\Repas\Domain\Exception\RecipeException;
+use Repas\Repas\Domain\Interface\ConversionRepository;
+use Repas\Repas\Domain\Interface\IngredientRepository;
 use Repas\Repas\Domain\Interface\RecipeRepository;
+use Repas\Tests\Helper\Builder\ConversionBuilder;
+use Repas\Tests\Helper\Builder\IngredientBuilder;
 use Repas\Tests\Helper\Builder\RecipeBuilder;
+use Repas\Tests\Helper\Builder\RecipeRowBuilder;
+use Repas\Tests\Helper\Builder\UnitBuilder;
 use Repas\Tests\Helper\Builder\UserBuilder;
+use Repas\Tests\Helper\InMemoryRepository\ConversionInMemoryRepository;
+use Repas\Tests\Helper\InMemoryRepository\IngredientInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\RecipeInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\UserInMemoryRepository;
 use Repas\Tests\Helper\RepasAssert;
@@ -22,20 +30,51 @@ class CopyRecipeHandlerTest extends TestCase
     private readonly CopyRecipeHandler $handler;
     private readonly RecipeRepository $recipeRepository;
     private readonly UserRepository $userRepository;
+    private readonly IngredientRepository $ingredientRepository;
+    private readonly ConversionRepository $conversionRepository;
     private User $user;
+    private IngredientBuilder $secretIngredient;
+    private ConversionBuilder $secretIngredientConversion;
 
     protected function setUp(): void
     {
         $owner = new UserBuilder()->withId('owner-id')->build();
         $this->user = new UserBuilder()->withId('user-id')->build();
         $this->userRepository = new UserInMemoryRepository([$owner, $this->user]);
+        $box = new UnitBuilder()->isBox();
+        $unit = new UnitBuilder()->isUnite();
+        $this->secretIngredient = new IngredientBuilder()
+            ->withName("ingredient secret")
+            ->withCreator($owner)
+            ->withDefaultCookingUnit($unit)
+            ->withDefaultPurchaseUnit($box)
+            ->withCompatibleUnits([$unit, $box])
+        ;
+        $this->ingredientRepository = new IngredientInMemoryRepository([$this->secretIngredient->build()]);
+        $this->secretIngredientConversion = new ConversionBuilder()
+            ->withIngredient($this->secretIngredient)
+            ->withStartUnit($box)
+            ->withEndUnit($unit)
+            ->withCoefficient(10);
+        $this->conversionRepository = new ConversionInMemoryRepository([
+            $this->secretIngredientConversion->build(),
+        ]);
         $this->recipeRepository = new RecipeInMemoryRepository([
-            new RecipeBuilder()->withId('recipe-id')->isPastaCarbonara()->withAuthor($owner)->build(),
+            new RecipeBuilder()
+                ->withId('recipe-id')
+                ->isPastaCarbonara()
+                ->addRow(new RecipeRowBuilder()
+                    ->withIngredient($this->secretIngredient)
+                )
+                ->withAuthor($owner)
+                ->build(),
         ]);
 
         $this->handler = new CopyRecipeHandler(
             $this->recipeRepository,
             $this->userRepository,
+            $this->ingredientRepository,
+            $this->conversionRepository,
         );
     }
 
@@ -50,9 +89,21 @@ class CopyRecipeHandlerTest extends TestCase
 
         // Assert
         $actual = $this->recipeRepository->findByAuthor($this->user)->reset();
-        $expected = new RecipeBuilder()->withId($actual->getId())->isPastaCarbonara()->withAuthor($this->user)->build();
-
+        $expected = new RecipeBuilder()
+            ->withId($actual->getId())
+            ->withAuthor($this->user)
+            ->isPastaCarbonara()
+            ->addRow(new RecipeRowBuilder()->withIngredient($this->secretIngredient->withCreator($this->user, true)->build()))
+            ->build();
         RepasAssert::assertRecipe($expected, $actual, ['RecipeRow' => ['id']]);
+
+        $actualIngredient = $this->ingredientRepository->findByOwner($this->user)->reset();
+        $expectedIngredient = $this->secretIngredient->withCreator($this->user)->build();
+        RepasAssert::assertIngredient($expectedIngredient, $actualIngredient);
+
+        $actualConversion = $this->conversionRepository->findByIngredient($actualIngredient)->reset();
+        $expectedConversion = $this->secretIngredientConversion->withIngredient($actualIngredient)->build();
+        RepasAssert::assertConversion($expectedConversion, $actualConversion, ['id']);
     }
 
     public function testFailedHandleCopyRecipeUnknownUser(): void

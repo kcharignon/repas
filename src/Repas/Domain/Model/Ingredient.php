@@ -147,6 +147,20 @@ final class Ingredient implements ModelInterface
         );
     }
 
+    public static function copyFromOriginal(Ingredient $ingredient, User $author): self
+    {
+        $ingredientCopy = self::create(
+            $ingredient->getName(),
+            $ingredient->getImage(),
+            $ingredient->getDepartment(),
+            $ingredient->getDefaultCookingUnit(),
+            $ingredient->getDefaultPurchaseUnit(),
+            $author,
+        );
+        $ingredientCopy->setCompatibleUnits($ingredient->getCompatibleUnits());
+        return $ingredientCopy;
+    }
+
     public static function load(array $datas): self
     {
         return new Ingredient(

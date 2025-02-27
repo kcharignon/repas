@@ -33,7 +33,7 @@ class ConversionRepositoryTest extends DatabaseTestCase
         $this->conversionRepository->save($conversion);
 
         // Assert
-        $eggConversions = $this->conversionRepository->findByIngredient($egg);
+        $eggConversions = $this->conversionRepository->findByIngredientOrCommon($egg);
         $actual = $eggConversions->find(fn(Conversion $c) =>  $c->isEqual($conversion));
         RepasAssert::assertConversion($conversion, $actual);
 
@@ -50,11 +50,11 @@ class ConversionRepositoryTest extends DatabaseTestCase
         $this->conversionRepository->save($conversion);
 
         // Assert
-        $eggConversions = $this->conversionRepository->findByIngredient($egg);
+        $eggConversions = $this->conversionRepository->findByIngredientOrCommon($egg);
         $actual = $eggConversions->find(fn(Conversion $c) =>  $c->isEqual($conversion));
         $this->assertNull($actual);
 
-        $milkConversions = $this->conversionRepository->findByIngredient($milk);
+        $milkConversions = $this->conversionRepository->findByIngredientOrCommon($milk);
         $actual = $milkConversions->find(fn(Conversion $c) =>  $c->isEqual($conversion));
         RepasAssert::assertConversion($conversion, $actual);
     }

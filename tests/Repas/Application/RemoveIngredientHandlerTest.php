@@ -70,7 +70,7 @@ class RemoveIngredientHandlerTest extends TestCase
         ($this->handler)($command);
 
         // Assert
-        $conversions = $this->conversionRepository->findByIngredient(new IngredientBuilder()->isSugar()->build())->filter(fn(Conversion $conversion) => $conversion->getIngredient() !== null);
+        $conversions = $this->conversionRepository->findByIngredientOrCommon(new IngredientBuilder()->isSugar()->build())->filter(fn(Conversion $conversion) => $conversion->getIngredient() !== null);
         $this->assertCount(0, $conversions);
 
         $this->expectExceptionObject(IngredientException::notFound('sucre'));

@@ -64,7 +64,7 @@ class CreateConversionHandlerTest extends TestCase
             ->withCoefficient(6)
             ->withIngredient($egg)
             ->build();
-        $actual = $this->conversionRepository->findByIngredient($egg)->reset();
+        $actual = $this->conversionRepository->findByIngredientOrCommon($egg)->reset();
         RepasAssert::assertConversion($expected, $actual);
     }
 

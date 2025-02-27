@@ -134,9 +134,10 @@ final class Recipe implements ModelInterface
             author: $author,
             type: $original->getType(),
             rows: $original->getRows()->map(fn(RecipeRow $row) => RecipeRow::copyFromOriginal(
-                UuidGenerator::new(),
-                $row,
-                $id
+                id: UuidGenerator::new(),
+                originalRow: $row,
+                recipeId: $id,
+                author: $author,
             )),
             originalId: $original->getId()
         );

@@ -15,7 +15,7 @@ interface ConversionRepository
     /**
      * @return Tab<Conversion>
      */
-    public function findByIngredient(Ingredient $ingredient): Tab;
+    public function findByIngredientOrCommon(Ingredient $ingredient): Tab;
 
     public function findByIngredientAndStartUnitAndEndUnit(Ingredient $ingredient, Unit $startUnit, Unit $endUnit): ?Conversion;
 
@@ -27,4 +27,9 @@ interface ConversionRepository
     public function save(Conversion $conversion): void;
 
     public function deleteByIngredient(Ingredient $ingredient): void;
+
+    /**
+     * @return Tab<Conversion>
+     */
+    public function findByIngredient(Ingredient $ingredient): Tab;
 }

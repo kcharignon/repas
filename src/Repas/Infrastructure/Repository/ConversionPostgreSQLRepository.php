@@ -39,12 +39,24 @@ readonly class ConversionPostgreSQLRepository extends PostgreSQLRepository imple
     }
 
 
-    public function findByIngredient(Ingredient $ingredient): Tab
+    public function findByIngredientOrCommon(Ingredient $ingredient): Tab
     {
         $conversionEntities = $this->entityRepository->createQueryBuilder('c')
             ->where('c.ingredientSlug = :ingredientSlug')
             ->setParameter('ingredientSlug', $ingredient->getSlug())
             ->orWhere('c.ingredientSlug is NULL')
+            ->getQuery()
+            ->getResult();
+
+        $conversionEntities = Tab::fromArray($conversionEntities);
+        return $conversionEntities->map(fn(ConversionEntity $conversion) => $this->convertEntityToModel($conversion));
+    }
+
+    public function findByIngredient(Ingredient $ingredient): Tab
+    {
+        $conversionEntities = $this->entityRepository->createQueryBuilder('c')
+            ->where('c.ingredientSlug = :ingredientSlug')
+            ->setParameter('ingredientSlug', $ingredient->getSlug())
             ->getQuery()
             ->getResult();
 

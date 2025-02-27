@@ -157,7 +157,7 @@ readonly class ConversionService
     {
         if (!isset($this->graphs[$ingredient->getSlug()])) {
             // Recuperation de toutes les conversions d'un ingredient
-            $conversions = $this->conversionRepository->findByIngredient($ingredient);
+            $conversions = $this->conversionRepository->findByIngredientOrCommon($ingredient);
 
             // Construire un graphe bidirectionnel des conversions.
             // Pour chaque conversion, on ajoute deux arêtes :

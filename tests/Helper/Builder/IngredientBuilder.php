@@ -202,9 +202,12 @@ class IngredientBuilder implements Builder
         return $this;
     }
 
-    public function withCreator(User|UserBuilder|null $creator): self
+    public function withCreator(User|UserBuilder|null $creator, bool $refreshSlug = false): self
     {
         $this->creator = $creator;
+        if ($refreshSlug) {
+            $this->slug = $this->calculateSlug();
+        }
         return $this;
     }
 

@@ -17,10 +17,16 @@ class ConversionInMemoryRepository extends AbstractInMemoryRepository implements
         return Conversion::class;
     }
 
-    public function findByIngredient(Ingredient $ingredient): Tab
+    public function findByIngredientOrCommon(Ingredient $ingredient): Tab
     {
         return $this->models->filter(fn (Conversion $conversion) => $conversion->getIngredient() === null || $conversion->getIngredient()->isEqual($ingredient));
     }
+
+    public function findByIngredient(Ingredient $ingredient): Tab
+    {
+        return $this->models->filter(fn (Conversion $conversion) => $ingredient->isEqual($conversion->getIngredient()));
+    }
+
 
     public function save(Conversion $conversion): void
     {

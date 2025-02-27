@@ -31,7 +31,7 @@ class RecipeBuilder implements Builder
             'serving' => $this->serving,
             'author' => $author,
             'type' => $this->type instanceof RecipeType ? $this->type : $this->type->build(),
-            'rows' => $this->rows->map(fn(RecipeRowBuilder $row) => $row->build()),
+            'rows' => $this->rows->map(fn(RecipeRowBuilder $row) => $row->withRecipeId($this->id)->build()),
             'original_id' => $this->originalId,
         ]);
     }

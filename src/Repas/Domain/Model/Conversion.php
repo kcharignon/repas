@@ -70,6 +70,17 @@ final class Conversion implements ModelInterface
         );
     }
 
+    public static function copyFromOriginal(string $id, Conversion $conversion, Ingredient $newIngredient): self
+    {
+        return self::create(
+            $id,
+            $conversion->getStartUnit(),
+            $conversion->getEndUnit(),
+            $conversion->getCoefficient(),
+            $newIngredient,
+        );
+    }
+
     public function update(
         Unit $startUnit,
         Unit $endUnit,
