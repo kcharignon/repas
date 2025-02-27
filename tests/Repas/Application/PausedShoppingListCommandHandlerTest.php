@@ -3,6 +3,7 @@
 namespace Repas\Tests\Repas\Application;
 
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Repas\Repas\Application\PausedShoppingList\PausedShoppingListCommand;
 use Repas\Repas\Application\PausedShoppingList\PausedShoppingListHandler;
@@ -35,7 +36,7 @@ class PausedShoppingListCommandHandlerTest extends TestCase
         );
     }
 
-    public function successfullyHandleDataProvider(): array
+    public static function successfullyHandleDataProvider(): array
     {
         return [
             "active-id" => ['active-id', [
@@ -56,9 +57,7 @@ class PausedShoppingListCommandHandlerTest extends TestCase
         ];
     }
 
-    /**
-     * @dataProvider successfullyHandleDataProvider
-     */
+    #[DataProvider('successfullyHandleDataProvider')]
     public function testSuccessfullyHandleActivatedShoppingList(string $shoppingListId, array $expected): void
     {
         // Arrange

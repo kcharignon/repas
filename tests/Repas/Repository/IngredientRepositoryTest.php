@@ -3,6 +3,7 @@
 namespace Repas\Tests\Repas\Repository;
 
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use Repas\Repas\Domain\Interface\IngredientRepository;
 use Repas\Repas\Domain\Model\Ingredient;
 use Repas\Shared\Domain\Tool\Tab;
@@ -57,7 +58,7 @@ class IngredientRepositoryTest extends DatabaseTestCase
         RepasAssert::assertIngredient($ingredient, $loadedIngredient);
     }
 
-    public function getByDepartmentDataProvider(): array
+    public static function getByDepartmentDataProvider(): array
     {
         $creator = new UserBuilder()->build();
         $admin = new UserBuilder()->isAdmin()->build();
@@ -72,9 +73,7 @@ class IngredientRepositoryTest extends DatabaseTestCase
         ];
     }
 
-    /**
-     * @dataProvider getByDepartmentDataProvider
-     */
+    #[DataProvider('getByDepartmentDataProvider')]
     public function testGetByDepartment(?User $creator, User $user, bool $see): void
     {
         // Arrange

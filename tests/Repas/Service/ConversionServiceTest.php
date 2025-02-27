@@ -3,6 +3,7 @@
 namespace Repas\Tests\Repas\Service;
 
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Repas\Repas\Domain\Exception\IngredientException;
 use Repas\Repas\Domain\Model\Conversion;
@@ -32,7 +33,7 @@ class ConversionServiceTest extends TestCase
         $this->conversionService = new ConversionService($conversionRepository, $unitRepository);
     }
 
-    public function convertToPurchaseUnitSuccessDataProvider(): array
+    public static function convertToPurchaseUnitSuccessDataProvider(): array
     {
         $egg = new IngredientBuilder()->isEgg()->build();
         $box = new UnitBuilder()->isBox()->build();
@@ -49,9 +50,7 @@ class ConversionServiceTest extends TestCase
         ];
     }
 
-    /**
-     * @dataProvider convertToPurchaseUnitSuccessDataProvider
-     */
+    #[DataProvider('convertToPurchaseUnitSuccessDataProvider')]
     public function testConvertToPurchaseUnitSuccess(Ingredient $ingredient, float $quantity, Unit $unit, float $expected): void
     {
         // Act
@@ -74,7 +73,7 @@ class ConversionServiceTest extends TestCase
         $actual = $this->conversionService->convertToPurchaseUnit($egg, 25, $unit);
     }
 
-    public function getConvertibleUnitDataProvider(): array
+    public static function getConvertibleUnitDataProvider(): array
     {
         $egg = new IngredientBuilder()->isEgg()->build();
         $kilo  = new UnitBuilder()->isKilo()->build();
@@ -89,10 +88,7 @@ class ConversionServiceTest extends TestCase
         ];
     }
 
-    /**
-     * @dataProvider getConvertibleUnitDataProvider
-     * @param Tab<Unit> $expected
-     */
+    #[DataProvider('getConvertibleUnitDataProvider')]
     public function testGetConvertibleUnits(Ingredient $ingredient, Unit $unit, Tab $expected): void
     {
         // Act

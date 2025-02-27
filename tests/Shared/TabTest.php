@@ -5,6 +5,7 @@ namespace Repas\Tests\Shared;
 
 use Closure;
 use InvalidArgumentException;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Repas\Shared\Domain\Tool\Tab;
 use Repas\Tests\Helper\Builder\UserBuilder;
@@ -13,7 +14,7 @@ use stdClass;
 
 class TabTest extends TestCase
 {
-    public function goodArrayDataProvider(): array
+    public static function goodArrayDataProvider(): array
     {
         return [
             "integer" => [[1, 2, 3], 'integer'],
@@ -28,9 +29,7 @@ class TabTest extends TestCase
         ];
     }
 
-    /**
-     * @dataProvider goodArrayDataProvider
-     */
+    #[DataProvider('goodArrayDataProvider')]
     public function testCreateWithArrayThenSuccess(array $datas, string $expectedType): void
     {
         //Act
@@ -43,7 +42,7 @@ class TabTest extends TestCase
         }
     }
 
-    public function wrongArrayDataProvider(): array
+    public static function wrongArrayDataProvider(): array
     {
         return [
             'integer with string' => [['1', 2]],
@@ -53,9 +52,7 @@ class TabTest extends TestCase
         ];
     }
 
-    /**
-     * @dataProvider wrongArrayDataProvider
-     */
+    #[DataProvider('wrongArrayDataProvider')]
     public function testCreateWithArrayThenFailed(array $datas): void
     {
         //Assert
@@ -88,7 +85,7 @@ class TabTest extends TestCase
         $tab->add('string');
     }
 
-    public function mapDataProvider(): array
+    public static function mapDataProvider(): array
     {
         return [
             'add prefix' => [
@@ -112,9 +109,7 @@ class TabTest extends TestCase
         ];
     }
 
-    /**
-     * @dataProvider mapDataProvider
-     */
+    #[DataProvider('mapDataProvider')]
     public function testMap(array $initial, Closure $callback, array $expectedValues, string $expectedType): void
     {
         //Arrange
@@ -173,7 +168,7 @@ class TabTest extends TestCase
         $this->assertEquals($keyArray, $keyTab);
     }
 
-    public function arraySliceDataProvider(): array
+    public static function arraySliceDataProvider(): array
     {
         $array = [1, 2, 3, 4, 5];
         return [
@@ -185,9 +180,7 @@ class TabTest extends TestCase
         ];
     }
 
-    /**
-     * @dataProvider arraySliceDataProvider
-     */
+    #[DataProvider('arraySliceDataProvider')]
     public function testSlice(array $array, int $offset, ?int $length, bool $preserveKey): void
     {
         // Arrange
@@ -285,7 +278,7 @@ class TabTest extends TestCase
         $this->assertEquals($arrayKeys, $tabKeys);
     }
 
-    public function goodArrayMergeDataProvider(): array
+    public static function goodArrayMergeDataProvider(): array
     {
         return [
             'integer no key' => [
@@ -299,9 +292,7 @@ class TabTest extends TestCase
         ];
     }
 
-    /**
-     * @dataProvider goodArrayMergeDataProvider
-     */
+    #[DataProvider('goodArrayMergeDataProvider')]
     public function testMergeTabThenSuccess(array $expected, array ...$arrays): void
     {
         //Arrange
@@ -357,7 +348,7 @@ class TabTest extends TestCase
         $this->assertEquals($array, $tab->toArray());
     }
 
-    public function uniqueDataProvider(): array
+    public static function uniqueDataProvider(): array
     {
         return [
             "int SORT_NUMERIC" => [[1, 5, 4, 2, 1, 5, 5], SORT_NUMERIC],
@@ -366,9 +357,7 @@ class TabTest extends TestCase
         ];
     }
 
-    /**
-     * @dataProvider uniqueDataProvider
-     */
+    #[DataProvider('uniqueDataProvider')]
     public function testUnique(array $in, int $flags): void
     {
         // Arrange

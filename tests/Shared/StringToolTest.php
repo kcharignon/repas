@@ -4,6 +4,7 @@ namespace Repas\Tests\Shared;
 
 
 use InvalidArgumentException;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Random\RandomException;
 use Repas\Shared\Domain\Tool\StringTool;
@@ -11,7 +12,7 @@ use Repas\Shared\Domain\Tool\StringTool;
 class StringToolTest extends TestCase
 {
 
-    public function stringToolSlugifyDataProvider(): array
+    public static function stringToolSlugifyDataProvider(): array
     {
         return [
             "Caractères Spéciaux" => ["& @ œ '", "et-at-oe"],
@@ -25,9 +26,7 @@ class StringToolTest extends TestCase
         ];
     }
 
-    /**
-     * @dataProvider stringToolSlugifyDataProvider
-     */
+    #[DataProvider('stringToolSlugifyDataProvider')]
     public function testSlugify(string $initial, string $expected): void
     {
         //Act
@@ -37,9 +36,7 @@ class StringToolTest extends TestCase
         $this->assertSame($expected, $actual);
     }
 
-    /**
-     * @dataProvider stringToolSlugifyDataProvider
-     */
+    #[DataProvider('stringToolSlugifyDataProvider')]
     public function testSlugifyTwice(string $initial, string $expected): void
     {
         //Act
@@ -49,7 +46,7 @@ class StringToolTest extends TestCase
         $this->assertSame($expected, $actual);
     }
 
-    public function upperCaseFirstDataProvider(): array
+    public static function upperCaseFirstDataProvider(): array
     {
         return [
             "simple" => ["simple", "Simple"],
@@ -59,9 +56,7 @@ class StringToolTest extends TestCase
         ];
     }
 
-    /**
-     * @dataProvider upperCaseFirstDataProvider
-     */
+    #[DataProvider('upperCaseFirstDataProvider')]
     public function testUpperCaseFirst(string $initial, string $expected): void
     {
         //Act
@@ -71,7 +66,7 @@ class StringToolTest extends TestCase
         $this->assertSame($expected, $actual);
     }
 
-    public function generateRandomStringDataProvider(): array
+    public static function generateRandomStringDataProvider(): array
     {
         return [
             'Length 10 with default alphabet' => [10, StringTool::ALPHABET_ALPHA_NUMERIC, 'abcdefghijklmnopqrstuvwxyz0123456789'],
@@ -81,10 +76,7 @@ class StringToolTest extends TestCase
         ];
     }
 
-    /**
-     * @dataProvider generateRandomStringDataProvider
-     * @throws RandomException
-     */
+    #[DataProvider('generateRandomStringDataProvider')]
     public function testGenerateRandomString(int $length, string|int $alphabet, string $expectedAlphabet): void
     {
         // Act
