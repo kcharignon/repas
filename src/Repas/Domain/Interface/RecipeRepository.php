@@ -34,4 +34,6 @@ interface RecipeRepository
      * @return Tab<Recipe>
      */
     public function findByIngredient(Ingredient $ingredient): Tab;
+
+    public function delete(Recipe $recipe): void;
 }

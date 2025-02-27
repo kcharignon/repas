@@ -22,6 +22,7 @@ class PausedShoppingListViewController extends AbstractController
     }
 
     #[Route(path: '/shopping-list/{id}/paused', name: 'view_shopping_list_paused', methods: ['POST'])]
+    #[IsGranted('ROLE_USER')]
     #[IsGranted('SHOPPING_LIST_OWNER', 'id')]
     public function __invoke(string $id): JsonResponse
     {

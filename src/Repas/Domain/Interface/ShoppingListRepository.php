@@ -4,6 +4,7 @@ namespace Repas\Repas\Domain\Interface;
 
 
 use Repas\Repas\Domain\Model\Ingredient;
+use Repas\Repas\Domain\Model\Recipe;
 use Repas\Repas\Domain\Model\ShoppingList;
 use Repas\Repas\Domain\Model\ShoppingListStatus;
 use Repas\Shared\Domain\Tool\Tab;
@@ -35,4 +36,9 @@ interface ShoppingListRepository
      * @return Tab<ShoppingList>
      */
     public function findByIngredient(Ingredient $ingredient): Tab;
+
+    /**
+     * @return Tab<ShoppingList>
+     */
+    public function findByRecipe(Recipe $recipe): Tab;
 }

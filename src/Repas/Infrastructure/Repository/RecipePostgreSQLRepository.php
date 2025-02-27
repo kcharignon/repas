@@ -153,4 +153,15 @@ readonly class RecipePostgreSQLRepository extends PostgreSQLRepository implement
     {
         return $entities->map(fn(RecipeEntity $entity) => $this->convertEntityToModel($entity), Recipe::class);
     }
+
+    public function delete(Recipe $recipe): void
+    {
+        $this->modelCache->removeModelCache($recipe);
+        $this->entityRepository->createQueryBuilder('r')
+            ->delete()
+            ->where('r.id = :id')
+            ->setParameter('id', $recipe->getId())
+            ->getQuery()
+            ->execute();
+    }
 }

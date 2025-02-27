@@ -9,10 +9,12 @@ use Repas\Repas\Domain\Exception\ShoppingListException;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Repas\Domain\Model\Ingredient;
 use Repas\Repas\Domain\Model\Meal as MealModel;
+use Repas\Repas\Domain\Model\Recipe;
 use Repas\Repas\Domain\Model\ShoppingList;
 use Repas\Repas\Domain\Model\ShoppingListIngredient as ShoppingListIngredientModel;
 use Repas\Repas\Domain\Model\ShoppingListRow as ShoppingListRowModel;
 use Repas\Repas\Domain\Model\ShoppingListStatus;
+use Repas\Repas\Infrastructure\Entity\Meal;
 use Repas\Repas\Infrastructure\Entity\Recipe as RecipeEntity;
 use Repas\Repas\Infrastructure\Entity\ShoppingList as ShoppingListEntity;
 use Repas\Repas\Infrastructure\Entity\ShoppingListIngredient;
@@ -212,6 +214,20 @@ readonly class ShoppingListPostgreSQLRepository extends PostgreSQLRepository imp
             ShoppingListEntity::class
         );
 
+        return $this->convertEntitiesToModels($entities);
+    }
+
+    public function findByRecipe(Recipe $recipe): Tab
+    {
+        $entities = new Tab($this->entityManager->createQueryBuilder()
+            ->select('sl')
+            ->from(ShoppingListEntity::class, 'sl')
+            ->innerJoin(Meal::class, 'm', 'WITH', 'sl.id = m.shoppingListId')
+            ->where('m.recipeId = :recipeId')
+            ->setParameter('recipeId', $recipe->getId())
+            ->getQuery()
+            ->getResult()
+        , ShoppingListEntity::class);
         return $this->convertEntitiesToModels($entities);
     }
 }

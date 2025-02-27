@@ -21,4 +21,9 @@ class RecipeException extends DomainException
     {
         return new static(sprintf("Can't load recipe '%s'", $recipe), 404);
     }
+
+    public static function cannotRemoveExistInShoppingList(): static
+    {
+        return new static("Cannot remove recipe '%s', present in shopping list", 403);
+    }
 }

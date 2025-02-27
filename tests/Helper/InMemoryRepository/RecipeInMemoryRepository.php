@@ -53,4 +53,9 @@ class RecipeInMemoryRepository extends AbstractInMemoryRepository implements Rec
             ) !== null
         );
     }
+
+    public function delete(Recipe $recipe): void
+    {
+        unset($this->models[$recipe->getId()]);
+    }
 }

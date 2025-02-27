@@ -7,6 +7,7 @@ use Repas\Repas\Domain\Exception\ShoppingListException;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Repas\Domain\Model\Ingredient;
 use Repas\Repas\Domain\Model\Meal;
+use Repas\Repas\Domain\Model\Recipe;
 use Repas\Repas\Domain\Model\ShoppingList;
 use Repas\Repas\Domain\Model\ShoppingListIngredient;
 use Repas\Repas\Domain\Model\ShoppingListStatus;
@@ -65,5 +66,10 @@ class ShoppingListInMemoryRepository extends AbstractInMemoryRepository implemen
                 fn(ShoppingListIngredient $sli) => $sli->getIngredient()->isEqual($ingredient)
             )
         );
+    }
+
+    public function findByRecipe(Recipe $recipe): Tab
+    {
+        return $this->models->filter(fn(ShoppingList $sl) => $sl->getMeals()->find(fn(Meal $meal) => $recipe->isEqual($meal->getRecipe())));
     }
 }
