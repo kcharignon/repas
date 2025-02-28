@@ -50,7 +50,7 @@ class RecipeTypeBuilder implements Builder
         return $this;
     }
 
-    public function isBreakfast(): self
+    public function isStarter(): self
     {
         $this->slug = 'entrée';
         $this->name = 'entree';
