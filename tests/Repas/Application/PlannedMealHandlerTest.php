@@ -14,6 +14,7 @@ use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Repas\Domain\Interface\UnitRepository;
 use Repas\Repas\Domain\Model\ShoppingListRow;
 use Repas\Repas\Domain\Service\ConversionService;
+use Repas\Shared\Domain\Tool\UuidGenerator;
 use Repas\Tests\Helper\Builder\ConversionBuilder;
 use Repas\Tests\Helper\Builder\IngredientBuilder;
 use Repas\Tests\Helper\Builder\MealBuilder;
@@ -70,6 +71,7 @@ class PlannedMealHandlerTest extends TestCase
             $this->shoppingListRepository,
             $this->recipeRepository,
             $this->conversionService,
+            new UuidGenerator()
         );
     }
 

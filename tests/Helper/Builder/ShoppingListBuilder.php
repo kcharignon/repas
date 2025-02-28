@@ -11,6 +11,7 @@ use Repas\Repas\Domain\Model\ShoppingList;
 use Repas\Repas\Domain\Model\ShoppingListIngredient;
 use Repas\Repas\Domain\Model\ShoppingListRow;
 use Repas\Repas\Domain\Model\ShoppingListStatus;
+use Repas\Shared\Domain\Interface\UuidGenerator as UuidGeneratorInterface;
 use Repas\Shared\Domain\Tool\Tab;
 use Repas\Shared\Domain\Tool\UuidGenerator;
 use Repas\User\Domain\Model\User;
@@ -25,6 +26,13 @@ class ShoppingListBuilder implements Builder
     private ?Tab $recipes = null;
     /** @var Tab<Ingredient>|null  */
     private ?Tab $ingredients = null;
+    private UuidGeneratorInterface $uuidGenerator;
+
+    public function __construct(?UuidGeneratorInterface $uuidGenerator = null)
+    {
+        $this->uuidGenerator = $uuidGenerator ?? new UuidGenerator();
+    }
+
 
     public function build(): ShoppingList
     {
@@ -43,7 +51,7 @@ class ShoppingListBuilder implements Builder
         // On ajoute les repas(recette)
         foreach ($this->recipes as $recipe) {
             $recipe = $recipe instanceof Recipe ? $recipe : $recipe->build();
-            $shoppingList->addMeal($recipe);
+            $shoppingList->addMeal($this->uuidGenerator->generate(), $recipe);
         }
 
         // On passe au status demandé

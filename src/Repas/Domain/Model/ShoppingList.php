@@ -8,6 +8,7 @@ use Repas\Repas\Domain\Exception\ShoppingListException;
 use Repas\Shared\Domain\Model\ModelInterface;
 use Repas\Shared\Domain\Model\ModelTrait;
 use Repas\Shared\Domain\Tool\Tab;
+use Repas\Shared\Domain\Tool\UuidGenerator;
 use Repas\User\Domain\Model\User;
 use Repas\Repas\Domain\Model\ShoppingListStatus as Status;
 use Repas\Repas\Domain\Model\ShoppingListRow as Row;
@@ -197,7 +198,7 @@ final class ShoppingList implements ModelInterface
     /**
      * @throws ShoppingListException
      */
-    public function addMeal(Recipe $recipe): void
+    public function addMeal(string $id, Recipe $recipe): void
     {
         // Impossible de mettre la même recette deux fois dans une liste
         if ($this->hasRecipe($recipe)) {
@@ -206,6 +207,7 @@ final class ShoppingList implements ModelInterface
 
         // Ajoute à la liste des recettes avec le nombre de personnes de l'auteur
         $this->meals[] = Meal::create(
+            id: $id,
             shoppingListId: $this->id,
             recipe: $recipe,
             servings: $this->owner->getDefaultServing(),

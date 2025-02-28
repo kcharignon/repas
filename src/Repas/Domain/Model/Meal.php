@@ -6,7 +6,6 @@ namespace Repas\Repas\Domain\Model;
 use Repas\Shared\Domain\Model\ModelInterface;
 use Repas\Shared\Domain\Model\ModelTrait;
 use Repas\Shared\Domain\Tool\Tab;
-use Repas\Shared\Domain\Tool\UuidGenerator;
 
 final class Meal implements ModelInterface
 {
@@ -22,10 +21,10 @@ final class Meal implements ModelInterface
 
 
 
-    public static function create(string $shoppingListId, Recipe $recipe, int $servings): self
+    public static function create(string $id, string $shoppingListId, Recipe $recipe, int $servings): self
     {
         return new self(
-            id: UuidGenerator::new(),
+            id: $id,
             shoppingListId: $shoppingListId,
             recipe: $recipe,
             serving: $servings

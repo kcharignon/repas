@@ -143,12 +143,9 @@ readonly class ShoppingListPostgreSQLRepository extends PostgreSQLRepository imp
         $this->mealRepository->deleteByShoppingListId($shoppingList->getId());
 
         // Suppression de la liste
-        $this->entityRepository->createQueryBuilder('sl')
-            ->delete(ShoppingListEntity::class, 'sl')
-            ->where('sl.id = :shoppingListId')
-            ->setParameter('shoppingListId', $shoppingList->getId())
-            ->getQuery()
-            ->execute();
+        $entity = $this->entityManager->find(ShoppingListEntity::class, $shoppingList->getId());
+        $this->entityManager->remove($entity);
+        $this->entityManager->flush();
     }
 
     /**

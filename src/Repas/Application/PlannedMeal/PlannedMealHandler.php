@@ -7,9 +7,9 @@ use Repas\Repas\Domain\Exception\IngredientException;
 use Repas\Repas\Domain\Exception\ShoppingListException;
 use Repas\Repas\Domain\Interface\RecipeRepository;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
-use Repas\Repas\Domain\Model\RecipeRow;
 use Repas\Repas\Domain\Model\ShoppingList;
 use Repas\Repas\Domain\Service\ConversionService;
+use Repas\Shared\Domain\Interface\UuidGenerator;
 use Repas\User\Domain\Exception\UserException;
 use Repas\User\Domain\Interface\UserRepository;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
@@ -22,6 +22,7 @@ readonly class PlannedMealHandler
         private ShoppingListRepository $shoppingListRepository,
         private RecipeRepository $recipeRepository,
         private ConversionService $conversionService,
+        private UuidGenerator $uuidGenerator,
     ) {
     }
 
@@ -42,7 +43,7 @@ readonly class PlannedMealHandler
 
         $recipe = $this->recipeRepository->findOneById($command->recipeId);
 
-        $shoppingList->addMeal($recipe);
+        $shoppingList->addMeal($this->uuidGenerator->generate(), $recipe);
 
         // On récupere les Ingredients de la recette dans les bonnes proportions
         $rows = $recipe->getRowForServing($owner->getDefaultServing());

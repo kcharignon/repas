@@ -3,6 +3,7 @@
 namespace Repas\Tests\Repas\Repository;
 
 
+use Repas\Repas\Domain\Exception\ShoppingListException;
 use Repas\Repas\Domain\Interface\RecipeRepository;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Repas\Domain\Model\ShoppingList;
@@ -10,6 +11,7 @@ use Repas\Repas\Domain\Model\ShoppingListStatus;
 use Repas\Shared\Domain\Tool\Tab;
 use Repas\Tests\Helper\Builder\IngredientBuilder;
 use Repas\Tests\Helper\Builder\ShoppingListBuilder;
+use Repas\Tests\Helper\ControlledUuidGenerator;
 use Repas\Tests\Helper\DatabaseTestCase;
 use Repas\Tests\Helper\RepasAssert;
 use Repas\User\Domain\Interface\UserRepository;
@@ -52,7 +54,7 @@ class ShoppingListRepositoryTest extends DatabaseTestCase
 
         // Arrange
         $secondRecipe = $recipes->shift();
-        $shoppingList->addMeal($secondRecipe);
+        $shoppingList->addMeal('second-meal-id', $secondRecipe);
 
         // Act
         $this->shoppingListRepository->save($shoppingList);
@@ -82,6 +84,13 @@ class ShoppingListRepositoryTest extends DatabaseTestCase
         // Assert
         $actual = $this->shoppingListRepository->findOneById($shoppingList->getId());
         RepasAssert::assertShoppingList($shoppingList, $actual);
+
+        // Act
+        $this->shoppingListRepository->delete($shoppingList);
+
+        // Assert
+        $this->expectExceptionObject(ShoppingListException::shoppingListNotFound($shoppingList->getId()));
+        $actual = $this->shoppingListRepository->findOneById($shoppingList->getId());
     }
 
     public function testFindByOwner(): void
@@ -121,5 +130,54 @@ class ShoppingListRepositoryTest extends DatabaseTestCase
 
         // Arrange
         $this->assertCount(0, $actual);
+    }
+
+    public function testFindByOwnerAndStatus(): void
+    {
+        // Arrange
+        $user = $this->userRepository->findOneByEmail('alexiane.sichi@gmail.com');
+        $status = ShoppingListStatus::ACTIVE;
+
+        // Act
+        $shoppingLists = $this->shoppingListRepository->findByOwnerAndStatus($user, $status);
+
+        // Assert
+        RepasAssert::assertTabType(Tab::newEmptyTyped(ShoppingList::class), $shoppingLists);
+        foreach ($shoppingLists as $shoppingList) {
+            RepasAssert::assertUser($shoppingList->getOwner(), $user);
+            $this->assertEquals($status, $shoppingList->getStatus());
+        }
+    }
+
+    public function testFindOneByMealId(): void
+    {
+        // Arrange
+        $user = $this->userRepository->findOneByEmail('alexiane.sichi@gmail.com');
+        $recipe = $this->recipeRepository->findByAuthor($user)->reset();
+        $generator = new ControlledUuidGenerator(['meal-id-0']);
+        $shoppingList = new ShoppingListBuilder($generator)->withOwner($user)->addRecipe($recipe)->build();
+        $this->shoppingListRepository->save($shoppingList);
+
+        // Act
+        $actual = $this->shoppingListRepository->findOneByMealId('meal-id-0');
+
+        // Assert
+        RepasAssert::assertShoppingList($shoppingList, $actual);
+    }
+
+    public function testFindByRecipe(): void
+    {
+        // Arrange
+        $user = $this->userRepository->findOneByEmail('alexiane.sichi@gmail.com');
+        $recipe = $this->recipeRepository->findByAuthor($user)->reset();
+        $shoppingList = new ShoppingListBuilder()->withOwner($user)->addRecipe($recipe)->build();
+        $this->shoppingListRepository->save($shoppingList);
+
+        // Act
+        $shoppingLists = $this->shoppingListRepository->findByRecipe($recipe);
+
+        // Assert
+        $this->assertNotEmpty($shoppingLists);
+        RepasAssert::assertTabType(Tab::newEmptyTyped(ShoppingList::class), $shoppingLists);
     }
 }
