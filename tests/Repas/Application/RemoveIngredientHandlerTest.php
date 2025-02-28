@@ -35,14 +35,14 @@ class RemoveIngredientHandlerTest extends TestCase
     {
         $this->ingredientRepository = new IngredientInMemoryRepository([
             new IngredientBuilder()->isSugar()->build(),
-            new IngredientBuilder()->isFloor()->build(),
+            new IngredientBuilder()->isFlour()->build(),
             new IngredientBuilder()->isPasta()->build(),
         ]);
         $this->recipeRepository = new RecipeInMemoryRepository([
             new RecipeBuilder()->isPastaCarbonara()->build(),
         ]);
         $this->shoppingListRepository = new ShoppingListInMemoryRepository([
-            new ShoppingListBuilder()->addIngredient(new IngredientBuilder()->isFloor())->build()
+            new ShoppingListBuilder()->addIngredient(new IngredientBuilder()->isFlour())->build()
         ]);
         $this->conversionRepository = new ConversionInMemoryRepository([
            new ConversionBuilder()

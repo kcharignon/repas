@@ -153,7 +153,7 @@ class RecipeBuilder implements Builder
         $this->rows = Tab::fromArray([
             new RecipeRowBuilder()
             ->withRecipeId($this->id)
-            ->withIngredient(new IngredientBuilder()->isFloor())
+            ->withIngredient(new IngredientBuilder()->isFlour())
             ->withUnit(new UnitBuilder()->isGramme())
             ->withQuantity(250),
             new RecipeRowBuilder()

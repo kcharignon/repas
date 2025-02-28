@@ -96,4 +96,66 @@ class ConversionRepositoryTest extends DatabaseTestCase
             ->build();
         RepasAssert::assertConversion($expected, $actual);
     }
+
+    public function testFindByIngredient(): void
+    {
+        // Arrange
+        $ingredient = new IngredientBuilder()->isFlour()->build();
+        $conversion1 = new ConversionBuilder()
+            ->withStartUnit(new UnitBuilder()->isKilo()->build())
+            ->withEndUnit(new UnitBuilder()->isGramme()->build())
+            ->withCoefficient(1000)
+            ->withIngredient($ingredient)
+            ->build();
+
+        $conversion2 = new ConversionBuilder()
+            ->withStartUnit(new UnitBuilder()->isBowl()->build())
+            ->withEndUnit(new UnitBuilder()->isGramme()->build())
+            ->withCoefficient(120)
+            ->withIngredient($ingredient)
+            ->build();
+
+        $this->conversionRepository->save($conversion1);
+        $this->conversionRepository->save($conversion2);
+
+        // Act
+        $conversions = $this->conversionRepository->findByIngredient($ingredient);
+
+        // Assert
+        $this->assertCount(2, $conversions);
+        $actual1 = $conversions->find(fn(Conversion $c) =>  $c->isEqual($conversion1));
+        $actual2 = $conversions->find(fn(Conversion $c) =>  $c->isEqual($conversion2));
+
+        RepasAssert::assertConversion($conversion1, $actual1);
+        RepasAssert::assertConversion($conversion2, $actual2);
+    }
+
+    public function testDeleteByIngredient(): void
+    {
+        // Arrange
+        $ingredient = new IngredientBuilder()->isSugar()->build();
+        $conversion1 = new ConversionBuilder()
+            ->withStartUnit(new UnitBuilder()->isKilo()->build())
+            ->withEndUnit(new UnitBuilder()->isGramme()->build())
+            ->withCoefficient(1000)
+            ->withIngredient($ingredient)
+            ->build();
+
+        $conversion2 = new ConversionBuilder()
+            ->withStartUnit(new UnitBuilder()->isCoffeeSpoon()->build())
+            ->withEndUnit(new UnitBuilder()->isGramme()->build())
+            ->withCoefficient(4)
+            ->withIngredient($ingredient)
+            ->build();
+
+        $this->conversionRepository->save($conversion1);
+        $this->conversionRepository->save($conversion2);
+
+        // Act
+        $this->conversionRepository->deleteByIngredient($ingredient);
+
+        // Assert
+        $conversions = $this->conversionRepository->findByIngredient($ingredient);
+        $this->assertCount(0, $conversions);
+    }
 }

@@ -237,11 +237,11 @@ class IngredientBuilder implements Builder
         return StringTool::slugify($this->name);
     }
 
-    public function isFloor(): self
+    public function isFlour(): self
     {
         $this->name = 'farine';
         $this->slug = StringTool::slugify($this->name);
-        $this->image = '';
+        $this->image = 'images/ingredient/flour.png';
 
         $this->departmentBuilder = new DepartmentBuilder()->isBakery();
         $this->defaultCookingUnitBuilder = new UnitBuilder()->isGramme();
