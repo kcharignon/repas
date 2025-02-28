@@ -44,13 +44,11 @@ readonly class IngredientPostgreSQLRepository extends PostgreSQLRepository imple
     {
         // On cherche dans le cache
         if (($model = $this->modelCache->getModelCache(IngredientModel::class, $slug)) !== null) {
-            dump('CACHED');
             return $model;
         }
 
         // On cherche en base de donnée
         if (($entity = $this->entityRepository->find($slug)) !== null) {
-            dump('IN BASE');
             return $this->convertEntityToModel($entity);
         }
 

@@ -78,4 +78,48 @@ class RecipeRepositoryTest extends DatabaseTestCase
         $this->assertCount(4, $actual);
         RepasAssert::assertTabType(Tab::newEmptyTyped(Recipe::class), $actual);
     }
+
+    public function testDelete(): void
+    {
+        // Arrange
+        $user = $this->userRepository->findOneByEmail('alexiane.sichi@gmail.com');
+        $recipe = new RecipeBuilder()->isPastaCarbonara()->withAuthor($user)->build();
+        $this->recipeRepository->save($recipe);
+
+        // Act
+        $this->recipeRepository->delete($recipe);
+        static::getContainer()->get('doctrine.orm.entity_manager')->clear(); // Nettoie le cache Doctrine
+
+        // Assert
+        $this->expectException(\Exception::class); // Adapte si une exception spécifique est levée
+        $this->recipeRepository->findOneById($recipe->getId());
+    }
+
+    public function testFindByAuthorAndType(): void
+    {
+        // Arrange
+        $author = $this->userRepository->findOneByEmail('alexiane.sichi@gmail.com');
+        $type = new RecipeTypeBuilder()->isDessert()->build();
+
+        // Act
+        $recipes = $this->recipeRepository->findByAuthorAndType($author, $type);
+
+        // Assert
+        $this->assertCount(12, $recipes);
+        RepasAssert::assertTabType(Tab::newEmptyTyped(Recipe::class), $recipes);
+    }
+
+    public function testFindBy(): void
+    {
+        // Arrange
+        $criteria = ['name' => 'pates carbonara'];
+        $orderBy = ['serving' => 'DESC'];
+
+        // Act
+        $recipes = $this->recipeRepository->findBy($criteria, $orderBy);
+
+        // Assert
+        $this->assertNotEmpty($recipes);
+        RepasAssert::assertTabType(Tab::newEmptyTyped(Recipe::class), $recipes);
+    }
 }
