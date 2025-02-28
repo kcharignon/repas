@@ -44,11 +44,13 @@ readonly class IngredientPostgreSQLRepository extends PostgreSQLRepository imple
     {
         // On cherche dans le cache
         if (($model = $this->modelCache->getModelCache(IngredientModel::class, $slug)) !== null) {
+            dump('CACHED');
             return $model;
         }
 
         // On cherche en base de donnée
         if (($entity = $this->entityRepository->find($slug)) !== null) {
+            dump('IN BASE');
             return $this->convertEntityToModel($entity);
         }
 
@@ -209,11 +211,8 @@ readonly class IngredientPostgreSQLRepository extends PostgreSQLRepository imple
         $this->modelCache->removeModelCache($ingredient);
 
         // Suppression de la liste
-        $this->entityRepository->createQueryBuilder('i')
-            ->delete(IngredientEntity::class, 'i')
-            ->where('i.slug = :ingredientId')
-            ->setParameter('ingredientId', $ingredient->getId())
-            ->getQuery()
-            ->execute();
+        $entity = $this->entityManager->find(IngredientEntity::class, $ingredient->getId());
+        $this->entityManager->remove($entity);
+        $this->entityManager->flush();
     }
 }

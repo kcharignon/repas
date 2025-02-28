@@ -4,6 +4,7 @@ namespace Repas\Tests\Repas\Repository;
 
 
 use PHPUnit\Framework\Attributes\DataProvider;
+use Repas\Repas\Domain\Exception\IngredientException;
 use Repas\Repas\Domain\Interface\IngredientRepository;
 use Repas\Repas\Domain\Model\Ingredient;
 use Repas\Shared\Domain\Tool\Tab;
@@ -34,7 +35,7 @@ class IngredientRepositoryTest extends DatabaseTestCase
         // Arrange
         $ingredient = new IngredientBuilder()->build();
 
-        // Act
+        // Act (insert)
         $this->ingredientRepository->save($ingredient);
 
         // Assert
@@ -50,12 +51,19 @@ class IngredientRepositoryTest extends DatabaseTestCase
         $ingredient->setDefaultCookingUnit($gramme);
         $ingredient->setDefaultPurchaseUnit($gramme);
 
-        // Act
+        // Act (update)
         $this->ingredientRepository->save($ingredient);
 
         // Assert
         $loadedIngredient = $this->ingredientRepository->findOneBySlug($ingredient->getSlug());
         RepasAssert::assertIngredient($ingredient, $loadedIngredient);
+
+        // Act (delete)
+        $this->ingredientRepository->delete($ingredient);
+
+        // Assert
+        $this->expectExceptionObject(IngredientException::notFound($ingredient->getSlug()));
+        $this->ingredientRepository->findOneBySlug($ingredient->getSlug());
     }
 
     public static function getByDepartmentDataProvider(): array
