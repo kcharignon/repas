@@ -7,6 +7,7 @@ use PHPUnit\Framework\TestCase;
 use Repas\Repas\Application\CreateIngredient\CreateIngredientCommand;
 use Repas\Repas\Application\CreateIngredient\CreateIngredientHandler;
 use Repas\Repas\Domain\Event\CreateIngredientWithConversionEvent;
+use Repas\Repas\Domain\Event\IngredientCreatedEvent;
 use Repas\Repas\Domain\Exception\DepartmentException;
 use Repas\Repas\Domain\Exception\UnitException;
 use Repas\Repas\Domain\Interface\ConversionRepository;
@@ -77,7 +78,7 @@ class CreateIngredientHandlerTest extends TestCase
     public function testHandleSuccessfullyCreateIngredient(): void
     {
         // Arrange
-        $user = new UserBuilder()->build();
+        $user = new UserBuilder()->withId('user-id')->build();
         $this->userRepository->save($user);
         $command = new CreateIngredientCommand(
             name: "nom de l'ingredient",
@@ -90,7 +91,10 @@ class CreateIngredientHandlerTest extends TestCase
         );
 
         // Assert
-        $this->eventDispatcher->expects(self::never())->method('dispatch');
+        $this->eventDispatcher->expects(self::once())->method('dispatch')->with(new IngredientCreatedEvent(
+            $user->getId(),
+            'nom-de-l-ingredientuser-id',
+        ));
 
         // Act
         ($this->handler)($command);
@@ -106,15 +110,12 @@ class CreateIngredientHandlerTest extends TestCase
             ->build();
         $actual = $this->ingredientRepository->findOneBySlug($expected->getSlug());
         RepasAssert::assertIngredient($expected, $actual);
-
-        $actualUser = $this->userRepository->findOneById($user->getId());
-        $this->assertEquals(1, $actualUser->getIngredientStats());
     }
 
     public function testHandleSuccessfullyCreateIngredientWithDifferentUnitConvertible(): void
     {
         // Arrange
-        $user = new UserBuilder()->build();
+        $user = new UserBuilder()->withId('user-id')->build();
         $this->userRepository->save($user);
         $command = new CreateIngredientCommand(
             name: "nom de l'ingredient",
@@ -127,7 +128,10 @@ class CreateIngredientHandlerTest extends TestCase
         );
 
         // Assert
-        $this->eventDispatcher->expects(self::never())->method('dispatch');
+        $this->eventDispatcher->expects(self::once())->method('dispatch')->with(new IngredientCreatedEvent(
+            $user->getId(),
+            'nom-de-l-ingredientuser-id',
+        ));
 
         // Act
         ($this->handler)($command);
@@ -143,15 +147,12 @@ class CreateIngredientHandlerTest extends TestCase
             ->build();
         $actual = $this->ingredientRepository->findOneBySlug($expected->getSlug());
         RepasAssert::assertIngredient($expected, $actual);
-
-        $actualUser = $this->userRepository->findOneById($user->getId());
-        $this->assertEquals(1, $actualUser->getIngredientStats());
     }
 
     public function testHandleSuccessfullyCreateIngredientWithDifferentUnitNotConvertible(): void
     {
         // Arrange
-        $user = new UserBuilder()->build();
+        $user = new UserBuilder()->withId('user-id')->build();
         $this->userRepository->save($user);
         $command = new CreateIngredientCommand(
             name: "nom de l'ingredient",
@@ -178,10 +179,17 @@ class CreateIngredientHandlerTest extends TestCase
             ->build();
 
         // Assert
-        $this->eventDispatcher->expects(self::once())->method('dispatch')->with(new CreateIngredientWithConversionEvent(
-            $expected->getSlug(),
-            25
-        ));
+        $expectedEvents = [
+            new IngredientCreatedEvent($user->getId(), 'nom-de-l-ingredientuser-id'),
+            new CreateIngredientWithConversionEvent($expected->getSlug(), 25),
+        ];
+        $callIndex = 0;
+        $this->eventDispatcher->expects(self::exactly(2))->method('dispatch')->willReturnCallback(function ($event) use (&$callIndex, $expectedEvents) {
+            // Vérifie que l'événement dispatché correspond à celui attendu dans l'ordre
+            self::assertEquals($expectedEvents[$callIndex], $event);
+            $callIndex++;
+            return $event;
+        });
 
         // Act
         ($this->handler)($command);
@@ -189,9 +197,6 @@ class CreateIngredientHandlerTest extends TestCase
         // Assert
         $actual = $this->ingredientRepository->findOneBySlug($expected->getSlug());
         RepasAssert::assertIngredient($expected, $actual);
-
-        $actualUser = $this->userRepository->findOneById($user->getId());
-        $this->assertEquals(1, $actualUser->getIngredientStats());
     }
 
     public function testHandleSuccessfullyCreateIngredientByAdmin(): void

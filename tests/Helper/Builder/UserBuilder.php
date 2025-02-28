@@ -79,4 +79,12 @@ class UserBuilder implements Builder
         $this->statistics['createdAt'] = $now;
         return $this;
     }
+
+    public function withRecipeAndIngredientStats(int $recipe, int $ingredient): self
+    {
+        $this->statistics ??= [];
+        $this->statistics['recipes'] = $recipe;
+        $this->statistics['ingredients'] = $ingredient;
+        return $this;
+    }
 }

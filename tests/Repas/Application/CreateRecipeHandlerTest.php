@@ -7,6 +7,7 @@ use PHPUnit\Framework\TestCase;
 use Repas\Repas\Application\CreateRecipe\CreateRecipeCommand;
 use Repas\Repas\Application\CreateRecipe\CreateRecipeHandler;
 use Repas\Repas\Application\CreateRecipe\CreateRecipeRowSubCommand;
+use Repas\Repas\Domain\Event\RecipeCreatedEvent;
 use Repas\Repas\Domain\Exception\IngredientException;
 use Repas\Repas\Domain\Exception\RecipeException;
 use Repas\Repas\Domain\Interface\IngredientRepository;
@@ -29,6 +30,7 @@ use Repas\Tests\Helper\InMemoryRepository\UserInMemoryRepository;
 use Repas\Tests\Helper\RepasAssert;
 use Repas\User\Domain\Exception\UserException;
 use Repas\User\Domain\Interface\UserRepository;
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 
 class CreateRecipeHandlerTest extends TestCase
 {
@@ -38,6 +40,7 @@ class CreateRecipeHandlerTest extends TestCase
     private readonly IngredientRepository $ingredientRepository;
     private readonly UnitRepository $unitRepository;
     private readonly RecipeRepository $recipeRepository;
+    private readonly EventDispatcherInterface $eventDispatcher;
 
     protected function setUp(): void
     {
@@ -54,6 +57,7 @@ class CreateRecipeHandlerTest extends TestCase
             new RecipeTypeBuilder()->isDessert()->build(),
         ]);
         $this->recipeRepository = new RecipeInMemoryRepository();
+        $this->eventDispatcher = $this->createMock(EventDispatcherInterface::class);
 
         $this->handler = new CreateRecipeHandler(
             $this->userRepository,
@@ -61,13 +65,14 @@ class CreateRecipeHandlerTest extends TestCase
             $this->ingredientRepository,
             $this->unitRepository,
             $this->recipeRepository,
+            $this->eventDispatcher,
         );
     }
 
     public function testHandleSuccessfullyCreateRecipe(): void
     {
         // Arrange
-        $user = new UserBuilder()->build();
+        $user = new UserBuilder()->withId('user-id')->build();
         $this->userRepository->save($user);
         $pasta = new IngredientBuilder()->isPasta()->build();
         $this->ingredientRepository->save($pasta);
@@ -87,6 +92,11 @@ class CreateRecipeHandlerTest extends TestCase
             ingredientSlug: $pasta->getSlug(),
             unitSlug: 'gramme',
             quantity: 10,
+        );
+
+        // Assert
+        $this->eventDispatcher->expects(self::once())->method('dispatch')->with(
+            new RecipeCreatedEvent('user-id', 'unique_id')
         );
 
         // Act
@@ -109,9 +119,6 @@ class CreateRecipeHandlerTest extends TestCase
             ->build();
         $actual = $this->recipeRepository->findOneById("unique_id");
         RepasAssert::assertRecipe($expected, $actual, ["RecipeRow" => ["id"]]);
-
-        $actualUser = $this->userRepository->findOneById($user->getId());
-        $this->assertEquals(1, $actualUser->getRecipeStats());
     }
 
 
@@ -140,6 +147,7 @@ class CreateRecipeHandlerTest extends TestCase
         );
 
         // Assert
+        $this->eventDispatcher->expects(self::never())->method('dispatch');
         $this->expectExceptionObject(UserException::NotFound($user->getId()));
 
         // Act
@@ -171,6 +179,7 @@ class CreateRecipeHandlerTest extends TestCase
         );
 
         // Assert
+        $this->eventDispatcher->expects(self::never())->method('dispatch');
         $this->expectExceptionObject(IngredientException::NotFound($pasta->getSlug()));
 
         // Act
@@ -203,6 +212,7 @@ class CreateRecipeHandlerTest extends TestCase
         );
 
         // Assert
+        $this->eventDispatcher->expects(self::never())->method('dispatch');
         $this->expectExceptionObject(RecipeException::typeNotFound($recipeType->getSlug()));
 
         // Act

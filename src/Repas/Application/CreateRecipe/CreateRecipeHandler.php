@@ -2,6 +2,7 @@
 
 namespace Repas\Repas\Application\CreateRecipe;
 
+use Repas\Repas\Domain\Event\RecipeCreatedEvent;
 use Repas\Repas\Domain\Exception\RecipeException;
 use Repas\Repas\Domain\Interface\IngredientRepository;
 use Repas\Repas\Domain\Interface\RecipeRepository;
@@ -12,6 +13,7 @@ use Repas\Repas\Domain\Model\RecipeRow;
 use Repas\Shared\Domain\Tool\UuidGenerator;
 use Repas\User\Domain\Exception\UserException;
 use Repas\User\Domain\Interface\UserRepository;
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 #[AsMessageHandler]
@@ -23,6 +25,7 @@ readonly class CreateRecipeHandler
         private IngredientRepository $ingredientRepository,
         private UnitRepository $unitRepository,
         private RecipeRepository $recipeRepository,
+        private EventDispatcherInterface $eventDispatcher,
     ) {
     }
 
@@ -53,7 +56,6 @@ readonly class CreateRecipeHandler
 
         $this->recipeRepository->save($recipe);
 
-        $author->createRecipe();
-        $this->userRepository->save($author);
+        $this->eventDispatcher->dispatch(new RecipeCreatedEvent($author->getId(), $recipe->getId()));
     }
 }

@@ -4,6 +4,7 @@ namespace Repas\Repas\Application\CreateIngredient;
 
 
 use Repas\Repas\Domain\Event\CreateIngredientWithConversionEvent;
+use Repas\Repas\Domain\Event\IngredientCreatedEvent;
 use Repas\Repas\Domain\Exception\DepartmentException;
 use Repas\Repas\Domain\Exception\UnitException;
 use Repas\Repas\Domain\Interface\DepartmentRepository;
@@ -56,8 +57,7 @@ readonly class CreateIngredientHandler
         $this->ingredientRepository->save($ingredient);
 
         if ($owner instanceof User) {
-            $owner->createIngredient();
-            $this->userRepository->save($owner);
+            $this->eventDispatcher->dispatch(new IngredientCreatedEvent($owner->getId(), $ingredient->getSlug()));
         }
 
         // On récupère les unités compatibles à la conversion après la création de l'ingrédient

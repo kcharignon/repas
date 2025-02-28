@@ -124,10 +124,24 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, Passwor
         return $this;
     }
 
+    public function createRecipes(int $number): User
+    {
+        $this->statistics['recipes'] ??= 0;
+        $this->statistics['recipes'] += $number;
+        return $this;
+    }
+
     public function createIngredient(): User
     {
         $this->statistics['ingredients'] ??= 0;
         $this->statistics['ingredients']++;
+        return $this;
+    }
+
+    public function createIngredients(int $number): User
+    {
+        $this->statistics['ingredients'] ??= 0;
+        $this->statistics['ingredients'] += $number;
         return $this;
     }
 
