@@ -29,7 +29,6 @@ readonly class UpdateUserStatisticsEventListener
 
     public function __invoke(RecipesOrIngredientsCreatedEvent|RecipesOrIngredientsRemovedEvent $event): void
     {
-        dump($event);
         if ($event instanceof RecipesOrIngredientsCreatedEvent) {
             $command = new UpdateUserStatisticsCommand($event->userId, $event->ingredientSlugs->count(), $event->recipeIds->count());
         } else {
