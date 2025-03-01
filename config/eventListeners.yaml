@@ -6,3 +6,6 @@ services:
             $rememberMeHandler: '@security.remember_me.handler.main'
         tags:
             - { name: kernel.event_listener, event: security.logout }
+    Repas\User\Infrastructure\EventListener\UpdateUserStatisticsEventListener:
+        tags:
+            - { name: kernel.event_listener, event: security.logout }

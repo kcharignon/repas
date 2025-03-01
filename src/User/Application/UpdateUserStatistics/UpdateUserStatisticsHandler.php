@@ -18,8 +18,8 @@ readonly class UpdateUserStatisticsHandler
     {
         $user = $this->userRepository->findOneById($command->userId);
 
-        $user->createIngredients($command->newIngredients);
-        $user->createRecipes($command->newRecipes);
+        $user->createIngredients($command->ingredients);
+        $user->createRecipes($command->recipes);
 
         $this->userRepository->save($user);
     }

@@ -8,8 +8,8 @@ readonly class UpdateUserStatisticsCommand
 
     public function __construct(
         public string $userId,
-        public int $newIngredients,
-        public int $newRecipes,
+        public int    $ingredients,
+        public int    $recipes,
     ) {
     }
 }

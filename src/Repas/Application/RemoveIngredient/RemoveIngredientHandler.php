@@ -2,11 +2,13 @@
 
 namespace Repas\Repas\Application\RemoveIngredient;
 
+use Repas\Repas\Domain\Event\IngredientRemovedEvent;
 use Repas\Repas\Domain\Exception\IngredientException;
 use Repas\Repas\Domain\Interface\ConversionRepository;
 use Repas\Repas\Domain\Interface\IngredientRepository;
 use Repas\Repas\Domain\Interface\RecipeRepository;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 #[AsMessageHandler]
@@ -18,6 +20,7 @@ readonly class RemoveIngredientHandler
         private RecipeRepository $recipeRepository,
         private ShoppingListRepository $shoppingListRepository,
         private ConversionRepository $conversionRepository,
+        private EventDispatcherInterface $eventDispatcher,
     ) {
     }
 
@@ -42,5 +45,8 @@ readonly class RemoveIngredientHandler
 
         $this->conversionRepository->deleteByIngredient($ingredient);
         $this->ingredientRepository->delete($ingredient);
+        if ($ingredient->getCreator()?->getId()) {
+            $this->eventDispatcher->dispatch(new IngredientRemovedEvent($ingredient->getCreator()->getId(), $ingredient->getId()));
+        }
     }
 }
