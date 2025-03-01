@@ -87,4 +87,11 @@ class RecipeType
             sequence: $recipeType->getOrder(),
         );
     }
+
+    public function updateFromModel(RecipeTypeModel $recipeType): void
+    {
+        $this->name = $recipeType->getName();
+        $this->image = $recipeType->getImage();
+        $this->sequence = $recipeType->getOrder();
+    }
 }

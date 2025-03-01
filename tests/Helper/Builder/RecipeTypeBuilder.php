@@ -5,6 +5,7 @@ namespace Repas\Tests\Helper\Builder;
 
 
 use Repas\Repas\Domain\Model\RecipeType;
+use Repas\Shared\Domain\Tool\StringTool;
 
 class RecipeTypeBuilder implements Builder
 {
@@ -26,8 +27,8 @@ class RecipeTypeBuilder implements Builder
 
     private function initialize(): void
     {
-        $this->slug ??= 'plat';
         $this->name ??= 'plat';
+        $this->slug ??= StringTool::slugify($this->name);
         $this->image ??= 'images/recipe/type/meal.svg';
         $this->order ??= 2;
     }
@@ -56,6 +57,30 @@ class RecipeTypeBuilder implements Builder
         $this->name = 'entree';
         $this->image = 'images/recipe/type/starter.svg';
         $this->order = 1;
+        return $this;
+    }
+
+    public function withName(string $name): self
+    {
+        $this->name = $name;
+        return $this;
+    }
+
+    public function withImage(string $image): self
+    {
+        $this->image = $image;
+        return $this;
+    }
+
+    public function withOrder(int $order): self
+    {
+        $this->order = $order;
+        return $this;
+    }
+
+    public function withSlug(string $slug): self
+    {
+        $this->slug = $slug;
         return $this;
     }
 }

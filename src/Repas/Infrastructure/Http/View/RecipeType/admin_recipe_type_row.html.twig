@@ -1,0 +1,13 @@
+<tr id="department-{{recipeType.id }}">
+    <td>{{ recipeType.name|capitalize }}</td>
+    <td>{{ recipeType.order }}</td>
+    <td>{{ recipeType.image }}</td>
+    <td>
+        <a
+            type="button"
+            class="btn btn-secondary btn-sm float-end me-1"
+            href="{{ path("view_admin_recipe_type_update", {id: recipeType.id}) }}">
+            <i class="fas fa-pen"></i>
+        </a>
+    </td>
+</tr>

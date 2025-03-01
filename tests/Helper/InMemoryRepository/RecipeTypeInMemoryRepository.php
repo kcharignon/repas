@@ -10,6 +10,8 @@ use Repas\Shared\Domain\Tool\Tab;
 
 class RecipeTypeInMemoryRepository extends AbstractInMemoryRepository implements RecipeTypeRepository
 {
+    use SaveModelTrait;
+
     protected static function getClassName(): string
     {
         return RecipeType::class;

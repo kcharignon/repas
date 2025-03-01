@@ -64,10 +64,10 @@ final class RecipeType implements ModelInterface
         $this->order = $order;
     }
 
-    public static function create(string $name, string $image, int $sequence): self
+    public static function create(string $name, string $image, int $order): self
     {
         $slug = StringTool::slugify($name);
-        return new self($slug, $name, $image, $sequence);
+        return new self($slug, $name, $image, $order);
     }
 
     public static function load(array $datas): self
@@ -78,5 +78,12 @@ final class RecipeType implements ModelInterface
             image: $datas['image'],
             order: $datas['order'],
         );
+    }
+
+    public function update(string $name, string $image, int $order): void
+    {
+        $this->name = $name;
+        $this->image = $image;
+        $this->order = $order;
     }
 }

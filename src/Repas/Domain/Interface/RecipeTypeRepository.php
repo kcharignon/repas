@@ -18,4 +18,6 @@ interface RecipeTypeRepository
      * @throws RecipeException
      */
     public function findOneBySlug(string $slug): RecipeType;
+
+    public function save(RecipeType $recipeType): void;
 }

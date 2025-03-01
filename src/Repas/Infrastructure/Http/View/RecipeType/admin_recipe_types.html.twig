@@ -1,0 +1,35 @@
+{% set active = "admin" %}
+{% extends '@Shared/base.html.twig' %}
+
+{% block title %}
+    Rayons
+{% endblock %}
+
+{% block body %}
+
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item active">Types</li>
+    </ol>
+
+    <table class="table table-sm">
+        {# Nouveau rayon #}
+        <thead>
+        <th scope="col">Types</th>
+        <th scope="col">Ordre</th>
+        <th scope="col">Image</th>
+        <th>
+            <a
+                type="button"
+                class="btn btn-success btn-sm float-end me-1"
+                href="{{ path('view_admin_recipe_type_create') }}">
+                <i class="fas fa-plus-circle"></i>
+            </a>
+        </th>
+        </thead>
+
+        {# Rayons existants #}
+        {% for recipeType in recipeTypes %}
+            {% include "@Repas/RecipeType/admin_recipe_type_row.html.twig" %}
+        {% endfor %}
+    </table>
+{% endblock %}

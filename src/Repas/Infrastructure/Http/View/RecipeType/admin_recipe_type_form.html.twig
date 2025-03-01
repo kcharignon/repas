@@ -1,0 +1,36 @@
+{% extends '@Shared/base.html.twig' %}
+{% set title = (recipeType|default(null) is not null) ? 'Modification de ' ~ recipeType.name : 'Nouveau type de recette' %}
+{% block title %}
+    {{ title }}
+{% endblock %}
+
+{% block body %}
+    <div class="container my-5">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ path("view_admin_recipe_types") }}">Types</a></li>
+            <li class="breadcrumb-item active">{{ title }}</li>
+        </ol>
+
+        <h1>{{ title }}</h1>
+
+        {# Affichage du formulaire Symfony #}
+        {{ form_start(recipeTypeForm, {'attr': {'id': 'conversion-form'}}) }}
+        <div class="mb-3">
+            {{ form_label(recipeTypeForm.name) }}
+            {{ form_widget(recipeTypeForm.name, {'attr': {'class': 'form-control'}}) }}
+            {{ form_errors(recipeTypeForm.name) }}
+        </div>
+        <div class="mb-3">
+            {{ form_label(recipeTypeForm.image) }}
+            {{ form_widget(recipeTypeForm.image, {'attr': {'class': 'form-control'}}) }}
+            {{ form_errors(recipeTypeForm.image) }}
+        </div>
+        <div class="mb-3">
+            {{ form_label(recipeTypeForm.order) }}
+            {{ form_widget(recipeTypeForm.order, {'attr': {'class': 'form-control'}}) }}
+            {{ form_errors(recipeTypeForm.order) }}
+        </div>
+        <button type="submit" class="btn btn-primary">{{ (recipeType|default(null) is not null) ? 'Modifier' : 'Ajouter' }}</button>
+        {{ form_end(recipeTypeForm) }}
+    </div>
+{% endblock %}
