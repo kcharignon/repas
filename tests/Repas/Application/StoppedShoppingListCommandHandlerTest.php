@@ -13,17 +13,18 @@ use Repas\Repas\Domain\Model\ShoppingListStatus as Status;
 use Repas\Tests\Helper\Builder\ShoppingListBuilder;
 use Repas\Tests\Helper\Builder\UserBuilder;
 use Repas\Tests\Helper\InMemoryRepository\ShoppingListInMemoryRepository;
+use Repas\Tests\Helper\InMemoryRepository\UserInMemoryRepository;
+use Repas\User\Domain\Interface\UserRepository;
 
 class StoppedShoppingListCommandHandlerTest extends TestCase
 {
     private readonly StoppedShoppingListHandler $handler;
     private readonly ShoppingListRepository $shoppingListRepository;
+    private readonly UserRepository $userRepository;
 
     protected function setUp(): void
     {
-        $user = new UserBuilder()->build();
-
-
+        $user = new UserBuilder()->withId('user-id')->build();
 
         $this->shoppingListRepository = new ShoppingListInMemoryRepository([
             new ShoppingListBuilder()->withId('active-id')->withStatus(Status::ACTIVE)->withOwner($user)->build(),
@@ -31,8 +32,10 @@ class StoppedShoppingListCommandHandlerTest extends TestCase
             new ShoppingListBuilder()->withId('fini-id')->withStatus(Status::COMPLETED)->withOwner($user)->build(),
         ]);
 
+        $this->userRepository = new UserInMemoryRepository([$user]);
         $this->handler = new StoppedShoppingListHandler(
             $this->shoppingListRepository,
+            $this->userRepository,
         );
     }
 
@@ -71,6 +74,9 @@ class StoppedShoppingListCommandHandlerTest extends TestCase
             $actual = $this->shoppingListRepository->findOneById($id);
             $this->assertEquals($status, $actual->getStatus());
         }
+
+        $actualUser = $this->userRepository->findOneById('user-id');
+        $this->assertCount(1, $actualUser->getShoppingListStats());
     }
 
     public function testFailedHandleActivatedShoppingListNotFound(): void
