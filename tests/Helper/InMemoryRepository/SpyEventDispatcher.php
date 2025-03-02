@@ -54,7 +54,7 @@ class SpyEventDispatcher implements EventDispatcherInterface
         return $event;
     }
 
-    public function lastEventDispatched(): ?object
+    public function getLastEventDispatched(): ?object
     {
         return end($this->eventDispatched) ?? null;
     }

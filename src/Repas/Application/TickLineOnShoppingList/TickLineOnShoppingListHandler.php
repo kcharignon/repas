@@ -2,9 +2,9 @@
 
 namespace Repas\Repas\Application\TickLineOnShoppingList;
 
-use Repas\Repas\Domain\Interface\ShoppingListRepository;
+use Repas\Repas\Domain\Event\LineTickedEvent;
 use Repas\Repas\Domain\Interface\ShoppingListRowRepository;
-use Repas\User\Domain\Interface\UserRepository;
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 #[AsMessageHandler]
@@ -12,8 +12,7 @@ readonly class TickLineOnShoppingListHandler
 {
     public function __construct(
         private ShoppingListRowRepository $shoppingListRowRepository,
-        private ShoppingListRepository $shoppingListRepository,
-        private UserRepository $userRepository,
+        private EventDispatcherInterface $eventDispatcher,
     ) {
     }
 
@@ -24,15 +23,6 @@ readonly class TickLineOnShoppingListHandler
         $row->tick();
         $this->shoppingListRowRepository->save($row);
 
-        // Si on a coché toute la liste, on la passe au status terminé.
-        $shoppingList = $this->shoppingListRepository->findOneById($row->getShoppingListId());
-        if ($shoppingList->allLineTicked()) {
-            $shoppingList->completed();
-            $this->shoppingListRepository->save($shoppingList);
-
-            $owner = $shoppingList->getOwner();
-            $owner->completedShoppingList($shoppingList);
-            $this->userRepository->save($owner);
-        }
+        $this->eventDispatcher->dispatch(new LineTickedEvent($row->getShoppingListId()));
     }
 }

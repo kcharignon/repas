@@ -53,7 +53,7 @@ class RemoveRecipeHandlerTest extends TestCase
 
         // Assert
         $expectedEvent = new RecipeRemovedEvent('user-id', 'recipe-free');
-        $actualEvent = $this->eventDispatcher->lastEventDispatched();
+        $actualEvent = $this->eventDispatcher->getLastEventDispatched();
         $this->assertEquals($expectedEvent, $actualEvent);
 
         $this->expectExceptionObject(RecipeException::notFound('recipe-free'));

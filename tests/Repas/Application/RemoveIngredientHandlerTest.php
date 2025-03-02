@@ -97,7 +97,7 @@ class RemoveIngredientHandlerTest extends TestCase
 
         // Assert
         $expectedEvent = new IngredientRemovedEvent('user-id', 'lait');
-        $actualEvent = $this->eventDispatcher->lastEventDispatched();
+        $actualEvent = $this->eventDispatcher->getLastEventDispatched();
         $this->assertEquals($expectedEvent, $actualEvent);
 
         $this->expectExceptionObject(IngredientException::notFound('lait'));
