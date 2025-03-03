@@ -27,6 +27,7 @@ class ShoppingListBuilder implements Builder
     /** @var Tab<Ingredient>|null  */
     private ?Tab $ingredients = null;
     private UuidGeneratorInterface $uuidGenerator;
+    private ?string $name = null;
 
     public function __construct(?UuidGeneratorInterface $uuidGenerator = null)
     {
@@ -42,6 +43,7 @@ class ShoppingListBuilder implements Builder
             'id' => $this->id,
             'owner' => $owner,
             'created_at' => $this->createdAt,
+            'name' => $this->name,
             'status' => ShoppingListStatus::ACTIVE, // On met au status ACTIVE pour pouvoir ajouter les recettes
             'meals' => Tab::newEmptyTyped(Meal::class),
             'ingredients' => Tab::newEmptyTyped(ShoppingListIngredient::class),
@@ -90,6 +92,7 @@ class ShoppingListBuilder implements Builder
         $this->owner ??= new UserBuilder();
         $this->createdAt ??= new DateTimeImmutable();
         $this->status ??= ShoppingListStatus::ACTIVE;
+        $this->name ??= null;
         $this->recipes ??= Tab::newEmptyTyped(Recipe::class);
         $this->ingredients ??= Tab::newEmptyTyped(Ingredient::class);
     }
@@ -111,6 +114,12 @@ class ShoppingListBuilder implements Builder
     public function withStatus(ShoppingListStatus $status): self
     {
         $this->status = $status;
+        return $this;
+    }
+
+    public function withName(?string $name): self
+    {
+        $this->name = $name;
         return $this;
     }
 }

@@ -24,16 +24,21 @@ class ShoppingList
     #[ORM\Column(type: 'string', enumType: Status::class)]
     private ?Status $status = null;
 
+    #[ORM\Column(name: 'name', nullable: true)]
+    private ?string $name = null;
+
     public function __construct(
         string            $id,
         string            $ownerId,
         DateTimeImmutable $createdAt,
         Status            $status,
+        ?string            $name
     ) {
         $this->id = $id;
         $this->ownerId = $ownerId;
         $this->createdAt = $createdAt;
         $this->status = $status;
+        $this->name = $name;
     }
 
     public static function fromModel(ShoppingListModel $shoppingListModel): static
@@ -43,12 +48,14 @@ class ShoppingList
             ownerId: $shoppingListModel->getOwner()->getId(),
             createdAt: $shoppingListModel->getCreatedAt(),
             status: $shoppingListModel->getStatus(),
+            name: $shoppingListModel->getName(),
         );
     }
 
     public function updateFromModel(ShoppingListModel $shoppingListModel): void
     {
         $this->status = $shoppingListModel->getStatus();
+        $this->name = $shoppingListModel->getName();
     }
 
     public function getId(): ?string
@@ -88,6 +95,17 @@ class ShoppingList
     {
         $this->ownerId = $ownerId;
 
+        return $this;
+    }
+
+    public function getName(): ?string
+    {
+        return $this->name;
+    }
+
+    public function setName(?string $name): ShoppingList
+    {
+        $this->name = $name;
         return $this;
     }
 }

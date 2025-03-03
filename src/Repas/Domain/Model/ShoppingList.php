@@ -8,7 +8,6 @@ use Repas\Repas\Domain\Exception\ShoppingListException;
 use Repas\Shared\Domain\Model\ModelInterface;
 use Repas\Shared\Domain\Model\ModelTrait;
 use Repas\Shared\Domain\Tool\Tab;
-use Repas\Shared\Domain\Tool\UuidGenerator;
 use Repas\User\Domain\Model\User;
 use Repas\Repas\Domain\Model\ShoppingListStatus as Status;
 use Repas\Repas\Domain\Model\ShoppingListRow as Row;
@@ -30,6 +29,7 @@ final class ShoppingList implements ModelInterface
         private User              $owner,
         private DateTimeImmutable $createdAt,
         private Status            $status,
+        private ?string           $name,
         private Tab               $meals,
         private Tab               $ingredients,
         private Tab               $rows,
@@ -82,6 +82,7 @@ final class ShoppingList implements ModelInterface
             owner: $owner,
             createdAt: $createdAt,
             status: Status::ACTIVE,
+            name: null,
             meals: Tab::newEmptyTyped(Meal::class),
             ingredients: Tab::newEmptyTyped(ShoppingListIngredient::class),
             rows: Tab::newEmptyTyped(Row::class),
@@ -95,6 +96,7 @@ final class ShoppingList implements ModelInterface
             owner: $datas['owner'],
             createdAt: $datas['created_at'],
             status: $datas['status'],
+            name: $datas['name'],
             meals: $datas['meals'],
             ingredients: $datas['ingredients'],
             rows: $datas['rows'],
@@ -180,16 +182,6 @@ final class ShoppingList implements ModelInterface
         return $this->status === Status::PAUSED;
     }
 
-    public function isPlanning(): bool
-    {
-        return $this->status === Status::PLANNING;
-    }
-
-    public function isShopping(): bool
-    {
-        return $this->status === Status::SHOPPING;
-    }
-
     public function isCompleted(): bool
     {
         return $this->status === Status::COMPLETED;
@@ -247,16 +239,15 @@ final class ShoppingList implements ModelInterface
         return $this->status;
     }
 
-    /**
-     * @throws ShoppingListException
-     */
-    public function toPlanning(): void
+    public function getName(): ?string
     {
-        if (!$this->isShopping()) {
-            throw ShoppingListException::shoppingListShouldBeOnShoppingBeforeRevertToPlanning($this->id, $this->status);
-        }
+        return $this->name;
+    }
 
-        $this->status = Status::PLANNING;
+    public function setName(?string $name): ShoppingList
+    {
+        $this->name = $name;
+        return $this;
     }
 
     public function addIngredient(Ingredient $ingredient): void

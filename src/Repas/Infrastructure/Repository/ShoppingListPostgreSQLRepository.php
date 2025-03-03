@@ -172,6 +172,7 @@ readonly class ShoppingListPostgreSQLRepository extends PostgreSQLRepository imp
             'owner' => $this->userRepository->findOneById($shoppingListEntity->getOwnerId()),
             'created_at' => $shoppingListEntity->getCreatedAt(),
             'status' => $shoppingListEntity->getStatus(),
+            'name' => $shoppingListEntity->getName(),
             'meals' => $this->mealRepository->findByShoppingListId($shoppingListEntity->getId()),
             'ingredients' => $this->shopListIngredientRepository->findByShoppingListId($shoppingListEntity->getId()),
             'rows' => $this->shopListRowRepository->findByShoppingListId($shoppingListEntity->getId()),

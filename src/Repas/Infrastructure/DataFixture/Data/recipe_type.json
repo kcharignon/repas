@@ -3,18 +3,30 @@
         "slug": "plat",
         "name": "plat",
         "image": "images\/recipe\/type\/meal.svg",
-        "sequence": 2
+        "sequence": 3
     },
     {
         "slug": "dessert",
         "name": "dessert",
         "image": "images\/recipe\/type\/dessert.svg",
-        "sequence": 3
+        "sequence": 4
     },
     {
         "slug": "entree",
         "name": "entrée",
-        "image": "images\/recipe\/type\/starter.svg",
-        "sequence": 1
+        "image": "images\/recipe\/type\/starter.png",
+        "sequence": 2
+    },
+    {
+      "slug": "boisson",
+      "name": "Boisson",
+      "image": "images\/recipe\/type\/drink.png",
+      "sequence": 5
+    },
+    {
+      "slug": "apero",
+      "name": "Apéro",
+      "image": "images\/recipe\/type\/aperitif.svg",
+      "sequence": 1
     }
 ]

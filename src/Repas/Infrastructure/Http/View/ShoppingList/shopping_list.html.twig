@@ -7,14 +7,42 @@
 
 {% block javascript_custom %}
     <script src="{{ javascripts_dir ~ "repas_shopping_list.js" }}"></script>
+    <script>
+        $(document).ready(function(){
+            console.log("File shopping_list.html.twig loaded");
+
+            $(document).on('click', '#btn-edit', function(){
+                showInput();
+            });
+
+            $(document).on('click', '#btn-cancel', function(){
+                hideInput();
+            });
+
+            $(document).on('click', '#btn-validate', function(){
+                hideInput();
+            });
+
+            function showInput() {
+                $("#btn-edit").hide();
+                $("#card-header-name").hide();
+                $("#input-name-group").show();
+                $("#card-header-input").val($("#card-header-input").data("value"));
+            }
+
+            function hideInput() {
+                $("#btn-edit").show();
+                $("#card-header-name").show();
+                $("#input-name-group").hide();
+            }
+        });
+    </script>
 {% endblock %}
 
 {% block body %}
     {% if shoppingList is not null %}
         <div id="shopping-list-card" class="card bg-light" style="max-width: 100rem;">
-            <h3 class="card-header">
-                {{ "Liste du " ~ shoppingList.createdAt|format_datetime(locale='fr_FR', pattern="dd MMMM YYYY") }}
-            </h3>
+            {% include"@Repas/ShoppingList/_shopping_list_card_header.html.twig" %}
             <div class="card-body">
 
                 <!-- Boutons pour basculer entre les vues en mode mobile -->

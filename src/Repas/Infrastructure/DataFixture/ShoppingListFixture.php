@@ -28,6 +28,7 @@ class ShoppingListFixture extends Fixture implements DependentFixtureInterface, 
             'user' => 'alexiane.sichi@gmail.com',
             'createdAt' => '2024-12-22T19:31:05+01:00',
             'status' => ShoppingListStatus::PAUSED,
+            'name' => "EVJF Hélène",
         ],
         [
             'user' => 'alexiane.sichi@gmail.com',
@@ -62,6 +63,7 @@ class ShoppingListFixture extends Fixture implements DependentFixtureInterface, 
                     ownerId: $userEntity->getId(),
                     createdAt: DateTimeImmutable::createFromFormat(DATE_ATOM, $shoppingList['createdAt']),
                     status: $shoppingList['status'],
+                    name: $shoppingList['name'] ?? null,
                 );
 
                 $manager->persist($shoppingListEntity);

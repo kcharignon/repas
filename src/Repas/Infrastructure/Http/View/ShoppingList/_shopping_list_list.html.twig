@@ -13,7 +13,13 @@
             <a
                 href="{{ path("view_one_shopping_list", {"id": shoppingList.id}) }}"
                 class="d-flex align-items-center flex-grow-1 text-decoration-none text-dark">
-                <span style="width: 10em">{{ shoppingList.createdAt|format_datetime(locale="fr_FR", pattern="dd MMMM YYYY") }}</span>
+                <span style="width: 10em">
+                    {% if shoppingList.name is not null %}
+                        {{ shoppingList.name }}
+                    {% else %}
+                        {{ shoppingList.createdAt|format_datetime(locale="fr_FR", pattern="dd MMMM YYYY") }}
+                    {% endif %}
+                </span>
                 {% if shoppingList.isActive %}
                     <span class="badge bg-primary rounded-pill pt-1">Active</span>
                 {% endif %}

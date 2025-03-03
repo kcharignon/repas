@@ -5,6 +5,11 @@ $(document).ready(function(){
     handleAjaxAction(this);
   });
 
+  $(document).on("click", "[data-action='submit-input-ajax']", function(event) {
+    let selector = $(this).data("selector")
+    handleAjaxAction($(selector));
+  });
+
   $(document).on("change", "[data-action='input-ajax']", function(event) {
     handleAjaxAction(this);
   });
