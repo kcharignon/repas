@@ -14,7 +14,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
 #[AsCommand(
-    name: 'repas:update-user-statistics',
+    name: 'repas:update-users-statistics',
     description: 'Initialize les statistiques pour tous les utilisateurs',
 )]
 class UpdateUserStatisticsCommand extends Command

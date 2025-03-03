@@ -20,6 +20,9 @@ class Ingredient
     #[ORM\Column(length: 2048)]
     private ?string $image = null;
 
+    #[ORM\Column(length: 255, nullable: false)]
+    private ?string $sluggedName = null;
+
     #[ORM\Column(name: 'department', nullable: false)]
     private ?string $departmentSlug = null;
 
@@ -43,6 +46,7 @@ class Ingredient
         ?string $slug,
         ?string $name,
         ?string $image,
+        ?string $sluggedName,
         ?string $department,
         ?string $defaultCookingUnit,
         ?string $defaultPurchaseUnit,
@@ -52,6 +56,7 @@ class Ingredient
         $this->slug = $slug;
         $this->name = $name;
         $this->image = $image;
+        $this->sluggedName = $sluggedName;
         $this->departmentSlug = $department;
         $this->defaultCookingUnitSlug = $defaultCookingUnit;
         $this->defaultPurchaseUnitSlug = $defaultPurchaseUnit;
@@ -80,6 +85,17 @@ class Ingredient
     public function getImage(): ?string
     {
         return $this->image;
+    }
+
+    public function getSluggedName(): ?string
+    {
+        return $this->sluggedName;
+    }
+
+    public function setSluggedName(?string $sluggedName): Ingredient
+    {
+        $this->sluggedName = $sluggedName;
+        return $this;
     }
 
     public function getDepartmentSlug(): ?string
@@ -152,6 +168,7 @@ class Ingredient
             slug: $ingredient->getSlug(),
             name: $ingredient->getName(),
             image: $ingredient->getImage(),
+            sluggedName: $ingredient->getSluggedName(),
             department: $ingredient->getDepartment()->getSlug(),
             defaultCookingUnit: $ingredient->getDefaultCookingUnit()->getSlug(),
             defaultPurchaseUnit: $ingredient->getDefaultPurchaseUnit()->getSlug(),

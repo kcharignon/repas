@@ -20,6 +20,7 @@ final class Ingredient implements ModelInterface
         private string     $slug,
         private string     $name,
         private string     $image,
+        private string     $sluggedName,
         private Department $department,
         private Unit       $defaultCookingUnit,
         private Unit       $defaultPurchaseUnit,
@@ -46,6 +47,17 @@ final class Ingredient implements ModelInterface
     public function getImage(): string
     {
         return $this->image;
+    }
+
+    public function getSluggedName(): string
+    {
+        return $this->sluggedName;
+    }
+
+    public function setSluggedName(string $sluggedName): Ingredient
+    {
+        $this->sluggedName = $sluggedName;
+        return $this;
     }
 
     public function getDepartment(): Department
@@ -135,10 +147,12 @@ final class Ingredient implements ModelInterface
         ?User $creator,
     ): self {
         $slug = StringTool::slugify($name.($creator?->getId() ?? ''));
+        $sluggedName = StringTool::slugify($name);
         return new self(
             $slug,
             $name,
             $image,
+            $sluggedName,
             $department,
             $defaultCookingUnit,
             $defaultPurchaseUnit,
@@ -167,6 +181,7 @@ final class Ingredient implements ModelInterface
             slug: $datas['slug'],
             name: $datas['name'],
             image: $datas['image'],
+            sluggedName: $datas['slugged_name'],
             department: $datas['department'],
             defaultCookingUnit: $datas['default_cooking_unit'],
             defaultPurchaseUnit: $datas['default_purchase_unit'],
@@ -188,6 +203,7 @@ final class Ingredient implements ModelInterface
     ): void {
         $this->name = $name;
         $this->image = $image;
+        $this->sluggedName = StringTool::slugify($name);
         $this->department = $department;
         $this->defaultCookingUnit = $defaultCookingUnit;
         $this->defaultPurchaseUnit = $defaultPurchaseUnit;

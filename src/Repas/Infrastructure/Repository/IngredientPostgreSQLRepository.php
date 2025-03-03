@@ -57,7 +57,7 @@ readonly class IngredientPostgreSQLRepository extends PostgreSQLRepository imple
 
     public function findAll(): Tab
     {
-        $entities = $this->entityRepository->findBy([], ['slug' => 'ASC']);
+        $entities = $this->entityRepository->findBy([], ['sluggedName' => 'ASC']);
 
         return $this->convertEntitiesToModels(new Tab($entities, IngredientEntity::class));
     }
@@ -69,7 +69,7 @@ readonly class IngredientPostgreSQLRepository extends PostgreSQLRepository imple
             ->andWhere('i.creatorId = :owner or i.creatorId is null')
             ->setParameter('department', $department->getId())
             ->setParameter('owner', $owner->getId())
-            ->orderBy('i.slug', 'ASC')
+            ->orderBy('i.sluggedName', 'ASC')
             ->getQuery()
             ->getResult();
 
@@ -81,7 +81,7 @@ readonly class IngredientPostgreSQLRepository extends PostgreSQLRepository imple
         $entities = $this->entityRepository->createQueryBuilder('i')
             ->where('i.creatorId = :owner or i.creatorId is null')
             ->setParameter('owner', $owner->getId())
-            ->orderBy('i.slug', 'ASC')
+            ->orderBy('i.sluggedName', 'ASC')
             ->getQuery()
             ->getResult();
 
@@ -108,6 +108,7 @@ readonly class IngredientPostgreSQLRepository extends PostgreSQLRepository imple
         $ingredientEntity
             ->setName($ingredient->getName())
             ->setImage($ingredient->getImage())
+            ->setSluggedName($ingredient->getSluggedName())
             ->setDepartmentSlug($ingredient->getDepartment()->getSlug())
             ->setDefaultCookingUnitSlug($ingredient->getDefaultCookingUnit()->getSlug())
             ->setDefaultPurchaseUnitSlug($ingredient->getDefaultPurchaseUnit()->getSlug())
@@ -130,6 +131,7 @@ readonly class IngredientPostgreSQLRepository extends PostgreSQLRepository imple
             "slug" => $ingredientEntity->getSlug(),
             "name" => $ingredientEntity->getName(),
             "image" => $ingredientEntity->getImage(),
+            "slugged_name" => $ingredientEntity->getSluggedName(),
             "department" => $this->departmentRepository->findOneBySlug($ingredientEntity->getDepartmentSlug()),
             "default_cooking_unit" => $this->unitRepository->findOneBySlug($ingredientEntity->getDefaultCookingUnitSlug()),
             "default_purchase_unit" => $this->unitRepository->findOneBySlug($ingredientEntity->getDefaultPurchaseUnitSlug()),

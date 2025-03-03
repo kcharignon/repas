@@ -8,6 +8,7 @@ use Doctrine\Common\DataFixtures\DependentFixtureInterface;
 use Doctrine\Persistence\ObjectManager;
 use Exception;
 use Repas\Repas\Infrastructure\Entity\Ingredient;
+use Repas\Shared\Domain\Tool\StringTool;
 
 class IngredientFixture extends RepasFixture implements DependentFixtureInterface, FixtureGroupInterface
 {
@@ -38,6 +39,7 @@ class IngredientFixture extends RepasFixture implements DependentFixtureInterfac
                     slug: $ingredientData['slug'],
                     name: $ingredientData['name'],
                     image: $ingredientData['image'] ?? '',
+                    sluggedName: StringTool::slugify($ingredientData['name']),
                     department: $ingredientData['department'],
                     defaultCookingUnit: $ingredientData['default_cooking_unit'],
                     defaultPurchaseUnit: $ingredientData['default_purchase_unit'],

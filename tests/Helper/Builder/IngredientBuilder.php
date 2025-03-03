@@ -70,6 +70,7 @@ class IngredientBuilder implements Builder
             'slug' => $this->slug,
             'name' => $this->name,
             'image' => $this->image,
+            'slugged_name' => StringTool::slugify($this->name),
             'department' => $this->departmentBuilder->build(),
             'default_cooking_unit' => $this->defaultCookingUnitBuilder->build(),
             'default_purchase_unit' => $this->defaultPurchaseUnitBuilder->build(),
