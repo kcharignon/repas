@@ -13,15 +13,7 @@
     {% if shoppingList is not null %}
         <div id="shopping-list-card" class="card bg-light" style="max-width: 100rem;">
             <h3 class="card-header">
-                {{ "Liste du " ~ shoppingList.createdAt|format_datetime(locale='fr_FR', pattern="dd MMMM YYYY") }} :
-                <span class="small text-secondary ms-2">
-                    {% for recipeType in shoppingList.recipeTypePresent %}
-                        <span class="me-3">
-                            {{ shoppingList.numberOfTypeRecipes(recipeType) }}
-                            <img style="height: 1.5em" src="{{ absolute_url(asset(recipeType.image)) }}" alt="{{ recipeType.name }}">
-                        </span>
-                    {% endfor %}
-                </span>
+                {{ "Liste du " ~ shoppingList.createdAt|format_datetime(locale='fr_FR', pattern="dd MMMM YYYY") }}
             </h3>
             <div class="card-body">
 
@@ -44,7 +36,8 @@
                                 <ul class="list-group mb-1">
                                     <li class="d-flex list-group-item justify-content-start align-items-center active">
                                         <img src="{{ absolute_url(asset(recipeType.image)) }}" alt="{{ recipeType.name }}" style="height: 1.5em">
-                                        <span class="ms-1">{{ recipeType.name|capitalize }}</span>
+                                        <span class="ms-2">{{ shoppingList.numberOfTypeRecipes(recipeType) }}</span>
+                                        <span class="ms-1">{{ recipeType.name|capitalize }}{{ shoppingList.numberOfTypeRecipes(recipeType) > 1 ? "s" : ""}}</span>
                                     </li>
                                     {% for meal in meals %}
                                         <li class="list-group-item d-flex justify-content-start align-items-center">
