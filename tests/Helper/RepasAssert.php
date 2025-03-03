@@ -42,6 +42,7 @@ class RepasAssert
         Assert::assertInstanceOf(Ingredient::class, $actual);
         Assert::assertEquals($expected->getSlug(), $actual->getSlug());
         Assert::assertEquals($expected->getName(), $actual->getName());
+        Assert::assertEquals($expected->getSluggedName(), $actual->getSluggedName());
         Assert::assertEquals($expected->getImage(), $actual->getImage(), sprintf("Ingredient %s, have wrong image", $expected->getSlug()));
         if ($expected->getCreator() === null) {
             Assert::assertNull($actual->getCreator());
