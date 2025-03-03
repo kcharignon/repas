@@ -28,7 +28,13 @@
                 $("#card-header-name").hide();
                 $("#input-name-group").show();
                 $("#card-header-input").val($("#card-header-input").data("value"));
-                $("#card-header-input").focus();
+                let $input = $("#card-header-input");
+                $input.val($input.data("value"));
+
+                // Déplace le curseur à la fin
+                let input = $input[0];
+                input.focus();
+                input.setSelectionRange(input.value.length, input.value.length);
             }
 
             function hideInput() {
