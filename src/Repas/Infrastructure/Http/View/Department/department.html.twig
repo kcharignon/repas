@@ -6,13 +6,8 @@
 {% endblock %}
 
 {% block body %}
-    <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a href="{{ path("view_departments") }}">Rayon</a></li>
-        <li class="breadcrumb-item active">{{ department.name|capitalize }}</li>
-    </ol>
-
-
     <ul class="list-group">
+        <li class="list-group-item active" aria-current="true">{{ department.name|capitalize }}</li>
         {% for ingredient in ingredients %}
             {% include('@Repas/Department/_ingredient_row.html.twig') %}
         {% endfor %}

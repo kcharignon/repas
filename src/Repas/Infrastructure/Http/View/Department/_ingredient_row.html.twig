@@ -9,7 +9,7 @@
         <i class="fas fa-minus-circle"></i>
     </button>
     {% if shoppingList and shoppingList.getIngredientQuantity(ingredient) %}
-        <button class="btn btn-secondary btn-sm float-end me-1" disabled> {{ shoppingList.getIngredientQuantity(ingredient) ~ " " ~ ingredient.defaultPurchaseUnit.symbol }}</button>
+        <button class="btn btn-secondary btn-sm float-end me-1" disabled> {{ shoppingList.getIngredientQuantity(ingredient)|round(1) ~ " " ~ ingredient.defaultPurchaseUnit.symbol }}</button>
     {% endif %}
     <button
         type="button"

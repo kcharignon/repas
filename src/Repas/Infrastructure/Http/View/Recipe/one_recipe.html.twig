@@ -6,17 +6,11 @@
 {% endblock %}
 
 {% block body %}
-    <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a href="{{ path("view_recipe_types") }}">Recettes</a></li>
-        <li class="breadcrumb-item"><a href="{{ path("view_one_recipe_type", {"slug":recipe.type.slug}) }}">{{ recipe.type.name|capitalize }}</a></li>
-        <li class="breadcrumb-item active">{{ recipe.name|capitalize }}</li>
-    </ol>
-
     <h1>{{ recipe.name|capitalize }}</h1>
-    <h2>Ingrédients pour {{ recipe.serving }} personnes</h2>
     <div class="row">
         <div class="col-lg-4">
             <ul class="list-group">
+                <li class="list-group-item active" aria-current="true">Ingrédients pour {{ recipe.serving }} personnes</li>
                 {% for row in recipe.rows %}
                     <li class="list-group-item d-flex align-item-center" style="height: 42px">
                         {% if row.unit is not null%}
