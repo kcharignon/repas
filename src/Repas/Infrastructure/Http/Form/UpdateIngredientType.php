@@ -63,7 +63,7 @@ class UpdateIngredientType extends AbstractIngredientType implements DataMapperI
         );
     }
 
-    private function findCoefficient(Ingredient $ingredient): float
+    private function findCoefficient(Ingredient $ingredient): ?float
     {
         return $this->conversionRepository->findByIngredientAndStartUnitAndEndUnit(
             $ingredient,
