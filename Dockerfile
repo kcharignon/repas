@@ -21,9 +21,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 	acl=2.3.1-3 \
 	file=1:5.44-3 \
 	gettext=0.21-12 \
-	git=1:2.39.5-0+deb12u1 \
+	git \
     ###> doctrine/doctrine-bundle ###
-    libpq-dev=15.10-0+deb12u1 \
+    libpq-dev \
 	&& rm -rf /var/lib/apt/lists/*
 
 RUN set -eux; \
