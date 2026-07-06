@@ -2,7 +2,7 @@
 
 namespace Repas\Repas\Infrastructure\Http\Form;
 
-use Repas\Repas\Application\CreateRecipe\CreateRecipeRowSubCommand;
+use Repas\Repas\Application\Command\CreateRecipe\CreateRecipeRowSubCommand;
 use Symfony\Component\Form\FormInterface;
 use Symfony\Component\OptionsResolver\OptionsResolver;
 

@@ -4,8 +4,8 @@ namespace Repas\Tests\Repas\Application;
 
 
 use PHPUnit\Framework\TestCase;
-use Repas\Repas\Application\UpdateRecipeType\UpdateRecipeTypeCommand;
-use Repas\Repas\Application\UpdateRecipeType\UpdateRecipeTypeHandler;
+use Repas\Repas\Application\Command\UpdateRecipeType\UpdateRecipeTypeCommand;
+use Repas\Repas\Application\Command\UpdateRecipeType\UpdateRecipeTypeHandler;
 use Repas\Repas\Domain\Exception\RecipeException;
 use Repas\Repas\Domain\Interface\RecipeTypeRepository;
 use Repas\Tests\Helper\Builder\RecipeTypeBuilder;

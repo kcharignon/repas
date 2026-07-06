@@ -4,8 +4,8 @@ namespace Repas\Tests\Repas\Application;
 
 
 use PHPUnit\Framework\TestCase;
-use Repas\Repas\Application\UpdateIngredient\UpdateIngredientCommand;
-use Repas\Repas\Application\UpdateIngredient\UpdateIngredientHandler;
+use Repas\Repas\Application\Command\UpdateIngredient\UpdateIngredientCommand;
+use Repas\Repas\Application\Command\UpdateIngredient\UpdateIngredientHandler;
 use Repas\Repas\Domain\Exception\IngredientException;
 use Repas\Repas\Domain\Interface\ConversionRepository;
 use Repas\Repas\Domain\Interface\DepartmentRepository;

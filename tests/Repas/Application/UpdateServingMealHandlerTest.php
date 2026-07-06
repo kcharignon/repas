@@ -4,8 +4,8 @@ namespace Repas\Application;
 
 
 use PHPUnit\Framework\TestCase;
-use Repas\Repas\Application\UpdateServingMeal\UpdateServingMealCommand;
-use Repas\Repas\Application\UpdateServingMeal\UpdateServingMealHandler;
+use Repas\Repas\Application\Command\UpdateServingMeal\UpdateServingMealCommand;
+use Repas\Repas\Application\Command\UpdateServingMeal\UpdateServingMealHandler;
 use Repas\Repas\Domain\Interface\ConversionRepository;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Repas\Domain\Interface\UnitRepository;

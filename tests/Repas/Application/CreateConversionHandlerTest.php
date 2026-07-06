@@ -4,8 +4,8 @@ namespace Repas\Application;
 
 
 use PHPUnit\Framework\TestCase;
-use Repas\Repas\Application\CreateConversion\CreateConversionCommand;
-use Repas\Repas\Application\CreateConversion\CreateConversionHandler;
+use Repas\Repas\Application\Command\CreateConversion\CreateConversionCommand;
+use Repas\Repas\Application\Command\CreateConversion\CreateConversionHandler;
 use Repas\Repas\Domain\Exception\IngredientException;
 use Repas\Repas\Domain\Exception\UnitException;
 use Repas\Repas\Domain\Interface\ConversionRepository;

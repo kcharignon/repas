@@ -3,8 +3,8 @@
 namespace Repas\Repas\Infrastructure\Http\Controller;
 
 
-use Repas\Repas\Application\PlannedMeal\PlannedMealCommand;
-use Repas\Repas\Application\CreateShoppingList\CreateShoppingListCommand;
+use Repas\Repas\Application\Command\CreateShoppingList\CreateShoppingListCommand;
+use Repas\Repas\Application\Command\PlannedMeal\PlannedMealCommand;
 use Repas\Repas\Domain\Interface\RecipeRepository;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Repas\Domain\Model\ShoppingList;

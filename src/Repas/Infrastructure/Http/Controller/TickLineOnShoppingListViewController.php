@@ -3,7 +3,7 @@
 namespace Repas\Repas\Infrastructure\Http\Controller;
 
 
-use Repas\Repas\Application\TickLineOnShoppingList\TickLineOnShoppingListCommand;
+use Repas\Repas\Application\Command\TickLineOnShoppingList\TickLineOnShoppingListCommand;
 use Repas\Repas\Domain\Interface\ShoppingListRowRepository;
 use Repas\Shared\Application\Service\CommandBus;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;

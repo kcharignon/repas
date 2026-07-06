@@ -3,7 +3,7 @@
 namespace Repas\Repas\Infrastructure\Http\Form;
 
 
-use Repas\Repas\Application\UpdateIngredient\UpdateIngredientCommand;
+use Repas\Repas\Application\Command\UpdateIngredient\UpdateIngredientCommand;
 use Repas\Repas\Domain\Interface\ConversionRepository;
 use Repas\Repas\Domain\Model\Ingredient;
 use Symfony\Component\Form\DataMapperInterface;

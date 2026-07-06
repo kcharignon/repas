@@ -4,9 +4,8 @@ namespace Repas\Tests\Repas\Application;
 
 
 use PHPUnit\Framework\TestCase;
-use Repas\Repas\Application\CopyRecipe\CopyRecipeCommand;
-use Repas\Repas\Application\CopyRecipe\CopyRecipeHandler;
-use Repas\Repas\Domain\Event\RecipesOrIngredientsCreatedEvent;
+use Repas\Repas\Application\Command\CopyRecipe\CopyRecipeCommand;
+use Repas\Repas\Application\Command\CopyRecipe\CopyRecipeHandler;
 use Repas\Repas\Domain\Exception\RecipeException;
 use Repas\Repas\Domain\Interface\ConversionRepository;
 use Repas\Repas\Domain\Interface\IngredientRepository;

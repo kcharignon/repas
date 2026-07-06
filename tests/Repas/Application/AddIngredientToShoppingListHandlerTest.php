@@ -3,8 +3,8 @@
 namespace Repas\Tests\Repas\Application;
 
 use PHPUnit\Framework\TestCase;
-use Repas\Repas\Application\AddIngredientToShoppingList\AddIngredientToShoppingListCommand;
-use Repas\Repas\Application\AddIngredientToShoppingList\AddIngredientToShoppingListHandler;
+use Repas\Repas\Application\Command\AddIngredientToShoppingList\AddIngredientToShoppingListCommand;
+use Repas\Repas\Application\Command\AddIngredientToShoppingList\AddIngredientToShoppingListHandler;
 use Repas\Repas\Domain\Exception\IngredientException;
 use Repas\Repas\Domain\Exception\ShoppingListException;
 use Repas\Repas\Domain\Interface\IngredientRepository;

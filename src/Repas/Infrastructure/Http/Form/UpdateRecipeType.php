@@ -2,8 +2,8 @@
 
 namespace Repas\Repas\Infrastructure\Http\Form;
 
-use Repas\Repas\Application\UpdateRecipe\UpdateRecipeCommand;
-use Repas\Repas\Application\UpdateRecipe\UpdateRecipeRowSubCommand;
+use Repas\Repas\Application\Command\UpdateRecipe\UpdateRecipeCommand;
+use Repas\Repas\Application\Command\UpdateRecipe\UpdateRecipeRowSubCommand;
 use Repas\Repas\Domain\Model\Recipe;
 use Repas\Shared\Domain\Tool\Tab;
 use Symfony\Component\Form\FormInterface;

@@ -4,8 +4,8 @@ namespace Repas\Tests\Repas\Application;
 
 
 use PHPUnit\Framework\TestCase;
-use Repas\Repas\Application\UpdateDepartment\UpdateDepartmentCommand;
-use Repas\Repas\Application\UpdateDepartment\UpdateDepartmentHandler;
+use Repas\Repas\Application\Command\UpdateDepartment\UpdateDepartmentCommand;
+use Repas\Repas\Application\Command\UpdateDepartment\UpdateDepartmentHandler;
 use Repas\Repas\Domain\Exception\DepartmentException;
 use Repas\Repas\Domain\Interface\DepartmentRepository;
 use Repas\Tests\Helper\Builder\DepartmentBuilder;

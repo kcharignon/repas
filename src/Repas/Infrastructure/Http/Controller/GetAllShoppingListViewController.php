@@ -3,10 +3,7 @@
 namespace Repas\Repas\Infrastructure\Http\Controller;
 
 
-use Repas\Repas\Application\CreateShoppingList\CreateShoppingListCommand;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
-use Repas\Shared\Application\Interface\CommandBusInterface;
-use Repas\Shared\Domain\Tool\UuidGenerator;
 use Repas\User\Domain\Model\User;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;

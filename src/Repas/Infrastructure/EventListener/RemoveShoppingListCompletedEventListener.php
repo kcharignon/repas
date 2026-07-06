@@ -2,7 +2,7 @@
 
 namespace Repas\Repas\Infrastructure\EventListener;
 
-use Repas\Repas\Application\RemoveShoppingList\RemoveShoppingListCommand;
+use Repas\Repas\Application\Command\RemoveShoppingList\RemoveShoppingListCommand;
 use Repas\Repas\Domain\Event\NewShoppingListCreatedEvent;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Repas\Domain\Model\ShoppingListStatus;

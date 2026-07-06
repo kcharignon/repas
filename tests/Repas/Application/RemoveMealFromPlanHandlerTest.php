@@ -4,8 +4,8 @@ namespace Repas\Tests\Repas\Application;
 
 
 use PHPUnit\Framework\TestCase;
-use Repas\Repas\Application\RemoveMealFromPlan\removeMealFromPlanCommand;
-use Repas\Repas\Application\RemoveMealFromPlan\removeMealFromPlanHandler;
+use Repas\Repas\Application\Command\RemoveMealFromPlan\removeMealFromPlanCommand;
+use Repas\Repas\Application\Command\RemoveMealFromPlan\removeMealFromPlanHandler;
 use Repas\Repas\Domain\Exception\RecipeException;
 use Repas\Repas\Domain\Exception\ShoppingListException;
 use Repas\Repas\Domain\Interface\ConversionRepository;

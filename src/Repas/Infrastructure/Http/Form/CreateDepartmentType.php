@@ -3,7 +3,7 @@
 namespace Repas\Repas\Infrastructure\Http\Form;
 
 
-use Repas\Repas\Application\CreateDepartment\CreateDepartmentCommand;
+use Repas\Repas\Application\Command\CreateDepartment\CreateDepartmentCommand;
 use Symfony\Component\Form\FormInterface;
 
 class CreateDepartmentType extends AbstractDepartmentType

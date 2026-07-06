@@ -4,9 +4,9 @@ namespace Repas\Tests\Repas\Application;
 
 
 use PHPUnit\Framework\TestCase;
-use Repas\Repas\Application\CreateRecipe\CreateRecipeCommand;
-use Repas\Repas\Application\CreateRecipe\CreateRecipeHandler;
-use Repas\Repas\Application\CreateRecipe\CreateRecipeRowSubCommand;
+use Repas\Repas\Application\Command\CreateRecipe\CreateRecipeCommand;
+use Repas\Repas\Application\Command\CreateRecipe\CreateRecipeHandler;
+use Repas\Repas\Application\Command\CreateRecipe\CreateRecipeRowSubCommand;
 use Repas\Repas\Domain\Event\RecipeCreatedEvent;
 use Repas\Repas\Domain\Exception\IngredientException;
 use Repas\Repas\Domain\Exception\RecipeException;

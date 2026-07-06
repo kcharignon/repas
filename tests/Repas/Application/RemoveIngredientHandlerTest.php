@@ -4,8 +4,8 @@ namespace Repas\Tests\Repas\Application;
 
 
 use PHPUnit\Framework\TestCase;
-use Repas\Repas\Application\RemoveIngredient\RemoveIngredientCommand;
-use Repas\Repas\Application\RemoveIngredient\RemoveIngredientHandler;
+use Repas\Repas\Application\Command\RemoveIngredient\RemoveIngredientCommand;
+use Repas\Repas\Application\Command\RemoveIngredient\RemoveIngredientHandler;
 use Repas\Repas\Domain\Event\IngredientRemovedEvent;
 use Repas\Repas\Domain\Exception\IngredientException;
 use Repas\Repas\Domain\Interface\ConversionRepository;
@@ -24,7 +24,6 @@ use Repas\Tests\Helper\InMemoryRepository\IngredientInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\RecipeInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\ShoppingListInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\SpyEventDispatcher;
-use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 
 class RemoveIngredientHandlerTest extends TestCase
 {

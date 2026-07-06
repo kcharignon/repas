@@ -3,7 +3,7 @@
 namespace Repas\Repas\Infrastructure\Http\Form;
 
 
-use Repas\Repas\Application\UpdateRecipeType\UpdateRecipeTypeCommand;
+use Repas\Repas\Application\Command\UpdateRecipeType\UpdateRecipeTypeCommand;
 use Repas\Repas\Domain\Model\RecipeType;
 use Symfony\Component\Form\FormInterface;
 

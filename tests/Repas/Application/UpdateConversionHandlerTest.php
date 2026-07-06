@@ -4,8 +4,8 @@ namespace Repas\Application;
 
 
 use PHPUnit\Framework\TestCase;
-use Repas\Repas\Application\UpdateConversion\UpdateConversionCommand;
-use Repas\Repas\Application\UpdateConversion\UpdateConversionHandler;
+use Repas\Repas\Application\Command\UpdateConversion\UpdateConversionCommand;
+use Repas\Repas\Application\Command\UpdateConversion\UpdateConversionHandler;
 use Repas\Repas\Domain\Interface\ConversionRepository;
 use Repas\Repas\Domain\Interface\IngredientRepository;
 use Repas\Repas\Domain\Interface\UnitRepository;

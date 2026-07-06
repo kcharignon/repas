@@ -3,8 +3,7 @@
 namespace Repas\Repas\Infrastructure\Http\Form;
 
 
-use Repas\Repas\Application\CreateDepartment\CreateDepartmentCommand;
-use Repas\Repas\Application\UpdateDepartment\UpdateDepartmentCommand;
+use Repas\Repas\Application\Command\UpdateDepartment\UpdateDepartmentCommand;
 use Repas\Repas\Domain\Model\Department;
 use Symfony\Component\Form\FormInterface;
 use Traversable;

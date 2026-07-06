@@ -4,8 +4,8 @@ namespace Repas\Application;
 
 
 use PHPUnit\Framework\TestCase;
-use Repas\Repas\Application\CreateDepartment\CreateDepartmentCommand;
-use Repas\Repas\Application\CreateDepartment\CreateDepartmentHandler;
+use Repas\Repas\Application\Command\CreateDepartment\CreateDepartmentCommand;
+use Repas\Repas\Application\Command\CreateDepartment\CreateDepartmentHandler;
 use Repas\Repas\Domain\Interface\DepartmentRepository;
 use Repas\Tests\Helper\Builder\DepartmentBuilder;
 use Repas\Tests\Helper\InMemoryRepository\DepartmentInMemoryRepository;

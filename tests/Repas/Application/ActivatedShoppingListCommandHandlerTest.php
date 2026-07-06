@@ -3,10 +3,10 @@
 namespace Repas\Tests\Repas\Application;
 
 
-use PHPUnit\Framework\TestCase;
 use PHPUnit\Framework\Attributes\DataProvider;
-use Repas\Repas\Application\ActivatedShoppingList\ActivatedShoppingListCommand;
-use Repas\Repas\Application\ActivatedShoppingList\ActivatedShoppingListHandler;
+use PHPUnit\Framework\TestCase;
+use Repas\Repas\Application\Command\ActivatedShoppingList\ActivatedShoppingListCommand;
+use Repas\Repas\Application\Command\ActivatedShoppingList\ActivatedShoppingListHandler;
 use Repas\Repas\Domain\Exception\ShoppingListException;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Repas\Domain\Model\ShoppingListStatus as Status;
