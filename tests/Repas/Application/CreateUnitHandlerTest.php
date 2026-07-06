@@ -4,8 +4,8 @@ namespace Repas\Application;
 
 
 use PHPUnit\Framework\TestCase;
-use Repas\Repas\Application\CreateUnit\CreateUnitCommand;
-use Repas\Repas\Application\CreateUnit\CreateUnitHandler;
+use Repas\Repas\Application\Command\CreateUnit\CreateUnitCommand;
+use Repas\Repas\Application\Command\CreateUnit\CreateUnitHandler;
 use Repas\Repas\Domain\Interface\UnitRepository;
 use Repas\Tests\Helper\Builder\UnitBuilder;
 use Repas\Tests\Helper\InMemoryRepository\UnitInMemoryRepository;

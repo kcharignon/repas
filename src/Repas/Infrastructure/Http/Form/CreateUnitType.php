@@ -4,7 +4,7 @@ namespace Repas\Repas\Infrastructure\Http\Form;
 
 
 
-use Repas\Repas\Application\CreateUnit\CreateUnitCommand;
+use Repas\Repas\Application\Command\CreateUnit\CreateUnitCommand;
 use Symfony\Component\Form\FormInterface;
 use Traversable;
 

@@ -4,8 +4,8 @@ namespace Repas\Application;
 
 
 use PHPUnit\Framework\TestCase;
-use Repas\Repas\Application\UpdateUnit\UpdateUnitCommand;
-use Repas\Repas\Application\UpdateUnit\UpdateUnitHandler;
+use Repas\Repas\Application\Command\UpdateUnit\UpdateUnitCommand;
+use Repas\Repas\Application\Command\UpdateUnit\UpdateUnitHandler;
 use Repas\Repas\Domain\Exception\UnitException;
 use Repas\Repas\Domain\Interface\UnitRepository;
 use Repas\Tests\Helper\Builder\UnitBuilder;

@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "7a0e5d33a8f113e10c63c5c66bf3118e",
+    "content-hash": "5aa6b67a65b8e400c8e816e0ad2b827e",
     "packages": [
         {
             "name": "brick/math",
@@ -6737,6 +6737,52 @@
             "time": "2025-02-25T06:13:04+00:00"
         },
         {
+            "name": "rregeer/phpunit-coverage-check",
+            "version": "0.3.1",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/richardregeer/phpunit-coverage-check.git",
+                "reference": "9618fa74477fbc448c1b0599bef5153d170094bd"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/richardregeer/phpunit-coverage-check/zipball/9618fa74477fbc448c1b0599bef5153d170094bd",
+                "reference": "9618fa74477fbc448c1b0599bef5153d170094bd",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">=7.0.0"
+            },
+            "bin": [
+                "bin/coverage-check"
+            ],
+            "type": "library",
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Richard Regeer",
+                    "email": "rich2309@gmail.com"
+                }
+            ],
+            "description": "Check the code coverage using the clover report of phpunit",
+            "keywords": [
+                "ci",
+                "code coverage",
+                "php",
+                "phpunit",
+                "testing",
+                "unittest"
+            ],
+            "support": {
+                "issues": "https://github.com/richardregeer/phpunit-coverage-check/issues",
+                "source": "https://github.com/richardregeer/phpunit-coverage-check/tree/0.3.1"
+            },
+            "time": "2019-10-14T07:04:13+00:00"
+        },
+        {
             "name": "sebastian/cli-parser",
             "version": "4.0.0",
             "source": {
@@ -8193,5 +8239,5 @@
         "ext-iconv": "*"
     },
     "platform-dev": {},
-    "plugin-api-version": "2.6.0"
+    "plugin-api-version": "2.9.0"
 }

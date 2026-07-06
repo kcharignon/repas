@@ -4,8 +4,8 @@ namespace Repas\Application;
 
 
 use PHPUnit\Framework\TestCase;
-use Repas\Repas\Application\RemoveIngredientToShoppingList\RemoveIngredientToShoppingListCommand;
-use Repas\Repas\Application\RemoveIngredientToShoppingList\RemoveIngredientToShoppingListHandler;
+use Repas\Repas\Application\Command\RemoveIngredientToShoppingList\RemoveIngredientToShoppingListCommand;
+use Repas\Repas\Application\Command\RemoveIngredientToShoppingList\RemoveIngredientToShoppingListHandler;
 use Repas\Repas\Domain\Exception\ShoppingListException;
 use Repas\Repas\Domain\Interface\IngredientRepository;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;

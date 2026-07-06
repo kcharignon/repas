@@ -3,7 +3,7 @@
 namespace Repas\Repas\Infrastructure\Http\Controller;
 
 
-use Repas\Repas\Application\CreateShoppingList\CreateShoppingListCommand;
+use Repas\Repas\Application\Command\CreateShoppingList\CreateShoppingListCommand;
 use Repas\Shared\Application\Interface\CommandBusInterface;
 use Repas\Shared\Domain\Tool\UuidGenerator;
 use Repas\User\Domain\Model\User;

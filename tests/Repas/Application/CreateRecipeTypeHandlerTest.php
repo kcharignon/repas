@@ -4,8 +4,8 @@ namespace Repas\Tests\Repas\Application;
 
 
 use PHPUnit\Framework\TestCase;
-use Repas\Repas\Application\CreateRecipeType\CreateRecipeTypeCommand;
-use Repas\Repas\Application\CreateRecipeType\CreateRecipeTypeHandler;
+use Repas\Repas\Application\Command\CreateRecipeType\CreateRecipeTypeCommand;
+use Repas\Repas\Application\Command\CreateRecipeType\CreateRecipeTypeHandler;
 use Repas\Repas\Domain\Interface\RecipeTypeRepository;
 use Repas\Tests\Helper\Builder\RecipeTypeBuilder;
 use Repas\Tests\Helper\InMemoryRepository\RecipeTypeInMemoryRepository;

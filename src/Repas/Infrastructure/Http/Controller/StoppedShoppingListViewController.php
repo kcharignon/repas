@@ -3,9 +3,7 @@
 namespace Repas\Repas\Infrastructure\Http\Controller;
 
 
-use Repas\Repas\Application\ActivatedShoppingList\ActivatedShoppingListCommand;
-use Repas\Repas\Application\PausedShoppingList\PausedShoppingListCommand;
-use Repas\Repas\Application\StoppedShoppingList\StoppedShoppingListCommand;
+use Repas\Repas\Application\Command\StoppedShoppingList\StoppedShoppingListCommand;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Shared\Application\Interface\CommandBusInterface;
 use Repas\User\Domain\Model\User;

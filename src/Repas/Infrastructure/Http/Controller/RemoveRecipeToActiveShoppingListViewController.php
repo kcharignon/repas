@@ -3,7 +3,7 @@
 namespace Repas\Repas\Infrastructure\Http\Controller;
 
 
-use Repas\Repas\Application\RemoveMealFromPlan\removeMealFromPlanCommand;
+use Repas\Repas\Application\Command\RemoveMealFromPlan\removeMealFromPlanCommand;
 use Repas\Repas\Domain\Interface\RecipeRepository;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Shared\Application\Interface\CommandBusInterface;

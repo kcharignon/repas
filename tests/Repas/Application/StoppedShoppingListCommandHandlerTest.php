@@ -5,8 +5,8 @@ namespace Repas\Tests\Repas\Application;
 
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
-use Repas\Repas\Application\StoppedShoppingList\StoppedShoppingListCommand;
-use Repas\Repas\Application\StoppedShoppingList\StoppedShoppingListHandler;
+use Repas\Repas\Application\Command\StoppedShoppingList\StoppedShoppingListCommand;
+use Repas\Repas\Application\Command\StoppedShoppingList\StoppedShoppingListHandler;
 use Repas\Repas\Domain\Exception\ShoppingListException;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Repas\Domain\Model\ShoppingListStatus as Status;

@@ -4,8 +4,8 @@ namespace Repas\Tests\Repas\Application;
 
 
 use PHPUnit\Framework\TestCase;
-use Repas\Repas\Application\UncheckLineOnShoppingList\UncheckLineOnShoppingListCommand;
-use Repas\Repas\Application\UncheckLineOnShoppingList\UncheckLineOnShoppingListHandler;
+use Repas\Repas\Application\Command\UncheckLineOnShoppingList\UncheckLineOnShoppingListCommand;
+use Repas\Repas\Application\Command\UncheckLineOnShoppingList\UncheckLineOnShoppingListHandler;
 use Repas\Repas\Domain\Exception\ShoppingListException;
 use Repas\Repas\Domain\Exception\ShoppingListRowException;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;

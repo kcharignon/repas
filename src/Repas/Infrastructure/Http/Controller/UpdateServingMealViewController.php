@@ -3,7 +3,7 @@
 namespace Repas\Repas\Infrastructure\Http\Controller;
 
 
-use Repas\Repas\Application\UpdateServingMeal\UpdateServingMealCommand;
+use Repas\Repas\Application\Command\UpdateServingMeal\UpdateServingMealCommand;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Shared\Application\Interface\CommandBusInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;

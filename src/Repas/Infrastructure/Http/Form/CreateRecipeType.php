@@ -2,12 +2,11 @@
 
 namespace Repas\Repas\Infrastructure\Http\Form;
 
-use Repas\Repas\Application\CreateRecipe\CreateRecipeCommand;
-use Repas\Repas\Application\CreateRecipe\CreateRecipeRowSubCommand;
+use Repas\Repas\Application\Command\CreateRecipe\CreateRecipeCommand;
+use Repas\Repas\Application\Command\CreateRecipe\CreateRecipeRowSubCommand;
 use Repas\Shared\Domain\Tool\Tab;
 use Repas\Shared\Domain\Tool\UuidGenerator;
 use Symfony\Component\Form\FormInterface;
-use Symfony\Component\OptionsResolver\OptionsResolver;
 use Traversable;
 
 class CreateRecipeType extends AbstractRecipeType

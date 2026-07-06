@@ -3,7 +3,7 @@
 namespace Repas\Repas\Infrastructure\Http\Form;
 
 
-use Repas\Repas\Application\CreateRecipeType\CreateRecipeTypeCommand;
+use Repas\Repas\Application\Command\CreateRecipeType\CreateRecipeTypeCommand;
 use Symfony\Component\Form\FormInterface;
 
 class CreateRecipeTypeType extends AbstractRecipeTypeType

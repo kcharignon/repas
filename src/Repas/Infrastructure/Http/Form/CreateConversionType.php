@@ -3,7 +3,7 @@
 namespace Repas\Repas\Infrastructure\Http\Form;
 
 
-use Repas\Repas\Application\CreateConversion\CreateConversionCommand;
+use Repas\Repas\Application\Command\CreateConversion\CreateConversionCommand;
 use Symfony\Component\Form\FormInterface;
 
 class CreateConversionType extends AbstractConversionType

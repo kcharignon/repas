@@ -3,7 +3,7 @@
 namespace Repas\Repas\Infrastructure\Http\Controller;
 
 
-use Repas\Repas\Application\CopyRecipe\CopyRecipeCommand;
+use Repas\Repas\Application\Command\CopyRecipe\CopyRecipeCommand;
 use Repas\Shared\Application\Interface\CommandBusInterface;
 use Repas\Shared\Domain\Exception\DomainException;
 use Repas\User\Domain\Model\User;

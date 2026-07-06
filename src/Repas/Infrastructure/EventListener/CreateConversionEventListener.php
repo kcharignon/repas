@@ -2,7 +2,7 @@
 
 namespace Repas\Repas\Infrastructure\EventListener;
 
-use Repas\Repas\Application\CreateConversion\CreateConversionCommand;
+use Repas\Repas\Application\Command\CreateConversion\CreateConversionCommand;
 use Repas\Repas\Domain\Event\CreateIngredientWithConversionEvent;
 use Repas\Repas\Domain\Exception\IngredientException;
 use Repas\Repas\Domain\Interface\IngredientRepository;

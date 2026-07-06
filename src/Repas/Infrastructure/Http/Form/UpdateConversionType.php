@@ -3,7 +3,7 @@
 namespace Repas\Repas\Infrastructure\Http\Form;
 
 
-use Repas\Repas\Application\UpdateConversion\UpdateConversionCommand;
+use Repas\Repas\Application\Command\UpdateConversion\UpdateConversionCommand;
 use Repas\Repas\Domain\Model\Conversion;
 use Symfony\Component\Form\FormInterface;
 use Traversable;

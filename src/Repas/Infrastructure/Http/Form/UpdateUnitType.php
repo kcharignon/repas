@@ -3,7 +3,7 @@
 namespace Repas\Repas\Infrastructure\Http\Form;
 
 
-use Repas\Repas\Application\UpdateUnit\UpdateUnitCommand;
+use Repas\Repas\Application\Command\UpdateUnit\UpdateUnitCommand;
 use Repas\Repas\Domain\Model\Unit;
 use Symfony\Component\Form\FormInterface;
 use Traversable;

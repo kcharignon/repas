@@ -4,8 +4,8 @@ namespace Repas\Tests\Repas\Application;
 
 
 use PHPUnit\Framework\TestCase;
-use Repas\Repas\Application\TickLineOnShoppingList\TickLineOnShoppingListCommand;
-use Repas\Repas\Application\TickLineOnShoppingList\TickLineOnShoppingListHandler;
+use Repas\Repas\Application\Command\TickLineOnShoppingList\TickLineOnShoppingListCommand;
+use Repas\Repas\Application\Command\TickLineOnShoppingList\TickLineOnShoppingListHandler;
 use Repas\Repas\Domain\Event\LineTickedEvent;
 use Repas\Repas\Domain\Exception\ShoppingListRowException;
 use Repas\Repas\Domain\Interface\ShoppingListRowRepository;

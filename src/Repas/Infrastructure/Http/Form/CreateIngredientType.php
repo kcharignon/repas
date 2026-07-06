@@ -3,7 +3,7 @@
 namespace Repas\Repas\Infrastructure\Http\Form;
 
 
-use Repas\Repas\Application\CreateIngredient\CreateIngredientCommand;
+use Repas\Repas\Application\Command\CreateIngredient\CreateIngredientCommand;
 use Repas\User\Domain\Model\User;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\Form\DataMapperInterface;

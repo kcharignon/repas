@@ -2,7 +2,7 @@
 
 namespace Repas\Repas\Infrastructure\EventListener;
 
-use Repas\Repas\Application\StoppedShoppingList\StoppedShoppingListCommand;
+use Repas\Repas\Application\Command\StoppedShoppingList\StoppedShoppingListCommand;
 use Repas\Repas\Domain\Event\LineTickedEvent;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Shared\Application\Interface\CommandBusInterface;
