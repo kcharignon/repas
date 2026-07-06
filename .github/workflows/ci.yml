@@ -56,7 +56,20 @@ jobs:
         run: docker compose exec -T php bin/console -e test doctrine:migrations:migrate --no-interaction
       -
         name: Run PHPUnit
-        run: docker compose exec -T php bin/phpunit
+        run: docker compose exec -T -e XDEBUG_MODE=coverage php bin/phpunit --coverage-clover clover.xml
+      -
+        name: Coverage Checker
+        run: |
+          OUTPUT=$(docker compose exec -T php vendor/bin/coverage-check clover.xml 80 --only-percentage)
+          PERCENTAGE=$(echo "$OUTPUT" | grep -oE '[0-9]+\.[0-9]+|[0-9]+' | head -1)
+
+          if (( $(echo "$PERCENTAGE >= 80" | bc -l) )); then
+            echo "✅ Success! Coverage is $PERCENTAGE% (>= 80%)"
+            exit 0
+          else
+            echo "❌ Failed! Coverage is $PERCENTAGE% (< 80%)"
+            exit 1
+          fi
       -
         name: Doctrine Schema Validator
         run: docker compose exec -T php bin/console -e test doctrine:schema:validate
