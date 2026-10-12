@@ -1,0 +1,25 @@
+# ADR 0010 : un test de handler (Command ou Query) est unitaire. Il n'utilise ni kernel, ni base, ni Doctrine,
+# ni classe d'Infrastructure : la persistance se teste dans tests/*/OutputAdapter (repositories, loaders), jamais
+# par transitivité à travers un handler.
+deptrac:
+  paths:
+    - ../../tests
+  layers:
+    - name: HandlerTest
+      collectors:
+        - type: classLike
+          value: ^Repas\\Tests\\(Repas|User)\\Application\\.*
+    - name: Persistence
+      collectors:
+        - type: classLike
+          value: ^Repas\\Tests\\Helper\\DatabaseTestCase$
+        - type: classLike
+          value: ^Symfony\\Bundle\\FrameworkBundle\\Test\\.*
+        - type: classLike
+          value: ^Doctrine\\.*
+        - type: classLike
+          value: ^Repas\\(Repas|User|Shared)\\Infrastructure\\.*
+
+  ruleset:
+    HandlerTest:
+      - '!Persistence'

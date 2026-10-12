@@ -32,9 +32,21 @@ services:
     Repas\Command\ResetDatabaseCommand:
         tags: ['console.command']
         
+    Repas\Shared\Application\Service\CommandBus:
+        arguments:
+            $messageBus: '@command.bus'
+
     Repas\Shared\Application\Service\QueryBus:
         arguments:
-            $messageBus: '@messenger.bus.default'
+            $messageBus: '@query.bus'
 
     Repas\User\Domain\Service\UserChecker: ~
     
+
+when@test:
+    services:
+        # Controllers factices de tests/Helper/Http (voir config/routes/test/probes.yaml)
+        Repas\Tests\Helper\Http\:
+            resource: '../tests/Helper/Http/'
+            autowire: true
+            autoconfigure: true

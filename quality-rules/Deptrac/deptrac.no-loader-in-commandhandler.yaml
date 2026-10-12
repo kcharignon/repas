@@ -1,0 +1,25 @@
+# ADR 0003 / 0004 : un CommandHandler ne lit jamais via un Loader, uniquement via un Repository.
+# Contexte Repas : namespace Application\Command. Contexte User : Application à plat, on cible les *Handler hors Query.
+deptrac:
+  paths:
+    - ../../src
+  layers:
+    - name: Loader
+      collectors:
+        - type: classLike
+          value: .*Loader$
+    - name: Command
+      collectors:
+        - type: classLike
+          value: .*\\Application\\Command\\.*
+        - type: bool
+          must:
+            - type: classLike
+              value: ^Repas\\User\\Application\\.*Handler$
+          must_not:
+            - type: classLike
+              value: .*\\Query\\.*
+
+  ruleset:
+    Command:
+      - '!Loader'

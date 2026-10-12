@@ -1,0 +1,127 @@
+deptrac:
+  skip_violations:
+    Repas\Repas\Application\Command\AddIngredientToShoppingList\AddIngredientToShoppingListHandler:
+      - Repas\User\Domain\Exception\UserException
+      - Repas\User\Domain\Interface\UserRepository
+    Repas\Repas\Application\Command\CopyRecipe\CopyRecipeHandler:
+      - Repas\User\Domain\Interface\UserRepository
+    Repas\Repas\Application\Command\CreateIngredient\CreateIngredientHandler:
+      - Repas\User\Domain\Exception\UserException
+      - Repas\User\Domain\Interface\UserRepository
+      - Repas\User\Domain\Model\User
+    Repas\Repas\Application\Command\CreateRecipe\CreateRecipeHandler:
+      - Repas\User\Domain\Exception\UserException
+      - Repas\User\Domain\Interface\UserRepository
+    Repas\Repas\Application\Command\CreateShoppingList\CreateShoppingListHandler:
+      - Repas\User\Domain\Exception\UserException
+      - Repas\User\Domain\Interface\UserRepository
+    Repas\Repas\Application\Command\PlannedMeal\PlannedMealHandler:
+      - Repas\User\Domain\Exception\UserException
+      - Repas\User\Domain\Interface\UserRepository
+    Repas\Repas\Application\Command\RemoveIngredientToShoppingList\RemoveIngredientToShoppingListHandler:
+      - Repas\User\Domain\Exception\UserException
+      - Repas\User\Domain\Interface\UserRepository
+    Repas\Repas\Application\Command\RemoveMealFromPlan\removeMealFromPlanHandler:
+      - Repas\User\Domain\Exception\UserException
+      - Repas\User\Domain\Interface\UserRepository
+    Repas\Repas\Application\Command\StoppedShoppingList\StoppedShoppingListHandler:
+      - Repas\User\Domain\Interface\UserRepository
+    Repas\Repas\Domain\Interface\IngredientRepository:
+      - Repas\User\Domain\Model\User
+    Repas\Repas\Domain\Interface\RecipeRepository:
+      - Repas\User\Domain\Model\User
+    Repas\Repas\Domain\Interface\ShoppingListRepository:
+      - Repas\User\Domain\Model\User
+    Repas\Repas\Domain\Model\Ingredient:
+      - Repas\User\Domain\Model\User
+    Repas\Repas\Domain\Model\Recipe:
+      - Repas\User\Domain\Model\User
+    Repas\Repas\Domain\Model\RecipeRow:
+      - Repas\User\Domain\Model\User
+    Repas\Repas\Domain\Model\ShoppingList:
+      - Repas\User\Domain\Model\User
+    Repas\Repas\Infrastructure\DataFixture\RecipeFixture:
+      - Repas\User\Infrastructure\DataFixture\UserFixture
+      - Repas\User\Infrastructure\Entity\User
+    Repas\Repas\Infrastructure\DataFixture\ShoppingListFixture:
+      - Repas\User\Infrastructure\Entity\User
+    Repas\Repas\Infrastructure\Http\Controller\ActivatedShoppingListViewController:
+      - Repas\User\Domain\Model\User
+    Repas\Repas\Infrastructure\Http\Controller\AddIngredientToActiveShoppingListViewController:
+      - Repas\User\Domain\Model\User
+    Repas\Repas\Infrastructure\Http\Controller\AddRecipeToActiveShoppingListViewController:
+      - Repas\User\Domain\Model\User
+    Repas\Repas\Infrastructure\Http\Controller\CopyRecipeViewController:
+      - Repas\User\Domain\Model\User
+    Repas\Repas\Infrastructure\Http\Controller\CreateShoppingListViewController:
+      - Repas\User\Domain\Model\User
+    Repas\Repas\Infrastructure\Http\Controller\GetActiveShoppingListViewController:
+      - Repas\User\Domain\Model\User
+    Repas\Repas\Infrastructure\Http\Controller\GetAllOtherPeopleRecipesViewController:
+      - Repas\User\Domain\Model\User
+    Repas\Repas\Infrastructure\Http\Controller\GetAllRecipeTypeViewController:
+      - Repas\User\Domain\Model\User
+    Repas\Repas\Infrastructure\Http\Controller\GetAllShoppingListViewController:
+      - Repas\User\Domain\Model\User
+    Repas\Repas\Infrastructure\Http\Controller\GetOneDepartmentViewController:
+      - Repas\User\Domain\Model\User
+    Repas\Repas\Infrastructure\Http\Controller\GetOneRecipeTypeViewController:
+      - Repas\User\Domain\Model\User
+    Repas\Repas\Infrastructure\Http\Controller\PausedShoppingListViewController:
+      - Repas\User\Domain\Model\User
+    Repas\Repas\Infrastructure\Http\Controller\RemoveIngredientToActiveShoppingListViewController:
+      - Repas\User\Domain\Model\User
+    Repas\Repas\Infrastructure\Http\Controller\RemoveRecipeToActiveShoppingListViewController:
+      - Repas\User\Domain\Model\User
+    Repas\Repas\Infrastructure\Http\Controller\StoppedShoppingListViewController:
+      - Repas\User\Domain\Model\User
+    Repas\Repas\Infrastructure\Http\Controller\UpdateRecipeViewController:
+      - Repas\User\Domain\Model\User
+    Repas\Repas\Infrastructure\Http\Form\AbstractRecipeType:
+      - Repas\User\Domain\Model\User
+    Repas\Repas\Infrastructure\Http\Form\CreateIngredientType:
+      - Repas\User\Domain\Model\User
+    Repas\Repas\Infrastructure\Http\Form\CreateRecipeType:
+      - Repas\User\Domain\Model\User
+    Repas\Repas\Infrastructure\Http\Form\SelectIngredientType:
+      - Repas\User\Domain\Model\User
+    Repas\Repas\Infrastructure\Http\Form\UpdateRecipeType:
+      - Repas\User\Domain\Model\User
+    Repas\Repas\Infrastructure\Loader\RecipeLoader:
+      - Repas\User\Domain\Exception\UserException
+      - Repas\User\Domain\Interface\UserRepository
+      - Repas\User\Domain\Model\User
+    Repas\Repas\Infrastructure\Repository\IngredientPostgreSQLRepository:
+      - Repas\User\Domain\Exception\UserException
+      - Repas\User\Domain\Interface\UserRepository
+      - Repas\User\Domain\Model\User
+    Repas\Repas\Infrastructure\Repository\RecipePostgreSQLRepository:
+      - Repas\User\Domain\Exception\UserException
+      - Repas\User\Domain\Interface\UserRepository
+      - Repas\User\Domain\Model\User
+    Repas\Repas\Infrastructure\Repository\ShoppingListPostgreSQLRepository:
+      - Repas\User\Domain\Exception\UserException
+      - Repas\User\Domain\Interface\UserRepository
+      - Repas\User\Domain\Model\User
+    Repas\Shared\Infrastructure\Repository\RepositoryTrait:
+      - Repas\Repas\Domain\Model\ShoppingList
+      - Repas\Repas\Domain\Model\Unit
+      - Repas\Repas\Infrastructure\Entity\ShoppingList
+      - Repas\Repas\Infrastructure\Entity\Unit
+      - Repas\User\Domain\Model\User
+      - Repas\User\Infrastructure\Entity\User
+    Repas\User\Domain\Model\User:
+      - Repas\Repas\Domain\Model\ShoppingList
+    Repas\User\Infrastructure\EventListener\UpdateUserStatisticsEventListener:
+      - Repas\Repas\Domain\Event\IngredientCreatedEvent
+      - Repas\Repas\Domain\Event\IngredientRemovedEvent
+      - Repas\Repas\Domain\Event\RecipeCreatedEvent
+      - Repas\Repas\Domain\Event\RecipeRemovedEvent
+      - Repas\Repas\Domain\Event\RecipesOrIngredientsCreatedEvent
+      - Repas\Repas\Domain\Event\RecipesOrIngredientsRemovedEvent
+    Repas\User\Infrastructure\Repository\UserPostgreSQLRepository:
+      - Repas\Repas\Infrastructure\Repository\PostgreSQLRepository
+    Repas\User\Infrastructure\Security\OwnerVoter:
+      - Repas\Repas\Domain\Interface\IngredientRepository
+      - Repas\Repas\Domain\Interface\RecipeRepository
+      - Repas\Repas\Domain\Interface\ShoppingListRepository

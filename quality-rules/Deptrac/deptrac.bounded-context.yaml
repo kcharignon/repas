@@ -1,0 +1,30 @@
+# Bounded contexts (ADR 0001) : Repas et User dépendent de Shared ; Shared n'importe aucun contexte.
+# Les couplages existants (Repas -> User surtout) sont figés dans la baseline : elle ne doit que diminuer.
+# Régénérer après avoir résorbé une dépendance :
+#   vendor/bin/deptrac analyse --config-file=quality-rules/Deptrac/deptrac.bounded-context.yaml \
+#     --formatter=baseline --output=quality-rules/Deptrac/baseline/bounded-context.baseline.yaml
+imports:
+  - baseline/bounded-context.baseline.yaml
+
+deptrac:
+  paths:
+    - ../../src
+  layers:
+    - name: Shared
+      collectors:
+        - type: classLike
+          value: ^Repas\\Shared\\.*
+    - name: Repas
+      collectors:
+        - type: classLike
+          value: ^Repas\\Repas\\.*
+    - name: User
+      collectors:
+        - type: classLike
+          value: ^Repas\\User\\.*
+
+  ruleset:
+    Repas:
+      - Shared
+    User:
+      - Shared

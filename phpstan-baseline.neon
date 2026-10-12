@@ -1,0 +1,793 @@
+parameters:
+	ignoreErrors:
+		-
+			message: '#^Call to an undefined method Symfony\\Component\\Console\\Application\:\:getKernel\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: src/Command/ResetDatabaseCommand.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Repas\\Shared\\Domain\\Tool\\Tab\<Repas\\Repas\\Domain\\Model\\Unit\>\:\:map\(\) expects callable\(Repas\\Repas\\Domain\\Model\\Unit\)\: Repas\\Repas\\Domain\\Model\\Unit, Closure\(Repas\\Repas\\Domain\\Model\\Unit\)\: string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Command/UpdateIngredientsUnitsCommand.php
+
+		-
+			message: '#^Variable \$ingredient in PHPDoc tag @var does not match assigned variable \$newIngredientSlugs\.$#'
+			identifier: varTag.differentVariable
+			count: 1
+			path: src/Repas/Application/Command/CopyRecipe/CopyRecipeHandler.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Repas\\Shared\\Domain\\Tool\\Tab\<Repas\\Repas\\Application\\Command\\CreateRecipe\\CreateRecipeRowSubCommand\>\:\:map\(\) expects callable\(Repas\\Repas\\Application\\Command\\CreateRecipe\\CreateRecipeRowSubCommand\)\: Repas\\Repas\\Application\\Command\\CreateRecipe\\CreateRecipeRowSubCommand, Closure\(Repas\\Repas\\Application\\Command\\CreateRecipe\\CreateRecipeRowSubCommand\)\: Repas\\Repas\\Domain\\Model\\RecipeRow given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Repas/Application/Command/CreateRecipe/CreateRecipeHandler.php
+
+		-
+			message: '#^Unsafe usage of new static\(\)\.$#'
+			identifier: new.static
+			count: 1
+			path: src/Repas/Domain/Exception/ConversionException.php
+
+		-
+			message: '#^Unsafe usage of new static\(\)\.$#'
+			identifier: new.static
+			count: 1
+			path: src/Repas/Domain/Exception/DepartmentException.php
+
+		-
+			message: '#^Unsafe usage of new static\(\)\.$#'
+			identifier: new.static
+			count: 5
+			path: src/Repas/Domain/Exception/IngredientException.php
+
+		-
+			message: '#^Unsafe usage of new static\(\)\.$#'
+			identifier: new.static
+			count: 1
+			path: src/Repas/Domain/Exception/MealException.php
+
+		-
+			message: '#^Unsafe usage of new static\(\)\.$#'
+			identifier: new.static
+			count: 4
+			path: src/Repas/Domain/Exception/RecipeException.php
+
+		-
+			message: '#^Method Repas\\Repas\\Domain\\Exception\\ShoppingListException\:\:activeShoppingListNotFound\(\) should return static\(Repas\\Repas\\Domain\\Exception\\ShoppingListException\) but returns Repas\\Repas\\Domain\\Exception\\ShoppingListException\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Repas/Domain/Exception/ShoppingListException.php
+
+		-
+			message: '#^Method Repas\\Repas\\Domain\\Exception\\ShoppingListException\:\:cannotAddRecipeToShoppingListUnlessPlanning\(\) should return static\(Repas\\Repas\\Domain\\Exception\\ShoppingListException\) but returns Repas\\Repas\\Domain\\Exception\\ShoppingListException\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Repas/Domain/Exception/ShoppingListException.php
+
+		-
+			message: '#^Method Repas\\Repas\\Domain\\Exception\\ShoppingListException\:\:cannotRemoveRecipeToShoppingListUnlessPlanning\(\) should return static\(Repas\\Repas\\Domain\\Exception\\ShoppingListException\) but returns Repas\\Repas\\Domain\\Exception\\ShoppingListException\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Repas/Domain/Exception/ShoppingListException.php
+
+		-
+			message: '#^Method Repas\\Repas\\Domain\\Exception\\ShoppingListException\:\:recipeAlreadyInList\(\) should return static\(Repas\\Repas\\Domain\\Exception\\ShoppingListException\) but returns Repas\\Repas\\Domain\\Exception\\ShoppingListException\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Repas/Domain/Exception/ShoppingListException.php
+
+		-
+			message: '#^Method Repas\\Repas\\Domain\\Exception\\ShoppingListException\:\:shoppingListNotFound\(\) should return static\(Repas\\Repas\\Domain\\Exception\\ShoppingListException\) but returns Repas\\Repas\\Domain\\Exception\\ShoppingListException\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Repas/Domain/Exception/ShoppingListException.php
+
+		-
+			message: '#^Method Repas\\Repas\\Domain\\Exception\\ShoppingListException\:\:shoppingListShouldBeOnPlanningBeforeShopping\(\) should return static\(Repas\\Repas\\Domain\\Exception\\ShoppingListException\) but returns Repas\\Repas\\Domain\\Exception\\ShoppingListException\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Repas/Domain/Exception/ShoppingListException.php
+
+		-
+			message: '#^Method Repas\\Repas\\Domain\\Exception\\ShoppingListException\:\:shoppingListShouldBeOnShoppingBeforeRevertToPlanning\(\) should return static\(Repas\\Repas\\Domain\\Exception\\ShoppingListException\) but returns Repas\\Repas\\Domain\\Exception\\ShoppingListException\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Repas/Domain/Exception/ShoppingListException.php
+
+		-
+			message: '#^Unsafe usage of new static\(\)\.$#'
+			identifier: new.static
+			count: 1
+			path: src/Repas/Domain/Exception/ShoppingListRowException.php
+
+		-
+			message: '#^Unsafe usage of new static\(\)\.$#'
+			identifier: new.static
+			count: 1
+			path: src/Repas/Domain/Exception/UnitException.php
+
+		-
+			message: '#^Offset ''name'' on array\{name\: ''baggle''\|''bananabread''\|''blanquette de veau''\|''ble dinde''\|''brique''\|''burger''\|''bœuf bourguignon''\|''charlotte framboise''\|''chili con carne''\|''cookies''\|''crepe''\|''croque monsieur''\|''crumble de courgette''\|''endive au jambon''\|''fajitas''\|''flamenkuche''\|''fondue''\|''galette bretonne''\|''gaspacho''\|''gateau yaourt''\|''gnocci''\|''gratin courgette''\|''gratin de choux…''\|''gratin de pate''\|''guacamole''\|''gâteau basque''\|''lasagne''\|''légume cordon bleu''\|''marbré''\|''moelleux chocolat''\|''moussaka''\|''muffin pépitte…''\|''nuggets fritte''\|''omelette''\|''panini''\|''pate bolognaise''\|''pate pesto''\|''pates carbonara''\|''petit pois poisson''\|''pizza''\|''pizza big apple''\|''potage''\|''poulet basquaise''\|''poulet indien''\|''poulet thai''\|''quenelle''\|''raclette''\|''ramen''\|''raviole''\|''risotto''\|''riz cantonais''\|''sablé''\|''salade caesar''\|''salade composee''\|''saucisse lentille''\|''saucisse purée''\|''saumon papillotte''\|''soupe''\|''taboulet syrien''\|''tartare''\|''tarte au pomme''\|''tarte mozza''\|''tarte tatin''\|''tartiflette''\|''tartine''\|''terrine aubergine''\|''tiramisu citron''\|''tomate farcie''\|''tourte épinard''\|''woke''\|''wrap''\|''œuf dur''\|''œufs à la coque'', owner\: ''alexiane\.sichi…'', type\: ''dessert''\|''entree''\|''plat'', people\: 2\|4\|6, ingredients\: non\-empty\-list\<array\{slug\: ''aiguilette\-de\-poulet''\|''ail''\|''bearnaise''\|''beurre''\|''blanquette\-de\-veau''\|''ble''\|''boeuf''\|''boeuf\-bourguignon''\|''bolognaise''\|''boulgoure\-fin''\|''cacahuete''\|''capre''\|''chair\-a\-saucisse''\|''champignon''\|''charcuterie''\|''chevre''\|''chocolat''\|''chocolat\-en\-poudre''\|''chorizo''\|''choux\-fleur''\|''compote''\|''concentre\-de\-tomate''\|''cornichon''\|''courgette''\|''creme\-fraiche…''\|''curry''\|''dinde''\|''emmental\-rape''\|''epinard''\|''farine''\|''framboise\-surgelee''\|''frite''\|''fromage\-fondue''\|''fromage\-frais''\|''haricot''\|''haricot\-rouge''\|''huile''\|''jambon\-cru''\|''ketchup''\|''lait''\|''lardon''\|''lentille''\|''mais''\|''maizena''\|''mascarpone''\|''mayonnaise''\|''miel''\|''mozzarella''\|''nouille\-chinoise''\|''nutella''\|''olive''\|''pain''\|''parmesan''\|''pate''\|''pate\-lasagne''\|''pate\-ramen''\|''pepite\-de\-chocolat''\|''persil''\|''pesto''\|''petit\-pois''\|''petit\-pois\-surgele''\|''pomme\-de\-terre''\|''poulet''\|''raclette''\|''risotto''\|''riste\-aubergine''\|''riz''\|''salade''\|''salade\-verte''\|''sauce\-napolitaine''\|''sauce\-tomate''\|''saumon''\|''sirop\-fruit\-rouge''\|''soja''\|''steack\-hache''\|''sucre''\|''vermicelle''\|''viande\-hachee''\|''vin\-blanc\-cuisine''\|''vin\-rouge\-cuisine'', quantity\: 10\|30\|50\|100\|125\|150\|200\|250\|300\|400\|500\|600\|800, unit\: ''gramme''\|''millilitre''\}\|array\{slug\: ''ail''\|''aubergine''\|''avocat''\|''banane''\|''bouquet\-garni''\|''carotte''\|''cheddar\-en\-tranche''\|''citron''\|''concombre''\|''cordon\-bleu''\|''courgette''\|''courgette\-a\-farcir''\|''echalote''\|''endive''\|''feuille\-de\-brique''\|''feuille\-gelatine''\|''galette''\|''jambon\-blanc''\|''nem''\|''oeuf''\|''oignon''\|''oignon\-rouge''\|''pain''\|''pain\-a\-burger''\|''pain\-baggle''\|''pain\-de\-mie''\|''pain\-panini''\|''pain\-tartine''\|''pate\-feuilletee''\|''pate\-pizza''\|''pate\-sablee''\|''poireau''\|''poisson\-pane''\|''poivron''\|''pomme''\|''pomme\-golden''\|''quenelle''\|''reblochon''\|''salade\-verte''\|''saucisse''\|''saumon''\|''steack\-hache''\|''tomate''\|''tomate\-a\-farcir''\|''tortilla''\|''yaourt\-nature'', quantity\: 1\|2\|3\|4\|8, unit\: ''tranche''\|''unite''\}\|array\{slug\: ''bicarbonate''\|''sucre'', quantity\: 1, unit\: ''cuillere\-a\-cafe''\}\|array\{slug\: ''biscuit\-cuillere'', quantity\: 20, unit\: ''unite''\}\|array\{slug\: ''bouillon''\|''bouillon\-de\-boeuf''\|''bouillon\-de\-legume'', quantity\: 1, unit\: ''cube''\}\|array\{slug\: ''caramel\-liquide''\|''huile''\|''vinaigre'', quantity\: 1, unit\: ''cuillere\-a\-soupe''\}\|array\{slug\: ''epice''\|''poivre''\|''sel'', quantity\: 2\|5, unit\: ''gramme''\}\|array\{slug\: ''epice\-guacamole''\|''epice\-viande''\|''gnocci''\|''levure\-patissiere''\|''raviole''\|''sucre\-vanille'', quantity\: 0\.5\|1\|2, unit\: ''sachet''\}\|array\{slug\: ''huile\-d\-olive''\|''sauce\-nuoc\-man''\|''sauce\-soja''\|''vinaigre\-balsamique'', quantity\: 2\|3, unit\: ''cuillere\-a\-soupe''\}\|array\{slug\: ''melon'', quantity\: 0\.5, unit\: ''unite''\}\|array\{slug\: ''nuggets'', quantity\: 12, unit\: ''unite''\}\|array\{slug\: ''soupe'', quantity\: 1, unit\: ''litre''\}\|array\{slug\: ''vanille'', quantity\: 1, unit\: ''gousse''\}\>\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: src/Repas/Infrastructure/DataFixture/RecipeFixture.php
+
+		-
+			message: '#^Offset ''user'' on array\{user\: ''alexiane\.sichi…'', createdAt\: ''2024\-12\-20T19\:31\:05…'', status\: Repas\\Repas\\Domain\\Model\\ShoppingListStatus\:\:COMPLETED\}\|array\{user\: ''alexiane\.sichi…'', createdAt\: ''2024\-12\-22T19\:31\:05…'', status\: Repas\\Repas\\Domain\\Model\\ShoppingListStatus\:\:PAUSED, name\: ''EVJF Hélène''\}\|array\{user\: ''alexiane\.sichi…'', createdAt\: ''2025\-01\-05T09\:35\:05…'', status\: Repas\\Repas\\Domain\\Model\\ShoppingListStatus\:\:ACTIVE\}\|array\{user\: ''kantincharignon…'', createdAt\: ''2025\-01\-20T10\:56\:23…'', status\: Repas\\Repas\\Domain\\Model\\ShoppingListStatus\:\:COMPLETED\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: src/Repas/Infrastructure/DataFixture/ShoppingListFixture.php
+
+		-
+			message: '#^Unsafe usage of new static\(\)\.$#'
+			identifier: new.static
+			count: 1
+			path: src/Repas/Infrastructure/Entity/Conversion.php
+
+		-
+			message: '#^Unsafe usage of new static\(\)\.$#'
+			identifier: new.static
+			count: 1
+			path: src/Repas/Infrastructure/Entity/Department.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Repas\\Shared\\Domain\\Tool\\Tab\<Repas\\Repas\\Domain\\Model\\Unit\>\:\:map\(\) expects callable\(Repas\\Repas\\Domain\\Model\\Unit\)\: Repas\\Repas\\Domain\\Model\\Unit, Closure\(Repas\\Repas\\Domain\\Model\\Unit\)\: string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Repas/Infrastructure/Entity/Ingredient.php
+
+		-
+			message: '#^Unsafe usage of new static\(\)\.$#'
+			identifier: new.static
+			count: 1
+			path: src/Repas/Infrastructure/Entity/Ingredient.php
+
+		-
+			message: '#^Method Repas\\Repas\\Infrastructure\\Entity\\Meal\:\:fromModel\(\) should return static\(Repas\\Repas\\Infrastructure\\Entity\\Meal\) but returns Repas\\Repas\\Infrastructure\\Entity\\Meal\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Repas/Infrastructure/Entity/Meal.php
+
+		-
+			message: '#^Unsafe usage of new static\(\)\.$#'
+			identifier: new.static
+			count: 1
+			path: src/Repas/Infrastructure/Entity/Recipe.php
+
+		-
+			message: '#^Unsafe usage of new static\(\)\.$#'
+			identifier: new.static
+			count: 1
+			path: src/Repas/Infrastructure/Entity/RecipeRow.php
+
+		-
+			message: '#^Unsafe usage of new static\(\)\.$#'
+			identifier: new.static
+			count: 1
+			path: src/Repas/Infrastructure/Entity/ShoppingList.php
+
+		-
+			message: '#^Unsafe usage of new static\(\)\.$#'
+			identifier: new.static
+			count: 1
+			path: src/Repas/Infrastructure/Entity/ShoppingListIngredient.php
+
+		-
+			message: '#^Unsafe usage of new static\(\)\.$#'
+			identifier: new.static
+			count: 1
+			path: src/Repas/Infrastructure/Entity/ShoppingListRow.php
+
+		-
+			message: '#^Unsafe usage of new static\(\)\.$#'
+			identifier: new.static
+			count: 1
+			path: src/Repas/Infrastructure/Entity/Unit.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Repas\\Shared\\Domain\\Tool\\Tab\<Repas\\Repas\\Domain\\Model\\Unit\>\:\:map\(\) expects callable\(Repas\\Repas\\Domain\\Model\\Unit\)\: Repas\\Repas\\Domain\\Model\\Unit, Closure\(Repas\\Repas\\Domain\\Model\\Unit\)\: array\{name\: string, slug\: string\} given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Repas/Infrastructure/Http/Controller/GetCompatibleUnitsForIngredientViewController.php
+
+		-
+			message: '#^PHPDoc tag @var with type Symfony\\Component\\Form\\FormInterface is not subtype of native type array\.$#'
+			identifier: varTag.nativeType
+			count: 1
+			path: src/Repas/Infrastructure/Http/Form/CreateUnitType.php
+
+		-
+			message: '#^Anonymous function has an unused use \$unitChoices\.$#'
+			identifier: closure.unusedUse
+			count: 1
+			path: src/Repas/Infrastructure/Http/Form/SelectUnitType.php
+
+		-
+			message: '#^Parameter &\$viewData by\-ref type of method Repas\\Repas\\Infrastructure\\Http\\Form\\UpdateRecipeType\:\:mapFormsToData\(\) expects Repas\\Repas\\Domain\\Model\\Recipe, Repas\\Repas\\Application\\Command\\UpdateRecipe\\UpdateRecipeCommand given\.$#'
+			identifier: parameterByRef.type
+			count: 1
+			path: src/Repas/Infrastructure/Http/Form/UpdateRecipeType.php
+
+		-
+			message: '#^PHPDoc tag @var with type Symfony\\Component\\Form\\FormInterface is not subtype of native type array\.$#'
+			identifier: varTag.nativeType
+			count: 1
+			path: src/Repas/Infrastructure/Http/Form/UpdateUnitType.php
+
+		-
+			message: '#^Call to an undefined method Doctrine\\Persistence\\ObjectRepository\:\:createQueryBuilder\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: src/Repas/Infrastructure/Loader/RecipeLoader.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Repas\\Shared\\Domain\\Tool\\Tab\<Repas\\Repas\\Infrastructure\\Entity\\Recipe\>\:\:map\(\) expects callable\(Repas\\Repas\\Infrastructure\\Entity\\Recipe\)\: Repas\\Repas\\Infrastructure\\Entity\\Recipe, Closure\(Repas\\Repas\\Infrastructure\\Entity\\Recipe\)\: Repas\\Repas\\Domain\\Model\\Recipe given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Repas/Infrastructure/Loader/RecipeLoader.php
+
+		-
+			message: '#^Call to an undefined method Doctrine\\Persistence\\ObjectRepository\:\:createQueryBuilder\(\)\.$#'
+			identifier: method.notFound
+			count: 4
+			path: src/Repas/Infrastructure/Repository/ConversionPostgreSQLRepository.php
+
+		-
+			message: '#^Method Repas\\Repas\\Infrastructure\\Repository\\DepartmentPostgreSQLRepository\:\:findOneBySlug\(\) should return Repas\\Repas\\Domain\\Model\\Department but returns Repas\\Shared\\Domain\\Model\\ModelInterface\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Repas/Infrastructure/Repository/DepartmentPostgreSQLRepository.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Repas\\Shared\\Domain\\Tool\\Tab\<string\>\:\:map\(\) expects callable\(string\)\: string, Closure\(string\)\: \(Repas\\Shared\\Domain\\Model\\ModelInterface\|null\) given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Repas/Infrastructure/Repository/DepartmentPostgreSQLRepository.php
+
+		-
+			message: '#^Call to an undefined method Doctrine\\Persistence\\ObjectRepository\:\:createQueryBuilder\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: src/Repas/Infrastructure/Repository/IngredientPostgreSQLRepository.php
+
+		-
+			message: '#^Method Repas\\Repas\\Infrastructure\\Repository\\IngredientPostgreSQLRepository\:\:convertEntityToModel\(\) should return Repas\\Repas\\Domain\\Model\\Ingredient but returns Repas\\Shared\\Domain\\Model\\ModelInterface\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Repas/Infrastructure/Repository/IngredientPostgreSQLRepository.php
+
+		-
+			message: '#^Method Repas\\Repas\\Infrastructure\\Repository\\IngredientPostgreSQLRepository\:\:findOneBySlug\(\) should return Repas\\Repas\\Domain\\Model\\Ingredient but returns Repas\\Shared\\Domain\\Model\\ModelInterface\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Repas/Infrastructure/Repository/IngredientPostgreSQLRepository.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Repas\\Shared\\Domain\\Tool\\Tab\<Repas\\Repas\\Domain\\Model\\Unit\>\:\:map\(\) expects callable\(Repas\\Repas\\Domain\\Model\\Unit\)\: Repas\\Repas\\Domain\\Model\\Unit, Closure\(Repas\\Repas\\Domain\\Model\\Unit\)\: string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Repas/Infrastructure/Repository/IngredientPostgreSQLRepository.php
+
+		-
+			message: '#^Call to an undefined method Doctrine\\Persistence\\ObjectRepository\:\:createQueryBuilder\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: src/Repas/Infrastructure/Repository/MealPostgreSQLRepository.php
+
+		-
+			message: '#^Call to an undefined method Doctrine\\Persistence\\ObjectRepository\:\:createQueryBuilder\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: src/Repas/Infrastructure/Repository/RecipePostgreSQLRepository.php
+
+		-
+			message: '#^Method Repas\\Repas\\Infrastructure\\Repository\\RecipePostgreSQLRepository\:\:convertEntityToModel\(\) should return Repas\\Repas\\Domain\\Model\\Recipe but returns Repas\\Shared\\Domain\\Model\\ModelInterface\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Repas/Infrastructure/Repository/RecipePostgreSQLRepository.php
+
+		-
+			message: '#^Method Repas\\Repas\\Infrastructure\\Repository\\RecipePostgreSQLRepository\:\:findOneById\(\) should return Repas\\Repas\\Domain\\Model\\Recipe but returns Repas\\Shared\\Domain\\Model\\ModelInterface\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Repas/Infrastructure/Repository/RecipePostgreSQLRepository.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Repas\\Shared\\Domain\\Tool\\Tab\<Repas\\Repas\\Domain\\Model\\RecipeRow\>\:\:map\(\) expects callable\(Repas\\Repas\\Domain\\Model\\RecipeRow\)\: Repas\\Repas\\Domain\\Model\\RecipeRow, Closure\(Repas\\Repas\\Domain\\Model\\RecipeRow\)\: string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Repas/Infrastructure/Repository/RecipePostgreSQLRepository.php
+
+		-
+			message: '#^Call to an undefined method Doctrine\\Persistence\\ObjectRepository\:\:createQueryBuilder\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: src/Repas/Infrastructure/Repository/RecipeRowPostgreSQLRepository.php
+
+		-
+			message: '#^Method Repas\\Repas\\Infrastructure\\Repository\\RecipeTypePostgreSQLRepository\:\:findOneBySlug\(\) should return Repas\\Repas\\Domain\\Model\\RecipeType but returns Repas\\Shared\\Domain\\Model\\ModelInterface\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Repas/Infrastructure/Repository/RecipeTypePostgreSQLRepository.php
+
+		-
+			message: '#^Call to an undefined method Doctrine\\Persistence\\ObjectRepository\:\:createQueryBuilder\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: src/Repas/Infrastructure/Repository/ShoppingListIngredientPostgreSQLRepository.php
+
+		-
+			message: '#^Call to an undefined method Doctrine\\Persistence\\ObjectRepository\:\:createQueryBuilder\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: src/Repas/Infrastructure/Repository/ShoppingListPostgreSQLRepository.php
+
+		-
+			message: '#^Method Repas\\Repas\\Infrastructure\\Repository\\ShoppingListPostgreSQLRepository\:\:convertEntityToModel\(\) should return Repas\\Repas\\Domain\\Model\\ShoppingList but returns Repas\\Shared\\Domain\\Model\\ModelInterface\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Repas/Infrastructure/Repository/ShoppingListPostgreSQLRepository.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Repas\\Shared\\Domain\\Tool\\Tab\<Repas\\Repas\\Domain\\Model\\Meal\>\:\:map\(\) expects callable\(Repas\\Repas\\Domain\\Model\\Meal\)\: Repas\\Repas\\Domain\\Model\\Meal, Closure\(Repas\\Repas\\Domain\\Model\\Meal\)\: string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Repas/Infrastructure/Repository/ShoppingListPostgreSQLRepository.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Repas\\Shared\\Domain\\Tool\\Tab\<Repas\\Repas\\Domain\\Model\\ShoppingListIngredient\>\:\:map\(\) expects callable\(Repas\\Repas\\Domain\\Model\\ShoppingListIngredient\)\: Repas\\Repas\\Domain\\Model\\ShoppingListIngredient, Closure\(Repas\\Repas\\Domain\\Model\\ShoppingListIngredient\)\: string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Repas/Infrastructure/Repository/ShoppingListPostgreSQLRepository.php
+
+		-
+			message: '#^Call to an undefined method Doctrine\\Persistence\\ObjectRepository\:\:createQueryBuilder\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: src/Repas/Infrastructure/Repository/ShoppingListRowPostgreSQLRepository.php
+
+		-
+			message: '#^Call to an undefined method Doctrine\\Persistence\\ObjectRepository\:\:createQueryBuilder\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: src/Repas/Infrastructure/Repository/UnitPostgreSQLRepository.php
+
+		-
+			message: '#^Method Repas\\Repas\\Infrastructure\\Repository\\UnitPostgreSQLRepository\:\:findOneBySlug\(\) should return Repas\\Repas\\Domain\\Model\\Unit but returns Repas\\Shared\\Domain\\Model\\ModelInterface\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Repas/Infrastructure/Repository/UnitPostgreSQLRepository.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Repas\\Shared\\Domain\\Tool\\Tab\<string\>\:\:map\(\) expects callable\(string\)\: string, Closure\(string\)\: \(Repas\\Shared\\Domain\\Model\\ModelInterface\|null\) given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Repas/Infrastructure/Repository/UnitPostgreSQLRepository.php
+
+		-
+			message: '#^Parameter \#1 \$className of method Repas\\Shared\\Infrastructure\\Repository\\ModelCache\<Repas\\Shared\\Domain\\Model\\ModelInterface\>\:\:getModelCache\(\) expects class\-string\<Repas\\Shared\\Domain\\Model\\ModelInterface\>, string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Repas/Infrastructure/Repository/UnitPostgreSQLRepository.php
+
+		-
+			message: '#^Call to function is_string\(\) with string will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: src/Shared/Domain/Tool/StringTool.php
+
+		-
+			message: '#^Trait Repas\\Shared\\Infrastructure\\Repository\\RepositoryTrait is used zero times and is not analysed\.$#'
+			identifier: trait.unused
+			count: 1
+			path: src/Shared/Infrastructure/Repository/RepositoryTrait.php
+
+		-
+			message: '#^Unsafe usage of new static\(\)\.$#'
+			identifier: new.static
+			count: 2
+			path: src/User/Domain/Exception/UserException.php
+
+		-
+			message: '#^Property Repas\\User\\Domain\\Model\\User\:\:\$defaultServing \(int\) does not accept string\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: src/User/Domain/Model/User.php
+
+		-
+			message: '#^Property Repas\\User\\Domain\\Model\\User\:\:\$roles on left side of \?\? is not nullable nor uninitialized\.$#'
+			identifier: nullCoalesce.initializedProperty
+			count: 1
+			path: src/User/Domain/Model/User.php
+
+		-
+			message: '#^Unsafe usage of new static\(\)\.$#'
+			identifier: new.static
+			count: 2
+			path: src/User/Domain/Model/User.php
+
+		-
+			message: '#^Method Repas\\User\\Infrastructure\\Entity\\User\:\:fromModel\(\) should return static\(Repas\\User\\Infrastructure\\Entity\\User\) but returns Repas\\User\\Infrastructure\\Entity\\User\.$#'
+			identifier: return.type
+			count: 1
+			path: src/User/Infrastructure/Entity/User.php
+
+		-
+			message: '#^Property Repas\\User\\Infrastructure\\Entity\\User\:\:\$statistics \(array\|null\) is never assigned null so it can be removed from the property type\.$#'
+			identifier: property.unusedType
+			count: 1
+			path: src/User/Infrastructure/Entity/User.php
+
+		-
+			message: '#^Instanceof between Repas\\User\\Domain\\Model\\User and Repas\\User\\Domain\\Model\\User will always evaluate to true\.$#'
+			identifier: instanceof.alwaysTrue
+			count: 1
+			path: src/User/Infrastructure/Http/Form/RegisterNewUserType.php
+
+		-
+			message: '#^Method Repas\\User\\Infrastructure\\Repository\\UserPostgreSQLRepository\:\:convertEntityToModel\(\) should return Repas\\User\\Domain\\Model\\User but returns Repas\\Shared\\Domain\\Model\\ModelInterface\.$#'
+			identifier: return.type
+			count: 1
+			path: src/User/Infrastructure/Repository/UserPostgreSQLRepository.php
+
+		-
+			message: '#^Method Repas\\User\\Infrastructure\\Repository\\UserPostgreSQLRepository\:\:findOneById\(\) should return Repas\\User\\Domain\\Model\\User but returns Repas\\Shared\\Domain\\Model\\ModelInterface\.$#'
+			identifier: return.type
+			count: 1
+			path: src/User/Infrastructure/Repository/UserPostgreSQLRepository.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Repas\\Shared\\Domain\\Tool\\Tab\<Repas\\Tests\\Helper\\Builder\\RecipeRowBuilder\>\:\:map\(\) expects callable\(Repas\\Tests\\Helper\\Builder\\RecipeRowBuilder\)\: Repas\\Tests\\Helper\\Builder\\RecipeRowBuilder, Closure\(Repas\\Tests\\Helper\\Builder\\RecipeRowBuilder\)\: Repas\\Repas\\Domain\\Model\\RecipeRow given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Helper/Builder/RecipeBuilder.php
+
+		-
+			message: '#^Property Repas\\Tests\\Helper\\Builder\\RecipeBuilder\:\:\$originalId \(string\|null\) is never assigned string so it can be removed from the property type\.$#'
+			identifier: property.unusedType
+			count: 1
+			path: tests/Helper/Builder/RecipeBuilder.php
+
+		-
+			message: '#^Repas\\Shared\\Domain\\Tool\\Tab\<\*NEVER\*\> does not accept T of Repas\\Shared\\Domain\\Model\\ModelInterface\.$#'
+			identifier: offsetAssign.valueType
+			count: 1
+			path: tests/Helper/InMemoryRepository/AbstractInMemoryRepository.php
+
+		-
+			message: '#^Method Repas\\Tests\\Helper\\InMemoryRepository\\ConversionInMemoryRepository\:\:findAll\(\) should return Repas\\Shared\\Domain\\Tool\\Tab\<Repas\\Repas\\Domain\\Model\\Conversion\> but returns Repas\\Shared\\Domain\\Tool\\Tab\<Repas\\Shared\\Domain\\Model\\ModelInterface\>\.$#'
+			identifier: return.type
+			count: 1
+			path: tests/Helper/InMemoryRepository/ConversionInMemoryRepository.php
+
+		-
+			message: '#^Method Repas\\Tests\\Helper\\InMemoryRepository\\ConversionInMemoryRepository\:\:findById\(\) should return Repas\\Repas\\Domain\\Model\\Conversion\|null but returns Repas\\Shared\\Domain\\Model\\ModelInterface\.$#'
+			identifier: return.type
+			count: 1
+			path: tests/Helper/InMemoryRepository/ConversionInMemoryRepository.php
+
+		-
+			message: '#^Method Repas\\Tests\\Helper\\InMemoryRepository\\ConversionInMemoryRepository\:\:findByIngredient\(\) should return Repas\\Shared\\Domain\\Tool\\Tab\<Repas\\Repas\\Domain\\Model\\Conversion\> but returns Repas\\Shared\\Domain\\Tool\\Tab\<Repas\\Shared\\Domain\\Model\\ModelInterface\>\.$#'
+			identifier: return.type
+			count: 1
+			path: tests/Helper/InMemoryRepository/ConversionInMemoryRepository.php
+
+		-
+			message: '#^Method Repas\\Tests\\Helper\\InMemoryRepository\\ConversionInMemoryRepository\:\:findByIngredientAndStartUnitAndEndUnit\(\) should return Repas\\Repas\\Domain\\Model\\Conversion\|null but returns Repas\\Shared\\Domain\\Model\\ModelInterface\|null\.$#'
+			identifier: return.type
+			count: 1
+			path: tests/Helper/InMemoryRepository/ConversionInMemoryRepository.php
+
+		-
+			message: '#^Method Repas\\Tests\\Helper\\InMemoryRepository\\ConversionInMemoryRepository\:\:findByIngredientOrCommon\(\) should return Repas\\Shared\\Domain\\Tool\\Tab\<Repas\\Repas\\Domain\\Model\\Conversion\> but returns Repas\\Shared\\Domain\\Tool\\Tab\<Repas\\Shared\\Domain\\Model\\ModelInterface\>\.$#'
+			identifier: return.type
+			count: 1
+			path: tests/Helper/InMemoryRepository/ConversionInMemoryRepository.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Repas\\Shared\\Domain\\Tool\\Tab\<Repas\\Shared\\Domain\\Model\\ModelInterface\>\:\:filter\(\) expects \(callable\(int\|string\)\: bool\)\|\(callable\(Repas\\Shared\\Domain\\Model\\ModelInterface, int\|string\)\: bool\), Closure\(Repas\\Repas\\Domain\\Model\\Conversion\)\: bool given\.$#'
+			identifier: argument.type
+			count: 3
+			path: tests/Helper/InMemoryRepository/ConversionInMemoryRepository.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Repas\\Shared\\Domain\\Tool\\Tab\<Repas\\Shared\\Domain\\Model\\ModelInterface\>\:\:find\(\) expects callable\(Repas\\Shared\\Domain\\Model\\ModelInterface, int\|string\)\: bool, Closure\(Repas\\Repas\\Domain\\Model\\Conversion\)\: bool given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Helper/InMemoryRepository/ConversionInMemoryRepository.php
+
+		-
+			message: '#^Method Repas\\Tests\\Helper\\InMemoryRepository\\DepartmentInMemoryRepository\:\:findAll\(\) should return Repas\\Shared\\Domain\\Tool\\Tab\<Repas\\Repas\\Domain\\Model\\Department\> but returns Repas\\Shared\\Domain\\Tool\\Tab\<Repas\\Shared\\Domain\\Model\\ModelInterface\>\.$#'
+			identifier: return.type
+			count: 1
+			path: tests/Helper/InMemoryRepository/DepartmentInMemoryRepository.php
+
+		-
+			message: '#^Method Repas\\Tests\\Helper\\InMemoryRepository\\DepartmentInMemoryRepository\:\:findBySlugs\(\) should return Repas\\Shared\\Domain\\Tool\\Tab\<Repas\\Repas\\Domain\\Model\\Department\> but returns Repas\\Shared\\Domain\\Tool\\Tab\<Repas\\Shared\\Domain\\Model\\ModelInterface\>\.$#'
+			identifier: return.type
+			count: 1
+			path: tests/Helper/InMemoryRepository/DepartmentInMemoryRepository.php
+
+		-
+			message: '#^Method Repas\\Tests\\Helper\\InMemoryRepository\\DepartmentInMemoryRepository\:\:findOneBySlug\(\) should return Repas\\Repas\\Domain\\Model\\Department but returns Repas\\Shared\\Domain\\Model\\ModelInterface\.$#'
+			identifier: return.type
+			count: 1
+			path: tests/Helper/InMemoryRepository/DepartmentInMemoryRepository.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Repas\\Shared\\Domain\\Tool\\Tab\<Repas\\Shared\\Domain\\Model\\ModelInterface\>\:\:filter\(\) expects \(callable\(int\|string\)\: bool\)\|\(callable\(Repas\\Shared\\Domain\\Model\\ModelInterface, int\|string\)\: bool\), Closure\(Repas\\Repas\\Domain\\Model\\Department\)\: bool given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Helper/InMemoryRepository/DepartmentInMemoryRepository.php
+
+		-
+			message: '#^Method Repas\\Tests\\Helper\\InMemoryRepository\\IngredientInMemoryRepository\:\:findAll\(\) should return Repas\\Shared\\Domain\\Tool\\Tab\<Repas\\Repas\\Domain\\Model\\Ingredient\> but returns Repas\\Shared\\Domain\\Tool\\Tab\<Repas\\Shared\\Domain\\Model\\ModelInterface\>\.$#'
+			identifier: return.type
+			count: 1
+			path: tests/Helper/InMemoryRepository/IngredientInMemoryRepository.php
+
+		-
+			message: '#^Method Repas\\Tests\\Helper\\InMemoryRepository\\IngredientInMemoryRepository\:\:findByDepartmentAndOwner\(\) should return Repas\\Shared\\Domain\\Tool\\Tab\<Repas\\Repas\\Domain\\Model\\Ingredient\> but returns Repas\\Shared\\Domain\\Tool\\Tab\<Repas\\Shared\\Domain\\Model\\ModelInterface\>\.$#'
+			identifier: return.type
+			count: 1
+			path: tests/Helper/InMemoryRepository/IngredientInMemoryRepository.php
+
+		-
+			message: '#^Method Repas\\Tests\\Helper\\InMemoryRepository\\IngredientInMemoryRepository\:\:findByOwner\(\) should return Repas\\Shared\\Domain\\Tool\\Tab\<Repas\\Repas\\Domain\\Model\\Ingredient\> but returns Repas\\Shared\\Domain\\Tool\\Tab\<Repas\\Shared\\Domain\\Model\\ModelInterface\>\.$#'
+			identifier: return.type
+			count: 1
+			path: tests/Helper/InMemoryRepository/IngredientInMemoryRepository.php
+
+		-
+			message: '#^Method Repas\\Tests\\Helper\\InMemoryRepository\\IngredientInMemoryRepository\:\:findOneBySlug\(\) should return Repas\\Repas\\Domain\\Model\\Ingredient but returns Repas\\Shared\\Domain\\Model\\ModelInterface\.$#'
+			identifier: return.type
+			count: 1
+			path: tests/Helper/InMemoryRepository/IngredientInMemoryRepository.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Repas\\Shared\\Domain\\Tool\\Tab\<Repas\\Shared\\Domain\\Model\\ModelInterface\>\:\:filter\(\) expects \(callable\(int\|string\)\: bool\)\|\(callable\(Repas\\Shared\\Domain\\Model\\ModelInterface, int\|string\)\: bool\), Closure\(Repas\\Repas\\Domain\\Model\\Ingredient\)\: bool given\.$#'
+			identifier: argument.type
+			count: 2
+			path: tests/Helper/InMemoryRepository/IngredientInMemoryRepository.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Repas\\Shared\\Domain\\Tool\\Tab\<Repas\\Shared\\Domain\\Model\\ModelInterface\>\:\:find\(\) expects callable\(Repas\\Shared\\Domain\\Model\\ModelInterface, int\|string\)\: bool, Closure\(Repas\\Repas\\Domain\\Model\\Ingredient\)\: bool given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Helper/InMemoryRepository/IngredientInMemoryRepository.php
+
+		-
+			message: '#^Method Repas\\Tests\\Helper\\InMemoryRepository\\RecipeInMemoryRepository\:\:findByAuthor\(\) should return Repas\\Shared\\Domain\\Tool\\Tab\<Repas\\Repas\\Domain\\Model\\Recipe\> but returns Repas\\Shared\\Domain\\Tool\\Tab\<Repas\\Shared\\Domain\\Model\\ModelInterface\>\.$#'
+			identifier: return.type
+			count: 1
+			path: tests/Helper/InMemoryRepository/RecipeInMemoryRepository.php
+
+		-
+			message: '#^Method Repas\\Tests\\Helper\\InMemoryRepository\\RecipeInMemoryRepository\:\:findByAuthorAndType\(\) should return Repas\\Shared\\Domain\\Tool\\Tab\<Repas\\Repas\\Domain\\Model\\Recipe\> but returns Repas\\Shared\\Domain\\Tool\\Tab\<Repas\\Shared\\Domain\\Model\\ModelInterface\>\.$#'
+			identifier: return.type
+			count: 1
+			path: tests/Helper/InMemoryRepository/RecipeInMemoryRepository.php
+
+		-
+			message: '#^Method Repas\\Tests\\Helper\\InMemoryRepository\\RecipeInMemoryRepository\:\:findByIngredient\(\) should return Repas\\Shared\\Domain\\Tool\\Tab\<Repas\\Repas\\Domain\\Model\\Recipe\> but returns Repas\\Shared\\Domain\\Tool\\Tab\<Repas\\Shared\\Domain\\Model\\ModelInterface\>\.$#'
+			identifier: return.type
+			count: 1
+			path: tests/Helper/InMemoryRepository/RecipeInMemoryRepository.php
+
+		-
+			message: '#^Method Repas\\Tests\\Helper\\InMemoryRepository\\RecipeInMemoryRepository\:\:findOneById\(\) should return Repas\\Repas\\Domain\\Model\\Recipe but returns Repas\\Shared\\Domain\\Model\\ModelInterface\.$#'
+			identifier: return.type
+			count: 1
+			path: tests/Helper/InMemoryRepository/RecipeInMemoryRepository.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Repas\\Shared\\Domain\\Tool\\Tab\<Repas\\Shared\\Domain\\Model\\ModelInterface\>\:\:filter\(\) expects \(callable\(int\|string\)\: bool\)\|\(callable\(Repas\\Shared\\Domain\\Model\\ModelInterface, int\|string\)\: bool\), Closure\(Repas\\Repas\\Domain\\Model\\Recipe\)\: bool given\.$#'
+			identifier: argument.type
+			count: 3
+			path: tests/Helper/InMemoryRepository/RecipeInMemoryRepository.php
+
+		-
+			message: '#^Method Repas\\Tests\\Helper\\InMemoryRepository\\RecipeTypeInMemoryRepository\:\:findAll\(\) should return Repas\\Shared\\Domain\\Tool\\Tab\<Repas\\Repas\\Domain\\Model\\RecipeType\> but returns Repas\\Shared\\Domain\\Tool\\Tab\<Repas\\Shared\\Domain\\Model\\ModelInterface\>\.$#'
+			identifier: return.type
+			count: 1
+			path: tests/Helper/InMemoryRepository/RecipeTypeInMemoryRepository.php
+
+		-
+			message: '#^Method Repas\\Tests\\Helper\\InMemoryRepository\\RecipeTypeInMemoryRepository\:\:findOneBySlug\(\) should return Repas\\Repas\\Domain\\Model\\RecipeType but returns Repas\\Shared\\Domain\\Model\\ModelInterface\.$#'
+			identifier: return.type
+			count: 1
+			path: tests/Helper/InMemoryRepository/RecipeTypeInMemoryRepository.php
+
+		-
+			message: '#^Method Repas\\Tests\\Helper\\InMemoryRepository\\ShoppingListInMemoryRepository\:\:findByIngredient\(\) should return Repas\\Shared\\Domain\\Tool\\Tab\<Repas\\Repas\\Domain\\Model\\ShoppingList\> but returns Repas\\Shared\\Domain\\Tool\\Tab\<Repas\\Shared\\Domain\\Model\\ModelInterface\>\.$#'
+			identifier: return.type
+			count: 1
+			path: tests/Helper/InMemoryRepository/ShoppingListInMemoryRepository.php
+
+		-
+			message: '#^Method Repas\\Tests\\Helper\\InMemoryRepository\\ShoppingListInMemoryRepository\:\:findByOwner\(\) should return Repas\\Shared\\Domain\\Tool\\Tab\<Repas\\Repas\\Domain\\Model\\ShoppingList\> but returns Repas\\Shared\\Domain\\Tool\\Tab\<Repas\\Shared\\Domain\\Model\\ModelInterface\>\.$#'
+			identifier: return.type
+			count: 1
+			path: tests/Helper/InMemoryRepository/ShoppingListInMemoryRepository.php
+
+		-
+			message: '#^Method Repas\\Tests\\Helper\\InMemoryRepository\\ShoppingListInMemoryRepository\:\:findByRecipe\(\) should return Repas\\Shared\\Domain\\Tool\\Tab\<Repas\\Repas\\Domain\\Model\\ShoppingList\> but returns Repas\\Shared\\Domain\\Tool\\Tab\<Repas\\Shared\\Domain\\Model\\ModelInterface\>\.$#'
+			identifier: return.type
+			count: 1
+			path: tests/Helper/InMemoryRepository/ShoppingListInMemoryRepository.php
+
+		-
+			message: '#^Method Repas\\Tests\\Helper\\InMemoryRepository\\ShoppingListInMemoryRepository\:\:findOneActivateByOwner\(\) should return Repas\\Repas\\Domain\\Model\\ShoppingList\|null but returns Repas\\Shared\\Domain\\Model\\ModelInterface\|null\.$#'
+			identifier: return.type
+			count: 1
+			path: tests/Helper/InMemoryRepository/ShoppingListInMemoryRepository.php
+
+		-
+			message: '#^Method Repas\\Tests\\Helper\\InMemoryRepository\\ShoppingListInMemoryRepository\:\:findOneById\(\) should return Repas\\Repas\\Domain\\Model\\ShoppingList but returns Repas\\Shared\\Domain\\Model\\ModelInterface\.$#'
+			identifier: return.type
+			count: 1
+			path: tests/Helper/InMemoryRepository/ShoppingListInMemoryRepository.php
+
+		-
+			message: '#^Method Repas\\Tests\\Helper\\InMemoryRepository\\ShoppingListInMemoryRepository\:\:findOneByMealId\(\) should return Repas\\Repas\\Domain\\Model\\ShoppingList but returns Repas\\Shared\\Domain\\Model\\ModelInterface\|null\.$#'
+			identifier: return.type
+			count: 1
+			path: tests/Helper/InMemoryRepository/ShoppingListInMemoryRepository.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Repas\\Shared\\Domain\\Tool\\Tab\<Repas\\Shared\\Domain\\Model\\ModelInterface\>\:\:filter\(\) expects \(callable\(int\|string\)\: bool\)\|\(callable\(Repas\\Shared\\Domain\\Model\\ModelInterface, int\|string\)\: bool\), Closure\(Repas\\Repas\\Domain\\Model\\ShoppingList\)\: \(Repas\\Repas\\Domain\\Model\\Meal\|null\) given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Helper/InMemoryRepository/ShoppingListInMemoryRepository.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Repas\\Shared\\Domain\\Tool\\Tab\<Repas\\Shared\\Domain\\Model\\ModelInterface\>\:\:filter\(\) expects \(callable\(int\|string\)\: bool\)\|\(callable\(Repas\\Shared\\Domain\\Model\\ModelInterface, int\|string\)\: bool\), Closure\(Repas\\Repas\\Domain\\Model\\ShoppingList\)\: \(Repas\\Repas\\Domain\\Model\\ShoppingListIngredient\|null\) given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Helper/InMemoryRepository/ShoppingListInMemoryRepository.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Repas\\Shared\\Domain\\Tool\\Tab\<Repas\\Shared\\Domain\\Model\\ModelInterface\>\:\:filter\(\) expects \(callable\(int\|string\)\: bool\)\|\(callable\(Repas\\Shared\\Domain\\Model\\ModelInterface, int\|string\)\: bool\), Closure\(Repas\\Repas\\Domain\\Model\\ShoppingList\)\: bool given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Helper/InMemoryRepository/ShoppingListInMemoryRepository.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Repas\\Shared\\Domain\\Tool\\Tab\<Repas\\Shared\\Domain\\Model\\ModelInterface\>\:\:find\(\) expects callable\(Repas\\Shared\\Domain\\Model\\ModelInterface, int\|string\)\: bool, Closure\(Repas\\Repas\\Domain\\Model\\ShoppingList\)\: \(Repas\\Repas\\Domain\\Model\\Meal\|null\) given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Helper/InMemoryRepository/ShoppingListInMemoryRepository.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Repas\\Shared\\Domain\\Tool\\Tab\<Repas\\Shared\\Domain\\Model\\ModelInterface\>\:\:find\(\) expects callable\(Repas\\Shared\\Domain\\Model\\ModelInterface, int\|string\)\: bool, Closure\(Repas\\Repas\\Domain\\Model\\ShoppingList\)\: bool given\.$#'
+			identifier: argument.type
+			count: 2
+			path: tests/Helper/InMemoryRepository/ShoppingListInMemoryRepository.php
+
+		-
+			message: '#^Method Repas\\Tests\\Helper\\InMemoryRepository\\ShoppingListRowInMemoryRepository\:\:findOneById\(\) should return Repas\\Repas\\Domain\\Model\\ShoppingListRow but returns Repas\\Shared\\Domain\\Model\\ModelInterface\.$#'
+			identifier: return.type
+			count: 1
+			path: tests/Helper/InMemoryRepository/ShoppingListRowInMemoryRepository.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Repas\\Shared\\Domain\\Tool\\Tab\<Repas\\Shared\\Domain\\Model\\ModelInterface\>\:\:filter\(\) expects \(callable\(int\|string\)\: bool\)\|\(callable\(Repas\\Shared\\Domain\\Model\\ModelInterface, int\|string\)\: bool\), Closure\(Repas\\Repas\\Domain\\Model\\ShoppingListRow\)\: bool given\.$#'
+			identifier: argument.type
+			count: 2
+			path: tests/Helper/InMemoryRepository/ShoppingListRowInMemoryRepository.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Repas\\Shared\\Domain\\Tool\\Tab\<Repas\\Shared\\Domain\\Model\\ModelInterface\>\:\:find\(\) expects callable\(Repas\\Shared\\Domain\\Model\\ModelInterface, int\|string\)\: bool, Closure\(Repas\\Repas\\Domain\\Model\\ShoppingListRow\)\: bool given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Helper/InMemoryRepository/ShoppingListRowInMemoryRepository.php
+
+		-
+			message: '#^Method Repas\\Tests\\Helper\\InMemoryRepository\\UnitInMemoryRepository\:\:findAll\(\) should return Repas\\Shared\\Domain\\Tool\\Tab\<Repas\\Repas\\Domain\\Model\\Unit\> but returns Repas\\Shared\\Domain\\Tool\\Tab\<Repas\\Shared\\Domain\\Model\\ModelInterface\>\.$#'
+			identifier: return.type
+			count: 1
+			path: tests/Helper/InMemoryRepository/UnitInMemoryRepository.php
+
+		-
+			message: '#^Method Repas\\Tests\\Helper\\InMemoryRepository\\UnitInMemoryRepository\:\:findBySlugs\(\) should return Repas\\Shared\\Domain\\Tool\\Tab\<Repas\\Repas\\Domain\\Model\\Unit\> but returns Repas\\Shared\\Domain\\Tool\\Tab\<Repas\\Shared\\Domain\\Model\\ModelInterface\>\.$#'
+			identifier: return.type
+			count: 1
+			path: tests/Helper/InMemoryRepository/UnitInMemoryRepository.php
+
+		-
+			message: '#^Method Repas\\Tests\\Helper\\InMemoryRepository\\UnitInMemoryRepository\:\:findOneBySlug\(\) should return Repas\\Repas\\Domain\\Model\\Unit but returns Repas\\Shared\\Domain\\Model\\ModelInterface\.$#'
+			identifier: return.type
+			count: 1
+			path: tests/Helper/InMemoryRepository/UnitInMemoryRepository.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Repas\\Shared\\Domain\\Tool\\Tab\<Repas\\Shared\\Domain\\Model\\ModelInterface\>\:\:filter\(\) expects \(callable\(int\|string\)\: bool\)\|\(callable\(Repas\\Shared\\Domain\\Model\\ModelInterface, int\|string\)\: bool\), Closure\(Repas\\Repas\\Domain\\Model\\Unit\)\: bool given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Helper/InMemoryRepository/UnitInMemoryRepository.php
+
+		-
+			message: '#^PHPDoc tag @param for parameter \$users with type array\<Repas\\User\\Domain\\Model\\User\>\|null is not subtype of native type array\.$#'
+			identifier: parameter.phpDocType
+			count: 1
+			path: tests/Helper/InMemoryRepository/UserInMemoryRepository.php
+
+		-
+			message: '#^Parameter \#1 \$expected of static method Repas\\Tests\\Helper\\RepasAssert\:\:assertTab\(\) expects Repas\\Shared\\Domain\\Tool\\Tab\<Repas\\Repas\\Domain\\Model\\Meal\>, Repas\\Shared\\Domain\\Tool\\Tab\<Repas\\Repas\\Domain\\Model\\RecipeRow\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Helper/RepasAssert.php
+
+		-
+			message: '#^Parameter \#1 \$expected of static method Repas\\Tests\\Helper\\RepasAssert\:\:assertTab\(\) expects Repas\\Shared\\Domain\\Tool\\Tab\<Repas\\Repas\\Domain\\Model\\Meal\>, Repas\\Shared\\Domain\\Tool\\Tab\<Repas\\Repas\\Domain\\Model\\Unit\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Helper/RepasAssert.php
+
+		-
+			message: '#^Using nullsafe method call on non\-nullable type mixed\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: tests/Repas/Application/AddIngredientToShoppingListHandlerTest.php
+
+		-
+			message: '#^Call to an undefined method Symfony\\Component\\EventDispatcher\\EventDispatcherInterface\:\:expects\(\)\.$#'
+			identifier: method.notFound
+			count: 8
+			path: tests/Repas/Application/CreateIngredientHandlerTest.php
+
+		-
+			message: '#^Call to an undefined method Symfony\\Component\\EventDispatcher\\EventDispatcherInterface\:\:expects\(\)\.$#'
+			identifier: method.notFound
+			count: 4
+			path: tests/Repas/Application/CreateRecipeHandlerTest.php
+
+		-
+			message: '#^Repas\\Shared\\Domain\\Tool\\Tab\<\*NEVER\*\> does not accept Repas\\Repas\\Application\\Command\\CreateRecipe\\CreateRecipeRowSubCommand\.$#'
+			identifier: offsetAssign.valueType
+			count: 4
+			path: tests/Repas/Application/CreateRecipeHandlerTest.php
+
+		-
+			message: '#^Call to an undefined method Symfony\\Component\\EventDispatcher\\EventDispatcherInterface\:\:expects\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: tests/Repas/Application/CreateShoppingListHandlerTest.php
+
+		-
+			message: '#^Call to an undefined method Symfony\\Component\\EventDispatcher\\EventDispatcherInterface\:\:getLastEventDispatched\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Repas/Application/TickLineOnShoppingListHandlerTest.php
+
+		-
+			message: '#^Call to method PHPUnit\\Framework\\Assert\:\:assertTrue\(\) with true will always evaluate to true\.$#'
+			identifier: method.alreadyNarrowedType
+			count: 1
+			path: tests/Repas/InputAdapter/AddNewUnitControllerTest.php
+
+		-
+			message: '#^Array has 2 duplicate keys with value 0 \(0, ''0''\)\.$#'
+			identifier: array.duplicateKey
+			count: 2
+			path: tests/Shared/TabTest.php
+
+		-
+			message: '#^Call to an undefined method Symfony\\Component\\PasswordHasher\\Hasher\\PasswordHasherFactoryInterface\:\:hash\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/User/Application/RegisterNewUserHandlerTest.php
+
+		-
+			message: '#^Parameter \#3 \$defaultServing of class Repas\\User\\Application\\UpdateUserSettings\\UpdateUserSettingsCommand constructor expects string, int given\.$#'
+			identifier: argument.type
+			count: 3
+			path: tests/User/Application/UpdateUserSettingsHandlerTest.php
+
+		-
+			message: '#^Call to function method_exists\(\) with ''Symfony\\\\Component\\\\Dotenv\\\\Dotenv'' and ''bootEnv'' will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: tests/bootstrap.php

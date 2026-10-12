@@ -14,6 +14,9 @@
         "doctrine/doctrine-fixtures-bundle": "^4.0",
         "doctrine/doctrine-migrations-bundle": "^3.3",
         "doctrine/orm": "^3.3",
+        "lexik/jwt-authentication-bundle": "^3.2",
+        "nelmio/api-doc-bundle": "^5.13",
+        "nelmio/cors-bundle": "^2.6",
         "ramsey/uuid": "*",
         "runtime/frankenphp-symfony": "^0.2.0",
         "symfony/asset": "7.2.*",
@@ -24,11 +27,15 @@
         "symfony/framework-bundle": "7.2.*",
         "symfony/messenger": "7.2.*",
         "symfony/process": "7.2.*",
+        "symfony/property-access": "7.2.*",
         "symfony/runtime": "7.2.*",
         "symfony/security-bundle": "7.2.*",
+        "symfony/serializer": "7.2.*",
         "symfony/twig-bundle": "7.2.*",
+        "symfony/validator": "7.2.*",
         "symfony/yaml": "7.2.*",
-        "twig/intl-extra": "^3.18"
+        "twig/intl-extra": "^3.18",
+        "zircote/swagger-php": "^5.8"
     },
     "config": {
         "allow-plugins": {
@@ -46,7 +53,8 @@
     },
     "autoload-dev": {
         "psr-4": {
-            "Repas\\Tests\\": "tests/"
+            "Repas\\Tests\\": "tests/",
+            "PHPStanRules\\": "quality-rules/Phpstan/"
         }
     },
     "replace": {
@@ -82,6 +90,10 @@
         }
     },
     "require-dev": {
+        "dama/doctrine-test-bundle": "^8.3",
+        "deptrac/deptrac": "^4.5",
+        "phpstan/phpstan": "^2.3",
+        "phpstan/phpstan-phpunit": "^2.1",
         "phpunit/phpunit": "^12.0",
         "rregeer/phpunit-coverage-check": "^0.3.1",
         "symfony/browser-kit": "7.2.*",

@@ -14,3 +14,9 @@ when@test:
         test: true
         session:
             storage_factory_id: session.storage.factory.mock_file
+        # Les tests d'API provoquent volontairement des 404 et 403 : ne pas les écrire en [error] sur la sortie de PHPUnit.
+        exceptions:
+            Symfony\Component\HttpKernel\Exception\NotFoundHttpException:
+                log_level: debug
+            Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException:
+                log_level: debug

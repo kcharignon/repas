@@ -1,0 +1,22 @@
+# Les Builder de test (tests/Helper/Builder) ne doivent jamais être utilisés par le code applicatif.
+deptrac:
+  paths:
+    - ../../src
+  layers:
+    - name: Builder
+      collectors:
+        - type: bool
+          must:
+            - type: classLike
+              value: .*Builder$
+          must_not:
+            - type: classLike
+              value: .*QueryBuilder$
+    - name: Src
+      collectors:
+        - type: classLike
+          value: ^Repas\\.*
+
+  ruleset:
+    Src:
+      - '!Builder'

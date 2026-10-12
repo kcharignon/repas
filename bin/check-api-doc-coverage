@@ -1,0 +1,58 @@
+#!/usr/bin/env php
+<?php
+
+/**
+ * Vérifie que chaque controller API (*ApiController sous Infrastructure/Http/Api) porte au moins
+ * un attribut OpenAPI (#[OA\Get|Post|Put|Patch|Delete]) — ADR 0007.
+ *
+ * Code de sortie 1 si au moins un controller n'est pas documenté.
+ */
+
+declare(strict_types=1);
+
+$projectRoot = dirname(__DIR__);
+
+$openApiAttributes = ['OA\Get', 'OA\Post', 'OA\Put', 'OA\Patch', 'OA\Delete'];
+
+$errors = [];
+$checked = 0;
+
+$iterator = new RecursiveIteratorIterator(
+    new RecursiveDirectoryIterator($projectRoot . '/src', FilesystemIterator::SKIP_DOTS)
+);
+
+foreach ($iterator as $file) {
+    if ($file->getExtension() !== 'php' || !str_ends_with($file->getBasename('.php'), 'ApiController')) {
+        continue;
+    }
+
+    $content = file_get_contents($file->getPathname());
+    ++$checked;
+
+    $documented = false;
+    foreach ($openApiAttributes as $attribute) {
+        if (str_contains($content, '#[' . $attribute)) {
+            $documented = true;
+            break;
+        }
+    }
+
+    if (!$documented) {
+        $errors[] = str_replace($projectRoot . '/', '', $file->getPathname());
+    }
+}
+
+echo "Vérification de la couverture de la doc API OpenAPI...\n";
+echo "  Controllers analysés : {$checked}\n";
+
+if ($errors !== []) {
+    echo "\n" . count($errors) . " controller(s) sans documentation OpenAPI :\n";
+    foreach ($errors as $error) {
+        echo "  - {$error}\n";
+    }
+    echo "\nAjouter #[OA\\Get|Post|Put|Patch|Delete] sur ces controllers.\n";
+    exit(1);
+}
+
+echo "Tous les controllers API sont documentés.\n";
+exit(0);

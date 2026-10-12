@@ -22,6 +22,7 @@ install:  ## Install and start the project with vendors update
 	@docker compose run --rm php composer install --no-scripts
 	@$(MAKE) start
 	@$(EXEC_PHP) php bin/console assets:install
+	@$(MAKE) jwt-keys
 	@$(EXEC_PHP) php bin/console cache:clear
 	@echo "drop all db if exist and create it"
 	@$(MAKE) db-drop
@@ -44,7 +45,7 @@ restart: ## Restart the project
 	@$(MAKE) start
 
 ## —— Code quality 📋 ————————————————————————————————————————————————————————
-.PHONY: test test-coverage
+.PHONY: test test-coverage deptrac phpstan api-doc-validate api-doc-coverage jwt-keys quality
 
 test: ## Run PHPUnit tests
 	@echo "🧪 Exécution des tests avec PHPUnit..."
@@ -59,6 +60,37 @@ test-coverage: ## Run PHPUnit tests with code coverage
 	  echo "🧪 Couverture de test avec le fichier de configuration par défaut.\n" && \
 	  $(DOCKER_COMPOSE) exec -e XDEBUG_MODE=coverage php vendor/bin/phpunit --configuration phpunit.dist.xml --coverage-html ./coverage; \
 	fi
+
+deptrac: ## Run Deptrac to check architectural dependencies
+	@echo "Check des dépendances entre Domain, Application et Infrastructure"
+	@$(EXEC_PHP) vendor/bin/deptrac analyse --config-file=quality-rules/Deptrac/deptrac.layer.yaml --no-progress
+	@echo "Check des dépendances entre bounded contexts"
+	@$(EXEC_PHP) vendor/bin/deptrac analyse --config-file=quality-rules/Deptrac/deptrac.bounded-context.yaml --no-progress
+	@echo "Check des dépendances : un Repository ne peut pas être appelé dans une Query"
+	@$(EXEC_PHP) vendor/bin/deptrac analyse --config-file=quality-rules/Deptrac/deptrac.no-repo-in-queryhandler.yaml --no-progress
+	@echo "Check des dépendances : un Loader ne peut pas être appelé dans une Command"
+	@$(EXEC_PHP) vendor/bin/deptrac analyse --config-file=quality-rules/Deptrac/deptrac.no-loader-in-commandhandler.yaml --no-progress
+	@echo "Check des dépendances : un Builder ne peut pas être appelé dans src"
+	@$(EXEC_PHP) vendor/bin/deptrac analyse --config-file=quality-rules/Deptrac/deptrac.no-builder-in-src.yaml --no-progress
+	@echo "Check des dépendances : un test de handler ne touche ni base, ni kernel, ni Infrastructure"
+	@$(EXEC_PHP) vendor/bin/deptrac analyse --config-file=quality-rules/Deptrac/deptrac.no-database-in-handler-tests.yaml --no-progress
+
+phpstan: ## Run PHPStan static analysis
+	@echo "🔍 Check PHPStan..."
+	@$(EXEC_PHP) vendor/bin/phpstan analyse --memory-limit=1G --no-progress
+
+api-doc-validate: ## Validate that the API documentation generates without errors
+	@echo "🔍 Validation de la doc API OpenAPI..."
+	@$(EXEC_PHP) bin/console nelmio:apidoc:dump --format=json > /dev/null
+	@echo "✅ La documentation API est valide."
+
+api-doc-coverage: ## Check that every API controller has OpenAPI documentation
+	@$(EXEC_PHP) php bin/check-api-doc-coverage
+
+jwt-keys: ## Generate the JWT key pair if missing (config/jwt, git-ignored)
+	@$(EXEC_PHP) bin/console lexik:jwt:generate-keypair --skip-if-exists
+
+quality: deptrac phpstan api-doc-validate api-doc-coverage ## Run architecture, static analysis and API doc checks
 
 
 ## —— Helper 🛠️ ——————————————————————————————————————————————————————————————

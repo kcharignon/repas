@@ -1,0 +1,6 @@
+# Routes d'API factices pour tester la sécurité (JWT, 401, 403). Environnement de test uniquement.
+test_probe_controllers:
+    resource:
+        path: ../../../tests/Helper/Http/
+        namespace: Repas\Tests\Helper\Http
+    type: attribute
