@@ -26,6 +26,14 @@
         <include>
             <directory suffix=".php">src</directory>
         </include>
+        <exclude>
+            <!-- Couche Twig legacy (session, fragments HTML) : controllers et FormTypes sans test fonctionnel, remplacés
+                 au fil de la migration (docs/migration-roadmap.md). Les controllers API (Http/Api) restent mesurés. -->
+            <directory>src/Repas/Infrastructure/Http/Controller</directory>
+            <directory>src/Repas/Infrastructure/Http/Form</directory>
+            <directory>src/User/Infrastructure/Http/Controller</directory>
+            <directory>src/User/Infrastructure/Http/Form</directory>
+        </exclude>
     </source>
 
     <coverage>

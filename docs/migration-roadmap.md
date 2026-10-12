@@ -94,6 +94,13 @@ Valide de bout en bout : bus, Loader, Deptrac, API, JWT. Risque faible.
 - `RecipeRowRepository` : interface vide, le repository concret est injecté.
 - Formulaires admin : `conversion|default(null)` / `department|default(null)` / `unit|default(null)` jamais fournis par les controllers update, le titre reste « Nouveau … ».
 
+## Couverture de tests (cliquet)
+
+- Seuil CI : **75 %** (`COVERAGE_THRESHOLD`, `.github/workflows/ci.yml`). Mesure au 2026-10-12 : 78,1 %. Le seuil de 80 % précédent n'était plus tenu avant la migration (57,2 %, toute la couche Twig non testée).
+- Exclus de la mesure (`phpunit.dist.xml`) : `Http/Controller` et `Http/Form` des contextes `Repas` et `User`. Ils sortent de l'exclusion en même temps que du code (phase 9) ; les controllers API restent mesurés.
+- Règle : le seuil ne baisse jamais. Le remonter par paliers vers 80 % quand la mesure le permet (les slices Query/Loader/API entrent à 100 %, donc le chiffre monte avec la migration).
+- Plus gros trous restants (éléments non couverts) : `Infrastructure/Entity` 172, `Domain/Model` 134, commandes console `src/Command` 113, `Infrastructure/Repository` 89, `DataFixture` 31.
+
 ## Inventaire des lectures directes (état initial, 2026-10-12)
 
 - 15 controllers de lecture pure (10 `Get*`, 4 `AdminGetAll*` Repas, `AdminGetUsers`).

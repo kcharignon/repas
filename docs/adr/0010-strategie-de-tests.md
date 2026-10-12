@@ -39,9 +39,10 @@ Règles :
 6. Structure `// Given` / `// When` / `// Then` dans chaque test.
 7. Un nouveau controller (Api) ou `QueryHandler` sans test est refusé par PHPStan (règle custom, [0011](0011-garde-fous-deptrac-phpstan.md)).
 8. Horloge et ids : `FrozenClock` et `ControlledUuidGenerator` (`tests/Helper/`).
+9. **Couverture en cliquet.** La CI exige un seuil de couverture (`COVERAGE_THRESHOLD` dans `.github/workflows/ci.yml`, 75 % au 2026-10-12) qui ne baisse jamais et se remonte vers 80 % au fil de la migration. La couche Twig legacy (`Http/Controller` et `Http/Form` des deux contextes), sans test fonctionnel et vouée à être remplacée, est exclue de la mesure dans `phpunit.dist.xml` ; les controllers API (`Http/Api`) restent mesurés. Le seuil de 80 % initial n'était déjà plus tenu avant la migration (57 %).
 
 ## Conséquences
 
 - Positives : la couche la plus testée (Application) est la plus rapide ; un test rouge localise la couche en cause (métier, mapping SQL, contrat HTTP) ; un changement de schéma ne fait pas tomber les tests de handlers.
 - Coûts : un `InMemoryLoader` par interface de Loader ; les tests de Loader et de Repository dépendent de la base de test.
-- Garde-fou : Deptrac pour l'isolation des tests de handlers ; couverture 80 % déjà exigée en CI ; PHPStan pour la présence des tests.
+- Garde-fou : Deptrac pour l'isolation des tests de handlers ; seuil de couverture en cliquet en CI (règle 9) ; PHPStan pour la présence des tests.
