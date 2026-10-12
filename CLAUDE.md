@@ -2,6 +2,13 @@
 
 Guide d'architecture pour ce projet (Symfony 7.2 / PHP 8.4). L'objectif: rester cohérent avec le style DDD / Hexagonal / CQRS / Repository / SOLID déjà en place dans `src/`. Ne pas réinventer, suivre les patterns existants ci-dessous.
 
+## Source de vérité : ADR, roadmap, skill
+
+- **Décisions d'architecture** : `docs/adr/README.md` (index). À lire avant de développer. En cas de désaccord avec ce fichier, l'ADR gagne.
+- **Migration en cours** : les lectures passent petit à petit de « controller → repository » à « controller → QueryBus → QueryHandler → Loader → DTO », avec en parallèle de nouveaux endpoints API JSON stateless (JWT). Suivi dans `docs/migration-roadmap.md` (à mettre à jour à chaque slice).
+- **Skill développeur** : `/repas-dev` (`.claude/skills/repas-dev/`) — recettes pas-à-pas (nouvelle lecture, migration d'un ViewController, endpoint API, écriture), nommage, Definition of Done.
+- Changer une convention = mettre à jour l'ADR, ce fichier, le skill et la roadmap dans le même commit.
+
 ## Bounded contexts
 
 Le code est organisé en contextes métier sous `src/` :
@@ -22,11 +29,14 @@ src/{Context}/
     Exception/     # exceptions métier (héritent de Shared\Domain\Exception\DomainException)
   Application/     # orchestration des cas d'usage
     Command/{UseCase}/{UseCase}Command.php + {UseCase}Handler.php
-    Query/         # (prévu pour les lectures via bus, actuellement peu utilisé, cf. plus bas)
+    Query/{UseCase}/{UseCase}Query.php + {UseCase}QueryHandler.php + {X}DTO.php
+    Loader/        # ports de lecture : interfaces {X}Loader (retournent des DTO)
   Infrastructure/   # adapters concrets (framework, DB, HTTP)
     Entity/         # entités Doctrine (mapping ORM, séparées du Domain\Model)
-    Repository/     # implémentations *PostgreSQLRepository des ports Domain\Interface
-    Http/Controller # {Action}ViewController (un controller = une route = une action)
+    Repository/     # implémentations *PostgreSQLRepository des ports Domain\Interface (écriture, agrégats)
+    Loader/         # implémentations {X}PostgreSQLLoader des ports Application\Loader (lecture, DTO)
+    Http/Controller # {Action}ViewController Twig (un controller = une route = une action)
+    Http/Api/{UseCase}/ # {UseCase}ApiController JSON `/api/v1` (+ RequestQuery / Payload)
     Http/Form       # Symfony FormType liés aux Command
     Http/View       # templates Twig
     EventListener/  # écoute les Domain\Event
@@ -38,12 +48,21 @@ src/{Context}/
 ## CQRS
 
 - **Écritures (Command)** : passent par un bus. `CommandBusInterface::dispatch()` (`src/Shared/Application/Interface/CommandBusInterface.php`) envoie le `{UseCase}Command` (DTO `readonly`, propriétés publiques, pas de logique) au `{UseCase}Handler` marqué `#[AsMessageHandler]` (Symfony Messenger). Le controller ne fait qu'assembler la Command et appeler `dispatch()` — jamais de logique métier dans un controller.
-- **Lectures (Query)** : actuellement les controllers de lecture (`Get*ViewController`) appellent directement le `Domain\Interface\{X}Repository` injecté — pas de bus. `QueryBusInterface::ask()` existe (`src/Shared/Application/Interface/QueryBusInterface.php`) mais le dossier `Application/Query` est encore vide : si une lecture devient complexe (agrégation, plusieurs repositories), créer un `{UseCase}Query` + `{UseCase}QueryHandler` sur le même modèle que les Command plutôt que d'alourdir le controller.
+- **Lectures (Query)** : passent par `QueryBusInterface::ask()` (`src/Shared/Application/Interface/QueryBusInterface.php`). Le `{UseCase}Query` (`final readonly`, `implements QueryInterface`) est traité par un `{UseCase}QueryHandler` qui délègue à un port `Application/Loader/{X}Loader` et renvoie un `{X}DTO` (`final readonly`). Le controller (Twig ou API) ne manipule que ce DTO — jamais un modèle de domaine, jamais un repository (ADR 0003, 0004, 0005).
+- **Règles fermes** : un `QueryHandler` n'appelle jamais un `Repository` ; un `CommandHandler` n'appelle jamais un `Loader` ; un `QueryHandler` ne modifie pas l'état (une lecture qui crée si absent = une Command puis une Query).
+- **État de la migration** : la lecture directe via `Domain\Interface\{X}Repository` dans les `Get*ViewController`, les controllers AJAX, les form types et `OwnerVoter` est la **dette à résorber**, pas un modèle à suivre. Pour toute nouvelle lecture, ou si tu touches une lecture existante, suis la recette du skill `/repas-dev` et coche la slice dans `docs/migration-roadmap.md`.
+- **Buses** : `command.bus` et `query.bus` distincts (ADR 0006). Les controllers injectent toujours `CommandBusInterface` / `QueryBusInterface`, jamais les classes concrètes.
+
+## API JSON (`/api/v1`)
+
+- Controllers dans `Infrastructure/Http/Api/{UseCase}/`, suffixe `ApiController`, qui n'appellent que le `QueryBusInterface` (GET) ou le `CommandBusInterface` (écritures). Sortie de lecture = le DTO de la query ; liste = `{member, totalItems}` ; écriture = `204` ou `201` + `Location` ; erreurs = `{error:{message}}` (ADR 0007).
+- Stateless, authentifiés par **JWT** (ADR 0008). Les routes Twig/AJAX existantes restent en session et ne changent pas : les deux coexistent.
+- Documentation OpenAPI (`#[OA\…]`) obligatoire sur chaque controller API.
 
 ## Domain Model
 
 - Classes `final` (sauf besoin d'héritage explicite), propriétés `private`, jamais d'ORM dedans.
-- Implémentent `Repas\Shared\Domain\Model\ModelInterface` + `use ModelTrait` : `getId()`, `toArray()` (sérialisation générique via réflexion + snake_case), `isEqual()`.
+- Implémentent `Repas\Shared\Domain\Model\ModelInterface` + `use ModelTrait` : `getId()`, `toArray()` (sérialisation générique via réflexion + snake_case, **jamais une sortie HTTP** : elle exposerait les champs privés), `isEqual()`.
 - Construction :
   - `create(...)` — factory pour une nouvelle instance (règles métier de création, ex. génération de slug).
   - `load(array $datas)` — reconstruction depuis la persistance (utilisé par les repositories).
@@ -53,11 +72,13 @@ src/{Context}/
 
 ## Repository pattern
 
-- Le port est défini dans `Domain/Interface/{X}Repository.php` — c'est ce type que Application et les controllers injectent, jamais l'implémentation concrète.
+- Le port est défini dans `Domain/Interface/{X}Repository.php` — c'est ce type que les `CommandHandler` injectent, jamais l'implémentation concrète. Un controller n'injecte plus de repository (écriture : `CommandBusInterface` ; lecture : `QueryBusInterface`).
 - L'implémentation Doctrine vit dans `Infrastructure/Repository/{X}PostgreSQLRepository.php`, hérite de `PostgreSQLRepository` (gère `EntityManager`/`ObjectRepository`), convertit `Entity` (Doctrine) <-> `Model` (Domain) via `Entity::fromModel()` / `{X}Model::load([...])`.
 - Utiliser `ModelCache` (`Shared/Infrastructure/Repository/ModelCache.php`) pour éviter les hydratations répétées dans une requête.
 - Pour les tests : implémentation `InMemory{X}Repository` dans `tests/Helper/InMemoryRepository/`, même interface, aucune dépendance Doctrine — permet de tester Application/Domain sans DB.
-- Ne jamais faire de requête Doctrine (QueryBuilder, DQL) en dehors de `Infrastructure/Repository`.
+- Un Repository sert à **charger pour modifier** un agrégat ; pour **afficher**, utiliser un Loader (ADR 0004).
+- Ne jamais faire de requête Doctrine (QueryBuilder, DQL) en dehors de `Infrastructure/Repository` et `Infrastructure/Loader`.
+- Legacy : `Infrastructure/Loader/RecipeLoader` renvoie encore des modèles de domaine ; il sera remplacé par un Loader à DTO (roadmap, phase 5). Ne pas l'étendre.
 
 ## SOLID — application concrète dans ce repo
 
@@ -72,24 +93,38 @@ src/{Context}/
 
 ## Conventions de nommage
 
-- Use case : dossier `Application/Command/{VerbNoun}/` contenant `{VerbNoun}Command.php` + `{VerbNoun}Handler.php`.
-- Controller HTTP : suffixe `ViewController`, attribut `#[Route]` sur `__invoke()`.
-- Repository infra : suffixe technologie, ex. `PostgreSQLRepository`.
+- Use case d'écriture : dossier `Application/Command/{VerbNoun}/` contenant `{VerbNoun}Command.php` + `{VerbNoun}Handler.php`.
+- Use case de lecture : dossier `Application/Query/{Get|List}{Noun}/` contenant `{Get|List}{Noun}Query.php`, `…QueryHandler.php` (`#[AsMessageHandler(bus: 'query.bus')]`) et les `{X}DTO.php`. `Get` = un élément, `List` = une collection.
+- Controller HTTP Twig : suffixe `ViewController` ; API : suffixe `ApiController` ; attribut `#[Route]` sur `__invoke()`.
+- Repository infra : suffixe technologie, ex. `PostgreSQLRepository`. Loader infra : `{X}PostgreSQLLoader implements {X}Loader`.
 - Événements de domaine : suffixe `Event`, dispatchés via `EventDispatcherInterface` depuis un Handler, consommés par un `EventListener` en Infrastructure.
 
 ## Tests
 
 - `tests/Helper/Builder/` : builders pour construire des modèles de test rapidement (pattern Test Data Builder).
 - `tests/Helper/InMemoryRepository/` : doubles des repositories pour tester Application sans DB.
-- Tester les Handler avec les InMemoryRepository + `SpyEventDispatcher`, pas de mock manuel des interfaces.
+- Tester les `CommandHandler` avec les InMemoryRepository + `SpyEventDispatcher`, pas de mock manuel des interfaces.
+- Tester les `QueryHandler` avec un `Fake{X}Loader` (`tests/Helper/Loader/`), sans kernel ; tester chaque Loader sur la vraie base (`tests/Repas/OutputAdapter/`, `DatabaseTestCase`) ; tester les controllers API avec des doubles de bus (`tests/Repas/InputAdapter/`) en vérifiant la query construite, le statut et les **clés JSON** du DTO (ADR 0010).
+- Structure `// Given` / `// When` / `// Then`.
 
 ## Quand tu ajoutes une fonctionnalité
 
+Utiliser le skill `/repas-dev` (recettes détaillées). En bref :
+
+**Écriture**
 1. Modéliser dans `Domain/Model` (+ `Domain/Exception` si nouveaux cas d'erreur).
 2. Définir/étendre le port dans `Domain/Interface`.
 3. Écrire le cas d'usage dans `Application/Command/{UseCase}/` (Command DTO + Handler `#[AsMessageHandler]`).
 4. Implémenter le port dans `Infrastructure/Repository` (+ `Infrastructure/Entity` si nouvelle table Doctrine).
-5. Exposer via `Infrastructure/Http/Controller` qui appelle uniquement le `CommandBusInterface` (écriture) ou le repository (lecture simple).
+5. Exposer via un controller qui n'appelle que le `CommandBusInterface`.
 6. Ajouter l'InMemoryRepository de test + Builder si nouvel agrégat.
 
-Ne pas mettre de logique métier dans les controllers, les entités Doctrine ou les templates Twig — tout va dans `Domain`/`Application`.
+**Lecture**
+1. DTO + interface `Application/Loader/{X}Loader` + `{UseCase}Query` + `{UseCase}QueryHandler`.
+2. Implémenter `Infrastructure/Loader/{X}PostgreSQLLoader` (DQL/DBAL → DTO, pas d'hydratation de modèle de domaine).
+3. Exposer via un controller Twig et/ou API qui n'appelle que le `QueryBusInterface`.
+4. Tests : handler + fake Loader, Loader sur base réelle, controller API.
+
+**Avant de committer** : `make test` (puis `make deptrac`, `make phpstan`, `make api-doc-validate` — ces cibles sont introduites au fil de la phase 0 de la roadmap). Un commit par unité logique, message court en français, sans `Co-Authored-By`, jamais de push sans demande explicite.
+
+Ne pas mettre de logique métier dans les controllers, les entités Doctrine ou les templates Twig — tout va dans `Domain`/`Application` ; les calculs d'affichage d'une lecture sont précalculés dans le DTO par le Loader.
