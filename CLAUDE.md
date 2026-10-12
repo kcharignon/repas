@@ -75,7 +75,7 @@ src/{Context}/
 - Le port est défini dans `Domain/Interface/{X}Repository.php` — c'est ce type que les `CommandHandler` injectent, jamais l'implémentation concrète. Un controller n'injecte plus de repository (écriture : `CommandBusInterface` ; lecture : `QueryBusInterface`).
 - L'implémentation Doctrine vit dans `Infrastructure/Repository/{X}PostgreSQLRepository.php`, hérite de `PostgreSQLRepository` (gère `EntityManager`/`ObjectRepository`), convertit `Entity` (Doctrine) <-> `Model` (Domain) via `Entity::fromModel()` / `{X}Model::load([...])`.
 - Utiliser `ModelCache` (`Shared/Infrastructure/Repository/ModelCache.php`) pour éviter les hydratations répétées dans une requête.
-- Pour les tests : implémentation `InMemory{X}Repository` dans `tests/Helper/InMemoryRepository/`, même interface, aucune dépendance Doctrine — permet de tester Application/Domain sans DB.
+- Pour les tests : implémentation `{X}InMemoryRepository` dans `tests/Helper/InMemoryRepository/`, même interface, aucune dépendance Doctrine — permet de tester Application/Domain sans DB.
 - Un Repository sert à **charger pour modifier** un agrégat ; pour **afficher**, utiliser un Loader (ADR 0004).
 - Ne jamais faire de requête Doctrine (QueryBuilder, DQL) en dehors de `Infrastructure/Repository` et `Infrastructure/Loader`.
 - Legacy : `Infrastructure/Loader/RecipeLoader` renvoie encore des modèles de domaine ; il sera remplacé par un Loader à DTO (roadmap, phase 5). Ne pas l'étendre.
@@ -102,9 +102,10 @@ src/{Context}/
 ## Tests
 
 - `tests/Helper/Builder/` : builders pour construire des modèles de test rapidement (pattern Test Data Builder).
-- `tests/Helper/InMemoryRepository/` : doubles des repositories pour tester Application sans DB.
-- Tester les `CommandHandler` avec les InMemoryRepository + `SpyEventDispatcher`, pas de mock manuel des interfaces.
-- Tester les `QueryHandler` avec un `Fake{X}Loader` (`tests/Helper/Loader/`), sans kernel ; tester chaque Loader sur la vraie base (`tests/Repas/OutputAdapter/`, `DatabaseTestCase`) ; tester les controllers API avec des doubles de bus (`tests/Repas/InputAdapter/`) en vérifiant la query construite, le statut et les **clés JSON** du DTO (ADR 0010).
+- `tests/Helper/InMemoryRepository/` et `tests/Helper/InMemoryLoader/` : doubles en mémoire des repositories (`{X}InMemoryRepository`) et des loaders (`{X}InMemoryLoader`), pour tester Application sans DB.
+- **Un handler (Command ou Query) se teste en unitaire, jamais avec la base ni le kernel** (ADR 0010, vérifié par Deptrac). La persistance se teste uniquement dans `tests/*/OutputAdapter/` (repositories et loaders), jamais par transitivité à travers un handler.
+- `CommandHandler` : `{X}InMemoryRepository` + `SpyEventDispatcher`, pas de mock manuel des interfaces.
+- `QueryHandler` : un `{X}InMemoryLoader` (double idiot : renvoie des DTO programmés, enregistre ses appels). Le test asserte que le handler transmet les bons paramètres au Loader et renvoie son résultat tel quel. Filtres, tri, jointures et calculs du DTO se prouvent dans le test du Loader réel (`tests/Repas/OutputAdapter/`, `DatabaseTestCase`). Controllers API : doubles de bus (`tests/Repas/InputAdapter/`), en vérifiant la query construite, le statut et les **clés JSON** du DTO (ADR 0010).
 - Structure `// Given` / `// When` / `// Then`.
 
 ## Quand tu ajoutes une fonctionnalité
@@ -123,7 +124,7 @@ Utiliser le skill `/repas-dev` (recettes détaillées). En bref :
 1. DTO + interface `Application/Loader/{X}Loader` + `{UseCase}Query` + `{UseCase}QueryHandler`.
 2. Implémenter `Infrastructure/Loader/{X}PostgreSQLLoader` (DQL/DBAL → DTO, pas d'hydratation de modèle de domaine).
 3. Exposer via un controller Twig et/ou API qui n'appelle que le `QueryBusInterface`.
-4. Tests : handler + fake Loader, Loader sur base réelle, controller API.
+4. Tests : handler + InMemoryLoader (unitaire, jamais de base), Loader sur base réelle, controller API.
 
 **Avant de committer** : `make test` puis `make quality` (agrège `deptrac`, `phpstan`, `api-doc-validate`, `api-doc-coverage`). Les clés JWT de dev s'initialisent avec `make jwt-keys`. Les baselines (`quality-rules/Deptrac/baseline/`, `phpstan-baseline.neon`) ne doivent que diminuer. Un commit par unité logique, message court en français, sans `Co-Authored-By`, jamais de push sans demande explicite.
 

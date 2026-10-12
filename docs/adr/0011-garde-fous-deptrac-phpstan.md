@@ -10,14 +10,15 @@ Repas n'a aucun outil d'analyse : ni Deptrac, ni PHPStan, ni Rector, ni CS-Fixer
 
 ## Décision
 
-1. **Deptrac** (`deptrac/deptrac`, en dev), cinq fichiers sous `quality-rules/Deptrac/`, exécutés par `make deptrac` et en CI :
+1. **Deptrac** (`deptrac/deptrac`, en dev), six fichiers sous `quality-rules/Deptrac/`, exécutés par `make deptrac` et en CI :
    - `deptrac.layer.yaml` : `Application → Domain` ; `Infrastructure → Domain, Application`.
    - `deptrac.bounded-context.yaml` : `Repas → Shared`, `User → Shared`, `Shared` n'importe aucun contexte.
    - `deptrac.no-repo-in-queryhandler.yaml` : les classes de `…\Application\Query\…` ne dépendent d'aucun `*Repository`.
    - `deptrac.no-loader-in-commandhandler.yaml` : les classes de `…\Application\Command\…` ne dépendent d'aucun `*Loader`.
    - `deptrac.no-builder-in-src.yaml` : aucun `*Builder` (hors `*QueryBuilder`) sous `src/`.
+   - `deptrac.no-database-in-handler-tests.yaml` : les tests de `tests/*/Application/**` (handlers) ne dépendent ni de `DatabaseTestCase`, ni du kernel/`WebTestCase`, ni de Doctrine, ni d'une classe d'`Infrastructure` ([0010](0010-strategie-de-tests.md)). Seule règle qui analyse `tests/` et non `src/`.
    Les règles `Query`/`Command` s'appuient sur le **namespace** (pas sur le suffixe `…CommandHandler`) car les handlers d'écriture existants s'appellent `{UseCase}Handler`.
-2. Les violations existantes (liste en ADR 0001) sont figées dans la baseline Deptrac `quality-rules/Deptrac/baseline/bounded-context.baseline.yaml` (importée par `deptrac.bounded-context.yaml`). Les trois autres règles n'ont aucune violation existante, donc pas de baseline. **Le nombre d'entrées de la baseline ne peut que diminuer** ; la régénérer (commande en tête du fichier de config) après avoir résorbé une dépendance. Deptrac 4.5 exige `--config-file` avant les autres options.
+2. Les violations existantes (liste en ADR 0001) sont figées dans la baseline Deptrac `quality-rules/Deptrac/baseline/bounded-context.baseline.yaml` (importée par `deptrac.bounded-context.yaml`). Les autres règles n'ont aucune violation existante, donc pas de baseline. **Le nombre d'entrées de la baseline ne peut que diminuer** ; la régénérer (commande en tête du fichier de config) après avoir résorbé une dépendance. Deptrac 4.5 exige `--config-file` avant les autres options.
 3. **PHPStan** (`phpstan/phpstan`, `phpstan/phpstan-phpunit`) : `phpstan.dist.neon` (convention de la recette Flex, comme `phpunit.dist.xml` ; `phpstan.neon` est git-ignoré pour une surcharge locale) sur `src/`, `tests/` et `quality-rules/Phpstan/`, **niveau 5** au départ, baseline générée pour l'existant (`phpstan-baseline.neon`, 171 erreurs à l'introduction ; régénérer avec `--generate-baseline` seulement quand elle diminue). Le niveau monte par paliers (6, 7, 8) quand la baseline est vidée. Tout code nouveau doit passer sans entrée de baseline.
 4. Règle PHPStan custom `quality-rules/Phpstan/EnsureControllerAndHandlerHaveTestRule` : une classe d'`Application/Query/**` (`*QueryHandler`) ou d'`Infrastructure/Http/Api/**` (`*ApiController`) doit avoir un fichier `{ShortName}Test.php` quelque part sous `tests/`. Limitée aux nouveaux dossiers pour ne pas bloquer l'existant.
 5. Cibles Make : `deptrac`, `phpstan`, `api-doc-validate`, `api-doc-coverage`, `quality` (les agrège). Étapes équivalentes dans `.github/workflows/ci.yml`.

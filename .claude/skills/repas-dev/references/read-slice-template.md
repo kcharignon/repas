@@ -140,26 +140,49 @@ namespace Repas\Tests\Repas\Application\Query\ListDepartments;
 use PHPUnit\Framework\TestCase;
 use Repas\Repas\Application\Query\ListDepartments\ListDepartmentsQuery;
 use Repas\Repas\Application\Query\ListDepartments\ListDepartmentsQueryHandler;
-use Repas\Tests\Helper\Loader\FakeDepartmentLoader;
+use Repas\Tests\Helper\Builder\DTO\DepartmentDTOBuilder;
+use Repas\Tests\Helper\InMemoryLoader\DepartmentInMemoryLoader;
 
 class ListDepartmentsQueryHandlerTest extends TestCase
 {
-    public function testReturnsDepartmentsFromLoader(): void
+    public function testReturnsWhatTheLoaderReturns(): void
     {
         // Given
-        $loader = new FakeDepartmentLoader();
+        $departments = [DepartmentDTOBuilder::aDepartment()->build()];
+        $loader = new DepartmentInMemoryLoader(departments: $departments);
         $handler = new ListDepartmentsQueryHandler($loader);
 
         // When
         $result = $handler(new ListDepartmentsQuery());
 
         // Then
-        $this->assertSame($loader->departments, $result);
+        $this->assertSame($departments, $result);
     }
 }
 ```
 
-Fake — `tests/Helper/Loader/FakeDepartmentLoader.php` : implémente l'interface, expose les DTO renvoyés (et ses arguments reçus s'il y en a), construits via un `{X}DTOBuilder` dans `tests/Helper/Builder/DTO/`.
+**Règle (ADR 0010) : un test de handler est unitaire. Jamais de `DatabaseTestCase`, de kernel, de Doctrine ni de classe d'`Infrastructure`** (Deptrac le refuse). Le `QueryHandler` ne prouve que deux choses : il transmet les **bons paramètres** au Loader, et il renvoie **le résultat du Loader tel quel**. Tri, filtre, jointure, calculs du DTO = test du Loader réel (section 6), jamais à travers le handler.
+
+Quand la query porte des paramètres, asserter les arguments reçus par le Loader :
+
+```php
+public function testForwardsQueryParametersToTheLoader(): void
+{
+    // Given
+    $loader = new RecipeInMemoryLoader();
+    $handler = new ListRecipesByTypeQueryHandler($loader);
+
+    // When
+    $handler(new ListRecipesByTypeQuery(recipeTypeSlug: 'plat', authorId: 'user-1'));
+
+    // Then
+    $this->assertSame([['plat', 'user-1']], $loader->listByTypeCalls);
+}
+```
+
+Double — `tests/Helper/InMemoryLoader/DepartmentInMemoryLoader.php` (miroir de `tests/Helper/InMemoryRepository/`, un par interface de Loader) : implémente l'interface, **renvoie les DTO programmés au constructeur** (construits via un `{X}DTOBuilder` dans `tests/Helper/Builder/DTO/`) et **enregistre ses appels** (`listByTypeCalls`, …). C'est un double idiot : il ne rejoue ni filtre, ni tri, ni jointure, sinon le test du handler vérifierait le double et pas le code.
+
+Test d'un `CommandHandler` : même esprit, avec les `{X}InMemoryRepository` + `SpyEventDispatcher`. Le mapping `Entity` ↔ `Model` est prouvé par le test `OutputAdapter` du repository, pas par le handler.
 
 ## 6. Test du Loader (base réelle) — `tests/Repas/OutputAdapter/DepartmentPostgreSQLLoaderTest.php`
 

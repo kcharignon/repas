@@ -38,7 +38,7 @@ description: Développer ou migrer une fonctionnalité du projet Repas (Symfony 
 | Controller Twig | `src/Repas/Infrastructure/Http/Controller/` | `{Action}ViewController` (existant) |
 | Command | `src/Repas/Application/Command/{UseCase}/` | `{UseCase}Command` + `{UseCase}Handler` (existant) |
 | Exception | `Domain/Exception/{Aggregate}Exception` | factories statiques (`notFound()`) |
-| Fake Loader (test) | `tests/Helper/Loader/` | `Fake{X}Loader` |
+| Double de Loader (test) | `tests/Helper/InMemoryLoader/` | `{X}InMemoryLoader` (renvoie des DTO programmés, enregistre ses appels) |
 | Builder de DTO (test) | `tests/Helper/Builder/DTO/` | `{X}DTOBuilder` |
 
 Même chose pour le contexte `User` (`src/User/…`, noter qu'`Application/` y est à plat sans sous-dossier `Command/`). Verbes : `Get{X}` pour un élément, `List{X}` pour une collection.
@@ -51,7 +51,7 @@ Détail et squelettes : `references/read-slice-template.md`. Ordre :
 2. Interface `Application/Loader/{X}Loader`.
 3. `{UseCase}Query` + `{UseCase}QueryHandler` (le handler délègue au Loader, rien d'autre).
 4. `Infrastructure/Loader/{X}PostgreSQLLoader` (DQL/DBAL → DTO). Autowiring suffit s'il n'y a qu'une implémentation.
-5. Tests : handler + `Fake{X}Loader` (unit), Loader sur base réelle (`DatabaseTestCase`, dossier `tests/Repas/OutputAdapter/`).
+5. Tests : handler + `{X}InMemoryLoader` (unitaire : bons paramètres transmis au Loader, résultat renvoyé tel quel, **jamais de base**) ; Loader sur base réelle (`DatabaseTestCase`, dossier `tests/Repas/OutputAdapter/`).
 6. `make test deptrac phpstan`.
 
 ### 3.2 Migrer un ViewController Twig vers le QueryBus
@@ -76,7 +76,7 @@ Détail : `references/migrate-view-controller.md`. Résumé :
 2. Port/extension du Repository (`Domain/Interface`) + implémentation `Infrastructure/Repository`.
 3. `Application/Command/{UseCase}/{UseCase}Command.php` (DTO `readonly`) + `{UseCase}Handler.php` (`#[AsMessageHandler]`, repositories + `UuidGenerator` + `Clock` + `EventDispatcherInterface` si événement).
 4. Controller (Twig ou API) qui ne fait que `CommandBusInterface::dispatch()`.
-5. Test : handler avec InMemory repos + `SpyEventDispatcher` + builders (aucune base, aucun kernel).
+5. Test : handler avec `{X}InMemoryRepository` + `SpyEventDispatcher` + builders (aucune base, aucun kernel ; la persistance se teste dans `OutputAdapter`, pas à travers le handler).
 
 ## 4. Definition of Done
 
@@ -85,13 +85,15 @@ Détail : `references/migrate-view-controller.md`. Résumé :
 - [ ] `make phpstan` vert (aucune nouvelle entrée de baseline)
 - [ ] `make api-doc-validate` et `make api-doc-coverage` verts si un endpoint API est touché
 - [ ] Le controller migré n'injecte plus de `*Repository`; les templates concernés n'appellent plus de méthode de domaine
-- [ ] Tests : `QueryHandler`, Loader (base réelle), controller API (clés JSON)
+- [ ] Tests : `QueryHandler` (unitaire, `InMemoryLoader`, paramètres transmis), Loader (base réelle), controller API (clés JSON)
 - [ ] `docs/migration-roadmap.md` mis à jour (case cochée, bugs vus en passant notés dans « Hors périmètre »)
 - [ ] ADR ajouté ou amendé si une convention a changé (et `CLAUDE.md` + ce skill dans le même commit)
 
 ## 5. Interdits
 
 - `Repository` dans un `QueryHandler`; `Loader` dans un `CommandHandler`.
+- Tester un handler (Command ou Query) avec la base, le kernel ou une classe d'`Infrastructure` : la persistance se teste dans `OutputAdapter`, jamais par transitivité à travers un handler (ADR 0010, vérifié par Deptrac).
+- Un `InMemoryLoader` qui rejoue filtre, tri ou jointure : c'est un double idiot.
 - Modèle du domaine (ou `toArray()`) dans un DTO, une réponse HTTP ou un template migré.
 - `load()` dans un handler pour créer une entité ; `new \DateTimeImmutable()` / `Uuid::v4()` dans le Domain.
 - Logique métier dans un controller, une entité Doctrine ou un template.

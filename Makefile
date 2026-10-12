@@ -72,6 +72,8 @@ deptrac: ## Run Deptrac to check architectural dependencies
 	@$(EXEC_PHP) vendor/bin/deptrac analyse --config-file=quality-rules/Deptrac/deptrac.no-loader-in-commandhandler.yaml --no-progress
 	@echo "Check des dépendances : un Builder ne peut pas être appelé dans src"
 	@$(EXEC_PHP) vendor/bin/deptrac analyse --config-file=quality-rules/Deptrac/deptrac.no-builder-in-src.yaml --no-progress
+	@echo "Check des dépendances : un test de handler ne touche ni base, ni kernel, ni Infrastructure"
+	@$(EXEC_PHP) vendor/bin/deptrac analyse --config-file=quality-rules/Deptrac/deptrac.no-database-in-handler-tests.yaml --no-progress
 
 phpstan: ## Run PHPStan static analysis
 	@echo "🔍 Check PHPStan..."
