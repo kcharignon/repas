@@ -1,0 +1,9 @@
+nelmio_api_doc:
+    documentation:
+        info:
+            title: Repas API
+            description: API JSON de l'application Repas (recettes, ingrédients, listes de courses). Voir docs/adr/0007-api-rest-v1.md.
+            version: 1.0.0
+    areas:
+        path_patterns:
+            - ^/api(?!/doc$)

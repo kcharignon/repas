@@ -79,6 +79,9 @@ jobs:
       -
         name: PHPStan
         run: make phpstan EXEC_PHP="docker compose exec -T php"
+      -
+        name: API documentation
+        run: make api-doc-validate api-doc-coverage EXEC_PHP="docker compose exec -T php"
   lint:
     name: Docker Lint
     runs-on: ubuntu-latest

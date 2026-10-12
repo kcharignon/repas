@@ -9,3 +9,22 @@ repas_controllers:
         path: ../src/Repas/Infrastructure/Http/Controller/
         namespace: Repas\Repas\Infrastructure\Http\Controller
     type: attribute
+
+# API JSON /api/v1 (ADR 0007) : un dossier Http/Api/{UseCase}/ par contexte
+shared_api_controllers:
+    resource:
+        path: ../src/Shared/Infrastructure/Http/Api/
+        namespace: Repas\Shared\Infrastructure\Http\Api
+    type: attribute
+
+repas_api_controllers:
+    resource:
+        path: ../src/Repas/Infrastructure/Http/Api/
+        namespace: Repas\Repas\Infrastructure\Http\Api
+    type: attribute
+
+user_api_controllers:
+    resource:
+        path: ../src/User/Infrastructure/Http/Api/
+        namespace: Repas\User\Infrastructure\Http\Api
+    type: attribute

@@ -44,7 +44,7 @@ restart: ## Restart the project
 	@$(MAKE) start
 
 ## —— Code quality 📋 ————————————————————————————————————————————————————————
-.PHONY: test test-coverage deptrac phpstan quality
+.PHONY: test test-coverage deptrac phpstan api-doc-validate api-doc-coverage quality
 
 test: ## Run PHPUnit tests
 	@echo "🧪 Exécution des tests avec PHPUnit..."
@@ -76,7 +76,15 @@ phpstan: ## Run PHPStan static analysis
 	@echo "🔍 Check PHPStan..."
 	@$(EXEC_PHP) vendor/bin/phpstan analyse --memory-limit=1G --no-progress
 
-quality: deptrac phpstan ## Run architecture and static analysis checks
+api-doc-validate: ## Validate that the API documentation generates without errors
+	@echo "🔍 Validation de la doc API OpenAPI..."
+	@$(EXEC_PHP) bin/console nelmio:apidoc:dump --format=json > /dev/null
+	@echo "✅ La documentation API est valide."
+
+api-doc-coverage: ## Check that every API controller has OpenAPI documentation
+	@$(EXEC_PHP) php bin/check-api-doc-coverage
+
+quality: deptrac phpstan api-doc-validate api-doc-coverage ## Run architecture, static analysis and API doc checks
 
 
 ## —— Helper 🛠️ ——————————————————————————————————————————————————————————————
