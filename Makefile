@@ -44,7 +44,7 @@ restart: ## Restart the project
 	@$(MAKE) start
 
 ## —— Code quality 📋 ————————————————————————————————————————————————————————
-.PHONY: test test-coverage
+.PHONY: test test-coverage deptrac
 
 test: ## Run PHPUnit tests
 	@echo "🧪 Exécution des tests avec PHPUnit..."
@@ -59,6 +59,18 @@ test-coverage: ## Run PHPUnit tests with code coverage
 	  echo "🧪 Couverture de test avec le fichier de configuration par défaut.\n" && \
 	  $(DOCKER_COMPOSE) exec -e XDEBUG_MODE=coverage php vendor/bin/phpunit --configuration phpunit.dist.xml --coverage-html ./coverage; \
 	fi
+
+deptrac: ## Run Deptrac to check architectural dependencies
+	@echo "Check des dépendances entre Domain, Application et Infrastructure"
+	@$(EXEC_PHP) vendor/bin/deptrac analyse --config-file=quality-rules/Deptrac/deptrac.layer.yaml --no-progress
+	@echo "Check des dépendances entre bounded contexts"
+	@$(EXEC_PHP) vendor/bin/deptrac analyse --config-file=quality-rules/Deptrac/deptrac.bounded-context.yaml --no-progress
+	@echo "Check des dépendances : un Repository ne peut pas être appelé dans une Query"
+	@$(EXEC_PHP) vendor/bin/deptrac analyse --config-file=quality-rules/Deptrac/deptrac.no-repo-in-queryhandler.yaml --no-progress
+	@echo "Check des dépendances : un Loader ne peut pas être appelé dans une Command"
+	@$(EXEC_PHP) vendor/bin/deptrac analyse --config-file=quality-rules/Deptrac/deptrac.no-loader-in-commandhandler.yaml --no-progress
+	@echo "Check des dépendances : un Builder ne peut pas être appelé dans src"
+	@$(EXEC_PHP) vendor/bin/deptrac analyse --config-file=quality-rules/Deptrac/deptrac.no-builder-in-src.yaml --no-progress
 
 
 ## —— Helper 🛠️ ——————————————————————————————————————————————————————————————

@@ -9,9 +9,12 @@
 Le code est organisé en bounded contexts sous `src/` : `Repas` (recettes, ingrédients, listes de courses), `User` (inscription, auth, préférences) et `Shared` (briques transverses). Chaque contexte suit trois couches : `Domain`, `Application`, `Infrastructure`. La structure existe et fonctionne, mais la règle n'était écrite que dans `CLAUDE.md` et n'est vérifiée par aucun outil. Plusieurs entorses existent déjà :
 
 - `User\Domain\Model\User` implémente des interfaces Symfony Security.
-- `Repas\Domain\Model\ShoppingList` importe `User\Domain\Model\User` (dépendance inter-contextes dans le Domain).
-- `Shared\Infrastructure\Repository\RepositoryTrait` importe des modèles et entités de `Repas` et `User`.
 - `Domain\Service\{AuthenticatorEmail,UserChecker,UserProvider}` dépendent de Symfony.
+- `Repas` dépend de `User` : `Repas\Domain\Model\ShoppingList` importe `User\Domain\Model\User`, et la plupart des handlers d'écriture injectent `UserRepository` / lèvent `UserException` (60 dépendances).
+- `User` dépend de `Repas` (11 dépendances, dont `OwnerVoter` qui injecte trois repositories de `Repas` et le listener de statistiques).
+- `Shared` dépend de `Repas` et `User` (6 dépendances, dont `RepositoryTrait`).
+
+Les trois dernières entorses sont détectées par Deptrac et figées dans la baseline (77 entrées, 120 occurrences à l'introduction de l'outil). Les deux premières (dépendance à Symfony) ne le sont pas : Symfony n'est pas une couche Deptrac, elles restent signalées ici.
 
 ## Décision
 

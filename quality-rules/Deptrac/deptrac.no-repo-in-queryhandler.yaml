@@ -1,0 +1,18 @@
+# ADR 0003 / 0004 : une Query (et son handler) ne lit jamais via un Repository, uniquement via un Loader.
+# Règle par namespace : les handlers d'écriture existants s'appellent {UseCase}Handler (pas CommandHandler).
+deptrac:
+  paths:
+    - ../../src
+  layers:
+    - name: Repository
+      collectors:
+        - type: classLike
+          value: .*Repository$
+    - name: Query
+      collectors:
+        - type: classLike
+          value: .*\\Application\\Query\\.*
+
+  ruleset:
+    Query:
+      - '!Repository'

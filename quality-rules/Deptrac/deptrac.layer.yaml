@@ -1,0 +1,25 @@
+# Règle de dépendance hexagonale (ADR 0001) :
+# Domain ne dépend de rien, Application dépend de Domain, Infrastructure de Domain et Application.
+deptrac:
+  paths:
+    - ../../src
+  layers:
+    - name: Domain
+      collectors:
+        - type: classLike
+          value: .*\\Domain\\.*
+    - name: Application
+      collectors:
+        - type: classLike
+          value: .*\\Application\\.*
+    - name: Infrastructure
+      collectors:
+        - type: classLike
+          value: .*\\Infrastructure\\.*
+
+  ruleset:
+    Application:
+      - Domain
+    Infrastructure:
+      - Domain
+      - Application
