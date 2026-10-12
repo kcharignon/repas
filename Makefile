@@ -44,7 +44,7 @@ restart: ## Restart the project
 	@$(MAKE) start
 
 ## —— Code quality 📋 ————————————————————————————————————————————————————————
-.PHONY: test test-coverage deptrac
+.PHONY: test test-coverage deptrac phpstan quality
 
 test: ## Run PHPUnit tests
 	@echo "🧪 Exécution des tests avec PHPUnit..."
@@ -71,6 +71,12 @@ deptrac: ## Run Deptrac to check architectural dependencies
 	@$(EXEC_PHP) vendor/bin/deptrac analyse --config-file=quality-rules/Deptrac/deptrac.no-loader-in-commandhandler.yaml --no-progress
 	@echo "Check des dépendances : un Builder ne peut pas être appelé dans src"
 	@$(EXEC_PHP) vendor/bin/deptrac analyse --config-file=quality-rules/Deptrac/deptrac.no-builder-in-src.yaml --no-progress
+
+phpstan: ## Run PHPStan static analysis
+	@echo "🔍 Check PHPStan..."
+	@$(EXEC_PHP) vendor/bin/phpstan analyse --memory-limit=1G --no-progress
+
+quality: deptrac phpstan ## Run architecture and static analysis checks
 
 
 ## —— Helper 🛠️ ——————————————————————————————————————————————————————————————

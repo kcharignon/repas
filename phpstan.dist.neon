@@ -1,0 +1,22 @@
+# Niveau 5 au départ (ADR 0011) ; monter à 6, 7, 8 quand la baseline est vidée.
+# Tout code nouveau doit passer sans nouvelle entrée de baseline.
+includes:
+    - phpstan-baseline.neon
+    - vendor/phpstan/phpstan-phpunit/extension.neon
+
+parameters:
+    level: 5
+    paths:
+        - src/
+        - tests/
+        - quality-rules/Phpstan/
+    treatPhpDocTypesAsCertain: false
+
+services:
+    -
+        class: PHPStanRules\EnsureControllerAndHandlerHaveTestRule
+        arguments:
+            testDirectories:
+                - %currentWorkingDirectory%/tests
+        tags:
+            - phpstan.rules.rule

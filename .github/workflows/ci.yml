@@ -76,6 +76,9 @@ jobs:
       -
         name: Deptrac
         run: make deptrac EXEC_PHP="docker compose exec -T php"
+      -
+        name: PHPStan
+        run: make phpstan EXEC_PHP="docker compose exec -T php"
   lint:
     name: Docker Lint
     runs-on: ubuntu-latest
