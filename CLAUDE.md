@@ -125,6 +125,6 @@ Utiliser le skill `/repas-dev` (recettes détaillées). En bref :
 3. Exposer via un controller Twig et/ou API qui n'appelle que le `QueryBusInterface`.
 4. Tests : handler + fake Loader, Loader sur base réelle, controller API.
 
-**Avant de committer** : `make test` (puis `make deptrac`, `make phpstan`, `make api-doc-validate` — ces cibles sont introduites au fil de la phase 0 de la roadmap). Un commit par unité logique, message court en français, sans `Co-Authored-By`, jamais de push sans demande explicite.
+**Avant de committer** : `make test` puis `make quality` (agrège `deptrac`, `phpstan`, `api-doc-validate`, `api-doc-coverage`). Les clés JWT de dev s'initialisent avec `make jwt-keys`. Les baselines (`quality-rules/Deptrac/baseline/`, `phpstan-baseline.neon`) ne doivent que diminuer. Un commit par unité logique, message court en français, sans `Co-Authored-By`, jamais de push sans demande explicite.
 
 Ne pas mettre de logique métier dans les controllers, les entités Doctrine ou les templates Twig — tout va dans `Domain`/`Application` ; les calculs d'affichage d'une lecture sont précalculés dans le DTO par le Loader.
