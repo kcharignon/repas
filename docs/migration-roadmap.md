@@ -12,7 +12,7 @@ Suivi vivant. Décisions : [`adr/`](adr/README.md) (surtout [0003](adr/0003-cqrs
 - [x] Cette roadmap
 - [x] Skill `repas-dev` (`.claude/skills/repas-dev/`)
 - [x] `CLAUDE.md` mis à jour (lecture via Query/Loader, renvoi ADR et skill)
-- [ ] 0.1 Buses `command.bus` / `query.bus`, `QueryInterface`, `QueryBus` déballe `HandlerFailedException` ([0006](adr/0006-buses-messenger.md))
+- [x] 0.1 Buses `command.bus` / `query.bus`, `QueryInterface`, `QueryBus` déballe `HandlerFailedException` ([0006](adr/0006-buses-messenger.md))
 - [ ] 0.2 Deptrac + cible Make + CI ([0011](adr/0011-garde-fous-deptrac-phpstan.md))
 - [ ] 0.3 PHPStan niveau 5 + baseline + règle « controller/handler ⇒ test » + `make quality`
 - [ ] 0.5 Plomberie API : serializer, validator, nelmio api-doc/cors, listener d'erreurs JSON, `GET /api/v1/health`, `make api-doc-*` ([0007](adr/0007-api-rest-v1.md))

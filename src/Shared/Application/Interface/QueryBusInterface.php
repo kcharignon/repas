@@ -5,5 +5,5 @@ namespace Repas\Shared\Application\Interface;
 
 interface QueryBusInterface
 {
-    public function ask(object $query): mixed;
+    public function ask(QueryInterface $query): mixed;
 }
