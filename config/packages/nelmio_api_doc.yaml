@@ -4,6 +4,52 @@ nelmio_api_doc:
             title: Repas API
             description: API JSON de l'application Repas (recettes, ingrédients, listes de courses). Voir docs/adr/0007-api-rest-v1.md.
             version: 1.0.0
+        components:
+            securitySchemes:
+                Bearer:
+                    type: http
+                    scheme: bearer
+                    bearerFormat: JWT
+        security:
+            - Bearer: []
+        paths:
+            # Géré par le firewall `login` (json_login), pas par un controller : documenté ici.
+            /api/login_check:
+                post:
+                    operationId: api_post_login_check
+                    tags: [Auth]
+                    summary: Obtenir un token JWT
+                    security: []
+                    requestBody:
+                        required: true
+                        content:
+                            application/json:
+                                schema:
+                                    type: object
+                                    required: [email, password]
+                                    properties:
+                                        email: { type: string, format: email, example: alexiane.sichi@gmail.com }
+                                        password: { type: string, format: password }
+                    responses:
+                        '200':
+                            description: Token JWT (durée de vie 3600 s)
+                            content:
+                                application/json:
+                                    schema:
+                                        type: object
+                                        properties:
+                                            token: { type: string }
+                        '401':
+                            description: Identifiants invalides ou compte désactivé
+                            content:
+                                application/json:
+                                    schema:
+                                        type: object
+                                        properties:
+                                            error:
+                                                type: object
+                                                properties:
+                                                    message: { type: string, example: Invalid credentials. }
     areas:
         path_patterns:
             - ^/api(?!/doc$)

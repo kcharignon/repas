@@ -11,6 +11,24 @@ security:
         dev:
             pattern: ^/(_(profiler|wdt)|css|images|js)/
             security: false
+        # API JSON stateless authentifiée par JWT (ADR 0008). Déclarés avant `main` : le web (session) ne change pas.
+        login:
+            pattern: ^/api/login
+            stateless: true
+            provider: user_model_provider
+            user_checker: Repas\User\Domain\Service\UserChecker
+            json_login:
+                check_path: /api/login_check
+                username_path: email
+                password_path: password
+                success_handler: lexik_jwt_authentication.handler.authentication_success
+                failure_handler: lexik_jwt_authentication.handler.authentication_failure
+        api:
+            pattern: ^/api
+            stateless: true
+            provider: user_model_provider
+            user_checker: Repas\User\Domain\Service\UserChecker
+            jwt: ~
         main:
             lazy: true
             provider: user_model_provider
@@ -25,6 +43,13 @@ security:
             user_checker: Repas\User\Domain\Service\UserChecker
             logout:
                 path: /logout
+
+    # Seul /api est filtré ici ; le web s'autorise par #[IsGranted] et OwnerVoter (le premier chemin qui correspond gagne).
+    access_control:
+        - { path: ^/api/v1/health, roles: PUBLIC_ACCESS }
+        - { path: ^/api/login, roles: PUBLIC_ACCESS }
+        - { path: ^/api/doc, roles: PUBLIC_ACCESS }
+        - { path: ^/api, roles: ROLE_USER }
 
 when@test:
     security:

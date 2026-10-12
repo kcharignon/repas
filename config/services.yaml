@@ -42,3 +42,11 @@ services:
 
     Repas\User\Domain\Service\UserChecker: ~
     
+
+when@test:
+    services:
+        # Controllers factices de tests/Helper/Http (voir config/routes/test/probes.yaml)
+        Repas\Tests\Helper\Http\:
+            resource: '../tests/Helper/Http/'
+            autowire: true
+            autoconfigure: true

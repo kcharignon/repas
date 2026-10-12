@@ -22,6 +22,7 @@ install:  ## Install and start the project with vendors update
 	@docker compose run --rm php composer install --no-scripts
 	@$(MAKE) start
 	@$(EXEC_PHP) php bin/console assets:install
+	@$(MAKE) jwt-keys
 	@$(EXEC_PHP) php bin/console cache:clear
 	@echo "drop all db if exist and create it"
 	@$(MAKE) db-drop
@@ -44,7 +45,7 @@ restart: ## Restart the project
 	@$(MAKE) start
 
 ## —— Code quality 📋 ————————————————————————————————————————————————————————
-.PHONY: test test-coverage deptrac phpstan api-doc-validate api-doc-coverage quality
+.PHONY: test test-coverage deptrac phpstan api-doc-validate api-doc-coverage jwt-keys quality
 
 test: ## Run PHPUnit tests
 	@echo "🧪 Exécution des tests avec PHPUnit..."
@@ -83,6 +84,9 @@ api-doc-validate: ## Validate that the API documentation generates without error
 
 api-doc-coverage: ## Check that every API controller has OpenAPI documentation
 	@$(EXEC_PHP) php bin/check-api-doc-coverage
+
+jwt-keys: ## Generate the JWT key pair if missing (config/jwt, git-ignored)
+	@$(EXEC_PHP) bin/console lexik:jwt:generate-keypair --skip-if-exists
 
 quality: deptrac phpstan api-doc-validate api-doc-coverage ## Run architecture, static analysis and API doc checks
 

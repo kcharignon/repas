@@ -55,6 +55,9 @@ jobs:
         name: Run migrations
         run: docker compose exec -T php bin/console -e test doctrine:migrations:migrate --no-interaction
       -
+        name: Generate JWT keys
+        run: make jwt-keys EXEC_PHP="docker compose exec -T php"
+      -
         name: Run PHPUnit
         run: docker compose exec -T -e XDEBUG_MODE=coverage php bin/phpunit --coverage-clover clover.xml
       -
