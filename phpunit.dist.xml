@@ -33,6 +33,9 @@
             <directory>src/Repas/Infrastructure/Http/Form</directory>
             <directory>src/User/Infrastructure/Http/Controller</directory>
             <directory>src/User/Infrastructure/Http/Form</directory>
+            <!-- Données de test, pas de logique : chargées une seule fois hors d'un test (DatabaseTestCase), donc jamais créditées. -->
+            <directory>src/Repas/Infrastructure/DataFixture</directory>
+            <directory>src/User/Infrastructure/DataFixture</directory>
         </exclude>
     </source>
 
@@ -43,5 +46,7 @@
     </coverage>
 
     <extensions>
+        <!-- Chaque test est exécuté dans une transaction annulée à la fin (voir tests/Helper/DatabaseTestCase.php) -->
+        <bootstrap class="DAMA\DoctrineTestBundle\PHPUnit\PHPUnitExtension"/>
     </extensions>
 </phpunit>

@@ -186,27 +186,35 @@ Test d'un `CommandHandler` : même esprit, avec les `{X}InMemoryRepository` + `S
 
 ## 6. Test du Loader (base réelle) — `tests/Repas/OutputAdapter/DepartmentPostgreSQLLoaderTest.php`
 
-Étendre `Repas\Tests\Helper\DatabaseTestCase` (schéma recréé + fixtures chargées). Modèle : `tests/Repas/OutputAdapter/RecipeLoaderTest.php`.
+Étendre `Repas\Tests\Helper\DatabaseTestCase`. Chaque test tourne dans une **transaction annulée à la fin** (DAMA) : rien ne fuit d'un test à l'autre, pas besoin de nettoyer.
+
+**Le test crée lui-même ses données** (builders + repository, puis `flush`/`clear` si besoin) et n'asserte que sur elles. Il ne s'appuie **jamais** sur les fixtures globales, encore chargées par `DatabaseTestCase` tant que la dette « fixtures globales » n'est pas soldée (roadmap) : pas de `assertCount(N, …)` sur un total, pas de `assertNotEmpty` comme seule preuve.
 
 ```php
 class DepartmentPostgreSQLLoaderTest extends DatabaseTestCase
 {
-    public function testList(): void
+    public function testListReturnsCreatedDepartmentsOrderedByName(): void
     {
         // Given
+        $repository = static::getContainer()->get(DepartmentRepository::class);
+        $repository->save(new DepartmentBuilder()->withSlug('zzz-outils')->withName('Zzz Outils')->build());
+        $repository->save(new DepartmentBuilder()->withSlug('aaa-outils')->withName('Aaa Outils')->build());
         $loader = static::getContainer()->get(DepartmentLoader::class);
 
         // When
         $result = $loader->list();
 
         // Then
+        $slugs = array_map(static fn (DepartmentDTO $d): string => $d->slug, $result);
         $this->assertContainsOnlyInstancesOf(DepartmentDTO::class, $result);
-        $this->assertNotEmpty($result);
+        $this->assertContains('aaa-outils', $slugs);
+        $this->assertContains('zzz-outils', $slugs);
+        $this->assertLessThan(array_search('zzz-outils', $slugs), array_search('aaa-outils', $slugs)); // tri
     }
 }
 ```
 
-Compléter : cas vide (si pertinent), tri, filtres, `NotFound`. Si le Loader remplace un N+1, assert le nombre de requêtes.
+Compléter : cas vide (possible seulement une fois les fixtures globales retirées), filtres, `NotFound`. Si le Loader remplace un N+1, assert le nombre de requêtes.
 
 ## 7. Controller Twig — bascule (existant)
 
