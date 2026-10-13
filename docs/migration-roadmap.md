@@ -22,7 +22,7 @@ Suivi vivant. Décisions : [`adr/`](adr/README.md) (surtout [0003](adr/0003-cqrs
 
 ## Dette de tests : sortir des fixtures globales
 
-`DatabaseTestCase` charge encore **toutes** les fixtures une fois par exécution (comportement legacy). 7 classes de tests (33 tests) en dépendent (`DepartmentRepositoryTest` converti en phase 1). La cible est celle de Compliance : un test crée ses propres données (builders + repositories), asserte uniquement sur elles, et `DatabaseTestCase` ne crée plus que le schéma ([0010](adr/0010-strategie-de-tests.md) règle 11). Cette dette ne doit pas traîner : elle gêne chaque nouveau test de Loader (impossible d'asserter un total ou un cas vide tant que les fixtures sont là).
+`DatabaseTestCase` charge encore **toutes** les fixtures une fois par exécution (comportement legacy). 6 classes de tests (29 tests) en dépendent (`DepartmentRepositoryTest` et `JwtAuthenticationTest` convertis en phase 1). La cible est celle de Compliance : un test crée ses propres données (builders + repositories), asserte uniquement sur elles, et `DatabaseTestCase` ne crée plus que le schéma ([0010](adr/0010-strategie-de-tests.md) règle 11). Cette dette ne doit pas traîner : elle gêne chaque nouveau test de Loader (impossible d'asserter un total ou un cas vide tant que les fixtures sont là).
 
 **Règles dès maintenant**
 - Tout **nouveau** test de base crée ses données et n'utilise jamais les fixtures globales (voir `references/read-slice-template.md` §6 du skill `repas-dev`).
@@ -32,7 +32,6 @@ Suivi vivant. Décisions : [`adr/`](adr/README.md) (surtout [0003](adr/0003-cqrs
 
 | Classe | Tests à réécrire | Convertie avec |
 |---|---|---|
-| `Shared/.../Api/JwtAuthenticationTest` | 4 / 13 (3 utilisateurs de fixtures) | phase 1 (`GetCurrentUser` remplace aussi les routes `_probe`) |
 | `OutputAdapter/ShoppingListRepositoryTest` | 6 / 7 | phase 2 (`ListShoppingLists`) |
 | `OutputAdapter/ShoppingListRowRepositoryTest` | 3 / 4 | phase 2 |
 | `OutputAdapter/IngredientRepositoryTest` | 6 / 8 | commit dédié fin de phase 2 |
@@ -40,7 +39,7 @@ Suivi vivant. Décisions : [`adr/`](adr/README.md) (surtout [0003](adr/0003-cqrs
 | `OutputAdapter/RecipeRepositoryTest` | 6 / 6 | commit dédié fin de phase 2 |
 | `OutputAdapter/RecipeLoaderTest` | 3 / 3 | commit dédié fin de phase 2 (le `RecipeLoader` legacy est remplacé en phase 5) |
 
-`UnitRepositoryTest` et `UserRepositoryTest` n'en dépendent déjà plus.
+`UnitRepositoryTest`, `UserRepositoryTest` et `JwtAuthenticationTest` n'en dépendent déjà plus.
 
 **Quand tout est converti** (commit « fin des fixtures globales ») : retirer `doctrine:fixtures:load` de `DatabaseTestCase::loadSchemaAndFixtures()`, ajouter les cas « liste vide » aux tests de Loader, retirer cette section. Les `DataFixture` restent pour le jeu de données de dev.
 
@@ -55,7 +54,7 @@ Chaque ligne = une ou plusieurs queries livrables ensemble.
 - [x] `ListDepartments` — GetAllDepartment, AdminGetAllDepartment. DTO `DepartmentDTO` (slug, name, image), `DepartmentLoader` / `DepartmentPostgreSQLLoader` (une requête, tri par slug), `GET /api/v1/departments`. Premier `MockQueryBus` (`tests/Helper/`), premiers `InMemoryLoader` et `DTOBuilder`.
 - [x] `ListRecipeTypes` — GetAllRecipeType, AdminGetAllRecipeType. DTO `RecipeTypeDTO` (slug, name, image, order), `RecipeTypeLoader` / `RecipeTypePostgreSQLLoader` (une requête, tri par ordre puis slug), `GET /api/v1/recipe-types`. Socle de test `QueryBusWebTestCase` (bus doublé, utilisateur, JWT) partagé par les tests de controllers.
 - [x] `ListUnits` — AdminGetAllUnit, et le ré-affichage de la liste après création / modification (AdminCreateUnit, AdminUpdateUnit). DTO `UnitDTO` (slug, name, symbol), `UnitLoader` / `UnitPostgreSQLLoader` (une requête, tri par slug), `GET /api/v1/units`. `AdminUpdateUnitViewController` garde `UnitRepository::findOneBySlug` pour pré-remplir son formulaire (lecture de formulaire, hors périmètre de cette slice). Premiers tests des controllers de formulaire (POST valide avec jeton CSRF stateless, `HTTP_ORIGIN`) ; le test factice `AddNewUnitControllerTest` (`assertTrue(true)`) est supprimé avec son entrée de baseline PHPStan.
-- [ ] `GetCurrentUser` (`GET /api/v1/me`, remplace `app.user` / `current_user.getUser().id` côté front)
+- [x] `GetCurrentUser` (`GET /api/v1/me`, remplace `app.user` / `current_user.getUser().id` côté front). Query `GetCurrentUserQuery(userId)` (l'identifiant vient du token via `#[CurrentUser]`), DTO `CurrentUserDTO` (id, email, roles, isAdmin, defaultServing ; jamais de mot de passe ni de statistiques), `UserLoader` / `UserPostgreSQLLoader` (`UserException::NotFound` si absent, donc 404). Première slice du contexte `User` : `Application/Query/` et `Application/Loader/` y sont créés comme dans `Repas` (les règles Deptrac sont par namespace). Aucune page Twig touchée : la navbar garde `app.user` (sécurité, pas une lecture de repository). `JwtAuthenticationTest` ne dépend plus des fixtures et `/me` remplace la route d'essai `whoami` ; la route d'essai `admin` reste tant qu'aucun endpoint API n'exige `ROLE_ADMIN` (ADR 0008 §9). Premier test de bout en bout du chemin réel firewall JWT, bus, handler, loader.
 
 Valide de bout en bout : bus, Loader, Deptrac, API, JWT. Risque faible.
 

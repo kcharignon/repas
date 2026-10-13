@@ -41,7 +41,7 @@ description: Développer ou migrer une fonctionnalité du projet Repas (Symfony 
 | Double de Loader (test) | `tests/Helper/InMemoryLoader/` | `{X}InMemoryLoader` (renvoie des DTO programmés, enregistre ses appels) |
 | Builder de DTO (test) | `tests/Helper/Builder/DTO/` | `{X}DTOBuilder` |
 
-Même chose pour le contexte `User` (`src/User/…`, noter qu'`Application/` y est à plat sans sous-dossier `Command/`). Verbes : `Get{X}` pour un élément, `List{X}` pour une collection.
+Même chose pour le contexte `User` (`src/User/…`), avec deux nuances : `Application/` y est à plat pour les commandes (pas de sous-dossier `Command/`), mais les lectures vont dans `Application/Query/{UseCase}/` et `Application/Loader/` comme dans `Repas` (les règles Deptrac et PHPStan sont par namespace) ; les tests sont dans `tests/User/{Application,InputAdapter,OutputAdapter}/`. Exemple complet : `GetCurrentUser`. Verbes : `Get{X}` pour un élément, `List{X}` pour une collection.
 
 ## 3. Recettes
 
