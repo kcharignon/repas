@@ -88,6 +88,7 @@ Valide de bout en bout : bus, Loader, Deptrac, API, JWT. Risque faible.
 - [ ] Options de formulaires : `SelectDepartmentType`, `SelectIngredientType`, `SelectUnitType`, `AbstractRecipeType`, `UpdateIngredientType`, `RegisterNewUserType` (unicité email)
 - [ ] `OwnerVoter` : remplacer les 3 repositories par un Loader d'ownership léger
 - [ ] `ListUsers` — AdminGetUsers
+- [ ] Supprimer `ModelCache` (cache maison des modèles hydratés, devenu `ResetInterface` en phase 2 pour être vidé entre deux requêtes en mode worker) dès que plus aucune lecture ne passe par un modèle : il ne servait qu'à éviter des hydratations répétées.
 - [ ] Deptrac : interdire `Domain\Interface\*Repository` dans `Infrastructure\Http` et `Infrastructure\Http\Form`
 
 ## Écriture et extinction
@@ -111,7 +112,6 @@ Valide de bout en bout : bus, Loader, Deptrac, API, JWT. Risque faible.
 
 ## Hors périmètre (vus en passant, non corrigés)
 
-- `ModelCache` a une méthode `reset()` mais n'implémente pas `ResetInterface` : en mode worker FrankenPHP (dev et prod) ses modèles survivent entre deux requêtes, donc lecture périmée après une écriture hors de l'application et résultats différents d'un worker à l'autre. À corriger à part (`implements ResetInterface` + test).
 - Le motif de date `dd MMMM YYYY` (templates des listes de courses et `ListShoppingLists`) utilise l'année ISO de la semaine : le 29 décembre 2025 s'affiche « 29 décembre 2026 ». Conservé tel quel pour ne pas changer l'affichage ; remplacer `YYYY` par `yyyy` partout en une fois (loader, `_shopping_list_card_header`, `shopping_list.html.twig`).
 - `LoginCheckViewController` rend `login_check/index.html.twig`, template inexistant.
 - `RecipeTypePostgreSQLRepository::findOneBySlug` interroge le cache avec `Recipe::class`.

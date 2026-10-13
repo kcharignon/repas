@@ -3,11 +3,15 @@
 namespace Repas\Shared\Infrastructure\Repository;
 
 use Repas\Shared\Domain\Model\ModelInterface;
+use Symfony\Contracts\Service\ResetInterface;
 
 /**
+ * Cache des modèles hydratés pendant une requête. Il est vidé entre deux requêtes (`ResetInterface`, tag `kernel.reset`
+ * posé par l'autoconfiguration) : en mode worker FrankenPHP le service survit à la requête.
+ *
  * @template T of ModelInterface
  */
-class ModelCache
+class ModelCache implements ResetInterface
 {
     private array $models = [];
 
