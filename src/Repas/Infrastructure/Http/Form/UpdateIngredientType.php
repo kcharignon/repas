@@ -4,19 +4,13 @@ namespace Repas\Repas\Infrastructure\Http\Form;
 
 
 use Repas\Repas\Application\Command\UpdateIngredient\UpdateIngredientCommand;
-use Repas\Repas\Domain\Interface\ConversionRepository;
-use Repas\Repas\Domain\Model\Ingredient;
+use Repas\Repas\Application\Query\GetIngredient\IngredientDTO;
 use Symfony\Component\Form\DataMapperInterface;
 use Symfony\Component\Form\FormInterface;
 use Traversable;
 
 class UpdateIngredientType extends AbstractIngredientType implements DataMapperInterface
 {
-    public function __construct(
-        readonly ConversionRepository $conversionRepository,
-    ) {
-    }
-
     /**
      * @param mixed $viewData
      * @param Traversable $forms
@@ -24,7 +18,7 @@ class UpdateIngredientType extends AbstractIngredientType implements DataMapperI
      */
     public function mapDataToForms(mixed $viewData, Traversable $forms): void
     {
-        if (!$viewData instanceof Ingredient) {
+        if (!$viewData instanceof IngredientDTO) {
             return;
         }
         $ingredient = $viewData;
@@ -32,28 +26,29 @@ class UpdateIngredientType extends AbstractIngredientType implements DataMapperI
         /** @var FormInterface[] $forms */
         $forms = iterator_to_array($forms);
 
-        $forms['name']->setData($ingredient->getName());
-        $forms['department']->setData($ingredient->getDepartment()->getSlug());
-        $forms['defaultCookingUnit']->setData($ingredient->getDefaultCookingUnit()->getSlug());
-        $forms['defaultPurchaseUnit']->setData($ingredient->getDefaultPurchaseUnit()->getSlug());
-        if (!$ingredient->hasSameUnitInCookingAndPurchase()) {
-            $forms['coefficient']->setData($this->findCoefficient($ingredient));
+        $forms['name']->setData($ingredient->name);
+        $forms['department']->setData($ingredient->departmentSlug);
+        $forms['defaultCookingUnit']->setData($ingredient->cookingUnitSlug);
+        $forms['defaultPurchaseUnit']->setData($ingredient->purchaseUnitSlug);
+        if (!$ingredient->hasSameUnit) {
+            $forms['coefficient']->setData($ingredient->coefficient);
         }
     }
 
     /**
-     * @param UpdateIngredientCommand $viewData
+     * @param IngredientDTO $viewData en entrée, remplacé par la commande de modification
+     * @param-out UpdateIngredientCommand $viewData
      */
     public function mapFormsToData(Traversable $forms, mixed &$viewData): void
     {
-        if (!$viewData instanceof Ingredient) {
+        if (!$viewData instanceof IngredientDTO) {
             return;
         }
 
         $forms = iterator_to_array($forms);
 
         $viewData = new UpdateIngredientCommand(
-            slug: $viewData->getSlug(),
+            slug: $viewData->slug,
             name: $forms['name']->getData(),
             image: '',
             departmentSlug: $forms['department']->getData(),
@@ -61,14 +56,5 @@ class UpdateIngredientType extends AbstractIngredientType implements DataMapperI
             defaultPurchaseUnitSlug: $forms['defaultPurchaseUnit']->getData(),
             coefficient: $forms['coefficient']->getData(),
         );
-    }
-
-    private function findCoefficient(Ingredient $ingredient): ?float
-    {
-        return $this->conversionRepository->findByIngredientAndStartUnitAndEndUnit(
-            $ingredient,
-            $ingredient->getDefaultPurchaseUnit(),
-            $ingredient->getDefaultCookingUnit()
-        )?->getCoefficient();
     }
 }

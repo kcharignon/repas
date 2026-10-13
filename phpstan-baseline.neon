@@ -187,12 +187,6 @@ parameters:
 			path: src/Repas/Infrastructure/Entity/Unit.php
 
 		-
-			message: '#^Parameter \#1 \$callback of method Repas\\Shared\\Domain\\Tool\\Tab\<Repas\\Repas\\Domain\\Model\\Unit\>\:\:map\(\) expects callable\(Repas\\Repas\\Domain\\Model\\Unit\)\: Repas\\Repas\\Domain\\Model\\Unit, Closure\(Repas\\Repas\\Domain\\Model\\Unit\)\: array\{name\: string, slug\: string\} given\.$#'
-			identifier: argument.type
-			count: 1
-			path: src/Repas/Infrastructure/Http/Controller/GetCompatibleUnitsForIngredientViewController.php
-
-		-
 			message: '#^PHPDoc tag @var with type Symfony\\Component\\Form\\FormInterface is not subtype of native type array\.$#'
 			identifier: varTag.nativeType
 			count: 1

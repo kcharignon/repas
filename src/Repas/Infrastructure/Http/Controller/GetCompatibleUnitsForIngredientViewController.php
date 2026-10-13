@@ -3,9 +3,9 @@
 namespace Repas\Repas\Infrastructure\Http\Controller;
 
 
-use Repas\Repas\Domain\Interface\IngredientRepository;
-use Repas\Repas\Domain\Model\Unit;
-use Repas\Shared\Domain\Tool\StringTool;
+use Repas\Repas\Application\Query\ListCompatibleUnits\CompatibleUnitDTO;
+use Repas\Repas\Application\Query\ListCompatibleUnits\ListCompatibleUnitsQuery;
+use Repas\Shared\Application\Interface\QueryBusInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Attribute\Route;
@@ -14,7 +14,7 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 class GetCompatibleUnitsForIngredientViewController extends AbstractController
 {
     public function __construct(
-        private readonly IngredientRepository $ingredientRepository,
+        private readonly QueryBusInterface $queryBus,
     ) {
     }
 
@@ -22,15 +22,14 @@ class GetCompatibleUnitsForIngredientViewController extends AbstractController
     #[IsGranted("ROLE_USER")]
     public function __invoke(string $slug): JsonResponse
     {
-        $ingredient = $this->ingredientRepository->findOneBySlug($slug);
-
-        $compatibleUnits = $ingredient->getCompatibleUnits()->map(fn(Unit $unit) => [
-            "name" => StringTool::upperCaseFirst($unit->getName()),
-            "slug" => $unit->getSlug(),
-        ]);
+        /** @var list<CompatibleUnitDTO> $compatibleUnits */
+        $compatibleUnits = $this->queryBus->ask(new ListCompatibleUnitsQuery($slug));
 
         return new JsonResponse([
-            'units' => $compatibleUnits->toArray(),
+            'units' => array_map(
+                static fn(CompatibleUnitDTO $unit): array => ['name' => $unit->name, 'slug' => $unit->slug],
+                $compatibleUnits,
+            ),
         ]);
     }
 }

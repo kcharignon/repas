@@ -11,7 +11,7 @@ use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 
 /**
  * Firewalls `login` et `api` (ADR 0008). Chaque test crée ses utilisateurs (mot de passe connu) : aucune fixture.
- * `/api/v1/me` est la route protégée ROLE_USER ; seule la route d'essai ROLE_ADMIN reste, faute d'endpoint d'admin.
+ * `/api/v1/me` est la route protégée ROLE_USER, `/api/v1/conversions` la route réservée aux administrateurs.
  */
 class JwtAuthenticationTest extends DatabaseTestCase
 {
@@ -124,7 +124,7 @@ class JwtAuthenticationTest extends DatabaseTestCase
         $token = $this->tokenFor($user->getEmail(), self::PASSWORD);
 
         // When
-        $this->client->request('GET', '/api/v1/_probe/admin', server: $this->bearer($token));
+        $this->client->request('GET', '/api/v1/conversions', server: $this->bearer($token));
 
         // Then
         $this->assertSame(403, $this->client->getResponse()->getStatusCode());
@@ -138,11 +138,11 @@ class JwtAuthenticationTest extends DatabaseTestCase
         $token = $this->tokenFor($admin->getEmail(), self::PASSWORD);
 
         // When
-        $this->client->request('GET', '/api/v1/_probe/admin', server: $this->bearer($token));
+        $this->client->request('GET', '/api/v1/conversions', server: $this->bearer($token));
 
         // Then
         $this->assertSame(200, $this->client->getResponse()->getStatusCode());
-        $this->assertSame(['admin' => true], $this->jsonBody());
+        $this->assertSame(['member' => [], 'totalItems' => 0], $this->jsonBody());
     }
 
     public function testHealthStaysPublic(): void

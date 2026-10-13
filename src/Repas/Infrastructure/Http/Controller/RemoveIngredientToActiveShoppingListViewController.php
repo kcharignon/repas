@@ -5,7 +5,7 @@ namespace Repas\Repas\Infrastructure\Http\Controller;
 
 use Repas\Repas\Application\Command\RemoveIngredientToShoppingList\RemoveIngredientToShoppingListCommand;
 use Repas\Repas\Application\Query\GetActiveShoppingListSummary\GetActiveShoppingListSummaryQuery;
-use Repas\Repas\Domain\Interface\IngredientRepository;
+use Repas\Repas\Application\Query\GetIngredient\GetIngredientQuery;
 use Repas\Shared\Application\Interface\CommandBusInterface;
 use Repas\Shared\Application\Interface\QueryBusInterface;
 use Repas\User\Domain\Model\User;
@@ -18,7 +18,6 @@ class RemoveIngredientToActiveShoppingListViewController extends AbstractControl
 {
     public function __construct(
         private readonly CommandBusInterface $commandBus,
-        private readonly IngredientRepository $ingredientRepository,
         private readonly QueryBusInterface $queryBus,
     ) {
     }
@@ -36,7 +35,7 @@ class RemoveIngredientToActiveShoppingListViewController extends AbstractControl
         );
         $this->commandBus->dispatch($command);
 
-        $ingredient = $this->ingredientRepository->findOneBySlug($slug);
+        $ingredient = $this->queryBus->ask(new GetIngredientQuery($slug, $connectedUser->getId(), $this->isGranted('ROLE_ADMIN')));
 
         $activeSummary = $this->queryBus->ask(new GetActiveShoppingListSummaryQuery($connectedUser->getId()));
         $html = $this->renderView('@Repas/Department/_ingredient_row.html.twig', [
@@ -47,7 +46,7 @@ class RemoveIngredientToActiveShoppingListViewController extends AbstractControl
         return new JsonResponse([
             "views" => [
                 [
-                    "selector" => "#ingredient-row-{$ingredient->getSlug()}",
+                    "selector" => "#ingredient-row-{$ingredient->slug}",
                     "html" => $html,
                 ]
             ]
