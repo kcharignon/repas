@@ -361,12 +361,6 @@ parameters:
 			path: src/User/Domain/Exception/UserException.php
 
 		-
-			message: '#^Property Repas\\User\\Domain\\Model\\User\:\:\$defaultServing \(int\) does not accept string\.$#'
-			identifier: assign.propertyType
-			count: 1
-			path: src/User/Domain/Model/User.php
-
-		-
 			message: '#^Property Repas\\User\\Domain\\Model\\User\:\:\$roles on left side of \?\? is not nullable nor uninitialized\.$#'
 			identifier: nullCoalesce.initializedProperty
 			count: 1
@@ -389,12 +383,6 @@ parameters:
 			identifier: property.unusedType
 			count: 1
 			path: src/User/Infrastructure/Entity/User.php
-
-		-
-			message: '#^Instanceof between Repas\\User\\Domain\\Model\\User and Repas\\User\\Domain\\Model\\User will always evaluate to true\.$#'
-			identifier: instanceof.alwaysTrue
-			count: 1
-			path: src/User/Infrastructure/Http/Form/RegisterNewUserType.php
 
 		-
 			message: '#^Method Repas\\User\\Infrastructure\\Repository\\UserPostgreSQLRepository\:\:convertEntityToModel\(\) should return Repas\\User\\Domain\\Model\\User but returns Repas\\Shared\\Domain\\Model\\ModelInterface\.$#'
@@ -731,12 +719,6 @@ parameters:
 			identifier: method.notFound
 			count: 1
 			path: tests/User/Application/RegisterNewUserHandlerTest.php
-
-		-
-			message: '#^Parameter \#3 \$defaultServing of class Repas\\User\\Application\\UpdateUserSettings\\UpdateUserSettingsCommand constructor expects string, int given\.$#'
-			identifier: argument.type
-			count: 3
-			path: tests/User/Application/UpdateUserSettingsHandlerTest.php
 
 		-
 			message: '#^Call to function method_exists\(\) with ''Symfony\\\\Component\\\\Dotenv\\\\Dotenv'' and ''bootEnv'' will always evaluate to true\.$#'

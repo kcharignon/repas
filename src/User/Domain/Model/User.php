@@ -218,7 +218,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, Passwor
         return $this->status->value;
     }
 
-    public function update(string $defaultServing): void
+    public function update(int $defaultServing): void
     {
         $this->defaultServing = $defaultServing;
     }
