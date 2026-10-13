@@ -6,7 +6,7 @@ namespace Repas\Repas\Infrastructure\Http\Controller;
 use Repas\Repas\Application\Command\EnsureActiveShoppingList\EnsureActiveShoppingListCommand;
 use Repas\Repas\Application\Command\PlannedMeal\PlannedMealCommand;
 use Repas\Repas\Application\Query\GetActiveShoppingListSummary\GetActiveShoppingListSummaryQuery;
-use Repas\Repas\Domain\Interface\RecipeRepository;
+use Repas\Repas\Application\Query\GetRecipe\GetRecipeQuery;
 use Repas\Shared\Application\Interface\CommandBusInterface;
 use Repas\Shared\Application\Interface\QueryBusInterface;
 use Repas\Shared\Domain\Interface\AuthenticatedUser;
@@ -20,7 +20,6 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 class AddRecipeToActiveShoppingListViewController extends AbstractController
 {
     public function __construct(
-        private readonly RecipeRepository $recipeRepository,
         private readonly CommandBusInterface $commandBus,
         private readonly QueryBusInterface $queryBus,
     ) {
@@ -45,7 +44,7 @@ class AddRecipeToActiveShoppingListViewController extends AbstractController
 
         // Chargement des donnees pour générer une vue avec des données à jours
         $activeSummary = $this->queryBus->ask(new GetActiveShoppingListSummaryQuery($connectedUser->getId()));
-        $recipe = $this->recipeRepository->findOneById($id);
+        $recipe = $this->queryBus->ask(new GetRecipeQuery($id));
         return new JsonResponse([
             "views" => [
                 [

@@ -111,23 +111,6 @@ class RecipeRepositoryTest extends DatabaseTestCase
         $this->recipeRepository->findOneById($recipe->getId());
     }
 
-    public function testFindByAuthorAndType(): void
-    {
-        // Arrange
-        $author = $this->savedUser();
-        $dessert = $this->savedRecipe(new RecipeBuilder()->isBasqueCake()->withAuthor($author));
-        $this->savedRecipe(new RecipeBuilder()->isPastaCarbonara()->withAuthor($author));
-        $this->savedRecipe(new RecipeBuilder()->isBasqueCake()->withAuthor($this->savedUser()));
-        $type = new RecipeTypeBuilder()->isDessert()->build();
-
-        // Act
-        $recipes = $this->recipeRepository->findByAuthorAndType($author, $type);
-
-        // Assert
-        $this->assertSame([$dessert->getId()], $this->idsOf($recipes));
-        RepasAssert::assertTabType(Tab::newEmptyTyped(Recipe::class), $recipes);
-    }
-
     public function testFindBy(): void
     {
         // Arrange

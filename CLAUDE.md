@@ -78,7 +78,6 @@ src/{Context}/
 - Pour les tests : implémentation `{X}InMemoryRepository` dans `tests/Helper/InMemoryRepository/`, même interface, aucune dépendance Doctrine — permet de tester Application/Domain sans DB.
 - Un Repository sert à **charger pour modifier** un agrégat ; pour **afficher**, utiliser un Loader (ADR 0004).
 - Ne jamais faire de requête Doctrine (QueryBuilder, DQL) en dehors de `Infrastructure/Repository` et `Infrastructure/Loader`.
-- Legacy : `Infrastructure/Loader/RecipeLoader` renvoie encore des modèles de domaine ; il sera remplacé par un Loader à DTO (roadmap, phase 5). Ne pas l'étendre.
 
 ## SOLID — application concrète dans ce repo
 

@@ -55,15 +55,6 @@ readonly class RecipePostgreSQLRepository extends PostgreSQLRepository implement
         return $this->findBy(['authorId' => $author->getId()]);
     }
 
-    public function findByAuthorAndType(User $author, RecipeType $type): Tab
-    {
-        return $this->findBy(
-            ['authorId' => $author->getId(), 'typeSlug' => $type->getSlug()],
-            ['slug' => 'ASC']
-        );
-    }
-
-
     public function findBy(array $criteria, ?array $orderBy = null): Tab
     {
         $entities = new Tab($this->entityRepository->findBy($criteria, $orderBy), RecipeEntity::class);

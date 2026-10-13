@@ -42,4 +42,3 @@ Objectif : même page, même HTML (à la logique d'affichage près), mais sans `
 - `ShoppingList::getDepartments`, `recipeTypePresent`, `getMealByType` mutent des caches internes et trient : à reproduire dans le Loader sans mutation.
 - `current_user` est le service `security.helper` exposé en global Twig (`config/packages/twig.yaml`) : à ne plus utiliser dans les templates migrés.
 - `OwnerVoter` recharge l'agrégat complet (`SHOPPING_LIST_OWNER`, `RECIPE_OWNER`…) : phase 7 de la roadmap, ne pas y toucher dans une slice de lecture.
-- `RecipeRepository::findByAuthorAndType` et `RecipeLoader::findByAuthorAndType` font doublon ; ne pas ajouter de troisième variante.

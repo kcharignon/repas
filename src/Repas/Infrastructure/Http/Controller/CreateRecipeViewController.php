@@ -3,7 +3,6 @@
 namespace Repas\Repas\Infrastructure\Http\Controller;
 
 
-use Repas\Repas\Domain\Interface\RecipeRepository;
 use Repas\Repas\Infrastructure\Http\Form\CreateRecipeType;
 use Repas\Shared\Application\Interface\CommandBusInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -16,7 +15,6 @@ class CreateRecipeViewController extends AbstractController
 {
     public function __construct(
         private readonly CommandBusInterface $commandBus,
-        private readonly RecipeRepository $recipeRepository,
     ) {}
 
     #[Route(path: '/recipe', name: 'view_create_recipe', methods: ['GET', 'POST'])]
@@ -30,10 +28,8 @@ class CreateRecipeViewController extends AbstractController
             $command = $form->getData();
             $this->commandBus->dispatch($command);
 
-            $recipe = $this->recipeRepository->findOneById($command->id);
-
             return $this->redirectToRoute('view_one_recipe_type', [
-                'slug' => $recipe->getType()->getSlug(),
+                'slug' => $command->typeSlug,
             ]);
         }
 

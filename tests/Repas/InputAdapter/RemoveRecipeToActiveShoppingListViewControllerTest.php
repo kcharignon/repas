@@ -4,8 +4,10 @@ namespace Repas\Tests\Repas\InputAdapter;
 
 
 use Repas\Repas\Application\Query\GetActiveShoppingListSummary\GetActiveShoppingListSummaryQuery;
+use Repas\Repas\Application\Query\GetRecipe\GetRecipeQuery;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Tests\Helper\Builder\DTO\ActiveShoppingListSummaryDTOBuilder;
+use Repas\Tests\Helper\Builder\DTO\RecipeDTOBuilder;
 use Repas\Tests\Helper\Builder\RecipeBuilder;
 use Repas\Tests\Helper\Builder\ShoppingListBuilder;
 use Repas\Tests\Helper\QueryBusWebTestCase;
@@ -21,6 +23,7 @@ class RemoveRecipeToActiveShoppingListViewControllerTest extends QueryBusWebTest
         $shoppingListRepository = static::getContainer()->get(ShoppingListRepository::class);
         $shoppingListRepository->save(new ShoppingListBuilder()->withOwner($user)->addRecipe($recipe)->build());
         $this->queryBus->willReturn(GetActiveShoppingListSummaryQuery::class, new ActiveShoppingListSummaryDTOBuilder()->build());
+        $this->queryBus->willReturn(GetRecipeQuery::class, new RecipeDTOBuilder()->withId($recipe->getId())->withName('zzz omelette')->build());
         $this->client->loginUser($user);
 
         // When
@@ -29,7 +32,7 @@ class RemoveRecipeToActiveShoppingListViewControllerTest extends QueryBusWebTest
         // Then
         $this->assertSame(200, $this->client->getResponse()->getStatusCode());
         $this->assertFalse($shoppingListRepository->findOneActivateByOwner($user)->hasRecipe($recipe));
-        $query = $this->queryBus->getLastAskedQuery();
+        $query = $this->queryBus->getAskedQuery(GetActiveShoppingListSummaryQuery::class);
         $this->assertInstanceOf(GetActiveShoppingListSummaryQuery::class, $query);
         $this->assertSame($user->getId(), $query->ownerId);
         $view = json_decode($this->client->getResponse()->getContent(), true, flags: JSON_THROW_ON_ERROR)['views'][0];

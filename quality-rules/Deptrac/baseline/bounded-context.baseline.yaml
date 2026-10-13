@@ -49,17 +49,11 @@ deptrac:
       - Repas\User\Domain\Model\User
     Repas\Repas\Infrastructure\Http\Controller\CreateShoppingListViewController:
       - Repas\User\Domain\Model\User
-    Repas\Repas\Infrastructure\Http\Controller\GetAllOtherPeopleRecipesViewController:
-      - Repas\User\Domain\Model\User
     Repas\Repas\Infrastructure\Http\Controller\GetOneDepartmentViewController:
-      - Repas\User\Domain\Model\User
-    Repas\Repas\Infrastructure\Http\Controller\GetOneRecipeTypeViewController:
       - Repas\User\Domain\Model\User
     Repas\Repas\Infrastructure\Http\Controller\RemoveIngredientToActiveShoppingListViewController:
       - Repas\User\Domain\Model\User
     Repas\Repas\Infrastructure\Http\Controller\RemoveRecipeToActiveShoppingListViewController:
-      - Repas\User\Domain\Model\User
-    Repas\Repas\Infrastructure\Http\Controller\UpdateRecipeViewController:
       - Repas\User\Domain\Model\User
     Repas\Repas\Infrastructure\Http\Form\AbstractRecipeType:
       - Repas\User\Domain\Model\User
@@ -70,10 +64,6 @@ deptrac:
     Repas\Repas\Infrastructure\Http\Form\SelectIngredientType:
       - Repas\User\Domain\Model\User
     Repas\Repas\Infrastructure\Http\Form\UpdateRecipeType:
-      - Repas\User\Domain\Model\User
-    Repas\Repas\Infrastructure\Loader\RecipeLoader:
-      - Repas\User\Domain\Exception\UserException
-      - Repas\User\Domain\Interface\UserRepository
       - Repas\User\Domain\Model\User
     Repas\Repas\Infrastructure\Repository\IngredientPostgreSQLRepository:
       - Repas\User\Domain\Exception\UserException

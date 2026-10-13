@@ -4,9 +4,11 @@ namespace Repas\Tests\Repas\InputAdapter;
 
 
 use Repas\Repas\Application\Query\GetActiveShoppingListSummary\GetActiveShoppingListSummaryQuery;
+use Repas\Repas\Application\Query\GetRecipe\GetRecipeQuery;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Repas\Domain\Model\ShoppingListStatus;
 use Repas\Tests\Helper\Builder\DTO\ActiveShoppingListSummaryDTOBuilder;
+use Repas\Tests\Helper\Builder\DTO\RecipeDTOBuilder;
 use Repas\Tests\Helper\Builder\IngredientBuilder;
 use Repas\Tests\Helper\Builder\RecipeBuilder;
 use Repas\Tests\Helper\Builder\RecipeRowBuilder;
@@ -25,6 +27,7 @@ class AddRecipeToActiveShoppingListViewControllerTest extends QueryBusWebTestCas
         )->build();
         $this->persister->saveRecipe($recipe);
         $this->queryBus->willReturn(GetActiveShoppingListSummaryQuery::class, new ActiveShoppingListSummaryDTOBuilder()->withPlannedRecipe($recipe->getId())->build());
+        $this->queryBus->willReturn(GetRecipeQuery::class, new RecipeDTOBuilder()->withId($recipe->getId())->withName('zzz omelette')->build());
         $this->client->loginUser($user);
 
         // When
@@ -34,7 +37,7 @@ class AddRecipeToActiveShoppingListViewControllerTest extends QueryBusWebTestCas
         $this->assertSame(200, $this->client->getResponse()->getStatusCode());
         $active = static::getContainer()->get(ShoppingListRepository::class)->findOneActivateByOwner($user);
         $this->assertTrue($active->hasRecipe($recipe));
-        $query = $this->queryBus->getLastAskedQuery();
+        $query = $this->queryBus->getAskedQuery(GetActiveShoppingListSummaryQuery::class);
         $this->assertInstanceOf(GetActiveShoppingListSummaryQuery::class, $query);
         $this->assertSame($user->getId(), $query->ownerId);
         $view = json_decode($this->client->getResponse()->getContent(), true, flags: JSON_THROW_ON_ERROR)['views'][0];

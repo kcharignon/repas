@@ -13,22 +13,18 @@
                 <li class="list-group-item active" aria-current="true">Ingrédients pour {{ recipe.serving }} personnes</li>
                 {% for row in recipe.rows %}
                     <li class="list-group-item d-flex align-item-center" style="height: 42px">
-                        {% if row.unit is not null%}
-                            <span class="me-1">
-                                    {{ row.quantity ~ row.unit.symbol }}
-                                {% if row.unit.symbol != "" %}de{% endif %}
-                                </span>
-                        {% else %}
-                            {{ row.quantity }}
-                        {% endif %}
-                        <strong>{{ row.ingredient.name|capitalize }}</strong>
+                        <span class="me-1">
+                                {{ row.quantity ~ row.unitSymbol }}
+                            {% if row.unitSymbol != "" %}de{% endif %}
+                            </span>
+                        <strong>{{ row.ingredientName|capitalize }}</strong>
                         <span class="flex-fill"></span>
-                        {% if row.ingredient.image|length > 0 %}
+                        {% if row.ingredientImage|length > 0 %}
                         <img
                             class="align-self-center"
                             style="height: 32px"
-                            src="{{ absolute_url(asset(row.ingredient.image)) }}"
-                            alt="row.ingredient.name">
+                            src="{{ absolute_url(asset(row.ingredientImage)) }}"
+                            alt="{{ row.ingredientName }}">
                         {% endif %}
                     </li>
                 {% endfor %}

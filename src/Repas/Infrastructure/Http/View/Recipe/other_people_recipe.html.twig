@@ -23,7 +23,7 @@
                 {% for recipe in recipes %}
                     <tr id="recipe-{{ recipe.id }}">
                         <td>{{ recipe.name|capitalize }}</td>
-                        <td>{{ recipe.type.name|capitalize }}</td>
+                        <td>{{ recipe.typeName|capitalize }}</td>
                         <td>
                             <button
                                 type="button"
