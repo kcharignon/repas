@@ -20,7 +20,7 @@ use Repas\Tests\Helper\RepasAssert;
 use Repas\User\Domain\Model\User;
 
 /**
- * Chaque test crée ses utilisateurs, recettes et listes (aucune fixture globale, roadmap « Dette de tests »).
+ * Chaque test crée ses utilisateurs, recettes et listes (la base de test est vide au départ).
  */
 class ShoppingListRepositoryTest extends DatabaseTestCase
 {

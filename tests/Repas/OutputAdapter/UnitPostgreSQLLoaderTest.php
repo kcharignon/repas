@@ -22,6 +22,15 @@ class UnitPostgreSQLLoaderTest extends DatabaseTestCase
         $this->unitLoader = static::getContainer()->get(UnitLoader::class);
     }
 
+    public function testListReturnsNothingWhenThereIsNone(): void
+    {
+        // When
+        $result = $this->unitLoader->list();
+
+        // Then
+        $this->assertSame([], $result);
+    }
+
     public function testListReturnsDTOsOfCreatedUnits(): void
     {
         // Given

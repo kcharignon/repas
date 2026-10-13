@@ -22,6 +22,15 @@ class DepartmentPostgreSQLLoaderTest extends DatabaseTestCase
         $this->departmentLoader = static::getContainer()->get(DepartmentLoader::class);
     }
 
+    public function testListReturnsNothingWhenThereIsNone(): void
+    {
+        // When
+        $result = $this->departmentLoader->list();
+
+        // Then
+        $this->assertSame([], $result);
+    }
+
     public function testListReturnsDTOsOfCreatedDepartments(): void
     {
         // Given

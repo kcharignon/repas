@@ -6,20 +6,17 @@ use DAMA\DoctrineTestBundle\Doctrine\DBAL\StaticDriver;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Tools\SchemaTool;
 use Repas\Shared\Infrastructure\Repository\ModelCache;
-use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
-use Symfony\Component\Console\Input\ArrayInput;
-use Symfony\Component\Console\Output\NullOutput;
 
 /**
  * Socle des tests qui touchent la vraie base (ADR 0010).
  *
- * Le schéma et les fixtures sont chargés UNE SEULE FOIS par exécution de PHPUnit (premier test qui en a besoin).
+ * Le schéma est créé UNE SEULE FOIS par exécution de PHPUnit (premier test qui en a besoin), vide : aucune fixture.
  * Chaque test tourne ensuite dans une transaction annulée à la fin (DAMA doctrine-test-bundle, extension déclarée dans
  * phpunit.dist.xml), sur une connexion statique qui survit aux reboots du kernel (KernelBrowser).
  *
- * Dette (docs/migration-roadmap.md, « Dette de tests ») : les fixtures globales sont un comportement legacy. Un nouveau
- * test crée ses propres données (builders + repositories) et ne s'appuie jamais sur elles.
+ * Un test crée ses propres données (builders + repositories, voir `DataPersister`) et n'asserte que sur elles. Les
+ * `DataFixture` ne servent qu'au jeu de données de développement (`make fixtures-load-dev`).
  */
 abstract class DatabaseTestCase extends KernelTestCase
 {
@@ -70,13 +67,13 @@ abstract class DatabaseTestCase extends KernelTestCase
         StaticDriver::setKeepStaticConnections(false);
 
         try {
-            self::loadSchemaAndFixtures();
+            self::createSchema();
         } finally {
             StaticDriver::setKeepStaticConnections($keepStaticConnections);
         }
     }
 
-    private static function loadSchemaAndFixtures(): void
+    private static function createSchema(): void
     {
         self::bootKernel();
 
@@ -87,15 +84,6 @@ abstract class DatabaseTestCase extends KernelTestCase
 
         $schemaTool->dropSchema($metadata);
         $schemaTool->createSchema($metadata);
-
-        $application = new Application(self::$kernel);
-        $application->setAutoExit(false);
-        $application->run(new ArrayInput([
-            'command' => 'doctrine:fixtures:load',
-            '--env' => 'test',
-            '--purge-with-truncate' => true,
-            '--no-interaction' => true,
-        ]), new NullOutput());
 
         $entityManager->clear();
         self::ensureKernelShutdown();

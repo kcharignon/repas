@@ -23,7 +23,7 @@ class ShoppingListRowRepositoryTest extends DatabaseTestCase
 
         $this->shoppingListRowRepository = static::getContainer()->get(ShoppingListRowRepository::class);
 
-        // Les lignes de test portent des œufs, en unité : on les enregistre, sans compter sur les fixtures globales
+        // Les lignes de test portent des œufs, en unité : on les enregistre,
         $persister = new DataPersister(static::getContainer());
         $persister->saveIngredient(new IngredientBuilder()->isEgg()->build());
         $persister->saveUnit(new UnitBuilder()->isUnite()->build());

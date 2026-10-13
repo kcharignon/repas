@@ -18,30 +18,7 @@ Suivi vivant. Décisions : [`adr/`](adr/README.md) (surtout [0003](adr/0003-cqrs
 - [x] 0.5 Plomberie API : serializer, validator, nelmio api-doc/cors, listener d'erreurs JSON, `GET /api/v1/health`, `make api-doc-*` ([0007](adr/0007-api-rest-v1.md))
 - [x] 0.6 JWT stateless pour `/api` ([0008](adr/0008-auth-session-et-jwt.md))
 - [x] 0.7 Tests de base rapides : schéma + fixtures chargés une fois, un test = une transaction annulée (DAMA), suite de ~31 s à ~4 s ([0010](adr/0010-strategie-de-tests.md) règle 10)
-- [ ] 0.8 **Dette de tests** : sortir des fixtures globales (voir la section ci-dessous), **échéance : avant le début de la phase 3**
-
-## Dette de tests : sortir des fixtures globales
-
-`DatabaseTestCase` charge encore **toutes** les fixtures une fois par exécution (comportement legacy). 4 classes de tests (20 tests) en dépendent (`DepartmentRepositoryTest` et `JwtAuthenticationTest` convertis en phase 1, `ShoppingListRepositoryTest` et `ShoppingListRowRepositoryTest` en phase 2). La cible est celle de Compliance : un test crée ses propres données (builders + repositories), asserte uniquement sur elles, et `DatabaseTestCase` ne crée plus que le schéma ([0010](adr/0010-strategie-de-tests.md) règle 11). Cette dette ne doit pas traîner : elle gêne chaque nouveau test de Loader (impossible d'asserter un total ou un cas vide tant que les fixtures sont là).
-
-**Règles dès maintenant**
-- Tout **nouveau** test de base crée ses données et n'utilise jamais les fixtures globales (voir `references/read-slice-template.md` §6 du skill `repas-dev`). `tests/Helper/DataPersister` enregistre un modèle de builder avec les agrégats qu'il référence (utilisateur, unités, rayon, ingrédients, type de recette) : les `save()` sont des upserts, il sert à toutes les conversions.
-- Une slice qui touche un agrégat convertit au passage les tests de cet agrégat listés ci-dessous (même commit ou commit suivant).
-
-**À convertir** (nombre de tests qui cassent si on coupe les fixtures)
-
-| Classe | Tests à réécrire | Convertie avec |
-|---|---|---|
-| `OutputAdapter/IngredientRepositoryTest` | 6 / 8 | commit dédié fin de phase 2 |
-| `OutputAdapter/ConversionRepositoryTest` | 5 / 6 | commit dédié fin de phase 2 |
-| `OutputAdapter/RecipeRepositoryTest` | 6 / 6 | commit dédié fin de phase 2 |
-| `OutputAdapter/RecipeLoaderTest` | 3 / 3 | commit dédié fin de phase 2 (le `RecipeLoader` legacy est remplacé en phase 5) |
-
-`UnitRepositoryTest`, `UserRepositoryTest`, `ShoppingListRepositoryTest`, `ShoppingListRowRepositoryTest` et `JwtAuthenticationTest` n'en dépendent déjà plus.
-
-**Quand tout est converti** (commit « fin des fixtures globales ») : retirer `doctrine:fixtures:load` de `DatabaseTestCase::loadSchemaAndFixtures()`, ajouter les cas « liste vide » aux tests de Loader, retirer cette section. Les `DataFixture` restent pour le jeu de données de dev.
-
-**Vérifier la dépendance** : commenter temporairement le chargement des fixtures dans `DatabaseTestCase` et lancer `make test` ; chaque test rouge dépend encore des fixtures.
+- [x] 0.8 Tests de base sans fixtures globales : `DatabaseTestCase` ne crée plus que le schéma (vide), chaque test crée ses données avec les builders et `tests/Helper/DataPersister` (enregistre un modèle et les agrégats qu'il référence) ; suite de 346 tests en ~3 s, cas « liste vide » ajoutés aux tests de Loader ([0010](adr/0010-strategie-de-tests.md) règle 11)
 
 ## Slices de lecture
 
