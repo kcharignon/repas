@@ -4,15 +4,13 @@ namespace Repas\Repas\Infrastructure\Http\Controller;
 
 
 use Repas\Repas\Application\Command\AddIngredientToShoppingList\AddIngredientToShoppingListCommand;
-use Repas\Repas\Application\Command\CreateShoppingList\CreateShoppingListCommand;
+use Repas\Repas\Application\Command\EnsureActiveShoppingList\EnsureActiveShoppingListCommand;
 use Repas\Repas\Application\Query\GetActiveShoppingListSummary\GetActiveShoppingListSummaryQuery;
 use Repas\Repas\Domain\Interface\IngredientRepository;
-use Repas\Repas\Domain\Interface\ShoppingListRepository;
-use Repas\Repas\Domain\Model\ShoppingList;
 use Repas\Shared\Application\Interface\CommandBusInterface;
 use Repas\Shared\Application\Interface\QueryBusInterface;
+use Repas\Shared\Domain\Interface\AuthenticatedUser;
 use Repas\Shared\Domain\Tool\UuidGenerator;
-use Repas\User\Domain\Model\User;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Attribute\Route;
@@ -21,7 +19,6 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 class AddIngredientToActiveShoppingListViewController extends AbstractController
 {
     public function __construct(
-        private readonly ShoppingListRepository $shoppingListRepository,
         private readonly IngredientRepository $ingredientRepository,
         private readonly CommandBusInterface $commandBus,
         private readonly QueryBusInterface $queryBus,
@@ -33,18 +30,10 @@ class AddIngredientToActiveShoppingListViewController extends AbstractController
     public function __invoke(string $slug): JsonResponse
     {
         $connectedUser = $this->getUser();
-        assert($connectedUser instanceof User);
+        assert($connectedUser instanceof AuthenticatedUser);
 
-        // Recuperation de la liste active ou creation d'une nouvelle liste (active)
-        $activeShoppingList = $this->shoppingListRepository->findOneActivateByOwner($connectedUser);
-        if (!$activeShoppingList instanceof ShoppingList) {
-            // Creation d'une nouvelle liste active
-            $command = new CreateShoppingListCommand(
-                UuidGenerator::new(),
-                $connectedUser->getId(),
-            );
-            $this->commandBus->dispatch($command);
-        }
+        // Liste active existante, ou création d'une nouvelle liste (active)
+        $this->commandBus->dispatch(new EnsureActiveShoppingListCommand(UuidGenerator::new(), $connectedUser->getId()));
 
         //On Ajoute l'ingrédient dans la liste active
         $command = new AddIngredientToShoppingListCommand(

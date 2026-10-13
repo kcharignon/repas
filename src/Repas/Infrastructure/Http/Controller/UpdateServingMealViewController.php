@@ -4,8 +4,9 @@ namespace Repas\Repas\Infrastructure\Http\Controller;
 
 
 use Repas\Repas\Application\Command\UpdateServingMeal\UpdateServingMealCommand;
-use Repas\Repas\Domain\Interface\ShoppingListRepository;
+use Repas\Repas\Application\Query\GetShoppingListByMeal\GetShoppingListByMealQuery;
 use Repas\Shared\Application\Interface\CommandBusInterface;
+use Repas\Shared\Application\Interface\QueryBusInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Attribute\Route;
@@ -15,7 +16,7 @@ class UpdateServingMealViewController extends AbstractController
 {
     public function __construct(
         private readonly CommandBusInterface $commandBus,
-        private readonly ShoppingListRepository $shoppingListRepository,
+        private readonly QueryBusInterface $queryBus,
     ) {
     }
 
@@ -27,7 +28,7 @@ class UpdateServingMealViewController extends AbstractController
         $command = new UpdateServingMealCommand($id, $serving);
         $this->commandBus->dispatch($command);
 
-        $shoppingList = $this->shoppingListRepository->findOneByMealId($id);
+        $shoppingList = $this->queryBus->ask(new GetShoppingListByMealQuery($id));
         $html = $this->renderView('@Repas/ShoppingList/_ingredients_column.html.twig', [
             'shoppingList' => $shoppingList,
         ]);

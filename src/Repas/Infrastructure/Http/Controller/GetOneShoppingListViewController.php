@@ -3,7 +3,8 @@
 namespace Repas\Repas\Infrastructure\Http\Controller;
 
 
-use Repas\Repas\Domain\Interface\ShoppingListRepository;
+use Repas\Repas\Application\Query\GetShoppingList\GetShoppingListQuery;
+use Repas\Shared\Application\Interface\QueryBusInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
@@ -12,7 +13,7 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 class GetOneShoppingListViewController extends AbstractController
 {
     public function __construct(
-        private readonly ShoppingListRepository $shoppingListRepository,
+        private readonly QueryBusInterface $queryBus,
     ) {
     }
 
@@ -21,10 +22,10 @@ class GetOneShoppingListViewController extends AbstractController
     #[IsGranted('SHOPPING_LIST_OWNER', 'id')]
     public function __invoke(string $id): Response
     {
-        $shoppingList = $this->shoppingListRepository->findOneById($id);
+        $shoppingList = $this->queryBus->ask(new GetShoppingListQuery($id));
+
         return $this->render('@Repas/ShoppingList/shopping_list.html.twig', [
             'shoppingList' => $shoppingList,
         ]);
     }
-
 }

@@ -45,15 +45,9 @@ deptrac:
       - Repas\User\Infrastructure\Entity\User
     Repas\Repas\Infrastructure\DataFixture\ShoppingListFixture:
       - Repas\User\Infrastructure\Entity\User
-    Repas\Repas\Infrastructure\Http\Controller\AddIngredientToActiveShoppingListViewController:
-      - Repas\User\Domain\Model\User
-    Repas\Repas\Infrastructure\Http\Controller\AddRecipeToActiveShoppingListViewController:
-      - Repas\User\Domain\Model\User
     Repas\Repas\Infrastructure\Http\Controller\CopyRecipeViewController:
       - Repas\User\Domain\Model\User
     Repas\Repas\Infrastructure\Http\Controller\CreateShoppingListViewController:
-      - Repas\User\Domain\Model\User
-    Repas\Repas\Infrastructure\Http\Controller\GetActiveShoppingListViewController:
       - Repas\User\Domain\Model\User
     Repas\Repas\Infrastructure\Http\Controller\GetAllOtherPeopleRecipesViewController:
       - Repas\User\Domain\Model\User
