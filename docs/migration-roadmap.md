@@ -53,7 +53,7 @@ Chaque ligne = une ou plusieurs queries livrables ensemble.
 ### Phase 1 — Pilote : données de référence
 
 - [x] `ListDepartments` — GetAllDepartment, AdminGetAllDepartment. DTO `DepartmentDTO` (slug, name, image), `DepartmentLoader` / `DepartmentPostgreSQLLoader` (une requête, tri par slug), `GET /api/v1/departments`. Premier `MockQueryBus` (`tests/Helper/`), premiers `InMemoryLoader` et `DTOBuilder`.
-- [ ] `ListRecipeTypes` — GetAllRecipeType, AdminGetAllRecipeType
+- [x] `ListRecipeTypes` — GetAllRecipeType, AdminGetAllRecipeType. DTO `RecipeTypeDTO` (slug, name, image, order), `RecipeTypeLoader` / `RecipeTypePostgreSQLLoader` (une requête, tri par ordre puis slug), `GET /api/v1/recipe-types`. Socle de test `QueryBusWebTestCase` (bus doublé, utilisateur, JWT) partagé par les tests de controllers.
 - [ ] `ListUnits` — AdminGetAllUnit
 - [ ] `GetCurrentUser` (`GET /api/v1/me`, remplace `app.user` / `current_user.getUser().id` côté front)
 
@@ -120,6 +120,7 @@ Valide de bout en bout : bus, Loader, Deptrac, API, JWT. Risque faible.
 - `phpunit.dist.xml` : `SYMFONY_PHPUNIT_VERSION=9.6` obsolète (PHPUnit 12 installé).
 - `symfony/translation` absent alors que `login.html.twig` utilise `|trans`.
 - `RecipeRowRepository` : interface vide, le repository concret est injecté.
+- `admin_recipe_type_row.html.twig` : la ligne porte `id="department-…"` (copier-coller du rayon), à renommer quand un test ou du JS la cible.
 - Formulaires admin : `conversion|default(null)` / `department|default(null)` / `unit|default(null)` jamais fournis par les controllers update, le titre reste « Nouveau … ».
 
 ## Couverture de tests (cliquet)
