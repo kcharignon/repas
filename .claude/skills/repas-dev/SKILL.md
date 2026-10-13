@@ -62,7 +62,8 @@ Détail : `references/migrate-view-controller.md`. Résumé :
 3. Le controller n'injecte plus que `QueryBusInterface` : `$dto = $this->queryBus->ask(new XQuery(...))`.
 4. Adapter le template : propriétés du DTO, plus aucun appel de domaine.
 5. Vérifier le nombre de requêtes avant/après (web profiler) et que le HTML est équivalent.
-6. Cocher la slice dans `docs/migration-roadmap.md`.
+6. Test visuel dans Chromium (`references/visual-check.md`) : captures lues, liens et actions essayés.
+7. Cocher la slice dans `docs/migration-roadmap.md`.
 
 ### 3.3 Nouvel endpoint API
 1. La query existe (3.1) — sinon la créer d'abord.
@@ -87,6 +88,7 @@ Détail : `references/migrate-view-controller.md`. Résumé :
 - [ ] `make api-doc-validate` et `make api-doc-coverage` verts si un endpoint API est touché
 - [ ] Le controller migré n'injecte plus de `*Repository`; les templates concernés n'appellent plus de méthode de domaine
 - [ ] Tests : `QueryHandler` (unitaire, `InMemoryLoader`, paramètres transmis), Loader (base réelle), controller API (clés JSON)
+- [ ] Test visuel dans Chromium de chaque page Twig touchée (connexion réelle, captures lues, liens et actions essayés, aucune erreur console/HTTP) : `references/visual-check.md`
 - [ ] `docs/migration-roadmap.md` mis à jour (case cochée, bugs vus en passant notés dans « Hors périmètre »)
 - [ ] ADR ajouté ou amendé si une convention a changé (et `CLAUDE.md` + ce skill dans le même commit)
 
