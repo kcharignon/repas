@@ -64,13 +64,21 @@ class DepartmentRepositoryTest extends DatabaseTestCase
 
     }
 
-    public function testFindAll(): void
+    public function testFindAllContainsSavedDepartments(): void
     {
+        // Arrange
+        $first = new DepartmentBuilder()->withSlug('aaa-outils')->withName('Aaa Outils')->build();
+        $second = new DepartmentBuilder()->withSlug('zzz-outils')->withName('Zzz Outils')->build();
+        $this->departmentRepository->save($first);
+        $this->departmentRepository->save($second);
+
         // Act
         $departments = $this->departmentRepository->findAll();
 
         // Assert
-        $this->assertCount(21, $departments);
         RepasAssert::assertTabType(Tab::newEmptyTyped(Department::class), $departments);
+        $slugs = array_map(fn(Department $department) => $department->getSlug(), $departments->toArray());
+        $this->assertContains('aaa-outils', $slugs);
+        $this->assertContains('zzz-outils', $slugs);
     }
 }

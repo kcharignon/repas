@@ -24,4 +24,4 @@ Compliance déclare `query.bus` mais route aussi les queries sur `command.bus` (
 
 - Positives : les queries ne passent plus par les middlewares d'écriture ; isolation claire ; les exceptions de domaine se comportent pareil en lecture et en écriture.
 - Coûts : `bin/console debug:messenger` à connaître pour diagnostiquer ; une query mal déclarée (sans `bus:`) serait aussi enregistrée sur `command.bus`.
-- Garde-fou : test unitaire de `QueryBus` ; convention + revue pour l'attribut `bus:`.
+- Garde-fous : tests unitaires de `QueryBus` et `CommandBus` (`tests/Helper/MockMessageBus.php`) ; `BusWiringTest` (kernel, vrais buses, handlers factices `tests/Helper/Bus/` déclarés sur un seul bus : prouve que chaque wrapper est câblé sur le bon bus, que le bus d'en face ne trouve pas le handler, et que la `DomainException` ressort déballée d'un vrai handler) ; `QueryConventionTest` (chaque `QueryHandler` de `src/` porte `bus: 'query.bus'`, chaque `Query` a son handler). Ce dernier remplace la « convention + revue » : un oubli du `bus:` ne casse rien à l'exécution, seul ce test le voit.

@@ -22,7 +22,7 @@ Suivi vivant. Décisions : [`adr/`](adr/README.md) (surtout [0003](adr/0003-cqrs
 
 ## Dette de tests : sortir des fixtures globales
 
-`DatabaseTestCase` charge encore **toutes** les fixtures une fois par exécution (comportement legacy). 8 classes de tests (34 tests) en dépendent. La cible est celle de Compliance : un test crée ses propres données (builders + repositories), asserte uniquement sur elles, et `DatabaseTestCase` ne crée plus que le schéma ([0010](adr/0010-strategie-de-tests.md) règle 11). Cette dette ne doit pas traîner : elle gêne chaque nouveau test de Loader (impossible d'asserter un total ou un cas vide tant que les fixtures sont là).
+`DatabaseTestCase` charge encore **toutes** les fixtures une fois par exécution (comportement legacy). 7 classes de tests (33 tests) en dépendent (`DepartmentRepositoryTest` converti en phase 1). La cible est celle de Compliance : un test crée ses propres données (builders + repositories), asserte uniquement sur elles, et `DatabaseTestCase` ne crée plus que le schéma ([0010](adr/0010-strategie-de-tests.md) règle 11). Cette dette ne doit pas traîner : elle gêne chaque nouveau test de Loader (impossible d'asserter un total ou un cas vide tant que les fixtures sont là).
 
 **Règles dès maintenant**
 - Tout **nouveau** test de base crée ses données et n'utilise jamais les fixtures globales (voir `references/read-slice-template.md` §6 du skill `repas-dev`).
@@ -32,7 +32,6 @@ Suivi vivant. Décisions : [`adr/`](adr/README.md) (surtout [0003](adr/0003-cqrs
 
 | Classe | Tests à réécrire | Convertie avec |
 |---|---|---|
-| `Repository/DepartmentRepositoryTest` | 1 / 3 | phase 1 (`ListDepartments`) |
 | `Shared/.../Api/JwtAuthenticationTest` | 4 / 13 (3 utilisateurs de fixtures) | phase 1 (`GetCurrentUser` remplace aussi les routes `_probe`) |
 | `OutputAdapter/ShoppingListRepositoryTest` | 6 / 7 | phase 2 (`ListShoppingLists`) |
 | `OutputAdapter/ShoppingListRowRepositoryTest` | 3 / 4 | phase 2 |
@@ -53,7 +52,7 @@ Chaque ligne = une ou plusieurs queries livrables ensemble.
 
 ### Phase 1 — Pilote : données de référence
 
-- [ ] `ListDepartments` — GetAllDepartment, AdminGetAllDepartment
+- [x] `ListDepartments` — GetAllDepartment, AdminGetAllDepartment. DTO `DepartmentDTO` (slug, name, image), `DepartmentLoader` / `DepartmentPostgreSQLLoader` (une requête, tri par slug), `GET /api/v1/departments`. Premier `MockQueryBus` (`tests/Helper/`), premiers `InMemoryLoader` et `DTOBuilder`.
 - [ ] `ListRecipeTypes` — GetAllRecipeType, AdminGetAllRecipeType
 - [ ] `ListUnits` — AdminGetAllUnit
 - [ ] `GetCurrentUser` (`GET /api/v1/me`, remplace `app.user` / `current_user.getUser().id` côté front)
