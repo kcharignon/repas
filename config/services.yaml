@@ -50,3 +50,9 @@ when@test:
             resource: '../tests/Helper/Http/'
             autowire: true
             autoconfigure: true
+
+        # Messages et handlers factices de tests/Helper/Bus (voir tests/Shared/Application/Service/BusWiringTest.php)
+        Repas\Tests\Helper\Bus\:
+            resource: '../tests/Helper/Bus/'
+            autowire: true
+            autoconfigure: true
