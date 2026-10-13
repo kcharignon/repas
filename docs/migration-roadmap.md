@@ -67,21 +67,57 @@ Valide de bout en bout : bus, Loader, Deptrac, API, JWT. Risque faible.
 - [x] `ListUsers` — AdminGetUsers (`UserSummaryDTO`) et `GET /api/v1/users` (ROLE_ADMIN) ; réglages et inscription via `GetCurrentUser` / `IsEmailAlreadyUsed` ; le mot de passe actuel est vérifié par `UpdateUserSettingsHandler` (règle de domaine), le controller traduit `UserException::INVALID_PASSWORD` en erreur de formulaire
 - [x] Endpoints API de lecture unitaire : `GET /api/v1/units/{slug}`, `/departments/{slug}`, `/recipe-types/{slug}`
 - [x] Deptrac : `deptrac.no-repository-in-http.yaml` interdit tout `*Repository` dans `…\Infrastructure\Http\…` (controllers, API, formulaires) des deux contextes ; aucune baseline, 0 violation
-- [ ] ~~Supprimer `ModelCache`~~ **Conservé** : plus aucune *lecture* n'en dépend (lecture détail liste : 4 requêtes, liste des recettes : 2, identiques avec ou sans cache), mais le chemin d'*écriture* (handlers qui chargent des agrégats) en profite encore. Mesure en dev, cache neutralisé : `serving` 45 → 126 requêtes, `tick` / `uncheck` 46 → 108, ajout ingrédient 57 → 119, retrait 48 → 112, planification recette 88 → 171, retrait recette 55 → 159. À rouvrir avec les écritures (phase 8), pas avant d'avoir des Loaders/ports plus fins côté commandes.
+- [ ] ~~Supprimer `ModelCache`~~ **Conservé** : plus aucune *lecture* n'en dépend (lecture détail liste : 4 requêtes, liste des recettes : 2, identiques avec ou sans cache), mais le chemin d'*écriture* (handlers qui chargent des agrégats) en profite encore. Mesure en dev, cache neutralisé : `serving` 45 → 126 requêtes, `tick` / `uncheck` 46 → 108, ajout ingrédient 57 → 119, retrait 48 → 112, planification recette 88 → 171, retrait recette 55 → 159. Le chantier est la phase 8 : on allège d'abord les écritures, on retire le cache ensuite.
 
 ## Écriture et extinction
 
-### Phase 8 — Endpoints API d'écriture
+### Phase 8 — Écritures allégées, puis retrait de `ModelCache`
+
+**Constat (2026-10-14).** Les lectures ne passent plus par `ModelCache`, les écritures si. Un handler charge l'agrégat entier (liste → repas → recettes → lignes → ingrédients → rayons, unités, créateurs) même pour changer un champ : renommer une liste coûte 28 requêtes SQL, cocher une ligne 28 aussi, dont l'essentiel vient de `StopListEventListener` qui recharge toute la liste pour savoir si toutes les lignes sont cochées. `ModelCache` masque ce surcoût : sans lui, les mêmes use cases font 58 et 59 requêtes (la différence vient de `UnitRepository::findBySlugs`, qui n'évite le SQL que grâce au cache).
+
+**Décision.** On allège d'abord les use cases (ne charger que ce que le use case modifie ou vérifie), puis on retire `ModelCache`, **sans aucune régression** de requêtes. Retirer le cache avant ne ferait que doubler les requêtes d'écriture (mesuré en phase 7).
+
+**Outils (faits).**
+- [x] `tests/Repas/WriteBudget` : 32 use cases d'écriture mesurés de bout en bout (bus, handler, repositories, listeners, vraie base), avec et sans `ModelCache`, sur un cas typique (3 recettes, une liste active). Budgets figés dans `budgets.php`, en cliquet : plus de requêtes = régression (test rouge) ; moins = baisser le budget (`make sql-budget-update`). Compteur : middleware DBAL de test `tests/Helper/SqlBudget` ([0010](adr/0010-strategie-de-tests.md) règle 12).
+- [x] `make cache-removal-check` : feu vert quand aucun use case ne fait plus de requêtes sans cache qu'avec.
+
+**État de départ** (requêtes SQL : avec cache / sans cache) et levier :
+
+| Use case | Départ | Cause | Levier |
+|---|---|---|---|
+| `tick-ligne`, `decocher-ligne` | 28 / 59 | le handler hydrate la ligne avec son ingrédient pour inverser un booléen ; le listener recharge la liste entière pour `allLineTicked()` ; `decocher` charge en plus la liste | méthode de port « reste-t-il une ligne non cochée » en une requête ; ne pas hydrater la liste ni l'ingrédient |
+| `tick-derniere-ligne` | 33 / 107 | idem + `StoppedShoppingList` recharge la liste et l'utilisateur | idem, puis charge ciblée de la fin de liste |
+| `renommer-liste`, `mettre-liste-en-pause`, `reactiver-liste`, `terminer-liste`, `supprimer-liste` | 28–29 / 58–59 | `findOneById` hydrate tout l'agrégat pour changer un champ de l'en-tête | chargement de l'en-tête seul (statut, nom, propriétaire) ou méthodes de port ciblées ; `supprimer` par id |
+| `planifier-repas`, `retirer-repas`, `modifier-portions-repas` | 39 / 69, 30 / 74, 35 / 79 | besoin réel du graphe recette → ingrédients → conversions, mais lu ligne à ligne | préchargement par lot (`WHERE slug IN`) des ingrédients, unités et rayons ; ne charger de la liste que repas et lignes touchés |
+| `ajouter-ingredient-liste`, `retirer-ingredient-liste` | 32 / 63, 28 / 61 | hydrate la liste entière | charger les ingrédients de la liste et les lignes seulement |
+| `supprimer-ingredient`, `supprimer-recette` | 12 / 13, 14 / 22 | `findByIngredient` / `findByRecipe` hydratent des agrégats entiers pour une simple vérification d'existence | ports booléens (`isUsedInRecipe`, `isUsedInShoppingList`…) |
+| `creer-recette`, `modifier-recette`, `copier-recette`, `creer-ingredient`, `modifier-ingredient` | 8–29 / 8–36 | un `findOneBySlug` par ligne (ingrédient, unité) | préchargement par lot des références |
+| référentiels, conversions, utilisateurs | 2–8 / 2–9 | déjà minimal | rien à faire |
+
+**Slices d'allègement** (une par ligne du tableau, dans l'ordre d'impact ; chacune baisse des budgets et le commit inclut `budgets.php`) :
+- [ ] Cocher / décocher une ligne, fin de liste automatique
+- [ ] Opérations d'en-tête d'une liste (renommer, pause, réactiver, terminer, supprimer)
+- [ ] Ajouter / retirer un ingrédient de la liste
+- [ ] Planifier / retirer un repas, modifier les portions
+- [ ] Suppressions d'ingrédient et de recette (vérifications d'existence)
+- [ ] Création et modification de recettes et d'ingrédients (préchargement par lot)
+
+**Retrait de `ModelCache`** (quand `make cache-removal-check` est vert) :
+- [ ] Corriger `Unit` / `Department::findBySlugs` pour s'appuyer sur l'identity map de Doctrine (mesuré en phase 7 : mêmes requêtes qu'avec le cache, +5 à 10 % de temps sur une liste de 18 repas)
+- [ ] Retirer `cachedByRecipe` (préchargement qui ne fonctionne que par le cache) et les ~70 appels des 8 repositories ; trois lectures ne touchaient de toute façon jamais (`Recipe` lue par slug mais stockée par id, `RecipeType::findOneBySlug` lue sous `Recipe::class`, `Unit::findBySlugs` lue sous `UnitEntity::class`)
+- [ ] Supprimer `ModelCache`, `ModelCacheTest`, le mock de `DatabaseTestCase` et, dans `WriteBudgetTest`, la variante « avec cache » ; mettre à jour CLAUDE.md et ADR 0001
+
+### Phase 9 — Endpoints API d'écriture
 
 - [ ] Corriger les trous d'autorisation (voir plus bas)
 - [ ] Endpoints d'écriture pour les 28 use cases (`#[MapRequestPayload]`, 204 / 201 + `Location`)
 - [ ] Remplacer le protocole `{views:[{selector, html}]}` par de l'état ressource côté API (le front re-requête ; `ajax.js` et les 14 controllers AJAX restent pour Twig)
 
-### Phase 9 — Extinction de Twig
+### Phase 10 — Extinction de Twig
 
 - [ ] À décider produit : quels `ViewController` retirer quand le front les remplace (ADR dédié le moment venu)
 
-## Trous d'autorisation à corriger avant la phase 8
+## Trous d'autorisation à corriger avant la phase 9
 
 - `AdminCreateUnitViewController` (`/admin/unit/create`) et `CreateIngredientViewController` (`/ingredient`) sans `#[IsGranted]`.
 - Routes `tick` / `uncheck` d'une ligne : `ROLE_USER` sans voter propriétaire.
@@ -95,6 +131,7 @@ Valide de bout en bout : bus, Loader, Deptrac, API, JWT. Risque faible.
 - `LoginCheckViewController` rend `login_check/index.html.twig`, template inexistant.
 - `RecipeTypePostgreSQLRepository::findOneBySlug` interroge le cache avec `Recipe::class`.
 - `RecipePostgreSQLRepository::convertEntityToModel` : clé de cache = slug de la recette, pas son id.
+- `ConversionService::$graphs` : graphe de conversions mis en cache par ingrédient dans le service, jamais vidé ; en mode worker (FrankenPHP) il survit aux requêtes et reste périmé après la modification d'une conversion tant que le worker n'est pas redémarré. À rendre `ResetInterface` (comme `ModelCache`).
 - `phpunit.dist.xml` : `SYMFONY_PHPUNIT_VERSION=9.6` obsolète (PHPUnit 12 installé).
 - `symfony/translation` absent alors que `login.html.twig` utilise `|trans`.
 - `RecipeRowRepository` : interface vide, le repository concret est injecté.
@@ -104,7 +141,7 @@ Valide de bout en bout : bus, Loader, Deptrac, API, JWT. Risque faible.
 ## Couverture de tests (cliquet)
 
 - Seuil CI : **80 %** (`COVERAGE_THRESHOLD`, `.github/workflows/ci.yml`). Mesure au 2026-10-13 : 77,1 %, puis 81,8 % à la fin de la phase 2, d'où le passage de 75 à 80. Le seuil de 80 % d'origine n'était plus tenu avant la migration (57,2 %, toute la couche Twig non testée).
-- Exclus de la mesure (`phpunit.dist.xml`) : `Http/Controller` et `Http/Form` des contextes `Repas` et `User` (ils sortent de l'exclusion en même temps que du code, phase 9 ; les controllers API restent mesurés), et les `DataFixture` (données de test chargées hors d'un test, donc jamais créditées).
+- Exclus de la mesure (`phpunit.dist.xml`) : `Http/Controller` et `Http/Form` des contextes `Repas` et `User` (ils sortent de l'exclusion en même temps que du code, phase 10 ; les controllers API restent mesurés), et les `DataFixture` (données de test chargées hors d'un test, donc jamais créditées).
 - Règle : le seuil ne baisse jamais. Le remonter par paliers quand la mesure le permet (les slices Query/Loader/API entrent à 100 %, donc le chiffre monte avec la migration).
 - Plus gros trous restants (éléments non couverts) : `Infrastructure/Entity` 172, `Domain/Model` 134, commandes console `src/Command` 113, `Infrastructure/Repository` 89.
 

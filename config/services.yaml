@@ -50,3 +50,9 @@ when@test:
             resource: '../tests/Helper/Bus/'
             autowire: true
             autoconfigure: true
+
+        # Comptage des requêtes SQL par use case (tests/Repas/WriteBudget, voir ADR 0010 et roadmap phase 8)
+        Repas\Tests\Helper\SqlBudget\QueryCounter: ~
+        Repas\Tests\Helper\SqlBudget\CountingMiddleware:
+            autowire: true
+            tags: ['doctrine.middleware']

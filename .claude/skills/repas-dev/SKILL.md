@@ -86,6 +86,7 @@ Détail : `references/migrate-view-controller.md`. Résumé :
 - [ ] `make deptrac` vert (la baseline ne grossit pas)
 - [ ] `make phpstan` vert (aucune nouvelle entrée de baseline)
 - [ ] `make api-doc-validate` et `make api-doc-coverage` verts si un endpoint API est touché
+- [ ] Use case d'écriture touché ou ajouté : son scénario existe dans `tests/Repas/WriteBudget/scenarios.php`, son budget SQL ne monte pas ; s'il baisse, `make sql-budget-update` et `budgets.php` est dans le commit (ADR 0010 règle 12)
 - [ ] Le controller migré n'injecte plus de `*Repository`; les templates concernés n'appellent plus de méthode de domaine
 - [ ] Tests : `QueryHandler` (unitaire, `InMemoryLoader`, paramètres transmis), Loader (base réelle), controller API (clés JSON)
 - [ ] Test visuel dans Chromium de chaque page Twig touchée (connexion réelle, captures lues, liens et actions essayés, aucune erreur console/HTTP) : `references/visual-check.md`

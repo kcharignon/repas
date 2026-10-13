@@ -1,0 +1,35 @@
+#!/usr/bin/env php
+<?php
+
+/**
+ * Feu vert pour retirer `ModelCache` (roadmap, phase 8) : aucun use case d'écriture ne doit faire plus de requêtes SQL
+ * sans le cache qu'avec lui. Lit les budgets mesurés par `tests/Repas/WriteBudget/WriteBudgetTest`.
+ *
+ * Code de sortie 1 tant qu'au moins un use case régresserait sans le cache.
+ */
+
+declare(strict_types=1);
+
+/** @var array<string, array{on: int, off: int}> $budgets */
+$budgets = require __DIR__ . '/../tests/Repas/WriteBudget/budgets.php';
+
+uasort($budgets, static fn(array $a, array $b): int => ($b['off'] - $b['on']) <=> ($a['off'] - $a['on']));
+
+$blocking = 0;
+$totalOn = $totalOff = 0;
+printf("%-30s %8s %8s %8s\n", 'use case', 'cache', 'sans', 'écart');
+foreach ($budgets as $name => $budget) {
+    $gap = $budget['off'] - $budget['on'];
+    $blocking += $gap > 0 ? 1 : 0;
+    $totalOn += $budget['on'];
+    $totalOff += $budget['off'];
+    printf("%-30s %8d %8d %8s%s\n", $name, $budget['on'], $budget['off'], ($gap > 0 ? '+' : '') . $gap, $gap > 0 ? '  ✗' : '');
+}
+printf("%-30s %8d %8d\n", 'total', $totalOn, $totalOff);
+
+if ($blocking > 0) {
+    fwrite(STDERR, sprintf("\n%d use case(s) sur %d feraient plus de requêtes sans ModelCache : ne pas le retirer.\n", $blocking, count($budgets)));
+    exit(1);
+}
+
+echo "\nTous les use cases font au plus autant de requêtes sans ModelCache : il peut être retiré.\n";
