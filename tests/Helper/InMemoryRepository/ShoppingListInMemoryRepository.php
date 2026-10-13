@@ -39,6 +39,18 @@ class ShoppingListInMemoryRepository extends AbstractInMemoryRepository implemen
         return $this->models->find(fn(ShoppingList $sl) => $sl->getOwner()->isEqual($owner) && $sl->isActivate());
     }
 
+    public function hasActiveShoppingList(string $ownerId): bool
+    {
+        foreach ($this->models as $shoppingList) {
+            /** @var ShoppingList $shoppingList */
+            if ($shoppingList->getOwner()->getId() === $ownerId && $shoppingList->isActivate()) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     public function save(ShoppingList $shoppingList): void
     {
         $this->models[$shoppingList->getId()] = $shoppingList;

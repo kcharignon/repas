@@ -4,8 +4,9 @@ namespace Repas\Repas\Infrastructure\Http\Controller;
 
 
 use Repas\Repas\Application\Command\UpdateShoppingList\UpdateShoppingListCommand;
-use Repas\Repas\Domain\Interface\ShoppingListRepository;
+use Repas\Repas\Application\Query\GetShoppingList\GetShoppingListQuery;
 use Repas\Shared\Application\Interface\CommandBusInterface;
+use Repas\Shared\Application\Interface\QueryBusInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -16,7 +17,7 @@ class RenamedShoppingListViewController extends AbstractController
 {
     public function __construct(
         private readonly CommandBusInterface $commandBus,
-        private readonly ShoppingListRepository $shoppingListRepository,
+        private readonly QueryBusInterface $queryBus,
     ) {
     }
 
@@ -31,7 +32,7 @@ class RenamedShoppingListViewController extends AbstractController
         $command = new UpdateShoppingListCommand($shoppingListId, $newName);
         $this->commandBus->dispatch($command);
 
-        $shoppingList = $this->shoppingListRepository->findOneById($command->shoppingListId);
+        $shoppingList = $this->queryBus->ask(new GetShoppingListQuery($shoppingListId));
         return new JsonResponse([
             "status" => "success",
             "views" => [[

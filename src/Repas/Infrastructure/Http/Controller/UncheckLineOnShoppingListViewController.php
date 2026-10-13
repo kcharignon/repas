@@ -4,8 +4,9 @@ namespace Repas\Repas\Infrastructure\Http\Controller;
 
 
 use Repas\Repas\Application\Command\UncheckLineOnShoppingList\UncheckLineOnShoppingListCommand;
-use Repas\Repas\Domain\Interface\ShoppingListRowRepository;
+use Repas\Repas\Application\Query\GetShoppingListRow\GetShoppingListRowQuery;
 use Repas\Shared\Application\Interface\CommandBusInterface;
+use Repas\Shared\Application\Interface\QueryBusInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Attribute\Route;
@@ -15,7 +16,7 @@ class UncheckLineOnShoppingListViewController extends AbstractController
 {
     public function __construct(
         private CommandBusInterface $commandBus,
-        private ShoppingListRowRepository $shoppingListRowRepository,
+        private QueryBusInterface $queryBus,
     ) {
     }
 
@@ -27,7 +28,7 @@ class UncheckLineOnShoppingListViewController extends AbstractController
 
         $this->commandBus->dispatch($command);
 
-        $row = $this->shoppingListRowRepository->findOneById($id);
+        $row = $this->queryBus->ask(new GetShoppingListRowQuery($id));
 
         $html = $this->renderView('@Repas/ShoppingList/_row.html.twig', [
             'row' => $row,

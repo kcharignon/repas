@@ -4,8 +4,9 @@ namespace Repas\Repas\Infrastructure\Http\Controller;
 
 
 use Repas\Repas\Application\Command\TickLineOnShoppingList\TickLineOnShoppingListCommand;
-use Repas\Repas\Domain\Interface\ShoppingListRowRepository;
+use Repas\Repas\Application\Query\GetShoppingListRow\GetShoppingListRowQuery;
 use Repas\Shared\Application\Interface\CommandBusInterface;
+use Repas\Shared\Application\Interface\QueryBusInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Attribute\Route;
@@ -15,7 +16,7 @@ class TickLineOnShoppingListViewController extends AbstractController
 {
     public function __construct(
         private readonly CommandBusInterface $commandBus,
-        private readonly ShoppingListRowRepository $shoppingListRowRepository,
+        private readonly QueryBusInterface $queryBus,
     ) {
     }
 
@@ -29,7 +30,7 @@ class TickLineOnShoppingListViewController extends AbstractController
 
         $this->commandBus->dispatch($command);
 
-        $shoppingListRow = $this->shoppingListRowRepository->findOneById($id);
+        $shoppingListRow = $this->queryBus->ask(new GetShoppingListRowQuery($id));
         $html = $this->renderView('@Repas/ShoppingList/_row.html.twig', [
             'row' => $shoppingListRow,
         ]);

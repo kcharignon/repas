@@ -3,16 +3,14 @@
 namespace Repas\Repas\Infrastructure\Http\Controller;
 
 
-use Repas\Repas\Application\Command\CreateShoppingList\CreateShoppingListCommand;
+use Repas\Repas\Application\Command\EnsureActiveShoppingList\EnsureActiveShoppingListCommand;
 use Repas\Repas\Application\Command\PlannedMeal\PlannedMealCommand;
 use Repas\Repas\Application\Query\GetActiveShoppingListSummary\GetActiveShoppingListSummaryQuery;
 use Repas\Repas\Domain\Interface\RecipeRepository;
-use Repas\Repas\Domain\Interface\ShoppingListRepository;
-use Repas\Repas\Domain\Model\ShoppingList;
 use Repas\Shared\Application\Interface\CommandBusInterface;
 use Repas\Shared\Application\Interface\QueryBusInterface;
+use Repas\Shared\Domain\Interface\AuthenticatedUser;
 use Repas\Shared\Domain\Tool\UuidGenerator;
-use Repas\User\Domain\Model\User;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
@@ -22,7 +20,6 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 class AddRecipeToActiveShoppingListViewController extends AbstractController
 {
     public function __construct(
-        private readonly ShoppingListRepository $shoppingListRepository,
         private readonly RecipeRepository $recipeRepository,
         private readonly CommandBusInterface $commandBus,
         private readonly QueryBusInterface $queryBus,
@@ -34,18 +31,10 @@ class AddRecipeToActiveShoppingListViewController extends AbstractController
     public function __invoke(string $id): Response
     {
         $connectedUser = $this->getUser();
-        assert($connectedUser instanceof User);
+        assert($connectedUser instanceof AuthenticatedUser);
 
-        // Recuperation de la liste active ou creation d'une nouvelle liste (active)
-        $activeShoppingList = $this->shoppingListRepository->findOneActivateByOwner($connectedUser);
-        if (!$activeShoppingList instanceof ShoppingList) {
-            // Creation d'une nouvelle liste active
-            $command = new CreateShoppingListCommand(
-                UuidGenerator::new(),
-                $connectedUser->getId(),
-            );
-            $this->commandBus->dispatch($command);
-        }
+        // Liste active existante, ou création d'une nouvelle liste (active)
+        $this->commandBus->dispatch(new EnsureActiveShoppingListCommand(UuidGenerator::new(), $connectedUser->getId()));
 
         // Ajout de la recette dans la liste active
         $command = new PlannedMealCommand(

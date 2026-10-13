@@ -148,6 +148,29 @@ class ShoppingListRepositoryTest extends DatabaseTestCase
         $this->assertNull($shoppingList);
     }
 
+    public function testHasActiveShoppingList(): void
+    {
+        // Arrange
+        $user = $this->savedUser();
+        $this->savedShoppingList($user, ShoppingListStatus::PAUSED);
+        $this->savedShoppingList($user, ShoppingListStatus::ACTIVE);
+
+        // Act & Assert
+        $this->assertTrue($this->shoppingListRepository->hasActiveShoppingList($user->getId()));
+    }
+
+    public function testHasNoActiveShoppingListWithOnlyPausedOrOtherUsersLists(): void
+    {
+        // Arrange
+        $user = $this->savedUser();
+        $this->savedShoppingList($user, ShoppingListStatus::PAUSED);
+        $this->savedShoppingList($user, ShoppingListStatus::COMPLETED);
+        $this->savedShoppingList($this->savedUser(), ShoppingListStatus::ACTIVE);
+
+        // Act & Assert
+        $this->assertFalse($this->shoppingListRepository->hasActiveShoppingList($user->getId()));
+    }
+
     public function testFindByIngredient(): void
     {
         // Arrange

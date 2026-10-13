@@ -1,7 +1,5 @@
-{% set name =  shoppingList.name is not null ? shoppingList.name : ("Liste du " ~ shoppingList.createdAt|format_datetime(locale='fr_FR', pattern="dd MMMM YYYY"))%}
-
 <h3 id="shopping-list-card-header" class="card-header">
-    <span id="card-header-name">{{ name }}</span>
+    <span id="card-header-name">{{ shoppingList.displayName }}</span>
     <div id="input-name-group" class="input-group" style="display: none;">
         <button
             id="btn-validate"

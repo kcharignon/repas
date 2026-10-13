@@ -21,6 +21,11 @@ interface ShoppingListRepository
 
     public function findOneActivateByOwner(User $owner): ?ShoppingList;
 
+    /**
+     * L'utilisateur a-t-il une liste active ? Sans hydrater l'agrégat ni importer le domaine du contexte User.
+     */
+    public function hasActiveShoppingList(string $ownerId): bool;
+
     public function save(ShoppingList $shoppingList): void;
 
     public function delete(ShoppingList $shoppingList): void;
