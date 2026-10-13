@@ -1,9 +1,9 @@
 <tr id="conversion-{{ conversion.id }}">
-    <td>{{ conversion.ingredient.name|default("")|capitalize }}</td>
-    <td>{{ conversion.ingredient.creator.email|default("-") }}</td>
-    <td>{{ conversion.startUnit.name|capitalize }}</td>
+    <td>{{ conversion.ingredientName|default("")|capitalize }}</td>
+    <td>{{ conversion.creatorEmail|default("-") }}</td>
+    <td>{{ conversion.startUnitName|capitalize }}</td>
     <td>{{ conversion.coefficient }}</td>
-    <td>{{ conversion.endUnit.name|capitalize }}</td>
+    <td>{{ conversion.endUnitName|capitalize }}</td>
     <td>
         <a
             type="button"

@@ -4,9 +4,11 @@ namespace Repas\Repas\Infrastructure\Http\Controller;
 
 
 use Repas\Repas\Application\Command\UpdateIngredient\UpdateIngredientCommand;
-use Repas\Repas\Domain\Interface\IngredientRepository;
+use Repas\Repas\Application\Query\GetIngredient\GetIngredientQuery;
 use Repas\Repas\Infrastructure\Http\Form\UpdateIngredientType;
 use Repas\Shared\Application\Interface\CommandBusInterface;
+use Repas\Shared\Application\Interface\QueryBusInterface;
+use Repas\Shared\Domain\Interface\AuthenticatedUser;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -17,7 +19,7 @@ class UpdateIngredientViewController extends AbstractController
 {
     public function __construct(
         private readonly CommandBusInterface $commandBus,
-        private readonly IngredientRepository $ingredientRepository,
+        private readonly QueryBusInterface $queryBus,
     ) {
     }
 
@@ -26,7 +28,9 @@ class UpdateIngredientViewController extends AbstractController
     #[IsGranted('INGREDIENT_OWNER', 'slug')]
     public function __invoke(string $slug, Request $request): Response
     {
-        $ingredient = $this->ingredientRepository->findOneBySlug($slug);
+        $connectedUser = $this->getUser();
+        assert($connectedUser instanceof AuthenticatedUser);
+        $ingredient = $this->queryBus->ask(new GetIngredientQuery($slug, $connectedUser->getId(), $this->isGranted('ROLE_ADMIN')));
         $form = $this->createForm(UpdateIngredientType::class, $ingredient);
 
         $form->handleRequest($request);

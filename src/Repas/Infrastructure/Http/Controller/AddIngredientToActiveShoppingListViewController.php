@@ -6,7 +6,7 @@ namespace Repas\Repas\Infrastructure\Http\Controller;
 use Repas\Repas\Application\Command\AddIngredientToShoppingList\AddIngredientToShoppingListCommand;
 use Repas\Repas\Application\Command\EnsureActiveShoppingList\EnsureActiveShoppingListCommand;
 use Repas\Repas\Application\Query\GetActiveShoppingListSummary\GetActiveShoppingListSummaryQuery;
-use Repas\Repas\Domain\Interface\IngredientRepository;
+use Repas\Repas\Application\Query\GetIngredient\GetIngredientQuery;
 use Repas\Shared\Application\Interface\CommandBusInterface;
 use Repas\Shared\Application\Interface\QueryBusInterface;
 use Repas\Shared\Domain\Interface\AuthenticatedUser;
@@ -19,7 +19,6 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 class AddIngredientToActiveShoppingListViewController extends AbstractController
 {
     public function __construct(
-        private readonly IngredientRepository $ingredientRepository,
         private readonly CommandBusInterface $commandBus,
         private readonly QueryBusInterface $queryBus,
     ) {
@@ -42,7 +41,7 @@ class AddIngredientToActiveShoppingListViewController extends AbstractController
         );
         $this->commandBus->dispatch($command);
 
-        $ingredient = $this->ingredientRepository->findOneBySlug($slug);
+        $ingredient = $this->queryBus->ask(new GetIngredientQuery($slug, $connectedUser->getId(), $this->isGranted('ROLE_ADMIN')));
         $activeSummary = $this->queryBus->ask(new GetActiveShoppingListSummaryQuery($connectedUser->getId()));
 
         $html = $this->renderView('@Repas/Department/_ingredient_row.html.twig', [
@@ -53,7 +52,7 @@ class AddIngredientToActiveShoppingListViewController extends AbstractController
         return new JsonResponse([
             "views" => [
                 [
-                    "selector" => "#ingredient-row-{$ingredient->getSlug()}",
+                    "selector" => "#ingredient-row-{$ingredient->slug}",
                     "html" => $html,
                 ]
             ]

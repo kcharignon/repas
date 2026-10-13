@@ -4,7 +4,7 @@ namespace Repas\Repas\Infrastructure\Http\Form;
 
 
 use Repas\Repas\Application\Command\UpdateConversion\UpdateConversionCommand;
-use Repas\Repas\Domain\Model\Conversion;
+use Repas\Repas\Application\Query\ListConversions\ConversionDTO;
 use Symfony\Component\Form\FormInterface;
 use Traversable;
 
@@ -12,22 +12,22 @@ class UpdateConversionType extends AbstractConversionType
 {
     public function mapDataToForms(mixed $viewData, Traversable $forms): void
     {
-        if (!$viewData instanceof Conversion) {
+        if (!$viewData instanceof ConversionDTO) {
             return ;
         }
 
         /** @var FormInterface[] $forms */
         $forms = iterator_to_array($forms);
 
-        $forms['startUnit']->setData($viewData->getStartUnit()->getSlug());
-        $forms['endUnit']->setData($viewData->getEndUnit()->getSlug());
-        $forms['coefficient']->setData($viewData->getCoefficient());
-        $forms['ingredient']->setData($viewData->getIngredient()?->getSlug());
+        $forms['startUnit']->setData($viewData->startUnitSlug);
+        $forms['endUnit']->setData($viewData->endUnitSlug);
+        $forms['coefficient']->setData($viewData->coefficient);
+        $forms['ingredient']->setData($viewData->ingredientSlug);
     }
 
     public function mapFormsToData(Traversable $forms, mixed &$viewData): void
     {
-        if (!$viewData instanceof Conversion) {
+        if (!$viewData instanceof ConversionDTO) {
             return ;
         }
 
@@ -35,7 +35,7 @@ class UpdateConversionType extends AbstractConversionType
         $forms = iterator_to_array($forms);
 
         $viewData = new UpdateConversionCommand(
-            id: $viewData->getId(),
+            id: $viewData->id,
             startUnitSlug: $forms['startUnit']->getData(),
             endUnitSlug: $forms['endUnit']->getData(),
             coefficient: $forms['coefficient']->getData(),

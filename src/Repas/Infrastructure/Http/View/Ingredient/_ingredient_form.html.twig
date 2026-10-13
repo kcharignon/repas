@@ -29,7 +29,7 @@
             {{ form_widget(form.defaultPurchaseUnit, {'attr': {'class': 'form-control'}}) }}
             {{ form_errors(form.defaultPurchaseUnit) }}
         </div>
-        {%  set hidden = ingredient is not defined or (ingredient is defined and ingredient.hasSameUnitInCookingAndPurchase) %}
+        {%  set hidden = ingredient is not defined or (ingredient is defined and ingredient.hasSameUnit) %}
         <div
             class="mb-3"
             id="coefficient-group"
@@ -37,7 +37,7 @@
         >
             <label id="coefficient-label" for="create_ingredient_coefficient">
                 {% if not hidden %}
-                    {{ "1 " ~ ingredient.defaultPurchaseUnit.name ~ " contient combien de " ~ ingredient.defaultCookingUnit.name ~ " ?" }}
+                    {{ "1 " ~ ingredient.purchaseUnitName ~ " contient combien de " ~ ingredient.cookingUnitName ~ " ?" }}
                 {% endif %}
             </label>
             {{ form_widget(form.coefficient, {'attr': {'class': 'form-control', 'id': 'coefficient'}}) }}

@@ -49,8 +49,6 @@ deptrac:
       - Repas\User\Domain\Model\User
     Repas\Repas\Infrastructure\Http\Controller\CreateShoppingListViewController:
       - Repas\User\Domain\Model\User
-    Repas\Repas\Infrastructure\Http\Controller\GetOneDepartmentViewController:
-      - Repas\User\Domain\Model\User
     Repas\Repas\Infrastructure\Http\Controller\RemoveIngredientToActiveShoppingListViewController:
       - Repas\User\Domain\Model\User
     Repas\Repas\Infrastructure\Http\Controller\RemoveRecipeToActiveShoppingListViewController:
