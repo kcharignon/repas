@@ -10,11 +10,12 @@ Repas n'a aucun outil d'analyse : ni Deptrac, ni PHPStan, ni Rector, ni CS-Fixer
 
 ## Décision
 
-1. **Deptrac** (`deptrac/deptrac`, en dev), six fichiers sous `quality-rules/Deptrac/`, exécutés par `make deptrac` et en CI :
+1. **Deptrac** (`deptrac/deptrac`, en dev), sept fichiers sous `quality-rules/Deptrac/`, exécutés par `make deptrac` et en CI :
    - `deptrac.layer.yaml` : `Application → Domain` ; `Infrastructure → Domain, Application`.
    - `deptrac.bounded-context.yaml` : `Repas → Shared`, `User → Shared`, `Shared` n'importe aucun contexte.
    - `deptrac.no-repo-in-queryhandler.yaml` : les classes de `…\Application\Query\…` ne dépendent d'aucun `*Repository`.
    - `deptrac.no-loader-in-commandhandler.yaml` : les classes de `…\Application\Command\…` ne dépendent d'aucun `*Loader`.
+   - `deptrac.no-repository-in-http.yaml` : les classes de `…\Infrastructure\Http\…` (controllers Twig, controllers API, formulaires) ne dépendent d'aucun `*Repository` : lecture par le QueryBus, écriture par le CommandBus (phase 7).
    - `deptrac.no-builder-in-src.yaml` : aucun `*Builder` (hors `*QueryBuilder`) sous `src/`.
    - `deptrac.no-database-in-handler-tests.yaml` : les tests de `tests/*/Application/**` (handlers) ne dépendent ni de `DatabaseTestCase`, ni du kernel/`WebTestCase`, ni de Doctrine, ni d'une classe d'`Infrastructure` ([0010](0010-strategie-de-tests.md)). Seule règle qui analyse `tests/` et non `src/`.
    Les règles `Query`/`Command` s'appuient sur le **namespace** (pas sur le suffixe `…CommandHandler`) car les handlers d'écriture existants s'appellent `{UseCase}Handler`.

@@ -53,15 +53,7 @@ deptrac:
       - Repas\User\Domain\Model\User
     Repas\Repas\Infrastructure\Http\Controller\RemoveRecipeToActiveShoppingListViewController:
       - Repas\User\Domain\Model\User
-    Repas\Repas\Infrastructure\Http\Form\AbstractRecipeType:
-      - Repas\User\Domain\Model\User
     Repas\Repas\Infrastructure\Http\Form\CreateIngredientType:
-      - Repas\User\Domain\Model\User
-    Repas\Repas\Infrastructure\Http\Form\CreateRecipeType:
-      - Repas\User\Domain\Model\User
-    Repas\Repas\Infrastructure\Http\Form\SelectIngredientType:
-      - Repas\User\Domain\Model\User
-    Repas\Repas\Infrastructure\Http\Form\UpdateRecipeType:
       - Repas\User\Domain\Model\User
     Repas\Repas\Infrastructure\Repository\IngredientPostgreSQLRepository:
       - Repas\User\Domain\Exception\UserException
@@ -93,7 +85,3 @@ deptrac:
       - Repas\Repas\Domain\Event\RecipesOrIngredientsRemovedEvent
     Repas\User\Infrastructure\Repository\UserPostgreSQLRepository:
       - Repas\Repas\Infrastructure\Repository\PostgreSQLRepository
-    Repas\User\Infrastructure\Security\OwnerVoter:
-      - Repas\Repas\Domain\Interface\IngredientRepository
-      - Repas\Repas\Domain\Interface\RecipeRepository
-      - Repas\Repas\Domain\Interface\ShoppingListRepository

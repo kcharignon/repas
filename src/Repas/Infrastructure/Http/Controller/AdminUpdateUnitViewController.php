@@ -3,8 +3,8 @@
 namespace Repas\Repas\Infrastructure\Http\Controller;
 
 
+use Repas\Repas\Application\Query\GetUnit\GetUnitQuery;
 use Repas\Repas\Application\Query\ListUnits\ListUnitsQuery;
-use Repas\Repas\Domain\Interface\UnitRepository;
 use Repas\Repas\Infrastructure\Http\Form\UpdateUnitType;
 use Repas\Shared\Application\Interface\CommandBusInterface;
 use Repas\Shared\Application\Interface\QueryBusInterface;
@@ -19,7 +19,6 @@ class AdminUpdateUnitViewController extends AbstractController
     public function __construct(
         private CommandBusInterface $commandBus,
         private QueryBusInterface $queryBus,
-        private UnitRepository $unitRepository,
     ) {
     }
 
@@ -27,7 +26,7 @@ class AdminUpdateUnitViewController extends AbstractController
     #[IsGranted("ROLE_ADMIN")]
     public function __invoke(string $slug, Request $request): Response
     {
-        $unit = $this->unitRepository->findOneBySlug($slug);
+        $unit = $this->queryBus->ask(new GetUnitQuery($slug));
 
         $form = $this->createForm(UpdateUnitType::class, $unit);
         $form->handleRequest($request);

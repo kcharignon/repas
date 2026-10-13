@@ -6,6 +6,7 @@ namespace Repas\Tests\Repas\OutputAdapter;
 use Repas\Repas\Application\Loader\IngredientLoader;
 use Repas\Repas\Application\Query\GetIngredient\IngredientDTO;
 use Repas\Repas\Application\Query\ListCompatibleUnits\CompatibleUnitDTO;
+use Repas\Repas\Application\Query\ListAvailableIngredients\IngredientOptionDTO;
 use Repas\Repas\Application\Query\ListDepartments\DepartmentDTO;
 use Repas\Repas\Application\Query\ListIngredientsByDepartment\IngredientRowDTO;
 use Repas\Repas\Domain\Exception\DepartmentException;
@@ -241,6 +242,34 @@ class IngredientPostgreSQLLoaderTest extends DatabaseTestCase
 
         // When
         $this->ingredientLoader->listCompatibleUnits('inconnu');
+    }
+
+    public function testListAvailableReturnsTheCommonAndOwnIngredientsSortedByName(): void
+    {
+        // Given
+        $viewer = $this->savedUser();
+        $other = $this->savedUser();
+        $common = $this->savedIngredient(new IngredientBuilder()->withName('mmm sel'));
+        $own = $this->savedIngredient(new IngredientBuilder()->withName('aaa farine')->withCreator($viewer, true));
+        $this->savedIngredient(new IngredientBuilder()->withName('zzz secret')->withCreator($other, true));
+
+        // When
+        $result = $this->ingredientLoader->listAvailable($viewer->getId());
+
+        // Then
+        $this->assertEquals(
+            [new IngredientOptionDTO($own->getSlug(), 'aaa farine'), new IngredientOptionDTO($common->getSlug(), 'mmm sel')],
+            $result,
+        );
+    }
+
+    public function testListAvailableIsEmptyWithoutIngredient(): void
+    {
+        // When
+        $result = $this->ingredientLoader->listAvailable($this->savedUser()->getId());
+
+        // Then
+        $this->assertSame([], $result);
     }
 
     private function savedUser(): User

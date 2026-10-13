@@ -9,7 +9,9 @@ use Repas\Repas\Domain\Interface\IngredientRepository;
 use Repas\Repas\Domain\Model\Ingredient;
 use Repas\Tests\Helper\Builder\ConversionBuilder;
 use Repas\Tests\Helper\Builder\DepartmentBuilder;
+use Repas\Tests\Helper\Builder\DTO\DepartmentDTOBuilder;
 use Repas\Tests\Helper\Builder\DTO\IngredientDTOBuilder;
+use Repas\Tests\Helper\Builder\DTO\UnitDTOBuilder;
 use Repas\Tests\Helper\Builder\IngredientBuilder;
 use Repas\Tests\Helper\Builder\UnitBuilder;
 use Repas\Tests\Helper\QueryBusWebTestCase;
@@ -23,6 +25,7 @@ class UpdateIngredientViewControllerTest extends QueryBusWebTestCase
         $user = $this->savedUser();
         $ingredient = $this->savedIngredientOf($user);
         $this->queryBus->willReturn(GetIngredientQuery::class, $this->dtoOf($ingredient));
+        $this->offerOptions();
         $this->client->loginUser($user);
 
         // When
@@ -30,7 +33,7 @@ class UpdateIngredientViewControllerTest extends QueryBusWebTestCase
 
         // Then
         $this->assertSame(200, $this->client->getResponse()->getStatusCode());
-        $query = $this->queryBus->getLastAskedQuery();
+        $query = $this->queryBus->getAskedQuery(GetIngredientQuery::class);
         $this->assertInstanceOf(GetIngredientQuery::class, $query);
         $this->assertSame([$ingredient->getSlug(), $user->getId(), false], [$query->slug, $query->viewerId, $query->viewerIsAdmin]);
         $this->assertSame('Modification de zzz beurre', trim($crawler->filter('h1')->text()));
@@ -51,6 +54,7 @@ class UpdateIngredientViewControllerTest extends QueryBusWebTestCase
             ->withDefaultCookingUnit(new UnitBuilder()->isGramme())->withDefaultPurchaseUnit(new UnitBuilder()->isGramme())->build();
         $this->persister->saveIngredient($ingredient);
         $this->queryBus->willReturn(GetIngredientQuery::class, new IngredientDTOBuilder()->withSlug($ingredient->getSlug())->withName('zzz sel')->build());
+        $this->offerOptions();
         $this->client->loginUser($user);
 
         // When
@@ -66,6 +70,7 @@ class UpdateIngredientViewControllerTest extends QueryBusWebTestCase
         $user = $this->savedUser();
         $ingredient = $this->savedIngredientOf($user);
         $this->queryBus->willReturn(GetIngredientQuery::class, $this->dtoOf($ingredient));
+        $this->offerOptions();
         $this->client->loginUser($user);
 
         // When
@@ -97,6 +102,14 @@ class UpdateIngredientViewControllerTest extends QueryBusWebTestCase
         // Then
         $this->assertSame(403, $this->client->getResponse()->getStatusCode());
         $this->assertSame(0, $this->queryBus->countAskedQueries());
+    }
+
+    private function offerOptions(): void
+    {
+        $this->willOfferFormOptions(
+            units: [new UnitDTOBuilder()->withSlug('gramme')->withName('gramme')->build(), new UnitDTOBuilder()->withSlug('plaquette')->withName('plaquette')->build()],
+            departments: [new DepartmentDTOBuilder()->withSlug('cereale')->withName('céréale')->build()],
+        );
     }
 
     private function savedIngredientOf(User $user): Ingredient

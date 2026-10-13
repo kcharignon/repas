@@ -4,7 +4,7 @@ namespace Repas\User\Infrastructure\Http\Controller;
 
 
 use Repas\Shared\Application\Interface\CommandBusInterface;
-use Repas\User\Domain\Interface\UserRepository;
+use Repas\User\Domain\Service\UserProvider;
 use Repas\User\Infrastructure\Http\Form\RegisterNewUserType;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -18,7 +18,7 @@ class RegistrationViewController extends AbstractController
 
     public function __construct(
         private readonly CommandBusInterface $commandBus,
-        private readonly UserRepository $userRepository,
+        private readonly UserProvider $userProvider,
     ) {
     }
 
@@ -34,7 +34,7 @@ class RegistrationViewController extends AbstractController
             $command = $form->getData();
             $this->commandBus->dispatch($command);
 
-            $user = $this->userRepository->findOneByEmail($command->email);
+            $user = $this->userProvider->loadUserByIdentifier($command->email);
 
             // Création du token pour le firewall "main"
             $token = new UsernamePasswordToken($user, 'main', $user->getRoles());

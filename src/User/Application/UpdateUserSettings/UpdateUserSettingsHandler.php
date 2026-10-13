@@ -25,12 +25,16 @@ readonly class UpdateUserSettingsHandler
     {
         $user = $this->userRepository->findOneById($command->userId);
 
-        $user->update($command->defaultServing);
-
         if ($command->newPassword) {
+            if (!$user->passwordMatch($command->actualPassword ?? '')) {
+                throw UserException::invalidPassword();
+            }
+
             $hashedPassword = $this->passwordHasherFactory->getPasswordHasher(User::class)->hash($command->newPassword);
             $user->setPassword($hashedPassword);
         }
+
+        $user->update($command->defaultServing);
 
         $this->userRepository->save($user);
     }

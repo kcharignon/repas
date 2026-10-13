@@ -5,6 +5,7 @@ namespace Repas\Tests\Repas\OutputAdapter;
 
 use Repas\Repas\Application\Loader\RecipeTypeLoader;
 use Repas\Repas\Application\Query\ListRecipeTypes\RecipeTypeDTO;
+use Repas\Repas\Domain\Exception\RecipeException;
 use Repas\Repas\Domain\Interface\RecipeTypeRepository;
 use Repas\Tests\Helper\Builder\RecipeTypeBuilder;
 use Repas\Tests\Helper\DatabaseTestCase;
@@ -47,6 +48,27 @@ class RecipeTypePostgreSQLLoaderTest extends DatabaseTestCase
             new RecipeTypeDTO('zzz-gouter', 'Zzz gouter', 'images/zzz.svg', 9001),
             $this->findBySlug($result, 'zzz-gouter'),
         );
+    }
+
+    public function testGetReturnsTheRecipeType(): void
+    {
+        // Given
+        $this->recipeTypeRepository->save(new RecipeTypeBuilder()->withSlug('zzz-brunch')->withName('zzz brunch')->withImage('file://images/zzz.svg')->withOrder(7)->build());
+
+        // When
+        $result = $this->recipeTypeLoader->get('zzz-brunch');
+
+        // Then
+        $this->assertEquals(new RecipeTypeDTO('zzz-brunch', 'zzz brunch', 'file://images/zzz.svg', 7), $result);
+    }
+
+    public function testGetFailsForAnUnknownRecipeType(): void
+    {
+        // Then
+        $this->expectExceptionObject(RecipeException::typeNotFound('inconnu'));
+
+        // When
+        $this->recipeTypeLoader->get('inconnu');
     }
 
     public function testListIsOrderedBySequence(): void

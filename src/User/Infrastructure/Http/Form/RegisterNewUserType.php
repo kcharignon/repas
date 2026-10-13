@@ -2,10 +2,9 @@
 
 namespace Repas\User\Infrastructure\Http\Form;
 
+use Repas\Shared\Application\Interface\QueryBusInterface;
+use Repas\User\Application\Query\IsEmailAlreadyUsed\IsEmailAlreadyUsedQuery;
 use Repas\User\Application\RegisterNewUser\RegisterNewUserCommand;
-use Repas\User\Domain\Exception\UserException;
-use Repas\User\Domain\Interface\UserRepository;
-use Repas\User\Domain\Model\User;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\DataMapperInterface;
 use Symfony\Component\Form\Extension\Core\Type\EmailType;
@@ -21,7 +20,7 @@ class RegisterNewUserType extends AbstractType implements DataMapperInterface
 
 
     public function __construct(
-        private readonly UserRepository $userRepository,
+        private readonly QueryBusInterface $queryBus,
     ) {
     }
 
@@ -72,13 +71,9 @@ class RegisterNewUserType extends AbstractType implements DataMapperInterface
         $plainPasswordRepeat = $forms['plainPasswordRepeat']->getData();
         $email               = $forms['email']->getData();
 
-        try {
-            if ($this->userRepository->findOneByEmail($email) instanceof User) {
-                // L'utilisateur existe déjà
-                $forms['email']->addError(new FormError('Cette adresse email est déjà utilisée.'));
-                return;
-            }
-        } catch (UserException $e) {
+        if ($this->queryBus->ask(new IsEmailAlreadyUsedQuery($email))) {
+            $forms['email']->addError(new FormError('Cette adresse email est déjà utilisée.'));
+            return;
         }
 
         if ($plainPassword !== $plainPasswordRepeat) {

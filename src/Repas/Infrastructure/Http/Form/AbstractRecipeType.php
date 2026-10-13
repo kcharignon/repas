@@ -2,9 +2,11 @@
 
 namespace Repas\Repas\Infrastructure\Http\Form;
 
-use Repas\Repas\Domain\Interface\RecipeTypeRepository;
+use Repas\Repas\Application\Query\ListRecipeTypes\ListRecipeTypesQuery;
+use Repas\Repas\Application\Query\ListRecipeTypes\RecipeTypeDTO;
+use Repas\Shared\Application\Interface\QueryBusInterface;
+use Repas\Shared\Domain\Interface\AuthenticatedUser;
 use Repas\Shared\Domain\Tool\StringTool;
-use Repas\User\Domain\Model\User;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\DataMapperInterface;
@@ -18,25 +20,24 @@ use Symfony\Component\OptionsResolver\OptionsResolver;
 
 abstract class AbstractRecipeType extends AbstractType implements DataMapperInterface
 {
-    protected User $user;
+    protected AuthenticatedUser $user;
 
     public function __construct(
-        private readonly RecipeTypeRepository $recipeTypeRepository,
+        private readonly QueryBusInterface $queryBus,
         private readonly Security $security,
     ) {
         $user = $this->security->getUser();
-        assert($user instanceof User);
+        assert($user instanceof AuthenticatedUser);
         $this->user = $user;
     }
 
     public function buildForm(FormBuilderInterface $builder, array $options): void
     {
-        /** @var User $user */
-        $user = $this->security->getUser();
-
         $typeChoices = [];
-        foreach ($this->recipeTypeRepository->findAll() as $recipeType) {
-            $typeChoices[StringTool::upperCaseFirst($recipeType->getName())] = $recipeType->getSlug();
+        /** @var list<RecipeTypeDTO> $recipeTypes */
+        $recipeTypes = $this->queryBus->ask(new ListRecipeTypesQuery());
+        foreach ($recipeTypes as $recipeType) {
+            $typeChoices[StringTool::upperCaseFirst($recipeType->name)] = $recipeType->slug;
         }
         $builder
             ->add('name', TextType::class, [
@@ -44,7 +45,7 @@ abstract class AbstractRecipeType extends AbstractType implements DataMapperInte
             ])
             ->add('serving', IntegerType::class, [
                 'label' => 'Nombre de personnes',
-                'empty_data' => $user->getDefaultServing(),
+                'empty_data' => $this->user->getDefaultServing(),
             ])
             ->add('typeSlug', ChoiceType::class, [
                 'label' => 'Type de recette',

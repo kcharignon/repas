@@ -5,6 +5,7 @@ namespace Repas\Tests\Repas\OutputAdapter;
 
 use Repas\Repas\Application\Loader\UnitLoader;
 use Repas\Repas\Application\Query\ListUnits\UnitDTO;
+use Repas\Repas\Domain\Exception\UnitException;
 use Repas\Repas\Domain\Interface\UnitRepository;
 use Repas\Tests\Helper\Builder\UnitBuilder;
 use Repas\Tests\Helper\DatabaseTestCase;
@@ -62,6 +63,27 @@ class UnitPostgreSQLLoaderTest extends DatabaseTestCase
             new UnitDTO('zzz-sans-symbole', 'Zzz sans symbole', ''),
             $this->findBySlug($result, 'zzz-sans-symbole'),
         );
+    }
+
+    public function testGetReturnsTheUnit(): void
+    {
+        // Given
+        $this->unitRepository->save(new UnitBuilder()->withSlug('zzz-pincee')->withName('Zzz pincée')->withSymbol('zz')->build());
+
+        // When
+        $result = $this->unitLoader->get('zzz-pincee');
+
+        // Then
+        $this->assertEquals(new UnitDTO('zzz-pincee', 'Zzz pincée', 'zz'), $result);
+    }
+
+    public function testGetFailsForAnUnknownUnit(): void
+    {
+        // Then
+        $this->expectExceptionObject(UnitException::notFound('inconnue'));
+
+        // When
+        $this->unitLoader->get('inconnue');
     }
 
     public function testListIsOrderedBySlug(): void

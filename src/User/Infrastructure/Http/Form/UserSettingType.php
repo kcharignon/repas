@@ -4,7 +4,7 @@ namespace Repas\User\Infrastructure\Http\Form;
 
 
 use Repas\User\Application\UpdateUserSettings\UpdateUserSettingsCommand;
-use Repas\User\Domain\Model\User;
+use Repas\User\Application\Query\GetCurrentUser\CurrentUserDTO;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\DataMapperInterface;
 use Symfony\Component\Form\Extension\Core\Type\IntegerType;
@@ -48,32 +48,29 @@ class UserSettingType extends AbstractType implements DataMapperInterface
 
     public function mapDataToForms(mixed $viewData, \Traversable $forms): void
     {
-        if (!$viewData instanceof User) {
+        if (!$viewData instanceof CurrentUserDTO) {
             return;
         }
 
         $forms = iterator_to_array($forms);
 
-        $forms['defaultServing']->setData($viewData->getDefaultServing());
+        $forms['defaultServing']->setData($viewData->defaultServing);
     }
 
+    /**
+     * @param CurrentUserDTO $viewData en entrée, remplacé par la commande de modification
+     * @param-out UpdateUserSettingsCommand $viewData
+     */
     public function mapFormsToData(\Traversable $forms, mixed &$viewData): void
     {
-        /** @var User $user */
-        $user = $viewData;
-
+        $userId = $viewData->id;
         $forms = iterator_to_array($forms);
-
         $actualPassword = $forms['actualPassword']->getData();
         $newPassword = $forms['newPassword']->getData();
         $newPasswordRepeat = $forms['newPasswordRepeat']->getData();
 
-
+        // Le mot de passe actuel est vérifié par le cas d'usage (UpdateUserSettingsHandler)
         if ($newPassword || $newPasswordRepeat) {
-            if (!$actualPassword || !$user->passwordMatch($actualPassword)) {
-                //Comment controller que l'ancien mot de passe est bon.
-                $forms['actualPassword']->addError(new FormError('Mot de passe actuel invalide'));
-            }
             if ($newPassword !== $newPasswordRepeat) {
                 $forms['newPasswordRepeat']->addError(new FormError("Les mots de passe ne correspondent pas"));
             }
@@ -82,9 +79,10 @@ class UserSettingType extends AbstractType implements DataMapperInterface
         }
 
         $viewData = new UpdateUserSettingsCommand(
-            $user->getId(),
+            $userId,
             $newPassword,
             $forms['defaultServing']->getData(),
+            $actualPassword,
         );
     }
 }

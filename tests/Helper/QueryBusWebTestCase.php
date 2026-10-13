@@ -4,6 +4,14 @@ namespace Repas\Tests\Helper;
 
 
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
+use Repas\Repas\Application\Query\ListAvailableIngredients\IngredientOptionDTO;
+use Repas\Repas\Application\Query\ListAvailableIngredients\ListAvailableIngredientsQuery;
+use Repas\Repas\Application\Query\ListDepartments\DepartmentDTO;
+use Repas\Repas\Application\Query\ListDepartments\ListDepartmentsQuery;
+use Repas\Repas\Application\Query\ListRecipeTypes\ListRecipeTypesQuery;
+use Repas\Repas\Application\Query\ListRecipeTypes\RecipeTypeDTO;
+use Repas\Repas\Application\Query\ListUnits\ListUnitsQuery;
+use Repas\Repas\Application\Query\ListUnits\UnitDTO;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Repas\Domain\Model\ShoppingList;
 use Repas\Repas\Domain\Model\ShoppingListStatus;
@@ -42,6 +50,24 @@ abstract class QueryBusWebTestCase extends DatabaseTestCase
         static::getContainer()->get(UserRepository::class)->save($user);
 
         return $user;
+    }
+
+    /**
+     * Les listes de choix des formulaires (unités, rayons, types de recette, ingrédients) sont demandées au QueryBus :
+     * un test de formulaire les programme ici, avec les valeurs que sa page doit proposer.
+     *
+     * @param list<UnitDTO> $units
+     * @param list<DepartmentDTO> $departments
+     * @param list<RecipeTypeDTO> $recipeTypes
+     * @param list<IngredientOptionDTO> $ingredients
+     */
+    protected function willOfferFormOptions(array $units = [], array $departments = [], array $recipeTypes = [], array $ingredients = []): void
+    {
+        $this->queryBus
+            ->willReturn(ListUnitsQuery::class, $units)
+            ->willReturn(ListDepartmentsQuery::class, $departments)
+            ->willReturn(ListRecipeTypesQuery::class, $recipeTypes)
+            ->willReturn(ListAvailableIngredientsQuery::class, $ingredients);
     }
 
     /**

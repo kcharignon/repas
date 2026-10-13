@@ -32,7 +32,7 @@ class UpdateUserSettingsHandlerTest extends TestCase
             new UserBuilder()
                 ->withId('unique-id')
                 ->withEmail('john.doe@example.com')
-                ->withPassword('hashpasswordhash')
+                ->withPassword(password_hash('current-password', PASSWORD_BCRYPT, ['cost' => 4]))
                 ->withServing(15)
                 ->withCreatedAt($this->clock->now())
                 ->build(),
@@ -50,6 +50,7 @@ class UpdateUserSettingsHandlerTest extends TestCase
             'unique-id',
             'new password',
             1,
+            'current-password',
         );
 
         // Act
@@ -84,12 +85,47 @@ class UpdateUserSettingsHandlerTest extends TestCase
         $expected = new UserBuilder()
             ->withId('unique-id')
             ->withEmail('john.doe@example.com')
-            ->withPassword('hashpasswordhash')
+            ->withPassword($this->userRepository->findOneById('unique-id')->getPassword())
             ->withServing(1)
             ->withCreatedAt($this->clock->now())
             ->build();
         $actual = $this->userRepository->findOneByEmail('john.doe@example.com');
         RepasAssert::assertUser($expected, $actual);
+    }
+
+    public function testRefusesANewPasswordWithoutTheCurrentOne(): void
+    {
+        // Arrange
+        $before = $this->userRepository->findOneById('unique-id')->getPassword();
+
+        // Assert
+        $this->expectExceptionObject(UserException::invalidPassword());
+
+        // Act
+        try {
+            ($this->handler)(new UpdateUserSettingsCommand('unique-id', 'new password', 1));
+        } finally {
+            $user = $this->userRepository->findOneById('unique-id');
+            $this->assertSame([$before, 15], [$user->getPassword(), $user->getDefaultServing()]);
+        }
+    }
+
+    public function testRefusesANewPasswordWithAWrongCurrentPassword(): void
+    {
+        // Assert
+        $this->expectExceptionObject(UserException::invalidPassword());
+
+        // Act
+        ($this->handler)(new UpdateUserSettingsCommand('unique-id', 'new password', 1, 'wrong-password'));
+    }
+
+    public function testDoesNotAskForTheCurrentPasswordToChangeTheServingOnly(): void
+    {
+        // Act
+        ($this->handler)(new UpdateUserSettingsCommand('unique-id', null, 3));
+
+        // Assert
+        $this->assertSame(3, $this->userRepository->findOneById('unique-id')->getDefaultServing());
     }
 
     public function testFailedHandleUpdateUserSettingsUnkownId(): void

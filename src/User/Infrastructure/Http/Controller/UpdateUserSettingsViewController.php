@@ -4,9 +4,12 @@ namespace Repas\User\Infrastructure\Http\Controller;
 
 
 use Repas\Shared\Application\Interface\CommandBusInterface;
-use Repas\User\Domain\Interface\UserRepository;
+use Repas\Shared\Application\Interface\QueryBusInterface;
+use Repas\User\Application\Query\GetCurrentUser\GetCurrentUserQuery;
+use Repas\User\Domain\Exception\UserException;
 use Repas\User\Infrastructure\Http\Form\UserSettingType;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\Form\FormError;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
@@ -15,7 +18,7 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 class UpdateUserSettingsViewController extends AbstractController
 {
     public function __construct(
-        private readonly UserRepository $userRepository,
+        private readonly QueryBusInterface $queryBus,
         private readonly CommandBusInterface $commandBus,
     ) {
     }
@@ -25,7 +28,7 @@ class UpdateUserSettingsViewController extends AbstractController
     #[IsGranted('HIMSELF', 'id')]
     public function __invoke(string $id, Request $request): Response
     {
-        $user = $this->userRepository->findOneById($id);
+        $user = $this->queryBus->ask(new GetCurrentUserQuery($id));
 
         $form = $this->createForm(UserSettingType::class, $user);
 
@@ -33,14 +36,20 @@ class UpdateUserSettingsViewController extends AbstractController
 
         if ($form->isSubmitted() && $form->isValid()) {
             $command = $form->getData();
-            $this->commandBus->dispatch($command);
+            try {
+                $this->commandBus->dispatch($command);
+            } catch (UserException $exception) {
+                if ($exception->getMessage() !== UserException::INVALID_PASSWORD) {
+                    throw $exception;
+                }
+                $form->get('actualPassword')->addError(new FormError('Mot de passe actuel invalide'));
+            }
 
 
         }
 
         return $this->render('@User/_user_setting.html.twig', [
             'form' => $form->createView(),
-            'user' => $user,
         ]);
     }
 

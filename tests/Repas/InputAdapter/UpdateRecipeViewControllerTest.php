@@ -6,9 +6,12 @@ namespace Repas\Tests\Repas\InputAdapter;
 use Repas\Repas\Application\Query\GetRecipe\GetRecipeQuery;
 use Repas\Repas\Application\Query\GetRecipe\RecipeDTO;
 use Repas\Repas\Application\Query\GetRecipe\RecipeRowDTO;
+use Repas\Repas\Application\Query\ListAvailableIngredients\IngredientOptionDTO;
 use Repas\Repas\Domain\Interface\RecipeRepository;
 use Repas\Repas\Domain\Model\Recipe;
 use Repas\Tests\Helper\Builder\DTO\RecipeDTOBuilder;
+use Repas\Tests\Helper\Builder\DTO\RecipeTypeDTOBuilder;
+use Repas\Tests\Helper\Builder\DTO\UnitDTOBuilder;
 use Repas\Tests\Helper\Builder\IngredientBuilder;
 use Repas\Tests\Helper\Builder\RecipeBuilder;
 use Repas\Tests\Helper\Builder\RecipeRowBuilder;
@@ -25,6 +28,7 @@ class UpdateRecipeViewControllerTest extends QueryBusWebTestCase
         $user = $this->savedUser();
         $recipe = $this->savedRecipeOf($user);
         $this->queryBus->willReturn(GetRecipeQuery::class, $this->recipeDTO($recipe->getId()));
+        $this->offerOptions();
         $this->client->loginUser($user);
 
         // When
@@ -32,7 +36,7 @@ class UpdateRecipeViewControllerTest extends QueryBusWebTestCase
 
         // Then
         $this->assertSame(200, $this->client->getResponse()->getStatusCode());
-        $query = $this->queryBus->getLastAskedQuery();
+        $query = $this->queryBus->getAskedQuery(GetRecipeQuery::class);
         $this->assertInstanceOf(GetRecipeQuery::class, $query);
         $this->assertSame($recipe->getId(), $query->recipeId);
         $this->assertSame('Zzz omelette', trim($crawler->filter('h2')->text()));
@@ -51,6 +55,7 @@ class UpdateRecipeViewControllerTest extends QueryBusWebTestCase
         $user = $this->savedUser();
         $recipe = $this->savedRecipeOf($user);
         $this->queryBus->willReturn(GetRecipeQuery::class, $this->recipeDTO($recipe->getId()));
+        $this->offerOptions();
         $this->client->loginUser($user);
 
         // When
@@ -83,6 +88,15 @@ class UpdateRecipeViewControllerTest extends QueryBusWebTestCase
         // Then
         $this->assertSame(403, $this->client->getResponse()->getStatusCode());
         $this->assertSame(0, $this->queryBus->countAskedQueries());
+    }
+
+    private function offerOptions(): void
+    {
+        $this->willOfferFormOptions(
+            units: [new UnitDTOBuilder()->withSlug('unite')->withName('unité')->build()],
+            recipeTypes: [new RecipeTypeDTOBuilder()->withSlug('plat')->withName('plat')->build()],
+            ingredients: [new IngredientOptionDTO('oeuf', 'œuf')],
+        );
     }
 
     private function savedRecipeOf(User $user): Recipe

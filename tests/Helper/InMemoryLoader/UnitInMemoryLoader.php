@@ -4,6 +4,7 @@ namespace Repas\Tests\Helper\InMemoryLoader;
 
 
 use Repas\Repas\Application\Loader\UnitLoader;
+use Repas\Repas\Domain\Exception\UnitException;
 use Repas\Repas\Application\Query\ListUnits\UnitDTO;
 
 /**
@@ -13,11 +14,15 @@ class UnitInMemoryLoader implements UnitLoader
 {
     public int $listCalls = 0;
 
+    /** @var list<string> */
+    public array $getCalls = [];
+
     /**
      * @param list<UnitDTO> $units
      */
     public function __construct(
         private readonly array $units = [],
+        private readonly ?UnitDTO $unit = null,
     ) {
     }
 
@@ -26,5 +31,12 @@ class UnitInMemoryLoader implements UnitLoader
         $this->listCalls++;
 
         return $this->units;
+    }
+
+    public function get(string $slug): UnitDTO
+    {
+        $this->getCalls[] = $slug;
+
+        return $this->unit ?? throw UnitException::notFound($slug);
     }
 }
