@@ -3,9 +3,8 @@
 namespace Repas\Repas\Infrastructure\Http\Controller;
 
 
-use Repas\Repas\Domain\Interface\RecipeRepository;
-use Repas\Repas\Domain\Interface\RecipeTypeRepository;
-use Repas\User\Domain\Model\User;
+use Repas\Repas\Application\Query\ListRecipeTypes\ListRecipeTypesQuery;
+use Repas\Shared\Application\Interface\QueryBusInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
@@ -14,7 +13,7 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 class GetAllRecipeTypeViewController extends AbstractController
 {
     public function __construct(
-        private readonly RecipeTypeRepository $recipeTypeRepository,
+        private readonly QueryBusInterface $queryBus,
     ) {
     }
 
@@ -22,10 +21,7 @@ class GetAllRecipeTypeViewController extends AbstractController
     #[IsGranted('ROLE_USER')]
     public function __invoke(): Response
     {
-        $connectedUser = $this->getUser();
-        assert($connectedUser instanceof User);
-
-        $recipeTypes = $this->recipeTypeRepository->findAll();
+        $recipeTypes = $this->queryBus->ask(new ListRecipeTypesQuery());
 
         return $this->render('@Repas/Recipe/recipe_types.html.twig', [
             'recipeTypes' => $recipeTypes,
