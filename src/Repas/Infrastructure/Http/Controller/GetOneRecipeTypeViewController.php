@@ -3,10 +3,11 @@
 namespace Repas\Repas\Infrastructure\Http\Controller;
 
 
+use Repas\Repas\Application\Query\GetActiveShoppingListSummary\GetActiveShoppingListSummaryQuery;
 use Repas\Repas\Domain\Interface\RecipeRepository;
 use Repas\Repas\Domain\Interface\RecipeTypeRepository;
-use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Repas\Infrastructure\Loader\RecipeLoader;
+use Repas\Shared\Application\Interface\QueryBusInterface;
 use Repas\User\Domain\Model\User;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
@@ -18,7 +19,7 @@ class GetOneRecipeTypeViewController extends AbstractController
     public function __construct(
         private readonly RecipeLoader           $recipeLoader,
         private readonly RecipeTypeRepository   $recipeTypeRepository,
-        private readonly ShoppingListRepository $shoppingListRepository,
+        private readonly QueryBusInterface $queryBus,
     ) {
     }
 
@@ -30,11 +31,11 @@ class GetOneRecipeTypeViewController extends AbstractController
         assert($userConnected instanceof User);
         $type = $this->recipeTypeRepository->findOneBySlug($slug);
         $recipes = $this->recipeLoader->findByAuthorAndType($userConnected, $type);
-        $shoppingList = $this->shoppingListRepository->findOneActivateByOwner($userConnected);
+        $activeSummary = $this->queryBus->ask(new GetActiveShoppingListSummaryQuery($userConnected->getId()));
         return $this->render('@Repas/Recipe/type.html.twig', [
             'recipeType' => $type,
             'recipes' => $recipes,
-            'shoppingList' => $shoppingList,
+            'activeSummary' => $activeSummary,
         ]);
     }
 }

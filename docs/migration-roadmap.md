@@ -39,7 +39,7 @@ Valide de bout en bout : bus, Loader, Deptrac, API, JWT. Risque faible.
 
 ### Phase 3 — Résumé de la liste active
 
-- [ ] `GetActiveShoppingListSummary` (quantité par ingrédient + recettes planifiées) — GetOneDepartment, GetOneRecipeType, Add/RemoveIngredientToActive, Add/RemoveRecipeToActive. Remplace `shoppingList.hasRecipe(recipe)` ×4 par ligne et `getIngredientQuantity` dans `_recipe_row` / `_ingredient_row`.
+- [x] `GetActiveShoppingListSummary` — GetOneDepartment, GetOneRecipeType, Add/RemoveIngredientToActive, Add/RemoveRecipeToActive. Query `GetActiveShoppingListSummaryQuery(ownerId)`, DTO `ActiveShoppingListSummaryDTO` (`shoppingListId` ou null, `quantityByIngredientSlug`, `plannedRecipeIds`), `ShoppingListLoader::getActiveSummary()` (3 requêtes bornées : liste active, lignes, repas), `GET /api/v1/shopping-lists/active/summary` (sans liste active : 200, identifiant null et collections vides). `_recipe_row` et `_ingredient_row` ne rappellent plus `hasRecipe` ni `getIngredientQuantity` ; le résumé remplace la liste de courses complète dans les 2 pages et les 4 fragments. Rayon : 13 → 8 requêtes SQL, type de recette : 14 → 6, HTML identique. Premiers tests de ces 6 controllers. Restent dans ces controllers : `ingredient`, `recipe` et `department` en modèles (phases 5 et 6, dont `current_user` de `_ingredient_row`) et, dans les 2 controllers `Add…`, le « créer la liste active si absente » (commande `EnsureActiveShoppingList`, phase 4).
 
 ### Phase 4 — Liste de courses (détail)
 

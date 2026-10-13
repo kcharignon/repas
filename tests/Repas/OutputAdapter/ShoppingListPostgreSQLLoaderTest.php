@@ -5,12 +5,16 @@ namespace Repas\Tests\Repas\OutputAdapter;
 
 use DateTimeImmutable;
 use Repas\Repas\Application\Loader\ShoppingListLoader;
+use Repas\Repas\Application\Query\GetActiveShoppingListSummary\ActiveShoppingListSummaryDTO;
 use Repas\Repas\Application\Query\ListShoppingLists\ShoppingListDTO;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Repas\Domain\Model\ShoppingListStatus;
+use Repas\Tests\Helper\Builder\IngredientBuilder;
+use Repas\Tests\Helper\Builder\RecipeBuilder;
 use Repas\Tests\Helper\Builder\ShoppingListBuilder;
 use Repas\Tests\Helper\Builder\UserBuilder;
 use Repas\Tests\Helper\DatabaseTestCase;
+use Repas\Tests\Helper\DataPersister;
 use Repas\User\Domain\Interface\UserRepository;
 use Repas\User\Domain\Model\User;
 
@@ -19,6 +23,7 @@ class ShoppingListPostgreSQLLoaderTest extends DatabaseTestCase
     private ShoppingListRepository $shoppingListRepository;
     private UserRepository $userRepository;
     private ShoppingListLoader $shoppingListLoader;
+    private DataPersister $persister;
 
     protected function setUp(): void
     {
@@ -27,6 +32,7 @@ class ShoppingListPostgreSQLLoaderTest extends DatabaseTestCase
         $this->shoppingListRepository = static::getContainer()->get(ShoppingListRepository::class);
         $this->userRepository = static::getContainer()->get(UserRepository::class);
         $this->shoppingListLoader = static::getContainer()->get(ShoppingListLoader::class);
+        $this->persister = new DataPersister(static::getContainer());
     }
 
     public function testListByOwnerReturnsTheDTOOfAnActiveNamedList(): void
@@ -133,6 +139,66 @@ class ShoppingListPostgreSQLLoaderTest extends DatabaseTestCase
 
         // Then
         $this->assertSame([], $result);
+    }
+
+    public function testGetActiveSummaryReturnsAnEmptySummaryWithoutActiveList(): void
+    {
+        // Given
+        $owner = $this->savedUser();
+        $this->saveShoppingList($owner, 'list-paused', ShoppingListStatus::PAUSED, null, '2026-03-03 10:00:00');
+
+        // When
+        $result = $this->shoppingListLoader->getActiveSummary($owner->getId());
+
+        // Then
+        $this->assertEquals(new ActiveShoppingListSummaryDTO(null, [], []), $result);
+    }
+
+    public function testGetActiveSummaryReturnsQuantitiesAndPlannedRecipesOfTheActiveList(): void
+    {
+        // Given
+        $owner = $this->savedUser();
+        $egg = new IngredientBuilder()->isEgg()->build();
+        $pasta = new IngredientBuilder()->isPasta()->build();
+        $this->persister->saveIngredient($egg);
+        $this->persister->saveIngredient($pasta);
+        $recipe = new RecipeBuilder()->isSoftBoiledEggs()->withAuthor($owner)->build();
+        $this->persister->saveRecipe($recipe);
+        $shoppingList = new ShoppingListBuilder()->withId('list-active')->withOwner($owner)
+            ->addRecipe($recipe)->addIngredient($egg)->addIngredient($pasta)->build();
+        $shoppingList->addRow($egg, 5);
+        $this->shoppingListRepository->save($shoppingList);
+
+        // When
+        $result = $this->shoppingListLoader->getActiveSummary($owner->getId());
+
+        // Then
+        $this->assertEquals(
+            new ActiveShoppingListSummaryDTO('list-active', [$egg->getSlug() => 6.0, $pasta->getSlug() => 1.0], [$recipe->getId()]),
+            $result,
+        );
+    }
+
+    public function testGetActiveSummaryIgnoresInactiveListsAndOtherUsers(): void
+    {
+        // Given
+        $owner = $this->savedUser();
+        $other = $this->savedUser();
+        $egg = new IngredientBuilder()->isEgg()->build();
+        $pasta = new IngredientBuilder()->isPasta()->build();
+        $milk = new IngredientBuilder()->isMilk()->build();
+        foreach ([$egg, $pasta, $milk] as $ingredient) {
+            $this->persister->saveIngredient($ingredient);
+        }
+        $this->shoppingListRepository->save(new ShoppingListBuilder()->withId('list-active')->withOwner($owner)->addIngredient($egg)->build());
+        $this->shoppingListRepository->save(new ShoppingListBuilder()->withId('list-paused')->withOwner($owner)->withStatus(ShoppingListStatus::PAUSED)->addIngredient($pasta)->build());
+        $this->shoppingListRepository->save(new ShoppingListBuilder()->withId('list-theirs')->withOwner($other)->addIngredient($milk)->build());
+
+        // When
+        $result = $this->shoppingListLoader->getActiveSummary($owner->getId());
+
+        // Then
+        $this->assertEquals(new ActiveShoppingListSummaryDTO('list-active', [$egg->getSlug() => 1.0], []), $result);
     }
 
     private function savedUser(): User

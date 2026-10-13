@@ -5,10 +5,12 @@ namespace Repas\Repas\Infrastructure\Http\Controller;
 
 use Repas\Repas\Application\Command\AddIngredientToShoppingList\AddIngredientToShoppingListCommand;
 use Repas\Repas\Application\Command\CreateShoppingList\CreateShoppingListCommand;
+use Repas\Repas\Application\Query\GetActiveShoppingListSummary\GetActiveShoppingListSummaryQuery;
 use Repas\Repas\Domain\Interface\IngredientRepository;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Repas\Domain\Model\ShoppingList;
 use Repas\Shared\Application\Interface\CommandBusInterface;
+use Repas\Shared\Application\Interface\QueryBusInterface;
 use Repas\Shared\Domain\Tool\UuidGenerator;
 use Repas\User\Domain\Model\User;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -22,6 +24,7 @@ class AddIngredientToActiveShoppingListViewController extends AbstractController
         private readonly ShoppingListRepository $shoppingListRepository,
         private readonly IngredientRepository $ingredientRepository,
         private readonly CommandBusInterface $commandBus,
+        private readonly QueryBusInterface $queryBus,
     ) {
     }
 
@@ -36,14 +39,11 @@ class AddIngredientToActiveShoppingListViewController extends AbstractController
         $activeShoppingList = $this->shoppingListRepository->findOneActivateByOwner($connectedUser);
         if (!$activeShoppingList instanceof ShoppingList) {
             // Creation d'une nouvelle liste active
-            $activeShoppingListId = UuidGenerator::new();
             $command = new CreateShoppingListCommand(
-                $activeShoppingListId,
+                UuidGenerator::new(),
                 $connectedUser->getId(),
             );
             $this->commandBus->dispatch($command);
-        } else {
-            $activeShoppingListId = $activeShoppingList->getId();
         }
 
         //On Ajoute l'ingrédient dans la liste active
@@ -54,11 +54,11 @@ class AddIngredientToActiveShoppingListViewController extends AbstractController
         $this->commandBus->dispatch($command);
 
         $ingredient = $this->ingredientRepository->findOneBySlug($slug);
-        $activeShoppingList = $this->shoppingListRepository->findOneActivateByOwner($connectedUser);
+        $activeSummary = $this->queryBus->ask(new GetActiveShoppingListSummaryQuery($connectedUser->getId()));
 
         $html = $this->renderView('@Repas/Department/_ingredient_row.html.twig', [
             'ingredient' => $ingredient,
-            'shoppingList' => $activeShoppingList,
+            'activeSummary' => $activeSummary,
         ]);
 
         return new JsonResponse([
