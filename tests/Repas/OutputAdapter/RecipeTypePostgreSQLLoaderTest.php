@@ -22,6 +22,15 @@ class RecipeTypePostgreSQLLoaderTest extends DatabaseTestCase
         $this->recipeTypeLoader = static::getContainer()->get(RecipeTypeLoader::class);
     }
 
+    public function testListReturnsNothingWhenThereIsNone(): void
+    {
+        // When
+        $result = $this->recipeTypeLoader->list();
+
+        // Then
+        $this->assertSame([], $result);
+    }
+
     public function testListReturnsDTOsOfCreatedRecipeTypes(): void
     {
         // Given

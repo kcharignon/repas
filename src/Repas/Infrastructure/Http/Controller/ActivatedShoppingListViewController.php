@@ -4,9 +4,10 @@ namespace Repas\Repas\Infrastructure\Http\Controller;
 
 
 use Repas\Repas\Application\Command\ActivatedShoppingList\ActivatedShoppingListCommand;
-use Repas\Repas\Domain\Interface\ShoppingListRepository;
+use Repas\Repas\Application\Query\ListShoppingLists\ListShoppingListsQuery;
 use Repas\Shared\Application\Interface\CommandBusInterface;
-use Repas\User\Domain\Model\User;
+use Repas\Shared\Application\Interface\QueryBusInterface;
+use Repas\Shared\Domain\Interface\AuthenticatedUser;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Attribute\Route;
@@ -16,7 +17,7 @@ class ActivatedShoppingListViewController extends AbstractController
 {
     public function __construct(
         private readonly CommandBusInterface $commandBus,
-        private readonly ShoppingListRepository $shoppingListRepository,
+        private readonly QueryBusInterface $queryBus,
     ) {
     }
 
@@ -26,12 +27,12 @@ class ActivatedShoppingListViewController extends AbstractController
     public function __invoke(string $id): JsonResponse
     {
         $currentUser = $this->getUser();
-        assert($currentUser instanceof User);
+        assert($currentUser instanceof AuthenticatedUser);
 
         $command = new ActivatedShoppingListCommand($id);
         $this->commandBus->dispatch($command);
 
-        $shoppingLists = $this->shoppingListRepository->findByOwner($currentUser);
+        $shoppingLists = $this->queryBus->ask(new ListShoppingListsQuery($currentUser->getId()));
         $html = $this->renderView('@Repas/ShoppingList/_shopping_list_list.html.twig', [
             'shoppingLists' => $shoppingLists,
         ]);

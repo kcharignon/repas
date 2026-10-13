@@ -445,12 +445,6 @@ parameters:
 			path: tests/Helper/Builder/RecipeBuilder.php
 
 		-
-			message: '#^Property Repas\\Tests\\Helper\\Builder\\RecipeBuilder\:\:\$originalId \(string\|null\) is never assigned string so it can be removed from the property type\.$#'
-			identifier: property.unusedType
-			count: 1
-			path: tests/Helper/Builder/RecipeBuilder.php
-
-		-
 			message: '#^Repas\\Shared\\Domain\\Tool\\Tab\<\*NEVER\*\> does not accept T of Repas\\Shared\\Domain\\Model\\ModelInterface\.$#'
 			identifier: offsetAssign.valueType
 			count: 1

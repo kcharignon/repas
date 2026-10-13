@@ -122,4 +122,10 @@ class ShoppingListBuilder implements Builder
         $this->name = $name;
         return $this;
     }
+
+    public function withCreatedAt(DateTimeImmutable $createdAt): self
+    {
+        $this->createdAt = $createdAt;
+        return $this;
+    }
 }

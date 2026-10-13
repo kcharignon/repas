@@ -6,8 +6,11 @@ use Repas\Repas\Domain\Interface\ShoppingListRowRepository;
 use Repas\Repas\Domain\Model\ShoppingListRow;
 use Repas\Shared\Domain\Tool\Tab;
 use Repas\Tests\Helper\Builder\ShoppingListBuilder;
+use Repas\Tests\Helper\Builder\IngredientBuilder;
 use Repas\Tests\Helper\Builder\ShoppingListRowBuilder;
+use Repas\Tests\Helper\Builder\UnitBuilder;
 use Repas\Tests\Helper\DatabaseTestCase;
+use Repas\Tests\Helper\DataPersister;
 use Repas\Tests\Helper\RepasAssert;
 
 class ShoppingListRowRepositoryTest extends DatabaseTestCase
@@ -19,6 +22,11 @@ class ShoppingListRowRepositoryTest extends DatabaseTestCase
         parent::setUp();
 
         $this->shoppingListRowRepository = static::getContainer()->get(ShoppingListRowRepository::class);
+
+        // Les lignes de test portent des œufs, en unité : on les enregistre,
+        $persister = new DataPersister(static::getContainer());
+        $persister->saveIngredient(new IngredientBuilder()->isEgg()->build());
+        $persister->saveUnit(new UnitBuilder()->isUnite()->build());
     }
 
     public function testCRUD(): void

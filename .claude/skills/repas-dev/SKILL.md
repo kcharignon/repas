@@ -21,7 +21,7 @@ description: Développer ou migrer une fonctionnalité du projet Repas (Symfony 
 - Un DTO est `final readonly`, props publiques, sans logique ; tout calcul d'affichage (flags `canEdit`, quantité en liste, nom par défaut, statuts, regroupements) est précalculé par le Loader (ADR 0005). **Jamais de modèle de domaine ni de `current_user` dans un template.**
 - `ModelTrait::toArray()` n'est jamais une sortie HTTP.
 - Domaine : `create()` pour créer, `load()` réservé à l'infra et aux builders de test ; ids et dates injectés par le handler (`UuidGenerator`, `Clock`) (ADR 0002).
-- Controllers : un controller = une route = une action, aucune logique métier, injecter les **interfaces** des buses. Twig : `{Action}ViewController` ; API : `{UseCase}ApiController` dans `Http/Api/{UseCase}/`.
+- Controllers : un controller = une route = une action, aucune logique métier, injecter les **interfaces** des buses. Twig : `{Action}ViewController` ; API : `{UseCase}ApiController` dans `Http/Api/{UseCase}/`. L'utilisateur connecté s'obtient par `#[CurrentUser] AuthenticatedUser $user` (`Shared\Domain\Interface`) puis `$user->getId()` : jamais `User\Domain\Model\User` dans le contexte `Repas` (ADR 0001 §8).
 - API : `/api/v1`, stateless JWT, `{member,totalItems}` en lecture de liste, `204`/`201 + Location` en écriture, erreurs `{error:{message}}`, `#[OA\…]` obligatoire (ADR 0007/0008).
 - Les routes Twig/AJAX existantes restent valides (coexistence, ADR 0009). Pas de changement de comportement visible dans une slice de lecture.
 

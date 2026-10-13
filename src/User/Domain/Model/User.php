@@ -5,6 +5,7 @@ namespace Repas\User\Domain\Model;
 
 use DateTimeImmutable;
 use Repas\Repas\Domain\Model\ShoppingList;
+use Repas\Shared\Domain\Interface\AuthenticatedUser;
 use Repas\Shared\Domain\Model\ModelInterface;
 use Repas\Shared\Domain\Model\ModelTrait;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
@@ -12,7 +13,7 @@ use Symfony\Component\Security\Core\User\PasswordUpgraderInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
 use Repas\User\Domain\Model\UserStatus as Status;
 
-class User implements UserInterface, PasswordAuthenticatedUserInterface, PasswordUpgraderInterface, ModelInterface
+class User implements UserInterface, PasswordAuthenticatedUserInterface, PasswordUpgraderInterface, ModelInterface, AuthenticatedUser
 {
 
     use ModelTrait;

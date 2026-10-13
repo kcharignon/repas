@@ -10,17 +10,23 @@ use Repas\Tests\Helper\Builder\ConversionBuilder;
 use Repas\Tests\Helper\Builder\IngredientBuilder;
 use Repas\Tests\Helper\Builder\UnitBuilder;
 use Repas\Tests\Helper\DatabaseTestCase;
+use Repas\Tests\Helper\DataPersister;
 use Repas\Tests\Helper\RepasAssert;
 
+/**
+ * Chaque test crée ses unités, ingrédients et conversions (la base de test est vide au départ).
+ */
 class ConversionRepositoryTest extends DatabaseTestCase
 {
     private ConversionRepository $conversionRepository;
+    private DataPersister $persister;
 
     protected function setUp(): void
     {
         parent::setUp();
 
         $this->conversionRepository = static::getContainer()->get(ConversionRepository::class);
+        $this->persister = new DataPersister(static::getContainer());
     }
 
     public function testCRUD(): void
@@ -28,6 +34,7 @@ class ConversionRepositoryTest extends DatabaseTestCase
         // Arrange
         $egg = new IngredientBuilder()->isEgg()->build();
         $conversion = new ConversionBuilder()->build();
+        $this->persister->saveConversionDependencies($conversion);
 
         // Act
         $this->conversionRepository->save($conversion);
@@ -45,6 +52,7 @@ class ConversionRepositoryTest extends DatabaseTestCase
             coefficient: 100,
             ingredient: $milk,
         );
+        $this->persister->saveConversionDependencies($conversion);
 
         // Act
         $this->conversionRepository->save($conversion);
@@ -61,16 +69,28 @@ class ConversionRepositoryTest extends DatabaseTestCase
 
     public function testFindAll(): void
     {
+        // Arrange
+        $forEgg = new ConversionBuilder()->isUnitToGrammeForEgg()->build();
+        $common = new ConversionBuilder()->isKiloToGramme()->build();
+        $this->persister->saveConversion($forEgg);
+        $this->persister->saveConversion($common);
+
         // Act
         $conversions = $this->conversionRepository->findAll();
 
-        // Arrange
-        $this->assertCount(67, $conversions);
+        // Assert
         RepasAssert::assertTabType(Tab::newEmptyTyped(Conversion::class), $conversions);
+        $this->assertCount(2, $conversions);
+        RepasAssert::assertConversion($forEgg, $conversions->find(fn(Conversion $c) => $c->isEqual($forEgg)));
+        RepasAssert::assertConversion($common, $conversions->find(fn(Conversion $c) => $c->isEqual($common)));
     }
 
     public function testFindByIngredientAndStartUnitAndEndUnit(): void
     {
+        // Arrange
+        $expected = new ConversionBuilder()->isBlockToGrammeForButter()->build();
+        $this->persister->saveConversion($expected);
+
         // Act
         $actual = $this->conversionRepository->findByIngredientAndStartUnitAndEndUnit(
             new IngredientBuilder()->isButter()->build(),
@@ -79,21 +99,19 @@ class ConversionRepositoryTest extends DatabaseTestCase
         );
 
         // Assert
-        $expected = new ConversionBuilder()
-            ->isBlockToGrammeForButter()
-            ->build();
         RepasAssert::assertConversion($expected, $actual);
     }
 
     public function testFindById(): void
     {
+        // Arrange
+        $expected = new ConversionBuilder()->isBlockToGrammeForButter()->build();
+        $this->persister->saveConversion($expected);
+
         // Act
-        $actual = $this->conversionRepository->findById("9967014a-7c8b-423f-9b96-04fc13943a05");
+        $actual = $this->conversionRepository->findById($expected->getId());
 
         // Assert
-        $expected = new ConversionBuilder()
-            ->isBlockToGrammeForButter()
-            ->build();
         RepasAssert::assertConversion($expected, $actual);
     }
 
@@ -115,8 +133,8 @@ class ConversionRepositoryTest extends DatabaseTestCase
             ->withIngredient($ingredient)
             ->build();
 
-        $this->conversionRepository->save($conversion1);
-        $this->conversionRepository->save($conversion2);
+        $this->persister->saveConversion($conversion1);
+        $this->persister->saveConversion($conversion2);
 
         // Act
         $conversions = $this->conversionRepository->findByIngredient($ingredient);
@@ -148,8 +166,8 @@ class ConversionRepositoryTest extends DatabaseTestCase
             ->withIngredient($ingredient)
             ->build();
 
-        $this->conversionRepository->save($conversion1);
-        $this->conversionRepository->save($conversion2);
+        $this->persister->saveConversion($conversion1);
+        $this->persister->saveConversion($conversion2);
 
         // Act
         $this->conversionRepository->deleteByIngredient($ingredient);

@@ -4,7 +4,11 @@ namespace Repas\Tests\Helper;
 
 
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
+use Repas\Repas\Domain\Interface\ShoppingListRepository;
+use Repas\Repas\Domain\Model\ShoppingList;
+use Repas\Repas\Domain\Model\ShoppingListStatus;
 use Repas\Shared\Application\Interface\QueryBusInterface;
+use Repas\Tests\Helper\Builder\ShoppingListBuilder;
 use Repas\Tests\Helper\Builder\UserBuilder;
 use Repas\User\Domain\Interface\UserRepository;
 use Repas\User\Domain\Model\User;
@@ -36,6 +40,18 @@ abstract class QueryBusWebTestCase extends DatabaseTestCase
         static::getContainer()->get(UserRepository::class)->save($user);
 
         return $user;
+    }
+
+    /**
+     * Liste de courses enregistrée en base de test (annulée à la fin du test), pour les controllers dont le voter
+     * ou la commande lisent le vrai repository.
+     */
+    protected function savedShoppingList(User $owner, ShoppingListStatus $status = ShoppingListStatus::ACTIVE): ShoppingList
+    {
+        $shoppingList = new ShoppingListBuilder()->withOwner($owner)->withStatus($status)->build();
+        static::getContainer()->get(ShoppingListRepository::class)->save($shoppingList);
+
+        return $shoppingList;
     }
 
     /**

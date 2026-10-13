@@ -188,7 +188,7 @@ Test d'un `CommandHandler` : même esprit, avec les `{X}InMemoryRepository` + `S
 
 Étendre `Repas\Tests\Helper\DatabaseTestCase`. Chaque test tourne dans une **transaction annulée à la fin** (DAMA) : rien ne fuit d'un test à l'autre, pas besoin de nettoyer.
 
-**Le test crée lui-même ses données** (builders + repository, puis `flush`/`clear` si besoin) et n'asserte que sur elles. Il ne s'appuie **jamais** sur les fixtures globales, encore chargées par `DatabaseTestCase` tant que la dette « fixtures globales » n'est pas soldée (roadmap) : pas de `assertCount(N, …)` sur un total, pas de `assertNotEmpty` comme seule preuve.
+**Le test crée lui-même ses données** (builders + repository, puis `flush`/`clear` si besoin) et n'asserte que sur elles. La base de test est vide au départ (plus de fixtures globales) : un total (`assertCount`) et un cas « liste vide » se prouvent sur des données connues, et `assertNotEmpty` n'est jamais la seule preuve. `tests/Helper/DataPersister` enregistre un modèle de builder avec les agrégats qu'il référence (utilisateur, unités, rayon, ingrédients, type de recette) : les `save()` sont des upserts.
 
 ```php
 class DepartmentPostgreSQLLoaderTest extends DatabaseTestCase
@@ -214,7 +214,7 @@ class DepartmentPostgreSQLLoaderTest extends DatabaseTestCase
 }
 ```
 
-Piège : le tri se prouve par la position relative de deux enregistrements créés par le test (`aaa-…` avant `zzz-…`), jamais en comparant toute la liste à `sort()` PHP (la collation PostgreSQL ignore parfois la casse et les tirets). Compléter : cas vide (possible seulement une fois les fixtures globales retirées), filtres, `NotFound`. Si le Loader remplace un N+1, assert le nombre de requêtes.
+Piège : le tri se prouve par la position relative de deux enregistrements créés par le test (`aaa-…` avant `zzz-…`), jamais en comparant toute la liste à `sort()` PHP (la collation PostgreSQL ignore parfois la casse et les tirets). Compléter : cas vide, filtres, `NotFound`. Si le Loader remplace un N+1, assert le nombre de requêtes.
 
 ## 7. Controller Twig — bascule (existant)
 

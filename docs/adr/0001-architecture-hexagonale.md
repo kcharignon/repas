@@ -25,6 +25,7 @@ Les trois dernières entorses sont détectées par Deptrac et figées dans la ba
 5. `Shared` n'importe jamais `Repas` ni `User`. Les contextes peuvent importer `Shared`.
 6. Un contexte n'importe pas les `Infrastructure` d'un autre contexte.
 7. Les entorses existantes sont listées dans la baseline Deptrac ([0011](0011-garde-fous-deptrac-phpstan.md)) et résorbées au fil de l'eau, jamais aggravées. Toute nouvelle classe respecte les règles ci-dessus sans passer par la baseline.
+8. L'utilisateur connecté vu depuis un autre contexte que `User` est `Repas\Shared\Domain\Interface\AuthenticatedUser` (un seul accesseur : `getId()`), implémenté par `User\Domain\Model\User`. Un controller du contexte `Repas` l'obtient par `#[CurrentUser] AuthenticatedUser $user` (ou `assert($this->getUser() instanceof AuthenticatedUser)`) et passe `$user->getId()` à sa query ou à sa commande. Il n'importe jamais `User\Domain\Model\User` : la baseline Deptrac ne peut que diminuer (les controllers déjà migrés ont vu leur entrée retirée).
 
 Arborescence d'un contexte :
 
