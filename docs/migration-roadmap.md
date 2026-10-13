@@ -54,7 +54,7 @@ Chaque ligne = une ou plusieurs queries livrables ensemble.
 
 - [x] `ListDepartments` — GetAllDepartment, AdminGetAllDepartment. DTO `DepartmentDTO` (slug, name, image), `DepartmentLoader` / `DepartmentPostgreSQLLoader` (une requête, tri par slug), `GET /api/v1/departments`. Premier `MockQueryBus` (`tests/Helper/`), premiers `InMemoryLoader` et `DTOBuilder`.
 - [x] `ListRecipeTypes` — GetAllRecipeType, AdminGetAllRecipeType. DTO `RecipeTypeDTO` (slug, name, image, order), `RecipeTypeLoader` / `RecipeTypePostgreSQLLoader` (une requête, tri par ordre puis slug), `GET /api/v1/recipe-types`. Socle de test `QueryBusWebTestCase` (bus doublé, utilisateur, JWT) partagé par les tests de controllers.
-- [ ] `ListUnits` — AdminGetAllUnit
+- [x] `ListUnits` — AdminGetAllUnit, et le ré-affichage de la liste après création / modification (AdminCreateUnit, AdminUpdateUnit). DTO `UnitDTO` (slug, name, symbol), `UnitLoader` / `UnitPostgreSQLLoader` (une requête, tri par slug), `GET /api/v1/units`. `AdminUpdateUnitViewController` garde `UnitRepository::findOneBySlug` pour pré-remplir son formulaire (lecture de formulaire, hors périmètre de cette slice). Premiers tests des controllers de formulaire (POST valide avec jeton CSRF stateless, `HTTP_ORIGIN`) ; le test factice `AddNewUnitControllerTest` (`assertTrue(true)`) est supprimé avec son entrée de baseline PHPStan.
 - [ ] `GetCurrentUser` (`GET /api/v1/me`, remplace `app.user` / `current_user.getUser().id` côté front)
 
 Valide de bout en bout : bus, Loader, Deptrac, API, JWT. Risque faible.
