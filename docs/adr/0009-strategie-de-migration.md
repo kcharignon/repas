@@ -17,7 +17,7 @@ Le projet compte 49 controllers, 38 templates, 6 form types et 1 voter qui lisen
 5. Ordre de priorité : valeur (N+1 supprimés, logique Twig sortie) puis risque croissant. Phase 1 = données de référence (pilote), puis listes de courses, recettes, ingrédients/conversions, formulaires et voter, enfin endpoints d'écriture.
 6. **Definition of Done d'une slice** : `make test`, `make deptrac`, `make phpstan`, `make api-doc-validate` verts ; aucun `Repository` référencé par le controller migré ; aucun appel de méthode de domaine dans les templates concernés ; test du `QueryHandler`, test du Loader sur base réelle, test du controller API (query construite, statut, clés JSON) ; **test visuel de chaque page Twig touchée dans Chromium** (connexion réelle, captures d'écran relues, liens et actions essayés, aucune erreur console ni HTTP) ; roadmap mise à jour ; nouvel ADR si une décision d'architecture a été prise.
 7. Les bugs découverts en route sont notés dans la roadmap (section « Hors périmètre »), pas corrigés dans la slice, sauf s'ils la bloquent.
-8. Un commit par unité logique, message court, jamais de push automatique.
+8. Un commit par unité logique, message court. En fin de slice, la branche de travail est poussée et sa PR ouverte vers `main` sans attendre de demande (description concise) ; le merge reste à l'humain : jamais de merge, de push sur `main` ni de force-push.
 
 ## Conséquences
 
