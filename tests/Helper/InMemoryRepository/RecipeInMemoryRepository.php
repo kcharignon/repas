@@ -9,7 +9,6 @@ use Repas\Repas\Domain\Interface\RecipeRepository;
 use Repas\Repas\Domain\Model\Ingredient;
 use Repas\Repas\Domain\Model\Recipe;
 use Repas\Repas\Domain\Model\RecipeRow;
-use Repas\Repas\Domain\Model\RecipeType;
 use Repas\Shared\Domain\Tool\Tab;
 use Repas\User\Domain\Model\User;
 
@@ -33,11 +32,6 @@ class RecipeInMemoryRepository extends AbstractInMemoryRepository implements Rec
     public function findByAuthor(User $author): Tab
     {
         return $this->models->filter(fn(Recipe $recipe) => $author->isEqual($recipe->getAuthor()));
-    }
-
-    public function findByAuthorAndType(User $author, RecipeType $type): Tab
-    {
-        return $this->models->filter(fn(Recipe $recipe) => $recipe->getAuthor()->isEqual($author) && $recipe->getType()->isEqual($type));
     }
 
     public function findBy(array $criteria, ?array $orderBy = null): Tab

@@ -1,0 +1,41 @@
+<?php
+
+namespace Repas\Repas\Infrastructure\Http\Api\GetRecipe;
+
+
+use Nelmio\ApiDocBundle\Attribute\Model;
+use OpenApi\Attributes as OA;
+use Repas\Repas\Application\Query\GetRecipe\GetRecipeQuery;
+use Repas\Repas\Application\Query\GetRecipe\RecipeDTO;
+use Repas\Shared\Application\Interface\QueryBusInterface;
+use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Security\Http\Attribute\IsGranted;
+
+final class GetRecipeApiController extends AbstractController
+{
+    public function __construct(
+        private readonly QueryBusInterface $queryBus,
+    ) {
+    }
+
+    // L'identifiant est un UUID : la contrainte évite de capter `/recipes/other-people`
+    #[Route(path: '/api/v1/recipes/{id}', name: 'api_get_recipe', requirements: ['id' => '[0-9a-fA-F-]{36}'], methods: ['GET'])]
+    #[IsGranted('ROLE_USER')]
+    #[OA\Get(summary: 'Détail d\'une recette et de ses ingrédients (lisible par tout utilisateur authentifié, comme sur le site)')]
+    #[OA\Tag(name: 'Recipes')]
+    #[OA\Response(
+        response: 200,
+        description: 'Détail de la recette',
+        content: new OA\JsonContent(ref: new Model(type: RecipeDTO::class)),
+    )]
+    #[OA\Response(response: 404, description: 'Recette inconnue')]
+    public function __invoke(string $id): JsonResponse
+    {
+        /** @var RecipeDTO $recipe */
+        $recipe = $this->queryBus->ask(new GetRecipeQuery($id));
+
+        return new JsonResponse($recipe);
+    }
+}

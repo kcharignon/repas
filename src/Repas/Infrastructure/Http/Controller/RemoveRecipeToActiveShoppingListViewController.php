@@ -5,7 +5,7 @@ namespace Repas\Repas\Infrastructure\Http\Controller;
 
 use Repas\Repas\Application\Command\RemoveMealFromPlan\removeMealFromPlanCommand;
 use Repas\Repas\Application\Query\GetActiveShoppingListSummary\GetActiveShoppingListSummaryQuery;
-use Repas\Repas\Domain\Interface\RecipeRepository;
+use Repas\Repas\Application\Query\GetRecipe\GetRecipeQuery;
 use Repas\Shared\Application\Interface\CommandBusInterface;
 use Repas\Shared\Application\Interface\QueryBusInterface;
 use Repas\User\Domain\Model\User;
@@ -19,7 +19,6 @@ class RemoveRecipeToActiveShoppingListViewController extends AbstractController
     public function __construct(
         private readonly CommandBusInterface $commandBus,
         private readonly QueryBusInterface $queryBus,
-        private readonly RecipeRepository $recipeRepository,
     ) {
     }
 
@@ -38,7 +37,7 @@ class RemoveRecipeToActiveShoppingListViewController extends AbstractController
 
         // Chargement des données pour générer une vue à jours
         $activeSummary = $this->queryBus->ask(new GetActiveShoppingListSummaryQuery($connectedUser->getId()));
-        $recipe = $this->recipeRepository->findOneById($id);
+        $recipe = $this->queryBus->ask(new GetRecipeQuery($id));
         return new JsonResponse([
             "views" => [
                 [

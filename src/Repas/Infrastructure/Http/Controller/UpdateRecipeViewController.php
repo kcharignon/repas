@@ -3,10 +3,10 @@
 namespace Repas\Repas\Infrastructure\Http\Controller;
 
 
-use Repas\Repas\Domain\Interface\RecipeRepository;
+use Repas\Repas\Application\Query\GetRecipe\GetRecipeQuery;
 use Repas\Repas\Infrastructure\Http\Form\UpdateRecipeType;
 use Repas\Shared\Application\Interface\CommandBusInterface;
-use Repas\User\Domain\Model\User;
+use Repas\Shared\Application\Interface\QueryBusInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -17,7 +17,7 @@ class UpdateRecipeViewController extends AbstractController
 {
     public function __construct(
         private readonly CommandBusInterface $commandBus,
-        private readonly RecipeRepository $recipeRepository,
+        private readonly QueryBusInterface $queryBus,
     ) {}
 
     #[Route(path: '/recipe/{id}/update', name: 'view_update_recipe', methods: ['GET', 'POST'])]
@@ -25,10 +25,7 @@ class UpdateRecipeViewController extends AbstractController
     #[IsGranted('RECIPE_OWNER', 'id')]
     public function __invoke(string $id, Request $request): Response
     {
-        $connectedUser = $this->getUser();
-        assert($connectedUser instanceof User);
-
-        $recipe = $this->recipeRepository->findOneById($id);
+        $recipe = $this->queryBus->ask(new GetRecipeQuery($id));
 
         $form = $this->createForm(UpdateRecipeType::class, $recipe);
         $form->handleRequest($request);
@@ -37,10 +34,8 @@ class UpdateRecipeViewController extends AbstractController
             $command = $form->getData();
             $this->commandBus->dispatch($command);
 
-            $recipe = $this->recipeRepository->findOneById($command->id);
-
             return $this->redirectToRoute('view_one_recipe_type', [
-                'slug' => $recipe->getType()->getSlug(),
+                'slug' => $command->typeSlug,
             ]);
         }
 

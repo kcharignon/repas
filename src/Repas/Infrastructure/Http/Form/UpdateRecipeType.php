@@ -4,7 +4,7 @@ namespace Repas\Repas\Infrastructure\Http\Form;
 
 use Repas\Repas\Application\Command\UpdateRecipe\UpdateRecipeCommand;
 use Repas\Repas\Application\Command\UpdateRecipe\UpdateRecipeRowSubCommand;
-use Repas\Repas\Domain\Model\Recipe;
+use Repas\Repas\Application\Query\GetRecipe\RecipeDTO;
 use Repas\Shared\Domain\Tool\Tab;
 use Symfony\Component\Form\FormInterface;
 use Traversable;
@@ -14,20 +14,20 @@ class UpdateRecipeType extends AbstractRecipeType
 
     public function mapDataToForms($viewData, Traversable $forms): void
     {
-        if (!$viewData instanceof Recipe) {
+        if (!$viewData instanceof RecipeDTO) {
             return; // Rien à mapper si la donnée d'origine n'est pas valide
         }
 
         /** @var FormInterface[] $forms */
         $forms = iterator_to_array($forms);
 
-        $forms['name']->setData($viewData->getName());
-        $forms['serving']->setData($viewData->getServing());
-        $forms['typeSlug']->setData($viewData->getType()->getSlug());
+        $forms['name']->setData($viewData->name);
+        $forms['serving']->setData($viewData->serving);
+        $forms['typeSlug']->setData($viewData->typeSlug);
 
         // Transformer le Tab<CreateRecipeRowSubCommand> en array
         $rowsData = [];
-        foreach ($viewData->getRows() as $row) {
+        foreach ($viewData->rows as $row) {
             $rowsData[] = $row;
         }
 
@@ -35,7 +35,8 @@ class UpdateRecipeType extends AbstractRecipeType
     }
 
     /**
-     * @param Recipe &$viewData
+     * @param RecipeDTO $viewData en entrée, remplacé par la commande de modification
+     * @param-out UpdateRecipeCommand $viewData
      */
     public function mapFormsToData(Traversable $forms, &$viewData): void
     {
@@ -52,7 +53,7 @@ class UpdateRecipeType extends AbstractRecipeType
         }
         // Mise à jour du viewData (CreateRecipeCommand)
         $viewData = new UpdateRecipeCommand(
-            id: $viewData->getId(),
+            id: $viewData->id,
             name: $forms['name']->getData(),
             serving: $forms['serving']->getData(),
             rows: $rows,

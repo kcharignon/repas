@@ -3,8 +3,9 @@
 namespace Repas\Repas\Infrastructure\Http\Controller;
 
 
-use Repas\Repas\Infrastructure\Loader\RecipeLoader;
-use Repas\User\Domain\Model\User;
+use Repas\Repas\Application\Query\ListOtherPeopleRecipes\ListOtherPeopleRecipesQuery;
+use Repas\Shared\Application\Interface\QueryBusInterface;
+use Repas\Shared\Domain\Interface\AuthenticatedUser;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
@@ -13,7 +14,7 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 class GetAllOtherPeopleRecipesViewController extends AbstractController
 {
     public function __construct(
-        private readonly RecipeLoader $recipeLoader,
+        private readonly QueryBusInterface $queryBus,
     ) {
     }
 
@@ -22,9 +23,9 @@ class GetAllOtherPeopleRecipesViewController extends AbstractController
     public function __invoke(): Response
     {
         $currentUser = $this->getUser();
-        assert($currentUser instanceof User);
+        assert($currentUser instanceof AuthenticatedUser);
 
-        $recipes = $this->recipeLoader->findByNotAuthorAndNotCopy($currentUser);
+        $recipes = $this->queryBus->ask(new ListOtherPeopleRecipesQuery($currentUser->getId()));
 
         return $this->render('@Repas/Recipe/other_people_recipe.html.twig', [
             'recipes' => $recipes,

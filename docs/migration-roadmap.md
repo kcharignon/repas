@@ -48,10 +48,10 @@ Valide de bout en bout : bus, Loader, Deptrac, API, JWT. Risque faible.
 
 ### Phase 5 — Recettes
 
-- [ ] `GetRecipe` — GetOneRecipe, prefill UpdateRecipe, re-read Add/Remove
-- [ ] `ListRecipesByType` — GetOneRecipeType
-- [ ] `ListOtherPeopleRecipes` — GetAllOtherPeopleRecipes
-- [ ] Remplacer le `RecipeLoader` legacy (renvoie des modèles) par une interface `Application\Loader` + `RecipePostgreSQLLoader` (DTO) ; supprimer le doublon `RecipeRepository::findByAuthorAndType`
+- [x] `GetRecipe` — GetOneRecipe, prefill UpdateRecipe, re-lecture des fragments Add/RemoveRecipeToActive. Query `GetRecipeQuery(id)`, DTO `RecipeDTO` (id, name, serving, typeSlug, typeName, rows) et `RecipeRowDTO` (ingrédient, quantité, unité), `GET /api/v1/recipes/{id}` (lisible par tout utilisateur authentifié, comme sur le site ; `{id}` contraint à un UUID pour ne pas capter `other-people`). `UpdateRecipeType` et `UpdateRecipeRowType` se préremplissent depuis le DTO ; `CreateRecipe` et `UpdateRecipe` ne relisent plus la recette (la commande porte déjà `typeSlug`). Page recette : 8 → 3 requêtes SQL.
+- [x] `ListRecipesByType` — GetOneRecipeType. Query `ListRecipesByTypeQuery(authorId, typeSlug)`, DTO `RecipeTypeRecipesDTO` (le type + `RecipeSummaryDTO` id, name, triés par slug), `GET /api/v1/recipe-types/{slug}/recipes` (`{recipeType, member, totalItems}`). Type inconnu : `RecipeException::typeNotFound`.
+- [x] `ListOtherPeopleRecipes` — GetAllOtherPeopleRecipes. Query `ListOtherPeopleRecipesQuery(userId)`, DTO `OtherPeopleRecipeDTO` (id, name, typeName, triés par slug), `GET /api/v1/recipes/other-people`. Une seule requête (plus de recettes chargées une à une) : 7 → 2.
+- [x] `RecipeLoader` legacy remplacé par l'interface `Application\Loader\RecipeLoader` + `RecipePostgreSQLLoader` (DTO) ; supprimés : l'ancienne classe `Infrastructure\Loader\RecipeLoader` et son test, le doublon `RecipeRepository::findByAuthorAndType`, leurs entrées de baseline Deptrac et PHPStan. 3 entrées de baseline Deptrac de controllers en moins. `AbstractRecipeType` lit toujours `RecipeTypeRepository` pour ses choix (phase 7).
 
 ### Phase 6 — Ingrédients et conversions
 
@@ -89,6 +89,7 @@ Valide de bout en bout : bus, Loader, Deptrac, API, JWT. Risque faible.
 
 ## Hors périmètre (vus en passant, non corrigés)
 
+- Lignes d'une recette : aucune colonne de position, l'ordre affiché est l'ordre de stockage (celui de la saisie tant que la recette n'est pas modifiée, puis variable). `RecipePostgreSQLLoader` le conserve à l'identique ; ajouter une position si l'ordre doit être garanti.
 - Le motif de date `dd MMMM YYYY` (templates des listes de courses et `ListShoppingLists`) utilise l'année ISO de la semaine : le 29 décembre 2025 s'affiche « 29 décembre 2026 ». Conservé tel quel pour ne pas changer l'affichage ; remplacer `YYYY` par `yyyy` partout en une fois (loader, `_shopping_list_card_header`, `shopping_list.html.twig`).
 - `LoginCheckViewController` rend `login_check/index.html.twig`, template inexistant.
 - `RecipeTypePostgreSQLRepository::findOneBySlug` interroge le cache avec `Recipe::class`.

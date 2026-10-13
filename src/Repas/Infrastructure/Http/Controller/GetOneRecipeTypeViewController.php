@@ -4,11 +4,9 @@ namespace Repas\Repas\Infrastructure\Http\Controller;
 
 
 use Repas\Repas\Application\Query\GetActiveShoppingListSummary\GetActiveShoppingListSummaryQuery;
-use Repas\Repas\Domain\Interface\RecipeRepository;
-use Repas\Repas\Domain\Interface\RecipeTypeRepository;
-use Repas\Repas\Infrastructure\Loader\RecipeLoader;
+use Repas\Repas\Application\Query\ListRecipesByType\ListRecipesByTypeQuery;
 use Repas\Shared\Application\Interface\QueryBusInterface;
-use Repas\User\Domain\Model\User;
+use Repas\Shared\Domain\Interface\AuthenticatedUser;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
@@ -17,8 +15,6 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 class GetOneRecipeTypeViewController extends AbstractController
 {
     public function __construct(
-        private readonly RecipeLoader           $recipeLoader,
-        private readonly RecipeTypeRepository   $recipeTypeRepository,
         private readonly QueryBusInterface $queryBus,
     ) {
     }
@@ -28,13 +24,12 @@ class GetOneRecipeTypeViewController extends AbstractController
     public function __invoke(string $slug): Response
     {
         $userConnected = $this->getUser();
-        assert($userConnected instanceof User);
-        $type = $this->recipeTypeRepository->findOneBySlug($slug);
-        $recipes = $this->recipeLoader->findByAuthorAndType($userConnected, $type);
+        assert($userConnected instanceof AuthenticatedUser);
+        $recipesOfType = $this->queryBus->ask(new ListRecipesByTypeQuery($userConnected->getId(), $slug));
         $activeSummary = $this->queryBus->ask(new GetActiveShoppingListSummaryQuery($userConnected->getId()));
         return $this->render('@Repas/Recipe/type.html.twig', [
-            'recipeType' => $type,
-            'recipes' => $recipes,
+            'recipeType' => $recipesOfType->recipeType,
+            'recipes' => $recipesOfType->recipes,
             'activeSummary' => $activeSummary,
         ]);
     }
