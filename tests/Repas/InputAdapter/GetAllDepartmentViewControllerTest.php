@@ -4,28 +4,11 @@ namespace Repas\Tests\Repas\InputAdapter;
 
 
 use Repas\Repas\Application\Query\ListDepartments\ListDepartmentsQuery;
-use Repas\Shared\Application\Interface\QueryBusInterface;
 use Repas\Tests\Helper\Builder\DTO\DepartmentDTOBuilder;
-use Repas\Tests\Helper\Builder\UserBuilder;
-use Repas\Tests\Helper\DatabaseTestCase;
-use Repas\Tests\Helper\MockQueryBus;
-use Repas\User\Domain\Interface\UserRepository;
-use Symfony\Bundle\FrameworkBundle\KernelBrowser;
+use Repas\Tests\Helper\QueryBusWebTestCase;
 
-class GetAllDepartmentViewControllerTest extends DatabaseTestCase
+class GetAllDepartmentViewControllerTest extends QueryBusWebTestCase
 {
-    private KernelBrowser $client;
-    private MockQueryBus $queryBus;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->queryBus = new MockQueryBus();
-        static::getContainer()->set(QueryBusInterface::class, $this->queryBus);
-        $this->client = static::getContainer()->get('test.client');
-    }
-
     public function testPageRendersOneCardPerDepartmentFromTheDTOs(): void
     {
         // Given
@@ -54,13 +37,5 @@ class GetAllDepartmentViewControllerTest extends DatabaseTestCase
         // Then
         $this->assertTrue($this->client->getResponse()->isRedirect());
         $this->assertSame(0, $this->queryBus->countAskedQueries());
-    }
-
-    private function savedUser(): \Repas\User\Domain\Model\User
-    {
-        $user = new UserBuilder()->withEmail('department-viewer@example.com')->build();
-        static::getContainer()->get(UserRepository::class)->save($user);
-
-        return $user;
     }
 }

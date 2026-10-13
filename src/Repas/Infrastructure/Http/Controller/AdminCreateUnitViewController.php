@@ -3,9 +3,10 @@
 namespace Repas\Repas\Infrastructure\Http\Controller;
 
 
-use Repas\Repas\Domain\Interface\UnitRepository;
+use Repas\Repas\Application\Query\ListUnits\ListUnitsQuery;
 use Repas\Repas\Infrastructure\Http\Form\CreateUnitType;
 use Repas\Shared\Application\Interface\CommandBusInterface;
+use Repas\Shared\Application\Interface\QueryBusInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -15,7 +16,7 @@ class AdminCreateUnitViewController extends AbstractController
 {
     public function __construct(
         private readonly CommandBusInterface $commandBus,
-        private readonly UnitRepository $unitRepository,
+        private readonly QueryBusInterface $queryBus,
     ) {
     }
 
@@ -30,7 +31,7 @@ class AdminCreateUnitViewController extends AbstractController
             $this->commandBus->dispatch($command);
 
             return $this->render('@Repas/Unit/admin_units.html.twig', [
-                'units' => $this->unitRepository->findAll(),
+                'units' => $this->queryBus->ask(new ListUnitsQuery()),
             ]);
         }
 

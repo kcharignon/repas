@@ -763,12 +763,6 @@ parameters:
 			path: tests/Repas/Application/TickLineOnShoppingListHandlerTest.php
 
 		-
-			message: '#^Call to method PHPUnit\\Framework\\Assert\:\:assertTrue\(\) with true will always evaluate to true\.$#'
-			identifier: method.alreadyNarrowedType
-			count: 1
-			path: tests/Repas/InputAdapter/AddNewUnitControllerTest.php
-
-		-
 			message: '#^Array has 2 duplicate keys with value 0 \(0, ''0''\)\.$#'
 			identifier: array.duplicateKey
 			count: 2

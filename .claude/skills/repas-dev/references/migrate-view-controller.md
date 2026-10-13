@@ -32,7 +32,7 @@ Objectif : même page, même HTML (à la logique d'affichage près), mais sans `
 
 - `make test` (ne doit rien casser) puis tests de la slice (handler, Loader sur base réelle).
 - `make deptrac phpstan` : le controller ne référence plus de `Domain\Interface\*Repository`.
-- Ouvrir la page dans le navigateur, comparer avec la version précédente (même contenu, mêmes actions AJAX qui fonctionnent).
+- Test visuel dans Chromium headless de chaque page touchée, captures lues, liens et actions AJAX essayés : [`visual-check.md`](visual-check.md). Même contenu que la version précédente.
 - Web profiler : nombre de requêtes SQL avant/après — il doit baisser ou rester borné (pas de boucle de requêtes).
 - `grep -n "\.get\|\.has\|\.is\|\.count\|current_user" <templates concernés>` : plus d'appel de domaine.
 - Cocher la slice dans `docs/migration-roadmap.md`.

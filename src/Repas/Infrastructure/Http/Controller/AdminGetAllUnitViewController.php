@@ -3,7 +3,8 @@
 namespace Repas\Repas\Infrastructure\Http\Controller;
 
 
-use Repas\Repas\Domain\Interface\UnitRepository;
+use Repas\Repas\Application\Query\ListUnits\ListUnitsQuery;
+use Repas\Shared\Application\Interface\QueryBusInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
@@ -12,7 +13,7 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 class AdminGetAllUnitViewController extends AbstractController
 {
     public function __construct(
-        public UnitRepository $unitRepository,
+        private readonly QueryBusInterface $queryBus,
     ) {
     }
 
@@ -20,10 +21,8 @@ class AdminGetAllUnitViewController extends AbstractController
     #[IsGranted("ROLE_ADMIN")]
     public function __invoke(): Response
     {
-        $units = $this->unitRepository->findAll();
-
         return $this->render('@Repas/Unit/admin_units.html.twig', [
-            'units' => $units,
+            'units' => $this->queryBus->ask(new ListUnitsQuery()),
         ]);
     }
 }

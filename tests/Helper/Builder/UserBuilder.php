@@ -55,6 +55,12 @@ class UserBuilder implements Builder
         return $this;
     }
 
+    public function isDisabled(): static
+    {
+        $this->status = Status::DISABLED;
+        return $this;
+    }
+
     public function withId(string $id): static
     {
         $this->id = $id;

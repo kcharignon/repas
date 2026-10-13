@@ -59,8 +59,6 @@ deptrac:
       - Repas\User\Domain\Model\User
     Repas\Repas\Infrastructure\Http\Controller\GetAllOtherPeopleRecipesViewController:
       - Repas\User\Domain\Model\User
-    Repas\Repas\Infrastructure\Http\Controller\GetAllRecipeTypeViewController:
-      - Repas\User\Domain\Model\User
     Repas\Repas\Infrastructure\Http\Controller\GetAllShoppingListViewController:
       - Repas\User\Domain\Model\User
     Repas\Repas\Infrastructure\Http\Controller\GetOneDepartmentViewController:

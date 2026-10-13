@@ -3,21 +3,19 @@
 namespace Repas\Tests\Shared\Infrastructure\Http\Api;
 
 
+use Repas\Tests\Helper\Builder\UserBuilder;
 use Repas\Tests\Helper\DatabaseTestCase;
+use Repas\User\Domain\Interface\UserRepository;
+use Repas\User\Domain\Model\User;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 
 /**
- * Firewalls `login` et `api` (ADR 0008) sur la base de fixtures :
- * alexiane (ROLE_USER, actif), kantin (ROLE_ADMIN), john (désactivé).
+ * Firewalls `login` et `api` (ADR 0008). Chaque test crée ses utilisateurs (mot de passe connu) : aucune fixture.
+ * `/api/v1/me` est la route protégée ROLE_USER ; seule la route d'essai ROLE_ADMIN reste, faute d'endpoint d'admin.
  */
 class JwtAuthenticationTest extends DatabaseTestCase
 {
-    private const string USER_EMAIL = 'alexiane.sichi@gmail.com';
-    private const string USER_PASSWORD = 'logan';
-    private const string ADMIN_EMAIL = 'kantincharignon@gmail.com';
-    private const string ADMIN_PASSWORD = 'test';
-    private const string DISABLED_EMAIL = 'john.doe@gmail.com';
-    private const string DISABLED_PASSWORD = 'hjfauendfiwp';
+    private const string PASSWORD = 'correct-horse-battery';
 
     private KernelBrowser $client;
 
@@ -30,8 +28,11 @@ class JwtAuthenticationTest extends DatabaseTestCase
 
     public function testLoginReturnsATokenForValidCredentials(): void
     {
+        // Given
+        $user = $this->savedUser();
+
         // When
-        $this->login(self::USER_EMAIL, self::USER_PASSWORD);
+        $this->login($user->getEmail(), self::PASSWORD);
 
         // Then
         $this->assertSame(200, $this->client->getResponse()->getStatusCode());
@@ -42,8 +43,11 @@ class JwtAuthenticationTest extends DatabaseTestCase
 
     public function testLoginRejectsWrongPassword(): void
     {
+        // Given
+        $user = $this->savedUser();
+
         // When
-        $this->login(self::USER_EMAIL, 'not-the-password');
+        $this->login($user->getEmail(), 'not-the-password');
 
         // Then
         $this->assertSame(401, $this->client->getResponse()->getStatusCode());
@@ -62,8 +66,11 @@ class JwtAuthenticationTest extends DatabaseTestCase
 
     public function testLoginRejectsDisabledUserWithTheSameResponse(): void
     {
+        // Given
+        $user = $this->savedUser(disabled: true);
+
         // When
-        $this->login(self::DISABLED_EMAIL, self::DISABLED_PASSWORD);
+        $this->login($user->getEmail(), self::PASSWORD);
 
         // Then
         $this->assertSame(401, $this->client->getResponse()->getStatusCode());
@@ -73,7 +80,7 @@ class JwtAuthenticationTest extends DatabaseTestCase
     public function testProtectedRouteWithoutTokenIsRefused(): void
     {
         // When
-        $this->client->request('GET', '/api/v1/_probe/whoami');
+        $this->client->request('GET', '/api/v1/me');
 
         // Then
         $this->assertSame(401, $this->client->getResponse()->getStatusCode());
@@ -83,30 +90,38 @@ class JwtAuthenticationTest extends DatabaseTestCase
     public function testProtectedRouteWithInvalidTokenIsRefused(): void
     {
         // When
-        $this->client->request('GET', '/api/v1/_probe/whoami', server: ['HTTP_AUTHORIZATION' => 'Bearer not.a.token']);
+        $this->client->request('GET', '/api/v1/me', server: ['HTTP_AUTHORIZATION' => 'Bearer not.a.token']);
 
         // Then
         $this->assertSame(401, $this->client->getResponse()->getStatusCode());
         $this->assertSame(['error' => ['message' => 'Invalid token.']], $this->jsonBody());
     }
 
-    public function testProtectedRouteWithValidTokenIsGranted(): void
+    public function testTokenObtainedByLoginIdentifiesTheUserOnMe(): void
     {
-        // Given
-        $token = $this->tokenFor(self::USER_EMAIL, self::USER_PASSWORD);
+        // Given : chemin réel de bout en bout (firewalls, bus, handler, loader), sans double
+        $user = $this->savedUser();
+        $token = $this->tokenFor($user->getEmail(), self::PASSWORD);
 
         // When
-        $this->client->request('GET', '/api/v1/_probe/whoami', server: $this->bearer($token));
+        $this->client->request('GET', '/api/v1/me', server: $this->bearer($token));
 
         // Then
         $this->assertSame(200, $this->client->getResponse()->getStatusCode());
-        $this->assertSame(['identifier' => self::USER_EMAIL], $this->jsonBody());
+        $this->assertSame([
+            'id' => $user->getId(),
+            'email' => $user->getEmail(),
+            'roles' => ['ROLE_USER'],
+            'isAdmin' => false,
+            'defaultServing' => 4,
+        ], $this->jsonBody());
     }
 
     public function testAuthenticatedUserWithoutTheRoleGets403(): void
     {
         // Given
-        $token = $this->tokenFor(self::USER_EMAIL, self::USER_PASSWORD);
+        $user = $this->savedUser();
+        $token = $this->tokenFor($user->getEmail(), self::PASSWORD);
 
         // When
         $this->client->request('GET', '/api/v1/_probe/admin', server: $this->bearer($token));
@@ -119,7 +134,8 @@ class JwtAuthenticationTest extends DatabaseTestCase
     public function testAdminTokenGrantsTheAdminRoute(): void
     {
         // Given
-        $token = $this->tokenFor(self::ADMIN_EMAIL, self::ADMIN_PASSWORD);
+        $admin = $this->savedUser(admin: true);
+        $token = $this->tokenFor($admin->getEmail(), self::PASSWORD);
 
         // When
         $this->client->request('GET', '/api/v1/_probe/admin', server: $this->bearer($token));
@@ -165,6 +181,21 @@ class JwtAuthenticationTest extends DatabaseTestCase
         // Then
         $this->assertTrue($this->client->getResponse()->isRedirect());
         $this->assertStringContainsString('/login', $this->client->getResponse()->headers->get('Location'));
+    }
+
+    private function savedUser(bool $admin = false, bool $disabled = false): User
+    {
+        $builder = new UserBuilder()->withPassword(password_hash(self::PASSWORD, PASSWORD_BCRYPT, ['cost' => 4]));
+        if ($admin) {
+            $builder->isAdmin();
+        }
+        if ($disabled) {
+            $builder->isDisabled();
+        }
+        $user = $builder->build();
+        self::getContainer()->get(UserRepository::class)->save($user);
+
+        return $user;
     }
 
     private function login(string $email, string $password): void
