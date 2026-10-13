@@ -22,24 +22,22 @@ Suivi vivant. Décisions : [`adr/`](adr/README.md) (surtout [0003](adr/0003-cqrs
 
 ## Dette de tests : sortir des fixtures globales
 
-`DatabaseTestCase` charge encore **toutes** les fixtures une fois par exécution (comportement legacy). 6 classes de tests (29 tests) en dépendent (`DepartmentRepositoryTest` et `JwtAuthenticationTest` convertis en phase 1). La cible est celle de Compliance : un test crée ses propres données (builders + repositories), asserte uniquement sur elles, et `DatabaseTestCase` ne crée plus que le schéma ([0010](adr/0010-strategie-de-tests.md) règle 11). Cette dette ne doit pas traîner : elle gêne chaque nouveau test de Loader (impossible d'asserter un total ou un cas vide tant que les fixtures sont là).
+`DatabaseTestCase` charge encore **toutes** les fixtures une fois par exécution (comportement legacy). 4 classes de tests (20 tests) en dépendent (`DepartmentRepositoryTest` et `JwtAuthenticationTest` convertis en phase 1, `ShoppingListRepositoryTest` et `ShoppingListRowRepositoryTest` en phase 2). La cible est celle de Compliance : un test crée ses propres données (builders + repositories), asserte uniquement sur elles, et `DatabaseTestCase` ne crée plus que le schéma ([0010](adr/0010-strategie-de-tests.md) règle 11). Cette dette ne doit pas traîner : elle gêne chaque nouveau test de Loader (impossible d'asserter un total ou un cas vide tant que les fixtures sont là).
 
 **Règles dès maintenant**
-- Tout **nouveau** test de base crée ses données et n'utilise jamais les fixtures globales (voir `references/read-slice-template.md` §6 du skill `repas-dev`).
+- Tout **nouveau** test de base crée ses données et n'utilise jamais les fixtures globales (voir `references/read-slice-template.md` §6 du skill `repas-dev`). `tests/Helper/DataPersister` enregistre un modèle de builder avec les agrégats qu'il référence (utilisateur, unités, rayon, ingrédients, type de recette) : les `save()` sont des upserts, il sert à toutes les conversions.
 - Une slice qui touche un agrégat convertit au passage les tests de cet agrégat listés ci-dessous (même commit ou commit suivant).
 
 **À convertir** (nombre de tests qui cassent si on coupe les fixtures)
 
 | Classe | Tests à réécrire | Convertie avec |
 |---|---|---|
-| `OutputAdapter/ShoppingListRepositoryTest` | 6 / 7 | phase 2 (`ListShoppingLists`) |
-| `OutputAdapter/ShoppingListRowRepositoryTest` | 3 / 4 | phase 2 |
 | `OutputAdapter/IngredientRepositoryTest` | 6 / 8 | commit dédié fin de phase 2 |
 | `OutputAdapter/ConversionRepositoryTest` | 5 / 6 | commit dédié fin de phase 2 |
 | `OutputAdapter/RecipeRepositoryTest` | 6 / 6 | commit dédié fin de phase 2 |
 | `OutputAdapter/RecipeLoaderTest` | 3 / 3 | commit dédié fin de phase 2 (le `RecipeLoader` legacy est remplacé en phase 5) |
 
-`UnitRepositoryTest`, `UserRepositoryTest` et `JwtAuthenticationTest` n'en dépendent déjà plus.
+`UnitRepositoryTest`, `UserRepositoryTest`, `ShoppingListRepositoryTest`, `ShoppingListRowRepositoryTest` et `JwtAuthenticationTest` n'en dépendent déjà plus.
 
 **Quand tout est converti** (commit « fin des fixtures globales ») : retirer `doctrine:fixtures:load` de `DatabaseTestCase::loadSchemaAndFixtures()`, ajouter les cas « liste vide » aux tests de Loader, retirer cette section. Les `DataFixture` restent pour le jeu de données de dev.
 
@@ -60,7 +58,7 @@ Valide de bout en bout : bus, Loader, Deptrac, API, JWT. Risque faible.
 
 ### Phase 2 — Listes de courses (liste)
 
-- [ ] `ListShoppingLists` — GetAllShoppingList, Activated/Paused/Stopped (re-read des fragments). DTO : id, nom affiché (nom par défaut inclus), statut, flags `isActive/isPaused/isCompleted`, createdAt. Supprime le pire N+1 (un agrégat complet par liste pour 4 champs) et 8 tests de statut dans `_shopping_list_list.html.twig`.
+- [x] `ListShoppingLists` — GetAllShoppingList, Activated/Paused/Stopped (re-read du fragment `#shopping-list-list`). Query `ListShoppingListsQuery(ownerId)`, DTO `ShoppingListDTO` (id, displayName, status, isActive, isPaused, isCompleted, createdAt ATOM), `ShoppingListLoader` / `ShoppingListPostgreSQLLoader` (une requête, du plus récent au plus ancien), `GET /api/v1/shopping-lists`. `displayName` = nom saisi, sinon la date de création en français (`dd MMMM YYYY`, comme l'ancien template). Sur la page avec 4 listes : 14 requêtes SQL avant, 2 après ; plus aucun test de statut ni `format_datetime` dans `_shopping_list_list.html.twig`. Les 4 controllers n'importent plus `User\Domain\Model\User` (interface Shared `AuthenticatedUser`, ADR 0001 §8), 4 entrées retirées de la baseline Deptrac. Reste `GetOneShoppingListViewController` et le détail (phase 4) : la page détail affiche « Liste du … » là où la liste affiche la date seule, à unifier alors dans le DTO.
 
 ### Phase 3 — Résumé de la liste active
 
@@ -113,6 +111,8 @@ Valide de bout en bout : bus, Loader, Deptrac, API, JWT. Risque faible.
 
 ## Hors périmètre (vus en passant, non corrigés)
 
+- `ModelCache` a une méthode `reset()` mais n'implémente pas `ResetInterface` : en mode worker FrankenPHP (dev et prod) ses modèles survivent entre deux requêtes, donc lecture périmée après une écriture hors de l'application et résultats différents d'un worker à l'autre. À corriger à part (`implements ResetInterface` + test).
+- Le motif de date `dd MMMM YYYY` (templates des listes de courses et `ListShoppingLists`) utilise l'année ISO de la semaine : le 29 décembre 2025 s'affiche « 29 décembre 2026 ». Conservé tel quel pour ne pas changer l'affichage ; remplacer `YYYY` par `yyyy` partout en une fois (loader, `_shopping_list_card_header`, `shopping_list.html.twig`).
 - `LoginCheckViewController` rend `login_check/index.html.twig`, template inexistant.
 - `RecipeTypePostgreSQLRepository::findOneBySlug` interroge le cache avec `Recipe::class`.
 - `RecipePostgreSQLRepository::convertEntityToModel` : clé de cache = slug de la recette, pas son id.
@@ -124,7 +124,7 @@ Valide de bout en bout : bus, Loader, Deptrac, API, JWT. Risque faible.
 
 ## Couverture de tests (cliquet)
 
-- Seuil CI : **75 %** (`COVERAGE_THRESHOLD`, `.github/workflows/ci.yml`). Mesure au 2026-10-13 : 77,1 %. Le seuil de 80 % précédent n'était plus tenu avant la migration (57,2 %, toute la couche Twig non testée).
+- Seuil CI : **75 %** (`COVERAGE_THRESHOLD`, `.github/workflows/ci.yml`). Mesure au 2026-10-13 : 77,1 %, puis 81,8 % à la fin de la phase 2 (le seuil peut passer à 80). Le seuil de 80 % précédent n'était plus tenu avant la migration (57,2 %, toute la couche Twig non testée).
 - Exclus de la mesure (`phpunit.dist.xml`) : `Http/Controller` et `Http/Form` des contextes `Repas` et `User` (ils sortent de l'exclusion en même temps que du code, phase 9 ; les controllers API restent mesurés), et les `DataFixture` (données de test chargées hors d'un test, donc jamais créditées).
 - Règle : le seuil ne baisse jamais. Le remonter par paliers vers 80 % quand la mesure le permet (les slices Query/Loader/API entrent à 100 %, donc le chiffre monte avec la migration).
 - Plus gros trous restants (éléments non couverts) : `Infrastructure/Entity` 172, `Domain/Model` 134, commandes console `src/Command` 113, `Infrastructure/Repository` 89.
