@@ -1,8 +1,5 @@
-{% if shoppingList is null or not shoppingList.hasRecipe(recipe) %}
-    {% set url = path("view_shopping_list_add_recipe", {"id" : recipe.id}) %}
-{% elseif shoppingList.hasRecipe(recipe) %}
-    {% set url = path("view_shopping_list_remove_recipe", {"id" : recipe.id}) %}
-{% endif %}
+{% set planned = recipe.id in activeSummary.plannedRecipeIds %}
+{% set url = planned ? path("view_shopping_list_remove_recipe", {"id" : recipe.id}) : path("view_shopping_list_add_recipe", {"id" : recipe.id}) %}
 <li
     id="recipe_{{ recipe.id }}"
     class="list-group-item d-flex list-group-item-action">
@@ -12,10 +9,10 @@
         data-action="btn-ajax"
         data-url="{{ url }}"
         data-method="post">
-        {% if shoppingList is null or not shoppingList.hasRecipe(recipe) %}
-            <i data-loader="replace" class="far fa-square me-1"></i>
-        {% elseif shoppingList.hasRecipe(recipe) %}
+        {% if planned %}
             <i data-loader="replace" class="far fa-check-square me-1"></i>
+        {% else %}
+            <i data-loader="replace" class="far fa-square me-1"></i>
         {% endif %}
         {{ recipe.name|capitalize }}
     </div>

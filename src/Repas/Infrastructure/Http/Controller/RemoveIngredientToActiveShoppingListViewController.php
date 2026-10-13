@@ -4,9 +4,10 @@ namespace Repas\Repas\Infrastructure\Http\Controller;
 
 
 use Repas\Repas\Application\Command\RemoveIngredientToShoppingList\RemoveIngredientToShoppingListCommand;
+use Repas\Repas\Application\Query\GetActiveShoppingListSummary\GetActiveShoppingListSummaryQuery;
 use Repas\Repas\Domain\Interface\IngredientRepository;
-use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Shared\Application\Interface\CommandBusInterface;
+use Repas\Shared\Application\Interface\QueryBusInterface;
 use Repas\User\Domain\Model\User;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -18,7 +19,7 @@ class RemoveIngredientToActiveShoppingListViewController extends AbstractControl
     public function __construct(
         private readonly CommandBusInterface $commandBus,
         private readonly IngredientRepository $ingredientRepository,
-        private readonly ShoppingListRepository $shoppingListRepository,
+        private readonly QueryBusInterface $queryBus,
     ) {
     }
 
@@ -37,10 +38,10 @@ class RemoveIngredientToActiveShoppingListViewController extends AbstractControl
 
         $ingredient = $this->ingredientRepository->findOneBySlug($slug);
 
-        $activeShoppingList = $this->shoppingListRepository->findOneActivateByOwner($connectedUser);
+        $activeSummary = $this->queryBus->ask(new GetActiveShoppingListSummaryQuery($connectedUser->getId()));
         $html = $this->renderView('@Repas/Department/_ingredient_row.html.twig', [
             'ingredient' => $ingredient,
-            'shoppingList' => $activeShoppingList,
+            'activeSummary' => $activeSummary,
         ]);
 
         return new JsonResponse([

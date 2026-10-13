@@ -23,6 +23,7 @@ abstract class QueryBusWebTestCase extends DatabaseTestCase
 {
     protected KernelBrowser $client;
     protected MockQueryBus $queryBus;
+    protected DataPersister $persister;
 
     protected function setUp(): void
     {
@@ -31,6 +32,7 @@ abstract class QueryBusWebTestCase extends DatabaseTestCase
         $this->queryBus = new MockQueryBus();
         static::getContainer()->set(QueryBusInterface::class, $this->queryBus);
         $this->client = static::getContainer()->get('test.client');
+        $this->persister = new DataPersister(static::getContainer());
     }
 
     protected function savedUser(bool $admin = false): User

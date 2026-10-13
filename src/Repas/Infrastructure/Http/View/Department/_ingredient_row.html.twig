@@ -8,8 +8,9 @@
         data-url="{{ path("view_shopping_list_remove_ingredient", {"slug" : ingredient.slug}) }}">
         <i class="fas fa-minus-circle"></i>
     </button>
-    {% if shoppingList and shoppingList.getIngredientQuantity(ingredient) %}
-        <button class="btn btn-secondary btn-sm float-end me-1" disabled> {{ shoppingList.getIngredientQuantity(ingredient)|round(1) ~ " " ~ ingredient.defaultPurchaseUnit.symbol }}</button>
+    {% set quantity = activeSummary.quantityByIngredientSlug[ingredient.slug] ?? 0 %}
+    {% if quantity %}
+        <button class="btn btn-secondary btn-sm float-end me-1" disabled> {{ quantity|round(1) ~ " " ~ ingredient.defaultPurchaseUnit.symbol }}</button>
     {% endif %}
     <button
         type="button"

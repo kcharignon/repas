@@ -4,9 +4,10 @@ namespace Repas\Repas\Infrastructure\Http\Controller;
 
 
 use Repas\Repas\Application\Command\RemoveMealFromPlan\removeMealFromPlanCommand;
+use Repas\Repas\Application\Query\GetActiveShoppingListSummary\GetActiveShoppingListSummaryQuery;
 use Repas\Repas\Domain\Interface\RecipeRepository;
-use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Shared\Application\Interface\CommandBusInterface;
+use Repas\Shared\Application\Interface\QueryBusInterface;
 use Repas\User\Domain\Model\User;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -17,7 +18,7 @@ class RemoveRecipeToActiveShoppingListViewController extends AbstractController
 {
     public function __construct(
         private readonly CommandBusInterface $commandBus,
-        private readonly ShoppingListRepository $shoppingListRepository,
+        private readonly QueryBusInterface $queryBus,
         private readonly RecipeRepository $recipeRepository,
     ) {
     }
@@ -36,14 +37,14 @@ class RemoveRecipeToActiveShoppingListViewController extends AbstractController
         $this->commandBus->dispatch($command);
 
         // Chargement des données pour générer une vue à jours
-        $activeShoppingList = $this->shoppingListRepository->findOneActivateByOwner($connectedUser);
+        $activeSummary = $this->queryBus->ask(new GetActiveShoppingListSummaryQuery($connectedUser->getId()));
         $recipe = $this->recipeRepository->findOneById($id);
         return new JsonResponse([
             "views" => [
                 [
                     "selector" => "#recipe_".$id,
                     "html" => $this->renderView("@Repas/Recipe/_recipe_row.html.twig", [
-                        "shoppingList" => $activeShoppingList,
+                        "activeSummary" => $activeSummary,
                         "recipe" => $recipe,
                     ])
                 ]
