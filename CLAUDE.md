@@ -50,7 +50,8 @@ src/{Context}/
 - **Écritures (Command)** : passent par un bus. `CommandBusInterface::dispatch()` (`src/Shared/Application/Interface/CommandBusInterface.php`) envoie le `{UseCase}Command` (DTO `readonly`, propriétés publiques, pas de logique) au `{UseCase}Handler` marqué `#[AsMessageHandler]` (Symfony Messenger). Le controller ne fait qu'assembler la Command et appeler `dispatch()` — jamais de logique métier dans un controller.
 - **Lectures (Query)** : passent par `QueryBusInterface::ask()` (`src/Shared/Application/Interface/QueryBusInterface.php`). Le `{UseCase}Query` (`final readonly`, `implements QueryInterface`) est traité par un `{UseCase}QueryHandler` qui délègue à un port `Application/Loader/{X}Loader` et renvoie un `{X}DTO` (`final readonly`). Le controller (Twig ou API) ne manipule que ce DTO — jamais un modèle de domaine, jamais un repository (ADR 0003, 0004, 0005).
 - **Règles fermes** : un `QueryHandler` n'appelle jamais un `Repository` ; un `CommandHandler` n'appelle jamais un `Loader` ; un `QueryHandler` ne modifie pas l'état (une lecture qui crée si absent = une Command puis une Query).
-- **État de la migration** : la lecture directe via `Domain\Interface\{X}Repository` dans les `Get*ViewController`, les controllers AJAX, les form types et `OwnerVoter` est la **dette à résorber**, pas un modèle à suivre. Pour toute nouvelle lecture, ou si tu touches une lecture existante, suis la recette du skill `/repas-dev` et coche la slice dans `docs/migration-roadmap.md`.
+- **État de la migration** : plus aucun controller, API, formulaire ni voter ne lit via un `Domain\Interface\{X}Repository` (phase 7) ; Deptrac (`deptrac.no-repository-in-http.yaml`) l'interdit dans `Infrastructure\Http`. Toute nouvelle lecture suit la recette du skill `/repas-dev` et coche la slice dans `docs/migration-roadmap.md`. Un prédicat booléen se nomme `Is{X}` / `Has{X}` (ex. `IsEmailAlreadyUsed`) et renvoie un `bool`.
+- **Droits d'accès** : `OwnerVoter` (contexte `User`) interroge le port `Shared\Application\Interface\OwnershipLoader` (ids de propriétaire uniquement), implémenté dans `Repas\Infrastructure\Loader`.
 - **Buses** : `command.bus` et `query.bus` distincts (ADR 0006). Les controllers injectent toujours `CommandBusInterface` / `QueryBusInterface`, jamais les classes concrètes.
 
 ## API JSON (`/api/v1`)
@@ -74,7 +75,7 @@ src/{Context}/
 
 - Le port est défini dans `Domain/Interface/{X}Repository.php` — c'est ce type que les `CommandHandler` injectent, jamais l'implémentation concrète. Un controller n'injecte plus de repository (écriture : `CommandBusInterface` ; lecture : `QueryBusInterface`).
 - L'implémentation Doctrine vit dans `Infrastructure/Repository/{X}PostgreSQLRepository.php`, hérite de `PostgreSQLRepository` (gère `EntityManager`/`ObjectRepository`), convertit `Entity` (Doctrine) <-> `Model` (Domain) via `Entity::fromModel()` / `{X}Model::load([...])`.
-- Utiliser `ModelCache` (`Shared/Infrastructure/Repository/ModelCache.php`) pour éviter les hydratations répétées dans une requête.
+- Utiliser `ModelCache` (`Shared/Infrastructure/Repository/ModelCache.php`) pour éviter les hydratations répétées dans une requête. Il ne sert plus qu'au chemin d'écriture (le retirer double les requêtes des commandes, voir roadmap phase 7) ; une lecture n'y passe jamais.
 - Pour les tests : implémentation `{X}InMemoryRepository` dans `tests/Helper/InMemoryRepository/`, même interface, aucune dépendance Doctrine — permet de tester Application/Domain sans DB.
 - Un Repository sert à **charger pour modifier** un agrégat ; pour **afficher**, utiliser un Loader (ADR 0004).
 - Ne jamais faire de requête Doctrine (QueryBuilder, DQL) en dehors de `Infrastructure/Repository` et `Infrastructure/Loader`.
@@ -93,7 +94,7 @@ src/{Context}/
 ## Conventions de nommage
 
 - Use case d'écriture : dossier `Application/Command/{VerbNoun}/` contenant `{VerbNoun}Command.php` + `{VerbNoun}Handler.php`.
-- Use case de lecture : dossier `Application/Query/{Get|List}{Noun}/` contenant `{Get|List}{Noun}Query.php`, `…QueryHandler.php` (`#[AsMessageHandler(bus: 'query.bus')]`) et les `{X}DTO.php`. `Get` = un élément, `List` = une collection.
+- Use case de lecture : dossier `Application/Query/{Get|List}{Noun}/` contenant `{Get|List}{Noun}Query.php`, `…QueryHandler.php` (`#[AsMessageHandler(bus: 'query.bus')]`) et les `{X}DTO.php`. `Get` = un élément, `List` = une collection, `Is`/`Has` = un prédicat booléen.
 - Controller HTTP Twig : suffixe `ViewController` ; API : suffixe `ApiController` ; attribut `#[Route]` sur `__invoke()`.
 - Utilisateur connecté dans un controller du contexte `Repas` : `#[CurrentUser] AuthenticatedUser $user` (`Shared\Domain\Interface`, accesseurs `getId()` et `getDefaultServing()`), aussi dans les formulaires, jamais `User\Domain\Model\User` (ADR 0001 §8).
 - Repository infra : suffixe technologie, ex. `PostgreSQLRepository`. Loader infra : `{X}PostgreSQLLoader implements {X}Loader`.

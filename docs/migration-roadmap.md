@@ -62,11 +62,12 @@ Valide de bout en bout : bus, Loader, Deptrac, API, JWT. Risque faible.
 
 ### Phase 7 — Dernières lectures directes
 
-- [ ] Options de formulaires : `SelectDepartmentType`, `SelectIngredientType`, `SelectUnitType`, `AbstractRecipeType`, `UpdateIngredientType`, `RegisterNewUserType` (unicité email)
-- [ ] `OwnerVoter` : remplacer les 3 repositories par un Loader d'ownership léger
-- [ ] `ListUsers` — AdminGetUsers
-- [ ] Supprimer `ModelCache` (cache maison des modèles hydratés, devenu `ResetInterface` en phase 2 pour être vidé entre deux requêtes en mode worker) dès que plus aucune lecture ne passe par un modèle : il ne servait qu'à éviter des hydratations répétées.
-- [ ] Deptrac : interdire `Domain\Interface\*Repository` dans `Infrastructure\Http` et `Infrastructure\Http\Form`
+- [x] Options de formulaires : `SelectDepartmentType`, `SelectUnitType`, `SelectIngredientType` (`ListAvailableIngredients`), `AbstractRecipeType` (types de recette, portion par défaut via `AuthenticatedUser::getDefaultServing()`), préremplissage des formulaires admin par `GetUnit` / `GetDepartment` / `GetRecipeType`, `RegisterNewUserType` (`IsEmailAlreadyUsed`, prédicat booléen : nommer `Is{X}` / `Has{X}`)
+- [x] `OwnerVoter` : port `Shared\Application\Interface\OwnershipLoader` (renvoie des ids, jamais un agrégat) implémenté par `Repas\Infrastructure\Loader\OwnershipPostgreSQLLoader` ; le contexte `User` n'importe plus rien de `Repas` ici (entrée de baseline retirée). Le trou « ingrédient commun » est fermé : `INGREDIENT_OWNER` renvoie `false` (seul un administrateur le modifie).
+- [x] `ListUsers` — AdminGetUsers (`UserSummaryDTO`) et `GET /api/v1/users` (ROLE_ADMIN) ; réglages et inscription via `GetCurrentUser` / `IsEmailAlreadyUsed` ; le mot de passe actuel est vérifié par `UpdateUserSettingsHandler` (règle de domaine), le controller traduit `UserException::INVALID_PASSWORD` en erreur de formulaire
+- [x] Endpoints API de lecture unitaire : `GET /api/v1/units/{slug}`, `/departments/{slug}`, `/recipe-types/{slug}`
+- [x] Deptrac : `deptrac.no-repository-in-http.yaml` interdit tout `*Repository` dans `…\Infrastructure\Http\…` (controllers, API, formulaires) des deux contextes ; aucune baseline, 0 violation
+- [ ] ~~Supprimer `ModelCache`~~ **Conservé** : plus aucune *lecture* n'en dépend (lecture détail liste : 4 requêtes, liste des recettes : 2, identiques avec ou sans cache), mais le chemin d'*écriture* (handlers qui chargent des agrégats) en profite encore. Mesure en dev, cache neutralisé : `serving` 45 → 126 requêtes, `tick` / `uncheck` 46 → 108, ajout ingrédient 57 → 119, retrait 48 → 112, planification recette 88 → 171, retrait recette 55 → 159. À rouvrir avec les écritures (phase 8), pas avant d'avoir des Loaders/ports plus fins côté commandes.
 
 ## Écriture et extinction
 
@@ -85,7 +86,7 @@ Valide de bout en bout : bus, Loader, Deptrac, API, JWT. Risque faible.
 - `AdminCreateUnitViewController` (`/admin/unit/create`) et `CreateIngredientViewController` (`/ingredient`) sans `#[IsGranted]`.
 - Routes `tick` / `uncheck` d'une ligne : `ROLE_USER` sans voter propriétaire.
 - `RemoveIngredientViewController` : GET destructif.
-- `OwnerVoter` `INGREDIENT_OWNER` retourne `null` pour un ingrédient système (type de retour `bool`).
+- ~~`OwnerVoter` `INGREDIENT_OWNER` retourne `null` pour un ingrédient système~~ : corrigé en phase 7.
 
 ## Hors périmètre (vus en passant, non corrigés)
 

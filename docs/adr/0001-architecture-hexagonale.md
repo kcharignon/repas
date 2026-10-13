@@ -11,7 +11,7 @@ Le code est organisé en bounded contexts sous `src/` : `Repas` (recettes, ingr�
 - `User\Domain\Model\User` implémente des interfaces Symfony Security.
 - `Domain\Service\{AuthenticatorEmail,UserChecker,UserProvider}` dépendent de Symfony.
 - `Repas` dépend de `User` : `Repas\Domain\Model\ShoppingList` importe `User\Domain\Model\User`, et la plupart des handlers d'écriture injectent `UserRepository` / lèvent `UserException` (60 dépendances).
-- `User` dépend de `Repas` (11 dépendances, dont `OwnerVoter` qui injecte trois repositories de `Repas` et le listener de statistiques).
+- `User` dépend de `Repas` (le listener de statistiques ; `OwnerVoter` ne dépend plus de `Repas` depuis la phase 7 : il passe par le port `Shared\Application\Interface\OwnershipLoader`).
 - `Shared` dépend de `Repas` et `User` (6 dépendances, dont `RepositoryTrait`).
 
 Les trois dernières entorses sont détectées par Deptrac et figées dans la baseline (77 entrées, 120 occurrences à l'introduction de l'outil). Les deux premières (dépendance à Symfony) ne le sont pas : Symfony n'est pas une couche Deptrac, elles restent signalées ici.
