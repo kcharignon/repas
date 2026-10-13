@@ -129,6 +129,11 @@ readonly class ShoppingListPostgreSQLRepository extends PostgreSQLRepository imp
         return null;
     }
 
+    public function hasActiveShoppingList(string $ownerId): bool
+    {
+        return $this->entityRepository->findOneBy(['ownerId' => $ownerId, 'status' => ShoppingListStatus::ACTIVE]) !== null;
+    }
+
     public function delete(ShoppingList $shoppingList): void
     {
         $this->modelCache->removeModelCache($shoppingList);
