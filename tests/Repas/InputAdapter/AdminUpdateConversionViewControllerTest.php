@@ -5,10 +5,12 @@ namespace Repas\Tests\Repas\InputAdapter;
 
 use Repas\Repas\Application\Query\GetConversion\GetConversionQuery;
 use Repas\Repas\Application\Query\ListConversions\ConversionDTO;
+use Repas\Repas\Application\Query\ListAvailableIngredients\IngredientOptionDTO;
 use Repas\Repas\Domain\Interface\ConversionRepository;
 use Repas\Repas\Domain\Model\Conversion;
 use Repas\Tests\Helper\Builder\ConversionBuilder;
 use Repas\Tests\Helper\Builder\DTO\ConversionDTOBuilder;
+use Repas\Tests\Helper\Builder\DTO\UnitDTOBuilder;
 use Repas\Tests\Helper\QueryBusWebTestCase;
 
 class AdminUpdateConversionViewControllerTest extends QueryBusWebTestCase
@@ -18,6 +20,7 @@ class AdminUpdateConversionViewControllerTest extends QueryBusWebTestCase
         // Given
         $conversion = $this->savedConversion();
         $this->queryBus->willReturn(GetConversionQuery::class, $this->dtoOf($conversion->getId()));
+        $this->offerOptions();
         $this->client->loginUser($this->savedUser(admin: true));
 
         // When
@@ -25,7 +28,7 @@ class AdminUpdateConversionViewControllerTest extends QueryBusWebTestCase
 
         // Then
         $this->assertSame(200, $this->client->getResponse()->getStatusCode());
-        $query = $this->queryBus->getLastAskedQuery();
+        $query = $this->queryBus->getAskedQuery(GetConversionQuery::class);
         $this->assertInstanceOf(GetConversionQuery::class, $query);
         $this->assertSame($conversion->getId(), $query->conversionId);
         $this->assertSame('plaquette', $crawler->filter('select[name="update_conversion[startUnit]"] option[selected]')->attr('value'));
@@ -39,6 +42,7 @@ class AdminUpdateConversionViewControllerTest extends QueryBusWebTestCase
         // Given
         $conversion = $this->savedConversion();
         $this->queryBus->willReturn(GetConversionQuery::class, $this->dtoOf($conversion->getId()));
+        $this->offerOptions();
         $this->client->loginUser($this->savedUser(admin: true));
 
         // When
@@ -68,6 +72,14 @@ class AdminUpdateConversionViewControllerTest extends QueryBusWebTestCase
         // Then
         $this->assertSame(403, $this->client->getResponse()->getStatusCode());
         $this->assertSame(0, $this->queryBus->countAskedQueries());
+    }
+
+    private function offerOptions(): void
+    {
+        $this->willOfferFormOptions(
+            units: [new UnitDTOBuilder()->withSlug('plaquette')->withName('plaquette')->build(), new UnitDTOBuilder()->withSlug('gramme')->withName('gramme')->build()],
+            ingredients: [new IngredientOptionDTO('beurre', 'beurre')],
+        );
     }
 
     private function savedConversion(): Conversion

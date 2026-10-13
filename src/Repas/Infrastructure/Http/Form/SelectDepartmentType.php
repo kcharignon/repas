@@ -3,7 +3,9 @@
 namespace Repas\Repas\Infrastructure\Http\Form;
 
 
-use Repas\Repas\Domain\Interface\DepartmentRepository;
+use Repas\Repas\Application\Query\ListDepartments\DepartmentDTO;
+use Repas\Repas\Application\Query\ListDepartments\ListDepartmentsQuery;
+use Repas\Shared\Application\Interface\QueryBusInterface;
 use Repas\Shared\Domain\Tool\StringTool;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
@@ -12,15 +14,17 @@ use Symfony\Component\OptionsResolver\OptionsResolver;
 class SelectDepartmentType extends AbstractType
 {
     public function __construct(
-        private readonly DepartmentRepository $departmentRepository,
+        private readonly QueryBusInterface $queryBus,
     ) {
     }
 
     public function configureOptions(OptionsResolver $resolver): void
     {
         $choices = [];
-        foreach ($this->departmentRepository->findAll() as $department) {
-            $choices[StringTool::upperCaseFirst($department->getName())] = $department->getSlug();
+        /** @var list<DepartmentDTO> $departments */
+        $departments = $this->queryBus->ask(new ListDepartmentsQuery());
+        foreach ($departments as $department) {
+            $choices[StringTool::upperCaseFirst($department->name)] = $department->slug;
         }
 
         $resolver->setDefaults([

@@ -95,7 +95,7 @@ src/{Context}/
 - Use case d'écriture : dossier `Application/Command/{VerbNoun}/` contenant `{VerbNoun}Command.php` + `{VerbNoun}Handler.php`.
 - Use case de lecture : dossier `Application/Query/{Get|List}{Noun}/` contenant `{Get|List}{Noun}Query.php`, `…QueryHandler.php` (`#[AsMessageHandler(bus: 'query.bus')]`) et les `{X}DTO.php`. `Get` = un élément, `List` = une collection.
 - Controller HTTP Twig : suffixe `ViewController` ; API : suffixe `ApiController` ; attribut `#[Route]` sur `__invoke()`.
-- Utilisateur connecté dans un controller du contexte `Repas` : `#[CurrentUser] AuthenticatedUser $user` (`Shared\Domain\Interface`, accesseur `getId()`), jamais `User\Domain\Model\User` (ADR 0001 §8).
+- Utilisateur connecté dans un controller du contexte `Repas` : `#[CurrentUser] AuthenticatedUser $user` (`Shared\Domain\Interface`, accesseurs `getId()` et `getDefaultServing()`), aussi dans les formulaires, jamais `User\Domain\Model\User` (ADR 0001 §8).
 - Repository infra : suffixe technologie, ex. `PostgreSQLRepository`. Loader infra : `{X}PostgreSQLLoader implements {X}Loader`.
 - Événements de domaine : suffixe `Event`, dispatchés via `EventDispatcherInterface` depuis un Handler, consommés par un `EventListener` en Infrastructure.
 
