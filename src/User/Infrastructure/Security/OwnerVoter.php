@@ -3,9 +3,7 @@
 namespace Repas\User\Infrastructure\Security;
 
 
-use Repas\Repas\Domain\Interface\IngredientRepository;
-use Repas\Repas\Domain\Interface\RecipeRepository;
-use Repas\Repas\Domain\Interface\ShoppingListRepository;
+use Repas\Shared\Application\Interface\OwnershipLoader;
 use Repas\User\Domain\Model\User;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
 use Symfony\Component\Security\Core\Authorization\AccessDecisionManagerInterface;
@@ -21,9 +19,7 @@ class OwnerVoter extends Voter
 
     public function __construct(
         private readonly AccessDecisionManagerInterface $accessDecisionManager,
-        private readonly ShoppingListRepository $shoppingListRepository,
-        private readonly RecipeRepository $recipeRepository,
-        private readonly IngredientRepository $ingredientRepository,
+        private readonly OwnershipLoader $ownershipLoader,
     ) {
     }
 
@@ -55,17 +51,14 @@ class OwnerVoter extends Voter
             case self::HIMSELF:
                 return $user->getId() === $subject;
             case self::INGREDIENT_OWNER:
-                $ingredient = $this->ingredientRepository->findOneBySlug($subject);
-                return $ingredient->getCreator()?->isEqual($user);
+                // Un ingrédient commun (sans créateur) n'appartient à personne : seul un administrateur peut le modifier
+                return $this->ownershipLoader->ingredientCreatorId($subject) === $user->getId();
             case self::SHOPPING_LIST_OWNER:
-                $shoppingList = $this->shoppingListRepository->findOneById($subject);
-                return $shoppingList->getOwner()->isEqual($user);
+                return $this->ownershipLoader->shoppingListOwnerId($subject) === $user->getId();
             case self::RECIPE_OWNER:
-                $recipe = $this->recipeRepository->findOneById($subject);
-                return $recipe->getAuthor()->isEqual($user);
+                return $this->ownershipLoader->recipeAuthorId($subject) === $user->getId();
             case self::MEAL_OWNER:
-                $shoppingList = $this->shoppingListRepository->findOneByMealId($subject);
-                return $shoppingList->getOwner()->isEqual($user);
+                return $this->ownershipLoader->mealOwnerId($subject) === $user->getId();
             default:
                 return false;
         }
