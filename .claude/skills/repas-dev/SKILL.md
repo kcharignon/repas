@@ -52,6 +52,7 @@ Détail et squelettes : `references/read-slice-template.md`. Ordre :
 3. `{UseCase}Query` + `{UseCase}QueryHandler` (le handler délègue au Loader, rien d'autre).
 4. `Infrastructure/Loader/{X}PostgreSQLLoader` (DQL/DBAL → DTO). Autowiring suffit s'il n'y a qu'une implémentation.
 5. Tests : handler + `{X}InMemoryLoader` (unitaire : bons paramètres transmis au Loader, résultat renvoyé tel quel, **jamais de base**) ; Loader sur base réelle (`DatabaseTestCase`, dossier `tests/Repas/OutputAdapter/`).
+   `QueryConventionTest` contrôle tout seul l'attribut `bus: 'query.bus'` et la présence du handler : ne pas le dupliquer dans le test du handler.
 6. `make test deptrac phpstan`.
 
 ### 3.2 Migrer un ViewController Twig vers le QueryBus

@@ -107,6 +107,7 @@ src/{Context}/
 - **Tests de base** : `DatabaseTestCase` charge le schéma et les fixtures une seule fois, puis chaque test tourne dans une transaction annulée (DAMA) ; suite complète ~4 s. Un nouveau test de base **crée ses propres données** (builders + repositories) et ne s'appuie jamais sur les fixtures globales (dette legacy à solder avant la phase 3, voir `docs/migration-roadmap.md`, « Dette de tests »).
 - `CommandHandler` : `{X}InMemoryRepository` + `SpyEventDispatcher`, pas de mock manuel des interfaces.
 - `QueryHandler` : un `{X}InMemoryLoader` (double idiot : renvoie des DTO programmés, enregistre ses appels). Le test asserte que le handler transmet les bons paramètres au Loader et renvoie son résultat tel quel. Filtres, tri, jointures et calculs du DTO se prouvent dans le test du Loader réel (`tests/Repas/OutputAdapter/`, `DatabaseTestCase`). Controllers API : doubles de bus (`tests/Repas/InputAdapter/`), en vérifiant la query construite, le statut et les **clés JSON** du DTO (ADR 0010).
+- Buses : `QueryBus` / `CommandBus` se testent en unitaire avec `MockMessageBus` ; `BusWiringTest` prouve le câblage réel avec les handlers factices de `tests/Helper/Bus/` ; `QueryConventionTest` impose `#[AsMessageHandler(bus: 'query.bus')]` et un handler par query (ADR 0006). Les controllers se testent avec `MockQueryBus` (`MockCommandBus` à créer avec la première écriture API).
 - Structure `// Given` / `// When` / `// Then`.
 
 ## Quand tu ajoutes une fonctionnalité

@@ -28,6 +28,8 @@ Chaque couche a son type de test :
 | `Repository` | `tests/Repas/OutputAdapter/…` | Base réelle (`DatabaseTestCase`). | Le mapping `Entity` ↔ `Model` et les requêtes d'écriture/relecture d'agrégats. |
 | `Loader` | `tests/Repas/OutputAdapter/…` | Base réelle (`DatabaseTestCase`), fixtures via les `Repository`/builders puis `flush()` + `clear()`, assertion sur les DTO. | Filtres, ordre, jointures, calculs précalculés du DTO, cas vide, `NotFound`. Pour un Loader qui remplace un N+1, un test compte les requêtes. |
 | Controller API / Twig | `tests/Repas/InputAdapter/…` | `WebTestCase`, `QueryBus`/`CommandBus` remplacés par des doubles (`MockQueryBus`, `MockCommandBus`). | La query/commande construite, le statut, et pour l'API les **clés JSON** du DTO. |
+| `QueryBus` / `CommandBus` | `tests/Shared/Application/Service/…` | Unitaire avec `MockMessageBus` (double du bus Messenger : résultat, `HandlerFailedException`, message non traité), puis `BusWiringTest` : `KernelTestCase` sans base, handlers factices de `tests/Helper/Bus/`. | Le wrapper transmet le message, renvoie le résultat du handler, déballe la `DomainException` ; chaque wrapper est câblé sur son bus et seulement sur lui ([0006](0006-buses-messenger.md)). |
+| Convention des `QueryHandler` | `tests/Shared/Application/QueryConventionTest.php` | Réflexion sur `src/*/Application/Query/*`, sans kernel. | `bus: 'query.bus'` présent sur chaque handler, un handler par query qui accepte bien cette query. |
 
 Règles :
 
