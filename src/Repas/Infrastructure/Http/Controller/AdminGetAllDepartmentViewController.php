@@ -3,7 +3,8 @@
 namespace Repas\Repas\Infrastructure\Http\Controller;
 
 
-use Repas\Repas\Domain\Interface\DepartmentRepository;
+use Repas\Repas\Application\Query\ListDepartments\ListDepartmentsQuery;
+use Repas\Shared\Application\Interface\QueryBusInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
@@ -12,7 +13,7 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 class AdminGetAllDepartmentViewController extends AbstractController
 {
     public function __construct(
-        private readonly DepartmentRepository $departmentRepository,
+        private readonly QueryBusInterface $queryBus,
     ) {
     }
 
@@ -20,7 +21,7 @@ class AdminGetAllDepartmentViewController extends AbstractController
     #[IsGranted("ROLE_ADMIN")]
     public function __invoke(): Response
     {
-        $departments = $this->departmentRepository->findAll();
+        $departments = $this->queryBus->ask(new ListDepartmentsQuery());
         return $this->render('@Repas/Department/admin_departments.html.twig', [
             'departments' => $departments,
         ]);
