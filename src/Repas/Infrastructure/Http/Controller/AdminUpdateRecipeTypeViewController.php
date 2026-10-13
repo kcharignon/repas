@@ -3,9 +3,10 @@
 namespace Repas\Repas\Infrastructure\Http\Controller;
 
 
-use Repas\Repas\Domain\Interface\RecipeTypeRepository;
+use Repas\Repas\Application\Query\GetRecipeType\GetRecipeTypeQuery;
 use Repas\Repas\Infrastructure\Http\Form\UpdateRecipeTypeType;
 use Repas\Shared\Application\Interface\CommandBusInterface;
+use Repas\Shared\Application\Interface\QueryBusInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -16,7 +17,7 @@ class AdminUpdateRecipeTypeViewController extends AbstractController
 {
     public function __construct(
         private readonly CommandBusInterface $commandBus,
-        private readonly RecipeTypeRepository $recipeTypeRepository,
+        private readonly QueryBusInterface $queryBus,
     ) {
     }
 
@@ -24,7 +25,7 @@ class AdminUpdateRecipeTypeViewController extends AbstractController
     #[IsGranted("ROLE_ADMIN")]
     public function __invoke(string $id, Request $request): Response
     {
-        $recipeType = $this->recipeTypeRepository->findOneBySlug($id);
+        $recipeType = $this->queryBus->ask(new GetRecipeTypeQuery($id));
         $form = $this->createForm(UpdateRecipeTypeType::class, $recipeType);
         $form->handleRequest($request);
         if ($form->isSubmitted() && $form->isValid()) {

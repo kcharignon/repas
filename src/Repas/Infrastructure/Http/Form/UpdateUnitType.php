@@ -4,7 +4,7 @@ namespace Repas\Repas\Infrastructure\Http\Form;
 
 
 use Repas\Repas\Application\Command\UpdateUnit\UpdateUnitCommand;
-use Repas\Repas\Domain\Model\Unit;
+use Repas\Repas\Application\Query\ListUnits\UnitDTO;
 use Symfony\Component\Form\FormInterface;
 use Traversable;
 
@@ -12,15 +12,15 @@ class UpdateUnitType extends AbstractUnitType
 {
     public function mapDataToForms(mixed $viewData, Traversable $forms): void
     {
-        if (!$viewData instanceof Unit) {
+        if (!$viewData instanceof UnitDTO) {
             return;
         }
 
         /** @var FormInterface[] $forms */
         $forms = iterator_to_array($forms);
 
-        $forms['name']->setData($viewData->getName());
-        $forms['symbol']->setData($viewData->getSymbol());
+        $forms['name']->setData($viewData->name);
+        $forms['symbol']->setData($viewData->symbol);
     }
 
     public function mapFormsToData(Traversable $forms, mixed &$viewData): void
@@ -29,7 +29,7 @@ class UpdateUnitType extends AbstractUnitType
         $forms = iterator_to_array($forms);
 
         $viewData = new UpdateUnitCommand(
-            slug: $viewData->getSlug(),
+            slug: $viewData->slug,
             name: $forms['name']->getData(),
             symbol: $forms['symbol']->getData(),
         );

@@ -3,9 +3,10 @@
 namespace Repas\Repas\Infrastructure\Http\Controller;
 
 
-use Repas\Repas\Domain\Interface\DepartmentRepository;
+use Repas\Repas\Application\Query\GetDepartment\GetDepartmentQuery;
 use Repas\Repas\Infrastructure\Http\Form\UpdateDepartmentType;
 use Repas\Shared\Application\Interface\CommandBusInterface;
+use Repas\Shared\Application\Interface\QueryBusInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -15,7 +16,7 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 class AdminUpdateDepartmentViewController extends AbstractController
 {
     public function __construct(
-        private readonly DepartmentRepository $departmentRepository,
+        private readonly QueryBusInterface $queryBus,
         private readonly CommandBusInterface $commandBus,
     ) {
     }
@@ -24,7 +25,7 @@ class AdminUpdateDepartmentViewController extends AbstractController
     #[IsGranted("ROLE_ADMIN")]
     public function __invoke(string $slug, Request $request): Response
     {
-        $department = $this->departmentRepository->findOneBySlug($slug);
+        $department = $this->queryBus->ask(new GetDepartmentQuery($slug));
 
         $form = $this->createForm(UpdateDepartmentType::class, $department);
         $form->handleRequest($request);
