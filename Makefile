@@ -45,7 +45,7 @@ restart: ## Restart the project
 	@$(MAKE) start
 
 ## —— Code quality 📋 ————————————————————————————————————————————————————————
-.PHONY: test test-coverage deptrac phpstan api-doc-validate api-doc-coverage jwt-keys quality
+.PHONY: test test-coverage deptrac phpstan api-doc-validate api-doc-coverage jwt-keys quality sql-budget-update cache-removal-check
 
 test: ## Run PHPUnit tests
 	@echo "🧪 Exécution des tests avec PHPUnit..."
@@ -93,6 +93,12 @@ jwt-keys: ## Generate the JWT key pair if missing (config/jwt, git-ignored)
 	@$(EXEC_PHP) bin/console lexik:jwt:generate-keypair --skip-if-exists
 
 quality: deptrac phpstan api-doc-validate api-doc-coverage ## Run architecture, static analysis and API doc checks
+
+sql-budget-update: ## Régénère les budgets SQL des use cases d'écriture après un allègement (tests/Repas/WriteBudget)
+	@$(DOCKER_COMPOSE) exec -T -e UPDATE_SQL_BUDGETS=1 php vendor/bin/phpunit --no-coverage tests/Repas/WriteBudget
+
+cache-removal-check: ## ModelCache peut-il être retiré ? (aucun use case ne doit faire plus de requêtes sans lui)
+	@$(EXEC_PHP) php bin/cache-removal-check
 
 
 ## —— Helper 🛠️ ——————————————————————————————————————————————————————————————
