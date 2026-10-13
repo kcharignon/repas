@@ -1,0 +1,18 @@
+# ADR 0003 / 0004 (roadmap, phase 7) : la couche HTTP (controllers Twig, controllers API, formulaires) ne lit ni n'écrit
+# jamais via un Repository : la lecture passe par le QueryBus, l'écriture par le CommandBus.
+deptrac:
+  paths:
+    - ../../src
+  layers:
+    - name: Repository
+      collectors:
+        - type: classLike
+          value: .*Repository$
+    - name: Http
+      collectors:
+        - type: classLike
+          value: .*\\Infrastructure\\Http\\.*
+
+  ruleset:
+    Http:
+      - '!Repository'
