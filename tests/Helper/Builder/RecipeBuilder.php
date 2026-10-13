@@ -126,6 +126,12 @@ class RecipeBuilder implements Builder
         return $this;
     }
 
+    public function withOriginalId(?string $originalId): self
+    {
+        $this->originalId = $originalId;
+        return $this;
+    }
+
     public function withServing(int $serving): self
     {
         $this->serving = $serving;
