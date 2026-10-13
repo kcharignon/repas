@@ -6,6 +6,7 @@ use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Query\Expr\Join;
 use Repas\Repas\Application\Loader\IngredientLoader;
 use Repas\Repas\Application\Query\GetIngredient\IngredientDTO;
+use Repas\Repas\Application\Query\ListAvailableIngredients\IngredientOptionDTO;
 use Repas\Repas\Application\Query\ListCompatibleUnits\CompatibleUnitDTO;
 use Repas\Repas\Application\Query\ListDepartments\DepartmentDTO;
 use Repas\Repas\Application\Query\ListIngredientsByDepartment\DepartmentIngredientsDTO;
@@ -143,6 +144,21 @@ final readonly class IngredientPostgreSQLLoader implements IngredientLoader
         }
 
         return $units;
+    }
+
+    public function listAvailable(string $userId): array
+    {
+        $rows = $this->entityManager->createQueryBuilder()
+            ->select('i.slug AS slug', 'i.name AS name')
+            ->from(Ingredient::class, 'i')
+            ->where('i.creatorId = :user OR i.creatorId IS NULL')
+            ->setParameter('user', $userId)
+            ->orderBy('i.sluggedName', 'ASC')
+            ->addOrderBy('i.slug', 'ASC')
+            ->getQuery()
+            ->getArrayResult();
+
+        return array_map(static fn(array $row): IngredientOptionDTO => new IngredientOptionDTO($row['slug'], $row['name']), $rows);
     }
 
     private function canEdit(?string $creatorId, string $viewerId, bool $viewerIsAdmin): bool

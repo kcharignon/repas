@@ -3,6 +3,7 @@
 namespace Repas\Repas\Application\Loader;
 
 use Repas\Repas\Application\Query\GetIngredient\IngredientDTO;
+use Repas\Repas\Application\Query\ListAvailableIngredients\IngredientOptionDTO;
 use Repas\Repas\Application\Query\ListCompatibleUnits\CompatibleUnitDTO;
 use Repas\Repas\Application\Query\ListIngredientsByDepartment\DepartmentIngredientsDTO;
 use Repas\Repas\Domain\Exception\DepartmentException;
@@ -32,4 +33,10 @@ interface IngredientLoader
      * @throws IngredientException
      */
     public function listCompatibleUnits(string $ingredientSlug): array;
+    /**
+     * Ingrédients que l'utilisateur peut utiliser (communs et les siens), triés par nom : choix des formulaires.
+     *
+     * @return list<IngredientOptionDTO>
+     */
+    public function listAvailable(string $userId): array;
 }

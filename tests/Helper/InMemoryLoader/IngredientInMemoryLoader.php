@@ -5,6 +5,7 @@ namespace Repas\Tests\Helper\InMemoryLoader;
 
 use Repas\Repas\Application\Loader\IngredientLoader;
 use Repas\Repas\Application\Query\GetIngredient\IngredientDTO;
+use Repas\Repas\Application\Query\ListAvailableIngredients\IngredientOptionDTO;
 use Repas\Repas\Application\Query\ListCompatibleUnits\CompatibleUnitDTO;
 use Repas\Repas\Application\Query\ListIngredientsByDepartment\DepartmentIngredientsDTO;
 use Repas\Repas\Domain\Exception\DepartmentException;
@@ -24,13 +25,18 @@ class IngredientInMemoryLoader implements IngredientLoader
     /** @var list<string> */
     public array $listCompatibleUnitsCalls = [];
 
+    /** @var list<string> */
+    public array $listAvailableCalls = [];
+
     /**
      * @param list<CompatibleUnitDTO> $compatibleUnits
+     * @param list<IngredientOptionDTO> $availableIngredients
      */
     public function __construct(
         private readonly ?DepartmentIngredientsDTO $departmentIngredients = null,
         private readonly ?IngredientDTO $ingredient = null,
         private readonly array $compatibleUnits = [],
+        private readonly array $availableIngredients = [],
     ) {
     }
 
@@ -53,5 +59,11 @@ class IngredientInMemoryLoader implements IngredientLoader
         $this->listCompatibleUnitsCalls[] = $ingredientSlug;
 
         return $this->compatibleUnits;
+    }
+    public function listAvailable(string $userId): array
+    {
+        $this->listAvailableCalls[] = $userId;
+
+        return $this->availableIngredients;
     }
 }
