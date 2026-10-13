@@ -5,6 +5,7 @@ namespace Repas\Repas\Infrastructure\Loader;
 use Doctrine\ORM\EntityManagerInterface;
 use Repas\Repas\Application\Loader\RecipeTypeLoader;
 use Repas\Repas\Application\Query\ListRecipeTypes\RecipeTypeDTO;
+use Repas\Repas\Domain\Exception\RecipeException;
 use Repas\Repas\Infrastructure\Entity\RecipeType;
 
 final readonly class RecipeTypePostgreSQLLoader implements RecipeTypeLoader
@@ -28,5 +29,22 @@ final readonly class RecipeTypePostgreSQLLoader implements RecipeTypeLoader
             static fn (array $row): RecipeTypeDTO => new RecipeTypeDTO($row['slug'], $row['name'], $row['image'], $row['sequence']),
             $rows,
         );
+    }
+
+    public function get(string $slug): RecipeTypeDTO
+    {
+        $row = $this->entityManager->createQueryBuilder()
+            ->select('t.slug AS slug', 't.name AS name', 't.image AS image', 't.sequence AS sequence')
+            ->from(RecipeType::class, 't')
+            ->where('t.slug = :slug')
+            ->setParameter('slug', $slug)
+            ->getQuery()
+            ->getOneOrNullResult();
+
+        if ($row === null) {
+            throw RecipeException::typeNotFound($slug);
+        }
+
+        return new RecipeTypeDTO($row['slug'], $row['name'], $row['image'], (int) $row['sequence']);
     }
 }

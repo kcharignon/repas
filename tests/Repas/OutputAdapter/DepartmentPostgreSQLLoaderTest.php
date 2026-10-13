@@ -5,6 +5,7 @@ namespace Repas\Tests\Repas\OutputAdapter;
 
 use Repas\Repas\Application\Loader\DepartmentLoader;
 use Repas\Repas\Application\Query\ListDepartments\DepartmentDTO;
+use Repas\Repas\Domain\Exception\DepartmentException;
 use Repas\Repas\Domain\Interface\DepartmentRepository;
 use Repas\Tests\Helper\Builder\DepartmentBuilder;
 use Repas\Tests\Helper\DatabaseTestCase;
@@ -47,6 +48,27 @@ class DepartmentPostgreSQLLoaderTest extends DatabaseTestCase
             new DepartmentDTO('zzz-outils', 'Zzz Outils', 'file://images/zzz.jpg'),
             $this->findBySlug($result, 'zzz-outils'),
         );
+    }
+
+    public function testGetReturnsTheDepartment(): void
+    {
+        // Given
+        $this->departmentRepository->save(new DepartmentBuilder()->withSlug('zzz-outils')->withName('Zzz Outils')->withImage('file://images/zzz.jpg')->build());
+
+        // When
+        $result = $this->departmentLoader->get('zzz-outils');
+
+        // Then
+        $this->assertEquals(new DepartmentDTO('zzz-outils', 'Zzz Outils', 'file://images/zzz.jpg'), $result);
+    }
+
+    public function testGetFailsForAnUnknownDepartment(): void
+    {
+        // Then
+        $this->expectExceptionObject(DepartmentException::notFound());
+
+        // When
+        $this->departmentLoader->get('inconnu');
     }
 
     public function testListIsOrderedBySlug(): void

@@ -5,6 +5,7 @@ namespace Repas\Repas\Infrastructure\Loader;
 use Doctrine\ORM\EntityManagerInterface;
 use Repas\Repas\Application\Loader\UnitLoader;
 use Repas\Repas\Application\Query\ListUnits\UnitDTO;
+use Repas\Repas\Domain\Exception\UnitException;
 use Repas\Repas\Infrastructure\Entity\Unit;
 
 final readonly class UnitPostgreSQLLoader implements UnitLoader
@@ -27,5 +28,22 @@ final readonly class UnitPostgreSQLLoader implements UnitLoader
             static fn (array $row): UnitDTO => new UnitDTO($row['slug'], $row['name'], $row['symbol']),
             $rows,
         );
+    }
+
+    public function get(string $slug): UnitDTO
+    {
+        $row = $this->entityManager->createQueryBuilder()
+            ->select('u.slug AS slug', 'u.name AS name', 'u.symbol AS symbol')
+            ->from(Unit::class, 'u')
+            ->where('u.slug = :slug')
+            ->setParameter('slug', $slug)
+            ->getQuery()
+            ->getOneOrNullResult();
+
+        if ($row === null) {
+            throw UnitException::notFound($slug);
+        }
+
+        return new UnitDTO($row['slug'], $row['name'], $row['symbol']);
     }
 }
