@@ -13,11 +13,11 @@ final readonly class ShoppingListDTO
         public string $displayName,
         #[OA\Property(description: 'Statut de la liste', enum: ['ACTIVE', 'PAUSED', 'COMPLETED'], example: 'ACTIVE')]
         public string $status,
-        #[OA\Property(description: 'La liste est en cours (au plus une par utilisateur)')]
+        #[OA\Property(description: 'La liste est en cours (au plus une par utilisateur)', example: true)]
         public bool $isActive,
-        #[OA\Property(description: 'La liste est en pause')]
+        #[OA\Property(description: 'La liste est en pause', example: false)]
         public bool $isPaused,
-        #[OA\Property(description: 'La liste est terminée')]
+        #[OA\Property(description: 'La liste est terminée', example: false)]
         public bool $isCompleted,
         #[OA\Property(description: 'Date de création (ATOM)', example: '2026-10-12T10:00:00+02:00')]
         public string $createdAt,
