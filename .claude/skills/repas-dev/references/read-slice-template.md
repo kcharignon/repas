@@ -113,7 +113,7 @@ final readonly class DepartmentPostgreSQLLoader implements DepartmentLoader
         $rows = $this->entityManager->createQueryBuilder()
             ->select('d.slug AS slug', 'd.name AS name', 'd.image AS image')
             ->from(Department::class, 'd')
-            ->orderBy('d.name', 'ASC')
+            ->orderBy('d.slug', 'ASC')
             ->getQuery()
             ->getArrayResult();
 
@@ -148,8 +148,8 @@ class ListDepartmentsQueryHandlerTest extends TestCase
     public function testReturnsWhatTheLoaderReturns(): void
     {
         // Given
-        $departments = [DepartmentDTOBuilder::aDepartment()->build()];
-        $loader = new DepartmentInMemoryLoader(departments: $departments);
+        $departments = [new DepartmentDTOBuilder()->withSlug('boulangerie')->build()];
+        $loader = new DepartmentInMemoryLoader($departments);
         $handler = new ListDepartmentsQueryHandler($loader);
 
         // When
@@ -193,7 +193,7 @@ Test d'un `CommandHandler` : même esprit, avec les `{X}InMemoryRepository` + `S
 ```php
 class DepartmentPostgreSQLLoaderTest extends DatabaseTestCase
 {
-    public function testListReturnsCreatedDepartmentsOrderedByName(): void
+    public function testListIsOrderedBySlug(): void
     {
         // Given
         $repository = static::getContainer()->get(DepartmentRepository::class);
@@ -209,12 +209,12 @@ class DepartmentPostgreSQLLoaderTest extends DatabaseTestCase
         $this->assertContainsOnlyInstancesOf(DepartmentDTO::class, $result);
         $this->assertContains('aaa-outils', $slugs);
         $this->assertContains('zzz-outils', $slugs);
-        $this->assertLessThan(array_search('zzz-outils', $slugs), array_search('aaa-outils', $slugs)); // tri
+        $this->assertLessThan(array_search('zzz-outils', $slugs), array_search('aaa-outils', $slugs));
     }
 }
 ```
 
-Compléter : cas vide (possible seulement une fois les fixtures globales retirées), filtres, `NotFound`. Si le Loader remplace un N+1, assert le nombre de requêtes.
+Piège : le tri se prouve par la position relative de deux enregistrements créés par le test (`aaa-…` avant `zzz-…`), jamais en comparant toute la liste à `sort()` PHP (la collation PostgreSQL ignore parfois la casse et les tirets). Compléter : cas vide (possible seulement une fois les fixtures globales retirées), filtres, `NotFound`. Si le Loader remplace un N+1, assert le nombre de requêtes.
 
 ## 7. Controller Twig — bascule (existant)
 
@@ -282,4 +282,6 @@ Entrée en query string : `#[MapQueryString(validationFailedStatusCode: 422)] Li
 
 ## 9. Test du controller API — `tests/Repas/InputAdapter/ListDepartmentsApiControllerTest.php`
 
-Vérifier : (a) la query construite (`MockQueryBus::getLastAskedQuery()`), (b) le statut, (c) **les clés JSON** de chaque DTO, (d) sans token → 401. Remplacer le bus : `static::getContainer()->set(QueryBusInterface::class, $mockQueryBus)`. Les doubles `MockQueryBus` / `MockCommandBus` sont à créer dans `tests/Helper/` à la première slice qui en a besoin (copier le principe de `Compliance/tests/Helper/MockQueryBus.php`) : enregistrent les messages, rendent une valeur préprogrammée par classe de query.
+Vérifier : (a) la query construite (`MockQueryBus::getLastAskedQuery()`), (b) le statut, (c) **les clés JSON** de chaque DTO, (d) sans token → 401. Modèle complet : `tests/Repas/InputAdapter/ListDepartmentsApiControllerTest.php`. Le test étend `DatabaseTestCase` (il crée un utilisateur réel pour le JWT), remplace le bus dans `setUp()` avec `static::getContainer()->set(QueryBusInterface::class, $mockQueryBus)` (avant la première requête du client : le kernel redémarre entre deux requêtes), puis signe un jeton sans passer par `/api/login_check` : `static::getContainer()->get(JWTTokenManagerInterface::class)->create($user)` après `UserRepository::save()`.
+
+Double : `tests/Helper/MockQueryBus.php` (existe) : `willReturn(XQuery::class, $resultat)`, `getLastAskedQuery()`, `countAskedQueries()` ; lève une `LogicException` si une query sans résultat programmé est posée. Un `MockCommandBus` du même modèle est à créer à la première slice d'écriture API.
