@@ -6,6 +6,8 @@ namespace Repas\Repas\Infrastructure\Http\Controller;
 use Repas\Repas\Infrastructure\Http\Form\CreateRecipeTypeType;
 use Repas\Shared\Application\Interface\CommandBusInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Repas\Repas\Domain\Exception\RecipeException;
+use Symfony\Component\Form\FormError;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
@@ -26,9 +28,16 @@ class AdminCreateRecipeTypeViewController extends AbstractController
         $form->handleRequest($request);
         if ($form->isSubmitted() && $form->isValid()) {
             $command = $form->getData();
-            $this->commandBus->dispatch($command);
+            try {
+                $this->commandBus->dispatch($command);
 
-            return $this->redirectToRoute('view_admin_recipe_types');
+                return $this->redirectToRoute('view_admin_recipe_types');
+            } catch (RecipeException $exception) {
+                if ($exception->getCode() !== Response::HTTP_CONFLICT) {
+                    throw $exception;
+                }
+                $form->get('name')->addError(new FormError('Un type de recette de ce nom existe déjà.'));
+            }
         }
 
         return $this->render('@Repas/RecipeType/admin_recipe_type_form.html.twig', [
