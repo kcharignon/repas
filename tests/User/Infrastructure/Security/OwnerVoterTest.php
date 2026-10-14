@@ -11,6 +11,7 @@ use Repas\User\Infrastructure\Security\OwnerVoter;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
 use Symfony\Component\Security\Core\Authentication\Token\UsernamePasswordToken;
+use Symfony\Component\Security\Core\Authorization\AccessDecision;
 use Symfony\Component\Security\Core\Authorization\AccessDecisionManagerInterface;
 use Symfony\Component\Security\Core\Authorization\Voter\VoterInterface;
 
@@ -112,7 +113,7 @@ class OwnerVoterTest extends TestCase
             {
             }
 
-            public function decide(TokenInterface $token, array $attributes, mixed $object = null, bool $allowMultipleVotes = false): bool
+            public function decide(TokenInterface $token, array $attributes, mixed $object = null, ?AccessDecision $accessDecision = null): bool
             {
                 return $this->admin;
             }
