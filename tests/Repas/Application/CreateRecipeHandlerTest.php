@@ -7,7 +7,7 @@ use PHPUnit\Framework\TestCase;
 use Repas\Repas\Application\Command\CreateRecipe\CreateRecipeCommand;
 use Repas\Repas\Application\Command\CreateRecipe\CreateRecipeHandler;
 use Repas\Repas\Application\Command\CreateRecipe\CreateRecipeRowSubCommand;
-use Repas\Repas\Domain\Event\RecipeCreatedEvent;
+use Repas\Shared\Domain\Event\RecipeCreatedEvent;
 use Repas\Repas\Domain\Exception\IngredientException;
 use Repas\Repas\Domain\Exception\RecipeException;
 use Repas\Repas\Domain\Interface\IngredientRepository;

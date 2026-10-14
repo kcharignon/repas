@@ -45,7 +45,7 @@ class ShoppingList
     {
         return new static (
             id: $shoppingListModel->getId(),
-            ownerId: $shoppingListModel->getOwner()->getId(),
+            ownerId: $shoppingListModel->getOwnerId(),
             createdAt: $shoppingListModel->getCreatedAt(),
             status: $shoppingListModel->getStatus(),
             name: $shoppingListModel->getName(),

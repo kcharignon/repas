@@ -4,7 +4,7 @@ namespace Repas\Repas\Application\Command\CreateIngredient;
 
 
 use Repas\Repas\Domain\Event\CreateIngredientWithConversionEvent;
-use Repas\Repas\Domain\Event\IngredientCreatedEvent;
+use Repas\Shared\Domain\Event\IngredientCreatedEvent;
 use Repas\Repas\Domain\Exception\DepartmentException;
 use Repas\Repas\Domain\Exception\IngredientException;
 use Repas\Repas\Domain\Exception\UnitException;

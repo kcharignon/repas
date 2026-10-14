@@ -7,7 +7,7 @@ use Repas\Repas\Application\Command\CopyRecipe\CopyRecipeCommand;
 use Repas\Shared\Application\Interface\CommandBusInterface;
 use Repas\Shared\Domain\Tool\UuidGenerator;
 use Repas\Shared\Domain\Exception\DomainException;
-use Repas\User\Domain\Model\User;
+use Repas\Shared\Domain\Interface\AuthenticatedUser;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Attribute\Route;
@@ -25,7 +25,7 @@ class CopyRecipeViewController extends AbstractController
     public function __invoke(string $id): JsonResponse
     {
         $userConnected = $this->getUser();
-        assert($userConnected instanceof User);
+        assert($userConnected instanceof AuthenticatedUser);
 
         $command = new CopyRecipeCommand($id, $userConnected->getId(), UuidGenerator::new());
         try {

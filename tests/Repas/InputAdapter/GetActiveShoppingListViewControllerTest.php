@@ -44,7 +44,7 @@ class GetActiveShoppingListViewControllerTest extends QueryBusWebTestCase
 
         // Then
         $this->assertSame(200, $this->client->getResponse()->getStatusCode());
-        $created = static::getContainer()->get(ShoppingListRepository::class)->findOneActivateByOwner($user);
+        $created = static::getContainer()->get(ShoppingListRepository::class)->findOneActivateByOwner($user->getId());
         $this->assertSame(ShoppingListStatus::ACTIVE, $created->getStatus());
         $query = $this->queryBus->getLastAskedQuery();
         $this->assertInstanceOf(GetShoppingListQuery::class, $query);

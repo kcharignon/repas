@@ -7,20 +7,20 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Repas\Repas\Application\Command\StoppedShoppingList\StoppedShoppingListCommand;
 use Repas\Repas\Application\Command\StoppedShoppingList\StoppedShoppingListHandler;
+use Repas\Shared\Domain\Event\ShoppingListCompletedEvent;
 use Repas\Repas\Domain\Exception\ShoppingListException;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Repas\Domain\Model\ShoppingListStatus as Status;
 use Repas\Tests\Helper\Builder\ShoppingListBuilder;
 use Repas\Tests\Helper\Builder\UserBuilder;
 use Repas\Tests\Helper\InMemoryRepository\ShoppingListInMemoryRepository;
-use Repas\Tests\Helper\InMemoryRepository\UserInMemoryRepository;
-use Repas\User\Domain\Interface\UserRepository;
+use Repas\Tests\Helper\InMemoryRepository\SpyEventDispatcher;
 
 class StoppedShoppingListCommandHandlerTest extends TestCase
 {
     private readonly StoppedShoppingListHandler $handler;
     private readonly ShoppingListRepository $shoppingListRepository;
-    private readonly UserRepository $userRepository;
+    private readonly SpyEventDispatcher $eventDispatcher;
 
     protected function setUp(): void
     {
@@ -32,10 +32,10 @@ class StoppedShoppingListCommandHandlerTest extends TestCase
             new ShoppingListBuilder()->withId('fini-id')->withStatus(Status::COMPLETED)->withOwner($user)->build(),
         ]);
 
-        $this->userRepository = new UserInMemoryRepository([$user]);
+        $this->eventDispatcher = new SpyEventDispatcher();
         $this->handler = new StoppedShoppingListHandler(
             $this->shoppingListRepository,
-            $this->userRepository,
+            $this->eventDispatcher,
         );
     }
 
@@ -75,8 +75,16 @@ class StoppedShoppingListCommandHandlerTest extends TestCase
             $this->assertEquals($status, $actual->getStatus());
         }
 
-        $actualUser = $this->userRepository->findOneById('user-id');
-        $this->assertCount(1, $actualUser->getShoppingListStats());
+        // Le contexte `User` en tient la statistique : le handler annonce la fin de la liste et rien d'autre
+        $completed = $this->shoppingListRepository->findOneById($shoppingListId);
+        $this->assertEquals([new ShoppingListCompletedEvent(
+            ownerId: 'user-id',
+            shoppingListId: $shoppingListId,
+            createdAt: $completed->getCreatedAt(),
+            mealCount: 0,
+            ingredientCount: 0,
+            rowCount: 0,
+        )], $this->eventDispatcher->eventDispatched);
     }
 
     public function testFailedHandleActivatedShoppingListNotFound(): void
@@ -88,6 +96,10 @@ class StoppedShoppingListCommandHandlerTest extends TestCase
         $this->expectExceptionObject(ShoppingListException::shoppingListNotFound('not-founded-id'));
 
         // Act
-        ($this->handler)($command);
+        try {
+            ($this->handler)($command);
+        } finally {
+            $this->assertSame([], $this->eventDispatcher->eventDispatched);
+        }
     }
 }

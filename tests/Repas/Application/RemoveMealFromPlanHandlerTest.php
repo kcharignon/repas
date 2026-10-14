@@ -23,16 +23,12 @@ use Repas\Tests\Helper\InMemoryRepository\ConversionInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\RecipeInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\ShoppingListInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\UnitInMemoryRepository;
-use Repas\Tests\Helper\InMemoryRepository\UserInMemoryRepository;
 use Repas\Tests\Helper\RepasAssert;
-use Repas\User\Domain\Exception\UserException;
-use Repas\User\Domain\Interface\UserRepository;
 use Repas\User\Domain\Model\User;
 
 class RemoveMealFromPlanHandlerTest extends TestCase
 {
     private readonly removeMealFromPlanHandler $handler;
-    private readonly UserRepository $userRepository;
     private readonly ShoppingListRepository $shoppingListRepository;
     private readonly RecipeRepository $recipeRepository;
     private readonly ConversionRepository $conversionRepository;
@@ -58,7 +54,6 @@ class RemoveMealFromPlanHandlerTest extends TestCase
             ->withOwner($this->user)
             ->addRecipe($this->recipe)
             ->build();
-        $this->userRepository = new UserInMemoryRepository();
         $this->shoppingListRepository = new ShoppingListInMemoryRepository();
         $this->recipeRepository = new RecipeInMemoryRepository();
         $this->conversionRepository = new ConversionInMemoryRepository([
@@ -72,7 +67,6 @@ class RemoveMealFromPlanHandlerTest extends TestCase
             $this->unitRepository,
         );
         $this->handler = new removeMealFromPlanHandler(
-            $this->userRepository,
             $this->shoppingListRepository,
             $this->recipeRepository,
             $this->conversionService
@@ -82,7 +76,6 @@ class RemoveMealFromPlanHandlerTest extends TestCase
     public function testSuccessfullyHandleRemoveMealFromPlan(): void
     {
         // Arrange
-        $this->userRepository->save($this->user);
         $this->recipeRepository->save($this->recipe);
         $this->shoppingListRepository->save($this->shoppingList);
         $command = new removeMealFromPlanCommand(
@@ -98,14 +91,13 @@ class RemoveMealFromPlanHandlerTest extends TestCase
             ->withId('shopping-list-id')
             ->withOwner($this->user)
             ->build();
-        $actual = $this->shoppingListRepository->findOneActivateByOwner($this->user);
+        $actual = $this->shoppingListRepository->findOneActivateByOwner($this->user->getId());
         RepasAssert::assertShoppingList($expected, $actual);
     }
 
     public function testSuccessfullyHandleRemoveMealFromPlanWithEmptyShoppingList(): void
     {
         // Arrange
-        $this->userRepository->save($this->user);
         $this->recipeRepository->save($this->recipe);
         $this->shoppingListRepository->save(new ShoppingListBuilder()
             ->withOwner($this->user)
@@ -125,29 +117,13 @@ class RemoveMealFromPlanHandlerTest extends TestCase
             ->withId('shopping-list-id')
             ->withOwner($this->user)
             ->build();
-        $actual = $this->shoppingListRepository->findOneActivateByOwner($this->user);
+        $actual = $this->shoppingListRepository->findOneActivateByOwner($this->user->getId());
         RepasAssert::assertShoppingList($expected, $actual);
-    }
-
-    public function testFailedHandleRemoveMealFromPlanUnknownUser(): void
-    {
-        // Arrange
-        $command = new removeMealFromPlanCommand(
-            "user-id",
-            "recipe-id",
-        );
-
-        // Assert
-        $this->expectExceptionObject(UserException::NotFound('user-id'));
-
-        // Act
-        ($this->handler)($command);
     }
 
     public function testFailedHandleRemoveMealFromPlanUnknownRecipe(): void
     {
         // Arrange
-        $this->userRepository->save($this->user);
         $this->shoppingListRepository->save(new ShoppingListBuilder()->withOwner($this->user)->build());
         $command = new removeMealFromPlanCommand(
             "user-id",
@@ -164,7 +140,6 @@ class RemoveMealFromPlanHandlerTest extends TestCase
     public function testFailedHandleRemoveMealFromPlanNoActiveShoppingList(): void
     {
         // Arrange
-        $this->userRepository->save($this->user);
         $this->recipeRepository->save($this->recipe);
         $command = new removeMealFromPlanCommand(
             "user-id",

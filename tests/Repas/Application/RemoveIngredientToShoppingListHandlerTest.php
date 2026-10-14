@@ -17,14 +17,11 @@ use Repas\Tests\Helper\Builder\ShoppingListBuilder;
 use Repas\Tests\Helper\Builder\UserBuilder;
 use Repas\Tests\Helper\InMemoryRepository\IngredientInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\ShoppingListInMemoryRepository;
-use Repas\Tests\Helper\InMemoryRepository\UserInMemoryRepository;
-use Repas\User\Domain\Interface\UserRepository;
 use Repas\User\Domain\Model\User;
 
 class RemoveIngredientToShoppingListHandlerTest extends TestCase
 {
     private RemoveIngredientToShoppingListHandler $handler;
-    private UserRepository $userRepository;
     private ShoppingListRepository $shoppingListRepository;
     private IngredientRepository $ingredientRepository;
 
@@ -33,17 +30,14 @@ class RemoveIngredientToShoppingListHandlerTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->userRepository = new UserInMemoryRepository();
         $this->shoppingListRepository = new ShoppingListInMemoryRepository();
         $this->ingredientRepository = new IngredientInMemoryRepository();
         $this->handler = new RemoveIngredientToShoppingListHandler(
-            $this->userRepository,
             $this->shoppingListRepository,
             $this->ingredientRepository,
         );
 
         $this->user = new UserBuilder()->withId('user-id')->build();
-        $this->userRepository->save($this->user);
         $this->ingredient = new IngredientBuilder()->isPasta()->build();
         $this->ingredientRepository->save($this->ingredient);
     }

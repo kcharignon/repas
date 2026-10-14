@@ -4,7 +4,6 @@ namespace Repas\User\Domain\Model;
 
 
 use DateTimeImmutable;
-use Repas\Repas\Domain\Model\ShoppingList;
 use Repas\Shared\Domain\Interface\AuthenticatedUser;
 use Repas\Shared\Domain\Model\ModelInterface;
 use Repas\Shared\Domain\Model\ModelTrait;
@@ -155,14 +154,14 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, Passwor
         return $this;
     }
 
-    public function completedShoppingList(ShoppingList $shoppingList): User
+    public function completedShoppingList(string $shoppingListId, DateTimeImmutable $createdAt, int $meals, int $ingredients, int $rows): User
     {
         $this->statistics['shoppingLists'] ??= [];
-        $this->statistics['shoppingLists'][$shoppingList->getId()] = [
-            'createdAt' => $shoppingList->getCreatedAt(),
-            'meals' => $shoppingList->getMeals()->count(),
-            'ingredients' => $shoppingList->getIngredients()->count(),
-            'rows' => $shoppingList->getRows()->count(),
+        $this->statistics['shoppingLists'][$shoppingListId] = [
+            'createdAt' => $createdAt,
+            'meals' => $meals,
+            'ingredients' => $ingredients,
+            'rows' => $rows,
         ];
         return $this;
     }

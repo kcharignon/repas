@@ -1,6 +1,6 @@
 <?php
 
-namespace Repas\Repas\Domain\Event;
+namespace Repas\Shared\Domain\Event;
 
 
 use Repas\Shared\Domain\Tool\Tab;

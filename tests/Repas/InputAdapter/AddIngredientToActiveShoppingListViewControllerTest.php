@@ -28,7 +28,7 @@ class AddIngredientToActiveShoppingListViewControllerTest extends QueryBusWebTes
 
         // Then
         $this->assertSame(200, $this->client->getResponse()->getStatusCode());
-        $active = static::getContainer()->get(ShoppingListRepository::class)->findOneActivateByOwner($user);
+        $active = static::getContainer()->get(ShoppingListRepository::class)->findOneActivateByOwner($user->getId());
         $this->assertSame(1.0, $active->getIngredientQuantity($pasta));
         $query = $this->queryBus->getAskedQuery(GetActiveShoppingListSummaryQuery::class);
         $this->assertInstanceOf(GetActiveShoppingListSummaryQuery::class, $query);

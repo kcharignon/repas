@@ -8,7 +8,6 @@ use Repas\Repas\Domain\Exception\ShoppingListException;
 use Repas\Shared\Domain\Model\ModelInterface;
 use Repas\Shared\Domain\Model\ModelTrait;
 use Repas\Shared\Domain\Tool\Tab;
-use Repas\User\Domain\Model\User;
 use Repas\Repas\Domain\Model\ShoppingListStatus as Status;
 use Repas\Repas\Domain\Model\ShoppingListRow as Row;
 
@@ -23,7 +22,7 @@ final class ShoppingList implements ModelInterface
      */
     private function __construct(
         private string            $id,
-        private User              $owner,
+        private string            $ownerId,
         private DateTimeImmutable $createdAt,
         private Status            $status,
         private ?string           $name,
@@ -38,9 +37,12 @@ final class ShoppingList implements ModelInterface
         return $this->id;
     }
 
-    public function getOwner(): User
+    /**
+     * Identifiant du propriétaire de la liste (ADR 0013 règle 8 : un agrégat référence un utilisateur par son identifiant).
+     */
+    public function getOwnerId(): string
     {
-        return $this->owner;
+        return $this->ownerId;
     }
 
     public function getCreatedAt(): DateTimeImmutable
@@ -71,12 +73,12 @@ final class ShoppingList implements ModelInterface
 
     public static function create(
         string            $id,
-        User              $owner,
+        string            $ownerId,
         DateTimeImmutable $createdAt,
     ): ShoppingList {
         return new ShoppingList(
             id: $id,
-            owner: $owner,
+            ownerId: $ownerId,
             createdAt: $createdAt,
             status: Status::ACTIVE,
             name: null,
@@ -90,7 +92,7 @@ final class ShoppingList implements ModelInterface
     {
         return new self(
             id: $datas['id'],
-            owner: $datas['owner'],
+            ownerId: $datas['owner_id'],
             createdAt: $datas['created_at'],
             status: $datas['status'],
             name: $datas['name'],
@@ -123,19 +125,23 @@ final class ShoppingList implements ModelInterface
     /**
      * @throws ShoppingListException
      */
-    public function addMeal(string $id, Recipe $recipe): void
+    /**
+     * @param int $servings nombre de personnes du repas : celui du propriétaire (`AuthenticatedUser::getDefaultServing()`),
+     *                       que le use case transmet puisque la liste ne connaît pas l'utilisateur
+     */
+    public function addMeal(string $id, Recipe $recipe, int $servings): void
     {
         // Impossible de mettre la même recette deux fois dans une liste
         if ($this->hasRecipe($recipe)) {
             throw ShoppingListException::recipeAlreadyInList($recipe->getName());
         }
 
-        // Ajoute à la liste des recettes avec le nombre de personnes de l'auteur
+        // Ajoute à la liste des recettes avec le nombre de personnes demandé
         $this->meals[] = Meal::create(
             id: $id,
             shoppingListId: $this->id,
             recipeId: $recipe->getId(),
-            servings: $this->owner->getDefaultServing(),
+            servings: $servings,
         );
     }
 

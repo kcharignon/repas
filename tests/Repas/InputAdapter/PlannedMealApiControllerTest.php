@@ -19,7 +19,7 @@ class PlannedMealApiControllerTest extends QueryBusWebTestCase
 
         // Then
         $this->assertSame(204, $this->client->getResponse()->getStatusCode());
-        $this->assertEquals([new PlannedMealCommand($owner->getId(), 'recipe-1')], $commandBus->dispatched());
+        $this->assertEquals([new PlannedMealCommand($owner->getId(), 'recipe-1', $owner->getDefaultServing())], $commandBus->dispatched());
     }
 
     public function testRefusesAnUnauthenticatedRequest(): void

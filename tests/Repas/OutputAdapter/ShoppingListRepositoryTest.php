@@ -55,7 +55,7 @@ class ShoppingListRepositoryTest extends DatabaseTestCase
         RepasAssert::assertShoppingList($shoppingList, $actual);
 
         // Arrange
-        $shoppingList->addMeal('second-meal-id', $secondRecipe);
+        $shoppingList->addMeal('second-meal-id', $secondRecipe, 4);
 
         // Act
         $this->shoppingListRepository->save($shoppingList);
@@ -106,14 +106,14 @@ class ShoppingListRepositoryTest extends DatabaseTestCase
         $this->savedShoppingList($other, ShoppingListStatus::ACTIVE);
 
         // Act
-        $shoppingLists = $this->shoppingListRepository->findByOwner($user);
+        $shoppingLists = $this->shoppingListRepository->findByOwner($user->getId());
 
         // Assert
         RepasAssert::assertTabType(Tab::newEmptyTyped(ShoppingList::class), $shoppingLists);
         $this->assertCount(3, $shoppingLists);
         $this->assertEqualsCanonicalizing($expectedIds, $this->idsOf($shoppingLists));
         foreach ($shoppingLists as $shoppingList) {
-            RepasAssert::assertUser($shoppingList->getOwner(), $user);
+            $this->assertSame($user->getId(), $shoppingList->getOwnerId());
         }
     }
 
@@ -126,13 +126,13 @@ class ShoppingListRepositoryTest extends DatabaseTestCase
         $active = $this->savedShoppingList($user, ShoppingListStatus::ACTIVE);
 
         // Act
-        $shoppingList = $this->shoppingListRepository->findOneActivateByOwner($user);
+        $shoppingList = $this->shoppingListRepository->findOneActivateByOwner($user->getId());
 
         // Assert
         $this->assertInstanceOf(ShoppingList::class, $shoppingList);
         $this->assertSame($active->getId(), $shoppingList->getId());
         $this->assertEquals(ShoppingListStatus::ACTIVE, $shoppingList->getStatus());
-        RepasAssert::assertUser($shoppingList->getOwner(), $user);
+        $this->assertSame($user->getId(), $shoppingList->getOwnerId());
     }
 
     public function testFindOneActivateByOwnerReturnsNullWithoutActiveList(): void
@@ -142,7 +142,7 @@ class ShoppingListRepositoryTest extends DatabaseTestCase
         $this->savedShoppingList($user, ShoppingListStatus::PAUSED);
 
         // Act
-        $shoppingList = $this->shoppingListRepository->findOneActivateByOwner($user);
+        $shoppingList = $this->shoppingListRepository->findOneActivateByOwner($user->getId());
 
         // Assert
         $this->assertNull($shoppingList);

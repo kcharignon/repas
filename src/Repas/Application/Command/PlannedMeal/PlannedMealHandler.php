@@ -10,15 +10,12 @@ use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Repas\Domain\Model\ShoppingList;
 use Repas\Repas\Domain\Service\ConversionService;
 use Repas\Shared\Domain\Interface\UuidGenerator;
-use Repas\User\Domain\Exception\UserException;
-use Repas\User\Domain\Interface\UserRepository;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 #[AsMessageHandler]
 readonly class PlannedMealHandler
 {
     public function __construct(
-        private UserRepository $userRepository,
         private ShoppingListRepository $shoppingListRepository,
         private RecipeRepository $recipeRepository,
         private ConversionService $conversionService,
@@ -28,13 +25,11 @@ readonly class PlannedMealHandler
 
     /**
      * @throws ShoppingListException
-     * @throws UserException
      * @throws IngredientException
      */
     public function __invoke(PlannedMealCommand $command): void
     {
-        $owner = $this->userRepository->findOneById($command->ownerId);
-        $shoppingList = $this->shoppingListRepository->findOneActivateByOwner($owner);
+        $shoppingList = $this->shoppingListRepository->findOneActivateByOwner($command->ownerId);
 
         // Si aucune liste active on ne peut pas ajouter de repas
         if (!$shoppingList instanceof ShoppingList) {
@@ -43,10 +38,10 @@ readonly class PlannedMealHandler
 
         $recipe = $this->recipeRepository->findOneById($command->recipeId);
 
-        $shoppingList->addMeal($this->uuidGenerator->generate(), $recipe);
+        $shoppingList->addMeal($this->uuidGenerator->generate(), $recipe, $command->defaultServing);
 
         // On récupere les Ingredients de la recette dans les bonnes proportions
-        $rows = $recipe->getRowForServing($owner->getDefaultServing());
+        $rows = $recipe->getRowForServing($command->defaultServing);
 
         foreach ($rows as $row) {
             // On calcule la quantité dans l'unité d'achat

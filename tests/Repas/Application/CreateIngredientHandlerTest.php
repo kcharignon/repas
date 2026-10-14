@@ -7,7 +7,7 @@ use PHPUnit\Framework\TestCase;
 use Repas\Repas\Application\Command\CreateIngredient\CreateIngredientCommand;
 use Repas\Repas\Application\Command\CreateIngredient\CreateIngredientHandler;
 use Repas\Repas\Domain\Event\CreateIngredientWithConversionEvent;
-use Repas\Repas\Domain\Event\IngredientCreatedEvent;
+use Repas\Shared\Domain\Event\IngredientCreatedEvent;
 use Repas\Repas\Domain\Exception\DepartmentException;
 use Repas\Repas\Domain\Exception\IngredientException;
 use Repas\Repas\Domain\Exception\UnitException;

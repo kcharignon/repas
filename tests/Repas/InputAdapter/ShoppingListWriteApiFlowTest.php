@@ -51,7 +51,7 @@ class ShoppingListWriteApiFlowTest extends DatabaseTestCase
         $location = $this->client->getResponse()->headers->get('Location');
         $this->assertMatchesRegularExpression('#^/api/v1/shopping-lists/[0-9a-f-]{36}$#', $location);
         $created = $this->shoppingLists()->findOneById(basename($location));
-        $this->assertSame([$owner->getId(), ShoppingListStatus::ACTIVE], [$created->getOwner()->getId(), $created->getStatus()]);
+        $this->assertSame([$owner->getId(), ShoppingListStatus::ACTIVE], [$created->getOwnerId(), $created->getStatus()]);
     }
 
     public function testAnActiveListIsCreatedOnlyWhenNoneExists(): void
@@ -65,7 +65,7 @@ class ShoppingListWriteApiFlowTest extends DatabaseTestCase
 
         // Then
         $this->assertSame(204, $this->client->getResponse()->getStatusCode());
-        $this->assertSame($active->getId(), $this->shoppingLists()->findOneActivateByOwner($owner)->getId());
+        $this->assertSame($active->getId(), $this->shoppingLists()->findOneActivateByOwner($owner->getId())->getId());
     }
 
     public function testPlanningARecipeWithoutAnActiveListIsNotFound(): void

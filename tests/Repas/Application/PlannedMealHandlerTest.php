@@ -26,15 +26,11 @@ use Repas\Tests\Helper\InMemoryRepository\ConversionInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\RecipeInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\ShoppingListInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\UnitInMemoryRepository;
-use Repas\Tests\Helper\InMemoryRepository\UserInMemoryRepository;
 use Repas\Tests\Helper\RepasAssert;
-use Repas\User\Domain\Exception\UserException;
-use Repas\User\Domain\Interface\UserRepository;
 
 class PlannedMealHandlerTest extends TestCase
 {
     private readonly PlannedMealHandler $handler;
-    private readonly UserRepository $userRepository;
     private readonly ShoppingListRepository $shoppingListRepository;
     private readonly RecipeRepository $recipeRepository;
     private readonly ConversionService $conversionService;
@@ -43,7 +39,6 @@ class PlannedMealHandlerTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->userRepository = new UserInMemoryRepository();
         $this->shoppingListRepository = new ShoppingListInMemoryRepository();
         $this->recipeRepository = new RecipeInMemoryRepository();
         $this->unitRepository = new UnitInMemoryRepository();
@@ -67,7 +62,6 @@ class PlannedMealHandlerTest extends TestCase
         );
 
         $this->handler = new PlannedMealHandler(
-            $this->userRepository,
             $this->shoppingListRepository,
             $this->recipeRepository,
             $this->conversionService,
@@ -79,7 +73,6 @@ class PlannedMealHandlerTest extends TestCase
     {
         // Arrange
         $user = new UserBuilder()->withServing(2)->build();
-        $this->userRepository->save($user);
         $recipe = new RecipeBuilder()->isBasqueCake()->withAuthor($user)->build();
         $this->recipeRepository->save($recipe);
         $shoppingList = new ShoppingListBuilder()->withOwner($user)->build();
@@ -87,13 +80,14 @@ class PlannedMealHandlerTest extends TestCase
         $command = new PlannedMealCommand(
             $user->getId(),
             $recipe->getId(),
+            $user->getDefaultServing(),
         );
 
         // Act
         ($this->handler)($command);
 
         // Assert
-        $shoppingList = $this->shoppingListRepository->findOneActivateByOwner($user);
+        $shoppingList = $this->shoppingListRepository->findOneActivateByOwner($user->getId());
         $this->assertTrue($shoppingList->hasRecipe($recipe));
         $expected = new MealBuilder()
             ->withRecipe($recipe)
@@ -118,12 +112,12 @@ class PlannedMealHandlerTest extends TestCase
     {
         // Arrange
         $user = new UserBuilder()->build();
-        $this->userRepository->save($user);
         $recipe = new RecipeBuilder()->isPastaCarbonara()->withAuthor($user)->build();
         $this->recipeRepository->save($recipe);
         $command = new PlannedMealCommand(
             $user->getId(),
             $recipe->getId(),
+            $user->getDefaultServing(),
         );
 
         // Assert
@@ -137,13 +131,13 @@ class PlannedMealHandlerTest extends TestCase
     {
         // Arrange
         $user = new UserBuilder()->build();
-        $this->userRepository->save($user);
         $recipe = new RecipeBuilder()->isPastaCarbonara()->withAuthor($user)->build();
         $shoppingList = new ShoppingListBuilder()->withOwner($user)->build();
         $this->shoppingListRepository->save($shoppingList);
         $command = new PlannedMealCommand(
             $user->getId(),
             $recipe->getId(),
+            $user->getDefaultServing(),
         );
 
         // Assert
@@ -153,23 +147,4 @@ class PlannedMealHandlerTest extends TestCase
         ($this->handler)($command);
     }
 
-    public function testHandleFailedPlannedMealUserNotFound(): void
-    {
-        // Arrange
-        $user = new UserBuilder()->build();
-        $recipe = new RecipeBuilder()->isPastaCarbonara()->withAuthor($user)->build();
-        $this->recipeRepository->save($recipe);
-        $shoppingList = new ShoppingListBuilder()->withOwner($user)->build();
-        $this->shoppingListRepository->save($shoppingList);
-        $command = new PlannedMealCommand(
-            $user->getId(),
-            $recipe->getId(),
-        );
-
-        // Assert
-        $this->expectExceptionObject(UserException::notFound($user->getId()));
-
-        // Act
-        ($this->handler)($command);
-    }
 }

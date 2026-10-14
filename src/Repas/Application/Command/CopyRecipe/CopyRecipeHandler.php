@@ -2,7 +2,7 @@
 
 namespace Repas\Repas\Application\Command\CopyRecipe;
 
-use Repas\Repas\Domain\Event\RecipesOrIngredientsCreatedEvent;
+use Repas\Shared\Domain\Event\RecipesOrIngredientsCreatedEvent;
 use Repas\Repas\Domain\Interface\ConversionRepository;
 use Repas\Repas\Domain\Interface\IngredientRepository;
 use Repas\Repas\Domain\Interface\RecipeRepository;

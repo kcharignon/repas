@@ -41,7 +41,7 @@ class ShoppingListBuilder implements Builder
         $owner = $this->owner instanceof User ? $this->owner : $this->owner->build();
         $shoppingList = ShoppingList::load([
             'id' => $this->id,
-            'owner' => $owner,
+            'owner_id' => $owner->getId(),
             'created_at' => $this->createdAt,
             'name' => $this->name,
             'status' => ShoppingListStatus::ACTIVE, // On met au status ACTIVE pour pouvoir ajouter les recettes
@@ -53,7 +53,7 @@ class ShoppingListBuilder implements Builder
         // On ajoute les repas(recette)
         foreach ($this->recipes as $recipe) {
             $recipe = $recipe instanceof Recipe ? $recipe : $recipe->build();
-            $shoppingList->addMeal($this->uuidGenerator->generate(), $recipe);
+            $shoppingList->addMeal($this->uuidGenerator->generate(), $recipe, $owner->getDefaultServing());
         }
 
         // On passe au status demandé

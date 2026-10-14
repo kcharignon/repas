@@ -6,7 +6,7 @@ namespace Repas\Tests\Repas\Application;
 use PHPUnit\Framework\TestCase;
 use Repas\Repas\Application\Command\RemoveIngredient\RemoveIngredientCommand;
 use Repas\Repas\Application\Command\RemoveIngredient\RemoveIngredientHandler;
-use Repas\Repas\Domain\Event\IngredientRemovedEvent;
+use Repas\Shared\Domain\Event\IngredientRemovedEvent;
 use Repas\Repas\Domain\Exception\IngredientException;
 use Repas\Repas\Domain\Interface\ConversionRepository;
 use Repas\Repas\Domain\Interface\IngredientRepository;

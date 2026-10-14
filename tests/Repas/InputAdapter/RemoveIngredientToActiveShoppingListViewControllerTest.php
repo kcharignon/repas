@@ -31,7 +31,7 @@ class RemoveIngredientToActiveShoppingListViewControllerTest extends QueryBusWeb
 
         // Then
         $this->assertSame(200, $this->client->getResponse()->getStatusCode());
-        $this->assertNull($shoppingListRepository->findOneActivateByOwner($user)->getIngredientQuantity($pasta));
+        $this->assertNull($shoppingListRepository->findOneActivateByOwner($user->getId())->getIngredientQuantity($pasta));
         $query = $this->queryBus->getAskedQuery(GetActiveShoppingListSummaryQuery::class);
         $this->assertInstanceOf(GetActiveShoppingListSummaryQuery::class, $query);
         $this->assertSame($user->getId(), $query->ownerId);
