@@ -23,6 +23,10 @@ security:
                 password_path: password
                 success_handler: lexik_jwt_authentication.handler.authentication_success
                 failure_handler: lexik_jwt_authentication.handler.authentication_failure
+            # 5 échecs par 15 minutes pour un couple IP + email, 25 pour une même IP (ADR 0008) ; au-delà : 429
+            login_throttling:
+                max_attempts: 5
+                interval: '15 minutes'
         api:
             pattern: ^/api
             stateless: true
@@ -34,6 +38,9 @@ security:
             provider: user_model_provider
             custom_authenticators:
                 - Repas\User\Domain\Service\AuthenticatorEmail
+            login_throttling:
+                max_attempts: 5
+                interval: '15 minutes'
             remember_me:
                 secret: "%kernel.secret%"
                 lifetime: 604800
@@ -54,6 +61,14 @@ security:
 
 when@test:
     security:
+        # Compteurs de connexion en mémoire (test.rate_limiter_pool, config/services.yaml) : un test ne voit pas les tentatives d'un autre
+        firewalls:
+            login:
+                login_throttling:
+                    cache_pool: test.rate_limiter_pool
+            main:
+                login_throttling:
+                    cache_pool: test.rate_limiter_pool
         password_hashers:
             # By default, password hashers are resource intensive and take time. This is
             # important to generate secure password hashes. In tests however, secure hashes

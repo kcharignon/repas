@@ -9,7 +9,9 @@ use Lexik\Bundle\JWTAuthenticationBundle\Event\JWTInvalidEvent;
 use Lexik\Bundle\JWTAuthenticationBundle\Event\JWTNotFoundEvent;
 use PHPUnit\Framework\TestCase;
 use Repas\Shared\Infrastructure\Http\ApiAuthenticationFailureListener;
+use Lexik\Bundle\JWTAuthenticationBundle\Response\JWTAuthenticationFailureResponse;
 use Symfony\Component\Security\Core\Exception\AuthenticationException;
+use Symfony\Component\Security\Core\Exception\TooManyLoginAttemptsAuthenticationException;
 
 class ApiAuthenticationFailureListenerTest extends TestCase
 {
@@ -59,6 +61,24 @@ class ApiAuthenticationFailureListenerTest extends TestCase
 
         // Then
         $this->assertUnauthorized($event, 'Invalid credentials.');
+    }
+
+    public function testTooManyLoginAttemptsGiveA429WithRetryAfter(): void
+    {
+        // Given : le plafond du `login_throttling` annonce une attente de 7 minutes
+        $event = new AuthenticationFailureEvent(new TooManyLoginAttemptsAuthenticationException(7), new JWTAuthenticationFailureResponse());
+
+        // When
+        (new ApiAuthenticationFailureListener())->onAuthenticationFailure($event);
+
+        // Then
+        $response = $event->getResponse();
+        $this->assertSame(429, $response->getStatusCode());
+        $this->assertSame('420', $response->headers->get('Retry-After'));
+        $this->assertSame(
+            ['error' => ['message' => 'Too many failed login attempts, please try again later.']],
+            json_decode($response->getContent(), true, flags: JSON_THROW_ON_ERROR)
+        );
     }
 
     private function assertUnauthorized(AuthenticationFailureEvent $event, string $expectedMessage): void

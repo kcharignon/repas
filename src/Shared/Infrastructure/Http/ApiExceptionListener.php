@@ -37,6 +37,7 @@ final class ApiExceptionListener
         $event->setResponse(new JsonResponse(
             data: ['error' => ['message' => $this->getMessage($exception)]],
             status: $this->getStatusCode($exception),
+            headers: $exception instanceof HttpExceptionInterface ? $exception->getHeaders() : [],
         ));
     }
 

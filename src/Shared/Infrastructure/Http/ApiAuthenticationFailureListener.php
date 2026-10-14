@@ -8,6 +8,7 @@ use Lexik\Bundle\JWTAuthenticationBundle\Events;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Security\Core\Exception\TooManyLoginAttemptsAuthenticationException;
 
 /**
  * Met les échecs d'authentification JWT au format d'erreur de l'API : {"error": {"message": "..."}} (ADR 0007).
@@ -38,6 +39,18 @@ final class ApiAuthenticationFailureListener
     #[AsEventListener(event: Events::AUTHENTICATION_FAILURE)]
     public function onAuthenticationFailure(AuthenticationFailureEvent $event): void
     {
+        $exception = $event->getException();
+        if ($exception instanceof TooManyLoginAttemptsAuthenticationException) {
+            // Plafond du `login_throttling` (config/packages/security.yaml) : 429 et délai d'attente en secondes (le seuil est en minutes)
+            $event->setResponse(new JsonResponse(
+                data: ['error' => ['message' => 'Too many failed login attempts, please try again later.']],
+                status: Response::HTTP_TOO_MANY_REQUESTS,
+                headers: ['Retry-After' => (string) (max(1, (int) ($exception->getMessageData()['%minutes%'] ?? 1)) * 60)],
+            ));
+
+            return;
+        }
+
         $this->unauthorized($event, 'Invalid credentials.');
     }
 

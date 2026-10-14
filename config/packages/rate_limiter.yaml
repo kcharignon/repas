@@ -1,0 +1,14 @@
+framework:
+    rate_limiter:
+        # Inscription publique (POST /api/v1/users), par adresse IP (RegisterNewUserRateLimitListener) : un compte créé n'a
+        # ni confirmation d'email ni captcha, c'est ce plafond qui limite la création en masse (ADR 0008).
+        registration:
+            policy: sliding_window
+            limit: 10
+            interval: '1 hour'
+
+when@test:
+    framework:
+        rate_limiter:
+            registration:
+                cache_pool: test.rate_limiter_pool
