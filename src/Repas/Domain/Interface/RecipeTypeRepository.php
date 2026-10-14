@@ -19,5 +19,10 @@ interface RecipeTypeRepository
      */
     public function findOneBySlug(string $slug): RecipeType;
 
+    /**
+     * Un recipe type porte ce slug (le slug dérive du nom : deux créations du même nom se télescoperaient).
+     */
+    public function exists(string $slug): bool;
+
     public function save(RecipeType $recipeType): void;
 }

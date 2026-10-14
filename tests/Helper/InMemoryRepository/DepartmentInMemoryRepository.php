@@ -20,6 +20,11 @@ class DepartmentInMemoryRepository extends AbstractInMemoryRepository implements
         $this->models[$department->getId()] = $department;
     }
 
+    public function exists(string $slug): bool
+    {
+        return isset($this->models[$slug]);
+    }
+
     public function findOneBySlug(string $slug): Department
     {
         return $this->models[$slug] ?? throw DepartmentException::notFound();

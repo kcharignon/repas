@@ -7,6 +7,8 @@ use Repas\Repas\Application\Command\CreateIngredient\CreateIngredientCommand;
 use Repas\Repas\Infrastructure\Http\Form\CreateIngredientType;
 use Repas\Shared\Application\Interface\CommandBusInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Repas\Repas\Domain\Exception\IngredientException;
+use Symfony\Component\Form\FormError;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
@@ -30,9 +32,16 @@ class CreateIngredientViewController extends AbstractController
         if ($form->isSubmitted() && $form->isValid()) {
             /** @var CreateIngredientCommand $command */
             $command = $form->getData();
-            $this->commandBus->dispatch($command);
+            try {
+                $this->commandBus->dispatch($command);
 
-            return $this->redirectToRoute('view_department', ['slug' => $command->departmentSlug]);
+                return $this->redirectToRoute('view_department', ['slug' => $command->departmentSlug]);
+            } catch (IngredientException $exception) {
+                if ($exception->getCode() !== Response::HTTP_CONFLICT) {
+                    throw $exception;
+                }
+                $form->get('name')->addError(new FormError('Un ingrédient de ce nom existe déjà.'));
+            }
         }
 
         return $this->render('@Repas/Ingredient/_ingredient_form.html.twig', [

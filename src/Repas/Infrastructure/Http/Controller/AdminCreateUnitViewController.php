@@ -8,6 +8,8 @@ use Repas\Repas\Infrastructure\Http\Form\CreateUnitType;
 use Repas\Shared\Application\Interface\CommandBusInterface;
 use Repas\Shared\Application\Interface\QueryBusInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Repas\Repas\Domain\Exception\UnitException;
+use Symfony\Component\Form\FormError;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
@@ -30,11 +32,18 @@ class AdminCreateUnitViewController extends AbstractController
 
         if ($form->isSubmitted() && $form->isValid()) {
             $command = $form->getData();
-            $this->commandBus->dispatch($command);
+            try {
+                $this->commandBus->dispatch($command);
 
-            return $this->render('@Repas/Unit/admin_units.html.twig', [
-                'units' => $this->queryBus->ask(new ListUnitsQuery()),
-            ]);
+                return $this->render('@Repas/Unit/admin_units.html.twig', [
+                    'units' => $this->queryBus->ask(new ListUnitsQuery()),
+                ]);
+            } catch (UnitException $exception) {
+                if ($exception->getCode() !== Response::HTTP_CONFLICT) {
+                    throw $exception;
+                }
+                $form->get('name')->addError(new FormError('Une unité de ce nom existe déjà.'));
+            }
         }
 
         return $this->render('@Repas/Unit/_admin_unit_form.html.twig', [

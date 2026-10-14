@@ -11,4 +11,9 @@ class UnitException extends DomainException
     {
         return new static(sprintf("Unit %s not found.", $slug), 404);
     }
+
+    public static function alreadyExists(string $slug): self
+    {
+        return new self(sprintf("Unit %s already exists.", $slug), 409);
+    }
 }

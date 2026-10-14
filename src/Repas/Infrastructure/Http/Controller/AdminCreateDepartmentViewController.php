@@ -6,6 +6,8 @@ namespace Repas\Repas\Infrastructure\Http\Controller;
 use Repas\Repas\Infrastructure\Http\Form\CreateDepartmentType;
 use Repas\Shared\Application\Interface\CommandBusInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Repas\Repas\Domain\Exception\DepartmentException;
+use Symfony\Component\Form\FormError;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
@@ -27,8 +29,16 @@ class AdminCreateDepartmentViewController extends AbstractController
 
         if ($form->isSubmitted() && $form->isValid()) {
             $command = $form->getData();
-            $this->commandBus->dispatch($command);
-            return $this->redirectToRoute('view_admin_departments');
+            try {
+                $this->commandBus->dispatch($command);
+
+                return $this->redirectToRoute('view_admin_departments');
+            } catch (DepartmentException $exception) {
+                if ($exception->getCode() !== Response::HTTP_CONFLICT) {
+                    throw $exception;
+                }
+                $form->get('name')->addError(new FormError('Un rayon de ce nom existe déjà.'));
+            }
         }
 
         return $this->render('@Repas/Department/_admin_department_form.html.twig', [

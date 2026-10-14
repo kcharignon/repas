@@ -38,6 +38,11 @@ readonly class RecipeTypePostgreSQLRepository extends PostgreSQLRepository imple
         throw RecipeException::typeNotFound($slug);
     }
 
+    public function exists(string $slug): bool
+    {
+        return $this->entityRepository->find($slug) !== null;
+    }
+
     public function save(RecipeTypeModel $recipeType): void
     {
         $entity = $this->entityRepository->find($recipeType->getId());

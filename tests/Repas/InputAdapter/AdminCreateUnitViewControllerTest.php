@@ -7,6 +7,7 @@ use Repas\Repas\Application\Query\ListUnits\ListUnitsQuery;
 use Repas\Repas\Domain\Exception\UnitException;
 use Repas\Repas\Domain\Interface\UnitRepository;
 use Repas\Tests\Helper\Builder\DTO\UnitDTOBuilder;
+use Repas\Tests\Helper\Builder\UnitBuilder;
 use Repas\Tests\Helper\QueryBusWebTestCase;
 
 class AdminCreateUnitViewControllerTest extends QueryBusWebTestCase
@@ -70,5 +71,22 @@ class AdminCreateUnitViewControllerTest extends QueryBusWebTestCase
         // Then
         $this->assertTrue($this->client->getResponse()->isRedirection());
         $this->assertStringContainsString('/login', $this->client->getResponse()->headers->get('Location'));
+    }
+
+    public function testADuplicateNameShowsAnErrorAndKeepsTheFirstUnit(): void
+    {
+        // Given
+        $this->persister->saveUnit(new UnitBuilder()->withName('Zzz pincée')->withSymbol('zz')->build());
+        $this->client->loginUser($this->savedUser(admin: true));
+
+        // When
+        $crawler = $this->client->request('POST', '/admin/unit/create', [
+            'create_unit' => ['name' => 'zzz pincee', 'symbol' => 'autre', '_token' => 'csrf-token'],
+        ], server: ['HTTP_ORIGIN' => 'http://localhost']);
+
+        // Then
+        $this->assertSame(200, $this->client->getResponse()->getStatusCode());
+        $this->assertStringContainsString('Une unité de ce nom existe déjà.', $crawler->text());
+        $this->assertSame('zz', static::getContainer()->get(UnitRepository::class)->findOneBySlug('zzz-pincee')->getSymbol());
     }
 }

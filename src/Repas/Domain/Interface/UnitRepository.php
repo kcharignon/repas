@@ -9,6 +9,11 @@ use Repas\Shared\Domain\Tool\Tab;
 
 interface UnitRepository
 {
+    /**
+     * Un unit porte ce slug (le slug dérive du nom : deux créations du même nom se télescoperaient).
+     */
+    public function exists(string $slug): bool;
+
     public function save(Unit $unit): void;
 
     /**

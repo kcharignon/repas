@@ -37,6 +37,11 @@ readonly class DepartmentPostgreSQLRepository extends PostgreSQLRepository imple
         throw DepartmentException::notFound();
     }
 
+    public function exists(string $slug): bool
+    {
+        return $this->entityRepository->find($slug) !== null;
+    }
+
     public function save(DepartmentModel $department): void
     {
         $departmentEntity = $this->entityRepository->find($department->getSlug());

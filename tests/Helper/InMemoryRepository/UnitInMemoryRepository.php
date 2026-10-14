@@ -22,6 +22,11 @@ class UnitInMemoryRepository extends AbstractInMemoryRepository implements UnitR
         return $this->models;
     }
 
+    public function exists(string $slug): bool
+    {
+        return isset($this->models[$slug]);
+    }
+
     public function findOneBySlug(string $slug): Unit
     {
         return $this->models[$slug] ?? throw UnitException::notFound($slug);
