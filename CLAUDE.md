@@ -69,6 +69,7 @@ src/{Context}/
   - `load(array $datas)` — reconstruction depuis la persistance (utilisé par les repositories).
   - Méthodes `update(...)` / `set*()` fluent (`return $this;`) pour les mutations.
 - Comparaison par identité via `isEqual()`, jamais `===` sur les objets métier.
+- **Un agrégat référence les autres agrégats par identifiant** (slug, id), jamais par l'objet : `ShoppingListRow` porte `ingredientSlug` / `unitSlug`, `Meal` porte `recipeId` (ADR 0013). Un use case qui a besoin de la `Recipe` d'un repas la charge par son port ; une question d'existence ou d'état d'un ensemble est une méthode de port booléenne, pas une hydratation d'agrégats.
 - Collections typées via `Repas\Shared\Domain\Tool\Tab` (wrapper de collection typé), pas de tableaux PHP nus pour des listes de modèles.
 
 ## Repository pattern

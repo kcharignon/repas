@@ -8,7 +8,7 @@ Suivi vivant. Décisions : [`adr/`](adr/README.md) (surtout [0003](adr/0003-cqrs
 
 ## Phase 0 — Fondations
 
-- [x] ADR 0001 à 0012 (`docs/adr/`)
+- [x] ADR 0001 à 0012 (`docs/adr/`) ; 0013 ajouté en phase 8
 - [x] Cette roadmap
 - [x] Skill `repas-dev` (`.claude/skills/repas-dev/`)
 - [x] `CLAUDE.md` mis à jour (lecture via Query/Loader, renvoi ADR et skill)
@@ -81,25 +81,26 @@ Valide de bout en bout : bus, Loader, Deptrac, API, JWT. Risque faible.
 - [x] `tests/Repas/WriteBudget` : 32 use cases d'écriture mesurés de bout en bout (bus, handler, repositories, listeners, vraie base), avec et sans `ModelCache`, sur un cas typique (3 recettes, une liste active). Budgets figés dans `budgets.php`, en cliquet : plus de requêtes = régression (test rouge) ; moins = baisser le budget (`make sql-budget-update`). Compteur : middleware DBAL de test `tests/Helper/SqlBudget` ([0010](adr/0010-strategie-de-tests.md) règle 12).
 - [x] `make cache-removal-check` : feu vert quand aucun use case ne fait plus de requêtes sans cache qu'avec.
 
-**État de départ** (requêtes SQL : avec cache / sans cache) et levier :
+**État** (requêtes SQL : avec cache / sans cache ; « départ » = mesure du 2026-10-14 avant la phase 8) :
 
-| Use case | Départ | Cause | Levier |
+| Use case | Départ | Maintenant | Reste à alléger |
 |---|---|---|---|
-| `tick-ligne`, `decocher-ligne` | 28 / 59 | le handler hydrate la ligne avec son ingrédient pour inverser un booléen ; le listener recharge la liste entière pour `allLineTicked()` ; `decocher` charge en plus la liste | méthode de port « reste-t-il une ligne non cochée » en une requête ; ne pas hydrater la liste ni l'ingrédient |
-| `tick-derniere-ligne` | 33 / 107 | idem + `StoppedShoppingList` recharge la liste et l'utilisateur | idem, puis charge ciblée de la fin de liste |
-| `renommer-liste`, `mettre-liste-en-pause`, `reactiver-liste`, `terminer-liste`, `supprimer-liste` | 28–29 / 58–59 | `findOneById` hydrate tout l'agrégat pour changer un champ de l'en-tête | chargement de l'en-tête seul (statut, nom, propriétaire) ou méthodes de port ciblées ; `supprimer` par id |
-| `planifier-repas`, `retirer-repas`, `modifier-portions-repas` | 39 / 69, 30 / 74, 35 / 79 | besoin réel du graphe recette → ingrédients → conversions, mais lu ligne à ligne | préchargement par lot (`WHERE slug IN`) des ingrédients, unités et rayons ; ne charger de la liste que repas et lignes touchés |
-| `ajouter-ingredient-liste`, `retirer-ingredient-liste` | 32 / 63, 28 / 61 | hydrate la liste entière | charger les ingrédients de la liste et les lignes seulement |
-| `supprimer-ingredient`, `supprimer-recette` | 12 / 13, 14 / 22 | `findByIngredient` / `findByRecipe` hydratent des agrégats entiers pour une simple vérification d'existence | ports booléens (`isUsedInRecipe`, `isUsedInShoppingList`…) |
-| `creer-recette`, `modifier-recette`, `copier-recette`, `creer-ingredient`, `modifier-ingredient` | 8–29 / 8–36 | un `findOneBySlug` par ligne (ingrédient, unité) | préchargement par lot des références |
-| référentiels, conversions, utilisateurs | 2–8 / 2–9 | déjà minimal | rien à faire |
+| `tick-ligne`, `decocher-ligne`, `tick-derniere-ligne` | 28 / 59, 28 / 59, 33 / 107 | 3 / 3, 7 / 7, 13 / 13 | rien d'utile |
+| `renommer-liste`, `mettre-liste-en-pause`, `reactiver-liste`, `terminer-liste`, `supprimer-liste` | 28–29 / 58–59 | 9–10 / 9–10 | rien d'utile (liste = 5 requêtes) |
+| `ajouter-ingredient-liste`, `retirer-ingredient-liste` | 32 / 63, 28 / 61 | 16 / 16, 12 / 12 | charger l'ingrédient (rayon, unités, créateur) alors que seuls le slug et l'unité d'achat servent |
+| `planifier-repas`, `retirer-repas`, `modifier-portions-repas` | 39 / 69, 30 / 74, 35 / 79 | 29 / 40, 21 / 30, 26 / 35 | graphe recette → ingrédients → conversions lu ligne à ligne : préchargement par lot |
+| `supprimer-ingredient`, `supprimer-recette` | 12 / 13, 14 / 22 | inchangé | `findByIngredient` / `findByRecipe` hydratent des agrégats entiers pour une vérification d'existence : ports booléens |
+| `creer-recette`, `modifier-recette`, `copier-recette`, `creer-ingredient`, `modifier-ingredient` | 8–29 / 8–36 | inchangé | un `findOneBySlug` par ligne (ingrédient, unité) : préchargement par lot |
+| `creer-liste`, `assurer-liste-active` | 5 / 8, 6 / 9 | inchangé | l'utilisateur est relu plusieurs fois sans cache |
+| référentiels, conversions, utilisateurs | 2–8 / 2–9 | inchangé | rien à faire |
 
 **Slices d'allègement** (une par ligne du tableau, dans l'ordre d'impact ; chacune baisse des budgets et le commit inclut `budgets.php`) :
-- [ ] Cocher / décocher une ligne, fin de liste automatique
-- [ ] Opérations d'en-tête d'une liste (renommer, pause, réactiver, terminer, supprimer)
-- [ ] Ajouter / retirer un ingrédient de la liste
-- [ ] Planifier / retirer un repas, modifier les portions
+- [x] Cocher / décocher une ligne, fin de liste automatique : la ligne, l'ingrédient de liste et le repas référencent désormais leurs agrégats par identifiant ([0013](adr/0013-agregats-references-par-identifiant.md)), `ShoppingListRowRepository::allRowsChecked` remplace le rechargement de la liste par `StopListEventListener`
+- [x] Opérations d'en-tête d'une liste (renommer, pause, réactiver, terminer, supprimer) : obtenues par la même refonte, sans port dédié
+- [x] Ajouter / retirer un ingrédient de la liste : la liste se charge en 5 requêtes ; reste le chargement de l'ingrédient lui-même
+- [ ] Planifier / retirer un repas, modifier les portions (`UpdateServingMealHandler` charge désormais la recette de son repas par `RecipeRepository`)
 - [ ] Suppressions d'ingrédient et de recette (vérifications d'existence)
+- [ ] Création de liste et liste active assurée (utilisateur relu plusieurs fois sans cache)
 - [ ] Création et modification de recettes et d'ingrédients (préchargement par lot)
 
 **Retrait de `ModelCache`** (quand `make cache-removal-check` est vert) :

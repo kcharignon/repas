@@ -16,6 +16,7 @@ Décisions d'architecture du projet Repas. **À relire avant de développer ou d
 | [0010](0010-strategie-de-tests.md) | Stratégie de tests de la lecture et de l'API | Accepted |
 | [0011](0011-garde-fous-deptrac-phpstan.md) | Garde-fous : Deptrac et PHPStan | Accepted |
 | [0012](0012-pieges-compliance.md) | Pièges observés dans Compliance à ne pas reproduire | Accepted |
+| [0013](0013-agregats-references-par-identifiant.md) | Un agrégat référence les autres agrégats par identifiant | Accepted |
 
 ## Sources
 
