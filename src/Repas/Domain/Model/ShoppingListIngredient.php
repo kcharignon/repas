@@ -22,16 +22,16 @@ final class ShoppingListIngredient implements ModelInterface
     }
 
     public static function create(
-        string     $shoppingListId,
-        Ingredient $ingredient,
-        Unit       $unit,
-        float      $quantity
+        string $shoppingListId,
+        string $ingredientSlug,
+        string $unitSlug,
+        float  $quantity
     ): self {
         return new self(
             id: UuidGenerator::new(),
             shoppingListId: $shoppingListId,
-            ingredientSlug: $ingredient->getSlug(),
-            unitSlug: $unit->getSlug(),
+            ingredientSlug: $ingredientSlug,
+            unitSlug: $unitSlug,
             quantity: $quantity,
         );
     }
@@ -82,8 +82,8 @@ final class ShoppingListIngredient implements ModelInterface
         $this->quantity -= $getQuantity;
     }
 
-    public function hasIngredient(Ingredient $ingredient): bool
+    public function hasIngredient(string $ingredientSlug): bool
     {
-        return $this->ingredientSlug === $ingredient->getSlug();
+        return $this->ingredientSlug === $ingredientSlug;
     }
 }

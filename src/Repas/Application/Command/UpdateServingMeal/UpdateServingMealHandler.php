@@ -44,10 +44,10 @@ readonly class UpdateServingMealHandler
             $quantity = $this->conversionService->convertRecipeRowToPurchaseUnit($row);
             if ($meal->getServing() < $command->serving) {
                 // On ajoute cette quantité dans la liste d'achat
-                $shoppingList->addRow($row->getIngredient(), $quantity);
+                $shoppingList->addRow($row->getIngredient()->getSlug(), $row->getIngredient()->getDefaultPurchaseUnit()->getSlug(), $quantity);
             } else {
                 // On déduit cette quantité dans la liste d'achat
-                $shoppingList->subtractRow($row->getIngredient(), $quantity);
+                $shoppingList->subtractRow($row->getIngredient()->getSlug(), $quantity);
             }
         }
 

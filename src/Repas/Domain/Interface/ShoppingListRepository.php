@@ -3,8 +3,6 @@
 namespace Repas\Repas\Domain\Interface;
 
 
-use Repas\Repas\Domain\Model\Ingredient;
-use Repas\Repas\Domain\Model\Recipe;
 use Repas\Repas\Domain\Model\ShoppingList;
 use Repas\Repas\Domain\Model\ShoppingListStatus;
 use Repas\Shared\Domain\Tool\Tab;
@@ -39,12 +37,12 @@ interface ShoppingListRepository
     public function findOneByMealId(string $mealId): ShoppingList;
 
     /**
-     * @return Tab<ShoppingList>
+     * Une liste de courses contient-elle cet ingrédient ? (existence seulement : aucun agrégat n'est hydraté)
      */
-    public function findByIngredient(Ingredient $ingredient): Tab;
+    public function isIngredientUsed(string $ingredientSlug): bool;
 
     /**
-     * @return Tab<ShoppingList>
+     * Un repas d'une liste de courses est-il planifié avec cette recette ?
      */
-    public function findByRecipe(Recipe $recipe): Tab;
+    public function isRecipePlanned(string $recipeId): bool;
 }

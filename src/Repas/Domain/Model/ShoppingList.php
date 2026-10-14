@@ -145,21 +145,21 @@ final class ShoppingList implements ModelInterface
         );
     }
 
-    public function addRow(Ingredient $ingredient, float $quantity): void
+    public function addRow(string $ingredientSlug, string $purchaseUnitSlug, float $quantity): void
     {
         // Cherche si la ligne avec l'ingrédient est déjà present dans la liste
-        if (($row = $this->rows->find(fn(Row $row) => $row->getIngredientSlug() === $ingredient->getSlug())) !== null) {
+        if (($row = $this->rows->find(fn(Row $row) => $row->getIngredientSlug() === $ingredientSlug)) !== null) {
             $row->addQuantity($quantity);
         } else {
             //Sinon on créer la ligne
-            $this->rows[] = Row::create($this->id, $ingredient, $quantity);
+            $this->rows[] = Row::create($this->id, $ingredientSlug, $purchaseUnitSlug, $quantity);
         }
     }
 
-    public function subtractRow(Ingredient $ingredient, float $quantity): void
+    public function subtractRow(string $ingredientSlug, float $quantity): void
     {
         // Cherche si la ligne avec l'ingrédient est déjà present dans la liste
-        if (($rowKey = $this->rows->findKey(fn(Row $row) => $row->getIngredientSlug() === $ingredient->getSlug())) !== null) {
+        if (($rowKey = $this->rows->findKey(fn(Row $row) => $row->getIngredientSlug() === $ingredientSlug)) !== null) {
             $this->rows[$rowKey]->subtractQuantity($quantity);
             // si la quantité passe à zero ou moins, on supprime la row
             if ($this->rows[$rowKey]->getQuantity() <= 0) {
@@ -189,26 +189,26 @@ final class ShoppingList implements ModelInterface
         return $this;
     }
 
-    public function addIngredient(Ingredient $ingredient): void
+    public function addIngredient(string $ingredientSlug, string $purchaseUnitSlug): void
     {
         // Recherche de l'ingrédient dans l'unité d'achat dans la liste
-        if (($shopListIngredient = $this->ingredients->find(fn(ShoppingListIngredient $sli) => $sli->hasIngredient($ingredient) && $sli->getUnitSlug() === $ingredient->getDefaultPurchaseUnit()->getSlug())) !== null) {
+        if (($shopListIngredient = $this->ingredients->find(fn(ShoppingListIngredient $sli) => $sli->hasIngredient($ingredientSlug) && $sli->getUnitSlug() === $purchaseUnitSlug)) !== null) {
             // Si on le trouve on incrémente de 1 la quantité
             $shopListIngredient->addQuantity(1);
         } else {
             // Sinon on le créer avec une quantité de 1
             $this->ingredients[] = ShoppingListIngredient::create(
                 shoppingListId: $this->id,
-                ingredient: $ingredient,
-                unit: $ingredient->getDefaultPurchaseUnit(),
+                ingredientSlug: $ingredientSlug,
+                unitSlug: $purchaseUnitSlug,
                 quantity: 1
             );
         }
     }
 
-    public function removeIngredient(Ingredient $ingredient): void
+    public function removeIngredient(string $ingredientSlug, string $purchaseUnitSlug): void
     {
-        $ingredientKey = $this->ingredients->findKey(fn(ShoppingListIngredient $sli) => $sli->hasIngredient($ingredient) && $sli->getUnitSlug() === $ingredient->getDefaultPurchaseUnit()->getSlug());
+        $ingredientKey = $this->ingredients->findKey(fn(ShoppingListIngredient $sli) => $sli->hasIngredient($ingredientSlug) && $sli->getUnitSlug() === $purchaseUnitSlug);
 
         // Si on ne retrouve pas l'ingrédient, il n'est deja plus present dans la liste
         if ($ingredientKey === null) {

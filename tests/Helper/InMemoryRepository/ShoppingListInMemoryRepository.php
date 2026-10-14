@@ -81,17 +81,31 @@ class ShoppingListInMemoryRepository extends AbstractInMemoryRepository implemen
         return $this->models->find(fn(ShoppingList $sl) => $sl->getMeals()->find(fn(Meal $meal) => $meal->getId() === $mealId));
     }
 
-    public function findByIngredient(Ingredient $ingredient): Tab
+    public function isIngredientUsed(string $ingredientSlug): bool
     {
-        return $this->models->filter(
-            fn(ShoppingList $shopList) => $shopList->getIngredients()->find(
-                fn(ShoppingListIngredient $sli) => $sli->hasIngredient($ingredient)
-            )
-        );
+        /** @var ShoppingList $shoppingList */
+        foreach ($this->models as $shoppingList) {
+            foreach ($shoppingList->getIngredients() as $ingredient) {
+                if ($ingredient->getIngredientSlug() === $ingredientSlug) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
-    public function findByRecipe(Recipe $recipe): Tab
+    public function isRecipePlanned(string $recipeId): bool
     {
-        return $this->models->filter(fn(ShoppingList $sl) => $sl->getMeals()->find(fn(Meal $meal) => $meal->hasRecipe($recipe)));
+        /** @var ShoppingList $shoppingList */
+        foreach ($this->models as $shoppingList) {
+            foreach ($shoppingList->getMeals() as $meal) {
+                if ($meal->getRecipeId() === $recipeId) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 }

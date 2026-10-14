@@ -103,23 +103,18 @@ class RecipeRepositoryTest extends DatabaseTestCase
         RepasAssert::assertTabType(Tab::newEmptyTyped(Recipe::class), $recipes);
     }
 
-    public function testFindByIngredient(): void
+    public function testIsIngredientUsedTellsIfAnyRecipeUsesTheIngredient(): void
     {
-        // Arrange
-        $author = $this->savedUser();
-        $carbonara = $this->savedRecipe(new RecipeBuilder()->isPastaCarbonara()->withAuthor($author));
-        $otherCarbonara = $this->savedRecipe(new RecipeBuilder()->isPastaCarbonara()->withAuthor($this->savedUser()));
-        $withoutPasta = $this->savedRecipe(new RecipeBuilder()->isSoftBoiledEggs()->withAuthor($author));
+        // Arrange : les pâtes sont dans une recette, le lait dans aucune
+        $this->savedRecipe(new RecipeBuilder()->isPastaCarbonara()->withAuthor($this->savedUser()));
+        $milk = new IngredientBuilder()->isMilk()->build();
+        $this->persister->saveIngredient($milk);
+        $pasta = new IngredientBuilder()->isPasta()->build();
 
-        // Act
-        $actual = $this->recipeRepository->findByIngredient(new IngredientBuilder()->isPasta()->build());
-
-        // Assert
-        RepasAssert::assertTabType(Tab::newEmptyTyped(Recipe::class), $actual);
-        $ids = $this->idsOf($actual);
-        $this->assertContains($carbonara->getId(), $ids);
-        $this->assertContains($otherCarbonara->getId(), $ids);
-        $this->assertNotContains($withoutPasta->getId(), $ids);
+        // Act & Assert
+        $this->assertTrue($this->recipeRepository->isIngredientUsed($pasta->getSlug()));
+        $this->assertFalse($this->recipeRepository->isIngredientUsed($milk->getSlug()));
+        $this->assertFalse($this->recipeRepository->isIngredientUsed('inconnu'));
     }
 
     public function testDelete(): void

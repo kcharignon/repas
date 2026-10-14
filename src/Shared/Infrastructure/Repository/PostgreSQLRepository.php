@@ -45,6 +45,18 @@ abstract readonly class PostgreSQLRepository
         }
     }
 
+    /**
+     * Entité déjà connue de l'identity map, sans requête (`null` si elle n'y est pas). Après un `preload()` des mêmes
+     * identifiants, `null` veut dire que l'entité n'existe pas en base : l'enregistrement peut l'insérer sans la chercher
+     * une deuxième fois.
+     */
+    protected function findManaged(string $id): ?object
+    {
+        $entity = $this->entityManager->getUnitOfWork()->tryGetById($id, $this->entityRepository->getClassName());
+
+        return $entity === false ? null : $entity;
+    }
+
     // TODO: refacto saves Methode()
 //    protected function saveEntity(ModelInterface $model): void
 //    {

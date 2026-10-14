@@ -49,6 +49,7 @@ readonly class ConversionPostgreSQLRepository extends PostgreSQLRepository imple
             ->getQuery()
             ->getResult();
 
+        $this->preloadUnits($conversionEntities);
         $conversionEntities = Tab::fromArray($conversionEntities);
         return $conversionEntities->map(fn(ConversionEntity $conversion) => $this->convertEntityToModel($conversion));
     }
@@ -61,6 +62,7 @@ readonly class ConversionPostgreSQLRepository extends PostgreSQLRepository imple
             ->getQuery()
             ->getResult();
 
+        $this->preloadUnits($conversionEntities);
         $conversionEntities = Tab::fromArray($conversionEntities);
         return $conversionEntities->map(fn(ConversionEntity $conversion) => $this->convertEntityToModel($conversion));
     }
@@ -99,9 +101,27 @@ readonly class ConversionPostgreSQLRepository extends PostgreSQLRepository imple
     public function findAll(): Tab
     {
         $entities = new Tab($this->entityRepository->findBy([], ["ingredientSlug" => "ASC", "startUnitSlug" => "ASC"]), ConversionEntity::class);
+        $this->preloadUnits($entities->toArray());
         return $entities->map(fn(ConversionEntity $entity) => $this->convertEntityToModel($entity));
     }
 
+
+    /**
+     * Lit en une requête les unités des conversions qui vont être converties en modèles : les lectures unitaires qui
+     * suivent sont servies par l'identity map de Doctrine, sans requête (une par unité sinon).
+     *
+     * @param array<ConversionEntity> $conversionEntities
+     */
+    private function preloadUnits(array $conversionEntities): void
+    {
+        $slugs = Tab::newEmptyTyped('string');
+        foreach ($conversionEntities as $conversion) {
+            $slugs[] = $conversion->getStartUnitSlug();
+            $slugs[] = $conversion->getEndUnitSlug();
+        }
+
+        $this->unitRepository->findBySlugs($slugs);
+    }
 
     /**
      * @throws UnitException

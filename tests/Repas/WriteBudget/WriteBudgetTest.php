@@ -4,6 +4,7 @@ namespace Repas\Tests\Repas\WriteBudget;
 
 
 use PHPUnit\Framework\Attributes\DataProvider;
+use Repas\Tests\Helper\SqlBudget\QueryCounter;
 use Repas\Tests\Helper\WriteBudgetTestCase;
 
 /**
@@ -12,7 +13,8 @@ use Repas\Tests\Helper\WriteBudgetTestCase;
  * en fait moins impose de baisser le budget (le fichier ne fait que diminuer).
  *
  * Pour régénérer le fichier après un allègement : `make sql-budget-update`. `SQL_BUDGET_VERBOSE=1` affiche la
- * répartition par table de chaque scénario.
+ * répartition par table de chaque scénario, `SQL_BUDGET_VERBOSE=2` y ajoute le texte de chaque requête, dans l'ordre
+ * (pour trouver d'où vient une requête superflue).
  */
 class WriteBudgetTest extends WriteBudgetTestCase
 {
@@ -39,6 +41,11 @@ class WriteBudgetTest extends WriteBudgetTestCase
         $details = implode(', ', array_map(fn(string $key, int $n): string => "$key ×$n", array_keys($byTable), $byTable));
         if (getenv('SQL_BUDGET_VERBOSE') !== false) {
             fwrite(STDERR, sprintf("%s : %d\n  %s\n", $scenario, $count, $details));
+            if (getenv('SQL_BUDGET_VERBOSE') === '2') {
+                foreach (static::getContainer()->get(QueryCounter::class)->statements() as $i => $sql) {
+                    fwrite(STDERR, sprintf("  %2d. %s\n", $i + 1, preg_replace('/\s+/', ' ', $sql)));
+                }
+            }
         }
         if (getenv('UPDATE_SQL_BUDGETS') !== false) {
             self::$measured[$scenario] = $count;

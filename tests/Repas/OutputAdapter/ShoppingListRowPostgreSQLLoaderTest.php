@@ -74,7 +74,7 @@ class ShoppingListRowPostgreSQLLoaderTest extends DatabaseTestCase
         $pasta = new IngredientBuilder()->isPasta()->build();
         $this->persister->saveIngredient($pasta);
         $shoppingList = new ShoppingListBuilder()->withOwner($owner)->addIngredient($pasta)->build();
-        $shoppingList->addRow($pasta, $quantity);
+        $shoppingList->addRow($pasta->getSlug(), $pasta->getDefaultPurchaseUnit()->getSlug(), $quantity);
         $this->shoppingListRepository->save($shoppingList);
 
         return $shoppingList->getRows()->reset()->getId();

@@ -49,7 +49,7 @@ readonly class removeMealFromPlanHandler
             // On calcule la quantité dans l'unité d'achat
             $quantity = $this->conversionService->convertRecipeRowToPurchaseUnit($row);
             // On enleve cette quantité dans la liste d'achat
-            $activeShoppingList->subtractRow($row->getIngredient(), $quantity);
+            $activeShoppingList->subtractRow($row->getIngredient()->getSlug(), $quantity);
         }
 
         $activeShoppingList->removeMeal($recipe);

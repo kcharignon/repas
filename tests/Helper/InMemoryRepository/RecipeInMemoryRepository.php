@@ -41,13 +41,18 @@ class RecipeInMemoryRepository extends AbstractInMemoryRepository implements Rec
         throw new Exception("Not implemented");
     }
 
-    public function findByIngredient(Ingredient $ingredient): Tab
+    public function isIngredientUsed(string $ingredientSlug): bool
     {
-        return $this->models->filter(
-            fn(Recipe $recipe) => $recipe->getRows()->find(
-                fn(RecipeRow $row) => $row->getIngredient()->isEqual($ingredient)
-            ) !== null
-        );
+        /** @var Recipe $recipe */
+        foreach ($this->models as $recipe) {
+            foreach ($recipe->getRows() as $row) {
+                if ($row->getIngredient()->getSlug() === $ingredientSlug) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     public function delete(Recipe $recipe): void
