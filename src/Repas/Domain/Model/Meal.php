@@ -5,7 +5,6 @@ namespace Repas\Repas\Domain\Model;
 
 use Repas\Shared\Domain\Model\ModelInterface;
 use Repas\Shared\Domain\Model\ModelTrait;
-use Repas\Shared\Domain\Tool\Tab;
 
 final class Meal implements ModelInterface
 {
@@ -14,19 +13,19 @@ final class Meal implements ModelInterface
     private function __construct(
         private string $id,
         private string $shoppingListId,
-        private Recipe $recipe,
+        private string $recipeId,
         private int    $serving,
     ) {
     }
 
 
 
-    public static function create(string $id, string $shoppingListId, Recipe $recipe, int $servings): self
+    public static function create(string $id, string $shoppingListId, string $recipeId, int $servings): self
     {
         return new self(
             id: $id,
             shoppingListId: $shoppingListId,
-            recipe: $recipe,
+            recipeId: $recipeId,
             serving: $servings
         );
     }
@@ -36,7 +35,7 @@ final class Meal implements ModelInterface
         return new self(
             id: $datas['id'],
             shoppingListId: $datas['shopping_list_id'],
-            recipe: $datas['recipe'],
+            recipeId: $datas['recipe_id'],
             serving: $datas['serving']
         );
     }
@@ -51,9 +50,9 @@ final class Meal implements ModelInterface
         return $this->shoppingListId;
     }
 
-    public function getRecipe(): Recipe
+    public function getRecipeId(): string
     {
-        return $this->recipe;
+        return $this->recipeId;
     }
 
     public function getServing(): int
@@ -61,27 +60,9 @@ final class Meal implements ModelInterface
         return $this->serving;
     }
 
-    public function getRecipeType(): RecipeType
-    {
-        return $this->recipe->getType();
-    }
-
-    /**
-     * @return Tab<Department>
-     */
-    public function departmentPresent(): Tab
-    {
-        return $this->recipe->departmentPresent();
-    }
-
-    public function typeIs(RecipeType $recipeType): bool
-    {
-        return $this->recipe->isType($recipeType);
-    }
-
     public function hasRecipe(Recipe $recipe): bool
     {
-        return $this->recipe->isEqual($recipe);
+        return $this->recipeId === $recipe->getId();
     }
 
     public function setServing(int $serving): void

@@ -3,6 +3,7 @@
 namespace Repas\Repas\Application\Command\UpdateServingMeal;
 
 
+use Repas\Repas\Domain\Interface\RecipeRepository;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Repas\Domain\Model\Meal;
 use Repas\Repas\Domain\Service\ConversionService;
@@ -13,6 +14,7 @@ readonly class UpdateServingMealHandler
 {
     public function __construct(
         private ShoppingListRepository $shoppingListRepository,
+        private RecipeRepository $recipeRepository,
         private ConversionService $conversionService,
     ) {
     }
@@ -28,7 +30,7 @@ readonly class UpdateServingMealHandler
             return ;
         }
 
-        $recipe = $meal->getRecipe();
+        $recipe = $this->recipeRepository->findOneById($meal->getRecipeId());
 
         // Le coefficient de difference = Nouveau Serving - Ancien Serving
         // S'il est positif on dois ajouter, s'il est négatif on doit soustraire

@@ -82,6 +82,6 @@ class ShoppingListInMemoryRepository extends AbstractInMemoryRepository implemen
 
     public function findByRecipe(Recipe $recipe): Tab
     {
-        return $this->models->filter(fn(ShoppingList $sl) => $sl->getMeals()->find(fn(Meal $meal) => $recipe->isEqual($meal->getRecipe())));
+        return $this->models->filter(fn(ShoppingList $sl) => $sl->getMeals()->find(fn(Meal $meal) => $meal->hasRecipe($recipe)));
     }
 }

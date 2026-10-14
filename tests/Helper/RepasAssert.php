@@ -132,7 +132,7 @@ class RepasAssert
         if (!in_array("id", $excluded, true)) {
             Assert::assertEquals($expected->getId(), $actual->getId());
         }
-        self::assertRecipe($expected->getRecipe(), $actual->getRecipe());
+        Assert::assertSame($expected->getRecipeId(), $actual->getRecipeId());
         Assert::assertEquals($expected->getServing(), $actual->getServing());
         Assert::assertEquals($expected->getShoppingListId(), $actual->getShoppingListId());
     }

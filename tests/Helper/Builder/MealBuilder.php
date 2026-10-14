@@ -45,7 +45,7 @@ class MealBuilder implements Builder
         return Meal::load([
             'id' => $this->id,
             'shopping_list_id' => $this->shoppingListId,
-            'recipe' => $recipe,
+            'recipe_id' => $recipe->getId(),
             'serving' => $this->serving,
         ]);
     }

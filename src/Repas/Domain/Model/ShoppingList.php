@@ -16,9 +16,6 @@ final class ShoppingList implements ModelInterface
 {
     use ModelTrait;
 
-    /** @var Tab<RecipeType>|null  */
-    private ?Tab $recipeTypes = null;
-
     /**
      * @param Tab<Meal> $meals
      * @param Tab<ShoppingListIngredient> $ingredients
@@ -103,57 +100,6 @@ final class ShoppingList implements ModelInterface
         );
     }
 
-    /**
-     * @return Tab<RecipeType>
-     */
-    public function recipeTypePresent(): Tab
-    {
-        if (null === $this->recipeTypes) {
-            $this->recipeTypes = Tab::newEmptyTyped(RecipeType::class);
-            foreach ($this->meals as $meal) {
-                $mealRecipeType = $meal->getRecipeType();
-                if (!isset($this->recipeTypes[$mealRecipeType->getSlug()])) {
-                    $this->recipeTypes[$mealRecipeType->getSlug()] = $mealRecipeType;
-                }
-            }
-        }
-
-        // Tri des types par ordre de séquence
-        return $this->recipeTypes
-            ->usort(fn(RecipeType $type1, RecipeType $type2) =>  $type1->getOrder() <=> $type2->getOrder());
-    }
-
-    /**
-     * @param RecipeType $recipeType
-     * @return Tab<Recipe>
-     */
-    public function getRecipesByType(RecipeType $recipeType): Tab
-    {
-        $res = Tab::newEmptyTyped(Recipe::class);
-
-        foreach ($this->meals as $meal) {
-            if ($meal->getRecipeType()->isEqual($recipeType)) {
-                $res[] = $meal->getRecipe();
-            }
-        }
-
-        return $res;
-    }
-
-    /**
-     * @param RecipeType $recipeType
-     * @return Tab<Meal>
-     */
-    public function getMealByType(RecipeType $recipeType): Tab
-    {
-        return $this->meals->filter(fn(Meal $meal) => $meal->getRecipeType()->isEqual($recipeType));
-    }
-
-    public function numberOfTypeRecipes(RecipeType $type): int
-    {
-        return $this->meals->filter(fn(Meal $meal) => $meal->typeIs($type))->count();
-    }
-
     public function hasRecipe(Recipe $recipe): bool
     {
         return $this->meals->find(fn(Meal $meal) => $meal->hasRecipe($recipe)) !== null;
@@ -188,7 +134,7 @@ final class ShoppingList implements ModelInterface
         $this->meals[] = Meal::create(
             id: $id,
             shoppingListId: $this->id,
-            recipe: $recipe,
+            recipeId: $recipe->getId(),
             servings: $this->owner->getDefaultServing(),
         );
     }
