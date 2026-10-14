@@ -16,6 +16,8 @@ La liste de courses embarquait des objets de domaine complets : chaque ligne por
 4. Une question d'existence ou d'état d'un ensemble se pose par une méthode de port qui renvoie un booléen (`ShoppingListRowRepository::allRowsChecked`), pas en hydratant des agrégats.
 5. Les nombres de requêtes sont figés par le cliquet `tests/Repas/WriteBudget` ([0010](0010-strategie-de-tests.md) règle 12) : alléger baisse le budget, jamais l'inverse.
 
+6. Pas de cache de modèles. L'identity map de Doctrine sert les `find()` par clé primaire ; une lecture par lot se fait avec `PostgreSQLRepository::preload()` (une requête pour les entités absentes de l'identity map, puis `find()` sans coût). `ModelCache` est retiré.
+
 ## Conséquences
 
 - Positives : charger une liste coûte 5 requêtes quelle que soit sa taille (liste, propriétaire, repas, ingrédients, lignes) ; cocher une ligne 3, la décocher 7, renommer, mettre en pause ou supprimer une liste 9. Les use cases de liste ont les mêmes coûts avec ou sans `ModelCache`.

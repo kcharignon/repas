@@ -67,46 +67,46 @@ Valide de bout en bout : bus, Loader, Deptrac, API, JWT. Risque faible.
 - [x] `ListUsers` — AdminGetUsers (`UserSummaryDTO`) et `GET /api/v1/users` (ROLE_ADMIN) ; réglages et inscription via `GetCurrentUser` / `IsEmailAlreadyUsed` ; le mot de passe actuel est vérifié par `UpdateUserSettingsHandler` (règle de domaine), le controller traduit `UserException::INVALID_PASSWORD` en erreur de formulaire
 - [x] Endpoints API de lecture unitaire : `GET /api/v1/units/{slug}`, `/departments/{slug}`, `/recipe-types/{slug}`
 - [x] Deptrac : `deptrac.no-repository-in-http.yaml` interdit tout `*Repository` dans `…\Infrastructure\Http\…` (controllers, API, formulaires) des deux contextes ; aucune baseline, 0 violation
-- [ ] ~~Supprimer `ModelCache`~~ **Conservé** : plus aucune *lecture* n'en dépend (lecture détail liste : 4 requêtes, liste des recettes : 2, identiques avec ou sans cache), mais le chemin d'*écriture* (handlers qui chargent des agrégats) en profite encore. Mesure en dev, cache neutralisé : `serving` 45 → 126 requêtes, `tick` / `uncheck` 46 → 108, ajout ingrédient 57 → 119, retrait 48 → 112, planification recette 88 → 171, retrait recette 55 → 159. Le chantier est la phase 8 : on allège d'abord les écritures, on retire le cache ensuite.
+- [x] `ModelCache` : conservé à la fin de la phase 7 (sans lui les écritures doublaient : `serving` 45 → 126 requêtes, `tick` 46 → 108, planification 88 → 171), retiré en phase 8 une fois les écritures allégées, sans régression.
 
 ## Écriture et extinction
 
-### Phase 8 — Écritures allégées, puis retrait de `ModelCache`
+### Phase 8 — Écritures allégées, puis retrait de `ModelCache` — retrait fait
 
-**Constat (2026-10-14).** Les lectures ne passent plus par `ModelCache`, les écritures si. Un handler charge l'agrégat entier (liste → repas → recettes → lignes → ingrédients → rayons, unités, créateurs) même pour changer un champ : renommer une liste coûte 28 requêtes SQL, cocher une ligne 28 aussi, dont l'essentiel vient de `StopListEventListener` qui recharge toute la liste pour savoir si toutes les lignes sont cochées. `ModelCache` masque ce surcoût : sans lui, les mêmes use cases font 58 et 59 requêtes (la différence vient de `UnitRepository::findBySlugs`, qui n'évite le SQL que grâce au cache).
+**Constat (2026-10-14).** Les lectures ne passaient plus par `ModelCache`, les écritures si. Un handler chargeait l'agrégat entier (liste → repas → recettes → lignes → ingrédients → rayons, unités, créateurs) même pour changer un champ : renommer une liste coûtait 28 requêtes SQL, cocher une ligne 28 aussi, dont l'essentiel venait de `StopListEventListener` qui rechargeait toute la liste. `ModelCache` masquait ce surcoût : sans lui, les mêmes use cases faisaient 58 et 59 requêtes.
 
-**Décision.** On allège d'abord les use cases (ne charger que ce que le use case modifie ou vérifie), puis on retire `ModelCache`, **sans aucune régression** de requêtes. Retirer le cache avant ne ferait que doubler les requêtes d'écriture (mesuré en phase 7).
+**Décision.** Alléger d'abord les use cases, retirer `ModelCache` ensuite, **sans aucune régression** de requêtes. Retirer le cache avant n'aurait fait que doubler les requêtes d'écriture (mesuré en phase 7).
 
-**Outils (faits).**
-- [x] `tests/Repas/WriteBudget` : 32 use cases d'écriture mesurés de bout en bout (bus, handler, repositories, listeners, vraie base), avec et sans `ModelCache`, sur un cas typique (3 recettes, une liste active). Budgets figés dans `budgets.php`, en cliquet : plus de requêtes = régression (test rouge) ; moins = baisser le budget (`make sql-budget-update`). Compteur : middleware DBAL de test `tests/Helper/SqlBudget` ([0010](adr/0010-strategie-de-tests.md) règle 12).
-- [x] `make cache-removal-check` : feu vert quand aucun use case ne fait plus de requêtes sans cache qu'avec.
+**Outils.**
+- [x] `tests/Repas/WriteBudget` : 32 use cases d'écriture mesurés de bout en bout (bus, handler, repositories, listeners, vraie base) sur un cas typique (3 recettes, une liste active). Budgets figés dans `budgets.php`, en cliquet : plus de requêtes = régression (test rouge) ; moins = baisser le budget (`make sql-budget-update`). Compteur : middleware DBAL de test `tests/Helper/SqlBudget` ([0010](adr/0010-strategie-de-tests.md) règle 12). `SQL_BUDGET_VERBOSE=1` affiche la répartition par table.
+- [x] Pendant le chantier, chaque budget existait avec et sans cache et un script de feu vert vérifiait qu'aucun use case ne coûtait plus sans cache ; il a servi à décider du retrait, puis a été supprimé avec lui.
 
-**État** (requêtes SQL : avec cache / sans cache ; « départ » = mesure du 2026-10-14 avant la phase 8) :
+**Résultat** (requêtes SQL ; « départ » = avec cache / sans cache le 2026-10-14, avant la phase 8) :
 
-| Use case | Départ | Maintenant | Reste à alléger |
-|---|---|---|---|
-| `tick-ligne`, `decocher-ligne`, `tick-derniere-ligne` | 28 / 59, 28 / 59, 33 / 107 | 3 / 3, 7 / 7, 13 / 13 | rien d'utile |
-| `renommer-liste`, `mettre-liste-en-pause`, `reactiver-liste`, `terminer-liste`, `supprimer-liste` | 28–29 / 58–59 | 9–10 / 9–10 | rien d'utile (liste = 5 requêtes) |
-| `ajouter-ingredient-liste`, `retirer-ingredient-liste` | 32 / 63, 28 / 61 | 16 / 16, 12 / 12 | charger l'ingrédient (rayon, unités, créateur) alors que seuls le slug et l'unité d'achat servent |
-| `planifier-repas`, `retirer-repas`, `modifier-portions-repas` | 39 / 69, 30 / 74, 35 / 79 | 29 / 40, 21 / 30, 26 / 35 | graphe recette → ingrédients → conversions lu ligne à ligne : préchargement par lot |
-| `supprimer-ingredient`, `supprimer-recette` | 12 / 13, 14 / 22 | inchangé | `findByIngredient` / `findByRecipe` hydratent des agrégats entiers pour une vérification d'existence : ports booléens |
-| `creer-recette`, `modifier-recette`, `copier-recette`, `creer-ingredient`, `modifier-ingredient` | 8–29 / 8–36 | inchangé | un `findOneBySlug` par ligne (ingrédient, unité) : préchargement par lot |
-| `creer-liste`, `assurer-liste-active` | 5 / 8, 6 / 9 | inchangé | l'utilisateur est relu plusieurs fois sans cache |
-| référentiels, conversions, utilisateurs | 2–8 / 2–9 | inchangé | rien à faire |
+| Use case | Départ | Maintenant |
+|---|---|---|
+| `tick-ligne`, `decocher-ligne`, `tick-derniere-ligne` | 28 / 59, 28 / 59, 33 / 107 | 3, 7, 13 |
+| `renommer-liste`, `mettre-liste-en-pause`, `reactiver-liste`, `terminer-liste`, `supprimer-liste` | 28–29 / 58–59 | 9–10 |
+| `ajouter-ingredient-liste`, `retirer-ingredient-liste` | 32 / 63, 28 / 61 | 16, 12 |
+| `planifier-repas`, `retirer-repas`, `modifier-portions-repas` | 39 / 69, 30 / 74, 35 / 79 | 29, 21, 26 |
+| `supprimer-ingredient`, `supprimer-recette` | 12 / 13, 14 / 22 | 12, 14 |
+| `creer-recette`, `modifier-recette`, `copier-recette`, `creer-ingredient`, `modifier-ingredient` | 8–29 / 8–36 | 8, 23, 25, 29, 8 |
+| `creer-liste`, `assurer-liste-active` | 5 / 8, 6 / 9 | 5, 6 |
+| référentiels, conversions, utilisateurs | 2–8 / 2–9 | 2–4 |
 
-**Slices d'allègement** (une par ligne du tableau, dans l'ordre d'impact ; chacune baisse des budgets et le commit inclut `budgets.php`) :
-- [x] Cocher / décocher une ligne, fin de liste automatique : la ligne, l'ingrédient de liste et le repas référencent désormais leurs agrégats par identifiant ([0013](adr/0013-agregats-references-par-identifiant.md)), `ShoppingListRowRepository::allRowsChecked` remplace le rechargement de la liste par `StopListEventListener`
-- [x] Opérations d'en-tête d'une liste (renommer, pause, réactiver, terminer, supprimer) : obtenues par la même refonte, sans port dédié
-- [x] Ajouter / retirer un ingrédient de la liste : la liste se charge en 5 requêtes ; reste le chargement de l'ingrédient lui-même
-- [ ] Planifier / retirer un repas, modifier les portions (`UpdateServingMealHandler` charge désormais la recette de son repas par `RecipeRepository`)
-- [ ] Suppressions d'ingrédient et de recette (vérifications d'existence)
-- [ ] Création de liste et liste active assurée (utilisateur relu plusieurs fois sans cache)
-- [ ] Création et modification de recettes et d'ingrédients (préchargement par lot)
+Total des 32 scénarios : 328 requêtes, avec comme sans cache à l'arrivée.
 
-**Retrait de `ModelCache`** (quand `make cache-removal-check` est vert) :
-- [ ] Corriger `Unit` / `Department::findBySlugs` pour s'appuyer sur l'identity map de Doctrine (mesuré en phase 7 : mêmes requêtes qu'avec le cache, +5 à 10 % de temps sur une liste de 18 repas)
-- [ ] Retirer `cachedByRecipe` (préchargement qui ne fonctionne que par le cache) et les ~70 appels des 8 repositories ; trois lectures ne touchaient de toute façon jamais (`Recipe` lue par slug mais stockée par id, `RecipeType::findOneBySlug` lue sous `Recipe::class`, `Unit::findBySlugs` lue sous `UnitEntity::class`)
-- [ ] Supprimer `ModelCache`, `ModelCacheTest`, le mock de `DatabaseTestCase` et, dans `WriteBudgetTest`, la variante « avec cache » ; mettre à jour CLAUDE.md et ADR 0001
+**Ce qui a changé.**
+- [x] La ligne de courses, l'ingrédient de liste et le repas référencent leurs agrégats par identifiant ([0013](adr/0013-agregats-references-par-identifiant.md)) : une liste se charge en 5 requêtes. `ShoppingListRowRepository::allRowsChecked` remplace le rechargement de la liste par `StopListEventListener`.
+- [x] `PostgreSQLRepository::preload()` : lecture par lot des entités absentes de l'identity map de Doctrine, utilisée par `Unit` / `Department::findBySlugs` et `IngredientPostgreSQLRepository::preloadByRecipe` (ex-`cachedByRecipe`, sorti du port du domaine). Seule fonction qui dépendait vraiment du cache : tout l'écart « sans cache » mesuré était `SELECT unit`.
+- [x] Nettoyage des listes terminées à la création d'une liste par identifiants (`findIdsByOwnerAndStatus`, l'événement porte le propriétaire).
+- [x] `ModelCache` supprimé, avec ses ~70 appels dans les 8 repositories (trois lectures ne touchaient de toute façon jamais : `Recipe` lue par slug mais stockée par id, `RecipeType::findOneBySlug` lue sous `Recipe::class`, `Unit::findBySlugs` lue sous `UnitEntity::class`) et le mock de `DatabaseTestCase`. Chaque use case a gardé exactement son budget.
+
+**Reste à alléger (optionnel, plus bloquant)** : le cliquet empêche toute régression ; ces points sont des gains supplémentaires.
+- [ ] Planifier / retirer un repas, modifier les portions : graphe recette → ingrédients → conversions encore lu ligne à ligne, aux 5 lignes de liste près
+- [ ] Suppressions d'ingrédient et de recette : `findByIngredient` / `findByRecipe` hydratent des agrégats entiers pour une vérification d'existence (ports booléens)
+- [ ] Création et modification de recettes : un `SELECT recipe_row` par ligne à l'enregistrement, un `find` par unité
+- [ ] Ajout et retrait d'un ingrédient de liste : l'ingrédient est chargé avec son rayon, ses unités et son créateur alors que seuls son slug et son unité d'achat servent
 
 ### Phase 9 — Endpoints API d'écriture
 

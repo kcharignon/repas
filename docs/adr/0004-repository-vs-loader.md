@@ -6,7 +6,7 @@
 
 ## Contexte
 
-Les `*PostgreSQLRepository` convertissent une entité Doctrine en modèle de domaine via `convertEntityToModel()`. Comme les entités Doctrine ne portent aucune relation (uniquement des ids et slugs scalaires), cette conversion rappelle d'autres repositories : `ShoppingListPostgreSQLRepository` charge l'owner, les meals (qui chargent chacun une `Recipe`), les ingrédients et les lignes, puis chaque ligne recharge son ingrédient et son unité. `ModelCache` limite les doublons dans une requête mais n'évite ni l'over-fetching ni le N+1.
+Les `*PostgreSQLRepository` convertissent une entité Doctrine en modèle de domaine via `convertEntityToModel()`. Comme les entités Doctrine ne portent aucune relation (uniquement des ids et slugs scalaires), cette conversion rappelle d'autres repositories : `ShoppingListPostgreSQLRepository` charge l'owner, les meals (qui chargent chacun une `Recipe`), les ingrédients et les lignes, puis chaque ligne recharge son ingrédient et son unité. Un cache de modèles (`ModelCache`, retiré depuis) limitait les doublons dans une requête mais n'évitait ni l'over-fetching ni le N+1 ; l'identity map de Doctrine et le préchargement par lot ([0013](0013-agregats-references-par-identifiant.md)) le remplacent.
 
 Un seul « loader » existe : `Infrastructure/Loader/RecipeLoader`. Il étend `PostgreSQLRepository`, renvoie des `Recipe` du domaine (rows vides) et n'est derrière aucune interface.
 
