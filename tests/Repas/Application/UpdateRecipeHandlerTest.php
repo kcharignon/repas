@@ -7,6 +7,7 @@ use PHPUnit\Framework\TestCase;
 use Repas\Repas\Application\Command\UpdateRecipe\UpdateRecipeCommand;
 use Repas\Repas\Application\Command\UpdateRecipe\UpdateRecipeHandler;
 use Repas\Repas\Application\Command\UpdateRecipe\UpdateRecipeRowSubCommand;
+use Repas\Repas\Domain\Exception\IngredientException;
 use Repas\Repas\Domain\Exception\RecipeException;
 use Repas\Repas\Domain\Interface\IngredientRepository;
 use Repas\Repas\Domain\Interface\RecipeRepository;
@@ -15,6 +16,7 @@ use Repas\Repas\Domain\Interface\UnitRepository;
 use Repas\Shared\Domain\Tool\Tab;
 use Repas\Tests\Helper\Builder\IngredientBuilder;
 use Repas\Tests\Helper\Builder\RecipeBuilder;
+use Repas\Tests\Helper\Builder\UserBuilder;
 use Repas\Tests\Helper\Builder\RecipeRowBuilder;
 use Repas\Tests\Helper\Builder\RecipeTypeBuilder;
 use Repas\Tests\Helper\Builder\UnitBuilder;
@@ -132,6 +134,28 @@ class UpdateRecipeHandlerTest extends TestCase
 
         // Assert
         $this->expectExceptionObject(RecipeException::notFound($recipe->getId()));
+
+        // Act
+        ($this->handler)($command);
+    }
+
+    public function testRefusesAnIngredientCustomisedByAnotherUser(): void
+    {
+        // Arrange
+        $recipe = new RecipeBuilder()->isPastaCarbonara()->build();
+        $this->recipeRepository->save($recipe);
+        $private = new IngredientBuilder()->isParmesan()->withCreator(new UserBuilder()->withId('other-id')->build(), true)->build();
+        $this->ingredientRepository->save($private);
+        $command = new UpdateRecipeCommand(
+            $recipe->getId(),
+            'Pates carbo. épurées',
+            4,
+            Tab::fromArray(new UpdateRecipeRowSubCommand($private->getSlug(), 'gramme', 400)),
+            'plat',
+        );
+
+        // Assert : l'ingrédient d'un autre que l'auteur de la recette est traité comme inconnu
+        $this->expectExceptionObject(IngredientException::notFound($private->getSlug()));
 
         // Act
         ($this->handler)($command);

@@ -54,7 +54,7 @@ readonly class CopyRecipeHandler
         }
 
         $recipe = Recipe::copyFromOriginal(
-            UuidGenerator::new(),
+            $command->newRecipeId,
             $originalRecipe,
             $author,
         );

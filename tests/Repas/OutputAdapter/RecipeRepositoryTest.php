@@ -4,6 +4,7 @@ namespace Repas\Tests\Repas\OutputAdapter;
 
 
 use Repas\Repas\Domain\Interface\RecipeRepository;
+use Repas\Repas\Infrastructure\Entity\RecipeRow as RecipeRowEntity;
 use Repas\Repas\Domain\Model\Recipe;
 use Repas\Shared\Domain\Tool\Tab;
 use Repas\Tests\Helper\Builder\IngredientBuilder;
@@ -109,6 +110,29 @@ class RecipeRepositoryTest extends DatabaseTestCase
         // Assert
         $this->expectException(\Exception::class); // Adapte si une exception spécifique est levée
         $this->recipeRepository->findOneById($recipe->getId());
+    }
+
+    public function testDeleteRemovesTheRowsOfTheRecipeToo(): void
+    {
+        // Arrange
+        $user = $this->savedUser();
+        $recipe = $this->savedRecipe(new RecipeBuilder()->isPastaCarbonara()->withAuthor($user));
+        $otherRecipe = $this->savedRecipe(new RecipeBuilder()->isSoftBoiledEggs()->withAuthor($user));
+        $rowsOf = fn(string $recipeId): int => (int) $this->entityManager->createQueryBuilder()
+            ->select('COUNT(rr.id)')
+            ->from(RecipeRowEntity::class, 'rr')
+            ->where('rr.recipeId = :recipeId')
+            ->setParameter('recipeId', $recipeId)
+            ->getQuery()
+            ->getSingleScalarResult();
+        $this->assertGreaterThan(0, $rowsOf($recipe->getId()));
+
+        // Act
+        $this->recipeRepository->delete($recipe);
+
+        // Assert : plus aucune ligne orpheline, celles des autres recettes sont intactes
+        $this->assertSame(0, $rowsOf($recipe->getId()));
+        $this->assertSame($otherRecipe->getRows()->count(), $rowsOf($otherRecipe->getId()));
     }
 
     public function testFindBy(): void

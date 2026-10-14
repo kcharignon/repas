@@ -3,6 +3,7 @@
 namespace Repas\Repas\Domain\Model;
 
 
+use Repas\Repas\Domain\Exception\IngredientException;
 use Repas\Shared\Domain\Model\ModelInterface;
 use Repas\Shared\Domain\Model\ModelTrait;
 use Repas\Shared\Domain\Tool\Tab;
@@ -119,7 +120,12 @@ final class Recipe implements ModelInterface
         Tab     $rows,
         ?string $originalId,
     ): self {
-        return new self($id, $name, $servings, $author, $recipeType, $rows, $originalId);
+        $recipe = new self($id, $name, $servings, $author, $recipeType, $rows, $originalId);
+        foreach ($rows as $row) {
+            $recipe->assertIngredientIsAvailable($row->getIngredient());
+        }
+
+        return $recipe;
     }
 
     public static function copyFromOriginal(
@@ -184,6 +190,8 @@ final class Recipe implements ModelInterface
 
     public function addRow(Ingredient $ingredient, Unit $unit, float $quantity): void
     {
+        $this->assertIngredientIsAvailable($ingredient);
+
         $row = RecipeRow::create(
             id: UuidGenerator::new(),
             recipeId: $this->id,
@@ -192,6 +200,20 @@ final class Recipe implements ModelInterface
             unit: $unit
         );
         $this->rows[] = $row;
+    }
+
+    /**
+     * Un ingrédient commun est utilisable par tous, un ingrédient personnalisé seulement par son créateur : l'ingrédient
+     * d'un autre utilisateur est traité comme inconnu (on ne révèle pas son existence).
+     *
+     * @throws IngredientException
+     */
+    private function assertIngredientIsAvailable(Ingredient $ingredient): void
+    {
+        $creator = $ingredient->getCreator();
+        if ($creator !== null && !$creator->isEqual($this->author)) {
+            throw IngredientException::notFound($ingredient->getSlug());
+        }
     }
 
     public function isOriginal(): bool

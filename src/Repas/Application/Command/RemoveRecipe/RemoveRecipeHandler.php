@@ -29,7 +29,7 @@ readonly class RemoveRecipeHandler
 
         $shoppingLists = $this->shoppingListRepository->findByRecipe($recipe);
         if (!$shoppingLists->empty()) {
-            throw RecipeException::cannotRemoveExistInShoppingList();
+            throw RecipeException::cannotRemoveExistInShoppingList($recipe->getId());
         }
 
         $this->recipeRepository->delete($recipe);

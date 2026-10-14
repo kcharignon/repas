@@ -132,6 +132,7 @@ readonly class RecipePostgreSQLRepository extends PostgreSQLRepository implement
 
     public function delete(Recipe $recipe): void
     {
+        $this->recipeRowRepository->deleteByRecipeId($recipe->getId());
         $this->entityRepository->createQueryBuilder('r')
             ->delete()
             ->where('r.id = :id')

@@ -45,6 +45,16 @@ readonly class RecipeRowPostgreSQLRepository extends PostgreSQLRepository
         $this->entityManager->flush();
     }
 
+    public function deleteByRecipeId(string $recipeId): void
+    {
+        $this->entityManager->createQueryBuilder()
+            ->delete(RecipeRowEntity::class, 'rw')
+            ->where('rw.recipeId = :recipeId')
+            ->setParameter('recipeId', $recipeId)
+            ->getQuery()
+            ->execute();
+    }
+
     /**
      * @param Tab<string> $ids
      */
