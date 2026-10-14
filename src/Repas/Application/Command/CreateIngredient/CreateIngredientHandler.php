@@ -51,7 +51,7 @@ readonly class CreateIngredientHandler
             department: $this->departmentRepository->findOneBySlug($command->departmentSlug),
             defaultCookingUnit: $cookingUnit,
             defaultPurchaseUnit: $purchaseUnit,
-            creator: $command->ownerId !== null ? $this->userRepository->findOneById($command->ownerId) : null,
+            creator: $owner,
         );
 
         $this->ingredientRepository->save($ingredient);
