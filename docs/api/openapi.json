@@ -40,7 +40,15 @@
                 },
                 "responses": {
                     "200": {
-                        "description": "Token JWT (dur\u00e9e de vie 3600 s)",
+                        "description": "Token JWT (dur\u00e9e de vie 3600 s). Pose aussi le cookie `repas_refresh` (HttpOnly, SameSite=Strict, `Path=/api/auth`), \u00e0 \u00e9changer contre un nouveau JWT par `POST /api/auth/refresh` (ADR 0015)",
+                        "headers": {
+                            "Set-Cookie": {
+                                "description": "Refresh token, `HttpOnly; Secure; SameSite=Strict; Path=/api/auth`",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        },
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -1875,6 +1883,72 @@
                 "security": []
             }
         },
+        "/api/auth/logout": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Se d\u00e9connecter : r\u00e9voquer la connexion du cookie de rafra\u00eechissement",
+                "description": "Supprime toute la famille du refresh token pr\u00e9sent\u00e9 et efface le cookie. Idempotent : sans cookie ou avec un cookie inconnu, la r\u00e9ponse est la m\u00eame. Les JWT d\u00e9j\u00e0 \u00e9mis restent valables jusqu'\u00e0 leur expiration (1 h) : le client doit les oublier (ADR 0015).",
+                "operationId": "post_api_auth_logout",
+                "responses": {
+                    "204": {
+                        "description": "Connexion r\u00e9voqu\u00e9e, cookie `repas_refresh` effac\u00e9",
+                        "headers": {
+                            "Set-Cookie": {
+                                "description": "Cookie vide expir\u00e9",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": []
+            }
+        },
+        "/api/auth/refresh": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Obtenir un nouveau JWT avec le cookie de rafra\u00eechissement",
+                "description": "Public : le JWT est expir\u00e9, l'identit\u00e9 vient du seul cookie `repas_refresh` (HttpOnly, SameSite=Strict, `Path=/api/auth`), pos\u00e9 \u00e0 la connexion. Le jeton est \u00e0 usage unique : la r\u00e9ponse en pose un nouveau (rotation). Pr\u00e9senter un jeton d\u00e9j\u00e0 utilis\u00e9 r\u00e9voque toute la connexion (ADR 0015).",
+                "operationId": "post_api_auth_refresh",
+                "responses": {
+                    "200": {
+                        "description": "Nouveau JWT (dur\u00e9e de vie 3600 s) ; le cookie `repas_refresh` est remplac\u00e9",
+                        "headers": {
+                            "Set-Cookie": {
+                                "description": "Nouveau refresh token, `HttpOnly; Secure; SameSite=Strict; Path=/api/auth`",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "token": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Cookie absent, inconnu, expir\u00e9, d\u00e9j\u00e0 utilis\u00e9, compte d\u00e9sactiv\u00e9 ou mot de passe chang\u00e9 depuis : sans pr\u00e9cision. Le cookie est effac\u00e9 ; le client r\u00e9essaie une fois (course entre onglets) avant de renvoyer \u00e0 la connexion"
+                    },
+                    "429": {
+                        "description": "Trop de rafra\u00eechissements depuis cette adresse (60 par 10 minutes)"
+                    }
+                },
+                "security": []
+            }
+        },
         "/api/v1/me/settings": {
             "put": {
                 "tags": [
@@ -3089,8 +3163,7 @@
             "name": "Users"
         },
         {
-            "name": "Auth",
-            "description": "Auth"
+            "name": "Auth"
         }
     ]
 }
