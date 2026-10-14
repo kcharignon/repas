@@ -24,6 +24,6 @@ class RecipeException extends DomainException
 
     public static function cannotRemoveExistInShoppingList(): static
     {
-        return new static("Cannot remove recipe '%s', present in shopping list", 403);
+        return new static("Cannot remove recipe '%s', present in shopping list", 409);
     }
 }

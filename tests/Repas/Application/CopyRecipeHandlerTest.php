@@ -85,13 +85,14 @@ class CopyRecipeHandlerTest extends TestCase
     public function testSuccessfullyHandleCopyRecipe(): void
     {
         // Arrange
-        $command = new CopyRecipeCommand('recipe-id', 'user-id');
+        $command = new CopyRecipeCommand('recipe-id', 'user-id', 'copy-id');
 
         // Act
         ($this->handler)($command);
 
         // Assert
         $actual = $this->recipeRepository->findByAuthor($this->user)->reset();
+        $this->assertSame('copy-id', $actual->getId());
         $expected = new RecipeBuilder()
             ->withId($actual->getId())
             ->withAuthor($this->user)
@@ -112,7 +113,7 @@ class CopyRecipeHandlerTest extends TestCase
     public function testFailedHandleCopyRecipeUnknownUser(): void
     {
         // Arrange
-        $command = new CopyRecipeCommand('recipe-id', 'not-found');
+        $command = new CopyRecipeCommand('recipe-id', 'not-found', 'copy-id');
 
         // Assert
         $this->expectExceptionObject(UserException::NotFound('not-found'));
@@ -124,7 +125,7 @@ class CopyRecipeHandlerTest extends TestCase
     public function testFailedHandleCopyRecipeUnknownRecipe(): void
     {
         // Arrange
-        $command = new CopyRecipeCommand('not-found', 'user-id');
+        $command = new CopyRecipeCommand('not-found', 'user-id', 'copy-id');
 
         // Assert
         $this->expectExceptionObject(RecipeException::NotFound('not-found'));

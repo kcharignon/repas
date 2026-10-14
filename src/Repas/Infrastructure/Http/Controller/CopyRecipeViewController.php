@@ -5,6 +5,7 @@ namespace Repas\Repas\Infrastructure\Http\Controller;
 
 use Repas\Repas\Application\Command\CopyRecipe\CopyRecipeCommand;
 use Repas\Shared\Application\Interface\CommandBusInterface;
+use Repas\Shared\Domain\Tool\UuidGenerator;
 use Repas\Shared\Domain\Exception\DomainException;
 use Repas\User\Domain\Model\User;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -26,7 +27,7 @@ class CopyRecipeViewController extends AbstractController
         $userConnected = $this->getUser();
         assert($userConnected instanceof User);
 
-        $command = new CopyRecipeCommand($id, $userConnected->getId());
+        $command = new CopyRecipeCommand($id, $userConnected->getId(), UuidGenerator::new());
         try {
             $this->commandBus->dispatch($command);
         } catch (DomainException) {

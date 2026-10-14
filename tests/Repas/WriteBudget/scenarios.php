@@ -200,7 +200,7 @@ return [
         $other = $t->savedUser();
         $recipe = $t->savedRecipe($author, new RecipeBuilder()->isPastaCarbonara());
 
-        return new CopyRecipeCommand($recipe->getId(), $other->getId());
+        return new CopyRecipeCommand($recipe->getId(), $other->getId(), UuidGenerator::new());
     },
     'supprimer-recette' => static function (WriteBudgetTestCase $t): object {
         $owner = $t->savedUser();
