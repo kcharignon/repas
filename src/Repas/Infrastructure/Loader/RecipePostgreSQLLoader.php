@@ -26,8 +26,7 @@ final readonly class RecipePostgreSQLLoader implements RecipeLoader
     }
 
     /**
-     * Les lignes gardent l'ordre de stockage, comme avant : celui de la saisie tant que la recette n'est pas modifiée. Aucune colonne
-     * de position n'existe pour le garantir (roadmap, « Hors périmètre »).
+     * Les lignes sont dans l'ordre de la recette (colonne `position`, écrite dans l'ordre de la saisie à chaque enregistrement).
      */
     public function get(string $id): RecipeDTO
     {
@@ -54,6 +53,7 @@ final readonly class RecipePostgreSQLLoader implements RecipeLoader
             ->innerJoin(Unit::class, 'u', Join::WITH, 'u.slug = rr.unitSlug')
             ->where('rr.recipeId = :id')
             ->setParameter('id', $id)
+            ->orderBy('rr.position', 'ASC')
             ->getQuery()
             ->getArrayResult();
 

@@ -21,7 +21,7 @@ final readonly class RecipeDTO
         public string $typeSlug,
         #[OA\Property(example: 'plat')]
         public string $typeName,
-        #[OA\Property(description: 'Ingrédients de la recette, dans leur ordre de stockage', type: 'array', items: new OA\Items(ref: new Model(type: RecipeRowDTO::class)))]
+        #[OA\Property(description: 'Ingrédients de la recette, dans l\'ordre de la recette (celui de la saisie)', type: 'array', items: new OA\Items(ref: new Model(type: RecipeRowDTO::class)))]
         public array $rows,
     ) {
     }
