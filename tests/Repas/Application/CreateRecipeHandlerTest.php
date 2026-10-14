@@ -22,6 +22,8 @@ use Repas\Tests\Helper\Builder\RecipeRowBuilder;
 use Repas\Tests\Helper\Builder\RecipeTypeBuilder;
 use Repas\Tests\Helper\Builder\UnitBuilder;
 use Repas\Tests\Helper\Builder\UserBuilder;
+use Repas\Tests\Helper\InMemoryRepository\ConversionInMemoryRepository;
+use Repas\Repas\Domain\Service\ConversionService;
 use Repas\Tests\Helper\InMemoryRepository\IngredientInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\RecipeInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\RecipeTypeInMemoryRepository;
@@ -59,6 +61,7 @@ class CreateRecipeHandlerTest extends TestCase
             $this->ingredientRepository,
             $this->unitRepository,
             $this->recipeRepository,
+            new ConversionService(new ConversionInMemoryRepository(), $this->unitRepository),
             $this->eventDispatcher,
         );
     }
@@ -224,6 +227,33 @@ class CreateRecipeHandlerTest extends TestCase
             ($this->handler)($command);
         } finally {
             $this->assertSame([], $this->eventDispatcher->eventDispatched);
+        }
+    }
+
+    public function testRefusesAUnitWithoutAConversionToThePurchaseUnit(): void
+    {
+        // Arrange : les pâtes s'achètent au gramme, aucune conversion ne mène de l'unité au gramme
+        $user = new UserBuilder()->withId('user-id')->build();
+        $pasta = new IngredientBuilder()->isPasta()->build();
+        $this->ingredientRepository->save($pasta);
+        $command = new CreateRecipeCommand(
+            id: "unique_id",
+            name: "Gloubiboulga",
+            serving: 25,
+            authorId: $user->getId(),
+            rows: Tab::fromArray(new CreateRecipeRowSubCommand(ingredientSlug: $pasta->getSlug(), unitSlug: 'unite', quantity: 3)),
+            typeSlug: new RecipeTypeBuilder()->isMeal()->build()->getSlug(),
+        );
+
+        // Assert : refusée à l'enregistrement, pas plus tard à la planification
+        $this->expectExceptionObject(IngredientException::cannotConvertToUnit($pasta, new UnitBuilder()->isUnite()->build(), $pasta->getDefaultPurchaseUnit()));
+
+        // Act
+        try {
+            ($this->handler)($command);
+        } finally {
+            $this->assertSame([], $this->eventDispatcher->eventDispatched);
+            $this->assertSame(0, $this->recipeRepository->findByAuthor($user->getId())->count());
         }
     }
 }

@@ -14,6 +14,7 @@ use Repas\Repas\Infrastructure\Entity\RecipeRow as RecipeRowEntity;
 use Repas\Tests\Helper\Builder\IngredientBuilder;
 use Repas\Tests\Helper\Builder\RecipeBuilder;
 use Repas\Tests\Helper\Builder\RecipeTypeBuilder;
+use Repas\Tests\Helper\Builder\UnitBuilder;
 use Repas\Tests\Helper\Builder\ShoppingListBuilder;
 use Repas\Tests\Helper\Builder\UserBuilder;
 use Repas\Tests\Helper\DatabaseTestCase;
@@ -110,6 +111,57 @@ class RecipeWriteApiFlowTest extends DatabaseTestCase
         $updated = $this->recipes()->findOneById($recipe->getId());
         $this->assertSame(['Beurre seul', 2, [$butter->getSlug()]], [$updated->getName(), $updated->getServing(), array_map(fn(RecipeRow $row) => $row->getIngredient()->getSlug(), array_values($updated->getRows()->toArray()))]);
         $this->assertSame(1, $this->rowCount($recipe->getId()));
+    }
+
+    public function testTheRowsKeepTheOrderOfTheBodyAndAReplacementReordersThem(): void
+    {
+        // Given : trois ingrédients dont l'ordre alphabétique n'est pas celui de la saisie
+        $author = $this->savedUser();
+        $butter = new IngredientBuilder()->isButter()->build();
+        $pasta = new IngredientBuilder()->isPasta()->build();
+        $egg = new IngredientBuilder()->isEgg()->build();
+        foreach ([$butter, $pasta, $egg] as $ingredient) {
+            $this->persister->saveIngredient($ingredient);
+        }
+        $this->persister->saveRecipeType(new RecipeTypeBuilder()->isMeal()->build());
+        $row = static fn($ingredient): array => ['ingredientSlug' => $ingredient->getSlug(), 'unitSlug' => $ingredient->getDefaultPurchaseUnit()->getSlug(), 'quantity' => 2];
+        $slugsOfTheRecipe = fn(string $id): array => array_map(fn($r) => $r['ingredientSlug'], (function () use ($id, $author) {
+            $this->request('GET', '/api/v1/recipes/' . $id, $author);
+
+            return $this->jsonBody()['rows'];
+        })());
+
+        // When : création
+        $this->request('POST', '/api/v1/recipes', $author, ['name' => 'Trio', 'serving' => 2, 'typeSlug' => 'plat', 'rows' => [$row($butter), $row($pasta), $row($egg)]]);
+        $id = basename($this->client->getResponse()->headers->get('Location'));
+
+        // Then : relue dans l'ordre de la saisie
+        $this->assertSame([$butter->getSlug(), $pasta->getSlug(), $egg->getSlug()], $slugsOfTheRecipe($id));
+
+        // When : remplacement avec un autre ordre
+        $this->request('PUT', '/api/v1/recipes/' . $id, $author, ['name' => 'Trio', 'serving' => 2, 'typeSlug' => 'plat', 'rows' => [$row($egg), $row($butter), $row($pasta)]]);
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+
+        // Then
+        $this->assertSame([$egg->getSlug(), $butter->getSlug(), $pasta->getSlug()], $slugsOfTheRecipe($id));
+    }
+
+    public function testAUnitWithoutAConversionToThePurchaseUnitIsRefused(): void
+    {
+        // Given : les pâtes s'achètent au gramme, rien ne convertit l'unité en gramme
+        $author = $this->savedUser();
+        $pasta = new IngredientBuilder()->isPasta()->build();
+        $this->persister->saveIngredient($pasta);
+        $this->persister->saveRecipeType(new RecipeTypeBuilder()->isMeal()->build());
+        $this->persister->saveUnit(new UnitBuilder()->isUnite()->build());
+
+        // When
+        $this->request('POST', '/api/v1/recipes', $author, ['name' => 'Pâtes', 'serving' => 2, 'typeSlug' => 'plat', 'rows' => [['ingredientSlug' => $pasta->getSlug(), 'unitSlug' => 'unite', 'quantity' => 3]]]);
+
+        // Then : 422 à l'enregistrement, rien n'est créé
+        $this->assertSame(422, $this->client->getResponse()->getStatusCode());
+        $this->assertArrayHasKey('error', $this->jsonBody());
+        $this->assertSame(0, $this->recipes()->findByAuthor($author->getId())->count());
     }
 
     public function testAnotherUserCannotUpdateOrDeleteTheRecipe(): void

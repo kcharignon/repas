@@ -17,6 +17,8 @@ use Repas\Shared\Domain\Tool\Tab;
 use Repas\Tests\Helper\Builder\IngredientBuilder;
 use Repas\Tests\Helper\Builder\RecipeBuilder;
 use Repas\Tests\Helper\Builder\UserBuilder;
+use Repas\Tests\Helper\InMemoryRepository\ConversionInMemoryRepository;
+use Repas\Repas\Domain\Service\ConversionService;
 use Repas\Tests\Helper\Builder\RecipeRowBuilder;
 use Repas\Tests\Helper\Builder\RecipeTypeBuilder;
 use Repas\Tests\Helper\Builder\UnitBuilder;
@@ -46,6 +48,7 @@ class UpdateRecipeHandlerTest extends TestCase
         ]);
         $this->unitRepository = new UnitInMemoryRepository([
             new UnitBuilder()->isGramme()->build(),
+            new UnitBuilder()->isUnite()->build(),
         ]);
 
         $this->handler = new UpdateRecipeHandler(
@@ -53,6 +56,7 @@ class UpdateRecipeHandlerTest extends TestCase
             $this->recipeTypeRepository,
             $this->ingredientRepository,
             $this->unitRepository,
+            new ConversionService(new ConversionInMemoryRepository(), $this->unitRepository),
         );
     }
 
@@ -191,5 +195,26 @@ class UpdateRecipeHandlerTest extends TestCase
         // Act
         ($this->handler)($command);
 
+    }
+
+    public function testRefusesAUnitWithoutAConversionToThePurchaseUnit(): void
+    {
+        // Arrange : les pâtes s'achètent au gramme, aucune conversion ne mène de l'unité au gramme
+        $recipe = new RecipeBuilder()->isPastaCarbonara()->build();
+        $this->recipeRepository->save($recipe);
+        $pasta = $this->ingredientRepository->findOneBySlug('pate');
+        $command = new UpdateRecipeCommand(
+            $recipe->getId(),
+            'Pates carbo.',
+            4,
+            Tab::fromArray(new UpdateRecipeRowSubCommand('pate', 'unite', 3)),
+            'plat'
+        );
+
+        // Assert
+        $this->expectExceptionObject(IngredientException::cannotConvertToUnit($pasta, new UnitBuilder()->isUnite()->build(), $pasta->getDefaultPurchaseUnit()));
+
+        // Act
+        ($this->handler)($command);
     }
 }
