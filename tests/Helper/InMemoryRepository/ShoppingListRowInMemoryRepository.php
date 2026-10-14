@@ -8,6 +8,9 @@ use Repas\Repas\Domain\Interface\ShoppingListRowRepository;
 use Repas\Repas\Domain\Model\ShoppingListRow;
 use Repas\Shared\Domain\Tool\Tab;
 
+/**
+ * @extends AbstractInMemoryRepository<ShoppingListRow>
+ */
 class ShoppingListRowInMemoryRepository extends AbstractInMemoryRepository implements ShoppingListRowRepository
 {
     protected static function getClassName(): string

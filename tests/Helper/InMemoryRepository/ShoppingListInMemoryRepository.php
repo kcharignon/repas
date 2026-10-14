@@ -13,6 +13,9 @@ use Repas\Repas\Domain\Model\ShoppingListIngredient;
 use Repas\Repas\Domain\Model\ShoppingListStatus;
 use Repas\Shared\Domain\Tool\Tab;
 
+/**
+ * @extends AbstractInMemoryRepository<ShoppingList>
+ */
 class ShoppingListInMemoryRepository extends AbstractInMemoryRepository implements ShoppingListRepository
 {
     protected static function getClassName(): string

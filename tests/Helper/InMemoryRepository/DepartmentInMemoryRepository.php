@@ -8,6 +8,9 @@ use Repas\Repas\Domain\Interface\DepartmentRepository;
 use Repas\Repas\Domain\Model\Department;
 use Repas\Shared\Domain\Tool\Tab;
 
+/**
+ * @extends AbstractInMemoryRepository<Department>
+ */
 class DepartmentInMemoryRepository extends AbstractInMemoryRepository implements DepartmentRepository
 {
     protected static function getClassName(): string
