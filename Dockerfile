@@ -1,7 +1,7 @@
 #syntax=docker/dockerfile:1
 
 # Versions
-FROM dunglas/frankenphp:1.4.0-php8.4.2 AS frankenphp_upstream
+FROM dunglas/frankenphp:1.12.4-php8.4.23 AS frankenphp_upstream
 
 # The different stages of this Dockerfile are meant to be built into separate images
 # https://docs.docker.com/develop/develop-images/multistage-build/#stop-at-a-specific-build-stage
@@ -18,9 +18,9 @@ VOLUME /app/var/
 # persistent / runtime deps
 # hadolint ignore=DL3008
 RUN apt-get update && apt-get install -y --no-install-recommends \
-	acl=2.3.1-3 \
-	file=1:5.44-3 \
-	gettext=0.21-12 \
+	acl \
+	file \
+	gettext \
 	git \
     ###> doctrine/doctrine-bundle ###
     libpq-dev \

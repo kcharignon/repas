@@ -24,7 +24,7 @@ use Repas\Tests\Helper\RepasAssert;
 use Repas\User\Domain\Exception\UserException;
 use Repas\User\Domain\Interface\UserRepository;
 use Repas\User\Domain\Model\User;
-use Symfony\Component\EventDispatcher\EventDispatcherInterface;
+use Repas\Tests\Helper\InMemoryRepository\SpyEventDispatcher;
 
 class CopyRecipeHandlerTest extends TestCase
 {
@@ -33,7 +33,7 @@ class CopyRecipeHandlerTest extends TestCase
     private readonly UserRepository $userRepository;
     private readonly IngredientRepository $ingredientRepository;
     private readonly ConversionRepository $conversionRepository;
-    private readonly EventDispatcherInterface $eventDispatcher;
+    private readonly SpyEventDispatcher $eventDispatcher;
     private User $user;
     private IngredientBuilder $secretIngredient;
     private ConversionBuilder $secretIngredientConversion;
@@ -71,7 +71,7 @@ class CopyRecipeHandlerTest extends TestCase
                 ->withAuthor($owner)
                 ->build(),
         ]);
-        $this->eventDispatcher = $this->createMock(EventDispatcherInterface::class);
+        $this->eventDispatcher = new SpyEventDispatcher();
         $this->handler = new CopyRecipeHandler(
             $this->recipeRepository,
             $this->userRepository,

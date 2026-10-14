@@ -601,34 +601,10 @@ parameters:
 			path: tests/Repas/Application/AddIngredientToShoppingListHandlerTest.php
 
 		-
-			message: '#^Call to an undefined method Symfony\\Component\\EventDispatcher\\EventDispatcherInterface\:\:expects\(\)\.$#'
-			identifier: method.notFound
-			count: 8
-			path: tests/Repas/Application/CreateIngredientHandlerTest.php
-
-		-
-			message: '#^Call to an undefined method Symfony\\Component\\EventDispatcher\\EventDispatcherInterface\:\:expects\(\)\.$#'
-			identifier: method.notFound
-			count: 4
-			path: tests/Repas/Application/CreateRecipeHandlerTest.php
-
-		-
 			message: '#^Repas\\Shared\\Domain\\Tool\\Tab\<\*NEVER\*\> does not accept Repas\\Repas\\Application\\Command\\CreateRecipe\\CreateRecipeRowSubCommand\.$#'
 			identifier: offsetAssign.valueType
 			count: 4
 			path: tests/Repas/Application/CreateRecipeHandlerTest.php
-
-		-
-			message: '#^Call to an undefined method Symfony\\Component\\EventDispatcher\\EventDispatcherInterface\:\:expects\(\)\.$#'
-			identifier: method.notFound
-			count: 2
-			path: tests/Repas/Application/CreateShoppingListHandlerTest.php
-
-		-
-			message: '#^Call to an undefined method Symfony\\Component\\EventDispatcher\\EventDispatcherInterface\:\:getLastEventDispatched\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: tests/Repas/Application/TickLineOnShoppingListHandlerTest.php
 
 		-
 			message: '#^Array has 2 duplicate keys with value 0 \(0, ''0''\)\.$#'

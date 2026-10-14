@@ -19,21 +19,21 @@ use Repas\Tests\Helper\InMemoryRepository\UserInMemoryRepository;
 use Repas\Tests\Helper\RepasAssert;
 use Repas\User\Domain\Exception\UserException;
 use Repas\User\Domain\Interface\UserRepository;
-use Symfony\Component\EventDispatcher\EventDispatcherInterface;
+use Repas\Tests\Helper\InMemoryRepository\SpyEventDispatcher;
 
 class CreateShoppingListHandlerTest extends TestCase
 {
     private readonly CreateShoppingListHandler $handler;
     private readonly UserRepository $userRepository;
     private readonly ShoppingListRepository $shoppingListRepository;
-    private readonly EventDispatcherInterface $eventDispatcher;
+    private readonly SpyEventDispatcher $eventDispatcher;
     private readonly ClockInterface $clock;
 
     protected function setUp(): void
     {
         $this->userRepository = new UserInMemoryRepository();
         $this->shoppingListRepository = new ShoppingListInMemoryRepository();
-        $this->eventDispatcher = $this->createMock(EventDispatcherInterface::class);
+        $this->eventDispatcher = new SpyEventDispatcher();
         $this->clock = new FrozenClock(new DateTimeImmutable());
 
         $this->handler = new CreateShoppingListHandler(
@@ -53,13 +53,11 @@ class CreateShoppingListHandlerTest extends TestCase
         $this->shoppingListRepository->save($shoppingList);
         $command = new CreateShoppingListCommand("unique_id", $user->getId());
 
-        // Assert
-        $this->eventDispatcher->expects(self::once())->method('dispatch')->with(new NewShoppingListCreatedEvent("unique_id", $user->getId()));
-
         // Act
         ($this->handler)($command);
 
         // Assert
+        $this->assertEquals([new NewShoppingListCreatedEvent("unique_id", $user->getId())], $this->eventDispatcher->eventDispatched);
         $expected = new ShoppingListBuilder()->withId("unique_id")->withOwner($user)->build();
         $actual = $this->shoppingListRepository->findOneById("unique_id");
         RepasAssert::assertShoppingList($expected, $actual);
@@ -75,10 +73,13 @@ class CreateShoppingListHandlerTest extends TestCase
         $command = new CreateShoppingListCommand("unique_id", $user->getId());
 
         // Assert
-        $this->eventDispatcher->expects(self::never())->method('dispatch');
         $this->expectExceptionObject(UserException::NotFound($user->getId()));
 
         // Act
-        ($this->handler)($command);
+        try {
+            ($this->handler)($command);
+        } finally {
+            $this->assertSame([], $this->eventDispatcher->eventDispatched);
+        }
     }
 }

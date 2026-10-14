@@ -30,7 +30,7 @@ use Repas\Tests\Helper\InMemoryRepository\UserInMemoryRepository;
 use Repas\Tests\Helper\RepasAssert;
 use Repas\User\Domain\Exception\UserException;
 use Repas\User\Domain\Interface\UserRepository;
-use Symfony\Component\EventDispatcher\EventDispatcherInterface;
+use Repas\Tests\Helper\InMemoryRepository\SpyEventDispatcher;
 
 class CreateRecipeHandlerTest extends TestCase
 {
@@ -40,7 +40,7 @@ class CreateRecipeHandlerTest extends TestCase
     private readonly IngredientRepository $ingredientRepository;
     private readonly UnitRepository $unitRepository;
     private readonly RecipeRepository $recipeRepository;
-    private readonly EventDispatcherInterface $eventDispatcher;
+    private readonly SpyEventDispatcher $eventDispatcher;
 
     protected function setUp(): void
     {
@@ -57,7 +57,7 @@ class CreateRecipeHandlerTest extends TestCase
             new RecipeTypeBuilder()->isDessert()->build(),
         ]);
         $this->recipeRepository = new RecipeInMemoryRepository();
-        $this->eventDispatcher = $this->createMock(EventDispatcherInterface::class);
+        $this->eventDispatcher = new SpyEventDispatcher();
 
         $this->handler = new CreateRecipeHandler(
             $this->userRepository,
@@ -94,15 +94,11 @@ class CreateRecipeHandlerTest extends TestCase
             quantity: 10,
         );
 
-        // Assert
-        $this->eventDispatcher->expects(self::once())->method('dispatch')->with(
-            new RecipeCreatedEvent('user-id', 'unique_id')
-        );
-
         // Act
         ($this->handler)($command);
 
         // Assert
+        $this->assertEquals([new RecipeCreatedEvent('user-id', 'unique_id')], $this->eventDispatcher->eventDispatched);
         $expected = new RecipeBuilder()
             ->withId("unique_id")
             ->withName("Gloubiboulga")
@@ -197,11 +193,14 @@ class CreateRecipeHandlerTest extends TestCase
         );
 
         // Assert
-        $this->eventDispatcher->expects(self::never())->method('dispatch');
         $this->expectExceptionObject(UserException::NotFound($user->getId()));
 
         // Act
-        ($this->handler)($command);
+        try {
+            ($this->handler)($command);
+        } finally {
+            $this->assertSame([], $this->eventDispatcher->eventDispatched);
+        }
     }
 
     public function testHandleCreateRecipeFailedIngredientNotFound(): void
@@ -229,11 +228,14 @@ class CreateRecipeHandlerTest extends TestCase
         );
 
         // Assert
-        $this->eventDispatcher->expects(self::never())->method('dispatch');
         $this->expectExceptionObject(IngredientException::NotFound($pasta->getSlug()));
 
         // Act
-        ($this->handler)($command);
+        try {
+            ($this->handler)($command);
+        } finally {
+            $this->assertSame([], $this->eventDispatcher->eventDispatched);
+        }
     }
 
     public function testHandleCreateRecipeFailedRecipeTypeNotFound(): void
@@ -262,10 +264,13 @@ class CreateRecipeHandlerTest extends TestCase
         );
 
         // Assert
-        $this->eventDispatcher->expects(self::never())->method('dispatch');
         $this->expectExceptionObject(RecipeException::typeNotFound($recipeType->getSlug()));
 
         // Act
-        ($this->handler)($command);
+        try {
+            ($this->handler)($command);
+        } finally {
+            $this->assertSame([], $this->eventDispatcher->eventDispatched);
+        }
     }
 }

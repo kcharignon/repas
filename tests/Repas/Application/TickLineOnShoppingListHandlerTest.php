@@ -13,13 +13,12 @@ use Repas\Tests\Helper\Builder\ShoppingListRowBuilder;
 use Repas\Tests\Helper\InMemoryRepository\ShoppingListRowInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\SpyEventDispatcher;
 use Repas\Tests\Helper\RepasAssert;
-use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 
 class TickLineOnShoppingListHandlerTest extends TestCase
 {
     private readonly TickLineOnShoppingListHandler $handler;
     private readonly ShoppingListRowRepository $shoppingListRowRepository;
-    private readonly EventDispatcherInterface $eventDispatcher;
+    private readonly SpyEventDispatcher $eventDispatcher;
 
     protected function setUp(): void
     {

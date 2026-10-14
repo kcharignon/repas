@@ -29,7 +29,7 @@ use Repas\Tests\Helper\InMemoryRepository\UserInMemoryRepository;
 use Repas\Tests\Helper\RepasAssert;
 use Repas\User\Domain\Exception\UserException;
 use Repas\User\Domain\Interface\UserRepository;
-use Symfony\Component\EventDispatcher\EventDispatcherInterface;
+use Repas\Tests\Helper\InMemoryRepository\SpyEventDispatcher;
 
 class CreateIngredientHandlerTest extends TestCase
 {
@@ -38,7 +38,7 @@ class CreateIngredientHandlerTest extends TestCase
     private readonly IngredientRepository $ingredientRepository;
     private readonly UnitRepository $unitRepository;
     private readonly DepartmentRepository $departmentRepository;
-    private readonly EventDispatcherInterface $eventDispatcher;
+    private readonly SpyEventDispatcher $eventDispatcher;
     private readonly ConversionRepository $conversionRepository;
 
     protected function setUp(): void
@@ -52,7 +52,7 @@ class CreateIngredientHandlerTest extends TestCase
         $this->ingredientRepository = new IngredientInMemoryRepository();
         $this->unitRepository = new UnitInMemoryRepository([$unite, $liter, $centiliter]);
         $this->departmentRepository = new DepartmentInMemoryRepository([$baby]);
-        $this->eventDispatcher = $this->createMock(EventDispatcherInterface::class);
+        $this->eventDispatcher = new SpyEventDispatcher();
         $this->conversionRepository = new ConversionInMemoryRepository([
             new ConversionBuilder()
                 ->withStartUnit($liter)
@@ -91,16 +91,14 @@ class CreateIngredientHandlerTest extends TestCase
             coefficient: null,
         );
 
-        // Assert
-        $this->eventDispatcher->expects(self::once())->method('dispatch')->with(new IngredientCreatedEvent(
-            $user->getId(),
-            'nom-de-l-ingredientuser-id',
-        ));
-
         // Act
         ($this->handler)($command);
 
         // Assert
+        $this->assertEquals([new IngredientCreatedEvent(
+            $user->getId(),
+            'nom-de-l-ingredientuser-id',
+        )], $this->eventDispatcher->eventDispatched);
         $expected = new IngredientBuilder()
             ->withName("nom de l'ingredient")
             ->withImage("super-image.jpg")
@@ -128,16 +126,14 @@ class CreateIngredientHandlerTest extends TestCase
             coefficient: null,
         );
 
-        // Assert
-        $this->eventDispatcher->expects(self::once())->method('dispatch')->with(new IngredientCreatedEvent(
-            $user->getId(),
-            'nom-de-l-ingredientuser-id',
-        ));
-
         // Act
         ($this->handler)($command);
 
         // Assert
+        $this->assertEquals([new IngredientCreatedEvent(
+            $user->getId(),
+            'nom-de-l-ingredientuser-id',
+        )], $this->eventDispatcher->eventDispatched);
         $expected = new IngredientBuilder()
             ->withName("nom de l'ingredient")
             ->withImage("super-image.jpg")
@@ -179,23 +175,14 @@ class CreateIngredientHandlerTest extends TestCase
             ->withCreator($user)
             ->build();
 
-        // Assert
-        $expectedEvents = [
-            new IngredientCreatedEvent($user->getId(), 'nom-de-l-ingredientuser-id'),
-            new CreateIngredientWithConversionEvent($expected->getSlug(), 25),
-        ];
-        $callIndex = 0;
-        $this->eventDispatcher->expects(self::exactly(2))->method('dispatch')->willReturnCallback(function ($event) use (&$callIndex, $expectedEvents) {
-            // Vérifie que l'événement dispatché correspond à celui attendu dans l'ordre
-            self::assertEquals($expectedEvents[$callIndex], $event);
-            $callIndex++;
-            return $event;
-        });
-
         // Act
         ($this->handler)($command);
 
-        // Assert
+        // Assert : les deux événements, dans l'ordre
+        $this->assertEquals([
+            new IngredientCreatedEvent($user->getId(), 'nom-de-l-ingredientuser-id'),
+            new CreateIngredientWithConversionEvent($expected->getSlug(), 25),
+        ], $this->eventDispatcher->eventDispatched);
         $actual = $this->ingredientRepository->findOneBySlug($expected->getSlug());
         RepasAssert::assertIngredient($expected, $actual);
     }
@@ -216,10 +203,13 @@ class CreateIngredientHandlerTest extends TestCase
         );
 
         // Assert
-        $this->eventDispatcher->expects(self::never())->method('dispatch');
 
         // Act
-        ($this->handler)($command);
+        try {
+            ($this->handler)($command);
+        } finally {
+            $this->assertSame([], $this->eventDispatcher->eventDispatched);
+        }
 
         // Assert
         $expected = new IngredientBuilder()
@@ -316,11 +306,14 @@ class CreateIngredientHandlerTest extends TestCase
         );
 
         // Assert
-        $this->eventDispatcher->expects(self::never())->method('dispatch');
         $this->expectExceptionObject(UserException::NotFound($user->getId()));
 
         // Act
-        ($this->handler)($command);
+        try {
+            ($this->handler)($command);
+        } finally {
+            $this->assertSame([], $this->eventDispatcher->eventDispatched);
+        }
     }
 
     public function testHandleCreateIngredientFailedDepartmentNotFound(): void
@@ -339,11 +332,14 @@ class CreateIngredientHandlerTest extends TestCase
         );
 
         // Assert
-        $this->eventDispatcher->expects(self::never())->method('dispatch');
         $this->expectExceptionObject(DepartmentException::NotFound());
 
         // Act
-        ($this->handler)($command);
+        try {
+            ($this->handler)($command);
+        } finally {
+            $this->assertSame([], $this->eventDispatcher->eventDispatched);
+        }
     }
 
     public function testHandleCreateIngredientFailedDefaultCookingUnitNotFound(): void
@@ -362,11 +358,14 @@ class CreateIngredientHandlerTest extends TestCase
         );
 
         // Assert
-        $this->eventDispatcher->expects(self::never())->method('dispatch');
         $this->expectExceptionObject(UnitException::NotFound("inexistant"));
 
         // Act
-        ($this->handler)($command);
+        try {
+            ($this->handler)($command);
+        } finally {
+            $this->assertSame([], $this->eventDispatcher->eventDispatched);
+        }
     }
 
     public function testHandleCreateIngredientFailedDefaultPurchaseUnitNotFound(): void
@@ -385,10 +384,13 @@ class CreateIngredientHandlerTest extends TestCase
         );
 
         // Assert
-        $this->eventDispatcher->expects(self::never())->method('dispatch');
         $this->expectExceptionObject(UnitException::NotFound("inexistant"));
 
         // Act
-        ($this->handler)($command);
+        try {
+            ($this->handler)($command);
+        } finally {
+            $this->assertSame([], $this->eventDispatcher->eventDispatched);
+        }
     }
 }

@@ -145,6 +145,17 @@ Total des 32 scénarios : 328 requêtes, avec comme sans cache à l'arrivée.
 - **Prérequis : le front Vue.js (projet séparé) doit être prêt** avant toute extinction de Twig ; rien n'est retiré tant que ce n'est pas le cas.
 - [ ] À décider produit, une fois le front prêt : quels `ViewController` (et `ajax.js`, templates, formulaires Twig) retirer (ADR dédié le moment venu)
 
+## Chantiers de maintenance (décidés le 2026-10-14, une PR chacun, dans cet ordre)
+
+Issus des points « hors périmètre » des PR et de `composer audit` (32 avis de sécurité, Symfony 7.2 hors support). PHP reste en 8.4.
+
+- [x] **Ménage** (PR #30) : 404 sur les routes Twig, `ConversionService::clear()` sur `kernel.reset`, `symfony/translation` et locale `fr`, code mort retiré
+- [x] **E1 — Symfony 7.4 LTS** : `symfony/*` en `7.4.*`, `twig/twig` 3.30, `doctrine/orm` 3.7, PHPUnit 12.5, 0 avis de sécurité ; `Dockerfile` aligné (`frankenphp:1.12.4-php8.4.23`, paquets `apt` non épinglés : l'épinglage exact cassait la build) ; Dependabot hebdomadaire, job CI `composer audit`, `make audit` / `make outdated`, [ADR 0014](adr/0014-montee-de-versions-et-dependabot.md) ; 5 tests de handlers passent de mocks sans attente au `SpyEventDispatcher` (4 entrées de baseline PHPStan retirées, notices PHPUnit 12.5 supprimées) ; zéro dépréciation de conteneur en `dev` et `test` (`debug:container --deprecations` : routes de bundles en PHP, signatures de `UserChecker` et `OwnerVoter`, `collect_serializer_data`), condition de E3
+- [ ] **B — Sécurité de l'API** : `symfony/rate-limiter` (`login_throttling`, limiteur d'inscription), JWT invalidés au changement de mot de passe, emails en minuscules et doublon concurrent en 409
+- [ ] **E2 — Doctrine** : DBAL 4, doctrine-bundle 3, migrations-bundle 4 (les budgets SQL ne doivent pas bouger)
+- [ ] **E3 — Symfony 8.1** : bloqué aujourd'hui par doctrine-bundle 2.x, migrations-bundle 3.x, maker-bundle et web-profiler 7.x
+- [ ] **D — `User` par identifiant** dans `Ingredient`, `Recipe`, `ShoppingList` (baseline Deptrac de 84 lignes à vider, ADR dédié)
+
 ## Trous d'autorisation (corrigés en phase 9)
 
 Audit de tous les controllers qui dispatchent une commande (méthode HTTP et garde) :
