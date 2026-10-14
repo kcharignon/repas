@@ -142,7 +142,8 @@ Total des 32 scénarios : 328 requêtes, avec comme sans cache à l'arrivée.
 
 ### Phase 10 — Extinction de Twig
 
-- [ ] À décider produit : quels `ViewController` retirer quand le front les remplace (ADR dédié le moment venu)
+- **Prérequis : le front Vue.js (projet séparé) doit être prêt** avant toute extinction de Twig ; rien n'est retiré tant que ce n'est pas le cas.
+- [ ] À décider produit, une fois le front prêt : quels `ViewController` (et `ajax.js`, templates, formulaires Twig) retirer (ADR dédié le moment venu)
 
 ## Trous d'autorisation (corrigés en phase 9)
 
