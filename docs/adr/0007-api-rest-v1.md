@@ -24,12 +24,13 @@ L'application est rendue côté serveur (Twig). Les actions dynamiques passent p
 12. **Codes des exceptions de domaine** (relayés tels quels par le listener) : `404` pour une ressource introuvable, `409` pour un conflit avec l'état courant (recette déjà dans la liste), `403` réservé à l'autorisation, `422` pour une règle métier non respectée. Une confirmation d'identité refusée (mot de passe actuel erroné) est une règle métier : `422`. Une exception de domaine neuve choisit son code selon cette grille.
 13. **Tests d'un endpoint d'écriture** : un test de controller par endpoint avec `QueryBusWebTestCase::mockCommandBus()` (commande construite, statut, `Location`, 401, 403 propriétaire, 404 inconnu, 422 corps invalide), plus un parcours de bout en bout par ressource avec les vrais bus (`ShoppingListWriteApiFlowTest` : jeton → handler → base → listeners). Le client de test redémarre le noyau entre deux requêtes : le double de bus ne vaut que pour une requête par test.
 14. **Écriture publique** : l'inscription (`POST /api/v1/users`) est la seule écriture sans jeton ; elle est déclarée en `PUBLIC_ACCESS` dans `access_control` ([0008](0008-auth-session-et-jwt.md) §4), limitée à sa méthode : `GET /api/v1/users` reste réservé à `ROLE_ADMIN`. Toute nouvelle route publique suit la même règle (chemin exact et méthode) et se justifie ici.
+15. **Contrat versionné** : le document OpenAPI complet est commité dans `docs/api/openapi.json` (généré par `nelmio:apidoc:dump`, déterministe). `make openapi` le régénère ; `make openapi-check` (dans `make quality` et en CI) échoue s'il ne correspond plus aux controllers. Toute modification de l'API (route, paramètre, clé de DTO, code de réponse) apparaît donc dans le diff de la PR, où un changement cassant se voit et se discute. C'est la seule source du client typé du front (`openapi-typescript`) : le front le lit à un commit précis de ce dépôt (pas de couplage de code).
 
 ## Conséquences
 
 - Positives : un contrat stable pour le front, doc vivante, même couche Application que Twig.
 - Coûts : dépendances à ajouter (serializer, validator, property-access, nelmio api-doc, nelmio cors) ; double surface (Twig + API) à maintenir pendant la coexistence.
-- Garde-fou : `make api-doc-validate` et `make api-doc-coverage` en CI ; règle PHPStan « controller API ⇒ test ».
+- Garde-fou : `make api-doc-validate`, `make api-doc-coverage` et `make openapi-check` en CI ; règle PHPStan « controller API ⇒ test ».
 
 ## Alternatives écartées
 
