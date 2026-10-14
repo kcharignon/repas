@@ -66,7 +66,7 @@ class RemoveRecipeHandlerTest extends TestCase
         $command = new RemoveRecipeCommand('recipe-used');
 
         // Assert
-        $this->expectExceptionObject(RecipeException::cannotRemoveExistInShoppingList());
+        $this->expectExceptionObject(RecipeException::cannotRemoveExistInShoppingList('recipe-used'));
 
         // Act
         ($this->handler)($command);
