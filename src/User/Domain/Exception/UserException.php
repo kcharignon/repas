@@ -26,6 +26,6 @@ class UserException extends DomainException
 
     public static function invalidPassword(): self
     {
-        return new self(self::INVALID_PASSWORD, 403);
+        return new self(self::INVALID_PASSWORD, 422);
     }
 }
