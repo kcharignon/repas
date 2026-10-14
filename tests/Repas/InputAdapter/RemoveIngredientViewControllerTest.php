@@ -26,7 +26,7 @@ class RemoveIngredientViewControllerTest extends QueryBusWebTestCase
         $this->client->loginUser($user);
 
         // When
-        $this->client->request('GET', '/ingredient/' . $ingredient->getSlug() . '/delete');
+        $this->client->request('POST', '/ingredient/' . $ingredient->getSlug() . '/delete', ['_token' => 'csrf-token'], server: ['HTTP_ORIGIN' => 'http://localhost']);
 
         // Then
         $this->assertTrue($this->client->getResponse()->isRedirect('/department/cereale'));
@@ -49,7 +49,7 @@ class RemoveIngredientViewControllerTest extends QueryBusWebTestCase
         $this->client->loginUser($user);
 
         // When
-        $this->client->request('GET', '/ingredient/' . $ingredient->getSlug() . '/delete');
+        $this->client->request('POST', '/ingredient/' . $ingredient->getSlug() . '/delete', ['_token' => 'csrf-token'], server: ['HTTP_ORIGIN' => 'http://localhost']);
 
         // Then
         $this->assertTrue($this->client->getResponse()->isRedirect('/department/cereale'));
@@ -64,10 +64,41 @@ class RemoveIngredientViewControllerTest extends QueryBusWebTestCase
         $this->client->loginUser($this->savedUser());
 
         // When
-        $this->client->request('GET', '/ingredient/' . $ingredient->getSlug() . '/delete');
+        $this->client->request('POST', '/ingredient/' . $ingredient->getSlug() . '/delete', ['_token' => 'csrf-token'], server: ['HTTP_ORIGIN' => 'http://localhost']);
 
         // Then
         $this->assertSame(403, $this->client->getResponse()->getStatusCode());
         $this->assertSame(0, $this->queryBus->countAskedQueries());
+    }
+    public function testRefusesALinkOpenedByGet(): void
+    {
+        // Given
+        $user = $this->savedUser();
+        $ingredient = new IngredientBuilder()->withName('zzz sel')->withCreator($user, true)->build();
+        $this->persister->saveIngredient($ingredient);
+        $this->client->loginUser($user);
+
+        // When
+        $this->client->request('GET', '/ingredient/' . $ingredient->getSlug() . '/delete');
+
+        // Then
+        $this->assertSame(405, $this->client->getResponse()->getStatusCode());
+        $this->assertSame($ingredient->getSlug(), static::getContainer()->get(IngredientRepository::class)->findOneBySlug($ingredient->getSlug())->getSlug());
+    }
+
+    public function testRefusesAPostWithoutTheCsrfToken(): void
+    {
+        // Given
+        $user = $this->savedUser();
+        $ingredient = new IngredientBuilder()->withName('zzz sel')->withCreator($user, true)->build();
+        $this->persister->saveIngredient($ingredient);
+        $this->client->loginUser($user);
+
+        // When : pas de jeton, et une requête venue d'un autre site
+        $this->client->request('POST', '/ingredient/' . $ingredient->getSlug() . '/delete', server: ['HTTP_ORIGIN' => 'https://autre-site.example']);
+
+        // Then
+        $this->assertSame(403, $this->client->getResponse()->getStatusCode());
+        $this->assertSame($ingredient->getSlug(), static::getContainer()->get(IngredientRepository::class)->findOneBySlug($ingredient->getSlug())->getSlug());
     }
 }

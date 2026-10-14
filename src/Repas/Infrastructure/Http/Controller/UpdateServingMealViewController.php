@@ -20,7 +20,7 @@ class UpdateServingMealViewController extends AbstractController
     ) {
     }
 
-    #[Route(path: '/shopping-list/meal/{id}/serving/{serving}', name: 'view_update_serving_meal', methods: ['GET', 'PUT'])]
+    #[Route(path: '/shopping-list/meal/{id}/serving/{serving}', name: 'view_update_serving_meal', methods: ['PUT'])]
     #[IsGranted("ROLE_USER")]
     #[IsGranted("MEAL_OWNER", "id")]
     public function __invoke(string $id, int $serving): JsonResponse
