@@ -13,6 +13,7 @@ use Repas\Tests\Helper\DummyPasswordHasher;
 use Repas\Tests\Helper\RepasAssert;
 use Repas\User\Application\RegisterNewUser\RegisterNewUserCommand;
 use Repas\User\Application\RegisterNewUser\RegisterNewUserHandler;
+use Repas\User\Domain\Exception\UserException;
 use Repas\User\Domain\Interface\UserRepository;
 use Symfony\Component\PasswordHasher\Hasher\PasswordHasherFactoryInterface;
 
@@ -56,5 +57,21 @@ class RegisterNewUserHandlerTest extends TestCase
             ->build();
         $actual = $this->userRepository->findOneByEmail("john.doe@example.com");
         RepasAssert::assertUser($expected, $actual, excluded: ["id"]);
+    }
+
+    public function testRefusesAnEmailThatIsAlreadyUsed(): void
+    {
+        // Arrange : un second compte du même email échouerait sur l'unicité en base
+        $this->userRepository->save(new UserBuilder()->withEmail("john.doe@example.com")->withServing(2)->build());
+
+        // Assert
+        $this->expectExceptionObject(UserException::emailAlreadyUsed("john.doe@example.com"));
+
+        // Act
+        try {
+            ($this->handler)(new RegisterNewUserCommand("john.doe@example.com", "megapassword", 5));
+        } finally {
+            $this->assertSame(2, $this->userRepository->findOneByEmail("john.doe@example.com")->getDefaultServing());
+        }
     }
 }

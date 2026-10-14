@@ -42,6 +42,11 @@ readonly class UserPostgreSQLRepository extends PostgreSQLRepository implements 
         throw UserException::NotFound($email);
     }
 
+    public function emailExists(string $email): bool
+    {
+        return $this->entityRepository->findOneBy(['email' => $email]) !== null;
+    }
+
     public function findAll(): Tab
     {
         $entities = new Tab($this->entityRepository->findBy([], ['email' => 'ASC']), UserEntity::class);

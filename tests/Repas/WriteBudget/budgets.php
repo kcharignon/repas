@@ -17,7 +17,7 @@ return [
     'creer-type-recette' => 3,
     'creer-unite' => 3,
     'decocher-ligne' => 7,
-    'inscription' => 2,
+    'inscription' => 3,
     'mettre-liste-en-pause' => 9,
     'modifier-conversion' => 4,
     'modifier-ingredient' => 8,
