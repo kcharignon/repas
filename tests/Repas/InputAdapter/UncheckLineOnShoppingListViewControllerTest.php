@@ -40,4 +40,54 @@ class UncheckLineOnShoppingListViewControllerTest extends QueryBusWebTestCase
         $this->assertStringContainsString("/shopping-list/line/$rowId/tick", $view['html']);
         $this->assertStringNotContainsString('fa-check-square', $view['html']);
     }
+
+    public function testRefusesTheLineOfAnotherUser(): void
+    {
+        // Given
+        $owner = $this->savedUser();
+        $pasta = new IngredientBuilder()->isPasta()->build();
+        $this->persister->saveIngredient($pasta);
+        $shoppingList = new ShoppingListBuilder()->withOwner($owner)->addIngredient($pasta)->build();
+        static::getContainer()->get(ShoppingListRepository::class)->save($shoppingList);
+        $rowId = $shoppingList->getRows()->reset()->getId();
+        $this->client->loginUser($this->savedUser());
+
+        // When
+        $this->client->request('POST', '/shopping-list/line/' . $rowId . '/uncheck');
+
+        // Then
+        $this->assertSame(403, $this->client->getResponse()->getStatusCode());
+        $this->assertSame(0, $this->queryBus->countAskedQueries());
+        $this->assertFalse(static::getContainer()->get(ShoppingListRowRepository::class)->findOneById($rowId)->isChecked());
+    }
+
+    public function testAnAdministratorMayActOnTheLineOfAnotherUser(): void
+    {
+        // Given
+        $pasta = new IngredientBuilder()->isPasta()->build();
+        $this->persister->saveIngredient($pasta);
+        $shoppingList = new ShoppingListBuilder()->withOwner($this->savedUser())->addIngredient($pasta)->build();
+        static::getContainer()->get(ShoppingListRepository::class)->save($shoppingList);
+        $rowId = $shoppingList->getRows()->reset()->getId();
+        $this->queryBus->willReturn(GetShoppingListRowQuery::class, new ShoppingListRowDTOBuilder()->withId($rowId)->withIngredientName('pâtes')->build());
+        $this->client->loginUser($this->savedUser(admin: true));
+
+        // When
+        $this->client->request('POST', '/shopping-list/line/' . $rowId . '/uncheck');
+
+        // Then
+        $this->assertSame(200, $this->client->getResponse()->getStatusCode());
+    }
+
+    public function testAnUnknownLineIsNotFound(): void
+    {
+        // Given
+        $this->client->loginUser($this->savedUser());
+
+        // When
+        $this->client->request('POST', '/shopping-list/line/unknown-line/uncheck');
+
+        // Then
+        $this->assertSame(404, $this->client->getResponse()->getStatusCode());
+    }
 }

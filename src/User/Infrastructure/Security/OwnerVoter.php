@@ -4,7 +4,9 @@ namespace Repas\User\Infrastructure\Security;
 
 
 use Repas\Shared\Application\Interface\OwnershipLoader;
+use Repas\Shared\Domain\Exception\DomainException;
 use Repas\User\Domain\Model\User;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
 use Symfony\Component\Security\Core\Authorization\AccessDecisionManagerInterface;
 use Symfony\Component\Security\Core\Authorization\Voter\Voter;
@@ -16,6 +18,7 @@ class OwnerVoter extends Voter
     public const string SHOPPING_LIST_OWNER = 'SHOPPING_LIST_OWNER';
     public const string RECIPE_OWNER = 'RECIPE_OWNER';
     public const string MEAL_OWNER = 'MEAL_OWNER';
+    public const string SHOPPING_LIST_ROW_OWNER = 'SHOPPING_LIST_ROW_OWNER';
 
     public function __construct(
         private readonly AccessDecisionManagerInterface $accessDecisionManager,
@@ -32,6 +35,7 @@ class OwnerVoter extends Voter
                 self::SHOPPING_LIST_OWNER,
                 self::RECIPE_OWNER,
                 self::MEAL_OWNER,
+                self::SHOPPING_LIST_ROW_OWNER,
             ]) && is_string($subject);
     }
 
@@ -47,6 +51,16 @@ class OwnerVoter extends Voter
             return false;
         }
 
+        // Une ressource introuvable donne un 404 (Twig comme API), pas une erreur 500
+        try {
+            return $this->owns($attribute, $subject, $user);
+        } catch (DomainException $exception) {
+            throw new NotFoundHttpException($exception->getMessage(), $exception);
+        }
+    }
+
+    private function owns(string $attribute, string $subject, User $user): bool
+    {
         switch ($attribute) {
             case self::HIMSELF:
                 return $user->getId() === $subject;
@@ -59,6 +73,8 @@ class OwnerVoter extends Voter
                 return $this->ownershipLoader->recipeAuthorId($subject) === $user->getId();
             case self::MEAL_OWNER:
                 return $this->ownershipLoader->mealOwnerId($subject) === $user->getId();
+            case self::SHOPPING_LIST_ROW_OWNER:
+                return $this->ownershipLoader->shoppingListRowOwnerId($subject) === $user->getId();
             default:
                 return false;
         }

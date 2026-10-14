@@ -8,10 +8,12 @@ use Repas\Repas\Domain\Exception\IngredientException;
 use Repas\Repas\Domain\Exception\MealException;
 use Repas\Repas\Domain\Exception\RecipeException;
 use Repas\Repas\Domain\Exception\ShoppingListException;
+use Repas\Repas\Domain\Exception\ShoppingListRowException;
 use Repas\Repas\Infrastructure\Entity\Ingredient;
 use Repas\Repas\Infrastructure\Entity\Meal;
 use Repas\Repas\Infrastructure\Entity\Recipe;
 use Repas\Repas\Infrastructure\Entity\ShoppingList;
+use Repas\Repas\Infrastructure\Entity\ShoppingListRow;
 use Repas\Shared\Application\Interface\OwnershipLoader;
 
 final readonly class OwnershipPostgreSQLLoader implements OwnershipLoader
@@ -72,5 +74,19 @@ final readonly class OwnershipPostgreSQLLoader implements OwnershipLoader
             ->getOneOrNullResult();
 
         return $row === null ? throw MealException::notFound() : $row['owner'];
+    }
+
+    public function shoppingListRowOwnerId(string $shoppingListRowId): string
+    {
+        $row = $this->entityManager->createQueryBuilder()
+            ->select('l.ownerId AS owner')
+            ->from(ShoppingListRow::class, 'r')
+            ->innerJoin(ShoppingList::class, 'l', Join::WITH, 'l.id = r.shoppingListId')
+            ->where('r.id = :id')
+            ->setParameter('id', $shoppingListRowId)
+            ->getQuery()
+            ->getOneOrNullResult();
+
+        return $row === null ? throw ShoppingListRowException::notFound($shoppingListRowId) : $row['owner'];
     }
 }

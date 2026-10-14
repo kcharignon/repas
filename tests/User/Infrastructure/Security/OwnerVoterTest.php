@@ -4,11 +4,11 @@ namespace Repas\Tests\User\Infrastructure\Security;
 
 
 use PHPUnit\Framework\TestCase;
-use Repas\Repas\Domain\Exception\ShoppingListException;
 use Repas\Tests\Helper\Builder\UserBuilder;
 use Repas\Tests\Helper\InMemoryLoader\OwnershipInMemoryLoader;
 use Repas\User\Domain\Model\User;
 use Repas\User\Infrastructure\Security\OwnerVoter;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
 use Symfony\Component\Security\Core\Authentication\Token\UsernamePasswordToken;
 use Symfony\Component\Security\Core\Authorization\AccessDecisionManagerInterface;
@@ -71,6 +71,15 @@ class OwnerVoterTest extends TestCase
         $this->assertSame(VoterInterface::ACCESS_DENIED, $this->vote($this->other, OwnerVoter::MEAL_OWNER, 'meal-1', $loader));
     }
 
+    public function testOnlyTheOwnerOfTheShoppingListOwnsOneOfItsRows(): void
+    {
+        $loader = new OwnershipInMemoryLoader(shoppingListRowOwners: ['row-1' => 'owner-id']);
+
+        $this->assertSame(VoterInterface::ACCESS_GRANTED, $this->vote($this->owner, OwnerVoter::SHOPPING_LIST_ROW_OWNER, 'row-1', $loader));
+        $this->assertSame(VoterInterface::ACCESS_DENIED, $this->vote($this->other, OwnerVoter::SHOPPING_LIST_ROW_OWNER, 'row-1', $loader));
+        $this->assertSame(VoterInterface::ACCESS_GRANTED, $this->vote($this->other, OwnerVoter::SHOPPING_LIST_ROW_OWNER, 'row-1', $loader, admin: true));
+    }
+
     public function testAnAdministratorOwnsEverythingWithoutLookingTheResourceUp(): void
     {
         $this->assertSame(VoterInterface::ACCESS_GRANTED, $this->vote($this->other, OwnerVoter::SHOPPING_LIST_OWNER, 'unknown-list', admin: true));
@@ -84,13 +93,11 @@ class OwnerVoterTest extends TestCase
         $this->assertSame(VoterInterface::ACCESS_DENIED, $this->vote($disabled, OwnerVoter::SHOPPING_LIST_OWNER, 'list-1', $loader));
     }
 
-    public function testAnUnknownResourceRaisesTheNotFoundException(): void
+    public function testAnUnknownResourceIsNotFound(): void
     {
-        // Then
-        $this->expectExceptionObject(ShoppingListException::shoppingListNotFound('unknown-list'));
+        $this->expectException(NotFoundHttpException::class);
 
-        // When
-        $this->vote($this->owner, OwnerVoter::SHOPPING_LIST_OWNER, 'unknown-list');
+        $this->vote($this->owner, OwnerVoter::SHOPPING_LIST_ROW_OWNER, 'unknown-row');
     }
 
     public function testItAbstainsOnAnotherAttribute(): void

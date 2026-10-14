@@ -34,4 +34,11 @@ interface OwnershipLoader
      * @throws DomainException
      */
     public function mealOwnerId(string $mealId): string;
+
+    /**
+     * Identifiant du propriétaire de la liste de courses qui contient cette ligne.
+     *
+     * @throws DomainException
+     */
+    public function shoppingListRowOwnerId(string $shoppingListRowId): string;
 }
