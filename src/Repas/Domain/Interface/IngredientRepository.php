@@ -27,6 +27,11 @@ interface IngredientRepository
      */
     public function findByOwner(User $owner): Tab;
 
+    /**
+     * Un ingrédient porte ce slug (le slug dérive du nom et du créateur : deux créations du même nom se télescoperaient).
+     */
+    public function exists(string $slug): bool;
+
     public function save(Ingredient $ingredient): void;
 
     /**

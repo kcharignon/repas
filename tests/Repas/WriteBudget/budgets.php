@@ -10,7 +10,7 @@ return [
     'assurer-liste-active' => 6,
     'copier-recette' => 25,
     'creer-conversion' => 4,
-    'creer-ingredient' => 8,
+    'creer-ingredient' => 9,
     'creer-liste' => 5,
     'creer-rayon' => 2,
     'creer-recette' => 29,

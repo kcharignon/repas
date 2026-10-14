@@ -51,6 +51,10 @@ readonly class UpdateIngredientHandler
         }
 
         if (!$newCookingUnit->isEqual($newPurchaseUnit)) {
+            if ($command->coefficient === null) {
+                throw IngredientException::coefficientRequired();
+            }
+
             if ($conversion instanceof Conversion) { // Met à jour la conversion existante
                 $conversion->update(
                     startUnit: $newPurchaseUnit,
@@ -72,7 +76,7 @@ readonly class UpdateIngredientHandler
 
         $ingredient->update(
             name: $command->name,
-            image: $command->image,
+            image: $command->image ?? $ingredient->getImage(),
             department: $this->departmentRepository->findOneBySlug($command->departmentSlug),
             defaultCookingUnit: $newCookingUnit,
             defaultPurchaseUnit: $newPurchaseUnit,
