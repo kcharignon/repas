@@ -57,7 +57,7 @@ src/{Context}/
 ## API JSON (`/api/v1`)
 
 - Controllers dans `Infrastructure/Http/Api/{UseCase}/`, suffixe `ApiController`, qui n'appellent que le `QueryBusInterface` (GET) ou le `CommandBusInterface` (écritures). Sortie de lecture = le DTO de la query ; liste = `{member, totalItems}` ; écriture = `204` ou `201` + `Location` ; erreurs = `{error:{message}}` (ADR 0007).
-- Stateless, authentifiés par **JWT** (ADR 0008). Les routes Twig/AJAX existantes restent en session et ne changent pas : les deux coexistent.
+- Stateless, authentifiés par **JWT** (ADR 0008). Seule exception : l'inscription `POST /api/v1/users` est publique (`access_control`, ADR 0007 §14). Les routes Twig/AJAX existantes restent en session et ne changent pas : les deux coexistent.
 - Documentation OpenAPI (`#[OA\…]`) obligatoire sur chaque controller API.
 - Endpoints d'écriture : un use case = une commande = un controller ; l'utilisateur vient du JWT (`#[CurrentUser] AuthenticatedUser`), jamais du corps ; transitions d'état en `POST …/{action}` ; codes de domaine 404 / 409 / 422, `403` réservé à l'autorisation (ADR 0007 §11 à 13).
 

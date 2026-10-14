@@ -3,6 +3,7 @@
 namespace Repas\User\Infrastructure\Http\Form;
 
 use Repas\Shared\Application\Interface\QueryBusInterface;
+use Repas\Shared\Domain\Tool\UuidGenerator;
 use Repas\User\Application\Query\IsEmailAlreadyUsed\IsEmailAlreadyUsedQuery;
 use Repas\User\Application\RegisterNewUser\RegisterNewUserCommand;
 use Symfony\Component\Form\AbstractType;
@@ -82,6 +83,7 @@ class RegisterNewUserType extends AbstractType implements DataMapperInterface
         }
 
         $viewData = new RegisterNewUserCommand(
+            userId: UuidGenerator::new(),
             email: $forms['email']->getData(),
             passwordPlainText: $plainPassword,
             defaultServing: $forms['defaultServing']->getData(),

@@ -19,6 +19,11 @@ interface UserRepository
     public function findOneByEmail(string $email): User;
 
     /**
+     * Un utilisateur porte cet email (l'email est unique : deux inscriptions du même email se télescoperaient).
+     */
+    public function emailExists(string $email): bool;
+
+    /**
      * @return Tab<User>
      */
     public function findAll(): Tab;

@@ -18,8 +18,14 @@ class UserException extends DomainException
     {
         return new static('USER_BANNED', 403);
     }
+
+    public static function emailAlreadyUsed(string $email): self
+    {
+        return new self(sprintf("Email '%s' is already used", $email), 409);
+    }
+
     public static function invalidPassword(): self
     {
-        return new self(self::INVALID_PASSWORD, 403);
+        return new self(self::INVALID_PASSWORD, 422);
     }
 }

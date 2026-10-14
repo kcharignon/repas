@@ -3,7 +3,7 @@
 namespace Repas\User\Application\RegisterNewUser;
 
 use Psr\Clock\ClockInterface;
-use Repas\Shared\Domain\Tool\UuidGenerator;
+use Repas\User\Domain\Exception\UserException;
 use Repas\User\Domain\Interface\UserRepository;
 use Repas\User\Domain\Model\User;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
@@ -19,13 +19,20 @@ readonly class RegisterNewUserHandler
     ) {
     }
 
+    /**
+     * @throws UserException
+     */
     public function __invoke(RegisterNewUserCommand $command): void
     {
+        if ($this->userRepository->emailExists($command->email)) {
+            throw UserException::emailAlreadyUsed($command->email);
+        }
+
         $passwordHashed = $this->passwordHasherFactory
             ->getPasswordHasher(User::class)
             ->hash($command->passwordPlainText);
         $user = User::create(
-            id: UuidGenerator::new(),
+            id: $command->userId,
             email: $command->email,
             roles: ['ROLE_USER'],
             password: $passwordHashed,

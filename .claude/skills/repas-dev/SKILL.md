@@ -74,7 +74,7 @@ Détail : `references/migrate-view-controller.md`. Résumé :
 4. Test `tests/Repas/InputAdapter/` : `MockQueryBus`/`MockCommandBus`, query construite, statut, clés JSON.
    Écriture : `$this->mockCommandBus()` (une requête par test), 401, 403 propriétaire, 404 inconnu, 422 corps invalide, `Location` en 201 ; plus un parcours avec les vrais bus par ressource (`ShoppingListWriteApiFlowTest`). Conventions : ADR 0007 §11 à 13 (action en `POST …/{action}`, alias `active`, identité par le JWT, jamais par le corps).
 5. `make api-doc-validate api-doc-coverage`, relire la doc générée (`/api/doc`).
-6. Vérifier le niveau d'accès (`#[IsGranted]` / voter propriétaire) : `ROLE_USER` est un plancher, pas une autorisation.
+6. Vérifier le niveau d'accès (`#[IsGranted]` / voter propriétaire) : `ROLE_USER` est un plancher, pas une autorisation. Une route publique (ADR 0007 §14) est une exception : chemin exact et méthode dans `access_control`, dite et justifiée dans l'ADR.
 
 ### 3.4 Nouveau use case d'écriture
 1. Modèle (`Domain/Model`, `create()`/méthode métier) + exception si nouveaux cas d'erreur.

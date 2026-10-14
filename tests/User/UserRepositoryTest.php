@@ -46,6 +46,16 @@ class UserRepositoryTest extends DatabaseTestCase
     }
 
 
+    public function testEmailExistsOnlyForASavedEmail(): void
+    {
+        //Arrange
+        $this->userRepository->save(new UserBuilder()->withEmail('known@test.com')->build());
+
+        //Act & Assert
+        $this->assertTrue($this->userRepository->emailExists('known@test.com'));
+        $this->assertFalse($this->userRepository->emailExists('unknown@test.com'));
+    }
+
     public function testUserNotFound(): void
     {
         //Assert

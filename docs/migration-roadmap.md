@@ -130,7 +130,11 @@ Total des 32 scénarios : 328 requêtes, avec comme sans cache à l'arrivée.
   - Même trou que pour les ingrédients : le slug dérive du nom, créer « Gramme » une seconde fois écrasait l'unité existante (et ses conversions, ses recettes). Gardes ajoutées (`exists` sur les trois ports, `…::alreadyExists` en 409) ; les handlers de création renvoient le slug. Budgets `creer-unite`, `creer-rayon`, `creer-type-recette` : 2 → 3
   - Les quatre formulaires Twig de création (unité, rayon, type de recette, et ingrédient de la PR précédente) affichent « … de ce nom existe déjà. » sur le champ Nom au lieu d'une erreur 500
   - Image d'un rayon ou d'un type : URL `https://…` ou chemin relatif `images/…` (les valeurs en base sont de ces deux formes) ; `http:`, `javascript:` et `../` sont refusés en 422
-- [ ] Utilisateur : inscription, réglages
+- [x] **Utilisateur** (3 endpoints) : `POST /users` (inscription, **seule route d'écriture publique**, 201 + `Location`), `GET /users/{id}` (lui-même ou administrateur, c'est le `Location` de l'inscription) et `PUT /me/settings` (nombre de personnes, mot de passe, 204 ; l'identité vient du JWT).
+  - Même trou que pour les slugs : `email` est `unique` en base mais le handler ne le vérifiait pas (le formulaire Twig le faisait par `IsEmailAlreadyUsed`) : un doublon donnait une violation d'unicité, donc une 500. Garde `UserRepository::emailExists` dans le handler, `UserException::emailAlreadyUsed` en 409 ; `inscription` passe de 2 à 3 requêtes (le contrôle d'existence)
+  - `RegisterNewUserCommand` reçoit l'id (`userId`, généré par le controller comme les autres créations, ADR 0007 §11)
+  - `UserException::invalidPassword` passe de 403 à 422 : le mot de passe actuel erroné est une règle métier non respectée, pas un défaut d'autorisation (le formulaire Twig s'appuie sur le message, inchangé)
+  - Le corps de l'inscription exige un mot de passe de 8 caractères au moins (le formulaire Twig n'impose rien) ; 1 à 100 personnes
 - [ ] Remplacer le protocole `{views:[{selector, html}]}` par de l'état ressource côté API (le front re-requête ; `ajax.js` et les 14 controllers AJAX restent pour Twig)
 
 ### Phase 10 — Extinction de Twig
@@ -165,6 +169,8 @@ Audit de tous les controllers qui dispatchent une commande (méthode HTTP et gar
 - `ConversionService::$graphs` : graphe de conversions mis en cache par ingrédient dans le service, jamais vidé ; en mode worker (FrankenPHP) il survit aux requêtes et reste périmé après la modification d'une conversion tant que le worker n'est pas redémarré. À rendre `ResetInterface` (comme `ModelCache`).
 - `phpunit.dist.xml` : `SYMFONY_PHPUNIT_VERSION=9.6` obsolète (PHPUnit 12 installé).
 - `symfony/translation` absent alors que `login.html.twig` utilise `|trans`.
+- Inscription publique (`POST /api/v1/users`) : aucun limiteur de débit (`symfony/rate-limiter` absent) ni vérification d'email ; un email déjà pris répond 409, ce qui révèle l'existence du compte (le formulaire Twig le fait déjà). Les emails sont comparés tels quels (casse comprise) et deux inscriptions simultanées du même email peuvent encore atteindre la contrainte d'unicité (500). À traiter avant d'ouvrir l'API hors du front.
+- Un changement de mot de passe n'invalide pas les jetons JWT déjà émis (durée de vie 1 h, ADR 0008 §5).
 - `RecipeRowRepository` : interface vide, le repository concret est injecté.
 - `admin_recipe_type_row.html.twig` : la ligne porte `id="department-…"` (copier-coller du rayon), à renommer quand un test ou du JS la cible.
 - Formulaires admin : `conversion|default(null)` / `department|default(null)` / `unit|default(null)` jamais fournis par les controllers update, le titre reste « Nouveau … ».

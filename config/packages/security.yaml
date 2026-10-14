@@ -49,6 +49,7 @@ security:
         - { path: ^/api/v1/health, roles: PUBLIC_ACCESS }
         - { path: ^/api/login, roles: PUBLIC_ACCESS }
         - { path: ^/api/doc, roles: PUBLIC_ACCESS }
+        - { path: ^/api/v1/users$, roles: PUBLIC_ACCESS, methods: [POST] } # inscription
         - { path: ^/api, roles: ROLE_USER }
 
 when@test:
