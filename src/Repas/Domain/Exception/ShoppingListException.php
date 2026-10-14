@@ -16,7 +16,7 @@ class ShoppingListException extends DomainException
 
     public static function recipeAlreadyInList(string $recipe): static
     {
-        return new self(sprintf("Recipe (%s) already present in list", $recipe), 403);
+        return new self(sprintf("Recipe (%s) already present in list", $recipe), 409);
     }
 
     public static function cannotAddRecipeToShoppingListUnlessPlanning(string $shoppingList): static
@@ -26,7 +26,7 @@ class ShoppingListException extends DomainException
 
     public static function activeShoppingListNotFound(): static
     {
-        return new self("No active shopping list found.", 403);
+        return new self("No active shopping list found.", 404);
     }
 
     public static function cannotRemoveRecipeToShoppingListUnlessPlanning(string $shoppingList): static

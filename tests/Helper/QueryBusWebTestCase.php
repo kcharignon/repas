@@ -15,6 +15,7 @@ use Repas\Repas\Application\Query\ListUnits\UnitDTO;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Repas\Domain\Model\ShoppingList;
 use Repas\Repas\Domain\Model\ShoppingListStatus;
+use Repas\Shared\Application\Interface\CommandBusInterface;
 use Repas\Shared\Application\Interface\QueryBusInterface;
 use Repas\Tests\Helper\Builder\ShoppingListBuilder;
 use Repas\Tests\Helper\Builder\UserBuilder;
@@ -41,6 +42,18 @@ abstract class QueryBusWebTestCase extends DatabaseTestCase
         static::getContainer()->set(QueryBusInterface::class, $this->queryBus);
         $this->client = static::getContainer()->get('test.client');
         $this->persister = new DataPersister(static::getContainer());
+    }
+
+    /**
+     * Pour les endpoints d'écriture de l'API : les commandes sont enregistrées au lieu d'être exécutées. À appeler avant la
+     * première requête du test (le service est figé dès qu'il est utilisé).
+     */
+    protected function mockCommandBus(): MockCommandBus
+    {
+        $commandBus = new MockCommandBus();
+        static::getContainer()->set(CommandBusInterface::class, $commandBus);
+
+        return $commandBus;
     }
 
     protected function savedUser(bool $admin = false): User

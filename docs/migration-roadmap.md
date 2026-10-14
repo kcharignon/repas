@@ -111,7 +111,15 @@ Total des 32 scénarios : 328 requêtes, avec comme sans cache à l'arrivée.
 ### Phase 9 — Endpoints API d'écriture
 
 - [x] Corriger les trous d'autorisation (voir plus bas) : fait, avec une mutation de plus trouvée à l'audit
-- [ ] Endpoints d'écriture pour les 28 use cases (`#[MapRequestPayload]`, 204 / 201 + `Location`)
+- [x] **Listes de courses** (14 endpoints, conventions dans [0007](adr/0007-api-rest-v1.md) §11 à 13) :
+  - `POST /shopping-lists` (201 + `Location`), `PUT /shopping-lists/active` (s'assure d'une liste active), `PATCH /shopping-lists/{id}` (renommer), `DELETE /shopping-lists/{id}`
+  - `POST /shopping-lists/{id}/activate|pause|complete`, `POST /shopping-list-rows/{id}/tick|uncheck`, `PUT /meals/{id}/serving`
+  - `PUT` / `DELETE /shopping-lists/active/recipes/{recipeId}` (planifier, retirer), `POST /shopping-lists/active/ingredients/{slug}/increase|decrease`
+  - Codes de domaine alignés : `activeShoppingListNotFound` 404, `recipeAlreadyInList` 409
+- [ ] Recettes (créer, modifier, copier, supprimer)
+- [ ] Ingrédients (créer, modifier, supprimer) et conversions (créer, modifier)
+- [ ] Référentiels administrateur : unités, rayons, types de recette (créer, modifier)
+- [ ] Utilisateur : inscription, réglages
 - [ ] Remplacer le protocole `{views:[{selector, html}]}` par de l'état ressource côté API (le front re-requête ; `ajax.js` et les 14 controllers AJAX restent pour Twig)
 
 ### Phase 10 — Extinction de Twig
