@@ -45,8 +45,8 @@ readonly class RemoveIngredientHandler
 
         $this->conversionRepository->deleteByIngredient($ingredient);
         $this->ingredientRepository->delete($ingredient);
-        if ($ingredient->getCreator()?->getId()) {
-            $this->eventDispatcher->dispatch(new IngredientRemovedEvent($ingredient->getCreator()->getId(), $ingredient->getId()));
+        if ($ingredient->getCreatorId() !== null) {
+            $this->eventDispatcher->dispatch(new IngredientRemovedEvent($ingredient->getCreatorId(), $ingredient->getId()));
         }
     }
 }

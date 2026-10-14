@@ -101,7 +101,7 @@ class CopyRecipeHandlerTest extends TestCase
             ->build();
         RepasAssert::assertRecipe($expected, $actual, ['RecipeRow' => ['id']]);
 
-        $actualIngredient = $this->ingredientRepository->findByOwner($this->user)->reset();
+        $actualIngredient = $this->ingredientRepository->findByOwner($this->user->getId())->reset();
         $expectedIngredient = $this->secretIngredient->withCreator($this->user)->build();
         RepasAssert::assertIngredient($expectedIngredient, $actualIngredient);
 

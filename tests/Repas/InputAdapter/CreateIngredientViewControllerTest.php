@@ -48,7 +48,7 @@ class CreateIngredientViewControllerTest extends QueryBusWebTestCase
         // Then
         $this->assertTrue($this->client->getResponse()->isRedirect('/department/cereale'));
         $created = static::getContainer()->get(IngredientRepository::class)->findOneBySlug(StringTool::slugify('zzz sel' . $user->getId()));
-        $this->assertSame($user->getId(), $created->getCreator()->getId());
+        $this->assertSame($user->getId(), $created->getCreatorId());
     }
 
     public function testADuplicateNameShowsAnErrorAndKeepsTheFirstIngredient(): void

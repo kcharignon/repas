@@ -103,7 +103,7 @@ class IngredientRepositoryTest extends DatabaseTestCase
         $this->persister->saveIngredient($ingredient);
 
         // Act
-        $actual = $this->ingredientRepository->findByDepartmentAndOwner($babyDepartment, $user);
+        $actual = $this->ingredientRepository->findByDepartmentAndOwner($babyDepartment, $user->getId());
 
         // Assert
         $slugs = $this->slugsOf($actual);
@@ -148,7 +148,7 @@ class IngredientRepositoryTest extends DatabaseTestCase
         }
 
         // Act
-        $actual = $this->ingredientRepository->findByOwner($owner);
+        $actual = $this->ingredientRepository->findByOwner($owner->getId());
 
         // Assert
         RepasAssert::assertTabType(Tab::newEmptyTyped(Ingredient::class), $actual);

@@ -59,9 +59,6 @@ final readonly class DataPersister
 
     public function saveIngredientDependencies(Ingredient $ingredient): void
     {
-        if (($creator = $ingredient->getCreator()) !== null) {
-            $this->saveUser($creator);
-        }
         $this->saveDepartment($ingredient->getDepartment());
         foreach ([$ingredient->getDefaultCookingUnit(), $ingredient->getDefaultPurchaseUnit(), ...$ingredient->getCompatibleUnits()] as $unit) {
             $this->saveUnit($unit);

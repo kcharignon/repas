@@ -12,6 +12,7 @@ readonly class CreateIngredientCommand
         public string  $defaultCookingUnitSlug,
         public string  $defaultPurchaseUnitSlug,
         public string $userId,
+        public bool    $isAdmin,
         public ?float  $coefficient,
     ) {
     }

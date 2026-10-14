@@ -21,7 +21,7 @@ class CreateIngredientApiControllerTest extends QueryBusWebTestCase
 
         // Then
         $this->assertSame(201, $this->client->getResponse()->getStatusCode());
-        $this->assertEquals([new CreateIngredientCommand('Praliné', '', 'epicerie', 'gramme', 'kilo', $user->getId(), 1000.0)], $commandBus->dispatched());
+        $this->assertEquals([new CreateIngredientCommand('Praliné', '', 'epicerie', 'gramme', 'kilo', $user->getId(), false, 1000.0)], $commandBus->dispatched());
         $this->assertSame('/api/v1/ingredients/praline-user', $this->client->getResponse()->headers->get('Location'));
     }
 

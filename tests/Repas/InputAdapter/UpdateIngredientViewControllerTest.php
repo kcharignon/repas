@@ -127,6 +127,6 @@ class UpdateIngredientViewControllerTest extends QueryBusWebTestCase
     {
         return new IngredientDTOBuilder()->withSlug($ingredient->getSlug())->withName('zzz beurre')->withDepartment('cereale', 'céréale')
             ->withCookingUnit('gramme', 'gramme')->withPurchaseUnit('plaquette', 'plaquette', '')->withCoefficient(250)
-            ->withCreatorId($ingredient->getCreator()->getId())->editable()->build();
+            ->withCreatorId($ingredient->getCreatorId())->editable()->build();
     }
 }

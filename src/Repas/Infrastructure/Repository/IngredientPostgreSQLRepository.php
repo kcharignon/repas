@@ -16,9 +16,6 @@ use Repas\Repas\Domain\Model\Unit;
 use Repas\Repas\Infrastructure\Entity\Ingredient as IngredientEntity;
 use Repas\Repas\Infrastructure\Entity\RecipeRow;
 use Repas\Shared\Domain\Tool\Tab;
-use Repas\User\Domain\Exception\UserException;
-use Repas\User\Domain\Interface\UserRepository;
-use Repas\User\Domain\Model\User;
 
 readonly class IngredientPostgreSQLRepository extends PostgreSQLRepository implements IngredientRepository
 {
@@ -26,7 +23,6 @@ readonly class IngredientPostgreSQLRepository extends PostgreSQLRepository imple
         ManagerRegistry $managerRegistry,
         private UnitRepository $unitRepository,
         private DepartmentRepository $departmentRepository,
-        private UserRepository $userRepository,
     ) {
         parent::__construct($managerRegistry, IngredientEntity::class);
     }
@@ -35,7 +31,6 @@ readonly class IngredientPostgreSQLRepository extends PostgreSQLRepository imple
      * @throws DepartmentException
      * @throws UnitException
      * @throws IngredientException
-     * @throws UserException
      */
     public function findOneBySlug(string $slug): IngredientModel
     {
@@ -59,13 +54,13 @@ readonly class IngredientPostgreSQLRepository extends PostgreSQLRepository imple
         return $this->convertEntitiesToModels(new Tab($entities, IngredientEntity::class));
     }
 
-    public function findByDepartmentAndOwner(Department $department, User $owner): Tab
+    public function findByDepartmentAndOwner(Department $department, string $ownerId): Tab
     {
         $entities = $this->entityRepository->createQueryBuilder('i')
             ->where('i.departmentSlug = :department')
             ->andWhere('i.creatorId = :owner or i.creatorId is null')
             ->setParameter('department', $department->getId())
-            ->setParameter('owner', $owner->getId())
+            ->setParameter('owner', $ownerId)
             ->orderBy('i.sluggedName', 'ASC')
             ->getQuery()
             ->getResult();
@@ -73,11 +68,11 @@ readonly class IngredientPostgreSQLRepository extends PostgreSQLRepository imple
         return $this->convertEntitiesToModels(new Tab($entities, IngredientEntity::class));
     }
 
-    public function findByOwner(User $owner): Tab
+    public function findByOwner(string $ownerId): Tab
     {
         $entities = $this->entityRepository->createQueryBuilder('i')
             ->where('i.creatorId = :owner or i.creatorId is null')
-            ->setParameter('owner', $owner->getId())
+            ->setParameter('owner', $ownerId)
             ->orderBy('i.sluggedName', 'ASC')
             ->getQuery()
             ->getResult();
@@ -113,7 +108,6 @@ readonly class IngredientPostgreSQLRepository extends PostgreSQLRepository imple
 
     /**
      * @throws UnitException
-     * @throws UserException
      * @throws DepartmentException
      */
     private function convertEntityToModel(IngredientEntity $ingredientEntity): IngredientModel
@@ -126,7 +120,7 @@ readonly class IngredientPostgreSQLRepository extends PostgreSQLRepository imple
             "department" => $this->departmentRepository->findOneBySlug($ingredientEntity->getDepartmentSlug()),
             "default_cooking_unit" => $this->unitRepository->findOneBySlug($ingredientEntity->getDefaultCookingUnitSlug()),
             "default_purchase_unit" => $this->unitRepository->findOneBySlug($ingredientEntity->getDefaultPurchaseUnitSlug()),
-            "creator" => $this->findOneCreatorById($ingredientEntity->getCreatorId()),
+            "creator_id" => $ingredientEntity->getCreatorId(),
             "compatible_units" => $this->unitRepository->findBySlugs(new Tab($ingredientEntity->getCompatibleUnitSlugs(), 'string')),
         ]);
     }
@@ -174,17 +168,6 @@ readonly class IngredientPostgreSQLRepository extends PostgreSQLRepository imple
         // Charger tous les départements et unités nécessaires en une requête chacun
         $this->departmentRepository->findBySlugs($departmentSlugs->unique());
         $this->unitRepository->findBySlugs($unitSlugs->unique());
-    }
-
-    /**
-     * @throws UserException
-     */
-    private function findOneCreatorById(?string $id): ?User
-    {
-        if ($id === null) {
-            return null;
-        }
-        return $this->userRepository->findOneById($id);
     }
 
     public function delete(IngredientModel $ingredient): void

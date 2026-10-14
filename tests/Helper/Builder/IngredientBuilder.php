@@ -74,7 +74,7 @@ class IngredientBuilder implements Builder
             'department' => $this->departmentBuilder->build(),
             'default_cooking_unit' => $this->defaultCookingUnitBuilder->build(),
             'default_purchase_unit' => $this->defaultPurchaseUnitBuilder->build(),
-            'creator' => $this->creator instanceof UserBuilder ? $this->creator->build() : $this->creator,
+            'creator_id' => ($this->creator instanceof UserBuilder ? $this->creator->build() : $this->creator)?->getId(),
             'compatible_units' => $this->compatibleUnits,
         ]);
     }

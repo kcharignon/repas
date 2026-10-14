@@ -15,9 +15,6 @@ use Repas\Repas\Domain\Model\Ingredient;
 use Repas\Repas\Domain\Model\Unit;
 use Repas\Repas\Domain\Service\ConversionService;
 use Repas\Shared\Domain\Tool\Tab;
-use Repas\User\Domain\Exception\UserException;
-use Repas\User\Domain\Interface\UserRepository;
-use Repas\User\Domain\Model\User;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
@@ -29,7 +26,6 @@ readonly class CreateIngredientHandler
         private DepartmentRepository $departmentRepository,
         private UnitRepository $unitRepository,
         private IngredientRepository $ingredientRepository,
-        private UserRepository $userRepository,
         private EventDispatcherInterface $eventDispatcher,
         private ConversionService $conversionService,
     ) {
@@ -38,15 +34,13 @@ readonly class CreateIngredientHandler
     /**
      * @throws DepartmentException
      * @throws UnitException
-     * @throws UserException
      */
     public function __invoke(CreateIngredientCommand $command): string
     {
         $cookingUnit = $this->unitRepository->findOneBySlug($command->defaultCookingUnitSlug);
         $purchaseUnit = $this->unitRepository->findOneBySlug($command->defaultPurchaseUnitSlug);
-        $user = $this->userRepository->findOneById($command->userId);
         // Un administrateur crée des ingrédients communs (sans créateur), un utilisateur des ingrédients personnalisés
-        $creator = $user->isAdmin() ? null : $user;
+        $creatorId = $command->isAdmin ? null : $command->userId;
 
         $ingredient = Ingredient::create(
             name: $command->name,
@@ -54,7 +48,7 @@ readonly class CreateIngredientHandler
             department: $this->departmentRepository->findOneBySlug($command->departmentSlug),
             defaultCookingUnit: $cookingUnit,
             defaultPurchaseUnit: $purchaseUnit,
-            creator: $creator,
+            creatorId: $creatorId,
         );
 
         // Le slug dérive du nom et du créateur : enregistrer sous un slug existant écraserait l'ingrédient
@@ -64,8 +58,8 @@ readonly class CreateIngredientHandler
 
         $this->ingredientRepository->save($ingredient);
 
-        if ($creator instanceof User) {
-            $this->eventDispatcher->dispatch(new IngredientCreatedEvent($creator->getId(), $ingredient->getSlug()));
+        if ($creatorId !== null) {
+            $this->eventDispatcher->dispatch(new IngredientCreatedEvent($creatorId, $ingredient->getSlug()));
         }
 
         // On récupère les unités compatibles à la conversion après la création de l'ingrédient

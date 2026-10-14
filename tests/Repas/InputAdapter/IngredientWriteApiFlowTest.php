@@ -54,7 +54,7 @@ class IngredientWriteApiFlowTest extends DatabaseTestCase
         $this->assertSame(201, $this->client->getResponse()->getStatusCode());
         $slug = basename($this->client->getResponse()->headers->get('Location'));
         $ingredient = $this->ingredients()->findOneBySlug($slug);
-        $this->assertSame([$user->getId(), 'Praliné'], [$ingredient->getCreator()->getId(), $ingredient->getName()]);
+        $this->assertSame([$user->getId(), 'Praliné'], [$ingredient->getCreatorId(), $ingredient->getName()]);
         $this->assertSame(1, static::getContainer()->get(UserRepository::class)->findOneById($user->getId())->getStatistics()['ingredients']);
     }
 
@@ -65,7 +65,7 @@ class IngredientWriteApiFlowTest extends DatabaseTestCase
 
         // Then
         $this->assertSame(201, $this->client->getResponse()->getStatusCode());
-        $this->assertNull($this->ingredients()->findOneBySlug(basename($this->client->getResponse()->headers->get('Location')))->getCreator());
+        $this->assertNull($this->ingredients()->findOneBySlug(basename($this->client->getResponse()->headers->get('Location')))->getCreatorId());
     }
 
     public function testCreatingTheSameIngredientTwiceIsAConflict(): void

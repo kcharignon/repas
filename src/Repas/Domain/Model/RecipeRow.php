@@ -103,8 +103,8 @@ final class RecipeRow implements ModelInterface
         string $recipeId,
         User $author,
     ): self {
-        if ($originalRow->getIngredient()->getCreator()) {
-            $ingredient = Ingredient::copyFromOriginal($originalRow->getIngredient(), $author);
+        if ($originalRow->getIngredient()->getCreatorId() !== null) {
+            $ingredient = Ingredient::copyFromOriginal($originalRow->getIngredient(), $author->getId());
         } else {
             $ingredient = $originalRow->getIngredient();
         }

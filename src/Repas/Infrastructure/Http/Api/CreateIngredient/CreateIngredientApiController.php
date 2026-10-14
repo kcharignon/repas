@@ -41,6 +41,7 @@ final class CreateIngredientApiController extends AbstractController
             defaultCookingUnitSlug: $payload->defaultCookingUnitSlug,
             defaultPurchaseUnitSlug: $payload->defaultPurchaseUnitSlug,
             userId: $user->getId(),
+            isAdmin: $user->isAdmin(),
             coefficient: $payload->coefficient,
         ));
 

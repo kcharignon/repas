@@ -20,7 +20,7 @@ return [
     'inscription' => 3,
     'mettre-liste-en-pause' => 9,
     'modifier-conversion' => 4,
-    'modifier-ingredient' => 8,
+    'modifier-ingredient' => 7,
     'modifier-portions-repas' => 26,
     'modifier-rayon' => 2,
     'modifier-recette' => 23,

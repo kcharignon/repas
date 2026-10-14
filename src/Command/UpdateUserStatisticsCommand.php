@@ -34,7 +34,7 @@ class UpdateUserStatisticsCommand extends Command
         $users = $this->userRepository->findAll();
         foreach ($users as $user) {
             // Recuperation des Ingredient de l'utilisateur
-            $ingredients = $this->ingredientRepository->findByOwner($user)->filter(fn(Ingredient $ingredient) => $user->isEqual($ingredient->getCreator()))->count();
+            $ingredients = $this->ingredientRepository->findByOwner($user->getId())->filter(fn(Ingredient $ingredient) => $ingredient->getCreatorId() === $user->getId())->count();
             $recipes = $this->recipeRepository->findByAuthor($user)->count();
             $io->info("{$user->getEmail()} : {$ingredients} ingredient(s) et {$recipes} recipes");
 

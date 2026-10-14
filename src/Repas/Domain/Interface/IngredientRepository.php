@@ -8,7 +8,6 @@ use Repas\Repas\Domain\Model\Department;
 use Repas\Repas\Domain\Model\Ingredient;
 use Repas\Repas\Domain\Model\Recipe;
 use Repas\Shared\Domain\Tool\Tab;
-use Repas\User\Domain\Model\User;
 
 interface IngredientRepository
 {
@@ -20,12 +19,12 @@ interface IngredientRepository
     /**
      * @return Tab<Ingredient>
      */
-    public function findByDepartmentAndOwner(Department $department, User $owner): Tab;
+    public function findByDepartmentAndOwner(Department $department, string $ownerId): Tab;
 
     /**
      * @return Tab<Ingredient>
      */
-    public function findByOwner(User $owner): Tab;
+    public function findByOwner(string $ownerId): Tab;
 
     /**
      * Un ingrédient porte ce slug (le slug dérive du nom et du créateur : deux créations du même nom se télescoperaient).
