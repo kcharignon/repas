@@ -73,6 +73,39 @@ class ConversionServiceTest extends TestCase
         $actual = $this->conversionService->convertToPurchaseUnit($egg, 25, $unit);
     }
 
+    public function testTheGraphIsRebuiltAfterClear(): void
+    {
+        // Given : le graphe de l'œuf est déjà construit, le kilo ne mène nulle part
+        $conversionRepository = new ConversionInMemoryRepository($this->generateConversions());
+        $service = new ConversionService($conversionRepository, new UnitInMemoryRepository($this->generateUnits()));
+        $egg = new IngredientBuilder()->isEgg()->build();
+        $kilo = new UnitBuilder()->isKilo()->build();
+        $this->assertFalse($this->canConvert($service, $egg, $kilo));
+
+        // When : une conversion commune kilo => gramme est ajoutée, le service ne la voit pas tant que le graphe est en cache
+        $conversionRepository->save(new ConversionBuilder()
+            ->withStartUnit($kilo)
+            ->withEndUnit(new UnitBuilder()->isGramme()->build())
+            ->withCoefficient(1000)
+            ->build());
+        $this->assertFalse($this->canConvert($service, $egg, $kilo));
+        $service->clear();
+
+        // Then
+        $this->assertTrue($this->canConvert($service, $egg, $kilo));
+    }
+
+    private function canConvert(ConversionService $service, Ingredient $ingredient, Unit $unit): bool
+    {
+        try {
+            $service->convertToPurchaseUnit($ingredient, 1, $unit);
+        } catch (IngredientException) {
+            return false;
+        }
+
+        return true;
+    }
+
     public static function getConvertibleUnitDataProvider(): array
     {
         $egg = new IngredientBuilder()->isEgg()->build();

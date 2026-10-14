@@ -40,6 +40,11 @@ services:
         arguments:
             $messageBus: '@query.bus'
 
+    # Le graphe de conversions est mis en cache dans le service : vidé entre deux requêtes (mode worker FrankenPHP)
+    Repas\Repas\Domain\Service\ConversionService:
+        tags:
+            - { name: kernel.reset, method: clear }
+
     Repas\User\Domain\Service\UserChecker: ~
     
 
