@@ -5,7 +5,6 @@ namespace Repas\Repas\Infrastructure\Repository;
 
 use Doctrine\Persistence\ManagerRegistry;
 use Repas\Repas\Domain\Exception\RecipeException;
-use Repas\Repas\Domain\Interface\IngredientRepository;
 use Repas\Repas\Domain\Interface\RecipeRepository;
 use Repas\Repas\Domain\Interface\RecipeTypeRepository;
 use Repas\Repas\Domain\Model\Ingredient;
@@ -15,7 +14,6 @@ use Repas\Repas\Domain\Model\RecipeType;
 use Repas\Repas\Infrastructure\Entity\Recipe as RecipeEntity;
 use Repas\Repas\Infrastructure\Entity\RecipeRow as RecipeRowEntity;
 use Repas\Shared\Domain\Tool\Tab;
-use Repas\Shared\Infrastructure\Repository\ModelCache;
 use Repas\User\Domain\Exception\UserException;
 use Repas\User\Domain\Interface\UserRepository;
 use Repas\User\Domain\Model\User;
@@ -24,11 +22,10 @@ readonly class RecipePostgreSQLRepository extends PostgreSQLRepository implement
 {
     public function __construct(
         ManagerRegistry $managerRegistry,
-        private ModelCache $modelCache,
         private UserRepository $userRepository,
         private RecipeTypeRepository $recipeTypeRepository,
         private RecipeRowPostgreSQLRepository $recipeRowRepository,
-        private IngredientRepository $ingredientRepository,
+        private IngredientPostgreSQLRepository $ingredientRepository,
     ) {
         parent::__construct($managerRegistry, RecipeEntity::class);
     }
@@ -39,10 +36,6 @@ readonly class RecipePostgreSQLRepository extends PostgreSQLRepository implement
      */
     public function findOneById(string $id): Recipe
     {
-        if (($model = $this->modelCache->getModelCache(Recipe::class, $id)) !== null) {
-            return $model;
-        }
-
         if (($entity = $this->entityRepository->find($id)) !== null) {
             return $this->convertEntityToModel($entity);
         }
@@ -64,7 +57,6 @@ readonly class RecipePostgreSQLRepository extends PostgreSQLRepository implement
 
     public function save(Recipe $recipe): void
     {
-        $this->modelCache->setModelCache($recipe);
         $recipeEntity = $this->entityRepository->find($recipe->getId());
         if ($recipeEntity === null) {
             $recipeEntity = RecipeEntity::fromModel($recipe);
@@ -83,7 +75,6 @@ readonly class RecipePostgreSQLRepository extends PostgreSQLRepository implement
         }
 
         $this->entityManager->flush();
-        $this->modelCache->setModelCache($recipe);
     }
 
     /**
@@ -92,12 +83,9 @@ readonly class RecipePostgreSQLRepository extends PostgreSQLRepository implement
      */
     private function convertEntityToModel(RecipeEntity $entity): Recipe
     {
-        if (($model = $this->modelCache->getModelCache(Recipe::class, $entity->getSlug())) !== null) {
-            return $model;
-        }
+        $this->ingredientRepository->preloadByRecipe($entity->getId());
 
-        $this->ingredientRepository->cachedByRecipe($entity->getId());
-        $model = Recipe::load([
+        return Recipe::load([
             'id' => $entity->getId(),
             'name' => $entity->getName(),
             'serving' => $entity->getServing(),
@@ -106,9 +94,6 @@ readonly class RecipePostgreSQLRepository extends PostgreSQLRepository implement
             'rows' => $this->recipeRowRepository->findByRecipeId($entity->getId()),
             'original_id' => $entity->getOriginalId(),
         ]);
-
-        $this->modelCache->setModelCache($model);
-        return $model;
     }
 
     public function findByIngredient(Ingredient $ingredient): Tab
@@ -147,7 +132,6 @@ readonly class RecipePostgreSQLRepository extends PostgreSQLRepository implement
 
     public function delete(Recipe $recipe): void
     {
-        $this->modelCache->removeModelCache($recipe);
         $this->entityRepository->createQueryBuilder('r')
             ->delete()
             ->where('r.id = :id')

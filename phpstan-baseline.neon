@@ -205,27 +205,9 @@ parameters:
 			path: src/Repas/Infrastructure/Repository/ConversionPostgreSQLRepository.php
 
 		-
-			message: '#^Method Repas\\Repas\\Infrastructure\\Repository\\DepartmentPostgreSQLRepository\:\:findOneBySlug\(\) should return Repas\\Repas\\Domain\\Model\\Department but returns Repas\\Shared\\Domain\\Model\\ModelInterface\.$#'
-			identifier: return.type
-			count: 1
-			path: src/Repas/Infrastructure/Repository/DepartmentPostgreSQLRepository.php
-
-		-
 			message: '#^Call to an undefined method Doctrine\\Persistence\\ObjectRepository\:\:createQueryBuilder\(\)\.$#'
 			identifier: method.notFound
 			count: 2
-			path: src/Repas/Infrastructure/Repository/IngredientPostgreSQLRepository.php
-
-		-
-			message: '#^Method Repas\\Repas\\Infrastructure\\Repository\\IngredientPostgreSQLRepository\:\:convertEntityToModel\(\) should return Repas\\Repas\\Domain\\Model\\Ingredient but returns Repas\\Shared\\Domain\\Model\\ModelInterface\.$#'
-			identifier: return.type
-			count: 1
-			path: src/Repas/Infrastructure/Repository/IngredientPostgreSQLRepository.php
-
-		-
-			message: '#^Method Repas\\Repas\\Infrastructure\\Repository\\IngredientPostgreSQLRepository\:\:findOneBySlug\(\) should return Repas\\Repas\\Domain\\Model\\Ingredient but returns Repas\\Shared\\Domain\\Model\\ModelInterface\.$#'
-			identifier: return.type
-			count: 1
 			path: src/Repas/Infrastructure/Repository/IngredientPostgreSQLRepository.php
 
 		-
@@ -247,18 +229,6 @@ parameters:
 			path: src/Repas/Infrastructure/Repository/RecipePostgreSQLRepository.php
 
 		-
-			message: '#^Method Repas\\Repas\\Infrastructure\\Repository\\RecipePostgreSQLRepository\:\:convertEntityToModel\(\) should return Repas\\Repas\\Domain\\Model\\Recipe but returns Repas\\Shared\\Domain\\Model\\ModelInterface\.$#'
-			identifier: return.type
-			count: 1
-			path: src/Repas/Infrastructure/Repository/RecipePostgreSQLRepository.php
-
-		-
-			message: '#^Method Repas\\Repas\\Infrastructure\\Repository\\RecipePostgreSQLRepository\:\:findOneById\(\) should return Repas\\Repas\\Domain\\Model\\Recipe but returns Repas\\Shared\\Domain\\Model\\ModelInterface\.$#'
-			identifier: return.type
-			count: 1
-			path: src/Repas/Infrastructure/Repository/RecipePostgreSQLRepository.php
-
-		-
 			message: '#^Parameter \#1 \$callback of method Repas\\Shared\\Domain\\Tool\\Tab\<Repas\\Repas\\Domain\\Model\\RecipeRow\>\:\:map\(\) expects callable\(Repas\\Repas\\Domain\\Model\\RecipeRow\)\: Repas\\Repas\\Domain\\Model\\RecipeRow, Closure\(Repas\\Repas\\Domain\\Model\\RecipeRow\)\: string given\.$#'
 			identifier: argument.type
 			count: 1
@@ -271,12 +241,6 @@ parameters:
 			path: src/Repas/Infrastructure/Repository/RecipeRowPostgreSQLRepository.php
 
 		-
-			message: '#^Method Repas\\Repas\\Infrastructure\\Repository\\RecipeTypePostgreSQLRepository\:\:findOneBySlug\(\) should return Repas\\Repas\\Domain\\Model\\RecipeType but returns Repas\\Shared\\Domain\\Model\\ModelInterface\.$#'
-			identifier: return.type
-			count: 1
-			path: src/Repas/Infrastructure/Repository/RecipeTypePostgreSQLRepository.php
-
-		-
 			message: '#^Call to an undefined method Doctrine\\Persistence\\ObjectRepository\:\:createQueryBuilder\(\)\.$#'
 			identifier: method.notFound
 			count: 1
@@ -285,12 +249,6 @@ parameters:
 		-
 			message: '#^Call to an undefined method Doctrine\\Persistence\\ObjectRepository\:\:createQueryBuilder\(\)\.$#'
 			identifier: method.notFound
-			count: 1
-			path: src/Repas/Infrastructure/Repository/ShoppingListPostgreSQLRepository.php
-
-		-
-			message: '#^Method Repas\\Repas\\Infrastructure\\Repository\\ShoppingListPostgreSQLRepository\:\:convertEntityToModel\(\) should return Repas\\Repas\\Domain\\Model\\ShoppingList but returns Repas\\Shared\\Domain\\Model\\ModelInterface\.$#'
-			identifier: return.type
 			count: 1
 			path: src/Repas/Infrastructure/Repository/ShoppingListPostgreSQLRepository.php
 
@@ -315,12 +273,6 @@ parameters:
 		-
 			message: '#^Call to an undefined method Doctrine\\Persistence\\ObjectRepository\:\:createQueryBuilder\(\)\.$#'
 			identifier: method.notFound
-			count: 1
-			path: src/Repas/Infrastructure/Repository/UnitPostgreSQLRepository.php
-
-		-
-			message: '#^Method Repas\\Repas\\Infrastructure\\Repository\\UnitPostgreSQLRepository\:\:findOneBySlug\(\) should return Repas\\Repas\\Domain\\Model\\Unit but returns Repas\\Shared\\Domain\\Model\\ModelInterface\.$#'
-			identifier: return.type
 			count: 1
 			path: src/Repas/Infrastructure/Repository/UnitPostgreSQLRepository.php
 
@@ -365,18 +317,6 @@ parameters:
 			identifier: property.unusedType
 			count: 1
 			path: src/User/Infrastructure/Entity/User.php
-
-		-
-			message: '#^Method Repas\\User\\Infrastructure\\Repository\\UserPostgreSQLRepository\:\:convertEntityToModel\(\) should return Repas\\User\\Domain\\Model\\User but returns Repas\\Shared\\Domain\\Model\\ModelInterface\.$#'
-			identifier: return.type
-			count: 1
-			path: src/User/Infrastructure/Repository/UserPostgreSQLRepository.php
-
-		-
-			message: '#^Method Repas\\User\\Infrastructure\\Repository\\UserPostgreSQLRepository\:\:findOneById\(\) should return Repas\\User\\Domain\\Model\\User but returns Repas\\Shared\\Domain\\Model\\ModelInterface\.$#'
-			identifier: return.type
-			count: 1
-			path: src/User/Infrastructure/Repository/UserPostgreSQLRepository.php
 
 		-
 			message: '#^Parameter \#1 \$callback of method Repas\\Shared\\Domain\\Tool\\Tab\<Repas\\Tests\\Helper\\Builder\\RecipeRowBuilder\>\:\:map\(\) expects callable\(Repas\\Tests\\Helper\\Builder\\RecipeRowBuilder\)\: Repas\\Tests\\Helper\\Builder\\RecipeRowBuilder, Closure\(Repas\\Tests\\Helper\\Builder\\RecipeRowBuilder\)\: Repas\\Repas\\Domain\\Model\\RecipeRow given\.$#'

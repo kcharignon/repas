@@ -12,12 +12,10 @@ use Repas\Repas\Domain\Interface\IngredientRepository;
 use Repas\Repas\Domain\Interface\UnitRepository;
 use Repas\Repas\Domain\Model\Department;
 use Repas\Repas\Domain\Model\Ingredient as IngredientModel;
-use Repas\Repas\Domain\Model\Recipe;
 use Repas\Repas\Domain\Model\Unit;
 use Repas\Repas\Infrastructure\Entity\Ingredient as IngredientEntity;
 use Repas\Repas\Infrastructure\Entity\RecipeRow;
 use Repas\Shared\Domain\Tool\Tab;
-use Repas\Shared\Infrastructure\Repository\ModelCache;
 use Repas\User\Domain\Exception\UserException;
 use Repas\User\Domain\Interface\UserRepository;
 use Repas\User\Domain\Model\User;
@@ -26,7 +24,6 @@ readonly class IngredientPostgreSQLRepository extends PostgreSQLRepository imple
 {
     public function __construct(
         ManagerRegistry $managerRegistry,
-        private ModelCache $modelCache,
         private UnitRepository $unitRepository,
         private DepartmentRepository $departmentRepository,
         private UserRepository $userRepository,
@@ -42,12 +39,7 @@ readonly class IngredientPostgreSQLRepository extends PostgreSQLRepository imple
      */
     public function findOneBySlug(string $slug): IngredientModel
     {
-        // On cherche dans le cache
-        if (($model = $this->modelCache->getModelCache(IngredientModel::class, $slug)) !== null) {
-            return $model;
-        }
-
-        // On cherche en base de donnée
+        // Doctrine ne relit pas en base une entité déjà dans son identity map
         if (($entity = $this->entityRepository->find($slug)) !== null) {
             return $this->convertEntityToModel($entity);
         }
@@ -90,7 +82,6 @@ readonly class IngredientPostgreSQLRepository extends PostgreSQLRepository imple
 
     public function save(IngredientModel $ingredient): void
     {
-        $this->modelCache->removeModelCache($ingredient);
         $ingredientEntity = $this->entityRepository->find($ingredient->getSlug());
         if ($ingredientEntity) {
             $this->updateEntity($ingredientEntity, $ingredient);
@@ -100,7 +91,6 @@ readonly class IngredientPostgreSQLRepository extends PostgreSQLRepository imple
 
         $this->entityManager->persist($ingredientEntity);
         $this->entityManager->flush();
-        $this->modelCache->setModelCache($ingredient);
     }
 
     private function updateEntity(IngredientEntity $ingredientEntity, IngredientModel $ingredient): void
@@ -123,11 +113,7 @@ readonly class IngredientPostgreSQLRepository extends PostgreSQLRepository imple
      */
     private function convertEntityToModel(IngredientEntity $ingredientEntity): IngredientModel
     {
-        if (($model = $this->modelCache->getModelCache(IngredientModel::class, $ingredientEntity->getSlug())) !== null) {
-            return $model;
-        }
-
-        $model = IngredientModel::load([
+        return IngredientModel::load([
             "slug" => $ingredientEntity->getSlug(),
             "name" => $ingredientEntity->getName(),
             "image" => $ingredientEntity->getImage(),
@@ -138,9 +124,6 @@ readonly class IngredientPostgreSQLRepository extends PostgreSQLRepository imple
             "creator" => $this->findOneCreatorById($ingredientEntity->getCreatorId()),
             "compatible_units" => $this->unitRepository->findBySlugs(new Tab($ingredientEntity->getCompatibleUnitSlugs(), 'string')),
         ]);
-
-        $this->modelCache->setModelCache($model);
-        return $model;
     }
 
     private function convertEntitiesToModels(Tab $entities): Tab
@@ -151,15 +134,11 @@ readonly class IngredientPostgreSQLRepository extends PostgreSQLRepository imple
     }
 
     /**
-     * @throws UserException
+     * Précharge par lot les ingrédients d'une recette, avec leurs rayons et leurs unités : les lectures unitaires qui
+     * suivent (une par ligne de la recette) sont servies par l'identity map de Doctrine, sans requête.
      */
-    public function cachedByRecipe(string $recipeId): void
+    public function preloadByRecipe(string $recipeId): void
     {
-        // Si la recette est deja en cache
-        if ($this->modelCache->isCachedExists(Recipe::class, $recipeId)) {
-            return ;
-        }
-
         // Récupérer les ingrédients liés à la recette
         /** @var Tab<IngredientEntity> $ingredientEntities */
         $ingredientEntities = new Tab(
@@ -187,12 +166,9 @@ readonly class IngredientPostgreSQLRepository extends PostgreSQLRepository imple
             $unitSlugs->merge(new Tab($ingredient->getCompatibleUnitSlugs()));
         }
 
-        // Charger tous les départements et unités nécessaires en une seule requête (pour une mise en cache)
+        // Charger tous les départements et unités nécessaires en une requête chacun
         $this->departmentRepository->findBySlugs($departmentSlugs->unique());
         $this->unitRepository->findBySlugs($unitSlugs->unique());
-
-        // Convertir chaque ingrédient en modèle et le stocker en cache
-        $this->convertEntitiesToModels($ingredientEntities);
     }
 
     /**
@@ -208,7 +184,6 @@ readonly class IngredientPostgreSQLRepository extends PostgreSQLRepository imple
 
     public function delete(IngredientModel $ingredient): void
     {
-        $this->modelCache->removeModelCache($ingredient);
 
         // Suppression de la liste
         $entity = $this->entityManager->find(IngredientEntity::class, $ingredient->getId());

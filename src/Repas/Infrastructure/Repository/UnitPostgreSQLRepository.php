@@ -12,13 +12,11 @@ use Repas\Repas\Domain\Interface\UnitRepository;
 use Repas\Repas\Domain\Model\Unit as UnitModel;
 use Repas\Repas\Infrastructure\Entity\Unit as UnitEntity;
 use Repas\Shared\Domain\Tool\Tab;
-use Repas\Shared\Infrastructure\Repository\ModelCache;
 
 readonly class UnitPostgreSQLRepository extends PostgreSQLRepository implements UnitRepository
 {
     public function __construct(
         ManagerRegistry $managerRegistry,
-        private ModelCache $modelCache,
     ) {
         parent::__construct($managerRegistry, UnitEntity::class);
     }
@@ -26,23 +24,12 @@ readonly class UnitPostgreSQLRepository extends PostgreSQLRepository implements 
     public function findAll(): Tab
     {
         $units = new Tab($this->entityRepository->findBy([], ['slug' => 'ASC']), UnitEntity::class);
-        return $units->map(function (UnitEntity $entity) {
-            if (($model = $this->modelCache->getModelCache(UnitModel::class, $entity->getSlug())) !== null) {
-                return $model;
-            }
-
-            $model = $this->convertEntityToModel($entity);
-            $this->modelCache->setModelCache($model);
-            return $model;
-            }, UnitModel::class);
+        return $units->map(fn(UnitEntity $entity) => $this->convertEntityToModel($entity), UnitModel::class);
     }
 
 
     public function save(UnitModel $unit): void
     {
-        // On supprime le model du cache
-        $this->modelCache->removeModelCache($unit);
-
         // On recupere l'entity
         $unitEntity = $this->entityRepository->find($unit->getSlug());
         if ($unitEntity instanceof UnitEntity) {
@@ -54,9 +41,6 @@ readonly class UnitPostgreSQLRepository extends PostgreSQLRepository implements 
         // On persiste les changement
         $this->entityManager->persist($unitEntity);
         $this->entityManager->flush();
-
-        // On met le model en cache
-        $this->modelCache->setModelCache($unit);
     }
 
 
@@ -65,17 +49,8 @@ readonly class UnitPostgreSQLRepository extends PostgreSQLRepository implements 
      */
     public function findOneBySlug(string $slug): UnitModel
     {
-        // On cherche dans le cache
-        if (($model = $this->modelCache->getModelCache(UnitModel::class, $slug)) !== null) {
-            return $model;
-        }
-
-        // On cherche en BDD
         if (($entity = $this->entityRepository->find($slug)) !== null) {
-            $model = $this->convertEntityToModel($entity);
-            // On stock model en cache
-            $this->modelCache->setModelCache($model);
-            return $model;
+            return $this->convertEntityToModel($entity);
         }
 
         throw UnitException::notFound($slug);
@@ -83,8 +58,6 @@ readonly class UnitPostgreSQLRepository extends PostgreSQLRepository implements 
 
     public function delete(UnitModel $unit): void
     {
-        $this->modelCache->removeModelCache($unit);
-
         $this->entityRepository->createQueryBuilder('u')
             ->delete()
             ->where('u.slug = :slug')

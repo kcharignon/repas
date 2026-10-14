@@ -3,12 +3,10 @@
 namespace Repas\Tests\Helper;
 
 
-use Doctrine\ORM\EntityManagerInterface;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Repas\Domain\Model\Recipe;
 use Repas\Repas\Domain\Model\ShoppingList;
 use Repas\Shared\Application\Interface\CommandBusInterface;
-use Repas\Shared\Infrastructure\Repository\ModelCache;
 use Repas\Tests\Helper\Builder\ConversionBuilder;
 use Repas\Tests\Helper\Builder\RecipeBuilder;
 use Repas\Tests\Helper\Builder\ShoppingListBuilder;
@@ -21,32 +19,30 @@ use Repas\User\Domain\Model\User;
  * et listeners d'événements réels, sur la vraie base de test (voir ADR 0010 et roadmap, phase 8).
  *
  * La mesure part d'un état « requête HTTP neuve » : les données sont créées par le scénario, puis l'identity map de
- * Doctrine et `ModelCache` sont vidés avant de compter.
+ * Doctrine est vidée avant de compter.
  */
 abstract class WriteBudgetTestCase extends DatabaseTestCase
 {
     public DataPersister $persister;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->persister = new DataPersister(static::getContainer());
+    }
+
     /**
      * @param callable(self): object $arrange crée les données du scénario et renvoie la commande à exécuter
      * @return array{int, array<string, int>} nombre de requêtes, et leur répartition par type et par table
      */
-    public function measure(bool $modelCacheEnabled, callable $arrange): array
+    public function measure(callable $arrange): array
     {
-        // Noyau neuf : `DatabaseTestCase` a déjà posé un cache factice, qu'un service initialisé ne laisse pas remplacer.
-        // Le cache est donc choisi avant toute instanciation d'un repository ; la connexion de test (DAMA) survit au reboot.
-        self::ensureKernelShutdown();
-        self::bootKernel();
         $container = static::getContainer();
-        $this->entityManager = $container->get(EntityManagerInterface::class);
-        $this->persister = new DataPersister($container);
-        $modelCache = $modelCacheEnabled ? new ModelCache() : $this->modelCacheMock;
-        $container->set(ModelCache::class, $modelCache);
 
         $command = $arrange($this);
 
         $this->entityManager->clear();
-        $modelCache->reset();
         $counter = $container->get(QueryCounter::class);
         $counter->reset();
 

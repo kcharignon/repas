@@ -34,11 +34,6 @@ class IngredientInMemoryRepository extends AbstractInMemoryRepository implements
         return $this->models->filter(fn(Ingredient $ingredient) => $ingredient->getCreator()->isEqual($owner));
     }
 
-    public function cachedByRecipe(string $recipeId): void
-    {
-        // don't need to implement cachedByRecipe() method.
-    }
-
     /**
      * @return Tab<Ingredient>
      */

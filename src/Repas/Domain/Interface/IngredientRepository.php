@@ -29,8 +29,6 @@ interface IngredientRepository
 
     public function save(Ingredient $ingredient): void;
 
-    public function cachedByRecipe(string $recipeId): void;
-
     /**
      * @return Tab<Ingredient>
      */

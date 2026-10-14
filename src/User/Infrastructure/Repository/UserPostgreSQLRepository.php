@@ -7,7 +7,6 @@ namespace Repas\User\Infrastructure\Repository;
 use Doctrine\Persistence\ManagerRegistry;
 use Repas\Repas\Infrastructure\Repository\PostgreSQLRepository;
 use Repas\Shared\Domain\Tool\Tab;
-use Repas\Shared\Infrastructure\Repository\ModelCache;
 use Repas\User\Domain\Exception\UserException;
 use Repas\User\Domain\Interface\UserRepository;
 use Repas\User\Domain\Model\User;
@@ -17,7 +16,6 @@ readonly class UserPostgreSQLRepository extends PostgreSQLRepository implements 
 {
     public function __construct(
         ManagerRegistry $managerRegistry,
-        private ModelCache $modelCache,
     ) {
         parent::__construct($managerRegistry, UserEntity::class);
     }
@@ -27,14 +25,8 @@ readonly class UserPostgreSQLRepository extends PostgreSQLRepository implements 
      */
     public function findOneById(string $id): User
     {
-        if (($model = $this->modelCache->getModelCache(User::class, $id)) !== null) {
-            return $model;
-        }
-
         if (($entity = $this->entityRepository->find($id)) !== null) {
-            $model = $this->convertEntityToModel($entity);
-            $this->modelCache->setModelCache($model);
-            return $model;
+            return $this->convertEntityToModel($entity);
         }
         throw UserException::NotFound($id);
     }
@@ -45,9 +37,7 @@ readonly class UserPostgreSQLRepository extends PostgreSQLRepository implements 
     public function findOneByEmail(string $email): User
     {
         if (($userEntity = $this->entityRepository->findOneBy(['email' => $email])) !== null) {
-            $userModel = $this->convertEntityToModel($userEntity);
-            $this->modelCache->setModelCache($userModel);
-            return $userModel;
+            return $this->convertEntityToModel($userEntity);
         }
         throw UserException::NotFound($email);
     }
@@ -72,18 +62,12 @@ readonly class UserPostgreSQLRepository extends PostgreSQLRepository implements 
             $this->entityManager->persist($newUserEntity);
         }
 
-        $this->modelCache->setModelCache($user);
         $this->entityManager->flush();
-
     }
 
     private function convertEntityToModel(UserEntity $entity): User
     {
-        if (($model = $this->modelCache->getModelCache(User::class, $entity->getId())) !== null) {
-            return $model;
-        }
-
-        $model = User::load([
+        return User::load([
             'id' => $entity->getId(),
             'email' => $entity->getEmail(),
             'roles' => $entity->getRoles(),
@@ -92,9 +76,6 @@ readonly class UserPostgreSQLRepository extends PostgreSQLRepository implements 
             'status' => $entity->getStatus(),
             'statistics' => $entity->getStatistics(),
         ]);
-
-        $this->modelCache->setModelCache($model);
-        return $model;
     }
 
     private function convertEntitiesToModels(Tab $entities): Tab

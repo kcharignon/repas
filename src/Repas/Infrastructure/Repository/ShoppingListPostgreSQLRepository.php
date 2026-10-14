@@ -19,7 +19,6 @@ use Repas\Repas\Infrastructure\Entity\Recipe as RecipeEntity;
 use Repas\Repas\Infrastructure\Entity\ShoppingList as ShoppingListEntity;
 use Repas\Repas\Infrastructure\Entity\ShoppingListIngredient;
 use Repas\Shared\Domain\Tool\Tab;
-use Repas\Shared\Infrastructure\Repository\ModelCache;
 use Repas\User\Domain\Exception\UserException;
 use Repas\User\Domain\Interface\UserRepository;
 use Repas\User\Domain\Model\User;
@@ -28,7 +27,6 @@ readonly class ShoppingListPostgreSQLRepository extends PostgreSQLRepository imp
 {
     public function __construct(
         ManagerRegistry                                    $managerRegistry,
-        private ModelCache                                 $modelCache,
         private UserRepository                             $userRepository,
         private MealPostgreSQLRepository                   $mealRepository,
         private ShoppingListIngredientPostgreSQLRepository $shopListIngredientRepository,
@@ -75,7 +73,6 @@ readonly class ShoppingListPostgreSQLRepository extends PostgreSQLRepository imp
 
     public function save(ShoppingList $shoppingList): void
     {
-        $this->modelCache->removeModelCache($shoppingList);
         $shoppingListEntity = $this->entityRepository->find($shoppingList->getId());
         if (!$shoppingListEntity instanceof ShoppingListEntity) {
             $shoppingListEntity = ShoppingListEntity::fromModel($shoppingList);
@@ -114,7 +111,6 @@ readonly class ShoppingListPostgreSQLRepository extends PostgreSQLRepository imp
         }
 
         $this->entityManager->flush();
-        $this->modelCache->setModelCache($shoppingList);
     }
 
     /**
@@ -136,7 +132,6 @@ readonly class ShoppingListPostgreSQLRepository extends PostgreSQLRepository imp
 
     public function delete(ShoppingList $shoppingList): void
     {
-        $this->modelCache->removeModelCache($shoppingList);
 
         // Suppression des lignes
         $this->shopListRowRepository->deleteByShoppingListId($shoppingList->getId());
@@ -175,11 +170,7 @@ readonly class ShoppingListPostgreSQLRepository extends PostgreSQLRepository imp
      */
     private function convertEntityToModel(ShoppingListEntity $shoppingListEntity): ShoppingList
     {
-        if (($model = $this->modelCache->getModelCache(ShoppingList::class, $shoppingListEntity->getId())) !== null) {
-            return $model;
-        }
-
-        $model = ShoppingList::load([
+        return ShoppingList::load([
             'id' => $shoppingListEntity->getId(),
             'owner' => $this->userRepository->findOneById($shoppingListEntity->getOwnerId()),
             'created_at' => $shoppingListEntity->getCreatedAt(),
@@ -189,9 +180,6 @@ readonly class ShoppingListPostgreSQLRepository extends PostgreSQLRepository imp
             'ingredients' => $this->shopListIngredientRepository->findByShoppingListId($shoppingListEntity->getId()),
             'rows' => $this->shopListRowRepository->findByShoppingListId($shoppingListEntity->getId()),
         ]);
-
-        $this->modelCache->setModelCache($model);
-        return $model;
     }
 
     private function convertEntitiesToModels(Tab $entities): Tab

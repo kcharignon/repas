@@ -5,7 +5,6 @@ namespace Repas\Tests\Helper;
 use DAMA\DoctrineTestBundle\Doctrine\DBAL\StaticDriver;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Tools\SchemaTool;
-use Repas\Shared\Infrastructure\Repository\ModelCache;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
 /**
@@ -23,7 +22,6 @@ abstract class DatabaseTestCase extends KernelTestCase
     private static bool $databasePrepared = false;
 
     protected ?EntityManagerInterface $entityManager;
-    protected ModelCache $modelCacheMock;
     protected array $backupServices = [];
 
     public static function setUpBeforeClass(): void
@@ -52,9 +50,6 @@ abstract class DatabaseTestCase extends KernelTestCase
 
         // Get the EntityManager
         $this->entityManager = self::getContainer()->get(EntityManagerInterface::class);
-        $this->modelCacheMock = $this->createMock(ModelCache::class);
-        // Remplacer le service dans le conteneur
-        self::getContainer()->set(ModelCache::class, $this->modelCacheMock);
     }
 
     /**

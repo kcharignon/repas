@@ -24,7 +24,7 @@ abstract readonly class PostgreSQLRepository
 
     /**
      * Lit en une seule requête les entités absentes de l'identity map de Doctrine : les `find()` qui suivent, un par
-     * identifiant, ne coûtent alors plus aucune requête (préchargement par lot, sans dépendre de `ModelCache`).
+     * identifiant, ne coûtent alors plus aucune requête (préchargement par lot).
      *
      * @param iterable<string> $ids valeurs de la clé primaire
      */
