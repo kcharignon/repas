@@ -169,11 +169,15 @@ readonly class IngredientPostgreSQLRepository extends PostgreSQLRepository imple
 
         // Extraire tous les slugs de départements et unités à récupérer
         $departmentSlugs = Tab::newEmptyTyped('string');
-        $unitSlugs = Tab::newEmptyTyped('string');;
+        $unitSlugs = Tab::newEmptyTyped('string');
 
         foreach ($ingredientEntities as $ingredient) {
             $departmentSlugs[] = $ingredient->getDepartmentSlug();
-            $unitSlugs->merge(new Tab($ingredient->getCompatibleUnitSlugs()));
+            $unitSlugs[] = $ingredient->getDefaultCookingUnitSlug();
+            $unitSlugs[] = $ingredient->getDefaultPurchaseUnitSlug();
+            foreach ($ingredient->getCompatibleUnitSlugs() as $compatibleUnitSlug) {
+                $unitSlugs[] = $compatibleUnitSlug;
+            }
         }
 
         // Charger tous les départements et unités nécessaires en une requête chacun

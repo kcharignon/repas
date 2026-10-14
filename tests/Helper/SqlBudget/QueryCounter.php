@@ -30,6 +30,14 @@ final class QueryCounter
     }
 
     /**
+     * @return list<string>
+     */
+    public function statements(): array
+    {
+        return $this->statements;
+    }
+
+    /**
      * Nombre de requêtes par type et par table, de la plus fréquente à la moins fréquente (ex. `SELECT unit` => 54).
      *
      * @return array<string, int>

@@ -31,6 +31,14 @@ readonly class RecipeRowPostgreSQLRepository extends PostgreSQLRepository
     public function findByRecipeId(string $recipeId): Tab
     {
         $recipeRows = new Tab($this->entityRepository->findBy(['recipeId' => $recipeId]), RecipeRowEntity::class);
+
+        // Les unités des lignes sont lues en une requête (sinon une par unité) ; les lectures suivantes viennent de l'identity map
+        $unitSlugs = Tab::newEmptyTyped('string');
+        foreach ($recipeRows as $recipeRow) {
+            $unitSlugs[] = $recipeRow->getUnitSlug();
+        }
+        $this->unitRepository->findBySlugs($unitSlugs);
+
         return $recipeRows->map(fn(RecipeRowEntity $recipeRow) => $this->convertEntityToModel($recipeRow));
     }
 

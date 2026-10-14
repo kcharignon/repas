@@ -99,9 +99,7 @@ readonly class ShoppingListPostgreSQLRepository extends PostgreSQLRepository imp
             $this->shopListIngredientRepository->save($shopListIngredient);
         }
         // Ajoute de nouvelles lignes et mise à jour des autres
-        foreach ($shoppingList->getRows() as $shoppingListRow) {
-            $this->shopListRowRepository->save($shoppingListRow);
-        }
+        $this->shopListRowRepository->saveAll($shoppingList->getRows());
 
         $this->entityManager->flush();
     }

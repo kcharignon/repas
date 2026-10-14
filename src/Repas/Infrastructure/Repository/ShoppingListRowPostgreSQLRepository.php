@@ -85,6 +85,32 @@ readonly class ShoppingListRowPostgreSQLRepository extends PostgreSQLRepository 
     }
 
 
+    /**
+     * Enregistre plusieurs lignes : celles qui existent déjà sont lues en une requête, les autres sont insérées sans être
+     * cherchées une à une.
+     *
+     * @param iterable<ShoppingListRowModel> $shoppingListRows
+     */
+    public function saveAll(iterable $shoppingListRows): void
+    {
+        $rows = [];
+        foreach ($shoppingListRows as $shoppingListRow) {
+            $rows[] = $shoppingListRow;
+        }
+        $this->preload(array_map(static fn(ShoppingListRowModel $row): string => $row->getId(), $rows), 'id');
+
+        foreach ($rows as $shoppingListRow) {
+            $entity = $this->findManaged($shoppingListRow->getId());
+            if ($entity instanceof ShoppingListRowEntity) {
+                $entity->updateFromModel($shoppingListRow);
+            } else {
+                $this->entityManager->persist(ShoppingListRowEntity::fromModel($shoppingListRow));
+            }
+        }
+
+        $this->entityManager->flush();
+    }
+
     public function save(ShoppingListRowModel $shoppingListRow): void
     {
         $entity = $this->entityRepository->find($shoppingListRow->getId());
