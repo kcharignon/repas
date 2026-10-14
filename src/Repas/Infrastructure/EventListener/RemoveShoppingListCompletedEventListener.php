@@ -21,11 +21,8 @@ readonly class RemoveShoppingListCompletedEventListener
 
     public function __invoke(NewShoppingListCreatedEvent $event): void
     {
-        $shoppingList = $this->shoppingListRepository->findOneById($event->shoppingListId);
-
-        $shoppingLists = $this->shoppingListRepository->findByOwnerAndStatus($shoppingList->getOwner(), ShoppingListStatus::COMPLETED);
-        foreach ($shoppingLists as $shoppingList) {
-            $this->commandBus->dispatch(new RemoveShoppingListCommand($shoppingList->getId()));
+        foreach ($this->shoppingListRepository->findIdsByOwnerAndStatus($event->ownerId, ShoppingListStatus::COMPLETED) as $shoppingListId) {
+            $this->commandBus->dispatch(new RemoveShoppingListCommand($shoppingListId));
         }
     }
 }

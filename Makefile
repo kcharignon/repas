@@ -45,7 +45,7 @@ restart: ## Restart the project
 	@$(MAKE) start
 
 ## —— Code quality 📋 ————————————————————————————————————————————————————————
-.PHONY: test test-coverage deptrac phpstan api-doc-validate api-doc-coverage jwt-keys quality sql-budget-update cache-removal-check
+.PHONY: test test-coverage deptrac phpstan api-doc-validate api-doc-coverage jwt-keys quality sql-budget-update
 
 test: ## Run PHPUnit tests
 	@echo "🧪 Exécution des tests avec PHPUnit..."
@@ -96,9 +96,6 @@ quality: deptrac phpstan api-doc-validate api-doc-coverage ## Run architecture, 
 
 sql-budget-update: ## Régénère les budgets SQL des use cases d'écriture après un allègement (tests/Repas/WriteBudget)
 	@$(DOCKER_COMPOSE) exec -T -e UPDATE_SQL_BUDGETS=1 php vendor/bin/phpunit --no-coverage tests/Repas/WriteBudget
-
-cache-removal-check: ## ModelCache peut-il être retiré ? (aucun use case ne doit faire plus de requêtes sans lui)
-	@$(EXEC_PHP) php bin/cache-removal-check
 
 
 ## —— Helper 🛠️ ——————————————————————————————————————————————————————————————

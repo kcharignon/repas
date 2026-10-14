@@ -9,13 +9,11 @@ use Repas\Repas\Domain\Interface\DepartmentRepository;
 use Repas\Repas\Domain\Model\Department as DepartmentModel;
 use Repas\Repas\Infrastructure\Entity\Department as DepartmentEntity;
 use Repas\Shared\Domain\Tool\Tab;
-use Repas\Shared\Infrastructure\Repository\ModelCache;
 
 readonly class DepartmentPostgreSQLRepository extends PostgreSQLRepository implements DepartmentRepository
 {
     public function __construct(
         ManagerRegistry $registry,
-        private ModelCache $modelCache,
     ) {
         parent::__construct($registry, DepartmentEntity::class);
     }
@@ -23,15 +21,7 @@ readonly class DepartmentPostgreSQLRepository extends PostgreSQLRepository imple
     public function findAll(): Tab
     {
         $entities = new Tab($this->entityRepository->findBy([], ['slug' => 'ASC']), DepartmentEntity::class);
-        return $entities->map(function (DepartmentEntity $entity) {
-            if (($model = $this->modelCache->getModelCache(DepartmentModel::class, $entity->getSlug())) !== null) {
-                return $model;
-            }
-
-            $model = $this->convertEntityToModel($entity);
-            $this->modelCache->setModelCache($model);
-            return $model;
-        });
+        return $entities->map(fn(DepartmentEntity $entity) => $this->convertEntityToModel($entity));
     }
 
 
@@ -40,18 +30,8 @@ readonly class DepartmentPostgreSQLRepository extends PostgreSQLRepository imple
      */
     public function findOneBySlug(string $slug): DepartmentModel
     {
-        // On cherche dans le cache
-        if (($model = $this->modelCache->getModelCache(DepartmentModel::class, $slug)) !== null) {
-            return $model;
-        }
-
-        // On cherche en BDD
         if (($entity = $this->entityRepository->find($slug)) !== null) {
-            $model = $this->convertEntityToModel($entity);
-
-            // On stock dans le cache
-            $this->modelCache->setModelCache($model);
-            return $model;
+            return $this->convertEntityToModel($entity);
         }
 
         throw DepartmentException::notFound();
@@ -59,7 +39,6 @@ readonly class DepartmentPostgreSQLRepository extends PostgreSQLRepository imple
 
     public function save(DepartmentModel $department): void
     {
-        $this->modelCache->removeModelCache($department);
         $departmentEntity = $this->entityRepository->find($department->getSlug());
         if ($departmentEntity) {
             $this->updateEntity($departmentEntity, $department);
@@ -69,7 +48,6 @@ readonly class DepartmentPostgreSQLRepository extends PostgreSQLRepository imple
 
         $this->entityManager->persist($departmentEntity);
         $this->entityManager->flush();
-        $this->modelCache->setModelCache($department);
     }
 
     private function updateEntity(DepartmentEntity $departmentEntity, DepartmentModel $department): void
@@ -93,30 +71,12 @@ readonly class DepartmentPostgreSQLRepository extends PostgreSQLRepository imple
      */
     public function findBySlugs(Tab $slugs): Tab
     {
-
-        // Si on ne trouve aucun element qui n'est pas en cache
-        if ($slugs->find(fn(string $slug) => !$this->modelCache->isCachedExists(DepartmentModel::class, $slug)) === null) {
-            return $slugs->map(fn(string $slug) => $this->modelCache->getModelCache(DepartmentModel::class, $slug));
-        }
-
-        /** @var DepartmentEntity[] $departmentsEntities */
-        $departmentsEntities = $this->entityManager->createQueryBuilder()
-            ->select('d')
-            ->from(DepartmentEntity::class, 'd')
-            ->where('d.slug IN (:slugs)')
-            ->setParameter('slugs', $slugs->toArray())
-            ->getQuery()
-            ->getResult();
+        // Les slugs absents de l'identity map sont lus en une requête, puis résolus un par un
+        $this->preload($slugs);
 
         $models = Tab::newEmptyTyped(DepartmentModel::class);
-        foreach ($departmentsEntities as $departmentEntity) {
-            if (($model = $this->modelCache->getModelCache(DepartmentModel::class, $departmentEntity->getSlug())) !== null) {
-                $models[] = $model;
-            } else {
-                $model = $this->convertEntityToModel($departmentEntity);
-                $this->modelCache->setModelCache($model);
-                $models[] = $model;
-            }
+        foreach ($slugs as $slug) {
+            $models[] = $this->findOneBySlug($slug);
         }
 
         return $models;

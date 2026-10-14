@@ -22,6 +22,29 @@ abstract readonly class PostgreSQLRepository
         $this->entityRepository = $entityManager->getRepository($className);
     }
 
+    /**
+     * Lit en une seule requête les entités absentes de l'identity map de Doctrine : les `find()` qui suivent, un par
+     * identifiant, ne coûtent alors plus aucune requête (préchargement par lot).
+     *
+     * @param iterable<string> $ids valeurs de la clé primaire
+     */
+    protected function preload(iterable $ids, string $field = 'slug'): void
+    {
+        $unitOfWork = $this->entityManager->getUnitOfWork();
+        $className = $this->entityRepository->getClassName();
+
+        $missing = [];
+        foreach ($ids as $id) {
+            if (!isset($missing[$id]) && $unitOfWork->tryGetById($id, $className) === false) {
+                $missing[$id] = $id;
+            }
+        }
+
+        if ($missing !== []) {
+            $this->entityRepository->findBy([$field => array_values($missing)]);
+        }
+    }
+
     // TODO: refacto saves Methode()
 //    protected function saveEntity(ModelInterface $model): void
 //    {

@@ -8,6 +8,7 @@ readonly class NewShoppingListCreatedEvent
 
     public function __construct(
         public string $shoppingListId,
+        public string $ownerId,
     ) {
     }
 }

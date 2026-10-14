@@ -70,13 +70,14 @@ src/{Context}/
   - Méthodes `update(...)` / `set*()` fluent (`return $this;`) pour les mutations.
 - Comparaison par identité via `isEqual()`, jamais `===` sur les objets métier.
 - **Un agrégat référence les autres agrégats par identifiant** (slug, id), jamais par l'objet : `ShoppingListRow` porte `ingredientSlug` / `unitSlug`, `Meal` porte `recipeId` (ADR 0013). Un use case qui a besoin de la `Recipe` d'un repas la charge par son port ; une question d'existence ou d'état d'un ensemble est une méthode de port booléenne, pas une hydratation d'agrégats.
+- **Un modèle est une copie** : chaque `find` en construit un neuf, et `save()` recopie tout le modèle sur l'entité (dernier enregistrement gagnant). Un use case charge donc un agrégat une seule fois et passe l'instance ; un listener recharge depuis la base ; on n'enregistre pas un modèle chargé avant un événement qui peut modifier le même agrégat (statistiques d'un `User`) ; `isEqual()`, jamais `===` (ADR 0013 règle 7).
 - Collections typées via `Repas\Shared\Domain\Tool\Tab` (wrapper de collection typé), pas de tableaux PHP nus pour des listes de modèles.
 
 ## Repository pattern
 
 - Le port est défini dans `Domain/Interface/{X}Repository.php` — c'est ce type que les `CommandHandler` injectent, jamais l'implémentation concrète. Un controller n'injecte plus de repository (écriture : `CommandBusInterface` ; lecture : `QueryBusInterface`).
 - L'implémentation Doctrine vit dans `Infrastructure/Repository/{X}PostgreSQLRepository.php`, hérite de `PostgreSQLRepository` (gère `EntityManager`/`ObjectRepository`), convertit `Entity` (Doctrine) <-> `Model` (Domain) via `Entity::fromModel()` / `{X}Model::load([...])`.
-- Utiliser `ModelCache` (`Shared/Infrastructure/Repository/ModelCache.php`) pour éviter les hydratations répétées dans une requête. Il ne sert plus qu'au chemin d'écriture (le retirer double les requêtes des commandes, voir roadmap phase 7) ; une lecture n'y passe jamais.
+- Pas de cache de modèles : l'identity map de Doctrine sert les `find()` par clé primaire sans requête. Pour charger N entités d'un coup (références d'une recette, unités compatibles), `PostgreSQLRepository::preload()` les lit en une requête ; les `find()` suivants ne coûtent rien. `ModelCache` a été retiré en phase 8 de la roadmap.
 - Pour les tests : implémentation `{X}InMemoryRepository` dans `tests/Helper/InMemoryRepository/`, même interface, aucune dépendance Doctrine — permet de tester Application/Domain sans DB.
 - Un Repository sert à **charger pour modifier** un agrégat ; pour **afficher**, utiliser un Loader (ADR 0004).
 - Ne jamais faire de requête Doctrine (QueryBuilder, DQL) en dehors de `Infrastructure/Repository` et `Infrastructure/Loader`.
@@ -110,7 +111,7 @@ src/{Context}/
 - `CommandHandler` : `{X}InMemoryRepository` + `SpyEventDispatcher`, pas de mock manuel des interfaces.
 - `QueryHandler` : un `{X}InMemoryLoader` (double idiot : renvoie des DTO programmés, enregistre ses appels). Le test asserte que le handler transmet les bons paramètres au Loader et renvoie son résultat tel quel. Filtres, tri, jointures et calculs du DTO se prouvent dans le test du Loader réel (`tests/Repas/OutputAdapter/`, `DatabaseTestCase`). Controllers API : doubles de bus (`tests/Repas/InputAdapter/`), en vérifiant la query construite, le statut et les **clés JSON** du DTO (ADR 0010).
 - Buses : `QueryBus` / `CommandBus` se testent en unitaire avec `MockMessageBus` ; `BusWiringTest` prouve le câblage réel avec les handlers factices de `tests/Helper/Bus/` ; `QueryConventionTest` impose `#[AsMessageHandler(bus: 'query.bus')]` et un handler par query (ADR 0006). Les controllers se testent avec `MockQueryBus` (`MockCommandBus` enregistre les commandes reçues sans les exécuter).
-- **Budget SQL des écritures** : `tests/Repas/WriteBudget` mesure chaque use case d'écriture de bout en bout (requêtes SQL avec et sans `ModelCache`) et fige le résultat dans `budgets.php`, en cliquet (ADR 0010 règle 12). Un use case plus gourmand fait échouer `make test` ; un use case allégé impose `make sql-budget-update`. `make cache-removal-check` indique quand `ModelCache` peut être retiré (phase 8 de la roadmap).
+- **Budget SQL des écritures** : `tests/Repas/WriteBudget` mesure chaque use case d'écriture de bout en bout (requêtes SQL) et fige le résultat dans `budgets.php`, en cliquet (ADR 0010 règle 12). Un use case plus gourmand fait échouer `make test` ; un use case allégé impose `make sql-budget-update`.
 - Structure `// Given` / `// When` / `// Then`.
 
 ## Quand tu ajoutes une fonctionnalité

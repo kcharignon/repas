@@ -16,6 +16,14 @@ La liste de courses embarquait des objets de domaine complets : chaque ligne por
 4. Une question d'existence ou d'état d'un ensemble se pose par une méthode de port qui renvoie un booléen (`ShoppingListRowRepository::allRowsChecked`), pas en hydratant des agrégats.
 5. Les nombres de requêtes sont figés par le cliquet `tests/Repas/WriteBudget` ([0010](0010-strategie-de-tests.md) règle 12) : alléger baisse le budget, jamais l'inverse.
 
+6. Pas de cache de modèles. L'identity map de Doctrine sert les `find()` par clé primaire ; une lecture par lot se fait avec `PostgreSQLRepository::preload()` (une requête pour les entités absentes de l'identity map, puis `find()` sans coût). `ModelCache` est retiré.
+7. **Un modèle est une copie, un agrégat se charge une seule fois par use case.** Chaque `find` d'un repository construit un modèle neuf depuis l'entité Doctrine : deux chargements du même agrégat donnent deux instances indépendantes, et `save()` recopie tout le modèle sur l'entité, donc le dernier enregistrement écrase l'autre sans erreur (mise à jour perdue). Règles :
+   - un use case charge un agrégat une fois et passe l'instance (`creator: $owner`), il ne le recharge pas ;
+   - un événement ne porte que des identifiants et son listener recharge l'agrégat depuis la base (donc à jour) ;
+   - un handler n'enregistre jamais un modèle chargé avant un événement dont un listener peut modifier le même agrégat (aujourd'hui : les statistiques d'un `User`, écrites par `UpdateUserStatistics`) ;
+   - on compare des modèles avec `isEqual()`, jamais avec `===` (déjà la règle, aucune entorse dans `src/`).
+   Audit au retrait de `ModelCache` : aucun enregistrement concerné, un seul double chargement inoffensif (`CreateIngredientHandler`, corrigé). Si l'API (phase 9) expose plusieurs clients sur la même ressource, étudier un contrôle de version du modèle à l'enregistrement pour transformer une mise à jour perdue en erreur.
+
 ## Conséquences
 
 - Positives : charger une liste coûte 5 requêtes quelle que soit sa taille (liste, propriétaire, repas, ingrédients, lignes) ; cocher une ligne 3, la décocher 7, renommer, mettre en pause ou supprimer une liste 9. Les use cases de liste ont les mêmes coûts avec ou sans `ModelCache`.

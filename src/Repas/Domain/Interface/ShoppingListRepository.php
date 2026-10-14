@@ -31,9 +31,11 @@ interface ShoppingListRepository
     public function delete(ShoppingList $shoppingList): void;
 
     /**
-     * @return Tab<ShoppingList>
+     * Identifiants seulement : de quoi agir sur ces listes sans les hydrater.
+     *
+     * @return list<string>
      */
-    public function findByOwnerAndStatus(User $owner, ShoppingListStatus $status): Tab;
+    public function findIdsByOwnerAndStatus(string $ownerId, ShoppingListStatus $status): array;
 
     public function findOneByMealId(string $mealId): ShoppingList;
 

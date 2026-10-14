@@ -54,7 +54,7 @@ class CreateShoppingListHandlerTest extends TestCase
         $command = new CreateShoppingListCommand("unique_id", $user->getId());
 
         // Assert
-        $this->eventDispatcher->expects(self::once())->method('dispatch')->with(new NewShoppingListCreatedEvent("unique_id"));
+        $this->eventDispatcher->expects(self::once())->method('dispatch')->with(new NewShoppingListCreatedEvent("unique_id", $user->getId()));
 
         // Act
         ($this->handler)($command);
