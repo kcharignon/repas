@@ -34,7 +34,7 @@ return [
     'retirer-repas' => 21,
     'supprimer-ingredient' => 12,
     'supprimer-liste' => 9,
-    'supprimer-recette' => 14,
+    'supprimer-recette' => 15,
     'terminer-liste' => 10,
     'tick-derniere-ligne' => 13,
     'tick-ligne' => 3,
