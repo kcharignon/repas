@@ -45,7 +45,7 @@ restart: ## Restart the project
 	@$(MAKE) start
 
 ## —— Code quality 📋 ————————————————————————————————————————————————————————
-.PHONY: test test-coverage deptrac phpstan api-doc-validate api-doc-coverage jwt-keys quality sql-budget-update
+.PHONY: test test-coverage deptrac phpstan api-doc-validate api-doc-coverage openapi openapi-check jwt-keys quality sql-budget-update
 
 test: ## Run PHPUnit tests
 	@echo "🧪 Exécution des tests avec PHPUnit..."
@@ -89,10 +89,20 @@ api-doc-validate: ## Validate that the API documentation generates without error
 api-doc-coverage: ## Check that every API controller has OpenAPI documentation
 	@$(EXEC_PHP) php bin/check-api-doc-coverage
 
+openapi: ## Regenerate the versioned API contract docs/api/openapi.json (ADR 0007 §15)
+	@echo "📄 Génération du contrat OpenAPI..."
+	@$(EXEC_PHP) bin/console nelmio:apidoc:dump --format=json > docs/api/openapi.json
+	@echo "✅ docs/api/openapi.json régénéré : relis le diff (un changement de contrat est une décision)."
+
+openapi-check: ## Fail if docs/api/openapi.json is not the current API contract
+	@$(EXEC_PHP) bin/console nelmio:apidoc:dump --format=json | diff -u docs/api/openapi.json - > /dev/null \
+		|| { echo "❌ docs/api/openapi.json ne correspond plus à l'API : lance 'make openapi' et relis le diff."; exit 1; }
+	@echo "✅ Le contrat OpenAPI versionné est à jour."
+
 jwt-keys: ## Generate the JWT key pair if missing (config/jwt, git-ignored)
 	@$(EXEC_PHP) bin/console lexik:jwt:generate-keypair --skip-if-exists
 
-quality: deptrac phpstan api-doc-validate api-doc-coverage ## Run architecture, static analysis and API doc checks
+quality: deptrac phpstan api-doc-validate api-doc-coverage openapi-check ## Run architecture, static analysis and API doc checks
 
 audit: ## Check composer.lock against known security advisories (ADR 0014)
 	@$(EXEC_PHP) composer audit --locked
