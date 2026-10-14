@@ -2,5 +2,5 @@ lexik_jwt_authentication:
     secret_key: '%env(resolve:JWT_SECRET_KEY)%'
     public_key: '%env(resolve:JWT_PUBLIC_KEY)%'
     pass_phrase: '%env(JWT_PASSPHRASE)%'
-    # Durée de vie du token en secondes (ADR 0008) ; pas de refresh token pour l'instant.
+    # Durée de vie du token en secondes (ADR 0008) ; renouvelé par le refresh token en cookie (ADR 0015).
     token_ttl: 3600

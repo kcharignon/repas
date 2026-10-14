@@ -31,3 +31,7 @@ services:
     Repas\Repas\Domain\Interface\ShoppingListRowRepository:
         alias: 'Repas\Repas\Infrastructure\Repository\ShoppingListRowPostgreSQLRepository'
         public: true
+
+    Repas\User\Domain\Interface\RefreshTokenRepository:
+        alias: 'Repas\User\Infrastructure\Repository\RefreshTokenPostgreSQLRepository'
+        public: true

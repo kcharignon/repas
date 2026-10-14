@@ -6,9 +6,17 @@ framework:
             policy: sliding_window
             limit: 10
             interval: '1 hour'
+        # Rafraîchissement du JWT (POST /api/auth/refresh), par adresse IP (RefreshTokenRateLimitListener, ADR 0015 §9) :
+        # un SPA le sollicite à chaque rechargement de page et toutes les heures, 60 par 10 minutes laissent de la marge.
+        refresh_token:
+            policy: sliding_window
+            limit: 60
+            interval: '10 minutes'
 
 when@test:
     framework:
         rate_limiter:
             registration:
+                cache_pool: test.rate_limiter_pool
+            refresh_token:
                 cache_pool: test.rate_limiter_pool

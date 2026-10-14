@@ -11,6 +11,11 @@ security:
         dev:
             pattern: ^/(_(profiler|wdt)|css|images|js)/
             security: false
+        # Échange du refresh token (cookie) contre un JWT et déconnexion (ADR 0015 §10) : hors sécurité, l'identité vient du
+        # seul cookie ; un `Authorization: Bearer` expiré ne doit pas faire échouer l'échange qui le remplace.
+        auth:
+            pattern: ^/api/auth
+            security: false
         # API JSON stateless authentifiée par JWT (ADR 0008). Déclarés avant `main` : le web (session) ne change pas.
         login:
             pattern: ^/api/login

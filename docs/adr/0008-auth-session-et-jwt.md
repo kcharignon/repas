@@ -16,7 +16,7 @@ La branche `feat/api-rest` (un commit WIP, base ancienne) ajoute `lexik/jwt-auth
 2. Les endpoints sous `/api` sont **stateless** et authentifiés par **JWT** (`lexik/jwt-authentication-bundle`).
 3. Deux firewalls dédiés, déclarés **avant** `main` : `login` (`^/api/login`, stateless, `json_login`, `check_path: /api/login_check`) et `api` (`^/api`, stateless, `jwt: ~`).
 4. `access_control` : `^/api/v1/health`, `^/api/login` et `^/api/doc` (Swagger UI et `doc.json`, qu'un navigateur ne peut pas appeler avec un en-tête `Authorization`) en `PUBLIC_ACCESS`, ainsi que `POST ^/api/v1/users` (inscription, [0007](0007-api-rest-v1.md) §14), le reste de `^/api` en `ROLE_USER`. Les rôles plus fins (admin, propriétaire) restent portés par `#[IsGranted]` et les voters, communs au web et à l'API.
-5. Durée de vie du token : 3600 s (valeur de la branche WIP). Pas de refresh token dans cette itération ; à traiter par un ADR dédié si le front le demande.
+5. Durée de vie du token : 3600 s. Le renouvellement sans ressaisie du mot de passe est un refresh token en cookie `HttpOnly` à rotation : voir [0015](0015-refresh-token-du-spa.md).
 6. Les clés `config/jwt/private.pem` et `public.pem` ne sont jamais commitées. Génération : `make jwt-keys` (`lexik:jwt:generate-keypair --skip-if-exists`, appelé par `make install` et par la CI). La passphrase de dev est dans `.env` ; en production, la surcharger (`JWT_PASSPHRASE` dans `.env.local` ou une vraie variable d'environnement) **avant** de générer les clés de production.
 7. Les échecs d'authentification (token absent, invalide, expiré, identifiants faux) répondent `401` + `{"error":{"message":"..."}}` + `WWW-Authenticate: Bearer`, via `ApiAuthenticationFailureListener`. Les messages sont génériques : un compte désactivé, un mot de passe faux et un compte inconnu donnent la même réponse `Invalid credentials.`. Le refus d'accès d'un utilisateur authentifié (`403`) est mis en forme par `ApiExceptionListener` ([0007](0007-api-rest-v1.md)).
 8. Le firewall `login` et le firewall `api` utilisent le même provider (`user_model_provider`) et le même `UserChecker` que `main` : un compte désactivé ne peut obtenir ni utiliser un token.
@@ -31,7 +31,7 @@ La branche `feat/api-rest` (un commit WIP, base ancienne) ajoute `lexik/jwt-auth
 ## Conséquences
 
 - Positives : le web ne change pas ; le front mobile/SPA n'a pas besoin de cookies ni de CSRF.
-- Coûts : deux mécanismes d'auth à comprendre ; gestion des clés par environnement ; un jeton n'est révoqué que par un changement de mot de passe (§13) ou son expiration (1 h), pas de refresh token.
+- Coûts : deux mécanismes d'auth à comprendre ; gestion des clés par environnement ; un jeton n'est révoqué que par un changement de mot de passe (§13) ou son expiration (1 h), le refresh token ([0015](0015-refresh-token-du-spa.md)) est révoqué par le même changement de mot de passe.
 - Garde-fou : tests fonctionnels (sans token → 401, avec token valide → accès, `/login` web toujours fonctionnel).
 
 ## Alternatives écartées
