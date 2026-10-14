@@ -10,6 +10,7 @@ use Repas\Repas\Application\Command\CreateRecipe\CreateRecipeRowSubCommand;
 use Repas\Shared\Domain\Event\RecipeCreatedEvent;
 use Repas\Repas\Domain\Exception\IngredientException;
 use Repas\Repas\Domain\Exception\RecipeException;
+use Repas\Repas\Domain\Exception\UnitException;
 use Repas\Repas\Domain\Interface\IngredientRepository;
 use Repas\Repas\Domain\Interface\RecipeRepository;
 use Repas\Repas\Domain\Interface\RecipeTypeRepository;
@@ -113,6 +114,27 @@ class CreateRecipeHandlerTest extends TestCase
         RepasAssert::assertRecipe($expected, $actual, ["RecipeRow" => ["id"]]);
     }
 
+
+    public function testRefusesAnUnknownUnit(): void
+    {
+        // Arrange
+        $pasta = new IngredientBuilder()->isPasta()->build();
+        $this->ingredientRepository->save($pasta);
+        $command = new CreateRecipeCommand(
+            id: 'unique_id',
+            name: 'Gloubiboulga',
+            serving: 4,
+            authorId: 'user-id',
+            rows: new Tab([new CreateRecipeRowSubCommand($pasta->getSlug(), 'inconnue', 10)], CreateRecipeRowSubCommand::class),
+            typeSlug: 'plat',
+        );
+
+        // Assert
+        $this->expectExceptionObject(UnitException::notFound('inconnue'));
+
+        // Act
+        ($this->handler)($command);
+    }
 
     public function testRefusesAnIngredientCustomisedByAnotherUser(): void
     {

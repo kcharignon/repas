@@ -9,6 +9,7 @@ use Repas\Repas\Application\Command\UpdateRecipe\UpdateRecipeHandler;
 use Repas\Repas\Application\Command\UpdateRecipe\UpdateRecipeRowSubCommand;
 use Repas\Repas\Domain\Exception\IngredientException;
 use Repas\Repas\Domain\Exception\RecipeException;
+use Repas\Repas\Domain\Exception\UnitException;
 use Repas\Repas\Domain\Interface\IngredientRepository;
 use Repas\Repas\Domain\Interface\RecipeRepository;
 use Repas\Repas\Domain\Interface\RecipeTypeRepository;
@@ -195,6 +196,26 @@ class UpdateRecipeHandlerTest extends TestCase
         // Act
         ($this->handler)($command);
 
+    }
+
+    public function testFailedHandleUpdateRecipeUnknownUnit(): void
+    {
+        // Arrange
+        $recipe = new RecipeBuilder()->isPastaCarbonara()->build();
+        $this->recipeRepository->save($recipe);
+        $command = new UpdateRecipeCommand(
+            $recipe->getId(),
+            'Pates carbo.',
+            4,
+            Tab::fromArray(new UpdateRecipeRowSubCommand('pate', 'inconnue', 3)),
+            'plat'
+        );
+
+        // Assert
+        $this->expectExceptionObject(UnitException::notFound('inconnue'));
+
+        // Act
+        ($this->handler)($command);
     }
 
     public function testRefusesAUnitWithoutAConversionToThePurchaseUnit(): void
