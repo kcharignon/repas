@@ -23,7 +23,7 @@ use Throwable;
 #[AsEventListener(event: KernelEvents::EXCEPTION, priority: -10)]
 final class ApiExceptionListener
 {
-    private const API_PATH_PREFIX = '/api';
+    public const API_PATH_PREFIX = '/api';
     private const GENERIC_MESSAGE = 'An unexpected error occurred.';
 
     public function __invoke(ExceptionEvent $event): void
