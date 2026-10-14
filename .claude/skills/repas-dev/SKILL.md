@@ -1,6 +1,6 @@
 ---
 name: repas-dev
-description: Développer ou migrer une fonctionnalité du projet Repas (Symfony 7.2 / PHP 8.4, hexagonal + DDD + CQRS). À utiliser pour ajouter ou migrer un use case de lecture (Query, QueryHandler, Loader, DTO), un endpoint API `/api/v1` (JWT), un use case d'écriture (Command), ou basculer un ViewController Twig vers le QueryBus. Charge les ADR et la roadmap avant d'écrire du code.
+description: Développer ou migrer une fonctionnalité du projet Repas (Symfony 7.4 / PHP 8.4, hexagonal + DDD + CQRS). À utiliser pour ajouter ou migrer un use case de lecture (Query, QueryHandler, Loader, DTO), un endpoint API `/api/v1` (JWT), un use case d'écriture (Command), ou basculer un ViewController Twig vers le QueryBus. Charge les ADR et la roadmap avant d'écrire du code.
 ---
 
 # repas-dev — développer et migrer Repas selon les ADR
@@ -87,6 +87,7 @@ Détail : `references/migrate-view-controller.md`. Résumé :
 
 - [ ] `make test` vert
 - [ ] `make deptrac` vert (la baseline ne grossit pas)
+- [ ] `make audit` vert si `composer.json` ou `composer.lock` change (ADR 0014)
 - [ ] `make phpstan` vert (aucune nouvelle entrée de baseline)
 - [ ] `make api-doc-validate` et `make api-doc-coverage` verts si un endpoint API est touché
 - [ ] Use case d'écriture touché ou ajouté : son scénario existe dans `tests/Repas/WriteBudget/scenarios.php`, son budget SQL ne monte pas ; s'il baisse, `make sql-budget-update` et `budgets.php` est dans le commit (ADR 0010 règle 12)

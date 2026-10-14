@@ -1,0 +1,65 @@
+# Mises à jour hebdomadaires des dépendances (ADR 0014) : correctifs et mineures seulement. Les montées majeures se
+# font à la main, une PR par chantier (elles cassent des API : DBAL 4, Symfony 8…).
+version: 2
+
+updates:
+  - package-ecosystem: composer
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Europe/Paris
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore(deps)"
+    labels:
+      - dependencies
+    groups:
+      symfony:
+        patterns:
+          - "symfony/*"
+      doctrine:
+        patterns:
+          - "doctrine/*"
+      quality:
+        patterns:
+          - "phpstan/*"
+          - "phpunit/*"
+          - "deptrac/*"
+          - "dama/*"
+          - "rregeer/*"
+    ignore:
+      - dependency-name: "*"
+        update-types:
+          - "version-update:semver-major"
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Europe/Paris
+    commit-message:
+      prefix: "chore(deps)"
+    labels:
+      - dependencies
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+
+  # Image FrankenPHP / PHP du Dockerfile. `compose.yaml` référence PostgreSQL par une variable (`postgres:${POSTGRES_VERSION}`) :
+  # Dependabot ne sait pas la suivre, et une montée majeure de PostgreSQL demande de toute façon une migration des données.
+  - package-ecosystem: docker
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Europe/Paris
+    commit-message:
+      prefix: "chore(deps)"
+    labels:
+      - dependencies

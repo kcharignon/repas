@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Guide d'architecture pour ce projet (Symfony 7.2 / PHP 8.4). L'objectif: rester cohérent avec le style DDD / Hexagonal / CQRS / Repository / SOLID déjà en place dans `src/`. Ne pas réinventer, suivre les patterns existants ci-dessous.
+Guide d'architecture pour ce projet (Symfony 7.4 / PHP 8.4). L'objectif: rester cohérent avec le style DDD / Hexagonal / CQRS / Repository / SOLID déjà en place dans `src/`. Ne pas réinventer, suivre les patterns existants ci-dessous.
 
 ## Source de vérité : ADR, roadmap, skill
 
@@ -103,6 +103,12 @@ src/{Context}/
 - Repository infra : suffixe technologie, ex. `PostgreSQLRepository`. Loader infra : `{X}PostgreSQLLoader implements {X}Loader`.
 - Événements de domaine : suffixe `Event`, dispatchés via `EventDispatcherInterface` depuis un Handler, consommés par un `EventListener` en Infrastructure.
 
+## Dépendances (ADR 0014)
+
+- Dependabot propose chaque lundi les correctifs et mineures (composer, GitHub Actions, Docker), regroupés `symfony` / `doctrine` / `quality` ; les montées **majeures** se font à la main, une PR par chantier (`make outdated` les liste). Une PR de dépendances ne se merge que verte (`make test`, `make quality`), sans notice ni dépréciation : on corrige, on ne masque pas.
+- `symfony/*` reste contraint à une seule mineure (`7.4.*`, `extra.symfony.require` assorti). `make audit` (`composer audit --locked`, aussi en CI) doit être vert dès qu'on touche `composer.json` ou `composer.lock`.
+- Image Docker : FrankenPHP/PHP épinglés par tag complet, paquets `apt` jamais épinglés.
+
 ## Tests
 
 - `tests/Helper/Builder/` : builders pour construire des modèles de test rapidement (pattern Test Data Builder).
@@ -133,6 +139,6 @@ Utiliser le skill `/repas-dev` (recettes détaillées). En bref :
 3. Exposer via un controller Twig et/ou API qui n'appelle que le `QueryBusInterface`.
 4. Tests : handler + InMemoryLoader (unitaire, jamais de base), Loader sur base réelle, controller API.
 
-**Avant de committer** : `make test` puis `make quality` (agrège `deptrac`, `phpstan`, `api-doc-validate`, `api-doc-coverage`). Toute slice qui touche une page Twig passe aussi un test visuel dans Chromium (captures lues, voir `.claude/skills/repas-dev/references/visual-check.md`). Les clés JWT de dev s'initialisent avec `make jwt-keys`. Les baselines (`quality-rules/Deptrac/baseline/`, `phpstan-baseline.neon`) ne doivent que diminuer. Un commit par unité logique, message court en français, sans `Co-Authored-By`. En fin de slice, pousser la branche de travail (`git push -u origin <branche>`) et ouvrir la PR vers `main` avec `gh pr create` sans attendre de demande : titre court (`refactor(chore): cqrs phase N …`), description concise qui suit `.github/pull_request_template.md` (Quoi / Vérifié / À relire), sans pied de page d'attribution. Jamais de merge, de push sur `main` ni de force-push : le merge est fait par l'humain.
+**Avant de committer** : `make test` puis `make quality` (agrège `deptrac`, `phpstan`, `api-doc-validate`, `api-doc-coverage`). `make audit` si `composer.*` change. Toute slice qui touche une page Twig passe aussi un test visuel dans Chromium (captures lues, voir `.claude/skills/repas-dev/references/visual-check.md`). Les clés JWT de dev s'initialisent avec `make jwt-keys`. Les baselines (`quality-rules/Deptrac/baseline/`, `phpstan-baseline.neon`) ne doivent que diminuer. Un commit par unité logique, message court en français, sans `Co-Authored-By`. En fin de slice, pousser la branche de travail (`git push -u origin <branche>`) et ouvrir la PR vers `main` avec `gh pr create` sans attendre de demande : titre court (`refactor(chore): cqrs phase N …`), description concise qui suit `.github/pull_request_template.md` (Quoi / Vérifié / À relire), sans pied de page d'attribution. Jamais de merge, de push sur `main` ni de force-push : le merge est fait par l'humain.
 
 Ne pas mettre de logique métier dans les controllers, les entités Doctrine ou les templates Twig — tout va dans `Domain`/`Application` ; les calculs d'affichage d'une lecture sont précalculés dans le DTO par le Loader.

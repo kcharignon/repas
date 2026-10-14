@@ -94,6 +94,12 @@ jwt-keys: ## Generate the JWT key pair if missing (config/jwt, git-ignored)
 
 quality: deptrac phpstan api-doc-validate api-doc-coverage ## Run architecture, static analysis and API doc checks
 
+audit: ## Check composer.lock against known security advisories (ADR 0014)
+	@$(EXEC_PHP) composer audit --locked
+
+outdated: ## List direct dependencies with a newer version, majors included (ADR 0014)
+	@$(EXEC_PHP) composer outdated --direct
+
 sql-budget-update: ## Régénère les budgets SQL des use cases d'écriture après un allègement (tests/Repas/WriteBudget)
 	@$(DOCKER_COMPOSE) exec -T -e UPDATE_SQL_BUDGETS=1 php vendor/bin/phpunit --no-coverage tests/Repas/WriteBudget
 
