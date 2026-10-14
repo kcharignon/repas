@@ -18,7 +18,7 @@ L'application est rendue côté serveur (Twig). Les actions dynamiques passent p
 6. Sorties d'écriture : `204 No Content` (modification/suppression) ou `201 Created` + `Location` (création). Le client relit l'état avec une query. Pas de fragment HTML.
 7. Erreurs : toujours `{"error": {"message": "..."}}`. Mapping par un listener limité à `^/api` : `DomainException` → son code HTTP (`404` pour `…NotFound`, `422` sinon), validation → `422`, `NotFoundHttpException` → `404`, `AccessDeniedException` → `403`, authentification manquante → `401`, le reste → `500` avec message générique.
 8. OpenAPI obligatoire : chaque controller porte `#[OA\Get|Post|Put|Patch|Delete]`, `#[OA\Tag]`, `#[OA\Response]` ; documentation générée par `nelmio/api-doc-bundle` (zone `^/api`, UI `/api/doc`, JSON `/api/doc.json`). Les DTO se référencent via `new Model(type: XDTO::class)`.
-9. Contrôle d'accès : l'autorisation métier (propriétaire d'une liste, admin) vit dans le Domain/Application ou un voter, jamais dans le front ; chaque endpoint déclare son niveau (`#[IsGranted]` ou `access_control`).
+9. Contrôle d'accès : l'autorisation métier (propriétaire d'une liste, admin) vit dans le Domain/Application ou un voter, jamais dans le front ; chaque endpoint déclare son niveau (`#[IsGranted]` ou `access_control`). Un voter qui ne trouve pas la ressource lève un `NotFoundHttpException` (404, sur l'API comme sur Twig) ; `OwnerVoter` couvre l'ingrédient, la recette, la liste, le repas et la ligne de courses. Une mutation n'est jamais acceptée en `GET`.
 10. Le test d'un controller API vérifie : la `Query`/`Command` construite, le statut HTTP, et les **clés JSON** du DTO (contrat front).
 
 ## Conséquences

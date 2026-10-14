@@ -110,7 +110,7 @@ Total des 32 scénarios : 328 requêtes, avec comme sans cache à l'arrivée.
 
 ### Phase 9 — Endpoints API d'écriture
 
-- [ ] Corriger les trous d'autorisation (voir plus bas)
+- [x] Corriger les trous d'autorisation (voir plus bas) : fait, avec une mutation de plus trouvée à l'audit
 - [ ] Endpoints d'écriture pour les 28 use cases (`#[MapRequestPayload]`, 204 / 201 + `Location`)
 - [ ] Remplacer le protocole `{views:[{selector, html}]}` par de l'état ressource côté API (le front re-requête ; `ajax.js` et les 14 controllers AJAX restent pour Twig)
 
@@ -118,11 +118,15 @@ Total des 32 scénarios : 328 requêtes, avec comme sans cache à l'arrivée.
 
 - [ ] À décider produit : quels `ViewController` retirer quand le front les remplace (ADR dédié le moment venu)
 
-## Trous d'autorisation à corriger avant la phase 9
+## Trous d'autorisation (corrigés en phase 9)
 
-- `AdminCreateUnitViewController` (`/admin/unit/create`) et `CreateIngredientViewController` (`/ingredient`) sans `#[IsGranted]`.
-- Routes `tick` / `uncheck` d'une ligne : `ROLE_USER` sans voter propriétaire.
-- `RemoveIngredientViewController` : GET destructif.
+Audit de tous les controllers qui dispatchent une commande (méthode HTTP et garde) :
+
+- [x] `AdminCreateUnitViewController` (`/admin/unit/create`) : `ROLE_ADMIN` ajouté ; `CreateIngredientViewController` (`/ingredient`) : `ROLE_USER` ajouté (un anonyme obtenait une erreur 500 à la place d'un renvoi au login).
+- [x] Routes `tick` / `uncheck` d'une ligne : voter `SHOPPING_LIST_ROW_OWNER` (`OwnershipLoader::shoppingListRowOwnerId`), seul le propriétaire de la liste (ou un administrateur) peut cocher.
+- [x] `RemoveIngredientViewController` : plus de GET destructif. La suppression est un POST protégé contre le CSRF (jeton `remove-ingredient`, ajouté aux `stateless_token_ids`), envoyé par un formulaire placé hors du formulaire principal, le bouton y est rattaché par l'attribut `form`.
+- [x] Trouvés à l'audit : `CreateShoppingListViewController` créait la liste sur un simple GET et `UpdateServingMealViewController` modifiait les portions sur un GET. Désormais `POST` et `PUT` seulement (le front n'utilisait déjà que ceux-là).
+- [x] Le voter lève un 404 (`NotFoundHttpException`) quand la ressource est introuvable, au lieu d'une exception de domaine qui donnait un 500 sur les routes Twig ; l'API garde son 404.
 - ~~`OwnerVoter` `INGREDIENT_OWNER` retourne `null` pour un ingrédient système~~ : corrigé en phase 7.
 
 ## Bugs connus à corriger
@@ -131,6 +135,8 @@ Total des 32 scénarios : 328 requêtes, avec comme sans cache à l'arrivée.
 
 ## Hors périmètre (vus en passant, non corrigés)
 
+- Routes Twig : un id inconnu donne un 500 pour un administrateur (le voter laisse passer l'administrateur avant de chercher la ressource, puis la query lève `…NotFound`) ; seule l'API mappe les exceptions de domaine en JSON (ADR 0007 §7, limité à `^/api`). Un listener équivalent hors `/api` donnerait un 404.
+- `GetActiveShoppingListViewController` crée la liste active sur un GET (lecture avec effet de bord, `EnsureActiveShoppingList`) : à garder tant que le front Twig l'attend, à supprimer avec l'API.
 - Lignes d'une recette : aucune colonne de position, l'ordre affiché est l'ordre de stockage (celui de la saisie tant que la recette n'est pas modifiée, puis variable). `RecipePostgreSQLLoader` le conserve à l'identique ; ajouter une position si l'ordre doit être garanti.
 - Le motif de date `dd MMMM YYYY` (templates des listes de courses et `ListShoppingLists`) utilise l'année ISO de la semaine : le 29 décembre 2025 s'affiche « 29 décembre 2026 ». Conservé tel quel pour ne pas changer l'affichage ; remplacer `YYYY` par `yyyy` partout en une fois (loader, `_shopping_list_card_header`, `shopping_list.html.twig`).
 - `LoginCheckViewController` rend `login_check/index.html.twig`, template inexistant.

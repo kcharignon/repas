@@ -7,6 +7,7 @@ use Repas\Repas\Domain\Exception\IngredientException;
 use Repas\Repas\Domain\Exception\MealException;
 use Repas\Repas\Domain\Exception\RecipeException;
 use Repas\Repas\Domain\Exception\ShoppingListException;
+use Repas\Repas\Domain\Exception\ShoppingListRowException;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Shared\Application\Interface\OwnershipLoader;
 use Repas\Tests\Helper\Builder\IngredientBuilder;
@@ -85,5 +86,20 @@ class OwnershipPostgreSQLLoaderTest extends DatabaseTestCase
         }
 
         $this->fail(sprintf('%s attendue.', $expected::class));
+    }
+
+    public function testShoppingListRowOwnerIsTheOwnerOfItsList(): void
+    {
+        // Given
+        $owner = new UserBuilder()->build();
+        $this->persister->saveUser($owner);
+        $ingredient = new IngredientBuilder()->isEgg()->build();
+        $this->persister->saveIngredient($ingredient);
+        $shoppingList = new ShoppingListBuilder()->withOwner($owner)->addIngredient($ingredient)->build();
+        static::getContainer()->get(ShoppingListRepository::class)->save($shoppingList);
+
+        // When & Then
+        $this->assertSame($owner->getId(), $this->ownershipLoader->shoppingListRowOwnerId($shoppingList->getRows()->reset()->getId()));
+        $this->assertThrowsObject(ShoppingListRowException::notFound('inconnue'), fn() => $this->ownershipLoader->shoppingListRowOwnerId('inconnue'));
     }
 }

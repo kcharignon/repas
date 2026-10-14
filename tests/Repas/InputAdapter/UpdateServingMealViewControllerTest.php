@@ -71,4 +71,17 @@ class UpdateServingMealViewControllerTest extends QueryBusWebTestCase
         $this->assertSame(403, $this->client->getResponse()->getStatusCode());
         $this->assertSame(0, $this->queryBus->countAskedQueries());
     }
+
+    public function testRefusesAChangeOpenedByGet(): void
+    {
+        // Given
+        $this->client->loginUser($this->savedUser());
+
+        // When
+        $this->client->request('GET', '/shopping-list/meal/any-meal/serving/8');
+
+        // Then
+        $this->assertSame(405, $this->client->getResponse()->getStatusCode());
+        $this->assertSame(0, $this->queryBus->countAskedQueries());
+    }
 }

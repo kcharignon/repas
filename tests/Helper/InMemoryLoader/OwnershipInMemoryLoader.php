@@ -7,6 +7,7 @@ use Repas\Repas\Domain\Exception\IngredientException;
 use Repas\Repas\Domain\Exception\MealException;
 use Repas\Repas\Domain\Exception\RecipeException;
 use Repas\Repas\Domain\Exception\ShoppingListException;
+use Repas\Repas\Domain\Exception\ShoppingListRowException;
 use Repas\Shared\Application\Interface\OwnershipLoader;
 
 /**
@@ -19,12 +20,14 @@ class OwnershipInMemoryLoader implements OwnershipLoader
      * @param array<string, string> $shoppingListOwners
      * @param array<string, string> $recipeAuthors
      * @param array<string, string> $mealOwners
+     * @param array<string, string> $shoppingListRowOwners
      */
     public function __construct(
         private readonly array $ingredientCreators = [],
         private readonly array $shoppingListOwners = [],
         private readonly array $recipeAuthors = [],
         private readonly array $mealOwners = [],
+        private readonly array $shoppingListRowOwners = [],
     ) {
     }
 
@@ -46,5 +49,10 @@ class OwnershipInMemoryLoader implements OwnershipLoader
     public function mealOwnerId(string $mealId): string
     {
         return $this->mealOwners[$mealId] ?? throw MealException::notFound();
+    }
+
+    public function shoppingListRowOwnerId(string $shoppingListRowId): string
+    {
+        return $this->shoppingListRowOwners[$shoppingListRowId] ?? throw ShoppingListRowException::notFound($shoppingListRowId);
     }
 }

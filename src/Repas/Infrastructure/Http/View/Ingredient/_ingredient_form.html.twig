@@ -46,15 +46,15 @@
 
         <button type="submit" class="btn btn-primary">{{ (ingredient|default(null) is not null) ? 'Modifier' : 'Ajouter' }}</button>
         {% if ingredient|default(null) is not null %}
-        <a
-            type="button"
-            class="btn btn-danger float-end"
-            href="{{ path('view_ingredient_remove', {slug: ingredient.slug}) }}"
-        >
-            Supprimer
-        </a>
+        <button type="submit" form="remove-ingredient-form" class="btn btn-danger float-end">Supprimer</button>
         {% endif %}
         {{ form_end(form) }}
+        {% if ingredient|default(null) is not null %}
+        {# Formulaire hors du formulaire principal (pas d'imbrication) : la suppression est un POST protégé contre le CSRF #}
+        <form id="remove-ingredient-form" method="post" action="{{ path('view_ingredient_remove', {slug: ingredient.slug}) }}">
+            <input type="hidden" name="_token" value="{{ csrf_token('remove-ingredient') }}">
+        </form>
+        {% endif %}
     </div>
 {% endblock %}
 

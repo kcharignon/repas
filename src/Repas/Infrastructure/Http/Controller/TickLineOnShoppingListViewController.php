@@ -22,6 +22,7 @@ class TickLineOnShoppingListViewController extends AbstractController
 
     #[Route(path: '/shopping-list/line/{id}/tick', name: 'view_shopping_list_row_tick', methods: ['POST'])]
     #[IsGranted('ROLE_USER')]
+    #[IsGranted('SHOPPING_LIST_ROW_OWNER', 'id')]
     public function __invoke(string $id): JsonResponse
     {
         $command = new TickLineOnShoppingListCommand(
