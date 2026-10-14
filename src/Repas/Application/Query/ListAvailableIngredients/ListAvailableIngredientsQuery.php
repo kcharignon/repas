@@ -8,6 +8,7 @@ final readonly class ListAvailableIngredientsQuery implements QueryInterface
 {
     public function __construct(
         public string $userId,
+        public ?string $search = null,
     ) {
     }
 }
