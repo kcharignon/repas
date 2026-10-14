@@ -155,4 +155,23 @@ class UpdateServingMealApiControllerTest extends QueryBusWebTestCase
         $this->assertSame(401, $this->client->getResponse()->getStatusCode());
         $this->assertSame([], $commandBus->dispatched());
     }
+
+    public function testForwardsTheIfMatchVersionToTheCommand(): void
+    {
+        // Given
+        $commandBus = $this->mockCommandBus();
+        $owner = $this->savedUser();
+        $recipe = new RecipeBuilder()->withAuthor($owner)->build();
+        $this->persister->saveRecipe($recipe);
+        $shoppingList = new ShoppingListBuilder()->withOwner($owner)->addRecipe($recipe)->build();
+        static::getContainer()->get(ShoppingListRepository::class)->save($shoppingList);
+        $mealId = $shoppingList->getMeals()->reset()->getId();
+
+        // When
+        $this->client->request('PUT', '/api/v1/meals/' . $mealId . '/serving', content: json_encode(['serving' => 6], JSON_THROW_ON_ERROR), server: $this->bearerFor($owner) + ['CONTENT_TYPE' => 'application/json', 'HTTP_IF_MATCH' => '"3"']);
+
+        // Then
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->assertEquals([new UpdateServingMealCommand($mealId, 6, 3)], $commandBus->dispatched());
+    }
 }
