@@ -126,7 +126,10 @@ Total des 32 scénarios : 328 requêtes, avec comme sans cache à l'arrivée.
   - Corrigé : modifier un ingrédient par le formulaire Twig remettait son image à vide ; l'image est désormais conservée (`UpdateIngredientCommand::$image` nul = inchangée)
   - `CreateConversionCommand` reçoit son id ; `ConversionException::notFound` passe à 404 ; codes d'`IngredientException` alignés (409 utilisé, 422 conversion impossible)
   - **Les commandes n'étaient pas atomiques** : `command.bus` n'avait aucun middleware de transaction. Ajout de `doctrine_transaction` ([0006](adr/0006-buses-messenger.md) §8, `CommandBusTransactionTest`)
-- [ ] Référentiels administrateur : unités, rayons, types de recette (créer, modifier)
+- [x] **Référentiels administrateur** (6 endpoints) : `POST` (201 + `Location` vers la lecture existante) et `PUT` (remplacement, le slug ne change pas) sur `/units`, `/departments`, `/recipe-types`, réservés à `ROLE_ADMIN`.
+  - Même trou que pour les ingrédients : le slug dérive du nom, créer « Gramme » une seconde fois écrasait l'unité existante (et ses conversions, ses recettes). Gardes ajoutées (`exists` sur les trois ports, `…::alreadyExists` en 409) ; les handlers de création renvoient le slug. Budgets `creer-unite`, `creer-rayon`, `creer-type-recette` : 2 → 3
+  - Les quatre formulaires Twig de création (unité, rayon, type de recette, et ingrédient de la PR précédente) affichent « … de ce nom existe déjà. » sur le champ Nom au lieu d'une erreur 500
+  - Image d'un rayon ou d'un type : URL `https://…` ou chemin relatif `images/…` (les valeurs en base sont de ces deux formes) ; `http:`, `javascript:` et `../` sont refusés en 422
 - [ ] Utilisateur : inscription, réglages
 - [ ] Remplacer le protocole `{views:[{selector, html}]}` par de l'état ressource côté API (le front re-requête ; `ajax.js` et les 14 controllers AJAX restent pour Twig)
 
