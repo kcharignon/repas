@@ -94,9 +94,9 @@ class ShoppingListPostgreSQLLoaderTest extends DatabaseTestCase
         $this->assertSame('12 octobre 2026', $result[0]->displayName);
     }
 
-    public function testListByOwnerKeepsTheYearFormatOfTheOriginalTemplate(): void
+    public function testListByOwnerShowsTheCalendarYearAtTheEndOfDecember(): void
     {
-        // Given : « YYYY » est l'année ISO de la semaine, le 29 décembre 2025 est en semaine 1 de 2026 (comportement d'origine conservé)
+        // Given : le 29 décembre 2025 est en semaine ISO 1 de 2026 ; l'année affichée est celle du calendrier
         $owner = $this->savedUser();
         $this->saveShoppingList($owner, 'list-year-end', ShoppingListStatus::ACTIVE, null, '2025-12-29 09:00:00');
 
@@ -104,7 +104,7 @@ class ShoppingListPostgreSQLLoaderTest extends DatabaseTestCase
         $result = $this->shoppingListLoader->listByOwner($owner->getId());
 
         // Then
-        $this->assertSame('29 décembre 2026', $result[0]->displayName);
+        $this->assertSame('29 décembre 2025', $result[0]->displayName);
     }
 
     public function testListByOwnerIsOrderedFromTheMostRecentToTheOldest(): void

@@ -36,4 +36,17 @@ class ListAvailableIngredientsQueryHandlerTest extends TestCase
         // Then
         $this->assertSame(['user-1'], $loader->listAvailableCalls);
     }
+
+    public function testForwardsTheSearchToTheLoader(): void
+    {
+        // Given
+        $loader = new IngredientInMemoryLoader();
+        $handler = new ListAvailableIngredientsQueryHandler($loader);
+
+        // When
+        $handler(new ListAvailableIngredientsQuery('user-1', 'cre'));
+
+        // Then
+        $this->assertSame([['user-1', 'cre']], $loader->listAvailableCalls);
+    }
 }

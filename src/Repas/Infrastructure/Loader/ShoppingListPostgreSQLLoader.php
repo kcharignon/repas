@@ -279,7 +279,7 @@ final readonly class ShoppingListPostgreSQLLoader implements ShoppingListLoader
 
     private function dateFormatter(): IntlDateFormatter
     {
-        // Motif repris tel quel du template d'origine : « YYYY » est l'année ISO de la semaine (voir roadmap, « Hors périmètre »).
-        return new IntlDateFormatter('fr_FR', IntlDateFormatter::NONE, IntlDateFormatter::NONE, null, IntlDateFormatter::GREGORIAN, 'dd MMMM YYYY');
+        // « yyyy » est l'année du calendrier (« YYYY », celle de la semaine ISO, donnait « 29 décembre 2026 » pour le 29 décembre 2025)
+        return new IntlDateFormatter('fr_FR', IntlDateFormatter::NONE, IntlDateFormatter::NONE, null, IntlDateFormatter::GREGORIAN, 'dd MMMM yyyy');
     }
 }

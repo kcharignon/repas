@@ -35,6 +35,9 @@ class User
     #[ORM\Column(name: 'statistics', type: 'json', nullable: false)]
     private ?array $statistics = [];
 
+    #[ORM\Column(name: 'credentials_version', type: 'integer', nullable: false)]
+    private int $credentialsVersion = 0;
+
     public function __construct(
         string $id,
         string $email,
@@ -43,6 +46,7 @@ class User
         int $defaultServing,
         Status $status,
         array $statistics,
+        int $credentialsVersion = 0,
     ) {
         $this->id = $id;
         $this->email = $email;
@@ -51,6 +55,7 @@ class User
         $this->defaultServing = $defaultServing;
         $this->status = $status;
         $this->statistics = $statistics;
+        $this->credentialsVersion = $credentialsVersion;
     }
 
     public function getId(): ?string
@@ -105,6 +110,11 @@ class User
         return $this;
     }
 
+    public function getCredentialsVersion(): int
+    {
+        return $this->credentialsVersion;
+    }
+
     public function getStatus(): ?Status
     {
         return $this->status;
@@ -156,6 +166,7 @@ class User
             defaultServing: $user->getDefaultServing(),
             status: $user->getStatus(),
             statistics: $user->getStatistics(),
+            credentialsVersion: $user->getCredentialsVersion(),
         );
     }
 
@@ -168,5 +179,6 @@ class User
         $this->defaultServing = $user->getDefaultServing();
         $this->status = $user->getStatus();
         $this->statistics = $user->getStatistics();
+        $this->credentialsVersion = $user->getCredentialsVersion();
     }
 }

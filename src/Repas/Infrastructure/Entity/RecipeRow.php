@@ -26,21 +26,27 @@ class RecipeRow
     #[ORM\Column(name: 'recipe', nullable: false)]
     private ?string $recipeId = null;
 
+    // Rang de la ligne dans la recette : l'ordre de saisie est conservé à la lecture
+    #[ORM\Column(name: 'position', type: 'integer', nullable: false)]
+    private int $position = 0;
+
     public function __construct(
         ?string $id,
         ?string $ingredientSlug,
         ?float  $quantity,
         ?string $unitSlug,
-        ?string $recipeId
+        ?string $recipeId,
+        int     $position = 0,
     ) {
         $this->id = $id;
         $this->ingredientSlug = $ingredientSlug;
         $this->quantity = $quantity;
         $this->unitSlug = $unitSlug;
         $this->recipeId = $recipeId;
+        $this->position = $position;
     }
 
-    public static function fromModel(RecipeRowModel $recipeRow): static
+    public static function fromModel(RecipeRowModel $recipeRow, int $position = 0): static
     {
         return new static(
             $recipeRow->getId(),
@@ -48,14 +54,21 @@ class RecipeRow
             $recipeRow->getQuantity(),
             $recipeRow->getUnit()->getSlug(),
             $recipeRow->getRecipeId(),
+            $position,
         );
     }
 
-    public function updateFromModel(RecipeRowModel $recipeRowModel): void
+    public function updateFromModel(RecipeRowModel $recipeRowModel, int $position = 0): void
     {
         $this->ingredientSlug = $recipeRowModel->getIngredient()->getSlug();
         $this->quantity = $recipeRowModel->getQuantity();
         $this->unitSlug = $recipeRowModel->getUnit()->getSlug();
+        $this->position = $position;
+    }
+
+    public function getPosition(): int
+    {
+        return $this->position;
     }
 
     public function getId(): ?string

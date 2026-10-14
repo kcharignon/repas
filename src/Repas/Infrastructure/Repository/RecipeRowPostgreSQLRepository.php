@@ -30,7 +30,7 @@ readonly class RecipeRowPostgreSQLRepository extends PostgreSQLRepository
      */
     public function findByRecipeId(string $recipeId): Tab
     {
-        $recipeRows = new Tab($this->entityRepository->findBy(['recipeId' => $recipeId]), RecipeRowEntity::class);
+        $recipeRows = new Tab($this->entityRepository->findBy(['recipeId' => $recipeId], ['position' => 'ASC']), RecipeRowEntity::class);
 
         // Les unités des lignes sont lues en une requête (sinon une par unité) ; les lectures suivantes viennent de l'identity map
         $unitSlugs = Tab::newEmptyTyped('string');
@@ -42,13 +42,16 @@ readonly class RecipeRowPostgreSQLRepository extends PostgreSQLRepository
         return $recipeRows->map(fn(RecipeRowEntity $recipeRow) => $this->convertEntityToModel($recipeRow));
     }
 
-    public function save(RecipeRowModel $recipeRow): void
+    /**
+     * @param int $position rang de la ligne dans sa recette (0 pour la première)
+     */
+    public function save(RecipeRowModel $recipeRow, int $position = 0): void
     {
         $recipeRowEntity = $this->entityRepository->find($recipeRow->getId());
         if ($recipeRowEntity instanceof RecipeRowEntity) {
-            $recipeRowEntity->updateFromModel($recipeRow);
+            $recipeRowEntity->updateFromModel($recipeRow, $position);
         } else {
-            $recipeRowEntity = RecipeRowEntity::fromModel($recipeRow);
+            $recipeRowEntity = RecipeRowEntity::fromModel($recipeRow, $position);
             $this->entityManager->persist($recipeRowEntity);
         }
         $this->entityManager->flush();

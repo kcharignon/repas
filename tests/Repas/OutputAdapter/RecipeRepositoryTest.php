@@ -33,6 +33,31 @@ class RecipeRepositoryTest extends DatabaseTestCase
         $this->persister = new DataPersister(static::getContainer());
     }
 
+    public function testRowsKeepTheirOrderAfterSavingAndAfterReordering(): void
+    {
+        // Arrange : trois lignes dans un ordre qui n'est ni alphabétique ni celui des identifiants
+        $user = $this->savedUser();
+        $recipe = new RecipeBuilder()->isPastaCarbonara()->withAuthor($user)->build();
+        $rows = $recipe->getRows()->toArray();
+        $this->persister->saveRecipeDependencies($recipe);
+        $this->recipeRepository->save($recipe);
+        $slugs = static fn(Recipe $loaded): array => array_map(static fn($row) => $row->getIngredient()->getSlug(), array_values($loaded->getRows()->toArray()));
+        $expected = array_map(static fn($row) => $row->getIngredient()->getSlug(), array_values($rows));
+
+        // Assert : l'ordre enregistré est l'ordre relu
+        $this->assertGreaterThan(2, count($expected));
+        $this->assertSame($expected, $slugs($this->recipeRepository->findOneById($recipe->getId())));
+
+        // Arrange : la recette est modifiée, ses lignes passent dans l'ordre inverse
+        $recipe->setRows(Tab::fromArray(...array_reverse(array_values($rows))));
+
+        // Act
+        $this->recipeRepository->save($recipe);
+
+        // Assert
+        $this->assertSame(array_reverse($expected), $slugs($this->recipeRepository->findOneById($recipe->getId())));
+    }
+
     public function testCRUD(): void
     {
         // Arrange

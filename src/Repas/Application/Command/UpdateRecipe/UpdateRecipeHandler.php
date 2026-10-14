@@ -10,6 +10,7 @@ use Repas\Repas\Domain\Interface\RecipeRepository;
 use Repas\Repas\Domain\Interface\RecipeTypeRepository;
 use Repas\Repas\Domain\Interface\UnitRepository;
 use Repas\Repas\Domain\Model\RecipeRow;
+use Repas\Repas\Domain\Service\ConversionService;
 use Repas\Shared\Domain\Tool\Tab;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
@@ -21,6 +22,7 @@ readonly class UpdateRecipeHandler
         private RecipeTypeRepository $recipeTypeRepository,
         private IngredientRepository $ingredientRepository,
         private UnitRepository $unitRepository,
+        private ConversionService $conversionService,
     ) {
     }
 
@@ -47,6 +49,7 @@ readonly class UpdateRecipeHandler
             $ingredient = $this->ingredientRepository->findOneBySlug($row->ingredientSlug);
             $unit = $this->unitRepository->findOneBySlug($row->unitSlug);
             $quantity = $row->quantity;
+            $this->conversionService->assertConvertibleToPurchaseUnit($ingredient, $unit);
             $recipe->addRow($ingredient, $unit, $quantity);
         }
 

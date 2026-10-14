@@ -128,6 +128,17 @@ class UpdateUserSettingsHandlerTest extends TestCase
         $this->assertSame(3, $this->userRepository->findOneById('unique-id')->getDefaultServing());
     }
 
+    public function testChangingThePasswordRevokesTheTokensButNotChangingItDoesNot(): void
+    {
+        // Act : le nombre de personnes seul ne touche pas aux identifiants
+        ($this->handler)(new UpdateUserSettingsCommand('unique-id', null, 2));
+        $this->assertSame(0, $this->userRepository->findOneById('unique-id')->getCredentialsVersion());
+
+        // Act : un vrai changement de mot de passe augmente la version (jetons déjà émis révoqués)
+        ($this->handler)(new UpdateUserSettingsCommand('unique-id', 'new password', 2, 'current-password'));
+        $this->assertSame(1, $this->userRepository->findOneById('unique-id')->getCredentialsVersion());
+    }
+
     public function testFailedHandleUpdateUserSettingsUnkownId(): void
     {
         // Arrange

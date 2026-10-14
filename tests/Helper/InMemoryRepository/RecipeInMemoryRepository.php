@@ -11,6 +11,9 @@ use Repas\Repas\Domain\Model\Recipe;
 use Repas\Repas\Domain\Model\RecipeRow;
 use Repas\Shared\Domain\Tool\Tab;
 
+/**
+ * @extends AbstractInMemoryRepository<Recipe>
+ */
 class RecipeInMemoryRepository extends AbstractInMemoryRepository implements RecipeRepository
 {
     use SaveModelTrait;

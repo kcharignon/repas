@@ -25,6 +25,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, Passwor
         private int    $defaultServing,
         private Status $status,
         private array  $statistics,
+        private int    $credentialsVersion,
     ) {
     }
 
@@ -53,6 +54,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, Passwor
             $defaultServing,
             Status::ACTIVE,
             ['createdAt' => $createdAt],
+            0,
         );
     }
 
@@ -66,6 +68,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, Passwor
             $datas['default_serving'],
             $datas['status'],
             $datas['statistics'],
+            $datas['credentials_version'] ?? 0,
         );
     }
 
@@ -89,9 +92,28 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, Passwor
         return $this->password;
     }
 
+    /**
+     * Remplace le hash sans que l'utilisateur ait changé de mot de passe (Symfony recalcule le hash à la connexion quand
+     * l'algorithme ou son coût change) : les jetons émis restent valables.
+     */
     public function setPassword(string $password): void
     {
         $this->password = $password;
+    }
+
+    /**
+     * Le mot de passe change réellement : la version des identifiants augmente, ce qui révoque les jetons déjà émis
+     * (`JwtCredentialsVersionListener`, ADR 0008).
+     */
+    public function changePassword(string $password): void
+    {
+        $this->password = $password;
+        $this->credentialsVersion++;
+    }
+
+    public function getCredentialsVersion(): int
+    {
+        return $this->credentialsVersion;
     }
 
     public function getRoles(): array

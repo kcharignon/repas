@@ -10,7 +10,7 @@ use Repas\Repas\Domain\Exception\RecipeException;
 interface RecipeLoader
 {
     /**
-     * Recette avec ses ingrédients, dans leur ordre de stockage (aucune position n'est enregistrée).
+     * Recette avec ses ingrédients, dans l'ordre de la recette (colonne `position`).
      *
      * @throws RecipeException
      */

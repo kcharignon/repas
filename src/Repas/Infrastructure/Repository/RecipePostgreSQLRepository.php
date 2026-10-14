@@ -65,8 +65,9 @@ readonly class RecipePostgreSQLRepository extends PostgreSQLRepository implement
             );
         }
         // Ajoute les nouvelles lignes ou modifie les lignes existantes
+        $position = 0;
         foreach ($recipe->getRows() as $row) {
-            $this->recipeRowRepository->save($row);
+            $this->recipeRowRepository->save($row, $position++);
         }
 
         $this->entityManager->flush();
