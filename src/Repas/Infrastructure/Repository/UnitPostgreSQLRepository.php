@@ -119,30 +119,12 @@ readonly class UnitPostgreSQLRepository extends PostgreSQLRepository implements 
      */
     public function findBySlugs(Tab $slugs): Tab
     {
-        // Si on ne trouve aucune unit qui n'est pas en cache
-        if ($slugs->find(fn(string $slug) => !$this->modelCache->isCachedExists(UnitModel::class, $slug)) === null) {
-            return $slugs->map(fn(string $slug) => $this->modelCache->getModelCache(UnitModel::class, $slug));
-        }
-
-
-        /** @var UnitEntity[] $unitEntities */
-        $unitEntities = $this->entityManager->createQueryBuilder()
-            ->select('u')
-            ->from(UnitEntity::class, 'u')
-            ->where('u.slug IN (:slugs)')
-            ->setParameter('slugs', $slugs)
-            ->getQuery()
-            ->getResult();
+        // Les slugs absents de l'identity map sont lus en une requête, puis résolus un par un
+        $this->preload($slugs);
 
         $models = Tab::newEmptyTyped(UnitModel::class);
-        foreach ($unitEntities as $unitEntity) {
-            if (($model = $this->modelCache->getModelCache(UnitEntity::class, $unitEntity->getSlug())) !== null) {
-                $models[] = $model;
-            } else {
-                $model = $this->convertEntityToModel($unitEntity);
-                $this->modelCache->setModelCache($model);
-                $models[] = $model;
-            }
+        foreach ($slugs as $slug) {
+            $models[] = $this->findOneBySlug($slug);
         }
 
         return $models;

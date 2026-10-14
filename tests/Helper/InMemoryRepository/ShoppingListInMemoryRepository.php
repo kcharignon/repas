@@ -61,9 +61,17 @@ class ShoppingListInMemoryRepository extends AbstractInMemoryRepository implemen
         unset($this->models[$shoppingList->getId()]);
     }
 
-    public function findByOwnerAndStatus(User $owner, ShoppingListStatus $status): Tab
+    public function findIdsByOwnerAndStatus(string $ownerId, ShoppingListStatus $status): array
     {
-        return $this->models->find(fn(ShoppingList $sl) => $sl->getOwner()->isEqual($owner) && $sl->getStatus()->value === $status->value);
+        $ids = [];
+        /** @var ShoppingList $shoppingList */
+        foreach ($this->models as $shoppingList) {
+            if ($shoppingList->getOwner()->getId() === $ownerId && $shoppingList->getStatus() === $status) {
+                $ids[] = $shoppingList->getId();
+            }
+        }
+
+        return $ids;
     }
 
     public function findOneByMealId(string $mealId): ShoppingList

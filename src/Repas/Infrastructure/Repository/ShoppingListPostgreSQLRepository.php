@@ -153,13 +153,20 @@ readonly class ShoppingListPostgreSQLRepository extends PostgreSQLRepository imp
         $this->entityManager->flush();
     }
 
-    /**
-     * @return Tab<ShoppingList>
-     */
-    public function findByOwnerAndStatus(User $owner, ShoppingListStatus $status): Tab
+    public function findIdsByOwnerAndStatus(string $ownerId, ShoppingListStatus $status): array
     {
-        return new Tab($this->entityRepository->findBy(['ownerId' => $owner->getId(), 'status' => $status]), ShoppingListEntity::class)
-            ->map(fn(ShoppingListEntity $entity) => $this->convertEntityToModel($entity));
+        $rows = $this->entityManager->createQueryBuilder()
+            ->select('sl.id AS id')
+            ->from(ShoppingListEntity::class, 'sl')
+            ->where('sl.ownerId = :ownerId')
+            ->andWhere('sl.status = :status')
+            ->orderBy('sl.createdAt', 'DESC')
+            ->setParameter('ownerId', $ownerId)
+            ->setParameter('status', $status)
+            ->getQuery()
+            ->getScalarResult();
+
+        return array_column($rows, 'id');
     }
 
 

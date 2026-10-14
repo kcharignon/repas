@@ -11,7 +11,7 @@ use Repas\Tests\Helper\WriteBudgetTestCase;
  * sans `ModelCache`, est figé dans `budgets.php`. Un use case qui fait plus de requêtes que son budget est une
  * régression ; un use case qui en fait moins impose de baisser le budget (le fichier ne fait que diminuer).
  *
- * Pour régénérer le fichier après un allègement : `UPDATE_SQL_BUDGETS=1 make sql-budget-update`.
+ * Pour régénérer le fichier après un allègement : `UPDATE_SQL_BUDGETS=1 make sql-budget-update`. `SQL_BUDGET_VERBOSE=1` affiche la répartition par table de chaque scénario.
  */
 class WriteBudgetTest extends WriteBudgetTestCase
 {
@@ -34,6 +34,9 @@ class WriteBudgetTest extends WriteBudgetTestCase
     {
         // When
         [$count, $byTable] = $this->measure($modelCacheEnabled, self::loadScenarios()[$scenario]);
+        if (getenv('SQL_BUDGET_VERBOSE') !== false) {
+            fwrite(STDERR, sprintf("%s (%s) : %d\n  %s\n", $scenario, $modelCacheEnabled ? 'cache' : 'sans cache', $count, implode(', ', array_map(fn(string $key, int $n): string => "$key ×$n", array_keys($byTable), $byTable))));
+        }
 
         // Then
         $mode = $modelCacheEnabled ? 'on' : 'off';

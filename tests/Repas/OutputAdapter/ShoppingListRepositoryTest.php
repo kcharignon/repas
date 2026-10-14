@@ -191,7 +191,7 @@ class ShoppingListRepositoryTest extends DatabaseTestCase
         $this->assertCount(0, $withEgg);
     }
 
-    public function testFindByOwnerAndStatus(): void
+    public function testFindIdsByOwnerAndStatus(): void
     {
         // Arrange
         $user = $this->savedUser();
@@ -201,15 +201,10 @@ class ShoppingListRepositoryTest extends DatabaseTestCase
         $this->savedShoppingList($this->savedUser(), ShoppingListStatus::ACTIVE);
 
         // Act
-        $shoppingLists = $this->shoppingListRepository->findByOwnerAndStatus($user, $status);
+        $ids = $this->shoppingListRepository->findIdsByOwnerAndStatus($user->getId(), $status);
 
         // Assert
-        RepasAssert::assertTabType(Tab::newEmptyTyped(ShoppingList::class), $shoppingLists);
-        $this->assertSame([$active->getId()], $this->idsOf($shoppingLists));
-        foreach ($shoppingLists as $shoppingList) {
-            RepasAssert::assertUser($shoppingList->getOwner(), $user);
-            $this->assertEquals($status, $shoppingList->getStatus());
-        }
+        $this->assertSame([$active->getId()], $ids);
     }
 
     public function testFindOneByMealId(): void
