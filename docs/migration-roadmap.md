@@ -120,7 +120,12 @@ Total des 32 scénarios : 328 requêtes, avec comme sans cache à l'arrivée.
   - `CopyRecipeCommand` reçoit l'id de la copie (`newRecipeId`), comme les autres créations, pour pouvoir rendre le `Location`
   - Règle de domaine ajoutée : un ingrédient personnalisé n'est utilisable que dans les recettes de son créateur (ingrédient d'un autre = inconnu, 404). Le formulaire Twig ne proposait que les siens, l'API aurait laissé référencer n'importe quel slug
   - Corrigé en passant : supprimer une recette supprime ses lignes (migration `Version20261014120000` pour les lignes orphelines existantes) ; `supprimer-recette` passe de 14 à 15 requêtes (le `DELETE recipe_row`, budget relevé en connaissance de cause)
-- [ ] Ingrédients (créer, modifier, supprimer) et conversions (créer, modifier)
+- [x] **Ingrédients et conversions** (6 endpoints) : `POST /ingredients` (201 + `Location`), `PUT /ingredients/{slug}`, `DELETE /ingredients/{slug}` (409 si utilisé dans une recette ou une liste), `GET` / `POST` / `PUT /conversions` (administrateur ; le `GET /conversions/{id}` sert le `Location`).
+  - L'acteur vient du JWT : `CreateIngredientCommand::userId` remplace `ownerId`, et c'est le handler qui décide « commun » (administrateur) ou « personnalisé » (la règle était dans le formulaire Twig) ; le handler renvoie le slug créé
+  - Gardes ajoutées : un slug existant donne 409 (créer deux fois le même nom écrasait l'ingrédient, en Twig comme en API), un coefficient absent alors que les unités diffèrent sans conversion donne 422 (c'était une `TypeError` 500), `creer-ingredient` passe de 8 à 9 requêtes (le contrôle d'existence)
+  - Corrigé : modifier un ingrédient par le formulaire Twig remettait son image à vide ; l'image est désormais conservée (`UpdateIngredientCommand::$image` nul = inchangée)
+  - `CreateConversionCommand` reçoit son id ; `ConversionException::notFound` passe à 404 ; codes d'`IngredientException` alignés (409 utilisé, 422 conversion impossible)
+  - **Les commandes n'étaient pas atomiques** : `command.bus` n'avait aucun middleware de transaction. Ajout de `doctrine_transaction` ([0006](adr/0006-buses-messenger.md) §8, `CommandBusTransactionTest`)
 - [ ] Référentiels administrateur : unités, rayons, types de recette (créer, modifier)
 - [ ] Utilisateur : inscription, réglages
 - [ ] Remplacer le protocole `{views:[{selector, html}]}` par de l'état ressource côté API (le front re-requête ; `ajax.js` et les 14 controllers AJAX restent pour Twig)

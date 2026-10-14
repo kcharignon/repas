@@ -26,16 +26,25 @@ class IngredientException extends DomainException
             $startUnit->getName(),
             $endUnit->getName(),
             $ingredient->getName(),
-        ), 403);
+        ), 422);
     }
 
     public static function cannotBeRemoveExistInRecipe(string $ingredientId): static
     {
-        return new static(sprintf("Cannot remove ingredient '%s', exist in recipe", $ingredientId), 403);
+        return new static(sprintf("Cannot remove ingredient '%s', exist in recipe", $ingredientId), 409);
     }
 
     public static function cannotBeRemoveExistInShoppingList(string $ingredientId): static
     {
-        return new static(sprintf("Cannot remove ingredient '%s', exist in shopping list", $ingredientId), 403);
+        return new static(sprintf("Cannot remove ingredient '%s', exist in shopping list", $ingredientId), 409);
+    }
+    public static function alreadyExists(string $slug): self
+    {
+        return new self(sprintf("Ingredient '%s' already exists", $slug), 409);
+    }
+
+    public static function coefficientRequired(): self
+    {
+        return new self('A conversion coefficient is required when the cooking and purchase units differ.', 422);
     }
 }

@@ -50,7 +50,7 @@ class UpdateIngredientType extends AbstractIngredientType implements DataMapperI
         $viewData = new UpdateIngredientCommand(
             slug: $viewData->slug,
             name: $forms['name']->getData(),
-            image: '',
+            image: null,
             departmentSlug: $forms['department']->getData(),
             defaultCookingUnitSlug: $forms['defaultCookingUnit']->getData(),
             defaultPurchaseUnitSlug: $forms['defaultPurchaseUnit']->getData(),

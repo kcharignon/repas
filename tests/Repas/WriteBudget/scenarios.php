@@ -245,7 +245,7 @@ return [
         $t->persister->saveUnit(new UnitBuilder()->isLiter()->build());
         $t->persister->saveUnit(new UnitBuilder()->isMillilitre()->build());
 
-        return new CreateConversionCommand('litre', 'millilitre', 1000.0, null);
+        return new CreateConversionCommand(UuidGenerator::new(), 'litre', 'millilitre', 1000.0, null);
     },
     'modifier-conversion' => static function (WriteBudgetTestCase $t): object {
         $conversion = new ConversionBuilder()->isKiloToGramme()->build();

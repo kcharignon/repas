@@ -5,8 +5,8 @@ namespace Repas\Tests\Repas\Application;
 
 use PHPUnit\Framework\TestCase;
 use Repas\Repas\Application\Command\UpdateIngredient\UpdateIngredientCommand;
-use Repas\Repas\Application\Command\UpdateIngredient\UpdateIngredientHandler;
 use Repas\Repas\Domain\Exception\IngredientException;
+use Repas\Repas\Application\Command\UpdateIngredient\UpdateIngredientHandler;
 use Repas\Repas\Domain\Interface\ConversionRepository;
 use Repas\Repas\Domain\Interface\DepartmentRepository;
 use Repas\Repas\Domain\Interface\IngredientRepository;
@@ -190,6 +190,34 @@ class UpdateIngredientHandlerTest extends TestCase
             ->build();
         $actualConversion = $this->conversionRepository->findByIngredientAndStartUnitAndEndUnit($expected, $expected->getDefaultPurchaseUnit(), $expected->getDefaultCookingUnit());
         RepasAssert::assertConversion($expectedConversion, $actualConversion, ['id', 'ingredient']);
+    }
+
+    public function testKeepsTheImageWhenNoneIsGiven(): void
+    {
+        // Arrange
+        $ingredient = new IngredientBuilder()->isPasta()->withImage('images/pate.png')->build();
+        $this->ingredientRepository->save($ingredient);
+        $command = new UpdateIngredientCommand($ingredient->getSlug(), 'Pasta', null, 'conserve', 'boite', 'boite', null);
+
+        // Act
+        ($this->handler)($command);
+
+        // Assert
+        $this->assertSame('images/pate.png', $this->ingredientRepository->findOneBySlug($ingredient->getSlug())->getImage());
+    }
+
+    public function testRequiresACoefficientWhenTheUnitsDiffer(): void
+    {
+        // Arrange
+        $ingredient = new IngredientBuilder()->isPasta()->build();
+        $this->ingredientRepository->save($ingredient);
+        $command = new UpdateIngredientCommand($ingredient->getSlug(), 'Pasta', null, 'conserve', 'gramme', 'boite', null);
+
+        // Assert
+        $this->expectExceptionObject(IngredientException::coefficientRequired());
+
+        // Act
+        ($this->handler)($command);
     }
 
     public function testHandleFailedUpdateIngredientUnknownIngredient(): void

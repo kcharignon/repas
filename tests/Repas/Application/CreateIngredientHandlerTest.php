@@ -9,6 +9,7 @@ use Repas\Repas\Application\Command\CreateIngredient\CreateIngredientHandler;
 use Repas\Repas\Domain\Event\CreateIngredientWithConversionEvent;
 use Repas\Repas\Domain\Event\IngredientCreatedEvent;
 use Repas\Repas\Domain\Exception\DepartmentException;
+use Repas\Repas\Domain\Exception\IngredientException;
 use Repas\Repas\Domain\Exception\UnitException;
 use Repas\Repas\Domain\Interface\ConversionRepository;
 use Repas\Repas\Domain\Interface\DepartmentRepository;
@@ -86,7 +87,7 @@ class CreateIngredientHandlerTest extends TestCase
             departmentSlug:  "bebe",
             defaultCookingUnitSlug: "unite",
             defaultPurchaseUnitSlug: "unite",
-            ownerId: $user->getId(),
+            userId: $user->getId(),
             coefficient: null,
         );
 
@@ -123,7 +124,7 @@ class CreateIngredientHandlerTest extends TestCase
             departmentSlug:  "bebe",
             defaultCookingUnitSlug: "litre",
             defaultPurchaseUnitSlug: "centilitre",
-            ownerId: $user->getId(),
+            userId: $user->getId(),
             coefficient: null,
         );
 
@@ -160,7 +161,7 @@ class CreateIngredientHandlerTest extends TestCase
             departmentSlug:  "bebe",
             defaultCookingUnitSlug: "unite",
             defaultPurchaseUnitSlug: "centilitre",
-            ownerId: $user->getId(),
+            userId: $user->getId(),
             coefficient: 25,
         );
 
@@ -202,13 +203,15 @@ class CreateIngredientHandlerTest extends TestCase
     public function testHandleSuccessfullyCreateIngredientByAdmin(): void
     {
         // Arrange
+        $admin = new UserBuilder()->withId('admin-id')->isAdmin()->build();
+        $this->userRepository->save($admin);
         $command = new CreateIngredientCommand(
             name: "nom de l'ingredient",
             image: "super-image.jpg",
             departmentSlug:  "bebe",
             defaultCookingUnitSlug: "unite",
             defaultPurchaseUnitSlug: "unite",
-            ownerId: null,
+            userId: $admin->getId(),
             coefficient: null,
         );
 
@@ -231,6 +234,73 @@ class CreateIngredientHandlerTest extends TestCase
     }
 
 
+    public function testReturnsTheSlugOfTheCreatedIngredient(): void
+    {
+        // Arrange
+        $user = new UserBuilder()->withId('user-id')->build();
+        $this->userRepository->save($user);
+        $command = new CreateIngredientCommand(
+            name: "nom de l'ingredient",
+            image: '',
+            departmentSlug: 'bebe',
+            defaultCookingUnitSlug: 'unite',
+            defaultPurchaseUnitSlug: 'unite',
+            userId: $user->getId(),
+            coefficient: null,
+        );
+
+        // Act
+        $slug = ($this->handler)($command);
+
+        // Assert
+        $this->assertSame('nom-de-l-ingredientuser-id', $slug);
+        $this->assertSame($slug, $this->ingredientRepository->findOneBySlug($slug)->getSlug());
+    }
+
+    public function testAnAdministratorCreatesACommonIngredient(): void
+    {
+        // Arrange
+        $admin = new UserBuilder()->withId('admin-id')->isAdmin()->build();
+        $this->userRepository->save($admin);
+        $command = new CreateIngredientCommand("nom de l'ingredient", '', 'bebe', 'unite', 'unite', $admin->getId(), null);
+
+        // Act
+        $slug = ($this->handler)($command);
+
+        // Assert
+        $this->assertNull($this->ingredientRepository->findOneBySlug($slug)->getCreator());
+        $this->assertSame('nom-de-l-ingredient', $slug);
+    }
+
+    public function testRefusesAnIngredientThatAlreadyExists(): void
+    {
+        // Arrange
+        $user = new UserBuilder()->withId('user-id')->build();
+        $this->userRepository->save($user);
+        $command = new CreateIngredientCommand("nom de l'ingredient", '', 'bebe', 'unite', 'unite', $user->getId(), null);
+        ($this->handler)($command);
+
+        // Assert : un second ingrédient de même nom et même créateur écraserait le premier
+        $this->expectExceptionObject(IngredientException::alreadyExists('nom-de-l-ingredientuser-id'));
+
+        // Act
+        ($this->handler)($command);
+    }
+
+    public function testRequiresACoefficientWhenTheUnitsCannotBeConverted(): void
+    {
+        // Arrange
+        $user = new UserBuilder()->withId('user-id')->build();
+        $this->userRepository->save($user);
+        $command = new CreateIngredientCommand("nom de l'ingredient", '', 'bebe', 'unite', 'centilitre', $user->getId(), null);
+
+        // Assert
+        $this->expectExceptionObject(IngredientException::coefficientRequired());
+
+        // Act
+        ($this->handler)($command);
+    }
+
     public function testHandleCreateIngredientFailedUserNotFound(): void
     {
         // Arrange
@@ -241,7 +311,7 @@ class CreateIngredientHandlerTest extends TestCase
             departmentSlug:  "bebe",
             defaultCookingUnitSlug: "unite",
             defaultPurchaseUnitSlug: "unite",
-            ownerId: $user->getId(),
+            userId: $user->getId(),
             coefficient: null,
         );
 
@@ -264,7 +334,7 @@ class CreateIngredientHandlerTest extends TestCase
             departmentSlug:  "inexistant",
             defaultCookingUnitSlug: "unite",
             defaultPurchaseUnitSlug: "unite",
-            ownerId: $user->getId(),
+            userId: $user->getId(),
             coefficient: null,
         );
 
@@ -287,7 +357,7 @@ class CreateIngredientHandlerTest extends TestCase
             departmentSlug:  "bebe",
             defaultCookingUnitSlug: "inexistant",
             defaultPurchaseUnitSlug: "unite",
-            ownerId: $user->getId(),
+            userId: $user->getId(),
             coefficient: null,
         );
 
@@ -310,7 +380,7 @@ class CreateIngredientHandlerTest extends TestCase
             departmentSlug:  "bebe",
             defaultCookingUnitSlug: "unite",
             defaultPurchaseUnitSlug: "inexistant",
-            ownerId: $user->getId(),
+            userId: $user->getId(),
             coefficient: null,
         );
 

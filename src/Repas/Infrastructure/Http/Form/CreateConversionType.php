@@ -4,6 +4,7 @@ namespace Repas\Repas\Infrastructure\Http\Form;
 
 
 use Repas\Repas\Application\Command\CreateConversion\CreateConversionCommand;
+use Repas\Shared\Domain\Tool\UuidGenerator;
 use Symfony\Component\Form\FormInterface;
 
 class CreateConversionType extends AbstractConversionType
@@ -19,6 +20,7 @@ class CreateConversionType extends AbstractConversionType
         $forms = iterator_to_array($forms);
 
         $viewData = new CreateConversionCommand(
+            UuidGenerator::new(),
             $forms['startUnit']->getData(),
             $forms['endUnit']->getData(),
             $forms['coefficient']->getData(),

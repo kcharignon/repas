@@ -6,7 +6,6 @@ use Repas\Repas\Domain\Interface\ConversionRepository;
 use Repas\Repas\Domain\Interface\IngredientRepository;
 use Repas\Repas\Domain\Interface\UnitRepository;
 use Repas\Repas\Domain\Model\Conversion;
-use Repas\Shared\Domain\Tool\UuidGenerator;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 #[AsMessageHandler]
@@ -17,7 +16,6 @@ readonly class CreateConversionHandler
         private ConversionRepository $conversionRepository,
         private UnitRepository $unitRepository,
         private IngredientRepository $ingredientRepository,
-        private UuidGenerator $uuidGenerator,
     ) {
     }
 
@@ -28,7 +26,7 @@ readonly class CreateConversionHandler
         $ingredient = ($command->ingredientSlug) ? $this->ingredientRepository->findOneBySlug($command->ingredientSlug) : null;
 
         $conversion = Conversion::create(
-            id: $this->uuidGenerator::new(),
+            id: $command->id,
             startUnit: $startUnit,
             endUnit: $endUnit,
             coefficient: $command->coefficient,

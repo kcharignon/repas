@@ -52,7 +52,7 @@ src/{Context}/
 - **Règles fermes** : un `QueryHandler` n'appelle jamais un `Repository` ; un `CommandHandler` n'appelle jamais un `Loader` ; un `QueryHandler` ne modifie pas l'état (une lecture qui crée si absent = une Command puis une Query).
 - **État de la migration** : plus aucun controller, API, formulaire ni voter ne lit via un `Domain\Interface\{X}Repository` (phase 7) ; Deptrac (`deptrac.no-repository-in-http.yaml`) l'interdit dans `Infrastructure\Http`. Toute nouvelle lecture suit la recette du skill `/repas-dev` et coche la slice dans `docs/migration-roadmap.md`. Un prédicat booléen se nomme `Is{X}` / `Has{X}` (ex. `IsEmailAlreadyUsed`) et renvoie un `bool`.
 - **Droits d'accès** : `OwnerVoter` (contexte `User`) interroge le port `Shared\Application\Interface\OwnershipLoader` (ids de propriétaire uniquement), implémenté dans `Repas\Infrastructure\Loader`.
-- **Buses** : `command.bus` et `query.bus` distincts (ADR 0006). Les controllers injectent toujours `CommandBusInterface` / `QueryBusInterface`, jamais les classes concrètes.
+- **Buses** : `command.bus` et `query.bus` distincts (ADR 0006). `command.bus` est transactionnel (`doctrine_transaction`) : une commande est atomique, un handler qui échoue en cours de route n'écrit rien. Les controllers injectent toujours `CommandBusInterface` / `QueryBusInterface`, jamais les classes concrètes.
 
 ## API JSON (`/api/v1`)
 

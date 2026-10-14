@@ -53,8 +53,6 @@ deptrac:
       - Repas\User\Domain\Model\User
     Repas\Repas\Infrastructure\Http\Controller\RemoveRecipeToActiveShoppingListViewController:
       - Repas\User\Domain\Model\User
-    Repas\Repas\Infrastructure\Http\Form\CreateIngredientType:
-      - Repas\User\Domain\Model\User
     Repas\Repas\Infrastructure\Repository\IngredientPostgreSQLRepository:
       - Repas\User\Domain\Exception\UserException
       - Repas\User\Domain\Interface\UserRepository

@@ -6,6 +6,7 @@ namespace Repas\Repas\Application\Command\CreateIngredient;
 use Repas\Repas\Domain\Event\CreateIngredientWithConversionEvent;
 use Repas\Repas\Domain\Event\IngredientCreatedEvent;
 use Repas\Repas\Domain\Exception\DepartmentException;
+use Repas\Repas\Domain\Exception\IngredientException;
 use Repas\Repas\Domain\Exception\UnitException;
 use Repas\Repas\Domain\Interface\DepartmentRepository;
 use Repas\Repas\Domain\Interface\IngredientRepository;
@@ -39,11 +40,13 @@ readonly class CreateIngredientHandler
      * @throws UnitException
      * @throws UserException
      */
-    public function __invoke(CreateIngredientCommand $command): void
+    public function __invoke(CreateIngredientCommand $command): string
     {
         $cookingUnit = $this->unitRepository->findOneBySlug($command->defaultCookingUnitSlug);
         $purchaseUnit = $this->unitRepository->findOneBySlug($command->defaultPurchaseUnitSlug);
-        $owner = $command->ownerId !== null ? $this->userRepository->findOneById($command->ownerId) : null;
+        $user = $this->userRepository->findOneById($command->userId);
+        // Un administrateur crée des ingrédients communs (sans créateur), un utilisateur des ingrédients personnalisés
+        $creator = $user->isAdmin() ? null : $user;
 
         $ingredient = Ingredient::create(
             name: $command->name,
@@ -51,13 +54,18 @@ readonly class CreateIngredientHandler
             department: $this->departmentRepository->findOneBySlug($command->departmentSlug),
             defaultCookingUnit: $cookingUnit,
             defaultPurchaseUnit: $purchaseUnit,
-            creator: $owner,
+            creator: $creator,
         );
+
+        // Le slug dérive du nom et du créateur : enregistrer sous un slug existant écraserait l'ingrédient
+        if ($this->ingredientRepository->exists($ingredient->getSlug())) {
+            throw IngredientException::alreadyExists($ingredient->getSlug());
+        }
 
         $this->ingredientRepository->save($ingredient);
 
-        if ($owner instanceof User) {
-            $this->eventDispatcher->dispatch(new IngredientCreatedEvent($owner->getId(), $ingredient->getSlug()));
+        if ($creator instanceof User) {
+            $this->eventDispatcher->dispatch(new IngredientCreatedEvent($creator->getId(), $ingredient->getSlug()));
         }
 
         // On récupère les unités compatibles à la conversion après la création de l'ingrédient
@@ -68,11 +76,18 @@ readonly class CreateIngredientHandler
         // Si l'ingrédient n'a pas la même unité dans les recettes qu'à l'achat et qu'on ne peut pas convertir entre les deux,
         // alors on crée une conversion entre les deux unités.
         if (!$cookingUnit->isEqual($purchaseUnit) && !$this->conversionService->canConvertToPurchaseUnit($ingredient)) {
+            // L'erreur annule toute la commande (transaction de command.bus) : l'ingrédient n'est pas créé sans sa conversion
+            if ($command->coefficient === null) {
+                throw IngredientException::coefficientRequired();
+            }
+
             $this->eventDispatcher->dispatch(new CreateIngredientWithConversionEvent(
                 $ingredient->getSlug(),
                 $command->coefficient,
             ));
         }
+
+        return $ingredient->getSlug();
     }
 
     /**

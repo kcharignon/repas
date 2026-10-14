@@ -20,6 +20,8 @@ Compliance déclare `query.bus` mais route aussi les queries sur `command.bus` (
 6. Les controllers injectent toujours l'interface (`CommandBusInterface` / `QueryBusInterface`), jamais la classe concrète.
 7. Les commandes restent sans marqueur pour l'instant (`dispatch(object)`) ; introduire `CommandInterface` plus tard serait un ADR séparé.
 
+8. **`command.bus` est transactionnel** (phase 9) : middleware `doctrine_transaction`. Une commande est atomique : si son handler, ou un listener qu'il déclenche (les événements s'exécutent dans la même transaction, les commandes imbriquées en savepoint), lève une exception, tout ce qui a été écrit est annulé. Constaté en phase 9 : sans ce middleware, `POST /ingredients` répondait 422 en laissant l'ingrédient créé. `CommandBusTransactionTest` le prouve avec un handler factice qui écrit puis échoue.
+
 ## Conséquences
 
 - Positives : les queries ne passent plus par les middlewares d'écriture ; isolation claire ; les exceptions de domaine se comportent pareil en lecture et en écriture.
