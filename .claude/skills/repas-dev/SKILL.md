@@ -72,6 +72,7 @@ Détail : `references/migrate-view-controller.md`. Résumé :
 2. `Infrastructure/Http/Api/{UseCase}/{UseCase}ApiController.php` : `#[Route('/api/v1/...', methods: [...])]`, `#[OA\…]`, appelle `QueryBusInterface::ask()` ou `CommandBusInterface::dispatch()`, renvoie `JsonResponse`/`Response`. Entrées par `#[MapQueryString(validationFailedStatusCode: 422)]` / `#[MapRequestPayload]`.
 3. Liste → `{member: [...], totalItems: N}`. Écriture → `204` ou `201` + `Location`.
 4. Test `tests/Repas/InputAdapter/` : `MockQueryBus`/`MockCommandBus`, query construite, statut, clés JSON.
+   Écriture : `$this->mockCommandBus()` (une requête par test), 401, 403 propriétaire, 404 inconnu, 422 corps invalide, `Location` en 201 ; plus un parcours avec les vrais bus par ressource (`ShoppingListWriteApiFlowTest`). Conventions : ADR 0007 §11 à 13 (action en `POST …/{action}`, alias `active`, identité par le JWT, jamais par le corps).
 5. `make api-doc-validate api-doc-coverage`, relire la doc générée (`/api/doc`).
 6. Vérifier le niveau d'accès (`#[IsGranted]` / voter propriétaire) : `ROLE_USER` est un plancher, pas une autorisation.
 
