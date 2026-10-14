@@ -14,9 +14,11 @@ when@test:
         test: true
         session:
             storage_factory_id: session.storage.factory.mock_file
-        # Les tests d'API provoquent volontairement des 404 et 403 : ne pas les écrire en [error] sur la sortie de PHPUnit.
+        # Les tests d'API provoquent volontairement des 401, 403, 404, 405, 409 et 422 : les erreurs HTTP et les exceptions de
+        # domaine (relayées en JSON par ApiExceptionListener) ne s'écrivent pas sur la sortie de PHPUnit. Une exception
+        # inattendue (RuntimeException, TypeError…) reste journalisée.
         exceptions:
-            Symfony\Component\HttpKernel\Exception\NotFoundHttpException:
+            Symfony\Component\HttpKernel\Exception\HttpException:
                 log_level: debug
-            Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException:
+            Repas\Shared\Domain\Exception\DomainException:
                 log_level: debug
