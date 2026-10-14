@@ -140,10 +140,27 @@ Total des 32 scénarios : 328 requêtes, avec comme sans cache à l'arrivée.
   - Preuve de parité : le scénario Chromium des listes de courses (`p8-actions`, 11 relevés d'état en base : planifier, portions, ingrédients, cocher jusqu'à la fin, décocher, renommer, pause, terminer, retirer) rejoué en API avec un vrai JWT donne des états **identiques** à ceux de Twig, et les relectures `GET` suivent la base à chaque étape
   - Parcours de bout en bout ajoutés (vrais bus, `ShoppingListWriteApiFlowTest`) pour les 5 actions qui n'en avaient pas : activer (met l'ancienne liste active en pause), terminer (statistiques du propriétaire), décocher (réactive une liste terminée), ajouter / retirer un ingrédient, retirer une recette
 
-### Phase 10 — Extinction de Twig
+### Phase 10 — Front Vue.js, bascule et extinction de Twig
 
-- **Prérequis : le front Vue.js (projet séparé) doit être prêt** avant toute extinction de Twig ; rien n'est retiré tant que ce n'est pas le cas.
-- [ ] À décider produit, une fois le front prêt : quels `ViewController` (et `ajax.js`, templates, formulaires Twig) retirer (ADR dédié le moment venu)
+Le front est un projet séparé (`repas-front`), planifié dans [`front-vuejs-plan.md`](front-vuejs-plan.md) (architecture, inventaire de parité, design, phases, bascule, extinction). **Rien n'est retiré de Twig tant que la parité n'est pas atteinte et la bascule faite.**
+
+**Prérequis côté API (phase 0 du plan, dans ce dépôt)**
+- [ ] `GET /api/v1/ingredients` : ingrédients utilisables par l'utilisateur, avec recherche — PR #42
+- [ ] Ordre des lignes d'une recette (colonne `position`) — PR #41
+- [ ] Validation de l'unité à l'enregistrement d'une recette (`ConversionService::assertConvertibleToPurchaseUnit`) — PR #41
+- [ ] Pagination et recherche des listes volumineuses (recettes d'un type, ingrédients d'un rayon)
+- [ ] Refresh token et déconnexion (ADR [0015](adr/0015-refresh-token-du-spa.md), [0008](adr/0008-auth-session-et-jwt.md) §5) — PR #47 (empilée sur #41)
+- [ ] Contrôle de version (ETag / `If-Match`) sur recette et liste de courses ([0013](adr/0013-agregats-references-par-identifiant.md) règle 7)
+- [ ] Contrat OpenAPI versionné (`docs/api/openapi.json`, `make openapi-check` en CI) — PR #44
+- [ ] ADR « front Vue.js » (stack, déploiement) et ADR « authentification du SPA »
+
+**Front et bascule**
+- [ ] Phase 1 — socle du front (nouveau dépôt, CI, client généré, session, design system)
+- [ ] Phases 2 à 4 — parcours cœur, référentiel utilisateur, administration (parité de l'inventaire)
+- [ ] Phase 5 — finitions (PWA, accessibilité, performance)
+- [ ] Phase 6 — recette de parité (100 % de l'inventaire)
+- [ ] Phase 7 — bascule en production (marche parallèle, retour arrière prévu)
+- [ ] Phase 8 — extinction de Twig (routes, templates, formulaires, JS, dépendances, pare-feu `main`, ADR, documentation)
 
 ## Chantiers de maintenance (décidés le 2026-10-14, une PR chacun, dans cet ordre)
 
@@ -179,15 +196,15 @@ Audit de tous les controllers qui dispatchent une commande (méthode HTTP et gar
 ## Hors périmètre (vus en passant, non corrigés)
 
 - Une ligne de recette peut porter une unité sans chemin de conversion vers l'unité d'achat de son ingrédient : l'enregistrement l'accepte (formulaire Twig comme API), la planification échoue ensuite (`cannotConvertToUnit`). À valider à l'enregistrement avec `ConversionService::canConvertToPurchaseUnit`.
-- `GetActiveShoppingListViewController` crée la liste active sur un GET (lecture avec effet de bord, `EnsureActiveShoppingList`) : à garder tant que le front Twig l'attend, à supprimer avec l'API.
+- **Twig seulement, non corrigé (supprimé en phase 10)** : `GetActiveShoppingListViewController` crée la liste active sur un GET (lecture avec effet de bord, `EnsureActiveShoppingList`) : à garder tant que le front Twig l'attend, à supprimer avec l'API.
 - Lignes d'une recette : aucune colonne de position, l'ordre affiché est l'ordre de stockage (celui de la saisie tant que la recette n'est pas modifiée, puis variable). `RecipePostgreSQLLoader` le conserve à l'identique ; ajouter une position si l'ordre doit être garanti.
 - Le motif de date `dd MMMM YYYY` (templates des listes de courses et `ListShoppingLists`) utilise l'année ISO de la semaine : le 29 décembre 2025 s'affiche « 29 décembre 2026 ». Conservé tel quel pour ne pas changer l'affichage ; remplacer `YYYY` par `yyyy` partout en une fois (loader, `_shopping_list_card_header`, `shopping_list.html.twig`).
 - Inscription publique (`POST /api/v1/users`) : pas de vérification d'email (ni de captcha) ; un email déjà pris répond 409, ce qui révèle l'existence du compte (le formulaire Twig le fait déjà). Le plafond par IP ne vaut que si `SYMFONY_TRUSTED_PROXIES` est configuré derrière un reverse proxy.
 - `UserProvider::upgradePassword` met à jour le hash sur le modèle chargé mais ne l'enregistre pas : le rehachage automatique du mot de passe à la connexion est perdu (inoffensif tant que l'algorithme ne change pas).
-- Formulaires Twig de rayon (`AbstractDepartmentType`) : `UrlType` préfixe `http://` à une valeur sans protocole, donc modifier un rayon dont l'image est un chemin relatif (`images/…`, forme stockée en base et acceptée par l'API) la transforme en `http://images/…`. `default_protocol` est explicitement `http` (comportement inchangé, notice de dépréciation symfony/form 7.1 retirée) ; le passer à `null` rendrait le champ en `type="url"` et bloquerait les chemins relatifs dans le navigateur. À trancher avec le futur front (champ texte validé côté serveur comme `DepartmentPayload`, ou liste d'images).
-- `admin_recipe_type_row.html.twig` : la ligne porte `id="department-…"` (copier-coller du rayon), à renommer quand un test ou du JS la cible.
-- Formulaires admin : `conversion|default(null)` / `department|default(null)` / `unit|default(null)` jamais fournis par les controllers update, le titre reste « Nouveau … ».
-- Page de connexion : l'erreur « Identifiants invalides. » s'affiche sous le champ email et sous le champ mot de passe (`login.html.twig`), au lieu d'une seule fois.
+- **Twig seulement, non corrigé (supprimé en phase 10)** : formulaires Twig de rayon (`AbstractDepartmentType`) : `UrlType` préfixe `http://` à une valeur sans protocole, donc modifier un rayon dont l'image est un chemin relatif (`images/…`, forme stockée en base et acceptée par l'API) la transforme en `http://images/…`. `default_protocol` est explicitement `http` (comportement inchangé, notice de dépréciation symfony/form 7.1 retirée) ; le passer à `null` rendrait le champ en `type="url"` et bloquerait les chemins relatifs dans le navigateur. À trancher avec le futur front (champ texte validé côté serveur comme `DepartmentPayload`, ou liste d'images).
+- **Twig seulement, non corrigé (supprimé en phase 10)** : `admin_recipe_type_row.html.twig` : la ligne porte `id="department-…"` (copier-coller du rayon), à renommer quand un test ou du JS la cible.
+- **Twig seulement, non corrigé (supprimé en phase 10)** : formulaires admin : `conversion|default(null)` / `department|default(null)` / `unit|default(null)` jamais fournis par les controllers update, le titre reste « Nouveau … ».
+- **Twig seulement, non corrigé (supprimé en phase 10)** : page de connexion : l'erreur « Identifiants invalides. » s'affiche sous le champ email et sous le champ mot de passe (`login.html.twig`), au lieu d'une seule fois.
 
 ## Couverture de tests (cliquet)
 
