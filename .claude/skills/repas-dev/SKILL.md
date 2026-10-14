@@ -86,7 +86,7 @@ Détail : `references/migrate-view-controller.md`. Résumé :
 ## 4. Definition of Done
 
 - [ ] `make test` vert
-- [ ] `make deptrac` vert (la baseline ne grossit pas)
+- [ ] `make deptrac` vert (plus de baseline : aucune dépendance entre contextes, ce qui circule passe par `Shared`)
 - [ ] `make audit` vert si `composer.json` ou `composer.lock` change (ADR 0014)
 - [ ] `make phpstan` vert (aucune nouvelle entrée de baseline)
 - [ ] `make api-doc-validate` et `make api-doc-coverage` verts si un endpoint API est touché

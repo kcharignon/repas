@@ -14,7 +14,7 @@ Le code est organisé en bounded contexts sous `src/` : `Repas` (recettes, ingr�
 - `User` dépend de `Repas` (le listener de statistiques ; `OwnerVoter` ne dépend plus de `Repas` depuis la phase 7 : il passe par le port `Shared\Application\Interface\OwnershipLoader`).
 - `Shared` dépend de `Repas` et `User` (6 dépendances, dont `RepositoryTrait`).
 
-Les trois dernières entorses sont détectées par Deptrac et figées dans la baseline (77 entrées, 120 occurrences à l'introduction de l'outil). Les deux premières (dépendance à Symfony) ne le sont pas : Symfony n'est pas une couche Deptrac, elles restent signalées ici.
+Les trois dernières entorses étaient détectées par Deptrac et figées dans une baseline (77 entrées, 120 occurrences à l'introduction de l'outil) ; elles sont toutes résorbées (lot « `User` par identifiant », ADR 0013 règle 8) et la baseline est supprimée. Les deux premières (dépendance à Symfony) ne le sont pas : Symfony n'est pas une couche Deptrac, elles restent signalées ici.
 
 ## Décision
 
@@ -24,7 +24,7 @@ Les trois dernières entorses sont détectées par Deptrac et figées dans la ba
 4. `Infrastructure` implémente les ports et adapte le framework (HTTP, Doctrine, Twig, Security).
 5. `Shared` n'importe jamais `Repas` ni `User`. Les contextes peuvent importer `Shared`.
 6. Un contexte n'importe pas les `Infrastructure` d'un autre contexte.
-7. Les entorses existantes sont listées dans la baseline Deptrac ([0011](0011-garde-fous-deptrac-phpstan.md)) et résorbées au fil de l'eau, jamais aggravées. Toute nouvelle classe respecte les règles ci-dessus sans passer par la baseline.
+7. Deptrac interdit toute dépendance entre contextes, sans baseline ([0011](0011-garde-fous-deptrac-phpstan.md)). Ce qui doit circuler entre `Repas` et `User` est dans `Shared` : événements (`Shared\Domain\Event`), `AuthenticatedUser`, `OwnershipLoader`, classe de base des repositories Doctrine. Les fixtures de développement sont hors de cette règle.
 8. L'utilisateur connecté vu depuis un autre contexte que `User` est `Repas\Shared\Domain\Interface\AuthenticatedUser` (deux accesseurs : `getId()` et `getDefaultServing()`, ce dernier pour préremplir les formulaires), implémenté par `User\Domain\Model\User`. Un controller du contexte `Repas` l'obtient par `#[CurrentUser] AuthenticatedUser $user` (ou `assert($this->getUser() instanceof AuthenticatedUser)`) et passe `$user->getId()` à sa query ou à sa commande. Il n'importe jamais `User\Domain\Model\User` : la baseline Deptrac ne peut que diminuer (les controllers déjà migrés ont vu leur entrée retirée).
 
 Arborescence d'un contexte :
