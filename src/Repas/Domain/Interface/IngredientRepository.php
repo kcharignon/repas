@@ -17,6 +17,15 @@ interface IngredientRepository
     public function findOneBySlug(string $slug): Ingredient;
 
     /**
+     * Les ingrédients de ces slugs (chacun une fois), pour les use cases qui en lisent plusieurs d'un coup (lignes d'une recette).
+     *
+     * @param Tab<string> $slugs
+     * @return Tab<Ingredient>
+     * @throws IngredientException le premier slug inconnu
+     */
+    public function findBySlugs(Tab $slugs): Tab;
+
+    /**
      * Slug de l'unité d'achat de l'ingrédient : de quoi poser une ligne de liste sans hydrater l'ingrédient, son rayon et ses unités.
      *
      * @throws IngredientException

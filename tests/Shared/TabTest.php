@@ -372,6 +372,30 @@ class TabTest extends TestCase
     }
 
 
+    public function testIndexBy(): void
+    {
+        // Arrange
+        $tab = Tab::fromArray('pomme', 'poire', 'prune');
+
+        // Act
+        $actual = $tab->indexBy(fn(string $fruit) => strlen($fruit) . $fruit[2]);
+
+        // Assert
+        $this->assertSame(['5m' => 'pomme', '5i' => 'poire', '5u' => 'prune'], $actual);
+    }
+
+    public function testIndexByKeepsTheLastOfTwoItemsWithTheSameKey(): void
+    {
+        // Arrange
+        $tab = Tab::fromArray('pomme', 'poire');
+
+        // Act
+        $actual = $tab->indexBy(fn(string $fruit) => $fruit[0]);
+
+        // Assert
+        $this->assertSame(['p' => 'poire'], $actual);
+    }
+
     public function testReduce(): void
     {
         // Arrange

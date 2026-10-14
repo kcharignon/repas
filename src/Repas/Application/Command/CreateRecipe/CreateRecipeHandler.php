@@ -5,12 +5,15 @@ namespace Repas\Repas\Application\Command\CreateRecipe;
 use Repas\Shared\Domain\Event\RecipeCreatedEvent;
 use Repas\Repas\Domain\Exception\IngredientException;
 use Repas\Repas\Domain\Exception\RecipeException;
+use Repas\Repas\Domain\Exception\UnitException;
 use Repas\Repas\Domain\Interface\IngredientRepository;
 use Repas\Repas\Domain\Interface\RecipeRepository;
 use Repas\Repas\Domain\Interface\RecipeTypeRepository;
 use Repas\Repas\Domain\Interface\UnitRepository;
+use Repas\Repas\Domain\Model\Ingredient;
 use Repas\Repas\Domain\Model\Recipe;
 use Repas\Repas\Domain\Model\RecipeRow;
+use Repas\Repas\Domain\Model\Unit;
 use Repas\Repas\Domain\Service\ConversionService;
 use Repas\Shared\Domain\Tool\UuidGenerator;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
@@ -31,11 +34,20 @@ readonly class CreateRecipeHandler
 
     /**
      * @throws RecipeException
+     * @throws UnitException
      * @throws IngredientException une unité sans chemin de conversion vers l'unité d'achat de son ingrédient
      */
     public function __invoke(CreateRecipeCommand $command): void
     {
         $type = $this->typeRepository->findOneBySlug($command->typeSlug);
+
+        // Ingrédients et unités des lignes : une lecture par type, pas une par ligne
+        $ingredients = $this->ingredientRepository
+            ->findBySlugs($command->rows->map(fn(CreateRecipeRowSubCommand $subCmd) => $subCmd->ingredientSlug))
+            ->indexBy(fn(Ingredient $ingredient) => $ingredient->getSlug());
+        $units = $this->unitRepository
+            ->findBySlugs($command->rows->map(fn(CreateRecipeRowSubCommand $subCmd) => $subCmd->unitSlug)->unique())
+            ->indexBy(fn(Unit $unit) => $unit->getSlug());
 
         $recipe = Recipe::create(
             id: $command->id,
@@ -46,9 +58,9 @@ readonly class CreateRecipeHandler
             rows: $command->rows->map(fn(CreateRecipeRowSubCommand $subCmd) => RecipeRow::create(
                 id: UuidGenerator::new(),
                 recipeId: $command->id,
-                ingredient: $this->ingredientRepository->findOneBySlug($subCmd->ingredientSlug),
+                ingredient: $ingredients[$subCmd->ingredientSlug],
                 quantity: $subCmd->quantity,
-                unit: $this->unitRepository->findOneBySlug($subCmd->unitSlug),
+                unit: $units[$subCmd->unitSlug] ?? throw UnitException::notFound($subCmd->unitSlug),
             )),
             originalId: null,
         );

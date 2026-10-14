@@ -43,17 +43,26 @@ readonly class RecipeRowPostgreSQLRepository extends PostgreSQLRepository
     }
 
     /**
-     * @param int $position rang de la ligne dans sa recette (0 pour la première)
+     * Enregistre les lignes d'une recette dans l'ordre reçu (le rang est la position). Les lignes déjà connues sont
+     * lues en une requête (au lieu d'une par ligne), toutes sont écrites par un seul `flush`.
+     *
+     * @param Tab<RecipeRowModel> $recipeRows
      */
-    public function save(RecipeRowModel $recipeRow, int $position = 0): void
+    public function saveAll(Tab $recipeRows): void
     {
-        $recipeRowEntity = $this->entityRepository->find($recipeRow->getId());
-        if ($recipeRowEntity instanceof RecipeRowEntity) {
-            $recipeRowEntity->updateFromModel($recipeRow, $position);
-        } else {
-            $recipeRowEntity = RecipeRowEntity::fromModel($recipeRow, $position);
-            $this->entityManager->persist($recipeRowEntity);
+        $this->preload($recipeRows->map(fn(RecipeRowModel $recipeRow) => $recipeRow->getId()), 'id');
+
+        $position = 0;
+        foreach ($recipeRows as $recipeRow) {
+            $recipeRowEntity = $this->findManaged($recipeRow->getId());
+            if ($recipeRowEntity instanceof RecipeRowEntity) {
+                $recipeRowEntity->updateFromModel($recipeRow, $position);
+            } else {
+                $this->entityManager->persist(RecipeRowEntity::fromModel($recipeRow, $position));
+            }
+            ++$position;
         }
+
         $this->entityManager->flush();
     }
 

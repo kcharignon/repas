@@ -89,9 +89,10 @@ class Tab implements ArrayAccess, IteratorAggregate, Countable
      *
      * You can force the typing of the Tab resulting from the map. This is useful if Tab is empty.
      *
-     * @param callable(T): T $callback
+     * @template U
+     * @param callable(T): U $callback
      * @param string|null $type
-     * @return Tab
+     * @return Tab<U>
      */
     public function map(callable $callback, ?string $type = null): Tab
     {
@@ -121,6 +122,22 @@ class Tab implements ArrayAccess, IteratorAggregate, Countable
     public function find(callable $callback)
     {
         return array_find($this->items, $callback);
+    }
+
+    /**
+     * Les éléments rangés dans un tableau PHP par la clé que donne le callback (le dernier gagne en cas de doublon).
+     *
+     * @param callable(T): (int|string) $keyOf
+     * @return array<int|string, T>
+     */
+    public function indexBy(callable $keyOf): array
+    {
+        $indexed = [];
+        foreach ($this->items as $item) {
+            $indexed[$keyOf($item)] = $item;
+        }
+
+        return $indexed;
     }
 
     /**

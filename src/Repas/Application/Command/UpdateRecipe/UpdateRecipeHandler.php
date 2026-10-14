@@ -9,7 +9,9 @@ use Repas\Repas\Domain\Interface\IngredientRepository;
 use Repas\Repas\Domain\Interface\RecipeRepository;
 use Repas\Repas\Domain\Interface\RecipeTypeRepository;
 use Repas\Repas\Domain\Interface\UnitRepository;
+use Repas\Repas\Domain\Model\Ingredient;
 use Repas\Repas\Domain\Model\RecipeRow;
+use Repas\Repas\Domain\Model\Unit;
 use Repas\Repas\Domain\Service\ConversionService;
 use Repas\Shared\Domain\Tool\Tab;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
@@ -44,13 +46,20 @@ readonly class UpdateRecipeHandler
             serving: $command->serving,
         );
 
+        // Ingrédients et unités des lignes : une lecture par type, pas une par ligne
+        $ingredients = $this->ingredientRepository
+            ->findBySlugs($command->rows->map(fn(UpdateRecipeRowSubCommand $row) => $row->ingredientSlug))
+            ->indexBy(fn(Ingredient $ingredient) => $ingredient->getSlug());
+        $units = $this->unitRepository
+            ->findBySlugs($command->rows->map(fn(UpdateRecipeRowSubCommand $row) => $row->unitSlug)->unique())
+            ->indexBy(fn(Unit $unit) => $unit->getSlug());
+
         $recipe->setRows(Tab::newEmptyTyped(RecipeRow::class));
         foreach ($command->rows as $row) {
-            $ingredient = $this->ingredientRepository->findOneBySlug($row->ingredientSlug);
-            $unit = $this->unitRepository->findOneBySlug($row->unitSlug);
-            $quantity = $row->quantity;
+            $ingredient = $ingredients[$row->ingredientSlug];
+            $unit = $units[$row->unitSlug] ?? throw UnitException::notFound($row->unitSlug);
             $this->conversionService->assertConvertibleToPurchaseUnit($ingredient, $unit);
-            $recipe->addRow($ingredient, $unit, $quantity);
+            $recipe->addRow($ingredient, $unit, $row->quantity);
         }
 
         $this->recipeRepository->save($recipe);

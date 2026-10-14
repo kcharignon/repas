@@ -44,6 +44,27 @@ readonly class IngredientPostgreSQLRepository extends PostgreSQLRepository imple
     }
 
     /**
+     * Les ingrédients, leurs rayons et leurs unités sont lus en une requête chacun (au lieu de trois par ingrédient).
+     *
+     * @param Tab<string> $slugs
+     * @return Tab<IngredientModel>
+     * @throws IngredientException
+     */
+    public function findBySlugs(Tab $slugs): Tab
+    {
+        $slugs = $slugs->unique();
+        $this->preload($slugs);
+
+        $entities = Tab::newEmptyTyped(IngredientEntity::class);
+        foreach ($slugs as $slug) {
+            $entities[] = $this->findManaged($slug) ?? throw IngredientException::notFound($slug);
+        }
+        $this->preloadReferences($entities);
+
+        return $this->convertEntitiesToModels($entities);
+    }
+
+    /**
      * @throws IngredientException
      */
     public function findPurchaseUnitSlug(string $slug): string
@@ -163,11 +184,20 @@ readonly class IngredientPostgreSQLRepository extends PostgreSQLRepository imple
             type: IngredientEntity::class
         );
 
+        $this->preloadReferences($ingredientEntities);
+    }
+
+    /**
+     * Charge les rayons et les unités (d'achat, de cuisson, compatibles) des ingrédients en une requête chacun.
+     *
+     * @param Tab<IngredientEntity> $ingredientEntities
+     */
+    private function preloadReferences(Tab $ingredientEntities): void
+    {
         if (!$ingredientEntities->count()) {
-            return; // Aucun ingrédient à mettre en cache
+            return;
         }
 
-        // Extraire tous les slugs de départements et unités à récupérer
         $departmentSlugs = Tab::newEmptyTyped('string');
         $unitSlugs = Tab::newEmptyTyped('string');
 
@@ -180,7 +210,6 @@ readonly class IngredientPostgreSQLRepository extends PostgreSQLRepository imple
             }
         }
 
-        // Charger tous les départements et unités nécessaires en une requête chacun
         $this->departmentRepository->findBySlugs($departmentSlugs->unique());
         $this->unitRepository->findBySlugs($unitSlugs->unique());
     }

@@ -15,6 +15,7 @@ use Repas\Tests\Helper\Builder\UserBuilder;
 use Repas\Tests\Helper\DatabaseTestCase;
 use Repas\Tests\Helper\DataPersister;
 use Repas\Tests\Helper\RepasAssert;
+use Repas\Tests\Helper\SqlBudget\QueryCounter;
 use Repas\User\Domain\Model\User;
 
 /**
@@ -50,6 +51,61 @@ class IngredientRepositoryTest extends DatabaseTestCase
 
         // Act
         $this->ingredientRepository->findPurchaseUnitSlug('inconnu');
+    }
+
+    public function testFindBySlugsReturnsEachIngredientOnce(): void
+    {
+        // Arrange
+        $egg = new IngredientBuilder()->isEgg()->build();
+        $pasta = new IngredientBuilder()->isPasta()->build();
+        $milk = new IngredientBuilder()->isMilk()->build();
+        foreach ([$egg, $pasta, $milk] as $ingredient) {
+            $this->persister->saveIngredient($ingredient);
+        }
+
+        // Act
+        $actual = $this->ingredientRepository->findBySlugs(Tab::fromArray($pasta->getSlug(), $egg->getSlug(), $pasta->getSlug()));
+
+        // Assert
+        RepasAssert::assertTabType(Tab::newEmptyTyped(Ingredient::class), $actual);
+        $this->assertCount(2, $actual);
+        $indexed = $actual->indexBy(fn(Ingredient $ingredient) => $ingredient->getSlug());
+        RepasAssert::assertIngredient($pasta, $indexed[$pasta->getSlug()]);
+        RepasAssert::assertIngredient($egg, $indexed[$egg->getSlug()]);
+    }
+
+    public function testFindBySlugsFailsForAnUnknownIngredient(): void
+    {
+        // Arrange
+        $egg = new IngredientBuilder()->isEgg()->build();
+        $this->persister->saveIngredient($egg);
+
+        // Assert
+        $this->expectExceptionObject(IngredientException::notFound('inconnu'));
+
+        // Act
+        $this->ingredientRepository->findBySlugs(Tab::fromArray($egg->getSlug(), 'inconnu'));
+    }
+
+    public function testFindBySlugsReadsIngredientsDepartmentsAndUnitsInOneQueryEach(): void
+    {
+        // Arrange
+        $egg = new IngredientBuilder()->isEgg()->build();
+        $pasta = new IngredientBuilder()->isPasta()->build();
+        $milk = new IngredientBuilder()->isMilk()->build();
+        foreach ([$egg, $pasta, $milk] as $ingredient) {
+            $this->persister->saveIngredient($ingredient);
+        }
+        static::getContainer()->get('doctrine')->getManager()->clear();
+        $counter = static::getContainer()->get(QueryCounter::class);
+        $counter->reset();
+
+        // Act
+        $actual = $this->ingredientRepository->findBySlugs(Tab::fromArray($egg->getSlug(), $pasta->getSlug(), $milk->getSlug()));
+
+        // Assert
+        $this->assertCount(3, $actual);
+        $this->assertSame(['SELECT ingredient' => 1, 'SELECT department' => 1, 'SELECT unit' => 1], $counter->byTable());
     }
 
     public function testCRUD(): void
