@@ -37,7 +37,6 @@ class CreateConversionHandlerTest extends TestCase
             $this->conversionRepository,
             $this->unitRepository,
             $this->ingredientRepository,
-            new ControlledUuidGenerator(),
         );
     }
 
@@ -51,7 +50,7 @@ class CreateConversionHandlerTest extends TestCase
         $egg = new IngredientBuilder()->isEgg()->build();
         $this->ingredientRepository->save($egg);
 
-        $command = new CreateConversionCommand($box->getSlug(), $unite->getSlug(), 6, $egg->getSlug());
+        $command = new CreateConversionCommand(ControlledUuidGenerator::UUID, $box->getSlug(), $unite->getSlug(), 6, $egg->getSlug());
 
         // Act
         ($this->handler)($command);
@@ -77,7 +76,7 @@ class CreateConversionHandlerTest extends TestCase
         $box = new UnitBuilder()->isBox()->build();
         $this->unitRepository->save($box);
 
-        $command = new CreateConversionCommand($box->getSlug(), $unite->getSlug(), 6, null);
+        $command = new CreateConversionCommand(ControlledUuidGenerator::UUID, $box->getSlug(), $unite->getSlug(), 6, null);
 
         // Act
         ($this->handler)($command);
@@ -103,7 +102,7 @@ class CreateConversionHandlerTest extends TestCase
         $this->unitRepository->save($box);
         $egg = new IngredientBuilder()->isEgg()->build();
 
-        $command = new CreateConversionCommand($box->getSlug(), $unite->getSlug(), 6, $egg->getSlug());
+        $command = new CreateConversionCommand(ControlledUuidGenerator::UUID, $box->getSlug(), $unite->getSlug(), 6, $egg->getSlug());
 
         // Assert
         $this->expectExceptionObject(IngredientException::notFound($egg->getSlug()));
@@ -121,7 +120,7 @@ class CreateConversionHandlerTest extends TestCase
         $egg = new IngredientBuilder()->isEgg()->build();
         $this->ingredientRepository->save($egg);
 
-        $command = new CreateConversionCommand($box->getSlug(), $unite->getSlug(), 6, $egg->getSlug());
+        $command = new CreateConversionCommand(ControlledUuidGenerator::UUID, $box->getSlug(), $unite->getSlug(), 6, $egg->getSlug());
 
         // Assert
         $this->expectExceptionObject(UnitException::notFound($box->getSlug()));
@@ -139,7 +138,7 @@ class CreateConversionHandlerTest extends TestCase
         $egg = new IngredientBuilder()->isEgg()->build();
         $this->ingredientRepository->save($egg);
 
-        $command = new CreateConversionCommand($box->getSlug(), $unite->getSlug(), 6, $egg->getSlug());
+        $command = new CreateConversionCommand(ControlledUuidGenerator::UUID, $box->getSlug(), $unite->getSlug(), 6, $egg->getSlug());
 
         // Assert
         $this->expectExceptionObject(UnitException::notFound($unite->getSlug()));
