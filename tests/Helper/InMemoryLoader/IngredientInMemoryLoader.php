@@ -60,9 +60,9 @@ class IngredientInMemoryLoader implements IngredientLoader
 
         return $this->compatibleUnits;
     }
-    public function listAvailable(string $userId): array
+    public function listAvailable(string $userId, ?string $search = null): array
     {
-        $this->listAvailableCalls[] = $userId;
+        $this->listAvailableCalls[] = $search === null ? $userId : [$userId, $search];
 
         return $this->availableIngredients;
     }
