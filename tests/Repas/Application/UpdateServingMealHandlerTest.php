@@ -20,6 +20,7 @@ use Repas\Tests\Helper\Builder\ShoppingListBuilder;
 use Repas\Tests\Helper\Builder\UnitBuilder;
 use Repas\Tests\Helper\Builder\UserBuilder;
 use Repas\Tests\Helper\InMemoryRepository\ConversionInMemoryRepository;
+use Repas\Tests\Helper\InMemoryRepository\RecipeInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\ShoppingListInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\UnitInMemoryRepository;
 
@@ -67,6 +68,7 @@ class UpdateServingMealHandlerTest extends TestCase
 
         $this->handler = new UpdateServingMealHandler(
             $this->shoppingListRepository,
+            new RecipeInMemoryRepository([$this->recipe]),
             $this->conversionService,
         );
     }

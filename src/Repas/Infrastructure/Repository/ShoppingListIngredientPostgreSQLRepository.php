@@ -4,10 +4,6 @@ namespace Repas\Repas\Infrastructure\Repository;
 
 
 use Doctrine\Persistence\ManagerRegistry;
-use Repas\Repas\Domain\Exception\IngredientException;
-use Repas\Repas\Domain\Exception\UnitException;
-use Repas\Repas\Domain\Interface\IngredientRepository;
-use Repas\Repas\Domain\Interface\UnitRepository;
 use Repas\Repas\Domain\Model\ShoppingListIngredient;
 use Repas\Repas\Domain\Model\ShoppingListIngredient as ShopListIngModel;
 use Repas\Repas\Infrastructure\Entity\ShoppingListIngredient as ShopListIngEntity;
@@ -18,8 +14,6 @@ readonly class ShoppingListIngredientPostgreSQLRepository extends PostgreSQLRepo
 
     public function __construct(
         ManagerRegistry $registry,
-        private IngredientRepository $ingredientRepository,
-        private UnitRepository $unitRepository,
     ) {
         parent::__construct($registry, ShopListIngEntity::class);
     }
@@ -46,18 +40,14 @@ readonly class ShoppingListIngredientPostgreSQLRepository extends PostgreSQLRepo
         $this->entityManager->flush();
     }
 
-    /**
-     * @throws UnitException
-     * @throws IngredientException
-     */
     private function convertEntityToModel(ShopListIngEntity $entity): ShopListIngModel
     {
         return ShopListIngModel::load([
             'id' => $entity->getId(),
             'shopping_list_id' => $entity->getShoppingListId(),
-            'ingredient' => $this->ingredientRepository->findOneBySlug($entity->getIngredientSlug()),
+            'ingredient_slug' => $entity->getIngredientSlug(),
             'quantity' => $entity->getQuantity(),
-            'unit' => $this->unitRepository->findOneBySlug($entity->getUnitSlug()),
+            'unit_slug' => $entity->getUnitSlug(),
         ]);
     }
 

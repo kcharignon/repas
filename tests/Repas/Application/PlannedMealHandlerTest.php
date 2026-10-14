@@ -107,7 +107,7 @@ class PlannedMealHandlerTest extends TestCase
         foreach ($recipe->getRows() as $recipeRow) {
             $ingredient = $recipeRow->getIngredient();
             $coefficient = $user->getDefaultServing() / $recipe->getServing();
-            $actualQuantity = $shoppingList->getRows()->find(fn(ShoppingListRow $row) => $row->getIngredient()->isEqual($ingredient))->getQuantity();
+            $actualQuantity = $shoppingList->getRows()->find(fn(ShoppingListRow $row) => $row->getIngredientSlug() === $ingredient->getSlug())->getQuantity();
             // On convertie dans l'unité d'achat et on multiplie par le coef
             $expectedQuantity = $this->conversionService->convertTo($ingredient, $recipeRow->getQuantity(), $recipeRow->getUnit(), $ingredient->getDefaultPurchaseUnit()) * $coefficient;
             $this->assertEquals($expectedQuantity, $actualQuantity, "Ingredient '{$ingredient->getName()}' have not the right quantity");

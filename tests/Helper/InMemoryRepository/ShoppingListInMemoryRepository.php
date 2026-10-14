@@ -75,13 +75,13 @@ class ShoppingListInMemoryRepository extends AbstractInMemoryRepository implemen
     {
         return $this->models->filter(
             fn(ShoppingList $shopList) => $shopList->getIngredients()->find(
-                fn(ShoppingListIngredient $sli) => $sli->getIngredient()->isEqual($ingredient)
+                fn(ShoppingListIngredient $sli) => $sli->hasIngredient($ingredient)
             )
         );
     }
 
     public function findByRecipe(Recipe $recipe): Tab
     {
-        return $this->models->filter(fn(ShoppingList $sl) => $sl->getMeals()->find(fn(Meal $meal) => $recipe->isEqual($meal->getRecipe())));
+        return $this->models->filter(fn(ShoppingList $sl) => $sl->getMeals()->find(fn(Meal $meal) => $meal->hasRecipe($recipe)));
     }
 }

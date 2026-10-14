@@ -96,8 +96,8 @@ class RemoveIngredientToShoppingListHandlerTest extends TestCase
         $shoppingList = $this->shoppingListRepository->findOneById('shopping-list-id');
         $this->assertCount(1, $shoppingList->getIngredients());
         $this->assertCount(1, $shoppingList->getRows());
-        $this->assertEquals(2, $shoppingList->getIngredients()->find(fn(ShoppingListIngredient $spi) => $spi->getIngredient()->isEqual($this->ingredient))->getQuantity());
-        $this->assertEquals(2, $shoppingList->getRows()->find(fn(ShoppingListRow $spr) => $spr->getIngredient()->isEqual($this->ingredient))->getQuantity());
+        $this->assertEquals(2, $shoppingList->getIngredients()->find(fn(ShoppingListIngredient $spi) => $spi->hasIngredient($this->ingredient))->getQuantity());
+        $this->assertEquals(2, $shoppingList->getRows()->find(fn(ShoppingListRow $spr) => $spr->getIngredientSlug() === $this->ingredient->getSlug())->getQuantity());
     }
 
     public function testFailedHandleRemoveIngredientToShoppingListShoppingListNotFound(): void

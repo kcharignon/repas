@@ -49,9 +49,9 @@ class ShoppingListRow
         return new static(
             id: $rowModel->getId(),
             shoppingListId: $rowModel->getShoppingListId(),
-            ingredientSlug: $rowModel->getIngredient()->getSlug(),
+            ingredientSlug: $rowModel->getIngredientSlug(),
             quantity: $rowModel->getQuantity(),
-            unitSlug: $rowModel->getUnit()->getSlug(),
+            unitSlug: $rowModel->getUnitSlug(),
             checked: $rowModel->isChecked()
         );
     }

@@ -16,9 +16,6 @@ final class ShoppingList implements ModelInterface
 {
     use ModelTrait;
 
-    /** @var Tab<RecipeType>|null  */
-    private ?Tab $recipeTypes = null;
-
     /**
      * @param Tab<Meal> $meals
      * @param Tab<ShoppingListIngredient> $ingredients
@@ -69,7 +66,7 @@ final class ShoppingList implements ModelInterface
 
     public function getRows(): Tab
     {
-        return $this->rows->usort(fn(Row $a, Row $b) => $a->getIngredient()->getSlug() <=> $b->getIngredient()->getSlug());
+        return $this->rows->usort(fn(Row $a, Row $b) => $a->getIngredientSlug() <=> $b->getIngredientSlug());
     }
 
     public static function create(
@@ -101,70 +98,6 @@ final class ShoppingList implements ModelInterface
             ingredients: $datas['ingredients'],
             rows: $datas['rows'],
         );
-    }
-
-    /**
-     * @return Tab<RecipeType>
-     */
-    public function recipeTypePresent(): Tab
-    {
-        if (null === $this->recipeTypes) {
-            $this->recipeTypes = Tab::newEmptyTyped(RecipeType::class);
-            foreach ($this->meals as $meal) {
-                $mealRecipeType = $meal->getRecipeType();
-                if (!isset($this->recipeTypes[$mealRecipeType->getSlug()])) {
-                    $this->recipeTypes[$mealRecipeType->getSlug()] = $mealRecipeType;
-                }
-            }
-        }
-
-        // Tri des types par ordre de séquence
-        return $this->recipeTypes
-            ->usort(fn(RecipeType $type1, RecipeType $type2) =>  $type1->getOrder() <=> $type2->getOrder());
-    }
-
-    /**
-     * @param RecipeType $recipeType
-     * @return Tab<Recipe>
-     */
-    public function getRecipesByType(RecipeType $recipeType): Tab
-    {
-        $res = Tab::newEmptyTyped(Recipe::class);
-
-        foreach ($this->meals as $meal) {
-            if ($meal->getRecipeType()->isEqual($recipeType)) {
-                $res[] = $meal->getRecipe();
-            }
-        }
-
-        return $res;
-    }
-
-    /**
-     * @param RecipeType $recipeType
-     * @return Tab<Meal>
-     */
-    public function getMealByType(RecipeType $recipeType): Tab
-    {
-        return $this->meals->filter(fn(Meal $meal) => $meal->getRecipeType()->isEqual($recipeType));
-    }
-
-    /**
-     * @return Tab<Department>
-     */
-    public function getDepartments(): Tab
-    {
-        $res = Tab::newEmptyTyped(Department::class);
-        foreach ($this->rows as $row) {
-            $department = $row->getDepartment();
-            $res[$department->getSlug()] = $department;
-        }
-        return $res->usort(fn(Department $a, Department $b) => $a->getSlug() <=> $b->getSlug());
-    }
-
-    public function numberOfTypeRecipes(RecipeType $type): int
-    {
-        return $this->meals->filter(fn(Meal $meal) => $meal->typeIs($type))->count();
     }
 
     public function hasRecipe(Recipe $recipe): bool
@@ -201,7 +134,7 @@ final class ShoppingList implements ModelInterface
         $this->meals[] = Meal::create(
             id: $id,
             shoppingListId: $this->id,
-            recipe: $recipe,
+            recipeId: $recipe->getId(),
             servings: $this->owner->getDefaultServing(),
         );
     }
@@ -209,7 +142,7 @@ final class ShoppingList implements ModelInterface
     public function addRow(Ingredient $ingredient, float $quantity): void
     {
         // Cherche si la ligne avec l'ingrédient est déjà present dans la liste
-        if (($row = $this->rows->find(fn(Row $row) => $row->getIngredient()->isEqual($ingredient))) !== null) {
+        if (($row = $this->rows->find(fn(Row $row) => $row->getIngredientSlug() === $ingredient->getSlug())) !== null) {
             $row->addQuantity($quantity);
         } else {
             //Sinon on créer la ligne
@@ -220,7 +153,7 @@ final class ShoppingList implements ModelInterface
     public function subtractRow(Ingredient $ingredient, float $quantity): void
     {
         // Cherche si la ligne avec l'ingrédient est déjà present dans la liste
-        if (($rowKey = $this->rows->findKey(fn(Row $row) => $row->getIngredient()->isEqual($ingredient))) !== null) {
+        if (($rowKey = $this->rows->findKey(fn(Row $row) => $row->getIngredientSlug() === $ingredient->getSlug())) !== null) {
             $this->rows[$rowKey]->subtractQuantity($quantity);
             // si la quantité passe à zero ou moins, on supprime la row
             if ($this->rows[$rowKey]->getQuantity() <= 0) {
@@ -253,7 +186,7 @@ final class ShoppingList implements ModelInterface
     public function addIngredient(Ingredient $ingredient): void
     {
         // Recherche de l'ingrédient dans l'unité d'achat dans la liste
-        if (($shopListIngredient = $this->ingredients->find(fn(ShoppingListIngredient $sli) => $sli->getIngredient()->isEqual($ingredient) && $sli->getUnit()->isEqual($ingredient->getDefaultPurchaseUnit()))) !== null) {
+        if (($shopListIngredient = $this->ingredients->find(fn(ShoppingListIngredient $sli) => $sli->hasIngredient($ingredient) && $sli->getUnitSlug() === $ingredient->getDefaultPurchaseUnit()->getSlug())) !== null) {
             // Si on le trouve on incrémente de 1 la quantité
             $shopListIngredient->addQuantity(1);
         } else {
@@ -269,7 +202,7 @@ final class ShoppingList implements ModelInterface
 
     public function removeIngredient(Ingredient $ingredient): void
     {
-        $ingredientKey = $this->ingredients->findKey(fn(ShoppingListIngredient $sli) => $sli->getIngredient()->isEqual($ingredient) && $sli->getUnit()->isEqual($ingredient->getDefaultPurchaseUnit()));
+        $ingredientKey = $this->ingredients->findKey(fn(ShoppingListIngredient $sli) => $sli->hasIngredient($ingredient) && $sli->getUnitSlug() === $ingredient->getDefaultPurchaseUnit()->getSlug());
 
         // Si on ne retrouve pas l'ingrédient, il n'est deja plus present dans la liste
         if ($ingredientKey === null) {
@@ -283,11 +216,6 @@ final class ShoppingList implements ModelInterface
         if ($this->ingredients[$ingredientKey]->getQuantity() <= 0) {
             unset($this->ingredients[$ingredientKey]);
         }
-    }
-
-    public function allLineTicked(): bool
-    {
-        return $this->rows->find(fn(ShoppingListRow $row) => !$row->isChecked()) === null;
     }
 
     public function completed(): void
@@ -325,7 +253,7 @@ final class ShoppingList implements ModelInterface
 
     public function getIngredientQuantity(Ingredient $ingredient): ?float
     {
-        return $this->rows->find(fn(Row $row) => $row->getIngredient()->isEqual($ingredient))?->getQuantity();
+        return $this->rows->find(fn(Row $row) => $row->getIngredientSlug() === $ingredient->getSlug())?->getQuantity();
     }
 
     public function isActivate(): bool

@@ -75,8 +75,8 @@ class ShoppingListRepositoryTest extends DatabaseTestCase
         RepasAssert::assertShoppingList($shoppingList, $actual);
 
         // Arrange
-        foreach ($shoppingList->getIngredients() as $shopListIngredient) {
-            $shoppingList->addRow($shopListIngredient->getIngredient(), $shopListIngredient->getQuantity());
+        foreach ($secondRecipe->getRows() as $recipeRow) {
+            $shoppingList->addRow($recipeRow->getIngredient(), $recipeRow->getQuantity());
         }
 
         // Act

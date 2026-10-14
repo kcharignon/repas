@@ -29,6 +29,36 @@ class ShoppingListRowRepositoryTest extends DatabaseTestCase
         $persister->saveUnit(new UnitBuilder()->isUnite()->build());
     }
 
+
+    public function testAllRowsCheckedIsFalseWhileOneRowRemainsToTick(): void
+    {
+        // Arrange
+        $shoppingListId = 'shopping-list-id';
+        $checked = new ShoppingListRowBuilder()->withShoppingListId($shoppingListId)->checked()->build();
+        $remaining = new ShoppingListRowBuilder()->withShoppingListId($shoppingListId)->build();
+        $this->shoppingListRowRepository->save($checked);
+        $this->shoppingListRowRepository->save($remaining);
+
+        // Act & Assert
+        $this->assertFalse($this->shoppingListRowRepository->allRowsChecked($shoppingListId));
+
+        // Arrange
+        $remaining->tick();
+        $this->shoppingListRowRepository->save($remaining);
+
+        // Act & Assert
+        $this->assertTrue($this->shoppingListRowRepository->allRowsChecked($shoppingListId));
+    }
+
+    public function testAllRowsCheckedIgnoresTheRowsOfOtherListsAndIsTrueForAnEmptyList(): void
+    {
+        // Arrange
+        $this->shoppingListRowRepository->save(new ShoppingListRowBuilder()->withShoppingListId('another-list')->build());
+
+        // Act & Assert
+        $this->assertTrue($this->shoppingListRowRepository->allRowsChecked('shopping-list-id'));
+    }
+
     public function testCRUD(): void
     {
         // Arrange

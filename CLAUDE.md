@@ -69,6 +69,7 @@ src/{Context}/
   - `load(array $datas)` — reconstruction depuis la persistance (utilisé par les repositories).
   - Méthodes `update(...)` / `set*()` fluent (`return $this;`) pour les mutations.
 - Comparaison par identité via `isEqual()`, jamais `===` sur les objets métier.
+- **Un agrégat référence les autres agrégats par identifiant** (slug, id), jamais par l'objet : `ShoppingListRow` porte `ingredientSlug` / `unitSlug`, `Meal` porte `recipeId` (ADR 0013). Un use case qui a besoin de la `Recipe` d'un repas la charge par son port ; une question d'existence ou d'état d'un ensemble est une méthode de port booléenne, pas une hydratation d'agrégats.
 - Collections typées via `Repas\Shared\Domain\Tool\Tab` (wrapper de collection typé), pas de tableaux PHP nus pour des listes de modèles.
 
 ## Repository pattern
@@ -108,7 +109,7 @@ src/{Context}/
 - **Tests de base** : `DatabaseTestCase` crée le schéma (vide) une seule fois, puis chaque test tourne dans une transaction annulée (DAMA) ; suite complète ~3 s. Un test de base **crée ses propres données** (builders + repositories ; `tests/Helper/DataPersister` enregistre un modèle et les agrégats qu'il référence) et n'asserte que sur elles : aucune fixture globale. Les `DataFixture` ne servent qu'au développement.
 - `CommandHandler` : `{X}InMemoryRepository` + `SpyEventDispatcher`, pas de mock manuel des interfaces.
 - `QueryHandler` : un `{X}InMemoryLoader` (double idiot : renvoie des DTO programmés, enregistre ses appels). Le test asserte que le handler transmet les bons paramètres au Loader et renvoie son résultat tel quel. Filtres, tri, jointures et calculs du DTO se prouvent dans le test du Loader réel (`tests/Repas/OutputAdapter/`, `DatabaseTestCase`). Controllers API : doubles de bus (`tests/Repas/InputAdapter/`), en vérifiant la query construite, le statut et les **clés JSON** du DTO (ADR 0010).
-- Buses : `QueryBus` / `CommandBus` se testent en unitaire avec `MockMessageBus` ; `BusWiringTest` prouve le câblage réel avec les handlers factices de `tests/Helper/Bus/` ; `QueryConventionTest` impose `#[AsMessageHandler(bus: 'query.bus')]` et un handler par query (ADR 0006). Les controllers se testent avec `MockQueryBus` (`MockCommandBus` à créer avec la première écriture API).
+- Buses : `QueryBus` / `CommandBus` se testent en unitaire avec `MockMessageBus` ; `BusWiringTest` prouve le câblage réel avec les handlers factices de `tests/Helper/Bus/` ; `QueryConventionTest` impose `#[AsMessageHandler(bus: 'query.bus')]` et un handler par query (ADR 0006). Les controllers se testent avec `MockQueryBus` (`MockCommandBus` enregistre les commandes reçues sans les exécuter).
 - **Budget SQL des écritures** : `tests/Repas/WriteBudget` mesure chaque use case d'écriture de bout en bout (requêtes SQL avec et sans `ModelCache`) et fige le résultat dans `budgets.php`, en cliquet (ADR 0010 règle 12). Un use case plus gourmand fait échouer `make test` ; un use case allégé impose `make sql-budget-update`. `make cache-removal-check` indique quand `ModelCache` peut être retiré (phase 8 de la roadmap).
 - Structure `// Given` / `// When` / `// Then`.
 

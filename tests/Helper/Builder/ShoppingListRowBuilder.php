@@ -23,9 +23,9 @@ class ShoppingListRowBuilder implements Builder
         return ShoppingListRow::load([
             'id' => $this->id,
             'shopping_list_id' => $this->shoppingListId,
-            'ingredient' => $this->ingredient instanceof IngredientBuilder ? $this->ingredient->build() : $this->ingredient,
+            'ingredient_slug' => ($this->ingredient instanceof IngredientBuilder ? $this->ingredient->build() : $this->ingredient)->getSlug(),
             'quantity' => $this->quantity,
-            'unit' => $this->unit instanceof UnitBuilder ? $this->unit->build() : $this->unit,
+            'unit_slug' => ($this->unit instanceof UnitBuilder ? $this->unit->build() : $this->unit)->getSlug(),
             'checked' => $this->checked,
         ]);
     }

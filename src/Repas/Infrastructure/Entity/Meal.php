@@ -40,7 +40,7 @@ class Meal
         return new self(
             id: $meal->getId(),
             shoppingListId: $meal->getShoppingListId(),
-            recipeId: $meal->getRecipe()->getId(),
+            recipeId: $meal->getRecipeId(),
             serving: $meal->getServing(),
         );
     }

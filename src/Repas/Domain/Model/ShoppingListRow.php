@@ -14,9 +14,9 @@ final class ShoppingListRow implements ModelInterface
     public function __construct(
         private string     $id,
         private string     $shoppingListId,
-        private Ingredient $ingredient,
+        private string     $ingredientSlug,
         private float      $quantity,
-        private Unit       $unit,
+        private string     $unitSlug,
         private bool       $checked,
     ) {
     }
@@ -29,9 +29,9 @@ final class ShoppingListRow implements ModelInterface
         return new self(
             id: UuidGenerator::new(),
             shoppingListId: $shoppingListId,
-            ingredient: $ingredient,
+            ingredientSlug: $ingredient->getSlug(),
             quantity: $quantity,
-            unit: $ingredient->getDefaultPurchaseUnit(),
+            unitSlug: $ingredient->getDefaultPurchaseUnit()->getSlug(),
             checked: false,
         );
     }
@@ -46,9 +46,9 @@ final class ShoppingListRow implements ModelInterface
         return $this->shoppingListId;
     }
 
-    public function getIngredient(): Ingredient
+    public function getIngredientSlug(): string
     {
-        return $this->ingredient;
+        return $this->ingredientSlug;
     }
 
     public function getQuantity(): float
@@ -56,9 +56,9 @@ final class ShoppingListRow implements ModelInterface
         return $this->quantity;
     }
 
-    public function getUnit(): Unit
+    public function getUnitSlug(): string
     {
-        return $this->unit;
+        return $this->unitSlug;
     }
 
     public function isChecked(): bool
@@ -71,9 +71,9 @@ final class ShoppingListRow implements ModelInterface
         return new self(
             id: $datas['id'],
             shoppingListId: $datas['shopping_list_id'],
-            ingredient: $datas['ingredient'],
+            ingredientSlug: $datas['ingredient_slug'],
             quantity: $datas['quantity'],
-            unit: $datas['unit'],
+            unitSlug: $datas['unit_slug'],
             checked: $datas['checked'],
         );
     }
@@ -96,10 +96,5 @@ final class ShoppingListRow implements ModelInterface
     public function uncheck(): void
     {
         $this->checked = false;
-    }
-
-    public function getDepartment(): Department
-    {
-        return $this->ingredient->getDepartment();
     }
 }

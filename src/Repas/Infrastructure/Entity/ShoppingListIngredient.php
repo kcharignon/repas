@@ -44,8 +44,8 @@ class ShoppingListIngredient
         return new static(
             id: $model->getId(),
             shoppingListId: $model->getShoppingListId(),
-            ingredientSlug: $model->getIngredient()->getSlug(),
-            unitSlug: $model->getUnit()->getSlug(),
+            ingredientSlug: $model->getIngredientSlug(),
+            unitSlug: $model->getUnitSlug(),
             quantity: $model->getQuantity(),
         );
     }

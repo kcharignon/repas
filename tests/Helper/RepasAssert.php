@@ -132,7 +132,7 @@ class RepasAssert
         if (!in_array("id", $excluded, true)) {
             Assert::assertEquals($expected->getId(), $actual->getId());
         }
-        self::assertRecipe($expected->getRecipe(), $actual->getRecipe());
+        Assert::assertSame($expected->getRecipeId(), $actual->getRecipeId());
         Assert::assertEquals($expected->getServing(), $actual->getServing());
         Assert::assertEquals($expected->getShoppingListId(), $actual->getShoppingListId());
     }
@@ -215,8 +215,8 @@ class RepasAssert
         Assert::assertEquals($expected->getId(), $actual->getId());
         Assert::assertEquals($expected->getShoppingListId(), $actual->getShoppingListId());
         Assert::assertEquals($expected->getQuantity(), $actual->getQuantity());
-        self::assertUnit($expected->getUnit(), $actual->getUnit());
-        self::assertIngredient($expected->getIngredient(), $actual->getIngredient());
+        Assert::assertSame($expected->getUnitSlug(), $actual->getUnitSlug());
+        Assert::assertSame($expected->getIngredientSlug(), $actual->getIngredientSlug());
     }
 
     public static function assertConversion(Conversion $expected, mixed $actual, array $excluded = []): void
@@ -244,7 +244,7 @@ class RepasAssert
         Assert::assertEquals($expected->isChecked(), $actual->isChecked());
         Assert::assertEquals($expected->getShoppingListId(), $actual->getShoppingListId());
         Assert::assertEquals($expected->getQuantity(), $actual->getQuantity());
-        self::assertUnit($expected->getUnit(), $actual->getUnit());
-        self::assertIngredient($expected->getIngredient(), $actual->getIngredient());
+        Assert::assertSame($expected->getUnitSlug(), $actual->getUnitSlug());
+        Assert::assertSame($expected->getIngredientSlug(), $actual->getIngredientSlug());
     }
 }

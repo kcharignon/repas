@@ -6,7 +6,6 @@ namespace Repas\Repas\Infrastructure\Repository;
 use Doctrine\Persistence\ManagerRegistry;
 use Repas\Repas\Domain\Exception\MealException;
 use Repas\Repas\Domain\Interface\MealRepository;
-use Repas\Repas\Domain\Interface\RecipeRepository;
 use Repas\Repas\Domain\Model\Meal;
 use Repas\Repas\Infrastructure\Entity\Meal as MealEntity;
 use Repas\Shared\Domain\Tool\Tab;
@@ -15,7 +14,6 @@ readonly class MealPostgreSQLRepository extends PostgreSQLRepository
 {
     public function __construct(
         ManagerRegistry $managerRegistry,
-        private RecipeRepository $recipeRepository,
     ) {
         parent::__construct($managerRegistry, MealEntity::class);
     }
@@ -60,7 +58,7 @@ readonly class MealPostgreSQLRepository extends PostgreSQLRepository
         return Meal::load([
             'id' => $meal->getId(),
             'shopping_list_id' => $meal->getShoppingListId(),
-            'recipe' => $this->recipeRepository->findOneById($meal->getRecipeId()),
+            'recipe_id' => $meal->getRecipeId(),
             'serving' => $meal->getServing(),
         ]);
     }

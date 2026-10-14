@@ -4,7 +4,7 @@ namespace Repas\Repas\Infrastructure\EventListener;
 
 use Repas\Repas\Application\Command\StoppedShoppingList\StoppedShoppingListCommand;
 use Repas\Repas\Domain\Event\LineTickedEvent;
-use Repas\Repas\Domain\Interface\ShoppingListRepository;
+use Repas\Repas\Domain\Interface\ShoppingListRowRepository;
 use Repas\Shared\Application\Interface\CommandBusInterface;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 
@@ -12,17 +12,15 @@ use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 readonly class StopListEventListener
 {
     public function __construct(
-        public ShoppingListRepository $shoppingListRepository,
+        public ShoppingListRowRepository $shoppingListRowRepository,
         public CommandBusInterface $commandBus,
     ) {
     }
 
     public function __invoke(LineTickedEvent $lineTickedEvent): void
     {
-        $shoppingList = $this->shoppingListRepository->findOneById($lineTickedEvent->shoppingListId);
-
-        if ($shoppingList->allLineTicked()) {
-            $command = new StoppedShoppingListCommand($shoppingList->getId());
+        if ($this->shoppingListRowRepository->allRowsChecked($lineTickedEvent->shoppingListId)) {
+            $command = new StoppedShoppingListCommand($lineTickedEvent->shoppingListId);
             $this->commandBus->dispatch($command);
         }
     }
