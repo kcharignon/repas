@@ -8,9 +8,7 @@ use Doctrine\Persistence\ManagerRegistry;
 use Repas\Repas\Domain\Exception\MealException;
 use Repas\Repas\Domain\Exception\ShoppingListException;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
-use Repas\Repas\Domain\Model\Ingredient;
 use Repas\Repas\Domain\Model\Meal as MealModel;
-use Repas\Repas\Domain\Model\Recipe;
 use Repas\Repas\Domain\Model\ShoppingList;
 use Repas\Repas\Domain\Model\ShoppingListIngredient as ShoppingListIngredientModel;
 use Repas\Repas\Domain\Model\ShoppingListRow as ShoppingListRowModel;
@@ -180,45 +178,27 @@ readonly class ShoppingListPostgreSQLRepository extends PostgreSQLRepository imp
         return $entities->map(fn(ShoppingListEntity $entity) => $this->convertEntityToModel($entity));
     }
 
-    public function findByIngredient(Ingredient $ingredient): Tab
+    public function isIngredientUsed(string $ingredientSlug): bool
     {
-        $ids = new Tab($this->entityManager->createQueryBuilder()
+        return $this->entityManager->createQueryBuilder()
             ->select('sli.shoppingListId')
             ->from(ShoppingListIngredient::class, 'sli')
-            ->where('sli.ingredientSlug = :ingredientId')
-            ->setParameter('ingredientId', $ingredient->getId())
+            ->where('sli.ingredientSlug = :ingredient')
+            ->setParameter('ingredient', $ingredientSlug)
+            ->setMaxResults(1)
             ->getQuery()
-            ->getResult()
-        )->map(fn(array $item) => $item['shoppingListId']);
-
-        return $this->findByIds($ids);
+            ->getOneOrNullResult() !== null;
     }
 
-    private function findByIds(Tab $ids): Tab
+    public function isRecipePlanned(string $recipeId): bool
     {
-        $entities = new Tab(
-            $this->entityRepository->createQueryBuilder('sl')
-                ->where('sl.id IN (:ids)')
-                ->setParameter('ids', $ids->toArray())
-                ->getQuery()
-                ->getResult(),
-            ShoppingListEntity::class
-        );
-
-        return $this->convertEntitiesToModels($entities);
-    }
-
-    public function findByRecipe(Recipe $recipe): Tab
-    {
-        $entities = new Tab($this->entityManager->createQueryBuilder()
-            ->select('sl')
-            ->from(ShoppingListEntity::class, 'sl')
-            ->innerJoin(Meal::class, 'm', 'WITH', 'sl.id = m.shoppingListId')
-            ->where('m.recipeId = :recipeId')
-            ->setParameter('recipeId', $recipe->getId())
+        return $this->entityManager->createQueryBuilder()
+            ->select('m.shoppingListId')
+            ->from(Meal::class, 'm')
+            ->where('m.recipeId = :recipe')
+            ->setParameter('recipe', $recipeId)
+            ->setMaxResults(1)
             ->getQuery()
-            ->getResult()
-        , ShoppingListEntity::class);
-        return $this->convertEntitiesToModels($entities);
+            ->getOneOrNullResult() !== null;
     }
 }

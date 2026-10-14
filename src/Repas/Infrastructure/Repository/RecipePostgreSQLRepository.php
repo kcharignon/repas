@@ -8,7 +8,6 @@ use Doctrine\Persistence\ManagerRegistry;
 use Repas\Repas\Domain\Exception\RecipeException;
 use Repas\Repas\Domain\Interface\RecipeRepository;
 use Repas\Repas\Domain\Interface\RecipeTypeRepository;
-use Repas\Repas\Domain\Model\Ingredient;
 use Repas\Repas\Domain\Model\Recipe;
 use Repas\Repas\Domain\Model\RecipeRow;
 use Repas\Repas\Domain\Model\RecipeType;
@@ -91,33 +90,16 @@ readonly class RecipePostgreSQLRepository extends PostgreSQLRepository implement
         ]);
     }
 
-    public function findByIngredient(Ingredient $ingredient): Tab
+    public function isIngredientUsed(string $ingredientSlug): bool
     {
-        $ids = new Tab($this->entityManager->createQueryBuilder()
+        return $this->entityManager->createQueryBuilder()
             ->select('rr.recipeId')
             ->from(RecipeRowEntity::class, 'rr')
             ->where('rr.ingredientSlug = :ingredient')
-            ->setParameter('ingredient', $ingredient->getId())
+            ->setParameter('ingredient', $ingredientSlug)
+            ->setMaxResults(1)
             ->getQuery()
-            ->getResult()
-        )->map(fn(array $item) => $item['recipeId']);
-
-        return $this->findByIds($ids);
-    }
-
-
-    private function findByIds(Tab $ids): Tab
-    {
-        $entities = new Tab(
-            $this->entityRepository->createQueryBuilder('r')
-                ->where('r.id IN (:ids)')
-                ->setParameter('ids', $ids->toArray())
-                ->getQuery()
-                ->getResult(),
-            RecipeEntity::class
-        );
-
-        return $this->convertEntitiesToModels($entities);
+            ->getOneOrNullResult() !== null;
     }
 
     private function convertEntitiesToModels(Tab $entities): Tab

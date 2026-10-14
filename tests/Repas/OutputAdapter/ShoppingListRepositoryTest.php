@@ -171,24 +171,19 @@ class ShoppingListRepositoryTest extends DatabaseTestCase
         $this->assertFalse($this->shoppingListRepository->hasActiveShoppingList($user->getId()));
     }
 
-    public function testFindByIngredient(): void
+    public function testIsIngredientUsedTellsIfAnyShoppingListHoldsTheIngredient(): void
     {
         // Arrange
         $user = $this->savedUser();
         $pasta = new IngredientBuilder()->isPasta()->build();
         $this->persister->saveIngredient($pasta);
-        $shoppingList = new ShoppingListBuilder()->withOwner($user)->addIngredient($pasta)->build();
-        $this->shoppingListRepository->save($shoppingList);
+        $this->shoppingListRepository->save(new ShoppingListBuilder()->withOwner($user)->addIngredient($pasta)->build());
         $egg = new IngredientBuilder()->isEgg()->build();
         $this->persister->saveIngredient($egg);
 
-        // Act
-        $withPasta = $this->shoppingListRepository->findByIngredient($pasta);
-        $withEgg = $this->shoppingListRepository->findByIngredient($egg);
-
-        // Assert
-        $this->assertSame([$shoppingList->getId()], $this->idsOf($withPasta));
-        $this->assertCount(0, $withEgg);
+        // Act & Assert
+        $this->assertTrue($this->shoppingListRepository->isIngredientUsed($pasta->getSlug()));
+        $this->assertFalse($this->shoppingListRepository->isIngredientUsed($egg->getSlug()));
     }
 
     public function testFindIdsByOwnerAndStatus(): void
@@ -223,22 +218,17 @@ class ShoppingListRepositoryTest extends DatabaseTestCase
         RepasAssert::assertShoppingList($shoppingList, $actual);
     }
 
-    public function testFindByRecipe(): void
+    public function testIsRecipePlannedTellsIfAnyMealUsesTheRecipe(): void
     {
         // Arrange
         $user = $this->savedUser();
         $recipe = $this->savedRecipe($user, new RecipeBuilder()->isPastaCarbonara());
         $otherRecipe = $this->savedRecipe($user, new RecipeBuilder()->isSoftBoiledEggs());
-        $shoppingList = new ShoppingListBuilder()->withOwner($user)->addRecipe($recipe)->build();
-        $this->shoppingListRepository->save($shoppingList);
+        $this->shoppingListRepository->save(new ShoppingListBuilder()->withOwner($user)->addRecipe($recipe)->build());
 
-        // Act
-        $shoppingLists = $this->shoppingListRepository->findByRecipe($recipe);
-
-        // Assert
-        RepasAssert::assertTabType(Tab::newEmptyTyped(ShoppingList::class), $shoppingLists);
-        $this->assertSame([$shoppingList->getId()], $this->idsOf($shoppingLists));
-        $this->assertCount(0, $this->shoppingListRepository->findByRecipe($otherRecipe));
+        // Act & Assert
+        $this->assertTrue($this->shoppingListRepository->isRecipePlanned($recipe->getId()));
+        $this->assertFalse($this->shoppingListRepository->isRecipePlanned($otherRecipe->getId()));
     }
 
     /**

@@ -32,7 +32,7 @@ return [
     'renommer-liste' => 8,
     'retirer-ingredient-liste' => 11,
     'retirer-repas' => 20,
-    'supprimer-ingredient' => 12,
+    'supprimer-ingredient' => 10,
     'supprimer-liste' => 8,
     'supprimer-recette' => 15,
     'terminer-liste' => 10,

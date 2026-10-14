@@ -225,7 +225,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Doctrine\\Persistence\\ObjectRepository\:\:createQueryBuilder\(\)\.$#'
 			identifier: method.notFound
-			count: 2
+			count: 1
 			path: src/Repas/Infrastructure/Repository/RecipePostgreSQLRepository.php
 
 		-
@@ -245,12 +245,6 @@ parameters:
 			identifier: method.notFound
 			count: 1
 			path: src/Repas/Infrastructure/Repository/ShoppingListIngredientPostgreSQLRepository.php
-
-		-
-			message: '#^Call to an undefined method Doctrine\\Persistence\\ObjectRepository\:\:createQueryBuilder\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: src/Repas/Infrastructure/Repository/ShoppingListPostgreSQLRepository.php
 
 		-
 			message: '#^Parameter \#1 \$callback of method Repas\\Shared\\Domain\\Tool\\Tab\<Repas\\Repas\\Domain\\Model\\Meal\>\:\:map\(\) expects callable\(Repas\\Repas\\Domain\\Model\\Meal\)\: Repas\\Repas\\Domain\\Model\\Meal, Closure\(Repas\\Repas\\Domain\\Model\\Meal\)\: string given\.$#'
@@ -433,12 +427,6 @@ parameters:
 			path: tests/Helper/InMemoryRepository/RecipeInMemoryRepository.php
 
 		-
-			message: '#^Method Repas\\Tests\\Helper\\InMemoryRepository\\RecipeInMemoryRepository\:\:findByIngredient\(\) should return Repas\\Shared\\Domain\\Tool\\Tab\<Repas\\Repas\\Domain\\Model\\Recipe\> but returns Repas\\Shared\\Domain\\Tool\\Tab\<Repas\\Shared\\Domain\\Model\\ModelInterface\>\.$#'
-			identifier: return.type
-			count: 1
-			path: tests/Helper/InMemoryRepository/RecipeInMemoryRepository.php
-
-		-
 			message: '#^Method Repas\\Tests\\Helper\\InMemoryRepository\\RecipeInMemoryRepository\:\:findOneById\(\) should return Repas\\Repas\\Domain\\Model\\Recipe but returns Repas\\Shared\\Domain\\Model\\ModelInterface\.$#'
 			identifier: return.type
 			count: 1
@@ -447,7 +435,7 @@ parameters:
 		-
 			message: '#^Parameter \#1 \$callback of method Repas\\Shared\\Domain\\Tool\\Tab\<Repas\\Shared\\Domain\\Model\\ModelInterface\>\:\:filter\(\) expects \(callable\(int\|string\)\: bool\)\|\(callable\(Repas\\Shared\\Domain\\Model\\ModelInterface, int\|string\)\: bool\), Closure\(Repas\\Repas\\Domain\\Model\\Recipe\)\: bool given\.$#'
 			identifier: argument.type
-			count: 2
+			count: 1
 			path: tests/Helper/InMemoryRepository/RecipeInMemoryRepository.php
 
 		-
@@ -463,19 +451,7 @@ parameters:
 			path: tests/Helper/InMemoryRepository/RecipeTypeInMemoryRepository.php
 
 		-
-			message: '#^Method Repas\\Tests\\Helper\\InMemoryRepository\\ShoppingListInMemoryRepository\:\:findByIngredient\(\) should return Repas\\Shared\\Domain\\Tool\\Tab\<Repas\\Repas\\Domain\\Model\\ShoppingList\> but returns Repas\\Shared\\Domain\\Tool\\Tab\<Repas\\Shared\\Domain\\Model\\ModelInterface\>\.$#'
-			identifier: return.type
-			count: 1
-			path: tests/Helper/InMemoryRepository/ShoppingListInMemoryRepository.php
-
-		-
 			message: '#^Method Repas\\Tests\\Helper\\InMemoryRepository\\ShoppingListInMemoryRepository\:\:findByOwner\(\) should return Repas\\Shared\\Domain\\Tool\\Tab\<Repas\\Repas\\Domain\\Model\\ShoppingList\> but returns Repas\\Shared\\Domain\\Tool\\Tab\<Repas\\Shared\\Domain\\Model\\ModelInterface\>\.$#'
-			identifier: return.type
-			count: 1
-			path: tests/Helper/InMemoryRepository/ShoppingListInMemoryRepository.php
-
-		-
-			message: '#^Method Repas\\Tests\\Helper\\InMemoryRepository\\ShoppingListInMemoryRepository\:\:findByRecipe\(\) should return Repas\\Shared\\Domain\\Tool\\Tab\<Repas\\Repas\\Domain\\Model\\ShoppingList\> but returns Repas\\Shared\\Domain\\Tool\\Tab\<Repas\\Shared\\Domain\\Model\\ModelInterface\>\.$#'
 			identifier: return.type
 			count: 1
 			path: tests/Helper/InMemoryRepository/ShoppingListInMemoryRepository.php
@@ -495,18 +471,6 @@ parameters:
 		-
 			message: '#^Method Repas\\Tests\\Helper\\InMemoryRepository\\ShoppingListInMemoryRepository\:\:findOneByMealId\(\) should return Repas\\Repas\\Domain\\Model\\ShoppingList but returns Repas\\Shared\\Domain\\Model\\ModelInterface\|null\.$#'
 			identifier: return.type
-			count: 1
-			path: tests/Helper/InMemoryRepository/ShoppingListInMemoryRepository.php
-
-		-
-			message: '#^Parameter \#1 \$callback of method Repas\\Shared\\Domain\\Tool\\Tab\<Repas\\Shared\\Domain\\Model\\ModelInterface\>\:\:filter\(\) expects \(callable\(int\|string\)\: bool\)\|\(callable\(Repas\\Shared\\Domain\\Model\\ModelInterface, int\|string\)\: bool\), Closure\(Repas\\Repas\\Domain\\Model\\ShoppingList\)\: \(Repas\\Repas\\Domain\\Model\\Meal\|null\) given\.$#'
-			identifier: argument.type
-			count: 1
-			path: tests/Helper/InMemoryRepository/ShoppingListInMemoryRepository.php
-
-		-
-			message: '#^Parameter \#1 \$callback of method Repas\\Shared\\Domain\\Tool\\Tab\<Repas\\Shared\\Domain\\Model\\ModelInterface\>\:\:filter\(\) expects \(callable\(int\|string\)\: bool\)\|\(callable\(Repas\\Shared\\Domain\\Model\\ModelInterface, int\|string\)\: bool\), Closure\(Repas\\Repas\\Domain\\Model\\ShoppingList\)\: \(Repas\\Repas\\Domain\\Model\\ShoppingListIngredient\|null\) given\.$#'
-			identifier: argument.type
 			count: 1
 			path: tests/Helper/InMemoryRepository/ShoppingListInMemoryRepository.php
 
