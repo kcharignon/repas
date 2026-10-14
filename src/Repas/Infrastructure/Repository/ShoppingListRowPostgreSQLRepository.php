@@ -4,12 +4,8 @@ namespace Repas\Repas\Infrastructure\Repository;
 
 
 use Doctrine\Persistence\ManagerRegistry;
-use Repas\Repas\Domain\Exception\IngredientException;
 use Repas\Repas\Domain\Exception\ShoppingListRowException;
-use Repas\Repas\Domain\Exception\UnitException;
-use Repas\Repas\Domain\Interface\IngredientRepository;
 use Repas\Repas\Domain\Interface\ShoppingListRowRepository;
-use Repas\Repas\Domain\Interface\UnitRepository;
 use Repas\Repas\Domain\Model\ShoppingList;
 use Repas\Repas\Domain\Model\ShoppingListRow;
 use Repas\Repas\Domain\Model\ShoppingListRow as ShoppingListRowModel;
@@ -23,16 +19,12 @@ readonly class ShoppingListRowPostgreSQLRepository extends PostgreSQLRepository 
 {
     public function __construct(
         ManagerRegistry $managerRegistry,
-        private IngredientRepository $ingredientRepository,
-        private UnitRepository $unitRepository,
         private ModelCache $modelCache,
     ) {
         parent::__construct($managerRegistry, ShoppingListRowEntity::class);
     }
 
     /**
-     * @throws UnitException
-     * @throws IngredientException
      * @throws ShoppingListRowException
      */
     public function findOneById(string $id): ShoppingListRowModel
@@ -45,6 +37,20 @@ readonly class ShoppingListRowPostgreSQLRepository extends PostgreSQLRepository 
         return $this->convertEntityToModel($entity);
     }
 
+
+    public function allRowsChecked(string $shoppingListId): bool
+    {
+        $unchecked = $this->entityManager->createQueryBuilder()
+            ->select('COUNT(r.id)')
+            ->from(ShoppingListRowEntity::class, 'r')
+            ->where('r.shoppingListId = :shoppingListId')
+            ->andWhere('r.checked = false')
+            ->setParameter('shoppingListId', $shoppingListId)
+            ->getQuery()
+            ->getSingleScalarResult();
+
+        return (int) $unchecked === 0;
+    }
 
     /**
      * @param string $shoppingListId
@@ -96,18 +102,14 @@ readonly class ShoppingListRowPostgreSQLRepository extends PostgreSQLRepository 
         $this->entityManager->flush();
     }
 
-    /**
-     * @throws UnitException
-     * @throws IngredientException
-     */
     private function convertEntityToModel(ShoppingListRowEntity $rowEntity): ShoppingListRowModel
     {
         return ShoppingListRowModel::load([
             'id' => $rowEntity->getId(),
             'shopping_list_id' => $rowEntity->getShoppingListId(),
-            'ingredient' => $this->ingredientRepository->findOneBySlug($rowEntity->getIngredientSlug()),
+            'ingredient_slug' => $rowEntity->getIngredientSlug(),
             'quantity' => $rowEntity->getQuantity(),
-            'unit' => $this->unitRepository->findOneBySlug($rowEntity->getUnitSlug()),
+            'unit_slug' => $rowEntity->getUnitSlug(),
             'checked' => $rowEntity->isChecked(),
         ]);
     }

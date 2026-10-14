@@ -69,7 +69,7 @@ final class ShoppingList implements ModelInterface
 
     public function getRows(): Tab
     {
-        return $this->rows->usort(fn(Row $a, Row $b) => $a->getIngredient()->getSlug() <=> $b->getIngredient()->getSlug());
+        return $this->rows->usort(fn(Row $a, Row $b) => $a->getIngredientSlug() <=> $b->getIngredientSlug());
     }
 
     public static function create(
@@ -149,19 +149,6 @@ final class ShoppingList implements ModelInterface
         return $this->meals->filter(fn(Meal $meal) => $meal->getRecipeType()->isEqual($recipeType));
     }
 
-    /**
-     * @return Tab<Department>
-     */
-    public function getDepartments(): Tab
-    {
-        $res = Tab::newEmptyTyped(Department::class);
-        foreach ($this->rows as $row) {
-            $department = $row->getDepartment();
-            $res[$department->getSlug()] = $department;
-        }
-        return $res->usort(fn(Department $a, Department $b) => $a->getSlug() <=> $b->getSlug());
-    }
-
     public function numberOfTypeRecipes(RecipeType $type): int
     {
         return $this->meals->filter(fn(Meal $meal) => $meal->typeIs($type))->count();
@@ -209,7 +196,7 @@ final class ShoppingList implements ModelInterface
     public function addRow(Ingredient $ingredient, float $quantity): void
     {
         // Cherche si la ligne avec l'ingrédient est déjà present dans la liste
-        if (($row = $this->rows->find(fn(Row $row) => $row->getIngredient()->isEqual($ingredient))) !== null) {
+        if (($row = $this->rows->find(fn(Row $row) => $row->getIngredientSlug() === $ingredient->getSlug())) !== null) {
             $row->addQuantity($quantity);
         } else {
             //Sinon on créer la ligne
@@ -220,7 +207,7 @@ final class ShoppingList implements ModelInterface
     public function subtractRow(Ingredient $ingredient, float $quantity): void
     {
         // Cherche si la ligne avec l'ingrédient est déjà present dans la liste
-        if (($rowKey = $this->rows->findKey(fn(Row $row) => $row->getIngredient()->isEqual($ingredient))) !== null) {
+        if (($rowKey = $this->rows->findKey(fn(Row $row) => $row->getIngredientSlug() === $ingredient->getSlug())) !== null) {
             $this->rows[$rowKey]->subtractQuantity($quantity);
             // si la quantité passe à zero ou moins, on supprime la row
             if ($this->rows[$rowKey]->getQuantity() <= 0) {
@@ -285,11 +272,6 @@ final class ShoppingList implements ModelInterface
         }
     }
 
-    public function allLineTicked(): bool
-    {
-        return $this->rows->find(fn(ShoppingListRow $row) => !$row->isChecked()) === null;
-    }
-
     public function completed(): void
     {
         $this->status = Status::COMPLETED;
@@ -325,7 +307,7 @@ final class ShoppingList implements ModelInterface
 
     public function getIngredientQuantity(Ingredient $ingredient): ?float
     {
-        return $this->rows->find(fn(Row $row) => $row->getIngredient()->isEqual($ingredient))?->getQuantity();
+        return $this->rows->find(fn(Row $row) => $row->getIngredientSlug() === $ingredient->getSlug())?->getQuantity();
     }
 
     public function isActivate(): bool

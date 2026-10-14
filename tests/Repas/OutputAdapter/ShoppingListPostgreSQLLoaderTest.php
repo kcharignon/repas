@@ -269,7 +269,7 @@ class ShoppingListPostgreSQLLoaderTest extends DatabaseTestCase
         $shoppingList = new ShoppingListBuilder()->withId('list-1')->withOwner($owner)
             ->addIngredient($egg)->addIngredient($milk)->addIngredient($pasta)->addIngredient($bread)->build();
         $shoppingList->addRow($pasta, 499);
-        $shoppingList->getRows()->find(fn($row) => $row->getIngredient()->isEqual($egg))->tick();
+        $shoppingList->getRows()->find(fn($row) => $row->getIngredientSlug() === $egg->getSlug())->tick();
         $this->shoppingListRepository->save($shoppingList);
 
         // When

@@ -16,6 +16,11 @@ interface ShoppingListRowRepository
     public function save(ShoppingListRow $shoppingListRow): void;
 
     /**
+     * Vrai quand plus aucune ligne de la liste n'est à cocher (une liste sans ligne l'est aussi).
+     */
+    public function allRowsChecked(string $shoppingListId): bool;
+
+    /**
      * @return Tab<ShoppingListRowModel>
      */
     public function findByShoppingListId(string $shoppingListId): Tab;

@@ -244,7 +244,7 @@ class RepasAssert
         Assert::assertEquals($expected->isChecked(), $actual->isChecked());
         Assert::assertEquals($expected->getShoppingListId(), $actual->getShoppingListId());
         Assert::assertEquals($expected->getQuantity(), $actual->getQuantity());
-        self::assertUnit($expected->getUnit(), $actual->getUnit());
-        self::assertIngredient($expected->getIngredient(), $actual->getIngredient());
+        Assert::assertSame($expected->getUnitSlug(), $actual->getUnitSlug());
+        Assert::assertSame($expected->getIngredientSlug(), $actual->getIngredientSlug());
     }
 }
