@@ -278,7 +278,7 @@ return [
     },
 
     // --- Utilisateurs
-    'inscription' => static fn(WriteBudgetTestCase $t): object => new RegisterNewUserCommand('nouveau@example.com', 'mot-de-passe', 3),
+    'inscription' => static fn(WriteBudgetTestCase $t): object => new RegisterNewUserCommand(UuidGenerator::new(), 'nouveau@example.com', 'mot-de-passe', 3),
     'reglages-utilisateur' => static function (WriteBudgetTestCase $t): object {
         $user = $t->savedUser();
 
