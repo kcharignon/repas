@@ -40,8 +40,8 @@ readonly class CopyRecipeHandler
         foreach ($originalRecipe->getRows() as $recipeRow) {
             $ingredient = $recipeRow->getIngredient();
             // Si c'est un ingredient personnalisé, on le copie
-            if ($ingredient->getCreator()) {
-                $newIngredient = Ingredient::copyFromOriginal($ingredient, $author);
+            if ($ingredient->getCreatorId() !== null) {
+                $newIngredient = Ingredient::copyFromOriginal($ingredient, $author->getId());
                 $newIngredientSlugs[] = $newIngredient->getSlug();
                 $this->ingredientRepository->save($newIngredient);
                 // Si des conversions existent, on les copies

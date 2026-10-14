@@ -210,8 +210,8 @@ final class Recipe implements ModelInterface
      */
     private function assertIngredientIsAvailable(Ingredient $ingredient): void
     {
-        $creator = $ingredient->getCreator();
-        if ($creator !== null && !$creator->isEqual($this->author)) {
+        $creatorId = $ingredient->getCreatorId();
+        if ($creatorId !== null && $creatorId !== $this->author->getId()) {
             throw IngredientException::notFound($ingredient->getSlug());
         }
     }

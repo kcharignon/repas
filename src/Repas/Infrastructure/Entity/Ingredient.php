@@ -172,7 +172,7 @@ class Ingredient
             department: $ingredient->getDepartment()->getSlug(),
             defaultCookingUnit: $ingredient->getDefaultCookingUnit()->getSlug(),
             defaultPurchaseUnit: $ingredient->getDefaultPurchaseUnit()->getSlug(),
-            creatorId: $ingredient->getCreator()?->getId(),
+            creatorId: $ingredient->getCreatorId(),
             compatibleUnitSlugs: $ingredient->getCompatibleUnits()->map(fn(UnitModel $unit) => $unit->getSlug())->toArray(),
         );
     }

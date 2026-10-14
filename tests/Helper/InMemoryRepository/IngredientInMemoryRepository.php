@@ -8,7 +8,6 @@ use Repas\Repas\Domain\Interface\IngredientRepository;
 use Repas\Repas\Domain\Model\Department;
 use Repas\Repas\Domain\Model\Ingredient;
 use Repas\Shared\Domain\Tool\Tab;
-use Repas\User\Domain\Model\User;
 
 class IngredientInMemoryRepository extends AbstractInMemoryRepository implements IngredientRepository
 {
@@ -29,14 +28,14 @@ class IngredientInMemoryRepository extends AbstractInMemoryRepository implements
         return $this->models->find(fn(Ingredient $ingredient) => $ingredient->getSlug() === $slug) ?? throw IngredientException::notFound($slug);
     }
 
-    public function findByDepartmentAndOwner(Department $department, User $owner): Tab
+    public function findByDepartmentAndOwner(Department $department, string $ownerId): Tab
     {
-        return $this->models->filter(fn(Ingredient $ingredient) => $ingredient->getDepartment()->isEqual($department) && $ingredient->getCreator()->isEqual($owner));
+        return $this->models->filter(fn(Ingredient $ingredient) => $ingredient->getDepartment()->isEqual($department) && $ingredient->getCreatorId() === $ownerId);
     }
 
-    public function findByOwner(User $owner): Tab
+    public function findByOwner(string $ownerId): Tab
     {
-        return $this->models->filter(fn(Ingredient $ingredient) => $ingredient->getCreator()->isEqual($owner));
+        return $this->models->filter(fn(Ingredient $ingredient) => $ingredient->getCreatorId() === $ownerId);
     }
 
     /**

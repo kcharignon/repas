@@ -38,6 +38,7 @@ class CreateIngredientType extends AbstractIngredientType implements DataMapperI
             defaultCookingUnitSlug: $forms['defaultCookingUnit']->getData(),
             defaultPurchaseUnitSlug: $forms['defaultPurchaseUnit']->getData(),
             userId: $this->user->getId(),
+            isAdmin: $this->user->isAdmin(),
             coefficient: $forms['coefficient']->getData(),
         );
     }

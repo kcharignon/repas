@@ -217,7 +217,7 @@ return [
         $t->persister->saveDepartment($department);
         $t->persister->saveUnit($unit);
 
-        return new CreateIngredientCommand('Praliné', '', $department->getSlug(), $unit->getSlug(), $unit->getSlug(), $owner->getId(), null);
+        return new CreateIngredientCommand('Praliné', '', $department->getSlug(), $unit->getSlug(), $unit->getSlug(), $owner->getId(), false, null);
     },
     'modifier-ingredient' => static function (WriteBudgetTestCase $t): object {
         $owner = $t->savedUser();

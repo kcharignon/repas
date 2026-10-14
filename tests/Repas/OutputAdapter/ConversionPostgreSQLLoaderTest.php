@@ -31,6 +31,7 @@ class ConversionPostgreSQLLoaderTest extends DatabaseTestCase
     {
         // Given
         $creator = new UserBuilder()->withEmail('createur@example.com')->build();
+        $this->persister->saveUser($creator);
         $ingredient = new IngredientBuilder()->withName('zzz beurre')->withCreator($creator, true)->build();
         $conversion = new ConversionBuilder()->withIngredient($ingredient)->withStartUnit(new UnitBuilder()->isBlock()->build())
             ->withEndUnit(new UnitBuilder()->isGramme()->build())->withCoefficient(250)->build();

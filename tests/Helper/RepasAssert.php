@@ -44,11 +44,7 @@ class RepasAssert
         Assert::assertEquals($expected->getName(), $actual->getName());
         Assert::assertEquals($expected->getSluggedName(), $actual->getSluggedName());
         Assert::assertEquals($expected->getImage(), $actual->getImage(), sprintf("Ingredient %s, have wrong image", $expected->getSlug()));
-        if ($expected->getCreator() === null) {
-            Assert::assertNull($actual->getCreator());
-        } else {
-            self::assertUser($expected->getCreator(), $actual->getCreator(), "Ingredient {$expected->getSlug()}, have wrong owner");
-        }
+        Assert::assertSame($expected->getCreatorId(), $actual->getCreatorId(), "Ingredient {$expected->getSlug()}, have wrong creator");
         self::assertUnit($expected->getDefaultCookingUnit(), $actual->getDefaultCookingUnit(), sprintf("Ingredient %s, have wrong default cooking unit", $expected->getSlug()));
         self::assertUnit($expected->getDefaultPurchaseUnit(), $actual->getDefaultPurchaseUnit(), sprintf("Ingredient %s, have wrong default purchase unit", $expected->getSlug()));
         self::assertTab(

@@ -7,7 +7,6 @@ use Repas\Shared\Domain\Model\ModelInterface;
 use Repas\Shared\Domain\Model\ModelTrait;
 use Repas\Shared\Domain\Tool\StringTool;
 use Repas\Shared\Domain\Tool\Tab;
-use Repas\User\Domain\Model\User;
 
 final class Ingredient implements ModelInterface
 {
@@ -24,7 +23,7 @@ final class Ingredient implements ModelInterface
         private Department $department,
         private Unit       $defaultCookingUnit,
         private Unit       $defaultPurchaseUnit,
-        private ?User      $creator,
+        private ?string    $creatorId,
         private Tab        $compatibleUnits,
     ) {
     }
@@ -105,14 +104,18 @@ final class Ingredient implements ModelInterface
         return $this;
     }
 
-    public function getCreator(): ?User
+    /**
+     * Identifiant de l'utilisateur qui a créé l'ingrédient, `null` pour un ingrédient commun (ADR 0013 : un agrégat référence
+     * un autre par identifiant).
+     */
+    public function getCreatorId(): ?string
     {
-        return $this->creator;
+        return $this->creatorId;
     }
 
-    public function setCreator(?User $creator): Ingredient
+    public function setCreatorId(?string $creatorId): Ingredient
     {
-        $this->creator = $creator;
+        $this->creatorId = $creatorId;
         return $this;
     }
 
@@ -144,9 +147,9 @@ final class Ingredient implements ModelInterface
         Department $department,
         Unit $defaultCookingUnit,
         Unit $defaultPurchaseUnit,
-        ?User $creator,
+        ?string $creatorId,
     ): self {
-        $slug = StringTool::slugify($name.($creator?->getId() ?? ''));
+        $slug = StringTool::slugify($name.($creatorId ?? ''));
         $sluggedName = StringTool::slugify($name);
         return new self(
             $slug,
@@ -156,12 +159,12 @@ final class Ingredient implements ModelInterface
             $department,
             $defaultCookingUnit,
             $defaultPurchaseUnit,
-            $creator,
+            $creatorId,
             Tab::newEmptyTyped(Unit::class),
         );
     }
 
-    public static function copyFromOriginal(Ingredient $ingredient, User $author): self
+    public static function copyFromOriginal(Ingredient $ingredient, string $authorId): self
     {
         $ingredientCopy = self::create(
             $ingredient->getName(),
@@ -169,7 +172,7 @@ final class Ingredient implements ModelInterface
             $ingredient->getDepartment(),
             $ingredient->getDefaultCookingUnit(),
             $ingredient->getDefaultPurchaseUnit(),
-            $author,
+            $authorId,
         );
         $ingredientCopy->setCompatibleUnits($ingredient->getCompatibleUnits());
         return $ingredientCopy;
@@ -185,7 +188,7 @@ final class Ingredient implements ModelInterface
             department: $datas['department'],
             defaultCookingUnit: $datas['default_cooking_unit'],
             defaultPurchaseUnit: $datas['default_purchase_unit'],
-            creator: $datas['creator'],
+            creatorId: $datas['creator_id'],
             compatibleUnits: $datas['compatible_units'],
         );
     }

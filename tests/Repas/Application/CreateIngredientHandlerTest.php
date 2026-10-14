@@ -25,16 +25,12 @@ use Repas\Tests\Helper\InMemoryRepository\ConversionInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\DepartmentInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\IngredientInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\UnitInMemoryRepository;
-use Repas\Tests\Helper\InMemoryRepository\UserInMemoryRepository;
 use Repas\Tests\Helper\RepasAssert;
-use Repas\User\Domain\Exception\UserException;
-use Repas\User\Domain\Interface\UserRepository;
 use Repas\Tests\Helper\InMemoryRepository\SpyEventDispatcher;
 
 class CreateIngredientHandlerTest extends TestCase
 {
     private readonly CreateIngredientHandler $handler;
-    private readonly UserRepository $userRepository;
     private readonly IngredientRepository $ingredientRepository;
     private readonly UnitRepository $unitRepository;
     private readonly DepartmentRepository $departmentRepository;
@@ -48,7 +44,6 @@ class CreateIngredientHandlerTest extends TestCase
         $liter = new UnitBuilder()->isLiter()->build();
         $centiliter = new UnitBuilder()->isCentiliter()->build();
 
-        $this->userRepository = new UserInMemoryRepository();
         $this->ingredientRepository = new IngredientInMemoryRepository();
         $this->unitRepository = new UnitInMemoryRepository([$unite, $liter, $centiliter]);
         $this->departmentRepository = new DepartmentInMemoryRepository([$baby]);
@@ -70,7 +65,6 @@ class CreateIngredientHandlerTest extends TestCase
             $this->departmentRepository,
             $this->unitRepository,
             $this->ingredientRepository,
-            $this->userRepository,
             $this->eventDispatcher,
             $conversionService
         );
@@ -80,7 +74,6 @@ class CreateIngredientHandlerTest extends TestCase
     {
         // Arrange
         $user = new UserBuilder()->withId('user-id')->build();
-        $this->userRepository->save($user);
         $command = new CreateIngredientCommand(
             name: "nom de l'ingredient",
             image: "super-image.jpg",
@@ -88,6 +81,7 @@ class CreateIngredientHandlerTest extends TestCase
             defaultCookingUnitSlug: "unite",
             defaultPurchaseUnitSlug: "unite",
             userId: $user->getId(),
+            isAdmin: false,
             coefficient: null,
         );
 
@@ -115,7 +109,6 @@ class CreateIngredientHandlerTest extends TestCase
     {
         // Arrange
         $user = new UserBuilder()->withId('user-id')->build();
-        $this->userRepository->save($user);
         $command = new CreateIngredientCommand(
             name: "nom de l'ingredient",
             image: "super-image.jpg",
@@ -123,6 +116,7 @@ class CreateIngredientHandlerTest extends TestCase
             defaultCookingUnitSlug: "litre",
             defaultPurchaseUnitSlug: "centilitre",
             userId: $user->getId(),
+            isAdmin: false,
             coefficient: null,
         );
 
@@ -150,7 +144,6 @@ class CreateIngredientHandlerTest extends TestCase
     {
         // Arrange
         $user = new UserBuilder()->withId('user-id')->build();
-        $this->userRepository->save($user);
         $command = new CreateIngredientCommand(
             name: "nom de l'ingredient",
             image: "super-image.jpg",
@@ -158,6 +151,7 @@ class CreateIngredientHandlerTest extends TestCase
             defaultCookingUnitSlug: "unite",
             defaultPurchaseUnitSlug: "centilitre",
             userId: $user->getId(),
+            isAdmin: false,
             coefficient: 25,
         );
 
@@ -191,7 +185,6 @@ class CreateIngredientHandlerTest extends TestCase
     {
         // Arrange
         $admin = new UserBuilder()->withId('admin-id')->isAdmin()->build();
-        $this->userRepository->save($admin);
         $command = new CreateIngredientCommand(
             name: "nom de l'ingredient",
             image: "super-image.jpg",
@@ -199,6 +192,7 @@ class CreateIngredientHandlerTest extends TestCase
             defaultCookingUnitSlug: "unite",
             defaultPurchaseUnitSlug: "unite",
             userId: $admin->getId(),
+            isAdmin: true,
             coefficient: null,
         );
 
@@ -228,7 +222,6 @@ class CreateIngredientHandlerTest extends TestCase
     {
         // Arrange
         $user = new UserBuilder()->withId('user-id')->build();
-        $this->userRepository->save($user);
         $command = new CreateIngredientCommand(
             name: "nom de l'ingredient",
             image: '',
@@ -236,6 +229,7 @@ class CreateIngredientHandlerTest extends TestCase
             defaultCookingUnitSlug: 'unite',
             defaultPurchaseUnitSlug: 'unite',
             userId: $user->getId(),
+            isAdmin: false,
             coefficient: null,
         );
 
@@ -251,14 +245,13 @@ class CreateIngredientHandlerTest extends TestCase
     {
         // Arrange
         $admin = new UserBuilder()->withId('admin-id')->isAdmin()->build();
-        $this->userRepository->save($admin);
-        $command = new CreateIngredientCommand("nom de l'ingredient", '', 'bebe', 'unite', 'unite', $admin->getId(), null);
+        $command = new CreateIngredientCommand("nom de l'ingredient", '', 'bebe', 'unite', 'unite', $admin->getId(), true, null);
 
         // Act
         $slug = ($this->handler)($command);
 
         // Assert
-        $this->assertNull($this->ingredientRepository->findOneBySlug($slug)->getCreator());
+        $this->assertNull($this->ingredientRepository->findOneBySlug($slug)->getCreatorId());
         $this->assertSame('nom-de-l-ingredient', $slug);
     }
 
@@ -266,8 +259,7 @@ class CreateIngredientHandlerTest extends TestCase
     {
         // Arrange
         $user = new UserBuilder()->withId('user-id')->build();
-        $this->userRepository->save($user);
-        $command = new CreateIngredientCommand("nom de l'ingredient", '', 'bebe', 'unite', 'unite', $user->getId(), null);
+        $command = new CreateIngredientCommand("nom de l'ingredient", '', 'bebe', 'unite', 'unite', $user->getId(), false, null);
         ($this->handler)($command);
 
         // Assert : un second ingrédient de même nom et même créateur écraserait le premier
@@ -281,8 +273,7 @@ class CreateIngredientHandlerTest extends TestCase
     {
         // Arrange
         $user = new UserBuilder()->withId('user-id')->build();
-        $this->userRepository->save($user);
-        $command = new CreateIngredientCommand("nom de l'ingredient", '', 'bebe', 'unite', 'centilitre', $user->getId(), null);
+        $command = new CreateIngredientCommand("nom de l'ingredient", '', 'bebe', 'unite', 'centilitre', $user->getId(), false, null);
 
         // Assert
         $this->expectExceptionObject(IngredientException::coefficientRequired());
@@ -291,36 +282,10 @@ class CreateIngredientHandlerTest extends TestCase
         ($this->handler)($command);
     }
 
-    public function testHandleCreateIngredientFailedUserNotFound(): void
-    {
-        // Arrange
-        $user = new UserBuilder()->build();
-        $command = new CreateIngredientCommand(
-            name: "nom de l'ingredient",
-            image: "super-image.jpg",
-            departmentSlug:  "bebe",
-            defaultCookingUnitSlug: "unite",
-            defaultPurchaseUnitSlug: "unite",
-            userId: $user->getId(),
-            coefficient: null,
-        );
-
-        // Assert
-        $this->expectExceptionObject(UserException::NotFound($user->getId()));
-
-        // Act
-        try {
-            ($this->handler)($command);
-        } finally {
-            $this->assertSame([], $this->eventDispatcher->eventDispatched);
-        }
-    }
-
     public function testHandleCreateIngredientFailedDepartmentNotFound(): void
     {
         // Arrange
         $user = new UserBuilder()->build();
-        $this->userRepository->save($user);
         $command = new CreateIngredientCommand(
             name: "nom de l'ingredient",
             image: "super-image.jpg",
@@ -328,6 +293,7 @@ class CreateIngredientHandlerTest extends TestCase
             defaultCookingUnitSlug: "unite",
             defaultPurchaseUnitSlug: "unite",
             userId: $user->getId(),
+            isAdmin: false,
             coefficient: null,
         );
 
@@ -346,7 +312,6 @@ class CreateIngredientHandlerTest extends TestCase
     {
         // Arrange
         $user = new UserBuilder()->build();
-        $this->userRepository->save($user);
         $command = new CreateIngredientCommand(
             name: "nom de l'ingredient",
             image: "super-image.jpg",
@@ -354,6 +319,7 @@ class CreateIngredientHandlerTest extends TestCase
             defaultCookingUnitSlug: "inexistant",
             defaultPurchaseUnitSlug: "unite",
             userId: $user->getId(),
+            isAdmin: false,
             coefficient: null,
         );
 
@@ -372,7 +338,6 @@ class CreateIngredientHandlerTest extends TestCase
     {
         // Arrange
         $user = new UserBuilder()->build();
-        $this->userRepository->save($user);
         $command = new CreateIngredientCommand(
             name: "nom de l'ingredient",
             image: "super-image.jpg",
@@ -380,6 +345,7 @@ class CreateIngredientHandlerTest extends TestCase
             defaultCookingUnitSlug: "unite",
             defaultPurchaseUnitSlug: "inexistant",
             userId: $user->getId(),
+            isAdmin: false,
             coefficient: null,
         );
 
