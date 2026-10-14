@@ -15,8 +15,8 @@ final class ShoppingListIngredient implements ModelInterface
     public function __construct(
         private string                $id,
         private string                $shoppingListId,
-        private Ingredient            $ingredient,
-        private Unit                  $unit,
+        private string                $ingredientSlug,
+        private string                $unitSlug,
         private float                 $quantity,
     ) {
     }
@@ -30,8 +30,8 @@ final class ShoppingListIngredient implements ModelInterface
         return new self(
             id: UuidGenerator::new(),
             shoppingListId: $shoppingListId,
-            ingredient: $ingredient,
-            unit: $unit,
+            ingredientSlug: $ingredient->getSlug(),
+            unitSlug: $unit->getSlug(),
             quantity: $quantity,
         );
     }
@@ -41,8 +41,8 @@ final class ShoppingListIngredient implements ModelInterface
         return new self(
             id : $datas['id'],
             shoppingListId : $datas['shopping_list_id'],
-            ingredient : $datas['ingredient'],
-            unit : $datas['unit'],
+            ingredientSlug : $datas['ingredient_slug'],
+            unitSlug : $datas['unit_slug'],
             quantity : $datas['quantity'],
         );
     }
@@ -57,29 +57,19 @@ final class ShoppingListIngredient implements ModelInterface
         return $this->shoppingListId;
     }
 
-    public function getIngredient(): Ingredient
+    public function getIngredientSlug(): string
     {
-        return $this->ingredient;
+        return $this->ingredientSlug;
     }
 
-    public function getUnit(): Unit
+    public function getUnitSlug(): string
     {
-        return $this->unit;
+        return $this->unitSlug;
     }
 
     public function getQuantity(): float
     {
         return $this->quantity;
-    }
-
-    public function getDepartment(): Department
-    {
-        return $this->getIngredient()->getDepartment();
-    }
-
-    public function hasIngredientInUnit(Ingredient $ingredient, Unit $unit): bool
-    {
-        return $this->ingredient->isEqual($ingredient) && $this->unit->isEqual($unit);
     }
 
     public function addQuantity(float $getQuantity): void
@@ -94,6 +84,6 @@ final class ShoppingListIngredient implements ModelInterface
 
     public function hasIngredient(Ingredient $ingredient): bool
     {
-        return $this->ingredient->isEqual($ingredient);
+        return $this->ingredientSlug === $ingredient->getSlug();
     }
 }

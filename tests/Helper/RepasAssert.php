@@ -215,8 +215,8 @@ class RepasAssert
         Assert::assertEquals($expected->getId(), $actual->getId());
         Assert::assertEquals($expected->getShoppingListId(), $actual->getShoppingListId());
         Assert::assertEquals($expected->getQuantity(), $actual->getQuantity());
-        self::assertUnit($expected->getUnit(), $actual->getUnit());
-        self::assertIngredient($expected->getIngredient(), $actual->getIngredient());
+        Assert::assertSame($expected->getUnitSlug(), $actual->getUnitSlug());
+        Assert::assertSame($expected->getIngredientSlug(), $actual->getIngredientSlug());
     }
 
     public static function assertConversion(Conversion $expected, mixed $actual, array $excluded = []): void

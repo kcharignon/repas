@@ -30,7 +30,7 @@ return [
     'reactiver-liste' => ['on' => 29, 'off' => 50],
     'reglages-utilisateur' => ['on' => 2, 'off' => 2],
     'renommer-liste' => ['on' => 28, 'off' => 49],
-    'retirer-ingredient-liste' => ['on' => 28, 'off' => 51],
+    'retirer-ingredient-liste' => ['on' => 28, 'off' => 50],
     'retirer-repas' => ['on' => 30, 'off' => 65],
     'supprimer-ingredient' => ['on' => 12, 'off' => 13],
     'supprimer-liste' => ['on' => 28, 'off' => 49],

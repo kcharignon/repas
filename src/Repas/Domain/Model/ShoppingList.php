@@ -240,7 +240,7 @@ final class ShoppingList implements ModelInterface
     public function addIngredient(Ingredient $ingredient): void
     {
         // Recherche de l'ingrédient dans l'unité d'achat dans la liste
-        if (($shopListIngredient = $this->ingredients->find(fn(ShoppingListIngredient $sli) => $sli->getIngredient()->isEqual($ingredient) && $sli->getUnit()->isEqual($ingredient->getDefaultPurchaseUnit()))) !== null) {
+        if (($shopListIngredient = $this->ingredients->find(fn(ShoppingListIngredient $sli) => $sli->hasIngredient($ingredient) && $sli->getUnitSlug() === $ingredient->getDefaultPurchaseUnit()->getSlug())) !== null) {
             // Si on le trouve on incrémente de 1 la quantité
             $shopListIngredient->addQuantity(1);
         } else {
@@ -256,7 +256,7 @@ final class ShoppingList implements ModelInterface
 
     public function removeIngredient(Ingredient $ingredient): void
     {
-        $ingredientKey = $this->ingredients->findKey(fn(ShoppingListIngredient $sli) => $sli->getIngredient()->isEqual($ingredient) && $sli->getUnit()->isEqual($ingredient->getDefaultPurchaseUnit()));
+        $ingredientKey = $this->ingredients->findKey(fn(ShoppingListIngredient $sli) => $sli->hasIngredient($ingredient) && $sli->getUnitSlug() === $ingredient->getDefaultPurchaseUnit()->getSlug());
 
         // Si on ne retrouve pas l'ingrédient, il n'est deja plus present dans la liste
         if ($ingredientKey === null) {
