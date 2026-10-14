@@ -29,12 +29,12 @@ readonly class RemoveIngredientToShoppingListHandler
             throw ShoppingListException::activeShoppingListNotFound();
         }
 
-        $ingredient = $this->ingredientRepository->findOneBySlug($command->ingredientSlug);
+        $purchaseUnitSlug = $this->ingredientRepository->findPurchaseUnitSlug($command->ingredientSlug);
 
-        $activeShoppingList->removeIngredient($ingredient);
+        $activeShoppingList->removeIngredient($command->ingredientSlug, $purchaseUnitSlug);
 
         // On ajoute une quantité d'achat
-        $activeShoppingList->subtractRow($ingredient, 1);
+        $activeShoppingList->subtractRow($command->ingredientSlug, 1);
 
         $this->shoppingListRepository->save($activeShoppingList);
     }

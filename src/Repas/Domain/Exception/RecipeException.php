@@ -5,7 +5,7 @@ namespace Repas\Repas\Domain\Exception;
 
 use Repas\Shared\Domain\Exception\DomainException;
 
-class RecipeException extends DomainException
+final class RecipeException extends DomainException
 {
     public static function notFound(string $id): static
     {

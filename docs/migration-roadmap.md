@@ -66,6 +66,7 @@ Valide de bout en bout : bus, Loader, Deptrac, API, JWT. Risque faible.
 - [x] `OwnerVoter` : port `Shared\Application\Interface\OwnershipLoader` (renvoie des ids, jamais un agrégat) implémenté par `Repas\Infrastructure\Loader\OwnershipPostgreSQLLoader` ; le contexte `User` n'importe plus rien de `Repas` ici (entrée de baseline retirée). Le trou « ingrédient commun » est fermé : `INGREDIENT_OWNER` renvoie `false` (seul un administrateur le modifie).
 - [x] `ListUsers` — AdminGetUsers (`UserSummaryDTO`) et `GET /api/v1/users` (ROLE_ADMIN) ; réglages et inscription via `GetCurrentUser` / `IsEmailAlreadyUsed` ; le mot de passe actuel est vérifié par `UpdateUserSettingsHandler` (règle de domaine), le controller traduit `UserException::INVALID_PASSWORD` en erreur de formulaire
 - [x] Endpoints API de lecture unitaire : `GET /api/v1/units/{slug}`, `/departments/{slug}`, `/recipe-types/{slug}`
+- [x] `GET /api/v1/ingredients` (prérequis du front) : ingrédients que l'utilisateur peut utiliser (communs et les siens), triés par nom, recherche facultative `?q=` (nom contenant le texte, sans casse ni accents ; 100 caractères au plus, `422` sinon). Même query `ListAvailableIngredients` que les formulaires Twig (paramètre `search` ajouté), controller `ListAvailableIngredientsApiController`
 - [x] Deptrac : `deptrac.no-repository-in-http.yaml` interdit tout `*Repository` dans `…\Infrastructure\Http\…` (controllers, API, formulaires) des deux contextes ; aucune baseline, 0 violation
 - [x] `ModelCache` : conservé à la fin de la phase 7 (sans lui les écritures doublaient : `serving` 45 → 126 requêtes, `tick` 46 → 108, planification 88 → 171), retiré en phase 8 une fois les écritures allégées, sans régression.
 
@@ -103,10 +104,10 @@ Total des 32 scénarios : 328 requêtes, avec comme sans cache à l'arrivée.
 - [x] `ModelCache` supprimé, avec ses ~70 appels dans les 8 repositories (trois lectures ne touchaient de toute façon jamais : `Recipe` lue par slug mais stockée par id, `RecipeType::findOneBySlug` lue sous `Recipe::class`, `Unit::findBySlugs` lue sous `UnitEntity::class`) et le mock de `DatabaseTestCase`. Chaque use case a gardé exactement son budget.
 
 **Reste à alléger (optionnel, plus bloquant)** : le cliquet empêche toute régression ; ces points sont des gains supplémentaires.
-- [ ] Planifier / retirer un repas, modifier les portions : graphe recette → ingrédients → conversions encore lu ligne à ligne, aux 5 lignes de liste près
-- [ ] Suppressions d'ingrédient et de recette : `findByIngredient` / `findByRecipe` hydratent des agrégats entiers pour une vérification d'existence (ports booléens)
+- [x] Planifier / retirer un repas, modifier les portions : le préchargement des unités ne servait à rien (`Tab::merge` renvoie un nouveau `Tab`, le résultat était jeté) ; il lit maintenant en une requête les unités d'achat, de cuisson et compatibles des ingrédients d'une recette, celles de ses lignes (`RecipeRowPostgreSQLRepository::findByRecipeId`) et celles de leurs conversions, et les lignes de liste neuves sont insérées par lot (`ShoppingListRowPostgreSQLRepository::saveAll`, `PostgreSQLRepository::findManaged`). `planifier-repas` 28 → 23, `retirer-repas` 20 → 16, `modifier-portions-repas` 25 → 21, `copier-recette` 24 → 20, `modifier-recette` 23 → 19, `supprimer-recette` 15 → 11. Il reste une lecture de conversions par ingrédient (la recherche de chemin reste faite par ingrédient, `ConversionService`), gardée telle quelle
+- [x] Suppressions d'ingrédient et de recette : `RecipeRepository::isIngredientUsed`, `ShoppingListRepository::isIngredientUsed` et `isRecipePlanned` (ports booléens, `LIMIT 1`) remplacent `findByIngredient` / `findByRecipe`, qui hydrataient des agrégats entiers pour une vérification d'existence. `supprimer-ingredient` 12 → 10, baseline PHPStan 55 → 51 entrées
 - [ ] Création et modification de recettes : un `SELECT recipe_row` par ligne à l'enregistrement, un `find` par unité
-- [ ] Ajout et retrait d'un ingrédient de liste : l'ingrédient est chargé avec son rayon, ses unités et son créateur alors que seuls son slug et son unité d'achat servent
+- [x] Ajout et retrait d'un ingrédient de liste : `IngredientRepository::findPurchaseUnitSlug` (une lecture) remplace le chargement de l'ingrédient avec son rayon et ses unités ; `ShoppingList::addIngredient` / `removeIngredient` / `addRow` / `subtractRow` prennent des slugs ([0013](adr/0013-agregats-references-par-identifiant.md)). `ajouter-ingredient-liste` 15 → 12, `retirer-ingredient-liste` 11 → 8
 
 ### Phase 9 — Endpoints API d'écriture
 
@@ -139,12 +140,30 @@ Total des 32 scénarios : 328 requêtes, avec comme sans cache à l'arrivée.
   - Correspondance : planifier / retirer une recette `PUT` / `DELETE /shopping-lists/active/recipes/{recipeId}`, ajouter / retirer un ingrédient `POST …/active/ingredients/{slug}/increase|decrease`, portions `PUT /meals/{id}/serving`, cocher / décocher `POST /shopping-list-rows/{id}/tick|uncheck`, renommer `PATCH /shopping-lists/{id}`, activer / pause / terminer `POST /shopping-lists/{id}/activate|pause|complete`, supprimer `DELETE /shopping-lists/{id}`, copier / supprimer une recette `POST /recipes/{id}/copy`, `DELETE /recipes/{id}`
   - Preuve de parité : le scénario Chromium des listes de courses (`p8-actions`, 11 relevés d'état en base : planifier, portions, ingrédients, cocher jusqu'à la fin, décocher, renommer, pause, terminer, retirer) rejoué en API avec un vrai JWT donne des états **identiques** à ceux de Twig, et les relectures `GET` suivent la base à chaque étape
   - Parcours de bout en bout ajoutés (vrais bus, `ShoppingListWriteApiFlowTest`) pour les 5 actions qui n'en avaient pas : activer (met l'ancienne liste active en pause), terminer (statistiques du propriétaire), décocher (réactive une liste terminée), ajouter / retirer un ingrédient, retirer une recette
+- [x] **Contrat OpenAPI versionné** (prérequis du front) : `docs/api/openapi.json` (53 opérations, 118 Ko, déterministe) est commité ; `make openapi` le régénère, `make openapi-check` (dans `make quality` et dans l'étape « API documentation » de la CI) échoue s'il ne correspond plus aux controllers. Tout changement d'API se voit donc dans le diff d'une PR ([0007](adr/0007-api-rest-v1.md) §15). Le front génère son client typé depuis ce fichier, lu à un commit précis
 - [x] **Refresh token et déconnexion** (prérequis du front, [0015](adr/0015-refresh-token-du-spa.md)) : cookie `repas_refresh` (`HttpOnly`, `Secure`, `SameSite=Strict`, `Path=/api/auth`) posé à la connexion (`POST /api/login_check`), `POST /api/auth/refresh` (rotation à chaque usage, détection de rejeu par famille avec 10 s de grâce pour la course entre onglets, révocation au changement de mot de passe et à la désactivation du compte, 60 échanges par 10 minutes et par IP) et `POST /api/auth/logout`. Table `refresh_token` (secret haché, migration `Version20261014190000`), 4 commandes (`IssueRefreshToken`, `RotateRefreshToken`, `RevokeRefreshToken`, `PurgeExpiredRefreshTokens`), `bin/console repas:purge-refresh-tokens` à planifier une fois par jour
 
-### Phase 10 — Extinction de Twig
+### Phase 10 — Front Vue.js, bascule et extinction de Twig
 
-- **Prérequis : le front Vue.js (projet séparé) doit être prêt** avant toute extinction de Twig ; rien n'est retiré tant que ce n'est pas le cas.
-- [ ] À décider produit, une fois le front prêt : quels `ViewController` (et `ajax.js`, templates, formulaires Twig) retirer (ADR dédié le moment venu)
+Le front est un projet séparé (`repas-front`), planifié dans [`front-vuejs-plan.md`](front-vuejs-plan.md) (architecture, inventaire de parité, design, phases, bascule, extinction). **Rien n'est retiré de Twig tant que la parité n'est pas atteinte et la bascule faite.**
+
+**Prérequis côté API (phase 0 du plan, dans ce dépôt)**
+- [ ] `GET /api/v1/ingredients` : ingrédients utilisables par l'utilisateur, avec recherche — PR #42
+- [ ] Ordre des lignes d'une recette (colonne `position`) — PR #41
+- [ ] Validation de l'unité à l'enregistrement d'une recette (`ConversionService::assertConvertibleToPurchaseUnit`) — PR #41
+- [ ] Pagination et recherche des listes volumineuses (recettes d'un type, ingrédients d'un rayon)
+- [ ] Refresh token et déconnexion (ADR [0015](adr/0015-refresh-token-du-spa.md), [0008](adr/0008-auth-session-et-jwt.md) §5) — PR #47 (empilée sur #41)
+- [ ] Contrôle de version (ETag / `If-Match`) sur recette et liste de courses ([0013](adr/0013-agregats-references-par-identifiant.md) règle 7)
+- [ ] Contrat OpenAPI versionné (`docs/api/openapi.json`, `make openapi-check` en CI) — PR #44
+- [ ] ADR « front Vue.js » (stack, déploiement) et ADR « authentification du SPA »
+
+**Front et bascule**
+- [ ] Phase 1 — socle du front (nouveau dépôt, CI, client généré, session, design system)
+- [ ] Phases 2 à 4 — parcours cœur, référentiel utilisateur, administration (parité de l'inventaire)
+- [ ] Phase 5 — finitions (PWA, accessibilité, performance)
+- [ ] Phase 6 — recette de parité (100 % de l'inventaire)
+- [ ] Phase 7 — bascule en production (marche parallèle, retour arrière prévu)
+- [ ] Phase 8 — extinction de Twig (routes, templates, formulaires, JS, dépendances, pare-feu `main`, ADR, documentation)
 
 ## Chantiers de maintenance (décidés le 2026-10-14, une PR chacun, dans cet ordre)
 
@@ -160,6 +179,7 @@ Issus des points « hors périmètre » des PR et de `composer audit` (32 avis d
   - [x] **D2 — `Recipe`** : `author` devient `authorId` ; `RecipeRepository::findByAuthor` prend un identifiant ; `CreateRecipeHandler` et `CopyRecipeHandler` ne chargent plus l'utilisateur (`RecipeRow::copyFromOriginal` et `Recipe::copyFromOriginal` reçoivent l'identifiant de l'auteur) ; `RecipePostgreSQLRepository` n'hydrate plus de `User` ; budgets `modifier-recette` 23 → 22 et `copier-recette` 25 → 24 ; baseline Deptrac −15 lignes (58 restantes)
   - [x] **D3 — `ShoppingList`** : `owner` devient `ownerId` ; `ShoppingListRepository::findByOwner` / `findOneActivateByOwner` prennent un identifiant ; six handlers (`AddIngredientToShoppingList`, `RemoveIngredientToShoppingList`, `PlannedMeal`, `RemoveMealFromPlan`, `CreateShoppingList`, `ActivatedShoppingList`) ne chargent plus l'utilisateur ; le nombre de personnes d'un repas vient du principal authentifié (`PlannedMealCommand::defaultServing`, `ShoppingList::addMeal(, , )`). `StoppedShoppingList` n'enregistre plus de `User` : il annonce `ShoppingListCompletedEvent`, le contexte `User` tient la statistique (`RecordCompletedShoppingList`), `User::completedShoppingList` ne dépend plus du domaine `Repas`. Budgets SQL : 12 use cases de liste baissent d'une requête (`planifier-repas` 29 → 28, `retirer-repas` 21 → 20, `creer-liste` 5 → 4…)
   - [x] **Deptrac sans baseline** : événements consommés par `User` (`Ingredient/Recipe/…Event`, `ShoppingListCompletedEvent`) déplacés dans `Shared\Domain\Event`, classe de base `PostgreSQLRepository` dans `Shared\Infrastructure\Repository`, `RepositoryTrait` (inutilisé) supprimé, fixtures de développement hors des règles de contexte ; la baseline `bounded-context.baseline.yaml` (84 lignes à l'origine) est supprimée, toute dépendance entre contextes fait échouer `make deptrac`
+- [x] **Baseline PHPStan 103 → 55 entrées** : les doubles en mémoire déclarent leur modèle (`@extends AbstractInMemoryRepository<Unit>`, …), ce qui règle les génériques de `Tab` d'un coup ; les exceptions de domaine sont `final` (plus de `new static` non sûr, `ShoppingListException` renvoyait `new self` sous un type `static`). Reste surtout les entités Doctrine (`new static`, non finales pour Doctrine) et les accesseurs `?string` des entités
 - [x] **Données de recette et mot de passe** (prérequis du front) : position des lignes de recette (colonne `recipe_row.position`, remplie dans l'ordre de stockage actuel par la migration `Version20261014180000`, écrite dans l'ordre de la saisie, relue par `ORDER BY position`) ; une unité sans chemin de conversion vers l'unité d'achat est refusée **à l'enregistrement** d'une recette (`ConversionService::assertConvertibleToPurchaseUnit`, 422), budgets `creer-recette` 29 → 30 et `modifier-recette` 22 → 23 (le graphe de conversion se lit une fois par ingrédient) ; l'année des dates de liste est celle du calendrier (`yyyy`, le 29 décembre 2025 s'affichait « 2026 ») ; `UserProvider::upgradePassword` **enregistre** le hash recalculé. Ce dernier point a révélé un piège : Symfony émet le JWT **avant** de rehacher, donc une empreinte du hash aurait révoqué aussitôt chaque jeton émis lors d'un rehachage ; la révocation repose désormais sur une **version des identifiants** (`user.credentials_version`, migration `Version20261014181000`, claim `cv`, [ADR 0008](adr/0008-auth-session-et-jwt.md) §13), augmentée seulement par `User::changePassword`
 
 ## Trous d'autorisation (corrigés en phase 9)
@@ -180,19 +200,19 @@ Audit de tous les controllers qui dispatchent une commande (méthode HTTP et gar
 
 ## Hors périmètre (vus en passant, non corrigés)
 
-- `GetActiveShoppingListViewController` crée la liste active sur un GET (lecture avec effet de bord, `EnsureActiveShoppingList`) : à garder tant que le front Twig l'attend, à supprimer avec l'API.
+- **Twig seulement, non corrigé (supprimé en phase 10)** : `GetActiveShoppingListViewController` crée la liste active sur un GET (lecture avec effet de bord, `EnsureActiveShoppingList`) : à garder tant que le front Twig l'attend, à supprimer avec l'API.
 - Inscription publique (`POST /api/v1/users`) : pas de vérification d'email (ni de captcha) ; un email déjà pris répond 409, ce qui révèle l'existence du compte (le formulaire Twig le fait déjà). Le plafond par IP ne vaut que si `SYMFONY_TRUSTED_PROXIES` est configuré derrière un reverse proxy.
-- Formulaires Twig de rayon (`AbstractDepartmentType`) : `UrlType` préfixe `http://` à une valeur sans protocole, donc modifier un rayon dont l'image est un chemin relatif (`images/…`, forme stockée en base et acceptée par l'API) la transforme en `http://images/…`. `default_protocol` est explicitement `http` (comportement inchangé, notice de dépréciation symfony/form 7.1 retirée) ; le passer à `null` rendrait le champ en `type="url"` et bloquerait les chemins relatifs dans le navigateur. À trancher avec le futur front (champ texte validé côté serveur comme `DepartmentPayload`, ou liste d'images).
-- `admin_recipe_type_row.html.twig` : la ligne porte `id="department-…"` (copier-coller du rayon), à renommer quand un test ou du JS la cible.
-- Formulaires admin : `conversion|default(null)` / `department|default(null)` / `unit|default(null)` jamais fournis par les controllers update, le titre reste « Nouveau … ».
-- Page de connexion : l'erreur « Identifiants invalides. » s'affiche sous le champ email et sous le champ mot de passe (`login.html.twig`), au lieu d'une seule fois.
+- **Twig seulement, non corrigé (supprimé en phase 10)** : formulaires Twig de rayon (`AbstractDepartmentType`) : `UrlType` préfixe `http://` à une valeur sans protocole, donc modifier un rayon dont l'image est un chemin relatif (`images/…`, forme stockée en base et acceptée par l'API) la transforme en `http://images/…`. `default_protocol` est explicitement `http` (comportement inchangé, notice de dépréciation symfony/form 7.1 retirée) ; le passer à `null` rendrait le champ en `type="url"` et bloquerait les chemins relatifs dans le navigateur. À trancher avec le futur front (champ texte validé côté serveur comme `DepartmentPayload`, ou liste d'images).
+- **Twig seulement, non corrigé (supprimé en phase 10)** : `admin_recipe_type_row.html.twig` : la ligne porte `id="department-…"` (copier-coller du rayon), à renommer quand un test ou du JS la cible.
+- **Twig seulement, non corrigé (supprimé en phase 10)** : formulaires admin : `conversion|default(null)` / `department|default(null)` / `unit|default(null)` jamais fournis par les controllers update, le titre reste « Nouveau … ».
+- **Twig seulement, non corrigé (supprimé en phase 10)** : page de connexion : l'erreur « Identifiants invalides. » s'affiche sous le champ email et sous le champ mot de passe (`login.html.twig`), au lieu d'une seule fois.
 
 ## Couverture de tests (cliquet)
 
-- Seuil CI : **80 %** (`COVERAGE_THRESHOLD`, `.github/workflows/ci.yml`). Mesure au 2026-10-13 : 77,1 %, puis 81,8 % à la fin de la phase 2, d'où le passage de 75 à 80. Le seuil de 80 % d'origine n'était plus tenu avant la migration (57,2 %, toute la couche Twig non testée).
+- Seuil CI : **88 %** (`COVERAGE_THRESHOLD`, `.github/workflows/ci.yml`). Mesure au 2026-10-14 : 90,3 %, d'où le passage de 80 à 88 (2 points de marge pour une PR qui ajoute plus de code que de tests). Historique : 77,1 % puis 81,8 % à la fin de la phase 2 (seuil de 75 à 80). Le seuil de 80 % d'origine n'était plus tenu avant la migration (57,2 %, toute la couche Twig non testée).
 - Exclus de la mesure (`phpunit.dist.xml`) : `Http/Controller` et `Http/Form` des contextes `Repas` et `User` (ils sortent de l'exclusion en même temps que du code, phase 10 ; les controllers API restent mesurés), et les `DataFixture` (données de test chargées hors d'un test, donc jamais créditées).
 - Règle : le seuil ne baisse jamais. Le remonter par paliers quand la mesure le permet (les slices Query/Loader/API entrent à 100 %, donc le chiffre monte avec la migration).
-- Plus gros trous restants (éléments non couverts) : `Infrastructure/Entity` 172, `Domain/Model` 134, commandes console `src/Command` 113, `Infrastructure/Repository` 89.
+- Plus gros trous restants (mesure du 2026-10-13, éléments non couverts) : `Infrastructure/Entity` 172, `Domain/Model` 134, commandes console `src/Command` 113, `Infrastructure/Repository` 89.
 
 ## Inventaire des lectures directes (état initial, 2026-10-12)
 

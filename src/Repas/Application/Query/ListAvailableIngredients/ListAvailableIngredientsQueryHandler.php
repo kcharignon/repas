@@ -18,6 +18,6 @@ final readonly class ListAvailableIngredientsQueryHandler
      */
     public function __invoke(ListAvailableIngredientsQuery $query): array
     {
-        return $this->ingredientLoader->listAvailable($query->userId);
+        return $this->ingredientLoader->listAvailable($query->userId, $query->search);
     }
 }

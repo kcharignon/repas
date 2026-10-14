@@ -17,6 +17,13 @@ interface IngredientRepository
     public function findOneBySlug(string $slug): Ingredient;
 
     /**
+     * Slug de l'unité d'achat de l'ingrédient : de quoi poser une ligne de liste sans hydrater l'ingrédient, son rayon et ses unités.
+     *
+     * @throws IngredientException
+     */
+    public function findPurchaseUnitSlug(string $slug): string;
+
+    /**
      * @return Tab<Ingredient>
      */
     public function findByDepartmentAndOwner(Department $department, string $ownerId): Tab;

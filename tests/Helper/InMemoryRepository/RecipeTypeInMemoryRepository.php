@@ -8,6 +8,9 @@ use Repas\Repas\Domain\Interface\RecipeTypeRepository;
 use Repas\Repas\Domain\Model\RecipeType;
 use Repas\Shared\Domain\Tool\Tab;
 
+/**
+ * @extends AbstractInMemoryRepository<RecipeType>
+ */
 class RecipeTypeInMemoryRepository extends AbstractInMemoryRepository implements RecipeTypeRepository
 {
     use SaveModelTrait;

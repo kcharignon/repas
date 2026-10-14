@@ -32,14 +32,12 @@ readonly class RemoveIngredientHandler
         $ingredient = $this->ingredientRepository->findOneBySlug($command->ingredientId);
 
         // Si l'ingrédient est dans une recette, alors on ne le supprime pas
-        $recipes = $this->recipeRepository->findByIngredient($ingredient);
-        if (!$recipes->empty()) {
+        if ($this->recipeRepository->isIngredientUsed($ingredient->getSlug())) {
             throw IngredientException::cannotBeRemoveExistInRecipe($ingredient->getId());
         }
 
         // Si l'ingrédient est dans une liste de course, alors on ne le supprime pas
-        $shoppingLists = $this->shoppingListRepository->findByIngredient($ingredient);
-        if (!$shoppingLists->empty()) {
+        if ($this->shoppingListRepository->isIngredientUsed($ingredient->getSlug())) {
             throw IngredientException::cannotBeRemoveExistInShoppingList($ingredient->getId());
         }
 

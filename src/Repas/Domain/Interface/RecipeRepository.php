@@ -3,7 +3,6 @@
 namespace Repas\Repas\Domain\Interface;
 
 
-use Repas\Repas\Domain\Model\Ingredient;
 use Repas\Repas\Domain\Model\Recipe;
 use Repas\Shared\Domain\Tool\Tab;
 
@@ -24,9 +23,9 @@ interface RecipeRepository
     public function save(Recipe $recipe): void;
 
     /**
-     * @return Tab<Recipe>
+     * Une recette utilise-t-elle cet ingrédient ? (existence seulement : aucun agrégat n'est hydraté)
      */
-    public function findByIngredient(Ingredient $ingredient): Tab;
+    public function isIngredientUsed(string $ingredientSlug): bool;
 
     public function delete(Recipe $recipe): void;
 }

@@ -23,15 +23,16 @@ final class ShoppingListRow implements ModelInterface
 
     public static function create(
         string $shoppingListId,
-        Ingredient $ingredient,
-        float      $quantity,
+        string $ingredientSlug,
+        string $unitSlug,
+        float  $quantity,
     ): self {
         return new self(
             id: UuidGenerator::new(),
             shoppingListId: $shoppingListId,
-            ingredientSlug: $ingredient->getSlug(),
+            ingredientSlug: $ingredientSlug,
             quantity: $quantity,
-            unitSlug: $ingredient->getDefaultPurchaseUnit()->getSlug(),
+            unitSlug: $unitSlug,
             checked: false,
         );
     }

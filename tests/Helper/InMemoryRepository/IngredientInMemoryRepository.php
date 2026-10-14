@@ -9,6 +9,9 @@ use Repas\Repas\Domain\Model\Department;
 use Repas\Repas\Domain\Model\Ingredient;
 use Repas\Shared\Domain\Tool\Tab;
 
+/**
+ * @extends AbstractInMemoryRepository<Ingredient>
+ */
 class IngredientInMemoryRepository extends AbstractInMemoryRepository implements IngredientRepository
 {
     use SaveModelTrait;
@@ -16,6 +19,11 @@ class IngredientInMemoryRepository extends AbstractInMemoryRepository implements
     protected static function getClassName(): string
     {
         return Ingredient::class;
+    }
+
+    public function findPurchaseUnitSlug(string $slug): string
+    {
+        return $this->findOneBySlug($slug)->getDefaultPurchaseUnit()->getSlug();
     }
 
     public function exists(string $slug): bool

@@ -5,7 +5,7 @@ namespace Repas\Repas\Domain\Exception;
 
 use Repas\Shared\Domain\Exception\DomainException;
 
-class ShoppingListRowException extends DomainException
+final class ShoppingListRowException extends DomainException
 {
 
     public static function notFound(string $id): static
