@@ -22,6 +22,7 @@ readonly class UpdateServingMealHandler
     public function __invoke(UpdateServingMealCommand $command): void
     {
         $shoppingList = $this->shoppingListRepository->findOneByMealId($command->mealId);
+        $shoppingList->assertVersion($command->expectedVersion);
 
         $meal = $shoppingList->getMeals()->find(fn(Meal $meal) => $meal->getId() === $command->mealId);
 

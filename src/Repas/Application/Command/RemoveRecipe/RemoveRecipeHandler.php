@@ -26,6 +26,7 @@ readonly class RemoveRecipeHandler
     public function __invoke(RemoveRecipeCommand $command): void
     {
         $recipe = $this->recipeRepository->findOneById($command->recipeId);
+        $recipe->assertVersion($command->expectedVersion);
 
         if ($this->shoppingListRepository->isRecipePlanned($recipe->getId())) {
             throw RecipeException::cannotRemoveExistInShoppingList($recipe->getId());

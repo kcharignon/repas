@@ -111,4 +111,35 @@ class UpdateRecipeApiControllerTest extends QueryBusWebTestCase
     {
         $this->client->request('PUT', $uri, content: json_encode($body, JSON_THROW_ON_ERROR), server: $this->bearerFor($user) + ['CONTENT_TYPE' => 'application/json']);
     }
+
+    public function testForwardsTheIfMatchVersionToTheCommand(): void
+    {
+        // Given
+        $commandBus = $this->mockCommandBus();
+        $author = $this->savedUser();
+        $recipe = $this->savedRecipe($author);
+
+        // When
+        $this->client->request('PUT', '/api/v1/recipes/' . $recipe->getId(), content: json_encode(self::BODY, JSON_THROW_ON_ERROR), server: $this->bearerFor($author) + ['CONTENT_TYPE' => 'application/json', 'HTTP_IF_MATCH' => '"4"']);
+
+        // Then
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->assertSame(4, $commandBus->dispatched()[0]->expectedVersion);
+    }
+
+    public function testRefusesAnIfMatchWhichIsNotAnEtagWithoutDispatching(): void
+    {
+        // Given
+        $commandBus = $this->mockCommandBus();
+        $author = $this->savedUser();
+        $recipe = $this->savedRecipe($author);
+
+        // When
+        $this->client->request('PUT', '/api/v1/recipes/' . $recipe->getId(), content: json_encode(self::BODY, JSON_THROW_ON_ERROR), server: $this->bearerFor($author) + ['CONTENT_TYPE' => 'application/json', 'HTTP_IF_MATCH' => 'abc']);
+
+        // Then
+        $this->assertSame(412, $this->client->getResponse()->getStatusCode());
+        $this->assertArrayHasKey('error', $this->jsonBody());
+        $this->assertSame([], $commandBus->dispatched());
+    }
 }

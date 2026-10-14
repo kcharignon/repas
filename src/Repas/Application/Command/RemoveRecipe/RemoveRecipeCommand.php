@@ -7,7 +7,8 @@ readonly class RemoveRecipeCommand
 {
 
     public function __construct(
-        public string $recipeId
+        public string $recipeId,
+        public ?int $expectedVersion = null,
     ) {
     }
 }

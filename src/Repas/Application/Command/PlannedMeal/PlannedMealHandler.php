@@ -35,6 +35,7 @@ readonly class PlannedMealHandler
         if (!$shoppingList instanceof ShoppingList) {
             throw ShoppingListException::activeShoppingListNotFound();
         }
+        $shoppingList->assertVersion($command->expectedVersion);
 
         $recipe = $this->recipeRepository->findOneById($command->recipeId);
 

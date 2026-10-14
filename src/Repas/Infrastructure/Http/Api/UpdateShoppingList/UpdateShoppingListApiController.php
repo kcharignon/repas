@@ -7,7 +7,9 @@ use Nelmio\ApiDocBundle\Attribute\Model;
 use OpenApi\Attributes as OA;
 use Repas\Repas\Application\Command\UpdateShoppingList\UpdateShoppingListCommand;
 use Repas\Shared\Application\Interface\CommandBusInterface;
+use Repas\Shared\Infrastructure\Http\EntityVersion;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\MapRequestPayload;
 use Symfony\Component\Routing\Attribute\Route;
@@ -26,13 +28,15 @@ final class UpdateShoppingListApiController extends AbstractController
     #[OA\Patch(summary: 'Renomme une liste de courses ; `name` absent ou null rétablit le nom par défaut (la date)')]
     #[OA\Tag(name: 'Shopping lists')]
     #[OA\RequestBody(required: true, content: new OA\JsonContent(ref: new Model(type: UpdateShoppingListPayload::class)))]
+    #[OA\Parameter(ref: '#/components/parameters/IfMatch')]
     #[OA\Response(response: 204, description: 'Liste renommée')]
     #[OA\Response(response: 403, description: "La ressource appartient à un autre utilisateur")]
     #[OA\Response(response: 404, description: 'Ressource inconnue')]
     #[OA\Response(response: 422, description: 'Corps de la requête invalide')]
-    public function __invoke(string $id, #[MapRequestPayload] UpdateShoppingListPayload $payload): Response
+    #[OA\Response(response: 412, description: "La version de la liste n'est plus celle de `If-Match` : elle a été modifiée depuis sa lecture")]
+    public function __invoke(string $id, #[MapRequestPayload] UpdateShoppingListPayload $payload, Request $request): Response
     {
-        $this->commandBus->dispatch(new UpdateShoppingListCommand($id, $payload->name));
+        $this->commandBus->dispatch(new UpdateShoppingListCommand($id, $payload->name, EntityVersion::expected($request)));
 
         return new Response(status: Response::HTTP_NO_CONTENT);
     }

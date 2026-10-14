@@ -34,4 +34,18 @@ class PlannedMealApiControllerTest extends QueryBusWebTestCase
         $this->assertSame(401, $this->client->getResponse()->getStatusCode());
         $this->assertSame([], $commandBus->dispatched());
     }
+
+    public function testForwardsTheIfMatchVersionToTheCommand(): void
+    {
+        // Given
+        $commandBus = $this->mockCommandBus();
+        $owner = $this->savedUser();
+
+        // When
+        $this->client->request('PUT', '/api/v1/shopping-lists/active/recipes/recipe-1', server: $this->bearerFor($owner) + ['HTTP_IF_MATCH' => '"5"']);
+
+        // Then
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->assertEquals([new PlannedMealCommand($owner->getId(), 'recipe-1', $owner->getDefaultServing(), 5)], $commandBus->dispatched());
+    }
 }

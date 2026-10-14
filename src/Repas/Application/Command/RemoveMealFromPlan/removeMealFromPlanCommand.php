@@ -9,6 +9,7 @@ readonly class removeMealFromPlanCommand
     public function __construct(
         public string $ownerId,
         public string $recipeId,
+        public ?int $expectedVersion = null,
     ) {
     }
 }

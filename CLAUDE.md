@@ -60,7 +60,7 @@ src/{Context}/
 - Stateless, authentifiés par **JWT** (ADR 0008). Le JWT dure 1 h ; le SPA le renouvelle avec un **refresh token en cookie `HttpOnly` à rotation** (`POST /api/auth/refresh` et `/logout`, ADR 0015). Seule exception : l'inscription `POST /api/v1/users` est publique (`access_control`, ADR 0007 §14). Les routes Twig/AJAX existantes restent en session et ne changent pas : les deux coexistent.
 - Documentation OpenAPI (`#[OA\…]`) obligatoire sur chaque controller API.
 - Le contrat complet est versionné dans `docs/api/openapi.json` : après tout changement d'API, `make openapi` puis relire le diff (`make openapi-check` échoue sinon, ADR 0007 §15).
-- Endpoints d'écriture : un use case = une commande = un controller ; l'utilisateur vient du JWT (`#[CurrentUser] AuthenticatedUser`), jamais du corps ; transitions d'état en `POST …/{action}` ; codes de domaine 404 / 409 / 422, `403` réservé à l'autorisation (ADR 0007 §11 à 13).
+- Endpoints d'écriture : un use case = une commande = un controller ; l'utilisateur vient du JWT (`#[CurrentUser] AuthenticatedUser`), jamais du corps ; transitions d'état en `POST …/{action}` ; codes de domaine 404 / 409 / 422, `403` réservé à l'autorisation (ADR 0007 §11 à 13). Recette et liste de courses ont une `version` (`ETag` à la lecture, `If-Match` facultatif aux écritures, `412` si périmée, `409` si une autre requête a enregistré entre-temps : ADR 0016) ; toute nouvelle écriture sur ces deux agrégats ajoute `?int $expectedVersion = null` à sa commande et appelle `assertVersion()` après le chargement.
 
 ## Domain Model
 
@@ -72,7 +72,7 @@ src/{Context}/
   - Méthodes `update(...)` / `set*()` fluent (`return $this;`) pour les mutations.
 - Comparaison par identité via `isEqual()`, jamais `===` sur les objets métier.
 - **Un agrégat référence les autres agrégats par identifiant** (slug, id), jamais par l'objet : `ShoppingListRow` porte `ingredientSlug` / `unitSlug`, `Meal` porte `recipeId` (ADR 0013). Un use case qui a besoin de la `Recipe` d'un repas la charge par son port ; une question d'existence ou d'état d'un ensemble est une méthode de port booléenne, pas une hydratation d'agrégats.
-- **Un modèle est une copie** : chaque `find` en construit un neuf, et `save()` recopie tout le modèle sur l'entité (dernier enregistrement gagnant). Un use case charge donc un agrégat une seule fois et passe l'instance ; un listener recharge depuis la base ; on n'enregistre pas un modèle chargé avant un événement qui peut modifier le même agrégat (statistiques d'un `User`) ; `isEqual()`, jamais `===` (ADR 0013 règle 7).
+- **Un modèle est une copie** : chaque `find` en construit un neuf, et `save()` recopie tout le modèle sur l'entité (dernier enregistrement gagnant, sauf conflit détecté par la version, ADR 0016). Un use case charge donc un agrégat une seule fois et passe l'instance ; un listener recharge depuis la base ; on n'enregistre pas un modèle chargé avant un événement qui peut modifier le même agrégat (statistiques d'un `User`) ; `isEqual()`, jamais `===` (ADR 0013 règle 7).
 - Collections typées via `Repas\Shared\Domain\Tool\Tab` (wrapper de collection typé), pas de tableaux PHP nus pour des listes de modèles.
 
 ## Repository pattern

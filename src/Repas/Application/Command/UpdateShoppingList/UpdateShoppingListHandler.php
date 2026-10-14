@@ -17,6 +17,7 @@ readonly class UpdateShoppingListHandler
     public function __invoke(UpdateShoppingListCommand $command): void
     {
         $shoppingList = $this->shoppingListRepository->findOneById($command->shoppingListId);
+        $shoppingList->assertVersion($command->expectedVersion);
         $shoppingList->setName($command->newName);
         $this->shoppingListRepository->save($shoppingList);
     }

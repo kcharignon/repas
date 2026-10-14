@@ -87,4 +87,25 @@ class AddIngredientToShoppingListHandlerTest extends TestCase
         // Act
         ($this->handler)($command);
     }
+
+    public function testRefusesAnOutdatedVersionAndAddsNothing(): void
+    {
+        // Arrange : la liste est à la version 1, le client croit à la 2
+        $user = new UserBuilder()->build();
+        $egg = new IngredientBuilder()->isEgg()->build();
+        $this->ingredientRepository->save($egg);
+        $shoppingList = new ShoppingListBuilder()->withOwner($user)->build();
+        $this->shoppingListRepository->save($shoppingList);
+        $command = new AddIngredientToShoppingListCommand($user->getId(), $egg->getSlug(), expectedVersion: 2);
+
+        // Assert
+        $this->expectExceptionObject(ShoppingListException::outdated($shoppingList->getId()));
+
+        // Act
+        try {
+            ($this->handler)($command);
+        } finally {
+            $this->assertCount(0, $shoppingList->getIngredients());
+        }
+    }
 }

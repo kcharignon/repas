@@ -19,6 +19,7 @@ Décisions d'architecture du projet Repas. **À relire avant de développer ou d
 | [0013](0013-agregats-references-par-identifiant.md) | Un agrégat référence les autres agrégats par identifiant | Accepted |
 | [0014](0014-montee-de-versions-et-dependabot.md) | Montée de versions, Dependabot et avis de sécurité | Accepted |
 | [0015](0015-refresh-token-du-spa.md) | Authentification du SPA : refresh token en cookie `HttpOnly` à rotation | Accepted |
+| [0016](0016-controle-de-version-etag-if-match.md) | Contrôle de modification concurrente : version, `ETag` et `If-Match` | Accepted |
 
 ## Sources
 

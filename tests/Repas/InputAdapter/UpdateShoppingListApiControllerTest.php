@@ -125,4 +125,19 @@ class UpdateShoppingListApiControllerTest extends QueryBusWebTestCase
         $this->assertSame(401, $this->client->getResponse()->getStatusCode());
         $this->assertSame([], $commandBus->dispatched());
     }
+
+    public function testForwardsTheIfMatchVersionToTheCommand(): void
+    {
+        // Given
+        $commandBus = $this->mockCommandBus();
+        $owner = $this->savedUser();
+        $shoppingList = $this->savedShoppingList($owner);
+
+        // When
+        $this->client->request('PATCH', '/api/v1/shopping-lists/' . $shoppingList->getId(), content: json_encode(['name' => 'Courses'], JSON_THROW_ON_ERROR), server: $this->bearerFor($owner) + ['CONTENT_TYPE' => 'application/json', 'HTTP_IF_MATCH' => '"6"']);
+
+        // Then
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->assertEquals([new UpdateShoppingListCommand($shoppingList->getId(), 'Courses', 6)], $commandBus->dispatched());
+    }
 }

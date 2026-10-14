@@ -3,6 +3,7 @@
 namespace Repas\Application;
 
 
+use Repas\Repas\Domain\Exception\ShoppingListException;
 use PHPUnit\Framework\TestCase;
 use Repas\Repas\Application\Command\UpdateServingMeal\UpdateServingMealCommand;
 use Repas\Repas\Application\Command\UpdateServingMeal\UpdateServingMealHandler;
@@ -89,5 +90,23 @@ class UpdateServingMealHandlerTest extends TestCase
         $actualMeal = $this->shoppingListRepository->findOneById($this->shoppingList->getId())
             ->getMeals()->find(fn(Meal $meal) => $meal->getId() === $mealId);
         $this->assertEquals(12, $actualMeal->getServing());
+    }
+
+    public function testRefusesAnOutdatedVersionAndKeepsTheServing(): void
+    {
+        // Arrange : la liste est à la version 1, le client croit à la 2
+        $meal = $this->shoppingList->getMeals()->find(fn(Meal $meal) => $meal->hasRecipe($this->recipe));
+        $servingBefore = $meal->getServing();
+        $command = new UpdateServingMealCommand($meal->getId(), $servingBefore + 5, expectedVersion: 2);
+
+        // Assert
+        $this->expectExceptionObject(ShoppingListException::outdated($this->shoppingList->getId()));
+
+        // Act
+        try {
+            ($this->handler)($command);
+        } finally {
+            $this->assertSame($servingBefore, $meal->getServing());
+        }
     }
 }

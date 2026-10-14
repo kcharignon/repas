@@ -31,7 +31,7 @@ final readonly class RecipePostgreSQLLoader implements RecipeLoader
     public function get(string $id): RecipeDTO
     {
         $recipe = $this->entityManager->createQueryBuilder()
-            ->select('r.id AS id', 'r.name AS name', 'r.serving AS serving', 't.slug AS typeSlug', 't.name AS typeName')
+            ->select('r.id AS id', 'r.name AS name', 'r.serving AS serving', 't.slug AS typeSlug', 't.name AS typeName', 'r.version AS version')
             ->from(Recipe::class, 'r')
             ->innerJoin(RecipeType::class, 't', Join::WITH, 't.slug = r.typeSlug')
             ->where('r.id = :id')
@@ -69,6 +69,7 @@ final readonly class RecipePostgreSQLLoader implements RecipeLoader
                 ),
                 $rows,
             ),
+            version: (int) $recipe['version'],
         );
     }
 

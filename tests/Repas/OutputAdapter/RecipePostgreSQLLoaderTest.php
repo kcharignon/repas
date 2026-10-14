@@ -9,6 +9,7 @@ use Repas\Repas\Application\Query\ListOtherPeopleRecipes\OtherPeopleRecipeDTO;
 use Repas\Repas\Application\Query\ListRecipesByType\RecipeSummaryDTO;
 use Repas\Repas\Application\Query\ListRecipeTypes\RecipeTypeDTO;
 use Repas\Repas\Domain\Exception\RecipeException;
+use Repas\Repas\Domain\Interface\RecipeRepository;
 use Repas\Repas\Domain\Model\Recipe;
 use Repas\Tests\Helper\Builder\IngredientBuilder;
 use Repas\Tests\Helper\Builder\RecipeBuilder;
@@ -56,6 +57,22 @@ class RecipePostgreSQLLoaderTest extends DatabaseTestCase
             ],
             $result->rows,
         );
+    }
+
+    public function testGetReturnsTheVersionOfTheRecipe(): void
+    {
+        // Given : une recette neuve (version 1) puis enregistrée une seconde fois (version 2)
+        $recipe = new RecipeBuilder()->withAuthor($this->savedUser())->build();
+        $this->persister->saveRecipe($recipe);
+        $this->assertSame(1, $this->recipeLoader->get($recipe->getId())->version);
+        $recipe->setName('zzz autre nom');
+        static::getContainer()->get(RecipeRepository::class)->save($recipe);
+
+        // When
+        $result = $this->recipeLoader->get($recipe->getId());
+
+        // Then
+        $this->assertSame(2, $result->version);
     }
 
     public function testGetReturnsARecipeWithoutRow(): void
