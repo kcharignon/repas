@@ -346,6 +346,53 @@
             }
         },
         "/api/v1/ingredients": {
+            "get": {
+                "tags": [
+                    "Ingredients"
+                ],
+                "summary": "Ingr\u00e9dients que l'utilisateur authentifi\u00e9 peut utiliser (communs et les siens), tri\u00e9s par nom : choix des recettes",
+                "operationId": "get_api_list_available_ingredients",
+                "parameters": [
+                    {
+                        "name": "q",
+                        "in": "query",
+                        "description": "Ne garde que les ingr\u00e9dients dont le nom contient ce texte (sans tenir compte de la casse ni des accents), 100 caract\u00e8res au plus",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "maxLength": 100
+                        },
+                        "example": "cre"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Ingr\u00e9dients utilisables",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "member": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/IngredientOptionDTO"
+                                            }
+                                        },
+                                        "totalItems": {
+                                            "type": "integer",
+                                            "example": 42
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Param\u00e8tre `q` invalide (trop long)"
+                    }
+                }
+            },
             "post": {
                 "tags": [
                     "Ingredients"
@@ -2073,6 +2120,17 @@
                 },
                 "type": "object"
             },
+            "ListAvailableIngredientsRequestQuery": {
+                "properties": {
+                    "q": {
+                        "type": "string",
+                        "default": null,
+                        "maxLength": 100,
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
             "UpdateServingMealPayload": {
                 "required": [
                     "serving"
@@ -2241,6 +2299,24 @@
                         "description": "Chemin ou URL de l'image du rayon",
                         "type": "string",
                         "example": "images/department/fruits.png"
+                    }
+                },
+                "type": "object"
+            },
+            "IngredientOptionDTO": {
+                "required": [
+                    "slug",
+                    "name"
+                ],
+                "properties": {
+                    "slug": {
+                        "description": "Identifiant de l'ingr\u00e9dient (slug)",
+                        "type": "string",
+                        "example": "oeuf"
+                    },
+                    "name": {
+                        "type": "string",
+                        "example": "\u0153uf"
                     }
                 },
                 "type": "object"

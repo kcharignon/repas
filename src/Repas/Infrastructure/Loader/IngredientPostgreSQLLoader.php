@@ -146,17 +146,23 @@ final readonly class IngredientPostgreSQLLoader implements IngredientLoader
         return $units;
     }
 
-    public function listAvailable(string $userId): array
+    public function listAvailable(string $userId, ?string $search = null): array
     {
-        $rows = $this->entityManager->createQueryBuilder()
+        $query = $this->entityManager->createQueryBuilder()
             ->select('i.slug AS slug', 'i.name AS name')
             ->from(Ingredient::class, 'i')
             ->where('i.creatorId = :user OR i.creatorId IS NULL')
             ->setParameter('user', $userId)
             ->orderBy('i.sluggedName', 'ASC')
-            ->addOrderBy('i.slug', 'ASC')
-            ->getQuery()
-            ->getArrayResult();
+            ->addOrderBy('i.slug', 'ASC');
+
+        // `slugged_name` est le nom sans accent ni majuscule, séparé par des tirets : on cherche le texte dans la même forme
+        $needle = $search === null ? '' : StringTool::slugify($search);
+        if ($needle !== '') {
+            $query->andWhere('i.sluggedName LIKE :search')->setParameter('search', '%' . $needle . '%');
+        }
+
+        $rows = $query->getQuery()->getArrayResult();
 
         return array_map(static fn(array $row): IngredientOptionDTO => new IngredientOptionDTO($row['slug'], $row['name']), $rows);
     }

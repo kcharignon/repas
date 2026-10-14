@@ -263,6 +263,41 @@ class IngredientPostgreSQLLoaderTest extends DatabaseTestCase
         );
     }
 
+    public function testListAvailableSearchesTheNameWithoutCaseNorAccentNorSpacing(): void
+    {
+        // Given
+        $viewer = $this->savedUser();
+        $other = $this->savedUser();
+        $cream = $this->savedIngredient(new IngredientBuilder()->withName('zzz Crème fraîche'));
+        $this->savedIngredient(new IngredientBuilder()->withName('zzz farine'));
+        $ownCream = $this->savedIngredient(new IngredientBuilder()->withName('aaa crème maison')->withCreator($viewer, true));
+        $this->savedIngredient(new IngredientBuilder()->withName('zzz crème secrète')->withCreator($other, true));
+
+        // When
+        $byAccentedText = $this->ingredientLoader->listAvailable($viewer->getId(), '  CRÈME ');
+        $byPartOfTwoWords = $this->ingredientLoader->listAvailable($viewer->getId(), 'me fra');
+
+        // Then : communs et propres, jamais ceux d'un autre, toujours triés par nom
+        $this->assertEquals(
+            [new IngredientOptionDTO($ownCream->getSlug(), 'aaa crème maison'), new IngredientOptionDTO($cream->getSlug(), 'zzz Crème fraîche')],
+            $byAccentedText,
+        );
+        $this->assertEquals([new IngredientOptionDTO($cream->getSlug(), 'zzz Crème fraîche')], $byPartOfTwoWords);
+    }
+
+    public function testListAvailableWithABlankSearchKeepsEverything(): void
+    {
+        // Given
+        $viewer = $this->savedUser();
+        $this->savedIngredient(new IngredientBuilder()->withName('zzz sel'));
+
+        // When
+        $result = $this->ingredientLoader->listAvailable($viewer->getId(), '   ');
+
+        // Then
+        $this->assertCount(1, $result);
+    }
+
     public function testListAvailableIsEmptyWithoutIngredient(): void
     {
         // When
