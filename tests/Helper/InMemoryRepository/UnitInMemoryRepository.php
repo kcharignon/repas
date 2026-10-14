@@ -8,6 +8,9 @@ use Repas\Repas\Domain\Interface\UnitRepository;
 use Repas\Repas\Domain\Model\Unit;
 use Repas\Shared\Domain\Tool\Tab;
 
+/**
+ * @extends AbstractInMemoryRepository<Unit>
+ */
 class UnitInMemoryRepository extends AbstractInMemoryRepository implements UnitRepository
 {
     use SaveModelTrait;

@@ -10,6 +10,9 @@ use Repas\Repas\Domain\Model\Ingredient;
 use Repas\Repas\Domain\Model\Unit;
 use Repas\Shared\Domain\Tool\Tab;
 
+/**
+ * @extends AbstractInMemoryRepository<Conversion>
+ */
 class ConversionInMemoryRepository extends AbstractInMemoryRepository implements ConversionRepository
 {
     protected static function getClassName(): string

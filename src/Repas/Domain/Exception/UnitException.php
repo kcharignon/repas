@@ -5,7 +5,7 @@ namespace Repas\Repas\Domain\Exception;
 
 use Repas\Shared\Domain\Exception\DomainException;
 
-class UnitException extends DomainException
+final class UnitException extends DomainException
 {
     public static function notFound(string $slug): static
     {
