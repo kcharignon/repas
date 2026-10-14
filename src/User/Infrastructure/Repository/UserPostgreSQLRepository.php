@@ -86,6 +86,7 @@ readonly class UserPostgreSQLRepository extends PostgreSQLRepository implements 
             'default_serving' => $entity->getDefaultServing(),
             'status' => $entity->getStatus(),
             'statistics' => $entity->getStatistics(),
+            'credentials_version' => $entity->getCredentialsVersion(),
         ]);
     }
 

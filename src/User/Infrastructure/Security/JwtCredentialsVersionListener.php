@@ -7,20 +7,23 @@ use Lexik\Bundle\JWTAuthenticationBundle\Event\JWTAuthenticatedEvent;
 use Lexik\Bundle\JWTAuthenticationBundle\Event\JWTCreatedEvent;
 use Lexik\Bundle\JWTAuthenticationBundle\Events;
 use Lexik\Bundle\JWTAuthenticationBundle\Exception\InvalidTokenException;
+use Repas\User\Domain\Model\User;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
-use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 
 /**
- * Lie chaque JWT au mot de passe de son titulaire : changer de mot de passe révoque les jetons déjà émis (ADR 0008).
+ * Lie chaque JWT à la version des identifiants de son titulaire : changer de mot de passe révoque les jetons déjà émis
+ * (ADR 0008).
  *
- * Le jeton porte l'empreinte du hash du mot de passe (`pwd`) ; à chaque requête, l'utilisateur relu en base doit avoir la
- * même. L'empreinte est un HMAC tronqué (clé : `kernel.secret`), pas le hash lui-même : le contenu d'un JWT est lisible
- * de tous. Un jeton sans empreinte (émis avant cette règle) est refusé.
+ * Le jeton porte `cv`, un HMAC tronqué (clé : `kernel.secret`) de l'identifiant et de la version des identifiants de
+ * l'utilisateur ; à chaque requête, l'utilisateur relu en base doit avoir la même. La version n'augmente que quand le mot
+ * de passe change (`User::changePassword`), **pas** quand Symfony recalcule le hash à la connexion (`User::setPassword`) : Symfony
+ * émet le jeton avant ce recalcul, une empreinte du hash lui-même révoquerait aussitôt le jeton qu'on vient de donner.
+ * Un jeton sans `cv` (émis avant cette règle) est refusé.
  */
-final readonly class JwtPasswordFingerprintListener
+final readonly class JwtCredentialsVersionListener
 {
-    public const string CLAIM = 'pwd';
+    public const string CLAIM = 'cv';
 
     public function __construct(
         #[Autowire('%kernel.secret%')]
@@ -32,7 +35,7 @@ final readonly class JwtPasswordFingerprintListener
     public function onJwtCreated(JWTCreatedEvent $event): void
     {
         $user = $event->getUser();
-        if (!$user instanceof PasswordAuthenticatedUserInterface) {
+        if (!$user instanceof User) {
             return;
         }
 
@@ -43,7 +46,7 @@ final readonly class JwtPasswordFingerprintListener
     public function onJwtAuthenticated(JWTAuthenticatedEvent $event): void
     {
         $user = $event->getToken()->getUser();
-        if (!$user instanceof PasswordAuthenticatedUserInterface) {
+        if (!$user instanceof User) {
             return;
         }
 
@@ -53,8 +56,8 @@ final readonly class JwtPasswordFingerprintListener
         }
     }
 
-    private function fingerprint(PasswordAuthenticatedUserInterface $user): string
+    private function fingerprint(User $user): string
     {
-        return substr(hash_hmac('sha256', (string) $user->getPassword(), $this->secret), 0, 16);
+        return substr(hash_hmac('sha256', $user->getId() . '|' . $user->getCredentialsVersion(), $this->secret), 0, 16);
     }
 }
