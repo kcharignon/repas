@@ -5,7 +5,7 @@ namespace Repas\User\Domain\Exception;
 
 use Repas\Shared\Domain\Exception\DomainException;
 
-class UserException extends DomainException
+final class UserException extends DomainException
 {
     public const string INVALID_PASSWORD = 'INVALID_PASSWORD';
 

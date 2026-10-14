@@ -7,7 +7,7 @@ use Repas\Repas\Domain\Model\Ingredient;
 use Repas\Repas\Domain\Model\Unit;
 use Repas\Shared\Domain\Exception\DomainException;
 
-class IngredientException extends DomainException
+final class IngredientException extends DomainException
 {
     public static function notFound(string $slug): static
     {

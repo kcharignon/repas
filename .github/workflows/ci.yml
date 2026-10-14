@@ -65,7 +65,7 @@ jobs:
         # Seuil en cliquet : on ne le baisse jamais, on le remonte quand la mesure le permet (docs/migration-roadmap.md).
         # La couche Twig (Http/Controller, Http/Form) est exclue de la mesure dans phpunit.dist.xml.
         env:
-          COVERAGE_THRESHOLD: 80
+          COVERAGE_THRESHOLD: 88
         run: |
           OUTPUT=$(docker compose exec -T php vendor/bin/coverage-check clover.xml "$COVERAGE_THRESHOLD" --only-percentage || true)
           PERCENTAGE=$(echo "$OUTPUT" | grep -oE '[0-9]+\.[0-9]+|[0-9]+' | head -1)
@@ -88,7 +88,7 @@ jobs:
         run: make phpstan EXEC_PHP="docker compose exec -T php"
       -
         name: API documentation
-        run: make api-doc-validate api-doc-coverage EXEC_PHP="docker compose exec -T php"
+        run: make api-doc-validate api-doc-coverage openapi-check EXEC_PHP="docker compose exec -T php"
   audit:
     name: Security advisories
     runs-on: ubuntu-latest
