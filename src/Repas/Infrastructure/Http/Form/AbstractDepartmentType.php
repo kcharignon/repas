@@ -22,6 +22,8 @@ abstract class AbstractDepartmentType extends AbstractType implements DataMapper
             ->add("image", UrlType::class, [
                 "label" => "Image",
                 "required" => true,
+                // Valeur par défaut de Symfony 7, rendue explicite (symfony/form 7.1 : elle devient `null` en 8.0)
+                "default_protocol" => "http",
             ])
             ->setDataMapper($this);
     }

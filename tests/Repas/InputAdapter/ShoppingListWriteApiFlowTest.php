@@ -171,6 +171,94 @@ class ShoppingListWriteApiFlowTest extends DatabaseTestCase
         $this->assertSame(9, $this->shoppingLists()->findOneById($shoppingList->getId())->getMeals()->reset()->getServing());
     }
 
+    public function testActivatingAListPausesTheCurrentActiveOne(): void
+    {
+        // Given
+        $owner = $this->savedUser();
+        $active = $this->savedList($owner);
+        $paused = new ShoppingListBuilder()->withOwner($owner)->withStatus(ShoppingListStatus::PAUSED)->build();
+        $this->shoppingLists()->save($paused);
+
+        // When
+        $this->request('POST', '/api/v1/shopping-lists/' . $paused->getId() . '/activate', $owner);
+
+        // Then
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->assertSame(ShoppingListStatus::ACTIVE, $this->shoppingLists()->findOneById($paused->getId())->getStatus());
+        $this->assertSame(ShoppingListStatus::PAUSED, $this->shoppingLists()->findOneById($active->getId())->getStatus());
+    }
+
+    public function testCompletingAListRecordsItInTheOwnerStatistics(): void
+    {
+        // Given
+        $owner = $this->savedUser();
+        $shoppingList = $this->savedList($owner);
+
+        // When
+        $this->request('POST', '/api/v1/shopping-lists/' . $shoppingList->getId() . '/complete', $owner);
+
+        // Then
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->assertSame(ShoppingListStatus::COMPLETED, $this->shoppingLists()->findOneById($shoppingList->getId())->getStatus());
+        $statistics = static::getContainer()->get(UserRepository::class)->findOneById($owner->getId())->getShoppingListStats();
+        $this->assertSame([$shoppingList->getId()], array_keys($statistics));
+    }
+
+    public function testUncheckingALineOfACompletedListReactivatesIt(): void
+    {
+        // Given : cocher la dernière ligne termine la liste
+        $owner = $this->savedUser();
+        $egg = new IngredientBuilder()->isEgg()->build();
+        $this->persister->saveIngredient($egg);
+        $shoppingList = new ShoppingListBuilder()->withOwner($owner)->addIngredient($egg)->build();
+        $this->shoppingLists()->save($shoppingList);
+        $rowId = $shoppingList->getRows()->reset()->getId();
+        $this->request('POST', '/api/v1/shopping-list-rows/' . $rowId . '/tick', $owner);
+        $this->assertSame(ShoppingListStatus::COMPLETED, $this->shoppingLists()->findOneById($shoppingList->getId())->getStatus());
+
+        // When
+        $this->request('POST', '/api/v1/shopping-list-rows/' . $rowId . '/uncheck', $owner);
+
+        // Then
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->assertFalse(static::getContainer()->get(ShoppingListRowRepository::class)->findOneById($rowId)->isChecked());
+        $this->assertSame(ShoppingListStatus::ACTIVE, $this->shoppingLists()->findOneById($shoppingList->getId())->getStatus());
+    }
+
+    public function testIncreasesThenDecreasesAnIngredientOfTheActiveList(): void
+    {
+        // Given
+        $owner = $this->savedUser();
+        $egg = new IngredientBuilder()->isEgg()->build();
+        $this->persister->saveIngredient($egg);
+        $shoppingList = $this->savedList($owner);
+
+        // When & Then
+        $this->request('POST', '/api/v1/shopping-lists/active/ingredients/' . $egg->getSlug() . '/increase', $owner);
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->request('POST', '/api/v1/shopping-lists/active/ingredients/' . $egg->getSlug() . '/increase', $owner);
+        $this->assertSame(2.0, $this->shoppingLists()->findOneById($shoppingList->getId())->getIngredientQuantity($egg));
+
+        $this->request('POST', '/api/v1/shopping-lists/active/ingredients/' . $egg->getSlug() . '/decrease', $owner);
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->assertSame(1.0, $this->shoppingLists()->findOneById($shoppingList->getId())->getIngredientQuantity($egg));
+    }
+
+    public function testUnplanningARecipeRemovesItsMeal(): void
+    {
+        // Given
+        $owner = $this->savedUser();
+        $recipe = $this->savedRecipe($owner);
+        $shoppingList = $this->savedList($owner, $recipe);
+
+        // When
+        $this->request('DELETE', '/api/v1/shopping-lists/active/recipes/' . $recipe->getId(), $owner);
+
+        // Then
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->assertSame(0, $this->shoppingLists()->findOneById($shoppingList->getId())->getMeals()->count());
+    }
+
     /**
      * @param array<string, mixed>|null $body
      */
