@@ -28,6 +28,7 @@ readonly class RemoveIngredientToShoppingListHandler
         if (!$activeShoppingList instanceof ShoppingList) {
             throw ShoppingListException::activeShoppingListNotFound();
         }
+        $activeShoppingList->assertVersion($command->expectedVersion);
 
         $purchaseUnitSlug = $this->ingredientRepository->findPurchaseUnitSlug($command->ingredientSlug);
 

@@ -37,6 +37,7 @@ readonly class UpdateRecipeHandler
     {
 
         $recipe = $this->recipeRepository->findOneById($command->id);
+        $recipe->assertVersion($command->expectedVersion);
 
         $type = $this->recipeTypeRepository->findOneBySlug($command->typeSlug);
 

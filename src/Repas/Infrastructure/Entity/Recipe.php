@@ -32,6 +32,10 @@ class Recipe
     #[ORM\Column(name: "orignal", nullable: true)]
     private ?string $originalId = null;
 
+    // Version de l'ETag : écrite seulement par `PostgreSQLRepository::bumpVersion` (jamais par le flush de Doctrine)
+    #[ORM\Column(type: 'integer', updatable: false)]
+    private int $version = 1;
+
     public function __construct(
         ?string $id,
         ?string $name,
@@ -109,6 +113,18 @@ class Recipe
     public function setTypeSlug(?string $typeSlug): static
     {
         $this->typeSlug = $typeSlug;
+
+        return $this;
+    }
+
+    public function getVersion(): int
+    {
+        return $this->version;
+    }
+
+    public function setVersion(int $version): static
+    {
+        $this->version = $version;
 
         return $this;
     }

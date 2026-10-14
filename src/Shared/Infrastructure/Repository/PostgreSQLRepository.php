@@ -57,6 +57,23 @@ abstract readonly class PostgreSQLRepository
         return $entity === false ? null : $entity;
     }
 
+    /**
+     * Contrôle de modification concurrente (ADR 0016) : augmente de 1 la version de la ligne `$id` si elle vaut encore
+     * `$version`, celle que cette requête a lue. `false` : quelqu'un a enregistré entre la lecture et l'écriture, rien
+     * n'a été écrit. Une requête SQL, la colonne `version` n'est écrite que par ici (jamais par le flush de Doctrine).
+     */
+    protected function bumpVersion(string $id, int $version): bool
+    {
+        $table = $this->entityManager->getConnection()->quoteSingleIdentifier(
+            $this->entityManager->getClassMetadata($this->entityRepository->getClassName())->getTableName(),
+        );
+
+        return $this->entityManager->getConnection()->executeStatement(
+            sprintf('UPDATE %s SET version = version + 1 WHERE id = :id AND version = :version', $table),
+            ['id' => $id, 'version' => $version],
+        ) === 1;
+    }
+
     // TODO: refacto saves Methode()
 //    protected function saveEntity(ModelInterface $model): void
 //    {

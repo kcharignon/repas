@@ -33,6 +33,7 @@ readonly class removeMealFromPlanHandler
         if (!$activeShoppingList instanceof ShoppingList) {
             throw ShoppingListException::activeShoppingListNotFound();
         }
+        $activeShoppingList->assertVersion($command->expectedVersion);
 
         $recipe = $this->recipeRepository->findOneById($command->recipeId);
         $meal = $activeShoppingList->getMeals()->find(fn(Meal $meal) => $meal->hasRecipe($recipe));

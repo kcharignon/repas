@@ -1,0 +1,34 @@
+# 0016 — Contrôle de modification concurrente : version, `ETag` et `If-Match`
+
+- **Statut** : Accepted
+- **Date** : 2026-10-15
+- **Liens** : [0013](0013-agregats-references-par-identifiant.md) règle 7 (« dernier enregistrement gagnant »), [0007](0007-api-rest-v1.md), [0006](0006-buses-messenger.md), [0010](0010-strategie-de-tests.md) règle 12 (budget SQL), `docs/front-vuejs-plan.md`
+
+## Contexte
+
+Un modèle est une copie et `save()` recopie tout le modèle sur l'entité : le dernier enregistrement gagne (0013 règle 7). Avec Twig et un seul onglet, c'était tolérable. Avec un SPA (plusieurs onglets, plusieurs appareils, une liste de courses partagée entre le téléphone et l'ordinateur), deux utilisateurs de la même liste ou deux onglets de la même recette s'écrasent en silence : l'un planifie un repas, l'autre renomme la liste avec un état périmé, et le repas disparaît.
+
+Faits : la recette (`recipe`) et la liste de courses (`shopping_list`) sont les deux seuls agrégats modifiés à la main par plusieurs écrans ; une commande est atomique (`command.bus` transactionnel, 0006) ; un listener recharge l'agrégat depuis la base (0013 règle 7) ; Doctrine tient une seule entité par ligne et par requête (identity map).
+
+## Décision
+
+1. **Une version par agrégat concerné** : colonne `version` (entier, 1 à la création) sur `recipe` et `shopping_list`, portée par le modèle (`getVersion()`) et par l'entité. Elle augmente de 1 **à chaque enregistrement** de l'agrégat, quel que soit l'appelant (site Twig comprise) : une version est donc valable comme jeton même si une modification est venue d'ailleurs.
+2. **Comparaison-échange à l'enregistrement** : `save()` d'un agrégat existant exécute d'abord `UPDATE … SET version = version + 1 WHERE id = ? AND version = ?` avec la version **de l'entité** (celle que la requête a lue, partagée par toutes les copies du modèle dans la requête). Zéro ligne modifiée : quelqu'un a enregistré entre la lecture et l'écriture, `Exception::concurrentModification()` (`409`), la transaction de la commande est annulée, rien n'est écrit. Comme la version vient de l'entité et non du modèle, une commande qui enregistre deux fois le même agrégat, ou un listener qui le recharge après le handler, ne se bloque pas elle-même ; seul un autre processus peut provoquer le conflit.
+3. **`If-Match` facultatif, vérifié par le domaine** : une commande d'écriture sur ces agrégats porte `?int $expectedVersion = null`. Le handler appelle `$agregat->assertVersion($command->expectedVersion)` juste après le chargement : une autre version lève `Exception::outdated()` (`412`, « modifié depuis sa lecture »). `null` ne contrôle rien : les écrans Twig et les clients qui n'envoient pas l'en-tête gardent le comportement précédent.
+4. **HTTP** : les `GET /api/v1/recipes/{id}` et `GET /api/v1/shopping-lists/{id}` renvoient la version dans le DTO (`version`) **et** dans l'en-tête `ETag: "3"` (ETag fort, entre guillemets). Les écritures `If-Match: "3"` : `PUT` et `DELETE` d'une recette ; planifier / retirer une recette, portions d'un repas, `increase` / `decrease` d'un ingrédient, renommer une liste. `If-Match: *` équivaut à l'absence d'en-tête ; une valeur qui n'est pas un ETag de l'API répond `412` sans rien exécuter. Le controller ne fait que traduire l'en-tête (`EntityVersion::expected()`), le contrôle est dans le domaine (règle « pas de logique métier dans un controller »). Une écriture réussie répond `204` sans `ETag` : le client relit la ressource (il en a besoin pour son affichage) et obtient la nouvelle version.
+5. **Hors périmètre volontaire** : cocher ou décocher une ligne (`tick`, `uncheck`) n'augmente pas la version de la liste : c'est un geste fréquent, indépendant de la structure de la liste, qui ne doit pas faire échouer un `If-Match` d'un autre onglet. Les transitions d'état d'une liste (activer, pause, terminer) augmentent la version (elles enregistrent la liste) mais n'acceptent pas `If-Match` : ce sont des actions, pas des modifications d'un état lu. `If-None-Match` (lecture conditionnelle, `304`) n'est pas mis en œuvre : la version de la liste ne change pas quand on coche une ligne, ce n'est donc pas un validateur de cache.
+6. **Coût** : une requête SQL de plus à chaque enregistrement d'un agrégat existant (le `UPDATE` de la version, dans la transaction). Les budgets de 11 use cases d'écriture montent de 1 (`planifier-repas`, `retirer-repas`, `modifier-portions-repas`, `modifier-recette`, `ajouter-ingredient-liste`, `retirer-ingredient-liste`, `renommer-liste`, `mettre-liste-en-pause`, `reactiver-liste`, `terminer-liste`, `tick-derniere-ligne`), en le disant ici (0010 règle 12). La suppression d'une recette n'ajoute aucune requête : la version est dans le `DELETE`.
+
+## Conséquences
+
+- Positives : un client qui envoie `If-Match` ne peut plus écraser le travail d'un autre sans le savoir ; la course entre deux requêtes simultanées est détectée même sans `If-Match` (au lieu d'un écrasement silencieux) ; aucune dépendance, aucun verrouillage de ligne.
+- Négatives / coûts : une requête de plus par enregistrement ; un `409` peut maintenant survenir sur une écriture simultanée (le client relit et recommence) ; le front doit conserver l'`ETag` de la dernière lecture et gérer `412` (proposer de recharger).
+- Garde-fou : tests de comparaison-échange sur base réelle (deux copies d'un agrégat, la seconde échoue sans rien écrire), des handlers (`412`, version identique, sans version), des controllers (en-tête transmis à la commande, `412` sur une valeur invalide) et d'un parcours complet avec les vrais bus ; budgets SQL ; `make openapi-check` impose `ETag`, `If-Match` et `412` dans le contrat.
+
+## Alternatives écartées
+
+- `#[ORM\Version]` de Doctrine : il n'augmente la version que si une colonne de l'entité change, or enregistrer une liste modifie surtout ses repas, ingrédients et lignes (autres entités) ; il aurait fallu une colonne « modifié le » artificielle. Le `UPDATE` explicite est un statement de plus, mais fait ce qu'on dit.
+- Version portée par le modèle pour la comparaison-échange : deux copies du même agrégat dans une requête (`ActivatedShoppingList` charge la liste puis la liste active, qui peut être la même) se seraient bloquées l'une l'autre. L'entité est unique par requête.
+- Verrou pessimiste (`SELECT … FOR UPDATE`) : tient une transaction ouverte pendant tout le traitement et ne protège pas la lecture du client, qui a lieu dans une autre requête.
+- `If-Match` obligatoire (`428 Precondition Required`) : casserait Twig et les clients existants ; le contrôle reste un choix du client tant que le front n'est pas l'unique appelant. À réévaluer à l'extinction de Twig.
+- Horodatage `updated_at` comme `ETag` : deux écritures dans la même milliseconde (ou une horloge qui recule) donnent le même jeton.

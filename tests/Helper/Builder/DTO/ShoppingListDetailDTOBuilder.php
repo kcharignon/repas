@@ -19,6 +19,7 @@ class ShoppingListDetailDTOBuilder implements Builder
     private array $departments = [];
     /** @var list<ShoppingListRecipeTypeDTO> */
     private array $recipeTypes = [];
+    private int $version = 1;
 
     public function withId(string $id): self
     {
@@ -41,6 +42,12 @@ class ShoppingListDetailDTOBuilder implements Builder
     public function withStatus(ShoppingListStatus $status): self
     {
         $this->status = $status;
+        return $this;
+    }
+
+    public function withVersion(int $version): self
+    {
+        $this->version = $version;
         return $this;
     }
 
@@ -72,6 +79,7 @@ class ShoppingListDetailDTOBuilder implements Builder
             recipeCount: array_sum(array_map(static fn(ShoppingListRecipeTypeDTO $type): int => count($type->meals), $this->recipeTypes)),
             departments: $this->departments,
             recipeTypes: $this->recipeTypes,
+            version: $this->version,
         );
     }
 }

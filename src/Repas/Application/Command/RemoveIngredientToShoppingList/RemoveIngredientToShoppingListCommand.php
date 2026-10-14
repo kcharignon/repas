@@ -9,6 +9,7 @@ readonly class RemoveIngredientToShoppingListCommand
     public function __construct(
         public string $ownerId,
         public string $ingredientSlug,
+        public ?int $expectedVersion = null,
     ) {
     }
 }

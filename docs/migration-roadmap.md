@@ -153,7 +153,7 @@ Le front est un projet séparé (`repas-front`), planifié dans [`front-vuejs-pl
 - [x] Validation de l'unité à l'enregistrement d'une recette (`ConversionService::assertConvertibleToPurchaseUnit`)
 - [ ] Pagination et recherche des listes volumineuses (recettes d'un type, ingrédients d'un rayon)
 - [x] Refresh token et déconnexion (ADR [0015](adr/0015-refresh-token-du-spa.md), [0008](adr/0008-auth-session-et-jwt.md) §5)
-- [ ] Contrôle de version (ETag / `If-Match`) sur recette et liste de courses ([0013](adr/0013-agregats-references-par-identifiant.md) règle 7)
+- [x] Contrôle de version (ETag / `If-Match`) sur recette et liste de courses : [0016](adr/0016-controle-de-version-etag-if-match.md) (colonne `version`, comparaison-échange au `save()`, `ETag` sur les GET, `If-Match` facultatif sur 8 écritures, `412` / `409` ; budgets SQL +1 sur 11 use cases). Reste : tests de controller du transfert de `If-Match` (7 endpoints) et parcours avec les vrais bus
 - [x] Contrat OpenAPI versionné (`docs/api/openapi.json`, `make openapi-check` en CI)
 - [x] ADR « authentification du SPA » : [0015](adr/0015-refresh-token-du-spa.md)
 - [ ] ADR « front Vue.js » (stack, déploiement) : à écrire dans le dépôt du front avec l'utilisateur (hébergement, domaine, identité visuelle)
