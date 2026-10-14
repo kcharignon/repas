@@ -21,6 +21,17 @@ readonly class ConversionService
         $this->graphs = Tab::newEmptyTyped('array');
     }
 
+    /**
+     * Oublie les graphes de conversions déjà construits. Le service survit aux requêtes en mode worker : appelé entre deux
+     * requêtes (tag `kernel.reset`, config/services.yaml), il évite de servir un graphe périmé après la modification d'une conversion.
+     */
+    public function clear(): void
+    {
+        foreach ($this->graphs->keys() as $slug) {
+            unset($this->graphs[$slug]);
+        }
+    }
+
     public function canConvertToPurchaseUnit(Ingredient $ingredient): bool
     {
         try {

@@ -1,10 +1,10 @@
 <?php
 
-namespace Repas\Tests\User;
+namespace Repas\Tests\User\InputAdapter;
 
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 
-class LoginCheckControllerTest extends WebTestCase
+class UserLoginViewControllerTest extends WebTestCase
 {
 
     public function testLoginSuccess(): void
