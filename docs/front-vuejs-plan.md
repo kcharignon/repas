@@ -27,7 +27,7 @@ Le projet est réussi quand :
 
 ## 3. Ce qui manque côté API (phase 0, dans ce dépôt)
 
-À livrer **avant** les écrans concernés, en PR séparées :
+À livrer **avant** les écrans concernés, en PR séparées. État au 2026-10-14 : `GET /ingredients` (PR #42), position des lignes et validation d'unité (PR #41), refresh token (ADR 0015, PR #47) et contrat OpenAPI versionné (`docs/api/openapi.json`, PR #44) sont écrits et attendent leur merge ; restent la pagination et le contrôle de version.
 
 | Manque | Pourquoi | Taille |
 |---|---|---|

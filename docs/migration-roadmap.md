@@ -145,13 +145,13 @@ Total des 32 scénarios : 328 requêtes, avec comme sans cache à l'arrivée.
 Le front est un projet séparé (`repas-front`), planifié dans [`front-vuejs-plan.md`](front-vuejs-plan.md) (architecture, inventaire de parité, design, phases, bascule, extinction). **Rien n'est retiré de Twig tant que la parité n'est pas atteinte et la bascule faite.**
 
 **Prérequis côté API (phase 0 du plan, dans ce dépôt)**
-- [ ] `GET /api/v1/ingredients` : ingrédients utilisables par l'utilisateur, avec recherche
-- [ ] Ordre des lignes d'une recette (colonne `position`)
-- [ ] Validation de l'unité à l'enregistrement d'une recette (`ConversionService::canConvertToPurchaseUnit`)
+- [ ] `GET /api/v1/ingredients` : ingrédients utilisables par l'utilisateur, avec recherche — PR #42
+- [ ] Ordre des lignes d'une recette (colonne `position`) — PR #41
+- [ ] Validation de l'unité à l'enregistrement d'une recette (`ConversionService::assertConvertibleToPurchaseUnit`) — PR #41
 - [ ] Pagination et recherche des listes volumineuses (recettes d'un type, ingrédients d'un rayon)
-- [ ] Refresh token et déconnexion (ADR dédié, [0008](adr/0008-auth-session-et-jwt.md) §5)
+- [ ] Refresh token et déconnexion (ADR [0015](adr/0015-refresh-token-du-spa.md), [0008](adr/0008-auth-session-et-jwt.md) §5) — PR #47 (empilée sur #41)
 - [ ] Contrôle de version (ETag / `If-Match`) sur recette et liste de courses ([0013](adr/0013-agregats-references-par-identifiant.md) règle 7)
-- [ ] Contrat OpenAPI publié par la CI (`openapi.json`)
+- [ ] Contrat OpenAPI versionné (`docs/api/openapi.json`, `make openapi-check` en CI) — PR #44
 - [ ] ADR « front Vue.js » (stack, déploiement) et ADR « authentification du SPA »
 
 **Front et bascule**
