@@ -19,10 +19,7 @@ use Repas\Tests\Helper\Builder\UserBuilder;
 use Repas\Tests\Helper\InMemoryRepository\ConversionInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\IngredientInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\RecipeInMemoryRepository;
-use Repas\Tests\Helper\InMemoryRepository\UserInMemoryRepository;
 use Repas\Tests\Helper\RepasAssert;
-use Repas\User\Domain\Exception\UserException;
-use Repas\User\Domain\Interface\UserRepository;
 use Repas\User\Domain\Model\User;
 use Repas\Tests\Helper\InMemoryRepository\SpyEventDispatcher;
 
@@ -30,7 +27,6 @@ class CopyRecipeHandlerTest extends TestCase
 {
     private readonly CopyRecipeHandler $handler;
     private readonly RecipeRepository $recipeRepository;
-    private readonly UserRepository $userRepository;
     private readonly IngredientRepository $ingredientRepository;
     private readonly ConversionRepository $conversionRepository;
     private readonly SpyEventDispatcher $eventDispatcher;
@@ -42,7 +38,6 @@ class CopyRecipeHandlerTest extends TestCase
     {
         $owner = new UserBuilder()->withId('owner-id')->build();
         $this->user = new UserBuilder()->withId('user-id')->build();
-        $this->userRepository = new UserInMemoryRepository([$owner, $this->user]);
         $box = new UnitBuilder()->isBox();
         $unit = new UnitBuilder()->isUnite();
         $this->secretIngredient = new IngredientBuilder()
@@ -74,7 +69,6 @@ class CopyRecipeHandlerTest extends TestCase
         $this->eventDispatcher = new SpyEventDispatcher();
         $this->handler = new CopyRecipeHandler(
             $this->recipeRepository,
-            $this->userRepository,
             $this->ingredientRepository,
             $this->conversionRepository,
             $this->eventDispatcher,
@@ -91,7 +85,7 @@ class CopyRecipeHandlerTest extends TestCase
         ($this->handler)($command);
 
         // Assert
-        $actual = $this->recipeRepository->findByAuthor($this->user)->reset();
+        $actual = $this->recipeRepository->findByAuthor($this->user->getId())->reset();
         $this->assertSame('copy-id', $actual->getId());
         $expected = new RecipeBuilder()
             ->withId($actual->getId())
@@ -108,18 +102,6 @@ class CopyRecipeHandlerTest extends TestCase
         $actualConversion = $this->conversionRepository->findByIngredient($actualIngredient)->reset();
         $expectedConversion = $this->secretIngredientConversion->withIngredient($actualIngredient)->build();
         RepasAssert::assertConversion($expectedConversion, $actualConversion, ['id']);
-    }
-
-    public function testFailedHandleCopyRecipeUnknownUser(): void
-    {
-        // Arrange
-        $command = new CopyRecipeCommand('recipe-id', 'not-found', 'copy-id');
-
-        // Assert
-        $this->expectExceptionObject(UserException::NotFound('not-found'));
-
-        // Act
-        ($this->handler)($command);
     }
 
     public function testFailedHandleCopyRecipeUnknownRecipe(): void

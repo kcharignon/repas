@@ -603,7 +603,7 @@ parameters:
 		-
 			message: '#^Repas\\Shared\\Domain\\Tool\\Tab\<\*NEVER\*\> does not accept Repas\\Repas\\Application\\Command\\CreateRecipe\\CreateRecipeRowSubCommand\.$#'
 			identifier: offsetAssign.valueType
-			count: 4
+			count: 3
 			path: tests/Repas/Application/CreateRecipeHandlerTest.php
 
 		-

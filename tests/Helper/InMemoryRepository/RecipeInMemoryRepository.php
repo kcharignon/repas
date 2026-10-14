@@ -10,7 +10,6 @@ use Repas\Repas\Domain\Model\Ingredient;
 use Repas\Repas\Domain\Model\Recipe;
 use Repas\Repas\Domain\Model\RecipeRow;
 use Repas\Shared\Domain\Tool\Tab;
-use Repas\User\Domain\Model\User;
 
 class RecipeInMemoryRepository extends AbstractInMemoryRepository implements RecipeRepository
 {
@@ -29,9 +28,9 @@ class RecipeInMemoryRepository extends AbstractInMemoryRepository implements Rec
         return $this->models[$id] ?? throw RecipeException::notFound($id);
     }
 
-    public function findByAuthor(User $author): Tab
+    public function findByAuthor(string $authorId): Tab
     {
-        return $this->models->filter(fn(Recipe $recipe) => $author->isEqual($recipe->getAuthor()));
+        return $this->models->filter(fn(Recipe $recipe) => $recipe->getAuthorId() === $authorId);
     }
 
     public function findBy(array $criteria, ?array $orderBy = null): Tab

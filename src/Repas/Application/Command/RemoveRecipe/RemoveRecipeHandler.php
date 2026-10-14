@@ -33,6 +33,6 @@ readonly class RemoveRecipeHandler
         }
 
         $this->recipeRepository->delete($recipe);
-        $this->eventDispatcher->dispatch(new RecipeRemovedEvent($recipe->getAuthor()->getId(), $recipe->getId()));
+        $this->eventDispatcher->dispatch(new RecipeRemovedEvent($recipe->getAuthorId(), $recipe->getId()));
     }
 }

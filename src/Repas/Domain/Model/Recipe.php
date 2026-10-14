@@ -8,7 +8,6 @@ use Repas\Shared\Domain\Model\ModelInterface;
 use Repas\Shared\Domain\Model\ModelTrait;
 use Repas\Shared\Domain\Tool\Tab;
 use Repas\Shared\Domain\Tool\UuidGenerator;
-use Repas\User\Domain\Model\User;
 use Repas\Repas\Domain\Model\RecipeType as Type;
 
 final class Recipe implements ModelInterface
@@ -23,7 +22,7 @@ final class Recipe implements ModelInterface
         private string  $id,
         private string  $name,
         private int     $serving,
-        private User    $author,
+        private string  $authorId,
         private Type    $type,
         private Tab     $rows,
         private ?string $originalId,
@@ -45,9 +44,13 @@ final class Recipe implements ModelInterface
         return $this->serving;
     }
 
-    public function getAuthor(): User
+    /**
+     * Identifiant de l'utilisateur qui a écrit la recette (ADR 0013 règle 8 : un agrégat référence un utilisateur par son
+     * identifiant).
+     */
+    public function getAuthorId(): string
     {
-        return $this->author;
+        return $this->authorId;
     }
 
     public function getType(): Type
@@ -104,7 +107,7 @@ final class Recipe implements ModelInterface
             id: $datas['id'],
             name: $datas['name'],
             serving: $datas['serving'],
-            author: $datas['author'],
+            authorId: $datas['author_id'],
             type: $datas['type'],
             rows: $datas['rows'],
             originalId: $datas['original_id'],
@@ -115,12 +118,12 @@ final class Recipe implements ModelInterface
         string  $id,
         string  $name,
         int     $servings,
-        User    $author,
+        string  $authorId,
         Type    $recipeType,
         Tab     $rows,
         ?string $originalId,
     ): self {
-        $recipe = new self($id, $name, $servings, $author, $recipeType, $rows, $originalId);
+        $recipe = new self($id, $name, $servings, $authorId, $recipeType, $rows, $originalId);
         foreach ($rows as $row) {
             $recipe->assertIngredientIsAvailable($row->getIngredient());
         }
@@ -131,19 +134,19 @@ final class Recipe implements ModelInterface
     public static function copyFromOriginal(
         string $id,
         Recipe $original,
-        User   $author,
+        string $authorId,
     ): self {
         return new self(
             id: $id,
             name: $original->getName(),
             serving: $original->getServing(),
-            author: $author,
+            authorId: $authorId,
             type: $original->getType(),
             rows: $original->getRows()->map(fn(RecipeRow $row) => RecipeRow::copyFromOriginal(
                 id: UuidGenerator::new(),
                 originalRow: $row,
                 recipeId: $id,
-                author: $author,
+                authorId: $authorId,
             )),
             originalId: $original->getId()
         );
@@ -211,7 +214,7 @@ final class Recipe implements ModelInterface
     private function assertIngredientIsAvailable(Ingredient $ingredient): void
     {
         $creatorId = $ingredient->getCreatorId();
-        if ($creatorId !== null && $creatorId !== $this->author->getId()) {
+        if ($creatorId !== null && $creatorId !== $this->authorId) {
             throw IngredientException::notFound($ingredient->getSlug());
         }
     }

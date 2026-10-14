@@ -4,7 +4,6 @@ namespace Repas\Repas\Domain\Model;
 
 use Repas\Shared\Domain\Model\ModelInterface;
 use Repas\Shared\Domain\Model\ModelTrait;
-use Repas\User\Domain\Model\User;
 
 final class RecipeRow implements ModelInterface
 {
@@ -101,10 +100,10 @@ final class RecipeRow implements ModelInterface
         string $id,
         RecipeRow $originalRow,
         string $recipeId,
-        User $author,
+        string $authorId,
     ): self {
         if ($originalRow->getIngredient()->getCreatorId() !== null) {
-            $ingredient = Ingredient::copyFromOriginal($originalRow->getIngredient(), $author->getId());
+            $ingredient = Ingredient::copyFromOriginal($originalRow->getIngredient(), $authorId);
         } else {
             $ingredient = $originalRow->getIngredient();
         }

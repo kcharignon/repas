@@ -26,17 +26,13 @@ use Repas\Tests\Helper\InMemoryRepository\IngredientInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\RecipeInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\RecipeTypeInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\UnitInMemoryRepository;
-use Repas\Tests\Helper\InMemoryRepository\UserInMemoryRepository;
 use Repas\Tests\Helper\RepasAssert;
-use Repas\User\Domain\Exception\UserException;
-use Repas\User\Domain\Interface\UserRepository;
 use Repas\Tests\Helper\InMemoryRepository\SpyEventDispatcher;
 
 class CreateRecipeHandlerTest extends TestCase
 {
     private readonly CreateRecipeHandler $handler;
     private readonly RecipeTypeRepository $recipeTypeRepository;
-    private readonly UserRepository $userRepository;
     private readonly IngredientRepository $ingredientRepository;
     private readonly UnitRepository $unitRepository;
     private readonly RecipeRepository $recipeRepository;
@@ -46,7 +42,6 @@ class CreateRecipeHandlerTest extends TestCase
     {
         $baby = new DepartmentBuilder()->isBaby()->build();
 
-        $this->userRepository = new UserInMemoryRepository();
         $this->ingredientRepository = new IngredientInMemoryRepository();
         $this->unitRepository = new UnitInMemoryRepository([
             new UnitBuilder()->isUnite()->build(),
@@ -60,7 +55,6 @@ class CreateRecipeHandlerTest extends TestCase
         $this->eventDispatcher = new SpyEventDispatcher();
 
         $this->handler = new CreateRecipeHandler(
-            $this->userRepository,
             $this->recipeTypeRepository,
             $this->ingredientRepository,
             $this->unitRepository,
@@ -73,7 +67,6 @@ class CreateRecipeHandlerTest extends TestCase
     {
         // Arrange
         $user = new UserBuilder()->withId('user-id')->build();
-        $this->userRepository->save($user);
         $pasta = new IngredientBuilder()->isPasta()->build();
         $this->ingredientRepository->save($pasta);
         $recipeType = new RecipeTypeBuilder()->isMeal()->build();
@@ -123,8 +116,6 @@ class CreateRecipeHandlerTest extends TestCase
         // Arrange
         $user = new UserBuilder()->withId('user-id')->build();
         $other = new UserBuilder()->withId('other-id')->build();
-        $this->userRepository->save($user);
-        $this->userRepository->save($other);
         $private = new IngredientBuilder()->isPasta()->withCreator($other, true)->build();
         $this->ingredientRepository->save($private);
         $recipeType = new RecipeTypeBuilder()->isMeal()->build();
@@ -148,7 +139,6 @@ class CreateRecipeHandlerTest extends TestCase
     {
         // Arrange
         $user = new UserBuilder()->withId('user-id')->build();
-        $this->userRepository->save($user);
         $own = new IngredientBuilder()->isPasta()->withCreator($user, true)->build();
         $this->ingredientRepository->save($own);
         $recipeType = new RecipeTypeBuilder()->isMeal()->build();
@@ -168,46 +158,10 @@ class CreateRecipeHandlerTest extends TestCase
         $this->assertSame($own->getSlug(), $this->recipeRepository->findOneById('unique_id')->getRows()->reset()->getIngredient()->getSlug());
     }
 
-    public function testHandleCreateRecipeFailedUserNotFound(): void
-    {
-        // Arrange
-        $user = new UserBuilder()->build();
-        $pasta = new IngredientBuilder()->isPasta()->build();
-        $this->ingredientRepository->save($pasta);
-        $recipeType = new RecipeTypeBuilder()->isMeal()->build();
-
-        $rows = new Tab([], CreateRecipeRowSubCommand::class);
-        $command = new CreateRecipeCommand(
-            id: "unique_id",
-            name: "Gloubiboulga",
-            serving: 25,
-            authorId: $user->getId(),
-            rows: $rows,
-            typeSlug: $recipeType->getSlug(),
-        );
-
-        $rows[] = new CreateRecipeRowSubCommand(
-            ingredientSlug: $pasta->getSlug(),
-            unitSlug: 'gramme',
-            quantity: 10,
-        );
-
-        // Assert
-        $this->expectExceptionObject(UserException::NotFound($user->getId()));
-
-        // Act
-        try {
-            ($this->handler)($command);
-        } finally {
-            $this->assertSame([], $this->eventDispatcher->eventDispatched);
-        }
-    }
-
     public function testHandleCreateRecipeFailedIngredientNotFound(): void
     {
         // Arrange
         $user = new UserBuilder()->build();
-        $this->userRepository->save($user);
         $pasta = new IngredientBuilder()->isPasta()->build();
         $recipeType = new RecipeTypeBuilder()->isMeal()->build();
 
@@ -242,7 +196,6 @@ class CreateRecipeHandlerTest extends TestCase
     {
         // Arrange
         $user = new UserBuilder()->build();
-        $this->userRepository->save($user);
         $pasta = new IngredientBuilder()->isPasta()->build();
         $this->ingredientRepository->save($pasta);
         $recipeType = new RecipeTypeBuilder()->isStarter()->build();

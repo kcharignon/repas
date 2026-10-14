@@ -89,7 +89,7 @@ class UpdateRecipeHandlerTest extends TestCase
             ->withId($recipe->getId())
             ->withName('Pates carbo. épurées')
             ->withServing(450)
-            ->withAuthor($recipe->getAuthor())
+            ->withAuthorId($recipe->getAuthorId())
             ->withRecipeType(new RecipeTypeBuilder()->isMeal())
             ->addRow(new RecipeRowBuilder()
                 ->withRecipeId($recipe->getId())

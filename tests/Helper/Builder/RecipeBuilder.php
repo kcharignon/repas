@@ -15,6 +15,7 @@ class RecipeBuilder implements Builder
     private ?string $name = null;
     private ?int $serving = null;
     private UserBuilder|User|null $author = null;
+    private ?string $authorId = null;
     private RecipeTypeBuilder|RecipeType|null $type = null;
     /** @var Tab<RecipeRowBuilder>|null  */
     private ?Tab $rows = null;
@@ -24,12 +25,12 @@ class RecipeBuilder implements Builder
     public function build(): Recipe
     {
         $this->initialize();
-        $author = $this->author instanceof User ? $this->author : $this->author->build();
+        $authorId = $this->authorId ?? ($this->author instanceof User ? $this->author : $this->author->build())->getId();
         return Recipe::load([
             'id' => $this->id,
             'name' => $this->name,
             'serving' => $this->serving,
-            'author' => $author,
+            'author_id' => $authorId,
             'type' => $this->type instanceof RecipeType ? $this->type : $this->type->build(),
             'rows' => $this->rows->map(fn(RecipeRowBuilder $row) => $row->withRecipeId($this->id)->build()),
             'original_id' => $this->originalId,
@@ -108,6 +109,12 @@ class RecipeBuilder implements Builder
     public function withAuthor(UserBuilder|User $author): self
     {
         $this->author = $author;
+        return $this;
+    }
+
+    public function withAuthorId(string $authorId): self
+    {
+        $this->authorId = $authorId;
         return $this;
     }
 
