@@ -5,6 +5,8 @@ imports:
 
 parameters:
     env(ADMIN_PASSWORD): '%env(ADMIN_PASSWORD)%'
+    # Le cookie du refresh token (ADR 0015) n'est envoyé qu'en HTTPS ; le client de test parle en HTTP
+    app.refresh_cookie_secure: true
 
 services:
     # default configuration for services in *this* file
@@ -49,6 +51,9 @@ services:
     
 
 when@test:
+    parameters:
+        app.refresh_cookie_secure: false
+
     services:
         # État des limiteurs (inscription, connexion) : en mémoire, conservé tant que le noyau de test vit (un pool du framework
         # serait vidé à chaque requête par `kernel.reset`), perdu quand il est reconstruit entre deux tests.
