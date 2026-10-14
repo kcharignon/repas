@@ -31,7 +31,7 @@ readonly class UpdateUserSettingsHandler
             }
 
             $hashedPassword = $this->passwordHasherFactory->getPasswordHasher(User::class)->hash($command->newPassword);
-            $user->setPassword($hashedPassword);
+            $user->changePassword($hashedPassword);
         }
 
         $user->update($command->defaultServing);

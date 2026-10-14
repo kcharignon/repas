@@ -48,11 +48,11 @@ class RecipePostgreSQLLoaderTest extends DatabaseTestCase
 
         // Then
         $this->assertSame([$recipe->getId(), 'zzz gâteau', 6, 'dessert', 'dessert'], [$result->id, $result->name, $result->serving, $result->typeSlug, $result->typeName]);
-        // L'ordre des lignes est celui du stockage, non garanti : on compare sans tenir compte de l'ordre
-        $this->assertEqualsCanonicalizing(
+        // L'ordre est celui de la saisie (colonne `position`), pas l'ordre alphabétique
+        $this->assertEquals(
             [
-                new RecipeRowDTO('aaa-farine', 'aaa farine', '', 250.0, 'gramme', 'g'),
                 new RecipeRowDTO('zzz-sucre', 'zzz sucre', 'images/sucre.png', 2.0, 'unite', ''),
+                new RecipeRowDTO('aaa-farine', 'aaa farine', '', 250.0, 'gramme', 'g'),
             ],
             $result->rows,
         );

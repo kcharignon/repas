@@ -32,6 +32,17 @@ readonly class ConversionService
         }
     }
 
+    /**
+     * Une ligne de recette doit pouvoir être exprimée dans l'unité d'achat de son ingrédient : sinon la planification de la
+     * recette échouerait plus tard. À vérifier à l'enregistrement de la recette.
+     *
+     * @throws IngredientException si aucun chemin de conversion ne mène de cette unité à l'unité d'achat
+     */
+    public function assertConvertibleToPurchaseUnit(Ingredient $ingredient, Unit $unit): void
+    {
+        $this->convertToPurchaseUnit($ingredient, 1, $unit);
+    }
+
     public function canConvertToPurchaseUnit(Ingredient $ingredient): bool
     {
         try {

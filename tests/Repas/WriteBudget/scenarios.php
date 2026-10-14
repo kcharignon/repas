@@ -186,12 +186,14 @@ return [
     'creer-recette' => static function (WriteBudgetTestCase $t) use ($createRows): object {
         $owner = $t->savedUser();
         $model = $t->savedRecipe($owner, new RecipeBuilder()->isPastaCarbonara());
+        $t->savedConversionsFor([$model]); // l'enregistrement vérifie que chaque unité mène à l'unité d'achat
 
         return new CreateRecipeCommand(UuidGenerator::new(), 'Carbonara bis', 4, $owner->getId(), $createRows($model), $model->getType()->getSlug());
     },
     'modifier-recette' => static function (WriteBudgetTestCase $t) use ($updateRows): object {
         $owner = $t->savedUser();
         $recipe = $t->savedRecipe($owner, new RecipeBuilder()->isPastaCarbonara());
+        $t->savedConversionsFor([$recipe]);
 
         return new UpdateRecipeCommand($recipe->getId(), 'Carbonara revisitée', 4, $updateRows($recipe), $recipe->getType()->getSlug());
     },

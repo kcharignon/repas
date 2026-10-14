@@ -29,6 +29,8 @@ readonly class UserProvider implements UserProviderInterface, PasswordUpgraderIn
         }
 
         $user->setPassword($newHashedPassword);
+        // Le hash recalculé (algorithme ou coût changé) doit survivre à la requête : sans enregistrement, il est perdu
+        $this->userRepository->save($user);
     }
 
     public function refreshUser(UserInterface $user): UserInterface

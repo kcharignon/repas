@@ -2627,7 +2627,7 @@
                         "example": "plat"
                     },
                     "rows": {
-                        "description": "Ingr\u00e9dients de la recette, dans leur ordre de stockage",
+                        "description": "Ingr\u00e9dients de la recette, dans l'ordre de la recette (celui de la saisie)",
                         "type": "array",
                         "items": {
                             "$ref": "#/components/schemas/RecipeRowDTO"
