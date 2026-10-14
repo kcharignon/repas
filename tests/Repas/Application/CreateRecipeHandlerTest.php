@@ -122,6 +122,56 @@ class CreateRecipeHandlerTest extends TestCase
     }
 
 
+    public function testRefusesAnIngredientCustomisedByAnotherUser(): void
+    {
+        // Arrange
+        $user = new UserBuilder()->withId('user-id')->build();
+        $other = new UserBuilder()->withId('other-id')->build();
+        $this->userRepository->save($user);
+        $this->userRepository->save($other);
+        $private = new IngredientBuilder()->isPasta()->withCreator($other, true)->build();
+        $this->ingredientRepository->save($private);
+        $recipeType = new RecipeTypeBuilder()->isMeal()->build();
+        $command = new CreateRecipeCommand(
+            id: 'unique_id',
+            name: 'Gloubiboulga',
+            serving: 4,
+            authorId: $user->getId(),
+            rows: new Tab([new CreateRecipeRowSubCommand($private->getSlug(), 'gramme', 10)], CreateRecipeRowSubCommand::class),
+            typeSlug: $recipeType->getSlug(),
+        );
+
+        // Assert : l'ingrédient d'un autre est traité comme inconnu
+        $this->expectExceptionObject(IngredientException::notFound($private->getSlug()));
+
+        // Act
+        ($this->handler)($command);
+    }
+
+    public function testAcceptsAnIngredientCustomisedByTheAuthor(): void
+    {
+        // Arrange
+        $user = new UserBuilder()->withId('user-id')->build();
+        $this->userRepository->save($user);
+        $own = new IngredientBuilder()->isPasta()->withCreator($user, true)->build();
+        $this->ingredientRepository->save($own);
+        $recipeType = new RecipeTypeBuilder()->isMeal()->build();
+        $command = new CreateRecipeCommand(
+            id: 'unique_id',
+            name: 'Gloubiboulga',
+            serving: 4,
+            authorId: $user->getId(),
+            rows: new Tab([new CreateRecipeRowSubCommand($own->getSlug(), 'gramme', 10)], CreateRecipeRowSubCommand::class),
+            typeSlug: $recipeType->getSlug(),
+        );
+
+        // Act
+        ($this->handler)($command);
+
+        // Assert
+        $this->assertSame($own->getSlug(), $this->recipeRepository->findOneById('unique_id')->getRows()->reset()->getIngredient()->getSlug());
+    }
+
     public function testHandleCreateRecipeFailedUserNotFound(): void
     {
         // Arrange
