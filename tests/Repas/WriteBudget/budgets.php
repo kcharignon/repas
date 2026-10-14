@@ -6,7 +6,7 @@
  * @return array<string, int>
  */
 return [
-    'ajouter-ingredient-liste' => 15,
+    'ajouter-ingredient-liste' => 12,
     'assurer-liste-active' => 5,
     'copier-recette' => 24,
     'creer-conversion' => 4,
@@ -30,7 +30,7 @@ return [
     'reactiver-liste' => 9,
     'reglages-utilisateur' => 2,
     'renommer-liste' => 8,
-    'retirer-ingredient-liste' => 11,
+    'retirer-ingredient-liste' => 8,
     'retirer-repas' => 20,
     'supprimer-ingredient' => 10,
     'supprimer-liste' => 8,

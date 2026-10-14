@@ -76,7 +76,7 @@ class ShoppingListRepositoryTest extends DatabaseTestCase
 
         // Arrange
         foreach ($secondRecipe->getRows() as $recipeRow) {
-            $shoppingList->addRow($recipeRow->getIngredient(), $recipeRow->getQuantity());
+            $shoppingList->addRow($recipeRow->getIngredient()->getSlug(), $recipeRow->getIngredient()->getDefaultPurchaseUnit()->getSlug(), $recipeRow->getQuantity());
         }
 
         // Act

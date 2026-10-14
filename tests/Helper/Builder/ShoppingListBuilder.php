@@ -62,8 +62,9 @@ class ShoppingListBuilder implements Builder
         }
 
         foreach ($this->ingredients as $ingredient) {
-            $shoppingList->addIngredient($ingredient);
-            $shoppingList->addRow($ingredient, 1);
+            $purchaseUnitSlug = $ingredient->getDefaultPurchaseUnit()->getSlug();
+            $shoppingList->addIngredient($ingredient->getSlug(), $purchaseUnitSlug);
+            $shoppingList->addRow($ingredient->getSlug(), $purchaseUnitSlug, 1);
         }
 
         return $shoppingList;

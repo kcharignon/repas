@@ -174,7 +174,7 @@ class ShoppingListPostgreSQLLoaderTest extends DatabaseTestCase
         $this->persister->saveRecipe($recipe);
         $shoppingList = new ShoppingListBuilder()->withId('list-active')->withOwner($owner)
             ->addRecipe($recipe)->addIngredient($egg)->addIngredient($pasta)->build();
-        $shoppingList->addRow($egg, 5);
+        $shoppingList->addRow($egg->getSlug(), $egg->getDefaultPurchaseUnit()->getSlug(), 5);
         $this->shoppingListRepository->save($shoppingList);
 
         // When
@@ -268,7 +268,7 @@ class ShoppingListPostgreSQLLoaderTest extends DatabaseTestCase
         }
         $shoppingList = new ShoppingListBuilder()->withId('list-1')->withOwner($owner)
             ->addIngredient($egg)->addIngredient($milk)->addIngredient($pasta)->addIngredient($bread)->build();
-        $shoppingList->addRow($pasta, 499);
+        $shoppingList->addRow($pasta->getSlug(), $pasta->getDefaultPurchaseUnit()->getSlug(), 499);
         $shoppingList->getRows()->find(fn($row) => $row->getIngredientSlug() === $egg->getSlug())->tick();
         $this->shoppingListRepository->save($shoppingList);
 

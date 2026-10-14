@@ -43,6 +43,16 @@ readonly class IngredientPostgreSQLRepository extends PostgreSQLRepository imple
         throw IngredientException::notFound($slug);
     }
 
+    /**
+     * @throws IngredientException
+     */
+    public function findPurchaseUnitSlug(string $slug): string
+    {
+        $entity = $this->entityRepository->find($slug) ?? throw IngredientException::notFound($slug);
+
+        return $entity->getDefaultPurchaseUnitSlug();
+    }
+
     public function exists(string $slug): bool
     {
         return $this->entityRepository->find($slug) !== null;

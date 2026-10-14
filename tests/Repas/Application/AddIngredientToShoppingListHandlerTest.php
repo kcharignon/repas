@@ -51,8 +51,8 @@ class AddIngredientToShoppingListHandlerTest extends TestCase
         //Assert
         $this->assertCount(1, $shoppingList->getIngredients());
         $this->assertCount(1, $shoppingList->getRows());
-        $this->assertNotNull($shoppingList->getIngredients()->find(fn(ShoppingListIngredient $sli) => $sli->hasIngredient($egg)));
-        $this->assertEquals(1, $shoppingList->getIngredients()->find(fn(ShoppingListIngredient $sli) => $sli->hasIngredient($egg))?->getQuantity());
+        $this->assertNotNull($shoppingList->getIngredients()->find(fn(ShoppingListIngredient $sli) => $sli->hasIngredient($egg->getSlug())));
+        $this->assertEquals(1, $shoppingList->getIngredients()->find(fn(ShoppingListIngredient $sli) => $sli->hasIngredient($egg->getSlug()))?->getQuantity());
     }
 
     public function testHandleAddsIngredientToShoppingListWithMissingShoppingList(): void

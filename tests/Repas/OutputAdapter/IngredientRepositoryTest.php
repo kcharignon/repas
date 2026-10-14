@@ -33,6 +33,25 @@ class IngredientRepositoryTest extends DatabaseTestCase
         $this->persister = new DataPersister(static::getContainer());
     }
 
+    public function testFindPurchaseUnitSlugReadsTheUnitWithoutLoadingTheIngredient(): void
+    {
+        // Arrange
+        $ingredient = new IngredientBuilder()->isPasta()->build();
+        $this->persister->saveIngredient($ingredient);
+
+        // Act & Assert
+        $this->assertSame($ingredient->getDefaultPurchaseUnit()->getSlug(), $this->ingredientRepository->findPurchaseUnitSlug($ingredient->getSlug()));
+    }
+
+    public function testFindPurchaseUnitSlugFailsForAnUnknownIngredient(): void
+    {
+        // Assert
+        $this->expectExceptionObject(IngredientException::notFound('inconnu'));
+
+        // Act
+        $this->ingredientRepository->findPurchaseUnitSlug('inconnu');
+    }
+
     public function testCRUD(): void
     {
         // Arrange

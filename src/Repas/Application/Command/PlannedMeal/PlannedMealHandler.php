@@ -47,7 +47,7 @@ readonly class PlannedMealHandler
             // On calcule la quantité dans l'unité d'achat
             $quantity = $this->conversionService->convertRecipeRowToPurchaseUnit($row);
             // On ajoute cette quantité dans la liste d'achat
-            $shoppingList->addRow($row->getIngredient(), $quantity);
+            $shoppingList->addRow($row->getIngredient()->getSlug(), $row->getIngredient()->getDefaultPurchaseUnit()->getSlug(), $quantity);
         }
 
         $this->shoppingListRepository->save($shoppingList);

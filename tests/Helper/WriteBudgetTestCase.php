@@ -87,7 +87,7 @@ abstract class WriteBudgetTestCase extends DatabaseTestCase
         $shoppingList = $builder->build();
         foreach ($recipes as $recipe) {
             foreach ($recipe->getRows() as $row) {
-                $shoppingList->addRow($row->getIngredient(), $row->getQuantity());
+                $shoppingList->addRow($row->getIngredient()->getSlug(), $row->getIngredient()->getDefaultPurchaseUnit()->getSlug(), $row->getQuantity());
             }
         }
         if ($beforeSave !== null) {

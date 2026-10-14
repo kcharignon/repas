@@ -18,6 +18,11 @@ class IngredientInMemoryRepository extends AbstractInMemoryRepository implements
         return Ingredient::class;
     }
 
+    public function findPurchaseUnitSlug(string $slug): string
+    {
+        return $this->findOneBySlug($slug)->getDefaultPurchaseUnit()->getSlug();
+    }
+
     public function exists(string $slug): bool
     {
         return isset($this->models[$slug]);

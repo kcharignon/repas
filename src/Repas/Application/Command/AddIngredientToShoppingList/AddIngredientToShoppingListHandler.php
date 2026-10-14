@@ -29,10 +29,10 @@ readonly class AddIngredientToShoppingListHandler
             throw ShoppingListException::activeShoppingListNotFound();
         }
 
-        $ingredient = $this->ingredientRepository->findOneBySlug($command->ingredientSlug);
-        $shoppingListActive->addIngredient($ingredient);
+        $purchaseUnitSlug = $this->ingredientRepository->findPurchaseUnitSlug($command->ingredientSlug);
+        $shoppingListActive->addIngredient($command->ingredientSlug, $purchaseUnitSlug);
 
-        $shoppingListActive->addRow($ingredient, 1);
+        $shoppingListActive->addRow($command->ingredientSlug, $purchaseUnitSlug, 1);
 
         $this->shoppingListRepository->save($shoppingListActive);
     }
