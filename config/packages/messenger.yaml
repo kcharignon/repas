@@ -2,7 +2,10 @@ framework:
     messenger:
         default_bus: command.bus
         buses:
-            command.bus: ~
+            command.bus:
+                # Une commande est atomique : si son handler (ou un listener appelé par lui) échoue, tout est annulé
+                middleware:
+                    - doctrine_transaction
             query.bus: ~
 
         # Uncomment this (and the failed transport below) to send failed messages to this transport for later handling.
