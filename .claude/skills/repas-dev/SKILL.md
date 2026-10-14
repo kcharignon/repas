@@ -1,6 +1,6 @@
 ---
 name: repas-dev
-description: Développer ou migrer une fonctionnalité du projet Repas (Symfony 7.4 / PHP 8.4, hexagonal + DDD + CQRS). À utiliser pour ajouter ou migrer un use case de lecture (Query, QueryHandler, Loader, DTO), un endpoint API `/api/v1` (JWT), un use case d'écriture (Command), ou basculer un ViewController Twig vers le QueryBus. Charge les ADR et la roadmap avant d'écrire du code.
+description: Développer ou migrer une fonctionnalité du projet Repas (Symfony 8.1 / PHP 8.4, hexagonal + DDD + CQRS). À utiliser pour ajouter ou migrer un use case de lecture (Query, QueryHandler, Loader, DTO), un endpoint API `/api/v1` (JWT), un use case d'écriture (Command), ou basculer un ViewController Twig vers le QueryBus. Charge les ADR et la roadmap avant d'écrire du code.
 ---
 
 # repas-dev — développer et migrer Repas selon les ADR

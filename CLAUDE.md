@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Guide d'architecture pour ce projet (Symfony 7.4 / PHP 8.4). L'objectif: rester cohérent avec le style DDD / Hexagonal / CQRS / Repository / SOLID déjà en place dans `src/`. Ne pas réinventer, suivre les patterns existants ci-dessous.
+Guide d'architecture pour ce projet (Symfony 8.1 / PHP 8.4). L'objectif: rester cohérent avec le style DDD / Hexagonal / CQRS / Repository / SOLID déjà en place dans `src/`. Ne pas réinventer, suivre les patterns existants ci-dessous.
 
 ## Source de vérité : ADR, roadmap, skill
 
@@ -106,7 +106,7 @@ src/{Context}/
 ## Dépendances (ADR 0014)
 
 - Dependabot propose chaque lundi les correctifs et mineures (composer, GitHub Actions, Docker), regroupés `symfony` / `doctrine` / `quality` ; les montées **majeures** se font à la main, une PR par chantier (`make outdated` les liste). Une PR de dépendances ne se merge que verte (`make test`, `make quality`), sans notice ni dépréciation : on corrige, on ne masque pas.
-- `symfony/*` reste contraint à une seule mineure (`7.4.*`, `extra.symfony.require` assorti). `make audit` (`composer audit --locked`, aussi en CI) doit être vert dès qu'on touche `composer.json` ou `composer.lock`.
+- `symfony/*` reste contraint à une seule mineure (`8.1.*`, `extra.symfony.require` assorti ; une mineure 8.x n'est maintenue que 8 mois : fin de maintenance de la 8.1 en 01/2027, la prochaine LTS est la 8.4 en 11/2027). `make audit` (`composer audit --locked`, aussi en CI) doit être vert dès qu'on touche `composer.json` ou `composer.lock`.
 - Image Docker : FrankenPHP/PHP épinglés par tag complet, paquets `apt` jamais épinglés.
 
 ## Tests
