@@ -106,7 +106,7 @@ Total des 32 scénarios : 328 requêtes, avec comme sans cache à l'arrivée.
 **Reste à alléger (optionnel, plus bloquant)** : le cliquet empêche toute régression ; ces points sont des gains supplémentaires.
 - [x] Planifier / retirer un repas, modifier les portions : le préchargement des unités ne servait à rien (`Tab::merge` renvoie un nouveau `Tab`, le résultat était jeté) ; il lit maintenant en une requête les unités d'achat, de cuisson et compatibles des ingrédients d'une recette, celles de ses lignes (`RecipeRowPostgreSQLRepository::findByRecipeId`) et celles de leurs conversions, et les lignes de liste neuves sont insérées par lot (`ShoppingListRowPostgreSQLRepository::saveAll`, `PostgreSQLRepository::findManaged`). `planifier-repas` 28 → 23, `retirer-repas` 20 → 16, `modifier-portions-repas` 25 → 21, `copier-recette` 24 → 20, `modifier-recette` 23 → 19, `supprimer-recette` 15 → 11. Il reste une lecture de conversions par ingrédient (la recherche de chemin reste faite par ingrédient, `ConversionService`), gardée telle quelle
 - [x] Suppressions d'ingrédient et de recette : `RecipeRepository::isIngredientUsed`, `ShoppingListRepository::isIngredientUsed` et `isRecipePlanned` (ports booléens, `LIMIT 1`) remplacent `findByIngredient` / `findByRecipe`, qui hydrataient des agrégats entiers pour une vérification d'existence. `supprimer-ingredient` 12 → 10, baseline PHPStan 55 → 51 entrées
-- [ ] Création et modification de recettes : un `SELECT recipe_row` par ligne à l'enregistrement, un `find` par unité
+- [x] Création et modification de recettes : `IngredientRepository::findBySlugs` lit les ingrédients, leurs rayons et leurs unités en une requête chacun (au lieu de trois par ligne), les unités des lignes sont lues d'un coup, `RecipeRowPostgreSQLRepository::saveAll` lit les lignes existantes en une requête et écrit tout en un `flush` (au lieu d'un `SELECT` et d'un `flush` par ligne) ; `Tab::map` est typé (`callable(T): U`), ce qui retire 8 entrées de la baseline PHPStan. `creer-recette` 30 → 15, `modifier-recette` 19 → 15, `copier-recette` 20 → 16
 - [x] Ajout et retrait d'un ingrédient de liste : `IngredientRepository::findPurchaseUnitSlug` (une lecture) remplace le chargement de l'ingrédient avec son rayon et ses unités ; `ShoppingList::addIngredient` / `removeIngredient` / `addRow` / `subtractRow` prennent des slugs ([0013](adr/0013-agregats-references-par-identifiant.md)). `ajouter-ingredient-liste` 15 → 12, `retirer-ingredient-liste` 11 → 8
 
 ### Phase 9 — Endpoints API d'écriture
@@ -148,14 +148,15 @@ Total des 32 scénarios : 328 requêtes, avec comme sans cache à l'arrivée.
 Le front est un projet séparé (`repas-front`), planifié dans [`front-vuejs-plan.md`](front-vuejs-plan.md) (architecture, inventaire de parité, design, phases, bascule, extinction). **Rien n'est retiré de Twig tant que la parité n'est pas atteinte et la bascule faite.**
 
 **Prérequis côté API (phase 0 du plan, dans ce dépôt)**
-- [ ] `GET /api/v1/ingredients` : ingrédients utilisables par l'utilisateur, avec recherche — PR #42
-- [ ] Ordre des lignes d'une recette (colonne `position`) — PR #41
-- [ ] Validation de l'unité à l'enregistrement d'une recette (`ConversionService::assertConvertibleToPurchaseUnit`) — PR #41
+- [x] `GET /api/v1/ingredients` : ingrédients utilisables par l'utilisateur, avec recherche
+- [x] Ordre des lignes d'une recette (colonne `position`)
+- [x] Validation de l'unité à l'enregistrement d'une recette (`ConversionService::assertConvertibleToPurchaseUnit`)
 - [ ] Pagination et recherche des listes volumineuses (recettes d'un type, ingrédients d'un rayon)
-- [ ] Refresh token et déconnexion (ADR [0015](adr/0015-refresh-token-du-spa.md), [0008](adr/0008-auth-session-et-jwt.md) §5) — PR #47 (empilée sur #41)
+- [x] Refresh token et déconnexion (ADR [0015](adr/0015-refresh-token-du-spa.md), [0008](adr/0008-auth-session-et-jwt.md) §5)
 - [ ] Contrôle de version (ETag / `If-Match`) sur recette et liste de courses ([0013](adr/0013-agregats-references-par-identifiant.md) règle 7)
-- [ ] Contrat OpenAPI versionné (`docs/api/openapi.json`, `make openapi-check` en CI) — PR #44
-- [ ] ADR « front Vue.js » (stack, déploiement) et ADR « authentification du SPA »
+- [x] Contrat OpenAPI versionné (`docs/api/openapi.json`, `make openapi-check` en CI)
+- [x] ADR « authentification du SPA » : [0015](adr/0015-refresh-token-du-spa.md)
+- [ ] ADR « front Vue.js » (stack, déploiement) : à écrire dans le dépôt du front avec l'utilisateur (hébergement, domaine, identité visuelle)
 
 **Front et bascule**
 - [ ] Phase 1 — socle du front (nouveau dépôt, CI, client généré, session, design system)

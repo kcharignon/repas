@@ -36,6 +36,16 @@ class IngredientInMemoryRepository extends AbstractInMemoryRepository implements
         return $this->models->find(fn(Ingredient $ingredient) => $ingredient->getSlug() === $slug) ?? throw IngredientException::notFound($slug);
     }
 
+    public function findBySlugs(Tab $slugs): Tab
+    {
+        $ingredients = Tab::newEmptyTyped(Ingredient::class);
+        foreach ($slugs->unique() as $slug) {
+            $ingredients[] = $this->findOneBySlug($slug);
+        }
+
+        return $ingredients;
+    }
+
     public function findByDepartmentAndOwner(Department $department, string $ownerId): Tab
     {
         return $this->models->filter(fn(Ingredient $ingredient) => $ingredient->getDepartment()->isEqual($department) && $ingredient->getCreatorId() === $ownerId);
