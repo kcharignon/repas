@@ -5,7 +5,7 @@ namespace Repas\Repas\Domain\Exception;
 
 use Repas\Shared\Domain\Exception\DomainException;
 
-class DepartmentException extends DomainException
+final class DepartmentException extends DomainException
 {
     public static function notFound(): static
     {

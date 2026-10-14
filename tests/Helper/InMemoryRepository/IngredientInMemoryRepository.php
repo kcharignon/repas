@@ -9,6 +9,9 @@ use Repas\Repas\Domain\Model\Department;
 use Repas\Repas\Domain\Model\Ingredient;
 use Repas\Shared\Domain\Tool\Tab;
 
+/**
+ * @extends AbstractInMemoryRepository<Ingredient>
+ */
 class IngredientInMemoryRepository extends AbstractInMemoryRepository implements IngredientRepository
 {
     use SaveModelTrait;

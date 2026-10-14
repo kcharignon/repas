@@ -73,7 +73,7 @@ Détail : `references/migrate-view-controller.md`. Résumé :
 3. Liste → `{member: [...], totalItems: N}`. Écriture → `204` ou `201` + `Location`.
 4. Test `tests/Repas/InputAdapter/` : `MockQueryBus`/`MockCommandBus`, query construite, statut, clés JSON.
    Écriture : `$this->mockCommandBus()` (une requête par test), 401, 403 propriétaire, 404 inconnu, 422 corps invalide, `Location` en 201 ; plus un parcours avec les vrais bus par ressource (`ShoppingListWriteApiFlowTest`). Conventions : ADR 0007 §11 à 13 (action en `POST …/{action}`, alias `active`, identité par le JWT, jamais par le corps).
-5. `make api-doc-validate api-doc-coverage`, relire la doc générée (`/api/doc`).
+5. `make api-doc-validate api-doc-coverage`, relire la doc générée (`/api/doc`), puis `make openapi` et relire le diff de `docs/api/openapi.json` (le contrat versionné, ADR 0007 §15).
 6. Vérifier le niveau d'accès (`#[IsGranted]` / voter propriétaire) : `ROLE_USER` est un plancher, pas une autorisation. Une route publique (ADR 0007 §14) est une exception : chemin exact et méthode dans `access_control`, dite et justifiée dans l'ADR.
 
 ### 3.4 Nouveau use case d'écriture
@@ -89,7 +89,7 @@ Détail : `references/migrate-view-controller.md`. Résumé :
 - [ ] `make deptrac` vert (plus de baseline : aucune dépendance entre contextes, ce qui circule passe par `Shared`)
 - [ ] `make audit` vert si `composer.json` ou `composer.lock` change (ADR 0014)
 - [ ] `make phpstan` vert (aucune nouvelle entrée de baseline)
-- [ ] `make api-doc-validate` et `make api-doc-coverage` verts si un endpoint API est touché
+- [ ] `make api-doc-validate`, `make api-doc-coverage` et `make openapi-check` verts si un endpoint API est touché (`make openapi` régénère `docs/api/openapi.json`, diff relu)
 - [ ] Use case d'écriture touché ou ajouté : son scénario existe dans `tests/Repas/WriteBudget/scenarios.php`, son budget SQL ne monte pas ; s'il baisse, `make sql-budget-update` et `budgets.php` est dans le commit (ADR 0010 règle 12)
 - [ ] Le controller migré n'injecte plus de `*Repository`; les templates concernés n'appellent plus de méthode de domaine
 - [ ] Tests : `QueryHandler` (unitaire, `InMemoryLoader`, paramètres transmis), Loader (base réelle), controller API (clés JSON)
