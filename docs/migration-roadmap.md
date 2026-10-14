@@ -116,7 +116,10 @@ Total des 32 scénarios : 328 requêtes, avec comme sans cache à l'arrivée.
   - `POST /shopping-lists/{id}/activate|pause|complete`, `POST /shopping-list-rows/{id}/tick|uncheck`, `PUT /meals/{id}/serving`
   - `PUT` / `DELETE /shopping-lists/active/recipes/{recipeId}` (planifier, retirer), `POST /shopping-lists/active/ingredients/{slug}/increase|decrease`
   - Codes de domaine alignés : `activeShoppingListNotFound` 404, `recipeAlreadyInList` 409
-- [ ] Recettes (créer, modifier, copier, supprimer)
+- [x] **Recettes** (4 endpoints) : `POST /recipes` (201 + `Location`), `PUT /recipes/{id}` (remplacement complet, les lignes absentes du corps sont supprimées), `POST /recipes/{id}/copy` (201 + `Location` de la copie), `DELETE /recipes/{id}` (409 si la recette est dans une liste). Le corps (`RecipePayload`) exige au moins une ligne, 1 à 100 personnes, des quantités positives.
+  - `CopyRecipeCommand` reçoit l'id de la copie (`newRecipeId`), comme les autres créations, pour pouvoir rendre le `Location`
+  - Règle de domaine ajoutée : un ingrédient personnalisé n'est utilisable que dans les recettes de son créateur (ingrédient d'un autre = inconnu, 404). Le formulaire Twig ne proposait que les siens, l'API aurait laissé référencer n'importe quel slug
+  - Corrigé en passant : supprimer une recette supprime ses lignes (migration `Version20261014120000` pour les lignes orphelines existantes) ; `supprimer-recette` passe de 14 à 15 requêtes (le `DELETE recipe_row`, budget relevé en connaissance de cause)
 - [ ] Ingrédients (créer, modifier, supprimer) et conversions (créer, modifier)
 - [ ] Référentiels administrateur : unités, rayons, types de recette (créer, modifier)
 - [ ] Utilisateur : inscription, réglages
@@ -139,10 +142,11 @@ Audit de tous les controllers qui dispatchent une commande (méthode HTTP et gar
 
 ## Bugs connus à corriger
 
-- [ ] **Supprimer une recette laisse ses lignes orphelines.** `RecipePostgreSQLRepository::delete` ne supprime que la ligne `recipe` : les `recipe_row` de la recette restent en base (la table n'a ni clé étrangère ni cascade, `recipe_row_pkey` seulement). Constaté pendant les tests navigateur de la phase 8 (recette créée puis supprimée par l'interface : ses lignes subsistent, sous un `recipe` qui n'existe plus). Aucun effet visible aujourd'hui (les lectures partent des recettes), mais les lignes s'accumulent et la table gonfle. À faire : `RecipeRowPostgreSQLRepository::deleteByRecipeId` appelé par `RecipePostgreSQLRepository::delete`, un test de repository sur base réelle (le test du handler utilise un double en mémoire et ne peut pas le voir), et un nettoyage des lignes orphelines existantes (`delete from recipe_row where recipe not in (select id from recipe)`) livré avec la correction.
+- [x] ~~Supprimer une recette laisse ses lignes orphelines~~ : corrigé en phase 9 (`RecipeRowPostgreSQLRepository::deleteByRecipeId` appelé par `RecipePostgreSQLRepository::delete`, test de repository sur base réelle, migration de nettoyage).
 
 ## Hors périmètre (vus en passant, non corrigés)
 
+- Une ligne de recette peut porter une unité sans chemin de conversion vers l'unité d'achat de son ingrédient : l'enregistrement l'accepte (formulaire Twig comme API), la planification échoue ensuite (`cannotConvertToUnit`). À valider à l'enregistrement avec `ConversionService::canConvertToPurchaseUnit`.
 - Routes Twig : un id inconnu donne un 500 pour un administrateur (le voter laisse passer l'administrateur avant de chercher la ressource, puis la query lève `…NotFound`) ; seule l'API mappe les exceptions de domaine en JSON (ADR 0007 §7, limité à `^/api`). Un listener équivalent hors `/api` donnerait un 404.
 - `GetActiveShoppingListViewController` crée la liste active sur un GET (lecture avec effet de bord, `EnsureActiveShoppingList`) : à garder tant que le front Twig l'attend, à supprimer avec l'API.
 - Lignes d'une recette : aucune colonne de position, l'ordre affiché est l'ordre de stockage (celui de la saisie tant que la recette n'est pas modifiée, puis variable). `RecipePostgreSQLLoader` le conserve à l'identique ; ajouter une position si l'ordre doit être garanti.
