@@ -70,6 +70,7 @@ src/{Context}/
   - Méthodes `update(...)` / `set*()` fluent (`return $this;`) pour les mutations.
 - Comparaison par identité via `isEqual()`, jamais `===` sur les objets métier.
 - **Un agrégat référence les autres agrégats par identifiant** (slug, id), jamais par l'objet : `ShoppingListRow` porte `ingredientSlug` / `unitSlug`, `Meal` porte `recipeId` (ADR 0013). Un use case qui a besoin de la `Recipe` d'un repas la charge par son port ; une question d'existence ou d'état d'un ensemble est une méthode de port booléenne, pas une hydratation d'agrégats.
+- **Un modèle est une copie** : chaque `find` en construit un neuf, et `save()` recopie tout le modèle sur l'entité (dernier enregistrement gagnant). Un use case charge donc un agrégat une seule fois et passe l'instance ; un listener recharge depuis la base ; on n'enregistre pas un modèle chargé avant un événement qui peut modifier le même agrégat (statistiques d'un `User`) ; `isEqual()`, jamais `===` (ADR 0013 règle 7).
 - Collections typées via `Repas\Shared\Domain\Tool\Tab` (wrapper de collection typé), pas de tableaux PHP nus pour des listes de modèles.
 
 ## Repository pattern
