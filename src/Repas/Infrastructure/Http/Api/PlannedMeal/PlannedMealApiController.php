@@ -28,7 +28,7 @@ final class PlannedMealApiController extends AbstractController
     #[OA\Response(response: 404, description: 'Ressource inconnue')]
     public function __invoke(string $recipeId, #[CurrentUser] AuthenticatedUser $user): Response
     {
-        $this->commandBus->dispatch(new PlannedMealCommand($user->getId(), $recipeId));
+        $this->commandBus->dispatch(new PlannedMealCommand($user->getId(), $recipeId, $user->getDefaultServing()));
 
         return new Response(status: Response::HTTP_NO_CONTENT);
     }

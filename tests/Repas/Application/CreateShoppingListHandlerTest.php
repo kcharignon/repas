@@ -15,29 +15,23 @@ use Repas\Tests\Helper\Builder\ShoppingListBuilder;
 use Repas\Tests\Helper\Builder\UserBuilder;
 use Repas\Tests\Helper\FrozenClock;
 use Repas\Tests\Helper\InMemoryRepository\ShoppingListInMemoryRepository;
-use Repas\Tests\Helper\InMemoryRepository\UserInMemoryRepository;
 use Repas\Tests\Helper\RepasAssert;
-use Repas\User\Domain\Exception\UserException;
-use Repas\User\Domain\Interface\UserRepository;
 use Repas\Tests\Helper\InMemoryRepository\SpyEventDispatcher;
 
 class CreateShoppingListHandlerTest extends TestCase
 {
     private readonly CreateShoppingListHandler $handler;
-    private readonly UserRepository $userRepository;
     private readonly ShoppingListRepository $shoppingListRepository;
     private readonly SpyEventDispatcher $eventDispatcher;
     private readonly ClockInterface $clock;
 
     protected function setUp(): void
     {
-        $this->userRepository = new UserInMemoryRepository();
         $this->shoppingListRepository = new ShoppingListInMemoryRepository();
         $this->eventDispatcher = new SpyEventDispatcher();
         $this->clock = new FrozenClock(new DateTimeImmutable());
 
         $this->handler = new CreateShoppingListHandler(
-            $this->userRepository,
             $this->shoppingListRepository,
             $this->eventDispatcher,
             $this->clock
@@ -48,7 +42,6 @@ class CreateShoppingListHandlerTest extends TestCase
     {
         // Arrange
         $user = new UserBuilder()->build();
-        $this->userRepository->save($user);
         $shoppingList = new ShoppingListBuilder()->withOwner($user)->withId('shopping-list-id')->build();
         $this->shoppingListRepository->save($shoppingList);
         $command = new CreateShoppingListCommand("unique_id", $user->getId());
@@ -66,20 +59,4 @@ class CreateShoppingListHandlerTest extends TestCase
         $this->assertEquals(ShoppingListStatus::PAUSED, $actualShoppingList->getStatus());
     }
 
-    public function testHandleFailedCreateShoppingListUnknownUser(): void
-    {
-        // Arrange
-        $user = new UserBuilder()->build();
-        $command = new CreateShoppingListCommand("unique_id", $user->getId());
-
-        // Assert
-        $this->expectExceptionObject(UserException::NotFound($user->getId()));
-
-        // Act
-        try {
-            ($this->handler)($command);
-        } finally {
-            $this->assertSame([], $this->eventDispatcher->eventDispatched);
-        }
-    }
 }

@@ -3,6 +3,7 @@
 namespace Repas\Repas\Infrastructure\Repository;
 
 
+use Repas\Shared\Infrastructure\Repository\PostgreSQLRepository;
 use Doctrine\Persistence\ManagerRegistry;
 use Repas\Repas\Domain\Exception\DepartmentException;
 use Repas\Repas\Domain\Interface\DepartmentRepository;

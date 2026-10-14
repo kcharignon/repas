@@ -12,7 +12,6 @@ use Repas\Repas\Domain\Model\ShoppingList;
 use Repas\Repas\Domain\Model\ShoppingListIngredient;
 use Repas\Repas\Domain\Model\ShoppingListStatus;
 use Repas\Shared\Domain\Tool\Tab;
-use Repas\User\Domain\Model\User;
 
 class ShoppingListInMemoryRepository extends AbstractInMemoryRepository implements ShoppingListRepository
 {
@@ -21,9 +20,9 @@ class ShoppingListInMemoryRepository extends AbstractInMemoryRepository implemen
         return ShoppingList::class;
     }
 
-    public function findByOwner(User $owner): Tab
+    public function findByOwner(string $ownerId): Tab
     {
-        return $this->models->filter(fn(ShoppingList $sl) => $sl->getOwner()->isEqual($owner));
+        return $this->models->filter(fn(ShoppingList $sl) => $sl->getOwnerId() === $ownerId);
     }
 
     /**
@@ -34,16 +33,16 @@ class ShoppingListInMemoryRepository extends AbstractInMemoryRepository implemen
         return $this->models[$id] ?? throw ShoppingListException::shoppingListNotFound($id);
     }
 
-    public function findOneActivateByOwner(User $owner): ?ShoppingList
+    public function findOneActivateByOwner(string $ownerId): ?ShoppingList
     {
-        return $this->models->find(fn(ShoppingList $sl) => $sl->getOwner()->isEqual($owner) && $sl->isActivate());
+        return $this->models->find(fn(ShoppingList $sl) => $sl->getOwnerId() === $ownerId && $sl->isActivate());
     }
 
     public function hasActiveShoppingList(string $ownerId): bool
     {
         foreach ($this->models as $shoppingList) {
             /** @var ShoppingList $shoppingList */
-            if ($shoppingList->getOwner()->getId() === $ownerId && $shoppingList->isActivate()) {
+            if ($shoppingList->getOwnerId() === $ownerId && $shoppingList->isActivate()) {
                 return true;
             }
         }
@@ -66,7 +65,7 @@ class ShoppingListInMemoryRepository extends AbstractInMemoryRepository implemen
         $ids = [];
         /** @var ShoppingList $shoppingList */
         foreach ($this->models as $shoppingList) {
-            if ($shoppingList->getOwner()->getId() === $ownerId && $shoppingList->getStatus() === $status) {
+            if ($shoppingList->getOwnerId() === $ownerId && $shoppingList->getStatus() === $status) {
                 $ids[] = $shoppingList->getId();
             }
         }

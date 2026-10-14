@@ -1,6 +1,6 @@
 <?php
 
-namespace Repas\Repas\Infrastructure\Repository;
+namespace Repas\Shared\Infrastructure\Repository;
 
 
 use Doctrine\ORM\EntityManagerInterface;

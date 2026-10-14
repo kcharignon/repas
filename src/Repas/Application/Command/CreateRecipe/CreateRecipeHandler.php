@@ -2,7 +2,7 @@
 
 namespace Repas\Repas\Application\Command\CreateRecipe;
 
-use Repas\Repas\Domain\Event\RecipeCreatedEvent;
+use Repas\Shared\Domain\Event\RecipeCreatedEvent;
 use Repas\Repas\Domain\Exception\RecipeException;
 use Repas\Repas\Domain\Interface\IngredientRepository;
 use Repas\Repas\Domain\Interface\RecipeRepository;

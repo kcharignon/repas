@@ -1,11 +1,9 @@
-# Bounded contexts (ADR 0001) : Repas et User dépendent de Shared ; Shared n'importe aucun contexte.
-# Les couplages existants (Repas -> User surtout) sont figés dans la baseline : elle ne doit que diminuer.
-# Régénérer après avoir résorbé une dépendance :
-#   vendor/bin/deptrac analyse --config-file=quality-rules/Deptrac/deptrac.bounded-context.yaml \
-#     --formatter=baseline --output=quality-rules/Deptrac/baseline/bounded-context.baseline.yaml
-imports:
-  - baseline/bounded-context.baseline.yaml
-
+# Bounded contexts (ADR 0001, 0013) : Repas et User dépendent de Shared ; Shared n'importe aucun contexte.
+# Aucune dépendance entre contextes n'est tolérée (plus de baseline depuis le lot « User par identifiant ») : ce qui doit
+# circuler entre eux est dans Shared (événements de `Shared\Domain\Event`, interface `AuthenticatedUser`, port
+# `OwnershipLoader`, classe de base des repositories Doctrine).
+# Les fixtures de développement composent les contextes (une fixture Repas référence un utilisateur) : elles sont hors
+# de ces règles, comme le code de test.
 deptrac:
   paths:
     - ../../src
@@ -16,12 +14,22 @@ deptrac:
           value: ^Repas\\Shared\\.*
     - name: Repas
       collectors:
-        - type: classLike
-          value: ^Repas\\Repas\\.*
+        - type: bool
+          must:
+            - type: classLike
+              value: ^Repas\\Repas\\.*
+          must_not:
+            - type: classLike
+              value: ^Repas\\Repas\\Infrastructure\\DataFixture\\.*
     - name: User
       collectors:
-        - type: classLike
-          value: ^Repas\\User\\.*
+        - type: bool
+          must:
+            - type: classLike
+              value: ^Repas\\User\\.*
+          must_not:
+            - type: classLike
+              value: ^Repas\\User\\Infrastructure\\DataFixture\\.*
 
   ruleset:
     Repas:

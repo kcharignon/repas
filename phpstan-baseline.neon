@@ -283,12 +283,6 @@ parameters:
 			path: src/Shared/Domain/Tool/StringTool.php
 
 		-
-			message: '#^Trait Repas\\Shared\\Infrastructure\\Repository\\RepositoryTrait is used zero times and is not analysed\.$#'
-			identifier: trait.unused
-			count: 1
-			path: src/Shared/Infrastructure/Repository/RepositoryTrait.php
-
-		-
 			message: '#^Unsafe usage of new static\(\)\.$#'
 			identifier: new.static
 			count: 2

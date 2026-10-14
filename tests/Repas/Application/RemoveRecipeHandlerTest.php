@@ -6,7 +6,7 @@ namespace Repas\Tests\Repas\Application;
 use PHPUnit\Framework\TestCase;
 use Repas\Repas\Application\Command\RemoveRecipe\RemoveRecipeCommand;
 use Repas\Repas\Application\Command\RemoveRecipe\RemoveRecipeHandler;
-use Repas\Repas\Domain\Event\RecipeRemovedEvent;
+use Repas\Shared\Domain\Event\RecipeRemovedEvent;
 use Repas\Repas\Domain\Exception\RecipeException;
 use Repas\Repas\Domain\Interface\RecipeRepository;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;

@@ -15,26 +15,20 @@ use Repas\Tests\Helper\Builder\UserBuilder;
 use Repas\Tests\Helper\FrozenClock;
 use Repas\Tests\Helper\InMemoryRepository\ShoppingListInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\SpyEventDispatcher;
-use Repas\Tests\Helper\InMemoryRepository\UserInMemoryRepository;
-use Repas\User\Domain\Exception\UserException;
-use Repas\User\Domain\Interface\UserRepository;
 
 class EnsureActiveShoppingListHandlerTest extends TestCase
 {
-    private UserRepository $userRepository;
     private ShoppingListRepository $shoppingListRepository;
     private SpyEventDispatcher $eventDispatcher;
     private EnsureActiveShoppingListHandler $handler;
 
     protected function setUp(): void
     {
-        $this->userRepository = new UserInMemoryRepository();
         $this->shoppingListRepository = new ShoppingListInMemoryRepository();
         $this->eventDispatcher = new SpyEventDispatcher();
         $this->handler = new EnsureActiveShoppingListHandler(
             $this->shoppingListRepository,
             new CreateShoppingListHandler(
-                $this->userRepository,
                 $this->shoppingListRepository,
                 $this->eventDispatcher,
                 new FrozenClock(new DateTimeImmutable()),
@@ -46,7 +40,6 @@ class EnsureActiveShoppingListHandlerTest extends TestCase
     {
         // Given
         $user = new UserBuilder()->build();
-        $this->userRepository->save($user);
 
         // When
         ($this->handler)(new EnsureActiveShoppingListCommand('new-list', $user->getId()));
@@ -54,7 +47,7 @@ class EnsureActiveShoppingListHandlerTest extends TestCase
         // Then
         $created = $this->shoppingListRepository->findOneById('new-list');
         $this->assertSame(ShoppingListStatus::ACTIVE, $created->getStatus());
-        $this->assertTrue($created->getOwner()->isEqual($user));
+        $this->assertSame($user->getId(), $created->getOwnerId());
         $this->assertCount(1, $this->eventDispatcher->eventDispatched);
     }
 
@@ -62,7 +55,6 @@ class EnsureActiveShoppingListHandlerTest extends TestCase
     {
         // Given
         $user = new UserBuilder()->build();
-        $this->userRepository->save($user);
         $this->shoppingListRepository->save(new ShoppingListBuilder()->withId('paused-list')->withOwner($user)->withStatus(ShoppingListStatus::PAUSED)->build());
 
         // When
@@ -77,27 +69,14 @@ class EnsureActiveShoppingListHandlerTest extends TestCase
     {
         // Given
         $user = new UserBuilder()->build();
-        $this->userRepository->save($user);
         $this->shoppingListRepository->save(new ShoppingListBuilder()->withId('active-list')->withOwner($user)->build());
 
         // When
         ($this->handler)(new EnsureActiveShoppingListCommand('new-list', $user->getId()));
 
         // Then
-        $this->assertSame('active-list', $this->shoppingListRepository->findOneActivateByOwner($user)->getId());
+        $this->assertSame('active-list', $this->shoppingListRepository->findOneActivateByOwner($user->getId())->getId());
         $this->assertCount(0, $this->eventDispatcher->eventDispatched);
-        $this->assertCount(1, $this->shoppingListRepository->findByOwner($user));
-    }
-
-    public function testFailsForAnUnknownUser(): void
-    {
-        // Given
-        $unknownId = new UserBuilder()->build()->getId();
-
-        // Then
-        $this->expectExceptionObject(UserException::NotFound($unknownId));
-
-        // When
-        ($this->handler)(new EnsureActiveShoppingListCommand('new-list', $unknownId));
+        $this->assertCount(1, $this->shoppingListRepository->findByOwner($user->getId()));
     }
 }

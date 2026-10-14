@@ -6,7 +6,7 @@ namespace Repas\User\Infrastructure\Repository;
 
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Doctrine\Persistence\ManagerRegistry;
-use Repas\Repas\Infrastructure\Repository\PostgreSQLRepository;
+use Repas\Shared\Infrastructure\Repository\PostgreSQLRepository;
 use Repas\Shared\Domain\Tool\Tab;
 use Repas\User\Domain\Exception\UserException;
 use Repas\User\Domain\Interface\UserRepository;

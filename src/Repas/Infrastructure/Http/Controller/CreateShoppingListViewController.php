@@ -6,7 +6,7 @@ namespace Repas\Repas\Infrastructure\Http\Controller;
 use Repas\Repas\Application\Command\CreateShoppingList\CreateShoppingListCommand;
 use Repas\Shared\Application\Interface\CommandBusInterface;
 use Repas\Shared\Domain\Tool\UuidGenerator;
-use Repas\User\Domain\Model\User;
+use Repas\Shared\Domain\Interface\AuthenticatedUser;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
@@ -24,7 +24,7 @@ class CreateShoppingListViewController extends AbstractController
     public function __invoke(): Response
     {
         $userConnected = $this->getUser();
-        assert($userConnected instanceof User);
+        assert($userConnected instanceof AuthenticatedUser);
         $shoppingListId = UuidGenerator::new();
         $command = new CreateShoppingListCommand($shoppingListId, $userConnected->getId());
         $this->commandBus->dispatch($command);

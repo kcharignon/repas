@@ -2,7 +2,7 @@
 
 namespace Repas\Repas\Application\Command\RemoveRecipe;
 
-use Repas\Repas\Domain\Event\RecipeRemovedEvent;
+use Repas\Shared\Domain\Event\RecipeRemovedEvent;
 use Repas\Repas\Domain\Exception\RecipeException;
 use Repas\Repas\Domain\Interface\RecipeRepository;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;

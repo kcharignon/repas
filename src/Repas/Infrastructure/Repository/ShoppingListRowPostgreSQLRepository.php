@@ -3,6 +3,7 @@
 namespace Repas\Repas\Infrastructure\Repository;
 
 
+use Repas\Shared\Infrastructure\Repository\PostgreSQLRepository;
 use Doctrine\Persistence\ManagerRegistry;
 use Repas\Repas\Domain\Exception\ShoppingListRowException;
 use Repas\Repas\Domain\Interface\ShoppingListRowRepository;
@@ -11,7 +12,6 @@ use Repas\Repas\Domain\Model\ShoppingListRow as ShoppingListRowModel;
 use Repas\Repas\Domain\Model\ShoppingListStatus;
 use Repas\Repas\Infrastructure\Entity\ShoppingListRow as ShoppingListRowEntity;
 use Repas\Shared\Domain\Tool\Tab;
-use Repas\User\Domain\Model\User;
 
 readonly class ShoppingListRowPostgreSQLRepository extends PostgreSQLRepository implements ShoppingListRowRepository
 {

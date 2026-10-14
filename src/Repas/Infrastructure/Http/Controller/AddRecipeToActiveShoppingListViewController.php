@@ -38,7 +38,8 @@ class AddRecipeToActiveShoppingListViewController extends AbstractController
         // Ajout de la recette dans la liste active
         $command = new PlannedMealCommand(
             $connectedUser->getId(),
-            $id
+            $id,
+            $connectedUser->getDefaultServing(),
         );
         $this->commandBus->dispatch($command);
 

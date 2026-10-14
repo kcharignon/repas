@@ -8,18 +8,17 @@ use Repas\Repas\Domain\Model\Recipe;
 use Repas\Repas\Domain\Model\ShoppingList;
 use Repas\Repas\Domain\Model\ShoppingListStatus;
 use Repas\Shared\Domain\Tool\Tab;
-use Repas\User\Domain\Model\User;
 
 interface ShoppingListRepository
 {
     /**
      * @return Tab<ShoppingList>
      */
-    public function findByOwner(User $owner): Tab;
+    public function findByOwner(string $ownerId): Tab;
 
     public function findOneById(string $id): ShoppingList;
 
-    public function findOneActivateByOwner(User $owner): ?ShoppingList;
+    public function findOneActivateByOwner(string $ownerId): ?ShoppingList;
 
     /**
      * L'utilisateur a-t-il une liste active ? Sans hydrater l'agrégat ni importer le domaine du contexte User.

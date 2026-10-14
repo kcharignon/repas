@@ -3,13 +3,15 @@
 namespace Repas\User\Infrastructure\EventListener;
 
 
-use Repas\Repas\Domain\Event\IngredientCreatedEvent;
-use Repas\Repas\Domain\Event\IngredientRemovedEvent;
-use Repas\Repas\Domain\Event\RecipeCreatedEvent;
-use Repas\Repas\Domain\Event\RecipeRemovedEvent;
-use Repas\Repas\Domain\Event\RecipesOrIngredientsCreatedEvent;
-use Repas\Repas\Domain\Event\RecipesOrIngredientsRemovedEvent;
+use Repas\Shared\Domain\Event\IngredientCreatedEvent;
+use Repas\Shared\Domain\Event\IngredientRemovedEvent;
+use Repas\Shared\Domain\Event\RecipeCreatedEvent;
+use Repas\Shared\Domain\Event\RecipeRemovedEvent;
+use Repas\Shared\Domain\Event\RecipesOrIngredientsCreatedEvent;
+use Repas\Shared\Domain\Event\RecipesOrIngredientsRemovedEvent;
+use Repas\Shared\Domain\Event\ShoppingListCompletedEvent;
 use Repas\Shared\Application\Interface\CommandBusInterface;
+use Repas\User\Application\RecordCompletedShoppingList\RecordCompletedShoppingListCommand;
 use Repas\User\Application\UpdateUserStatistics\UpdateUserStatisticsCommand;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 
@@ -19,6 +21,7 @@ use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 #[AsEventListener(event: RecipesOrIngredientsRemovedEvent::class, method: '__invoke')]
 #[AsEventListener(event: RecipeRemovedEvent::class, method: '__invoke')]
 #[AsEventListener(event: IngredientRemovedEvent::class, method: '__invoke')]
+#[AsEventListener(event: ShoppingListCompletedEvent::class, method: 'onShoppingListCompleted')]
 readonly class UpdateUserStatisticsEventListener
 {
 
@@ -35,5 +38,17 @@ readonly class UpdateUserStatisticsEventListener
             $command = new UpdateUserStatisticsCommand($event->userId, -$event->ingredientSlugs->count(), -$event->recipeIds->count());
         }
         $this->commandBus->dispatch($command);
+    }
+
+    public function onShoppingListCompleted(ShoppingListCompletedEvent $event): void
+    {
+        $this->commandBus->dispatch(new RecordCompletedShoppingListCommand(
+            userId: $event->ownerId,
+            shoppingListId: $event->shoppingListId,
+            createdAt: $event->createdAt,
+            mealCount: $event->mealCount,
+            ingredientCount: $event->ingredientCount,
+            rowCount: $event->rowCount,
+        ));
     }
 }

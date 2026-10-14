@@ -8,7 +8,7 @@ use Repas\Repas\Application\Query\GetActiveShoppingListSummary\GetActiveShopping
 use Repas\Repas\Application\Query\GetRecipe\GetRecipeQuery;
 use Repas\Shared\Application\Interface\CommandBusInterface;
 use Repas\Shared\Application\Interface\QueryBusInterface;
-use Repas\User\Domain\Model\User;
+use Repas\Shared\Domain\Interface\AuthenticatedUser;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Attribute\Route;
@@ -27,7 +27,7 @@ class RemoveRecipeToActiveShoppingListViewController extends AbstractController
     public function __invoke(string $id): JsonResponse
     {
         $connectedUser = $this->getUser();
-        assert($connectedUser instanceof User);
+        assert($connectedUser instanceof AuthenticatedUser);
 
         $command = new removeMealFromPlanCommand(
             $connectedUser->getId(),

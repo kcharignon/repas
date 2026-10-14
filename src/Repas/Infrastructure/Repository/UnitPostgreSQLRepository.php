@@ -3,6 +3,7 @@
 namespace Repas\Repas\Infrastructure\Repository;
 
 
+use Repas\Shared\Infrastructure\Repository\PostgreSQLRepository;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\Persistence\ManagerRegistry;

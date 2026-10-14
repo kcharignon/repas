@@ -1,12 +1,13 @@
 <?php
 
-namespace Repas\Repas\Domain\Event;
+namespace Repas\Shared\Domain\Event;
 
 
 use Repas\Shared\Domain\Tool\Tab;
 
-class RecipeRemovedEvent extends  RecipesOrIngredientsRemovedEvent
+readonly class RecipeCreatedEvent extends RecipesOrIngredientsCreatedEvent
 {
+
     public function __construct(
         string $userId,
         string $recipeId

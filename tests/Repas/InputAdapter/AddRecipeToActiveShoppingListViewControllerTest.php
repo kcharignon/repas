@@ -35,7 +35,7 @@ class AddRecipeToActiveShoppingListViewControllerTest extends QueryBusWebTestCas
 
         // Then
         $this->assertSame(200, $this->client->getResponse()->getStatusCode());
-        $active = static::getContainer()->get(ShoppingListRepository::class)->findOneActivateByOwner($user);
+        $active = static::getContainer()->get(ShoppingListRepository::class)->findOneActivateByOwner($user->getId());
         $this->assertTrue($active->hasRecipe($recipe));
         $query = $this->queryBus->getAskedQuery(GetActiveShoppingListSummaryQuery::class);
         $this->assertInstanceOf(GetActiveShoppingListSummaryQuery::class, $query);

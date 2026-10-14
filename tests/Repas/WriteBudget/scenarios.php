@@ -116,7 +116,7 @@ return [
         [$first, $second, $third] = $t->typicalRecipes($owner);
         $t->savedShoppingList($owner, [$first, $second]);
 
-        return new PlannedMealCommand($owner->getId(), $third->getId());
+        return new PlannedMealCommand($owner->getId(), $third->getId(), $owner->getDefaultServing());
     },
     'retirer-repas' => static function (WriteBudgetTestCase $t): object {
         $owner = $t->savedUser();

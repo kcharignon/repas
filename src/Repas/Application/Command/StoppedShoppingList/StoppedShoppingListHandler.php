@@ -2,8 +2,9 @@
 
 namespace Repas\Repas\Application\Command\StoppedShoppingList;
 
+use Repas\Shared\Domain\Event\ShoppingListCompletedEvent;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
-use Repas\User\Domain\Interface\UserRepository;
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 #[AsMessageHandler]
@@ -12,7 +13,7 @@ readonly class StoppedShoppingListHandler
 
     public function __construct(
         private ShoppingListRepository $shoppingListRepository,
-        private UserRepository $userRepository,
+        private EventDispatcherInterface $eventDispatcher,
     ) {
     }
 
@@ -22,8 +23,15 @@ readonly class StoppedShoppingListHandler
         $shoppingList->completed();
         $this->shoppingListRepository->save($shoppingList);
 
-        $owner = $shoppingList->getOwner();
-        $owner->completedShoppingList($shoppingList);
-        $this->userRepository->save($owner);
+        // La statistique du propriétaire est tenue par le contexte `User` (UpdateUserStatisticsEventListener) : il recharge
+        // l'utilisateur lui-même, ce handler n'enregistre plus de modèle `User` (ADR 0013 règles 7 et 8)
+        $this->eventDispatcher->dispatch(new ShoppingListCompletedEvent(
+            ownerId: $shoppingList->getOwnerId(),
+            shoppingListId: $shoppingList->getId(),
+            createdAt: $shoppingList->getCreatedAt(),
+            mealCount: $shoppingList->getMeals()->count(),
+            ingredientCount: $shoppingList->getIngredients()->count(),
+            rowCount: $shoppingList->getRows()->count(),
+        ));
     }
 }

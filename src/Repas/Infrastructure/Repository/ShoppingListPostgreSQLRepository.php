@@ -3,6 +3,7 @@
 namespace Repas\Repas\Infrastructure\Repository;
 
 
+use Repas\Shared\Infrastructure\Repository\PostgreSQLRepository;
 use Doctrine\Persistence\ManagerRegistry;
 use Repas\Repas\Domain\Exception\MealException;
 use Repas\Repas\Domain\Exception\ShoppingListException;
@@ -19,15 +20,11 @@ use Repas\Repas\Infrastructure\Entity\Recipe as RecipeEntity;
 use Repas\Repas\Infrastructure\Entity\ShoppingList as ShoppingListEntity;
 use Repas\Repas\Infrastructure\Entity\ShoppingListIngredient;
 use Repas\Shared\Domain\Tool\Tab;
-use Repas\User\Domain\Exception\UserException;
-use Repas\User\Domain\Interface\UserRepository;
-use Repas\User\Domain\Model\User;
 
 readonly class ShoppingListPostgreSQLRepository extends PostgreSQLRepository implements ShoppingListRepository
 {
     public function __construct(
         ManagerRegistry                                    $managerRegistry,
-        private UserRepository                             $userRepository,
         private MealPostgreSQLRepository                   $mealRepository,
         private ShoppingListIngredientPostgreSQLRepository $shopListIngredientRepository,
         private ShoppingListRowPostgreSQLRepository        $shopListRowRepository,
@@ -38,15 +35,14 @@ readonly class ShoppingListPostgreSQLRepository extends PostgreSQLRepository imp
     /**
      * @return Tab<ShoppingList>
      */
-    public function findByOwner(User $owner): Tab
+    public function findByOwner(string $ownerId): Tab
     {
-        $shoppingListEntities = Tab::fromArray($this->entityRepository->findBy(['ownerId' => $owner->getId()], ['createdAt' => 'DESC']));
+        $shoppingListEntities = Tab::fromArray($this->entityRepository->findBy(['ownerId' => $ownerId], ['createdAt' => 'DESC']));
         return $this->convertEntitiesToModels($shoppingListEntities);
     }
 
     /**
      * @throws ShoppingListException
-     * @throws UserException
      */
     public function findOneById(string $id): ShoppingList
     {
@@ -62,7 +58,6 @@ readonly class ShoppingListPostgreSQLRepository extends PostgreSQLRepository imp
     /**
      * @throws ShoppingListException
      * @throws MealException
-     * @throws UserException
      */
     public function findOneByMealId(string $mealId): ShoppingList
     {
@@ -114,11 +109,10 @@ readonly class ShoppingListPostgreSQLRepository extends PostgreSQLRepository imp
     }
 
     /**
-     * @throws UserException
      */
-    public function findOneActivateByOwner(User $owner): ?ShoppingList
+    public function findOneActivateByOwner(string $ownerId): ?ShoppingList
     {
-        if (($shoppingListEntity = $this->entityRepository->findOneBy(['ownerId' => $owner->getId(), 'status' => ShoppingListStatus::ACTIVE])) !== null) {
+        if (($shoppingListEntity = $this->entityRepository->findOneBy(['ownerId' => $ownerId, 'status' => ShoppingListStatus::ACTIVE])) !== null) {
             return $this->convertEntityToModel($shoppingListEntity);
         }
 
@@ -166,13 +160,12 @@ readonly class ShoppingListPostgreSQLRepository extends PostgreSQLRepository imp
 
 
     /**
-     * @throws UserException
      */
     private function convertEntityToModel(ShoppingListEntity $shoppingListEntity): ShoppingList
     {
         return ShoppingList::load([
             'id' => $shoppingListEntity->getId(),
-            'owner' => $this->userRepository->findOneById($shoppingListEntity->getOwnerId()),
+            'owner_id' => $shoppingListEntity->getOwnerId(),
             'created_at' => $shoppingListEntity->getCreatedAt(),
             'status' => $shoppingListEntity->getStatus(),
             'name' => $shoppingListEntity->getName(),
