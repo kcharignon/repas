@@ -157,27 +157,21 @@ Audit de tous les controllers qui dispatchent une commande (méthode HTTP et gar
 
 ## Bugs connus à corriger
 
+- [x] ~~Ménage des points « hors périmètre »~~ : corrigé. Id inconnu sur une route Twig = 404 pour tous (`WebDomainExceptionListener`, y compris pour un administrateur, que le voter laissait passer) ; `ConversionService::clear()` branché sur `kernel.reset` (le graphe de conversions ne survit plus aux requêtes en mode worker) ; `symfony/translation` installé et locale `fr` (le message de connexion s'affichait en anglais, les messages de validation de l'API et des formulaires sont désormais en français) ; code mort supprimé (`LoginCheckViewController` qui rendait un template inexistant, `RecipeRowRepository` vide) ; `SYMFONY_PHPUNIT_VERSION` retiré ; deux puces obsolètes retirées (cache de `RecipeType` et `Recipe`, `ModelCache` n'existe plus).
 - [x] ~~Supprimer une recette laisse ses lignes orphelines~~ : corrigé en phase 9 (`RecipeRowPostgreSQLRepository::deleteByRecipeId` appelé par `RecipePostgreSQLRepository::delete`, test de repository sur base réelle, migration de nettoyage).
 
 ## Hors périmètre (vus en passant, non corrigés)
 
 - Une ligne de recette peut porter une unité sans chemin de conversion vers l'unité d'achat de son ingrédient : l'enregistrement l'accepte (formulaire Twig comme API), la planification échoue ensuite (`cannotConvertToUnit`). À valider à l'enregistrement avec `ConversionService::canConvertToPurchaseUnit`.
-- Routes Twig : un id inconnu donne un 500 pour un administrateur (le voter laisse passer l'administrateur avant de chercher la ressource, puis la query lève `…NotFound`) ; seule l'API mappe les exceptions de domaine en JSON (ADR 0007 §7, limité à `^/api`). Un listener équivalent hors `/api` donnerait un 404.
 - `GetActiveShoppingListViewController` crée la liste active sur un GET (lecture avec effet de bord, `EnsureActiveShoppingList`) : à garder tant que le front Twig l'attend, à supprimer avec l'API.
 - Lignes d'une recette : aucune colonne de position, l'ordre affiché est l'ordre de stockage (celui de la saisie tant que la recette n'est pas modifiée, puis variable). `RecipePostgreSQLLoader` le conserve à l'identique ; ajouter une position si l'ordre doit être garanti.
 - Le motif de date `dd MMMM YYYY` (templates des listes de courses et `ListShoppingLists`) utilise l'année ISO de la semaine : le 29 décembre 2025 s'affiche « 29 décembre 2026 ». Conservé tel quel pour ne pas changer l'affichage ; remplacer `YYYY` par `yyyy` partout en une fois (loader, `_shopping_list_card_header`, `shopping_list.html.twig`).
-- `LoginCheckViewController` rend `login_check/index.html.twig`, template inexistant.
-- `RecipeTypePostgreSQLRepository::findOneBySlug` interroge le cache avec `Recipe::class`.
-- `RecipePostgreSQLRepository::convertEntityToModel` : clé de cache = slug de la recette, pas son id.
-- `ConversionService::$graphs` : graphe de conversions mis en cache par ingrédient dans le service, jamais vidé ; en mode worker (FrankenPHP) il survit aux requêtes et reste périmé après la modification d'une conversion tant que le worker n'est pas redémarré. À rendre `ResetInterface` (comme `ModelCache`).
-- `phpunit.dist.xml` : `SYMFONY_PHPUNIT_VERSION=9.6` obsolète (PHPUnit 12 installé).
-- `symfony/translation` absent alors que `login.html.twig` utilise `|trans`.
 - Inscription publique (`POST /api/v1/users`) : aucun limiteur de débit (`symfony/rate-limiter` absent) ni vérification d'email ; un email déjà pris répond 409, ce qui révèle l'existence du compte (le formulaire Twig le fait déjà). Les emails sont comparés tels quels (casse comprise) et deux inscriptions simultanées du même email peuvent encore atteindre la contrainte d'unicité (500). À traiter avant d'ouvrir l'API hors du front.
 - Un changement de mot de passe n'invalide pas les jetons JWT déjà émis (durée de vie 1 h, ADR 0008 §5).
 - Formulaires Twig de rayon (`AbstractDepartmentType`) : `UrlType` préfixe `http://` à une valeur sans protocole, donc modifier un rayon dont l'image est un chemin relatif (`images/…`, forme stockée en base et acceptée par l'API) la transforme en `http://images/…`. `default_protocol` est explicitement `http` (comportement inchangé, notice de dépréciation symfony/form 7.1 retirée) ; le passer à `null` rendrait le champ en `type="url"` et bloquerait les chemins relatifs dans le navigateur. À trancher avec le futur front (champ texte validé côté serveur comme `DepartmentPayload`, ou liste d'images).
-- `RecipeRowRepository` : interface vide, le repository concret est injecté.
 - `admin_recipe_type_row.html.twig` : la ligne porte `id="department-…"` (copier-coller du rayon), à renommer quand un test ou du JS la cible.
 - Formulaires admin : `conversion|default(null)` / `department|default(null)` / `unit|default(null)` jamais fournis par les controllers update, le titre reste « Nouveau … ».
+- Page de connexion : l'erreur « Identifiants invalides. » s'affiche sous le champ email et sous le champ mot de passe (`login.html.twig`), au lieu d'une seule fois.
 
 ## Couverture de tests (cliquet)
 
