@@ -8,6 +8,7 @@ use Repas\User\Application\Query\GetCurrentUser\CurrentUserDTO;
 use Repas\User\Application\Query\ListUsers\UserSummaryDTO;
 use Repas\User\Domain\Model\UserStatus;
 use Repas\User\Domain\Exception\UserException;
+use Repas\User\Domain\Model\User as DomainUser;
 use Repas\User\Infrastructure\Entity\User;
 
 final readonly class UserPostgreSQLLoader implements UserLoader
@@ -77,7 +78,7 @@ final readonly class UserPostgreSQLLoader implements UserLoader
             ->select('u.id')
             ->from(User::class, 'u')
             ->where('u.email = :email')
-            ->setParameter('email', $email)
+            ->setParameter('email', DomainUser::normalizeEmail($email))
             ->setMaxResults(1)
             ->getQuery()
             ->getOneOrNullResult() !== null;

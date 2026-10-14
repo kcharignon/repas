@@ -4,6 +4,7 @@ namespace Repas\User\Infrastructure\Repository;
 
 
 
+use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Doctrine\Persistence\ManagerRegistry;
 use Repas\Repas\Infrastructure\Repository\PostgreSQLRepository;
 use Repas\Shared\Domain\Tool\Tab;
@@ -36,7 +37,7 @@ readonly class UserPostgreSQLRepository extends PostgreSQLRepository implements 
      */
     public function findOneByEmail(string $email): User
     {
-        if (($userEntity = $this->entityRepository->findOneBy(['email' => $email])) !== null) {
+        if (($userEntity = $this->entityRepository->findOneBy(['email' => User::normalizeEmail($email)])) !== null) {
             return $this->convertEntityToModel($userEntity);
         }
         throw UserException::NotFound($email);
@@ -44,7 +45,7 @@ readonly class UserPostgreSQLRepository extends PostgreSQLRepository implements 
 
     public function emailExists(string $email): bool
     {
-        return $this->entityRepository->findOneBy(['email' => $email]) !== null;
+        return $this->entityRepository->findOneBy(['email' => User::normalizeEmail($email)]) !== null;
     }
 
     public function findAll(): Tab
@@ -67,7 +68,12 @@ readonly class UserPostgreSQLRepository extends PostgreSQLRepository implements 
             $this->entityManager->persist($newUserEntity);
         }
 
-        $this->entityManager->flush();
+        try {
+            $this->entityManager->flush();
+        } catch (UniqueConstraintViolationException) {
+            // Deux inscriptions simultanées du même email : la seconde échoue sur l'unicité en base, comme si le contrôle d'existence l'avait vue
+            throw UserException::emailAlreadyUsed($user->getEmail());
+        }
     }
 
     private function convertEntityToModel(UserEntity $entity): User

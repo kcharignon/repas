@@ -3,6 +3,7 @@
 namespace Repas\Tests\User\InputAdapter;
 
 
+use Lexik\Bundle\JWTAuthenticationBundle\Encoder\JWTEncoderInterface;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Repas\Tests\Helper\Builder\UserBuilder;
 use Repas\Tests\Helper\DatabaseTestCase;
@@ -43,6 +44,24 @@ class UserWriteApiFlowTest extends DatabaseTestCase
         $this->assertSame(200, $this->client->getResponse()->getStatusCode());
         $this->assertSame(['email' => 'alexiane@example.com', 'roles' => ['ROLE_USER'], 'isAdmin' => false, 'defaultServing' => 3], array_diff_key($this->jsonBody(), ['id' => true]));
         $this->assertSame($location, '/api/v1/users/' . $this->jsonBody()['id']);
+    }
+
+    public function testTheEmailIsKeptInLowercaseAndLoginIgnoresTheCase(): void
+    {
+        // When : inscription avec des majuscules
+        $this->request('POST', '/api/v1/users', body: ['email' => 'Alexiane@Example.COM', 'password' => 'un-mot-de-passe', 'defaultServing' => 3]);
+        $this->assertSame(201, $this->client->getResponse()->getStatusCode());
+
+        // Then : connexion avec n'importe quelle casse, l'email est stocké en minuscules
+        foreach (['alexiane@example.com', 'ALEXIANE@EXAMPLE.COM', 'Alexiane@Example.COM'] as $email) {
+            $this->request('GET', '/api/v1/me', $this->tokenFor($email, 'un-mot-de-passe'));
+            $this->assertSame(200, $this->client->getResponse()->getStatusCode(), $email);
+            $this->assertSame('alexiane@example.com', $this->jsonBody()['email']);
+        }
+
+        // Then : le même email avec une autre casse est un doublon
+        $this->request('POST', '/api/v1/users', body: ['email' => 'ALEXIANE@example.com', 'password' => 'autre-mot-de-passe', 'defaultServing' => 2]);
+        $this->assertSame(409, $this->client->getResponse()->getStatusCode());
     }
 
     public function testRegisteringTwiceWithTheSameEmailGivesAConflictAndKeepsTheFirstAccount(): void
@@ -123,6 +142,41 @@ class UserWriteApiFlowTest extends DatabaseTestCase
     {
         yield 'mot de passe actuel absent' => [[]];
         yield 'mot de passe actuel erroné' => [['actualPassword' => 'pas-le-bon']];
+    }
+
+    public function testChangingThePasswordRevokesTheTokensAlreadyIssued(): void
+    {
+        // Given : deux jetons émis avant le changement (deux appareils)
+        $this->savedUser('alexiane@example.com');
+        $firstDevice = $this->tokenFor('alexiane@example.com', 'test');
+        $secondDevice = $this->tokenFor('alexiane@example.com', 'test');
+
+        // When : un appareil change le mot de passe
+        $this->request('PUT', '/api/v1/me/settings', $firstDevice, ['defaultServing' => 4, 'newPassword' => 'un-nouveau-mot-de-passe', 'actualPassword' => 'test']);
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+
+        // Then : les deux anciens jetons sont refusés, un jeton émis avec le nouveau mot de passe est accepté
+        foreach ([$firstDevice, $secondDevice] as $token) {
+            $this->request('GET', '/api/v1/me', $token);
+            $this->assertSame(401, $this->client->getResponse()->getStatusCode());
+            $this->assertSame(['error' => ['message' => 'Invalid token.']], $this->jsonBody());
+        }
+        $this->request('GET', '/api/v1/me', $this->tokenFor('alexiane@example.com', 'un-nouveau-mot-de-passe'));
+        $this->assertSame(200, $this->client->getResponse()->getStatusCode());
+    }
+
+    public function testATokenWithoutPasswordFingerprintIsRefused(): void
+    {
+        // Given : un jeton signé par le serveur mais émis avant la règle (aucune empreinte de mot de passe)
+        $user = $this->savedUser('alexiane@example.com');
+        $token = static::getContainer()->get(JWTEncoderInterface::class)->encode(['username' => $user->getEmail(), 'iat' => time(), 'exp' => time() + 3600]);
+
+        // When
+        $this->request('GET', '/api/v1/me', $token);
+
+        // Then
+        $this->assertSame(401, $this->client->getResponse()->getStatusCode());
+        $this->assertSame(['error' => ['message' => 'Invalid token.']], $this->jsonBody());
     }
 
     public function testAUserCannotReadAnotherAccountButAnAdministratorCan(): void

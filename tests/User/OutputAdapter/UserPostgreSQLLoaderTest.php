@@ -83,6 +83,15 @@ class UserPostgreSQLLoaderTest extends DatabaseTestCase
         $this->assertFalse($this->userLoader->emailExists('other@example.com'));
     }
 
+    public function testEmailExistsIgnoresTheCase(): void
+    {
+        // Given
+        $this->userRepository->save(new UserBuilder()->withEmail('existing@example.com')->build());
+
+        // When & Then
+        $this->assertTrue($this->userLoader->emailExists('Existing@Example.COM'));
+    }
+
     public function testGetFlagsAnAdministrator(): void
     {
         // Given

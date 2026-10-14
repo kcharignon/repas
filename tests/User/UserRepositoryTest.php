@@ -56,6 +56,29 @@ class UserRepositoryTest extends DatabaseTestCase
         $this->assertFalse($this->userRepository->emailExists('unknown@test.com'));
     }
 
+    public function testTheEmailIsFoundWhateverItsCase(): void
+    {
+        //Arrange
+        $user = new UserBuilder()->withEmail('known@test.com')->build();
+        $this->userRepository->save($user);
+
+        //Act & Assert
+        $this->assertTrue($this->userRepository->emailExists('Known@Test.COM'));
+        $this->assertSame($user->getId(), $this->userRepository->findOneByEmail('  KNOWN@test.com ')->getId());
+    }
+
+    public function testTheSameEmailSavedTwiceGivesAnEmailAlreadyUsedError(): void
+    {
+        //Arrange : deux inscriptions simultanées ont passé le contrôle d'existence
+        $this->userRepository->save(new UserBuilder()->withEmail('twice@test.com')->build());
+
+        //Assert
+        $this->expectExceptionObject(UserException::emailAlreadyUsed('twice@test.com'));
+
+        //Act
+        $this->userRepository->save(new UserBuilder()->withEmail('twice@test.com')->build());
+    }
+
     public function testUserNotFound(): void
     {
         //Assert
