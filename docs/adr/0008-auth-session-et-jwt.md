@@ -24,10 +24,14 @@ La branche `feat/api-rest` (un commit WIP, base ancienne) ajoute `lexik/jwt-auth
 10. CORS : `nelmio/cors-bundle`, limité à `^/api/` (aucune origine autorisée ailleurs), origines autorisées via `CORS_ALLOW_ORIGIN`, en-têtes `Content-Type` et `Authorization`.
 11. `ROLE_USER` est le plancher d'un endpoint API. Un endpoint qui modifie une ressource appartenant à un utilisateur doit vérifier la propriété (voter) avant d'être exposé : les trous existants sont listés dans `docs/migration-roadmap.md` et corrigés avant la phase des endpoints d'écriture.
 
+12. **Plafonds de débit** (`symfony/rate-limiter`, `config/packages/rate_limiter.yaml`). `login_throttling` sur les firewalls `login` (JSON) et `main` (formulaire) : 5 échecs par 15 minutes pour un couple IP + email (25 pour une même IP), le compteur ne distingue pas un compte inconnu d'un compte existant, une connexion réussie le remet à zéro. Au-delà : `429` + `Retry-After` en secondes (`ApiAuthenticationFailureListener`), même avec le bon mot de passe ; sur le formulaire Twig, le message « Trop de tentatives… ». L'inscription publique est plafonnée à 10 par heure et par IP (`RegisterNewUserRateLimitListener`, limiteur `registration`) : `429` + `Retry-After`. L'IP vient de `Request::getClientIp()` : derrière un reverse proxy, déclarer `SYMFONY_TRUSTED_PROXIES`, sinon tous les clients partagent le compteur du proxy.
+13. **Révocation à la modification du mot de passe** (`JwtPasswordFingerprintListener`) : chaque JWT porte `pwd`, un HMAC tronqué du hash du mot de passe (clé `kernel.secret` ; jamais le hash lui-même, le contenu d'un JWT est lisible). À chaque requête l'utilisateur est relu en base et son empreinte doit correspondre, sinon `401 Invalid token.` : changer de mot de passe, par l'API comme par Twig, révoque tous les jetons déjà émis. Un jeton sans `pwd` (émis avant cette règle) est refusé. Les autres modifications (nombre de personnes…) ne révoquent rien.
+14. **Emails** : comparés sans tenir compte de la casse ni des espaces autour (`User::normalizeEmail()`, appliqué à la création, à la recherche et à `IsEmailAlreadyUsed`), stockés en minuscules (migration `Version20261014140000`, qui s'arrête s'il existe deux emails qui ne diffèrent que par la casse). Deux inscriptions simultanées du même email : la seconde échoue sur la contrainte d'unicité, rattrapée en `409` (`UserException::emailAlreadyUsed`).
+
 ## Conséquences
 
 - Positives : le web ne change pas ; le front mobile/SPA n'a pas besoin de cookies ni de CSRF.
-- Coûts : deux mécanismes d'auth à comprendre ; gestion des clés par environnement ; pas de révocation de token avant expiration.
+- Coûts : deux mécanismes d'auth à comprendre ; gestion des clés par environnement ; un jeton n'est révoqué que par un changement de mot de passe (§13) ou son expiration (1 h), pas de refresh token.
 - Garde-fou : tests fonctionnels (sans token → 401, avec token valide → accès, `/login` web toujours fonctionnel).
 
 ## Alternatives écartées

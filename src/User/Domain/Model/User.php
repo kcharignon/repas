@@ -29,6 +29,15 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, Passwor
     ) {
     }
 
+    /**
+     * L'email est l'identifiant de connexion et il est unique : on le compare sans tenir compte de la casse ni des espaces
+     * autour, donc on ne le stocke et ne le cherche qu'ainsi.
+     */
+    public static function normalizeEmail(string $email): string
+    {
+        return mb_strtolower(trim($email));
+    }
+
     public static function create(
         string $id,
         string $email,
@@ -39,7 +48,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, Passwor
     ): static {
         return new static(
             $id,
-            $email,
+            static::normalizeEmail($email),
             $roles,
             $password,
             $defaultServing,
@@ -73,7 +82,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, Passwor
 
     public function setEmail(string $email): void
     {
-        $this->email = $email;
+        $this->email = static::normalizeEmail($email);
     }
 
     public function getPassword(): ?string

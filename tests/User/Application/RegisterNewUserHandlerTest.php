@@ -61,6 +61,27 @@ class RegisterNewUserHandlerTest extends TestCase
         RepasAssert::assertUser($expected, $actual);
     }
 
+    public function testStoresTheEmailInLowercaseWithoutSurroundingSpaces(): void
+    {
+        // Act
+        ($this->handler)(new RegisterNewUserCommand("new-user-id", "  John.Doe@Example.COM ", "megapassword", 5));
+
+        // Assert
+        $this->assertSame("john.doe@example.com", $this->userRepository->findOneById("new-user-id")->getEmail());
+    }
+
+    public function testRefusesAnEmailThatDiffersOnlyByCase(): void
+    {
+        // Arrange
+        $this->userRepository->save(new UserBuilder()->withEmail("john.doe@example.com")->build());
+
+        // Assert
+        $this->expectExceptionObject(UserException::emailAlreadyUsed("JOHN.DOE@example.com"));
+
+        // Act
+        ($this->handler)(new RegisterNewUserCommand("other-id", "JOHN.DOE@example.com", "megapassword", 5));
+    }
+
     public function testRefusesAnEmailThatIsAlreadyUsed(): void
     {
         // Arrange : un second compte du même email échouerait sur l'unicité en base

@@ -13,6 +13,7 @@ use Symfony\Component\HttpKernel\Event\ExceptionEvent;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use Symfony\Component\HttpKernel\Exception\TooManyRequestsHttpException;
 use Symfony\Component\HttpKernel\HttpKernelInterface;
 use Symfony\Component\Validator\ConstraintViolation;
 use Symfony\Component\Validator\ConstraintViolationList;
@@ -92,6 +93,20 @@ class ApiExceptionListenerTest extends TestCase
             ['error' => ['message' => 'page: This value should be positive. name: This value should not be blank.']],
             $this->body($event)
         );
+    }
+
+    public function testHttpExceptionHeadersAreKept(): void
+    {
+        // Given : un plafond atteint (429) annonce son délai d'attente
+        $event = $this->anApiEvent(new TooManyRequestsHttpException(120));
+
+        // When
+        (new ApiExceptionListener())($event);
+
+        // Then
+        $this->assertSame(429, $event->getResponse()->getStatusCode());
+        $this->assertSame('120', $event->getResponse()->headers->get('Retry-After'));
+        $this->assertSame(['error' => ['message' => 'Too Many Requests']], $this->body($event));
     }
 
     public function testUnexpectedErrorIsMappedTo500WithoutLeakingTheMessage(): void

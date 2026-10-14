@@ -32,12 +32,12 @@ class UserInMemoryRepository implements UserRepository
 
     public function findOneByEmail(string $email): User
     {
-        return $this->users->find(fn(User $user) => $user->getEmail() === $email) ?? throw UserException::NotFound($email);
+        return $this->users->find(fn(User $user) => $user->getEmail() === User::normalizeEmail($email)) ?? throw UserException::NotFound($email);
     }
 
     public function emailExists(string $email): bool
     {
-        return $this->users->find(fn(User $user) => $user->getEmail() === $email) !== null;
+        return $this->users->find(fn(User $user) => $user->getEmail() === User::normalizeEmail($email)) !== null;
     }
 
     public function save(User $user): void

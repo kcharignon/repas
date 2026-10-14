@@ -50,6 +50,11 @@ services:
 
 when@test:
     services:
+        # État des limiteurs (inscription, connexion) : en mémoire, conservé tant que le noyau de test vit (un pool du framework
+        # serait vidé à chaque requête par `kernel.reset`), perdu quand il est reconstruit entre deux tests.
+        test.rate_limiter_pool:
+            class: Symfony\Component\Cache\Adapter\ArrayAdapter
+
         # Messages et handlers factices de tests/Helper/Bus (voir tests/Shared/Application/Service/BusWiringTest.php)
         Repas\Tests\Helper\Bus\:
             resource: '../tests/Helper/Bus/'
