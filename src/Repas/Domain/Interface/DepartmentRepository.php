@@ -9,6 +9,11 @@ use Repas\Shared\Domain\Tool\Tab;
 
 interface DepartmentRepository
 {
+    /**
+     * Un department porte ce slug (le slug dérive du nom : deux créations du même nom se télescoperaient).
+     */
+    public function exists(string $slug): bool;
+
     public function save(Department $department): void;
 
     /**

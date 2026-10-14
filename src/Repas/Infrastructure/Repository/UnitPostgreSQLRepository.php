@@ -28,6 +28,11 @@ readonly class UnitPostgreSQLRepository extends PostgreSQLRepository implements 
     }
 
 
+    public function exists(string $slug): bool
+    {
+        return $this->entityRepository->find($slug) !== null;
+    }
+
     public function save(UnitModel $unit): void
     {
         // On recupere l'entity

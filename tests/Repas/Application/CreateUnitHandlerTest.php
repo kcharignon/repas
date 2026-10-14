@@ -6,6 +6,7 @@ namespace Repas\Application;
 use PHPUnit\Framework\TestCase;
 use Repas\Repas\Application\Command\CreateUnit\CreateUnitCommand;
 use Repas\Repas\Application\Command\CreateUnit\CreateUnitHandler;
+use Repas\Repas\Domain\Exception\UnitException;
 use Repas\Repas\Domain\Interface\UnitRepository;
 use Repas\Tests\Helper\Builder\UnitBuilder;
 use Repas\Tests\Helper\InMemoryRepository\UnitInMemoryRepository;
@@ -37,5 +38,26 @@ class CreateUnitHandlerTest extends TestCase
             ->build();
         $actual = $this->unitRepository->findOneBySlug("nouvelle-unite");
         RepasAssert::assertUnit($expected, $actual);
+    }
+
+    public function testReturnsTheSlugOfTheCreatedUnit(): void
+    {
+        // Act
+        $slug = ($this->handler)(new CreateUnitCommand('nouvelle unite', 'symbol'));
+
+        // Assert
+        $this->assertSame('nouvelle-unite', $slug);
+    }
+
+    public function testRefusesAnUnitWhoseSlugAlreadyExists(): void
+    {
+        // Arrange : un second « Nouvelle unité » écraserait la première
+        ($this->handler)(new CreateUnitCommand('nouvelle unite', 'symbol'));
+
+        // Assert
+        $this->expectExceptionObject(UnitException::alreadyExists('nouvelle-unite'));
+
+        // Act
+        ($this->handler)(new CreateUnitCommand('Nouvelle unité', 'autre'));
     }
 }

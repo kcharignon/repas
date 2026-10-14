@@ -6,6 +6,7 @@ namespace Repas\Application;
 use PHPUnit\Framework\TestCase;
 use Repas\Repas\Application\Command\CreateDepartment\CreateDepartmentCommand;
 use Repas\Repas\Application\Command\CreateDepartment\CreateDepartmentHandler;
+use Repas\Repas\Domain\Exception\DepartmentException;
 use Repas\Repas\Domain\Interface\DepartmentRepository;
 use Repas\Tests\Helper\Builder\DepartmentBuilder;
 use Repas\Tests\Helper\InMemoryRepository\DepartmentInMemoryRepository;
@@ -39,5 +40,26 @@ class CreateDepartmentHandlerTest extends TestCase
         // Assert
         $actual = $this->departmentRepository->findOneBySlug($expected->getSlug());
         RepasAssert::assertDepartment($expected, $actual);
+    }
+
+    public function testReturnsTheSlugOfTheCreatedDepartment(): void
+    {
+        // Act
+        $slug = ($this->handler)(new CreateDepartmentCommand('Surgelés', 'images/frozen.svg'));
+
+        // Assert
+        $this->assertSame('surgeles', $slug);
+    }
+
+    public function testRefusesADepartmentWhoseSlugAlreadyExists(): void
+    {
+        // Arrange
+        ($this->handler)(new CreateDepartmentCommand('Surgelés', 'images/frozen.svg'));
+
+        // Assert
+        $this->expectExceptionObject(DepartmentException::alreadyExists('surgeles'));
+
+        // Act
+        ($this->handler)(new CreateDepartmentCommand('surgeles', 'images/autre.svg'));
     }
 }

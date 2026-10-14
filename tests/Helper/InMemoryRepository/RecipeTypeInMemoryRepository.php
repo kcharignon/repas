@@ -22,6 +22,11 @@ class RecipeTypeInMemoryRepository extends AbstractInMemoryRepository implements
         return $this->models;
     }
 
+    public function exists(string $slug): bool
+    {
+        return isset($this->models[$slug]);
+    }
+
     public function findOneBySlug(string $slug): RecipeType
     {
         return $this->models[$slug] ?? throw RecipeException::typeNotFound($slug);

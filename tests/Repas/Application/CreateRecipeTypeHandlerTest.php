@@ -6,6 +6,7 @@ namespace Repas\Tests\Repas\Application;
 use PHPUnit\Framework\TestCase;
 use Repas\Repas\Application\Command\CreateRecipeType\CreateRecipeTypeCommand;
 use Repas\Repas\Application\Command\CreateRecipeType\CreateRecipeTypeHandler;
+use Repas\Repas\Domain\Exception\RecipeException;
 use Repas\Repas\Domain\Interface\RecipeTypeRepository;
 use Repas\Tests\Helper\Builder\RecipeTypeBuilder;
 use Repas\Tests\Helper\InMemoryRepository\RecipeTypeInMemoryRepository;
@@ -45,4 +46,25 @@ class CreateRecipeTypeHandlerTest extends TestCase
     }
 
 
+
+    public function testReturnsTheSlugOfTheCreatedRecipeType(): void
+    {
+        // Act
+        $slug = ($this->handler)(new CreateRecipeTypeCommand('Apéritif', 'images/aperitif.svg', 4));
+
+        // Assert
+        $this->assertSame('aperitif', $slug);
+    }
+
+    public function testRefusesARecipeTypeWhoseSlugAlreadyExists(): void
+    {
+        // Arrange
+        ($this->handler)(new CreateRecipeTypeCommand('Apéritif', 'images/aperitif.svg', 4));
+
+        // Assert
+        $this->expectExceptionObject(RecipeException::typeAlreadyExists('aperitif'));
+
+        // Act
+        ($this->handler)(new CreateRecipeTypeCommand('aperitif', 'images/autre.svg', 5));
+    }
 }

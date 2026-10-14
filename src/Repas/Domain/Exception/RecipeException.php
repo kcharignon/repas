@@ -26,4 +26,9 @@ class RecipeException extends DomainException
     {
         return new static(sprintf("Cannot remove recipe '%s', present in shopping list", $recipeId), 409);
     }
+
+    public static function typeAlreadyExists(string $slug): self
+    {
+        return new self(sprintf("Recipe type '%s' already exists", $slug), 409);
+    }
 }
