@@ -53,7 +53,7 @@ class RecipeWriteApiFlowTest extends DatabaseTestCase
         // Then
         $this->assertSame(201, $this->client->getResponse()->getStatusCode());
         $recipe = $this->recipes()->findOneById(basename($this->client->getResponse()->headers->get('Location')));
-        $this->assertSame(['Pâtes carbonara', 4, $author->getId()], [$recipe->getName(), $recipe->getServing(), $recipe->getAuthor()->getId()]);
+        $this->assertSame(['Pâtes carbonara', 4, $author->getId()], [$recipe->getName(), $recipe->getServing(), $recipe->getAuthorId()]);
         $this->assertSame([[$pasta->getSlug(), 'gramme', 500.0]], array_map(fn(RecipeRow $row) => [$row->getIngredient()->getSlug(), $row->getUnit()->getSlug(), $row->getQuantity()], array_values($recipe->getRows()->toArray())));
         $this->assertSame(1, static::getContainer()->get(UserRepository::class)->findOneById($author->getId())->getStatistics()['recipes']);
     }
@@ -138,8 +138,8 @@ class RecipeWriteApiFlowTest extends DatabaseTestCase
         // Then
         $this->assertSame(201, $this->client->getResponse()->getStatusCode());
         $copy = $this->recipes()->findOneById(basename($this->client->getResponse()->headers->get('Location')));
-        $this->assertSame([$copier->getId(), $recipe->getId(), $recipe->getName()], [$copy->getAuthor()->getId(), $copy->getOriginalId(), $copy->getName()]);
-        $this->assertSame($recipe->getAuthor()->getId(), $this->recipes()->findOneById($recipe->getId())->getAuthor()->getId());
+        $this->assertSame([$copier->getId(), $recipe->getId(), $recipe->getName()], [$copy->getAuthorId(), $copy->getOriginalId(), $copy->getName()]);
+        $this->assertSame($recipe->getAuthorId(), $this->recipes()->findOneById($recipe->getId())->getAuthorId());
     }
 
     public function testCopyingAnUnknownRecipeIsNotFound(): void

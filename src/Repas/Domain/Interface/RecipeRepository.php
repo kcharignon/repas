@@ -6,7 +6,6 @@ namespace Repas\Repas\Domain\Interface;
 use Repas\Repas\Domain\Model\Ingredient;
 use Repas\Repas\Domain\Model\Recipe;
 use Repas\Shared\Domain\Tool\Tab;
-use Repas\User\Domain\Model\User;
 
 interface RecipeRepository
 {
@@ -15,7 +14,7 @@ interface RecipeRepository
     /**
      * @return Tab<Recipe>
      */
-    public function findByAuthor(User $author): Tab;
+    public function findByAuthor(string $authorId): Tab;
 
     /**
      * @return Tab<Recipe>

@@ -88,7 +88,6 @@ final readonly class DataPersister
 
     public function saveRecipeDependencies(Recipe $recipe): void
     {
-        $this->saveUser($recipe->getAuthor());
         $this->saveRecipeType($recipe->getType());
         /** @var RecipeRow $row */
         foreach ($recipe->getRows() as $row) {

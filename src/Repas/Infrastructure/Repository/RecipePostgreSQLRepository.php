@@ -14,15 +14,11 @@ use Repas\Repas\Domain\Model\RecipeType;
 use Repas\Repas\Infrastructure\Entity\Recipe as RecipeEntity;
 use Repas\Repas\Infrastructure\Entity\RecipeRow as RecipeRowEntity;
 use Repas\Shared\Domain\Tool\Tab;
-use Repas\User\Domain\Exception\UserException;
-use Repas\User\Domain\Interface\UserRepository;
-use Repas\User\Domain\Model\User;
 
 readonly class RecipePostgreSQLRepository extends PostgreSQLRepository implements RecipeRepository
 {
     public function __construct(
         ManagerRegistry $managerRegistry,
-        private UserRepository $userRepository,
         private RecipeTypeRepository $recipeTypeRepository,
         private RecipeRowPostgreSQLRepository $recipeRowRepository,
         private IngredientPostgreSQLRepository $ingredientRepository,
@@ -32,7 +28,6 @@ readonly class RecipePostgreSQLRepository extends PostgreSQLRepository implement
 
     /**
      * @throws RecipeException
-     * @throws UserException
      */
     public function findOneById(string $id): Recipe
     {
@@ -43,9 +38,9 @@ readonly class RecipePostgreSQLRepository extends PostgreSQLRepository implement
         throw RecipeException::notFound($id);
     }
 
-    public function findByAuthor(User $author): Tab
+    public function findByAuthor(string $authorId): Tab
     {
-        return $this->findBy(['authorId' => $author->getId()]);
+        return $this->findBy(['authorId' => $authorId]);
     }
 
     public function findBy(array $criteria, ?array $orderBy = null): Tab
@@ -78,7 +73,6 @@ readonly class RecipePostgreSQLRepository extends PostgreSQLRepository implement
     }
 
     /**
-     * @throws UserException
      * @throws RecipeException
      */
     private function convertEntityToModel(RecipeEntity $entity): Recipe
@@ -89,7 +83,7 @@ readonly class RecipePostgreSQLRepository extends PostgreSQLRepository implement
             'id' => $entity->getId(),
             'name' => $entity->getName(),
             'serving' => $entity->getServing(),
-            'author' => $this->userRepository->findOneById($entity->getAuthorId()),
+            'author_id' => $entity->getAuthorId(),
             'type' => $this->recipeTypeRepository->findOneBySlug($entity->getTypeSlug()),
             'rows' => $this->recipeRowRepository->findByRecipeId($entity->getId()),
             'original_id' => $entity->getOriginalId(),

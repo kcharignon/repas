@@ -130,7 +130,7 @@ class Recipe
             id: $recipe->getId(),
             name: $recipe->getName(),
             serving: $recipe->getServing(),
-            authorId: $recipe->getAuthor()->getId(),
+            authorId: $recipe->getAuthorId(),
             typeSlug: $recipe->getType()->getSlug(),
             original: $recipe->getOriginalId(),
         );

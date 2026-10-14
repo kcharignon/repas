@@ -90,7 +90,7 @@ class RepasAssert
         Assert::assertEquals($expected->getName(), $actual->getName());
         Assert::assertEquals($expected->getServing(), $actual->getServing());
         self::assertRecipeType($expected->getType(), $actual->getType());
-        self::assertUser($expected->getAuthor(), $actual->getAuthor());
+        Assert::assertSame($expected->getAuthorId(), $actual->getAuthorId());
         self::assertRecipeRows($expected->getRows(), $actual->getRows(), $excluded['RecipeRow'] ?? []);
     }
 

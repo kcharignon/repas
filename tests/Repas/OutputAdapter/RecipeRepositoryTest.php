@@ -71,7 +71,7 @@ class RecipeRepositoryTest extends DatabaseTestCase
         $this->savedRecipe(new RecipeBuilder()->isSoftBoiledEggs()->withAuthor($this->savedUser()));
 
         // Act
-        $recipes = $this->recipeRepository->findByAuthor($author);
+        $recipes = $this->recipeRepository->findByAuthor($author->getId());
 
         // Assert
         $this->assertEqualsCanonicalizing([$first->getId(), $second->getId()], $this->idsOf($recipes));

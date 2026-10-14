@@ -52,7 +52,7 @@ class CreateRecipeViewControllerTest extends QueryBusWebTestCase
 
         // Then
         $this->assertTrue($this->client->getResponse()->isRedirect('/recipe/type/dessert'));
-        $recipes = static::getContainer()->get(RecipeRepository::class)->findByAuthor($user);
+        $recipes = static::getContainer()->get(RecipeRepository::class)->findByAuthor($user->getId());
         $this->assertCount(1, $recipes);
         $this->assertSame(['zzz mousse', 4], [$recipes->reset()->getName(), $recipes->reset()->getServing()]);
     }

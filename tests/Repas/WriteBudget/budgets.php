@@ -8,7 +8,7 @@
 return [
     'ajouter-ingredient-liste' => 16,
     'assurer-liste-active' => 6,
-    'copier-recette' => 25,
+    'copier-recette' => 24,
     'creer-conversion' => 4,
     'creer-ingredient' => 9,
     'creer-liste' => 5,
@@ -23,7 +23,7 @@ return [
     'modifier-ingredient' => 7,
     'modifier-portions-repas' => 26,
     'modifier-rayon' => 2,
-    'modifier-recette' => 23,
+    'modifier-recette' => 22,
     'modifier-type-recette' => 2,
     'modifier-unite' => 2,
     'planifier-repas' => 29,
