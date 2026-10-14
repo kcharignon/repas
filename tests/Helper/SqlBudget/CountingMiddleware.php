@@ -53,11 +53,11 @@ final readonly class CountingMiddleware implements Middleware
                                 parent::__construct($statement);
                             }
 
-                            public function execute($params = null): Result
+                            public function execute(): Result
                             {
                                 $this->counter->record($this->sql);
 
-                                return parent::execute($params);
+                                return parent::execute();
                             }
                         };
                     }
