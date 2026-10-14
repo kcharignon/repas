@@ -132,6 +132,7 @@ Total des 32 scénarios : 328 requêtes, avec comme sans cache à l'arrivée.
 - `LoginCheckViewController` rend `login_check/index.html.twig`, template inexistant.
 - `RecipeTypePostgreSQLRepository::findOneBySlug` interroge le cache avec `Recipe::class`.
 - `RecipePostgreSQLRepository::convertEntityToModel` : clé de cache = slug de la recette, pas son id.
+- `RecipePostgreSQLRepository::delete` ne supprime pas les lignes de la recette : elles restent en base (`recipe_row` orphelines, constaté pendant les tests navigateur). Ajouter `recipeRowRepository->deleteByRecipeId` et nettoyer l'existant.
 - `ConversionService::$graphs` : graphe de conversions mis en cache par ingrédient dans le service, jamais vidé ; en mode worker (FrankenPHP) il survit aux requêtes et reste périmé après la modification d'une conversion tant que le worker n'est pas redémarré. À rendre `ResetInterface` (comme `ModelCache`).
 - `phpunit.dist.xml` : `SYMFONY_PHPUNIT_VERSION=9.6` obsolète (PHPUnit 12 installé).
 - `symfony/translation` absent alors que `login.html.twig` utilise `|trans`.
