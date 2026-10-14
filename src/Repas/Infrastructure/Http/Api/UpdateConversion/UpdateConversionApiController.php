@@ -1,0 +1,45 @@
+<?php
+
+namespace Repas\Repas\Infrastructure\Http\Api\UpdateConversion;
+
+
+use Nelmio\ApiDocBundle\Attribute\Model;
+use OpenApi\Attributes as OA;
+use Repas\Repas\Application\Command\UpdateConversion\UpdateConversionCommand;
+use Repas\Repas\Infrastructure\Http\Api\CreateConversion\ConversionPayload;
+use Repas\Shared\Application\Interface\CommandBusInterface;
+use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Attribute\MapRequestPayload;
+use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Security\Http\Attribute\IsGranted;
+
+final class UpdateConversionApiController extends AbstractController
+{
+    public function __construct(
+        private readonly CommandBusInterface $commandBus,
+    ) {
+    }
+
+    #[Route(path: '/api/v1/conversions/{id}', name: 'api_update_conversion', methods: ['PUT'])]
+    #[IsGranted('ROLE_ADMIN')]
+    #[OA\Put(summary: 'Remplace une conversion entre unités (administrateur)')]
+    #[OA\Tag(name: 'Conversions')]
+    #[OA\RequestBody(required: true, content: new OA\JsonContent(ref: new Model(type: ConversionPayload::class)))]
+    #[OA\Response(response: 204, description: 'Conversion modifiée')]
+    #[OA\Response(response: 403, description: 'Réservé aux administrateurs')]
+    #[OA\Response(response: 404, description: 'Conversion, unité ou ingrédient inconnu')]
+    #[OA\Response(response: 422, description: 'Corps de la requête invalide')]
+    public function __invoke(string $id, #[MapRequestPayload] ConversionPayload $payload): Response
+    {
+        $this->commandBus->dispatch(new UpdateConversionCommand(
+            id: $id,
+            startUnitSlug: $payload->startUnitSlug,
+            endUnitSlug: $payload->endUnitSlug,
+            coefficient: $payload->coefficient,
+            ingredientSlug: $payload->ingredientSlug,
+        ));
+
+        return new Response(status: Response::HTTP_NO_CONTENT);
+    }
+}

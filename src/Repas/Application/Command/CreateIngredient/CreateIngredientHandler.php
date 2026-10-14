@@ -76,7 +76,7 @@ readonly class CreateIngredientHandler
         // Si l'ingrédient n'a pas la même unité dans les recettes qu'à l'achat et qu'on ne peut pas convertir entre les deux,
         // alors on crée une conversion entre les deux unités.
         if (!$cookingUnit->isEqual($purchaseUnit) && !$this->conversionService->canConvertToPurchaseUnit($ingredient)) {
-            // L'erreur annule toute la commande (transaction du bus) : l'ingrédient n'est pas créé sans sa conversion
+            // L'erreur annule toute la commande (transaction de command.bus) : l'ingrédient n'est pas créé sans sa conversion
             if ($command->coefficient === null) {
                 throw IngredientException::coefficientRequired();
             }
