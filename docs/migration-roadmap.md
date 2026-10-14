@@ -210,10 +210,10 @@ Audit de tous les controllers qui dispatchent une commande (méthode HTTP et gar
 
 ## Couverture de tests (cliquet)
 
-- Seuil CI : **80 %** (`COVERAGE_THRESHOLD`, `.github/workflows/ci.yml`). Mesure au 2026-10-13 : 77,1 %, puis 81,8 % à la fin de la phase 2, d'où le passage de 75 à 80. Le seuil de 80 % d'origine n'était plus tenu avant la migration (57,2 %, toute la couche Twig non testée).
+- Seuil CI : **88 %** (`COVERAGE_THRESHOLD`, `.github/workflows/ci.yml`). Mesure au 2026-10-14 : 90,3 %, d'où le passage de 80 à 88 (2 points de marge pour une PR qui ajoute plus de code que de tests). Historique : 77,1 % puis 81,8 % à la fin de la phase 2 (seuil de 75 à 80). Le seuil de 80 % d'origine n'était plus tenu avant la migration (57,2 %, toute la couche Twig non testée).
 - Exclus de la mesure (`phpunit.dist.xml`) : `Http/Controller` et `Http/Form` des contextes `Repas` et `User` (ils sortent de l'exclusion en même temps que du code, phase 10 ; les controllers API restent mesurés), et les `DataFixture` (données de test chargées hors d'un test, donc jamais créditées).
 - Règle : le seuil ne baisse jamais. Le remonter par paliers quand la mesure le permet (les slices Query/Loader/API entrent à 100 %, donc le chiffre monte avec la migration).
-- Plus gros trous restants (éléments non couverts) : `Infrastructure/Entity` 172, `Domain/Model` 134, commandes console `src/Command` 113, `Infrastructure/Repository` 89.
+- Plus gros trous restants (mesure du 2026-10-13, éléments non couverts) : `Infrastructure/Entity` 172, `Domain/Model` 134, commandes console `src/Command` 113, `Infrastructure/Repository` 89.
 
 ## Inventaire des lectures directes (état initial, 2026-10-12)
 
