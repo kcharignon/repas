@@ -11,6 +11,7 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 class AdminCreateUnitViewController extends AbstractController
 {
@@ -21,6 +22,7 @@ class AdminCreateUnitViewController extends AbstractController
     }
 
     #[Route(path: '/admin/unit/create', name: 'view_admin_unit_create', methods: ['GET', 'POST'])]
+    #[IsGranted("ROLE_ADMIN")]
     public function __invoke(Request $request): Response
     {
         $form = $this->createForm(CreateUnitType::class);

@@ -10,6 +10,7 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 class CreateIngredientViewController extends AbstractController
 {
@@ -19,6 +20,7 @@ class CreateIngredientViewController extends AbstractController
     }
 
     #[Route(path: '/ingredient', name: 'view_ingredient_create', methods: ['GET', 'POST'])]
+    #[IsGranted("ROLE_USER")]
     public function __invoke(Request $request): Response
     {
         $form = $this->createForm(CreateIngredientType::class);
