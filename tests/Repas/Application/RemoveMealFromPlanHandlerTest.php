@@ -152,4 +152,22 @@ class RemoveMealFromPlanHandlerTest extends TestCase
         // Act
         ($this->handler)($command);
     }
+
+    public function testRefusesAnOutdatedVersionAndRemovesNothing(): void
+    {
+        // Arrange : la liste est à la version 1, le client croit à la 2
+        $this->recipeRepository->save($this->recipe);
+        $this->shoppingListRepository->save($this->shoppingList);
+        $command = new removeMealFromPlanCommand('user-id', 'recipe-id', expectedVersion: 2);
+
+        // Assert
+        $this->expectExceptionObject(ShoppingListException::outdated('shopping-list-id'));
+
+        // Act
+        try {
+            ($this->handler)($command);
+        } finally {
+            $this->assertTrue($this->shoppingList->hasRecipe($this->recipe));
+        }
+    }
 }

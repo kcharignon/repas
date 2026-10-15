@@ -17,7 +17,7 @@ class GetRecipeApiControllerTest extends QueryBusWebTestCase
         // Given
         $id = UuidGenerator::new();
         $this->queryBus->willReturn(GetRecipeQuery::class, new RecipeDTOBuilder()
-            ->withId($id)->withName('pâtes carbonara')->withServing(4)->withType('plat', 'plat')
+            ->withId($id)->withName('pâtes carbonara')->withServing(4)->withType('plat', 'plat')->withVersion(3)
             ->withRow(new RecipeRowDTO('pate', 'pâtes', 'images/pate.png', 500.0, 'gramme', 'g'))
             ->build());
 
@@ -26,6 +26,7 @@ class GetRecipeApiControllerTest extends QueryBusWebTestCase
 
         // Then
         $this->assertSame(200, $this->client->getResponse()->getStatusCode());
+        $this->assertSame('"3"', $this->client->getResponse()->headers->get('ETag'));
         $query = $this->queryBus->getLastAskedQuery();
         $this->assertInstanceOf(GetRecipeQuery::class, $query);
         $this->assertSame($id, $query->recipeId);
@@ -43,6 +44,7 @@ class GetRecipeApiControllerTest extends QueryBusWebTestCase
                 'unitSlug' => 'gramme',
                 'unitSymbol' => 'g',
             ]],
+            'version' => 3,
         ], $this->jsonBody());
     }
 

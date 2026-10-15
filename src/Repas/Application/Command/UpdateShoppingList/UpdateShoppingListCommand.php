@@ -9,6 +9,7 @@ readonly class UpdateShoppingListCommand
     public function __construct(
         public string $shoppingListId,
         public ?string $newName,
+        public ?int $expectedVersion = null,
     ) {
     }
 }

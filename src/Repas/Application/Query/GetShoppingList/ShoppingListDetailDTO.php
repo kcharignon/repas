@@ -38,6 +38,8 @@ final readonly class ShoppingListDetailDTO
         public array $departments,
         #[OA\Property(description: 'Recettes planifiées groupées par type (triées par ordre d\'affichage)', type: 'array', items: new OA\Items(ref: new Model(type: ShoppingListRecipeTypeDTO::class)))]
         public array $recipeTypes,
+        #[OA\Property(description: 'Version de la liste, aussi renvoyée dans l\'en-tête `ETag` : à renvoyer dans `If-Match` pour modifier la liste sans écraser le travail d\'un autre (cocher une ligne ne la change pas)', example: 3)]
+        public int $version,
     ) {
     }
 }

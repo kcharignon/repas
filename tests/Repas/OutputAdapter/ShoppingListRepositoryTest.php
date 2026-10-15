@@ -231,6 +231,76 @@ class ShoppingListRepositoryTest extends DatabaseTestCase
         $this->assertFalse($this->shoppingListRepository->isRecipePlanned($otherRecipe->getId()));
     }
 
+    public function testEverySaveOfAnExistingListIncreasesItsVersion(): void
+    {
+        // Arrange
+        $user = $this->savedUser();
+        $recipe = $this->savedRecipe($user, new RecipeBuilder()->isPastaCarbonara());
+        $shoppingList = $this->savedShoppingList($user, ShoppingListStatus::ACTIVE);
+        $this->assertSame(1, $this->shoppingListRepository->findOneById($shoppingList->getId())->getVersion());
+
+        // Act : seule une entité liée change (un repas), la ligne de la liste elle-même n'a pas bougé
+        $shoppingList->addMeal('meal-id', $recipe, 4);
+        $this->shoppingListRepository->save($shoppingList);
+
+        // Assert
+        $this->assertSame(2, $this->shoppingListRepository->findOneById($shoppingList->getId())->getVersion());
+
+        // Act : un champ de la liste change
+        $shoppingList->setName('Courses');
+        $this->shoppingListRepository->save($shoppingList);
+
+        // Assert
+        $this->assertSame(3, $this->shoppingListRepository->findOneById($shoppingList->getId())->getVersion());
+    }
+
+    public function testSavingAListChangedByAnotherRequestIsRefusedAndWritesNothing(): void
+    {
+        // Arrange
+        $user = $this->savedUser();
+        $shoppingList = $this->savedShoppingList($user, ShoppingListStatus::ACTIVE);
+        $loaded = $this->shoppingListRepository->findOneById($shoppingList->getId());
+        // Une autre requête enregistre la liste après notre lecture (hors de l'identity map de celle-ci)
+        $this->entityManager->getConnection()->executeStatement(
+            'UPDATE shopping_list SET version = version + 1, name = :name WHERE id = :id',
+            ['name' => "Nom de l'autre", 'id' => $shoppingList->getId()],
+        );
+        $loaded->setName('Mon nom');
+
+        // Assert
+        $this->expectExceptionObject(ShoppingListException::concurrentModification($shoppingList->getId()));
+
+        // Act
+        try {
+            $this->shoppingListRepository->save($loaded);
+        } finally {
+            $this->entityManager->clear();
+            $after = $this->shoppingListRepository->findOneById($shoppingList->getId());
+            $this->assertSame("Nom de l'autre", $after->getName());
+            $this->assertSame(2, $after->getVersion());
+        }
+    }
+
+    public function testTwoCopiesOfTheSameListInOneRequestDoNotBlockEachOther(): void
+    {
+        // Arrange : deux chargements dans la même requête, comme un handler et le listener qui recharge l'agrégat
+        $user = $this->savedUser();
+        $shoppingList = $this->savedShoppingList($user, ShoppingListStatus::ACTIVE);
+        $first = $this->shoppingListRepository->findOneById($shoppingList->getId());
+        $second = $this->shoppingListRepository->findOneById($shoppingList->getId());
+        $first->setName('Premier');
+        $second->setName('Second');
+
+        // Act
+        $this->shoppingListRepository->save($first);
+        $this->shoppingListRepository->save($second);
+
+        // Assert : le dernier enregistrement gagne, la version a augmenté deux fois
+        $loaded = $this->shoppingListRepository->findOneById($shoppingList->getId());
+        $this->assertSame(3, $loaded->getVersion());
+        $this->assertSame('Second', $loaded->getName());
+    }
+
     /**
      * @param Tab<ShoppingList> $shoppingLists
      * @return list<string>

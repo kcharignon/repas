@@ -147,4 +147,42 @@ class PlannedMealHandlerTest extends TestCase
         ($this->handler)($command);
     }
 
+
+    public function testRefusesAnOutdatedVersionAndPlansNothing(): void
+    {
+        // Arrange : la liste est à la version 3, le client a lu la 2
+        $user = new UserBuilder()->withServing(2)->build();
+        $recipe = new RecipeBuilder()->isBasqueCake()->withAuthor($user)->build();
+        $this->recipeRepository->save($recipe);
+        $shoppingList = new ShoppingListBuilder()->withOwner($user)->withVersion(3)->build();
+        $this->shoppingListRepository->save($shoppingList);
+        $command = new PlannedMealCommand($user->getId(), $recipe->getId(), $user->getDefaultServing(), expectedVersion: 2);
+
+        // Assert
+        $this->expectExceptionObject(ShoppingListException::outdated($shoppingList->getId()));
+
+        // Act
+        try {
+            ($this->handler)($command);
+        } finally {
+            $this->assertCount(0, $shoppingList->getMeals());
+        }
+    }
+
+    public function testPlansWhenTheExpectedVersionIsTheCurrentOne(): void
+    {
+        // Arrange
+        $user = new UserBuilder()->withServing(2)->build();
+        $recipe = new RecipeBuilder()->isBasqueCake()->withAuthor($user)->build();
+        $this->recipeRepository->save($recipe);
+        $shoppingList = new ShoppingListBuilder()->withOwner($user)->withVersion(3)->build();
+        $this->shoppingListRepository->save($shoppingList);
+        $command = new PlannedMealCommand($user->getId(), $recipe->getId(), $user->getDefaultServing(), expectedVersion: 3);
+
+        // Act
+        ($this->handler)($command);
+
+        // Assert
+        $this->assertTrue($shoppingList->hasRecipe($recipe));
+    }
 }

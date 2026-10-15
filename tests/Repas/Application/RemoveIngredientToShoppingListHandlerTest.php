@@ -109,4 +109,26 @@ class RemoveIngredientToShoppingListHandlerTest extends TestCase
         ($this->handler)($command);
     }
 
+
+    public function testRefusesAnOutdatedVersionAndRemovesNothing(): void
+    {
+        // Arrange : la liste est à la version 1, le client croit à la 2
+        $shoppingList = new ShoppingListBuilder()
+            ->withId('shopping-list-id')
+            ->withOwner($this->user)
+            ->addIngredient($this->ingredient)
+            ->build();
+        $this->shoppingListRepository->save($shoppingList);
+        $command = new RemoveIngredientToShoppingListCommand('user-id', 'pate', expectedVersion: 2);
+
+        // Assert
+        $this->expectExceptionObject(ShoppingListException::outdated('shopping-list-id'));
+
+        // Act
+        try {
+            ($this->handler)($command);
+        } finally {
+            $this->assertCount(1, $shoppingList->getIngredients());
+        }
+    }
 }

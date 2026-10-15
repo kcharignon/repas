@@ -27,6 +27,22 @@ final class RecipeException extends DomainException
         return new static(sprintf("Cannot remove recipe '%s', present in shopping list", $recipeId), 409);
     }
 
+    /**
+     * Le client a lu une autre version que celle d'aujourd'hui (`If-Match`).
+     */
+    public static function outdated(string $id): static
+    {
+        return new static(sprintf("Recipe '%s' was modified since it was read", $id), 412);
+    }
+
+    /**
+     * Quelqu'un d'autre a enregistré la recette entre la lecture et l'écriture de cette requête.
+     */
+    public static function concurrentModification(string $id): static
+    {
+        return new static(sprintf("Recipe '%s' was modified by someone else, try again", $id), 409);
+    }
+
     public static function typeAlreadyExists(string $slug): self
     {
         return new self(sprintf("Recipe type '%s' already exists", $slug), 409);

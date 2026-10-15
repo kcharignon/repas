@@ -28,6 +28,7 @@ class ShoppingListBuilder implements Builder
     private ?Tab $ingredients = null;
     private UuidGeneratorInterface $uuidGenerator;
     private ?string $name = null;
+    private int $version = 1;
 
     public function __construct(?UuidGeneratorInterface $uuidGenerator = null)
     {
@@ -48,6 +49,7 @@ class ShoppingListBuilder implements Builder
             'meals' => Tab::newEmptyTyped(Meal::class),
             'ingredients' => Tab::newEmptyTyped(ShoppingListIngredient::class),
             'rows' => Tab::newEmptyTyped(ShoppingListRow::class),
+            'version' => $this->version,
         ]);
 
         // On ajoute les repas(recette)
@@ -68,6 +70,12 @@ class ShoppingListBuilder implements Builder
         }
 
         return $shoppingList;
+    }
+
+    public function withVersion(int $version): self
+    {
+        $this->version = $version;
+        return $this;
     }
 
     public function withOwner(UserBuilder|User $owner): self

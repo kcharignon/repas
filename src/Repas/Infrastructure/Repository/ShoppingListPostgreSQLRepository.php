@@ -64,6 +64,9 @@ readonly class ShoppingListPostgreSQLRepository extends PostgreSQLRepository imp
     }
 
 
+    /**
+     * @throws ShoppingListException une autre requête a enregistré la liste depuis sa lecture (ADR 0016)
+     */
     public function save(ShoppingList $shoppingList): void
     {
         $shoppingListEntity = $this->entityRepository->find($shoppingList->getId());
@@ -71,6 +74,11 @@ readonly class ShoppingListPostgreSQLRepository extends PostgreSQLRepository imp
             $shoppingListEntity = ShoppingListEntity::fromModel($shoppingList);
             $this->entityManager->persist($shoppingListEntity);
         } else {
+            // Avant toute écriture : si la liste a changé depuis sa lecture, rien n'est enregistré
+            if (!$this->bumpVersion($shoppingListEntity->getId(), $shoppingListEntity->getVersion())) {
+                throw ShoppingListException::concurrentModification($shoppingList->getId());
+            }
+            $shoppingListEntity->setVersion($shoppingListEntity->getVersion() + 1);
             $shoppingListEntity->updateFromModel($shoppingList);
             // Suppression des anciens repas
             $this->mealRepository->deleteByShoppingListIdExceptIds(
@@ -168,6 +176,7 @@ readonly class ShoppingListPostgreSQLRepository extends PostgreSQLRepository imp
             'meals' => $this->mealRepository->findByShoppingListId($shoppingListEntity->getId()),
             'ingredients' => $this->shopListIngredientRepository->findByShoppingListId($shoppingListEntity->getId()),
             'rows' => $this->shopListRowRepository->findByShoppingListId($shoppingListEntity->getId()),
+            'version' => $shoppingListEntity->getVersion(),
         ]);
     }
 

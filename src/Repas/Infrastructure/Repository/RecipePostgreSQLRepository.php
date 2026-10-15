@@ -50,6 +50,9 @@ readonly class RecipePostgreSQLRepository extends PostgreSQLRepository implement
     }
 
 
+    /**
+     * @throws RecipeException une autre requête a enregistré la recette depuis sa lecture (ADR 0016)
+     */
     public function save(Recipe $recipe): void
     {
         $recipeEntity = $this->entityRepository->find($recipe->getId());
@@ -57,6 +60,11 @@ readonly class RecipePostgreSQLRepository extends PostgreSQLRepository implement
             $recipeEntity = RecipeEntity::fromModel($recipe);
             $this->entityManager->persist($recipeEntity);
         } else {
+            // Avant toute écriture : si la recette a changé depuis sa lecture, rien n'est enregistré
+            if (!$this->bumpVersion($recipeEntity->getId(), $recipeEntity->getVersion())) {
+                throw RecipeException::concurrentModification($recipe->getId());
+            }
+            $recipeEntity->setVersion($recipeEntity->getVersion() + 1);
             $recipeEntity->updateFromModel($recipe);
             // Supprime les anciennes lignes de la recette
             $this->recipeRowRepository->deleteByRecipeIdExceptIds(
@@ -85,6 +93,7 @@ readonly class RecipePostgreSQLRepository extends PostgreSQLRepository implement
             'type' => $this->recipeTypeRepository->findOneBySlug($entity->getTypeSlug()),
             'rows' => $this->recipeRowRepository->findByRecipeId($entity->getId()),
             'original_id' => $entity->getOriginalId(),
+            'version' => $entity->getVersion(),
         ]);
     }
 
@@ -105,14 +114,28 @@ readonly class RecipePostgreSQLRepository extends PostgreSQLRepository implement
         return $entities->map(fn(RecipeEntity $entity) => $this->convertEntityToModel($entity), Recipe::class);
     }
 
+    /**
+     * @throws RecipeException une autre requête a enregistré la recette depuis sa lecture (ADR 0016)
+     */
     public function delete(Recipe $recipe): void
     {
+        // La version est celle de l'entité (partagée par toutes les copies du modèle dans la requête), pas celle du modèle
+        $entity = $this->entityRepository->find($recipe->getId());
+        if ($entity instanceof RecipeEntity) {
+            // Avant les lignes : si la recette a changé depuis sa lecture, rien n'est supprimé
+            $deleted = $this->entityRepository->createQueryBuilder('r')
+                ->delete()
+                ->where('r.id = :id')
+                ->andWhere('r.version = :version')
+                ->setParameter('id', $recipe->getId())
+                ->setParameter('version', $entity->getVersion())
+                ->getQuery()
+                ->execute();
+            if ($deleted === 0) {
+                throw RecipeException::concurrentModification($recipe->getId());
+            }
+        }
+
         $this->recipeRowRepository->deleteByRecipeId($recipe->getId());
-        $this->entityRepository->createQueryBuilder('r')
-            ->delete()
-            ->where('r.id = :id')
-            ->setParameter('id', $recipe->getId())
-            ->getQuery()
-            ->execute();
     }
 }

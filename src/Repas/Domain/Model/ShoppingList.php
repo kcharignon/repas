@@ -29,12 +29,35 @@ final class ShoppingList implements ModelInterface
         private Tab               $meals,
         private Tab               $ingredients,
         private Tab               $rows,
+        private int               $version = 1,
     ) {
     }
 
     public function getId(): string
     {
         return $this->id;
+    }
+
+    /**
+     * Version de la liste (ETag, ADR 0016) : augmente à chaque enregistrement de la liste ou de ses repas, ingrédients et
+     * quantités ; cocher une ligne n'y touche pas.
+     */
+    public function getVersion(): int
+    {
+        return $this->version;
+    }
+
+    /**
+     * Refuse la modification si le client a lu une autre version que celle d'aujourd'hui (`If-Match`). Sans version
+     * attendue, la modification passe : le contrôle est facultatif.
+     *
+     * @throws ShoppingListException
+     */
+    public function assertVersion(?int $expectedVersion): void
+    {
+        if ($expectedVersion !== null && $expectedVersion !== $this->version) {
+            throw ShoppingListException::outdated($this->id);
+        }
     }
 
     /**
@@ -99,6 +122,7 @@ final class ShoppingList implements ModelInterface
             meals: $datas['meals'],
             ingredients: $datas['ingredients'],
             rows: $datas['rows'],
+            version: $datas['version'] ?? 1,
         );
     }
 

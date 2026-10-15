@@ -23,6 +23,7 @@ class GetShoppingListApiControllerTest extends QueryBusWebTestCase
             ->withId($shoppingList->getId())
             ->withName('Courses du week-end')
             ->withStatus(ShoppingListStatus::PAUSED)
+            ->withVersion(7)
             ->withDepartment(new ShoppingListDepartmentDTO('divers', 'divers', 'images/divers.svg', [
                 new ShoppingListRowDTOBuilder()->withId('row-egg')->withIngredientName('œuf')->withQuantity(6)->checked()->build(),
             ]))
@@ -36,6 +37,7 @@ class GetShoppingListApiControllerTest extends QueryBusWebTestCase
 
         // Then
         $this->assertSame(200, $this->client->getResponse()->getStatusCode());
+        $this->assertSame('"7"', $this->client->getResponse()->headers->get('ETag'));
         $query = $this->queryBus->getLastAskedQuery();
         $this->assertInstanceOf(GetShoppingListQuery::class, $query);
         $this->assertSame($shoppingList->getId(), $query->shoppingListId);
@@ -63,6 +65,7 @@ class GetShoppingListApiControllerTest extends QueryBusWebTestCase
                 'image' => 'images/plat.svg',
                 'meals' => [['id' => 'meal-1', 'recipeId' => 'recipe-1', 'recipeName' => 'omelette', 'serving' => 4]],
             ]],
+            'version' => 7,
         ], $this->jsonBody());
     }
 

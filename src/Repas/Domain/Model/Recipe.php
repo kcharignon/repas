@@ -4,6 +4,7 @@ namespace Repas\Repas\Domain\Model;
 
 
 use Repas\Repas\Domain\Exception\IngredientException;
+use Repas\Repas\Domain\Exception\RecipeException;
 use Repas\Shared\Domain\Model\ModelInterface;
 use Repas\Shared\Domain\Model\ModelTrait;
 use Repas\Shared\Domain\Tool\Tab;
@@ -26,12 +27,34 @@ final class Recipe implements ModelInterface
         private Type    $type,
         private Tab     $rows,
         private ?string $originalId,
+        private int     $version = 1,
     ) {
     }
 
     public function getId(): string
     {
         return $this->id;
+    }
+
+    /**
+     * Version de la recette (ETag, ADR 0016) : augmente à chaque enregistrement.
+     */
+    public function getVersion(): int
+    {
+        return $this->version;
+    }
+
+    /**
+     * Refuse la modification si le client a lu une autre version que celle d'aujourd'hui (`If-Match`). Sans version
+     * attendue, la modification passe : le contrôle est facultatif.
+     *
+     * @throws RecipeException
+     */
+    public function assertVersion(?int $expectedVersion): void
+    {
+        if ($expectedVersion !== null && $expectedVersion !== $this->version) {
+            throw RecipeException::outdated($this->id);
+        }
     }
 
     public function getName(): string
@@ -111,6 +134,7 @@ final class Recipe implements ModelInterface
             type: $datas['type'],
             rows: $datas['rows'],
             originalId: $datas['original_id'],
+            version: $datas['version'] ?? 1,
         );
     }
 

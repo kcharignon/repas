@@ -62,4 +62,20 @@ class UpdateShoppingListHandlerTest extends TestCase
         // Act
         ($this->handler)($command);
     }
+
+    public function testRefusesAnOutdatedVersionAndKeepsTheName(): void
+    {
+        // Arrange : la liste est à la version 1, le client croit à la 2
+        $command = new UpdateShoppingListCommand('named', 'courses', expectedVersion: 2);
+
+        // Assert
+        $this->expectExceptionObject(ShoppingListException::outdated('named'));
+
+        // Act
+        try {
+            ($this->handler)($command);
+        } finally {
+            $this->assertSame('EVG', $this->shoppingListRepository->findOneById('named')->getName());
+        }
+    }
 }

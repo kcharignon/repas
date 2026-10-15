@@ -66,4 +66,20 @@ class RemoveRecipeApiControllerTest extends QueryBusWebTestCase
         $this->assertSame(401, $this->client->getResponse()->getStatusCode());
         $this->assertSame([], $commandBus->dispatched());
     }
+
+    public function testForwardsTheIfMatchVersionToTheCommand(): void
+    {
+        // Given
+        $commandBus = $this->mockCommandBus();
+        $author = $this->savedUser();
+        $recipe = new RecipeBuilder()->isPastaCarbonara()->withAuthor($author)->build();
+        $this->persister->saveRecipe($recipe);
+
+        // When
+        $this->client->request('DELETE', '/api/v1/recipes/' . $recipe->getId(), server: $this->bearerFor($author) + ['HTTP_IF_MATCH' => '"2"']);
+
+        // Then
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->assertEquals([new RemoveRecipeCommand($recipe->getId(), 2)], $commandBus->dispatched());
+    }
 }

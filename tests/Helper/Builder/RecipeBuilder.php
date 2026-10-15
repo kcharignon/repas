@@ -20,6 +20,7 @@ class RecipeBuilder implements Builder
     /** @var Tab<RecipeRowBuilder>|null  */
     private ?Tab $rows = null;
     private ?string $originalId = null;
+    private int $version = 1;
 
 
     public function build(): Recipe
@@ -34,6 +35,7 @@ class RecipeBuilder implements Builder
             'type' => $this->type instanceof RecipeType ? $this->type : $this->type->build(),
             'rows' => $this->rows->map(fn(RecipeRowBuilder $row) => $row->withRecipeId($this->id)->build()),
             'original_id' => $this->originalId,
+            'version' => $this->version,
         ]);
     }
 
@@ -115,6 +117,12 @@ class RecipeBuilder implements Builder
     public function withAuthorId(string $authorId): self
     {
         $this->authorId = $authorId;
+        return $this;
+    }
+
+    public function withVersion(int $version): self
+    {
+        $this->version = $version;
         return $this;
     }
 

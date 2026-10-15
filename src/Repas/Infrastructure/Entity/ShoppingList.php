@@ -27,6 +27,10 @@ class ShoppingList
     #[ORM\Column(name: 'name', nullable: true)]
     private ?string $name = null;
 
+    // Version de l'ETag : écrite seulement par `PostgreSQLRepository::bumpVersion` (jamais par le flush de Doctrine)
+    #[ORM\Column(type: 'integer', updatable: false)]
+    private int $version = 1;
+
     public function __construct(
         string            $id,
         string            $ownerId,
@@ -94,6 +98,18 @@ class ShoppingList
     public function setOwnerId(?string $ownerId): static
     {
         $this->ownerId = $ownerId;
+
+        return $this;
+    }
+
+    public function getVersion(): int
+    {
+        return $this->version;
+    }
+
+    public function setVersion(int $version): static
+    {
+        $this->version = $version;
 
         return $this;
     }

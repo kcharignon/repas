@@ -71,4 +71,21 @@ class RemoveRecipeHandlerTest extends TestCase
         // Act
         ($this->handler)($command);
     }
+
+    public function testRefusesAnOutdatedVersionAndRemovesNothing(): void
+    {
+        // Arrange : la recette est à la version 1, le client croit à la 2
+        $command = new RemoveRecipeCommand('recipe-free', expectedVersion: 2);
+
+        // Assert
+        $this->expectExceptionObject(RecipeException::outdated('recipe-free'));
+
+        // Act
+        try {
+            ($this->handler)($command);
+        } finally {
+            $this->assertSame('recipe-free', $this->recipeRepository->findOneById('recipe-free')->getId());
+            $this->assertSame([], $this->eventDispatcher->eventDispatched);
+        }
+    }
 }
