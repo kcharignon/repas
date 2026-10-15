@@ -34,4 +34,18 @@ class RemoveIngredientToShoppingListApiControllerTest extends QueryBusWebTestCas
         $this->assertSame(401, $this->client->getResponse()->getStatusCode());
         $this->assertSame([], $commandBus->dispatched());
     }
+
+    public function testForwardsTheIfMatchVersionToTheCommand(): void
+    {
+        // Given
+        $commandBus = $this->mockCommandBus();
+        $owner = $this->savedUser();
+
+        // When
+        $this->client->request('POST', '/api/v1/shopping-lists/active/ingredients/sel/decrease', server: $this->bearerFor($owner) + ['HTTP_IF_MATCH' => '"8"']);
+
+        // Then
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->assertEquals([new RemoveIngredientToShoppingListCommand($owner->getId(), 'sel', 8)], $commandBus->dispatched());
+    }
 }

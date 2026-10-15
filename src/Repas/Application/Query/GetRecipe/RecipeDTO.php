@@ -23,6 +23,8 @@ final readonly class RecipeDTO
         public string $typeName,
         #[OA\Property(description: 'Ingrédients de la recette, dans l\'ordre de la recette (celui de la saisie)', type: 'array', items: new OA\Items(ref: new Model(type: RecipeRowDTO::class)))]
         public array $rows,
+        #[OA\Property(description: 'Version de la recette, aussi renvoyée dans l\'en-tête `ETag` : à renvoyer dans `If-Match` pour modifier ou supprimer sans écraser le travail d\'un autre', example: 3)]
+        public int $version,
     ) {
     }
 }

@@ -16,6 +16,7 @@ class RecipeDTOBuilder implements Builder
     private string $typeName = 'plat';
     /** @var list<RecipeRowDTO> */
     private array $rows = [];
+    private int $version = 1;
 
     public function withId(string $id): self
     {
@@ -42,6 +43,12 @@ class RecipeDTOBuilder implements Builder
         return $this;
     }
 
+    public function withVersion(int $version): self
+    {
+        $this->version = $version;
+        return $this;
+    }
+
     public function withRow(RecipeRowDTO $row): self
     {
         $this->rows[] = $row;
@@ -50,6 +57,6 @@ class RecipeDTOBuilder implements Builder
 
     public function build(): RecipeDTO
     {
-        return new RecipeDTO($this->id, $this->name, $this->serving, $this->typeSlug, $this->typeName, $this->rows);
+        return new RecipeDTO($this->id, $this->name, $this->serving, $this->typeSlug, $this->typeName, $this->rows, $this->version);
     }
 }

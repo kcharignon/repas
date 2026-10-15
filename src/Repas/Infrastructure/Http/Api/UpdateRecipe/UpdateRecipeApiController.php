@@ -11,7 +11,9 @@ use Repas\Repas\Infrastructure\Http\Api\CreateRecipe\RecipePayload;
 use Repas\Repas\Infrastructure\Http\Api\CreateRecipe\RecipeRowPayload;
 use Repas\Shared\Application\Interface\CommandBusInterface;
 use Repas\Shared\Domain\Tool\Tab;
+use Repas\Shared\Infrastructure\Http\EntityVersion;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\MapRequestPayload;
 use Symfony\Component\Routing\Attribute\Route;
@@ -30,11 +32,13 @@ final class UpdateRecipeApiController extends AbstractController
     #[OA\Put(summary: "Remplace une recette de l'utilisateur : nom, personnes, type et lignes (les lignes absentes du corps sont supprimées)")]
     #[OA\Tag(name: 'Recipes')]
     #[OA\RequestBody(required: true, content: new OA\JsonContent(ref: new Model(type: RecipePayload::class)))]
+    #[OA\Parameter(ref: '#/components/parameters/IfMatch')]
     #[OA\Response(response: 204, description: 'Recette modifiée')]
     #[OA\Response(response: 403, description: 'La recette appartient à un autre utilisateur')]
     #[OA\Response(response: 404, description: "Recette, type, ingrédient ou unité inconnu (un ingrédient personnalisé d'un autre utilisateur l'est aussi)")]
     #[OA\Response(response: 422, description: 'Corps de la requête invalide')]
-    public function __invoke(string $id, #[MapRequestPayload] RecipePayload $payload): Response
+    #[OA\Response(response: 412, description: "La version de la recette n'est plus celle de `If-Match` : elle a été modifiée depuis sa lecture")]
+    public function __invoke(string $id, #[MapRequestPayload] RecipePayload $payload, Request $request): Response
     {
         $this->commandBus->dispatch(new UpdateRecipeCommand(
             id: $id,
@@ -45,6 +49,7 @@ final class UpdateRecipeApiController extends AbstractController
                 UpdateRecipeRowSubCommand::class,
             ),
             typeSlug: $payload->typeSlug,
+            expectedVersion: EntityVersion::expected($request),
         ));
 
         return new Response(status: Response::HTTP_NO_CONTENT);

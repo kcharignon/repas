@@ -259,16 +259,57 @@ class ShoppingListWriteApiFlowTest extends DatabaseTestCase
         $this->assertSame(0, $this->shoppingLists()->findOneById($shoppingList->getId())->getMeals()->count());
     }
 
+    public function testIfMatchProtectsAListFromAStaleWrite(): void
+    {
+        // Given
+        $owner = $this->savedUser();
+        $egg = new IngredientBuilder()->isEgg()->build();
+        $this->persister->saveIngredient($egg);
+        $shoppingList = $this->savedList($owner);
+        $increase = '/api/v1/shopping-lists/active/ingredients/' . $egg->getSlug() . '/increase';
+        $etag = function () use ($owner, $shoppingList): string {
+            $this->request('GET', '/api/v1/shopping-lists/' . $shoppingList->getId(), $owner);
+            $this->assertSame(200, $this->client->getResponse()->getStatusCode());
+
+            return $this->client->getResponse()->headers->get('ETag');
+        };
+        $firstEtag = $etag();
+
+        // When : écriture avec la version lue
+        $this->request('POST', $increase, $owner, headers: ['HTTP_IF_MATCH' => $firstEtag]);
+
+        // Then : la version a changé, la lecture suivante le montre
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $secondEtag = $etag();
+        $this->assertNotSame($firstEtag, $secondEtag);
+        $this->assertSame($secondEtag, '"' . $this->jsonBody()['version'] . '"');
+
+        // When : un second onglet rejoue l'ancienne version
+        $this->request('POST', $increase, $owner, headers: ['HTTP_IF_MATCH' => $firstEtag]);
+
+        // Then : refus, la quantité n'a pas bougé
+        $this->assertSame(412, $this->client->getResponse()->getStatusCode());
+        $this->assertSame(1.0, $this->shoppingLists()->findOneById($shoppingList->getId())->getIngredientQuantity($egg));
+
+        // When : la version à jour passe, et l'absence d'en-tête aussi
+        $this->request('POST', $increase, $owner, headers: ['HTTP_IF_MATCH' => $secondEtag]);
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->request('POST', $increase, $owner);
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->assertSame(3.0, $this->shoppingLists()->findOneById($shoppingList->getId())->getIngredientQuantity($egg));
+    }
+
     /**
      * @param array<string, mixed>|null $body
+     * @param array<string, string> $headers en-têtes en plus, au format $_SERVER (`HTTP_IF_MATCH`)
      */
-    private function request(string $method, string $uri, User $user, ?array $body = null): void
+    private function request(string $method, string $uri, User $user, ?array $body = null, array $headers = []): void
     {
         $token = static::getContainer()->get(JWTTokenManagerInterface::class)->create($user);
         $this->client->request($method, $uri, content: $body === null ? null : json_encode($body, JSON_THROW_ON_ERROR), server: [
             'HTTP_AUTHORIZATION' => 'Bearer ' . $token,
             'CONTENT_TYPE' => 'application/json',
-        ]);
+        ] + $headers);
     }
 
     /**

@@ -10,6 +10,7 @@ readonly class PlannedMealCommand
         public string $ownerId,
         public string $recipeId,
         public int $defaultServing,
+        public ?int $expectedVersion = null,
     ) {
     }
 }

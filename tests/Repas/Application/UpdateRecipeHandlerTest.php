@@ -238,4 +238,36 @@ class UpdateRecipeHandlerTest extends TestCase
         // Act
         ($this->handler)($command);
     }
+
+    public function testRefusesAnOutdatedVersionAndChangesNothing(): void
+    {
+        // Arrange : la recette est à la version 4, le client a lu la 3
+        $recipe = new RecipeBuilder()->isPastaCarbonara()->withVersion(4)->build();
+        $this->recipeRepository->save($recipe);
+        $command = new UpdateRecipeCommand($recipe->getId(), 'Nouveau nom', 4, Tab::fromArray(new UpdateRecipeRowSubCommand('pate', 'gramme', 3)), 'plat', expectedVersion: 3);
+
+        // Assert
+        $this->expectExceptionObject(RecipeException::outdated($recipe->getId()));
+
+        // Act
+        try {
+            ($this->handler)($command);
+        } finally {
+            $this->assertNotSame('Nouveau nom', $this->recipeRepository->findOneById($recipe->getId())->getName());
+        }
+    }
+
+    public function testAcceptsTheCurrentVersion(): void
+    {
+        // Arrange
+        $recipe = new RecipeBuilder()->isPastaCarbonara()->withVersion(4)->build();
+        $this->recipeRepository->save($recipe);
+        $command = new UpdateRecipeCommand($recipe->getId(), 'Nouveau nom', 4, Tab::fromArray(new UpdateRecipeRowSubCommand('pate', 'gramme', 3)), 'plat', expectedVersion: 4);
+
+        // Act
+        ($this->handler)($command);
+
+        // Assert
+        $this->assertSame('Nouveau nom', $this->recipeRepository->findOneById($recipe->getId())->getName());
+    }
 }

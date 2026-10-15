@@ -3,6 +3,7 @@
 namespace Repas\Tests\Repas\OutputAdapter;
 
 
+use Repas\Repas\Domain\Exception\RecipeException;
 use Repas\Repas\Domain\Interface\RecipeRepository;
 use Repas\Repas\Infrastructure\Entity\RecipeRow as RecipeRowEntity;
 use Repas\Repas\Domain\Model\Recipe;
@@ -130,6 +131,95 @@ class RecipeRepositoryTest extends DatabaseTestCase
         // Assert
         $this->expectException(\Exception::class); // Adapte si une exception spécifique est levée
         $this->recipeRepository->findOneById($recipe->getId());
+    }
+
+    public function testEverySaveOfAnExistingRecipeIncreasesItsVersion(): void
+    {
+        // Arrange
+        $user = $this->savedUser();
+        $recipe = $this->savedRecipe(new RecipeBuilder()->isPastaCarbonara()->withAuthor($user));
+        $this->assertSame(1, $this->recipeRepository->findOneById($recipe->getId())->getVersion());
+
+        // Act : un champ de la recette change
+        $recipe->setName('Autre nom');
+        $this->recipeRepository->save($recipe);
+
+        // Assert
+        $this->assertSame(2, $this->recipeRepository->findOneById($recipe->getId())->getVersion());
+
+        // Act : seules les lignes changent, la ligne de la recette elle-même n'a pas bougé
+        $recipe->setRows(Tab::fromArray(...array_reverse(array_values($recipe->getRows()->toArray()))));
+        $this->recipeRepository->save($recipe);
+
+        // Assert
+        $this->assertSame(3, $this->recipeRepository->findOneById($recipe->getId())->getVersion());
+    }
+
+    public function testSavingARecipeChangedByAnotherRequestIsRefusedAndWritesNothing(): void
+    {
+        // Arrange
+        $user = $this->savedUser();
+        $recipe = $this->savedRecipe(new RecipeBuilder()->isPastaCarbonara()->withAuthor($user));
+        $loaded = $this->recipeRepository->findOneById($recipe->getId());
+        // Une autre requête enregistre la recette après notre lecture (hors de l'identity map de celle-ci)
+        $this->entityManager->getConnection()->executeStatement(
+            'UPDATE recipe SET version = version + 1, name = :name WHERE id = :id',
+            ['name' => "Nom de l'autre", 'id' => $recipe->getId()],
+        );
+        $loaded->setName('Mon nom');
+
+        // Assert
+        $this->expectExceptionObject(RecipeException::concurrentModification($recipe->getId()));
+
+        // Act
+        try {
+            $this->recipeRepository->save($loaded);
+        } finally {
+            $this->entityManager->clear();
+            $after = $this->recipeRepository->findOneById($recipe->getId());
+            $this->assertSame("Nom de l'autre", $after->getName());
+            $this->assertSame(2, $after->getVersion());
+        }
+    }
+
+    public function testDeletingARecipeChangedByAnotherRequestIsRefusedAndDeletesNothing(): void
+    {
+        // Arrange
+        $user = $this->savedUser();
+        $recipe = $this->savedRecipe(new RecipeBuilder()->isPastaCarbonara()->withAuthor($user));
+        $loaded = $this->recipeRepository->findOneById($recipe->getId());
+        $this->entityManager->getConnection()->executeStatement('UPDATE recipe SET version = version + 1 WHERE id = :id', ['id' => $recipe->getId()]);
+
+        // Assert
+        $this->expectExceptionObject(RecipeException::concurrentModification($recipe->getId()));
+
+        // Act
+        try {
+            $this->recipeRepository->delete($loaded);
+        } finally {
+            $this->entityManager->clear();
+            $this->assertSame($recipe->getRows()->count(), $this->recipeRepository->findOneById($recipe->getId())->getRows()->count());
+        }
+    }
+
+    public function testTwoCopiesOfTheSameRecipeInOneRequestDoNotBlockEachOther(): void
+    {
+        // Arrange : deux chargements dans la même requête, comme un handler et le listener qui recharge l'agrégat
+        $user = $this->savedUser();
+        $recipe = $this->savedRecipe(new RecipeBuilder()->isPastaCarbonara()->withAuthor($user));
+        $first = $this->recipeRepository->findOneById($recipe->getId());
+        $second = $this->recipeRepository->findOneById($recipe->getId());
+        $first->setName('Premier');
+        $second->setServing(9);
+
+        // Act
+        $this->recipeRepository->save($first);
+        $this->recipeRepository->save($second);
+
+        // Assert : le dernier enregistrement gagne, la version a augmenté deux fois
+        $loaded = $this->recipeRepository->findOneById($recipe->getId());
+        $this->assertSame(3, $loaded->getVersion());
+        $this->assertSame(9, $loaded->getServing());
     }
 
     public function testDeleteRemovesTheRowsOfTheRecipeToo(): void

@@ -28,6 +28,7 @@ readonly class AddIngredientToShoppingListHandler
         if (!$shoppingListActive instanceof ShoppingList) {
             throw ShoppingListException::activeShoppingListNotFound();
         }
+        $shoppingListActive->assertVersion($command->expectedVersion);
 
         $purchaseUnitSlug = $this->ingredientRepository->findPurchaseUnitSlug($command->ingredientSlug);
         $shoppingListActive->addIngredient($command->ingredientSlug, $purchaseUnitSlug);

@@ -227,6 +227,23 @@ class ShoppingListPostgreSQLLoaderTest extends DatabaseTestCase
         $this->assertSame(['PAUSED', false, true, false], [$result->status, $result->isActive, $result->isPaused, $result->isCompleted]);
     }
 
+    public function testGetReturnsTheVersionOfTheList(): void
+    {
+        // Given : une liste neuve (version 1) puis enregistrée une seconde fois (version 2)
+        $owner = $this->savedUser();
+        $this->saveShoppingList($owner, 'list-1', ShoppingListStatus::ACTIVE, null, '2026-10-12 10:00:00');
+        $this->assertSame(1, $this->shoppingListLoader->get('list-1')->version);
+        $list = $this->shoppingListRepository->findOneById('list-1');
+        $list->setName('Courses');
+        $this->shoppingListRepository->save($list);
+
+        // When
+        $result = $this->shoppingListLoader->get('list-1');
+
+        // Then
+        $this->assertSame(2, $result->version);
+    }
+
     public function testGetUsesTheNameGivenByTheUser(): void
     {
         // Given

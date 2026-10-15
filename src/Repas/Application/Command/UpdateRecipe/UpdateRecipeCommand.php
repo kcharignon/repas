@@ -15,7 +15,8 @@ class UpdateRecipeCommand
         public string $name,
         public int $serving,
         public Tab $rows,
-        public string $typeSlug
+        public string $typeSlug,
+        public ?int $expectedVersion = null,
     ) {
     }
 }

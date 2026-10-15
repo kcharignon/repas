@@ -116,7 +116,7 @@ final readonly class ShoppingListPostgreSQLLoader implements ShoppingListLoader
     public function get(string $id): ShoppingListDetailDTO
     {
         $list = $this->entityManager->createQueryBuilder()
-            ->select('l.id AS id', 'l.name AS name', 'l.status AS status', 'l.createdAt AS createdAt')
+            ->select('l.id AS id', 'l.name AS name', 'l.status AS status', 'l.createdAt AS createdAt', 'l.version AS version')
             ->from(ShoppingList::class, 'l')
             ->where('l.id = :id')
             ->setParameter('id', $id)
@@ -167,7 +167,7 @@ final readonly class ShoppingListPostgreSQLLoader implements ShoppingListLoader
     }
 
     /**
-     * @param array{id: string, name: ?string, status: ShoppingListStatus, createdAt: DateTimeImmutable} $list
+     * @param array{id: string, name: ?string, status: ShoppingListStatus, createdAt: DateTimeImmutable, version: int} $list
      */
     private function buildDetail(array $list): ShoppingListDetailDTO
     {
@@ -190,6 +190,7 @@ final readonly class ShoppingListPostgreSQLLoader implements ShoppingListLoader
             recipeCount: array_sum(array_map(static fn(ShoppingListRecipeTypeDTO $type): int => count($type->meals), $recipeTypes)),
             departments: $departments,
             recipeTypes: $recipeTypes,
+            version: $list['version'],
         );
     }
 
