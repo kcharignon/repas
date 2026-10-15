@@ -172,7 +172,11 @@ create-migration: ## Create a new Doctrine migration
 
 
 ## —— Fixtures 🗃️ ————————————————————————————————————————————————————————————
-.PHONY: fixtures-load-test fixtures-load-dev fixtures-load-append-dev fixtures-load-append-test
+.PHONY: fixtures-demo fixtures-load-test fixtures-load-dev fixtures-load-append-dev fixtures-load-append-test
+
+fixtures-demo: ## Create the demo accounts and data (admin@repas.fr, user@repas.fr / "M0t 2 p@sse"): dev only, idempotent, keeps your data
+	@$(EXEC_PHP) bin/console doctrine:fixtures:load --env=dev --group=demo --append -n
+	@echo "✅ Comptes de démo prêts : admin@repas.fr (administrateur) et user@repas.fr, mot de passe : M0t 2 p@sse"
 
 fixtures-load-test: ## Load fixtures into the test database
 	@$(EXEC_PHP) bin/console doctrine:fixtures:load --env=test -n
