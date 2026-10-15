@@ -27,7 +27,7 @@ Le projet est réussi quand :
 
 ## 3. Ce qui manque côté API (phase 0, dans ce dépôt)
 
-À livrer **avant** les écrans concernés, en PR séparées. État au 2026-10-14 : `GET /ingredients` (PR #42), position des lignes et validation d'unité (PR #41), refresh token (ADR 0015, PR #47) et contrat OpenAPI versionné (`docs/api/openapi.json`, PR #44) sont écrits et attendent leur merge ; restent la pagination et le contrôle de version.
+À livrer **avant** les écrans concernés, en PR séparées. État au 2026-10-15 : `GET /ingredients` (PR #42), position des lignes et validation d'unité (PR #41), refresh token (ADR 0015, PR #47), contrat OpenAPI versionné (`docs/api/openapi.json`, PR #44) et contrôle de version (ADR 0016, PR #50) sont fusionnés ; restent la **pagination** (le front n'en a pas encore besoin : 73 recettes s'affichent sans gêne) et la **vérification d'e-mail** (décision produit).
 
 | Manque | Pourquoi | Taille |
 |---|---|---|
@@ -39,6 +39,10 @@ Le projet est réussi quand :
 | Contrôle de version (ETag / `If-Match`) sur recette et liste | Deux onglets ou deux appareils modifient la même ressource : aujourd'hui « le dernier enregistrement gagne » (ADR 0013 règle 7) | M |
 | Export du contrat OpenAPI versionné (`openapi.json` publié par la CI) | Le front génère son client typé depuis ce fichier | S |
 | Vérification d'email à l'inscription (si souhaitée) | Inscription publique sans confirmation ; nécessite un service d'envoi (`symfony/mailer`) | M, **décision produit** |
+
+### État du front au 2026-10-15
+
+Dépôt `kcharignon/repas-front`, PR #1 à #23 fusionnées : les phases 1 à 5 sont faites. Chaque route Twig a son équivalent (`PARITY.md` du front : route Twig, écran, tests unitaires et de bout en bout, état) ; les anciennes adresses Twig sont redirigées côté front ; l'application est installable, la liste en cours se lit hors-ligne (ADR front 0006) ; Lighthouse sur l'image de production : performance 94 à 100, accessibilité 100, bonnes pratiques 100, SEO 100. **Reste à faire avec l'utilisateur** : la phase 6 (recette de parité jouée à la main, une semaine de « dogfooding »), puis la bascule (phase 7) et l'extinction de Twig (phase 8), **seulement sur son accord explicite**.
 
 ## 4. Architecture proposée du front
 
