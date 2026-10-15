@@ -156,12 +156,12 @@ Le front est un projet séparé (`repas-front`), planifié dans [`front-vuejs-pl
 - [x] Contrôle de version (ETag / `If-Match`) sur recette et liste de courses : [0016](adr/0016-controle-de-version-etag-if-match.md) (colonne `version`, comparaison-échange au `save()`, `ETag` sur les GET, `If-Match` facultatif sur 8 écritures, `412` / `409` ; budgets SQL +1 sur 11 use cases).
 - [x] Contrat OpenAPI versionné (`docs/api/openapi.json`, `make openapi-check` en CI)
 - [x] ADR « authentification du SPA » : [0015](adr/0015-refresh-token-du-spa.md)
-- [ ] ADR « front Vue.js » (stack, déploiement) : à écrire dans le dépôt du front avec l'utilisateur (hébergement, domaine, identité visuelle)
+- [x] ADR « front Vue.js » : écrits dans le dépôt du front (`docs/adr/0001` à `0006` : stack, SDK généré, design, Docker, session, PWA)
 
 **Front et bascule**
-- [ ] Phase 1 — socle du front (nouveau dépôt, CI, client généré, session, design system)
-- [ ] Phases 2 à 4 — parcours cœur, référentiel utilisateur, administration (parité de l'inventaire)
-- [ ] Phase 5 — finitions (PWA, accessibilité, performance)
+- [x] Phase 1 — socle du front (nouveau dépôt, CI, client généré, session, design system)
+- [x] Phases 2 à 4 — parcours cœur, référentiel utilisateur, administration (parité de l'inventaire : `PARITY.md` du front)
+- [x] Phase 5 — finitions (PWA et lecture hors-ligne de la liste en cours, accessibilité axe clair et sombre, budgets Lighthouse)
 - [ ] Phase 6 — recette de parité (100 % de l'inventaire)
 - [ ] Phase 7 — bascule en production (marche parallèle, retour arrière prévu)
 - [ ] Phase 8 — extinction de Twig (routes, templates, formulaires, JS, dépendances, pare-feu `main`, ADR, documentation)
