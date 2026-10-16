@@ -22,7 +22,7 @@ Faits : Twig est supprimé ([0018](0018-extinction-de-twig.md)), donc pas de gab
 8. **Le renvoi ne révèle rien** : `204` que l'adresse soit inconnue, déjà confirmée, désactivée, ou qu'un lien soit parti il y a moins de 60 s (`EmailVerificationToken::RESEND_COOLDOWN_SECONDS`, par compte : pas de mitraillage de la boîte d'un tiers).
 9. **Plafond de débit** : les deux routes partagent le limiteur `email_verification` (20 par heure et par IP, `EmailVerificationRateLimitListener`), `429` + `Retry-After` au-delà ([0008](0008-auth-session-et-jwt.md) §12).
 10. **Une adresse en attente n'est pas réattribuée** : s'inscrire avec une adresse déjà prise, confirmée ou non, répond `409` comme avant. Écraser le mot de passe d'un compte en attente permettrait à un tiers de s'inscrire avec l'adresse d'autrui, de laisser sa victime confirmer, puis de se connecter.
-11. **Environnements** : en développement, Mailpit (service `mailer` de `compose.override.yaml`, boîte sur `http://localhost:8025`) ; en test, `null://null` (les tests lisent le journal du mailer) ; en production, `MAILER_DSN` et `MAILER_FROM` sont **obligatoires** dans `/opt/repas/.env` (`${…:?}` dans `deploy/compose.yaml`) : sans eux le déploiement échoue et le code revient en arrière ([0017](0017-deploiement-et-releases.md)). `FRONT_URL` vaut `https://${APP_HOST}`.
+11. **Environnements** : en développement, Mailpit (service `mailer` de `compose.override.yaml`, boîte sur `http://localhost:8025`) ; en test, `null://null` (les tests lisent le journal du mailer) ; en production, l'envoi passe par l'**API HTTPS de Brevo** (`MAILER_DSN=brevo+api://<clé>@default`, pont `symfony/brevo-mailer`) parce que DigitalOcean bloque le SMTP sortant (25, 465, 587) ; `MAILER_DSN` et `MAILER_FROM` sont **obligatoires** dans `/opt/repas/.env` (`${…:?}` dans `deploy/compose.yaml`) : sans eux le déploiement échoue et le code revient en arrière ([0017](0017-deploiement-et-releases.md)). `FRONT_URL` vaut `https://${APP_HOST}`.
 
 ## Conséquences
 
@@ -32,6 +32,7 @@ Faits : Twig est supprimé ([0018](0018-extinction-de-twig.md)), donc pas de gab
 
 ## Alternatives écartées
 
+- SMTP d'un service tiers (Brevo, SendGrid, Mailgun) sur le port 587 : bloqué par DigitalOcean sur les droplets ; seul le port 2525 ou une API HTTPS passe, et l'API n'ajoute qu'un pont Symfony.
 - Envoi asynchrone par Messenger : demande un worker en production (supervision, redémarrage) pour un volume de quelques emails par jour.
 - `TemplatedEmail` et gabarits Twig : Twig est supprimé ([0018](0018-extinction-de-twig.md)), deux gabarits courts tiennent en PHP.
 - `401` pour un compte en attente : le front ne pourrait pas le distinguer d'un mauvais mot de passe sans lire un message, déjà générique par choix ([0008](0008-auth-session-et-jwt.md) §7).

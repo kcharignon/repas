@@ -26,6 +26,7 @@ description: Mettre en production, publier une release, revenir en arrière, sau
 | Publier une version (back ou front) | `references/release.md` |
 | Ça ne marche plus : retour arrière, restauration de la base, diagnostic | `references/incident.md` |
 | Le front est inutilisable : rendre Twig en urgence (dernière version qui le servait) | `references/retour-twig.md` |
+| Mettre en place l'envoi d'emails (confirmation d'adresse, ADR 0020) : compte Brevo, domaine, clé d'API, `MAILER_DSN` | `references/envoi-emails.md` |
 
 ## 3. Règles
 
