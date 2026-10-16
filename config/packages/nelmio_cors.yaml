@@ -1,6 +1,6 @@
 nelmio_cors:
     defaults:
-        # Aucune origine autorisée hors /api : les pages Twig ne sont pas concernées.
+        # Aucune origine autorisée hors /api.
         allow_origin: []
     paths:
         '^/api/':

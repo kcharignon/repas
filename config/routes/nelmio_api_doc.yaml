@@ -1,10 +1,6 @@
-# Documentation OpenAPI (zone ^/api, voir config/packages/nelmio_api_doc.yaml)
+# Contrat OpenAPI en JSON (zone ^/api, voir config/packages/nelmio_api_doc.yaml). Pas d'interface HTML : le contrat versionné
+# est dans docs/api/openapi.json.
 app.swagger:
     path: /api/doc.json
     methods: GET
     defaults: { _controller: nelmio_api_doc.controller.swagger }
-
-app.swagger_ui:
-    path: /api/doc
-    methods: GET
-    defaults: { _controller: nelmio_api_doc.controller.swagger_ui }

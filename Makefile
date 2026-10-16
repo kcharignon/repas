@@ -70,7 +70,7 @@ deptrac: ## Run Deptrac to check architectural dependencies
 	@$(EXEC_PHP) vendor/bin/deptrac analyse --config-file=quality-rules/Deptrac/deptrac.no-repo-in-queryhandler.yaml --no-progress
 	@echo "Check des dépendances : un Loader ne peut pas être appelé dans une Command"
 	@$(EXEC_PHP) vendor/bin/deptrac analyse --config-file=quality-rules/Deptrac/deptrac.no-loader-in-commandhandler.yaml --no-progress
-	@echo "Check des dépendances : un controller ou un formulaire HTTP ne peut pas appeler un Repository"
+	@echo "Check des dépendances : un controller HTTP ne peut pas appeler un Repository"
 	@$(EXEC_PHP) vendor/bin/deptrac analyse --config-file=quality-rules/Deptrac/deptrac.no-repository-in-http.yaml --no-progress
 	@echo "Check des dépendances : un Builder ne peut pas être appelé dans src"
 	@$(EXEC_PHP) vendor/bin/deptrac analyse --config-file=quality-rules/Deptrac/deptrac.no-builder-in-src.yaml --no-progress

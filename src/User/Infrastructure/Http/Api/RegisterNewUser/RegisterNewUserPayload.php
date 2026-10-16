@@ -7,8 +7,8 @@ use OpenApi\Attributes as OA;
 use Symfony\Component\Validator\Constraints as Assert;
 
 /**
- * Corps de l'inscription. Le formulaire Twig n'impose pas de longueur minimale au mot de passe ; l'API publique en
- * impose une (un compte créé sans formulaire ni confirmation de saisie).
+ * Corps de l'inscription. L'API publique impose une longueur minimale au mot de passe (un compte créé sans
+ * confirmation de saisie).
  */
 final readonly class RegisterNewUserPayload
 {

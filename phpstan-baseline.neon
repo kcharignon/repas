@@ -85,18 +85,6 @@ parameters:
 			path: src/Repas/Infrastructure/Entity/Unit.php
 
 		-
-			message: '#^PHPDoc tag @var with type Symfony\\Component\\Form\\FormInterface is not subtype of native type array\.$#'
-			identifier: varTag.nativeType
-			count: 1
-			path: src/Repas/Infrastructure/Http/Form/CreateUnitType.php
-
-		-
-			message: '#^PHPDoc tag @var with type Symfony\\Component\\Form\\FormInterface is not subtype of native type array\.$#'
-			identifier: varTag.nativeType
-			count: 1
-			path: src/Repas/Infrastructure/Http/Form/UpdateUnitType.php
-
-		-
 			message: '#^Call to an undefined method Doctrine\\Persistence\\ObjectRepository\:\:createQueryBuilder\(\)\.$#'
 			identifier: method.notFound
 			count: 4

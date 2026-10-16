@@ -5,7 +5,7 @@
 
 ## Vérifié
 - `make test` : <N tests>, `make quality` : <vert>
-- Chromium : <pages et actions essayées, ou « sans page Twig »>
+- `make deploy-smoke` : <vert, ou « sans changement dans deploy/, le Dockerfile ou l'entrypoint »>
 - <mesure utile : requêtes SQL avant/après, couverture…>
 
 ## À relire
