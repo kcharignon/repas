@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Essai de bout en bout de la configuration de production, en local ou en CI : `make deploy-smoke`.
 # Démarre deploy/compose.yaml avec de faux secrets et des certificats internes, puis vérifie ce que la production exige :
-# démarrage sur base vide (migrations), clés JWT, bordure, API, Twig, cookie du SPA, déploiement et retour arrière.
+# démarrage sur base vide (migrations), clés JWT, bordure, API, redirection de l'ancien nom, cookie du SPA, déploiement et retour arrière.
 #
 # Variables : BACK_IMAGE (obligatoire, image du back déjà construite), FRONT_IMAGE (facultative : sans elle, le SPA n'est pas essayé),
 # SMOKE_HTTPS_PORT (défaut 9443), SMOKE_KEEP=1 pour laisser la pile démarrée.
@@ -78,7 +78,9 @@ trap cleanup EXIT
 echo "== Premier déploiement du back (base vide)"
 check "deploy.sh back v0.0.1" ./deploy.sh back v0.0.1
 check "l'API répond par la bordure" test "$(curl_app -o /dev/null -w '%{http_code}' "https://$app:$port/api/v1/health")" = 200
-check "Twig répond sur l'ancien domaine" test "$(curl_legacy -o /dev/null -w '%{http_code}' "https://$legacy:$port/login")" = 200
+check "l'ancien nom redirige durablement vers le site, chemin conservé" bash -c "curl -sk -o /dev/null -w '%{http_code} %{redirect_url}' --resolve $legacy:$port:127.0.0.1 'https://$legacy:$port/recettes?x=1' | grep -q '^301 https://$app/recettes?x=1$'"
+# Le back lui-même (sans la bordure, où /login appartient au front) ne connaît plus que /api.
+check "le back ne sert plus de page web (404 sur /login)" test "$(docker compose exec -T php curl -s -o /dev/null -w '%{http_code}' http://localhost/login < /dev/null)" = 404
 check "le profileur est coupé en production (pas d'en-tête X-Debug-Token)" bash -c "! curl -sk -D - -o /dev/null --resolve $app:$port:127.0.0.1 https://$app:$port/api/v1/health | grep -qi x-debug-token"
 check "les clés JWT existent dans le volume" docker compose exec -T php test -f /app/config/jwt/private.pem
 

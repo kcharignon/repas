@@ -1,19 +1,12 @@
 # see https://symfony.com/doc/current/reference/configuration/framework.html
 framework:
     secret: '%env(APP_SECRET)%'
-    csrf_protection: true
-
-    # Note that the session will be started ONLY if you read or write from it.
-    session: true
-
-    profiler:
-        enabled: true
+    # Ni session ni CSRF : le back ne sert que l'API JSON stateless authentifiée par JWT (ADR 0008, ADR 0018).
+    # Pas de profileur non plus : il écrirait une trace de chaque requête (corps compris) et ajouterait `X-Debug-Token`.
 
 when@test:
     framework:
         test: true
-        session:
-            storage_factory_id: session.storage.factory.mock_file
         # Les tests d'API provoquent volontairement des 401, 403, 404, 405, 409 et 422 : les erreurs HTTP et les exceptions de
         # domaine (relayées en JSON par ApiExceptionListener) ne s'écrivent pas sur la sortie de PHPUnit. Une exception
         # inattendue (RuntimeException, TypeError…) reste journalisée.
@@ -22,10 +15,3 @@ when@test:
                 log_level: debug
             Repas\Shared\Domain\Exception\DomainException:
                 log_level: debug
-
-when@prod:
-    framework:
-        # Le profileur écrit une trace de chaque requête (corps compris) sur le disque et ajoute `X-Debug-Token` aux réponses :
-        # réservé au dev et aux tests (ADR 0017).
-        profiler:
-            enabled: false

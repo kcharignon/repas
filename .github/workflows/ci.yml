@@ -65,9 +65,8 @@ jobs:
       -
         name: Coverage Checker
         # Seuil en cliquet : on ne le baisse jamais, on le remonte quand la mesure le permet (docs/migration-roadmap.md).
-        # La couche Twig (Http/Controller, Http/Form) est exclue de la mesure dans phpunit.dist.xml.
         env:
-          COVERAGE_THRESHOLD: 88
+          COVERAGE_THRESHOLD: 89
         run: |
           OUTPUT=$(docker compose exec -T php vendor/bin/coverage-check clover.xml "$COVERAGE_THRESHOLD" --only-percentage || true)
           PERCENTAGE=$(echo "$OUTPUT" | grep -oE '[0-9]+\.[0-9]+|[0-9]+' | head -1)

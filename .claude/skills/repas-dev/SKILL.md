@@ -1,9 +1,9 @@
 ---
 name: repas-dev
-description: Développer ou migrer une fonctionnalité du projet Repas (Symfony 8.1 / PHP 8.4, hexagonal + DDD + CQRS). À utiliser pour ajouter ou migrer un use case de lecture (Query, QueryHandler, Loader, DTO), un endpoint API `/api/v1` (JWT), un use case d'écriture (Command), ou basculer un ViewController Twig vers le QueryBus. Charge les ADR et la roadmap avant d'écrire du code.
+description: Développer une fonctionnalité du projet Repas (Symfony 8.1 / PHP 8.4, hexagonal + DDD + CQRS). À utiliser pour ajouter un use case de lecture (Query, QueryHandler, Loader, DTO), un endpoint API `/api/v1` (JWT) ou un use case d'écriture (Command). Charge les ADR et la roadmap avant d'écrire du code.
 ---
 
-# repas-dev — développer et migrer Repas selon les ADR
+# repas-dev — développer Repas selon les ADR
 
 ## 0. Avant toute chose
 
@@ -24,9 +24,9 @@ description: Développer ou migrer une fonctionnalité du projet Repas (Symfony 
 - Un modèle est une copie : un use case charge un agrégat une seule fois et passe l'instance, un listener recharge depuis la base, jamais d'enregistrement d'un modèle chargé avant un événement qui peut modifier le même agrégat (dernier enregistrement gagnant, ADR 0013 règle 7).
 - Recette et liste de courses portent une `version` (ADR 0016) : `ETag` sur les `GET`, `If-Match` facultatif sur les écritures (`EntityVersion::expected($request)` dans le controller, `?int $expectedVersion = null` dans la commande, `$agregat->assertVersion($command->expectedVersion)` dans le handler juste après le chargement ; `#[OA\Parameter(ref: '#/components/parameters/IfMatch')]` et la réponse `412` dans la doc). Chaque enregistrement d'un agrégat existant coûte une requête de plus (budget SQL).
 - Domaine : `create()` pour créer, `load()` réservé à l'infra et aux builders de test ; ids et dates injectés par le handler (`UuidGenerator`, `Clock`) (ADR 0002).
-- Controllers : un controller = une route = une action, aucune logique métier, injecter les **interfaces** des buses. Twig : `{Action}ViewController` ; API : `{UseCase}ApiController` dans `Http/Api/{UseCase}/`. L'utilisateur connecté s'obtient par `#[CurrentUser] AuthenticatedUser $user` (`Shared\Domain\Interface`, accesseurs `getId()` et `getDefaultServing()`) puis `$user->getId()` : jamais `User\Domain\Model\User` dans le contexte `Repas` (ADR 0001 §8).
+- Controllers : un controller = une route = une action, aucune logique métier, injecter les **interfaces** des buses. API : `{UseCase}ApiController` dans `Http/Api/{UseCase}/`. L'utilisateur connecté s'obtient par `#[CurrentUser] AuthenticatedUser $user` (`Shared\Domain\Interface`, accesseurs `getId()` et `getDefaultServing()`) puis `$user->getId()` : jamais `User\Domain\Model\User` dans le contexte `Repas` (ADR 0001 §8).
 - API : `/api/v1`, stateless JWT, `{member,totalItems}` en lecture de liste, `204`/`201 + Location` en écriture, erreurs `{error:{message}}`, `#[OA\…]` obligatoire (ADR 0007/0008).
-- Les routes Twig/AJAX existantes restent valides (coexistence, ADR 0009). Pas de changement de comportement visible dans une slice de lecture.
+- Le back ne sert que l'API (ADR 0018) : pas de page, de session ni de formulaire. Un changement de contrat se relit dans `docs/api/openapi.json` (`make openapi`, `make openapi-check`).
 
 ## 2. Chemins et noms
 
@@ -38,7 +38,6 @@ description: Développer ou migrer une fonctionnalité du projet Repas (Symfony 
 | Port Loader | `src/Repas/Application/Loader/` | `{X}Loader` (interface) |
 | Impl. Loader | `src/Repas/Infrastructure/Loader/` | `{X}PostgreSQLLoader implements {X}Loader` |
 | Controller API | `src/Repas/Infrastructure/Http/Api/{UseCase}/` | `{UseCase}ApiController`, + `{UseCase}RequestQuery` / `{UseCase}Payload` |
-| Controller Twig | `src/Repas/Infrastructure/Http/Controller/` | `{Action}ViewController` (existant) |
 | Command | `src/Repas/Application/Command/{UseCase}/` | `{UseCase}Command` + `{UseCase}Handler` (existant) |
 | Exception | `Domain/Exception/{Aggregate}Exception` | factories statiques (`notFound()`) |
 | Double de Loader (test) | `tests/Helper/InMemoryLoader/` | `{X}InMemoryLoader` (renvoie des DTO programmés, enregistre ses appels) |
@@ -58,30 +57,20 @@ Détail et squelettes : `references/read-slice-template.md`. Ordre :
    `QueryConventionTest` contrôle tout seul l'attribut `bus: 'query.bus'` et la présence du handler : ne pas le dupliquer dans le test du handler.
 6. `make test deptrac phpstan`.
 
-### 3.2 Migrer un ViewController Twig vers le QueryBus
-Détail : `references/migrate-view-controller.md`. Résumé :
-1. Lister ce que le template lit (variables, appels de méthodes de domaine, `current_user`).
-2. Mettre ces besoins dans le DTO (3.1), logique d'affichage incluse.
-3. Le controller n'injecte plus que `QueryBusInterface` : `$dto = $this->queryBus->ask(new XQuery(...))`.
-4. Adapter le template : propriétés du DTO, plus aucun appel de domaine.
-5. Vérifier le nombre de requêtes avant/après (web profiler) et que le HTML est équivalent.
-6. Test visuel dans Chromium (`references/visual-check.md`) : captures lues, liens et actions essayés.
-7. Cocher la slice dans `docs/migration-roadmap.md`.
-
-### 3.3 Nouvel endpoint API
+### 3.2 Nouvel endpoint API
 1. La query existe (3.1) — sinon la créer d'abord.
 2. `Infrastructure/Http/Api/{UseCase}/{UseCase}ApiController.php` : `#[Route('/api/v1/...', methods: [...])]`, `#[OA\…]`, appelle `QueryBusInterface::ask()` ou `CommandBusInterface::dispatch()`, renvoie `JsonResponse`/`Response`. Entrées par `#[MapQueryString(validationFailedStatusCode: 422)]` / `#[MapRequestPayload]`.
 3. Liste → `{member: [...], totalItems: N}`. Écriture → `204` ou `201` + `Location`.
 4. Test `tests/Repas/InputAdapter/` : `MockQueryBus`/`MockCommandBus`, query construite, statut, clés JSON.
    Écriture : `$this->mockCommandBus()` (une requête par test), 401, 403 propriétaire, 404 inconnu, 422 corps invalide, `Location` en 201 ; plus un parcours avec les vrais bus par ressource (`ShoppingListWriteApiFlowTest`). Conventions : ADR 0007 §11 à 13 (action en `POST …/{action}`, alias `active`, identité par le JWT, jamais par le corps).
-5. `make api-doc-validate api-doc-coverage`, relire la doc générée (`/api/doc`), puis `make openapi` et relire le diff de `docs/api/openapi.json` (le contrat versionné, ADR 0007 §15).
+5. `make api-doc-validate api-doc-coverage`, relire la doc générée (`/api/doc.json`), puis `make openapi` et relire le diff de `docs/api/openapi.json` (le contrat versionné, ADR 0007 §15).
 6. Vérifier le niveau d'accès (`#[IsGranted]` / voter propriétaire) : `ROLE_USER` est un plancher, pas une autorisation. Une route publique (ADR 0007 §14) est une exception : chemin exact et méthode dans `access_control`, dite et justifiée dans l'ADR.
 
-### 3.4 Nouveau use case d'écriture
+### 3.3 Nouveau use case d'écriture
 1. Modèle (`Domain/Model`, `create()`/méthode métier) + exception si nouveaux cas d'erreur.
 2. Port/extension du Repository (`Domain/Interface`) + implémentation `Infrastructure/Repository`.
 3. `Application/Command/{UseCase}/{UseCase}Command.php` (DTO `readonly`) + `{UseCase}Handler.php` (`#[AsMessageHandler]`, repositories + `UuidGenerator` + `Clock` + `EventDispatcherInterface` si événement).
-4. Controller (Twig ou API) qui ne fait que `CommandBusInterface::dispatch()`.
+4. Controller API qui ne fait que `CommandBusInterface::dispatch()`.
 5. Test : handler avec `{X}InMemoryRepository` + `SpyEventDispatcher` + builders (aucune base, aucun kernel ; la persistance se teste dans `OutputAdapter`, pas à travers le handler).
 
 ## 4. Definition of Done
@@ -92,9 +81,8 @@ Détail : `references/migrate-view-controller.md`. Résumé :
 - [ ] `make phpstan` vert (aucune nouvelle entrée de baseline)
 - [ ] `make api-doc-validate`, `make api-doc-coverage` et `make openapi-check` verts si un endpoint API est touché (`make openapi` régénère `docs/api/openapi.json`, diff relu)
 - [ ] Use case d'écriture touché ou ajouté : son scénario existe dans `tests/Repas/WriteBudget/scenarios.php`, son budget SQL ne monte pas ; s'il baisse, `make sql-budget-update` et `budgets.php` est dans le commit (ADR 0010 règle 12)
-- [ ] Le controller migré n'injecte plus de `*Repository`; les templates concernés n'appellent plus de méthode de domaine
+- [ ] Aucun controller n'injecte de `*Repository` (Deptrac `no-repository-in-http`)
 - [ ] Tests : `QueryHandler` (unitaire, `InMemoryLoader`, paramètres transmis), Loader (base réelle), controller API (clés JSON)
-- [ ] Test visuel dans Chromium de chaque page Twig touchée (connexion réelle, captures lues, liens et actions essayés, aucune erreur console/HTTP) : `references/visual-check.md`
 - [ ] `docs/migration-roadmap.md` mis à jour (case cochée, bugs vus en passant notés dans « Hors périmètre »)
 - [ ] ADR ajouté ou amendé si une convention a changé (et `CLAUDE.md` + ce skill dans le même commit)
 
@@ -113,6 +101,6 @@ Détail : `references/migrate-view-controller.md`. Résumé :
 
 ## 6. Commits
 
-Un commit par unité logique (ex. : DTO+Query+Handler+Loader+tests de la slice, puis bascule du controller Twig, puis controller API). Message court en français au style du dépôt (`feat:`, `refacto:`, `chore:`, `docs:`, `fix:`), sans `Co-Authored-By`.
+Un commit par unité logique (ex. : DTO+Query+Handler+Loader+tests de la slice, puis controller API). Message court en français au style du dépôt (`feat:`, `refacto:`, `chore:`, `docs:`, `fix:`), sans `Co-Authored-By`.
 
-Fin de slice : `git push -u origin <branche>` puis `gh pr create --base main` sans attendre de demande. Titre court (`refactor(chore): cqrs phase N …` pour une phase de la roadmap). Description concise, du même ton que les messages de commit, qui suit `.github/pull_request_template.md` : **Quoi** (3 à 5 puces), **Vérifié** (`make test`, `make quality`, test Chromium si Twig, mesure utile), **À relire** (décisions, risques, bugs notés hors périmètre). Une PR sans description n'est pas acceptable. Pas de pied de page d'attribution. Donner le lien de la PR. Jamais de merge (l'humain merge), de push sur `main` ni de force-push.
+Fin de slice : `git push -u origin <branche>` puis `gh pr create --base main` sans attendre de demande. Titre court (`refactor(chore): cqrs phase N …` pour une phase de la roadmap). Description concise, du même ton que les messages de commit, qui suit `.github/pull_request_template.md` : **Quoi** (3 à 5 puces), **Vérifié** (`make test`, `make quality`, `make deploy-smoke` si `deploy/` change, mesure utile), **À relire** (décisions, risques, bugs notés hors périmètre). Une PR sans description n'est pas acceptable. Pas de pied de page d'attribution. Donner le lien de la PR. Jamais de merge (l'humain merge), de push sur `main` ni de force-push.

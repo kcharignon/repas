@@ -154,7 +154,7 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *         cookie_name?: scalar|Param|null, // The name of the cookie to use when using stateless protection. // Default: "csrf-token"
  *     },
  *     form?: bool|array{ // Form configuration
- *         enabled?: bool|Param, // Default: true
+ *         enabled?: bool|Param, // Default: false
  *         csrf_protection?: bool|array{
  *             enabled?: scalar|Param|null, // Default: null
  *             token_id?: scalar|Param|null, // Default: null
@@ -267,7 +267,7 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *         formats?: array<string, Param|string|list<scalar|Param|null>>,
  *     },
  *     assets?: bool|array{ // Assets configuration
- *         enabled?: bool|Param, // Default: true
+ *         enabled?: bool|Param, // Default: false
  *         strict_mode?: bool|Param, // Throw an exception if an entry is missing from the manifest.json. // Default: false
  *         version_strategy?: scalar|Param|null, // Default: null
  *         version?: scalar|Param|null, // Default: null
@@ -1231,58 +1231,10 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *     }>,
  *     role_hierarchy?: array<string, Param|string|list<scalar|Param|null>>,
  * }
- * @psalm-type TwigConfig = array{
- *     form_themes?: list<scalar|Param|null>,
- *     globals?: array<string, array{ // Default: []
- *         id?: scalar|Param|null,
- *         type?: scalar|Param|null,
- *         value?: mixed,
- *         ...<string, mixed>
- *     }>,
- *     autoescape_service?: scalar|Param|null, // Default: null
- *     autoescape_service_method?: scalar|Param|null, // Default: null
- *     cache?: scalar|Param|null, // Default: true
- *     charset?: scalar|Param|null, // Default: "%kernel.charset%"
- *     debug?: bool|Param, // Default: "%kernel.debug%"
- *     strict_variables?: bool|Param, // Default: "%kernel.debug%"
- *     auto_reload?: scalar|Param|null,
- *     optimizations?: int|Param,
- *     default_path?: scalar|Param|null, // The default path used to load templates. // Default: "%kernel.project_dir%/templates"
- *     file_name_pattern?: Param|string|list<scalar|Param|null>,
- *     paths?: array<string, mixed>,
- *     date?: array{ // The default format options used by the date filter.
- *         format?: scalar|Param|null, // Default: "F j, Y H:i"
- *         interval_format?: scalar|Param|null, // Default: "%d days"
- *         timezone?: scalar|Param|null, // The timezone used when formatting dates, when set to null, the timezone returned by date_default_timezone_get() is used. // Default: null
- *     },
- *     number_format?: array{ // The default format options for the number_format filter.
- *         decimals?: int|Param, // Default: 0
- *         decimal_point?: scalar|Param|null, // Default: "."
- *         thousands_separator?: scalar|Param|null, // Default: ","
- *     },
- *     mailer?: array{
- *         html_to_text_converter?: scalar|Param|null, // A service implementing the "Symfony\Component\Mime\HtmlToTextConverter\HtmlToTextConverterInterface". // Default: null
- *     },
- * }
  * @psalm-type MakerConfig = array{
  *     root_namespace?: scalar|Param|null, // Default: "App"
  *     generate_final_classes?: bool|Param, // Default: true
  *     generate_final_entities?: bool|Param, // Default: false
- * }
- * @psalm-type WebProfilerConfig = array{
- *     toolbar?: bool|array{ // Profiler toolbar configuration
- *         enabled?: bool|Param, // Default: false
- *         ajax_replace?: bool|Param, // Replace toolbar on AJAX requests // Default: false
- *     },
- *     intercept_redirects?: bool|Param, // Default: false
- *     excluded_ajax_paths?: scalar|Param|null, // Default: "^/((index|app(_[\\w]+)?)\\.php/)?_wdt"
- * }
- * @psalm-type DebugConfig = array{
- *     max_items?: int|Param, // Max number of displayed items past the first level, -1 means no limit. // Default: 2500
- *     min_depth?: int|Param, // Minimum tree depth to clone all the items, 1 is default. // Default: 1
- *     max_string_length?: int|Param, // Max length of displayed strings, -1 means no limit. // Default: -1
- *     dump_destination?: scalar|Param|null, // A stream URL where dumps should be written to. // Default: null
- *     theme?: "dark"|"light"|Param, // Changes the color of the dump() output when rendered directly on the templating. "dark" (default) or "light". // Default: "dark"
  * }
  * @psalm-type NelmioApiDocConfig = array{
  *     type_info?: bool|Param, // Use the symfony/type-info component for determining types. // Default: true
@@ -1461,7 +1413,6 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *     doctrine?: DoctrineConfig,
  *     doctrine_migrations?: DoctrineMigrationsConfig,
  *     security?: SecurityConfig,
- *     twig?: TwigConfig,
  *     nelmio_api_doc?: NelmioApiDocConfig,
  *     nelmio_cors?: NelmioCorsConfig,
  *     lexik_jwt_authentication?: LexikJwtAuthenticationConfig,
@@ -1473,10 +1424,7 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *         doctrine?: DoctrineConfig,
  *         doctrine_migrations?: DoctrineMigrationsConfig,
  *         security?: SecurityConfig,
- *         twig?: TwigConfig,
  *         maker?: MakerConfig,
- *         web_profiler?: WebProfilerConfig,
- *         debug?: DebugConfig,
  *         nelmio_api_doc?: NelmioApiDocConfig,
  *         nelmio_cors?: NelmioCorsConfig,
  *         lexik_jwt_authentication?: LexikJwtAuthenticationConfig,
@@ -1489,7 +1437,6 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *         doctrine?: DoctrineConfig,
  *         doctrine_migrations?: DoctrineMigrationsConfig,
  *         security?: SecurityConfig,
- *         twig?: TwigConfig,
  *         nelmio_api_doc?: NelmioApiDocConfig,
  *         nelmio_cors?: NelmioCorsConfig,
  *         lexik_jwt_authentication?: LexikJwtAuthenticationConfig,
@@ -1502,8 +1449,6 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *         doctrine?: DoctrineConfig,
  *         doctrine_migrations?: DoctrineMigrationsConfig,
  *         security?: SecurityConfig,
- *         twig?: TwigConfig,
- *         web_profiler?: WebProfilerConfig,
  *         nelmio_api_doc?: NelmioApiDocConfig,
  *         nelmio_cors?: NelmioCorsConfig,
  *         lexik_jwt_authentication?: LexikJwtAuthenticationConfig,

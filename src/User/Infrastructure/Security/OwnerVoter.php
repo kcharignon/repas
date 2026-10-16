@@ -52,7 +52,7 @@ class OwnerVoter extends Voter
             return false;
         }
 
-        // Une ressource introuvable donne un 404 (Twig comme API), pas une erreur 500
+        // Une ressource introuvable donne un 404, pas une erreur 500
         try {
             return $this->owns($attribute, $subject, $user);
         } catch (DomainException $exception) {

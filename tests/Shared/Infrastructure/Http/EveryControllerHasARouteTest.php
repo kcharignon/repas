@@ -7,9 +7,9 @@ use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Routing\RouterInterface;
 
 /**
- * Chaque controller (Twig ou API) a au moins une route. Un attribut `#[Route]` d'une classe qui n'existe plus (l'ancien
- * `Routing\Annotation\Route` a disparu en Symfony 8) ne lève aucune erreur : la route disparaît sans bruit, et seule une
- * page qui y redirige s'en aperçoit.
+ * Chaque controller de l'API a au moins une route. Un attribut `#[Route]` d'une classe qui n'existe plus (l'ancien
+ * `Routing\Annotation\Route` a disparu en Symfony 8) ne lève aucune erreur : la route disparaît sans bruit, et seul un
+ * client qui l'appelle s'en aperçoit.
  */
 class EveryControllerHasARouteTest extends KernelTestCase
 {
@@ -41,10 +41,7 @@ class EveryControllerHasARouteTest extends KernelTestCase
     private function controllerClasses(): array
     {
         $srcDir = dirname(__DIR__, 4) . '/src';
-        $files = array_merge(
-            glob($srcDir . '/*/Infrastructure/Http/Controller/*ViewController.php') ?: [],
-            glob($srcDir . '/*/Infrastructure/Http/Api/*/*ApiController.php') ?: [],
-        );
+        $files = glob($srcDir . '/*/Infrastructure/Http/Api/*/*ApiController.php') ?: [];
 
         return array_map(
             static fn(string $file): string => 'Repas\\' . str_replace('/', '\\', substr($file, strlen($srcDir) + 1, -strlen('.php'))),

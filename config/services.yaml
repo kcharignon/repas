@@ -1,7 +1,6 @@
 #config/services.yaml
 imports:
     - { resource: repositories.yaml }
-    - { resource: eventListeners.yaml }
 
 parameters:
     env(ADMIN_PASSWORD): '%env(ADMIN_PASSWORD)%'
@@ -13,10 +12,6 @@ services:
     _defaults:
         autowire: true      # Automatically injects dependencies in your services.
         autoconfigure: true # Automatically registers your services as commands, event subscribers, etc.
-        
-    twig.extension.intl:
-        class: Twig\Extra\Intl\IntlExtension
-        tags: [ 'twig.extension' ]
 
     # makes classes in src/ available to be used as services
     # this creates a service per class whose id is the fully-qualified class name
@@ -27,10 +22,6 @@ services:
             - '../src/Entity/'
             - '../src/Kernel.php'
 
-    Repas\User\Infrastructure\Http\Controller\:
-        resource: '../src/User/Infrastructure/Http/Controller/'
-        tags: [ 'controller.service_arguments' ]
-    
     Repas\Command\ResetDatabaseCommand:
         tags: ['console.command']
         

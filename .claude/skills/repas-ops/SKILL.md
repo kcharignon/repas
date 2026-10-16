@@ -1,6 +1,6 @@
 ---
 name: repas-ops
-description: Mettre en production, publier une release, revenir en arrière, sauvegarder ou diagnostiquer le serveur de Repas (droplet DigitalOcean, Docker Compose, GHCR, bordure Caddy). À utiliser pour « déployer », « release », « rollback », « sauvegarde », « le site est tombé », la première mise en production, la bascule du SPA sur le domaine principal, ou toute modification de `deploy/` et des workflows `release.yml`. Lit l'ADR 0017 avant d'agir.
+description: Mettre en production, publier une release, revenir en arrière, sauvegarder ou diagnostiquer le serveur de Repas (droplet DigitalOcean, Docker Compose, GHCR, bordure Caddy). À utiliser pour « déployer », « release », « rollback », « sauvegarde », « le site est tombé », la première mise en production, un retour d'urgence vers Twig, ou toute modification de `deploy/` et des workflows `release.yml`. Lit l'ADR 0017 avant d'agir.
 ---
 
 # repas-ops — exploiter la production de Repas
@@ -25,7 +25,7 @@ description: Mettre en production, publier une release, revenir en arrière, sau
 | Première mise en production (nouveau serveur de déploiement, base de l'ancienne installation reprise) | `references/premiere-mise-en-production.md` |
 | Publier une version (back ou front) | `references/release.md` |
 | Ça ne marche plus : retour arrière, restauration de la base, diagnostic | `references/incident.md` |
-| Donner la racine du domaine au SPA (extinction de Twig plus tard) | `references/bascule-spa.md` |
+| Le front est inutilisable : rendre Twig en urgence (dernière version qui le servait) | `references/retour-twig.md` |
 
 ## 3. Règles
 
@@ -33,5 +33,5 @@ description: Mettre en production, publier une release, revenir en arrière, sau
 - Toute migration doit rester compatible avec la version précédente du code (ADR 0017 règle 6) : le retour arrière ne défait pas le schéma.
 - Avant de toucher à `deploy/` : `make deploy-smoke` (FRONT_IMAGE=… pour essayer le SPA). La CI le rejoue (job `deploy-config`).
 - Changer une règle d'exploitation = mettre à jour l'ADR 0017, `CLAUDE.md`, ce skill et `docs/production.md` dans le même commit.
-- Jamais d'extinction de Twig ni de bascule de la racine sans accord explicite de l'utilisateur.
+- Twig n'existe plus dans le back (ADR 0018) ; le domaine principal sert le front, l'ancien nom `app.` est redirigé en `301`. Tout changement de nom de domaine ou de redirection passe par l'utilisateur.
 - Les PR du back sont fusionnées par l'utilisateur ; celles du front, par moi (CI verte, squash).

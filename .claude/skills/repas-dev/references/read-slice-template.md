@@ -216,24 +216,7 @@ class DepartmentPostgreSQLLoaderTest extends DatabaseTestCase
 
 Piège : le tri se prouve par la position relative de deux enregistrements créés par le test (`aaa-…` avant `zzz-…`), jamais en comparant toute la liste à `sort()` PHP (la collation PostgreSQL ignore parfois la casse et les tirets). Compléter : cas vide, filtres, `NotFound`. Si le Loader remplace un N+1, assert le nombre de requêtes.
 
-## 7. Controller Twig — bascule (existant)
-
-```php
-public function __construct(private readonly QueryBusInterface $queryBus) {}
-
-#[Route(path: '/department', name: 'view_departments', methods: ['GET'])]
-#[IsGranted('ROLE_USER')]
-public function __invoke(): Response
-{
-    $departments = $this->queryBus->ask(new ListDepartmentsQuery());
-
-    return $this->render('@Repas/Department/departments.html.twig', ['departments' => $departments]);
-}
-```
-
-Le template lit `department.slug`, `department.name`, `department.image` (propriétés du DTO).
-
-## 8. Controller API — `src/Repas/Infrastructure/Http/Api/ListDepartments/ListDepartmentsApiController.php`
+## 7. Controller API — `src/Repas/Infrastructure/Http/Api/ListDepartments/ListDepartmentsApiController.php`
 
 ```php
 <?php
@@ -280,10 +263,9 @@ final class ListDepartmentsApiController extends AbstractController
 
 Entrée en query string : `#[MapQueryString(validationFailedStatusCode: 422)] ListXRequestQuery $requestQuery`. Entrée en corps : `#[MapRequestPayload] XPayload $payload` (objet `final readonly` + `#[Assert\…]`, statut d'échec 422 par défaut).
 
-## 9. Test du controller API — `tests/Repas/InputAdapter/ListDepartmentsApiControllerTest.php`
+## 8. Test du controller API — `tests/Repas/InputAdapter/ListDepartmentsApiControllerTest.php`
 
-Vérifier : (a) la query construite (`MockQueryBus::getLastAskedQuery()`), (b) le statut, (c) **les clés JSON** de chaque DTO, (d) sans token → 401. Modèle complet : `tests/Repas/InputAdapter/ListRecipeTypesApiControllerTest.php` (API) et `GetAllRecipeTypeViewControllerTest.php` / `AdminGetAllRecipeTypeViewControllerTest.php` (Twig). Le test étend `Repas\Tests\Helper\QueryBusWebTestCase`, qui remplace le QueryBus par un `MockQueryBus` (`$this->queryBus`, avant la première requête du client : le kernel redémarre entre deux requêtes), fournit le client (`$this->client`), un vrai utilisateur annulé en fin de test (`$this->savedUser(admin: true)`), la connexion Twig (`$this->client->loginUser($user)`), le jeton JWT sans passer par `/api/login_check` (`server: $this->bearerFor($user)`) et `$this->jsonBody()`.
+Vérifier : (a) la query construite (`MockQueryBus::getLastAskedQuery()`), (b) le statut, (c) **les clés JSON** de chaque DTO, (d) sans token → 401. Modèle complet : `tests/Repas/InputAdapter/ListRecipeTypesApiControllerTest.php`. Le test étend `Repas\Tests\Helper\QueryBusWebTestCase`, qui remplace le QueryBus par un `MockQueryBus` (`$this->queryBus`, avant la première requête du client : le kernel redémarre entre deux requêtes), fournit le client (`$this->client`), un vrai utilisateur annulé en fin de test (`$this->savedUser(admin: true)`), le jeton JWT sans passer par `/api/login_check` (`server: $this->bearerFor($user)`) et `$this->jsonBody()`.
 
 Double : `tests/Helper/MockQueryBus.php` (existe) : `willReturn(XQuery::class, $resultat)`, `getLastAskedQuery()`, `countAskedQueries()` ; lève une `LogicException` si une query sans résultat programmé est posée. Un `MockCommandBus` du même modèle est à créer à la première slice d'écriture API.
 
-**Controller de formulaire qui ré-affiche une liste** (ex. `AdminCreateUnitViewController`, `AdminUpdateUnitViewController`) : il demande la même query que la page de liste. Test : `tests/Repas/InputAdapter/AdminCreateUnitViewControllerTest.php`. Une soumission valide se simule par `$this->client->request('POST', $url, ['nom_du_formulaire' => ['champ' => …, '_token' => 'csrf-token']], server: ['HTTP_ORIGIN' => 'http://localhost'])` (CSRF stateless de Symfony 7.2 : la valeur est le littéral `csrf-token` et l'origine doit correspondre à l'hôte). Le `CommandBus` reste le vrai (donnée écrite en base de test, annulée en fin de test) ; le `QueryBus` reste le `MockQueryBus`. Vérifier l'écriture via le repository et le rendu via la query doublée. Le nom du formulaire est le préfixe de bloc de son type (`CreateUnitType` donne `create_unit`).

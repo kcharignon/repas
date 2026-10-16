@@ -1,6 +1,6 @@
 # 0008 — Authentification : session pour le web, JWT stateless pour `/api`
 
-- **Statut** : Accepted
+- **Statut** : Accepted ; la partie « session pour le web » est caduque depuis [0018](0018-extinction-de-twig.md) (plus de firewall `main`, de form login ni de `remember_me`), le JWT stateless est inchangé
 - **Date** : 2026-10-12
 - **Liens** : [0007](0007-api-rest-v1.md), branche `feat/api-rest` (commit `1b7d649`)
 

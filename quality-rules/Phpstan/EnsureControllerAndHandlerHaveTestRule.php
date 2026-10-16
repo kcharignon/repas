@@ -17,7 +17,7 @@ use SplFileInfo;
  * Un QueryHandler (Application\Query) ou un ApiController (Infrastructure\Http\Api) doit avoir
  * un fichier de test {NomCourt}Test.php quelque part sous tests/ (ADR 0010 et 0011).
  *
- * Volontairement limitée aux nouveaux dossiers : les controllers Twig et handlers d'écriture
+ * Volontairement limitée aux nouveaux dossiers : les handlers d'écriture
  * existants ne sont pas concernés.
  *
  * @implements Rule<InClassNode>

@@ -18,11 +18,9 @@
         "nelmio/api-doc-bundle": "^5.13",
         "nelmio/cors-bundle": "^2.6",
         "ramsey/uuid": ">=4.9.4",
-        "symfony/asset": "8.1.*",
         "symfony/console": "8.1.*",
         "symfony/dotenv": "8.1.*",
         "symfony/flex": "^2.11",
-        "symfony/form": "8.1.*",
         "symfony/framework-bundle": "8.1.*",
         "symfony/messenger": "8.1.*",
         "symfony/process": "8.1.*",
@@ -32,10 +30,8 @@
         "symfony/security-bundle": "8.1.*",
         "symfony/serializer": "8.1.*",
         "symfony/translation": "8.1.*",
-        "symfony/twig-bundle": "8.1.*",
         "symfony/validator": "8.1.*",
         "symfony/yaml": "8.1.*",
-        "twig/intl-extra": "^3.30",
         "zircote/swagger-php": "^5.8"
     },
     "config": {
@@ -70,8 +66,7 @@
     },
     "scripts": {
         "auto-scripts": {
-            "cache:clear": "symfony-cmd",
-            "assets:install %PUBLIC_DIR%": "symfony-cmd"
+            "cache:clear": "symfony-cmd"
         },
         "post-install-cmd": [
             "@auto-scripts"
@@ -98,11 +93,8 @@
         "phpunit/phpunit": "^12.5.39",
         "rregeer/phpunit-coverage-check": "^0.3.1",
         "symfony/browser-kit": "8.1.*",
-        "symfony/css-selector": "8.1.*",
-        "symfony/debug-bundle": "8.1.*",
         "symfony/maker-bundle": "^1.68",
         "symfony/phpunit-bridge": "^7.4.21",
-        "symfony/stopwatch": "8.1.*",
-        "symfony/web-profiler-bundle": "8.1.*"
+        "symfony/stopwatch": "8.1.*"
     }
 }

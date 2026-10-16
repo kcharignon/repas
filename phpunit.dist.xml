@@ -25,12 +25,6 @@
             <directory suffix=".php">src</directory>
         </include>
         <exclude>
-            <!-- Couche Twig legacy (session, fragments HTML) : controllers et FormTypes sans test fonctionnel, remplacés
-                 au fil de la migration (docs/migration-roadmap.md). Les controllers API (Http/Api) restent mesurés. -->
-            <directory>src/Repas/Infrastructure/Http/Controller</directory>
-            <directory>src/Repas/Infrastructure/Http/Form</directory>
-            <directory>src/User/Infrastructure/Http/Controller</directory>
-            <directory>src/User/Infrastructure/Http/Form</directory>
             <!-- Données de test, pas de logique : chargées une seule fois hors d'un test (DatabaseTestCase), donc jamais créditées. -->
             <directory>src/Repas/Infrastructure/DataFixture</directory>
             <directory>src/User/Infrastructure/DataFixture</directory>

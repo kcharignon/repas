@@ -164,23 +164,20 @@ class JwtAuthenticationTest extends DatabaseTestCase
         $this->assertArrayHasKey('/api/login_check', $this->jsonBody()['paths']);
     }
 
-    public function testWebSessionFirewallIsUnchanged(): void
+    public function testTheBackServesNothingButTheApi(): void
     {
-        // When
-        $this->client->request('GET', '/login');
+        // When : le back ne sert plus aucune page web, ni session ni cookie de session
+        $statuses = [];
+        $cookies = [];
+        foreach (['/', '/login', '/shopping-list', '/api/doc'] as $path) {
+            $this->client->request('GET', $path);
+            $statuses[$path] = $this->client->getResponse()->getStatusCode();
+            $cookies[$path] = $this->client->getResponse()->headers->getCookies();
+        }
 
         // Then
-        $this->assertSame(200, $this->client->getResponse()->getStatusCode());
-    }
-
-    public function testWebRouteStillRedirectsAnonymousUsersToTheLoginForm(): void
-    {
-        // When
-        $this->client->request('GET', '/shopping-list');
-
-        // Then
-        $this->assertTrue($this->client->getResponse()->isRedirect());
-        $this->assertStringContainsString('/login', $this->client->getResponse()->headers->get('Location'));
+        $this->assertSame(['/' => 404, '/login' => 404, '/shopping-list' => 404, '/api/doc' => 404], $statuses);
+        $this->assertSame(['/' => [], '/login' => [], '/shopping-list' => [], '/api/doc' => []], $cookies);
     }
 
     private function savedUser(bool $admin = false, bool $disabled = false): User

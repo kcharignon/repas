@@ -21,6 +21,7 @@ Décisions d'architecture du projet Repas. **À relire avant de développer ou d
 | [0015](0015-refresh-token-du-spa.md) | Authentification du SPA : refresh token en cookie `HttpOnly` à rotation | Accepted |
 | [0016](0016-controle-de-version-etag-if-match.md) | Contrôle de modification concurrente : version, `ETag` et `If-Match` | Accepted |
 | [0017](0017-deploiement-et-releases.md) | Déploiement : release GitHub, images GHCR, bordure Caddy, retour arrière automatique | Accepted |
+| [0018](0018-extinction-de-twig.md) | Extinction de Twig : le back ne sert plus que l'API | Accepted |
 
 ## Sources
 

@@ -34,7 +34,7 @@ interface IngredientLoader
      */
     public function listCompatibleUnits(string $ingredientSlug): array;
     /**
-     * Ingrédients que l'utilisateur peut utiliser (communs et les siens), triés par nom : choix des formulaires et des recettes.
+     * Ingrédients que l'utilisateur peut utiliser (communs et les siens), triés par nom : sélecteur d'ingrédients des recettes.
      * `$search` ne garde que ceux dont le nom contient ce texte, sans tenir compte de la casse, des accents ni des espaces.
      *
      * @return list<IngredientOptionDTO>
