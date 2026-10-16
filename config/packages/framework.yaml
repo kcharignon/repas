@@ -22,3 +22,10 @@ when@test:
                 log_level: debug
             Repas\Shared\Domain\Exception\DomainException:
                 log_level: debug
+
+when@prod:
+    framework:
+        # Le profileur écrit une trace de chaque requête (corps compris) sur le disque et ajoute `X-Debug-Token` aux réponses :
+        # réservé au dev et aux tests (ADR 0017).
+        profiler:
+            enabled: false
