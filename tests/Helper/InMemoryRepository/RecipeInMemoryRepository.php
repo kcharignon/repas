@@ -59,4 +59,26 @@ class RecipeInMemoryRepository extends AbstractInMemoryRepository implements Rec
     {
         unset($this->models[$recipe->getId()]);
     }
+
+    public function findIdsByAuthor(string $authorId): array
+    {
+        return array_values($this->findByAuthor($authorId)->map(fn(Recipe $recipe) => $recipe->getId())->toArray());
+    }
+
+    public function makeCopiesOriginal(array $recipeIds): void
+    {
+        /** @var Recipe $recipe */
+        foreach ($this->models as $recipe) {
+            if (in_array($recipe->getOriginalId(), $recipeIds, true)) {
+                $recipe->setOriginalId(null);
+            }
+        }
+    }
+
+    public function deleteByAuthor(string $authorId): void
+    {
+        foreach ($this->findIdsByAuthor($authorId) as $recipeId) {
+            unset($this->models[$recipeId]);
+        }
+    }
 }

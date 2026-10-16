@@ -45,4 +45,18 @@ interface ShoppingListRepository
      * Un repas d'une liste de courses est-il planifié avec cette recette ?
      */
     public function isRecipePlanned(string $recipeId): bool;
+
+    /**
+     * Supprime toutes les listes d'un propriétaire, avec leurs repas, ingrédients et lignes (suppression d'un compte,
+     * ADR 0021). Opération en masse : les agrégats déjà chargés ne sont pas mis à jour.
+     */
+    public function deleteByOwner(string $ownerId): void;
+
+    /**
+     * Retire des listes de courses, quel qu'en soit le propriétaire, les repas planifiés avec ces recettes. Les quantités
+     * des lignes ne sont pas recalculées (suppression d'un compte, ADR 0021).
+     *
+     * @param list<string> $recipeIds
+     */
+    public function removeMealsOfRecipes(array $recipeIds): void;
 }

@@ -20,6 +20,11 @@ interface RefreshTokenRepository
     public function deleteFamily(string $familyId): void;
 
     /**
+     * Supprime toutes les connexions de l'utilisateur, sur tous ses appareils (compte désactivé ou supprimé, ADR 0021).
+     */
+    public function deleteAllOfUser(string $userId): void;
+
+    /**
      * Ne garde que les `$keep` familles les plus récemment actives de l'utilisateur et supprime les autres.
      */
     public function deleteOldestFamiliesOfUser(string $userId, int $keep): void;

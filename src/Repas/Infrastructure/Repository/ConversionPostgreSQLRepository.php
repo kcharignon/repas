@@ -16,6 +16,7 @@ use Repas\Repas\Domain\Model\Conversion as ConversionModel;
 use Repas\Repas\Domain\Model\Ingredient;
 use Repas\Repas\Domain\Model\Unit;
 use Repas\Repas\Infrastructure\Entity\Conversion as ConversionEntity;
+use Repas\Repas\Infrastructure\Entity\Ingredient as IngredientEntity;
 use Repas\Shared\Domain\Tool\Tab;
 
 readonly class ConversionPostgreSQLRepository extends PostgreSQLRepository implements ConversionRepository
@@ -145,6 +146,16 @@ readonly class ConversionPostgreSQLRepository extends PostgreSQLRepository imple
             ->delete()
             ->where('c.ingredientSlug = :ingredientSlug')
             ->setParameter('ingredientSlug', $ingredient->getSlug())
+            ->getQuery()
+            ->execute();
+    }
+
+    public function deleteByIngredientCreator(string $creatorId): void
+    {
+        $this->entityManager->createQueryBuilder()
+            ->delete(ConversionEntity::class, 'c')
+            ->where('c.ingredientSlug IN (SELECT i.slug FROM ' . IngredientEntity::class . ' i WHERE i.creatorId = :creator)')
+            ->setParameter('creator', $creatorId)
             ->getQuery()
             ->execute();
     }

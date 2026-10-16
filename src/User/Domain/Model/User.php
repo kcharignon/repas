@@ -7,6 +7,7 @@ use DateTimeImmutable;
 use Repas\Shared\Domain\Interface\AuthenticatedUser;
 use Repas\Shared\Domain\Model\ModelInterface;
 use Repas\Shared\Domain\Model\ModelTrait;
+use Repas\User\Domain\Exception\UserException;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use Symfony\Component\Security\Core\User\PasswordUpgraderInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
@@ -286,6 +287,34 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, Passwor
     public function passwordMatch(string $password): bool
     {
         return password_verify($password, $this->password);
+    }
+
+    /**
+     * L'administrateur confirme lui-même le compte : un compte en attente devient actif (ADR 0021).
+     *
+     * @throws UserException le compte n'est pas en attente
+     */
+    public function activate(): void
+    {
+        if ($this->status !== Status::PENDING) {
+            throw UserException::invalidStatusTransition($this->status, Status::ACTIVE);
+        }
+
+        $this->status = Status::ACTIVE;
+    }
+
+    /**
+     * Un compte en attente ou actif devient désactivé : il ne peut plus ni se connecter ni rien obtenir (ADR 0021).
+     *
+     * @throws UserException le compte est déjà désactivé
+     */
+    public function disable(): void
+    {
+        if ($this->status === Status::DISABLED) {
+            throw UserException::invalidStatusTransition($this->status, Status::DISABLED);
+        }
+
+        $this->status = Status::DISABLED;
     }
 
     public function isDisabled(): bool

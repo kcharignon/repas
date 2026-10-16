@@ -4,8 +4,10 @@ namespace Repas\Tests\User\Domain;
 
 
 use DateTimeImmutable;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Repas\Tests\Helper\Builder\UserBuilder;
+use Repas\User\Domain\Exception\UserException;
 use Repas\User\Domain\Model\User;
 use Repas\User\Domain\Model\UserStatus;
 
@@ -75,5 +77,79 @@ class UserTest extends TestCase
 
         // Then
         $this->assertSame(UserStatus::ACTIVE, $user->getStatus());
+    }
+
+    public function testAnAdministratorCanActivateAPendingAccount(): void
+    {
+        // Given
+        $user = new UserBuilder()->isPending()->build();
+
+        // When
+        $user->activate();
+
+        // Then
+        $this->assertSame(UserStatus::ACTIVE, $user->getStatus());
+    }
+
+    #[DataProvider('statusesThatAreNotPending')]
+    public function testOnlyAPendingAccountCanBeActivated(UserBuilder $builder, UserStatus $status): void
+    {
+        // Given
+        $user = $builder->build();
+
+        // Assert
+        $this->expectExceptionObject(UserException::invalidStatusTransition($status, UserStatus::ACTIVE));
+
+        // When
+        $user->activate();
+    }
+
+    /**
+     * @return iterable<string, array{UserBuilder, UserStatus}>
+     */
+    public static function statusesThatAreNotPending(): iterable
+    {
+        yield 'actif' => [new UserBuilder(), UserStatus::ACTIVE];
+        yield 'désactivé' => [new UserBuilder()->isDisabled(), UserStatus::DISABLED];
+    }
+
+    #[DataProvider('statusesThatCanBeDisabled')]
+    public function testAnActiveOrPendingAccountCanBeDisabled(UserBuilder $builder): void
+    {
+        // Given
+        $user = $builder->build();
+
+        // When
+        $user->disable();
+
+        // Then
+        $this->assertSame(UserStatus::DISABLED, $user->getStatus());
+        $this->assertTrue($user->isDisabled());
+    }
+
+    /**
+     * @return iterable<string, array{UserBuilder}>
+     */
+    public static function statusesThatCanBeDisabled(): iterable
+    {
+        yield 'actif' => [new UserBuilder()];
+        yield 'en attente' => [new UserBuilder()->isPending()];
+    }
+
+    public function testADisabledAccountCannotBeDisabledAgain(): void
+    {
+        // Given
+        $user = new UserBuilder()->isDisabled()->build();
+
+        // Assert
+        $this->expectExceptionObject(UserException::invalidStatusTransition(UserStatus::DISABLED, UserStatus::DISABLED));
+
+        // When
+        $user->disable();
+    }
+
+    public function testAnInvalidTransitionIsAConflictWithTheCurrentState(): void
+    {
+        $this->assertSame(409, UserException::invalidStatusTransition(UserStatus::DISABLED, UserStatus::ACTIVE)->getCode());
     }
 }

@@ -171,6 +171,8 @@ Le front est un projet séparé (`repas-front`), planifié dans [`front-vuejs-pl
 
 - [x] `SearchIngredients` — recherche d'ingrédients depuis la page des rayons du front ([ADR 0019](adr/0019-recherche-d-ingredients-par-pertinence.md)). Query `SearchIngredientsQuery(search, viewerId, viewerIsAdmin)`, DTO `IngredientSearchResultDTO` (`IngredientRowDTO` + rayon : slug, nom, image), `IngredientLoader::search()` (une requête, pertinence `SearchRelevance` / `JaroWinkler` en PHP, 30 résultats au plus), `GET /api/v1/ingredients/search?q=`. Le front l'affiche avec l'icône du rayon et le sélecteur de quantité.
 
+- [x] **Gestion des comptes par l'administrateur** ([ADR 0021](adr/0021-gestion-des-comptes-par-l-administrateur.md)) — `POST /api/v1/users/{id}/activate` (`PENDING` → `ACTIVE`), `POST /api/v1/users/{id}/disable` (`ACTIVE` ou `PENDING` → `DISABLED`, supprime les refresh tokens et les liens de confirmation), `DELETE /api/v1/users/{id}` (supprime le compte et tout ce qu'il possède). Commandes `ActivateUser`, `DisableUser`, `DeleteUser` (`User`) et `PurgeUserData` (`Repas`, déclenchée par `UserDeletedEvent` dans la même transaction) ; les copies de ses recettes faites par d'autres restent, `orignal` à `NULL`. `UserSummaryDTO` gagne `status`. Budgets SQL : `activer-compte` 3, `desactiver-compte` 4, `supprimer-compte` 15 (constant). Garde-fou `UserOwnedDataCoverageTest`. **Reste (front)** : écran d'administration des comptes (statut, activer, désactiver, supprimer avec confirmation). Pas de réactivation d'un compte désactivé (non demandée).
+
 ## Chantiers de maintenance (décidés le 2026-10-14, une PR chacun, dans cet ordre)
 
 Issus des points « hors périmètre » des PR et de `composer audit` (32 avis de sécurité, Symfony 7.2 hors support). PHP reste en 8.4.
@@ -205,6 +207,8 @@ Audit de tous les controllers qui dispatchent une commande (méthode HTTP et gar
 - [x] ~~Supprimer une recette laisse ses lignes orphelines~~ : corrigé en phase 9 (`RecipeRowPostgreSQLRepository::deleteByRecipeId` appelé par `RecipePostgreSQLRepository::delete`, test de repository sur base réelle, migration de nettoyage).
 
 ## Hors périmètre (vus en passant, non corrigés)
+
+- **Planifier la recette d'un autre** : `PUT /shopping-lists/active/recipes/{recipeId}` (`PlannedMealHandler`) ne vérifie pas que la recette appartient à l'utilisateur (le front ne propose que les siennes). Vu en concevant la suppression d'un compte ([0021](adr/0021-gestion-des-comptes-par-l-administrateur.md)) : un repas qui planifie la recette d'un compte supprimé est retiré de la liste, sans recalcul des quantités. À trancher : refuser (403/404) ou assumer.
 
 - **Twig seulement, non corrigé (supprimé en phase 10)** : `GetActiveShoppingListViewController` crée la liste active sur un GET (lecture avec effet de bord, `EnsureActiveShoppingList`) : à garder tant que le front Twig l'attend, à supprimer avec l'API.
 - Inscription publique (`POST /api/v1/users`) : l'adresse est confirmée par un lien depuis [0020](adr/0020-confirmation-d-adresse-email.md) (pas de captcha) ; un email déjà pris répond 409, ce qui révèle l'existence du compte (le formulaire Twig le fait déjà). Le plafond par IP ne vaut que si `SYMFONY_TRUSTED_PROXIES` est configuré derrière un reverse proxy.

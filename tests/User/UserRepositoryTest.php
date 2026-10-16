@@ -79,6 +79,49 @@ class UserRepositoryTest extends DatabaseTestCase
         $this->userRepository->save(new UserBuilder()->withEmail('twice@test.com')->build());
     }
 
+    public function testADeletedUserIsGoneAndTheOthersStay(): void
+    {
+        //Arrange
+        $leaving = new UserBuilder()->withEmail('leaving@test.com')->build();
+        $staying = new UserBuilder()->withEmail('staying@test.com')->build();
+        $this->userRepository->save($leaving);
+        $this->userRepository->save($staying);
+
+        //Act
+        $this->userRepository->delete($leaving);
+        $this->entityManager->clear();
+
+        //Assert
+        $this->assertFalse($this->userRepository->emailExists('leaving@test.com'));
+        $this->assertTrue($this->userRepository->emailExists('staying@test.com'));
+        $this->expectExceptionObject(UserException::NotFound($leaving->getId()));
+        $this->userRepository->findOneById($leaving->getId());
+    }
+
+    public function testDeletingAnUnknownUserIsNotAnError(): void
+    {
+        //Act
+        $this->userRepository->delete(new UserBuilder()->build());
+
+        //Assert
+        $this->assertSame(0, $this->userRepository->findAll()->count());
+    }
+
+    public function testAStatusChangeIsPersisted(): void
+    {
+        //Arrange
+        $user = new UserBuilder()->isPending()->build();
+        $this->userRepository->save($user);
+
+        //Act
+        $user->disable();
+        $this->userRepository->save($user);
+        $this->entityManager->clear();
+
+        //Assert
+        $this->assertTrue($this->userRepository->findOneById($user->getId())->isDisabled());
+    }
+
     public function testUserNotFound(): void
     {
         //Assert

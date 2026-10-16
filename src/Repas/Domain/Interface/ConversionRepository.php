@@ -29,6 +29,12 @@ interface ConversionRepository
     public function deleteByIngredient(Ingredient $ingredient): void;
 
     /**
+     * Supprime les conversions des ingrédients personnalisés d'un créateur (suppression d'un compte, ADR 0021). À appeler
+     * avant `IngredientRepository::deleteByCreator()`.
+     */
+    public function deleteByIngredientCreator(string $creatorId): void;
+
+    /**
      * @return Tab<Conversion>
      */
     public function findByIngredient(Ingredient $ingredient): Tab;

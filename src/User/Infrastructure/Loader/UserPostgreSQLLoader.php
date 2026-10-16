@@ -68,6 +68,7 @@ final readonly class UserPostgreSQLLoader implements UserLoader
                     : '',
                 isDisabled: $row['status'] === UserStatus::DISABLED,
                 isAdmin: in_array('ROLE_ADMIN', $row['roles'], true),
+                status: $row['status']->value,
             );
         }, $rows);
     }

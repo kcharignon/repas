@@ -135,6 +135,28 @@ class RefreshTokenRepositoryTest extends DatabaseTestCase
         $this->assertNotNull($this->refreshTokenRepository->findOneByTokenHash('hash-recent'));
     }
 
+    public function testDeleteAllOfUserRemovesEveryConnectionOfTheUserAndOnlyThose(): void
+    {
+        // Arrange : deux appareils (dont une famille avec un jeton utilisé) et la connexion d'un autre utilisateur
+        $first = RefreshToken::startFamily('id-1', 'family-1', 'user-id', 'hash-1', 0, $this->now);
+        $this->refreshTokenRepository->save($first);
+        $this->refreshTokenRepository->save($first->rotate('id-2', 'hash-2', $this->now));
+        $this->refreshTokenRepository->save(RefreshToken::startFamily('id-3', 'family-2', 'user-id', 'hash-3', 0, $this->now));
+        $this->refreshTokenRepository->save(RefreshToken::startFamily('id-4', 'family-3', 'other-id', 'hash-4', 0, $this->now));
+
+        // Act
+        $this->refreshTokenRepository->deleteAllOfUser('user-id');
+
+        // Assert : même sans vider l'identity map, les lignes supprimées ne sont plus rendues
+        foreach (['hash-1', 'hash-2', 'hash-3'] as $hash) {
+            $this->assertNull($this->refreshTokenRepository->findOneByTokenHash($hash), $hash);
+        }
+        $this->assertNotNull($this->refreshTokenRepository->findOneByTokenHash('hash-4'));
+        $this->clearIdentityMap();
+        $this->assertNull($this->refreshTokenRepository->findOneByTokenHash('hash-1'));
+        $this->assertNotNull($this->refreshTokenRepository->findOneByTokenHash('hash-4'));
+    }
+
     private function clearIdentityMap(): void
     {
         static::getContainer()->get('doctrine')->getManager()->clear();

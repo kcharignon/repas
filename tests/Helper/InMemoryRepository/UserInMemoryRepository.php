@@ -45,6 +45,11 @@ class UserInMemoryRepository implements UserRepository
         $this->users[$user->getId()] = $user;
     }
 
+    public function delete(User $user): void
+    {
+        unset($this->users[$user->getId()]);
+    }
+
     public function findAll(): Tab
     {
         return $this->users;

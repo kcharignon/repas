@@ -68,4 +68,9 @@ class IngredientInMemoryRepository extends AbstractInMemoryRepository implements
     {
         unset($this->models[$ingredient->getId()]);
     }
+
+    public function deleteByCreator(string $creatorId): void
+    {
+        $this->models = $this->models->filter(fn(Ingredient $ingredient) => $ingredient->getCreatorId() !== $creatorId);
+    }
 }

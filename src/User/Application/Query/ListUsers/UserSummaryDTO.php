@@ -25,6 +25,8 @@ final readonly class UserSummaryDTO
         public bool $isDisabled,
         #[OA\Property(description: 'L\'utilisateur est administrateur')]
         public bool $isAdmin,
+        #[OA\Property(description: 'État du compte : `PENDING` (adresse email pas encore confirmée), `ACTIVE` ou `DISABLED`', enum: ['PENDING', 'ACTIVE', 'DISABLED'], example: 'ACTIVE')]
+        public string $status,
     ) {
     }
 }

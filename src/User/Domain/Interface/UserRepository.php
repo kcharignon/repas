@@ -29,4 +29,9 @@ interface UserRepository
     public function findAll(): Tab;
 
     public function save(User $user): void;
+
+    /**
+     * Supprime le compte lui-même ; ses jetons et ses données du contexte `Repas` partent avec lui (ADR 0021).
+     */
+    public function delete(User $user): void;
 }

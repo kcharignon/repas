@@ -46,6 +46,9 @@ use Repas\Tests\Helper\Builder\ShoppingListBuilder;
 use Repas\Tests\Helper\Builder\UnitBuilder;
 use Repas\Tests\Helper\Builder\UserBuilder;
 use Repas\Tests\Helper\WriteBudgetTestCase;
+use Repas\User\Application\ActivateUser\ActivateUserCommand;
+use Repas\User\Application\DeleteUser\DeleteUserCommand;
+use Repas\User\Application\DisableUser\DisableUserCommand;
 use Repas\User\Application\RegisterNewUser\RegisterNewUserCommand;
 use Repas\User\Application\SendEmailVerification\SendEmailVerificationCommand;
 use Repas\User\Application\UpdateUserSettings\UpdateUserSettingsCommand;
@@ -301,5 +304,26 @@ return [
         $user = $t->savedUser();
 
         return new UpdateUserSettingsCommand($user->getId(), null, 5);
+    },
+    'activer-compte' => static function (WriteBudgetTestCase $t): object {
+        $user = $t->savedUser(new UserBuilder()->isPending());
+        $t->savedEmailVerificationToken($user, 'le-secret');
+
+        return new ActivateUserCommand($user->getId());
+    },
+    'desactiver-compte' => static function (WriteBudgetTestCase $t): object {
+        $user = $t->savedUser();
+        $t->savedEmailVerificationToken($user, 'le-secret');
+
+        return new DisableUserCommand($user->getId(), 'administrateur');
+    },
+    // Compte qui a trois recettes planifiées dans une liste, dont une est copiée par un autre utilisateur
+    'supprimer-compte' => static function (WriteBudgetTestCase $t): object {
+        $owner = $t->savedUser();
+        $recipes = $t->typicalRecipes($owner);
+        $t->savedShoppingList($owner, $recipes);
+        $t->savedRecipe($t->savedUser(), new RecipeBuilder()->isPastaCarbonara()->withOriginalId($recipes[0]->getId()));
+
+        return new DeleteUserCommand($owner->getId(), 'administrateur');
     },
 ];

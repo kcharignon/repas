@@ -55,4 +55,10 @@ interface IngredientRepository
     public function findAll(): Tab;
 
     public function delete(Ingredient $ingredient): void;
+
+    /**
+     * Supprime les ingrédients personnalisés d'un créateur (suppression d'un compte, ADR 0021). Opération en masse :
+     * ni contrôle d'usage ni événement par ingrédient, et les agrégats déjà chargés ne sont pas mis à jour.
+     */
+    public function deleteByCreator(string $creatorId): void;
 }
