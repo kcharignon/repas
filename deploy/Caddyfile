@@ -5,13 +5,13 @@
 	{$CADDY_GLOBAL_OPTIONS}
 }
 
-# Ancienne application (Twig, session) : tout part vers le back, comme avant l'arrivée du front.
+# Ancien nom de domaine : redirigé en permanence vers le site, chemin et paramètres conservés (signets, liens partagés).
 {$LEGACY_HOST} {
-	reverse_proxy php:80
+	redir https://{$APP_HOST}{uri} permanent
 }
 
-# Nouvelle application : le SPA, et l'API et les images relayées directement vers le back. La bordure est ainsi le seul
-# relais devant le back, qui lit l'adresse du visiteur dans `X-Forwarded-For` (SYMFONY_TRUSTED_PROXIES).
+# Le site : le SPA, et l'API et les images relayées directement vers le back. La bordure est ainsi le seul relais devant
+# le back, qui lit l'adresse du visiteur dans `X-Forwarded-For` (SYMFONY_TRUSTED_PROXIES).
 {$APP_HOST} {
 	@back path /api/* /images/*
 	handle @back {
