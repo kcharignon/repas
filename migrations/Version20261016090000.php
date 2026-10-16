@@ -32,6 +32,19 @@ final class Version20261016090000 extends AbstractMigration
         'hygiene' => 3212855,
     ];
 
+    /** Rayons présents seulement en production (absents des fixtures) : slug => identifiant Flaticon. */
+    private const PRODUCTION_ONLY_DEPARTMENTS = [
+        'petit-dejeuner' => 887396,
+    ];
+
+    /**
+     * Autre icône Flaticon qu'un rayon des fixtures porte en production : slug => identifiant.
+     * Les deux anciennes URLs mènent au même fichier local ; `down()` ne restaure que celle des fixtures.
+     */
+    private const DEPARTMENT_ALTERNATIVES = [
+        'hygiene' => 4990880,
+    ];
+
     /** Icônes d'ingrédient : slug de l'ingrédient => [identifiant Flaticon (CDN 64 px), fichier local]. */
     private const INGREDIENTS = [
         'avocat' => [135609, 'avocat'],
@@ -50,6 +63,10 @@ final class Version20261016090000 extends AbstractMigration
             $this->swap('department', $slug, $this->departmentCdnUrl($id), $this->departmentPath($slug));
         }
 
+        foreach ([...self::PRODUCTION_ONLY_DEPARTMENTS, ...self::DEPARTMENT_ALTERNATIVES] as $slug => $id) {
+            $this->swap('department', $slug, $this->departmentCdnUrl($id), $this->departmentPath($slug));
+        }
+
         foreach (self::INGREDIENTS as $slug => [$id, $file]) {
             $this->swap('ingredient', $slug, $this->ingredientCdnUrl($id), $this->ingredientPath($file));
         }
@@ -58,6 +75,10 @@ final class Version20261016090000 extends AbstractMigration
     public function down(Schema $schema): void
     {
         foreach (self::DEPARTMENTS as $slug => $id) {
+            $this->swap('department', $slug, $this->departmentPath($slug), $this->departmentCdnUrl($id));
+        }
+
+        foreach (self::PRODUCTION_ONLY_DEPARTMENTS as $slug => $id) {
             $this->swap('department', $slug, $this->departmentPath($slug), $this->departmentCdnUrl($id));
         }
 
