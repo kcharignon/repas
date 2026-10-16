@@ -8,17 +8,18 @@ use Repas\User\Application\DeleteUser\DeleteUserCommand;
 
 class DeleteUserApiControllerTest extends QueryBusWebTestCase
 {
-    public function testAnAdministratorDeletesAnAccount(): void
+    public function testAnAdministratorDeletesAnAccountAndIsTheActingUser(): void
     {
         // Given
+        $admin = $this->savedUser(admin: true);
         $commandBus = $this->mockCommandBus();
 
         // When
-        $this->client->request('DELETE', '/api/v1/users/target-id', server: $this->bearerFor($this->savedUser(admin: true)));
+        $this->client->request('DELETE', '/api/v1/users/target-id', server: $this->bearerFor($admin));
 
         // Then
         $this->assertSame(204, $this->client->getResponse()->getStatusCode());
-        $this->assertEquals([new DeleteUserCommand('target-id')], $commandBus->dispatched());
+        $this->assertEquals([new DeleteUserCommand('target-id', $admin->getId())], $commandBus->dispatched());
     }
 
     public function testAUserWithoutTheAdminRoleIsRefused(): void

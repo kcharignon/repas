@@ -126,7 +126,8 @@ class ChangeUserStatusHandlerTest extends TestCase
         yield 'toujours en attente' => [UserStatus::PENDING, true];
     }
 
-    public function testTheProtectedAccountCannotBeDisabledAndKeepsItsConnections(): void
+    #[DataProvider('statusesRefusedToTheProtectedAccount')]
+    public function testTheProtectedAccountIsUntouchableAndKeepsItsConnections(UserStatus $to): void
     {
         // Given
         $this->userRepository->save(new UserBuilder()->withId('user-id')->withEmail(User::PROTECTED_EMAIL)->build());
@@ -134,14 +135,35 @@ class ChangeUserStatusHandlerTest extends TestCase
 
         // When
         try {
-            ($this->handler)(new ChangeUserStatusCommand('user-id', UserStatus::DISABLED));
-            $this->fail('Le compte protégé ne se désactive pas.');
+            ($this->handler)(new ChangeUserStatusCommand('user-id', $to));
+            $this->fail('Le compte protégé est intouchable.');
         } catch (UserException $exception) {
             // Then
             $this->assertEquals(UserException::protectedAccount(), $exception);
             $this->assertSame(UserStatus::ACTIVE, $this->userRepository->findOneById('user-id')->getStatus());
             $this->assertNotNull($this->refreshTokenRepository->findOneByTokenHash('hash-1'));
         }
+    }
+
+    /**
+     * @return iterable<string, array{UserStatus}>
+     */
+    public static function statusesRefusedToTheProtectedAccount(): iterable
+    {
+        yield 'désactivé' => [UserStatus::DISABLED];
+        yield 'en attente' => [UserStatus::PENDING];
+    }
+
+    public function testTheProtectedAccountStaysActiveWhenActiveIsRequested(): void
+    {
+        // Given
+        $this->userRepository->save(new UserBuilder()->withId('user-id')->withEmail(User::PROTECTED_EMAIL)->build());
+
+        // When
+        ($this->handler)(new ChangeUserStatusCommand('user-id', UserStatus::ACTIVE));
+
+        // Then
+        $this->assertSame(UserStatus::ACTIVE, $this->userRepository->findOneById('user-id')->getStatus());
     }
 
     public function testAnUnknownAccountIsNotFound(): void

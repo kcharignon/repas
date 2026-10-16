@@ -319,6 +319,6 @@ return [
         $t->savedShoppingList($owner, $recipes);
         $t->savedRecipe($t->savedUser(), new RecipeBuilder()->isPastaCarbonara()->withOriginalId($recipes[0]->getId()));
 
-        return new DeleteUserCommand($owner->getId());
+        return new DeleteUserCommand($owner->getId(), 'administrateur');
     },
 ];

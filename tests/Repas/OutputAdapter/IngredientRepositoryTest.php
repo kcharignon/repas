@@ -44,6 +44,41 @@ class IngredientRepositoryTest extends DatabaseTestCase
         $this->assertSame($ingredient->getDefaultPurchaseUnit()->getSlug(), $this->ingredientRepository->findPurchaseUnitSlug($ingredient->getSlug()));
     }
 
+    public function testFindPurchaseUnitSlugUsableByGivesTheUnitOfACommonIngredientAndOfTheCreatorsOwn(): void
+    {
+        // Arrange
+        $creator = new UserBuilder()->build();
+        $this->persister->saveUser($creator);
+        $common = new IngredientBuilder()->isPasta()->build();
+        $custom = new IngredientBuilder()->isButter()->withCreator($creator, true)->build();
+        $this->persister->saveIngredient($common);
+        $this->persister->saveIngredient($custom);
+
+        // Act & Assert
+        $this->assertSame($common->getDefaultPurchaseUnit()->getSlug(), $this->ingredientRepository->findPurchaseUnitSlugUsableBy($common->getSlug(), $creator->getId()));
+        $this->assertSame($common->getDefaultPurchaseUnit()->getSlug(), $this->ingredientRepository->findPurchaseUnitSlugUsableBy($common->getSlug(), 'another-user-id'));
+        $this->assertSame($custom->getDefaultPurchaseUnit()->getSlug(), $this->ingredientRepository->findPurchaseUnitSlugUsableBy($custom->getSlug(), $creator->getId()));
+    }
+
+    public function testFindPurchaseUnitSlugUsableByFailsForTheCustomIngredientOfAnotherUserAndForAnUnknownOne(): void
+    {
+        // Arrange
+        $creator = new UserBuilder()->build();
+        $this->persister->saveUser($creator);
+        $custom = new IngredientBuilder()->isButter()->withCreator($creator, true)->build();
+        $this->persister->saveIngredient($custom);
+
+        // Assert & Act
+        try {
+            $this->ingredientRepository->findPurchaseUnitSlugUsableBy($custom->getSlug(), 'another-user-id');
+            $this->fail("L'ingrédient personnalisé d'un autre est inconnu.");
+        } catch (IngredientException $exception) {
+            $this->assertEquals(IngredientException::notFound($custom->getSlug()), $exception);
+        }
+        $this->expectExceptionObject(IngredientException::notFound('inconnu'));
+        $this->ingredientRepository->findPurchaseUnitSlugUsableBy('inconnu', $creator->getId());
+    }
+
     public function testFindPurchaseUnitSlugFailsForAnUnknownIngredient(): void
     {
         // Assert

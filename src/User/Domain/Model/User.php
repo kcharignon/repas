@@ -293,14 +293,14 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, Passwor
     }
 
     /**
-     * L'administrateur fixe le statut du compte, quel que soit l'ancien (ADR 0021). Seule règle : le compte protégé ne
-     * devient jamais désactivé.
+     * L'administrateur fixe le statut du compte, quel que soit l'ancien (ADR 0021). Seule règle : le compte protégé est
+     * intouchable, il ne peut qu'être actif.
      *
-     * @throws UserException le compte est protégé et le statut demandé le désactiverait
+     * @throws UserException le compte est protégé et le statut demandé le rendrait inutilisable
      */
     public function changeStatus(Status $status): void
     {
-        if ($status === Status::DISABLED && $this->isProtected()) {
+        if ($status !== Status::ACTIVE && $this->isProtected()) {
             throw UserException::protectedAccount();
         }
 
@@ -308,8 +308,8 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, Passwor
     }
 
     /**
-     * Compte que personne ne peut désactiver ni supprimer, pas même un administrateur : celui de son propriétaire, qui
-     * perdrait sinon l'administration sans reprise possible (ADR 0021).
+     * Compte intouchable : personne ne peut le désactiver, le remettre en attente ni le supprimer, pas même un administrateur.
+     * C'est celui de son propriétaire, qui perdrait sinon l'administration sans reprise possible (ADR 0021).
      */
     public function isProtected(): bool
     {

@@ -218,7 +218,7 @@
                         "description": "Quantit\u00e9 augment\u00e9e"
                     },
                     "404": {
-                        "description": "Ressource inconnue"
+                        "description": "Aucune liste active, ou ingr\u00e9dient inconnu ou personnalis\u00e9 d'un autre utilisateur"
                     },
                     "412": {
                         "description": "La version de la liste n'est plus celle de `If-Match` : elle a \u00e9t\u00e9 modifi\u00e9e depuis sa lecture"
@@ -1873,7 +1873,7 @@
                     "Users"
                 ],
                 "summary": "Fixe le statut d'un compte (administrateur), quel que soit l'ancien",
-                "description": "Un compte d\u00e9sactiv\u00e9 ne peut plus se connecter ni rien obtenir ; un compte d\u00e9sactiv\u00e9 ou en attente perd ses connexions ouvertes. Fixer le statut qu'a d\u00e9j\u00e0 le compte est sans effet. Seul le compte prot\u00e9g\u00e9 ne peut pas \u00eatre d\u00e9sactiv\u00e9 (ADR 0021).",
+                "description": "Un compte d\u00e9sactiv\u00e9 ne peut plus se connecter ni rien obtenir ; un compte d\u00e9sactiv\u00e9 ou en attente perd ses connexions ouvertes. Fixer le statut qu'a d\u00e9j\u00e0 le compte est sans effet. Le compte prot\u00e9g\u00e9 est intouchable : seul le statut ACTIVE lui est permis (ADR 0021).",
                 "operationId": "put_api_change_user_status",
                 "parameters": [
                     {
@@ -1906,7 +1906,7 @@
                         "description": "Utilisateur inconnu"
                     },
                     "422": {
-                        "description": "Corps invalide, ou compte prot\u00e9g\u00e9 qu'on d\u00e9sactiverait (`PROTECTED_ACCOUNT`)"
+                        "description": "Corps invalide, ou compte prot\u00e9g\u00e9 (`PROTECTED_ACCOUNT`) : seul le statut `ACTIVE` lui est permis"
                     }
                 }
             }
@@ -1974,7 +1974,7 @@
                         "description": "Utilisateur inconnu"
                     },
                     "422": {
-                        "description": "Le compte prot\u00e9g\u00e9 ne se supprime pas (`PROTECTED_ACCOUNT`)"
+                        "description": "L'administrateur ne supprime pas son propre compte (`CANNOT_DELETE_OWN_ACCOUNT`), ni le compte prot\u00e9g\u00e9 (`PROTECTED_ACCOUNT`)"
                     }
                 }
             }

@@ -109,43 +109,46 @@ class UserTest extends TestCase
         }
     }
 
-    #[DataProvider('statusesOtherThanDisabled')]
-    public function testTheProtectedAccountCanTakeAnyStatusButDisabled(UserStatus $to): void
+    #[DataProvider('statusesOfAProtectedAccount')]
+    public function testTheProtectedAccountIsUntouchableButCanBeActive(UserStatus $from): void
     {
         // Given
-        $user = new UserBuilder()->withEmail(User::PROTECTED_EMAIL)->build();
+        $user = $this->userWithStatus($from, User::PROTECTED_EMAIL);
 
         // When
-        $user->changeStatus($to);
+        $user->changeStatus(UserStatus::ACTIVE);
 
-        // Then
-        $this->assertSame($to, $user->getStatus());
+        // Then : rétablir l'accès est permis, quel que soit l'état de départ
+        $this->assertSame(UserStatus::ACTIVE, $user->getStatus());
     }
 
-    /**
-     * @return iterable<string, array{UserStatus}>
-     */
-    public static function statusesOtherThanDisabled(): iterable
-    {
-        yield 'actif' => [UserStatus::ACTIVE];
-        yield 'en attente' => [UserStatus::PENDING];
-    }
-
-    #[DataProvider('statusesOfAProtectedAccount')]
-    public function testTheProtectedAccountCannotBeDisabled(UserStatus $from): void
+    #[DataProvider('protectedAccountChanges')]
+    public function testTheProtectedAccountCannotBeDisabledNorPutPending(UserStatus $from, UserStatus $to): void
     {
         // Given
         $user = $this->userWithStatus($from, User::PROTECTED_EMAIL);
 
         // When
         try {
-            $user->changeStatus(UserStatus::DISABLED);
-            $this->fail('Le compte protégé ne se désactive pas.');
+            $user->changeStatus($to);
+            $this->fail('Le compte protégé est intouchable.');
         } catch (UserException $exception) {
             // Then
             $this->assertEquals(UserException::protectedAccount(), $exception);
             $this->assertSame(422, $exception->getCode());
             $this->assertSame($from, $user->getStatus());
+        }
+    }
+
+    /**
+     * @return iterable<string, array{UserStatus, UserStatus}>
+     */
+    public static function protectedAccountChanges(): iterable
+    {
+        foreach (UserStatus::cases() as $from) {
+            foreach ([UserStatus::PENDING, UserStatus::DISABLED] as $to) {
+                yield "$from->value vers $to->value" => [$from, $to];
+            }
         }
     }
 

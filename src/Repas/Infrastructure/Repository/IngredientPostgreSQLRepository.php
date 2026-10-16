@@ -74,6 +74,16 @@ readonly class IngredientPostgreSQLRepository extends PostgreSQLRepository imple
         return $entity->getDefaultPurchaseUnitSlug();
     }
 
+    public function findPurchaseUnitSlugUsableBy(string $slug, string $userId): string
+    {
+        $entity = $this->entityRepository->find($slug) ?? throw IngredientException::notFound($slug);
+        if ($entity->getCreatorId() !== null && $entity->getCreatorId() !== $userId) {
+            throw IngredientException::notFound($slug);
+        }
+
+        return $entity->getDefaultPurchaseUnitSlug();
+    }
+
     public function exists(string $slug): bool
     {
         return $this->entityRepository->find($slug) !== null;

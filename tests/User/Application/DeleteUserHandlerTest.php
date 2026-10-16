@@ -47,7 +47,7 @@ class DeleteUserHandlerTest extends TestCase
         $this->emailVerificationTokenRepository->add(EmailVerificationToken::issue('link-1', 'user-id', 'link-hash-1', $this->now));
 
         // When
-        ($this->handler)(new DeleteUserCommand('user-id'));
+        ($this->handler)(new DeleteUserCommand('user-id', 'admin-id'));
 
         // Then
         $this->assertFalse($this->userRepository->emailExists("user-id@example.com"));
@@ -58,17 +58,37 @@ class DeleteUserHandlerTest extends TestCase
         $this->assertEquals([new UserDeletedEvent('user-id')], $this->eventDispatcher->eventDispatched);
     }
 
-    public function testAnAdministratorCanDeleteHisOwnAccount(): void
+    public function testAnAdministratorCannotDeleteHisOwnAccount(): void
     {
         // Given
         $this->userRepository->save(new UserBuilder()->withId('admin-id')->isAdmin()->build());
+        $this->refreshTokenRepository->save(RefreshToken::startFamily('token-1', 'family-1', 'admin-id', 'hash-1', 0, $this->now));
 
         // When
-        ($this->handler)(new DeleteUserCommand('admin-id'));
+        try {
+            ($this->handler)(new DeleteUserCommand('admin-id', 'admin-id'));
+            $this->fail('Un administrateur ne supprime pas son propre compte.');
+        } catch (UserException $exception) {
+            // Then
+            $this->assertEquals(UserException::cannotDeleteOwnAccount(), $exception);
+            $this->assertSame(422, $exception->getCode());
+            $this->assertTrue($this->userRepository->emailExists('admin-id@example.com'));
+            $this->assertNotNull($this->refreshTokenRepository->findOneByTokenHash('hash-1'));
+            $this->assertSame([], $this->eventDispatcher->eventDispatched);
+        }
+    }
+
+    public function testAnAdministratorCanDeleteAnotherAdministrator(): void
+    {
+        // Given
+        $this->userRepository->save(new UserBuilder()->withId('other-admin-id')->isAdmin()->build());
+
+        // When
+        ($this->handler)(new DeleteUserCommand('other-admin-id', 'admin-id'));
 
         // Then
-        $this->assertFalse($this->userRepository->emailExists('admin-id@example.com'));
-        $this->assertEquals([new UserDeletedEvent('admin-id')], $this->eventDispatcher->eventDispatched);
+        $this->assertFalse($this->userRepository->emailExists('other-admin-id@example.com'));
+        $this->assertEquals([new UserDeletedEvent('other-admin-id')], $this->eventDispatcher->eventDispatched);
     }
 
     public function testTheProtectedAccountIsNeitherDeletedNorAnnounced(): void
@@ -79,7 +99,7 @@ class DeleteUserHandlerTest extends TestCase
 
         // When
         try {
-            ($this->handler)(new DeleteUserCommand('owner-id'));
+            ($this->handler)(new DeleteUserCommand('owner-id', 'admin-id'));
             $this->fail('Le compte protégé ne se supprime pas.');
         } catch (UserException $exception) {
             // Then
@@ -94,7 +114,7 @@ class DeleteUserHandlerTest extends TestCase
     {
         // When
         try {
-            ($this->handler)(new DeleteUserCommand('ghost-id'));
+            ($this->handler)(new DeleteUserCommand('ghost-id', 'admin-id'));
             $this->fail('Un compte inconnu est introuvable.');
         } catch (UserException $exception) {
             // Then

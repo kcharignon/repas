@@ -33,6 +33,14 @@ interface IngredientRepository
     public function findPurchaseUnitSlug(string $slug): string;
 
     /**
+     * Comme `findPurchaseUnitSlug()`, pour poser l'ingrédient dans la liste d'un utilisateur : un ingrédient commun est
+     * utilisable par tous, un ingrédient personnalisé seulement par son créateur, celui d'un autre est traité comme inconnu.
+     *
+     * @throws IngredientException
+     */
+    public function findPurchaseUnitSlugUsableBy(string $slug, string $userId): string;
+
+    /**
      * @return Tab<Ingredient>
      */
     public function findByDepartmentAndOwner(Department $department, string $ownerId): Tab;
