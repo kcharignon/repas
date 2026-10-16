@@ -26,6 +26,7 @@ description: Développer une fonctionnalité du projet Repas (Symfony 8.1 / PHP 
 - Domaine : `create()` pour créer, `load()` réservé à l'infra et aux builders de test ; ids et dates injectés par le handler (`UuidGenerator`, `Clock`) (ADR 0002).
 - Controllers : un controller = une route = une action, aucune logique métier, injecter les **interfaces** des buses. API : `{UseCase}ApiController` dans `Http/Api/{UseCase}/`. L'utilisateur connecté s'obtient par `#[CurrentUser] AuthenticatedUser $user` (`Shared\Domain\Interface`, accesseurs `getId()` et `getDefaultServing()`) puis `$user->getId()` : jamais `User\Domain\Model\User` dans le contexte `Repas` (ADR 0001 §8).
 - API : `/api/v1`, stateless JWT, `{member,totalItems}` en lecture de liste, `204`/`201 + Location` en écriture, erreurs `{error:{message}}`, `#[OA\…]` obligatoire (ADR 0007/0008).
+- Emails sortants (ADR 0020) : un port `Domain/Interface/…Notifier`, un adaptateur `Infrastructure/Mailer/` (Symfony Mailer, texte et HTML en PHP, sans Twig), envoi direct dans la requête (pas de worker) ; `MAILER_DSN` / `MAILER_FROM` / `FRONT_URL`, Mailpit en dev (http://localhost:8025), `null://null` en test.
 - Le back ne sert que l'API (ADR 0018) : pas de page, de session ni de formulaire. Un changement de contrat se relit dans `docs/api/openapi.json` (`make openapi`, `make openapi-check`).
 
 ## 2. Chemins et noms

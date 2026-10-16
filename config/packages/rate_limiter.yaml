@@ -6,6 +6,12 @@ framework:
             policy: sliding_window
             limit: 10
             interval: '1 hour'
+        # Confirmation d'adresse email (POST /api/v1/users/email-verification/send et /confirm), par adresse IP
+        # (EmailVerificationRateLimitListener, ADR 0020) : chaque renvoi accepté envoie un email.
+        email_verification:
+            policy: sliding_window
+            limit: 20
+            interval: '1 hour'
         # Rafraîchissement du JWT (POST /api/auth/refresh), par adresse IP (RefreshTokenRateLimitListener, ADR 0015 §9) :
         # un SPA le sollicite à chaque rechargement de page et toutes les heures, 60 par 10 minutes laissent de la marge.
         refresh_token:
@@ -19,4 +25,6 @@ when@test:
             registration:
                 cache_pool: test.rate_limiter_pool
             refresh_token:
+                cache_pool: test.rate_limiter_pool
+            email_verification:
                 cache_pool: test.rate_limiter_pool

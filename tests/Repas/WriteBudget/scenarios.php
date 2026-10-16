@@ -44,9 +44,13 @@ use Repas\Tests\Helper\Builder\RecipeBuilder;
 use Repas\Tests\Helper\Builder\RecipeTypeBuilder;
 use Repas\Tests\Helper\Builder\ShoppingListBuilder;
 use Repas\Tests\Helper\Builder\UnitBuilder;
+use Repas\Tests\Helper\Builder\UserBuilder;
 use Repas\Tests\Helper\WriteBudgetTestCase;
 use Repas\User\Application\RegisterNewUser\RegisterNewUserCommand;
+use Repas\User\Application\SendEmailVerification\SendEmailVerificationCommand;
 use Repas\User\Application\UpdateUserSettings\UpdateUserSettingsCommand;
+use Repas\User\Application\VerifyEmail\VerifyEmailCommand;
+use Repas\User\Domain\Model\EmailVerificationToken;
 
 /**
  * Un scénario = un use case d'écriture mesuré sur une situation typique : un utilisateur avec trois recettes
@@ -281,6 +285,18 @@ return [
 
     // --- Utilisateurs
     'inscription' => static fn(WriteBudgetTestCase $t): object => new RegisterNewUserCommand(UuidGenerator::new(), 'nouveau@example.com', 'mot-de-passe', 3),
+    'renvoi-confirmation-email' => static function (WriteBudgetTestCase $t): object {
+        $user = $t->savedUser(new UserBuilder()->withEmail('attente@example.com')->isPending());
+        $t->savedEmailVerificationToken($user, 'ancien-secret', minutesAgo: 5);
+
+        return new SendEmailVerificationCommand('attente@example.com');
+    },
+    'confirmation-email' => static function (WriteBudgetTestCase $t): object {
+        $user = $t->savedUser(new UserBuilder()->isPending());
+        $t->savedEmailVerificationToken($user, 'le-secret');
+
+        return new VerifyEmailCommand(EmailVerificationToken::hash('le-secret'));
+    },
     'reglages-utilisateur' => static function (WriteBudgetTestCase $t): object {
         $user = $t->savedUser();
 

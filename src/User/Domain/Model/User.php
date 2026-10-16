@@ -38,6 +38,9 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, Passwor
         return mb_strtolower(trim($email));
     }
 
+    /**
+     * Compte créé hors inscription (fixtures, données de démonstration) : actif d'emblée, sans confirmation d'email.
+     */
     public static function create(
         string $id,
         string $email,
@@ -46,13 +49,40 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, Passwor
         int $defaultServing,
         DateTimeImmutable $createdAt,
     ): static {
+        return self::instantiate($id, $email, $roles, $password, $defaultServing, $createdAt, Status::ACTIVE);
+    }
+
+    /**
+     * Inscription d'un visiteur : le compte reste en attente (`PENDING`) tant qu'il n'a pas confirmé son adresse email
+     * (`verifyEmail()`, ADR 0020).
+     */
+    public static function register(
+        string $id,
+        string $email,
+        array $roles,
+        string $password,
+        int $defaultServing,
+        DateTimeImmutable $createdAt,
+    ): static {
+        return self::instantiate($id, $email, $roles, $password, $defaultServing, $createdAt, Status::PENDING);
+    }
+
+    private static function instantiate(
+        string $id,
+        string $email,
+        array $roles,
+        string $password,
+        int $defaultServing,
+        DateTimeImmutable $createdAt,
+        Status $status,
+    ): static {
         return new static(
             $id,
             static::normalizeEmail($email),
             $roles,
             $password,
             $defaultServing,
-            Status::ACTIVE,
+            $status,
             ['createdAt' => $createdAt],
             0,
         );
@@ -261,5 +291,21 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, Passwor
     public function isDisabled(): bool
     {
         return $this->status === Status::DISABLED;
+    }
+
+    public function isPending(): bool
+    {
+        return $this->status === Status::PENDING;
+    }
+
+    /**
+     * L'adresse est confirmée : un compte en attente devient actif. Un compte désactivé le reste (confirmer une adresse ne
+     * lève pas une désactivation) et un compte déjà actif n'est pas modifié.
+     */
+    public function verifyEmail(): void
+    {
+        if ($this->status === Status::PENDING) {
+            $this->status = Status::ACTIVE;
+        }
     }
 }

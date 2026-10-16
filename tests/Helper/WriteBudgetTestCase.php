@@ -3,6 +3,7 @@
 namespace Repas\Tests\Helper;
 
 
+use DateTimeImmutable;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Repas\Domain\Model\Recipe;
 use Repas\Repas\Domain\Model\ShoppingList;
@@ -12,6 +13,9 @@ use Repas\Tests\Helper\Builder\RecipeBuilder;
 use Repas\Tests\Helper\Builder\ShoppingListBuilder;
 use Repas\Tests\Helper\Builder\UserBuilder;
 use Repas\Tests\Helper\SqlBudget\QueryCounter;
+use Repas\Shared\Domain\Tool\UuidGenerator;
+use Repas\User\Domain\Interface\EmailVerificationTokenRepository;
+use Repas\User\Domain\Model\EmailVerificationToken;
 use Repas\User\Domain\Model\User;
 
 /**
@@ -57,6 +61,16 @@ abstract class WriteBudgetTestCase extends DatabaseTestCase
         $this->persister->saveUser($user);
 
         return $user;
+    }
+
+    /**
+     * Lien de confirmation d'adresse déjà envoyé à `$user` (émis `$minutesAgo` minutes avant maintenant).
+     */
+    public function savedEmailVerificationToken(User $user, string $secret, int $minutesAgo = 0): void
+    {
+        static::getContainer()->get(EmailVerificationTokenRepository::class)->add(
+            EmailVerificationToken::issue(UuidGenerator::new(), $user->getId(), EmailVerificationToken::hash($secret), new DateTimeImmutable("-{$minutesAgo} minutes")),
+        );
     }
 
     public function savedRecipe(User $author, RecipeBuilder $builder): Recipe
