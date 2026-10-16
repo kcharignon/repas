@@ -7,6 +7,7 @@ Guide d'architecture pour ce projet (Symfony 8.1 / PHP 8.4). L'objectif: rester 
 - **Décisions d'architecture** : `docs/adr/README.md` (index). À lire avant de développer. En cas de désaccord avec ce fichier, l'ADR gagne.
 - **Migration en cours** : les lectures passent petit à petit de « controller → repository » à « controller → QueryBus → QueryHandler → Loader → DTO », avec en parallèle de nouveaux endpoints API JSON stateless (JWT). Suivi dans `docs/migration-roadmap.md` (à mettre à jour à chaque slice).
 - **Skill développeur** : `/repas-dev` (`.claude/skills/repas-dev/`) — recettes pas-à-pas (nouvelle lecture, migration d'un ViewController, endpoint API, écriture), nommage, Definition of Done.
+- **Skill exploitation** : `/repas-ops` (`.claude/skills/repas-ops/`) — release, déploiement, retour arrière, sauvegarde, première mise en production, bascule du SPA ; l'utilisateur n'est pas devops : une étape à la fois, jamais de secret dans le chat (ADR 0017).
 - Changer une convention = mettre à jour l'ADR, ce fichier, le skill et la roadmap dans le même commit.
 
 ## Bounded contexts
@@ -110,6 +111,12 @@ src/{Context}/
 - `symfony/*` reste contraint à une seule mineure (`8.1.*`, `extra.symfony.require` assorti ; une mineure 8.x n'est maintenue que 8 mois : fin de maintenance de la 8.1 en 01/2027, la prochaine LTS est la 8.4 en 11/2027). `make audit` (`composer audit --locked`, aussi en CI) doit être vert dès qu'on touche `composer.json` ou `composer.lock`.
 - Image Docker : FrankenPHP/PHP épinglés par tag complet, paquets `apt` jamais épinglés.
 
+## Déploiement (ADR 0017)
+
+- Une release GitHub (tag `vX.Y.Z` sur `main`) construit l'image, la publie sur GHCR et la déploie : `.github/workflows/release.yml`, puis `deploy/deploy.sh back|front vX.Y.Z` sur le serveur (sauvegarde, contrôle de santé, retour arrière automatique du code). Le front a son propre workflow dans `kcharignon/repas-front` ; l'infrastructure (`deploy/`) vit dans ce dépôt.
+- Une migration doit rester compatible avec la version précédente du code : le retour arrière ne défait pas le schéma. Le profileur Symfony est coupé en production, les clés JWT naissent au premier démarrage (volume `jwt`), le back est derrière la bordure Caddy (`SYMFONY_TRUSTED_PROXIES`).
+- Toute modification de `deploy/`, du `Dockerfile` de production ou du `docker-entrypoint.sh` passe `make deploy-smoke` (rejoué par la CI, job `deploy-config`). Production : `docs/production.md`.
+
 ## Tests
 
 - `tests/Helper/Builder/` : builders pour construire des modèles de test rapidement (pattern Test Data Builder).
@@ -142,6 +149,6 @@ Utiliser le skill `/repas-dev` (recettes détaillées). En bref :
 
 **Données de démonstration** (dev seulement) : `make fixtures-demo` crée, sans vider la base, les comptes `admin@repas.fr` (administrateur) et `user@repas.fr` (mot de passe `M0t 2 p@sse`) et leurs recettes et listes de courses, par les vrais cas d'usage (`DemoUserFixture`, `DemoRepasFixture`, groupe `demo`, refusées en production). Les données de référence viennent de `make fixtures-load-dev` (qui vide la base). Idempotent.
 
-**Avant de committer** : `make test` puis `make quality` (agrège `deptrac`, `phpstan`, `api-doc-validate`, `api-doc-coverage`, `openapi-check`). `make audit` si `composer.*` change. Toute slice qui touche une page Twig passe aussi un test visuel dans Chromium (captures lues, voir `.claude/skills/repas-dev/references/visual-check.md`). Les clés JWT de dev s'initialisent avec `make jwt-keys`. La baseline PHPStan (`phpstan-baseline.neon`) ne doit que diminuer ; Deptrac n'a plus de baseline : aucune dépendance entre contextes n'est tolérée (ce qui doit circuler passe par `Shared`, ADR 0013 règle 8). Un commit par unité logique, message court en français, sans `Co-Authored-By`. En fin de slice, pousser la branche de travail (`git push -u origin <branche>`) et ouvrir la PR vers `main` avec `gh pr create` sans attendre de demande : titre court (`refactor(chore): cqrs phase N …`), description concise qui suit `.github/pull_request_template.md` (Quoi / Vérifié / À relire), sans pied de page d'attribution. Jamais de merge, de push sur `main` ni de force-push : le merge est fait par l'humain.
+**Avant de committer** : `make test` puis `make quality` (agrège `deptrac`, `phpstan`, `api-doc-validate`, `api-doc-coverage`, `openapi-check`). `make audit` si `composer.*` change, `make deploy-smoke` si `deploy/`, le `Dockerfile` ou l'entrypoint changent. Toute slice qui touche une page Twig passe aussi un test visuel dans Chromium (captures lues, voir `.claude/skills/repas-dev/references/visual-check.md`). Les clés JWT de dev s'initialisent avec `make jwt-keys`. La baseline PHPStan (`phpstan-baseline.neon`) ne doit que diminuer ; Deptrac n'a plus de baseline : aucune dépendance entre contextes n'est tolérée (ce qui doit circuler passe par `Shared`, ADR 0013 règle 8). Un commit par unité logique, message court en français, sans `Co-Authored-By`. En fin de slice, pousser la branche de travail (`git push -u origin <branche>`) et ouvrir la PR vers `main` avec `gh pr create` sans attendre de demande : titre court (`refactor(chore): cqrs phase N …`), description concise qui suit `.github/pull_request_template.md` (Quoi / Vérifié / À relire), sans pied de page d'attribution. Jamais de merge, de push sur `main` ni de force-push : le merge est fait par l'humain.
 
 Ne pas mettre de logique métier dans les controllers, les entités Doctrine ou les templates Twig — tout va dans `Domain`/`Application` ; les calculs d'affichage d'une lecture sont précalculés dans le DTO par le Loader.

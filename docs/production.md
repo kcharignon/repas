@@ -1,110 +1,45 @@
-# Deploying in Production
+# Production de Repas
 
-Symfony Docker provides Docker images, and a Docker Compose definition optimized for production usage.
-In this tutorial, we will learn how to deploy our Symfony application on a single server using Docker Compose.
+Décision et justification : [ADR 0017](adr/0017-deploiement-et-releases.md). Procédures pas à pas : skill `repas-ops` (`.claude/skills/repas-ops/`).
 
-## Preparing a Server
+## Vue d'ensemble
 
-To deploy your application in production, you need a server.
-In this tutorial, we will use a virtual machine provided by DigitalOcean, but any Linux server can work.
-If you already have a Linux server with Docker Compose installed, you can skip straight to [the next section](#configuring-a-domain-name).
-
-Otherwise, use [this affiliate link](https://m.do.co/c/5d8aabe3ab80) to get $100 of free credit, create an account, then click on "Create a Droplet".
-Then, click on the "Marketplace" tab under the "Choose an image" section and search for the app named "Docker".
-This will provision an Ubuntu server with the latest versions of Docker and Docker Compose already installed!
-
-For test purposes, the cheapest plans will be enough, even though you might want at least 2GB of RAM to execute Docker Compose for the first time. For real production usage, you'll probably want to pick a plan in the "general purpose" section to fit your needs.
-
-![Deploying a Symfony app on DigitalOcean with Docker Compose](digitalocean-droplet.png)
-
-You can keep the defaults for other settings, or tweak them according to your needs.
-Don't forget to add your SSH key or create a password then press the "Finalize and create" button.
-
-Then, wait a few seconds while your Droplet is provisioning.
-When your Droplet is ready, use SSH to connect:
-
-```console
-ssh root@<droplet-ip>
+```
+Internet ─▶ edge (Caddy, HTTPS)  ─▶ php  (back FrankenPHP : Twig, /api, /images) ─▶ database (PostgreSQL)
+                    └────────────▶ front (SPA statique, Caddy)
 ```
 
-## Configuring a Domain Name
+- Un seul droplet DigitalOcean, Docker Compose, dossier `/opt/repas` (contenu de `deploy/` + `.env` + `backups/`).
+- Les images sont construites par la CI et publiées sur GHCR (`ghcr.io/kcharignon/repas`, `ghcr.io/kcharignon/repas-front`), étiquetées par version. Le serveur ne construit rien.
+- `LEGACY_HOST` sert l'ancienne application (Twig) ; `APP_HOST` sert le SPA, avec `/api` et `/images` relayés vers le back.
 
-In most cases, you'll want to associate a domain name with your site.
-If you don't own a domain name yet, you'll have to buy one through a registrar.
+## Publier une version
 
-Then create a DNS record of type `A` for your domain name pointing to the IP address of your server:
+Créer une release GitHub (tag `vX.Y.Z`) sur le dépôt concerné : `gh release create vX.Y.Z --target main --generate-notes`. La CI teste, construit l'image, la publie, puis lance `deploy.sh` sur le serveur, qui sauvegarde la base, déploie, vérifie et revient seul à la version précédente si la vérification échoue. Le détail est dans `.claude/skills/repas-ops/references/release.md`.
 
-```dns
-your-domain-name.example.com.  IN  A     207.154.233.113
+## Fichiers
+
+| Fichier | Rôle |
+|---|---|
+| `deploy/compose.yaml` | services `edge`, `php`, `front`, `database`, volumes, redémarrage automatique |
+| `deploy/Caddyfile` | un site par nom de domaine, TLS automatique |
+| `deploy/deploy.sh` | `./deploy.sh back\|front vX.Y.Z` : sauvegarde, déploiement, contrôle de santé, retour arrière |
+| `deploy/backup.sh` | `pg_dump` vérifié, 14 dernières sauvegardes conservées |
+| `deploy/.env.example` | modèle du `.env` du serveur (secrets : jamais dans git) |
+| `deploy/smoke-test.sh` | essai de bout en bout, `make deploy-smoke` (aussi dans la CI) |
+| `.github/workflows/release.yml` | release → tests → image GHCR → déploiement (environnement `production`) |
+
+## Essayer la production en local
+
+```
+make deploy-smoke                                  # back seul
+make deploy-smoke FRONT_IMAGE=repas-smoke-front    # avec le SPA (image construite depuis le dépôt repas-front)
 ```
 
-Example with the DigitalOcean Domains service ("Networking" > "Domains"):
+Le test démarre la vraie image sur une base vide avec de faux secrets et des certificats internes (ports 9442/9443), puis déploie, sauvegarde et force un retour arrière. Il ne touche ni à la pile de développement ni aux images existantes de la machine.
 
-![Configuring DNS on DigitalOcean](digitalocean-dns.png)
+## Ce que la production exige de l'application
 
-> [!NOTE]  
-> Let's Encrypt, the service used by default by Symfony Docker to automatically generate a TLS certificate doesn't support using bare IP addresses. Using a domain name is mandatory to use Let's Encrypt.
-
-## Deploying
-
-Copy your project on the server using `git clone`, `scp`, or any other tool that may fit your need.
-If you use GitHub, you may want to use [a deploy key](https://docs.github.com/en/free-pro-team@latest/developers/overview/managing-deploy-keys#deploy-keys).
-Deploy keys are also [supported by GitLab](https://docs.gitlab.com/ee/user/project/deploy_keys/).
-
-Example with Git:
-
-```console
-git clone git@github.com:<username>/<project-name>.git
-```
-
-Go into the directory containing your project (`<project-name>`), and start the app in production mode:
-
-```console
-SERVER_NAME=your-domain-name.example.com \
-APP_SECRET=ChangeMe \
-CADDY_MERCURE_JWT_SECRET=ChangeThisMercureHubJWTSecretKey \
-docker compose -f compose.yaml -f compose.prod.yaml up -d --wait
-```
-
-Be sure to replace `your-domain-name.example.com` with your actual domain name and to set the values of `APP_SECRET`, `CADDY_MERCURE_JWT_SECRET` to cryptographically secure random values.
-
-Your server is up and running, and a HTTPS certificate has been automatically generated for you.
-Go to `https://your-domain-name.example.com` and enjoy!
-
-> [!NOTE]
-> The worker mode of FrankenPHP is enabled by default in prod. To disable it, add the env var FRANKENPHP_CONFIG as empty to the compose.prod.yaml file.
-
-> [!CAUTION]
-> Docker can have a cache layer, make sure you have the right build for each deployment or rebuild your project with --no-cache option to avoid cache issue.
-
-## Disabling HTTPS
-
-Alternatively, if you don't want to expose an HTTPS server but only an HTTP one, run the following command:
-
-```console
-SERVER_NAME=:80 \
-APP_SECRET=ChangeMe \
-CADDY_MERCURE_JWT_SECRET=ChangeThisMercureHubJWTSecretKey \
-docker compose -f compose.yaml -f compose.prod.yaml up -d --wait
-```
-
-## Deploying on Multiple Nodes
-
-If you want to deploy your app on a cluster of machines, you can use [Docker Swarm](https://docs.docker.com/engine/swarm/stack-deploy/),
-which is compatible with the provided Compose files.
-To deploy on Kubernetes, take a look at [the Helm chart provided with API Platform](https://api-platform.com/docs/deployment/kubernetes/), which can be easily adapted for use with Symfony Docker.
-
-## Passing local environment variables to containers
-
-By default, `.env.local` and `.env.*.local` files are excluded from production images.
-If you want to pass them to your containers, you can use the [`env_file` attribute](https://docs.docker.com/compose/environment-variables/set-environment-variables/#use-the-env_file-attribute):
-
-```yaml
-# compose.prod.yml
-
-services:
-    php:
-        env_file:
-            - .env.prod.local
-        # ...
-```
+- `APP_ENV=prod`, profileur coupé (`config/packages/framework.yaml`), clés JWT créées au premier démarrage dans le volume `jwt`, cache reconstruit à chaque démarrage (`frankenphp/docker-entrypoint.sh`).
+- Les migrations s'appliquent au démarrage du conteneur : **chaque migration reste compatible avec la version précédente du code**, car le retour arrière ne défait pas le schéma.
+- `SYMFONY_TRUSTED_PROXIES=PRIVATE_SUBNETS` : le back lit l'adresse du visiteur et le HTTPS dans les en-têtes de la bordure (plafonds de débit par IP, cookie `Secure`).
