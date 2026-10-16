@@ -167,6 +167,10 @@ Le front est un projet séparé (`repas-front`), planifié dans [`front-vuejs-pl
   - [x] Chaîne de déploiement ([ADR 0017](adr/0017-deploiement-et-releases.md)) : release GitHub → image GHCR → `deploy/deploy.sh` (sauvegarde, contrôle de santé, retour arrière automatique), bordure Caddy à deux noms de domaine (marche parallèle : Twig sur le domaine actuel, SPA sur `app.`), `make deploy-smoke` rejoué par la CI ; profileur coupé en production, clés JWT créées au démarrage. Fait le 2026-10-16 : amorçage du serveur, `v0.1.0-rc1` du back et du front, bascule de la racine.
 - [x] Phase 8 — extinction de Twig ([ADR 0018](adr/0018-extinction-de-twig.md), 2026-10-16) : routes, templates, formulaires, JS/CSS, pare-feu `main`, session, CSRF, profileur, `twig/twig` et 10 autres paquets, `/api/doc` HTML ; le back ne sert plus que l'API. Anciennes pages Twig : `404` ; ancien nom `app.` redirigé en `301`
 
+### Phase 11 — Fonctionnalités après la bascule
+
+- [x] `SearchIngredients` — recherche d'ingrédients depuis la page des rayons du front ([ADR 0019](adr/0019-recherche-d-ingredients-par-pertinence.md)). Query `SearchIngredientsQuery(search, viewerId, viewerIsAdmin)`, DTO `IngredientSearchResultDTO` (`IngredientRowDTO` + rayon : slug, nom, image), `IngredientLoader::search()` (une requête, pertinence `SearchRelevance` / `JaroWinkler` en PHP, 30 résultats au plus), `GET /api/v1/ingredients/search?q=`. Le front l'affiche avec l'icône du rayon et le sélecteur de quantité.
+
 ## Chantiers de maintenance (décidés le 2026-10-14, une PR chacun, dans cet ordre)
 
 Issus des points « hors périmètre » des PR et de `composer audit` (32 avis de sécurité, Symfony 7.2 hors support). PHP reste en 8.4.

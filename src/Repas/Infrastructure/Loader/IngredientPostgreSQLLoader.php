@@ -11,16 +11,21 @@ use Repas\Repas\Application\Query\ListCompatibleUnits\CompatibleUnitDTO;
 use Repas\Repas\Application\Query\ListDepartments\DepartmentDTO;
 use Repas\Repas\Application\Query\ListIngredientsByDepartment\DepartmentIngredientsDTO;
 use Repas\Repas\Application\Query\ListIngredientsByDepartment\IngredientRowDTO;
+use Repas\Repas\Application\Query\SearchIngredients\IngredientSearchResultDTO;
 use Repas\Repas\Domain\Exception\DepartmentException;
 use Repas\Repas\Domain\Exception\IngredientException;
 use Repas\Repas\Infrastructure\Entity\Conversion;
 use Repas\Repas\Infrastructure\Entity\Department;
 use Repas\Repas\Infrastructure\Entity\Ingredient;
 use Repas\Repas\Infrastructure\Entity\Unit;
+use Repas\Shared\Domain\Tool\SearchRelevance;
 use Repas\Shared\Domain\Tool\StringTool;
 
 final readonly class IngredientPostgreSQLLoader implements IngredientLoader
 {
+    /** Nombre maximal de résultats d'une recherche : au-delà, la saisie est à préciser */
+    private const int SEARCH_LIMIT = 30;
+
     public function __construct(
         private EntityManagerInterface $entityManager,
     ) {
@@ -165,6 +170,54 @@ final readonly class IngredientPostgreSQLLoader implements IngredientLoader
         $rows = $query->getQuery()->getArrayResult();
 
         return array_map(static fn(array $row): IngredientOptionDTO => new IngredientOptionDTO($row['slug'], $row['name']), $rows);
+    }
+
+    public function search(string $search, string $viewerId, bool $viewerIsAdmin): array
+    {
+        // `slugged_name` est le nom sans accent ni majuscule, séparé par des tirets : on cherche le texte dans la même forme
+        $needle = StringTool::slugify($search);
+        if ($needle === '') {
+            return [];
+        }
+
+        // Le score est calculé en PHP (Jaro-Winkler n'existe pas en SQL) sur tous les ingrédients visibles : quelques centaines
+        $rows = $this->entityManager->createQueryBuilder()
+            ->select(
+                'i.slug AS slug', 'i.name AS name', 'i.sluggedName AS sluggedName', 'i.creatorId AS creatorId',
+                'u.symbol AS purchaseUnitSymbol',
+                'd.slug AS departmentSlug', 'd.name AS departmentName', 'd.image AS departmentImage',
+            )
+            ->from(Ingredient::class, 'i')
+            ->innerJoin(Unit::class, 'u', Join::WITH, 'u.slug = i.defaultPurchaseUnitSlug')
+            ->innerJoin(Department::class, 'd', Join::WITH, 'd.slug = i.departmentSlug')
+            ->where('i.creatorId = :viewer OR i.creatorId IS NULL')
+            ->setParameter('viewer', $viewerId)
+            ->getQuery()
+            ->getArrayResult();
+
+        $scored = [];
+        foreach ($rows as $row) {
+            $score = SearchRelevance::score($needle, $row['sluggedName']);
+            if ($score >= SearchRelevance::MINIMUM) {
+                $scored[] = ['score' => $score, 'row' => $row];
+            }
+        }
+
+        // Ex æquo : ordre alphabétique, pour que deux appels donnent le même résultat
+        usort($scored, static fn(array $a, array $b): int => [$b['score'], $a['row']['sluggedName'], $a['row']['slug']] <=> [$a['score'], $b['row']['sluggedName'], $b['row']['slug']]);
+
+        return array_map(
+            fn(array $match): IngredientSearchResultDTO => new IngredientSearchResultDTO(
+                slug: $match['row']['slug'],
+                name: $match['row']['name'],
+                purchaseUnitSymbol: $match['row']['purchaseUnitSymbol'],
+                canEdit: $this->canEdit($match['row']['creatorId'], $viewerId, $viewerIsAdmin),
+                departmentSlug: $match['row']['departmentSlug'],
+                departmentName: $match['row']['departmentName'],
+                departmentImage: $match['row']['departmentImage'],
+            ),
+            array_slice($scored, 0, self::SEARCH_LIMIT),
+        );
     }
 
     private function canEdit(?string $creatorId, string $viewerId, bool $viewerIsAdmin): bool

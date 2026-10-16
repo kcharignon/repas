@@ -22,6 +22,7 @@ Décisions d'architecture du projet Repas. **À relire avant de développer ou d
 | [0016](0016-controle-de-version-etag-if-match.md) | Contrôle de modification concurrente : version, `ETag` et `If-Match` | Accepted |
 | [0017](0017-deploiement-et-releases.md) | Déploiement : release GitHub, images GHCR, bordure Caddy, retour arrière automatique | Accepted |
 | [0018](0018-extinction-de-twig.md) | Extinction de Twig : le back ne sert plus que l'API | Accepted |
+| [0019](0019-recherche-d-ingredients-par-pertinence.md) | Recherche d'ingrédients par pertinence (Jaro-Winkler) | Accepted |
 
 ## Sources
 

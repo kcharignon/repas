@@ -97,10 +97,10 @@ Détail et squelettes : `references/read-slice-template.md`. Ordre :
 - Requête Doctrine (QueryBuilder, DQL) hors `Infrastructure/Repository` et `Infrastructure/Loader`.
 - Lecture avec effet de bord (créer si absent) : scinder en commande + query.
 - Injecter `CommandBus`/`QueryBus` concrets au lieu des interfaces.
-- Merger une PR, pousser sur `main`, force-push, `--no-verify`, commit rouge, `git add -A` sans relire `git status`.
+- Merger une PR dont la CI n'est pas verte ou sans description, pousser sur `main`, force-push, `--no-verify`, commit rouge, `git add -A` sans relire `git status`.
 
 ## 6. Commits
 
 Un commit par unité logique (ex. : DTO+Query+Handler+Loader+tests de la slice, puis controller API). Message court en français au style du dépôt (`feat:`, `refacto:`, `chore:`, `docs:`, `fix:`), sans `Co-Authored-By`.
 
-Fin de slice : `git push -u origin <branche>` puis `gh pr create --base main` sans attendre de demande. Titre court (`refactor(chore): cqrs phase N …` pour une phase de la roadmap). Description concise, du même ton que les messages de commit, qui suit `.github/pull_request_template.md` : **Quoi** (3 à 5 puces), **Vérifié** (`make test`, `make quality`, `make deploy-smoke` si `deploy/` change, mesure utile), **À relire** (décisions, risques, bugs notés hors périmètre). Une PR sans description n'est pas acceptable. Pas de pied de page d'attribution. Donner le lien de la PR. Jamais de merge (l'humain merge), de push sur `main` ni de force-push.
+Fin de slice : `git push -u origin <branche>` puis `gh pr create --base main` sans attendre de demande. Titre court (`refactor(chore): cqrs phase N …` pour une phase de la roadmap). Description concise, du même ton que les messages de commit, qui suit `.github/pull_request_template.md` : **Quoi** (3 à 5 puces), **Vérifié** (`make test`, `make quality`, `make deploy-smoke` si `deploy/` change, mesure utile), **À relire** (décisions, risques, bugs notés hors périmètre). Une PR sans description n'est pas acceptable. Pas de pied de page d'attribution. Donner le lien de la PR. Une fois la CI verte, Claude fusionne la PR (`gh pr merge --squash --delete-branch`, autorisé le 2026-10-16) ; jamais de push sur `main` ni de force-push ; l'approbation du déploiement reste à l'humain.
