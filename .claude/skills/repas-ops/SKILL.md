@@ -34,4 +34,4 @@ description: Mettre en production, publier une release, revenir en arrière, sau
 - Avant de toucher à `deploy/` : `make deploy-smoke` (FRONT_IMAGE=… pour essayer le SPA). La CI le rejoue (job `deploy-config`).
 - Changer une règle d'exploitation = mettre à jour l'ADR 0017, `CLAUDE.md`, ce skill et `docs/production.md` dans le même commit.
 - Twig n'existe plus dans le back (ADR 0018) ; le domaine principal sert le front, l'ancien nom `app.` est redirigé en `301`. Tout changement de nom de domaine ou de redirection passe par l'utilisateur.
-- Les PR du back sont fusionnées par l'utilisateur ; celles du front, par moi (CI verte, squash).
+- Les PR du back comme du front sont fusionnées par moi (CI verte, squash) ; seule l'approbation du déploiement en production reste à l'utilisateur.
