@@ -1867,13 +1867,14 @@
                 }
             }
         },
-        "/api/v1/users/{id}/activate": {
-            "post": {
+        "/api/v1/users/{id}/status": {
+            "put": {
                 "tags": [
                     "Users"
                 ],
-                "summary": "Active un compte en attente de confirmation d'adresse email (administrateur)",
-                "operationId": "post_api_activate_user",
+                "summary": "Fixe le statut d'un compte (administrateur), quel que soit l'ancien",
+                "description": "Un compte d\u00e9sactiv\u00e9 ne peut plus se connecter ni rien obtenir ; un compte d\u00e9sactiv\u00e9 ou en attente perd ses connexions ouvertes. Fixer le statut qu'a d\u00e9j\u00e0 le compte est sans effet. Seul le compte prot\u00e9g\u00e9 ne peut pas \u00eatre d\u00e9sactiv\u00e9 (ADR 0021).",
+                "operationId": "put_api_change_user_status",
                 "parameters": [
                     {
                         "name": "id",
@@ -1884,9 +1885,19 @@
                         }
                     }
                 ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ChangeUserStatusPayload"
+                            }
+                        }
+                    }
+                },
                 "responses": {
                     "204": {
-                        "description": "Compte activ\u00e9"
+                        "description": "Statut modifi\u00e9"
                     },
                     "403": {
                         "description": "R\u00e9serv\u00e9 aux administrateurs"
@@ -1894,8 +1905,8 @@
                     "404": {
                         "description": "Utilisateur inconnu"
                     },
-                    "409": {
-                        "description": "Le compte n'est pas en attente"
+                    "422": {
+                        "description": "Corps invalide, ou compte prot\u00e9g\u00e9 qu'on d\u00e9sactiverait (`PROTECTED_ACCOUNT`)"
                     }
                 }
             }
@@ -1963,43 +1974,7 @@
                         "description": "Utilisateur inconnu"
                     },
                     "422": {
-                        "description": "L'administrateur ne peut pas supprimer son propre compte (`CANNOT_MANAGE_OWN_ACCOUNT`)"
-                    }
-                }
-            }
-        },
-        "/api/v1/users/{id}/disable": {
-            "post": {
-                "tags": [
-                    "Users"
-                ],
-                "summary": "D\u00e9sactive un compte, en attente ou actif (administrateur) : plus de connexion, plus de jeton, plus de lien par email",
-                "operationId": "post_api_disable_user",
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "Compte d\u00e9sactiv\u00e9"
-                    },
-                    "403": {
-                        "description": "R\u00e9serv\u00e9 aux administrateurs"
-                    },
-                    "404": {
-                        "description": "Utilisateur inconnu"
-                    },
-                    "409": {
-                        "description": "Le compte est d\u00e9j\u00e0 d\u00e9sactiv\u00e9"
-                    },
-                    "422": {
-                        "description": "L'administrateur ne peut pas d\u00e9sactiver son propre compte (`CANNOT_MANAGE_OWN_ACCOUNT`)"
+                        "description": "Le compte prot\u00e9g\u00e9 ne se supprime pas (`PROTECTED_ACCOUNT`)"
                     }
                 }
             }
@@ -2520,6 +2495,24 @@
                         "maxLength": 255,
                         "example": "Courses du week-end",
                         "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "ChangeUserStatusPayload": {
+                "required": [
+                    "status"
+                ],
+                "properties": {
+                    "status": {
+                        "description": "Nouveau statut : `PENDING` (adresse email \u00e0 confirmer), `ACTIVE` ou `DISABLED`",
+                        "type": "string",
+                        "enum": [
+                            "PENDING",
+                            "ACTIVE",
+                            "DISABLED"
+                        ],
+                        "example": "ACTIVE"
                     }
                 },
                 "type": "object"

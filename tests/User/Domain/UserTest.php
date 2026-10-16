@@ -79,77 +79,116 @@ class UserTest extends TestCase
         $this->assertSame(UserStatus::ACTIVE, $user->getStatus());
     }
 
-    public function testAnAdministratorCanActivateAPendingAccount(): void
+    #[DataProvider('everyChangeOfStatus')]
+    public function testTheStatusCanChangeToAnyOtherOne(UserStatus $from, UserStatus $to): void
     {
         // Given
-        $user = new UserBuilder()->isPending()->build();
+        $user = $this->userWithStatus($from);
 
         // When
-        $user->activate();
+        $user->changeStatus($to);
 
         // Then
-        $this->assertSame(UserStatus::ACTIVE, $user->getStatus());
-    }
-
-    #[DataProvider('statusesThatAreNotPending')]
-    public function testOnlyAPendingAccountCanBeActivated(UserBuilder $builder, UserStatus $status): void
-    {
-        // Given
-        $user = $builder->build();
-
-        // Assert
-        $this->expectExceptionObject(UserException::invalidStatusTransition($status, UserStatus::ACTIVE));
-
-        // When
-        $user->activate();
+        $this->assertSame($to, $user->getStatus());
+        $this->assertSame($to === UserStatus::ACTIVE, $user->isActive());
+        $this->assertSame($to === UserStatus::DISABLED, $user->isDisabled());
+        $this->assertSame($to === UserStatus::PENDING, $user->isPending());
     }
 
     /**
-     * @return iterable<string, array{UserBuilder, UserStatus}>
+     * Les neuf couples, y compris rester dans le même statut.
+     *
+     * @return iterable<string, array{UserStatus, UserStatus}>
      */
-    public static function statusesThatAreNotPending(): iterable
+    public static function everyChangeOfStatus(): iterable
     {
-        yield 'actif' => [new UserBuilder(), UserStatus::ACTIVE];
-        yield 'désactivé' => [new UserBuilder()->isDisabled(), UserStatus::DISABLED];
+        foreach (UserStatus::cases() as $from) {
+            foreach (UserStatus::cases() as $to) {
+                yield "$from->value vers $to->value" => [$from, $to];
+            }
+        }
     }
 
-    #[DataProvider('statusesThatCanBeDisabled')]
-    public function testAnActiveOrPendingAccountCanBeDisabled(UserBuilder $builder): void
+    #[DataProvider('statusesOtherThanDisabled')]
+    public function testTheProtectedAccountCanTakeAnyStatusButDisabled(UserStatus $to): void
     {
         // Given
-        $user = $builder->build();
+        $user = new UserBuilder()->withEmail(User::PROTECTED_EMAIL)->build();
 
         // When
-        $user->disable();
+        $user->changeStatus($to);
 
         // Then
-        $this->assertSame(UserStatus::DISABLED, $user->getStatus());
-        $this->assertTrue($user->isDisabled());
+        $this->assertSame($to, $user->getStatus());
     }
 
     /**
-     * @return iterable<string, array{UserBuilder}>
+     * @return iterable<string, array{UserStatus}>
      */
-    public static function statusesThatCanBeDisabled(): iterable
+    public static function statusesOtherThanDisabled(): iterable
     {
-        yield 'actif' => [new UserBuilder()];
-        yield 'en attente' => [new UserBuilder()->isPending()];
+        yield 'actif' => [UserStatus::ACTIVE];
+        yield 'en attente' => [UserStatus::PENDING];
     }
 
-    public function testADisabledAccountCannotBeDisabledAgain(): void
+    #[DataProvider('statusesOfAProtectedAccount')]
+    public function testTheProtectedAccountCannotBeDisabled(UserStatus $from): void
     {
         // Given
-        $user = new UserBuilder()->isDisabled()->build();
-
-        // Assert
-        $this->expectExceptionObject(UserException::invalidStatusTransition(UserStatus::DISABLED, UserStatus::DISABLED));
+        $user = $this->userWithStatus($from, User::PROTECTED_EMAIL);
 
         // When
-        $user->disable();
+        try {
+            $user->changeStatus(UserStatus::DISABLED);
+            $this->fail('Le compte protégé ne se désactive pas.');
+        } catch (UserException $exception) {
+            // Then
+            $this->assertEquals(UserException::protectedAccount(), $exception);
+            $this->assertSame(422, $exception->getCode());
+            $this->assertSame($from, $user->getStatus());
+        }
     }
 
-    public function testAnInvalidTransitionIsAConflictWithTheCurrentState(): void
+    /**
+     * @return iterable<string, array{UserStatus}>
+     */
+    public static function statusesOfAProtectedAccount(): iterable
     {
-        $this->assertSame(409, UserException::invalidStatusTransition(UserStatus::DISABLED, UserStatus::ACTIVE)->getCode());
+        foreach (UserStatus::cases() as $status) {
+            yield $status->value => [$status];
+        }
+    }
+
+    public function testTheProtectedAccountIsRecognisedWhateverTheCaseOfItsEmail(): void
+    {
+        $this->assertTrue(new UserBuilder()->withEmail(User::PROTECTED_EMAIL)->build()->isProtected());
+        $this->assertTrue(User::register('id', ' ' . strtoupper(User::PROTECTED_EMAIL), ['ROLE_USER'], 'hash', 3, $this->now)->isProtected());
+        $this->assertFalse(new UserBuilder()->withEmail('autre@example.com')->build()->isProtected());
+    }
+
+    public function testOnlyTheProtectedAccountCannotBeDeleted(): void
+    {
+        // Given
+        $ordinary = new UserBuilder()->withEmail('autre@example.com')->build();
+        $protected = new UserBuilder()->withEmail(User::PROTECTED_EMAIL)->build();
+
+        // When
+        $ordinary->assertCanBeDeleted();
+
+        // Then
+        $this->expectExceptionObject(UserException::protectedAccount());
+        $protected->assertCanBeDeleted();
+    }
+
+    private function userWithStatus(UserStatus $status, string $email = 'autre@example.com'): User
+    {
+        $builder = new UserBuilder()->withEmail($email);
+        $builder = match ($status) {
+            UserStatus::PENDING => $builder->isPending(),
+            UserStatus::DISABLED => $builder->isDisabled(),
+            UserStatus::ACTIVE => $builder,
+        };
+
+        return $builder->build();
     }
 }

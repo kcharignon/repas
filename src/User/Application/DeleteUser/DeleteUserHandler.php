@@ -26,15 +26,12 @@ readonly class DeleteUserHandler
      * Supprime le compte et ses jetons, puis annonce la suppression : le contexte `Repas` efface ses données dans la même
      * transaction du bus de commandes, donc rien n'est supprimé si l'une des étapes échoue.
      *
-     * @throws UserException compte inconnu (404), ou le sien (422)
+     * @throws UserException compte inconnu (404), ou compte protégé (422)
      */
     public function __invoke(DeleteUserCommand $command): void
     {
-        if ($command->userId === $command->actingUserId) {
-            throw UserException::cannotManageOwnAccount();
-        }
-
         $user = $this->userRepository->findOneById($command->userId);
+        $user->assertCanBeDeleted();
 
         $this->refreshTokenRepository->deleteAllOfUser($user->getId());
         $this->emailVerificationTokenRepository->deleteAllOfUser($user->getId());
