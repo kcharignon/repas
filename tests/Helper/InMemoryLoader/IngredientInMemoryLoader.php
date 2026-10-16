@@ -8,6 +8,7 @@ use Repas\Repas\Application\Query\GetIngredient\IngredientDTO;
 use Repas\Repas\Application\Query\ListAvailableIngredients\IngredientOptionDTO;
 use Repas\Repas\Application\Query\ListCompatibleUnits\CompatibleUnitDTO;
 use Repas\Repas\Application\Query\ListIngredientsByDepartment\DepartmentIngredientsDTO;
+use Repas\Repas\Application\Query\SearchIngredients\IngredientSearchResultDTO;
 use Repas\Repas\Domain\Exception\DepartmentException;
 use Repas\Repas\Domain\Exception\IngredientException;
 
@@ -28,15 +29,20 @@ class IngredientInMemoryLoader implements IngredientLoader
     /** @var list<string> */
     public array $listAvailableCalls = [];
 
+    /** @var list<array{string, string, bool}> */
+    public array $searchCalls = [];
+
     /**
      * @param list<CompatibleUnitDTO> $compatibleUnits
      * @param list<IngredientOptionDTO> $availableIngredients
+     * @param list<IngredientSearchResultDTO> $searchResults
      */
     public function __construct(
         private readonly ?DepartmentIngredientsDTO $departmentIngredients = null,
         private readonly ?IngredientDTO $ingredient = null,
         private readonly array $compatibleUnits = [],
         private readonly array $availableIngredients = [],
+        private readonly array $searchResults = [],
     ) {
     }
 
@@ -65,5 +71,12 @@ class IngredientInMemoryLoader implements IngredientLoader
         $this->listAvailableCalls[] = $search === null ? $userId : [$userId, $search];
 
         return $this->availableIngredients;
+    }
+
+    public function search(string $search, string $viewerId, bool $viewerIsAdmin): array
+    {
+        $this->searchCalls[] = [$search, $viewerId, $viewerIsAdmin];
+
+        return $this->searchResults;
     }
 }

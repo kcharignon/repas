@@ -9,6 +9,7 @@ use Repas\Repas\Application\Query\ListCompatibleUnits\CompatibleUnitDTO;
 use Repas\Repas\Application\Query\ListAvailableIngredients\IngredientOptionDTO;
 use Repas\Repas\Application\Query\ListDepartments\DepartmentDTO;
 use Repas\Repas\Application\Query\ListIngredientsByDepartment\IngredientRowDTO;
+use Repas\Repas\Application\Query\SearchIngredients\IngredientSearchResultDTO;
 use Repas\Repas\Domain\Exception\DepartmentException;
 use Repas\Repas\Domain\Exception\IngredientException;
 use Repas\Repas\Domain\Model\Ingredient;
@@ -305,6 +306,120 @@ class IngredientPostgreSQLLoaderTest extends DatabaseTestCase
 
         // Then
         $this->assertSame([], $result);
+    }
+
+    public function testSearchReturnsTheMostRelevantFirstWithTheDepartmentOfEachIngredient(): void
+    {
+        // Given
+        $viewer = $this->savedUser();
+        $cereal = new DepartmentBuilder()->isCereal();
+        $exact = $this->savedIngredient(new IngredientBuilder()->withName('Riz')->withDepartment($cereal));
+        $longer = $this->savedIngredient(new IngredientBuilder()->withName('Riz basmati')->withDepartment(new DepartmentBuilder()->isBakery()));
+        $this->savedIngredient(new IngredientBuilder()->withName('Chorizo')->withDepartment(new DepartmentBuilder()->isMeat()));
+
+        // When
+        $result = $this->ingredientLoader->search('  RIZ ', $viewer->getId(), false);
+
+        // Then
+        $this->assertEquals(
+            [
+                new IngredientSearchResultDTO($exact->getSlug(), 'Riz', '', false, 'cereale', 'céréale', new DepartmentBuilder()->isCereal()->build()->getImage()),
+                new IngredientSearchResultDTO($longer->getSlug(), 'Riz basmati', '', false, 'boulangerie', 'boulangerie', new DepartmentBuilder()->isBakery()->build()->getImage()),
+            ],
+            $result,
+        );
+    }
+
+    public function testSearchForgivesATypoAndIgnoresAccents(): void
+    {
+        // Given
+        $viewer = $this->savedUser();
+        $cream = $this->savedIngredient(new IngredientBuilder()->withName('Crème fraîche'));
+        $this->savedIngredient(new IngredientBuilder()->withName('Caramel'));
+
+        // When
+        $byTypo = $this->ingredientLoader->search('creme frache', $viewer->getId(), false);
+        $byAccent = $this->ingredientLoader->search('CRÈME', $viewer->getId(), false);
+
+        // Then
+        $this->assertSame([$cream->getSlug()], array_map(static fn(IngredientSearchResultDTO $result): string => $result->slug, $byTypo));
+        $this->assertSame([$cream->getSlug()], array_map(static fn(IngredientSearchResultDTO $result): string => $result->slug, $byAccent));
+    }
+
+    public function testSearchBreaksTiesByName(): void
+    {
+        // Given
+        $viewer = $this->savedUser();
+        $this->savedIngredient(new IngredientBuilder()->withName('Tomate séchée'));
+        $this->savedIngredient(new IngredientBuilder()->withName('Tomate cerise'));
+
+        // When
+        $result = $this->ingredientLoader->search('tomate', $viewer->getId(), false);
+
+        // Then : mêmes mots, même longueur de nom
+        $this->assertSame(['Tomate cerise', 'Tomate séchée'], array_map(static fn(IngredientSearchResultDTO $result): string => $result->name, $result));
+    }
+
+    public function testSearchFindsTheCommonAndOwnIngredientsNeverThoseOfAnotherUser(): void
+    {
+        // Given
+        $viewer = $this->savedUser();
+        $other = $this->savedUser();
+        $this->savedIngredient(new IngredientBuilder()->withName('Sel'));
+        $this->savedIngredient(new IngredientBuilder()->withName('Sel fin')->withCreator($viewer, true));
+        $this->savedIngredient(new IngredientBuilder()->withName('Sel secret')->withCreator($other, true));
+
+        // When
+        $result = $this->ingredientLoader->search('sel', $viewer->getId(), false);
+
+        // Then
+        $this->assertSame(['Sel', 'Sel fin'], array_map(static fn(IngredientSearchResultDTO $result): string => $result->name, $result));
+    }
+
+    public function testSearchLetsAnAdministratorEditTheCommonIngredientsOnly(): void
+    {
+        // Given
+        $admin = $this->savedUser();
+        $this->savedIngredient(new IngredientBuilder()->withName('Sel'));
+        $this->savedIngredient(new IngredientBuilder()->withName('Sel fin')->withCreator($admin, true));
+
+        // When
+        $asAdmin = $this->ingredientLoader->search('sel', $admin->getId(), true);
+        $asUser = $this->ingredientLoader->search('sel', $admin->getId(), false);
+
+        // Then
+        $this->assertSame([true, true], array_map(static fn(IngredientSearchResultDTO $result): bool => $result->canEdit, $asAdmin));
+        $this->assertSame([false, true], array_map(static fn(IngredientSearchResultDTO $result): bool => $result->canEdit, $asUser));
+    }
+
+    public function testSearchKeepsTheThirtyMostRelevantResults(): void
+    {
+        // Given
+        $viewer = $this->savedUser();
+        for ($i = 0; $i < 35; $i++) {
+            $this->savedIngredient(new IngredientBuilder()->withName('Fromage ' . $i));
+        }
+
+        // When
+        $result = $this->ingredientLoader->search('fromage', $viewer->getId(), false);
+
+        // Then
+        $this->assertCount(30, $result);
+    }
+
+    public function testSearchFindsNothingForAnUnrelatedOrTextWithoutLetter(): void
+    {
+        // Given
+        $viewer = $this->savedUser();
+        $this->savedIngredient(new IngredientBuilder()->withName('Sel'));
+
+        // When
+        $unrelated = $this->ingredientLoader->search('zzzzzz', $viewer->getId(), false);
+        $withoutLetter = $this->ingredientLoader->search(' !? ', $viewer->getId(), false);
+
+        // Then
+        $this->assertSame([], $unrelated);
+        $this->assertSame([], $withoutLetter);
     }
 
     private function savedUser(): User

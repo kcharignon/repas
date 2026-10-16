@@ -6,6 +6,7 @@ use Repas\Repas\Application\Query\GetIngredient\IngredientDTO;
 use Repas\Repas\Application\Query\ListAvailableIngredients\IngredientOptionDTO;
 use Repas\Repas\Application\Query\ListCompatibleUnits\CompatibleUnitDTO;
 use Repas\Repas\Application\Query\ListIngredientsByDepartment\DepartmentIngredientsDTO;
+use Repas\Repas\Application\Query\SearchIngredients\IngredientSearchResultDTO;
 use Repas\Repas\Domain\Exception\DepartmentException;
 use Repas\Repas\Domain\Exception\IngredientException;
 
@@ -40,4 +41,13 @@ interface IngredientLoader
      * @return list<IngredientOptionDTO>
      */
     public function listAvailable(string $userId, ?string $search = null): array;
+
+    /**
+     * Ingrédients communs ou créés par l'utilisateur dont le nom ressemble à `$search` (sans tenir compte de la casse ni des
+     * accents, fautes de frappe tolérées), du plus pertinent au moins pertinent (`SearchRelevance`), avec leur rayon.
+     * Une recherche sans lettre ni chiffre ne trouve rien.
+     *
+     * @return list<IngredientSearchResultDTO>
+     */
+    public function search(string $search, string $viewerId, bool $viewerIsAdmin): array;
 }
