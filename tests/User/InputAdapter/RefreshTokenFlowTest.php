@@ -5,6 +5,7 @@ namespace Repas\Tests\User\InputAdapter;
 
 use Doctrine\DBAL\Connection;
 use Repas\Tests\Helper\DatabaseTestCase;
+use Repas\User\Domain\Interface\UserRepository;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Component\BrowserKit\Cookie;
 
@@ -27,6 +28,12 @@ class RefreshTokenFlowTest extends DatabaseTestCase
         $this->client = static::getContainer()->get('test.client');
         $this->client->request('POST', '/api/v1/users', content: json_encode(['email' => self::EMAIL, 'password' => self::PASSWORD, 'defaultServing' => 3], JSON_THROW_ON_ERROR), server: ['CONTENT_TYPE' => 'application/json']);
         $this->assertSame(201, $this->client->getResponse()->getStatusCode());
+
+        // Ce parcours porte sur le refresh token, pas sur la confirmation d'adresse (EmailVerificationFlowTest) : le compte est activé
+        $userRepository = static::getContainer()->get(UserRepository::class);
+        $user = $userRepository->findOneByEmail(self::EMAIL);
+        $user->verifyEmail();
+        $userRepository->save($user);
     }
 
     public function testLoggingInPutsTheRefreshCookieInTheBrowser(): void

@@ -61,6 +61,12 @@ class UserBuilder implements Builder
         return $this;
     }
 
+    public function isPending(): static
+    {
+        $this->status = Status::PENDING;
+        return $this;
+    }
+
     public function withId(string $id): static
     {
         $this->id = $id;

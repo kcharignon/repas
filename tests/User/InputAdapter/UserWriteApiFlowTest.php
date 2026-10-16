@@ -36,6 +36,9 @@ class UserWriteApiFlowTest extends DatabaseTestCase
         $location = $this->client->getResponse()->headers->get('Location');
         $this->assertMatchesRegularExpression('#^/api/v1/users/[0-9a-f-]{36}$#', $location);
 
+        // Given : l'adresse est confirmée (le parcours de confirmation est dans EmailVerificationFlowTest)
+        $this->activate('alexiane@example.com');
+
         // When : connexion puis relecture par le Location
         $token = $this->tokenFor('alexiane@example.com', 'un-mot-de-passe');
         $this->request('GET', $location, $token);
@@ -51,6 +54,8 @@ class UserWriteApiFlowTest extends DatabaseTestCase
         // When : inscription avec des majuscules
         $this->request('POST', '/api/v1/users', body: ['email' => 'Alexiane@Example.COM', 'password' => 'un-mot-de-passe', 'defaultServing' => 3]);
         $this->assertSame(201, $this->client->getResponse()->getStatusCode());
+
+        $this->activate('alexiane@example.com');
 
         // Then : connexion avec n'importe quelle casse, l'email est stocké en minuscules
         foreach (['alexiane@example.com', 'ALEXIANE@EXAMPLE.COM', 'Alexiane@Example.COM'] as $email) {
@@ -198,6 +203,17 @@ class UserWriteApiFlowTest extends DatabaseTestCase
         // Then
         $this->assertSame(200, $this->client->getResponse()->getStatusCode());
         $this->assertSame('other@example.com', $this->jsonBody()['email']);
+    }
+
+    /**
+     * Confirme l'adresse d'un compte inscrit, sans passer par le lien envoyé par email.
+     */
+    private function activate(string $email): void
+    {
+        $userRepository = static::getContainer()->get(UserRepository::class);
+        $user = $userRepository->findOneByEmail($email);
+        $user->verifyEmail();
+        $userRepository->save($user);
     }
 
     /**
