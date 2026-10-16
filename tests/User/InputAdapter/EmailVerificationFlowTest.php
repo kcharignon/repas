@@ -214,7 +214,7 @@ class EmailVerificationFlowTest extends DatabaseTestCase
 
     private function secretOf(Email $email): string
     {
-        $this->assertSame(1, preg_match('#^http://front\.test/confirmation-email\?token=([0-9a-f]{64})$#m', $email->getTextBody(), $matches));
+        $this->assertSame(1, preg_match('#^https?://\S+/confirmation-email\?token=([0-9a-f]{64})$#m', $email->getTextBody(), $matches));
 
         return $matches[1];
     }

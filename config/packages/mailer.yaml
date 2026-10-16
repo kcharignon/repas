@@ -3,3 +3,10 @@ framework:
         dsn: '%env(MAILER_DSN)%'
         # Envoi direct, dans la requête : pas de transport Messenger asynchrone ni de worker en production (ADR 0020)
         message_bus: false
+
+when@test:
+    framework:
+        mailer:
+            # Aucun email ne part en test, quelle que soit la variable d'environnement du conteneur (une vraie variable l'emporterait
+            # sur `.env.test`) : les tests lisent les messages dans le journal du mailer
+            dsn: 'null://null'
