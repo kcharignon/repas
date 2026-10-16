@@ -22,7 +22,7 @@
    3. `cd /opt/repas && docker compose up -d --wait database`, puis `pg_restore` de la sauvegarde dans la nouvelle base (`--no-owner --no-privileges`) ;
    4. comptes avant/après : utilisateurs, recettes, ingrédients, listes.
 9. **Approuver le déploiement** sur la page du run (« Review deployments »). `deploy.sh` démarre la bordure et le back : les migrations s'appliquent (répétées avec succès sur une copie), les certificats viennent du volume repris.
-10. **Vérifier** : `https://kantin.eu/` (Twig), `https://app.kantin.eu/api/v1/health` (200), connexion Twig avec un vrai compte, une recette et une liste lues.
+10. **Vérifier** : `https://kantin.eu/` (le site, alors encore Twig), `https://app.kantin.eu/api/v1/health` (200), connexion Twig avec un vrai compte, une recette et une liste lues.
 
 Échec avant l'étape 9 : l'ancien site se relance avec `cd /root/repas && docker compose -f compose.yaml -f compose.prod.yaml up -d` (la variable `CADDY_MERCURE_JWT_SECRET` manquante ne gêne pas). Échec à l'étape 9 : `deploy.sh` n'a pas de version précédente à remettre ; même remède, puis diagnostic (`references/incident.md`).
 

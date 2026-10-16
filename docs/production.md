@@ -5,13 +5,13 @@ Décision et justification : [ADR 0017](adr/0017-deploiement-et-releases.md). Pr
 ## Vue d'ensemble
 
 ```
-Internet ─▶ edge (Caddy, HTTPS)  ─▶ php  (back FrankenPHP : Twig, /api, /images) ─▶ database (PostgreSQL)
+Internet ─▶ edge (Caddy, HTTPS)  ─▶ php  (back FrankenPHP : /api, /images) ─▶ database (PostgreSQL)
                     └────────────▶ front (SPA statique, Caddy)
 ```
 
 - Un seul droplet DigitalOcean, Docker Compose, dossier `/opt/repas` (contenu de `deploy/` + `.env` + `backups/`).
 - Les images sont construites par la CI et publiées sur GHCR (`ghcr.io/kcharignon/repas`, `ghcr.io/kcharignon/repas-front`), étiquetées par version. Le serveur ne construit rien.
-- `LEGACY_HOST` sert l'ancienne application (Twig) ; `APP_HOST` sert le SPA, avec `/api` et `/images` relayés vers le back.
+- `APP_HOST` sert le site : le SPA, avec `/api` et `/images` relayés vers le back. `LEGACY_HOST` (ancien nom) est redirigé en permanence vers `APP_HOST`. Le back ne sert que l'API (ADR 0018).
 
 ## Publier une version
 

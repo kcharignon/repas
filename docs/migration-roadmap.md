@@ -162,10 +162,10 @@ Le front est un projet séparé (`repas-front`), planifié dans [`front-vuejs-pl
 - [x] Phase 1 — socle du front (nouveau dépôt, CI, client généré, session, design system)
 - [x] Phases 2 à 4 — parcours cœur, référentiel utilisateur, administration (parité de l'inventaire : `PARITY.md` du front)
 - [x] Phase 5 — finitions (PWA et lecture hors-ligne de la liste en cours, accessibilité axe clair et sombre, budgets Lighthouse)
-- [ ] Phase 6 — recette de parité (100 % de l'inventaire)
-- [ ] Phase 7 — bascule en production (marche parallèle, retour arrière prévu)
-  - [x] Chaîne de déploiement ([ADR 0017](adr/0017-deploiement-et-releases.md)) : release GitHub → image GHCR → `deploy/deploy.sh` (sauvegarde, contrôle de santé, retour arrière automatique), bordure Caddy à deux noms de domaine (marche parallèle : Twig sur le domaine actuel, SPA sur `app.`), `make deploy-smoke` rejoué par la CI ; profileur coupé en production, clés JWT créées au démarrage. Reste : amorçage du serveur et première release avec l'utilisateur (skill `repas-ops`), puis la bascule de la racine, sur accord explicite.
-- [ ] Phase 8 — extinction de Twig (routes, templates, formulaires, JS, dépendances, pare-feu `main`, ADR, documentation)
+- [x] Phase 6 — recette de parité : jouée à la main par l'utilisateur sur ses données réelles (2026-10-16)
+- [x] Phase 7 — bascule en production (2026-10-16) : back et front déployés par release (v0.1.0-rc1), puis le front prend la racine `kantin.eu`
+  - [x] Chaîne de déploiement ([ADR 0017](adr/0017-deploiement-et-releases.md)) : release GitHub → image GHCR → `deploy/deploy.sh` (sauvegarde, contrôle de santé, retour arrière automatique), bordure Caddy à deux noms de domaine (marche parallèle : Twig sur le domaine actuel, SPA sur `app.`), `make deploy-smoke` rejoué par la CI ; profileur coupé en production, clés JWT créées au démarrage. Fait le 2026-10-16 : amorçage du serveur, `v0.1.0-rc1` du back et du front, bascule de la racine.
+- [x] Phase 8 — extinction de Twig ([ADR 0018](adr/0018-extinction-de-twig.md), 2026-10-16) : routes, templates, formulaires, JS/CSS, pare-feu `main`, session, CSRF, profileur, `twig/twig` et 10 autres paquets, `/api/doc` HTML ; le back ne sert plus que l'API. Anciennes pages Twig : `404` ; ancien nom `app.` redirigé en `301`
 
 ## Chantiers de maintenance (décidés le 2026-10-14, une PR chacun, dans cet ordre)
 
@@ -211,8 +211,8 @@ Audit de tous les controllers qui dispatchent une commande (méthode HTTP et gar
 
 ## Couverture de tests (cliquet)
 
-- Seuil CI : **88 %** (`COVERAGE_THRESHOLD`, `.github/workflows/ci.yml`). Mesure au 2026-10-14 : 90,3 %, d'où le passage de 80 à 88 (2 points de marge pour une PR qui ajoute plus de code que de tests). Historique : 77,1 % puis 81,8 % à la fin de la phase 2 (seuil de 75 à 80). Le seuil de 80 % d'origine n'était plus tenu avant la migration (57,2 %, toute la couche Twig non testée).
-- Exclus de la mesure (`phpunit.dist.xml`) : `Http/Controller` et `Http/Form` des contextes `Repas` et `User` (ils sortent de l'exclusion en même temps que du code, phase 10 ; les controllers API restent mesurés), et les `DataFixture` (données de test chargées hors d'un test, donc jamais créditées).
+- Seuil CI : **89 %** (`COVERAGE_THRESHOLD`, `.github/workflows/ci.yml`). Mesure au 2026-10-16, après l'extinction de Twig (plus aucune exclusion hors fixtures) : 91,3 %, d'où le passage de 88 à 89. Au 2026-10-14 : 90,3 %, passage de 80 à 88 (2 points de marge pour une PR qui ajoute plus de code que de tests). Historique : 77,1 % puis 81,8 % à la fin de la phase 2 (seuil de 75 à 80). Le seuil de 80 % d'origine n'était plus tenu avant la migration (57,2 %, toute la couche Twig non testée).
+- Exclus de la mesure (`phpunit.dist.xml`) : les `DataFixture` seulement (les `Http/Controller` et `Http/Form` Twig, exclus jusque-là, ont été supprimés) (données de test chargées hors d'un test, donc jamais créditées).
 - Règle : le seuil ne baisse jamais. Le remonter par paliers quand la mesure le permet (les slices Query/Loader/API entrent à 100 %, donc le chiffre monte avec la migration).
 - Plus gros trous restants (mesure du 2026-10-13, éléments non couverts) : `Infrastructure/Entity` 172, `Domain/Model` 134, commandes console `src/Command` 113, `Infrastructure/Repository` 89.
 

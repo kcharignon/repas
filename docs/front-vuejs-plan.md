@@ -40,6 +40,10 @@ Le projet est réussi quand :
 | Export du contrat OpenAPI versionné (`openapi.json` publié par la CI) | Le front génère son client typé depuis ce fichier | S |
 | Vérification d'email à l'inscription (si souhaitée) | Inscription publique sans confirmation ; nécessite un service d'envoi (`symfony/mailer`) | M, **décision produit** |
 
+### État au 2026-10-16 : terminé
+
+Le front est en production sur `kantin.eu` (releases `v0.1.0-rc1` du back et du front, [ADR 0017](adr/0017-deploiement-et-releases.md)) ; la recette de parité a été jouée par l'utilisateur ; **Twig est supprimé du back** ([ADR 0018](adr/0018-extinction-de-twig.md)) et `app.kantin.eu` redirige vers `kantin.eu`. Le reste de ce document est l'historique du plan : les sections 5 (inventaire), 8 à 10 décrivent ce qui a été fait, la section 10 « Bascule et extinction » a été exécutée en un jour, sans délai de grâce, à la demande de l'utilisateur.
+
 ### État du front au 2026-10-15
 
 Dépôt `kcharignon/repas-front`, PR #1 à #23 fusionnées : les phases 1 à 5 sont faites. Chaque route Twig a son équivalent (`PARITY.md` du front : route Twig, écran, tests unitaires et de bout en bout, état) ; les anciennes adresses Twig sont redirigées côté front ; l'application est installable, la liste en cours se lit hors-ligne (ADR front 0006) ; Lighthouse sur l'image de production : performance 94 à 100, accessibilité 100, bonnes pratiques 100, SEO 100. **Reste à faire avec l'utilisateur** : la phase 6 (recette de parité jouée à la main, une semaine de « dogfooding »), puis la bascule (phase 7) et l'extinction de Twig (phase 8), **seulement sur son accord explicite**.

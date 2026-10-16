@@ -1,6 +1,6 @@
 # 0009 — Stratégie de migration « strangler » par slice de lecture
 
-- **Statut** : Accepted
+- **Statut** : Accepted, terminée : la migration est achevée et Twig supprimé ([0018](0018-extinction-de-twig.md)) ; le texte ci-dessous est conservé comme historique
 - **Date** : 2026-10-12
 - **Liens** : [0003](0003-cqrs-lecture-ecriture.md), `docs/migration-roadmap.md`
 

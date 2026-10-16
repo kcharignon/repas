@@ -5,9 +5,9 @@ Guide d'architecture pour ce projet (Symfony 8.1 / PHP 8.4). L'objectif: rester 
 ## Source de vérité : ADR, roadmap, skill
 
 - **Décisions d'architecture** : `docs/adr/README.md` (index). À lire avant de développer. En cas de désaccord avec ce fichier, l'ADR gagne.
-- **Migration en cours** : les lectures passent petit à petit de « controller → repository » à « controller → QueryBus → QueryHandler → Loader → DTO », avec en parallèle de nouveaux endpoints API JSON stateless (JWT). Suivi dans `docs/migration-roadmap.md` (à mettre à jour à chaque slice).
-- **Skill développeur** : `/repas-dev` (`.claude/skills/repas-dev/`) — recettes pas-à-pas (nouvelle lecture, migration d'un ViewController, endpoint API, écriture), nommage, Definition of Done.
-- **Skill exploitation** : `/repas-ops` (`.claude/skills/repas-ops/`) — release, déploiement, retour arrière, sauvegarde, première mise en production, bascule du SPA ; l'utilisateur n'est pas devops : une étape à la fois, jamais de secret dans le chat (ADR 0017).
+- **Migration terminée** ([ADR 0018](docs/adr/0018-extinction-de-twig.md)) : toutes les lectures passent par « controller → QueryBus → QueryHandler → Loader → DTO » et le back ne sert plus que l'API JSON stateless (JWT) ; l'interface est le front Vue.js (dépôt `kcharignon/repas-front`). L'historique des slices est dans `docs/migration-roadmap.md`.
+- **Skill développeur** : `/repas-dev` (`.claude/skills/repas-dev/`) — recettes pas-à-pas (nouvelle lecture, endpoint API, écriture), nommage, Definition of Done.
+- **Skill exploitation** : `/repas-ops` (`.claude/skills/repas-ops/`) — release, déploiement, retour arrière, sauvegarde, incident ; l'utilisateur n'est pas devops : une étape à la fois, jamais de secret dans le chat (ADR 0017).
 - Changer une convention = mettre à jour l'ADR, ce fichier, le skill et la roadmap dans le même commit.
 
 ## Bounded contexts
@@ -36,10 +36,7 @@ src/{Context}/
     Entity/         # entités Doctrine (mapping ORM, séparées du Domain\Model)
     Repository/     # implémentations *PostgreSQLRepository des ports Domain\Interface (écriture, agrégats)
     Loader/         # implémentations {X}PostgreSQLLoader des ports Application\Loader (lecture, DTO)
-    Http/Controller # {Action}ViewController Twig (un controller = une route = une action)
     Http/Api/{UseCase}/ # {UseCase}ApiController JSON `/api/v1` (+ RequestQuery / Payload)
-    Http/Form       # Symfony FormType liés aux Command
-    Http/View       # templates Twig
     EventListener/  # écoute les Domain\Event
     DataFixture/    # fixtures Doctrine
 ```
@@ -49,16 +46,16 @@ src/{Context}/
 ## CQRS
 
 - **Écritures (Command)** : passent par un bus. `CommandBusInterface::dispatch()` (`src/Shared/Application/Interface/CommandBusInterface.php`) envoie le `{UseCase}Command` (DTO `readonly`, propriétés publiques, pas de logique) au `{UseCase}Handler` marqué `#[AsMessageHandler]` (Symfony Messenger). Le controller ne fait qu'assembler la Command et appeler `dispatch()` — jamais de logique métier dans un controller.
-- **Lectures (Query)** : passent par `QueryBusInterface::ask()` (`src/Shared/Application/Interface/QueryBusInterface.php`). Le `{UseCase}Query` (`final readonly`, `implements QueryInterface`) est traité par un `{UseCase}QueryHandler` qui délègue à un port `Application/Loader/{X}Loader` et renvoie un `{X}DTO` (`final readonly`). Le controller (Twig ou API) ne manipule que ce DTO — jamais un modèle de domaine, jamais un repository (ADR 0003, 0004, 0005).
+- **Lectures (Query)** : passent par `QueryBusInterface::ask()` (`src/Shared/Application/Interface/QueryBusInterface.php`). Le `{UseCase}Query` (`final readonly`, `implements QueryInterface`) est traité par un `{UseCase}QueryHandler` qui délègue à un port `Application/Loader/{X}Loader` et renvoie un `{X}DTO` (`final readonly`). Le controller API ne manipule que ce DTO — jamais un modèle de domaine, jamais un repository (ADR 0003, 0004, 0005).
 - **Règles fermes** : un `QueryHandler` n'appelle jamais un `Repository` ; un `CommandHandler` n'appelle jamais un `Loader` ; un `QueryHandler` ne modifie pas l'état (une lecture qui crée si absent = une Command puis une Query).
-- **État de la migration** : plus aucun controller, API, formulaire ni voter ne lit via un `Domain\Interface\{X}Repository` (phase 7) ; Deptrac (`deptrac.no-repository-in-http.yaml`) l'interdit dans `Infrastructure\Http`. Toute nouvelle lecture suit la recette du skill `/repas-dev` et coche la slice dans `docs/migration-roadmap.md`. Un prédicat booléen se nomme `Is{X}` / `Has{X}` (ex. `IsEmailAlreadyUsed`) et renvoie un `bool`.
+- **État de la migration (terminée, ADR 0018)** : plus aucun controller API ni voter ne lit via un `Domain\Interface\{X}Repository` (phase 7) ; Deptrac (`deptrac.no-repository-in-http.yaml`) l'interdit dans `Infrastructure\Http`. Toute nouvelle lecture suit la recette du skill `/repas-dev` et coche la slice dans `docs/migration-roadmap.md`. Un prédicat booléen se nomme `Is{X}` / `Has{X}` (ex. `IsEmailAlreadyUsed`) et renvoie un `bool`.
 - **Droits d'accès** : `OwnerVoter` (contexte `User`) interroge le port `Shared\Application\Interface\OwnershipLoader` (ids de propriétaire uniquement), implémenté dans `Repas\Infrastructure\Loader`.
 - **Buses** : `command.bus` et `query.bus` distincts (ADR 0006). `command.bus` est transactionnel (`doctrine_transaction`) : une commande est atomique, un handler qui échoue en cours de route n'écrit rien. Les controllers injectent toujours `CommandBusInterface` / `QueryBusInterface`, jamais les classes concrètes.
 
 ## API JSON (`/api/v1`)
 
 - Controllers dans `Infrastructure/Http/Api/{UseCase}/`, suffixe `ApiController`, qui n'appellent que le `QueryBusInterface` (GET) ou le `CommandBusInterface` (écritures). Sortie de lecture = le DTO de la query ; liste = `{member, totalItems}` ; écriture = `204` ou `201` + `Location` ; erreurs = `{error:{message}}` (ADR 0007).
-- Stateless, authentifiés par **JWT** (ADR 0008). Le JWT dure 1 h ; le SPA le renouvelle avec un **refresh token en cookie `HttpOnly` à rotation** (`POST /api/auth/refresh` et `/logout`, ADR 0015). Seule exception : l'inscription `POST /api/v1/users` est publique (`access_control`, ADR 0007 §14). Les routes Twig/AJAX existantes restent en session et ne changent pas : les deux coexistent.
+- Stateless, authentifiés par **JWT** (ADR 0008). Le JWT dure 1 h ; le SPA le renouvelle avec un **refresh token en cookie `HttpOnly` à rotation** (`POST /api/auth/refresh` et `/logout`, ADR 0015). Seule exception : l'inscription `POST /api/v1/users` est publique (`access_control`, ADR 0007 §14). Le back ne sert que l'API : plus de page web, de session ni de CSRF (ADR 0018).
 - Documentation OpenAPI (`#[OA\…]`) obligatoire sur chaque controller API.
 - Le contrat complet est versionné dans `docs/api/openapi.json` : après tout changement d'API, `make openapi` puis relire le diff (`make openapi-check` échoue sinon, ADR 0007 §15).
 - Endpoints d'écriture : un use case = une commande = un controller ; l'utilisateur vient du JWT (`#[CurrentUser] AuthenticatedUser`), jamais du corps ; transitions d'état en `POST …/{action}` ; codes de domaine 404 / 409 / 422, `403` réservé à l'autorisation (ADR 0007 §11 à 13). Recette et liste de courses ont une `version` (`ETag` à la lecture, `If-Match` facultatif aux écritures, `412` si périmée, `409` si une autre requête a enregistré entre-temps : ADR 0016) ; toute nouvelle écriture sur ces deux agrégats ajoute `?int $expectedVersion = null` à sa commande et appelle `assertVersion()` après le chargement.
@@ -100,8 +97,8 @@ src/{Context}/
 
 - Use case d'écriture : dossier `Application/Command/{VerbNoun}/` contenant `{VerbNoun}Command.php` + `{VerbNoun}Handler.php`.
 - Use case de lecture : dossier `Application/Query/{Get|List}{Noun}/` contenant `{Get|List}{Noun}Query.php`, `…QueryHandler.php` (`#[AsMessageHandler(bus: 'query.bus')]`) et les `{X}DTO.php`. `Get` = un élément, `List` = une collection, `Is`/`Has` = un prédicat booléen.
-- Controller HTTP Twig : suffixe `ViewController` ; API : suffixe `ApiController` ; attribut `#[Route]` sur `__invoke()`.
-- Utilisateur connecté dans un controller du contexte `Repas` : `#[CurrentUser] AuthenticatedUser $user` (`Shared\Domain\Interface`, accesseurs `getId()` et `getDefaultServing()`), aussi dans les formulaires, jamais `User\Domain\Model\User` (ADR 0001 §8).
+- Controller HTTP (API JSON uniquement) : suffixe `ApiController` ; attribut `#[Route]` sur `__invoke()`.
+- Utilisateur connecté dans un controller du contexte `Repas` : `#[CurrentUser] AuthenticatedUser $user` (`Shared\Domain\Interface`, accesseurs `getId()` et `getDefaultServing()`), jamais `User\Domain\Model\User` (ADR 0001 §8).
 - Repository infra : suffixe technologie, ex. `PostgreSQLRepository`. Loader infra : `{X}PostgreSQLLoader implements {X}Loader`.
 - Événements de domaine : suffixe `Event`, dispatchés via `EventDispatcherInterface` depuis un Handler, consommés par un `EventListener` en Infrastructure.
 
@@ -144,11 +141,11 @@ Utiliser le skill `/repas-dev` (recettes détaillées). En bref :
 **Lecture**
 1. DTO + interface `Application/Loader/{X}Loader` + `{UseCase}Query` + `{UseCase}QueryHandler`.
 2. Implémenter `Infrastructure/Loader/{X}PostgreSQLLoader` (DQL/DBAL → DTO, pas d'hydratation de modèle de domaine).
-3. Exposer via un controller Twig et/ou API qui n'appelle que le `QueryBusInterface`.
+3. Exposer via un controller API qui n'appelle que le `QueryBusInterface`.
 4. Tests : handler + InMemoryLoader (unitaire, jamais de base), Loader sur base réelle, controller API.
 
 **Données de démonstration** (dev seulement) : `make fixtures-demo` crée, sans vider la base, les comptes `admin@repas.fr` (administrateur) et `user@repas.fr` (mot de passe `M0t 2 p@sse`) et leurs recettes et listes de courses, par les vrais cas d'usage (`DemoUserFixture`, `DemoRepasFixture`, groupe `demo`, refusées en production). Les données de référence viennent de `make fixtures-load-dev` (qui vide la base). Idempotent.
 
-**Avant de committer** : `make test` puis `make quality` (agrège `deptrac`, `phpstan`, `api-doc-validate`, `api-doc-coverage`, `openapi-check`). `make audit` si `composer.*` change, `make deploy-smoke` si `deploy/`, le `Dockerfile` ou l'entrypoint changent. Toute slice qui touche une page Twig passe aussi un test visuel dans Chromium (captures lues, voir `.claude/skills/repas-dev/references/visual-check.md`). Les clés JWT de dev s'initialisent avec `make jwt-keys`. La baseline PHPStan (`phpstan-baseline.neon`) ne doit que diminuer ; Deptrac n'a plus de baseline : aucune dépendance entre contextes n'est tolérée (ce qui doit circuler passe par `Shared`, ADR 0013 règle 8). Un commit par unité logique, message court en français, sans `Co-Authored-By`. En fin de slice, pousser la branche de travail (`git push -u origin <branche>`) et ouvrir la PR vers `main` avec `gh pr create` sans attendre de demande : titre court (`refactor(chore): cqrs phase N …`), description concise qui suit `.github/pull_request_template.md` (Quoi / Vérifié / À relire), sans pied de page d'attribution. Jamais de merge, de push sur `main` ni de force-push : le merge est fait par l'humain.
+**Avant de committer** : `make test` puis `make quality` (agrège `deptrac`, `phpstan`, `api-doc-validate`, `api-doc-coverage`, `openapi-check`). `make audit` si `composer.*` change, `make deploy-smoke` si `deploy/`, le `Dockerfile` ou l'entrypoint changent. Les clés JWT de dev s'initialisent avec `make jwt-keys`. La baseline PHPStan (`phpstan-baseline.neon`) ne doit que diminuer ; Deptrac n'a plus de baseline : aucune dépendance entre contextes n'est tolérée (ce qui doit circuler passe par `Shared`, ADR 0013 règle 8). Un commit par unité logique, message court en français, sans `Co-Authored-By`. En fin de slice, pousser la branche de travail (`git push -u origin <branche>`) et ouvrir la PR vers `main` avec `gh pr create` sans attendre de demande : titre court (`refactor(chore): cqrs phase N …`), description concise qui suit `.github/pull_request_template.md` (Quoi / Vérifié / À relire), sans pied de page d'attribution. Jamais de merge, de push sur `main` ni de force-push : le merge est fait par l'humain.
 
-Ne pas mettre de logique métier dans les controllers, les entités Doctrine ou les templates Twig — tout va dans `Domain`/`Application` ; les calculs d'affichage d'une lecture sont précalculés dans le DTO par le Loader.
+Ne pas mettre de logique métier dans les controllers, les entités Doctrine — tout va dans `Domain`/`Application` ; les calculs d'affichage d'une lecture sont précalculés dans le DTO par le Loader.

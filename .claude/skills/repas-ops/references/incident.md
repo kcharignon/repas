@@ -31,6 +31,6 @@ Les sauvegardes sont dans `/opt/repas/backups/` (14 dernières, une avant chaque
 
 À répéter d'abord sur une base jetable locale (voir la répétition faite avant le premier déploiement : `docker compose exec -T database createdb …` puis `pg_restore`).
 
-## 4. Revenir à l'ancienne installation (avant la bascule définitive)
+## 4. Rendre Twig en urgence
 
-Tant que `/root/repas` existe : `cd /opt/repas && docker compose down`, puis `cd /root/repas && docker compose -f compose.yaml -f compose.prod.yaml up -d` (variables : voir sa `.env`/`.env.prod.local`). Sa base est celle d'avant la reprise : les données saisies depuis sont perdues, d'où l'intérêt de la restauration du §3 si le nouveau site a déjà servi.
+Twig n'existe plus dans la version courante (ADR 0018) ; l'ancienne installation arrêtée dans `/root/repas` a une base périmée. Voir `references/retour-twig.md`.
