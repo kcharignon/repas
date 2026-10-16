@@ -71,6 +71,43 @@ class AddIngredientToShoppingListHandlerTest extends TestCase
         ($this->handler)($command);
     }
 
+    public function testHandleAddsACustomIngredientOfTheOwner(): void
+    {
+        // Arrange
+        $user = new UserBuilder()->build();
+        $butter = new IngredientBuilder()->isButter()->withCreator($user, true)->build();
+        $this->ingredientRepository->save($butter);
+        $shoppingList = new ShoppingListBuilder()->withOwner($user)->build();
+        $this->shoppingListRepository->save($shoppingList);
+
+        // Act
+        ($this->handler)(new AddIngredientToShoppingListCommand($user->getId(), $butter->getSlug()));
+
+        // Assert
+        $this->assertCount(1, $shoppingList->getRows());
+    }
+
+    public function testHandleRefusesTheCustomIngredientOfAnotherUserAsUnknown(): void
+    {
+        // Arrange : l'ingrédient personnalisé d'un autre n'est ni à l'utilisateur ni commun
+        $user = new UserBuilder()->build();
+        $butter = new IngredientBuilder()->isButter()->withCreator(new UserBuilder()->build(), true)->build();
+        $this->ingredientRepository->save($butter);
+        $shoppingList = new ShoppingListBuilder()->withOwner($user)->build();
+        $this->shoppingListRepository->save($shoppingList);
+
+        // Act
+        try {
+            ($this->handler)(new AddIngredientToShoppingListCommand($user->getId(), $butter->getSlug()));
+            $this->fail("L'ingrédient d'un autre utilisateur ne se pose pas dans la liste.");
+        } catch (IngredientException $exception) {
+            // Assert
+            $this->assertEquals(IngredientException::notFound($butter->getSlug()), $exception);
+            $this->assertCount(0, $shoppingList->getRows());
+            $this->assertCount(0, $shoppingList->getIngredients());
+        }
+    }
+
     public function testHandleAddsIngredientToShoppingListWithUnknownIngredient(): void
     {
         // Arrange

@@ -10,6 +10,7 @@ final class UserException extends DomainException
     public const string INVALID_PASSWORD = 'INVALID_PASSWORD';
     public const string INVALID_EMAIL_VERIFICATION_TOKEN = 'INVALID_EMAIL_VERIFICATION_TOKEN';
     public const string PROTECTED_ACCOUNT = 'PROTECTED_ACCOUNT';
+    public const string CANNOT_DELETE_OWN_ACCOUNT = 'CANNOT_DELETE_OWN_ACCOUNT';
 
     public static function NotFound(string $user): static
     {
@@ -40,10 +41,18 @@ final class UserException extends DomainException
     }
 
     /**
-     * Le compte protégé ne se désactive ni ne se supprime (ADR 0021) : règle métier, `422`.
+     * Le compte protégé est intouchable : ni désactivé, ni remis en attente, ni supprimé (ADR 0021). Règle métier, `422`.
      */
     public static function protectedAccount(): self
     {
         return new self(self::PROTECTED_ACCOUNT, 422);
+    }
+
+    /**
+     * Un administrateur ne supprime pas son propre compte (ADR 0021) : règle métier, `422`.
+     */
+    public static function cannotDeleteOwnAccount(): self
+    {
+        return new self(self::CANNOT_DELETE_OWN_ACCOUNT, 422);
     }
 }

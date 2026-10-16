@@ -30,7 +30,7 @@ readonly class AddIngredientToShoppingListHandler
         }
         $shoppingListActive->assertVersion($command->expectedVersion);
 
-        $purchaseUnitSlug = $this->ingredientRepository->findPurchaseUnitSlug($command->ingredientSlug);
+        $purchaseUnitSlug = $this->ingredientRepository->findPurchaseUnitSlugUsableBy($command->ingredientSlug, $command->ownerId);
         $shoppingListActive->addIngredient($command->ingredientSlug, $purchaseUnitSlug);
 
         $shoppingListActive->addRow($command->ingredientSlug, $purchaseUnitSlug, 1);

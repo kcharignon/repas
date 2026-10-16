@@ -4,6 +4,7 @@ namespace Repas\Tests\Repas\InputAdapter;
 
 
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
+use Repas\Repas\Domain\Exception\IngredientException;
 use Repas\Repas\Domain\Exception\RecipeException;
 use Repas\Repas\Domain\Exception\ShoppingListException;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
@@ -256,6 +257,56 @@ class ShoppingListWriteApiFlowTest extends DatabaseTestCase
         $this->assertSame(204, $this->client->getResponse()->getStatusCode());
         $this->assertFalse(static::getContainer()->get(ShoppingListRowRepository::class)->findOneById($rowId)->isChecked());
         $this->assertSame(ShoppingListStatus::ACTIVE, $this->shoppingLists()->findOneById($shoppingList->getId())->getStatus());
+    }
+
+    public function testAddingTheCustomIngredientOfAnotherUserIsNotFoundAndLeavesTheListUntouched(): void
+    {
+        // Given : un ingrédient personnalisé d'un autre utilisateur, et une liste active
+        $owner = $this->savedUser();
+        $butter = new IngredientBuilder()->isButter()->withCreator($this->savedUser(), true)->build();
+        $this->persister->saveIngredient($butter);
+        $list = $this->savedList($owner);
+
+        // When
+        $this->request('POST', '/api/v1/shopping-lists/active/ingredients/' . $butter->getSlug() . '/increase', $owner);
+
+        // Then : même réponse qu'un ingrédient inconnu, et la liste n'a ni ligne ni ingrédient
+        $this->assertSame(404, $this->client->getResponse()->getStatusCode());
+        $this->assertSame(['error' => ['message' => IngredientException::notFound($butter->getSlug())->getMessage()]], $this->jsonBody());
+        $reloaded = $this->shoppingLists()->findOneById($list->getId());
+        $this->assertCount(0, $reloaded->getRows());
+        $this->assertCount(0, $reloaded->getIngredients());
+    }
+
+    public function testAnAdministratorCannotAddTheCustomIngredientOfAnotherUserEither(): void
+    {
+        // Given
+        $admin = $this->savedUser(admin: true);
+        $butter = new IngredientBuilder()->isButter()->withCreator($this->savedUser(), true)->build();
+        $this->persister->saveIngredient($butter);
+        $this->savedList($admin);
+
+        // When
+        $this->request('POST', '/api/v1/shopping-lists/active/ingredients/' . $butter->getSlug() . '/increase', $admin);
+
+        // Then
+        $this->assertSame(404, $this->client->getResponse()->getStatusCode());
+    }
+
+    public function testACommonIngredientCanBeAddedByAnyUser(): void
+    {
+        // Given
+        $owner = $this->savedUser();
+        $egg = new IngredientBuilder()->isEgg()->build();
+        $this->persister->saveIngredient($egg);
+        $list = $this->savedList($owner);
+
+        // When
+        $this->request('POST', '/api/v1/shopping-lists/active/ingredients/' . $egg->getSlug() . '/increase', $owner);
+
+        // Then
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->assertCount(1, $this->shoppingLists()->findOneById($list->getId())->getRows());
     }
 
     public function testIncreasesThenDecreasesAnIngredientOfTheActiveList(): void

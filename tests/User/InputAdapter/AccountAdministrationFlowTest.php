@@ -178,36 +178,75 @@ class AccountAdministrationFlowTest extends DatabaseTestCase
         $this->assertSame(401, $this->statusOf('GET', '/api/v1/me', $token));
     }
 
-    public function testTheProtectedAccountCannotBeDisabledOrDeletedButCanTakeTheOtherStatuses(): void
+    public function testTheProtectedAccountIsUntouchable(): void
     {
-        // Given : le compte protégé est un administrateur, son propriétaire
+        // Given : le compte protégé est un administrateur, son propriétaire, connecté
         $protected = $this->savedUser(new UserBuilder()->withEmail(User::PROTECTED_EMAIL)->isAdmin());
         $recipe = $this->savedRecipe($protected, new RecipeBuilder()->isPastaCarbonara());
+        $protectedJwt = $this->login(User::PROTECTED_EMAIL);
         $token = $this->login('admin@example.com');
 
-        // When : on le désactive
+        // When : un autre administrateur le désactive, le remet en attente, le supprime
+        foreach (['DISABLED', 'PENDING'] as $status) {
+            $this->changeStatus($protected, $status, $token);
+
+            // Then
+            $this->assertSame(422, $this->client->getResponse()->getStatusCode(), $status);
+            $this->assertSame(['error' => ['message' => 'PROTECTED_ACCOUNT']], $this->jsonBody());
+        }
+        $this->request('DELETE', '/api/v1/users/' . $protected->getId(), $token);
+        $this->assertSame(422, $this->client->getResponse()->getStatusCode());
+        $this->assertSame(['error' => ['message' => 'PROTECTED_ACCOUNT']], $this->jsonBody());
+
+        // Then : le compte, ses données et sa connexion sont intacts
+        $this->assertSame(UserStatus::ACTIVE, $this->userStatus($protected));
+        $this->assertSame(1, $this->rowCount('user', 'id', $protected->getId()));
+        $this->assertSame(1, $this->rowCount('recipe', 'id', $recipe->getId()));
+        $this->assertSame(1, $this->rowCount('refresh_token', 'user_id', $protected->getId()));
+        $this->assertSame(200, $this->statusOf('GET', '/api/v1/me', $protectedJwt));
+
+        // When : on lui redonne le statut actif
+        $this->changeStatus($protected, 'ACTIVE', $token);
+
+        // Then : permis, sans effet
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->assertSame(UserStatus::ACTIVE, $this->userStatus($protected));
+    }
+
+    public function testTheProtectedAccountCannotTouchItselfEither(): void
+    {
+        // Given
+        $protected = $this->savedUser(new UserBuilder()->withEmail(User::PROTECTED_EMAIL)->isAdmin());
+        $token = $this->login(User::PROTECTED_EMAIL);
+
+        // When
         $this->changeStatus($protected, 'DISABLED', $token);
 
         // Then
         $this->assertSame(422, $this->client->getResponse()->getStatusCode());
-        $this->assertSame(['error' => ['message' => 'PROTECTED_ACCOUNT']], $this->jsonBody());
         $this->assertSame(UserStatus::ACTIVE, $this->userStatus($protected));
+    }
 
-        // When : on le supprime
-        $this->request('DELETE', '/api/v1/users/' . $protected->getId(), $token);
+    public function testAnAdministratorCannotDeleteHisOwnAccountButCanDeleteAnotherAdministrator(): void
+    {
+        // Given
+        $other = $this->savedUser(new UserBuilder()->withEmail('other-admin@example.com')->isAdmin());
+        $token = $this->login('admin@example.com');
 
-        // Then : le compte et ses données sont intacts
+        // When : il supprime son propre compte
+        $this->request('DELETE', '/api/v1/users/' . $this->admin->getId(), $token);
+
+        // Then
         $this->assertSame(422, $this->client->getResponse()->getStatusCode());
-        $this->assertSame(['error' => ['message' => 'PROTECTED_ACCOUNT']], $this->jsonBody());
-        $this->assertSame(1, $this->rowCount('user', 'id', $protected->getId()));
-        $this->assertSame(1, $this->rowCount('recipe', 'id', $recipe->getId()));
+        $this->assertSame(['error' => ['message' => 'CANNOT_DELETE_OWN_ACCOUNT']], $this->jsonBody());
+        $this->assertSame(1, $this->rowCount('user', 'id', $this->admin->getId()));
 
-        // When : les autres statuts restent permis
-        $this->changeStatus($protected, 'PENDING', $token);
+        // When : il supprime un autre administrateur
+        $this->request('DELETE', '/api/v1/users/' . $other->getId(), $token);
 
         // Then
         $this->assertSame(204, $this->client->getResponse()->getStatusCode());
-        $this->assertSame(UserStatus::PENDING, $this->userStatus($protected));
+        $this->assertSame(0, $this->rowCount('user', 'id', $other->getId()));
     }
 
     public function testTheAdministrationListShowsTheStatusOfEachAccount(): void
