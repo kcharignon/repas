@@ -52,9 +52,9 @@ compose() {
 # Répond « ok » quand le service déployé sert réellement, pas seulement quand son conteneur tourne.
 healthy() {
 	if [[ $service == back ]]; then
-		compose exec -T edge wget -q -O - http://php/api/v1/health > /dev/null 2>&1
+		compose exec -T edge wget -q -O - http://php/api/v1/health < /dev/null > /dev/null 2>&1
 	else
-		compose exec -T edge wget -q -O - http://front/ 2> /dev/null | grep -q '<div id="app">'
+		compose exec -T edge wget -q -O - http://front/ < /dev/null 2> /dev/null | grep -q '<div id="app">'
 	fi
 }
 
@@ -70,7 +70,7 @@ apply() {
 	compose pull --quiet --ignore-pull-failures "$@" || return 1
 	compose up -d --wait --wait-timeout 240 --remove-orphans || return 1
 	# La bordure relit le Caddyfile copié avec cette version, sans couper les connexions.
-	compose exec -T edge caddy reload --config /etc/caddy/Caddyfile --force > /dev/null 2>&1 || true
+	compose exec -T edge caddy reload --config /etc/caddy/Caddyfile --force < /dev/null > /dev/null 2>&1 || true
 }
 
 previous=$(get_var "$var")

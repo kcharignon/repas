@@ -16,6 +16,7 @@ description: Mettre en production, publier une release, revenir en arrière, sau
 - Droplet DigitalOcean `repasdocker`, `64.227.124.100`, Ubuntu 22.04, 1 Go de RAM : **jamais de build sur le serveur**.
 - Production : `/opt/repas` (compose, `Caddyfile`, `deploy.sh`, `backup.sh`, `.env`, `backups/`, `state/`), propriétaire `deploy`. L'**ancienne installation** (`/root/repas`, projet compose `repas`, base dans `docker/db/data`) reste intacte pour un retour arrière tant que le SPA n'a pas pris la racine.
 - Lecture seule en SSH : autorisée (`ssh -i ~/.ssh/id_ed25519 root@64.227.124.100 '…'`, `-o BatchMode=yes`). **Écriture : bloquée pour moi par le système** → j'écris un script dans le scratchpad et l'utilisateur le lance : `! ssh -i ~/.ssh/id_ed25519 root@64.227.124.100 'bash -s' < <chemin du script>`. Ne pas contourner.
+- Piège : dans un script lancé par `ssh … 'bash -s' < script`, toute commande `docker compose exec -T` doit porter `< /dev/null` (ou son propre fichier en entrée), sinon elle avale la suite du script. `deploy.sh` et `backup.sh` le font déjà.
 
 ## 2. Quelle recette ?
 
