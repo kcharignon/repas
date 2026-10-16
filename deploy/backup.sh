@@ -14,7 +14,7 @@ umask 077
 file="backups/repas-$(date +%Y%m%d-%H%M%S)${label:+-$label}.dump"
 
 # Écrit dans un fichier temporaire : une sauvegarde interrompue ne remplace jamais une bonne.
-docker compose exec -T database sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc' > "$file.partial"
+docker compose exec -T database sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc' < /dev/null > "$file.partial"
 
 # Un dump vide ou illisible n'est pas une sauvegarde.
 if ! docker compose exec -T database pg_restore --list < "$file.partial" > /dev/null; then
