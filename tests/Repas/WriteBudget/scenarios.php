@@ -46,14 +46,14 @@ use Repas\Tests\Helper\Builder\ShoppingListBuilder;
 use Repas\Tests\Helper\Builder\UnitBuilder;
 use Repas\Tests\Helper\Builder\UserBuilder;
 use Repas\Tests\Helper\WriteBudgetTestCase;
-use Repas\User\Application\ActivateUser\ActivateUserCommand;
+use Repas\User\Application\ChangeUserStatus\ChangeUserStatusCommand;
 use Repas\User\Application\DeleteUser\DeleteUserCommand;
-use Repas\User\Application\DisableUser\DisableUserCommand;
 use Repas\User\Application\RegisterNewUser\RegisterNewUserCommand;
 use Repas\User\Application\SendEmailVerification\SendEmailVerificationCommand;
 use Repas\User\Application\UpdateUserSettings\UpdateUserSettingsCommand;
 use Repas\User\Application\VerifyEmail\VerifyEmailCommand;
 use Repas\User\Domain\Model\EmailVerificationToken;
+use Repas\User\Domain\Model\UserStatus;
 
 /**
  * Un scénario = un use case d'écriture mesuré sur une situation typique : un utilisateur avec trois recettes
@@ -305,17 +305,12 @@ return [
 
         return new UpdateUserSettingsCommand($user->getId(), null, 5);
     },
-    'activer-compte' => static function (WriteBudgetTestCase $t): object {
-        $user = $t->savedUser(new UserBuilder()->isPending());
-        $t->savedEmailVerificationToken($user, 'le-secret');
-
-        return new ActivateUserCommand($user->getId());
-    },
-    'desactiver-compte' => static function (WriteBudgetTestCase $t): object {
+    // Pire cas : un compte actif connecté, avec un lien de confirmation, devient désactivé
+    'changer-statut-compte' => static function (WriteBudgetTestCase $t): object {
         $user = $t->savedUser();
         $t->savedEmailVerificationToken($user, 'le-secret');
 
-        return new DisableUserCommand($user->getId(), 'administrateur');
+        return new ChangeUserStatusCommand($user->getId(), UserStatus::DISABLED);
     },
     // Compte qui a trois recettes planifiées dans une liste, dont une est copiée par un autre utilisateur
     'supprimer-compte' => static function (WriteBudgetTestCase $t): object {
@@ -324,6 +319,6 @@ return [
         $t->savedShoppingList($owner, $recipes);
         $t->savedRecipe($t->savedUser(), new RecipeBuilder()->isPastaCarbonara()->withOriginalId($recipes[0]->getId()));
 
-        return new DeleteUserCommand($owner->getId(), 'administrateur');
+        return new DeleteUserCommand($owner->getId());
     },
 ];

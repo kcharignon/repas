@@ -18,6 +18,9 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, Passwor
 
     use ModelTrait;
 
+    /** Adresse du compte protégé (voir `isProtected()`). */
+    public const string PROTECTED_EMAIL = 'kantincharignon@gmail.com';
+
     private function __construct(
         private string $id,
         private string $email,
@@ -290,31 +293,42 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, Passwor
     }
 
     /**
-     * L'administrateur confirme lui-même le compte : un compte en attente devient actif (ADR 0021).
+     * L'administrateur fixe le statut du compte, quel que soit l'ancien (ADR 0021). Seule règle : le compte protégé ne
+     * devient jamais désactivé.
      *
-     * @throws UserException le compte n'est pas en attente
+     * @throws UserException le compte est protégé et le statut demandé le désactiverait
      */
-    public function activate(): void
+    public function changeStatus(Status $status): void
     {
-        if ($this->status !== Status::PENDING) {
-            throw UserException::invalidStatusTransition($this->status, Status::ACTIVE);
+        if ($status === Status::DISABLED && $this->isProtected()) {
+            throw UserException::protectedAccount();
         }
 
-        $this->status = Status::ACTIVE;
+        $this->status = $status;
     }
 
     /**
-     * Un compte en attente ou actif devient désactivé : il ne peut plus ni se connecter ni rien obtenir (ADR 0021).
-     *
-     * @throws UserException le compte est déjà désactivé
+     * Compte que personne ne peut désactiver ni supprimer, pas même un administrateur : celui de son propriétaire, qui
+     * perdrait sinon l'administration sans reprise possible (ADR 0021).
      */
-    public function disable(): void
+    public function isProtected(): bool
     {
-        if ($this->status === Status::DISABLED) {
-            throw UserException::invalidStatusTransition($this->status, Status::DISABLED);
-        }
+        return $this->email === static::normalizeEmail(self::PROTECTED_EMAIL);
+    }
 
-        $this->status = Status::DISABLED;
+    /**
+     * @throws UserException le compte est protégé
+     */
+    public function assertCanBeDeleted(): void
+    {
+        if ($this->isProtected()) {
+            throw UserException::protectedAccount();
+        }
+    }
+
+    public function isActive(): bool
+    {
+        return $this->status === Status::ACTIVE;
     }
 
     public function isDisabled(): bool

@@ -57,7 +57,7 @@ class AccountAdministrationFlowTest extends DatabaseTestCase
         $this->assertSame(1, $this->rowCount('refresh_token', 'user_id', $target->getId()));
 
         // When : l'administrateur le désactive
-        $this->request('POST', '/api/v1/users/' . $target->getId() . '/disable', $this->login('admin@example.com'));
+        $this->changeStatus($target, 'DISABLED', $this->login('admin@example.com'));
 
         // Then : le jeton d'accès encore valable est refusé tout de suite
         $this->assertSame(204, $this->client->getResponse()->getStatusCode());
@@ -70,10 +70,24 @@ class AccountAdministrationFlowTest extends DatabaseTestCase
         $this->client->request('POST', '/api/login_check', content: json_encode(['email' => 'target@example.com', 'password' => self::PASSWORD], JSON_THROW_ON_ERROR), server: ['CONTENT_TYPE' => 'application/json']);
         $this->assertSame(401, $this->client->getResponse()->getStatusCode());
         $this->assertSame(['error' => ['message' => 'Invalid credentials.']], $this->jsonBody());
-        // Then : plus de connexion ni de lien en attente, et le lien ne réactive rien
+        // Then : plus de connexion ni de lien en attente
         $this->assertSame(0, $this->rowCount('refresh_token', 'user_id', $target->getId()));
         $this->assertNull(static::getContainer()->get(EmailVerificationTokenRepository::class)->findOneByUserId($target->getId()));
         $this->assertSame(UserStatus::DISABLED, $this->userStatus($target));
+    }
+
+    public function testADisabledAccountCanBeActivatedAgainAndLogsIn(): void
+    {
+        // Given
+        $target = $this->savedUser(new UserBuilder()->withEmail('target@example.com')->isDisabled());
+        $token = $this->login('admin@example.com');
+
+        // When
+        $this->changeStatus($target, 'ACTIVE', $token);
+
+        // Then
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->assertSame(200, $this->statusOf('GET', '/api/v1/me', $this->login('target@example.com')));
     }
 
     public function testAPendingAccountActivatedByAnAdministratorCanLogIn(): void
@@ -86,12 +100,33 @@ class AccountAdministrationFlowTest extends DatabaseTestCase
         $this->assertSame(['error' => ['message' => 'EMAIL_NOT_VERIFIED']], $this->jsonBody());
 
         // When
-        $this->request('POST', '/api/v1/users/' . $target->getId() . '/activate', $this->login('admin@example.com'));
+        $this->changeStatus($target, 'ACTIVE', $this->login('admin@example.com'));
 
         // Then : il se connecte, et son ancien lien n'existe plus
         $this->assertSame(204, $this->client->getResponse()->getStatusCode());
         $this->assertSame(200, $this->statusOf('GET', '/api/v1/me', $this->login('target@example.com')));
         $this->assertNull(static::getContainer()->get(EmailVerificationTokenRepository::class)->findOneByUserId($target->getId()));
+    }
+
+    public function testAnActiveAccountPutBackToPendingMustConfirmItsAddressAgain(): void
+    {
+        // Given : le compte est connecté
+        $target = $this->savedUser(new UserBuilder()->withEmail('target@example.com'));
+        $jwt = $this->login('target@example.com');
+        $refreshSecret = $this->refreshSecret();
+
+        // When
+        $this->changeStatus($target, 'PENDING', $this->login('admin@example.com'));
+
+        // Then : ni le jeton d'accès, ni le cookie, ni le mot de passe n'ouvrent plus rien ; la confirmation est demandée
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->assertSame(401, $this->statusOf('GET', '/api/v1/me', $jwt));
+        $this->setRefreshSecret($refreshSecret);
+        $this->client->request('POST', '/api/auth/refresh');
+        $this->assertSame(401, $this->client->getResponse()->getStatusCode());
+        $this->client->request('POST', '/api/login_check', content: json_encode(['email' => 'target@example.com', 'password' => self::PASSWORD], JSON_THROW_ON_ERROR), server: ['CONTENT_TYPE' => 'application/json']);
+        $this->assertSame(403, $this->client->getResponse()->getStatusCode());
+        $this->assertSame(UserStatus::PENDING, $this->userStatus($target));
     }
 
     public function testAPendingAccountCanBeDisabledDirectly(): void
@@ -100,11 +135,79 @@ class AccountAdministrationFlowTest extends DatabaseTestCase
         $target = $this->savedUser(new UserBuilder()->withEmail('target@example.com')->isPending());
 
         // When
-        $this->request('POST', '/api/v1/users/' . $target->getId() . '/disable', $this->login('admin@example.com'));
+        $this->changeStatus($target, 'DISABLED', $this->login('admin@example.com'));
 
         // Then
         $this->assertSame(204, $this->client->getResponse()->getStatusCode());
         $this->assertSame(UserStatus::DISABLED, $this->userStatus($target));
+    }
+
+    public function testSettingTheStatusTheAccountAlreadyHasChangesNothing(): void
+    {
+        // Given
+        $target = $this->savedUser(new UserBuilder()->withEmail('target@example.com'));
+
+        // When
+        $this->changeStatus($target, 'ACTIVE', $this->login('admin@example.com'));
+
+        // Then
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->assertSame(UserStatus::ACTIVE, $this->userStatus($target));
+    }
+
+    public function testAnAdministratorCanBeDisabledByAnotherOneAndEvenByHimself(): void
+    {
+        // Given
+        $other = $this->savedUser(new UserBuilder()->withEmail('other-admin@example.com')->isAdmin());
+        $token = $this->login('admin@example.com');
+        $otherToken = $this->login('other-admin@example.com');
+
+        // When : un administrateur en désactive un autre
+        $this->changeStatus($other, 'DISABLED', $token);
+
+        // Then : l'autre est coupé sur-le-champ
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->assertSame(401, $this->statusOf('GET', '/api/v1/me', $otherToken));
+
+        // When : l'administrateur se désactive lui-même
+        $this->changeStatus($this->admin, 'DISABLED', $token);
+
+        // Then
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->assertSame(UserStatus::DISABLED, $this->userStatus($this->admin));
+        $this->assertSame(401, $this->statusOf('GET', '/api/v1/me', $token));
+    }
+
+    public function testTheProtectedAccountCannotBeDisabledOrDeletedButCanTakeTheOtherStatuses(): void
+    {
+        // Given : le compte protégé est un administrateur, son propriétaire
+        $protected = $this->savedUser(new UserBuilder()->withEmail(User::PROTECTED_EMAIL)->isAdmin());
+        $recipe = $this->savedRecipe($protected, new RecipeBuilder()->isPastaCarbonara());
+        $token = $this->login('admin@example.com');
+
+        // When : on le désactive
+        $this->changeStatus($protected, 'DISABLED', $token);
+
+        // Then
+        $this->assertSame(422, $this->client->getResponse()->getStatusCode());
+        $this->assertSame(['error' => ['message' => 'PROTECTED_ACCOUNT']], $this->jsonBody());
+        $this->assertSame(UserStatus::ACTIVE, $this->userStatus($protected));
+
+        // When : on le supprime
+        $this->request('DELETE', '/api/v1/users/' . $protected->getId(), $token);
+
+        // Then : le compte et ses données sont intacts
+        $this->assertSame(422, $this->client->getResponse()->getStatusCode());
+        $this->assertSame(['error' => ['message' => 'PROTECTED_ACCOUNT']], $this->jsonBody());
+        $this->assertSame(1, $this->rowCount('user', 'id', $protected->getId()));
+        $this->assertSame(1, $this->rowCount('recipe', 'id', $recipe->getId()));
+
+        // When : les autres statuts restent permis
+        $this->changeStatus($protected, 'PENDING', $token);
+
+        // Then
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->assertSame(UserStatus::PENDING, $this->userStatus($protected));
     }
 
     public function testTheAdministrationListShowsTheStatusOfEachAccount(): void
@@ -122,60 +225,22 @@ class AccountAdministrationFlowTest extends DatabaseTestCase
         $this->assertSame(['admin@example.com' => 'ACTIVE', 'disabled@example.com' => 'DISABLED', 'pending@example.com' => 'PENDING'], $statuses);
     }
 
-    /**
-    #[\PHPUnit\Framework\Attributes\DataProvider('impossibleTransitions')]
-    public function testATransitionTheAccountCannotMakeIsAConflict(UserBuilder $target, string $action, UserStatus $unchanged): void
-    {
-        // Given
-        $user = $this->savedUser($target->withEmail('target@example.com'));
-
-        // When
-        $this->request('POST', '/api/v1/users/' . $user->getId() . '/' . $action, $this->login('admin@example.com'));
-
-        // Then
-        $this->assertSame(409, $this->client->getResponse()->getStatusCode());
-        $this->assertArrayHasKey('error', $this->jsonBody());
-        $this->assertSame($unchanged, $this->userStatus($user));
-    }
-
-    /**
-     * @return iterable<string, array{UserBuilder, string, UserStatus}>
-     */
-    public static function impossibleTransitions(): iterable
-    {
-        yield 'activer un compte actif' => [new UserBuilder(), 'activate', UserStatus::ACTIVE];
-        yield 'activer un compte désactivé' => [new UserBuilder()->isDisabled(), 'activate', UserStatus::DISABLED];
-        yield 'désactiver un compte désactivé' => [new UserBuilder()->isDisabled(), 'disable', UserStatus::DISABLED];
-    }
-
-    public function testAnAdministratorCannotDisableOrDeleteHisOwnAccount(): void
-    {
-        // Given
-        $token = $this->login('admin@example.com');
-
-        foreach ([['POST', '/disable'], ['DELETE', '']] as [$method, $suffix]) {
-            // When
-            $this->request($method, '/api/v1/users/' . $this->admin->getId() . $suffix, $token);
-
-            // Then
-            $this->assertSame(422, $this->client->getResponse()->getStatusCode(), $method);
-            $this->assertSame(['error' => ['message' => 'CANNOT_MANAGE_OWN_ACCOUNT']], $this->jsonBody());
-        }
-        $this->assertSame(UserStatus::ACTIVE, $this->userStatus($this->admin));
-    }
-
     public function testAnUnknownAccountIsNotFound(): void
     {
         // Given
         $token = $this->login('admin@example.com');
 
-        foreach ([['POST', '/activate'], ['POST', '/disable'], ['DELETE', '']] as [$method, $suffix]) {
-            // When
-            $this->request($method, '/api/v1/users/unknown-id' . $suffix, $token);
+        // When
+        $this->client->request('PUT', '/api/v1/users/unknown-id/status', content: json_encode(['status' => 'ACTIVE'], JSON_THROW_ON_ERROR), server: ['CONTENT_TYPE' => 'application/json', 'HTTP_AUTHORIZATION' => 'Bearer ' . $token]);
 
-            // Then
-            $this->assertSame(404, $this->client->getResponse()->getStatusCode(), $method . $suffix);
-        }
+        // Then
+        $this->assertSame(404, $this->client->getResponse()->getStatusCode());
+
+        // When
+        $this->request('DELETE', '/api/v1/users/unknown-id', $token);
+
+        // Then
+        $this->assertSame(404, $this->client->getResponse()->getStatusCode());
     }
 
     public function testAnOrdinaryUserCannotManageAccounts(): void
@@ -185,13 +250,17 @@ class AccountAdministrationFlowTest extends DatabaseTestCase
         $target = $this->savedUser(new UserBuilder()->withEmail('target@example.com'));
         $token = $this->login('ordinary@example.com');
 
-        foreach ([['POST', '/activate'], ['POST', '/disable'], ['DELETE', '']] as [$method, $suffix]) {
-            // When
-            $this->request($method, '/api/v1/users/' . $target->getId() . $suffix, $token);
+        // When
+        $this->changeStatus($target, 'DISABLED', $token);
 
-            // Then
-            $this->assertSame(403, $this->client->getResponse()->getStatusCode(), $method . $suffix);
-        }
+        // Then
+        $this->assertSame(403, $this->client->getResponse()->getStatusCode());
+
+        // When
+        $this->request('DELETE', '/api/v1/users/' . $target->getId(), $token);
+
+        // Then
+        $this->assertSame(403, $this->client->getResponse()->getStatusCode());
         $this->assertSame(UserStatus::ACTIVE, $this->userStatus($target));
     }
 
@@ -329,6 +398,16 @@ class AccountAdministrationFlowTest extends DatabaseTestCase
     private function request(string $method, string $uri, string $token): void
     {
         $this->client->request($method, $uri, server: ['HTTP_AUTHORIZATION' => 'Bearer ' . $token]);
+    }
+
+    private function changeStatus(User $target, string $status, string $token): void
+    {
+        $this->client->request(
+            'PUT',
+            '/api/v1/users/' . $target->getId() . '/status',
+            content: json_encode(['status' => $status], JSON_THROW_ON_ERROR),
+            server: ['CONTENT_TYPE' => 'application/json', 'HTTP_AUTHORIZATION' => 'Bearer ' . $token],
+        );
     }
 
     private function statusOf(string $method, string $uri, string $token): int

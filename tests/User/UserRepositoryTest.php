@@ -7,6 +7,7 @@ use Repas\Tests\Helper\DatabaseTestCase;
 use Repas\Tests\Helper\RepasAssert;
 use Repas\User\Domain\Exception\UserException;
 use Repas\User\Domain\Interface\UserRepository;
+use Repas\User\Domain\Model\UserStatus;
 
 class UserRepositoryTest extends DatabaseTestCase
 {
@@ -114,7 +115,7 @@ class UserRepositoryTest extends DatabaseTestCase
         $this->userRepository->save($user);
 
         //Act
-        $user->disable();
+        $user->changeStatus(UserStatus::DISABLED);
         $this->userRepository->save($user);
         $this->entityManager->clear();
 

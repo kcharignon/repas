@@ -57,7 +57,7 @@ readonly class RotateRefreshTokenHandler
             $user = null;
         }
 
-        if ($user === null || $token->isExpired($now) || $user->isDisabled() || $user->getCredentialsVersion() !== $token->getCredentialsVersion()) {
+        if ($user === null || $token->isExpired($now) || !$user->isActive() || $user->getCredentialsVersion() !== $token->getCredentialsVersion()) {
             $this->refreshTokenRepository->deleteFamily($token->getFamilyId());
 
             return null;

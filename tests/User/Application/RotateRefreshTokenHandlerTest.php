@@ -138,6 +138,20 @@ class RotateRefreshTokenHandlerTest extends TestCase
         $this->assertSame([], $this->refreshTokenRepository->all());
     }
 
+    public function testAPendingAccountIsRefusedAndItsFamilyRemoved(): void
+    {
+        // Given : un compte remis en attente par un administrateur détient encore un cookie
+        $this->started('family', 'hash-1');
+        $this->user = new UserBuilder()->withId('user-id')->isPending()->build();
+
+        // When
+        $result = $this->rotate('hash-1', 'hash-2');
+
+        // Then
+        $this->assertNull($result);
+        $this->assertSame([], $this->refreshTokenRepository->all());
+    }
+
     public function testATokenOfADeletedUserIsRefusedAndItsFamilyRemoved(): void
     {
         // Given
