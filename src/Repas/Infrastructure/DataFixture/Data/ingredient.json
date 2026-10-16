@@ -14,7 +14,7 @@
   {
     "slug": "avocat",
     "name": "avocat",
-    "image": "https:\/\/cdn-icons-png.flaticon.com\/64\/135\/135609.png",
+    "image": "images\/ingredient\/avocat.png",
     "department": "fruit-et-legume",
     "default_cooking_unit": "unite",
     "default_purchase_unit": "unite",
@@ -3336,7 +3336,7 @@
   {
     "slug": "nutella",
     "name": "nutella",
-    "image": "https:\/\/cdn-icons-png.flaticon.com\/64\/135\/135605.png",
+    "image": "images\/ingredient\/nutella.png",
     "department": "conserve",
     "default_cooking_unit": "pot",
     "default_purchase_unit": "pot",
@@ -3618,7 +3618,7 @@
   {
     "slug": "tomate",
     "name": "tomate",
-    "image": "https:\/\/cdn-icons-png.flaticon.com\/64\/135\/135702.png",
+    "image": "images\/ingredient\/tomate.png",
     "department": "fruit-et-legume",
     "default_cooking_unit": "unite",
     "default_purchase_unit": "unite",

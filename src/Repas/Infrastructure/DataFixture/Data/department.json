@@ -2,22 +2,22 @@
   {
     "slug": "fruit-et-legume",
     "name": "fruit & légume",
-    "image": "https:\/\/cdn-icons-png.flaticon.com\/128\/1147\/1147832.png"
+    "image": "images\/department\/fruit-et-legume.png"
   },
   {
     "slug": "fromage",
     "name": "fromage",
-    "image": "https:\/\/cdn-icons-png.flaticon.com\/128\/3753\/3753482.png"
+    "image": "images\/department\/fromage.png"
   },
   {
     "slug": "yaourt",
     "name": "yaourt",
-    "image": "https:\/\/cdn-icons-png.flaticon.com\/128\/1047\/1047510.png"
+    "image": "images\/department\/yaourt.png"
   },
   {
     "slug": "gateau",
     "name": "gâteau",
-    "image": "https:\/\/cdn-icons-png.flaticon.com\/128\/2435\/2435678.png"
+    "image": "images\/department\/gateau.png"
   },
   {
     "slug": "bebe",
@@ -27,42 +27,42 @@
   {
     "slug": "aperitif",
     "name": "apéritif",
-    "image": "https:\/\/cdn-icons-png.flaticon.com\/128\/3814\/3814603.png"
+    "image": "images\/department\/aperitif.png"
   },
   {
     "slug": "boucherie",
     "name": "boucherie",
-    "image": "https:\/\/cdn-icons-png.flaticon.com\/128\/1134\/1134447.png"
+    "image": "images\/department\/boucherie.png"
   },
   {
     "slug": "alcool",
     "name": "alcool",
-    "image": "https:\/\/cdn-icons-png.flaticon.com\/128\/920\/920541.png"
+    "image": "images\/department\/alcool.png"
   },
   {
     "slug": "boisson",
     "name": "boisson",
-    "image": "https:\/\/cdn-icons-png.flaticon.com\/128\/2405\/2405597.png"
+    "image": "images\/department\/boisson.png"
   },
   {
     "slug": "surgele",
     "name": "surgelé",
-    "image": "https:\/\/cdn-icons-png.flaticon.com\/128\/3082\/3082004.png"
+    "image": "images\/department\/surgele.png"
   },
   {
     "slug": "conserve",
     "name": "conserve",
-    "image": "https:\/\/cdn-icons-png.flaticon.com\/128\/2916\/2916046.png"
+    "image": "images\/department\/conserve.png"
   },
   {
     "slug": "aide-patissier",
     "name": "aide pâtissier",
-    "image": "https:\/\/cdn-icons-png.flaticon.com\/128\/992\/992767.png"
+    "image": "images\/department\/aide-patissier.png"
   },
   {
     "slug": "cereale",
     "name": "céréale",
-    "image": "https:\/\/cdn-icons-png.flaticon.com\/128\/5009\/5009812.png"
+    "image": "images\/department\/cereale.png"
   },
   {
     "slug": "traiteur",
@@ -72,36 +72,36 @@
   {
     "slug": "produit-menager",
     "name": "produit ménager",
-    "image": "https:\/\/cdn-icons-png.flaticon.com\/128\/3899\/3899392.png"
+    "image": "images\/department\/produit-menager.png"
   },
   {
     "slug": "boulangerie",
     "name": "boulangerie",
-    "image": "https:\/\/cdn-icons-png.flaticon.com\/128\/3081\/3081918.png"
+    "image": "images\/department\/boulangerie.png"
   },
   {
     "slug": "sauce",
     "name": "sauce",
-    "image": "https:\/\/cdn-icons-png.flaticon.com\/128\/3106\/3106132.png"
+    "image": "images\/department\/sauce.png"
   },
   {
     "slug": "animal",
     "name": "animal",
-    "image": "https:\/\/cdn-icons-png.flaticon.com\/128\/2619\/2619232.png"
+    "image": "images\/department\/animal.png"
   },
   {
     "slug": "divers",
     "name": "divers",
-    "image": "https:\/\/cdn-icons-png.flaticon.com\/128\/699\/699044.png"
+    "image": "images\/department\/divers.png"
   },
   {
     "slug": "cuisine-du-monde",
     "name": "cuisine du monde",
-    "image": "https:\/\/cdn-icons-png.flaticon.com\/128\/1717\/1717511.png"
+    "image": "images\/department\/cuisine-du-monde.png"
   },
   {
     "slug": "hygiene",
     "name": "Hygiène",
-    "image": "https:\/\/cdn-icons-png.flaticon.com\/128\/3212\/3212855.png"
+    "image": "images\/department\/hygiene.png"
   }
 ]
