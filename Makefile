@@ -45,7 +45,7 @@ restart: ## Restart the project
 	@$(MAKE) start
 
 ## —— Code quality 📋 ————————————————————————————————————————————————————————
-.PHONY: test test-coverage deptrac phpstan api-doc-validate api-doc-coverage openapi openapi-check jwt-keys quality sql-budget-update
+.PHONY: test test-coverage deptrac phpstan api-doc-validate api-doc-coverage openapi openapi-check jwt-keys quality sql-budget-update deploy-smoke
 
 test: ## Run PHPUnit tests
 	@echo "🧪 Exécution des tests avec PHPUnit..."
@@ -103,6 +103,10 @@ jwt-keys: ## Generate the JWT key pair if missing (config/jwt, git-ignored)
 	@$(EXEC_PHP) bin/console lexik:jwt:generate-keypair --skip-if-exists
 
 quality: deptrac phpstan api-doc-validate api-doc-coverage openapi-check ## Run architecture, static analysis and API doc checks
+
+deploy-smoke: ## Essai local de la configuration de production (deploy/) ; FRONT_IMAGE=<image du front> pour essayer aussi le SPA (ADR 0017)
+	@docker build --target frankenphp_prod -t repas-smoke-back .
+	@BACK_IMAGE=repas-smoke-back FRONT_IMAGE=$(FRONT_IMAGE) bash deploy/smoke-test.sh
 
 audit: ## Check composer.lock against known security advisories (ADR 0014)
 	@$(EXEC_PHP) composer audit --locked

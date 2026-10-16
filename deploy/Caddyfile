@@ -1,0 +1,23 @@
+# Bordure de production (ADR 0017) : le seul service qui parle à Internet.
+{
+	email {$ACME_EMAIL}
+	# Réservé aux essais locaux : `local_certs` (certificats internes, pas de Let's Encrypt).
+	{$CADDY_GLOBAL_OPTIONS}
+}
+
+# Ancienne application (Twig, session) : tout part vers le back, comme avant l'arrivée du front.
+{$LEGACY_HOST} {
+	reverse_proxy php:80
+}
+
+# Nouvelle application : le SPA, et l'API et les images relayées directement vers le back. La bordure est ainsi le seul
+# relais devant le back, qui lit l'adresse du visiteur dans `X-Forwarded-For` (SYMFONY_TRUSTED_PROXIES).
+{$APP_HOST} {
+	@back path /api/* /images/*
+	handle @back {
+		reverse_proxy php:80
+	}
+	handle {
+		reverse_proxy front:80
+	}
+}
