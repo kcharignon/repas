@@ -164,6 +164,7 @@ Le front est un projet séparé (`repas-front`), planifié dans [`front-vuejs-pl
 - [x] Phase 5 — finitions (PWA et lecture hors-ligne de la liste en cours, accessibilité axe clair et sombre, budgets Lighthouse)
 - [ ] Phase 6 — recette de parité (100 % de l'inventaire)
 - [ ] Phase 7 — bascule en production (marche parallèle, retour arrière prévu)
+  - [x] Chaîne de déploiement ([ADR 0017](adr/0017-deploiement-et-releases.md)) : release GitHub → image GHCR → `deploy/deploy.sh` (sauvegarde, contrôle de santé, retour arrière automatique), bordure Caddy à deux noms de domaine (marche parallèle : Twig sur le domaine actuel, SPA sur `app.`), `make deploy-smoke` rejoué par la CI ; profileur coupé en production, clés JWT créées au démarrage. Reste : amorçage du serveur et première release avec l'utilisateur (skill `repas-ops`), puis la bascule de la racine, sur accord explicite.
 - [ ] Phase 8 — extinction de Twig (routes, templates, formulaires, JS, dépendances, pare-feu `main`, ADR, documentation)
 
 ## Chantiers de maintenance (décidés le 2026-10-14, une PR chacun, dans cet ordre)

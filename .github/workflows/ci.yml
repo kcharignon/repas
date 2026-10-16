@@ -6,6 +6,8 @@ on:
       - main
   pull_request: ~
   workflow_dispatch: ~
+  # Appelé par release.yml : une release ne part en production que si toute la CI passe sur son commit.
+  workflow_call: ~
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
@@ -100,6 +102,30 @@ jobs:
         # composer.lock contre les avis de sécurité connus (ADR 0014) ; indépendant de la pile Docker du projet
         name: Composer audit
         run: docker run --rm -v "$PWD":/app -w /app composer:2 composer audit --locked
+  deploy-config:
+    name: Configuration de production
+    runs-on: ubuntu-latest
+    steps:
+      -
+        name: Checkout
+        uses: actions/checkout@v7
+      -
+        name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+      -
+        name: Construire l'image de production
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          target: frankenphp_prod
+          load: true
+          tags: repas-smoke-back
+          cache-from: type=gha,scope=prod
+          cache-to: type=gha,scope=prod,mode=max
+      -
+        # deploy/ : démarrage sur base vide, bordure, API, cookie, déploiement, sauvegarde et retour arrière (ADR 0017)
+        name: Essai de bout en bout de deploy/
+        run: BACK_IMAGE=repas-smoke-back bash deploy/smoke-test.sh
   lint:
     name: Docker Lint
     runs-on: ubuntu-latest

@@ -32,3 +32,10 @@ vendor/
 .env.local
 .env.local.php
 .env.test
+
+# Jamais dans l image : données locales, clés, outillage de déploiement (ADR 0017)
+docker/
+export/
+config/jwt/
+deploy/
+.claude/
