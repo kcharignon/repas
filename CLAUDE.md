@@ -15,7 +15,7 @@ Guide d'architecture pour ce projet (Symfony 8.1 / PHP 8.4). L'objectif: rester 
 Le code est organisé en contextes métier sous `src/` :
 
 - `Repas` — recettes, ingrédients, listes de courses, unités, conversions.
-- `User` — inscription, authentification, préférences.
+- `User` — inscription, authentification, préférences, gestion des comptes par l'administrateur (activer, désactiver, supprimer : ADR 0021).
 - `Shared` — briques transverses (bus, modèle de base, outils).
 
 Chaque contexte suit la même structure en 3 couches (architecture hexagonale) :
@@ -49,6 +49,7 @@ src/{Context}/
 - **Lectures (Query)** : passent par `QueryBusInterface::ask()` (`src/Shared/Application/Interface/QueryBusInterface.php`). Le `{UseCase}Query` (`final readonly`, `implements QueryInterface`) est traité par un `{UseCase}QueryHandler` qui délègue à un port `Application/Loader/{X}Loader` et renvoie un `{X}DTO` (`final readonly`). Le controller API ne manipule que ce DTO — jamais un modèle de domaine, jamais un repository (ADR 0003, 0004, 0005).
 - **Règles fermes** : un `QueryHandler` n'appelle jamais un `Repository` ; un `CommandHandler` n'appelle jamais un `Loader` ; un `QueryHandler` ne modifie pas l'état (une lecture qui crée si absent = une Command puis une Query).
 - **État de la migration (terminée, ADR 0018)** : plus aucun controller API ni voter ne lit via un `Domain\Interface\{X}Repository` (phase 7) ; Deptrac (`deptrac.no-repository-in-http.yaml`) l'interdit dans `Infrastructure\Http`. Toute nouvelle lecture suit la recette du skill `/repas-dev` et coche la slice dans `docs/migration-roadmap.md`. Un prédicat booléen se nomme `Is{X}` / `Has{X}` (ex. `IsEmailAlreadyUsed`) et renvoie un `bool`.
+- **Comptes** (ADR 0021) : un administrateur active (`PENDING` → `ACTIVE`), désactive (`ACTIVE`/`PENDING` → `DISABLED`) ou supprime un compte (`POST /api/v1/users/{id}/activate|disable`, `DELETE /api/v1/users/{id}`) ; il ne peut ni désactiver ni supprimer le sien. Un compte désactivé ne peut plus rien : toute future route publique qui s'adresse à un compte (mot de passe oublié) ne fait rien pour lui. Supprimer un compte efface tout ce qu'il possède, par `UserDeletedEvent` (`Shared`) puis `PurgeUserData` (`Repas`), dans la même transaction ; les copies de ses recettes faites par d'autres restent, devenues originales. Aucune clé étrangère n'existe : toute entité qui gagne une colonne `owner|author|creator|user` doit être ajoutée à la purge (`UserOwnedDataCoverageTest` échoue sinon).
 - **Droits d'accès** : `OwnerVoter` (contexte `User`) interroge le port `Shared\Application\Interface\OwnershipLoader` (ids de propriétaire uniquement), implémenté dans `Repas\Infrastructure\Loader`.
 - **Buses** : `command.bus` et `query.bus` distincts (ADR 0006). `command.bus` est transactionnel (`doctrine_transaction`) : une commande est atomique, un handler qui échoue en cours de route n'écrit rien. Les controllers injectent toujours `CommandBusInterface` / `QueryBusInterface`, jamais les classes concrètes.
 

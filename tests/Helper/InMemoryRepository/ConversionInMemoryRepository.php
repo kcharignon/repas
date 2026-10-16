@@ -62,4 +62,9 @@ class ConversionInMemoryRepository extends AbstractInMemoryRepository implements
     {
         $this->models = $this->models->filter(fn (Conversion $conversion) => !$ingredient->isEqual($conversion->getIngredient()));
     }
+
+    public function deleteByIngredientCreator(string $creatorId): void
+    {
+        $this->models = $this->models->filter(fn (Conversion $conversion) => $conversion->getIngredient()?->getCreatorId() !== $creatorId);
+    }
 }

@@ -95,6 +95,32 @@ class ShoppingListInMemoryRepository extends AbstractInMemoryRepository implemen
         return false;
     }
 
+    public function deleteByOwner(string $ownerId): void
+    {
+        foreach ($this->findIdsByOwner($ownerId) as $shoppingListId) {
+            unset($this->models[$shoppingListId]);
+        }
+    }
+
+    public function removeMealsOfRecipes(array $recipeIds): void
+    {
+        /** @var ShoppingList $shoppingList */
+        foreach ($this->models as $shoppingList) {
+            $meals = $shoppingList->getMeals();
+            while (($key = $meals->findKey(fn(Meal $meal) => in_array($meal->getRecipeId(), $recipeIds, true))) !== null) {
+                unset($meals[$key]);
+            }
+        }
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function findIdsByOwner(string $ownerId): array
+    {
+        return array_values($this->findByOwner($ownerId)->map(fn(ShoppingList $shoppingList) => $shoppingList->getId())->toArray());
+    }
+
     public function isRecipePlanned(string $recipeId): bool
     {
         /** @var ShoppingList $shoppingList */

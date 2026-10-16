@@ -49,6 +49,17 @@ readonly class RefreshTokenPostgreSQLRepository extends PostgreSQLRepository imp
         $this->detachWhere(static fn(RefreshTokenEntity $entity): bool => $entity->getFamilyId() === $familyId);
     }
 
+    public function deleteAllOfUser(string $userId): void
+    {
+        $this->entityManager->createQueryBuilder()
+            ->delete(RefreshTokenEntity::class, 't')
+            ->where('t.userId = :user')
+            ->setParameter('user', $userId)
+            ->getQuery()
+            ->execute();
+        $this->detachWhere(static fn(RefreshTokenEntity $entity): bool => $entity->getUserId() === $userId);
+    }
+
     public function deleteOldestFamiliesOfUser(string $userId, int $keep): void
     {
         /** @var list<array{familyId: string}> $families */

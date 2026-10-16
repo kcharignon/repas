@@ -17,6 +17,7 @@ use Repas\Repas\Infrastructure\Entity\Meal;
 use Repas\Repas\Infrastructure\Entity\Recipe as RecipeEntity;
 use Repas\Repas\Infrastructure\Entity\ShoppingList as ShoppingListEntity;
 use Repas\Repas\Infrastructure\Entity\ShoppingListIngredient;
+use Repas\Repas\Infrastructure\Entity\ShoppingListRow;
 use Repas\Shared\Domain\Tool\Tab;
 
 readonly class ShoppingListPostgreSQLRepository extends PostgreSQLRepository implements ShoppingListRepository
@@ -195,6 +196,41 @@ readonly class ShoppingListPostgreSQLRepository extends PostgreSQLRepository imp
             ->setMaxResults(1)
             ->getQuery()
             ->getOneOrNullResult() !== null;
+    }
+
+    public function deleteByOwner(string $ownerId): void
+    {
+        $ownedLists = 'SELECT sl.id FROM ' . ShoppingListEntity::class . ' sl WHERE sl.ownerId = :owner';
+
+        foreach ([ShoppingListRow::class, ShoppingListIngredient::class, Meal::class] as $childClass) {
+            $this->entityManager->createQueryBuilder()
+                ->delete($childClass, 'child')
+                ->where('child.shoppingListId IN (' . $ownedLists . ')')
+                ->setParameter('owner', $ownerId)
+                ->getQuery()
+                ->execute();
+        }
+
+        $this->entityManager->createQueryBuilder()
+            ->delete(ShoppingListEntity::class, 'sl')
+            ->where('sl.ownerId = :owner')
+            ->setParameter('owner', $ownerId)
+            ->getQuery()
+            ->execute();
+    }
+
+    public function removeMealsOfRecipes(array $recipeIds): void
+    {
+        if ($recipeIds === []) {
+            return;
+        }
+
+        $this->entityManager->createQueryBuilder()
+            ->delete(Meal::class, 'm')
+            ->where('m.recipeId IN (:recipeIds)')
+            ->setParameter('recipeIds', $recipeIds)
+            ->getQuery()
+            ->execute();
     }
 
     public function isRecipePlanned(string $recipeId): bool

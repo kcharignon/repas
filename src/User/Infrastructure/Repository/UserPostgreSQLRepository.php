@@ -76,6 +76,15 @@ readonly class UserPostgreSQLRepository extends PostgreSQLRepository implements 
         }
     }
 
+    public function delete(User $user): void
+    {
+        $entity = $this->entityRepository->find($user->getId());
+        if ($entity instanceof UserEntity) {
+            $this->entityManager->remove($entity);
+            $this->entityManager->flush();
+        }
+    }
+
     private function convertEntityToModel(UserEntity $entity): User
     {
         return User::load([

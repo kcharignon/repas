@@ -138,4 +138,51 @@ readonly class RecipePostgreSQLRepository extends PostgreSQLRepository implement
 
         $this->recipeRowRepository->deleteByRecipeId($recipe->getId());
     }
+
+    public function findIdsByAuthor(string $authorId): array
+    {
+        $rows = $this->entityManager->createQueryBuilder()
+            ->select('r.id AS id')
+            ->from(RecipeEntity::class, 'r')
+            ->where('r.authorId = :author')
+            ->setParameter('author', $authorId)
+            ->getQuery()
+            ->getScalarResult();
+
+        return array_column($rows, 'id');
+    }
+
+    public function makeCopiesOriginal(array $recipeIds): void
+    {
+        if ($recipeIds === []) {
+            return;
+        }
+
+        // La colonne `version` s'écrit en SQL, comme `bumpVersion()` : une copie modifiée entre-temps est vue comme périmée
+        $this->entityManager->createQueryBuilder()
+            ->update(RecipeEntity::class, 'r')
+            ->set('r.originalId', 'NULL')
+            ->set('r.version', 'r.version + 1')
+            ->where('r.originalId IN (:originalIds)')
+            ->setParameter('originalIds', $recipeIds)
+            ->getQuery()
+            ->execute();
+    }
+
+    public function deleteByAuthor(string $authorId): void
+    {
+        $this->entityManager->createQueryBuilder()
+            ->delete(RecipeRowEntity::class, 'rw')
+            ->where('rw.recipeId IN (SELECT r.id FROM ' . RecipeEntity::class . ' r WHERE r.authorId = :author)')
+            ->setParameter('author', $authorId)
+            ->getQuery()
+            ->execute();
+
+        $this->entityManager->createQueryBuilder()
+            ->delete(RecipeEntity::class, 'r')
+            ->where('r.authorId = :author')
+            ->setParameter('author', $authorId)
+            ->getQuery()
+            ->execute();
+    }
 }

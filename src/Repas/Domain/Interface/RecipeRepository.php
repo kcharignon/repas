@@ -28,4 +28,26 @@ interface RecipeRepository
     public function isIngredientUsed(string $ingredientSlug): bool;
 
     public function delete(Recipe $recipe): void;
+
+    /**
+     * Identifiants seulement : de quoi agir sur les recettes d'un auteur sans les hydrater.
+     *
+     * @return list<string>
+     */
+    public function findIdsByAuthor(string $authorId): array;
+
+    /**
+     * Les copies de ces recettes deviennent des recettes originales (`originalId` à `null`, version augmentée), comme si
+     * leur auteur les avait écrites : l'original disparaît (suppression d'un compte, ADR 0021). Opération en masse : les
+     * agrégats déjà chargés ne sont pas mis à jour.
+     *
+     * @param list<string> $recipeIds
+     */
+    public function makeCopiesOriginal(array $recipeIds): void;
+
+    /**
+     * Supprime toutes les recettes d'un auteur et leurs lignes (suppression d'un compte, ADR 0021). Opération en masse :
+     * ni contrôle de version ni événement par recette, et les agrégats déjà chargés ne sont pas mis à jour.
+     */
+    public function deleteByAuthor(string $authorId): void;
 }

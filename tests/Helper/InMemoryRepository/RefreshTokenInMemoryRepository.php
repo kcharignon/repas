@@ -43,6 +43,11 @@ class RefreshTokenInMemoryRepository implements RefreshTokenRepository
         $this->tokens = array_filter($this->tokens, static fn(RefreshToken $token): bool => $token->getFamilyId() !== $familyId);
     }
 
+    public function deleteAllOfUser(string $userId): void
+    {
+        $this->tokens = array_filter($this->tokens, static fn(RefreshToken $token): bool => $token->getUserId() !== $userId);
+    }
+
     public function deleteOldestFamiliesOfUser(string $userId, int $keep): void
     {
         $latestByFamily = [];

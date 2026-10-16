@@ -24,6 +24,7 @@ Décisions d'architecture du projet Repas. **À relire avant de développer ou d
 | [0018](0018-extinction-de-twig.md) | Extinction de Twig : le back ne sert plus que l'API | Accepted |
 | [0019](0019-recherche-d-ingredients-par-pertinence.md) | Recherche d'ingrédients par pertinence (Jaro-Winkler) | Accepted |
 | [0020](0020-confirmation-d-adresse-email.md) | Confirmation d'adresse email à l'inscription : statut `PENDING`, lien à usage unique, Symfony Mailer | Accepted |
+| [0021](0021-gestion-des-comptes-par-l-administrateur.md) | Gestion des comptes par l'administrateur : activer, désactiver, supprimer (purge des données, copies conservées) | Accepted |
 
 ## Sources
 

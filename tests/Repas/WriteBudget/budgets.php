@@ -6,6 +6,7 @@
  * @return array<string, int>
  */
 return [
+    'activer-compte' => 3,
     'ajouter-ingredient-liste' => 13,
     'assurer-liste-active' => 5,
     'confirmation-email' => 4,
@@ -18,6 +19,7 @@ return [
     'creer-type-recette' => 3,
     'creer-unite' => 3,
     'decocher-ligne' => 6,
+    'desactiver-compte' => 4,
     'inscription' => 4,
     'mettre-liste-en-pause' => 9,
     'modifier-conversion' => 4,
@@ -34,6 +36,7 @@ return [
     'renvoi-confirmation-email' => 4,
     'retirer-ingredient-liste' => 9,
     'retirer-repas' => 17,
+    'supprimer-compte' => 15,
     'supprimer-ingredient' => 10,
     'supprimer-liste' => 8,
     'supprimer-recette' => 11,

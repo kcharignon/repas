@@ -13,7 +13,7 @@ class ListUsersApiControllerTest extends QueryBusWebTestCase
     {
         // Given
         $this->queryBus->willReturn(ListUsersQuery::class, [
-            new UserSummaryDTO('user-1', 'admin@example.com', 5, 3, 2, 4, '2026-10-13T08:56:40+02:00', false, true),
+            new UserSummaryDTO('user-1', 'admin@example.com', 5, 3, 2, 4, '2026-10-13T08:56:40+02:00', false, true, 'ACTIVE'),
         ]);
 
         // When
@@ -33,6 +33,7 @@ class ListUsersApiControllerTest extends QueryBusWebTestCase
                 'createdAt' => '2026-10-13T08:56:40+02:00',
                 'isDisabled' => false,
                 'isAdmin' => true,
+                'status' => 'ACTIVE',
             ]],
             'totalItems' => 1,
         ], $this->jsonBody());

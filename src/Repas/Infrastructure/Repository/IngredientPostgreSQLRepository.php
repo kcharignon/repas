@@ -222,4 +222,14 @@ readonly class IngredientPostgreSQLRepository extends PostgreSQLRepository imple
         $this->entityManager->remove($entity);
         $this->entityManager->flush();
     }
+
+    public function deleteByCreator(string $creatorId): void
+    {
+        $this->entityManager->createQueryBuilder()
+            ->delete(IngredientEntity::class, 'i')
+            ->where('i.creatorId = :creator')
+            ->setParameter('creator', $creatorId)
+            ->getQuery()
+            ->execute();
+    }
 }

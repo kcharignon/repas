@@ -50,6 +50,8 @@ class UserPostgreSQLLoaderTest extends DatabaseTestCase
             ->withCreatedAt($created)->withRecipeAndIngredientStats(7, 5)->isDisabled()->build());
         $this->userRepository->save(new UserBuilder()->withId('11111111-1111-4111-8111-111111111111')->withEmail('aaa@example.com')->withServing(6)
             ->withCreatedAt($created)->isAdmin()->build());
+        $this->userRepository->save(new UserBuilder()->withId('33333333-3333-4333-8333-333333333333')->withEmail('mmm@example.com')->withServing(3)
+            ->withCreatedAt($created)->isPending()->build());
 
         // When
         $result = $this->userLoader->list();
@@ -57,8 +59,9 @@ class UserPostgreSQLLoaderTest extends DatabaseTestCase
         // Then
         $this->assertEquals(
             [
-                new UserSummaryDTO('11111111-1111-4111-8111-111111111111', 'aaa@example.com', 6, 0, 0, 0, '2026-10-13T08:56:40+02:00', false, true),
-                new UserSummaryDTO('22222222-2222-4222-8222-222222222222', 'zzz@example.com', 2, 7, 5, 0, '2026-10-13T08:56:40+02:00', true, false),
+                new UserSummaryDTO('11111111-1111-4111-8111-111111111111', 'aaa@example.com', 6, 0, 0, 0, '2026-10-13T08:56:40+02:00', false, true, 'ACTIVE'),
+                new UserSummaryDTO('33333333-3333-4333-8333-333333333333', 'mmm@example.com', 3, 0, 0, 0, '2026-10-13T08:56:40+02:00', false, false, 'PENDING'),
+                new UserSummaryDTO('22222222-2222-4222-8222-222222222222', 'zzz@example.com', 2, 7, 5, 0, '2026-10-13T08:56:40+02:00', true, false, 'DISABLED'),
             ],
             $result,
         );
