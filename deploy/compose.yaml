@@ -50,6 +50,10 @@ services:
       SERVER_NAME: ":80"
       DATABASE_URL: postgresql://${POSTGRES_USER:?}:${POSTGRES_PASSWORD:?}@database:5432/${POSTGRES_DB:?}?serverVersion=16&charset=utf8
       JWT_PASSPHRASE: ${JWT_PASSPHRASE:?JWT_PASSPHRASE manquant}
+      # Emails (confirmation d'adresse, ADR 0020) : DSN du fournisseur d'envoi (secret) et expéditeur ; le lien du mail mène au front.
+      MAILER_DSN: ${MAILER_DSN:?MAILER_DSN manquant}
+      MAILER_FROM: ${MAILER_FROM:?MAILER_FROM manquant}
+      FRONT_URL: https://${APP_HOST}
       # Sans cela, Symfony verrait l'adresse de la bordure pour tous les visiteurs : plafonds de débit par IP faussés,
       # cookie `Secure` et URLs absolues en http.
       SYMFONY_TRUSTED_PROXIES: PRIVATE_SUBNETS

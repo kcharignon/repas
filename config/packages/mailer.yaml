@@ -1,0 +1,5 @@
+framework:
+    mailer:
+        dsn: '%env(MAILER_DSN)%'
+        # Envoi direct, dans la requête : pas de transport Messenger asynchrone ni de worker en production (ADR 0020)
+        message_bus: false

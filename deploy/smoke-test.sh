@@ -45,6 +45,8 @@ FRONT_TAG=
 APP_SECRET=$(openssl rand -hex 16)
 JWT_PASSPHRASE=$(openssl rand -hex 16)
 MERCURE_JWT_SECRET=$(openssl rand -hex 16)
+MAILER_DSN=null://null
+MAILER_FROM="Repas <no-reply@smoke.localhost>"
 POSTGRES_DB=repas
 POSTGRES_USER=repas
 POSTGRES_PASSWORD=$(openssl rand -hex 12)
@@ -94,6 +96,12 @@ check "inscription : 201" grep -q "^HTTP/[0-9.]* 201" <<< "$register_headers"
 # Le PHP est volontairement dans des guillemets simples.
 # shellcheck disable=SC2016
 check "Symfony fait confiance à la bordure (proxys privés, en-têtes X-Forwarded-*)" docker compose exec -T php php -r 'require "/app/vendor/autoload.php"; $k = new Repas\Kernel("prod", false); $k->boot(); $r = Symfony\Component\HttpFoundation\Request::getTrustedProxies(); exit(in_array("10.0.0.0/8", $r, true) && (Symfony\Component\HttpFoundation\Request::getTrustedHeaderSet() & Symfony\Component\HttpFoundation\Request::HEADER_X_FORWARDED_FOR) ? 0 : 1);'
+# Un compte inscrit attend la confirmation de son adresse (ADR 0020) : la connexion est refusée avec le bon mot de passe.
+refused=$(curl_app -w '\n%{http_code}' -X POST -H 'Content-Type: application/json' \
+	-d "{\"email\":\"$email\",\"password\":\"$password\"}" "https://$app:$port/api/login_check" || true)
+check "connexion avant confirmation de l'adresse : 403 EMAIL_NOT_VERIFIED" bash -c "grep -q EMAIL_NOT_VERIFIED <<< \"\$1\" && tail -n 1 <<< \"\$1\" | grep -q '^403$'" _ "$refused"
+# Le message part par `null://null` (MAILER_DSN de l'essai) : on active le compte en base, comme le ferait le lien reçu.
+docker compose exec -T database psql -q -U repas -d repas -c "UPDATE \"user\" SET status = 'ACTIVE' WHERE email = '$email'" < /dev/null
 headers=$(curl_app -D - -o /dev/null -X POST -H 'Content-Type: application/json' \
 	-d "{\"email\":\"$email\",\"password\":\"$password\"}" "https://$app:$port/api/login_check" || true)
 check "connexion : 200" grep -q '^HTTP/[0-9.]* 200' <<< "$headers"
