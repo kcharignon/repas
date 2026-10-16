@@ -53,6 +53,13 @@ if [ "$1" = 'frankenphp' ] || [ "$1" = 'php' ] || [ "$1" = 'bin/console' ]; then
 		fi
 	fi
 
+	if [ "$APP_ENV" = 'prod' ]; then
+		# Le dossier var peut venir d'un conteneur d'une version précédente : on repart d'un cache de la version déployée.
+		php bin/console cache:clear --no-interaction
+		# Clés JWT : créées au premier démarrage dans le volume config/jwt, conservées ensuite (ADR 0017).
+		php bin/console lexik:jwt:generate-keypair --skip-if-exists --no-interaction
+	fi
+
 	setfacl -R -m u:www-data:rwX -m u:"$(whoami)":rwX var
 	setfacl -dR -m u:www-data:rwX -m u:"$(whoami)":rwX var
 
