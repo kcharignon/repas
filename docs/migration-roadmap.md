@@ -200,6 +200,7 @@ Audit de tous les controllers qui dispatchent une commande (méthode HTTP et gar
 - [x] Trouvés à l'audit : `CreateShoppingListViewController` créait la liste sur un simple GET et `UpdateServingMealViewController` modifiait les portions sur un GET. Désormais `POST` et `PUT` seulement (le front n'utilisait déjà que ceux-là).
 - [x] Le voter lève un 404 (`NotFoundHttpException`) quand la ressource est introuvable, au lieu d'une exception de domaine qui donnait un 500 sur les routes Twig ; l'API garde son 404.
 - ~~`OwnerVoter` `INGREDIENT_OWNER` retourne `null` pour un ingrédient système~~ : corrigé en phase 7.
+- [x] `PUT /shopping-lists/active/recipes/{recipeId}` planifiait la recette de n'importe quel utilisateur, donc ses ingrédients personnalisés : `ShoppingList::addMeal` refuse désormais la recette dont l'auteur n'est pas le propriétaire de la liste (`404`, administrateur compris), comme un ingrédient d'un autre ([0021](adr/0021-gestion-des-comptes-par-l-administrateur.md)).
 
 ## Bugs connus à corriger
 
@@ -207,8 +208,6 @@ Audit de tous les controllers qui dispatchent une commande (méthode HTTP et gar
 - [x] ~~Supprimer une recette laisse ses lignes orphelines~~ : corrigé en phase 9 (`RecipeRowPostgreSQLRepository::deleteByRecipeId` appelé par `RecipePostgreSQLRepository::delete`, test de repository sur base réelle, migration de nettoyage).
 
 ## Hors périmètre (vus en passant, non corrigés)
-
-- **Planifier la recette d'un autre** : `PUT /shopping-lists/active/recipes/{recipeId}` (`PlannedMealHandler`) ne vérifie pas que la recette appartient à l'utilisateur (le front ne propose que les siennes). Vu en concevant la suppression d'un compte ([0021](adr/0021-gestion-des-comptes-par-l-administrateur.md)) : un repas qui planifie la recette d'un compte supprimé est retiré de la liste, sans recalcul des quantités. À trancher : refuser (403/404) ou assumer.
 
 - **Twig seulement, non corrigé (supprimé en phase 10)** : `GetActiveShoppingListViewController` crée la liste active sur un GET (lecture avec effet de bord, `EnsureActiveShoppingList`) : à garder tant que le front Twig l'attend, à supprimer avec l'API.
 - Inscription publique (`POST /api/v1/users`) : l'adresse est confirmée par un lien depuis [0020](adr/0020-confirmation-d-adresse-email.md) (pas de captcha) ; un email déjà pris répond 409, ce qui révèle l'existence du compte (le formulaire Twig le fait déjà). Le plafond par IP ne vaut que si `SYMFONY_TRUSTED_PROXIES` est configuré derrière un reverse proxy.

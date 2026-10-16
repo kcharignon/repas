@@ -4,6 +4,7 @@ namespace Repas\Repas\Domain\Model;
 
 
 use DateTimeImmutable;
+use Repas\Repas\Domain\Exception\RecipeException;
 use Repas\Repas\Domain\Exception\ShoppingListException;
 use Repas\Shared\Domain\Model\ModelInterface;
 use Repas\Shared\Domain\Model\ModelTrait;
@@ -147,14 +148,19 @@ final class ShoppingList implements ModelInterface
     }
 
     /**
-     * @throws ShoppingListException
-     */
-    /**
      * @param int $servings nombre de personnes du repas : celui du propriétaire (`AuthenticatedUser::getDefaultServing()`),
      *                       que le use case transmet puisque la liste ne connaît pas l'utilisateur
+     * @throws RecipeException la recette n'est pas celle du propriétaire de la liste : ses ingrédients personnalisés seraient
+     *                         ceux d'un autre, la recette est traitée comme inconnue (comme l'ingrédient d'un autre)
+     * @throws ShoppingListException la recette est déjà dans la liste
      */
     public function addMeal(string $id, Recipe $recipe, int $servings): void
     {
+        // Une liste ne planifie que les recettes de son propriétaire : leurs ingrédients sont les siens ou des ingrédients communs
+        if ($recipe->getAuthorId() !== $this->ownerId) {
+            throw RecipeException::notFound($recipe->getId());
+        }
+
         // Impossible de mettre la même recette deux fois dans une liste
         if ($this->hasRecipe($recipe)) {
             throw ShoppingListException::recipeAlreadyInList($recipe->getName());

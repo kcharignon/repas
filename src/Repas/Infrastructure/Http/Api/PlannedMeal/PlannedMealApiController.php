@@ -28,7 +28,7 @@ final class PlannedMealApiController extends AbstractController
     #[OA\Tag(name: 'Shopping lists')]
     #[OA\Parameter(ref: '#/components/parameters/IfMatch')]
     #[OA\Response(response: 204, description: 'Recette planifiée')]
-    #[OA\Response(response: 404, description: 'Ressource inconnue')]
+    #[OA\Response(response: 404, description: "Aucune liste active, recette inconnue ou recette d'un autre utilisateur")]
     #[OA\Response(response: 412, description: "La version de la liste n'est plus celle de `If-Match` : elle a été modifiée depuis sa lecture")]
     public function __invoke(string $recipeId, #[CurrentUser] AuthenticatedUser $user, Request $request): Response
     {
