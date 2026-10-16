@@ -127,6 +127,28 @@ class PlannedMealHandlerTest extends TestCase
         ($this->handler)($command);
     }
 
+    public function testHandleFailedPlannedMealRecipeOfAnotherUser(): void
+    {
+        // Arrange : la recette d'un autre utilisateur est traitée comme inconnue, la liste ne change pas
+        $user = new UserBuilder()->build();
+        $recipe = new RecipeBuilder()->isPastaCarbonara()->withAuthor(new UserBuilder()->build())->build();
+        $this->recipeRepository->save($recipe);
+        $this->shoppingListRepository->save(new ShoppingListBuilder()->withOwner($user)->build());
+        $command = new PlannedMealCommand($user->getId(), $recipe->getId(), $user->getDefaultServing());
+
+        // Act
+        try {
+            ($this->handler)($command);
+            $this->fail("La recette d'un autre utilisateur ne se planifie pas.");
+        } catch (RecipeException $exception) {
+            // Assert
+            $this->assertEquals(RecipeException::notFound($recipe->getId()), $exception);
+            $shoppingList = $this->shoppingListRepository->findOneActivateByOwner($user->getId());
+            $this->assertCount(0, $shoppingList->getMeals());
+            $this->assertCount(0, $shoppingList->getRows());
+        }
+    }
+
     public function testHandleFailedPlannedMealRecipeNotFound(): void
     {
         // Arrange

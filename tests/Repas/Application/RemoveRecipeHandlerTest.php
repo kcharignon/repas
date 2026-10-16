@@ -26,12 +26,13 @@ class RemoveRecipeHandlerTest extends TestCase
 
     protected function setUp(): void
     {
-        $recipeFree = new RecipeBuilder()->withId('recipe-free')->withAuthor(new UserBuilder()->withId('user-id'))->isSoftBoiledEggs()->build();
-        $recipeUsed = new RecipeBuilder()->withId('recipe-used')->isSoftBoiledEggs()->build();
+        $author = new UserBuilder()->withId('user-id');
+        $recipeFree = new RecipeBuilder()->withId('recipe-free')->withAuthor($author)->isSoftBoiledEggs()->build();
+        $recipeUsed = new RecipeBuilder()->withId('recipe-used')->withAuthor($author)->isSoftBoiledEggs()->build();
         $this->recipeRepository = new RecipeInMemoryRepository([$recipeFree, $recipeUsed]);
 
         $this->shoppingListRepository = new ShoppingListInMemoryRepository([
-            new ShoppingListBuilder()->addRecipe($recipeUsed)->build()
+            new ShoppingListBuilder()->withOwner($author)->addRecipe($recipeUsed)->build()
         ]);
 
         $this->eventDispatcher = new SpyEventDispatcher();

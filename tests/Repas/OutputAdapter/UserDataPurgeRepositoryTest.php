@@ -8,6 +8,7 @@ use Repas\Repas\Domain\Interface\IngredientRepository;
 use Repas\Repas\Domain\Interface\RecipeRepository;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Repas\Domain\Model\Ingredient;
+use Repas\Repas\Domain\Model\Meal;
 use Repas\Repas\Domain\Model\Recipe;
 use Repas\Repas\Domain\Model\ShoppingList;
 use Repas\Tests\Helper\Builder\ConversionBuilder;
@@ -81,7 +82,11 @@ class UserDataPurgeRepositoryTest extends DatabaseTestCase
         // Arrange
         $departingRecipe = $this->savedRecipe($this->departing, new RecipeBuilder()->isPastaCarbonara());
         $stayingRecipe = $this->savedRecipe($this->staying, new RecipeBuilder()->isSoftBoiledEggs());
-        $stayingList = $this->savedListPlanning($this->staying, $stayingRecipe, $departingRecipe);
+        $stayingList = $this->savedListPlanning($this->staying, $stayingRecipe);
+        // Une liste ne peut plus planifier la recette d'un autre ; une donnée plus ancienne le peut encore
+        $stayingList->getMeals()[] = Meal::create('legacy-meal', $stayingList->getId(), $departingRecipe->getId(), 4);
+        $this->shoppingListRepository->save($stayingList);
+        $this->entityManager->clear();
 
         // Act
         $this->shoppingListRepository->removeMealsOfRecipes([$departingRecipe->getId()]);

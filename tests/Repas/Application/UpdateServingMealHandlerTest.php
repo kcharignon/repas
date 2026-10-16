@@ -38,7 +38,7 @@ class UpdateServingMealHandlerTest extends TestCase
     protected function setUp(): void
     {
         $user = new UserBuilder()->withId("unique-id")->build();
-        $this->recipe = new RecipeBuilder()->isBasqueCake()->build();
+        $this->recipe = new RecipeBuilder()->withAuthor($user)->isBasqueCake()->build();
         $this->shoppingList = new ShoppingListBuilder()
             ->withOwner($user)
             ->addRecipe($this->recipe)

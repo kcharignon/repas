@@ -1656,7 +1656,7 @@
                         "description": "Recette planifi\u00e9e"
                     },
                     "404": {
-                        "description": "Ressource inconnue"
+                        "description": "Aucune liste active, recette inconnue ou recette d'un autre utilisateur"
                     },
                     "412": {
                         "description": "La version de la liste n'est plus celle de `If-Match` : elle a \u00e9t\u00e9 modifi\u00e9e depuis sa lecture"

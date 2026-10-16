@@ -4,6 +4,7 @@ namespace Repas\Tests\Repas\InputAdapter;
 
 
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
+use Repas\Repas\Domain\Exception\RecipeException;
 use Repas\Repas\Domain\Exception\ShoppingListException;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Repas\Domain\Interface\ShoppingListRowRepository;
@@ -95,6 +96,38 @@ class ShoppingListWriteApiFlowTest extends DatabaseTestCase
         // Then
         $this->assertSame(409, $this->client->getResponse()->getStatusCode());
         $this->assertArrayHasKey('error', $this->jsonBody());
+    }
+
+    public function testPlanningTheRecipeOfAnotherUserIsNotFoundAndLeavesTheListUntouched(): void
+    {
+        // Given : la recette d'un autre utilisateur, avec ses ingrédients, et une liste active
+        $owner = $this->savedUser();
+        $recipe = $this->savedRecipe($this->savedUser());
+        $list = $this->savedList($owner);
+
+        // When
+        $this->request('PUT', '/api/v1/shopping-lists/active/recipes/' . $recipe->getId(), $owner);
+
+        // Then : même réponse qu'une recette inconnue, et la liste n'a ni repas ni ligne
+        $this->assertSame(404, $this->client->getResponse()->getStatusCode());
+        $this->assertSame(['error' => ['message' => RecipeException::notFound($recipe->getId())->getMessage()]], $this->jsonBody());
+        $reloaded = $this->shoppingLists()->findOneById($list->getId());
+        $this->assertCount(0, $reloaded->getMeals());
+        $this->assertCount(0, $reloaded->getRows());
+    }
+
+    public function testAnAdministratorCannotPlanTheRecipeOfAnotherUserEither(): void
+    {
+        // Given
+        $admin = $this->savedUser(admin: true);
+        $recipe = $this->savedRecipe($this->savedUser());
+        $this->savedList($admin);
+
+        // When
+        $this->request('PUT', '/api/v1/shopping-lists/active/recipes/' . $recipe->getId(), $admin);
+
+        // Then
+        $this->assertSame(404, $this->client->getResponse()->getStatusCode());
     }
 
     public function testTickingTheLastLineCompletesTheList(): void
@@ -320,9 +353,10 @@ class ShoppingListWriteApiFlowTest extends DatabaseTestCase
         return json_decode($this->client->getResponse()->getContent(), true, flags: JSON_THROW_ON_ERROR);
     }
 
-    private function savedUser(): User
+    private function savedUser(bool $admin = false): User
     {
-        $user = new UserBuilder()->build();
+        $builder = new UserBuilder();
+        $user = ($admin ? $builder->isAdmin() : $builder)->build();
         static::getContainer()->get(UserRepository::class)->save($user);
 
         return $user;

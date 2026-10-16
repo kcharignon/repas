@@ -39,9 +39,13 @@ class PurgeUserDataHandlerTest extends TestCase
         $copyOfUserRecipe = new RecipeBuilder()->withId('copy-of-user-recipe')->withAuthor($other)->isSoftBoiledEggs()->withOriginalId('user-recipe')->build();
         $this->recipeRepository = new RecipeInMemoryRepository([$userRecipe, $userSecondRecipe, $otherRecipe, $copyOfUserRecipe]);
 
+        // Une liste ne peut plus planifier la recette d'un autre ; une donnée plus ancienne le peut encore (le repas est ajouté sans passer par le modèle)
+        $otherList = new ShoppingListBuilder()->withId('other-list')->withOwner($other)->addRecipe($otherRecipe)->build();
+        $otherList->getMeals()[] = Meal::create('legacy-meal', $otherList->getId(), $userSecondRecipe->getId(), 4);
+
         $this->shoppingListRepository = new ShoppingListInMemoryRepository([
             new ShoppingListBuilder()->withId('user-list')->withOwner($user)->addRecipe($userRecipe)->build(),
-            new ShoppingListBuilder()->withId('other-list')->withOwner($other)->addRecipe($otherRecipe)->addRecipe($userSecondRecipe)->build(),
+            $otherList,
         ]);
 
         $userCustomButter = new IngredientBuilder()->isButter()->withCreator($user->build(), true);
