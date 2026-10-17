@@ -46,7 +46,7 @@ Gabarit à remplir après l'exécution du banc d'essai (DRV-001) sur le téléph
 ## Reste à faire sur ce rapport
 
 - **DRV-007** : relever la vraie requête d'ajout au panier (outils de développement) pour comprendre le 404.
-- Observer l'adresse après la navigation avec fragment vers Leclerc (ligne 9).
+- Tester les fragments courts vers Leclerc (ligne 9, décision D21).
 - Refaire les essais 1, 2, 6, 9, 10, 12 sur le téléphone, dès qu'un favori s'installe (DRV-006).
 - Deuxième magasin (ligne 15) ; EAN sur la fiche produit (ligne 16) ; adresse de la page panier (ligne 14).
 
