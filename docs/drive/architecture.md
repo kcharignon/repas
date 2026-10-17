@@ -10,7 +10,8 @@ Référence pour les agents qui implémentent les tickets (`tickets/DRV-*.md`). 
 - **Agent** : script autonome exécuté dans la page leclercdrive.fr de l'utilisateur, lancé par un favori JavaScript. Ne parle jamais à notre API.
 - **Plan** : ce que Repas demande à l'agent de faire pour une liste envoyée (une ligne par ingrédient).
 - **Produit** (`Product`) : article vendu par l'enseigne, fait public sans propriétaire.
-- **Choix** (`Choice`) : lien privé d'un utilisateur, pour un magasin et un ingrédient, vers un produit ou vers « j'en ai toujours ».
+- **Choix** (`Choice`, ou préférence) : ce qu'un utilisateur veut, pour un magasin et un ingrédient, privé : une liste **ordonnée** de produits acceptés (priorité 1 = préféré, les suivants = produits de secours), une liste de produits **refusés** (jamais proposés ni mis au panier), ou « j'en ai toujours ».
+- **Produit de secours** : produit accepté de rang 2 ou plus, mis au panier seulement si ceux qui le précèdent sont indisponibles.
 - **Liste envoyée** : `ShoppingList` au statut `SENT`, non modifiable.
 - **Passage** (`run`) : un lancement de l'agent pour une liste, identifié par un `runId` (uuid) créé par le front.
 
@@ -108,7 +109,7 @@ Le retour arrière ne défait ni le schéma ni les données (ADR 0017 règle 6) 
 - `Dimension` (enum `Repas\Shared\Domain\Model\Dimension`, partagée avec `Repas` pour `Unit`) : `WEIGHT`, `VOLUME`, `COUNT`, `PACKAGE`. `ContentUnit` (enum de `Drive`) : `G` (WEIGHT, 1), `KG` (WEIGHT, 1000), `ML` (VOLUME, 1), `CL` (VOLUME, 10), `L` (VOLUME, 1000), `PIECE` (COUNT, 1).
 - `ProductContent` (valeur) : `value` (float > 0), `unit` (`ContentUnit`).
 - `Product` : `id` (uuid), `retailer`, `storeId`, `retailerProductId`, `ean` (nullable), `label`, `content` (nullable), `lastSeenAt`. Clé naturelle `(retailer, storeId, retailerProductId)`. `storeId` fait partie de la clé tant que le spike DRV-002 n'a pas montré que les identifiants sont communs à tous les magasins.
-- `Choice` : `id`, `userId`, `retailer`, `storeId`, `ingredientSlug`, `kind` (`PRODUCT` | `HAVE_AT_HOME`), `productId` (nullable, requis si `PRODUCT`), `chosenAt`. Unique `(userId, retailer, storeId, ingredientSlug)`.
+- `Choice` (agrégat, privé) : `id`, `userId`, `retailer`, `storeId`, `ingredientSlug`, `kind` (`PRODUCTS` | `HAVE_AT_HOME`), `accepted` (liste de `AcceptedProduct{productId, rank}`, rangs 1..n contigus, **5 au plus**), `rejected` (liste de `productId`, **20 au plus**), `updatedAt`. Unique `(userId, retailer, storeId, ingredientSlug)`. Invariants dans le domaine : un produit n'est jamais à la fois accepté et refusé, un produit n'apparaît qu'une fois, les rangs restent contigus, `HAVE_AT_HOME` n'a ni produit accepté ni refusé. Comportements : `addPrimary(productId)` (rang 1, les autres descendent d'un rang ; déjà présent : remonté), `addFallback(productId)` (à la fin ; déjà présent : inchangé), `reject(productId)` (retiré des acceptés, ajouté aux refusés), `unreject`, `remove`, `reorder(list<productId>)`, `markHaveAtHome()`, `resumeBuying()`. Quand le dernier produit accepté est retiré, le choix reste (ses refusés comptent) et la ligne redevient `NEW` dans le plan.
 - `PackCalculator` : § 6.
 
 Conventions du dépôt : classes `final`, `create()` / `load()`, ids et dates injectés (`UuidGenerator`, `Clock`), `ModelInterface` + `ModelTrait`, collections `Tab`, exceptions `DriveException` avec factories statiques.
@@ -122,15 +123,28 @@ drive_product(id VARCHAR(36) PK, retailer VARCHAR(20), store_id VARCHAR(20), ret
               ean VARCHAR(14) NULL, label VARCHAR(255), content_value NUMERIC(10,3) NULL, content_unit VARCHAR(8) NULL,
               last_seen_at TIMESTAMP)                                       -- UNIQUE (retailer, store_id, retailer_product_id), INDEX (ean)
 drive_choice(id VARCHAR(36) PK, user_id VARCHAR(36), retailer VARCHAR(20), store_id VARCHAR(20),
-             ingredient_slug VARCHAR(255), kind VARCHAR(16), product_id VARCHAR(36) NULL, chosen_at TIMESTAMP)
+             ingredient_slug VARCHAR(255), kind VARCHAR(16), updated_at TIMESTAMP)
                                                                            -- UNIQUE (user_id, retailer, store_id, ingredient_slug)
+drive_choice_product(choice_id VARCHAR(36), product_id VARCHAR(36), verdict VARCHAR(8), rank SMALLINT NULL)
+                                                                           -- PK (choice_id, product_id) ; verdict ACCEPTED (rank 1..5) ou REJECTED (rank NULL)
+                                                                           -- UNIQUE (choice_id, rank) ; INDEX (product_id)
 ```
 
-Les champs Doctrine `userId` correspondent à l'expression de `UserOwnedDataCoverageTest` (`/^(owner|author|creator|user)(Id)?$/i`) : `DriveSettings` et `Choice` doivent y être listés et purgés avec le compte. `drive_product` n'a pas de propriétaire : rien à purger. Les migrations sont **compatibles avec la version précédente du code** (nouvelles tables, colonnes nullables).
+Les champs Doctrine `userId` correspondent à l'expression de `UserOwnedDataCoverageTest` (`/^(owner|author|creator|user)(Id)?$/i`) : `DriveSettings` et `Choice` doivent y être listés et purgés avec le compte. `drive_choice_product` n'a pas de colonne utilisateur (le test ne la voit pas) mais **doit être purgée aussi**, par les identifiants des choix de l'utilisateur, sinon des lignes orphelines restent (aucune clé étrangère) : un test de base vérifie qu'il n'en reste aucune. `drive_product` n'a pas de propriétaire : rien à purger. Les migrations sont **compatibles avec la version précédente du code** (nouvelles tables, colonnes nullables).
 
 ### 5.3 Cas d'usage
 
-Écritures (`Application/Command/{UseCase}/`, `#[AsMessageHandler]`) : `SaveDriveSettings`, `SaveProductChoices` (lot ≤ 200 : upsert des `Product` puis des `Choice` dans la transaction du `command.bus`), `ForgetChoice`, `PurgeDriveData` (appelé par l'écouteur de `UserDeletedEvent`, comme `PurgeUserDataOnUserDeletedListener` côté `Repas`).
+Écritures (`Application/Command/{UseCase}/`, `#[AsMessageHandler]`) : `SaveDriveSettings`, `SaveProductChoices` (lot ≤ 200 d'**intentions** issues du résultat de l'agent, fusionnées dans les préférences existantes : voir le tableau des actions ci-dessous ; upsert des `Product` puis des `Choice` dans la transaction du `command.bus`), `ReplaceIngredientPreference` (remplace d'un coup la préférence d'un ingrédient depuis l'écran de gestion : produits acceptés dans l'ordre, refusés, « j'en ai toujours »), `ForgetChoice` (oublie toute la préférence d'un ingrédient), `PurgeDriveData` (appelé par l'écouteur de `UserDeletedEvent`, comme `PurgeUserDataOnUserDeletedListener` côté `Repas`).
+
+Actions d'un lot `SaveProductChoices` (par ingrédient, appliquées dans l'ordre reçu) :
+
+| `action` | Données | Effet sur la préférence |
+|---|---|---|
+| `ADD_PRODUCT` | `product`, `placement` ∈ `PRIMARY` \| `FALLBACK` | `PRIMARY` : le produit passe en rang 1 (les autres descendent) ; `FALLBACK` : ajouté à la fin (si la limite de 5 est atteinte : `422`). Un produit refusé qu'on ajoute est retiré des refusés. |
+| `REJECT_PRODUCT` | `product` | Retiré des acceptés (rangs recompactés), ajouté aux refusés. |
+| `HAVE_AT_HOME` | — | `kind = HAVE_AT_HOME`, produits effacés. |
+
+Un passage « seulement cette fois » (`ONCE`) n'envoie rien : le produit reste hors des préférences.
 
 Lectures (`Application/Query/{UseCase}/`, `#[AsMessageHandler(bus: 'query.bus')]`) : `GetDriveSettings`, `ListChoices`, `GetDrivePlan`.
 
@@ -166,11 +180,12 @@ Conventions : ADR 0007 (JWT, `{member,totalItems}` pour une liste, `204` ou `201
 | `GET /drive/settings` | Drive | `{enabled, retailer, store: {id,label,baseUrl} \| null}` |
 | `PUT /drive/settings` | Drive | `204` ; `404 DRIVE_DISABLED` ; `422 DRIVE_STORE_INVALID` |
 | `GET /drive/plans/{shoppingListId}` | Drive | plan (ci-dessous) ; `403` autre utilisateur ; `404` ; `409 DRIVE_NOT_CONFIGURED` ; `409 SHOPPING_LIST_NOT_SENT` |
-| `GET /drive/choices?retailer=` | Drive | `{member:[{ingredientSlug, ingredientName, kind, product}], totalItems}` pour le magasin courant |
-| `PUT /drive/choices` | Drive | `204` ; lot `{retailer, storeId, choices:[{ingredientSlug, kind, product?}]}` ; `409 DRIVE_NOT_CONFIGURED` ou `DRIVE_STORE_MISMATCH` (le `storeId` n'est pas le magasin courant) ; `422 DRIVE_CHOICE_INVALID` |
-| `DELETE /drive/choices/{ingredientSlug}?retailer=&storeId=` | Drive | `204` ; `404 DRIVE_CHOICE_NOT_FOUND` |
+| `GET /drive/choices?retailer=` | Drive | `{member:[{ingredientSlug, ingredientName, haveAtHome, accepted:[{rank, product}], rejected:[product], updatedAt}], totalItems}` pour le magasin courant |
+| `PUT /drive/choices` | Drive | `204` ; lot d'intentions issues de l'agent (ci-dessous) ; `409 DRIVE_NOT_CONFIGURED` ou `DRIVE_STORE_MISMATCH` (le `storeId` n'est pas le magasin courant) ; `422 DRIVE_CHOICE_INVALID` (dont plus de 5 produits acceptés ou 20 refusés) |
+| `PUT /drive/choices/{ingredientSlug}` | Drive | `204` ; remplace la préférence d'un ingrédient depuis l'écran de gestion : `{retailer, storeId, haveAtHome, accepted:[productId…] dans l'ordre, rejected:[productId…]}` ; `productId` = identifiant Repas du produit (celui renvoyé par `GET /drive/choices`) ; `422 DRIVE_CHOICE_INVALID` (produit inconnu, doublon, produit à la fois accepté et refusé, limites) ; mêmes `409` |
+| `DELETE /drive/choices/{ingredientSlug}?retailer=&storeId=` | Drive | `204` ; oublie toute la préférence ; `404 DRIVE_CHOICE_NOT_FOUND` |
 
-`product` dans un lot : `{id, ean?, label, content?: {value, unit}}` (`unit` ∈ `g|kg|ml|cl|l|piece`).
+**Lot `PUT /drive/choices`** : `{retailer, storeId, choices:[{ingredientSlug, action, placement?, product?}]}` avec `action` ∈ `ADD_PRODUCT` (`product` et `placement` ∈ `PRIMARY`|`FALLBACK` requis), `REJECT_PRODUCT` (`product` requis), `HAVE_AT_HOME` (rien d'autre). `product` = `{retailerProductId, ean?, label, content?: {value, unit}}` (`unit` ∈ `g|kg|ml|cl|l|piece`). Effets : § 5.3. Dans les réponses de lecture, un produit est `{productId, retailerProductId, ean, label, content}`.
 
 **Plan** (`DrivePlanDTO`, `final readonly`) :
 
@@ -186,15 +201,21 @@ Conventions : ADR 0007 (JWT, `{member,totalItems}` pour une liste, `204` ou `201
     {"ingredientSlug": "farine", "ingredientName": "Farine",
      "needed": {"quantity": 300, "unitSymbol": "g"},
      "status": "KNOWN",
-     "product": {"id": "123456", "ean": null, "label": "Farine de blé T55 1 kg", "content": {"value": 1000, "unit": "g"}},
-     "packs": 1, "packsStatus": "COMPUTED", "searchQuery": "farine"},
+     "products": [
+       {"rank": 1, "retailerProductId": "123456", "ean": null, "label": "Farine de blé T55 Marque Repère 1 kg",
+        "content": {"value": 1000, "unit": "g"}, "packs": 1, "packsStatus": "COMPUTED"},
+       {"rank": 2, "retailerProductId": "222333", "ean": null, "label": "Farine de blé T45 1 kg",
+        "content": {"value": 1000, "unit": "g"}, "packs": 1, "packsStatus": "COMPUTED"}
+     ],
+     "rejected": [{"retailerProductId": "999000", "label": "Farine complète bio 1 kg"}],
+     "searchQuery": "farine"},
     {"ingredientSlug": "poivre", "ingredientName": "Poivre", "needed": {"quantity": 1, "unitSymbol": "paquet"},
-     "status": "NEW", "product": null, "packs": null, "packsStatus": null, "searchQuery": "poivre"}
+     "status": "NEW", "products": [], "rejected": [], "searchQuery": "poivre"}
   ]
 }
 ```
 
-Statuts de ligne : `KNOWN` (un `Choice` `PRODUCT` existe pour ce magasin), `NEW`, `HAVE_AT_HOME` (`Choice` de ce type : ligne ignorée par l'agent).
+Statuts de ligne : `KNOWN` (au moins un produit accepté pour ce magasin ; `products` est classé par rang croissant, 5 au plus, chaque produit avec **ses propres** `packs` et `packsStatus` car les contenus diffèrent), `NEW` (aucun produit accepté ; `rejected` peut quand même contenir des produits refusés), `HAVE_AT_HOME` (ligne ignorée par l'agent). `rejected` : 20 au plus.
 
 ## 8. Protocole de l'agent (v1)
 
@@ -211,20 +232,27 @@ Les schémas JSON font foi (`drive-agent/protocol/`, ticket DRV-302). Exemples e
   "returnPath": "/drive/retour",
   "lines": [
     {"ingredientSlug": "farine", "name": "Farine", "status": "KNOWN",
-     "product": {"id": "123456", "label": "Farine de blé T55 1 kg", "content": {"value": 1000, "unit": "g"}},
-     "packs": 1, "packsStatus": "COMPUTED"},
-    {"ingredientSlug": "poivre", "name": "Poivre", "status": "NEW", "searchQuery": "poivre", "packs": null},
+     "products": [
+       {"id": "123456", "label": "Farine de blé T55 Marque Repère 1 kg", "content": {"value": 1000, "unit": "g"},
+        "packs": 1, "packsStatus": "COMPUTED"},
+       {"id": "222333", "label": "Farine de blé T45 1 kg", "content": {"value": 1000, "unit": "g"},
+        "packs": 1, "packsStatus": "COMPUTED"}
+     ],
+     "rejected": [{"id": "999000", "label": "Farine complète bio 1 kg"}], "searchQuery": "farine"},
+    {"ingredientSlug": "poivre", "name": "Poivre", "status": "NEW", "products": [], "rejected": [], "searchQuery": "poivre"},
     {"ingredientSlug": "sel", "name": "Sel", "status": "HAVE_AT_HOME"},
     {"ingredientSlug": "huile", "name": "Huile", "status": "SKIP"},
-    {"ingredientSlug": "lait", "name": "Lait", "status": "NEW", "searchQuery": "lait demi-écrémé",
-     "replaces": {"id": "98765", "label": "Lait UHT 1 L"}}
+    {"ingredientSlug": "lait", "name": "Lait", "status": "NEW", "products": [], "rejected": [],
+     "searchQuery": "lait demi-écrémé", "replaces": {"id": "98765", "label": "Lait UHT 1 L"}}
   ]
 }
 ```
 
+`products` est classé par priorité (le premier est préféré ; 5 au plus), `rejected` liste les produits que l'utilisateur ne veut jamais (20 au plus). Le front traduit `retailerProductId` du plan du back en `id`.
+
 `type: "setup"` : mêmes champs sans `lines` ; l'agent lit le magasin courant et le renvoie dans un message `setup-result` : `{"v":1,"type":"setup-result","runId":"…","agentVersion":"1.0.0","store":{"id":"053701","host":"fd9-courses.leclercdrive.fr","baseUrl":"https://fd9-courses.leclercdrive.fr/magasin-053701-053701","label":null}}`. `SKIP` = « passer cette fois » choisi par l'utilisateur sur l'écran du plan (non mémorisé). Un `KNOWN` que l'utilisateur veut changer devient `NEW` avec `replaces`.
 
-**Validation par l'agent avant toute action** : `v === 1` ; `runId` uuid ; `retailer` autorisé ; hôte de la page ∈ liste autorisée **et** magasin du message = magasin de la page (sinon `STORE_MISMATCH`) ; ≤ 100 lignes ; `ingredientSlug` `^[a-z0-9-]{1,100}$` ; identifiants de produit `^[0-9]{1,12}$` ; `packs` entier 1..99 ou `null` ; chaînes bornées (libellés ≤ 255) ; tout affichage par `textContent` (jamais de HTML) ; `returnPath` ∈ `["/drive/retour"]` ; l'origine de retour est **écrite en dur** dans le favori, jamais lue dans le message. Le gabarit de l'agent contient un marqueur unique `__REPAS_ORIGIN__` que le front remplace par `location.origin` quand l'utilisateur copie le code du favori (DRV-301, DRV-403) : l'image de production du front ne contient ainsi aucun nom de domaine.
+**Validation par l'agent avant toute action** : `v === 1` ; `runId` uuid ; `retailer` autorisé ; hôte de la page ∈ liste autorisée **et** magasin du message = magasin de la page (sinon `STORE_MISMATCH`) ; ≤ 100 lignes ; `ingredientSlug` `^[a-z0-9-]{1,100}$` ; identifiants de produit `^[0-9]{1,12}$` ; `products` ≤ 5 sans doublon, `KNOWN` en exige au moins 1 et `NEW` n'en a aucun ; `rejected` ≤ 20 ; aucun produit à la fois dans `products` et `rejected` ; `packs` entier 1..99 ou `null` ; chaînes bornées (libellés ≤ 255) ; tout affichage par `textContent` (jamais de HTML) ; `returnPath` ∈ `["/drive/retour"]` ; l'origine de retour est **écrite en dur** dans le favori, jamais lue dans le message. Le gabarit de l'agent contient un marqueur unique `__REPAS_ORIGIN__` que le front remplace par `location.origin` quand l'utilisateur copie le code du favori (DRV-301, DRV-403) : l'image de production du front ne contient ainsi aucun nom de domaine.
 
 **Message de résultat** (agent → front) :
 
@@ -233,25 +261,35 @@ Les schémas JSON font foi (`drive-agent/protocol/`, ticket DRV-302). Exemples e
   "v": 1, "type": "result", "runId": "8f14e45f-ceea-467a-9575-8e6b8c0a1b2c", "agentVersion": "1.0.0",
   "outcome": "completed", "store": {"id": "053701"},
   "lines": [
-    {"ingredientSlug": "farine", "outcome": "ADDED", "productId": "123456", "quantity": 1},
-    {"ingredientSlug": "poivre", "outcome": "CHOSEN", "quantity": 1,
+    {"ingredientSlug": "farine", "outcome": "ADDED", "productId": "222333", "usedRank": 2, "quantity": 1,
+     "unavailableIds": ["123456"]},
+    {"ingredientSlug": "poivre", "outcome": "CHOSEN", "quantity": 1, "placement": "PRIMARY",
      "product": {"id": "555111", "ean": null, "label": "Poivre noir moulu 50 g", "content": {"value": 50, "unit": "g"}}},
+    {"ingredientSlug": "lait", "outcome": "CHOSEN", "quantity": 1, "placement": "FALLBACK",
+     "product": {"id": "444222", "ean": null, "label": "Lait demi-écrémé UHT 1 L", "content": {"value": 1, "unit": "l"}},
+     "unavailableIds": ["98765"],
+     "rejected": [{"id": "98765", "label": "Lait UHT 1 L"}]},
     {"ingredientSlug": "sel", "outcome": "HAVE_AT_HOME"},
     {"ingredientSlug": "huile", "outcome": "SKIPPED"},
-    {"ingredientSlug": "lait", "outcome": "UNAVAILABLE", "productId": "98765"},
+    {"ingredientSlug": "riz", "outcome": "UNAVAILABLE", "unavailableIds": ["31415"]},
     {"ingredientSlug": "beurre", "outcome": "FAILED", "error": "BLOCKED"}
   ]
 }
 ```
 
-`outcome` global : `completed` | `partial` | `aborted` | `error` (avec `error: {code, message}`). Codes : `NOT_LOGGED_IN`, `STORE_MISMATCH`, `BLOCKED`, `CONTRACT_CHANGED`, `NETWORK`, `CANCELLED`, `INVALID_MESSAGE`, `UNSUPPORTED_PAGE`. Issues de ligne : `ADDED` (produit connu mis au panier), `CHOSEN` (nouveau produit choisi et ajouté ; à mémoriser), `HAVE_AT_HOME` (« j'en ai toujours » ; à mémoriser), `SKIPPED` (passé cette fois), `UNAVAILABLE`, `FAILED`.
+`outcome` global : `completed` | `partial` | `aborted` | `error` (avec `error: {code, message}`). Codes : `NOT_LOGGED_IN`, `STORE_MISMATCH`, `BLOCKED`, `CONTRACT_CHANGED`, `NETWORK`, `CANCELLED`, `INVALID_MESSAGE`, `UNSUPPORTED_PAGE`. Issues de ligne :
+- `ADDED` : un produit déjà connu a été mis au panier ; `usedRank` (1 = le préféré, 2 ou plus = produit de secours) et `unavailableIds` (ceux qui le précèdent et étaient indisponibles).
+- `CHOSEN` : l'utilisateur a choisi un produit sur Leclerc, ajouté au panier ; `placement` ∈ `PRIMARY` (nouveau produit préféré), `FALLBACK` (produit de secours), `ONCE` (cette fois seulement, rien à mémoriser).
+- `HAVE_AT_HOME` : « j'en ai toujours » (à mémoriser). `SKIPPED` : passé cette fois. `UNAVAILABLE` : aucun produit disponible et l'utilisateur n'en a pas choisi d'autre. `FAILED` : erreur (`BLOCKED`, `NETWORK`…).
+- Toute ligne peut porter `rejected` : les produits que l'utilisateur a choisi de ne plus jamais prendre (avec libellé et contenu pour pouvoir les mémoriser). `unavailableIds` ne sert qu'à l'affichage du récapitulatif, jamais à la mémorisation.
 
 **Comportement de l'agent**
 1. Au lancement, lit `location.hash` (`repas=`). Absent : écran « ouvre d'abord Repas » + accès au diagnostic.
 2. Valide le message, affiche un récapitulatif et demande confirmation (rien n'est envoyé avant).
-3. **Phase A** : pour chaque ligne `KNOWN`, fixe la quantité absolue au panier (`packs`) ; `packsStatus` `TO_CHECK` ou `packs` nul : demande la quantité. Produit indisponible (`iQteDisponible` à 0) : la ligne passe en phase B avec « ce produit n'est plus disponible ».
-4. **Phase B** : pour chaque ligne `NEW`, l'utilisateur choisit un produit (P1 ou P2 ci-dessous) ou « Passer cette fois » ou « J'en ai toujours » ; après un choix, l'agent calcule le nombre de produits (contenu du produit choisi, quantité demandée), le montre (« 800 g demandés, 500 g par produit : 2 ») et fixe la quantité au panier.
+3. **Phase A** : pour chaque ligne `KNOWN`, essaie les produits **dans l'ordre de priorité** : le premier **disponible** est mis au panier avec sa quantité absolue (`packs` de ce produit ; `packsStatus` `TO_CHECK` ou `packs` nul : demande la quantité). Si le préféré est indisponible, l'agent passe au suivant sans rien demander (produit de secours) et le note (`usedRank`, `unavailableIds`) ; il n'ajoute **jamais** un produit refusé ni un produit absent de la liste. La disponibilité se lit par la méthode retenue au spike (DRV-002) : stock de la recherche par libellé (`iQteDisponible`) ou réponse du panier. **Si aucun produit de la liste n'est disponible**, la ligne passe en phase B avec « Ces produits ne sont plus disponibles : … ».
+4. **Phase B** : pour chaque ligne `NEW` (jamais de produit, tous indisponibles, ou « autre produit » demandé), l'utilisateur choisit un produit (P1 ou P2 ci-dessous) ou « Passer cette fois » ou « J'en ai toujours » ; après un choix, l'agent calcule le nombre de produits (contenu du produit choisi, quantité demandée), le montre (« 800 g demandés, 500 g par produit : 2 ») et fixe la quantité au panier. **Rôle du produit choisi** : s'il n'y avait aucun produit pour cet ingrédient, il devient le préféré sans question (`PRIMARY`) ; sinon l'agent demande « Que fais-tu de <produit> ? » — « Mon nouveau produit préféré » (`PRIMARY`, les autres restent derrière), « Produit de secours » (`FALLBACK`, après les autres), « Seulement cette fois » (`ONCE`). Pour chaque produit devenu indisponible, une case « Ne plus jamais prendre <produit> » (le produit part dans `rejected`). Un produit refusé figure grisé et non sélectionnable dans la liste P2 ; en P1, si l'utilisateur ajoute un produit refusé, l'agent prévient et propose de le retirer du panier ou de le garder cette fois.
 5. Construit le résultat et navigue vers l'origine de Repas.
+- **Priorités et substitution** : l'agent ne choisit jamais seul un produit « équivalent » absent de la liste de l'utilisateur ; une substitution automatique (suggestion) est au backlog (DRV-601) et exclura toujours les produits refusés.
 - **P1 (recommandée, à confirmer à G1)** : un `iframe` plein écran vers `recherche.aspx?TexteRecherche=<searchQuery>` du même hôte ; l'agent reste dans la page parente et repère le produit que l'utilisateur ajoute. **P2 (repli)** : l'agent interroge `recherche.aspx`, lit le JSON embarqué et affiche lui-même les candidats.
 - **Cadence** : ≥ 800 ms entre requêtes avec gigue jusqu'à +700 ms, jamais en parallèle ; arrêt après 2 réponses 403/429 consécutives (`partial` + `BLOCKED`) ; une seule reprise sur erreur réseau.
 - **Écran allumé** (Wake Lock) pendant le passage ; état de reprise dans `sessionStorage` (`repas:run:<runId>`).
@@ -260,7 +298,7 @@ Les schémas JSON font foi (`drive-agent/protocol/`, ticket DRV-302). Exemples e
 
 ## 9. Front
 
-- Routes : `/drive/reglages` (magasin, favori, produits mémorisés, « j'en ai toujours »), `/drive/envoi/:listId` (plan, ouverture de Leclerc, attente), `/drive/retour` (récapitulatif).
+- Routes : `/drive/reglages` (magasin, favori, produits mémorisés avec leur ordre de priorité et leurs produits refusés, « j'en ai toujours »), `/drive/envoi/:listId` (plan avec, pour chaque ligne, le produit préféré et ses produits de secours ; ouverture de Leclerc ; attente), `/drive/retour` (récapitulatif, avec les produits de secours utilisés).
 - Une liste `SENT` s'affiche en lecture seule : bandeau « Envoyée au drive le … », actions « Reprendre l'envoi », « Terminer », « Rouvrir » (confirmation). `/liste` ne crée pas de liste tout seul quand il n'y a que des listes `SENT`.
 - **Brouillon de passage** : `{runId, listId, startedAt}` dans `localStorage` (24 h), car l'utilisateur quitte Repas pour Leclerc et que le service worker de production recharge la page dès qu'il détecte une nouvelle version. Au retour, un `runId` différent du brouillon est ignoré avec un message.
 - **Ouverture dans Chrome complet** : lien d'intention Android (`intent://<hôte>/<chemin>#Intent;scheme=https;package=com.android.chrome;end`) quand l'application est installée (`display-mode: standalone`), sinon lien normal ; à valider au spike DRV-002. Le favori ne s'exécute pas dans l'onglet intégré d'une PWA.

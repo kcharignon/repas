@@ -13,7 +13,7 @@ Le front parle à l'agent par fragment d'URL. Ce module isole tout ce qui concer
 
 ## Portée
 
-1. `buildPlanMessage(plan: DrivePlan, overrides, runId): PlanMessage` : à partir du plan du back (`GET /api/v1/drive/plans/{id}`, types générés) et des surcharges de l'utilisateur par ligne (`replace` : la ligne `KNOWN` devient `NEW` avec `replaces`; `skip` : la ligne devient `SKIP`) ; limite de 100 lignes (au-delà : erreur claire).
+1. `buildPlanMessage(plan: DrivePlan, overrides, runId): PlanMessage` : à partir du plan du back (`GET /api/v1/drive/plans/{id}`, types générés) et des surcharges de l'utilisateur par ligne ; traduit chaque `retailerProductId` du plan en `id` du protocole et conserve l'ordre de priorité de `products` (5 au plus) et la liste `rejected` (20 au plus) ; surcharge `replace` : la ligne `KNOWN` devient `NEW` avec `products: []`, `rejected` conservé et `replaces` = le produit préféré ; surcharge `skip` : la ligne devient `SKIP` ; limite de 100 lignes (au-delà : erreur claire).
 2. `buildLeclercUrl(baseUrl, message): string` = `baseUrl + '#repas=' + encodeMessage(message)` ; vérifie que `baseUrl` correspond au motif autorisé.
 3. `openLeclerc(url)` : ouvre Chrome complet. Si l'application est installée (`matchMedia('(display-mode: standalone)')`), utiliser un lien d'intention Android `intent://<hôte><chemin>#Intent;scheme=https;package=com.android.chrome;end` (hôte et chemin issus de l'URL ; **le fragment du message est placé dans le paramètre `S.browser_fallback_url` ou dans le chemin selon ce que DRV-002 a validé**) ; sinon `window.location.assign`/`window.open`. Le comportement exact (lien d'intention ou lien normal) est celui décidé à G1 (`DRV-005`).
 4. `readResult(hash: string): ResultMessage | SetupResultMessage` : décode et valide (`validateResult`), refuse tout le reste ; puis `clearHash()` (remplacer l'URL par `history.replaceState` pour ne pas laisser le fragment dans la barre d'adresse ni l'historique).
@@ -24,6 +24,7 @@ Le front parle à l'agent par fragment d'URL. Ce module isole tout ce qui concer
 ## Critères d'acceptation
 
 - `buildLeclercUrl` produit une URL dont le fragment décode en un plan valide ; une `baseUrl` hors motif est refusée.
+- Une ligne à deux produits classés et un produit refusé sort du constructeur avec les mêmes produits dans le même ordre, chacun avec ses `packs`, et le refusé dans `rejected`.
 - `readResult` rejette un résultat invalide, un `runId` inconnu, un agent trop ancien ; le fragment est effacé de l'URL.
 - Le brouillon expire après 24 h et survit à un rechargement.
 

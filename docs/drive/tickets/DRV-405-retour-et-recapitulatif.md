@@ -17,7 +17,7 @@ Route `/drive/retour` (accessible sans passer par le routeur « liste » ; conse
 
 1. Lit le fragment (`readResult`, DRV-402). Invalide, absent ou agent trop ancien : message explicatif et lien vers l'aide. `runId` différent du brouillon : « Ce résultat ne correspond pas à ton dernier envoi » (ignoré).
 2. **`setup-result`** : enregistre le magasin (`PUT /drive/settings`) puis revient aux réglages avec confirmation.
-3. **`result`** : construit le lot de choix à enregistrer (lignes `CHOSEN` → `PRODUCT` avec produit ; lignes `HAVE_AT_HOME` → `HAVE_AT_HOME`) et appelle `PUT /drive/choices` (un seul appel) ; en cas d'échec, conserver le résultat en mémoire et proposer « Réessayer l'enregistrement » (le brouillon n'est supprimé qu'après succès).
+3. **`result`** : construit le lot d'intentions à enregistrer et appelle `PUT /drive/choices` (un seul appel, `retailerProductId` = `id` du protocole) : ligne `CHOSEN` avec `placement` `PRIMARY` ou `FALLBACK` → `ADD_PRODUCT` ; `placement` `ONCE` → rien ; ligne `HAVE_AT_HOME` → `HAVE_AT_HOME` ; chaque produit de `rejected` (toute ligne) → `REJECT_PRODUCT` ; `ADDED`, `SKIPPED`, `UNAVAILABLE`, `FAILED` et `unavailableIds` → rien à enregistrer ; en cas d'échec, conserver le résultat en mémoire et proposer « Réessayer l'enregistrement » (le brouillon n'est supprimé qu'après succès).
 4. **Récapitulatif** : compteurs (ajoutés, choisis et mémorisés, tu en as déjà, passés, indisponibles, échecs), liste par ligne avec le produit et la quantité, message selon `outcome` (`completed` / `partial` / `aborted` / `error` avec le code traduit en phrase claire : connexion, magasin différent, blocage, site changé, réseau).
 5. **Actions** :
    - « Finaliser sur Leclerc » : ouvre la page panier du magasin (adresse trouvée par le spike DRV-004/002 ; à défaut la page d'accueil du magasin) ;
@@ -29,7 +29,8 @@ Route `/drive/retour` (accessible sans passer par le routeur « liste » ; conse
 
 ## Critères d'acceptation
 
-- Un résultat `completed` avec 8 `ADDED`, 3 `CHOSEN`, 1 `HAVE_AT_HOME` enregistre 4 choix en un appel et affiche les compteurs.
+- Un résultat `completed` avec 8 `ADDED` (dont 1 avec `usedRank: 2`), 3 `CHOSEN` (2 `PRIMARY`, 1 `ONCE`), 1 `HAVE_AT_HOME` et 1 produit `rejected` enregistre 4 intentions en un appel (2 `ADD_PRODUCT`, 1 `HAVE_AT_HOME`, 1 `REJECT_PRODUCT`) et affiche les compteurs.
+- Le récapitulatif signale chaque produit de secours utilisé (« Farine : produit de secours utilisé, le préféré n'était pas disponible »).
 - Un résultat `partial` avec `BLOCKED` propose « Réessayer les échecs » et n'efface pas ce qui a été fait.
 - Un fragment invalide ou d'un autre `runId` n'enregistre rien.
 - Si l'enregistrement échoue, rien n'est perdu et l'utilisateur peut réessayer.

@@ -29,6 +29,7 @@ Gabarit à remplir après l'exécution du banc d'essai (DRV-001) sur le téléph
 | 16 | Un EAN est-il visible sur la fiche produit ? | | |
 | 17 | Contenu net déductible du libellé ou du prix par unité de mesure : sur 30 résultats, combien ? | | |
 | 18 | Sur 30 ingrédients de Repas, le bon produit est-il dans les 3 premiers résultats ? Combien ? | | |
+| 19 | Disponibilité : un produit déjà connu (vu à la ligne 4) est-il retrouvé par une recherche sur son libellé, avec son stock lu ? Que répond le panier quand on ajoute un produit en rupture (stock 0) ? Comment savoir avant d'ajouter qu'il est disponible ? | | |
 
 ## Conclusion (à remplir par DRV-005)
 

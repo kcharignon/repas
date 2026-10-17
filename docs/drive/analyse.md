@@ -80,6 +80,10 @@ Décidé : on n'en stocke aucun. Si l'on devait (non recommandé, aucun plan) : 
 - D13 Un produit connu devenu indisponible repasse en phase B.
 - D14 « J'en ai toujours » = un `Choice` de type `HAVE_AT_HOME`.
 - D15 Libellés : statut API `SENT`, texte « Envoyée au drive ».
+- D16 Un ingrédient peut avoir jusqu'à 5 produits acceptés classés par priorité (le premier est préféré, les suivants sont des produits de secours) et jusqu'à 20 produits refusés (jamais proposés ni mis au panier). Demande de l'utilisateur du 2026-10-17 : « je prends la farine Marque Repère si dispo, sinon une autre marque équivalente me va, mais pas cette farine-là ».
+- D17 Si le produit préféré est indisponible, l'agent prend le suivant de la liste sans rien demander ; si aucun n'est disponible, il demande à l'utilisateur de choisir un autre produit sur Leclerc (phase B) et lui demande son rôle : nouveau préféré, produit de secours, ou seulement cette fois.
+- D18 L'agent ne choisit jamais seul un produit « équivalent » absent de la liste ; la suggestion automatique (backlog DRV-601) devra toujours exclure les produits refusés.
+- D19 Un produit refusé se désigne depuis la phase B (case « Ne plus jamais prendre » pour un produit indisponible) ou depuis l'écran « Mes produits » (DRV-410) ; il se ré-accepte depuis ce même écran.
 
 ## 8. Lacunes comblées
 
@@ -100,4 +104,4 @@ Règle de verrou (statuts, opérations, codes, versions, déploiement) · contex
 
 ## 10. Découpage
 
-Voir [`roadmap.md`](roadmap.md) : 41 tickets en 6 jalons (M0 découverte et décision G1, M1 back `Repas`, M2 back `Drive`, M3 agent, M4 front, M5 intégration et livraison) plus un backlog. Principe : rien de produit n'est codé avant la décision G1, qui dépend des spikes sur le téléphone, des CGU et des en-têtes de sécurité de Leclerc.
+Voir [`roadmap.md`](roadmap.md) : 43 tickets en 6 jalons (M0 découverte et décision G1, M1 back `Repas`, M2 back `Drive`, M3 agent, M4 front, M5 intégration et livraison) plus un backlog. Principe : rien de produit n'est codé avant la décision G1, qui dépend des spikes sur le téléphone, des CGU et des en-têtes de sécurité de Leclerc.

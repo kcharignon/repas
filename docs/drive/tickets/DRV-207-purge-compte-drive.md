@@ -13,10 +13,10 @@ Aucune clé étrangère ne lie les tables à `user` : supprimer un compte « com
 
 ## Portée
 
-1. `Application/Command/PurgeUserDriveData/` : `PurgeUserDriveDataCommand(string $userId)` et son handler (`DriveSettingsRepository::deleteByUser`, `ChoiceRepository::deleteByUser` : suppressions en masse, sans événement).
+1. `Application/Command/PurgeUserDriveData/` : `PurgeUserDriveDataCommand(string $userId)` et son handler : supprime d'abord les lignes `drive_choice_product` des préférences de l'utilisateur (`ChoiceRepository::deleteProductsByUser`, par les identifiants de ses `drive_choice`, sinon des lignes orphelines restent : aucune clé étrangère), puis `drive_choice` (`ChoiceRepository::deleteByUser`) et `drive_settings` (`DriveSettingsRepository::deleteByUser`) : suppressions en masse, sans événement.
 2. `Infrastructure/EventListener/PurgeUserDataOnUserDeletedListener` (dans `Drive`, `#[AsEventListener]`, répond à `Shared\Domain\Event\UserDeletedEvent` par la commande, comme le listener de `Repas`) : synchrone, donc dans la transaction de `DeleteUser`.
 3. `UserOwnedDataCoverageTest::ERASED_WITH_THE_USER` : ajouter `DriveSettings::class => ['userId']` et `Choice::class => ['userId']` (classes d'entités `Repas\Drive\Infrastructure\Entity\…`).
-4. Budget du scénario `supprimer-compte` (15 requêtes aujourd'hui) : mettre à jour `tests/Repas/WriteBudget/budgets.php` (`make sql-budget-update`) après avoir vérifié l'ajout (2 suppressions).
+4. Budget du scénario `supprimer-compte` (15 requêtes aujourd'hui) : mettre à jour `tests/Repas/WriteBudget/budgets.php` (`make sql-budget-update`) après avoir vérifié l'ajout (3 suppressions).
 5. Mettre à jour la documentation de l'ADR 0021 (une phrase : la purge couvre aussi le contexte `Drive`).
 
 ## Hors portée
@@ -25,13 +25,13 @@ Suppression des `Product` (faits publics).
 
 ## Critères d'acceptation
 
-- Étant donné un utilisateur avec des réglages et des choix, quand son compte est supprimé, alors ses réglages et ses choix n'existent plus et les produits restent.
+- Étant donné un utilisateur avec des réglages et des préférences (produits acceptés et refusés), quand son compte est supprimé, alors ses réglages, ses préférences et **toutes leurs lignes de produits** n'existent plus (aucune ligne orpheline dans `drive_choice_product`) et les produits restent.
 - Si la purge échoue, le compte n'est pas supprimé (atomicité du `command.bus`).
 - `UserOwnedDataCoverageTest` passe ; il échoue si on retire l'une des deux entrées.
 
 ## Tests exigés
 
-Handler en unitaire (doubles en mémoire) ; test de bout en bout de `DeleteUser` avec données `Drive` ; `UserOwnedDataCoverageTest` ; budget.
+Handler en unitaire (doubles en mémoire) ; test de bout en bout de `DeleteUser` avec données `Drive` ; test de base qui vérifie qu'aucune ligne de `drive_choice_product` ne reste après la purge ; `UserOwnedDataCoverageTest` ; budget.
 
 ## Definition of Done
 

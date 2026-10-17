@@ -29,10 +29,11 @@ Suivi vivant. Cocher une case quand le ticket est fusionné (et noter la PR). Le
 - [ ] [DRV-201](tickets/DRV-201-squelette-contexte-drive.md) back · S · Squelette du contexte `Drive` · dépend de : — · Issue : —
 - [ ] [DRV-202](tickets/DRV-202-port-shared-liste-pour-drive.md) back · S · Port `Shared` de lecture de la liste · dépend de : 201, 104, 105 · Issue : —
 - [ ] [DRV-203](tickets/DRV-203-reglages-du-drive.md) back · M · Réglages du drive · dépend de : 201, 103 · Issue : —
-- [ ] [DRV-204](tickets/DRV-204-produits-et-choix.md) back · L · Produits et choix · dépend de : 201 · Issue : —
+- [ ] [DRV-204](tickets/DRV-204-produits-et-choix.md) back · L · Produits, choix et priorités · dépend de : 201, 202, 203 · Issue : —
 - [ ] [DRV-205](tickets/DRV-205-pack-calculator.md) back · M · `PackCalculator` · dépend de : 201 · Issue : —
 - [ ] [DRV-206](tickets/DRV-206-plan-d-envoi.md) back · M · Plan d'envoi · dépend de : 202, 203, 204, 205 · Issue : —
-- [ ] [DRV-207](tickets/DRV-207-purge-compte-drive.md) back · S · Purge à la suppression du compte · dépend de : 203, 204 · Issue : —
+- [ ] [DRV-207](tickets/DRV-207-purge-compte-drive.md) back · S · Purge à la suppression du compte (dont lignes de produits) · dépend de : 203, 204 · Issue : —
+- [ ] [DRV-208](tickets/DRV-208-remplacement-preference.md) back · M · Remplacer la préférence d'un ingrédient (ordre, refus) · dépend de : 204 · Issue : —
 
 ## M3 — Agent (front, `drive-agent/`)
 
@@ -58,6 +59,7 @@ Suivi vivant. Cocher une case quand le ticket est fusionné (et noter la PR). Le
 - [ ] [DRV-407](tickets/DRV-407-adr-front-et-claude-md.md) front · S · ADR front 0008 et `CLAUDE.md` · dépend de : 404 · Issue : —
 - [ ] [DRV-408](tickets/DRV-408-page-d-aide.md) front · S · Page d'aide · dépend de : 403 · Issue : —
 - [ ] [DRV-409](tickets/DRV-409-admin-unites-dimension.md) front · S · Administration des unités : dimension · dépend de : 105 · Issue : —
+- [ ] [DRV-410](tickets/DRV-410-priorites-produits-ui.md) front · M · Écran « Mes produits » : priorités et produits refusés · dépend de : 208, 403 · Issue : —
 
 ## M5 — Intégration et livraison
 

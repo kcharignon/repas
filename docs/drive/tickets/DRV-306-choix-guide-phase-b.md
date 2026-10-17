@@ -13,9 +13,11 @@ Pour chaque nouvel ingrédient, l'utilisateur choisit le produit qu'il préfère
 
 ## Portée
 
-Commun aux deux variantes, pour chaque ligne `NEW` (et chaque ligne `KNOWN` devenue indisponible, avec le rappel « remplace <produit> ») :
+Commun aux deux variantes, pour chaque ligne `NEW` : ingrédient jamais acheté, **ou tous les produits mémorisés indisponibles** (bandeau « Ces produits ne sont plus disponibles : <libellés> »), **ou « autre produit » demandé** par l'utilisateur sur l'écran du plan (rappel « remplace <produit> ») :
 - Écran hôte (DRV-304) avec le nom de l'ingrédient, la quantité demandée (« 300 g »), le compteur, et trois actions : **« Passer cette fois »** (issue `SKIPPED`), **« J'en ai toujours »** (issue `HAVE_AT_HOME`, à mémoriser), **« Annuler le passage »** (résultat `aborted`).
-- Quand un produit est choisi : l'agent récupère ses données (`id`, libellé, libellé 2, prix par unité de mesure, contenu via `parseContent`), calcule le nombre de produits (règle de `architecture.md` § 6 appliquée côté agent seulement quand le contenu est connu : même formule que `PackCalculator` ; sinon écran « Quantité à vérifier »), montre « 800 g demandés, 500 g par produit : 2 », fixe la quantité absolue au panier (`setCartQuantity`), et enregistre l'issue `CHOSEN` avec `product` et `quantity`.
+- Quand un produit est choisi : l'agent récupère ses données (`id`, libellé, libellé 2, prix par unité de mesure, contenu via `parseContent`), calcule le nombre de produits (règle de `architecture.md` § 6 appliquée côté agent seulement quand le contenu est connu : même formule que `PackCalculator` ; sinon écran « Quantité à vérifier »), montre « 800 g demandés, 500 g par produit : 2 », fixe la quantité absolue au panier (`setCartQuantity`), et enregistre l'issue `CHOSEN` avec `product`, `quantity` et `placement`.
+- **Rôle du produit choisi** (`placement`) : si l'ingrédient n'avait aucun produit mémorisé, il devient le préféré **sans question** (`PRIMARY`). Si des produits étaient mémorisés (ils sont tous indisponibles, ou l'utilisateur a demandé un autre produit), l'écran demande « Que fais-tu de <produit> ? » avec trois choix : **« Mon nouveau produit préféré »** (`PRIMARY` : les autres restent derrière, utilisables en secours), **« Produit de secours »** (`FALLBACK` : après les autres), **« Seulement cette fois »** (`ONCE` : rien n'est mémorisé).
+- **Produits à ne plus jamais prendre** : pour chaque produit mémorisé devenu indisponible, une case « Ne plus jamais prendre <produit> » ; cochée, le produit part dans `rejected` du résultat (avec libellé et contenu). Les produits déjà refusés (`rejected` du plan) ne sont jamais proposés comme choix : grisés et non sélectionnables en P2 ; en P1, si l'utilisateur en ajoute un au panier, l'agent prévient (« Tu as refusé ce produit ») et propose de le retirer (quantité 0) ou de le garder cette fois.
 - Cadence et arrêt sur blocage identiques à la phase A.
 
 **Variante P1 (cadre natif)** :
@@ -38,6 +40,10 @@ Suggestion automatique du meilleur candidat (backlog DRV-601).
 - « Annuler le passage » renvoie un résultat `aborted` avec ce qui a déjà été fait.
 - Contenu inconnu : l'écran « Quantité à vérifier » apparaît ; la quantité saisie est fixée.
 - Un libellé hostile ne s'exécute pas.
+- Étant donné un ingrédient dont l'unique produit mémorisé est indisponible, quand l'utilisateur choisit un autre produit, alors l'écran demande son rôle (préféré, secours, seulement cette fois) et le résultat porte le `placement` choisi et `unavailableIds`.
+- Étant donné un ingrédient jamais acheté, quand l'utilisateur choisit un produit, alors aucune question de rôle n'est posée et le placement est `PRIMARY`.
+- Étant donné la case « Ne plus jamais prendre » cochée pour un produit indisponible, alors le résultat contient ce produit dans `rejected`.
+- Un produit présent dans `rejected` du plan n'est pas sélectionnable (P2) ; ajouté par l'utilisateur dans le cadre (P1), l'agent le signale et propose de le retirer.
 
 ## Tests exigés
 

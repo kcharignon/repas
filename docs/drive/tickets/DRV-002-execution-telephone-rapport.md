@@ -15,7 +15,7 @@ Seul le téléphone réel de l'utilisateur, avec son navigateur et son compte, p
 
 1. Créer le favori de test sur Chrome Android (suivre `PROCEDURE.md`).
 2. Ouvrir le drive Leclerc de son magasin, se connecter lui-même, choisir son magasin.
-3. Lancer chaque essai du banc d'essai et noter le résultat dans `docs/drive/spikes/DRV-002-rapport.md` (18 lignes, « non testé » avec la raison si impossible).
+3. Lancer chaque essai du banc d'essai et noter le résultat dans `docs/drive/spikes/DRV-002-rapport.md` (19 lignes, « non testé » avec la raison si impossible).
 4. Si possible, refaire les essais d'identifiants et de contenu (lignes 15 à 17) avec un deuxième magasin.
 5. Coller dans le rapport le résultat copié du lot de 30 recherches (test 11), puis noter dans la ligne 18 combien de fois le bon produit est dans les 3 premiers.
 6. Ouvrir une PR docs avec le rapport rempli.
@@ -26,7 +26,7 @@ Toute modification de code. Toute commande ou validation de panier réel.
 
 ## Critères d'acceptation
 
-- Les 18 lignes du rapport sont remplies ou marquées « non testé » avec la raison.
+- Les 19 lignes du rapport sont remplies ou marquées « non testé » avec la raison.
 - Le rapport indique le modèle du téléphone, la version d'Android et de Chrome.
 - Le rapport ne contient aucun identifiant, cookie, jeton, adresse e-mail ni numéro de magasin personnel.
 

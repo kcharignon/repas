@@ -17,8 +17,8 @@ Quand l'utilisateur envoie sa liste, le front demande au back le **plan** : pour
 2. Port `Application/Loader/DrivePlanLoader` ; implémentation `Infrastructure/Loader/DrivePlanPostgreSQLLoader` qui :
    - lit les réglages de l'utilisateur (`DRIVE_NOT_CONFIGURED`, 409, s'il n'y en a pas) ;
    - lit la liste par le port `Shared` `ShoppingListForDriveLoader` ; si son `status` n'est pas `SENT` : `SHOPPING_LIST_NOT_SENT` (409) ; si `ownerId` n'est pas `userId` : refus (le voter du contrôleur est la défense principale) ;
-   - lit les choix de l'utilisateur pour ce magasin avec leurs produits (une requête, jointure `drive_choice` ↔ `drive_product`) ;
-   - pour chaque ligne : `HAVE_AT_HOME` → statut `HAVE_AT_HOME` ; `PRODUCT` → `KNOWN` avec produit et `PackCalculator::packsFor` ; sinon `NEW` avec `searchQuery` = nom de l'ingrédient ; `needed` = quantité et symbole d'unité de la ligne ; `counts` ;
+   - lit les préférences de l'utilisateur pour ce magasin avec leurs produits, acceptés et refusés (deux requêtes au plus : `drive_choice` ↔ `drive_choice_product` ↔ `drive_product`) ;
+   - pour chaque ligne : préférence `HAVE_AT_HOME` → statut `HAVE_AT_HOME` ; au moins un produit accepté → `KNOWN` avec `products` classés par rang croissant (5 au plus), **chacun avec ses propres `packs` et `packsStatus`** par `PackCalculator::packsFor` (les contenus diffèrent d'un produit à l'autre) et `rejected` (produits refusés, 20 au plus) ; sinon `NEW` avec `products` vide, `rejected` éventuel et `searchQuery` = nom de l'ingrédient ; `needed` = quantité et symbole d'unité de la ligne ; `counts` ;
    - renvoie aussi `shoppingListId`, `listVersion`, `retailer`, `store`, `generatedAt` (horloge injectée).
 3. Contrôleur `GET /api/v1/drive/plans/{shoppingListId}` : `#[IsGranted('ROLE_USER')]`, `#[IsGranted('SHOPPING_LIST_OWNER', 'shoppingListId')]`, `404 DRIVE_DISABLED` si coupé, réponse = le DTO, `#[OA\…]` (200, 403, 404, 409) ; `make openapi`.
 4. L'ordre des lignes est celui de la liste (slug d'ingrédient croissant) ; stable.
@@ -29,9 +29,9 @@ Surcharges par ligne (« autre produit », « passer ») : faites par le front a
 
 ## Critères d'acceptation
 
-- Pour une liste `SENT` avec 3 lignes (un produit connu en grammes, un ingrédient neuf, un « j'en ai toujours »), le plan renvoie `counts {known:1,new:1,haveAtHome:1}`, les `packs` et `packsStatus` calculés, `needed` correct.
+- Pour une liste `SENT` avec 4 lignes (un ingrédient connu avec deux produits classés et un produit refusé, un ingrédient neuf, un ingrédient neuf avec un produit refusé seulement, un « j'en ai toujours »), le plan renvoie `counts {known:1,new:2,haveAtHome:1}`, pour la ligne connue les deux produits dans l'ordre avec leurs `packs` et `packsStatus` calculés séparément, le produit refusé dans `rejected`, et `needed` correct.
 - Liste non `SENT` : `409 SHOPPING_LIST_NOT_SENT` ; pas de réglage : `409 DRIVE_NOT_CONFIGURED` ; liste d'un autre utilisateur : `403` ; inconnue : `404`.
-- Les choix d'un autre magasin ne produisent pas de ligne `KNOWN`.
+- Les préférences d'un autre magasin ne produisent ni ligne `KNOWN` ni produit refusé.
 - Nombre de requêtes SQL constant quelle que soit la taille de la liste (≤ 5).
 
 ## Tests exigés
