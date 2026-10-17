@@ -30,6 +30,7 @@
             <!-- Données de test, pas de logique : chargées une seule fois hors d'un test (DatabaseTestCase), donc jamais créditées. -->
             <directory>src/Repas/Infrastructure/DataFixture</directory>
             <directory>src/User/Infrastructure/DataFixture</directory>
+            <directory>src/Drive/Infrastructure/DataFixture</directory>
         </exclude>
     </source>
 

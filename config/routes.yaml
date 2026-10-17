@@ -17,6 +17,12 @@ user_api_controllers:
         namespace: Repas\User\Infrastructure\Http\Api
     type: attribute
 
+drive_api_controllers:
+    resource:
+        path: ../src/Drive/Infrastructure/Http/Api/
+        namespace: Repas\Drive\Infrastructure\Http\Api
+    type: attribute
+
 # Point d'entrée du json_login (firewall `login`) : intercepté par le firewall, la route doit exister.
 api_login_check:
     path: /api/login_check

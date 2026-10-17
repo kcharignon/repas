@@ -45,3 +45,7 @@ src/{Context}/
 ## Alternatives écartées
 
 - Architecture en couches classique Symfony (controller → service → repository Doctrine) : le Domain se couple à Doctrine, les tests exigent une base.
+
+## Mise à jour du 2026-10-17
+
+Un troisième contexte métier, `Drive` (envoi de la liste de courses au drive d'une enseigne), s'ajoute à `Repas` et `User` ([0022](0022-remplissage-du-panier-drive.md) § 6). Mêmes règles : trois couches, `Drive` ne dépend que de `Shared`, `Shared` n'importe jamais `Drive`, aucune dépendance entre contextes ; `deptrac.bounded-context.yaml` et `deptrac.no-database-in-handler-tests.yaml` le couvrent.

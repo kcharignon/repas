@@ -1,4 +1,4 @@
-# Bounded contexts (ADR 0001, 0013) : Repas et User dépendent de Shared ; Shared n'importe aucun contexte.
+# Bounded contexts (ADR 0001, 0013, 0022) : Repas, User et Drive dépendent de Shared ; Shared n'importe aucun contexte.
 # Aucune dépendance entre contextes n'est tolérée (plus de baseline depuis le lot « User par identifiant ») : ce qui doit
 # circuler entre eux est dans Shared (événements de `Shared\Domain\Event`, interface `AuthenticatedUser`, port
 # `OwnershipLoader`, classe de base des repositories Doctrine).
@@ -30,9 +30,20 @@ deptrac:
           must_not:
             - type: classLike
               value: ^Repas\\User\\Infrastructure\\DataFixture\\.*
+    - name: Drive
+      collectors:
+        - type: bool
+          must:
+            - type: classLike
+              value: ^Repas\\Drive\\.*
+          must_not:
+            - type: classLike
+              value: ^Repas\\Drive\\Infrastructure\\DataFixture\\.*
 
   ruleset:
     Repas:
       - Shared
     User:
+      - Shared
+    Drive:
       - Shared
