@@ -4,7 +4,7 @@
 - **Jalon** : M3 Agent
 - **Taille** : M
 - **Dépend de** : DRV-005 (décision G1 : Go)
-- **Statut** : à faire
+- **Statut** : fait (PR [repas-front#76](https://github.com/kcharignon/repas-front/pull/76), 2026-10-17)
 - **Lire d'abord** : [`../architecture.md`](../architecture.md) §§ 2, 8, 10, 11 ; `CLAUDE.md` du front (tout tourne dans Docker : `make check`) ; `docs/adr/0004-front-dans-docker.md` ; DRV-001 (banc d'essai, à ne pas dupliquer).
 
 ## Contexte
@@ -53,3 +53,7 @@ Celle du front : `make check` vert, couverture non abaissée, PR avec le gabarit
 ## Mise à jour G1 (2026-10-17)
 
 Le véhicule de l'agent est l'**application Android** ([`../pivot-application-android.md`](../pivot-application-android.md), DRV-313), plus un favori Chrome. La construction produit donc : `dist/agent.js` (un seul fichier, version et empreinte SHA-384) embarqué dans l'APK par DRV-313. Le générateur de favori et la limite de 60 Ko ne sont plus une exigence ; un favori de bureau pour PC (Chrome de bureau accepte de gros favoris) reste **facultatif**, jamais sur le chemin critique.
+
+## Réalisation (2026-10-17, PR repas-front#76)
+
+Sortie : `make agent-build` produit `drive-agent/dist/agent.js` et `dist/manifest.json` (`{version, bytes, sha384}`) ; `make agent-verify` (rejoué en CI et dans `make quality`) construit deux fois et compare. Budget de taille 256 000 octets (`AGENT_MAX_BYTES`). ESLint interdit dans `drive-agent/src` : `eval`, `new Function`, `innerHTML` et équivalents, `fetch` vers une adresse absolue, imports non relatifs. Le marqueur d'origine `__REPAS_ORIGIN__`, le générateur de favori et la limite de 60 Ko sont **abandonnés** (voir « Mise à jour G1 ») ; DRV-302 peut remettre une origine de retour dans l'agent si besoin. Les sous-dossiers `protocol/`, `leclerc/`, `ui/`, `flow/`, `diagnostic/` sont à créer par les tickets suivants (la carte est dans `drive-agent/README.md`).

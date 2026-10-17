@@ -44,3 +44,7 @@ Celle du dépôt front ; PR concise ; fusion si CI verte.
 
 - Les caractéristiques de l'appareil (`navigator.platform`, tactile) restent celles d'un téléphone ; le spike n'a pas montré de blocage.
 - Ne pas exposer d'objet natif aux pages Leclerc (voir DRV-313).
+
+## Laissé par DRV-311 (2026-10-17)
+
+À faire dans ce ticket : ajouter la permission Internet et `androidx.webkit` (absents du squelette) ; brancher `NavigationPolicy` et `UserAgent` (présents mais pas encore reliés à l'écran) ; gérer les **marges** autour de la WebView (`targetSdk` 36 : affichage bord à bord) ; reprendre le `build.sh` de `android/` tel quel.

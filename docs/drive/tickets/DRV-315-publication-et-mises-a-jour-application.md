@@ -41,3 +41,7 @@ Celle du dépôt front ; PR concise ; fusion si CI verte. L'étape humaine est c
 
 - Perdre la clé de signature empêche les mises à jour par-dessus : sauvegarde obligatoire (documenter).
 - Android peut exiger l'enregistrement du développeur pour les applications installées hors Play (à vérifier au moment de la livraison, [`../pivot-application-android.md`](../pivot-application-android.md) inconnue 6).
+
+## Déjà fait par DRV-311 (2026-10-17)
+
+`make android-release` attend déjà les quatre variables de clé (`ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`) plus `ANDROID_VERSION_TAG` et `ANDROID_VERSION_CODE`, et produit `android/dist/repas-drive.apk`. Reste : le workflow par étiquette `android-vX.Y.Z`, la release (APK, empreinte, `version.json`), la vérification de version dans l'application, et la partie humaine (création de la clé, secrets GitHub).
