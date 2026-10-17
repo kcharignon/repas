@@ -150,7 +150,7 @@ Lectures (`Application/Query/{UseCase}/`, `#[AsMessageHandler(bus: 'query.bus')]
 
 Ports : `DriveSettingsRepository`, `ProductRepository`, `ChoiceRepository` (écriture) ; `DriveSettingsLoader`, `ChoiceLoader` (lecture) ; côté `Shared` : `ShoppingListForDriveLoader::get(string $shoppingListId): ShoppingListForDrive` où `ShoppingListForDrive` = `{id, ownerId, status, version, lines: list<ShoppingListLineForDrive>}` et `ShoppingListLineForDrive` = `{ingredientSlug, ingredientName, quantity: float, unitSlug, unitSymbol, unitDimension: ?string, unitBaseFactor: ?float}`. Implémentation : `Repas\Infrastructure\Loader\ShoppingListForDrivePostgreSQLLoader` (précédent : `OwnershipLoader` / `OwnershipPostgreSQLLoader`). Une liste inconnue lève `ShoppingListException::shoppingListNotFound` (404). Second port `Shared\Application\Interface\IngredientNameLoader::namesBySlug(array $slugs): array` (slug → nom) pour l'écran des produits mémorisés.
 
-Interrupteur : port `Shared\Application\Interface\DriveFeature::isEnabled(): bool`, implémenté dans `Shared\Infrastructure` (variable `DRIVE_ENABLED`, booléen). Les contrôleurs `send`, `reopen` et tous ceux de `Drive` répondent `404 DRIVE_DISABLED` quand il est coupé, sauf `GET /drive/settings` (renvoie `enabled: false`).
+Interrupteur : port `Shared\Application\Interface\DriveFeature::isEnabled(): bool`, implémenté dans `Shared\Infrastructure` (`Shared\Infrastructure\Feature\EnvDriveFeature`, variable `DRIVE_ENABLED`, booléen). Les contrôleurs `send`, `reopen` et tous ceux de `Drive` portent l'attribut `#[Repas\Shared\Infrastructure\Http\RequiresDrive]` : `DriveEnabledListener` (`kernel.controller`) leur fait répondre `404 DRIVE_DISABLED` (`DriveFeatureException::disabled()`) quand il est coupé, après la sécurité (401 d'abord) et avant la résolution des arguments (pas de 422). Sauf `GET /drive/settings` (renvoie `enabled: false`, sans l'attribut). Dans les tests, `DRIVE_ENABLED=true` (`.env.test` et `phpunit.dist.xml`) et `Repas\Tests\Helper\ControlledDriveFeature` remplace le service pour essayer le cas coupé.
 
 ## 6. Calcul des conditionnements (`PackCalculator`)
 
@@ -321,7 +321,7 @@ Les schémas JSON font foi (`drive-agent/protocol/`, ticket DRV-302). Exemples e
 
 ## 12. Déploiement et exploitation
 
-- Ordre : (1) back avec `DRIVE_ENABLED=false` ; (2) front ; (3) l'humain active `DRIVE_ENABLED=true` dans `/opt/repas/.env` (variable listée avec `:?` dans `deploy/compose.yaml`, `deploy/.env.example`, `docs/production.md`) après un déploiement stable. L'approbation du déploiement reste à l'humain (ADR 0017).
+- Ordre : (1) back avec `DRIVE_ENABLED=false` ; (2) front ; (3) l'humain active `DRIVE_ENABLED=true` dans `/opt/repas/.env` (variable listée avec la valeur par défaut `false` : `${DRIVE_ENABLED:-false}`, dans `deploy/compose.yaml`, puis dans `deploy/.env.example` et `docs/production.md`) après un déploiement stable. L'approbation du déploiement reste à l'humain (ADR 0017).
 - Retour arrière : § 4.5 ; le schéma reste.
 - Panne ou changement de Leclerc : interrupteur, runbook (DRV-503), nouvelle version du favori à réinstaller.
 - Sauvegardes : les nouvelles tables sont dans les `pg_dump` ; aucun secret d'enseigne n'existe.

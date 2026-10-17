@@ -85,6 +85,8 @@ check "l'ancien nom redirige durablement vers le site, chemin conservé" bash -c
 check "le back ne sert plus de page web (404 sur /login)" test "$(docker compose exec -T php curl -s -o /dev/null -w '%{http_code}' http://localhost/login < /dev/null)" = 404
 check "le profileur est coupé en production (pas d'en-tête X-Debug-Token)" bash -c "! curl -sk -D - -o /dev/null --resolve $app:$port:127.0.0.1 https://$app:$port/api/v1/health | grep -qi x-debug-token"
 check "les clés JWT existent dans le volume" docker compose exec -T php test -f /app/config/jwt/private.pem
+# DRIVE_ENABLED n'est pas dans le .env de cet essai : la valeur par défaut de compose (false) doit gagner sur celle du .env embarqué dans l'image.
+check "l'envoi de la liste au drive est coupé par défaut (DRIVE_ENABLED=false)" test "$(docker compose exec -T php printenv DRIVE_ENABLED < /dev/null)" = false
 
 echo "== Inscription et connexion (JWT, cookie du SPA)"
 email="smoke-$RANDOM@example.com"
