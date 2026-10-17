@@ -4,7 +4,7 @@
 - **Jalon** : M1 Back `Repas`
 - **Taille** : S
 - **Dépend de** : —
-- **Statut** : à faire
+- **Statut** : fait (PR [#119](https://github.com/kcharignon/repas/pull/119), 2026-10-17 ; `ingredientSlug` et `unitSlug` ajoutés à `ShoppingListRowDTO`, aucune clé existante modifiée)
 - **Lire d'abord** : ADR 0004, 0005 ; skill `repas-dev` § 3.1 ; `src/Repas/Application/Query/GetShoppingList/ShoppingListRowDTO.php` ; `ShoppingListPostgreSQLLoader::loadDepartments`.
 
 ## Contexte
