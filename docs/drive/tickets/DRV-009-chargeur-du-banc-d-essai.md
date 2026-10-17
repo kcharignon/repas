@@ -4,7 +4,7 @@
 - **Jalon** : M0 Découverte
 - **Taille** : S
 - **Dépend de** : DRV-008 fusionné
-- **Statut** : à faire
+- **Statut** : fait (PR [repas-front#65](https://github.com/kcharignon/repas-front/pull/65), 2026-10-17 ; chargeur de 500 caractères, fichier publié vérifié sur jsDelivr)
 - **Lire d'abord** : [`../spikes/DRV-006-installation-favori.md`](../spikes/DRV-006-installation-favori.md), [`../spikes/DRV-004-entetes.md`](../spikes/DRV-004-entetes.md), [`../analyse.md`](../analyse.md) (D20), `drive-agent/lab/build.ts`, `drive-agent/lab/bookmarklet.ts`, `drive-agent/lab/PROCEDURE.md`, `CLAUDE.md` du front.
 
 ## Contexte
