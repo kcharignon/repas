@@ -4,7 +4,7 @@
 - **Jalon** : M3 Agent
 - **Taille** : M
 - **Dépend de** : DRV-301
-- **Statut** : à faire
+- **Statut** : fait (PR [repas-front#77](https://github.com/kcharignon/repas-front/pull/77), 2026-10-17)
 - **Lire d'abord** : [`../architecture.md`](../architecture.md) § 8 (messages, validation) ; [ADR 0022](../../adr/0022-remplissage-du-panier-drive.md) décision 5.
 
 ## Contexte
@@ -51,3 +51,7 @@ Celle du front ; `architecture.md` § 8 mis à jour si le format évolue (le sch
 ## Mise à jour G1 (2026-10-17)
 
 Le transport est **interchangeable** : le protocole v1 (messages `plan`, `setup`, `result`, validation, bornes) reste identique, mais l'agent reçoit le plan et renvoie le résultat par un **pont de l'application Android** (DRV-313) au lieu du fragment d'adresse. Prévoir dans le module de l'agent une interface de transport avec deux implémentations (fragment d'adresse pour le favori de bureau et les tests, pont pour l'application). Côté Repas, le plan part dans un lien `repasdrive://open?plan=<base64url>` (DRV-314, DRV-402) ; le retour reste `https://kantin.eu/drive/retour#result=<base64url>`.
+
+## Réalisation (2026-10-17, PR repas-front#77)
+
+`drive-agent/protocol/` (alias `@drive-protocol`) : types, limites, `encodeMessage` / `decodeMessage` (64 Ko), `validatePlan` / `validateResult`, `ProtocolError`, schémas JSON `plan.schema.json` / `result.schema.json`, 17 exemples valides et 53 invalides. `drive-agent/src/transport/` : interface `Transport { listen(onMessage, onInvalid); send(result) }`, `fragmentTransport(page, returnOrigin)` et `bridgeTransport(bridge)` (le pont est un objet avec `postMessage(texte)` et `addEventListener('message', …)`, JSON en texte). Précisions : `store` est obligatoire dans un `setup` ; `error` obligatoire si l'issue globale est `error` ; une ligne `FAILED` porte un code `error` ; EAN de 8 à 14 chiffres ou `null` ; `packs` et `packsStatus` facultatifs ou `null`.

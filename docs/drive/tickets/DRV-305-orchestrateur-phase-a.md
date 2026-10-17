@@ -48,3 +48,8 @@ Celle du front.
 
 - Un seul passage actif à la fois : si deux `runId` coexistent dans `sessionStorage`, proposer le plus récent et ignorer l'autre.
 - Les erreurs ne contiennent jamais de contenu de page ni de cookies.
+
+## Points laissés par DRV-302 et DRV-303 (2026-10-17)
+
+- Entrée : `validatePlan(await decodeMessage(...))` via `Transport.listen` ; adaptateur : `new LeclercAdapter(browserDeps(window))`. Mettre `error.code` de `LeclercError` dans les issues de ligne ou globale ; comparer `CartResult.obtained` à la quantité voulue (`ok`) ; `contentSource === 'prices'` peut justifier `packsStatus: 'TO_CHECK'`.
+- **Décision (prix, D22)** : une ligne `ADDED` doit aussi remonter le **prix lu** du produit (la phase A relit la recherche pour le stock) afin que Repas rafraîchisse le prix mémorisé à chaque envoi. Étendre le module `drive-agent/protocol/` (variante `ADDED` : `price?` comme `ProductPrice`, schémas, exemples, tests) et le dire dans `DRV-204` (le back accepte le prix d'une ligne `ADDED` pour mettre à jour le produit connu).

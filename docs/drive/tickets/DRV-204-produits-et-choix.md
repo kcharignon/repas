@@ -58,3 +58,5 @@ Celle du skill `repas-dev` § 4 ; `UserOwnedDataCoverageTest` étendu (DRV-207).
 - Un modèle chargé est une copie : charger une fois, enregistrer une fois.
 - La contrainte `UNIQUE (choice_id, rank)` est sensible à l'ordre des écritures lors d'un décalage de rangs : réécrire toutes les lignes de la préférence plutôt que mettre à jour une à une.
 - **Prix et garde-fous (décisions D22 et D23)** : mémoriser pour un produit **choisi par un utilisateur** l'identifiant, le libellé, le contenu net **et le prix** (`priceCents`, `pricePerMeasure`, `priceSeenAt`, voir `architecture.md`) ; pas de photos ; aucune route de l'API qui liste ou cherche dans la table `drive_product` en dehors des produits des propres choix ou plans de l'utilisateur connecté.
+
+- **Prix des lignes `ADDED` (décision du 2026-10-17)** : le résultat de l'agent peut porter un `price` sur une ligne `ADDED` (produit connu) ; `SaveProductChoices` met à jour `priceCents`, `pricePerMeasure` et `priceSeenAt` du produit sans toucher aux choix.
