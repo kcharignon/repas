@@ -45,3 +45,5 @@ Celle du front ; `architecture.md` § 8 mis à jour si le format évolue (le sch
 
 - base64url : remplacer `+`→`-`, `/`→`_`, supprimer `=` ; décoder en restaurant le bourrage.
 - Ne jamais interpréter un champ du message comme HTML ni comme URL de navigation.
+
+- **Prix (décision D22)** : le `product` d'une ligne du message de résultat peut porter `price` : `{cents: entier ≥ 0, perMeasure?: {cents: entier ≥ 0, unit: 'kg'|'l'|'piece'}}` (borné, facultatif). Voir `architecture.md`.
