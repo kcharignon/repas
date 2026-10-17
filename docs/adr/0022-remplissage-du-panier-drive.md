@@ -1,6 +1,6 @@
 # 0022 — Remplir le panier d'un drive : agent de page, aucun identifiant d'enseigne
 
-- **Statut** : Proposed (passe `Accepted` ou `Rejected` à la décision G1, ticket DRV-005)
+- **Statut** : Accepted (décision G1 du 2026-10-17, voir `docs/drive/spikes/DRV-005-decision-g1.md` ; véhicule de l'agent : application Android, voir la mise à jour en fin de document)
 - **Date** : 2026-10-17
 - **Liens** : [0001](0001-architecture-hexagonale.md), [0003](0003-cqrs-lecture-ecriture.md), [0007](0007-api-rest-v1.md), [0013](0013-agregats-references-par-identifiant.md), [0017](0017-deploiement-et-releases.md), [0021](0021-gestion-des-comptes-par-l-administrateur.md), [0023](0023-liste-envoyee-au-drive.md), [`docs/drive/`](../drive/README.md)
 
@@ -54,3 +54,7 @@ Détail complet : [`docs/drive/analyse.md`](../drive/analyse.md) § 4.
 ## Mise à jour du 2026-10-17 (soir)
 
 Le moyen d'exécuter l'agent dans la page Leclerc change : Chrome Android ne lance aucun favori JavaScript sur le téléphone de l'utilisateur (essais DRV-006), qui a choisi une **application Android** (WebView limitée à `*.leclercdrive.fr`, agent embarqué dans l'application). Les invariants (aucun identifiant chez nous, le back ne contacte jamais l'enseigne, pas de code distant non vérifié) et le protocole v1 sont inchangés. Voir [`docs/drive/pivot-application-android.md`](../drive/pivot-application-android.md). L'option « Application Android dédiée (WebView) » listée plus haut comme écartée est donc **reprise**, après le spike DRV-011 ; la décision définitive est prise à G1.
+
+## Décision G1 du 2026-10-17
+
+Statut **Accepted**. Preuves et décisions : [`docs/drive/spikes/DRV-005-decision-g1.md`](../drive/spikes/DRV-005-decision-g1.md). Résumé : l'agent est embarqué dans une **application Android** (WebView limitée à `*.leclercdrive.fr`, Leclerc affiché en mode ordinateur) ; le choix du produit se fait dans la liste de l'agent (P2, le cadre natif est refusé par l'enseigne) ; le plan voyage de Repas vers l'application par un lien `repasdrive://open?plan=…`, le résultat revient par `https://kantin.eu/drive/retour#result=…` ; les invariants (aucun identifiant ni cookie d'enseigne chez nous, le back ne contacte jamais l'enseigne, agent embarqué et non chargé à distance) restent. Distribution par APK signé à installer à la main.

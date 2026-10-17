@@ -4,25 +4,25 @@ Suivi vivant. Cocher une case quand le ticket est fusionné (et noter la PR). Le
 
 **Dépôts** : `back` = `kcharignon/repas` (ce dépôt) ; `front` = `kcharignon/repas-front` (dossier `drive-agent/` pour l'agent) ; `humain` = tâche pour l'utilisateur ; `assistant` = rédaction de documentation.
 
-**Règle du chantier** : aucun code produit avant la décision **G1** (DRV-005). Peuvent démarrer tout de suite : DRV-001, DRV-003, DRV-004.
+**Règle du chantier** : G1 (DRV-005) est décidée (GO, 2026-10-17) : les tickets M1 à M5 peuvent démarrer selon leurs dépendances. Le spike `android-lab`, le banc `lab` et le contenu de `drive-agent/lab/` restent des outils jetables.
 
 **Épiques GitHub** (dépôt back) : [M0 #88](https://github.com/kcharignon/repas/issues/88) · [M1 #89](https://github.com/kcharignon/repas/issues/89) · [M2 #90](https://github.com/kcharignon/repas/issues/90) · [M3 #91](https://github.com/kcharignon/repas/issues/91) · [M4 #92](https://github.com/kcharignon/repas/issues/92) · [M5 #93](https://github.com/kcharignon/repas/issues/93). Une issue par ticket, dans le dépôt indiqué (labels `drive`, `spike`, `agent`, `humain`, `epic`).
 
 ## M0 — Découverte (spikes, décision G1)
 
 - [x] [DRV-001](tickets/DRV-001-banc-d-essai-favori.md) front · M · Banc d'essai du favori (outil de test jetable) · dépend de : — · Issue : [repas-front#38](https://github.com/kcharignon/repas-front/issues/38)
-- [ ] [DRV-002](tickets/DRV-002-execution-telephone-rapport.md) humain · S · Exécution sur le téléphone Android et rapport · dépend de : 001 · Issue : [#66](https://github.com/kcharignon/repas/issues/66)
+- [x] [DRV-002](tickets/DRV-002-execution-telephone-rapport.md) humain · S · Exécution sur le téléphone Android et rapport (faite sur PC puis dans l'application de test, DRV-011) · dépend de : 001 · Issue : [#66](https://github.com/kcharignon/repas/issues/66)
 - [x] [DRV-003](tickets/DRV-003-lecture-cgu-leclerc.md) humain · S · Lecture des CGU/CGV de Leclerc (clos par décision de l'utilisateur le 2026-10-17, D23) · dépend de : — · Issue : [#67](https://github.com/kcharignon/repas/issues/67)
-- [ ] [DRV-004](tickets/DRV-004-releve-entetes-securite.md) humain · S · Relevé des en-têtes de sécurité (accueil et recherche faits, panier à relever) · dépend de : — · Issue : [#68](https://github.com/kcharignon/repas/issues/68)
+- [x] [DRV-004](tickets/DRV-004-releve-entetes-securite.md) humain · S · Relevé des en-têtes de sécurité (accueil et recherche faits ; page panier à relever à l'intégration) · dépend de : — · Issue : [#68](https://github.com/kcharignon/repas/issues/68)
 - [x] [DRV-006](tickets/DRV-006-installation-favori-telephone.md) humain · S · Test d'installation d'un favori sur le téléphone (limite de taille) · dépend de : — · Issue : [#96](https://github.com/kcharignon/repas/issues/96)
 - [x] [DRV-007](tickets/DRV-007-requete-ajout-panier.md) humain · S · Relevé de la vraie requête d'ajout au panier (l'ajout du banc répond 404) · dépend de : — · Issue : [#98](https://github.com/kcharignon/repas/issues/98)
 - [x] [DRV-008](tickets/DRV-008-corriger-ajout-banc-d-essai.md) front · S · Corriger l'ajout du banc d'essai et tester les quantités · dépend de : 007 · Issue : [repas-front#60](https://github.com/kcharignon/repas-front/issues/60)
 - [x] [DRV-009](tickets/DRV-009-chargeur-du-banc-d-essai.md) front · S · Chargeur court pour le banc d'essai (installation sur le téléphone) · dépend de : 008 · Issue : [repas-front#61](https://github.com/kcharignon/repas-front/issues/61)
 - [ ] ~~[DRV-010](tickets/DRV-010-essai-firefox-android.md)~~ humain · S · (mis de côté) Essai du favori de démarrage dans Firefox Android (Chrome Android refuse les favoris JavaScript) · dépend de : 009 · Issue : [#112](https://github.com/kcharignon/repas/issues/112)
 - [x] [DRV-011](tickets/DRV-011-spike-application-android.md) front · M · Spike : application Android jetable (WebView + banc d'essai) · dépend de : 009 · Issue : [repas-front#66](https://github.com/kcharignon/repas-front/issues/66)
-- [ ] [DRV-005](tickets/DRV-005-synthese-decision-g1.md) assistant · S · Synthèse et décision G1 · dépend de : 002, 003, 004, 006, 007, 008, 009, 011 · Issue : [#69](https://github.com/kcharignon/repas/issues/69)
+- [x] [DRV-005](tickets/DRV-005-synthese-decision-g1.md) assistant · S · Synthèse et décision G1 (GO le 2026-10-17, application Android ; voir spikes/DRV-005-decision-g1.md) · dépend de : 002, 003, 004, 006, 007, 008, 009, 011 · Issue : [#69](https://github.com/kcharignon/repas/issues/69)
 
-**Gate G1** : le favori s'exécute sur le téléphone, les requêtes passent DataDome, les CGU n'interdisent pas l'usage, le cadre (P1) ou la liste de résultats (P2) fonctionne. Sinon : Firefox + gestionnaire de scripts, ou mode assisté seulement, ou arrêt. ADR 0022 passe `Accepted` ou `Rejected`.
+**Gate G1 (passée le 2026-10-17, GO avec application Android)** : le favori s'exécute sur le téléphone, les requêtes passent DataDome, les CGU n'interdisent pas l'usage, le cadre (P1) ou la liste de résultats (P2) fonctionne. Sinon : Firefox + gestionnaire de scripts, ou mode assisté seulement, ou arrêt. ADR 0022 passe `Accepted` ou `Rejected`.
 
 ## M1 — Back `Repas` (après G1)
 
@@ -56,6 +56,18 @@ Suivi vivant. Cocher une case quand le ticket est fusionné (et noter la PR). Le
 - [ ] [DRV-309](tickets/DRV-309-faux-site-leclerc-e2e.md) front · L · Faux site Leclerc et tests e2e de l'agent · dépend de : 303 · Issue : [repas-front#47](https://github.com/kcharignon/repas-front/issues/47)
 - [ ] [DRV-310](tickets/DRV-310-publication-favori.md) front · S · Publication du favori · dépend de : 306 · Issue : [repas-front#48](https://github.com/kcharignon/repas-front/issues/48)
 
+## M3b — Application Android (front, `android/`)
+
+Prépare l'application « Repas Drive » (WebView en mode ordinateur, agent embarqué). Décision et contexte : [`spikes/DRV-005-decision-g1.md`](spikes/DRV-005-decision-g1.md), [`pivot-application-android.md`](pivot-application-android.md).
+
+- [ ] [DRV-311](tickets/DRV-311-squelette-application-android.md) front · M · Squelette de l'application Android (`android/`) · dépend de : 005 · Issue : [repas-front#69](https://github.com/kcharignon/repas-front/issues/69)
+- [ ] [DRV-312](tickets/DRV-312-hote-webview-mode-ordinateur.md) front · M · Hôte WebView en mode ordinateur · dépend de : 311 · Issue : [repas-front#70](https://github.com/kcharignon/repas-front/issues/70)
+- [ ] [DRV-313](tickets/DRV-313-injection-agent-et-pont.md) front · L · Injection de l'agent et pont de messages · dépend de : 312, 301, 302 · Issue : [repas-front#71](https://github.com/kcharignon/repas-front/issues/71)
+- [ ] [DRV-314](tickets/DRV-314-passage-du-plan-et-retour.md) front · L · Passage du plan et retour vers Repas · dépend de : 313, 302 · Issue : [repas-front#72](https://github.com/kcharignon/repas-front/issues/72)
+- [ ] [DRV-315](tickets/DRV-315-publication-et-mises-a-jour-application.md) front+humain · M · Publication signée et mises à jour de l'application · dépend de : 311 · Issue : [repas-front#73](https://github.com/kcharignon/repas-front/issues/73)
+- [ ] [DRV-316](tickets/DRV-316-aide-installation-application.md) front · S · Aide et installation de l'application dans Repas (remplace DRV-408) · dépend de : 315, 402 · Issue : [repas-front#74](https://github.com/kcharignon/repas-front/issues/74)
+
+
 ## M4 — Front
 
 - [ ] [DRV-401](tickets/DRV-401-liste-envoyee-ui.md) front · M · Liste envoyée dans l'interface · dépend de : 102, 104 · Issue : [repas-front#49](https://github.com/kcharignon/repas-front/issues/49)
@@ -65,13 +77,13 @@ Suivi vivant. Cocher une case quand le ticket est fusionné (et noter la PR). Le
 - [ ] [DRV-405](tickets/DRV-405-retour-et-recapitulatif.md) front · L · Retour et récapitulatif · dépend de : 204, 402 · Issue : [repas-front#53](https://github.com/kcharignon/repas-front/issues/53)
 - [ ] [DRV-406](tickets/DRV-406-tests-e2e-pixel.md) front · M · Tests e2e Pixel 7, accessibilité, visuel · dépend de : 403, 404, 405 · Issue : [repas-front#54](https://github.com/kcharignon/repas-front/issues/54)
 - [ ] [DRV-407](tickets/DRV-407-adr-front-et-claude-md.md) front · S · ADR front 0008 et `CLAUDE.md` · dépend de : 404 · Issue : [repas-front#55](https://github.com/kcharignon/repas-front/issues/55)
-- [ ] [DRV-408](tickets/DRV-408-page-d-aide.md) front · S · Page d'aide · dépend de : 403 · Issue : [repas-front#56](https://github.com/kcharignon/repas-front/issues/56)
+- [ ] ~~[DRV-408](tickets/DRV-408-page-d-aide.md)~~ (remplacé par DRV-316) front · S · Page d'aide · dépend de : 403 · Issue : [repas-front#56](https://github.com/kcharignon/repas-front/issues/56)
 - [ ] [DRV-409](tickets/DRV-409-admin-unites-dimension.md) front · S · Administration des unités : dimension · dépend de : 105 · Issue : [repas-front#57](https://github.com/kcharignon/repas-front/issues/57)
 - [ ] [DRV-410](tickets/DRV-410-priorites-produits-ui.md) front · M · Écran « Mes produits » : priorités et produits refusés · dépend de : 208, 403 · Issue : [repas-front#58](https://github.com/kcharignon/repas-front/issues/58)
 
 ## M5 — Intégration et livraison
 
-- [ ] [DRV-501](tickets/DRV-501-integration-dev.md) back+front · M · Intégration en développement et checklist de recette · dépend de : M2, M3, M4 · Issue : [#83](https://github.com/kcharignon/repas/issues/83)
+- [ ] [DRV-501](tickets/DRV-501-integration-dev.md) back+front · M · Intégration en développement et checklist de recette · dépend de : M2, M3, M3b, M4 · Issue : [#83](https://github.com/kcharignon/repas/issues/83)
 - [ ] [DRV-502](tickets/DRV-502-deploiement.md) back · S · Déploiement, interrupteur, retour arrière · dépend de : 501 · Issue : [#84](https://github.com/kcharignon/repas/issues/84)
 - [ ] [DRV-503](tickets/DRV-503-runbook-leclerc-change.md) back · S · Runbook « Leclerc a changé » · dépend de : 501 · Issue : [#85](https://github.com/kcharignon/repas/issues/85)
 - [ ] [DRV-504](tickets/DRV-504-note-vie-privee.md) back+front · S · Note de vie privée · dépend de : 204 · Issue : [#86](https://github.com/kcharignon/repas/issues/86)

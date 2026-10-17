@@ -4,7 +4,7 @@
 - **Jalon** : M0 Découverte
 - **Taille** : S
 - **Dépend de** : DRV-002, DRV-003, DRV-004, DRV-006, DRV-007, DRV-008, DRV-009, DRV-011
-- **Statut** : à faire
+- **Statut** : fait (décision G1 du 2026-10-17 : GO, application Android ; voir `../spikes/DRV-005-decision-g1.md`)
 - **Lire d'abord** : les trois rapports `docs/drive/spikes/`, [ADR 0022](../../adr/0022-remplissage-du-panier-drive.md), [`../roadmap.md`](../roadmap.md)
 
 ## Contexte

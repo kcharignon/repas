@@ -44,3 +44,7 @@ Celle du front.
 
 - Le presse-papiers demande une action de l'utilisateur et un contexte sécurisé : prévoir un repli « sélectionner le texte ».
 - Le service worker précache les ressources : le gabarit de l'agent est servi hors précache ou avec une stratégie qui reflète toujours la dernière version.
+
+## Mise à jour G1 (2026-10-17)
+
+La partie « installation du favori et version minimale de l'agent » est remplacée par « **application Android** » : lien vers l'aide et la dernière version (DRV-316), version minimale de l'application attendue (affichée si l'application est trop ancienne). Le choix du magasin reste fait par le mode `setup` de l'agent dans l'application (DRV-307).

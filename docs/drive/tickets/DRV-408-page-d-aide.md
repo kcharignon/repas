@@ -23,3 +23,7 @@ La page est accessible sans compte Leclerc, lisible sur 360 px, testée visuelle
 ## Definition of Done
 
 Celle du front.
+
+## Mise à jour G1 (2026-10-17)
+
+**Remplacé par [DRV-316](DRV-316-aide-installation-application.md)** (aide et installation de l'application Android). Ne pas implémenter ce ticket tel quel.

@@ -31,3 +31,7 @@ Test de cohérence manifeste/gabarit ; contrôle CI de reproductibilité (DRV-30
 ## Definition of Done
 
 Celle du front.
+
+## Mise à jour G1 (2026-10-17)
+
+Le favori n'est plus le véhicule principal (Chrome Android refuse les favoris JavaScript). Ce ticket devient « **Publication de l'agent** » : version, journal des changements et empreinte de `agent.js` (consommés par DRV-313 et DRV-315). La chaîne de favori pour Chrome de bureau est **facultative** (gros favori ou chargeur depuis un hébergement figé par empreinte) et peut être faite en dernier.
