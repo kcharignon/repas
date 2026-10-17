@@ -14,7 +14,8 @@ Suivi vivant. Cocher une case quand le ticket est fusionné (et noter la PR). Le
 - [ ] [DRV-002](tickets/DRV-002-execution-telephone-rapport.md) humain · S · Exécution sur le téléphone Android et rapport · dépend de : 001 · Issue : [#66](https://github.com/kcharignon/repas/issues/66)
 - [ ] [DRV-003](tickets/DRV-003-lecture-cgu-leclerc.md) humain · S · Lecture des CGU/CGV de Leclerc · dépend de : — · Issue : [#67](https://github.com/kcharignon/repas/issues/67)
 - [ ] [DRV-004](tickets/DRV-004-releve-entetes-securite.md) humain · S · Relevé des en-têtes de sécurité · dépend de : — · Issue : [#68](https://github.com/kcharignon/repas/issues/68)
-- [ ] [DRV-005](tickets/DRV-005-synthese-decision-g1.md) assistant · S · Synthèse et décision G1 · dépend de : 002, 003, 004 · Issue : [#69](https://github.com/kcharignon/repas/issues/69)
+- [ ] [DRV-006](tickets/DRV-006-installation-favori-telephone.md) humain · S · Test d'installation d'un favori sur le téléphone (limite de taille) · dépend de : — · Issue : [#96](https://github.com/kcharignon/repas/issues/96)
+- [ ] [DRV-005](tickets/DRV-005-synthese-decision-g1.md) assistant · S · Synthèse et décision G1 · dépend de : 002, 003, 004, 006 · Issue : [#69](https://github.com/kcharignon/repas/issues/69)
 
 **Gate G1** : le favori s'exécute sur le téléphone, les requêtes passent DataDome, les CGU n'interdisent pas l'usage, le cadre (P1) ou la liste de résultats (P2) fonctionne. Sinon : Firefox + gestionnaire de scripts, ou mode assisté seulement, ou arrêt. ADR 0022 passe `Accepted` ou `Rejected`.
 

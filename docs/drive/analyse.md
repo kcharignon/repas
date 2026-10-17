@@ -84,6 +84,7 @@ Décidé : on n'en stocke aucun. Si l'on devait (non recommandé, aucun plan) : 
 - D17 Si le produit préféré est indisponible, l'agent prend le suivant de la liste sans rien demander ; si aucun n'est disponible, il demande à l'utilisateur de choisir un autre produit sur Leclerc (phase B) et lui demande son rôle : nouveau préféré, produit de secours, ou seulement cette fois.
 - D18 L'agent ne choisit jamais seul un produit « équivalent » absent de la liste ; la suggestion automatique (backlog DRV-601) devra toujours exclure les produits refusés.
 - D19 Un produit refusé se désigne depuis la phase B (case « Ne plus jamais prendre » pour un produit indisponible) ou depuis l'écran « Mes produits » (DRV-410) ; il se ré-accepte depuis ce même écran.
+- D20 (**ouverte**, constat du 2026-10-17) Le favori du banc d'essai (49,6 Ko) ne s'installe pas sur le téléphone de l'utilisateur : créé sur l'ordinateur il ne se synchronise pas, créé sur le téléphone la chaîne est coupée au collage. L'agent final, plus gros, ne peut donc pas être un favori « complet ». Pistes, à trancher à G1 après DRV-004 (CSP de Leclerc) et DRV-006 (limite de taille réelle) : (a) **favori chargeur** de moins de 1 Ko qui charge le code de l'agent depuis l'origine de Repas, avec une empreinte (SRI) écrite dans le favori, ce qui garde « pas de code modifiable à distance » mais impose de réinstaller le favori à chaque version ; (b) même chargeur mais code **signé** (clé publique dans le favori, vérification par WebCrypto) : mises à jour sans réinstaller, sans faire confiance au serveur ; (c) Firefox Android + gestionnaire de scripts (aucune limite de taille, mise à jour par l'extension), mais l'utilisateur quitte Chrome ; (d) mode assisté seul. Les pistes (a) et (b) supposent que la CSP de Leclerc laisse charger un script de notre origine : **inconnu**. L'invariant « pas de code distant » de l'ADR 0022 est à reformuler en « pas de code distant non vérifié » si (a) ou (b) est retenue.
 
 ## 8. Lacunes comblées
 
@@ -101,6 +102,7 @@ Règle de verrou (statuts, opérations, codes, versions, déploiement) · contex
 8. Support des proches (installation du favori) (moyen) → page d'aide, installation faite une fois pour eux.
 9. Maintenance pour une personne (fort) → rester mince, contexte supprimable d'un bloc.
 10. Dérive vers plusieurs enseignes trop tôt (fort) → un port, un adaptateur.
+11. Le favori est trop gros pour être installé sur le téléphone (fort, **constaté** le 2026-10-17 avec 49,6 Ko) → DRV-006 (limite réelle), DRV-004 (CSP), décision D20.
 
 ## 10. Découpage
 
