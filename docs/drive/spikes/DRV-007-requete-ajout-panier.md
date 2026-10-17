@@ -14,7 +14,7 @@ Contexte : le banc d'essai (DRV-001) envoie `POST …/panier.aspx?op=1` avec un 
 
 ## Relevé
 
-Première passe du 2026-10-17 (ordinateur, Chrome 155, hôte `fd7`, produit « Farine de blé T45 Tablier Blanc », identifiant 1955). **Le contenu du champ `d` envoyé par le site n'a pas encore été relevé** (l'onglet « Charge utile » de la *requête* n'a pas été copié ; ce qui a été collé comme « payload » est la *réponse*). Reste à faire : copier ce champ.
+Relevé du 2026-10-17 (ordinateur, Chrome 155, hôte `fd7`, produit « Farine de blé T45 Tablier Blanc », identifiant 1955), en deux temps : en-têtes et réponses, puis le champ `d` des deux requêtes. **Relevé complet.**
 
 | Élément | Ajout (+) | Retrait (−) |
 |---|---|---|
@@ -24,8 +24,8 @@ Première passe du 2026-10-17 (ordinateur, Chrome 155, hôte `fd7`, produit « F
 | `Content-Length` du corps | **317** octets | **124** octets |
 | En-têtes propres au site | `X-Requested-With: XMLHttpRequest`, `Origin` (même hôte), `Sec-Fetch-Site: same-origin`, `Accept: */*`. Aucun en-tête personnalisé `X-…` autre que celui-là. | identique |
 | `Referer` (chemin seulement) | `/magasin-[masqué]/recherche.aspx?TexteRecherche=farine` | identique |
-| Corps : champ(s) de formulaire | non relevé (très probablement `d`) | non relevé |
-| Corps : contenu du champ `d` décodé | **non relevé** | **non relevé** |
+| Corps : champ(s) de formulaire | `d` (JSON, un seul champ) | `d` |
+| Corps : contenu du champ `d` décodé | `{"eTypeAction":1,"iIdProduit":"1955","iQuantite":1,"sNoPointLivraison":"[masqué]","objContexteProvenanceArticle":{"eOrigine":4,"eTypePage":3,"sTexteRecherche":"farine","eVue":0,"sInformationsComplementaires":"uni-2"}}` | `{"eTypeAction":2,"iIdProduit":"1955","iQuantite":0,"sNoPointLivraison":"[masqué]"}` |
 | Réponse | JSON, tableau de 4 évènements (`Content-Encoding: gzip`, 2 243 octets) : produit (`eTypeEvenement` 101), rayon (501), panier (1) et paniers complets (4) | idem avec 102 et 502 ; 2 220 octets |
 | Le banc d'essai avec « objet d'analytique vide » coché : code HTTP | non essayé | — |
 
@@ -35,10 +35,10 @@ Première passe du 2026-10-17 (ordinateur, Chrome 155, hôte `fd7`, produit « F
 - **Contenu net structuré** dans le produit : `sUniteMesure` (`KG`), `nrContenanceUnitaire` (1,0), `nrContenanceTotale` (1,0), `sUniteMesureTotale` (`kg`). À vérifier : ces champs existent-ils aussi dans les résultats de recherche (à comparer avec le libellé et le prix au kilo de DRV-002 ligne 17).
 - **Page produit** : `fiche-produits-{id}-{nom}.aspx` sous le chemin du magasin (champ `sUrlPageProduit`). Piste pour l'EAN (ligne 16), non regardée.
 - **En-têtes de réponse** : `X-Frame-Options: DENY` (explique le refus du cadre), `X-DataDome: protected`, `Access-Control-Allow-Origin` limité à l'hôte du magasin (nos pages ne peuvent donc pas appeler Leclerc : le script doit tourner dans la page), `Access-Control-Allow-Headers` cite un en-tête `zcwb` (inconnu, non envoyé ici), `Accept-CH` demande des indications sur l'appareil (Sec-CH-UA…), beaucoup de `Set-Cookie` (cookies de session et anti-robot, jamais touchés par le script).
-- **Le banc a envoyé quelque chose de plus court** : corps de 118 octets pour l'ajout du banc, 317 pour l'ajout du site. Le corps du **retrait** du site (124 octets) a exactement la taille du corps du banc plus 6 octets, soit les deux guillemets d'un identifiant de produit écrit **en texte** (`"1955"`) au lieu d'un nombre. Le corps de l'**ajout** du site (317 octets) a exactement la taille de l'exemple de la source tierce (avec identifiant en texte **et** objet `objContexteProvenanceArticle` rempli : origine, type de page, texte de recherche, vue, informations complémentaires). **Hypothèse (non prouvée tant que `d` n'est pas relevé)** : le 404 vient de l'identifiant en nombre et/ou de l'objet de contexte manquant à l'ajout.
+- **Pourquoi le banc avait un 404 (hypothèse confirmée par le champ `d`)** : le banc envoyait l'identifiant de produit en **nombre** (`1955`) et, à l'ajout, **sans** l'objet `objContexteProvenanceArticle`. Le site envoie l'identifiant en **texte** (`"1955"`) et joint l'objet de contexte à l'ajout (origine 4, type de page 3, texte de la recherche en cours, vue 0, informations `uni-2`, probablement « univers 2 » = drive). Le retrait du site n'a pas de contexte. Les tailles de corps (317 et 124 octets) correspondaient exactement. On ne sait pas encore lequel des deux écarts (ou les deux) provoque le 404 : DRV-008 le dira.
 
 ## Conclusion (pour DRV-005)
 
-- Différence trouvée entre la requête du banc et celle du site : hypothèse ci-dessus ; à confirmer avec le champ `d`.
-- L'ajout par script est possible avec la requête relevée : à tester (le site lui-même fait la même requête, même méthode, mêmes en-têtes, sans jeton visible dans les en-têtes).
+- Différence trouvée entre la requête du banc et celle du site : identifiant en texte et objet de contexte à l'ajout (voir ci-dessus).
+- L'ajout par script est possible avec la requête relevée : **à tester** (DRV-008). Le site fait la même requête, même méthode et mêmes en-têtes, sans jeton visible dans les en-têtes.
 - Présence d'un jeton de page ou d'un en-tête à reproduire (nom seulement) : aucun relevé dans les en-têtes de requête (hors cookies, non copiés).
