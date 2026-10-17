@@ -5,7 +5,7 @@
 - **Taille** : S
 - **Dépend de** : DRV-001 fusionné
 - **Statut** : à faire
-- **Lire d'abord** : `drive-agent/lab/PROCEDURE.md` du dépôt front, [`../spikes/DRV-002-rapport.md`](../spikes/DRV-002-rapport.md)
+- **Lire d'abord** : `drive-agent/lab/PROCEDURE.md` du dépôt front (banc d'essai fusionné le 2026-10-17 ; `make lab` produit la chaîne du favori), [`../spikes/DRV-002-rapport.md`](../spikes/DRV-002-rapport.md)
 
 ## Contexte
 

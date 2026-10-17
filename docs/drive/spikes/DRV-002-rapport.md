@@ -21,7 +21,7 @@ Gabarit à remplir après l'exécution du banc d'essai (DRV-001) sur le téléph
 | 8 | L'agent repère-t-il le produit que l'utilisateur ajoute dans le cadre ? | | |
 | 9 | Un fragment de 6 Ko, 16 Ko, 64 Ko survit-il à la navigation aller vers Leclerc ? | | |
 | 10 | Le retour vers `https://kantin.eu/` conserve-t-il le fragment (routeur compris) ? | | |
-| 11 | Un lien d'intention ouvre-t-il Chrome complet depuis la PWA installée ? Un lien normal ouvre-t-il un onglet intégré ? | | |
+| 11 | Un lien d'intention ouvre-t-il Chrome complet depuis la PWA installée ? Un lien normal ouvre-t-il un onglet intégré ? | | Hors banc d'essai (aucun essai ne le couvre) : noter « non testé » ; à valider avec DRV-402 |
 | 12 | Le maintien de l'écran allumé (Wake Lock) tient-il une minute ? | | |
 | 13 | Le panier rempli sur le site apparaît-il dans l'appli Leclerc Drive du même compte ? | | |
 | 14 | Adresse de la page panier / récapitulatif (chemin, sans identifiants) : | | |
