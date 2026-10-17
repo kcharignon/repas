@@ -4,7 +4,7 @@
 - **Jalon** : M1 Back `Repas`
 - **Taille** : S
 - **Dépend de** : —
-- **Statut** : à faire
+- **Statut** : fait (PR [#118](https://github.com/kcharignon/repas/pull/118), 2026-10-17 ; attribut `#[RequiresDrive]` + `DriveEnabledListener`, `DRIVE_ENABLED` coupé par défaut)
 - **Lire d'abord** : [`../architecture.md`](../architecture.md) §§ 5.3, 12 ; ADR 0017 ; `docs/production.md` ; `.claude/skills/repas-ops/` (pour savoir comment une variable d'environnement atteint la production).
 
 ## Contexte
