@@ -13,6 +13,7 @@ use Repas\Repas\Domain\Interface\UnitRepository;
 use Repas\Repas\Domain\Model\Meal;
 use Repas\Repas\Domain\Model\Recipe;
 use Repas\Repas\Domain\Model\ShoppingList;
+use Repas\Repas\Domain\Model\ShoppingListStatus;
 use Repas\Repas\Domain\Service\ConversionService;
 use Repas\Tests\Helper\Builder\ConversionBuilder;
 use Repas\Tests\Helper\Builder\IngredientBuilder;
@@ -108,5 +109,53 @@ class UpdateServingMealHandlerTest extends TestCase
         } finally {
             $this->assertSame($servingBefore, $meal->getServing());
         }
+    }
+
+    public function testRefusesASentListAndChangesNothing(): void
+    {
+        // Arrange : une liste envoyée au drive n'est plus modifiable (ADR 0023), même pour un repas désigné par son identifiant
+        $user = new UserBuilder()->withId("unique-id")->build();
+        $sent = new ShoppingListBuilder()
+            ->withId('sent-list')
+            ->withOwner($user)
+            ->addRecipe($this->recipe)
+            ->addIngredient(new IngredientBuilder()->isEgg())
+            ->withStatus(ShoppingListStatus::SENT)
+            ->build();
+        $this->shoppingListRepository->save($sent);
+        $meal = $sent->getMeals()->reset();
+        $serving = $meal->getServing();
+
+        // Assert
+        $this->expectExceptionObject(ShoppingListException::sent('sent-list'));
+
+        // Act
+        try {
+            ($this->handler)(new UpdateServingMealCommand($meal->getId(), $serving + 2));
+        } finally {
+            $this->assertSame($serving, $meal->getServing());
+            $this->assertCount(1, $sent->getRows());
+        }
+    }
+
+    public function testRefusesASentListEvenWithTheSameServing(): void
+    {
+        // Arrange
+        $user = new UserBuilder()->withId("unique-id")->build();
+        $sent = new ShoppingListBuilder()
+            ->withId('sent-list')
+            ->withOwner($user)
+            ->addRecipe($this->recipe)
+            ->addIngredient(new IngredientBuilder()->isEgg())
+            ->withStatus(ShoppingListStatus::SENT)
+            ->build();
+        $this->shoppingListRepository->save($sent);
+        $meal = $sent->getMeals()->reset();
+
+        // Assert
+        $this->expectExceptionObject(ShoppingListException::sent('sent-list'));
+
+        // Act
+        ($this->handler)(new UpdateServingMealCommand($meal->getId(), $meal->getServing()));
     }
 }

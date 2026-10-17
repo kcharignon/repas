@@ -23,6 +23,12 @@ interface ShoppingListRepository
      */
     public function hasActiveShoppingList(string $ownerId): bool;
 
+    /**
+     * La liste est-elle envoyée au drive (`SENT`, ADR 0023) ? Une requête, sans hydrater l'agrégat : cocher et décocher ne
+     * chargent qu'une ligne. Une liste inconnue n'est pas envoyée.
+     */
+    public function isSent(string $shoppingListId): bool;
+
     public function save(ShoppingList $shoppingList): void;
 
     public function delete(ShoppingList $shoppingList): void;

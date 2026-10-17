@@ -85,4 +85,23 @@ class UncheckLineOnShoppingListHandlerTest extends TestCase
         // Act
         ($this->handler)($command);
     }
+
+    public function testRefusesALineOfASentListAndNeverReactivatesIt(): void
+    {
+        // Arrange : une liste envoyée au drive n'est plus modifiable (ADR 0023) et décocher ne la réactive pas
+        $this->shoppingListRepository->save(
+            new ShoppingListBuilder()->withId('shopping-list-id')->withStatus(ShoppingListStatus::SENT)->build()
+        );
+
+        // Assert
+        $this->expectExceptionObject(ShoppingListException::sent('shopping-list-id'));
+
+        // Act
+        try {
+            ($this->handler)(new UncheckLineOnShoppingListCommand('shopping-list-row-id'));
+        } finally {
+            $this->assertTrue($this->shoppingListRowRepository->findOneById('shopping-list-row-id')->isChecked());
+            $this->assertSame(ShoppingListStatus::SENT, $this->shoppingListRepository->findOneById('shopping-list-id')->getStatus());
+        }
+    }
 }

@@ -23,6 +23,8 @@ readonly class UpdateServingMealHandler
     {
         $shoppingList = $this->shoppingListRepository->findOneByMealId($command->mealId);
         $shoppingList->assertVersion($command->expectedVersion);
+        // Le repas est modifié sans passer par un mutateur de l'agrégat : la garde de la liste envoyée est explicite (ADR 0023)
+        $shoppingList->assertEditable();
 
         $meal = $shoppingList->getMeals()->find(fn(Meal $meal) => $meal->getId() === $command->mealId);
 

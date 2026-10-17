@@ -2,6 +2,7 @@
 
 namespace Repas\Repas\Application\Command\UncheckLineOnShoppingList;
 
+use Repas\Repas\Domain\Exception\ShoppingListException;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Repas\Domain\Interface\ShoppingListRowRepository;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
@@ -18,6 +19,11 @@ readonly class UncheckLineOnShoppingListHandler
     public function __invoke(UncheckLineOnShoppingListCommand $command): void
     {
         $row = $this->shoppingListRowRepository->findOneById($command->shoppingListRowId);
+
+        // Une liste envoyée au drive n'est plus modifiable et n'est jamais réactivée en décochant (ADR 0023)
+        if ($this->shoppingListRepository->isSent($row->getShoppingListId())) {
+            throw ShoppingListException::sent($row->getShoppingListId());
+        }
 
         $row->uncheck();
         $this->shoppingListRowRepository->save($row);

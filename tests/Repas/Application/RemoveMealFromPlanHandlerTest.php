@@ -14,6 +14,7 @@ use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Repas\Domain\Interface\UnitRepository;
 use Repas\Repas\Domain\Model\Recipe;
 use Repas\Repas\Domain\Model\ShoppingList;
+use Repas\Repas\Domain\Model\ShoppingListStatus;
 use Repas\Repas\Domain\Service\ConversionService;
 use Repas\Tests\Helper\Builder\ConversionBuilder;
 use Repas\Tests\Helper\Builder\RecipeBuilder;
@@ -168,6 +169,24 @@ class RemoveMealFromPlanHandlerTest extends TestCase
             ($this->handler)($command);
         } finally {
             $this->assertTrue($this->shoppingList->hasRecipe($this->recipe));
+        }
+    }
+
+    public function testDoesNotTouchASentList(): void
+    {
+        // Arrange : le propriétaire n'a qu'une liste envoyée au drive (ADR 0023)
+        $this->recipeRepository->save($this->recipe);
+        $this->shoppingList->setStatus(ShoppingListStatus::SENT);
+        $this->shoppingListRepository->save($this->shoppingList);
+
+        // Assert
+        $this->expectExceptionObject(ShoppingListException::activeShoppingListNotFound());
+
+        // Act
+        try {
+            ($this->handler)(new removeMealFromPlanCommand('user-id', 'recipe-id'));
+        } finally {
+            $this->assertCount(1, $this->shoppingListRepository->findOneById('shopping-list-id')->getMeals());
         }
     }
 }

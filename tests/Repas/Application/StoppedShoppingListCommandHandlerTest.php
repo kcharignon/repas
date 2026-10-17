@@ -11,6 +11,7 @@ use Repas\Shared\Domain\Event\ShoppingListCompletedEvent;
 use Repas\Repas\Domain\Exception\ShoppingListException;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Repas\Domain\Model\ShoppingListStatus as Status;
+use Repas\Tests\Helper\Builder\IngredientBuilder;
 use Repas\Tests\Helper\Builder\ShoppingListBuilder;
 use Repas\Tests\Helper\Builder\UserBuilder;
 use Repas\Tests\Helper\InMemoryRepository\ShoppingListInMemoryRepository;
@@ -101,5 +102,23 @@ class StoppedShoppingListCommandHandlerTest extends TestCase
         } finally {
             $this->assertSame([], $this->eventDispatcher->eventDispatched);
         }
+    }
+
+    public function testCompletesASentListAndAnnouncesIt(): void
+    {
+        // Arrange : terminer reste permis depuis une liste envoyée au drive (ADR 0023)
+        $this->shoppingListRepository->save(
+            new ShoppingListBuilder()->withId('sent-id')->withOwner(new UserBuilder()->withId('user-id')->build())
+                ->addIngredient(new IngredientBuilder()->isEgg())->withStatus(Status::SENT)->build()
+        );
+
+        // Act
+        ($this->handler)(new StoppedShoppingListCommand('sent-id'));
+
+        // Assert
+        $this->assertSame(Status::COMPLETED, $this->shoppingListRepository->findOneById('sent-id')->getStatus());
+        $event = $this->eventDispatcher->getLastEventDispatched();
+        $this->assertInstanceOf(ShoppingListCompletedEvent::class, $event);
+        $this->assertSame(['user-id', 'sent-id', 1], [$event->ownerId, $event->shoppingListId, $event->rowCount]);
     }
 }

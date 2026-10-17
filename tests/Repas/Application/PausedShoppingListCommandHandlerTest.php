@@ -10,6 +10,7 @@ use Repas\Repas\Application\Command\PausedShoppingList\PausedShoppingListHandler
 use Repas\Repas\Domain\Exception\ShoppingListException;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Repas\Domain\Model\ShoppingListStatus as Status;
+use Repas\Tests\Helper\Builder\IngredientBuilder;
 use Repas\Tests\Helper\Builder\ShoppingListBuilder;
 use Repas\Tests\Helper\Builder\UserBuilder;
 use Repas\Tests\Helper\InMemoryRepository\ShoppingListInMemoryRepository;
@@ -83,5 +84,24 @@ class PausedShoppingListCommandHandlerTest extends TestCase
 
         // Act
         ($this->handler)($command);
+    }
+
+    public function testRefusesASentListAndChangesNoStatus(): void
+    {
+        // Arrange : une liste envoyée au drive n'est plus modifiable (ADR 0023), ni activée ni mise en pause
+        $this->shoppingListRepository->save(
+            new ShoppingListBuilder()->withId('sent-id')->addIngredient(new IngredientBuilder()->isEgg())->withStatus(Status::SENT)->build()
+        );
+
+        // Assert
+        $this->expectExceptionObject(ShoppingListException::sent('sent-id'));
+
+        // Act
+        try {
+            ($this->handler)(new PausedShoppingListCommand('sent-id'));
+        } finally {
+            $this->assertSame(Status::SENT, $this->shoppingListRepository->findOneById('sent-id')->getStatus());
+            $this->assertSame(Status::ACTIVE, $this->shoppingListRepository->findOneById('active-id')->getStatus());
+        }
     }
 }

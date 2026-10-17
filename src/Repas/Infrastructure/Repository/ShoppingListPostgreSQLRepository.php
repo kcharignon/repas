@@ -129,6 +129,20 @@ readonly class ShoppingListPostgreSQLRepository extends PostgreSQLRepository imp
         return $this->entityRepository->findOneBy(['ownerId' => $ownerId, 'status' => ShoppingListStatus::ACTIVE]) !== null;
     }
 
+    public function isSent(string $shoppingListId): bool
+    {
+        return $this->entityManager->createQueryBuilder()
+            ->select('sl.id')
+            ->from(ShoppingListEntity::class, 'sl')
+            ->where('sl.id = :id')
+            ->andWhere('sl.status = :status')
+            ->setParameter('id', $shoppingListId)
+            ->setParameter('status', ShoppingListStatus::SENT)
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult() !== null;
+    }
+
     public function delete(ShoppingList $shoppingList): void
     {
 
@@ -178,6 +192,7 @@ readonly class ShoppingListPostgreSQLRepository extends PostgreSQLRepository imp
             'ingredients' => $this->shopListIngredientRepository->findByShoppingListId($shoppingListEntity->getId()),
             'rows' => $this->shopListRowRepository->findByShoppingListId($shoppingListEntity->getId()),
             'version' => $shoppingListEntity->getVersion(),
+            'sent_at' => $shoppingListEntity->getSentAt(),
         ]);
     }
 

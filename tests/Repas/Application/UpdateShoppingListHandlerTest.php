@@ -9,6 +9,8 @@ use Repas\Repas\Application\Command\UpdateShoppingList\UpdateShoppingListCommand
 use Repas\Repas\Application\Command\UpdateShoppingList\UpdateShoppingListHandler;
 use Repas\Repas\Domain\Exception\ShoppingListException;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
+use Repas\Repas\Domain\Model\ShoppingListStatus;
+use Repas\Tests\Helper\Builder\IngredientBuilder;
 use Repas\Tests\Helper\Builder\ShoppingListBuilder;
 use Repas\Tests\Helper\InMemoryRepository\ShoppingListInMemoryRepository;
 
@@ -76,6 +78,24 @@ class UpdateShoppingListHandlerTest extends TestCase
             ($this->handler)($command);
         } finally {
             $this->assertSame('EVG', $this->shoppingListRepository->findOneById('named')->getName());
+        }
+    }
+
+    public function testRefusesASentListAndKeepsTheName(): void
+    {
+        // Arrange : une liste envoyée au drive n'est plus modifiable (ADR 0023)
+        $this->shoppingListRepository->save(
+            new ShoppingListBuilder()->withId('sent')->withName('EVG')->addIngredient(new IngredientBuilder()->isEgg())->withStatus(ShoppingListStatus::SENT)->build()
+        );
+
+        // Assert
+        $this->expectExceptionObject(ShoppingListException::sent('sent'));
+
+        // Act
+        try {
+            ($this->handler)(new UpdateShoppingListCommand('sent', 'courses'));
+        } finally {
+            $this->assertSame('EVG', $this->shoppingListRepository->findOneById('sent')->getName());
         }
     }
 }

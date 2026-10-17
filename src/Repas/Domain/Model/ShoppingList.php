@@ -31,6 +31,7 @@ final class ShoppingList implements ModelInterface
         private Tab               $ingredients,
         private Tab               $rows,
         private int               $version = 1,
+        private ?DateTimeImmutable $sentAt = null,
     ) {
     }
 
@@ -124,6 +125,7 @@ final class ShoppingList implements ModelInterface
             ingredients: $datas['ingredients'],
             rows: $datas['rows'],
             version: $datas['version'] ?? 1,
+            sentAt: $datas['sent_at'] ?? null,
         );
     }
 
@@ -147,6 +149,71 @@ final class ShoppingList implements ModelInterface
         return $this->status === Status::COMPLETED;
     }
 
+    public function isSent(): bool
+    {
+        return $this->status === Status::SENT;
+    }
+
+    /**
+     * Date d'envoi au drive ; null tant que la liste n'est pas `SENT`.
+     */
+    public function getSentAt(): ?DateTimeImmutable
+    {
+        return $this->sentAt;
+    }
+
+    /**
+     * Une liste envoyée au drive n'est plus modifiable (ADR 0023) : seuls la lecture, `completed()`, `reopen()` et la
+     * suppression restent permis. Appelée par chaque mutateur de l'agrégat et, pour ce qui ne passe pas par lui, par les
+     * handlers (repas par identifiant).
+     *
+     * @throws ShoppingListException
+     */
+    public function assertEditable(): void
+    {
+        if ($this->isSent()) {
+            throw ShoppingListException::sent($this->id);
+        }
+    }
+
+    /**
+     * Envoie la liste au drive : elle devient non modifiable. Sans effet si elle est déjà envoyée.
+     *
+     * @throws ShoppingListException la liste n'est ni active ni déjà envoyée (409), ou elle est vide (422)
+     */
+    public function send(DateTimeImmutable $now): void
+    {
+        if ($this->isSent()) {
+            return;
+        }
+
+        if ($this->status !== Status::ACTIVE) {
+            throw ShoppingListException::notSendable($this->id);
+        }
+
+        if ($this->countRows() === 0) {
+            throw ShoppingListException::empty($this->id);
+        }
+
+        $this->status = Status::SENT;
+        $this->sentAt = $now;
+    }
+
+    /**
+     * Rouvre une liste envoyée : elle redevient active et modifiable. Le use case met en pause l'éventuelle autre liste active.
+     *
+     * @throws ShoppingListException la liste n'est pas envoyée
+     */
+    public function reopen(): void
+    {
+        if (!$this->isSent()) {
+            throw ShoppingListException::notSent($this->id);
+        }
+
+        $this->status = Status::ACTIVE;
+        $this->sentAt = null;
+    }
+
     /**
      * @param int $servings nombre de personnes du repas : celui du propriétaire (`AuthenticatedUser::getDefaultServing()`),
      *                       que le use case transmet puisque la liste ne connaît pas l'utilisateur
@@ -156,6 +223,8 @@ final class ShoppingList implements ModelInterface
      */
     public function addMeal(string $id, Recipe $recipe, int $servings): void
     {
+        $this->assertEditable();
+
         // Une liste ne planifie que les recettes de son propriétaire : leurs ingrédients sont les siens ou des ingrédients communs
         if ($recipe->getAuthorId() !== $this->ownerId) {
             throw RecipeException::notFound($recipe->getId());
@@ -177,6 +246,8 @@ final class ShoppingList implements ModelInterface
 
     public function addRow(string $ingredientSlug, string $purchaseUnitSlug, float $quantity): void
     {
+        $this->assertEditable();
+
         // Cherche si la ligne avec l'ingrédient est déjà present dans la liste
         if (($row = $this->rows->find(fn(Row $row) => $row->getIngredientSlug() === $ingredientSlug)) !== null) {
             $row->addQuantity($quantity);
@@ -188,6 +259,8 @@ final class ShoppingList implements ModelInterface
 
     public function subtractRow(string $ingredientSlug, float $quantity): void
     {
+        $this->assertEditable();
+
         // Cherche si la ligne avec l'ingrédient est déjà present dans la liste
         if (($rowKey = $this->rows->findKey(fn(Row $row) => $row->getIngredientSlug() === $ingredientSlug)) !== null) {
             $this->rows[$rowKey]->subtractQuantity($quantity);
@@ -215,12 +288,15 @@ final class ShoppingList implements ModelInterface
 
     public function setName(?string $name): ShoppingList
     {
+        $this->assertEditable();
         $this->name = $name;
         return $this;
     }
 
     public function addIngredient(string $ingredientSlug, string $purchaseUnitSlug): void
     {
+        $this->assertEditable();
+
         // Recherche de l'ingrédient dans l'unité d'achat dans la liste
         if (($shopListIngredient = $this->ingredients->find(fn(ShoppingListIngredient $sli) => $sli->hasIngredient($ingredientSlug) && $sli->getUnitSlug() === $purchaseUnitSlug)) !== null) {
             // Si on le trouve on incrémente de 1 la quantité
@@ -238,6 +314,8 @@ final class ShoppingList implements ModelInterface
 
     public function removeIngredient(string $ingredientSlug, string $purchaseUnitSlug): void
     {
+        $this->assertEditable();
+
         $ingredientKey = $this->ingredients->findKey(fn(ShoppingListIngredient $sli) => $sli->hasIngredient($ingredientSlug) && $sli->getUnitSlug() === $purchaseUnitSlug);
 
         // Si on ne retrouve pas l'ingrédient, il n'est deja plus present dans la liste
@@ -261,11 +339,14 @@ final class ShoppingList implements ModelInterface
 
     public function activated(): void
     {
+        $this->assertEditable();
         $this->status = Status::ACTIVE;
     }
 
     public function removeMeal(Recipe $recipe): void
     {
+        $this->assertEditable();
+
         $mealKey = $this->meals->findKey(fn(Meal $meal) => $meal->hasRecipe($recipe));
 
         if ($mealKey === null) {
@@ -299,6 +380,7 @@ final class ShoppingList implements ModelInterface
 
     public function pause(): void
     {
+        $this->assertEditable();
         $this->status = Status::PAUSED;
     }
 }

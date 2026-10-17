@@ -11,6 +11,7 @@ use Repas\Repas\Application\Command\CreateShoppingList\CreateShoppingListHandler
 use Repas\Repas\Domain\Event\NewShoppingListCreatedEvent;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Repas\Domain\Model\ShoppingListStatus;
+use Repas\Tests\Helper\Builder\IngredientBuilder;
 use Repas\Tests\Helper\Builder\ShoppingListBuilder;
 use Repas\Tests\Helper\Builder\UserBuilder;
 use Repas\Tests\Helper\FrozenClock;
@@ -59,4 +60,23 @@ class CreateShoppingListHandlerTest extends TestCase
         $this->assertEquals(ShoppingListStatus::PAUSED, $actualShoppingList->getStatus());
     }
 
+
+    public function testDoesNotTouchASentList(): void
+    {
+        // Arrange : la liste envoyée au drive garde sa place ; la liste active est mise en pause (ADR 0023)
+        $user = new UserBuilder()->build();
+        $sent = new ShoppingListBuilder()->withOwner($user)->withId('sent-id')->addIngredient(new IngredientBuilder()->isEgg())->withStatus(ShoppingListStatus::SENT)->build();
+        $sentAt = $sent->getSentAt();
+        $this->shoppingListRepository->save($sent);
+        $this->shoppingListRepository->save(new ShoppingListBuilder()->withOwner($user)->withId('active-id')->build());
+
+        // Act
+        ($this->handler)(new CreateShoppingListCommand('new-id', $user->getId()));
+
+        // Assert
+        $this->assertSame(ShoppingListStatus::SENT, $this->shoppingListRepository->findOneById('sent-id')->getStatus());
+        $this->assertSame($sentAt, $this->shoppingListRepository->findOneById('sent-id')->getSentAt());
+        $this->assertSame(ShoppingListStatus::PAUSED, $this->shoppingListRepository->findOneById('active-id')->getStatus());
+        $this->assertSame(ShoppingListStatus::ACTIVE, $this->shoppingListRepository->findOneById('new-id')->getStatus());
+    }
 }

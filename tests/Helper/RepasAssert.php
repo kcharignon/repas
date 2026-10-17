@@ -181,6 +181,7 @@ class RepasAssert
         Assert::assertEquals($expected->getCreatedAt()->format(DATE_ATOM), $actual->getCreatedAt()->format(DATE_ATOM));
         Assert::assertEquals($expected->getStatus(), $actual->getStatus());
         Assert::assertEquals($expected->getName(), $actual->getName());
+        Assert::assertEquals($expected->getSentAt()?->format(DATE_ATOM), $actual->getSentAt()?->format(DATE_ATOM));
         Assert::assertSame($expected->getOwnerId(), $actual->getOwnerId());
         self::assertMeals($expected->getMeals(), $actual->getMeals());
         self::assertShoppingListIngredients($expected->getIngredients(), $actual->getIngredients());

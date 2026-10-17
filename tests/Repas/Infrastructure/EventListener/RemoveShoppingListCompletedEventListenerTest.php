@@ -8,6 +8,7 @@ use Repas\Repas\Application\Command\RemoveShoppingList\RemoveShoppingListCommand
 use Repas\Repas\Domain\Event\NewShoppingListCreatedEvent;
 use Repas\Repas\Domain\Model\ShoppingListStatus;
 use Repas\Repas\Infrastructure\EventListener\RemoveShoppingListCompletedEventListener;
+use Repas\Tests\Helper\Builder\IngredientBuilder;
 use Repas\Tests\Helper\Builder\ShoppingListBuilder;
 use Repas\Tests\Helper\Builder\UserBuilder;
 use Repas\Tests\Helper\InMemoryRepository\ShoppingListInMemoryRepository;
@@ -40,6 +41,23 @@ class RemoveShoppingListCompletedEventListenerTest extends TestCase
         // Given
         $owner = new UserBuilder()->withId('owner-id')->build();
         $shoppingLists = new ShoppingListInMemoryRepository([
+            new ShoppingListBuilder()->withId('new')->withOwner($owner)->build(),
+        ]);
+        $bus = new MockCommandBus();
+
+        // When
+        new RemoveShoppingListCompletedEventListener($bus, $shoppingLists)(new NewShoppingListCreatedEvent('new', 'owner-id'));
+
+        // Then
+        $this->assertSame([], $bus->dispatched());
+    }
+
+    public function testNeverRemovesASentList(): void
+    {
+        // Given
+        $owner = new UserBuilder()->withId('owner-id')->build();
+        $shoppingLists = new ShoppingListInMemoryRepository([
+            new ShoppingListBuilder()->withId('sent')->withOwner($owner)->addIngredient(new IngredientBuilder()->isEgg())->withStatus(ShoppingListStatus::SENT)->build(),
             new ShoppingListBuilder()->withId('new')->withOwner($owner)->build(),
         ]);
         $bus = new MockCommandBus();
