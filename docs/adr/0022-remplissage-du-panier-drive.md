@@ -50,3 +50,7 @@ Faits ([`docs/drive/recherche.md`](../drive/recherche.md)) :
 - Partenariat façon Jow → hors de portée en usage familial.
 
 Détail complet : [`docs/drive/analyse.md`](../drive/analyse.md) § 4.
+
+## Mise à jour du 2026-10-17 (soir)
+
+Le moyen d'exécuter l'agent dans la page Leclerc change : Chrome Android ne lance aucun favori JavaScript sur le téléphone de l'utilisateur (essais DRV-006), qui a choisi une **application Android** (WebView limitée à `*.leclercdrive.fr`, agent embarqué dans l'application). Les invariants (aucun identifiant chez nous, le back ne contacte jamais l'enseigne, pas de code distant non vérifié) et le protocole v1 sont inchangés. Voir [`docs/drive/pivot-application-android.md`](../drive/pivot-application-android.md). L'option « Application Android dédiée (WebView) » listée plus haut comme écartée est donc **reprise**, après le spike DRV-011 ; la décision définitive est prise à G1.
