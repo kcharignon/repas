@@ -41,3 +41,10 @@ Celle du dépôt front ; PR concise ; fusion si CI verte.
 
 - Un lien de même origine que la PWA est traité dans la PWA : d'où le schéma `repasdrive://` / `intent://`. À valider sur un vrai téléphone (si la PWA refuse de le lancer, l'alternative est un bouton « Ouvrir l'application » qui n'est pas dans la portée de la PWA, ou une adresse de pont sur un autre sous-domaine).
 - N'importe quelle autre application peut déclarer le même schéma : le plan ne contient que des noms d'ingrédients, aucune donnée sensible.
+
+## Points laissés par DRV-312 et DRV-313 (2026-10-18)
+
+- Le résultat arrive dans `AgentHost` (callback `onAgentMessage` avec `Inbound.FromAgent(type, text)`) ; `MainActivity` ne l'exploite aujourd'hui que dans la variante de débogage (`DebugRun`). L'envoi du plan passe par `AgentHost.send(texte)`, possible une fois la page annoncée (`ready`, après `hello`).
+- Le lancement sur la page du magasin quand un plan est reçu reste à faire (`NavigationPolicy.START_URL` aujourd'hui).
+- Restreindre l'écran allumé à la durée d'un passage.
+- Le menu de débogage « Plan d'essai » peut réutiliser le chemin de réception d'un plan.
