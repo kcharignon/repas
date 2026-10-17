@@ -6,68 +6,70 @@ Suivi vivant. Cocher une case quand le ticket est fusionné (et noter la PR). Le
 
 **Règle du chantier** : aucun code produit avant la décision **G1** (DRV-005). Peuvent démarrer tout de suite : DRV-001, DRV-003, DRV-004.
 
+**Épiques GitHub** (dépôt back) : [M0 #88](https://github.com/kcharignon/repas/issues/88) · [M1 #89](https://github.com/kcharignon/repas/issues/89) · [M2 #90](https://github.com/kcharignon/repas/issues/90) · [M3 #91](https://github.com/kcharignon/repas/issues/91) · [M4 #92](https://github.com/kcharignon/repas/issues/92) · [M5 #93](https://github.com/kcharignon/repas/issues/93). Une issue par ticket, dans le dépôt indiqué (labels `drive`, `spike`, `agent`, `humain`, `epic`).
+
 ## M0 — Découverte (spikes, décision G1)
 
-- [ ] [DRV-001](tickets/DRV-001-banc-d-essai-favori.md) front · M · Banc d'essai du favori (outil de test jetable) · dépend de : — · Issue : —
-- [ ] [DRV-002](tickets/DRV-002-execution-telephone-rapport.md) humain · S · Exécution sur le téléphone Android et rapport · dépend de : 001 · Issue : —
-- [ ] [DRV-003](tickets/DRV-003-lecture-cgu-leclerc.md) humain · S · Lecture des CGU/CGV de Leclerc · dépend de : — · Issue : —
-- [ ] [DRV-004](tickets/DRV-004-releve-entetes-securite.md) humain · S · Relevé des en-têtes de sécurité · dépend de : — · Issue : —
-- [ ] [DRV-005](tickets/DRV-005-synthese-decision-g1.md) assistant · S · Synthèse et décision G1 · dépend de : 002, 003, 004 · Issue : —
+- [ ] [DRV-001](tickets/DRV-001-banc-d-essai-favori.md) front · M · Banc d'essai du favori (outil de test jetable) · dépend de : — · Issue : [repas-front#38](https://github.com/kcharignon/repas-front/issues/38)
+- [ ] [DRV-002](tickets/DRV-002-execution-telephone-rapport.md) humain · S · Exécution sur le téléphone Android et rapport · dépend de : 001 · Issue : [#66](https://github.com/kcharignon/repas/issues/66)
+- [ ] [DRV-003](tickets/DRV-003-lecture-cgu-leclerc.md) humain · S · Lecture des CGU/CGV de Leclerc · dépend de : — · Issue : [#67](https://github.com/kcharignon/repas/issues/67)
+- [ ] [DRV-004](tickets/DRV-004-releve-entetes-securite.md) humain · S · Relevé des en-têtes de sécurité · dépend de : — · Issue : [#68](https://github.com/kcharignon/repas/issues/68)
+- [ ] [DRV-005](tickets/DRV-005-synthese-decision-g1.md) assistant · S · Synthèse et décision G1 · dépend de : 002, 003, 004 · Issue : [#69](https://github.com/kcharignon/repas/issues/69)
 
 **Gate G1** : le favori s'exécute sur le téléphone, les requêtes passent DataDome, les CGU n'interdisent pas l'usage, le cadre (P1) ou la liste de résultats (P2) fonctionne. Sinon : Firefox + gestionnaire de scripts, ou mode assisté seulement, ou arrêt. ADR 0022 passe `Accepted` ou `Rejected`.
 
 ## M1 — Back `Repas` (après G1)
 
-- [ ] [DRV-101](tickets/DRV-101-liste-envoyee-verrou.md) back · L · Liste envoyée : statut `SENT`, verrou, transitions · dépend de : 005 · Issue : —
-- [ ] [DRV-102](tickets/DRV-102-api-send-reopen.md) back · M · API `send` / `reopen` et DTO · dépend de : 101, 103 · Issue : —
-- [ ] [DRV-103](tickets/DRV-103-interrupteur-drive-enabled.md) back · S · Interrupteur `DRIVE_ENABLED` · dépend de : — · Issue : —
-- [ ] [DRV-104](tickets/DRV-104-lignes-liste-slugs.md) back · S · Lignes de liste : `ingredientSlug` et `unitSlug` · dépend de : — · Issue : —
-- [ ] [DRV-105](tickets/DRV-105-unite-dimension.md) back · M · Unités : `dimension` et `baseFactor` · dépend de : — · Issue : —
+- [ ] [DRV-101](tickets/DRV-101-liste-envoyee-verrou.md) back · L · Liste envoyée : statut `SENT`, verrou, transitions · dépend de : 005 · Issue : [#70](https://github.com/kcharignon/repas/issues/70)
+- [ ] [DRV-102](tickets/DRV-102-api-send-reopen.md) back · M · API `send` / `reopen` et DTO · dépend de : 101, 103 · Issue : [#71](https://github.com/kcharignon/repas/issues/71)
+- [ ] [DRV-103](tickets/DRV-103-interrupteur-drive-enabled.md) back · S · Interrupteur `DRIVE_ENABLED` · dépend de : — · Issue : [#72](https://github.com/kcharignon/repas/issues/72)
+- [ ] [DRV-104](tickets/DRV-104-lignes-liste-slugs.md) back · S · Lignes de liste : `ingredientSlug` et `unitSlug` · dépend de : — · Issue : [#73](https://github.com/kcharignon/repas/issues/73)
+- [ ] [DRV-105](tickets/DRV-105-unite-dimension.md) back · M · Unités : `dimension` et `baseFactor` · dépend de : — · Issue : [#74](https://github.com/kcharignon/repas/issues/74)
 
 ## M2 — Back `Drive` (après G1)
 
-- [ ] [DRV-201](tickets/DRV-201-squelette-contexte-drive.md) back · S · Squelette du contexte `Drive` · dépend de : — · Issue : —
-- [ ] [DRV-202](tickets/DRV-202-port-shared-liste-pour-drive.md) back · S · Port `Shared` de lecture de la liste · dépend de : 201, 104, 105 · Issue : —
-- [ ] [DRV-203](tickets/DRV-203-reglages-du-drive.md) back · M · Réglages du drive · dépend de : 201, 103 · Issue : —
-- [ ] [DRV-204](tickets/DRV-204-produits-et-choix.md) back · L · Produits, choix et priorités · dépend de : 201, 202, 203 · Issue : —
-- [ ] [DRV-205](tickets/DRV-205-pack-calculator.md) back · M · `PackCalculator` · dépend de : 201 · Issue : —
-- [ ] [DRV-206](tickets/DRV-206-plan-d-envoi.md) back · M · Plan d'envoi · dépend de : 202, 203, 204, 205 · Issue : —
-- [ ] [DRV-207](tickets/DRV-207-purge-compte-drive.md) back · S · Purge à la suppression du compte (dont lignes de produits) · dépend de : 203, 204 · Issue : —
-- [ ] [DRV-208](tickets/DRV-208-remplacement-preference.md) back · M · Remplacer la préférence d'un ingrédient (ordre, refus) · dépend de : 204 · Issue : —
+- [ ] [DRV-201](tickets/DRV-201-squelette-contexte-drive.md) back · S · Squelette du contexte `Drive` · dépend de : — · Issue : [#75](https://github.com/kcharignon/repas/issues/75)
+- [ ] [DRV-202](tickets/DRV-202-port-shared-liste-pour-drive.md) back · S · Port `Shared` de lecture de la liste · dépend de : 201, 104, 105 · Issue : [#76](https://github.com/kcharignon/repas/issues/76)
+- [ ] [DRV-203](tickets/DRV-203-reglages-du-drive.md) back · M · Réglages du drive · dépend de : 201, 103 · Issue : [#77](https://github.com/kcharignon/repas/issues/77)
+- [ ] [DRV-204](tickets/DRV-204-produits-et-choix.md) back · L · Produits, choix et priorités · dépend de : 201, 202, 203 · Issue : [#78](https://github.com/kcharignon/repas/issues/78)
+- [ ] [DRV-205](tickets/DRV-205-pack-calculator.md) back · M · `PackCalculator` · dépend de : 201 · Issue : [#79](https://github.com/kcharignon/repas/issues/79)
+- [ ] [DRV-206](tickets/DRV-206-plan-d-envoi.md) back · M · Plan d'envoi · dépend de : 202, 203, 204, 205 · Issue : [#80](https://github.com/kcharignon/repas/issues/80)
+- [ ] [DRV-207](tickets/DRV-207-purge-compte-drive.md) back · S · Purge à la suppression du compte (dont lignes de produits) · dépend de : 203, 204 · Issue : [#81](https://github.com/kcharignon/repas/issues/81)
+- [ ] [DRV-208](tickets/DRV-208-remplacement-preference.md) back · M · Remplacer la préférence d'un ingrédient (ordre, refus) · dépend de : 204 · Issue : [#82](https://github.com/kcharignon/repas/issues/82)
 
 ## M3 — Agent (front, `drive-agent/`)
 
-- [ ] [DRV-301](tickets/DRV-301-squelette-agent.md) front · M · Squelette de l'agent · dépend de : 005 · Issue : —
-- [ ] [DRV-302](tickets/DRV-302-protocole-v1.md) front · M · Protocole v1 · dépend de : 301 · Issue : —
-- [ ] [DRV-303](tickets/DRV-303-adaptateur-leclerc.md) front · L · Adaptateur Leclerc · dépend de : 301, 302 · Issue : —
-- [ ] [DRV-304](tickets/DRV-304-interface-superposee.md) front · L · Interface superposée · dépend de : 301 · Issue : —
-- [ ] [DRV-305](tickets/DRV-305-orchestrateur-phase-a.md) front · M · Orchestrateur, phase A · dépend de : 302, 303, 304 · Issue : —
-- [ ] [DRV-306](tickets/DRV-306-choix-guide-phase-b.md) front · L · Choix guidé, phase B · dépend de : 305 · Issue : —
-- [ ] [DRV-307](tickets/DRV-307-mode-configuration.md) front · S · Mode configuration · dépend de : 302, 303 · Issue : —
-- [ ] [DRV-308](tickets/DRV-308-mode-diagnostic.md) front · S · Mode diagnostic · dépend de : 303, 304 · Issue : —
-- [ ] [DRV-309](tickets/DRV-309-faux-site-leclerc-e2e.md) front · L · Faux site Leclerc et tests e2e de l'agent · dépend de : 303 · Issue : —
-- [ ] [DRV-310](tickets/DRV-310-publication-favori.md) front · S · Publication du favori · dépend de : 306 · Issue : —
+- [ ] [DRV-301](tickets/DRV-301-squelette-agent.md) front · M · Squelette de l'agent · dépend de : 005 · Issue : [repas-front#39](https://github.com/kcharignon/repas-front/issues/39)
+- [ ] [DRV-302](tickets/DRV-302-protocole-v1.md) front · M · Protocole v1 · dépend de : 301 · Issue : [repas-front#40](https://github.com/kcharignon/repas-front/issues/40)
+- [ ] [DRV-303](tickets/DRV-303-adaptateur-leclerc.md) front · L · Adaptateur Leclerc · dépend de : 301, 302 · Issue : [repas-front#41](https://github.com/kcharignon/repas-front/issues/41)
+- [ ] [DRV-304](tickets/DRV-304-interface-superposee.md) front · L · Interface superposée · dépend de : 301 · Issue : [repas-front#42](https://github.com/kcharignon/repas-front/issues/42)
+- [ ] [DRV-305](tickets/DRV-305-orchestrateur-phase-a.md) front · M · Orchestrateur, phase A · dépend de : 302, 303, 304 · Issue : [repas-front#43](https://github.com/kcharignon/repas-front/issues/43)
+- [ ] [DRV-306](tickets/DRV-306-choix-guide-phase-b.md) front · L · Choix guidé, phase B · dépend de : 305 · Issue : [repas-front#44](https://github.com/kcharignon/repas-front/issues/44)
+- [ ] [DRV-307](tickets/DRV-307-mode-configuration.md) front · S · Mode configuration · dépend de : 302, 303 · Issue : [repas-front#45](https://github.com/kcharignon/repas-front/issues/45)
+- [ ] [DRV-308](tickets/DRV-308-mode-diagnostic.md) front · S · Mode diagnostic · dépend de : 303, 304 · Issue : [repas-front#46](https://github.com/kcharignon/repas-front/issues/46)
+- [ ] [DRV-309](tickets/DRV-309-faux-site-leclerc-e2e.md) front · L · Faux site Leclerc et tests e2e de l'agent · dépend de : 303 · Issue : [repas-front#47](https://github.com/kcharignon/repas-front/issues/47)
+- [ ] [DRV-310](tickets/DRV-310-publication-favori.md) front · S · Publication du favori · dépend de : 306 · Issue : [repas-front#48](https://github.com/kcharignon/repas-front/issues/48)
 
 ## M4 — Front
 
-- [ ] [DRV-401](tickets/DRV-401-liste-envoyee-ui.md) front · M · Liste envoyée dans l'interface · dépend de : 102, 104 · Issue : —
-- [ ] [DRV-402](tickets/DRV-402-module-drive-bridge.md) front · M · Module `driveBridge` · dépend de : 302 · Issue : —
-- [ ] [DRV-403](tickets/DRV-403-reglages-drive-ui.md) front · L · Réglages du drive · dépend de : 203, 204, 307, 402 · Issue : —
-- [ ] [DRV-404](tickets/DRV-404-flux-d-envoi.md) front · L · Flux d'envoi · dépend de : 102, 206, 401, 402 · Issue : —
-- [ ] [DRV-405](tickets/DRV-405-retour-et-recapitulatif.md) front · L · Retour et récapitulatif · dépend de : 204, 402 · Issue : —
-- [ ] [DRV-406](tickets/DRV-406-tests-e2e-pixel.md) front · M · Tests e2e Pixel 7, accessibilité, visuel · dépend de : 403, 404, 405 · Issue : —
-- [ ] [DRV-407](tickets/DRV-407-adr-front-et-claude-md.md) front · S · ADR front 0008 et `CLAUDE.md` · dépend de : 404 · Issue : —
-- [ ] [DRV-408](tickets/DRV-408-page-d-aide.md) front · S · Page d'aide · dépend de : 403 · Issue : —
-- [ ] [DRV-409](tickets/DRV-409-admin-unites-dimension.md) front · S · Administration des unités : dimension · dépend de : 105 · Issue : —
-- [ ] [DRV-410](tickets/DRV-410-priorites-produits-ui.md) front · M · Écran « Mes produits » : priorités et produits refusés · dépend de : 208, 403 · Issue : —
+- [ ] [DRV-401](tickets/DRV-401-liste-envoyee-ui.md) front · M · Liste envoyée dans l'interface · dépend de : 102, 104 · Issue : [repas-front#49](https://github.com/kcharignon/repas-front/issues/49)
+- [ ] [DRV-402](tickets/DRV-402-module-drive-bridge.md) front · M · Module `driveBridge` · dépend de : 302 · Issue : [repas-front#50](https://github.com/kcharignon/repas-front/issues/50)
+- [ ] [DRV-403](tickets/DRV-403-reglages-drive-ui.md) front · L · Réglages du drive · dépend de : 203, 204, 307, 402 · Issue : [repas-front#51](https://github.com/kcharignon/repas-front/issues/51)
+- [ ] [DRV-404](tickets/DRV-404-flux-d-envoi.md) front · L · Flux d'envoi · dépend de : 102, 206, 401, 402 · Issue : [repas-front#52](https://github.com/kcharignon/repas-front/issues/52)
+- [ ] [DRV-405](tickets/DRV-405-retour-et-recapitulatif.md) front · L · Retour et récapitulatif · dépend de : 204, 402 · Issue : [repas-front#53](https://github.com/kcharignon/repas-front/issues/53)
+- [ ] [DRV-406](tickets/DRV-406-tests-e2e-pixel.md) front · M · Tests e2e Pixel 7, accessibilité, visuel · dépend de : 403, 404, 405 · Issue : [repas-front#54](https://github.com/kcharignon/repas-front/issues/54)
+- [ ] [DRV-407](tickets/DRV-407-adr-front-et-claude-md.md) front · S · ADR front 0008 et `CLAUDE.md` · dépend de : 404 · Issue : [repas-front#55](https://github.com/kcharignon/repas-front/issues/55)
+- [ ] [DRV-408](tickets/DRV-408-page-d-aide.md) front · S · Page d'aide · dépend de : 403 · Issue : [repas-front#56](https://github.com/kcharignon/repas-front/issues/56)
+- [ ] [DRV-409](tickets/DRV-409-admin-unites-dimension.md) front · S · Administration des unités : dimension · dépend de : 105 · Issue : [repas-front#57](https://github.com/kcharignon/repas-front/issues/57)
+- [ ] [DRV-410](tickets/DRV-410-priorites-produits-ui.md) front · M · Écran « Mes produits » : priorités et produits refusés · dépend de : 208, 403 · Issue : [repas-front#58](https://github.com/kcharignon/repas-front/issues/58)
 
 ## M5 — Intégration et livraison
 
-- [ ] [DRV-501](tickets/DRV-501-integration-dev.md) back+front · M · Intégration en développement et checklist de recette · dépend de : M2, M3, M4 · Issue : —
-- [ ] [DRV-502](tickets/DRV-502-deploiement.md) back · S · Déploiement, interrupteur, retour arrière · dépend de : 501 · Issue : —
-- [ ] [DRV-503](tickets/DRV-503-runbook-leclerc-change.md) back · S · Runbook « Leclerc a changé » · dépend de : 501 · Issue : —
-- [ ] [DRV-504](tickets/DRV-504-note-vie-privee.md) back+front · S · Note de vie privée · dépend de : 204 · Issue : —
-- [ ] [DRV-505](tickets/DRV-505-recette-reelle.md) humain · S · Recette en conditions réelles et activation · dépend de : 502, 503 · Issue : —
+- [ ] [DRV-501](tickets/DRV-501-integration-dev.md) back+front · M · Intégration en développement et checklist de recette · dépend de : M2, M3, M4 · Issue : [#83](https://github.com/kcharignon/repas/issues/83)
+- [ ] [DRV-502](tickets/DRV-502-deploiement.md) back · S · Déploiement, interrupteur, retour arrière · dépend de : 501 · Issue : [#84](https://github.com/kcharignon/repas/issues/84)
+- [ ] [DRV-503](tickets/DRV-503-runbook-leclerc-change.md) back · S · Runbook « Leclerc a changé » · dépend de : 501 · Issue : [#85](https://github.com/kcharignon/repas/issues/85)
+- [ ] [DRV-504](tickets/DRV-504-note-vie-privee.md) back+front · S · Note de vie privée · dépend de : 204 · Issue : [#86](https://github.com/kcharignon/repas/issues/86)
+- [ ] [DRV-505](tickets/DRV-505-recette-reelle.md) humain · S · Recette en conditions réelles et activation · dépend de : 502, 503 · Issue : [#87](https://github.com/kcharignon/repas/issues/87)
 
 ## Backlog (non détaillé, à écrire quand il devient utile)
 
