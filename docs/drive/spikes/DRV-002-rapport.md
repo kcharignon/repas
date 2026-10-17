@@ -17,7 +17,7 @@ Gabarit à remplir après l'exécution du banc d'essai (DRV-001) sur le téléph
 | 2 | Le favori affiche-t-il son menu de test ? | oui (ordinateur) | Banc 1.0.0, menu affiché. |
 | 3 | La sonde d'environnement voit-elle le magasin courant et l'hôte ? | oui | Hôte reconnu, magasin lu dans l'adresse, `sNoPointLivraison` trouvé dans la page (même valeur). Contexte sécurisé : oui. Wake Lock disponible : oui. Page dans un cadre : non. Aucune politique de sécurité dans une balise `<meta>`. Le cookie `datadome` est lisible par un script de la page (non protégé en lecture). |
 | 4 | Une recherche même origine répond-elle 200 avec des produits analysables (combien) ? | oui | `recherche.aspx?TexteRecherche=farine` : HTTP 200, `text/html`, environ 220 000 caractères, 536 ms, 25 produits reconnus avec identifiant, libellés (2 lignes), prix, prix par unité de mesure, stock, quantité déjà au panier. **Pas d'EAN dans les données.** Autres mots : 55 à 209 produits, pages de 0,36 à 1,0 million de caractères, 0,7 à 0,9 s. |
-| 5 | Ajouter un produit au panier (puis le retirer) fonctionne-t-il ? Code HTTP ? | **non** | `POST …/panier.aspx?op=1` (champ `d`, action 1, produit 1955, quantité 1, sans objet d'analytique) : **HTTP 404**, `text/html`, 7 095 caractères, 215 ms. Réponse : page d'erreur de Leclerc « Désolé, ce service est momentanément indisponible. Retour à la page d'accueil ». Ce n'est **pas** un 403 d'anti-bot. Le produit n'est pas dans le panier (vérifié sur l'ordinateur et sur le téléphone). Le banc a affiché « blocage probable » à tort : il traite 404 comme un blocage. Cause : le site envoie un en-tête `zcwb: ajax-manager` et part d'une adresse de panier sans suffixe de ville, que le banc n'avait pas ; rejouée depuis la console, la vraie requête répond **200** (voir [DRV-007](DRV-007-requete-ajout-panier.md)). **À confirmer : banc corrigé (DRV-008 suite)** (la requête du site elle-même, même route et mêmes en-têtes, répond 200). |
+| 5 | Ajouter un produit au panier (puis le retirer) fonctionne-t-il ? Code HTTP ? | **oui (ordinateur)** | Après correction du banc (DRV-008) : ajout `POST …/panier.aspx?op=1` **HTTP 200**, JSON de 4 évènements en 127 ms, quantité obtenue lue dans la réponse (`iQtePanier` 1, stock 520, total du panier mis à jour), puis retrait HTTP 200 (produit absent de `lstProduitsLight`, panier revenu à son état). Le 404 d'avant venait de l'en-tête `zcwb: ajax-manager` et de l'adresse du panier avec suffixe de ville (voir [DRV-007](DRV-007-requete-ajout-panier.md)). À refaire sur téléphone. |
 | 6 | Un blocage (403) apparaît-il ? Après combien de requêtes ? | non (ordinateur) | Aucun 403 ni 429 sur environ 40 requêtes en série (5 en cadence 800 ms + gigue, puis un lot de 30). Réponses 200 en 0,7 à 0,9 s. Le 404 de la ligne 5 n'est pas un blocage. À refaire sur téléphone. |
 | 7 | Un `iframe` vers la page de recherche du même hôte s'affiche-t-il ? | **non** | Le cadre déclenche `load` mais son contenu est inaccessible ; la page du cadre affiche « fd7-courses.leclercdrive.fr n'autorise pas la connexion » (refus par `X-Frame-Options` ou `frame-ancestors`). **P1 impossible.** |
 | 8 | L'agent repère-t-il le produit que l'utilisateur ajoute dans le cadre ? | non testé | Sans objet : le cadre est refusé. |
@@ -35,7 +35,7 @@ Gabarit à remplir après l'exécution du banc d'essai (DRV-001) sur le téléph
 
 ## Constats (première passe, ordinateur)
 
-1. **La lecture marche, l'écriture non.** Recherche, analyse des produits, prix, stock, contenu net : très bon. L'ajout au panier tel que décrit par la source tierce (`recherche.md`) répond 404. Tant que ce n'est pas résolu, l'agent ne peut pas remplir le panier : c'est le point bloquant de la décision G1.
+1. **La lecture et l'écriture marchent** (ordinateur). Recherche, analyse des produits, prix, stock, contenu net, ajout et retrait au panier avec confirmation de la quantité par la réponse. Le banc corrigé reproduit exactement la requête du site (en-tête `zcwb`, adresse du panier sans ville, contexte de recherche à l'ajout, identifiant en texte). Reste à voir si cela tient sur téléphone (DataDome, DRV-002 lignes 1, 2, 6, 9 à 13).
 2. **DataDome n'a rien bloqué** en lecture sur ordinateur (environ 40 requêtes en série). Le téléphone reste à tester.
 3. **Cadre natif refusé** (P1 impossible). Le choix du produit se fera dans une liste de résultats affichée par l'agent (P2) : le produit choisi est connu directement, sans avoir à le repérer dans un cadre.
 4. **Pas d'EAN** dans la recherche : la clé d'un produit reste l'identifiant Leclerc, propre au magasin tant que la ligne 15 n'est pas testée.
@@ -45,7 +45,7 @@ Gabarit à remplir après l'exécution du banc d'essai (DRV-001) sur le téléph
 
 ## Reste à faire sur ce rapport
 
-- **DRV-007** : relever la vraie requête d'ajout au panier (outils de développement) pour comprendre le 404.
+- Essai 3b (sens des quantités) et essai 10 (contenu net structuré) à faire sur ordinateur.
 - Tester les fragments courts vers Leclerc (ligne 9, décision D21).
 - Refaire les essais 1, 2, 6, 9, 10, 12 sur le téléphone, dès qu'un favori s'installe (DRV-006).
 - Deuxième magasin (ligne 15) ; EAN sur la fiche produit (ligne 16) ; adresse de la page panier (ligne 14).
