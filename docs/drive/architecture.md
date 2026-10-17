@@ -329,3 +329,7 @@ Les schémas JSON font foi (`drive-agent/protocol/`, ticket DRV-302). Exemples e
 ### Ajout du 2026-10-18 : champ `needed` d'une ligne du plan
 
 Une ligne du message `plan` peut porter `needed : {quantity, unitSymbol, dimension?, baseFactor?}` (la quantité demandée par la liste, avec la dimension et le facteur de base de l'unité). Sans lui, l'agent ne peut pas calculer le nombre de produits en phase B et demande la quantité. Le back le fournit dans le plan (DRV-206, le `PackCalculator` les connaît) et le front le recopie (DRV-404). Les schémas JSON de `drive-agent/protocol/` font foi. Une ligne `ADDED` du résultat peut aussi porter `price` (D22).
+
+### Ajout du 2026-10-18 : commande de l'application vers l'agent
+
+Message de l'application vers l'agent : `{"v":1,"type":"command","command":"diagnostic"}` (clés `v`, `type`, `command` seulement ; schéma `drive-agent/protocol/command.schema.json` du front). Il déclenche le diagnostic de l'agent ; ignoré pendant un passage. Le message `{"v":1,"type":"hello"}` envoyé par le script d'injection à l'application est propre au transport du pont (il ne fait pas partie du protocole) : l'application l'avale et s'en sert pour répondre à la page.

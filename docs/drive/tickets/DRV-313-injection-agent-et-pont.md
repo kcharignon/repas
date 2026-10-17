@@ -4,7 +4,7 @@
 - **Jalon** : M3b Application Android
 - **Taille** : L
 - **Dépend de** : DRV-312, DRV-301, DRV-302
-- **Statut** : à faire
+- **Statut** : fait (PR [repas-front#85](https://github.com/kcharignon/repas-front/pull/85), 2026-10-18)
 - **Lire d'abord** : [`../pivot-application-android.md`](../pivot-application-android.md), [`../spikes/DRV-005-decision-g1.md`](../spikes/DRV-005-decision-g1.md), [`../spikes/DRV-011-rapport.md`](../spikes/DRV-011-rapport.md), `drive-agent/android-lab/` (le spike, `PROCEDURE.md` compris), `CLAUDE.md` du front, [`../architecture.md`](../architecture.md) § 8 (protocole), DRV-301, DRV-302, DRV-304, DRV-305
 
 ## Contexte
@@ -50,3 +50,9 @@ Celle du dépôt front ; PR concise ; fusion si CI verte.
 ## Point laissé par DRV-302 (2026-10-17)
 
 Le pont attendu par `bridgeTransport` (`drive-agent/src/transport/bridge.ts`) est un objet avec `postMessage(texte)` et `addEventListener('message', …)`, JSON en texte (64 Ko au plus). L'application doit donc exposer à l'agent ce pont côté page (message listener Web) et relayer vers/depuis le canal natif.
+
+## Réalisation (2026-10-18, PR repas-front#85)
+
+`agent.js` est un actif de l'APK ; `android/agent.js.sha384` contient l'empreinte attendue (construction en échec si elle diffère ; revérifiée au démarrage ; test de cohérence avec `manifest.json`). **Cliquet** : toute modification de `drive-agent/src`, du protocole, des scripts de construction ou de `package-lock.json` oblige à lancer `make android-agent-hash` et à commiter `agent.js.sha384`. Injection par `addDocumentStartJavaScript` (repli `evaluateJavascript` après `onPageFinished`), canal `addWebMessageListener` (`repasHost`), origines `https://*.leclercdrive.fr` seulement, pas de `addJavascriptInterface`, 64 Ko au plus dans les deux sens. `android/app/src/main/assets/injection.js` installe un objet gelé de la forme attendue par `bridgeTransport`, met en file les messages arrivés avant l'agent, annonce la page par `{"v":1,"type":"hello"}` (message propre au transport du pont, hors protocole, avalé par l'application, qui obtient ainsi le canal de réponse). Commande ajoutée au protocole : `{"v":1,"type":"command","command":"diagnostic"}` (`drive-agent/protocol/command.ts`, `command.schema.json`), ignorée pendant un passage. Menu « Diagnostic de l'agent » et, en débogage seulement, « Plan d'essai (débogage) » (`setup`, puis plan synthétique de quatre ingrédients ; résultat copiable avec numéro de magasin réduit aux trois derniers chiffres). Pré-version de débogage : `android-dev-2026-10-18` (`repas-drive-debug.apk`, signée avec la clé de débogage publique, empreinte SHA-256 vérifiée), mode d'emploi `android/PROCEDURE.md`.
+
+**Non vérifié sans appareil** : ordre réel entre `repasHost` et le script de départ de page ; acheminement du canal de réponse après `hello` ; connexion et session conservée ; cookies tiers de l'anti-robot ; que le mode ordinateur donne bien le site `fd…`.

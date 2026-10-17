@@ -4,7 +4,7 @@
 - **Jalon** : M3b Application Android
 - **Taille** : M
 - **Dépend de** : DRV-311
-- **Statut** : à faire
+- **Statut** : fait (PR [repas-front#84](https://github.com/kcharignon/repas-front/pull/84), 2026-10-18)
 - **Lire d'abord** : [`../pivot-application-android.md`](../pivot-application-android.md), [`../spikes/DRV-005-decision-g1.md`](../spikes/DRV-005-decision-g1.md), [`../spikes/DRV-011-rapport.md`](../spikes/DRV-011-rapport.md), `drive-agent/android-lab/` (le spike, `PROCEDURE.md` compris), `CLAUDE.md` du front
 
 ## Contexte
@@ -52,3 +52,7 @@ Celle du dépôt front ; PR concise ; fusion si CI verte.
 ## Précision (2026-10-18, DRV-308)
 
 Le menu de l'application propose « Diagnostic de l'agent » : il déclenche le diagnostic par un message de commande sur le pont (DRV-313), pas par un fragment d'adresse.
+
+## Réalisation (2026-10-18, PR repas-front#84)
+
+Hôte WebView plein écran en mode ordinateur (agent utilisateur et indications client cohérents, repli sans indications client), navigation limitée à `*.leclercdrive.fr`, cookies conservés, retour par `OnBackInvokedCallback` (nécessaire en `targetSdk` 36), marges tenant compte des barres, de l'encoche et du clavier, erreurs en français avec « Réessayer », menu. L'écran reste allumé dès que l'application est au premier plan (DRV-314 pourra le restreindre à un passage). Rien n'a été essayé sur appareil.
