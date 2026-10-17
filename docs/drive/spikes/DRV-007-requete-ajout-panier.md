@@ -22,7 +22,7 @@ Relevé du 2026-10-17 (ordinateur, Chrome 155, hôte `fd7`, produit « Farine de
 | Code HTTP | 200 | 200 |
 | `Content-Type` de la requête | `application/x-www-form-urlencoded; charset=UTF-8` | identique |
 | `Content-Length` du corps | **317** octets | **124** octets |
-| En-têtes propres au site | `X-Requested-With: XMLHttpRequest`, `Origin` (même hôte), `Sec-Fetch-Site: same-origin`, `Accept: */*`. Aucun en-tête personnalisé `X-…` autre que celui-là. | identique |
+| En-têtes propres au site | **`zcwb: ajax-manager`** (relevé ensuite par 'Copier en tant que fetch', absent de la première copie des en-têtes), `X-Requested-With: XMLHttpRequest`, `Origin` (même hôte), `Sec-Fetch-Site: same-origin`, `Accept: */*`. Seul en-tête personnalisé : `zcwb`. | identique |
 | `Referer` (chemin seulement) | `/magasin-[masqué]/recherche.aspx?TexteRecherche=farine` | identique |
 | Corps : champ(s) de formulaire | `d` (JSON, un seul champ) | `d` |
 | Corps : contenu du champ `d` décodé | `{"eTypeAction":1,"iIdProduit":"1955","iQuantite":1,"sNoPointLivraison":"[masqué]","objContexteProvenanceArticle":{"eOrigine":4,"eTypePage":3,"sTexteRecherche":"farine","eVue":0,"sInformationsComplementaires":"uni-2"}}` | `{"eTypeAction":2,"iIdProduit":"1955","iQuantite":0,"sNoPointLivraison":"[masqué]"}` |
@@ -42,3 +42,15 @@ Relevé du 2026-10-17 (ordinateur, Chrome 155, hôte `fd7`, produit « Farine de
 - Différence trouvée entre la requête du banc et celle du site : identifiant en texte et objet de contexte à l'ajout (voir ci-dessus).
 - L'ajout par script est possible avec la requête relevée : **à tester** (DRV-008). Le site fait la même requête, même méthode et mêmes en-têtes, sans jeton visible dans les en-têtes.
 - Présence d'un jeton de page ou d'un en-tête à reproduire (nom seulement) : aucun relevé dans les en-têtes de requête (hors cookies, non copiés).
+
+## Complément (2026-10-17, soir) : la cause du 404
+
+La requête rejouée dans la console avec « Copier en tant que fetch » répond **200** (la farine est revenue dans le panier). Elle diffère de celle du banc par deux points :
+
+1. **`zcwb: ajax-manager`** : en-tête personnalisé envoyé par le site, que le banc ne posait pas (il n'apparaissait pas dans la première copie des en-têtes ; `Access-Control-Allow-Headers` le cite).
+2. **Adresse du panier sans suffixe de ville** : les pages du magasin ont une adresse `/magasin-<id>-<id>-<Ville>/…` ; la requête du panier part de `/magasin-<id>-<id>/panier.aspx?op=1`. Le banc reprenait le segment complet de la page, ville comprise.
+
+Le corps (`d=…`, 317 octets pour l'ajout) était déjà identique, `credentials` et `referrer` n'ont pas d'importance a priori (le site met le `referrer` de la page de recherche). Correction demandée dans le banc : voir DRV-008 (suite). Le contenu complet de la requête réelle est dans [`../recherche.md`](../recherche.md).
+
+- Ajout par script depuis la page : **possible** (200 en rejouant la requête du site depuis la console).
+- Reste à confirmer avec le banc corrigé que les deux écarts expliquent bien le 404.
