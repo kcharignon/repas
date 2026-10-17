@@ -4,7 +4,7 @@
 - **Jalon** : M0 Découverte
 - **Taille** : M
 - **Dépend de** : DRV-009 (fait) ; accord de l'utilisateur pour installer un APK de test
-- **Statut** : à faire
+- **Statut** : construit et publié (PR [repas-front#67](https://github.com/kcharignon/repas-front/pull/67), 2026-10-17), essais sur téléphone à faire par l'utilisateur : [rapport](../spikes/DRV-011-rapport.md)
 - **Lire d'abord** : [`../pivot-application-android.md`](../pivot-application-android.md), [`../spikes/DRV-006-installation-favori.md`](../spikes/DRV-006-installation-favori.md) (suite), [`../spikes/DRV-007-requete-ajout-panier.md`](../spikes/DRV-007-requete-ajout-panier.md), `drive-agent/lab/` (le banc d'essai, `published/lab.js`), `CLAUDE.md` du front.
 
 ## Contexte
