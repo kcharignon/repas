@@ -49,3 +49,7 @@ Celle du front : `make check` vert, couverture non abaissée, PR avec le gabarit
 
 - Le front n'a pas Node sur l'hôte de l'utilisateur : tout passe par Docker (`make up`, `make check`).
 - Ne pas committer `dist/`.
+
+## Mise à jour G1 (2026-10-17)
+
+Le véhicule de l'agent est l'**application Android** ([`../pivot-application-android.md`](../pivot-application-android.md), DRV-313), plus un favori Chrome. La construction produit donc : `dist/agent.js` (un seul fichier, version et empreinte SHA-384) embarqué dans l'APK par DRV-313. Le générateur de favori et la limite de 60 Ko ne sont plus une exigence ; un favori de bureau pour PC (Chrome de bureau accepte de gros favoris) reste **facultatif**, jamais sur le chemin critique.

@@ -4,7 +4,7 @@
 - **Jalon** : M0 Découverte
 - **Taille** : S
 - **Dépend de** : —
-- **Statut** : à faire
+- **Statut** : fait pour l'accueil et la recherche (2026-10-17) ; page panier à relever à l'intégration
 - **Lire d'abord** : [`../spikes/DRV-004-entetes.md`](../spikes/DRV-004-entetes.md)
 
 ## Contexte

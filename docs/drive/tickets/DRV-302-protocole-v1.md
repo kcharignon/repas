@@ -47,3 +47,7 @@ Celle du front ; `architecture.md` § 8 mis à jour si le format évolue (le sch
 - Ne jamais interpréter un champ du message comme HTML ni comme URL de navigation.
 
 - **Prix (décision D22)** : le `product` d'une ligne du message de résultat peut porter `price` : `{cents: entier ≥ 0, perMeasure?: {cents: entier ≥ 0, unit: 'kg'|'l'|'piece'}}` (borné, facultatif). Voir `architecture.md`.
+
+## Mise à jour G1 (2026-10-17)
+
+Le transport est **interchangeable** : le protocole v1 (messages `plan`, `setup`, `result`, validation, bornes) reste identique, mais l'agent reçoit le plan et renvoie le résultat par un **pont de l'application Android** (DRV-313) au lieu du fragment d'adresse. Prévoir dans le module de l'agent une interface de transport avec deux implémentations (fragment d'adresse pour le favori de bureau et les tests, pont pour l'application). Côté Repas, le plan part dans un lien `repasdrive://open?plan=<base64url>` (DRV-314, DRV-402) ; le retour reste `https://kantin.eu/drive/retour#result=<base64url>`.

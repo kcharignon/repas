@@ -8,7 +8,7 @@ Sur Android, une fois la liste de courses prête, l'utilisateur touche « Envoye
 
 ## Où en est-on
 
-**Mise à jour du 2026-10-17 (soir)** : Chrome Android ne lance pas les favoris JavaScript sur le téléphone de l'utilisateur ; il a choisi une **application Android** à la place du favori (lire [`pivot-application-android.md`](pivot-application-android.md)). Dans ce dossier, « favori » désigne désormais le moyen prévu au départ ; le moyen retenu est l'application, à confirmer par le spike [DRV-011](tickets/DRV-011-spike-application-android.md). L'agent, le protocole et le back ne changent pas.
+**Décision G1 du 2026-10-17 : GO.** Le moyen d'exécuter l'agent est une **application Android** (WebView en mode ordinateur, agent embarqué), car Chrome Android refuse les favoris JavaScript. Lire [`spikes/DRV-005-decision-g1.md`](spikes/DRV-005-decision-g1.md) (preuves et décisions) et [`pivot-application-android.md`](pivot-application-android.md). Les tickets M1 à M5 peuvent démarrer selon leurs dépendances ; M3b regroupe l'application.
 
 Voir [`roadmap.md`](roadmap.md) (cases à cocher). Rien de produit n'est codé avant la décision **G1** (DRV-005), qui dépend de trois découvertes : le banc d'essai sur le téléphone (DRV-001, DRV-002), les CGU de Leclerc (DRV-003) et ses en-têtes de sécurité (DRV-004).
 

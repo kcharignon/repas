@@ -40,3 +40,7 @@ Celle du front.
 
 - Un fragment très long peut être tronqué par certains navigateurs : le plan est limité à 100 lignes et la taille vérifiée (< 16 Ko).
 - Ne jamais afficher ni journaliser le message complet.
+
+## Mise à jour G1 (2026-10-17)
+
+`driveBridge` n'ouvre plus Leclerc dans Chrome : il **lance l'application Android** avec le plan par un lien `repasdrive://open?plan=<base64url>` (lien d'intention `intent://` avec le nom du paquet `eu.kantin.repas.drive`, en repli le lien direct) et lit le retour dans `/drive/retour#result=…`. Le brouillon de passage (`runId`, 24 h) et la validation par les schémas partagés restent. Si le lien n'ouvre rien (application absente), proposer la page d'installation (DRV-316) et le mode assisté. À valider sur un vrai téléphone avec la PWA installée (DRV-314, ligne 11 du rapport DRV-002).
