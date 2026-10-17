@@ -4,7 +4,7 @@
 - **Jalon** : M1 Back `Repas`
 - **Taille** : L
 - **Dépend de** : DRV-005 (décision G1 : Go)
-- **Statut** : à faire
+- **Statut** : fait (PR [#128](https://github.com/kcharignon/repas/pull/128), 2026-10-18 ; statut `SENT`, `assertEditable()`, `send` / `reopen`, ADR 0023 acceptée)
 - **Lire d'abord** : [`../architecture.md`](../architecture.md) § 4, [ADR 0023](../../adr/0023-liste-envoyee-au-drive.md), ADR 0002, 0013, 0016 ; skill `.claude/skills/repas-dev/SKILL.md` ; `CLAUDE.md` du back.
 
 ## Contexte
@@ -65,3 +65,13 @@ Celle du skill `repas-dev` § 4 : `make test`, `make quality`, `make openapi` (a
 - `Meal::setServing` est appelé depuis le handler, pas depuis l'agrégat : la garde doit être explicite dans le handler.
 - `UncheckLine...` réactive aujourd'hui une liste `COMPLETED` ; ne pas changer ce comportement pour `COMPLETED`.
 - Les écritures chargent un modèle copie : ne pas enregistrer un modèle chargé avant un événement qui peut modifier la même liste (ADR 0013 règle 7).
+
+## Réalisation (2026-10-18, PR repas#128)
+
+`ShoppingListStatus::SENT`, colonne `shopping_list.sent_at` (migration `Version20261018090000`, nullable), modèle : `send($now)`, `reopen()`, `isSent()`, `getSentAt()`, `assertEditable()` appelée par `addMeal`, `addRow`, `subtractRow`, `addIngredient`, `removeIngredient`, `removeMeal`, `setName`, `pause`, `activated` (`setStatus` reste sans garde : builders et infra). `ShoppingListException` : constantes `SENT`, `NOT_SENDABLE`, `NOT_SENT`, `EMPTY` et factories `sent($id)`, `notSendable($id)`, `notSent($id)`, `empty($id)` (409, 409, 409, 422). Port `ShoppingListRepository::isSent()` (DQL sur l'id et le statut) ; `TickLine…` reçoit `ShoppingListRepository`. Commandes `SendShoppingList` et `ReopenShoppingList` (`?int $expectedVersion`). Précisions :
+
+- `SendShoppingListHandler` ne réenregistre pas une liste déjà `SENT` (retour avant `save` : version inchangée).
+- `ReopenShoppingListHandler` lit l'éventuelle autre liste active **avant** `reopen()`, puis `reopen()` (lève `NOT_SENT` avant tout enregistrement), met l'autre en pause, enregistre la liste rouverte.
+- Budgets `WriteBudget` : `envoyer-liste` 9, `rouvrir-liste` 18 (avec une autre liste active) ; `tick-ligne` 4, `tick-derniere-ligne` 15, `decocher-ligne` 7 (+1 requête `isSent`, voulue par le ticket).
+- Tests : `ShoppingListBuilder::withSentAt()` et `withStatus(SENT)` (le statut est posé en dernier), `ShoppingListInMemoryRepository::isSent()`, `RepasAssert::assertShoppingList` compare `sentAt`.
+- Pour DRV-102 : les erreurs sont des `DomainException` de code HTTP 409/422 que `ApiExceptionListener` rend telles quelles (`{error:{message}}`) ; les DTO de lecture n'ont pas encore `isSent` / `sentAt`.
