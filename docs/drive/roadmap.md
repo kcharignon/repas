@@ -30,7 +30,7 @@ Suivi vivant. Cocher une case quand le ticket est fusionné (et noter la PR). Le
 - [ ] [DRV-102](tickets/DRV-102-api-send-reopen.md) back · M · API `send` / `reopen` et DTO · dépend de : 101, 103 · Issue : [#71](https://github.com/kcharignon/repas/issues/71)
 - [x] [DRV-103](tickets/DRV-103-interrupteur-drive-enabled.md) back · S · Interrupteur `DRIVE_ENABLED` · dépend de : — · Issue : [#72](https://github.com/kcharignon/repas/issues/72)
 - [x] [DRV-104](tickets/DRV-104-lignes-liste-slugs.md) back · S · Lignes de liste : `ingredientSlug` et `unitSlug` · dépend de : — · Issue : [#73](https://github.com/kcharignon/repas/issues/73)
-- [ ] [DRV-105](tickets/DRV-105-unite-dimension.md) back · M · Unités : `dimension` et `baseFactor` · dépend de : — · Issue : [#74](https://github.com/kcharignon/repas/issues/74)
+- [x] [DRV-105](tickets/DRV-105-unite-dimension.md) back · M · Unités : `dimension` et `baseFactor` · dépend de : — · Issue : [#74](https://github.com/kcharignon/repas/issues/74)
 
 ## M2 — Back `Drive` (après G1)
 

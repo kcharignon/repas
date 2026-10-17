@@ -23,7 +23,20 @@ class GetUnitApiControllerTest extends QueryBusWebTestCase
         $query = $this->queryBus->getLastAskedQuery();
         $this->assertInstanceOf(GetUnitQuery::class, $query);
         $this->assertSame('zzz', $query->slug);
-        $this->assertSame(['slug' => 'zzz', 'name' => 'zzz pincée', 'symbol' => 'zz'], $this->jsonBody());
+        $this->assertSame(['slug' => 'zzz', 'name' => 'zzz pincée', 'symbol' => 'zz', 'dimension' => null, 'baseFactor' => null], $this->jsonBody());
+    }
+
+    public function testReturnsTheDimensionAndTheBaseFactorOfAMeasuredUnit(): void
+    {
+        // Given
+        $this->queryBus->willReturn(GetUnitQuery::class, new UnitDTOBuilder()->withSlug('kilo')->withName('kilo')->withSymbol('kg')->withMeasure('WEIGHT', 1000.0)->build());
+
+        // When
+        $this->client->request('GET', '/api/v1/units/kilo', server: $this->bearerFor($this->savedUser()));
+
+        // Then
+        $this->assertSame(200, $this->client->getResponse()->getStatusCode());
+        $this->assertSame(['slug' => 'kilo', 'name' => 'kilo', 'symbol' => 'kg', 'dimension' => 'WEIGHT', 'baseFactor' => 1000], $this->jsonBody());
     }
 
     public function testReturns404ForAnUnknownItem(): void

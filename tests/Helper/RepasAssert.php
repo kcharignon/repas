@@ -27,6 +27,8 @@ class RepasAssert
         Assert::assertEquals($expected->getSlug(), $actual->getSlug(), $message);
         Assert::assertEquals($expected->getName(), $actual->getName(), $message);
         Assert::assertEquals($expected->getSymbol(), $actual->getSymbol(), $message);
+        Assert::assertSame($expected->getDimension(), $actual->getDimension(), $message);
+        Assert::assertSame($expected->getBaseFactor(), $actual->getBaseFactor(), $message);
     }
 
     public static function assertDepartment(Department $expected, mixed $actual): void

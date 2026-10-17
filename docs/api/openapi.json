@@ -726,7 +726,7 @@
                         "description": "Un \u00e9l\u00e9ment de m\u00eame slug existe d\u00e9j\u00e0 (le slug d\u00e9rive du nom)"
                     },
                     "422": {
-                        "description": "Corps de la requ\u00eate invalide"
+                        "description": "Corps de la requ\u00eate invalide (dont une dimension sans facteur de base ou l'inverse, ou un facteur qui n'est pas strictement positif)"
                     }
                 }
             }
@@ -1387,6 +1387,7 @@
                     "Units"
                 ],
                 "summary": "Remplace l'unit\u00e9 (administrateur) ; son slug ne change pas",
+                "description": "Un corps qui ne mentionne ni `dimension` ni `baseFactor` laisse les deux valeurs de l'unit\u00e9 telles quelles ; un corps qui en mentionne un remplace la paire (un champ absent compte comme `null`), et `null`, `null` l'efface.",
                 "operationId": "put_api_update_unit",
                 "parameters": [
                     {
@@ -1419,7 +1420,7 @@
                         "description": "Inconnu"
                     },
                     "422": {
-                        "description": "Corps de la requ\u00eate invalide"
+                        "description": "Corps de la requ\u00eate invalide (dont une dimension sans facteur de base ou l'inverse, ou un facteur qui n'est pas strictement positif)"
                     }
                 }
             }
@@ -2439,6 +2440,15 @@
                 },
                 "type": "object"
             },
+            "Dimension": {
+                "type": "string",
+                "enum": [
+                    "WEIGHT",
+                    "VOLUME",
+                    "COUNT",
+                    "PACKAGE"
+                ]
+            },
             "UnitPayload": {
                 "required": [
                     "name",
@@ -2456,6 +2466,27 @@
                         "type": "string",
                         "maxLength": 50,
                         "example": "pin"
+                    },
+                    "dimension": {
+                        "description": "Ce que l'unit\u00e9 mesure : `WEIGHT` (poids), `VOLUME`, `COUNT` (pi\u00e8ces) ou `PACKAGE` (conditionnement). `null` : dimension inconnue (cuill\u00e8re, tranche\u2026). Va avec `baseFactor`.",
+                        "default": null,
+                        "example": "WEIGHT",
+                        "nullable": true,
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/Dimension"
+                            }
+                        ]
+                    },
+                    "baseFactor": {
+                        "description": "Combien d'unit\u00e9s de base (g, ml, pi\u00e8ce) vaut une unit\u00e9, strictement positif : 1000 pour le kilo. Va avec `dimension` ; sans importance pour `PACKAGE` (1).",
+                        "type": "number",
+                        "format": "float",
+                        "default": null,
+                        "minimum": 0,
+                        "exclusiveMinimum": true,
+                        "example": 1000,
+                        "nullable": true
                     }
                 },
                 "type": "object"
@@ -2858,6 +2889,25 @@
                         "description": "Symbole affich\u00e9 \u00e0 c\u00f4t\u00e9 d'une quantit\u00e9 (peut \u00eatre vide)",
                         "type": "string",
                         "example": "g"
+                    },
+                    "dimension": {
+                        "description": "Ce que l'unit\u00e9 mesure : poids, volume, pi\u00e8ces ou conditionnement ; null si inconnu (cuill\u00e8re, tranche\u2026)",
+                        "type": "string",
+                        "enum": [
+                            "WEIGHT",
+                            "VOLUME",
+                            "COUNT",
+                            "PACKAGE"
+                        ],
+                        "example": "WEIGHT",
+                        "nullable": true
+                    },
+                    "baseFactor": {
+                        "description": "Combien d'unit\u00e9s de base (g, ml, pi\u00e8ce) vaut l'unit\u00e9, null si la dimension est inconnue",
+                        "type": "number",
+                        "format": "float",
+                        "example": 1000,
+                        "nullable": true
                     }
                 },
                 "type": "object"

@@ -141,6 +141,76 @@ class ReferenceDataWriteApiFlowTest extends DatabaseTestCase
         $this->assertSame('gramme', $this->jsonBody()['name']);
     }
 
+    public function testAUnitKeepsItsMeasureUnlessTheBodyMentionsIt(): void
+    {
+        // Given : une unité créée avec sa mesure, relue par l'API
+        $admin = $this->savedUser(admin: true);
+        $this->request('POST', '/api/v1/units', $admin, ['name' => 'Kilo bis', 'symbol' => 'kg', 'dimension' => 'WEIGHT', 'baseFactor' => 1000]);
+        $this->assertSame(201, $this->client->getResponse()->getStatusCode());
+        $this->request('GET', '/api/v1/units/kilo-bis', $admin);
+        $this->assertSame(['WEIGHT', 1000], [$this->jsonBody()['dimension'], $this->jsonBody()['baseFactor']]);
+
+        // When : un remplacement qui ne mentionne ni dimension ni facteur
+        $this->request('PUT', '/api/v1/units/kilo-bis', $admin, ['name' => 'Kilo ter', 'symbol' => 'kgs']);
+
+        // Then : la mesure est conservée
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->request('GET', '/api/v1/units/kilo-bis', $admin);
+        $this->assertSame(['Kilo ter', 'WEIGHT', 1000], [$this->jsonBody()['name'], $this->jsonBody()['dimension'], $this->jsonBody()['baseFactor']]);
+
+        // When : un remplacement qui la change
+        $this->request('PUT', '/api/v1/units/kilo-bis', $admin, ['name' => 'Kilo ter', 'symbol' => 'kgs', 'dimension' => 'PACKAGE', 'baseFactor' => 1]);
+
+        // Then
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->request('GET', '/api/v1/units/kilo-bis', $admin);
+        $this->assertSame(['PACKAGE', 1], [$this->jsonBody()['dimension'], $this->jsonBody()['baseFactor']]);
+
+        // When : un remplacement qui l'efface explicitement
+        $this->request('PUT', '/api/v1/units/kilo-bis', $admin, ['name' => 'Kilo ter', 'symbol' => 'kgs', 'dimension' => null, 'baseFactor' => null]);
+
+        // Then
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->request('GET', '/api/v1/units/kilo-bis', $admin);
+        $this->assertSame([null, null], [$this->jsonBody()['dimension'], $this->jsonBody()['baseFactor']]);
+    }
+
+    /**
+     * @param array<string, mixed> $measure
+     */
+    #[DataProvider('inconsistentMeasures')]
+    public function testAnInconsistentMeasureIsRefusedWith422AndChangesNothing(array $measure): void
+    {
+        // Given
+        $admin = $this->savedUser(admin: true);
+        $this->persister->saveUnit(new UnitBuilder()->isGramme()->build());
+
+        // When : création, puis modification, avec une mesure incohérente
+        $this->request('POST', '/api/v1/units', $admin, ['name' => 'Pincée', 'symbol' => 'pin'] + $measure);
+        $created = $this->client->getResponse()->getStatusCode();
+        $this->request('PUT', '/api/v1/units/gramme', $admin, ['name' => 'Autre', 'symbol' => 'a'] + $measure);
+
+        // Then
+        $this->assertSame(422, $created);
+        $this->assertSame(422, $this->client->getResponse()->getStatusCode());
+        $this->assertArrayHasKey('error', $this->jsonBody());
+        $this->request('GET', '/api/v1/units/pincee', $admin);
+        $this->assertSame(404, $this->client->getResponse()->getStatusCode());
+        $this->request('GET', '/api/v1/units/gramme', $admin);
+        $this->assertSame(['gramme', 'WEIGHT', 1], [$this->jsonBody()['name'], $this->jsonBody()['dimension'], $this->jsonBody()['baseFactor']]);
+    }
+
+    /**
+     * @return iterable<string, array{array<string, mixed>}>
+     */
+    public static function inconsistentMeasures(): iterable
+    {
+        yield 'dimension sans facteur' => [['dimension' => 'VOLUME']];
+        yield 'dimension et facteur nul' => [['dimension' => 'VOLUME', 'baseFactor' => null]];
+        yield 'facteur sans dimension' => [['baseFactor' => 10]];
+        yield 'facteur et dimension nulle' => [['dimension' => null, 'baseFactor' => 10]];
+    }
+
     private function slugOf(string $name): string
     {
         return StringTool::slugify($name);

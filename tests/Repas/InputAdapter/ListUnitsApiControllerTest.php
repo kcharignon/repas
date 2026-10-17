@@ -13,7 +13,7 @@ class ListUnitsApiControllerTest extends QueryBusWebTestCase
     {
         // Given
         $this->queryBus->willReturn(ListUnitsQuery::class, [
-            new UnitDTOBuilder()->withSlug('gramme')->withName('gramme')->withSymbol('g')->build(),
+            new UnitDTOBuilder()->withSlug('gramme')->withName('gramme')->withSymbol('g')->withMeasure('WEIGHT', 1.0)->build(),
             new UnitDTOBuilder()->withSlug('unite')->withName('unité')->withSymbol('')->build(),
         ]);
 
@@ -25,8 +25,8 @@ class ListUnitsApiControllerTest extends QueryBusWebTestCase
         $this->assertInstanceOf(ListUnitsQuery::class, $this->queryBus->getLastAskedQuery());
         $this->assertSame([
             'member' => [
-                ['slug' => 'gramme', 'name' => 'gramme', 'symbol' => 'g'],
-                ['slug' => 'unite', 'name' => 'unité', 'symbol' => ''],
+                ['slug' => 'gramme', 'name' => 'gramme', 'symbol' => 'g', 'dimension' => 'WEIGHT', 'baseFactor' => 1],
+                ['slug' => 'unite', 'name' => 'unité', 'symbol' => '', 'dimension' => null, 'baseFactor' => null],
             ],
             'totalItems' => 2,
         ], $this->jsonBody());

@@ -18,14 +18,14 @@ final readonly class UnitPostgreSQLLoader implements UnitLoader
     public function list(): array
     {
         $rows = $this->entityManager->createQueryBuilder()
-            ->select('u.slug AS slug', 'u.name AS name', 'u.symbol AS symbol')
+            ->select('u.slug AS slug', 'u.name AS name', 'u.symbol AS symbol', 'u.dimension AS dimension', 'u.baseFactor AS baseFactor')
             ->from(Unit::class, 'u')
             ->orderBy('u.slug', 'ASC')
             ->getQuery()
             ->getArrayResult();
 
         return array_map(
-            static fn (array $row): UnitDTO => new UnitDTO($row['slug'], $row['name'], $row['symbol']),
+            static fn (array $row): UnitDTO => new UnitDTO($row['slug'], $row['name'], $row['symbol'], $row['dimension']?->value, $row['baseFactor']),
             $rows,
         );
     }
@@ -33,7 +33,7 @@ final readonly class UnitPostgreSQLLoader implements UnitLoader
     public function get(string $slug): UnitDTO
     {
         $row = $this->entityManager->createQueryBuilder()
-            ->select('u.slug AS slug', 'u.name AS name', 'u.symbol AS symbol')
+            ->select('u.slug AS slug', 'u.name AS name', 'u.symbol AS symbol', 'u.dimension AS dimension', 'u.baseFactor AS baseFactor')
             ->from(Unit::class, 'u')
             ->where('u.slug = :slug')
             ->setParameter('slug', $slug)
@@ -44,6 +44,6 @@ final readonly class UnitPostgreSQLLoader implements UnitLoader
             throw UnitException::notFound($slug);
         }
 
-        return new UnitDTO($row['slug'], $row['name'], $row['symbol']);
+        return new UnitDTO($row['slug'], $row['name'], $row['symbol'], $row['dimension']?->value, $row['baseFactor']);
     }
 }

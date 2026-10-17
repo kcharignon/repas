@@ -176,7 +176,7 @@ Conventions : ADR 0007 (JWT, `{member,totalItems}` pour une liste, `204` ou `201
 | `POST /shopping-lists/{id}/reopen` | Repas | `204` ; `404 DRIVE_DISABLED` ; `409 SHOPPING_LIST_NOT_SENT` ; `412` |
 | écritures existantes sur une liste `SENT` | Repas | `409 SHOPPING_LIST_SENT` |
 | lectures de liste (modifiées) | Repas | `status` peut valoir `SENT` ; `isSent`, `sentAt` ; lignes avec `ingredientSlug` et `unitSlug` |
-| `POST /units`, `PUT /units/{slug}` (modifiés) | Repas | corps avec `dimension` (nullable) et `baseFactor` (nullable) |
+| `POST /units`, `PUT /units/{slug}` (modifiés) | Repas | corps avec `dimension` (nullable) et `baseFactor` (nullable), ensemble ou pas du tout (`422` sinon, ou si le facteur n'est pas > 0) ; au `PUT`, un corps qui ne mentionne ni l'un ni l'autre garde les valeurs de l'unité, un corps qui en mentionne un remplace la paire (absent = `null`), `null`/`null` l'efface ; `GET /units` et `GET /units/{slug}` renvoient les deux champs |
 | `GET /drive/settings` | Drive | `{enabled, retailer, store: {id,label,baseUrl} \| null}` |
 | `PUT /drive/settings` | Drive | `204` ; `404 DRIVE_DISABLED` ; `422 DRIVE_STORE_INVALID` |
 | `GET /drive/plans/{shoppingListId}` | Drive | plan (ci-dessous) ; `403` autre utilisateur ; `404` ; `409 DRIVE_NOT_CONFIGURED` ; `409 SHOPPING_LIST_NOT_SENT` |
