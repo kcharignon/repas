@@ -3,7 +3,7 @@
 - **Dépôt** : back (`docs/`)
 - **Jalon** : M0 Découverte
 - **Taille** : S
-- **Dépend de** : DRV-002, DRV-003, DRV-004, DRV-006, DRV-007, DRV-008, DRV-009, DRV-010
+- **Dépend de** : DRV-002, DRV-003, DRV-004, DRV-006, DRV-007, DRV-008, DRV-009, DRV-011
 - **Statut** : à faire
 - **Lire d'abord** : les trois rapports `docs/drive/spikes/`, [ADR 0022](../../adr/0022-remplissage-du-panier-drive.md), [`../roadmap.md`](../roadmap.md)
 

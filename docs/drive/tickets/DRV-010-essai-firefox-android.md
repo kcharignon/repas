@@ -4,7 +4,7 @@
 - **Jalon** : M0 Découverte
 - **Taille** : S
 - **Dépend de** : DRV-009 (fait) ; accord de l'utilisateur pour commander dans Firefox
-- **Statut** : à faire (en attente de l'accord de l'utilisateur)
+- **Statut** : mis de côté (l'utilisateur a choisi l'application Android, voir DRV-011)
 - **Lire d'abord** : [`../spikes/DRV-006-installation-favori.md`](../spikes/DRV-006-installation-favori.md) (suite), [`../analyse.md`](../analyse.md) (D20, D20b)
 
 ## Contexte
