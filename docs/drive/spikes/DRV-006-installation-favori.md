@@ -19,8 +19,8 @@ Quatre favoris de test, de plus en plus longs : `t2` (2 Ko), `t8` (8 Ko), `t16` 
 
 | Favori | Visible sur le téléphone ? | Le message s'affiche ? | Remarque |
 |---|---|---|---|
-| `t2` (2 Ko) | oui (synchronisé) | non précisé | |
-| `t8` (8 Ko) | oui (synchronisé) | non précisé | |
+| `t2` (2 Ko) | oui (synchronisé) | **non** | Rien ne s'affiche quand on touche la ligne du favori dans les suggestions. |
+| `t8` (8 Ko) | oui (synchronisé) | **non** | Rien ne s'affiche. |
 | `t16` (16 Ko) | **non** | — | Jamais arrivé sur le téléphone. |
 | `t32` (32 Ko) | **non** | — | Jamais arrivé sur le téléphone. |
 
@@ -33,3 +33,10 @@ Quatre favoris de test, de plus en plus longs : `t2` (2 Ko), `t8` (8 Ko), `t16` 
 
 - Plus grande taille de favori installable : au moins 8 Ko, moins de 16 Ko (limite exacte non cherchée)
 - Chargeur court (moins de 1 Ko) possible : **oui** pour la taille ; la politique de sécurité de Leclerc (DRV-004) ne l'en empêche pas. Reste à prouver sur le téléphone qu'un chargeur lance bien un script (DRV-009).
+
+## Suite (2026-10-17, soir) : Chrome Android ne lance pas ces favoris
+
+- `t2` et `t8` (synchronisés) ne font rien quand l'utilisateur les touche dans les suggestions de la barre d'adresse de Chrome Android (page `example.com`, nom tapé sans Entrée).
+- Le chargeur du banc d'essai (DRV-009, favori `lab2`, 500 caractères) n'affiche pas son menu non plus sur une page du drive.
+- Contrôle : taper à la main `javascript:alert(1)` dans la barre d'adresse de Chrome Android lance **une recherche Google**. Chrome n'exécute donc pas d'adresse `javascript:` depuis la barre d'adresse de ce téléphone.
+- Conclusion : le favori JavaScript sous **Chrome Android** n'est pas utilisable sur le téléphone de l'utilisateur (la taille n'était qu'un premier obstacle). Les témoignages trouvés vont dans le même sens (Chrome Android n'a jamais bien géré les favoris JavaScript). Voir D20 et DRV-010.

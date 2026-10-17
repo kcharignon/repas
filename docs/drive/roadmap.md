@@ -18,7 +18,8 @@ Suivi vivant. Cocher une case quand le ticket est fusionné (et noter la PR). Le
 - [x] [DRV-007](tickets/DRV-007-requete-ajout-panier.md) humain · S · Relevé de la vraie requête d'ajout au panier (l'ajout du banc répond 404) · dépend de : — · Issue : [#98](https://github.com/kcharignon/repas/issues/98)
 - [x] [DRV-008](tickets/DRV-008-corriger-ajout-banc-d-essai.md) front · S · Corriger l'ajout du banc d'essai et tester les quantités · dépend de : 007 · Issue : [repas-front#60](https://github.com/kcharignon/repas-front/issues/60)
 - [x] [DRV-009](tickets/DRV-009-chargeur-du-banc-d-essai.md) front · S · Chargeur court pour le banc d'essai (installation sur le téléphone) · dépend de : 008 · Issue : [repas-front#61](https://github.com/kcharignon/repas-front/issues/61)
-- [ ] [DRV-005](tickets/DRV-005-synthese-decision-g1.md) assistant · S · Synthèse et décision G1 · dépend de : 002, 003, 004, 006, 007, 008, 009 · Issue : [#69](https://github.com/kcharignon/repas/issues/69)
+- [ ] [DRV-010](tickets/DRV-010-essai-firefox-android.md) humain · S · Essai du favori de démarrage dans Firefox Android (Chrome Android refuse les favoris JavaScript) · dépend de : 009 · Issue : [#112](https://github.com/kcharignon/repas/issues/112)
+- [ ] [DRV-005](tickets/DRV-005-synthese-decision-g1.md) assistant · S · Synthèse et décision G1 · dépend de : 002, 003, 004, 006, 007, 008, 009, 010 · Issue : [#69](https://github.com/kcharignon/repas/issues/69)
 
 **Gate G1** : le favori s'exécute sur le téléphone, les requêtes passent DataDome, les CGU n'interdisent pas l'usage, le cadre (P1) ou la liste de résultats (P2) fonctionne. Sinon : Firefox + gestionnaire de scripts, ou mode assisté seulement, ou arrêt. ADR 0022 passe `Accepted` ou `Rejected`.
 
