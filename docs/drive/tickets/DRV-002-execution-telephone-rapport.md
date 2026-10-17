@@ -11,6 +11,8 @@
 
 Seul le téléphone réel de l'utilisateur, avec son navigateur et son compte, peut dire si le favori tourne sur Leclerc et si DataDome laisse passer les requêtes. Ce ticket est fait par l'utilisateur (ou un agent qui le guide **une étape à la fois**, sans jamais lui demander un identifiant ni un mot de passe).
 
+**Constat du 2026-10-17** : le favori de 49,6 Ko ne s'installe pas sur le téléphone de l'utilisateur (voir DRV-006). Tant que ce n'est pas réglé, les essais portant sur le **site** (recherche, ajout au panier, DataDome, cadre, CSP : lignes 3 à 8 et 14 à 19 du rapport, DataDome pouvant réagir autrement sur un téléphone) peuvent se faire avec le même favori sur **Chrome de bureau** ; les essais propres au **téléphone** (lancement du favori, écran allumé, retour vers Repas, lien d'intention, appli Leclerc : lignes 1, 2 et 9 à 13) restent à faire sur le téléphone.
+
 ## Portée
 
 1. Créer le favori de test sur Chrome Android (suivre `PROCEDURE.md`).
