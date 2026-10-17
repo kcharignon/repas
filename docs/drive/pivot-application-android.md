@@ -50,3 +50,13 @@ Recommandation provisoire : **A**, parce que le cœur du risque (la WebView face
 - **Inchangés** : DRV-101 à DRV-105, DRV-201 à DRV-208, DRV-302 à DRV-309 (l'agent), DRV-401, DRV-404, DRV-405, DRV-410.
 - **Nouveaux**, à écrire une fois le spike réussi : squelette et construction de l'application, hôte WebView et injection, passage du plan et retour, publication et mise à jour (APK ou Play), page d'aide d'installation, tests (faux site Leclerc pour la partie JavaScript, essais sur téléphone pour la partie native).
 - **Spike** : [DRV-011](tickets/DRV-011-spike-application-android.md).
+
+## Premiers résultats du spike (2026-10-17, soir)
+
+Détail : [`spikes/DRV-011-rapport.md`](spikes/DRV-011-rapport.md). Sur un Pixel 9 (WebView 155) :
+
+- L'application s'installe, l'utilisateur se connecte, le banc d'essai s'exécute dans les pages Leclerc.
+- **Leclerc sert au téléphone son site mobile** (`m-courses.leclercdrive.fr`, adresses `/magasin-…/recherche/<mot>`) : la recherche du banc n'y trouve rien, ses routes sont autres que celles du site PC.
+- **En mode « Ordinateur »** (agent utilisateur Linux de bureau et indications client cohérentes, fenêtre large, comme la « version pour ordinateur » de Chrome), Leclerc sert le site PC (`fdN-courses…`) et le banc obtient les mêmes résultats que sur ordinateur : 26 produits reconnus, ajout HTTP 200, quantité absolue (3 obtenu). Aucun blocage anti-robot.
+- Décision D25 (proposée) : l'application fait tourner Leclerc **en mode ordinateur** pour réutiliser le contrat déjà mesuré (recherche, panier, en-tête `zcwb`). Le contrat du site mobile n'est relevé que si ce mode cesse de fonctionner (relevé par câble USB et `chrome://inspect`).
+- Reste à mesurer : persistance de la session, lot de 30 recherches sur téléphone, finalisation de la commande sur le site PC affiché sur un écran de téléphone (ergonomie), lancement depuis la PWA Repas.
