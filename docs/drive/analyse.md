@@ -94,7 +94,7 @@ Règle de verrou (statuts, opérations, codes, versions, déploiement) · contex
 ## 9. Risques
 
 1. DataDome bloque le favori sur téléphone (fort, inconnu) → DRV-002.
-2. Les CGU interdisent (fort, inconnu) → DRV-003.
+2. Les CGU interdisent (fort) → DRV-003 : CGU du site E.Leclerc lues le 2026-10-17, pas d'interdiction explicite des outils tiers, clauses ambiguës sur l'extraction répétée et le bon fonctionnement du site, sanction possible sur le compte E.Leclerc ; CGU/CGV du drive à lire.
 3. CSP ou refus de cadre de Leclerc (moyen) → DRV-004 et DRV-002 ; repli P2, sinon Firefox, sinon mode assisté.
 4. Le lancement du favori dans Chrome Android est pénible ou cassé par une mise à jour de Chrome (moyen) → DRV-002.
 5. Le site change et casse l'agent (moyen, certain à terme) → interrupteur, runbook, détection `CONTRACT_CHANGED`.

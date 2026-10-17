@@ -14,3 +14,7 @@ Texte clair en français, affiché dans l'aide du drive et dans les réglages : 
 ## Critères d'acceptation
 
 Le texte est relu, cohérent avec les invariants, sans promesse inexacte ; il est accessible depuis `/drive/reglages` et `/drive/aide`.
+
+## À dire aussi (constat CGU du 2026-10-17, [DRV-003](../spikes/DRV-003-cgu.md))
+
+Le texte doit prévenir chaque utilisateur que l'envoi au drive agit dans sa propre session Leclerc, que les conditions de Leclerc permettent à l'enseigne de suspendre un compte E.Leclerc (et la cagnotte de Tickets associée) en cas d'usage jugé abusif, que Repas ne voit jamais ses identifiants et que l'envoi se fait à faible cadence, à sa demande, pour sa seule liste.
