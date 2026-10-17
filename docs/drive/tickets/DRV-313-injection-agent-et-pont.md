@@ -42,3 +42,7 @@ Celle du dépôt front ; PR concise ; fusion si CI verte.
 
 - `addDocumentStartJavaScript` demande une WebView récente (vérifier `WebViewFeature`) ; sinon, repli par `evaluateJavascript` après `onPageFinished`, sans changer la règle d'origine.
 - Le défi anti-robot est un cadre d'un autre site : ne pas injecter l'agent dans ces cadres.
+
+## Laissé par DRV-301 (2026-10-17)
+
+`drive-agent/dist/agent.js` et `dist/manifest.json` (`sha384-…`) sont produits par `make agent-build`. Il faudra un fichier d'empreinte attendue (comme `lab.js.sha384` du spike) et un test de cohérence entre ce fichier, `manifest.json` et l'actif de l'application.

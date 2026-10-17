@@ -45,7 +45,7 @@ Suivi vivant. Cocher une case quand le ticket est fusionné (et noter la PR). Le
 
 ## M3 — Agent (front, `drive-agent/`)
 
-- [ ] [DRV-301](tickets/DRV-301-squelette-agent.md) front · M · Squelette de l'agent · dépend de : 005 · Issue : [repas-front#39](https://github.com/kcharignon/repas-front/issues/39)
+- [x] [DRV-301](tickets/DRV-301-squelette-agent.md) front · M · Squelette de l'agent · dépend de : 005 · Issue : [repas-front#39](https://github.com/kcharignon/repas-front/issues/39)
 - [ ] [DRV-302](tickets/DRV-302-protocole-v1.md) front · M · Protocole v1 · dépend de : 301 · Issue : [repas-front#40](https://github.com/kcharignon/repas-front/issues/40)
 - [ ] [DRV-303](tickets/DRV-303-adaptateur-leclerc.md) front · L · Adaptateur Leclerc · dépend de : 301, 302 · Issue : [repas-front#41](https://github.com/kcharignon/repas-front/issues/41)
 - [ ] [DRV-304](tickets/DRV-304-interface-superposee.md) front · L · Interface superposée · dépend de : 301 · Issue : [repas-front#42](https://github.com/kcharignon/repas-front/issues/42)
@@ -60,7 +60,7 @@ Suivi vivant. Cocher une case quand le ticket est fusionné (et noter la PR). Le
 
 Prépare l'application « Repas Drive » (WebView en mode ordinateur, agent embarqué). Décision et contexte : [`spikes/DRV-005-decision-g1.md`](spikes/DRV-005-decision-g1.md), [`pivot-application-android.md`](pivot-application-android.md).
 
-- [ ] [DRV-311](tickets/DRV-311-squelette-application-android.md) front · M · Squelette de l'application Android (`android/`) · dépend de : 005 · Issue : [repas-front#69](https://github.com/kcharignon/repas-front/issues/69)
+- [x] [DRV-311](tickets/DRV-311-squelette-application-android.md) front · M · Squelette de l'application Android (`android/`) · dépend de : 005 · Issue : [repas-front#69](https://github.com/kcharignon/repas-front/issues/69)
 - [ ] [DRV-312](tickets/DRV-312-hote-webview-mode-ordinateur.md) front · M · Hôte WebView en mode ordinateur · dépend de : 311 · Issue : [repas-front#70](https://github.com/kcharignon/repas-front/issues/70)
 - [ ] [DRV-313](tickets/DRV-313-injection-agent-et-pont.md) front · L · Injection de l'agent et pont de messages · dépend de : 312, 301, 302 · Issue : [repas-front#71](https://github.com/kcharignon/repas-front/issues/71)
 - [ ] [DRV-314](tickets/DRV-314-passage-du-plan-et-retour.md) front · L · Passage du plan et retour vers Repas · dépend de : 313, 302 · Issue : [repas-front#72](https://github.com/kcharignon/repas-front/issues/72)

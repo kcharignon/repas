@@ -4,7 +4,7 @@
 - **Jalon** : M3b Application Android
 - **Taille** : M
 - **Dépend de** : DRV-005 (décision G1, fait)
-- **Statut** : à faire
+- **Statut** : fait (PR [repas-front#75](https://github.com/kcharignon/repas-front/pull/75), 2026-10-17)
 - **Lire d'abord** : [`../pivot-application-android.md`](../pivot-application-android.md), [`../spikes/DRV-005-decision-g1.md`](../spikes/DRV-005-decision-g1.md), [`../spikes/DRV-011-rapport.md`](../spikes/DRV-011-rapport.md), `drive-agent/android-lab/` (le spike, `PROCEDURE.md` compris), `CLAUDE.md` du front
 
 ## Contexte
@@ -42,3 +42,7 @@ Celle du dépôt front ; PR concise sans pied d'attribution ; fusion si CI verte
 
 - Ne jamais committer le fichier de clé de publication (voir DRV-315).
 - Le SDK Android est lourd : garder l'image Docker de construction en cache dans la CI.
+
+## Réalisation (2026-10-17, PR repas-front#75)
+
+`android/` : application « Repas Drive » (`eu.kantin.repas.drive`, minSdk 26, `targetSdk` 36), écran de version seulement. Cibles `make android`, `make android-test`, `make android-release` (exige `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`, `ANDROID_VERSION_TAG`, `ANDROID_VERSION_CODE` ; produit `android/dist/repas-drive.apk`), `make android-release-selftest`. Workflow `.github/workflows/android.yml`. Un test garde l'absence de clé dans le dépôt.
