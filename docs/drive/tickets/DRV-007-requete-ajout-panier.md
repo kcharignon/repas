@@ -4,7 +4,7 @@
 - **Jalon** : M0 Découverte
 - **Taille** : S
 - **Dépend de** : —
-- **Statut** : à faire
+- **Statut** : fait (relevé complet le 2026-10-17)
 - **Lire d'abord** : [`../spikes/DRV-007-requete-ajout-panier.md`](../spikes/DRV-007-requete-ajout-panier.md), [`../spikes/DRV-002-rapport.md`](../spikes/DRV-002-rapport.md) (ligne 5)
 
 ## Contexte
