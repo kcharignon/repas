@@ -4,7 +4,7 @@
 - **Jalon** : M1 Back `Repas`
 - **Taille** : M
 - **Dépend de** : —
-- **Statut** : à faire
+- **Statut** : fait (PR [#120](https://github.com/kcharignon/repas/pull/120), 2026-10-17 ; au `PUT /units/{slug}`, un corps sans `dimension` ni `baseFactor` garde les valeurs, un corps qui en mentionne un remplace la paire, `null`/`null` l'efface)
 - **Lire d'abord** : [`../architecture.md`](../architecture.md) § 6 ; ADR 0017 règle 6 (migrations compatibles) ; skill `repas-dev` ; `src/Repas/Domain/Model/Unit.php`.
 
 ## Contexte
