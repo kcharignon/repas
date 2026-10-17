@@ -4,7 +4,7 @@
 - **Jalon** : M3 Agent
 - **Taille** : L
 - **Dépend de** : DRV-305 (variante retenue à G1 par DRV-005)
-- **Statut** : à faire
+- **Statut** : fait (PR [repas-front#81](https://github.com/kcharignon/repas-front/pull/81), 2026-10-18)
 - **Lire d'abord** : [`../architecture.md`](../architecture.md) § 8 ; décision G1 `docs/drive/spikes/DRV-005-decision-g1.md` (P1 ou P2) ; rapports DRV-002 (lignes 7 et 8) et DRV-004.
 
 ## Contexte
@@ -61,3 +61,7 @@ Celle du front. Rapport de G1 cité dans la PR.
 ## Points laissés par DRV-304 et DRV-305 (2026-10-18)
 
 La phase B se branche par `FlowDeps.phaseB(context)` (voir DRV-305, « Réalisation ») et l'écran `chooser` existe déjà (`ui.show('chooser', { ingredient, position, total, mount(zone, answer) })`). Textes d'erreur : parler de l'application Repas Drive, pas du favori.
+
+## Réalisation (2026-10-18, PR repas-front#81)
+
+Variante P2 : `drive-agent/src/flow/{phase-b,packs}.ts`, `drive-agent/src/ui/picker.ts`. L'agent cherche le nom (ou `searchQuery`), affiche 8 produits au plus (libellé, contenu, prix, prix à l'unité de mesure, promotion, calcul « 800 g demandés, 500 g par produit : 2 »), n'ajoute au panier qu'après « Choisir ». Issue `CHOSEN` avec rôle : `PRIMARY` sans question quand rien n'est mémorisé ; sinon écran `placement` (« Mon nouveau produit préféré », « Produit de secours », « Seulement cette fois »). Boutons « Passer cette fois », « J'en ai toujours », « Annuler le passage », case « Ne plus jamais prendre » par produit indisponible. Produit refusé ou en rupture grisé, quantité plafonnée au stock, erreur réseau affichée dans la liste (réessayer ou passer), `BLOCKED` met les lignes restantes en `FAILED`. Pas de vignettes. Exports : `guidedChoice`, `packsFor`, `labelOf`. **Protocole : `needed` ajouté** à une ligne du plan (voir `architecture.md` § 8).

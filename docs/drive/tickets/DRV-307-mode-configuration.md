@@ -4,7 +4,7 @@
 - **Jalon** : M3 Agent
 - **Taille** : S
 - **Dépend de** : DRV-302, DRV-303
-- **Statut** : à faire
+- **Statut** : fait (PR [repas-front#82](https://github.com/kcharignon/repas-front/pull/82), 2026-10-18)
 - **Lire d'abord** : [`../architecture.md`](../architecture.md) § 8 (type `setup`) ; DRV-203 (réglages du drive).
 
 ## Contexte
@@ -33,3 +33,7 @@ Celle du front.
 ## Point laissé par DRV-303 (2026-10-17)
 
 Le `setup-result` se construit avec `adapter.readStore()` (`StoreInfo { id, host, baseUrl, label }`, `label` null sauf si `readLabel` est fourni).
+
+## Réalisation (2026-10-18, PR repas-front#82)
+
+`setupHandler` (`drive-agent/src/flow/setup.ts`) lit le magasin de la page sans requête, affiche l'écran `store`, renvoie `setup-result`. Annuler envoie un `result` `aborted` sans ligne. Le contrôle « retour possible vers Repas » passe avant le `setup`, comme pour un plan.

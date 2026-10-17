@@ -46,3 +46,7 @@ Celle du skill `repas-dev` § 4.
 
 - Un `QueryHandler` n'appelle jamais un `Repository` : tout passe par le loader.
 - Le loader peut utiliser le service de domaine `PackCalculator` (fonction pure) sans enfreindre l'architecture ; il ne manipule pas de modèle d'agrégat.
+
+## Précision (2026-10-18, DRV-306)
+
+Chaque ligne du plan renvoie `needed : {quantity, unitSymbol, dimension, baseFactor}` (l'agent s'en sert pour calculer le nombre de produits en phase B). Voir `architecture.md` (ajout du 2026-10-18) et `drive-agent/protocol/plan.schema.json`.

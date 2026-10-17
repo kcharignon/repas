@@ -49,3 +49,7 @@ Celle du front.
 
 - L'envoi verrouille la liste **avant** l'ouverture de Leclerc : si l'utilisateur abandonne, la liste reste `SENT` ; prévoir clairement « Rouvrir la liste ».
 - Le plan peut changer si l'utilisateur modifie ses choix entre deux ouvertures : recharger le plan à chaque ouverture de l'écran.
+
+## Précision (2026-10-18, DRV-306)
+
+`buildPlanMessage` doit recopier `needed` de chaque ligne du plan du back dans le message `plan` (schéma `drive-agent/protocol/plan.schema.json`).
