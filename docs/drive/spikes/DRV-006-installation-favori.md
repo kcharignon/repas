@@ -19,17 +19,17 @@ Quatre favoris de test, de plus en plus longs : `t2` (2 Ko), `t8` (8 Ko), `t16` 
 
 | Favori | Visible sur le téléphone ? | Le message s'affiche ? | Remarque |
 |---|---|---|---|
-| `t2` (2 Ko) | | | |
-| `t8` (8 Ko) | | | |
-| `t16` (16 Ko) | | | |
-| `t32` (32 Ko) | | | |
+| `t2` (2 Ko) | oui (synchronisé) | non précisé | |
+| `t8` (8 Ko) | oui (synchronisé) | non précisé | |
+| `t16` (16 Ko) | **non** | — | Jamais arrivé sur le téléphone. |
+| `t32` (32 Ko) | **non** | — | Jamais arrivé sur le téléphone. |
 
 - Modèle du téléphone, version de Chrome (téléphone et ordinateur) :
 - Synchronisation des favoris activée sur les deux appareils : oui / non
-- Limite de taille constatée à la synchronisation :
+- Limite de taille constatée à la synchronisation : **entre 8 Ko (passe) et 16 Ko (ne passe pas)** pour un favori `javascript:` créé sur Chrome de bureau et synchronisé vers Chrome Android. Les favoris `javascript:` se synchronisent donc bien. Le favori du banc (49,6 Ko) était trop gros.
 - Collage direct sur le téléphone (chaîne de 2 Ko, puis 8 Ko) : coupé ? à quelle longueur ?
 
 ## Conclusion (pour DRV-005)
 
-- Plus grande taille de favori installable : … Ko
-- Chargeur court (moins de 1 Ko) possible : oui / non (dépend aussi de DRV-004 : la CSP de Leclerc autorise-t-elle notre origine ?)
+- Plus grande taille de favori installable : au moins 8 Ko, moins de 16 Ko (limite exacte non cherchée)
+- Chargeur court (moins de 1 Ko) possible : **oui** pour la taille ; la politique de sécurité de Leclerc (DRV-004) ne l'en empêche pas. Reste à prouver sur le téléphone qu'un chargeur lance bien un script (DRV-009).

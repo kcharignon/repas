@@ -4,7 +4,7 @@
 - **Jalon** : M0 Découverte
 - **Taille** : S
 - **Dépend de** : —
-- **Statut** : à faire
+- **Statut** : fait (test de taille du 2026-10-17 : limite entre 8 et 16 Ko)
 - **Lire d'abord** : [`../spikes/DRV-006-installation-favori.md`](../spikes/DRV-006-installation-favori.md), [`../analyse.md`](../analyse.md) (risque 11, décision D20)
 
 ## Contexte
