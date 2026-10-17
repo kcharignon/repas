@@ -26,6 +26,7 @@ final class TickLineOnShoppingListApiController extends AbstractController
     #[OA\Response(response: 204, description: 'Ligne cochée')]
     #[OA\Response(response: 403, description: "La ressource appartient à un autre utilisateur")]
     #[OA\Response(response: 404, description: 'Ressource inconnue')]
+    #[OA\Response(response: 409, description: 'La liste est envoyée au drive : elle n\'est plus modifiable (message `SHOPPING_LIST_SENT`)')]
     public function __invoke(string $id): Response
     {
         $this->commandBus->dispatch(new TickLineOnShoppingListCommand($id));

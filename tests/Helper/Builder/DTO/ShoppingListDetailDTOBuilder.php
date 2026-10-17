@@ -20,6 +20,7 @@ class ShoppingListDetailDTOBuilder implements Builder
     /** @var list<ShoppingListRecipeTypeDTO> */
     private array $recipeTypes = [];
     private int $version = 1;
+    private ?string $sentAt = null;
 
     public function withId(string $id): self
     {
@@ -42,6 +43,12 @@ class ShoppingListDetailDTOBuilder implements Builder
     public function withStatus(ShoppingListStatus $status): self
     {
         $this->status = $status;
+        return $this;
+    }
+
+    public function withSentAt(?string $sentAt): self
+    {
+        $this->sentAt = $sentAt;
         return $this;
     }
 
@@ -75,6 +82,8 @@ class ShoppingListDetailDTOBuilder implements Builder
             isActive: $this->status === ShoppingListStatus::ACTIVE,
             isPaused: $this->status === ShoppingListStatus::PAUSED,
             isCompleted: $this->status === ShoppingListStatus::COMPLETED,
+            isSent: $this->status === ShoppingListStatus::SENT,
+            sentAt: $this->sentAt ?? ($this->status === ShoppingListStatus::SENT ? '2026-10-18T10:00:00+02:00' : null),
             rowCount: array_sum(array_map(static fn(ShoppingListDepartmentDTO $department): int => count($department->rows), $this->departments)),
             recipeCount: array_sum(array_map(static fn(ShoppingListRecipeTypeDTO $type): int => count($type->meals), $this->recipeTypes)),
             departments: $this->departments,

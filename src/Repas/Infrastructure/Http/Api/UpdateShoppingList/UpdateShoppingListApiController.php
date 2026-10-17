@@ -32,6 +32,7 @@ final class UpdateShoppingListApiController extends AbstractController
     #[OA\Response(response: 204, description: 'Liste renommée')]
     #[OA\Response(response: 403, description: "La ressource appartient à un autre utilisateur")]
     #[OA\Response(response: 404, description: 'Ressource inconnue')]
+    #[OA\Response(response: 409, description: 'La liste est envoyée au drive : elle n\'est plus modifiable (message `SHOPPING_LIST_SENT`)')]
     #[OA\Response(response: 422, description: 'Corps de la requête invalide')]
     #[OA\Response(response: 412, description: "La version de la liste n'est plus celle de `If-Match` : elle a été modifiée depuis sa lecture")]
     public function __invoke(string $id, #[MapRequestPayload] UpdateShoppingListPayload $payload, Request $request): Response

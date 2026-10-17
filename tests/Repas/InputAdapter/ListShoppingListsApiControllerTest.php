@@ -17,6 +17,7 @@ class ListShoppingListsApiControllerTest extends QueryBusWebTestCase
         $this->queryBus->willReturn(ListShoppingListsQuery::class, [
             new ShoppingListDTOBuilder()->withId('list-1')->withDisplayName('Courses du week-end')->withStatus(ShoppingListStatus::ACTIVE)->withCreatedAt('2026-10-12T10:00:00+02:00')->build(),
             new ShoppingListDTOBuilder()->withId('list-2')->withDisplayName('20 janvier 2025')->withStatus(ShoppingListStatus::COMPLETED)->withCreatedAt('2025-01-20T10:56:23+01:00')->build(),
+            new ShoppingListDTOBuilder()->withId('list-3')->withDisplayName('Courses envoyées')->withStatus(ShoppingListStatus::SENT)->withCreatedAt('2026-10-17T09:00:00+02:00')->build(),
         ]);
 
         // When
@@ -36,6 +37,8 @@ class ListShoppingListsApiControllerTest extends QueryBusWebTestCase
                     'isActive' => true,
                     'isPaused' => false,
                     'isCompleted' => false,
+                    'isSent' => false,
+                    'sentAt' => null,
                     'createdAt' => '2026-10-12T10:00:00+02:00',
                 ],
                 [
@@ -45,10 +48,23 @@ class ListShoppingListsApiControllerTest extends QueryBusWebTestCase
                     'isActive' => false,
                     'isPaused' => false,
                     'isCompleted' => true,
+                    'isSent' => false,
+                    'sentAt' => null,
                     'createdAt' => '2025-01-20T10:56:23+01:00',
                 ],
+                [
+                    'id' => 'list-3',
+                    'displayName' => 'Courses envoyées',
+                    'status' => 'SENT',
+                    'isActive' => false,
+                    'isPaused' => false,
+                    'isCompleted' => false,
+                    'isSent' => true,
+                    'sentAt' => '2026-10-18T10:00:00+02:00',
+                    'createdAt' => '2026-10-17T09:00:00+02:00',
+                ],
             ],
-            'totalItems' => 2,
+            'totalItems' => 3,
         ], $this->jsonBody());
     }
 
