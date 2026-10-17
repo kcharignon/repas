@@ -4,7 +4,7 @@
 - **Jalon** : M0 Découverte
 - **Taille** : M
 - **Dépend de** : —
-- **Statut** : à faire
+- **Statut** : fait (PR [repas-front#59](https://github.com/kcharignon/repas-front/pull/59), 2026-10-17)
 - **Lire d'abord** : [`../README.md`](../README.md), [`../architecture.md`](../architecture.md) §§ 2, 8, 9 ; [`../recherche.md`](../recherche.md) §§ 2, 3, 6 ; `CLAUDE.md` du front.
 
 ## Contexte
