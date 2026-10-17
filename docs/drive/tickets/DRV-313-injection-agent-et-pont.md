@@ -46,3 +46,7 @@ Celle du dépôt front ; PR concise ; fusion si CI verte.
 ## Laissé par DRV-301 (2026-10-17)
 
 `drive-agent/dist/agent.js` et `dist/manifest.json` (`sha384-…`) sont produits par `make agent-build`. Il faudra un fichier d'empreinte attendue (comme `lab.js.sha384` du spike) et un test de cohérence entre ce fichier, `manifest.json` et l'actif de l'application.
+
+## Point laissé par DRV-302 (2026-10-17)
+
+Le pont attendu par `bridgeTransport` (`drive-agent/src/transport/bridge.ts`) est un objet avec `postMessage(texte)` et `addEventListener('message', …)`, JSON en texte (64 Ko au plus). L'application doit donc exposer à l'agent ce pont côté page (message listener Web) et relayer vers/depuis le canal natif.

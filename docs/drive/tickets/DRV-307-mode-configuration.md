@@ -29,3 +29,7 @@ Vitest (adaptateur et `location` simulés) ; cas de page invalide ; e2e DRV-309.
 ## Definition of Done
 
 Celle du front.
+
+## Point laissé par DRV-303 (2026-10-17)
+
+Le `setup-result` se construit avec `adapter.readStore()` (`StoreInfo { id, host, baseUrl, label }`, `label` null sauf si `readLabel` est fourni).

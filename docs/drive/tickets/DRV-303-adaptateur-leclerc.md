@@ -4,7 +4,7 @@
 - **Jalon** : M3 Agent
 - **Taille** : L
 - **Dépend de** : DRV-301, DRV-302
-- **Statut** : à faire
+- **Statut** : fait (PR [repas-front#78](https://github.com/kcharignon/repas-front/pull/78), 2026-10-17)
 - **Lire d'abord** : [`../recherche.md`](../recherche.md) §§ 2, 3 ; [`../architecture.md`](../architecture.md) § 8 ; rapport `docs/drive/spikes/DRV-002-rapport.md` (ce qui a réellement marché).
 
 ## Contexte
@@ -48,3 +48,7 @@ Celle du front. Aucun HTML brut de Leclerc dans le dépôt.
 - Les écritures parallèles déclenchent DataDome : la file sérialisée n'est pas une optimisation, c'est une exigence.
 
 - **Prix (décision D22)** : `searchProducts` doit renvoyer aussi le prix unitaire (`nrPVUnitaireTTC`) et le prix à l'unité de mesure (`nrPVParUniteDeMesureTTC` et son unité) en centimes, quand ils sont lus ; ils partent dans le résultat (`price`).
+
+## Réalisation (2026-10-17, PR repas-front#78)
+
+`drive-agent/src/leclerc/` : `RetailerAdapter` et `LeclercAdapter` (`fetch` et horloge injectés), `browserDeps(window)`, `LeclercError` (code), `Pacer`, `parseContent`, `Candidate` (avec `contentSource` et `promo`), `CartResult { productId, requested, sent, obtained, ok, items }`, `StoreInfo { id, host, baseUrl, label }`. Le premier 403/429 est retenté une fois après la pause de cadence, le second de suite lève `BLOCKED`. Devinés, **à confirmer à la recette réelle (DRV-505)** : la phrase « aucun résultat » d'une page vide, la réponse de connexion (401 ou redirection vers `connexion`, `identif`, `login`, `authent`), le libellé du magasin (`label` null par défaut). Branché, l'adaptateur ajoute environ 13 Ko au bundle.
