@@ -41,11 +41,12 @@ Gabarit à remplir après l'exécution du banc d'essai (DRV-001) sur le téléph
 4. **Pas d'EAN** dans la recherche : la clé d'un produit reste l'identifiant Leclerc, propre au magasin tant que la ligne 15 n'est pas testée.
 5. **Fruits et légumes frais** mal trouvés par la recherche texte : les 7 échecs de l'échantillon en sont tous. Ces ingrédients passeront presque toujours par le choix de l'utilisateur, puis par la mémorisation. À traiter dans la suggestion (backlog DRV-601) et le calcul des quantités (vente à la pièce ou au kilo).
 6. **Contenu net** déductible de façon fiable par deux méthodes qui se recoupent ; les désaccords (produits en pièces) se détectent.
-7. **Pages lourdes** : jusqu'à 1 million de caractères par recherche (209 produits). L'agent ne garde que les champs utiles.
+7. **Quantités absolues confirmées** (essai 3b) : `iQuantite` est la quantité visée, dans les deux sens, avec la seule action 1 ; le retrait complet est l'action 2 avec la quantité 0. Rejouer un envoi ne double donc pas les quantités.
+8. **Pages lourdes** : jusqu'à 1 million de caractères par recherche (209 produits). L'agent ne garde que les champs utiles.
 
 ## Reste à faire sur ce rapport
 
-- Essai 3b (sens des quantités) et essai 10 (contenu net structuré) à faire sur ordinateur.
+- Essai 10 (contenu net structuré) à faire sur ordinateur.
 - Tester les fragments courts vers Leclerc (ligne 9, décision D21).
 - Refaire les essais 1, 2, 6, 9, 10, 12 sur le téléphone, dès qu'un favori s'installe (DRV-006).
 - Deuxième magasin (ligne 15) ; EAN sur la fiche produit (ligne 16) ; adresse de la page panier (ligne 14).
