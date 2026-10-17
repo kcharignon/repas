@@ -1,0 +1,52 @@
+# 0022 — Remplir le panier d'un drive : agent de page, aucun identifiant d'enseigne
+
+- **Statut** : Proposed (passe `Accepted` ou `Rejected` à la décision G1, ticket DRV-005)
+- **Date** : 2026-10-17
+- **Liens** : [0001](0001-architecture-hexagonale.md), [0003](0003-cqrs-lecture-ecriture.md), [0007](0007-api-rest-v1.md), [0013](0013-agregats-references-par-identifiant.md), [0017](0017-deploiement-et-releases.md), [0021](0021-gestion-des-comptes-par-l-administrateur.md), [0023](0023-liste-envoyee-au-drive.md), [`docs/drive/`](../drive/README.md)
+
+## Contexte
+
+L'utilisateur veut, depuis un téléphone Android, remplir le panier de son drive (E.Leclerc d'abord) à partir de sa liste de courses, avec un produit mémorisé par ingrédient.
+
+Faits ([`docs/drive/recherche.md`](../drive/recherche.md)) :
+
+- E.Leclerc Drive n'a aucune API publique. Ses routes internes sont connues par rétro-ingénierie (recherche `recherche.aspx`, panier `panier.aspx?op=1` à quantité absolue).
+- DataDome bloque les requêtes de serveur et le rejeu de cookies ; seuls des navigateurs réels dans la session de l'utilisateur fonctionnent.
+- Chrome Android n'a pas d'extensions ; un favori JavaScript peut tourner dans la page.
+- Notre back n'a ni worker ni tâche planifiée, aucun chiffrement au repos, un seul serveur de 1 Go ; les secrets sont des variables d'environnement.
+- Les dépôts sont publics.
+
+## Décision
+
+1. **Le back ne contacte jamais une enseigne.** Aucune requête sortante vers leclercdrive.fr (ou autre) depuis `src/`.
+2. **Aucun identifiant, cookie ni jeton d'enseigne ne transite par le back ou le front, ni n'est stocké ni journalisé.** L'utilisateur se connecte lui-même sur le site de l'enseigne. Garde-fou : aucun champ de ce type dans `docs/api/openapi.json`.
+3. **Le remplissage est fait par un « agent de page »** : un script autonome, lancé par l'utilisateur (favori JavaScript sur Chrome), qui s'exécute dans la page de l'enseigne. Il ne contient aucun code distant : toute mise à jour passe par la réinstallation du favori.
+4. **L'agent se limite à** lire le magasin courant, chercher un produit, fixer la quantité d'un produit au panier (quantité absolue), lire le produit que l'utilisateur ajoute dans le cadre de choix. Il ne choisit jamais de créneau, ne valide ni ne paie, ne lit ni cookies ni données de compte.
+5. **Échanges Repas ↔ agent par fragment d'URL**, avec des messages versionnés (`v: 1`), validés strictement et plafonnés (≤ 100 lignes, quantités 1..99). L'origine de retour est écrite en dur dans le favori, jamais lue dans un message.
+6. **Contexte `Drive` séparé.** `Drive` ne dépend que de `Shared` ; il référence les ingrédients par slug et l'utilisateur par identifiant ([0013](0013-agregats-references-par-identifiant.md)). Ce qui vient de `Repas` passe par un port `Shared`. Le contexte peut être supprimé d'un bloc si l'intégration disparaît.
+7. **`Produit` est un fait public sans propriétaire ; `Choix` est privé** (utilisateur, enseigne, magasin, ingrédient → produit ou « j'en ai toujours ») et purgé avec le compte ([0021](0021-gestion-des-comptes-par-l-administrateur.md)).
+8. **Les conditionnements (nombre de produits pour une quantité) se calculent dans le back**, dans `Drive` (`PackCalculator`), pas dans le front ni dans l'agent.
+9. **Un envoi ne modifie jamais `checked`** et ne vide ni ne réduit le panier de l'enseigne.
+10. **Interrupteur `DRIVE_ENABLED`**, coupé par défaut ; activé par l'humain après un déploiement stable.
+11. **Aucun code produit avant la décision G1** : spikes sur le téléphone réel, lecture des CGU, relevé des en-têtes de sécurité.
+
+## Conséquences
+
+- Positives : aucune donnée d'identification à protéger ; pas de dépendance à un partenariat ; le mode assisté (liens de recherche) reste un repli ; les choix mémorisés servent aussi à d'autres enseignes plus tard.
+- Négatives / coûts : l'intégration est non officielle et peut casser à chaque changement du site de l'enseigne ; un favori se réinstalle à chaque mise à jour ; un geste de plus pour l'utilisateur ; risque de blocage DataDome du compte ou de l'IP de l'utilisateur ; maintenance d'un agent en plus du back et du front ; les CGU de l'enseigne peuvent interdire l'usage (à lire avant G1).
+- Garde-fous : Deptrac (`Drive` → `Shared` seulement) ; test du contrat OpenAPI ; revue de l'agent (pas de `eval`, pas de réseau hors du site de l'enseigne) ; faux site de test ; recette sur téléphone ; interrupteur.
+
+## Alternatives écartées
+
+- Serveur avec navigateur sans tête et identifiants stockés → DataDome, 2FA, fuite engageant notre responsabilité, un seul serveur sans coffre.
+- Cookie de session envoyé au serveur → même blocage, vaut un identifiant.
+- Application Android dédiée (WebView) → second projet, identifiants saisis dans notre appli.
+- Navigateur distant diffusé → nous verrions la session.
+- Leclerc dans un cadre intégré à Repas → refus possible, CSP, cookies de connexion.
+- Sélecteur de produit dans Repas → un aller-retour par recherche, images bloquées par la CSP.
+- Extension Chrome (n'existe pas sur Chrome Android), extension Firefox ou Safari (publication publique ou compte payant) → gardées pour le backlog.
+- Code distant chargé par le favori → notre serveur deviendrait une porte vers les comptes de l'enseigne.
+- Synchronisation du catalogue, scrapers payants, Open Food Facts → ne remplissent pas le panier ou extraction massive.
+- Partenariat façon Jow → hors de portée en usage familial.
+
+Détail complet : [`docs/drive/analyse.md`](../drive/analyse.md) § 4.
