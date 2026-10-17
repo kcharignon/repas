@@ -54,6 +54,9 @@ services:
       MAILER_DSN: ${MAILER_DSN:?MAILER_DSN manquant}
       MAILER_FROM: ${MAILER_FROM:?MAILER_FROM manquant}
       FRONT_URL: https://${APP_HOST}
+      # Envoi de la liste au drive : coupé tant que l'humain ne l'allume pas. Variable listée ici avec sa valeur par défaut, sinon
+      # la valeur du .env embarqué dans l'image (composer dump-env prod) s'appliquerait en silence.
+      DRIVE_ENABLED: ${DRIVE_ENABLED:-false}
       # Sans cela, Symfony verrait l'adresse de la bordure pour tous les visiteurs : plafonds de débit par IP faussés,
       # cookie `Secure` et URLs absolues en http.
       SYMFONY_TRUSTED_PROXIES: PRIVATE_SUBNETS
