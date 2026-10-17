@@ -8,7 +8,7 @@ deptrac:
     - name: HandlerTest
       collectors:
         - type: classLike
-          value: ^Repas\\Tests\\(Repas|User)\\Application\\.*
+          value: ^Repas\\Tests\\(Repas|User|Drive)\\Application\\.*
     - name: Persistence
       collectors:
         - type: classLike
@@ -18,7 +18,7 @@ deptrac:
         - type: classLike
           value: ^Doctrine\\.*
         - type: classLike
-          value: ^Repas\\(Repas|User|Shared)\\Infrastructure\\.*
+          value: ^Repas\\(Repas|User|Drive|Shared)\\Infrastructure\\.*
 
   ruleset:
     HandlerTest:
