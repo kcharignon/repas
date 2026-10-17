@@ -6,7 +6,7 @@ Guide d'architecture pour ce projet (Symfony 8.1 / PHP 8.4). L'objectif: rester 
 
 - **Décisions d'architecture** : `docs/adr/README.md` (index). À lire avant de développer. En cas de désaccord avec ce fichier, l'ADR gagne.
 - **Migration terminée** ([ADR 0018](docs/adr/0018-extinction-de-twig.md)) : toutes les lectures passent par « controller → QueryBus → QueryHandler → Loader → DTO » et le back ne sert plus que l'API JSON stateless (JWT) ; l'interface est le front Vue.js (dépôt `kcharignon/repas-front`). L'historique des slices est dans `docs/migration-roadmap.md`.
-- **Chantier en cours : envoi de la liste au drive Leclerc** (ADR [0022](docs/adr/0022-remplissage-du-panier-drive.md) et [0023](docs/adr/0023-liste-envoyee-au-drive.md), statut Proposed) : lire `docs/drive/README.md` avant de toucher aux listes de courses, aux unités ou au futur contexte `Drive` ; les tickets sont dans `docs/drive/tickets/`.
+- **Chantier en cours : envoi de la liste au drive Leclerc** (ADR [0022](docs/adr/0022-remplissage-du-panier-drive.md) acceptée et [0023](docs/adr/0023-liste-envoyee-au-drive.md) proposée) : lire `docs/drive/README.md` avant de toucher aux listes de courses, aux unités ou au contexte `Drive` ; les tickets sont dans `docs/drive/tickets/`.
 - **Skill développeur** : `/repas-dev` (`.claude/skills/repas-dev/`) — recettes pas-à-pas (nouvelle lecture, endpoint API, écriture), nommage, Definition of Done.
 - **Skill exploitation** : `/repas-ops` (`.claude/skills/repas-ops/`) — release, déploiement, retour arrière, sauvegarde, incident ; l'utilisateur n'est pas devops : une étape à la fois, jamais de secret dans le chat (ADR 0017).
 - Changer une convention = mettre à jour l'ADR, ce fichier, le skill et la roadmap dans le même commit.
@@ -17,6 +17,7 @@ Le code est organisé en contextes métier sous `src/` :
 
 - `Repas` — recettes, ingrédients, listes de courses, unités, conversions.
 - `User` — inscription, authentification, préférences, gestion des comptes par l'administrateur (statut libre, suppression : ADR 0021).
+- `Drive` — envoi de la liste de courses au drive d'une enseigne : réglages, produits, choix, plan d'envoi (ADR 0022 et 0023, `docs/drive/`). Contexte en cours de construction (squelette seulement, DRV-201) ; il ne dépend que de `Shared` et référence ingrédients et utilisateurs par identifiant.
 - `Shared` — briques transverses (bus, modèle de base, outils).
 
 Chaque contexte suit la même structure en 3 couches (architecture hexagonale) :

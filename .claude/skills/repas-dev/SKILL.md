@@ -14,7 +14,7 @@ description: Développer une fonctionnalité du projet Repas (Symfony 8.1 / PHP 
 
 ## 1. Règles en bref
 
-- Dépendances : `Infrastructure → Application → Domain`. `Shared` n'importe jamais `Repas` ni `User` (ADR 0001).
+- Dépendances : `Infrastructure → Application → Domain`. `Shared` n'importe jamais `Repas`, `User` ni `Drive` (ADR 0001) ; un contexte n'importe jamais un autre contexte.
 - Écriture : `Controller → CommandBusInterface::dispatch(Command) → Handler → Domain → Repository`. Lecture : `Controller → QueryBusInterface::ask(Query) → QueryHandler → Loader → DTO` (ADR 0003).
 - `QueryHandler` n'appelle **jamais** un `Repository`. `CommandHandler` n'appelle **jamais** un `Loader`. Un `QueryHandler` ne modifie pas l'état.
 - Un Loader retourne des **DTO**, jamais un modèle du domaine (ADR 0004). Il lit les entités Doctrine/SQL directement, jointures manuelles sur ids.

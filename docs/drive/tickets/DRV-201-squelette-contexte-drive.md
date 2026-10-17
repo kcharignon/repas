@@ -4,7 +4,7 @@
 - **Jalon** : M2 Back `Drive`
 - **Taille** : S
 - **Dépend de** : DRV-005 (décision G1 : Go)
-- **Statut** : à faire
+- **Statut** : fait (PR [#121](https://github.com/kcharignon/repas/pull/121), 2026-10-17 ; squelette `src/Drive`, Deptrac, Doctrine, routes, phpunit ; aucune classe métier)
 - **Lire d'abord** : [`../architecture.md`](../architecture.md) §§ 3, 5 ; ADR 0001, 0011, 0013 ; `quality-rules/Deptrac/*.yaml` (7 fichiers) ; `quality-rules/Phpstan/` ; skill `repas-dev`.
 
 ## Contexte
