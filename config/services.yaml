@@ -57,6 +57,12 @@ when@test:
             autowire: true
             autoconfigure: true
 
+        # Routes d'essai de l'interrupteur du drive (voir config/routes.yaml)
+        Repas\Tests\Helper\Http\:
+            resource: '../tests/Helper/Http/'
+            autowire: true
+            autoconfigure: true
+
         # Comptage des requêtes SQL par use case (tests/Repas/WriteBudget, voir ADR 0010 et roadmap phase 8)
         Repas\Tests\Helper\SqlBudget\QueryCounter: ~
         Repas\Tests\Helper\SqlBudget\CountingMiddleware:

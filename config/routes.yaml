@@ -21,3 +21,11 @@ user_api_controllers:
 api_login_check:
     path: /api/login_check
     methods: [POST]
+
+when@test:
+    # Routes d'essai de l'interrupteur du drive (tests/Helper/Http), absentes de dev et de prod
+    test_probe_controllers:
+        resource:
+            path: ../tests/Helper/Http/
+            namespace: Repas\Tests\Helper\Http
+        type: attribute
