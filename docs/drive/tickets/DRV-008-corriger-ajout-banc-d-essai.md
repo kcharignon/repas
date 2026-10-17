@@ -4,7 +4,7 @@
 - **Jalon** : M0 Découverte
 - **Taille** : S
 - **Dépend de** : DRV-007 (fait)
-- **Statut** : fait (PR [repas-front#62](https://github.com/kcharignon/repas-front/pull/62), 2026-10-17 ; essais à refaire par l'utilisateur sur son ordinateur)
+- **Statut** : fait et validé sur le site (PR repas-front#62, #63 et #64, 2026-10-17 : ajout et retrait HTTP 200 depuis le banc, sur ordinateur)
 - **Lire d'abord** : [`../spikes/DRV-007-requete-ajout-panier.md`](../spikes/DRV-007-requete-ajout-panier.md), [`../recherche.md`](../recherche.md) (lignes « Forme exacte de la requête du site »), `drive-agent/lab/src/cart.ts`, `drive-agent/lab/src/essais/cartFlow.ts`, `drive-agent/lab/src/http.ts`, `drive-agent/lab/PROCEDURE.md`, `CLAUDE.md` du front.
 
 ## Contexte

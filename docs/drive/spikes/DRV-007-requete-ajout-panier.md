@@ -53,4 +53,4 @@ La requête rejouée dans la console avec « Copier en tant que fetch » répond
 Le corps (`d=…`, 317 octets pour l'ajout) était déjà identique, `credentials` et `referrer` n'ont pas d'importance a priori (le site met le `referrer` de la page de recherche). Correction demandée dans le banc : voir DRV-008 (suite). Le contenu complet de la requête réelle est dans [`../recherche.md`](../recherche.md).
 
 - Ajout par script depuis la page : **possible** (200 en rejouant la requête du site depuis la console).
-- Reste à confirmer avec le banc corrigé que les deux écarts expliquent bien le 404.
+- **Confirmé** : avec le banc corrigé (en-tête `zcwb` et adresse sans ville), l'ajout et le retrait répondent HTTP 200 depuis un script lancé sur la page.
