@@ -7,6 +7,7 @@ use Doctrine\Bundle\FixturesBundle\FixtureGroupInterface;
 use Doctrine\Persistence\ObjectManager;
 use Exception;
 use Repas\Repas\Infrastructure\Entity\Unit as UnitEntity;
+use Repas\Shared\Domain\Model\Dimension;
 
 class UnitFixture extends RepasFixture implements FixtureGroupInterface
 {
@@ -29,6 +30,8 @@ class UnitFixture extends RepasFixture implements FixtureGroupInterface
                     slug : $unitData["slug"],
                     name: $unitData["name"],
                     symbol: $unitData["symbol"],
+                    dimension: isset($unitData["dimension"]) ? Dimension::from($unitData["dimension"]) : null,
+                    baseFactor: isset($unitData["baseFactor"]) ? (float) $unitData["baseFactor"] : null,
                 );
                 $manager->persist($unitEntity);
 

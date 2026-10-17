@@ -11,6 +11,8 @@ class UnitDTOBuilder implements Builder
     private string $slug;
     private string $name;
     private string $symbol;
+    private ?string $dimension = null;
+    private ?float $baseFactor = null;
 
     private function initialize(): void
     {
@@ -37,9 +39,16 @@ class UnitDTOBuilder implements Builder
         return $this;
     }
 
+    public function withMeasure(?string $dimension, ?float $baseFactor): self
+    {
+        $this->dimension = $dimension;
+        $this->baseFactor = $baseFactor;
+        return $this;
+    }
+
     public function build(): UnitDTO
     {
         $this->initialize();
-        return new UnitDTO($this->slug, $this->name, $this->symbol);
+        return new UnitDTO($this->slug, $this->name, $this->symbol, $this->dimension, $this->baseFactor);
     }
 }

@@ -80,7 +80,9 @@ readonly class UnitPostgreSQLRepository extends PostgreSQLRepository implements 
     private function updateEntity(UnitEntity $entity, UnitModel $model): void
     {
         $entity->setName($model->getName())
-            ->setSymbol($model->getSymbol());
+            ->setSymbol($model->getSymbol())
+            ->setDimension($model->getDimension())
+            ->setBaseFactor($model->getBaseFactor());
     }
 
     private function convertEntityToModel(UnitEntity $entity): UnitModel
@@ -89,6 +91,8 @@ readonly class UnitPostgreSQLRepository extends PostgreSQLRepository implements 
             'slug' => $entity->getSlug(),
             'name' => $entity->getName(),
             'symbol' => $entity->getSymbol(),
+            'dimension' => $entity->getDimension(),
+            'baseFactor' => $entity->getBaseFactor(),
         ]);
     }
 

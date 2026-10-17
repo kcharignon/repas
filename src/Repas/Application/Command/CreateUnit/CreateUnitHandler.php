@@ -22,7 +22,9 @@ readonly class CreateUnitHandler
     {
         $unit = Unit::create(
             name: $command->name,
-            symbol: $command->symbol
+            symbol: $command->symbol,
+            dimension: $command->dimension,
+            baseFactor: $command->baseFactor,
         );
 
         // Le slug dérive du nom : enregistrer sous un slug existant écraserait l'unité

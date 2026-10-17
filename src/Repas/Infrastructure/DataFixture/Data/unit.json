@@ -2,126 +2,176 @@
   {
     "slug": "unite",
     "name": "unité",
-    "symbol": ""
+    "symbol": "",
+    "dimension": "COUNT",
+    "baseFactor": 1
   },
   {
     "slug": "kilo",
     "name": "kilo",
-    "symbol": "kg"
+    "symbol": "kg",
+    "dimension": "WEIGHT",
+    "baseFactor": 1000
   },
   {
     "slug": "gramme",
     "name": "gramme",
-    "symbol": "g"
+    "symbol": "g",
+    "dimension": "WEIGHT",
+    "baseFactor": 1
   },
   {
     "slug": "litre",
     "name": "litre",
-    "symbol": "l"
+    "symbol": "l",
+    "dimension": "VOLUME",
+    "baseFactor": 1000
   },
   {
     "slug": "millilitre",
     "name": "millilitre",
-    "symbol": "ml"
+    "symbol": "ml",
+    "dimension": "VOLUME",
+    "baseFactor": 1
   },
   {
     "slug": "centilitre",
     "name": "centilitre",
-    "symbol": "cl"
+    "symbol": "cl",
+    "dimension": "VOLUME",
+    "baseFactor": 10
   },
   {
     "slug": "cuillere-a-soupe",
     "name": "cuillère à soupe",
-    "symbol": "cuillère à soupe"
+    "symbol": "cuillère à soupe",
+    "dimension": null,
+    "baseFactor": null
   },
   {
     "slug": "cuillere-a-cafe",
     "name": "cuillère à café",
-    "symbol": "cuillère à café"
+    "symbol": "cuillère à café",
+    "dimension": null,
+    "baseFactor": null
   },
   {
     "slug": "tasse-a-cafe",
     "name": "tasse à café",
-    "symbol": "tasse à café"
+    "symbol": "tasse à café",
+    "dimension": null,
+    "baseFactor": null
   },
   {
     "slug": "verre",
     "name": "verre",
-    "symbol": "verre"
+    "symbol": "verre",
+    "dimension": null,
+    "baseFactor": null
   },
   {
     "slug": "bol",
     "name": "bol",
-    "symbol": "bol"
+    "symbol": "bol",
+    "dimension": null,
+    "baseFactor": null
   },
   {
     "slug": "plaquette",
     "name": "plaquette",
-    "symbol": "plaquette"
+    "symbol": "plaquette",
+    "dimension": "PACKAGE",
+    "baseFactor": 1
   },
   {
     "slug": "tablette",
     "name": "tablette",
-    "symbol": "tablette"
+    "symbol": "tablette",
+    "dimension": "PACKAGE",
+    "baseFactor": 1
   },
   {
     "slug": "tranche",
     "name": "tranche",
-    "symbol": "tranche"
+    "symbol": "tranche",
+    "dimension": null,
+    "baseFactor": null
   },
   {
     "slug": "paquet",
     "name": "paquet",
-    "symbol": "paquet"
+    "symbol": "paquet",
+    "dimension": "PACKAGE",
+    "baseFactor": 1
   },
   {
     "slug": "boite",
     "name": "boîte",
-    "symbol": "boîte"
+    "symbol": "boîte",
+    "dimension": "PACKAGE",
+    "baseFactor": 1
   },
   {
     "slug": "sachet",
     "name": "sachet",
-    "symbol": "sachet"
+    "symbol": "sachet",
+    "dimension": "PACKAGE",
+    "baseFactor": 1
   },
   {
     "slug": "bouteille",
     "name": "bouteille",
-    "symbol": "bouteille"
+    "symbol": "bouteille",
+    "dimension": "PACKAGE",
+    "baseFactor": 1
   },
   {
     "slug": "conserve",
     "name": "conserve",
-    "symbol": "conserve"
+    "symbol": "conserve",
+    "dimension": "PACKAGE",
+    "baseFactor": 1
   },
   {
     "slug": "cube",
     "name": "cube",
-    "symbol": "cube"
+    "symbol": "cube",
+    "dimension": null,
+    "baseFactor": null
   },
   {
     "slug": "buche",
     "name": "bûche",
-    "symbol": "buche"
+    "symbol": "buche",
+    "dimension": "PACKAGE",
+    "baseFactor": 1
   },
   {
     "slug": "brique",
     "name": "brique",
-    "symbol": "brique"
+    "symbol": "brique",
+    "dimension": "PACKAGE",
+    "baseFactor": 1
   },
   {
     "slug": "pot",
     "name": "pot",
-    "symbol": "pot"
+    "symbol": "pot",
+    "dimension": "PACKAGE",
+    "baseFactor": 1
   },
   {
     "slug": "gousse",
     "name": "gousse",
-    "symbol": "gousse"
+    "symbol": "gousse",
+    "dimension": null,
+    "baseFactor": null
   },
   {
     "slug": "flacon",
     "name": "flacon",
-    "symbol": "flacon"
+    "symbol": "flacon",
+    "dimension": "PACKAGE",
+    "baseFactor": 1
   }
 ]

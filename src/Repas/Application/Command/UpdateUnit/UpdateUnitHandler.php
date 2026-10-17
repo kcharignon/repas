@@ -22,6 +22,11 @@ readonly class UpdateUnitHandler
     {
         $unit = $this->unitRepository->findOneBySlug($command->slug);
 
+        // La mesure d'abord : si elle est incohérente, l'unité n'a encore été touchée en rien
+        if ($command->replaceMeasure) {
+            $unit->setMeasure($command->dimension, $command->baseFactor);
+        }
+
         $unit->update(
             $command->name,
             $command->symbol,

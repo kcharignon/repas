@@ -4,6 +4,7 @@ namespace Repas\Tests\Helper\Builder;
 
 
 use Repas\Repas\Domain\Model\Unit;
+use Repas\Shared\Domain\Model\Dimension;
 use Repas\Shared\Domain\Tool\StringTool;
 
 class UnitBuilder implements Builder
@@ -11,6 +12,8 @@ class UnitBuilder implements Builder
     private ?string $slug;
     private ?string $name;
     private ?string $symbol;
+    private ?Dimension $dimension = null;
+    private ?float $baseFactor = null;
 
     private function initialize(): void
     {
@@ -33,12 +36,22 @@ class UnitBuilder implements Builder
         return $this;
     }
 
+    /**
+     * La dimension et le facteur de base vont ensemble ; `build()` ne les contrôle pas (`load()`), un test peut fabriquer un état incohérent.
+     */
+    public function withMeasure(?Dimension $dimension, ?float $baseFactor): UnitBuilder
+    {
+        $this->dimension = $dimension;
+        $this->baseFactor = $baseFactor;
+        return $this;
+    }
+
     public function isGramme(): UnitBuilder
     {
         $this->name = 'gramme';
         $this->slug = 'gramme';
         $this->symbol = 'g';
-        return $this;
+        return $this->withMeasure(Dimension::WEIGHT, 1);
     }
 
     public function isKilo(): UnitBuilder
@@ -46,7 +59,7 @@ class UnitBuilder implements Builder
         $this->name = 'kilo';
         $this->slug = 'kilo';
         $this->symbol = 'kg';
-        return $this;
+        return $this->withMeasure(Dimension::WEIGHT, 1000);
     }
 
     public function isUnite(): UnitBuilder
@@ -54,7 +67,7 @@ class UnitBuilder implements Builder
         $this->name = 'unité';
         $this->slug = 'unite';
         $this->symbol = '';
-        return $this;
+        return $this->withMeasure(Dimension::COUNT, 1);
     }
 
     public function withSymbol(?string $symbol): UnitBuilder
@@ -70,6 +83,8 @@ class UnitBuilder implements Builder
             'name' => $this->name,
             'slug' => $this->slug,
             'symbol' => $this->symbol,
+            'dimension' => $this->dimension,
+            'baseFactor' => $this->baseFactor,
         ]);
     }
 
@@ -78,7 +93,7 @@ class UnitBuilder implements Builder
         $this->name = 'boîte';
         $this->slug = 'boite';
         $this->symbol = 'boîte';
-        return $this;
+        return $this->withMeasure(Dimension::PACKAGE, 1);
     }
 
     public function isCentiliter(): self
@@ -86,7 +101,7 @@ class UnitBuilder implements Builder
         $this->name = 'centilitre';
         $this->slug = 'centilitre';
         $this->symbol = 'cl';
-        return $this;
+        return $this->withMeasure(Dimension::VOLUME, 10);
     }
 
     public function isMillilitre(): self
@@ -94,7 +109,7 @@ class UnitBuilder implements Builder
         $this->name = 'millilitre';
         $this->slug = 'millilitre';
         $this->symbol = 'ml';
-        return $this;
+        return $this->withMeasure(Dimension::VOLUME, 1);
     }
 
     public function isLiter(): self
@@ -102,7 +117,7 @@ class UnitBuilder implements Builder
         $this->name = 'litre';
         $this->slug = 'litre';
         $this->symbol = 'l';
-        return $this;
+        return $this->withMeasure(Dimension::VOLUME, 1000);
     }
 
     public function isBlock(): self
@@ -110,7 +125,7 @@ class UnitBuilder implements Builder
         $this->name = 'plaquette';
         $this->slug = 'plaquette';
         $this->symbol = 'plaquette';
-        return $this;
+        return $this->withMeasure(Dimension::PACKAGE, 1);
     }
 
     public function isSoupSpoon(): self

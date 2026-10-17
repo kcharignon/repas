@@ -5,6 +5,7 @@ namespace Repas\Tests\Repas\InputAdapter;
 
 use PHPUnit\Framework\Attributes\DataProvider;
 use Repas\Repas\Application\Command\CreateUnit\CreateUnitCommand;
+use Repas\Shared\Domain\Model\Dimension;
 use Repas\Tests\Helper\QueryBusWebTestCase;
 use Repas\User\Domain\Model\User;
 
@@ -22,6 +23,32 @@ class CreateUnitApiControllerTest extends QueryBusWebTestCase
         $this->assertSame(201, $this->client->getResponse()->getStatusCode());
         $this->assertEquals([new CreateUnitCommand('Pincée', 'pin')], $commandBus->dispatched());
         $this->assertSame('/api/v1/units/pincee', $this->client->getResponse()->headers->get('Location'));
+    }
+
+    public function testForwardsTheDimensionAndTheBaseFactor(): void
+    {
+        // Given
+        $commandBus = $this->mockCommandBus()->willReturn(CreateUnitCommand::class, 'kilo-bis');
+
+        // When
+        $this->post($this->savedUser(admin: true), ['name' => 'Kilo bis', 'symbol' => 'kg', 'dimension' => 'WEIGHT', 'baseFactor' => 1000]);
+
+        // Then
+        $this->assertSame(201, $this->client->getResponse()->getStatusCode());
+        $this->assertEquals([new CreateUnitCommand('Kilo bis', 'kg', Dimension::WEIGHT, 1000.0)], $commandBus->dispatched());
+    }
+
+    public function testAcceptsAnExplicitNullMeasure(): void
+    {
+        // Given
+        $commandBus = $this->mockCommandBus()->willReturn(CreateUnitCommand::class, 'pincee');
+
+        // When
+        $this->post($this->savedUser(admin: true), ['name' => 'Pincée', 'symbol' => 'pin', 'dimension' => null, 'baseFactor' => null]);
+
+        // Then
+        $this->assertSame(201, $this->client->getResponse()->getStatusCode());
+        $this->assertEquals([new CreateUnitCommand('Pincée', 'pin', null, null)], $commandBus->dispatched());
     }
 
     public function testRefusesAUserWhoIsNotAnAdministrator(): void
@@ -67,6 +94,11 @@ class CreateUnitApiControllerTest extends QueryBusWebTestCase
         yield 'sans symbole' => [['symbol' => ''] + $valid];
         yield 'symbole trop long' => [['symbol' => str_repeat('a', 51)] + $valid];
         yield 'nom de mauvais type' => [['name' => ['x']] + $valid];
+        yield 'dimension inconnue' => [['dimension' => 'MASS', 'baseFactor' => 1] + $valid];
+        yield 'dimension de mauvais type' => [['dimension' => 3, 'baseFactor' => 1] + $valid];
+        yield 'facteur nul' => [['dimension' => 'WEIGHT', 'baseFactor' => 0] + $valid];
+        yield 'facteur négatif' => [['dimension' => 'WEIGHT', 'baseFactor' => -1000] + $valid];
+        yield 'facteur de mauvais type' => [['dimension' => 'WEIGHT', 'baseFactor' => 'beaucoup'] + $valid];
     }
 
     public function testRefusesAnUnauthenticatedRequest(): void

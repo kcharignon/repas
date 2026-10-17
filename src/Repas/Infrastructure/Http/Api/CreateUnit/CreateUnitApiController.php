@@ -28,11 +28,11 @@ final class CreateUnitApiController extends AbstractController
     #[OA\Response(response: 201, description: 'Créé', headers: [new OA\Header(header: 'Location', description: 'URL de la ressource créée', schema: new OA\Schema(type: 'string'))])]
     #[OA\Response(response: 403, description: 'Réservé aux administrateurs')]
     #[OA\Response(response: 409, description: 'Un élément de même slug existe déjà (le slug dérive du nom)')]
-    #[OA\Response(response: 422, description: 'Corps de la requête invalide')]
+    #[OA\Response(response: 422, description: "Corps de la requête invalide (dont une dimension sans facteur de base ou l'inverse, ou un facteur qui n'est pas strictement positif)")]
     public function __invoke(#[MapRequestPayload] UnitPayload $payload): Response
     {
         /** @var string $slug le handler renvoie le slug, qui dérive du nom */
-        $slug = $this->commandBus->dispatch(new CreateUnitCommand(name: $payload->name, symbol: $payload->symbol));
+        $slug = $this->commandBus->dispatch(new CreateUnitCommand(name: $payload->name, symbol: $payload->symbol, dimension: $payload->dimension, baseFactor: $payload->baseFactor));
 
         return new Response(status: Response::HTTP_CREATED, headers: ['Location' => $this->generateUrl('api_get_unit', ['slug' => $slug])]);
     }
