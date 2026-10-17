@@ -12,6 +12,7 @@ use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Repas\Domain\Model\Ingredient;
 use Repas\Repas\Domain\Model\ShoppingListIngredient;
 use Repas\Repas\Domain\Model\ShoppingListRow;
+use Repas\Repas\Domain\Model\ShoppingListStatus;
 use Repas\Tests\Helper\Builder\IngredientBuilder;
 use Repas\Tests\Helper\Builder\ShoppingListBuilder;
 use Repas\Tests\Helper\Builder\UserBuilder;
@@ -129,6 +130,28 @@ class RemoveIngredientToShoppingListHandlerTest extends TestCase
             ($this->handler)($command);
         } finally {
             $this->assertCount(1, $shoppingList->getIngredients());
+        }
+    }
+
+    public function testDoesNotTouchASentList(): void
+    {
+        // Arrange : le propriétaire n'a qu'une liste envoyée au drive (ADR 0023)
+        $sent = new ShoppingListBuilder()
+            ->withId('shopping-list-id')
+            ->withOwner($this->user)
+            ->addIngredient($this->ingredient)
+            ->withStatus(ShoppingListStatus::SENT)
+            ->build();
+        $this->shoppingListRepository->save($sent);
+
+        // Assert
+        $this->expectExceptionObject(ShoppingListException::activeShoppingListNotFound());
+
+        // Act
+        try {
+            ($this->handler)(new RemoveIngredientToShoppingListCommand('user-id', 'pate'));
+        } finally {
+            $this->assertEquals(1, $this->shoppingListRepository->findOneById('shopping-list-id')->getIngredients()->reset()->getQuantity());
         }
     }
 }

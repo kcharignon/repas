@@ -29,6 +29,7 @@ class ShoppingListBuilder implements Builder
     private UuidGeneratorInterface $uuidGenerator;
     private ?string $name = null;
     private int $version = 1;
+    private ?DateTimeImmutable $sentAt = null;
 
     public function __construct(?UuidGeneratorInterface $uuidGenerator = null)
     {
@@ -50,6 +51,7 @@ class ShoppingListBuilder implements Builder
             'ingredients' => Tab::newEmptyTyped(ShoppingListIngredient::class),
             'rows' => Tab::newEmptyTyped(ShoppingListRow::class),
             'version' => $this->version,
+            'sent_at' => $this->status === ShoppingListStatus::SENT ? ($this->sentAt ?? new DateTimeImmutable()) : null,
         ]);
 
         // On ajoute les repas(recette)
@@ -58,15 +60,15 @@ class ShoppingListBuilder implements Builder
             $shoppingList->addMeal($this->uuidGenerator->generate(), $recipe, $owner->getDefaultServing());
         }
 
-        // On passe au status demandé
-        if ($this->status !== ShoppingListStatus::ACTIVE) {
-            $shoppingList->setStatus($this->status);
-        }
-
         foreach ($this->ingredients as $ingredient) {
             $purchaseUnitSlug = $ingredient->getDefaultPurchaseUnit()->getSlug();
             $shoppingList->addIngredient($ingredient->getSlug(), $purchaseUnitSlug);
             $shoppingList->addRow($ingredient->getSlug(), $purchaseUnitSlug, 1);
+        }
+
+        // On passe au status demandé en dernier : une liste envoyée n'est plus modifiable
+        if ($this->status !== ShoppingListStatus::ACTIVE) {
+            $shoppingList->setStatus($this->status);
         }
 
         return $shoppingList;
@@ -123,6 +125,12 @@ class ShoppingListBuilder implements Builder
     public function withStatus(ShoppingListStatus $status): self
     {
         $this->status = $status;
+        return $this;
+    }
+
+    public function withSentAt(DateTimeImmutable $sentAt): self
+    {
+        $this->sentAt = $sentAt;
         return $this;
     }
 

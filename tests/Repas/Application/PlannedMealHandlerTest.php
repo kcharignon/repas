@@ -13,6 +13,7 @@ use Repas\Repas\Domain\Interface\RecipeRepository;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Repas\Domain\Interface\UnitRepository;
 use Repas\Repas\Domain\Model\ShoppingListRow;
+use Repas\Repas\Domain\Model\ShoppingListStatus;
 use Repas\Repas\Domain\Service\ConversionService;
 use Repas\Shared\Domain\Tool\UuidGenerator;
 use Repas\Tests\Helper\Builder\ConversionBuilder;
@@ -206,5 +207,26 @@ class PlannedMealHandlerTest extends TestCase
 
         // Assert
         $this->assertTrue($shoppingList->hasRecipe($recipe));
+    }
+
+    public function testDoesNotTouchASentList(): void
+    {
+        // Arrange : le propriétaire n'a qu'une liste envoyée au drive (ADR 0023)
+        $user = new UserBuilder()->build();
+        $recipe = new RecipeBuilder()->isPastaCarbonara()->withAuthor($user)->build();
+        $this->recipeRepository->save($recipe);
+        $sent = new ShoppingListBuilder()->withOwner($user)->addIngredient(new IngredientBuilder()->isEgg())->withStatus(ShoppingListStatus::SENT)->build();
+        $this->shoppingListRepository->save($sent);
+
+        // Assert
+        $this->expectExceptionObject(ShoppingListException::activeShoppingListNotFound());
+
+        // Act
+        try {
+            ($this->handler)(new PlannedMealCommand($user->getId(), $recipe->getId(), $user->getDefaultServing()));
+        } finally {
+            $this->assertCount(0, $sent->getMeals());
+            $this->assertCount(1, $sent->getRows());
+        }
     }
 }

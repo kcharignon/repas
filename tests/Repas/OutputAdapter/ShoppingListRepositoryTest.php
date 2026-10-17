@@ -110,7 +110,7 @@ class ShoppingListRepositoryTest extends DatabaseTestCase
 
         // Assert
         RepasAssert::assertTabType(Tab::newEmptyTyped(ShoppingList::class), $shoppingLists);
-        $this->assertCount(3, $shoppingLists);
+        $this->assertCount(count(ShoppingListStatus::cases()), $shoppingLists);
         $this->assertEqualsCanonicalizing($expectedIds, $this->idsOf($shoppingLists));
         foreach ($shoppingLists as $shoppingList) {
             $this->assertSame($user->getId(), $shoppingList->getOwnerId());
@@ -332,5 +332,52 @@ class ShoppingListRepositoryTest extends DatabaseTestCase
         $this->shoppingListRepository->save($shoppingList);
 
         return $shoppingList;
+    }
+
+    public function testIsSentTellsIfTheListIsSentToTheDrive(): void
+    {
+        // Arrange
+        $user = $this->savedUser();
+        $sent = $this->savedShoppingList($user, ShoppingListStatus::SENT);
+        $active = $this->savedShoppingList($user, ShoppingListStatus::ACTIVE);
+        $completed = $this->savedShoppingList($user, ShoppingListStatus::COMPLETED);
+
+        // Act & Assert
+        $this->assertTrue($this->shoppingListRepository->isSent($sent->getId()));
+        $this->assertFalse($this->shoppingListRepository->isSent($active->getId()));
+        $this->assertFalse($this->shoppingListRepository->isSent($completed->getId()));
+        $this->assertFalse($this->shoppingListRepository->isSent('unknown-id'));
+    }
+
+    public function testSendingAndReopeningAListIsPersistedWithItsSentDate(): void
+    {
+        // Arrange
+        $user = $this->savedUser();
+        $shoppingList = new ShoppingListBuilder()->withOwner($user)->addIngredient(new IngredientBuilder()->isEgg())->build();
+        $this->persister->saveIngredient(new IngredientBuilder()->isEgg()->build());
+        $this->shoppingListRepository->save($shoppingList);
+        $sentAt = new \DateTimeImmutable('2026-10-18 10:30:00');
+
+        // Act
+        $shoppingList->send($sentAt);
+        $this->shoppingListRepository->save($shoppingList);
+
+        // Assert
+        $loaded = $this->shoppingListRepository->findOneById($shoppingList->getId());
+        $this->assertSame(ShoppingListStatus::SENT, $loaded->getStatus());
+        $this->assertSame($sentAt->format(DATE_ATOM), $loaded->getSentAt()?->format(DATE_ATOM));
+        $this->assertTrue($this->shoppingListRepository->isSent($shoppingList->getId()));
+        $this->assertSame(2, $loaded->getVersion());
+
+        // Act
+        $loaded->reopen();
+        $this->shoppingListRepository->save($loaded);
+
+        // Assert
+        $reopened = $this->shoppingListRepository->findOneById($shoppingList->getId());
+        $this->assertSame(ShoppingListStatus::ACTIVE, $reopened->getStatus());
+        $this->assertNull($reopened->getSentAt());
+        $this->assertFalse($this->shoppingListRepository->isSent($shoppingList->getId()));
+        $this->assertSame(3, $reopened->getVersion());
     }
 }

@@ -19,6 +19,8 @@ use Repas\Repas\Application\Command\RemoveIngredientToShoppingList\RemoveIngredi
 use Repas\Repas\Application\Command\RemoveMealFromPlan\removeMealFromPlanCommand;
 use Repas\Repas\Application\Command\RemoveRecipe\RemoveRecipeCommand;
 use Repas\Repas\Application\Command\RemoveShoppingList\RemoveShoppingListCommand;
+use Repas\Repas\Application\Command\ReopenShoppingList\ReopenShoppingListCommand;
+use Repas\Repas\Application\Command\SendShoppingList\SendShoppingListCommand;
 use Repas\Repas\Application\Command\StoppedShoppingList\StoppedShoppingListCommand;
 use Repas\Repas\Application\Command\TickLineOnShoppingList\TickLineOnShoppingListCommand;
 use Repas\Repas\Application\Command\UncheckLineOnShoppingList\UncheckLineOnShoppingListCommand;
@@ -165,6 +167,22 @@ return [
         $list = $t->savedShoppingList($owner, $t->typicalRecipes($owner), static fn(ShoppingListBuilder $b) => $b->withStatus(ShoppingListStatus::PAUSED));
 
         return new ActivatedShoppingListCommand($list->getId());
+    },
+    'envoyer-liste' => static function (WriteBudgetTestCase $t): object {
+        $owner = $t->savedUser();
+        $list = $t->savedShoppingList($owner, $t->typicalRecipes($owner));
+
+        return new SendShoppingListCommand($list->getId());
+    },
+    // Rouvrir une liste envoyée : l'autre liste active du propriétaire est mise en pause
+    'rouvrir-liste' => static function (WriteBudgetTestCase $t): object {
+        $owner = $t->savedUser();
+        $sent = $t->savedShoppingList($owner, $t->typicalRecipes($owner), null, static function (ShoppingList $list): void {
+            $list->send(new DateTimeImmutable());
+        });
+        $t->savedShoppingList($owner, []);
+
+        return new ReopenShoppingListCommand($sent->getId());
     },
     'renommer-liste' => static function (WriteBudgetTestCase $t): object {
         $owner = $t->savedUser();

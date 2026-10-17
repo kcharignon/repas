@@ -27,6 +27,10 @@ class ShoppingList
     #[ORM\Column(name: 'name', nullable: true)]
     private ?string $name = null;
 
+    // Date d'envoi au drive (statut SENT, ADR 0023) ; null sinon
+    #[ORM\Column(name: 'sent_at', nullable: true)]
+    private ?DateTimeImmutable $sentAt = null;
+
     // Version de l'ETag : écrite seulement par `PostgreSQLRepository::bumpVersion` (jamais par le flush de Doctrine)
     #[ORM\Column(type: 'integer', updatable: false)]
     private int $version = 1;
@@ -36,13 +40,15 @@ class ShoppingList
         string            $ownerId,
         DateTimeImmutable $createdAt,
         Status            $status,
-        ?string            $name
+        ?string            $name,
+        ?DateTimeImmutable $sentAt = null,
     ) {
         $this->id = $id;
         $this->ownerId = $ownerId;
         $this->createdAt = $createdAt;
         $this->status = $status;
         $this->name = $name;
+        $this->sentAt = $sentAt;
     }
 
     public static function fromModel(ShoppingListModel $shoppingListModel): static
@@ -53,6 +59,7 @@ class ShoppingList
             createdAt: $shoppingListModel->getCreatedAt(),
             status: $shoppingListModel->getStatus(),
             name: $shoppingListModel->getName(),
+            sentAt: $shoppingListModel->getSentAt(),
         );
     }
 
@@ -60,6 +67,7 @@ class ShoppingList
     {
         $this->status = $shoppingListModel->getStatus();
         $this->name = $shoppingListModel->getName();
+        $this->sentAt = $shoppingListModel->getSentAt();
     }
 
     public function getId(): ?string
@@ -123,5 +131,10 @@ class ShoppingList
     {
         $this->name = $name;
         return $this;
+    }
+
+    public function getSentAt(): ?DateTimeImmutable
+    {
+        return $this->sentAt;
     }
 }

@@ -8,6 +8,40 @@ use Repas\Shared\Domain\Exception\DomainException;
 
 final class ShoppingListException extends DomainException
 {
+    // Messages des cas métier de la liste envoyée au drive (ADR 0023) : le front les distingue
+    public const string SENT = 'SHOPPING_LIST_SENT';
+    public const string NOT_SENDABLE = 'SHOPPING_LIST_NOT_SENDABLE';
+    public const string NOT_SENT = 'SHOPPING_LIST_NOT_SENT';
+    public const string EMPTY = 'SHOPPING_LIST_EMPTY';
+
+    /**
+     * La liste est envoyée au drive : elle n'est plus modifiable, il faut la rouvrir (ADR 0023).
+     */
+    public static function sent(string $id): static
+    {
+        return new static(self::SENT, 409);
+    }
+
+    /**
+     * Seule une liste active (ou déjà envoyée) peut être envoyée.
+     */
+    public static function notSendable(string $id): static
+    {
+        return new static(self::NOT_SENDABLE, 409);
+    }
+
+    public static function notSent(string $id): static
+    {
+        return new static(self::NOT_SENT, 409);
+    }
+
+    /**
+     * Une liste sans ligne n'a rien à envoyer. Règle métier, `422`.
+     */
+    public static function empty(string $id): static
+    {
+        return new static(self::EMPTY, 422);
+    }
 
     public static function shoppingListNotFound(string $id): static
     {

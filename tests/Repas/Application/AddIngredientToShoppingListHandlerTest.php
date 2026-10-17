@@ -10,6 +10,7 @@ use Repas\Repas\Domain\Exception\ShoppingListException;
 use Repas\Repas\Domain\Interface\IngredientRepository;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Repas\Domain\Model\ShoppingListIngredient;
+use Repas\Repas\Domain\Model\ShoppingListStatus;
 use Repas\Tests\Helper\Builder\IngredientBuilder;
 use Repas\Tests\Helper\Builder\ShoppingListBuilder;
 use Repas\Tests\Helper\Builder\UserBuilder;
@@ -143,6 +144,26 @@ class AddIngredientToShoppingListHandlerTest extends TestCase
             ($this->handler)($command);
         } finally {
             $this->assertCount(0, $shoppingList->getIngredients());
+        }
+    }
+
+    public function testDoesNotTouchASentList(): void
+    {
+        // Arrange : le propriétaire n'a qu'une liste envoyée au drive (ADR 0023)
+        $user = new UserBuilder()->build();
+        $egg = new IngredientBuilder()->isEgg()->build();
+        $this->ingredientRepository->save($egg);
+        $sent = new ShoppingListBuilder()->withOwner($user)->addIngredient(new IngredientBuilder()->isEgg())->withStatus(ShoppingListStatus::SENT)->build();
+        $this->shoppingListRepository->save($sent);
+
+        // Assert
+        $this->expectExceptionObject(ShoppingListException::activeShoppingListNotFound());
+
+        // Act
+        try {
+            ($this->handler)(new AddIngredientToShoppingListCommand($user->getId(), $egg->getSlug()));
+        } finally {
+            $this->assertEquals(1, $sent->getIngredients()->reset()->getQuantity());
         }
     }
 }

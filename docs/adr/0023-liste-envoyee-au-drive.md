@@ -1,6 +1,6 @@
 # 0023 — Liste envoyée au drive : statut `SENT` et verrou
 
-- **Statut** : Proposed (passe `Accepted` avec le ticket DRV-101)
+- **Statut** : Accepted (ticket DRV-101, 2026-10-18)
 - **Date** : 2026-10-17
 - **Liens** : [0002](0002-modele-domaine-riche.md), [0007](0007-api-rest-v1.md) §11 et §12, [0013](0013-agregats-references-par-identifiant.md), [0016](0016-controle-de-version-etag-if-match.md), [0017](0017-deploiement-et-releases.md) règle 6, [0022](0022-remplissage-du-panier-drive.md), [`docs/drive/architecture.md`](../drive/architecture.md) § 4
 

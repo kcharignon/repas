@@ -53,6 +53,11 @@ class ShoppingListInMemoryRepository extends AbstractInMemoryRepository implemen
         return false;
     }
 
+    public function isSent(string $shoppingListId): bool
+    {
+        return ($this->models[$shoppingListId] ?? null)?->isSent() === true;
+    }
+
     public function save(ShoppingList $shoppingList): void
     {
         $this->models[$shoppingList->getId()] = $shoppingList;
