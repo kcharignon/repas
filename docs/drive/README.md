@@ -19,7 +19,8 @@ Voir [`roadmap.md`](roadmap.md) (cases à cocher). Rien de produit n'est codé a
 3. [`roadmap.md`](roadmap.md) puis le ticket choisi dans [`tickets/`](tickets/) (autonome).
 4. [ADR 0022](../adr/0022-remplissage-du-panier-drive.md) et [ADR 0023](../adr/0023-liste-envoyee-au-drive.md) (décisions ; elles gagnent en cas d'écart).
 5. Au besoin : [`analyse.md`](analyse.md) (pourquoi), [`recherche.md`](recherche.md) (faits sourcés), [`plan-initial.md`](plan-initial.md) (copie du plan complet du 2026-10-17).
-6. Les règles du dépôt où l'on travaille : `CLAUDE.md`, skill `.claude/skills/repas-dev/` (back) ; `CLAUDE.md` du front.
+6. [`consignes-agents.md`](consignes-agents.md) : règles communes à tout agent qui implémente un ticket.
+7. Les règles du dépôt où l'on travaille : `CLAUDE.md`, skill `.claude/skills/repas-dev/` (back) ; `CLAUDE.md` du front.
 
 ## Dépôts
 
