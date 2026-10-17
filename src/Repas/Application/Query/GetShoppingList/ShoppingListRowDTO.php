@@ -17,6 +17,10 @@ final readonly class ShoppingListRowDTO
         public string $unitSymbol,
         #[OA\Property(description: 'La ligne est cochée (déjà dans le caddie)')]
         public bool $checked,
+        #[OA\Property(description: 'Identifiant stable de l\'ingrédient (slug)', example: 'oeuf')]
+        public string $ingredientSlug,
+        #[OA\Property(description: 'Identifiant stable de l\'unité d\'achat (slug)', example: 'gramme')]
+        public string $unitSlug,
     ) {
     }
 }

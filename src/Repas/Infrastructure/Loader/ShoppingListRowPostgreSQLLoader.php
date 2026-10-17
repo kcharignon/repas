@@ -21,7 +21,7 @@ final readonly class ShoppingListRowPostgreSQLLoader implements ShoppingListRowL
     public function get(string $rowId): ShoppingListRowDTO
     {
         $row = $this->entityManager->createQueryBuilder()
-            ->select('r.id AS id', 'r.quantity AS quantity', 'r.checked AS checked', 'i.name AS ingredientName', 'u.symbol AS unitSymbol')
+            ->select('r.id AS id', 'r.quantity AS quantity', 'r.checked AS checked', 'i.slug AS ingredientSlug', 'i.name AS ingredientName', 'u.slug AS unitSlug', 'u.symbol AS unitSymbol')
             ->from(ShoppingListRow::class, 'r')
             ->innerJoin(Ingredient::class, 'i', Join::WITH, 'i.slug = r.ingredientSlug')
             ->innerJoin(Unit::class, 'u', Join::WITH, 'u.slug = r.unitSlug')
@@ -34,6 +34,14 @@ final readonly class ShoppingListRowPostgreSQLLoader implements ShoppingListRowL
             throw ShoppingListRowException::notFound($rowId);
         }
 
-        return new ShoppingListRowDTO($row['id'], $row['ingredientName'], (float) $row['quantity'], $row['unitSymbol'], (bool) $row['checked']);
+        return new ShoppingListRowDTO(
+            id: $row['id'],
+            ingredientName: $row['ingredientName'],
+            quantity: (float) $row['quantity'],
+            unitSymbol: $row['unitSymbol'],
+            checked: (bool) $row['checked'],
+            ingredientSlug: $row['ingredientSlug'],
+            unitSlug: $row['unitSlug'],
+        );
     }
 }
