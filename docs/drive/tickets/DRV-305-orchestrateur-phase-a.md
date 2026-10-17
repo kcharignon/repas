@@ -4,7 +4,7 @@
 - **Jalon** : M3 Agent
 - **Taille** : M
 - **Dépend de** : DRV-302, DRV-303, DRV-304 (et la méthode de disponibilité retenue par DRV-002, ligne 19 du rapport)
-- **Statut** : à faire
+- **Statut** : fait (PR [repas-front#80](https://github.com/kcharignon/repas-front/pull/80), 2026-10-18)
 - **Lire d'abord** : [`../architecture.md`](../architecture.md) § 8 (comportement) ; DRV-303 (interface `RetailerAdapter`).
 
 ## Contexte
@@ -53,3 +53,7 @@ Celle du front.
 
 - Entrée : `validatePlan(await decodeMessage(...))` via `Transport.listen` ; adaptateur : `new LeclercAdapter(browserDeps(window))`. Mettre `error.code` de `LeclercError` dans les issues de ligne ou globale ; comparer `CartResult.obtained` à la quantité voulue (`ok`) ; `contentSource === 'prices'` peut justifier `packsStatus: 'TO_CHECK'`.
 - **Décision (prix, D22)** : une ligne `ADDED` doit aussi remonter le **prix lu** du produit (la phase A relit la recherche pour le stock) afin que Repas rafraîchisse le prix mémorisé à chaque envoi. Étendre le module `drive-agent/protocol/` (variante `ADDED` : `price?` comme `ProductPrice`, schémas, exemples, tests) et le dire dans `DRV-204` (le back accepte le prix d'une ligne `ADDED` pour mettre à jour le produit connu).
+
+## Réalisation (2026-10-18, PR repas-front#80)
+
+`drive-agent/src/flow/index.ts` : `new Flow(deps)` avec `start(message)`, `invalid()`, `history` ; `FlowDeps.phaseB(context)` (DRV-306 : reçoit `pending {line, unavailable}`, `record(ResultLine)`, `stopRequested()`, `showProgress()`, `adapter`, `ui` ; rend `'done' | 'cancelled'` ; une ligne non enregistrée devient `UNAVAILABLE`) et `FlowDeps.onSetup(message)` (DRV-307). L'accueil (`welcome`) n'est pas affiché par `agent.ts` : DRV-308 le fait. Exports : `settleKnownLine`, `priceOf`, `buildResult`, `endingOf`, `endProps`, `resultLines`, `RunStore`, `RUN_PREFIX`, `keepAwake`. Pont attendu : `window.repasHost` (`postMessage(texte)`, `addEventListener('message', …)`) ; `run(win, options)` accepte `origin`, `navigate`, `flow` pour les tests. Choix : une ligne `NEW` sans phase B sort `UNAVAILABLE` (passage `partial`) ; `CONTRACT_CHANGED` ou incident imprévu arrête en `error` sans citer le message ; `BLOCKED` met les lignes restantes qui demandent le site en `FAILED` ; reprise proposée seulement pour le même `runId`. Le prix des lignes `ADDED` est porté par `AddedLine.price?` (décision D22). `dist/agent.js` : 38 718 octets, version 0.2.0.

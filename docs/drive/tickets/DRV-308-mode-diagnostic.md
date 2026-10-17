@@ -30,3 +30,7 @@ Vitest ; e2e contre le faux site (DRV-309).
 ## Definition of Done
 
 Celle du front.
+
+## Point laissé par DRV-304 et DRV-305 (2026-10-18)
+
+L'écran d'accueil `welcome` est prêt (résultat `'diagnostic' | 'close'`) ; `agent.ts` ne l'appelle pas : c'est à ce ticket de le faire.
