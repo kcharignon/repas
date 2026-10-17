@@ -4,7 +4,7 @@
 - **Jalon** : M3 Agent
 - **Taille** : S
 - **Dépend de** : DRV-303, DRV-304
-- **Statut** : à faire
+- **Statut** : fait (PR [repas-front#83](https://github.com/kcharignon/repas-front/pull/83), 2026-10-18)
 - **Lire d'abord** : [`../architecture.md`](../architecture.md) § 8 (mode diagnostic) ; [`../recherche.md`](../recherche.md) § 9.
 
 ## Contexte
@@ -34,3 +34,7 @@ Celle du front.
 ## Point laissé par DRV-304 et DRV-305 (2026-10-18)
 
 L'écran d'accueil `welcome` est prêt (résultat `'diagnostic' | 'close'`) ; `agent.ts` ne l'appelle pas : c'est à ce ticket de le faire.
+
+## Réalisation (2026-10-18, PR repas-front#83)
+
+`drive-agent/src/diagnostic/{checks,report,index}.ts` : huit contrôles en lecture seule, une seule recherche (« sel », `TEST_TERM`), rapport texte copiable (numéro de magasin réduit à `…` plus trois derniers chiffres, hôte réduit à `fdN`). Le contrôle « cadre de même origine » est **`NON TESTÉ`** (P2 retenu, le site refuse les cadres) : DRV-309 doit tolérer ce `NON TESTÉ` dans « tous les contrôles OK ». Seuils : au moins la moitié des produits lus ont identifiant, libellé, prix et stock, et la moitié un contenu net lisible. Ouverture : l'agent exporte `DIAGNOSTIC_HASH` (`#repas-diagnostic`). **Décision (assistant, 2026-10-18)** : ne pas utiliser de fragment d'adresse sur les pages Leclerc (un fragment de 6 Ko a provoqué la page d'erreur de Leclerc, les fragments courts ne sont pas mesurés) ; l'application déclenche le diagnostic par un **message de commande** sur le pont (`{v:1, type:'command', command:'diagnostic'}`, validé par l'agent), à ajouter au protocole par DRV-313.

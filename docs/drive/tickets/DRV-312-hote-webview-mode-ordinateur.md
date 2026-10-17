@@ -48,3 +48,7 @@ Celle du dépôt front ; PR concise ; fusion si CI verte.
 ## Laissé par DRV-311 (2026-10-17)
 
 À faire dans ce ticket : ajouter la permission Internet et `androidx.webkit` (absents du squelette) ; brancher `NavigationPolicy` et `UserAgent` (présents mais pas encore reliés à l'écran) ; gérer les **marges** autour de la WebView (`targetSdk` 36 : affichage bord à bord) ; reprendre le `build.sh` de `android/` tel quel.
+
+## Précision (2026-10-18, DRV-308)
+
+Le menu de l'application propose « Diagnostic de l'agent » : il déclenche le diagnostic par un message de commande sur le pont (DRV-313), pas par un fragment d'adresse.

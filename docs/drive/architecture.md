@@ -325,3 +325,7 @@ Les schémas JSON font foi (`drive-agent/protocol/`, ticket DRV-302). Exemples e
 - Retour arrière : § 4.5 ; le schéma reste.
 - Panne ou changement de Leclerc : interrupteur, runbook (DRV-503), nouvelle version du favori à réinstaller.
 - Sauvegardes : les nouvelles tables sont dans les `pg_dump` ; aucun secret d'enseigne n'existe.
+
+### Ajout du 2026-10-18 : champ `needed` d'une ligne du plan
+
+Une ligne du message `plan` peut porter `needed : {quantity, unitSymbol, dimension?, baseFactor?}` (la quantité demandée par la liste, avec la dimension et le facteur de base de l'unité). Sans lui, l'agent ne peut pas calculer le nombre de produits en phase B et demande la quantité. Le back le fournit dans le plan (DRV-206, le `PackCalculator` les connaît) et le front le recopie (DRV-404). Les schémas JSON de `drive-agent/protocol/` font foi. Une ligne `ADDED` du résultat peut aussi porter `price` (D22).
