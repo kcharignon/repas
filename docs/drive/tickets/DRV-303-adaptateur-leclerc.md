@@ -46,3 +46,5 @@ Celle du front. Aucun HTML brut de Leclerc dans le dépôt.
 - Le panier n'a pas de lecture propre : ne pas tenter de le lire ; utiliser `iQuantitePanier` de la recherche quand c'est utile.
 - **Constat du 2026-10-17** ([DRV-007](../spikes/DRV-007-requete-ajout-panier.md)) : chaque écriture renvoie l'état complet du panier (`lstProduitsLight`, `iQuantitePanier`, `sTotalAPayer`) : l'utiliser pour vérifier la quantité obtenue au lieu de lire une page. Le produit porte aussi un contenu net structuré (`sUniteMesure`, `nrContenanceUnitaire`, `nrContenanceTotale`) à préférer au libellé quand il existe. Un 404 à l'ajout n'est pas un blocage anti-robot : ne pas le classer `BLOCKED` (requête mal formée → `CONTRACT_CHANGED`).
 - Les écritures parallèles déclenchent DataDome : la file sérialisée n'est pas une optimisation, c'est une exigence.
+
+- **Prix (décision D22)** : `searchProducts` doit renvoyer aussi le prix unitaire (`nrPVUnitaireTTC`) et le prix à l'unité de mesure (`nrPVParUniteDeMesureTTC` et son unité) en centimes, quand ils sont lus ; ils partent dans le résultat (`price`).

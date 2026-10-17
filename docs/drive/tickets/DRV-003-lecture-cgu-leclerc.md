@@ -4,7 +4,7 @@
 - **Jalon** : M0 Découverte
 - **Taille** : S
 - **Dépend de** : —
-- **Statut** : à faire
+- **Statut** : clos par décision de l'utilisateur le 2026-10-17 (D23 : les CGU sont considérées comme acceptées)
 - **Lire d'abord** : [`../spikes/DRV-003-cgu.md`](../spikes/DRV-003-cgu.md), [`../recherche.md`](../recherche.md) § 4
 
 ## Contexte
