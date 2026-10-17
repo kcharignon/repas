@@ -207,7 +207,7 @@ final readonly class ShoppingListPostgreSQLLoader implements ShoppingListLoader
                 'r.id AS id', 'r.quantity AS quantity', 'r.checked AS checked',
                 'i.slug AS ingredientSlug', 'i.name AS ingredientName',
                 'd.slug AS departmentSlug', 'd.name AS departmentName', 'd.image AS departmentImage',
-                'u.symbol AS unitSymbol',
+                'u.symbol AS unitSymbol', 'u.slug AS unitSlug',
             )
             ->from(ShoppingListRow::class, 'r')
             ->innerJoin(Ingredient::class, 'i', Join::WITH, 'i.slug = r.ingredientSlug')
@@ -229,6 +229,8 @@ final readonly class ShoppingListPostgreSQLLoader implements ShoppingListLoader
                 quantity: (float) $row['quantity'],
                 unitSymbol: $row['unitSymbol'],
                 checked: (bool) $row['checked'],
+                ingredientSlug: $row['ingredientSlug'],
+                unitSlug: $row['unitSlug'],
             );
         }
         ksort($groups, SORT_STRING);

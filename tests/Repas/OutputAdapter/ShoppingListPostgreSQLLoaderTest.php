@@ -23,6 +23,7 @@ use Repas\Tests\Helper\Builder\ShoppingListBuilder;
 use Repas\Tests\Helper\Builder\UserBuilder;
 use Repas\Tests\Helper\DatabaseTestCase;
 use Repas\Tests\Helper\DataPersister;
+use Repas\Tests\Helper\SqlBudget\QueryCounter;
 use Repas\User\Domain\Interface\UserRepository;
 use Repas\User\Domain\Model\User;
 
@@ -298,11 +299,34 @@ class ShoppingListPostgreSQLLoaderTest extends DatabaseTestCase
         $this->assertSame(['pate'], $this->ingredientNames($result->departments[1]));
         $this->assertSame(['lait', 'œuf'], $this->ingredientNames($result->departments[2]));
         $this->assertSame(4, $result->rowCount);
-        $this->assertEquals(new ShoppingListRowDTO($result->departments[1]->rows[0]->id, 'pate', 500.0, 'g', false), $result->departments[1]->rows[0]);
+        $this->assertEquals(new ShoppingListRowDTO($result->departments[1]->rows[0]->id, 'pate', 500.0, 'g', false, 'pate', 'gramme'), $result->departments[1]->rows[0]);
         $eggRow = $result->departments[2]->rows[1];
         $this->assertSame(['œuf', 1.0, '', true], [$eggRow->ingredientName, $eggRow->quantity, $eggRow->unitSymbol, $eggRow->checked]);
+        $this->assertSame(['oeuf', 'unite'], [$eggRow->ingredientSlug, $eggRow->unitSlug]);
         $this->assertSame('céréale', $result->departments[1]->name);
         $this->assertSame($pasta->getDepartment()->getImage(), $result->departments[1]->image);
+    }
+
+    public function testGetReadsTheRowsWithTheirSlugsWithoutAnyExtraQuery(): void
+    {
+        // Given : quatre lignes, trois rayons ; les identifiants d'ingrédient et d'unité viennent de la requête des lignes (jointures déjà présentes)
+        $owner = $this->savedUser();
+        $ingredients = [new IngredientBuilder()->isBread()->build(), new IngredientBuilder()->isPasta()->build(), new IngredientBuilder()->isEgg()->build(), new IngredientBuilder()->isMilk()->withDepartment(new DepartmentBuilder()->isMiscellaneous())->build()];
+        $builder = new ShoppingListBuilder()->withId('list-1')->withOwner($owner);
+        foreach ($ingredients as $ingredient) {
+            $this->persister->saveIngredient($ingredient);
+            $builder->addIngredient($ingredient);
+        }
+        $this->shoppingListRepository->save($builder->build());
+        static::getContainer()->get('doctrine')->getManager()->clear();
+        $counter = static::getContainer()->get(QueryCounter::class);
+        $counter->reset();
+
+        // When
+        $this->shoppingListLoader->get('list-1');
+
+        // Then
+        $this->assertSame(['SELECT shopping_list' => 1, 'SELECT shopping_list_row' => 1, 'SELECT meal' => 1], $counter->byTable());
     }
 
     public function testGetGroupsTheMealsByRecipeTypeInDisplayOrder(): void

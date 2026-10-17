@@ -3081,7 +3081,9 @@
                     "ingredientName",
                     "quantity",
                     "unitSymbol",
-                    "checked"
+                    "checked",
+                    "ingredientSlug",
+                    "unitSlug"
                 ],
                 "properties": {
                     "id": {
@@ -3107,6 +3109,16 @@
                     "checked": {
                         "description": "La ligne est coch\u00e9e (d\u00e9j\u00e0 dans le caddie)",
                         "type": "boolean"
+                    },
+                    "ingredientSlug": {
+                        "description": "Identifiant stable de l'ingr\u00e9dient (slug)",
+                        "type": "string",
+                        "example": "oeuf"
+                    },
+                    "unitSlug": {
+                        "description": "Identifiant stable de l'unit\u00e9 d'achat (slug)",
+                        "type": "string",
+                        "example": "gramme"
                     }
                 },
                 "type": "object"
