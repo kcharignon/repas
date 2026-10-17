@@ -57,3 +57,7 @@ Celle du front. Rapport de G1 cité dans la PR.
 
 - Le contenu d'un produit vient de Leclerc : le traiter comme une donnée non fiable (bornes, `null` si incertain).
 - Ne pas ajouter de produit au panier à la place de l'utilisateur sans confirmation : l'ajout vient de lui (P1) ou d'un bouton « Choisir » (P2).
+
+## Points laissés par DRV-304 et DRV-305 (2026-10-18)
+
+La phase B se branche par `FlowDeps.phaseB(context)` (voir DRV-305, « Réalisation ») et l'écran `chooser` existe déjà (`ui.show('chooser', { ingredient, position, total, mount(zone, answer) })`). Textes d'erreur : parler de l'application Repas Drive, pas du favori.

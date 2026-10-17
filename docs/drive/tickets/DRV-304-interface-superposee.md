@@ -4,7 +4,7 @@
 - **Jalon** : M3 Agent
 - **Taille** : L
 - **Dépend de** : DRV-301
-- **Statut** : à faire
+- **Statut** : fait (PR [repas-front#79](https://github.com/kcharignon/repas-front/pull/79), 2026-10-17)
 - **Lire d'abord** : [`../architecture.md`](../architecture.md) §§ 8, 10 ; règles d'accessibilité du `CLAUDE.md` du front (WCAG AA, cibles ≥ 44 px).
 
 ## Contexte
@@ -50,3 +50,7 @@ Celle du front, y compris test visuel Chromium mobile.
 
 - Un Shadow DOM fermé empêche la page hôte de lire l'interface : c'est voulu.
 - Ne pas stocker de données dans le DOM de la page hôte.
+
+## Réalisation (2026-10-17, PR repas-front#79)
+
+`drive-agent/src/ui/index.ts` : `createUi({ win?, mode? })` → `UiHandle { show(écran, props), update(patch), close() }`. Écrans : `welcome`, `summary`, `resume`, `progress`, `quantity`, `chooser`, `error`, `end`. `ui.show('chooser', { ingredient, position, total, mount(zone, answer) })` : `mount` remplit la zone (peut rendre un nettoyeur), `answer(valeur)` conclut `{kind:'content', value}` ; les boutons de la barre rendent `{kind:'skip' | 'have' | 'cancel'}`. Aides : `h`, `text`, `append`, `clear`, `S`, `ERROR_TEXTS`, `count`. Textes : « relance l'envoi depuis Repas » et « mets à jour l'application Repas Drive » à la place du favori. Test Playwright `e2e/agent-ui.spec.ts` (axe sans violation A/AA sur 18 écrans, mobile et bureau, clair et sombre).
