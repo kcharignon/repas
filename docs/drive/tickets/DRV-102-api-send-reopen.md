@@ -4,7 +4,7 @@
 - **Jalon** : M1 Back `Repas`
 - **Taille** : M
 - **Dépend de** : DRV-101, DRV-103
-- **Statut** : à faire
+- **Statut** : fait (PR [#129](https://github.com/kcharignon/repas/pull/129), 2026-10-18 ; routes `send` et `reopen`, `isSent` et `sentAt` en lecture)
 - **Lire d'abord** : [`../architecture.md`](../architecture.md) §§ 4, 7 ; ADR 0007 (§ 11 à 13, 15), 0016 ; skill `repas-dev` § 3.2.
 
 ## Contexte
@@ -45,3 +45,13 @@ Celle du skill `repas-dev` § 4. `docs/api/openapi.json` commité. Roadmap coch�
 
 - Le client de test redémarre le noyau entre deux requêtes : le double de bus ne vaut que pour une requête par test.
 - Ne pas oublier `sentAt` dans `ListShoppingListsQuery` : l'écran « Mes listes » l'affichera.
+
+## Réalisation (2026-10-18, PR repas#129)
+
+`SendShoppingListApiController` et `ReopenShoppingListApiController` (`#[RequiresDrive]`, `ROLE_USER` + `SHOPPING_LIST_OWNER`, `EntityVersion::expected($request)`, `204`) ; `ShoppingListDTO` et `ShoppingListDetailDTO` gagnent `isSent` et `sentAt` (juste après `isCompleted`) ; `ShoppingListPostgreSQLLoader` sélectionne `l.sentAt` ; le `409 SHOPPING_LIST_SENT` est documenté sur `PATCH /shopping-lists/{id}`, `PUT /meals/{id}/serving`, `POST …/tick`, `…/uncheck`, `…/activate`, `…/pause` ; `docs/api/openapi.json` régénéré. Contrat pour le front (DRV-401) :
+
+- Lecture : `status` ∈ `ACTIVE | PAUSED | SENT | COMPLETED`, `isSent: bool`, `sentAt: string | null` (ATOM). `GET /shopping-lists/current` peut renvoyer une liste `SENT` (aucune liste active) ; `ETag` plus grand après l'envoi et après la réouverture.
+- `POST …/send` : `204` (aussi si déjà envoyée, sans effet, version inchangée) ; `404` `DRIVE_DISABLED` (interrupteur coupé) ou liste inconnue ; `403` autre utilisateur ; `409` `SHOPPING_LIST_NOT_SENDABLE` (liste en pause ou terminée) ; `412` `If-Match` périmé ; `422` `SHOPPING_LIST_EMPTY`. Message d'erreur = code : `{"error":{"message":"SHOPPING_LIST_EMPTY"}}`.
+- `POST …/reopen` : `204` ; `409` `SHOPPING_LIST_NOT_SENT` ; `404`, `403`, `412` comme ci-dessus ; l'éventuelle autre liste active de l'utilisateur passe en `PAUSED`.
+- Sur une liste `SENT` : `409` `SHOPPING_LIST_SENT` pour renommer, changer les portions, cocher, décocher, `activate`, `pause`. Terminer (`complete`), rouvrir et supprimer restent permis. Planifier une recette, retirer un repas et `+`/`-` d'un ingrédient passent par la liste **active** : si l'utilisateur n'a que la liste `SENT`, ils répondent `404` (aucune liste active), pas `409`.
+- Test de bout en bout : `ShoppingListWriteApiFlowTest` (`testASentListIsLockedUntilItIsReopened` et suivants).

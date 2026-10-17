@@ -433,8 +433,153 @@ class ShoppingListWriteApiFlowTest extends DatabaseTestCase
         return $shoppingList;
     }
 
+    /**
+     * Liste active d'un repas et d'une ligne (l'ingrédient de la recette) : elle peut être envoyée.
+     */
+    private function savedSendableList(User $owner): ShoppingList
+    {
+        $recipe = $this->savedRecipe($owner);
+        $shoppingList = new ShoppingListBuilder()
+            ->withOwner($owner)
+            ->addRecipe($recipe)
+            ->addIngredient($recipe->getRows()->reset()->getIngredient())
+            ->build();
+        $this->shoppingLists()->save($shoppingList);
+
+        return $shoppingList;
+    }
+
     private function shoppingLists(): ShoppingListRepository
     {
         return static::getContainer()->get(ShoppingListRepository::class);
+    }
+
+    public function testASentListIsLockedUntilItIsReopened(): void
+    {
+        // Given : une liste active d'un repas et d'une ligne
+        $owner = $this->savedUser();
+        $list = $this->savedSendableList($owner);
+        $id = $list->getId();
+        $mealId = $list->getMeals()->reset()->getId();
+        $rowId = $list->getRows()->reset()->getId();
+        $etag = function () use ($owner, $id): string {
+            $this->request('GET', "/api/v1/shopping-lists/$id", $owner);
+
+            return $this->client->getResponse()->headers->get('ETag');
+        };
+        $firstEtag = $etag();
+        $this->assertSame([false, null], [$this->jsonBody()['isSent'], $this->jsonBody()['sentAt']]);
+
+        // When : l'envoi avec la version lue
+        $this->request('POST', "/api/v1/shopping-lists/$id/send", $owner, headers: ['HTTP_IF_MATCH' => $firstEtag]);
+
+        // Then : la liste est envoyée, sa version a augmenté
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $sentEtag = $etag();
+        $this->assertNotSame($firstEtag, $sentEtag);
+        $sent = $this->jsonBody();
+        $this->assertSame(['SENT', false, true], [$sent['status'], $sent['isActive'], $sent['isSent']]);
+        $this->assertNotNull($sent['sentAt']);
+
+        // When : un second envoi (même ancienne version) est refusé, un envoi sans en-tête n'a aucun effet
+        $this->request('POST', "/api/v1/shopping-lists/$id/send", $owner, headers: ['HTTP_IF_MATCH' => $firstEtag]);
+        $this->assertSame(412, $this->client->getResponse()->getStatusCode());
+        $this->request('POST', "/api/v1/shopping-lists/$id/send", $owner);
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->assertSame($sentEtag, $etag());
+
+        // When & Then : aucune écriture de contenu ne passe, la liste ne bouge pas
+        foreach ([
+            ['PATCH', "/api/v1/shopping-lists/$id", ['name' => 'Autre nom']],
+            ['PUT', "/api/v1/meals/$mealId/serving", ['serving' => 9]],
+            ['POST', "/api/v1/shopping-list-rows/$rowId/tick", null],
+            ['POST', "/api/v1/shopping-list-rows/$rowId/uncheck", null],
+            ['POST', "/api/v1/shopping-lists/$id/pause", null],
+            ['POST', "/api/v1/shopping-lists/$id/activate", null],
+        ] as [$method, $uri, $body]) {
+            $this->request($method, $uri, $owner, $body);
+            $this->assertSame(409, $this->client->getResponse()->getStatusCode(), "$method $uri");
+            $this->assertSame(['error' => ['message' => 'SHOPPING_LIST_SENT']], $this->jsonBody(), "$method $uri");
+        }
+        $this->assertSame($sentEtag, $etag());
+        $this->assertFalse(static::getContainer()->get(ShoppingListRowRepository::class)->findOneById($rowId)->isChecked());
+
+        // When : la réouverture
+        $this->request('POST', "/api/v1/shopping-lists/$id/reopen", $owner);
+
+        // Then : la liste est active et modifiable de nouveau
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $etag();
+        $reopened = $this->jsonBody();
+        $this->assertSame(['ACTIVE', true, false, null], [$reopened['status'], $reopened['isActive'], $reopened['isSent'], $reopened['sentAt']]);
+        $this->request('PATCH', "/api/v1/shopping-lists/$id", $owner, ['name' => 'Autre nom']);
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+    }
+
+    public function testASentListCanBeCompleted(): void
+    {
+        // Given
+        $owner = $this->savedUser();
+        $list = $this->savedSendableList($owner);
+        $this->request('POST', '/api/v1/shopping-lists/' . $list->getId() . '/send', $owner);
+
+        // When
+        $this->request('POST', '/api/v1/shopping-lists/' . $list->getId() . '/complete', $owner);
+
+        // Then
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->assertSame(ShoppingListStatus::COMPLETED, $this->shoppingLists()->findOneById($list->getId())->getStatus());
+    }
+
+    public function testSendingRefusesAnEmptyListAnInactiveListAndAnotherUsersList(): void
+    {
+        // Given
+        $owner = $this->savedUser();
+        $empty = $this->savedList($owner);
+        $paused = new ShoppingListBuilder()->withOwner($owner)->withStatus(ShoppingListStatus::PAUSED)->build();
+        $this->shoppingLists()->save($paused);
+
+        // When & Then
+        $this->request('POST', '/api/v1/shopping-lists/' . $empty->getId() . '/send', $owner);
+        $this->assertSame(422, $this->client->getResponse()->getStatusCode());
+        $this->assertSame(['error' => ['message' => 'SHOPPING_LIST_EMPTY']], $this->jsonBody());
+
+        $this->request('POST', '/api/v1/shopping-lists/' . $paused->getId() . '/send', $owner);
+        $this->assertSame(409, $this->client->getResponse()->getStatusCode());
+        $this->assertSame(['error' => ['message' => 'SHOPPING_LIST_NOT_SENDABLE']], $this->jsonBody());
+
+        $this->request('POST', '/api/v1/shopping-lists/' . $empty->getId() . '/send', $this->savedUser());
+        $this->assertSame(403, $this->client->getResponse()->getStatusCode());
+
+        $this->request('POST', '/api/v1/shopping-lists/unknown-list/send', $owner);
+        $this->assertSame(404, $this->client->getResponse()->getStatusCode());
+        $this->assertSame(ShoppingListStatus::ACTIVE, $this->shoppingLists()->findOneById($empty->getId())->getStatus());
+    }
+
+    public function testReopeningPausesTheActiveListAndRefusesAListThatIsNotSent(): void
+    {
+        // Given : une liste envoyée, puis une nouvelle liste active créée à sa place
+        $owner = $this->savedUser();
+        $sent = $this->savedSendableList($owner);
+        $this->request('POST', '/api/v1/shopping-lists/' . $sent->getId() . '/send', $owner);
+        $this->request('POST', '/api/v1/shopping-lists', $owner);
+        $newId = basename($this->client->getResponse()->headers->get('Location'));
+        $this->assertSame(ShoppingListStatus::SENT, $this->shoppingLists()->findOneById($sent->getId())->getStatus());
+
+        // When : la liste active n'est pas envoyée, on ne la rouvre pas
+        $this->request('POST', "/api/v1/shopping-lists/$newId/reopen", $owner);
+
+        // Then
+        $this->assertSame(409, $this->client->getResponse()->getStatusCode());
+        $this->assertSame(['error' => ['message' => 'SHOPPING_LIST_NOT_SENT']], $this->jsonBody());
+        $this->assertSame(ShoppingListStatus::ACTIVE, $this->shoppingLists()->findOneById($newId)->getStatus());
+
+        // When : la rouverture de la liste envoyée met l'autre en pause
+        $this->request('POST', '/api/v1/shopping-lists/' . $sent->getId() . '/reopen', $owner);
+
+        // Then
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->assertSame(ShoppingListStatus::ACTIVE, $this->shoppingLists()->findOneById($sent->getId())->getStatus());
+        $this->assertSame(ShoppingListStatus::PAUSED, $this->shoppingLists()->findOneById($newId)->getStatus());
     }
 }

@@ -189,6 +189,9 @@
                     },
                     "404": {
                         "description": "Ressource inconnue"
+                    },
+                    "409": {
+                        "description": "La liste est envoy\u00e9e au drive : elle n'est plus modifiable (message `SHOPPING_LIST_SENT`)"
                     }
                 }
             }
@@ -1340,6 +1343,9 @@
                     "404": {
                         "description": "Ressource inconnue"
                     },
+                    "409": {
+                        "description": "La liste est envoy\u00e9e au drive : elle n'est plus modifiable (message `SHOPPING_LIST_SENT`)"
+                    },
                     "422": {
                         "description": "Corps de la requ\u00eate invalide"
                     },
@@ -1628,6 +1634,9 @@
                     },
                     "404": {
                         "description": "Ressource inconnue"
+                    },
+                    "409": {
+                        "description": "La liste est envoy\u00e9e au drive : elle n'est plus modifiable (message `SHOPPING_LIST_SENT`)"
                     }
                 }
             }
@@ -1729,6 +1738,87 @@
                 }
             }
         },
+        "/api/v1/shopping-lists/{id}/reopen": {
+            "post": {
+                "tags": [
+                    "Shopping lists"
+                ],
+                "summary": "Rouvre une liste envoy\u00e9e au drive : elle redevient active et modifiable, l'\u00e9ventuelle autre liste active de l'utilisateur passe en pause",
+                "operationId": "post_api_reopen_shopping_list",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/IfMatch"
+                    },
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Liste rouverte"
+                    },
+                    "403": {
+                        "description": "La ressource appartient \u00e0 un autre utilisateur"
+                    },
+                    "404": {
+                        "description": "Liste inconnue, ou fonction drive coup\u00e9e (message `DRIVE_DISABLED`)"
+                    },
+                    "409": {
+                        "description": "La liste n'est pas envoy\u00e9e (message `SHOPPING_LIST_NOT_SENT`), ou elle a \u00e9t\u00e9 enregistr\u00e9e entre-temps par une autre requ\u00eate"
+                    },
+                    "412": {
+                        "description": "La version de la liste n'est plus celle de `If-Match` : elle a \u00e9t\u00e9 modifi\u00e9e depuis sa lecture"
+                    }
+                }
+            }
+        },
+        "/api/v1/shopping-lists/{id}/send": {
+            "post": {
+                "tags": [
+                    "Shopping lists"
+                ],
+                "summary": "Envoie une liste de courses au drive : elle passe au statut `SENT` et n'est plus modifiable (sans effet si elle l'est d\u00e9j\u00e0)",
+                "operationId": "post_api_send_shopping_list",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/IfMatch"
+                    },
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Liste envoy\u00e9e (ou d\u00e9j\u00e0 envoy\u00e9e)"
+                    },
+                    "403": {
+                        "description": "La ressource appartient \u00e0 un autre utilisateur"
+                    },
+                    "404": {
+                        "description": "Liste inconnue, ou fonction drive coup\u00e9e (message `DRIVE_DISABLED`)"
+                    },
+                    "409": {
+                        "description": "La liste n'est ni active ni d\u00e9j\u00e0 envoy\u00e9e (message `SHOPPING_LIST_NOT_SENDABLE`), ou elle a \u00e9t\u00e9 enregistr\u00e9e entre-temps par une autre requ\u00eate"
+                    },
+                    "412": {
+                        "description": "La version de la liste n'est plus celle de `If-Match` : elle a \u00e9t\u00e9 modifi\u00e9e depuis sa lecture"
+                    },
+                    "422": {
+                        "description": "La liste est vide (message `SHOPPING_LIST_EMPTY`)"
+                    }
+                }
+            }
+        },
         "/api/v1/shopping-lists/{id}/complete": {
             "post": {
                 "tags": [
@@ -1785,6 +1875,9 @@
                     },
                     "404": {
                         "description": "Ressource inconnue"
+                    },
+                    "409": {
+                        "description": "La liste est envoy\u00e9e au drive : elle n'est plus modifiable (message `SHOPPING_LIST_SENT`)"
                     }
                 }
             }
@@ -1815,6 +1908,9 @@
                     },
                     "404": {
                         "description": "Ressource inconnue"
+                    },
+                    "409": {
+                        "description": "La liste est envoy\u00e9e au drive : elle n'est plus modifiable (message `SHOPPING_LIST_SENT`)"
                     }
                 }
             }
@@ -1858,6 +1954,9 @@
                     },
                     "404": {
                         "description": "Ressource inconnue"
+                    },
+                    "409": {
+                        "description": "La liste est envoy\u00e9e au drive : elle n'est plus modifiable (message `SHOPPING_LIST_SENT`)"
                     },
                     "422": {
                         "description": "Corps de la requ\u00eate invalide"
@@ -2823,6 +2922,7 @@
                     "isActive",
                     "isPaused",
                     "isCompleted",
+                    "isSent",
                     "createdAt"
                 ],
                 "properties": {
@@ -2842,6 +2942,7 @@
                         "enum": [
                             "ACTIVE",
                             "PAUSED",
+                            "SENT",
                             "COMPLETED"
                         ],
                         "example": "ACTIVE"
@@ -2860,6 +2961,17 @@
                         "description": "La liste est termin\u00e9e",
                         "type": "boolean",
                         "example": false
+                    },
+                    "isSent": {
+                        "description": "La liste est envoy\u00e9e au drive : elle n'est plus modifiable (statut `SENT`)",
+                        "type": "boolean",
+                        "example": false
+                    },
+                    "sentAt": {
+                        "description": "Date d'envoi au drive (ATOM), null si la liste n'est pas envoy\u00e9e",
+                        "type": "string",
+                        "example": null,
+                        "nullable": true
                     },
                     "createdAt": {
                         "description": "Date de cr\u00e9ation (ATOM)",
@@ -3275,6 +3387,7 @@
                     "isActive",
                     "isPaused",
                     "isCompleted",
+                    "isSent",
                     "rowCount",
                     "recipeCount",
                     "departments",
@@ -3314,6 +3427,7 @@
                         "enum": [
                             "ACTIVE",
                             "PAUSED",
+                            "SENT",
                             "COMPLETED"
                         ],
                         "example": "ACTIVE"
@@ -3329,6 +3443,17 @@
                     "isCompleted": {
                         "type": "boolean",
                         "example": false
+                    },
+                    "isSent": {
+                        "description": "La liste est envoy\u00e9e au drive : elle n'est plus modifiable (statut `SENT`)",
+                        "type": "boolean",
+                        "example": false
+                    },
+                    "sentAt": {
+                        "description": "Date d'envoi au drive (ATOM), null si la liste n'est pas envoy\u00e9e",
+                        "type": "string",
+                        "example": null,
+                        "nullable": true
                     },
                     "rowCount": {
                         "description": "Nombre de lignes d'ingr\u00e9dient",

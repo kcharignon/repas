@@ -36,7 +36,7 @@ final readonly class ShoppingListPostgreSQLLoader implements ShoppingListLoader
     public function listByOwner(string $ownerId): array
     {
         $rows = $this->entityManager->createQueryBuilder()
-            ->select('l.id AS id', 'l.name AS name', 'l.status AS status', 'l.createdAt AS createdAt')
+            ->select('l.id AS id', 'l.name AS name', 'l.status AS status', 'l.createdAt AS createdAt', 'l.sentAt AS sentAt')
             ->from(ShoppingList::class, 'l')
             ->where('l.ownerId = :ownerId')
             ->setParameter('ownerId', $ownerId)
@@ -61,7 +61,9 @@ final readonly class ShoppingListPostgreSQLLoader implements ShoppingListLoader
                     isActive: $status === ShoppingListStatus::ACTIVE,
                     isPaused: $status === ShoppingListStatus::PAUSED,
                     isCompleted: $status === ShoppingListStatus::COMPLETED,
+                    isSent: $status === ShoppingListStatus::SENT,
                     createdAt: $createdAt->format(DATE_ATOM),
+                    sentAt: $row['sentAt']?->format(DATE_ATOM),
                 );
             },
             $rows,
@@ -116,7 +118,7 @@ final readonly class ShoppingListPostgreSQLLoader implements ShoppingListLoader
     public function get(string $id): ShoppingListDetailDTO
     {
         $list = $this->entityManager->createQueryBuilder()
-            ->select('l.id AS id', 'l.name AS name', 'l.status AS status', 'l.createdAt AS createdAt', 'l.version AS version')
+            ->select('l.id AS id', 'l.name AS name', 'l.status AS status', 'l.createdAt AS createdAt', 'l.sentAt AS sentAt', 'l.version AS version')
             ->from(ShoppingList::class, 'l')
             ->where('l.id = :id')
             ->setParameter('id', $id)
@@ -167,7 +169,7 @@ final readonly class ShoppingListPostgreSQLLoader implements ShoppingListLoader
     }
 
     /**
-     * @param array{id: string, name: ?string, status: ShoppingListStatus, createdAt: DateTimeImmutable, version: int} $list
+     * @param array{id: string, name: ?string, status: ShoppingListStatus, createdAt: DateTimeImmutable, sentAt: ?DateTimeImmutable, version: int} $list
      */
     private function buildDetail(array $list): ShoppingListDetailDTO
     {
@@ -186,6 +188,8 @@ final readonly class ShoppingListPostgreSQLLoader implements ShoppingListLoader
             isActive: $status === ShoppingListStatus::ACTIVE,
             isPaused: $status === ShoppingListStatus::PAUSED,
             isCompleted: $status === ShoppingListStatus::COMPLETED,
+            isSent: $status === ShoppingListStatus::SENT,
+            sentAt: $list['sentAt']?->format(DATE_ATOM),
             rowCount: array_sum(array_map(static fn(ShoppingListDepartmentDTO $department): int => count($department->rows), $departments)),
             recipeCount: array_sum(array_map(static fn(ShoppingListRecipeTypeDTO $type): int => count($type->meals), $recipeTypes)),
             departments: $departments,

@@ -55,7 +55,7 @@ class ShoppingListPostgreSQLLoaderTest extends DatabaseTestCase
 
         // Then
         $this->assertEquals(
-            [new ShoppingListDTO('list-active', 'Courses du week-end', 'ACTIVE', true, false, false, new DateTimeImmutable('2026-10-12 10:00:00')->format(DATE_ATOM))],
+            [new ShoppingListDTO('list-active', 'Courses du week-end', 'ACTIVE', true, false, false, false, null, new DateTimeImmutable('2026-10-12 10:00:00')->format(DATE_ATOM))],
             $result,
         );
     }
@@ -67,6 +67,7 @@ class ShoppingListPostgreSQLLoaderTest extends DatabaseTestCase
         $this->saveShoppingList($owner, 'list-active', ShoppingListStatus::ACTIVE, null, '2026-03-03 10:00:00');
         $this->saveShoppingList($owner, 'list-paused', ShoppingListStatus::PAUSED, null, '2026-02-02 10:00:00');
         $this->saveShoppingList($owner, 'list-completed', ShoppingListStatus::COMPLETED, null, '2026-01-01 10:00:00');
+        $this->saveShoppingList($owner, 'list-sent', ShoppingListStatus::SENT, null, '2026-02-15 10:00:00');
 
         // When
         $result = $this->shoppingListLoader->listByOwner($owner->getId());
@@ -74,9 +75,10 @@ class ShoppingListPostgreSQLLoaderTest extends DatabaseTestCase
         // Then
         $this->assertSame(
             [
-                'list-active' => ['ACTIVE', true, false, false],
-                'list-paused' => ['PAUSED', false, true, false],
-                'list-completed' => ['COMPLETED', false, false, true],
+                'list-active' => ['ACTIVE', true, false, false, false],
+                'list-sent' => ['SENT', false, false, false, true],
+                'list-paused' => ['PAUSED', false, true, false, false],
+                'list-completed' => ['COMPLETED', false, false, true, false],
             ],
             $this->flagsById($result),
         );
@@ -225,7 +227,8 @@ class ShoppingListPostgreSQLLoaderTest extends DatabaseTestCase
         $this->assertSame('Liste du 12 octobre 2026', $result->displayName);
         $this->assertSame('12 octobre 2026', $result->dateLabel);
         $this->assertSame(new DateTimeImmutable('2026-10-12 10:00:00')->format(DATE_ATOM), $result->createdAt);
-        $this->assertSame(['PAUSED', false, true, false], [$result->status, $result->isActive, $result->isPaused, $result->isCompleted]);
+        $this->assertSame(['PAUSED', false, true, false, false], [$result->status, $result->isActive, $result->isPaused, $result->isCompleted, $result->isSent]);
+        $this->assertNull($result->sentAt);
     }
 
     public function testGetReturnsTheVersionOfTheList(): void
@@ -477,9 +480,48 @@ class ShoppingListPostgreSQLLoaderTest extends DatabaseTestCase
     {
         $flags = [];
         foreach ($shoppingLists as $list) {
-            $flags[$list->id] = [$list->status, $list->isActive, $list->isPaused, $list->isCompleted];
+            $flags[$list->id] = [$list->status, $list->isActive, $list->isPaused, $list->isCompleted, $list->isSent];
         }
 
         return $flags;
+    }
+
+    public function testASentListExposesItsSentDateInTheListAndTheDetail(): void
+    {
+        // Given
+        $owner = $this->savedUser();
+        $this->shoppingListRepository->save(
+            new ShoppingListBuilder()
+                ->withId('list-sent')
+                ->withOwner($owner)
+                ->addIngredient(new IngredientBuilder()->isEgg())
+                ->withStatus(ShoppingListStatus::SENT)
+                ->withSentAt(new DateTimeImmutable('2026-10-18 10:30:00'))
+                ->build()
+        );
+        $this->saveShoppingList($owner, 'list-paused', ShoppingListStatus::PAUSED, null, '2026-01-01 10:00:00');
+        $expected = new DateTimeImmutable('2026-10-18 10:30:00')->format(DATE_ATOM);
+
+        // When
+        $summaries = array_column(array_map(static fn(ShoppingListDTO $dto): array => [$dto->id, $dto->sentAt], $this->shoppingListLoader->listByOwner($owner->getId())), 1, 0);
+        $detail = $this->shoppingListLoader->get('list-sent');
+
+        // Then
+        $this->assertSame(['list-sent' => $expected, 'list-paused' => null], $summaries);
+        $this->assertSame(['SENT', false, false, false, true, $expected], [$detail->status, $detail->isActive, $detail->isPaused, $detail->isCompleted, $detail->isSent, $detail->sentAt]);
+    }
+
+    public function testGetCurrentCanBeASentListWhenNoneIsActive(): void
+    {
+        // Given : la liste envoyée libère la place de la liste active, c'est alors la plus récente qui est courante
+        $owner = $this->savedUser();
+        $this->saveShoppingList($owner, 'list-older', ShoppingListStatus::PAUSED, null, '2026-01-01 10:00:00');
+        $this->saveShoppingList($owner, 'list-sent', ShoppingListStatus::SENT, null, '2026-03-03 10:00:00');
+
+        // When
+        $result = $this->shoppingListLoader->getCurrent($owner->getId());
+
+        // Then
+        $this->assertSame(['list-sent', true], [$result->id, $result->isSent]);
     }
 }

@@ -51,6 +51,8 @@ class GetShoppingListApiControllerTest extends QueryBusWebTestCase
             'isActive' => false,
             'isPaused' => true,
             'isCompleted' => false,
+            'isSent' => false,
+            'sentAt' => null,
             'rowCount' => 1,
             'recipeCount' => 1,
             'departments' => [[

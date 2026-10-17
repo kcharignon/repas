@@ -13,6 +13,7 @@ class ShoppingListDTOBuilder implements Builder
     private string $displayName;
     private ShoppingListStatus $status;
     private string $createdAt;
+    private ?string $sentAt = null;
 
     private function initialize(): void
     {
@@ -46,6 +47,12 @@ class ShoppingListDTOBuilder implements Builder
         return $this;
     }
 
+    public function withSentAt(?string $sentAt): self
+    {
+        $this->sentAt = $sentAt;
+        return $this;
+    }
+
     public function build(): ShoppingListDTO
     {
         $this->initialize();
@@ -56,6 +63,8 @@ class ShoppingListDTOBuilder implements Builder
             isActive: $this->status === ShoppingListStatus::ACTIVE,
             isPaused: $this->status === ShoppingListStatus::PAUSED,
             isCompleted: $this->status === ShoppingListStatus::COMPLETED,
+            isSent: $this->status === ShoppingListStatus::SENT,
+            sentAt: $this->sentAt ?? ($this->status === ShoppingListStatus::SENT ? '2026-10-18T10:00:00+02:00' : null),
             createdAt: $this->createdAt,
         );
     }
