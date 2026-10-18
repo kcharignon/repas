@@ -4,7 +4,7 @@
 - **Jalon** : M3b Application Android
 - **Taille** : L
 - **Dépend de** : DRV-313 (fait) pour la première partie (émulateur et test de fumée) ; DRV-317 et DRV-309 (faux site Leclerc) pour les scénarios complets
-- **Statut** : à faire (KVM disponible depuis le 2026-10-18 : `/dev/kvm` créé par l'utilisateur avec `sudo modprobe kvm_intel`, valable jusqu'au redémarrage de WSL)
+- **Statut** : livraison 1 faite (PR [repas-front#90](https://github.com/kcharignon/repas-front/pull/90), 2026-10-18) ; livraison 2 en attente de DRV-317 et DRV-309
 - **Lire d'abord** : [`../pivot-application-android.md`](../pivot-application-android.md), `android/README.md`, DRV-309, DRV-313, DRV-317, `CLAUDE.md` du front.
 
 ## Contexte
@@ -49,3 +49,7 @@ L'émulateur doit être installé **de façon durable**, pas à refaire à chaqu
 - **SDK, image système et AVD dans un volume Docker nommé** (ou un dossier hors du dépôt, par exemple `~/.cache/repas-android-sdk`) : téléchargés une fois, réutilisés ensuite ; `.dockerignore` et `.gitignore` à jour.
 - **Cibles** : `make android-emulator-up` (démarre et attend la fin du démarrage), `make android-emulator-down`, `make android-emulator-status` ; `make android-e2e` démarre l'émulateur s'il est arrêté.
 - L'agent qui implémente démarre lui-même la pile de développement (`make up` dans les deux dépôts) quand un scénario en a besoin ; l'utilisateur n'a rien à lancer.
+
+## Réalisation de la livraison 1 (2026-10-18, PR repas-front#90)
+
+`android/emulator/` : image Docker (outils Android en ligne de commande, `dnsmasq`, Python), SDK, émulateur, image système Android 14 Google APIs x86_64 (WebView) et AVD dans le volume nommé `repas-front_android-emulator-sdk` ; émulateur sans fenêtre avec `/dev/kvm`. Cibles `make android-emulator-up|down|status` et `make android-smoke` (26 contrôles OK, 63 s une fois l'émulateur démarré). Premier démarrage à vide 2 min 45 (environ 2 Go téléchargés, 6 Go sur disque), démarrages suivants 26 à 34 s. **Jamais Leclerc** : le DNS de l'émulateur envoie `*.leclercdrive.fr` vers un faux site HTTPS local (`10.0.2.2`) et ne résout rien d'autre ; le test s'arrête si le nom ne pointe pas vers `10.0.2.2` ; certificat jetable dans le volume, accepté par la WebView via `--ignore-certificate-errors-spki-list` écrit dans l'émulateur seulement (l'application n'est pas modifiée ; image Google APIs « userdebug »). Pas de `network_security_config` propre au débogage : à reconsidérer. Reste (livraison 2, après DRV-317 et DRV-309) : `make android-e2e` (démarre l'émulateur s'il est arrêté), scénarios de la coquille Repas sur le front de développement, pont `repasNative`, `DriveActivity`, faux site Leclerc complet. Étape humaine facultative : `[boot] command = modprobe kvm_intel && chmod 666 /dev/kvm` dans `/etc/wsl.conf`, puis `wsl --shutdown`.
