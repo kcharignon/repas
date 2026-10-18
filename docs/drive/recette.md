@@ -4,6 +4,8 @@ Procédure à dérouler **par l'utilisateur, sur son téléphone Android, avec s
 
 **État : à dérouler.** Rien dans ce fichier n'a encore été fait sur un vrai téléphone. Le tableau de signature (partie 18) est vide.
 
+**Ce que cette recette suppose du vrai site sans l'avoir mesuré** : [`hypotheses-site-reel.md`](hypotheses-site-reel.md) (les cinq points à vérifier en premier, fiche de notes à remplir en route).
+
 ## Comment lire ce fichier
 
 - Chaque étape a quatre lignes : **But** (pourquoi on le fait), **Geste** (ce que tu fais, exactement), **Attendu** (ce que tu dois voir), **Si ça diffère** (quoi faire). Fais une étape, regarde le résultat, puis seulement passe à la suivante. L'assistant te donne une partie à la fois.
