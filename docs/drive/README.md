@@ -50,6 +50,7 @@ Voir `architecture.md` § 1 : drive, enseigne, magasin, agent, plan, produit, ch
 | `recherche.md` | Faits sourcés et ce qui reste à vérifier. |
 | `roadmap.md` | Jalons, tickets, dépendances, Definition of Done. |
 | `runbook.md` | « Leclerc a changé » : symptômes, diagnostic, coupure (`DRIVE_ENABLED=false`), repli, correction, retour en service (DRV-503). Mise en production et retour arrière : `../production.md`. |
+| `note-vie-privee.md` | Note de vie privée de la fonction (texte court et complet à afficher dans le front, ce qui est vrai et d'où ça vient, fiche de registre des traitements) (DRV-504, partie back). |
 | `tickets/DRV-*.md` | Un ticket par fichier, autonome. |
 | `spikes/` | Gabarits des rapports de découverte (à remplir par l'humain ou l'agent). |
 | `plan-initial.md` | Copie intégrale du plan, pour ne rien perdre. |
