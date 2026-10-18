@@ -37,8 +37,10 @@ readonly class ReplaceIngredientPreferenceHandler
      */
     public function __invoke(ReplaceIngredientPreferenceCommand $command): void
     {
-        $accepted = $command->acceptedProductIds;
-        $rejected = $command->rejectedProductIds;
+        // Un corps JSON `{"a": "…"}` arrive ici en tableau à clés texte : `[...$accepted, ...$rejected]` laisserait alors la clé
+        // d'une liste écraser celle de l'autre (un produit à la fois accepté et refusé, ou jamais contrôlé, passerait)
+        $accepted = array_values($command->acceptedProductIds);
+        $rejected = array_values($command->rejectedProductIds);
         // Avant toute lecture : une demande hors des bornes n'interroge pas la base
         if (count($accepted) > Choice::MAX_ACCEPTED || count($rejected) > Choice::MAX_REJECTED) {
             throw DriveException::invalidChoice();

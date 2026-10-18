@@ -172,6 +172,11 @@ class ReplaceIngredientPreferenceHandlerTest extends TestCase
         yield 'vingt et un refusés' => [false, [], array_map('strval', range(100, 120))];
         yield "j'en ai toujours avec des acceptés" => [true, ['1'], []];
         yield "j'en ai toujours avec des refusés" => [true, [], ['3']];
+        // Un corps JSON `{"a": …}` donne un tableau à clés texte : les clés ne doivent ni fusionner les deux listes ni masquer un produit
+        yield 'objets de mêmes clés : à la fois accepté et refusé' => [false, ['a' => '1'], ['a' => '1']];
+        yield "objets de mêmes clés : produit d'un autre magasin masqué" => [false, ['a' => '8'], ['a' => '1']];
+        yield 'objets de mêmes clés : produit inconnu masqué' => [false, ['a' => 'inconnu'], ['a' => '3']];
+        yield 'objet aux clés numériques : doublon' => [false, ['0' => '1', '5' => '1'], []];
     }
 
     public function testAStoreThatIsNotTheCurrentOneIsRefused(): void
