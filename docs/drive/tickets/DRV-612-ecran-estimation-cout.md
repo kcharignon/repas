@@ -4,7 +4,7 @@
 - **Jalon** : M2b Estimation du coût
 - **Taille** : M
 - **Dépend de** : DRV-611 (fait), DRV-401 (fait)
-- **Statut** : à faire
+- **Statut** : fait (PR [repas-front#104](https://github.com/kcharignon/repas-front/pull/104), 2026-10-18)
 - **Lire d'abord** : [`DRV-611`](DRV-611-estimation-cout-liste.md) (section « Réalisation »), skill `repas-front-dev`, `docs/drive/consignes-agents.md`, `CLAUDE.md` du front.
 
 ## Contexte
@@ -26,3 +26,7 @@ Historique des prix, comparaison entre magasins, promotions.
 ## Definition of Done
 
 Celle du dépôt front ; PR concise ; fusion si tous les contrôles de la CI sont verts ; issue fermée.
+
+## Réalisation (2026-10-18, PR repas-front#104)
+
+Bloc `DriveEstimate` sur la liste de courses et l'écran d'envoi : total en euros, couverture, dates, avertissement du back repris tel quel, détail repliable (lignes non estimées d'abord), états de chargement / erreur / vide ; visible seulement si le drive est activé et le magasin enregistré ; relu à l'ouverture et après toute écriture sur les listes. Sous 50 % de couverture le total reste affiché avec l'avertissement en tête (choix à confirmer). L'estimation porte sur toute la liste, y compris en « réessayer les échecs ».
