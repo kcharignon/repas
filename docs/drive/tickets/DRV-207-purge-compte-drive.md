@@ -4,7 +4,7 @@
 - **Jalon** : M2 Back `Drive`
 - **Taille** : S
 - **Dépend de** : DRV-203, DRV-204
-- **Statut** : à faire
+- **Statut** : fait (PR [#142](https://github.com/kcharignon/repas/pull/142), 2026-10-18)
 - **Lire d'abord** : [ADR 0021](../../adr/0021-gestion-des-comptes-par-l-administrateur.md) (décisions 6, 8, 9, 10) ; `src/Repas/Infrastructure/EventListener/PurgeUserDataOnUserDeletedListener.php` ; `tests/Shared/Infrastructure/UserOwnedDataCoverageTest.php`.
 
 > **Mise à jour du 2026-10-18 (DRV-204, PR #138)** : la purge des choix est déjà faite : `ChoiceRepository::deleteProductsByUser` puis `deleteByUser` appelés par `PurgeUserDriveDataHandler`, entrée `Choice::class => ['userId']` de `UserOwnedDataCoverageTest`, test de bout en bout dans `AccountAdministrationFlowTest` (aucune ligne orpheline dans `drive_choice_product`), budget `supprimer-compte` 18. **Il ne reste ici que le point 5 (la phrase de l'ADR 0021)** et la relecture des critères d'acceptation.
@@ -40,3 +40,13 @@ Handler en unitaire (doubles en mémoire) ; test de bout en bout de `DeleteUser`
 ## Definition of Done
 
 Celle du skill `repas-dev` § 4.
+
+## Réalisation (2026-10-18, PR repas#142)
+
+Tout le code était déjà livré par DRV-203 (réglages) et DRV-204 (préférences et leurs lignes de produits) ; cette PR ne contient que de la documentation. Relecture des critères d'acceptation contre le code de `main` :
+
+- Commande `PurgeUserDriveDataCommand` et handler (`drive_settings`, puis les lignes `drive_choice_product` par les préférences de l'utilisateur, puis `drive_choice`), écouteur `Drive\Infrastructure\EventListener\PurgeUserDataOnUserDeletedListener` (synchrone, dans la transaction de `DeleteUser`) : en place. Tests : `PurgeUserDriveDataHandlerTest` (doubles en mémoire), `PurgeUserDataOnUserDeletedListenerTest`, `ChoiceRepositoryTest` et `DriveSettingsRepositoryTest` (suppressions sur base réelle, lignes de produits comprises).
+- `UserOwnedDataCoverageTest::ERASED_WITH_THE_USER` : `DriveSettings::class => ['userId']` et `Choice::class => ['userId']`. Le test échoue si l'une des deux entrées est retirée (il compare les colonnes `user` des entités à cette liste).
+- Parcours de bout en bout : `AccountAdministrationFlowTest::testADeletedAccountTakesItsDriveSettingsAndChoicesWithItAndLeavesTheOthers` (réglages et préférences effacés, produits conservés, aucune ligne orpheline dans `drive_choice_product`, données d'un autre compte intactes). L'atomicité est celle de `command.bus` (ADR 0021 décision 8), déjà prouvée par le test « suppression annulée si la purge échoue ».
+- Budget `supprimer-compte` : 18 requêtes (15 + 1 pour les réglages + 2 pour les préférences).
+- **Fait ici** : la phrase de l'ADR 0021 (décision 6 : la purge couvre aussi le contexte `Drive`, produits conservés) ; décision 9 : `supprimer-compte` passe de 15 à 18 requêtes ; `CLAUDE.md` (paragraphe « Comptes ») et la Definition of Done du skill `repas-dev` citent `PurgeUserDriveData`.

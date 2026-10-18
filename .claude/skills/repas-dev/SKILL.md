@@ -83,7 +83,7 @@ Détail et squelettes : `references/read-slice-template.md`. Ordre :
 - [ ] `make api-doc-validate`, `make api-doc-coverage` et `make openapi-check` verts si un endpoint API est touché (`make openapi` régénère `docs/api/openapi.json`, diff relu)
 - [ ] Use case d'écriture touché ou ajouté : son scénario existe dans `tests/Repas/WriteBudget/scenarios.php`, son budget SQL ne monte pas ; s'il baisse, `make sql-budget-update` et `budgets.php` est dans le commit (ADR 0010 règle 12)
 - [ ] Aucun controller n'injecte de `*Repository` (Deptrac `no-repository-in-http`)
-- [ ] Nouvelle table ou colonne qui désigne un utilisateur (`owner`, `author`, `creator`, `user`) : elle est effacée à la suppression du compte (`DeleteUserHandler` côté `User`, `PurgeUserDataHandler` côté `Repas`, ADR 0021) et ajoutée à `UserOwnedDataCoverageTest`
+- [ ] Nouvelle table ou colonne qui désigne un utilisateur (`owner`, `author`, `creator`, `user`) : elle est effacée à la suppression du compte (`DeleteUserHandler` côté `User`, `PurgeUserDataHandler` côté `Repas`, `PurgeUserDriveDataHandler` côté `Drive`, ADR 0021) et ajoutée à `UserOwnedDataCoverageTest`
 - [ ] Tests : `QueryHandler` (unitaire, `InMemoryLoader`, paramètres transmis), Loader (base réelle), controller API (clés JSON)
 - [ ] `docs/migration-roadmap.md` mis à jour (case cochée, bugs vus en passant notés dans « Hors périmètre »)
 - [ ] ADR ajouté ou amendé si une convention a changé (et `CLAUDE.md` + ce skill dans le même commit)
