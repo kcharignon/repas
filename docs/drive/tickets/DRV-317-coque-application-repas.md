@@ -4,7 +4,7 @@
 - **Jalon** : M3b Application Android
 - **Taille** : L
 - **Dépend de** : DRV-312, DRV-313
-- **Statut** : à faire
+- **Statut** : fait (PR [repas-front#95](https://github.com/kcharignon/repas-front/pull/95), 2026-10-18)
 - **Lire d'abord** : [`../pivot-application-android.md`](../pivot-application-android.md) (précision du 2026-10-18), `android/README.md`, `android/PROCEDURE.md`, `CLAUDE.md` du front.
 
 ## Contexte
