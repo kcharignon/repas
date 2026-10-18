@@ -6,6 +6,8 @@ namespace Repas\Drive\Infrastructure\Http\Api\SaveDriveSettings;
 use Nelmio\ApiDocBundle\Attribute\Model;
 use OpenApi\Attributes as OA;
 use Repas\Drive\Application\Command\SaveDriveSettings\SaveDriveSettingsCommand;
+use Repas\Drive\Infrastructure\Http\DriveRateLimit;
+use Repas\Drive\Infrastructure\Http\RateLimitedPerUser;
 use Repas\Shared\Application\Interface\CommandBusInterface;
 use Repas\Shared\Domain\Interface\AuthenticatedUser;
 use Repas\Shared\Infrastructure\Http\RequiresDrive;
@@ -17,6 +19,7 @@ use Symfony\Component\Security\Http\Attribute\CurrentUser;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 #[RequiresDrive]
+#[RateLimitedPerUser(DriveRateLimit::WRITE)]
 final class SaveDriveSettingsApiController extends AbstractController
 {
     public function __construct(
@@ -32,6 +35,7 @@ final class SaveDriveSettingsApiController extends AbstractController
     #[OA\Response(response: 204, description: 'Magasin enregistré')]
     #[OA\Response(response: 404, description: 'Fonction drive coupée (message `DRIVE_DISABLED`)')]
     #[OA\Response(response: 422, description: "Corps invalide, ou magasin refusé (message `DRIVE_STORE_INVALID`) : adresse qui n'est pas celle d'un magasin de l'enseigne, identifiant différent de celui de l'adresse")]
+    #[OA\Response(response: 429, ref: '#/components/responses/DriveWriteRateLimited')]
     public function __invoke(#[CurrentUser] AuthenticatedUser $user, #[MapRequestPayload] DriveSettingsPayload $payload): Response
     {
         $this->commandBus->dispatch(new SaveDriveSettingsCommand(

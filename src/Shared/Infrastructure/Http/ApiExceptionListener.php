@@ -78,6 +78,12 @@ final class ApiExceptionListener
                 return $this->formatViolations($previous);
             }
 
+            // Une exception HTTP qui porte des en-têtes (`429` + `Retry-After`) et enveloppe l'erreur métier de même statut :
+            // le code en majuscules de l'erreur métier est le message, comme pour une exception de domaine seule.
+            if ($previous instanceof DomainException && $previous->getCode() === $exception->getStatusCode()) {
+                return $previous->getMessage();
+            }
+
             return Response::$statusTexts[$exception->getStatusCode()] ?? self::GENERIC_MESSAGE;
         }
 

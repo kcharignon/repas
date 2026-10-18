@@ -6,6 +6,8 @@ namespace Repas\Drive\Infrastructure\Http\Api\ReplaceIngredientPreference;
 use Nelmio\ApiDocBundle\Attribute\Model;
 use OpenApi\Attributes as OA;
 use Repas\Drive\Application\Command\ReplaceIngredientPreference\ReplaceIngredientPreferenceCommand;
+use Repas\Drive\Infrastructure\Http\DriveRateLimit;
+use Repas\Drive\Infrastructure\Http\RateLimitedPerUser;
 use Repas\Shared\Application\Interface\CommandBusInterface;
 use Repas\Shared\Domain\Interface\AuthenticatedUser;
 use Repas\Shared\Infrastructure\Http\RequiresDrive;
@@ -17,6 +19,7 @@ use Symfony\Component\Security\Http\Attribute\CurrentUser;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 #[RequiresDrive]
+#[RateLimitedPerUser(DriveRateLimit::WRITE)]
 final class ReplaceIngredientPreferenceApiController extends AbstractController
 {
     public function __construct(
@@ -34,6 +37,7 @@ final class ReplaceIngredientPreferenceApiController extends AbstractController
     #[OA\Response(response: 404, description: 'Fonction drive coupée (message `DRIVE_DISABLED`)')]
     #[OA\Response(response: 409, description: "Pas de magasin enregistré (message `DRIVE_NOT_CONFIGURED`), ou `storeId` n'est pas le magasin courant (message `DRIVE_STORE_MISMATCH`)")]
     #[OA\Response(response: 422, description: "Corps invalide, ou préférence refusée (message `DRIVE_CHOICE_INVALID`) : produit inconnu ou d'un autre magasin, doublon, produit à la fois accepté et refusé, plus de 5 produits acceptés ou 20 refusés, « j'en ai toujours » avec des produits ; ou plafond atteint (message `DRIVE_LIMIT_REACHED`) : la création dépasserait 1 000 préférences dans le magasin")]
+    #[OA\Response(response: 429, ref: '#/components/responses/DriveWriteRateLimited')]
     public function __invoke(
         #[CurrentUser] AuthenticatedUser $user,
         string $ingredientSlug,

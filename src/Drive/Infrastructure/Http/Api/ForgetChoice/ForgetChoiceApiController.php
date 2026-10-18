@@ -5,6 +5,8 @@ namespace Repas\Drive\Infrastructure\Http\Api\ForgetChoice;
 
 use OpenApi\Attributes as OA;
 use Repas\Drive\Application\Command\ForgetChoice\ForgetChoiceCommand;
+use Repas\Drive\Infrastructure\Http\DriveRateLimit;
+use Repas\Drive\Infrastructure\Http\RateLimitedPerUser;
 use Repas\Shared\Application\Interface\CommandBusInterface;
 use Repas\Shared\Domain\Interface\AuthenticatedUser;
 use Repas\Shared\Infrastructure\Http\RequiresDrive;
@@ -16,6 +18,7 @@ use Symfony\Component\Security\Http\Attribute\CurrentUser;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 #[RequiresDrive]
+#[RateLimitedPerUser(DriveRateLimit::WRITE)]
 final class ForgetChoiceApiController extends AbstractController
 {
     public function __construct(
@@ -34,6 +37,7 @@ final class ForgetChoiceApiController extends AbstractController
     #[OA\Response(response: 404, description: "Fonction drive coupée (message `DRIVE_DISABLED`), ou pas de préférence pour cet ingrédient (message `DRIVE_CHOICE_NOT_FOUND`)")]
     #[OA\Response(response: 409, description: "Pas de magasin enregistré (message `DRIVE_NOT_CONFIGURED`), ou `storeId` n'est pas le magasin courant (message `DRIVE_STORE_MISMATCH`)")]
     #[OA\Response(response: 422, description: 'Paramètre `retailer` ou `storeId` absent ou invalide')]
+    #[OA\Response(response: 429, ref: '#/components/responses/DriveWriteRateLimited')]
     public function __invoke(
         #[CurrentUser] AuthenticatedUser $user,
         string $ingredientSlug,
