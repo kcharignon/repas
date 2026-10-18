@@ -38,6 +38,7 @@ L'agent s'arrête proprement avec un code ; le titre est ce que l'utilisateur li
 
 - **Le site s'affiche en version mobile** (le nom commence par `m-`) : dans l'application, menu → « Se déconnecter de Leclerc et effacer les données du drive », puis rouvrir le drive.
 - **Le compte Leclerc d'un proche est suspendu ou bloqué** : couper aussitôt pour tous (§ 4). Les conditions de Leclerc permettent à l'enseigne de suspendre un compte en cas d'usage jugé abusif. Le proche contacte lui-même le service client de Leclerc ; Repas ne contacte jamais Leclerc.
+- **Un `429` `DRIVE_RATE_LIMITED` vient de Repas, pas de Leclerc** (DRV-615) : le back plafonne par utilisateur les écritures du drive (60 par minute) et la lecture des plans et estimations (120 par minute). Un usage normal n'y arrive jamais ; si quelqu'un le voit, attendre une minute suffit (aucune donnée n'est perdue : la demande refusée n'a rien enregistré). À ne pas confondre avec `BLOCKED`, qui est le refus de Leclerc. Rien à couper ni à corriger côté Leclerc ; si un compte le déclenche en boucle, regarder qui (script, application bloquée dans une boucle de nouvelle tentative) avant de désactiver le compte (ADR 0021).
 - **Le back ne voit rien** : il ne contacte jamais Leclerc et n'enregistre ni plan ni résultat dans ses journaux ([`architecture.md`](architecture.md) § 10). Le serveur n'a donc aucun signal de panne : la détection vient des messages de l'agent, du diagnostic et de ce que disent les utilisateurs.
 
 ## 2. Avant de commencer

@@ -63,6 +63,8 @@ Décisions : [ADR 0022](adr/0022-remplissage-du-panier-drive.md) et [ADR 0023](a
 
 Le front n'a pas de variable : il lit `enabled` dans `GET /api/v1/drive/settings`. `FRONT_URL`, `MAILER_*` et les autres variables ne changent pas.
 
+**Plafonds de débit (DRV-615).** Aucune variable ni réglage serveur : les écritures du drive d'un utilisateur (`PUT /drive/settings`, `PUT /drive/choices`, `PUT` et `DELETE /drive/choices/{slug}`) sont limitées à **60 par minute**, ses lectures de plan et d'estimation à **120 par minute** (limiteurs `drive_write` et `drive_read`, `config/packages/rate_limiter.yaml`, un compteur par utilisateur du jeton, pas par adresse IP). Au-delà : `429` `DRIVE_RATE_LIMITED` avec `Retry-After`, sans rien enregistrer ; un usage normal (un lot de l'agent par passage, un clic par écriture) n'en approche jamais. Les compteurs sont dans le **cache de l'application** (fichiers sous `var/cache` du conteneur `php`), pas dans la base : aucune migration, aucune requête SQL en plus, remis à zéro par un nouveau déploiement ou un vidage du cache, sans conséquence. Une machine unique suffit ; avec plusieurs conteneurs `php` il faudrait un cache partagé (Redis). Un `429` isolé dans les journaux n'est pas une panne : il montre qu'un compte ou un script dépasse le plafond (voir `drive/runbook.md`).
+
 **Migrations.** Cinq migrations s'appliquent au démarrage du back (`docker-entrypoint.sh`). Elles sont **additives** et donc compatibles avec la version précédente du code, qui les ignore (ADR 0017 règle 6) : colonnes nullables, nouvelles tables, aucune clé étrangère.
 
 | Migration | Ajoute |

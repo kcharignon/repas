@@ -52,6 +52,7 @@ Suivi vivant. Cocher une case quand le ticket est fusionné (et noter la PR). Le
 
 - [ ] [DRV-613](tickets/DRV-613-durcissement-fiches-produits.md) back puis front · M · Durcissement des fiches de produits partagées, plafonds, `reopen` interrupteur coupé (partie 1 back faite, PR #166 ; partie 2 front à faire) · dépend de : 204, 305, 306 · Issue : [#164](https://github.com/kcharignon/repas/issues/164)
 - [ ] [DRV-614](tickets/DRV-614-retour-limite-au-plan.md) front · S · Le retour de l'agent ne retient que les lignes du plan, message `DRIVE_LIMIT_REACHED`, « Rouvrir » interrupteur coupé (constat C1 de la revue du front) · dépend de : 405, 613
+- [x] [DRV-615](tickets/DRV-615-limiteur-de-debit.md) back · S · Limiteur de débit par utilisateur sur les écritures et les lectures coûteuses du drive, `429 DRIVE_RATE_LIMITED` (constat C2 de la revue du back) · dépend de : 204, 613 · Issue : [#175](https://github.com/kcharignon/repas/issues/175)
 
 ## M3 — Agent (front, `drive-agent/`)
 
