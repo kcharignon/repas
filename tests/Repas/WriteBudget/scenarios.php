@@ -1,5 +1,7 @@
 <?php
 
+use Repas\Drive\Application\Command\SaveDriveSettings\SaveDriveSettingsCommand;
+use Repas\Drive\Domain\Model\Retailer;
 use Repas\Repas\Application\Command\ActivatedShoppingList\ActivatedShoppingListCommand;
 use Repas\Repas\Application\Command\AddIngredientToShoppingList\AddIngredientToShoppingListCommand;
 use Repas\Repas\Application\Command\CopyRecipe\CopyRecipeCommand;
@@ -330,11 +332,19 @@ return [
 
         return new ChangeUserStatusCommand($user->getId(), UserStatus::DISABLED);
     },
+    // Pire cas : le magasin déjà enregistré est remplacé par un autre
+    'reglages-drive' => static function (WriteBudgetTestCase $t): object {
+        $user = $t->savedUser();
+        $t->savedDriveSettings($user);
+
+        return new SaveDriveSettingsCommand($user->getId(), Retailer::LECLERC, '654321', 'Ville-Test', 'https://autre.leclercdrive.fr/magasin-654321-654321');
+    },
     // Compte qui a trois recettes planifiées dans une liste, dont une est copiée par un autre utilisateur
     'supprimer-compte' => static function (WriteBudgetTestCase $t): object {
         $owner = $t->savedUser();
         $recipes = $t->typicalRecipes($owner);
         $t->savedShoppingList($owner, $recipes);
+        $t->savedDriveSettings($owner);
         $t->savedRecipe($t->savedUser(), new RecipeBuilder()->isPastaCarbonara()->withOriginalId($recipes[0]->getId()));
 
         return new DeleteUserCommand($owner->getId(), 'administrateur');

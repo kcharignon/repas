@@ -2329,6 +2329,55 @@
                 },
                 "security": []
             }
+        },
+        "/api/v1/drive/settings": {
+            "get": {
+                "tags": [
+                    "Drive"
+                ],
+                "summary": "R\u00e9glages du drive de l'utilisateur connect\u00e9 (magasin) et \u00e9tat de l'interrupteur de la fonction",
+                "operationId": "get_api_get_drive_settings",
+                "responses": {
+                    "200": {
+                        "description": "L'interrupteur et le magasin de l'utilisateur (`store: null` tant qu'il n'en a pas enregistr\u00e9) ; `200` aussi quand la fonction est coup\u00e9e (`enabled: false`)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DriveSettingsDTO"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "Drive"
+                ],
+                "summary": "Enregistre le magasin du drive de l'utilisateur connect\u00e9 (remplace le pr\u00e9c\u00e9dent)",
+                "operationId": "put_api_save_drive_settings",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/DriveSettingsPayload"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "204": {
+                        "description": "Magasin enregistr\u00e9"
+                    },
+                    "404": {
+                        "description": "Fonction drive coup\u00e9e (message `DRIVE_DISABLED`)"
+                    },
+                    "422": {
+                        "description": "Corps invalide, ou magasin refus\u00e9 (message `DRIVE_STORE_INVALID`) : adresse qui n'est pas celle d'un magasin de l'enseigne, identifiant diff\u00e9rent de celui de l'adresse"
+                    }
+                }
+            }
         }
     },
     "components": {
@@ -2733,6 +2782,56 @@
                         "type": "string",
                         "maxLength": 256,
                         "example": "3f9c0a5e7d1b4c6a8e2f0b9d7c5a3e1f3f9c0a5e7d1b4c6a8e2f0b9d7c5a3e1f"
+                    }
+                },
+                "type": "object"
+            },
+            "Retailer": {
+                "type": "string",
+                "enum": [
+                    "leclerc"
+                ]
+            },
+            "DriveStorePayload": {
+                "required": [
+                    "id",
+                    "baseUrl"
+                ],
+                "properties": {
+                    "id": {
+                        "description": "Identifiant du magasin chez l'enseigne : celui de l'adresse de base",
+                        "type": "string",
+                        "maxLength": 20,
+                        "example": "123456"
+                    },
+                    "baseUrl": {
+                        "description": "Adresse de base du magasin : `https://<sous-domaine>.leclercdrive.fr/magasin-<id>-<id>`",
+                        "type": "string",
+                        "maxLength": 255,
+                        "example": "https://exemple.leclercdrive.fr/magasin-123456-123456"
+                    },
+                    "label": {
+                        "description": "Nom du magasin tel que lu par l'agent (255 caract\u00e8res au plus)",
+                        "type": "string",
+                        "default": null,
+                        "maxLength": 255,
+                        "example": "Ville-Test",
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "DriveSettingsPayload": {
+                "required": [
+                    "retailer",
+                    "store"
+                ],
+                "properties": {
+                    "retailer": {
+                        "$ref": "#/components/schemas/Retailer"
+                    },
+                    "store": {
+                        "$ref": "#/components/schemas/DriveStorePayload"
                     }
                 },
                 "type": "object"
@@ -3685,6 +3784,62 @@
                     }
                 },
                 "type": "object"
+            },
+            "DriveStoreDTO": {
+                "required": [
+                    "id",
+                    "baseUrl"
+                ],
+                "properties": {
+                    "id": {
+                        "description": "Identifiant du magasin chez l'enseigne (chiffres, z\u00e9ros initiaux conserv\u00e9s)",
+                        "type": "string",
+                        "example": "123456"
+                    },
+                    "label": {
+                        "description": "Nom du magasin tel que lu par l'agent, si connu",
+                        "type": "string",
+                        "example": "Ville-Test",
+                        "nullable": true
+                    },
+                    "baseUrl": {
+                        "description": "Adresse de base du magasin sur le site de l'enseigne",
+                        "type": "string",
+                        "example": "https://exemple.leclercdrive.fr/magasin-123456-123456"
+                    }
+                },
+                "type": "object"
+            },
+            "DriveSettingsDTO": {
+                "required": [
+                    "enabled",
+                    "retailer"
+                ],
+                "properties": {
+                    "enabled": {
+                        "description": "Vrai si la fonction \u00ab envoyer au drive \u00bb est allum\u00e9e (interrupteur `DRIVE_ENABLED`) ; faux, toutes les autres routes du drive r\u00e9pondent `404 DRIVE_DISABLED`",
+                        "type": "boolean",
+                        "example": true
+                    },
+                    "retailer": {
+                        "description": "Enseigne du drive",
+                        "type": "string",
+                        "enum": [
+                            "leclerc"
+                        ],
+                        "example": "leclerc"
+                    },
+                    "store": {
+                        "description": "Magasin de l'utilisateur, `null` tant qu'il n'a pas \u00e9t\u00e9 enregistr\u00e9",
+                        "nullable": true,
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/DriveStoreDTO"
+                            }
+                        ]
+                    }
+                },
+                "type": "object"
             }
         },
         "parameters": {
@@ -3745,6 +3900,9 @@
         },
         {
             "name": "Auth"
+        },
+        {
+            "name": "Drive"
         }
     ]
 }

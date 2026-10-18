@@ -4,11 +4,13 @@ namespace Repas\Tests\Helper;
 
 
 use DateTimeImmutable;
+use Repas\Drive\Domain\Interface\DriveSettingsRepository;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Repas\Domain\Model\Recipe;
 use Repas\Repas\Domain\Model\ShoppingList;
 use Repas\Shared\Application\Interface\CommandBusInterface;
 use Repas\Tests\Helper\Builder\ConversionBuilder;
+use Repas\Tests\Helper\Builder\DriveSettingsBuilder;
 use Repas\Tests\Helper\Builder\RecipeBuilder;
 use Repas\Tests\Helper\Builder\ShoppingListBuilder;
 use Repas\Tests\Helper\Builder\UserBuilder;
@@ -71,6 +73,14 @@ abstract class WriteBudgetTestCase extends DatabaseTestCase
         static::getContainer()->get(EmailVerificationTokenRepository::class)->add(
             EmailVerificationToken::issue(UuidGenerator::new(), $user->getId(), EmailVerificationToken::hash($secret), new DateTimeImmutable("-{$minutesAgo} minutes")),
         );
+    }
+
+    /**
+     * Réglages du drive de `$user` (magasin factice) : un `SaveDriveSettings` ultérieur les remplace.
+     */
+    public function savedDriveSettings(User $user): void
+    {
+        static::getContainer()->get(DriveSettingsRepository::class)->save(new DriveSettingsBuilder()->withUserId($user->getId())->build());
     }
 
     public function savedRecipe(User $author, RecipeBuilder $builder): Recipe

@@ -3,6 +3,7 @@
 namespace Repas\Tests\Shared\Infrastructure;
 
 
+use Repas\Drive\Infrastructure\Entity\DriveSettings;
 use Repas\Repas\Infrastructure\Entity\Ingredient;
 use Repas\Repas\Infrastructure\Entity\Recipe;
 use Repas\Repas\Infrastructure\Entity\ShoppingList;
@@ -14,7 +15,7 @@ use Repas\User\Infrastructure\Entity\RefreshToken;
  * Garde-fou de la suppression d'un compte (ADR 0021) : aucune clé étrangère ne lie les tables à `user`, donc supprimer un
  * compte « comme s'il n'avait jamais existé » repose sur une liste écrite à la main. Ce test échoue dès qu'une entité
  * gagne une colonne qui désigne un utilisateur : il faut alors effacer ces données à la suppression du compte
- * (`DeleteUserHandler` pour le contexte `User`, `PurgeUserDataHandler` pour `Repas`) puis ajouter la colonne ci-dessous.
+ * (`DeleteUserHandler` pour le contexte `User`, `PurgeUserDataHandler` pour `Repas`, `PurgeUserDriveDataHandler` pour `Drive`) puis ajouter la colonne ci-dessous.
  */
 class UserOwnedDataCoverageTest extends DatabaseTestCase
 {
@@ -26,6 +27,7 @@ class UserOwnedDataCoverageTest extends DatabaseTestCase
         Ingredient::class => ['creatorId'],
         ShoppingList::class => ['ownerId'],
         RefreshToken::class => ['userId'],
+        DriveSettings::class => ['userId'],
         EmailVerificationToken::class => ['userId'],
     ];
 
