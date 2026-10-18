@@ -341,6 +341,8 @@ final class ShoppingList implements ModelInterface
     {
         $this->assertEditable();
         $this->status = Status::ACTIVE;
+        // Une liste envoyée puis terminée garde sa date d'envoi (relevé) ; redevenue active, elle n'est plus envoyée
+        $this->sentAt = null;
     }
 
     public function removeMeal(Recipe $recipe): void
