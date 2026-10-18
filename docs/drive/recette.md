@@ -178,6 +178,8 @@ L'application « Repas » est **toute** l'application Repas (recettes, listes, d
 
 ## 6. Premier envoi : aucun produit n'est encore connu (phase B)
 
+> **À vérifier ici (DRV-319)** : l'application ouvre `https://<hôte du magasin>/` au début d'un envoi ; le faux site redirige cette racine vers l'accueil du magasin. Seul le vrai site le confirme : note ce qui s'affiche.
+
 Au premier envoi, Repas ne connaît encore **aucun** de tes produits : toutes les lignes sont « à choisir ». L'agent travaille en deux temps : la **phase A** met au panier les produits déjà connus (rien à faire pour toi) ; la **phase B** te fait choisir un produit pour chaque nouvel ingrédient. Ici il n'y a que la phase B ; la phase A travaillera au deuxième envoi (partie 7).
 
 ### 6.1 Envoyer la liste

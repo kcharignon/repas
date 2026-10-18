@@ -118,3 +118,7 @@ Coupé, `reopen` répond `404 DRIVE_DISABLED` (règle voulue, ADR 0023 §9, `run
 ## Hors périmètre, vu en passant
 
 Ces points ne concernent pas le drive et n'ont pas été modifiés. Le dépôt public contient (1) une adresse e-mail réelle d'un tiers dans les exemples OpenAPI et les fixtures de développement (`grep -rn "@gmail" docs/api src/Repas/Infrastructure/DataFixture`), (2) l'adresse IP du serveur de production et la connexion `root` dans `docs/production.md` et les fiches `repas-ops`. À remplacer par des valeurs factices si l'on veut tenir la règle « aucune donnée réelle dans les dépôts publics » partout.
+
+## Suite côté agent (2026-10-18)
+
+Défaut D2 : l'agent retire désormais à la lecture exactement les caractères que le back refuse dans un libellé (`drive-agent/src/text.ts`, PR repas-front#120, agent 0.8.2), donc un seul libellé marqué ne fait plus échouer tout le lot. Le motif du back (`LABEL_FORBIDDEN_CHARACTERS_PATTERN`, `Product.php`) est recopié côté front dans `drive-agent/test/back-label-rules.ts` ; un test éprouve tous les points de code Unicode. Le back n'interdit que U+2060 (pas U+2061 à U+2064) : à élargir ou non, décision à prendre.

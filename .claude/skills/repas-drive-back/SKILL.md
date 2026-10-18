@@ -138,3 +138,7 @@ Le front fige `docs/api/openapi.json` sur un commit du back (`npm run api:update
 ## 8. Interdits
 
 Contacter Leclerc ; mettre une donnée réelle dans le code, les tests ou la doc ; activer `DRIVE_ENABLED` en production ; déployer ou créer une release ; `--no-verify`, force-push, push sur `main` ; fusionner une PR dont un contrôle de la CI n'est pas vert ; `Co-Authored-By` dans un commit ; modifier les ADR 0022 et 0023 sans que le ticket le demande.
+
+## 9. Libellés refusés et copie côté front
+
+La liste des caractères refusés dans un libellé de produit (`LABEL_FORBIDDEN_CHARACTERS_PATTERN`, `Product.php`) est recopiée côté front dans `drive-agent/test/back-label-rules.ts` : tout changement de ce motif impose de le recopier là-bas (le test du front dit alors quoi retirer de plus dans l'agent).
