@@ -5,8 +5,12 @@ namespace Repas\Tests\Drive\InputAdapter;
 
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use Repas\Drive\Domain\Interface\DriveSettingsRepository;
+use Repas\Drive\Domain\Interface\ProductRepository;
+use Repas\Drive\Domain\Model\Product;
+use Repas\Drive\Domain\Model\Retailer;
 use Repas\Shared\Application\Interface\DriveFeature;
 use Repas\Tests\Helper\Builder\DriveSettingsBuilder;
+use Repas\Tests\Helper\Builder\ProductBuilder;
 use Repas\Tests\Helper\Builder\UserBuilder;
 use Repas\Tests\Helper\ControlledDriveFeature;
 use Repas\Tests\Helper\DatabaseTestCase;
@@ -292,6 +296,29 @@ class DriveChoicesApiFlowTest extends DatabaseTestCase
         $this->assertSame(array_reverse($aliceProducts), array_map(static fn(array $accepted): string => $accepted['product']['productId'], $this->jsonBody()['member'][0]['accepted']));
     }
 
+
+    public function testListsSentAsJsonObjectsAreCheckedLikeListsAndNeverEndInAServerError(): void
+    {
+        // Given : un produit du magasin de l'utilisateur et un produit d'un autre magasin
+        $user = $this->userWithAStore();
+        $this->put($user, [$this->add('farine', 'PRIMARY', '555111', 'Farine T55 1 kg')]);
+        $own = Product::idFor(Retailer::LECLERC, '123456', '555111');
+        $otherStore = new ProductBuilder()->withStoreId('654321')->withRetailerProductId('777888')->build();
+        static::getContainer()->get(ProductRepository::class)->save($otherStore);
+
+        // When : `{"a": …}` dans les deux listes, avec la même clé : le même produit accepté et refusé, puis un produit d'un autre magasin
+        foreach ([
+            "{\"accepted\":{\"a\":\"$own\"},\"rejected\":{\"a\":\"$own\"}}",
+            "{\"accepted\":{\"a\":\"{$otherStore->getId()}\"},\"rejected\":{\"a\":\"$own\"}}",
+            "{\"accepted\":{\"0\":\"$own\",\"1\":\"$own\"},\"rejected\":[]}",
+        ] as $lists) {
+            $this->request('PUT', '/api/v1/drive/choices/farine', $user, '{"retailer":"leclerc","storeId":"123456","haveAtHome":false,' . substr($lists, 1));
+
+            // Then : refusé comme avec des listes, et rien n'est enregistré
+            $this->assertSame([422, ['error' => ['message' => 'DRIVE_CHOICE_INVALID']]], [$this->client->getResponse()->getStatusCode(), $this->jsonBody()], $lists);
+            $this->assertSame([['555111'], []], $this->readFarine($user), $lists);
+        }
+    }
 
     public function testListingWithoutStoreIsEmpty(): void
     {
