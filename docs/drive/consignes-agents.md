@@ -8,6 +8,20 @@
 - **Front** : `/home/kantin/Projet/repas-front` (`kcharignon/repas-front`, Vue.js + TypeScript, dossiers `drive-agent/` pour l'agent et `android/` pour l'application). Tout passe par le Makefile et Docker. `make check` avant chaque commit ; `make agent-verify` si l'agent change ; `make android-test` si l'application change.
 - Les deux dépôts sont **publics**.
 
+## Skills du domaine
+
+Chaque domaine a son skill (pièges réels du chantier, recettes, Definition of Done). **Avant tout ticket, lire le skill du domaine ; si l'outil Skill ne le propose pas, lire directement son `SKILL.md`.**
+
+| Skill | Domaine | Chemin |
+|---|---|---|
+| `repas-dev` | Recettes générales du back (lecture, API, écriture, Definition of Done) | `.claude/skills/repas-dev/SKILL.md` (dépôt back) |
+| `repas-drive-back` | Back du chantier : contexte `Drive`, verrou de liste `SENT`, ports `Shared`, migrations, budgets SQL, purge du compte | `.claude/skills/repas-drive-back/SKILL.md` (dépôt back) |
+| `repas-front-dev` | Front web Vue.js / TypeScript : Docker, `make check`, i18n, jetons, CSP, `driveBridge`, tests Vitest et Playwright | `.claude/skills/repas-front-dev/SKILL.md` (dépôt front) |
+| `repas-agent-dev` | Agent JavaScript embarqué `drive-agent/` : règles de sécurité, construction reproductible, protocole v1, contrat Leclerc, fixtures | `.claude/skills/repas-agent-dev/SKILL.md` (dépôt front) |
+| `repas-android-dev` | Application Android `android/` : WebView sécurisée, mode ordinateur, signature, émulateur, étapes humaines | `.claude/skills/repas-android-dev/SKILL.md` (dépôt front) |
+
+Un ticket qui touche plusieurs domaines (par exemple un champ du plan : back, protocole, front) lit les skills de chacun.
+
 ## Livraison
 
 1. Une branche depuis `main` à jour par ticket (`feat/drv-xxx-…`). Un ticket = une PR = une fusion, avant de passer au suivant.
