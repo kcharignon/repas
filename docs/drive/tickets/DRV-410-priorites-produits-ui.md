@@ -4,7 +4,7 @@
 - **Jalon** : M4 Front
 - **Taille** : M
 - **Dépend de** : DRV-208, DRV-403
-- **Statut** : à faire
+- **Statut** : fait (PR [repas-front#97](https://github.com/kcharignon/repas-front/pull/97), 2026-10-18)
 - **Lire d'abord** : [`../architecture.md`](../architecture.md) §§ 5, 7, 9 ; `docs/adr/0003-design-system-basilic-et-safran.md` du front ; composants `src/design/Ui*` ; DRV-208.
 
 ## Contexte
@@ -49,3 +49,7 @@ Celle du front.
 
 - Ne pas recalculer d'ordre côté serveur : le front envoie l'ordre voulu, le back valide.
 - Un produit refusé et accepté dans la même demande est rejeté par le back : le front l'empêche aussi.
+
+## Réalisation (2026-10-18, PR repas-front#97)
+
+Routes `/drive/produits` (liste avec recherche) et `/drive/produits/:slug` (détail : monter, descendre, retirer, refuser, ré-accepter, « j'en ai toujours », oublier) ; modifications locales jusqu'à « Enregistrer » (un seul `PUT /drive/choices/{slug}`) ; entrée dans « Mon compte » si le drive est activé. À 5 produits acceptés, « Accepter de nouveau » est désactivé avec explication. Pas d'alerte en quittant avec des modifications non enregistrées.
