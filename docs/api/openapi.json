@@ -4546,7 +4546,7 @@
                         "example": 300
                     },
                     "unitSymbol": {
-                        "description": "Symbole de l'unit\u00e9 d'achat (vide pour une unit\u00e9 sans symbole)",
+                        "description": "Symbole de l'unit\u00e9 d'achat, ou son nom si elle n'a pas de symbole (jamais vide, 32 caract\u00e8res au plus)",
                         "type": "string",
                         "example": "g"
                     },

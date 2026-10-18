@@ -41,6 +41,7 @@ final readonly class DrivePlanPostgreSQLLoader implements DrivePlanLoader
     private const Retailer RETAILER = Retailer::LECLERC;
     private const string SENT = 'SENT';
     private const string ACCEPTED = 'ACCEPTED';
+    private const int UNIT_LABEL_MAX_LENGTH = 32;
 
     public function __construct(
         private EntityManagerInterface $entityManager,
@@ -166,12 +167,27 @@ final readonly class DrivePlanPostgreSQLLoader implements DrivePlanLoader
         return new DrivePlanLineDTO(
             ingredientSlug: $line->ingredientSlug,
             ingredientName: $line->ingredientName,
-            needed: new DrivePlanNeededDTO($line->quantity, $line->unitSymbol, $line->unitDimension, $line->unitBaseFactor),
+            needed: new DrivePlanNeededDTO($line->quantity, $this->unitLabel($line), $line->unitDimension, $line->unitBaseFactor),
             status: $status->value,
             products: array_map(fn(array $row): DrivePlanProductDTO => $this->product($row, $quantity), $choice['accepted'] ?? []),
             rejected: $choice['rejected'] ?? [],
             searchQuery: $line->ingredientName,
         );
+    }
+
+    /**
+     * Le protocole de l'agent veut un texte non vide de 32 caractères au plus (`plan.schema.json`) : à défaut de symbole (l'unité
+     * « unité » n'en a pas), le nom de l'unité, puis son slug.
+     */
+    private function unitLabel(ShoppingListLineForDrive $line): string
+    {
+        foreach ([$line->unitSymbol, $line->unitName, $line->unitSlug] as $candidate) {
+            if (trim($candidate) !== '') {
+                return mb_substr(trim($candidate), 0, self::UNIT_LABEL_MAX_LENGTH);
+            }
+        }
+
+        return $line->unitSlug;
     }
 
     /**

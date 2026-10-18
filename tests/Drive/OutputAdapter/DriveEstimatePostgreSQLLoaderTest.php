@@ -72,12 +72,12 @@ class DriveEstimatePostgreSQLLoaderTest extends DatabaseTestCase
             new ChoiceBuilder()->withUserId('user-1')->withIngredientSlug('beurre')->withAccepted([$this->id('5')])->build(),
         ]);
         $list = $this->list('user-1', [
-            new ShoppingListLineForDrive('beurre', 'Beurre', 250, 'gramme', 'g', 'WEIGHT', 1.0),
-            new ShoppingListLineForDrive('farine', 'Farine', 1200, 'gramme', 'g', 'WEIGHT', 1.0),
-            new ShoppingListLineForDrive('lait', 'Lait', 1.5, 'litre', 'l', 'VOLUME', 1000.0),
-            new ShoppingListLineForDrive('poivre', 'Poivre', 1, 'paquet', 'paquet', 'PACKAGE', 1.0),
-            new ShoppingListLineForDrive('sel', 'Sel', 2, 'cuillere-a-soupe', 'cuillère à soupe', null, null),
-            new ShoppingListLineForDrive('thym', 'Thym', 1, 'paquet', 'paquet', 'PACKAGE', 1.0),
+            new ShoppingListLineForDrive('beurre', 'Beurre', 250, 'gramme', 'gramme', 'g', 'WEIGHT', 1.0),
+            new ShoppingListLineForDrive('farine', 'Farine', 1200, 'gramme', 'gramme', 'g', 'WEIGHT', 1.0),
+            new ShoppingListLineForDrive('lait', 'Lait', 1.5, 'litre', 'litre', 'l', 'VOLUME', 1000.0),
+            new ShoppingListLineForDrive('poivre', 'Poivre', 1, 'paquet', 'paquet', 'paquet', 'PACKAGE', 1.0),
+            new ShoppingListLineForDrive('sel', 'Sel', 2, 'cuillere-a-soupe', 'cuillère à soupe', 'cuillère à soupe', null, null),
+            new ShoppingListLineForDrive('thym', 'Thym', 1, 'paquet', 'paquet', 'paquet', 'PACKAGE', 1.0),
         ]);
 
         // When
@@ -119,8 +119,8 @@ class DriveEstimatePostgreSQLLoaderTest extends DatabaseTestCase
             new ChoiceBuilder()->withUserId('user-1')->withIngredientSlug('sucre')->withAccepted([$this->id('2')])->build(),
         ]);
         $list = $this->list('user-1', [
-            new ShoppingListLineForDrive('farine', 'Farine', 1, 'paquet', 'paquet', 'PACKAGE', 1.0),
-            new ShoppingListLineForDrive('sucre', 'Sucre', 1, 'paquet', 'paquet', 'PACKAGE', 1.0),
+            new ShoppingListLineForDrive('farine', 'Farine', 1, 'paquet', 'paquet', 'paquet', 'PACKAGE', 1.0),
+            new ShoppingListLineForDrive('sucre', 'Sucre', 1, 'paquet', 'paquet', 'paquet', 'PACKAGE', 1.0),
         ]);
 
         // When
@@ -144,8 +144,8 @@ class DriveEstimatePostgreSQLLoaderTest extends DatabaseTestCase
             new ChoiceBuilder()->withUserId('user-1')->withStoreId('654321')->withIngredientSlug('lait')->withAccepted([$this->id('2', '654321')])->build(),
         ]);
         $list = $this->list('user-1', [
-            new ShoppingListLineForDrive('farine', 'Farine', 1, 'paquet', 'paquet', 'PACKAGE', 1.0),
-            new ShoppingListLineForDrive('lait', 'Lait', 1, 'paquet', 'paquet', 'PACKAGE', 1.0),
+            new ShoppingListLineForDrive('farine', 'Farine', 1, 'paquet', 'paquet', 'paquet', 'PACKAGE', 1.0),
+            new ShoppingListLineForDrive('lait', 'Lait', 1, 'paquet', 'paquet', 'paquet', 'PACKAGE', 1.0),
         ]);
 
         // When
@@ -162,7 +162,7 @@ class DriveEstimatePostgreSQLLoaderTest extends DatabaseTestCase
         // Given
         $this->settings->save(new DriveSettingsBuilder()->withUserId('user-1')->build());
         $this->choices->save(new ChoiceBuilder()->withUserId('user-1')->withAccepted(['produit-inconnu'])->build());
-        $list = $this->list('user-1', [new ShoppingListLineForDrive('farine', 'Farine', 1, 'paquet', 'paquet', 'PACKAGE', 1.0)]);
+        $list = $this->list('user-1', [new ShoppingListLineForDrive('farine', 'Farine', 1, 'paquet', 'paquet', 'paquet', 'PACKAGE', 1.0)]);
 
         // When
         $estimate = $this->loader($list)->get('user-1', 'list-1');

@@ -9,7 +9,7 @@ final readonly class DrivePlanNeededDTO
     public function __construct(
         #[OA\Property(description: "Quantité demandée par la liste, dans l'unité d'achat de la ligne", example: 300)]
         public float $quantity,
-        #[OA\Property(description: "Symbole de l'unité d'achat (vide pour une unité sans symbole)", example: 'g')]
+        #[OA\Property(description: "Symbole de l'unité d'achat, ou son nom si elle n'a pas de symbole (jamais vide, 32 caractères au plus)", example: 'g')]
         public string $unitSymbol,
         #[OA\Property(description: "Dimension de l'unité, `null` si elle ne se convertit pas (cuillère, tranche…)", enum: ['WEIGHT', 'VOLUME', 'COUNT', 'PACKAGE'], nullable: true, example: 'WEIGHT')]
         public ?string $dimension,
