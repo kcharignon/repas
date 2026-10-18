@@ -55,3 +55,8 @@ Celle du dépôt concerné ; PR concises ; fusion si tous les contrôles de la C
 - **Récapitulatif de fin** : « Contenu différent de celui mémorisé », avec « Farine : 10 au lieu de 1 » par ligne concernée ; la mention survit à un rechargement (état de reprise `changes`, validé). Le résultat envoyé à Repas ne change pas.
 - **Tests** : unitaires (dont deux sur la vraie page de recherche en fixture) et trois cas e2e contre le faux site (contenu différent avec mention, même nombre sans mention, contenu illisible ou d'une autre dimension avec repli) ; le faux site gagne un 31e produit (contenu illisible). Agent 0.8.0, `android/agent.js.sha384` mis à jour.
 - **Limites assumées** : un nombre du plan « à vérifier » reste une question à l'utilisateur même si le contenu en direct est lisible ; un contenu en direct d'une autre dimension garde le plan sans question ; `refusedOf` renvoie encore le contenu mémorisé d'un produit refusé (le back l'ignore pour une fiche connue).
+
+## Suites liées (2026-10-18)
+
+- PR repas-front#120 (agent 0.8.2) : l'agent retire des libellés les caractères que le back refuse (voir la revue de sécurité du back, « Suite côté agent »).
+- PR repas-front#121 : sur « Reprendre l'envoi », interrupteur coupé (`404 DRIVE_DISABLED`), l'écran propose « Rouvrir la liste » (`reopen` répond 204 interrupteur coupé).
