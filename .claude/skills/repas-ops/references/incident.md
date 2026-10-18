@@ -18,7 +18,7 @@ Causes fréquentes : disque plein (images : `docker image prune -af --filter unt
 `deploy.sh` le fait déjà si le contrôle de santé échoue. À la main, pour une version qui « passe » le contrôle mais se comporte mal :
 `ssh deploy@64.227.124.100 'cd /opt/repas && ./deploy.sh back vX.Y.Z'` avec la version précédente (liste : `gh release list`). Une sauvegarde est faite avant, comme pour tout déploiement.
 
-⚠ Cela remet le **code**, pas le schéma : si la version fautive a appliqué une migration, vérifier qu'elle est compatible avec le code remis (ADR 0017 règle 6).
+⚠ Cela remet le **code**, pas le schéma : si la version fautive a appliqué une migration, vérifier qu'elle est compatible avec le code remis (ADR 0017 règle 6). Cas particulier : des listes de courses au statut `SENT` (envoi au drive) ne sont pas lisibles par une version qui ne connaît pas ce statut : couper `DRIVE_ENABLED` et les remettre en état **avant** de remettre le code (`references/drive.md`, sections C et D).
 
 ## 3. Restaurer la base (décision humaine, jamais automatique)
 

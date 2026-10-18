@@ -1,6 +1,6 @@
 ---
 name: repas-ops
-description: Mettre en production, publier une release, revenir en arrière, sauvegarder ou diagnostiquer le serveur de Repas (droplet DigitalOcean, Docker Compose, GHCR, bordure Caddy). À utiliser pour « déployer », « release », « rollback », « sauvegarde », « le site est tombé », la première mise en production, un retour d'urgence vers Twig, ou toute modification de `deploy/` et des workflows `release.yml`. Lit l'ADR 0017 avant d'agir.
+description: Mettre en production, publier une release, revenir en arrière, sauvegarder ou diagnostiquer le serveur de Repas (droplet DigitalOcean, Docker Compose, GHCR, bordure Caddy). À utiliser pour « déployer », « release », « rollback », « sauvegarde », « le site est tombé », la première mise en production, un retour d'urgence vers Twig, allumer, couper ou annuler l'envoi de la liste au drive (`DRIVE_ENABLED`, listes `SENT`), ou toute modification de `deploy/` et des workflows `release.yml`. Lit l'ADR 0017 avant d'agir.
 ---
 
 # repas-ops — exploiter la production de Repas
@@ -27,11 +27,13 @@ description: Mettre en production, publier une release, revenir en arrière, sau
 | Ça ne marche plus : retour arrière, restauration de la base, diagnostic | `references/incident.md` |
 | Le front est inutilisable : rendre Twig en urgence (dernière version qui le servait) | `references/retour-twig.md` |
 | Mettre en place l'envoi d'emails (confirmation d'adresse, ADR 0020) : compte Brevo, domaine, clé d'API, `MAILER_DSN` | `references/envoi-emails.md` |
+| Envoi de la liste au drive : mettre en production (back, front, application), allumer ou couper `DRIVE_ENABLED`, revenir en arrière avec des listes `SENT` (faits et commandes : `docs/production.md`) | `references/drive.md` (scripts `ecrire-drive-enabled.sh`, `rouvrir-listes-envoyees.sh`) |
 
 ## 3. Règles
 
 - Une release = un tag `vX.Y.Z` sur un commit de `main` ; jamais de `latest`. Le workflow refuse le reste.
 - Toute migration doit rester compatible avec la version précédente du code (ADR 0017 règle 6) : le retour arrière ne défait pas le schéma.
+- `DRIVE_ENABLED` est coupé par défaut ; l'allumer est une décision humaine, après un déploiement stable, par un script que l'utilisateur lance. Ne jamais remettre une version du back qui ne connaît pas le statut `SENT` sans avoir coupé la fonction et remis en état les listes envoyées (`references/drive.md`, sections C et D).
 - Avant de toucher à `deploy/` : `make deploy-smoke` (FRONT_IMAGE=… pour essayer le SPA). La CI le rejoue (job `deploy-config`).
 - Changer une règle d'exploitation = mettre à jour l'ADR 0017, `CLAUDE.md`, ce skill et `docs/production.md` dans le même commit.
 - Twig n'existe plus dans le back (ADR 0018) ; le domaine principal sert le front, l'ancien nom `app.` est redirigé en `301`. Tout changement de nom de domaine ou de redirection passe par l'utilisateur.
