@@ -36,3 +36,16 @@ Celle du dépôt front ; PR concise ; fusion si CI verte.
 
 1. **Première livraison (peut démarrer maintenant)** : image d'émulateur, `make android-emulator`, installation de l'APK de débogage actuel, **test de fumée** (l'application démarre sans plantage, la WebView affiche une page locale de test, le script d'injection et le pont répondent sur cette page, le menu de débogage s'ouvre), rapport avec captures d'écran lues.
 2. **Deuxième livraison (après DRV-317 et DRV-309)** : scénarios complets (coquille Repas sur le front de développement, pont `repasNative`, passage contre le faux site Leclerc avec autorité de certification de test).
+
+## Installation permanente (demande de l'utilisateur, 2026-10-18)
+
+L'émulateur doit être installé **de façon durable**, pas à refaire à chaque session :
+- **KVM au démarrage de WSL** : ajouter à `/etc/wsl.conf` (étape humaine, une seule fois, puis `wsl --shutdown` côté Windows) :
+  ```
+  [boot]
+  command = modprobe kvm_intel && chmod 666 /dev/kvm
+  ```
+  Ne pas écraser un `[boot]` existant ; documenter dans `android/README.md`.
+- **SDK, image système et AVD dans un volume Docker nommé** (ou un dossier hors du dépôt, par exemple `~/.cache/repas-android-sdk`) : téléchargés une fois, réutilisés ensuite ; `.dockerignore` et `.gitignore` à jour.
+- **Cibles** : `make android-emulator-up` (démarre et attend la fin du démarrage), `make android-emulator-down`, `make android-emulator-status` ; `make android-e2e` démarre l'émulateur s'il est arrêté.
+- L'agent qui implémente démarre lui-même la pile de développement (`make up` dans les deux dépôts) quand un scénario en a besoin ; l'utilisateur n'a rien à lancer.
