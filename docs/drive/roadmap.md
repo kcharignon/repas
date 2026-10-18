@@ -105,6 +105,16 @@ Prépare l'application « Repas Drive » (WebView en mode ordinateur, agent emba
 - [ ] [DRV-504](tickets/DRV-504-note-vie-privee.md) back+front · S · Note de vie privée (partie back faite : texte et registre, PR #152 ; partie front faite : repas-front#101, #105 et #106 ; reste la relecture des textes par l'utilisateur) · dépend de : 204 · Issue : [#86](https://github.com/kcharignon/repas/issues/86)
 - [ ] [DRV-505](tickets/DRV-505-recette-reelle.md) humain · S · Recette en conditions réelles et activation (procédure écrite : [`recette.md`](recette.md), à dérouler sur le téléphone, interrupteur allumé) · dépend de : 502, 503 · Issue : [#87](https://github.com/kcharignon/repas/issues/87)
 
+## M6 — Simplicité d'usage (audit du PO, 2026-10-19)
+
+Références : [`principes-produit.md`](principes-produit.md), [`audit-simplicite.md`](audit-simplicite.md). Ordre conseillé : 621, puis 623 et 622, puis 624 ; 625 seulement après la vérification humaine qu'il décrit.
+
+- [ ] [DRV-621](tickets/DRV-621-voix-et-vocabulaire-uniques.md) front · M · Vouvoiement partout et glossaire appliqué au web, à l'agent, à l'application et à l'aide, avec un test qui garde le glossaire · dépend de : —
+- [ ] [DRV-622](tickets/DRV-622-ecrans-envoi-et-recapitulatif-simples.md) front · M · Écran de l'envoi et récapitulatif en une phrase, compteurs non nuls, erreurs en trois phrases, magasin manquant = bouton · dépend de : 621
+- [ ] [DRV-623](tickets/DRV-623-un-seul-geste-pour-le-magasin.md) front · S · Un seul geste pour enregistrer son magasin · dépend de : 320, 621
+- [ ] [DRV-624](tickets/DRV-624-choix-de-produit-sans-jargon.md) front · M · Choix du produit sans jargon, « passer les suivants » · dépend de : 306, 208, 621
+- [ ] [DRV-625](tickets/DRV-625-entrer-dans-le-magasin-sans-geste.md) front · M · Entrer dans le magasin, revenir et finaliser dans l'application sans geste inutile (après vérification humaine) · dépend de : 314, 405, 622
+
 ## Backlog (non détaillé, à écrire quand il devient utile)
 
 DRV-601 suggestions automatiques · DRV-602 journal d'envoi · DRV-603 Firefox + gestionnaire de scripts ou extension · DRV-604 vignettes dans Repas (exception CSP ou relais d'images) · DRV-605 conversions unité↔poids par ingrédient · DRV-606 reprise des choix au changement de magasin (EAN, libellé) · DRV-607 deuxième enseigne (spike + adaptateur) · DRV-608 enregistrement direct des choix par jeton à usage unique · DRV-609 partage de choix entre proches · DRV-610 rapport d'exécution anonyme.

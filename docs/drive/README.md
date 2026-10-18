@@ -22,6 +22,8 @@ Sur Android, une fois la liste de courses prête, l'utilisateur touche « Envoye
 6. [`consignes-agents.md`](consignes-agents.md) : règles communes à tout agent qui implémente un ticket.
 7. Les règles du dépôt où l'on travaille : `CLAUDE.md`, skill `.claude/skills/repas-dev/` (back) ; `CLAUDE.md` du front.
 
+**Produit** : tout ticket ou toute PR qui touche un écran, un texte ou un enchaînement de gestes suit [`principes-produit.md`](principes-produit.md) (parcours court, vouvoiement, glossaire, erreurs en trois phrases ; skill `/repas-po`). Le constat en cours est dans [`audit-simplicite.md`](audit-simplicite.md).
+
 ## Dépôts
 
 - **Back** : `/home/kantin/Projet/Repas`, `kcharignon/repas` (public). Contextes `Repas`, `User`, `Shared` et le nouveau `Drive`.
