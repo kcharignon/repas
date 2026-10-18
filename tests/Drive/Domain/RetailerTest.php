@@ -52,6 +52,19 @@ class RetailerTest extends TestCase
         yield 'fragment' => ['https://exemple.leclercdrive.fr/magasin-123456-123456#repas=x'];
         yield 'suite de chemin' => ['https://exemple.leclercdrive.fr/magasin-123456-123456/../autre'];
         yield 'espace' => [' https://exemple.leclercdrive.fr/magasin-123456-123456'];
+        yield 'retour chariot final' => ["https://exemple.leclercdrive.fr/magasin-123456-123456\r\n"];
+        yield 'retour à la ligne avant' => ["\nhttps://exemple.leclercdrive.fr/magasin-123456-123456"];
+        yield 'retour à la ligne dans l\'hôte' => ["https://exemple\n.leclercdrive.fr/magasin-123456-123456"];
+        yield 'identifiants avant un second hôte' => ['https://exemple.leclercdrive.fr@autre.example/magasin-123456-123456'];
+        yield 'barre oblique inverse comme séparateur' => ['https://autre.example\\@exemple.leclercdrive.fr/magasin-123456-123456'];
+        yield 'hôte encodé en pourcentage' => ['https://exemple%2eleclercdrive.fr/magasin-123456-123456'];
+        yield 'sous-domaine vide' => ['https://.leclercdrive.fr/magasin-123456-123456'];
+        yield 'chiffres arabes-indiens' => ["https://exemple.leclercdrive.fr/magasin-\u{0661}\u{0662}\u{0663}-\u{0661}\u{0662}\u{0663}"];
+        yield 'chiffres pleine chasse' => ["https://exemple.leclercdrive.fr/magasin-\u{FF11}\u{FF12}\u{FF13}-\u{FF11}\u{FF12}\u{FF13}"];
+        yield 'lettre cyrillique dans le domaine' => ["https://ex\u{0430}mple.leclercdrive.fr/magasin-123456-123456"];
+        yield 'nom de domaine internationalisé' => ["https://exempl\u{00E9}.leclercdrive.fr/magasin-123456-123456"];
+        yield 'domaine de l\'enseigne avec une autre fin' => ['https://exemple.leclercdrive.fr.example/magasin-123456-123456'];
+        yield 'octet nul' => ["https://exemple.leclercdrive.fr/magasin-123456-123456\0"];
     }
 
     #[DataProvider('invalidStoreUrls')]

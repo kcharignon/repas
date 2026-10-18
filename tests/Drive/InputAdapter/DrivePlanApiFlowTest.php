@@ -87,6 +87,21 @@ class DrivePlanApiFlowTest extends DatabaseTestCase
         $this->assertSame(404, $this->client->getResponse()->getStatusCode());
     }
 
+    public function testAnAdministratorPassesTheVoterButNeverGetsThePlanOfAnotherUser(): void
+    {
+        // Given : un administrateur qui a un magasin, la liste envoyée d'un autre utilisateur
+        $admin = new UserBuilder()->isAdmin()->build();
+        static::getContainer()->get(UserRepository::class)->save($admin);
+        static::getContainer()->get(DriveSettingsRepository::class)->save(new DriveSettingsBuilder()->withUserId($admin->getId())->build());
+        $sent = $this->savedList($this->savedUser(), ShoppingListStatus::SENT);
+
+        // When
+        $this->request('GET', "/api/v1/drive/plans/$sent", $admin);
+
+        // Then : le voter laisse passer l'administrateur, le loader refuse, et la réponse ne porte rien de la liste
+        $this->assertSame([403, ['error' => ['message' => 'SHOPPING_LIST_FORBIDDEN']]], [$this->client->getResponse()->getStatusCode(), $this->jsonBody()]);
+    }
+
     private function savedUser(): User
     {
         $user = new UserBuilder()->build();
