@@ -2331,6 +2331,50 @@
             }
         },
         "/api/v1/drive/choices/{ingredientSlug}": {
+            "put": {
+                "tags": [
+                    "Drive"
+                ],
+                "summary": "Remplace d'un coup la pr\u00e9f\u00e9rence de l'utilisateur connect\u00e9 pour un ingr\u00e9dient : produits accept\u00e9s dans l'ordre, produits refus\u00e9s, ou \u00ab j'en ai toujours \u00bb (sans produit ni \u00ab j'en ai toujours \u00bb, la pr\u00e9f\u00e9rence est supprim\u00e9e)",
+                "operationId": "put_api_replace_ingredient_preference",
+                "parameters": [
+                    {
+                        "name": "ingredientSlug",
+                        "in": "path",
+                        "description": "Slug de l'ingr\u00e9dient",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "pattern": "^[a-z0-9-]{1,255}$"
+                        },
+                        "example": "farine"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ReplaceIngredientPreferencePayload"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "204": {
+                        "description": "Pr\u00e9f\u00e9rence remplac\u00e9e (cr\u00e9\u00e9e si elle n'existait pas, supprim\u00e9e si le corps est vide)"
+                    },
+                    "404": {
+                        "description": "Fonction drive coup\u00e9e (message `DRIVE_DISABLED`)"
+                    },
+                    "409": {
+                        "description": "Pas de magasin enregistr\u00e9 (message `DRIVE_NOT_CONFIGURED`), ou `storeId` n'est pas le magasin courant (message `DRIVE_STORE_MISMATCH`)"
+                    },
+                    "422": {
+                        "description": "Corps invalide, ou pr\u00e9f\u00e9rence refus\u00e9e (message `DRIVE_CHOICE_INVALID`) : produit inconnu ou d'un autre magasin, doublon, produit \u00e0 la fois accept\u00e9 et refus\u00e9, plus de 5 produits accept\u00e9s ou 20 refus\u00e9s, \u00ab j'en ai toujours \u00bb avec des produits"
+                    }
+                }
+            },
             "delete": {
                 "tags": [
                     "Drive"
@@ -3002,6 +3046,48 @@
                 "properties": {
                     "retailer": {
                         "$ref": "#/components/schemas/Retailer"
+                    }
+                },
+                "type": "object"
+            },
+            "ReplaceIngredientPreferencePayload": {
+                "required": [
+                    "retailer",
+                    "storeId",
+                    "haveAtHome",
+                    "accepted",
+                    "rejected"
+                ],
+                "properties": {
+                    "retailer": {
+                        "$ref": "#/components/schemas/Retailer"
+                    },
+                    "storeId": {
+                        "description": "Magasin des produits : doit \u00eatre le magasin courant des r\u00e9glages de l'utilisateur",
+                        "type": "string",
+                        "maxLength": 20,
+                        "example": "123456"
+                    },
+                    "haveAtHome": {
+                        "description": "Vrai pour \u00ab j'en ai toujours \u00bb : `accepted` et `rejected` doivent alors \u00eatre vides",
+                        "type": "boolean",
+                        "example": false
+                    },
+                    "accepted": {
+                        "description": "Identifiants Repas des produits accept\u00e9s (`productId` de `GET /drive/choices`), le pr\u00e9f\u00e9r\u00e9 d'abord ; 5 au plus",
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "example": "0b0a8c4e-6b0e-4e0a-9d52-2c3f7a1d9e10"
+                        }
+                    },
+                    "rejected": {
+                        "description": "Identifiants Repas des produits \u00e0 ne jamais prendre ; 20 au plus",
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "example": "5d1c0e0a-3f21-4c6e-8c0f-5a9b3a7b6d11"
+                        }
                     }
                 },
                 "type": "object"

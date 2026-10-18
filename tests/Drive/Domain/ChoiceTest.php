@@ -291,4 +291,80 @@ class ChoiceTest extends TestCase
         // Then
         $this->assertEquals(new DateTimeImmutable('2026-10-19 08:00:00'), $choice->getUpdatedAt());
     }
+
+    public function testReplaceSetsTheOrderAndTheRejectedProductsInOneGo(): void
+    {
+        // Given
+        $choice = new ChoiceBuilder()->withAccepted(['a', 'b'])->withRejected(['x'])->build();
+
+        // When : b remonte, a part, c est accepté, x n'est plus refusé et y l'est
+        $choice->replace(false, ['b', 'c'], ['y']);
+
+        // Then
+        $this->assertEquals([new AcceptedProduct('b', 1), new AcceptedProduct('c', 2)], $choice->getAccepted());
+        $this->assertSame(['y'], $choice->getRejectedProductIds());
+        $this->assertFalse($choice->isHaveAtHome());
+    }
+
+    public function testReplaceWithHaveAtHomeClearsTheProductsAndBuyingResumes(): void
+    {
+        // Given
+        $choice = new ChoiceBuilder()->withAccepted(['a'])->withRejected(['x'])->build();
+
+        // When
+        $choice->replace(true, [], []);
+
+        // Then
+        $this->assertTrue($choice->isHaveAtHome());
+        $this->assertSame([[], []], [$choice->getAcceptedProductIds(), $choice->getRejectedProductIds()]);
+
+        // When
+        $choice->replace(false, ['a'], []);
+
+        // Then
+        $this->assertFalse($choice->isHaveAtHome());
+        $this->assertSame(['a'], $choice->getAcceptedProductIds());
+    }
+
+    /**
+     * @param list<string> $accepted
+     * @param list<string> $rejected
+     */
+    #[DataProvider('invalidReplacements')]
+    public function testReplaceRefusesAnInvalidPreferenceAndChangesNothing(bool $haveAtHome, array $accepted, array $rejected): void
+    {
+        // Given
+        $choice = new ChoiceBuilder()->withAccepted(['a', 'b'])->withRejected(['x'])->build();
+
+        // When
+        try {
+            $choice->replace($haveAtHome, $accepted, $rejected);
+            $this->fail('DRIVE_CHOICE_INVALID attendu');
+        } catch (DriveException $exception) {
+            // Then
+            $this->assertSame('DRIVE_CHOICE_INVALID', $exception->getMessage());
+        }
+        $this->assertSame([['a', 'b'], ['x'], false], [$choice->getAcceptedProductIds(), $choice->getRejectedProductIds(), $choice->isHaveAtHome()]);
+    }
+
+    public static function invalidReplacements(): iterable
+    {
+        yield 'six acceptés' => [false, ['a', 'b', 'c', 'd', 'e', 'f'], []];
+        yield 'vingt et un refusés' => [false, [], array_map('strval', range(1, 21))];
+        yield 'doublon accepté' => [false, ['a', 'a'], []];
+        yield 'doublon refusé' => [false, [], ['x', 'x']];
+        yield 'accepté et refusé' => [false, ['a'], ['a']];
+        yield "j'en ai toujours avec un accepté" => [true, ['a'], []];
+        yield "j'en ai toujours avec un refusé" => [true, [], ['x']];
+    }
+
+    public function testReplaceAcceptsTheLimits(): void
+    {
+        // When
+        $choice = new ChoiceBuilder()->build()->replace(false, ['a', 'b', 'c', 'd', 'e'], array_map(static fn(int $i): string => "x$i", range(1, 20)));
+
+        // Then
+        $this->assertCount(5, $choice->getAcceptedProductIds());
+        $this->assertCount(20, $choice->getRejectedProductIds());
+    }
 }

@@ -185,4 +185,27 @@ class ChoiceRepositoryTest extends DatabaseTestCase
         $this->assertSame(2, (int) $connection->fetchOne('SELECT COUNT(*) FROM drive_choice_product'));
         $this->assertSame(['a'], $this->repository->findOne('staying', Retailer::LECLERC, '123456', 'farine')->getAcceptedProductIds());
     }
+
+    public function testReplacingTheListsRewritesTheLinesWithoutBreakingTheUniqueRank(): void
+    {
+        // Given
+        $this->repository->save(new ChoiceBuilder()->withId('choice-1')->withUserId('user-1')->withAccepted(['a', 'b', 'c'])->withRejected(['x', 'y'])->build());
+        $choice = $this->repository->findOne('user-1', Retailer::LECLERC, '123456', 'farine');
+
+        // When : l'ordre s'inverse, c est retiré, y n'est plus refusé, z l'est
+        $this->repository->save($choice->replace(false, ['b', 'a'], ['x', 'z']));
+
+        // Then
+        $found = $this->repository->findOne('user-1', Retailer::LECLERC, '123456', 'farine');
+        $this->assertSame(['b', 'a'], $found->getAcceptedProductIds());
+        $this->assertSame(['x', 'z'], $found->getRejectedProductIds());
+        $this->assertSame(4, (int) $this->entityManager->getConnection()->fetchOne('SELECT COUNT(*) FROM drive_choice_product'));
+
+        // When : « j'en ai toujours »
+        $this->repository->save($found->replace(true, [], []));
+
+        // Then : plus aucune ligne de produit, la préférence reste
+        $this->assertTrue($this->repository->findOne('user-1', Retailer::LECLERC, '123456', 'farine')->isHaveAtHome());
+        $this->assertSame(0, (int) $this->entityManager->getConnection()->fetchOne('SELECT COUNT(*) FROM drive_choice_product'));
+    }
 }
