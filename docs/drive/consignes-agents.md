@@ -42,7 +42,7 @@ Un ticket qui touche plusieurs domaines (par exemple un champ du plan : back, pr
 
 ## Ambiguïtés
 
-Appliquer le ticket au plus juste, noter l'écart dans la PR (« À relire ») et continuer ; ne pas bloquer. Réutiliser le code existant (notamment le banc d'essai `drive-agent/lab/src/`, validé sur le vrai site) plutôt que de le redécouvrir.
+Appliquer le ticket au plus juste, noter l'écart dans la PR (« À relire ») et continuer ; ne pas bloquer. Réutiliser le code existant (l'agent `drive-agent/src/`, validé sur le vrai site) plutôt que de le redécouvrir. Le banc d'essai `drive-agent/lab/` et l'application de test `android-lab` ont été retirés du dépôt front (PR front #134, 2026-10-19) ; leur histoire reste dans l'historique git et dans les tickets DRV-001 à 011.
 
 ## Rapport final (court)
 
