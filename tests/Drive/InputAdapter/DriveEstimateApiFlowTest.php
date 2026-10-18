@@ -109,6 +109,21 @@ class DriveEstimateApiFlowTest extends DatabaseTestCase
         $this->assertSame(401, $this->client->getResponse()->getStatusCode());
     }
 
+    public function testAnAdministratorPassesTheVoterButNeverGetsTheEstimateOfAnotherUser(): void
+    {
+        // Given : un administrateur qui a un magasin, la liste d'un autre utilisateur
+        $admin = new UserBuilder()->isAdmin()->build();
+        static::getContainer()->get(UserRepository::class)->save($admin);
+        static::getContainer()->get(DriveSettingsRepository::class)->save(new DriveSettingsBuilder()->withUserId($admin->getId())->build());
+        $others = $this->savedList($this->savedUser(), ShoppingListStatus::ACTIVE);
+
+        // When
+        $this->request('GET', "/api/v1/drive/estimates/$others", $admin);
+
+        // Then : le voter laisse passer l'administrateur, le loader refuse, et la réponse ne porte rien de la liste
+        $this->assertSame([403, ['error' => ['message' => 'SHOPPING_LIST_FORBIDDEN']]], [$this->client->getResponse()->getStatusCode(), $this->jsonBody()]);
+    }
+
     private function savedUser(): User
     {
         $user = new UserBuilder()->build();

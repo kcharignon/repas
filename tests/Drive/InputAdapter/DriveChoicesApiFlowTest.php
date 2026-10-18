@@ -320,6 +320,29 @@ class DriveChoicesApiFlowTest extends DatabaseTestCase
         }
     }
 
+    public function testTheOwnerOfAChoiceComesFromTheTokenNeverFromTheBody(): void
+    {
+        // Given : Alice a un magasin et une farine ; Mallory vise Alice dans le corps de ses demandes
+        $alice = $this->userWithAStore();
+        $mallory = $this->userWithAStore();
+        $this->put($alice, [$this->add('farine', 'PRIMARY', '555111', 'Farine T55 1 kg')]);
+        $body = static fn(array $extra): string => json_encode($extra + ['retailer' => 'leclerc', 'storeId' => '123456', 'choices' => [
+            ['ingredientSlug' => 'sel', 'action' => 'HAVE_AT_HOME', 'userId' => $alice->getId()],
+            ['ingredientSlug' => 'farine', 'action' => 'HAVE_AT_HOME', 'userId' => $alice->getId()],
+        ]], JSON_THROW_ON_ERROR);
+
+        // When : les champs `userId` et `user` du corps sont ignorés
+        $this->request('PUT', '/api/v1/drive/choices', $mallory, $body(['userId' => $alice->getId(), 'user' => $alice->getId()]));
+        $this->request('PUT', '/api/v1/drive/choices/farine', $mallory, json_encode(['userId' => $alice->getId(), 'retailer' => 'leclerc', 'storeId' => '123456', 'haveAtHome' => true, 'accepted' => [], 'rejected' => []], JSON_THROW_ON_ERROR));
+        $this->request('DELETE', '/api/v1/drive/choices/farine?retailer=leclerc&storeId=123456&userId=' . $alice->getId(), $mallory);
+
+        // Then : les choix de Mallory ont bougé, ceux d'Alice jamais
+        $this->get($alice);
+        $this->assertSame([['farine', false, ['555111']]], array_map(static fn(array $c): array => [$c['ingredientSlug'], $c['haveAtHome'], array_map(static fn(array $a): string => $a['product']['retailerProductId'], $c['accepted'])], $this->jsonBody()['member']));
+        $this->get($mallory);
+        $this->assertSame(['sel'], array_column($this->jsonBody()['member'], 'ingredientSlug'));
+    }
+
     public function testListingWithoutStoreIsEmpty(): void
     {
         // When

@@ -85,6 +85,23 @@ class DriveSettingsApiFlowTest extends DatabaseTestCase
         $this->assertNull($this->jsonBody()['store']);
     }
 
+    public function testTheOwnerOfTheStoreComesFromTheTokenNeverFromTheBody(): void
+    {
+        // Given : Alice a un magasin ; Mallory désigne Alice dans le corps de sa demande
+        $alice = $this->savedUser();
+        $mallory = $this->savedUser();
+        $this->request('PUT', $alice, ['retailer' => 'leclerc', 'store' => ['id' => '123456', 'baseUrl' => self::URL]]);
+
+        // When
+        $this->request('PUT', $mallory, ['userId' => $alice->getId(), 'retailer' => 'leclerc', 'store' => ['id' => '654321', 'baseUrl' => self::OTHER_URL]]);
+
+        // Then : le magasin d'Alice n'a pas bougé, celui de Mallory est enregistré
+        $this->request('GET', $alice);
+        $this->assertSame('123456', $this->jsonBody()['store']['id']);
+        $this->request('GET', $mallory);
+        $this->assertSame('654321', $this->jsonBody()['store']['id']);
+    }
+
     public function testAStoreOfAnotherHostOrWithAnotherIdIsRefused(): void
     {
         // Given
