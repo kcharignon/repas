@@ -30,14 +30,14 @@ Procédure à dérouler **par l'utilisateur, sur son téléphone Android, avec s
 
 | Menu | Où | Entrées utiles |
 |---|---|---|
-| Menu de Repas | petit bouton rond **⋮** au bord droit de l'écran Repas (version de test seulement) ; dans toute version : « Mon compte » → section « Drive » → « Menu de l'application » (visible seulement dans l'application, **fonction allumée**) | « Réglages du drive », « Ouvrir le drive Leclerc », « Version et mode d'emploi », « Se déconnecter de Leclerc et effacer les données du drive » |
+| Menu de Repas | petit bouton rond **⋮** au bord droit de l'écran Repas (version de test seulement) ; dans toute version : « Moi » → section « Drive » → « Menu de l'application » (visible seulement dans l'application, **fonction allumée**) | « Réglages du drive », « Ouvrir le drive Leclerc », « Version et mode d'emploi », « Se déconnecter de Leclerc et effacer les données du drive » |
 | Menu du drive | bouton rond **⋮** en bas à droite de l'écran du drive (Leclerc) | « Test automatique (débogage) », « Abandonner l'envoi » (pendant un envoi seulement), « Version et mode d'emploi », « Se déconnecter de Leclerc et effacer les données du drive », « Ouvrir dans le navigateur », « Diagnostic de l'agent » |
 
 **Ce que cette recette ne couvre pas** : la suppression du compte et sa purge (prouvées par les tests automatiques : `UserOwnedDataCoverageTest`, ADR 0021), la protection des fiches de produits partagées entre deux comptes (prouvée par `DrivePlanApiFlowTest::testASecondUserCannotRewriteTheProductOfTheFirst`, DRV-613 ; un essai à deux comptes de test est possible mais n'est pas demandé), la publication signée de l'application (DRV-315) et le lien vérifié `assetlinks.json` (partie 2, encadré « Plus tard »), l'émulateur (DRV-319).
 
 **Écarts connus entre ce fichier et le code au moment de l'écriture** (à vérifier par l'assistant, partie 1 étape 1.1) :
 
-- DRV-320 (bouton « Lire mon magasin dans l'application », entrée « Menu de l'application » de « Mon compte ») est **fusionné** (repas-front#111, agent 0.7.0) : la pré-version doit être construite après lui. Reste à essayer sur téléphone la **page de choix du magasin du vrai site** : l'application attend une adresse `/magasin-<id>-<id>` pour lancer la lecture, ce que seul le faux site a prouvé (étape 4.2).
+- DRV-320 (bouton « Lire mon magasin dans l'application », entrée « Menu de l'application » de « Moi ») est **fusionné** (repas-front#111, agent 0.7.0) : la pré-version doit être construite après lui. Reste à essayer sur téléphone la **page de choix du magasin du vrai site** : l'application attend une adresse `/magasin-<id>-<id>` pour lancer la lecture, ce que seul le faux site a prouvé (étape 4.2).
 - DRV-613 partie 2 (l'agent recalcule le nombre de produits avec le contenu lu en direct) : pas encore fusionné. Le message « contenu différent de celui mémorisé » n'est pas à attendre tant qu'il manque.
 - DRV-614 (front, à faire) : le retour ne retiendra que les lignes du plan (option C du constat C1 de la revue du front), `DRIVE_LIMIT_REACHED` aura son message, et « Rouvrir » est proposé fonction coupée. Tant qu'il manque, l'écran du retour enregistre tout résultat portant le bon identifiant de passage, et un « Rouvrir » absent fonction coupée (étape 10.2) est un défaut connu.
 - DRV-315 (APK signé) n'existe pas : **aucune release `android-v…` n'existe encore** (la clé de signature est une étape humaine). La recette se fait donc avec une **pré-version de test** `android-dev-…`, en essai, à désinstaller après (étape 1.6).
@@ -64,8 +64,8 @@ Procédure à dérouler **par l'utilisateur, sur son téléphone Android, avec s
 ### 1.3 Ce que toi tu vois, fonction coupée
 
 - **But** : vérifier que l'interface se tait quand la fonction est coupée.
-- **Geste** (toi, dans un navigateur ou l'ancienne icône Repas) : ouvre « Mon compte », puis une liste qui a des articles, puis l'adresse `/drive/reglages` de Repas.
-- **Attendu** : « Mon compte » n'a **pas** de rubrique « Drive » ; la liste n'a **pas** de bouton « Envoyer au drive » ; `/drive/reglages` dit « L'envoi au drive n'est pas encore activé : il n'y a rien à régler pour le moment. ».
+- **Geste** (toi, dans un navigateur ou l'ancienne icône Repas) : ouvre « Moi », puis une liste qui a des articles, puis l'adresse `/drive/reglages` de Repas.
+- **Attendu** : « Moi » n'a **pas** de rubrique « Drive » ; la liste n'a **pas** de bouton « Envoyer au drive » ; `/drive/reglages` dit « L'envoi au drive n'est pas encore activé : il n'y a rien à régler pour le moment. ».
 - **Si ça diffère** : note ce que tu vois et dis-le à l'assistant ; ne continue pas.
 
 ### 1.4 Seuls les comptes attendus sont actifs
@@ -121,7 +121,7 @@ L'application « Repas » est **toute** l'application Repas (recettes, listes, d
 - **Attendu** : une ligne du genre « Version 0.0.0-dev (numéro 123), construction a1b2c3d, débogage » et une ligne « Agent : version 0.7.0 (ou plus récente), empreinte … ». Recopie ces deux lignes dans le tableau de la partie 18 (elles ne contiennent aucune donnée personnelle). La fenêtre peut aussi dire si les données de Leclerc sont séparées de celles de Repas (profil séparé) : note-le. L'empreinte de l'agent doit commencer comme celle qui est écrite dans la description de la release.
 - **Si ça diffère** : « Agent : absent de l'application » ou « empreinte inattendue » : réinstalle l'application ; si ça persiste, arrête (le fichier est abîmé ou ce n'est pas le bon). « Ta WebView est trop ancienne » : mets à jour « Android System WebView » dans le Play Store.
 
-> **Plus tard, avec l'APK signé (DRV-315)** : quand l'utilisateur aura créé sa clé de signature (étape humaine : `android/README.md` du front, section « Signature »), posé les quatre secrets GitHub et décidé l'étiquette `android-vX.Y.Z`, et publié `https://kantin.eu/.well-known/assetlinks.json` (étape humaine, même README), on refait **uniquement** : désinstaller la version de test (la connexion à Leclerc dans l'application est alors effacée), installer l'APK signé, vérifier sa somme de contrôle (`sha256sum`, runbook § 7.4), contrôler que l'empreinte de l'agent (« Version et mode d'emploi ») commence comme celle de la release, qu'un lien `https://kantin.eu/…` reçu par e-mail s'ouvre dans l'application, et que « Mon compte » → « Drive » → « Menu de l'application » ouvre le menu (DRV-320, c'est le seul moyen de l'atteindre dans l'APK signé). Facultatif, avec le téléphone branché et l'assistant (recommandations de la revue de sécurité du front) : l'application n'est **pas** débogable ni sauvegardable (`adb shell dumpsys package eu.kantin.repas.drive | grep -i flags` ne contient ni `DEBUGGABLE` ni `ALLOW_BACKUP`) et, après un envoi, `adb logcat -d | grep RepasDrive` ne montre ni adresse, ni cookie, ni contenu. Les parties 5 à 9 ne sont pas à refaire.
+> **Plus tard, avec l'APK signé (DRV-315)** : quand l'utilisateur aura créé sa clé de signature (étape humaine : `android/README.md` du front, section « Signature »), posé les quatre secrets GitHub et décidé l'étiquette `android-vX.Y.Z`, et publié `https://kantin.eu/.well-known/assetlinks.json` (étape humaine, même README), on refait **uniquement** : désinstaller la version de test (la connexion à Leclerc dans l'application est alors effacée), installer l'APK signé, vérifier sa somme de contrôle (`sha256sum`, runbook § 7.4), contrôler que l'empreinte de l'agent (« Version et mode d'emploi ») commence comme celle de la release, qu'un lien `https://kantin.eu/…` reçu par e-mail s'ouvre dans l'application, et que « Moi » → « Drive » → « Menu de l'application » ouvre le menu (DRV-320, c'est le seul moyen de l'atteindre dans l'APK signé). Facultatif, avec le téléphone branché et l'assistant (recommandations de la revue de sécurité du front) : l'application n'est **pas** débogable ni sauvegardable (`adb shell dumpsys package eu.kantin.repas.drive | grep -i flags` ne contient ni `DEBUGGABLE` ni `ALLOW_BACKUP`) et, après un envoi, `adb logcat -d | grep RepasDrive` ne montre ni adresse, ni cookie, ni contenu. Les parties 5 à 9 ne sont pas à refaire.
 
 ## 3. Allumer l'interrupteur (toi seul)
 
@@ -138,9 +138,9 @@ L'application « Repas » est **toute** l'application Repas (recettes, listes, d
 ### 4.1 Ouvrir les réglages du drive
 
 - **But** : dire à Repas quel magasin tu utilises.
-- **Geste** : dans l'application, ouvre « Mon compte », puis « Réglages du drive ».
+- **Geste** : dans l'application, ouvre « Moi », puis « Réglages du drive ».
 - **Attendu** : en haut, une note « Votre vie privée » avec un lien « Lisez la note complète » ; puis « Votre magasin » (« Aucun magasin enregistré. ») ; en bas « Application Repas », avec « Version … » et « Le drive est prêt dans cette application. ».
-- **Si ça diffère** : « Le drive ne peut pas fonctionner dans cette version de l'application : mettez-la à jour » : l'agent est absent ou la WebView trop ancienne (étape 2.4). « Vous utilisez Repas dans un navigateur » : tu n'es pas dans l'application ; ouvre l'icône « Repas » installée à l'étape 2.2. « Mon compte » n'a pas de rubrique « Drive » : l'interrupteur n'est pas allumé (partie 3).
+- **Si ça diffère** : « Le drive ne peut pas fonctionner dans cette version de l'application : mettez-la à jour » : l'agent est absent ou la WebView trop ancienne (étape 2.4). « Vous utilisez Repas dans un navigateur » : tu n'es pas dans l'application ; ouvre l'icône « Repas » installée à l'étape 2.2. « Moi » n'a pas de rubrique « Drive » : l'interrupteur n'est pas allumé (partie 3).
 
 > *Point de vie privée n° 1* : lis ici le texte court, puis « Lisez la note complète » (elle s'ouvre dans « Installer l'application Repas », ancre « Votre vie privée avec le drive »). Elle doit dire que Repas ne voit ni ton identifiant, ni ton mot de passe, ni tes cookies, ni ton panier.
 
@@ -172,7 +172,7 @@ L'application « Repas » est **toute** l'application Repas (recettes, listes, d
 ### 5.2 Noter le panier Leclerc
 
 - **But** : savoir ce qui est à toi dans le panier, pour juger la recette sans te tromper.
-- **Geste** : ouvre le menu de Repas (**⋮** au bord droit) → « Ouvrir le drive Leclerc » ; ouvre ton panier sur le site (le lien « panier » de la page) et note son contenu (lignes, quantités, total). Reviens (bouton retour du téléphone).
+- **Geste** : ouvre « Moi » → rubrique « Drive » → « Menu de l'application » → « Ouvrir le drive Leclerc » ; ouvre ton panier sur le site (le lien « panier » de la page) et note son contenu (lignes, quantités, total). Reviens (bouton retour du téléphone).
 - **Attendu** : tu es déjà connecté à Leclerc (la connexion est gardée entre deux ouvertures). Le site s'affiche en version ordinateur (le nom du site ne commence pas par `m-`).
 - **Si ça diffère** : tu dois te reconnecter : fais-le (il n'y a rien d'anormal). Version mobile : voir l'étape 4.2.
 
@@ -290,7 +290,7 @@ On rejoue la **même liste** : l'envoi se rejoue sans danger, car l'agent fixe l
 ### 8.1 Ouvrir le panier dans l'application
 
 - **But** : comparer ce que Repas dit avec ce qui est vraiment dans le panier de Leclerc.
-- **Geste** : menu de Repas (**⋮**, bord droit) → « Ouvrir le drive Leclerc », puis ouvre ton panier sur le site.
+- **Geste** : « Moi » → rubrique « Drive » → « Menu de l'application » → « Ouvrir le drive Leclerc », puis ouvre ton panier sur le site.
 - **Attendu** : le panier contient (en plus de ce que tu avais noté à l'étape 5.2) : **I1** (produit préféré, quantité du plan) ; **I2** : le premier produit **et** le produit de secours choisi au deuxième passage (les deux : Repas n'en retire aucun) ; **I3** et **I4** (produits choisis, quantité annoncée). **I5** : rien ; **I6** : rien. Rien n'a été ajouté deux fois.
 - **Si ça diffère** : une quantité fausse : note la ligne (produit, quantité attendue, quantité vue) ; si c'est une erreur d'arrondi (par exemple 1 500 g demandés avec des produits de 1 kg : 2), c'est le comportement prévu (arrondi supérieur). Un produit absent alors que l'agent le disait « ajouté » : note-le et refais le contrôle une fois, sans relancer d'envoi.
 
@@ -320,7 +320,7 @@ On rejoue la **même liste** : l'envoi se rejoue sans danger, car l'agent fixe l
 ### 9.1 « Mes produits »
 
 - **But** : vérifier ce que Repas a mémorisé (DRV-410).
-- **Geste** : « Mon compte » → « Mes produits du drive ». Ouvre **I2**.
+- **Geste** : « Moi » → « Mes produits du drive ». Ouvre **I2**.
 - **Attendu** : la liste montre **I1** (« Préféré : … »), **I2** (préféré + « 1 produit de secours »), **I3**, **I4** (préféré), **I6** (« Vous en avez toujours »). **I5** n'y est pas, et **rien d'autre que ce que tu as choisi** n'y figure (aucun produit ni ingrédient que tu ne reconnais pas). La fiche d'I2 montre « Produits acceptés » (du préféré aux produits de secours, avec « Monter », « Descendre », « Retirer », « Ne plus jamais prendre »), « Produits refusés » et « Oublier cet ingrédient ».
 - **Si ça diffère** : un ingrédient manque : le choix n'a pas été enregistré (étape 7.5) ; note-le.
 
@@ -363,7 +363,7 @@ On rejoue la **même liste** : l'envoi se rejoue sans danger, car l'agent fixe l
 - **But** : vérifier qu'une coupure d'urgence ne fige pas les listes déjà envoyées (ADR 0023 §9, DRV-613).
 - **Geste** : touche « Envoyer au drive » puis confirme ; sur l'écran du plan, **ne touche pas** « Ouvrir le drive » : retourne à la liste (« Retour à la liste »). Elle est « Envoyée au drive le … ». L'assistant t'explique le script, puis tu lances :
   `! ssh -i ~/.ssh/id_ed25519 root@64.227.124.100 'bash -s -- false' < .claude/skills/repas-ops/references/ecrire-drive-enabled.sh`
-- **Attendu** : `OK : DRIVE_ENABLED=false, le conteneur php le voit et /api/v1/health répond.` Dans Repas (recharge la page) : « Mon compte » n'a plus de rubrique « Drive » (le « Menu de l'application » disparaît aussi ; le bouton ⋮ de la version de test reste) ; `/drive/reglages` dit que l'envoi n'est pas activé ; la liste reste « Envoyée au drive le … », lisible, **avec** « Rouvrir la liste » et « Terminer ». Touche « Rouvrir la liste » puis confirme : la liste redevient « En cours ». L'assistant peut le confirmer dans les journaux de la bordure (`docker compose logs --since 10m edge`, lecture seule) : l'appel `reopen` a réussi alors que le drive est coupé.
+- **Attendu** : `OK : DRIVE_ENABLED=false, le conteneur php le voit et /api/v1/health répond.` Dans Repas (recharge la page) : « Moi » n'a plus de rubrique « Drive » (le « Menu de l'application » disparaît aussi ; le bouton ⋮ de la version de test reste) ; `/drive/reglages` dit que l'envoi n'est pas activé ; la liste reste « Envoyée au drive le … », lisible, **avec** « Rouvrir la liste » et « Terminer ». Touche « Rouvrir la liste » puis confirme : la liste redevient « En cours ». L'assistant peut le confirmer dans les journaux de la bordure (`docker compose logs --since 10m edge`, lecture seule) : l'appel `reopen` a réussi alors que le drive est coupé.
 - **Si ça diffère** : « Rouvrir la liste » absent ou grisé interrupteur coupé : c'est un défaut du front ; note-le. Si la réouverture échoue en `404`, c'est le back (`reopen` ne doit pas être derrière l'interrupteur) : arrête et préviens.
 
 ### 10.3 Rallumer, renvoyer, terminer
@@ -380,7 +380,7 @@ Ces deux contrôles servent aussi plus tard, quand Leclerc change son site (runb
 ### 11.1 Le diagnostic de l'agent (lecture seule)
 
 - **But** : un contrôle rapide qui ne touche pas au panier.
-- **Geste** : menu de Repas (**⋮**, bord droit) → « Ouvrir le drive Leclerc », fais une recherche (par exemple « farine ») pour être sur une page de magasin. Touche **⋮** en bas à droite → « Diagnostic de l'agent ». Attends la fin, touche « Copier le rapport ».
+- **Geste** : « Moi » → rubrique « Drive » → « Menu de l'application » → « Ouvrir le drive Leclerc », fais une recherche (par exemple « farine ») pour être sur une page de magasin. Touche **⋮** en bas à droite → « Diagnostic de l'agent ». Attends la fin, touche « Copier le rapport ».
 - **Attendu** : chaque ligne est `OK`, `KO` ou `NON TESTÉ`. Normalement : version de l'agent (`OK`), page prise en charge (`OK`), origine de Repas (`NON TESTÉ` dans l'application : normal), stockage de session (`OK`), écran allumé (`OK` ou toléré), **recherche d'un mot courant (`OK`)**, contenu net des produits (`OK`, tous ou presque), cadre de même origine (`NON TESTÉ`, normal). Le rapport dit « Aucune écriture au panier. » et ne contient ni cookie, ni identifiant, ni adresse, ni numéro de magasin entier.
 - **Si ça diffère** : lis la colonne « Si c'est KO » du runbook § 3.1. `KO CONTRACT_CHANGED` sur la recherche : Leclerc a changé. `KO BLOCKED` : anti-robot (partie 14).
 
