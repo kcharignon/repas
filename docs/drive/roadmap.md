@@ -78,7 +78,7 @@ Prépare l'application « Repas Drive » (WebView en mode ordinateur, agent emba
 - [x] [DRV-317](tickets/DRV-317-coque-application-repas.md) front · L · Coquille de l'application Repas (WebView sur le front Repas) · dépend de : 312, 313 · Issue : [repas-front#86](https://github.com/kcharignon/repas-front/issues/86)
 - [x] [DRV-318](tickets/DRV-318-test-automatique-application.md) front · M · Test automatique en un geste dans l'application de débogage · dépend de : 313 · Issue : [repas-front#87](https://github.com/kcharignon/repas-front/issues/87)
 - [ ] [DRV-319](tickets/DRV-319-emulateur-android-docker.md) front · L · Émulateur Android en Docker pour tester l'application sans Leclerc · dépend de : 313 (partie 1), 317 et 309 (partie 2) · Issue : [repas-front#88](https://github.com/kcharignon/repas-front/issues/88)
-- [ ] [DRV-320](tickets/DRV-320-lecture-magasin-depuis-application.md) front · M · Lecture du magasin depuis l'application (`drive.setup`) et menu natif · dépend de : 314, 307, 403 · Issue : [repas-front#103](https://github.com/kcharignon/repas-front/issues/103)
+- [x] [DRV-320](tickets/DRV-320-lecture-magasin-depuis-application.md) front · M · Lecture du magasin depuis l'application (`drive.setup`) et menu natif (PR front #111, 2026-10-18) · dépend de : 314, 307, 403 · Issue : [repas-front#103](https://github.com/kcharignon/repas-front/issues/103)
 
 
 

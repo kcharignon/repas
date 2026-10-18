@@ -50,7 +50,7 @@ Noter, sans donnée personnelle : la date, le titre du message et son code, la v
 
 C'est le contrôle de premier niveau. Il est en **lecture seule** : il ne met rien au panier.
 
-1. Sur le téléphone concerné, dans l'application, ouvrir le **drive Leclerc** (menu de Repas → « Ouvrir le drive Leclerc » : dans la pré-version de test, le bouton ⋮ au bord droit de l'écran ; dans l'application de publication, « Mon compte » → « Menu de l'application », prévu par DRV-320 et à vérifier une fois fusionné), se connecter si besoin, choisir son magasin et aller sur une page de magasin (faire une recherche, par exemple « farine »).
+1. Sur le téléphone concerné, dans l'application, ouvrir le **drive Leclerc** (menu de Repas → « Ouvrir le drive Leclerc » : dans la pré-version de test, le bouton ⋮ au bord droit de l'écran ; dans l'application de publication, « Mon compte » → section « Drive » → « Menu de l'application » (DRV-320, repas-front#111) : visible seulement dans l'application et **fonction allumée**), se connecter si besoin, choisir son magasin et aller sur une page de magasin (faire une recherche, par exemple « farine »).
 2. Sur l'écran du drive, toucher le bouton rond **⋮** en bas à droite, puis **« Diagnostic de l'agent »**. Les contrôles défilent (une seule recherche, celle du mot « sel », avec la cadence normale).
 3. Toucher **« Copier le rapport »**, puis le coller dans la conversation. Le rapport ne contient ni cookie, ni identifiant, ni adresse, ni nom, ni numéro de magasin complet (seulement `…` et les trois derniers chiffres) ; relire avant de coller.
 
@@ -106,6 +106,7 @@ Ce qui change ensuite :
 - `send` et les routes du drive répondent `404 DRIVE_DISABLED` ; `reopen` continue de répondre (ADR 0023 §9) ;
 - les **listes déjà envoyées** (`SENT`) restent **lisibles** et peuvent être **terminées** ou **supprimées** ; elles restent verrouillées (non modifiables) tant qu'elles sont envoyées, mais **chacun peut rouvrir la sienne** depuis l'interface même fonction coupée (`reopen` n'est pas derrière l'interrupteur) ;
 - les produits mémorisés, les réglages de magasin et les listes sont **intacts** ; l'application et l'agent ne sont pas touchés.
+- dans l'application de publication, « Mon compte » → « Drive » (donc « Menu de l'application », donc « Se déconnecter de Leclerc et effacer les données du drive ») disparaît tant que la fonction est coupée ; la pré-version de test garde son bouton ⋮ (point signalé à l'utilisateur, ticket DRV-320).
 
 **Rouvrir en bloc les listes envoyées** (utile surtout avant de remettre une version du code qui ne connaît pas `SENT`, qui n'a pas de `reopen` ; pour une simple coupure, chacun rouvre sa liste) : script `rouvrir-listes-envoyees.sh`, d'abord sans argument (lecture seule), puis avec `--appliquer` après accord : voir [`../production.md`](../production.md), « Listes `SENT` ». Il fait une sauvegarde avant.
 

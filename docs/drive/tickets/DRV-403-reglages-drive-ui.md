@@ -51,7 +51,7 @@ La partie « installation du favori et version minimale de l'agent » est rempla
 
 ## RÉVISION du 2026-10-18 (D28)
 
-Le choix du magasin se fait par le mode `setup` de l'agent via le pont natif (`drive.setup` à ajouter avec DRV-314 si besoin) : le front demande à l'application d'ouvrir l'écran drive en mode réglage et reçoit le magasin lu.
+Le choix du magasin se fait par le mode `setup` de l'agent via le pont natif (`drive.setup` à ajouter avec DRV-314 si besoin) : le front demande à l'application d'ouvrir l'écran drive en mode réglage et reçoit le magasin lu. **`drive.setup` est branché par DRV-320 (fait, repas-front#111).**
 
 ## Constat de l'essai réel (2026-10-18)
 
