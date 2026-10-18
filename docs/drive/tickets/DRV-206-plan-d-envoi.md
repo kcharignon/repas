@@ -4,7 +4,7 @@
 - **Jalon** : M2 Back `Drive`
 - **Taille** : M
 - **Dépend de** : DRV-202, DRV-203, DRV-204, DRV-205
-- **Statut** : fait (PR [#PRNUM](https://github.com/kcharignon/repas/pull/PRNUM), 2026-10-18)
+- **Statut** : fait (PR [#141](https://github.com/kcharignon/repas/pull/141), 2026-10-18)
 - **Lire d'abord** : [`../architecture.md`](../architecture.md) §§ 5, 6, 7 (plan) ; ADR 0003, 0004, 0005 ; skill `repas-dev` § 3.1 et 3.2.
 
 ## Contexte
@@ -51,7 +51,7 @@ Celle du skill `repas-dev` § 4.
 
 Chaque ligne du plan renvoie `needed : {quantity, unitSymbol, dimension, baseFactor}` (l'agent s'en sert pour calculer le nombre de produits en phase B). Voir `architecture.md` (ajout du 2026-10-18) et `drive-agent/protocol/plan.schema.json`.
 
-## Réalisation (2026-10-18, PR repas#PRNUM)
+## Réalisation (2026-10-18, PR repas#141)
 
 - **Lecture** : `GET /api/v1/drive/plans/{shoppingListId}` (`GetDrivePlanApiController`, `#[RequiresDrive]`, `ROLE_USER` + voter `SHOPPING_LIST_OWNER`), `GetDrivePlanQuery(userId, shoppingListId)` → `GetDrivePlanQueryHandler` → port `Drive\Application\Loader\DrivePlanLoader` → `DrivePlanPostgreSQLLoader`. DTO dans `Application/Query/GetDrivePlan/` : `DrivePlanDTO{shoppingListId, listVersion, retailer, store, generatedAt, counts, lines}`, `DrivePlanCountsDTO{known, new, haveAtHome}`, `DrivePlanLineDTO{ingredientSlug, ingredientName, needed, status, products, rejected, searchQuery}`, `DrivePlanNeededDTO{quantity, unitSymbol, dimension, baseFactor}`, `DrivePlanProductDTO{rank, retailerProductId, ean, label, content, packs, packsStatus}`, `DrivePlanRejectedDTO{retailerProductId, label}`. **Écart** : le magasin réutilise `DriveStoreDTO` (`GetDriveSettings`) et le contenu `ProductContentDTO` (`ListChoices`), de forme identique, au lieu d'un `DrivePlanStoreDTO` dédié.
 - **Contrat que DRV-404 recopie** (message `plan`) : `lines[]` triées par slug d'ingrédient ; `needed` = `{quantity (nombre), unitSymbol, dimension (WEIGHT|VOLUME|COUNT|PACKAGE|null), baseFactor (nombre|null)}` ; `status` ∈ `KNOWN|NEW|HAVE_AT_HOME` ; `products[]` (vide hors `KNOWN`, 5 au plus, par rang) = `{rank, retailerProductId, ean|null, label, content: {value, unit}|null, packs: 1..99|null, packsStatus: COMPUTED|TO_CHECK}` avec `packs` calculé **pour chaque produit** (`PackCalculator`, un appel par produit) ; `rejected[]` = `{retailerProductId, label}` (20 au plus, aussi sur une ligne `NEW`, vide pour `HAVE_AT_HOME`) ; `searchQuery` = **le nom de l'ingrédient tel quel** (casse conservée : « Farine », pas « farine ») sur **toutes** les lignes, `HAVE_AT_HOME` comprise ; `counts` = `{known, new, haveAtHome}`.
