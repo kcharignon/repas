@@ -4,7 +4,7 @@
 - **Jalon** : M3b Application Android
 - **Taille** : L
 - **Dépend de** : DRV-313, DRV-302
-- **Statut** : à faire
+- **Statut** : fait (PR [repas-front#102](https://github.com/kcharignon/repas-front/pull/102), 2026-10-18)
 - **Lire d'abord** : [`../pivot-application-android.md`](../pivot-application-android.md), [`../spikes/DRV-005-decision-g1.md`](../spikes/DRV-005-decision-g1.md), [`../spikes/DRV-011-rapport.md`](../spikes/DRV-011-rapport.md), `drive-agent/android-lab/` (le spike, `PROCEDURE.md` compris), `CLAUDE.md` du front, [`../architecture.md`](../architecture.md) §§ 8 et 9, DRV-402, DRV-405
 
 ## Contexte
@@ -52,3 +52,7 @@ Le passage du plan n'utilise plus de lien `repasdrive://` ni de fragment : le fr
 - Le lancement sur la page du magasin quand un plan est reçu reste à faire (`NavigationPolicy.START_URL` aujourd'hui).
 - Restreindre l'écran allumé à la durée d'un passage.
 - Le menu de débogage « Plan d'essai » peut réutiliser le chemin de réception d'un plan.
+
+## Réalisation et contrat final du pont `repasNative` (2026-10-18, PR repas-front#95 et #102)
+
+Objet `window.repasNative` (`addWebMessageListener`, origine `REPAS_ORIGIN` seulement, page principale seulement, aucun `addJavascriptInterface`). Messages JSON en texte avec `v:1` et `type` ; page → application : 64 Ko au plus ; le front enregistre son écouteur `message` AVANT d'envoyer. **Page → application** : `app.info` (réponse `{type:'app.info', version, versionCode, drive}` ; `drive` est faux si l'agent est absent ou altéré ou la WebView trop ancienne), `app.menu` (ouvre le menu natif ; sans réponse), `drive.start {plan}` (valide forme et hôte ; même `runId` pendant un passage = rouvre l'écran du drive), `drive.cancel {runId?}`. **Application → page** : `drive.result {result}` (résultat de l'agent tel quel, ou `aborted` / `CANCELLED` après abandon), `drive.error {code, runId?}` avec `INVALID_PLAN`, `BUSY`, `UNAVAILABLE`, `NO_PASS`, `error {code}` avec `INVALID_MESSAGE`, `UNKNOWN_TYPE`. Le résultat reste en file (et dans les préférences privées de l'application) s'il n'a pu partir et repart au premier message de la nouvelle page : **le front envoie `app.info` à chaque démarrage**. Un résultat peut être livré en double (ignoré comme périmé par `driveBridge`). Le plan n'est envoyé à l'agent qu'après `hello` ET fin du chargement de la page. Profil de WebView séparé pour le drive (`MULTI_PROFILE`) : se déconnecter de Leclerc n'efface pas la session de Repas ; repli sans profil non testé. Pas de bouton flottant en publication : le menu natif s'ouvre par `app.menu` (le front doit l'appeler depuis « Mon compte », sinon « Se déconnecter de Leclerc » est inatteignable) ; bouton ⋮ en débogage. Limite : le faux site de DRV-309 (HTTP) n'est pas rejoué dans l'émulateur (DRV-319 partie 2). Étapes humaines : `assetlinks.json` (après la signature, jamais l'empreinte de débogage), signature (DRV-315), recette sur téléphone.
