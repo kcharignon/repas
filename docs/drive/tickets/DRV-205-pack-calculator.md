@@ -4,7 +4,7 @@
 - **Jalon** : M2 Back `Drive`
 - **Taille** : M
 - **Dépend de** : DRV-201 (et DRV-105 pour `Dimension`)
-- **Statut** : fait (PR [#135](https://github.com/kcharignon/repas/pull/135), 2026-10-18)
+- **Statut** : fait (PR [#136](https://github.com/kcharignon/repas/pull/136), 2026-10-18)
 - **Lire d'abord** : [`../architecture.md`](../architecture.md) § 6 ; ADR 0002 (domaine pur).
 
 ## Contexte
@@ -60,7 +60,7 @@ Tests unitaires du domaine (aucune base, aucun kernel), chaque ligne du tableau 
 
 Celle du skill `repas-dev` § 4 (`make test`, `make quality`).
 
-## Réalisation (2026-10-18, PR repas#135)
+## Réalisation (2026-10-18, PR repas#136)
 
 `Repas\Drive\Domain\Service\PackCalculator::packsFor(LineQuantity, ?ProductContent): PackResult` (classe `final`, sans état, constantes `MAX_PACKS = 99` et `TOLERANCE = 1e-9`). Valeurs dans `Repas\Drive\Domain\Model\` : `LineQuantity(float $quantity, ?Dimension $dimension, ?float $baseFactor)`, `ProductContent(float $value, ContentUnit $unit)`, `ContentUnit` (enum `g|kg|ml|cl|l|piece`, `dimension()`, `factor()`), `PackResult(?int $packs, PackStatus $status)` avec `PackResult::computed(int)` et `::toCheck(?int)`, `PackStatus` (`COMPUTED` | `TO_CHECK`). Tests : `tests/Drive/Domain/PackCalculatorTest.php` (93 cas : le tableau du ticket, chaque règle, tolérance de part et d'autre de 1e-9, plafond, flottants `0,1 + 0,2`).
 
