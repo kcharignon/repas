@@ -201,7 +201,7 @@ Conventions : ADR 0007 (JWT, `{member,totalItems}` pour une liste, `204` ou `201
   "counts": {"known": 12, "new": 3, "haveAtHome": 2},
   "lines": [
     {"ingredientSlug": "farine", "ingredientName": "Farine",
-     "needed": {"quantity": 300, "unitSymbol": "g"},
+     "needed": {"quantity": 300, "unitSymbol": "g", "dimension": "WEIGHT", "baseFactor": 1},
      "status": "KNOWN",
      "products": [
        {"rank": 1, "retailerProductId": "123456", "ean": null, "label": "Farine de blé T55 Marque Repère 1 kg",
@@ -211,7 +211,7 @@ Conventions : ADR 0007 (JWT, `{member,totalItems}` pour une liste, `204` ou `201
      ],
      "rejected": [{"retailerProductId": "999000", "label": "Farine complète bio 1 kg"}],
      "searchQuery": "farine"},
-    {"ingredientSlug": "poivre", "ingredientName": "Poivre", "needed": {"quantity": 1, "unitSymbol": "paquet"},
+    {"ingredientSlug": "poivre", "ingredientName": "Poivre", "needed": {"quantity": 1, "unitSymbol": "paquet", "dimension": "PACKAGE", "baseFactor": 1},
      "status": "NEW", "products": [], "rejected": [], "searchQuery": "poivre"}
   ]
 }
