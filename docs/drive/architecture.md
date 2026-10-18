@@ -6,7 +6,7 @@ Référence pour les agents qui implémentent les tickets (`tickets/DRV-*.md`). 
 
 - **Drive** : service de courses en ligne d'une enseigne (ici E.Leclerc Drive, `leclercdrive.fr`).
 - **Enseigne** (`retailer`) : `leclerc` pour l'instant ; Auchan et Intermarché plus tard.
-- **Magasin** (`store`) : point de retrait de l'utilisateur. Identifiant chez l'enseigne (ex. `053701`), hôte (ex. `fd9-courses.leclercdrive.fr`), adresse de base `https://<hôte>/magasin-<id>-<id>`.
+- **Magasin** (`store`) : point de retrait de l'utilisateur. Identifiant chez l'enseigne (ex. `123456`), hôte (ex. `exemple.leclercdrive.fr`), adresse de base `https://<hôte>/magasin-<id>-<id>`.
 - **Agent** : script autonome exécuté dans la page leclercdrive.fr de l'utilisateur, lancé par un favori JavaScript. Ne parle jamais à notre API.
 - **Plan** : ce que Repas demande à l'agent de faire pour une liste envoyée (une ligne par ingrédient).
 - **Produit** (`Product`) : article vendu par l'enseigne, fait public sans propriétaire.
@@ -197,7 +197,7 @@ Conventions : ADR 0007 (JWT, `{member,totalItems}` pour une liste, `204` ou `201
   "shoppingListId": "0b0a8c4e-6b0e-4e0a-9d52-2c3f7a1d9e10",
   "listVersion": 5,
   "retailer": "leclerc",
-  "store": {"id": "053701", "label": null, "baseUrl": "https://fd9-courses.leclercdrive.fr/magasin-053701-053701"},
+  "store": {"id": "123456", "label": null, "baseUrl": "https://exemple.leclercdrive.fr/magasin-123456-123456"},
   "generatedAt": "2026-10-17T10:00:00+02:00",
   "counts": {"known": 12, "new": 3, "haveAtHome": 2},
   "lines": [
@@ -235,7 +235,7 @@ Les schémas JSON font foi (`drive-agent/protocol/`, ticket DRV-302). Exemples e
 ```json
 {
   "v": 1, "type": "plan", "runId": "8f14e45f-ceea-467a-9575-8e6b8c0a1b2c",
-  "retailer": "leclerc", "store": {"id": "053701", "host": "fd9-courses.leclercdrive.fr"},
+  "retailer": "leclerc", "store": {"id": "123456", "host": "exemple.leclercdrive.fr"},
   "returnPath": "/drive/retour",
   "lines": [
     {"ingredientSlug": "farine", "name": "Farine", "status": "KNOWN",
@@ -257,7 +257,7 @@ Les schémas JSON font foi (`drive-agent/protocol/`, ticket DRV-302). Exemples e
 
 `products` est classé par priorité (le premier est préféré ; 5 au plus), `rejected` liste les produits que l'utilisateur ne veut jamais (20 au plus). Le front traduit `retailerProductId` du plan du back en `id`.
 
-`type: "setup"` : mêmes champs sans `lines` ; l'agent lit le magasin courant et le renvoie dans un message `setup-result` : `{"v":1,"type":"setup-result","runId":"…","agentVersion":"1.0.0","store":{"id":"053701","host":"fd9-courses.leclercdrive.fr","baseUrl":"https://fd9-courses.leclercdrive.fr/magasin-053701-053701","label":null}}`. `SKIP` = « passer cette fois » choisi par l'utilisateur sur l'écran du plan (non mémorisé). Un `KNOWN` que l'utilisateur veut changer devient `NEW` avec `replaces`.
+`type: "setup"` : mêmes champs sans `lines` ; l'agent lit le magasin courant et le renvoie dans un message `setup-result` : `{"v":1,"type":"setup-result","runId":"…","agentVersion":"1.0.0","store":{"id":"123456","host":"exemple.leclercdrive.fr","baseUrl":"https://exemple.leclercdrive.fr/magasin-123456-123456","label":null}}`. `SKIP` = « passer cette fois » choisi par l'utilisateur sur l'écran du plan (non mémorisé). Un `KNOWN` que l'utilisateur veut changer devient `NEW` avec `replaces`.
 
 **Validation par l'agent avant toute action** : `v === 1` ; `runId` uuid ; `retailer` autorisé ; hôte de la page ∈ liste autorisée **et** magasin du message = magasin de la page (sinon `STORE_MISMATCH`) ; ≤ 100 lignes ; `ingredientSlug` `^[a-z0-9-]{1,100}$` ; identifiants de produit `^[0-9]{1,12}$` ; `products` ≤ 5 sans doublon, `KNOWN` en exige au moins 1 et `NEW` n'en a aucun ; `rejected` ≤ 20 ; aucun produit à la fois dans `products` et `rejected` ; `packs` entier 1..99 ou `null` ; chaînes bornées (libellés ≤ 255) ; tout affichage par `textContent` (jamais de HTML) ; `returnPath` ∈ `["/drive/retour"]` ; l'origine de retour est **écrite en dur** dans le favori, jamais lue dans le message. Le gabarit de l'agent contient un marqueur unique `__REPAS_ORIGIN__` que le front remplace par `location.origin` quand l'utilisateur copie le code du favori (DRV-301, DRV-403) : l'image de production du front ne contient ainsi aucun nom de domaine.
 
@@ -266,7 +266,7 @@ Les schémas JSON font foi (`drive-agent/protocol/`, ticket DRV-302). Exemples e
 ```json
 {
   "v": 1, "type": "result", "runId": "8f14e45f-ceea-467a-9575-8e6b8c0a1b2c", "agentVersion": "1.0.0",
-  "outcome": "completed", "store": {"id": "053701"},
+  "outcome": "completed", "store": {"id": "123456"},
   "lines": [
     {"ingredientSlug": "farine", "outcome": "ADDED", "productId": "222333", "usedRank": 2, "quantity": 1,
      "unavailableIds": ["123456"]},

@@ -11,7 +11,7 @@ Faits trouvés le **2026-10-17** par recherche web et lecture du code. Chaque fa
 
 ## 2. Routes internes du site (rétro-ingénierie par des tiers)
 
-Source : [skunkobi/mcp-leclerc-drive, docs/api-capture.md](https://github.com/skunkobi/mcp-leclerc-drive/blob/main/docs/api-capture.md), validé le **2026-06-13** sur un magasin (`053701`).
+Source : [skunkobi/mcp-leclerc-drive, docs/api-capture.md](https://github.com/skunkobi/mcp-leclerc-drive/blob/main/docs/api-capture.md), validé le **2026-06-13** sur un magasin (numéro non repris ici : jamais de vrai numéro de magasin dans ce dépôt).
 
 - **Hôte par magasin** : `fdN-courses.leclercdrive.fr` (`fd9`, `fd8`, `fd14`…) et chemin `magasin-{id}-{id}`. Le slug de ville dans les URL est cosmétique. La session est liée à **un seul drive**.
 - **Annuaire des magasins** : `api-recherchemagasins.leclercdrive.fr/API_RechercheMagasins/api/v1` avec `/autocomplete`, `/autocomplete/coordinates`, `/MapPoint/nearby` (champs `noPL`, `serviceType`, `distance`, hôte du magasin).

@@ -19,7 +19,7 @@ Le magasin n'est pas saisi à la main : l'utilisateur ouvre son drive Leclerc (m
 
 ## Critères d'acceptation
 
-- Sur une page `https://fd9-courses.leclercdrive.fr/magasin-053701-053701/…` (fictive en test), le résultat contient l'identifiant, l'hôte et l'URL de base exacts.
+- Sur une page `https://exemple.leclercdrive.fr/magasin-123456-123456/…` (fictive en test), le résultat contient l'identifiant, l'hôte et l'URL de base exacts.
 - Aucune donnée de compte n'est lue ni renvoyée.
 
 ## Tests exigés
