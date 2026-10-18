@@ -4,7 +4,7 @@
 - **Jalon** : M2 Back `Drive`
 - **Taille** : M
 - **Dépend de** : DRV-202, DRV-203, DRV-204, DRV-205
-- **Statut** : à faire
+- **Statut** : fait (PR [#141](https://github.com/kcharignon/repas/pull/141), 2026-10-18)
 - **Lire d'abord** : [`../architecture.md`](../architecture.md) §§ 5, 6, 7 (plan) ; ADR 0003, 0004, 0005 ; skill `repas-dev` § 3.1 et 3.2.
 
 ## Contexte
@@ -50,3 +50,11 @@ Celle du skill `repas-dev` § 4.
 ## Précision (2026-10-18, DRV-306)
 
 Chaque ligne du plan renvoie `needed : {quantity, unitSymbol, dimension, baseFactor}` (l'agent s'en sert pour calculer le nombre de produits en phase B). Voir `architecture.md` (ajout du 2026-10-18) et `drive-agent/protocol/plan.schema.json`.
+
+## Réalisation (2026-10-18, PR repas#141)
+
+- **Lecture** : `GET /api/v1/drive/plans/{shoppingListId}` (`GetDrivePlanApiController`, `#[RequiresDrive]`, `ROLE_USER` + voter `SHOPPING_LIST_OWNER`), `GetDrivePlanQuery(userId, shoppingListId)` → `GetDrivePlanQueryHandler` → port `Drive\Application\Loader\DrivePlanLoader` → `DrivePlanPostgreSQLLoader`. DTO dans `Application/Query/GetDrivePlan/` : `DrivePlanDTO{shoppingListId, listVersion, retailer, store, generatedAt, counts, lines}`, `DrivePlanCountsDTO{known, new, haveAtHome}`, `DrivePlanLineDTO{ingredientSlug, ingredientName, needed, status, products, rejected, searchQuery}`, `DrivePlanNeededDTO{quantity, unitSymbol, dimension, baseFactor}`, `DrivePlanProductDTO{rank, retailerProductId, ean, label, content, packs, packsStatus}`, `DrivePlanRejectedDTO{retailerProductId, label}`. **Écart** : le magasin réutilise `DriveStoreDTO` (`GetDriveSettings`) et le contenu `ProductContentDTO` (`ListChoices`), de forme identique, au lieu d'un `DrivePlanStoreDTO` dédié.
+- **Contrat que DRV-404 recopie** (message `plan`) : `lines[]` triées par slug d'ingrédient ; `needed` = `{quantity (nombre), unitSymbol, dimension (WEIGHT|VOLUME|COUNT|PACKAGE|null), baseFactor (nombre|null)}` ; `status` ∈ `KNOWN|NEW|HAVE_AT_HOME` ; `products[]` (vide hors `KNOWN`, 5 au plus, par rang) = `{rank, retailerProductId, ean|null, label, content: {value, unit}|null, packs: 1..99|null, packsStatus: COMPUTED|TO_CHECK}` avec `packs` calculé **pour chaque produit** (`PackCalculator`, un appel par produit) ; `rejected[]` = `{retailerProductId, label}` (20 au plus, aussi sur une ligne `NEW`, vide pour `HAVE_AT_HOME`) ; `searchQuery` = **le nom de l'ingrédient tel quel** (casse conservée : « Farine », pas « farine ») sur **toutes** les lignes, `HAVE_AT_HOME` comprise ; `counts` = `{known, new, haveAtHome}`.
+- **Erreurs** : `404 DRIVE_DISABLED` (coupé) ; `403` (liste d'un autre utilisateur : voter ; le loader refuse aussi, `SHOPPING_LIST_FORBIDDEN`, y compris pour un administrateur) ; `404` (liste inconnue) ; `409 DRIVE_NOT_CONFIGURED` ; `409 SHOPPING_LIST_NOT_SENT` (nouvelles fabriques `DriveException::shoppingListNotSent()` et `shoppingListForbidden()` : un contexte n'importe pas l'exception de `Repas`). Ordre des contrôles du loader : réglages, liste (404), propriétaire, statut `SENT`.
+- **Requêtes** : 4 au plus, quelle que soit la taille de la liste (réglages, liste, lignes par le port `Shared` `ShoppingListForDriveLoader`, puis une requête de préférences du magasin courant pour les slugs de la liste, avec leurs produits) ; test de base avec 12 ingrédients. Les préférences d'un autre magasin ou d'un autre utilisateur ne comptent pas (ligne `NEW`, aucun produit refusé) ; un produit absent du catalogue est ignoré. `generatedAt` vient de l'horloge injectée (`Psr\Clock\ClockInterface`). L'alias public de test de `ShoppingListForDriveLoader` est supprimé de `config/services.yaml`.
+- Tests : handler (`DrivePlanInMemoryLoader`), loader (`DrivePlanPostgreSQLLoaderTest`), controller (`GetDrivePlanApiControllerTest`, clés JSON), parcours réel `DrivePlanApiFlowTest` (préférences posées par `PUT /drive/choices` puis plan d'une vraie liste `SENT`) ; `docs/api/openapi.json` régénéré.

@@ -2390,6 +2390,48 @@
                 }
             }
         },
+        "/api/v1/drive/plans/{shoppingListId}": {
+            "get": {
+                "tags": [
+                    "Drive"
+                ],
+                "summary": "Plan d'envoi d'une liste envoy\u00e9e au drive : pour chaque ligne, le statut (`KNOWN`, `NEW`, `HAVE_AT_HOME`), la quantit\u00e9 demand\u00e9e, les produits class\u00e9s avec leur nombre de produits et les produits refus\u00e9s",
+                "operationId": "get_api_get_drive_plan",
+                "parameters": [
+                    {
+                        "name": "shoppingListId",
+                        "in": "path",
+                        "description": "Identifiant de la liste de courses (statut `SENT`)",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "example": "0b0a8c4e-6b0e-4e0a-9d52-2c3f7a1d9e10"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Le plan, dans le magasin courant de l'utilisateur",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DrivePlanDTO"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "La liste appartient \u00e0 un autre utilisateur"
+                    },
+                    "404": {
+                        "description": "Fonction drive coup\u00e9e (message `DRIVE_DISABLED`) ou liste inconnue"
+                    },
+                    "409": {
+                        "description": "Pas de magasin enregistr\u00e9 (message `DRIVE_NOT_CONFIGURED`), ou la liste n'est pas envoy\u00e9e au drive (message `SHOPPING_LIST_NOT_SENT`)"
+                    }
+                }
+            }
+        },
         "/api/v1/drive/settings": {
             "get": {
                 "tags": [
@@ -4195,33 +4237,66 @@
                 },
                 "type": "object"
             },
-            "DriveSettingsDTO": {
+            "DrivePlanCountsDTO": {
                 "required": [
-                    "enabled",
-                    "retailer"
+                    "known",
+                    "new",
+                    "haveAtHome"
                 ],
                 "properties": {
-                    "enabled": {
-                        "description": "Vrai si la fonction \u00ab envoyer au drive \u00bb est allum\u00e9e (interrupteur `DRIVE_ENABLED`) ; faux, toutes les autres routes du drive r\u00e9pondent `404 DRIVE_DISABLED`",
-                        "type": "boolean",
-                        "example": true
+                    "known": {
+                        "description": "Lignes dont au moins un produit est connu dans le magasin (`KNOWN`)",
+                        "type": "integer",
+                        "example": 12
                     },
-                    "retailer": {
-                        "description": "Enseigne du drive",
+                    "new": {
+                        "description": "Lignes sans produit connu : il faudra en choisir un (`NEW`)",
+                        "type": "integer",
+                        "example": 3
+                    },
+                    "haveAtHome": {
+                        "description": "Lignes \u00ab j'en ai toujours \u00bb, ignor\u00e9es \u00e0 l'envoi (`HAVE_AT_HOME`)",
+                        "type": "integer",
+                        "example": 2
+                    }
+                },
+                "type": "object"
+            },
+            "DrivePlanNeededDTO": {
+                "required": [
+                    "quantity",
+                    "unitSymbol"
+                ],
+                "properties": {
+                    "quantity": {
+                        "description": "Quantit\u00e9 demand\u00e9e par la liste, dans l'unit\u00e9 d'achat de la ligne",
+                        "type": "number",
+                        "format": "float",
+                        "example": 300
+                    },
+                    "unitSymbol": {
+                        "description": "Symbole de l'unit\u00e9 d'achat (vide pour une unit\u00e9 sans symbole)",
+                        "type": "string",
+                        "example": "g"
+                    },
+                    "dimension": {
+                        "description": "Dimension de l'unit\u00e9, `null` si elle ne se convertit pas (cuill\u00e8re, tranche\u2026)",
                         "type": "string",
                         "enum": [
-                            "leclerc"
+                            "WEIGHT",
+                            "VOLUME",
+                            "COUNT",
+                            "PACKAGE"
                         ],
-                        "example": "leclerc"
+                        "example": "WEIGHT",
+                        "nullable": true
                     },
-                    "store": {
-                        "description": "Magasin de l'utilisateur, `null` tant qu'il n'a pas \u00e9t\u00e9 enregistr\u00e9",
-                        "nullable": true,
-                        "oneOf": [
-                            {
-                                "$ref": "#/components/schemas/DriveStoreDTO"
-                            }
-                        ]
+                    "baseFactor": {
+                        "description": "Facteur qui ram\u00e8ne l'unit\u00e9 \u00e0 l'unit\u00e9 de base de sa dimension (1 pour le gramme, 1000 pour le kilo), `null` sans dimension",
+                        "type": "number",
+                        "format": "float",
+                        "example": 1,
+                        "nullable": true
                     }
                 },
                 "type": "object"
@@ -4250,6 +4325,220 @@
                             "piece"
                         ],
                         "example": "g"
+                    }
+                },
+                "type": "object"
+            },
+            "DrivePlanProductDTO": {
+                "required": [
+                    "rank",
+                    "retailerProductId",
+                    "label",
+                    "packsStatus"
+                ],
+                "properties": {
+                    "rank": {
+                        "description": "Rang du produit : 1 = le pr\u00e9f\u00e9r\u00e9, les suivants servent de secours",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "retailerProductId": {
+                        "description": "Identifiant du produit chez l'enseigne (chiffres)",
+                        "type": "string",
+                        "example": "123456"
+                    },
+                    "ean": {
+                        "description": "Code-barres, si connu",
+                        "type": "string",
+                        "example": "3017620422003",
+                        "nullable": true
+                    },
+                    "label": {
+                        "description": "Libell\u00e9 du produit",
+                        "type": "string",
+                        "example": "Farine de bl\u00e9 T55 Marque Rep\u00e8re 1 kg"
+                    },
+                    "content": {
+                        "description": "Contenu net, `null` si inconnu",
+                        "nullable": true,
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/ProductContentDTO"
+                            }
+                        ]
+                    },
+                    "packs": {
+                        "description": "Nombre de produits \u00e0 mettre au panier pour la quantit\u00e9 demand\u00e9e (1 \u00e0 99), calcul\u00e9 avec le contenu de ce produit ; `null` quand il ne se calcule pas",
+                        "type": "integer",
+                        "maximum": 99,
+                        "minimum": 1,
+                        "example": 1,
+                        "nullable": true
+                    },
+                    "packsStatus": {
+                        "description": "`COMPUTED` : calcul fiable ; `TO_CHECK` : valeur par d\u00e9faut ou absente, l'agent demande la quantit\u00e9",
+                        "type": "string",
+                        "enum": [
+                            "COMPUTED",
+                            "TO_CHECK"
+                        ],
+                        "example": "COMPUTED"
+                    }
+                },
+                "type": "object"
+            },
+            "DrivePlanRejectedDTO": {
+                "required": [
+                    "retailerProductId",
+                    "label"
+                ],
+                "properties": {
+                    "retailerProductId": {
+                        "description": "Identifiant du produit chez l'enseigne (chiffres)",
+                        "type": "string",
+                        "example": "999000"
+                    },
+                    "label": {
+                        "description": "Libell\u00e9 du produit",
+                        "type": "string",
+                        "example": "Farine compl\u00e8te bio 1 kg"
+                    }
+                },
+                "type": "object"
+            },
+            "DrivePlanLineDTO": {
+                "required": [
+                    "ingredientSlug",
+                    "ingredientName",
+                    "needed",
+                    "status",
+                    "products",
+                    "rejected",
+                    "searchQuery"
+                ],
+                "properties": {
+                    "ingredientSlug": {
+                        "description": "Slug de l'ingr\u00e9dient",
+                        "type": "string",
+                        "example": "farine"
+                    },
+                    "ingredientName": {
+                        "description": "Nom de l'ingr\u00e9dient",
+                        "type": "string",
+                        "example": "Farine"
+                    },
+                    "needed": {
+                        "$ref": "#/components/schemas/DrivePlanNeededDTO"
+                    },
+                    "status": {
+                        "description": "`KNOWN` : au moins un produit accept\u00e9 dans ce magasin ; `NEW` : aucun, l'utilisateur en choisira un ; `HAVE_AT_HOME` : \u00ab j'en ai toujours \u00bb, ligne ignor\u00e9e",
+                        "type": "string",
+                        "enum": [
+                            "KNOWN",
+                            "NEW",
+                            "HAVE_AT_HOME"
+                        ],
+                        "example": "KNOWN"
+                    },
+                    "products": {
+                        "description": "Produits accept\u00e9s, du pr\u00e9f\u00e9r\u00e9 (rang 1) aux produits de secours, 5 au plus, chacun avec son propre nombre de produits ; vide hors `KNOWN`",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/DrivePlanProductDTO"
+                        }
+                    },
+                    "rejected": {
+                        "description": "Produits que l'utilisateur ne veut jamais, 20 au plus (aussi pour une ligne `NEW`) ; vide pour `HAVE_AT_HOME`",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/DrivePlanRejectedDTO"
+                        }
+                    },
+                    "searchQuery": {
+                        "description": "Texte \u00e0 chercher sur le site de l'enseigne : le nom de l'ingr\u00e9dient",
+                        "type": "string",
+                        "example": "Farine"
+                    }
+                },
+                "type": "object"
+            },
+            "DrivePlanDTO": {
+                "required": [
+                    "shoppingListId",
+                    "listVersion",
+                    "retailer",
+                    "store",
+                    "generatedAt",
+                    "counts",
+                    "lines"
+                ],
+                "properties": {
+                    "shoppingListId": {
+                        "description": "Identifiant de la liste de courses",
+                        "type": "string",
+                        "example": "0b0a8c4e-6b0e-4e0a-9d52-2c3f7a1d9e10"
+                    },
+                    "listVersion": {
+                        "description": "Version de la liste au moment du plan",
+                        "type": "integer",
+                        "example": 5
+                    },
+                    "retailer": {
+                        "description": "Enseigne du drive",
+                        "type": "string",
+                        "enum": [
+                            "leclerc"
+                        ],
+                        "example": "leclerc"
+                    },
+                    "store": {
+                        "$ref": "#/components/schemas/DriveStoreDTO"
+                    },
+                    "generatedAt": {
+                        "description": "Date de calcul du plan (ISO 8601)",
+                        "type": "string",
+                        "example": "2026-10-18T10:00:00+02:00"
+                    },
+                    "counts": {
+                        "$ref": "#/components/schemas/DrivePlanCountsDTO"
+                    },
+                    "lines": {
+                        "description": "Une ligne par ingr\u00e9dient de la liste, dans l'ordre de la liste (slug d'ingr\u00e9dient croissant)",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/DrivePlanLineDTO"
+                        }
+                    }
+                },
+                "type": "object"
+            },
+            "DriveSettingsDTO": {
+                "required": [
+                    "enabled",
+                    "retailer"
+                ],
+                "properties": {
+                    "enabled": {
+                        "description": "Vrai si la fonction \u00ab envoyer au drive \u00bb est allum\u00e9e (interrupteur `DRIVE_ENABLED`) ; faux, toutes les autres routes du drive r\u00e9pondent `404 DRIVE_DISABLED`",
+                        "type": "boolean",
+                        "example": true
+                    },
+                    "retailer": {
+                        "description": "Enseigne du drive",
+                        "type": "string",
+                        "enum": [
+                            "leclerc"
+                        ],
+                        "example": "leclerc"
+                    },
+                    "store": {
+                        "description": "Magasin de l'utilisateur, `null` tant qu'il n'a pas \u00e9t\u00e9 enregistr\u00e9",
+                        "nullable": true,
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/DriveStoreDTO"
+                            }
+                        ]
                     }
                 },
                 "type": "object"

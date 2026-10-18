@@ -13,6 +13,8 @@ final class DriveException extends DomainException
     public const string DRIVE_CHOICE_INVALID = 'DRIVE_CHOICE_INVALID';
     public const string DRIVE_CHOICE_NOT_FOUND = 'DRIVE_CHOICE_NOT_FOUND';
     public const string DRIVE_STORE_MISMATCH = 'DRIVE_STORE_MISMATCH';
+    public const string SHOPPING_LIST_NOT_SENT = 'SHOPPING_LIST_NOT_SENT';
+    public const string SHOPPING_LIST_FORBIDDEN = 'SHOPPING_LIST_FORBIDDEN';
 
     /**
      * Magasin refusé : adresse qui n'est pas celle d'un magasin de l'enseigne, identifiant différent de celui de l'adresse,
@@ -54,6 +56,24 @@ final class DriveException extends DomainException
     public static function storeMismatch(): self
     {
         return new self(self::DRIVE_STORE_MISMATCH, 409);
+    }
+
+    /**
+     * Le plan d'envoi ne se calcule que pour une liste envoyée au drive : celle-ci ne l'est pas (ou plus), `409`. Même message
+     * que `ShoppingListException::notSent()` de `Repas`, qu'un contexte n'importe pas.
+     */
+    public static function shoppingListNotSent(): self
+    {
+        return new self(self::SHOPPING_LIST_NOT_SENT, 409);
+    }
+
+    /**
+     * La liste appartient à un autre utilisateur, `403`. Le voter `SHOPPING_LIST_OWNER` du controller est la défense
+     * principale (il laisse passer un administrateur) ; le plan, lui, ne se calcule que pour le propriétaire.
+     */
+    public static function shoppingListForbidden(): self
+    {
+        return new self(self::SHOPPING_LIST_FORBIDDEN, 403);
     }
 
     /**
