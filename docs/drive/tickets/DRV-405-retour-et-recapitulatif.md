@@ -47,3 +47,10 @@ Celle du front.
 
 - Ne rien enregistrer sur la foi d'un message non validé ; ne jamais afficher de HTML issu du message (libellés en texte).
 - Le service worker peut recharger la page : lire et effacer le fragment dès le premier rendu.
+
+## Précisions du back (2026-10-18, DRV-204)
+
+- Enregistrement des choix par `PUT /api/v1/drive/choices` (lot ≤ 200). Actions : `ADD_PRODUCT` (placement `PRIMARY|FALLBACK`, `product` avec `label`), `REJECT_PRODUCT`, `HAVE_AT_HOME` et **`REFRESH_PRICE`** (`{ingredientSlug, action:"REFRESH_PRICE", product:{retailerProductId, price:{cents, perMeasure?:{cents, unit}}}}`, sans libellé ni placement). **Une ligne `ADDED` du résultat de l'agent qui porte un `price` doit envoyer un `REFRESH_PRICE`** (le ticket disait « ADDED : rien à enregistrer » : c'est remplacé) ; le back ignore sans erreur un produit inconnu ou non accepté pour cet ingrédient. Le prix d'une ligne `CHOSEN` part avec le produit de l'`ADD_PRODUCT`.
+- `retailerProductId` est une **chaîne** de 1 à 12 chiffres (`"555111"`). Prix en centimes entiers (0 à 1 000 000), contenu de 0,001 à 100 000, libellé de 1 à 255 caractères, code-barres de 8 à 14 chiffres.
+- **Ordre des intentions pour un même ingrédient** : un `ADD_PRODUCT` ou un `REJECT_PRODUCT` sur un ingrédient « j'en ai toujours » le fait redevenir une préférence de produits ; si une ligne « j'en ai toujours » porte aussi des produits refusés, envoyer `HAVE_AT_HOME` **après** les `REJECT_PRODUCT` du même ingrédient. Un produit à la fois ajouté et refusé pour un même ingrédient dans un lot donne `422 DRIVE_CHOICE_INVALID`.
+- Erreurs : `404 DRIVE_DISABLED`, `409 DRIVE_NOT_CONFIGURED`, `409 DRIVE_STORE_MISMATCH` (le `storeId` n'est pas le magasin courant), `422 DRIVE_CHOICE_INVALID`.

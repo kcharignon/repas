@@ -56,3 +56,7 @@ Le choix du magasin se fait par le mode `setup` de l'agent via le pont natif (`d
 ## Constat de l'essai réel (2026-10-18)
 
 L'agent lit l'identifiant et l'hôte du magasin mais **pas son libellé** (`label` absent) : l'écran de réglages doit donc afficher « Magasin …123 » (derniers chiffres) et permettre à l'utilisateur de donner un nom à son magasin (champ facultatif, `label` de l'API `PUT /drive/settings`).
+
+## Contrat des choix et des réglages (2026-10-18)
+
+`GET /api/v1/drive/choices?retailer=leclerc` (`retailer` obligatoire) renvoie `{member, totalItems}` trié par slug ; chaque membre : `{ingredientSlug, ingredientName, haveAtHome, accepted:[{rank, product}], rejected:[product], updatedAt}` avec `product = {productId, retailerProductId, ean, label, content:{value, unit}|null}` (le prix n'est pas renvoyé). `DELETE /api/v1/drive/choices/{ingredientSlug}?retailer=&storeId=` répond 204 (404 `DRIVE_CHOICE_NOT_FOUND`). Réglages : `GET|PUT /api/v1/drive/settings` (voir DRV-203).
