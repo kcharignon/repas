@@ -1,6 +1,7 @@
 <?php
 
 use Repas\Drive\Application\Command\ForgetChoice\ForgetChoiceCommand;
+use Repas\Drive\Application\Command\ReplaceIngredientPreference\ReplaceIngredientPreferenceCommand;
 use Repas\Drive\Application\Command\SaveDriveSettings\SaveDriveSettingsCommand;
 use Repas\Drive\Application\Command\SaveProductChoices\ChoiceAction;
 use Repas\Drive\Application\Command\SaveProductChoices\ChoiceIntent;
@@ -8,6 +9,7 @@ use Repas\Drive\Application\Command\SaveProductChoices\Placement;
 use Repas\Drive\Application\Command\SaveProductChoices\ProductInput;
 use Repas\Drive\Application\Command\SaveProductChoices\SaveProductChoicesCommand;
 use Repas\Drive\Domain\Model\ContentUnit;
+use Repas\Drive\Domain\Model\Product;
 use Repas\Drive\Domain\Model\ProductContent;
 use Repas\Drive\Domain\Model\ProductPrice;
 use Repas\Drive\Domain\Model\Retailer;
@@ -381,6 +383,17 @@ return [
         $t->savedDriveChoice($user, 'farine', ['1', '2'], ['9']);
 
         return new ForgetChoiceCommand($user->getId(), Retailer::LECLERC, '123456', 'farine');
+    },
+    // Préférence mémorisée (deux produits acceptés, un refusé) remplacée depuis l'écran de gestion : l'ordre s'inverse, un produit connu
+    // d'une autre préférence est accepté, le refus change. Même budget quelle que soit la taille des listes.
+    'remplacer-preference-drive' => static function (WriteBudgetTestCase $t): object {
+        $user = $t->savedUser();
+        $t->savedDriveSettings($user);
+        $t->savedDriveChoice($user, 'farine', ['1', '2'], ['9']);
+        $t->savedDriveChoice($user, 'sel', ['3', '4']);
+        $id = static fn(string $retailerProductId): string => Product::idFor(Retailer::LECLERC, '123456', $retailerProductId);
+
+        return new ReplaceIngredientPreferenceCommand($user->getId(), Retailer::LECLERC, '123456', 'farine', false, [$id('2'), $id('1'), $id('3')], [$id('4')]);
     },
     // Compte qui a trois recettes planifiées dans une liste (dont une est copiée par un autre utilisateur), un magasin et une préférence de produits
     'supprimer-compte' => static function (WriteBudgetTestCase $t): object {

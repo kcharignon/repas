@@ -41,7 +41,7 @@ Suivi vivant. Cocher une case quand le ticket est fusionné (et noter la PR). Le
 - [x] [DRV-205](tickets/DRV-205-pack-calculator.md) back · M · `PackCalculator` · dépend de : 201 · Issue : [#79](https://github.com/kcharignon/repas/issues/79)
 - [x] [DRV-206](tickets/DRV-206-plan-d-envoi.md) back · M · Plan d'envoi · dépend de : 202, 203, 204, 205 · Issue : [#80](https://github.com/kcharignon/repas/issues/80)
 - [x] [DRV-207](tickets/DRV-207-purge-compte-drive.md) back · S · Purge à la suppression du compte (dont lignes de produits) · dépend de : 203, 204 · Issue : [#81](https://github.com/kcharignon/repas/issues/81)
-- [ ] [DRV-208](tickets/DRV-208-remplacement-preference.md) back · M · Remplacer la préférence d'un ingrédient (ordre, refus) · dépend de : 204 · Issue : [#82](https://github.com/kcharignon/repas/issues/82)
+- [x] [DRV-208](tickets/DRV-208-remplacement-preference.md) back · M · Remplacer la préférence d'un ingrédient (ordre, refus) · dépend de : 204 · Issue : [#82](https://github.com/kcharignon/repas/issues/82)
 
 ## M3 — Agent (front, `drive-agent/`)
 
@@ -53,7 +53,7 @@ Suivi vivant. Cocher une case quand le ticket est fusionné (et noter la PR). Le
 - [x] [DRV-306](tickets/DRV-306-choix-guide-phase-b.md) front · L · Choix guidé, phase B · dépend de : 305 · Issue : [repas-front#44](https://github.com/kcharignon/repas-front/issues/44)
 - [x] [DRV-307](tickets/DRV-307-mode-configuration.md) front · S · Mode configuration · dépend de : 302, 303 · Issue : [repas-front#45](https://github.com/kcharignon/repas-front/issues/45)
 - [x] [DRV-308](tickets/DRV-308-mode-diagnostic.md) front · S · Mode diagnostic · dépend de : 303, 304 · Issue : [repas-front#46](https://github.com/kcharignon/repas-front/issues/46)
-- [ ] [DRV-309](tickets/DRV-309-faux-site-leclerc-e2e.md) front · L · Faux site Leclerc et tests e2e de l'agent · dépend de : 303 · Issue : [repas-front#47](https://github.com/kcharignon/repas-front/issues/47)
+- [x] [DRV-309](tickets/DRV-309-faux-site-leclerc-e2e.md) front · L · Faux site Leclerc et tests e2e de l'agent · dépend de : 303 · Issue : [repas-front#47](https://github.com/kcharignon/repas-front/issues/47)
 - [ ] [DRV-310](tickets/DRV-310-publication-favori.md) front · S · Publication du favori · dépend de : 306 · Issue : [repas-front#48](https://github.com/kcharignon/repas-front/issues/48)
 
 ## M3b — Application Android (front, `android/`)
@@ -74,8 +74,8 @@ Prépare l'application « Repas Drive » (WebView en mode ordinateur, agent emba
 
 ## M4 — Front
 
-- [ ] [DRV-401](tickets/DRV-401-liste-envoyee-ui.md) front · M · Liste envoyée dans l'interface · dépend de : 102, 104 · Issue : [repas-front#49](https://github.com/kcharignon/repas-front/issues/49)
-- [ ] [DRV-402](tickets/DRV-402-module-drive-bridge.md) front · M · Module `driveBridge` · dépend de : 302 · Issue : [repas-front#50](https://github.com/kcharignon/repas-front/issues/50)
+- [x] [DRV-401](tickets/DRV-401-liste-envoyee-ui.md) front · M · Liste envoyée dans l'interface · dépend de : 102, 104 · Issue : [repas-front#49](https://github.com/kcharignon/repas-front/issues/49)
+- [x] [DRV-402](tickets/DRV-402-module-drive-bridge.md) front · M · Module `driveBridge` · dépend de : 302 · Issue : [repas-front#50](https://github.com/kcharignon/repas-front/issues/50)
 - [ ] [DRV-403](tickets/DRV-403-reglages-drive-ui.md) front · L · Réglages du drive · dépend de : 203, 204, 307, 402 · Issue : [repas-front#51](https://github.com/kcharignon/repas-front/issues/51)
 - [ ] [DRV-404](tickets/DRV-404-flux-d-envoi.md) front · L · Flux d'envoi · dépend de : 102, 206, 401, 402 · Issue : [repas-front#52](https://github.com/kcharignon/repas-front/issues/52)
 - [ ] [DRV-405](tickets/DRV-405-retour-et-recapitulatif.md) front · L · Retour et récapitulatif · dépend de : 204, 402 · Issue : [repas-front#53](https://github.com/kcharignon/repas-front/issues/53)

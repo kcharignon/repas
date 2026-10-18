@@ -36,6 +36,7 @@ return [
     'reactiver-liste' => 10,
     'reglages-drive' => 2,
     'reglages-utilisateur' => 2,
+    'remplacer-preference-drive' => 6,
     'renommer-liste' => 9,
     'renvoi-confirmation-email' => 4,
     'retirer-ingredient-liste' => 9,
