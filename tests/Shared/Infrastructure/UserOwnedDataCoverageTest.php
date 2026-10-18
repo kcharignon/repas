@@ -3,6 +3,7 @@
 namespace Repas\Tests\Shared\Infrastructure;
 
 
+use Repas\Drive\Infrastructure\Entity\Choice;
 use Repas\Drive\Infrastructure\Entity\DriveSettings;
 use Repas\Repas\Infrastructure\Entity\Ingredient;
 use Repas\Repas\Infrastructure\Entity\Recipe;
@@ -28,6 +29,7 @@ class UserOwnedDataCoverageTest extends DatabaseTestCase
         ShoppingList::class => ['ownerId'],
         RefreshToken::class => ['userId'],
         DriveSettings::class => ['userId'],
+        Choice::class => ['userId'],
         EmailVerificationToken::class => ['userId'],
     ];
 

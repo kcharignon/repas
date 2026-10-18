@@ -43,3 +43,11 @@ services:
     Repas\Drive\Domain\Interface\DriveSettingsRepository:
         alias: 'Repas\Drive\Infrastructure\Repository\DriveSettingsPostgreSQLRepository'
         public: true
+
+    Repas\Drive\Domain\Interface\ProductRepository:
+        alias: 'Repas\Drive\Infrastructure\Repository\ProductPostgreSQLRepository'
+        public: true
+
+    Repas\Drive\Domain\Interface\ChoiceRepository:
+        alias: 'Repas\Drive\Infrastructure\Repository\ChoicePostgreSQLRepository'
+        public: true

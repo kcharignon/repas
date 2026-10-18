@@ -4,13 +4,19 @@ namespace Repas\Tests\Helper;
 
 
 use DateTimeImmutable;
+use Repas\Drive\Domain\Interface\ChoiceRepository;
 use Repas\Drive\Domain\Interface\DriveSettingsRepository;
+use Repas\Drive\Domain\Interface\ProductRepository;
+use Repas\Drive\Domain\Model\Product;
+use Repas\Drive\Domain\Model\Retailer;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Repas\Domain\Model\Recipe;
 use Repas\Repas\Domain\Model\ShoppingList;
 use Repas\Shared\Application\Interface\CommandBusInterface;
+use Repas\Tests\Helper\Builder\ChoiceBuilder;
 use Repas\Tests\Helper\Builder\ConversionBuilder;
 use Repas\Tests\Helper\Builder\DriveSettingsBuilder;
+use Repas\Tests\Helper\Builder\ProductBuilder;
 use Repas\Tests\Helper\Builder\RecipeBuilder;
 use Repas\Tests\Helper\Builder\ShoppingListBuilder;
 use Repas\Tests\Helper\Builder\UserBuilder;
@@ -81,6 +87,27 @@ abstract class WriteBudgetTestCase extends DatabaseTestCase
     public function savedDriveSettings(User $user): void
     {
         static::getContainer()->get(DriveSettingsRepository::class)->save(new DriveSettingsBuilder()->withUserId($user->getId())->build());
+    }
+
+    /**
+     * Préférence de `$user` pour un ingrédient dans son magasin factice, avec ses produits (connus de `drive_product`) : les
+     * identifiants sont ceux de l'enseigne, le préféré d'abord.
+     *
+     * @param list<string> $accepted
+     * @param list<string> $rejected
+     */
+    public function savedDriveChoice(User $user, string $slug, array $accepted, array $rejected = []): void
+    {
+        $retailerProductIds = [...$accepted, ...$rejected];
+        $productId = static fn(string $retailerProductId): string => Product::idFor(Retailer::LECLERC, '123456', $retailerProductId);
+
+        static::getContainer()->get(ProductRepository::class)->saveAll(array_map(
+            static fn(string $retailerProductId): Product => new ProductBuilder()->withRetailerProductId($retailerProductId)->build(),
+            $retailerProductIds,
+        ));
+        static::getContainer()->get(ChoiceRepository::class)->save(
+            new ChoiceBuilder()->withUserId($user->getId())->withIngredientSlug($slug)->withAccepted(array_map($productId, $accepted))->withRejected(array_map($productId, $rejected))->build(),
+        );
     }
 
     public function savedRecipe(User $author, RecipeBuilder $builder): Recipe

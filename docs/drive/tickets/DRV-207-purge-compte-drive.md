@@ -7,6 +7,8 @@
 - **Statut** : à faire
 - **Lire d'abord** : [ADR 0021](../../adr/0021-gestion-des-comptes-par-l-administrateur.md) (décisions 6, 8, 9, 10) ; `src/Repas/Infrastructure/EventListener/PurgeUserDataOnUserDeletedListener.php` ; `tests/Shared/Infrastructure/UserOwnedDataCoverageTest.php`.
 
+> **Mise à jour du 2026-10-18 (DRV-204, PR #138)** : la purge des choix est déjà faite : `ChoiceRepository::deleteProductsByUser` puis `deleteByUser` appelés par `PurgeUserDriveDataHandler`, entrée `Choice::class => ['userId']` de `UserOwnedDataCoverageTest`, test de bout en bout dans `AccountAdministrationFlowTest` (aucune ligne orpheline dans `drive_choice_product`), budget `supprimer-compte` 18. **Il ne reste ici que le point 5 (la phrase de l'ADR 0021)** et la relecture des critères d'acceptation.
+
 ## Contexte
 
 Aucune clé étrangère ne lie les tables à `user` : supprimer un compte « comme s'il n'avait jamais existé » repose sur une liste écrite à la main, gardée par `UserOwnedDataCoverageTest`. Les tables `drive_settings` et `drive_choice` portent `user_id`. `drive_product` n'a pas de propriétaire : on la garde.

@@ -1,0 +1,311 @@
+<?php
+
+namespace Repas\Tests\Drive\InputAdapter;
+
+
+use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
+use Repas\Drive\Domain\Interface\DriveSettingsRepository;
+use Repas\Shared\Application\Interface\DriveFeature;
+use Repas\Tests\Helper\Builder\DriveSettingsBuilder;
+use Repas\Tests\Helper\Builder\UserBuilder;
+use Repas\Tests\Helper\ControlledDriveFeature;
+use Repas\Tests\Helper\DatabaseTestCase;
+use Repas\User\Domain\Interface\UserRepository;
+use Repas\User\Domain\Model\User;
+use Symfony\Bundle\FrameworkBundle\KernelBrowser;
+
+/**
+ * Parcours des préférences de produits avec les vrais bus, la vraie base et les listeners : le lot de l'agent se relit par
+ * `GET`, s'oublie par `DELETE`, et chaque utilisateur ne voit que les siennes. Les tests unitaires des controllers doublent les
+ * bus ; celui-ci prouve le câblage.
+ */
+class DriveChoicesApiFlowTest extends DatabaseTestCase
+{
+    private KernelBrowser $client;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->client = static::getContainer()->get('test.client');
+    }
+
+    public function testTheBatchOfTheAgentBuildsTheChoicesThatTheListReturns(): void
+    {
+        // Given
+        $user = $this->userWithAStore();
+
+        // When : premier passage, un produit préféré pour la farine, un refus, « j'en ai toujours » pour le sel
+        $this->put($user, [
+            $this->add('farine', 'PRIMARY', '555111', 'Farine de blé T55 1 kg', ['value' => 1000, 'unit' => 'g'], ['cents' => 149, 'perMeasure' => ['cents' => 149, 'unit' => 'kg']]),
+            $this->add('farine', 'FALLBACK', '222333', 'Farine de blé T45 1 kg', ['value' => 1, 'unit' => 'kg']),
+            ['ingredientSlug' => 'farine', 'action' => 'REJECT_PRODUCT', 'product' => ['retailerProductId' => '999000', 'label' => 'Farine complète bio 1 kg']],
+            ['ingredientSlug' => 'sel', 'action' => 'HAVE_AT_HOME'],
+        ]);
+
+        // Then
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->get($user);
+        $farine = $this->jsonBody()['member'][0];
+        $this->assertSame(2, $this->jsonBody()['totalItems']);
+        $this->assertSame(['ingredientSlug', 'ingredientName', 'haveAtHome', 'accepted', 'rejected', 'updatedAt'], array_keys($farine));
+        $this->assertSame(['farine', 'farine', false], [$farine['ingredientSlug'], $farine['ingredientName'], $farine['haveAtHome']]);
+        $this->assertSame([[1, '555111', 'Farine de blé T55 1 kg'], [2, '222333', 'Farine de blé T45 1 kg']], array_map(static fn(array $a): array => [$a['rank'], $a['product']['retailerProductId'], $a['product']['label']], $farine['accepted']));
+        $this->assertSame(['value' => 1000, 'unit' => 'g'], $farine['accepted'][0]['product']['content']);
+        $this->assertSame(['productId', 'retailerProductId', 'ean', 'label', 'content'], array_keys($farine['accepted'][0]['product']));
+        $this->assertSame(['999000'], array_column($farine['rejected'], 'retailerProductId'));
+        $this->assertSame(['sel', true, [], []], [$this->jsonBody()['member'][1]['ingredientSlug'], $this->jsonBody()['member'][1]['haveAtHome'], $this->jsonBody()['member'][1]['accepted'], $this->jsonBody()['member'][1]['rejected']]);
+
+        // When : second passage, un nouveau préféré décale les autres ; le refusé redevient accepté ; le sel s'achète de nouveau
+        $this->put($user, [
+            $this->add('farine', 'PRIMARY', '777888', 'Farine bio T55 1 kg'),
+            $this->add('farine', 'FALLBACK', '999000', 'Farine complète bio 1 kg'),
+            $this->add('sel', 'PRIMARY', '333444', 'Sel fin 1 kg'),
+        ]);
+
+        // Then
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->get($user);
+        $farine = $this->jsonBody()['member'][0];
+        $this->assertSame(['777888', '555111', '222333', '999000'], array_map(static fn(array $a): string => $a['product']['retailerProductId'], $farine['accepted']));
+        $this->assertSame([], $farine['rejected']);
+        $this->assertFalse($this->jsonBody()['member'][1]['haveAtHome']);
+        $this->assertSame(['333444'], array_map(static fn(array $a): string => $a['product']['retailerProductId'], $this->jsonBody()['member'][1]['accepted']));
+    }
+
+    public function testThePriceOfAnAcceptedProductIsRefreshedWithoutTouchingTheChoice(): void
+    {
+        // Given
+        $user = $this->userWithAStore();
+        $this->put($user, [$this->add('farine', 'PRIMARY', '555111', 'Farine T55', null, ['cents' => 149])]);
+        $this->get($user);
+        $before = $this->jsonBody();
+
+        // When : une ligne ADDED de l'agent porte le prix relu ; un produit qui n'est pas accepté pour cet ingrédient est ignoré
+        $this->put($user, [
+            ['ingredientSlug' => 'farine', 'action' => 'REFRESH_PRICE', 'product' => ['retailerProductId' => '555111', 'price' => ['cents' => 159, 'perMeasure' => ['cents' => 159, 'unit' => 'kg']]]],
+            ['ingredientSlug' => 'sel', 'action' => 'REFRESH_PRICE', 'product' => ['retailerProductId' => '555111', 'price' => ['cents' => 1]]],
+        ]);
+
+        // Then
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $price = $this->entityManager->getConnection()->fetchAssociative('SELECT price_cents, price_per_measure_cents, price_per_measure_unit FROM drive_product WHERE retailer_product_id = ?', ['555111']);
+        $this->assertSame([159, 159, 'kg'], array_values($price));
+        $this->get($user);
+        $this->assertSame($before, $this->jsonBody());
+        $this->assertSame(1, (int) $this->entityManager->getConnection()->fetchOne('SELECT COUNT(*) FROM drive_choice'));
+    }
+
+    public function testABatchIsAtomicAndOutOfBoundsValuesAreRefused(): void
+    {
+        // Given
+        $user = $this->userWithAStore();
+        $this->put($user, array_map(fn(int $i) => $this->add('farine', 'FALLBACK', (string) $i, "Farine $i"), range(1, 5)));
+
+        // When : un sixième produit accepté, dans un lot qui crée aussi du sel
+        $this->put($user, [$this->add('sel', 'PRIMARY', '9', 'Sel'), $this->add('farine', 'FALLBACK', '6', 'Farine 6')]);
+
+        // Then : rien n'est enregistré, ni préférence ni produit
+        $this->assertSame(422, $this->client->getResponse()->getStatusCode());
+        $this->assertSame(['error' => ['message' => 'DRIVE_CHOICE_INVALID']], $this->jsonBody());
+        $this->assertSame(['farine' => 1], $this->countsBySlug());
+        $this->assertSame(5, (int) $this->entityManager->getConnection()->fetchOne('SELECT COUNT(*) FROM drive_product'));
+
+        // When : un identifiant de produit qui n'est pas numérique, un libellé vide
+        foreach ([$this->add('sel', 'PRIMARY', 'abc', 'Sel'), $this->add('sel', 'PRIMARY', '9', '')] as $intent) {
+            $this->put($user, [$intent]);
+
+            // Then
+            $this->assertSame(422, $this->client->getResponse()->getStatusCode());
+            $this->assertSame(['error' => ['message' => 'DRIVE_CHOICE_INVALID']], $this->jsonBody());
+        }
+        $this->assertSame(['farine' => 1], $this->countsBySlug());
+    }
+
+    public function testABatchForAnotherStoreOrWithoutStoreIsRefusedAndNothingIsSaved(): void
+    {
+        // Given
+        $user = $this->savedUser();
+
+        // When : pas de magasin enregistré
+        $this->put($user, [$this->add('farine', 'PRIMARY', '1', 'Farine')]);
+
+        // Then
+        $this->assertSame(409, $this->client->getResponse()->getStatusCode());
+        $this->assertSame(['error' => ['message' => 'DRIVE_NOT_CONFIGURED']], $this->jsonBody());
+
+        // Given
+        static::getContainer()->get(DriveSettingsRepository::class)->save(new DriveSettingsBuilder()->withUserId($user->getId())->build());
+
+        // When : le magasin du lot n'est pas le magasin courant
+        $this->put($user, [$this->add('farine', 'PRIMARY', '1', 'Farine')], '654321');
+
+        // Then
+        $this->assertSame(409, $this->client->getResponse()->getStatusCode());
+        $this->assertSame(['error' => ['message' => 'DRIVE_STORE_MISMATCH']], $this->jsonBody());
+        $this->assertSame([], $this->countsBySlug());
+        $this->assertSame(0, (int) $this->entityManager->getConnection()->fetchOne('SELECT COUNT(*) FROM drive_product'));
+    }
+
+    public function testForgettingAChoiceRemovesItAndKeepsTheProducts(): void
+    {
+        // Given
+        $user = $this->userWithAStore();
+        $this->put($user, [$this->add('farine', 'PRIMARY', '1', 'Farine'), $this->add('sel', 'PRIMARY', '2', 'Sel'), ['ingredientSlug' => 'farine', 'action' => 'REJECT_PRODUCT', 'product' => ['retailerProductId' => '3', 'label' => 'Farine complète']]]);
+
+        // When
+        $this->delete($user, 'farine');
+
+        // Then
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->get($user);
+        $this->assertSame(['sel'], array_column($this->jsonBody()['member'], 'ingredientSlug'));
+        $this->assertSame(3, (int) $this->entityManager->getConnection()->fetchOne('SELECT COUNT(*) FROM drive_product'));
+        $this->assertSame(1, (int) $this->entityManager->getConnection()->fetchOne('SELECT COUNT(*) FROM drive_choice_product'));
+
+        // When : l'oublier une seconde fois, un ingrédient sans préférence, un autre magasin
+        $this->delete($user, 'farine');
+
+        // Then
+        $this->assertSame(404, $this->client->getResponse()->getStatusCode());
+        $this->assertSame(['error' => ['message' => 'DRIVE_CHOICE_NOT_FOUND']], $this->jsonBody());
+
+        // When
+        $this->delete($user, 'sel', '654321');
+
+        // Then
+        $this->assertSame(409, $this->client->getResponse()->getStatusCode());
+        $this->assertSame(['error' => ['message' => 'DRIVE_STORE_MISMATCH']], $this->jsonBody());
+    }
+
+    public function testTwoUsersShareTheProductAndNeverSeeOrForgetEachOthersChoices(): void
+    {
+        // Given
+        $alice = $this->userWithAStore();
+        $bob = $this->userWithAStore();
+
+        // When
+        $this->put($alice, [$this->add('farine', 'PRIMARY', '555111', 'Farine T55 1 kg')]);
+        $this->put($bob, [$this->add('farine', 'FALLBACK', '555111', 'Farine T55 1 kg'), $this->add('farine', 'PRIMARY', '222333', 'Farine T45 1 kg')]);
+
+        // Then : une seule ligne de produit par produit, chacun ses préférences
+        $this->assertSame(2, (int) $this->entityManager->getConnection()->fetchOne('SELECT COUNT(*) FROM drive_product'));
+        $this->get($alice);
+        $this->assertSame(['555111'], array_map(static fn(array $a): string => $a['product']['retailerProductId'], $this->jsonBody()['member'][0]['accepted']));
+        $this->get($bob);
+        $this->assertSame(['222333', '555111'], array_map(static fn(array $a): string => $a['product']['retailerProductId'], $this->jsonBody()['member'][0]['accepted']));
+
+        // When : un troisième utilisateur n'a rien, et ne peut rien oublier
+        $carol = $this->userWithAStore();
+        $this->get($carol);
+        $this->assertSame(['member' => [], 'totalItems' => 0], $this->jsonBody());
+        $this->delete($carol, 'farine');
+
+        // Then
+        $this->assertSame(404, $this->client->getResponse()->getStatusCode());
+        $this->assertSame(2, (int) $this->entityManager->getConnection()->fetchOne('SELECT COUNT(*) FROM drive_choice'));
+    }
+
+    public function testListingWithoutStoreIsEmpty(): void
+    {
+        // When
+        $this->get($this->savedUser());
+
+        // Then
+        $this->assertSame(200, $this->client->getResponse()->getStatusCode());
+        $this->assertSame(['member' => [], 'totalItems' => 0], $this->jsonBody());
+    }
+
+    public function testWithTheSwitchOffTheRoutesAnswer404(): void
+    {
+        // Given : le noyau est gardé entre les requêtes, sinon l'interrupteur posé serait perdu au redémarrage
+        $user = $this->savedUser();
+        $this->client->disableReboot();
+        static::getContainer()->set(DriveFeature::class, new ControlledDriveFeature(false));
+
+        // When / Then
+        $this->get($user);
+        $this->assertSame([404, ['error' => ['message' => 'DRIVE_DISABLED']]], [$this->client->getResponse()->getStatusCode(), $this->jsonBody()]);
+        $this->put($user, []);
+        $this->assertSame([404, ['error' => ['message' => 'DRIVE_DISABLED']]], [$this->client->getResponse()->getStatusCode(), $this->jsonBody()]);
+        $this->delete($user, 'farine');
+        $this->assertSame([404, ['error' => ['message' => 'DRIVE_DISABLED']]], [$this->client->getResponse()->getStatusCode(), $this->jsonBody()]);
+    }
+
+    /**
+     * @param array<string, mixed>|null $content
+     * @param array<string, mixed>|null $price
+     *
+     * @return array<string, mixed>
+     */
+    private function add(string $slug, string $placement, string $retailerProductId, string $label, ?array $content = null, ?array $price = null): array
+    {
+        return [
+            'ingredientSlug' => $slug,
+            'action' => 'ADD_PRODUCT',
+            'placement' => $placement,
+            'product' => array_filter(['retailerProductId' => $retailerProductId, 'label' => $label, 'content' => $content, 'price' => $price], static fn($value): bool => $value !== null),
+        ];
+    }
+
+    /**
+     * @param list<array<string, mixed>> $choices
+     */
+    private function put(User $user, array $choices, string $storeId = '123456'): void
+    {
+        $this->request('PUT', '/api/v1/drive/choices', $user, json_encode(['retailer' => 'leclerc', 'storeId' => $storeId, 'choices' => $choices], JSON_THROW_ON_ERROR));
+    }
+
+    private function get(User $user): void
+    {
+        $this->request('GET', '/api/v1/drive/choices?retailer=leclerc', $user);
+    }
+
+    private function delete(User $user, string $slug, string $storeId = '123456'): void
+    {
+        $this->request('DELETE', "/api/v1/drive/choices/$slug?retailer=leclerc&storeId=$storeId", $user);
+    }
+
+    private function request(string $method, string $uri, User $user, ?string $content = null): void
+    {
+        $token = static::getContainer()->get(JWTTokenManagerInterface::class)->create($user);
+        $this->client->request($method, $uri, content: $content, server: [
+            'HTTP_AUTHORIZATION' => 'Bearer ' . $token,
+            'CONTENT_TYPE' => 'application/json',
+        ]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function jsonBody(): array
+    {
+        $content = $this->client->getResponse()->getContent();
+
+        return $content === '' ? [] : json_decode($content, true, flags: JSON_THROW_ON_ERROR);
+    }
+
+    /**
+     * @return array<string, int>
+     */
+    private function countsBySlug(): array
+    {
+        return array_map('intval', $this->entityManager->getConnection()->fetchAllKeyValue('SELECT ingredient_slug, COUNT(*) FROM drive_choice GROUP BY ingredient_slug'));
+    }
+
+    private function userWithAStore(): User
+    {
+        $user = $this->savedUser();
+        static::getContainer()->get(DriveSettingsRepository::class)->save(new DriveSettingsBuilder()->withUserId($user->getId())->build());
+
+        return $user;
+    }
+
+    private function savedUser(): User
+    {
+        $user = new UserBuilder()->build();
+        static::getContainer()->get(UserRepository::class)->save($user);
+
+        return $user;
+    }
+}

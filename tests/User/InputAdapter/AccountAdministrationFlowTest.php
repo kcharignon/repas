@@ -4,16 +4,20 @@ namespace Repas\Tests\User\InputAdapter;
 
 
 use Doctrine\DBAL\Connection;
+use Repas\Drive\Domain\Interface\ChoiceRepository;
 use Repas\Drive\Domain\Interface\DriveSettingsRepository;
+use Repas\Drive\Domain\Interface\ProductRepository;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Repas\Domain\Model\Ingredient;
 use Repas\Repas\Domain\Model\Recipe;
 use Repas\Repas\Domain\Model\ShoppingList;
 use Repas\Shared\Domain\Event\UserDeletedEvent;
 use Repas\Shared\Domain\Tool\UuidGenerator;
+use Repas\Tests\Helper\Builder\ChoiceBuilder;
 use Repas\Tests\Helper\Builder\ConversionBuilder;
 use Repas\Tests\Helper\Builder\DriveSettingsBuilder;
 use Repas\Tests\Helper\Builder\IngredientBuilder;
+use Repas\Tests\Helper\Builder\ProductBuilder;
 use Repas\Tests\Helper\Builder\RecipeBuilder;
 use Repas\Tests\Helper\Builder\ShoppingListBuilder;
 use Repas\Tests\Helper\Builder\UserBuilder;
@@ -354,22 +358,34 @@ class AccountAdministrationFlowTest extends DatabaseTestCase
         $this->assertContains($copy->getId(), array_column($this->jsonBody()['member'], 'id'));
     }
 
-    public function testADeletedAccountTakesItsDriveSettingsWithItAndLeavesTheOthers(): void
+    public function testADeletedAccountTakesItsDriveSettingsAndChoicesWithItAndLeavesTheOthers(): void
     {
-        // Given
+        // Given : chacun a un magasin et des préférences de produits (acceptés et refusés), sur les mêmes produits
         $leaving = $this->savedUser(new UserBuilder()->withEmail('leaving@example.com'));
         $staying = $this->savedUser(new UserBuilder()->withEmail('staying@example.com'));
         $driveSettings = static::getContainer()->get(DriveSettingsRepository::class);
         $driveSettings->save(new DriveSettingsBuilder()->withUserId($leaving->getId())->build());
         $driveSettings->save(new DriveSettingsBuilder()->withUserId($staying->getId())->build());
+        $products = [new ProductBuilder()->withRetailerProductId('1')->build(), new ProductBuilder()->withRetailerProductId('2')->build(), new ProductBuilder()->withRetailerProductId('3')->build()];
+        static::getContainer()->get(ProductRepository::class)->saveAll($products);
+        static::getContainer()->get(ChoiceRepository::class)->saveAll([
+            new ChoiceBuilder()->withUserId($leaving->getId())->withIngredientSlug('farine')->withAccepted([$products[0]->getId(), $products[1]->getId()])->withRejected([$products[2]->getId()])->build(),
+            new ChoiceBuilder()->withUserId($leaving->getId())->withIngredientSlug('sel')->withAccepted([$products[0]->getId()])->build(),
+            new ChoiceBuilder()->withUserId($staying->getId())->withIngredientSlug('farine')->withAccepted([$products[0]->getId()])->withRejected([$products[2]->getId()])->build(),
+        ]);
 
         // When
         $this->request('DELETE', '/api/v1/users/' . $leaving->getId(), $this->login('admin@example.com'));
 
-        // Then
+        // Then : ses réglages, ses préférences et toutes leurs lignes ont disparu, aucune ligne orpheline ; le reste est intact
         $this->assertSame(204, $this->client->getResponse()->getStatusCode());
         $this->assertSame(0, $this->rowCount('drive_settings', 'user_id', $leaving->getId()));
         $this->assertSame(1, $this->rowCount('drive_settings', 'user_id', $staying->getId()));
+        $this->assertSame(0, $this->rowCount('drive_choice', 'user_id', $leaving->getId()));
+        $this->assertSame(1, $this->rowCount('drive_choice', 'user_id', $staying->getId()));
+        $this->assertSame(2, (int) $this->connection()->fetchOne('SELECT COUNT(*) FROM drive_choice_product'));
+        $this->assertSame(0, (int) $this->connection()->fetchOne('SELECT COUNT(*) FROM drive_choice_product WHERE choice_id NOT IN (SELECT id FROM drive_choice)'));
+        $this->assertSame(3, (int) $this->connection()->fetchOne('SELECT COUNT(*) FROM drive_product'));
     }
 
     public function testNothingIsDeletedWhenTheErasureFailsHalfway(): void
