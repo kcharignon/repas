@@ -52,6 +52,7 @@ Voir `architecture.md` § 1 : drive, enseigne, magasin, agent, plan, produit, ch
 | `runbook.md` | « Leclerc a changé » : symptômes, diagnostic, coupure (`DRIVE_ENABLED=false`), repli, correction, retour en service (DRV-503). Mise en production et retour arrière : `../production.md`. |
 | `note-vie-privee.md` | Note de vie privée de la fonction (texte court et complet à afficher dans le front, ce qui est vrai et d'où ça vient, fiche de registre des traitements) (DRV-504, partie back). |
 | `revue-securite-back.md` | Revue indépendante de sécurité et de qualité du back (2026-10-18) : défauts corrigés, risques à décider (fiches de produits partagées), points vérifiés, recommandations pour la recette. |
+| `recette.md` | Procédure de recette en conditions réelles (DRV-501 pour l'écriture, DRV-505 pour l'exécution) : pas à pas pour l'utilisateur sur son téléphone, critères de réussite, mesures, tableau de signature. |
 | `tickets/DRV-*.md` | Un ticket par fichier, autonome. |
 | `spikes/` | Gabarits des rapports de découverte (à remplir par l'humain ou l'agent). |
 | `plan-initial.md` | Copie intégrale du plan, pour ne rien perdre. |

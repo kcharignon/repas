@@ -4,13 +4,13 @@
 - **Jalon** : M5 Intégration et livraison
 - **Taille** : S
 - **Dépend de** : DRV-502, DRV-503
-- **Statut** : à faire
+- **Statut** : à faire (procédure écrite dans [`../recette.md`](../recette.md) le 2026-10-18 ; à dérouler par l'utilisateur sur son téléphone)
 - **Lire d'abord** : `docs/drive/recette.md` (DRV-501), `docs/drive/runbook.md` (DRV-503), skill `repas-ops`.
 
 ## Portée
 
-L'utilisateur déroule la checklist de `recette.md` sur son téléphone Android avec son compte Leclerc et une vraie liste, sans valider de commande. Un agent le guide **une étape à la fois** (jamais d'identifiant dans le chat). Si tout est bon, l'utilisateur approuve le déploiement et active `DRIVE_ENABLED=true` sur le serveur (ADR 0017), puis le chantier passe en « usage » : ADR 0022 et 0023 `Accepted` (si ce n'est pas déjà fait), roadmap close, `CLAUDE.md` à jour.
+L'utilisateur déroule la checklist de `recette.md` sur son téléphone Android avec son compte Leclerc et une vraie liste, sans valider de commande. Un agent le guide **une étape à la fois** (jamais d'identifiant dans le chat). Comme l'envoi n'existe pas interrupteur coupé, la recette elle-même se fait **interrupteur allumé** : après un déploiement stable du back et du front (`DRIVE_ENABLED` encore coupé), l'utilisateur approuve les déploiements, allume `DRIVE_ENABLED=true` avec le script du skill `repas-ops` (ADR 0017), déroule la recette (la famille est prévenue de ne pas s'en servir avant la fin), puis décide de le laisser allumé ou de le couper. Si tout est bon, le chantier passe en « usage » : ADR 0022 et 0023 `Accepted` (déjà fait), roadmap close, `CLAUDE.md` à jour.
 
 ## Critères d'acceptation
 
-La recette est signée (date, version du favori, version de Repas) dans `docs/drive/recette.md` ; la fonction est activée en production ; le runbook est connu de l'utilisateur.
+La recette est signée dans `docs/drive/recette.md` (date, version de l'application, de l'agent, du back et du front) ; la fonction est activée en production si l'utilisateur le décide ; le runbook est connu de l'utilisateur.

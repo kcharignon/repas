@@ -97,11 +97,11 @@ Prépare l'application « Repas Drive » (WebView en mode ordinateur, agent emba
 
 ## M5 — Intégration et livraison
 
-- [ ] [DRV-501](tickets/DRV-501-integration-dev.md) back+front · M · Intégration en développement et checklist de recette · dépend de : M2, M3, M3b, M4 · Issue : [#83](https://github.com/kcharignon/repas/issues/83) · partie back faite (PR #156)
+- [ ] [DRV-501](tickets/DRV-501-integration-dev.md) back+front · M · Intégration en développement et checklist de recette · dépend de : M2, M3, M3b, M4 · Issue : [#83](https://github.com/kcharignon/repas/issues/83) · partie back faite (PR #156), partie front faite (repas-front#106), `recette.md` écrite ; reste le parcours réel dans l'émulateur (DRV-319 partie 2) et `BASKET_PATH`
 - [x] [DRV-502](tickets/DRV-502-deploiement.md) back · S · Déploiement, interrupteur, retour arrière · dépend de : 501 · Issue : [#84](https://github.com/kcharignon/repas/issues/84)
 - [x] [DRV-503](tickets/DRV-503-runbook-leclerc-change.md) back · S · Runbook « Leclerc a changé » · dépend de : 501 · Issue : [#85](https://github.com/kcharignon/repas/issues/85)
 - [ ] [DRV-504](tickets/DRV-504-note-vie-privee.md) back+front · S · Note de vie privée (partie back faite : texte et registre, PR #152 ; reste l'affichage dans le front) · dépend de : 204 · Issue : [#86](https://github.com/kcharignon/repas/issues/86)
-- [ ] [DRV-505](tickets/DRV-505-recette-reelle.md) humain · S · Recette en conditions réelles et activation · dépend de : 502, 503 · Issue : [#87](https://github.com/kcharignon/repas/issues/87)
+- [ ] [DRV-505](tickets/DRV-505-recette-reelle.md) humain · S · Recette en conditions réelles et activation (procédure écrite : [`recette.md`](recette.md), à dérouler sur le téléphone, interrupteur allumé) · dépend de : 502, 503 · Issue : [#87](https://github.com/kcharignon/repas/issues/87)
 
 ## Backlog (non détaillé, à écrire quand il devient utile)
 
