@@ -1,6 +1,15 @@
 <?php
 
+use Repas\Drive\Application\Command\ForgetChoice\ForgetChoiceCommand;
 use Repas\Drive\Application\Command\SaveDriveSettings\SaveDriveSettingsCommand;
+use Repas\Drive\Application\Command\SaveProductChoices\ChoiceAction;
+use Repas\Drive\Application\Command\SaveProductChoices\ChoiceIntent;
+use Repas\Drive\Application\Command\SaveProductChoices\Placement;
+use Repas\Drive\Application\Command\SaveProductChoices\ProductInput;
+use Repas\Drive\Application\Command\SaveProductChoices\SaveProductChoicesCommand;
+use Repas\Drive\Domain\Model\ContentUnit;
+use Repas\Drive\Domain\Model\ProductContent;
+use Repas\Drive\Domain\Model\ProductPrice;
 use Repas\Drive\Domain\Model\Retailer;
 use Repas\Repas\Application\Command\ActivatedShoppingList\ActivatedShoppingListCommand;
 use Repas\Repas\Application\Command\AddIngredientToShoppingList\AddIngredientToShoppingListCommand;
@@ -339,12 +348,47 @@ return [
 
         return new SaveDriveSettingsCommand($user->getId(), Retailer::LECLERC, '654321', 'Ville-Test', 'https://autre.leclercdrive.fr/magasin-654321-654321');
     },
-    // Compte qui a trois recettes planifiées dans une liste, dont une est copiée par un autre utilisateur
+    // Un ingrédient déjà mémorisé (deux produits acceptés, un refusé), un nouveau produit préféré
+    'choix-drive' => static function (WriteBudgetTestCase $t): object {
+        $user = $t->savedUser();
+        $t->savedDriveSettings($user);
+        $t->savedDriveChoice($user, 'farine', ['1', '2'], ['9']);
+
+        return new SaveProductChoicesCommand($user->getId(), Retailer::LECLERC, '123456', [
+            new ChoiceIntent('farine', ChoiceAction::ADD_PRODUCT, Placement::PRIMARY, new ProductInput('3', 'Farine de blé T55 1 kg', null, new ProductContent(1000, ContentUnit::G), new ProductPrice(149))),
+        ]);
+    },
+    // Le même use case avec un lot de 41 intentions sur 11 ingrédients, dont dix déjà mémorisés : même budget que ci-dessus
+    'choix-drive-lot' => static function (WriteBudgetTestCase $t): object {
+        $user = $t->savedUser();
+        $t->savedDriveSettings($user);
+        $intents = [];
+        foreach (range(1, 10) as $i) {
+            $slug = "ingredient-$i";
+            $t->savedDriveChoice($user, $slug, [(string) $i, (string) ($i + 100)], [(string) ($i + 200)]);
+            $intents[] = new ChoiceIntent($slug, ChoiceAction::ADD_PRODUCT, Placement::PRIMARY, new ProductInput((string) ($i + 300), "Produit $i", null, new ProductContent(500, ContentUnit::G), new ProductPrice(100 + $i)));
+            $intents[] = new ChoiceIntent($slug, ChoiceAction::ADD_PRODUCT, Placement::FALLBACK, new ProductInput((string) ($i + 400), "Produit de secours $i"));
+            $intents[] = new ChoiceIntent($slug, ChoiceAction::REJECT_PRODUCT, null, new ProductInput((string) $i, "Produit refusé $i"));
+            $intents[] = new ChoiceIntent($slug, ChoiceAction::REFRESH_PRICE, null, new ProductInput((string) ($i + 100), null, null, null, new ProductPrice(200 + $i)));
+        }
+        $intents[] = new ChoiceIntent('sel', ChoiceAction::HAVE_AT_HOME);
+
+        return new SaveProductChoicesCommand($user->getId(), Retailer::LECLERC, '123456', $intents);
+    },
+    'oublier-choix-drive' => static function (WriteBudgetTestCase $t): object {
+        $user = $t->savedUser();
+        $t->savedDriveSettings($user);
+        $t->savedDriveChoice($user, 'farine', ['1', '2'], ['9']);
+
+        return new ForgetChoiceCommand($user->getId(), Retailer::LECLERC, '123456', 'farine');
+    },
+    // Compte qui a trois recettes planifiées dans une liste (dont une est copiée par un autre utilisateur), un magasin et une préférence de produits
     'supprimer-compte' => static function (WriteBudgetTestCase $t): object {
         $owner = $t->savedUser();
         $recipes = $t->typicalRecipes($owner);
         $t->savedShoppingList($owner, $recipes);
         $t->savedDriveSettings($owner);
+        $t->savedDriveChoice($owner, 'farine', ['1', '2'], ['9']);
         $t->savedRecipe($t->savedUser(), new RecipeBuilder()->isPastaCarbonara()->withOriginalId($recipes[0]->getId()));
 
         return new DeleteUserCommand($owner->getId(), 'administrateur');

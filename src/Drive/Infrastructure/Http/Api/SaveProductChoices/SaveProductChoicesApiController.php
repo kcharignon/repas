@@ -1,0 +1,47 @@
+<?php
+
+namespace Repas\Drive\Infrastructure\Http\Api\SaveProductChoices;
+
+
+use Nelmio\ApiDocBundle\Attribute\Model;
+use OpenApi\Attributes as OA;
+use Repas\Drive\Application\Command\SaveProductChoices\SaveProductChoicesCommand;
+use Repas\Shared\Application\Interface\CommandBusInterface;
+use Repas\Shared\Domain\Interface\AuthenticatedUser;
+use Repas\Shared\Infrastructure\Http\RequiresDrive;
+use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Attribute\MapRequestPayload;
+use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Security\Http\Attribute\CurrentUser;
+use Symfony\Component\Security\Http\Attribute\IsGranted;
+
+#[RequiresDrive]
+final class SaveProductChoicesApiController extends AbstractController
+{
+    public function __construct(
+        private readonly CommandBusInterface $commandBus,
+    ) {
+    }
+
+    #[Route(path: '/api/v1/drive/choices', name: 'api_save_product_choices', methods: ['PUT'])]
+    #[IsGranted('ROLE_USER')]
+    #[OA\Put(summary: "Mémorise un lot d'intentions de l'agent (produits choisis, refusés, « j'en ai toujours ») dans les préférences de l'utilisateur connecté")]
+    #[OA\Tag(name: 'Drive')]
+    #[OA\RequestBody(required: true, content: new OA\JsonContent(ref: new Model(type: SaveProductChoicesPayload::class)))]
+    #[OA\Response(response: 204, description: 'Préférences enregistrées (tout ou rien)')]
+    #[OA\Response(response: 404, description: 'Fonction drive coupée (message `DRIVE_DISABLED`)')]
+    #[OA\Response(response: 409, description: "Pas de magasin enregistré (message `DRIVE_NOT_CONFIGURED`), ou `storeId` n'est pas le magasin courant (message `DRIVE_STORE_MISMATCH`)")]
+    #[OA\Response(response: 422, description: "Corps invalide, ou intention refusée (message `DRIVE_CHOICE_INVALID`) : identifiant, libellé, contenu ou prix hors des bornes, plus de 200 intentions, plus de 5 produits acceptés ou 20 refusés pour un ingrédient, produit à la fois choisi et refusé pour un ingrédient")]
+    public function __invoke(#[CurrentUser] AuthenticatedUser $user, #[MapRequestPayload] SaveProductChoicesPayload $payload): Response
+    {
+        $this->commandBus->dispatch(new SaveProductChoicesCommand(
+            userId: $user->getId(),
+            retailer: $payload->retailer,
+            storeId: $payload->storeId,
+            intents: array_map(static fn(ChoiceIntentPayload $choice) => $choice->toIntent(), $payload->choices),
+        ));
+
+        return new Response(status: Response::HTTP_NO_CONTENT);
+    }
+}

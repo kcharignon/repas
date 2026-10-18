@@ -1,0 +1,20 @@
+<?php
+
+namespace Repas\Drive\Application\Command\SaveProductChoices;
+
+
+/**
+ * Une intention de l'utilisateur sur un ingrédient. Cohérence exigée (sinon `DRIVE_CHOICE_INVALID`) : `ADD_PRODUCT` a un produit
+ * (avec libellé) et un placement ; `REJECT_PRODUCT` un produit (avec libellé) sans placement ; `HAVE_AT_HOME` ni produit ni
+ * placement ; `REFRESH_PRICE` un produit avec un prix, sans placement.
+ */
+final readonly class ChoiceIntent
+{
+    public function __construct(
+        public string $ingredientSlug,
+        public ChoiceAction $action,
+        public ?Placement $placement = null,
+        public ?ProductInput $product = null,
+    ) {
+    }
+}
