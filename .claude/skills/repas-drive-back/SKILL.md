@@ -62,7 +62,8 @@ Complète `repas-dev` (recettes de lecture, d'API et d'écriture : ne pas les re
 ### Ordre et sens des intentions (`PUT /drive/choices`)
 - Intentions appliquées **dans l'ordre reçu** pour un même ingrédient. `ADD_PRODUCT` et `REJECT_PRODUCT` sur un ingrédient « j'en ai toujours » le font redevenir « produits » : pour garder « j'en ai toujours » avec des refus, envoyer `HAVE_AT_HOME` **après** les `REJECT_PRODUCT` (il efface tout).
 - Un produit à la fois ajouté et refusé pour un même ingrédient dans un lot : `422 DRIVE_CHOICE_INVALID`, rien d'enregistré. `REFRESH_PRICE` n'a ni libellé ni placement et est **sans effet, sans erreur**, si le produit est inconnu ou non accepté par l'utilisateur pour cet ingrédient.
-- Ordre des contrôles du handler : lot et intentions (aucune lecture), réglages (`DRIVE_NOT_CONFIGURED`, `DRIVE_STORE_MISMATCH`), puis produits, préférences, écritures. Le prix n'est jamais renvoyé en lecture (DRV-611).
+- `PUT /drive/choices/{slug}` (DRV-208) **remplace d'un coup** la préférence d'un ingrédient (l'ordre de `accepted` donne les rangs) : absente = créée ; listes vides et `haveAtHome` faux = préférence supprimée (sans erreur si elle n'existait pas) ; `haveAtHome` vrai efface les produits, et avec des produits dans la demande = `422` ; un produit n'est jamais supprimé de `drive_product`.
+- Ordre des contrôles du handler : lot et intentions (aucune lecture), réglages (`DRIVE_NOT_CONFIGURED`, `DRIVE_STORE_MISMATCH`), puis produits, préférences, écritures. Le prix n’est pas renvoyé par `GET /drive/choices` (l’estimation du coût d’une liste est le ticket DRV-611, à faire).
 
 ### Plan d'envoi (`GET /drive/plans/{id}`)
 - Un `QueryHandler` délègue au loader ; le loader peut appeler `PackCalculator` (fonction pure du domaine) mais ne manipule aucun agrégat. 4 requêtes au plus quelle que soit la liste. `packs` est calculé **par produit** ; `searchQuery` = nom de l'ingrédient tel quel. Changer ce contrat = changer le message `plan` du front (voir § 5).
@@ -71,14 +72,14 @@ Complète `repas-dev` (recettes de lecture, d'API et d'écriture : ne pas les re
 ### Erreurs, version, API
 - Les erreurs métier sont des **codes en majuscules** (constantes de classe + factory statique), rendus tels quels par `ApiExceptionListener` : `{error:{message:"DRIVE_NOT_CONFIGURED"}}`. Le front les distingue par ce texte : ne pas les renommer. `403` réservé à l'autorisation ; domaine = 404 / 409 / 422.
 - Liste de courses : `?int $expectedVersion = null` dans toute nouvelle commande, `assertVersion()` juste après le chargement, `EntityVersion::expected($request)` dans le controller, `#[OA\Parameter(ref: '#/components/parameters/IfMatch')]` et réponse `412`.
-- Aucun plan, choix ni donnée d'enseigne en query string (Caddy journalise l'URI) ; aucun champ de mot de passe, cookie ou jeton d'enseigne dans `docs/api/openapi.json`. Les identifiants de produit sont des **chaînes** (`"555111"`).
+- Aucun plan, choix ni donnée d'enseigne en query string (Caddy journalise l'URI) ; aucun champ de mot de passe, cookie ou jeton d'enseigne dans `docs/api/openapi.json`. Les identifiants de produit sont des **chaînes** (`"555111"`) ; ne pas confondre `retailerProductId` (identifiant de l'enseigne, `PUT /drive/choices`) et `productId` (identifiant Repas, UUID v5, lu dans `GET /drive/choices` et renvoyé par `PUT /drive/choices/{slug}`).
 - Après tout changement d'API : `make openapi`, relire le diff de `docs/api/openapi.json` ; n'ajouter que des champs (le front fige le contrat sur un commit), jamais retirer ni renommer.
 
 ### Purge du compte
 - Toute entité qui gagne une colonne `owner|author|creator|user` est ajoutée à `PurgeUserDriveDataHandler` (ou à son équivalent) **et** à `UserOwnedDataCoverageTest::ERASED_WITH_THE_USER` ; `drive_choice_product` (sans colonne utilisateur) se purge par les ids des préférences de l'utilisateur. Le budget de `supprimer-compte` monte alors : l'écrire dans `budgets.php` (ADR 0021).
 
 ### Budgets SQL (ADR 0010 règle 12)
-- Tout use case d'écriture a un scénario dans `tests/Repas/WriteBudget/scenarios.php` (même pour `Drive`) ; un budget ne fait que baisser : trop gourmand = `make test` rouge ; allégé = `make sql-budget-update` et `budgets.php` dans le commit. Les budgets Drive actuels (`reglages-drive` 2, `choix-drive` et `choix-drive-lot` 7, `oublier-choix-drive` 4) sont constants quel que soit le lot : c'est voulu.
+- Tout use case d'écriture a un scénario dans `tests/Repas/WriteBudget/scenarios.php` (même pour `Drive`) ; un budget ne fait que baisser : trop gourmand = `make test` rouge ; allégé = `make sql-budget-update` et `budgets.php` dans le commit. Les budgets Drive actuels (`reglages-drive` 2, `choix-drive` et `choix-drive-lot` 7, `oublier-choix-drive` 4, `remplacer-preference-drive` 6) sont constants quel que soit le lot ou la taille de la préférence : c'est voulu.
 
 ## 3. Tests
 
@@ -88,10 +89,10 @@ Complète `repas-dev` (recettes de lecture, d'API et d'écriture : ne pas les re
 
 ## 4. Recettes
 
-### 4.1 Nouveau use case d'écriture Drive (ex. `ReplaceIngredientPreference`, DRV-208)
-1. Domaine d'abord (`Choice` : méthode qui valide tout ou ne change rien) + test à table ; exception par factory dans `DriveException`.
+### 4.1 Nouveau use case d'écriture Drive (modèle : `ReplaceIngredientPreference`, DRV-208, fait)
+1. Domaine d'abord : une méthode **dédiée** de `Choice` qui valide tout ou ne change rien (`Choice::replace`), plutôt que de composer `markHaveAtHome`, `addFallback` et `reject`, qui laisseraient passer un doublon ou un produit dans les deux listes ; test à table ; exception par factory dans `DriveException`.
 2. Port (`Domain/Interface`), implémentation PostgreSQL (SQL direct si lot), alias dans `config/repositories.yaml`, double `InMemory`, builder.
-3. `Application/Command/{UseCase}/` : Command `readonly` + Handler `#[AsMessageHandler]` ; ordre des contrôles (forme, réglages, charges en une requête, écritures) ; magasin = celui des réglages sinon `DRIVE_STORE_MISMATCH`.
+3. `Application/Command/{UseCase}/` : Command `readonly` + Handler `#[AsMessageHandler]` ; ordre des contrôles (bornes sans aucune lecture, réglages, charges en une requête, écritures) ; magasin = celui des réglages sinon `DRIVE_STORE_MISMATCH` ; un identifiant de produit doit désigner un produit **de ce magasin**, sinon `DRIVE_CHOICE_INVALID`.
 4. Controller `Infrastructure/Http/Api/{UseCase}/` : `#[RequiresDrive]`, `#[IsGranted('ROLE_USER')]`, `#[MapRequestPayload]`, `204`, `#[OA\…]` complètes (404 `DRIVE_DISABLED`, 409, 422).
 5. Scénario `WriteBudget` ; `make openapi`.
 
