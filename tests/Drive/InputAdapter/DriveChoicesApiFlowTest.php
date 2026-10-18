@@ -206,6 +206,93 @@ class DriveChoicesApiFlowTest extends DatabaseTestCase
         $this->assertSame(2, (int) $this->entityManager->getConnection()->fetchOne('SELECT COUNT(*) FROM drive_choice'));
     }
 
+    public function testReplacingThePreferenceOfAnIngredientFromTheManagementScreen(): void
+    {
+        // Given : farine avec deux produits classés et un refus, lus par GET comme le fait l'écran
+        $user = $this->userWithAStore();
+        $this->put($user, [
+            $this->add('farine', 'PRIMARY', '555111', 'Farine T55 1 kg'),
+            $this->add('farine', 'FALLBACK', '222333', 'Farine T45 1 kg'),
+            ['ingredientSlug' => 'farine', 'action' => 'REJECT_PRODUCT', 'product' => ['retailerProductId' => '999000', 'label' => 'Farine complète bio']],
+        ]);
+        $this->get($user);
+        $ids = [];
+        foreach ([...$this->jsonBody()['member'][0]['accepted'], ...array_map(static fn(array $product): array => ['product' => $product], $this->jsonBody()['member'][0]['rejected'])] as $line) {
+            $ids[$line['product']['retailerProductId']] = $line['product']['productId'];
+        }
+
+        // When : l'ordre s'inverse
+        $this->replace($user, 'farine', false, [$ids['222333'], $ids['555111']], [$ids['999000']]);
+
+        // Then
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->assertSame([['222333', '555111'], ['999000']], $this->readFarine($user));
+
+        // When : 222333 est retiré, 999000 est accepté de nouveau, 222333 devient refusé
+        $this->replace($user, 'farine', false, [$ids['555111'], $ids['999000']], [$ids['222333']]);
+
+        // Then
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->assertSame([['555111', '999000'], ['222333']], $this->readFarine($user));
+
+        // When : une demande invalide (produit inconnu, doublon, à la fois accepté et refusé, « j'en ai toujours » avec produits)
+        foreach ([
+            [false, ['inconnu'], []],
+            [false, [$ids['555111'], $ids['555111']], []],
+            [false, [$ids['555111']], [$ids['555111']]],
+            [true, [$ids['555111']], []],
+        ] as [$haveAtHome, $accepted, $rejected]) {
+            $this->replace($user, 'farine', $haveAtHome, $accepted, $rejected);
+
+            // Then : rien n'est enregistré
+            $this->assertSame([422, ['error' => ['message' => 'DRIVE_CHOICE_INVALID']]], [$this->client->getResponse()->getStatusCode(), $this->jsonBody()]);
+        }
+        $this->assertSame([['555111', '999000'], ['222333']], $this->readFarine($user));
+
+        // When : un autre magasin
+        $this->replace($user, 'farine', false, [], [], '654321');
+
+        // Then
+        $this->assertSame([409, ['error' => ['message' => 'DRIVE_STORE_MISMATCH']]], [$this->client->getResponse()->getStatusCode(), $this->jsonBody()]);
+
+        // When : « j'en ai toujours », puis plus rien
+        $this->replace($user, 'farine', true, [], []);
+
+        // Then
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->get($user);
+        $this->assertSame([true, [], []], [$this->jsonBody()['member'][0]['haveAtHome'], $this->jsonBody()['member'][0]['accepted'], $this->jsonBody()['member'][0]['rejected']]);
+        $this->replace($user, 'farine', false, [], []);
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->get($user);
+        $this->assertSame(['member' => [], 'totalItems' => 0], $this->jsonBody());
+        $this->assertSame(3, (int) $this->entityManager->getConnection()->fetchOne('SELECT COUNT(*) FROM drive_product'));
+        $this->assertSame(0, (int) $this->entityManager->getConnection()->fetchOne('SELECT COUNT(*) FROM drive_choice_product'));
+    }
+
+
+    public function testAUserOnlyReplacesHisOwnPreferences(): void
+    {
+        // Given : deux utilisateurs avec la même farine, le produit est partagé
+        $alice = $this->userWithAStore();
+        $bob = $this->userWithAStore();
+        $this->put($alice, [$this->add('farine', 'PRIMARY', '555111', 'Farine T55 1 kg'), $this->add('farine', 'FALLBACK', '222333', 'Farine T45 1 kg')]);
+        $this->put($bob, [$this->add('farine', 'PRIMARY', '555111', 'Farine T55 1 kg')]);
+        $this->get($alice);
+        $aliceProducts = array_map(static fn(array $accepted): string => $accepted['product']['productId'], $this->jsonBody()['member'][0]['accepted']);
+
+        // When : Bob remplace sa farine par les produits d'Alice, dans l'autre ordre
+        $this->replace($bob, 'farine', false, array_reverse($aliceProducts), []);
+
+        // Then : Alice n'a pas changé
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->get($alice);
+        $this->assertSame($aliceProducts, array_map(static fn(array $accepted): string => $accepted['product']['productId'], $this->jsonBody()['member'][0]['accepted']));
+        $this->get($bob);
+        $this->assertSame(array_reverse($aliceProducts), array_map(static fn(array $accepted): string => $accepted['product']['productId'], $this->jsonBody()['member'][0]['accepted']));
+    }
+
+
     public function testListingWithoutStoreIsEmpty(): void
     {
         // When
@@ -291,6 +378,29 @@ class DriveChoicesApiFlowTest extends DatabaseTestCase
     private function countsBySlug(): array
     {
         return array_map('intval', $this->entityManager->getConnection()->fetchAllKeyValue('SELECT ingredient_slug, COUNT(*) FROM drive_choice GROUP BY ingredient_slug'));
+    }
+
+    /**
+     * @return array{list<string>, list<string>} retailerProductId des produits acceptés (dans l'ordre) puis refusés de la farine
+     */
+    private function readFarine(User $user): array
+    {
+        $this->get($user);
+        $farine = $this->jsonBody()['member'][0];
+
+        return [
+            array_map(static fn(array $accepted): string => $accepted['product']['retailerProductId'], $farine['accepted']),
+            array_map(static fn(array $product): string => $product['retailerProductId'], $farine['rejected']),
+        ];
+    }
+
+    /**
+     * @param list<string> $accepted
+     * @param list<string> $rejected
+     */
+    private function replace(User $user, string $slug, bool $haveAtHome, array $accepted, array $rejected, string $storeId = '123456'): void
+    {
+        $this->request('PUT', "/api/v1/drive/choices/$slug", $user, json_encode(['retailer' => 'leclerc', 'storeId' => $storeId, 'haveAtHome' => $haveAtHome, 'accepted' => $accepted, 'rejected' => $rejected], JSON_THROW_ON_ERROR));
     }
 
     private function userWithAStore(): User

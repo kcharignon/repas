@@ -254,6 +254,35 @@ final class Choice implements ModelInterface
     }
 
     /**
+     * Remplace d'un coup la préférence (écran de gestion des produits) : « j'en ai toujours », ou les produits acceptés dans
+     * l'ordre donné (le préféré d'abord) et les produits refusés. Un produit n'apparaît qu'une fois dans l'ensemble des deux
+     * listes ; « j'en ai toujours » n'a aucun produit.
+     *
+     * @param list<string> $accepted
+     * @param list<string> $rejected
+     *
+     * @throws DriveException `invalidChoice()` pour plus de 5 produits acceptés ou 20 refusés, un doublon, un produit à la fois
+     *                        accepté et refusé, ou « j'en ai toujours » avec des produits
+     */
+    public function replace(bool $haveAtHome, array $accepted, array $rejected): self
+    {
+        $products = [...$accepted, ...$rejected];
+        $valid = count($accepted) <= self::MAX_ACCEPTED
+            && count($rejected) <= self::MAX_REJECTED
+            && count(array_unique($products)) === count($products)
+            && (!$haveAtHome || $products === []);
+        if (!$valid) {
+            throw DriveException::invalidChoice();
+        }
+
+        $this->kind = $haveAtHome ? ChoiceKind::HAVE_AT_HOME : ChoiceKind::PRODUCTS;
+        $this->accepted = array_values($accepted);
+        $this->rejected = array_values($rejected);
+
+        return $this;
+    }
+
+    /**
      * « J'en ai toujours » : les produits acceptés et refusés sont effacés.
      */
     public function markHaveAtHome(): self
