@@ -24,7 +24,7 @@ Faits (code lu le 2026-10-17) :
 6. L'envoi libère la place de liste active ; `CreateShoppingList` ne touche pas une liste `SENT` ; `RemoveShoppingListCompletedEventListener` ne supprime que les listes `COMPLETED`.
 7. Aucun événement de domaine à l'envoi ni à la réouverture ; `ShoppingListCompletedEvent` reste émis par `complete`, y compris depuis `SENT`.
 8. Les DTO de lecture ajoutent `isSent` et `sentAt` ; la documentation OpenAPI ajoute `SENT` à l'énumération `status`.
-9. **Déploiement** : l'interrupteur `DRIVE_ENABLED` est coupé par défaut ; tant qu'il l'est, `send` répond `404 DRIVE_DISABLED` et aucune liste `SENT` n'existe. Retour arrière avec des listes `SENT` : `UPDATE shopping_list SET status = 'ACTIVE', sent_at = NULL WHERE status = 'SENT';`.
+9. **Déploiement** : l'interrupteur `DRIVE_ENABLED` est coupé par défaut ; tant qu'il l'est, `send` répond `404 DRIVE_DISABLED` et aucune liste `SENT` n'existe. Retour arrière avec des listes `SENT` : `UPDATE shopping_list SET status = 'ACTIVE', sent_at = NULL WHERE status = 'SENT';`. **Amendement (DRV-613, revue de sécurité C3)** : `reopen` n'est plus derrière l'interrupteur. Il n'appelle rien de l'enseigne ; interrupteur coupé il répond comme d'habitude (`204`, ou `409 SHOPPING_LIST_NOT_SENT`), la sécurité et le voter propriétaire restant. Ainsi une coupure d'urgence (l'enseigne change son site) ne fige pas les listes déjà envoyées : chacun rouvre la sienne. `send` et les routes de `Drive` restent derrière l'interrupteur (`404 DRIVE_DISABLED`). Le script en bloc ne sert plus qu'au retour vers une version du code qui ne connaît pas `SENT` (cette version n'a pas de `reopen`).
 
 ## Conséquences
 

@@ -58,7 +58,7 @@ Décisions : [ADR 0022](adr/0022-remplissage-du-panier-drive.md) et [ADR 0023](a
 
 | Variable | Où | Valeur | Rôle |
 |---|---|---|---|
-| `DRIVE_ENABLED` | `/opt/repas/.env` du serveur ; `deploy/compose.yaml` la transmet au conteneur `php` (`${DRIVE_ENABLED:-false}`) ; modèle dans `deploy/.env.example` | `false` (défaut, aussi quand la ligne est absente) ou `true` | Interrupteur de la fonction. Coupé : `send`, `reopen` et les routes `/api/v1/drive/*` répondent `404 DRIVE_DISABLED` (sauf `GET /drive/settings`, qui répond `enabled: false`) ; aucune liste n'est envoyée. |
+| `DRIVE_ENABLED` | `/opt/repas/.env` du serveur ; `deploy/compose.yaml` la transmet au conteneur `php` (`${DRIVE_ENABLED:-false}`) ; modèle dans `deploy/.env.example` | `false` (défaut, aussi quand la ligne est absente) ou `true` | Interrupteur de la fonction. Coupé : `send` et les routes `/api/v1/drive/*` répondent `404 DRIVE_DISABLED` (sauf `GET /drive/settings`, qui répond `enabled: false`) ; aucune liste n'est envoyée. `reopen` n'est **pas** concerné : il reste disponible (ADR 0023 §9). |
 | `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD` | secrets GitHub du dépôt **front**, posés par l'humain (jamais vus par un agent ni par le chat) | clé de signature de l'application, créée et gardée par l'utilisateur hors du dépôt | Signature de l'APK publié (ticket DRV-315, dépôt front). Rien à poser sur le serveur. |
 
 Le front n'a pas de variable : il lit `enabled` dans `GET /api/v1/drive/settings`. `FRONT_URL`, `MAILER_*` et les autres variables ne changent pas.
@@ -133,7 +133,7 @@ Sortie attendue : `OK : DRIVE_ENABLED=true` (ou `false`), `le conteneur php le v
 
 **Couper est toujours sûr et immédiat.** Rien n'est effacé : les produits mémorisés, les réglages et les listes restent en base. Effets visibles tant que c'est coupé :
 - le front (qui lit `enabled`) n'offre plus l'envoi ;
-- les listes déjà `SENT` restent **lisibles**, on peut les **terminer** (`complete`) ou les **supprimer** ; on ne peut pas les **rouvrir** (`reopen` répond `404 DRIVE_DISABLED`) : pour les rouvrir en bloc, voir « Listes `SENT` » plus bas ;
+- les listes déjà `SENT` restent **lisibles**, on peut les **terminer** (`complete`), les **supprimer** ou les **rouvrir** une à une depuis l'interface (`reopen` reste disponible interrupteur coupé, ADR 0023 §9 : une coupure d'urgence ne fige pas les listes) ; elles restent verrouillées tant qu'elles sont envoyées. Le script en bloc (« Listes `SENT` » plus bas) ne sert qu'avant de remettre une version du code qui ne connaît pas `SENT` ;
 - l'application et l'agent ne sont pas touchés (ils n'appellent rien tant que le front ne leur envoie pas de plan).
 
 Recommandé : couper dès que Leclerc change son site, bloque les requêtes de façon répétée, ou qu'un compte Leclerc est suspendu (procédure complète : [`drive/runbook.md`](drive/runbook.md)).

@@ -103,11 +103,11 @@ Décision de l'utilisateur ; un agent l'accompagne une étape à la fois.
 
 Ce qui change ensuite :
 - le front lit `enabled: false` : il n'offre plus l'envoi, et les réglages du drive disent que la fonction n'est pas activée (comportement prévu par DRV-403 et DRV-404, à contrôler à la recette DRV-505) ;
-- `send`, `reopen` et les routes du drive répondent `404 DRIVE_DISABLED` ;
-- les **listes déjà envoyées** (`SENT`) restent **lisibles** et peuvent être **terminées** ou **supprimées** ; elles restent verrouillées (non modifiables) et **ne peuvent plus être rouvertes** par l'interface tant que la fonction est coupée ;
+- `send` et les routes du drive répondent `404 DRIVE_DISABLED` ; `reopen` continue de répondre (ADR 0023 §9) ;
+- les **listes déjà envoyées** (`SENT`) restent **lisibles** et peuvent être **terminées** ou **supprimées** ; elles restent verrouillées (non modifiables) tant qu'elles sont envoyées, mais **chacun peut rouvrir la sienne** depuis l'interface même fonction coupée (`reopen` n'est pas derrière l'interrupteur) ;
 - les produits mémorisés, les réglages de magasin et les listes sont **intacts** ; l'application et l'agent ne sont pas touchés.
 
-**Rouvrir en bloc les listes envoyées** (si des proches veulent les modifier pendant la coupure) : script `rouvrir-listes-envoyees.sh`, d'abord sans argument (lecture seule), puis avec `--appliquer` après accord : voir [`../production.md`](../production.md), « Listes `SENT` ». Il fait une sauvegarde avant.
+**Rouvrir en bloc les listes envoyées** (utile surtout avant de remettre une version du code qui ne connaît pas `SENT`, qui n'a pas de `reopen` ; pour une simple coupure, chacun rouvre sa liste) : script `rouvrir-listes-envoyees.sh`, d'abord sans argument (lecture seule), puis avec `--appliquer` après accord : voir [`../production.md`](../production.md), « Listes `SENT` ». Il fait une sauvegarde avant.
 
 ## 5. Se replier : le mode assisté
 

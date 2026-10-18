@@ -12,10 +12,12 @@ use Repas\Repas\Domain\Interface\ShoppingListRowRepository;
 use Repas\Repas\Domain\Model\Recipe;
 use Repas\Repas\Domain\Model\ShoppingList;
 use Repas\Repas\Domain\Model\ShoppingListStatus;
+use Repas\Shared\Application\Interface\DriveFeature;
 use Repas\Tests\Helper\Builder\IngredientBuilder;
 use Repas\Tests\Helper\Builder\RecipeBuilder;
 use Repas\Tests\Helper\Builder\ShoppingListBuilder;
 use Repas\Tests\Helper\Builder\UserBuilder;
+use Repas\Tests\Helper\ControlledDriveFeature;
 use Repas\Tests\Helper\DatabaseTestCase;
 use Repas\Tests\Helper\DataPersister;
 use Repas\User\Domain\Interface\UserRepository;
@@ -436,11 +438,12 @@ class ShoppingListWriteApiFlowTest extends DatabaseTestCase
     /**
      * Liste active d'un repas et d'une ligne (l'ingrédient de la recette) : elle peut être envoyée.
      */
-    private function savedSendableList(User $owner): ShoppingList
+    private function savedSendableList(User $owner, ShoppingListStatus $status = ShoppingListStatus::ACTIVE): ShoppingList
     {
         $recipe = $this->savedRecipe($owner);
         $shoppingList = new ShoppingListBuilder()
             ->withOwner($owner)
+            ->withStatus($status)
             ->addRecipe($recipe)
             ->addIngredient($recipe->getRows()->reset()->getIngredient())
             ->build();
@@ -578,6 +581,37 @@ class ShoppingListWriteApiFlowTest extends DatabaseTestCase
         $this->request('POST', '/api/v1/shopping-lists/unknown-list/send', $owner);
         $this->assertSame(404, $this->client->getResponse()->getStatusCode());
         $this->assertSame(ShoppingListStatus::ACTIVE, $this->shoppingLists()->findOneById($empty->getId())->getStatus());
+    }
+
+    /**
+     * DRV-613 (constat C3) : l'interrupteur coupé après un envoi (retour arrière, coupure d'urgence) ne fige pas la liste. L'envoi,
+     * lui, est refusé ; les autres écritures de la liste restent verrouillées tant qu'elle est envoyée.
+     */
+    public function testASentListCanBeReopenedWhenTheSwitchIsOffAndSendingIsRefused(): void
+    {
+        // Given : l'interrupteur est coupé, une liste est restée envoyée (retour arrière, coupure d'urgence)
+        $owner = $this->savedUser();
+        static::getContainer()->set(DriveFeature::class, new ControlledDriveFeature(false));
+        $sent = $this->savedSendableList($owner, ShoppingListStatus::SENT);
+        $otherOwner = $this->savedUser();
+        $other = $this->savedSendableList($otherOwner);
+
+        // When : l'envoi d'une autre liste, interrupteur coupé
+        $this->request('POST', '/api/v1/shopping-lists/' . $other->getId() . '/send', $otherOwner);
+
+        // Then
+        $this->assertSame([404, ['error' => ['message' => 'DRIVE_DISABLED']]], [$this->client->getResponse()->getStatusCode(), $this->jsonBody()]);
+
+        // When : la liste envoyée reste verrouillée (écriture refusée), puis rouverte
+        $this->request('PATCH', '/api/v1/shopping-lists/' . $sent->getId(), $owner, ['name' => 'Autre nom']);
+        $this->assertSame(409, $this->client->getResponse()->getStatusCode());
+        $this->request('POST', '/api/v1/shopping-lists/' . $sent->getId() . '/reopen', $owner);
+
+        // Then
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->assertSame(ShoppingListStatus::ACTIVE, $this->shoppingLists()->findOneById($sent->getId())->getStatus());
+        $this->request('PATCH', '/api/v1/shopping-lists/' . $sent->getId(), $owner, ['name' => 'Autre nom']);
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
     }
 
     public function testReopeningPausesTheActiveListAndRefusesAListThatIsNotSent(): void
