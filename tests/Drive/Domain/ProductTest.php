@@ -91,6 +91,16 @@ class ProductTest extends TestCase
         yield 'libellé trop long' => ['1', null, str_repeat('a', 256), null];
         yield 'libellé avec saut de ligne' => ['1', null, "Farine\nT55", null];
         yield 'libellé en UTF-8 invalide' => ['1', null, "Farine \xff", null];
+        yield 'libellé avec séparateur de ligne (U+2028)' => ['1', null, "Farine\u{2028}T55", null];
+        yield 'libellé avec séparateur de paragraphe (U+2029)' => ['1', null, "Farine\u{2029}T55", null];
+        yield 'libellé avec inversion du sens de lecture (U+202E)' => ['1', null, "Farine \u{202E}gk 1", null];
+        yield 'libellé avec isolat bidirectionnel (U+2066)' => ['1', null, "Farine \u{2066}T55", null];
+        yield 'libellé avec marque de sens de lecture (U+200F)' => ['1', null, "Farine\u{200F}", null];
+        yield 'libellé avec espace de largeur nulle (U+200B)' => ['1', null, "Fa\u{200B}rine", null];
+        yield 'libellé réduit à une espace de largeur nulle' => ['1', null, "\u{200B}", null];
+        yield "libellé avec marque d'ordre des octets (U+FEFF)" => ['1', null, "\u{FEFF}Farine", null];
+        yield 'libellé réduit à une espace insécable' => ['1', null, "\u{00A0}", null];
+        yield 'libellé réduit à des espaces Unicode' => ['1', null, "\u{2003}\u{00A0}\u{3000}", null];
         yield 'contenu nul' => ['1', null, 'Farine', new ProductContent(0, ContentUnit::G)];
         yield 'contenu négatif' => ['1', null, 'Farine', new ProductContent(-5, ContentUnit::G)];
         yield 'contenu démesuré' => ['1', null, 'Farine', new ProductContent(100000.5, ContentUnit::KG)];
@@ -105,6 +115,28 @@ class ProductTest extends TestCase
 
         // Then
         $this->assertSame(255, mb_strlen($product->getLabel()));
+    }
+
+    public function testALabelWithAccentsSymbolsAndEmojiIsAccepted(): void
+    {
+        // When : ce que le site écrit vraiment (apostrophe courbe, tiret demi-cadratin, signes, œ, emoji), sans caractère invisible
+        $label = "Crème d’été – 12 œufs 6×50 g 2,5 % 🥚 (Bio)";
+        $product = Product::create(Retailer::LECLERC, '123456', '1', null, "  $label  ", null, null, $this->now);
+
+        // Then
+        $this->assertSame($label, $product->getLabel());
+    }
+
+    public function testSeeingALabelWithAnInvisibleCharacterChangesNothing(): void
+    {
+        // Given
+        $product = Product::create(Retailer::LECLERC, '123456', '555111', null, 'Farine', null, null, $this->now);
+
+        // Then
+        $this->expectExceptionObject(DriveException::invalidChoice());
+
+        // When
+        $product->see(null, "Farine \u{202E}gk 1", null, null, $this->now);
     }
 
     public function testPricesOutOfBoundsAreRefused(): void

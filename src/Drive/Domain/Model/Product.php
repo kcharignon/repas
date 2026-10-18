@@ -28,6 +28,13 @@ final class Product implements ModelInterface
     /** Code-barres : 8 à 14 chiffres. */
     public const string EAN_PATTERN = '/^[0-9]{8,14}$/D';
     public const int LABEL_MAX_LENGTH = 255;
+    /**
+     * Caractères refusés dans un libellé : contrôles (`Cc`), séparateurs de ligne et de paragraphe (`Zl`, `Zp`, U+2028 et
+     * U+2029), marques et inversions du sens de lecture (U+061C, U+200E, U+200F, U+202A à U+202E, U+2066 à U+2069), espaces et
+     * jointures de largeur nulle (U+200B à U+200D, U+2060), marque d'ordre des octets (U+FEFF). Un `preg_match` qui renvoie
+     * `false` (UTF-8 invalide) n'est pas `0` : le libellé est refusé aussi.
+     */
+    private const string LABEL_FORBIDDEN_CHARACTERS_PATTERN = '/[\p{Cc}\p{Zl}\p{Zp}\x{061C}\x{200B}-\x{200F}\x{202A}-\x{202E}\x{2060}\x{2066}-\x{2069}\x{FEFF}]/u';
 
     private const string ID_NAMESPACE = '7d1c1f3a-5a0e-4f0b-9c3e-2f6a8d4b1e57';
 
@@ -207,14 +214,17 @@ final class Product implements ModelInterface
     }
 
     /**
-     * Libellé borné, sans caractère de contrôle (un saut de ligne dans un libellé est une anomalie).
+     * Libellé borné, sans caractère de contrôle ni caractère invisible (un saut de ligne dans un libellé est une anomalie ; une
+     * marque de sens de lecture ou une espace de largeur nulle ne sert qu'à tromper l'œil : la fiche est partagée entre
+     * utilisateurs). Un libellé qui ne contient que des espaces, insécables ou autres, est vide.
      */
     private static function checkedLabel(string $label): string
     {
         $label = trim($label);
-        $controlCharacters = preg_match('/\p{Cc}/u', $label);
+        $forbiddenCharacters = preg_match(self::LABEL_FORBIDDEN_CHARACTERS_PATTERN, $label);
+        $blank = preg_match('/^[\p{Z}\s]*$/u', $label);
 
-        if ($label === '' || mb_strlen($label) > self::LABEL_MAX_LENGTH || $controlCharacters !== 0) {
+        if ($label === '' || mb_strlen($label) > self::LABEL_MAX_LENGTH || $forbiddenCharacters !== 0 || $blank !== 0) {
             throw DriveException::invalidChoice();
         }
 

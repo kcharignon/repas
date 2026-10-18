@@ -17,7 +17,7 @@ final readonly class ProductPayload
         #[OA\Property(description: "Identifiant du produit chez l'enseigne : 1 à 12 chiffres, en texte", pattern: '^[0-9]{1,12}$', example: '123456')]
         public string $retailerProductId,
         #[Assert\Length(max: 255)]
-        #[OA\Property(description: 'Libellé du produit (255 caractères au plus, sans caractère de contrôle)', example: 'Farine de blé T55 Marque Repère 1 kg', nullable: true)]
+        #[OA\Property(description: 'Libellé du produit (255 caractères au plus, sans caractère de contrôle ni caractère invisible : saut de ligne, sens de lecture, largeur nulle)', example: 'Farine de blé T55 Marque Repère 1 kg', nullable: true)]
         public ?string $label = null,
         #[OA\Property(description: 'Code-barres, 8 à 14 chiffres', pattern: '^[0-9]{8,14}$', example: '3017620422003', nullable: true)]
         public ?string $ean = null,
