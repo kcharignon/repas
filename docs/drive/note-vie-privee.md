@@ -85,7 +85,7 @@ Chaque phrase du texte a sa source. Si l'une change, mettre à jour ce texte **e
 | Effacé avec le compte, sauf les fiches de produits | `PurgeUserDriveDataHandler` (réglages, lignes de produits, préférences) ; `UserOwnedDataCoverageTest` ; ADR 0021. **Pas d'auto-suppression** : seul un administrateur supprime un compte |
 | Changer de magasin ne supprime pas les anciens choix | `SaveDriveSettingsHandler` remplace le magasin sans purge ; les choix portent leur `store_id` |
 | Sauvegardes : 14 conservées, une par nuit | `deploy/backup.sh` ; [`../production.md`](../production.md) |
-| Les pages de Leclerc appellent leurs propres services (anti-robot, audience) ; Repas ne les voit pas | comportement d'un navigateur ; le cookie anti-robot est visible dans la WebView ([`spikes/DRV-011-rapport.md`](spikes/DRV-011-rapport.md)) ; mis dans la note par repas-front#108 |
+| Les pages de Leclerc appellent leurs propres services (anti-robot, audience) ; Repas ne les voit pas | comportement d'un navigateur : la WebView du drive accepte les cookies de ces services (voulu, pour le défi anti-robot), celle de Repas non ; le cookie anti-robot est visible dans la WebView ([`spikes/DRV-011-rapport.md`](spikes/DRV-011-rapport.md)) ; phrase ajoutée à la note du front par repas-front#108 (revue de sécurité du front, [`revue-securite-drive.md`](https://github.com/kcharignon/repas-front/blob/main/docs/revue-securite-drive.md) constat D3), reportée ici |
 | Cadence lente, en série, à la demande | `architecture.md` § 8 (cadence), DRV-003 (constat CGU) ; l'agent s'arrête après deux refus |
 | Risque de suspension du compte E.Leclerc | [`spikes/DRV-003-cgu.md`](spikes/DRV-003-cgu.md) ; décision D23 de l'utilisateur |
 

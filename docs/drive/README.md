@@ -53,6 +53,7 @@ Voir `architecture.md` § 1 : drive, enseigne, magasin, agent, plan, produit, ch
 | `note-vie-privee.md` | Note de vie privée de la fonction (texte court et complet à afficher dans le front, ce qui est vrai et d'où ça vient, fiche de registre des traitements) (DRV-504, partie back). |
 | `revue-securite-back.md` | Revue indépendante de sécurité et de qualité du back (2026-10-18) : défauts corrigés, risques à décider (fiches de produits partagées), points vérifiés, recommandations pour la recette. |
 | `recette.md` | Procédure de recette en conditions réelles (DRV-501 pour l'écriture, DRV-505 pour l'exécution) : pas à pas pour l'utilisateur sur son téléphone, critères de réussite, mesures, tableau de signature. |
+| `revue-securite-drive.md` (dépôt front) | [Revue indépendante de sécurité et de qualité du front, de l'agent et de l'application Android](https://github.com/kcharignon/repas-front/blob/main/docs/revue-securite-drive.md) (2026-10-18) : défauts corrigés (#107 à #112), risques à décider (la page de Leclerc dans la base de confiance de l'agent, pré-versions publiques), recommandations pour la recette. Pendant de `revue-securite-back.md`. |
 | `tickets/DRV-*.md` | Un ticket par fichier, autonome. |
 | `spikes/` | Gabarits des rapports de découverte (à remplir par l'humain ou l'agent). |
 | `plan-initial.md` | Copie intégrale du plan, pour ne rien perdre. |

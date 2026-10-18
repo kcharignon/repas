@@ -39,7 +39,7 @@ Procédure à dérouler **par l'utilisateur, sur son téléphone Android, avec s
 
 - DRV-320 (bouton « Lire mon magasin dans l'application » et entrée « Menu de l'application » de « Mon compte ») : pas encore fusionné. Les étapes 4.1 à 4.3 en dépendent.
 - DRV-613 partie 2 (l'agent recalcule le nombre de produits avec le contenu lu en direct) : pas encore fusionné. Le message « contenu différent de celui mémorisé » n'est pas à attendre tant qu'il manque.
-- DRV-315 (APK signé) n'existe pas : la recette se fait avec une **pré-version de test** `android-dev-…`.
+- DRV-315 (APK signé) n'existe pas : **aucune release `android-v…` n'existe encore** (la clé de signature est une étape humaine). La recette se fait donc avec une **pré-version de test** `android-dev-…`, en essai, à désinstaller après (étape 1.6).
 - L'adresse de la page panier de Leclerc n'est pas encore relevée (`BASKET_PATH` du front, DRV-501) : « Finaliser sur Leclerc » ouvre l'accueil du magasin, d'où le panier est à un geste. Tu la notes à l'étape 8.4.
 
 ## 1. Prérequis : le déploiement est stable et l'interrupteur est coupé
@@ -81,6 +81,13 @@ Procédure à dérouler **par l'utilisateur, sur son téléphone Android, avec s
 - **Attendu** : tu sais que couper (`DRIVE_ENABLED=false`) est sûr, rapide et ne supprime rien.
 - **Si ça diffère** : pas de sauvegarde récente : l'assistant en fait faire une avant d'allumer (`references/incident.md`).
 
+### 1.6 Aucune version signée n'existe encore : la recette utilise une pré-version en essai
+
+- **But** : savoir ce que tu installes et pourquoi. L'aide de Repas (« Installer l'application Repas ») dit de prendre une release dont le nom commence par `android-v` et d'ignorer les versions « dev » et « Pre-release ». Elle a raison pour la famille, mais **aucune release `android-v…` n'existe encore** (DRV-315 : la clé de signature se crée et se garde par toi, hors du dépôt). Une pré-version `android-dev-…` est publique, **débogable** et signée d'une clé de test publique : n'importe qui pourrait fabriquer un fichier de même nom. Elle ne convient donc que comme **essai**, avec les précautions ci-dessous (revue de sécurité du front, constats D2 et C6).
+- **Geste** : tu acceptes ces règles. (1) Tu télécharges le fichier **seulement** depuis la page GitHub officielle `https://github.com/kcharignon/repas-front/releases`, tapée toi-même. (2) L'assistant a vérifié avant que l'empreinte SHA-256 du fichier publié est celle écrite dans la description de la release (étape 2.1). (3) Tu ne t'en sers que pour cette recette. (4) Tu la **désinstalles à la fin** (partie 19), puis tu installeras l'APK signé quand il existera.
+- **Attendu** : tu sais que ce n'est pas la version définitive.
+- **Si ça diffère** : tu préfères ne pas installer une version d'essai sur le téléphone qui sert aux courses : utilise un autre téléphone Android, ou attends l'APK signé (DRV-315) ; la recette est alors reportée.
+
 ## 2. Installer l'application de test
 
 L'application « Repas » est **toute** l'application Repas (recettes, listes, drive) dans une coquille Android. Comme l'APK signé n'existe pas encore (DRV-315), tu installes la **pré-version de test** : même application, signée avec une clé de test publique, avec en plus deux entrées de menu de test.
@@ -88,9 +95,9 @@ L'application « Repas » est **toute** l'application Repas (recettes, listes, d
 ### 2.1 L'assistant prépare une pré-version à jour
 
 - **But** : tester le code le plus récent.
-- **Geste** (assistant) : `gh release list -R kcharignon/repas-front --limit 5` : la plus récente `android-dev-AAAA-MM-JJ…` doit avoir été construite **après** la fusion de DRV-320 et DRV-613 partie 2 (la page de la release donne le commit ; `git log` du front le confirme). Sinon il lance le workflow `Android` à la main, depuis `main` seulement (`gh workflow run android.yml --ref main`) : c'est permis pour une pré-version de test, **jamais** pour une version `android-vX.Y.Z`, qui reste ta décision. Il note l'étiquette dans le tableau de signature.
-- **Attendu** : une pré-version à jour, avec `repas-drive-debug.apk` dans « Assets ».
-- **Si ça diffère** : pas de fichier `.apk` : relancer le workflow, regarder son journal (`gh run list --workflow Android`).
+- **Geste** (assistant) : `gh release list -R kcharignon/repas-front --limit 5` : la plus récente `android-dev-AAAA-MM-JJ…` doit avoir été construite **après** la fusion de DRV-320 et DRV-613 partie 2 (la page de la release donne le commit ; `git log` du front le confirme). Sinon il lance le workflow `Android` à la main, depuis `main` seulement (`gh workflow run android.yml --ref main`) : c'est permis pour une pré-version de test, **jamais** pour une version `android-vX.Y.Z`, qui reste ta décision. Il note l'étiquette dans le tableau de signature. Il télécharge ensuite le fichier sur son ordinateur (`gh release download <étiquette> -R kcharignon/repas-front -p repas-drive-debug.apk`, dans un dossier à part) et compare son `sha256sum` avec « Empreinte SHA-256 » de la description de la release.
+- **Attendu** : une pré-version à jour, avec `repas-drive-debug.apk` dans « Assets », dont l'empreinte SHA-256 est celle de la description.
+- **Si ça diffère** : pas de fichier `.apk` : relancer le workflow, regarder son journal (`gh run list --workflow Android`). Empreinte différente : **ne pas installer**, le dire à l'utilisateur (le fichier a été remplacé ou abîmé).
 
 ### 2.2 Installer le fichier
 
@@ -110,10 +117,10 @@ L'application « Repas » est **toute** l'application Repas (recettes, listes, d
 
 - **But** : écrire dans le tableau de signature ce qui est testé.
 - **Geste** : touche le bouton **⋮** au bord droit de l'écran, puis « Version et mode d'emploi ».
-- **Attendu** : une ligne du genre « Version 0.0.0-dev (numéro 123), construction a1b2c3d, débogage » et une ligne « Agent : version 0.6.0, empreinte … ». Recopie ces deux lignes dans le tableau de la partie 18 (elles ne contiennent aucune donnée personnelle).
+- **Attendu** : une ligne du genre « Version 0.0.0-dev (numéro 123), construction a1b2c3d, débogage » et une ligne « Agent : version 0.6.0, empreinte … ». Recopie ces deux lignes dans le tableau de la partie 18 (elles ne contiennent aucune donnée personnelle). La fenêtre peut aussi dire si les données de Leclerc sont séparées de celles de Repas (profil séparé) : note-le. L'empreinte de l'agent doit commencer comme celle qui est écrite dans la description de la release.
 - **Si ça diffère** : « Agent : absent de l'application » ou « empreinte inattendue » : réinstalle l'application ; si ça persiste, arrête (le fichier est abîmé ou ce n'est pas le bon). « Ta WebView est trop ancienne » : mets à jour « Android System WebView » dans le Play Store.
 
-> **Plus tard, avec l'APK signé (DRV-315)** : quand l'utilisateur aura créé sa clé de signature (étape humaine : `android/README.md` du front, section « Signature »), posé les quatre secrets GitHub et décidé l'étiquette `android-vX.Y.Z`, et publié `https://kantin.eu/.well-known/assetlinks.json` (étape humaine, même README), on refait **uniquement** : désinstaller la version de test (la connexion à Leclerc dans l'application est alors effacée), installer l'APK signé, vérifier sa somme de contrôle (`sha256sum`, runbook § 7.4), contrôler qu'un lien `https://kantin.eu/…` reçu par e-mail s'ouvre dans l'application, et que « Menu de l'application » (« Mon compte ») ouvre le menu (DRV-320). Les parties 5 à 9 ne sont pas à refaire.
+> **Plus tard, avec l'APK signé (DRV-315)** : quand l'utilisateur aura créé sa clé de signature (étape humaine : `android/README.md` du front, section « Signature »), posé les quatre secrets GitHub et décidé l'étiquette `android-vX.Y.Z`, et publié `https://kantin.eu/.well-known/assetlinks.json` (étape humaine, même README), on refait **uniquement** : désinstaller la version de test (la connexion à Leclerc dans l'application est alors effacée), installer l'APK signé, vérifier sa somme de contrôle (`sha256sum`, runbook § 7.4), contrôler que l'empreinte de l'agent (« Version et mode d'emploi ») commence comme celle de la release, qu'un lien `https://kantin.eu/…` reçu par e-mail s'ouvre dans l'application, et que « Menu de l'application » (« Mon compte ») ouvre le menu (DRV-320). Facultatif, avec le téléphone branché et l'assistant (recommandations de la revue de sécurité du front) : l'application n'est **pas** débogable ni sauvegardable (`adb shell dumpsys package eu.kantin.repas.drive | grep -i flags` ne contient ni `DEBUGGABLE` ni `ALLOW_BACKUP`) et, après un envoi, `adb logcat -d | grep RepasDrive` ne montre ni adresse, ni cookie, ni contenu. Les parties 5 à 9 ne sont pas à refaire.
 
 ## 3. Allumer l'interrupteur (toi seul)
 
@@ -311,7 +318,7 @@ On rejoue la **même liste** : l'envoi se rejoue sans danger, car l'agent fixe l
 
 - **But** : vérifier ce que Repas a mémorisé (DRV-410).
 - **Geste** : « Mon compte » → « Mes produits du drive ». Ouvre **I2**.
-- **Attendu** : la liste montre **I1** (« Préféré : … »), **I2** (préféré + « 1 produit de secours »), **I3**, **I4** (préféré), **I6** (« Vous en avez toujours »). **I5** n'y est pas. La fiche d'I2 montre « Produits acceptés » (du préféré aux produits de secours, avec « Monter », « Descendre », « Retirer », « Ne plus jamais prendre »), « Produits refusés » et « Oublier cet ingrédient ».
+- **Attendu** : la liste montre **I1** (« Préféré : … »), **I2** (préféré + « 1 produit de secours »), **I3**, **I4** (préféré), **I6** (« Vous en avez toujours »). **I5** n'y est pas, et **rien d'autre que ce que tu as choisi** n'y figure (aucun produit ni ingrédient que tu ne reconnais pas). La fiche d'I2 montre « Produits acceptés » (du préféré aux produits de secours, avec « Monter », « Descendre », « Retirer », « Ne plus jamais prendre »), « Produits refusés » et « Oublier cet ingrédient ».
 - **Si ça diffère** : un ingrédient manque : le choix n'a pas été enregistré (étape 7.5) ; note-le.
 
 > *Point de vie privée n° 2* : cet écran ne montre que **tes** produits.
@@ -397,8 +404,9 @@ Ces deux contrôles servent aussi plus tard, quand Leclerc change son site (runb
 | 6 | Le serveur ne garde ni plan ni résultat dans ses journaux | **Assistant**, lecture seule : `ssh … 'cd /opt/repas && docker compose logs --since 3h php edge < /dev/null' \| grep -ci "leclercdrive"` | `0`, ou seulement des lignes que l'assistant sait expliquer ; aucun numéro de magasin, aucun nom de produit dans une adresse (le contenu d'une requête n'est pas journalisé) |
 | 7 | « Oublier » efface bien | Étape 9.4 | I4 n'apparaît plus dans « Mes produits » ni dans le plan suivant |
 | 8 | « Se déconnecter de Leclerc et effacer les données du drive » efface la connexion | **En dernier**, car il te déconnecte de Leclerc : menu du drive (**⋮**) → ce choix → « Effacer » | « Données du drive effacées. » ; le drive te redemande ton identifiant Leclerc ; **Repas** reste connecté (profils séparés). Sur un téléphone dont la WebView ne les sépare pas, la fenêtre prévient que Repas sera déconnecté aussi |
-| 9 | Aucune requête de Repas vers Leclerc | Tout le parcours | Le back ne contacte jamais Leclerc : seuls l'application (sur ton téléphone) et ton navigateur le font. L'assistant n'a **pas** ouvert Leclerc de son côté |
+| 9 | Aucune requête de Repas vers Leclerc | Tout le parcours | Le back ne contacte jamais Leclerc : seuls l'application (sur ton téléphone) et ton navigateur le font, avec les services que les pages de Leclerc appellent d'elles-mêmes (anti-robot, mesure d'audience : comme dans un navigateur). L'assistant n'a **pas** ouvert Leclerc de son côté |
 | 10 | Aucun secret dans le dépôt, le chat ni les rapports | Relecture du chat et des rapports collés | Aucun mot de passe, code, cookie, jeton, adresse e-mail, numéro de magasin entier ni ville |
+| 11 | Ce que Repas a mémorisé est ce que tu as choisi | Étapes 6.6, 7.5 et 9.1 | Rien d'étranger dans « Mes produits » ni dans le récapitulatif. Limite connue : la page de Leclerc fait partie de la base de confiance de l'envoi et pourrait, en théorie, fausser un résultat que Repas enregistre aussitôt (revue de sécurité du front, constat C1, à décider par l'utilisateur) |
 
 ## 13. Facultatif : essais de robustesse (20 minutes)
 
@@ -439,7 +447,7 @@ Un blocage est **possible** : DataDome peut signaler le compte ou l'adresse de l
 3. **Remettre une version du back** : [`../production.md`](../production.md), « Retour arrière » (le schéma reste, c'est sans danger ; couper et rouvrir les listes **avant**).
 4. **Le panier Leclerc** : retire à la main ce qui vient de la recette. Repas ne l'a pas vidé.
 5. **Les données de la recette** : « Mes produits » → « Oublier cet ingrédient » pour chaque ingrédient testé ; la note de vie privée explique le reste.
-6. **L'application de test** : désinstalle-la si tu veux (appui long sur l'icône). Sa connexion à Leclerc est effacée avec.
+6. **L'application de test** : désinstalle-la (appui long sur l'icône, « Infos sur l'appli », « Désinstaller »). C'est une pré-version publique et débogable (étape 1.6) : elle ne reste pas sur le téléphone. Sa connexion à Leclerc est effacée avec.
 
 ## 16. Critères de réussite
 
@@ -511,4 +519,4 @@ Ce que l'assistant fait ensuite, sauf les points marqués **Toi**, qui sont des 
 3. Fermer l'issue DRV-505 (`gh issue close 87 -c "Fait par la PR #…"`) puis DRV-501 quand le reste est fait (parcours dans l'émulateur, DRV-319 partie 2, et `BASKET_PATH`).
 4. Mettre à jour `CLAUDE.md` (section « Chantier en cours » → « usage ») et le skill `repas-ops` si la procédure d'allumage a changé.
 5. Ouvrir des tickets pour chaque écart de la recette (backlog ou correctif), un par PR.
-6. **Toi** : l'APK signé (DRV-315 : clé, secrets GitHub, `assetlinks.json`) et la recette courte de l'encadré « Plus tard » de la partie 2.
+6. **Toi** : désinstaller la pré-version de test du téléphone (étape 1.6 et partie 15), puis, quand il existera, l'APK signé (DRV-315 : clé, secrets GitHub, `assetlinks.json`) et la recette courte de l'encadré « Plus tard » de la partie 2. L'assistant propose alors de supprimer les anciennes pré-versions `android-dev-…` et les bancs `android-lab-…` publics (revue de sécurité du front, constat C6), avec ton accord.
