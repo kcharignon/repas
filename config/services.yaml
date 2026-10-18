@@ -46,6 +46,15 @@ when@test:
         app.refresh_cookie_secure: false
 
     services:
+        # Ports de lecture `Shared` pour `Drive` : aucun cas d'usage ne les injecte encore (DRV-204, DRV-206), le conteneur
+        # les retirerait et leurs tests de base ne pourraient pas les obtenir. À supprimer quand ils seront injectés.
+        Repas\Shared\Application\Interface\ShoppingListForDriveLoader:
+            alias: Repas\Repas\Infrastructure\Loader\ShoppingListForDrivePostgreSQLLoader
+            public: true
+        Repas\Shared\Application\Interface\IngredientNameLoader:
+            alias: Repas\Repas\Infrastructure\Loader\IngredientNamePostgreSQLLoader
+            public: true
+
         # État des limiteurs (inscription, connexion) : en mémoire, conservé tant que le noyau de test vit (un pool du framework
         # serait vidé à chaque requête par `kernel.reset`), perdu quand il est reconstruit entre deux tests.
         test.rate_limiter_pool:

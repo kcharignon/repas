@@ -4,7 +4,7 @@
 - **Jalon** : M2 Back `Drive`
 - **Taille** : S
 - **Dépend de** : DRV-201, DRV-104, DRV-105
-- **Statut** : à faire
+- **Statut** : fait (PR [#133](https://github.com/kcharignon/repas/pull/133), 2026-10-18)
 - **Lire d'abord** : [`../architecture.md`](../architecture.md) § 5.3 ; ADR 0001, 0004, 0013 ; précédent : `Shared\Application\Interface\OwnershipLoader` et `Repas\Infrastructure\Loader\OwnershipPostgreSQLLoader`.
 
 ## Contexte
@@ -43,3 +43,10 @@ Celle du skill `repas-dev` § 4.
 
 - Les DTO `Shared` ne portent jamais de modèle de domaine.
 - Une ligne dont l'ingrédient ou l'unité a disparu ne doit pas faire échouer la lecture : l'ignorer ou la signaler selon le comportement du loader existant (`ShoppingListPostgreSQLLoader::loadDepartments` fait des jointures internes ; garder la même sémantique).
+
+## Réalisation (2026-10-18, PR repas#133)
+
+Ports `Repas\Shared\Application\Interface\ShoppingListForDriveLoader::get()` et `IngredientNameLoader::namesBySlug()`, DTO `Repas\Shared\Application\Dto\ShoppingListForDrive` et `ShoppingListLineForDrive` (champs du ticket, `unitDimension` = valeur de `Dimension` ou `null`). Implémentations `Repas\Repas\Infrastructure\Loader\ShoppingListForDrivePostgreSQLLoader` (2 requêtes : liste, puis lignes jointes ingrédient et unité, jointures internes, tri PHP par slug d'ingrédient) et `IngredientNamePostgreSQLLoader` (1 requête `IN`, aucune pour une liste vide). Doubles : `ShoppingListForDriveInMemoryLoader` (liste programmée, 404 si aucune) et `IngredientNameInMemoryLoader` (noms programmés), avec leurs appels enregistrés. Tests de base dans `tests/Repas/OutputAdapter/`, coût en requêtes inclus.
+
+- `config/services.yaml`, section `when@test` : les deux ports sont des alias publics, car aucun cas d'usage ne les injecte encore et le conteneur les retire. À supprimer quand DRV-204 ou DRV-206 les injecte.
+- DRV-204 et DRV-206 : injecter les interfaces `Shared`, jamais les classes de `Repas`. `get()` ne vérifie pas les droits (le voter du contrôleur s'en charge) ; `status` vaut `ACTIVE | PAUSED | SENT | COMPLETED`.
