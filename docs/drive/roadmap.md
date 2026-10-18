@@ -43,6 +43,10 @@ Suivi vivant. Cocher une case quand le ticket est fusionné (et noter la PR). Le
 - [x] [DRV-207](tickets/DRV-207-purge-compte-drive.md) back · S · Purge à la suppression du compte (dont lignes de produits) · dépend de : 203, 204 · Issue : [#81](https://github.com/kcharignon/repas/issues/81)
 - [x] [DRV-208](tickets/DRV-208-remplacement-preference.md) back · M · Remplacer la préférence d'un ingrédient (ordre, refus) · dépend de : 204 · Issue : [#82](https://github.com/kcharignon/repas/issues/82)
 
+## M2b — Estimation du coût
+
+- [x] [DRV-611](tickets/DRV-611-estimation-cout-liste.md) back · M · Estimation du coût d'une liste à partir des prix mémorisés · dépend de : 204, 205, 206 · Issue : [#144](https://github.com/kcharignon/repas/issues/144)
+
 ## M3 — Agent (front, `drive-agent/`)
 
 - [x] [DRV-301](tickets/DRV-301-squelette-agent.md) front · M · Squelette de l'agent · dépend de : 005 · Issue : [repas-front#39](https://github.com/kcharignon/repas-front/issues/39)
@@ -95,7 +99,7 @@ Prépare l'application « Repas Drive » (WebView en mode ordinateur, agent emba
 
 ## Backlog (non détaillé, à écrire quand il devient utile)
 
-DRV-601 suggestions automatiques · DRV-602 journal d'envoi · DRV-603 Firefox + gestionnaire de scripts ou extension · DRV-604 vignettes dans Repas (exception CSP ou relais d'images) · DRV-605 conversions unité↔poids par ingrédient · DRV-606 reprise des choix au changement de magasin (EAN, libellé) · DRV-607 deuxième enseigne (spike + adaptateur) · DRV-608 enregistrement direct des choix par jeton à usage unique · DRV-609 partage de choix entre proches · DRV-610 rapport d'exécution anonyme · DRV-611 estimation du coût d'une liste à partir des prix mémorisés (datés, jamais garantis).
+DRV-601 suggestions automatiques · DRV-602 journal d'envoi · DRV-603 Firefox + gestionnaire de scripts ou extension · DRV-604 vignettes dans Repas (exception CSP ou relais d'images) · DRV-605 conversions unité↔poids par ingrédient · DRV-606 reprise des choix au changement de magasin (EAN, libellé) · DRV-607 deuxième enseigne (spike + adaptateur) · DRV-608 enregistrement direct des choix par jeton à usage unique · DRV-609 partage de choix entre proches · DRV-610 rapport d'exécution anonyme.
 
 ## Chemin critique et parallélisme
 

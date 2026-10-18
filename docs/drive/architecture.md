@@ -182,6 +182,7 @@ Conventions : ADR 0007 (JWT, `{member,totalItems}` pour une liste, `204` ou `201
 | `GET /drive/settings` | Drive | `{enabled, retailer, store: {id,label,baseUrl} \| null}` |
 | `PUT /drive/settings` | Drive | `204` ; `404 DRIVE_DISABLED` ; `422 DRIVE_STORE_INVALID` |
 | `GET /drive/plans/{shoppingListId}` | Drive | plan (ci-dessous) ; `403` autre utilisateur ; `404` ; `409 DRIVE_NOT_CONFIGURED` ; `409 SHOPPING_LIST_NOT_SENT` |
+| `GET /drive/estimates/{shoppingListId}` | Drive | estimation du coût d'une liste d'après les prix mémorisés (DRV-611) ; `403` autre utilisateur ; `404` ; `409 DRIVE_NOT_CONFIGURED` |
 | `GET /drive/choices?retailer=` | Drive | `{member:[{ingredientSlug, ingredientName, haveAtHome, accepted:[{rank, product}], rejected:[product], updatedAt}], totalItems}` pour le magasin courant |
 | `PUT /drive/choices` | Drive | `204` ; lot d'intentions issues de l'agent (ci-dessous) ; `409 DRIVE_NOT_CONFIGURED` ou `DRIVE_STORE_MISMATCH` (le `storeId` n'est pas le magasin courant) ; `422 DRIVE_CHOICE_INVALID` (dont plus de 5 produits acceptés ou 20 refusés) |
 | `PUT /drive/choices/{ingredientSlug}` | Drive | `204` ; remplace la préférence d'un ingrédient depuis l'écran de gestion : `{retailer, storeId, haveAtHome, accepted:[productId…] dans l'ordre, rejected:[productId…]}` ; `productId` = identifiant Repas du produit (celui renvoyé par `GET /drive/choices`) ; `422 DRIVE_CHOICE_INVALID` (produit inconnu, doublon, produit à la fois accepté et refusé, limites) ; mêmes `409` |

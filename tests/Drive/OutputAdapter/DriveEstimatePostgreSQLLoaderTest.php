@@ -1,0 +1,305 @@
+<?php
+
+namespace Repas\Tests\Drive\OutputAdapter;
+
+
+use DateTimeImmutable;
+use Repas\Drive\Application\Loader\DriveEstimateLoader;
+use Repas\Drive\Application\Query\GetDriveEstimate\DriveEstimateDTO;
+use Repas\Drive\Application\Query\GetDriveEstimate\DriveEstimateLineDTO;
+use Repas\Drive\Application\Query\GetDriveSettings\DriveStoreDTO;
+use Repas\Drive\Domain\Exception\DriveException;
+use Repas\Drive\Domain\Interface\ChoiceRepository;
+use Repas\Drive\Domain\Interface\DriveSettingsRepository;
+use Repas\Drive\Domain\Interface\ProductRepository;
+use Repas\Drive\Domain\Model\ContentUnit;
+use Repas\Drive\Domain\Model\Product;
+use Repas\Drive\Domain\Model\ProductContent;
+use Repas\Drive\Domain\Model\Retailer;
+use Repas\Drive\Domain\Service\ListCostEstimator;
+use Repas\Drive\Domain\Service\PackCalculator;
+use Repas\Drive\Infrastructure\Loader\DriveEstimatePostgreSQLLoader;
+use Repas\Drive\Infrastructure\Loader\DriveSettingsPostgreSQLLoader;
+use Repas\Repas\Domain\Exception\ShoppingListException;
+use Repas\Repas\Domain\Interface\ShoppingListRepository;
+use Repas\Repas\Domain\Model\ShoppingListStatus;
+use Repas\Shared\Application\Dto\ShoppingListForDrive;
+use Repas\Shared\Application\Dto\ShoppingListLineForDrive;
+use Repas\Tests\Helper\Builder\ChoiceBuilder;
+use Repas\Tests\Helper\Builder\DriveSettingsBuilder;
+use Repas\Tests\Helper\Builder\IngredientBuilder;
+use Repas\Tests\Helper\Builder\ProductBuilder;
+use Repas\Tests\Helper\Builder\ShoppingListBuilder;
+use Repas\Tests\Helper\Builder\UserBuilder;
+use Repas\Tests\Helper\ControlledDriveFeature;
+use Repas\Tests\Helper\DatabaseTestCase;
+use Repas\Tests\Helper\DataPersister;
+use Repas\Tests\Helper\InMemoryLoader\ShoppingListForDriveInMemoryLoader;
+use Repas\Tests\Helper\SqlBudget\QueryCounter;
+use Repas\User\Domain\Interface\UserRepository;
+
+class DriveEstimatePostgreSQLLoaderTest extends DatabaseTestCase
+{
+    private ProductRepository $products;
+    private ChoiceRepository $choices;
+    private DriveSettingsRepository $settings;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->products = static::getContainer()->get(ProductRepository::class);
+        $this->choices = static::getContainer()->get(ChoiceRepository::class);
+        $this->settings = static::getContainer()->get(DriveSettingsRepository::class);
+    }
+
+    public function testEstimatesTheListLineByLineFromThePreferredProduct(): void
+    {
+        // Given : farine (deux produits classés : seul le rang 1 compte), lait (sans prix), poivre (refusé seulement), sel (j'en ai toujours), beurre (contenu inconnu)
+        $this->settings->save(new DriveSettingsBuilder()->withUserId('user-1')->withStore('123456', null, 'https://exemple.leclercdrive.fr/magasin-123456-123456')->build());
+        $this->products->saveAll([
+            new ProductBuilder()->withRetailerProductId('1')->withLabel('Farine T55 500 g')->withContent(new ProductContent(500, ContentUnit::G))->withPrice(129, 258, seenAt: new DateTimeImmutable('2026-10-12 09:30:00'))->build(),
+            new ProductBuilder()->withRetailerProductId('2')->withLabel('Farine T45 1 kg')->withContent(new ProductContent(1, ContentUnit::KG))->withPrice(99, seenAt: new DateTimeImmutable('2026-10-18 10:00:00'))->build(),
+            new ProductBuilder()->withRetailerProductId('3')->withLabel('Lait entier 1 l')->withContent(new ProductContent(1, ContentUnit::L))->build(),
+            new ProductBuilder()->withRetailerProductId('4')->withLabel('Poivre refusé')->withPrice(500)->build(),
+            new ProductBuilder()->withRetailerProductId('5')->withLabel('Beurre doux')->withContent(null)->withPrice(250, seenAt: new DateTimeImmutable('2026-10-15 08:00:00'))->build(),
+        ]);
+        $this->choices->saveAll([
+            new ChoiceBuilder()->withUserId('user-1')->withIngredientSlug('farine')->withAccepted([$this->id('1'), $this->id('2')])->build(),
+            new ChoiceBuilder()->withUserId('user-1')->withIngredientSlug('lait')->withAccepted([$this->id('3')])->build(),
+            new ChoiceBuilder()->withUserId('user-1')->withIngredientSlug('poivre')->withRejected([$this->id('4')])->build(),
+            new ChoiceBuilder()->withUserId('user-1')->withIngredientSlug('sel')->haveAtHome()->build(),
+            new ChoiceBuilder()->withUserId('user-1')->withIngredientSlug('beurre')->withAccepted([$this->id('5')])->build(),
+        ]);
+        $list = $this->list('user-1', [
+            new ShoppingListLineForDrive('beurre', 'Beurre', 250, 'gramme', 'g', 'WEIGHT', 1.0),
+            new ShoppingListLineForDrive('farine', 'Farine', 1200, 'gramme', 'g', 'WEIGHT', 1.0),
+            new ShoppingListLineForDrive('lait', 'Lait', 1.5, 'litre', 'l', 'VOLUME', 1000.0),
+            new ShoppingListLineForDrive('poivre', 'Poivre', 1, 'paquet', 'paquet', 'PACKAGE', 1.0),
+            new ShoppingListLineForDrive('sel', 'Sel', 2, 'cuillere-a-soupe', 'cuillère à soupe', null, null),
+            new ShoppingListLineForDrive('thym', 'Thym', 1, 'paquet', 'paquet', 'PACKAGE', 1.0),
+        ]);
+
+        // When
+        $estimate = $this->loader($list)->get('user-1', 'list-1');
+
+        // Then : farine 1,2 kg en paquets de 500 g = 3 x 1,29 € ; seule la farine entre dans le total (5 lignes à acheter)
+        $this->assertEquals(new DriveEstimateDTO(
+            shoppingListId: 'list-1',
+            retailer: 'leclerc',
+            store: new DriveStoreDTO('123456', null, 'https://exemple.leclercdrive.fr/magasin-123456-123456'),
+            estimatedTotalCents: 387,
+            estimatedLines: 1,
+            unestimatedLines: 4,
+            coverage: 0.2,
+            oldestPriceAt: new DateTimeImmutable('2026-10-12 09:30:00')->format(DATE_ATOM),
+            newestPriceAt: new DateTimeImmutable('2026-10-12 09:30:00')->format(DATE_ATOM),
+            lines: [
+                new DriveEstimateLineDTO('beurre', 'Beurre', 'Beurre doux', null, 250, null, new DateTimeImmutable('2026-10-15 08:00:00')->format(DATE_ATOM), 'TO_CHECK'),
+                new DriveEstimateLineDTO('farine', 'Farine', 'Farine T55 500 g', 3, 129, 387, new DateTimeImmutable('2026-10-12 09:30:00')->format(DATE_ATOM), 'ESTIMATED'),
+                new DriveEstimateLineDTO('lait', 'Lait', 'Lait entier 1 l', null, null, null, null, 'NO_PRICE'),
+                new DriveEstimateLineDTO('poivre', 'Poivre', null, null, null, null, null, 'NO_PRODUCT'),
+                new DriveEstimateLineDTO('sel', 'Sel', null, null, null, null, null, 'HAVE_AT_HOME'),
+                new DriveEstimateLineDTO('thym', 'Thym', null, null, null, null, null, 'NO_PRODUCT'),
+            ],
+            disclaimer: "Estimation d'après les derniers prix vus ; le prix réel est celui du drive.",
+        ), $estimate);
+    }
+
+    public function testThePriceDatesAreThoseOfTheLinesOfTheTotal(): void
+    {
+        // Given : deux prix de dates différentes entrent dans le total
+        $this->settings->save(new DriveSettingsBuilder()->withUserId('user-1')->build());
+        $this->products->saveAll([
+            new ProductBuilder()->withRetailerProductId('1')->withPrice(100, seenAt: new DateTimeImmutable('2026-10-12 09:30:00'))->build(),
+            new ProductBuilder()->withRetailerProductId('2')->withPrice(200, seenAt: new DateTimeImmutable('2026-10-18 10:00:00'))->build(),
+        ]);
+        $this->choices->saveAll([
+            new ChoiceBuilder()->withUserId('user-1')->withIngredientSlug('farine')->withAccepted([$this->id('1')])->build(),
+            new ChoiceBuilder()->withUserId('user-1')->withIngredientSlug('sucre')->withAccepted([$this->id('2')])->build(),
+        ]);
+        $list = $this->list('user-1', [
+            new ShoppingListLineForDrive('farine', 'Farine', 1, 'paquet', 'paquet', 'PACKAGE', 1.0),
+            new ShoppingListLineForDrive('sucre', 'Sucre', 1, 'paquet', 'paquet', 'PACKAGE', 1.0),
+        ]);
+
+        // When
+        $estimate = $this->loader($list)->get('user-1', 'list-1');
+
+        // Then
+        $this->assertSame([300, 1.0, new DateTimeImmutable('2026-10-12 09:30:00')->format(DATE_ATOM), new DateTimeImmutable('2026-10-18 10:00:00')->format(DATE_ATOM)], [$estimate->estimatedTotalCents, $estimate->coverage, $estimate->oldestPriceAt, $estimate->newestPriceAt]);
+    }
+
+    public function testOnlyTheChoicesOfTheCurrentStoreAndOfTheUserCount(): void
+    {
+        // Given : user-1 a changé de magasin ; ses anciens choix, comme ceux d'un autre utilisateur, ne comptent pas
+        $this->settings->save(new DriveSettingsBuilder()->withUserId('user-1')->withStore('654321', null, 'https://autre.leclercdrive.fr/magasin-654321-654321')->build());
+        $this->products->saveAll([
+            new ProductBuilder()->withRetailerProductId('1')->withPrice(100)->build(),
+            new ProductBuilder()->withStoreId('654321')->withRetailerProductId('2')->withPrice(200)->build(),
+        ]);
+        $this->choices->saveAll([
+            new ChoiceBuilder()->withUserId('user-1')->withIngredientSlug('farine')->withAccepted([$this->id('1')])->build(),
+            new ChoiceBuilder()->withUserId('user-2')->withStoreId('654321')->withIngredientSlug('farine')->withAccepted([$this->id('2', '654321')])->build(),
+            new ChoiceBuilder()->withUserId('user-1')->withStoreId('654321')->withIngredientSlug('lait')->withAccepted([$this->id('2', '654321')])->build(),
+        ]);
+        $list = $this->list('user-1', [
+            new ShoppingListLineForDrive('farine', 'Farine', 1, 'paquet', 'paquet', 'PACKAGE', 1.0),
+            new ShoppingListLineForDrive('lait', 'Lait', 1, 'paquet', 'paquet', 'PACKAGE', 1.0),
+        ]);
+
+        // When
+        $estimate = $this->loader($list)->get('user-1', 'list-1');
+
+        // Then : seul le lait est connu dans le magasin courant
+        $this->assertSame(['NO_PRODUCT', 'ESTIMATED'], array_map(static fn(DriveEstimateLineDTO $line): string => $line->status, $estimate->lines));
+        $this->assertSame(200, $estimate->estimatedTotalCents);
+        $this->assertSame('654321', $estimate->store->id);
+    }
+
+    public function testAProductUnknownToTheCatalogueIsLeftOut(): void
+    {
+        // Given
+        $this->settings->save(new DriveSettingsBuilder()->withUserId('user-1')->build());
+        $this->choices->save(new ChoiceBuilder()->withUserId('user-1')->withAccepted(['produit-inconnu'])->build());
+        $list = $this->list('user-1', [new ShoppingListLineForDrive('farine', 'Farine', 1, 'paquet', 'paquet', 'PACKAGE', 1.0)]);
+
+        // When
+        $estimate = $this->loader($list)->get('user-1', 'list-1');
+
+        // Then
+        $this->assertSame(['NO_PRODUCT', 0, null], [$estimate->lines[0]->status, $estimate->estimatedTotalCents, $estimate->oldestPriceAt]);
+    }
+
+    public function testAnEstimateIsAvailableWhateverTheStatusOfTheList(): void
+    {
+        // Given
+        $this->settings->save(new DriveSettingsBuilder()->withUserId('user-1')->build());
+
+        // When / Then
+        foreach (['ACTIVE', 'PAUSED', 'SENT', 'COMPLETED'] as $status) {
+            $this->assertSame('list-1', $this->loader($this->list('user-1', [], $status))->get('user-1', 'list-1')->shoppingListId);
+        }
+    }
+
+    public function testAnEmptyListHasNoLineAndNoCoverage(): void
+    {
+        // Given
+        $this->settings->save(new DriveSettingsBuilder()->withUserId('user-1')->build());
+
+        // When
+        $estimate = $this->loader($this->list('user-1', []))->get('user-1', 'list-1');
+
+        // Then
+        $this->assertSame([0, 0, 0, 0.0, []], [$estimate->estimatedTotalCents, $estimate->estimatedLines, $estimate->unestimatedLines, $estimate->coverage, $estimate->lines]);
+    }
+
+    public function testRefusesWithoutSettings(): void
+    {
+        // Then
+        $this->expectExceptionObject(DriveException::notConfigured());
+
+        // When
+        $this->loader($this->list('user-1', []))->get('user-1', 'list-1');
+    }
+
+    public function testRefusesTheListOfAnotherUser(): void
+    {
+        // Given
+        $this->settings->save(new DriveSettingsBuilder()->withUserId('user-2')->build());
+
+        // Then
+        $this->expectExceptionObject(DriveException::shoppingListForbidden());
+
+        // When
+        $this->loader($this->list('user-1', []))->get('user-2', 'list-1');
+    }
+
+    public function testAnUnknownListIsNotFound(): void
+    {
+        // Given
+        $this->settings->save(new DriveSettingsBuilder()->withUserId('user-1')->build());
+
+        // Then
+        $this->expectException(ShoppingListException::class);
+        $this->expectExceptionCode(404);
+
+        // When
+        $this->loader(null)->get('user-1', 'list-1');
+    }
+
+    public function testEstimatingARealListOfTwelveIngredientsCostsAFixedNumberOfQueries(): void
+    {
+        // Given : une vraie liste de 12 ingrédients (1 l chacun) ; 8 ont un produit préféré de 1 l avec un prix, 4 non (sans préférence,
+        // refus seul, sans prix, contenu en poids pour un volume)
+        $owner = new UserBuilder()->build();
+        static::getContainer()->get(UserRepository::class)->save($owner);
+        $this->settings->save(new DriveSettingsBuilder()->withUserId($owner->getId())->build());
+        $persister = new DataPersister(static::getContainer());
+        $builder = new ShoppingListBuilder()->withId('list-1')->withOwner($owner)->withStatus(ShoppingListStatus::SENT);
+        $products = $choices = [];
+        foreach (range(1, 12) as $i) {
+            $slug = sprintf('ingredient-%02d', $i);
+            $ingredient = new IngredientBuilder()->isMilk()->withSlug($slug)->withName("Ingrédient $i")->build();
+            $persister->saveIngredient($ingredient);
+            $builder->addIngredient($ingredient);
+            $litre = new ProductContent(1, ContentUnit::L);
+            $choice = new ChoiceBuilder()->withUserId($owner->getId())->withIngredientSlug($slug);
+            if ($i <= 8) {
+                // préféré avec un prix daté du 10 + i octobre, puis un produit de secours qui ne doit pas compter
+                $products[] = new ProductBuilder()->withRetailerProductId((string) $i)->withContent($litre)->withPrice($i * 100, seenAt: new DateTimeImmutable('2026-10-' . (10 + $i) . ' 09:00:00'))->build();
+                $products[] = new ProductBuilder()->withRetailerProductId((string) ($i + 100))->withContent($litre)->withPrice(1)->build();
+                $choices[] = $choice->withAccepted([$this->id((string) $i), $this->id((string) ($i + 100))])->build();
+            } elseif ($i === 10) {
+                $products[] = new ProductBuilder()->withRetailerProductId((string) $i)->withContent($litre)->withPrice(100)->build();
+                $choices[] = $choice->withRejected([$this->id((string) $i)])->build();
+            } elseif ($i === 11) {
+                $products[] = new ProductBuilder()->withRetailerProductId((string) $i)->withContent($litre)->build();
+                $choices[] = $choice->withAccepted([$this->id((string) $i)])->build();
+            } elseif ($i === 12) {
+                $products[] = new ProductBuilder()->withRetailerProductId((string) $i)->withContent(new ProductContent(1, ContentUnit::KG))->withPrice(100)->build();
+                $choices[] = $choice->withAccepted([$this->id((string) $i)])->build();
+            }
+        }
+        static::getContainer()->get(ShoppingListRepository::class)->save($builder->build());
+        $this->products->saveAll($products);
+        $this->choices->saveAll($choices);
+        $this->entityManager->clear();
+        $counter = static::getContainer()->get(QueryCounter::class);
+        $counter->reset();
+
+        // When : avec le vrai port de lecture de la liste
+        $estimate = static::getContainer()->get(DriveEstimateLoader::class)->get($owner->getId(), 'list-1');
+
+        // Then : total 100 + 200 + … + 800 = 3 600 centimes, couverture 8/12, dates du 11 et du 18 octobre ; réglages, liste, lignes, préférences
+        $this->assertCount(12, $estimate->lines);
+        $this->assertSame([3600, 8, 4], [$estimate->estimatedTotalCents, $estimate->estimatedLines, $estimate->unestimatedLines]);
+        $this->assertEqualsWithDelta(8 / 12, $estimate->coverage, 0.0001);
+        $this->assertSame([...array_fill(0, 8, 'ESTIMATED'), ...['NO_PRODUCT', 'NO_PRODUCT', 'NO_PRICE', 'TO_CHECK']], array_column($estimate->lines, 'status'));
+        $this->assertSame(['2026-10-11', '2026-10-18'], [substr($estimate->oldestPriceAt, 0, 10), substr($estimate->newestPriceAt, 0, 10)]);
+        $this->assertSame(4, $counter->count());
+    }
+
+    /**
+     * @param list<ShoppingListLineForDrive> $lines
+     */
+    private function list(string $ownerId, array $lines, string $status = 'ACTIVE'): ShoppingListForDrive
+    {
+        return new ShoppingListForDrive('list-1', $ownerId, $status, 7, $lines);
+    }
+
+    private function loader(?ShoppingListForDrive $list): DriveEstimatePostgreSQLLoader
+    {
+        return new DriveEstimatePostgreSQLLoader(
+            $this->entityManager,
+            new DriveSettingsPostgreSQLLoader($this->entityManager, new ControlledDriveFeature(true)),
+            new ShoppingListForDriveInMemoryLoader($list),
+            new ListCostEstimator(new PackCalculator()),
+        );
+    }
+
+    private function id(string $retailerProductId, string $storeId = '123456'): string
+    {
+        return Product::idFor(Retailer::LECLERC, $storeId, $retailerProductId);
+    }
+}
