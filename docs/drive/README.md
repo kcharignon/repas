@@ -49,6 +49,7 @@ Voir `architecture.md` § 1 : drive, enseigne, magasin, agent, plan, produit, ch
 | `analyse.md` | Analyse produit, options écartées, décisions par défaut, risques. |
 | `recherche.md` | Faits sourcés et ce qui reste à vérifier. |
 | `roadmap.md` | Jalons, tickets, dépendances, Definition of Done. |
+| `runbook.md` | « Leclerc a changé » : symptômes, diagnostic, coupure (`DRIVE_ENABLED=false`), repli, correction, retour en service (DRV-503). Mise en production et retour arrière : `../production.md`. |
 | `tickets/DRV-*.md` | Un ticket par fichier, autonome. |
 | `spikes/` | Gabarits des rapports de découverte (à remplir par l'humain ou l'agent). |
 | `plan-initial.md` | Copie intégrale du plan, pour ne rien perdre. |

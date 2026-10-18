@@ -28,6 +28,7 @@ description: Mettre en production, publier une release, revenir en arrière, sau
 | Le front est inutilisable : rendre Twig en urgence (dernière version qui le servait) | `references/retour-twig.md` |
 | Mettre en place l'envoi d'emails (confirmation d'adresse, ADR 0020) : compte Brevo, domaine, clé d'API, `MAILER_DSN` | `references/envoi-emails.md` |
 | Envoi de la liste au drive : mettre en production (back, front, application), allumer ou couper `DRIVE_ENABLED`, revenir en arrière avec des listes `SENT` (faits et commandes : `docs/production.md`) | `references/drive.md` (scripts `ecrire-drive-enabled.sh`, `rouvrir-listes-envoyees.sh`) |
+| Leclerc a changé ou bloque : couper `DRIVE_ENABLED`, diagnostic, repli en mode assisté, corriger l'agent, nouvelle application, rallumer | `docs/drive/runbook.md` (la couper : `references/drive.md` section B) |
 
 ## 3. Règles
 

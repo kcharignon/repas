@@ -1,6 +1,6 @@
 # Incident : le site ne répond plus ou une release s'est mal passée
 
-Toujours commencer par **lire**, sans rien modifier.
+Toujours commencer par **lire**, sans rien modifier. Si le problème vient de l'envoi de la liste au drive (message « Le site a changé », « Leclerc a ralenti les requêtes ») et non du serveur : `docs/drive/runbook.md`.
 
 ## 1. Diagnostic (lecture seule)
 
