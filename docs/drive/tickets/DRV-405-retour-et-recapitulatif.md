@@ -4,7 +4,7 @@
 - **Jalon** : M4 Front
 - **Taille** : L
 - **Dépend de** : DRV-204, DRV-402
-- **Statut** : à faire
+- **Statut** : fait (PR [repas-front#98](https://github.com/kcharignon/repas-front/pull/98), 2026-10-18)
 - **Lire d'abord** : [`../architecture.md`](../architecture.md) §§ 7, 8, 9 ; DRV-402.
 
 ## Contexte

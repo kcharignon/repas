@@ -18,3 +18,13 @@
 ## Critères d'acceptation
 
 Un agent d'intégration déroule `recette.md` en développement sans écart non expliqué ; tous les contrôles qualité sont verts dans les deux dépôts.
+
+## À vérifier à l'intégration (relevé par les agents du front, 2026-10-18)
+
+- Fixer `BASKET_PATH` (`src/features/drive/leclerc.ts`, vide pour l'instant : page d'accueil du magasin) avec l'adresse de la page panier relevée à la recette ; confirmer le lien de recherche du mode assisté `${store.baseUrl}/recherche.aspx?TexteRecherche=…`.
+- Vérifier côté application que `drive.result` arrive dans la page Repas au retour de `DriveActivity` (`useDriveReturn` écoute `repasNative` dès le démarrage et mène à `/drive/retour`) et qu'un passage abandonné renvoie un résultat `aborted`.
+- Un vrai `PUT /drive/choices` avec identifiants et prix réels (bornes du back : contenu 0,001 à 100 000, prix 0 à 1 000 000 centimes, `retailerProductId` chaîne de 1 à 12 chiffres).
+- `needed.unitSymbol` vide : le front omet `needed` pour la ligne (l'agent demande la quantité) ; le back renverra désormais le nom de l'unité à défaut de symbole (partie back de DRV-501) : retirer alors la rustine du front.
+- Un `setup-result` (lecture du magasin) arrive dans `useDriveReturnStore().event` ; il manque un `startRun` pour un message `setup` dans le pont (DRV-403/314 : message `drive.setup`).
+- Après un rechargement, les choix « autre produit » et « passer » ne sont pas gardés (le brouillon n'a volontairement aucune donnée personnelle).
+- Le récapitulatif du retour est en mémoire seulement : une page rechargée avant l'enregistrement le perd, le brouillon reste.

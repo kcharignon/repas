@@ -4,7 +4,7 @@
 - **Jalon** : M4 Front
 - **Taille** : L
 - **Dépend de** : DRV-102, DRV-206, DRV-401, DRV-402
-- **Statut** : à faire
+- **Statut** : fait (PR [repas-front#96](https://github.com/kcharignon/repas-front/pull/96), 2026-10-18)
 - **Lire d'abord** : [`../architecture.md`](../architecture.md) §§ 3, 7, 8, 9 ; DRV-402 (module `driveBridge`).
 
 ## Contexte
