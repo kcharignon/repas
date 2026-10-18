@@ -201,3 +201,8 @@ Si l'anti-robot bloque encore (`BLOCKED`) : ne pas rallumer pour tout le monde ;
 | Date | Symptôme (code) | Cause trouvée | Correction (PR) | Agent / application | Remis en service |
 |---|---|---|---|---|---|
 | | | | | | |
+
+## 11. Symptôme « HTTP 400 » ou « Page introuvable » (recette du 2026-10-18)
+
+- **Le diagnostic dit « Recherche d'un mot courant : CONTRACT_CHANGED, cause HTTP_400 »** : la recherche est demandée sur un chemin que le site refuse (page de départ sans suffixe de ville). Lance le diagnostic depuis une vraie page du magasin (« Commencer mes courses », puis une recherche du site) et lis les lignes « Chemin avec ville tiré de la page » et « HTTP : a=… b=… » (une ligne par forme essayée) : celle qui répond 200 est la forme à utiliser. Voir `hypotheses-site-reel.md` § 8.
+- **Une page « Désolé, la page demandée n'a pas pu être trouvée » à l'ouverture d'un envoi** : l'adresse ouverte n'est pas celle d'un magasin ; l'application doit ouvrir `https://www.leclercdrive.fr/` (pas la racine du serveur du magasin). Le bandeau « Cette page n'est pas celle de ton magasin » et le bouton « Ouvrir l'accueil du drive » sont le repli.
