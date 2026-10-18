@@ -46,12 +46,12 @@ Suivi vivant. Cocher une case quand le ticket est fusionné (et noter la PR). Le
 ## M2b — Estimation du coût
 
 - [x] [DRV-611](tickets/DRV-611-estimation-cout-liste.md) back · M · Estimation du coût d'une liste à partir des prix mémorisés · dépend de : 204, 205, 206 · Issue : [#144](https://github.com/kcharignon/repas/issues/144)
+- [x] [DRV-612](tickets/DRV-612-ecran-estimation-cout.md) front · M · Écran de l'estimation du coût d'une liste · dépend de : 611, 401 · Issue : [repas-front#99](https://github.com/kcharignon/repas-front/issues/99)
 
 ## M2c — Durcissement (revue de sécurité du back)
 
 - [ ] [DRV-613](tickets/DRV-613-durcissement-fiches-produits.md) back puis front · M · Durcissement des fiches de produits partagées, plafonds, `reopen` interrupteur coupé (partie 1 back faite, PR #166 ; partie 2 front à faire) · dépend de : 204, 305, 306 · Issue : [#164](https://github.com/kcharignon/repas/issues/164)
 - [ ] [DRV-614](tickets/DRV-614-retour-limite-au-plan.md) front · S · Le retour de l'agent ne retient que les lignes du plan, message `DRIVE_LIMIT_REACHED`, « Rouvrir » interrupteur coupé (constat C1 de la revue du front) · dépend de : 405, 613
-- [x] [DRV-612](tickets/DRV-612-ecran-estimation-cout.md) front · M · Écran de l'estimation du coût d'une liste · dépend de : 611, 401 · Issue : [repas-front#99](https://github.com/kcharignon/repas-front/issues/99)
 
 ## M3 — Agent (front, `drive-agent/`)
 
@@ -64,7 +64,7 @@ Suivi vivant. Cocher une case quand le ticket est fusionné (et noter la PR). Le
 - [x] [DRV-307](tickets/DRV-307-mode-configuration.md) front · S · Mode configuration · dépend de : 302, 303 · Issue : [repas-front#45](https://github.com/kcharignon/repas-front/issues/45)
 - [x] [DRV-308](tickets/DRV-308-mode-diagnostic.md) front · S · Mode diagnostic · dépend de : 303, 304 · Issue : [repas-front#46](https://github.com/kcharignon/repas-front/issues/46)
 - [x] [DRV-309](tickets/DRV-309-faux-site-leclerc-e2e.md) front · L · Faux site Leclerc et tests e2e de l'agent · dépend de : 303 · Issue : [repas-front#47](https://github.com/kcharignon/repas-front/issues/47)
-- [ ] [DRV-310](tickets/DRV-310-publication-favori.md) front · S · Publication du favori · dépend de : 306 · Issue : [repas-front#48](https://github.com/kcharignon/repas-front/issues/48)
+- [ ] ~~[DRV-310](tickets/DRV-310-publication-favori.md)~~ (remplacé par DRV-315 : plus de favori, l'agent est embarqué dans l'application) front · S · Publication du favori · dépend de : 306 · Issue : [repas-front#48](https://github.com/kcharignon/repas-front/issues/48)
 
 ## M3b — Application Android (front, `android/`)
 
@@ -79,7 +79,7 @@ Prépare l'application « Repas Drive » (WebView en mode ordinateur, agent emba
 - [x] [DRV-317](tickets/DRV-317-coque-application-repas.md) front · L · Coquille de l'application Repas (WebView sur le front Repas) · dépend de : 312, 313 · Issue : [repas-front#86](https://github.com/kcharignon/repas-front/issues/86)
 - [x] [DRV-318](tickets/DRV-318-test-automatique-application.md) front · M · Test automatique en un geste dans l'application de débogage · dépend de : 313 · Issue : [repas-front#87](https://github.com/kcharignon/repas-front/issues/87)
 - [ ] [DRV-319](tickets/DRV-319-emulateur-android-docker.md) front · L · Émulateur Android en Docker pour tester l'application sans Leclerc · dépend de : 313 (partie 1), 317 et 309 (partie 2) · Issue : [repas-front#88](https://github.com/kcharignon/repas-front/issues/88)
-- [ ] [DRV-320](tickets/DRV-320-lecture-magasin-depuis-application.md) front · M · Lecture du magasin depuis l'application (`drive.setup`) et menu natif · dépend de : 314, 307, 403 · Issue : [repas-front#103](https://github.com/kcharignon/repas-front/issues/103)
+- [x] [DRV-320](tickets/DRV-320-lecture-magasin-depuis-application.md) front · M · Lecture du magasin depuis l'application (`drive.setup`) et menu natif (PR front #111, 2026-10-18) · dépend de : 314, 307, 403 · Issue : [repas-front#103](https://github.com/kcharignon/repas-front/issues/103)
 
 
 
@@ -101,7 +101,7 @@ Prépare l'application « Repas Drive » (WebView en mode ordinateur, agent emba
 - [ ] [DRV-501](tickets/DRV-501-integration-dev.md) back+front · M · Intégration en développement et checklist de recette · dépend de : M2, M3, M3b, M4 · Issue : [#83](https://github.com/kcharignon/repas/issues/83) · partie back faite (PR #156), partie front faite (repas-front#106), `recette.md` écrite ; reste le parcours réel dans l'émulateur (DRV-319 partie 2) et `BASKET_PATH`
 - [x] [DRV-502](tickets/DRV-502-deploiement.md) back · S · Déploiement, interrupteur, retour arrière · dépend de : 501 · Issue : [#84](https://github.com/kcharignon/repas/issues/84)
 - [x] [DRV-503](tickets/DRV-503-runbook-leclerc-change.md) back · S · Runbook « Leclerc a changé » · dépend de : 501 · Issue : [#85](https://github.com/kcharignon/repas/issues/85)
-- [ ] [DRV-504](tickets/DRV-504-note-vie-privee.md) back+front · S · Note de vie privée (partie back faite : texte et registre, PR #152 ; reste l'affichage dans le front) · dépend de : 204 · Issue : [#86](https://github.com/kcharignon/repas/issues/86)
+- [ ] [DRV-504](tickets/DRV-504-note-vie-privee.md) back+front · S · Note de vie privée (partie back faite : texte et registre, PR #152 ; partie front faite : repas-front#101, #105 et #106 ; reste la relecture des textes par l'utilisateur) · dépend de : 204 · Issue : [#86](https://github.com/kcharignon/repas/issues/86)
 - [ ] [DRV-505](tickets/DRV-505-recette-reelle.md) humain · S · Recette en conditions réelles et activation (procédure écrite : [`recette.md`](recette.md), à dérouler sur le téléphone, interrupteur allumé) · dépend de : 502, 503 · Issue : [#87](https://github.com/kcharignon/repas/issues/87)
 
 ## Backlog (non détaillé, à écrire quand il devient utile)

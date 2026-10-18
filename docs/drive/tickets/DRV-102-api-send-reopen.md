@@ -30,7 +30,7 @@ Champs `ingredientSlug` et `unitSlug` des lignes (DRV-104). Tout le contexte `Dr
 - `POST /send` sur la liste d'un autre utilisateur : `403` ; liste inconnue : `404` ; liste vide : `422` `SHOPPING_LIST_EMPTY` ; `If-Match` périmé : `412` ; liste en pause : `409` `SHOPPING_LIST_NOT_SENDABLE`.
 - Toute écriture de contenu sur la liste envoyée : `409` `SHOPPING_LIST_SENT`.
 - `POST /reopen` : `204` et la liste est `ACTIVE`, `sentAt` nul ; sur une liste non envoyée : `409`.
-- Quand `DRIVE_ENABLED` est faux : `send` et `reopen` répondent `404` `DRIVE_DISABLED`.
+- Quand `DRIVE_ENABLED` est faux : `send` et `reopen` répondent `404` `DRIVE_DISABLED`. **Amendé le 2026-10-18 (DRV-613, ADR 0023 §9) : `reopen` n'est plus derrière l'interrupteur et répond comme d'habitude (`204` ou `409 SHOPPING_LIST_NOT_SENT`) ; seuls `send` et les routes `Drive` répondent `404 DRIVE_DISABLED`.**
 - Les clés JSON de `isSent` et `sentAt` apparaissent dans les deux DTO ; la doc OpenAPI les décrit.
 
 ## Tests exigés

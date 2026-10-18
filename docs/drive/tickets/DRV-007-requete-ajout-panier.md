@@ -9,7 +9,7 @@
 
 ## Contexte
 
-Le 2026-10-17, l'ajout au panier du banc d'essai a répondu 404 sur le site réel (hôte `fd7`), alors que la lecture (recherche, prix, stock) marche. Sans écriture dans le panier, l'agent ne sert à rien : c'est le point bloquant de la décision G1.
+Le 2026-10-17, l'ajout au panier du banc d'essai a répondu 404 sur le site réel (hôte `fdN`), alors que la lecture (recherche, prix, stock) marche. Sans écriture dans le panier, l'agent ne sert à rien : c'est le point bloquant de la décision G1.
 
 ## Portée
 

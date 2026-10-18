@@ -2,6 +2,8 @@
 
 Analyse faite le **2026-10-17** (grille Product Owner appliquée à la main : aucun skill dédié n'est installé). Faits : [`recherche.md`](recherche.md). Solution technique : [`architecture.md`](architecture.md). Tickets : [`roadmap.md`](roadmap.md).
 
+> **Mise à jour du 2026-10-18.** Cette analyse date du 2026-10-17 et parle de favori JavaScript (§ 2 point 2, § 4, § 9) : ce moyen est **abandonné** (D20b, D24). Le véhicule retenu à G1 est une **application Android** (D25 à D28 en § 7) qui est devenue l'application Repas complète ; l'analyse de fond (besoin, options écartées, ingrédient → produit, sécurité, décisions D1 à D19 et D22) reste valable. Lire § 7 pour les décisions à jour et [`pivot-application-android.md`](pivot-application-android.md) pour le pivot.
+
 ## 1. Besoin
 
 **Quand** ma liste de la semaine est prête, **je veux** que mon panier drive se remplisse avec mes produits habituels, **pour** ne pas ressaisir trente lignes. Sur Android, avec un geste de plus au maximum.
@@ -84,7 +86,7 @@ Décidé : on n'en stocke aucun. Si l'on devait (non recommandé, aucun plan) : 
 - D17 Si le produit préféré est indisponible, l'agent prend le suivant de la liste sans rien demander ; si aucun n'est disponible, il demande à l'utilisateur de choisir un autre produit sur Leclerc (phase B) et lui demande son rôle : nouveau préféré, produit de secours, ou seulement cette fois.
 - D18 L'agent ne choisit jamais seul un produit « équivalent » absent de la liste ; la suggestion automatique (backlog DRV-601) devra toujours exclure les produits refusés.
 - D19 Un produit refusé se désigne depuis la phase B (case « Ne plus jamais prendre » pour un produit indisponible) ou depuis l'écran « Mes produits » (DRV-410) ; il se ré-accepte depuis ce même écran.
-- D22 (décision de l'utilisateur, 2026-10-17) Le **prix** d'un produit choisi est mémorisé avec le produit (prix unitaire TTC en centimes, prix à l'unité de mesure, date de la dernière vue) pour pouvoir donner plus tard une estimation du coût d'une liste (backlog DRV-611). C'est une estimation datée, jamais un prix garanti. Les photos ne sont pas conservées. Les requêtes restent lentes, en série, à la demande de l'utilisateur, sans moissonner le catalogue.
+- D22 (décision de l'utilisateur, 2026-10-17) Le **prix** d'un produit choisi est mémorisé avec le produit (prix unitaire TTC en centimes, prix à l'unité de mesure, date de la dernière vue) pour pouvoir donner plus tard une estimation du coût d'une liste (DRV-611, fait). C'est une estimation datée, jamais un prix garanti. Les photos ne sont pas conservées. Les requêtes restent lentes, en série, à la demande de l'utilisateur, sans moissonner le catalogue.
 - D28 (décision de l'utilisateur, 2026-10-18) L'application Android est l'application **Repas complète** (recettes, listes, ingrédients, drive), pas un compagnon : coquille native autour du front Repas (WebView sur `https://kantin.eu/`) avec le drive comme second écran, relié par un pont natif ; remplace le lien `repasdrive://` de D26/G1. Voir `pivot-application-android.md`.
 - D26 (décision, G1 du 2026-10-17) Forme de l'application : **compagnon natif Kotlin** dans le dossier `android/` du dépôt front (prolongement du spike `android-lab`), plutôt que Repas empaqueté avec Capacitor (non éprouvé, plus lourd).
 - D27 (décision, G1 du 2026-10-17) Distribution : **APK signé** publié en release GitHub, installé à la main ; l'application signale les nouvelles versions ; la clé de signature est créée et gardée par l'utilisateur (hors dépôt) ; Google Play (test interne) reste une option ultérieure ; la vérification des développeurs annoncée par Google est à regarder à la livraison.
@@ -115,4 +117,4 @@ Règle de verrou (statuts, opérations, codes, versions, déploiement) · contex
 
 ## 10. Découpage
 
-Voir [`roadmap.md`](roadmap.md) : 43 tickets en 6 jalons (M0 découverte et décision G1, M1 back `Repas`, M2 back `Drive`, M3 agent, M4 front, M5 intégration et livraison) plus un backlog. Principe : rien de produit n'est codé avant la décision G1, qui dépend des spikes sur le téléphone, des CGU et des en-têtes de sécurité de Leclerc.
+Voir [`roadmap.md`](roadmap.md) : une soixantaine de tickets en jalons (M0 découverte et décision G1, M1 back `Repas`, M2 back `Drive`, M2b et M2c estimation et durcissement, M3 agent, M3b application Android, M4 front, M5 intégration et livraison) plus un backlog. Principe : rien de produit n'est codé avant la décision G1, qui dépend des spikes sur le téléphone, des CGU et des en-têtes de sécurité de Leclerc.

@@ -50,7 +50,7 @@ Noter, sans donnée personnelle : la date, le titre du message et son code, la v
 
 C'est le contrôle de premier niveau. Il est en **lecture seule** : il ne met rien au panier.
 
-1. Sur le téléphone concerné, dans l'application, ouvrir le **drive Leclerc** (menu → « Ouvrir le drive Leclerc »), se connecter si besoin, choisir son magasin et aller sur une page de magasin (faire une recherche, par exemple « farine »).
+1. Sur le téléphone concerné, dans l'application, ouvrir le **drive Leclerc** (menu de Repas → « Ouvrir le drive Leclerc » : dans la pré-version de test, le bouton ⋮ au bord droit de l'écran ; dans l'application de publication, « Mon compte » → section « Drive » → « Menu de l'application » (DRV-320, repas-front#111) : visible seulement dans l'application et **fonction allumée**), se connecter si besoin, choisir son magasin et aller sur une page de magasin (faire une recherche, par exemple « farine »).
 2. Sur l'écran du drive, toucher le bouton rond **⋮** en bas à droite, puis **« Diagnostic de l'agent »**. Les contrôles défilent (une seule recherche, celle du mot « sel », avec la cadence normale).
 3. Toucher **« Copier le rapport »**, puis le coller dans la conversation. Le rapport ne contient ni cookie, ni identifiant, ni adresse, ni nom, ni numéro de magasin complet (seulement `…` et les trois derniers chiffres) ; relire avant de coller.
 
@@ -106,12 +106,13 @@ Ce qui change ensuite :
 - `send` et les routes du drive répondent `404 DRIVE_DISABLED` ; `reopen` continue de répondre (ADR 0023 §9) ;
 - les **listes déjà envoyées** (`SENT`) restent **lisibles** et peuvent être **terminées** ou **supprimées** ; elles restent verrouillées (non modifiables) tant qu'elles sont envoyées, mais **chacun peut rouvrir la sienne** depuis l'interface même fonction coupée (`reopen` n'est pas derrière l'interrupteur) ;
 - les produits mémorisés, les réglages de magasin et les listes sont **intacts** ; l'application et l'agent ne sont pas touchés.
+- dans l'application de publication, « Mon compte » → « Drive » (donc « Menu de l'application », donc « Se déconnecter de Leclerc et effacer les données du drive ») disparaît tant que la fonction est coupée ; la pré-version de test garde son bouton ⋮ (point signalé à l'utilisateur, ticket DRV-320).
 
 **Rouvrir en bloc les listes envoyées** (utile surtout avant de remettre une version du code qui ne connaît pas `SENT`, qui n'a pas de `reopen` ; pour une simple coupure, chacun rouvre sa liste) : script `rouvrir-listes-envoyees.sh`, d'abord sans argument (lecture seule), puis avec `--appliquer` après accord : voir [`../production.md`](../production.md), « Listes `SENT` ». Il fait une sauvegarde avant.
 
 ## 5. Se replier : le mode assisté
 
-Le **mode assisté** est le repli permanent prévu par l'ADR 0022 : Repas affiche la liste, la personne ouvre Leclerc (application ou navigateur) et cherche elle-même chaque produit, sans remplissage automatique ; l'interface propose, quand elle le prévoit, un lien de recherche Leclerc par ligne. Rien n'est mémorisé dans ce mode et Repas n'envoie rien à Leclerc.
+Le **mode assisté** est le repli permanent prévu par l'ADR 0022 : Repas affiche la liste, la personne ouvre Leclerc (application ou navigateur) et cherche elle-même chaque produit, sans remplissage automatique ; l'écran d'envoi propose, **hors de l'application** (dans un navigateur ordinaire) et **fonction allumée**, un lien « Chercher sur Leclerc » par ligne (DRV-404, `driveSend.notInApp`). Rien n'est mémorisé dans ce mode et Repas n'envoie rien à Leclerc. **Fonction coupée**, l'écran d'envoi n'est pas offert : il n'y a alors pas de liens, la personne cherche seule sur le site de Leclerc (ou dans l'application : menu → « Ouvrir le drive Leclerc ») en lisant sa liste dans Repas.
 
 - Une liste déjà envoyée reste lisible : elle sert de liste de courses telle quelle.
 - Pour la modifier, la rouvrir (§ 4), ou en créer une nouvelle.
@@ -157,11 +158,11 @@ Dans le dépôt front : `make agent-test`, `make agent-e2e` (agent construit con
 1. **L'humain décide de l'étiquette** `android-vX.Y.Z` (un numéro plus grand que le précédent ; le compteur de version ne baisse jamais, sinon plus de mise à jour par-dessus). Ni un agent ni l'assistant ne la crée.
 2. Le workflow construit l'APK **signé** avec la clé de l'utilisateur (secrets GitHub posés par lui, jamais vus par un agent), calcule son SHA-256 et publie la release avec `repas-drive.apk`, `repas-drive.apk.sha256` et `version.json` (ticket DRV-315, dépôt front). Tant que DRV-315 n'est pas fait, la publication signée n'existe pas : seules les pré-versions de débogage sont possibles.
 3. **Vérifier l'empreinte** du fichier téléchargé : `sha256sum repas-drive.apk` doit donner la valeur de `repas-drive.apk.sha256`.
-4. Sur chaque téléphone : télécharger et **installer par-dessus** (sans désinstaller : même clé de signature). Ouvrir menu → « Version et mode d'emploi » : la version est la nouvelle et l'agent est « intact ».
+4. Sur chaque téléphone : télécharger et **installer par-dessus** (sans désinstaller : même clé de signature). Ouvrir menu → « Version et mode d'emploi » : la version est la nouvelle et la ligne « Agent : version …, empreinte … » donne la nouvelle version de l'agent (pas « absent » ni « empreinte inattendue »).
 
-### 7.5 Relever la version minimale de l'agent
+### 7.5 Version minimale de l'agent : elle n'existe pas
 
-Le front peut refuser les résultats d'un agent trop ancien (constante `MIN_AGENT_VERSION` et fonction `isAgentCompatible`, prévues par le ticket DRV-402 dans `src/features/drive/bridge/` du dépôt front ; vérifier avec `git grep MIN_AGENT_VERSION` qu'elles existent). Si oui, **dans la PR du front publiée avec la nouvelle application**, la relever au numéro de la nouvelle `AGENT_VERSION`. Un téléphone qui n'a pas encore mis à jour voit alors « mets à jour l'application » au lieu d'envoyer un résultat faux. La relever **après** avoir publié l'application, pas avant, sinon tout le monde est refusé.
+Le ticket DRV-402 prévoyait une constante `MIN_AGENT_VERSION` et une fonction `isAgentCompatible` pour refuser les résultats d'un agent trop ancien ; **elles n'ont pas été écrites** (vérifié le 2026-10-18 : `git grep MIN_AGENT_VERSION` ne trouve rien dans le front, et DRV-403 a retenu à la place le drapeau `drive` de `app.info`, qui dit seulement si l'agent est présent et intact). Il n'y a donc rien à relever après une correction : un téléphone qui n'a pas encore mis l'application à jour envoie un plan à l'ancien agent, qui s'arrête proprement (`CONTRACT_CHANGED` ou `INVALID_MESSAGE`) sans rien abîmer. Si on veut un jour que Repas refuse un agent trop ancien, il faut d'abord écrire cette fonction (nouveau ticket, côté front), puis la relever à chaque correction **après** avoir publié l'application, pas avant, sinon tout le monde est refusé.
 
 ### 7.6 Faire réinstaller
 

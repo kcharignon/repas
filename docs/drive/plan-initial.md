@@ -1,4 +1,4 @@
-> **Copie intégrale du plan du 2026-10-17** (analyse, architecture, découpage en tickets). Les autres fichiers de `docs/drive/` en sont dérivés ; en cas d'écart, `architecture.md`, `roadmap.md` et les tickets font foi. La section « Passation » ci-dessous décrit l'état au moment de la rédaction : depuis, le plan a été copié ici et l'avancement se lit dans `roadmap.md`.
+> **Copie intégrale du plan du 2026-10-17** (analyse, architecture, découpage en tickets). Les autres fichiers de `docs/drive/` en sont dérivés ; en cas d'écart, `architecture.md`, `roadmap.md` et les tickets font foi. **Le véhicule de l'agent y est périmé** : le favori JavaScript et le transport par fragment d'adresse sont abandonnés au profit de l'application Android (voir [`pivot-application-android.md`](pivot-application-android.md)). La section « Passation » ci-dessous décrit l'état au moment de la rédaction : depuis, le plan a été copié ici et l'avancement se lit dans `roadmap.md`.
 
 # Remplir le panier du drive Leclerc depuis la liste de courses — analyse, architecture et tickets
 

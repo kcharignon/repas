@@ -14,11 +14,11 @@ Contexte : le banc d'essai (DRV-001) envoie `POST …/panier.aspx?op=1` avec un 
 
 ## Relevé
 
-Relevé du 2026-10-17 (ordinateur, Chrome 155, hôte `fd7`, produit « Farine de blé T45 Tablier Blanc », identifiant 1955), en deux temps : en-têtes et réponses, puis le champ `d` des deux requêtes. **Relevé complet.**
+Relevé du 2026-10-17 (ordinateur, Chrome 155, hôte `fdN`, produit « Farine de blé T45 Tablier Blanc », identifiant 1955), en deux temps : en-têtes et réponses, puis le champ `d` des deux requêtes. **Relevé complet.**
 
 | Élément | Ajout (+) | Retrait (−) |
 |---|---|---|
-| Méthode et adresse complète | `POST /magasin-[masqué]/panier.aspx?op=1` (même hôte `fd7`) | identique |
+| Méthode et adresse complète | `POST /magasin-[masqué]/panier.aspx?op=1` (même hôte `fdN`) | identique |
 | Code HTTP | 200 | 200 |
 | `Content-Type` de la requête | `application/x-www-form-urlencoded; charset=UTF-8` | identique |
 | `Content-Length` du corps | **317** octets | **124** octets |

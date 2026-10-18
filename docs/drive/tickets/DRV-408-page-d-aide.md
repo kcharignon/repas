@@ -4,7 +4,7 @@
 - **Jalon** : M4 Front
 - **Taille** : S
 - **Dépend de** : DRV-403
-- **Statut** : à faire
+- **Statut** : remplacé par [DRV-316](DRV-316-aide-installation-application.md) (fait, repas-front#101, 2026-10-18) : l'aide explique l'application Android, plus un favori
 - **Lire d'abord** : DRV-403 ; rapport DRV-002 (ce qui marche réellement sur Chrome Android).
 
 ## Portée

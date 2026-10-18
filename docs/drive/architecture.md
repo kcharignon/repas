@@ -2,12 +2,14 @@
 
 Référence pour les agents qui implémentent les tickets (`tickets/DRV-*.md`). Contexte et raisons : [`analyse.md`](analyse.md). Faits sourcés : [`recherche.md`](recherche.md). Décisions : [ADR 0022](../adr/0022-remplissage-du-panier-drive.md) et [ADR 0023](../adr/0023-liste-envoyee-au-drive.md). En cas d'écart entre ce fichier et un ADR, l'ADR gagne.
 
+> **Mise à jour du 2026-10-18 (décisions G1, D24, D27, D28).** Le favori JavaScript du plan initial est **abandonné** : l'agent est embarqué dans l'**application Android « Repas »** (coquille autour du front, le drive Leclerc est son second écran en mode ordinateur). Le plan voyage du front vers l'application par le **pont natif** `window.repasNative` (message `drive.start`), l'application le donne à l'agent par son canal `repasHost`, et le résultat revient par `drive.result`. Le contrat exact du pont est dans `android/README.md` du dépôt front ; le protocole v1 (§ 8) et les invariants (§ 2) ne changent pas. Les passages ci-dessous qui parlent encore de favori, de fragment d'adresse ou de Chrome sont signalés comme historiques.
+
 ## 1. Glossaire
 
 - **Drive** : service de courses en ligne d'une enseigne (ici E.Leclerc Drive, `leclercdrive.fr`).
 - **Enseigne** (`retailer`) : `leclerc` pour l'instant ; Auchan et Intermarché plus tard.
 - **Magasin** (`store`) : point de retrait de l'utilisateur. Identifiant chez l'enseigne (ex. `123456`), hôte (ex. `exemple.leclercdrive.fr`), adresse de base `https://<hôte>/magasin-<id>-<id>`.
-- **Agent** : script autonome exécuté dans la page leclercdrive.fr de l'utilisateur, lancé par un favori JavaScript. Ne parle jamais à notre API.
+- **Agent** : script autonome exécuté dans la page leclercdrive.fr de l'utilisateur, **injecté par l'application Android** (un favori JavaScript dans le plan initial, abandonné). Ne parle jamais à notre API.
 - **Plan** : ce que Repas demande à l'agent de faire pour une liste envoyée (une ligne par ingrédient).
 - **Produit** (`Product`) : article vendu par l'enseigne, fait public sans propriétaire.
 - **Choix** (`Choice`, ou préférence) : ce qu'un utilisateur veut, pour un magasin et un ingrédient, privé : une liste **ordonnée** de produits acceptés (priorité 1 = préféré, les suivants = produits de secours), une liste de produits **refusés** (jamais proposés ni mis au panier), ou « j'en ai toujours ».
@@ -19,7 +21,7 @@ Référence pour les agents qui implémentent les tickets (`tickets/DRV-*.md`). 
 
 1. Aucun identifiant, cookie ni jeton d'enseigne ne transite par notre back, notre front ni nos logs, et rien n'en est stocké.
 2. Le back ne contacte jamais une enseigne.
-3. L'agent ne contient aucun code distant : tout son code est dans le favori ; une mise à jour = réinstaller le favori.
+3. L'agent ne contient aucun code distant : tout son code est dans l'application (actif vérifié par empreinte SHA-384 à la construction et au lancement) ; une mise à jour = installer une nouvelle version de l'application.
 4. L'agent ne fait que : lire le magasin courant, chercher un produit, fixer la quantité d'un produit au panier, lire ce que l'utilisateur ajoute dans le cadre de choix. Jamais de créneau, de validation de commande, de paiement, ni de lecture de données de compte.
 5. Une liste `SENT` n'est plus modifiable (§ 4).
 6. Un envoi ne coche jamais de ligne (`checked` = « dans le caddie » ; cocher la dernière ligne termine la liste).
@@ -32,7 +34,8 @@ Référence pour les agents qui implémentent les tickets (`tickets/DRV-*.md`). 
 | Contexte `Repas` (existant) | back `kcharignon/repas` | Cycle de vie de la liste dont le verrou `SENT` ; unités avec `dimension` ; lignes de liste avec `ingredientSlug` et `unitSlug`. |
 | Contexte `Drive` (nouveau) | back | Réglages du drive, `Product`, `Choice`, calcul des conditionnements, plan d'envoi, purge avec le compte. Isolé et supprimable d'un bloc. |
 | `Shared` | back | Ports `ShoppingListForDriveLoader` et `IngredientNameLoader` (+ DTO dans `Shared\Application\Dto`), port `DriveFeature`, énumération `Dimension` (`Shared\Domain\Model`), événement `UserDeletedEvent` (existant). |
-| Agent | front `kcharignon/repas-front`, `drive-agent/` | Favori autonome (TypeScript compilé en un fichier). |
+| Agent | front `kcharignon/repas-front`, `drive-agent/` | Script autonome (TypeScript compilé en un seul fichier `agent.js`), embarqué dans l'application. |
+| Application Android | front, `android/` | Coquille Repas (WebView sur le front), second écran du drive (WebView en mode ordinateur, agent injecté), pont natif `repasNative` / canal `repasHost`, passage du plan et retour du résultat, menu, version. |
 | Protocole | front, `drive-agent/protocol/` | Schémas JSON des messages, partagés par l'agent et le front. Source de vérité des formats ; § 7 en donne des exemples. |
 | Front Repas | front, `src/features/drive/` et `src/features/shopping-lists/` | Écrans, pont `driveBridge`, brouillon de passage. |
 
@@ -40,26 +43,16 @@ Dépendances back (Deptrac) : `Repas → Shared`, `User → Shared`, `Drive → 
 
 ### Séquence nominale
 
-```
-Utilisateur      Front (PWA)                 Back                    Agent (page Leclerc)
-    | Envoyer au drive |                       |                           |
-    |----------------->| POST /shopping-lists/{id}/send (If-Match)         |
-    |                  |---------------------->| ACTIVE -> SENT, sentAt     |
-    |                  | GET /drive/plans/{id} |                           |
-    |                  |---------------------->| lignes (Shared) + choix    |
-    |                  |<----------------------| + PackCalculator          |
-    |   revoit le plan, surcharges par ligne    |                           |
-    | Ouvrir Leclerc   | ouvre <baseUrl>#repas=<plan> dans Chrome complet   |
-    |------------------------------------------------------------------->  |
-    | (connexion Leclerc si besoin) touche le favori                       |
-    |                                                                      | valide, confirme
-    |                                                                      | phase A : produits connus
-    |                                                                      | phase B : choix guidés
-    |                  |<-------------------------- /drive/retour#result=<résultat>
-    |                  | PUT /drive/choices (nouveaux choix)               |
-    |                  |---------------------->|                           |
-    | récapitulatif : Finaliser sur Leclerc / Réessayer / Terminer / Rouvrir |
-```
+Acteurs : l'**utilisateur**, le **front** (dans la WebView de la coquille Android), le **back**, l'**application** (Kotlin) et l'**agent** (script injecté dans la page Leclerc de la WebView du drive).
+
+1. L'utilisateur touche « Envoyer au drive ». Le front appelle `POST /shopping-lists/{id}/send` (avec `If-Match`) : le back passe la liste de `ACTIVE` à `SENT` et enregistre `sentAt`.
+2. Le front appelle `GET /drive/plans/{id}` : le back lit les lignes (port `Shared`), les choix de l'utilisateur, calcule les conditionnements (`PackCalculator`) et rend le plan.
+3. L'utilisateur revoit le plan et peut surcharger une ligne (« Choisir un autre produit », « Passer cette fois »).
+4. « Ouvrir le drive » : le front traduit le plan en message `plan` du protocole et l'envoie à l'application par le pont `repasNative` (`drive.start`). L'application ouvre `DriveActivity` sur le magasin du plan.
+5. L'utilisateur se connecte lui-même à Leclerc si besoin. L'application injecte l'agent dans la page et lui donne le plan par son canal `repasHost`.
+6. L'agent valide le message, demande confirmation (« Commencer »), puis exécute la phase A (produits connus mis au panier) et la phase B (choix guidés des nouveaux produits).
+7. L'agent rend un message `result` ; l'application le poste à Repas (`drive.result`), ferme l'écran du drive et rend la main à la coquille.
+8. Le front enregistre les nouveaux choix (`PUT /drive/choices`) et affiche le récapitulatif : « Finaliser sur Leclerc », « Réessayer les échecs », « Terminer la liste », « Rouvrir la liste ».
 
 ## 4. Règle « liste envoyée = non modifiable »
 
@@ -77,7 +70,7 @@ Utilisateur      Front (PWA)                 Back                    Agent (page
 |---|---|---|
 | `ACTIVE` → `SENT` | `POST /api/v1/shopping-lists/{id}/send` | Au moins une ligne, sinon `422 SHOPPING_LIST_EMPTY`. Liste pas `ACTIVE` : `409 SHOPPING_LIST_NOT_SENDABLE`. `If-Match` accepté (`412`). Déjà `SENT` : `204` sans effet. Enregistre `sentAt` (horloge injectée). Aucun événement. |
 | `SENT` → `ACTIVE` | `POST /api/v1/shopping-lists/{id}/reopen` | Explicite. Met en pause la liste `ACTIVE` éventuelle, comme `ActivatedShoppingListHandler`. Efface `sentAt`. Pas `SENT` : `409 SHOPPING_LIST_NOT_SENT`. `If-Match` accepté. |
-| `SENT` → `COMPLETED` | `POST /api/v1/shopping-lists/{id}/complete` (existant) | Émet `ShoppingListCompletedEvent` comme aujourd'hui. |
+| `SENT` → `COMPLETED` | `POST /api/v1/shopping-lists/{id}/complete` (existant) | Émet `ShoppingListCompletedEvent` comme aujourd'hui. La liste terminée garde `sentAt` ; si elle repasse `ACTIVE` (décocher une ligne, activer), `sentAt` est effacé (`ShoppingList::activated()`, revue de sécurité D3, PR #160). |
 | `PAUSED` → `SENT`, `SENT` → `PAUSED` | — | Interdits. Pour envoyer une liste en pause : l'activer d'abord. |
 
 ### 4.3 Opérations sur une liste `SENT`
@@ -105,10 +98,10 @@ Le retour arrière ne défait ni le schéma ni les données (ADR 0017 règle 6) 
 
 - `Retailer` (enum, `LECLERC`) : porte la règle d'hôte autorisé (`https://<sous-domaine>.leclercdrive.fr/magasin-<chiffres>-<chiffres>`) et la construction de l'URL de recherche.
 - `Store` (valeur) : `id`, `label` (nullable), `baseUrl`.
-- `DriveSettings` : `userId`, `retailer`, `store`.
+- `DriveSettings` : `userId`, `retailer`, `store`, et le compteur du jour des écritures de produits (`productWritesDay`, `productWritesCount`, plafond `MAX_PRODUCT_WRITES_PER_DAY`, DRV-613).
 - `Dimension` (enum `Repas\Shared\Domain\Model\Dimension`, partagée avec `Repas` pour `Unit`) : `WEIGHT`, `VOLUME`, `COUNT`, `PACKAGE`. `ContentUnit` (enum de `Drive`) : `G` (WEIGHT, 1), `KG` (WEIGHT, 1000), `ML` (VOLUME, 1), `CL` (VOLUME, 10), `L` (VOLUME, 1000), `PIECE` (COUNT, 1).
 - `ProductContent` (valeur) : `value` (float > 0), `unit` (`ContentUnit`).
-- `Product` : `id` (UUID v5 déduit de la clé naturelle), `retailer`, `storeId`, `retailerProductId`, `ean` (nullable), `label`, `content` (nullable), `lastSeenAt`. **Prix (décision D22)** : `priceCents` (entier, prix unitaire TTC en centimes, nullable), `pricePerMeasure` (`{cents, unit}` avec `unit` ∈ `kg|l|piece`, nullable) et `priceSeenAt` ; **premier écrivain gagnant (DRV-613, constat C1)** : la fiche est commune à tous les utilisateurs du magasin, donc un agent ne fait que la créer ou la **compléter là où elle est vide** (code-barres, contenu, prix) ; le libellé, le contenu et le code-barres connus ne sont jamais réécrits par un autre, et le prix d'une fiche connue ne change que par `REFRESH_PRICE` ou par l'`ADD_PRODUCT` d'un produit que l'utilisateur accepte déjà pour cet ingrédient (le message de résultat porte `price` : `{cents, perMeasure?: {cents, unit}}` quand l'agent l'a lu). Le prix reste donc modifiable par quiconque accepte le produit ; seules des données par utilisateur (écartées, hors DRV-613) le protégeraient entièrement ; colonnes ajoutées à `drive_product` ; destinés à une estimation datée du coût d'une liste (backlog DRV-611), jamais présentés comme un prix garanti. Clé naturelle `(retailer, storeId, retailerProductId)`. `storeId` fait partie de la clé tant que le spike DRV-002 n'a pas montré que les identifiants sont communs à tous les magasins.
+- `Product` : `id` (UUID v5 déduit de la clé naturelle), `retailer`, `storeId`, `retailerProductId`, `ean` (nullable), `label`, `content` (nullable), `lastSeenAt`. **Prix (décision D22)** : `priceCents` (entier, prix unitaire TTC en centimes, nullable), `pricePerMeasure` (`{cents, unit}` avec `unit` ∈ `kg|l|piece`, nullable) et `priceSeenAt` ; **premier écrivain gagnant (DRV-613, constat C1)** : la fiche est commune à tous les utilisateurs du magasin, donc un agent ne fait que la créer ou la **compléter là où elle est vide** (code-barres, contenu, prix) ; le libellé, le contenu et le code-barres connus ne sont jamais réécrits par un autre, et le prix d'une fiche connue ne change que par `REFRESH_PRICE` ou par l'`ADD_PRODUCT` d'un produit que l'utilisateur accepte déjà pour cet ingrédient (le message de résultat porte `price` : `{cents, perMeasure?: {cents, unit}}` quand l'agent l'a lu). Le prix reste donc modifiable par quiconque accepte le produit ; seules des données par utilisateur (écartées, hors DRV-613) le protégeraient entièrement ; colonnes ajoutées à `drive_product` ; destinés à une estimation datée du coût d'une liste (DRV-611, fait), jamais présentés comme un prix garanti. Clé naturelle `(retailer, storeId, retailerProductId)`. `storeId` fait partie de la clé tant que le spike DRV-002 n'a pas montré que les identifiants sont communs à tous les magasins.
 - `Choice` (agrégat, privé) : `id`, `userId`, `retailer`, `storeId`, `ingredientSlug`, `kind` (`PRODUCTS` | `HAVE_AT_HOME`), `accepted` (liste de `AcceptedProduct{productId, rank}`, rangs 1..n contigus, **5 au plus**), `rejected` (liste de `productId`, **20 au plus**), `updatedAt`. Unique `(userId, retailer, storeId, ingredientSlug)`. Invariants dans le domaine : un produit n'est jamais à la fois accepté et refusé, un produit n'apparaît qu'une fois, les rangs restent contigus, `HAVE_AT_HOME` n'a ni produit accepté ni refusé. Comportements : `addPrimary(productId)` (rang 1, les autres descendent d'un rang ; déjà présent : remonté), `addFallback(productId)` (à la fin ; déjà présent : inchangé), `reject(productId)` (retiré des acceptés, ajouté aux refusés), `unreject`, `remove`, `reorder(list<productId>)`, `markHaveAtHome()`, `resumeBuying()`. Quand le dernier produit accepté est retiré, le choix reste (ses refusés comptent) et la ligne redevient `NEW` dans le plan.
 - `PackCalculator` : § 6.
 
@@ -118,7 +111,8 @@ Conventions du dépôt : classes `final`, `create()` / `load()`, ids et dates in
 
 ```
 drive_settings(user_id VARCHAR(36), retailer VARCHAR(20), store_id VARCHAR(20), store_label VARCHAR(255) NULL,
-               base_url VARCHAR(255), updated_at TIMESTAMP)                 -- PK (user_id, retailer)
+               base_url VARCHAR(255), updated_at TIMESTAMP,
+               product_writes_day DATE NULL, product_writes_count INT DEFAULT 0)   -- PK (user_id, retailer) ; compteur du jour des écritures de produits (plafond par utilisateur, DRV-613)
 drive_product(id VARCHAR(36) PK, retailer VARCHAR(20), store_id VARCHAR(20), retailer_product_id VARCHAR(40),
               ean VARCHAR(14) NULL, label VARCHAR(255), content_value NUMERIC(10,3) NULL, content_unit VARCHAR(8) NULL,
               price_cents INT NULL, price_per_measure_cents INT NULL, price_per_measure_unit VARCHAR(8) NULL,
@@ -135,7 +129,7 @@ Les champs Doctrine `userId` correspondent à l'expression de `UserOwnedDataCove
 
 ### 5.3 Cas d'usage
 
-Écritures (`Application/Command/{UseCase}/`, `#[AsMessageHandler]`) : `SaveDriveSettings`, `SaveProductChoices` (lot ≤ 200 d'**intentions** issues du résultat de l'agent, fusionnées dans les préférences existantes : voir le tableau des actions ci-dessous ; upsert des `Product` puis des `Choice` dans la transaction du `command.bus`), `ReplaceIngredientPreference` (remplace d'un coup la préférence d'un ingrédient depuis l'écran de gestion : produits acceptés dans l'ordre, refusés, « j'en ai toujours »), `ForgetChoice` (oublie toute la préférence d'un ingrédient), `PurgeDriveData` (appelé par l'écouteur de `UserDeletedEvent`, comme `PurgeUserDataOnUserDeletedListener` côté `Repas`).
+Écritures (`Application/Command/{UseCase}/`, `#[AsMessageHandler]`) : `SaveDriveSettings`, `SaveProductChoices` (lot ≤ 200 d'**intentions** issues du résultat de l'agent, fusionnées dans les préférences existantes : voir le tableau des actions ci-dessous ; upsert des `Product` puis des `Choice` dans la transaction du `command.bus`), `ReplaceIngredientPreference` (remplace d'un coup la préférence d'un ingrédient depuis l'écran de gestion : produits acceptés dans l'ordre, refusés, « j'en ai toujours »), `ForgetChoice` (oublie toute la préférence d'un ingrédient), `PurgeUserDriveData` (appelé par l'écouteur `PurgeUserDataOnUserDeletedListener` de `Drive` sur `UserDeletedEvent`, comme son homologue côté `Repas`).
 
 Actions d'un lot `SaveProductChoices` (par ingrédient, appliquées dans l'ordre reçu) :
 
@@ -148,7 +142,7 @@ Actions d'un lot `SaveProductChoices` (par ingrédient, appliquées dans l'ordre
 
 Un passage « seulement cette fois » (`ONCE`) n'envoie rien : le produit reste hors des préférences.
 
-Lectures (`Application/Query/{UseCase}/`, `#[AsMessageHandler(bus: 'query.bus')]`) : `GetDriveSettings`, `ListChoices`, `GetDrivePlan`.
+Lectures (`Application/Query/{UseCase}/`, `#[AsMessageHandler(bus: 'query.bus')]`) : `GetDriveSettings`, `ListChoices`, `GetDrivePlan`, `GetDriveEstimate`.
 
 Ports : `DriveSettingsRepository`, `ProductRepository`, `ChoiceRepository` (écriture) ; `DriveSettingsLoader`, `ChoiceLoader` (lecture) ; côté `Shared` : `ShoppingListForDriveLoader::get(string $shoppingListId): ShoppingListForDrive` où `ShoppingListForDrive` = `{id, ownerId, status, version, lines: list<ShoppingListLineForDrive>}` et `ShoppingListLineForDrive` = `{ingredientSlug, ingredientName, quantity: float, unitSlug, unitSymbol, unitDimension: ?string, unitBaseFactor: ?float}`. Implémentation : `Repas\Infrastructure\Loader\ShoppingListForDrivePostgreSQLLoader` (précédent : `OwnershipLoader` / `OwnershipPostgreSQLLoader`). Une liste inconnue lève `ShoppingListException::shoppingListNotFound` (404). Second port `Shared\Application\Interface\IngredientNameLoader::namesBySlug(array $slugs): array` (slug → nom) pour l'écran des produits mémorisés.
 
@@ -185,7 +179,7 @@ Conventions : ADR 0007 (JWT, `{member,totalItems}` pour une liste, `204` ou `201
 | `GET /drive/estimates/{shoppingListId}` | Drive | estimation du coût d'une liste d'après les prix mémorisés (DRV-611) ; `403` autre utilisateur ; `404` ; `409 DRIVE_NOT_CONFIGURED` |
 | `GET /drive/choices?retailer=` | Drive | `{member:[{ingredientSlug, ingredientName, haveAtHome, accepted:[{rank, product}], rejected:[product], updatedAt}], totalItems}` pour le magasin courant |
 | `PUT /drive/choices` | Drive | `204` ; lot d'intentions issues de l'agent (ci-dessous) ; `409 DRIVE_NOT_CONFIGURED` ou `DRIVE_STORE_MISMATCH` (le `storeId` n'est pas le magasin courant) ; `422 DRIVE_CHOICE_INVALID` (dont plus de 5 produits acceptés ou 20 refusés) ; `422 DRIVE_LIMIT_REACHED` (plafonds par utilisateur, DRV-613 : 5 000 écritures de produits par jour UTC, 1 000 préférences par magasin ; `DriveSettings::MAX_PRODUCT_WRITES_PER_DAY`, `Choice::MAX_PER_USER_AND_STORE`) |
-| `PUT /drive/choices/{ingredientSlug}` | Drive | `204` ; remplace la préférence d'un ingrédient depuis l'écran de gestion : `{retailer, storeId, haveAtHome, accepted:[productId…] dans l'ordre, rejected:[productId…]}` ; `productId` = identifiant Repas du produit (celui renvoyé par `GET /drive/choices`) ; `422 DRIVE_CHOICE_INVALID` (produit inconnu, doublon, produit à la fois accepté et refusé, limites) ; mêmes `409` |
+| `PUT /drive/choices/{ingredientSlug}` | Drive | `204` ; remplace la préférence d'un ingrédient depuis l'écran de gestion : `{retailer, storeId, haveAtHome, accepted:[productId…] dans l'ordre, rejected:[productId…]}` (`haveAtHome` faux et deux listes vides : la préférence est supprimée, sans erreur si elle n'existait pas) ; `productId` = identifiant Repas du produit (celui renvoyé par `GET /drive/choices`) ; `422 DRIVE_CHOICE_INVALID` (produit inconnu, doublon, produit à la fois accepté et refusé, limites) ; mêmes `409` |
 | `DELETE /drive/choices/{ingredientSlug}?retailer=&storeId=` | Drive | `204` ; oublie toute la préférence ; `404 DRIVE_CHOICE_NOT_FOUND` ; `409 DRIVE_NOT_CONFIGURED` ou `DRIVE_STORE_MISMATCH` |
 
 **Lot `PUT /drive/choices`** : `{retailer, storeId, choices:[{ingredientSlug, action, placement?, product?}]}` avec `action` ∈ `ADD_PRODUCT` (`product` et `placement` ∈ `PRIMARY`|`FALLBACK` requis), `REJECT_PRODUCT` (`product` requis), `HAVE_AT_HOME` (rien d'autre), `REFRESH_PRICE` (`product` = `{retailerProductId, price}` seulement). `product` = `{retailerProductId, ean?, label, content?: {value, unit}, price?: {cents, perMeasure?: {cents, unit}}}` (`unit` ∈ `g|kg|ml|cl|l|piece` pour le contenu, `kg|l|piece` pour `perMeasure` ; identifiants en chaînes ; prix en centimes, 0 à 1 000 000). Un produit à la fois ajouté et refusé pour un même ingrédient dans un lot : `422`. Un ingrédient « j'en ai toujours » qui reçoit ensuite un produit (ajouté ou refusé) redevient une préférence de produits : envoyer `HAVE_AT_HOME` après les refus d'un même ingrédient. Effets : § 5.3. Dans les réponses de lecture, un produit est `{productId, retailerProductId, ean, label, content}`.
@@ -228,7 +222,7 @@ Statuts de ligne : `KNOWN` (au moins un produit accepté pour ce magasin ; `prod
 
 Les schémas JSON font foi (`drive-agent/protocol/`, ticket DRV-302). Exemples et règles.
 
-**Transport** : fragment d'URL. Aller : `<baseUrl>#repas=<base64url(JSON)>` (sans bourrage `=`). Retour : `<origine de Repas>/drive/retour#result=<base64url(JSON)>`. Un fragment ne part jamais vers un serveur (ni journal Caddy, qui enregistre l'URI complète, ni CORS). Taille visée < 16 Ko. Presse-papiers en secours si les spikes l'imposent.
+**Transport** : dans l'application, les messages sont du **texte JSON** (`v: 1`, 64 Ko au plus dans chaque sens). Aller : le front envoie `drive.start {plan}` à l'application par le pont natif `repasNative`, qui le donne à l'agent par son canal `repasHost`. Retour : l'agent rend son message `result` à l'application, qui le poste au front (`drive.result {result}`) et revient à l'écran Repas ; les erreurs du pont (`INVALID_PLAN`, `BUSY`, `UNAVAILABLE`, `NO_PASS`) et la reprise d'un passage interrompu sont décrites dans `android/README.md` du dépôt front (« Le passage du plan »). **Lecture du magasin** (DRV-320) : le front envoie `drive.setup` avec `{"v":1,"type":"drive.setup","runId":"<uuid>"}` (rien d'autre n'est lu) ; l'application ouvre le drive sur son accueil, l'utilisateur se connecte et choisit son magasin, et le message `setup` (sans `store`) n'est donné à l'agent que lorsque la page est celle d'un magasin (`/magasin-<id>-<id>[-Ville]/…`) ; le `setup-result` revient par `drive.result`. C'est un passage comme les autres : **un seul à la fois** (`BUSY` avec le `runId` du passage occupant), `NO_PASS` pour une annulation sans passage, `UNAVAILABLE` si l'agent est absent ou la WebView trop ancienne, reprise sous 24 h, et le code `INVALID_SETUP` quand le `runId` est absent ou n'est pas un UUID. Contrat complet : `android/README.md` du dépôt front, « La lecture du magasin ». Aucun fragment d'adresse n'est plus utilisé, ni vers Leclerc ni vers Repas, et rien ne passe par le back ni par une adresse journalisée. *Historique (favori, abandonné) : le plan voyageait par `<baseUrl>#repas=<base64url(JSON)>` et le résultat revenait par `<origine de Repas>/drive/retour#result=<base64url(JSON)>` ; l'agent garde ce transport (`fragmentTransport`) pour le banc d'essai de bureau, l'application utilise `bridgeTransport`.*
 
 **Message de plan** (front → agent) :
 
@@ -257,9 +251,9 @@ Les schémas JSON font foi (`drive-agent/protocol/`, ticket DRV-302). Exemples e
 
 `products` est classé par priorité (le premier est préféré ; 5 au plus), `rejected` liste les produits que l'utilisateur ne veut jamais (20 au plus). Le front traduit `retailerProductId` du plan du back en `id`.
 
-`type: "setup"` : mêmes champs sans `lines` ; l'agent lit le magasin courant et le renvoie dans un message `setup-result` : `{"v":1,"type":"setup-result","runId":"…","agentVersion":"1.0.0","store":{"id":"123456","host":"exemple.leclercdrive.fr","baseUrl":"https://exemple.leclercdrive.fr/magasin-123456-123456","label":null}}`. `SKIP` = « passer cette fois » choisi par l'utilisateur sur l'écran du plan (non mémorisé). Un `KNOWN` que l'utilisateur veut changer devient `NEW` avec `replaces`.
+`type: "setup"` : mêmes champs sans `lines`. Son `store` est **facultatif** (DRV-320) : sans lui (le cas du front, qui ne connaît pas encore le magasin), l'agent lit le magasin que la page affiche, dans son adresse, sans requête ; avec lui, la page doit être celle de ce magasin, sinon `STORE_MISMATCH`. Le `store` reste **obligatoire** dans `plan` et dans `setup-result`, et **facultatif** dans `result` (absent quand une lecture s'arrête avant que le magasin soit connu : `aborted`, `UNSUPPORTED_PAGE`). L'agent renvoie le magasin lu dans un message `setup-result` : `{"v":1,"type":"setup-result","runId":"…","agentVersion":"1.0.0","store":{"id":"123456","host":"exemple.leclercdrive.fr","baseUrl":"https://exemple.leclercdrive.fr/magasin-123456-123456","label":null}}`. `SKIP` = « passer cette fois » choisi par l'utilisateur sur l'écran du plan (non mémorisé). Un `KNOWN` que l'utilisateur veut changer devient `NEW` avec `replaces`.
 
-**Validation par l'agent avant toute action** : `v === 1` ; `runId` uuid ; `retailer` autorisé ; hôte de la page ∈ liste autorisée **et** magasin du message = magasin de la page (sinon `STORE_MISMATCH`) ; ≤ 100 lignes ; `ingredientSlug` `^[a-z0-9-]{1,100}$` ; identifiants de produit `^[0-9]{1,12}$` ; `products` ≤ 5 sans doublon, `KNOWN` en exige au moins 1 et `NEW` n'en a aucun ; `rejected` ≤ 20 ; aucun produit à la fois dans `products` et `rejected` ; `packs` entier 1..99 ou `null` ; chaînes bornées (libellés ≤ 255) ; tout affichage par `textContent` (jamais de HTML) ; `returnPath` ∈ `["/drive/retour"]` ; l'origine de retour est **écrite en dur** dans le favori, jamais lue dans le message. Le gabarit de l'agent contient un marqueur unique `__REPAS_ORIGIN__` que le front remplace par `location.origin` quand l'utilisateur copie le code du favori (DRV-301, DRV-403) : l'image de production du front ne contient ainsi aucun nom de domaine.
+**Validation par l'agent avant toute action** : `v === 1` ; `runId` uuid ; `retailer` autorisé ; hôte de la page ∈ liste autorisée **et** magasin du message = magasin de la page (sinon `STORE_MISMATCH`) ; ≤ 100 lignes ; `ingredientSlug` `^[a-z0-9-]{1,100}$` ; identifiants de produit `^[0-9]{1,12}$` ; `products` ≤ 5 sans doublon, `KNOWN` en exige au moins 1 et `NEW` n'en a aucun ; `rejected` ≤ 20 ; aucun produit à la fois dans `products` et `rejected` ; `packs` entier 1..99 ou `null` ; chaînes bornées (libellés ≤ 255) ; tout affichage par `textContent` (jamais de HTML) ; `returnPath` ∈ `["/drive/retour"]` ; l'origine de retour n'est jamais lue dans le message : dans l'application l'agent ne navigue pas, c'est l'application qui rend le résultat à Repas (origine écrite en dur dans la construction de l'application, `BuildConfig.REPAS_ORIGIN`). *Historique (favori) : l'origine était écrite en dur dans le favori, par un marqueur `__REPAS_ORIGIN__` que le front remplaçait par `location.origin` à la copie du code (DRV-301, DRV-403) ; le marqueur reste dans le code de l'agent pour le banc de bureau.*
 
 **Message de résultat** (agent → front) :
 
@@ -291,30 +285,31 @@ Les schémas JSON font foi (`drive-agent/protocol/`, ticket DRV-302). Exemples e
 - Toute ligne peut porter `rejected` : les produits que l'utilisateur a choisi de ne plus jamais prendre (avec libellé et contenu pour pouvoir les mémoriser). `unavailableIds` ne sert qu'à l'affichage du récapitulatif, jamais à la mémorisation.
 
 **Comportement de l'agent**
-1. Au lancement, lit `location.hash` (`repas=`). Absent : écran « ouvre d'abord Repas » + accès au diagnostic.
+1. Au lancement, attend le message de l'application (canal `repasHost`) et reste silencieux tant qu'il n'arrive pas ; le diagnostic s'ouvre par la commande de l'application. *(Mode favori de bureau, abandonné : lisait `location.hash` ; sans `repas=`, écran « ouvre d'abord Repas ».)*
 2. Valide le message, affiche un récapitulatif et demande confirmation (rien n'est envoyé avant).
 3. **Phase A** : pour chaque ligne `KNOWN`, essaie les produits **dans l'ordre de priorité** : le premier **disponible** est mis au panier avec sa quantité absolue (`packs` de ce produit ; `packsStatus` `TO_CHECK` ou `packs` nul : demande la quantité). Si le préféré est indisponible, l'agent passe au suivant sans rien demander (produit de secours) et le note (`usedRank`, `unavailableIds`) ; il n'ajoute **jamais** un produit refusé ni un produit absent de la liste. La disponibilité se lit par la méthode retenue au spike (DRV-002) : stock de la recherche par libellé (`iQteDisponible`) ou réponse du panier. **Si aucun produit de la liste n'est disponible**, la ligne passe en phase B avec « Ces produits ne sont plus disponibles : … ».
 4. **Phase B** : pour chaque ligne `NEW` (jamais de produit, tous indisponibles, ou « autre produit » demandé), l'utilisateur choisit un produit (P1 ou P2 ci-dessous) ou « Passer cette fois » ou « J'en ai toujours » ; après un choix, l'agent calcule le nombre de produits (contenu du produit choisi, quantité demandée), le montre (« 800 g demandés, 500 g par produit : 2 ») et fixe la quantité au panier. **Rôle du produit choisi** : s'il n'y avait aucun produit pour cet ingrédient, il devient le préféré sans question (`PRIMARY`) ; sinon l'agent demande « Que fais-tu de <produit> ? » — « Mon nouveau produit préféré » (`PRIMARY`, les autres restent derrière), « Produit de secours » (`FALLBACK`, après les autres), « Seulement cette fois » (`ONCE`). Pour chaque produit devenu indisponible, une case « Ne plus jamais prendre <produit> » (le produit part dans `rejected`). Un produit refusé figure grisé et non sélectionnable dans la liste P2 ; en P1, si l'utilisateur ajoute un produit refusé, l'agent prévient et propose de le retirer du panier ou de le garder cette fois.
-5. Construit le résultat et navigue vers l'origine de Repas.
+5. Construit le résultat et le rend à l'application (« Retourner dans Repas »), qui le poste à Repas et revient à l'écran Repas.
 - **Priorités et substitution** : l'agent ne choisit jamais seul un produit « équivalent » absent de la liste de l'utilisateur ; une substitution automatique (suggestion) est au backlog (DRV-601) et exclura toujours les produits refusés.
-- **P1 (recommandée, à confirmer à G1)** : un `iframe` plein écran vers `recherche.aspx?TexteRecherche=<searchQuery>` du même hôte ; l'agent reste dans la page parente et repère le produit que l'utilisateur ajoute. **P2 (repli)** : l'agent interroge `recherche.aspx`, lit le JSON embarqué et affiche lui-même les candidats.
+- **P1 (écartée à G1)** : un `iframe` plein écran vers `recherche.aspx?TexteRecherche=<searchQuery>` du même hôte ; Leclerc refuse les cadres (`X-Frame-Options: DENY` sur toutes ses pages, DRV-004 et DRV-002 ligne 7). **P2 (retenue)** : l'agent interroge `recherche.aspx`, lit le JSON embarqué et affiche lui-même les candidats dans sa liste (décision G1, [`spikes/DRV-005-decision-g1.md`](spikes/DRV-005-decision-g1.md)).
 - **Cadence** : ≥ 800 ms entre requêtes avec gigue jusqu'à +700 ms, jamais en parallèle ; arrêt après 2 réponses 403/429 consécutives (`partial` + `BLOCKED`) ; une seule reprise sur erreur réseau.
-- **Écran allumé** (Wake Lock) pendant le passage ; état de reprise dans `sessionStorage` (`repas:run:<runId>`).
+- **Écran allumé** (Wake Lock de la page, et drapeau d'écran allumé de l'application) pendant le passage ; état de reprise dans `sessionStorage` (`repas:run:<runId>`).
 - **Interface** : Shadow DOM, cibles ≥ 44 px, `aria-live` pour la progression, textes en français, jamais de HTML injecté.
 - **Mode diagnostic** : auto-test OK/KO copiable, sans donnée personnelle.
 
 ## 9. Front
 
-- Routes : `/drive/reglages` (magasin, favori, produits mémorisés avec leur ordre de priorité et leurs produits refusés, « j'en ai toujours »), `/drive/envoi/:listId` (plan avec, pour chaque ligne, le produit préféré et ses produits de secours ; ouverture de Leclerc ; attente), `/drive/retour` (récapitulatif, avec les produits de secours utilisés).
+- Routes : `/drive/reglages` (magasin, état de l'application, résumé des produits mémorisés, note de vie privée), `/drive/produits` et `/drive/produits/:slug` (« Mes produits » : ordre de priorité, produits refusés, « j'en ai toujours », « Oublier »), `/drive/envoi/:listId` (plan avec, pour chaque ligne, le produit préféré et ses produits de secours ; ouverture du drive ; attente), `/drive/retour` (récapitulatif, avec les produits de secours utilisés), `/drive/aide` (installer et mettre à jour l'application, note de vie privée complète). Le bloc « Estimation du coût » s'affiche sur la liste et sur l'écran d'envoi.
 - Une liste `SENT` s'affiche en lecture seule : bandeau « Envoyée au drive le … », actions « Reprendre l'envoi », « Terminer », « Rouvrir » (confirmation). `/liste` ne crée pas de liste tout seul quand il n'y a que des listes `SENT`.
 - **Brouillon de passage** : `{runId, listId, startedAt}` dans `localStorage` (24 h), car l'utilisateur quitte Repas pour Leclerc et que le service worker de production recharge la page dès qu'il détecte une nouvelle version. Au retour, un `runId` différent du brouillon est ignoré avec un message.
-- **Ouverture dans Chrome complet** : lien d'intention Android (`intent://<hôte>/<chemin>#Intent;scheme=https;package=com.android.chrome;end`) quand l'application est installée (`display-mode: standalone`), sinon lien normal ; à valider au spike DRV-002. Le favori ne s'exécute pas dans l'onglet intégré d'une PWA.
+- **Ouverture du drive** : le module `driveBridge` (`src/features/drive/bridge/`) est le seul à connaître le pont natif `window.repasNative` : `drive.start {plan}`, `drive.setup {runId}`, `drive.cancel`, `drive.result`, `app.info`, `app.menu`. Il enregistre son écouteur avant d'envoyer quoi que ce soit. Hors de l'application (navigateur ordinaire), le pont n'existe pas : l'écran d'envoi propose d'installer l'application ou le **mode assisté** (lien « Chercher sur Leclerc » par ligne, sans remplissage). *Historique : le plan initial ouvrait Leclerc dans Chrome par un lien d'intention Android (`intent://…`) pour y lancer un favori, que Chrome Android refuse de lancer (DRV-006).*
 - Contraintes du front existant : pas de logique métier dans les composants (les conditionnements viennent du plan), jeton d'accès en mémoire, textes dans `src/i18n/fr.ts`, couleurs par jetons, CSP de production inchangée (aucune image externe : pas de vignettes Leclerc dans Repas en v1), tests Vitest + e2e Pixel 7, seuil de couverture 80 %.
 
 ## 10. Sécurité et vie privée
 
 - Invariants du § 2. Garde-fous testables : aucun champ « mot de passe / cookie / jeton d'enseigne » dans `docs/api/openapi.json` ; aucune donnée du plan ou du résultat dans les logs ; l'API n'a ni plan ni choix en query string (Caddy journalise l'URI complète).
 - L'agent s'exécute avec les droits de l'utilisateur sur leclercdrive.fr : pas de code distant, message validé et plafonné, confirmation visible avant d'agir, origine de retour en dur. Un lien piégé peut au pire remplir un panier de produits inutiles, sans commande ni paiement.
+- **Limite connue (revue de sécurité du front, constat C1)** : l'agent s'exécute dans le même monde JavaScript que la page de l'enseigne. Un script de cette page (Leclerc, ou un service qu'elle charge : anti-robot, mesure d'audience, faille chez eux) peut lire le plan et fabriquer un faux résultat, que le front enregistre aussitôt dans les choix. La page de l'enseigne fait donc partie de la base de confiance de l'envoi . Décision de l'assistant du 2026-10-18 : option C, ne retenir que les lignes du plan ([`DRV-614`](tickets/DRV-614-retour-limite-au-plan.md), à faire) ; la confirmation avant enregistrement (option B) et la mention dans la note de vie privée et l'ADR restent possibles. Rapport : [`revue-securite-drive.md`](https://github.com/kcharignon/repas-front/blob/main/docs/revue-securite-drive.md) du dépôt front.
 - `Product` est alimenté par les agents des utilisateurs : validation côté serveur (identifiants numériques, libellé borné, contenu plausible), mise à jour par clé, aucune donnée personnelle. `Choice` peut révéler régime ou santé : minimisation, purge à la suppression du compte, pas de statistiques tierces.
 - DataDome peut signaler le compte ou l'IP de l'utilisateur : requêtes en série, pauses, pas de moissonnage, information avant usage, interrupteur.
 - Rupture du site : détection `CONTRACT_CHANGED`, message clair, repli en mode assisté.
@@ -324,13 +319,13 @@ Les schémas JSON font foi (`drive-agent/protocol/`, ticket DRV-302). Exemples e
 - Back : définition de fini du skill `repas-dev` (`make test`, `make deptrac`, `make phpstan`, `make api-doc-validate api-doc-coverage openapi-check`, scénarios `WriteBudget` pour `SendShoppingList`, `ReopenShoppingList`, `SaveDriveSettings`, `SaveProductChoices`, `ForgetChoice`, budget de `supprimer-compte` revu). Handlers en unitaire avec doubles en mémoire ; loaders sur base réelle ; contrôleurs avec `MockCommandBus` / `MockQueryBus` ; un parcours de bout en bout par ressource ; `PackCalculator` en tests à table.
 - Agent : tests unitaires sur fixtures **synthétiques** (jamais de HTML Leclerc brut dans un dépôt public) ; faux site Leclerc (DRV-309) et tests e2e Playwright.
 - Front : Vitest, e2e Pixel 7 avec un agent simulé, accessibilité, test visuel Chromium (captures lues).
-- Recette sur le téléphone réel (humain, DRV-505) : le faux site ne prouve pas DataDome.
+- Recette sur le téléphone réel (humain, DRV-505, procédure : [`recette.md`](recette.md)) : le faux site ne prouve pas DataDome.
 
 ## 12. Déploiement et exploitation
 
 - Ordre : (1) back avec `DRIVE_ENABLED=false` ; (2) front ; (3) l'humain active `DRIVE_ENABLED=true` dans `/opt/repas/.env` (variable listée avec la valeur par défaut `false` : `${DRIVE_ENABLED:-false}`, dans `deploy/compose.yaml`, puis dans `deploy/.env.example` et `docs/production.md`) après un déploiement stable. L'approbation du déploiement reste à l'humain (ADR 0017).
 - Retour arrière : § 4.5 ; le schéma reste.
-- Panne ou changement de Leclerc : interrupteur, runbook (DRV-503), nouvelle version du favori à réinstaller.
+- Panne ou changement de Leclerc : interrupteur, runbook (DRV-503), nouvelle version de l'application (qui embarque l'agent) à installer par-dessus.
 - Sauvegardes : les nouvelles tables sont dans les `pg_dump` ; aucun secret d'enseigne n'existe.
 
 ### Ajout du 2026-10-18 : champ `needed` d'une ligne du plan
