@@ -29,11 +29,12 @@ readonly class ReplaceIngredientPreferenceHandler
      * Remplace d'un coup la préférence d'un ingrédient dans le magasin courant (écran de gestion) : produits acceptés dans
      * l'ordre donné, produits refusés, ou « j'en ai toujours ». Préférence absente : créée ; ni produit ni « j'en ai
      * toujours » : la préférence est supprimée (rien à faire si elle n'existe pas). Nombre de requêtes constant : réglages,
-     * produits, préférence, puis l'écriture.
+     * produits, préférence, puis l'écriture (et un décompte des préférences quand on en crée une).
      *
      * @throws DriveException `notConfigured()` et `storeMismatch()` (409) ; `invalidChoice()` (422) pour un produit inconnu ou
      *                        d'un autre magasin, un doublon, un produit à la fois accepté et refusé, plus de 5 produits
-     *                        acceptés ou 20 refusés, « j'en ai toujours » avec des produits
+     *                        acceptés ou 20 refusés, « j'en ai toujours » avec des produits ; `limitReached()` (422) si la
+     *                        création dépasserait 1 000 préférences dans le magasin
      */
     public function __invoke(ReplaceIngredientPreferenceCommand $command): void
     {
@@ -63,6 +64,11 @@ readonly class ReplaceIngredientPreferenceHandler
             }
 
             return;
+        }
+
+        if ($choice === null) {
+            // Une préférence de plus : plafond par utilisateur et par magasin (une lecture, seulement quand on en crée une)
+            Choice::assertRoomForNew($this->choiceRepository->countByUserAndStore($command->userId, $command->retailer, $command->storeId), 1);
         }
 
         $now = $this->clock->now();

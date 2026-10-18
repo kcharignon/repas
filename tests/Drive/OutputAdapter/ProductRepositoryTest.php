@@ -100,17 +100,18 @@ class ProductRepositoryTest extends DatabaseTestCase
     public function testSavingAKnownKeyUpdatesTheSameRow(): void
     {
         // Given
-        $this->repository->save(new ProductBuilder()->withLabel('Avant')->withPrice(100)->build());
+        $this->repository->save(new ProductBuilder()->withLabel('Avant')->withContent(null)->withPrice(100)->build());
         $product = $this->repository->findByIds([Product::idFor(Retailer::LECLERC, '123456', '555111')])[0];
 
         // When
-        $this->repository->save($product->see(null, 'Après', new ProductContent(2, ContentUnit::L), null, new DateTimeImmutable('2026-10-19 09:00:00')));
+        $this->repository->save($product->complete('12345678', 'Après', new ProductContent(2, ContentUnit::L), null, new DateTimeImmutable('2026-10-19 09:00:00')));
         $this->entityManager->clear();
 
-        // Then : une seule ligne, la clé naturelle fait foi
+        // Then : une seule ligne, la clé naturelle fait foi ; le libellé, lui, reste celui du premier écrivain
         $this->assertSame(1, (int) $this->entityManager->getConnection()->fetchOne('SELECT COUNT(*) FROM drive_product'));
         $found = $this->repository->findByIds([$product->getId()])[0];
-        $this->assertSame('Après', $found->getLabel());
+        $this->assertSame('Avant', $found->getLabel());
+        $this->assertSame('12345678', $found->getEan());
         $this->assertEquals(new ProductContent(2, ContentUnit::L), $found->getContent());
         $this->assertSame(100, $found->getPrice()->cents);
     }
@@ -118,15 +119,33 @@ class ProductRepositoryTest extends DatabaseTestCase
     public function testAProductAnotherRequestJustCreatedIsUpdatedNotDuplicated(): void
     {
         // Given : deux requêtes ont lu « produit inconnu » avant que l'une d'elles écrive
-        $this->repository->save(new ProductBuilder()->withLabel('Écrit en premier')->build());
-        $created = Product::create(Retailer::LECLERC, '123456', '555111', null, 'Écrit en second', null, null, new DateTimeImmutable('2026-10-19 09:00:00'));
+        $this->repository->save(new ProductBuilder()->withLabel('Écrit en premier')->withEan('30000000')->build());
+        $created = Product::create(Retailer::LECLERC, '123456', '555111', '40000000', 'Écrit en second', new ProductContent(7, ContentUnit::L), null, new DateTimeImmutable('2026-10-19 09:00:00'));
 
         // When
         $this->repository->save($created);
 
-        // Then
+        // Then : une seule ligne, et le second ne réécrit ni le libellé ni le code-barres du premier (premier écrivain gagnant)
         $this->assertSame(1, (int) $this->entityManager->getConnection()->fetchOne('SELECT COUNT(*) FROM drive_product'));
-        $this->assertSame('Écrit en second', $this->repository->findByIds([$created->getId()])[0]->getLabel());
+        $found = $this->repository->findByIds([$created->getId()])[0];
+        $this->assertSame(['Écrit en premier', '30000000'], [$found->getLabel(), $found->getEan()]);
+    }
+
+    public function testAContentAlreadyWrittenIsNotReplacedByASecondWriterButAnEmptyOneIsFilled(): void
+    {
+        // Given : un contenu écrit (1 kg), une fiche sans contenu
+        $this->repository->saveAll([
+            new ProductBuilder()->withRetailerProductId('1')->build(),
+            new ProductBuilder()->withRetailerProductId('2')->withContent(null)->build(),
+        ]);
+        $rival = static fn(string $id): Product => Product::create(Retailer::LECLERC, '123456', $id, null, 'Autre', new ProductContent(10, ContentUnit::CL), null, new DateTimeImmutable('2026-10-19 09:00:00'));
+
+        // When : un écrivain concurrent, qui n'avait pas vu les fiches, propose 10 cl pour les deux
+        $this->repository->saveAll([$rival('1'), $rival('2')]);
+
+        // Then
+        $this->assertEquals(new ProductContent(1000, ContentUnit::G), $this->repository->findByIds([Product::idFor(Retailer::LECLERC, '123456', '1')])[0]->getContent());
+        $this->assertEquals(new ProductContent(10, ContentUnit::CL), $this->repository->findByIds([Product::idFor(Retailer::LECLERC, '123456', '2')])[0]->getContent());
     }
 
     public function testReadingAndWritingABatchCostsOneQueryEach(): void

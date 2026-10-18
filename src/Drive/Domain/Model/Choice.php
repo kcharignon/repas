@@ -23,6 +23,11 @@ final class Choice implements ModelInterface
 
     public const int MAX_ACCEPTED = 5;
     public const int MAX_REJECTED = 20;
+    /**
+     * Préférences qu'un utilisateur peut avoir par magasin (un ingrédient = une préférence) : un foyer en mémorise quelques
+     * centaines au plus, un compte qui en crée davantage remplit la table commune (constat C2 de la revue de sécurité, DRV-613).
+     */
+    public const int MAX_PER_USER_AND_STORE = 1000;
     public const string SLUG_PATTERN = '/^[a-z0-9-]{1,255}$/D';
 
     /**
@@ -60,6 +65,18 @@ final class Choice implements ModelInterface
         }
 
         return new self($id, $userId, $retailer, $storeId, $ingredientSlug, ChoiceKind::PRODUCTS, [], [], $now);
+    }
+
+    /**
+     * Plafond de préférences d'un utilisateur dans un magasin : `$existing` sont déjà enregistrées, `$new` vont être créées.
+     *
+     * @throws DriveException `limitReached()` (422) si le total dépasserait `MAX_PER_USER_AND_STORE`
+     */
+    public static function assertRoomForNew(int $existing, int $new): void
+    {
+        if ($existing + $new > self::MAX_PER_USER_AND_STORE) {
+            throw DriveException::limitReached();
+        }
     }
 
     /**

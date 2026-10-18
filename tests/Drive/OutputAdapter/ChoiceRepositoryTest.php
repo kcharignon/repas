@@ -43,6 +43,25 @@ class ChoiceRepositoryTest extends DatabaseTestCase
         $this->assertSame([1, 2, 3], array_map(static fn($accepted) => $accepted->rank, $found->getAccepted()));
     }
 
+    public function testCountsThePreferencesOfOneUserInOneStoreInOneQuery(): void
+    {
+        // Given : deux préférences dans le magasin, une dans un autre, une chez un autre utilisateur
+        $this->repository->saveAll([
+            new ChoiceBuilder()->withUserId('user-1')->withIngredientSlug('farine')->withAccepted(['p-a'])->build(),
+            new ChoiceBuilder()->withUserId('user-1')->withIngredientSlug('sel')->haveAtHome()->build(),
+            new ChoiceBuilder()->withUserId('user-1')->withStoreId('654321')->withIngredientSlug('farine')->build(),
+            new ChoiceBuilder()->withUserId('user-2')->withIngredientSlug('farine')->build(),
+        ]);
+        $counter = static::getContainer()->get(QueryCounter::class);
+        $counter->reset();
+
+        // When / Then
+        $this->assertSame(2, $this->repository->countByUserAndStore('user-1', Retailer::LECLERC, '123456'));
+        $this->assertSame(['SELECT drive_choice' => 1], $counter->byTable());
+        $this->assertSame(1, $this->repository->countByUserAndStore('user-1', Retailer::LECLERC, '654321'));
+        $this->assertSame(0, $this->repository->countByUserAndStore('user-3', Retailer::LECLERC, '123456'));
+    }
+
     public function testRewritingTheRanksNeverBreaksTheUniqueRank(): void
     {
         // Given

@@ -13,6 +13,7 @@ final class DriveException extends DomainException
     public const string DRIVE_CHOICE_INVALID = 'DRIVE_CHOICE_INVALID';
     public const string DRIVE_CHOICE_NOT_FOUND = 'DRIVE_CHOICE_NOT_FOUND';
     public const string DRIVE_STORE_MISMATCH = 'DRIVE_STORE_MISMATCH';
+    public const string DRIVE_LIMIT_REACHED = 'DRIVE_LIMIT_REACHED';
     public const string SHOPPING_LIST_NOT_SENT = 'SHOPPING_LIST_NOT_SENT';
     public const string SHOPPING_LIST_FORBIDDEN = 'SHOPPING_LIST_FORBIDDEN';
 
@@ -40,6 +41,17 @@ final class DriveException extends DomainException
     public static function invalidChoice(): self
     {
         return new self(self::DRIVE_CHOICE_INVALID, 422);
+    }
+
+    /**
+     * Plafond par utilisateur atteint (DRV-613, constat C2 de la revue de sécurité) : trop de préférences dans le magasin
+     * (`Choice::MAX_PER_USER_AND_STORE`) ou trop d'écritures de produits aujourd'hui
+     * (`DriveSettings::MAX_PRODUCT_WRITES_PER_DAY`). Les tables du drive sont communes : un compte ne peut pas les remplir.
+     * Règle métier, `422`.
+     */
+    public static function limitReached(): self
+    {
+        return new self(self::DRIVE_LIMIT_REACHED, 422);
     }
 
     /**

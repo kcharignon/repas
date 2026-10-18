@@ -3,6 +3,8 @@
 namespace Repas\Tests\Drive\InputAdapter;
 
 
+use DateTimeImmutable;
+use DateTimeZone;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use Repas\Drive\Domain\Interface\DriveSettingsRepository;
 use Repas\Drive\Domain\Interface\ProductRepository;
@@ -98,6 +100,37 @@ class DriveChoicesApiFlowTest extends DatabaseTestCase
         $this->get($user);
         $this->assertSame($before, $this->jsonBody());
         $this->assertSame(1, (int) $this->entityManager->getConnection()->fetchOne('SELECT COUNT(*) FROM drive_choice'));
+    }
+
+    public function testTheDailyLimitOfProductWritesAnswers422AndSavesNothing(): void
+    {
+        // Given : 4 999 écritures de produits déjà envoyées aujourd'hui (jour UTC)
+        $user = $this->savedUser();
+        static::getContainer()->get(DriveSettingsRepository::class)->save(
+            new DriveSettingsBuilder()->withUserId($user->getId())->withProductWrites(new DateTimeImmutable('today', new DateTimeZone('UTC')), 4999)->build(),
+        );
+
+        // When : la 5 000e passe
+        $this->put($user, [$this->add('farine', 'PRIMARY', '1', 'Farine')]);
+
+        // Then
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+
+        // When : la 5 001e est refusée
+        $this->put($user, [$this->add('sel', 'PRIMARY', '2', 'Sel')]);
+
+        // Then : 422 DRIVE_LIMIT_REACHED, rien n'est enregistré
+        $this->assertSame([422, ['error' => ['message' => 'DRIVE_LIMIT_REACHED']]], [$this->client->getResponse()->getStatusCode(), $this->jsonBody()]);
+        $this->assertSame(['farine' => 1], $this->countsBySlug());
+        $this->assertSame(1, (int) $this->entityManager->getConnection()->fetchOne('SELECT COUNT(*) FROM drive_product'));
+
+        // When : ce qui n'écrit aucun produit reste permis (« j'en ai toujours », oubli, remplacement, lecture)
+        $this->put($user, [['ingredientSlug' => 'sel', 'action' => 'HAVE_AT_HOME']]);
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->delete($user, 'sel');
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->get($user);
+        $this->assertSame(200, $this->client->getResponse()->getStatusCode());
     }
 
     public function testABatchIsAtomicAndOutOfBoundsValuesAreRefused(): void

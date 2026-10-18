@@ -20,6 +20,11 @@ interface ChoiceRepository
     public function findOne(string $userId, Retailer $retailer, string $storeId, string $ingredientSlug): ?Choice;
 
     /**
+     * Nombre de préférences de l'utilisateur dans ce magasin (plafond `Choice::MAX_PER_USER_AND_STORE`), en une seule requête.
+     */
+    public function countByUserAndStore(string $userId, Retailer $retailer, string $storeId): int;
+
+    /**
      * Enregistre ces préférences (crée ou met à jour) et réécrit toutes les lignes de leurs produits, en un nombre de requêtes
      * qui ne dépend pas du nombre de préférences.
      *

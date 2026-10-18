@@ -49,7 +49,7 @@ Suivi vivant. Cocher une case quand le ticket est fusionné (et noter la PR). Le
 
 ## M2c — Durcissement (revue de sécurité du back)
 
-- [ ] [DRV-613](tickets/DRV-613-durcissement-fiches-produits.md) back puis front · M · Durcissement des fiches de produits partagées, plafonds, `reopen` interrupteur coupé · dépend de : 204, 305, 306 · Issue : [#164](https://github.com/kcharignon/repas/issues/164)
+- [ ] [DRV-613](tickets/DRV-613-durcissement-fiches-produits.md) back puis front · M · Durcissement des fiches de produits partagées, plafonds, `reopen` interrupteur coupé (partie 1 back faite, PR #166 ; partie 2 front à faire) · dépend de : 204, 305, 306 · Issue : [#164](https://github.com/kcharignon/repas/issues/164)
 - [x] [DRV-612](tickets/DRV-612-ecran-estimation-cout.md) front · M · Écran de l'estimation du coût d'une liste · dépend de : 611, 401 · Issue : [repas-front#99](https://github.com/kcharignon/repas-front/issues/99)
 
 ## M3 — Agent (front, `drive-agent/`)

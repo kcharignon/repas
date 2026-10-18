@@ -74,6 +74,8 @@ readonly class DriveSettingsPostgreSQLRepository extends PostgreSQLRepository im
                 'base_url' => $entity->getBaseUrl(),
             ]),
             'updated_at' => $entity->getUpdatedAt(),
+            'product_writes_day' => $entity->getProductWritesDay(),
+            'product_writes_count' => $entity->getProductWritesCount(),
         ]);
     }
 }

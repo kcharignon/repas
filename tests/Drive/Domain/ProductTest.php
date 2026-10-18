@@ -136,7 +136,7 @@ class ProductTest extends TestCase
         $this->expectExceptionObject(DriveException::invalidChoice());
 
         // When
-        $product->see(null, "Farine \u{202E}gk 1", null, null, $this->now);
+        $product->complete(null, "Farine \u{202E}gk 1", null, null, $this->now);
     }
 
     public function testPricesOutOfBoundsAreRefused(): void
@@ -153,33 +153,50 @@ class ProductTest extends TestCase
         $this->assertSame(1_000_000, new ProductPrice(1_000_000)->cents);
     }
 
-    public function testSeeingAgainReplacesWhatWasReadAndKeepsWhatWasNot(): void
+    public function testSeeingAgainNeverRewritesWhatIsKnown(): void
     {
-        // Given
+        // Given : une fiche complète
         $product = Product::create(Retailer::LECLERC, '123456', '555111', '3017620422003', 'Farine', new ProductContent(1000, ContentUnit::G), new ProductPrice(149), $this->now);
         $later = new DateTimeImmutable('2026-10-19 09:00:00');
 
-        // When : l'agent ne lit ni code-barres, ni contenu, ni prix
-        $product->see(null, 'Farine de blé T55', null, null, $later);
+        // When : un autre agent renvoie un autre libellé, un autre code-barres, un autre contenu et un autre prix
+        $product->complete('40000000', 'Texte trompeur', new ProductContent(100, ContentUnit::G), new ProductPrice(1), $later);
 
-        // Then
-        $this->assertSame('Farine de blé T55', $product->getLabel());
+        // Then : premier écrivain gagnant, seule la date de vue bouge
+        $this->assertSame('Farine', $product->getLabel());
         $this->assertSame('3017620422003', $product->getEan());
         $this->assertEquals(new ProductContent(1000, ContentUnit::G), $product->getContent());
         $this->assertSame(149, $product->getPrice()->cents);
         $this->assertEquals($this->now, $product->getPriceSeenAt());
         $this->assertEquals($later, $product->getLastSeenAt());
+    }
 
-        // When : il lit un nouveau contenu et un nouveau prix
-        $product->see(null, 'Farine de blé T55', new ProductContent(500, ContentUnit::G), new ProductPrice(99), $later);
+    public function testSeeingAgainOnlyFillsWhatIsStillEmpty(): void
+    {
+        // Given : une fiche sans code-barres, sans contenu ni prix
+        $product = Product::create(Retailer::LECLERC, '123456', '555111', null, 'Farine', null, null, $this->now);
+        $later = new DateTimeImmutable('2026-10-19 09:00:00');
+
+        // When : l'agent lit le contenu seulement
+        $product->complete(null, 'Farine de blé T55', new ProductContent(500, ContentUnit::G), null, $later);
 
         // Then
+        $this->assertSame('Farine', $product->getLabel());
+        $this->assertNull($product->getEan());
         $this->assertEquals(new ProductContent(500, ContentUnit::G), $product->getContent());
-        $this->assertSame(99, $product->getPrice()->cents);
+        $this->assertSame([null, null], [$product->getPrice()?->cents, $product->getPriceSeenAt()]);
+
+        // When : il lit ensuite un code-barres, un autre contenu et un prix
+        $product->complete('3017620422003', 'Farine', new ProductContent(900, ContentUnit::G), new ProductPrice(99), $later);
+
+        // Then : le code-barres et le prix manquants sont remplis, le contenu connu reste
+        $this->assertSame('3017620422003', $product->getEan());
+        $this->assertEquals(new ProductContent(500, ContentUnit::G), $product->getContent());
+        $this->assertSame(99, $product->getPrice()?->cents);
         $this->assertEquals($later, $product->getPriceSeenAt());
     }
 
-    public function testSeeingARefusedValueChangesNothingMore(): void
+    public function testSeeingARefusedValueIsStillRefusedEvenWhenItWouldNotBeUsed(): void
     {
         // Given
         $product = Product::create(Retailer::LECLERC, '123456', '555111', null, 'Farine', null, null, $this->now);
@@ -188,7 +205,7 @@ class ProductTest extends TestCase
         $this->expectExceptionObject(DriveException::invalidChoice());
 
         // When
-        $product->see('pas-un-ean', 'Farine', null, null, $this->now);
+        $product->complete('pas-un-ean', 'Farine', null, null, $this->now);
     }
 
     public function testSeePriceOnlyTouchesThePrice(): void

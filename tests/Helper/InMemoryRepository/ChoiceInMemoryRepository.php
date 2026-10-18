@@ -15,6 +15,9 @@ class ChoiceInMemoryRepository extends AbstractInMemoryRepository implements Cho
     /** @var int nombre d'appels à `findByUserStoreAndSlugs()` */
     public int $findByUserStoreAndSlugsCalls = 0;
 
+    /** @var int nombre d'appels à `countByUserAndStore()` */
+    public int $countCalls = 0;
+
     /** @var list<int> nombre de préférences reçues à chaque `saveAll()` */
     public array $saveAllSizes = [];
 
@@ -45,6 +48,18 @@ class ChoiceInMemoryRepository extends AbstractInMemoryRepository implements Cho
     public function findOne(string $userId, Retailer $retailer, string $storeId, string $ingredientSlug): ?Choice
     {
         return $this->findByUserStoreAndSlugs($userId, $retailer, $storeId, [$ingredientSlug])[0] ?? null;
+    }
+
+    public function countByUserAndStore(string $userId, Retailer $retailer, string $storeId): int
+    {
+        $this->countCalls++;
+
+        return count(array_filter(
+            $this->models->toArray(),
+            static fn(Choice $choice): bool => $choice->getUserId() === $userId
+                && $choice->getRetailer()->value === $retailer->value
+                && $choice->getStoreId() === $storeId,
+        ));
     }
 
     public function saveAll(array $choices): void

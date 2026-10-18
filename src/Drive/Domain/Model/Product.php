@@ -174,24 +174,33 @@ final class Product implements ModelInterface
     }
 
     /**
-     * L'agent revoit le produit : le libellé est remplacé, un code-barres, un contenu ou un prix lus remplacent les précédents,
-     * un champ que l'agent n'a pas su lire (`null`) garde sa valeur connue.
+     * Un agent revoit le produit : premier écrivain gagnant (constat C1 de la revue de sécurité, DRV-613). La fiche est commune
+     * à tous les utilisateurs du magasin : le libellé, le code-barres, le contenu et le prix d'une fiche connue ne sont jamais
+     * réécrits par un autre. L'agent ne **complète** que ce qui est encore vide (code-barres, contenu, prix) ; le libellé ne
+     * change jamais. Les valeurs reçues sont contrôlées même quand elles ne servent pas : une saisie hors des bornes reste
+     * refusée. Changer un prix est `seePrice()`, réservé à l'utilisateur qui accepte le produit.
      *
      * @throws DriveException `invalidChoice()` si une valeur sort des bornes
      */
-    public function see(?string $ean, string $label, ?ProductContent $content, ?ProductPrice $price, DateTimeImmutable $now): self
+    public function complete(?string $ean, string $label, ?ProductContent $content, ?ProductPrice $price, DateTimeImmutable $now): self
     {
-        $this->ean = self::checkedEan($ean) ?? $this->ean;
-        $this->label = self::checkedLabel($label);
-        $this->content = self::checkedContent($content) ?? $this->content;
-        $this->seePrice($price, $now);
+        $ean = self::checkedEan($ean);
+        self::checkedLabel($label);
+        $content = self::checkedContent($content);
+
+        $this->ean ??= $ean;
+        $this->content ??= $content;
+        if ($this->price === null) {
+            $this->seePrice($price, $now);
+        }
         $this->lastSeenAt = $now;
 
         return $this;
     }
 
     /**
-     * Rafraîchit le prix (sans rien changer d'autre) : `null` ne change rien.
+     * Rafraîchit le prix (sans rien changer d'autre) : `null` ne change rien. Le handler ne l'appelle que pour un utilisateur qui
+     * accepte le produit pour l'ingrédient (`REFRESH_PRICE`, ou `ADD_PRODUCT` d'un produit qu'il accepte déjà).
      */
     public function seePrice(?ProductPrice $price, DateTimeImmutable $now): self
     {

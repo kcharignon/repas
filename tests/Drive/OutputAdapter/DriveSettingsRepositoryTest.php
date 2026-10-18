@@ -6,6 +6,7 @@ namespace Repas\Tests\Drive\OutputAdapter;
 use DateTimeImmutable;
 use Repas\Drive\Domain\Interface\DriveSettingsRepository;
 use Repas\Drive\Domain\Model\Retailer;
+use Repas\Drive\Domain\Model\Store;
 use Repas\Tests\Helper\Builder\DriveSettingsBuilder;
 use Repas\Tests\Helper\DatabaseTestCase;
 use Repas\Tests\Helper\SqlBudget\QueryCounter;
@@ -36,6 +37,31 @@ class DriveSettingsRepositoryTest extends DatabaseTestCase
         $this->assertTrue($settings->isEqual($found));
         $this->assertEquals($settings->getStore(), $found->getStore());
         $this->assertEquals($settings->getUpdatedAt(), $found->getUpdatedAt());
+    }
+
+    public function testTheCounterOfProductWritesIsReadBackAndSurvivesAStoreChange(): void
+    {
+        // Given
+        $now = new DateTimeImmutable('2026-10-19 08:00:00');
+        $this->repository->save(new DriveSettingsBuilder()->withUserId('user-1')->build());
+        $this->repository->save(new DriveSettingsBuilder()->withUserId('user-2')->build());
+        $this->entityManager->clear();
+
+        // When
+        $settings = $this->repository->findOneByUser('user-1', Retailer::LECLERC);
+        $this->repository->save($settings->recordProductWrites(42, $now));
+        $this->entityManager->clear();
+        $settings = $this->repository->findOneByUser('user-1', Retailer::LECLERC);
+        $this->repository->save($settings->changeStore(Store::create(Retailer::LECLERC, '654321', null, 'https://autre.leclercdrive.fr/magasin-654321-654321'), $now));
+        $this->entityManager->clear();
+
+        // Then
+        $found = $this->repository->findOneByUser('user-1', Retailer::LECLERC);
+        $this->assertSame([42, '2026-10-19'], [$found->getProductWritesCount(), $found->getProductWritesDay()->format('Y-m-d')]);
+        $this->assertSame('654321', $found->getStore()->id);
+        $untouched = $this->repository->findOneByUser('user-2', Retailer::LECLERC);
+        $this->assertSame(0, $untouched->getProductWritesCount());
+        $this->assertNull($untouched->getProductWritesDay());
     }
 
     public function testAUserWithoutSettingsGetsNull(): void

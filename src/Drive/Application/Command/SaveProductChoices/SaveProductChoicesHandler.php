@@ -31,15 +31,20 @@ readonly class SaveProductChoicesHandler
 
     /**
      * Fusionne un lot d'intentions de l'agent dans les préférences de l'utilisateur pour son magasin courant. Les intentions
-     * d'un même ingrédient s'appliquent dans l'ordre reçu ; les produits décrits sont créés ou mis à jour (fait public
-     * partagé), les préférences créées si besoin. Tout ou rien : tout est validé avant la première écriture, et la commande
-     * est atomique. Nombre de requêtes constant, quelle que soit la taille du lot : une lecture des réglages, des produits et
-     * des préférences, puis une écriture par table. L'existence de l'ingrédient n'est pas vérifiée (`Drive` ne connaît pas
-     * `Repas`).
+     * d'un même ingrédient s'appliquent dans l'ordre reçu ; les produits décrits sont créés (fait public partagé) ou, s'ils sont
+     * déjà connus, complétés seulement là où la fiche est vide : premier écrivain gagnant pour le libellé, le contenu et le
+     * code-barres, jamais réécrits par un autre utilisateur (constat C1, DRV-613). Le prix d'une fiche connue ne change que par
+     * `REFRESH_PRICE` ou par l'`ADD_PRODUCT` d'un produit que l'utilisateur accepte déjà pour cet ingrédient. Les préférences
+     * sont créées si besoin. Tout ou rien : tout est validé avant la première écriture, et la commande est atomique. Nombre de
+     * requêtes constant, quelle que soit la taille du lot : une lecture des réglages, des produits et des préférences, puis
+     * une écriture par table, celle du compteur du jour dans les réglages, et un décompte des préférences quand le lot en crée.
+     * L'existence de l'ingrédient n'est pas vérifiée (`Drive` ne connaît pas `Repas`).
      *
      * @throws DriveException `invalidChoice()` (422) pour un lot, un produit ou une intention hors des bornes, un produit à la
      *                        fois ajouté et refusé pour un ingrédient, plus de 5 produits acceptés ou 20 refusés ;
-     *                        `notConfigured()` et `storeMismatch()` (409) si `storeId` n'est pas le magasin courant
+     *                        `limitReached()` (422) au-delà de 5 000 écritures de produits dans la journée ou de 1 000
+     *                        préférences dans le magasin ; `notConfigured()` et `storeMismatch()` (409) si `storeId` n'est
+     *                        pas le magasin courant
      */
     public function __invoke(SaveProductChoicesCommand $command): void
     {
@@ -57,8 +62,15 @@ readonly class SaveProductChoicesHandler
         }
 
         $now = $this->clock->now();
+        // Plafond du jour avant toute lecture de plus : les réglages sont déjà là, le compteur voyage avec eux (enregistré avec le reste)
+        $productWrites = count(array_filter($command->intents, static fn(ChoiceIntent $intent): bool => $intent->product !== null));
+        if ($productWrites > 0) {
+            $settings->recordProductWrites($productWrites, $now);
+        }
+
         [$products, $changedProducts] = $this->productsOf($command, $now);
         $choices = $this->existingChoices($command);
+        $this->assertRoomForNewChoices($command, $choices);
         $touchedChoices = [];
 
         foreach ($command->intents as $intent) {
@@ -76,6 +88,10 @@ readonly class SaveProductChoicesHandler
 
             $choice = $choices[$slug] ??= Choice::create($this->uuidGenerator->generate(), $command->userId, $command->retailer, $command->storeId, $slug, $now);
             $productId = $input === null ? null : $products[$input->retailerProductId]->getId();
+            // Le prix d'une fiche connue ne bouge que pour l'utilisateur qui accepte déjà ce produit pour cet ingrédient
+            if ($intent->action === ChoiceAction::ADD_PRODUCT && $input->price !== null && $choice->isAccepted($productId)) {
+                $changedProducts[$input->retailerProductId] = $products[$input->retailerProductId]->seePrice($input->price, $now);
+            }
             match ($intent->action) {
                 ChoiceAction::ADD_PRODUCT => $intent->placement === Placement::PRIMARY ? $choice->addPrimary($productId) : $choice->addFallback($productId),
                 ChoiceAction::REJECT_PRODUCT => $choice->reject($productId),
@@ -84,6 +100,9 @@ readonly class SaveProductChoicesHandler
             $touchedChoices[$slug] = $choice->touch($now);
         }
 
+        if ($productWrites > 0) {
+            $this->driveSettingsRepository->save($settings);
+        }
         $this->productRepository->saveAll(array_values($changedProducts));
         $this->choiceRepository->saveAll(array_values($touchedChoices));
     }
@@ -131,8 +150,9 @@ readonly class SaveProductChoicesHandler
 
     /**
      * Les produits du lot, par identifiant chez l'enseigne : ceux que l'agent décrit (`ADD_PRODUCT`, `REJECT_PRODUCT`) sont
-     * créés ou mis à jour (une même description vue plusieurs fois s'accumule), ceux dont il ne donne que le prix
-     * (`REFRESH_PRICE`) ne sont là que s'ils étaient déjà connus. Une seule lecture.
+     * créés, ou complétés là où la fiche est vide s'ils sont déjà connus (une même description vue plusieurs fois s'accumule,
+     * la première valeur lue reste), ceux dont il ne donne que le prix (`REFRESH_PRICE`) ne sont là que s'ils étaient déjà
+     * connus. Une seule lecture.
      *
      * @return array{array<string, Product>, array<string, Product>} tous les produits, et ceux à enregistrer
      */
@@ -163,11 +183,31 @@ readonly class SaveProductChoicesHandler
 
             $id = $input->retailerProductId;
             $changed[$id] = $products[$id] = isset($products[$id])
-                ? $products[$id]->see($input->ean, $input->label, $input->content, $input->price, $now)
+                ? $products[$id]->complete($input->ean, $input->label, $input->content, $input->price, $now)
                 : Product::create($command->retailer, $command->storeId, $id, $input->ean, $input->label, $input->content, $input->price, $now);
         }
 
         return [$products, $changed];
+    }
+
+    /**
+     * Plafond de préférences par utilisateur et par magasin : le lot crée une préférence par ingrédient qui n'en a pas encore
+     * (`REFRESH_PRICE` n'en crée jamais). Le décompte n'est lu que dans ce cas.
+     *
+     * @param array<string, Choice> $choices les préférences déjà enregistrées, par slug
+     */
+    private function assertRoomForNewChoices(SaveProductChoicesCommand $command, array $choices): void
+    {
+        $newSlugs = [];
+        foreach ($command->intents as $intent) {
+            if ($intent->action !== ChoiceAction::REFRESH_PRICE && !isset($choices[$intent->ingredientSlug])) {
+                $newSlugs[$intent->ingredientSlug] = true;
+            }
+        }
+
+        if ($newSlugs !== []) {
+            Choice::assertRoomForNew($this->choiceRepository->countByUserAndStore($command->userId, $command->retailer, $command->storeId), count($newSlugs));
+        }
     }
 
     /**

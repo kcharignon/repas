@@ -4,6 +4,7 @@ namespace Repas\Tests\Drive\InputAdapter;
 
 
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Repas\Drive\Domain\Interface\DriveSettingsRepository;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Repas\Domain\Model\ShoppingListStatus;
@@ -61,6 +62,51 @@ class DrivePlanApiFlowTest extends DatabaseTestCase
             $plan['lines'][0]['products'],
         );
         $this->assertSame([['retailerProductId' => '999000', 'label' => 'Lait entier']], $plan['lines'][0]['rejected']);
+    }
+
+    /**
+     * Constat C1 de la revue de sécurité : une fiche de produit est commune à tous les utilisateurs du magasin. Un second
+     * utilisateur qui renvoie l'identifiant d'un produit connu avec un autre libellé, un autre contenu et un autre prix ne
+     * change ni la fiche, ni le plan, ni l'estimation du premier (avant la correction : 10 produits au lieu d'1).
+     */
+    #[DataProvider('actionsOfTheSecondUser')]
+    public function testASecondUserCannotRewriteTheProductOfTheFirst(string $action, ?string $placement): void
+    {
+        // Given : Alice mémorise un lait de 1 l à 1,50 € pour sa liste de 1 l
+        $alice = $this->savedUser();
+        $mallory = $this->savedUser();
+        foreach ([$alice, $mallory] as $user) {
+            static::getContainer()->get(DriveSettingsRepository::class)->save(new DriveSettingsBuilder()->withUserId($user->getId())->build());
+        }
+        $listId = $this->savedList($alice, ShoppingListStatus::SENT);
+        $this->request('PUT', '/api/v1/drive/choices', $alice, json_encode(['retailer' => 'leclerc', 'storeId' => '123456', 'choices' => [
+            ['ingredientSlug' => 'lait', 'action' => 'ADD_PRODUCT', 'placement' => 'PRIMARY', 'product' => ['retailerProductId' => '555222', 'ean' => '30000000', 'label' => 'Lait entier 1 l', 'content' => ['value' => 1, 'unit' => 'l'], 'price' => ['cents' => 150]]],
+        ]], JSON_THROW_ON_ERROR));
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+
+        // When : Mallory, dans le même magasin, renvoie le même produit avec un autre libellé, un autre code, 10 cl et 1 centime
+        $intent = ['ingredientSlug' => 'lait', 'action' => $action, 'product' => ['retailerProductId' => '555222', 'ean' => '40000000', 'label' => 'Texte trompeur', 'content' => ['value' => 10, 'unit' => 'cl'], 'price' => ['cents' => 1]]];
+        $this->request('PUT', '/api/v1/drive/choices', $mallory, json_encode(['retailer' => 'leclerc', 'storeId' => '123456', 'choices' => [
+            $placement === null ? $intent : $intent + ['placement' => $placement],
+        ]], JSON_THROW_ON_ERROR));
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+
+        // Then : le plan et l'estimation d'Alice sont ceux qu'elle a mémorisés
+        $this->request('GET', "/api/v1/drive/plans/$listId", $alice);
+        $product = $this->jsonBody()['lines'][0]['products'][0];
+        $this->assertSame(['555222', '30000000', 'Lait entier 1 l', ['value' => 1, 'unit' => 'l'], 1, 'COMPUTED'], [$product['retailerProductId'], $product['ean'], $product['label'], $product['content'], $product['packs'], $product['packsStatus']]);
+        $this->request('GET', "/api/v1/drive/estimates/$listId", $alice);
+        $line = $this->jsonBody()['lines'][0];
+        $this->assertSame(['Lait entier 1 l', 1, 150, 150], [$line['productLabel'], $line['packs'], $line['unitPriceCents'], $line['subtotalCents']]);
+    }
+
+    /**
+     * @return iterable<string, array{string, ?string}>
+     */
+    public static function actionsOfTheSecondUser(): iterable
+    {
+        yield 'il accepte le produit' => ['ADD_PRODUCT', 'PRIMARY'];
+        yield 'il le refuse' => ['REJECT_PRODUCT', null];
     }
 
     public function testRefusesTheListsThatTheUserCannotSendToTheDrive(): void
