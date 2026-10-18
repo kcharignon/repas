@@ -402,7 +402,7 @@ Ces deux contrôles servent aussi plus tard, quand Leclerc change son site (runb
 
 ## 13. Facultatif : essais de robustesse (20 minutes)
 
-À faire seulement si les parties 6 à 11 sont réussies et si tu as envie de pousser. Chaque essai se fait **une fois**.
+À faire seulement si les parties 6 à 11 sont réussies et si tu as envie de pousser. Chaque essai se fait **une fois**. Il te faut une liste « Envoyée au drive » : si ta liste est « Terminée » (étape 10.3), crée une petite liste de test de 2 articles et envoie-la comme à l'étape 6.1.
 
 ### 13.1 Abandonner un envoi
 
@@ -504,7 +504,7 @@ Les idées qui viennent pendant la recette (un libellé peu clair, une étape tr
 
 ## 19. Après la signature
 
-Ce que l'assistant fait ensuite (jamais l'utilisateur seul, jamais un agent seul pour ce qui est marqué « toi ») :
+Ce que l'assistant fait ensuite, sauf les points marqués **Toi**, qui sont des décisions ou des gestes de l'utilisateur :
 
 1. Recopier le tableau et les mesures dans ce fichier ; cocher DRV-505 dans [`roadmap.md`](roadmap.md) et passer son statut à « fait » (PR, date) ; renseigner `BASKET_PATH` (ticket du front) avec l'adresse relevée à l'étape 8.4.
 2. **Toi** : décider de laisser `DRIVE_ENABLED=true` (la famille peut l'utiliser ; prévenir avec le message du runbook § 6) ou de le couper (`false`). L'ADR 0022 et l'ADR 0023 sont déjà `Accepted` ; si une règle a changé pendant la recette, les amender dans la même PR.
