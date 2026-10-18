@@ -39,3 +39,7 @@ services:
     Repas\User\Domain\Interface\EmailVerificationTokenRepository:
         alias: 'Repas\User\Infrastructure\Repository\EmailVerificationTokenPostgreSQLRepository'
         public: true
+
+    Repas\Drive\Domain\Interface\DriveSettingsRepository:
+        alias: 'Repas\Drive\Infrastructure\Repository\DriveSettingsPostgreSQLRepository'
+        public: true
