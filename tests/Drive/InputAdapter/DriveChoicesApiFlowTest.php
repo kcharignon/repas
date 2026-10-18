@@ -111,8 +111,8 @@ class DriveChoicesApiFlowTest extends DatabaseTestCase
         $this->assertSame(['farine' => 1], $this->countsBySlug());
         $this->assertSame(5, (int) $this->entityManager->getConnection()->fetchOne('SELECT COUNT(*) FROM drive_product'));
 
-        // When : un identifiant de produit qui n'est pas numérique, un libellé vide
-        foreach ([$this->add('sel', 'PRIMARY', 'abc', 'Sel'), $this->add('sel', 'PRIMARY', '9', '')] as $intent) {
+        // When : un identifiant de produit qui n'est pas numérique, un libellé vide, un libellé qui inverse le sens de lecture
+        foreach ([$this->add('sel', 'PRIMARY', 'abc', 'Sel'), $this->add('sel', 'PRIMARY', '9', ''), $this->add('sel', 'PRIMARY', '9', "Sel \u{202E}gk")] as $intent) {
             $this->put($user, [$intent]);
 
             // Then
