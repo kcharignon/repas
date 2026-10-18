@@ -30,3 +30,7 @@ La publication (DRV-315).
 ## Definition of Done
 
 Celle du dépôt front (`make check`, e2e, couverture 80 %) ; PR concise ; fusion si CI verte.
+
+## RÉVISION du 2026-10-18 (application Repas complète, D28)
+
+L'application installée est **toute** l'application Repas (pas un compagnon du drive) : la page explique comment l'installer et la mettre à jour pour tout usage (recettes, listes, drive), et signale que la PWA actuelle peut être désinstallée une fois l'application en place.

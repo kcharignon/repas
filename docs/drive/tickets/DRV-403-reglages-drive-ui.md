@@ -48,3 +48,7 @@ Celle du front.
 ## Mise à jour G1 (2026-10-17)
 
 La partie « installation du favori et version minimale de l'agent » est remplacée par « **application Android** » : lien vers l'aide et la dernière version (DRV-316), version minimale de l'application attendue (affichée si l'application est trop ancienne). Le choix du magasin reste fait par le mode `setup` de l'agent dans l'application (DRV-307).
+
+## RÉVISION du 2026-10-18 (D28)
+
+Le choix du magasin se fait par le mode `setup` de l'agent via le pont natif (`drive.setup` à ajouter avec DRV-314 si besoin) : le front demande à l'application d'ouvrir l'écran drive en mode réglage et reçoit le magasin lu.
