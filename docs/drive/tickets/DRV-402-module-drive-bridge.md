@@ -44,3 +44,7 @@ Celle du front.
 ## Mise à jour G1 (2026-10-17)
 
 `driveBridge` n'ouvre plus Leclerc dans Chrome : il **lance l'application Android** avec le plan par un lien `repasdrive://open?plan=<base64url>` (lien d'intention `intent://` avec le nom du paquet `eu.kantin.repas.drive`, en repli le lien direct) et lit le retour dans `/drive/retour#result=…`. Le brouillon de passage (`runId`, 24 h) et la validation par les schémas partagés restent. Si le lien n'ouvre rien (application absente), proposer la page d'installation (DRV-316) et le mode assisté. À valider sur un vrai téléphone avec la PWA installée (DRV-314, ligne 11 du rapport DRV-002).
+
+## RÉVISION du 2026-10-18 (application Repas complète, D28)
+
+Le pont est le **pont natif** de l'application Repas (`repasNative`, DRV-317 et DRV-314) : `driveBridge` détecte sa présence, envoie `drive.start` avec le plan et reçoit `drive.result`. Plus de lien `repasdrive://` ni d'ouverture de Chrome. Hors de l'application (navigateur ordinaire), proposer « Installer l'application Repas » (DRV-316) et le mode assisté. Le lien d'intention `intent://` n'est plus nécessaire.

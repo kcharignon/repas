@@ -1,0 +1,33 @@
+# DRV-319 — Émulateur Android en Docker pour tester l'application sans Leclerc
+
+- **Dépôt** : front (`kcharignon/repas-front`), dossier `android/`
+- **Jalon** : M3b Application Android
+- **Taille** : L
+- **Dépend de** : DRV-317, DRV-309 (faux site Leclerc) ; accès à `/dev/kvm` dans WSL (étape humaine)
+- **Statut** : à faire (après la mise à disposition de KVM par l'utilisateur)
+- **Lire d'abord** : [`../pivot-application-android.md`](../pivot-application-android.md), `android/README.md`, DRV-309, DRV-313, DRV-317, `CLAUDE.md` du front.
+
+## Contexte
+
+L'utilisateur propose de mettre en place un émulateur pour que les agents testent l'application Android sans dépendre de son téléphone. Faisabilité constatée le 2026-10-18 : le processeur expose `vmx`, le noyau WSL a les modules `kvm` et `kvm-intel`, mais `/dev/kvm` n'existe pas tant que `sudo modprobe kvm_intel` n'a pas été exécuté (étape humaine).
+
+## Portée
+
+1. **Image Docker d'émulateur** (cible `make android-emulator`) : SDK Android, image système `x86_64` (Google APIs, niveau 34 ou 35, avec WebView), AVD sans fenêtre (`-no-window -no-audio -gpu swiftshader_indirect`), accélération KVM (`--device /dev/kvm`), démarrage vérifié (`adb wait-for-device`, `sys.boot_completed`), arrêt propre.
+2. **Cible `make android-e2e`** : installe l'APK de débogage, lance des scénarios automatisés (UI Automator ou Espresso/Compose-less, au choix, dans `android/`) : lancement de la coquille Repas (DRV-317) sur un front de développement local (hôte de l'émulateur `10.0.2.2`), connexion avec les données de démonstration du back de développement, navigation, pont `repasNative`, ouverture de `DriveActivity`.
+3. **Faux site Leclerc** : la variante de débogage fait confiance à une autorité de certification de test (`network_security_config` propre au débogage) et résout un hôte `*.leclercdrive.fr` factice vers le faux site de DRV-309 (image AOSP ou `google_apis` userdebug : `adb root`, entrée `hosts`), afin de jouer un passage complet (plan → récapitulatif → recherche → choix → ajout → résultat → retour dans Repas) **sans jamais contacter le vrai Leclerc**.
+4. Rapport de test en texte (réussites, échecs, captures d'écran des écrans clés lues par l'agent) ; temps d'exécution < 15 minutes ; CI optionnelle (`workflow_dispatch`, KVM absent sur les exécuteurs hébergés).
+5. Documentation en français : comment activer KVM dans WSL (`sudo modprobe kvm_intel`, droits de `/dev/kvm`, démarrage automatique via `/etc/wsl.conf`), comment lancer l'émulateur, dépannage.
+
+## Hors portée
+
+Tout test contre le vrai Leclerc (connexion et anti-robot ne s'automatisent pas : c'est le rôle du test automatique DRV-318 sur le téléphone de l'utilisateur).
+
+## Critères d'acceptation
+
+- Étant donné `/dev/kvm` accessible, quand on lance `make android-e2e`, alors l'émulateur démarre, l'APK s'installe et les scénarios passent ou échouent avec un rapport lisible.
+- Le scénario du faux site déroule un passage complet sans aucun accès réseau vers Leclerc (vérifié par la résolution d'hôtes de l'émulateur).
+
+## Definition of Done
+
+Celle du dépôt front ; PR concise ; fusion si CI verte.

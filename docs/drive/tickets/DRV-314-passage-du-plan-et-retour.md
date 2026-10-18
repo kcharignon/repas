@@ -42,6 +42,10 @@ Celle du dépôt front ; PR concise ; fusion si CI verte.
 - Un lien de même origine que la PWA est traité dans la PWA : d'où le schéma `repasdrive://` / `intent://`. À valider sur un vrai téléphone (si la PWA refuse de le lancer, l'alternative est un bouton « Ouvrir l'application » qui n'est pas dans la portée de la PWA, ou une adresse de pont sur un autre sous-domaine).
 - N'importe quelle autre application peut déclarer le même schéma : le plan ne contient que des noms d'ingrédients, aucune donnée sensible.
 
+## RÉVISION du 2026-10-18 (application Repas complète, D28)
+
+Le passage du plan n'utilise plus de lien `repasdrive://` ni de fragment : le front Repas tourne dans la WebView de la coquille (DRV-317) et parle à l'application par le **pont natif** `repasNative`. `drive.start` (plan du protocole v1, 64 Ko au plus, validé) fait ouvrir `DriveActivity` sur la page du magasin du plan ; l'agent s'exécute ; à la réception du `result`, l'application poste `drive.result` à la WebView de Repas (mis en file si la page s'est rechargée) et revient à l'écran Repas. `drive.cancel` et l'abandon donnent un `result` `aborted`. Reprise 24 h après interruption, un seul passage à la fois, écran allumé seulement pendant un passage. Les critères sur le schéma `repasdrive://` et `https://kantin.eu/drive/retour#result=` ci-dessus sont remplacés par : `drive.start` suivi de `drive.result` dans la même application.
+
 ## Points laissés par DRV-312 et DRV-313 (2026-10-18)
 
 - Le résultat arrive dans `AgentHost` (callback `onAgentMessage` avec `Inbound.FromAgent(type, text)`) ; `MainActivity` ne l'exploite aujourd'hui que dans la variante de débogage (`DebugRun`). L'envoi du plan passe par `AgentHost.send(texte)`, possible une fois la page annoncée (`ready`, après `hello`).
