@@ -46,3 +46,11 @@ Appliquer le ticket au plus juste, noter l'écart dans la PR (« À relire ») e
 ## Rapport final (court)
 
 Pour chaque ticket : numéro de PR, résultat des commandes de qualité (nombre de tests), écarts par rapport au ticket, points à relire par un humain, et ce que l'assistant doit mettre à jour (roadmap, tickets suivants).
+
+## Compléments (2026-10-18)
+
+- **Étiquettes** : un agent ne crée **aucune** étiquette de version (`vX.Y.Z` pour la production, `android-vX.Y.Z` pour la publication signée de l'application) ni de release signée ; seules les pré-versions de débogage `android-dev-AAAA-MM-JJ[lettre]` sont permises, et seulement quand le ticket le demande. La création des étiquettes de publication est une décision humaine.
+- **Roadmap et statuts des tickets** : un agent du **back** met à jour la roadmap et le statut de ses tickets dans ses PR ; pour un ticket du **front**, c'est l'assistant qui met à jour la roadmap et le ticket du back après la fusion (l'agent du front l'indique dans son rapport).
+- **Modifier le plan ou un message du protocole** : trois endroits à garder identiques et à changer dans cet ordre : le DTO du back et `architecture.md` § 8 (back), le schéma `drive-agent/protocol/*.schema.json` et ses exemples (front), puis `buildPlanMessage` et l'agent ; l'intégration (DRV-501) ajoute un test de concordance entre le DTO du plan du back et le schéma du front.
+- **Attribution des commits** : les commits sont **sans `Co-Authored-By`** et les PR **sans pied d'attribution**, même si l'outil propose le contraire (règle des `CLAUDE.md` des deux dépôts).
+- **Étapes humaines** (à demander à l'utilisateur, jamais à faire soi-même) : création de la clé de signature, secrets GitHub, publication de `assetlinks.json`, `/etc/wsl.conf` (KVM au démarrage de WSL), activation de `DRIVE_ENABLED` en production, approbation des déploiements, recette sur téléphone.
