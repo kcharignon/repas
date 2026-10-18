@@ -25,3 +25,7 @@ Le texte doit prévenir chaque utilisateur que l'envoi au drive agit dans sa pro
 - Même fichier : tableau « À garder vrai » (chaque phrase renvoie à sa source), fiche de registre des traitements (le dépôt n'a pas de registre : la fiche en tient lieu), liste pour l'intégration dans le front.
 - **Reste à faire (front, autre ticket)** : afficher le texte court dans `/drive/reglages` et le texte complet dans `/drive/aide` (ancre `#vie-privee`), avant la première activation de l'envoi ; test du lien depuis les deux écrans. L'issue #86 reste ouverte pour cette partie. Cases de la roadmap : à cocher quand l'affichage est fait.
 - **Écarts avec le ticket** : (1) « Oublier » existe **par ingrédient** (pas par produit) ; retirer un produit passe par `PUT /drive/choices/{slug}` (écran DRV-410, pas encore fait) ; (2) la suppression du compte est faite **par un administrateur** (ADR 0021), il n'y a pas d'auto-suppression ; (3) changer de magasin laisse les anciens choix en base jusqu'à la suppression du compte. Le texte dit ces trois choses telles qu'elles sont.
+
+## Réalisation partie front (2026-10-18, PR repas-front#105)
+
+Composant `DrivePrivacyNote.vue` (texte court, lien « Lisez la note complète » vers `/drive/aide#vie-privee`) ; textes en vouvoiement dans `drivePrivacy.short` / note complète dans l'aide. Reste : poser `<DrivePrivacyNote />` dans les réglages (DRV-501 partie front) ; faire relire les textes par l'utilisateur.
