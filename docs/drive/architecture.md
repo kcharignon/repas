@@ -333,3 +333,7 @@ Une ligne du message `plan` peut porter `needed : {quantity, unitSymbol, dimensi
 ### Ajout du 2026-10-18 : commande de l'application vers l'agent
 
 Message de l'application vers l'agent : `{"v":1,"type":"command","command":"diagnostic"}` (clés `v`, `type`, `command` seulement ; schéma `drive-agent/protocol/command.schema.json` du front). Il déclenche le diagnostic de l'agent ; ignoré pendant un passage. Le message `{"v":1,"type":"hello"}` envoyé par le script d'injection à l'application est propre au transport du pont (il ne fait pas partie du protocole) : l'application l'avale et s'en sert pour répondre à la page.
+
+### Ajout du 2026-10-18 : commande `selftest` et message `selftest-result`
+
+Commande de l'application vers l'agent `{"v":1,"type":"command","command":"selftest"}`, honorée **seulement** si l'application a annoncé `debug: true` dans son message d'accueil (variante de débogage), ignorée pendant un passage. L'agent répond par un message `selftest-result` (rapport texte sans donnée personnelle). Voir `drive-agent/protocol/` du front. Autres changements de l'adaptateur : `LeclercError.status`, `CartResult.status` et `totalCents`, `RetailerAdapter.pageCartTotal()`.

@@ -4,7 +4,7 @@
 - **Jalon** : M3b Application Android
 - **Taille** : M
 - **Dépend de** : DRV-313 (fait)
-- **Statut** : à faire
+- **Statut** : fait (PR [repas-front#89](https://github.com/kcharignon/repas-front/pull/89), 2026-10-18 ; pré-version `android-dev-2026-10-18b`, essai réel par l'utilisateur à faire)
 - **Lire d'abord** : [`../pivot-application-android.md`](../pivot-application-android.md), `android/PROCEDURE.md` (36 étapes : trop longues pour l'utilisateur), [`../spikes/DRV-011-rapport.md`](../spikes/DRV-011-rapport.md), `drive-agent/README.md`, `CLAUDE.md` du front.
 
 ## Contexte
@@ -48,3 +48,7 @@ Celle du dépôt front ; PR concise ; fusion si CI verte ; issue fermée.
 
 - Respecter la cadence (800 ms + gigue) même en test : ne pas accélérer au détriment de l'anti-robot.
 - Le premier candidat peut être un produit cher : quantité 1 puis retrait ; ne pas dépasser 3 produits.
+
+## Réalisation (2026-10-18, PR repas-front#89)
+
+Menu « Test automatique (débogage) » : diagnostic, lecture du magasin, lot de 12 recherches (farine, sucre, sel, lait, oeufs sans ligature…), passage d'essai sur farine, sucre et sel (produit éligible : en stock pour 3 exemplaires, hors panier, prix lu, jamais déjà pris pour un autre ingrédient ; quantités 1, 3, 2 sur le premier, puis retrait de tout), comparaison du panier avant et après (`non lu` quand le site ne donne pas l'information), un seul rapport copié automatiquement (« Verdict : OK » en tête), boutons « Copier » et « Partager ». Commande `selftest` honorée seulement si l'application a annoncé `debug: true` ; message `selftest-result` ; l'application n'accepte un rapport que si elle vient de le demander. Arrêt après 3 recherches de suite sans résultat. `agent.js` 0.6.0 (68,3 Ko). Pré-version `android-dev-2026-10-18b` (version 12, empreinte SHA-256 vérifiée). Le workflow `android.yml` accepte une étiquette `android-dev-AAAA-MM-JJ[lettre]`.
