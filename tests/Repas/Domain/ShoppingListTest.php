@@ -172,6 +172,20 @@ class ShoppingListTest extends TestCase
         $this->assertSame(Status::COMPLETED, $list->getStatus());
     }
 
+    public function testACompletedListKeepsItsSentDateButNoLongerOnceActiveAgain(): void
+    {
+        // Given : envoyée puis terminée, comme le relevé d'une commande
+        $list = $this->sentList();
+        $list->completed();
+        $this->assertNotNull($list->getSentAt());
+
+        // When : un décochage ou une activation la remet en liste active
+        $list->activated();
+
+        // Then : « date d'envoi, null si la liste n'est pas envoyée » (documentation OpenAPI)
+        $this->assertSame([Status::ACTIVE, false, null], [$list->getStatus(), $list->isSent(), $list->getSentAt()]);
+    }
+
     /**
      * @return iterable<string, array{callable(ShoppingList, Recipe): mixed}>
      */

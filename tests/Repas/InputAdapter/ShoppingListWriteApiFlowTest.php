@@ -531,6 +531,30 @@ class ShoppingListWriteApiFlowTest extends DatabaseTestCase
         $this->assertSame(ShoppingListStatus::COMPLETED, $this->shoppingLists()->findOneById($list->getId())->getStatus());
     }
 
+    public function testACompletedSentListKeepsItsDateUntilAUncheckMakesItActiveAgain(): void
+    {
+        // Given : une liste envoyée puis terminée
+        $owner = $this->savedUser();
+        $list = $this->savedSendableList($owner);
+        $id = $list->getId();
+        $rowId = $list->getRows()->reset()->getId();
+        $this->request('POST', "/api/v1/shopping-lists/$id/send", $owner);
+        $this->request('POST', "/api/v1/shopping-lists/$id/complete", $owner);
+        $this->request('GET', "/api/v1/shopping-lists/$id", $owner);
+        $completed = $this->jsonBody();
+        $this->assertSame(['COMPLETED', false], [$completed['status'], $completed['isSent']]);
+        $this->assertNotNull($completed['sentAt']);
+
+        // When : décocher une ligne la remet en liste active
+        $this->request('POST', "/api/v1/shopping-list-rows/$rowId/uncheck", $owner);
+
+        // Then : elle n'est plus envoyée, sa date d'envoi non plus
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->request('GET', "/api/v1/shopping-lists/$id", $owner);
+        $active = $this->jsonBody();
+        $this->assertSame(['ACTIVE', false, null], [$active['status'], $active['isSent'], $active['sentAt']]);
+    }
+
     public function testSendingRefusesAnEmptyListAnInactiveListAndAnotherUsersList(): void
     {
         // Given
