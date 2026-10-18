@@ -87,11 +87,15 @@ readonly class ProductPostgreSQLRepository extends PostgreSQLRepository implemen
         $tuples = implode(', ', array_fill(0, count($products), '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'));
 
         // La clé naturelle fait foi : un produit qu'une autre requête vient de créer est mis à jour, jamais dupliqué (et son
-        // identifiant, déduit de la même clé, est le même)
+        // identifiant, déduit de la même clé, est le même). Premier écrivain gagnant jusque dans la base (DRV-613) : si deux
+        // requêtes créent la même fiche en même temps, la seconde ne remplace ni le libellé, ni le code-barres, ni le contenu
+        // déjà écrits (le modèle, lui, ne fait que les compléter ; le prix, que son propriétaire rafraîchit, est écrit tel quel).
         $this->connection()->executeStatement(
             sprintf(
                 'INSERT INTO drive_product (%s) VALUES %s ON CONFLICT (retailer, store_id, retailer_product_id) DO UPDATE SET '
-                . 'ean = EXCLUDED.ean, label = EXCLUDED.label, content_value = EXCLUDED.content_value, content_unit = EXCLUDED.content_unit, '
+                . 'ean = COALESCE(drive_product.ean, EXCLUDED.ean), '
+                . 'content_unit = CASE WHEN drive_product.content_value IS NULL THEN EXCLUDED.content_unit ELSE drive_product.content_unit END, '
+                . 'content_value = COALESCE(drive_product.content_value, EXCLUDED.content_value), '
                 . 'price_cents = EXCLUDED.price_cents, price_per_measure_cents = EXCLUDED.price_per_measure_cents, '
                 . 'price_per_measure_unit = EXCLUDED.price_per_measure_unit, price_seen_at = EXCLUDED.price_seen_at, '
                 . 'last_seen_at = EXCLUDED.last_seen_at',

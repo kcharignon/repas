@@ -350,7 +350,8 @@ return [
 
         return new SaveDriveSettingsCommand($user->getId(), Retailer::LECLERC, '654321', 'Ville-Test', 'https://autre.leclercdrive.fr/magasin-654321-654321');
     },
-    // Un ingrédient déjà mémorisé (deux produits acceptés, un refusé), un nouveau produit préféré
+    // Un ingrédient déjà mémorisé (deux produits acceptés, un refusé), un nouveau produit préféré. 8 requêtes : 7 + la mise à jour
+    // du compteur du jour des écritures de produits, dans les réglages (plafond par utilisateur, DRV-613)
     'choix-drive' => static function (WriteBudgetTestCase $t): object {
         $user = $t->savedUser();
         $t->savedDriveSettings($user);
@@ -360,7 +361,9 @@ return [
             new ChoiceIntent('farine', ChoiceAction::ADD_PRODUCT, Placement::PRIMARY, new ProductInput('3', 'Farine de blé T55 1 kg', null, new ProductContent(1000, ContentUnit::G), new ProductPrice(149))),
         ]);
     },
-    // Le même use case avec un lot de 41 intentions sur 11 ingrédients, dont dix déjà mémorisés : même budget que ci-dessus
+    // Le même use case avec un lot de 41 intentions sur 11 ingrédients, dont dix déjà mémorisés et un nouveau : constant quelle que soit
+    // la taille du lot, et une requête de plus que ci-dessus, le décompte des préférences (plafond par utilisateur, DRV-613), lu
+    // seulement quand le lot crée une préférence
     'choix-drive-lot' => static function (WriteBudgetTestCase $t): object {
         $user = $t->savedUser();
         $t->savedDriveSettings($user);
@@ -394,6 +397,17 @@ return [
         $id = static fn(string $retailerProductId): string => Product::idFor(Retailer::LECLERC, '123456', $retailerProductId);
 
         return new ReplaceIngredientPreferenceCommand($user->getId(), Retailer::LECLERC, '123456', 'farine', false, [$id('2'), $id('1'), $id('3')], [$id('4')]);
+    },
+    // La même chose pour un ingrédient sans préférence : la préférence est créée, ce qui ajoute le décompte des préférences (plafond
+    // par utilisateur, DRV-613). Pire cas du use case.
+    'creer-preference-drive' => static function (WriteBudgetTestCase $t): object {
+        $user = $t->savedUser();
+        $t->savedDriveSettings($user);
+        $t->savedDriveChoice($user, 'farine', ['1', '2'], ['9']);
+        $t->savedDriveChoice($user, 'sel', ['3', '4']);
+        $id = static fn(string $retailerProductId): string => Product::idFor(Retailer::LECLERC, '123456', $retailerProductId);
+
+        return new ReplaceIngredientPreferenceCommand($user->getId(), Retailer::LECLERC, '123456', 'sucre', false, [$id('2'), $id('3')], [$id('4')]);
     },
     // Compte qui a trois recettes planifiées dans une liste (dont une est copiée par un autre utilisateur), un magasin et une préférence de produits
     'supprimer-compte' => static function (WriteBudgetTestCase $t): object {

@@ -49,7 +49,7 @@ Envoyer ta liste au drive, c'est Repas qui prépare la liste et l'application qu
 - Elles restent **tant que ton compte existe**, ou jusqu'à ce que tu les oublies (voir plus bas).
 - Le serveur fait une copie de sauvegarde chaque nuit et garde les 14 dernières : une donnée effacée peut rester dans ces copies **environ deux semaines au plus**, puis elles sont remplacées.
 - Sur ton téléphone, l'application garde ta connexion à Leclerc, comme le ferait un navigateur. Elle ne la partage ni avec Repas ni avec personne. Tu peux l'effacer à tout moment : menu de l'application, « Se déconnecter de Leclerc et effacer les données du drive ».
-- Les fiches de produits (nom, contenu, prix vu, magasin) sont communes à tous les utilisateurs de Repas et ne disent **pas** qui les a vues. Chacun ne retrouve que les produits qu'il a lui-même mémorisés. Ces fiches restent quand un compte est supprimé, mais sans aucun lien avec la personne.
+- Les fiches de produits (nom, contenu, prix vu, magasin) sont communes à tous les utilisateurs de Repas et ne disent **pas** qui les a vues. Chacun ne retrouve que les produits qu'il a lui-même mémorisés. La première personne qui décrit un produit fixe sa fiche (nom, contenu, code-barres) : les suivantes ne la réécrivent pas, elles ne font que la compléter si elle est incomplète ; le prix vu, lui, est rafraîchi par celles qui choisissent ce produit. Ces fiches restent quand un compte est supprimé, mais sans aucun lien avec la personne.
 
 ### Comment tout effacer
 

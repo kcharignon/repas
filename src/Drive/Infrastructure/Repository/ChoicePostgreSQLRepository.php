@@ -50,6 +50,14 @@ readonly class ChoicePostgreSQLRepository extends PostgreSQLRepository implement
         return $this->findByUserStoreAndSlugs($userId, $retailer, $storeId, [$ingredientSlug])[0] ?? null;
     }
 
+    public function countByUserAndStore(string $userId, Retailer $retailer, string $storeId): int
+    {
+        return (int) $this->connection()->fetchOne(
+            'SELECT COUNT(*) FROM drive_choice WHERE user_id = ? AND retailer = ? AND store_id = ?',
+            [$userId, $retailer->value, $storeId],
+        );
+    }
+
     public function saveAll(array $choices): void
     {
         if ($choices === []) {

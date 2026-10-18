@@ -31,6 +31,12 @@ class DriveSettings
     #[ORM\Column(name: 'updated_at', type: Types::DATETIME_IMMUTABLE)]
     private DateTimeImmutable $updatedAt;
 
+    #[ORM\Column(name: 'product_writes_day', type: Types::DATE_IMMUTABLE, nullable: true)]
+    private ?DateTimeImmutable $productWritesDay;
+
+    #[ORM\Column(name: 'product_writes_count', type: Types::INTEGER, options: ['default' => 0])]
+    private int $productWritesCount;
+
     public static function fromModel(DriveSettingsModel $model): self
     {
         $entity = new self();
@@ -48,6 +54,8 @@ class DriveSettings
         $this->storeLabel = $store->label;
         $this->baseUrl = $store->baseUrl;
         $this->updatedAt = $model->getUpdatedAt();
+        $this->productWritesDay = $model->getProductWritesDay();
+        $this->productWritesCount = $model->getProductWritesCount();
     }
 
     public function getUserId(): string
@@ -78,5 +86,15 @@ class DriveSettings
     public function getUpdatedAt(): DateTimeImmutable
     {
         return $this->updatedAt;
+    }
+
+    public function getProductWritesDay(): ?DateTimeImmutable
+    {
+        return $this->productWritesDay;
+    }
+
+    public function getProductWritesCount(): int
+    {
+        return $this->productWritesCount;
     }
 }

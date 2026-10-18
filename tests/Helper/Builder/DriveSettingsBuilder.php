@@ -18,6 +18,8 @@ class DriveSettingsBuilder implements Builder
     private Retailer $retailer;
     private Store $store;
     private DateTimeImmutable $updatedAt;
+    private ?DateTimeImmutable $productWritesDay = null;
+    private int $productWritesCount = 0;
 
     private function initialize(): void
     {
@@ -45,6 +47,13 @@ class DriveSettingsBuilder implements Builder
         return $this;
     }
 
+    public function withProductWrites(DateTimeImmutable $day, int $count): self
+    {
+        $this->productWritesDay = $day;
+        $this->productWritesCount = $count;
+        return $this;
+    }
+
     public function build(): DriveSettings
     {
         $this->initialize();
@@ -53,6 +62,8 @@ class DriveSettingsBuilder implements Builder
             'retailer' => $this->retailer,
             'store' => $this->store,
             'updated_at' => $this->updatedAt,
+            'product_writes_day' => $this->productWritesDay,
+            'product_writes_count' => $this->productWritesCount,
         ]);
     }
 }

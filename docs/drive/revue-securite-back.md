@@ -35,6 +35,8 @@ Tests ajoutés sans défaut derrière (PR #162) : garde-fou structurel de l'inte
 
 ## Constats non corrigés (décisions pour l'utilisateur)
 
+> **Suite (2026-10-18, [DRV-613](tickets/DRV-613-durcissement-fiches-produits.md) partie 1, PR #166)** : décision de l'assistant, défense en profondeur plutôt que des données par utilisateur. C1 : premier écrivain gagnant pour le libellé, le contenu et le code-barres, prix réservé à qui accepte le produit (le prix reste modifiable par qui accepte le produit : reste ouvert) ; C2 : plafonds de 1 000 préférences par magasin et 5 000 écritures de produits par jour et par utilisateur (`422 DRIVE_LIMIT_REACHED`), pas de limiteur de débit ; C3 : `reopen` disponible interrupteur coupé. La partie 2 (l'agent recalcule le nombre de produits sur le contenu lu en direct) est au front. Le texte ci-dessous est celui de la revue, laissé tel quel.
+
 ### C1 — Les fiches de produits sont réécrites par n'importe quel utilisateur du même magasin (moyenne)
 
 `drive_product` est « un fait public sans propriétaire » (D22) : la clé est `(enseigne, magasin, identifiant du produit)` et chaque `ADD_PRODUCT` ou `REJECT_PRODUCT` d'un agent **remplace** le libellé, le code-barres, le contenu et le prix de la fiche. Les inscriptions sont ouvertes (une adresse e-mail confirmée suffit pour être `ACTIVE`) : une fois `DRIVE_ENABLED=true`, un inconnu inscrit peut viser un autre utilisateur dont il connaît le numéro de magasin et un identifiant de produit.

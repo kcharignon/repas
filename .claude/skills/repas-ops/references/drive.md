@@ -21,7 +21,7 @@ Ordre fixe : back, front, application, stabilité, puis l'utilisateur allume. Ne
 
 ## B. Couper (immédiat, réversible)
 
-À proposer dès que Leclerc change son site ou bloque, ou qu'un compte Leclerc est suspendu. Le runbook `docs/drive/runbook.md` donne les symptômes, le diagnostic, le repli, la correction et le retour en service : le suivre pas à pas avec l'utilisateur. Pour couper : le script de la section A (étape 6) avec `false` (`bash -s -- false`). Attendu : `OK : DRIVE_ENABLED=false`. Dire ce qui change pour la famille (le front n'offre plus l'envoi ; les listes déjà envoyées restent lisibles et peuvent être terminées ou supprimées, pas rouvertes) et que **rien n'est effacé**. Pour rouvrir des listes envoyées : section D.
+À proposer dès que Leclerc change son site ou bloque, ou qu'un compte Leclerc est suspendu. Le runbook `docs/drive/runbook.md` donne les symptômes, le diagnostic, le repli, la correction et le retour en service : le suivre pas à pas avec l'utilisateur. Pour couper : le script de la section A (étape 6) avec `false` (`bash -s -- false`). Attendu : `OK : DRIVE_ENABLED=false`. Dire ce qui change pour la famille (le front n'offre plus l'envoi ; les listes déjà envoyées restent lisibles et peuvent être terminées, supprimées ou **rouvertes une à une** : `reopen` n'est pas derrière l'interrupteur, ADR 0023 §9) et que **rien n'est effacé**. Le script en bloc (section D) ne sert qu'avant de remettre une version du code qui ne connaît pas `SENT`.
 
 ## C. Revenir à une version précédente du back
 
@@ -32,7 +32,7 @@ Ordre fixe : back, front, application, stabilité, puis l'utilisateur allume. Ne
 
 ## D. Rouvrir les listes envoyées (retour arrière, fonction coupée)
 
-Explication à donner en premier : « un envoi verrouille la liste ; si on coupe la fonction, le bouton pour la rouvrir ne marche plus ; ce script les remet en état d'un coup, après une sauvegarde ». Toujours **deux temps** :
+Explication à donner en premier : « un envoi verrouille la liste ; même fonction coupée, chacun peut rouvrir la sienne avec le bouton ; ce script les remet en état d'un coup, après une sauvegarde, et sert surtout quand on revient à une version du code qui ne connaît pas le verrou (elle n'a pas de bouton pour rouvrir) ». Toujours **deux temps** :
 
 1. Lecture seule (rien n'est modifié) : `! ssh -i ~/.ssh/id_ed25519 root@64.227.124.100 'bash -s' < .claude/skills/repas-ops/references/rouvrir-listes-envoyees.sh` ; lire avec lui le tableau (listes par statut, propriétaires concernés).
 2. Seulement après son accord : même commande avec `'bash -s -- --appliquer'`. Attendu : une sauvegarde `avant-reouverture-listes`, puis un tableau sans statut `SENT`.

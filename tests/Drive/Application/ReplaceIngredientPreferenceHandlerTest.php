@@ -96,6 +96,52 @@ class ReplaceIngredientPreferenceHandlerTest extends TestCase
         $this->assertEquals($this->now, $choice->getUpdatedAt());
     }
 
+    public function testAThousandAndFirstPreferenceIsRefusedButAKnownOneStillChanges(): void
+    {
+        // Given : 998 préférences de plus pour user-1 (farine et sel déjà là : 1 000 en tout), une dans un autre magasin
+        $this->choices->saveAll(array_map(
+            static fn(int $i): Choice => new ChoiceBuilder()->withUserId('user-1')->withIngredientSlug("ingredient-$i")->build(),
+            range(1, 998),
+        ));
+        $this->choices->save(new ChoiceBuilder()->withUserId('user-1')->withStoreId('654321')->withIngredientSlug('autre-magasin')->build());
+
+        // When : une préférence existante change malgré tout
+        $this->replace('user-1', 'farine', accepted: ['2']);
+
+        // Then
+        $this->assertSame([$this->id('2')], $this->choice('user-1', 'farine')->getAcceptedProductIds());
+
+        // When / Then : la 1 001e est refusée, rien n'est créé
+        try {
+            $this->replace('user-1', 'sucre', accepted: ['5']);
+            $this->fail('DRIVE_LIMIT_REACHED attendu');
+        } catch (DriveException $exception) {
+            $this->assertSame(['DRIVE_LIMIT_REACHED', 422], [$exception->getMessage(), $exception->getCode()]);
+        }
+        $this->assertNull($this->choices->findOne('user-1', Retailer::LECLERC, self::STORE, 'sucre'));
+        // Un autre utilisateur n'est pas concerné ; vider une préférence existante reste permis
+        $this->replace('user-2', 'sucre', accepted: ['5']);
+        $this->replace('user-1', 'farine');
+        $this->assertNull($this->choices->findOne('user-1', Retailer::LECLERC, self::STORE, 'farine'));
+    }
+
+    public function testThePreferencesAreOnlyCountedWhenOneIsCreated(): void
+    {
+        // When
+        $this->replace('user-1', 'farine', accepted: ['2']);
+        $this->replace('user-1', 'farine');
+        $this->replace('user-1', 'inconnu-sans-produit');
+
+        // Then : modification, suppression et demande vide d'un ingrédient sans préférence ne comptent rien
+        $this->assertSame(0, $this->choices->countCalls);
+
+        // When
+        $this->replace('user-1', 'sucre', accepted: ['5']);
+
+        // Then
+        $this->assertSame(1, $this->choices->countCalls);
+    }
+
     public function testHaveAtHomeReplacesTheProductsAndComesBack(): void
     {
         // When

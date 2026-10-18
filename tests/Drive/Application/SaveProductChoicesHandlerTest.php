@@ -13,6 +13,7 @@ use Repas\Drive\Application\Command\SaveProductChoices\ProductInput;
 use Repas\Drive\Application\Command\SaveProductChoices\SaveProductChoicesCommand;
 use Repas\Drive\Application\Command\SaveProductChoices\SaveProductChoicesHandler;
 use Repas\Drive\Domain\Exception\DriveException;
+use Repas\Drive\Domain\Model\Choice;
 use Repas\Drive\Domain\Model\ContentUnit;
 use Repas\Drive\Domain\Model\PricePerMeasure;
 use Repas\Drive\Domain\Model\PriceUnit;
@@ -36,6 +37,7 @@ class SaveProductChoicesHandlerTest extends TestCase
     private DateTimeImmutable $now;
     private ProductInMemoryRepository $products;
     private ChoiceInMemoryRepository $choices;
+    private DriveSettingsInMemoryRepository $settings;
     private SaveProductChoicesHandler $handler;
 
     protected function setUp(): void
@@ -43,11 +45,11 @@ class SaveProductChoicesHandlerTest extends TestCase
         $this->now = new DateTimeImmutable('2026-10-19 12:00:00');
         $this->products = new ProductInMemoryRepository();
         $this->choices = new ChoiceInMemoryRepository();
-        $settings = new DriveSettingsInMemoryRepository([
+        $this->settings = new DriveSettingsInMemoryRepository([
             new DriveSettingsBuilder()->withUserId('user-1')->build(),
             new DriveSettingsBuilder()->withUserId('user-2')->build(),
         ]);
-        $this->handler = new SaveProductChoicesHandler($settings, $this->products, $this->choices, new UuidGenerator(), new FrozenClock($this->now));
+        $this->handler = new SaveProductChoicesHandler($this->settings, $this->products, $this->choices, new UuidGenerator(), new FrozenClock($this->now));
     }
 
     public function testAPrimaryProductOnANewIngredientCreatesTheChoiceAndTheProduct(): void
@@ -202,26 +204,27 @@ class SaveProductChoicesHandlerTest extends TestCase
         $this->save('user-1', [$this->add('farine', Placement::PRIMARY, '555111', 'Farine T55', price: new ProductPrice(149))]);
         $this->save('user-2', [$this->add('farine', Placement::FALLBACK, '555111', 'Farine T55 1 kg', price: new ProductPrice(155))]);
 
-        // Then : une ligne, la dernière lecture de l'agent fait foi ; chacun garde sa préférence
+        // Then : une ligne, la première lecture fait foi (libellé et prix du premier) ; chacun garde sa préférence
         $this->assertCount(1, $this->products->all());
-        $this->assertSame(['Farine T55 1 kg', 155], [$this->products->all()[0]->getLabel(), $this->products->all()[0]->getPrice()->cents]);
+        $this->assertSame(['Farine T55', 149], [$this->products->all()[0]->getLabel(), $this->products->all()[0]->getPrice()->cents]);
         $this->assertCount(2, $this->choices->all());
         $this->assertSame($this->productIds('555111'), $this->accepted('user-1', 'farine'));
         $this->assertSame($this->productIds('555111'), $this->accepted('user-2', 'farine'));
     }
 
-    public function testAKnownProductIsUpdatedWithoutLosingWhatTheAgentDidNotRead(): void
+    public function testAKnownProductKeepsWhatIsKnownAndOnlyItsSeenDateMoves(): void
     {
         // Given
-        $this->products->save(new ProductBuilder()->withRetailerProductId('555111')->withEan('3017620422003')->withPrice(149, 149)->withLastSeenAt(new DateTimeImmutable('2026-10-01 10:00:00'))->build());
+        $this->products->save(new ProductBuilder()->withRetailerProductId('555111')->withLabel('Farine T55')->withEan('3017620422003')->withPrice(149, 149)->withLastSeenAt(new DateTimeImmutable('2026-10-01 10:00:00'))->build());
 
-        // When : ni code-barres, ni contenu, ni prix lus
-        $this->save('user-1', [$this->add('farine', Placement::PRIMARY, '555111', 'Farine T55 nouveau libellé')]);
+        // When : le même produit, lu avec un autre libellé, un autre code-barres, un autre contenu, et un prix
+        $this->save('user-1', [$this->add('farine', Placement::PRIMARY, '555111', 'Farine T55 nouveau libellé', content: new ProductContent(100, ContentUnit::G))]);
 
         // Then
         $product = $this->products->all()[0];
-        $this->assertSame('Farine T55 nouveau libellé', $product->getLabel());
+        $this->assertSame('Farine T55', $product->getLabel());
         $this->assertSame('3017620422003', $product->getEan());
+        $this->assertEquals(new ProductContent(1000, ContentUnit::G), $product->getContent());
         $this->assertEquals(new ProductContent(1000, ContentUnit::G), $product->getContent());
         $this->assertSame(149, $product->getPrice()->cents);
         $this->assertEquals(new DateTimeImmutable('2026-10-18 10:00:00'), $product->getPriceSeenAt());
@@ -236,11 +239,216 @@ class SaveProductChoicesHandlerTest extends TestCase
             $this->reject('semoule', '1', 'Farine T55', new ProductContent(500, ContentUnit::G)),
         ]);
 
-        // Then
+        // Then : le libellé et le prix du premier, le contenu que le premier n'avait pas lu est complété
         $this->assertCount(1, $this->products->all());
         $product = $this->products->all()[0];
-        $this->assertSame(['Farine T55', 100], [$product->getLabel(), $product->getPrice()->cents]);
+        $this->assertSame(['Farine', 100], [$product->getLabel(), $product->getPrice()->cents]);
         $this->assertEquals(new ProductContent(500, ContentUnit::G), $product->getContent());
+    }
+
+    /**
+     * Constat C1 de la revue de sécurité : la fiche d'un produit est commune à tous les utilisateurs du magasin.
+     */
+    #[DataProvider('actionsOfTheSecondUser')]
+    public function testASecondUserCannotRewriteAKnownProduct(string $action): void
+    {
+        // Given : Alice a mémorisé le produit
+        $this->save('user-1', [new ChoiceIntent('farine', ChoiceAction::ADD_PRODUCT, Placement::PRIMARY, new ProductInput('555111', 'Farine T55 1 kg', '30000000', new ProductContent(1000, ContentUnit::G), new ProductPrice(149)))]);
+        $before = $this->products->all()[0];
+        $rival = new ProductInput('555111', 'Texte trompeur', '12345678', new ProductContent(100, ContentUnit::G), new ProductPrice(1));
+
+        // When : Mallory renvoie le même identifiant avec un autre libellé, un autre code, un autre contenu et un autre prix
+        $this->save('user-2', [$action === 'ADD_PRODUCT'
+            ? new ChoiceIntent('semoule', ChoiceAction::ADD_PRODUCT, Placement::PRIMARY, $rival)
+            : new ChoiceIntent('semoule', ChoiceAction::REJECT_PRODUCT, null, $rival)]);
+
+        // Then : la fiche d'Alice n'a pas bougé (hors date de vue)
+        $this->assertCount(1, $this->products->all());
+        $product = $this->products->all()[0];
+        $this->assertSame(
+            ['Farine T55 1 kg', '30000000', 149, 1000.0],
+            [$product->getLabel(), $product->getEan(), $product->getPrice()->cents, $product->getContent()->value],
+        );
+        $this->assertEquals($before->getPriceSeenAt(), $product->getPriceSeenAt());
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function actionsOfTheSecondUser(): iterable
+    {
+        yield 'il accepte le produit' => ['ADD_PRODUCT'];
+        yield 'il le refuse' => ['REJECT_PRODUCT'];
+    }
+
+    public function testTheOwnerOfAnAcceptanceMayRefreshThePriceByAddingTheProductAgain(): void
+    {
+        // Given : Alice accepte déjà le produit (149), Mallory ne l'accepte pas
+        $this->save('user-1', [$this->add('farine', Placement::PRIMARY, '555111', 'Farine T55 1 kg', price: new ProductPrice(149))]);
+        $later = new DateTimeImmutable('2026-10-20 08:00:00');
+        $this->handler = new SaveProductChoicesHandler($this->settings, $this->products, $this->choices, new UuidGenerator(), new FrozenClock($later));
+
+        // When : Alice renvoie le produit avec son prix du jour, Mallory aussi avec un prix à 1 centime
+        $this->save('user-1', [$this->add('farine', Placement::FALLBACK, '555111', 'Farine T55 1 kg', price: new ProductPrice(159))]);
+        $this->save('user-2', [$this->add('farine', Placement::PRIMARY, '555111', 'Farine T55 1 kg', price: new ProductPrice(1))]);
+
+        // Then : seul le prix de celle qui accepte déjà le produit compte
+        $product = $this->products->all()[0];
+        $this->assertSame(159, $product->getPrice()->cents);
+        $this->assertEquals($later, $product->getPriceSeenAt());
+    }
+
+    public function testAnAddedProductWithoutPriceInTheFicheGetsThePriceOfTheFirstWriter(): void
+    {
+        // Given : une fiche connue sans prix
+        $this->products->save(new ProductBuilder()->withRetailerProductId('555111')->build());
+
+        // When
+        $this->save('user-2', [$this->add('farine', Placement::PRIMARY, '555111', price: new ProductPrice(149))]);
+
+        // Then
+        $this->assertSame(149, $this->products->all()[0]->getPrice()->cents);
+        $this->assertEquals($this->now, $this->products->all()[0]->getPriceSeenAt());
+    }
+
+    public function testProductsOutOfBoundsAreRefusedEvenWhenTheKnownFicheWouldKeepItsValues(): void
+    {
+        // Given
+        $this->products->save(new ProductBuilder()->withRetailerProductId('1')->withEan('30000000')->build());
+
+        // When / Then : un code-barres ou un contenu invalide n'est pas ignoré en silence
+        $this->assertInvalid(fn() => $this->save('user-2', [new ChoiceIntent('farine', ChoiceAction::ADD_PRODUCT, Placement::PRIMARY, new ProductInput('1', 'Farine', '12'))]));
+        $this->assertInvalid(fn() => $this->save('user-2', [new ChoiceIntent('farine', ChoiceAction::ADD_PRODUCT, Placement::PRIMARY, new ProductInput('1', 'Farine', null, new ProductContent(0, ContentUnit::G)))]));
+        $this->assertSame([], $this->choices->all());
+    }
+
+    public function testTheProductWritesOfTheDayAreCountedInTheSettingsOfTheUser(): void
+    {
+        // When : trois écritures de produits et un « j'en ai toujours » (qui n'écrit aucun produit)
+        $this->save('user-1', [
+            $this->add('farine', Placement::PRIMARY, '1'),
+            $this->reject('farine', '2'),
+            $this->refresh('farine', '1', new ProductPrice(100)),
+            new ChoiceIntent('sel', ChoiceAction::HAVE_AT_HOME),
+        ]);
+        $this->save('user-1', [$this->add('sucre', Placement::PRIMARY, '3')]);
+
+        // Then
+        $settings = $this->settings->findOneByUser('user-1', Retailer::LECLERC);
+        $this->assertSame(4, $settings->getProductWritesCount());
+        $this->assertSame('2026-10-19', $settings->getProductWritesDay()->format('Y-m-d'));
+        $this->assertSame(0, $this->settings->findOneByUser('user-2', Retailer::LECLERC)->getProductWritesCount());
+    }
+
+    public function testABatchWithoutProductDoesNotTouchTheCounter(): void
+    {
+        // When
+        $this->save('user-1', [new ChoiceIntent('sel', ChoiceAction::HAVE_AT_HOME)]);
+
+        // Then
+        $this->assertSame(0, $this->settings->findOneByUser('user-1', Retailer::LECLERC)->getProductWritesCount());
+        $this->assertNull($this->settings->findOneByUser('user-1', Retailer::LECLERC)->getProductWritesDay());
+    }
+
+    public function testTheDailyLimitIsReachedAtTheNextWriteAndNothingIsSaved(): void
+    {
+        // Given : 4 950 écritures déjà comptées aujourd'hui
+        $this->settings->save(new DriveSettingsBuilder()->withUserId('user-1')->withProductWrites(new DateTimeImmutable('2026-10-19'), 4950)->build());
+
+        // When : 50 de plus (le plafond lui-même, 5 000) passent
+        $this->save('user-1', array_map(fn(int $i): ChoiceIntent => $this->add("ingredient-$i", Placement::PRIMARY, (string) $i), range(1, 50)));
+
+        // Then
+        $this->assertSame(5000, $this->settings->findOneByUser('user-1', Retailer::LECLERC)->getProductWritesCount());
+
+        // When : une de plus, refusée
+        try {
+            $this->save('user-1', [$this->add('sel', Placement::PRIMARY, '999')]);
+            $this->fail('DRIVE_LIMIT_REACHED attendu');
+        } catch (DriveException $exception) {
+            // Then : 422 DRIVE_LIMIT_REACHED, ni préférence ni produit de plus, compteur inchangé
+            $this->assertSame(['DRIVE_LIMIT_REACHED', 422], [$exception->getMessage(), $exception->getCode()]);
+        }
+        $this->assertNull($this->choices->findOne('user-1', Retailer::LECLERC, self::STORE, 'sel'));
+        $this->assertCount(50, $this->products->all());
+        $this->assertSame(5000, $this->settings->findOneByUser('user-1', Retailer::LECLERC)->getProductWritesCount());
+        // Un autre utilisateur n'est pas concerné
+        $this->save('user-2', [$this->add('sel', Placement::PRIMARY, '999')]);
+    }
+
+    public function testTheDailyCounterStartsOverTheNextDayUtc(): void
+    {
+        // Given : le plafond atteint hier
+        $this->settings->save(new DriveSettingsBuilder()->withUserId('user-1')->withProductWrites(new DateTimeImmutable('2026-10-18'), 5000)->build());
+
+        // When
+        $this->save('user-1', [$this->add('farine', Placement::PRIMARY, '1')]);
+
+        // Then
+        $settings = $this->settings->findOneByUser('user-1', Retailer::LECLERC);
+        $this->assertSame([1, '2026-10-19'], [$settings->getProductWritesCount(), $settings->getProductWritesDay()->format('Y-m-d')]);
+    }
+
+    public function testAThousandAndFirstPreferenceIsRefused(): void
+    {
+        // Given : 999 préférences dans ce magasin, 5 dans un autre magasin et chez un autre utilisateur (non comptées)
+        $this->fillChoices('user-1', self::STORE, 999);
+        $this->fillChoices('user-1', '654321', 5);
+        $this->fillChoices('user-2', self::STORE, 5);
+
+        // When : la 1 000e passe
+        $this->save('user-1', [$this->add('derniere', Placement::PRIMARY, '1')]);
+
+        // Then : la 1 001e est refusée, rien d'enregistré (même si l'autre ingrédient du lot existe déjà)
+        $this->assertNotNull($this->choices->findOne('user-1', Retailer::LECLERC, self::STORE, 'derniere'));
+        try {
+            $this->save('user-1', [$this->add('ingredient-1', Placement::PRIMARY, '2'), $this->add('de-trop', Placement::PRIMARY, '3')]);
+            $this->fail('DRIVE_LIMIT_REACHED attendu');
+        } catch (DriveException $exception) {
+            $this->assertSame(['DRIVE_LIMIT_REACHED', 422], [$exception->getMessage(), $exception->getCode()]);
+        }
+        $this->assertNull($this->choices->findOne('user-1', Retailer::LECLERC, self::STORE, 'de-trop'));
+        $this->assertCount(1, $this->products->all());
+    }
+
+    public function testAtTheLimitPreferencesAlreadyKnownAreStillUpdatedAndPricesRefreshed(): void
+    {
+        // Given : 1 000 préférences
+        $this->fillChoices('user-1', self::STORE, 1000);
+        $this->products->save(new ProductBuilder()->withRetailerProductId('1')->build());
+
+        // When : une préférence existante change, un prix d'un ingrédient sans préférence est rafraîchi (aucune création)
+        $this->save('user-1', [$this->add('ingredient-1', Placement::PRIMARY, '1'), $this->refresh('inconnu', '1', new ProductPrice(100))]);
+
+        // Then
+        $this->assertSame($this->productIds('1'), $this->accepted('user-1', 'ingredient-1'));
+        $this->assertNull($this->choices->findOne('user-1', Retailer::LECLERC, self::STORE, 'inconnu'));
+    }
+
+    public function testThePreferencesAreOnlyCountedWhenTheBatchCreatesSome(): void
+    {
+        // Given
+        $this->choices->save(new ChoiceBuilder()->withUserId('user-1')->withIngredientSlug('farine')->build());
+
+        // When : rien de nouveau
+        $this->save('user-1', [$this->add('farine', Placement::PRIMARY, '1')]);
+
+        // Then
+        $this->assertSame(0, $this->choices->countCalls);
+
+        // When
+        $this->save('user-1', [$this->add('sel', Placement::PRIMARY, '2')]);
+
+        // Then
+        $this->assertSame(1, $this->choices->countCalls);
+    }
+
+    private function fillChoices(string $userId, string $storeId, int $count): void
+    {
+        $this->choices->saveAll(array_map(
+            static fn(int $i): Choice => new ChoiceBuilder()->withUserId($userId)->withStoreId($storeId)->withIngredientSlug("ingredient-$i")->build(),
+            range(1, $count),
+        ));
     }
 
     public function testAnotherStoreOrUserIsNeverTouched(): void
