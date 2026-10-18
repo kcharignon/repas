@@ -63,7 +63,7 @@ Décisions : [ADR 0022](adr/0022-remplissage-du-panier-drive.md) et [ADR 0023](a
 
 Le front n'a pas de variable : il lit `enabled` dans `GET /api/v1/drive/settings`. `FRONT_URL`, `MAILER_*` et les autres variables ne changent pas.
 
-**Migrations.** Quatre migrations s'appliquent au démarrage du back (`docker-entrypoint.sh`). Elles sont **additives** et donc compatibles avec la version précédente du code, qui les ignore (ADR 0017 règle 6) : colonnes nullables, nouvelles tables, aucune clé étrangère.
+**Migrations.** Cinq migrations s'appliquent au démarrage du back (`docker-entrypoint.sh`). Elles sont **additives** et donc compatibles avec la version précédente du code, qui les ignore (ADR 0017 règle 6) : colonnes nullables, nouvelles tables, aucune clé étrangère.
 
 | Migration | Ajoute |
 |---|---|
@@ -71,6 +71,7 @@ Le front n'a pas de variable : il lit `enabled` dans `GET /api/v1/drive/settings
 | `Version20261018090000` | `shopping_list.sent_at` (nullable) |
 | `Version20261018100000` | table `drive_settings` (magasin de chaque utilisateur) |
 | `Version20261018110000` | tables `drive_product`, `drive_choice`, `drive_choice_product` (produits mémorisés, préférences) |
+| `Version20261018150000` | `drive_settings.product_writes_day` et `product_writes_count` (compteur du jour des écritures de produits, plafond par utilisateur, DRV-613) |
 
 La seule chose que l'ancien code ne sait pas lire est le statut `SENT` d'une liste de courses (`ShoppingListStatus::from('SENT')` lèverait une erreur). Tant que `DRIVE_ENABLED` est coupé, aucune liste n'est `SENT` : c'est la raison de l'interrupteur. Retour arrière quand des listes `SENT` existent : voir plus bas.
 
@@ -82,9 +83,9 @@ Chaque étape attend que la précédente soit contrôlée. Le détail des comman
 |---|---|---|---|
 | 1 | humain | **Back avec `DRIVE_ENABLED=false`** : release `vX.Y.Z` du dépôt `kcharignon/repas` (`references/release.md`), approbation du déploiement. Le `.env` du serveur ne contient pas `DRIVE_ENABLED=true`. | le run `Release` est vert, `printenv DRIVE_ENABLED` dans `php` vaut `false`, les migrations sont à jour (`New` = 0), `/api/v1/health` répond, l'application se comporte comme avant |
 | 2 | humain | **Front** : release du dépôt `kcharignon/repas-front` (`gh release create … -R kcharignon/repas-front`). Il lit `enabled: false` et n'offre pas l'envoi. | le site se charge, la connexion et les listes fonctionnent, rien du drive n'est actif |
-| 3 | humain | **Application Android** : APK signé publié par une étiquette `android-vX.Y.Z` (décidée par l'humain), installé à la main sur les téléphones ; étapes humaines propres à l'application (clé de signature, `assetlinks.json`) : `android/README.md` du front | l'application s'ouvre sur Repas, sa fenêtre « Version et mode d'emploi » indique que l'agent est intact |
-| 4 | humain | **Stabilité** : laisser tourner. Critères conseillés : aucune erreur `5xx` dans `docker compose logs php`, au moins une sauvegarde de nuit réussie depuis l'étape 1, recette sur téléphone signée (DRV-505) | les trois critères sont remplis |
-| 5 | humain | **Allumer** `DRIVE_ENABLED=true` (script ci-dessous). Jamais avant l'étape 4. | `printenv DRIVE_ENABLED` vaut `true`, `GET /drive/settings` répond `enabled: true`, le premier envoi se passe bien |
+| 3 | humain | **Application Android** : APK signé publié par une étiquette `android-vX.Y.Z` (décidée par l'humain), installé à la main sur les téléphones ; étapes humaines propres à l'application (clé de signature, `assetlinks.json`) : `android/README.md` du front. Tant que l'APK signé n'existe pas (DRV-315), la recette se fait avec une pré-version de test `android-dev-…` ([`drive/recette.md`](drive/recette.md) partie 2). | l'application s'ouvre sur Repas, sa fenêtre « Version et mode d'emploi » donne la version et une ligne « Agent : version …, empreinte … » (et non « absent » ni « empreinte inattendue ») |
+| 4 | humain | **Stabilité** : laisser tourner. Critères conseillés : aucune erreur `5xx` dans `docker compose logs php`, au moins une sauvegarde de nuit réussie depuis l'étape 1, l'application installée sur le téléphone de l'utilisateur, la famille prévenue de ne pas se servir de l'envoi avant la fin de la recette | les critères sont remplis |
+| 5 | humain | **Allumer** `DRIVE_ENABLED=true` (script ci-dessous). Jamais avant l'étape 4. **La recette sur téléphone (DRV-505, [`drive/recette.md`](drive/recette.md) parties 3 à 12) se déroule allumé** : l'envoi n'existe pas coupé. Recette signée : on laisse allumé et on prévient la famille ; sinon on coupe. | `printenv DRIVE_ENABLED` vaut `true`, `GET /drive/settings` répond `enabled: true`, la recette est signée |
 
 Pourquoi cet ordre : le front appelle des routes que seul le nouveau back connaît ; l'interrupteur coupé garantit qu'aucune liste `SENT` n'existe avant que tout soit en place ; l'application dépend du front (elle l'affiche dans une WebView : une mise à jour du site est visible aussitôt) et ne sert à rien tant que la fonction est coupée.
 
@@ -107,7 +108,7 @@ ssh … 'ls -1t /opt/repas/backups | head -3'                 # une sauvegarde r
 ```
 ssh … 'cd /opt/repas && cat state/ok-back && docker compose ps'                                   # la version attendue, tous les services « healthy »
 ssh … 'cd /opt/repas && docker compose exec -T php printenv DRIVE_ENABLED < /dev/null'            # false
-ssh … 'cd /opt/repas && docker compose exec -T php php bin/console doctrine:migrations:status --no-interaction < /dev/null | grep -E "Current|New"'   # Current = Version20261018110000 (ou plus récente), New = 0
+ssh … 'cd /opt/repas && docker compose exec -T php php bin/console doctrine:migrations:status --no-interaction < /dev/null | grep -E "Current|New"'   # Current = Version20261018150000 (ou plus récente), New = 0
 curl -sk -o /dev/null -w "%{http_code}\n" https://<domaine>/api/v1/health                          # 200
 ```
 
@@ -118,7 +119,7 @@ ssh … 'cd /opt/repas && docker compose exec -T php printenv DRIVE_ENABLED < /d
 ssh … 'cd /opt/repas && docker compose logs --since 10m php | grep -ci error'                      # pas de rafale d'erreurs
 ```
 
-puis, dans l'application, une liste réelle envoyée par l'utilisateur lui-même (sans valider de commande Leclerc) : la liste passe « Envoyée au drive », puis « Rouvrir » la remet active. Ces essais se font avec les vrais écrans ; aucune requête n'est envoyée à Leclerc depuis le serveur.
+puis, dans l'application, une liste réelle envoyée par l'utilisateur lui-même (sans valider de commande Leclerc) : la liste passe « Envoyée au drive », puis « Rouvrir » la remet active. Ces essais se font avec les vrais écrans, pas à pas dans [`drive/recette.md`](drive/recette.md) ; aucune requête n'est envoyée à Leclerc depuis le serveur.
 
 ### Allumer, couper
 
@@ -143,7 +144,7 @@ Recommandé : couper dès que Leclerc change son site, bloque les requêtes de f
 Du plus léger au plus lourd ; s'arrêter dès que le problème est réglé.
 
 1. **Couper** (`false`, ci-dessus). C'est la réponse à tout problème de la fonction : le code reste en place, le schéma aussi.
-2. **Remettre une version du code** (`./deploy.sh back vX.Y.Z`, `references/incident.md` § 2) : remet le **code**, **jamais le schéma** (ADR 0017 règle 6). Les quatre migrations restent appliquées, ce qui est sans danger : la version précédente ignore les colonnes et tables ajoutées. **Mais** si des listes sont au statut `SENT`, la version précédente ne sait pas les lire. Donc, **avant de remettre une version qui ne connaît pas `SENT`** :
+2. **Remettre une version du code** (`./deploy.sh back vX.Y.Z`, `references/incident.md` § 2) : remet le **code**, **jamais le schéma** (ADR 0017 règle 6). Les cinq migrations restent appliquées, ce qui est sans danger : la version précédente ignore les colonnes et tables ajoutées. **Mais** si des listes sont au statut `SENT`, la version précédente ne sait pas les lire. Donc, **avant de remettre une version qui ne connaît pas `SENT`** :
    1. couper la fonction (`false`), pour qu'aucune liste ne soit envoyée pendant l'opération ;
    2. voir combien de listes sont `SENT` (lecture seule) puis les remettre en état (script ci-dessous) ;
    3. seulement ensuite, remettre la version précédente.

@@ -4,7 +4,7 @@
 - **Jalon** : M5 Intégration et livraison
 - **Taille** : S
 - **Dépend de** : DRV-204
-- **Statut** : partie back faite (PR [#152](https://github.com/kcharignon/repas/pull/152), 2026-10-18) ; partie front (affichage dans `/drive/reglages` et `/drive/aide`) à faire
+- **Statut** : partie back faite (PR [#152](https://github.com/kcharignon/repas/pull/152), 2026-10-18) ; partie front faite (note complète dans l'aide : repas-front#101 ; note courte : repas-front#105 ; posée dans les réglages : repas-front#106) ; reste la relecture des textes par l'utilisateur
 - **Lire d'abord** : [`../architecture.md`](../architecture.md) § 10 ; page de confidentialité ou mentions existantes du front si elles existent.
 
 ## Portée
@@ -29,3 +29,7 @@ Le texte doit prévenir chaque utilisateur que l'envoi au drive agit dans sa pro
 ## Réalisation partie front (2026-10-18, PR repas-front#105)
 
 Composant `DrivePrivacyNote.vue` (texte court, lien « Lisez la note complète » vers `/drive/aide#vie-privee`) ; textes en vouvoiement dans `drivePrivacy.short` / note complète dans l'aide. Reste : poser `<DrivePrivacyNote />` dans les réglages (DRV-501 partie front) ; faire relire les textes par l'utilisateur.
+
+## Suite (audit de cohérence, 2026-10-18)
+
+La note courte est posée en tête des réglages du drive (repas-front#106) et la note complète est dans l'aide (`/drive/aide#vie-privee`, repas-front#101) : le critère « accessible depuis `/drive/reglages` et `/drive/aide` » est rempli. Restent : (1) la **relecture des textes par l'utilisateur** (critère « le texte est relu ») ; (2) le front **vouvoie** (« Votre vie privée ») alors que `note-vie-privee.md` est écrit au tutoiement : choix de ton à confirmer, le fond est identique ; (3) la note du front dit désormais que les pages de Leclerc font appel à leurs propres services (protection contre les robots, mesure d'audience), phrase reprise dans `note-vie-privee.md` ; (4) le front n'a pas encore la phrase sur le **premier écrivain** d'une fiche de produit (DRV-613 partie 1) que porte `note-vie-privee.md`.

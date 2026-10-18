@@ -4,7 +4,7 @@
 - **Jalon** : M3 Agent
 - **Taille** : S
 - **Dépend de** : DRV-306
-- **Statut** : à faire
+- **Statut** : remplacé (le favori est abandonné, voir `../pivot-application-android.md`) : la publication de l'agent se fait avec celle de l'application, DRV-315 ; la version minimale de l'agent n'existe pas (`../runbook.md` § 7.5)
 - **Lire d'abord** : DRV-301 (build), DRV-403 (installation côté front), [`../architecture.md`](../architecture.md) § 10.
 
 ## Contexte

@@ -1,6 +1,6 @@
 # Pivot du 2026-10-17 : une application Android à la place du favori
 
-**Statut** : décision de l'utilisateur prise ; forme exacte (A ou B ci-dessous) et distribution à trancher après le spike DRV-011. Les ADR 0022 et 0023 restent `Proposed` jusqu'à G1.
+**Statut** : **appliqué.** Décision G1 du 2026-10-17 : GO, forme A (spike DRV-011 réussi), distribution par APK signé hors Google Play (D26, D27) ; précision du 2026-10-18 : l'application est l'application Repas complète, coquille autour du front (D28, voir la fin du document). Les ADR 0022 et 0023 sont `Accepted`. Le texte qui suit garde le raisonnement d'origine (formes A et B, inconnues du spike) : il est historique.
 
 ## Pourquoi
 

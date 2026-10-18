@@ -2,7 +2,7 @@
 
 - **Statut** : Accepted
 - **Date** : 2026-10-14
-- **Liens** : [0001](0001-architecture-hexagonale.md), [0002](0002-modele-de-domaine-riche.md), [0004](0004-repository-vs-loader.md), [0010](0010-strategie-de-tests.md) règle 12, roadmap phase 8
+- **Liens** : [0001](0001-architecture-hexagonale.md), [0002](0002-modele-domaine-riche.md), [0004](0004-repository-vs-loader.md), [0010](0010-strategie-de-tests.md) règle 12, roadmap phase 8
 
 ## Contexte
 

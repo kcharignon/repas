@@ -7,7 +7,7 @@ Gabarit à remplir après l'exécution du banc d'essai (DRV-001) sur le téléph
 - Date du test : 2026-10-17 (première passe, ordinateur)
 - Téléphone (modèle) et version d'Android : non testé
 - Navigateur et version (Chrome ?) : Chrome 155 sous Windows 10/11 (ordinateur), fenêtre 1278 × 910
-- Magasin testé : un drive Leclerc de l'utilisateur, hôte `fd7-courses.leclercdrive.fr` (compte connecté, magasin choisi)
+- Magasin testé : un drive Leclerc de l'utilisateur, hôte `fdN-courses.leclercdrive.fr` (compte connecté, magasin choisi)
 
 ## Résultats
 
@@ -19,7 +19,7 @@ Gabarit à remplir après l'exécution du banc d'essai (DRV-001) sur le téléph
 | 4 | Une recherche même origine répond-elle 200 avec des produits analysables (combien) ? | oui | `recherche.aspx?TexteRecherche=farine` : HTTP 200, `text/html`, environ 220 000 caractères, 536 ms, 25 produits reconnus avec identifiant, libellés (2 lignes), prix, prix par unité de mesure, stock, quantité déjà au panier. **Pas d'EAN dans les données.** Autres mots : 55 à 209 produits, pages de 0,36 à 1,0 million de caractères, 0,7 à 0,9 s. |
 | 5 | Ajouter un produit au panier (puis le retirer) fonctionne-t-il ? Code HTTP ? | **oui (ordinateur)** | Après correction du banc (DRV-008) : ajout `POST …/panier.aspx?op=1` **HTTP 200**, JSON de 4 évènements en 127 ms, quantité obtenue lue dans la réponse (`iQtePanier` 1, stock 520, total du panier mis à jour), puis retrait HTTP 200 (produit absent de `lstProduitsLight`, panier revenu à son état). Le 404 d'avant venait de l'en-tête `zcwb: ajax-manager` et de l'adresse du panier avec suffixe de ville (voir [DRV-007](DRV-007-requete-ajout-panier.md)). À refaire sur téléphone. |
 | 6 | Un blocage (403) apparaît-il ? Après combien de requêtes ? | non (ordinateur) | Aucun 403 ni 429 sur environ 40 requêtes en série (5 en cadence 800 ms + gigue, puis un lot de 30). Réponses 200 en 0,7 à 0,9 s. Le 404 de la ligne 5 n'est pas un blocage. À refaire sur téléphone. |
-| 7 | Un `iframe` vers la page de recherche du même hôte s'affiche-t-il ? | **non** | Le cadre déclenche `load` mais son contenu est inaccessible ; la page du cadre affiche « fd7-courses.leclercdrive.fr n'autorise pas la connexion » (refus par `X-Frame-Options` ou `frame-ancestors`). **P1 impossible.** |
+| 7 | Un `iframe` vers la page de recherche du même hôte s'affiche-t-il ? | **non** | Le cadre déclenche `load` mais son contenu est inaccessible ; la page du cadre affiche « fdN-courses.leclercdrive.fr n'autorise pas la connexion » (refus par `X-Frame-Options` ou `frame-ancestors`). **P1 impossible.** |
 | 8 | L'agent repère-t-il le produit que l'utilisateur ajoute dans le cadre ? | non testé | Sans objet : le cadre est refusé. |
 | 9 | Un fragment de 6 Ko, 16 Ko, 64 Ko survit-il à la navigation aller vers Leclerc ? | **non (6 Ko)** | Vers Repas : 6 144, 16 384 et 65 536 caractères reçus, contenu intact (ordinateur). Vers Leclerc avec 6 Ko : Leclerc affiche sa page « désolé, ce service est momentanément indisponible » (adresse `PageDir/pgeWCSD002_Erreur.aspx?…&fromJs…=1`, sans chemin de magasin ni fragment). Fragments courts (`#repas=essai`, 1 000, 3 000 caractères) : à tester (décision D21 dans l'analyse). |
 | 10 | Le retour vers `https://kantin.eu/` conserve-t-il le fragment (routeur compris) ? | oui (ordinateur) | « fragment ok reçu ». À refaire sur téléphone (application installée). |

@@ -1,16 +1,16 @@
 # Chantier Drive : envoyer la liste de courses au drive (E.Leclerc)
 
-**À lire en premier par tout agent qui reprend ce chantier.** Rédigé le 2026-10-17 par l'assistant Product Owner / architecte, qui n'implémente pas : d'autres agents exécutent les tickets.
+**À lire en premier par tout agent qui reprend ce chantier.** Rédigé le 2026-10-17 par l'assistant Product Owner / architecte, qui n'implémente pas : d'autres agents exécutent les tickets. État mis à jour le 2026-10-18 (audit de cohérence).
 
 ## Le besoin en deux phrases
 
-Sur Android, une fois la liste de courses prête, l'utilisateur touche « Envoyer au drive » : la liste est verrouillée (`SENT`), Repas ouvre le drive Leclerc dans Chrome, un favori JavaScript (l'**agent**) met au panier les produits déjà connus avec la bonne quantité et fait choisir un produit pour chaque nouvel ingrédient ; Repas mémorise les choix. L'utilisateur finalise sa commande sur leclercdrive.fr. Aucun identifiant ni cookie Leclerc ne passe par nos serveurs.
+Sur Android, une fois la liste de courses prête, l'utilisateur touche « Envoyer au drive » : la liste est verrouillée (`SENT`), l'application Android de Repas ouvre le drive Leclerc sur un second écran (WebView en mode ordinateur), où un programme embarqué (l'**agent**) met au panier les produits déjà connus avec la bonne quantité et fait choisir un produit pour chaque nouvel ingrédient ; Repas mémorise les choix. L'utilisateur finalise sa commande sur le site de Leclerc. Aucun identifiant ni cookie Leclerc ne passe par nos serveurs.
 
 ## Où en est-on
 
-**Décision G1 du 2026-10-17 : GO.** Le moyen d'exécuter l'agent est une **application Android** (WebView en mode ordinateur, agent embarqué), car Chrome Android refuse les favoris JavaScript. Lire [`spikes/DRV-005-decision-g1.md`](spikes/DRV-005-decision-g1.md) (preuves et décisions) et [`pivot-application-android.md`](pivot-application-android.md). Les tickets M1 à M5 peuvent démarrer selon leurs dépendances ; M3b regroupe l'application.
+**Décision G1 du 2026-10-17 : GO.** Le moyen d'exécuter l'agent est une **application Android** (WebView en mode ordinateur, agent embarqué), car Chrome Android refuse les favoris JavaScript ; depuis le 2026-10-18 (D28) c'est l'application **Repas complète** (coquille autour du front, le drive est son second écran, pont natif `repasNative`). Lire [`spikes/DRV-005-decision-g1.md`](spikes/DRV-005-decision-g1.md) (preuves et décisions) et [`pivot-application-android.md`](pivot-application-android.md). Le favori JavaScript et le fragment d'adresse vers Leclerc sont abandonnés : tout passage de la documentation qui les décrit est historique.
 
-Voir [`roadmap.md`](roadmap.md) (cases à cocher). Rien de produit n'est codé avant la décision **G1** (DRV-005), qui dépend de trois découvertes : le banc d'essai sur le téléphone (DRV-001, DRV-002), les CGU de Leclerc (DRV-003) et ses en-têtes de sécurité (DRV-004).
+**Au 2026-10-18** : le back est terminé et fusionné sur `main` (verrou `SENT`, contexte `Drive`, plan, choix, estimation du coût, durcissement DRV-613 partie 1) ; l'agent, l'application (coquille, passage du plan, test automatique, émulateur partie 1) et les écrans du front sont fusionnés. **Restent** : la publication signée de l'application (DRV-315, étapes humaines), la lecture du magasin depuis l'application (DRV-320), la partie 2 de DRV-613 (agent), l'émulateur complet (DRV-319 partie 2), puis la **recette sur téléphone** ([`recette.md`](recette.md), DRV-505, par l'utilisateur) et l'activation de `DRIVE_ENABLED` en production. D'après `gh release list` (2026-10-18), rien du drive n'est encore déployé en production : les dernières versions publiées, le back `v0.5.0` et le front `v0.4.1`, n'en contiennent rien. Suivi des cases : [`roadmap.md`](roadmap.md).
 
 ## Ordre de lecture
 

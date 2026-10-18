@@ -10,14 +10,14 @@ Chantier « envoyer la liste de courses au drive Leclerc » ([ADR 0022](../../..
 
 Ordre fixe : back, front, application, stabilité, puis l'utilisateur allume. Ne jamais proposer d'allumer avant la fin de l'étape 4.
 
-1. **Contrôler avant** (lecture seule, moi) : CI verte sur `main`, `make deploy-smoke` vert (job `deploy-config`), migrations du chantier relues (4, additives), `DRIVE_ENABLED` absent ou `false` dans `/opt/repas/.env`, une sauvegarde récente. Résumer en trois lignes à l'utilisateur.
+1. **Contrôler avant** (lecture seule, moi) : CI verte sur `main`, `make deploy-smoke` vert (job `deploy-config`), migrations du chantier relues (5, additives), `DRIVE_ENABLED` absent ou `false` dans `/opt/repas/.env`, une sauvegarde récente. Résumer en trois lignes à l'utilisateur.
 2. **Back** : l'utilisateur décide de la version et du moment (`references/release.md`), publie la release, approuve le déploiement (« Review deployments »). Puis je contrôle (lecture) : `state/ok-back`, `docker compose ps`, `printenv DRIVE_ENABLED` = `false`, migrations à jour, `/api/v1/health`. Attendu : rien ne change pour les utilisateurs.
 3. **Front** : même chose dans `kcharignon/repas-front`. Attendu : le site se charge, la connexion et les listes marchent, aucune fonction du drive n'est active.
-4. **Application Android** : étapes humaines du dépôt front (`android/README.md`) : clé de signature créée et gardée par l'utilisateur, secrets GitHub posés par lui, étiquette `android-vX.Y.Z` décidée par lui, installation du fichier sur les téléphones, `assetlinks.json`. Je guide chaque étape séparément, sans jamais voir la clé ni les mots de passe. Attendu : l'application s'ouvre sur Repas ; « Version et mode d'emploi » dit que l'agent est intact.
-5. **Laisser tourner** : critères conseillés : aucune erreur `5xx` (`docker compose logs --tail 100 php`), une sauvegarde de nuit réussie, recette sur téléphone signée (DRV-505).
+4. **Application Android** : étapes humaines du dépôt front (`android/README.md`) : clé de signature créée et gardée par l'utilisateur, secrets GitHub posés par lui, étiquette `android-vX.Y.Z` décidée par lui, installation du fichier sur les téléphones, `assetlinks.json`. Je guide chaque étape séparément, sans jamais voir la clé ni les mots de passe. Attendu : l'application s'ouvre sur Repas ; « Version et mode d'emploi » donne la version et une ligne « Agent : version …, empreinte … » (et non « absent » ni « empreinte inattendue »). Tant que l'APK signé n'existe pas (DRV-315), c'est la pré-version de test `android-dev-…` qu'on installe.
+5. **Laisser tourner** : critères conseillés : aucune erreur `5xx` (`docker compose logs --tail 100 php`), une sauvegarde de nuit réussie, l'application installée sur le téléphone de l'utilisateur. La recette (DRV-505) ne se fait qu'allumé : elle suit l'allumage.
 6. **Allumer** : décision de l'utilisateur seul. Expliquer ce que le script fait (une ligne dans `.env`, redémarrage de `php`, quelques secondes de coupure), puis :
    `! ssh -i ~/.ssh/id_ed25519 root@64.227.124.100 'bash -s -- true' < .claude/skills/repas-ops/references/ecrire-drive-enabled.sh`
-   Attendu : `OK : DRIVE_ENABLED=true`. Puis contrôle en lecture (`printenv`), puis un premier envoi réel par l'utilisateur, sans valider de commande Leclerc.
+   Attendu : `OK : DRIVE_ENABLED=true`. Puis contrôle en lecture (`printenv`), puis la recette réelle par l'utilisateur, sans valider de commande Leclerc : `docs/drive/recette.md` (parties 3 à 12), une étape à la fois, avec la famille prévenue de ne pas se servir de l'envoi avant la fin.
 
 ## B. Couper (immédiat, réversible)
 

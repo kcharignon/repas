@@ -1,6 +1,6 @@
 # Note de vie privée : l'envoi de la liste au drive
 
-Texte prêt à intégrer dans le front (ticket DRV-504, **partie back** : le texte et le registre ; l'affichage est la partie front). Il doit être accessible depuis **`/drive/reglages`** (résumé et lien) et **`/drive/aide`** (texte complet). Français simple, tutoiement, comme le reste de l'interface ; chaque bloc ci-dessous peut devenir une clé de `src/i18n/fr.ts` (par exemple `drive.privacy.*`). Aucune image externe.
+Texte du front (ticket DRV-504 : **partie back** = le texte et le registre, ici ; **partie front** faite, repas-front#101, #105 et #106, clés `drivePrivacy.*` de `src/i18n/fr.ts`). Il est accessible depuis **`/drive/reglages`** (résumé et lien) et **`/drive/aide`** (texte complet). Français simple ; ce fichier est écrit au **tutoiement**, le front **vouvoie** dans ses écrans (« Votre vie privée », « Lisez la note complète ») : le fond est le même, le ton est un choix de l'utilisateur à confirmer. Aucune image externe.
 
 - Dernière mise à jour du texte : **2026-10-18**. Le relire à chaque changement de ce que la fonction enregistre (voir « À garder vrai » plus bas).
 - Les mots entre « » sont ceux de l'interface actuelle de l'application et du front.
@@ -25,7 +25,7 @@ Envoyer ta liste au drive, c'est Repas qui prépare la liste et l'application qu
 
 - Quand tu touches « Envoyer au drive », Repas prépare ta liste et la donne à l'application, sur ton téléphone.
 - L'application ouvre Leclerc dans sa propre fenêtre. C'est **toi** qui te connectes à Leclerc, comme sur le site. Ensuite elle cherche les produits et les met dans ton panier **depuis ta session Leclerc**, comme si tu le faisais toi-même.
-- Tout cela se passe entre ton téléphone et Leclerc. **Rien de cela ne passe par les serveurs de Repas.** À la fin, l'application ne rend à Repas que ce qu'il doit retenir : les produits que tu as choisis.
+- Tout cela se passe entre ton téléphone et Leclerc. **Rien de cela ne passe par les serveurs de Repas.** Comme dans un navigateur, les pages de Leclerc font appel à leurs propres services (protection contre les robots, mesure d'audience) : Repas n'y a pas accès et ne les choisit pas. À la fin, l'application ne rend à Repas que ce qu'il doit retenir : les produits que tu as choisis.
 - Tu finalises ta commande toi-même sur Leclerc. Repas ne valide jamais de commande, ne choisit pas de créneau, ne paie rien et ne vide jamais ton panier.
 
 ### Ce que Repas enregistre
@@ -48,7 +48,7 @@ Envoyer ta liste au drive, c'est Repas qui prépare la liste et l'application qu
 - Les données sont dans la base de Repas, sur le serveur de Repas (hébergé chez DigitalOcean). Repas ne les donne à personne, ne les vend pas, ne fait pas de publicité et n'envoie pas de statistiques à des tiers.
 - Elles restent **tant que ton compte existe**, ou jusqu'à ce que tu les oublies (voir plus bas).
 - Le serveur fait une copie de sauvegarde chaque nuit et garde les 14 dernières : une donnée effacée peut rester dans ces copies **environ deux semaines au plus**, puis elles sont remplacées.
-- Sur ton téléphone, l'application garde ta connexion à Leclerc, comme le ferait un navigateur. Elle ne la partage ni avec Repas ni avec personne. Tu peux l'effacer à tout moment : menu de l'application, « Se déconnecter de Leclerc et effacer les données du drive ».
+- Sur ton téléphone, l'application garde ta connexion à Leclerc, comme le ferait un navigateur. Elle ne la partage ni avec Repas ni avec personne d'autre que Leclerc et ses propres services. Tu peux l'effacer à tout moment : menu de l'application, « Se déconnecter de Leclerc et effacer les données du drive ».
 - Les fiches de produits (nom, contenu, prix vu, magasin) sont communes à tous les utilisateurs de Repas et ne disent **pas** qui les a vues. Chacun ne retrouve que les produits qu'il a lui-même mémorisés. La première personne qui décrit un produit fixe sa fiche (nom, contenu, code-barres) : les suivantes ne la réécrivent pas, elles ne font que la compléter si elle est incomplète ; le prix vu, lui, est rafraîchi par celles qui choisissent ce produit. Ces fiches restent quand un compte est supprimé, mais sans aucun lien avec la personne.
 
 ### Comment tout effacer
@@ -85,6 +85,7 @@ Chaque phrase du texte a sa source. Si l'une change, mettre à jour ce texte **e
 | Effacé avec le compte, sauf les fiches de produits | `PurgeUserDriveDataHandler` (réglages, lignes de produits, préférences) ; `UserOwnedDataCoverageTest` ; ADR 0021. **Pas d'auto-suppression** : seul un administrateur supprime un compte |
 | Changer de magasin ne supprime pas les anciens choix | `SaveDriveSettingsHandler` remplace le magasin sans purge ; les choix portent leur `store_id` |
 | Sauvegardes : 14 conservées, une par nuit | `deploy/backup.sh` ; [`../production.md`](../production.md) |
+| Les pages de Leclerc appellent leurs propres services (anti-robot, audience) ; Repas ne les voit pas | comportement d'un navigateur ; le cookie anti-robot est visible dans la WebView ([`spikes/DRV-011-rapport.md`](spikes/DRV-011-rapport.md)) ; mis dans la note par repas-front#108 |
 | Cadence lente, en série, à la demande | `architecture.md` § 8 (cadence), DRV-003 (constat CGU) ; l'agent s'arrête après deux refus |
 | Risque de suspension du compte E.Leclerc | [`spikes/DRV-003-cgu.md`](spikes/DRV-003-cgu.md) ; décision D23 de l'utilisateur |
 
