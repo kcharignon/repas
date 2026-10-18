@@ -4,7 +4,7 @@
 - **Jalon** : M2 Back `Drive`
 - **Taille** : M
 - **Dépend de** : DRV-201 (et DRV-105 pour `Dimension`)
-- **Statut** : à faire
+- **Statut** : fait (PR [#136](https://github.com/kcharignon/repas/pull/136), 2026-10-18)
 - **Lire d'abord** : [`../architecture.md`](../architecture.md) § 6 ; ADR 0002 (domaine pur).
 
 ## Contexte
@@ -59,3 +59,14 @@ Tests unitaires du domaine (aucune base, aucun kernel), chaque ligne du tableau 
 ## Definition of Done
 
 Celle du skill `repas-dev` § 4 (`make test`, `make quality`).
+
+## Réalisation (2026-10-18, PR repas#136)
+
+`Repas\Drive\Domain\Service\PackCalculator::packsFor(LineQuantity, ?ProductContent): PackResult` (classe `final`, sans état, constantes `MAX_PACKS = 99` et `TOLERANCE = 1e-9`). Valeurs dans `Repas\Drive\Domain\Model\` : `LineQuantity(float $quantity, ?Dimension $dimension, ?float $baseFactor)`, `ProductContent(float $value, ContentUnit $unit)`, `ContentUnit` (enum `g|kg|ml|cl|l|piece`, `dimension()`, `factor()`), `PackResult(?int $packs, PackStatus $status)` avec `PackResult::computed(int)` et `::toCheck(?int)`, `PackStatus` (`COMPUTED` | `TO_CHECK`). Tests : `tests/Drive/Domain/PackCalculatorTest.php` (93 cas : le tableau du ticket, chaque règle, tolérance de part et d'autre de 1e-9, plafond, flottants `0,1 + 0,2`).
+
+Choix pour les cas que le ticket ne tranche pas (à connaître de DRV-206) :
+
+- Un contenu inutilisable (valeur nulle, négative, infinie ou pas un nombre) est traité comme un contenu inconnu : `COUNT` donne `ceil(quantité)` à vérifier, poids et volume donnent `null` à vérifier, `PACKAGE` l'ignore comme tout contenu.
+- Un poids ou un volume dont le `baseFactor` est absent, nul, négatif ou infini donne `null` à vérifier (l'unité n'est pas convertible). `COUNT` n'utilise pas `baseFactor` (tous les contenus en pièces valent 1).
+- La quantité invalide (≤ 0 ou non finie) est testée en premier : `null` à vérifier même pour `PACKAGE`. Un quotient infini (quantité énorme, contenu minuscule) donne 99 à vérifier.
+- Le plafond s'applique aussi aux résultats déjà « à vérifier » (`COUNT` sans contenu : 500 donne 99). Un résultat arrondi à 99 par la tolérance reste `COMPUTED`.
