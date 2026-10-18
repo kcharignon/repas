@@ -4,7 +4,7 @@
 - **Jalon** : M4 Front
 - **Taille** : L
 - **Dépend de** : DRV-203, DRV-204, DRV-307, DRV-402
-- **Statut** : à faire
+- **Statut** : fait (PR [repas-front#100](https://github.com/kcharignon/repas-front/pull/100), 2026-10-18)
 - **Lire d'abord** : [`../architecture.md`](../architecture.md) §§ 5, 7, 9 ; `docs/adr/0003-design-system-basilic-et-safran.md` du front ; composants `src/design/Ui*` ; `RecipeEditorView.vue` comme modèle d'écran.
 
 ## Contexte
@@ -60,3 +60,7 @@ L'agent lit l'identifiant et l'hôte du magasin mais **pas son libellé** (`labe
 ## Contrat des choix et des réglages (2026-10-18)
 
 `GET /api/v1/drive/choices?retailer=leclerc` (`retailer` obligatoire) renvoie `{member, totalItems}` trié par slug ; chaque membre : `{ingredientSlug, ingredientName, haveAtHome, accepted:[{rank, product}], rejected:[product], updatedAt}` avec `product = {productId, retailerProductId, ean, label, content:{value, unit}|null}` (le prix n'est pas renvoyé). `DELETE /api/v1/drive/choices/{ingredientSlug}?retailer=&storeId=` répond 204 (404 `DRIVE_CHOICE_NOT_FOUND`). Réglages : `GET|PUT /api/v1/drive/settings` (voir DRV-203).
+
+## Réalisation (2026-10-18, PR repas-front#100) et reste à brancher
+
+`/drive/reglages` : drive coupé → message seul ; magasin « Magasin …456 » ou nom donné par l'utilisateur (`PUT /drive/settings` avec `label`) ; adresse saisie validée comme le back (hôte `*.leclercdrive.fr`, chemin `/magasin-<id>-<id>`) ; section application (`driveBridge.info()`) ; résumé des produits mémorisés. `src/features/drive/storeReader.ts` : `readStoreFromApp()` et `canReadStoreFromApp()` sont des points d'accroche (le bouton « Lire mon magasin dans l'application » n'apparaît pas encore) : **à brancher avec le message `drive.setup` du pont** (DRV-314 côté application, intégration DRV-501). Pas de « version minimale de l'application » (le drapeau `drive` de `app.info` suffit).
