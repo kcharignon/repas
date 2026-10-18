@@ -4,7 +4,7 @@
 - **Jalon** : M2 Back `Drive`
 - **Taille** : M
 - **Dépend de** : DRV-201, DRV-103
-- **Statut** : à faire
+- **Statut** : fait (PR [#134](https://github.com/kcharignon/repas/pull/134), 2026-10-18)
 - **Lire d'abord** : [`../architecture.md`](../architecture.md) §§ 5, 7 ; skill `repas-dev` §§ 3.1 à 3.3 ; ADR 0003, 0007 ; ADR 0020 (préférence d'un agrégat séparé plutôt que de grossir `User`).
 
 ## Contexte
@@ -45,3 +45,12 @@ Celle du skill `repas-dev` § 4 ; `UserOwnedDataCoverageTest` sera étendu en DR
 
 - `UserOwnedDataCoverageTest` échoue dès qu'une entité gagne un champ `userId` non listé : prévoir l'entrée dans la liste `ERASED_WITH_THE_USER` et la purge (DRV-207).
 - Ne pas importer `User\Domain\Model\User` : `#[CurrentUser] AuthenticatedUser` (`Shared`).
+
+## Réalisation (2026-10-18, PR repas#134)
+
+- **Domaine** (`src/Drive/Domain/`) : `Model\Retailer` (enum `LECLERC`, `isValidStoreUrl()`, `storeIdOf()`), `Model\Store` (valeur `id`, `label`, `baseUrl` ; `Store::create(Retailer, id, label, baseUrl)` valide et lève `DriveException::storeInvalid()` : adresse hors motif, identifiant différent de celui de l'adresse, `id` > 20, adresse > 255, libellé > 255 ; un libellé vide devient `null`), `Model\DriveSettings` (`create(userId, retailer, store, now)`, `load()`, `changeStore(store, now)`, `getId()` = `userId:retailer`), `Exception\DriveException` (`storeInvalid` 422, `notConfigured` 409, `disabled` 404), port `Interface\DriveSettingsRepository` (`findOneByUser(userId, Retailer)`, `save`, `deleteByUser`).
+- **Persistance** : entité `Drive\Infrastructure\Entity\DriveSettings` (table `drive_settings`, PK `(user_id, retailer)`, `retailer` en texte), `DriveSettingsPostgreSQLRepository` (alias public dans `config/repositories.yaml`), migration `Version20261018100000` (nouvelle table, compatible avec la version précédente).
+- **Écriture** : `SaveDriveSettingsCommand(userId, Retailer $retailer, storeId, storeLabel, baseUrl)` + `SaveDriveSettingsHandler` (valide, crée ou remplace, `ClockInterface`). Budget `reglages-drive` = 2 requêtes (un `SELECT`, un `UPDATE`).
+- **Lecture** : `GetDriveSettingsQuery(userId)` → `DriveSettingsDTO{enabled, retailer, store: DriveStoreDTO{id, label, baseUrl}|null}` ; `enabled` est posé par `DriveSettingsPostgreSQLLoader` (qui reçoit `DriveFeature`), le handler ne fait que déléguer au port `Application\Loader\DriveSettingsLoader` ; une requête SQL.
+- **API** (contrat pour DRV-403/DRV-404) : `GET /api/v1/drive/settings` → `200 {"enabled": bool, "retailer": "leclerc", "store": {"id": "123456", "label": "Ville-Test"|null, "baseUrl": "https://…leclercdrive.fr/magasin-123456-123456"} | null}` (toujours `200`, sans `#[RequiresDrive]`) ; `PUT /api/v1/drive/settings` avec `{"retailer": "leclerc", "store": {"id", "baseUrl", "label"?}}` → `204` ; `404 DRIVE_DISABLED` (interrupteur coupé, avant toute validation) ; `422` corps invalide (message de validation) ou `422 DRIVE_STORE_INVALID` (message `DRIVE_STORE_INVALID`). `GetDriveSettingsApiController`, `SaveDriveSettingsApiController`, `DriveSettingsPayload`, `DriveStorePayload`.
+- **Écart avec le ticket** : la purge à la suppression du compte (initialement prévue par DRV-207) est faite ici pour les réglages, sinon `UserOwnedDataCoverageTest` échoue : `PurgeUserDriveDataCommand(userId)` + `PurgeUserDriveDataHandler` (appelle `DriveSettingsRepository::deleteByUser`), `Drive\Infrastructure\EventListener\PurgeUserDataOnUserDeletedListener` (écoute `UserDeletedEvent`), entrée `DriveSettings::class => ['userId']` dans `UserOwnedDataCoverageTest`, budget `supprimer-compte` 15 → 16 (un `DELETE drive_settings`), test de bout en bout dans `AccountAdministrationFlowTest`. **DRV-207** n'a plus qu'à étendre ce handler avec les choix (`drive_choice_product` puis `drive_choice`), à ajouter l'entrée `Choice`, à revoir le budget et à compléter l'ADR 0021.

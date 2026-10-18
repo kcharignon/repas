@@ -11,6 +11,8 @@
 
 Aucune clé étrangère ne lie les tables à `user` : supprimer un compte « comme s'il n'avait jamais existé » repose sur une liste écrite à la main, gardée par `UserOwnedDataCoverageTest`. Les tables `drive_settings` et `drive_choice` portent `user_id`. `drive_product` n'a pas de propriétaire : on la garde.
 
+> **Mise à jour du 2026-10-18** : DRV-203 (PR #134) a déjà créé `PurgeUserDriveDataCommand` / `PurgeUserDriveDataHandler`, l’écouteur `Drive\Infrastructure\EventListener\PurgeUserDataOnUserDeletedListener`, l’entrée `DriveSettings::class` de `UserOwnedDataCoverageTest` et le budget `supprimer-compte` à 16 pour les réglages. Reste ici : étendre le handler aux choix (points 1, 3 et 4 pour `Choice` et `drive_choice_product`) et le point 5.
+
 ## Portée
 
 1. `Application/Command/PurgeUserDriveData/` : `PurgeUserDriveDataCommand(string $userId)` et son handler : supprime d'abord les lignes `drive_choice_product` des préférences de l'utilisateur (`ChoiceRepository::deleteProductsByUser`, par les identifiants de ses `drive_choice`, sinon des lignes orphelines restent : aucune clé étrangère), puis `drive_choice` (`ChoiceRepository::deleteByUser`) et `drive_settings` (`DriveSettingsRepository::deleteByUser`) : suppressions en masse, sans événement.
