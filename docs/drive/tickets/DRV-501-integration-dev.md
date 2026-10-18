@@ -4,7 +4,7 @@
 - **Jalon** : M5 Intégration et livraison
 - **Taille** : M
 - **Dépend de** : M2, M3, M4 terminés
-- **Statut** : à faire
+- **Statut** : en cours (partie back faite, PR #156, 2026-10-18 ; reste la partie front, l'intégration de bout en bout et `recette.md`)
 - **Lire d'abord** : tout `docs/drive/` ; `docs/production.md` ; `make start` du back et `make up` du front (voir `CLAUDE.md`).
 
 ## Portée
@@ -18,3 +18,13 @@
 ## Critères d'acceptation
 
 Un agent d'intégration déroule `recette.md` en développement sans écart non expliqué ; tous les contrôles qualité sont verts dans les deux dépôts.
+
+## Réalisation partie back (2026-10-18, PR repas#156)
+
+Objectif : que le front vérifie que le back et l'agent parlent la même langue **sans lancer toute la pile**.
+
+- **Exemples versionnés** dans `docs/drive/samples/` : `plan.sample.json` (`GET /drive/plans/{id}`), `choices.sample.json` (`GET /drive/choices?retailer=leclerc`), `estimate.sample.json` (`GET /drive/estimates/{id}`), `settings.sample.json` (`GET /drive/settings`). Une même liste envoyée de 5 lignes triées par slug : `farine` (`KNOWN`, produit préféré avec EAN + produit de secours, `ESTIMATED`), `lait` (`KNOWN`, un produit sans prix, un refusé, `NO_PRICE`), `oeuf` (`NEW`, unité « unité » sans symbole, `NO_PRODUCT`), `sel` (`KNOWN`, cuillère à soupe sans dimension : `packs: null` / `TO_CHECK`), `sucre` (`HAVE_AT_HOME`). Valeurs inventées : magasin `123456` / `Ville-Test` / hôte `exemple.leclercdrive.fr`, produits `5551xx`, EAN `2000000000008`, utilisateur et liste en UUID fixes, horloge figée au 2026-10-18 (`generatedAt` 10:30 UTC).
+- **Concordance** : `tests/Drive/Contract/DriveContractSamplesTest` (base de test, vrais bus) rejoue le parcours (réglage du magasin, `POST /send`, `PUT /drive/choices` avec prix, `REFRESH_PRICE`) puis compare chaque réponse à son exemple en aplatissant les deux en lignes `chemin: type valeur` (clés, ordre des clés et des lignes, types, valeurs ; entier et décimal sont tous deux des « nombres »). Il échoue, avec le chemin exact de l'écart, quand un DTO change sans que l'exemple soit régénéré. **Régénérer** : `make drive-samples` (réécrit les quatre fichiers depuis les réponses réelles, puis relire le diff : c'est le contrat que le front fige).
+- **Unité sans symbole** (écart de contrat corrigé) : le plan renvoyait `needed.unitSymbol: ""` pour l'unité « unité » (les œufs), que `plan.schema.json` refuse (`minLength: 1`, `maxLength: 32`). Le plan renvoie désormais, à défaut de symbole (vide ou espaces), **le nom de l'unité** (« unité »), puis son slug, coupé à 32 caractères. Le port `Shared` `ShoppingListLineForDrive` gagne `unitName` ; la règle est dans `DrivePlanPostgreSQLLoader::unitLabel()` (test `testTheUnitIsNamedByItsNameWhenItHasNoSymbol`). La clé reste `unitSymbol` (le front fige le contrat) ; `GET /shopping-lists/{id}` n'est pas touché. Note dans `architecture.md` § 7.
+- **Comment le front les utilise** : l'agent d'intégration du front lit `plan.sample.json` (copie ou lecture depuis le dépôt du back, jamais depuis un site), le traduit par `buildPlanMessage` (`src/features/drive/buildPlanMessage.ts` : `retailerProductId` devient `id`, `ingredientName` devient `name`; `needed` n'est gardé que si son symbole est utilisable, ce que l'unité « unité » devient avec ce correctif) et **valide le message obtenu contre `drive-agent/protocol/plan.schema.json`** (test Vitest à écrire côté front : un champ renommé ou retiré dans le DTO du back fait échouer ce test quand l'exemple est régénéré). Les trois autres exemples servent de réponses simulées aux tests des écrans (réglages, « Mes produits », estimation) et à vérifier le client OpenAPI généré.
+- **Reste à faire pour fermer DRV-501** : le test de concordance côté front, le parcours bout en bout en développement (back `DRIVE_ENABLED=true`, front, agent construit, faux site Leclerc), `docs/drive/recette.md`, les contrôles qualité des deux dépôts. La case n'est pas cochée.
