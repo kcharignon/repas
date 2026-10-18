@@ -4,7 +4,7 @@
 - **Jalon** : M4 Front
 - **Taille** : M
 - **Dépend de** : DRV-102, DRV-104 (contrat du back fusionné)
-- **Statut** : à faire
+- **Statut** : fait (PR [repas-front#91](https://github.com/kcharignon/repas-front/pull/91), 2026-10-18)
 - **Lire d'abord** : [`../architecture.md`](../architecture.md) §§ 4, 9 ; `CLAUDE.md` du front ; `src/features/shopping-lists/` (`ShoppingListHeader.vue`, `ShoppingListContent.vue`, `ShoppingListsView.vue`, `ShoppingListView.vue`, `queries.ts`).
 
 ## Contexte

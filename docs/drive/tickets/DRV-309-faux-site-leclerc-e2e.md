@@ -4,7 +4,7 @@
 - **Jalon** : M3 Agent
 - **Taille** : L
 - **Dépend de** : DRV-303 (puis complété au fil de DRV-305 à 308)
-- **Statut** : à faire
+- **Statut** : fait (PR [repas-front#92](https://github.com/kcharignon/repas-front/pull/92), 2026-10-18)
 - **Lire d'abord** : [`../architecture.md`](../architecture.md) §§ 8, 11 ; [`../recherche.md`](../recherche.md) § 2 ; configuration Playwright du front (`playwright.config.ts`, `e2e/`).
 
 ## Contexte
@@ -32,3 +32,7 @@ Les tests e2e eux-mêmes ; revue que les fixtures n'ont pas de HTML réel.
 ## Definition of Done
 
 Celle du front. Ne prouve pas DataDome : la recette réelle est DRV-505.
+
+## Réalisation (2026-10-18, PR repas-front#92)
+
+Faux site dans `drive-agent/fake-leclerc/` (serveur Node sans dépendance, 30 produits inventés, écoute 127.0.0.1 seulement, forme exacte du site mesurée : `zcwb`, adresse du panier sans suffixe de ville, identifiant en texte, contexte à l'ajout seulement, `lstProduitsLight`), pilotable par HTTP (`POST /__fake/behavior`, `POST /__fake/cart`, `GET /__fake/state`, hôtes via `FAKE_LECLERC_HOSTS`, port via `FAKE_LECLERC_PORT`). Tests Playwright Pixel 7 dans `drive-agent/e2e/` (28 tests, 15 s) par fragment et par le pont (vrai `injection.js` + faux canal natif). Cibles `make agent-e2e` (alias `make e2e-agent`) et `make agent-fake` (Node de la machine). Le cadre natif n'est pas testé (P1 abandonné). Constats : l'agent ne peut pas poser son interface si le plan arrive avant la fin du chargement (envoyer le plan après `hello` et chargement terminé) ; après un rechargement la cadence repart de zéro. Reste pour DRV-319 partie 2 : HTTPS avec l'autorité de test et accès depuis l'émulateur.
