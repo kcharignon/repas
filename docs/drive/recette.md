@@ -200,6 +200,8 @@ Au premier envoi, Repas ne connaît encore **aucun** de tes produits : toutes le
 
 ### 6.3 Ouvrir le drive
 
+> **Constat de la recette du 2026-10-18** : « Ouvrir le drive » ouvre `https://www.leclercdrive.fr/`, qui affiche l'accueil de ton magasin avec « Commencer mes courses » ; un bandeau te dit de toucher ce bouton, puis l'agent démarre tout seul sur la page de ton magasin. L'adresse de la racine du serveur du magasin et `/magasin-N-N/` sont des pages 404 (voir `hypotheses-site-reel.md` § 8).
+
 - **But** : lancer le passage de l'agent.
 - **Geste** : touche « Ouvrir le drive ». L'écran du drive Leclerc s'ouvre ; l'agent affiche « Prêt à remplir ton panier » : « 5 nouveaux produits à choisir », « 1 ignoré », « Repas ne vide pas ton panier Leclerc. », « Rien n'est commandé ni payé. ». Touche « Commencer ». *Pendant tout le passage, ne quitte pas l'application ; l'écran reste allumé.*
 - **Attendu** : rien ne part avant « Commencer ». Pas de phase A (aucun produit connu) : l'agent passe directement au premier choix.
