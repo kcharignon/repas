@@ -14,6 +14,7 @@ final class DriveException extends DomainException
     public const string DRIVE_CHOICE_NOT_FOUND = 'DRIVE_CHOICE_NOT_FOUND';
     public const string DRIVE_STORE_MISMATCH = 'DRIVE_STORE_MISMATCH';
     public const string DRIVE_LIMIT_REACHED = 'DRIVE_LIMIT_REACHED';
+    public const string DRIVE_RATE_LIMITED = 'DRIVE_RATE_LIMITED';
     public const string SHOPPING_LIST_NOT_SENT = 'SHOPPING_LIST_NOT_SENT';
     public const string SHOPPING_LIST_FORBIDDEN = 'SHOPPING_LIST_FORBIDDEN';
 
@@ -52,6 +53,16 @@ final class DriveException extends DomainException
     public static function limitReached(): self
     {
         return new self(self::DRIVE_LIMIT_REACHED, 422);
+    }
+
+    /**
+     * Plafond de débit par utilisateur dépassé (DRV-615, constat C2 de la revue de sécurité) : trop d'écritures ou de lectures
+     * coûteuses du drive dans la dernière minute. Levée par `DriveRateLimitListener` (`Infrastructure`), qui l'enveloppe dans
+     * une `TooManyRequestsHttpException` portant `Retry-After`, `429`.
+     */
+    public static function rateLimited(): self
+    {
+        return new self(self::DRIVE_RATE_LIMITED, 429);
     }
 
     /**

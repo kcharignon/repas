@@ -7,6 +7,8 @@ use Nelmio\ApiDocBundle\Attribute\Model;
 use OpenApi\Attributes as OA;
 use Repas\Drive\Application\Query\GetDriveEstimate\DriveEstimateDTO;
 use Repas\Drive\Application\Query\GetDriveEstimate\GetDriveEstimateQuery;
+use Repas\Drive\Infrastructure\Http\DriveRateLimit;
+use Repas\Drive\Infrastructure\Http\RateLimitedPerUser;
 use Repas\Shared\Application\Interface\QueryBusInterface;
 use Repas\Shared\Domain\Interface\AuthenticatedUser;
 use Repas\Shared\Infrastructure\Http\RequiresDrive;
@@ -17,6 +19,7 @@ use Symfony\Component\Security\Http\Attribute\CurrentUser;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 #[RequiresDrive]
+#[RateLimitedPerUser(DriveRateLimit::READ)]
 final class GetDriveEstimateApiController extends AbstractController
 {
     public function __construct(
@@ -34,6 +37,7 @@ final class GetDriveEstimateApiController extends AbstractController
     #[OA\Response(response: 403, description: 'La liste appartient à un autre utilisateur')]
     #[OA\Response(response: 404, description: 'Fonction drive coupée (message `DRIVE_DISABLED`) ou liste inconnue')]
     #[OA\Response(response: 409, description: 'Pas de magasin enregistré (message `DRIVE_NOT_CONFIGURED`)')]
+    #[OA\Response(response: 429, ref: '#/components/responses/DriveReadRateLimited')]
     public function __invoke(#[CurrentUser] AuthenticatedUser $user, string $shoppingListId): JsonResponse
     {
         /** @var DriveEstimateDTO $estimate */

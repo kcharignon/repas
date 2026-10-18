@@ -109,6 +109,37 @@ class ApiExceptionListenerTest extends TestCase
         $this->assertSame(['error' => ['message' => 'Too Many Requests']], $this->body($event));
     }
 
+    public function testHttpExceptionWrappingTheDomainErrorOfTheSameStatusShowsTheDomainCode(): void
+    {
+        // Given : un plafond de débit du drive (DRV-615) : exception HTTP pour l'en-tête, erreur métier pour le message
+        $domain = new class('DRIVE_RATE_LIMITED', 429) extends DomainException {
+        };
+        $event = $this->anApiEvent(new TooManyRequestsHttpException(17, 'DRIVE_RATE_LIMITED', $domain));
+
+        // When
+        (new ApiExceptionListener())($event);
+
+        // Then
+        $this->assertSame(429, $event->getResponse()->getStatusCode());
+        $this->assertSame('17', $event->getResponse()->headers->get('Retry-After'));
+        $this->assertSame(['error' => ['message' => 'DRIVE_RATE_LIMITED']], $this->body($event));
+    }
+
+    public function testHttpExceptionWrappingADomainErrorOfAnotherStatusKeepsTheGenericMessage(): void
+    {
+        // Given : l'erreur métier enveloppée n'est pas celle du statut HTTP (404 dans un 403) : son texte ne fuit pas
+        $domain = new class('INGREDIENT_NOT_FOUND', 404) extends DomainException {
+        };
+        $event = $this->anApiEvent(new AccessDeniedHttpException('secret detail', $domain));
+
+        // When
+        (new ApiExceptionListener())($event);
+
+        // Then
+        $this->assertSame(403, $event->getResponse()->getStatusCode());
+        $this->assertSame(['error' => ['message' => 'Forbidden']], $this->body($event));
+    }
+
     public function testUnexpectedErrorIsMappedTo500WithoutLeakingTheMessage(): void
     {
         // Given

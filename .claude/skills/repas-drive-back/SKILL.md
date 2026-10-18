@@ -22,6 +22,7 @@ Complète `repas-dev` (recettes de lecture, d'API et d'écriture : ne pas les re
 | Ports partagés | `src/Shared/Application/Interface/{DriveFeature,ShoppingListForDriveLoader,IngredientNameLoader}.php`, DTO `src/Shared/Application/Dto/ShoppingListForDrive*.php`, `Shared/Domain/Model/Dimension.php` |
 | Implémentations des ports | `src/Repas/Infrastructure/Loader/{ShoppingListForDrive,IngredientName}PostgreSQLLoader.php`, `src/Shared/Infrastructure/Feature/EnvDriveFeature.php` |
 | Interrupteur | `Shared/Infrastructure/Http/RequiresDrive.php` + `DriveEnabledListener.php`, `Shared/Domain/Exception/DriveFeatureException.php` |
+| Plafond de débit par utilisateur | `src/Drive/Infrastructure/Http/{DriveRateLimit,RateLimitedPerUser,DriveRateLimitListener}.php`, limiteurs `drive_write` et `drive_read` de `config/packages/rate_limiter.yaml`, réponses `429` de `config/packages/nelmio_api_doc.yaml`, helper de test `tests/Helper/RateLimiterTimeTravel.php` |
 | Verrou de liste | `src/Repas/Domain/Model/ShoppingList.php` (`send`, `reopen`, `assertEditable`), `Application/Command/{Send,Reopen}ShoppingList/` |
 | Alias des ports d'écriture | `config/repositories.yaml` (à compléter pour tout nouveau `*Repository`) |
 | Deptrac | `quality-rules/Deptrac/deptrac.bounded-context.yaml` (`Drive: [Shared]`), `deptrac.no-database-in-handler-tests.yaml` |
@@ -41,6 +42,11 @@ Complète `repas-dev` (recettes de lecture, d'API et d'écriture : ne pas les re
 - Tout controller Drive et `send` portent `#[RequiresDrive]` : `404 DRIVE_DISABLED` après la sécurité (401 d'abord) et avant la résolution des arguments (pas de 422). **Deux exceptions, sans l'attribut** : `GET /api/v1/drive/settings` (renvoie `enabled: false`) et `reopen` (DRV-613, ADR 0023 §9 : il n'appelle rien de l'enseigne, une coupure ne doit pas figer les listes `SENT` ; sécurité et voter restent). `DriveRoutesAreGuardedBySwitchTest` tient la liste explicite des exceptions (`ALWAYS_ANSWERING`) : en ajouter une est une décision, pas un oubli.
 - Une variable d'environnement de production se déclare **explicitement** dans `deploy/compose.yaml` (`${DRIVE_ENABLED:-false}`), sinon la valeur du `.env` embarqué dans l'image s'applique en silence. Toucher `deploy/` impose `make deploy-smoke`. L'activation en production est humaine.
 - En test, `DRIVE_ENABLED=true` (`.env.test`, `phpunit.dist.xml`) ; le cas coupé s'essaie avec `tests/Helper/ControlledDriveFeature.php`.
+
+### Plafond de débit par utilisateur (DRV-615, constat C2)
+- Toute route de `/api/v1/drive/*` porte `#[RateLimitedPerUser(DriveRateLimit::WRITE)]` (écritures, **60 par minute**, un compteur commun) ou `READ` (lectures qui coûtent 4 requêtes SQL : plan, estimation, **120 par minute**, un compteur commun), ou figure dans `UNLIMITED` de `DriveRoutesAreRateLimitedTest` (aujourd'hui `GET /drive/settings` et `GET /drive/choices`) : en ajouter une est une décision, pas un oubli. Le même test impose la réponse `#[OA\Response(response: 429, ref: '#/components/responses/DriveWriteRateLimited')]` (ou `DriveReadRateLimited`) sur chaque route plafonnée.
+- `DriveRateLimitListener` (`kernel.controller`, priorité **-10**) passe après la sécurité et `DriveEnabledListener` (interrupteur coupé : `404`, aucun jeton consommé) et avant les arguments (un corps invalide compte). Clé `user-<id du jeton>`, jamais l'adresse IP seule. Dépassement : `TooManyRequestsHttpException` + `Retry-After` enveloppant `DriveException::rateLimited()` ; `ApiExceptionListener` affiche le code de l'erreur métier enveloppée quand son code est celui du statut HTTP : `{error:{message:"DRIVE_RATE_LIMITED"}}`.
+- **Cache, pas base** : l'état de la fenêtre glissante est dans `cache.rate_limiter` (aucune requête SQL, budgets `WriteBudget` inchangés, une machine unique ; en test, pool en mémoire `test.rate_limiter_pool` et `disableReboot()` pour garder le noyau d'une requête à l'autre). Le composant lit l'heure avec `microtime()` : on ne lui injecte pas d'horloge, on **fait passer le temps** avec `RateLimiterTimeTravel::advance()` (recule la fin de fenêtre dans le pool) ; une fenêtre glissante ne se vide complètement que deux intervalles après le dernier coup (avancer de 121 s). Pour vider un compteur sans lancer 60 vraies écritures, appeler les routes d'essai de `DriveProbeController` (même compteur). `Retry-After` est celui du composant, optimiste après une rafale (souvent 1) : le front le traite comme un minimum.
 
 ### Verrou `SENT` (ADR 0023)
 - Le verrou est un invariant de l'agrégat : toute **nouvelle** méthode qui modifie `ShoppingList` appelle `assertEditable()` ; un handler qui modifie une entité fille par identifiant (comme `UpdateServingMealHandler` avec `Meal`) l'appelle explicitement ; cocher/décocher passent par `ShoppingListRepository::isSent()`.
@@ -95,11 +101,11 @@ Complète `repas-dev` (recettes de lecture, d'API et d'écriture : ne pas les re
 1. Domaine d'abord : une méthode **dédiée** de `Choice` qui valide tout ou ne change rien (`Choice::replace`), plutôt que de composer `markHaveAtHome`, `addFallback` et `reject`, qui laisseraient passer un doublon ou un produit dans les deux listes ; test à table ; exception par factory dans `DriveException`.
 2. Port (`Domain/Interface`), implémentation PostgreSQL (SQL direct si lot), alias dans `config/repositories.yaml`, double `InMemory`, builder.
 3. `Application/Command/{UseCase}/` : Command `readonly` + Handler `#[AsMessageHandler]` ; ordre des contrôles (bornes sans aucune lecture, réglages, charges en une requête, écritures) ; magasin = celui des réglages sinon `DRIVE_STORE_MISMATCH` ; un identifiant de produit doit désigner un produit **de ce magasin**, sinon `DRIVE_CHOICE_INVALID`.
-4. Controller `Infrastructure/Http/Api/{UseCase}/` : `#[RequiresDrive]`, `#[IsGranted('ROLE_USER')]`, `#[MapRequestPayload]`, `204`, `#[OA\…]` complètes (404 `DRIVE_DISABLED`, 409, 422).
+4. Controller `Infrastructure/Http/Api/{UseCase}/` : `#[RequiresDrive]`, `#[RateLimitedPerUser(DriveRateLimit::WRITE)]`, `#[IsGranted('ROLE_USER')]`, `#[MapRequestPayload]`, `204`, `#[OA\…]` complètes (404 `DRIVE_DISABLED`, 409, 422, 429 par `ref`).
 5. Scénario `WriteBudget` ; `make openapi`.
 
 ### 4.2 Nouvelle lecture Drive
-Recette `repas-dev` § 3.1 + 3.2, avec : port dans `Drive/Application/Loader/`, loader `…PostgreSQLLoader` (nombre de requêtes constant, noms d'ingrédients par `IngredientNameLoader`, slug à défaut), DTO `final readonly`, test du loader avec comptage de requêtes.
+Recette `repas-dev` § 3.1 + 3.2, avec : port dans `Drive/Application/Loader/`, loader `…PostgreSQLLoader` (nombre de requêtes constant, noms d'ingrédients par `IngredientNameLoader`, slug à défaut), DTO `final readonly`, test du loader avec comptage de requêtes. Une lecture coûteuse (plusieurs requêtes SQL, comme le plan et l'estimation) reçoit `#[RateLimitedPerUser(DriveRateLimit::READ)]` et son `429` ; une lecture bornée par les données de l'utilisateur seul (réglages, préférences) rejoint `UNLIMITED` de `DriveRoutesAreRateLimitedTest`.
 
 ### 4.3 Nouvelle table ou colonne
 Migration additive → entité de mapping → repository/loader → purge si elle désigne un utilisateur → `UserOwnedDataCoverageTest` → `make schema-validate`.
@@ -126,6 +132,7 @@ Le front fige `docs/api/openapi.json` sur un commit du back (`npm run api:update
 - Importer `Repas\Repas\…` depuis `Drive` ; oublier `#[RequiresDrive]` ; oublier l'alias dans `config/repositories.yaml` ou `UserOwnedDataCoverageTest` après une nouvelle colonne utilisateur.
 - Une migration qui supprime, renomme ou rend non nulle une colonne utilisée par la version précédente.
 - Mettre à jour une à une les lignes `drive_choice_product`, ou une requête par intention (le budget échoue).
+- Oublier `#[RateLimitedPerUser]` (ou son `429` OpenAPI) sur une nouvelle route du drive : `DriveRoutesAreRateLimitedTest` échoue.
 - Renommer un code d'erreur ou retirer un champ de réponse (le front et l'agent le lisent).
 
 ## 8. Interdits

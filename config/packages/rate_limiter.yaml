@@ -18,6 +18,20 @@ framework:
             policy: sliding_window
             limit: 60
             interval: '10 minutes'
+        # Écritures du drive, PAR UTILISATEUR et non par IP (DRV-615, DriveRateLimitListener, #[RateLimitedPerUser(DriveRateLimit::WRITE)]) :
+        # PUT /drive/settings, PUT /drive/choices, PUT et DELETE /drive/choices/{slug}, un compteur commun aux quatre routes.
+        # Un passage de l'agent envoie un seul lot ; une personne qui gère ses produits clique au plus une fois par seconde :
+        # 60 par minute laissent de la marge à l'usage normal et arrêtent un flot (boucle, script, compte malveillant).
+        drive_write:
+            policy: sliding_window
+            limit: 60
+            interval: '1 minute'
+        # Lectures coûteuses du drive, par utilisateur (GET /drive/plans/{id} et /drive/estimates/{id} : 4 requêtes SQL chacune),
+        # un compteur commun aux deux routes. Le front les relit à l'ouverture d'un écran : 120 par minute, deux par seconde.
+        drive_read:
+            policy: sliding_window
+            limit: 120
+            interval: '1 minute'
 
 when@test:
     framework:
@@ -27,4 +41,8 @@ when@test:
             refresh_token:
                 cache_pool: test.rate_limiter_pool
             email_verification:
+                cache_pool: test.rate_limiter_pool
+            drive_write:
+                cache_pool: test.rate_limiter_pool
+            drive_read:
                 cache_pool: test.rate_limiter_pool

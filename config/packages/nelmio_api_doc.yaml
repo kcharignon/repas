@@ -15,6 +15,50 @@ nelmio_api_doc:
                         écriture gagne). Une autre version répond 412 (la ressource a été modifiée depuis la lecture) ; une
                         modification simultanée détectée à l'enregistrement répond 409. ADR 0016.
                     schema: { type: string, example: '"3"' }
+            # Réponses 429 du drive (DRV-615), référencées par #[OA\Response(response: 429, ref: '#/components/responses/…')]
+            responses:
+                DriveWriteRateLimited:
+                    description: >-
+                        Trop d'écritures du drive de cet utilisateur : plus de 60 par minute (compteur commun à `PUT /drive/settings`,
+                        `PUT /drive/choices`, `PUT` et `DELETE /drive/choices/{ingredientSlug}`). Message `DRIVE_RATE_LIMITED`,
+                        rien n'a été enregistré ; patienter au moins le délai de `Retry-After`, sans réessayer en boucle.
+                    headers:
+                        Retry-After:
+                            description: >-
+                                Secondes à attendre au minimum avant de réessayer. Après une rafale le délai annoncé peut n'être que de
+                                1 seconde alors que le compteur ne se libère que progressivement : si la requête est encore refusée,
+                                patienter jusqu'à une minute
+                            schema: { type: integer, minimum: 1, example: 12 }
+                    content:
+                        application/json:
+                            schema:
+                                type: object
+                                properties:
+                                    error:
+                                        type: object
+                                        properties:
+                                            message: { type: string, example: DRIVE_RATE_LIMITED }
+                DriveReadRateLimited:
+                    description: >-
+                        Trop de lectures coûteuses du drive de cet utilisateur : plus de 120 par minute (compteur commun à
+                        `GET /drive/plans/{shoppingListId}` et `GET /drive/estimates/{shoppingListId}`). Message
+                        `DRIVE_RATE_LIMITED` ; patienter au moins le délai de `Retry-After`, sans réessayer en boucle.
+                    headers:
+                        Retry-After:
+                            description: >-
+                                Secondes à attendre au minimum avant de réessayer. Après une rafale le délai annoncé peut n'être que de
+                                1 seconde alors que le compteur ne se libère que progressivement : si la requête est encore refusée,
+                                patienter jusqu'à une minute
+                            schema: { type: integer, minimum: 1, example: 12 }
+                    content:
+                        application/json:
+                            schema:
+                                type: object
+                                properties:
+                                    error:
+                                        type: object
+                                        properties:
+                                            message: { type: string, example: DRIVE_RATE_LIMITED }
             securitySchemes:
                 Bearer:
                     type: http
