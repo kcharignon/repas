@@ -4,7 +4,7 @@
 - **Jalon** : M2 Back `Drive`
 - **Taille** : M
 - **Dépend de** : DRV-204
-- **Statut** : fait (PR [#PRNUM](https://github.com/kcharignon/repas/pull/PRNUM), 2026-10-18)
+- **Statut** : fait (PR [#143](https://github.com/kcharignon/repas/pull/143), 2026-10-18)
 - **Lire d'abord** : [`../architecture.md`](../architecture.md) §§ 5.3, 7 ; DRV-204.
 
 ## Contexte
@@ -36,7 +36,7 @@ Handler en unitaire (doubles en mémoire) ; dépôt sur base réelle ; contrôle
 
 Celle du skill `repas-dev` § 4.
 
-## Réalisation (2026-10-18, PR repas#PRNUM)
+## Réalisation (2026-10-18, PR repas#143)
 
 - **Écriture** : `ReplaceIngredientPreferenceCommand(userId, Retailer retailer, storeId, ingredientSlug, haveAtHome, list<string> acceptedProductIds, list<string> rejectedProductIds)` et son handler (`Application/Command/ReplaceIngredientPreference/`). Ordre : bornes (plus de 5 acceptés ou 20 refusés : `422` sans aucune lecture), réglages (`409 DRIVE_NOT_CONFIGURED`, `409 DRIVE_STORE_MISMATCH`), produits (`ProductRepository::findByIds`, une requête : chaque identifiant doit désigner un produit **de ce magasin**, sinon `422 DRIVE_CHOICE_INVALID`), préférence (`findOne`). Aucune lecture de plus que ces trois ; l'écriture est celle de `ChoiceRepository::save()`. Budget `remplacer-preference-drive` : **6 requêtes** (réglages, produits, préférence, upsert, effacement et réinsertion des lignes).
 - **Domaine** : nouvelle méthode `Choice::replace(bool $haveAtHome, list<string> $accepted, list<string> $rejected)` (au lieu de composer `markHaveAtHome`, `addFallback` et `reject`, qui auraient laissé passer un doublon ou un produit dans les deux listes sans erreur) : 5 acceptés et 20 refusés au plus, aucun doublon dans l'ensemble des deux listes (un produit à la fois accepté et refusé est un doublon), « j'en ai toujours » sans produit, sinon `DriveException::invalidChoice()` et rien ne change ; l'ordre de `accepted` donne les rangs. Le handler met la date à jour (`touch`).
