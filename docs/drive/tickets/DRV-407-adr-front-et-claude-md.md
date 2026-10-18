@@ -4,7 +4,7 @@
 - **Jalon** : M4 Front
 - **Taille** : S
 - **Dépend de** : DRV-404
-- **Statut** : à faire
+- **Statut** : fait (PR front #115, 2026-10-18)
 - **Lire d'abord** : `docs/adr/README.md` du front ; ADR 0003 et 0006 du front (usage du téléphone) ; [ADR 0022](../../adr/0022-remplissage-du-panier-drive.md) du back.
 
 ## Portée
@@ -17,3 +17,9 @@
 ## Critères d'acceptation
 
 ADR et `CLAUDE.md` relus, cohérents avec l'ADR 0022 du back (qui gagne en cas d'écart).
+
+## Réalisation (2026-10-18, PR repas-front#115)
+
+- ADR front `0008-envoi-de-la-liste-au-drive.md` : application Android qui charge le front, pont natif `repasNative`/`driveBridge` (seul à le connaître), agent embarqué dans l'APK et jamais servi par le front, protocole partagé (`@drive-protocol`), plan relu à chaque ouverture, brouillon de passage, retour recoupé avec le plan, aucune image externe, interrupteur du back, dépôt public. Index des ADR à jour.
+- ADR front 0003 et 0006 amendés (le téléphone envoie aussi la liste ; rien du drive hors ligne ; le brouillon survit au rechargement du service worker). `CLAUDE.md` du front : renvoi à l'ADR, routes et modules du drive, règles du pont.
+- Écart au ticket : fragment d'URL, gabarit sans domaine, ouverture dans Chrome complet et version minimale de l'agent n'existent plus (remplacés par le pont natif, G1 puis D28) : l'ADR décrit ce qui existe.

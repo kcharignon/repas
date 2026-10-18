@@ -4,7 +4,7 @@
 - **Jalon** : M2c Durcissement (revue de sécurité du front, constat C1)
 - **Taille** : S
 - **Dépend de** : DRV-405, DRV-613
-- **Statut** : à faire
+- **Statut** : fait (PR front #114, 2026-10-18)
 - **Lire d'abord** : `docs/revue-securite-drive.md` du dépôt front (C1), [`DRV-405`](DRV-405-retour-et-recapitulatif.md), [`DRV-613`](DRV-613-durcissement-fiches-produits.md), skill `repas-front-dev`, `docs/drive/consignes-agents.md`.
 
 ## Contexte
@@ -31,3 +31,12 @@ Demande de confirmation avant enregistrement (option B), changement du protocole
 ## Definition of Done
 
 Celle du dépôt front ; PR concise ; fusion seulement si tous les contrôles sont verts ; section « Réalisation » ajoutée à ce ticket (dans le dépôt back, par l'assistant) — l'agent la décrit dans sa PR.
+
+## Réalisation (2026-10-18, PR repas-front#114)
+
+- `restrictToPlan.ts` ne garde du résultat que ce que le plan envoyé explique : un slug absent du plan, un produit `ADDED` qui n'est pas l'un de ceux du plan, un `CHOSEN` sur une ligne qui n'était pas à choisir, un `HAVE_AT_HOME` sur une ligne passée sont ignorés (jamais enregistrés ni affichés) et comptés dans le récapitulatif (« N lignes inattendues ignorées »).
+- Le brouillon `repas.drive.run` garde `lines` (slug, statut envoyé, identifiants des produits) ; sans `lines` (ancien brouillon), l'écran relit `GET /drive/plans/{id}` (repli : `CHOSEN` accepté sur toute ligne connue) ; sans plan, rien n'est enregistré et « Réessayer l'enregistrement » relit le plan.
+- `422 DRIVE_LIMIT_REACHED` a son texte, distinct de `DRIVE_CHOICE_INVALID`, sur les deux routes `PUT /drive/choices`.
+- « Rouvrir la liste » était déjà proposé interrupteur coupé (prouvé par tests Vitest et e2e) ; « Envoyer au drive » reste masqué.
+- Écarts : `CHOSEN` accepté aussi pour une ligne connue dont tous les produits sont indisponibles (phase B, `unavailableIds` les nomme tous) ; deux contrôles en plus (produit `ADDED` ∈ plan, `HAVE_AT_HOME` refusé sur une ligne passée) ; les produits `rejected` ne sont pas recoupés.
+- Le brouillon garde maintenant des slugs et identifiants de produits (rien de personnel) : la phrase « aucune donnée personnelle » est nuancée dans le skill front, le `CLAUDE.md` et la revue.
