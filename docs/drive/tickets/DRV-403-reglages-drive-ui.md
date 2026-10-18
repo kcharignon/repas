@@ -52,3 +52,7 @@ La partie « installation du favori et version minimale de l'agent » est rempla
 ## RÉVISION du 2026-10-18 (D28)
 
 Le choix du magasin se fait par le mode `setup` de l'agent via le pont natif (`drive.setup` à ajouter avec DRV-314 si besoin) : le front demande à l'application d'ouvrir l'écran drive en mode réglage et reçoit le magasin lu.
+
+## Constat de l'essai réel (2026-10-18)
+
+L'agent lit l'identifiant et l'hôte du magasin mais **pas son libellé** (`label` absent) : l'écran de réglages doit donc afficher « Magasin …123 » (derniers chiffres) et permettre à l'utilisateur de donner un nom à son magasin (champ facultatif, `label` de l'API `PUT /drive/settings`).

@@ -4,7 +4,7 @@
 - **Jalon** : M3b Application Android
 - **Taille** : M
 - **Dépend de** : DRV-313 (fait)
-- **Statut** : fait (PR [repas-front#89](https://github.com/kcharignon/repas-front/pull/89), 2026-10-18 ; pré-version `android-dev-2026-10-18b`, essai réel par l'utilisateur à faire)
+- **Statut** : fait (PR [repas-front#89](https://github.com/kcharignon/repas-front/pull/89), 2026-10-18 ; pré-version `android-dev-2026-10-18b`, essai réel par l'utilisateur à faire ; essai réel du 2026-10-18 : verdict OK, voir le rapport DRV-011)
 - **Lire d'abord** : [`../pivot-application-android.md`](../pivot-application-android.md), `android/PROCEDURE.md` (36 étapes : trop longues pour l'utilisateur), [`../spikes/DRV-011-rapport.md`](../spikes/DRV-011-rapport.md), `drive-agent/README.md`, `CLAUDE.md` du front.
 
 ## Contexte
