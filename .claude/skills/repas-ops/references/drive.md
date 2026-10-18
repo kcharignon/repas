@@ -21,7 +21,7 @@ Ordre fixe : back, front, application, stabilité, puis l'utilisateur allume. Ne
 
 ## B. Couper (immédiat, réversible)
 
-À proposer dès que Leclerc change son site ou bloque, ou qu'un compte Leclerc est suspendu (`docs/drive/runbook.md`). Même script avec `false`. Attendu : `OK : DRIVE_ENABLED=false`. Dire ce qui change pour la famille (le front n'offre plus l'envoi ; les listes déjà envoyées restent lisibles et peuvent être terminées ou supprimées, pas rouvertes) et que **rien n'est effacé**. Pour rouvrir des listes envoyées : section D.
+À proposer dès que Leclerc change son site ou bloque, ou qu'un compte Leclerc est suspendu. Le runbook `docs/drive/runbook.md` donne les symptômes, le diagnostic, le repli, la correction et le retour en service : le suivre pas à pas avec l'utilisateur. Pour couper : le script de la section A (étape 6) avec `false` (`bash -s -- false`). Attendu : `OK : DRIVE_ENABLED=false`. Dire ce qui change pour la famille (le front n'offre plus l'envoi ; les listes déjà envoyées restent lisibles et peuvent être terminées ou supprimées, pas rouvertes) et que **rien n'est effacé**. Pour rouvrir des listes envoyées : section D.
 
 ## C. Revenir à une version précédente du back
 
