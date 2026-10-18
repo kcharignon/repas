@@ -3,8 +3,8 @@
 - **Dépôt** : front (`kcharignon/repas-front`), dossier `android/`
 - **Jalon** : M3b Application Android
 - **Taille** : L
-- **Dépend de** : DRV-317, DRV-309 (faux site Leclerc) ; accès à `/dev/kvm` dans WSL (étape humaine)
-- **Statut** : à faire (après la mise à disposition de KVM par l'utilisateur)
+- **Dépend de** : DRV-313 (fait) pour la première partie (émulateur et test de fumée) ; DRV-317 et DRV-309 (faux site Leclerc) pour les scénarios complets
+- **Statut** : à faire (KVM disponible depuis le 2026-10-18 : `/dev/kvm` créé par l'utilisateur avec `sudo modprobe kvm_intel`, valable jusqu'au redémarrage de WSL)
 - **Lire d'abord** : [`../pivot-application-android.md`](../pivot-application-android.md), `android/README.md`, DRV-309, DRV-313, DRV-317, `CLAUDE.md` du front.
 
 ## Contexte
@@ -31,3 +31,8 @@ Tout test contre le vrai Leclerc (connexion et anti-robot ne s'automatisent pas 
 ## Definition of Done
 
 Celle du dépôt front ; PR concise ; fusion si CI verte.
+
+## Découpage conseillé (2026-10-18)
+
+1. **Première livraison (peut démarrer maintenant)** : image d'émulateur, `make android-emulator`, installation de l'APK de débogage actuel, **test de fumée** (l'application démarre sans plantage, la WebView affiche une page locale de test, le script d'injection et le pont répondent sur cette page, le menu de débogage s'ouvre), rapport avec captures d'écran lues.
+2. **Deuxième livraison (après DRV-317 et DRV-309)** : scénarios complets (coquille Repas sur le front de développement, pont `repasNative`, passage contre le faux site Leclerc avec autorité de certification de test).
