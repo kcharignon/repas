@@ -60,7 +60,7 @@ final readonly class ShoppingListForDrivePostgreSQLLoader implements ShoppingLis
             ->select(
                 'r.quantity AS quantity',
                 'i.slug AS ingredientSlug', 'i.name AS ingredientName',
-                'u.slug AS unitSlug', 'u.symbol AS unitSymbol', 'u.dimension AS unitDimension', 'u.baseFactor AS unitBaseFactor',
+                'u.slug AS unitSlug', 'u.name AS unitName', 'u.symbol AS unitSymbol', 'u.dimension AS unitDimension', 'u.baseFactor AS unitBaseFactor',
             )
             ->from(ShoppingListRow::class, 'r')
             ->innerJoin(Ingredient::class, 'i', Join::WITH, 'i.slug = r.ingredientSlug')
@@ -82,6 +82,7 @@ final readonly class ShoppingListForDrivePostgreSQLLoader implements ShoppingLis
                     ingredientName: $row['ingredientName'],
                     quantity: (float) $row['quantity'],
                     unitSlug: $row['unitSlug'],
+                    unitName: $row['unitName'],
                     unitSymbol: $row['unitSymbol'],
                     unitDimension: $dimension?->value,
                     unitBaseFactor: $row['unitBaseFactor'] === null ? null : (float) $row['unitBaseFactor'],

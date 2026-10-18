@@ -72,10 +72,10 @@ class DrivePlanPostgreSQLLoaderTest extends DatabaseTestCase
             new ChoiceBuilder()->withUserId('user-1')->withIngredientSlug('sel')->haveAtHome()->build(),
         ]);
         $list = $this->sentList('user-1', [
-            new ShoppingListLineForDrive('farine', 'Farine', 300, 'gramme', 'g', 'WEIGHT', 1.0),
-            new ShoppingListLineForDrive('lait', 'Lait', 1.5, 'litre', 'l', 'VOLUME', 1000.0),
-            new ShoppingListLineForDrive('poivre', 'Poivre', 1, 'paquet', 'paquet', 'PACKAGE', 1.0),
-            new ShoppingListLineForDrive('sel', 'Sel', 2, 'cuillere-a-soupe', 'cuillère à soupe', null, null),
+            new ShoppingListLineForDrive('farine', 'Farine', 300, 'gramme', 'gramme', 'g', 'WEIGHT', 1.0),
+            new ShoppingListLineForDrive('lait', 'Lait', 1.5, 'litre', 'litre', 'l', 'VOLUME', 1000.0),
+            new ShoppingListLineForDrive('poivre', 'Poivre', 1, 'paquet', 'paquet', 'paquet', 'PACKAGE', 1.0),
+            new ShoppingListLineForDrive('sel', 'Sel', 2, 'cuillere-a-soupe', 'cuillère à soupe', 'cuillère à soupe', null, null),
         ]);
 
         // When
@@ -109,6 +109,28 @@ class DrivePlanPostgreSQLLoaderTest extends DatabaseTestCase
         ), $plan);
     }
 
+    public function testTheUnitIsNamedByItsNameWhenItHasNoSymbol(): void
+    {
+        // Given : l'unité « unité » n'a pas de symbole ; un symbole d'espaces ne vaut pas mieux ; un nom trop long est coupé
+        $this->settings->save(new DriveSettingsBuilder()->withUserId('user-1')->build());
+        $list = $this->sentList('user-1', [
+            new ShoppingListLineForDrive('farine', 'Farine', 300, 'gramme', 'gramme', 'g', 'WEIGHT', 1.0),
+            new ShoppingListLineForDrive('lait', 'Lait', 1, 'bouteille', 'bouteille', '  ', 'VOLUME', 1000.0),
+            new ShoppingListLineForDrive('oeuf', 'Œuf', 6, 'unite', 'unité', '', 'COUNT', 1.0),
+            new ShoppingListLineForDrive('poivre', 'Poivre', 1, 'sachet', str_repeat('é', 40), '', null, null),
+            new ShoppingListLineForDrive('sel', 'Sel', 1, 'sans-nom', '', '', null, null),
+        ]);
+
+        // When
+        $plan = $this->loader($list)->get('user-1', 'list-1');
+
+        // Then : jamais une chaîne vide, 32 caractères au plus
+        $this->assertSame(
+            ['g', 'bouteille', 'unité', str_repeat('é', 32), 'sans-nom'],
+            array_map(static fn(DrivePlanLineDTO $line): string => $line->needed->unitSymbol, $plan->lines),
+        );
+    }
+
     public function testAProductWithoutAUsableContentIsToCheck(): void
     {
         // Given : un produit sans contenu connu pour une quantité en grammes, un autre pour une unité sans dimension
@@ -122,8 +144,8 @@ class DrivePlanPostgreSQLLoaderTest extends DatabaseTestCase
             new ChoiceBuilder()->withUserId('user-1')->withIngredientSlug('sel')->withAccepted([$this->id('2')])->build(),
         ]);
         $list = $this->sentList('user-1', [
-            new ShoppingListLineForDrive('farine', 'Farine', 300, 'gramme', 'g', 'WEIGHT', 1.0),
-            new ShoppingListLineForDrive('sel', 'Sel', 2, 'cuillere-a-soupe', 'cuillère à soupe', null, null),
+            new ShoppingListLineForDrive('farine', 'Farine', 300, 'gramme', 'gramme', 'g', 'WEIGHT', 1.0),
+            new ShoppingListLineForDrive('sel', 'Sel', 2, 'cuillere-a-soupe', 'cuillère à soupe', 'cuillère à soupe', null, null),
         ]);
 
         // When
@@ -148,9 +170,9 @@ class DrivePlanPostgreSQLLoaderTest extends DatabaseTestCase
             new ChoiceBuilder()->withUserId('user-1')->withStoreId('654321')->withIngredientSlug('lait')->withAccepted([$this->id('2', '654321')])->build(),
         ]);
         $list = $this->sentList('user-1', [
-            new ShoppingListLineForDrive('farine', 'Farine', 1, 'paquet', 'paquet', 'PACKAGE', 1.0),
-            new ShoppingListLineForDrive('lait', 'Lait', 1, 'litre', 'l', 'VOLUME', 1000.0),
-            new ShoppingListLineForDrive('sel', 'Sel', 1, 'paquet', 'paquet', 'PACKAGE', 1.0),
+            new ShoppingListLineForDrive('farine', 'Farine', 1, 'paquet', 'paquet', 'paquet', 'PACKAGE', 1.0),
+            new ShoppingListLineForDrive('lait', 'Lait', 1, 'litre', 'litre', 'l', 'VOLUME', 1000.0),
+            new ShoppingListLineForDrive('sel', 'Sel', 1, 'paquet', 'paquet', 'paquet', 'PACKAGE', 1.0),
         ]);
 
         // When
@@ -167,7 +189,7 @@ class DrivePlanPostgreSQLLoaderTest extends DatabaseTestCase
         // Given
         $this->settings->save(new DriveSettingsBuilder()->withUserId('user-1')->build());
         $this->choices->save(new ChoiceBuilder()->withUserId('user-1')->withAccepted(['produit-inconnu'])->withRejected(['autre-inconnu'])->build());
-        $list = $this->sentList('user-1', [new ShoppingListLineForDrive('farine', 'Farine', 1, 'paquet', 'paquet', 'PACKAGE', 1.0)]);
+        $list = $this->sentList('user-1', [new ShoppingListLineForDrive('farine', 'Farine', 1, 'paquet', 'paquet', 'paquet', 'PACKAGE', 1.0)]);
 
         // When
         $line = $this->loader($list)->get('user-1', 'list-1')->lines[0];

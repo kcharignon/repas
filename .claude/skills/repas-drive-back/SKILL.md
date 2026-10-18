@@ -107,7 +107,8 @@ Migration additive → entité de mapping → repository/loader → purge si ell
 
 ## 5. Contrat avec le front et l'agent
 
-Le front fige `docs/api/openapi.json` sur un commit du back (`npm run api:update`) ; l'agent lit le plan recopié par le front (`drive-agent/protocol/plan.schema.json`). Changer le format du plan, des intentions ou d'une erreur = amender `docs/drive/architecture.md` §§ 7-8 **et** prévenir le ticket front concerné dans la PR (« À relire »). Le back n'ouvre jamais Leclerc et ne stocke aucun identifiant, cookie ou jeton d'enseigne.
+Le front fige `docs/api/openapi.json` sur un commit du back (`npm run api:update`) ; l'agent lit le plan recopié par le front (`drive-agent/protocol/plan.schema.json`). Changer le format du plan, des intentions ou d'une erreur = amender `docs/drive/architecture.md` §§ 7-8 **et** prévenir le ticket front concerné dans la PR (« À relire »). Les exemples `docs/drive/samples/*.sample.json` (DRV-501) reflètent les réponses réelles : `tests/Drive/Contract` échoue quand un DTO change, `make drive-samples` les régénère (relire le diff, c'est le contrat que le front fige).
+ Le back n'ouvre jamais Leclerc et ne stocke aucun identifiant, cookie ou jeton d'enseigne.
 
 ## 6. Definition of Done
 

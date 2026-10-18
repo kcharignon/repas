@@ -59,10 +59,10 @@ class ShoppingListForDrivePostgreSQLLoaderTest extends DatabaseTestCase
         $this->assertSame(['lait', 'oeuf', 'pate', 'sel'], array_map(static fn(ShoppingListLineForDrive $line): string => $line->ingredientSlug, $result->lines));
         $this->assertEquals(
             [
-                new ShoppingListLineForDrive('lait', 'lait', 1.0, 'litre', 'l', 'VOLUME', 1000.0),
-                new ShoppingListLineForDrive('oeuf', 'œuf', 1.0, 'unite', '', 'COUNT', 1.0),
-                new ShoppingListLineForDrive('pate', 'pate', 500.0, 'gramme', 'g', 'WEIGHT', 1.0),
-                new ShoppingListLineForDrive('sel', 'sel', 1.0, 'cuillere-a-soupe', 'cuillère à soupe', null, null),
+                new ShoppingListLineForDrive('lait', 'lait', 1.0, 'litre', 'litre', 'l', 'VOLUME', 1000.0),
+                new ShoppingListLineForDrive('oeuf', 'œuf', 1.0, 'unite', 'unité', '', 'COUNT', 1.0),
+                new ShoppingListLineForDrive('pate', 'pate', 500.0, 'gramme', 'gramme', 'g', 'WEIGHT', 1.0),
+                new ShoppingListLineForDrive('sel', 'sel', 1.0, 'cuillere-a-soupe', 'cuillère à soupe', 'cuillère à soupe', null, null),
             ],
             $result->lines,
         );

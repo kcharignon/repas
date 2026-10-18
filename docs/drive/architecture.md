@@ -220,6 +220,10 @@ Conventions : ADR 0007 (JWT, `{member,totalItems}` pour une liste, `204` ou `201
 
 Statuts de ligne : `KNOWN` (au moins un produit accepté pour ce magasin ; `products` est classé par rang croissant, 5 au plus, chaque produit avec **ses propres** `packs` et `packsStatus` car les contenus diffèrent), `NEW` (aucun produit accepté ; `rejected` peut quand même contenir des produits refusés), `HAVE_AT_HOME` (ligne ignorée par l'agent). `rejected` : 20 au plus.
 
+**`needed.unitSymbol`** n'est jamais vide : l'unité « unité » (les œufs) n'a pas de symbole et le protocole de l'agent refuse un texte vide (`plan.schema.json` : 1 à 32 caractères), donc le plan renvoie à défaut de symbole **le nom de l'unité** (« unité »), puis son slug, coupé à 32 caractères (DRV-501). `GET /shopping-lists/{id}` garde le symbole tel quel (vide possible).
+
+**Exemples versionnés** (DRV-501) : `docs/drive/samples/{plan,choices,estimate,settings}.sample.json` sont les réponses réelles de `GET /drive/plans/{id}`, `/drive/choices`, `/drive/estimates/{id}` et `/drive/settings` pour une liste envoyée de 5 lignes (valeurs inventées). `tests/Drive/Contract/DriveContractSamplesTest` rejoue le parcours (vraies routes, horloge figée) et compare chaque réponse à son exemple champ par champ (clés, ordre, types, valeurs) ; il échoue quand un DTO change sans que l'exemple soit régénéré par `make drive-samples`. Le front valide `plan.sample.json` traduit par `buildPlanMessage` contre `drive-agent/protocol/plan.schema.json`.
+
 ## 8. Protocole de l'agent (v1)
 
 Les schémas JSON font foi (`drive-agent/protocol/`, ticket DRV-302). Exemples et règles.

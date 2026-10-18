@@ -45,7 +45,7 @@ restart: ## Restart the project
 	@$(MAKE) start
 
 ## —— Code quality 📋 ————————————————————————————————————————————————————————
-.PHONY: test test-coverage deptrac phpstan api-doc-validate api-doc-coverage openapi openapi-check jwt-keys quality sql-budget-update deploy-smoke
+.PHONY: test test-coverage deptrac phpstan api-doc-validate api-doc-coverage openapi openapi-check jwt-keys quality sql-budget-update drive-samples deploy-smoke
 
 test: ## Run PHPUnit tests
 	@echo "🧪 Exécution des tests avec PHPUnit..."
@@ -116,6 +116,10 @@ outdated: ## List direct dependencies with a newer version, majors included (ADR
 
 sql-budget-update: ## Régénère les budgets SQL des use cases d'écriture après un allègement (tests/Repas/WriteBudget)
 	@$(DOCKER_COMPOSE) exec -T -e UPDATE_SQL_BUDGETS=1 php vendor/bin/phpunit --no-coverage tests/Repas/WriteBudget
+
+drive-samples: ## Régénère docs/drive/samples/*.sample.json depuis les réponses réelles de l'API Drive (DRV-501) : relis le diff
+	@$(DOCKER_COMPOSE) exec -T -e UPDATE_DRIVE_SAMPLES=1 php vendor/bin/phpunit --no-coverage tests/Drive/Contract
+	@echo "✅ docs/drive/samples régénéré : relis le diff (le front fige ce contrat)."
 
 
 ## —— Helper 🛠️ ——————————————————————————————————————————————————————————————

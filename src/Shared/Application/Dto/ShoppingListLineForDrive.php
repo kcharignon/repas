@@ -14,6 +14,8 @@ final readonly class ShoppingListLineForDrive
         public string $ingredientName,
         public float $quantity,
         public string $unitSlug,
+        public string $unitName,
+        /** Peut être vide (l'unité « unité » n'a pas de symbole) : le plan renvoie alors le nom. */
         public string $unitSymbol,
         /** Valeur de `Shared\Domain\Model\Dimension`, null si l'unité n'en a pas. */
         public ?string $unitDimension,
