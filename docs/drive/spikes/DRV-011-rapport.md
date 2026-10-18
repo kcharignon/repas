@@ -32,3 +32,9 @@ Diagnostic du mode ordinateur : agent utilisateur `Mozilla/5.0 (X11; Linux x86_6
 - Le banc donne les mêmes résultats que Chrome de bureau en mode ordinateur : **oui** (recherche, ajout, quantité absolue).
 - Reste à vérifier : persistance de la session, lot de 30 recherches sur téléphone, retrait, ergonomie du site PC sur écran de téléphone pour la connexion et la finalisation.
 - Forme d'application à retenir (A compagnon natif / B Repas empaqueté) : voir `../pivot-application-android.md`.
+
+## Essai réel du test automatique (2026-10-18, application de débogage version 12, Pixel 9)
+
+**Verdict : OK, 41,3 secondes, aucun blocage.** Hôte `fd7`, mode ordinateur. Diagnostic de l'agent : tous les contrôles OK sauf deux « non testés » voulus (origine de Repas, cadre de même origine). Lecture du magasin OK (libellé absent : l'agent ne le lit pas, voir DRV-403). **Lot de 12 recherches : 12 sur 12 réussies**, 1,9 s en moyenne, contenu net et prix lus pour 100 % des produits (25 à 209 produits par mot). **Essai au panier** sur farine, sucre et sel : ajout, passage à 3 puis à 2 (farine), retrait, tous en HTTP 200 avec la quantité obtenue attendue. **Panier avant et après : 0 article et 0,00 € dans les deux cas** (le panier est revenu à son état initial). Aucune commande, aucun paiement.
+
+Conclusion : sur téléphone, l'application Android en mode ordinateur fait fonctionner la recherche, la lecture du contenu net et des prix, l'ajout, les quantités absolues et le retrait, sans blocage de l'anti-robot. Le critère « la WebView est viable » de G1 est confirmé par un essai complet.
