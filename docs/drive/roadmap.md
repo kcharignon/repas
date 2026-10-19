@@ -147,6 +147,8 @@ Références : [`principes-produit.md`](principes-produit.md), [`audit-simplicit
 - [ ] [DRV-638](tickets/DRV-638-page-de-mise-a-jour-sobre.md) front · S · Page de mise à jour sobre (version + un bouton vers la release) (demande de l'utilisateur) · dépend de : —
 - [ ] [DRV-639](tickets/DRV-639-mise-a-jour-dans-l-application.md) front/android · L · L'application télécharge, vérifie, installe et supprime l'APK (variante hors Play, effort xhigh) · dépend de : DRV-638, AUTH-015
 - [ ] [DRV-640](tickets/DRV-640-version-minimale-pour-le-drive.md) front · S · Une application trop ancienne ne lance pas le drive (message court, mise à jour, repli à la main) · dépend de : —
+- [x] [DRV-641](tickets/DRV-641-pas-de-verrou-sans-application-a-jour.md) front · S · Ne jamais verrouiller la liste si l'envoi ne peut pas se faire (fait, PR #161)
+- [ ] [DRV-642](tickets/DRV-642-chercher-dans-le-bon-rayon.md) back/agent · M-L · Chercher dans le bon rayon (produits frais) : classer les candidats par rayon appris · dépend de : —
 - [x] [DRV-630](tickets/DRV-630-emails-du-back-au-tutoiement.md) back · S · E-mail de vérification d'adresse et message de connexion du back au tutoiement (restes du vouvoiement après le front) · dépend de : 627 · PR back #200
 
 ## Backlog (non détaillé, à écrire quand il devient utile)
