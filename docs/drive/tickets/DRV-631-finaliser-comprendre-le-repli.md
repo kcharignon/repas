@@ -29,3 +29,17 @@ Faux site (`fake-leclerc`) : `basketStatus` 404, 500, redirection ; tests Kotlin
 ## Definition of Done
 
 Celle du dépôt front ; agent incrémenté seulement si `strings.ts` ou le diagnostic JS changent ; à publier après le front et l'application selon la règle habituelle.
+
+## Constat du 2026-10-19 après-midi : « Finaliser » tombe sur « page introuvable » (application `0.1.8`, téléphone d'une utilisatrice)
+
+Sur le téléphone d'une utilisatrice, `android-v0.1.8`, « Finaliser sur Leclerc » ouvre la **page « introuvable » de Leclerc** : l'adresse directe `…/detail-panier.aspx` n'est pas fiable (Leclerc répond « introuvable » sans passer par son site, avec un statut que le repli de `DriveEntry` ne reconnaît pas comme une erreur ; sur le Pixel 6 de test la même version retombe sur l'accueil). **Décision du PO (urgente, réversible)** : ne plus naviguer vers `detail-panier.aspx`.
+
+### Portée urgente (remplace les points 1 à 3 pour la première livraison)
+
+1. « Finaliser sur Leclerc » ouvre, dans le drive de l'application, **la page d'accueil du magasin avec la ville** (`https://<hôte>/magasin-N-N-Ville`, le chemin mémorisé par `StorePathMemory`, validé comme aujourd'hui : hôte et numéros du lien du front), qui charge toujours ; à défaut de chemin mémorisé, l'accueil du drive (`NavigationPolicy.START_URL`, comportement actuel).
+2. Bandeau court à l'arrivée sur cette page : « Ton panier est dans l'icône en haut à droite. » (tutoiement, règle 10, sans bouton, disparaît à la première navigation).
+3. Une page « introuvable » de Leclerc (titre ou statut) n'est **jamais** affichée à l'utilisateur après « Finaliser » : si, malgré tout, la page chargée est un 404 déguisé (statut 200 mais titre « introuvable »), repli sur l'accueil du drive. Si ce n'est pas détectable proprement, ne rien lire du contenu de la page.
+4. `BASKET_PATH` du front vaut `''` à nouveau côté lien envoyé à l'application (l'adresse du panier n'est plus utilisée) ; le lien sert seulement à valider hôte et numéros. Aucun changement de protocole.
+5. Garder la raison du repli pour le diagnostic (point 1 d'origine : `CHEMIN_INCONNU`, `ADRESSE_REFUSEE`, `ERREUR_HTTP_4xx`, `ERREUR_HTTP_5xx`, `OUVERTE`), formes seulement.
+
+Critère d'acceptation : étant donné un chemin mémorisé, quand l'utilisateur touche « Finaliser », alors la page d'accueil du magasin s'ouvre avec le bandeau ; jamais une page « introuvable ». Tests Kotlin et faux site (accueil du magasin 200, `detail-panier.aspx` 404 déguisé en 200 : non demandé), `make android-e2e` (scénarios 15 à 17 adaptés).
