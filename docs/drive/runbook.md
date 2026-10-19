@@ -71,7 +71,7 @@ Noter, sans donnée personnelle : la date, le titre du message et son code, la v
 
 C'est le contrôle de premier niveau. Il est en **lecture seule** : il ne met rien au panier.
 
-1. Sur le téléphone concerné, dans l'application, ouvrir le **drive Leclerc** (menu de Repas → « Ouvrir le drive Leclerc » : dans la pré-version de test, le bouton ⋮ au bord droit de l'écran ; dans l'application de publication, « Mon compte » → section « Drive » → « Menu de l'application » (DRV-320, repas-front#111) : visible seulement dans l'application et **fonction allumée**), se connecter si besoin, choisir son magasin et aller sur une page de magasin (faire une recherche, par exemple « farine »).
+1. Sur le téléphone concerné, dans l'application, ouvrir le **drive Leclerc** (menu de Repas → « Ouvrir le drive Leclerc » : dans la pré-version de test, le bouton ⋮ au bord droit de l'écran ; dans l'application de publication, « Moi » → section « Drive » → « Menu de l'application » (DRV-320, repas-front#111) : visible seulement dans l'application et **fonction allumée**), se connecter si besoin, choisir son magasin et aller sur une page de magasin (faire une recherche, par exemple « farine »).
 2. Sur l'écran du drive, toucher le bouton rond **⋮** en bas à droite, puis **« Diagnostic de l'agent »**. Les contrôles défilent (une seule recherche, celle du mot « sel », avec la cadence normale).
 3. Toucher **« Copier le rapport »**, puis le coller dans la conversation. Le rapport ne contient ni cookie, ni identifiant, ni adresse, ni nom, ni numéro de magasin complet (seulement `…` et les trois derniers chiffres) ; relire avant de coller.
 
@@ -129,11 +129,11 @@ Ce qui change ensuite :
 - `send` et les routes du drive répondent `404 DRIVE_DISABLED` ; `reopen` continue de répondre (ADR 0023 §9) ;
 - les **listes déjà envoyées** (`SENT`) restent **lisibles** et peuvent être **terminées** ou **supprimées** ; elles restent verrouillées (non modifiables) tant qu'elles sont envoyées, mais **chacun peut rouvrir la sienne** depuis l'interface même fonction coupée (`reopen` n'est pas derrière l'interrupteur) ;
 - les produits mémorisés, les réglages de magasin et les listes sont **intacts** ; l'application et l'agent ne sont pas touchés.
-- dans l'application de publication, « Mon compte » → « Drive » (donc « Menu de l'application », donc « Se déconnecter de Leclerc et effacer les données du drive ») disparaît tant que la fonction est coupée ; la pré-version de test garde son bouton ⋮ (point signalé à l'utilisateur, ticket DRV-320).
+- dans l'application de publication, « Moi » → « Drive » (donc « Menu de l'application », donc « Se déconnecter de Leclerc ») disparaît tant que la fonction est coupée ; la pré-version de test garde son bouton ⋮ (point signalé à l'utilisateur, ticket DRV-320).
 
 **Rouvrir en bloc les listes envoyées** (utile surtout avant de remettre une version du code qui ne connaît pas `SENT`, qui n'a pas de `reopen` ; pour une simple coupure, chacun rouvre sa liste) : script `rouvrir-listes-envoyees.sh`, d'abord sans argument (lecture seule), puis avec `--appliquer` après accord : voir [`../production.md`](../production.md), « Listes `SENT` ». Il fait une sauvegarde avant.
 
-## 5. Se replier : le mode assisté
+## 5. Se replier : le mode assisté (« Chercher à la main » à l'écran)
 
 Le **mode assisté** est le repli permanent prévu par l'ADR 0022 : Repas affiche la liste, la personne ouvre Leclerc (application ou navigateur) et cherche elle-même chaque produit, sans remplissage automatique ; l'écran d'envoi propose, **hors de l'application** (dans un navigateur ordinaire) et **fonction allumée**, un lien « Chercher sur Leclerc » par ligne (DRV-404, `driveSend.notInApp`). Rien n'est mémorisé dans ce mode et Repas n'envoie rien à Leclerc. **Fonction coupée**, l'écran d'envoi n'est pas offert : il n'y a alors pas de liens, la personne cherche seule sur le site de Leclerc (ou dans l'application : menu → « Ouvrir le drive Leclerc ») en lisant sa liste dans Repas.
 
@@ -238,7 +238,7 @@ Le site mobile de Leclerc (`m-courses.leclercdrive.fr`) n'a pas les routes du si
 
 - **Ce qu'on voit** : sur l'écran du drive, le bandeau « Leclerc affiche son site mobile : ce n'est pas la version ordinateur du site, et Repas ne peut pas y agir » avec le bouton « Ouvrir l'accueil du drive » ; ou, si l'agent est lancé sur cette page, l'erreur « Ce n'est pas la version ordinateur du site » (code `UNSUPPORTED_PAGE`, cause `PAGE_MOBILE`) ; le diagnostic écrit « site mobile (pas la version ordinateur) » à la ligne « Hôte » du rapport, et « Page prise en charge » est `KO` (`UNSUPPORTED_PAGE`, cause `PAGE_MOBILE`). La lecture du magasin ne rend jamais un hôte mobile : le magasin enregistré ne peut plus être faussé par ce site.
 - **Ce n'est pas une panne de Leclerc** : ne pas couper pour tous. L'envoi n'a rien écrit.
-- **Que faire** : toucher « Ouvrir l'accueil du drive » (recharge l'accueil de l'enseigne), puis « Commencer mes courses ». Si le site mobile revient : menu du drive (**⋮**) → « Se déconnecter de Leclerc et effacer les données du drive », puis rouvrir le drive et se reconnecter. Si le bandeau revient à chaque fois, ouvrir une issue avec le rapport du diagnostic (version de l'application, ligne « Hôte »).
+- **Que faire** : toucher « Ouvrir l'accueil du drive » (recharge l'accueil de l'enseigne), puis « Commencer mes courses ». Si le site mobile revient : menu du drive (**⋮**) → « Se déconnecter de Leclerc », puis rouvrir le drive et se reconnecter. Si le bandeau revient à chaque fois, ouvrir une issue avec le rapport du diagnostic (version de l'application, ligne « Hôte »).
 - **Piège à ne pas confondre** : « Ouvrir dans le navigateur » (menu du drive) ouvre Chrome sur le site **mobile** `m-courses`, sans la session de l'application. C'est normal et sans rapport avec l'envoi.
 - **Avant l'agent 0.14.0** (applications `android-v0.1.4` et plus anciennes) : le site mobile n'était pas reconnu ; un envoi se terminait par « Ce n'est pas le bon magasin » ou « Le site a changé », et, d'après l'analyse de l'hypothèse H11 (jamais observé), la lecture du magasin aurait pu enregistrer un hôte mobile. Si un magasin enregistré a un hôte commençant par `m-`, le refaire lire dans une application récente.
 
