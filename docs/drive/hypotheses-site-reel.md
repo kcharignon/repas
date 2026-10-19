@@ -347,3 +347,18 @@ Ajouté le 2026-10-19. Sources : les PR du dépôt front `kcharignon/repas-front
 **Tickets candidats du § 6** : faits A, B, C, D, E, G, J, K, L, M (voir le tableau ci-dessus et `roadmap.md` § M3c) ; non faits **F** (adresse d'entrée portée par le plan), **H** (écriture du panier fidèle à la requête mesurée), **I** (poids variable, rupture, quantité réduite), **N** (liens ouverts dans le navigateur), **P** (sites confiés au navigateur) ; **O** (gestes de vérification dans `recette.md`) revient à l'assistant, après DRV-621.
 
 **Écarts du § 5** : (1) `drive-agent/fake-leclerc/README.md` du front dit encore que le point de livraison diffère de l'identifiant du magasin « comme sur le vrai site » : toujours là au 2026-10-19 ; (2) `runbook.md` corrigé le 2026-10-19 (§ 1 et § 12) ; (3) le ticket DRV-319 corrigé le 2026-10-19, `recette.md` partie 6 : le constat du 2026-10-19 est en 6.3, l'encadré « À vérifier ici (DRV-319) » juste au-dessus est périmé ; (4) `recette.md` 2.1 : version minimale d'application ajoutée le 2026-10-19 ; (5) `spikes/DRV-011-rapport.md` ligne 10 inchangée ; (6) toujours vrai : le diagnostic et le test automatique n'exercent pas H3 ni le parcours `drive.start`.
+
+## 10. Constats du 2026-10-19 (Pixel 6, compte Leclerc d'essai, application `android-v0.1.7`, agent 0.22.0)
+
+Mesurés avec les sondes du diagnostic (DRV-625) et des touches à la main ; formes seulement, aucun numéro de magasin ni ville.
+
+| Constat | Valeur mesurée |
+|---|---|
+| « Commencer mes courses » sur l'accueil | **un bouton sans adresse** (« oui, adresse sans adresse (bouton) ») : l'agent ne peut pas le suivre comme un lien ; une touche humaine mène à `/magasin-N-N-V` (page d'accueil du magasin, HTTP 200) |
+| Lien du panier sur une page de magasin | **aucun lien** « panier » dans la page (l'icône du panier est un bouton) |
+| Page du panier (après touche sur l'icône) | **`/magasin-N-N-V/detail-panier.aspx`**, avec la ville dans le chemin, HTTP 200, `Point de livraison` lu et égal au numéro de l'adresse |
+| Recherche depuis une page de magasin | inchangée : `/magasin-N-N/recherche.aspx` (sans ville) répond 200, 195 produits lus pour « sel » ; variantes avec ville = 400 |
+| Anti-robot | un **Chromium automatisé du PC** (sans fenêtre) reçoit HTTP 403 ; avec une fenêtre, 200 mais sans pouvoir se connecter ; ces essais ont fait **marquer l'adresse de la box** (« Vous avez été bloqué(e) », curseur à faire glisser, puis hCaptcha à la connexion) ; l'appareil, lui, passe après le curseur. **Aucun essai automatisé depuis le PC** à l'avenir. |
+| Connexion | e-mail, puis mot de passe, avec une case hCaptcha à cocher par une personne |
+
+**Conséquences** : (1) `BASKET_PATH` est `detail-panier.aspx`, à ajouter au chemin du magasin **avec la ville**, que seule la page donne (ticket DRV-629) ; (2) l'entrée sans geste de DRV-625 doit **cliquer le bouton** « Commencer mes courses » (il n'a pas d'adresse), avec repli sur le geste manuel.
