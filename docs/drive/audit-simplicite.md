@@ -48,6 +48,7 @@ Ordre conseillé : 621 d'abord (aucun risque, tout le reste en dépend pour les 
 | [DRV-623](tickets/DRV-623-un-seul-geste-pour-le-magasin.md) | Un seul geste pour enregistrer le magasin | F1 | S |
 | [DRV-624](tickets/DRV-624-choix-de-produit-sans-jargon.md) | Choix du produit sans jargon, une seule question, « passer les suivants » | F7, F8 | M |
 | [DRV-625](tickets/DRV-625-entrer-dans-le-magasin-sans-geste.md) | Entrer dans le magasin sans geste (« Commencer mes courses »), revenir dans Repas sans geste, « Finaliser » dans l’application (panier Leclerc connecté) | F2, F3, F16 | M (gardé par une vérification humaine) |
+| [DRV-626](tickets/DRV-626-balayage-apres-revue-de-parcours.md) | Balayage après la revue de parcours sur captures (compteurs à zéro, « Passer ces n articles », estimation sans prix, récapitulatif sans impasse, réglages) | F17 à F27 | M |
 
 ## 4. Décisions du PO (2026-10-19, réversibles)
 
@@ -77,6 +78,34 @@ Les quatre tickets sont fusionnés dans le front (`main`, agent 0.19.0) et pas e
 | F11 magasin manquant = message | fait : « Choisissez votre magasin », bouton « Choisir mon magasin » | DRV-622, DRV-623 |
 | F13 menu de l'application | fait pour les libellés ; « Diagnostic de l'agent » reste (voir DRV-621) | DRV-621 |
 
-**Touches du parcours heureux après ces tickets** (premier envoi, 6 articles dont 4 nouveaux) : les 8 touches fixes sont inchangées (rien de ce qui précède l'agent ne change avant DRV-625) ; les nouveaux articles passent de « 4 à 8 » à **« 3 à 4 »** (choisir les 4 : 4 ; choisir le premier et passer les 3 suivants : 3 ; une seule réponse à « Toujours prendre ce produit ? » au lieu de trois quand on remplace un produit retenu). Premier enregistrement du magasin : 2 touches au lieu de 3. Deuxième envoi, tout connu : toujours 7 (objectif 5 par DRV-625).
+**Touches du parcours heureux après ces tickets** (premier envoi, 6 articles dont 4 nouveaux ; recompte de la revue du § 7 : 11 touches = 7 fixes + 4 choix) : les touches fixes ne changent pas avant DRV-625 ; les nouveaux articles passent de « 4 à 8 » à **« 3 à 4 »** (choisir les 4 : 4 ; choisir le premier et passer les 3 suivants : 3 ; une seule réponse à « Toujours prendre ce produit ? » au lieu de trois quand on remplace un produit retenu). Premier enregistrement du magasin : 2 touches au lieu de 3. Deuxième envoi, tout connu : toujours 7 (objectif 5 par DRV-625).
 
 À relever à la prochaine recette réelle (`recette.md`, 6.4, 7.4 et 7.6) : le choix du produit du premier coup, le nombre de touches mesuré, et si « suivants » est compris.
+
+## 7. Revue de parcours sur captures (2026-10-19)
+
+Le PO a fait rejouer le chemin heureux à 360 px par un agent de revue (lecture seule : web de Repas simulé, agent réel dans l'émulateur contre le faux site, 80 écrans en clair et en sombre, aucun défilement horizontal, aucune violation d'accessibilité) et a lu les écrans. Les captures et les outils de rejeu sont dans le dossier de travail de la séance (jetables) ; les constats qui comptent sont ici.
+
+**Touches comptées sur les captures** : premier envoi avec 4 nouveaux articles : **11** (Envoyer au drive, confirmer, Ouvrir le drive, « Commencer mes courses » à la main, « Commencer », 4 × « Choisir », « Retourner dans Repas », « Finaliser sur Leclerc »), **10** avec « Passer ces n articles » après le premier choix ; chaque produit remplacé ajoute 1 touche, chaque quantité à vérifier 1 touche. Deuxième envoi, tout connu : **7** (depuis une liste déjà envoyée : 6, « Reprendre l'envoi » remplace les deux premières). Premier réglage du magasin : **5** (envoyer, « Choisir mon magasin », « Commencer mes courses » sur Leclerc, « Utiliser ce magasin », puis la fenêtre d'envoi qui se rouvre). Les deux touches manuelles restantes (« Commencer mes courses », « Retourner dans Repas ») sont celles de DRV-625.
+
+| # | Gravité | Constat (capture lue) | Traité par |
+|---|---|---|---|
+| F17 | B | « Prêt à remplir » de l'agent : compteurs à zéro, « produits » pour des articles | DRV-626 point 1 |
+| F18 | B | « Passer les n suivants » compte l'article affiché ; la confirmation laisse la liste de produits sous elle (deux décisions) | DRV-626 point 2 |
+| F19 | C | Fiche produit : la taille écrite trois fois ; « (1 sur 1) » | DRV-626 points 3 et 4 |
+| F20 | B | « Vérifiez la quantité » : champ prérempli non sélectionné (« 1 » + 4 = « 14 ») | DRV-626 point 5 |
+| F21 | B | « Le panier est rempli en partie » alors que rien n'est au panier | DRV-626 point 6 |
+| F22 | B | Liste envoyée : « 0 sur 6 articles dans le panier » (cases cochées) sous « Le panier est rempli » | DRV-626 point 7 |
+| F23 | B | Estimation du coût sans aucun prix : quatre messages empilés qui repoussent les articles | DRV-626 point 8 |
+| F24 | B | « Produits retenus, par ordre de préférence » : le mot que le glossaire écarte | DRV-626 point 9 |
+| F25 | B | « Aucun récapitulatif à afficher » : impasse sans bouton | DRV-626 point 10 |
+| F26 | B | Réglages du drive : la note de vie privée remplit l'écran, le magasin est sous la ligne de flottaison | DRV-626 point 11 |
+| F27 | B | « Vos choix sont enregistrés… » sur des erreurs sans choix (à vérifier hors simulation) | DRV-626 point 12 |
+
+**Constats laissés (décision du PO : pas maintenant)** :
+
+- « Vous n'êtes pas connecté » : le bouton principal de l'agent est « Retourner dans Repas » alors que l'action est de se connecter sur Leclerc ; la reprise passe par Repas. À traiter avec DRV-625 (entrée et retour sans geste).
+- Mêmes erreurs, deux textes (autre magasin, « Leclerc a ralenti les demandes » : l'agent ajoute « rechargez la page » ; titres différents) ; « Magasin n° 000001 » dans l'agent contre « Magasin …456 » dans Repas. Balayage cosmétique à grouper avec DRV-625.
+- « Android System WebView » à l'écran quand le composant est absent : c'est le nom de ce qu'il faut mettre à jour, gardé.
+- Espaces insécables dans les guillemets (un « ». » seul en début de ligne à 360 px), phrases de vie privée de plus de 15 mots hors parcours, cibles tactiles de Repas sous 44 px hors parcours Drive (cases des articles, liens « Mes listes » et « Moi ») : au backlog.
+- Le bandeau de lecture du magasin ne dit pas de toucher « Commencer mes courses » (l'agent n'affiche « Utiliser ce magasin ? » que sur une page de magasin) : relevé de la simulation, à vérifier sur le vrai site (DRV-625).
