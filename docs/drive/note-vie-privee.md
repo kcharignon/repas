@@ -1,13 +1,15 @@
 # Note de vie privée : l'envoi de la liste au drive
 
-Texte du front (ticket DRV-504 : **partie back** = le texte et le registre, ici ; **partie front** faite, repas-front#101, #105 et #106, clés `drivePrivacy.*` de `src/i18n/fr.ts`). Depuis DRV-628 (2026-10-19), il n'est plus dans le parcours : c'est la page **`/drive/conditions`** (« Conditions d'utilisation du drive », clés `driveTerms.*` de `src/i18n/fr.ts`), atteinte par un lien discret « Conditions d'utilisation » au pied de la rubrique Drive de « Moi » et de l'aide ; les écrans du parcours n'ont plus ni résumé, ni avertissement. Français simple, au **vouvoiement** comme tout le produit (décision du PO du 2026-10-19, DRV-621, [`principes-produit.md`](principes-produit.md)) : ce fichier reprend les clés `drivePrivacy.*` du front. Aucune image externe.
+Texte du front (ticket DRV-504 : **partie back** = le texte et le registre, ici ; **partie front** faite, repas-front#101, #105 et #106, clés `drivePrivacy.*` de `src/i18n/fr.ts`). Depuis DRV-628 (2026-10-19), il n'est plus dans le parcours : c'est la page **`/drive/conditions`** (« Conditions d'utilisation du drive », clés `driveTerms.*` de `src/i18n/fr.ts`), atteinte par un lien discret « Conditions d'utilisation » au pied de la rubrique Drive de « Moi » et de l'aide ; les écrans du parcours n'ont plus ni résumé, ni avertissement. Français simple, au **tutoiement** comme tout le produit (décision du PO du 2026-10-19, DRV-627, [`principes-produit.md`](principes-produit.md)) : le texte complet ci-dessous reprend les clés `driveTerms.*` du front, mot pour mot. Aucune image externe.
 
-- Dernière mise à jour du texte : **2026-10-19** (vouvoiement et glossaire, DRV-621). Le relire à chaque changement de ce que la fonction enregistre (voir « À garder vrai » plus bas).
+- Dernière mise à jour du texte : **2026-10-19** (tutoiement, DRV-627 ; page des conditions, DRV-628 ; glossaire, DRV-621). Le relire à chaque changement de ce que la fonction enregistre (voir « À garder vrai » plus bas).
 - Les mots entre « » sont ceux de l'interface actuelle de l'application et du front.
 
 ---
 
 ## 1. Texte court (retiré des écrans par DRV-628, gardé pour mémoire)
+
+*Texte d'origine, tel qu'il s'affichait (au vouvoiement de DRV-621) : il n'est plus à l'écran, donc il n'a pas été repris au tutoiement.*
 
 > **Votre vie privée.** Repas retient votre magasin, les produits que vous choisissez (avec leur prix vu) et la date d'envoi de vos listes. Il ne voit jamais votre identifiant, votre mot de passe, vos cookies, votre panier Leclerc ni vos commandes : l'envoi se fait dans l'application, avec votre propre connexion à Leclerc. Attention : Leclerc peut suspendre un compte qu'il juge utilisé de façon abusive. **Lisez la note complète.**
 
@@ -17,53 +19,55 @@ Texte du front (ticket DRV-504 : **partie back** = le texte et le registre, ici 
 
 ## 2. Texte complet (page « Conditions d'utilisation du drive », `/drive/conditions`)
 
-### Votre vie privée avec le drive
+### Conditions d'utilisation du drive
 
-Envoyer votre liste au drive, c'est Repas qui prépare la liste et l'application qui la met dans votre panier Leclerc, avec votre connexion à vous. Voici ce que Repas garde, ce qu'il ne voit jamais, et comment tout effacer.
+Envoyer ta liste au drive, c'est Repas qui prépare la liste et l'application qui la met dans ton panier Leclerc, avec ta connexion à toi. Voici comment cela se passe, ce que Repas garde, ce qu'il ne voit pas, les risques, et comment tout effacer.
 
 ### Comment ça se passe
 
-- Quand vous touchez « Envoyer au drive », Repas prépare votre liste et la donne à l'application, sur votre téléphone. Rien n'est mis au panier tant que vous n'avez pas touché « Commencer ».
-- L'application ouvre Leclerc dans sa propre fenêtre. C'est **vous** qui vous connectez à Leclerc, comme sur le site. Ensuite elle cherche les produits et les met dans votre panier **depuis votre session Leclerc**, comme si vous le faisiez vous-même. Un produit à la fois, avec des pauses, pour ne pas gêner Leclerc.
-- Tout cela se passe entre votre téléphone et Leclerc. **Rien de cela ne passe par les serveurs de Repas.** Comme dans un navigateur, les pages de Leclerc font appel à leurs propres services (protection contre les robots, mesure d'audience) : Repas n'y a pas accès et ne les choisit pas. À la fin, l'application ne rend à Repas que ce qu'il doit retenir : les produits que vous avez choisis.
-- Vous finalisez votre commande vous-même sur Leclerc. Repas ne valide jamais de commande, ne choisit pas de créneau, ne paie rien et ne vide jamais votre panier. Il ne réduit jamais une quantité déjà au panier : un article déjà présent en plus grande quantité reste tel quel.
+- Quand tu touches « Envoyer au drive », Repas prépare ta liste et la donne à l'application, sur ton téléphone. Rien n'est mis au panier tant que tu n'as pas touché « Commencer ».
+- L'application ouvre Leclerc dans sa propre fenêtre. C'est **toi** qui te connectes à Leclerc, comme sur le site. Ensuite elle cherche les produits et les met dans ton panier **depuis ta session Leclerc**, comme si tu le faisais toi-même : un produit à la fois, avec des pauses, pour ne pas gêner Leclerc.
+- Tout cela se passe entre ton téléphone et Leclerc. **Rien de cela ne passe par les serveurs de Repas.** Comme dans un navigateur, les pages de Leclerc font appel à leurs propres services (protection contre les robots, mesure d'audience) : Repas n'y a pas accès et ne les choisit pas. À la fin, l'application ne rend à Repas que ce qu'il doit retenir : les produits que tu as choisis, et ton magasin quand tu le lui fais lire. Rien d'autre de ton compte Leclerc ne quitte la page.
+- Si l'envoi s'arrête, tu le reprends là où il en était : l'avancement est gardé et les articles déjà faits ne sont pas refaits.
+- Tu finalises ta commande toi-même sur Leclerc. Repas ne valide jamais de commande, ne choisit pas de créneau, ne paie rien et ne vide jamais ton panier. Il ne réduit jamais une quantité déjà au panier : un article déjà présent en plus grande quantité reste tel quel.
 
 ### Ce que Repas enregistre
 
-- **Votre magasin Leclerc** : son numéro, son adresse sur le site de Leclerc, et le nom que vous lui avez donné si vous en avez mis un.
-- **Les produits dont Repas se souvient, article par article** : votre produit habituel, vos produits de remplacement (5 au plus), les produits à ne plus proposer (20 au plus) et les articles « J'en ai toujours ».
-- **Pour chaque produit** : son numéro chez Leclerc, son nom, son contenu (par exemple 1 kg), et son prix avec la date où il a été vu. Les prix servent à estimer le coût d'une liste ; l'estimation est datée et le vrai prix est toujours celui de Leclerc.
+- **Ton magasin Leclerc** : son numéro, son adresse sur le site de Leclerc, et le nom que tu lui as donné si tu en as mis un.
+- **Les produits dont Repas se souvient, article par article** : ton produit habituel, tes produits de remplacement (5 au plus), les produits à ne plus proposer (20 au plus) et les articles « J'en ai toujours ». Ces produits sont propres à ton magasin.
+- **Pour chaque produit** : son numéro chez Leclerc, son nom, son contenu (par exemple 1 kg), et son prix avec la date où il a été vu.
+- Les prix servent à estimer le coût d'une liste. L'estimation est indicative : elle est faite d'après les derniers prix vus, avec leur date, et le vrai prix est toujours celui de Leclerc. Elle ne compte que les articles dont le prix est connu, elle est peu fiable quand moins de la moitié en ont un, et Repas ne devine jamais un prix.
 - **Pour chaque liste** : le fait qu'elle a été « envoyée au drive » et la date de l'envoi.
 
 ### Ce que Repas ne voit et n'enregistre jamais
 
-- Votre identifiant et votre mot de passe Leclerc, et le code que Leclerc vous envoie par e-mail.
-- Vos cookies et vos jetons de connexion à Leclerc.
-- Votre adresse, votre créneau de retrait, votre moyen de paiement.
-- Le contenu réel de votre panier Leclerc, vos commandes, vos achats passés.
+- Ton identifiant et ton mot de passe Leclerc, et le code que Leclerc t'envoie par e-mail.
+- Tes cookies et tes jetons de connexion à Leclerc.
+- Ton adresse, ton créneau de retrait, ton moyen de paiement.
+- Le contenu réel de ton panier Leclerc, tes commandes, tes achats passés.
 - Les photos des produits.
 
 ### Où, et combien de temps
 
 - Les données sont dans la base de Repas, sur le serveur de Repas (hébergé chez DigitalOcean). Repas ne les donne à personne, ne les vend pas, ne fait pas de publicité et n'envoie pas de statistiques à des tiers.
-- Elles restent **tant que votre compte existe**, ou jusqu'à ce que vous les oubliez (voir plus bas).
+- Elles restent **tant que ton compte existe**, ou jusqu'à ce que tu les oublies (voir plus bas).
 - Le serveur fait une copie de sauvegarde chaque nuit et garde les 14 dernières : une donnée effacée peut rester dans ces copies **environ deux semaines au plus**, puis elles sont remplacées.
-- Sur votre téléphone, l'application garde votre connexion à Leclerc, comme le ferait un navigateur. Elle ne la partage ni avec Repas ni avec personne d'autre que Leclerc et ses propres services. Vous pouvez l'effacer à tout moment : menu de l'application, « Se déconnecter de Leclerc ».
+- Sur ton téléphone, l'application garde ta connexion à Leclerc, comme le ferait un navigateur. Elle ne la partage ni avec Repas ni avec personne d'autre que Leclerc et ses propres services. Tu peux l'effacer à tout moment : menu de l'application, « Se déconnecter de Leclerc ».
 - Les descriptions de produits (nom, contenu, prix vu, magasin) sont communes à tous les utilisateurs de Repas et ne disent **pas** qui les a vues. Chacun ne retrouve que les produits dont Repas se souvient pour lui. La première personne qui décrit un produit fixe sa description (nom, contenu, code-barres) : les suivantes ne la réécrivent pas, elles ne font que la compléter si elle est incomplète ; le prix vu, lui, est rafraîchi par celles qui choisissent ce produit. Ces descriptions restent quand un compte est supprimé, mais sans aucun lien avec la personne.
 
 ### Comment tout effacer
 
-- **Un produit, ou un article** : dans « Moi », « Mes produits du drive » : retirez un produit, choisissez « Ne plus proposer » pour un autre, ou touchez « Oublier cet article » pour effacer tout ce que Repas retient sur lui.
-- **Un changement de magasin** : si vous changez de magasin, les produits dont Repas se souvient pour l'ancien magasin ne sont plus utilisés, mais ils restent enregistrés jusqu'à la suppression de votre compte.
-- **Tout, d'un coup** : demandez la suppression de votre compte à la personne qui administre Repas. Elle efface vos données du drive (magasin, produits dont Repas se souvient), vos listes de courses avec leur statut d'envoi, et le reste de votre compte.
-- Pour exercer vos droits (savoir ce que Repas a de vous, corriger, effacer), écrivez à la personne qui vous a donné accès à Repas.
+- **Un produit, ou un article** : dans « Moi », « Mes produits du drive » : retire un produit, choisis « Ne plus proposer » pour un autre, ou touche « Oublier cet article » pour effacer tout ce que Repas retient sur lui.
+- **Un changement de magasin** : si tu changes de magasin, les produits dont Repas se souvient pour l'ancien magasin ne sont plus utilisés, mais ils restent enregistrés jusqu'à la suppression de ton compte.
+- **Tout, d'un coup** : demande la suppression de ton compte à la personne qui administre Repas. Elle efface tes données du drive (magasin, produits dont Repas se souvient), tes listes de courses avec leur statut d'envoi, et le reste de ton compte.
+- Pour exercer tes droits (savoir ce que Repas a de toi, corriger, effacer), écris à la personne qui t'a donné accès à Repas.
 
-### Avant d'utiliser l'envoi : ce que vous devez savoir
+### Avant d'utiliser l'envoi : ce que tu dois savoir
 
-- L'envoi agit **dans votre propre compte Leclerc**, avec votre propre connexion, comme si vous faisiez les recherches et les ajouts vous-même. Repas ne voit jamais vos identifiants.
-- Les conditions d'utilisation de Leclerc permettent à l'enseigne de **suspendre un compte E.Leclerc** (et la cagnotte de Tickets E.Leclerc qui va avec) si elle juge l'usage abusif. Repas limite ce risque : une requête à la fois, avec des pauses, seulement quand vous le demandez, et seulement pour votre liste. Mais le risque existe et il est pour votre compte.
-- Si l'envoi s'arrête, vous le reprenez là où il en était : l'avancement est gardé et les articles déjà faits ne sont pas refaits. Si Leclerc ralentit les requêtes, l'application s'arrête d'elle-même : attendez plusieurs heures avant de relancer, sans insister en boucle. Si votre compte Leclerc pose un problème, contactez le service client de Leclerc : Repas n'a aucun accès à votre compte et ne contacte jamais Leclerc.
-- Vous pouvez vous en passer à tout moment : la liste de Repas reste utilisable pour faire vos courses à la main sur Leclerc.
+- L'envoi agit **dans ton propre compte Leclerc**, avec ta propre connexion, comme si tu faisais les recherches et les ajouts toi-même. Repas ne voit jamais tes identifiants.
+- Les conditions d'utilisation de Leclerc permettent à l'enseigne de **suspendre un compte E.Leclerc** (et la cagnotte de Tickets E.Leclerc qui va avec) si elle juge l'usage abusif. Repas limite ce risque : une requête à la fois, avec des pauses, seulement quand tu le demandes, et seulement pour ta liste. Mais le risque existe et il est pour ton compte.
+- Si Leclerc ralentit les requêtes, l'application s'arrête d'elle-même. Attends plusieurs heures avant de reprendre l'envoi, sans le relancer en boucle. Si ton compte Leclerc pose un problème, contacte le service client de Leclerc : Repas n'a aucun accès à ton compte et ne contacte jamais Leclerc.
+- Tu peux t'en passer à tout moment : la liste de Repas reste utilisable pour faire tes courses à la main sur Leclerc.
 
 ---
 
@@ -80,6 +84,7 @@ Chaque phrase du texte a sa source. Si l'une change, mettre à jour ce texte **e
 | Produits dont Repas se souvient : habituel, remplacement (5), à ne plus proposer (20), « J'en ai toujours » (dans le code : préféré, secours, refusés, `HAVE_AT_HOME`) | ADR 0022 règle 7 ; tables `drive_choice`, `drive_choice_product` |
 | Description d'un produit : numéro, nom, contenu, prix et date de vue ; pas de photo | table `drive_product` (D22, `analyse.md`) ; `drive_product` n'a pas de colonne utilisateur |
 | Statut « envoyée » et date d'envoi | `shopping_list.status` et `sent_at` (ADR 0023) |
+| L'estimation est indicative et datée, ne compte que les articles dont le prix est connu, est peu fiable quand moins de la moitié en ont un, et ne devine jamais un prix | [`DRV-611`](tickets/DRV-611-estimation-cout-liste.md) (`ListCostEstimator`, couverture) ; [`DRV-612`](tickets/DRV-612-ecran-estimation-cout.md) |
 | Rien d'autre n'est lu : adresse, créneau, paiement, panier, commandes | l'agent ne fait que lire le magasin, chercher, fixer une quantité, lire le produit ajouté (ADR 0022 règle 4) |
 | Pas de statistiques tierces, pas de partage | `architecture.md` § 10 ; aucune route ne liste les préférences d'un autre utilisateur |
 | Effacé avec le compte, sauf les descriptions de produits | `PurgeUserDriveDataHandler` (réglages, lignes de produits, préférences) ; `UserOwnedDataCoverageTest` ; ADR 0021. **Pas d'auto-suppression** : seul un administrateur supprime un compte |

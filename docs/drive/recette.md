@@ -1,10 +1,10 @@
 # Recette en conditions réelles : envoyer une liste au drive Leclerc (DRV-505)
 
-Procédure à dérouler **par l'utilisateur, sur son téléphone Android, avec son compte Leclerc et une vraie petite liste**, sans jamais valider de commande. Un agent (l'« assistant ») le guide **une étape à la fois**. Elle prouve ce que les tests automatiques ne peuvent pas prouver : l'anti-robot de Leclerc (DataDome), la connexion, le vrai site, le vrai téléphone. Décisions : [ADR 0022](../adr/0022-remplissage-du-panier-drive.md) et [ADR 0023](../adr/0023-liste-envoyee-au-drive.md). Si Leclerc bloque ou a changé : [`runbook.md`](runbook.md). Vie privée : [`note-vie-privee.md`](note-vie-privee.md). Dernière mise à jour : 2026-10-19 (ticket DRV-501 pour la rédaction, DRV-505 pour l'exécution) ; état, version minimale et ordre de publication ajoutés le 2026-10-19 ; libellés réalignés sur le front après DRV-621 à 624 (vouvoiement, glossaire, écrans simplifiés).
+Procédure à dérouler **par l'utilisateur, sur son téléphone Android, avec son compte Leclerc et une vraie petite liste**, sans jamais valider de commande. Un agent (l'« assistant ») le guide **une étape à la fois**. Elle prouve ce que les tests automatiques ne peuvent pas prouver : l'anti-robot de Leclerc (DataDome), la connexion, le vrai site, le vrai téléphone. Décisions : [ADR 0022](../adr/0022-remplissage-du-panier-drive.md) et [ADR 0023](../adr/0023-liste-envoyee-au-drive.md). Si Leclerc bloque ou a changé : [`runbook.md`](runbook.md). Vie privée : [`note-vie-privee.md`](note-vie-privee.md). Dernière mise à jour : 2026-10-19 (ticket DRV-501 pour la rédaction, DRV-505 pour l'exécution) ; état, version minimale et ordre de publication ajoutés le 2026-10-19 ; libellés réalignés sur le front après DRV-621 à 624 (glossaire, écrans simplifiés) puis après DRV-627 (tutoiement, front PR #150, agent 0.23.0).
 
 **État au 2026-10-19 : signée par l'utilisateur** (`DRIVE_ENABLED` reste allumé). La recette a été déroulée sur un Pixel 9 les 2026-10-18 et 2026-10-19, des applications `android-v0.1.1` à `android-v0.1.5` ; les parties 3 à 12 sont faites (13 à 15 non faites, voir le compte rendu § 17 bis). Les constats de ces séances sont dans [`hypotheses-site-reel.md`](hypotheses-site-reel.md) § 8 (statut des défenses en § 9) ; les corrections faites ensuite dans l'agent et l'application, dans [`roadmap.md`](roadmap.md) § M3c.
 
-**Ce qui a changé depuis la séance du 2026-10-18** : des applications **signées** `android-vX.Y.Z` existent (DRV-315) et la recette n'a plus besoin d'une pré-version `android-dev-…` ; le back `v0.6.1` et le front `v0.5.1` sont en production, drive compris. Les parties 1 et 2 (prérequis, installation d'une pré-version) racontent la première séance et ne sont plus à refaire : pour un nouveau téléphone, installer l'APK signé de la dernière release `android-v…` (aide de Repas, « Installer l'application Repas »). Les textes d'écran cités dans les parties 4 à 13 ont été réalignés après les tickets de simplicité (DRV-621 à 624 : vouvoiement, mots du glossaire de [`principes-produit.md`](principes-produit.md), écrans plus courts) ; si un texte ne correspond plus, le sens compte (voir « Comment lire ce fichier »).
+**Ce qui a changé depuis la séance du 2026-10-18** : des applications **signées** `android-vX.Y.Z` existent (DRV-315) et la recette n'a plus besoin d'une pré-version `android-dev-…` ; le back `v0.6.1` et le front `v0.5.1` sont en production, drive compris. Les parties 1 et 2 (prérequis, installation d'une pré-version) racontent la première séance et ne sont plus à refaire : pour un nouveau téléphone, installer l'APK signé de la dernière release `android-v…` (aide de Repas, « Installer l'application Repas »). Les textes d'écran cités dans les parties 4 à 13 ont été réalignés après les tickets de simplicité (DRV-621 à 624 : mots du glossaire de [`principes-produit.md`](principes-produit.md), écrans plus courts), puis passés au tutoiement comme dans le front (DRV-627, 2026-10-19). Tant que le site et l'application qui portent DRV-627 ne sont pas publiés sur ton téléphone, un écran peut encore parler en vouvoiement (par exemple « Votre liste est prête pour le drive ») : le sens compte (voir « Comment lire ce fichier »).
 
 **Ce que cette recette suppose du vrai site sans l'avoir mesuré** : [`hypotheses-site-reel.md`](hypotheses-site-reel.md) (les cinq points à vérifier en premier, fiche de notes à remplir en route).
 
@@ -97,7 +97,7 @@ L'application « Repas » est **toute** l'application Repas (recettes, listes, d
 
 ### 2.1 L'assistant vérifie la release
 
-> **Version minimale d'application (constat du 2026-10-19) : `android-v0.1.4` (agent 0.11.0) ou plus récente.** Une application plus ancienne ouvre une **page 404** au début d'un envoi : `android-v0.1.0` ouvrait la racine du serveur du magasin, `android-v0.1.1` et `android-v0.1.2` l'adresse `/magasin-N-N/`, `android-v0.1.3` de nouveau la racine, trois pages introuvables sur le vrai site. Depuis `android-v0.1.4`, « Ouvrir le drive » ouvre l'accueil de l'enseigne (`https://www.leclercdrive.fr/`). L'assistant lit la version dans « Version et mode d'emploi » (étape 2.4) avant la partie 6. Les écrans simplifiés (vouvoiement, un seul geste pour le magasin, récapitulatif en une phrase) viennent avec l'agent 0.16.0 à 0.18.0 et plus, dans la prochaine application (`android-v0.1.5` ou plus récente).
+> **Version minimale d'application (constat du 2026-10-19) : `android-v0.1.4` (agent 0.11.0) ou plus récente.** Une application plus ancienne ouvre une **page 404** au début d'un envoi : `android-v0.1.0` ouvrait la racine du serveur du magasin, `android-v0.1.1` et `android-v0.1.2` l'adresse `/magasin-N-N/`, `android-v0.1.3` de nouveau la racine, trois pages introuvables sur le vrai site. Depuis `android-v0.1.4`, « Ouvrir le drive » ouvre l'accueil de l'enseigne (`https://www.leclercdrive.fr/`). L'assistant lit la version dans « Version et mode d'emploi » (étape 2.4) avant la partie 6. Les écrans simplifiés (un seul geste pour le magasin, récapitulatif en une phrase) viennent avec l'agent 0.16.0 à 0.18.0 et plus, dans la prochaine application (`android-v0.1.5` ou plus récente) ; le tutoiement de l'agent et de l'application vient avec l'agent 0.23.0 (DRV-627), dans l'application qui suit.
 >
 > **Ordre de publication, à respecter avant toute nouvelle application** : si l'agent qu'elle embarque a changé le protocole (agent 0.15.0 : champ `stats` du résultat), l'humain publie **d'abord le front** (par exemple `v0.5.2`), **puis** l'application (`android-v0.1.5`) ; sinon le site rejette les résultats du nouvel agent (« Le drive n'a pas répondu comme prévu ») et n'enregistre rien. Règle : [`architecture.md`](architecture.md) § 12, [`runbook.md`](runbook.md) § 7.4.
 
@@ -125,7 +125,7 @@ L'application « Repas » est **toute** l'application Repas (recettes, listes, d
 - **But** : écrire dans le tableau de signature ce qui est testé.
 - **Geste** : « Moi » → rubrique « Drive » → « Menu de l'application » → « Version et mode d'emploi ».
 - **Attendu** : une ligne du genre « Version 0.1.4 (numéro 5), construction a1b2c3d » et une ligne « Agent : version 0.11.0 (ou plus récente), empreinte … ». Recopie ces deux lignes dans le tableau de la partie 18 (elles ne contiennent aucune donnée personnelle). La fenêtre peut aussi dire si les données de Leclerc sont séparées de celles de Repas (profil séparé) : note-le. L'empreinte de l'agent doit commencer comme celle qui est écrite dans la description de la release.
-- **Si ça diffère** : « Agent : absent de l'application » ou « empreinte inattendue » : réinstalle l'application ; si ça persiste, arrête (le fichier est abîmé ou ce n'est pas le bon). « Votre WebView est trop ancienne » : mets à jour « Android System WebView » dans le Play Store.
+- **Si ça diffère** : « Agent : absent de l'application » ou « empreinte inattendue » : réinstalle l'application ; si ça persiste, arrête (le fichier est abîmé ou ce n'est pas le bon). « Ta WebView est trop ancienne » : mets à jour « Android System WebView » dans le Play Store.
 
 > **Contrôles facultatifs de l'APK signé** (avec le téléphone branché et l'assistant ; recommandations de la revue de sécurité du front) : un lien `https://kantin.eu/…` reçu par e-mail s'ouvre dans l'application (lien vérifié `assetlinks.json`, DRV-315) ; l'application n'est **pas** débogable ni sauvegardable (`adb shell dumpsys package eu.kantin.repas.drive | grep -i flags` ne contient ni `DEBUGGABLE` ni `ALLOW_BACKUP`) ; après un envoi, `adb logcat -d | grep RepasDrive` ne montre ni adresse, ni cookie, ni contenu. Les parties 5 à 9 ne sont pas à refaire après une mise à jour.
 
@@ -144,9 +144,9 @@ L'application « Repas » est **toute** l'application Repas (recettes, listes, d
 ### 4.1 Ouvrir les réglages du drive
 
 - **But** : dire à Repas quel magasin tu utilises.
-- **Geste** : dans l'application, ouvre « Moi », puis « Réglages du drive ». *(Si tu touches « Envoyer au drive » sans magasin, tu arrives sur « Choisissez votre magasin » avec un seul bouton « Choisir mon magasin » : même chose, voir 4.2, et tu reviens à l'envoi ensuite.)*
-- **Attendu** : en haut, « Votre magasin » (« Aucun magasin enregistré. ») avec le bouton « Lire mon magasin dans l'application », sans note ni avertissement au-dessus et visible sans faire défiler ; en bas « Application Repas », avec « Version … » (plus de phrase « Le drive est prêt » : seule une erreur s'affiche si le drive est inutilisable) ; au pied de la rubrique Drive de « Moi », un lien discret « Conditions d'utilisation ».
-- **Si ça diffère** : « Le drive ne peut pas fonctionner dans cette version de l'application : mettez-la à jour » : l'agent est absent ou la WebView trop ancienne (étape 2.4). « Vous utilisez Repas dans un navigateur » : tu n'es pas dans l'application ; ouvre l'icône « Repas » installée à l'étape 2.2. « Moi » n'a pas de rubrique « Drive » : l'interrupteur n'est pas allumé (partie 3).
+- **Geste** : dans l'application, ouvre « Moi », puis « Réglages du drive ». *(Si tu touches « Envoyer au drive » sans magasin, tu arrives sur « Choisis ton magasin » avec un seul bouton « Choisir mon magasin » : même chose, voir 4.2, et tu reviens à l'envoi ensuite.)*
+- **Attendu** : en haut, « Ton magasin » (« Aucun magasin enregistré. ») avec le bouton « Lire mon magasin dans l'application », sans note ni avertissement au-dessus et visible sans faire défiler ; en bas « Application Repas », avec « Version … » (plus de phrase « Le drive est prêt » : seule une erreur s'affiche si le drive est inutilisable) ; au pied de la rubrique Drive de « Moi », un lien discret « Conditions d'utilisation ».
+- **Si ça diffère** : « Le drive ne peut pas fonctionner dans cette version de l'application : mets-la à jour » : l'agent est absent ou la WebView trop ancienne (étape 2.4). « Tu utilises Repas dans un navigateur » : tu n'es pas dans l'application ; ouvre l'icône « Repas » installée à l'étape 2.2. « Moi » n'a pas de rubrique « Drive » : l'interrupteur n'est pas allumé (partie 3).
 
 > *Point de vie privée n° 1* : les risques et la vie privée ne sont plus dans le parcours (DRV-628) ; ils sont sur **une seule page**, « Conditions d'utilisation du drive », ouverte par le lien « Conditions d'utilisation » (pied de la rubrique Drive de « Moi », et de la page d'aide). Elle doit dire que Repas ne voit ni ton identifiant, ni ton mot de passe, ni tes cookies, ni ton panier, que Repas ne valide ni ne paie jamais une commande et ne réduit jamais une quantité au panier, et que Leclerc peut suspendre un compte qui sert à autre chose qu'à commander.
 
@@ -154,15 +154,15 @@ L'application « Repas » est **toute** l'application Repas (recettes, listes, d
 
 - **But** : que ce soit Leclerc qui dise quel est ton magasin (pas toi qui tapes une adresse).
 - **Geste** : touche « Lire mon magasin dans l'application ». Le drive Leclerc s'ouvre sur un second écran, avec en haut un message qui dit de se connecter à Leclerc si besoin et de choisir son magasin (le bouton retour du téléphone annule). Choisis ton magasin sur le site de Leclerc, puis **connecte-toi toi-même** (identifiant, mot de passe, et le code reçu si Leclerc le demande ; si un test anti-robot s'affiche, fais-le). Une fois sur une page de ton magasin, l'agent affiche **« Utiliser ce magasin ? »** avec « Magasin n° … » (ou son nom). Touche **« Utiliser ce magasin »**.
-- **Attendu** : Repas n'a rien demandé de ta connexion Leclerc : tu l'as saisie sur la page de Leclerc. L'écran dit « Seul le magasin est transmis : rien de votre compte Leclerc ne quitte cette page. » ; « Annuler » est plus discret.
+- **Attendu** : Repas n'a rien demandé de ta connexion Leclerc : tu l'as saisie sur la page de Leclerc. L'écran ne dit que « Utiliser ce magasin ? » avec deux boutons, « Utiliser ce magasin » et « Annuler » (plus discret) ; ce qui est transmis est écrit sur la page « Conditions d'utilisation du drive » : « Rien d'autre de ton compte Leclerc ne quitte la page. »
 - **Si ça diffère** : une page « version mobile » (le nom du site commence par `m-`) ou « Page non prise en charge » : menu du drive (**⋮** en bas à droite) → « Se déconnecter de Leclerc », puis recommence (runbook § 1). « L'agent n'est pas prêt sur cette page » : attends la fin du chargement de la page. Aucun message de l'agent : il n'apparaît que sur une page de magasin ; fais d'abord une recherche (par exemple « farine ») pour y être. S'il n'apparaît toujours pas, la page n'a pas l'adresse attendue (`/magasin-<id>-<id>`) : arrête-toi, note-le (sans l'adresse) et touche le bouton retour du téléphone pour annuler la lecture (« Abandonner la lecture du magasin »). Un message « Lecture du magasin interrompue » à la réouverture de l'application se règle par « Reprendre » ou « Abandonner ».
 
 ### 4.3 Le magasin est enregistré
 
 - **But** : vérifier que Repas a retenu le magasin sans autre geste.
-- **Geste** : aucun : tu reviens dans Repas, qui a enregistré le magasin tout seul. Facultatif : donne un nom au magasin (« Nom de votre magasin »), sous « Saisir l'adresse à la main ».
-- **Attendu** : « Magasin …xyz enregistré. » (les trois derniers chiffres de **ton** magasin) ; la rubrique « Votre magasin » montre « Magasin …xyz » avec le bouton « Changer de magasin ». Si un **autre** magasin était déjà enregistré, une fenêtre « Utiliser le magasin …xyz ? » prévient « Ce n'est pas votre magasin actuel. Les produits habituels de l'ancien magasin ne seront plus proposés. Vous les choisirez de nouveau. » : « Changer de magasin » ou « Garder l'ancien » (le seul cas à deux gestes, voulu).
-- **Si ça diffère** : « Repas n'a pas pu utiliser ce magasin. Rien n'est enregistré. Réessayez, ou saisissez l'adresse à la main. » : l'adresse lue n'a pas la forme `https://….leclercdrive.fr/magasin-<chiffres>-<chiffres>` ; ne la corrige pas à la main et dis-le à l'assistant (écart de contrat à corriger). Les autres erreurs de lecture suivent le même format (ce qui s'est passé, « Rien n'est enregistré. », que faire). Si tu vois toujours « Aucun magasin enregistré. » : le magasin n'a pas été enregistré, c'est un défaut ; note-le.
+- **Geste** : aucun : tu reviens dans Repas, qui a enregistré le magasin tout seul. Facultatif : donne un nom au magasin (« Nom de ton magasin »), sous « Saisir l'adresse à la main ».
+- **Attendu** : « Magasin …xyz enregistré. » (les trois derniers chiffres de **ton** magasin) ; la rubrique « Ton magasin » montre « Magasin …xyz » avec le bouton « Changer de magasin ». Si un **autre** magasin était déjà enregistré, une fenêtre « Utiliser le magasin …xyz ? » prévient « Ce n'est pas ton magasin actuel. Les produits habituels de l'ancien magasin ne seront plus proposés. Tu les choisiras de nouveau. » : « Changer de magasin » ou « Garder l'ancien » (le seul cas à deux gestes, voulu).
+- **Si ça diffère** : « Repas n'a pas pu utiliser ce magasin. Rien n'est enregistré. Réessaie, ou saisis l'adresse à la main. » : l'adresse lue n'a pas la forme `https://….leclercdrive.fr/magasin-<chiffres>-<chiffres>` ; ne la corrige pas à la main et dis-le à l'assistant (écart de contrat à corriger). Les autres erreurs de lecture suivent le même format (ce qui s'est passé, « Rien n'est enregistré. », que faire). Si tu vois toujours « Aucun magasin enregistré. » : le magasin n'a pas été enregistré, c'est un défaut ; note-le.
 
 > *Mesure à noter* : la lecture du magasin a-t-elle marché du premier coup ? Combien de touches et de temps (de « Lire mon magasin » à « Magasin … enregistré ») ? Objectif : 2 touches (« Lire mon magasin », « Utiliser ce magasin »).
 
@@ -173,7 +173,7 @@ L'application « Repas » est **toute** l'application Repas (recettes, listes, d
 - **But** : avoir de quoi tester les cas utiles avec peu d'articles.
 - **Geste** : dans Repas, crée une liste (ou garde ta liste en cours) de **6 articles que tu achètes vraiment au drive**, de préférence : **I1** un poids (farine, sucre…), **I2** un volume (lait, huile…), **I3** un compté à l'unité (œufs…), **I4** un paquet ou une boîte (pâtes, conserve…), **I5** un frais plus difficile à trouver (un légume), **I6** un assaisonnement que tu as toujours (sel, poivre). Note le nom de ces 6 ingrédients pour la suite (ces noms ne sont pas des données sensibles, tu peux les citer à l'assistant).
 - **Attendu** : la liste est « En cours », avec ses 6 articles et un bouton « Envoyer au drive ». Comme le drive est allumé et le magasin enregistré, un bloc « Estimation du coût » peut déjà s'afficher, réduit à une phrase : « Pas encore de prix connu. » (ni compteur, ni avertissement, ni bouton de détail) : c'est normal.
-- **Si ça diffère** : pas de bouton « Envoyer au drive » alors que la liste est « En cours » et non vide : l'interrupteur est coupé (partie 3). Le bouton mène aux réglages avec « Choisissez d'abord votre magasin… » : le magasin n'est pas enregistré (partie 4).
+- **Si ça diffère** : pas de bouton « Envoyer au drive » alors que la liste est « En cours » et non vide : l'interrupteur est coupé (partie 3). Le bouton mène aux réglages avec « Choisis d'abord ton magasin… » : le magasin n'est pas enregistré (partie 4).
 
 ### 5.2 Noter le panier Leclerc
 
@@ -189,9 +189,9 @@ Au premier envoi, Repas ne connaît encore **aucun** de tes produits : toutes le
 ### 6.1 Envoyer la liste
 
 - **But** : verrouiller la liste et préparer le plan.
-- **Geste** : sur la liste, touche « Envoyer au drive ». La fenêtre dit « Envoyer la liste au drive ? La liste ne sera plus modifiable. Vous pourrez la rouvrir. » : touche « Envoyer au drive ».
-- **Attendu** : l'écran « Votre liste est prête pour le drive » s'ouvre (« Magasin …xyz »). Une phrase de synthèse dit « 6 articles : tous sont à choisir sur Leclerc. » (les comptes varient avec la liste). Le bouton « Ouvrir le drive » est visible sans faire défiler ; la liste des articles est repliée sous « Voir les articles » (ouverte jusqu'à 6 articles : chaque ligne dit « À acheter : … » et « Nouveau : vous choisirez le produit sur Leclerc. »). En dessous, l'estimation : « Pas encore de prix connu. ».
-- **Si ça diffère** : « Choisissez votre magasin » avec un bouton « Choisir mon magasin » : le magasin n'est pas enregistré, touche ce bouton (partie 4), puis reviens à l'envoi. « Seule une liste en cours peut être envoyée » : active la liste (« Reprendre cette liste »). « La liste est vide » : ajoute un article. La liste est maintenant verrouillée : c'est voulu (on le vérifie à l'étape 9.3).
+- **Geste** : sur la liste, touche « Envoyer au drive ». La fenêtre dit « Envoyer la liste au drive ? La liste ne sera plus modifiable. Tu pourras la rouvrir. » : touche « Envoyer au drive ».
+- **Attendu** : l'écran « Ta liste est prête pour le drive » s'ouvre (« Magasin …xyz »). Une phrase de synthèse dit « 6 articles : tous sont à choisir sur Leclerc. » (les comptes varient avec la liste). Le bouton « Ouvrir le drive » est visible sans faire défiler ; la liste des articles est repliée sous « Voir les articles » (ouverte jusqu'à 6 articles : chaque ligne dit « À acheter : … » et « Nouveau : tu choisiras le produit sur Leclerc. »). En dessous, l'estimation : « Pas encore de prix connu. ».
+- **Si ça diffère** : « Choisis ton magasin » avec un bouton « Choisir mon magasin » : le magasin n'est pas enregistré, touche ce bouton (partie 4), puis reviens à l'envoi. « Seule une liste en cours peut être envoyée » : active la liste (« Reprendre cette liste »). « La liste est vide » : ajoute un article. La liste est maintenant verrouillée : c'est voulu (on le vérifie à l'étape 9.3).
 
 ### 6.2 Passer une ligne dès maintenant
 
@@ -202,24 +202,24 @@ Au premier envoi, Repas ne connaît encore **aucun** de tes produits : toutes le
 
 ### 6.3 Ouvrir le drive
 
-> **Constat de la recette du 2026-10-18** : « Ouvrir le drive » ouvre `https://www.leclercdrive.fr/`, qui affiche l'accueil de ton magasin avec « Commencer mes courses » ; depuis DRV-625 l'agent le suit tout seul (« Ouverture de votre magasin… ») ; s'il ne le peut pas (lien absent, défi anti-robot), un bandeau te dit « Touchez « Commencer mes courses ». », puis l'agent démarre sur la page de ton magasin. L'adresse de la racine du serveur du magasin et `/magasin-N-N/` sont des pages 404 (voir `hypotheses-site-reel.md` § 8).
+> **Constat de la recette du 2026-10-18** : « Ouvrir le drive » ouvre `https://www.leclercdrive.fr/`, qui affiche l'accueil de ton magasin avec « Commencer mes courses » ; depuis DRV-625 l'agent le suit tout seul (« Ouverture de ton magasin… ») ; s'il ne le peut pas (lien absent, défi anti-robot), un bandeau te dit « Touche « Commencer mes courses ». », puis l'agent démarre sur la page de ton magasin. L'adresse de la racine du serveur du magasin et `/magasin-N-N/` sont des pages 404 (voir `hypotheses-site-reel.md` § 8).
 
 - **But** : lancer l'envoi par l'agent.
-- **Geste** : touche « Ouvrir le drive ». L'écran du drive Leclerc s'ouvre ; l'agent affiche « Prêt à remplir votre panier » avec la même phrase de synthèse que Repas (« 6 articles : 5 sont à choisir sur Leclerc, 1 ne sera pas mis au panier. », sans compteur à zéro), puis « Voir la liste » et deux boutons (« Commencer » et « Annuler l'envoi »). Touche « Commencer ». *(Si l'agent affiche d'abord le bandeau, touche « Commencer mes courses » sur la page de Leclerc.)* *Pendant tout l'envoi, « Gardez l'application ouverte. » : ne la quitte pas ; l'écran reste allumé.*
+- **Geste** : touche « Ouvrir le drive ». L'écran du drive Leclerc s'ouvre ; l'agent affiche « Prêt à remplir ton panier » avec la même phrase de synthèse que Repas (« 6 articles : 5 sont à choisir sur Leclerc, 1 ne sera pas mis au panier. », sans compteur à zéro), puis « Voir la liste » et deux boutons (« Commencer » et « Annuler l'envoi »). Touche « Commencer ». *(Si l'agent affiche d'abord le bandeau, touche « Commencer mes courses » sur la page de Leclerc.)* *Pendant tout l'envoi, « Garde l'application ouverte. » : ne la quitte pas ; l'écran reste allumé.*
 - **Attendu** : rien ne part avant « Commencer ». Pas de phase A (aucun produit connu) : l'agent passe directement au premier choix.
-- **Si ça diffère** : « Ouvrez d'abord Repas » : l'agent n'a pas reçu le plan ; reviens dans Repas et refais « Ouvrir le drive ». « Ce n'est pas le bon magasin » (`STORE_MISMATCH`) : le magasin ouvert n'est pas celui des réglages ; dans l'application, change de magasin sur le site ou dans les réglages. « Vous n'êtes pas connecté » : connecte-toi à Leclerc, puis relance l'envoi.
+- **Si ça diffère** : « Ouvre d'abord Repas » : l'agent n'a pas reçu le plan ; reviens dans Repas et refais « Ouvrir le drive ». « Ce n'est pas le bon magasin » (`STORE_MISMATCH`) : le magasin ouvert n'est pas celui des réglages ; dans l'application, change de magasin sur le site ou dans les réglages. « Tu n'es pas connecté » : connecte-toi à Leclerc, puis relance l'envoi.
 
 ### 6.4 Choisir les produits (phase B)
 
 - **But** : mémoriser tes produits.
-- **Geste** : l'agent affiche, article après article, la liste des produits proposés, sous le nom de l'article et sa place dans la série (« … (2 sur 5) » ; rien quand il ne reste qu'un article), avec « Il vous faut : … ». La taille d'un produit n'est écrite qu'une fois. Pour chaque article :
-  - **I1 et I2** : touche « Choisir » sur le bon produit. L'agent dit combien de produits il faut (par exemple « 500 g par produit : 2 produits. », sous « Il vous faut : 800 g. ») et le met au panier. Comme Repas ne connaissait aucun produit pour cet article, il devient ton **produit habituel** sans te poser de question. *Note* si le bon produit était dans les trois premiers de la liste (mesure ci-dessous).
+- **Geste** : l'agent affiche, article après article, la liste des produits proposés, sous le nom de l'article et sa place dans la série (« … (2 sur 5) » ; rien quand il ne reste qu'un article), avec « Il te faut : … ». La taille d'un produit n'est écrite qu'une fois. Pour chaque article :
+  - **I1 et I2** : touche « Choisir » sur le bon produit. L'agent dit combien de produits il faut (par exemple « 500 g par produit : 2 produits. », sous « Il te faut : 800 g. ») et le met au panier. Comme Repas ne connaissait aucun produit pour cet article, il devient ton **produit habituel** sans te poser de question. *Note* si le bon produit était dans les trois premiers de la liste (mesure ci-dessous).
   - **I4** : touche « Pas cette fois ».
   - **I5** : touche « Pas cette fois » (même si le produit existe : on veut une couverture faible pour l'étape 6.7).
   - **I6** : touche « J'en ai toujours » (Repas ne mettra plus ce produit au panier et ne le redemandera plus).
-  - Si l'agent demande « Vérifiez la quantité » (« Combien de … pour … ? », avec « Il vous faut : 200 g. »), le « 1 » du champ est déjà sélectionné : tape le nombre voulu (de 1 à 99, taper 4 donne 4, pas 14) et touche « Valider », ou « Pas cette fois ».
+  - Si l'agent demande « Vérifie la quantité » (« Combien de … pour … ? », avec « Il te faut : 200 g. »), le « 1 » du champ est déjà sélectionné : tape le nombre voulu (de 1 à 99, taper 4 donne 4, pas 14) et touche « Valider », ou « Pas cette fois ».
 - **Attendu** : à chaque choix, le produit est mis au panier **avec la bonne quantité**. Un seul bouton principal par écran : « Choisir » ; « Pas cette fois » et « J'en ai toujours » sont plus discrets, « Annuler l'envoi » est un lien tout en bas. Tant qu'il reste plus d'un article, un bouton « Passer ces n articles » les accompagne (n compte l'article affiché) : **ne le touche pas ici**, il passerait I6 ; il s'essaie à l'étape 7.6. L'écran de progression avance ; l'écran reste allumé ; il y a des pauses (environ une seconde) entre les gestes.
-- **Si ça diffère** : « Leclerc n'a pas pu mettre ce produit au panier. Choisissez-en un autre. » : choisis-en un autre. « Aucun produit trouvé pour … » : écris un autre mot dans « Chercher autre chose » et touche « Chercher ». « Leclerc a ralenti les demandes » (`BLOCKED`) : **arrête-toi** et va à la partie 14, ne relance pas. « Le site a changé » (`CONTRACT_CHANGED`) : arrête-toi et va à la partie 14.
+- **Si ça diffère** : « Leclerc n'a pas pu mettre ce produit au panier. Choisis-en un autre. » : choisis-en un autre. « Aucun produit trouvé pour … » : écris un autre mot dans « Chercher autre chose » et touche « Chercher ». « Leclerc a ralenti les demandes » (`BLOCKED`) : **arrête-toi** et va à la partie 14, ne relance pas. « Le site a changé » (`CONTRACT_CHANGED`) : arrête-toi et va à la partie 14.
 
 > *Mesure à noter* : produits trouvés du premier coup = pour I1 et I2 (et I5 si tu l'avais choisi), combien avaient le bon produit parmi les trois premiers proposés, sans « Chercher autre chose » ? Touches du choix des 5 articles : 5 (une par article), c'est le minimum quand rien n'est connu.
 
@@ -234,8 +234,8 @@ Au premier envoi, Repas ne connaît encore **aucun** de tes produits : toutes le
 
 - **But** : vérifier que Repas a retenu tes choix.
 - **Geste** : lis l'écran « Récapitulatif » sans rien toucher.
-- **Attendu** : le titre « Le panier est rempli » ; une phrase sur ce qui est sauf et ce qui reste à faire ; des compteurs cohérents avec l'agent, sans aucun zéro (**Choisis sur Leclerc : 2 · J'en ai toujours : 1 · Pas cette fois : 3**) ; dans « Détails » (replié), le détail par ligne (« Choisi sur Leclerc, produit habituel : Repas s'en souvient. », « J'en ai toujours : Repas s'en souvient. », « Pas cette fois. ») ; « Vos choix sont enregistrés pour les prochains envois. » (écrit seulement si au moins un choix a été enregistré : produit habituel, « Ne plus proposer » ou « J'en ai toujours » ; des prix relus seuls ne la font pas apparaître) ; **Un seul bouton principal** : « Finaliser sur Leclerc » ; en liens discrets : « Terminer la liste », « Rouvrir la liste » (et « Reprendre l'envoi » si l'envoi n'est pas terminé).
-- **Si ça diffère** : « Vos choix n'ont pas pu être enregistrés » : touche « Réessayer l'enregistrement » une fois. « Ce récapitulatif ne correspond pas à votre dernier envoi » : il est ignoré, rien n'est enregistré ; ouvre la liste et reprends l'envoi. « Aucun récapitulatif à afficher » : la page a été rechargée avant l'enregistrement ; touche « Ouvrir mes listes », ouvre la liste, « Reprendre l'envoi ».
+- **Attendu** : le titre « Le panier est rempli » ; une phrase sur ce qui est sauf et ce qui reste à faire ; des compteurs cohérents avec l'agent, sans aucun zéro (**Choisis sur Leclerc : 2 · J'en ai toujours : 1 · Pas cette fois : 3**) ; dans « Détails » (replié), le détail par ligne (« Choisi sur Leclerc, produit habituel : Repas s'en souvient. », « J'en ai toujours : Repas s'en souvient. », « Pas cette fois. ») ; « Tes choix sont enregistrés pour les prochains envois. » (écrit seulement si au moins un choix a été enregistré : produit habituel, « Ne plus proposer » ou « J'en ai toujours » ; des prix relus seuls ne la font pas apparaître) ; **Un seul bouton principal** : « Finaliser sur Leclerc » ; en liens discrets : « Terminer la liste », « Rouvrir la liste » (et « Reprendre l'envoi » si l'envoi n'est pas terminé).
+- **Si ça diffère** : « Tes choix n'ont pas pu être enregistrés » : touche « Réessayer l'enregistrement » une fois. « Ce récapitulatif ne correspond pas à ton dernier envoi » : il est ignoré, rien n'est enregistré ; ouvre la liste et reprends l'envoi. « Aucun récapitulatif à afficher » : la page a été rechargée avant l'enregistrement ; touche « Ouvrir mes listes », ouvre la liste, « Reprendre l'envoi ».
 
 ### 6.7 L'estimation après le premier envoi : couverture faible
 
@@ -260,7 +260,7 @@ On rejoue la **même liste** : l'envoi se rejoue sans danger, car l'agent fixe l
 ### 7.2 Changer un produit connu
 
 - **But** : essayer « Choisir un autre produit » et la question du rôle du nouveau produit.
-- **Geste** : sur la ligne **I2**, touche « Choisir un autre produit ». Elle devient « Vous choisirez un autre produit sur Leclerc, à la place de : … ».
+- **Geste** : sur la ligne **I2**, touche « Choisir un autre produit ». Elle devient « Tu choisiras un autre produit sur Leclerc, à la place de : … ».
 - **Attendu** : la phrase de synthèse passe à **1 article déjà choisi, 4 à choisir sur Leclerc**.
 - **Si ça diffère** : touche de nouveau pour annuler le changement.
 
@@ -269,13 +269,13 @@ On rejoue la **même liste** : l'envoi se rejoue sans danger, car l'agent fixe l
 - **But** : vérifier que les produits connus sont mis au panier sans rien demander.
 - **Geste** : touche « Ouvrir le drive », puis « Commencer ».
 - **Attendu** : l'écran de progression montre « I1 : ajouté » sans question. Le panier garde **la même quantité** qu'au premier envoi (pas de doublon). Le produit habituel est pris tant qu'il est disponible.
-- **Si ça diffère** : « I1 : plus disponible, à choisir ensuite » : normal si le produit n'est plus en stock ; l'agent passera au produit de remplacement s'il y en a un, sinon il te le fait choisir en phase B. « Vérifiez la quantité » : la quantité n'a pas pu être calculée (contenu inconnu) ; entre-la. Un doublon de quantité (le double du premier envoi) : **arrête-toi** et dis-le à l'assistant, c'est un défaut grave.
+- **Si ça diffère** : « I1 : plus disponible, à choisir ensuite » : normal si le produit n'est plus en stock ; l'agent passera au produit de remplacement s'il y en a un, sinon il te le fait choisir en phase B. « Vérifie la quantité » : la quantité n'a pas pu être calculée (contenu inconnu) ; entre-la. Un doublon de quantité (le double du premier envoi) : **arrête-toi** et dis-le à l'assistant, c'est un défaut grave.
 
 ### 7.4 Phase B : un autre produit pour un article connu
 
 - **But** : essayer la question « Toujours prendre ce produit ? » et la recherche libre.
 - **Geste** :
-  - **I2** : touche « Choisir » sur **un autre produit** que le premier. L'agent demande « Toujours prendre ce produit ? » (« Vous avez choisi « … » pour … »). Touche **« Toujours prendre celui-ci »** (premier bouton, déjà mis en avant). « Cette fois seulement » ne change rien dans la mémoire de Repas ; « Revenir à la liste » (lien discret) renvoie au choix sans rien mettre au panier.
+  - **I2** : touche « Choisir » sur **un autre produit** que le premier. L'agent demande « Toujours prendre ce produit ? » (« Tu as choisi « … » pour … »). Touche **« Toujours prendre celui-ci »** (premier bouton, déjà mis en avant). « Cette fois seulement » ne change rien dans la mémoire de Repas ; « Revenir à la liste » (lien discret) renvoie au choix sans rien mettre au panier.
   - **I3** : écris un mot (par exemple « œufs plein air ») dans « Chercher autre chose », touche « Chercher », puis « Choisir » sur un produit.
   - **I4** : touche « Choisir » sur un produit de la liste.
   - **I5** : touche « Pas cette fois ». C'est le dernier article : le bouton « Passer ces n articles » n'est pas affiché.
@@ -286,7 +286,7 @@ On rejoue la **même liste** : l'envoi se rejoue sans danger, car l'agent fixe l
 
 - **But** : lire le résultat.
 - **Geste** : aucun si rien n'est à lire (retour automatique) ; sinon « Retourner dans Repas ».
-- **Attendu** : agent proche de **Ajoutés au panier : 1 · Choisis sur Leclerc : 3 · J'en ai toujours : 1 · Pas cette fois : 1** (aucun compteur à zéro). Dans Repas, « Récapitulatif », dans « Détails » : la ligne I2 dit « Choisi sur Leclerc, produit habituel : Repas s'en souvient. » (avec « Cette fois seulement » à l'étape 7.4, elle dirait « Choisi sur Leclerc pour cette fois seulement. ») ; I1 figure parmi les produits ajoutés (avec « × quantité ») ; « Vos choix sont enregistrés pour les prochains envois. ».
+- **Attendu** : agent proche de **Ajoutés au panier : 1 · Choisis sur Leclerc : 3 · J'en ai toujours : 1 · Pas cette fois : 1** (aucun compteur à zéro). Dans Repas, « Récapitulatif », dans « Détails » : la ligne I2 dit « Choisi sur Leclerc, produit habituel : Repas s'en souvient. » (avec « Cette fois seulement » à l'étape 7.4, elle dirait « Choisi sur Leclerc pour cette fois seulement. ») ; I1 figure parmi les produits ajoutés (avec « × quantité ») ; « Tes choix sont enregistrés pour les prochains envois. ».
 - **Si ça diffère** : comme à l'étape 6.5 et 6.6.
 
 > *Mesure à noter* : temps du deuxième envoi (de « Ouvrir le drive » à « Retourner dans Repas »), dont le temps de la phase A seule ; nombre de lignes où l'agent a dû demander la quantité.
@@ -431,16 +431,16 @@ Ces deux contrôles servent aussi plus tard, quand Leclerc change son site (runb
 ### 13.1 Abandonner un envoi
 
 - **Geste** : liste « Envoyée » (renvoie-la si besoin) → « Reprendre l'envoi » → « Ouvrir le drive » → « Commencer ». Quand l'agent te demande de choisir un produit, touche **⋮** (menu du drive) → « Abandonner l'envoi » → « Abandonner ».
-- **Attendu** : tu reviens dans Repas, « Vous avez arrêté l'envoi » : ce qui était déjà dans le panier y reste, avec le bouton « Reprendre l'envoi » ; la liste reste « Envoyée ».
+- **Attendu** : tu reviens dans Repas, « Tu as arrêté l'envoi » : ce qui était déjà dans le panier y reste, avec le bouton « Reprendre l'envoi » ; la liste reste « Envoyée ».
 
 ### 13.2 Fermer l'application en plein envoi
 
 - **Geste** : relance un envoi comme ci-dessus ; à un choix de produit, ferme complètement l'application (liste des applications récentes, balaie-la). Rouvre-la.
-- **Attendu** : une fenêtre « Envoi interrompu » propose « Reprendre » ou « Abandonner ». « Reprendre » rouvre le drive ; l'agent propose « Reprendre là où vous en étiez ? » ; « Reprendre » ne refait pas les lignes déjà faites.
+- **Attendu** : une fenêtre « Envoi interrompu » propose « Reprendre » ou « Abandonner ». « Reprendre » rouvre le drive ; l'agent propose « Reprendre là où tu en étais ? » ; « Reprendre » ne refait pas les lignes déjà faites.
 
 ### 13.3 Couper le réseau
 
-- **Geste** : relance un envoi jusqu'à l'écran « Prêt à remplir votre panier » de l'agent. **Avant** de toucher « Commencer », active le **mode avion** ; touche « Commencer » ; attends le message ; coupe le mode avion.
+- **Geste** : relance un envoi jusqu'à l'écran « Prêt à remplir ton panier » de l'agent. **Avant** de toucher « Commencer », active le **mode avion** ; touche « Commencer » ; attends le message ; coupe le mode avion.
 - **Attendu** : l'agent s'arrête sur « Le site ne répond pas » (`NETWORK`, après une seule reprise) ; dans Repas, le récapitulatif dit « Le panier est rempli en partie » ou « L'envoi s'est arrêté », ce qui était déjà au panier y reste et « Reprendre l'envoi » est proposé ; ce bouton, utilisé **une fois**, termine le travail.
 
 ## 14. Si Leclerc bloque (DataDome) ou a changé
@@ -470,7 +470,7 @@ Un blocage est **possible** : DataDome peut signaler le compte ou l'adresse de l
 La recette est **réussie** si, et seulement si, **tout** ceci est vrai. Sinon elle est « non signée » avec la liste de ce qui manque.
 
 1. Aucune commande n'a été validée ni payée ; aucun identifiant ou cookie n'a transité par Repas ou le chat.
-2. Parties 6 et 7 : les deux envois vont au bout sans erreur bloquante ; les choix sont enregistrés (« Vos choix sont enregistrés pour les prochains envois ») et réapparaissent dans « Mes produits ».
+2. Parties 6 et 7 : les deux envois vont au bout sans erreur bloquante ; les choix sont enregistrés (« Tes choix sont enregistrés pour les prochains envois ») et réapparaissent dans « Mes produits ».
 3. La phase A du deuxième envoi met au panier les produits connus **sans rien demander et sans doubler les quantités**.
 4. Le panier Leclerc (partie 8) correspond au récapitulatif de Repas, ligne par ligne, aux arrondis près.
 5. L'estimation (étapes 6.7 et 9.2) est affichée, sans avertissement (DRV-628) et du même ordre de grandeur que le panier.
@@ -492,7 +492,7 @@ Tu les remplis en route ; l'assistant les recopie dans les tickets du chantier (
 | Produits trouvés du premier coup (bon produit dans les 3 premiers, sans recherche libre) | / | / | |
 | Lignes passées / « j'en ai toujours » | | | |
 | Temps de « Ouvrir le drive » à « Retourner dans Repas » | | | dont phase A seule : |
-| Lignes où la quantité a été demandée (« Vérifiez la quantité ») | | | |
+| Lignes où la quantité a été demandée (« Vérifie la quantité ») | | | |
 | Produits dont le contenu net n'a pas pu être lu | | | |
 | Échecs (codes `BLOCKED`, `NETWORK`, `CONTRACT_CHANGED`, autres) | | | |
 | Articles dont le prix est connu (bloc « Estimation du coût », « n articles sur m estimés ») | | | |

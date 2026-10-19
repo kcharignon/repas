@@ -66,16 +66,18 @@ Ordre conseillé : 621 d'abord (aucun risque, tout le reste en dépend pour les 
 
 ## 6. État après DRV-621 à 624 (2026-10-19)
 
+*Les textes cités dans les constats et les comptes rendus de cette section et de la suivante sont ceux d'alors, au vouvoiement ; la colonne « État » du tableau suit les écrans actuels. DRV-627 (2026-10-19) a tout passé au tutoiement, sans changer un mot du glossaire (voir « Après DRV-627 » plus bas).*
+
 Les quatre tickets sont fusionnés dans le front (`main`, agent 0.19.0 ; 0.20.0 avec DRV-626, voir plus bas) et pas encore publiés : le front web (v0.5.2) avant l'application (android-v0.1.5). Les constats F1 et F4 à F12 sont traités (F13 pour les libellés), **F2, F3 et F16 sont traités par DRV-625** (fait le 2026-10-19, voir plus bas) ; F14 et F15 sont au backlog.
 
 | Constat | État | Par |
 |---|---|---|
 | F1 deux boutons pour le magasin | fait : « Utiliser ce magasin », une seule fois | DRV-623 |
-| F4, F5, F12 mots et voix | fait : vouvoiement partout, glossaire gardé par `voice-and-glossary.spec.ts`, « Moi » | DRV-621 |
+| F4, F5, F12 mots et voix | fait : une seule voix (le vouvoiement de DRV-621, remplacé par le tutoiement de DRV-627 le 2026-10-19), glossaire gardé par `voice-and-glossary.spec.ts`, « Moi » | DRV-621, DRV-627 |
 | F6, F9, F10 récapitulatif, erreurs, textes longs | fait : titre = résultat, compteurs non nuls, erreurs en trois phrases, code sous « Détails » | DRV-622 |
 | F7 « Que faites-vous de ce produit ? » | fait : « Toujours prendre ce produit ? », deux boutons | DRV-624 |
 | F8 aucun moyen de passer les suivants | fait : « Passer ces n articles » (nommé « Passer les n suivants » par DRV-624 ; 3 touches pour 4 nouveaux articles, 2 si la confirmation ne s'applique pas) | DRV-624, DRV-626 |
-| F11 magasin manquant = message | fait : « Choisissez votre magasin », bouton « Choisir mon magasin » | DRV-622, DRV-623 |
+| F11 magasin manquant = message | fait : « Choisis ton magasin », bouton « Choisir mon magasin » | DRV-622, DRV-623, DRV-627 |
 | F13 menu de l'application | fait pour les libellés ; « Diagnostic de l'agent » reste (voir DRV-621) | DRV-621 |
 
 **Touches du parcours heureux après ces tickets** (premier envoi, 6 articles dont 4 nouveaux ; recompte de la revue du § 7 : 11 touches = 7 fixes + 4 choix) : les touches fixes ne changent pas avant DRV-625 ; les nouveaux articles passent de « 4 à 8 » à **« 3 à 4 »** (choisir les 4 : 4 ; choisir le premier et passer les 3 suivants : 3 ; une seule réponse à « Toujours prendre ce produit ? » au lieu de trois quand on remplace un produit retenu). Premier enregistrement du magasin : 2 touches au lieu de 3. Deuxième envoi, tout connu : toujours 7 (objectif 5 par DRV-625).
@@ -85,6 +87,8 @@ Les quatre tickets sont fusionnés dans le front (`main`, agent 0.19.0 ; 0.20.0 
 À relever à la prochaine recette réelle (`recette.md`, 6.4, 7.4 et 7.6) : le choix du produit du premier coup, le nombre de touches mesuré, et si « Passer ces n articles » est compris.
 
 **Après DRV-626** (front `main` e32d9ce, agent 0.20.0, toujours non publié) : les constats F17 à F27 de la revue (§ 7) sont traités, sans touche ajoutée. Touches mesurées par l'agent d'implémentation : premier envoi de 4 nouveaux articles 3 / 3 (inchangé) ; deuxième envoi inchangé ; « Vérifiez la quantité » une suppression de moins (le « 1 » est sélectionné) ; réglages du drive un défilement de moins ; « Aucun récapitulatif à afficher » : de l'impasse à 1 touche vers « Mes listes ». Le recompte global reste celui de DRV-624 (11 touches au premier envoi avec 4 nouveaux articles, 10 avec « Passer ces n articles », 7 au deuxième) jusqu'à DRV-625.
+
+**Après DRV-627** (front `main` `97eb0e0`, PR #150, agent 0.23.0, fusionné le 2026-10-19, pas encore publié) : toute la voix de Repas est au tutoiement (web, agent, application Android, aide, conditions d'utilisation, erreurs). Ni le glossaire ni la structure des écrans ne changent (hors portée du ticket). Le test de voix interdit « vous », « votre », « vos » et les impératifs en « -ez ». Les constats F4 et F5 (deux voix) restent clos. Reste au vouvoiement : les deux e-mails et un message de connexion du back ([DRV-630](tickets/DRV-630-emails-du-back-au-tutoiement.md)).
 
 ## 7. Revue de parcours sur captures (2026-10-19)
 

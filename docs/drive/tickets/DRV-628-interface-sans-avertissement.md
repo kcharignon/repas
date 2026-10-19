@@ -30,7 +30,7 @@ Règle qui en sort : **une phrase ne reste à l'écran que si elle répond à «
 
 ## Hors portée
 
-Le tutoiement (DRV-627 : les textes restent au vouvoiement en attendant, y compris ceux que ce ticket réécrit) ; les gestes de DRV-625 ; le back ; l'ajout d'une acceptation obligatoire des conditions.
+Le tutoiement (DRV-627, fait ensuite : à l'époque de ce ticket, les textes restaient au vouvoiement, y compris ceux qu'il réécrit) ; les gestes de DRV-625 ; le back ; l'ajout d'une acceptation obligatoire des conditions.
 
 ## Critères d'acceptation
 

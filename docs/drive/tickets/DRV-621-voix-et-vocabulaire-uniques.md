@@ -4,7 +4,7 @@
 - **Jalon** : M6 Simplicité d'usage (audit du 2026-10-19)
 - **Taille** : M
 - **Dépend de** : — (à lancer quand aucun autre agent ne touche `fr.ts`, `strings.ts` ou `strings.xml`)
-- **Statut** : fait (2026-10-19, repas-front#139)
+- **Statut** : fait (2026-10-19, repas-front#139) ; la voix choisie ici (vouvoiement) a été remplacée le jour même par le tutoiement : [DRV-627](DRV-627-tutoiement.md). Le glossaire et le test qui le garde restent.
 - **Lire d'abord** : [`principes-produit.md`](../principes-produit.md) (§ 3 et § 5 font foi), [`audit-simplicite.md`](../audit-simplicite.md) (F4, F5, F12, F13), skills `repas-po`, `repas-front-dev`, `repas-agent-dev`, `repas-android-dev`, `consignes-agents.md`.
 
 ## Contexte

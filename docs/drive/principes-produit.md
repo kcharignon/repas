@@ -23,9 +23,9 @@ Critère de réussite du chantier : **un proche réussit son premier envoi sans 
 
 ## 3. Règles de texte
 
-- **Tutoiement** (décision de l'utilisateur du 2026-10-19, elle remplace le vouvoiement fixé par DRV-621) : Repas parle à chacun comme à un proche. Le passage se fait par DRV-627 ; **d'ici là les écrans restent au vouvoiement** et les textes nouveaux aussi, pour ne pas mélanger les deux voix. Les documents de développement restent libres.
+- **Tutoiement** (décision de l'utilisateur du 2026-10-19, elle remplace le vouvoiement fixé par DRV-621) : Repas parle à chacun comme à un proche (« tu », « ton », « ouvre »). **Appliqué par DRV-627 (2026-10-19)** à tous les écrans : web, agent, application Android, aide, conditions d'utilisation, erreurs ; tout texte nouveau est au tutoiement, jamais mélangé avec le vouvoiement. Le test `voice-and-glossary.spec.ts` du front interdit « vous », « votre », « vos » et les impératifs en « -ez » (seules les citations exactes de Leclerc peuvent garder la voix de l'enseigne : il n'y en a aucune aujourd'hui). Les e-mails du back restent au vouvoiement jusqu'à [DRV-630](tickets/DRV-630-emails-du-back-au-tutoiement.md). Les documents de développement restent libres.
 - **Phrases courtes** : 15 mots au plus, une idée par phrase, la plus importante d'abord. Un écran tient en un titre, une à deux phrases, un bouton.
-- **Le titre dit ce qui se passe ou ce qu'on attend de l'utilisateur** (« Le panier est rempli », « Choisissez votre magasin »), pas le nom de la fonction (« Retour du drive », « Résultat de l'essai »).
+- **Le titre dit ce qui se passe ou ce qu'on attend de l'utilisateur** (« Le panier est rempli », « Choisis ton magasin »), pas le nom de la fonction (« Retour du drive », « Résultat de l'essai »).
 - **Un bouton est un verbe qui dit ce qu'il fait** : « Ouvrir le drive », « Enregistrer mon magasin ». Pas de « OK », « Valider », « Continuer » seuls quand le verbe précis existe.
 - **Les nombres s'écrivent en chiffres** et s'accordent (« 1 produit », « 3 produits »). Jamais de compteur à zéro dans un récapitulatif : on n'affiche que ce qui existe.
 - **Un mot pour une chose** : voir le glossaire. Une même idée ne change pas de nom d'un écran à l'autre, ni entre l'application, l'agent et l'aide.
@@ -37,7 +37,7 @@ Format : **ce qui s'est passé** (en mots du quotidien), **ce qui est sauf** (le
 
 | Mal | Bien |
 |---|---|
-| « Réponse incomprise. L'application a renvoyé une réponse que Repas ne comprend pas. » | « Le drive n'a pas répondu comme prévu. Rien n'a été perdu. Mettez l'application à jour, puis réessayez. » [Mettre à jour l'application] |
+| « Réponse incomprise. L'application a renvoyé une réponse que Repas ne comprend pas. » | « Le drive n'a pas répondu comme prévu. Rien n'a été perdu. Mets l'application à jour, puis réessaie. » [Mettre à jour l'application] |
 | « Passage arrêté. » | « L'envoi s'est arrêté. Ce qui est déjà au panier y reste. » [Reprendre l'envoi] |
 | « Code : CONTRACT_CHANGED » | (le code n'apparaît que dans « Détails ») |
 
@@ -50,8 +50,8 @@ Quand l'utilisateur ne peut rien faire (Leclerc a changé son site), le texte le
 | L'opération complète | **envoi** (« Envoyer au drive », « Reprendre l'envoi », « liste envoyée ») | passage, plan, plan d'envoi, run, remplissage du panier (sauf « Le panier est rempli » en résultat) |
 | La ligne de la liste (farine) | **article** | ligne, ingrédient (sauf dans les recettes) |
 | Ce qu'on achète chez Leclerc (Farine de blé 1 kg) | **produit** | référence, fiche, SKU |
-| Le panier du site de Leclerc | **panier** (« votre panier Leclerc ») | caddie, cart |
-| Déjà chez soi, toujours | **J'en ai toujours** | Déjà à la maison, Vous en avez déjà, HAVE_AT_HOME |
+| Le panier du site de Leclerc | **panier** (« ton panier Leclerc ») | caddie, cart |
+| Déjà chez soi, toujours | **J'en ai toujours** | Déjà à la maison, Tu en as déjà, HAVE_AT_HOME |
 | Pas pour cet envoi seulement | **Pas cette fois** | Passer cette fois, Ignoré, Passés |
 | Produit retenu pour un article | **produit habituel** ; son remplaçant : **produit de remplacement** | préféré, préférence, primaire, secours, fallback |
 | Garder un produit choisi pour les envois suivants | **Toujours prendre celui-ci** / **Cette fois seulement** (la question : « Toujours prendre ce produit ? ») | Mon nouveau produit habituel, préféré, secours, une seule fois |
@@ -61,7 +61,7 @@ Quand l'utilisateur ne peut rien faire (Leclerc a changé son site), le texte le
 | Le fait que Repas se souvient | **Repas s'en souvient** | mémorisé, persisté, enregistré dans les préférences |
 | Les risques et la vie privée | **Conditions d'utilisation du drive** (une seule page, jamais dans le parcours) | Note de vie privée à l'écran, CGU (à l'écran), avertissement, mise en garde |
 | Écran de fin d'un envoi | **Récapitulatif** | Résumé, Retour du drive, Résultat |
-| Le magasin Leclerc de l'utilisateur | **votre magasin** | point de retrait, drive (pour un magasin), id |
+| Le magasin Leclerc de l'utilisateur | **ton magasin** | point de retrait, drive (pour un magasin), id |
 | Mettre l'appli à jour | **Mettre à jour l'application** | Installer l'application (quand elle l'est déjà) |
 | L'écran du profil et des réglages | **Moi** : le nom de l'onglet, repris tel quel dans le titre de la page et dans tous les textes qui y renvoient (aujourd'hui le titre de la page dit « Mon compte » : à aligner, DRV-621) | Mon compte |
 | Repli sans automatisation | **Chercher à la main** | mode assisté |
@@ -75,7 +75,7 @@ Une PR qui change un écran, un texte ou un enchaînement répond, dans sa descr
 
 1. Quel est le parcours heureux, et **combien de touches** (avant, après) ?
 2. Y a-t-il **une seule décision** par écran, un seul bouton principal ?
-3. Tous les textes respectent-ils la **voix** (vouvoiement jusqu'à DRV-627, puis tutoiement), les **phrases courtes** et le **glossaire** (aucun mot interdit, aucun code visible) ? Aucune mise en garde ni rassurance en série (règle 10) ?
+3. Tous les textes respectent-ils la **voix** (tutoiement, DRV-627), les **phrases courtes** et le **glossaire** (aucun mot interdit, aucun code visible) ? Aucune mise en garde ni rassurance en série (règle 10) ?
 4. Chaque erreur suit-elle le format **en trois phrases** avec une action ?
 5. Le texte tient-il à 360 px de large, sans défilement horizontal, et reste-t-il lisible dans la page de Leclerc en mode ordinateur (agent) ?
 6. La capture de l'écran a-t-elle été **lue** (test visuel Chromium pour le web ; émulateur pour l'agent) ?
