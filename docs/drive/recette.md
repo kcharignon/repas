@@ -41,7 +41,7 @@ Procédure à dérouler **par l'utilisateur, sur son téléphone Android, avec s
 
 **Écarts connus entre ce fichier et le code** (état au 2026-10-19) :
 
-- L'adresse de la page panier de Leclerc n'est pas encore relevée (`BASKET_PATH` du front vide, constat F16 de [`audit-simplicite.md`](audit-simplicite.md), ticket [DRV-625](tickets/DRV-625-entrer-dans-le-magasin-sans-geste.md), fait) : depuis DRV-625, « Finaliser sur Leclerc » ouvre l'accueil du drive **dans l'application**, connecté ; le panier est à une touche (l'icône en haut à droite). Le diagnostic (étape 11.1) donne désormais la forme du lien du panier ; on la relève à l'étape 8.4.
+- La page du panier est relevée (2026-10-19) : `/magasin-N-N-V/detail-panier.aspx`, avec la ville dans le chemin ([`hypotheses-site-reel.md`](hypotheses-site-reel.md) § 10). Depuis DRV-629 (`android-v0.1.8`), « Finaliser sur Leclerc » ouvre directement cette page **dans l'application**, connecté ; il retombe sur l'accueil du drive si le chemin avec ville n'est pas connu. Le diagnostic (étape 11.1) dit si l'application connaît ce chemin.
 - La page de choix du magasin du vrai site a été essayée à la recette réelle (le magasin se lit du premier coup) ; DRV-613 partie 2, DRV-614 et DRV-315 sont livrés.
 - Le scénario d'**essai d'un proche** (seul, sans explication, [`principes-produit.md`](principes-produit.md) § 7) n'a pas encore eu lieu.
 
@@ -202,7 +202,7 @@ Au premier envoi, Repas ne connaît encore **aucun** de tes produits : toutes le
 
 ### 6.3 Ouvrir le drive
 
-> **Constat de la recette du 2026-10-18** : « Ouvrir le drive » ouvre `https://www.leclercdrive.fr/`, qui affiche l'accueil de ton magasin avec « Commencer mes courses » ; depuis DRV-625 l'agent le suit tout seul (« Ouverture de ton magasin… ») ; s'il ne le peut pas (lien absent, défi anti-robot), un bandeau te dit « Touche « Commencer mes courses ». », puis l'agent démarre sur la page de ton magasin. L'adresse de la racine du serveur du magasin et `/magasin-N-N/` sont des pages 404 (voir `hypotheses-site-reel.md` § 8).
+> **Constat de la recette du 2026-10-18** : « Ouvrir le drive » ouvre `https://www.leclercdrive.fr/`, qui affiche l'accueil de ton magasin avec « Commencer mes courses » ; depuis DRV-629 l'agent **clique lui-même ce bouton** (c'est un bouton, pas un lien ; « Ouverture de ton magasin… ») ; s'il ne le peut pas (lien absent, défi anti-robot), un bandeau te dit « Touche « Commencer mes courses ». », puis l'agent démarre sur la page de ton magasin. L'adresse de la racine du serveur du magasin et `/magasin-N-N/` sont des pages 404 (voir `hypotheses-site-reel.md` § 8).
 
 - **But** : lancer l'envoi par l'agent.
 - **Geste** : touche « Ouvrir le drive ». L'écran du drive Leclerc s'ouvre ; l'agent affiche « Prêt à remplir ton panier » avec la même phrase de synthèse que Repas (« 6 articles : 5 sont à choisir sur Leclerc, 1 ne sera pas mis au panier. », sans compteur à zéro), puis « Voir la liste » et deux boutons (« Commencer » et « Annuler l'envoi »). Touche « Commencer ». *(Si l'agent affiche d'abord le bandeau, touche « Commencer mes courses » sur la page de Leclerc.)* *Pendant tout l'envoi, « Garde l'application ouverte. » : ne la quitte pas ; l'écran reste allumé.*
@@ -318,8 +318,8 @@ On rejoue la **même liste** : l'envoi se rejoue sans danger, car l'agent fixe l
 
 - **But** : vérifier que le bouton de Repas mène à Leclerc, sans commander.
 - **Geste** : retourne dans Repas (« Récapitulatif » ou la liste), touche « Finaliser sur Leclerc ». *Tu ne valides rien.*
-- **Attendu** : le **drive s'ouvre dans l'application** (écran du drive, connecté), sur l'accueil du magasin, sans quitter Repas pour le navigateur. Ton panier est celui de ton compte ; touche l'icône du panier en haut à droite pour le voir.
-- **Si ça diffère** : c'est le navigateur qui s'ouvre : l'application est trop ancienne (avant `android-v0.1.7`), mets-la à jour. Une page « introuvable » : note l'adresse **sous forme de forme** (chiffres et ville masqués). Le bouton « Finaliser sur Leclerc » n'est plus là (le résultat du retour n'est gardé que pendant la visite) : ce n'est pas un défaut ; ouvre le drive depuis « Moi ».
+- **Attendu** : le **drive s'ouvre dans l'application**, connecté, **directement sur la page de ton panier** (`…/detail-panier.aspx`), sans quitter Repas pour le navigateur. Tu vois le panier rempli par l'envoi.
+- **Si ça diffère** : l'accueil du drive s'ouvre au lieu du panier : l'application ne connaissait pas encore le chemin de ton magasin (premier envoi sans page de magasin chargée) ou Leclerc a refusé la page ; touche l'icône du panier en haut à droite. C'est le navigateur qui s'ouvre : l'application est trop ancienne (avant `android-v0.1.8`), mets-la à jour. Le bouton « Finaliser sur Leclerc » n'est plus là (le résultat du retour n'est gardé que pendant la visite) : ce n'est pas un défaut ; ouvre le drive depuis « Moi ».
 
 ### 8.4 Noter l'adresse de la page panier (pour le ticket DRV-501)
 

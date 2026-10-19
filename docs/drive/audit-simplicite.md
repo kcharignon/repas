@@ -82,6 +82,8 @@ Les quatre tickets sont fusionnés dans le front (`main`, agent 0.19.0 ; 0.20.0 
 
 **Touches du parcours heureux après ces tickets** (premier envoi, 6 articles dont 4 nouveaux ; recompte de la revue du § 7 : 11 touches = 7 fixes + 4 choix) : les touches fixes ne changent pas avant DRV-625 ; les nouveaux articles passent de « 4 à 8 » à **« 3 à 4 »** (choisir les 4 : 4 ; choisir le premier et passer les 3 suivants : 3 ; une seule réponse à « Toujours prendre ce produit ? » au lieu de trois quand on remplace un produit retenu). Premier enregistrement du magasin : 2 touches au lieu de 3. Deuxième envoi, tout connu : toujours 7 (objectif 5 par DRV-625).
 
+**Après DRV-629** (front `main` `35c3532`, agent 0.24.0, publié dans `v0.5.5` et `android-v0.1.8`) : « Commencer mes courses » est cliqué par l'agent (c'est un bouton sans adresse) et « Finaliser sur Leclerc » ouvre directement la page du panier (`detail-panier.aspx`, ville retenue côté application) ; reste à vérifier sur le vrai site que le clic programmé est accepté.
+
 **Après DRV-625** (front `main` `0cb6437`, agent 0.22.0, publié dans `v0.5.4` et `android-v0.1.7`) : F2 (« Commencer mes courses » suivi par l'agent, repli sur le bandeau court), F3 (retour sans écran de fin) et F16 (« Finaliser sur Leclerc » ouvre le drive dans l'application, connecté) sont traités. **Deuxième envoi, tout connu : 5 touches** (7 avant) : Envoyer au drive, Confirmer, Ouvrir le drive, Commencer, Finaliser. Reste `BASKET_PATH` (page du panier) : les sondes du diagnostic en relèveront la forme.
 
 À relever à la prochaine recette réelle (`recette.md`, 6.4, 7.4 et 7.6) : le choix du produit du premier coup, le nombre de touches mesuré, et si « Passer ces n articles » est compris.
