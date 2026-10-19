@@ -4,7 +4,7 @@
 - **Jalon** : M6 Simplicité d'usage
 - **Taille** : S
 - **Dépend de** : —
-- **Statut** : à faire (constat réel du 2026-10-19, [`hypotheses-site-reel.md`](../hypotheses-site-reel.md) § 11)
+- **Statut** : absorbé par [DRV-644](DRV-644-enregistrer-le-choix-refuse-et-expliquer.md) (PR front #163, fusionnée le 2026-10-19) ; origine : (constat réel du 2026-10-19, [`hypotheses-site-reel.md`](../hypotheses-site-reel.md) § 11)
 - **Lire d'abord** : [`principes-produit.md`](../principes-produit.md) (« pas de compteur à zéro », règle 10), skills `repas-po`, `repas-agent-dev`.
 
 ## Portée

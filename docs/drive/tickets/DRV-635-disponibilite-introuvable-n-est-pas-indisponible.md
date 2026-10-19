@@ -4,7 +4,7 @@
 - **Jalon** : M6 Simplicité d'usage
 - **Taille** : M
 - **Dépend de** : —
-- **Statut** : à faire (constat de l'utilisateur du 2026-10-19 : « certains produits sont affichés comme non disponibles sur Repas mais sont disponibles et cliquables sur le site du drive »)
+- **Statut** : fait (PR front #158, fusionnée le 2026-10-19) ; origine : (constat de l'utilisateur du 2026-10-19 : « certains produits sont affichés comme non disponibles sur Repas mais sont disponibles et cliquables sur le site du drive »)
 - **Lire d'abord** : [`principes-produit.md`](../principes-produit.md) (règles 7 et 10), [`hypotheses-site-reel.md`](../hypotheses-site-reel.md) § 8 et § 12, skills `repas-agent-dev`, `repas-po`.
 
 ## Contexte
@@ -75,3 +75,12 @@ Celle du dépôt front ; agent incrémenté, empreinte recalculée ; **à confir
 ### Piège
 
 Tenter l'ajout d'un produit en rupture est une écriture de plus chez l'enseigne : une seule tentative par produit et par envoi, jamais en rafale ; si le site répond par un défi anti-robot, arrêt comme d'habitude. **À valider sur le vrai site** par le PO avec le produit cité (P'tit Déli chocolat noisette 450 g).
+
+## Réalisation (PR front #158, fusionnée le 2026-10-19)
+
+- Un produit habituel non mis au panier a l'une de trois raisons, dans l'état de l'agent (le protocole ne change pas, la ligne reste `UNAVAILABLE`) : `OUT_OF_STOCK`, `NOT_FOUND` (aucune recherche ne le retrouve : plus jamais « indisponible »), `CART_REFUSED`. Seule la première dit « ne sont plus disponibles ».
+- Le panier tranche : un produit à étiquette de rupture est tenté une fois par envoi (phase A) ; en phase B, « Choisir » reste actif pour un produit « Plus en stock ».
+- Formes de requête d'un produit habituel (`productSearchForms`) : libellé tel quel, sans accents, sans signe, sans parenthèses ni mots de liaison ni quantités, puis les deux mots les plus longs ; 5 requêtes au plus, en série. Texte « Je ne retrouve pas « … » : cherche-le ou choisis-en un autre. » avec la recherche préremplie.
+- Raisons visibles dans le journal, l'écran de fin (bloc « Détails »), l'état de reprise et le diagnostic (nombres seulement). Agent 0.26.0.
+- Écarts : la question de quantité précède la tentative quand la quantité est « à vérifier » ; en phase B, « Toujours prendre ce produit ? » est posée avant l'écriture, même si le panier refuse ensuite ; le compteur « Indisponibles : N » reste générique ; « une seule tentative par produit et par envoi » ne tient que dans un même chargement de page.
+- À confirmer sur le vrai site : que le site accepte l'écriture d'un produit à stock 0, les valeurs de `eDisponibilite`, la fiabilité de `iQteDisponible` = 0.

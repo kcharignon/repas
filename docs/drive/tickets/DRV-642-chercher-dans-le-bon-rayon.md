@@ -4,7 +4,7 @@
 - **Jalon** : M6 Simplicité d'usage
 - **Taille** : M à L (en deux lots)
 - **Dépend de** : —
-- **Statut** : **lot 1a (back) fait, PR #217 ; lot 1b (agent, protocole et front) à faire** : voir « Réalisation du lot 1a ». Conception retenue (lot 1, voir plus bas) (demande de l'utilisateur du 2026-10-19 : « quand on veut des produits frais on ne voit jamais les bons produits ; chercher dans le bon rayon, fruits et légumes par exemple, devrait aider »). Effort de réalisation : `high`.
+- **Statut** : **lot 1a (back) fait, PR back #217 ; lot 1b (agent 0.31.0, protocole, front) fait, PR front #166 (fusionnées le 2026-10-19) ; lot 2 à faire** : voir « Réalisation du lot 1a » et « Réalisation du lot 1b ». Conception retenue (lot 1, voir plus bas) (demande de l'utilisateur du 2026-10-19 : « quand on veut des produits frais on ne voit jamais les bons produits ; chercher dans le bon rayon, fruits et légumes par exemple, devrait aider »). Effort de réalisation : `high`.
 - **Lire d'abord** : `docs/drive/recherche.md` (champs `iIdRayon`, `iIdFamille`, `niIdSousFamille` de chaque produit de la recherche), `docs/drive/hypotheses-site-reel.md`, ADR 0022, skills `repas-drive-back`, `repas-agent-dev`, `repas-po` (règle 3 : pas de réglage de plus).
 
 ## Contexte
@@ -97,3 +97,12 @@ Fait dans le back seulement ; rien n'est publié ni activé (aucune graine, aucu
 - L'apprentissage est **par enseigne**, pas par magasin (conception du lot 1, point 3 : « une enseigne = un jeu de rayons »), alors que « Pièges connus » dit que les identifiants peuvent différer d'un magasin à l'autre. Si la recette sur un second magasin le montre, ajouter une colonne `store_id` à la clé primaire (migration, puis lecture par magasin courant) ; les rayons ne sont qu'un classement, jamais un filtre, donc une erreur ne cache aucun produit.
 - Pas de graine de départ (« fruits et légumes » ↔ rayon des fruits et légumes) : l'apprentissage démarre vide, comme le ticket le demande avant vérification sur un second magasin.
 - L'apprentissage n'a pas d'autre borne par utilisateur que les plafonds existants (5 000 écritures de produits par jour, 60 écritures par minute) : une personne mal intentionnée peut peser sur le classement d'un rayon de Repas ; le seul effet est l'ordre des candidats proposés, jamais leur présence.
+
+## Réalisation du lot 1b (agent, protocole, front, PR front #166, fusionnée le 2026-10-19)
+
+- Protocole v1, ajouts facultatifs : une ligne du plan peut porter `rayonHints` (0 à 3 entiers de 1 à 2 147 483 647) ; le produit choisi d'un résultat peut porter `rayonId` et `familyId` (mêmes bornes). Une valeur hostile rend le message invalide.
+- Agent 0.31.0 : en phase B et dans « Chercher autre chose », les produits dont `iIdRayon` est un rayon conseillé passent d'abord (ordre du site à l'intérieur de chaque groupe), puis tous les autres ; aucun produit n'est caché ; le classement a lieu avant le plafond de 200 et l'affichage par lots. Sans `rayonHints`, ordre du site. Code dans `drive-agent/src/leclerc/aisle.ts`, aucun identifiant de rayon écrit en dur.
+- Web : le plan recopie `rayonHints` seulement pour une application dont l'agent les connaît (`RAYON_HINTS_APP_VERSION`, à fixer sur la première version Android publiée avec l'agent 0.31.0) ; `PUT /drive/choices` recopie `rayonId` et `familyId`. Aucun texte visible nouveau.
+- Ordre de publication : back, puis front, puis application Android (un récepteur qui ne connaît pas une clé rejette le message entier).
+- Non vérifié : `make android-e2e` et le comportement sur le vrai site (recette sur téléphone avec « tomate », « pomme », « courgette »).
+- **Lot 2 resté à faire** : filtre de rayon du site (après mesure sur un téléphone), graine de départ seulement après vérification sur un second magasin.
