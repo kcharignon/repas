@@ -13,10 +13,10 @@ DRV-625 a livré l'entrée sans geste et « Finaliser » dans l'application, sur
 
 ## Portée
 
-1. **Entrer par le bouton** : quand un plan est ouvert et que la page est l'accueil du magasin, l'agent repère le bouton « Commencer mes courses » (texte exact, bouton ou élément cliquable, dans la page) et le **clique** au rythme du `pacer`, une seule fois par envoi et par onglet. Il constate ensuite qu'une page du magasin du plan s'est ouverte (même hôte, chemin `/magasin-N-N-V`). Sinon (bouton absent, clic sans effet, défi anti-robot) : repli actuel sur le bandeau court « Touchez « Commencer mes courses ». ». Aucune boucle, aucune écriture.
+1. **Entrer par le bouton** : quand un plan est ouvert et que la page est l'accueil du magasin, l'agent repère le bouton « Commencer mes courses » (texte exact, bouton ou élément cliquable, dans la page) et le **clique** au rythme du `pacer`, une seule fois par envoi et par onglet. Il constate ensuite qu'une page du magasin du plan s'est ouverte (même hôte, chemin `/magasin-N-N-V`). Sinon (bouton absent, clic sans effet, défi anti-robot) : repli actuel sur le bandeau court « Touche « Commencer mes courses ». ». Aucune boucle, aucune écriture.
 2. **Finaliser vers le panier** : « Finaliser sur Leclerc » ouvre dans l'application la page du panier : le chemin du magasin **avec la ville**, tel que la dernière page de magasin vue par l'application l'a donné (mémorisé côté natif, validé par le motif `^/magasin-\d+-\d+-[^/]+$` et l'hôte du magasin du plan), suivi du segment fixe `detail-panier.aspx`. Pas de chemin avec ville connu, ou page refusée (404) : repli sur l'accueil du drive (comportement actuel). Jamais une adresse tirée du message du plan.
 3. **Sondes du diagnostic** : la ligne « Lien du panier » devient « Page du panier : `detail-panier.aspx` sous le chemin du magasin » (oui / non, d'après le chemin mémorisé) ; « Commencer mes courses » dit « bouton cliquable : oui / non ». Formes seulement.
-4. Les textes suivent le glossaire, le **vouvoiement tant que DRV-627 n'est pas fusionné** (puis le tutoiement), sans avertissement (règle 10).
+4. Les textes suivent le glossaire et le **tutoiement** (DRV-627, fusionné le 2026-10-19), sans avertissement (règle 10).
 
 ## Hors portée
 

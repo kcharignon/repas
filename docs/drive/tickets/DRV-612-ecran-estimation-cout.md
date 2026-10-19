@@ -17,7 +17,7 @@ Le back sait estimer le coût d'une liste d'après les prix mémorisés (D22). L
 2. Visible seulement si le drive est activé (`GET /drive/settings` → `enabled`) et configuré ; `GET /api/v1/drive/estimates/{shoppingListId}` (lecture seule, tous statuts de liste) ; états de chargement, d'erreur (`DRIVE_DISABLED`, `DRIVE_NOT_CONFIGURED`, 403, 404) et vide ; mis à jour après un changement de liste.
 3. Les lignes non estimées sont listées clairement, jamais comptées ni devinées ; si la couverture est faible (moins de la moitié), le bloc l'indique en tête.
 4. Contrat du back : `{shoppingListId, retailer, store, estimatedTotalCents, estimatedLines, unestimatedLines, coverage (0 à 1), oldestPriceAt, newestPriceAt, lines:[{ingredientSlug, ingredientName, productLabel|null, packs|null, unitPriceCents|null, subtotalCents|null, priceSeenAt|null, status}], disclaimer}` ; `npm run api:update` pour figer le contrat. Montants affichés en euros au format français.
-5. Textes dans `src/i18n/fr.ts` (vouvoiement), jetons de couleur, accessibilité (lecteur d'écran : total annoncé, détail repliable au clavier), mobile Pixel 7, tests Vitest et e2e (API simulée), test visuel avec captures lues.
+5. Textes dans `src/i18n/fr.ts` (vouvoiement à l'époque, tutoiement depuis DRV-627), jetons de couleur, accessibilité (lecteur d'écran : total annoncé, détail repliable au clavier), mobile Pixel 7, tests Vitest et e2e (API simulée), test visuel avec captures lues.
 
 ## Hors portée
 
