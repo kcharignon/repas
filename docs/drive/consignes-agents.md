@@ -36,7 +36,7 @@ Un ticket qui touche plusieurs domaines (par exemple un champ du plan : back, pr
 
 - Ne contacter **jamais** leclercdrive.fr ni aucun site d'enseigne (ni `curl`, ni navigateur, ni émulateur ouvert sur le vrai site). Tout se teste avec des données synthétiques et des `fetch` simulés. Seules requêtes réseau permises : `git`, `gh`, installation des dépendances, et au besoin `cdn.jsdelivr.net`.
 - Aucun vrai numéro de magasin, nom de ville, cookie, jeton, mot de passe, clé de signature, identifiant ou adresse e-mail dans le code, les tests, les fixtures, la documentation, les commits ou les PR. Valeurs factices : `123456`, `Ville-Test`.
-- Ne jamais déployer, créer de release de production (étiquettes `vX.Y.Z`), modifier un secret GitHub ni l'environnement de production, ni activer `DRIVE_ENABLED` en production. L'approbation du déploiement reste à l'humain (ADR 0017).
+- Ne jamais déployer, créer de release de production (étiquettes `vX.Y.Z`), modifier un secret GitHub ni l'environnement de production, ni activer `DRIVE_ENABLED` en production. Cela vise les sous-agents de code : depuis le 2026-10-20 et jusqu'à la 1.0.0 (phase bêta), l'assistant principal crée les releases et déploie, sans approbation manuelle (ADR 0017, amendement) ; l'allumage de `DRIVE_ENABLED` reste à l'humain.
 - Ne pas modifier les ADR 0022 et 0023 sauf si le ticket le demande explicitement.
 - Ne pas implémenter plus que le ou les tickets demandés.
 

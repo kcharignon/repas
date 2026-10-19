@@ -2,6 +2,8 @@
 
 **Se déroule avec l'utilisateur, une étape à la fois** (SKILL.md §0). Ce fichier est l'ordre des étapes ; chacune est donnée seule, vérifiée, puis on passe à la suivante. Les écritures sur le serveur passent par un script du scratchpad qu'il lance avec `!`.
 
+> Note du 2026-10-20 : depuis, et jusqu'à la 1.0.0 (phase bêta), il n'y a plus d'approbation du déploiement (ADR 0017, amendement) ; les étapes d'approbation ci-dessous sont l'historique de la première mise en production.
+
 État de départ (2026-10-16, déjà fait) : accès SSH `root`, sauvegarde `~/backups-repas/*.dump`, port 5432 fermé, migrations répétées sur une copie (OK), PR « déploiement » du back fusionnée.
 
 ## A. Sans coupure du site (l'ancienne installation continue de servir)
