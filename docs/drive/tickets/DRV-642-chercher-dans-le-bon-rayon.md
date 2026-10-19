@@ -4,7 +4,7 @@
 - **Jalon** : M6 Simplicité d'usage
 - **Taille** : M à L (en deux lots)
 - **Dépend de** : —
-- **Statut** : **lot 1a (back) fait, PR en cours (numéro ci-dessous) ; lot 1b (agent, protocole et front) à faire** : voir « Réalisation du lot 1a ». Conception retenue (lot 1, voir plus bas) (demande de l'utilisateur du 2026-10-19 : « quand on veut des produits frais on ne voit jamais les bons produits ; chercher dans le bon rayon, fruits et légumes par exemple, devrait aider »). Effort de réalisation : `high`.
+- **Statut** : **lot 1a (back) fait, PR #217 ; lot 1b (agent, protocole et front) à faire** : voir « Réalisation du lot 1a ». Conception retenue (lot 1, voir plus bas) (demande de l'utilisateur du 2026-10-19 : « quand on veut des produits frais on ne voit jamais les bons produits ; chercher dans le bon rayon, fruits et légumes par exemple, devrait aider »). Effort de réalisation : `high`.
 - **Lire d'abord** : `docs/drive/recherche.md` (champs `iIdRayon`, `iIdFamille`, `niIdSousFamille` de chaque produit de la recherche), `docs/drive/hypotheses-site-reel.md`, ADR 0022, skills `repas-drive-back`, `repas-agent-dev`, `repas-po` (règle 3 : pas de réglage de plus).
 
 ## Contexte
