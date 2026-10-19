@@ -48,6 +48,10 @@ services:
         alias: 'Repas\User\Infrastructure\Repository\UserIdentityPostgreSQLRepository'
         public: true
 
+    Repas\User\Domain\Interface\UserAppVersionRepository:
+        alias: 'Repas\User\Infrastructure\Repository\UserAppVersionPostgreSQLRepository'
+        public: true
+
     Repas\Drive\Domain\Interface\DriveSettingsRepository:
         alias: 'Repas\Drive\Infrastructure\Repository\DriveSettingsPostgreSQLRepository'
         public: true

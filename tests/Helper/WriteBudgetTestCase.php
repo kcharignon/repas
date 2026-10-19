@@ -19,12 +19,14 @@ use Repas\Tests\Helper\Builder\DriveSettingsBuilder;
 use Repas\Tests\Helper\Builder\ProductBuilder;
 use Repas\Tests\Helper\Builder\RecipeBuilder;
 use Repas\Tests\Helper\Builder\ShoppingListBuilder;
+use Repas\Tests\Helper\Builder\UserAppVersionBuilder;
 use Repas\Tests\Helper\Builder\UserBuilder;
 use Repas\Tests\Helper\Builder\UserIdentityBuilder;
 use Repas\Tests\Helper\SqlBudget\QueryCounter;
 use Repas\Shared\Domain\Tool\UuidGenerator;
 use Repas\User\Domain\Interface\EmailVerificationTokenRepository;
 use Repas\User\Domain\Interface\PasswordResetTokenRepository;
+use Repas\User\Domain\Interface\UserAppVersionRepository;
 use Repas\User\Domain\Interface\UserIdentityRepository;
 use Repas\User\Domain\Model\EmailVerificationToken;
 use Repas\User\Domain\Model\PasswordResetToken;
@@ -101,6 +103,14 @@ abstract class WriteBudgetTestCase extends DatabaseTestCase
     public function savedUserIdentity(User $user): void
     {
         static::getContainer()->get(UserIdentityRepository::class)->save(new UserIdentityBuilder()->withUser($user)->build());
+    }
+
+    /**
+     * Version de l'application vue pour `$user` (`0.1.8`, Android).
+     */
+    public function savedUserAppVersion(User $user): void
+    {
+        static::getContainer()->get(UserAppVersionRepository::class)->save(new UserAppVersionBuilder()->withUser($user)->build());
     }
 
     /**

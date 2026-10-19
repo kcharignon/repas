@@ -39,6 +39,13 @@ framework:
             policy: sliding_window
             limit: 120
             interval: '1 minute'
+        # Version de l'application installée (PUT /api/v1/users/me/app-version, DRV-637), PAR UTILISATEUR (AppVersionRateLimitListener) :
+        # l'application l'envoie une fois par session de connexion ; au plus une écriture par minute, les appels suivants répondent
+        # 204 sans rien écrire (pas d'erreur visible). Seuls les appels valides comptent.
+        app_version:
+            policy: sliding_window
+            limit: 1
+            interval: '1 minute'
 
 when@test:
     framework:
@@ -54,4 +61,6 @@ when@test:
             drive_write:
                 cache_pool: test.rate_limiter_pool
             drive_read:
+                cache_pool: test.rate_limiter_pool
+            app_version:
                 cache_pool: test.rate_limiter_pool

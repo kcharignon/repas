@@ -21,7 +21,8 @@ class GetUserApiControllerTest extends QueryBusWebTestCase
         // Then
         $this->assertSame(200, $this->client->getResponse()->getStatusCode());
         $this->assertEquals(new GetCurrentUserQuery($user->getId()), $this->queryBus->getLastAskedQuery());
-        $this->assertSame(['id', 'email', 'roles', 'isAdmin', 'defaultServing'], array_keys($this->jsonBody()));
+        $this->assertSame(['id', 'email', 'roles', 'isAdmin', 'defaultServing', 'appUpdate'], array_keys($this->jsonBody()));
+        $this->assertSame(['latest', 'minimum', 'outdated'], array_keys($this->jsonBody()['appUpdate']));
     }
 
     public function testAnAdministratorReadsAnotherUser(): void

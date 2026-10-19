@@ -45,11 +45,12 @@ return [
     'retirer-ingredient-liste' => 9,
     'retirer-repas' => 17,
     'rouvrir-liste' => 18,
-    'supprimer-compte' => 20,
+    'supprimer-compte' => 21,
     'supprimer-ingredient' => 10,
     'supprimer-liste' => 8,
     'supprimer-recette' => 11,
     'terminer-liste' => 11,
     'tick-derniere-ligne' => 15,
     'tick-ligne' => 4,
+    'version-application' => 1,
 ];
