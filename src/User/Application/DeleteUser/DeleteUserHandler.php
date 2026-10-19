@@ -8,6 +8,7 @@ use Repas\User\Domain\Exception\UserException;
 use Repas\User\Domain\Interface\EmailVerificationTokenRepository;
 use Repas\User\Domain\Interface\PasswordResetTokenRepository;
 use Repas\User\Domain\Interface\RefreshTokenRepository;
+use Repas\User\Domain\Interface\UserIdentityRepository;
 use Repas\User\Domain\Interface\UserRepository;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
@@ -20,13 +21,15 @@ readonly class DeleteUserHandler
         private RefreshTokenRepository $refreshTokenRepository,
         private EmailVerificationTokenRepository $emailVerificationTokenRepository,
         private PasswordResetTokenRepository $passwordResetTokenRepository,
+        private UserIdentityRepository $userIdentityRepository,
         private EventDispatcherInterface $eventDispatcher,
     ) {
     }
 
     /**
-     * Supprime le compte et ses jetons, puis annonce la suppression : le contexte `Repas` efface ses données dans la même
-     * transaction du bus de commandes, donc rien n'est supprimé si l'une des étapes échoue.
+     * Supprime le compte, ses jetons et ses liens d'identité externe (ADR 0024), puis annonce la suppression : les contextes
+     * `Repas` et `Drive` effacent leurs données dans la même transaction du bus de commandes, donc rien n'est supprimé si l'une
+     * des étapes échoue.
      *
      * @throws UserException compte inconnu (404), le sien ou le compte protégé (422)
      */
@@ -42,6 +45,7 @@ readonly class DeleteUserHandler
         $this->refreshTokenRepository->deleteAllOfUser($user->getId());
         $this->emailVerificationTokenRepository->deleteAllOfUser($user->getId());
         $this->passwordResetTokenRepository->deleteAllOfUser($user->getId());
+        $this->userIdentityRepository->deleteAllOfUser($user->getId());
         $this->userRepository->delete($user);
 
         $this->eventDispatcher->dispatch(new UserDeletedEvent($user->getId()));
