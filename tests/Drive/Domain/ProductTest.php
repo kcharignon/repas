@@ -99,6 +99,7 @@ class ProductTest extends TestCase
         yield 'libellé avec espace de largeur nulle (U+200B)' => ['1', null, "Fa\u{200B}rine", null];
         yield 'libellé réduit à une espace de largeur nulle' => ['1', null, "\u{200B}", null];
         yield "libellé avec marque d'ordre des octets (U+FEFF)" => ['1', null, "\u{FEFF}Farine", null];
+        yield 'libellé réduit à un trait d\'union conditionnel (U+00AD)' => ['1', null, "\u{00AD}", null];
         yield 'libellé réduit à une espace insécable' => ['1', null, "\u{00A0}", null];
         yield 'libellé réduit à des espaces Unicode' => ['1', null, "\u{2003}\u{00A0}\u{3000}", null];
         yield 'contenu nul' => ['1', null, 'Farine', new ProductContent(0, ContentUnit::G)];
@@ -125,6 +126,96 @@ class ProductTest extends TestCase
 
         // Then
         $this->assertSame($label, $product->getLabel());
+    }
+
+    #[DataProvider('invisibleCharacters')]
+    public function testALabelWithAnInvisibleCharacterIsRefused(string $character): void
+    {
+        // Then
+        $this->expectExceptionObject(DriveException::invalidChoice());
+
+        // When : au milieu du libellé
+        Product::create(Retailer::LECLERC, '123456', '1', null, "Fa{$character}rine", null, null, $this->now);
+    }
+
+    /**
+     * Chaque caractère ou plage refusé par le motif : ceux d'avant (sens de lecture, largeur nulle, séparateurs) et ceux ajoutés
+     * ensuite (format `Cf`, remplisseurs, sélecteurs de variation, TAG). Les plages sont dépliées : un point de code par cas.
+     *
+     * @return iterable<string, array{string}>
+     */
+    public static function invisibleCharacters(): iterable
+    {
+        $singles = [
+            0x00AD => 'trait d\'union conditionnel',
+            0x034F => 'joint de graphèmes',
+            0x061C => 'marque de lettre arabe',
+            0x115F => 'remplisseur hangul de tête',
+            0x1160 => 'remplisseur hangul de voyelle',
+            0x17B4 => 'voyelle inhérente khmère (aq)',
+            0x17B5 => 'voyelle inhérente khmère (aa)',
+            0x2028 => 'séparateur de ligne',
+            0x2029 => 'séparateur de paragraphe',
+            0x3164 => 'remplisseur hangul',
+            0xFEFF => 'marque d\'ordre des octets',
+            0xFFA0 => 'remplisseur hangul demi-chasse',
+            0x0600 => 'signe numérique arabe (Cf)',
+            0x06DD => 'fin de verset arabe (Cf)',
+            0x070F => 'abréviation syriaque (Cf)',
+            0xFFF9 => 'ancre d\'annotation interlinéaire (Cf)',
+            0x110BD => 'signe numérique kaithi (Cf)',
+            0x13430 => 'contrôle de hiéroglyphe égyptien (Cf)',
+            0x1D173 => 'contrôle musical (Cf)',
+        ];
+        foreach ($singles as $codePoint => $name) {
+            yield sprintf('U+%04X %s', $codePoint, $name) => [mb_chr($codePoint, 'UTF-8')];
+        }
+
+        $ranges = [
+            [0x200B, 0x200F, 'largeur nulle et sens de lecture'],
+            [0x202A, 0x202E, 'inversion du sens de lecture'],
+            [0x2060, 0x2064, 'joint de mots et opérateurs mathématiques invisibles'],
+            [0x2066, 0x2069, 'isolat bidirectionnel'],
+            [0x206A, 0x206F, 'format obsolète (Cf)'],
+            [0x180B, 0x180F, 'sélecteur de variation mongol'],
+            [0xFE00, 0xFE0F, 'sélecteur de variation'],
+            [0xE0000, 0xE007F, 'caractère de TAG'],
+            [0xE0100, 0xE01EF, 'sélecteur de variation (supplément)'],
+        ];
+        foreach ($ranges as [$from, $to, $name]) {
+            for ($codePoint = $from; $codePoint <= $to; ++$codePoint) {
+                yield sprintf('U+%04X %s', $codePoint, $name) => [mb_chr($codePoint, 'UTF-8')];
+            }
+        }
+    }
+
+    #[DataProvider('legitimateLabels')]
+    public function testALegitimateLabelIsAcceptedAsIs(string $label): void
+    {
+        // When
+        $product = Product::create(Retailer::LECLERC, '123456', '1', null, $label, null, null, $this->now);
+
+        // Then
+        $this->assertSame($label, $product->getLabel());
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function legitimateLabels(): iterable
+    {
+        yield 'lettres accentuées' => ['Crème brûlée à la façon de l’hôtel, île, noël, maïs, où'];
+        yield 'ligatures œ et Œ' => ['Œufs de poule, bœuf, cœur, sœur'];
+        yield 'ligatures typographiques' => ["Ba\u{FB01}ne \u{FB02}an"];
+        yield 'accent combinant (décomposé)' => ["Cre\u{0300}me bru\u{0302}le\u{0301}e"];
+        yield 'symboles de marque' => ['Marque® Produit™ © 2026'];
+        yield 'degré, euro, pourcent, esperluette' => ['Eau à 12 °C, 2,50 € le lot, 3 % de sel & poivre'];
+        yield 'apostrophe courbe et guillemets' => ['Pommes d’api « Bio »'];
+        yield 'espace insécable (U+00A0)' => ["Lait demi-écrémé 1\u{00A0}L"];
+        yield 'espace fine insécable (U+202F)' => ["Farine T55 1\u{202F}kg à 1,49\u{202F}€"];
+        yield 'espace normale et signes' => ['Pâtes 500 g (x2) - lot de 3 + 1 offert'];
+        yield 'emoji d\'un seul caractère' => ['Œufs 🥚 x12'];
+        yield 'lettres non latines' => ['Kimchi 김치, ラーメン, Ελιά'];
     }
 
     public function testSeeingALabelWithAnInvisibleCharacterChangesNothing(): void
