@@ -91,7 +91,7 @@ Chaque étape attend que la précédente soit contrôlée. Le détail des comman
 
 Pourquoi cet ordre : le front appelle des routes que seul le nouveau back connaît ; l'interrupteur coupé garantit qu'aucune liste `SENT` n'existe avant que tout soit en place ; l'application dépend du front (elle l'affiche dans une WebView : une mise à jour du site est visible aussitôt) et ne sert à rien tant que la fonction est coupée.
 
-**Plus tard, à chaque changement du protocole de l'agent** (par exemple un champ ajouté au résultat, comme `stats` avec l'agent 0.15.0) : le site web rejette un message qu'il ne connaît pas, donc **publier d'abord le site (release front `vX.Y.Z`, étapes 2), puis l'application (`android-vX.Y.Z`, étape 3)**. Une application plus récente que le site rend l'envoi inutilisable (le résultat est rejeté). Détail : [`drive/architecture.md`](drive/architecture.md) § 12.
+**Plus tard, à chaque changement du protocole de l'agent** (par exemple un champ ajouté au résultat, comme `stats` avec l'agent 0.15.0) : le site web rejette un message qu'il ne connaît pas, donc **publier d'abord le site (release front `vX.Y.Z`, étape 2), puis l'application (`android-vX.Y.Z`, étape 3)**. Une application plus récente que le site rend l'envoi inutilisable (le résultat est rejeté). Détail : [`drive/architecture.md`](drive/architecture.md) § 12.
 
 ### Contrôles (lecture seule)
 
