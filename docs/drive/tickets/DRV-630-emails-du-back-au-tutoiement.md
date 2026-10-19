@@ -4,7 +4,7 @@
 - **Jalon** : M6 Simplicité d'usage
 - **Taille** : S
 - **Dépend de** : DRV-627 (fait : le front parle déjà au tutoiement)
-- **Statut** : à faire (2026-10-19, issu du « hors portée » de la PR repas-front#150)
+- **Statut** : fait (2026-10-19, PR back #200 ; le texte part avec la prochaine release du back)
 - **Lire d'abord** : [`principes-produit.md`](../principes-produit.md) (§ 3, tutoiement), [`DRV-627`](DRV-627-tutoiement.md), skills `repas-po` et `repas-dev`, [ADR 0020](../../adr/0020-confirmation-d-adresse-email.md) (e-mail de vérification d'adresse).
 
 ## Contexte
@@ -34,3 +34,12 @@ Le fond ou la mise en page de l'e-mail, l'orthographe « email » / « e-mail »
 ## Definition of Done
 
 Celle du dépôt back : `make test` et `make quality` verts ; PR concise ; fusion si la CI est verte. L'e-mail se lit en développement dans Mailpit (http://localhost:8025) : relire l'objet et le corps, texte et HTML. Rien n'est publié par ce ticket : le texte part avec la prochaine release du back.
+
+## Réalisation (2026-10-19, PR back #200)
+
+Fusionné dans le back `main` (`7086b6f`) ; **rien n'est publié** : le texte part avec la prochaine release du back (v0.6.2, qui porte aussi le durcissement des libellés de produits, PR #198 : à publier **après** le front et l'application, voir `docs/drive/runbook.md`).
+
+- **E-mail de vérification** : objet « Confirmez votre adresse email » → « Confirme ton adresse email » ; corps texte et HTML au tutoiement (« Pour activer ton compte, confirme ton adresse email en ouvrant ce lien (valable 24 heures) : », « Si tu n'as pas créé de compte, ignore ce message : rien ne sera activé. », « Si le lien ne s'ouvre pas, copie cette adresse dans ton navigateur : »). Même lien, même durée, mêmes phrases ; 15 mots au plus ; aucun avertissement ajouté.
+- **`UserChecker`** : « Votre compte est désactivé. » → « Ton compte est désactivé. » (jamais montré : une connexion refusée répond toujours `401 Invalid credentials.`).
+- **Tests** : fixtures de `BrevoTransportTest` et `ApiAuthenticationFailureListenerTest`, objet attendu de `MailerEmailVerificationNotifierTest` et `UserCheckerTest` alignés ; un test échoue si « vous », « votre », « vos » ou un impératif en « -ez » revient dans l'objet, le texte ou le HTML ; la durée « 24 heures » est contrôlée.
+- **Vérifié** : `make test` (2284 tests), `make quality` vert, contrat OpenAPI inchangé, budget SQL inchangé ; relecture dans Mailpit (objet, texte, HTML) faite, avec une adresse fictive.
