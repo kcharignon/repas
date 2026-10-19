@@ -4,7 +4,7 @@
 - **Jalon** : M6 Simplicité d'usage
 - **Taille** : S
 - **Dépend de** : DRV-635, DRV-633
-- **Statut** : en cours (demande de l'utilisateur du 2026-10-19 : « très frustrant, impossible de le choisir ; et même si ce n'est pas possible de le mettre au panier, au moins l'enregistrer pour les prochaines fois, car visiblement c'est lui que je veux en priorité, et m'expliquer pourquoi le refus »). Effort : `high`. Absorbe DRV-632 (fiches sans « En promotion : 0,00 € »).
+- **Statut** : fait (PR front #163, fusionnée le 2026-10-19) ; origine : (demande de l'utilisateur du 2026-10-19 : « très frustrant, impossible de le choisir ; et même si ce n'est pas possible de le mettre au panier, au moins l'enregistrer pour les prochaines fois, car visiblement c'est lui que je veux en priorité, et m'expliquer pourquoi le refus »). Effort : `high`. Absorbe DRV-632 (fiches sans « En promotion : 0,00 € »).
 
 ## Contexte
 
@@ -32,3 +32,10 @@ Vitest, `make agent-e2e` (modes `real-out` et `misleading` du faux site), Playwr
 ## Definition of Done
 
 Celle du dépôt front. Part avec l'application suivante.
+
+## Réalisation (PR front #163, fusionnée le 2026-10-19, avec DRV-643)
+
+- « Choisir » sur un produit « Plus en stock », « Bientôt disponible » ou refusé par le panier : ligne `CHOSEN` ordinaire (même forme, aucune clé de plus), le passage continue, plus de bandeau « Choisis-en un autre ».
+- La fin du passage dit en une phrase par produit qu'il est enregistré mais pas dans le panier, et pourquoi (« Bientôt disponible », rupture, ou refus sans raison donnée), d'après `iQteDisponible` et `eDisponibilite` de l'évènement du produit ; ces valeurs (deux nombres) vont au diagnostic.
+- Absorbe DRV-632 : plus de « En promotion : 0,00 € », et « Plus en stock. » sans « À mettre au panier : 1 produit ». La mémoire n'est jamais effacée sans geste.
+- Écarts : pour Repas, la ligne `CHOSEN` d'un produit absent du panier est indiscernable d'une ligne au panier (le récapitulatif peut le compter « choisi ») ; le distinguer demanderait une clé de plus au protocole, non ajoutée. Un envoi terminé avec un tel produit affiche l'écran de fin au lieu de repartir tout de suite vers Repas. À confirmer sur le vrai site : que le panier renvoie bien ces valeurs en refusant.

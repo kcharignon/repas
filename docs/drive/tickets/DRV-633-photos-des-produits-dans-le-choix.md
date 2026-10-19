@@ -4,7 +4,7 @@
 - **Jalon** : M6 Simplicité d'usage
 - **Taille** : M
 - **Dépend de** : — (le protocole ne change pas)
-- **Statut** : à faire (demande de l'utilisateur du 2026-10-19 : « ma compagne a besoin de photo pour choisir le bon produit, car on a une mémoire visuelle des paquets »)
+- **Statut** : lot 1 fait (PR front #156, fusionnée le 2026-10-19) ; origine : (demande de l'utilisateur du 2026-10-19 : « ma compagne a besoin de photo pour choisir le bon produit, car on a une mémoire visuelle des paquets »)
 - **Lire d'abord** : [`principes-produit.md`](../principes-produit.md) (règles 1, 2, 8 et 10), [`hypotheses-site-reel.md`](../hypotheses-site-reel.md) (§ 2 et § 8 : le JSON de la recherche porte `sUrlVignetteProduit`), skills `repas-po`, `repas-agent-dev`.
 
 ## Contexte
@@ -45,3 +45,11 @@ Celle du dépôt front ; agent incrémenté, empreinte recalculée ; photos **no
 - L'hôte des images de Leclerc n'est peut-être pas `leclercdrive.fr` (CDN) : le relever dans le diagnostic avant de figer la liste blanche ; ne jamais accepter un hôte arbitraire.
 - Les images chargent depuis la page de l'enseigne : une rafale peut ressembler à un robot ; 12 images au plus, différées.
 - Les photos ont un fond blanc : en thème sombre, leur donner un petit cadre clair plutôt que de les inverser.
+
+## Réalisation du lot 1 (PR front #156, fusionnée le 2026-10-19)
+
+- L'écran de choix de l'agent montre la photo de chaque produit (80 px, à gauche du libellé, chargement différé) ; « Choisir » passe sous la fiche ; la question « Toujours prendre ce produit ? » montre la photo du produit choisi.
+- L'adresse `sUrlVignetteProduit` est validée deux fois (`photo-url.ts`, adaptateur puis interface) : `https`, hôte `leclercdrive.fr` ou sous-domaine, ni identifiant ni port, 2 000 caractères au plus. Sinon la fiche reste en texte, sans icône cassée.
+- Protocole inchangé : aucune adresse de photo dans le résultat, l'état de reprise ni vers Repas. Agent 0.27.0.
+- Écart : le plafond de 12 photos était lié aux fiches affichées alors (8 au plus) ; il est levé ensuite par DRV-643 (PR front #163, photos à la demande).
+- Points à confirmer sur le vrai site : l'hôte réel des images (supposé `fdN-photos.leclercdrive.fr`), adresse absolue ou relative, une éventuelle CSP de l'enseigne, DataDome. Lot 2 (photos dans Repas) : DRV-634, hors portée.

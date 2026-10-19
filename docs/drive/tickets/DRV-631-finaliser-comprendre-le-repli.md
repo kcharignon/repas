@@ -4,7 +4,7 @@
 - **Jalon** : M6 Simplicité d'usage
 - **Taille** : S (diagnostic) puis S (correctif)
 - **Dépend de** : DRV-629
-- **Statut** : à faire (constat réel du 2026-10-19, [`hypotheses-site-reel.md`](../hypotheses-site-reel.md) § 11)
+- **Statut** : fait (PR front #157, fusionnée le 2026-10-19) ; origine : (constat réel du 2026-10-19, [`hypotheses-site-reel.md`](../hypotheses-site-reel.md) § 11)
 - **Lire d'abord** : [`DRV-629`](DRV-629-finaliser-et-entrer-par-les-boutons.md) (§ Réalisation), `hypotheses-site-reel.md` §§ 10 et 11, skills `repas-android-dev`, `repas-agent-dev`, `repas-po`.
 
 ## Contexte
@@ -43,3 +43,12 @@ Sur le téléphone d'une utilisatrice, `android-v0.1.8`, « Finaliser sur Lecler
 5. Garder la raison du repli pour le diagnostic (point 1 d'origine : `CHEMIN_INCONNU`, `ADRESSE_REFUSEE`, `ERREUR_HTTP_4xx`, `ERREUR_HTTP_5xx`, `OUVERTE`), formes seulement.
 
 Critère d'acceptation : étant donné un chemin mémorisé, quand l'utilisateur touche « Finaliser », alors la page d'accueil du magasin s'ouvre avec le bandeau ; jamais une page « introuvable ». Tests Kotlin et faux site (accueil du magasin 200, `detail-panier.aspx` 404 déguisé en 200 : non demandé), `make android-e2e` (scénarios 15 à 17 adaptés).
+
+## Réalisation (PR front #157, fusionnée le 2026-10-19)
+
+- « Finaliser sur Leclerc » ouvre dans le drive de l'application l'accueil du magasin avec la ville (chemin mémorisé par `StorePathMemory`, validé comme avant), ou l'accueil du drive sans chemin mémorisé ; plus aucune navigation vers `detail-panier.aspx` (un test garde qu'aucun fichier Kotlin ne le contient). `BASKET_PATH` est supprimé côté front, `basketUrl` devient `finalizeLink`.
+- Bandeau « Ton panier est dans l'icône en haut à droite. » à l'arrivée, qui disparaît à la première navigation.
+- Page « introuvable » déguisée (statut 200) : repli sur l'accueil d'après le **titre** de la page seulement (`onReceivedTitle`) ; les erreurs 4xx/5xx (hors 403 et 429) se replient comme avant.
+- Raison du repli gardée pour le diagnostic (`OUVERTE`, `CHEMIN_INCONNU`, `ADRESSE_REFUSEE`, `ERREUR_HTTP_4XX`, `ERREUR_HTTP_5XX`, `TITRE_INTROUVABLE`), un mot, jamais d'adresse ni de numéro ni de ville.
+- Aucun changement de protocole ; les deux ordres de publication (site, application) sont sans dégât.
+- Écart : le titre de la vraie page « introuvable » n'est pas mesuré ; le repli cherche « introuvable », « pas pu être trouvée », « non trouvée », « not found » ou « 404 », et ne se déclenche pas si le vrai titre est autre.

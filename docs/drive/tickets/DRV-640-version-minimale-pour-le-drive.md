@@ -39,3 +39,10 @@ Celle du dépôt front. Part avec une release du site.
 
 - La version vient de l'application (source non fiable) : le contrôle ne fait que **refuser** une fonction, jamais accorder un droit.
 - Relever `MIN_DRIVE_APP_VERSION` demande une release du site ; tant que le serveur ne fournit pas le minimum (DRV-637), ne pas le relever avant que l'application correspondante soit publiée.
+
+## Réalisation (PR front #160, fusionnée le 2026-10-19)
+
+- `MIN_DRIVE_APP_VERSION = '0.1.10'` (un seul endroit, `appVersion.ts`) et un comparateur numérique (0.1.9 < 0.1.10).
+- Écran « Envoyer au drive » dans l'application, version inférieure ou inconnue : ni Leclerc ni l'agent ; une phrase (« Mets à jour l’application pour envoyer ta liste. »), un bouton « Mettre à jour » vers `/drive/aide`, et les liens de recherche par article (repli existant).
+- Version suffisante ou navigateur : rien ne change ; passage déjà commencé, « Finaliser » et « Retour » non concernés. Web seulement, aucun changement Kotlin ni agent.
+- Écarts : version inconnue (le pont ne répond pas) tenue pour trop ancienne ; les constructions de débogage (`0.0.0-dev`) sont tenues pour suffisantes ; `make android-e2e` non joué. À relever : la constante, quand une version de l'application devient nécessaire.
