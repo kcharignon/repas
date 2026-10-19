@@ -37,7 +37,7 @@ Format : **ce qui s'est passé** (en mots du quotidien), **ce qui est sauf** (le
 | Mal | Bien |
 |---|---|
 | « Réponse incomprise. L'application a renvoyé une réponse que Repas ne comprend pas. » | « Le drive n'a pas répondu comme prévu. Rien n'a été perdu. Mettez l'application à jour, puis réessayez. » [Mettre à jour l'application] |
-| « Passage arrêté. » | « Le remplissage s'est arrêté. Ce qui est déjà au panier y reste. » [Reprendre l'envoi] |
+| « Passage arrêté. » | « L'envoi s'est arrêté. Ce qui est déjà au panier y reste. » [Reprendre l'envoi] |
 | « Code : CONTRACT_CHANGED » | (le code n'apparaît que dans « Détails ») |
 
 Quand l'utilisateur ne peut rien faire (Leclerc a changé son site), le texte le dit franchement et propose le repli : « Chercher à la main sur Leclerc ».
