@@ -149,9 +149,31 @@ Références : [`principes-produit.md`](principes-produit.md), [`audit-simplicit
 - [ ] [DRV-640](tickets/DRV-640-version-minimale-pour-le-drive.md) front · S · Une application trop ancienne ne lance pas le drive (message court, mise à jour, repli à la main) · dépend de : —
 - [x] [DRV-630](tickets/DRV-630-emails-du-back-au-tutoiement.md) back · S · E-mail de vérification d'adresse et message de connexion du back au tutoiement (restes du vouvoiement après le front) · dépend de : 627 · PR back #200
 
+## M7 — Plusieurs enseignes (cadrage du 2026-10-19)
+
+Références : [`multi-enseignes.md`](multi-enseignes.md) (audit, conception, faits sur Auchan), [ADR 0027](../adr/0027-plusieurs-enseignes-de-drive.md) (`Proposed`). **Chaque ticket du découplage ne change aucun comportement visible tant qu'il n'y a qu'une enseigne.** Les spikes Auchan sont des tâches `humain` sur téléphone (jamais depuis un ordinateur). Ordre conseillé : 701, 704 et 708 en parallèle, puis 702, 703, 705, 706, puis 707 et 709, puis 710 ; 711 en continu. Les tickets après 717 (recherche, panier, entrée, recette Auchan) seront écrits par DRV-715 d'après les rapports des spikes. Effort recommandé entre parenthèses.
+
+- [ ] [DRV-701](tickets/DRV-701-registre-d-enseignes-du-back.md) back · M · Registre d'enseignes du back, enseigne en paramètre des lectures, contrat des enseignes (high) · dépend de : —
+- [ ] [DRV-702](tickets/DRV-702-interrupteur-par-enseigne.md) back · S · Interrupteur par enseigne `DRIVE_RETAILERS` (high) · dépend de : 701
+- [ ] [DRV-703](tickets/DRV-703-drive-habituel-et-derniere-enseigne.md) back · M · Drive habituel, dernière enseigne utilisée, retrait d'un drive, sélection `RetailerSelection` (xhigh) · dépend de : 701, 702
+- [ ] [DRV-704](tickets/DRV-704-registre-d-enseignes-de-l-agent.md) front (agent) · M · Registre d'enseignes de l'agent, types neutres, protocole par enseigne (high) · dépend de : 701
+- [ ] [DRV-705](tickets/DRV-705-textes-de-l-agent-avec-le-nom-de-l-enseigne.md) front (agent) · S · Textes de l'agent : le nom de l'enseigne en paramètre (medium) · dépend de : 704
+- [ ] [DRV-706](tickets/DRV-706-hotes-autorises-par-enseigne-dans-le-coeur-kotlin.md) front (`android/core`) · M · Hôtes autorisés, origines du pont et mémoires par enseigne (xhigh) · dépend de : 704
+- [ ] [DRV-707](tickets/DRV-707-ecran-du-drive-par-enseigne.md) front (`android/app`) · M · Écran du drive, injection, profil, menu et `app.info` par enseigne (high) · dépend de : 706
+- [ ] [DRV-708](tickets/DRV-708-le-nom-de-l-enseigne-en-parametre-sur-le-web.md) front (web) · M · Le web : nom en paramètre, plus de littéral `leclerc` (medium) · dépend de : 701
+- [ ] [DRV-709](tickets/DRV-709-mes-drives-dans-moi.md) front (web) · M · « Mes drives » dans « Moi » : liste, ajout, drive habituel (high) · dépend de : 703, 708
+- [ ] [DRV-710](tickets/DRV-710-choisir-le-drive-a-l-envoi.md) front (web) · M · Choisir le drive à l'envoi (R1 à R5), passage et retour par enseigne (high) · dépend de : 703, 707, 708, 709
+- [ ] [DRV-711](tickets/DRV-711-documentation-par-enseigne.md) back + front (docs) · S · Runbook, recette, skills et documentation « par enseigne » (medium) · dépend de : 701 à 710
+- [ ] [DRV-712](tickets/DRV-712-spike-auchan-parcours-et-magasin.md) humain · M · Spike Auchan A1 : parcours, mode drive ou livraison, magasin, site mobile ou ordinateur · dépend de : —
+- [ ] [DRV-713](tickets/DRV-713-spike-auchan-anti-robot-et-connexion.md) humain · M · Spike Auchan A2 : anti-robot et connexion · dépend de : 712
+- [ ] [DRV-714](tickets/DRV-714-spike-auchan-recherche-et-panier.md) humain · M · Spike Auchan A3 : recherche, produits, panier · dépend de : 712
+- [ ] [DRV-715](tickets/DRV-715-decision-auchan.md) assistant · S · Décision « Auchan : adaptateur complet, mode assisté ou abandon » et tickets suivants (medium) · dépend de : 712, 713, 714
+- [ ] [DRV-716](tickets/DRV-716-declarer-auchan-dans-les-registres.md) back + front · M · Déclarer Auchan dans les quatre registres, éteint (high) · dépend de : 715, 701, 704, 706, 708
+- [ ] [DRV-717](tickets/DRV-717-adaptateur-auchan-squelette.md) front (agent) · L · Adaptateur Auchan (squelette) et faux site (high) · dépend de : 715, 716
+
 ## Backlog (non détaillé, à écrire quand il devient utile)
 
-DRV-601 suggestions automatiques · DRV-602 journal d'envoi · DRV-603 Firefox + gestionnaire de scripts ou extension · DRV-604 vignettes dans Repas (exception CSP ou relais d'images) · DRV-605 conversions unité↔poids par ingrédient · DRV-606 reprise des choix au changement de magasin (EAN, libellé) · DRV-607 deuxième enseigne (spike + adaptateur) · DRV-608 enregistrement direct des choix par jeton à usage unique · DRV-609 partage de choix entre proches · DRV-610 rapport d'exécution anonyme.
+DRV-601 suggestions automatiques · DRV-602 journal d'envoi · DRV-603 Firefox + gestionnaire de scripts ou extension · DRV-604 vignettes dans Repas (exception CSP ou relais d'images) · DRV-605 conversions unité↔poids par ingrédient · DRV-606 reprise des choix au changement de magasin (EAN, libellé) · DRV-607 deuxième enseigne (remplacé par le jalon M7 : DRV-701 à 717) · DRV-718 « j'en ai toujours » commun à toutes les enseignes · DRV-719 comparer deux enseignes (estimation du coût côte à côte) · DRV-608 enregistrement direct des choix par jeton à usage unique · DRV-609 partage de choix entre proches · DRV-610 rapport d'exécution anonyme.
 
 ## Chemin critique et parallélisme
 
