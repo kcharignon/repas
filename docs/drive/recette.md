@@ -504,24 +504,53 @@ Tu les remplis en route ; l'assistant les recopie dans les tickets du chantier (
 
 Les idées qui viennent pendant la recette (un libellé peu clair, une étape trop longue, un produit toujours mal trouvé) se notent à part : elles alimentent le backlog (DRV-601 suggestions automatiques, DRV-606 changement de magasin…), pas la signature.
 
+## 17 bis. Compte rendu des essais (2026-10-19)
+
+Rédigé par l'assistant à partir de la recette pilotée par adb sur le téléphone de l'utilisateur (application `android-v0.1.5`, agent 0.20.0, site `v0.5.2`, back `v0.6.1`) et des deux envois réels des 18 et 19 octobre. Le compte utilisé est le compte administrateur de l'utilisateur, pas son compte de courses. La signature (§ 18) reste à l'utilisateur.
+
+| Partie | Résultat | Remarque |
+|---|---|---|
+| 3 à 8 | réussies (18 et 19 octobre) | deux envois complets, panier de 3 produits, total 2,35 €, aucune commande |
+| 9.1 « Mes produits » | réussie | exactement les choix faits, rien d'étranger |
+| 9.2 estimation | réussie | 2 articles sur 5 estimés (seuls 2 produits ont été choisis, d'où l'avertissement sous 50 %), total identique au panier |
+| 9.3 verrou | réussie | lecture seule, aucun compteur « dans le panier » sur la liste envoyée |
+| 9.4 gestes sur les produits | réussie en partie | « Ne plus proposer » et « Accepter de nouveau » marchent ; « Monter » et « Descendre » non essayés (un seul produit par article) ; « Oublier cet article » essayé sur le sel : l'article disparaît de « Mes produits » |
+| 10.1 rouvrir | réussie | |
+| 10.2 interrupteur coupé | réussie | « Moi » perd la rubrique Drive, la liste reste lisible et se rouvre |
+| 10.3 rallumer, envoyer, terminer | réussie | depuis la liste, « Terminer » n'a pas de fenêtre de confirmation |
+| 11.1 diagnostic | réussie | 6 réussis, 0 en échec, 2 non testés (normal), aucune écriture au panier |
+| 11.2 test automatique | sans objet | n'existe pas dans l'application signée |
+| 12 vie privée | réussie | points 1 à 11 ; point 3 : seule `INTERNET` est déclarée, Android ajoute lui-même `ACCESS_LOCAL_NETWORK` (accordée d'office) ; point 6 : 0 occurrence de « leclercdrive » dans les journaux du serveur ; point 8 : la connexion Leclerc est bien effacée, Repas reste connecté |
+| 13, 14, 15 | non faites | 13 facultative (mode avion coupe aussi adb sans fil) ; 14 ne se simule pas ; 15 non demandée |
+
+**Critères de réussite (§ 16)** : 1 à 9 constatés comme réussis (aucun `BLOCKED`, aucune commande ; le point 5 s'est vu avec 2 articles sur 5, soit l'avertissement attendu) ; 10 : aucune erreur 5xx dans les journaux du serveur sur 3 heures, disque à 49 %, sauvegarde de nuit du 19 octobre présente (celle qui suit la recette n'est pas encore passée). L'application et le site publiés sont ceux de la recette, donc le critère 7 vaut pour le diagnostic seulement.
+
+**Écarts et idées relevés** (tickets : DRV-628 pour les textes, le reste au backlog) :
+
+- Réglages du drive : compteurs à zéro dans « Produits dont Repas se souvient » ; beaucoup de texte explicatif (DRV-628).
+- Liste terminée sans case cochée : « Tout est dans le panier » alors que « 0 sur 6 articles dans le panier » (DRV-628).
+- « Reprendre l'envoi » reste le bouton principal d'une liste envoyée quand le drive est coupé ; il mène à une page « non activé » (à décider avec DRV-628).
+- Les notifications du téléphone peuvent prendre un geste de pilotage : demander « Ne pas déranger » pour les prochaines recettes pilotées.
+- Constat réseau : en recette, aucune requête de Repas vers Leclerc côté serveur (0 occurrence dans les journaux).
+
 ## 18. Tableau de signature
 
 À remplir **à la fin**, par l'utilisateur (l'assistant recopie dans ce fichier par une PR). Aucune donnée personnelle : pas de numéro de magasin complet, pas de ville, pas d'adresse.
 
 | Champ | Valeur |
 |---|---|
-| Date de la recette | |
-| Version de l'application (ligne « Version … » de « Version et mode d'emploi ») | |
-| Application installée (étiquette `android-v…`) | |
-| Version de l'agent (ligne « Agent : version … ») | |
-| Version du back (`state/ok-back`) | |
-| Version du front (`state/ok-front`) | |
-| Téléphone (modèle) et version d'Android | |
-| Version de « Android System WebView » (si connue) | |
+| Date de la recette | 2026-10-19 (envois réels des 18 et 19 octobre) |
+| Version de l'application (ligne « Version … » de « Version et mode d'emploi ») | 0.1.5 |
+| Application installée (étiquette `android-v…`) | `android-v0.1.5` |
+| Version de l'agent (ligne « Agent : version … ») | 0.20.0 |
+| Version du back (`state/ok-back`) | `v0.6.1` |
+| Version du front (`state/ok-front`) | `v0.5.2` |
+| Téléphone (modèle) et version d'Android | Pixel 9, Android 17 |
+| Version de « Android System WebView » (si connue) | 155.0.8059.43 |
 | Parties réussies (1 à 12) | |
 | Critères de réussite 1 à 10 | |
 | Écarts relevés (étape, ce qui a été vu) | |
-| `BLOCKED` ou `CONTRACT_CHANGED` rencontré ? | |
+| `BLOCKED` ou `CONTRACT_CHANGED` rencontré ? | non avec cette version (ceux du 18 octobre sont corrigés, jalon M3c) |
 | Décision sur `DRIVE_ENABLED` à la fin | allumé / coupé |
 | Résultat | **signée** / **non signée** |
 | Signature de l'utilisateur | |
