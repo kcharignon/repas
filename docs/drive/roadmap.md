@@ -133,8 +133,8 @@ La recette réelle sur téléphone (DRV-505) a montré des défauts que le faux 
 Références : [`principes-produit.md`](principes-produit.md), [`audit-simplicite.md`](audit-simplicite.md). Ordre conseillé : 621, puis 623 et 622, puis 624 ; 625 seulement après la vérification humaine qu'il décrit.
 
 - [x] [DRV-621](tickets/DRV-621-voix-et-vocabulaire-uniques.md) front · M · Vouvoiement partout et glossaire appliqué au web, à l'agent, à l'application et à l'aide, avec un test qui garde le glossaire · dépend de : — · PR front #139
-- [ ] [DRV-622](tickets/DRV-622-ecrans-envoi-et-recapitulatif-simples.md) front · M · Écran de l'envoi et récapitulatif en une phrase, compteurs non nuls, erreurs en trois phrases, magasin manquant = bouton · dépend de : 621
-- [ ] [DRV-623](tickets/DRV-623-un-seul-geste-pour-le-magasin.md) front · S · Un seul geste pour enregistrer son magasin · dépend de : 320, 621
+- [ ] [DRV-622](tickets/DRV-622-ecrans-envoi-et-recapitulatif-simples.md) front · M · Écran de l'envoi et récapitulatif en une phrase, compteurs non nuls, erreurs en trois phrases, magasin manquant = bouton (ce point est fait par DRV-623) · dépend de : 621
+- [x] [DRV-623](tickets/DRV-623-un-seul-geste-pour-le-magasin.md) front · S · Un seul geste pour enregistrer son magasin · dépend de : 320, 621 · PR front #140
 - [ ] [DRV-624](tickets/DRV-624-choix-de-produit-sans-jargon.md) front · M · Choix du produit sans jargon, « passer les suivants » · dépend de : 306, 208, 621
 - [ ] [DRV-625](tickets/DRV-625-entrer-dans-le-magasin-sans-geste.md) front · M · Entrer dans le magasin, revenir et finaliser dans l'application sans geste inutile (après vérification humaine) · dépend de : 314, 405, 622
 
