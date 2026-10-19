@@ -5,7 +5,7 @@
 - **Taille** : M
 - **Dépend de** : — (à faire **avant** AUTH-011 : il en fixe la forme)
 - **Faisable sans téléphone** : oui (tests Kotlin purs, `make android-test`)
-- **Statut** : à faire (décision D5 du propriétaire, 2026-10-19)
+- **Statut** : fait (PR front #155, 2026-10-19) ; l'interface réelle est `IdentityProvider.signIn(clientId, nonce, callback): Cancellation` (pas `start`), dans `android/core`
 - **Lire d'abord** : [ADR 0024](../../adr/0024-connexion-avec-google.md) (« Décisions du propriétaire »), `android/README.md`, skill `repas-android-dev`.
 
 ## Contexte
