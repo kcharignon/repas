@@ -4,7 +4,7 @@
 - **Jalon** : M6 Simplicité d'usage
 - **Taille** : M
 - **Dépend de** : —
-- **Statut** : partie back faite (PR back à venir, 2026-10-20 : points 2, 3 et 4, voir « Réalisation (partie back) ») ; **partie front à faire** (points 1, 5, 6 et 7), après la fusion du back et la mise à jour du contrat OpenAPI du front. Idée de l'utilisateur du 2026-10-19 : « tu peux stocker ça en base pour savoir qui est à jour ou non ».
+- **Statut** : partie back faite (PR back [#224](https://github.com/kcharignon/repas/pull/224), 2026-10-20 : points 2, 3 et 4, voir « Réalisation (partie back) ») ; **partie front à faire** (points 1, 5, 6 et 7), après la fusion du back et la mise à jour du contrat OpenAPI du front. Idée de l'utilisateur du 2026-10-19 : « tu peux stocker ça en base pour savoir qui est à jour ou non ».
 - **Lire d'abord** : [ADR 0021](../../adr/0021-gestion-des-comptes-par-l-administrateur.md) (purge à la suppression du compte, `UserOwnedDataCoverageTest`), `docs/adr/0007-*` (API), `docs/drive/principes-produit.md` (règles 3 et 10), skills `repas-dev`, `repas-front-dev`, `repas-android-dev`, `repas-po`.
 
 ## Contexte
@@ -45,7 +45,7 @@ Celle des deux dépôts ; ordre de publication : back (route inactive tant que l
 - La version vient de l'application, donc d'une source non fiable : ne s'en servir que pour informer, jamais pour accorder un droit.
 - Un compte supprimé pendant l'envoi : la ligne ne doit pas renaître (écrire seulement pour un utilisateur existant).
 
-## Réalisation (partie back, 2026-10-20)
+## Réalisation (partie back, PR #224, 2026-10-20)
 
 **Contrat que le front consomme** (`docs/api/openapi.json`, champs additifs : l'ancien front ne casse pas) :
 
