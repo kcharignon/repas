@@ -65,3 +65,7 @@ Celle du front (`make check`, couverture non abaissée) ; PR avec le gabarit Quo
 - Un favori trop long peut être refusé par le navigateur : mesurer la taille et la réduire (minification) ; sinon proposer de le charger en deux temps depuis le presse-papiers (à discuter avant).
 - Sur Chrome Android, le favori se lance depuis la barre d'adresse ; il ne s'exécute pas dans l'onglet intégré d'une PWA.
 - Ne pas committer de capture de page Leclerc ni de HTML brut (dépôt public).
+
+## Suite (2026-10-19) : le banc d'essai est retiré du dépôt front
+
+Le banc d'essai du favori `drive-agent/lab/` (dont `published/lab.js`, servi par jsDelivr) a été retiré du dépôt front par la PR [repas-front#134](https://github.com/kcharignon/repas-front/pull/134) (constat C6 de la revue de sécurité du front, la recette réelle étant faite), avec ses cibles `make lab*` et `lab:*`. L'historique Git le garde. Voir [`roadmap.md`](../roadmap.md) § M3c.

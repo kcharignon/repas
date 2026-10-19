@@ -54,3 +54,10 @@ Celle du front, y compris test visuel Chromium mobile.
 ## Réalisation (2026-10-17, PR repas-front#79)
 
 `drive-agent/src/ui/index.ts` : `createUi({ win?, mode? })` → `UiHandle { show(écran, props), update(patch), close() }`. Écrans : `welcome`, `summary`, `resume`, `progress`, `quantity`, `chooser`, `error`, `end`. `ui.show('chooser', { ingredient, position, total, mount(zone, answer) })` : `mount` remplit la zone (peut rendre un nettoyeur), `answer(valeur)` conclut `{kind:'content', value}` ; les boutons de la barre rendent `{kind:'skip' | 'have' | 'cancel'}`. Aides : `h`, `text`, `append`, `clear`, `S`, `ERROR_TEXTS`, `count`. Textes : « relance l'envoi depuis Repas » et « mets à jour l'application Repas Drive » à la place du favori. Test Playwright `e2e/agent-ui.spec.ts` (axe sans violation A/AA sur 18 écrans, mobile et bureau, clair et sombre).
+
+## Réalisation : corrections de la recette réelle (2026-10-18 et 19)
+
+- [repas-front#126](https://github.com/kcharignon/repas-front/pull/126) (agent 0.9.0) : l'interface est **lisible et touchable sur le site en mode ordinateur** : le cadre est agrandi de 1 / `visualViewport.scale` (borné à 1..3 ; 2,377 mesuré dans la WebView d'un Pixel 9), posé sur la zone visible et suivant `resize` / `scroll`, cibles de 48 px. `ui/scale.ts`, test `drive-agent/e2e/affichage.spec.ts`.
+- [repas-front#136](https://github.com/kcharignon/repas-front/pull/136) (agent 0.13.0) : bandeau « Leclerc demande une vérification » (page visible et touchable derrière, « Reprendre » / « Arrêter »).
+- [repas-front#135](https://github.com/kcharignon/repas-front/pull/135) (agent 0.12.0) : écran de fin « Déjà N au panier : conservé ».
+- Lignes du jalon : [`roadmap.md`](../roadmap.md) § M3c.

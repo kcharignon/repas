@@ -59,3 +59,7 @@ Celle du dépôt front pour ce qui touche à `make check` et à la CI ; PR conci
 - Une WebView n'a pas les mêmes cookies que Chrome : l'utilisateur doit se connecter dans l'application.
 - La WebView annonce `wv` dans son agent utilisateur ; DataDome peut y réagir. C'est un des deux points mesurés.
 - Le code reçu de Leclerc ne doit jamais avoir accès à des objets natifs (`addJavascriptInterface`) dans ce spike : aucune passerelle native n'est exposée.
+
+## Suite (2026-10-19) : l'application de test est retirée du dépôt front
+
+L'application de test `drive-agent/android-lab/` (APK `eu.kantin.repas.lab`, signé d'une clé de débogage publique), son workflow `android-lab.yml` (pré-versions `android-lab-*`) et le service `android-lab` de `compose.yaml` ont été retirés par la PR [repas-front#134](https://github.com/kcharignon/repas-front/pull/134) (constat C6 de la revue de sécurité du front). `android.yml` et ses pré-versions `android-dev-*` restent (le runbook s'en sert pour le « Test automatique »). La PR laisse à la main de l'utilisateur la suppression, sur la page des releases, des anciennes pré-versions `android-lab-*` et `android-dev-*` périmées. Voir [`roadmap.md`](../roadmap.md) § M3c.

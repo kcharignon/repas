@@ -55,3 +55,10 @@ Le transport est **interchangeable** : le protocole v1 (messages `plan`, `setup`
 ## Réalisation (2026-10-17, PR repas-front#77)
 
 `drive-agent/protocol/` (alias `@drive-protocol`) : types, limites, `encodeMessage` / `decodeMessage` (64 Ko), `validatePlan` / `validateResult`, `ProtocolError`, schémas JSON `plan.schema.json` / `result.schema.json`, 17 exemples valides et 53 invalides. `drive-agent/src/transport/` : interface `Transport { listen(onMessage, onInvalid); send(result) }`, `fragmentTransport(page, returnOrigin)` et `bridgeTransport(bridge)` (le pont est un objet avec `postMessage(texte)` et `addEventListener('message', …)`, JSON en texte). Précisions : `store` est obligatoire dans un `setup` ; `error` obligatoire si l'issue globale est `error` ; une ligne `FAILED` porte un code `error` ; EAN de 8 à 14 chiffres ou `null` ; `packs` et `packsStatus` facultatifs ou `null`.
+
+## Réalisation : corrections de la recette réelle (2026-10-18 et 19)
+
+- **Cause dans `error.message`** (PR [repas-front#127](https://github.com/kcharignon/repas-front/pull/127), agent 0.9.1) : « Le site a changé (SEARCH_NO_STATE) ». Ni champ ni code d'erreur ajouté (1 à 200 caractères), format du protocole inchangé.
+- **Champ facultatif `result.stats`** (PR [repas-front#138](https://github.com/kcharignon/repas-front/pull/138), agent 0.15.0) : `{requests, errors, blocks}`, trois entiers de 0 à 100 000, les trois obligatoires, aucune autre clé, absent d'un `setup-result` ; schéma, validateur (`result.ts`), types, 2 exemples valides (`result-avec-compteurs.json`, `result-compteurs-a-zero.json`) et 8 invalides, `drive-agent/protocol/README.md`. Description : [`../architecture.md`](../architecture.md) § 8.
+- **Conséquence de déploiement** : un récepteur qui ne connaît pas `stats` rejette le résultat entier. Le front (validateur du protocole) se déploie **avant** l'application qui embarque cet agent : [`../architecture.md`](../architecture.md) § 12, [`../runbook.md`](../runbook.md) § 7.4.
+- Ligne du jalon : [`roadmap.md`](../roadmap.md) § M3c.

@@ -38,3 +38,10 @@ Celle du dépôt front ; `make agent-verify`, `make android-agent-hash`, `make a
 - **Front** : `readStoreFromApp()` et `canReadStoreFromApp()` (`storeReader.ts`) branchés sur `drive.setup` par `driveBridge` ; le bouton « Lire mon magasin dans l'application » apparaît dans les réglages quand le pont est disponible ; « Mon compte » gagne « Menu de l'application » (section « Drive », **visible seulement dans l'application et fonction allumée**), qui envoie `app.menu`.
 - **Reste à essayer sur téléphone** (recette DRV-505, [`../recette.md`](../recette.md) partie 4) : la page de choix du magasin du vrai site Leclerc. L'application attend une adresse `/magasin-<id>-<id>` ; le test de fumée ne l'a essayée que sur le faux site.
 - **Point à relire** : « Menu de l'application » disparaît quand la fonction est coupée ; dans l'application de publication, « Se déconnecter de Leclerc et effacer les données du drive » est alors inatteignable (la version de test garde le bouton ⋮).
+
+## Réalisation : corrections de la recette réelle (2026-10-18 et 19)
+
+- La lecture du magasin s'ouvre sur `https://www.leclercdrive.fr/` (`NavigationPolicy.START_URL`) et le plan d'un envoi s'ouvre désormais au même endroit ([repas-front#132](https://github.com/kcharignon/repas-front/pull/132), DRV-314).
+- [repas-front#137](https://github.com/kcharignon/repas-front/pull/137) : la lecture du magasin ne rend jamais un hôte mobile (`m-courses`) ; l'agent la refuse (`PAGE_MOBILE`) et l'application ne l'envoie pas à cette page.
+- **Partie 4 de la recette** (lecture du magasin sur le vrai site) : déclarée réussie par l'utilisateur (2026-10-18 et 19) ; le point « reste à essayer sur téléphone » ci-dessus est donc levé.
+- Lignes du jalon : [`roadmap.md`](../roadmap.md) § M3c.

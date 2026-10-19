@@ -65,3 +65,10 @@ La phase B se branche par `FlowDeps.phaseB(context)` (voir DRV-305, « Réalisat
 ## Réalisation (2026-10-18, PR repas-front#81)
 
 Variante P2 : `drive-agent/src/flow/{phase-b,packs}.ts`, `drive-agent/src/ui/picker.ts`. L'agent cherche le nom (ou `searchQuery`), affiche 8 produits au plus (libellé, contenu, prix, prix à l'unité de mesure, promotion, calcul « 800 g demandés, 500 g par produit : 2 »), n'ajoute au panier qu'après « Choisir ». Issue `CHOSEN` avec rôle : `PRIMARY` sans question quand rien n'est mémorisé ; sinon écran `placement` (« Mon nouveau produit préféré », « Produit de secours », « Seulement cette fois »). Boutons « Passer cette fois », « J'en ai toujours », « Annuler le passage », case « Ne plus jamais prendre » par produit indisponible. Produit refusé ou en rupture grisé, quantité plafonnée au stock, erreur réseau affichée dans la liste (réessayer ou passer), `BLOCKED` met les lignes restantes en `FAILED`. Pas de vignettes. Exports : `guidedChoice`, `packsFor`, `labelOf`. **Protocole : `needed` ajouté** à une ligne du plan (voir `architecture.md` § 8).
+
+## Réalisation : corrections de la recette réelle (2026-10-18 et 19)
+
+- [repas-front#130](https://github.com/kcharignon/repas-front/pull/130) (agent 0.11.0, ticket D) : la recherche faite par l'agent (nom ou `searchQuery`) essaie les formes dérivées du nom quand le moteur ne répond rien ; la liste dit quelle recherche a répondu. Jamais pour ce que l'utilisateur tape lui-même.
+- [repas-front#135](https://github.com/kcharignon/repas-front/pull/135) (agent 0.12.0, ticket M) : la quantité fixée après un choix ne baisse jamais ce que le panier contient déjà.
+- [repas-front#136](https://github.com/kcharignon/repas-front/pull/136) (agent 0.13.0, ticket K) : « Reprendre » après un défi refait les lignes qui attendent.
+- Lignes du jalon : [`roadmap.md`](../roadmap.md) § M3c.
