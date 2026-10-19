@@ -6,12 +6,14 @@ namespace Repas\Tests\User\Application;
 use DateTimeImmutable;
 use PHPUnit\Framework\TestCase;
 use Repas\Shared\Domain\Event\UserDeletedEvent;
+use Repas\Tests\Helper\Builder\UserAppVersionBuilder;
 use Repas\Tests\Helper\Builder\UserBuilder;
 use Repas\Tests\Helper\Builder\UserIdentityBuilder;
 use Repas\Tests\Helper\InMemoryRepository\EmailVerificationTokenInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\PasswordResetTokenInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\RefreshTokenInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\SpyEventDispatcher;
+use Repas\Tests\Helper\InMemoryRepository\UserAppVersionInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\UserIdentityInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\UserInMemoryRepository;
 use Repas\User\Application\DeleteUser\DeleteUserCommand;
@@ -22,6 +24,7 @@ use Repas\User\Domain\Model\IdentityProvider;
 use Repas\User\Domain\Model\PasswordResetToken;
 use Repas\User\Domain\Model\RefreshToken;
 use Repas\User\Domain\Model\User;
+use Repas\User\Domain\Model\UserAppVersion;
 
 class DeleteUserHandlerTest extends TestCase
 {
@@ -31,6 +34,7 @@ class DeleteUserHandlerTest extends TestCase
     private EmailVerificationTokenInMemoryRepository $emailVerificationTokenRepository;
     private PasswordResetTokenInMemoryRepository $passwordResetTokenRepository;
     private UserIdentityInMemoryRepository $userIdentityRepository;
+    private UserAppVersionInMemoryRepository $userAppVersionRepository;
     private SpyEventDispatcher $eventDispatcher;
     private DeleteUserHandler $handler;
 
@@ -42,11 +46,12 @@ class DeleteUserHandlerTest extends TestCase
         $this->emailVerificationTokenRepository = new EmailVerificationTokenInMemoryRepository();
         $this->passwordResetTokenRepository = new PasswordResetTokenInMemoryRepository();
         $this->userIdentityRepository = new UserIdentityInMemoryRepository();
+        $this->userAppVersionRepository = new UserAppVersionInMemoryRepository($this->userRepository);
         $this->eventDispatcher = new SpyEventDispatcher();
-        $this->handler = new DeleteUserHandler($this->userRepository, $this->refreshTokenRepository, $this->emailVerificationTokenRepository, $this->passwordResetTokenRepository, $this->userIdentityRepository, $this->eventDispatcher);
+        $this->handler = new DeleteUserHandler($this->userRepository, $this->refreshTokenRepository, $this->emailVerificationTokenRepository, $this->passwordResetTokenRepository, $this->userIdentityRepository, $this->userAppVersionRepository, $this->eventDispatcher);
     }
 
-    public function testTheAccountItsConnectionsAndItsLinksAreDeletedAndTheDeletionIsAnnounced(): void
+    public function testTheAccountItsConnectionsItsLinksAndItsAppVersionsAreDeletedAndTheDeletionIsAnnounced(): void
     {
         // Given
         $this->userRepository->save(new UserBuilder()->withId('user-id')->build());
@@ -58,6 +63,8 @@ class DeleteUserHandlerTest extends TestCase
         $this->passwordResetTokenRepository->add(PasswordResetToken::issue('reset-2', 'other-id', 'reset-hash-2', $this->now));
         $this->userIdentityRepository->save(new UserIdentityBuilder()->withUserId('user-id')->withSubject('sujet-test-1')->build());
         $this->userIdentityRepository->save(new UserIdentityBuilder()->withUserId('other-id')->withSubject('sujet-test-2')->build());
+        $this->userAppVersionRepository->save(new UserAppVersionBuilder()->withUserId('user-id')->withVersion('0.1.8')->build());
+        $this->userAppVersionRepository->save(new UserAppVersionBuilder()->withUserId('other-id')->withVersion('0.1.10')->build());
 
         // When
         ($this->handler)(new DeleteUserCommand('user-id', 'admin-id'));
@@ -73,6 +80,7 @@ class DeleteUserHandlerTest extends TestCase
         $this->assertNull($this->userIdentityRepository->findOneByProviderAndSubject(IdentityProvider::GOOGLE, 'sujet-test-1'));
         $this->assertNull($this->userIdentityRepository->findOneByUserAndProvider('user-id', IdentityProvider::GOOGLE));
         $this->assertSame('other-id', $this->userIdentityRepository->findOneByProviderAndSubject(IdentityProvider::GOOGLE, 'sujet-test-2')?->getUserId());
+        $this->assertSame(['other-id'], array_map(static fn(UserAppVersion $appVersion): string => $appVersion->getUserId(), $this->userAppVersionRepository->all()));
         $this->assertEquals([new UserDeletedEvent('user-id')], $this->eventDispatcher->eventDispatched);
     }
 
@@ -82,6 +90,7 @@ class DeleteUserHandlerTest extends TestCase
         $this->userRepository->save(new UserBuilder()->withId('admin-id')->isAdmin()->build());
         $this->refreshTokenRepository->save(RefreshToken::startFamily('token-1', 'family-1', 'admin-id', 'hash-1', 0, $this->now));
         $this->userIdentityRepository->save(new UserIdentityBuilder()->withUserId('admin-id')->build());
+        $this->userAppVersionRepository->save(new UserAppVersionBuilder()->withUserId('admin-id')->build());
 
         // When
         try {
@@ -94,6 +103,7 @@ class DeleteUserHandlerTest extends TestCase
             $this->assertTrue($this->userRepository->emailExists('admin-id@example.com'));
             $this->assertNotNull($this->refreshTokenRepository->findOneByTokenHash('hash-1'));
             $this->assertNotNull($this->userIdentityRepository->findOneByUserAndProvider('admin-id', IdentityProvider::GOOGLE));
+            $this->assertCount(1, $this->userAppVersionRepository->all());
             $this->assertSame([], $this->eventDispatcher->eventDispatched);
         }
     }
@@ -117,6 +127,7 @@ class DeleteUserHandlerTest extends TestCase
         $this->userRepository->save(new UserBuilder()->withId('owner-id')->withEmail(User::PROTECTED_EMAIL)->isAdmin()->build());
         $this->refreshTokenRepository->save(RefreshToken::startFamily('token-1', 'family-1', 'owner-id', 'hash-1', 0, $this->now));
         $this->userIdentityRepository->save(new UserIdentityBuilder()->withUserId('owner-id')->build());
+        $this->userAppVersionRepository->save(new UserAppVersionBuilder()->withUserId('owner-id')->build());
 
         // When
         try {
@@ -128,6 +139,7 @@ class DeleteUserHandlerTest extends TestCase
             $this->assertTrue($this->userRepository->emailExists(User::PROTECTED_EMAIL));
             $this->assertNotNull($this->refreshTokenRepository->findOneByTokenHash('hash-1'));
             $this->assertNotNull($this->userIdentityRepository->findOneByUserAndProvider('owner-id', IdentityProvider::GOOGLE));
+            $this->assertCount(1, $this->userAppVersionRepository->all());
             $this->assertSame([], $this->eventDispatcher->eventDispatched);
         }
     }

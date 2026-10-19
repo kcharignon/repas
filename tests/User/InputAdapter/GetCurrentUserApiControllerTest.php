@@ -14,7 +14,7 @@ class GetCurrentUserApiControllerTest extends QueryBusWebTestCase
         // Given
         $user = $this->savedUser();
         $this->queryBus->willReturn(GetCurrentUserQuery::class, new CurrentUserDTOBuilder()
-            ->withId($user->getId())->withEmail('alexiane@example.com')->withDefaultServing(3)->build());
+            ->withId($user->getId())->withEmail('alexiane@example.com')->withDefaultServing(3)->withAppUpdate('0.1.10', '0.1.9', true)->build());
 
         // When
         $this->client->request('GET', '/api/v1/me', server: $this->bearerFor($user));
@@ -30,7 +30,22 @@ class GetCurrentUserApiControllerTest extends QueryBusWebTestCase
             'roles' => ['ROLE_USER'],
             'isAdmin' => false,
             'defaultServing' => 3,
+            'appUpdate' => ['latest' => '0.1.10', 'minimum' => '0.1.9', 'outdated' => true],
         ], $this->jsonBody());
+    }
+
+    public function testMeWritesNullVersionsWhenTheServerKnowsNone(): void
+    {
+        // Given : réglages du serveur vides (le défaut)
+        $user = $this->savedUser();
+        $this->queryBus->willReturn(GetCurrentUserQuery::class, new CurrentUserDTOBuilder()->withId($user->getId())->build());
+
+        // When
+        $this->client->request('GET', '/api/v1/me', server: $this->bearerFor($user));
+
+        // Then : les clés sont toujours écrites, `null` quand la valeur est inconnue
+        $this->assertSame(200, $this->client->getResponse()->getStatusCode());
+        $this->assertSame(['latest' => null, 'minimum' => null, 'outdated' => false], $this->jsonBody()['appUpdate']);
     }
 
     public function testMeFlagsAnAdministrator(): void

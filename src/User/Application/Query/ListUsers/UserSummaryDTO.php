@@ -27,6 +27,10 @@ final readonly class UserSummaryDTO
         public bool $isAdmin,
         #[OA\Property(description: 'État du compte : `PENDING` (adresse email pas encore confirmée), `ACTIVE` ou `DISABLED`', enum: ['PENDING', 'ACTIVE', 'DISABLED'], example: 'ACTIVE')]
         public string $status,
+        #[OA\Property(description: "Dernière version de l'application Android vue pour ce compte (DRV-637), `null` si inconnue (navigateur seul, application qui ne l'a jamais envoyée)", type: 'string', example: '0.1.8', nullable: true)]
+        public ?string $appVersion,
+        #[OA\Property(description: "« À mettre à jour » : vrai si `appVersion` est plus ancienne que la dernière version publiée (`APP_LATEST_VERSION`) ou que la minimale (`APP_MIN_VERSION`) ; faux si la version est inconnue ou si le serveur ne connaît aucune des deux", example: false)]
+        public bool $appOutdated,
     ) {
     }
 }

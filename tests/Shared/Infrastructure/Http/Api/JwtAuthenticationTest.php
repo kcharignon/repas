@@ -114,6 +114,7 @@ class JwtAuthenticationTest extends DatabaseTestCase
             'roles' => ['ROLE_USER'],
             'isAdmin' => false,
             'defaultServing' => 4,
+            'appUpdate' => ['latest' => null, 'minimum' => null, 'outdated' => false],
         ], $this->jsonBody());
     }
 

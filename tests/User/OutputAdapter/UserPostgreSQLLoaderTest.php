@@ -5,17 +5,24 @@ namespace Repas\Tests\User\OutputAdapter;
 
 use DateTimeImmutable;
 use DateTimeZone;
+use Repas\Tests\Helper\Builder\UserAppVersionBuilder;
 use Repas\Tests\Helper\Builder\UserBuilder;
+use Repas\Tests\Helper\ControlledAppReleaseProvider;
 use Repas\Tests\Helper\DatabaseTestCase;
+use Repas\Tests\Helper\SqlBudget\QueryCounter;
 use Repas\User\Application\Loader\UserLoader;
+use Repas\User\Application\Query\GetCurrentUser\AppUpdateDTO;
 use Repas\User\Application\Query\GetCurrentUser\CurrentUserDTO;
 use Repas\User\Application\Query\ListUsers\UserSummaryDTO;
 use Repas\User\Domain\Exception\UserException;
+use Repas\User\Domain\Interface\UserAppVersionRepository;
 use Repas\User\Domain\Interface\UserRepository;
+use Repas\User\Infrastructure\Loader\UserPostgreSQLLoader;
 
 class UserPostgreSQLLoaderTest extends DatabaseTestCase
 {
     private UserRepository $userRepository;
+    private UserAppVersionRepository $userAppVersionRepository;
     private UserLoader $userLoader;
 
     protected function setUp(): void
@@ -23,6 +30,7 @@ class UserPostgreSQLLoaderTest extends DatabaseTestCase
         parent::setUp();
 
         $this->userRepository = static::getContainer()->get(UserRepository::class);
+        $this->userAppVersionRepository = static::getContainer()->get(UserAppVersionRepository::class);
         $this->userLoader = static::getContainer()->get(UserLoader::class);
     }
 
@@ -35,11 +43,80 @@ class UserPostgreSQLLoaderTest extends DatabaseTestCase
         // When
         $result = $this->userLoader->get('22222222-2222-4222-8222-222222222222');
 
-        // Then
+        // Then : les réglages de version du serveur sont vides en test, personne n'est invité à mettre à jour
         $this->assertEquals(
-            new CurrentUserDTO('22222222-2222-4222-8222-222222222222', 'second@example.com', ['ROLE_USER'], false, 6),
+            new CurrentUserDTO('22222222-2222-4222-8222-222222222222', 'second@example.com', ['ROLE_USER'], false, 6, new AppUpdateDTO(null, null, false)),
             $result,
         );
+    }
+
+    public function testGetInvitesToUpdateWhenTheVersionSeenIsOlderThanTheLatest(): void
+    {
+        // Given
+        $this->userRepository->save(new UserBuilder()->withId('11111111-1111-4111-8111-111111111111')->build());
+        $this->userAppVersionRepository->save(new UserAppVersionBuilder()->withUserId('11111111-1111-4111-8111-111111111111')->withVersion('0.1.8')->build());
+
+        // When
+        $result = $this->loaderWith('0.1.10', '0.1.9')->get('11111111-1111-4111-8111-111111111111');
+
+        // Then
+        $this->assertEquals(new AppUpdateDTO('0.1.10', '0.1.9', true), $result->appUpdate);
+    }
+
+    public function testGetComparesTheVersionsNumberByNumber(): void
+    {
+        // Given : en texte, « 0.1.10 » serait avant « 0.1.9 »
+        $this->userRepository->save(new UserBuilder()->withId('11111111-1111-4111-8111-111111111111')->build());
+        $this->userAppVersionRepository->save(new UserAppVersionBuilder()->withUserId('11111111-1111-4111-8111-111111111111')->withVersion('0.1.10')->build());
+
+        // When
+        $result = $this->loaderWith('0.1.9', null)->get('11111111-1111-4111-8111-111111111111');
+
+        // Then
+        $this->assertEquals(new AppUpdateDTO('0.1.9', null, false), $result->appUpdate);
+    }
+
+    public function testGetNeverInvitesWhenNoVersionIsKnownForTheAccount(): void
+    {
+        // Given : un compte qui n'utilise que le navigateur ; un autre compte a une vieille application
+        $this->userRepository->save(new UserBuilder()->withId('11111111-1111-4111-8111-111111111111')->build());
+        $this->userRepository->save(new UserBuilder()->withId('22222222-2222-4222-8222-222222222222')->build());
+        $this->userAppVersionRepository->save(new UserAppVersionBuilder()->withUserId('22222222-2222-4222-8222-222222222222')->withVersion('0.0.1')->build());
+
+        // When
+        $result = $this->loaderWith('0.1.10', '0.1.9')->get('11111111-1111-4111-8111-111111111111');
+
+        // Then : jamais d'erreur, jamais d'invitation, et la version d'un autre compte ne compte pas
+        $this->assertEquals(new AppUpdateDTO('0.1.10', '0.1.9', false), $result->appUpdate);
+    }
+
+    public function testGetIgnoresMalformedServerSettings(): void
+    {
+        // Given
+        $this->userRepository->save(new UserBuilder()->withId('11111111-1111-4111-8111-111111111111')->build());
+        $this->userAppVersionRepository->save(new UserAppVersionBuilder()->withUserId('11111111-1111-4111-8111-111111111111')->withVersion('0.1.8')->build());
+
+        // When
+        $result = $this->loaderWith('0.1.10-dev', '1.0')->get('11111111-1111-4111-8111-111111111111');
+
+        // Then
+        $this->assertEquals(new AppUpdateDTO(null, null, false), $result->appUpdate);
+    }
+
+    public function testGetReadsTheAccountAndItsVersionInOneQuery(): void
+    {
+        // Given
+        $this->userRepository->save(new UserBuilder()->withId('11111111-1111-4111-8111-111111111111')->build());
+        $this->userAppVersionRepository->save(new UserAppVersionBuilder()->withUserId('11111111-1111-4111-8111-111111111111')->build());
+        $this->entityManager->clear();
+        $counter = static::getContainer()->get(QueryCounter::class);
+        $counter->reset();
+
+        // When
+        $this->loaderWith('0.1.10', null)->get('11111111-1111-4111-8111-111111111111');
+
+        // Then
+        $this->assertSame(1, $counter->count());
     }
 
     public function testListReturnsEveryUserWithItsStatisticsSortedByEmail(): void
@@ -59,12 +136,75 @@ class UserPostgreSQLLoaderTest extends DatabaseTestCase
         // Then
         $this->assertEquals(
             [
-                new UserSummaryDTO('11111111-1111-4111-8111-111111111111', 'aaa@example.com', 6, 0, 0, 0, '2026-10-13T08:56:40+02:00', false, true, 'ACTIVE'),
-                new UserSummaryDTO('33333333-3333-4333-8333-333333333333', 'mmm@example.com', 3, 0, 0, 0, '2026-10-13T08:56:40+02:00', false, false, 'PENDING'),
-                new UserSummaryDTO('22222222-2222-4222-8222-222222222222', 'zzz@example.com', 2, 7, 5, 0, '2026-10-13T08:56:40+02:00', true, false, 'DISABLED'),
+                new UserSummaryDTO('11111111-1111-4111-8111-111111111111', 'aaa@example.com', 6, 0, 0, 0, '2026-10-13T08:56:40+02:00', false, true, 'ACTIVE', null, false),
+                new UserSummaryDTO('33333333-3333-4333-8333-333333333333', 'mmm@example.com', 3, 0, 0, 0, '2026-10-13T08:56:40+02:00', false, false, 'PENDING', null, false),
+                new UserSummaryDTO('22222222-2222-4222-8222-222222222222', 'zzz@example.com', 2, 7, 5, 0, '2026-10-13T08:56:40+02:00', true, false, 'DISABLED', null, false),
             ],
             $result,
         );
+    }
+
+    public function testListShowsTheAppVersionOfEachAccountAndWhetherItIsToBeUpdated(): void
+    {
+        // Given : APP_LATEST_VERSION=0.1.10
+        $this->userRepository->save(new UserBuilder()->withId('11111111-1111-4111-8111-111111111111')->withEmail('a-ancienne@example.com')->build());
+        $this->userRepository->save(new UserBuilder()->withId('22222222-2222-4222-8222-222222222222')->withEmail('b-a-jour@example.com')->build());
+        $this->userRepository->save(new UserBuilder()->withId('33333333-3333-4333-8333-333333333333')->withEmail('c-navigateur@example.com')->build());
+        $this->userRepository->save(new UserBuilder()->withId('44444444-4444-4444-8444-444444444444')->withEmail('d-plus-recente@example.com')->build());
+        $this->userAppVersionRepository->save(new UserAppVersionBuilder()->withUserId('11111111-1111-4111-8111-111111111111')->withVersion('0.1.8')->build());
+        $this->userAppVersionRepository->save(new UserAppVersionBuilder()->withUserId('22222222-2222-4222-8222-222222222222')->withVersion('0.1.10')->build());
+        $this->userAppVersionRepository->save(new UserAppVersionBuilder()->withUserId('44444444-4444-4444-8444-444444444444')->withVersion('1.0.0')->build());
+
+        // When
+        $result = $this->loaderWith('0.1.10', null)->list();
+
+        // Then
+        $this->assertSame(
+            [
+                'a-ancienne@example.com' => ['0.1.8', true],
+                'b-a-jour@example.com' => ['0.1.10', false],
+                'c-navigateur@example.com' => [null, false],
+                'd-plus-recente@example.com' => ['1.0.0', false],
+            ],
+            array_combine(
+                array_map(static fn(UserSummaryDTO $user): string => $user->email, $result),
+                array_map(static fn(UserSummaryDTO $user): array => [$user->appVersion, $user->appOutdated], $result),
+            ),
+        );
+    }
+
+    public function testListComparesTheVersionsNumberByNumber(): void
+    {
+        // Given : APP_LATEST_VERSION=1.0.0 ; en texte, « 0.99.99 » et « 0.1.10 » se trieraient mal
+        $this->userRepository->save(new UserBuilder()->withId('11111111-1111-4111-8111-111111111111')->withEmail('a@example.com')->build());
+        $this->userRepository->save(new UserBuilder()->withId('22222222-2222-4222-8222-222222222222')->withEmail('b@example.com')->build());
+        $this->userAppVersionRepository->save(new UserAppVersionBuilder()->withUserId('11111111-1111-4111-8111-111111111111')->withVersion('0.99.99')->build());
+        $this->userAppVersionRepository->save(new UserAppVersionBuilder()->withUserId('22222222-2222-4222-8222-222222222222')->withVersion('1.0.0')->build());
+
+        // When
+        $result = $this->loaderWith('1.0.0', null)->list();
+
+        // Then
+        $this->assertSame([true, false], array_map(static fn(UserSummaryDTO $user): bool => $user->appOutdated, $result));
+    }
+
+    public function testListReadsEveryAccountAndItsVersionInOneQuery(): void
+    {
+        // Given
+        foreach (['11111111-1111-4111-8111-111111111111', '22222222-2222-4222-8222-222222222222', '33333333-3333-4333-8333-333333333333'] as $id) {
+            $this->userRepository->save(new UserBuilder()->withId($id)->build());
+            $this->userAppVersionRepository->save(new UserAppVersionBuilder()->withUserId($id)->build());
+        }
+        $this->entityManager->clear();
+        $counter = static::getContainer()->get(QueryCounter::class);
+        $counter->reset();
+
+        // When
+        $result = $this->loaderWith('0.1.10', null)->list();
+
+        // Then : aucune requête par compte
+        $this->assertCount(3, $result);
+        $this->assertSame(1, $counter->count());
     }
 
     public function testListIsEmptyWithoutUser(): void
@@ -117,7 +257,7 @@ class UserPostgreSQLLoaderTest extends DatabaseTestCase
         $result = $this->userLoader->get('44444444-4444-4444-8444-444444444444');
 
         // Then
-        $this->assertSame(['id', 'email', 'roles', 'isAdmin', 'defaultServing'], array_keys(get_object_vars($result)));
+        $this->assertSame(['id', 'email', 'roles', 'isAdmin', 'defaultServing', 'appUpdate'], array_keys(get_object_vars($result)));
     }
 
     public function testGetThrowsWhenTheUserDoesNotExist(): void
@@ -127,5 +267,13 @@ class UserPostgreSQLLoaderTest extends DatabaseTestCase
 
         // When
         $this->userLoader->get('99999999-9999-4999-8999-999999999999');
+    }
+
+    /**
+     * Le loader réel, avec les versions publiées choisies par le test (`APP_LATEST_VERSION`, `APP_MIN_VERSION`).
+     */
+    private function loaderWith(?string $latest, ?string $minimum): UserLoader
+    {
+        return new UserPostgreSQLLoader($this->entityManager, new ControlledAppReleaseProvider($latest, $minimum));
     }
 }

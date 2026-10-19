@@ -67,8 +67,10 @@ use Repas\User\Application\RegisterNewUser\RegisterNewUserCommand;
 use Repas\User\Application\ResetPassword\ResetPasswordCommand;
 use Repas\User\Application\SendEmailVerification\SendEmailVerificationCommand;
 use Repas\User\Application\SendPasswordReset\SendPasswordResetCommand;
+use Repas\User\Application\UpdateUserAppVersion\UpdateUserAppVersionCommand;
 use Repas\User\Application\UpdateUserSettings\UpdateUserSettingsCommand;
 use Repas\User\Application\VerifyEmail\VerifyEmailCommand;
+use Repas\User\Domain\Model\AppPlatform;
 use Repas\User\Domain\Model\EmailVerificationToken;
 use Repas\User\Domain\Model\PasswordResetToken;
 use Repas\User\Domain\Model\UserStatus;
@@ -353,6 +355,15 @@ return [
 
         return new UpdateUserSettingsCommand($user->getId(), null, 5);
     },
+    // Pire cas : une version déjà connue, remplacée par la nouvelle (DRV-637). Une seule requête : l'écriture conditionnelle
+    // (le compte existe) qui verrouille la ligne du compte, sans lecture préalable. Un deuxième appel dans la minute n'arrive pas
+    // jusqu'ici (limiteur, aucune requête).
+    'version-application' => static function (WriteBudgetTestCase $t): object {
+        $user = $t->savedUser();
+        $t->savedUserAppVersion($user);
+
+        return new UpdateUserAppVersionCommand($user->getId(), AppPlatform::ANDROID, '0.1.10');
+    },
     // Pire cas : un compte actif connecté, avec un lien de confirmation, devient désactivé
     'changer-statut-compte' => static function (WriteBudgetTestCase $t): object {
         $user = $t->savedUser();
@@ -431,10 +442,12 @@ return [
 
         return new ReplaceIngredientPreferenceCommand($user->getId(), Retailer::LECLERC, '123456', 'sucre', false, [$id('2'), $id('3')], [$id('4')]);
     },
-    // Compte qui a un lien Google, trois recettes planifiées dans une liste (dont une est copiée par un autre utilisateur), un magasin et une préférence de produits
+    // Compte qui a un lien Google, une version d'application connue (DRV-637), trois recettes planifiées dans une liste (dont une est
+    // copiée par un autre utilisateur), un magasin et une préférence de produits
     'supprimer-compte' => static function (WriteBudgetTestCase $t): object {
         $owner = $t->savedUser();
         $t->savedUserIdentity($owner);
+        $t->savedUserAppVersion($owner);
         $recipes = $t->typicalRecipes($owner);
         $t->savedShoppingList($owner, $recipes);
         $t->savedDriveSettings($owner);

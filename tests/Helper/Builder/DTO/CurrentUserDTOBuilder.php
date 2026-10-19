@@ -4,6 +4,7 @@ namespace Repas\Tests\Helper\Builder\DTO;
 
 
 use Repas\Tests\Helper\Builder\Builder;
+use Repas\User\Application\Query\GetCurrentUser\AppUpdateDTO;
 use Repas\User\Application\Query\GetCurrentUser\CurrentUserDTO;
 
 class CurrentUserDTOBuilder implements Builder
@@ -14,6 +15,7 @@ class CurrentUserDTOBuilder implements Builder
     private array $roles;
     private bool $isAdmin;
     private int $defaultServing;
+    private AppUpdateDTO $appUpdate;
 
     private function initialize(): void
     {
@@ -22,6 +24,7 @@ class CurrentUserDTOBuilder implements Builder
         $this->roles ??= ['ROLE_USER'];
         $this->isAdmin ??= in_array('ROLE_ADMIN', $this->roles, true);
         $this->defaultServing ??= 4;
+        $this->appUpdate ??= new AppUpdateDTO(null, null, false);
     }
 
     public function withId(string $id): self
@@ -49,9 +52,15 @@ class CurrentUserDTOBuilder implements Builder
         return $this;
     }
 
+    public function withAppUpdate(?string $latest, ?string $minimum, bool $outdated): self
+    {
+        $this->appUpdate = new AppUpdateDTO($latest, $minimum, $outdated);
+        return $this;
+    }
+
     public function build(): CurrentUserDTO
     {
         $this->initialize();
-        return new CurrentUserDTO($this->id, $this->email, $this->roles, $this->isAdmin, $this->defaultServing);
+        return new CurrentUserDTO($this->id, $this->email, $this->roles, $this->isAdmin, $this->defaultServing, $this->appUpdate);
     }
 }

@@ -13,7 +13,8 @@ class ListUsersApiControllerTest extends QueryBusWebTestCase
     {
         // Given
         $this->queryBus->willReturn(ListUsersQuery::class, [
-            new UserSummaryDTO('user-1', 'admin@example.com', 5, 3, 2, 4, '2026-10-13T08:56:40+02:00', false, true, 'ACTIVE'),
+            new UserSummaryDTO('user-1', 'admin@example.com', 5, 3, 2, 4, '2026-10-13T08:56:40+02:00', false, true, 'ACTIVE', '0.1.8', true),
+            new UserSummaryDTO('user-2', 'navigateur@example.com', 4, 0, 0, 0, '', false, false, 'ACTIVE', null, false),
         ]);
 
         // When
@@ -34,8 +35,23 @@ class ListUsersApiControllerTest extends QueryBusWebTestCase
                 'isDisabled' => false,
                 'isAdmin' => true,
                 'status' => 'ACTIVE',
+                'appVersion' => '0.1.8',
+                'appOutdated' => true,
+            ], [
+                'id' => 'user-2',
+                'email' => 'navigateur@example.com',
+                'defaultServing' => 4,
+                'recipeCount' => 0,
+                'ingredientCount' => 0,
+                'shoppingListCount' => 0,
+                'createdAt' => '',
+                'isDisabled' => false,
+                'isAdmin' => false,
+                'status' => 'ACTIVE',
+                'appVersion' => null,
+                'appOutdated' => false,
             ]],
-            'totalItems' => 1,
+            'totalItems' => 2,
         ], $this->jsonBody());
     }
 
