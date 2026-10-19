@@ -23,7 +23,7 @@ Un proche touche « Se connecter avec Google », choisit son compte et c'est fin
 
 ## M0 — Décisions et console
 
-- [ ] [AUTH-001](tickets/AUTH-001-decisions-du-proprietaire.md) assistant · S · Décisions D1 à D5 du propriétaire, ADR 0024 `Accepted` · dépend de : —
+- [x] [AUTH-001](tickets/AUTH-001-decisions-du-proprietaire.md) assistant · S · Décisions D1 à D5 du propriétaire, ADR 0024 `Accepted` · dépend de : —
 - [ ] [AUTH-002](tickets/AUTH-002-console-google-cloud.md) humain · M · Console Google Cloud : projet, consentement, client Web, client Android · dépend de : 001
 
 ## M1 — Back `User`
@@ -42,7 +42,8 @@ Un proche touche « Se connecter avec Google », choisit son compte et c'est fin
 
 ## M3 — Application Android
 
-- [ ] [AUTH-011](tickets/AUTH-011-android-pont-google-credential-manager.md) front (`android/`) · M · Pont `google.signIn` et Credential Manager · dépend de : —
+- [ ] [AUTH-015](tickets/AUTH-015-tronc-commun-kotlin.md) front (`android/`) · M · Isoler un tronc commun Kotlin (cœur sans dépendance Android, interfaces de plateforme) pour un iPhone plus tard (décision D5) · dépend de : —
+- [ ] [AUTH-011](tickets/AUTH-011-android-pont-google-credential-manager.md) front (`android/`) · M · Pont `google.signIn` et Credential Manager · dépend de : 015
 - [ ] [AUTH-012](tickets/AUTH-012-bouton-google-dans-l-application.md) front · S · Bouton natif dans l'application (côté page) · dépend de : 009, 011
 
 ## M4 — Recette et mise en service
@@ -52,6 +53,10 @@ Un proche touche « Se connecter avec Google », choisit son compte et c'est fin
 ## Facultatif
 
 - [ ] [AUTH-014](tickets/AUTH-014-poser-un-premier-mot-de-passe.md) back puis front · S · Poser un premier mot de passe depuis « Moi » (compte créé par Google) · dépend de : 006, 009 · à faire avant AUTH-013 si D3 = « maintenant »
+
+## Prérequis d'ouverture à tous
+
+Décision D3 (2026-10-19) : la fonction `GOOGLE_CLIENT_ID` n'est **allumée pour tous** qu'après « mot de passe oublié » (issue repas#31, à lancer après le redémarrage de session du 2026-10-19). Avant, on peut la tester avec le propriétaire seul.
 
 ## Chemin critique et parallélisme
 

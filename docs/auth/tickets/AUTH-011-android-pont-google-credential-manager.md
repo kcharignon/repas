@@ -3,7 +3,7 @@
 - **Dépôt** : front (`android/`)
 - **Jalon** : M3 Application Android
 - **Taille** : M
-- **Dépend de** : — (le contrat des messages est écrit ici) ; AUTH-002 pour l'essai réel (AUTH-013)
+- **Dépend de** : AUTH-015 (tronc commun Kotlin : le pont est écrit derrière l'interface `IdentityProvider`) ; le contrat des messages est écrit ici ; AUTH-002 pour l'essai réel (AUTH-013)
 - **Faisable sans téléphone** : en grande partie (validation des messages en Kotlin pur, fournisseur factice dans l'émulateur de test) ; le vrai Credential Manager n'est prouvé qu'à la recette
 - **Statut** : à faire
 - **Lire d'abord** : [`../connexion-google.md`](../connexion-google.md) §§ 2, 5.5 ; [ADR 0024](../../adr/0024-connexion-avec-google.md) décision 3 ; skill `repas-android-dev` ; `android/README.md` (« Le pont natif `repasNative` ») ; `NativeBridge.kt`, `MainActivity.kt` ; [guide Google](https://developer.android.com/identity/sign-in/credential-manager-siwg-implementation) (2026-10-16).

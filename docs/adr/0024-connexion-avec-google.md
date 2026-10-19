@@ -1,6 +1,6 @@
 # 0024 — Connexion avec Google : jeton d'identité, GIS sur le web, Credential Manager dans l'application
 
-- **Statut** : Proposed
+- **Statut** : Accepted
 - **Date** : 2026-10-19
 - **Liens** : analyse [`docs/auth/connexion-google.md`](../auth/connexion-google.md), tickets [`docs/auth/roadmap.md`](../auth/roadmap.md) ; [0008](0008-auth-session-et-jwt.md) §4, §7, §12, §13 ; [0015](0015-refresh-token-du-spa.md) §1, §10, §12 ; [0020](0020-confirmation-d-adresse-email.md) §10 ; [0021](0021-gestion-des-comptes-par-l-administrateur.md) §3, §4, §10 ; [0013](0013-agregats-references-par-identifiant.md) ; [0014](0014-montee-de-versions-et-dependabot.md) ; [0017](0017-deploiement-et-releases.md) règle 6, 7 ; [0007](0007-api-rest-v1.md) §14
 
@@ -59,3 +59,15 @@ Faits vérifiés (détail et sources datées dans l'analyse) :
 - **Lien magique par e-mail, passkeys, mot de passe partagé, Sign in with Apple** : voir l'analyse (§ 7). Le lien magique est l'alternative sans Google la plus simple, mais elle impose d'aller à la messagerie à chaque connexion.
 - **Nonce sans état (HMAC)** ou **table `login_nonce`** : le premier est rejouable 5 minutes, la seconde demande une migration et une purge pour un secret de 5 minutes ; le cache de l'application suffit (même machine unique que les plafonds de débit).
 - **Colonne `user.google_sub`** : un seul fournisseur possible, une contrainte de plus sur la table la plus sensible ; la table d'identités garde `user` intacte.
+
+## Décisions du propriétaire (2026-10-19, ticket AUTH-001)
+
+| # | Décision | Réponse |
+|---|---|---|
+| D1 | Première connexion Google : compte `ACTIVE` tout de suite, sans activation par l'administrateur | **oui** |
+| D2 | Liaison automatique d'un compte existant | **seulement pour les adresses Gmail** (les autres gardent le mot de passe) |
+| D3 | Comptes créés par Google sans mot de passe | **accepté, mais la fonction ne s'ouvre à tous qu'après « mot de passe oublié »** (issue #31, à lancer après le redémarrage de session du 2026-10-19) ; AUTH-014 reste facultatif |
+| D4 | Vérification de marque Google (nom « Repas » affiché) | **non** au premier lot (« je te fais confiance ») ; la page publique de conditions est faite quand même (AUTH-010) |
+| D5 | iPhone | **hors du premier lot** ; en revanche l'application Android doit garder un **tronc commun Kotlin** réutilisable (AUTH-015), pour sortir sur iPhone un jour sans tout réécrire |
+
+Conséquence de D5 : les services propres à la plateforme (connexion Google, stockage, ouverture d'un lien) sont derrière des interfaces ; la logique sans dépendance Android (validation des messages du pont, règles de navigation, formes d'adresses) est isolée dans un module Kotlin pur. Aucun code iOS n'est écrit.
