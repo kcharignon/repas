@@ -154,7 +154,7 @@ Références : [`principes-produit.md`](principes-produit.md), [`audit-simplicit
 - [x] [DRV-644](tickets/DRV-644-enregistrer-le-choix-refuse-et-expliquer.md) agent · S · Un produit choisi mais refusé par le panier est enregistré, avec la raison (absorbe DRV-632) · dépend de : DRV-635 · PR front #163 (fusionnée)
 - [x] [DRV-645](tickets/DRV-645-panier-pret-un-message.md) front · S · Panier prêt : un message, pas la page ordinateur (fait, PR front #162, fusionnée)
 - [x] [DRV-646](tickets/DRV-646-diagnostic-des-rayons.md) agent · S · Diagnostic des rayons et familles vus par la recherche pour quelques mots frais (prépare DRV-642) · dépend de : — · PR front #164 puis #165 (fusionnées)
-- [ ] [DRV-647](tickets/DRV-647-filtrer-le-choix-par-rayon-du-drive.md) agent · M · Filtrer le choix du produit par rayon du drive, sans lien avec les rayons de Repas (idée de l'utilisateur du 2026-10-20) : étape 0 mesure des libellés de rayons (agent 0.32.0), étape 1 rangée de rayons dans le choix · dépend de : 642 lot 1, 646
+- [ ] [DRV-647](tickets/DRV-647-filtrer-le-choix-par-rayon-du-drive.md) agent · M · Filtrer le choix du produit par rayon du drive, sans lien avec les rayons de Repas (idée de l'utilisateur du 2026-10-20) : étape 0 mesure des libellés de rayons (agent 0.32.0), étape 1 rangée de rayons dans le choix · dépend de : 642 lot 1, 646 · étapes 0 et 1 faites (PR front #169 et #172), recette à faire
 - [x] [DRV-630](tickets/DRV-630-emails-du-back-au-tutoiement.md) back · S · E-mail de vérification d'adresse et message de connexion du back au tutoiement (restes du vouvoiement après le front) · dépend de : 627 · PR back #200
 
 ## M7 — Plusieurs enseignes (cadrage du 2026-10-19)
