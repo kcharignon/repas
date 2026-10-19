@@ -4,7 +4,7 @@
 - **Jalon** : M6 Simplicité d'usage
 - **Taille** : S
 - **Dépend de** : —
-- **Statut** : en cours (demande de l'utilisateur du 2026-10-19 : « la page de mise à jour est trop bordélique, trop grosse, trop longue, on s'y perd ; on doit voir la version actuelle, un bouton pour aller directement sur le GitHub/tag et pas beaucoup plus »)
+- **Statut** : fait (PR front #159, site v0.5.7, 2026-10-19) ; demande de l'utilisateur : « la page de mise à jour est trop bordélique, trop grosse, trop longue, on s'y perd ; on doit voir la version actuelle, un bouton pour aller directement sur le GitHub/tag et pas beaucoup plus »)
 - **Lire d'abord** : `docs/drive/principes-produit.md` (règles 3 et 10), skills `repas-po`, `repas-front-dev`.
 
 ## Contexte

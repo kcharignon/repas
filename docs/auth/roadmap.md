@@ -42,7 +42,7 @@ Un proche touche « Se connecter avec Google », choisit son compte et c'est fin
 
 ## M3 — Application Android
 
-- [ ] [AUTH-015](tickets/AUTH-015-tronc-commun-kotlin.md) front (`android/`) · M · Isoler un tronc commun Kotlin (cœur sans dépendance Android, interfaces de plateforme) pour un iPhone plus tard (décision D5) · dépend de : —
+- [x] [AUTH-015](tickets/AUTH-015-tronc-commun-kotlin.md) front (`android/`) · M · Isoler un tronc commun Kotlin (cœur sans dépendance Android, interfaces de plateforme) pour un iPhone plus tard (décision D5) · dépend de : —
 - [ ] [AUTH-011](tickets/AUTH-011-android-pont-google-credential-manager.md) front (`android/`) · M · Pont `google.signIn` et Credential Manager · dépend de : 015
 - [ ] [AUTH-012](tickets/AUTH-012-bouton-google-dans-l-application.md) front · S · Bouton natif dans l'application (côté page) · dépend de : 009, 011
 

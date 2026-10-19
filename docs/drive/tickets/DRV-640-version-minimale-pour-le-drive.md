@@ -4,7 +4,7 @@
 - **Jalon** : M6 Simplicité d'usage
 - **Taille** : S
 - **Dépend de** : —
-- **Statut** : en cours (demande de l'utilisateur du 2026-10-19 : le téléphone de sa compagne ne peut pas être mis à jour à tout moment ; « il faut que l'application sache gérer si elle n'est pas dans la bonne version et se bloquer si besoin »). Effort : `high`.
+- **Statut** : fait (PR front #160, site v0.5.7, 2026-10-19) ; demande de l'utilisateur : le téléphone de sa compagne ne peut pas être mis à jour à tout moment ; « il faut que l'application sache gérer si elle n'est pas dans la bonne version et se bloquer si besoin »). Effort : `high`.
 - **Lire d'abord** : `docs/drive/principes-produit.md` (règles 3 et 10), [DRV-637](DRV-637-version-de-l-application-connue-du-serveur.md) (version connue du serveur : suite), skills `repas-po`, `repas-front-dev`.
 
 ## Contexte
