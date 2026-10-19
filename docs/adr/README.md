@@ -27,6 +27,7 @@ Décisions d'architecture du projet Repas. **À relire avant de développer ou d
 | [0021](0021-gestion-des-comptes-par-l-administrateur.md) | Gestion des comptes par l'administrateur : statut libre, compte protégé, suppression (purge des données, copies conservées) | Accepted |
 | [0022](0022-remplissage-du-panier-drive.md) | Remplir le panier d'un drive : agent de page, aucun identifiant d'enseigne | Accepted |
 | [0023](0023-liste-envoyee-au-drive.md) | Liste envoyée au drive : statut `SENT` et verrou | Accepted |
+| [0024](0024-connexion-avec-google.md) | Connexion avec Google : jeton d'identité, GIS sur le web, Credential Manager dans l'application, compte lié par `sub` | Proposed |
 
 ## Sources
 
