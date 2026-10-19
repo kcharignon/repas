@@ -4,7 +4,7 @@
 - **Jalon** : M6 Simplicité d'usage
 - **Taille** : M
 - **Dépend de** : DRV-626
-- **Statut** : à faire (décision de l'utilisateur du 2026-10-19)
+- **Statut** : fait (2026-10-19, PR repas-front#148, agent 0.21.0)
 - **Lire d'abord** : [`principes-produit.md`](../principes-produit.md) (règle 10), [`audit-simplicite.md`](../audit-simplicite.md), [`note-vie-privee.md`](../note-vie-privee.md), skills `repas-po`, `repas-agent-dev`, `repas-front-dev`.
 
 ## Contexte
@@ -52,3 +52,21 @@ Celle du dépôt front ; touches et mots avant / après dans « À relire » ; a
 - Ne pas confondre risque et erreur : « Leclerc a ralenti les demandes » est une erreur (ce qui s'est passé), pas une mise en garde ; elle reste, en trois phrases.
 - Un texte supprimé de l'agent change l'empreinte : une seule version de l'agent par PR.
 - `recette.md` cite plusieurs de ces textes : la mise à jour est faite par le PO après la fusion.
+
+## Réalisation (2026-10-19, PR repas-front#148, agent 0.21.0)
+
+Fusionné dans le front `main` (`a95017d`) ; **rien n'est publié**. Empreinte de l'agent 0.21.0 : `sha384-fQOMY2+URU46Qpej41dipLYWjq2NPr1k/nq/nqEzkT7Ib0ycxQfBu6HAH7Oh+UcN` (`android/agent.js.sha384`). Le protocole ne change pas : front d'abord, puis l'application qui embarque l'agent.
+
+- **Page des conditions** : route `/drive/conditions` (`DriveTermsView.vue`, textes `driveTerms` de `src/i18n/fr.ts`, titre « Conditions d'utilisation du drive »), ouverte par un lien discret « Conditions d'utilisation » au pied de la rubrique Drive de « Moi » (drive allumé) et de la page d'aide. Ni case à cocher, ni fenêtre. L'ancre `/drive/aide#vie-privee` n'existe plus. Tout le fond retiré des écrans s'y retrouve (suspension de compte et cagnotte, « Repas ne valide jamais de commande, ne vide jamais le panier, ne réduit jamais une quantité », attendre plusieurs heures sans relancer en boucle, estimation indicative, rien au panier avant « Commencer », reprise, pauses) ; un test le vérifie.
+- **Retiré des écrans** : la note de vie privée des réglages ; les rassurances de l'envoi, du récapitulatif de l'agent et du récapitulatif de Repas (« Rien n'est commandé ni payé », « Repas ne vide pas votre panier Leclerc », « Le panier Leclerc n'est pas vidé par Repas », « Rien ne part tant que… ») ; les réserves de l'estimation (« Estimation peu fiable », « D'après les prix vus », « Repas ne devine jamais un prix », avertissement du back, qui n'est plus affiché) ; les explications de mécanisme de « Mes produits » et de l'aide ; les phrases d'attente de l'application Android. Il reste le total estimé et « n articles sur m estimés ».
+- **Compteurs à zéro** des réglages : seuls les compteurs qui existent s'affichent. **« Courses terminées »** ne dit plus « Tout est dans le panier » (faux quand aucune case n'est cochée).
+- **Gardé** : le titre, la phrase de synthèse, les boutons, « La liste ne sera plus modifiable. Vous pourrez la rouvrir. », « Gardez l'application ouverte. », les erreurs en trois phrases (dont « Leclerc a ralenti les demandes. »).
+- **Garde-fou** : `voice-and-glossary.spec.ts` et `warningWords.ts` échouent si un texte hors de `driveTerms` contient « risque », « suspen… », « attention », « jamais », « ne voit », « peu fiable », « commandé ni payé », « rien ne part », « cagnotte », « anti-robot », « en boucle », « ne devine », « d'après les prix »… (web, `strings.ts` de l'agent, `strings.xml`) ; exemptés : le rapport du diagnostic, le test automatique (outils du mainteneur) et `leclerc/errors.ts` (jamais affiché).
+- **Mots avant / après** : réglages du drive environ 50 en moins ; estimation environ 60 ; aide environ 120 ; mode d'emploi Android environ 40 ; récapitulatif de l'agent 24 → 0 ; confirmation du magasin 21 → 0. **Touches** : aucune ajoutée (premier envoi 11, deuxième 7, premier réglage du magasin 5).
+- **Vérifié** : `make check` (2695 tests), `make quality`, `make agent-e2e` (61), `make android-test`, `make android-e2e` (tous les scénarios), Playwright web (suite complète rejouée par la CI, verte). Captures lues à 360 × 640.
+
+### Points laissés
+
+- Les cadres jaunes de l'écran de fin de l'agent gardent leur couleur d'avertissement.
+- `leclerc/errors.ts` garde « anti-robot » (message de diagnostic, jamais affiché).
+- « Reprendre l'envoi » reste le bouton principal d'une liste envoyée quand le drive est coupé (mène à une page « non activé »).

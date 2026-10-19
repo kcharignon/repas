@@ -145,10 +145,10 @@ L'application « Repas » est **toute** l'application Repas (recettes, listes, d
 
 - **But** : dire à Repas quel magasin tu utilises.
 - **Geste** : dans l'application, ouvre « Moi », puis « Réglages du drive ». *(Si tu touches « Envoyer au drive » sans magasin, tu arrives sur « Choisissez votre magasin » avec un seul bouton « Choisir mon magasin » : même chose, voir 4.2, et tu reviens à l'envoi ensuite.)*
-- **Attendu** : en haut, une note courte « Votre vie privée » (« Repas ne voit jamais votre mot de passe ni votre panier Leclerc. ») avec un lien « Lisez la note complète » ; puis « Votre magasin » (« Aucun magasin enregistré. ») avec le bouton « Lire mon magasin dans l'application », visible sans faire défiler ; en bas « Application Repas », avec « Version … » et « Le drive est prêt dans cette application. ».
+- **Attendu** : en haut, « Votre magasin » (« Aucun magasin enregistré. ») avec le bouton « Lire mon magasin dans l'application », sans note ni avertissement au-dessus et visible sans faire défiler ; en bas « Application Repas », avec « Version … » (plus de phrase « Le drive est prêt » : seule une erreur s'affiche si le drive est inutilisable) ; au pied de la rubrique Drive de « Moi », un lien discret « Conditions d'utilisation ».
 - **Si ça diffère** : « Le drive ne peut pas fonctionner dans cette version de l'application : mettez-la à jour » : l'agent est absent ou la WebView trop ancienne (étape 2.4). « Vous utilisez Repas dans un navigateur » : tu n'es pas dans l'application ; ouvre l'icône « Repas » installée à l'étape 2.2. « Moi » n'a pas de rubrique « Drive » : l'interrupteur n'est pas allumé (partie 3).
 
-> *Point de vie privée n° 1* : lis ici la phrase courte, puis « Lisez la note complète » (elle s'ouvre dans « Installer l'application Repas », ancre « Votre vie privée avec le drive »). La note complète doit dire que Repas ne voit ni ton identifiant, ni ton mot de passe, ni tes cookies, ni ton panier, et rappeler que Leclerc peut suspendre un compte qui sert à autre chose qu'à commander (« Avant d'utiliser l'envoi » : le risque n'est plus dans la phrase courte depuis DRV-626).
+> *Point de vie privée n° 1* : les risques et la vie privée ne sont plus dans le parcours (DRV-628) ; ils sont sur **une seule page**, « Conditions d'utilisation du drive », ouverte par le lien « Conditions d'utilisation » (pied de la rubrique Drive de « Moi », et de la page d'aide). Elle doit dire que Repas ne voit ni ton identifiant, ni ton mot de passe, ni tes cookies, ni ton panier, que Repas ne valide ni ne paie jamais une commande et ne réduit jamais une quantité au panier, et que Leclerc peut suspendre un compte qui sert à autre chose qu'à commander.
 
 ### 4.2 Lire ton magasin dans l'application
 
@@ -172,7 +172,7 @@ L'application « Repas » est **toute** l'application Repas (recettes, listes, d
 
 - **But** : avoir de quoi tester les cas utiles avec peu d'articles.
 - **Geste** : dans Repas, crée une liste (ou garde ta liste en cours) de **6 articles que tu achètes vraiment au drive**, de préférence : **I1** un poids (farine, sucre…), **I2** un volume (lait, huile…), **I3** un compté à l'unité (œufs…), **I4** un paquet ou une boîte (pâtes, conserve…), **I5** un frais plus difficile à trouver (un légume), **I6** un assaisonnement que tu as toujours (sel, poivre). Note le nom de ces 6 ingrédients pour la suite (ces noms ne sont pas des données sensibles, tu peux les citer à l'assistant).
-- **Attendu** : la liste est « En cours », avec ses 6 articles et un bouton « Envoyer au drive ». Comme le drive est allumé et le magasin enregistré, un bloc « Estimation du coût » peut déjà s'afficher, réduit à une phrase : « Pas encore de prix : Repas les retient à chaque envoi au drive. » (ni compteur, ni avertissement, ni bouton de détail) : c'est normal.
+- **Attendu** : la liste est « En cours », avec ses 6 articles et un bouton « Envoyer au drive ». Comme le drive est allumé et le magasin enregistré, un bloc « Estimation du coût » peut déjà s'afficher, réduit à une phrase : « Pas encore de prix connu. » (ni compteur, ni avertissement, ni bouton de détail) : c'est normal.
 - **Si ça diffère** : pas de bouton « Envoyer au drive » alors que la liste est « En cours » et non vide : l'interrupteur est coupé (partie 3). Le bouton mène aux réglages avec « Choisissez d'abord votre magasin… » : le magasin n'est pas enregistré (partie 4).
 
 ### 5.2 Noter le panier Leclerc
@@ -190,7 +190,7 @@ Au premier envoi, Repas ne connaît encore **aucun** de tes produits : toutes le
 
 - **But** : verrouiller la liste et préparer le plan.
 - **Geste** : sur la liste, touche « Envoyer au drive ». La fenêtre dit « Envoyer la liste au drive ? La liste ne sera plus modifiable. Vous pourrez la rouvrir. » : touche « Envoyer au drive ».
-- **Attendu** : l'écran « Votre liste est prête pour le drive » s'ouvre (« Magasin …xyz »). Une phrase de synthèse dit « 6 articles : tous sont à choisir sur Leclerc. » (les comptes varient avec la liste), puis « Le panier de Leclerc va se remplir, puis vous revenez ici. ». Le bouton « Ouvrir le drive » est visible sans faire défiler ; la liste des articles est repliée sous « Voir les articles » (ouverte jusqu'à 6 articles : chaque ligne dit « À acheter : … » et « Nouveau : vous choisirez le produit sur Leclerc. »). En dessous, l'estimation : « Pas encore de prix : Repas les retient à chaque envoi au drive. ».
+- **Attendu** : l'écran « Votre liste est prête pour le drive » s'ouvre (« Magasin …xyz »). Une phrase de synthèse dit « 6 articles : tous sont à choisir sur Leclerc. » (les comptes varient avec la liste). Le bouton « Ouvrir le drive » est visible sans faire défiler ; la liste des articles est repliée sous « Voir les articles » (ouverte jusqu'à 6 articles : chaque ligne dit « À acheter : … » et « Nouveau : vous choisirez le produit sur Leclerc. »). En dessous, l'estimation : « Pas encore de prix connu. ».
 - **Si ça diffère** : « Choisissez votre magasin » avec un bouton « Choisir mon magasin » : le magasin n'est pas enregistré, touche ce bouton (partie 4), puis reviens à l'envoi. « Seule une liste en cours peut être envoyée » : active la liste (« Reprendre cette liste »). « La liste est vide » : ajoute un article. La liste est maintenant verrouillée : c'est voulu (on le vérifie à l'étape 9.3).
 
 ### 6.2 Passer une ligne dès maintenant
@@ -205,7 +205,7 @@ Au premier envoi, Repas ne connaît encore **aucun** de tes produits : toutes le
 > **Constat de la recette du 2026-10-18** : « Ouvrir le drive » ouvre `https://www.leclercdrive.fr/`, qui affiche l'accueil de ton magasin avec « Commencer mes courses » ; un bandeau te dit de toucher ce bouton, puis l'agent démarre tout seul sur la page de ton magasin. L'adresse de la racine du serveur du magasin et `/magasin-N-N/` sont des pages 404 (voir `hypotheses-site-reel.md` § 8).
 
 - **But** : lancer l'envoi par l'agent.
-- **Geste** : touche « Ouvrir le drive ». L'écran du drive Leclerc s'ouvre ; l'agent affiche « Prêt à remplir votre panier » avec la même phrase de synthèse que Repas (« 6 articles : 5 sont à choisir sur Leclerc, 1 ne sera pas mis au panier. », sans compteur à zéro), « Rien ne part tant que vous n'avez pas touché « Commencer ». », « Repas ne vide pas votre panier Leclerc. », « Rien n'est commandé ni payé. ». Touche « Commencer ». *Pendant tout l'envoi, ne quitte pas l'application ; l'écran reste allumé.*
+- **Geste** : touche « Ouvrir le drive ». L'écran du drive Leclerc s'ouvre ; l'agent affiche « Prêt à remplir votre panier » avec la même phrase de synthèse que Repas (« 6 articles : 5 sont à choisir sur Leclerc, 1 ne sera pas mis au panier. », sans compteur à zéro), puis « Voir la liste » et deux boutons (« Commencer » et « Annuler l'envoi »). Touche « Commencer ». *Pendant tout l'envoi, « Gardez l'application ouverte. » : ne la quitte pas ; l'écran reste allumé.*
 - **Attendu** : rien ne part avant « Commencer ». Pas de phase A (aucun produit connu) : l'agent passe directement au premier choix.
 - **Si ça diffère** : « Ouvrez d'abord Repas » : l'agent n'a pas reçu le plan ; reviens dans Repas et refais « Ouvrir le drive ». « Ce n'est pas le bon magasin » (`STORE_MISMATCH`) : le magasin ouvert n'est pas celui des réglages ; dans l'application, change de magasin sur le site ou dans les réglages. « Vous n'êtes pas connecté » : connecte-toi à Leclerc, puis relance l'envoi.
 
@@ -234,14 +234,14 @@ Au premier envoi, Repas ne connaît encore **aucun** de tes produits : toutes le
 
 - **But** : vérifier que Repas a retenu tes choix.
 - **Geste** : lis l'écran « Récapitulatif » sans rien toucher.
-- **Attendu** : le titre « Le panier est rempli » ; une phrase sur ce qui est sauf et ce qui reste à faire ; des compteurs cohérents avec l'agent, sans aucun zéro (**Choisis sur Leclerc : 2 · J'en ai toujours : 1 · Pas cette fois : 3**) ; dans « Détails » (replié), le détail par ligne (« Choisi sur Leclerc, produit habituel : Repas s'en souvient. », « J'en ai toujours : Repas s'en souvient. », « Pas cette fois. ») ; « Vos choix sont enregistrés pour les prochains envois. » (écrit seulement si au moins un choix a été enregistré : produit habituel, « Ne plus proposer » ou « J'en ai toujours » ; des prix relus seuls ne la font pas apparaître) ; « Le panier Leclerc n'est pas vidé par Repas. ». **Un seul bouton principal** : « Finaliser sur Leclerc » ; en liens discrets : « Terminer la liste », « Rouvrir la liste » (et « Reprendre l'envoi » si l'envoi n'est pas terminé).
+- **Attendu** : le titre « Le panier est rempli » ; une phrase sur ce qui est sauf et ce qui reste à faire ; des compteurs cohérents avec l'agent, sans aucun zéro (**Choisis sur Leclerc : 2 · J'en ai toujours : 1 · Pas cette fois : 3**) ; dans « Détails » (replié), le détail par ligne (« Choisi sur Leclerc, produit habituel : Repas s'en souvient. », « J'en ai toujours : Repas s'en souvient. », « Pas cette fois. ») ; « Vos choix sont enregistrés pour les prochains envois. » (écrit seulement si au moins un choix a été enregistré : produit habituel, « Ne plus proposer » ou « J'en ai toujours » ; des prix relus seuls ne la font pas apparaître) ; **Un seul bouton principal** : « Finaliser sur Leclerc » ; en liens discrets : « Terminer la liste », « Rouvrir la liste » (et « Reprendre l'envoi » si l'envoi n'est pas terminé).
 - **Si ça diffère** : « Vos choix n'ont pas pu être enregistrés » : touche « Réessayer l'enregistrement » une fois. « Ce récapitulatif ne correspond pas à votre dernier envoi » : il est ignoré, rien n'est enregistré ; ouvre la liste et reprends l'envoi. « Aucun récapitulatif à afficher » : la page a été rechargée avant l'enregistrement ; touche « Ouvrir mes listes », ouvre la liste, « Reprendre l'envoi ».
 
 ### 6.7 L'estimation après le premier envoi : couverture faible
 
 - **But** : vérifier le seuil de couverture de 50 % (DRV-611, DRV-612).
 - **Geste** : ouvre la liste (« Retour à la liste »). Regarde le bloc « Estimation du coût », puis touche « Voir le détail ».
-- **Attendu** : sur les **5 lignes à acheter** (I6 « déjà à la maison » ne compte pas), **2** ont un prix (I1, I2) : « 2 articles sur 5 estimés » (si un contenu net n'a pas pu être lu, une ligne peut être « à vérifier » et sortir du total : ce n'est pas une erreur, note-le). Comme c'est moins de la moitié, le bloc **commence par** « Estimation peu fiable : moins de la moitié des articles ont un prix connu, le total ne couvre qu'une partie de la liste. ». Le « Total estimé » est la somme des 2 lignes estimées (nombre de produits × prix) ; la date est « D'après les prix vus le … » (aujourd'hui). Le détail range « Non estimées (3) » d'abord (« pas de produit choisi »), puis « Estimées (2) », puis « Déjà à la maison (1) », et dit « Ces articles ne sont pas dans le total : Repas ne devine jamais un prix. ».
+- **Attendu** : sur les **5 lignes à acheter** (I6 « déjà à la maison » ne compte pas), **2** ont un prix (I1, I2) : « 2 articles sur 5 estimés » (si un contenu net n'a pas pu être lu, une ligne peut être « à vérifier » et sortir du total : ce n'est pas une erreur, note-le). Le bloc ne porte **aucun avertissement** (DRV-628) : le « Total estimé » est la somme des 2 lignes estimées (nombre de produits × prix). Le détail range « Non estimées (3) » d'abord (« pas de produit choisi »), puis « Estimées (2) », puis « Déjà à la maison (1) ».
 - **Si ça diffère** : « Pas encore de prix » (l'estimation tient en une phrase) alors que tu as choisi des produits : l'agent n'a pas lu les prix ; note-le (mesure « articles dont le prix est connu »). Pas de bloc du tout : le magasin n'est pas enregistré ou la fonction est coupée.
 
 > *Mesure à noter* : le temps du premier envoi, de « Ouvrir le drive » au récapitulatif ; le nombre d'échecs.
@@ -343,7 +343,7 @@ On rejoue la **même liste** : l'envoi se rejoue sans danger, car l'agent fixe l
 
 - **But** : vérifier le bloc « Estimation du coût » quand la couverture est bonne (DRV-611, DRV-612).
 - **Geste** : ouvre la liste et lis le bloc. Compare « Total estimé » avec ce que la recette a mis dans le panier : le total du panier Leclerc après l'étape 8.2, moins le total que tu avais noté à l'étape 5.2.
-- **Attendu** : sur 5 articles à acheter, **4 estimés** (I1 à I4) → « 4 articles sur 5 estimés » ; **pas** d'avertissement « Estimation peu fiable » (la couverture est de 80 %, au-dessus de 50 %) ; I5 est « Non estimée » (« pas de produit choisi »). La phrase « D'après les prix vus le … » (ou « entre le … et le … ») donne la date des prix. L'avertissement du back, « Estimation d'après les derniers prix vus ; le prix réel est celui du drive. », reste visible. Le « Total estimé » est du même ordre que le panier ; un petit écart est normal (promotion, prix qui a bougé). C'est **un ordre de grandeur daté, jamais un prix garanti**.
+- **Attendu** : sur 5 articles à acheter, **4 estimés** (I1 à I4) → « 4 articles sur 5 estimés » ; aucun avertissement, ni sur la fiabilité ni sur la date (DRV-628) ; I5 est « Non estimée » (« pas de produit choisi »). Le « Total estimé » est du même ordre que le panier ; un petit écart est normal (promotion, prix qui a bougé). C'est un ordre de grandeur : la page des conditions dit que l'estimation est indicative.
 - **Si ça diffère** : un écart de plus de 10 % sans promotion évidente : note les lignes concernées (produit, prix estimé, prix vu dans le panier) ; c'est une anomalie à regarder. Un total qui ne bouge pas quand tu changes la liste : recharge l'écran.
 
 > *Mesure à noter* : écart entre l'estimation et le panier, en euros et en pour cent.
@@ -367,7 +367,7 @@ On rejoue la **même liste** : l'envoi se rejoue sans danger, car l'agent fixe l
 ### 10.1 Rouvrir la liste (interrupteur allumé)
 
 - **But** : vérifier la réouverture explicite.
-- **Geste** : touche « Rouvrir la liste » ; la fenêtre dit « Le panier Leclerc ne sera pas vidé. » ; confirme. Ajoute un article.
+- **Geste** : touche « Rouvrir la liste » ; la fenêtre ne dit que « … la liste redevient modifiable. » ; confirme. Ajoute un article.
 - **Attendu** : la liste est « En cours », modifiable, l'article s'ajoute. Si tu avais une autre liste en cours, elle est passée « En pause » (une seule liste active à la fois).
 - **Si ça diffère** : « Cette liste n'est plus envoyée au drive » : elle était déjà rouverte (autre appareil) ; recharge.
 
@@ -382,7 +382,7 @@ On rejoue la **même liste** : l'envoi se rejoue sans danger, car l'agent fixe l
 ### 10.3 Rallumer, renvoyer, terminer
 
 - **But** : essayer « Terminer ». *Terminer une liste est ce que tu ferais après tes courses ; si tu veux garder cette liste telle quelle, fais ce dernier essai sur une petite liste de test à part (2 articles).*
-- **Geste** : relance l'interrupteur (`'bash -s -- true'`, même commande qu'à la partie 3, attendu `OK : DRIVE_ENABLED=true`). Envoie la liste (« Envoyer au drive », confirme, retour à la liste), puis touche « Terminer » (sur l'écran « Récapitulatif », le bouton s'appelle « Terminer la liste » et demande une confirmation : « La liste sera terminée. Le panier Leclerc ne sera pas vidé. »).
+- **Geste** : relance l'interrupteur (`'bash -s -- true'`, même commande qu'à la partie 3, attendu `OK : DRIVE_ENABLED=true`). Envoie la liste (« Envoyer au drive », confirme, retour à la liste), puis touche « Terminer » (sur l'écran « Récapitulatif », le bouton s'appelle « Terminer la liste » et demande une confirmation : « La liste sera terminée. »).
 - **Attendu** : la liste est « Terminée » (« Courses terminées ») ; le panier Leclerc n'a pas changé.
 - **Si ça diffère** : si « Terminer » est refusé pour une liste envoyée, c'est un défaut : note le message.
 
@@ -412,7 +412,7 @@ Ces deux contrôles servent aussi plus tard, quand Leclerc change son site (runb
 
 | # | Point | Comment le voir | Attendu |
 |---|---|---|---|
-| 1 | La note est lisible depuis deux écrans | Réglages du drive (texte court + « Lisez la note complète »), puis « Installer l'application Repas » | Les deux existent et disent la même chose que `note-vie-privee.md` |
+| 1 | Les risques et la vie privée sont sur une seule page | « Moi » → rubrique Drive → « Conditions d'utilisation », puis le pied de la page d'aide | La page « Conditions d'utilisation du drive » s'ouvre depuis les deux ; elle dit la même chose que `note-vie-privee.md` ; aucun avertissement ailleurs dans le parcours |
 | 2 | Repas n'a jamais demandé ta connexion Leclerc | Tout le parcours | Tu t'es connecté **sur la page de Leclerc**, jamais dans un écran de Repas |
 | 3 | L'application n'a qu'une permission | Android : appui long sur l'icône → « Infos sur l'appli » → « Autorisations » | Aucune autorisation accordée (Internet n'est pas listée : elle est implicite) |
 | 4 | Le panier n'est jamais vidé ni réduit | Étapes 8.1 et 10.3 | Ce que tu avais avant y est encore ; les produits de remplacement ou remplacés restent |
@@ -473,7 +473,7 @@ La recette est **réussie** si, et seulement si, **tout** ceci est vrai. Sinon e
 2. Parties 6 et 7 : les deux envois vont au bout sans erreur bloquante ; les choix sont enregistrés (« Vos choix sont enregistrés pour les prochains envois ») et réapparaissent dans « Mes produits ».
 3. La phase A du deuxième envoi met au panier les produits connus **sans rien demander et sans doubler les quantités**.
 4. Le panier Leclerc (partie 8) correspond au récapitulatif de Repas, ligne par ligne, aux arrondis près.
-5. L'estimation (étapes 6.7 et 9.2) est affichée, datée, avec l'avertissement sous 50 % de couverture et du même ordre de grandeur que le panier.
+5. L'estimation (étapes 6.7 et 9.2) est affichée, sans avertissement (DRV-628) et du même ordre de grandeur que le panier.
 6. La liste envoyée est verrouillée, « Rouvrir » et « Terminer » marchent, y compris **interrupteur coupé** pour « Rouvrir ».
 7. Le diagnostic est `OK` partout (hors `NON TESTÉ`) et le test automatique rend « Verdict : OK » avec le panier revenu à son état initial.
 8. Les points de vie privée de la partie 12 sont tous cochés.
@@ -505,6 +505,8 @@ Tu les remplis en route ; l'assistant les recopie dans les tickets du chantier (
 Les idées qui viennent pendant la recette (un libellé peu clair, une étape trop longue, un produit toujours mal trouvé) se notent à part : elles alimentent le backlog (DRV-601 suggestions automatiques, DRV-606 changement de magasin…), pas la signature.
 
 ## 17 bis. Compte rendu des essais (2026-10-19)
+
+*Textes de la version publiée ce jour-là (site `v0.5.2`, application `0.1.5`) : DRV-628 (2026-10-19, fusionné après la recette) les a depuis allégés (plus d'avertissement ni de rassurance, une page « Conditions d'utilisation du drive »). Les étapes ci-dessus décrivent la nouvelle version.*
 
 Rédigé par l'assistant à partir de la recette pilotée par adb sur le téléphone de l'utilisateur (application `android-v0.1.5`, agent 0.20.0, site `v0.5.2`, back `v0.6.1`) et des deux envois réels des 18 et 19 octobre. Le compte utilisé est le compte administrateur de l'utilisateur, pas son compte de courses. La signature (§ 18) reste à l'utilisateur.
 

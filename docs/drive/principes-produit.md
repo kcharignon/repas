@@ -59,6 +59,7 @@ Quand l'utilisateur ne peut rien faire (Leclerc a changé son site), le texte le
 | Un envoi qui n'a rien mis au panier ni fait choisir | **Le panier n'est pas rempli** (« Le panier est rempli en partie » seulement si au moins un article est au panier ou choisi) | Échec, Erreur, Résultat vide |
 | Produit exclu | **Ne plus proposer** | Refusé, rejeté |
 | Le fait que Repas se souvient | **Repas s'en souvient** | mémorisé, persisté, enregistré dans les préférences |
+| Les risques et la vie privée | **Conditions d'utilisation du drive** (une seule page, jamais dans le parcours) | Note de vie privée à l'écran, CGU (à l'écran), avertissement, mise en garde |
 | Écran de fin d'un envoi | **Récapitulatif** | Résumé, Retour du drive, Résultat |
 | Le magasin Leclerc de l'utilisateur | **votre magasin** | point de retrait, drive (pour un magasin), id |
 | Mettre l'appli à jour | **Mettre à jour l'application** | Installer l'application (quand elle l'est déjà) |
