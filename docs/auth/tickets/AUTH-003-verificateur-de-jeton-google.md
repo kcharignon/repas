@@ -5,7 +5,7 @@
 - **Taille** : M
 - **Dépend de** : —
 - **Faisable sans téléphone** : oui (vraies signatures RSA générées dans les tests, aucun appel réseau)
-- **Statut** : à faire
+- **Statut** : fait (PR #220, 2026-10-20) ; rien n'est branché sur une route, la fonction reste coupée (`GOOGLE_CLIENT_ID` vide)
 - **Lire d'abord** : [`../connexion-google.md`](../connexion-google.md) §§ 3.1, 3.2, 3.4 ; [ADR 0024](../../adr/0024-connexion-avec-google.md) décisions 6 et 7 ; skill `repas-dev` ; ADR 0001, 0014 ; `src/User/Domain/Interface/EmailVerificationNotifier.php` et `src/User/Infrastructure/Mailer/` (même schéma port / adaptateur).
 
 ## Contexte
@@ -56,3 +56,31 @@ Celle du skill `repas-dev` § 4 : `make test`, `make quality`, `make audit` (`co
 - Ne pas mettre la clé de Google dans `config/` ni en fixture ; le cache se vide au redéploiement, c'est voulu.
 - `lcobucci/jwt` est aussi utilisée par Lexik : ne rien changer à la configuration de Lexik.
 - Ne jamais journaliser le jeton, l'adresse ni le nonce (rappel de la règle du dépôt public : pas de donnée personnelle).
+
+## Réalisation (PR #220, 2026-10-20)
+
+**Fait comme demandé** : domaine (`IdentityProvider`, `VerifiedIdentity`, `IdentityTokenVerifier`, `IdentityException::invalidCredential()`), `Security/GoogleSignInSettings`, `Security/GoogleSigningKeys` (+ `GoogleSigningKeysUnavailable`, l'échec fermé), `Security/GoogleIdTokenVerifier`, configuration (`GOOGLE_CLIENT_ID=` vide dans `.env`, `123456-repastest.apps.googleusercontent.com` factice dans `.env.test` et forcé dans `phpunit.dist.xml`), `lcobucci/jwt ^5.6` dans `require` : le diff de `composer.lock` n'est que l'empreinte (`content-hash`), aucun paquet ajouté ni mis à jour. Le port s'aliase tout seul sur `GoogleIdTokenVerifier` (seule implémentation) ; le service n'est encore utilisé par rien, donc retiré du conteneur compilé jusqu'à AUTH-006.
+
+**Tests** : `tests/User/Domain/VerifiedIdentityTest`, `tests/User/Infrastructure/Security/{GoogleIdTokenVerifier,GoogleSigningKeys,GoogleSignInSettings}Test` (172 tests) ; assistant `tests/Helper/Google/GoogleTestKey` (paire RSA par `openssl_pkey_new`, certificat auto-signé, jetons écrits à la main pour les cas que le `Builder` refuse de construire). Le cas nominal est construit par le `Builder` de `lcobucci/jwt`. Faux client HTTP qui compte ses appels et lève une erreur pour toute autre adresse que `oauth2/v1/certs`, `ArrayAdapter`, `MockClock`. Une trentaine de mutations manuelles du code font chacune échouer au moins un test.
+
+**Plus strict que la portée** (aucune ne refuse un jeton conforme à la documentation de Google) :
+
+- `aud` doit être l'ID client **seul** : `[notreID]` passe (même chose qu'une chaîne), une audience de plus est refusée (`PermittedFor` seul l'accepterait) ;
+- en-tête `crit` refusé ; `jwk`, `jku`, `x5u`, `x5c` ignorés (test : un jeton qui désigne la clé de l'attaquant est refusé et seule l'adresse de Google est appelée) ;
+- jeton de 8 Kio au plus ; `sub` et `email` : chaînes non vides de 255 caractères au plus (taille des colonnes) ; `nonce` et `hd`, s'ils sont là, chaînes non vides ;
+- réponse de Google retenue entière ou pas du tout : statut 200, objet non vide, chaque valeur une clé publique RSA PEM d'au moins 2048 bits ; un chemin `file://` est refusé (`openssl` lirait le disque, y compris la clé de Lexik).
+
+**Choix d'interprétation** :
+
+- `VerifiedIdentity::nonce` est `?string` : un jeton sans nonce passe la vérification (le premier critère d'acceptation n'en a pas) ; **AUTH-006 doit refuser `null`** (« faux ou absent »). `hd` est transporté, aucune règle ne le lit (D2).
+- Les **5 minutes** espacent tout téléchargement, quelle qu'en soit la raison (`kid` inconnu, clés échues, nouvel essai après une panne) : sans clé utilisable et Google en panne, le refus dure 5 min au plus avant l'essai suivant ; avec des clés de moins de 24 h, elles servent sans attendre 3 s à chaque requête.
+- « Cache de moins de 24 h » = clés **téléchargées** il y a moins de 24 h (et non périmées depuis moins de 24 h).
+- Catégories : `signature` pour un jeton illisible (dates non numériques comprises), un en-tête refusé, un `kid` inconnu ou une signature fausse ; `claims` pour `exp` ou `iat` absents ; `expired` pour une date hors de la fenêtre (`exp`, `iat`, `nbf`) ; `keys` (avec une raison technique) quand aucune clé n'est utilisable. Fonction coupée : refus `audience` sans appeler Google.
+- Le journal `info` des noms de revendications suit la vérification de la **signature** (un jeton bien signé mais refusé ensuite renseigne aussi la recette) ; l'espacement d'un jour est une entrée de `cache.app`.
+- `GoogleSigningKeys` écrit aussi un `warning` (raison technique seulement) quand il sert des clés périmées faute de réponse de Google : ce n'est pas un refus, c'est pour qu'une panne longue se voie avant les 24 h.
+
+**Pour la suite** :
+
+- **AUTH-008** : sans Monolog, le journal par défaut de Symfony n'écrit en production que `error` et au-delà (`SHELL_VERBOSITY` absent) : les `warning` de refus et la ligne `info` des noms de revendications **ne se verront pas à la recette** tant que le niveau n'est pas réglé (par exemple `SHELL_VERBOSITY=2` le temps de la recette, à décider).
+- **AUTH-004** : `GoogleSignInSettings::isEnabled()` et `clientId()` sont prêts ; `IdentityException` gagne `disabled()`.
+- **AUTH-007** : le parcours complet remplace `IdentityTokenVerifier` ; rien dans l'environnement de test n'empêche encore le vrai client HTTP de partir vers Google si `GoogleSigningKeys` y était appelé.

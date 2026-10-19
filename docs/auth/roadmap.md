@@ -28,7 +28,7 @@ Un proche touche « Se connecter avec Google », choisit son compte et c'est fin
 
 ## M1 — Back `User`
 
-- [ ] [AUTH-003](tickets/AUTH-003-verificateur-de-jeton-google.md) back · M · Vérificateur de jeton d'identité Google (port, adaptateur `lcobucci/jwt`, clés en cache) · dépend de : —
+- [x] [AUTH-003](tickets/AUTH-003-verificateur-de-jeton-google.md) back · M · Vérificateur de jeton d'identité Google (port, adaptateur `lcobucci/jwt`, clés en cache) · dépend de : — · fait (PR #220)
 - [ ] [AUTH-004](tickets/AUTH-004-nonce-de-connexion.md) back · S · Nonce à usage unique et `POST /api/auth/google/nonce` (interrupteur `GOOGLE_CLIENT_ID`) · dépend de : 003
 - [ ] [AUTH-005](tickets/AUTH-005-identite-externe-migration-purge.md) back · M · Identité externe : `UserIdentity`, table `user_identity`, purge du compte · dépend de : —
 - [ ] [AUTH-006](tickets/AUTH-006-cas-d-usage-se-connecter-avec-google.md) back · L · Cas d'usage : retrouver, lier, créer ou refuser un compte · dépend de : 003, 004, 005, 001
