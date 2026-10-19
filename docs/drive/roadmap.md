@@ -138,7 +138,7 @@ Références : [`principes-produit.md`](principes-produit.md), [`audit-simplicit
 - [x] [DRV-624](tickets/DRV-624-choix-de-produit-sans-jargon.md) front · M · Choix du produit sans jargon, « passer les suivants » · dépend de : 306, 208, 621 · PR front #142
 - [ ] [DRV-625](tickets/DRV-625-entrer-dans-le-magasin-sans-geste.md) front · M · Entrer dans le magasin, revenir et finaliser dans l'application sans geste inutile (après vérification humaine) · dépend de : 314, 405, 622
 - [x] [DRV-626](tickets/DRV-626-balayage-apres-revue-de-parcours.md) front · M · Balayage après la revue de parcours : douze points lus sur les captures (compteurs à zéro, « Passer ces n articles », estimation sans prix, récapitulatif sans impasse…) · dépend de : 621 à 624 · PR front #147
-- [ ] [DRV-628](tickets/DRV-628-interface-sans-avertissement.md) front · M · Une interface sans avertissement ni explication superflue : les risques vivent dans une seule page de conditions d'utilisation · dépend de : 626
+- [x] [DRV-628](tickets/DRV-628-interface-sans-avertissement.md) front · M · Une interface sans avertissement ni explication superflue : les risques vivent dans une seule page de conditions d'utilisation · dépend de : 626 · PR front #148
 - [ ] [DRV-627](tickets/DRV-627-tutoiement.md) front · M · Passer toute la voix de Repas au tutoiement (plus tard) · dépend de : 628
 
 ## Backlog (non détaillé, à écrire quand il devient utile)
