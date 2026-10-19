@@ -54,3 +54,24 @@ Celle du dépôt front ; agent incrémenté, empreinte recalculée ; **à confir
 
 - Le site réagit aux signes de ponctuation autrement qu'un moteur de recherche ordinaire : ne **jamais** conclure « indisponible » d'un simple « pas de résultat ».
 - Toute requête de plus est une requête de plus chez l'enseigne : 5 au plus, en série, au rythme habituel.
+
+## Complément du 2026-10-19 (constat réel, même magasin, deux captures de l'utilisateur)
+
+**Le site ordinateur et le site mobile de Leclerc ne disent pas la même chose du stock d'un même produit dans le même magasin.** « Céréales fourrées P'tit Déli Chocolat noisette – 450 g, 2,19 € » : dans l'écran de choix de l'agent « Plus en stock. » et le bouton **« Indisponible »** (désactivé) ; sur le site ordinateur, le même produit porte l'étiquette « Bientôt disponible », sans bouton d'ajout, avec « Produits similaires » ; sur le **site mobile** de Leclerc (même magasin), il est disponible avec son « + ». Même chose pour le chocolat au lait 450 g. Un produit qui est une **vraie rupture** (« Oeufs C'est Qui Le Patron x6 ») est « Bientôt disponible » des deux côtés. L'utilisatrice ne peut donc pas **choisir** ces produits dans Repas alors qu'ils s'achètent sur le site mobile.
+
+### Portée ajoutée (point 7 à 9)
+
+7. **Le panier tranche, pas l'étiquette.** Le stock lu (`iQteDisponible`, `eDisponibilite`, « Bientôt disponible ») n'est plus un verrou. Dans l'**écran de choix** (phase B), le bouton « Choisir » reste actif pour un produit « Plus en stock » / « Bientôt disponible » (la ligne « Plus en stock. » reste affichée, honnête) ; l'agent tente l'ajout d'**une** quantité et lit la réponse du panier (`obtained`). Accepté (obtenu ≥ 1) : le produit est au panier, la suite est normale. Refusé (obtenu 0) : « Leclerc n'a pas pu mettre « … » au panier. Choisis-en un autre. » (texte existant), le produit reste dans la liste, rien n'est mémorisé pour lui.
+8. **Produit habituel** (phase A) : si `stock === 0` ou « Bientôt disponible », tenter **une fois** l'ajout (une seule requête d'écriture, au rythme du `pacer`) avant de le déclarer indisponible ; le panier décide. Un refus devient `CART_REFUSED` (état distinct de `OUT_OF_STOCK`, point 2) ; le produit passe au suivant de la liste ou à la phase B sans être retiré de la mémoire.
+9. **Mesurer** : le diagnostic donne, sur un échantillon de résultats (12 produits au plus, nombres seulement, jamais de libellé), la répartition des valeurs de `eDisponibilite` et de `iQteDisponible` et le nombre de produits « Bientôt disponible » : de quoi savoir si ce marqueur est fiable. Le journal d'un envoi note, par produit tenté malgré une étiquette de rupture, **accepté** ou **refusé** par le panier.
+
+### Critères d'acceptation ajoutés
+
+- Étant donné un produit dont la fiche dit « Bientôt disponible » (stock 0) mais que le faux site accepte au panier : quand on le choisit, alors il est au panier et le texte « Plus en stock. » reste affiché sur sa fiche jusque-là.
+- Étant donné un produit « Bientôt disponible » que le panier refuse : alors le message « Leclerc n'a pas pu… », la liste reste affichée, l'envoi continue.
+- Étant donné un produit habituel à stock 0 que le panier accepte : alors il est mis au panier sans demander (phase A), avec la même quantité calculée que d'habitude.
+- Faux site : un mode « disponibilité trompeuse » (stock 0 mais panier qui accepte) et un mode « vraie rupture » (stock 0 et panier qui refuse).
+
+### Piège
+
+Tenter l'ajout d'un produit en rupture est une écriture de plus chez l'enseigne : une seule tentative par produit et par envoi, jamais en rafale ; si le site répond par un défi anti-robot, arrêt comme d'habitude. **À valider sur le vrai site** par le PO avec le produit cité (P'tit Déli chocolat noisette 450 g).
