@@ -54,7 +54,7 @@ class ApiAuthenticationFailureListenerTest extends TestCase
     public function testLoginFailureDoesNotLeakTheCause(): void
     {
         // Given
-        $event = new AuthenticationFailureEvent(new AuthenticationException('Votre compte est désactivé.'), null);
+        $event = new AuthenticationFailureEvent(new AuthenticationException('Ton compte est désactivé.'), null);
 
         // When
         (new ApiAuthenticationFailureListener())->onAuthenticationFailure($event);

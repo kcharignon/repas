@@ -36,14 +36,14 @@ final readonly class MailerEmailVerificationNotifier implements EmailVerificatio
         $message = new Email()
             ->from(Address::create($this->from))
             ->to($email)
-            ->subject('Confirmez votre adresse email')
+            ->subject('Confirme ton adresse email')
             ->text(sprintf(
-                "Bienvenue sur Repas !\n\nPour activer votre compte, confirmez votre adresse email en ouvrant ce lien (valable %d heures) :\n%s\n\nSi vous n'avez pas créé de compte, ignorez ce message : rien ne sera activé.\n",
+                "Bienvenue sur Repas !\n\nPour activer ton compte, confirme ton adresse email en ouvrant ce lien (valable %d heures) :\n%s\n\nSi tu n'as pas créé de compte, ignore ce message : rien ne sera activé.\n",
                 $hours,
                 $link,
             ))
             ->html(sprintf(
-                '<p>Bienvenue sur Repas&nbsp;!</p><p>Pour activer votre compte, <a href="%1$s">confirmez votre adresse email</a> (lien valable %2$d heures).</p><p>Si le lien ne s\'ouvre pas, copiez cette adresse dans votre navigateur&nbsp;:<br>%1$s</p><p>Si vous n\'avez pas créé de compte, ignorez ce message&nbsp;: rien ne sera activé.</p>',
+                '<p>Bienvenue sur Repas&nbsp;!</p><p>Pour activer ton compte, <a href="%1$s">confirme ton adresse email</a> (lien valable %2$d heures).</p><p>Si le lien ne s\'ouvre pas, copie cette adresse dans ton navigateur&nbsp;:<br>%1$s</p><p>Si tu n\'as pas créé de compte, ignore ce message&nbsp;: rien ne sera activé.</p>',
                 htmlspecialchars($link, ENT_QUOTES),
                 $hours,
             ));
