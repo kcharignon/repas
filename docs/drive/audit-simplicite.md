@@ -48,6 +48,7 @@ Ordre conseillé : 621 d'abord (aucun risque, tout le reste en dépend pour les 
 | [DRV-623](tickets/DRV-623-un-seul-geste-pour-le-magasin.md) | Un seul geste pour enregistrer le magasin | F1 | S |
 | [DRV-624](tickets/DRV-624-choix-de-produit-sans-jargon.md) | Choix du produit sans jargon, une seule question, « passer les suivants » | F7, F8 | M |
 | [DRV-625](tickets/DRV-625-entrer-dans-le-magasin-sans-geste.md) | Entrer dans le magasin sans geste (« Commencer mes courses »), revenir dans Repas sans geste, « Finaliser » dans l’application (panier Leclerc connecté) | F2, F3, F16 | M (gardé par une vérification humaine) |
+| [DRV-626](tickets/DRV-626-balayage-apres-revue-de-parcours.md) | Balayage après la revue de parcours sur captures (compteurs à zéro, « Passer ces n articles », estimation sans prix, récapitulatif sans impasse, réglages) | F17 à F27 | M |
 
 ## 4. Décisions du PO (2026-10-19, réversibles)
 
