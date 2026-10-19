@@ -144,6 +144,9 @@ Références : [`principes-produit.md`](principes-produit.md), [`audit-simplicit
 - [ ] [DRV-631](tickets/DRV-631-finaliser-comprendre-le-repli.md) front · S · « Finaliser sur Leclerc » : voir pourquoi il retombe sur l'accueil (raison du repli dans le diagnostic), puis corriger · dépend de : 629
 - [ ] [DRV-632](tickets/DRV-632-fiches-produit-sans-ligne-a-zero.md) front · S · Fiches produit de l'agent : pas de « En promotion : 0,00 € », pluriels justes · dépend de : —
 - [ ] [DRV-633](tickets/DRV-633-photos-des-produits-dans-le-choix.md) front · M · Photos des produits dans le choix de l'agent (demande de l'utilisateur : mémoire visuelle des paquets) ; lot 2 (photos dans Repas) en DRV-634 · dépend de : —
+- [ ] [DRV-638](tickets/DRV-638-page-de-mise-a-jour-sobre.md) front · S · Page de mise à jour sobre (version + un bouton vers la release) (demande de l'utilisateur) · dépend de : —
+- [ ] [DRV-639](tickets/DRV-639-mise-a-jour-dans-l-application.md) front/android · L · L'application télécharge, vérifie, installe et supprime l'APK (variante hors Play, effort xhigh) · dépend de : DRV-638, AUTH-015
+- [ ] [DRV-640](tickets/DRV-640-version-minimale-pour-le-drive.md) front · S · Une application trop ancienne ne lance pas le drive (message court, mise à jour, repli à la main) · dépend de : —
 - [x] [DRV-630](tickets/DRV-630-emails-du-back-au-tutoiement.md) back · S · E-mail de vérification d'adresse et message de connexion du back au tutoiement (restes du vouvoiement après le front) · dépend de : 627 · PR back #200
 
 ## Backlog (non détaillé, à écrire quand il devient utile)
