@@ -14,6 +14,8 @@
         <server name="SHELL_VERBOSITY" value="-1" />
         <!-- Plus fort que la variable que compose injecte depuis .env (coupée) : voir .env.test -->
         <server name="DRIVE_ENABLED" value="true" force="true" />
+        <!-- ID client Google FACTICE (connexion avec Google allumée en test), plus fort que la valeur vide injectée par compose -->
+        <server name="GOOGLE_CLIENT_ID" value="123456-repastest.apps.googleusercontent.com" force="true" />
     </php>
 
     <testsuites>
