@@ -40,3 +40,12 @@ Celle des deux dépôts ; `docs/drive/recherche.md` complété par la mesure.
 - Un seul agent à la fois sur le back.
 - Les identifiants de rayon peuvent différer d'un magasin à l'autre : les apprendre par magasin.
 - Respecter la règle 10 : aucun message nouveau pour la personne.
+
+## Constats réels (2026-10-19, téléphone de test, agent 0.29.0, site ordinateur, magasin de l'utilisateur)
+
+- **Menu « Rayons » du site** : une vingtaine de rayons, dont « Ma soirée parfaite », « Foire aux vins », « Mon marché frais » (Mon boucher, Mon poissonnier, Mon primeur, Mon boulanger pâtissier, Mon fromager, Mon charcutier, Mon Traiteur), « Viandes Poissons », « Fruits Légumes », « Pains Pâtisseries », « Laitier Oeufs Végétal », « Charcuterie Traiteur », « Surgelés », « Epicerie salée », « Epicerie sucrée », « Boissons », « Saveurs du monde », « Bébé », « Bio », « Parapharmacie », « Hygiène Beauté », « Entretien Nettoyage », « Animalerie », « Maison Loisirs », « Traiteur ».
+- **Deux niveaux** sous chaque rayon : les **familles** (ex. « Fruits Légumes » : Légumes, Fruits, Fruits secs et graines, Jus de fruits et légumes frais ; « Laitier Oeufs Végétal » : Laits et Oeufs, Crèmerie, Fromages, Yaourts Skyrs Fromages Blancs, Desserts, Compotes fraîches, Végétal, Laitier Oeufs Bio). Ces deux niveaux correspondent aux `iIdRayon` et `iIdFamille` de chaque produit de la recherche.
+- **« Mon marché frais »** est un raccourci commercial (boucher, poissonnier, primeur…) qui double d'autres rayons : à ne pas prendre pour un rayon de classement.
+- **Libellés** : l'application officielle et le site montrent des noms de rayons, mais **le JSON de la recherche ne porte que des identifiants** (aucun champ de libellé trouvé par DRV-646) : l'association identifiant → nom reste à lire sur le site ou à apprendre.
+- **Taille d'une réponse** : la première réponse de la recherche « sel » contient **203 produits** (diagnostic réel). Le plafond de 8 candidats était donc très en dessous de ce que le site renvoie ; DRV-643 affiche tout en défilant.
+- **Diagnostic des rayons** (DRV-646) : les lignes « Rayons vus pour tomate / pomme / courgette » n'apparaissent pas dans le rapport du « Diagnostic de l'agent » (agent 0.29.0) ; correction en cours (rendre les rayons visibles, rapport plus court).
