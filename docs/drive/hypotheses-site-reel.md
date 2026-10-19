@@ -6,6 +6,8 @@ Analyse faite le **2026-10-18** par un agent d'analyse, en **lecture seule** : d
 
 **Ce qui a vraiment été mesuré (le périmètre sûr).** Un seul utilisateur, un seul magasin, **compte connecté**, magasin déjà choisi, mode ordinateur, un Pixel 9 (WebView 155), des **mots courants d'épicerie** (farine, sucre, sel…), des écritures lancées depuis une page de **recherche** ou d'accueil ouverte à la main. Tout ce qui s'en écarte (autre magasin, autre téléphone, visiteur non connecté, page d'ouverture choisie par l'application, fruits et légumes, mot rare, produit en rupture) est une **extrapolation**.
 
+**Mise à jour du 2026-10-19.** La recette réelle (parties 3 à 8, 2026-10-18 et 19) a réfuté H1 (§ 8) et fait corriger une partie des défenses ci-dessous dans le dépôt front (PR #125 à #138, agents 0.9.0 à 0.15.0, [`roadmap.md`](roadmap.md) § M3c). **Le § 9 donne le statut de chaque hypothèse et de chaque ticket candidat** ; les § 1 à 7 gardent leur texte d'origine (historique), complété d'une ligne « Statut » pour les fiches touchées. « Défense livrée, à mesurer à la recette réelle » veut dire : le code existe et est testé contre le faux site, rien n'a encore été relevé sur le vrai site.
+
 ## Comment lire
 
 - **Classe** : **(a)** MESURÉ sur le vrai site (spike et date cités) ; **(b)** SUPPOSÉ : seuls les tests, les fixtures ou le faux site le « prouvent », et ils sont écrits par nous ; **(c)** INCONNU : ni mesuré, ni même modélisé.
@@ -59,6 +61,7 @@ Analyse faite le **2026-10-18** par un agent d'analyse, en **lecture seule** : d
 - **Si c'est faux** : (i) page d'erreur générique du site (« service momentanément indisponible », statut 404) : `LoadProblems` ne traite que les 5xx, l'application ne la signale pas et le bandeau suppose que l'utilisateur peut « ouvrir son magasin » depuis cette page ; (ii) redirection vers la racine ou la connexion : même bandeau, rien à toucher ; (iii) page servie mais à une adresse hors de la forme `/magasin-N-N…` : le plan n'est jamais envoyé. L'agent reste muet dans les trois cas.
 - **Vérifier** : en 6.3, noter ce que montre la page et si le bandeau est visible (voir tableau du § 1). Pour la forme de l'adresse : menu **⋮** → « Ouvrir dans le navigateur », lire la barre d'adresse, noter `/magasin-N-N[-V][/page]`.
 - **Défense** : tickets E (repli et message clair) et F (le plan porte l'adresse que le site sert vraiment).
+- **Statut (2026-10-19) : RÉFUTÉE.** `/magasin-N-N/` sans ville est une **page 404** du vrai site, comme la racine de l'hôte du magasin (§ 8). Corrigé : un plan s'ouvre sur l'accueil de l'enseigne `https://www.leclercdrive.fr/` (`NavigationPolicy.START_URL`, PR front #132, `android-v0.1.4`), après deux adresses fausses (#125 puis #128). Le repli du ticket E (bandeau, bouton « Ouvrir l'accueil du drive ») est livré (PR #128). Le ticket F (le plan porte l'adresse d'entrée) n'est pas fait.
 
 ### H2. La page « aucun résultat » est reconnue (b, risque haut)
 
@@ -67,6 +70,7 @@ Analyse faite le **2026-10-18** par un agent d'analyse, en **lecture seule** : d
 - **Mesuré** : 12 recherches sur 12 avec résultats (selftest, 2026-10-18) ; aucune recherche à zéro résultat n'a jamais été jouée sur le vrai site.
 - **Vérifier** : à la dernière ligne à choisir de la partie 6, toucher « Chercher autre chose », taper `zzqxkw`, « Chercher ». Une seule fois (lecture seule). Attendu : « Aucun produit trouvé ». Si « Le site a changé » s'affiche, le passage s'arrête : c'est justement la preuve ; ne pas insister.
 - **Défense** : ticket C (reconnaître « aucun résultat » par la structure de la page), A (cause fine) et B (sonde « recherche sans résultat »).
+- **Statut (2026-10-19) : défense livrée, à mesurer à la recette réelle.** Ticket C (PR front #127, agent 0.9.1, `android-v0.1.2`) : une réponse 200 sans produit lisible, au squelette du magasin et sans trace de produit, est une liste vide et n'est plus jamais `CONTRACT_CHANGED` ; le texte seul ne suffit plus. Tickets A (cause fine, même PR) et B (sonde « recherche du mot absurde `zzqxkw` » du diagnostic, PR #129, agent 0.10.0). Reste à relever sur le vrai site : la forme réelle d'une page sans résultat (le diagnostic écrit « liste vide reconnue »).
 
 ### H3. Un produit connu est retrouvé en cherchant son libellé complet (b, c ; risque haut)
 
@@ -75,6 +79,7 @@ Analyse faite le **2026-10-18** par un agent d'analyse, en **lecture seule** : d
 - **Si c'est faux** : soit H2 (arrêt du passage), soit le produit est déclaré « plus disponible » à tort : l'utilisateur voit « Ces produits ne sont plus disponibles » et rechoisit, la case « Ne plus jamais prendre » devient dangereuse. Le plan porte pourtant un `searchQuery` (nom de l'ingrédient) qui n'est pas utilisé en repli.
 - **Vérifier** : au deuxième envoi (7.3), noter combien de lignes connues sortent « plus disponible » ; pour chacune, coller son libellé dans la recherche de Leclerc (hors envoi) : trouvé ? à quel rang ? Un échec avec produit visible = H3 confirmée.
 - **Défense** : ticket D (requêtes de repli : libellé complet, première ligne seule, nom de l'ingrédient ; « introuvable » n'est jamais `CONTRACT_CHANGED`).
+- **Statut (2026-10-19) : défense livrée, à mesurer à la recette réelle.** Ticket D (PR front #130, agent 0.11.0, `android-v0.1.4`) : en phase A, les formes dérivées du libellé sont essayées avant « plus disponible » ; en phase B, celles du nom. Coût : jusqu'à 4 recherches de plus pour un produit vraiment disparu. À noter (fiche § 7 ligne 6) : les lignes connues sorties « plus disponible » alors que le produit existe.
 
 ### H4. « Non connecté » est détecté (c, risque haut)
 
@@ -82,6 +87,7 @@ Analyse faite le **2026-10-18** par un agent d'analyse, en **lecture seule** : d
 - **Si c'est faux** : si le site laisse un visiteur chercher (probable : le catalogue est public) et ajouter au panier, l'agent remplit un panier **anonyme** : tout est « ajouté », le récapitulatif est vert, et le panier du compte reste vide (ou perd son contenu à la connexion). C'est l'échec silencieux le plus coûteux. Déclencheurs réels : session expirée (durée de vie inconnue ; une seule réouverture mesurée, DRV-005), profil du drive effacé, cookie d'anti-robot renouvelé.
 - **Vérifier** : (1) en fin de recette, **déconnecté** du site (lien de déconnexion de Leclerc s'il y en a un, pas « effacer les données »), lancer le test automatique depuis une page de magasin : « NOT_LOGGED_IN » (bien) ou « Verdict : OK » (non détecté ; sans danger : panier anonyme remis à zéro) ; (2) à l'étape 8.3, ouvrir le panier dans l'**application officielle** de Leclerc (autre appareil de session) : les produits y sont-ils ? L'étape 8.1 seule ne prouve rien, c'est la même session.
 - **Défense** : ticket G (marqueur de connexion lu dans la page, contrôle avant « Commencer »), après la sonde B qui découvre le marqueur.
+- **Statut (2026-10-19) : défense livrée, à mesurer à la recette réelle.** Ticket G (PR front #127, agent 0.9.1) : visiteur = au moins deux signes cumulés et aucun signe de client ; affiné par la PR #129 (agent 0.10.0) : le lien « Se connecter » est un signe faible (le site le garde pour un client connecté, § 8) et l'état indéterminé vaut « connecté ». Les libellés de visiteur restent des hypothèses plausibles ; le diagnostic écrit « Connexion : … (signes : …) » (des noms seulement) pour les confirmer. À faire : le test déconnecté (fiche § 7 ligne 10).
 
 ### H5. Les écritures du panier réussissent depuis la page d'ouverture (b, risque moyen)
 
@@ -106,6 +112,7 @@ Analyse faite le **2026-10-18** par un agent d'analyse, en **lecture seule** : d
 - **Si c'est faux** : zéro résultat → H2 (arrêt) ou « Aucun produit trouvé » (l'utilisateur retape : défendu par « Chercher autre chose »).
 - **Vérifier** : en 6.4, pour chaque ligne, noter si la première recherche était vide (oui/non) et le nom de l'ingrédient (les noms d'ingrédients ne sont pas sensibles).
 - **Défense** : ticket D (normaliser : minuscules, `œ`→`oe`, `’`→`'`, second essai sans accents).
+- **Statut (2026-10-19) : défense livrée, à mesurer à la recette réelle.** Ticket D (PR front #130, agent 0.11.0) : normalisation et second essai sans accents, 4 formes au plus. La liste des mots de liaison et le pluriel du premier mot ne sont pas mesurés (fiche § 7 ligne 5).
 
 ### H8. Produits à poids variable : sens de la quantité (c, risque moyen)
 
@@ -138,6 +145,7 @@ Analyse faite le **2026-10-18** par un agent d'analyse, en **lecture seule** : d
 - **Si c'est faux** : à la **lecture du magasin**, l'agent enregistre l'hôte `m-courses…` comme celui du magasin (le back valide `[a-z0-9-]+` : état corrompu, tous les plans suivants portent ce faux hôte) ; à un **envoi**, `STORE_MISMATCH` (« Ce n'est pas le bon magasin ») ou `CONTRACT_CHANGED` à la première recherche. Le `runbook.md` § 1 annonce « Page non prise en charge » pour ce cas : c'est inexact.
 - **Vérifier** : au diagnostic (11.1), la ligne « Page prise en charge » doit dire une famille `fdN`, jamais « autre hôte leclercdrive.fr » (le texte du diagnostic pour un hôte hors `fdN`, donc aussi `m-courses`).
 - **Défense** : ticket J (n'accepter que le site ordinateur, message dédié, « mode ordinateur appliqué : oui/non » dans « Version et mode d'emploi »).
+- **Statut (2026-10-19) : défense livrée, à mesurer à la recette réelle.** Ticket J (PR front #137, agent 0.14.0) : l'agent refuse le site mobile tout de suite (`UNSUPPORTED_PAGE`, cause `PAGE_MOBILE`) et l'application ne lui envoie ni plan ni lecture du magasin (bandeau « Leclerc affiche son site mobile »). La ligne « mode ordinateur appliqué : oui/non » de « Version et mode d'emploi » n'a pas été ajoutée. Pas encore dans une application publiée.
 
 ### H12. Un vrai passage passe l'anti-robot (b, risque moyen)
 
@@ -146,6 +154,7 @@ Analyse faite le **2026-10-18** par un agent d'analyse, en **lecture seule** : d
 - **Si c'est faux** : `BLOCKED` après deux 403/429 de suite (prévu, message correct), mais le seuil réel et son effet sur le compte (CGU, DRV-003) sont inconnus.
 - **Vérifier** : la recette ne note ni le nombre de requêtes ni la durée par phase. Noter : nombre de lignes, durée de chaque passage, première lenteur éventuelle.
 - **Défense** : ticket L (compteurs d'un passage, respect d'un `Retry-After`, cache des recherches identiques dans un passage).
+- **Statut (2026-10-19) : défense livrée, à mesurer à la recette réelle.** Ticket L (PR front #138, agent 0.15.0) : compteurs `stats` du résultat et du diagnostic, cadence adaptative (seuils non mesurés, `architecture.md` § 8). Non faits : respecter un `Retry-After`, ne pas rejouer une recherche identique dans le même passage, compteurs dans le test automatique. Pas encore dans une application publiée ; **le front doit être déployé avant elle** (`architecture.md` § 12).
 
 ### H13. Défi anti-robot, 2FA ou session perdue en cours de route (c, risque moyen)
 
@@ -154,6 +163,7 @@ Analyse faite le **2026-10-18** par un agent d'analyse, en **lecture seule** : d
 - **Si c'est faux** : `BLOCKED` avec le conseil « Attends quelques minutes… » alors qu'il suffit de recharger la page et de résoudre le défi ; un défi plein écran masque l'interface de Repas.
 - **Vérifier** : ne pas provoquer. Si un défi ou un code de vérification apparaît, noter à quel moment (étape), le résoudre, et noter si l'agent propose « Reprendre où tu t'étais arrêté ? ».
 - **Défense** : tickets K (message distinct pour le défi, avec « recharger la page ») et L.
+- **Statut (2026-10-19) : défense livrée, à mesurer à la recette réelle.** Ticket K (PR front #136, agent 0.13.0) : `CHALLENGE` dès la première réponse, passage suspendu derrière un bandeau « Leclerc demande une vérification » (Reprendre / Arrêter) ; côté application, un 403 ou 429 sur la page d'ouverture laisse la page visible avec le même titre de bandeau (PR #128). La forme réelle du défi reçu par `fetch` n'est pas mesurée. Ticket L livré aussi (PR #138). Pas encore dans une application publiée.
 
 ### H14. Une quantité déjà au panier est écrasée (b, risque moyen)
 
@@ -161,6 +171,7 @@ Analyse faite le **2026-10-18** par un agent d'analyse, en **lecture seule** : d
 - **Si c'est faux** (c'est un défaut de conception plus qu'une hypothèse du site) : un produit du plan déjà au panier avec une quantité supérieure (ajout à la main, envoi précédent) est ramené à la quantité du plan, sans avertissement.
 - **Vérifier** : avant le deuxième envoi, ajouter à la main **un** exemplaire en plus d'un produit connu (I1), puis noter après l'envoi si sa quantité est revenue à celle du plan. Remettre à la main.
 - **Défense** : ticket M (décision du PO : garder la plus grande quantité, ou demander).
+- **Statut (2026-10-19) : défense livrée, à mesurer à la recette réelle.** Ticket M (PR front #135, agent 0.12.0) : la quantité du plan est un plancher, l'agent n'écrit que si elle dépasse le panier (écart au libellé du ticket : il n'écrit rien quand le panier a déjà autant ou plus). À noter : une ligne « Quantité au panier illisible » si elle apparaît (fiche § 7 ligne 9). Pas encore dans une application publiée.
 
 ### H15. Aucune requête n'a de délai d'attente (c, risque moyen)
 
@@ -169,6 +180,7 @@ Analyse faite le **2026-10-18** par un agent d'analyse, en **lecture seule** : d
 - **Si c'est faux** : la requête ne rend jamais la main ; l'écran de progression reste figé, sans message, jusqu'à l'abandon.
 - **Vérifier** : si la progression reste figée plus d'une minute sur une ligne, noter la ligne et l'heure, attendre deux minutes, puis « Abandonner ».
 - **Défense** : ticket K (délai de 25 s, puis le chemin « réseau » existant).
+- **Statut (2026-10-19) : défense livrée, à mesurer à la recette réelle.** Ticket K (PR front #136, agent 0.13.0) : délai de **20 s** (le ticket proposait 25 s), une reprise après 2 s, puis `NETWORK` de cause `REQUEST_TIMEOUT`. Pas encore dans une application publiée.
 
 ### H16. Compte ou profil neuf : mode de retrait, créneau avant d'ajouter (c, risque bas pour la recette, moyen pour les proches)
 
@@ -302,3 +314,36 @@ Mesurés par l'assistant en pilotant le téléphone de l'utilisateur par `adb` (
 - **Cause du HTTP 400 de la recherche confirmée.** Depuis l'accueil du magasin atteint par « Commencer mes courses », la recherche de l'agent (`GET <chemin de la page>/recherche.aspx?TexteRecherche=<mot>`) répond **HTTP 400** ; depuis une page de résultats de la recherche du site (chemin avec ville), le diagnostic lit « sel » : 195 produits, tous avec identifiant, libellé, prix et stock, et le contenu net de 195 produits sur 195. La requête JS était la même que celle du banc d'essai : seul le chemin de la page de départ diffère. L'agent 0.10.0 lit donc dans la page le chemin avec ville (action du formulaire de recherche, à défaut premier lien `/magasin-N-N-<Ville>`) et l'essaie d'abord ; en repli, chaque autre forme une fois sur un 400 ; le chemin du panier reste sans ville.
 - **H4 (visiteur) précisée.** Un membre connecté voit aussi un lien « Se connecter » dans la page : ce signe est devenu faible (visiteur seulement avec plusieurs signes et aucun signe de membre).
 - **Outils utiles pour la suite.** Le menu du drive (⋮) a « Diagnostic de l'agent » (ignoré pendant un passage : à lancer hors passage), « Agrandir/Réduire la page » et « Version et mode d'emploi » ; « Ouvrir dans le navigateur » ouvre Chrome (site mobile `m-courses`, sans la session) : il ne donne pas l'adresse de la WebView.
+
+## 9. Statut au 2026-10-19 (après les corrections de la recette réelle)
+
+Ajouté le 2026-10-19. Sources : les PR du dépôt front `kcharignon/repas-front` (#125 à #138) et [`roadmap.md`](roadmap.md) § M3c. « Application » : la première application publiée qui embarque la correction ; `android-v0.1.4` (agent 0.11.0) est la dernière publiée, les agents 0.12.0 à 0.15.0 n'y sont pas. **« À mesurer »** veut dire : rien n'est relevé sur le vrai site, la recette réelle le dira (fiche § 7).
+
+| Id | Statut | PR front · agent · application | Reste |
+|---|---|---|---|
+| H1 | **Réfutée** (§ 8) | #132 · — · `android-v0.1.4` (après #125 et #128, fausses) | Ticket F non fait |
+| H2 | Défense livrée, à mesurer à la recette réelle | #127 (C) · 0.9.1 · `android-v0.1.2` ; sonde #129 | Forme réelle d'une page sans résultat |
+| H3 | Défense livrée, à mesurer à la recette réelle | #130 (D) · 0.11.0 · `android-v0.1.4` | Lignes « plus disponible » à tort |
+| H4 | Défense livrée, à mesurer à la recette réelle | #127 (G), #129 · 0.9.1 et 0.10.0 · `android-v0.1.2`, `android-v0.1.3` | Test déconnecté ; libellés de visiteur |
+| H5 | Non défendue (ticket H non fait) | — | Test automatique depuis l'accueil du magasin |
+| H6 | Sonde livrée (ligne « Point de livraison » du diagnostic), ticket H non fait | #129 (B) · 0.10.0 · `android-v0.1.3` | Valeur et source du point de livraison |
+| H7 | Défense livrée, à mesurer à la recette réelle | #130 (D) · 0.11.0 · `android-v0.1.4` | Mots de liaison, pluriel |
+| H8 | Non défendue (ticket I non fait) | — | Un fruit ou légume choisi (fiche § 7 ligne 8) |
+| H9 | Cause lisible seulement (A : `CART_NO_CART_EVENT`…), ticket I non fait | #127 · 0.9.1 · `android-v0.1.2` | Quantité réduite, limite d'achat |
+| H10 | Repli livré (E) ; la partie 4 de la recette (lecture du magasin sur le vrai site) est déclarée réussie | #128, #132 · — · `android-v0.1.3`, `android-v0.1.4` | Les notes de la fiche § 7 ne sont pas reportées ici |
+| H11 | Défense livrée, à mesurer à la recette réelle | #137 (J) · 0.14.0 · pas encore publiée | — |
+| H12 | Défense livrée, à mesurer à la recette réelle | #138 (L) · 0.15.0 · pas encore publiée | Nombre de requêtes, durée, seuils de la cadence |
+| H13 | Défense livrée, à mesurer à la recette réelle | #136 (K), #138 · 0.13.0 et 0.15.0 · pas encore publiée ; bandeau de l'application #128 · `android-v0.1.3` | Forme réelle du défi |
+| H14 | Défense livrée, à mesurer à la recette réelle | #135 (M) · 0.12.0 · pas encore publiée | `iQuantitePanier` toujours lu ? |
+| H15 | Défense livrée, à mesurer à la recette réelle | #136 (K) · 0.13.0 · pas encore publiée | — |
+| H16 | Cause lisible seulement (A), pas de message statique | #127 · 0.9.1 · `android-v0.1.2` | Compte ou profil neuf |
+| H17 | Non défendue (ticket N non fait) | — | « Finaliser sur Leclerc », mode assisté (voir aussi F16 de `audit-simplicite.md`) |
+| H18 | Non défendue (ticket P non fait) | — | — |
+| H19 | Non défendue (ticket F non fait) | — | — |
+| H20 | Non défendue (ticket F non fait) | — | Surveillance |
+| H21 | Sonde livrée (nombre de produits lus par recherche, dans le diagnostic) | #129 (B) · 0.10.0 · `android-v0.1.3` | Pagination du vrai site |
+| H22 | Aucune défense | — | — |
+
+**Tickets candidats du § 6** : faits A, B, C, D, E, G, J, K, L, M (voir le tableau ci-dessus et `roadmap.md` § M3c) ; non faits **F** (adresse d'entrée portée par le plan), **H** (écriture du panier fidèle à la requête mesurée), **I** (poids variable, rupture, quantité réduite), **N** (liens ouverts dans le navigateur), **P** (sites confiés au navigateur) ; **O** (gestes de vérification dans `recette.md`) revient à l'assistant, après DRV-621.
+
+**Écarts du § 5** : (1) `drive-agent/fake-leclerc/README.md` du front dit encore que le point de livraison diffère de l'identifiant du magasin « comme sur le vrai site » : toujours là au 2026-10-19 ; (2) `runbook.md` corrigé le 2026-10-19 (§ 1 et § 12) ; (3) le ticket DRV-319 corrigé le 2026-10-19, `recette.md` partie 6 : le constat du 2026-10-19 est en 6.3, l'encadré « À vérifier ici (DRV-319) » juste au-dessus est périmé ; (4) `recette.md` 2.1 : version minimale d'application ajoutée le 2026-10-19 ; (5) `spikes/DRV-011-rapport.md` ligne 10 inchangée ; (6) toujours vrai : le diagnostic et le test automatique n'exercent pas H3 ni le parcours `drive.start`.

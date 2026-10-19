@@ -61,5 +61,11 @@ L'émulateur doit être installé **de façon durable**, pas à refaire à chaqu
 - Le faux site juge à chaque passage complet le panier, la cadence (au moins 800 ms, aucune requête en parallèle) et la forme exacte des requêtes.
 - Dispositif : faux Leclerc (Node) dans le conteneur de l'émulateur derrière un relais HTTPS limité à ce nom ; le faux certificat n'est accepté que par la WebView de l'émulateur de test, réglée de l'extérieur, jamais par l'application (vérifié par `android/__tests__/emulator-e2e.spec.ts`).
 - Écarts : pas de job CI émulateur (pas de KVM en CI, SDK de 2 Go : cible manuelle, option prévue par le ticket) ; pas de `network_security_config` propre au débogage ; la connexion avec les données de démonstration du back n'est pas rejouée (le faux Repas remplace le front).
-- Hypothèse à vérifier sur le vrai site (recette, partie 6) : `drive.start` ouvre `https://<hôte du magasin>/` ; le faux site redirige cette racine vers l'accueil du magasin.
+- Hypothèse à vérifier sur le vrai site (recette, partie 6) : `drive.start` ouvre `https://<hôte du magasin>/` ; le faux site redirige cette racine vers l'accueil du magasin. **Réfutée le 2026-10-18 (page 404) : voir la dernière section.**
 - Raccords liés (PR repas-front#118) : `CLAUDE.md` du front aligné sur le back (Claude fusionne), message `CONTRACT_CHANGED` « application Repas » (agent 0.8.1), phrase « premier écrivain » dans la note de vie privée complète du front (vouvoiement).
+
+## Réalisation : corrections de la recette réelle (2026-10-18 et 19)
+
+- **L'hypothèse de la dernière ligne ci-dessus est réfutée** par la recette du 2026-10-18 : `https://<hôte du magasin>/` n'est pas redirigé vers l'accueil du magasin, c'est une **page 404** du vrai site, comme `/magasin-N-N/` (le faux site les servait à tort comme un accueil). Le faux site est rendu fidèle (DRV-309) et `drive.start` ouvre `https://www.leclercdrive.fr/` (DRV-314).
+- Scénarios de `make android-e2e` ajoutés ou durcis : 8 « page du magasin détournée » ([repas-front#125](https://github.com/kcharignon/repas-front/pull/125)) ; 2 et 8 à 11 ([repas-front#128](https://github.com/kcharignon/repas-front/pull/128)) ; 2 et 12 « Commencer mes courses mène à une page 404 » ([repas-front#132](https://github.com/kcharignon/repas-front/pull/132)) ; émulateur réglé comme un Pixel 9 (1080 × 2424, 420 dpi) et cibles de l'agent lues en dp ([repas-front#126](https://github.com/kcharignon/repas-front/pull/126)).
+- Lignes du jalon : [`roadmap.md`](../roadmap.md) § M3c.

@@ -38,3 +38,11 @@ L'écran d'accueil `welcome` est prêt (résultat `'diagnostic' | 'close'`) ; `a
 ## Réalisation (2026-10-18, PR repas-front#83)
 
 `drive-agent/src/diagnostic/{checks,report,index}.ts` : huit contrôles en lecture seule, une seule recherche (« sel », `TEST_TERM`), rapport texte copiable (numéro de magasin réduit à `…` plus trois derniers chiffres, hôte réduit à `fdN`). Le contrôle « cadre de même origine » est **`NON TESTÉ`** (P2 retenu, le site refuse les cadres) : DRV-309 doit tolérer ce `NON TESTÉ` dans « tous les contrôles OK ». Seuils : au moins la moitié des produits lus ont identifiant, libellé, prix et stock, et la moitié un contenu net lisible. Ouverture : l'agent exporte `DIAGNOSTIC_HASH` (`#repas-diagnostic`). **Décision (assistant, 2026-10-18)** : ne pas utiliser de fragment d'adresse sur les pages Leclerc (un fragment de 6 Ko a provoqué la page d'erreur de Leclerc, les fragments courts ne sont pas mesurés) ; l'application déclenche le diagnostic par un **message de commande** sur le pont (`{v:1, type:'command', command:'diagnostic'}`, validé par l'agent), à ajouter au protocole par DRV-313.
+
+## Réalisation : corrections de la recette réelle (2026-10-18 et 19)
+
+- [repas-front#127](https://github.com/kcharignon/repas-front/pull/127) (agent 0.9.1) : chaque contrôle en échec porte sa cause (« cause … : libellé »).
+- [repas-front#129](https://github.com/kcharignon/repas-front/pull/129) (agent 0.10.0) : **sondes du site réel**, des formes, des noms et des nombres, jamais une valeur du site (adresse d'arrivée, chemin avec ville tiré de la page, codes HTTP, une ligne « HTTP : a=… b=… » par forme de requête, connexion lue, clés d'état) ; exception bornée à la lecture de `document.cookie` (nombre de cookies lisibles, présence d'un cookie anti-robot, jamais un nom ni une valeur : `consignes-agents.md`).
+- [repas-front#137](https://github.com/kcharignon/repas-front/pull/137) (agent 0.14.0) : l'hôte du site mobile se lit « site mobile (pas la version ordinateur) ».
+- [repas-front#138](https://github.com/kcharignon/repas-front/pull/138) (agent 0.15.0) : ligne « Requêtes du diagnostic : N (erreurs, blocages, délais dépassés, réponses lentes), pause la plus longue P ms ».
+- Mode d'emploi pour l'exploitation : [`../runbook.md`](../runbook.md) § 1 (causes), § 3.1, § 12 à 14. Lignes du jalon : [`roadmap.md`](../roadmap.md) § M3c.

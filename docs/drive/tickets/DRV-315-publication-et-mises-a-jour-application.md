@@ -66,3 +66,7 @@ Celle du dépôt front ; PR concise ; fusion si CI verte. L'étape humaine est c
 6. Désinstaller toute pré-version (autre clé), installer l'APK signé, puis essayer une mise à jour par-dessus.
 
 Reste du ticket : la vérification « nouvelle version disponible » dans l'application (`version.json` est déjà publié pour elle).
+
+## Suite (2026-10-19) : applications publiées
+
+Les étapes humaines sont faites et des applications **signées** sont publiées (`repas-drive.apk`, `repas-drive.apk.sha256`, `version.json`) : `android-v0.1.0` (agent 0.8.2), `android-v0.1.1` (0.9.0), `android-v0.1.2` (0.9.1), `android-v0.1.3` (0.10.0) et `android-v0.1.4` (0.11.0), toutes le 2026-10-18 (heure UTC). Les agents 0.12.0 à 0.15.0 ([`roadmap.md`](../roadmap.md) § M3c) ne sont dans aucune application publiée. **Avant la prochaine application, publier le front** (champ `stats`) : [`../runbook.md`](../runbook.md) § 7.4 étape 0. Reste de ce ticket : la vérification « nouvelle version disponible » dans l'application.

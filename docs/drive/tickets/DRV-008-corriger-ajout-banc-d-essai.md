@@ -46,3 +46,7 @@ Celle du dépôt front (`make check`, PR concise, fusion si la CI est verte) ; `
 
 - Le champ `sNoPointLivraison` est le numéro du point de livraison : ne jamais l'écrire dans un test, un message d'erreur ou un journal copiable.
 - Le favori reste un outil jetable : ne pas y investir plus que nécessaire (il disparaît après la décision G1).
+
+## Suite (2026-10-19) : le banc d'essai est retiré du dépôt front
+
+Le banc d'essai du favori `drive-agent/lab/` (dont `published/lab.js`, servi par jsDelivr) a été retiré du dépôt front par la PR [repas-front#134](https://github.com/kcharignon/repas-front/pull/134) (constat C6 de la revue de sécurité du front, la recette réelle étant faite), avec ses cibles `make lab*` et `lab:*`. L'historique Git le garde. Voir [`roadmap.md`](../roadmap.md) § M3c.

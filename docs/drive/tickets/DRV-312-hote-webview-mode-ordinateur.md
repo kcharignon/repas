@@ -56,3 +56,9 @@ Le menu de l'application propose « Diagnostic de l'agent » : il déclenche le 
 ## Réalisation (2026-10-18, PR repas-front#84)
 
 Hôte WebView plein écran en mode ordinateur (agent utilisateur et indications client cohérents, repli sans indications client), navigation limitée à `*.leclercdrive.fr`, cookies conservés, retour par `OnBackInvokedCallback` (nécessaire en `targetSdk` 36), marges tenant compte des barres, de l'encoche et du clavier, erreurs en français avec « Réessayer », menu. L'écran reste allumé dès que l'application est au premier plan (DRV-314 pourra le restreindre à un passage). Rien n'a été essayé sur appareil.
+
+## Réalisation : corrections de la recette réelle (2026-10-18 et 19)
+
+- [repas-front#126](https://github.com/kcharignon/repas-front/pull/126) : la page du drive est une fenêtre de ~980 px CSS sur ~411 dp d'écran, donc minuscule ; **aucun réglage de zoom de la WebView ne change cela** (fenêtre large, vue d'ensemble, pincement, double toucher : mesurés dans l'émulateur). L'interface de l'agent est agrandie par l'agent lui-même (voir DRV-304) ; le menu du drive gagne « Agrandir la page » et « Réduire la page » (`zoomBy` ×1,5). `textZoom`, `TEXT_AUTOSIZING` et `setInitialScale` sont écartés et documentés dans `android/README.md` du front (« La lisibilité en mode ordinateur »).
+- [repas-front#137](https://github.com/kcharignon/repas-front/pull/137) : `NavigationPolicy.isMobileSite` ; `isStorePage` est faux pour le site mobile même avec une adresse `/magasin-N-N…` (bandeau « Leclerc affiche son site mobile »).
+- Lignes du jalon : [`roadmap.md`](../roadmap.md) § M3c.

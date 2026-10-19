@@ -52,3 +52,14 @@ Celle du front. Aucun HTML brut de Leclerc dans le dépôt.
 ## Réalisation (2026-10-17, PR repas-front#78)
 
 `drive-agent/src/leclerc/` : `RetailerAdapter` et `LeclercAdapter` (`fetch` et horloge injectés), `browserDeps(window)`, `LeclercError` (code), `Pacer`, `parseContent`, `Candidate` (avec `contentSource` et `promo`), `CartResult { productId, requested, sent, obtained, ok, items }`, `StoreInfo { id, host, baseUrl, label }`. Le premier 403/429 est retenté une fois après la pause de cadence, le second de suite lève `BLOCKED`. Devinés, **à confirmer à la recette réelle (DRV-505)** : la phrase « aucun résultat » d'une page vide, la réponse de connexion (401 ou redirection vers `connexion`, `identif`, `login`, `authent`), le libellé du magasin (`label` null par défaut). Branché, l'adaptateur ajoute environ 13 Ko au bundle.
+
+## Réalisation : corrections de la recette réelle (2026-10-18 et 19)
+
+Dans `drive-agent/src/leclerc/` et `drive-agent/src/flow/` ; chaque ligne est détaillée dans [`roadmap.md`](../roadmap.md) § M3c.
+- [repas-front#127](https://github.com/kcharignon/repas-front/pull/127) (agent 0.9.1) : `causes.ts` (cause fine de chaque erreur), `search-page.ts` (« aucun résultat » reconnu par la structure de la page), `session.ts` (visiteur non connecté, `SESSION_VISITOR`).
+- [repas-front#129](https://github.com/kcharignon/repas-front/pull/129) (agent 0.10.0) : la recherche part du chemin avec la ville lu dans la page, repli sur un HTTP 400 par chaque autre forme de requête ; sondes du diagnostic.
+- [repas-front#130](https://github.com/kcharignon/repas-front/pull/130) (agent 0.11.0) : `flow/search-forms.ts` et `search-by-name.ts`, repli par formes dérivées du nom.
+- [repas-front#136](https://github.com/kcharignon/repas-front/pull/136) (agent 0.13.0) : `pacer.ts`, délai de 20 s par requête (`REQUEST_TIMEOUT`) et page de défi (`CHALLENGE`, sans reprise).
+- [repas-front#137](https://github.com/kcharignon/repas-front/pull/137) (agent 0.14.0) : `store.ts`, site mobile refusé (`PAGE_MOBILE`).
+- [repas-front#138](https://github.com/kcharignon/repas-front/pull/138) (agent 0.15.0) : `pacer.ts`, compteurs et cadence adaptative (valeurs non mesurées sur le vrai site).
+- [repas-front#135](https://github.com/kcharignon/repas-front/pull/135) (agent 0.12.0) : `flow/keep-cart.ts`, la quantité du plan est un plancher, `RetailerAdapter.cartQuantity`.

@@ -45,3 +45,7 @@ Celle du dépôt front (`make check`, PR concise sans pied d'attribution, fusion
 
 - jsDelivr ne sert un commit que s'il est poussé sur `kcharignon/repas-front` ; utiliser le sha complet (jamais `@main`, dont le cache est de plusieurs heures et qui contredirait l'empreinte).
 - Une empreinte fausse fait refuser le script par le navigateur sans message : le `onerror` du chargeur est indispensable pour le diagnostic.
+
+## Suite (2026-10-19) : le banc d'essai est retiré du dépôt front
+
+Le banc d'essai du favori `drive-agent/lab/` (dont `published/lab.js`, servi par jsDelivr) a été retiré du dépôt front par la PR [repas-front#134](https://github.com/kcharignon/repas-front/pull/134) (constat C6 de la revue de sécurité du front, la recette réelle étant faite), avec ses cibles `make lab*` et `lab:*`. L'historique Git le garde. Voir [`roadmap.md`](../roadmap.md) § M3c.

@@ -57,3 +57,10 @@ Celle du front.
 ## Réalisation (2026-10-18, PR repas-front#80)
 
 `drive-agent/src/flow/index.ts` : `new Flow(deps)` avec `start(message)`, `invalid()`, `history` ; `FlowDeps.phaseB(context)` (DRV-306 : reçoit `pending {line, unavailable}`, `record(ResultLine)`, `stopRequested()`, `showProgress()`, `adapter`, `ui` ; rend `'done' | 'cancelled'` ; une ligne non enregistrée devient `UNAVAILABLE`) et `FlowDeps.onSetup(message)` (DRV-307). L'accueil (`welcome`) n'est pas affiché par `agent.ts` : DRV-308 le fait. Exports : `settleKnownLine`, `priceOf`, `buildResult`, `endingOf`, `endProps`, `resultLines`, `RunStore`, `RUN_PREFIX`, `keepAwake`. Pont attendu : `window.repasHost` (`postMessage(texte)`, `addEventListener('message', …)`) ; `run(win, options)` accepte `origin`, `navigate`, `flow` pour les tests. Choix : une ligne `NEW` sans phase B sort `UNAVAILABLE` (passage `partial`) ; `CONTRACT_CHANGED` ou incident imprévu arrête en `error` sans citer le message ; `BLOCKED` met les lignes restantes qui demandent le site en `FAILED` ; reprise proposée seulement pour le même `runId`. Le prix des lignes `ADDED` est porté par `AddedLine.price?` (décision D22). `dist/agent.js` : 38 718 octets, version 0.2.0.
+
+## Réalisation : corrections de la recette réelle (2026-10-18 et 19)
+
+- [repas-front#135](https://github.com/kcharignon/repas-front/pull/135) (agent 0.12.0, ticket M) : `putInCart` (`flow/keep-cart.ts`) : la quantité du plan est un plancher ; l'agent n'écrit que si elle dépasse celle déjà au panier. Écart au libellé du ticket (« écris max(panier, plan) ») : rien n'est écrit quand le panier a déjà autant ou plus.
+- [repas-front#130](https://github.com/kcharignon/repas-front/pull/130) (agent 0.11.0, ticket D) : un produit connu que le libellé complet ne retrouve pas est cherché par les formes dérivées du libellé avant d'être dit « plus disponible ».
+- [repas-front#136](https://github.com/kcharignon/repas-front/pull/136) (agent 0.13.0, ticket K) : devant la page de défi le passage se suspend ; « Reprendre » refait la ligne en cours.
+- Lignes du jalon : [`roadmap.md`](../roadmap.md) § M3c.
