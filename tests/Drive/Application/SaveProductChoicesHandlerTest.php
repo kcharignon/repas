@@ -26,7 +26,9 @@ use Repas\Tests\Helper\Builder\ChoiceBuilder;
 use Repas\Tests\Helper\Builder\DriveSettingsBuilder;
 use Repas\Tests\Helper\Builder\ProductBuilder;
 use Repas\Tests\Helper\FrozenClock;
+use Repas\Tests\Helper\InMemoryLoader\IngredientDepartmentInMemoryResolver;
 use Repas\Tests\Helper\InMemoryRepository\ChoiceInMemoryRepository;
+use Repas\Tests\Helper\InMemoryRepository\DepartmentRayonInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\DriveSettingsInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\ProductInMemoryRepository;
 
@@ -37,6 +39,8 @@ class SaveProductChoicesHandlerTest extends TestCase
     private DateTimeImmutable $now;
     private ProductInMemoryRepository $products;
     private ChoiceInMemoryRepository $choices;
+    private DepartmentRayonInMemoryRepository $departmentRayons;
+    private IngredientDepartmentInMemoryResolver $ingredientDepartments;
     private DriveSettingsInMemoryRepository $settings;
     private SaveProductChoicesHandler $handler;
 
@@ -45,11 +49,14 @@ class SaveProductChoicesHandlerTest extends TestCase
         $this->now = new DateTimeImmutable('2026-10-19 12:00:00');
         $this->products = new ProductInMemoryRepository();
         $this->choices = new ChoiceInMemoryRepository();
+        $this->departmentRayons = new DepartmentRayonInMemoryRepository();
+        // Rayons de Repas des ingrédients des tests ; tout autre ingrédient (« ingredient-… », « inconnu ») n'en a pas
+        $this->ingredientDepartments = new IngredientDepartmentInMemoryResolver(['farine' => 'boulangerie', 'semoule' => 'boulangerie', 'sel' => 'epicerie', 'lait' => 'frais']);
         $this->settings = new DriveSettingsInMemoryRepository([
             new DriveSettingsBuilder()->withUserId('user-1')->build(),
             new DriveSettingsBuilder()->withUserId('user-2')->build(),
         ]);
-        $this->handler = new SaveProductChoicesHandler($this->settings, $this->products, $this->choices, new UuidGenerator(), new FrozenClock($this->now));
+        $this->handler = new SaveProductChoicesHandler($this->settings, $this->products, $this->choices, $this->departmentRayons, $this->ingredientDepartments, new UuidGenerator(), new FrozenClock($this->now));
     }
 
     public function testAPrimaryProductOnANewIngredientCreatesTheChoiceAndTheProduct(): void
@@ -231,6 +238,145 @@ class SaveProductChoicesHandlerTest extends TestCase
         $this->assertEquals($this->now, $product->getLastSeenAt());
     }
 
+    public function testTheRayonAndTheFamilyOfTheStoreAreKeptOnTheProduct(): void
+    {
+        // When : un produit accepté et un refusé qui portent leur rayon, un autre produit sans rayon (agent plus ancien)
+        $this->save('user-1', [
+            $this->add('farine', Placement::PRIMARY, '1', rayonId: 4001, familyId: 4101),
+            $this->reject('farine', '2', rayonId: 4002),
+            $this->add('sel', Placement::PRIMARY, '3'),
+        ]);
+
+        // Then
+        $byProduct = [];
+        foreach ($this->products->all() as $product) {
+            $byProduct[$product->getRetailerProductId()] = [$product->getRayonId(), $product->getFamilyId()];
+        }
+        $this->assertSame(['1' => [4001, 4101], '2' => [4002, null], '3' => [null, null]], $byProduct);
+    }
+
+    public function testAKnownProductKeepsItsRayonAndAMissingOneIsFilledByTheNextAgent(): void
+    {
+        // Given : un produit connu avec son rayon, un autre connu sans rayon (lu par un agent plus ancien)
+        $this->products->saveAll([
+            new ProductBuilder()->withRetailerProductId('1')->withRayon(4001, 4101)->build(),
+            new ProductBuilder()->withRetailerProductId('2')->build(),
+        ]);
+
+        // When : un autre utilisateur les renvoie, l'un avec un autre rayon, l'autre avec son rayon ; puis sans aucun rayon
+        $this->save('user-2', [
+            $this->add('farine', Placement::PRIMARY, '1', rayonId: 4999, familyId: 4999),
+            $this->add('sel', Placement::PRIMARY, '2', rayonId: 4002, familyId: 4102),
+        ]);
+        $this->save('user-1', [$this->add('farine', Placement::FALLBACK, '1'), $this->add('sel', Placement::FALLBACK, '2')]);
+
+        // Then : le rayon connu n'est ni remplacé ni effacé, le manquant est rempli
+        $byProduct = [];
+        foreach ($this->products->all() as $product) {
+            $byProduct[$product->getRetailerProductId()] = [$product->getRayonId(), $product->getFamilyId()];
+        }
+        $this->assertSame(['1' => [4001, 4101], '2' => [4002, 4102]], $byProduct);
+    }
+
+    public function testAChosenProductThatKnowsItsRayonTeachesTheRayonOfTheDepartmentOfItsIngredient(): void
+    {
+        // When : farine et semoule (rayon de Repas « boulangerie ») choisies dans le rayon 4001 de l'enseigne, le sel (« epicerie ») dans le 4002
+        $this->save('user-1', [
+            $this->add('farine', Placement::PRIMARY, '1', rayonId: 4001, familyId: 4101),
+            $this->add('semoule', Placement::FALLBACK, '2', rayonId: 4001),
+            $this->add('sel', Placement::PRIMARY, '3', rayonId: 4002),
+        ]);
+
+        // Then : un choix compté par produit choisi, en une seule écriture, après une seule lecture des rayons de Repas
+        $this->assertSame(['leclerc|boulangerie|4001' => 2, 'leclerc|epicerie|4002' => 1], $this->departmentRayons->all());
+        $this->assertSame([3], $this->departmentRayons->recordChoicesSizes);
+        $this->assertSame([['farine', 'semoule', 'sel']], $this->ingredientDepartments->departmentSlugsByIngredientCalls);
+
+        // When : un autre utilisateur choisit encore un produit de ce rayon pour la farine
+        $this->save('user-2', [$this->add('farine', Placement::PRIMARY, '4', rayonId: 4001)]);
+
+        // Then : les choix de tous s'additionnent
+        $this->assertSame(3, $this->departmentRayons->countFor(Retailer::LECLERC, 'boulangerie', 4001));
+    }
+
+    public function testOnlyAnAcceptedProductWithARayonAndAnIngredientWithADepartmentTeaches(): void
+    {
+        // When : un refus et un rafraîchissement de prix qui portent un rayon, « j'en ai toujours », un produit choisi sans rayon
+        // (agent plus ancien), un produit choisi pour un ingrédient dont Repas ne connaît pas le rayon
+        $this->save('user-1', [
+            $this->reject('farine', '1', rayonId: 4001),
+            $this->add('farine', Placement::PRIMARY, '2'),
+            $this->refresh('farine', '2', new ProductPrice(100)),
+            new ChoiceIntent('sel', ChoiceAction::HAVE_AT_HOME),
+            $this->add('ingredient-inconnu', Placement::PRIMARY, '3', rayonId: 4003),
+        ]);
+
+        // Then : rien n'est appris, et le rayon de Repas n'est demandé que pour l'ingrédient dont le produit porte un rayon
+        $this->assertSame([], $this->departmentRayons->all());
+        $this->assertSame([], $this->departmentRayons->recordChoicesSizes);
+        $this->assertSame([['ingredient-inconnu']], $this->ingredientDepartments->departmentSlugsByIngredientCalls);
+    }
+
+    public function testWithoutAnyRayonTheDepartmentsAreNotEvenRead(): void
+    {
+        // When : un lot d'un agent qui ne connaît pas les rayons
+        $this->save('user-1', [$this->add('farine', Placement::PRIMARY, '1'), $this->add('sel', Placement::PRIMARY, '2')]);
+
+        // Then : comme avant, aucune requête de plus
+        $this->assertSame([], $this->ingredientDepartments->departmentSlugsByIngredientCalls);
+        $this->assertSame([], $this->departmentRayons->recordChoicesSizes);
+    }
+
+    public function testTheRayonOfTheFicheIsTheOneThatCountsNotTheOneOfTheIntent(): void
+    {
+        // Given : un produit connu dans le rayon 4001, un autre connu sans rayon
+        $this->products->saveAll([
+            new ProductBuilder()->withRetailerProductId('1')->withRayon(4001)->build(),
+            new ProductBuilder()->withRetailerProductId('2')->build(),
+        ]);
+
+        // When : l'agent se trompe de rayon pour le premier, ne dit rien pour le second qui est ensuite complété par un autre agent
+        $this->save('user-1', [$this->add('farine', Placement::PRIMARY, '1', rayonId: 4999), $this->add('sel', Placement::PRIMARY, '2', rayonId: 4002)]);
+        $this->save('user-2', [$this->add('farine', Placement::FALLBACK, '1')]);
+
+        // Then : la fiche fait foi, même quand l'intention ne dit rien
+        $this->assertSame(['leclerc|boulangerie|4001' => 2, 'leclerc|epicerie|4002' => 1], $this->departmentRayons->all());
+    }
+
+    public function testABatchThatIsRefusedTeachesNothing(): void
+    {
+        // Given : cinq produits déjà acceptés pour la farine
+        $this->save('user-1', array_map(fn(string $id) => $this->add('farine', Placement::FALLBACK, $id), ['1', '2', '3', '4', '5']));
+
+        // When : le lot apprendrait un rayon mais le sixième produit est refusé
+        $this->assertInvalid(fn() => $this->save('user-1', [$this->add('sel', Placement::PRIMARY, '9', rayonId: 4002), $this->add('farine', Placement::FALLBACK, '6', rayonId: 4001)]));
+
+        // Then
+        $this->assertSame([], $this->departmentRayons->all());
+        $this->assertSame([], $this->departmentRayons->recordChoicesSizes);
+    }
+
+    public function testALearnedBatchCostsOneReadAndOneWriteWhateverItsSize(): void
+    {
+        // When : 40 ingrédients (dont 30 connus de Repas), chacun avec un produit choisi qui porte un rayon
+        $departments = [];
+        $intents = [];
+        foreach (range(1, 40) as $i) {
+            $intents[] = $this->add("ingredient-$i", Placement::PRIMARY, (string) $i, rayonId: 4000 + ($i % 3));
+            if ($i <= 30) {
+                $departments["ingredient-$i"] = 'epicerie';
+            }
+        }
+        $this->ingredientDepartments = new IngredientDepartmentInMemoryResolver($departments);
+        $this->handler = new SaveProductChoicesHandler($this->settings, $this->products, $this->choices, $this->departmentRayons, $this->ingredientDepartments, new UuidGenerator(), new FrozenClock($this->now));
+        $this->save('user-1', $intents);
+
+        // Then
+        $this->assertCount(1, $this->ingredientDepartments->departmentSlugsByIngredientCalls);
+        $this->assertCount(40, $this->ingredientDepartments->departmentSlugsByIngredientCalls[0]);
+        $this->assertSame([30], $this->departmentRayons->recordChoicesSizes);
+    }
+
     public function testTheSameProductSeenTwiceInOneBatchIsMerged(): void
     {
         // When
@@ -286,7 +432,7 @@ class SaveProductChoicesHandlerTest extends TestCase
         // Given : Alice accepte déjà le produit (149), Mallory ne l'accepte pas
         $this->save('user-1', [$this->add('farine', Placement::PRIMARY, '555111', 'Farine T55 1 kg', price: new ProductPrice(149))]);
         $later = new DateTimeImmutable('2026-10-20 08:00:00');
-        $this->handler = new SaveProductChoicesHandler($this->settings, $this->products, $this->choices, new UuidGenerator(), new FrozenClock($later));
+        $this->handler = new SaveProductChoicesHandler($this->settings, $this->products, $this->choices, $this->departmentRayons, $this->ingredientDepartments, new UuidGenerator(), new FrozenClock($later));
 
         // When : Alice renvoie le produit avec son prix du jour, Mallory aussi avec un prix à 1 centime
         $this->save('user-1', [$this->add('farine', Placement::FALLBACK, '555111', 'Farine T55 1 kg', price: new ProductPrice(159))]);
@@ -617,6 +763,12 @@ class SaveProductChoicesHandlerTest extends TestCase
         yield 'rafraîchissement avec placement' => [[new ChoiceIntent('farine', ChoiceAction::REFRESH_PRICE, Placement::PRIMARY, $priceOnly)]];
         yield 'identifiant de produit non numérique' => [[new ChoiceIntent('farine', ChoiceAction::ADD_PRODUCT, Placement::PRIMARY, new ProductInput('abc', 'Farine'))]];
         yield 'identifiant de produit trop long' => [[new ChoiceIntent('farine', ChoiceAction::ADD_PRODUCT, Placement::PRIMARY, new ProductInput('1234567890123', 'Farine'))]];
+        yield 'rayon nul' => [[new ChoiceIntent('farine', ChoiceAction::ADD_PRODUCT, Placement::PRIMARY, new ProductInput('1', 'Farine', rayonId: 0))]];
+        yield 'rayon négatif' => [[new ChoiceIntent('farine', ChoiceAction::ADD_PRODUCT, Placement::PRIMARY, new ProductInput('1', 'Farine', rayonId: -4001))]];
+        yield 'rayon trop grand pour un INT' => [[new ChoiceIntent('farine', ChoiceAction::ADD_PRODUCT, Placement::PRIMARY, new ProductInput('1', 'Farine', rayonId: 2147483648))]];
+        yield 'famille nulle' => [[new ChoiceIntent('farine', ChoiceAction::ADD_PRODUCT, Placement::PRIMARY, new ProductInput('1', 'Farine', familyId: 0))]];
+        yield 'famille trop grande pour un INT' => [[new ChoiceIntent('farine', ChoiceAction::REJECT_PRODUCT, null, new ProductInput('1', 'Farine', familyId: 2147483648))]];
+        yield 'rayon hors bornes sur un rafraîchissement de prix' => [[new ChoiceIntent('farine', ChoiceAction::REFRESH_PRICE, null, new ProductInput('1', null, null, null, new ProductPrice(100), 0))]];
     }
 
     /**
@@ -645,14 +797,14 @@ class SaveProductChoicesHandlerTest extends TestCase
         yield 'contenu démesuré' => [new ProductInput('1', 'Farine', null, new ProductContent(1e9, ContentUnit::KG))];
     }
 
-    private function add(string $slug, Placement $placement, string $retailerProductId, string $label = 'Farine', ?ProductContent $content = null, ?ProductPrice $price = null): ChoiceIntent
+    private function add(string $slug, Placement $placement, string $retailerProductId, string $label = 'Farine', ?ProductContent $content = null, ?ProductPrice $price = null, ?int $rayonId = null, ?int $familyId = null): ChoiceIntent
     {
-        return new ChoiceIntent($slug, ChoiceAction::ADD_PRODUCT, $placement, new ProductInput($retailerProductId, $label, null, $content, $price));
+        return new ChoiceIntent($slug, ChoiceAction::ADD_PRODUCT, $placement, new ProductInput($retailerProductId, $label, null, $content, $price, $rayonId, $familyId));
     }
 
-    private function reject(string $slug, string $retailerProductId, string $label = 'Farine', ?ProductContent $content = null): ChoiceIntent
+    private function reject(string $slug, string $retailerProductId, string $label = 'Farine', ?ProductContent $content = null, ?int $rayonId = null, ?int $familyId = null): ChoiceIntent
     {
-        return new ChoiceIntent($slug, ChoiceAction::REJECT_PRODUCT, null, new ProductInput($retailerProductId, $label, null, $content));
+        return new ChoiceIntent($slug, ChoiceAction::REJECT_PRODUCT, null, new ProductInput($retailerProductId, $label, null, $content, null, $rayonId, $familyId));
     }
 
     private function refresh(string $slug, string $retailerProductId, ProductPrice $price): ChoiceIntent

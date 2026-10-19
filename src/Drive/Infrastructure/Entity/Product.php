@@ -56,4 +56,12 @@ class Product
 
     #[ORM\Column(name: 'last_seen_at', type: Types::DATETIME_IMMUTABLE)]
     public DateTimeImmutable $lastSeenAt;
+
+    /** Rayon de l'enseigne (`iIdRayon` chez Leclerc), fait de catalogue rapporté par un agent (DRV-642). */
+    #[ORM\Column(name: 'rayon_id', type: Types::INTEGER, nullable: true)]
+    public ?int $rayonId;
+
+    /** Famille de l'enseigne (`iIdFamille` chez Leclerc), le niveau sous le rayon (DRV-642). */
+    #[ORM\Column(name: 'family_id', type: Types::INTEGER, nullable: true)]
+    public ?int $familyId;
 }

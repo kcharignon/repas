@@ -15,9 +15,11 @@ use Repas\Drive\Application\Query\GetDriveSettings\DriveStoreDTO;
 use Repas\Drive\Application\Query\ListChoices\ProductContentDTO;
 use Repas\Drive\Domain\Exception\DriveException;
 use Repas\Drive\Domain\Interface\ChoiceRepository;
+use Repas\Drive\Domain\Interface\DepartmentRayonRepository;
 use Repas\Drive\Domain\Interface\DriveSettingsRepository;
 use Repas\Drive\Domain\Interface\ProductRepository;
 use Repas\Drive\Domain\Model\ContentUnit;
+use Repas\Drive\Domain\Model\DepartmentRayonChoice;
 use Repas\Drive\Domain\Model\Product;
 use Repas\Drive\Domain\Model\ProductContent;
 use Repas\Drive\Domain\Model\Retailer;
@@ -273,11 +275,90 @@ class DrivePlanPostgreSQLLoaderTest extends DatabaseTestCase
         // When : avec le vrai port de lecture de la liste
         $plan = static::getContainer()->get(DrivePlanLoader::class)->get($owner->getId(), 'list-1');
 
-        // Then : réglages, liste, lignes, préférences avec produits
+        // Then : réglages, liste, lignes, préférences avec produits, rayons appris pour les rayons de Repas des lignes (DRV-642)
         $this->assertCount(12, $plan->lines);
         $this->assertSame(12, $plan->counts->known);
-        $this->assertLessThanOrEqual(5, $counter->count());
-        $this->assertSame(4, $counter->count());
+        $this->assertSame(5, $counter->count());
+        $this->assertSame(1, $counter->byTable()['SELECT drive_department_rayon']);
+    }
+
+    public function testTheLinesCarryTheRayonsOfTheStoreChainLearnedForTheirDepartment(): void
+    {
+        // Given : deux rayons de Repas ; « boulangerie » a quatre rayons appris dont deux à égalité, « epicerie » un seul
+        $this->settings->save(new DriveSettingsBuilder()->withUserId('user-1')->build());
+        $this->learn('boulangerie', 4001, 5);
+        $this->learn('boulangerie', 4003, 3);
+        $this->learn('boulangerie', 4002, 3);
+        $this->learn('boulangerie', 4004, 1);
+        $this->learn('epicerie', 4009, 2);
+        $list = $this->sentList('user-1', [
+            new ShoppingListLineForDrive('farine', 'Farine', 1, 'paquet', 'paquet', 'paquet', 'PACKAGE', 1.0, 'boulangerie'),
+            new ShoppingListLineForDrive('levure', 'Levure', 1, 'paquet', 'paquet', 'paquet', 'PACKAGE', 1.0, 'boulangerie'),
+            new ShoppingListLineForDrive('sel', 'Sel', 1, 'paquet', 'paquet', 'paquet', 'PACKAGE', 1.0, 'epicerie'),
+        ]);
+
+        // When
+        $lines = $this->loader($list)->get('user-1', 'list-1')->lines;
+
+        // Then : trois au plus, du plus choisi au moins choisi, à égalité le plus petit identifiant d'abord ; les lignes d'un même
+        // rayon de Repas ont les mêmes
+        $this->assertSame([[4001, 4002, 4003], [4001, 4002, 4003], [4009]], array_map(static fn(DrivePlanLineDTO $line): array => $line->rayonHints, $lines));
+    }
+
+    public function testALineWithoutLearnedRayonOrWithoutDepartmentHasNoHint(): void
+    {
+        // Given : rien d'appris pour « surgele », une ligne sans rayon de Repas, et des rayons appris par une autre enseigne
+        $this->settings->save(new DriveSettingsBuilder()->withUserId('user-1')->build());
+        $this->learn('boulangerie', 4001, 1);
+        $this->entityManager->getConnection()->executeStatement("INSERT INTO drive_department_rayon (retailer, department_slug, rayon_id, chosen_count) VALUES ('auchan', 'surgele', 7777, 9)");
+        $list = $this->sentList('user-1', [
+            new ShoppingListLineForDrive('glace', 'Glace', 1, 'paquet', 'paquet', 'paquet', 'PACKAGE', 1.0, 'surgele'),
+            new ShoppingListLineForDrive('inconnu', 'Inconnu', 1, 'paquet', 'paquet', 'paquet', 'PACKAGE', 1.0, null),
+            new ShoppingListLineForDrive('farine', 'Farine', 1, 'paquet', 'paquet', 'paquet', 'PACKAGE', 1.0, 'boulangerie'),
+        ]);
+
+        // When
+        $lines = $this->loader($list)->get('user-1', 'list-1')->lines;
+
+        // Then : les rayons de chaque enseigne restent chez elle
+        $this->assertSame([[], [], [4001]], array_map(static fn(DrivePlanLineDTO $line): array => $line->rayonHints, $lines));
+    }
+
+    public function testTheHintsAreTheSameForEveryUserAndEveryStoreOfTheChain(): void
+    {
+        // Given : ce qui est appris ne dépend ni de l'utilisateur ni du magasin (faits de catalogue agrégés)
+        $this->settings->save(new DriveSettingsBuilder()->withUserId('user-1')->withStore('123456', null, 'https://exemple.leclercdrive.fr/magasin-123456-123456')->build());
+        $this->settings->save(new DriveSettingsBuilder()->withUserId('user-2')->withStore('654321', null, 'https://autre.leclercdrive.fr/magasin-654321-654321')->build());
+        $this->learn('boulangerie', 4001, 2);
+        $line = static fn(): array => [new ShoppingListLineForDrive('farine', 'Farine', 1, 'paquet', 'paquet', 'paquet', 'PACKAGE', 1.0, 'boulangerie')];
+
+        // When
+        $first = $this->loader($this->sentList('user-1', $line()))->get('user-1', 'list-1');
+        $second = $this->loader($this->sentList('user-2', $line()))->get('user-2', 'list-1');
+
+        // Then
+        $this->assertSame([[4001], [4001]], [$first->lines[0]->rayonHints, $second->lines[0]->rayonHints]);
+    }
+
+    public function testThePlanOfLinesWithoutDepartmentCostsNoQueryForTheHints(): void
+    {
+        // Given
+        $this->settings->save(new DriveSettingsBuilder()->withUserId('user-1')->build());
+        $list = $this->sentList('user-1', [new ShoppingListLineForDrive('farine', 'Farine', 1, 'paquet', 'paquet', 'paquet', 'PACKAGE', 1.0)]);
+        $counter = static::getContainer()->get(QueryCounter::class);
+        $counter->reset();
+
+        // When
+        $this->loader($list)->get('user-1', 'list-1');
+
+        // Then : les réglages et les préférences seulement (la liste vient du double)
+        $this->assertArrayNotHasKey('SELECT drive_department_rayon', $counter->byTable());
+        $this->assertSame(2, $counter->count());
+    }
+
+    private function learn(string $departmentSlug, int $rayonId, int $times): void
+    {
+        static::getContainer()->get(DepartmentRayonRepository::class)->recordChoices(Retailer::LECLERC, array_fill(0, $times, new DepartmentRayonChoice($departmentSlug, $rayonId)));
     }
 
     /**

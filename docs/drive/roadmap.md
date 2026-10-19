@@ -148,7 +148,7 @@ Références : [`principes-produit.md`](principes-produit.md), [`audit-simplicit
 - [ ] [DRV-639](tickets/DRV-639-mise-a-jour-dans-l-application.md) front/android · L · L'application télécharge, vérifie, installe et supprime l'APK (variante hors Play, effort xhigh) · dépend de : DRV-638, AUTH-015
 - [x] [DRV-640](tickets/DRV-640-version-minimale-pour-le-drive.md) front · S · Une application trop ancienne ne lance pas le drive (message court, mise à jour, repli à la main) · dépend de : —
 - [x] [DRV-641](tickets/DRV-641-pas-de-verrou-sans-application-a-jour.md) front · S · Ne jamais verrouiller la liste si l'envoi ne peut pas se faire (fait, PR #161)
-- [ ] [DRV-642](tickets/DRV-642-chercher-dans-le-bon-rayon.md) back/agent · M-L · Chercher dans le bon rayon (produits frais) : classer les candidats par rayon appris · dépend de : —
+- [ ] [DRV-642](tickets/DRV-642-chercher-dans-le-bon-rayon.md) back/agent · M-L · Chercher dans le bon rayon (produits frais) : classer les candidats par rayon appris · dépend de : — (lot 1a back fait, PR #217 ; lot 1b agent, protocole et front à faire)
 - [ ] [DRV-643](tickets/DRV-643-tous-les-resultats-en-defilant.md) agent · M · Tous les résultats de la recherche, affichés en défilant (demande de l'utilisateur) · dépend de : DRV-633
 - [ ] [DRV-644](tickets/DRV-644-enregistrer-le-choix-refuse-et-expliquer.md) agent · S · Un produit choisi mais refusé par le panier est enregistré, avec la raison (absorbe DRV-632) · dépend de : DRV-635
 - [x] [DRV-645](tickets/DRV-645-panier-pret-un-message.md) front · S · Panier prêt : un message, pas la page ordinateur (fait, PR #162)

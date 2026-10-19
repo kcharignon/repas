@@ -299,6 +299,91 @@ class ProductTest extends TestCase
         $product->complete('pas-un-ean', 'Farine', null, null, $this->now);
     }
 
+    public function testCreateKeepsTheRayonAndTheFamilyOfTheStore(): void
+    {
+        // When
+        $product = Product::create(Retailer::LECLERC, '123456', '555111', null, 'Farine', null, null, $this->now, 4001, 4101);
+        $without = Product::create(Retailer::LECLERC, '123456', '555112', null, 'Sel', null, null, $this->now);
+
+        // Then : facultatifs, ils valent null quand l'agent ne les a pas lus
+        $this->assertSame([4001, 4101], [$product->getRayonId(), $product->getFamilyId()]);
+        $this->assertSame([null, null], [$without->getRayonId(), $without->getFamilyId()]);
+    }
+
+    #[DataProvider('invalidCatalogIds')]
+    public function testRefusesARayonOrAFamilyOutOfBounds(?int $rayonId, ?int $familyId): void
+    {
+        // Then
+        $this->expectExceptionObject(DriveException::invalidChoice());
+
+        // When
+        Product::create(Retailer::LECLERC, '123456', '555111', null, 'Farine', null, null, $this->now, $rayonId, $familyId);
+    }
+
+    /**
+     * @return iterable<string, array{?int, ?int}>
+     */
+    public static function invalidCatalogIds(): iterable
+    {
+        yield 'rayon nul' => [0, null];
+        yield 'rayon négatif' => [-4001, null];
+        yield 'rayon trop grand pour un INT' => [2147483648, null];
+        yield 'famille nulle' => [null, 0];
+        yield 'famille négative' => [4001, -1];
+        yield 'famille trop grande pour un INT' => [4001, 2147483648];
+    }
+
+    public function testTheBoundsOfACatalogIdAreOneAndTheLargestInt(): void
+    {
+        // When
+        $product = Product::create(Retailer::LECLERC, '123456', '555111', null, 'Farine', null, null, $this->now, 1, 2147483647);
+
+        // Then
+        $this->assertSame([1, 2147483647], [$product->getRayonId(), $product->getFamilyId()]);
+        $this->assertSame([false, true, true, false], array_map(Product::isCatalogId(...), [0, 1, 2147483647, 2147483648]));
+    }
+
+    public function testSeeingAgainFillsAMissingRayonButNeverReplacesOneOrEmptiesIt(): void
+    {
+        // Given : une fiche d'avant le rayon (rien), puis une fiche complète
+        $old = Product::create(Retailer::LECLERC, '123456', '555111', null, 'Farine', null, null, $this->now);
+        $complete = Product::create(Retailer::LECLERC, '123456', '555112', null, 'Sel', null, null, $this->now, 4001, 4101);
+        $later = new DateTimeImmutable('2026-10-19 09:00:00');
+
+        // When : un agent qui connaît le rayon complète l'ancienne fiche, un autre propose d'autres valeurs ou aucune
+        $old->complete(null, 'Farine', null, null, $later, 4002, 4102);
+        $complete->complete(null, 'Sel', null, null, $later, 4999, 4999);
+        $complete->complete(null, 'Sel', null, null, $later);
+
+        // Then : le rayon manquant est rempli, le rayon connu reste (ni remplacé, ni effacé par l'absence)
+        $this->assertSame([4002, 4102], [$old->getRayonId(), $old->getFamilyId()]);
+        $this->assertSame([4001, 4101], [$complete->getRayonId(), $complete->getFamilyId()]);
+    }
+
+    public function testSeeingAgainWithoutRayonLeavesAMissingRayonMissing(): void
+    {
+        // Given
+        $product = Product::create(Retailer::LECLERC, '123456', '555111', null, 'Farine', null, null, $this->now);
+
+        // When
+        $product->complete(null, 'Farine', null, null, $this->now);
+
+        // Then
+        $this->assertSame([null, null], [$product->getRayonId(), $product->getFamilyId()]);
+    }
+
+    public function testSeeingARayonOutOfBoundsIsRefusedEvenWhenAKnownRayonWouldWin(): void
+    {
+        // Given
+        $product = Product::create(Retailer::LECLERC, '123456', '555111', null, 'Farine', null, null, $this->now, 4001, null);
+
+        // Then
+        $this->expectExceptionObject(DriveException::invalidChoice());
+
+        // When
+        $product->complete(null, 'Farine', null, null, $this->now, 0, null);
+    }
+
     public function testSeePriceOnlyTouchesThePrice(): void
     {
         // Given

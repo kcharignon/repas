@@ -2,6 +2,8 @@
 
 namespace Repas\Drive\Infrastructure\Loader;
 
+use Doctrine\DBAL\ArrayParameterType;
+use Doctrine\DBAL\ParameterType;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Clock\ClockInterface;
 use Repas\Drive\Application\Loader\DrivePlanLoader;
@@ -30,10 +32,11 @@ use Repas\Shared\Application\Interface\ShoppingListForDriveLoader;
 use Repas\Shared\Domain\Model\Dimension;
 
 /**
- * Quatre requêtes au plus, quelle que soit la taille de la liste : les réglages, la liste avec ses lignes (port `Shared`, deux
- * requêtes), puis les préférences du magasin courant pour les ingrédients de la liste avec leurs produits. Seuls les produits
- * de ces préférences sont lus (décision D22). Les préférences d'un autre magasin ne comptent pas : un produit connu dont le
- * magasin a changé n'existe plus, la ligne est `NEW`.
+ * Cinq requêtes au plus, quelle que soit la taille de la liste : les réglages, la liste avec ses lignes (port `Shared`, deux
+ * requêtes), les préférences du magasin courant pour les ingrédients de la liste avec leurs produits, puis les rayons de l'enseigne
+ * appris pour les rayons de Repas des lignes (`rayonHints`, DRV-642 ; aucune requête si aucune ligne n'a de rayon de Repas). Seuls
+ * les produits de ces préférences sont lus (décision D22). Les préférences d'un autre magasin ne comptent pas : un produit connu
+ * dont le magasin a changé n'existe plus, la ligne est `NEW`. Les rayons appris, eux, valent pour l'enseigne (pas pour un magasin).
  */
 final readonly class DrivePlanPostgreSQLLoader implements DrivePlanLoader
 {
@@ -42,6 +45,8 @@ final readonly class DrivePlanPostgreSQLLoader implements DrivePlanLoader
     private const string SENT = 'SENT';
     private const string ACCEPTED = 'ACCEPTED';
     private const int UNIT_LABEL_MAX_LENGTH = 32;
+    /** Nombre de rayons de l'enseigne que le plan propose pour une ligne. */
+    public const int RAYON_HINTS_MAX = 3;
 
     public function __construct(
         private EntityManagerInterface $entityManager,
@@ -64,7 +69,12 @@ final readonly class DrivePlanPostgreSQLLoader implements DrivePlanLoader
 
         $choices = $this->choices($userId, $store->id, array_map(static fn(ShoppingListLineForDrive $line): string => $line->ingredientSlug, $list->lines));
 
-        $lines = array_map(fn(ShoppingListLineForDrive $line): DrivePlanLineDTO => $this->line($line, $choices[$line->ingredientSlug] ?? null), $list->lines);
+        $hints = $this->rayonHints($list->lines);
+
+        $lines = array_map(
+            fn(ShoppingListLineForDrive $line): DrivePlanLineDTO => $this->line($line, $choices[$line->ingredientSlug] ?? null, $line->departmentSlug === null ? [] : ($hints[$line->departmentSlug] ?? [])),
+            $list->lines,
+        );
         $count = static fn(PlanLineStatus $status): int => count(array_filter($lines, static fn(DrivePlanLineDTO $line): bool => $line->status === $status->value));
 
         return new DrivePlanDTO(
@@ -152,9 +162,43 @@ final readonly class DrivePlanPostgreSQLLoader implements DrivePlanLoader
     }
 
     /**
-     * @param array{haveAtHome: bool, accepted: list<array<string, mixed>>, rejected: list<DrivePlanRejectedDTO>}|null $choice
+     * Les rayons de l'enseigne les plus choisis pour chaque rayon de Repas des lignes (`RAYON_HINTS_MAX` au plus, du plus choisi au
+     * moins choisi, à égalité le plus petit identifiant d'abord : un ordre qui ne change pas d'un appel à l'autre). Une seule
+     * requête, et pas de lecture sans rayon de Repas ; le classement se fait en SQL pour ne lire que ce qui sort dans le plan.
+     *
+     * @param list<ShoppingListLineForDrive> $lines
+     *
+     * @return array<string, list<int>> identifiants de rayon de l'enseigne par slug de rayon de Repas ; absent si rien n'est appris
      */
-    private function line(ShoppingListLineForDrive $line, ?array $choice): DrivePlanLineDTO
+    private function rayonHints(array $lines): array
+    {
+        $departmentSlugs = array_values(array_unique(array_filter(array_map(static fn(ShoppingListLineForDrive $line): ?string => $line->departmentSlug, $lines))));
+        if ($departmentSlugs === []) {
+            return [];
+        }
+
+        $rows = $this->entityManager->getConnection()->fetchAllAssociative(
+            'SELECT department_slug, rayon_id FROM ('
+            . 'SELECT department_slug, rayon_id, ROW_NUMBER() OVER (PARTITION BY department_slug ORDER BY chosen_count DESC, rayon_id ASC) AS place '
+            . 'FROM drive_department_rayon WHERE retailer = ? AND department_slug IN (?)'
+            . ') AS ranked WHERE place <= ? ORDER BY department_slug, place',
+            [self::RETAILER->value, $departmentSlugs, self::RAYON_HINTS_MAX],
+            [ParameterType::STRING, ArrayParameterType::STRING, ParameterType::INTEGER],
+        );
+
+        $hints = [];
+        foreach ($rows as $row) {
+            $hints[(string) $row['department_slug']][] = (int) $row['rayon_id'];
+        }
+
+        return $hints;
+    }
+
+    /**
+     * @param array{haveAtHome: bool, accepted: list<array<string, mixed>>, rejected: list<DrivePlanRejectedDTO>}|null $choice
+     * @param list<int> $rayonHints
+     */
+    private function line(ShoppingListLineForDrive $line, ?array $choice, array $rayonHints): DrivePlanLineDTO
     {
         $dimension = $line->unitDimension === null ? null : Dimension::from($line->unitDimension);
         $quantity = new LineQuantity($line->quantity, $dimension, $line->unitBaseFactor);
@@ -172,6 +216,7 @@ final readonly class DrivePlanPostgreSQLLoader implements DrivePlanLoader
             products: array_map(fn(array $row): DrivePlanProductDTO => $this->product($row, $quantity), $choice['accepted'] ?? []),
             rejected: $choice['rejected'] ?? [],
             searchQuery: $line->ingredientName,
+            rayonHints: $rayonHints,
         );
     }
 

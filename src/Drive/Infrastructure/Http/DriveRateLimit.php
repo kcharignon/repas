@@ -12,6 +12,6 @@ enum DriveRateLimit: string
     /** `PUT /drive/settings`, `PUT /drive/choices`, `PUT` et `DELETE /drive/choices/{slug}` : un compteur commun. */
     case WRITE = 'drive_write';
 
-    /** `GET /drive/plans/{id}` et `GET /drive/estimates/{id}`, les lectures qui coûtent 4 requêtes SQL : un compteur commun. */
+    /** `GET /drive/plans/{id}` et `GET /drive/estimates/{id}`, les lectures qui coûtent 4 ou 5 requêtes SQL (le plan en lit une de plus depuis DRV-642) : un compteur commun. */
     case READ = 'drive_read';
 }

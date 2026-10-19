@@ -45,9 +45,10 @@ class GetDrivePlanApiControllerTest extends QueryBusWebTestCase
                     ],
                     'rejected' => [['retailerProductId' => '999000', 'label' => 'Farine complète bio 1 kg']],
                     'searchQuery' => 'Farine',
+                    'rayonHints' => [4001, 4002],
                 ],
-                ['ingredientSlug' => 'poivre', 'ingredientName' => 'Poivre', 'needed' => ['quantity' => 1, 'unitSymbol' => 'paquet', 'dimension' => 'PACKAGE', 'baseFactor' => 1], 'status' => 'NEW', 'products' => [], 'rejected' => [], 'searchQuery' => 'Poivre'],
-                ['ingredientSlug' => 'sel', 'ingredientName' => 'Sel', 'needed' => ['quantity' => 2, 'unitSymbol' => 'cuillère à soupe', 'dimension' => null, 'baseFactor' => null], 'status' => 'HAVE_AT_HOME', 'products' => [], 'rejected' => [], 'searchQuery' => 'Sel'],
+                ['ingredientSlug' => 'poivre', 'ingredientName' => 'Poivre', 'needed' => ['quantity' => 1, 'unitSymbol' => 'paquet', 'dimension' => 'PACKAGE', 'baseFactor' => 1], 'status' => 'NEW', 'products' => [], 'rejected' => [], 'searchQuery' => 'Poivre', 'rayonHints' => []],
+                ['ingredientSlug' => 'sel', 'ingredientName' => 'Sel', 'needed' => ['quantity' => 2, 'unitSymbol' => 'cuillère à soupe', 'dimension' => null, 'baseFactor' => null], 'status' => 'HAVE_AT_HOME', 'products' => [], 'rejected' => [], 'searchQuery' => 'Sel', 'rayonHints' => []],
             ],
         ], $this->jsonBody());
     }

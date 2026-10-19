@@ -122,6 +122,10 @@ final class DriveContractSamplesTest extends DatabaseTestCase
      *
      * Liste (triée par slug) : farine (préférée + secours), lait (un produit sans prix, un refus), œufs (unité sans symbole,
      * aucun produit), sel (cuillère : contenu non convertible), sucre (« j'en ai toujours »).
+     *
+     * Rayons (DRV-642, identifiants inventés) : l'agent rapporte le rayon 4001 pour la farine (rayon de Repas « boulangerie », celui
+     * du sucre aussi) et 4002 pour le lait (rayon « divers », celui des œufs aussi) ; il n'en rapporte pas pour le sel. Le plan
+     * propose donc `[4001]` à la farine et au sucre, `[4002]` au lait et aux œufs, et `[]` au sel.
      */
     private function playTheJourney(): User
     {
@@ -141,14 +145,14 @@ final class DriveContractSamplesTest extends DatabaseTestCase
         $this->request('PUT', '/api/v1/drive/choices', $user, ['retailer' => 'leclerc', 'storeId' => '123456', 'choices' => [
             ['ingredientSlug' => 'farine', 'action' => 'ADD_PRODUCT', 'placement' => 'PRIMARY', 'product' => [
                 'retailerProductId' => '555101', 'ean' => '2000000000008', 'label' => 'Farine de blé T55 1 kg', 'content' => ['value' => 1, 'unit' => 'kg'],
-                'price' => ['cents' => 195, 'perMeasure' => ['cents' => 195, 'unit' => 'kg']],
+                'price' => ['cents' => 195, 'perMeasure' => ['cents' => 195, 'unit' => 'kg']], 'rayonId' => 4001, 'familyId' => 4101,
             ]],
             ['ingredientSlug' => 'farine', 'action' => 'ADD_PRODUCT', 'placement' => 'FALLBACK', 'product' => [
                 'retailerProductId' => '555102', 'label' => 'Farine de blé T45 500 g', 'content' => ['value' => 500, 'unit' => 'g'],
                 'price' => ['cents' => 109, 'perMeasure' => ['cents' => 218, 'unit' => 'kg']],
             ]],
             ['ingredientSlug' => 'lait', 'action' => 'ADD_PRODUCT', 'placement' => 'PRIMARY', 'product' => [
-                'retailerProductId' => '555201', 'label' => 'Lait demi-écrémé UHT 50 cl', 'content' => ['value' => 50, 'unit' => 'cl'],
+                'retailerProductId' => '555201', 'label' => 'Lait demi-écrémé UHT 50 cl', 'content' => ['value' => 50, 'unit' => 'cl'], 'rayonId' => 4002,
             ]],
             ['ingredientSlug' => 'lait', 'action' => 'REJECT_PRODUCT', 'product' => [
                 'retailerProductId' => '555299', 'label' => 'Lait entier UHT 1 l', 'content' => ['value' => 1, 'unit' => 'l'],

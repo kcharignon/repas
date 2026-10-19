@@ -5,6 +5,7 @@ namespace Repas\Drive\Infrastructure\Http\Api\SaveProductChoices;
 
 use OpenApi\Attributes as OA;
 use Repas\Drive\Application\Command\SaveProductChoices\ProductInput;
+use Repas\Drive\Domain\Model\Product;
 use Symfony\Component\Validator\Constraints as Assert;
 
 /**
@@ -27,11 +28,17 @@ final readonly class ProductPayload
         #[Assert\Valid]
         #[OA\Property(description: 'Prix lu par l\'agent, `null` s\'il ne l\'a pas lu', nullable: true)]
         public ?ProductPricePayload $price = null,
+        #[Assert\Range(min: 1, max: Product::CATALOG_ID_MAX)]
+        #[OA\Property(description: "Rayon de l'enseigne où le site range le produit (`iIdRayon` chez Leclerc) : entier de 1 à 2147483647. Facultatif : absent ou `null`, la fiche du produit n'est pas modifiée ; une valeur déjà connue n'est jamais remplacée. Sert à apprendre dans quel rayon de l'enseigne chercher les ingrédients d'un rayon de Repas (`rayonHints` du plan)", minimum: 1, maximum: 2147483647, example: 4001, nullable: true)]
+        public ?int $rayonId = null,
+        #[Assert\Range(min: 1, max: Product::CATALOG_ID_MAX)]
+        #[OA\Property(description: "Famille de l'enseigne, le niveau sous le rayon (`iIdFamille` chez Leclerc) : entier de 1 à 2147483647. Facultatif, mêmes règles que `rayonId`", minimum: 1, maximum: 2147483647, example: 4101, nullable: true)]
+        public ?int $familyId = null,
     ) {
     }
 
     public function toInput(): ProductInput
     {
-        return new ProductInput($this->retailerProductId, $this->label, $this->ean, $this->content?->toContent(), $this->price?->toPrice());
+        return new ProductInput($this->retailerProductId, $this->label, $this->ean, $this->content?->toContent(), $this->price?->toPrice(), $this->rayonId, $this->familyId);
     }
 }
