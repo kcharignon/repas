@@ -49,6 +49,7 @@ class UserCheckerTest extends TestCase
     {
         // Assert
         $this->expectException(CustomUserMessageAccountStatusException::class);
+        $this->expectExceptionMessage('Ton compte est désactivé.');
 
         // When
         $this->checker->checkPreAuth(new UserBuilder()->isDisabled()->build());

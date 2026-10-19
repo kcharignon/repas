@@ -20,7 +20,7 @@ class BrevoTransportTest extends TestCase
         // Given
         $client = new MockHttpClient(new MockResponse('{"messageId":"<abc@brevo>"}', ['http_code' => 201]));
         $transport = Transport::fromDsn('brevo+api://la-cle-d-api@default', null, $client);
-        $email = new Email()->from('Repas <no-reply@kantin.eu>')->to('alexiane@example.com')->subject('Confirmez votre adresse email')->text('Le lien.');
+        $email = new Email()->from('Repas <no-reply@kantin.eu>')->to('alexiane@example.com')->subject('Confirme ton adresse email')->text('Le lien.');
 
         // When
         $transport->send($email);
