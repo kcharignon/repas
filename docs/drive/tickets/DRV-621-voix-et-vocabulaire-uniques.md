@@ -4,7 +4,7 @@
 - **Jalon** : M6 Simplicité d'usage (audit du 2026-10-19)
 - **Taille** : M
 - **Dépend de** : — (à lancer quand aucun autre agent ne touche `fr.ts`, `strings.ts` ou `strings.xml`)
-- **Statut** : à faire
+- **Statut** : fait (2026-10-19, repas-front#139)
 - **Lire d'abord** : [`principes-produit.md`](../principes-produit.md) (§ 3 et § 5 font foi), [`audit-simplicite.md`](../audit-simplicite.md) (F4, F5, F12, F13), skills `repas-po`, `repas-front-dev`, `repas-agent-dev`, `repas-android-dev`, `consignes-agents.md`.
 
 ## Contexte
@@ -45,3 +45,16 @@ Celle du dépôt front ; PR concise avec, dans « À relire », la liste des mot
 - Les libellés sont aussi des **sélecteurs** dans `android/emulator/e2e.sh`, `drive-agent/fake-leclerc/` et les tests Playwright : les chercher par `grep` avant de renommer.
 - Les textes de l'agent sont figés par l'empreinte (`agent.js.sha384`) : toujours recalculer.
 - Ne pas toucher aux clés techniques (`HAVE_AT_HOME`, `CONTRACT_CHANGED`…) ni au protocole : seuls les libellés changent.
+
+## Réalisation (2026-10-19, PR repas-front#139, agent 0.16.0)
+
+- **Vouvoiement** dans `drive-agent/src/ui/strings.ts`, `leclerc/errors.ts` et tout `strings.xml` ; le web vouvoyait déjà. **Glossaire** appliqué à `fr.ts`, `strings.ts` et `strings.xml` (mots seulement, aucun écran restructuré). « Mon compte » devient « Moi » partout.
+- **Test de glossaire** `src/i18n/__tests__/voice-and-glossary.spec.ts` (70 tests) : lit `fr.ts`, `strings.ts`, `errors.ts` (arbre syntaxique) et `strings.xml`, refuse les mots interdits de [`principes-produit.md`](../principes-produit.md) § 5 et le tutoiement (liste finie de verbes à l'impératif : la relecture reste la barrière pour un verbe nouveau). Exemptions **nommées** (glossaire seulement, jamais le vouvoiement) : diagnostic et test automatique de l'agent, étiquettes de variantes du diagnostic, messages du résultat jamais affichés tels quels ; dans `strings.xml` : `menu_diagnostic`, `menu_debug_plan`, `menu_selftest`, `agent_ready`, `result_title`, `selftest_*`, `report_copied`. Un test échoue si une exemption cite quelque chose qui n'existe plus. `android/__tests__/menu.spec.ts` (6 tests) : « Test automatique » et « Plan d'essai » n'existent qu'en débogage.
+- **Ménage** : renvois au banc d'essai retirés de l'agent ; `android/PUBLICATION.md` : règle « site web avant application » quand le protocole change.
+- **Libellés changés** (ancien → nouveau), repris dans `recette.md` à la fin du jalon M6 : voir le rapport de la PR ; points notables : onglet de la liste « Ingrédients · N » → « Articles · N » (une ligne à revenir en arrière si le PO le refuse) ; « Passer cette fois » → « Pas cette fois » ; « Déjà à la maison » → « J'en ai toujours » ; « Retour du drive » → « Récapitulatif » ; « Passage arrêté » → « Envoi arrêté » ; « Préféré/Secours » → « Habituel/Remplacement » ; « Ne plus jamais prendre » → « Ne plus proposer » ; « Se déconnecter de Leclerc et effacer les données du drive » → « Se déconnecter de Leclerc » ; « mode assisté » → « chercher à la main » ; « Mon compte » → « Moi ».
+
+### Points laissés (à décider par le PO)
+
+1. **« Diagnostic de l'agent » reste dans l'application signée** : le ticket le supposait caché, mais le runbook § 3.1 le dit « toujours disponible » et la recette § 11.1 s'en sert. Seuls « Plan d'essai » et « Test automatique » sont réservés au débogage. Le cacher (une ligne, `menu_diagnostic` sous `BuildConfig.DEBUG`) demanderait d'adapter runbook et recette : décision du PO au moment de DRV-622/624, sans urgence.
+2. « agent » et « WebView » subsistent dans quelques textes d'erreur Android et dans « Diagnostic de l'agent » ; « Accepter de nouveau », « Code : {code} », « Échecs », « Prix lus » et les compteurs à zéro restent : DRV-622 et DRV-624.
+3. Mise à jour du jalon : `recette.md` est réaligné **après** DRV-622 à 624 (une seule passe, plusieurs textes de la recette changent encore).
