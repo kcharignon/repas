@@ -12,6 +12,13 @@ framework:
             policy: sliding_window
             limit: 20
             interval: '1 hour'
+        # Mot de passe oublié (POST /api/v1/users/password-reset/send et /confirm), par adresse IP
+        # (PasswordResetRateLimitListener, ADR 0026) : chaque demande acceptée envoie un email. Limiteur distinct de
+        # email_verification : redemander un lien ne doit pas consommer le plafond de la confirmation d'adresse.
+        password_reset:
+            policy: sliding_window
+            limit: 20
+            interval: '1 hour'
         # Rafraîchissement du JWT (POST /api/auth/refresh), par adresse IP (RefreshTokenRateLimitListener, ADR 0015 §9) :
         # un SPA le sollicite à chaque rechargement de page et toutes les heures, 60 par 10 minutes laissent de la marge.
         refresh_token:
@@ -41,6 +48,8 @@ when@test:
             refresh_token:
                 cache_pool: test.rate_limiter_pool
             email_verification:
+                cache_pool: test.rate_limiter_pool
+            password_reset:
                 cache_pool: test.rate_limiter_pool
             drive_write:
                 cache_pool: test.rate_limiter_pool

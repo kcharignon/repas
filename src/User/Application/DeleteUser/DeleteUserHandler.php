@@ -6,6 +6,7 @@ namespace Repas\User\Application\DeleteUser;
 use Repas\Shared\Domain\Event\UserDeletedEvent;
 use Repas\User\Domain\Exception\UserException;
 use Repas\User\Domain\Interface\EmailVerificationTokenRepository;
+use Repas\User\Domain\Interface\PasswordResetTokenRepository;
 use Repas\User\Domain\Interface\RefreshTokenRepository;
 use Repas\User\Domain\Interface\UserRepository;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
@@ -18,6 +19,7 @@ readonly class DeleteUserHandler
         private UserRepository $userRepository,
         private RefreshTokenRepository $refreshTokenRepository,
         private EmailVerificationTokenRepository $emailVerificationTokenRepository,
+        private PasswordResetTokenRepository $passwordResetTokenRepository,
         private EventDispatcherInterface $eventDispatcher,
     ) {
     }
@@ -39,6 +41,7 @@ readonly class DeleteUserHandler
 
         $this->refreshTokenRepository->deleteAllOfUser($user->getId());
         $this->emailVerificationTokenRepository->deleteAllOfUser($user->getId());
+        $this->passwordResetTokenRepository->deleteAllOfUser($user->getId());
         $this->userRepository->delete($user);
 
         $this->eventDispatcher->dispatch(new UserDeletedEvent($user->getId()));

@@ -23,7 +23,9 @@ use Repas\Tests\Helper\Builder\UserBuilder;
 use Repas\Tests\Helper\SqlBudget\QueryCounter;
 use Repas\Shared\Domain\Tool\UuidGenerator;
 use Repas\User\Domain\Interface\EmailVerificationTokenRepository;
+use Repas\User\Domain\Interface\PasswordResetTokenRepository;
 use Repas\User\Domain\Model\EmailVerificationToken;
+use Repas\User\Domain\Model\PasswordResetToken;
 use Repas\User\Domain\Model\User;
 
 /**
@@ -78,6 +80,16 @@ abstract class WriteBudgetTestCase extends DatabaseTestCase
     {
         static::getContainer()->get(EmailVerificationTokenRepository::class)->add(
             EmailVerificationToken::issue(UuidGenerator::new(), $user->getId(), EmailVerificationToken::hash($secret), new DateTimeImmutable("-{$minutesAgo} minutes")),
+        );
+    }
+
+    /**
+     * Lien « mot de passe oublié » déjà envoyé à `$user` (émis `$minutesAgo` minutes avant maintenant).
+     */
+    public function savedPasswordResetToken(User $user, string $secret, int $minutesAgo = 0): void
+    {
+        static::getContainer()->get(PasswordResetTokenRepository::class)->add(
+            PasswordResetToken::issue(UuidGenerator::new(), $user->getId(), PasswordResetToken::hash($secret), new DateTimeImmutable("-{$minutesAgo} minutes")),
         );
     }
 

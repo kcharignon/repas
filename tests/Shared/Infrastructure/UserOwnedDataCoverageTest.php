@@ -10,6 +10,7 @@ use Repas\Repas\Infrastructure\Entity\Recipe;
 use Repas\Repas\Infrastructure\Entity\ShoppingList;
 use Repas\Tests\Helper\DatabaseTestCase;
 use Repas\User\Infrastructure\Entity\EmailVerificationToken;
+use Repas\User\Infrastructure\Entity\PasswordResetToken;
 use Repas\User\Infrastructure\Entity\RefreshToken;
 
 /**
@@ -31,6 +32,7 @@ class UserOwnedDataCoverageTest extends DatabaseTestCase
         DriveSettings::class => ['userId'],
         Choice::class => ['userId'],
         EmailVerificationToken::class => ['userId'],
+        PasswordResetToken::class => ['userId'],
     ];
 
     public function testEveryColumnThatPointsToAUserIsErasedWithHim(): void

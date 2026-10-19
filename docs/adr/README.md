@@ -29,6 +29,7 @@ Décisions d'architecture du projet Repas. **À relire avant de développer ou d
 | [0023](0023-liste-envoyee-au-drive.md) | Liste envoyée au drive : statut `SENT` et verrou | Accepted |
 | [0024](0024-connexion-avec-google.md) | Connexion avec Google : jeton d'identité, GIS sur le web, Credential Manager dans l'application, compte lié par `sub` | Accepted |
 | [0025](0025-publication-sur-google-play.md) | Publication de l'application Android sur Google Play : paliers (test interne, test fermé, production), clé de signature importée, AAB, conformité (suppression de compte, confidentialité, contenus d'utilisateurs) | Proposed |
+| [0026](0026-mot-de-passe-oublie.md) | Mot de passe oublié : lien de 30 minutes à usage unique, jeton à part, aucune énumération de comptes | Proposed |
 
 ## Sources
 
