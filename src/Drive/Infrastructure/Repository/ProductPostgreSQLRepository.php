@@ -25,7 +25,7 @@ use Repas\Shared\Infrastructure\Repository\PostgreSQLRepository;
 readonly class ProductPostgreSQLRepository extends PostgreSQLRepository implements ProductRepository
 {
     private const string DATE_FORMAT = 'Y-m-d H:i:s';
-    private const string COLUMNS = 'id, retailer, store_id, retailer_product_id, ean, label, content_value, content_unit, price_cents, price_per_measure_cents, price_per_measure_unit, price_seen_at, last_seen_at';
+    private const string COLUMNS = 'id, retailer, store_id, retailer_product_id, ean, label, content_value, content_unit, price_cents, price_per_measure_cents, price_per_measure_unit, price_seen_at, last_seen_at, rayon_id, family_id';
 
     public function __construct(
         ManagerRegistry $managerRegistry,
@@ -82,14 +82,17 @@ readonly class ProductPostgreSQLRepository extends PostgreSQLRepository implemen
                 $price?->perMeasure?->unit->value,
                 $product->getPriceSeenAt()?->format(self::DATE_FORMAT),
                 $product->getLastSeenAt()->format(self::DATE_FORMAT),
+                $product->getRayonId(),
+                $product->getFamilyId(),
             );
         }
-        $tuples = implode(', ', array_fill(0, count($products), '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'));
+        $tuples = implode(', ', array_fill(0, count($products), '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'));
 
         // La clé naturelle fait foi : un produit qu'une autre requête vient de créer est mis à jour, jamais dupliqué (et son
         // identifiant, déduit de la même clé, est le même). Premier écrivain gagnant jusque dans la base (DRV-613) : si deux
         // requêtes créent la même fiche en même temps, la seconde ne remplace ni le libellé, ni le code-barres, ni le contenu
-        // déjà écrits (le modèle, lui, ne fait que les compléter ; le prix, que son propriétaire rafraîchit, est écrit tel quel).
+        // déjà écrits (le modèle, lui, ne fait que les compléter ; le prix, que son propriétaire rafraîchit, est écrit tel quel). Le
+        // rayon et la famille de l'enseigne (DRV-642) suivent la même règle : le premier écrit reste, `NULL` n'efface rien.
         $this->connection()->executeStatement(
             sprintf(
                 'INSERT INTO drive_product (%s) VALUES %s ON CONFLICT (retailer, store_id, retailer_product_id) DO UPDATE SET '
@@ -98,7 +101,9 @@ readonly class ProductPostgreSQLRepository extends PostgreSQLRepository implemen
                 . 'content_value = COALESCE(drive_product.content_value, EXCLUDED.content_value), '
                 . 'price_cents = EXCLUDED.price_cents, price_per_measure_cents = EXCLUDED.price_per_measure_cents, '
                 . 'price_per_measure_unit = EXCLUDED.price_per_measure_unit, price_seen_at = EXCLUDED.price_seen_at, '
-                . 'last_seen_at = EXCLUDED.last_seen_at',
+                . 'last_seen_at = EXCLUDED.last_seen_at, '
+                . 'rayon_id = COALESCE(drive_product.rayon_id, EXCLUDED.rayon_id), '
+                . 'family_id = COALESCE(drive_product.family_id, EXCLUDED.family_id)',
                 self::COLUMNS,
                 $tuples,
             ),
@@ -144,6 +149,8 @@ readonly class ProductPostgreSQLRepository extends PostgreSQLRepository implemen
             'price' => $row['price_cents'] === null ? null : new ProductPrice((int) $row['price_cents'], $perMeasure),
             'price_seen_at' => $row['price_seen_at'] === null ? null : new DateTimeImmutable($row['price_seen_at']),
             'last_seen_at' => new DateTimeImmutable($row['last_seen_at']),
+            'rayon_id' => $row['rayon_id'] === null ? null : (int) $row['rayon_id'],
+            'family_id' => $row['family_id'] === null ? null : (int) $row['family_id'],
         ]);
     }
 

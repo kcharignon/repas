@@ -79,6 +79,45 @@ class DriveChoicesApiFlowTest extends DatabaseTestCase
         $this->assertSame(['333444'], array_map(static fn(array $a): string => $a['product']['retailerProductId'], $this->jsonBody()['member'][1]['accepted']));
     }
 
+    public function testTheRayonAndTheFamilyReportedByTheAgentAreKeptOnTheProductAndNeverRewritten(): void
+    {
+        // Given
+        $user = $this->userWithAStore();
+
+        // When : un agent récent donne le rayon et la famille du produit, un ancien agent n'en donne pas pour le sel
+        $this->put($user, [
+            $this->add('farine', 'PRIMARY', '1', 'Farine', rayonId: 4001, familyId: 4101),
+            $this->add('sel', 'PRIMARY', '2', 'Sel'),
+        ]);
+
+        // Then : l'ancien client marche comme avant, la fiche retient le rayon
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->assertSame(['1' => [4001, 4101], '2' => [null, null]], $this->rayonsByProduct());
+
+        // When : un autre utilisateur renvoie ces produits avec d'autres valeurs, puis sans rien ; le sel reçoit enfin son rayon
+        $other = $this->userWithAStore();
+        $this->put($other, [$this->add('farine', 'PRIMARY', '1', 'Farine', rayonId: 4999, familyId: 4999), $this->add('sel', 'PRIMARY', '2', 'Sel', rayonId: 4002)]);
+        $this->put($user, [$this->add('farine', 'FALLBACK', '1', 'Farine')]);
+
+        // Then : le rayon connu n'est ni remplacé ni effacé, celui qui manquait est rempli (la famille reste vide)
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->assertSame(['1' => [4001, 4101], '2' => [4002, null]], $this->rayonsByProduct());
+    }
+
+    public function testARayonOrAFamilyOutOfBoundsAnswers422AndSavesNothing(): void
+    {
+        // Given
+        $user = $this->userWithAStore();
+
+        // When / Then : zéro, négatif, trop grand pour un entier PostgreSQL
+        foreach ([['rayonId' => 0], ['rayonId' => -1], ['rayonId' => 2147483648], ['familyId' => 0], ['familyId' => 2147483648]] as $ids) {
+            $this->put($user, [['ingredientSlug' => 'farine', 'action' => 'ADD_PRODUCT', 'placement' => 'PRIMARY', 'product' => ['retailerProductId' => '1', 'label' => 'Farine'] + $ids]]);
+            $this->assertSame(422, $this->client->getResponse()->getStatusCode());
+        }
+        $this->assertSame([], $this->countsBySlug());
+        $this->assertSame([], $this->rayonsByProduct());
+    }
+
     public function testThePriceOfAnAcceptedProductIsRefreshedWithoutTouchingTheChoice(): void
     {
         // Given
@@ -408,14 +447,27 @@ class DriveChoicesApiFlowTest extends DatabaseTestCase
      *
      * @return array<string, mixed>
      */
-    private function add(string $slug, string $placement, string $retailerProductId, string $label, ?array $content = null, ?array $price = null): array
+    private function add(string $slug, string $placement, string $retailerProductId, string $label, ?array $content = null, ?array $price = null, ?int $rayonId = null, ?int $familyId = null): array
     {
         return [
             'ingredientSlug' => $slug,
             'action' => 'ADD_PRODUCT',
             'placement' => $placement,
-            'product' => array_filter(['retailerProductId' => $retailerProductId, 'label' => $label, 'content' => $content, 'price' => $price], static fn($value): bool => $value !== null),
+            'product' => array_filter(['retailerProductId' => $retailerProductId, 'label' => $label, 'content' => $content, 'price' => $price, 'rayonId' => $rayonId, 'familyId' => $familyId], static fn($value): bool => $value !== null),
         ];
+    }
+
+    /**
+     * @return array<string, array{?int, ?int}> rayon et famille mémorisés de chaque produit, par identifiant chez l'enseigne
+     */
+    private function rayonsByProduct(): array
+    {
+        $rows = $this->entityManager->getConnection()->fetchAllAssociative('SELECT retailer_product_id, rayon_id, family_id FROM drive_product ORDER BY retailer_product_id');
+
+        return array_combine(
+            array_column($rows, 'retailer_product_id'),
+            array_map(static fn(array $row): array => [$row['rayon_id'] === null ? null : (int) $row['rayon_id'], $row['family_id'] === null ? null : (int) $row['family_id']], $rows),
+        );
     }
 
     /**

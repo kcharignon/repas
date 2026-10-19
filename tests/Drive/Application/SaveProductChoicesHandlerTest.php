@@ -231,6 +231,46 @@ class SaveProductChoicesHandlerTest extends TestCase
         $this->assertEquals($this->now, $product->getLastSeenAt());
     }
 
+    public function testTheRayonAndTheFamilyOfTheStoreAreKeptOnTheProduct(): void
+    {
+        // When : un produit accepté et un refusé qui portent leur rayon, un autre produit sans rayon (agent plus ancien)
+        $this->save('user-1', [
+            $this->add('farine', Placement::PRIMARY, '1', rayonId: 4001, familyId: 4101),
+            $this->reject('farine', '2', rayonId: 4002),
+            $this->add('sel', Placement::PRIMARY, '3'),
+        ]);
+
+        // Then
+        $byProduct = [];
+        foreach ($this->products->all() as $product) {
+            $byProduct[$product->getRetailerProductId()] = [$product->getRayonId(), $product->getFamilyId()];
+        }
+        $this->assertSame(['1' => [4001, 4101], '2' => [4002, null], '3' => [null, null]], $byProduct);
+    }
+
+    public function testAKnownProductKeepsItsRayonAndAMissingOneIsFilledByTheNextAgent(): void
+    {
+        // Given : un produit connu avec son rayon, un autre connu sans rayon (lu par un agent plus ancien)
+        $this->products->saveAll([
+            new ProductBuilder()->withRetailerProductId('1')->withRayon(4001, 4101)->build(),
+            new ProductBuilder()->withRetailerProductId('2')->build(),
+        ]);
+
+        // When : un autre utilisateur les renvoie, l'un avec un autre rayon, l'autre avec son rayon ; puis sans aucun rayon
+        $this->save('user-2', [
+            $this->add('farine', Placement::PRIMARY, '1', rayonId: 4999, familyId: 4999),
+            $this->add('sel', Placement::PRIMARY, '2', rayonId: 4002, familyId: 4102),
+        ]);
+        $this->save('user-1', [$this->add('farine', Placement::FALLBACK, '1'), $this->add('sel', Placement::FALLBACK, '2')]);
+
+        // Then : le rayon connu n'est ni remplacé ni effacé, le manquant est rempli
+        $byProduct = [];
+        foreach ($this->products->all() as $product) {
+            $byProduct[$product->getRetailerProductId()] = [$product->getRayonId(), $product->getFamilyId()];
+        }
+        $this->assertSame(['1' => [4001, 4101], '2' => [4002, 4102]], $byProduct);
+    }
+
     public function testTheSameProductSeenTwiceInOneBatchIsMerged(): void
     {
         // When
@@ -617,6 +657,12 @@ class SaveProductChoicesHandlerTest extends TestCase
         yield 'rafraîchissement avec placement' => [[new ChoiceIntent('farine', ChoiceAction::REFRESH_PRICE, Placement::PRIMARY, $priceOnly)]];
         yield 'identifiant de produit non numérique' => [[new ChoiceIntent('farine', ChoiceAction::ADD_PRODUCT, Placement::PRIMARY, new ProductInput('abc', 'Farine'))]];
         yield 'identifiant de produit trop long' => [[new ChoiceIntent('farine', ChoiceAction::ADD_PRODUCT, Placement::PRIMARY, new ProductInput('1234567890123', 'Farine'))]];
+        yield 'rayon nul' => [[new ChoiceIntent('farine', ChoiceAction::ADD_PRODUCT, Placement::PRIMARY, new ProductInput('1', 'Farine', rayonId: 0))]];
+        yield 'rayon négatif' => [[new ChoiceIntent('farine', ChoiceAction::ADD_PRODUCT, Placement::PRIMARY, new ProductInput('1', 'Farine', rayonId: -4001))]];
+        yield 'rayon trop grand pour un INT' => [[new ChoiceIntent('farine', ChoiceAction::ADD_PRODUCT, Placement::PRIMARY, new ProductInput('1', 'Farine', rayonId: 2147483648))]];
+        yield 'famille nulle' => [[new ChoiceIntent('farine', ChoiceAction::ADD_PRODUCT, Placement::PRIMARY, new ProductInput('1', 'Farine', familyId: 0))]];
+        yield 'famille trop grande pour un INT' => [[new ChoiceIntent('farine', ChoiceAction::REJECT_PRODUCT, null, new ProductInput('1', 'Farine', familyId: 2147483648))]];
+        yield 'rayon hors bornes sur un rafraîchissement de prix' => [[new ChoiceIntent('farine', ChoiceAction::REFRESH_PRICE, null, new ProductInput('1', null, null, null, new ProductPrice(100), 0))]];
     }
 
     /**
@@ -645,14 +691,14 @@ class SaveProductChoicesHandlerTest extends TestCase
         yield 'contenu démesuré' => [new ProductInput('1', 'Farine', null, new ProductContent(1e9, ContentUnit::KG))];
     }
 
-    private function add(string $slug, Placement $placement, string $retailerProductId, string $label = 'Farine', ?ProductContent $content = null, ?ProductPrice $price = null): ChoiceIntent
+    private function add(string $slug, Placement $placement, string $retailerProductId, string $label = 'Farine', ?ProductContent $content = null, ?ProductPrice $price = null, ?int $rayonId = null, ?int $familyId = null): ChoiceIntent
     {
-        return new ChoiceIntent($slug, ChoiceAction::ADD_PRODUCT, $placement, new ProductInput($retailerProductId, $label, null, $content, $price));
+        return new ChoiceIntent($slug, ChoiceAction::ADD_PRODUCT, $placement, new ProductInput($retailerProductId, $label, null, $content, $price, $rayonId, $familyId));
     }
 
-    private function reject(string $slug, string $retailerProductId, string $label = 'Farine', ?ProductContent $content = null): ChoiceIntent
+    private function reject(string $slug, string $retailerProductId, string $label = 'Farine', ?ProductContent $content = null, ?int $rayonId = null, ?int $familyId = null): ChoiceIntent
     {
-        return new ChoiceIntent($slug, ChoiceAction::REJECT_PRODUCT, null, new ProductInput($retailerProductId, $label, null, $content));
+        return new ChoiceIntent($slug, ChoiceAction::REJECT_PRODUCT, null, new ProductInput($retailerProductId, $label, null, $content, null, $rayonId, $familyId));
     }
 
     private function refresh(string $slug, string $retailerProductId, ProductPrice $price): ChoiceIntent

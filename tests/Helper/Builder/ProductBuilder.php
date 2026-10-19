@@ -26,6 +26,8 @@ class ProductBuilder implements Builder
     private ?ProductPrice $price;
     private ?DateTimeImmutable $priceSeenAt;
     private DateTimeImmutable $lastSeenAt;
+    private ?int $rayonId = null;
+    private ?int $familyId = null;
 
     private function initialize(): void
     {
@@ -85,6 +87,16 @@ class ProductBuilder implements Builder
         return $this;
     }
 
+    /**
+     * Rayon et famille de l'enseigne (valeurs inventées dans les tests, jamais un vrai identifiant du site).
+     */
+    public function withRayon(?int $rayonId, ?int $familyId = null): self
+    {
+        $this->rayonId = $rayonId;
+        $this->familyId = $familyId;
+        return $this;
+    }
+
     public function build(): Product
     {
         $this->initialize();
@@ -99,6 +111,8 @@ class ProductBuilder implements Builder
             'price' => $this->price,
             'price_seen_at' => $this->priceSeenAt,
             'last_seen_at' => $this->lastSeenAt,
+            'rayon_id' => $this->rayonId,
+            'family_id' => $this->familyId,
         ]);
     }
 }

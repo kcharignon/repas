@@ -12,7 +12,8 @@ use Repas\Shared\Domain\Model\ModelTrait;
 /**
  * Un produit d'une enseigne dans un magasin, tel qu'un agent l'a lu : fait public, sans propriétaire, partagé par tous les
  * utilisateurs qui le choisissent. On ne garde que le strict nécessaire (identifiant chez l'enseigne, libellé, contenu net,
- * prix daté : décision D22) ; pas de photo.
+ * prix daté : décision D22) ; pas de photo. Le rayon et la famille de l'enseigne (`rayonId`, `familyId`, DRV-642) sont des faits
+ * du catalogue au même titre : les agents les lisent dans la réponse du site, Repas en tire le rayon où chercher un ingrédient.
  *
  * Clé naturelle `(retailer, storeId, retailerProductId)`. L'identifiant Repas en est déduit (UUID v5) : deux requêtes qui
  * découvrent en même temps le même produit lui donnent le même identifiant, aucune préférence ne désigne un produit inexistant.
@@ -28,6 +29,8 @@ final class Product implements ModelInterface
     /** Code-barres : 8 à 14 chiffres. */
     public const string EAN_PATTERN = '/^[0-9]{8,14}$/D';
     public const int LABEL_MAX_LENGTH = 255;
+    /** Un identifiant de rayon ou de famille de l'enseigne est un entier de 1 à cette borne, la taille d'un `INT` PostgreSQL. */
+    public const int CATALOG_ID_MAX = 2147483647;
     /**
      * Caractères refusés dans un libellé : tout ce qui ne se voit pas ou ne sert qu'à changer le sens de lecture. La fiche est
      * partagée entre utilisateurs et le libellé vient de la page d'une enseigne : un caractère invisible permet d'usurper ou de
@@ -72,6 +75,8 @@ final class Product implements ModelInterface
         private ?ProductPrice $price,
         private ?DateTimeImmutable $priceSeenAt,
         private DateTimeImmutable $lastSeenAt,
+        private ?int $rayonId = null,
+        private ?int $familyId = null,
     ) {
     }
 
@@ -87,6 +92,8 @@ final class Product implements ModelInterface
         ?ProductContent $content,
         ?ProductPrice $price,
         DateTimeImmutable $now,
+        ?int $rayonId = null,
+        ?int $familyId = null,
     ): self {
         if (preg_match(self::RETAILER_PRODUCT_ID_PATTERN, $retailerProductId) !== 1) {
             throw DriveException::invalidChoice();
@@ -103,11 +110,13 @@ final class Product implements ModelInterface
             price: $price,
             priceSeenAt: $price === null ? null : $now,
             lastSeenAt: $now,
+            rayonId: self::checkedCatalogId($rayonId),
+            familyId: self::checkedCatalogId($familyId),
         );
     }
 
     /**
-     * @param array{id: string, retailer: Retailer, store_id: string, retailer_product_id: string, ean: ?string, label: string, content: ?ProductContent, price: ?ProductPrice, price_seen_at: ?DateTimeImmutable, last_seen_at: DateTimeImmutable} $datas
+     * @param array{id: string, retailer: Retailer, store_id: string, retailer_product_id: string, ean: ?string, label: string, content: ?ProductContent, price: ?ProductPrice, price_seen_at: ?DateTimeImmutable, last_seen_at: DateTimeImmutable, rayon_id: ?int, family_id: ?int} $datas
      */
     public static function load(array $datas): self
     {
@@ -122,6 +131,8 @@ final class Product implements ModelInterface
             $datas['price'],
             $datas['price_seen_at'],
             $datas['last_seen_at'],
+            $datas['rayon_id'],
+            $datas['family_id'],
         );
     }
 
@@ -197,22 +208,51 @@ final class Product implements ModelInterface
     }
 
     /**
+     * Rayon de l'enseigne où le site range ce produit (`iIdRayon` chez Leclerc), `null` tant qu'aucun agent ne l'a rapporté.
+     */
+    public function getRayonId(): ?int
+    {
+        return $this->rayonId;
+    }
+
+    /**
+     * Famille de l'enseigne, le niveau sous le rayon (`iIdFamille` chez Leclerc), `null` tant qu'aucun agent ne l'a rapportée.
+     */
+    public function getFamilyId(): ?int
+    {
+        return $this->familyId;
+    }
+
+    /**
+     * Un identifiant de rayon ou de famille est-il dans les bornes (1 à `CATALOG_ID_MAX`) ?
+     */
+    public static function isCatalogId(int $id): bool
+    {
+        return $id >= 1 && $id <= self::CATALOG_ID_MAX;
+    }
+
+    /**
      * Un agent revoit le produit : premier écrivain gagnant (constat C1 de la revue de sécurité, DRV-613). La fiche est commune
      * à tous les utilisateurs du magasin : le libellé, le code-barres, le contenu et le prix d'une fiche connue ne sont jamais
      * réécrits par un autre. L'agent ne **complète** que ce qui est encore vide (code-barres, contenu, prix) ; le libellé ne
-     * change jamais. Les valeurs reçues sont contrôlées même quand elles ne servent pas : une saisie hors des bornes reste
+     * change jamais. Le rayon et la famille suivent la même règle (DRV-642) : renseignés une fois, ils ne sont plus réécrits, et
+     * `null` n'efface rien. Les valeurs reçues sont contrôlées même quand elles ne servent pas : une saisie hors des bornes reste
      * refusée. Changer un prix est `seePrice()`, réservé à l'utilisateur qui accepte le produit.
      *
      * @throws DriveException `invalidChoice()` si une valeur sort des bornes
      */
-    public function complete(?string $ean, string $label, ?ProductContent $content, ?ProductPrice $price, DateTimeImmutable $now): self
+    public function complete(?string $ean, string $label, ?ProductContent $content, ?ProductPrice $price, DateTimeImmutable $now, ?int $rayonId = null, ?int $familyId = null): self
     {
         $ean = self::checkedEan($ean);
         self::checkedLabel($label);
         $content = self::checkedContent($content);
+        $rayonId = self::checkedCatalogId($rayonId);
+        $familyId = self::checkedCatalogId($familyId);
 
         $this->ean ??= $ean;
         $this->content ??= $content;
+        $this->rayonId ??= $rayonId;
+        $this->familyId ??= $familyId;
         if ($this->price === null) {
             $this->seePrice($price, $now);
         }
@@ -261,6 +301,15 @@ final class Product implements ModelInterface
         }
 
         return $label;
+    }
+
+    private static function checkedCatalogId(?int $id): ?int
+    {
+        if ($id !== null && !self::isCatalogId($id)) {
+            throw DriveException::invalidChoice();
+        }
+
+        return $id;
     }
 
     private static function checkedContent(?ProductContent $content): ?ProductContent

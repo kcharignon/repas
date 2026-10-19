@@ -123,6 +123,7 @@ readonly class SaveProductChoicesHandler
             $product = $intent->product;
             $wellFormed = preg_match(Choice::SLUG_PATTERN, $intent->ingredientSlug) === 1
                 && ($product === null || preg_match(Product::RETAILER_PRODUCT_ID_PATTERN, $product->retailerProductId) === 1)
+                && ($product === null || self::catalogIdsAreInBounds($product))
                 && match ($intent->action) {
                     ChoiceAction::ADD_PRODUCT => $intent->placement !== null && $product?->label !== null,
                     ChoiceAction::REJECT_PRODUCT => $intent->placement === null && $product?->label !== null,
@@ -146,6 +147,20 @@ readonly class SaveProductChoicesHandler
                 throw DriveException::invalidChoice();
             }
         }
+    }
+
+    /**
+     * Le rayon et la famille, quand l'agent les donne, sont des entiers de 1 à 2147483647 (absents : rien à contrôler).
+     */
+    private static function catalogIdsAreInBounds(ProductInput $product): bool
+    {
+        foreach ([$product->rayonId, $product->familyId] as $id) {
+            if ($id !== null && !Product::isCatalogId($id)) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**
@@ -183,8 +198,8 @@ readonly class SaveProductChoicesHandler
 
             $id = $input->retailerProductId;
             $changed[$id] = $products[$id] = isset($products[$id])
-                ? $products[$id]->complete($input->ean, $input->label, $input->content, $input->price, $now)
-                : Product::create($command->retailer, $command->storeId, $id, $input->ean, $input->label, $input->content, $input->price, $now);
+                ? $products[$id]->complete($input->ean, $input->label, $input->content, $input->price, $now, $input->rayonId, $input->familyId)
+                : Product::create($command->retailer, $command->storeId, $id, $input->ean, $input->label, $input->content, $input->price, $now, $input->rayonId, $input->familyId);
         }
 
         return [$products, $changed];

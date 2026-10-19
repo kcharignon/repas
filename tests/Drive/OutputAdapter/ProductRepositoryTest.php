@@ -131,6 +131,46 @@ class ProductRepositoryTest extends DatabaseTestCase
         $this->assertSame(['Écrit en premier', '30000000'], [$found->getLabel(), $found->getEan()]);
     }
 
+    public function testTheRayonAndTheFamilyAreReadBackAndOlderRowsHaveNone(): void
+    {
+        // Given : un produit qui connaît son rayon, un autre dont la fiche date d'avant (colonnes à NULL)
+        $this->repository->saveAll([
+            new ProductBuilder()->withRetailerProductId('1')->withRayon(4001, 4101)->build(),
+            new ProductBuilder()->withRetailerProductId('2')->build(),
+        ]);
+        $this->entityManager->clear();
+
+        // When
+        $found = $this->repository->findByIds([Product::idFor(Retailer::LECLERC, '123456', '1'), Product::idFor(Retailer::LECLERC, '123456', '2')]);
+
+        // Then
+        $byProduct = [];
+        foreach ($found as $product) {
+            $byProduct[$product->getRetailerProductId()] = [$product->getRayonId(), $product->getFamilyId()];
+        }
+        ksort($byProduct);
+        $this->assertSame(['1' => [4001, 4101], '2' => [null, null]], $byProduct);
+    }
+
+    public function testAKnownRayonIsNotReplacedNorEmptiedByASecondWriterButAMissingOneIsFilled(): void
+    {
+        // Given : un rayon écrit (produit 1), une fiche sans rayon (produit 2)
+        $this->repository->saveAll([
+            new ProductBuilder()->withRetailerProductId('1')->withRayon(4001, 4101)->build(),
+            new ProductBuilder()->withRetailerProductId('2')->build(),
+        ]);
+        $rival = static fn(string $id, ?int $rayonId, ?int $familyId): Product => Product::create(Retailer::LECLERC, '123456', $id, null, 'Autre', null, null, new DateTimeImmutable('2026-10-19 09:00:00'), $rayonId, $familyId);
+
+        // When : des écrivains concurrents qui n'avaient pas vu les fiches
+        $this->repository->saveAll([$rival('1', 4999, 4999), $rival('2', 4002, 4102)]);
+        $this->repository->saveAll([$rival('1', null, null), $rival('2', null, null)]);
+
+        // Then : le rayon connu reste (même devant un autre, même devant l'absence), celui qui manquait est rempli
+        $rayons = static fn(Product $product): array => [$product->getRayonId(), $product->getFamilyId()];
+        $this->assertSame([4001, 4101], $rayons($this->repository->findByIds([Product::idFor(Retailer::LECLERC, '123456', '1')])[0]));
+        $this->assertSame([4002, 4102], $rayons($this->repository->findByIds([Product::idFor(Retailer::LECLERC, '123456', '2')])[0]));
+    }
+
     public function testAContentAlreadyWrittenIsNotReplacedByASecondWriterButAnEmptyOneIsFilled(): void
     {
         // Given : un contenu écrit (1 kg), une fiche sans contenu

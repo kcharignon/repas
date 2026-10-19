@@ -62,6 +62,30 @@ class SaveProductChoicesApiControllerTest extends QueryBusWebTestCase
         ])], $commandBus->dispatched());
     }
 
+    public function testTheRayonAndTheFamilyOfAProductAreFacultative(): void
+    {
+        // Given
+        $user = $this->savedUser();
+        $commandBus = $this->mockCommandBus();
+
+        // When : l'agent récent donne le rayon et la famille, un autre seulement le rayon, un autre `null`, un ancien rien du tout
+        $this->put($user, ['retailer' => 'leclerc', 'storeId' => '123456', 'choices' => [
+            ['ingredientSlug' => 'farine', 'action' => 'ADD_PRODUCT', 'placement' => 'PRIMARY', 'product' => ['retailerProductId' => '1', 'label' => 'Farine', 'rayonId' => 4001, 'familyId' => 4101]],
+            ['ingredientSlug' => 'lait', 'action' => 'ADD_PRODUCT', 'placement' => 'PRIMARY', 'product' => ['retailerProductId' => '2', 'label' => 'Lait', 'rayonId' => 2147483647]],
+            ['ingredientSlug' => 'sel', 'action' => 'ADD_PRODUCT', 'placement' => 'PRIMARY', 'product' => ['retailerProductId' => '3', 'label' => 'Sel', 'rayonId' => null, 'familyId' => null]],
+            ['ingredientSlug' => 'sucre', 'action' => 'REJECT_PRODUCT', 'product' => ['retailerProductId' => '4', 'label' => 'Sucre']],
+        ]]);
+
+        // Then
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->assertEquals([new SaveProductChoicesCommand($user->getId(), Retailer::LECLERC, '123456', [
+            new ChoiceIntent('farine', ChoiceAction::ADD_PRODUCT, Placement::PRIMARY, new ProductInput('1', 'Farine', rayonId: 4001, familyId: 4101)),
+            new ChoiceIntent('lait', ChoiceAction::ADD_PRODUCT, Placement::PRIMARY, new ProductInput('2', 'Lait', rayonId: 2147483647)),
+            new ChoiceIntent('sel', ChoiceAction::ADD_PRODUCT, Placement::PRIMARY, new ProductInput('3', 'Sel')),
+            new ChoiceIntent('sucre', ChoiceAction::REJECT_PRODUCT, null, new ProductInput('4', 'Sucre')),
+        ])], $commandBus->dispatched());
+    }
+
     public function testAnEmptyBatchIsAccepted(): void
     {
         // Given
@@ -139,6 +163,13 @@ class SaveProductChoicesApiControllerTest extends QueryBusWebTestCase
         yield 'contenu qui n\'est pas un nombre' => [$batch([...$add, 'product' => ['retailerProductId' => '1', 'label' => 'Farine', 'content' => ['value' => 'beaucoup', 'unit' => 'g']]])];
         yield 'prix sans centimes' => [$batch([...$add, 'product' => ['retailerProductId' => '1', 'label' => 'Farine', 'price' => []]])];
         yield 'prix qui n\'est pas un nombre' => [$batch([...$add, 'product' => ['retailerProductId' => '1', 'label' => 'Farine', 'price' => ['cents' => 'gratuit']]])];
+        yield 'rayon à zéro' => [$batch([...$add, 'product' => ['retailerProductId' => '1', 'label' => 'Farine', 'rayonId' => 0]])];
+        yield 'rayon négatif' => [$batch([...$add, 'product' => ['retailerProductId' => '1', 'label' => 'Farine', 'rayonId' => -4001]])];
+        yield 'rayon trop grand pour un INT' => [$batch([...$add, 'product' => ['retailerProductId' => '1', 'label' => 'Farine', 'rayonId' => 2147483648]])];
+        yield 'rayon en texte' => [$batch([...$add, 'product' => ['retailerProductId' => '1', 'label' => 'Farine', 'rayonId' => 'fruits']])];
+        yield 'rayon en chaîne de chiffres' => [$batch([...$add, 'product' => ['retailerProductId' => '1', 'label' => 'Farine', 'rayonId' => '4001']])];
+        yield 'famille à zéro' => [$batch([...$add, 'product' => ['retailerProductId' => '1', 'label' => 'Farine', 'familyId' => 0]])];
+        yield 'famille trop grande pour un INT' => [$batch([...$add, 'product' => ['retailerProductId' => '1', 'label' => 'Farine', 'familyId' => 2147483648]])];
         yield 'prix à l\'unité de mesure inconnue' => [$batch([...$add, 'product' => ['retailerProductId' => '1', 'label' => 'Farine', 'price' => ['cents' => 149, 'perMeasure' => ['cents' => 149, 'unit' => 'lb']]]])];
     }
 
