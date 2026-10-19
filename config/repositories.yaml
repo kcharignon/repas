@@ -44,6 +44,10 @@ services:
         alias: 'Repas\User\Infrastructure\Repository\PasswordResetTokenPostgreSQLRepository'
         public: true
 
+    Repas\User\Domain\Interface\UserIdentityRepository:
+        alias: 'Repas\User\Infrastructure\Repository\UserIdentityPostgreSQLRepository'
+        public: true
+
     Repas\Drive\Domain\Interface\DriveSettingsRepository:
         alias: 'Repas\Drive\Infrastructure\Repository\DriveSettingsPostgreSQLRepository'
         public: true

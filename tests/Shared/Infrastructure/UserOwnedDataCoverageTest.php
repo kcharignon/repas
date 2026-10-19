@@ -12,6 +12,7 @@ use Repas\Tests\Helper\DatabaseTestCase;
 use Repas\User\Infrastructure\Entity\EmailVerificationToken;
 use Repas\User\Infrastructure\Entity\PasswordResetToken;
 use Repas\User\Infrastructure\Entity\RefreshToken;
+use Repas\User\Infrastructure\Entity\UserIdentity;
 
 /**
  * Garde-fou de la suppression d'un compte (ADR 0021) : aucune clé étrangère ne lie les tables à `user`, donc supprimer un
@@ -33,6 +34,7 @@ class UserOwnedDataCoverageTest extends DatabaseTestCase
         Choice::class => ['userId'],
         EmailVerificationToken::class => ['userId'],
         PasswordResetToken::class => ['userId'],
+        UserIdentity::class => ['userId'],
     ];
 
     public function testEveryColumnThatPointsToAUserIsErasedWithHim(): void
