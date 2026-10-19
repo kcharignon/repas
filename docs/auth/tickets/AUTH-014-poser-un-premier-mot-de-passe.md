@@ -15,7 +15,7 @@ Un compte créé par Google a un mot de passe verrouillé (`!`). Le changement d
 ## Portée
 
 1. **Back** : `UpdateUserSettingsHandler` : si le compte n'a pas de mot de passe (`!$user->hasPassword()`) et qu'un nouveau mot de passe est fourni, accepter **sans** `actualPassword` ; sinon le comportement actuel (mot de passe actuel exigé, `422 INVALID_PASSWORD`). `changePassword()` fait monter la version des identifiants : les autres sessions sont révoquées. `GET /api/v1/me` expose `hasPassword: boolean` (DTO, loader, OpenAPI, `make openapi`).
-2. **Front** : dans « Moi », quand `hasPassword` est faux, le champ « Mot de passe actuel » est absent, le bloc s'appelle « Choisir un mot de passe » ; après l'enregistrement, le bloc redevient « Changer le mot de passe ». Même règle de longueur (8 caractères) qu'à l'inscription. Textes dans `fr.ts`, vouvoiement jusqu'à DRV-627.
+2. **Front** : dans « Moi », quand `hasPassword` est faux, le champ « Mot de passe actuel » est absent, le bloc s'appelle « Choisir un mot de passe » ; après l'enregistrement, le bloc redevient « Changer le mot de passe ». Même règle de longueur (8 caractères) qu'à l'inscription. Textes dans `fr.ts`, au tutoiement (DRV-627).
 3. Documentation : `connexion-google.md` § 4.2 (cas 18 : la ligne passe de « facultatif » à « fait »), ADR 0024 décision 10.
 
 ## Hors portée

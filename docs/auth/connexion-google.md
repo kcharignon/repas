@@ -258,16 +258,16 @@ La version précédente du code **ignore** la table ; aucune colonne n'est ajout
 
 **Touches du parcours heureux** (estimation de cadrage, à relever à la recette) : nouveau proche, mot de passe : ouvrir « Créer un compte », 3 champs, créer, ouvrir la messagerie, ouvrir le message, toucher le lien, puis se connecter (2 champs + bouton) : **environ 12 gestes** ; avec Google : **2** (bouton, compte). Reconnexion ensuite : 0 (cookie de rafraîchissement, 30 jours).
 
-### 5.2 Textes (vouvoiement en vigueur ; le balayage DRV-627 les passera au tutoiement)
+### 5.2 Textes (tutoiement, DRV-627 fait le 2026-10-19 ; le test de voix du front interdit « vous », « votre », « vos » et les impératifs en « -ez »)
 
 | Où | Texte |
 |---|---|
 | Bouton web (Google, `fr`) | « Se connecter avec Google » / « S'inscrire avec Google » |
 | Séparateur | « ou » |
-| Échec (`401`, fenêtre fermée par erreur technique) | « La connexion avec Google n'a pas abouti. Rien n'a été modifié. Réessayez, ou utilisez votre mot de passe. » |
-| Adresse déjà inscrite avec un mot de passe (`409`) | « Cette adresse a déjà un compte Repas protégé par un mot de passe. Rien n'a été modifié. Connectez-vous avec votre mot de passe. » |
-| Google indisponible sur le téléphone | « Google n'est pas disponible sur ce téléphone. Votre compte Repas n'est pas concerné. Utilisez votre adresse et votre mot de passe. » |
-| Aucun compte Google sur le téléphone | « Aucun compte Google n'est enregistré sur ce téléphone. Votre compte Repas n'est pas concerné. Utilisez votre adresse et votre mot de passe. » |
+| Échec (`401`, fenêtre fermée par erreur technique) | « La connexion avec Google n'a pas abouti. Rien n'a été modifié. Réessaie, ou utilise ton mot de passe. » |
+| Adresse déjà inscrite avec un mot de passe (`409`) | « Cette adresse a déjà un compte Repas protégé par un mot de passe. Rien n'a été modifié. Connecte-toi avec ton mot de passe. » |
+| Google indisponible sur le téléphone | « Google n'est pas disponible sur ce téléphone. Ton compte Repas n'est pas concerné. Utilise ton adresse et ton mot de passe. » |
+| Aucun compte Google sur le téléphone | « Aucun compte Google n'est enregistré sur ce téléphone. Ton compte Repas n'est pas concerné. Utilise ton adresse et ton mot de passe. » |
 | Trop d'essais (`429`) | comme `login.tooMany` |
 | Fenêtre fermée par l'utilisateur | **rien** (pas de message) |
 
