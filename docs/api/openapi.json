@@ -3301,7 +3301,7 @@
                         "example": "123456"
                     },
                     "label": {
-                        "description": "Libell\u00e9 du produit (255 caract\u00e8res au plus, sans caract\u00e8re de contr\u00f4le ni caract\u00e8re invisible : saut de ligne, sens de lecture, largeur nulle)",
+                        "description": "Libell\u00e9 du produit (255 caract\u00e8res au plus, sans caract\u00e8re de contr\u00f4le ni caract\u00e8re invisible ou de format : saut de ligne, sens de lecture, largeur nulle, trait d'union conditionnel, s\u00e9lecteur de variation, remplisseur, tag ; les espaces ins\u00e9cables sont permises)",
                         "type": "string",
                         "default": null,
                         "maxLength": 255,

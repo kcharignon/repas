@@ -141,4 +141,4 @@ Contacter Leclerc ; mettre une donnée réelle dans le code, les tests ou la doc
 
 ## 9. Libellés refusés et copie côté front
 
-La liste des caractères refusés dans un libellé de produit (`LABEL_FORBIDDEN_CHARACTERS_PATTERN`, `Product.php`) est recopiée côté front dans `drive-agent/test/back-label-rules.ts` : tout changement de ce motif impose de le recopier là-bas (le test du front dit alors quoi retirer de plus dans l'agent).
+La liste des caractères refusés dans un libellé de produit (`LABEL_FORBIDDEN_CHARACTERS_PATTERN`, `Product.php`) est recopiée côté front dans `drive-agent/test/back-label-rules.ts` : tout changement de ce motif impose de le recopier là-bas (le test du front dit alors quoi retirer de plus dans l'agent), et la nouvelle version de l'agent doit être livrée **avant** le back, sinon un libellé marqué fait échouer tout le lot. Le motif est une règle de catégories (`\p{Cc}`, `\p{Cf}`, `\p{Zl}`, `\p{Zp}`) plus une courte liste commentée d'exceptions ; les espaces insécables U+00A0 et U+202F restent acceptées (étiquettes de prix et de poids) ; `ProductTest` en tient la table de refus (un cas par point de code) et la table des libellés légitimes.

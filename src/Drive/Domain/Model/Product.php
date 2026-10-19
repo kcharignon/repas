@@ -29,12 +29,35 @@ final class Product implements ModelInterface
     public const string EAN_PATTERN = '/^[0-9]{8,14}$/D';
     public const int LABEL_MAX_LENGTH = 255;
     /**
-     * Caractères refusés dans un libellé : contrôles (`Cc`), séparateurs de ligne et de paragraphe (`Zl`, `Zp`, U+2028 et
-     * U+2029), marques et inversions du sens de lecture (U+061C, U+200E, U+200F, U+202A à U+202E, U+2066 à U+2069), espaces et
-     * jointures de largeur nulle (U+200B à U+200D, U+2060), marque d'ordre des octets (U+FEFF). Un `preg_match` qui renvoie
-     * `false` (UTF-8 invalide) n'est pas `0` : le libellé est refusé aussi.
+     * Caractères refusés dans un libellé : tout ce qui ne se voit pas ou ne sert qu'à changer le sens de lecture. La fiche est
+     * partagée entre utilisateurs et le libellé vient de la page d'une enseigne : un caractère invisible permet d'usurper ou de
+     * masquer du texte. Un `preg_match` qui renvoie `false` (UTF-8 invalide) n'est pas `0` : le libellé est refusé aussi.
+     *
+     * Par catégorie Unicode (la liste suit la version d'Unicode de PCRE, elle n'est pas recopiée ici) :
+     * - `Cc` : contrôles ; `Zl` et `Zp` : séparateurs de ligne et de paragraphe (U+2028, U+2029) ;
+     * - `Cf` : caractères de format, sans tracé : trait d'union conditionnel (U+00AD), marques et inversions du sens de lecture
+     *   (U+061C, U+200E, U+200F, U+202A à U+202E, U+2066 à U+2069), espaces et jointures de largeur nulle (U+200B à U+200D),
+     *   opérateurs mathématiques invisibles (U+2060 à U+2064), marque d'ordre des octets (U+FEFF), caractères de TAG (U+E0001,
+     *   U+E0020 à U+E007F).
+     *
+     * Exceptions listées : invisibles aussi, mais d'une autre catégorie.
+     * - U+034F (`Mn`, joint de graphèmes), U+17B4 et U+17B5 (`Mn`, voyelles inhérentes khmères) ;
+     * - U+115F, U+1160, U+3164, U+FFA0 (`Lo`, remplisseurs hangul : des lettres vides) ;
+     * - U+180B à U+180F (`Mn`, sélecteurs de variation mongols ; U+180E est `Cf` ou non selon la version d'Unicode) ;
+     * - U+FE00 à U+FE0F et U+E0100 à U+E01EF (`Mn`, sélecteurs de variation : deux libellés paraissent identiques) ;
+     * - U+E0000 à U+E007F (tout le bloc des TAG, points réservés compris).
+     *
+     * Ce qui reste accepté, voulu : lettres accentuées et ligatures (é, è, ç, œ), accents combinants (`Mn` : e puis U+0301),
+     * symboles courants (®, ™, ©, °, €, %, &, ’, « »), l'espace et les espaces insécables U+00A0 et U+202F (`Zs`, étiquettes
+     * de prix et de poids ; un libellé fait seulement d'espaces est refusé à part). Revers assumé : un emoji écrit avec une
+     * jointure (U+200D : famille, couple) ou avec le sélecteur U+FE0F (cœur, soleil) n'est pas accepté ; un emoji d'un seul
+     * caractère (🥚) l'est.
+     *
+     * Ce motif est recopié côté front (`drive-agent/test/back-label-rules.ts`) : le changer impose de changer l'agent aussi.
      */
-    private const string LABEL_FORBIDDEN_CHARACTERS_PATTERN = '/[\p{Cc}\p{Zl}\p{Zp}\x{061C}\x{200B}-\x{200F}\x{202A}-\x{202E}\x{2060}\x{2066}-\x{2069}\x{FEFF}]/u';
+    private const string LABEL_FORBIDDEN_CHARACTERS_PATTERN = '/[\p{Cc}\p{Cf}\p{Zl}\p{Zp}'
+        . '\x{034F}\x{115F}\x{1160}\x{17B4}\x{17B5}\x{180B}-\x{180F}\x{3164}\x{FE00}-\x{FE0F}\x{FFA0}'
+        . '\x{E0000}-\x{E007F}\x{E0100}-\x{E01EF}]/u';
 
     private const string ID_NAMESPACE = '7d1c1f3a-5a0e-4f0b-9c3e-2f6a8d4b1e57';
 
@@ -223,9 +246,9 @@ final class Product implements ModelInterface
     }
 
     /**
-     * Libellé borné, sans caractère de contrôle ni caractère invisible (un saut de ligne dans un libellé est une anomalie ; une
-     * marque de sens de lecture ou une espace de largeur nulle ne sert qu'à tromper l'œil : la fiche est partagée entre
-     * utilisateurs). Un libellé qui ne contient que des espaces, insécables ou autres, est vide.
+     * Libellé borné, sans caractère de contrôle ni caractère invisible (voir `LABEL_FORBIDDEN_CHARACTERS_PATTERN` : un saut de
+     * ligne dans un libellé est une anomalie ; une marque de sens de lecture ou une espace de largeur nulle ne sert qu'à tromper
+     * l'œil). Un libellé qui ne contient que des espaces, insécables ou autres, est vide.
      */
     private static function checkedLabel(string $label): string
     {
