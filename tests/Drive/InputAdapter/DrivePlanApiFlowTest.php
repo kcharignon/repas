@@ -53,7 +53,8 @@ class DrivePlanApiFlowTest extends DatabaseTestCase
         $plan = $this->jsonBody();
         $this->assertSame(['shoppingListId', 'listVersion', 'retailer', 'store', 'generatedAt', 'counts', 'lines'], array_keys($plan));
         $this->assertSame(['known' => 1, 'new' => 1, 'haveAtHome' => 0], $plan['counts']);
-        $this->assertSame(['ingredientSlug', 'ingredientName', 'needed', 'status', 'products', 'rejected', 'searchQuery'], array_keys($plan['lines'][0]));
+        $this->assertSame(['ingredientSlug', 'ingredientName', 'needed', 'status', 'products', 'rejected', 'searchQuery', 'rayonHints'], array_keys($plan['lines'][0]));
+        $this->assertSame([[], []], array_column($plan['lines'], 'rayonHints'));
         $this->assertSame(['lait', 'oeuf'], array_column($plan['lines'], 'ingredientSlug'));
         $this->assertSame(['KNOWN', 'NEW'], array_column($plan['lines'], 'status'));
         $this->assertSame(['quantity' => 1, 'unitSymbol' => 'l', 'dimension' => 'VOLUME', 'baseFactor' => 1000], $plan['lines'][0]['needed']);
@@ -62,6 +63,48 @@ class DrivePlanApiFlowTest extends DatabaseTestCase
             $plan['lines'][0]['products'],
         );
         $this->assertSame([['retailerProductId' => '999000', 'label' => 'Lait entier']], $plan['lines'][0]['rejected']);
+    }
+
+    /**
+     * DRV-642 de bout en bout : le rayon que l'agent rapporte pour un produit choisi (`PUT /drive/choices`) apprend le rayon de
+     * l'enseigne pour le rayon de Repas de l'ingrédient, et le plan (`GET /drive/plans/{id}`) le propose à toutes les lignes de ce
+     * rayon de Repas, pour tous les utilisateurs. Le lait et l'œuf sont tous deux au rayon « divers ».
+     */
+    public function testTheRayonOfTheChosenProductsBecomesTheHintOfTheLinesOfTheSameDepartment(): void
+    {
+        // Given : deux utilisateurs avec un magasin, Alice avec une liste envoyée (lait et œuf)
+        $alice = $this->savedUser();
+        $bob = $this->savedUser();
+        foreach ([$alice, $bob] as $user) {
+            static::getContainer()->get(DriveSettingsRepository::class)->save(new DriveSettingsBuilder()->withUserId($user->getId())->build());
+        }
+        $listId = $this->savedList($alice, ShoppingListStatus::SENT);
+        $this->request('GET', "/api/v1/drive/plans/$listId", $alice);
+        $this->assertSame([[], []], array_column($this->jsonBody()['lines'], 'rayonHints'));
+
+        // When : Alice choisit un lait du rayon 4001 ; Bob un lait et des œufs du rayon 4002 ; un ancien client choisit sans rayon
+        $this->request('PUT', '/api/v1/drive/choices', $alice, json_encode(['retailer' => 'leclerc', 'storeId' => '123456', 'choices' => [
+            ['ingredientSlug' => 'lait', 'action' => 'ADD_PRODUCT', 'placement' => 'PRIMARY', 'product' => ['retailerProductId' => '555111', 'label' => 'Lait demi-écrémé 50 cl', 'rayonId' => 4001, 'familyId' => 4101]],
+        ]], JSON_THROW_ON_ERROR));
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->request('PUT', '/api/v1/drive/choices', $bob, json_encode(['retailer' => 'leclerc', 'storeId' => '123456', 'choices' => [
+            ['ingredientSlug' => 'lait', 'action' => 'ADD_PRODUCT', 'placement' => 'PRIMARY', 'product' => ['retailerProductId' => '555222', 'label' => 'Lait entier 1 l', 'rayonId' => 4002]],
+            ['ingredientSlug' => 'oeuf', 'action' => 'ADD_PRODUCT', 'placement' => 'PRIMARY', 'product' => ['retailerProductId' => '555333', 'label' => 'Œufs x6', 'rayonId' => 4002]],
+            ['ingredientSlug' => 'sel', 'action' => 'ADD_PRODUCT', 'placement' => 'PRIMARY', 'product' => ['retailerProductId' => '555444', 'label' => 'Sel fin']],
+        ]], JSON_THROW_ON_ERROR));
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+
+        // Then : le plan d'Alice propose d'abord le rayon le plus choisi (4002, deux fois) puis 4001, pour les deux lignes du rayon
+        $this->request('GET', "/api/v1/drive/plans/$listId", $alice);
+        $this->assertSame(200, $this->client->getResponse()->getStatusCode());
+        $lines = $this->jsonBody()['lines'];
+        $this->assertSame(['lait', 'oeuf'], array_column($lines, 'ingredientSlug'));
+        $this->assertSame([[4002, 4001], [4002, 4001]], array_column($lines, 'rayonHints'));
+        $this->assertSame(['KNOWN', 'NEW'], array_column($lines, 'status'));
+        $this->assertEquals(
+            [['department_slug' => 'divers', 'rayon_id' => 4001, 'chosen_count' => 1], ['department_slug' => 'divers', 'rayon_id' => 4002, 'chosen_count' => 2]],
+            $this->entityManager->getConnection()->fetchAllAssociative('SELECT department_slug, rayon_id, chosen_count FROM drive_department_rayon ORDER BY rayon_id'),
+        );
     }
 
     /**

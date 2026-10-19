@@ -18,7 +18,7 @@ use Symfony\Component\Routing\RouterInterface;
 class DriveRoutesAreRateLimitedTest extends KernelTestCase
 {
     /**
-     * Routes plafonnées et leur compteur : les écritures du drive (un compteur commun) et les lectures qui coûtent 4 requêtes SQL.
+     * Routes plafonnées et leur compteur : les écritures du drive (un compteur commun) et les lectures qui coûtent 4 ou 5 requêtes SQL.
      *
      * @var array<string, DriveRateLimit>
      */

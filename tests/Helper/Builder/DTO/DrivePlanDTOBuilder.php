@@ -39,6 +39,7 @@ class DrivePlanDTOBuilder implements Builder
                     ],
                     [new DrivePlanRejectedDTO('999000', 'Farine complète bio 1 kg')],
                     'Farine',
+                    [4001, 4002],
                 ),
                 new DrivePlanLineDTO('poivre', 'Poivre', new DrivePlanNeededDTO(1, 'paquet', 'PACKAGE', 1), 'NEW', [], [], 'Poivre'),
                 new DrivePlanLineDTO('sel', 'Sel', new DrivePlanNeededDTO(2, 'cuillère à soupe', null, null), 'HAVE_AT_HOME', [], [], 'Sel'),

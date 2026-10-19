@@ -25,6 +25,15 @@ final readonly class DrivePlanLineDTO
         public array $rejected,
         #[OA\Property(description: "Texte à chercher sur le site de l'enseigne : le nom de l'ingrédient", example: 'Farine')]
         public string $searchQuery,
+        /** @var list<int> */
+        #[OA\Property(
+            description: "Rayons de l'enseigne où chercher d'abord cet ingrédient (DRV-642), 3 au plus, du plus choisi au moins choisi : ceux où les utilisateurs ont choisi des produits pour des ingrédients du même rayon de Repas. Ce sont des identifiants de rayon de l'enseigne (`iIdRayon` chez Leclerc), jamais des noms. Vide quand rien n'est encore appris pour ce rayon de Repas, ou quand l'ingrédient n'a pas de rayon. Un classement, pas un filtre : aucun produit n'est écarté. Clé facultative pour le lecteur (un back plus ancien ne l'envoie pas)",
+            type: 'array',
+            items: new OA\Items(type: 'integer', minimum: 1, maximum: 2147483647),
+            maxItems: 3,
+            example: [4001, 4002],
+        )]
+        public array $rayonHints = [],
     ) {
     }
 }

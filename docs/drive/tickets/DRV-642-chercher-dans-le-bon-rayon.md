@@ -4,7 +4,7 @@
 - **Jalon** : M6 Simplicité d'usage
 - **Taille** : M à L (en deux lots)
 - **Dépend de** : —
-- **Statut** : conception retenue (lot 1, voir plus bas), à faire (demande de l'utilisateur du 2026-10-19 : « quand on veut des produits frais on ne voit jamais les bons produits ; chercher dans le bon rayon, fruits et légumes par exemple, devrait aider »). Effort de réalisation : `high`.
+- **Statut** : **lot 1a (back) fait, PR en cours (numéro ci-dessous) ; lot 1b (agent, protocole et front) à faire** : voir « Réalisation du lot 1a ». Conception retenue (lot 1, voir plus bas) (demande de l'utilisateur du 2026-10-19 : « quand on veut des produits frais on ne voit jamais les bons produits ; chercher dans le bon rayon, fruits et légumes par exemple, devrait aider »). Effort de réalisation : `high`.
 - **Lire d'abord** : `docs/drive/recherche.md` (champs `iIdRayon`, `iIdFamille`, `niIdSousFamille` de chaque produit de la recherche), `docs/drive/hypotheses-site-reel.md`, ADR 0022, skills `repas-drive-back`, `repas-agent-dev`, `repas-po` (règle 3 : pas de réglage de plus).
 
 ## Contexte
@@ -70,3 +70,30 @@ Lecture : le rayon **284311** revient pour les trois produits frais (probablemen
 4. **Plan** : chaque ligne du plan gagne `rayonHints` (jusqu'à 3 identifiants de rayon, du plus choisi au moins choisi, pour le rayon de Repas de la ligne ; absent ou vide si rien n'est appris) ; clé facultative.
 5. **Agent** (lot 1b, après le lot back) : en phase B et pour « Chercher autre chose », les candidats dont `iIdRayon` ∈ `rayonHints` passent d'abord (ordre du site conservé à l'intérieur de chaque groupe), puis les autres, sans en cacher aucun ; si `rayonHints` est absent, ordre du site ; renvoie `rayonId`/`familyId` du produit choisi.
 4. **Démarrage à froid** : l'apprentissage démarre vide. Une **graine** facultative (migration de données) peut associer « fruits et légumes » au rayon 284311 pour Leclerc ; à ne poser qu'après vérification sur un second magasin (les identifiants de rayon peuvent différer) et marquée comme graine, jamais comme règle codée en dur.
+
+## Réalisation du lot 1a (back, 2026-10-19)
+
+Fait dans le back seulement ; rien n'est publié ni activé (aucune graine, aucun changement de `deploy/`). Un client ou un agent qui ne connaît pas les rayons marche exactement comme avant.
+
+**Contrat** (valeurs inventées dans les exemples ; `docs/api/openapi.json` et `docs/drive/samples/plan.sample.json` font foi)
+
+- `PUT /api/v1/drive/choices` : le `product` d'une intention gagne `rayonId` et `familyId`, **entiers de 1 à 2147483647, facultatifs, `null` accepté**. Absents ou `null` : la fiche du produit n'est pas modifiée ; une valeur déjà connue **n'est jamais remplacée** (premier écrivain gagnant, comme le code-barres) ni effacée ; hors bornes ou pas un entier : `422`, rien n'est enregistré. Exemple : `{"ingredientSlug": "farine", "action": "ADD_PRODUCT", "placement": "PRIMARY", "product": {"retailerProductId": "555101", "label": "Farine de blé T55 1 kg", "rayonId": 4001, "familyId": 4101}}`.
+- `GET /api/v1/drive/plans/{shoppingListId}` : chaque ligne gagne **`rayonHints`**, tableau de **3 entiers au plus** (identifiants de rayon de l'enseigne, du plus choisi au moins choisi, à égalité le plus petit identifiant d'abord), `[]` si rien n'est appris pour le rayon de Repas de la ligne ou si la ligne n'en a pas. La clé est toujours écrite par le back et reste **facultative pour le lecteur**. Exemple de ligne : `{"ingredientSlug": "farine", …, "searchQuery": "Farine", "rayonHints": [4001, 4002]}`.
+- `GET /api/v1/drive/choices` ne change pas (il ne rend pas le rayon).
+
+**Modèle** : `drive_product.rayon_id` et `family_id` (INT, nullables) ; table `drive_department_rayon(retailer, department_slug, rayon_id, chosen_count)`, clé primaire `(retailer, department_slug, rayon_id)`, **sans utilisateur ni magasin** : rien à purger avec un compte, `UserOwnedDataCoverageTest` n'a pas à la lister. Migrations additives `Version20261019200000` (colonnes) et `Version20261019200100` (table), compatibles avec la version précédente du code (ADR 0017 règle 6) : le retour arrière du code ne défait pas le schéma.
+
+**Apprentissage** : chaque `ADD_PRODUCT` (`PRIMARY` ou `FALLBACK`) dont le produit connaît son rayon compte un choix pour `(enseigne, rayon de Repas de l'ingrédient, rayon de l'enseigne)`. Le rayon pris est **celui de la fiche** (qui fait foi) et non celui de l'intention, pour qu'un agent qui se trompe ne fausse pas un produit déjà connu. Ni `REJECT_PRODUCT`, ni `REFRESH_PRICE`, ni `HAVE_AT_HOME`, ni un ingrédient sans rayon de Repas n'apprennent. Le rayon de Repas vient des ports `Shared` : `ShoppingListLineForDrive::departmentSlug` (lecture du plan) et `IngredientDepartmentResolver` (écriture du choix ; il ne s'appelle pas `…Loader` parce qu'un handler de commande n'appelle pas de `Loader`).
+
+**Coût SQL** : `PUT /drive/choices` +2 requêtes seulement quand un choix porte un rayon (lecture des rayons de Repas, écriture des compteurs, constantes quelle que soit la taille du lot) : budgets `choix-drive` 8 → 10 et `choix-drive-lot` 9 → 11. `GET /drive/plans/{id}` : 5 requêtes au plus au lieu de 4 (aucune de plus si aucune ligne n'a de rayon de Repas).
+
+**Pour le lot 1b (agent, protocole, front)** — à ne pas faire dans le back :
+1. Protocole v1, ajouts **facultatifs** : `rayonHints` (entiers, 3 au plus) dans chaque ligne du message `plan` (le front le recopie depuis le plan du back), et `rayonId`/`familyId` (entiers de 1 à 2147483647) dans le `product` d'une ligne `CHOSEN` du résultat. Règle de déploiement du § 12 de `architecture.md` : un récepteur qui ne connaît pas un champ rejette le message entier, donc **le site web (validateur du protocole) avant l'application Android qui embarque le nouvel agent**.
+2. Le front envoie `rayonId`/`familyId` dans `PUT /drive/choices` pour les produits choisis (le back accepte déjà).
+3. L'agent met d'abord les candidats dont `iIdRayon` est dans `rayonHints`, puis les autres, sans en cacher aucun ; sans `rayonHints`, l'ordre du site.
+4. `docs/drive/samples/plan.sample.json` est régénéré (`make drive-samples`) : le front le recopie (`make samples-update`) ; sa ligne `farine` porte `rayonHints: [4001]`.
+
+**Écarts et points ouverts**
+- L'apprentissage est **par enseigne**, pas par magasin (conception du lot 1, point 3 : « une enseigne = un jeu de rayons »), alors que « Pièges connus » dit que les identifiants peuvent différer d'un magasin à l'autre. Si la recette sur un second magasin le montre, ajouter une colonne `store_id` à la clé primaire (migration, puis lecture par magasin courant) ; les rayons ne sont qu'un classement, jamais un filtre, donc une erreur ne cache aucun produit.
+- Pas de graine de départ (« fruits et légumes » ↔ rayon des fruits et légumes) : l'apprentissage démarre vide, comme le ticket le demande avant vérification sur un second magasin.
+- L'apprentissage n'a pas d'autre borne par utilisateur que les plafonds existants (5 000 écritures de produits par jour, 60 écritures par minute) : une personne mal intentionnée peut peser sur le classement d'un rayon de Repas ; le seul effet est l'ordre des candidats proposés, jamais leur présence.
