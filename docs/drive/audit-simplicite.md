@@ -66,7 +66,7 @@ Ordre conseillé : 621 d'abord (aucun risque, tout le reste en dépend pour les 
 
 ## 6. État après DRV-621 à 624 (2026-10-19)
 
-Les quatre tickets sont fusionnés dans le front (`main`, agent 0.19.0) et pas encore publiés : le front web (v0.5.2) avant l'application (android-v0.1.5). Les constats F1 et F4 à F12 sont traités (F13 pour les libellés), **F2, F3 et F16 restent à DRV-625**, qui attend la vérification humaine sur le téléphone ; F14 et F15 sont au backlog.
+Les quatre tickets sont fusionnés dans le front (`main`, agent 0.19.0 ; 0.20.0 avec DRV-626, voir plus bas) et pas encore publiés : le front web (v0.5.2) avant l'application (android-v0.1.5). Les constats F1 et F4 à F12 sont traités (F13 pour les libellés), **F2, F3 et F16 restent à DRV-625**, qui attend la vérification humaine sur le téléphone ; F14 et F15 sont au backlog.
 
 | Constat | État | Par |
 |---|---|---|
@@ -74,13 +74,15 @@ Les quatre tickets sont fusionnés dans le front (`main`, agent 0.19.0) et pas e
 | F4, F5, F12 mots et voix | fait : vouvoiement partout, glossaire gardé par `voice-and-glossary.spec.ts`, « Moi » | DRV-621 |
 | F6, F9, F10 récapitulatif, erreurs, textes longs | fait : titre = résultat, compteurs non nuls, erreurs en trois phrases, code sous « Détails » | DRV-622 |
 | F7 « Que faites-vous de ce produit ? » | fait : « Toujours prendre ce produit ? », deux boutons | DRV-624 |
-| F8 aucun moyen de passer les suivants | fait : « Passer les n suivants » (3 touches pour 4 nouveaux articles, 2 si la confirmation ne s'applique pas) | DRV-624 |
+| F8 aucun moyen de passer les suivants | fait : « Passer ces n articles » (nommé « Passer les n suivants » par DRV-624 ; 3 touches pour 4 nouveaux articles, 2 si la confirmation ne s'applique pas) | DRV-624, DRV-626 |
 | F11 magasin manquant = message | fait : « Choisissez votre magasin », bouton « Choisir mon magasin » | DRV-622, DRV-623 |
 | F13 menu de l'application | fait pour les libellés ; « Diagnostic de l'agent » reste (voir DRV-621) | DRV-621 |
 
 **Touches du parcours heureux après ces tickets** (premier envoi, 6 articles dont 4 nouveaux ; recompte de la revue du § 7 : 11 touches = 7 fixes + 4 choix) : les touches fixes ne changent pas avant DRV-625 ; les nouveaux articles passent de « 4 à 8 » à **« 3 à 4 »** (choisir les 4 : 4 ; choisir le premier et passer les 3 suivants : 3 ; une seule réponse à « Toujours prendre ce produit ? » au lieu de trois quand on remplace un produit retenu). Premier enregistrement du magasin : 2 touches au lieu de 3. Deuxième envoi, tout connu : toujours 7 (objectif 5 par DRV-625).
 
-À relever à la prochaine recette réelle (`recette.md`, 6.4, 7.4 et 7.6) : le choix du produit du premier coup, le nombre de touches mesuré, et si « suivants » est compris.
+À relever à la prochaine recette réelle (`recette.md`, 6.4, 7.4 et 7.6) : le choix du produit du premier coup, le nombre de touches mesuré, et si « Passer ces n articles » est compris.
+
+**Après DRV-626** (front `main` e32d9ce, agent 0.20.0, toujours non publié) : les constats F17 à F27 de la revue (§ 7) sont traités, sans touche ajoutée. Touches mesurées par l'agent d'implémentation : premier envoi de 4 nouveaux articles 3 / 3 (inchangé) ; deuxième envoi inchangé ; « Vérifiez la quantité » une suppression de moins (le « 1 » est sélectionné) ; réglages du drive un défilement de moins ; « Aucun récapitulatif à afficher » : de l'impasse à 1 touche vers « Mes listes ». Le recompte global reste celui de DRV-624 (11 touches au premier envoi avec 4 nouveaux articles, 10 avec « Passer ces n articles », 7 au deuxième) jusqu'à DRV-625.
 
 ## 7. Revue de parcours sur captures (2026-10-19)
 
@@ -91,7 +93,7 @@ Le PO a fait rejouer le chemin heureux à 360 px par un agent de revue (lecture 
 | # | Gravité | Constat (capture lue) | Traité par |
 |---|---|---|---|
 | F17 | B | « Prêt à remplir » de l'agent : compteurs à zéro, « produits » pour des articles | DRV-626 point 1 |
-| F18 | B | « Passer les n suivants » compte l'article affiché ; la confirmation laisse la liste de produits sous elle (deux décisions) | DRV-626 point 2 |
+| F18 | B | « Passer les n suivants » compte l'article affiché ; la confirmation laisse la liste de produits sous elle (deux décisions) | DRV-626 point 2 : « Passer ces n articles », confirmation à deux boutons |
 | F19 | C | Fiche produit : la taille écrite trois fois ; « (1 sur 1) » | DRV-626 points 3 et 4 |
 | F20 | B | « Vérifiez la quantité » : champ prérempli non sélectionné (« 1 » + 4 = « 14 ») | DRV-626 point 5 |
 | F21 | B | « Le panier est rempli en partie » alors que rien n'est au panier | DRV-626 point 6 |
@@ -100,7 +102,9 @@ Le PO a fait rejouer le chemin heureux à 360 px par un agent de revue (lecture 
 | F24 | B | « Produits retenus, par ordre de préférence » : le mot que le glossaire écarte | DRV-626 point 9 |
 | F25 | B | « Aucun récapitulatif à afficher » : impasse sans bouton | DRV-626 point 10 |
 | F26 | B | Réglages du drive : la note de vie privée remplit l'écran, le magasin est sous la ligne de flottaison | DRV-626 point 11 |
-| F27 | B | « Vos choix sont enregistrés… » sur des erreurs sans choix (à vérifier hors simulation) | DRV-626 point 12 |
+| F27 | B | « Vos choix sont enregistrés… » sur des erreurs sans choix (à vérifier hors simulation) | DRV-626 point 12 : le défaut existait hors simulation, corrigé |
+
+**État (DRV-626 fait, PR front #147)** : F17 à F27 traités. **Vu pendant le balayage et laissé** : l'écran « Ce récapitulatif ne correspond pas à votre dernier envoi » n'a pas de bouton non plus ; un envoi terminé où tout est passé (rien au panier) dit encore « Le panier est rempli » ; si l'enregistrement de simples prix échoue, le texte parle de « choix » ; la liste de l'écran d'envoi garde ses rangs « 1. », « 2. » (l'ordre est visible).
 
 **Constats laissés (décision du PO : pas maintenant)** :
 

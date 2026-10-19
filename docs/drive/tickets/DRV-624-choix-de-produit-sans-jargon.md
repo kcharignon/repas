@@ -58,4 +58,4 @@ Les quatre points de la portée. Le protocole ne change pas : aucun ordre de pub
 ### Points laissés
 
 - Le bouton « Valider » de l'écran de quantité n'est pas touché ; la règle des verbes précis voudrait « Mettre au panier » : à voir dans un ticket de balayage.
-- Si « suivants » prête à confusion à l'essai d'un proche, « restants » ou « derniers » sont des alternatives (une chaîne).
+- ~~Si « suivants » prête à confusion à l'essai d'un proche, « restants » ou « derniers » sont des alternatives (une chaîne).~~ Tranché par la revue de parcours : « Passer ces n articles » (DRV-626, point 2), parce que « Passer les 4 suivants » laissait croire que l'article affiché n'était pas passé.

@@ -137,7 +137,7 @@ Références : [`principes-produit.md`](principes-produit.md), [`audit-simplicit
 - [x] [DRV-623](tickets/DRV-623-un-seul-geste-pour-le-magasin.md) front · S · Un seul geste pour enregistrer son magasin · dépend de : 320, 621 · PR front #140
 - [x] [DRV-624](tickets/DRV-624-choix-de-produit-sans-jargon.md) front · M · Choix du produit sans jargon, « passer les suivants » · dépend de : 306, 208, 621 · PR front #142
 - [ ] [DRV-625](tickets/DRV-625-entrer-dans-le-magasin-sans-geste.md) front · M · Entrer dans le magasin, revenir et finaliser dans l'application sans geste inutile (après vérification humaine) · dépend de : 314, 405, 622
-- [ ] [DRV-626](tickets/DRV-626-balayage-apres-revue-de-parcours.md) front · M · Balayage après la revue de parcours : douze points lus sur les captures (compteurs à zéro, « Passer ces n articles », estimation sans prix, récapitulatif sans impasse…) · dépend de : 621 à 624
+- [x] [DRV-626](tickets/DRV-626-balayage-apres-revue-de-parcours.md) front · M · Balayage après la revue de parcours : douze points lus sur les captures (compteurs à zéro, « Passer ces n articles », estimation sans prix, récapitulatif sans impasse…) · dépend de : 621 à 624 · PR front #147
 
 ## Backlog (non détaillé, à écrire quand il devient utile)
 
