@@ -143,6 +143,7 @@ Références : [`principes-produit.md`](principes-produit.md), [`audit-simplicit
 - [x] [DRV-629](tickets/DRV-629-finaliser-et-entrer-par-les-boutons.md) front · M · « Finaliser » vers la page du panier (`detail-panier.aspx`, ville dans le chemin) et entrée par le **bouton** « Commencer mes courses » (constats réels du 2026-10-19) · dépend de : 625 · PR front #151
 - [ ] [DRV-631](tickets/DRV-631-finaliser-comprendre-le-repli.md) front · S · « Finaliser sur Leclerc » : voir pourquoi il retombe sur l'accueil (raison du repli dans le diagnostic), puis corriger · dépend de : 629
 - [ ] [DRV-632](tickets/DRV-632-fiches-produit-sans-ligne-a-zero.md) front · S · Fiches produit de l'agent : pas de « En promotion : 0,00 € », pluriels justes · dépend de : —
+- [ ] [DRV-633](tickets/DRV-633-photos-des-produits-dans-le-choix.md) front · M · Photos des produits dans le choix de l'agent (demande de l'utilisateur : mémoire visuelle des paquets) ; lot 2 (photos dans Repas) en DRV-634 · dépend de : —
 - [x] [DRV-630](tickets/DRV-630-emails-du-back-au-tutoiement.md) back · S · E-mail de vérification d'adresse et message de connexion du back au tutoiement (restes du vouvoiement après le front) · dépend de : 627 · PR back #200
 
 ## Backlog (non détaillé, à écrire quand il devient utile)
