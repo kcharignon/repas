@@ -19,7 +19,7 @@ Chaque domaine a son skill (pièges réels du chantier, recettes, Definition of 
 | `repas-front-dev` | Front web Vue.js / TypeScript : Docker, `make check`, i18n, jetons, CSP, `driveBridge`, tests Vitest et Playwright | `.claude/skills/repas-front-dev/SKILL.md` (dépôt front) |
 | `repas-agent-dev` | Agent JavaScript embarqué `drive-agent/` : règles de sécurité, construction reproductible, protocole v1, contrat Leclerc, fixtures | `.claude/skills/repas-agent-dev/SKILL.md` (dépôt front) |
 | `repas-android-dev` | Application Android `android/` : WebView sécurisée, mode ordinateur, signature, émulateur, étapes humaines | `.claude/skills/repas-android-dev/SKILL.md` (dépôt front) |
-| `repas-po` | Product Owner : parcours le plus court, textes simples en vouvoiement, glossaire, erreurs en trois phrases ; à lire en plus du skill du domaine pour tout ticket qui touche un écran, un texte ou un message | `.claude/skills/repas-po/SKILL.md` (dépôt back, copie dans le dépôt front) ; référence : `docs/drive/principes-produit.md` |
+| `repas-po` | Product Owner : parcours le plus court, textes simples (tutoiement voulu, vouvoiement jusqu'à DRV-627), pas d'avertissement hors conditions d'utilisation, glossaire, erreurs en trois phrases ; à lire en plus du skill du domaine pour tout ticket qui touche un écran, un texte ou un message | `.claude/skills/repas-po/SKILL.md` (dépôt back, copie dans le dépôt front) ; référence : `docs/drive/principes-produit.md` |
 
 Un ticket qui touche plusieurs domaines (par exemple un champ du plan : back, protocole, front) lit les skills de chacun.
 

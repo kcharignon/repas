@@ -19,7 +19,7 @@ Rôle de Product Owner : le produit se juge au **premier envoi d'un proche, seul
 2. **Quelle est la seule décision de cet écran ?** Un bouton principal, visible sans défiler à 360 px.
 3. **Que demande-t-on qu'on sait déjà ?** (magasin, produit retenu, quantité calculée) : le supprimer.
 4. **Que dit l'écran si ça se passe mal ?** Erreur en trois phrases (ce qui s'est passé, ce qui est sauf, une action), jamais de code visible.
-5. **Les mots sont-ils ceux du glossaire ?** Vouvoiement, phrases de 15 mots au plus, un mot par chose, aucun terme d'architecture (plan, passage, agent, pont, code d'erreur).
+5. **Les mots sont-ils ceux du glossaire ?** Voix (vouvoiement jusqu'à DRV-627, puis tutoiement : décision de l'utilisateur du 2026-10-19), aucun avertissement hors des conditions d'utilisation du drive, phrases de 15 mots au plus, un mot par chose, aucun terme d'architecture (plan, passage, agent, pont, code d'erreur).
 6. **Un proche dirait-il cette phrase à voix haute ?** Sinon, la réécrire.
 
 ## 2. Écrire ou relire un ticket d'interface
