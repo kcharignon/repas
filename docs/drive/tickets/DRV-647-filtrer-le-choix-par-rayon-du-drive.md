@@ -4,7 +4,7 @@
 - **Jalon** : M6 Simplicité d'usage
 - **Taille** : M (deux étapes : mesure, puis écran)
 - **Dépend de** : DRV-642 lot 1 (fait), DRV-646 (fait)
-- **Statut** : à faire (idée de l'utilisateur du 2026-10-20)
+- **Statut** : étapes 0 et 1 faites (PR front #169 et #172), recette sur le téléphone de test à faire (idée de l’utilisateur du 2026-10-20)
 - **Lire d'abord** : [`DRV-642`](DRV-642-chercher-dans-le-bon-rayon.md) (« Mesure réelle des rayons »), [`DRV-646`](DRV-646-diagnostic-des-rayons.md), `docs/drive/multi-enseignes.md` et la règle « Ne pas durcir Leclerc » de `docs/drive/consignes-agents.md`, skill `repas-agent-dev`, skill `repas-po`.
 
 ## Contexte
@@ -40,3 +40,9 @@ Agent : tests unitaires du calcul des rayons présents (comptes, tri, repli de l
 ## Definition of Done
 
 Celle du dépôt front et de l'agent (lint, tests, e2e de l'agent, `android/agent.js.sha384` à jour, version de l'agent relevée) ; application publiée avec le nouvel agent ; recette sur le téléphone de test avec « courgette » et « tomate ».
+
+## Réalisation
+
+- **Étape 0 (fait)** : PR front #169 (agent 0.32.0). Mesure du 2026-10-20 sur le téléphone de test : le menu « Rayons » de la page ne donne aucun libellé (10 liens « Voir le rayon », adresses `/magasin-N-N-V/rayon-N-….aspx ?Filtres`, aucun bloc de menu ni lien de famille) ; chaque produit porte `sLibelleUrlNaviguerRayon`, `sUrlVoirRayon`, `sCategorie`, `sIdUniqueRayon`, `fVoirRayon` (valeurs non lues à ce stade) ; la réponse porte `objFiltreBloc` (135) et la page `objNavigationRayonFamille` ; chemin des produits `objContenu > lstElements[] > objElement` (73 clés par produit). Répartition mesurée pour « tomate » : 130 produits dans un rayon, 11 dans le rayon des légumes frais probables : le rayon utile est minoritaire.
+- **Étape 1 (PR front #172, agent 0.33.0)** : rangée « Tous (N) » puis les rayons présents avec leur nombre, au-dessus des résultats du choix ; toucher un rayon ne laisse que ses produits, sans requête ; le rayon appris est choisi d’avance et placé juste après « Tous » ; moins de deux rayons : pas de rangée ; protocole inchangé. Libellé résolu par l’adaptateur, dans l’ordre : `sLibelleUrlNaviguerRayon` lisible → nom dans `sUrlVoirRayon` → `sCategorie` → objet de rayon hors des produits (réponse, puis page) → « Rayon N ». On garde le texte le plus fréquent ; on écarte un nombre long, une adresse électronique ou web, ou une ville. Le diagnostic donne, pour les 8 rayons les plus fournis de « tomate », le libellé et sa source, les valeurs sûres des trois champs du premier produit, et les noms des clés de `objFiltreBloc` et `objNavigationRayonFamille`.
+- **Reste** : recette sur le téléphone de test (« courgette », « tomate ») : lire les lignes « Libellé du rayon … » du diagnostic et figer la source réelle des libellés ; vérifier le défilement de côté de la rangée.
