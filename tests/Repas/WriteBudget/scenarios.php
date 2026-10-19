@@ -431,9 +431,10 @@ return [
 
         return new ReplaceIngredientPreferenceCommand($user->getId(), Retailer::LECLERC, '123456', 'sucre', false, [$id('2'), $id('3')], [$id('4')]);
     },
-    // Compte qui a trois recettes planifiées dans une liste (dont une est copiée par un autre utilisateur), un magasin et une préférence de produits
+    // Compte qui a un lien Google, trois recettes planifiées dans une liste (dont une est copiée par un autre utilisateur), un magasin et une préférence de produits
     'supprimer-compte' => static function (WriteBudgetTestCase $t): object {
         $owner = $t->savedUser();
+        $t->savedUserIdentity($owner);
         $recipes = $t->typicalRecipes($owner);
         $t->savedShoppingList($owner, $recipes);
         $t->savedDriveSettings($owner);
