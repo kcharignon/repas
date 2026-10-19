@@ -19,7 +19,7 @@ Le code est organisé en contextes métier sous `src/` :
 
 - `Repas` — recettes, ingrédients, listes de courses, unités, conversions.
 - `User` — inscription, authentification, préférences, gestion des comptes par l'administrateur (statut libre, suppression : ADR 0021).
-- `Drive` — envoi de la liste de courses au drive d'une enseigne : réglages, produits, choix, plan d'envoi (ADR 0022 et 0023, `docs/drive/`). Contexte construit (réglages, produits et choix, plan d'envoi, estimation du coût, purge du compte : DRV-201 à DRV-208, DRV-611, DRV-613 partie 1) ; la recette réelle sur téléphone (DRV-505, `docs/drive/recette.md`) reste à faire (elle se déroule interrupteur allumé, par l'utilisateur seul) avant de laisser `DRIVE_ENABLED` allumé en production. Il ne dépend que de `Shared` et référence ingrédients et utilisateurs par identifiant.
+- `Drive` — envoi de la liste de courses au drive d'une enseigne : réglages, produits, choix, plan d'envoi (ADR 0022 et 0023, `docs/drive/`). Contexte construit (réglages, produits et choix, plan d'envoi, estimation du coût, purge du compte : DRV-201 à DRV-208, DRV-611, DRV-613 partie 1) ; la recette réelle sur téléphone (DRV-505, `docs/drive/recette.md`) est signée (2026-10-19) et `DRIVE_ENABLED` reste allumé en production. Il ne dépend que de `Shared` et référence ingrédients et utilisateurs par identifiant.
 - `Shared` — briques transverses (bus, modèle de base, outils).
 
 Chaque contexte suit la même structure en 3 couches (architecture hexagonale) :

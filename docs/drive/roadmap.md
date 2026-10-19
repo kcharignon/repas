@@ -126,7 +126,7 @@ La recette réelle sur téléphone (DRV-505) a montré des défauts que le faux 
 - [x] [DRV-502](tickets/DRV-502-deploiement.md) back · S · Déploiement, interrupteur, retour arrière · dépend de : 501 · Issue : [#84](https://github.com/kcharignon/repas/issues/84)
 - [x] [DRV-503](tickets/DRV-503-runbook-leclerc-change.md) back · S · Runbook « Leclerc a changé » · dépend de : 501 · Issue : [#85](https://github.com/kcharignon/repas/issues/85)
 - [ ] [DRV-504](tickets/DRV-504-note-vie-privee.md) back+front · S · Note de vie privée (partie back faite : texte et registre, PR #152 ; partie front faite : repas-front#101, #105 et #106 ; reste la relecture des textes par l'utilisateur) · dépend de : 204 · Issue : [#86](https://github.com/kcharignon/repas/issues/86)
-- [ ] [DRV-505](tickets/DRV-505-recette-reelle.md) humain · S · Recette en conditions réelles et activation (procédure écrite : [`recette.md`](recette.md), à dérouler sur le téléphone, interrupteur allumé ; **en cours : parties 3 à 8 faites avec succès les 2026-10-18 et 19, parties 9, 10 et 12 à faire**, voir l'état en tête de `recette.md`) · dépend de : 502, 503 · Issue : [#87](https://github.com/kcharignon/repas/issues/87)
+- [x] [DRV-505](tickets/DRV-505-recette-reelle.md) humain · S · Recette en conditions réelles et activation (procédure écrite : [`recette.md`](recette.md), à dérouler sur le téléphone, interrupteur allumé ; **signée par l'utilisateur le 2026-10-19, `DRIVE_ENABLED` reste allumé**, voir le compte rendu § 17 bis de `recette.md`) · dépend de : 502, 503 · Issue : [#87](https://github.com/kcharignon/repas/issues/87)
 
 ## M6 — Simplicité d'usage (audit du PO, 2026-10-19)
 

@@ -4,7 +4,7 @@
 - **Jalon** : M5 Intégration et livraison
 - **Taille** : S
 - **Dépend de** : DRV-502, DRV-503
-- **Statut** : en cours (procédure écrite dans [`../recette.md`](../recette.md) le 2026-10-18 ; parties 3 à 8 faites avec succès par l'utilisateur sur son téléphone les 2026-10-18 et 19, parties 9, 10 et 12 à faire ; non signée)
+- **Statut** : fait (recette signée par l'utilisateur le 2026-10-19, `DRIVE_ENABLED` reste allumé ; compte rendu dans [`../recette.md`](../recette.md) § 17 bis)
 - **Lire d'abord** : `docs/drive/recette.md` (DRV-501), `docs/drive/runbook.md` (DRV-503), skill `repas-ops`.
 
 ## Portée

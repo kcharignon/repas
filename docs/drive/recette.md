@@ -2,7 +2,7 @@
 
 Procédure à dérouler **par l'utilisateur, sur son téléphone Android, avec son compte Leclerc et une vraie petite liste**, sans jamais valider de commande. Un agent (l'« assistant ») le guide **une étape à la fois**. Elle prouve ce que les tests automatiques ne peuvent pas prouver : l'anti-robot de Leclerc (DataDome), la connexion, le vrai site, le vrai téléphone. Décisions : [ADR 0022](../adr/0022-remplissage-du-panier-drive.md) et [ADR 0023](../adr/0023-liste-envoyee-au-drive.md). Si Leclerc bloque ou a changé : [`runbook.md`](runbook.md). Vie privée : [`note-vie-privee.md`](note-vie-privee.md). Dernière mise à jour : 2026-10-19 (ticket DRV-501 pour la rédaction, DRV-505 pour l'exécution) ; état, version minimale et ordre de publication ajoutés le 2026-10-19 ; libellés réalignés sur le front après DRV-621 à 624 (vouvoiement, glossaire, écrans simplifiés).
 
-**État au 2026-10-19 : en cours, non signée.** La recette a été déroulée par l'utilisateur sur son téléphone (un Pixel 9) les 2026-10-18 et 2026-10-19, avec des applications de `android-v0.1.1` à `android-v0.1.4`. **Les parties 3 à 8 sont faites, avec succès. Les parties 9, 10 et 12 restent à faire.** Les autres parties (1, 2, 11 et 13 à 17) ne sont pas renseignées ici. Le tableau de signature (partie 18) est vide. Les constats de ces séances sont dans [`hypotheses-site-reel.md`](hypotheses-site-reel.md) § 8 (statut des défenses en § 9) ; les corrections faites ensuite dans l'agent et l'application, dans [`roadmap.md`](roadmap.md) § M3c.
+**État au 2026-10-19 : signée par l'utilisateur** (`DRIVE_ENABLED` reste allumé). La recette a été déroulée sur un Pixel 9 les 2026-10-18 et 2026-10-19, des applications `android-v0.1.1` à `android-v0.1.5` ; les parties 3 à 12 sont faites (13 à 15 non faites, voir le compte rendu § 17 bis). Les constats de ces séances sont dans [`hypotheses-site-reel.md`](hypotheses-site-reel.md) § 8 (statut des défenses en § 9) ; les corrections faites ensuite dans l'agent et l'application, dans [`roadmap.md`](roadmap.md) § M3c.
 
 **Ce qui a changé depuis la séance du 2026-10-18** : des applications **signées** `android-vX.Y.Z` existent (DRV-315) et la recette n'a plus besoin d'une pré-version `android-dev-…` ; le back `v0.6.1` et le front `v0.5.1` sont en production, drive compris. Les parties 1 et 2 (prérequis, installation d'une pré-version) racontent la première séance et ne sont plus à refaire : pour un nouveau téléphone, installer l'APK signé de la dernière release `android-v…` (aide de Repas, « Installer l'application Repas »). Les textes d'écran cités dans les parties 4 à 13 ont été réalignés après les tickets de simplicité (DRV-621 à 624 : vouvoiement, mots du glossaire de [`principes-produit.md`](principes-produit.md), écrans plus courts) ; si un texte ne correspond plus, le sens compte (voir « Comment lire ce fichier »).
 
@@ -547,13 +547,13 @@ Rédigé par l'assistant à partir de la recette pilotée par adb sur le télép
 | Version du front (`state/ok-front`) | `v0.5.2` |
 | Téléphone (modèle) et version d'Android | Pixel 9, Android 17 |
 | Version de « Android System WebView » (si connue) | 155.0.8059.43 |
-| Parties réussies (1 à 12) | |
-| Critères de réussite 1 à 10 | |
-| Écarts relevés (étape, ce qui a été vu) | |
+| Parties réussies (1 à 12) | 1 à 12 (13 à 15 non faites) |
+| Critères de réussite 1 à 10 | réussis (voir § 17 bis ; sauvegarde de nuit qui suit la recette à vérifier) |
+| Écarts relevés (étape, ce qui a été vu) | voir § 17 bis : textes à alléger et compteurs à zéro (DRV-628), « Tout est dans le panier » faux à 0 sur 6, « Reprendre l'envoi » drive coupé |
 | `BLOCKED` ou `CONTRACT_CHANGED` rencontré ? | non avec cette version (ceux du 18 octobre sont corrigés, jalon M3c) |
-| Décision sur `DRIVE_ENABLED` à la fin | allumé / coupé |
-| Résultat | **signée** / **non signée** |
-| Signature de l'utilisateur | |
+| Décision sur `DRIVE_ENABLED` à la fin | **allumé** (décision de l'utilisateur, 2026-10-19) |
+| Résultat | **signée** |
+| Signature de l'utilisateur | Signée par l'utilisateur dans la conversation, le 2026-10-19 |
 
 ## 19. Après la signature
 
