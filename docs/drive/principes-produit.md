@@ -19,10 +19,11 @@ Critère de réussite du chantier : **un proche réussit son premier envoi sans 
 7. **L'erreur est un écran du parcours**, pas une impasse : elle dit ce qui s'est passé, ce qui est sauf, et propose **une** action. Voir § 4.
 8. **L'utilisateur ne voit jamais l'architecture** : ni le plan, le passage, l'agent, le pont, le protocole, le contrat, la WebView, ni un code d'erreur. Les détails techniques vivent dans « Détails » (repliés) et dans le diagnostic.
 9. **Le chemin heureux est court même quand tout est nouveau, et très court quand tout est connu** : un deuxième envoi, où tout est déjà retenu, tient en quatre touches (voir `audit-simplicite.md`).
+10. **Aucun avertissement dans le parcours** (décision de l'utilisateur du 2026-10-19). Les messages qui font peur (risque pour le compte Leclerc, anti-robot, vie privée, rassurances en série) n'existent que dans les conditions d'utilisation du drive, une page que l'on ouvre si on le veut. L'écran sert l'action en cours : une phrase reste seulement si elle dit ce qui se passe ou ce qu'il faut faire maintenant. Les erreurs restent (ce qui s'est passé, ce qui est sauf, une action) mais sans ton alarmant. Voir DRV-628.
 
 ## 3. Règles de texte
 
-- **Vouvoiement partout** (décision PO du 2026-10-19) : c'est la voix de Repas depuis toujours (111 occurrences dans le front, aucune de « tu ») et celle des pages de Leclerc que l'agent recouvre. Le tutoiement de l'agent et de l'application Android est à corriger (DRV-621). Les documents de développement restent libres.
+- **Tutoiement** (décision de l'utilisateur du 2026-10-19, elle remplace le vouvoiement fixé par DRV-621) : Repas parle à chacun comme à un proche. Le passage se fait par DRV-627 ; **d'ici là les écrans restent au vouvoiement** et les textes nouveaux aussi, pour ne pas mélanger les deux voix. Les documents de développement restent libres.
 - **Phrases courtes** : 15 mots au plus, une idée par phrase, la plus importante d'abord. Un écran tient en un titre, une à deux phrases, un bouton.
 - **Le titre dit ce qui se passe ou ce qu'on attend de l'utilisateur** (« Le panier est rempli », « Choisissez votre magasin »), pas le nom de la fonction (« Retour du drive », « Résultat de l'essai »).
 - **Un bouton est un verbe qui dit ce qu'il fait** : « Ouvrir le drive », « Enregistrer mon magasin ». Pas de « OK », « Valider », « Continuer » seuls quand le verbe précis existe.
@@ -73,7 +74,7 @@ Une PR qui change un écran, un texte ou un enchaînement répond, dans sa descr
 
 1. Quel est le parcours heureux, et **combien de touches** (avant, après) ?
 2. Y a-t-il **une seule décision** par écran, un seul bouton principal ?
-3. Tous les textes respectent-ils le **vouvoiement**, les **phrases courtes** et le **glossaire** (aucun mot interdit, aucun code visible) ?
+3. Tous les textes respectent-ils la **voix** (vouvoiement jusqu'à DRV-627, puis tutoiement), les **phrases courtes** et le **glossaire** (aucun mot interdit, aucun code visible) ? Aucune mise en garde ni rassurance en série (règle 10) ?
 4. Chaque erreur suit-elle le format **en trois phrases** avec une action ?
 5. Le texte tient-il à 360 px de large, sans défilement horizontal, et reste-t-il lisible dans la page de Leclerc en mode ordinateur (agent) ?
 6. La capture de l'écran a-t-elle été **lue** (test visuel Chromium pour le web ; émulateur pour l'agent) ?
