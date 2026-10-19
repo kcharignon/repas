@@ -53,6 +53,8 @@ Quand l'utilisateur ne peut rien faire (Leclerc a changé son site), le texte le
 | Déjà chez soi, toujours | **J'en ai toujours** | Déjà à la maison, Vous en avez déjà, HAVE_AT_HOME |
 | Pas pour cet envoi seulement | **Pas cette fois** | Passer cette fois, Ignoré, Passés |
 | Produit retenu pour un article | **produit habituel** ; son remplaçant : **produit de remplacement** | préféré, primaire, secours, fallback |
+| Garder un produit choisi pour les envois suivants | **Toujours prendre celui-ci** / **Cette fois seulement** (la question : « Toujours prendre ce produit ? ») | Mon nouveau produit habituel, préféré, secours, une seule fois |
+| Passer plusieurs articles d'un coup | **Passer les n suivants** (n compte l'article affiché), puis **Revenir au choix** | Tout passer, Ignorer le reste |
 | Produit exclu | **Ne plus proposer** | Refusé, rejeté |
 | Le fait que Repas se souvient | **Repas s'en souvient** | mémorisé, persisté, enregistré dans les préférences |
 | Écran de fin d'un envoi | **Récapitulatif** | Résumé, Retour du drive, Résultat |

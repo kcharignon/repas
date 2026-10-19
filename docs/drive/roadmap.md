@@ -135,7 +135,7 @@ Références : [`principes-produit.md`](principes-produit.md), [`audit-simplicit
 - [x] [DRV-621](tickets/DRV-621-voix-et-vocabulaire-uniques.md) front · M · Vouvoiement partout et glossaire appliqué au web, à l'agent, à l'application et à l'aide, avec un test qui garde le glossaire · dépend de : — · PR front #139
 - [x] [DRV-622](tickets/DRV-622-ecrans-envoi-et-recapitulatif-simples.md) front · M · Écran de l'envoi et récapitulatif en une phrase, compteurs non nuls, erreurs en trois phrases, magasin manquant = bouton · dépend de : 621 · PR front #141 (le point « magasin manquant » : #140, DRV-623)
 - [x] [DRV-623](tickets/DRV-623-un-seul-geste-pour-le-magasin.md) front · S · Un seul geste pour enregistrer son magasin · dépend de : 320, 621 · PR front #140
-- [ ] [DRV-624](tickets/DRV-624-choix-de-produit-sans-jargon.md) front · M · Choix du produit sans jargon, « passer les suivants » · dépend de : 306, 208, 621
+- [x] [DRV-624](tickets/DRV-624-choix-de-produit-sans-jargon.md) front · M · Choix du produit sans jargon, « passer les suivants » · dépend de : 306, 208, 621 · PR front #142
 - [ ] [DRV-625](tickets/DRV-625-entrer-dans-le-magasin-sans-geste.md) front · M · Entrer dans le magasin, revenir et finaliser dans l'application sans geste inutile (après vérification humaine) · dépend de : 314, 405, 622
 
 ## Backlog (non détaillé, à écrire quand il devient utile)

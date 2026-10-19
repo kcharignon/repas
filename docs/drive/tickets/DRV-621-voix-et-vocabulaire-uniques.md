@@ -57,4 +57,4 @@ Celle du dépôt front ; PR concise avec, dans « À relire », la liste des mot
 
 1. **« Diagnostic de l'agent » reste dans l'application signée** : le ticket le supposait caché, mais le runbook § 3.1 le dit « toujours disponible » et la recette § 11.1 s'en sert. Seuls « Plan d'essai » et « Test automatique » sont réservés au débogage. Le cacher (une ligne, `menu_diagnostic` sous `BuildConfig.DEBUG`) demanderait d'adapter runbook et recette : décision du PO au moment de DRV-622/624, sans urgence.
 2. « agent » et « WebView » subsistent dans quelques textes d'erreur Android et dans « Diagnostic de l'agent » ; « Accepter de nouveau », « Code : {code} », « Échecs », « Prix lus » et les compteurs à zéro restent : DRV-622 et DRV-624.
-3. Mise à jour du jalon : `recette.md` est réaligné **après** DRV-622 à 624 (une seule passe, plusieurs textes de la recette changent encore).
+3. Mise à jour du jalon : `recette.md` a été réaligné en une seule passe après DRV-624 (2026-10-19).
