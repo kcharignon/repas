@@ -4,7 +4,7 @@
 - **Jalon** : M6 Simplicité d'usage
 - **Taille** : M
 - **Dépend de** : DRV-621 à 624
-- **Statut** : en cours (lancé le 2026-10-19)
+- **Statut** : fait (2026-10-19, PR repas-front#147, agent 0.20.0)
 - **Lire d'abord** : [`principes-produit.md`](../principes-produit.md), [`audit-simplicite.md`](../audit-simplicite.md) (§ 7), skills `repas-po`, `repas-agent-dev`, `repas-front-dev`.
 
 ## Contexte
@@ -53,3 +53,22 @@ Celle du dépôt front ; version de l'agent incrémentée (0.20.0), empreinte re
 
 - Le web de la revue était simulé : un défaut vu seulement dans la simulation (point 12) se vérifie dans le code avant de le corriger.
 - Un texte de l'agent change l'empreinte : une seule version de l'agent par PR.
+
+## Réalisation (2026-10-19, PR repas-front#147, agent 0.20.0)
+
+Les douze points sont faits. Front `main` e32d9ce ; **rien n'est publié** (le protocole ne change pas : aucune clé nouvelle, donc pas d'ordre de publication entre le site et l'application pour ce ticket).
+
+- **Agent 0.20.0**, empreinte `sha384-MEBncHZKGWZPJlfAUD/5K1EFhrX37289y7tw8i7PaGz8oiL7iB1K1nqdvS71pbfP` (`android/agent.js.sha384`).
+- **Libellés, ancien → nouveau** : « 2 produits connus à mettre au panier / 4 nouveaux produits à choisir / 0 « j'en ai toujours » / 0 « pas cette fois » » → « 6 articles : 2 sont déjà choisis, 4 sont à choisir sur Leclerc. » (la même phrase que Repas, prouvée identique sur 864 combinaisons de comptes) ; « Passer les n suivants » → « Passer ces n articles » ; « Le panier est rempli en partie » (rien au panier ni choisi) → « Le panier n'est pas rempli » ; estimation sans prix (quatre messages) → « Pas encore de prix : Repas les retient à chaque envoi au drive. » ; « Produits retenus, par ordre de préférence » → « Produit habituel : » (un seul) ou « Produits retenus : » (plusieurs) ; note de vie privée de 50 mots → « Repas ne voit jamais votre mot de passe ni votre panier Leclerc. » ; nouveaux : « Il vous faut : 200 g. » (quantité), « Ouvrir mes listes » (sur « Aucun récapitulatif à afficher »).
+- **Touches** : premier envoi de 4 nouveaux articles 3 / 3 ; deuxième envoi inchangé ; quantité à vérifier une suppression de moins ; réglages du drive un défilement de moins ; « Aucun récapitulatif » de l'impasse à 1 touche. Aucune touche ajoutée.
+- **Point 12** : le défaut existait hors simulation. « Vos choix sont enregistrés pour les prochains envois. » s'affichait dès la fin de l'enregistrement, même sans aucun choix (erreurs, tout passé) ou avec de simples prix relus ; la phrase n'apparaît plus qu'avec au moins un choix enregistré (produit habituel, « Ne plus proposer », « J'en ai toujours »). Les prix seuls restent enregistrés, sans phrase.
+- **Décisions de l'agent d'implémentation, confirmées par le PO** : la seconde ligne d'un libellé de produit n'est retirée que si elle redit la taille lue ; l'avertissement du back (« Estimation d'après… ») est masqué quand aucun prix n'est connu ; le champ de quantité se re-sélectionne à la première frappe (le curseur se pose après le toucher) ; pendant la confirmation de « Passer ces n articles », « Annuler l'envoi » est masqué aussi (deux boutons).
+- **À confirmer par l'utilisateur** : le risque « Leclerc peut suspendre un compte » n'est plus dans la phrase courte de vie privée des réglages. Il reste dans la note complète (« Avant d'utiliser l'envoi : ce que vous devez savoir »). Remettre une phrase courte est une chaîne.
+- **Vérifié** : `make check` (2668 tests), `make quality`, `make agent-verify`, `make android-test`, `make agent-e2e` (61), `make e2e` (235 réussis, 5 ignorés comme avant), `make android-e2e` (scénarios 1 à 15, 179 contrôles, 0 échec ; nouveau scénario 14 : taper 4 dans le champ de quantité donne 4 produits au panier). Captures lues : agent à 360 × 640 (Chromium et émulateur), web à 360 × 640 en clair et en sombre.
+
+### Points laissés
+
+- L'écran « Ce récapitulatif ne correspond pas à votre dernier envoi » n'a pas de bouton principal non plus.
+- Un envoi terminé où tout est passé (rien au panier) dit encore « Le panier est rempli ».
+- Si l'enregistrement de simples prix échoue, le texte parle de « choix ».
+- La liste de l'écran d'envoi garde ses rangs « 1. », « 2. » (l'ordre est visible).
