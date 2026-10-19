@@ -34,12 +34,6 @@
         </exclude>
     </source>
 
-    <coverage>
-        <report>
-            <html outputDirectory="coverage-report"/>
-        </report>
-    </coverage>
-
     <extensions>
         <!-- Chaque test est exécuté dans une transaction annulée à la fin (voir tests/Helper/DatabaseTestCase.php) -->
         <bootstrap class="DAMA\DoctrineTestBundle\PHPUnit\PHPUnitExtension"/>
