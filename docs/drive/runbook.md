@@ -1,6 +1,6 @@
 # Runbook : « Leclerc a changé » (et couper l'envoi au drive)
 
-À suivre quand l'envoi de la liste au drive ne marche plus : message « Le site a changé », « Leclerc a ralenti les requêtes », paniers vides, produits qui ne se trouvent plus. Écrit pour une personne qui **n'a pas écrit le code** : chaque étape dit quoi faire et ce qu'on doit voir. Décisions : [ADR 0022](../adr/0022-remplissage-du-panier-drive.md) et [ADR 0023](../adr/0023-liste-envoyee-au-drive.md). Mise en production et retour arrière : [`../production.md`](../production.md), section « Envoi de la liste au drive ». Dernière mise à jour : 2026-10-18 (DRV-503).
+À suivre quand l'envoi de la liste au drive ne marche plus : message « Le site a changé », « Leclerc a ralenti les requêtes », paniers vides, produits qui ne se trouvent plus. Écrit pour une personne qui **n'a pas écrit le code** : chaque étape dit quoi faire et ce qu'on doit voir. Décisions : [ADR 0022](../adr/0022-remplissage-du-panier-drive.md) et [ADR 0023](../adr/0023-liste-envoyee-au-drive.md). Mise en production et retour arrière : [`../production.md`](../production.md), section « Envoi de la liste au drive ». Dernière mise à jour : 2026-10-19 (DRV-503, corrections de la recette réelle : site mobile, page de vérification, compteurs, ordre de publication).
 
 ## Règles d'or
 
@@ -31,15 +31,35 @@ L'agent s'arrête proprement avec un code ; le titre est ce que l'utilisateur li
 | Des lignes « indisponibles » ou « quantité à vérifier » partout, ou **aucun produit trouvé** pour des mots courants (farine, sel, lait) | (résultat vide, `CONTRACT_CHANGED` ou lignes `UNAVAILABLE` / `TO_CHECK`) | La recherche ne lit plus les produits, ou plus leur contenu net : le site a changé d'une façon que l'agent ne reconnaît pas comme une erreur. | **Oui** après diagnostic |
 | « Tu n'es pas connecté » | `NOT_LOGGED_IN` | La session Leclerc a expiré. | Non : se reconnecter à Leclerc dans l'application |
 | « Le site ne répond pas » | `NETWORK` | Réseau du téléphone ou panne passagère de Leclerc (l'agent a déjà réessayé une fois). | Non : réessayer plus tard |
-| « Page non prise en charge » | `UNSUPPORTED_PAGE` | L'application n'est pas sur une page de magasin du site **ordinateur** (hôte `fdN-courses…`). Souvent : Leclerc sert son site **mobile** (`m-courses…`), dont les routes sont inconnues, parce que le mode ordinateur de l'application a été perdu. | Non : voir « Le site s'affiche en version mobile » plus bas |
+| « Page non prise en charge » ou, depuis l'agent 0.14.0, « **Ce n'est pas la version ordinateur du site** » | `UNSUPPORTED_PAGE` (causes `PAGE_PATH`, `PAGE_HOST`, `PAGE_MOBILE`) | L'application n'est pas sur une page de magasin du site **ordinateur** (hôte `fdN-courses…`). Soit l'adresse n'est pas celle d'un magasin (`PAGE_PATH`), soit elle n'est pas sur `leclercdrive.fr` (`PAGE_HOST`), soit Leclerc sert son site **mobile** (`m-courses…`, `PAGE_MOBILE`), dont les routes sont autres. Avant l'agent 0.14.0 (application `android-v0.1.4` et plus anciennes), le site mobile n'était pas reconnu : il se voyait comme « Ce n'est pas le bon magasin » ou « Le site a changé ». | Non : voir § 12 |
 | « Ce n'est pas le bon magasin » | `STORE_MISMATCH` | Repas a préparé la liste pour un autre magasin que celui ouvert. | Non |
 | « Liste illisible » | `INVALID_MESSAGE` | L'application, le front et le back ne parlent pas la même version du protocole (une mise à jour manque). | Non : mettre l'application à jour, puis le front si besoin |
 | « Envoi annulé » | `CANCELLED` | L'utilisateur a annulé. | Non |
 
-- **Le site s'affiche en version mobile** (le nom commence par `m-`) : dans l'application, menu → « Se déconnecter de Leclerc et effacer les données du drive », puis rouvrir le drive.
+- **Le message porte une cause entre parenthèses** (agent 0.9.1 et plus récent) : « Le site a changé (SEARCH_NO_STATE) ». Le code dit **quelle vérification** a échoué ; la table « Les causes » plus bas donne le sens. Elle ne contient jamais un morceau de page ni d'adresse, on peut la recopier.
+- **Le site s'affiche en version mobile** (le nom commence par `m-`) : voir § 12.
 - **Le compte Leclerc d'un proche est suspendu ou bloqué** : couper aussitôt pour tous (§ 4). Les conditions de Leclerc permettent à l'enseigne de suspendre un compte en cas d'usage jugé abusif. Le proche contacte lui-même le service client de Leclerc ; Repas ne contacte jamais Leclerc.
 - **Un `429` `DRIVE_RATE_LIMITED` vient de Repas, pas de Leclerc** (DRV-615) : le back plafonne par utilisateur les écritures du drive (60 par minute) et la lecture des plans et estimations (120 par minute). Un usage normal n'y arrive jamais ; si quelqu'un le voit, attendre une minute suffit (aucune donnée n'est perdue : la demande refusée n'a rien enregistré). À ne pas confondre avec `BLOCKED`, qui est le refus de Leclerc. Rien à couper ni à corriger côté Leclerc ; si un compte le déclenche en boucle, regarder qui (script, application bloquée dans une boucle de nouvelle tentative) avant de désactiver le compte (ADR 0021).
 - **Le back ne voit rien** : il ne contacte jamais Leclerc et n'enregistre ni plan ni résultat dans ses journaux ([`architecture.md`](architecture.md) § 10). Le serveur n'a donc aucun signal de panne : la détection vient des messages de l'agent, du diagnostic et de ce que disent les utilisateurs.
+
+### Les causes (entre parenthèses dans le message, ou « cause … » dans le diagnostic)
+
+Source : `drive-agent/src/leclerc/causes.ts` du dépôt front (agent 0.9.1 et plus récent). Un code `HTTP_<nombre>` dit que le site a répondu ce code HTTP à une requête que l'agent n'attendait pas (le nombre seulement, jamais le texte de la réponse).
+
+| Cause | Ce que ça dit | Que faire |
+|---|---|---|
+| `SEARCH_NO_STATE`, `SEARCH_PRODUCTS_UNREADABLE` | La page de recherche n'a plus l'état embarqué du magasin, ou ses produits ont des champs renommés | **Leclerc a changé** : diagnostic (§ 3) puis § 7 |
+| `SEARCH_REDIRECTED`, `LOGIN_REDIRECT`, `LOGIN_FORM` | La recherche a été remplacée par une autre page, ou par la page de connexion | Se reconnecter à Leclerc ; si ça revient, le diagnostic |
+| `SESSION_VISITOR` | La page est celle d'un visiteur non connecté (code `NOT_LOGGED_IN`) | Se reconnecter à Leclerc dans l'application, puis relancer |
+| `CART_NOT_JSON`, `CART_NO_EVENTS`, `CART_NO_CART_EVENT`, `CART_NO_PRODUCT_LIST`, `CART_QUANTITY_UNREADABLE` | La réponse du panier n'a pas la forme attendue : Leclerc a changé, ou refuse l'ajout (produit indisponible, limite d'achat : hypothèse H9) | Si c'est un seul produit, le passer ; si c'est partout, **Leclerc a changé** : le test automatique (§ 3.2) |
+| `HTTP_400` (recherche) | La recherche est demandée sur un chemin que le site refuse | § 11 |
+| `HTTP_404` | Page introuvable | § 11 ; vérifier l'adresse ouverte |
+| `REQUEST_TIMEOUT` | Leclerc n'a pas répondu dans les 20 s (code `NETWORK`) | Réessayer plus tard ; réseau du téléphone |
+| `CHALLENGE` | Page de vérification de l'anti-robot (code `BLOCKED`) | § 13 |
+| `PAGE_HOST`, `PAGE_PATH` | La page n'est pas sur `leclercdrive.fr`, ou son adresse n'est pas celle d'un magasin | Ouvrir son magasin (§ 11) |
+| `PAGE_MOBILE` | Le site mobile, pas la version ordinateur | § 12 |
+| `SEARCH_COMMON_EMPTY`, `SEARCH_FIELDS_INCOMPLETE`, `CONTENT_UNREADABLE` | Contrôles du diagnostic : aucun produit pour le mot d'essai, produits sans tous leurs champs, contenu net illisible | **Leclerc a changé** (§ 3.3) |
+| `EXCEPTION` | Incident imprévu de l'agent (jamais son message) | Ouvrir une issue avec le rapport du diagnostic |
 
 ## 2. Avant de commencer
 
@@ -66,6 +86,8 @@ Lecture du rapport (chaque ligne : `OK`, `KO` avec un code, ou `NON TESTÉ`) :
 | **Recherche d'un mot courant** | **Le contrôle qui décide.** `KO CONTRACT_CHANGED` ou « aucun produit lu » / « seulement N produits avec tous les champs attendus » : **Leclerc a changé**. `KO BLOCKED` : anti-robot. `KO NOT_LOGGED_IN` : se reconnecter. `KO NETWORK` : réseau. |
 | Contenu net des produits | « seulement N produits sur M » : le contenu net n'est plus lu ; l'envoi marche mais demande la quantité ligne par ligne. Dégradé, à corriger (§ 7). |
 | Cadre de même origine | `NON TESTÉ` est normal (le choix du produit se fait dans la liste de l'agent, le site refuse les cadres). |
+| **Requêtes du diagnostic** (agent 0.15.0) | Ligne de nombres : requêtes, erreurs, blocages, délais dépassés, réponses lentes, pause la plus longue (ms). Voir § 14. Information, jamais `KO`. |
+| **Sondes du site** (agent 0.10.0) | Des formes, des noms et des nombres (adresse d'arrivée, code HTTP et taille de la recherche, formes de requête essayées « HTTP : a=… b=… », connexion lue). Elles servent à la personne qui corrige (§ 7), pas à décider ; elles ne contiennent aucune valeur du site. |
 
 ### 3.2 Le test automatique de l'application de débogage (pour confirmer l'écriture au panier)
 
@@ -156,6 +178,7 @@ Dans le dépôt front : `make agent-test`, `make agent-e2e` (agent construit con
 
 ### 7.4 Publier la nouvelle application
 
+0. **Si le protocole a changé, publier d'abord le front.** Le site web valide chaque résultat de l'agent et **rejette le message entier** s'il porte un champ qu'il ne connaît pas : le front répond « Réponse incomprise » et n'enregistre rien. Quand un changement ajoute un champ ou un code à `drive-agent/protocol/` (par exemple le champ `stats` de l'agent 0.15.0), l'humain publie **la release du front** (`vX.Y.Z` de `kcharignon/repas-front`, approbation du déploiement) **avant** l'étiquette `android-vX.Y.Z` de l'application qui embarque le nouvel agent. Le site se charge dans l'application à chaque ouverture : le déployer met à jour toutes les applications déjà installées. Concrètement pour l'agent 0.15.0 : le front `v0.5.2` puis `android-v0.1.5` (numéros décidés par l'humain). Vérifier avant la deuxième étape que le site en production a bien la nouvelle version ([`../production.md`](../production.md), « Contrôles »). Règle : [`architecture.md`](architecture.md) § 12.
 1. **L'humain décide de l'étiquette** `android-vX.Y.Z` (un numéro plus grand que le précédent ; le compteur de version ne baisse jamais, sinon plus de mise à jour par-dessus). Ni un agent ni l'assistant ne la crée.
 2. Le workflow construit l'APK **signé** avec la clé de l'utilisateur (secrets GitHub posés par lui, jamais vus par un agent), calcule son SHA-256 et publie la release avec `repas-drive.apk`, `repas-drive.apk.sha256` et `version.json` (ticket DRV-315, dépôt front). Tant que DRV-315 n'est pas fait, la publication signée n'existe pas : seules les pré-versions de débogage sont possibles.
 3. **Vérifier l'empreinte** du fichier téléchargé : `sha256sum repas-drive.apk` doit donner la valeur de `repas-drive.apk.sha256`.
@@ -164,6 +187,8 @@ Dans le dépôt front : `make agent-test`, `make agent-e2e` (agent construit con
 ### 7.5 Version minimale de l'agent : elle n'existe pas
 
 Le ticket DRV-402 prévoyait une constante `MIN_AGENT_VERSION` et une fonction `isAgentCompatible` pour refuser les résultats d'un agent trop ancien ; **elles n'ont pas été écrites** (vérifié le 2026-10-18 : `git grep MIN_AGENT_VERSION` ne trouve rien dans le front, et DRV-403 a retenu à la place le drapeau `drive` de `app.info`, qui dit seulement si l'agent est présent et intact). Il n'y a donc rien à relever après une correction : un téléphone qui n'a pas encore mis l'application à jour envoie un plan à l'ancien agent, qui s'arrête proprement (`CONTRACT_CHANGED` ou `INVALID_MESSAGE`) sans rien abîmer. Si on veut un jour que Repas refuse un agent trop ancien, il faut d'abord écrire cette fonction (nouveau ticket, côté front), puis la relever à chaque correction **après** avoir publié l'application, pas avant, sinon tout le monde est refusé.
+
+L'ordre de publication du § 7.4 (étape 0) est ce qui évite le cas inverse : un agent récent dont le front ne comprend pas le résultat.
 
 ### 7.6 Faire réinstaller
 
@@ -205,4 +230,36 @@ Si l'anti-robot bloque encore (`BLOCKED`) : ne pas rallumer pour tout le monde ;
 ## 11. Symptôme « HTTP 400 » ou « Page introuvable » (recette du 2026-10-18)
 
 - **Le diagnostic dit « Recherche d'un mot courant : CONTRACT_CHANGED, cause HTTP_400 »** : la recherche est demandée sur un chemin que le site refuse (page de départ sans suffixe de ville). Lance le diagnostic depuis une vraie page du magasin (« Commencer mes courses », puis une recherche du site) et lis les lignes « Chemin avec ville tiré de la page » et « HTTP : a=… b=… » (une ligne par forme essayée) : celle qui répond 200 est la forme à utiliser. Voir `hypotheses-site-reel.md` § 8.
-- **Une page « Désolé, la page demandée n'a pas pu être trouvée » à l'ouverture d'un envoi** : l'adresse ouverte n'est pas celle d'un magasin ; l'application doit ouvrir `https://www.leclercdrive.fr/` (pas la racine du serveur du magasin). Le bandeau « Cette page n'est pas celle de ton magasin » et le bouton « Ouvrir l'accueil du drive » sont le repli.
+- **Une page « Désolé, la page demandée n'a pas pu être trouvée » à l'ouverture d'un envoi** : l'adresse ouverte n'est pas celle d'un magasin ; l'application doit ouvrir `https://www.leclercdrive.fr/` (`NavigationPolicy.START_URL`, application `android-v0.1.4` et plus récentes ; les versions plus anciennes ouvraient `/magasin-N-N/` puis la racine du serveur du magasin, deux pages 404 du vrai site, § 8 de `hypotheses-site-reel.md`). Cette page est l'accueil de l'enseigne : l'utilisateur touche « Commencer mes courses » **à la main** (un bandeau le lui dit) et l'agent démarre tout seul sur la page du magasin. Le bandeau « Cette page n'est pas celle de ton magasin » et le bouton « Ouvrir l'accueil du drive » sont le repli quand le site refuse la page (statut 4xx ou 5xx), tarde (25 s) ou la sert sans agent (10 s). **Application plus ancienne que `android-v0.1.4`** : l'envoi s'ouvre sur une page 404 ; la mettre à jour.
+
+## 12. Symptôme « Leclerc affiche son site mobile » (agent 0.14.0, PR front #137)
+
+Le site mobile de Leclerc (`m-courses.leclercdrive.fr`) n'a pas les routes du site ordinateur : sa recherche répond 200 sans produit (DRV-011). L'application met donc la WebView du drive en **mode ordinateur** ; si Leclerc sert quand même le site mobile, l'agent et l'application le refusent tout de suite au lieu d'échouer plus loin.
+
+- **Ce qu'on voit** : sur l'écran du drive, le bandeau « Leclerc affiche son site mobile : ce n'est pas la version ordinateur du site, et Repas ne peut pas y agir » avec le bouton « Ouvrir l'accueil du drive » ; ou, si l'agent est lancé sur cette page, l'erreur « Ce n'est pas la version ordinateur du site » (code `UNSUPPORTED_PAGE`, cause `PAGE_MOBILE`) ; le diagnostic écrit « site mobile (pas la version ordinateur) » à la ligne « Hôte » du rapport, et « Page prise en charge » est `KO` (`UNSUPPORTED_PAGE`, cause `PAGE_MOBILE`). La lecture du magasin ne rend jamais un hôte mobile : le magasin enregistré ne peut plus être faussé par ce site.
+- **Ce n'est pas une panne de Leclerc** : ne pas couper pour tous. L'envoi n'a rien écrit.
+- **Que faire** : toucher « Ouvrir l'accueil du drive » (recharge l'accueil de l'enseigne), puis « Commencer mes courses ». Si le site mobile revient : menu du drive (**⋮**) → « Se déconnecter de Leclerc et effacer les données du drive », puis rouvrir le drive et se reconnecter. Si le bandeau revient à chaque fois, ouvrir une issue avec le rapport du diagnostic (version de l'application, ligne « Hôte »).
+- **Piège à ne pas confondre** : « Ouvrir dans le navigateur » (menu du drive) ouvre Chrome sur le site **mobile** `m-courses`, sans la session de l'application. C'est normal et sans rapport avec l'envoi.
+- **Avant l'agent 0.14.0** (applications `android-v0.1.4` et plus anciennes) : le site mobile n'était pas reconnu ; un envoi se terminait par « Ce n'est pas le bon magasin » ou « Le site a changé », et, d'après l'analyse de l'hypothèse H11 (jamais observé), la lecture du magasin aurait pu enregistrer un hôte mobile. Si un magasin enregistré a un hôte commençant par `m-`, le refaire lire dans une application récente.
+
+## 13. La page de vérification de l'anti-robot : « Leclerc demande une vérification » (agent 0.13.0, PR front #136)
+
+Leclerc protège son site par un anti-robot (DataDome). Quand il doute, il peut servir une **page de vérification** à la place de la réponse attendue. **La forme réelle de cette page n'a jamais été mesurée** (hypothèse H13).
+
+- **Ce qu'on voit** : un bandeau en bas de l'écran du drive, « Leclerc demande une vérification », avec deux boutons « Reprendre » et « Arrêter ». La page de Leclerc reste visible et touchable derrière. Le message d'arrêt, lui, dit « Leclerc a ralenti les requêtes (CHALLENGE) ». Côté application, un bandeau du même titre apparaît aussi quand c'est la page d'ouverture qui répond 403 ou 429 : l'application laisse alors la page visible.
+- **Que faire** :
+  1. **Faire la vérification** dans la page de Leclerc, avec son doigt. Ne pas insister si elle se représente en boucle.
+  2. Toucher **« Reprendre »** : l'agent refait la ligne en cours (ou les lignes qui attendaient). Ce qui est déjà au panier n'est pas touché.
+  3. Si la page se recharge, l'agent propose de reprendre où il s'était arrêté : accepter.
+  4. Si rien ne s'affiche, ou si la vérification revient plusieurs fois : toucher **« Arrêter »** (le résultat est « partiel », `BLOCKED`, cause `CHALLENGE`), attendre **plusieurs heures** et réessayer **une seule fois**. Ne pas changer de réseau pour contourner.
+- **Quand couper pour tous** : comme pour `BLOCKED` (§ 1 et § 3.3) : plusieurs personnes touchées, ou plus d'un jour. Noter dans le journal du § 10 l'étape où le défi est apparu (sans donnée personnelle), c'est le relevé qui manque à H13.
+- **À ne pas confondre** : un 403 ou 429 **sans** page de vérification est retenté une fois ; deux de suite arrêtent le passage (`BLOCKED` sans cause). Un délai dépassé (20 s sans réponse) est une erreur réseau (`NETWORK`, cause `REQUEST_TIMEOUT`), pas un blocage.
+
+## 14. Les compteurs d'un passage (agent 0.15.0, PR front #138)
+
+Pour savoir combien de requêtes un vrai passage envoie et à partir de quand Leclerc ralentit (hypothèse H12), l'agent compte, **en nombres seulement** (jamais une adresse ni un contenu) :
+
+- **Dans le diagnostic** : la ligne « Requêtes du diagnostic : N (erreurs E, blocages B, délais dépassés D, réponses lentes L), pause la plus longue P ms ». À coller avec le rapport.
+- **Dans le résultat d'un envoi** : le champ facultatif `stats: {requests, errors, blocks}` ([`architecture.md`](architecture.md) § 8). Il n'est visible que dans le rapport de résultat de l'application de **débogage** (« Requêtes : N (erreurs E, blocages B) ») ; le back ne le reçoit pas et l'application signée ne l'affiche pas.
+
+Lecture : `erreurs` > 0 : réseau ou réponses d'erreur du site ; `blocages` > 0 : l'anti-robot a refusé (§ 13) ; « réponses lentes » > 0 ou pause la plus longue au-delà de 1 500 ms (800 ms plus la gigue maximale de 700 ms : une pause plus longue vient d'un ralentissement) : Leclerc a ralenti et l'agent a **espacé** ses requêtes tout seul (jusqu'à 3 000 ms de pause, puis retour à 800 ms à mesure que les réponses redeviennent rapides ; seuils **non mesurés** sur le vrai site, `architecture.md` § 8). À noter à chaque recette dans la fiche de `hypotheses-site-reel.md` § 7 (ligne 13) : nombre de lignes, durée, ces compteurs. Aucune valeur de ces compteurs n'est une limite connue de Leclerc.
