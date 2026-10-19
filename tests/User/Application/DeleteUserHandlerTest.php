@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Repas\Shared\Domain\Event\UserDeletedEvent;
 use Repas\Tests\Helper\Builder\UserBuilder;
 use Repas\Tests\Helper\InMemoryRepository\EmailVerificationTokenInMemoryRepository;
+use Repas\Tests\Helper\InMemoryRepository\PasswordResetTokenInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\RefreshTokenInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\SpyEventDispatcher;
 use Repas\Tests\Helper\InMemoryRepository\UserInMemoryRepository;
@@ -15,6 +16,7 @@ use Repas\User\Application\DeleteUser\DeleteUserCommand;
 use Repas\User\Application\DeleteUser\DeleteUserHandler;
 use Repas\User\Domain\Exception\UserException;
 use Repas\User\Domain\Model\EmailVerificationToken;
+use Repas\User\Domain\Model\PasswordResetToken;
 use Repas\User\Domain\Model\RefreshToken;
 use Repas\User\Domain\Model\User;
 
@@ -24,6 +26,7 @@ class DeleteUserHandlerTest extends TestCase
     private UserInMemoryRepository $userRepository;
     private RefreshTokenInMemoryRepository $refreshTokenRepository;
     private EmailVerificationTokenInMemoryRepository $emailVerificationTokenRepository;
+    private PasswordResetTokenInMemoryRepository $passwordResetTokenRepository;
     private SpyEventDispatcher $eventDispatcher;
     private DeleteUserHandler $handler;
 
@@ -33,8 +36,9 @@ class DeleteUserHandlerTest extends TestCase
         $this->userRepository = new UserInMemoryRepository();
         $this->refreshTokenRepository = new RefreshTokenInMemoryRepository();
         $this->emailVerificationTokenRepository = new EmailVerificationTokenInMemoryRepository();
+        $this->passwordResetTokenRepository = new PasswordResetTokenInMemoryRepository();
         $this->eventDispatcher = new SpyEventDispatcher();
-        $this->handler = new DeleteUserHandler($this->userRepository, $this->refreshTokenRepository, $this->emailVerificationTokenRepository, $this->eventDispatcher);
+        $this->handler = new DeleteUserHandler($this->userRepository, $this->refreshTokenRepository, $this->emailVerificationTokenRepository, $this->passwordResetTokenRepository, $this->eventDispatcher);
     }
 
     public function testTheAccountItsConnectionsAndItsLinksAreDeletedAndTheDeletionIsAnnounced(): void
@@ -45,6 +49,8 @@ class DeleteUserHandlerTest extends TestCase
         $this->refreshTokenRepository->save(RefreshToken::startFamily('token-1', 'family-1', 'user-id', 'hash-1', 0, $this->now));
         $this->refreshTokenRepository->save(RefreshToken::startFamily('token-2', 'family-2', 'other-id', 'hash-2', 0, $this->now));
         $this->emailVerificationTokenRepository->add(EmailVerificationToken::issue('link-1', 'user-id', 'link-hash-1', $this->now));
+        $this->passwordResetTokenRepository->add(PasswordResetToken::issue('reset-1', 'user-id', 'reset-hash-1', $this->now));
+        $this->passwordResetTokenRepository->add(PasswordResetToken::issue('reset-2', 'other-id', 'reset-hash-2', $this->now));
 
         // When
         ($this->handler)(new DeleteUserCommand('user-id', 'admin-id'));
@@ -55,6 +61,8 @@ class DeleteUserHandlerTest extends TestCase
         $this->assertNull($this->refreshTokenRepository->findOneByTokenHash('hash-1'));
         $this->assertNotNull($this->refreshTokenRepository->findOneByTokenHash('hash-2'));
         $this->assertNull($this->emailVerificationTokenRepository->findOneByUserId('user-id'));
+        $this->assertNull($this->passwordResetTokenRepository->findOneByUserId('user-id'));
+        $this->assertNotNull($this->passwordResetTokenRepository->findOneByUserId('other-id'));
         $this->assertEquals([new UserDeletedEvent('user-id')], $this->eventDispatcher->eventDispatched);
     }
 

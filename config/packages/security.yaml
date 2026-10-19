@@ -44,6 +44,7 @@ security:
         - { path: ^/api/doc, roles: PUBLIC_ACCESS }
         - { path: ^/api/v1/users$, roles: PUBLIC_ACCESS, methods: [POST] } # inscription
         - { path: ^/api/v1/users/email-verification/(send|confirm)$, roles: PUBLIC_ACCESS, methods: [POST] } # confirmation d'adresse email (ADR 0020)
+        - { path: ^/api/v1/users/password-reset/(send|confirm)$, roles: PUBLIC_ACCESS, methods: [POST] } # mot de passe oublié (ADR 0026)
         - { path: ^/api, roles: ROLE_USER }
 
 when@test:

@@ -64,10 +64,13 @@ use Repas\Tests\Helper\WriteBudgetTestCase;
 use Repas\User\Application\ChangeUserStatus\ChangeUserStatusCommand;
 use Repas\User\Application\DeleteUser\DeleteUserCommand;
 use Repas\User\Application\RegisterNewUser\RegisterNewUserCommand;
+use Repas\User\Application\ResetPassword\ResetPasswordCommand;
 use Repas\User\Application\SendEmailVerification\SendEmailVerificationCommand;
+use Repas\User\Application\SendPasswordReset\SendPasswordResetCommand;
 use Repas\User\Application\UpdateUserSettings\UpdateUserSettingsCommand;
 use Repas\User\Application\VerifyEmail\VerifyEmailCommand;
 use Repas\User\Domain\Model\EmailVerificationToken;
+use Repas\User\Domain\Model\PasswordResetToken;
 use Repas\User\Domain\Model\UserStatus;
 
 /**
@@ -330,6 +333,20 @@ return [
         $t->savedEmailVerificationToken($user, 'le-secret');
 
         return new VerifyEmailCommand(EmailVerificationToken::hash('le-secret'));
+    },
+    'mot-de-passe-oublie-demande' => static function (WriteBudgetTestCase $t): object {
+        $user = $t->savedUser(new UserBuilder()->withEmail('oubli@example.com'));
+        $t->savedPasswordResetToken($user, 'ancien-secret', minutesAgo: 5);
+
+        return new SendPasswordResetCommand('oubli@example.com');
+    },
+    // Pire cas : un compte en attente (adresse confirmée par le lien, son lien d'inscription supprimé en plus)
+    'mot-de-passe-oublie-reinitialisation' => static function (WriteBudgetTestCase $t): object {
+        $user = $t->savedUser(new UserBuilder()->isPending());
+        $t->savedEmailVerificationToken($user, 'le-secret-d-inscription');
+        $t->savedPasswordResetToken($user, 'le-secret');
+
+        return new ResetPasswordCommand(PasswordResetToken::hash('le-secret'), 'nouveau-mot-de-passe');
     },
     'reglages-utilisateur' => static function (WriteBudgetTestCase $t): object {
         $user = $t->savedUser();

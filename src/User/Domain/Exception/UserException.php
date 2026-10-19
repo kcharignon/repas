@@ -9,6 +9,7 @@ final class UserException extends DomainException
 {
     public const string INVALID_PASSWORD = 'INVALID_PASSWORD';
     public const string INVALID_EMAIL_VERIFICATION_TOKEN = 'INVALID_EMAIL_VERIFICATION_TOKEN';
+    public const string INVALID_PASSWORD_RESET_TOKEN = 'INVALID_PASSWORD_RESET_TOKEN';
     public const string PROTECTED_ACCOUNT = 'PROTECTED_ACCOUNT';
     public const string CANNOT_DELETE_OWN_ACCOUNT = 'CANNOT_DELETE_OWN_ACCOUNT';
 
@@ -38,6 +39,14 @@ final class UserException extends DomainException
     public static function invalidEmailVerificationToken(): self
     {
         return new self(self::INVALID_EMAIL_VERIFICATION_TOKEN, 422);
+    }
+
+    /**
+     * Lien de réinitialisation du mot de passe inconnu, déjà utilisé, expiré, ou d'un compte désactivé : on ne dit pas lequel (ADR 0026).
+     */
+    public static function invalidPasswordResetToken(): self
+    {
+        return new self(self::INVALID_PASSWORD_RESET_TOKEN, 422);
     }
 
     /**
