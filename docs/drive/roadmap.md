@@ -141,7 +141,7 @@ Références : [`principes-produit.md`](principes-produit.md), [`audit-simplicit
 - [x] [DRV-628](tickets/DRV-628-interface-sans-avertissement.md) front · M · Une interface sans avertissement ni explication superflue : les risques vivent dans une seule page de conditions d'utilisation · dépend de : 626 · PR front #148
 - [x] [DRV-627](tickets/DRV-627-tutoiement.md) front · M · Passer toute la voix de Repas au tutoiement (web, agent 0.23.0, application, aide, conditions d'utilisation) · dépend de : 628 · PR front #150
 - [ ] [DRV-629](tickets/DRV-629-finaliser-et-entrer-par-les-boutons.md) front · M · « Finaliser » vers la page du panier (`detail-panier.aspx`, ville dans le chemin) et entrée par le **bouton** « Commencer mes courses » (constats réels du 2026-10-19) · dépend de : 625
-- [ ] [DRV-630](tickets/DRV-630-emails-du-back-au-tutoiement.md) back · S · E-mail de vérification d'adresse et message de connexion du back au tutoiement (restes du vouvoiement après le front) · dépend de : 627
+- [x] [DRV-630](tickets/DRV-630-emails-du-back-au-tutoiement.md) back · S · E-mail de vérification d'adresse et message de connexion du back au tutoiement (restes du vouvoiement après le front) · dépend de : 627 · PR back #200
 
 ## Backlog (non détaillé, à écrire quand il devient utile)
 
