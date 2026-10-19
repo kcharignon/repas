@@ -7,10 +7,13 @@ use DateTimeImmutable;
 use Psr\Clock\ClockInterface;
 use Repas\Drive\Domain\Exception\DriveException;
 use Repas\Drive\Domain\Interface\ChoiceRepository;
+use Repas\Drive\Domain\Interface\DepartmentRayonRepository;
 use Repas\Drive\Domain\Interface\DriveSettingsRepository;
 use Repas\Drive\Domain\Interface\ProductRepository;
 use Repas\Drive\Domain\Model\Choice;
+use Repas\Drive\Domain\Model\DepartmentRayonChoice;
 use Repas\Drive\Domain\Model\Product;
+use Repas\Shared\Application\Interface\IngredientDepartmentResolver;
 use Repas\Shared\Domain\Interface\UuidGenerator;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
@@ -24,6 +27,8 @@ readonly class SaveProductChoicesHandler
         private DriveSettingsRepository $driveSettingsRepository,
         private ProductRepository $productRepository,
         private ChoiceRepository $choiceRepository,
+        private DepartmentRayonRepository $departmentRayonRepository,
+        private IngredientDepartmentResolver $ingredientDepartments,
         private UuidGenerator $uuidGenerator,
         private ClockInterface $clock,
     ) {
@@ -39,6 +44,12 @@ readonly class SaveProductChoicesHandler
      * requêtes constant, quelle que soit la taille du lot : une lecture des réglages, des produits et des préférences, puis
      * une écriture par table, celle du compteur du jour dans les réglages, et un décompte des préférences quand le lot en crée.
      * L'existence de l'ingrédient n'est pas vérifiée (`Drive` ne connaît pas `Repas`).
+     *
+     * **Apprentissage du rayon (DRV-642)** : chaque `ADD_PRODUCT` dont le produit connaît son rayon dans l'enseigne (donné par
+     * l'agent ou déjà sur la fiche, la fiche faisant foi) compte un choix pour le couple (rayon de Repas de l'ingrédient, rayon de
+     * l'enseigne) dans `drive_department_rayon`, ce qui nourrit les `rayonHints` du plan. Une lecture de plus (les rayons de Repas
+     * des ingrédients, par le port `Shared`) et une écriture de plus, seulement quand un choix porte un rayon ; un ingrédient sans
+     * rayon de Repas connu, un refus et un rafraîchissement de prix n'apprennent rien.
      *
      * @throws DriveException `invalidChoice()` (422) pour un lot, un produit ou une intention hors des bornes, un produit à la
      *                        fois ajouté et refusé pour un ingrédient, plus de 5 produits acceptés ou 20 refusés ;
@@ -100,11 +111,51 @@ readonly class SaveProductChoicesHandler
             $touchedChoices[$slug] = $choice->touch($now);
         }
 
+        $learned = $this->rayonsLearnedFrom($command->intents, $products);
+
         if ($productWrites > 0) {
             $this->driveSettingsRepository->save($settings);
         }
         $this->productRepository->saveAll(array_values($changedProducts));
         $this->choiceRepository->saveAll(array_values($touchedChoices));
+        if ($learned !== []) {
+            $this->departmentRayonRepository->recordChoices($command->retailer, $learned);
+        }
+    }
+
+    /**
+     * Un choix appris par `ADD_PRODUCT` dont le produit connaît son rayon dans l'enseigne, pour un ingrédient dont Repas connaît
+     * le rayon. Le rayon est celui de la fiche (premier écrivain gagnant), pas celui de l'intention : un agent qui se trompe ne
+     * fausse pas l'apprentissage d'un produit déjà connu. Aucune lecture quand aucun choix ne porte de rayon.
+     *
+     * @param list<ChoiceIntent> $intents
+     * @param array<string, Product> $products par identifiant chez l'enseigne, déjà complétés
+     *
+     * @return list<DepartmentRayonChoice>
+     */
+    private function rayonsLearnedFrom(array $intents, array $products): array
+    {
+        $candidates = [];
+        foreach ($intents as $intent) {
+            $rayonId = $intent->action === ChoiceAction::ADD_PRODUCT ? $products[$intent->product->retailerProductId]->getRayonId() : null;
+            if ($rayonId !== null) {
+                $candidates[] = [$intent->ingredientSlug, $rayonId];
+            }
+        }
+        if ($candidates === []) {
+            return [];
+        }
+
+        $departments = $this->ingredientDepartments->departmentSlugsByIngredient(array_values(array_unique(array_column($candidates, 0))));
+
+        $learned = [];
+        foreach ($candidates as [$ingredientSlug, $rayonId]) {
+            if (isset($departments[$ingredientSlug])) {
+                $learned[] = new DepartmentRayonChoice($departments[$ingredientSlug], $rayonId);
+            }
+        }
+
+        return $learned;
     }
 
     /**

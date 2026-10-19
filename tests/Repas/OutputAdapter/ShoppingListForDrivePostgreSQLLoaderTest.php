@@ -9,6 +9,7 @@ use Repas\Repas\Domain\Model\ShoppingListStatus;
 use Repas\Shared\Application\Dto\ShoppingListForDrive;
 use Repas\Shared\Application\Dto\ShoppingListLineForDrive;
 use Repas\Shared\Application\Interface\ShoppingListForDriveLoader;
+use Repas\Tests\Helper\Builder\DepartmentBuilder;
 use Repas\Tests\Helper\Builder\IngredientBuilder;
 use Repas\Tests\Helper\Builder\ShoppingListBuilder;
 use Repas\Tests\Helper\Builder\UnitBuilder;
@@ -41,7 +42,7 @@ class ShoppingListForDrivePostgreSQLLoaderTest extends DatabaseTestCase
         $milk = new IngredientBuilder()->isMilk()->build();
         $egg = new IngredientBuilder()->isEgg()->build();
         $pasta = new IngredientBuilder()->isPasta()->build();
-        $salt = new IngredientBuilder()->isMilk()->withSlug('sel')->withName('sel')->withDefaultPurchaseUnit(new UnitBuilder()->isSoupSpoon())->build();
+        $salt = new IngredientBuilder()->isMilk()->withSlug('sel')->withName('sel')->withDepartment(new DepartmentBuilder()->isConserve())->withDefaultPurchaseUnit(new UnitBuilder()->isSoupSpoon())->build();
         $builder = new ShoppingListBuilder()->withId('list-1')->withOwner($owner)->withVersion(3);
         foreach ([$salt, $pasta, $egg, $milk] as $ingredient) {
             $this->persister->saveIngredient($ingredient);
@@ -59,10 +60,10 @@ class ShoppingListForDrivePostgreSQLLoaderTest extends DatabaseTestCase
         $this->assertSame(['lait', 'oeuf', 'pate', 'sel'], array_map(static fn(ShoppingListLineForDrive $line): string => $line->ingredientSlug, $result->lines));
         $this->assertEquals(
             [
-                new ShoppingListLineForDrive('lait', 'lait', 1.0, 'litre', 'litre', 'l', 'VOLUME', 1000.0),
-                new ShoppingListLineForDrive('oeuf', 'œuf', 1.0, 'unite', 'unité', '', 'COUNT', 1.0),
-                new ShoppingListLineForDrive('pate', 'pate', 500.0, 'gramme', 'gramme', 'g', 'WEIGHT', 1.0),
-                new ShoppingListLineForDrive('sel', 'sel', 1.0, 'cuillere-a-soupe', 'cuillère à soupe', 'cuillère à soupe', null, null),
+                new ShoppingListLineForDrive('lait', 'lait', 1.0, 'litre', 'litre', 'l', 'VOLUME', 1000.0, 'divers'),
+                new ShoppingListLineForDrive('oeuf', 'œuf', 1.0, 'unite', 'unité', '', 'COUNT', 1.0, 'divers'),
+                new ShoppingListLineForDrive('pate', 'pate', 500.0, 'gramme', 'gramme', 'g', 'WEIGHT', 1.0, 'cereale'),
+                new ShoppingListLineForDrive('sel', 'sel', 1.0, 'cuillere-a-soupe', 'cuillère à soupe', 'cuillère à soupe', null, null, 'conserve'),
             ],
             $result->lines,
         );

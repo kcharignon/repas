@@ -59,7 +59,7 @@ final readonly class ShoppingListForDrivePostgreSQLLoader implements ShoppingLis
         $rows = $this->entityManager->createQueryBuilder()
             ->select(
                 'r.quantity AS quantity',
-                'i.slug AS ingredientSlug', 'i.name AS ingredientName',
+                'i.slug AS ingredientSlug', 'i.name AS ingredientName', 'i.departmentSlug AS departmentSlug',
                 'u.slug AS unitSlug', 'u.name AS unitName', 'u.symbol AS unitSymbol', 'u.dimension AS unitDimension', 'u.baseFactor AS unitBaseFactor',
             )
             ->from(ShoppingListRow::class, 'r')
@@ -86,6 +86,7 @@ final readonly class ShoppingListForDrivePostgreSQLLoader implements ShoppingLis
                     unitSymbol: $row['unitSymbol'],
                     unitDimension: $dimension?->value,
                     unitBaseFactor: $row['unitBaseFactor'] === null ? null : (float) $row['unitBaseFactor'],
+                    departmentSlug: $row['departmentSlug'],
                 );
             },
             $rows,

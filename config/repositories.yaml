@@ -55,3 +55,7 @@ services:
     Repas\Drive\Domain\Interface\ChoiceRepository:
         alias: 'Repas\Drive\Infrastructure\Repository\ChoicePostgreSQLRepository'
         public: true
+
+    Repas\Drive\Domain\Interface\DepartmentRayonRepository:
+        alias: 'Repas\Drive\Infrastructure\Repository\DepartmentRayonPostgreSQLRepository'
+        public: true

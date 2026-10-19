@@ -5,7 +5,8 @@ namespace Repas\Shared\Application\Dto;
 
 /**
  * Ligne d'une liste de courses vue par le contexte `Drive` : l'ingrédient et l'unité d'achat, avec la dimension et le
- * facteur de base de l'unité (nuls pour une unité qui ne se convertit pas : cuillère, tranche…).
+ * facteur de base de l'unité (nuls pour une unité qui ne se convertit pas : cuillère, tranche…), et le rayon de Repas de
+ * l'ingrédient (celui qui groupe la liste de courses ; DRV-642 en tire le rayon de l'enseigne où le chercher).
  */
 final readonly class ShoppingListLineForDrive
 {
@@ -20,6 +21,8 @@ final readonly class ShoppingListLineForDrive
         /** Valeur de `Shared\Domain\Model\Dimension`, null si l'unité n'en a pas. */
         public ?string $unitDimension,
         public ?float $unitBaseFactor,
+        /** Slug du rayon de Repas de l'ingrédient ; null si l'on ne le connaît pas (jamais dans la base : la colonne est obligatoire). */
+        public ?string $departmentSlug = null,
     ) {
     }
 }
