@@ -4,7 +4,9 @@ Chantier « envoyer la liste de courses au drive Leclerc » ([ADR 0022](../../..
 
 **Se déroule avec l'utilisateur, une étape par message** (SKILL.md §0). Pour chaque étape : le but en une phrase, ce qu'il doit voir si ça marche, puis on attend son résultat. Définir chaque mot nouveau (interrupteur, migration, sauvegarde). Il n'est pas devops.
 
-**Ce que je ne fais jamais** : approuver un déploiement, créer une release (`vX.Y.Z`) ou une étiquette `android-vX.Y.Z`, allumer `DRIVE_ENABLED`, toucher un secret GitHub ou la clé de signature de l'application, contacter Leclerc (ni `curl`, ni navigateur, ni depuis le serveur). Je prépare, j'explique, je vérifie en lecture seule ; les écritures sont des scripts que l'utilisateur lance (`!`). Aucun secret dans le chat.
+**Depuis le 2026-10-20 (phase bêta, jusqu'à la 1.0.0)** : plus d'approbation du déploiement ; je crée moi-même les releases (`vX.Y.Z`, `android-vX.Y.Z`) et le déploiement part quand la CI est verte (ADR 0017). Les points ci-dessous qui disent « l'utilisateur publie la release, approuve » sont l'historique.
+
+**Ce que je ne fais jamais** : allumer `DRIVE_ENABLED`, toucher un secret GitHub ou la clé de signature de l'application, contacter Leclerc (ni `curl`, ni navigateur, ni depuis le serveur). Je prépare, j'explique, je vérifie en lecture seule ; les écritures sont des scripts que l'utilisateur lance (`!`). Aucun secret dans le chat.
 
 ## A. Mettre la fonction en production (interrupteur coupé)
 
