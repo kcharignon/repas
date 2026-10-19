@@ -66,7 +66,7 @@ Ordre conseillé : 621 d'abord (aucun risque, tout le reste en dépend pour les 
 
 ## 6. État après DRV-621 à 624 (2026-10-19)
 
-Les quatre tickets sont fusionnés dans le front (`main`, agent 0.19.0 ; 0.20.0 avec DRV-626, voir plus bas) et pas encore publiés : le front web (v0.5.2) avant l'application (android-v0.1.5). Les constats F1 et F4 à F12 sont traités (F13 pour les libellés), **F2, F3 et F16 restent à DRV-625**, qui attend la vérification humaine sur le téléphone ; F14 et F15 sont au backlog.
+Les quatre tickets sont fusionnés dans le front (`main`, agent 0.19.0 ; 0.20.0 avec DRV-626, voir plus bas) et pas encore publiés : le front web (v0.5.2) avant l'application (android-v0.1.5). Les constats F1 et F4 à F12 sont traités (F13 pour les libellés), **F2, F3 et F16 sont traités par DRV-625** (fait le 2026-10-19, voir plus bas) ; F14 et F15 sont au backlog.
 
 | Constat | État | Par |
 |---|---|---|
@@ -79,6 +79,8 @@ Les quatre tickets sont fusionnés dans le front (`main`, agent 0.19.0 ; 0.20.0 
 | F13 menu de l'application | fait pour les libellés ; « Diagnostic de l'agent » reste (voir DRV-621) | DRV-621 |
 
 **Touches du parcours heureux après ces tickets** (premier envoi, 6 articles dont 4 nouveaux ; recompte de la revue du § 7 : 11 touches = 7 fixes + 4 choix) : les touches fixes ne changent pas avant DRV-625 ; les nouveaux articles passent de « 4 à 8 » à **« 3 à 4 »** (choisir les 4 : 4 ; choisir le premier et passer les 3 suivants : 3 ; une seule réponse à « Toujours prendre ce produit ? » au lieu de trois quand on remplace un produit retenu). Premier enregistrement du magasin : 2 touches au lieu de 3. Deuxième envoi, tout connu : toujours 7 (objectif 5 par DRV-625).
+
+**Après DRV-625** (front `main` `0cb6437`, agent 0.22.0, publié dans `v0.5.4` et `android-v0.1.7`) : F2 (« Commencer mes courses » suivi par l'agent, repli sur le bandeau court), F3 (retour sans écran de fin) et F16 (« Finaliser sur Leclerc » ouvre le drive dans l'application, connecté) sont traités. **Deuxième envoi, tout connu : 5 touches** (7 avant) : Envoyer au drive, Confirmer, Ouvrir le drive, Commencer, Finaliser. Reste `BASKET_PATH` (page du panier) : les sondes du diagnostic en relèveront la forme.
 
 À relever à la prochaine recette réelle (`recette.md`, 6.4, 7.4 et 7.6) : le choix du produit du premier coup, le nombre de touches mesuré, et si « Passer ces n articles » est compris.
 
