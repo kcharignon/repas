@@ -5,7 +5,7 @@
 - **Taille** : S
 - **Dépend de** : —
 - **Faisable sans téléphone** : oui
-- **Statut** : à faire
+- **Statut** : fait (2026-10-19 : D1 oui, D2 Gmail seulement, D3 on attend « mot de passe oublié », D4 non, D5 hors lot + tronc commun Kotlin ; ADR 0024 `Accepted`)
 - **Lire d'abord** : [`../connexion-google.md`](../connexion-google.md) § 0 et § 4.4 ; [ADR 0024](../../adr/0024-connexion-avec-google.md) ; skill `repas-po` (une question précise, un défaut raisonnable) ; mémoire « Rôle sur le chantier » (l'utilisateur n'est pas anglophone natif).
 
 ## Contexte
