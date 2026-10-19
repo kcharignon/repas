@@ -53,6 +53,7 @@ Ordre conseillé : 621 d'abord (aucun risque, tout le reste en dépend pour les 
 
 - **Vouvoiement partout** (voir `principes-produit.md` § 3).
 - **Le magasin lu par l'agent est enregistré par ce seul geste** (DRV-623) : la même validation côté serveur (hôte autorisé) vaut qu'on saisisse l'adresse à la main ou qu'on la lise ; un résultat falsifié par la page ne peut qu'enregistrer un autre magasin Leclerc, ce que l'utilisateur voit et corrige dans « Moi ».
+- **« Passer les n suivants » demande une ligne de confirmation** quand un des articles passés n’a encore aucun produit retenu (DRV-624) : passer un article jamais choisi le retire de la commande, et un toucher de travers sur un bouton voisin suffirait. Un envoi de 4 nouveaux articles coûte donc 3 touches (choisir, passer, confirmer), pas 2. Retirer la confirmation : une ligne (`confirmRest`, voir le ticket). Réversible.
 - **La notion de produit « de secours » reste dans le serveur** (ordre de préférence) ; elle disparaît des écrans : un nouveau produit « toujours » passe en tête, les anciens suivent en remplacement.
 - **Sous 50 % de couverture, l'estimation du total reste masquée** (« Estimation peu fiable ») tant que l'utilisateur ne décide pas autrement ; ce n'est pas un enjeu de simplicité.
 
@@ -61,3 +62,21 @@ Ordre conseillé : 621 d'abord (aucun risque, tout le reste en dépend pour les 
 - Parcours de 7 touches du deuxième envoi (objectif 5) : à recompter après DRV-625 (recette réelle, partie 6).
 - Essai d'un proche, seul, sans explication (voir `principes-produit.md` § 7) : ce qui le fait hésiter s'ajoute au tableau des constats.
 - Premier envoi d'un proche : le magasin à choisir et la connexion à Leclerc restent les deux seuls gestes préalables ; vérifier qu'aucun ne demande de réglage dans « Moi » (règle 6).
+
+## 6. État après DRV-621 à 624 (2026-10-19)
+
+Les quatre tickets sont fusionnés dans le front (`main`, agent 0.19.0) et pas encore publiés : le front web (v0.5.2) avant l'application (android-v0.1.5). Les constats F1 et F4 à F12 sont traités (F13 pour les libellés), **F2, F3 et F16 restent à DRV-625**, qui attend la vérification humaine sur le téléphone ; F14 et F15 sont au backlog.
+
+| Constat | État | Par |
+|---|---|---|
+| F1 deux boutons pour le magasin | fait : « Utiliser ce magasin », une seule fois | DRV-623 |
+| F4, F5, F12 mots et voix | fait : vouvoiement partout, glossaire gardé par `voice-and-glossary.spec.ts`, « Moi » | DRV-621 |
+| F6, F9, F10 récapitulatif, erreurs, textes longs | fait : titre = résultat, compteurs non nuls, erreurs en trois phrases, code sous « Détails » | DRV-622 |
+| F7 « Que faites-vous de ce produit ? » | fait : « Toujours prendre ce produit ? », deux boutons | DRV-624 |
+| F8 aucun moyen de passer les suivants | fait : « Passer les n suivants » (3 touches pour 4 nouveaux articles, 2 si la confirmation ne s'applique pas) | DRV-624 |
+| F11 magasin manquant = message | fait : « Choisissez votre magasin », bouton « Choisir mon magasin » | DRV-622, DRV-623 |
+| F13 menu de l'application | fait pour les libellés ; « Diagnostic de l'agent » reste (voir DRV-621) | DRV-621 |
+
+**Touches du parcours heureux après ces tickets** (premier envoi, 6 articles dont 4 nouveaux) : les 8 touches fixes sont inchangées (rien de ce qui précède l'agent ne change avant DRV-625) ; les nouveaux articles passent de « 4 à 8 » à **« 3 à 4 »** (choisir les 4 : 4 ; choisir le premier et passer les 3 suivants : 3 ; une seule réponse à « Toujours prendre ce produit ? » au lieu de trois quand on remplace un produit retenu). Premier enregistrement du magasin : 2 touches au lieu de 3. Deuxième envoi, tout connu : toujours 7 (objectif 5 par DRV-625).
+
+À relever à la prochaine recette réelle (`recette.md`, 6.4, 7.4 et 7.6) : le choix du produit du premier coup, le nombre de touches mesuré, et si « suivants » est compris.
