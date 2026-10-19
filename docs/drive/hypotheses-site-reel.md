@@ -362,3 +362,13 @@ Mesurés avec les sondes du diagnostic (DRV-625) et des touches à la main ; for
 | Connexion | e-mail, puis mot de passe, avec une case hCaptcha à cocher par une personne |
 
 **Conséquences** : (1) `BASKET_PATH` est `detail-panier.aspx`, à ajouter au chemin du magasin **avec la ville**, que seule la page donne (ticket DRV-629) ; (2) l'entrée sans geste de DRV-625 doit **cliquer le bouton** « Commencer mes courses » (il n'a pas d'adresse), avec repli sur le geste manuel.
+
+## 11. Constats du 2026-10-19 après-midi (Pixel 6, compte d'essai, application `android-v0.1.8`, agent 0.24.0)
+
+| Constat | Valeur mesurée |
+|---|---|
+| Clic programmé sur « Commencer mes courses » (DRV-629) | **ignoré par le site** : 25 secondes après « Ouvrir le drive », la page reste sur l'accueil avec la fenêtre « Commencer mes courses », et l'agent affiche son bandeau de repli « Touche « Commencer mes courses ». ». Le repli marche : une touche à la main, puis le plan part. Le site distingue donc un clic de personne d'un clic de programme (événement non fiable) : l'entrée sans geste n'est **pas possible** sur le vrai site ; le comportement de DRV-629 reste correct (repli). |
+| Envoi de 4 articles dont un produit habituel devenu indisponible | l'agent le dit (« Ces produits ne sont plus disponibles : … »), propose de choisir un autre produit, puis « Toujours prendre ce produit ? » ; retour automatique dans Repas : « Le panier est rempli », 3 ajoutés, 1 choisi, « Tes choix sont enregistrés pour les prochains envois. » |
+| « Finaliser sur Leclerc » (DRV-629) | **ouvre l'accueil du drive** (dans l'application, connecté), pas la page du panier : le repli sur l'accueil s'est déclenché (chemin avec ville non mémorisé, page refusée ou redirigée par le site : cause inconnue, l'application ne le journalise pas) → DRV-631 |
+| Fiche produit de l'agent | « En promotion : 0,00 € » affiché sur chaque produit sans promotion, et « Il te faut : 3 unité » (pluriel) → DRV-632 |
+| Mise à jour du site dans l'application | la page restée ouverte garde l'ancienne version ; un redémarrage de l'application charge la nouvelle (tutoiement vu après redémarrage) |
