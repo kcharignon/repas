@@ -387,7 +387,7 @@ final class AdoptionDataset
      * Tout ce qui appartient à un utilisateur, avec les versions, sous la forme d'une seule somme de contrôle : un compte « intact »
      * garde exactement la même valeur.
      */
-    public function hashOfUser(string $userId): string
+    public function hashOfUser(string $userId, bool $withOwnedIngredients = true, bool $withStatistics = true): string
     {
         $parts = [];
         $queries = [
@@ -401,8 +401,12 @@ final class AdoptionDataset
             'SELECT t::text FROM ingredient t WHERE t.creator = :u',
             'SELECT t::text FROM ingredient_alias t WHERE t.user_id = :u',
             'SELECT t::text FROM conversion t WHERE t.ingredient IN (SELECT slug FROM ingredient WHERE creator = :u)',
-            'SELECT t::text FROM "user" t WHERE t.id = :u',
+            $withStatistics ? 'SELECT t::text FROM "user" t WHERE t.id = :u' : "SELECT (to_jsonb(t) - 'statistics')::text FROM \"user\" t WHERE t.id = :u",
         ];
+        if (!$withOwnedIngredients) {
+            // Ni ses ingrédients ni leurs conversions : la passation change le créateur de ceux qui lui sont passés
+            unset($queries[7], $queries[9]);
+        }
         foreach ($queries as $query) {
             $rows = $this->connection->fetchFirstColumn($query, ['u' => $userId]);
             sort($rows);

@@ -210,13 +210,20 @@ SELECT (SELECT count(*) FROM "user" u WHERE u.status = 'ACTIVE' AND NOT EXISTS (
            AND NOT EXISTS (SELECT 1 FROM ingredient_alias a WHERE a.user_id = u.id AND a.kind = 'adoption')) AS actifs_sans_amorcage;
 ```
 
-**Retour arrière des données** (dernier recours, décision humaine, après sauvegarde, en une transaction ; inutile pour revenir du code R1 à la version d'avant, qui lit les deux formes). Il remet « sans créateur » les seuls anciens communs : un ingrédient du propriétaire se reconnaît comme tel à son **slug sans l'identifiant d'un compte** et à son origine vide (tout ingrédient créé ou copié ensuite a pour slug le nom suivi de l'identifiant du compte). Le marqueur « de base » reste (le code d'avant l'ignore) ; les comptes amorcés depuis la passation restent valables (ce sont des copies d'ingrédients de base, la forme d'ING-003).
+**Retour arrière des données** (dernier recours, décision humaine, après sauvegarde, en une transaction ; inutile pour revenir du code R1 à la version d'avant, qui lit les deux formes). Il remet « sans créateur » les seuls anciens communs : un ingrédient du propriétaire se reconnaît comme tel à son **slug sans l'identifiant d'un compte** et à son origine vide (tout ingrédient créé ou copié ensuite a pour slug le nom suivi de l'identifiant du compte). Le marqueur « de base » reste (le code d'avant l'ignore) ; les comptes amorcés depuis la passation restent valables (ce sont des copies d'ingrédients de base, la forme d'ING-003) ; le compteur « ingrédients créés » du propriétaire, que la passation avait fait monter d'autant, est ramené à ce qu'il était par la même instruction. **Testé** (`CatalogHandoverDocumentedSqlTest`, sur un jeu de type production) : après ce SQL, **toutes les tables sont identiques à ce qu'elles étaient juste avant la passation**, somme de contrôle par table, statistique comprise, et rejouer la commande rétablit l'état d'après, à l'identique.
 
 <!-- passation-retour-arriere-sql -->
 ```sql
 -- psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v ON_ERROR_STOP=1 --single-transaction -v owner=<identifiant du propriétaire> -f -
-UPDATE ingredient SET creator = NULL
- WHERE creator = :'owner' AND adopted_from IS NULL AND slug NOT LIKE '%' || :'owner';
+-- Une seule instruction : les anciens communs redeviennent sans créateur, et le compteur « ingrédients créés » du propriétaire (que la passation avait
+-- fait monter d'autant) est ramené à ce qu'il était
+WITH rendus AS (
+  UPDATE ingredient SET creator = NULL
+   WHERE creator = :'owner' AND adopted_from IS NULL AND slug NOT LIKE '%' || :'owner'
+   RETURNING slug)
+UPDATE "user" SET statistics = jsonb_set(statistics::jsonb, '{ingredients}',
+         to_jsonb(greatest(coalesce((statistics::jsonb ->> 'ingredients')::int, 0) - (SELECT count(*) FROM rendus), 0)))::json
+ WHERE id = :'owner';
 
 -- Contrôle (attendu : le nombre d'anciens communs qui existent encore, 261 si aucun n'a été supprimé depuis)
 SELECT count(*) AS sans_createur FROM ingredient WHERE creator IS NULL;
@@ -226,28 +233,35 @@ Après un retour arrière des données, l'administrateur qui crée un ingrédien
 
 ## 6. La passation, phase par phase
 
-Commande `php bin/console repas:ingredients:hand-over-catalog` (ING-009), lancée par `passer-communs-a-l-administrateur.sh`. Sans option : **à blanc**, lecture seule.
+**Livré par ING-009 (PR [#245](tickets/ING-009-passation-des-communs.md))** : commande `php bin/console repas:ingredients:hand-over-catalog`, script `.claude/skills/repas-ops/references/passer-communs-a-l-administrateur.sh`, classement `src/Repas/Infrastructure/Data/base-ingredients.json` (la copie sous `src/` du TSV validé : `BaseIngredientsDataTest` échoue si les deux divergent). Le pas à pas d'exploitation est au § 14.
+
+Commande `php bin/console repas:ingredients:hand-over-catalog`, lancée par `passer-communs-a-l-administrateur.sh`. Sans option : **à blanc**, lecture seule (aucun `INSERT`, `UPDATE` ni `DELETE`, aucun verrou).
 
 | Phase | Ce qu'elle fait | Transaction | Rejouable |
 |---|---|---|---|
-| 1. Classer | pose `is_base` sur les anciens communs d'après le fichier (151 vrais, 110 faux) ; refuse si l'ensemble des slugs sans créateur n'est pas **exactement** celui du fichier (un commun inconnu ou manquant : il faut le classer d'abord) | une | oui (même résultat) |
-| 2. Amorcer | amorce chaque compte **actif** non amorcé (hors propriétaire) par `SeedUserIngredients` (le compte vide) : une transaction par compte, empreintes avant/après, listes envoyées repointées si besoin (`--accept-sent`) | une par compte | oui (un compte amorcé est ignoré) |
-| 3. Contrôler | préconditions P1 à P6 ci-dessous, relues **dans** la transaction de la phase 4 | — | — |
-| 4. Passer | `UPDATE ingredient SET creator = <propriétaire> WHERE creator IS NULL AND slug IN (<fichier>)` ; statistiques « ingrédients créés » du propriétaire recalculées ; empreinte des 261 (tout sauf `creator`) comparée à celle d'avant | une, verrou consultatif `catalog-handover` | oui (rien à passer = rien à faire) |
-| 5. Vérifier | rejoue `--check` : § 5 « après » | lecture | oui |
+| 1. Classer | pose `is_base` sur les anciens communs d'après le fichier (151 vrais, 110 faux), un seul `UPDATE` qui n'écrit que les marqueurs qui changent ; refuse si l'ensemble des slugs sans créateur n'est pas **exactement** celui du fichier (un commun inconnu ou manquant : il faut le classer d'abord) ; n'a plus rien à classer une fois la passation faite (un marqueur que le propriétaire a changé ensuite lui appartient) | une | oui (rien à écrire = pas même un `UPDATE`) |
+| 2. Amorcer | amorce chaque compte **actif** non amorcé (hors propriétaire) par `SeedUserIngredients` (le compte vide) : une transaction par compte, empreintes avant/après, listes envoyées repointées si besoin (`--accept-sent`), source `rattrapage-AAAA-MM-JJ` | une par compte | oui (un compte amorcé est ignoré) |
+| 3. Contrôler | préconditions P1 à P7 ci-dessous, relues **dans** la transaction de la phase 4 | — | — |
+| 4. Passer | `UPDATE ingredient SET creator = <propriétaire> WHERE creator IS NULL AND slug IN (<fichier>)` ; empreinte des anciens communs (tout sauf `creator` et `is_base`, conversions propres comprises), du contenu du propriétaire (recettes, listes, versions, listes envoyées) et de ses choix du drive, comparées avant/après ; la statistique « ingrédients créés » du propriétaire annoncée **une fois** | une, verrou consultatif `catalog-handover` (`pg_advisory_xact_lock`) | oui (rien à passer = rien d'écrit, rien d'annoncé) |
+| 5. Vérifier | relit le rapport : plus rien à classer, à amorcer ni à passer, la requête de santé est verte (§ 5 « après ») | lecture | oui |
 
-`--apply --stop-before-handover` s'arrête après la phase 2 (étape 7 du plan). `--check` ne fait que lire et dit « Rien à faire : passation faite et conforme » ou ce qui reste (code de sortie 0 seulement si tout est conforme). La commande **s'arrête au premier échec** et ne continue jamais « pour voir ».
+**Options** : `--apply` (écrit, une transaction par phase), `--check` (lecture seule, code de sortie 0 seulement si la passation est faite et conforme), `--stop-before-handover` (classement et amorçage seulement ; avec `--check`, « classement posé, plus rien à amorcer »), `--accept-sent` (obligatoire dès qu'une liste envoyée au drive d'un compte à amorcer serait repointée), `--source=<nom>`. **À blanc, le code de sortie dit si `--apply` avec les mêmes options écrirait (0) ou refuserait d'écrire (1)** : le script s'en sert pour s'arrêter avant la sauvegarde. Écrire est refusé hors `prod` et `dev`. La commande **s'arrête au premier échec** et ne continue jamais « pour voir ».
 
-**Préconditions de la phase 4** (si l'une manque, rien n'est écrit et le message dit laquelle) :
+**Rien n'est écrit à moitié quand on sait déjà que la suite sera refusée** : `--apply` complet vérifie d'abord que les préconditions seront remplies une fois le classement posé et l'amorçage fait (le rapport projette P2 et P3, que l'amorçage lève, et juge les autres telles quelles) ; si l'une manquera (P4 : l'interrupteur est coupé, par exemple), il le dit et n'écrit **rien**, ni classement ni amorçage. `--apply --stop-before-handover` n'exige que l'absence d'anomalie bloquante et l'accord pour les listes envoyées.
 
-- **P1** le propriétaire est résolu par le port, `ACTIF`, administrateur, protégé ;
-- **P2** aucune ligne (recette, liste, ingrédient de liste, choix du drive) d'un compte **autre que le propriétaire** ne référence un ingrédient sans créateur ;
-- **P3** tout compte `ACTIF` autre que le propriétaire est amorcé (au moins un alias d'adoption) et a au moins un ingrédient ;
+**Préconditions de la phase 4** (relues dans la transaction ; si l'une manque, rien n'est écrit et le message dit laquelle) :
+
+- **P1** le propriétaire est résolu par le port (le compte de `User::PROTECTED_EMAIL`, un seul : l'adresse est unique), `ACTIF` et administrateur ;
+- **P2** aucune ligne (recette, liste, ingrédient de liste, choix du drive) d'un compte **autre que le propriétaire**, quel que soit son statut, ne référence un ingrédient sans créateur ;
+- **P3** tout compte `ACTIF` autre que le propriétaire est amorcé (au moins un alias d'adoption) et a au moins un ingrédient (mêmes définitions que la requête de santé d'ING-008, comparées par un test) ;
 - **P4** l'interrupteur `INGREDIENT_SEEDING_ENABLED` est **allumé** (sinon un compte activé après la passation n'aurait rien) ;
 - **P5** les slugs sans créateur sont exactement ceux du fichier, aucun n'a d'origine (`adopted_from`), aucun n'a la forme d'un slug de compte (garantie du retour arrière) ;
-- **P6** aucune référence orpheline.
+- **P6** aucune référence orpheline (lignes de recettes et de listes, ingrédients de liste, choix du drive, conversions) ;
+- **P7** (ajoutée par ING-009) aucune ligne du propriétaire ne désigne l'ingrédient personnel d'un autre compte : sinon l'invariant d'après la passation (§ 5, contrôle 3) serait rouge sans que la passation y soit pour rien.
 
-Ce que la passation **ne fait pas** : aucun `INSERT`, aucun `DELETE` (hors l'amorçage de la phase 2, compte par compte), aucune ligne de recette, de liste ou de choix modifiée, aucune version, aucun alias ni aucune conversion pour le propriétaire ; sur les 261 ingrédients, seuls `creator` et `is_base` changent (§ 3 e).
+Ce que la passation **ne fait pas** : aucun `INSERT`, aucun `DELETE` (hors l'amorçage de la phase 2, compte par compte), aucune ligne de recette, de liste ou de choix modifiée, aucune version, aucun alias ni aucune conversion pour le propriétaire ; sur les 261 ingrédients, seuls `creator` et `is_base` changent (§ 3 e). La phase 4 coûte **31 requêtes SQL** (`WriteBudget` `passation-communs`), dont **un seul `UPDATE`** d'ingrédients et celui de la statistique, quel que soit le volume du propriétaire (prouvé de 3 à 40 recettes, de 3 à 120 choix du drive : `HandOverBudgetTest`) ; le classement en coûte 3 (`classer-ingredients-de-base`). Mesuré sur un propriétaire de 12 000 lignes et 6 comptes migrés : phase 4 seule 0,2 s ; commande entière (à blanc, classement et amorçage, passation, second lancement, vérification) 0,1 s, 0,4 s, 0,3 s, 0,2 s, 0,05 s.
+
+**Deux corrections de performance livrées avec ce ticket, dans la lecture de la source de l'amorçage** (`SeedingSourceReader`, ING-008), parce que la passation (et chaque activation de compte) la lit plusieurs fois et qu'elle devenait lente avec le volume : (1) la colonne « copie déjà présente » n'est plus une sous-requête corrélée qui relit toute la table `ingredient` pour chaque candidat mais une table dérivée jointe une fois ; (2) les trois `EXISTS` corrélés des lignes du compte sont remplacés par une sous-requête non corrélée (`IN (… UNION …)`), car leur prix, multiplié par le nombre d'ingrédients, franchissait `jit_above_cost` et déclenchait la compilation JIT de PostgreSQL (0,5 à 1 s pour une requête de quelques millisecondes, mesuré avec 1 800 ingrédients et 2 500 lignes de liste). Même résultat (les 69 tests d'ING-008 passent), 4 ms au lieu de 1 s.
 
 ## 7. Compatibilité : code × données
 
@@ -361,28 +375,7 @@ Chemins relatifs à `src/` ; les symboles comptent, les numéros de ligne bougen
 
 ### Relevés de production demandés (lecture seule, avant l'étape 5)
 
-Les blocs « avant » du § 5 suffisent, avec en plus, sans aucune donnée personnelle :
-
-```sql
--- R1. Les administrateurs (attendu : 1 ligne)
-SELECT u.status, count(*) FROM "user" u WHERE u.roles::jsonb @> '["ROLE_ADMIN"]'::jsonb GROUP BY u.status;
-
--- R2. Le compte vide (ni ingrédient ni recette) : ses lignes sur des ingrédients sans créateur, par table, et son statut
-SELECT u.status,
-       (SELECT count(*) FROM shopping_list l WHERE l.owner = u.id) AS listes,
-       (SELECT count(*) FROM shopping_list l WHERE l.owner = u.id AND l.status = 'SENT') AS listes_envoyees,
-       (SELECT count(*) FROM shopping_list_row x JOIN shopping_list l ON l.id = x.shopping_list JOIN ingredient i ON i.slug = x.ingredient WHERE l.owner = u.id AND i.creator IS NULL) AS lignes_de_liste,
-       (SELECT count(*) FROM shopping_list_ingredient x JOIN shopping_list l ON l.id = x.shopping_list JOIN ingredient i ON i.slug = x.ingredient WHERE l.owner = u.id AND i.creator IS NULL) AS ingredients_de_liste,
-       (SELECT count(*) FROM drive_choice c JOIN ingredient i ON i.slug = c.ingredient_slug WHERE c.user_id = u.id AND i.creator IS NULL) AS choix_du_drive
-  FROM "user" u
- WHERE NOT EXISTS (SELECT 1 FROM ingredient i WHERE i.creator = u.id) AND NOT EXISTS (SELECT 1 FROM recipe r WHERE r.author = u.id);
-
--- R3. Origine des alias depuis la migration (des adoptions « first-use » ou « copy » ont-elles eu lieu ?)
-SELECT kind, source, count(*) FROM ingredient_alias GROUP BY kind, source ORDER BY 3 DESC;
-
--- R4. Comptes en attente ou désactivés (seront amorcés à leur activation)
-SELECT status, count(*) FROM "user" GROUP BY status;
-```
+Les six relevés R1 à R6 sont au § 14 (bloc exécuté par `CatalogHandoverDocumentedSqlTest`), avec les blocs « avant » du § 5. Ils ne contiennent aucune donnée personnelle. Ce qu'ils lèvent : R1 = I2 (un seul administrateur ?), R2 = I1 et I3 (le compte vide et les comptes en attente ou désactivés ont-ils des lignes sur des communs ?), R3 = l'origine des alias, R4 = les statuts, R5 = la photographie globale (à comparer après), R6 = les ingrédients que le propriétaire a déjà créés depuis R1.
 
 ## 13. L'amorçage, pas à pas (ING-008)
 
@@ -398,3 +391,78 @@ Lancé par l'humain, une étape par message avec l'assistant (skill `repas-ops`,
 8. **Chaque semaine** (et après chaque release du back) tant que le chantier n'est pas clos : `--verifier`. Un compte activé interrupteur coupé, ou par un chemin oublié, est vu ici.
 
 **Retour arrière.** (a) Le code : sans danger, l'ancien code lit tout ce que l'amorçage écrit (copies = ingrédients personnels ordinaires, alias d'adoption). (b) L'interrupteur : le couper arrête l'amorçage automatique. (c) Les données d'un lancement, sur décision humaine : `adopter-ingredients.sh --appliquer --annuler=<source>` (la `source` est dans le rapport : `rattrapage-AAAA-MM-JJ` ou `activation`), sauvegarde `avant-annulation-adoption-ingredients` ; les copies restent. (d) La restauration de `avant-amorcage-ingredients` (`references/incident.md` § 3), jamais automatique.
+
+## 14. La passation, pas à pas (ING-009)
+
+Lancée par l'humain avec l'assistant, **une étape par message** (skill `repas-ops`, `references/passation-ingredients.md`), avec les scripts `.claude/skills/repas-ops/references/passer-communs-a-l-administrateur.sh` (classement, amorçage, passation), `amorcer-ingredients.sh` (rattrapage, santé) et `ecrire-ingredient-seeding.sh` (interrupteur). **Aucun agent de code n'exécute ces scripts ni cette commande sur le serveur** : l'agent qui les a écrits les a essayés sur des bases jetables seulement. Ces étapes sont les étapes 5 à 13 du § 4. `ssh …` veut dire `ssh -i ~/.ssh/id_ed25519 root@64.227.124.100`.
+
+**Avant tout** : R1 (le back avec ING-008, ING-011, ING-012 et ING-009) est en production depuis au moins un jour et `/api/v1/health` répond ; **aucune autre release du back ce jour-là** ; la nuit ou un moment calme ; aucun envoi de liste en cours sur un téléphone ; une sauvegarde récente (celle de la nuit suffit, le script en fait une propre avant d'écrire).
+
+**1. Les relevés R1 à R6 (l'assistant, lecture seule).** Le propriétaire se trouve sans adresse : `SELECT id FROM "user" WHERE roles::jsonb @> '["ROLE_ADMIN"]'::jsonb;` (**une** ligne ; on passe l'identifiant en variable `-v owner=…`, jamais dans un fichier du dépôt ni dans le chat). Puis le bloc ci-dessous, avec `docker compose exec -T database sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v ON_ERROR_STOP=1 -v owner=<identifiant> -f -'`. À noter : ce sont les chiffres de référence, on les compare après.
+
+<!-- passation-releves-sql -->
+```sql
+-- psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v ON_ERROR_STOP=1 -v owner=<identifiant du propriétaire> -f -
+-- R1. Les administrateurs (attendu : 1 ligne, ACTIVE)
+SELECT u.status, count(*) FROM "user" u WHERE u.roles::jsonb @> '["ROLE_ADMIN"]'::jsonb GROUP BY u.status;
+
+-- R2. Le compte vide (ni ingrédient ni recette) : ses lignes sur des ingrédients sans créateur, par table, et son statut
+SELECT u.status,
+       (SELECT count(*) FROM shopping_list l WHERE l.owner = u.id) AS listes,
+       (SELECT count(*) FROM shopping_list l WHERE l.owner = u.id AND l.status = 'SENT') AS listes_envoyees,
+       (SELECT count(*) FROM shopping_list_row x JOIN shopping_list l ON l.id = x.shopping_list JOIN ingredient i ON i.slug = x.ingredient WHERE l.owner = u.id AND i.creator IS NULL) AS lignes_de_liste,
+       (SELECT count(*) FROM shopping_list_ingredient x JOIN shopping_list l ON l.id = x.shopping_list JOIN ingredient i ON i.slug = x.ingredient WHERE l.owner = u.id AND i.creator IS NULL) AS ingredients_de_liste,
+       (SELECT count(*) FROM drive_choice c JOIN ingredient i ON i.slug = c.ingredient_slug WHERE c.user_id = u.id AND i.creator IS NULL) AS choix_du_drive
+  FROM "user" u
+ WHERE NOT EXISTS (SELECT 1 FROM ingredient i WHERE i.creator = u.id) AND NOT EXISTS (SELECT 1 FROM recipe r WHERE r.author = u.id);
+
+-- R3. Origine des alias depuis la migration (des adoptions « first-use » ou « copy » ont-elles eu lieu ?)
+SELECT kind, source, count(*) FROM ingredient_alias GROUP BY kind, source ORDER BY 3 DESC;
+
+-- R4. Comptes par statut (les comptes en attente ou désactivés seront amorcés à leur activation)
+SELECT status, count(*) FROM "user" GROUP BY status;
+
+-- R5. La photographie globale, à comparer après chaque écriture (mêmes nombres et mêmes sommes, sauf ce que l'écriture change : les copies du compte vide)
+SELECT (SELECT count(*) FROM "user") AS comptes,
+       (SELECT count(*) FROM ingredient) AS ingredients,
+       (SELECT count(*) FROM ingredient WHERE creator IS NULL) AS sans_createur,
+       (SELECT count(*) FROM conversion) AS conversions,
+       (SELECT count(*) FROM ingredient_alias) AS alias,
+       (SELECT count(*) FROM recipe_row) AS lignes_de_recettes,
+       (SELECT count(*) FROM shopping_list_row) AS lignes_de_listes,
+       (SELECT count(*) FROM shopping_list_ingredient) AS ingredients_de_listes,
+       (SELECT count(*) FROM drive_choice) AS choix_du_drive,
+       (SELECT count(*) FROM drive_choice_product) AS produits_des_choix,
+       (SELECT count(*) FROM shopping_list WHERE status = 'SENT') AS listes_envoyees,
+       (SELECT md5(string_agg(id || ':' || version || ':' || coalesce(sent_at::text, ''), ',' ORDER BY id)) FROM shopping_list) AS somme_des_listes,
+       (SELECT md5(string_agg(id || ':' || version, ',' ORDER BY id)) FROM recipe) AS somme_des_recettes;
+
+-- R6. Les ingrédients que le propriétaire a déjà (créés depuis R1) : leurs slugs finissent tous par son identifiant, c'est ce qui les distingue des
+--     anciens communs pour le retour arrière (attendu : autant de lignes avec que de lignes en tout)
+SELECT count(*) AS ingredients_du_proprietaire,
+       count(*) FILTER (WHERE slug LIKE '%' || :'owner') AS avec_son_identifiant,
+       count(*) FILTER (WHERE is_base) AS de_base
+  FROM ingredient WHERE creator = :'owner';
+```
+
+À lire avec l'utilisateur, en mots simples : R1 une ligne (un seul administrateur, actif) ; R2 le compte vide a-t-il des listes, une liste envoyée, des choix du drive sur des anciens communs (le rapport les repointera, contenu, statut et date d'envoi ne changent pas) ; R3 la source des alias (`migration-…` : la migration du 2026-10-20 ; aucune `first-use` ni `copy` attendue) ; R4 combien de comptes en attente ou désactivés (ils ne sont pas servis maintenant, ils le seront à leur activation ; **s'ils ont des lignes sur des anciens communs, la passation est refusée par P2** : décider avec lui de les servir un par un, `amorcer-ingredients.sh --compte=<référence>`).
+
+**2. Le rapport à blanc (l'humain, lecture seule).** `! ssh … 'bash -s' < .claude/skills/repas-ops/references/passer-communs-a-l-administrateur.sh`. Rien n'est modifié. Lire avec l'assistant : le propriétaire (actif, administrateur, un seul), le fichier (261 dont 151, sommes de contrôle `a43e401aaf59b6e65bd1f433f7347c7b` et `3776a0ad5d1fbc427f9431656c14b7e2`), « Anciens communs : 261 sans créateur », « accord avec le fichier : exact ; phase 1 : 151 marqueur(s) à écrire », les comptes retenus pour l'amorçage (**le compte vide, et lui seul**, avec ce qu'il recevrait et repointerait, **liste envoyée** comprise), la santé, les préconditions (P2 et P3 « levée par l'amorçage », P4 « il est coupé » : normal, on l'allume à l'étape 6), et les deux lignes finales (« Prêt pour le classement et l'amorçage : oui » ; « Prêt pour la passation complète : NON … il manquera encore : P4 »). Aucune « ANOMALIE BLOQUANTE » ; sinon on s'arrête et on la comprend. Avec les options de l'étape suivante, le rapport dit si elle écrirait : `… 'bash -s -- --jusqu-a-l-amorcage --accepter-listes-envoyees'` termine par « --apply, avec ces options, écrirait. ».
+
+**3. Le classement et l'amorçage du compte vide (l'humain).** `! ssh … 'bash -s -- --appliquer --jusqu-a-l-amorcage --accepter-listes-envoyees' < …/passer-communs-a-l-administrateur.sh`. Le script refait le rapport (il s'arrête s'il dit que l'écriture serait refusée), fait la **sauvegarde `avant-passation-communs`** (dire où elle est), écrit (phase 1 : « 261 ingrédient(s) sans créateur classés : 151 « de base », 110 « spécifiques » ; 151 marqueur(s) écrit(s) » ; phase 2 : une ligne par compte amorcé, « empreinte … identique »), puis relit. Attendu en dernière ligne : « OK : classement posé et comptes amorcés. La passation n'est PAS faite ». **Au premier échec il s'arrête** : le compte en cause n'a rien reçu (transaction annulée), le classement déjà posé le reste, relancer est sans danger après lecture du message.
+
+**4. Les contrôles « avant » (l'assistant) et l'écran (l'utilisateur).** Le bloc « avant » du § 5 : le propriétaire actif, administrateur, sans ingrédient ni alias ; 261 anciens communs, **151 de base**, sommes de contrôle du classement, 0 ligne d'un autre compte sur un ancien commun, plus aucun compte actif sans amorçage ni sans ingrédient. Puis R5 comparé à l'étape 1 : seuls `ingredients`, `alias` et `conversions` ont augmenté (les copies du compte vide), les listes et recettes sont à leurs versions **+1** pour le seul compte vide. À l'écran, par l'utilisateur : le compte vide voit ses ingrédients de base, ses listes (dont l'envoyée) et ses produits du drive sont intacts.
+
+**5. L'interrupteur (l'humain).** `! ssh … 'bash -s -- true' < .claude/skills/repas-ops/references/ecrire-ingredient-seeding.sh` ; attendu `OK : INGREDIENT_SEEDING_ENABLED=true, le conteneur php le voit et /api/v1/health répond.` (le site coupe quelques secondes). L'assistant vérifie la variable dans le conteneur.
+
+**6. L'essai de bout en bout (l'humain et l'assistant).** Un compte d'essai (l'adresse de l'utilisateur) s'inscrit, confirme son adresse, voit ses ~150 ingrédients et leurs conversions ; l'administrateur le supprime (purge complète). Si la confirmation échoue (`500`), couper l'interrupteur (`… 'bash -s -- false' …`), lire `docker compose logs --tail 60 php`, rattraper ensuite par `amorcer-ingredients.sh`.
+
+**7. Le rapport à blanc de la passation.** Même commande qu'à l'étape 2 : le compte vide n'est plus retenu, P1 à P7 sont toutes « OK » (P4 comprise), « Prêt pour la passation complète (--apply) : OUI ». Sinon le rapport dit laquelle manque.
+
+**8. La passation (l'humain).** `! ssh … 'bash -s -- --appliquer' < …/passer-communs-a-l-administrateur.sh` (`--accepter-listes-envoyees` seulement si le rapport le demande). Le script : rapport, **nouvelle sauvegarde** `avant-passation-communs`, puis la commande (« Classement déjà posé », « Aucun compte à amorcer », puis « 261 ingrédient(s) passé(s) au propriétaire en une instruction ; … empreinte des ingrédients … et du contenu du propriétaire … identiques avant et après ; statistique … annoncée une fois »), puis la vérification : « Passation faite et conforme ». Durée : une à quelques secondes.
+
+**9. Les contrôles « après » (l'assistant) et l'écran (l'utilisateur).** Le bloc « après » du § 5 : 0 sans créateur, 261 anciens communs chez le propriétaire (151 de base, mêmes sommes de contrôle, **même nombre de conversions propres** qu'avant), **l'invariant « toute ligne désigne un ingrédient du compte qui la possède » à 0 partout**, 0 orphelin, mêmes listes envoyées et mêmes sommes de listes et de recettes qu'avant (R5 de l'étape 4), 0 compte actif sans amorçage. À l'écran, par l'utilisateur : **l'administrateur voit les mêmes ingrédients qu'avant**, ses recettes, ses listes (dont les envoyées), son plan d'envoi et ses produits du drive ; un compte migré ; l'ancien compte vide (il ne voit plus que ses ~156 ingrédients : les « spécifiques » qu'il voyait comme partagés restent chez le propriétaire, c'est la décision D5) ; un compte d'essai neuf.
+
+**10. Après.** `… 'bash -s -- --verifier'` (passation) et `amorcer-ingredients.sh --verifier` (santé) à chaque release du back et chaque semaine tant que le chantier n'est pas clos. **ING-013 et ING-014 ne se fusionnent qu'après l'étape 9**, R2 un autre jour que la passation.
+
+**Revenir en arrière (dernier recours, décision de l'utilisateur, du plus léger au plus lourd).** (a) Le **code** : sans danger, R1 lit les deux formes. (b) L'**interrupteur** : le couper. (c) Les **données de la passation** : le SQL du § 5 (« Retour arrière des données »), en une transaction, après une sauvegarde ; il remet « sans créateur » les seuls anciens communs et ramène la statistique du propriétaire ; tout le reste (copies, alias, marqueurs, comptes amorcés) est valable ; rejouer la passation remet tout en ordre. (d) La **restauration** de `avant-passation-communs` (`references/incident.md` § 3 du skill), jamais automatique. Un échec de la commande ne laisse rien à moitié : la phase 4 est une transaction, la phase 2 une transaction par compte (relancer est sans danger).
