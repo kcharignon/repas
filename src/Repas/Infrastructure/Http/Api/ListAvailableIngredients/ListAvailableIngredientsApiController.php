@@ -25,7 +25,7 @@ final class ListAvailableIngredientsApiController extends AbstractController
 
     #[Route(path: '/api/v1/ingredients', name: 'api_list_available_ingredients', methods: ['GET'])]
     #[IsGranted('ROLE_USER')]
-    #[OA\Get(summary: "Ingrédients que l'utilisateur authentifié peut utiliser (communs et les siens), triés par nom : choix des recettes")]
+    #[OA\Get(summary: "Ingrédients que l'utilisateur authentifié peut utiliser, triés par nom : les siens et les communs qu'il n'a pas adoptés (un commun adopté est remplacé par sa copie, qui est à lui) ; choix des recettes")]
     #[OA\Tag(name: 'Ingredients')]
     #[OA\Parameter(name: 'q', in: 'query', required: false, description: 'Ne garde que les ingrédients dont le nom contient ce texte (sans tenir compte de la casse ni des accents), 100 caractères au plus', schema: new OA\Schema(type: 'string', maxLength: 100), example: 'cre')]
     #[OA\Response(
