@@ -4,7 +4,7 @@
 - **Jalon** : M6 Simplicité d'usage
 - **Taille** : M
 - **Dépend de** : —
-- **Statut** : partie back faite (PR back [#224](https://github.com/kcharignon/repas/pull/224), 2026-10-20 : points 2, 3 et 4, voir « Réalisation (partie back) ») ; **partie front à faire** (points 1, 5, 6 et 7), après la fusion du back et la mise à jour du contrat OpenAPI du front. Idée de l'utilisateur du 2026-10-19 : « tu peux stocker ça en base pour savoir qui est à jour ou non ».
+- **Statut** : partie back faite (PR back [#224](https://github.com/kcharignon/repas/pull/224), 2026-10-20 : points 2, 3 et 4, voir « Réalisation (partie back) ») ; **partie front faite** (PR front [#173](https://github.com/kcharignon/repas-front/pull/173), site v0.5.12, 2026-10-20 : points 1, 5, 6 et 7, voir « Réalisation (partie front) »). Idée de l'utilisateur du 2026-10-19 : « tu peux stocker ça en base pour savoir qui est à jour ou non ».
 - **Lire d'abord** : [ADR 0021](../../adr/0021-gestion-des-comptes-par-l-administrateur.md) (purge à la suppression du compte, `UserOwnedDataCoverageTest`), `docs/adr/0007-*` (API), `docs/drive/principes-produit.md` (règles 3 et 10), skills `repas-dev`, `repas-front-dev`, `repas-android-dev`, `repas-po`.
 
 ## Contexte
@@ -87,3 +87,12 @@ Celle des deux dépôts ; ordre de publication : back (route inactive tant que l
 - Image de production (`make deploy-smoke`, nouvelle ligne : les deux variables arrivent vides dans `php`) ; sur cette pile, `ecrire-app-version.sh latest 0.1.10` puis une application `0.1.8` : `GET /api/v1/me` répond `"appUpdate":{"latest":"0.1.10","minimum":null,"outdated":true}` ; deuxième envoi dans la minute `204` sans écriture ; `0.1.8-dev` `422` ; `latest ''` remet `latest: null, outdated: false`. Le script refuse une version mal formée (`0.1.10-dev`) sans rien écrire.
 
 **Reste à faire (front, autre PR)** : points 1, 5, 6 et 7 de la portée, avec le contrat ci-dessus (`npm run api:update` sur le commit du back fusionné). Ordre de publication inchangé : back (route inactive tant que le front ne l'appelle pas), puis site, puis application ; `APP_LATEST_VERSION` s'écrit **après** la publication de l'application (sinon les téléphones seraient invités à une version absente).
+
+## Réalisation (partie front, PR front #173, site v0.5.12, 2026-10-20)
+
+- **Envoi** : dans l'application, une fois la session ouverte, la version du pont part une fois par session (`PUT /api/v1/users/me/app-version`) ; rien dans un navigateur, rien pour `0.0.0-dev` ou une version hors `X.Y.Z` ; échec, hors connexion ou `422` : silence, pas de nouvel essai.
+- **Bandeau « Mettre à jour » dans « Moi »** (application seulement) : « Une nouvelle version de l'application est prête. » + « Mettre à jour » (vers `/drive/aide#mise-a-jour`). **Décision** : le bandeau compare la version du pont, nombre par nombre, à `latest` et à `minimum` ; le `outdated` du serveur ne sert que de repli quand le pont ne dit pas sa version (il vient de la version enregistrée, pas de celle qui tourne) ; rien si `latest` et `minimum` sont `null`.
+- **Administration des comptes** : « Application : 0.1.8 » (« — » si inconnue) et le repère « À mettre à jour » (`appOutdated`).
+- **Vie privée** : une phrase dans les conditions d'utilisation (`driveTerms.saves.appVersion`), recopiée dans [`../note-vie-privee.md`](../note-vie-privee.md).
+- **Le site s'adapte à l'application** : principe écrit dans `android/PUBLICATION.md` du front (`MIN_DRIVE_APP_VERSION`, `RAYON_HINTS_APP_VERSION`).
+- **Exploitation** : `APP_LATEST_VERSION` est écrit par l'assistant avec `ecrire-app-version.sh` (skill `repas-ops`), **après** chaque publication de l'application (jamais avant) ; procédure dans [`../../production.md`](../../production.md).
