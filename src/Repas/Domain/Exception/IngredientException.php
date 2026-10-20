@@ -43,6 +43,11 @@ final class IngredientException extends DomainException
         return new self(sprintf("Ingredient '%s' already exists", $slug), 409);
     }
 
+    public static function notCommon(string $slug): self
+    {
+        return new self(sprintf("Ingredient '%s' is not a common ingredient, only a common one can be adopted", $slug), 422);
+    }
+
     public static function coefficientRequired(): self
     {
         return new self('A conversion coefficient is required when the cooking and purchase units differ.', 422);

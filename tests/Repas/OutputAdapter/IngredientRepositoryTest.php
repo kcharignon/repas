@@ -182,6 +182,56 @@ class IngredientRepositoryTest extends DatabaseTestCase
         $this->ingredientRepository->findOneBySlug($ingredient->getSlug());
     }
 
+    public function testTheOriginOfAnAdoptionSurvivesTheDatabaseAndAnUpdate(): void
+    {
+        // Arrange : la copie d'un commun par un utilisateur, et un ingrédient créé par lui
+        $user = new UserBuilder()->build();
+        $this->persister->saveUser($user);
+        $adoption = new IngredientBuilder()->isButter()->withCreator($user, true)->withAdoptedFrom('beurre')->build();
+        $created = new IngredientBuilder()->isFlour()->withCreator($user, true)->build();
+        $this->persister->saveIngredient($adoption);
+        $this->persister->saveIngredient($created);
+        $this->entityManager->clear();
+
+        // Act
+        $loadedAdoption = $this->ingredientRepository->findOneBySlug($adoption->getSlug());
+        $loadedCreated = $this->ingredientRepository->findOneBySlug($created->getSlug());
+
+        // Assert : lu en base (l'identity map est vide), pas rendu par le modèle enregistré
+        RepasAssert::assertIngredient($adoption, $loadedAdoption);
+        $this->assertSame('beurre', $loadedAdoption->getAdoptedFrom());
+        $this->assertTrue($loadedAdoption->isAdoption());
+        $this->assertNull($loadedCreated->getAdoptedFrom());
+        $this->assertSame('beurre', $this->columnOf($adoption->getSlug(), 'adopted_from'));
+        $this->assertNull($this->columnOf($created->getSlug(), 'adopted_from'));
+
+        // Act : la copie est renommée par son propriétaire
+        $loadedAdoption->setName('Beurre demi-sel');
+        $this->ingredientRepository->save($loadedAdoption);
+        $this->entityManager->clear();
+
+        // Assert : l'origine est un fait immuable
+        $renamed = $this->ingredientRepository->findOneBySlug($adoption->getSlug());
+        $this->assertSame(['Beurre demi-sel', 'beurre'], [$renamed->getName(), $renamed->getAdoptedFrom()]);
+    }
+
+    public function testSavingAModelWithoutOriginDoesNotEraseTheOriginOfTheRow(): void
+    {
+        // Arrange : une ligne née d'une adoption, réécrite par un modèle qui ne connaît pas l'origine (le code précédent, une copie)
+        $user = new UserBuilder()->build();
+        $this->persister->saveUser($user);
+        $adoption = new IngredientBuilder()->isButter()->withCreator($user, true)->withAdoptedFrom('beurre')->build();
+        $this->persister->saveIngredient($adoption);
+        $withoutOrigin = new IngredientBuilder()->isButter()->withCreator($user, true)->withName('Beurre')->build();
+
+        // Act
+        $this->ingredientRepository->save($withoutOrigin);
+        $this->entityManager->clear();
+
+        // Assert
+        $this->assertSame('beurre', $this->columnOf($adoption->getSlug(), 'adopted_from'));
+    }
+
     public static function getByDepartmentDataProvider(): array
     {
         $creator = new UserBuilder()->build();
@@ -266,6 +316,13 @@ class IngredientRepositoryTest extends DatabaseTestCase
         $this->assertContains($system->getSlug(), $slugs);
         $this->assertContains($own->getSlug(), $slugs);
         $this->assertNotContains($notOwn->getSlug(), $slugs);
+    }
+
+    private function columnOf(string $slug, string $column): ?string
+    {
+        $value = $this->entityManager->getConnection()->fetchOne(sprintf('SELECT %s FROM ingredient WHERE slug = ?', $column), [$slug]);
+
+        return $value === false ? null : $value;
     }
 
     /**

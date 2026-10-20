@@ -18,6 +18,7 @@ class IngredientBuilder implements Builder
     private UnitBuilder $defaultCookingUnitBuilder;
     private UnitBuilder $defaultPurchaseUnitBuilder;
     private UserBuilder|User|null $creator;
+    private ?string $adoptedFrom = null;
     /** @var Tab<Unit>  */
     private Tab $compatibleUnits;
 
@@ -76,6 +77,7 @@ class IngredientBuilder implements Builder
             'default_purchase_unit' => $this->defaultPurchaseUnitBuilder->build(),
             'creator_id' => ($this->creator instanceof UserBuilder ? $this->creator->build() : $this->creator)?->getId(),
             'compatible_units' => $this->compatibleUnits,
+            'adopted_from' => $this->adoptedFrom,
         ]);
     }
 
@@ -209,6 +211,13 @@ class IngredientBuilder implements Builder
         if ($refreshSlug) {
             $this->slug = $this->calculateSlug();
         }
+        return $this;
+    }
+
+    /** Un ingrédient né de l'adoption du commun de ce slug (ADR 0028). */
+    public function withAdoptedFrom(?string $commonSlug): self
+    {
+        $this->adoptedFrom = $commonSlug;
         return $this;
     }
 
