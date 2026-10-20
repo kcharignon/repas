@@ -63,6 +63,7 @@ use Repas\Tests\Helper\Builder\ConversionBuilder;
 use Repas\Tests\Helper\Builder\DepartmentBuilder;
 use Repas\Tests\Helper\Builder\IngredientBuilder;
 use Repas\Tests\Helper\Builder\RecipeBuilder;
+use Repas\Tests\Helper\Builder\RecipeRowBuilder;
 use Repas\Tests\Helper\Builder\RecipeTypeBuilder;
 use Repas\Tests\Helper\Builder\ShoppingListBuilder;
 use Repas\Tests\Helper\Builder\UnitBuilder;
@@ -271,6 +272,47 @@ return [
         $recipe = $t->savedRecipe($author, new RecipeBuilder()->isPastaCarbonara());
 
         return new CopyRecipeCommand($recipe->getId(), $other->getId(), UuidGenerator::new());
+    },
+    // Les ingrédients de la recette sont lus UNE fois pour tout le copieur (candidats du rapprochement, alias), quel que soit le nombre de
+    // lignes ; une copie d'ingrédient coûte ses écritures (ingrédient et conversions propres), un lien n'en coûte aucune. ING-004.
+    'copier-recette-ingredient-personnel' => static function (WriteBudgetTestCase $t): object {
+        $author = $t->savedUser();
+        $copier = $t->savedUser();
+        $butter = new IngredientBuilder()->isButter()->withCreator($author, true)->build();
+        $t->persister->saveIngredient($butter);
+        $t->persister->saveConversion(new ConversionBuilder()->withIngredient($butter)->withStartUnit(new UnitBuilder()->isBlock())->withEndUnit(new UnitBuilder()->isGramme())->withCoefficient(250)->build());
+        $recipe = $t->savedRecipe($author, new RecipeBuilder()->addRow(new RecipeRowBuilder()->withIngredient($butter)->withUnit(new UnitBuilder()->isGramme())->withQuantity(100)));
+
+        return new CopyRecipeCommand($recipe->getId(), $copier->getId(), UuidGenerator::new());
+    },
+    'copier-recette-ingredient-rapproche' => static function (WriteBudgetTestCase $t): object {
+        $author = $t->savedUser();
+        $copier = $t->savedUser();
+        $authorsButter = new IngredientBuilder()->isButter()->withCreator($author, true)->build();
+        $copiersButter = new IngredientBuilder()->isButter()->withCreator($copier, true)->build();
+        foreach ([$authorsButter, $copiersButter] as $butter) {
+            $t->persister->saveIngredient($butter);
+            $t->persister->saveConversion(new ConversionBuilder()->withIngredient($butter)->withStartUnit(new UnitBuilder()->isBlock())->withEndUnit(new UnitBuilder()->isGramme())->withCoefficient(250)->build());
+        }
+        $recipe = $t->savedRecipe($author, new RecipeBuilder()->addRow(new RecipeRowBuilder()->withIngredient($authorsButter)->withUnit(new UnitBuilder()->isGramme())->withQuantity(100)));
+
+        return new CopyRecipeCommand($recipe->getId(), $copier->getId(), UuidGenerator::new());
+    },
+    'copier-recette-adoptant' => static function (WriteBudgetTestCase $t): object {
+        $author = $t->savedUser();
+        $copier = $t->savedUser();
+        $flour = new IngredientBuilder()->isFlour()->build();
+        $authorsFlour = new IngredientBuilder()->isFlour()->withCreator($author, true)->withAdoptedFrom($flour->getSlug())->build();
+        $milk = new IngredientBuilder()->isMilk()->build();
+        $copiersMilk = new IngredientBuilder()->isMilk()->withCreator($copier, true)->withAdoptedFrom($milk->getSlug())->build();
+        foreach ([$flour, $authorsFlour, $milk, $copiersMilk] as $ingredient) {
+            $t->persister->saveIngredient($ingredient);
+        }
+        $t->persister->saveConversion(new ConversionBuilder()->isKiloToGramme()->build());
+        $t->persister->saveIngredientAlias(IngredientAlias::create($copier->getId(), $milk->getSlug(), $copiersMilk->getSlug(), AliasKind::ADOPTION, 'migration-2026-10-21', new \DateTimeImmutable()));
+        $recipe = $t->savedRecipe($author, new RecipeBuilder()->addRow(new RecipeRowBuilder()->withIngredient($authorsFlour)->withUnit(new UnitBuilder()->isGramme())->withQuantity(250)));
+
+        return new CopyRecipeCommand($recipe->getId(), $copier->getId(), UuidGenerator::new());
     },
     'supprimer-recette' => static function (WriteBudgetTestCase $t): object {
         $owner = $t->savedUser();

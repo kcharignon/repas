@@ -23,7 +23,10 @@ final class CopyRecipeApiController extends AbstractController
 
     #[Route(path: '/api/v1/recipes/{id}/copy', name: 'api_copy_recipe', methods: ['POST'])]
     #[IsGranted('ROLE_USER')]
-    #[OA\Post(summary: "Copie une recette dans celles de l'utilisateur connecté, avec les ingrédients personnalisés et leurs conversions")]
+    #[OA\Post(
+        summary: "Copie une recette dans celles de l'utilisateur connecté",
+        description: "Chaque ingrédient de la recette est rapproché de ceux que l'utilisateur possède déjà (ce qu'il a adopté, puis le même nom dans le même rayon, avec une unité compatible) ; à défaut, il reçoit une copie de l'ingrédient avec ses conversions propres. Un ingrédient existant de l'utilisateur n'est jamais modifié.",
+    )]
     #[OA\Tag(name: 'Recipes')]
     #[OA\Response(response: 201, description: 'Copie créée', headers: [new OA\Header(header: 'Location', description: 'URL de la copie', schema: new OA\Schema(type: 'string'))])]
     #[OA\Response(response: 404, description: 'Recette inconnue')]
