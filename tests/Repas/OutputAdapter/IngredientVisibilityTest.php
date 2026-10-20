@@ -10,6 +10,7 @@ use Repas\Repas\Application\Query\ListIngredientsByDepartment\IngredientRowDTO;
 use Repas\Repas\Application\Query\SearchIngredients\IngredientSearchResultDTO;
 use Repas\Repas\Domain\Exception\IngredientException;
 use Repas\Repas\Domain\Interface\IngredientAliasRepository;
+use Repas\Repas\Domain\Interface\IngredientMatchCandidates;
 use Repas\Repas\Domain\Interface\IngredientRepository;
 use Repas\Repas\Domain\Model\AliasKind;
 use Repas\Repas\Domain\Model\Ingredient;
@@ -37,6 +38,7 @@ class IngredientVisibilityTest extends DatabaseTestCase
     private IngredientLoader $ingredientLoader;
     private IngredientRepository $ingredientRepository;
     private IngredientAliasRepository $aliasRepository;
+    private IngredientMatchCandidates $matchCandidates;
     private DataPersister $persister;
 
     private User $adopter;
@@ -59,6 +61,7 @@ class IngredientVisibilityTest extends DatabaseTestCase
         $this->ingredientLoader = static::getContainer()->get(IngredientLoader::class);
         $this->ingredientRepository = static::getContainer()->get(IngredientRepository::class);
         $this->aliasRepository = static::getContainer()->get(IngredientAliasRepository::class);
+        $this->matchCandidates = static::getContainer()->get(IngredientMatchCandidates::class);
         $this->persister = new DataPersister(static::getContainer());
 
         $this->adopter = $this->savedUser();
@@ -221,6 +224,7 @@ class IngredientVisibilityTest extends DatabaseTestCase
             $this->assertSame($old, $this->slugsOfOptions($this->ingredientLoader->listAvailable($user->getId())), 'GET /ingredients');
             $this->assertSame($oldInTheDepartment, $this->visibleInTheDepartment($user), 'rayon');
             $this->assertSame($old, $this->slugsOfRepository($this->ingredientRepository->findByOwner($user->getId())), 'findByOwner');
+            $this->assertSame($old, $this->slugsOfCandidates($user), 'candidats du rapprochement');
             $department = new DepartmentBuilder()->isCereal()->build();
             $this->assertSame($oldInTheDepartment, $this->slugsOfRepository($this->ingredientRepository->findByDepartmentAndOwner($department, $user->getId())), 'findByDepartmentAndOwner');
             foreach (['tomate', 'oignon', 'carotte', 'poireau', 'radis'] as $needle) {
@@ -246,6 +250,7 @@ class IngredientVisibilityTest extends DatabaseTestCase
         $this->assertSame($expected, $this->slugsOfOptions($this->ingredientLoader->listAvailable($user->getId())), 'choix pour une recette');
         $this->assertSame($expected, $this->slugsOfRepository($this->ingredientRepository->findByOwner($user->getId())), 'findByOwner');
         $this->assertSame($expected, $this->slugsOfRepository($this->ingredientRepository->findByDepartmentAndOwner($department, $user->getId())), 'findByDepartmentAndOwner');
+        $this->assertSame($expected, $this->slugsOfCandidates($user), 'candidats du rapprochement à la copie d\'une recette');
         $found = [];
         foreach (['tomate', 'oignon', 'carotte', 'poireau', 'radis'] as $needle) {
             foreach ($this->ingredientLoader->search($needle, $user->getId(), $user === $this->admin) as $result) {
@@ -293,6 +298,17 @@ class IngredientVisibilityTest extends DatabaseTestCase
         foreach ($ingredients as $ingredient) {
             $slugs[] = $ingredient->getSlug();
         }
+        sort($slugs);
+
+        return $slugs;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function slugsOfCandidates(User $user): array
+    {
+        $slugs = array_map(static fn(\Repas\Repas\Domain\Model\IngredientCandidate $candidate): string => $candidate->slug, $this->matchCandidates->visibleTo($user->getId()));
         sort($slugs);
 
         return $slugs;
