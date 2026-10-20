@@ -5,7 +5,7 @@
 - **Taille** : L
 - **Effort recommandé pour l'agent** : **xhigh** (réécrit le propriétaire de tout le catalogue en production, préconditions de visibilité de tous les comptes)
 - **Dépend de** : ING-011 (marqueur, propriétaire du catalogue) et ING-008 (le rattrapage que la commande appelle)
-- **Statut** : **code livré** (PR #NNN, voir « Réalisation » en bas) ; **l'exécution en production n'est pas faite** (étape humaine) — **remplace** l'ancien ING-009 (« les communs deviennent les ingrédients de l'administrateur », plus tard), qui supposait une adoption préalable de tous par la première utilisation
+- **Statut** : **code livré** (PR #245, voir « Réalisation » en bas) ; **l'exécution en production n'est pas faite** (étape humaine) — **remplace** l'ancien ING-009 (« les communs deviennent les ingrédients de l'administrateur », plus tard), qui supposait une adoption préalable de tous par la première utilisation
 - **Sortie** : **R1** ; l'**exécution** en production est une étape humaine (`sans-commun.md` § 4, étapes 6 à 12), jamais celle de l'agent
 - **Lire d'abord** : [ADR 0028](../../adr/0028-ingredients-propres-a-chaque-utilisateur.md) amendement du 2026-10-20 (décisions 1, 4, 6, 7, 9) ; **[`sans-commun.md`](../sans-commun.md) en entier** (surtout §§ 2, 4 à 7) ; [`base-ingredients.tsv`](../base-ingredients.tsv) (le classement validé) ; ING-003 et sa section « Réalisation » (le style de la commande, du rapport, du script, des tests) ; ADR 0017 règle 6, 0021 ; skills `/repas-dev`, `/repas-ops`.
 
@@ -83,7 +83,7 @@ Handlers (en mémoire) ; **base réelle** pour le dépôt de passation et le cha
 - La commande ne crée ni ne supprime aucun ingrédient : si un test le voit faire, c'est un défaut.
 - Une sortie du back le jour de la passation est interdite (règle d'ING-003) ; la commande ne le sait pas, le script et le guide le disent.
 
-## Réalisation (PR back #NNN)
+## Réalisation (PR back #245)
 
 Livré comme décrit ci-dessus, avec les écarts et ajouts suivants, tous décidés pour tenir l'intention du ticket et de l'amendement du 2026-10-20. **Aucune migration de schéma ; rien n'a été exécuté en production** : la commande et son script se lancent à la main, avec sauvegarde, à blanc d'abord (`sans-commun.md` § 14). Tout a été prouvé sur des bases jetables.
 

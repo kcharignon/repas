@@ -233,7 +233,7 @@ Après un retour arrière des données, l'administrateur qui crée un ingrédien
 
 ## 6. La passation, phase par phase
 
-**Livré par ING-009 (PR [#NNN](tickets/ING-009-passation-des-communs.md))** : commande `php bin/console repas:ingredients:hand-over-catalog`, script `.claude/skills/repas-ops/references/passer-communs-a-l-administrateur.sh`, classement `src/Repas/Infrastructure/Data/base-ingredients.json` (la copie sous `src/` du TSV validé : `BaseIngredientsDataTest` échoue si les deux divergent). Le pas à pas d'exploitation est au § 14.
+**Livré par ING-009 (PR [#245](tickets/ING-009-passation-des-communs.md))** : commande `php bin/console repas:ingredients:hand-over-catalog`, script `.claude/skills/repas-ops/references/passer-communs-a-l-administrateur.sh`, classement `src/Repas/Infrastructure/Data/base-ingredients.json` (la copie sous `src/` du TSV validé : `BaseIngredientsDataTest` échoue si les deux divergent). Le pas à pas d'exploitation est au § 14.
 
 Commande `php bin/console repas:ingredients:hand-over-catalog`, lancée par `passer-communs-a-l-administrateur.sh`. Sans option : **à blanc**, lecture seule (aucun `INSERT`, `UPDATE` ni `DELETE`, aucun verrou).
 
