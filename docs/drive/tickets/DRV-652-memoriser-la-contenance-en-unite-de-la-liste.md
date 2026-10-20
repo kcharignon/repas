@@ -4,7 +4,7 @@
 - **Jalon** : M6 Simplicité d'usage
 - **Taille** : M (deux lots)
 - **Dépend de** : DRV-205 (`PackCalculator`, fait), DRV-650 (précédent exact : donnée privée mémorisée avec le choix, clé facultative de `PUT /drive/choices`, fait côté back)
-- **Statut** : **lot 1 (back) fait, PR back à venir (2026-10-20)** ; lot 2 (agent, protocole, web, « Mes produits ») à faire. Demande de l'utilisateur du 2026-10-20. Effort de réalisation : `high`.
+- **Statut** : **lot 1 (back) fait, PR back #229 (2026-10-20)** ; lot 2 (agent, protocole, web, « Mes produits ») à faire. Demande de l'utilisateur du 2026-10-20. Effort de réalisation : `high`.
 - **Lire d'abord** : [`DRV-650`](DRV-650-memoriser-la-recherche-du-drive.md) (même mécanique : migration additive, clé facultative, absente = gardée, `null` = effacée), [`DRV-205`](DRV-205-pack-calculator.md) (`PackCalculator`), [`../architecture.md`](../architecture.md) §§ 5.1, 5.3, 6, 7, [`../note-vie-privee.md`](../note-vie-privee.md), la règle « Ne pas durcir Leclerc » de [`../consignes-agents.md`](../consignes-agents.md) et [`../multi-enseignes.md`](../multi-enseignes.md), skills `repas-drive-back`, `repas-agent-dev`, `repas-front-dev`, `repas-po`.
 
 ## Contexte
