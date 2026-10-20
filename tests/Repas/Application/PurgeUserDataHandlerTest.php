@@ -6,6 +6,8 @@ namespace Repas\Tests\Repas\Application;
 use PHPUnit\Framework\TestCase;
 use Repas\Repas\Application\Command\PurgeUserData\PurgeUserDataCommand;
 use Repas\Repas\Application\Command\PurgeUserData\PurgeUserDataHandler;
+use Repas\Repas\Domain\Model\AliasKind;
+use Repas\Repas\Domain\Model\IngredientAlias;
 use Repas\Repas\Domain\Model\Meal;
 use Repas\Tests\Helper\Builder\ConversionBuilder;
 use Repas\Tests\Helper\Builder\IngredientBuilder;
@@ -13,6 +15,7 @@ use Repas\Tests\Helper\Builder\RecipeBuilder;
 use Repas\Tests\Helper\Builder\ShoppingListBuilder;
 use Repas\Tests\Helper\Builder\UserBuilder;
 use Repas\Tests\Helper\InMemoryRepository\ConversionInMemoryRepository;
+use Repas\Tests\Helper\InMemoryRepository\IngredientAliasInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\IngredientInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\RecipeInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\ShoppingListInMemoryRepository;
@@ -26,6 +29,7 @@ class PurgeUserDataHandlerTest extends TestCase
     private RecipeInMemoryRepository $recipeRepository;
     private ConversionInMemoryRepository $conversionRepository;
     private IngredientInMemoryRepository $ingredientRepository;
+    private IngredientAliasInMemoryRepository $aliasRepository;
     private PurgeUserDataHandler $handler;
 
     protected function setUp(): void
@@ -61,11 +65,18 @@ class PurgeUserDataHandlerTest extends TestCase
             new ConversionBuilder()->isKiloToGramme()->withoutIngredient()->withId('common-conversion')->build(),
         ]);
 
+        $this->aliasRepository = new IngredientAliasInMemoryRepository([
+            IngredientAlias::create(self::USER, 'beurre', 'beurre-user', AliasKind::ADOPTION, 'first-use', new \DateTimeImmutable()),
+            IngredientAlias::create(self::USER, 'farine', 'farine-user', AliasKind::ADOPTION, 'migration-2026-10-21', new \DateTimeImmutable()),
+            IngredientAlias::create(self::OTHER, 'beurre', 'beurre-other', AliasKind::ADOPTION, 'first-use', new \DateTimeImmutable()),
+        ]);
+
         $this->handler = new PurgeUserDataHandler(
             $this->shoppingListRepository,
             $this->recipeRepository,
             $this->conversionRepository,
             $this->ingredientRepository,
+            $this->aliasRepository,
         );
     }
 
@@ -127,6 +138,17 @@ class PurgeUserDataHandlerTest extends TestCase
             ['common-conversion', 'other-conversion'],
             $this->sortedIds($this->conversionRepository->findAll()->map(fn($conversion) => $conversion->getId())->toArray()),
         );
+    }
+
+    public function testTheAliasesOfTheUserAreDeletedAndTheOthersKept(): void
+    {
+        // When
+        ($this->handler)(new PurgeUserDataCommand(self::USER));
+
+        // Then
+        $this->assertNull($this->aliasRepository->find(self::USER, 'beurre'));
+        $this->assertNull($this->aliasRepository->find(self::USER, 'farine'));
+        $this->assertNotNull($this->aliasRepository->find(self::OTHER, 'beurre'));
     }
 
     public function testAUserWithoutAnyDataIsNotAnError(): void

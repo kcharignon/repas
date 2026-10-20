@@ -9,6 +9,7 @@ use Repas\Repas\Domain\Exception\DepartmentException;
 use Repas\Repas\Domain\Exception\IngredientException;
 use Repas\Repas\Domain\Exception\UnitException;
 use Repas\Repas\Domain\Interface\DepartmentRepository;
+use Repas\Repas\Domain\Interface\IngredientAliasRepository;
 use Repas\Repas\Domain\Interface\IngredientRepository;
 use Repas\Repas\Domain\Interface\UnitRepository;
 use Repas\Repas\Domain\Model\Ingredient;
@@ -26,6 +27,7 @@ readonly class CreateIngredientHandler
         private DepartmentRepository $departmentRepository,
         private UnitRepository $unitRepository,
         private IngredientRepository $ingredientRepository,
+        private IngredientAliasRepository $aliasRepository,
         private EventDispatcherInterface $eventDispatcher,
         private ConversionService $conversionService,
     ) {
@@ -59,6 +61,9 @@ readonly class CreateIngredientHandler
         $this->ingredientRepository->save($ingredient);
 
         if ($creatorId !== null) {
+            // Un alias de l'utilisateur dont la clé est ce slug (ingrédient absorbé par une fusion, puis recréé) détournerait le nouvel
+            // ingrédient vers l'ancien : la création le défait (ADR 0028). Un commun n'a pas d'alias : son créateur est un administrateur.
+            $this->aliasRepository->deleteByAliasSlug($creatorId, $ingredient->getSlug());
             $this->eventDispatcher->dispatch(new IngredientCreatedEvent($creatorId, $ingredient->getSlug()));
         }
 

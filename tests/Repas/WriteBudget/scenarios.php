@@ -18,6 +18,7 @@ use Repas\Drive\Domain\Model\ProductPrice;
 use Repas\Drive\Domain\Model\Retailer;
 use Repas\Drive\Domain\Model\SearchQuery;
 use Repas\Repas\Application\Command\ActivatedShoppingList\ActivatedShoppingListCommand;
+use Repas\Repas\Application\Command\AdoptCommonIngredient\AdoptCommonIngredientCommand;
 use Repas\Repas\Application\Command\AddIngredientToShoppingList\AddIngredientToShoppingListCommand;
 use Repas\Repas\Application\Command\CopyRecipe\CopyRecipeCommand;
 use Repas\Repas\Application\Command\CreateConversion\CreateConversionCommand;
@@ -50,6 +51,8 @@ use Repas\Repas\Application\Command\UpdateRecipeType\UpdateRecipeTypeCommand;
 use Repas\Repas\Application\Command\UpdateServingMeal\UpdateServingMealCommand;
 use Repas\Repas\Application\Command\UpdateShoppingList\UpdateShoppingListCommand;
 use Repas\Repas\Application\Command\UpdateUnit\UpdateUnitCommand;
+use Repas\Repas\Domain\Model\AliasKind;
+use Repas\Repas\Domain\Model\IngredientAlias;
 use Repas\Repas\Domain\Model\Recipe;
 use Repas\Repas\Domain\Model\ShoppingList;
 use Repas\Repas\Domain\Model\ShoppingListRow;
@@ -290,6 +293,18 @@ return [
 
         return new RemoveIngredientCommand($ingredient->getSlug());
     },
+    // Adoption d'un commun (ADR 0028, ING-001) : le beurre, avec deux conversions propres, que l'utilisateur n'a jamais adopté ; son slug est
+    // libre (une requête de plus par slug déjà pris). C'est le coût de la première utilisation d'un commun.
+    'adopter-ingredient' => static function (WriteBudgetTestCase $t): object {
+        $owner = $t->savedUser();
+        $butter = new IngredientBuilder()->isButter()->build();
+        $t->persister->saveConversion(new ConversionBuilder()->isBlockToGrammeForButter()->build());
+        $t->persister->saveConversion(
+            new ConversionBuilder()->withStartUnit(new UnitBuilder()->isSoupSpoon())->withEndUnit(new UnitBuilder()->isGramme())->withCoefficient(15)->withIngredient($butter)->build(),
+        );
+
+        return new AdoptCommonIngredientCommand($owner->getId(), $butter->getSlug(), 'first-use');
+    },
     'creer-conversion' => static function (WriteBudgetTestCase $t): object {
         $t->persister->saveUnit(new UnitBuilder()->isLiter()->build());
         $t->persister->saveUnit(new UnitBuilder()->isMillilitre()->build());
@@ -478,7 +493,7 @@ return [
         return new ReplaceIngredientPreferenceCommand($user->getId(), Retailer::LECLERC, '123456', 'sucre', false, [$id('2'), $id('3')], [$id('4')]);
     },
     // Compte qui a un lien Google, une version d'application connue (DRV-637), trois recettes planifiées dans une liste (dont une est
-    // copiée par un autre utilisateur), un magasin et une préférence de produits
+    // copiée par un autre utilisateur), un magasin, une préférence de produits et un alias d'ingrédient (ADR 0028)
     'supprimer-compte' => static function (WriteBudgetTestCase $t): object {
         $owner = $t->savedUser();
         $t->savedUserIdentity($owner);
@@ -487,6 +502,7 @@ return [
         $t->savedShoppingList($owner, $recipes);
         $t->savedDriveSettings($owner);
         $t->savedDriveChoice($owner, 'farine', ['1', '2'], ['9']);
+        $t->persister->saveIngredientAlias(IngredientAlias::create($owner->getId(), 'beurre', 'beurre' . $owner->getId(), AliasKind::ADOPTION, 'first-use', new \DateTimeImmutable()));
         $t->savedRecipe($t->savedUser(), new RecipeBuilder()->isPastaCarbonara()->withOriginalId($recipes[0]->getId()));
 
         return new DeleteUserCommand($owner->getId(), 'administrateur');

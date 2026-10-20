@@ -7,8 +7,11 @@ use Doctrine\DBAL\Connection;
 use Repas\Drive\Domain\Interface\ChoiceRepository;
 use Repas\Drive\Domain\Interface\DriveSettingsRepository;
 use Repas\Drive\Domain\Interface\ProductRepository;
+use Repas\Repas\Domain\Interface\IngredientAliasRepository;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
+use Repas\Repas\Domain\Model\AliasKind;
 use Repas\Repas\Domain\Model\Ingredient;
+use Repas\Repas\Domain\Model\IngredientAlias;
 use Repas\Repas\Domain\Model\Recipe;
 use Repas\Repas\Domain\Model\ShoppingList;
 use Repas\Shared\Domain\Event\UserDeletedEvent;
@@ -330,6 +333,11 @@ class AccountAdministrationFlowTest extends DatabaseTestCase
         $stayingRecipe = $this->savedRecipe($staying, new RecipeBuilder()->isSoftBoiledEggs());
         $stayingList = $this->savedListPlanning($staying, $stayingRecipe);
 
+        // Given : chacun a adopté le commun « beurre » (alias d'ingrédient, ADR 0028)
+        $aliases = static::getContainer()->get(IngredientAliasRepository::class);
+        $aliases->save(IngredientAlias::create($leaving->getId(), 'beurre', $butter->getSlug(), AliasKind::ADOPTION, 'first-use', new \DateTimeImmutable()));
+        $aliases->save(IngredientAlias::create($staying->getId(), 'beurre', 'beurre' . $staying->getId(), AliasKind::ADOPTION, 'first-use', new \DateTimeImmutable()));
+
         // When
         $this->request('DELETE', '/api/v1/users/' . $leaving->getId(), $this->login('admin@example.com'));
 
@@ -345,6 +353,8 @@ class AccountAdministrationFlowTest extends DatabaseTestCase
         }
         $this->assertSame(0, $this->rowCount('ingredient', 'slug', $butter->getSlug()));
         $this->assertSame(0, $this->rowCount('conversion', 'id', $conversion->getId()));
+        $this->assertSame(0, $this->rowCount('ingredient_alias', 'user_id', $leaving->getId()));
+        $this->assertSame(1, $this->rowCount('ingredient_alias', 'user_id', $staying->getId()));
         $this->client->request('POST', '/api/login_check', content: json_encode(['email' => 'leaving@example.com', 'password' => self::PASSWORD], JSON_THROW_ON_ERROR), server: ['CONTENT_TYPE' => 'application/json']);
         $this->assertSame(401, $this->client->getResponse()->getStatusCode());
 

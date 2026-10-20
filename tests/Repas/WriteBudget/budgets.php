@@ -6,6 +6,7 @@
  * @return array<string, int>
  */
 return [
+    'adopter-ingredient' => 16,
     'ajouter-ingredient-liste' => 13,
     'assurer-liste-active' => 5,
     'changer-statut-compte' => 4,
@@ -16,7 +17,7 @@ return [
     'confirmation-email' => 4,
     'copier-recette' => 16,
     'creer-conversion' => 4,
-    'creer-ingredient' => 9,
+    'creer-ingredient' => 10,
     'creer-liste' => 4,
     'creer-preference-drive' => 7,
     'creer-rayon' => 3,
@@ -47,8 +48,8 @@ return [
     'retirer-ingredient-liste' => 9,
     'retirer-repas' => 17,
     'rouvrir-liste' => 18,
-    'supprimer-compte' => 21,
-    'supprimer-ingredient' => 10,
+    'supprimer-compte' => 22,
+    'supprimer-ingredient' => 11,
     'supprimer-liste' => 8,
     'supprimer-recette' => 11,
     'terminer-liste' => 11,
