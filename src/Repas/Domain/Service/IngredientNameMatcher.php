@@ -6,6 +6,7 @@ namespace Repas\Repas\Domain\Service;
 use Repas\Repas\Domain\Model\IngredientCandidate;
 use Repas\Repas\Domain\Model\IngredientMatch;
 use Repas\Repas\Domain\Model\MatchLevel;
+use Repas\Repas\Domain\Model\NameSimilarity;
 use Repas\Shared\Domain\Tool\JaroWinkler;
 use Repas\Shared\Domain\Tool\StringTool;
 
@@ -117,8 +118,26 @@ final readonly class IngredientNameMatcher
      */
     public function similar(string $first, string $second): MatchLevel
     {
-        $score = self::score(self::tokens($first), self::tokens($second));
+        return self::levelOf(self::score(self::tokens($first), self::tokens($second)));
+    }
 
+    /**
+     * Comme `similar()`, pour deux candidats dont les mots sont déjà calculés, et avec le score : de quoi comparer beaucoup de paires sans
+     * normaliser dix fois le même nom (liste des doublons possibles, ING-006). `null` quand les deux ne se ressemblent pas assez pour
+     * être proposés (niveau `NONE`). Le garde-fou apparie les mots dans l'ordre du premier : pour que le résultat ne dépende pas de
+     * l'ordre dans lequel l'appelant les donne, il compare toujours le premier slug au second dans l'ordre alphabétique.
+     */
+    public function compare(IngredientCandidate $first, IngredientCandidate $second): ?NameSimilarity
+    {
+        [$first, $second] = strcmp($first->slug, $second->slug) <= 0 ? [$first, $second] : [$second, $first];
+        $score = self::score($first->tokens, $second->tokens);
+        $level = self::levelOf($score);
+
+        return $level === MatchLevel::NONE ? null : new NameSimilarity($level, (float) $score);
+    }
+
+    private static function levelOf(?float $score): MatchLevel
+    {
         return match (true) {
             $score === null => MatchLevel::NONE,
             $score >= 1.0 => MatchLevel::EXACT,
@@ -155,7 +174,7 @@ final readonly class IngredientNameMatcher
      */
     private static function passesGate(array $first, array $second): bool
     {
-        if (count($first) !== count($second)) {
+        if (count($first) !== count($second) || !self::mayBeTheSameLetters($first, $second)) {
             return false;
         }
 
@@ -190,6 +209,33 @@ final readonly class IngredientNameMatcher
         }
 
         return true;
+    }
+
+    /**
+     * Un refus rapide, SANS changer le verdict du garde-fou : deux noms dont chaque mot est identique ou à une faute près ne peuvent
+     * différer, au total, que de `n` lettres en longueur et de `2n` lettres dans l'inventaire de leurs lettres (une insertion ou un oubli
+     * change un compte d'une lettre, une substitution de deux, une permutation de zéro), `n` étant le nombre de mots. Le contraire est
+     * refusé avant d'apparier les mots un à un par Jaro-Winkler, ce qui coûte bien plus cher : la liste des doublons possibles compare
+     * des milliers de couples.
+     *
+     * @param list<string> $first
+     * @param list<string> $second
+     */
+    private static function mayBeTheSameLetters(array $first, array $second): bool
+    {
+        $firstLetters = implode('', $first);
+        $secondLetters = implode('', $second);
+        $words = count($first);
+        if (abs(strlen($firstLetters) - strlen($secondLetters)) > $words) {
+            return false;
+        }
+
+        $inventory = count_chars($firstLetters, 1);
+        foreach (count_chars($secondLetters, 1) as $letter => $count) {
+            $inventory[$letter] = ($inventory[$letter] ?? 0) - $count;
+        }
+
+        return array_sum(array_map(abs(...), $inventory)) <= 2 * $words;
     }
 
     /**

@@ -7,6 +7,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Repas\Repas\Domain\Model\IngredientCandidate;
 use Repas\Repas\Domain\Model\MatchLevel;
+use Repas\Repas\Domain\Model\NameSimilarity;
 use Repas\Repas\Domain\Service\IngredientNameMatcher;
 
 /**
@@ -295,6 +296,50 @@ class IngredientNameMatcherTest extends TestCase
         $this->assertSame(['oeuf'], IngredientNameMatcher::tokens('Œufs'));
         $this->assertSame(['san', 'gluten'], IngredientNameMatcher::tokens('sans gluten'), '« sans » change le sens : ce n\'est pas un mot vide (son « s » final se replie comme un pluriel).');
         $this->assertSame(['de', 'la'], IngredientNameMatcher::tokens('de la'), 'Un nom fait seulement de mots vides garde ses mots.');
+    }
+
+    // --- La comparaison de deux candidats (doublons possibles, ING-006) --------------------------------------------------------------
+
+    #[DataProvider('pairs')]
+    public function testCompareGivesTheSameLevelAsSimilarInBothDirectionsWithAScore(string $first, string $second, ?string $expected): void
+    {
+        // Given
+        $one = new IngredientCandidate('a-' . md5($first), $first, 'epicerie', 'unite');
+        $other = new IngredientCandidate('b-' . md5($second), $second, 'epicerie', 'unite');
+
+        // When
+        $forward = $this->matcher->compare($one, $other);
+        $backward = $this->matcher->compare($other, $one);
+
+        // Then : `compare` ne dépend pas de l'ordre des arguments, et dit comme `similar` si le couple est proposable
+        $this->assertEquals($forward, $backward);
+        $level = $this->matcher->similar($first, $second);
+        if ($forward === null) {
+            $this->assertSame(MatchLevel::NONE, $level);
+
+            return;
+        }
+        $this->assertSame($level, $forward->level);
+        $this->assertGreaterThanOrEqual(IngredientNameMatcher::SUGGESTION_THRESHOLD, $forward->score);
+        $this->assertLessThanOrEqual(1.0, $forward->score);
+    }
+
+    public function testCompareScoresAnExactNameOneAndASuggestionBetweenTheTwoThresholds(): void
+    {
+        // Given
+        $tomato = new IngredientCandidate('tomate', 'Tomate', 'fruit-et-legume', 'kilo');
+        $tomatoes = new IngredientCandidate('tomates', 'Tomates', 'fruit-et-legume', 'kilo');
+        $mozzarella = new IngredientCandidate('mozzarella', 'mozzarella', 'frais', 'unite');
+        $mozzerella = new IngredientCandidate('mozzerella', 'mozzerella', 'frais', 'unite');
+        $cherry = new IngredientCandidate('tomate-cerise', 'Tomate cerise', 'fruit-et-legume', 'kilo');
+
+        // When / Then
+        $this->assertEquals(new NameSimilarity(MatchLevel::EXACT, 1.0), $this->matcher->compare($tomato, $tomatoes));
+        $suggestion = $this->matcher->compare($mozzarella, $mozzerella);
+        $this->assertSame(MatchLevel::SUGGESTION, $suggestion->level);
+        $this->assertGreaterThanOrEqual(0.90, $suggestion->score);
+        $this->assertLessThan(0.97, $suggestion->score);
+        $this->assertNull($this->matcher->compare($tomato, $cherry), 'Un nom précisé n\'est pas le nom : le garde-fou refuse deux noms de longueurs différentes.');
     }
 
     /**

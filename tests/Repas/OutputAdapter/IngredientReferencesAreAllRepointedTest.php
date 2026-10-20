@@ -50,6 +50,8 @@ class IngredientReferencesAreAllRepointedTest extends DatabaseTestCase
         'conversion.ingredient' => 'conversions PROPRES : celles du commun sont copiées avec la copie (nouveaux identifiants, `copyConversions`) ; celles de l\'utilisateur restent à lui ; la fusion supprime celles de l\'ingrédient absorbé avec lui, sans les reporter',
         'ingredient_alias.alias_slug' => 'la table de correspondance elle-même : la clé est le commun (ou l\'ingrédient absorbé par une fusion, qui y est écrit)',
         'ingredient_alias.ingredient_slug' => 'la table de correspondance elle-même : la valeur est la copie (la fusion y remplace l\'absorbé par le gardé, `IngredientAliasRepository::mergeInto`)',
+        'ingredient_distinct.first_slug' => '« Pas le même » (ING-006) : les slugs des ingrédients PERSONNELS de l\'utilisateur, jamais ceux d\'un commun, que la migration ne déplace pas ; la fusion et la suppression d\'un ingrédient effacent les paires qui le nomment (`IngredientDistinctRepository::deleteByIngredientSlug`)',
+        'ingredient_distinct.second_slug' => 'idem (l\'autre côté de la paire)',
     ];
 
     /**
