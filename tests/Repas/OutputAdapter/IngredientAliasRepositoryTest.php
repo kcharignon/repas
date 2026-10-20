@@ -7,12 +7,16 @@ use DateTimeImmutable;
 use Repas\Repas\Domain\Interface\IngredientAliasRepository;
 use Repas\Repas\Domain\Model\AliasKind;
 use Repas\Repas\Domain\Model\IngredientAlias;
+use Repas\Tests\Helper\Builder\IngredientBuilder;
+use Repas\Tests\Helper\Builder\UserBuilder;
 use Repas\Tests\Helper\DatabaseTestCase;
+use Repas\Tests\Helper\DataPersister;
 use Repas\Tests\Helper\SqlBudget\QueryCounter;
 
 /**
- * La table `ingredient_alias` sur la vraie base (ADR 0028). Aucune clé étrangère : les utilisateurs et les ingrédients désignés
- * n'ont pas besoin d'exister, chaque test écrit ses propres lignes.
+ * La table `ingredient_alias` sur la vraie base (ADR 0028). Aucune clé étrangère : les utilisateurs n'ont pas besoin d'exister, chaque test écrit
+ * ses propres lignes. Les ingrédients désignés, eux, comptent depuis ING-002 : seul un alias VALIDE (l'ingrédient existe et est à l'utilisateur)
+ * répond à `resolve()` et `lookup()`.
  */
 class IngredientAliasRepositoryTest extends DatabaseTestCase
 {
@@ -20,12 +24,14 @@ class IngredientAliasRepositoryTest extends DatabaseTestCase
     private const string OTHER = 'other-id';
 
     private IngredientAliasRepository $aliasRepository;
+    private DataPersister $persister;
 
     protected function setUp(): void
     {
         parent::setUp();
 
         $this->aliasRepository = static::getContainer()->get(IngredientAliasRepository::class);
+        $this->persister = new DataPersister(static::getContainer());
     }
 
     public function testSaveThenFindGivesTheSameAlias(): void
@@ -93,6 +99,12 @@ class IngredientAliasRepositoryTest extends DatabaseTestCase
     public function testResolveGivesTheIngredientOfTheUserForEachKnownSlugInOneQuery(): void
     {
         // Given
+        foreach (['tomateuser-id', 'carotteuser-id', 'oignonuser-id'] as $slug) {
+            $this->ownIngredient(self::USER, $slug);
+        }
+        foreach (['tomateother-id', 'poireauother-id'] as $slug) {
+            $this->ownIngredient(self::OTHER, $slug);
+        }
         $this->aliasRepository->save($this->alias(self::USER, 'tomate', 'tomateuser-id'));
         $this->aliasRepository->save($this->alias(self::USER, 'carotte', 'carotteuser-id'));
         $this->aliasRepository->save($this->alias(self::USER, 'oignon-2user-id', 'oignonuser-id', AliasKind::MERGE, 'merge'));
@@ -107,6 +119,86 @@ class IngredientAliasRepositoryTest extends DatabaseTestCase
         // Then : les slugs sans alias pour cet utilisateur sont absents, ceux d'un autre aussi
         $this->assertEquals(['tomate' => 'tomateuser-id', 'oignon-2user-id' => 'oignonuser-id'], $resolved);
         $this->assertSame(['SELECT ingredient_alias' => 1], $counter->byTable());
+    }
+
+    public function testResolveIgnoresAnOrphanAliasWhoseIngredientNoLongerExists(): void
+    {
+        // Given : l'ancien code supprime une copie sans effacer son alias (retour arrière après la migration) ; l'autre alias est sain
+        $this->ownIngredient(self::USER, 'carotteuser-id');
+        $this->aliasRepository->save($this->alias(self::USER, 'tomate', 'tomateuser-id'));
+        $this->aliasRepository->save($this->alias(self::USER, 'carotte', 'carotteuser-id'));
+
+        // When
+        $resolved = $this->aliasRepository->resolve(self::USER, ['tomate', 'carotte']);
+
+        // Then : le commun reste lui-même, seul l'alias valide répond
+        $this->assertEquals(['carotte' => 'carotteuser-id'], $resolved);
+        $this->assertSame([], $this->aliasRepository->lookup(self::USER, ['tomate'])->resolved);
+    }
+
+    public function testResolveIgnoresAnAliasWhoseIngredientBelongsToSomeoneElse(): void
+    {
+        // Given : une donnée incohérente ne doit pas rediriger les écritures vers l'ingrédient d'un autre
+        $this->ownIngredient(self::OTHER, 'tomateother-id');
+        $this->aliasRepository->save($this->alias(self::USER, 'tomate', 'tomateother-id'));
+
+        // Then
+        $this->assertSame([], $this->aliasRepository->resolve(self::USER, ['tomate']));
+    }
+
+    public function testLookupGivesTheValidAliasesAndTheAdopterFlagInOneQuery(): void
+    {
+        // Given : un adoptant (une adoption, une fusion), un utilisateur qui n'a qu'une fusion, un qui n'a rien
+        $this->ownIngredient(self::USER, 'tomateuser-id');
+        $this->ownIngredient(self::USER, 'oignonuser-id');
+        $this->aliasRepository->save($this->alias(self::USER, 'tomate', 'tomateuser-id'));
+        $this->aliasRepository->save($this->alias(self::USER, 'oignon-2user-id', 'oignonuser-id', AliasKind::MERGE, 'merge'));
+        $this->ownIngredient(self::OTHER, 'oignonother-id');
+        $this->aliasRepository->save($this->alias(self::OTHER, 'oignon-2other-id', 'oignonother-id', AliasKind::MERGE, 'merge'));
+        $counter = static::getContainer()->get(QueryCounter::class);
+        $counter->reset();
+
+        // When
+        $adopter = $this->aliasRepository->lookup(self::USER, ['tomate', 'oignon-2user-id', 'carotte']);
+
+        // Then
+        $this->assertSame(['SELECT ingredient_alias' => 1], $counter->byTable());
+        $this->assertEquals(['tomate' => 'tomateuser-id', 'oignon-2user-id' => 'oignonuser-id'], $adopter->resolved);
+        $this->assertTrue($adopter->adopter);
+
+        $mergeOnly = $this->aliasRepository->lookup(self::OTHER, ['oignon-2other-id', 'tomate']);
+        $this->assertEquals(['oignon-2other-id' => 'oignonother-id'], $mergeOnly->resolved);
+        $this->assertFalse($mergeOnly->adopter, 'un alias de fusion seul ne fait pas un adoptant');
+
+        $nobody = $this->aliasRepository->lookup('nobody-id', ['tomate']);
+        $this->assertSame([], $nobody->resolved);
+        $this->assertFalse($nobody->adopter);
+    }
+
+    public function testLookupKnowsAnAdopterEvenWhenNoRequestedSlugHasAnAlias(): void
+    {
+        // Given
+        $this->ownIngredient(self::USER, 'tomateuser-id');
+        $this->aliasRepository->save($this->alias(self::USER, 'tomate', 'tomateuser-id'));
+
+        // When
+        $lookup = $this->aliasRepository->lookup(self::USER, ['carotte']);
+
+        // Then
+        $this->assertSame([], $lookup->resolved);
+        $this->assertTrue($lookup->adopter);
+        $this->assertTrue($this->aliasRepository->lookup(self::USER, [])->adopter, 'sans slug, le drapeau se lit tout de même');
+        $this->assertFalse($this->aliasRepository->lookup(self::OTHER, [])->adopter);
+    }
+
+    public function testAnOrphanAdoptionAliasStillMakesAnAdopter(): void
+    {
+        // Given : toutes ses copies ont été supprimées par l'ancien code ; il reste adoptant, le prochain commun utilisé sera adopté de nouveau
+        $this->aliasRepository->save($this->alias(self::USER, 'tomate', 'tomateuser-id'));
+
+        // Then
+        $this->assertTrue($this->aliasRepository->lookup(self::USER, ['tomate'])->adopter);
+        $this->assertSame([], $this->aliasRepository->lookup(self::USER, ['tomate'])->resolved);
     }
 
     public function testResolveOfNothingCostsNothing(): void
@@ -189,6 +281,14 @@ class IngredientAliasRepositoryTest extends DatabaseTestCase
 
         // Then
         $this->assertSame(0, $this->rowCount('ingredient_alias', 'user_id', 'nobody-id'));
+    }
+
+    /**
+     * Un ingrédient à l'utilisateur, sous ce slug (les tests d'alias écrivent des slugs à la main).
+     */
+    private function ownIngredient(string $userId, string $slug): void
+    {
+        $this->persister->saveIngredient(new IngredientBuilder()->isButter()->withCreator(new UserBuilder()->withId($userId)->build())->withSlug($slug)->build());
     }
 
     private function alias(string $userId, string $aliasSlug, string $ingredientSlug, AliasKind $kind = AliasKind::ADOPTION, string $source = 'first-use'): IngredientAlias

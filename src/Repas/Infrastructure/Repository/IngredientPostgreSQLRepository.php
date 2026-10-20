@@ -16,6 +16,7 @@ use Repas\Repas\Domain\Model\Ingredient as IngredientModel;
 use Repas\Repas\Domain\Model\Unit;
 use Repas\Repas\Infrastructure\Entity\Ingredient as IngredientEntity;
 use Repas\Repas\Infrastructure\Entity\RecipeRow;
+use Repas\Repas\Infrastructure\Visibility\IngredientVisibility;
 use Repas\Shared\Domain\Tool\Tab;
 
 readonly class IngredientPostgreSQLRepository extends PostgreSQLRepository implements IngredientRepository
@@ -76,12 +77,37 @@ readonly class IngredientPostgreSQLRepository extends PostgreSQLRepository imple
 
     public function findPurchaseUnitSlugUsableBy(string $slug, string $userId): string
     {
-        $entity = $this->entityRepository->find($slug) ?? throw IngredientException::notFound($slug);
-        if ($entity->getCreatorId() !== null && $entity->getCreatorId() !== $userId) {
-            throw IngredientException::notFound($slug);
+        // Une seule requête, comme `find()` : la visibilité (`IngredientVisibility`) est dans la condition, donc l'ingrédient d'un autre
+        // et un commun que l'utilisateur a adopté sont traités comme inconnus
+        $row = $this->entityManager->createQueryBuilder()
+            ->select('i.defaultPurchaseUnitSlug AS purchaseUnitSlug')
+            ->from(IngredientEntity::class, 'i')
+            ->where('i.slug = :slug')
+            ->andWhere(IngredientVisibility::visibleBy('i', 'user'))
+            ->setParameter('slug', $slug)
+            ->setParameter('user', $userId)
+            ->getQuery()
+            ->getOneOrNullResult();
+
+        return $row['purchaseUnitSlug'] ?? throw IngredientException::notFound($slug);
+    }
+
+    public function findCommonSlugs(array $slugs): array
+    {
+        if ($slugs === []) {
+            return [];
         }
 
-        return $entity->getDefaultPurchaseUnitSlug();
+        $rows = $this->entityManager->createQueryBuilder()
+            ->select('i.slug AS slug')
+            ->from(IngredientEntity::class, 'i')
+            ->where('i.slug IN (:slugs)')
+            ->andWhere(IngredientVisibility::isCommon('i'))
+            ->setParameter('slugs', array_values(array_unique($slugs)))
+            ->getQuery()
+            ->getArrayResult();
+
+        return array_column($rows, 'slug');
     }
 
     public function exists(string $slug): bool
@@ -100,7 +126,7 @@ readonly class IngredientPostgreSQLRepository extends PostgreSQLRepository imple
     {
         $entities = $this->entityRepository->createQueryBuilder('i')
             ->where('i.departmentSlug = :department')
-            ->andWhere('i.creatorId = :owner or i.creatorId is null')
+            ->andWhere(IngredientVisibility::visibleBy('i', 'owner'))
             ->setParameter('department', $department->getId())
             ->setParameter('owner', $ownerId)
             ->orderBy('i.sluggedName', 'ASC')
@@ -113,7 +139,7 @@ readonly class IngredientPostgreSQLRepository extends PostgreSQLRepository imple
     public function findByOwner(string $ownerId): Tab
     {
         $entities = $this->entityRepository->createQueryBuilder('i')
-            ->where('i.creatorId = :owner or i.creatorId is null')
+            ->where(IngredientVisibility::visibleBy('i', 'owner'))
             ->setParameter('owner', $ownerId)
             ->orderBy('i.sluggedName', 'ASC')
             ->getQuery()

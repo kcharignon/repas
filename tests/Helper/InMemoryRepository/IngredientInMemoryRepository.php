@@ -36,6 +36,14 @@ class IngredientInMemoryRepository extends AbstractInMemoryRepository implements
         return $ingredient->getDefaultPurchaseUnit()->getSlug();
     }
 
+    public function findCommonSlugs(array $slugs): array
+    {
+        return array_values(array_filter(
+            array_unique($slugs),
+            fn(string $slug): bool => isset($this->models[$slug]) && $this->models[$slug]->getCreatorId() === null,
+        ));
+    }
+
     public function exists(string $slug): bool
     {
         return isset($this->models[$slug]);

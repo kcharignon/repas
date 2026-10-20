@@ -33,19 +33,33 @@ interface IngredientRepository
     public function findPurchaseUnitSlug(string $slug): string;
 
     /**
-     * Comme `findPurchaseUnitSlug()`, pour poser l'ingrédient dans la liste d'un utilisateur : un ingrédient commun est
-     * utilisable par tous, un ingrédient personnalisé seulement par son créateur, celui d'un autre est traité comme inconnu.
+     * Comme `findPurchaseUnitSlug()`, pour poser l'ingrédient dans la liste d'un utilisateur : un ingrédient est utilisable par
+     * celui qui le voit (ADR 0028) : un commun qu'il n'a pas adopté ou son ingrédient personnel. L'ingrédient d'un autre, et un commun
+     * que l'utilisateur a adopté (sa copie le remplace : le cas d'usage résout le slug avant), sont traités comme inconnus.
      *
      * @throws IngredientException
      */
     public function findPurchaseUnitSlugUsableBy(string $slug, string $userId): string;
 
     /**
+     * Ceux de ces slugs qui désignent un ingrédient commun (sans créateur), en une requête ; un slug inconnu ou personnel est absent.
+     * Sert à la résolution des slugs reçus en écriture (ADR 0028 décision 4) : seul un commun s'adopte.
+     *
+     * @param list<string> $slugs
+     * @return list<string>
+     */
+    public function findCommonSlugs(array $slugs): array;
+
+    /**
+     * Les ingrédients que cet utilisateur voit dans ce rayon (ADR 0028 : les siens et les communs qu'il n'a pas adoptés).
+     *
      * @return Tab<Ingredient>
      */
     public function findByDepartmentAndOwner(Department $department, string $ownerId): Tab;
 
     /**
+     * Les ingrédients que cet utilisateur voit (ADR 0028 : les siens et les communs qu'il n'a pas adoptés).
+     *
      * @return Tab<Ingredient>
      */
     public function findByOwner(string $ownerId): Tab;
