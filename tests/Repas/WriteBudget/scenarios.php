@@ -8,11 +8,13 @@ use Repas\Drive\Application\Command\SaveProductChoices\ChoiceIntent;
 use Repas\Drive\Application\Command\SaveProductChoices\Placement;
 use Repas\Drive\Application\Command\SaveProductChoices\ProductInput;
 use Repas\Drive\Application\Command\SaveProductChoices\SaveProductChoicesCommand;
+use Repas\Drive\Application\Command\SaveProductChoices\SearchQueryChange;
 use Repas\Drive\Domain\Model\ContentUnit;
 use Repas\Drive\Domain\Model\Product;
 use Repas\Drive\Domain\Model\ProductContent;
 use Repas\Drive\Domain\Model\ProductPrice;
 use Repas\Drive\Domain\Model\Retailer;
+use Repas\Drive\Domain\Model\SearchQuery;
 use Repas\Repas\Application\Command\ActivatedShoppingList\ActivatedShoppingListCommand;
 use Repas\Repas\Application\Command\AddIngredientToShoppingList\AddIngredientToShoppingListCommand;
 use Repas\Repas\Application\Command\CopyRecipe\CopyRecipeCommand;
@@ -382,6 +384,8 @@ return [
     // du compteur du jour des écritures de produits, dans les réglages (plafond par utilisateur, DRV-613) + 2 pour l'apprentissage du
     // rayon (DRV-642) : la lecture du rayon de Repas des ingrédients et l'écriture du compteur, seulement quand un choix porte un rayon
     // de l'enseigne et que l'ingrédient a un rayon de Repas (ici : l'ingrédient existe, c'est le pire cas)
+    // Le choix porte aussi la recherche qui a fait trouver le produit (DRV-650) : elle voyage dans l'écriture de la préférence, aucune
+    // requête de plus (le budget est celui d'avant)
     'choix-drive' => static function (WriteBudgetTestCase $t): object {
         $user = $t->savedUser();
         $t->savedDriveSettings($user);
@@ -389,13 +393,14 @@ return [
         $t->savedDriveChoice($user, 'farine', ['1', '2'], ['9']);
 
         return new SaveProductChoicesCommand($user->getId(), Retailer::LECLERC, '123456', [
-            new ChoiceIntent('farine', ChoiceAction::ADD_PRODUCT, Placement::PRIMARY, new ProductInput('3', 'Farine de blé T55 1 kg', null, new ProductContent(1000, ContentUnit::G), new ProductPrice(149), 4001, 4101)),
+            new ChoiceIntent('farine', ChoiceAction::ADD_PRODUCT, Placement::PRIMARY, new ProductInput('3', 'Farine de blé T55 1 kg', null, new ProductContent(1000, ContentUnit::G), new ProductPrice(149), 4001, 4101), SearchQueryChange::set(SearchQuery::of('farine de blé t55'))),
         ]);
     },
     // Le même use case avec un lot de 41 intentions sur 11 ingrédients, dont dix déjà mémorisés et un nouveau : constant quelle que soit
     // la taille du lot, et une requête de plus que ci-dessus, le décompte des préférences (plafond par utilisateur, DRV-613), lu
     // seulement quand le lot crée une préférence. Chaque produit choisi porte un rayon de l'enseigne et les ingrédients existent : la
     // lecture des rayons de Repas et l'écriture des compteurs (DRV-642) restent deux requêtes pour tout le lot
+    // Les dix produits préférés portent aussi leur recherche mémorisée (DRV-650) : aucune requête de plus
     'choix-drive-lot' => static function (WriteBudgetTestCase $t): object {
         $user = $t->savedUser();
         $t->savedDriveSettings($user);
@@ -404,7 +409,7 @@ return [
             $slug = "ingredient-$i";
             $t->persister->saveIngredient(new IngredientBuilder()->isMilk()->withSlug($slug)->withName("Ingrédient $i")->build());
             $t->savedDriveChoice($user, $slug, [(string) $i, (string) ($i + 100)], [(string) ($i + 200)]);
-            $intents[] = new ChoiceIntent($slug, ChoiceAction::ADD_PRODUCT, Placement::PRIMARY, new ProductInput((string) ($i + 300), "Produit $i", null, new ProductContent(500, ContentUnit::G), new ProductPrice(100 + $i), 4000 + ($i % 3), 4100));
+            $intents[] = new ChoiceIntent($slug, ChoiceAction::ADD_PRODUCT, Placement::PRIMARY, new ProductInput((string) ($i + 300), "Produit $i", null, new ProductContent(500, ContentUnit::G), new ProductPrice(100 + $i), 4000 + ($i % 3), 4100), SearchQueryChange::set(SearchQuery::of("recherche $i")));
             $intents[] = new ChoiceIntent($slug, ChoiceAction::ADD_PRODUCT, Placement::FALLBACK, new ProductInput((string) ($i + 400), "Produit de secours $i"));
             $intents[] = new ChoiceIntent($slug, ChoiceAction::REJECT_PRODUCT, null, new ProductInput((string) $i, "Produit refusé $i"));
             $intents[] = new ChoiceIntent($slug, ChoiceAction::REFRESH_PRICE, null, new ProductInput((string) ($i + 100), null, null, null, new ProductPrice(200 + $i)));

@@ -37,6 +37,7 @@ final readonly class ChoicePostgreSQLLoader implements ChoiceLoader
             ->select(
                 'c.ingredientSlug AS slug',
                 'c.kind AS kind',
+                'c.searchQuery AS searchQuery',
                 'c.updatedAt AS updatedAt',
                 'cp.verdict AS verdict',
                 'cp.rank AS position',
@@ -87,6 +88,8 @@ final readonly class ChoicePostgreSQLLoader implements ChoiceLoader
                 accepted: $choice['accepted'],
                 rejected: $choice['rejected'],
                 updatedAt: $choice['row']['updatedAt']->format(DATE_ATOM),
+                // « J'en ai toujours » ne cherche rien : une recherche restée d'une version plus ancienne du code est ignorée
+                searchQuery: $choice['row']['kind'] === ChoiceKind::HAVE_AT_HOME->value ? null : $choice['row']['searchQuery'],
             );
         }
 

@@ -37,6 +37,7 @@ use Repas\Shared\Domain\Model\Dimension;
  * appris pour les rayons de Repas des lignes (`rayonHints`, DRV-642 ; aucune requête si aucune ligne n'a de rayon de Repas). Seuls
  * les produits de ces préférences sont lus (décision D22). Les préférences d'un autre magasin ne comptent pas : un produit connu
  * dont le magasin a changé n'existe plus, la ligne est `NEW`. Les rayons appris, eux, valent pour l'enseigne (pas pour un magasin).
+ * La recherche mémorisée (DRV-650) vient de la préférence du magasin courant : jamais d'une autre enseigne ni d'un autre magasin.
  */
 final readonly class DrivePlanPostgreSQLLoader implements DrivePlanLoader
 {
@@ -108,7 +109,7 @@ final readonly class DrivePlanPostgreSQLLoader implements DrivePlanLoader
      * produits refusés par libellé. Un produit introuvable dans le catalogue est ignoré.
      *
      * @param list<string> $slugs
-     * @return array<string, array{haveAtHome: bool, accepted: list<array<string, mixed>>, rejected: list<DrivePlanRejectedDTO>}>
+     * @return array<string, array{haveAtHome: bool, searchQuery: ?string, accepted: list<array<string, mixed>>, rejected: list<DrivePlanRejectedDTO>}>
      */
     private function choices(string $userId, string $storeId, array $slugs): array
     {
@@ -120,6 +121,7 @@ final readonly class DrivePlanPostgreSQLLoader implements DrivePlanLoader
             ->select(
                 'c.ingredientSlug AS slug',
                 'c.kind AS kind',
+                'c.searchQuery AS searchQuery',
                 'cp.verdict AS verdict',
                 'cp.rank AS position',
                 'p.retailerProductId AS retailerProductId',
@@ -147,7 +149,9 @@ final readonly class DrivePlanPostgreSQLLoader implements DrivePlanLoader
         $choices = [];
         foreach ($rows as $row) {
             $slug = $row['slug'];
-            $choices[$slug] ??= ['haveAtHome' => $row['kind'] === ChoiceKind::HAVE_AT_HOME->value, 'accepted' => [], 'rejected' => []];
+            $haveAtHome = $row['kind'] === ChoiceKind::HAVE_AT_HOME->value;
+            // La recherche mémorisée est celle du choix de cette enseigne et de ce magasin (filtre de la requête) ; « j'en ai toujours » ne cherche rien
+            $choices[$slug] ??= ['haveAtHome' => $haveAtHome, 'searchQuery' => $haveAtHome ? null : $row['searchQuery'], 'accepted' => [], 'rejected' => []];
             if ($row['retailerProductId'] === null) {
                 continue;
             }
@@ -195,7 +199,7 @@ final readonly class DrivePlanPostgreSQLLoader implements DrivePlanLoader
     }
 
     /**
-     * @param array{haveAtHome: bool, accepted: list<array<string, mixed>>, rejected: list<DrivePlanRejectedDTO>}|null $choice
+     * @param array{haveAtHome: bool, searchQuery: ?string, accepted: list<array<string, mixed>>, rejected: list<DrivePlanRejectedDTO>}|null $choice
      * @param list<int> $rayonHints
      */
     private function line(ShoppingListLineForDrive $line, ?array $choice, array $rayonHints): DrivePlanLineDTO
@@ -215,7 +219,8 @@ final readonly class DrivePlanPostgreSQLLoader implements DrivePlanLoader
             status: $status->value,
             products: array_map(fn(array $row): DrivePlanProductDTO => $this->product($row, $quantity), $choice['accepted'] ?? []),
             rejected: $choice['rejected'] ?? [],
-            searchQuery: $line->ingredientName,
+            // La recherche qui a fait trouver le produit choisi (DRV-650), sinon le nom de l'ingrédient ; le nom affiché ne change pas
+            searchQuery: $choice['searchQuery'] ?? $line->ingredientName,
             rayonHints: $rayonHints,
         );
     }

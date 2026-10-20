@@ -27,8 +27,9 @@ class ListChoicesApiControllerTest extends QueryBusWebTestCase
                 [new AcceptedProductDTO(1, new ChoiceProductDTO('p-1', '555111', '3017620422003', 'Farine T55 1 kg', new ProductContentDTO(1000, 'g')))],
                 [new ChoiceProductDTO('p-2', '999000', null, 'Farine complète bio 1 kg', null)],
                 '2026-10-18T10:00:00+02:00',
+                'farine de blé t55',
             ),
-            new ChoiceDTO('sel', 'Sel', true, [], [], '2026-10-18T11:00:00+02:00'),
+            new ChoiceDTO('sel', 'Sel', true, [], [], '2026-10-18T11:00:00+02:00', null),
         ]);
 
         // When
@@ -46,8 +47,9 @@ class ListChoicesApiControllerTest extends QueryBusWebTestCase
                     'accepted' => [['rank' => 1, 'product' => ['productId' => 'p-1', 'retailerProductId' => '555111', 'ean' => '3017620422003', 'label' => 'Farine T55 1 kg', 'content' => ['value' => 1000, 'unit' => 'g']]]],
                     'rejected' => [['productId' => 'p-2', 'retailerProductId' => '999000', 'ean' => null, 'label' => 'Farine complète bio 1 kg', 'content' => null]],
                     'updatedAt' => '2026-10-18T10:00:00+02:00',
+                    'searchQuery' => 'farine de blé t55',
                 ],
-                ['ingredientSlug' => 'sel', 'ingredientName' => 'Sel', 'haveAtHome' => true, 'accepted' => [], 'rejected' => [], 'updatedAt' => '2026-10-18T11:00:00+02:00'],
+                ['ingredientSlug' => 'sel', 'ingredientName' => 'Sel', 'haveAtHome' => true, 'accepted' => [], 'rejected' => [], 'updatedAt' => '2026-10-18T11:00:00+02:00', 'searchQuery' => null],
             ],
             'totalItems' => 2,
         ], $this->jsonBody());

@@ -14,8 +14,12 @@ use Repas\Shared\Domain\Model\ModelTrait;
  * (ADR 0013). Unique par `(userId, retailer, storeId, ingredientSlug)`.
  *
  * Invariants, vrais après chaque méthode : un produit n'apparaît qu'une fois, jamais à la fois accepté et refusé ; les rangs
- * sont contigus de 1 à n (ils se déduisent de l'ordre de la liste) ; « j'en ai toujours » n'a ni produit accepté ni refusé.
- * Une méthode qui échoue (`DriveException::invalidChoice()`) ne change rien.
+ * sont contigus de 1 à n (ils se déduisent de l'ordre de la liste) ; « j'en ai toujours » n'a ni produit accepté ni refusé
+ * ni recherche mémorisée. Une méthode qui échoue (`DriveException::invalidChoice()`) ne change rien.
+ *
+ * La recherche mémorisée (DRV-650) est le texte qui a fait trouver le produit choisi sur le site de l'enseigne ; elle vit sur la
+ * préférence, donc sous la même clé : propre à l'utilisateur, à l'enseigne et au magasin, jamais reprise d'une autre enseigne ni d'un
+ * autre magasin.
  */
 final class Choice implements ModelInterface
 {
@@ -43,6 +47,7 @@ final class Choice implements ModelInterface
         private ChoiceKind $kind,
         private array $accepted,
         private array $rejected,
+        private ?SearchQuery $searchQuery,
         private DateTimeImmutable $updatedAt,
     ) {
     }
@@ -64,7 +69,7 @@ final class Choice implements ModelInterface
             throw DriveException::invalidChoice();
         }
 
-        return new self($id, $userId, $retailer, $storeId, $ingredientSlug, ChoiceKind::PRODUCTS, [], [], $now);
+        return new self($id, $userId, $retailer, $storeId, $ingredientSlug, ChoiceKind::PRODUCTS, [], [], null, $now);
     }
 
     /**
@@ -82,7 +87,7 @@ final class Choice implements ModelInterface
     /**
      * Reconstruction depuis la persistance : aucun contrôle (les produits acceptés sont classés par rang).
      *
-     * @param array{id: string, user_id: string, retailer: Retailer, store_id: string, ingredient_slug: string, kind: ChoiceKind, accepted: list<AcceptedProduct>, rejected: list<string>, updated_at: DateTimeImmutable} $datas
+     * @param array{id: string, user_id: string, retailer: Retailer, store_id: string, ingredient_slug: string, kind: ChoiceKind, accepted: list<AcceptedProduct>, rejected: list<string>, search_query?: ?SearchQuery, updated_at: DateTimeImmutable} $datas
      */
     public static function load(array $datas): self
     {
@@ -98,6 +103,8 @@ final class Choice implements ModelInterface
             $datas['kind'],
             array_map(static fn(AcceptedProduct $product): string => $product->productId, $accepted),
             $datas['rejected'],
+            // Une version plus ancienne du code a pu repasser la ligne en « j'en ai toujours » sans effacer la recherche : elle est ignorée
+            $datas['kind'] === ChoiceKind::HAVE_AT_HOME ? null : ($datas['search_query'] ?? null),
             $datas['updated_at'],
         );
     }
@@ -172,6 +179,15 @@ final class Choice implements ModelInterface
         return in_array($productId, $this->accepted, true);
     }
 
+    /**
+     * Le texte qui a fait trouver le produit choisi sur le site de l'enseigne, `null` si aucun n'est mémorisé (ou pour « j'en ai
+     * toujours »).
+     */
+    public function getSearchQuery(): ?SearchQuery
+    {
+        return $this->searchQuery;
+    }
+
     public function getUpdatedAt(): DateTimeImmutable
     {
         return $this->updatedAt;
@@ -180,6 +196,32 @@ final class Choice implements ModelInterface
     public function touch(DateTimeImmutable $now): self
     {
         $this->updatedAt = $now;
+
+        return $this;
+    }
+
+    /**
+     * Mémorise (ou remplace) la recherche qui a fait trouver le produit choisi.
+     *
+     * @throws DriveException `invalidChoice()` pour « j'en ai toujours » : cette préférence n'achète rien, donc ne cherche rien
+     */
+    public function rememberSearch(SearchQuery $searchQuery): self
+    {
+        if ($this->kind === ChoiceKind::HAVE_AT_HOME) {
+            throw DriveException::invalidChoice();
+        }
+
+        $this->searchQuery = $searchQuery;
+
+        return $this;
+    }
+
+    /**
+     * Oublie la recherche mémorisée : le plan cherche de nouveau avec le nom de l'ingrédient.
+     */
+    public function forgetSearch(): self
+    {
+        $this->searchQuery = null;
 
         return $this;
     }
@@ -273,7 +315,8 @@ final class Choice implements ModelInterface
     /**
      * Remplace d'un coup la préférence (écran de gestion des produits) : « j'en ai toujours », ou les produits acceptés dans
      * l'ordre donné (le préféré d'abord) et les produits refusés. Un produit n'apparaît qu'une fois dans l'ensemble des deux
-     * listes ; « j'en ai toujours » n'a aucun produit.
+     * listes ; « j'en ai toujours » n'a aucun produit. La recherche mémorisée est gardée, sauf pour
+     * « j'en ai toujours » (elle est effacée) : cet écran ne la modifie pas.
      *
      * @param list<string> $accepted
      * @param list<string> $rejected
@@ -295,18 +338,22 @@ final class Choice implements ModelInterface
         $this->kind = $haveAtHome ? ChoiceKind::HAVE_AT_HOME : ChoiceKind::PRODUCTS;
         $this->accepted = array_values($accepted);
         $this->rejected = array_values($rejected);
+        if ($haveAtHome) {
+            $this->searchQuery = null;
+        }
 
         return $this;
     }
 
     /**
-     * « J'en ai toujours » : les produits acceptés et refusés sont effacés.
+     * « J'en ai toujours » : les produits acceptés et refusés, et la recherche mémorisée, sont effacés.
      */
     public function markHaveAtHome(): self
     {
         $this->kind = ChoiceKind::HAVE_AT_HOME;
         $this->accepted = [];
         $this->rejected = [];
+        $this->searchQuery = null;
 
         return $this;
     }

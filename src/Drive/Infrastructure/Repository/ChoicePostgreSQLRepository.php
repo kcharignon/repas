@@ -12,6 +12,7 @@ use Repas\Drive\Domain\Model\AcceptedProduct;
 use Repas\Drive\Domain\Model\Choice;
 use Repas\Drive\Domain\Model\ChoiceKind;
 use Repas\Drive\Domain\Model\Retailer;
+use Repas\Drive\Domain\Model\SearchQuery;
 use Repas\Drive\Infrastructure\Entity\Choice as ChoiceEntity;
 use Repas\Shared\Infrastructure\Repository\PostgreSQLRepository;
 
@@ -77,6 +78,7 @@ readonly class ChoicePostgreSQLRepository extends PostgreSQLRepository implement
                 $choice->getStoreId(),
                 $choice->getIngredientSlug(),
                 $choice->getKind()->value,
+                $choice->getSearchQuery()?->value,
                 $choice->getUpdatedAt()->format(self::DATE_FORMAT),
             );
             foreach ($choice->getAccepted() as $accepted) {
@@ -88,9 +90,9 @@ readonly class ChoicePostgreSQLRepository extends PostgreSQLRepository implement
         }
 
         $connection->executeStatement(
-            'INSERT INTO drive_choice (id, user_id, retailer, store_id, ingredient_slug, kind, updated_at) VALUES '
-            . implode(', ', array_fill(0, count($choices), '(?, ?, ?, ?, ?, ?, ?)'))
-            . ' ON CONFLICT (id) DO UPDATE SET kind = EXCLUDED.kind, updated_at = EXCLUDED.updated_at',
+            'INSERT INTO drive_choice (id, user_id, retailer, store_id, ingredient_slug, kind, search_query, updated_at) VALUES '
+            . implode(', ', array_fill(0, count($choices), '(?, ?, ?, ?, ?, ?, ?, ?)'))
+            . ' ON CONFLICT (id) DO UPDATE SET kind = EXCLUDED.kind, search_query = EXCLUDED.search_query, updated_at = EXCLUDED.updated_at',
             $choiceParams,
         );
         $connection->executeStatement('DELETE FROM drive_choice_product WHERE choice_id IN (?)', [$ids], [ArrayParameterType::STRING]);
@@ -139,7 +141,7 @@ readonly class ChoicePostgreSQLRepository extends PostgreSQLRepository implement
     private function fetch(string $where, array $params, array $types): array
     {
         $rows = $this->connection()->fetchAllAssociative(
-            'SELECT c.id, c.user_id, c.retailer, c.store_id, c.ingredient_slug, c.kind, c.updated_at, cp.product_id, cp.verdict, cp.rank '
+            'SELECT c.id, c.user_id, c.retailer, c.store_id, c.ingredient_slug, c.kind, c.search_query, c.updated_at, cp.product_id, cp.verdict, cp.rank '
             . 'FROM drive_choice c LEFT JOIN drive_choice_product cp ON cp.choice_id = c.id '
             . 'WHERE ' . $where . ' ORDER BY c.id, cp.rank, cp.product_id',
             $params,
@@ -166,6 +168,7 @@ readonly class ChoicePostgreSQLRepository extends PostgreSQLRepository implement
                 'kind' => ChoiceKind::from($choice['row']['kind']),
                 'accepted' => $choice['accepted'],
                 'rejected' => $choice['rejected'],
+                'search_query' => $choice['row']['search_query'] === null ? null : SearchQuery::load($choice['row']['search_query']),
                 'updated_at' => new DateTimeImmutable($choice['row']['updated_at']),
             ]),
             $choices,

@@ -50,7 +50,7 @@ class ChoicePostgreSQLLoaderTest extends DatabaseTestCase
         ]);
         $this->choices->saveAll([
             new ChoiceBuilder()->withUserId('user-1')->withIngredientSlug('farine')->withAccepted([$this->id('2'), $this->id('1')])->withRejected([$this->id('3')])
-                ->withUpdatedAt(new DateTimeImmutable('2026-10-18 10:00:00'))->build(),
+                ->withSearchQuery('farine de blé t55')->withUpdatedAt(new DateTimeImmutable('2026-10-18 10:00:00'))->build(),
             new ChoiceBuilder()->withUserId('user-1')->withIngredientSlug('sel')->haveAtHome()->withUpdatedAt(new DateTimeImmutable('2026-10-18 11:00:00'))->build(),
         ]);
 
@@ -69,9 +69,63 @@ class ChoicePostgreSQLLoaderTest extends DatabaseTestCase
                 ],
                 [new ChoiceProductDTO($this->id('3'), '3', null, 'Farine complète bio 1 kg', null)],
                 new DateTimeImmutable('2026-10-18 10:00:00')->format(DATE_ATOM),
+                'farine de blé t55',
             ),
-            new ChoiceDTO('sel', 'sel', true, [], [], new DateTimeImmutable('2026-10-18 11:00:00')->format(DATE_ATOM)),
+            new ChoiceDTO('sel', 'sel', true, [], [], new DateTimeImmutable('2026-10-18 11:00:00')->format(DATE_ATOM), null),
         ], $result);
+    }
+
+    public function testEachChoiceExposesItsOwnRememberedSearchOrNull(): void
+    {
+        // Given
+        $this->settings->save(new DriveSettingsBuilder()->withUserId('user-1')->build());
+        $this->choices->saveAll([
+            new ChoiceBuilder()->withUserId('user-1')->withIngredientSlug('cereale')->withAccepted(['p-1'])->withSearchQuery('céréales coussins chocolat')->build(),
+            new ChoiceBuilder()->withUserId('user-1')->withIngredientSlug('farine')->withAccepted(['p-2'])->build(),
+        ]);
+
+        // When
+        $result = $this->loader()->list('user-1', Retailer::LECLERC);
+
+        // Then : la clé est toujours là, null quand rien n'est mémorisé
+        $this->assertSame(['cereale' => 'céréales coussins chocolat', 'farine' => null], array_column(array_map(static fn(ChoiceDTO $dto): array => [$dto->ingredientSlug, $dto->searchQuery], $result), 1, 0));
+    }
+
+    public function testTheSearchOfAnotherRetailerAnotherUserOrAnOldStoreIsNeverListed(): void
+    {
+        // Given : le même ingrédient chez une autre enseigne (écrit en SQL : le code ne connaît qu'une enseigne), chez un autre
+        // utilisateur, et dans l'ancien magasin du même utilisateur
+        $this->settings->save(new DriveSettingsBuilder()->withUserId('user-1')->build());
+        $this->choices->saveAll([
+            new ChoiceBuilder()->withUserId('user-1')->withIngredientSlug('sel')->withAccepted(['p-1'])->build(),
+            new ChoiceBuilder()->withUserId('user-1')->withStoreId('654321')->withIngredientSlug('sel')->withAccepted(['p-1'])->withSearchQuery('recherche de l ancien magasin')->build(),
+            new ChoiceBuilder()->withUserId('user-2')->withIngredientSlug('sel')->withAccepted(['p-1'])->withSearchQuery('recherche de user-2')->build(),
+        ]);
+        $this->entityManager->getConnection()->executeStatement(
+            "INSERT INTO drive_choice (id, user_id, retailer, store_id, ingredient_slug, kind, search_query, updated_at) VALUES ('other-retailer', 'user-1', 'autre-enseigne', '123456', 'sel', 'PRODUCTS', 'recherche pour une autre enseigne', '2026-10-18 10:00:00')",
+        );
+
+        // When
+        $result = $this->loader()->list('user-1', Retailer::LECLERC);
+
+        // Then : une seule ligne, sans recherche : rien n'est repris d'ailleurs
+        $this->assertCount(1, $result);
+        $this->assertNull($result[0]->searchQuery);
+    }
+
+    public function testAHaveAtHomeRowNeverExposesASearchLeftByAnOlderVersion(): void
+    {
+        // Given : une version plus ancienne du code a repassé la ligne en « j'en ai toujours » sans effacer la colonne
+        $this->settings->save(new DriveSettingsBuilder()->withUserId('user-1')->build());
+        $this->choices->save(new ChoiceBuilder()->withId('choice-1')->withUserId('user-1')->withIngredientSlug('sel')->withAccepted(['p-1'])->withSearchQuery('gros sel')->build());
+        $this->entityManager->getConnection()->executeStatement("UPDATE drive_choice SET kind = 'HAVE_AT_HOME' WHERE id = 'choice-1'");
+
+        // When
+        $result = $this->loader()->list('user-1', Retailer::LECLERC);
+
+        // Then
+        $this->assertTrue($result[0]->haveAtHome);
+        $this->assertNull($result[0]->searchQuery);
     }
 
     public function testOnlyTheChoicesOfTheCurrentStoreAndTheUserAreListed(): void

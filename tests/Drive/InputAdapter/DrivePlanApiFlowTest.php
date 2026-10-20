@@ -108,6 +108,101 @@ class DrivePlanApiFlowTest extends DatabaseTestCase
     }
 
     /**
+     * DRV-650 de bout en bout : le texte qui a fait trouver un produit (`searchQuery` de `PUT /drive/choices`) est ce que le plan
+     * (`GET /drive/plans/{id}`) fait chercher la fois suivante, et ce que « Mes produits » (`GET /drive/choices`) montre. Clé absente :
+     * gardée ; `null` : effacée ; le nom affiché de l'ingrédient ne change jamais.
+     */
+    public function testTheSearchThatFoundTheProductIsWhatThePlanSearchesNextTime(): void
+    {
+        // Given : Alice, une liste envoyée de lait et d'œufs, et un lait choisi avec la recherche qui l'a fait trouver
+        $alice = $this->savedUser();
+        static::getContainer()->get(DriveSettingsRepository::class)->save(new DriveSettingsBuilder()->withUserId($alice->getId())->build());
+        $listId = $this->savedList($alice, ShoppingListStatus::SENT);
+        $this->request('GET', "/api/v1/drive/plans/$listId", $alice);
+        $names = array_column($this->jsonBody()['lines'], 'ingredientName');
+        $this->assertSame($names, array_column($this->jsonBody()['lines'], 'searchQuery'));
+        $addMilk = static fn(array $more = []): string => json_encode(['retailer' => 'leclerc', 'storeId' => '123456', 'choices' => [
+            ['ingredientSlug' => 'lait', 'action' => 'ADD_PRODUCT', 'placement' => 'PRIMARY', 'product' => ['retailerProductId' => '555111', 'label' => 'Lait demi-écrémé 50 cl'], ...$more],
+        ]], JSON_THROW_ON_ERROR);
+
+        // When
+        $this->request('PUT', '/api/v1/drive/choices', $alice, $addMilk(['searchQuery' => '  lait   demi écrémé uht ']));
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->request('GET', "/api/v1/drive/plans/$listId", $alice);
+
+        // Then : la recherche normalisée remplace le nom de l'ingrédient pour cette ligne seulement, le nom affiché reste
+        $lines = $this->jsonBody()['lines'];
+        $this->assertSame(['lait', 'oeuf'], array_column($lines, 'ingredientSlug'));
+        $this->assertSame($names, array_column($lines, 'ingredientName'));
+        $this->assertSame(['lait demi écrémé uht', $names[1]], array_column($lines, 'searchQuery'));
+        $this->request('GET', '/api/v1/drive/choices?retailer=leclerc', $alice);
+        $this->assertSame(['lait demi écrémé uht'], array_column($this->jsonBody()['member'], 'searchQuery'));
+
+        // When : un client qui ne connaît pas le champ choisit un autre lait
+        $this->request('PUT', '/api/v1/drive/choices', $alice, json_encode(['retailer' => 'leclerc', 'storeId' => '123456', 'choices' => [
+            ['ingredientSlug' => 'lait', 'action' => 'ADD_PRODUCT', 'placement' => 'PRIMARY', 'product' => ['retailerProductId' => '555222', 'label' => 'Lait entier 1 l']],
+        ]], JSON_THROW_ON_ERROR));
+        $this->request('GET', "/api/v1/drive/plans/$listId", $alice);
+
+        // Then : la recherche mémorisée est gardée
+        $this->assertSame('lait demi écrémé uht', $this->jsonBody()['lines'][0]['searchQuery']);
+
+        // When : `null` l'efface
+        $this->request('PUT', '/api/v1/drive/choices', $alice, $addMilk(['searchQuery' => null]));
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->request('GET', "/api/v1/drive/plans/$listId", $alice);
+
+        // Then : le plan retombe sur le nom de l'ingrédient
+        $this->assertSame($names, array_column($this->jsonBody()['lines'], 'searchQuery'));
+        $this->request('GET', '/api/v1/drive/choices?retailer=leclerc', $alice);
+        $this->assertSame([null], array_column($this->jsonBody()['member'], 'searchQuery'));
+    }
+
+    public function testASearchIsPrivateAndRefusedWhenMalformedOrOnAnythingButAnAddedProduct(): void
+    {
+        // Given : Alice et Bob ont chacun leur lait et leur recherche pour la même liste d'ingrédients
+        $alice = $this->savedUser();
+        $bob = $this->savedUser();
+        foreach ([$alice, $bob] as $user) {
+            static::getContainer()->get(DriveSettingsRepository::class)->save(new DriveSettingsBuilder()->withUserId($user->getId())->build());
+        }
+        $listId = $this->savedList($alice, ShoppingListStatus::SENT);
+        $put = fn(User $user, array $intent) => $this->request('PUT', '/api/v1/drive/choices', $user, json_encode(['retailer' => 'leclerc', 'storeId' => '123456', 'choices' => [$intent]], JSON_THROW_ON_ERROR));
+        $milk = ['ingredientSlug' => 'lait', 'action' => 'ADD_PRODUCT', 'placement' => 'PRIMARY', 'product' => ['retailerProductId' => '555111', 'label' => 'Lait demi-écrémé 50 cl']];
+        $put($alice, $milk + ['searchQuery' => 'lait pour alice']);
+        $put($bob, $milk + ['searchQuery' => 'lait pour bob']);
+
+        // When : une recherche mal formée, puis une recherche sur autre chose qu'un produit ajouté
+        $put($alice, $milk + ['searchQuery' => "lait\nbrique"]);
+        $malformed = [$this->client->getResponse()->getStatusCode(), $this->jsonBody()];
+        $put($alice, ['ingredientSlug' => 'lait', 'action' => 'HAVE_AT_HOME', 'searchQuery' => 'lait pour alice']);
+        $onTheWrongAction = [$this->client->getResponse()->getStatusCode(), $this->jsonBody()];
+        $put($alice, ['ingredientSlug' => 'lait', 'action' => 'REJECT_PRODUCT', 'product' => ['retailerProductId' => '999000', 'label' => 'Lait entier'], 'searchQuery' => null]);
+        $onARejection = [$this->client->getResponse()->getStatusCode(), $this->jsonBody()];
+
+        // Then : refusées avec leur code, rien n'a changé, et chacun garde la sienne
+        $this->assertSame([422, ['error' => ['message' => 'DRIVE_SEARCH_QUERY_INVALID']]], $malformed);
+        $this->assertSame([422, ['error' => ['message' => 'DRIVE_CHOICE_INVALID']]], $onTheWrongAction);
+        $this->assertSame([422, ['error' => ['message' => 'DRIVE_CHOICE_INVALID']]], $onARejection);
+        foreach ([[$alice, 'lait pour alice'], [$bob, 'lait pour bob']] as [$user, $expected]) {
+            $this->request('GET', '/api/v1/drive/choices?retailer=leclerc', $user);
+            $this->assertSame([$expected], array_column($this->jsonBody()['member'], 'searchQuery'));
+        }
+
+        // When : « j'en ai toujours » efface la recherche d'Alice, pas celle de Bob
+        $put($alice, ['ingredientSlug' => 'lait', 'action' => 'HAVE_AT_HOME']);
+        $this->request('GET', '/api/v1/drive/choices?retailer=leclerc', $alice);
+
+        // Then
+        $this->assertSame([[true, null]], array_map(static fn(array $choice): array => [$choice['haveAtHome'], $choice['searchQuery']], $this->jsonBody()['member']));
+        $this->request('GET', '/api/v1/drive/choices?retailer=leclerc', $bob);
+        $this->assertSame(['lait pour bob'], array_column($this->jsonBody()['member'], 'searchQuery'));
+        $this->request('GET', "/api/v1/drive/plans/$listId", $alice);
+        $this->assertSame('HAVE_AT_HOME', $this->jsonBody()['lines'][0]['status']);
+        $this->assertSame($this->jsonBody()['lines'][0]['ingredientName'], $this->jsonBody()['lines'][0]['searchQuery']);
+    }
+
+    /**
      * Constat C1 de la revue de sécurité : une fiche de produit est commune à tous les utilisateurs du magasin. Un second
      * utilisateur qui renvoie l'identifiant d'un produit connu avec un autre libellé, un autre contenu et un autre prix ne
      * change ni la fiche, ni le plan, ni l'estimation du premier (avant la correction : 10 produits au lieu d'1).

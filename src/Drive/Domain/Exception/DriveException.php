@@ -12,6 +12,7 @@ final class DriveException extends DomainException
     public const string DRIVE_NOT_CONFIGURED = 'DRIVE_NOT_CONFIGURED';
     public const string DRIVE_CHOICE_INVALID = 'DRIVE_CHOICE_INVALID';
     public const string DRIVE_CHOICE_NOT_FOUND = 'DRIVE_CHOICE_NOT_FOUND';
+    public const string DRIVE_SEARCH_QUERY_INVALID = 'DRIVE_SEARCH_QUERY_INVALID';
     public const string DRIVE_STORE_MISMATCH = 'DRIVE_STORE_MISMATCH';
     public const string DRIVE_LIMIT_REACHED = 'DRIVE_LIMIT_REACHED';
     public const string DRIVE_RATE_LIMITED = 'DRIVE_RATE_LIMITED';
@@ -42,6 +43,16 @@ final class DriveException extends DomainException
     public static function invalidChoice(): self
     {
         return new self(self::DRIVE_CHOICE_INVALID, 422);
+    }
+
+    /**
+     * Recherche mémorisée refusée (DRV-650) : pas un texte, moins de 2 ou plus de 80 caractères une fois les espaces ramenées à une
+     * seule, ou un caractère de contrôle ou invisible. Règle métier, `422`, distincte de `invalidChoice()` pour que le client sache
+     * que c'est ce texte-là qu'il doit corriger.
+     */
+    public static function searchQueryInvalid(): self
+    {
+        return new self(self::DRIVE_SEARCH_QUERY_INVALID, 422);
     }
 
     /**

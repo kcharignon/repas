@@ -9,12 +9,14 @@ use Repas\Drive\Application\Command\SaveProductChoices\ChoiceIntent;
 use Repas\Drive\Application\Command\SaveProductChoices\Placement;
 use Repas\Drive\Application\Command\SaveProductChoices\ProductInput;
 use Repas\Drive\Application\Command\SaveProductChoices\SaveProductChoicesCommand;
+use Repas\Drive\Application\Command\SaveProductChoices\SearchQueryChange;
 use Repas\Drive\Domain\Model\ContentUnit;
 use Repas\Drive\Domain\Model\PricePerMeasure;
 use Repas\Drive\Domain\Model\PriceUnit;
 use Repas\Drive\Domain\Model\ProductContent;
 use Repas\Drive\Domain\Model\ProductPrice;
 use Repas\Drive\Domain\Model\Retailer;
+use Repas\Drive\Domain\Model\SearchQuery;
 use Repas\Shared\Application\Interface\DriveFeature;
 use Repas\Tests\Helper\ControlledDriveFeature;
 use Repas\Tests\Helper\QueryBusWebTestCase;
@@ -84,6 +86,118 @@ class SaveProductChoicesApiControllerTest extends QueryBusWebTestCase
             new ChoiceIntent('sel', ChoiceAction::ADD_PRODUCT, Placement::PRIMARY, new ProductInput('3', 'Sel')),
             new ChoiceIntent('sucre', ChoiceAction::REJECT_PRODUCT, null, new ProductInput('4', 'Sucre')),
         ])], $commandBus->dispatched());
+    }
+
+    public function testTheSearchQueryIsKeptWhenAbsentForgottenWhenNullAndReplacedWhenText(): void
+    {
+        // Given
+        $user = $this->savedUser();
+        $commandBus = $this->mockCommandBus();
+        $product = static fn(string $id): array => ['retailerProductId' => $id, 'label' => 'Céréales coussins'];
+
+        // When : une application qui ne connaît pas le champ, `null` explicite, un texte (à normaliser), un refus sans le champ
+        $this->put($user, ['retailer' => 'leclerc', 'storeId' => '123456', 'choices' => [
+            ['ingredientSlug' => 'farine', 'action' => 'ADD_PRODUCT', 'placement' => 'PRIMARY', 'product' => $product('1')],
+            ['ingredientSlug' => 'lait', 'action' => 'ADD_PRODUCT', 'placement' => 'PRIMARY', 'product' => $product('2'), 'searchQuery' => null],
+            ['ingredientSlug' => 'cereale', 'action' => 'ADD_PRODUCT', 'placement' => 'FALLBACK', 'product' => $product('3'), 'searchQuery' => '  céréales   coussins '],
+            ['ingredientSlug' => 'sucre', 'action' => 'REJECT_PRODUCT', 'product' => $product('4')],
+            ['ingredientSlug' => 'sel', 'action' => 'HAVE_AT_HOME'],
+        ]]);
+
+        // Then
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->assertEquals([new SaveProductChoicesCommand($user->getId(), Retailer::LECLERC, '123456', [
+            new ChoiceIntent('farine', ChoiceAction::ADD_PRODUCT, Placement::PRIMARY, new ProductInput('1', 'Céréales coussins')),
+            new ChoiceIntent('lait', ChoiceAction::ADD_PRODUCT, Placement::PRIMARY, new ProductInput('2', 'Céréales coussins'), SearchQueryChange::clear()),
+            new ChoiceIntent('cereale', ChoiceAction::ADD_PRODUCT, Placement::FALLBACK, new ProductInput('3', 'Céréales coussins'), SearchQueryChange::set(SearchQuery::of('céréales coussins'))),
+            new ChoiceIntent('sucre', ChoiceAction::REJECT_PRODUCT, null, new ProductInput('4', 'Céréales coussins')),
+            new ChoiceIntent('sel', ChoiceAction::HAVE_AT_HOME),
+        ])], $commandBus->dispatched());
+        $intents = $commandBus->dispatched()[0]->intents;
+        $this->assertNull($intents[0]->searchQuery);
+        $this->assertNull($intents[1]->searchQuery->searchQuery);
+        $this->assertSame('céréales coussins', $intents[2]->searchQuery->searchQuery->value);
+    }
+
+    /**
+     * Une recherche mal formée est refusée avec son propre code (le client sait que c'est ce texte qu'il doit corriger), et rien
+     * n'est enregistré, même pour les autres intentions du lot.
+     */
+    #[DataProvider('invalidSearchQueries')]
+    public function testRefusesAnInvalidSearchQueryWithItsOwnMessage(mixed $searchQuery): void
+    {
+        // Given
+        $commandBus = $this->mockCommandBus();
+
+        // When
+        $this->put($this->savedUser(), ['retailer' => 'leclerc', 'storeId' => '123456', 'choices' => [
+            ['ingredientSlug' => 'sel', 'action' => 'HAVE_AT_HOME'],
+            ['ingredientSlug' => 'cereale', 'action' => 'ADD_PRODUCT', 'placement' => 'PRIMARY', 'product' => ['retailerProductId' => '1', 'label' => 'Céréales'], 'searchQuery' => $searchQuery],
+        ]]);
+
+        // Then
+        $this->assertSame(422, $this->client->getResponse()->getStatusCode());
+        $this->assertSame(['error' => ['message' => 'DRIVE_SEARCH_QUERY_INVALID']], $this->jsonBody());
+        $this->assertSame([], $commandBus->dispatched());
+    }
+
+    /**
+     * @return iterable<string, array{mixed}>
+     */
+    public static function invalidSearchQueries(): iterable
+    {
+        yield 'texte vide' => [''];
+        yield 'espaces seulement' => ['   '];
+        yield 'un seul caractère' => ['c'];
+        yield 'plus de 80 caractères' => [str_repeat('a', 81)];
+        yield 'saut de ligne' => ["céréales\ncoussins"];
+        yield 'espace de largeur nulle' => ["céréales\u{200B}coussins"];
+    }
+
+    /**
+     * @param mixed $searchQuery
+     */
+    #[DataProvider('searchQueriesThatAreNotText')]
+    public function testRefusesASearchQueryThatIsNotATextWithoutSavingAnything(mixed $searchQuery): void
+    {
+        // Given
+        $commandBus = $this->mockCommandBus();
+
+        // When
+        $this->put($this->savedUser(), ['retailer' => 'leclerc', 'storeId' => '123456', 'choices' => [
+            ['ingredientSlug' => 'cereale', 'action' => 'ADD_PRODUCT', 'placement' => 'PRIMARY', 'product' => ['retailerProductId' => '1', 'label' => 'Céréales'], 'searchQuery' => $searchQuery],
+        ]]);
+
+        // Then
+        $this->assertSame(422, $this->client->getResponse()->getStatusCode());
+        $this->assertArrayHasKey('error', $this->jsonBody());
+        $this->assertSame([], $commandBus->dispatched());
+    }
+
+    /**
+     * @return iterable<string, array{mixed}>
+     */
+    public static function searchQueriesThatAreNotText(): iterable
+    {
+        yield 'un nombre' => [12];
+        yield 'un booléen' => [true];
+        yield 'une liste' => [['céréales coussins']];
+        yield 'un objet' => [['texte' => 'céréales coussins']];
+    }
+
+    public function testASearchQueryOnAnotherActionIsPassedOnAndTheHandlerRefusesIt(): void
+    {
+        // Given
+        $commandBus = $this->mockCommandBus();
+
+        // When
+        $this->put($this->savedUser(), ['retailer' => 'leclerc', 'storeId' => '123456', 'choices' => [
+            ['ingredientSlug' => 'sel', 'action' => 'HAVE_AT_HOME', 'searchQuery' => 'gros sel'],
+        ]]);
+
+        // Then : le controller ne juge pas la cohérence de l'intention, c'est le gestionnaire qui la refuse (parcours : DriveChoicesApiFlowTest)
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->assertSame('gros sel', $commandBus->dispatched()[0]->intents[0]->searchQuery->searchQuery->value);
     }
 
     public function testAnEmptyBatchIsAccepted(): void
