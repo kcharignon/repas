@@ -1,6 +1,6 @@
 ---
 name: repas-ops
-description: Mettre en production, publier une release, revenir en arrière, sauvegarder ou diagnostiquer le serveur de Repas (droplet DigitalOcean, Docker Compose, GHCR, bordure Caddy). À utiliser pour « déployer », « release », « rollback », « sauvegarde », « le site est tombé », la première mise en production, un retour d'urgence vers Twig, allumer, couper ou annuler l'envoi de la liste au drive (`DRIVE_ENABLED`, listes `SENT`), annoncer une nouvelle version de l'application (`APP_LATEST_VERSION`), ou toute modification de `deploy/` et des workflows `release.yml`. Lit l'ADR 0017 avant d'agir.
+description: Mettre en production, publier une release, revenir en arrière, sauvegarder ou diagnostiquer le serveur de Repas (droplet DigitalOcean, Docker Compose, GHCR, bordure Caddy). À utiliser pour « déployer », « release », « rollback », « sauvegarde », « le site est tombé », la première mise en production, un retour d'urgence vers Twig, allumer, couper ou annuler l'envoi de la liste au drive (`DRIVE_ENABLED`, listes `SENT`), lancer la migration d'adoption des ingrédients communs (ING-003), annoncer une nouvelle version de l'application (`APP_LATEST_VERSION`), ou toute modification de `deploy/` et des workflows `release.yml`. Lit l'ADR 0017 avant d'agir.
 ---
 
 # repas-ops — exploiter la production de Repas
@@ -28,6 +28,7 @@ description: Mettre en production, publier une release, revenir en arrière, sau
 | Le front est inutilisable : rendre Twig en urgence (dernière version qui le servait) | `references/retour-twig.md` |
 | Mettre en place l'envoi d'emails (confirmation d'adresse, ADR 0020) : compte Brevo, domaine, clé d'API, `MAILER_DSN` | `references/envoi-emails.md` |
 | Envoi de la liste au drive : mettre en production (back, front, application), allumer ou couper `DRIVE_ENABLED`, revenir en arrière avec des listes `SENT` (faits et commandes : `docs/production.md`) | `references/drive.md` (scripts `ecrire-drive-enabled.sh`, `rouvrir-listes-envoyees.sh`) |
+| Adopter les ingrédients communs (migration ING-003 : chaque compte concerné reçoit sa copie, ADR 0028) : rapport à blanc, sauvegarde, écriture, second lancement, contrôles, retour arrière (faits : `docs/ingredients/migration.md` § 13 et `docs/production.md`) | `references/ingredients.md` (script `adopter-ingredients.sh`) |
 | Leclerc a changé ou bloque : couper `DRIVE_ENABLED`, diagnostic, repli en mode assisté, corriger l'agent, nouvelle application, rallumer | `docs/drive/runbook.md` (la couper : `references/drive.md` section B) |
 | Une nouvelle version de l'application Android est publiée : écrire `APP_LATEST_VERSION` (ou `APP_MIN_VERSION`) pour inviter les anciennes à se mettre à jour, toujours **après** la publication (DRV-637) | `docs/production.md` (« Ce que la production exige ») ; script `references/ecrire-app-version.sh` |
 

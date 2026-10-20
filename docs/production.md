@@ -53,6 +53,7 @@ Le test démarre la vraie image sur une base vide avec de faux secrets et des ce
   ```
 
   Sortie attendue : `OK : APP_LATEST_VERSION=0.1.10, le conteneur php le voit et /api/v1/health répond.` La table `user_app_version` (migration additive `Version20261020120000`) garde la dernière version vue pour chaque compte, rien d'autre (ni appareil, ni modèle de téléphone), et part avec le compte.
+- Adoption des ingrédients communs ([ADR 0028](adr/0028-ingredients-propres-a-chaque-utilisateur.md), ING-003) : une **commande de console** lancée par l'humain (rapport à blanc, sauvegarde, écriture), sans variable ni secret ni migration de schéma. Procédure, contrôles et retour arrière : section [Adoption des ingrédients](#adoption-des-ingredients-ing-003) ci-dessous.
 - Envoi de la liste au drive ([ADR 0022](adr/0022-remplissage-du-panier-drive.md), [ADR 0023](adr/0023-liste-envoyee-au-drive.md)) : l'interrupteur `DRIVE_ENABLED` est **coupé par défaut**. `deploy/compose.yaml` le liste avec la valeur `false` : sans cette ligne, la valeur du `.env` embarqué dans l'image (`composer dump-env prod`) s'appliquerait en silence. Coupé (ou absent), les routes du drive répondent `404` `DRIVE_DISABLED` et aucune liste n'est envoyée. L'allumer est une décision humaine, après un déploiement stable. Procédure, contrôles et retour arrière : section [Envoi de la liste au drive](#envoi-de-la-liste-au-drive-drv-502) ci-dessous.
 
 ## Envoi de la liste au drive (DRV-502)
@@ -195,3 +196,27 @@ Aucune ligne n'est cochée ni supprimée ; le panier Leclerc n'est jamais touch�
 ### Sauvegardes
 
 Les tables `drive_*` et les colonnes ajoutées sont dans les `pg_dump` d'avant chaque déploiement du back et de la nuit (14 conservés, `deploy/backup.sh`) : rien à ajouter. Elles contiennent des données personnelles (produits choisis, magasin, listes envoyées) : les sauvegardes restent sur le serveur, en mode `700`, comme avant. Aucun secret d'enseigne n'existe, donc aucune sauvegarde n'en contient. Une restauration d'une sauvegarde antérieure aux migrations fait réappliquer celles-ci au démarrage suivant (elles sont additives). Une suppression de compte disparaît des sauvegardes au plus tard quand les 14 derniers dumps ont été renouvelés (environ deux semaines ; voir la [note de vie privée](drive/note-vie-privee.md)).
+
+## Adoption des ingrédients (ING-003)
+
+Décision : [ADR 0028](adr/0028-ingredients-propres-a-chaque-utilisateur.md). Plan complet, vérifications, retour arrière et contrôles SQL : [`ingredients/migration.md`](ingredients/migration.md) (§ 13 pour le pas à pas). Pas à pas guidé avec l'utilisateur, une étape par message : skill `repas-ops`, `references/ingredients.md`.
+
+**Ce que c'est.** Une **commande de console** (`php bin/console repas:ingredients:adopt-commons`), pas une migration Doctrine : elle ne change pas le schéma, n'est pas lancée par le déploiement, et n'a ni variable d'environnement ni secret. Chaque compte **concerné** (non administrateur, avec au moins un ingrédient personnel ou une recette) reçoit sa propre copie de chaque ingrédient commun, avec ses conversions propres, et tout ce qui référençait un commun chez lui (lignes de ses recettes et de ses listes, **listes envoyées au drive comprises**, choix du drive) pointe vers sa copie. Les communs restent, intacts ; l'administrateur et les comptes sans recette ni ingrédient personnel ne reçoivent rien ; **rien n'est jamais supprimé**. Une transaction par compte, rejouable (un second lancement n'écrit rien).
+
+**Quand.** Après la mise en production d'ING-001, ING-002 et ING-004 (le déploiement du back A, observé quelques heures) ; **jamais le même jour qu'une autre release du back** ; pas pendant qu'un envoi de liste est en cours sur un téléphone ; à un moment calme.
+
+**Qui.** L'humain, avec l'assistant, par un script (`!`) ; **jamais un agent de code**, et la sortie ne contient aucune donnée personnelle (comptes numérotés, aucun e-mail ni identifiant ni nom d'ingrédient personnel).
+
+| Étape | Commande (`ssh …` = `ssh -i ~/.ssh/id_ed25519 root@64.227.124.100`) | Effet |
+|---|---|---|
+| Rapport à blanc | `! ssh … 'bash -s' < .claude/skills/repas-ops/references/adopter-ingredients.sh` | lecture seule : qui est concerné, ce qui serait copié et repointé, les anomalies, les listes envoyées, les empreintes |
+| Écrire | `! ssh … 'bash -s -- --appliquer --accepter-listes-envoyees' < …/adopter-ingredients.sh` | rapport à blanc, **sauvegarde `avant-adoption-ingredients`**, écriture compte par compte, vérification d'après |
+| Vérifier | `! ssh … 'bash -s -- --verifier' < …/adopter-ingredients.sh` | lecture seule, « Rien à faire » (code de sortie 0) ou ce qui reste |
+
+Le script s'arrête avant la sauvegarde si le rapport signale une anomalie bloquante (référence orpheline ou croisée d'un compte retenu), et `--appliquer` refuse d'écrire sans `--accepter-listes-envoyees` tant qu'une liste envoyée a des lignes sur un commun. `--compte=<référence>` (la référence courte du rapport) limite à un compte, pour un essai. Au premier échec d'un compte la commande s'arrête : ce compte n'a rien reçu, les autres comptes déjà faits le restent, relancer est sans danger.
+
+**Contrôles (lecture seule).** Les requêtes SQL de fin (aucune ligne restée sur un commun chez un compte migré, alias valides, aucun alias pour l'administrateur, photographie globale identique à celle d'avant) sont dans [`ingredients/migration.md`](ingredients/migration.md) § 13, à lancer avec `docker compose exec -T database sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"'`.
+
+**Retour arrière.** (1) Du **code** : sans danger, l'ancien code lit sans erreur ce que la migration écrit (les copies sont des ingrédients personnels ordinaires ; dégradations acceptées et visibles : chaque ingrédient en double dans les rayons, la recherche et le sélecteur de recette, [`ingredients/migration.md`](ingredients/migration.md) § 11). (2) Des **données**, sur décision humaine : `! ssh … 'bash -s -- --appliquer --annuler=<lancement>' < …/adopter-ingredients.sh` (sauvegarde `avant-annulation-adoption-ingredients`, puis repointage vers les communs, alias du lancement effacés, **copies conservées**), ou le SQL équivalent du document si la commande ne démarre plus. (3) La **restauration de la sauvegarde** `avant-adoption-ingredients` : décision humaine, jamais automatique ([`ingredients/migration.md`](ingredients/migration.md) § 10, `references/incident.md` § 3 du skill).
+
+**Sauvegardes.** Celle du lancement s'ajoute à celle du déploiement du back et à celle de la nuit (14 conservées, `deploy/backup.sh`) ; elles contiennent des données personnelles et restent sur le serveur, en mode `700`.

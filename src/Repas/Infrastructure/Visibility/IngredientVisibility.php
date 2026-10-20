@@ -42,6 +42,15 @@ final class IngredientVisibility
     }
 
     /**
+     * SQL natif : la ligne désignée par l'alias de table `$ingredientAlias` (une ligne de `ingredient`) est un commun. Même notion que `isCommon()`, pour les
+     * requêtes natives de la migration d'adoption (ING-003) : si les communs reçoivent un propriétaire (ING-009), les deux changent ici.
+     */
+    public static function isCommonSql(string $ingredientAlias): string
+    {
+        return $ingredientAlias . '.creator IS NULL';
+    }
+
+    /**
      * DQL : l'utilisateur du paramètre nommé `$viewerParameter` (sans les deux-points) voit l'ingrédient désigné par `$ingredient`.
      */
     public static function visibleBy(string $ingredient, string $viewerParameter): string
