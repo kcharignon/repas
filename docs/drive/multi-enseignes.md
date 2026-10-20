@@ -1,5 +1,7 @@
 # Plusieurs enseignes de drive : audit du couplage à Leclerc et conception cible
 
+> **En pause depuis le 2026-10-20** (décision de l’utilisateur) : rien de ce document ne se met en œuvre tant qu’il ne l’a pas relancé. Seule règle active : ne pas dépendre de l’implémentation de Leclerc dans le nouveau code.
+
 Cadrage du 2026-10-19 (jalon M7 de [`roadmap.md`](roadmap.md)), rédigé par l'assistant de cadrage ; **aucun code de produit n'est écrit ici**. Décision d'architecture : [ADR 0027](../adr/0027-plusieurs-enseignes-de-drive.md) (`Proposed`). Tickets : [`DRV-701` à `DRV-717`](tickets/). État lu : back `main` au commit `556e63f`, front `main` au commit `5b8779f`.
 
 ## 1. Le besoin

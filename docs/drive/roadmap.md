@@ -155,9 +155,13 @@ Références : [`principes-produit.md`](principes-produit.md), [`audit-simplicit
 - [x] [DRV-645](tickets/DRV-645-panier-pret-un-message.md) front · S · Panier prêt : un message, pas la page ordinateur (fait, PR front #162, fusionnée)
 - [x] [DRV-646](tickets/DRV-646-diagnostic-des-rayons.md) agent · S · Diagnostic des rayons et familles vus par la recherche pour quelques mots frais (prépare DRV-642) · dépend de : — · PR front #164 puis #165 (fusionnées)
 - [x] [DRV-647](tickets/DRV-647-filtrer-le-choix-par-rayon-du-drive.md) agent · M · Filtrer le choix du produit par rayon du drive, sans lien avec les rayons de Repas (idée de l'utilisateur du 2026-10-20) : étape 0 mesure des libellés de rayons (agent 0.32.0), étape 1 rangée de rayons dans le choix · dépend de : 642 lot 1, 646 · fait, recette en cours (PR front #169, #172, #174 à #178)
+- [ ] [DRV-648](tickets/DRV-648-envoi-sans-clic-inutile.md) front/agent · M · Envoyer au drive sans clic inutile : une intention = un clic (ouverture du drive automatique, plus de « Commencer » ni de « Commencer mes courses » à toucher) · demande de l’utilisateur du 2026-10-20 · en cours
+- [ ] [DRV-649](tickets/DRV-649-bouton-ajouter-a-la-liste-compact.md) front · S · Bouton « Ajouter à la liste » compact (rond sur les cartes, pastille courte sur la fiche) · demande de l’utilisateur du 2026-10-20 · en cours
 - [x] [DRV-630](tickets/DRV-630-emails-du-back-au-tutoiement.md) back · S · E-mail de vérification d'adresse et message de connexion du back au tutoiement (restes du vouvoiement après le front) · dépend de : 627 · PR back #200
 
 ## M7 — Plusieurs enseignes (cadrage du 2026-10-19)
+
+**En pause depuis le 2026-10-20 sur ordre de l’utilisateur** : aucun ticket de ce jalon ne se lance avant qu’il le dise. En attendant, tout nouveau code ou texte reste indépendant de l’implémentation de Leclerc (règle « Ne pas durcir Leclerc »).
 
 Références : [`multi-enseignes.md`](multi-enseignes.md) (audit, conception, faits sur Auchan), [ADR 0027](../adr/0027-plusieurs-enseignes-de-drive.md) (`Proposed`). **Chaque ticket du découplage ne change aucun comportement visible tant qu'il n'y a qu'une enseigne.** Les spikes Auchan sont des tâches `humain` sur téléphone (jamais depuis un ordinateur). Ordre conseillé : 701, 704 et 708 en parallèle, puis 702, 703, 705, 706, puis 707 et 709, puis 710 ; 711 en continu. Les tickets après 717 (recherche, panier, entrée, recette Auchan) seront écrits par DRV-715 d'après les rapports des spikes. Effort recommandé entre parenthèses.
 
