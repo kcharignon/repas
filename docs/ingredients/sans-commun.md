@@ -48,6 +48,7 @@ Un compte est **amorcé** quand il a au moins un alias `adoption` (`IngredientAl
 - **Défense en profondeur** : l'amorçage ne lit que les ingrédients dont le créateur est le propriétaire (ou vide, avant la passation) ; un marqueur posé sur l'ingrédient d'un autre compte, par un défaut ou un accès direct à la base, est **inerte**. Toute copie (amorçage, copie de recette, adoption, copie en masse) naît avec le marqueur à `FALSE` : les copies reçues n'en portent jamais.
 - **Ce que l'amorçage copie** : les ingrédients de base **avec leurs conversions propres** ; les conversions générales, les unités et les rayons restent partagés. Les 110 « spécifiques » restent chez le propriétaire.
 - **La donnée initiale** est le fichier validé [`base-ingredients.tsv`](base-ingredients.tsv) (261 lignes, 151 de base) : la commande de passation le pose, de façon idempotente, et vérifie 151 vrais et 110 faux avant et après.
+- **Livré par ING-011 ([PR #242](tickets/ING-011-marqueur-de-base.md))** : le propriétaire du catalogue est résolu par le port `Shared` `IngredientCatalogOwner` (le compte de `User::PROTECTED_EMAIL`, ou de `INGREDIENT_CATALOG_OWNER_EMAIL` en développement seulement ; `null` s'il n'existe pas, et alors personne ne pose le marqueur). Les réponses montrent `isBase` au seul propriétaire, `canSetBase` seulement sur un ingrédient **à lui** (le handler accepte aussi, jusqu'à ING-014, un ancien commun du propriétaire : le réglage n'apparaît dans l'écran qu'après la passation).
 
 ## 3. Réponses aux points de cadrage (a) à (m)
 
