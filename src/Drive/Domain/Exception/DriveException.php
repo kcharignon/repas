@@ -13,6 +13,7 @@ final class DriveException extends DomainException
     public const string DRIVE_CHOICE_INVALID = 'DRIVE_CHOICE_INVALID';
     public const string DRIVE_CHOICE_NOT_FOUND = 'DRIVE_CHOICE_NOT_FOUND';
     public const string DRIVE_SEARCH_QUERY_INVALID = 'DRIVE_SEARCH_QUERY_INVALID';
+    public const string DRIVE_PACK_SIZE_INVALID = 'DRIVE_PACK_SIZE_INVALID';
     public const string DRIVE_STORE_MISMATCH = 'DRIVE_STORE_MISMATCH';
     public const string DRIVE_LIMIT_REACHED = 'DRIVE_LIMIT_REACHED';
     public const string DRIVE_RATE_LIMITED = 'DRIVE_RATE_LIMITED';
@@ -53,6 +54,16 @@ final class DriveException extends DomainException
     public static function searchQueryInvalid(): self
     {
         return new self(self::DRIVE_SEARCH_QUERY_INVALID, 422);
+    }
+
+    /**
+     * Contenance mémorisée refusée (DRV-652) : valeur qui n'est pas un nombre de 0,001 à 9 999 avec trois décimales au plus, slug
+     * d'unité mal formé, ou unité qui n'existe pas. Règle métier, `422`, distincte de `invalidChoice()` pour que le client sache que
+     * c'est cette réponse-là qu'il doit corriger.
+     */
+    public static function packSizeInvalid(): self
+    {
+        return new self(self::DRIVE_PACK_SIZE_INVALID, 422);
     }
 
     /**

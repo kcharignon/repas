@@ -5,11 +5,13 @@ use Repas\Drive\Application\Command\ReplaceIngredientPreference\ReplaceIngredien
 use Repas\Drive\Application\Command\SaveDriveSettings\SaveDriveSettingsCommand;
 use Repas\Drive\Application\Command\SaveProductChoices\ChoiceAction;
 use Repas\Drive\Application\Command\SaveProductChoices\ChoiceIntent;
+use Repas\Drive\Application\Command\SaveProductChoices\PackSizeChange;
 use Repas\Drive\Application\Command\SaveProductChoices\Placement;
 use Repas\Drive\Application\Command\SaveProductChoices\ProductInput;
 use Repas\Drive\Application\Command\SaveProductChoices\SaveProductChoicesCommand;
 use Repas\Drive\Application\Command\SaveProductChoices\SearchQueryChange;
 use Repas\Drive\Domain\Model\ContentUnit;
+use Repas\Drive\Domain\Model\PackSize;
 use Repas\Drive\Domain\Model\Product;
 use Repas\Drive\Domain\Model\ProductContent;
 use Repas\Drive\Domain\Model\ProductPrice;
@@ -417,6 +419,20 @@ return [
         $intents[] = new ChoiceIntent('sel', ChoiceAction::HAVE_AT_HOME);
 
         return new SaveProductChoicesCommand($user->getId(), Retailer::LECLERC, '123456', $intents);
+    },
+    // Le même use case quand le lot donne la contenance du produit dans l'unité de la liste (DRV-652, « 20 tranches ») : elle voyage dans la
+    // réécriture des lignes de produits (aucune requête de plus pour la porter), mais l'unité doit exister dans Repas, une lecture de plus
+    // (une seule quel que soit le nombre de contenances du lot, aucune quand le lot n'en donne pas : `choix-drive*` ne changent pas)
+    'choix-drive-contenance' => static function (WriteBudgetTestCase $t): object {
+        $user = $t->savedUser();
+        $t->savedDriveSettings($user);
+        $t->persister->saveIngredient(new IngredientBuilder()->isFlour()->build());
+        $t->persister->saveUnit(new UnitBuilder()->isSlice()->build());
+        $t->savedDriveChoice($user, 'farine', ['1', '2'], ['9']);
+
+        return new SaveProductChoicesCommand($user->getId(), Retailer::LECLERC, '123456', [
+            new ChoiceIntent('farine', ChoiceAction::ADD_PRODUCT, Placement::PRIMARY, new ProductInput('3', 'Farine de blé T55 1 kg', null, new ProductContent(1000, ContentUnit::G), new ProductPrice(149), 4001, 4101, PackSizeChange::set(PackSize::of(20, 'tranche'))), SearchQueryChange::set(SearchQuery::of('farine de blé t55'))),
+        ]);
     },
     'oublier-choix-drive' => static function (WriteBudgetTestCase $t): object {
         $user = $t->savedUser();

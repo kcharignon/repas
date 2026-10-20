@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Repas\Drive\Domain\Model\ContentUnit;
 use Repas\Drive\Domain\Model\LineQuantity;
 use Repas\Drive\Domain\Model\PackResult;
+use Repas\Drive\Domain\Model\PackSize;
 use Repas\Drive\Domain\Model\PackStatus;
 use Repas\Drive\Domain\Model\ProductContent;
 use Repas\Drive\Domain\Service\PackCalculator;
@@ -227,6 +228,79 @@ class PackCalculatorTest extends TestCase
         $this->assertResult(3, self::COMPUTED, $calculator->packsFor(self::weight($noisy, 1000), self::content(100, ContentUnit::G)));
         $this->assertResult(1, self::COMPUTED, $calculator->packsFor(self::package($noisy * 10 - 2), null));
         $this->assertResult(3, self::COMPUTED, $calculator->packsFor(self::units(0.1 + 0.2 + 2.7), self::content(1, ContentUnit::PIECE)));
+    }
+
+    /**
+     * La contenance donnée par la personne dans l'unité de la liste (DRV-652) : « 15 tranches » pour un cheddar de 20 tranches.
+     *
+     * @return iterable<string, array{LineQuantity, ?ProductContent, ?PackSize, ?int, string}>
+     */
+    public static function theSizeGivenByThePerson(): iterable
+    {
+        $slices = static fn(float $quantity): LineQuantity => new LineQuantity($quantity, null, null, 'tranche');
+
+        yield '15 tranches pour 20 par produit' => [$slices(15), null, PackSize::load(20, 'tranche'), 1, self::COMPUTED];
+        yield '25 tranches pour 20 par produit' => [$slices(25), null, PackSize::load(20, 'tranche'), 2, self::COMPUTED];
+        yield '20 tranches pour 20 par produit (pas de 2)' => [$slices(20), null, PackSize::load(20, 'tranche'), 1, self::COMPUTED];
+        yield '21 tranches pour 20 par produit' => [$slices(21), null, PackSize::load(20, 'tranche'), 2, self::COMPUTED];
+        yield '40 tranches pour 20 par produit' => [$slices(40), null, PackSize::load(20, 'tranche'), 2, self::COMPUTED];
+        yield 'une seule tranche : au moins un produit' => [$slices(1), null, PackSize::load(20, 'tranche'), 1, self::COMPUTED];
+        yield 'moins d\'une tranche : au moins un produit' => [$slices(0.25), null, PackSize::load(20, 'tranche'), 1, self::COMPUTED];
+        yield 'flottants : 0,1 + 0,2 contre 0,3' => [new LineQuantity(0.1 + 0.2, null, null, 'tranche'), null, PackSize::load(0.3, 'tranche'), 1, self::COMPUTED];
+        yield 'flottants : 3 x 6,6 contre 6,6' => [new LineQuantity(6.6 * 3, null, null, 'tranche'), null, PackSize::load(6.6, 'tranche'), 3, self::COMPUTED];
+        yield 'contenance décimale : 10 cuillères pour 3,5 par produit' => [new LineQuantity(10, null, null, 'tranche'), null, PackSize::load(3.5, 'tranche'), 3, self::COMPUTED];
+        yield 'plafond : 1 980 tranches pour 20 par produit font 99, fiable' => [$slices(1980), null, PackSize::load(20, 'tranche'), 99, self::COMPUTED];
+        yield 'au-delà du plafond : 99 à vérifier' => [$slices(2000), null, PackSize::load(20, 'tranche'), 99, self::TO_CHECK];
+        yield 'au-delà du plafond avec une petite contenance' => [$slices(500), null, PackSize::load(1, 'tranche'), 99, self::TO_CHECK];
+        yield 'la contenance passe avant le contenu net en grammes' => [$slices(15), self::content(340, ContentUnit::G), PackSize::load(20, 'tranche'), 1, self::COMPUTED];
+        yield 'la contenance passe avant un contenu net en pièces' => [new LineQuantity(15, Dimension::COUNT, 1.0, 'tranche'), self::content(6, ContentUnit::PIECE), PackSize::load(20, 'tranche'), 1, self::COMPUTED];
+        yield 'la contenance passe avant le contenu net sur une unité de poids' => [new LineQuantity(300, Dimension::WEIGHT, 1.0, 'gramme'), self::content(1, ContentUnit::KG), PackSize::load(100, 'gramme'), 3, self::COMPUTED];
+        yield 'la contenance passe avant un contenu qui n\'a aucun rapport' => [new LineQuantity(300, Dimension::WEIGHT, 1.0, 'gramme'), self::content(6, ContentUnit::PIECE), PackSize::load(500, 'gramme'), 1, self::COMPUTED];
+        yield 'une autre unité que celle de la ligne est ignorée' => [$slices(15), null, PackSize::load(20, 'cuillere-a-soupe'), null, self::TO_CHECK];
+        yield 'une autre unité est ignorée : le contenu net reprend la main' => [new LineQuantity(300, Dimension::WEIGHT, 1.0, 'gramme'), self::content(1, ContentUnit::KG), PackSize::load(20, 'tranche'), 1, self::COMPUTED];
+        yield 'une unité qui ressemble sans être la même est ignorée' => [$slices(15), null, PackSize::load(20, 'tranches'), null, self::TO_CHECK];
+        yield 'une ligne sans slug d\'unité ignore la contenance' => [new LineQuantity(15, null, null), null, PackSize::load(20, 'tranche'), null, self::TO_CHECK];
+        yield 'une ligne en paquets ignore la contenance (règle 1)' => [new LineQuantity(2, Dimension::PACKAGE, 1.0, 'paquet'), null, PackSize::load(6, 'paquet'), 2, self::COMPUTED];
+        yield 'la quantité invalide est testée en premier' => [$slices(0), null, PackSize::load(20, 'tranche'), null, self::TO_CHECK];
+        yield 'quantité négative' => [$slices(-5), null, PackSize::load(20, 'tranche'), null, self::TO_CHECK];
+        yield 'quantité non finie' => [$slices(INF), null, PackSize::load(20, 'tranche'), null, self::TO_CHECK];
+        yield 'une contenance inutilisable (zéro) est ignorée' => [$slices(15), null, PackSize::load(0, 'tranche'), null, self::TO_CHECK];
+        yield 'une contenance négative est ignorée' => [$slices(15), null, PackSize::load(-20, 'tranche'), null, self::TO_CHECK];
+        yield 'une contenance inutilisable laisse le contenu net reprendre la main' => [new LineQuantity(3, Dimension::COUNT, 1.0, 'unite'), self::content(6, ContentUnit::PIECE), PackSize::load(0, 'unite'), 1, self::COMPUTED];
+    }
+
+    #[DataProvider('theSizeGivenByThePerson')]
+    public function testTheSizeGivenByThePersonCountsThePacks(LineQuantity $line, ?ProductContent $content, ?PackSize $packSize, ?int $packs, string $status): void
+    {
+        // When
+        $result = new PackCalculator()->packsFor($line, $content, $packSize);
+
+        // Then
+        $this->assertSame([$packs, $status], [$result->packs, $result->status->value]);
+    }
+
+    public function testWithoutASizeTheResultIsTheOneOfTheContent(): void
+    {
+        // Given : les mêmes lignes, avec et sans contenance mémorisée
+        $calculator = new PackCalculator();
+        $line = new LineQuantity(15, null, null, 'tranche');
+
+        // Then : sans contenance, une unité sans dimension ne se calcule pas (l'agent demande) ; avec, elle se calcule
+        $this->assertResult(null, self::TO_CHECK, $calculator->packsFor($line, self::content(340, ContentUnit::G)));
+        $this->assertResult(null, self::TO_CHECK, $calculator->packsFor($line, self::content(340, ContentUnit::G), null));
+        $this->assertResult(1, self::COMPUTED, $calculator->packsFor($line, self::content(340, ContentUnit::G), PackSize::load(20, 'tranche')));
+    }
+
+    public function testAnotherSizeGivesAnotherCountForTheSameLine(): void
+    {
+        // Given : 45 tranches contre deux produits qui n'en contiennent pas autant (une contenance par produit)
+        $calculator = new PackCalculator();
+        $line = new LineQuantity(45, null, null, 'tranche');
+
+        // Then
+        $this->assertResult(3, self::COMPUTED, $calculator->packsFor($line, null, PackSize::load(20, 'tranche')));
+        $this->assertResult(2, self::COMPUTED, $calculator->packsFor($line, null, PackSize::load(25, 'tranche')));
+        $this->assertResult(null, self::TO_CHECK, $calculator->packsFor($line, null, null));
     }
 
     public function testAnotherContentAndTheSameLineGiveTheirOwnCount(): void

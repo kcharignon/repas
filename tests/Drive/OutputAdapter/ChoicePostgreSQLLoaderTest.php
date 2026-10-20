@@ -8,6 +8,7 @@ use Repas\Drive\Application\Loader\ChoiceLoader;
 use Repas\Drive\Application\Query\ListChoices\AcceptedProductDTO;
 use Repas\Drive\Application\Query\ListChoices\ChoiceDTO;
 use Repas\Drive\Application\Query\ListChoices\ChoiceProductDTO;
+use Repas\Drive\Application\Query\ListChoices\PackSizeDTO;
 use Repas\Drive\Application\Query\ListChoices\ProductContentDTO;
 use Repas\Drive\Domain\Interface\ChoiceRepository;
 use Repas\Drive\Domain\Interface\DriveSettingsRepository;
@@ -64,15 +65,58 @@ class ChoicePostgreSQLLoaderTest extends DatabaseTestCase
                 'Farine',
                 false,
                 [
-                    new AcceptedProductDTO(1, new ChoiceProductDTO($this->id('2'), '2', null, 'Farine T45 1 kg', new ProductContentDTO(0.5, 'kg'))),
-                    new AcceptedProductDTO(2, new ChoiceProductDTO($this->id('1'), '1', '3017620422003', 'Farine T55 Marque Repère 1 kg', new ProductContentDTO(1000, 'g'))),
+                    new AcceptedProductDTO(1, new ChoiceProductDTO($this->id('2'), '2', null, 'Farine T45 1 kg', new ProductContentDTO(0.5, 'kg'), null)),
+                    new AcceptedProductDTO(2, new ChoiceProductDTO($this->id('1'), '1', '3017620422003', 'Farine T55 Marque Repère 1 kg', new ProductContentDTO(1000, 'g'), null)),
                 ],
-                [new ChoiceProductDTO($this->id('3'), '3', null, 'Farine complète bio 1 kg', null)],
+                [new ChoiceProductDTO($this->id('3'), '3', null, 'Farine complète bio 1 kg', null, null)],
                 new DateTimeImmutable('2026-10-18 10:00:00')->format(DATE_ATOM),
                 'farine de blé t55',
             ),
             new ChoiceDTO('sel', 'sel', true, [], [], new DateTimeImmutable('2026-10-18 11:00:00')->format(DATE_ATOM), null),
         ], $result);
+    }
+
+    public function testEachAcceptedProductExposesItsOwnPackSizeOrNull(): void
+    {
+        // Given : le préféré est compté en 20 tranches, le produit de secours n'a rien, le refusé n'a jamais rien
+        $this->settings->save(new DriveSettingsBuilder()->withUserId('user-1')->build());
+        $this->products->saveAll([
+            new ProductBuilder()->withRetailerProductId('1')->withLabel('Fromage Cheddar Burger 20 Tranches - 340g')->build(),
+            new ProductBuilder()->withRetailerProductId('2')->withLabel('Cheddar tranches 10')->build(),
+            new ProductBuilder()->withRetailerProductId('3')->withLabel('Cheddar en bloc')->build(),
+        ]);
+        $this->choices->save(new ChoiceBuilder()->withUserId('user-1')->withIngredientSlug('cheddar')
+            ->withAccepted([$this->id('1'), $this->id('2')])->withRejected([$this->id('3')])->withPackSize($this->id('1'), 20, 'tranche')->build());
+
+        // When
+        $result = $this->loader()->list('user-1', Retailer::LECLERC);
+
+        // Then : la clé est toujours là, null quand rien n'est mémorisé
+        $this->assertSame(
+            [[1, ['value' => 20.0, 'unitSlug' => 'tranche']], [2, null]],
+            array_map(static fn(AcceptedProductDTO $accepted): array => [$accepted->rank, $accepted->product->packSize === null ? null : ['value' => $accepted->product->packSize->value, 'unitSlug' => $accepted->product->packSize->unitSlug]], $result[0]->accepted),
+        );
+        $this->assertEquals(new PackSizeDTO(20, 'tranche'), $result[0]->accepted[0]->product->packSize);
+        $this->assertNull($result[0]->rejected[0]->packSize);
+    }
+
+    public function testThePackSizeOfAnotherUserOrAnOldStoreIsNeverListed(): void
+    {
+        // Given : la même ligne de produit chez un autre utilisateur et dans un ancien magasin de l'utilisateur
+        $this->settings->save(new DriveSettingsBuilder()->withUserId('user-1')->build());
+        $this->products->save(new ProductBuilder()->withRetailerProductId('1')->build());
+        $this->choices->saveAll([
+            new ChoiceBuilder()->withUserId('user-1')->withIngredientSlug('cheddar')->withAccepted([$this->id('1')])->build(),
+            new ChoiceBuilder()->withUserId('user-2')->withIngredientSlug('cheddar')->withAccepted([$this->id('1')])->withPackSize($this->id('1'), 30, 'tranche')->build(),
+            new ChoiceBuilder()->withUserId('user-1')->withStoreId('999999')->withIngredientSlug('emmental')->withAccepted([$this->id('1')])->withPackSize($this->id('1'), 40, 'tranche')->build(),
+        ]);
+
+        // When
+        $result = $this->loader()->list('user-1', Retailer::LECLERC);
+
+        // Then
+        $this->assertSame(['cheddar'], array_map(static fn(ChoiceDTO $choice): string => $choice->ingredientSlug, $result));
+        $this->assertNull($result[0]->accepted[0]->product->packSize);
     }
 
     public function testEachChoiceExposesItsOwnRememberedSearchOrNull(): void

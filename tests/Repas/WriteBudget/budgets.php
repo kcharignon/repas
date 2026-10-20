@@ -10,6 +10,7 @@ return [
     'assurer-liste-active' => 5,
     'changer-statut-compte' => 4,
     'choix-drive' => 10,
+    'choix-drive-contenance' => 11,
     'choix-drive-lot' => 11,
     'confirmation-email' => 4,
     'copier-recette' => 16,

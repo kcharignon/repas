@@ -63,7 +63,7 @@ final readonly class ListCostEstimator
             return $this->unestimated($input, EstimateLineStatus::NO_PRICE, $product->label);
         }
 
-        $result = $this->packCalculator->packsFor($input->quantity, $product->content);
+        $result = $this->packCalculator->packsFor($input->quantity, $product->content, $product->packSize);
         $packs = $result->status === PackStatus::COMPUTED ? $result->packs : null;
 
         return new EstimatedLine(

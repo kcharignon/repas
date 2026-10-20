@@ -136,6 +136,17 @@ class UnitBuilder implements Builder
         return $this;
     }
 
+    /**
+     * La tranche : une unité sans dimension (ni poids ni volume), comme la cuillère.
+     */
+    public function isSlice(): self
+    {
+        $this->name = 'tranche';
+        $this->slug = 'tranche';
+        $this->symbol = 'tranche';
+        return $this;
+    }
+
     public function isCoffeeSpoon(): self
     {
         $this->name = 'cuillère à café';

@@ -106,6 +106,37 @@ class DriveEstimatePostgreSQLLoaderTest extends DatabaseTestCase
         ), $estimate);
     }
 
+    public function testAPackSizeGivenForThePreferredProductEstimatesALineWithoutDimension(): void
+    {
+        // Given : 15 tranches de cheddar ; le préféré (compté en 20 tranches) est estimable, le suivant dans la liste n'a pas de réponse
+        $this->settings->save(new DriveSettingsBuilder()->withUserId('user-1')->build());
+        $this->products->saveAll([
+            new ProductBuilder()->withRetailerProductId('1')->withLabel('Cheddar 20 tranches')->withContent(new ProductContent(340, ContentUnit::G))->withPrice(299, seenAt: new DateTimeImmutable('2026-10-12 09:30:00'))->build(),
+            new ProductBuilder()->withRetailerProductId('2')->withLabel('Emmental tranches')->withContent(new ProductContent(200, ContentUnit::G))->withPrice(250, seenAt: new DateTimeImmutable('2026-10-12 09:30:00'))->build(),
+        ]);
+        $this->choices->saveAll([
+            new ChoiceBuilder()->withUserId('user-1')->withIngredientSlug('cheddar')->withAccepted([$this->id('1')])->withPackSize($this->id('1'), 20, 'tranche')->build(),
+            new ChoiceBuilder()->withUserId('user-1')->withIngredientSlug('emmental')->withAccepted([$this->id('2')])->build(),
+        ]);
+        $list = $this->list('user-1', [
+            new ShoppingListLineForDrive('cheddar', 'Cheddar', 15, 'tranche', 'tranche', '', null, null),
+            new ShoppingListLineForDrive('emmental', 'Emmental', 15, 'tranche', 'tranche', '', null, null),
+        ]);
+        $counter = static::getContainer()->get(QueryCounter::class);
+        $counter->reset();
+
+        // When
+        $estimate = $this->loader($list)->get('user-1', 'list-1');
+
+        // Then : le cheddar est estimé, l'emmental reste à vérifier ; aucune requête de plus
+        $this->assertSame(
+            [['cheddar', 'ESTIMATED', 1, 299], ['emmental', 'TO_CHECK', null, null]],
+            array_map(static fn(DriveEstimateLineDTO $line): array => [$line->ingredientSlug, $line->status, $line->packs, $line->subtotalCents], $estimate->lines),
+        );
+        $this->assertSame(299, $estimate->estimatedTotalCents);
+        $this->assertSame(2, $counter->count());
+    }
+
     public function testThePriceDatesAreThoseOfTheLinesOfTheTotal(): void
     {
         // Given : deux prix de dates différentes entrent dans le total

@@ -43,10 +43,12 @@ final readonly class ChoiceIntentPayload
     /**
      * @param bool $mentionsSearchQuery vrai si le corps de la requête porte la clé `searchQuery` pour cette intention, même à `null` :
      *                                  absente de la charge utile et `null` ne se distinguent pas, c'est le corps brut qui le dit
+     * @param bool $mentionsPackSize    de même pour la clé `packSize` du produit de cette intention (DRV-652)
      *
-     * @throws DriveException `searchQueryInvalid()` (422) pour une recherche hors des bornes
+     * @throws DriveException `searchQueryInvalid()` (422) pour une recherche hors des bornes, `packSizeInvalid()` (422) pour une
+     *                        contenance hors des bornes
      */
-    public function toIntent(bool $mentionsSearchQuery): ChoiceIntent
+    public function toIntent(bool $mentionsSearchQuery, bool $mentionsPackSize = false): ChoiceIntent
     {
         $searchQueryChange = match (true) {
             !$mentionsSearchQuery => null,
@@ -54,6 +56,6 @@ final readonly class ChoiceIntentPayload
             default => SearchQueryChange::set(SearchQuery::of($this->searchQuery)),
         };
 
-        return new ChoiceIntent($this->ingredientSlug, $this->action, $this->placement, $this->product?->toInput(), $searchQueryChange);
+        return new ChoiceIntent($this->ingredientSlug, $this->action, $this->placement, $this->product?->toInput($mentionsPackSize), $searchQueryChange);
     }
 }
