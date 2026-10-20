@@ -175,6 +175,23 @@ return [
 
         return new RemoveIngredientToShoppingListCommand($owner->getId(), $milk->getSlug());
     },
+    // Un ADOPTANT (il a déjà adopté la farine) pose dans sa liste un commun qu'il n'a jamais utilisé, le lait : le commun est adopté à la
+    // volée (ADR 0028, ING-002), ce qui ajoute au cas ordinaire la reconnaissance des communs parmi les slugs sans alias et le coût
+    // d'une adoption (`adopter-ingredient`, sans conversion propre ici). C'est le prix de la PREMIÈRE utilisation d'un commun ; les
+    // suivantes ne paient que la lecture de l'alias.
+    'ajouter-ingredient-liste-adoptant' => static function (WriteBudgetTestCase $t): object {
+        $owner = $t->savedUser();
+        $t->savedShoppingList($owner, $t->typicalRecipes($owner));
+        $flour = new IngredientBuilder()->isFlour()->build();
+        $flourCopy = new IngredientBuilder()->isFlour()->withCreator($owner, true)->withAdoptedFrom($flour->getSlug())->build();
+        $t->persister->saveIngredient($flour);
+        $t->persister->saveIngredient($flourCopy);
+        $t->persister->saveIngredientAlias(IngredientAlias::create($owner->getId(), $flour->getSlug(), $flourCopy->getSlug(), AliasKind::ADOPTION, 'migration-2026-10-21', new \DateTimeImmutable()));
+        $milk = new IngredientBuilder()->isMilk()->build();
+        $t->persister->saveIngredient($milk);
+
+        return new AddIngredientToShoppingListCommand($owner->getId(), $milk->getSlug());
+    },
     'terminer-liste' => static function (WriteBudgetTestCase $t): object {
         $owner = $t->savedUser();
         $list = $t->savedShoppingList($owner, $t->typicalRecipes($owner));

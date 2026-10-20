@@ -2,6 +2,7 @@
 
 namespace Repas\Repas\Application\Command\CreateRecipe;
 
+use Repas\Repas\Application\Service\IngredientSlugResolver;
 use Repas\Shared\Domain\Event\RecipeCreatedEvent;
 use Repas\Repas\Domain\Exception\IngredientException;
 use Repas\Repas\Domain\Exception\RecipeException;
@@ -29,6 +30,7 @@ readonly class CreateRecipeHandler
         private RecipeRepository $recipeRepository,
         private ConversionService $conversionService,
         private EventDispatcherInterface $eventDispatcher,
+        private IngredientSlugResolver $slugResolver,
     ) {
     }
 
@@ -41,9 +43,13 @@ readonly class CreateRecipeHandler
     {
         $type = $this->typeRepository->findOneBySlug($command->typeSlug);
 
+        // Un commun que l'auteur a adopté (ou adopte à la première utilisation) est remplacé par sa copie (ADR 0028 décision 4)
+        $resolved = $this->slugResolver->resolveForUser($command->authorId, $command->rows->map(fn(CreateRecipeRowSubCommand $subCmd) => $subCmd->ingredientSlug)->values());
+        $slugOf = static fn(CreateRecipeRowSubCommand $subCmd): string => $resolved[$subCmd->ingredientSlug] ?? $subCmd->ingredientSlug;
+
         // Ingrédients et unités des lignes : une lecture par type, pas une par ligne
         $ingredients = $this->ingredientRepository
-            ->findBySlugs($command->rows->map(fn(CreateRecipeRowSubCommand $subCmd) => $subCmd->ingredientSlug))
+            ->findBySlugs($command->rows->map($slugOf))
             ->indexBy(fn(Ingredient $ingredient) => $ingredient->getSlug());
         $units = $this->unitRepository
             ->findBySlugs($command->rows->map(fn(CreateRecipeRowSubCommand $subCmd) => $subCmd->unitSlug)->unique())
@@ -58,7 +64,7 @@ readonly class CreateRecipeHandler
             rows: $command->rows->map(fn(CreateRecipeRowSubCommand $subCmd) => RecipeRow::create(
                 id: UuidGenerator::new(),
                 recipeId: $command->id,
-                ingredient: $ingredients[$subCmd->ingredientSlug],
+                ingredient: $ingredients[$slugOf($subCmd)],
                 quantity: $subCmd->quantity,
                 unit: $units[$subCmd->unitSlug] ?? throw UnitException::notFound($subCmd->unitSlug),
             )),

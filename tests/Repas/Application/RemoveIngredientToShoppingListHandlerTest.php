@@ -3,19 +3,24 @@
 namespace Repas\Application;
 
 
+use DateTimeImmutable;
 use PHPUnit\Framework\TestCase;
 use Repas\Repas\Application\Command\RemoveIngredientToShoppingList\RemoveIngredientToShoppingListCommand;
 use Repas\Repas\Application\Command\RemoveIngredientToShoppingList\RemoveIngredientToShoppingListHandler;
 use Repas\Repas\Domain\Exception\ShoppingListException;
 use Repas\Repas\Domain\Interface\IngredientRepository;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
+use Repas\Repas\Domain\Model\AliasKind;
 use Repas\Repas\Domain\Model\Ingredient;
+use Repas\Repas\Domain\Model\IngredientAlias;
 use Repas\Repas\Domain\Model\ShoppingListIngredient;
 use Repas\Repas\Domain\Model\ShoppingListRow;
 use Repas\Repas\Domain\Model\ShoppingListStatus;
 use Repas\Tests\Helper\Builder\IngredientBuilder;
 use Repas\Tests\Helper\Builder\ShoppingListBuilder;
 use Repas\Tests\Helper\Builder\UserBuilder;
+use Repas\Tests\Helper\IngredientSlugResolverFactory;
+use Repas\Tests\Helper\InMemoryRepository\IngredientAliasInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\IngredientInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\ShoppingListInMemoryRepository;
 use Repas\User\Domain\Model\User;
@@ -25,6 +30,7 @@ class RemoveIngredientToShoppingListHandlerTest extends TestCase
     private RemoveIngredientToShoppingListHandler $handler;
     private ShoppingListRepository $shoppingListRepository;
     private IngredientRepository $ingredientRepository;
+    private IngredientAliasInMemoryRepository $aliasRepository;
 
     private User $user;
     private Ingredient $ingredient;
@@ -33,9 +39,11 @@ class RemoveIngredientToShoppingListHandlerTest extends TestCase
     {
         $this->shoppingListRepository = new ShoppingListInMemoryRepository();
         $this->ingredientRepository = new IngredientInMemoryRepository();
+        $this->aliasRepository = new IngredientAliasInMemoryRepository();
         $this->handler = new RemoveIngredientToShoppingListHandler(
             $this->shoppingListRepository,
             $this->ingredientRepository,
+            IngredientSlugResolverFactory::create($this->ingredientRepository, $this->aliasRepository),
         );
 
         $this->user = new UserBuilder()->withId('user-id')->build();
@@ -110,6 +118,57 @@ class RemoveIngredientToShoppingListHandlerTest extends TestCase
         ($this->handler)($command);
     }
 
+
+    public function testRemovesTheCopyOfACommonTheOwnerAdoptedWhenAnOldSlugIsSent(): void
+    {
+        // Arrange : la liste du propriétaire porte la copie des pâtes (il les a adoptées), son client envoie encore l'ancien slug
+        $copy = new IngredientBuilder()->isPasta()->withCreator($this->user, true)->withAdoptedFrom('pate')->build();
+        $this->ingredientRepository->save($copy);
+        $this->aliasRepository->save(IngredientAlias::create('user-id', 'pate', $copy->getSlug(), AliasKind::ADOPTION, 'migration-2026-10-21', new DateTimeImmutable()));
+        $shoppingList = new ShoppingListBuilder()->withId('shopping-list-id')->withOwner($this->user)->addIngredient($copy)->addIngredient($copy)->build();
+        $this->shoppingListRepository->save($shoppingList);
+
+        // Act
+        ($this->handler)(new RemoveIngredientToShoppingListCommand('user-id', 'pate'));
+
+        // Assert : une unité de moins sur la copie
+        $shoppingList = $this->shoppingListRepository->findOneById('shopping-list-id');
+        $this->assertEquals(1, $shoppingList->getRows()->find(fn(ShoppingListRow $row) => $row->getIngredientSlug() === $copy->getSlug())->getQuantity());
+    }
+
+    public function testNeverAdoptsACommonJustToRemoveIt(): void
+    {
+        // Arrange : un adoptant (il a adopté le lait) retire de sa liste les pâtes, qu'il n'a jamais adoptées
+        $milk = new IngredientBuilder()->isMilk()->build();
+        $milkCopy = new IngredientBuilder()->isMilk()->withCreator($this->user, true)->withAdoptedFrom($milk->getSlug())->build();
+        $this->ingredientRepository->save($milk);
+        $this->ingredientRepository->save($milkCopy);
+        $this->aliasRepository->save(IngredientAlias::create('user-id', $milk->getSlug(), $milkCopy->getSlug(), AliasKind::ADOPTION, 'migration-2026-10-21', new DateTimeImmutable()));
+        $shoppingList = new ShoppingListBuilder()->withId('shopping-list-id')->withOwner($this->user)->addIngredient($this->ingredient)->addIngredient($this->ingredient)->build();
+        $this->shoppingListRepository->save($shoppingList);
+
+        // Act
+        ($this->handler)(new RemoveIngredientToShoppingListCommand('user-id', 'pate'));
+
+        // Assert : aucune adoption, la ligne de la liste (qui portait le commun) est celle qui diminue
+        $this->assertCount(1, $this->aliasRepository->all());
+        $this->assertFalse($this->ingredientRepository->exists('pate' . 'user-id'));
+        $this->assertEquals(1, $this->shoppingListRepository->findOneById('shopping-list-id')->getRows()->find(fn(ShoppingListRow $row) => $row->getIngredientSlug() === 'pate')->getQuantity());
+    }
+
+    public function testWithoutAnyAliasTheSharedCommonIsRemovedAsBefore(): void
+    {
+        // Arrange
+        $shoppingList = new ShoppingListBuilder()->withId('shopping-list-id')->withOwner($this->user)->addIngredient($this->ingredient)->addIngredient($this->ingredient)->build();
+        $this->shoppingListRepository->save($shoppingList);
+
+        // Act
+        ($this->handler)(new RemoveIngredientToShoppingListCommand('user-id', 'pate'));
+
+        // Assert
+        $this->assertEquals(1, $this->shoppingListRepository->findOneById('shopping-list-id')->getRows()->find(fn(ShoppingListRow $row) => $row->getIngredientSlug() === 'pate')->getQuantity());
+        $this->assertSame([], $this->aliasRepository->all());
+    }
 
     public function testRefusesAnOutdatedVersionAndRemovesNothing(): void
     {
