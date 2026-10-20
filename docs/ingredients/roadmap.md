@@ -2,7 +2,7 @@
 
 Suivi vivant. Cocher une case quand le ticket est fusionné (et noter la PR). Chaque ticket est un fichier autonome dans [`tickets/`](tickets/). Décisions : [ADR 0028](../adr/0028-ingredients-propres-a-chaque-utilisateur.md) (**Acceptée** le 2026-10-20 : les dix décisions sont validées par le propriétaire). **Point d'entrée pour tout agent** : lire l'ADR, puis ce fichier, puis [`analyse.md`](analyse.md), puis le ticket choisi, et les skills `repas-dev`, `repas-drive-back` (tout ce qui touche au drive), `repas-po` (tout écran ou texte), `repas-ops` (migration en production).
 
-Rédigé le 2026-10-20. Cadrage, puis réalisation ticket par ticket : ING-001 (le socle), ING-002 (visibilité et résolution), ING-004 (rapprochement à la copie d'une recette) et ING-003 (la commande de migration, **écrite et testée, pas encore exécutée en production**) sont livrés, le reste est à faire. Un agent d'implémentation travaille **un ticket = une PR** ([`../drive/consignes-agents.md`](../drive/consignes-agents.md), qui valent ici, sauf la règle « ne pas durcir une enseigne » : ce chantier ne nomme aucune enseigne).
+Rédigé le 2026-10-20. Cadrage, puis réalisation ticket par ticket : ING-001 (le socle), ING-002 (visibilité et résolution), ING-004 (rapprochement à la copie d'une recette), ING-003 (la commande de migration, exécutée en production le 2026-10-20) et ING-005 (aperçu et écriture de la fusion, **code livré, pas encore déployé**) sont livrés, le reste est à faire. Un agent d'implémentation travaille **un ticket = une PR** ([`../drive/consignes-agents.md`](../drive/consignes-agents.md), qui valent ici, sauf la règle « ne pas durcir une enseigne » : ce chantier ne nomme aucune enseigne).
 
 **Dépôts** : `back` = `kcharignon/repas` ; `front` = `kcharignon/repas-front`.
 
@@ -28,7 +28,7 @@ Taille : S (quelques heures), M (une journée), L (plusieurs jours). Effort : le
 
 ### I2 — Migration
 
-- [x] [ING-003](tickets/ING-003-migration-de-donnees.md) (PR #237) back · L · **xhigh** · Commande `repas:ingredients:adopt-commons` (à blanc, `--apply`, `--check`, `--undo`), script d'exploitation, test d'équivalence du drive · dépend de : 001, 002 · **le code est livré ; l'exécution en production reste à faire : humain (l'assistant principal), procédure dans [`migration.md`](migration.md) § 13**
+- [x] [ING-003](tickets/ING-003-migration-de-donnees.md) (PR #237) back · L · **xhigh** · Commande `repas:ingredients:adopt-commons` (à blanc, `--apply`, `--check`, `--undo`), script d'exploitation, test d'équivalence du drive · dépend de : 001, 002 · **le code est livré et la migration a été exécutée en production le 2026-10-20 (procédure : [`migration.md`](migration.md) § 13)**
 
 ### I3 — Copie de recette
 
@@ -36,7 +36,7 @@ Taille : S (quelques heures), M (une journée), L (plusieurs jours). Effort : le
 
 ### I4 — Fusion
 
-- [ ] [ING-005](tickets/ING-005-fusion-back.md) back · L · **xhigh** · Aperçu, candidats et écriture de la fusion · dépend de : 001 (002 recommandé)
+- [x] [ING-005](tickets/ING-005-fusion-back.md) (PR #PR) back · L · **xhigh** · Aperçu, candidats et écriture de la fusion · dépend de : 001 (002 recommandé)
 - [ ] [ING-006](tickets/ING-006-doublons-possibles.md) back · M · **high** · Liste des doublons possibles, « Pas le même » · dépend de : 004, 005
 
 ### I5 — Front

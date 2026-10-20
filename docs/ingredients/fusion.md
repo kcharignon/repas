@@ -34,14 +34,14 @@ Dans l'ordre, en une transaction, avec un nombre de requêtes **constant** (ind�
 
 | Étape | Table | Opération |
 |---|---|---|
-| 0 | `ingredient` | `SELECT … FOR UPDATE` des deux lignes, ordre alphabétique des slugs (deux fusions concurrentes se sérialisent) |
+| 0 | `ingredient` | `SELECT … FOR UPDATE` des deux lignes, ordre alphabétique des slugs (deux fusions concurrentes se sérialisent ; la seconde trouve `B` supprimé et se reconnaît comme un rejeu, § 6) |
 | 1 | `recipe`, `recipe_row` | versions de toutes les recettes contenant `B` : `+1` ; `UPDATE recipe_row SET ingredient = A WHERE ingredient = B` (la **recette** garde ses deux lignes si elle contenait `A` et `B` : pas de cumul, l'auteur les a écrites) |
-| 2 | `shopping_list`, `shopping_list_row` | pour chaque liste contenant `B` : si elle contient aussi `A`, la ligne `A` reçoit `qté(A) + qté(B) × f` et `checked = checked(A) ET checked(B)` (**décochée si l'une des deux l'est** : mieux vaut racheter que oublier), la ligne `B` est supprimée ; sinon la ligne `B` devient une ligne `A` : `quantité × f`, unité d'achat de `A`, `checked` inchangé. `f` = facteur de conversion de l'unité d'achat de `B` vers celle de `A` (1 si elles sont égales). Versions `+1`. |
-| 3 | `shopping_list_ingredient` | même règle, clé `(liste, ingrédient, unité)`, quantité `ceil(qté × f)` (ce sont des compteurs de pas entiers) |
-| 4 | `drive_choice`, `drive_choice_product` | règle 9 : suppression des produits puis des choix de `B` là où `A` en a un ; `UPDATE drive_choice SET ingredient_slug = A WHERE … = B` pour le reste. Les contenances que la personne a données (`pack_size_*`, DRV-652) suivent le choix ; si l'unité d'achat de `B` diffère de celle de `A`, elles deviennent inertes (le calcul n'en tient compte que si leur unité est exactement celle de la ligne) |
-| 5 | `ingredient_alias` | alias qui désignent `B` -> `A` ; ajout `B -> A` (`kind = merge`) |
-| 6 | `ingredient_distinct` | suppression des lignes qui nomment `B` |
-| 7 | `conversion` | suppression des conversions propres de `B` (**non reportées**, voir ci-dessous) ; `A` garde les siennes |
+| 2 | `shopping_list`, `shopping_list_row` | pour chaque liste contenant `B` : si elle contient aussi `A`, la ligne `A` reçoit `qté(A) + qté(B) × f` et `checked = checked(A) ET checked(B)` (**décochée si l'une des deux l'est** : mieux vaut racheter que oublier), la ligne `B` est supprimée ; sinon la ligne `B` devient une ligne `A` : `quantité × f`, unité d'achat de `A`, `checked` inchangé. `f` = facteur de conversion de l'unité de la ligne de `B` vers l'unité où elle ira : celle de la ligne `A` de la même liste (la première, par identifiant), à défaut l'unité d'achat de `A` (1 si elles sont égales). Versions `+1`, une seule fois par liste même si elle a une ligne ET un ajout à la main de `B`. |
+| 3 | `shopping_list_ingredient` | même règle, clé `(liste, ingrédient, unité)`, toujours dans l'unité d'achat de `A` (c'est la clé que `AddIngredientToShoppingList` utilise), quantité `ceil(qté × f)` avec la tolérance de 1e-9 du plan d'envoi, jamais moins de 1 (ce sont des compteurs de pas entiers : un pas ne disparaît pas) |
+| 4 | `drive_choice`, `drive_choice_product` | règle 9, par le port `Shared` `DriveIngredientReferences::merge` (le contexte `Drive` garde ses tables, une requête, toutes enseignes et tous magasins) : suppression des produits puis des choix de `B` là où `A` en a un ; `UPDATE drive_choice SET ingredient_slug = A WHERE … = B` pour le reste (identifiant, date de mise à jour, recherche mémorisée et produits ne changent pas). Les contenances que la personne a données (`pack_size_*`, DRV-652) suivent le choix ; si l'unité d'achat de `B` diffère de celle de `A`, elles deviennent inertes (le calcul n'en tient compte que si leur unité est exactement celle de la ligne) |
+| 5 | `ingredient_alias` | alias qui désignent `B` -> `A` (un alias d'adoption reste `adoption` : le commun reste masqué derrière `A` ; sa `source` devient `merge`, ce qui le sort d'un `--undo` de la migration et lui épargne l'exigence « la copie vient de ce commun » de `--check`) ; l'alias dont la clé est le slug de `A` est effacé ; ajout `B -> A` (`kind = merge`, `source = merge`) |
+| 6 | `ingredient_distinct` | suppression des lignes qui nomment `B`. **Pas encore écrit** : la table naît avec ING-006, qui ajoute ce nettoyage à `MergeIngredientsHandler` (et à `RemoveIngredientHandler`) |
+| 7 | `conversion` | suppression des conversions propres de `B` (**non reportées**, voir ci-dessous) ; `A` garde les siennes (`ConversionRepository::deleteByIngredient`) |
 | 8 | `ingredient` | suppression de `B` |
 | 9 | événement | `IngredientRemovedEvent` si `B` n'est pas une copie d'adoption (statistiques) |
 
@@ -53,7 +53,7 @@ Une ligne de recette garde sa **quantité et son unité** (« 3 tranches », « 
 
 ## 5. Les unités : l'aperçu les vérifie avant le geste
 
-Soit `U` l'ensemble des **unités des lignes de recette de `B`** et `P(B)`, `P(A)` les unités d'achat. Pour chaque `u` de `U`, il faut `convertTo(A, 1, u, P(A))` possible. Pour les listes, il faut `convertTo(A, 1, P(B), P(A))` possible (c'est `f`). Les unités qui échouent forment `missingUnits`.
+Soit `U` l'ensemble des **unités des lignes de recette de `B`** (dans les recettes de l'utilisateur) et `P(A)` l'unité d'achat de `A`. Pour chaque `u` de `U`, il faut un chemin de `u` vers `P(A)` dans le graphe de conversion de `A` (ses conversions propres et les communes ; `ConversionGraph`, le parcours en largeur de `ConversionService`). Pour les listes, chaque changement d'unité d'une quantité (§ 3 étapes 2 et 3 : l'unité de la ligne de `B` vers l'unité de la ligne `A` de la même liste, à défaut vers `P(A)`) doit avoir un chemin aussi, et son coefficient est `f` (une unité qui ne change pas n'a pas de facteur). Les unités de départ qui échouent forment `missingUnits` (triées, sans doublon). Un seul service de domaine, `IngredientMergePlanner`, rend ce verdict pour l'aperçu et pour l'écriture.
 
 - `missingUnits` vide : la fusion est possible. Les quantités des **listes** sont ré-exprimées dans l'unité d'achat de `A` quand elles diffèrent (le même volume de nourriture), celles des **recettes** ne bougent pas (« Tes quantités ne changent pas » reste vrai dans la confirmation pour les recettes ; pour les listes on le dit autrement quand `f ≠ 1`, § 9).
 - `missingUnits` non vide : `GET …/merge-preview` répond `canMerge: false`, `blockedBy: UNIT_MISSING` et la liste ; `POST …/merge` répond `422 MERGE_UNIT_MISSING` **sans rien écrire**.
@@ -69,8 +69,8 @@ Toutes les routes : `#[IsGranted('ROLE_USER')]`, utilisateur pris dans le jeton 
 
 | Route | Rôle |
 |---|---|
-| `GET /api/v1/ingredients/{slug}/merge-candidates?q=` | les ingrédients de l'utilisateur avec lesquels `{slug}` peut être fusionné, **même rayon d'abord** (classés par `IngredientNameMatcher`, ceux qui ressemblent le plus en tête), puis les autres rayons ; `q` filtre par nom (recherche de la feuille) ; 30 au plus ; chaque entrée : `slug`, `name`, `departmentSlug`, `departmentName`, `purchaseUnitName`, `recipeCount`, `listCount`, `sameDepartment`, `veryClose` (booléen : niveau exact ou faute de frappe de `rapprochement.md`) |
-| `GET /api/v1/ingredients/{slug}/merge-preview?into={slug}` | l'aperçu de « fusionner `{slug}` dans `into` » : voir ci-dessous. `200` toujours si les deux ingrédients sont ceux de l'utilisateur ; les erreurs de règle sont dans le corps (`blockedBy`) pour que le front affiche la bonne phrase sans une erreur |
+| `GET /api/v1/ingredients/{slug}/merge-candidates?q=` | les ingrédients de l'utilisateur (les siens, copies d'adoption comprises, **jamais un commun**) avec lesquels `{slug}` (l'ingrédient qui serait absorbé) peut être fusionné, **même rayon d'abord** (classés par `IngredientNameMatcher::similar`, ceux qui ressemblent le plus en tête, puis par nom), puis les autres rayons ; `q` filtre par nom (sans casse ni accent, 100 caractères au plus) ; 30 au plus ; chaque entrée : `slug`, `name`, `departmentSlug`, `departmentName`, `purchaseUnitName`, `recipeCount`, `listCount`, `sameDepartment`, `veryClose` (booléen d'après le nom seul : niveau exact ou faute de frappe de `rapprochement.md`, quel que soit le rayon). `404` si `{slug}` est inconnu ou à un autre utilisateur, `422 CANNOT_MERGE_COMMON_INGREDIENT` s'il est commun |
+| `GET /api/v1/ingredients/{slug}/merge-preview?into={slug}` | l'aperçu de « fusionner `{slug}` dans `into` » (`into` est obligatoire, `422` sinon) : voir ci-dessous. `200` toujours si les deux ingrédients sont ceux de l'utilisateur (ou communs : `blockedBy` le dit) ; les erreurs de règle sont dans le corps (`blockedBy`) pour que le front affiche la bonne phrase sans une erreur ; `404` pour un ingrédient inconnu ou à un autre utilisateur |
 | `POST /api/v1/ingredients/{slug}/merge` corps `{"into": "<slug>"}` | la fusion ; `204` |
 | `GET /api/v1/ingredients/duplicates` | les doublons possibles (§ 8) ; `{member, totalItems}` |
 | `POST /api/v1/ingredients/{slug}/distinct-from` corps `{"other": "<slug>"}` | « Pas le même » : mémorise la paire ; `204` |
@@ -92,7 +92,7 @@ Toutes les routes : `#[IsGranted('ROLE_USER')]`, utilisateur pris dans le jeton 
 }
 ```
 
-`missingUnits` contient par exemple `[{"slug": "tranche", "name": "tranche"}]` quand `blockedBy` vaut `UNIT_MISSING`. `blockedBy` : `null`, `UNIT_MISSING`, `IN_SENT_LIST`, `COMMON_INGREDIENT`, `SAME_INGREDIENT`. `driveChoiceCount` = nombre de choix qui passent sur `A` (pas ceux qui sont supprimés).
+`missingUnits` contient par exemple `[{"slug": "tranche", "name": "tranche"}]` quand `blockedBy` vaut `UNIT_MISSING` ; elle est renseignée même quand un refus plus haut dans l'ordre la masque. `blockedBy` : `null`, ou le **premier** cas dans cet ordre : `SAME_INGREDIENT`, `COMMON_INGREDIENT`, `USED_BY_ANOTHER_USER` (règle 15, ajouté au cahier d'origine : l'aperçu dit exactement ce que l'écriture ferait), `IN_SENT_LIST`, `UNIT_MISSING`. L'écriture lève l'erreur de ce même cas (tableau ci-dessous). Un front doit tolérer une valeur de `blockedBy` qu'il ne connaît pas (refus générique). `driveChoiceCount` = nombre de choix qui passent sur `A` (pas ceux qui sont supprimés). `recipeCount` et `listCount` = les recettes et les listes **de l'utilisateur** qui utilisent `B` (une liste compte une fois, qu'elle ait une ligne, un ajout à la main ou les deux).
 
 **Codes d'erreur de `POST …/merge`** (message = code, comme `PROTECTED_ACCOUNT`) :
 
@@ -103,7 +103,8 @@ Toutes les routes : `#[IsGranted('ROLE_USER')]`, utilisateur pris dans le jeton 
 | `422` | `CANNOT_MERGE_COMMON_INGREDIENT` | l'un des deux est un commun |
 | `422` | `MERGE_UNIT_MISSING` | § 5 |
 | `409` | `INGREDIENT_IN_SENT_LIST` | règle 8 |
-| `409` | `INGREDIENT_USED_BY_ANOTHER_USER` | règle 15 |
+| `409` | `INGREDIENT_USED_BY_ANOTHER_USER` | règle 15 (recette, liste ou choix du drive d'un autre utilisateur sur `B`) |
+| `409` | `INGREDIENT_MERGE_CONFLICT` | une écriture concurrente a posé une référence sur `B` pendant la fusion (ou en a laissé une) : rien n'a été écrit, la fusion se rejoue |
 | `204` | | succès, ou rejeu idempotent |
 
 `#[OA\…]` complet, `make openapi`, relire le diff de `docs/api/openapi.json` ([`repas-dev`](../../.claude/skills/repas-dev/SKILL.md) § 3.2). Pas d'`If-Match` : un ingrédient n'a pas de version ; la concurrence est réglée par le verrou des deux lignes et les versions des recettes et listes touchées.
