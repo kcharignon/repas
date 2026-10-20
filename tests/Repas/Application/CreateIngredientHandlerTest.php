@@ -91,7 +91,6 @@ class CreateIngredientHandlerTest extends TestCase
             defaultCookingUnitSlug: "unite",
             defaultPurchaseUnitSlug: "unite",
             userId: $user->getId(),
-            isAdmin: false,
             coefficient: null,
         );
 
@@ -126,7 +125,6 @@ class CreateIngredientHandlerTest extends TestCase
             defaultCookingUnitSlug: "litre",
             defaultPurchaseUnitSlug: "centilitre",
             userId: $user->getId(),
-            isAdmin: false,
             coefficient: null,
         );
 
@@ -161,7 +159,6 @@ class CreateIngredientHandlerTest extends TestCase
             defaultCookingUnitSlug: "unite",
             defaultPurchaseUnitSlug: "centilitre",
             userId: $user->getId(),
-            isAdmin: false,
             coefficient: 25,
         );
 
@@ -202,26 +199,21 @@ class CreateIngredientHandlerTest extends TestCase
             defaultCookingUnitSlug: "unite",
             defaultPurchaseUnitSlug: "unite",
             userId: $admin->getId(),
-            isAdmin: true,
             coefficient: null,
         );
 
-        // Assert
-
         // Act
-        try {
-            ($this->handler)($command);
-        } finally {
-            $this->assertSame([], $this->eventDispatcher->eventDispatched);
-        }
+        ($this->handler)($command);
 
-        // Assert
+        // Assert : l'ingrédient d'un administrateur est à lui, comme celui de tout le monde, et son compteur « ingrédients créés » le suit
+        $this->assertEquals([new IngredientCreatedEvent($admin->getId(), 'nom-de-l-ingredientadmin-id')], $this->eventDispatcher->eventDispatched);
         $expected = new IngredientBuilder()
             ->withName("nom de l'ingredient")
             ->withImage("super-image.jpg")
             ->withDepartment(new DepartmentBuilder()->isBaby())
             ->withDefaultCookingUnit(new UnitBuilder()->isUnite())
             ->withDefaultPurchaseUnit(new UnitBuilder()->isUnite())
+            ->withCreator($admin)
             ->build();
         $actual = $this->ingredientRepository->findOneBySlug($expected->getSlug());
         RepasAssert::assertIngredient($expected, $actual);
@@ -239,7 +231,6 @@ class CreateIngredientHandlerTest extends TestCase
             defaultCookingUnitSlug: 'unite',
             defaultPurchaseUnitSlug: 'unite',
             userId: $user->getId(),
-            isAdmin: false,
             coefficient: null,
         );
 
@@ -251,25 +242,76 @@ class CreateIngredientHandlerTest extends TestCase
         $this->assertSame($slug, $this->ingredientRepository->findOneBySlug($slug)->getSlug());
     }
 
-    public function testAnAdministratorCreatesACommonIngredient(): void
+    public function testAnAdministratorNeverCreatesACommonIngredient(): void
     {
         // Arrange
         $admin = new UserBuilder()->withId('admin-id')->isAdmin()->build();
-        $command = new CreateIngredientCommand("nom de l'ingredient", '', 'bebe', 'unite', 'unite', $admin->getId(), true, null);
+        $command = new CreateIngredientCommand("nom de l'ingredient", '', 'bebe', 'unite', 'unite', $admin->getId(), null);
 
         // Act
         $slug = ($this->handler)($command);
 
+        // Assert : même slug (nom et identifiant) et même créateur que pour un utilisateur ordinaire
+        $this->assertSame('admin-id', $this->ingredientRepository->findOneBySlug($slug)->getCreatorId());
+        $this->assertSame('nom-de-l-ingredientadmin-id', $slug);
+    }
+
+    public function testNoCreationEverLeavesAnIngredientWithoutCreator(): void
+    {
+        // Act
+        foreach (['user-id', 'admin-id', 'owner-id'] as $userId) {
+            ($this->handler)($this->createCommand($userId));
+        }
+
         // Assert
-        $this->assertNull($this->ingredientRepository->findOneBySlug($slug)->getCreatorId());
-        $this->assertSame('nom-de-l-ingredient', $slug);
+        foreach ($this->ingredientRepository->findAll() as $ingredient) {
+            $this->assertNotNull($ingredient->getCreatorId());
+        }
+        $this->assertCount(3, $this->ingredientRepository->findAll());
+    }
+
+    public function testTwoAccountsCreatingTheSameNameHaveTwoDistinctIngredients(): void
+    {
+        // Act
+        $first = ($this->handler)($this->createCommand('user-id'));
+        $second = ($this->handler)($this->createCommand('admin-id'));
+
+        // Assert
+        $this->assertNotSame($first, $second);
+        $this->assertSame('user-id', $this->ingredientRepository->findOneBySlug($first)->getCreatorId());
+        $this->assertSame('admin-id', $this->ingredientRepository->findOneBySlug($second)->getCreatorId());
+    }
+
+    public function testRefusesTheSameNormalizedNameForTheSameCreator(): void
+    {
+        // Arrange : « Tomate » chez le propriétaire, avec un slug SANS identifiant (un ancien commun passé à son propriétaire par la passation)
+        $this->ingredientRepository->save($this->legacyTomato(new UserBuilder()->withId('owner-id')->build()));
+
+        // Assert : le slug du nouvel ingrédient (tomateowner-id) est libre, mais le nom normalisé est déjà à lui
+        $this->expectExceptionObject(IngredientException::alreadyExists('tomateowner-id'));
+
+        // Act
+        ($this->handler)(new CreateIngredientCommand('TOMATE', '', 'bebe', 'unite', 'unite', 'owner-id', null));
+    }
+
+    public function testAnOldCommonIngredientDoesNotBelongToTheAdministratorBeforeTheHandover(): void
+    {
+        // Arrange : avant la passation, « Tomate » est un commun (sans créateur)
+        $this->ingredientRepository->save($this->legacyTomato(null));
+
+        // Act : le doublon est permis, il sera proposé par « Doublons possibles »
+        $slug = ($this->handler)(new CreateIngredientCommand('Tomate', '', 'bebe', 'unite', 'unite', 'owner-id', null));
+
+        // Assert
+        $this->assertSame('tomateowner-id', $slug);
+        $this->assertSame('tomate', $this->ingredientRepository->findOneBySlug('tomate')->getSlug());
     }
 
     public function testRefusesAnIngredientThatAlreadyExists(): void
     {
         // Arrange
         $user = new UserBuilder()->withId('user-id')->build();
-        $command = new CreateIngredientCommand("nom de l'ingredient", '', 'bebe', 'unite', 'unite', $user->getId(), false, null);
+        $command = new CreateIngredientCommand("nom de l'ingredient", '', 'bebe', 'unite', 'unite', $user->getId(), null);
         ($this->handler)($command);
 
         // Assert : un second ingrédient de même nom et même créateur écraserait le premier
@@ -288,7 +330,7 @@ class CreateIngredientHandlerTest extends TestCase
         $this->aliasRepository->save($otherUserAlias);
 
         // Act
-        ($this->handler)(new CreateIngredientCommand("nom de l'ingredient", '', 'bebe', 'unite', 'unite', 'user-id', false, null));
+        ($this->handler)(new CreateIngredientCommand("nom de l'ingredient", '', 'bebe', 'unite', 'unite', 'user-id', null));
 
         // Assert : l'alias du créateur est défait, celui d'un autre utilisateur n'est pas touché
         $this->assertNull($this->aliasRepository->find('user-id', 'nom-de-l-ingredientuser-id'));
@@ -298,7 +340,7 @@ class CreateIngredientHandlerTest extends TestCase
     public function testAnAlreadyExistingIngredientKeepsTheAlias(): void
     {
         // Arrange
-        $command = new CreateIngredientCommand("nom de l'ingredient", '', 'bebe', 'unite', 'unite', 'user-id', false, null);
+        $command = new CreateIngredientCommand("nom de l'ingredient", '', 'bebe', 'unite', 'unite', 'user-id', null);
         ($this->handler)($command);
         $this->aliasRepository->save(IngredientAlias::create('user-id', 'nom-de-l-ingredientuser-id', 'autre-ingredient', AliasKind::MERGE, 'merge', new \DateTimeImmutable()));
 
@@ -313,23 +355,26 @@ class CreateIngredientHandlerTest extends TestCase
         $this->assertNotNull($this->aliasRepository->find('user-id', 'nom-de-l-ingredientuser-id'));
     }
 
-    public function testAnAdministratorCreatingACommonDoesNotTouchAliases(): void
+    public function testAnAdministratorCreatingAnIngredientOnlyTouchesItsOwnAliases(): void
     {
-        // Arrange : un alias dont la clé est le slug du commun qu'un administrateur va créer
+        // Arrange : l'alias d'un utilisateur dont la clé est le slug d'un ancien commun (« nom-de-l-ingredient »), et un alias de l'administrateur dont la clé est
+        // le slug qu'il va créer
         $this->aliasRepository->save(IngredientAlias::create('user-id', 'nom-de-l-ingredient', 'nom-de-l-ingredientuser-id', AliasKind::ADOPTION, 'first-use', new \DateTimeImmutable()));
+        $this->aliasRepository->save(IngredientAlias::create('admin-id', 'nom-de-l-ingredientadmin-id', 'autre-ingredient', AliasKind::MERGE, 'merge', new \DateTimeImmutable()));
 
         // Act
-        ($this->handler)(new CreateIngredientCommand("nom de l'ingredient", '', 'bebe', 'unite', 'unite', 'admin-id', true, null));
+        ($this->handler)(new CreateIngredientCommand("nom de l'ingredient", '', 'bebe', 'unite', 'unite', 'admin-id', null));
 
         // Assert
         $this->assertNotNull($this->aliasRepository->find('user-id', 'nom-de-l-ingredient'));
+        $this->assertNull($this->aliasRepository->find('admin-id', 'nom-de-l-ingredientadmin-id'));
     }
 
     public function testRequiresACoefficientWhenTheUnitsCannotBeConverted(): void
     {
         // Arrange
         $user = new UserBuilder()->withId('user-id')->build();
-        $command = new CreateIngredientCommand("nom de l'ingredient", '', 'bebe', 'unite', 'centilitre', $user->getId(), false, null);
+        $command = new CreateIngredientCommand("nom de l'ingredient", '', 'bebe', 'unite', 'centilitre', $user->getId(), null);
 
         // Assert
         $this->expectExceptionObject(IngredientException::coefficientRequired());
@@ -349,7 +394,6 @@ class CreateIngredientHandlerTest extends TestCase
             defaultCookingUnitSlug: "unite",
             defaultPurchaseUnitSlug: "unite",
             userId: $user->getId(),
-            isAdmin: false,
             coefficient: null,
         );
 
@@ -375,7 +419,6 @@ class CreateIngredientHandlerTest extends TestCase
             defaultCookingUnitSlug: "inexistant",
             defaultPurchaseUnitSlug: "unite",
             userId: $user->getId(),
-            isAdmin: false,
             coefficient: null,
         );
 
@@ -401,7 +444,6 @@ class CreateIngredientHandlerTest extends TestCase
             defaultCookingUnitSlug: "unite",
             defaultPurchaseUnitSlug: "inexistant",
             userId: $user->getId(),
-            isAdmin: false,
             coefficient: null,
         );
 
@@ -416,15 +458,22 @@ class CreateIngredientHandlerTest extends TestCase
         }
     }
 
-    private function createCommand(string $userId, bool $isAdmin, bool $isBase = false): CreateIngredientCommand
+    private function legacyTomato(?\Repas\User\Domain\Model\User $creator): \Repas\Repas\Domain\Model\Ingredient
     {
-        return new CreateIngredientCommand("nom de l'ingredient", '', 'bebe', 'unite', 'unite', $userId, $isAdmin, null, $isBase);
+        // Un ancien commun a un slug sans identifiant de compte, y compris une fois passé à son propriétaire
+        return new IngredientBuilder()->withName('Tomate')->withDepartment(new DepartmentBuilder()->isBaby())
+            ->withDefaultCookingUnit(new UnitBuilder()->isUnite())->withDefaultPurchaseUnit(new UnitBuilder()->isUnite())->withCreator($creator)->build();
+    }
+
+    private function createCommand(string $userId, bool $isBase = false): CreateIngredientCommand
+    {
+        return new CreateIngredientCommand("nom de l'ingredient", '', 'bebe', 'unite', 'unite', $userId, null, $isBase);
     }
 
     public function testAnIngredientIsNotBaseByDefaultAndTheCatalogOwnerIsNotRead(): void
     {
         // Given
-        $command = new CreateIngredientCommand("nom de l'ingredient", '', 'bebe', 'unite', 'unite', 'user-id', false, null);
+        $command = new CreateIngredientCommand("nom de l'ingredient", '', 'bebe', 'unite', 'unite', 'user-id', null);
 
         // When
         $slug = ($this->handler)($command);
@@ -437,8 +486,8 @@ class CreateIngredientHandlerTest extends TestCase
     public function testNotAskingForTheMarkerIsAcceptedFromAnyUserWithoutReadingTheCatalogOwner(): void
     {
         // When : `false` explicite, d'un utilisateur ordinaire comme d'un administrateur qui n'est pas le propriétaire
-        $ordinary = ($this->handler)($this->createCommand('user-id', false, false));
-        $admin = ($this->handler)($this->createCommand('admin-id', true, false));
+        $ordinary = ($this->handler)($this->createCommand('user-id', false));
+        $admin = ($this->handler)($this->createCommand('admin-id', false));
 
         // Then
         $this->assertFalse($this->ingredientRepository->findOneBySlug($ordinary)->isBase());
@@ -449,7 +498,7 @@ class CreateIngredientHandlerTest extends TestCase
     public function testTheCatalogOwnerCreatesABaseIngredientOfItsOwn(): void
     {
         // When
-        $slug = ($this->handler)($this->createCommand('owner-id', false, true));
+        $slug = ($this->handler)($this->createCommand('owner-id', true));
 
         // Then
         $ingredient = $this->ingredientRepository->findOneBySlug($slug);
@@ -459,16 +508,6 @@ class CreateIngredientHandlerTest extends TestCase
         $this->assertEquals([new IngredientCreatedEvent('owner-id', $slug)], $this->eventDispatcher->eventDispatched);
     }
 
-    public function testTheCatalogOwnerCreatesABaseIngredientWhileAdministratorsStillCreateCommons(): void
-    {
-        // When : jusqu'à ING-012, un administrateur crée un ingrédient sans créateur ; le propriétaire du catalogue l'est
-        $slug = ($this->handler)($this->createCommand('owner-id', true, true));
-
-        // Then
-        $ingredient = $this->ingredientRepository->findOneBySlug($slug);
-        $this->assertTrue($ingredient->isBase());
-        $this->assertNull($ingredient->getCreatorId());
-    }
 
     public function testAnotherUserCannotCreateABaseIngredientAndNothingIsWritten(): void
     {
@@ -480,7 +519,7 @@ class CreateIngredientHandlerTest extends TestCase
 
         // When
         try {
-            ($this->handler)($this->createCommand('user-id', false, true));
+            ($this->handler)($this->createCommand('user-id', true));
         } finally {
             $this->assertFalse($this->ingredientRepository->exists('nom-de-l-ingredientuser-id'));
             $this->assertSame([], $this->eventDispatcher->eventDispatched);
@@ -495,7 +534,7 @@ class CreateIngredientHandlerTest extends TestCase
 
         // When
         try {
-            ($this->handler)($this->createCommand('admin-id', true, true));
+            ($this->handler)($this->createCommand('admin-id', true));
         } finally {
             $this->assertFalse($this->ingredientRepository->exists('nom-de-l-ingredient'));
             $this->assertSame([], $this->eventDispatcher->eventDispatched);
@@ -519,6 +558,6 @@ class CreateIngredientHandlerTest extends TestCase
         $this->expectExceptionObject(IngredientException::baseMarkerForbidden());
 
         // When
-        $handler($this->createCommand('owner-id', false, true));
+        $handler($this->createCommand('owner-id', true));
     }
 }

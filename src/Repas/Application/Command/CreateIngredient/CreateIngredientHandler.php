@@ -43,8 +43,8 @@ readonly class CreateIngredientHandler
     {
         $cookingUnit = $this->unitRepository->findOneBySlug($command->defaultCookingUnitSlug);
         $purchaseUnit = $this->unitRepository->findOneBySlug($command->defaultPurchaseUnitSlug);
-        // Un administrateur crée des ingrédients communs (sans créateur), un utilisateur des ingrédients personnalisés
-        $creatorId = $command->isAdmin ? null : $command->userId;
+        // Tout ingrédient est à celui qui le crée, administrateur compris : plus aucun nouvel ingrédient commun (ADR 0028, amendement)
+        $creatorId = $command->userId;
 
         $ingredient = Ingredient::create(
             name: $command->name,
@@ -62,19 +62,18 @@ readonly class CreateIngredientHandler
             $ingredient->changeBase(true);
         }
 
-        // Le slug dérive du nom et du créateur : enregistrer sous un slug existant écraserait l'ingrédient
-        if ($this->ingredientRepository->exists($ingredient->getSlug())) {
+        // Le slug dérive du nom et du créateur : enregistrer sous un slug existant écraserait l'ingrédient. Le nom normalisé du créateur est
+        // vérifié dans la même requête : un ancien commun passé à son propriétaire a un slug sans identifiant du compte.
+        if ($this->ingredientRepository->existsForCreator($ingredient->getSlug(), $creatorId, $ingredient->getSluggedName())) {
             throw IngredientException::alreadyExists($ingredient->getSlug());
         }
 
         $this->ingredientRepository->save($ingredient);
 
-        if ($creatorId !== null) {
-            // Un alias de l'utilisateur dont la clé est ce slug (ingrédient absorbé par une fusion, puis recréé) détournerait le nouvel
-            // ingrédient vers l'ancien : la création le défait (ADR 0028). Un commun n'a pas d'alias : son créateur est un administrateur.
-            $this->aliasRepository->deleteByAliasSlug($creatorId, $ingredient->getSlug());
-            $this->eventDispatcher->dispatch(new IngredientCreatedEvent($creatorId, $ingredient->getSlug()));
-        }
+        // Un alias de l'utilisateur dont la clé est ce slug (ingrédient absorbé par une fusion, puis recréé) détournerait le nouvel
+        // ingrédient vers l'ancien : la création le défait (ADR 0028).
+        $this->aliasRepository->deleteByAliasSlug($creatorId, $ingredient->getSlug());
+        $this->eventDispatcher->dispatch(new IngredientCreatedEvent($creatorId, $ingredient->getSlug()));
 
         // On récupère les unités compatibles à la conversion après la création de l'ingrédient
         $compatibleUnit = $this->getCompatibleUnit($ingredient);

@@ -226,15 +226,13 @@ class IngredientMergeApiFlowTest extends DatabaseTestCase
                 $this->assertSame(['error' => ['message' => $message]], $this->jsonBody(), $label);
             }
         }
-        // un administrateur n'a aucun ingrédient personnel (ce qu'il crée est commun) : même les siens ne se fusionnent pas
+        // ING-012 : ce qu'un administrateur crée est à lui (plus de commun) ; il fusionne les siens comme tout le monde
         $adminA = $this->createIngredient($admin, 'Poivre');
         $adminB = $this->createIngredient($admin, 'Poivres');
-        $this->assertSame(2, $this->scalar("SELECT COUNT(*) FROM ingredient WHERE creator IS NULL AND slug IN ('$adminA', '$adminB')"));
-        $hash = $this->tablesHash();
+        $this->assertSame(0, $this->scalar("SELECT COUNT(*) FROM ingredient WHERE creator IS NULL AND slug IN ('$adminA', '$adminB')"));
         $this->request('POST', "/api/v1/ingredients/$adminB/merge", $admin, ['into' => $adminA]);
-        $this->assertSame(422, $this->client->getResponse()->getStatusCode());
-        $this->assertSame(['error' => ['message' => 'CANNOT_MERGE_COMMON_INGREDIENT']], $this->jsonBody());
-        $this->assertSame($hash, $this->tablesHash());
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->assertSame(0, $this->scalar("SELECT COUNT(*) FROM ingredient WHERE slug = '$adminB'"));
     }
 
     public function testASentListBlocksTheMergeUntilItIsReopened(): void
