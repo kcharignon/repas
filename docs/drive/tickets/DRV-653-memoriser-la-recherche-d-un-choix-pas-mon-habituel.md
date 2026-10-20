@@ -4,7 +4,7 @@
 - **Jalon** : M6 Simplicité d'usage
 - **Taille** : S (deux lots)
 - **Dépend de** : DRV-650 (la recherche mémorisée avec le choix, fait côté back)
-- **Statut** : **lot 1 (back) fait, PR back #230 (2026-10-20)** ; lot 2 (agent + site) à faire. Demande de l'utilisateur du 2026-10-20. Effort de réalisation : `medium` (lot 1 : `high`, il touche le contrat de `PUT /drive/choices`).
+- **Statut** : **fait ; lot 1 (back) fait, PR back #230 (2026-10-20)** ; lot 2 (agent + site) fait, PR front #183 (2026-10-20). Demande de l'utilisateur du 2026-10-20. Effort de réalisation : `medium` (lot 1 : `high`, il touche le contrat de `PUT /drive/choices`).
 - **Lire d'abord** : [`DRV-650`](DRV-650-memoriser-la-recherche-du-drive.md) (précédent exact : même colonne, même texte, mêmes erreurs, clé absente / `null` / texte), [`DRV-652`](DRV-652-memoriser-la-contenance-en-unite-de-la-liste.md) (même mécanique d'intentions, lot tout ou rien), [`../architecture.md`](../architecture.md) §§ 5.3, 7, [`../note-vie-privee.md`](../note-vie-privee.md), la règle « Ne pas durcir Leclerc » de [`../consignes-agents.md`](../consignes-agents.md) et [`../multi-enseignes.md`](../multi-enseignes.md), skills `repas-drive-back`, `repas-agent-dev`, `repas-front-dev`, `repas-po`.
 
 ## Contexte

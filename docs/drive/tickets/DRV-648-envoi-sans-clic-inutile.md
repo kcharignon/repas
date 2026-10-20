@@ -4,7 +4,7 @@
 - **Jalon** : M6 Simplicité d'usage
 - **Taille** : M
 - **Dépend de** : DRV-622 (écran d'envoi), DRV-645 (panier prêt), DRV-647 (choix par rayon)
-- **Statut** : en cours (agent lancé le 2026-10-20, demande de l'utilisateur)
+- **Statut** : fait (PR front #180, 2026-10-20 ; demande de l'utilisateur)
 - **Lire d'abord** : `docs/drive/principes-produit.md` (règles 1 à 3), skills `repas-po`, `repas-front-dev`, `repas-agent-dev`.
 
 ## Contexte
@@ -51,3 +51,7 @@ Protocole v1, ajouts optionnels seulement ; un site neuf avec l'application 0.1.
 ## Recette sur téléphone réel (PO)
 
 Clic automatique sur « Commencer mes courses » (dépend de la vraie structure du site), reprise d'un envoi, retour arrière.
+
+## Réalisation (PR front #180, 2026-10-20)
+
+Mesuré sur le téléphone de test : l'envoi passe de 5 clics à 2, et « Reprendre l'envoi » de 4 à 1. Les scripts d'émulateur `smoke.sh` et `e2e.sh` attendent encore l'ancien écran « Commencer » : [DRV-654](DRV-654-aligner-les-scripts-d-emulateur-sur-l-envoi-sans-clic.md). Propositions restantes de l'audit : [DRV-655](DRV-655-propositions-restantes-de-l-audit-des-clics.md).

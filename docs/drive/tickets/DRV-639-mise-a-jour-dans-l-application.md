@@ -4,7 +4,7 @@
 - **Jalon** : M6 Simplicité d'usage
 - **Taille** : L
 - **Dépend de** : DRV-638, [AUTH-015](../../auth/tickets/AUTH-015-tronc-commun-kotlin.md) (tronc commun Kotlin : le code d'installation est de la plateforme, il reste dans `app`)
-- **Statut** : à faire (idée de l'utilisateur du 2026-10-19 : « aller lire les fichiers téléchargés pour voir le dernier, un bouton qui supprime le dernier APK avant ou après le téléchargement, car là c'est complexe »). Effort de réalisation : `xhigh` (installation de paquets, intégrité, signature).
+- **Statut** : **fait (PR front #191, sites v0.5.23, 2026-10-20, voir « Réalisation »)** ; idée initiale ( de l'utilisateur du 2026-10-19 : « aller lire les fichiers téléchargés pour voir le dernier, un bouton qui supprime le dernier APK avant ou après le téléchargement, car là c'est complexe »). Effort de réalisation : `xhigh` (installation de paquets, intégrité, signature).
 - **Lire d'abord** : `android/PUBLICATION.md`, `android/ARCHITECTURE.md`, [ADR 0025](../../adr/0025-publication-sur-google-play.md), skills `repas-android-dev`, `repas-po`.
 
 ## Contexte
@@ -41,3 +41,10 @@ Celle du dépôt front ; `android/PUBLICATION.md` décrit la variante sans cette
 - `REQUEST_INSTALL_PACKAGES` est une permission sensible : à ne déclarer que dans la variante hors Play.
 - `version.json` et l'APK viennent du même dépôt : l'empreinte ne protège pas d'un dépôt compromis, seule la signature d'Android (même clé) le fait ; ne jamais assouplir la vérification de signature.
 - Option bon marché à étudier avant tout : nommer l'asset de release avec la version (`repas-drive-0.1.10.apk`) pour que le « dernier » téléchargement soit évident.
+
+## Réalisation (PR front #191, sites v0.5.23, 2026-10-20)
+
+- **Adresses fixes** : la release roulante `android-latest` porte `version.json` et `repas-drive.apk` ; l'application lit `releases/download/android-latest/version.json` et demande l'APK à l'adresse de sa propre release (le champ `apkUrl` est ignoré). `releases/latest` est pris par les releases du site et ne sert plus.
+- **Variantes de distribution** `direct` et `play` : la variante `play` n'a ni la permission `REQUEST_INSTALL_PACKAGES` ni le code de mise à jour. Messages `update.*` du pont ; page publique `/installer` ; ADR front 0009.
+- **Parcours** : un geste, plus une autorisation unique d'Android. L'écran Play Protect (« Installer sans analyser », puis empreinte ou code) est imposé par Google : il est décrit dans l'aide.
+- **Testé de bout en bout sur le téléphone de test** le 2026-10-20 : 0.1.27 vers 0.1.28.
