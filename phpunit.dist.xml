@@ -10,6 +10,9 @@
     <php>
         <ini name="display_errors" value="1" />
         <ini name="error_reporting" value="-1" />
+        <!-- La couverture (Xdebug) garde en mémoire les lignes couvertes par chaque test : à 128 Mo, la suite (3 019 tests) n'avait plus que
+             3,5 Mo de marge en CI, et la suivante la dépasse (« Allowed memory size exhausted » au milieu de la suite). -->
+        <ini name="memory_limit" value="512M" />
         <server name="APP_ENV" value="test" force="true" />
         <server name="SHELL_VERBOSITY" value="-1" />
         <!-- Plus fort que la variable que compose injecte depuis .env (coupée) : voir .env.test -->
