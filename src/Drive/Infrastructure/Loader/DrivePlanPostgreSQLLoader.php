@@ -14,11 +14,13 @@ use Repas\Drive\Application\Query\GetDrivePlan\DrivePlanNeededDTO;
 use Repas\Drive\Application\Query\GetDrivePlan\DrivePlanProductDTO;
 use Repas\Drive\Application\Query\GetDrivePlan\DrivePlanRejectedDTO;
 use Repas\Drive\Application\Query\GetDriveSettings\DriveStoreDTO;
+use Repas\Drive\Application\Query\ListChoices\PackSizeDTO;
 use Repas\Drive\Application\Query\ListChoices\ProductContentDTO;
 use Repas\Drive\Domain\Exception\DriveException;
 use Repas\Drive\Domain\Model\ChoiceKind;
 use Repas\Drive\Domain\Model\ContentUnit;
 use Repas\Drive\Domain\Model\LineQuantity;
+use Repas\Drive\Domain\Model\PackSize;
 use Repas\Drive\Domain\Model\PlanLineStatus;
 use Repas\Drive\Domain\Model\ProductContent;
 use Repas\Drive\Domain\Model\Retailer;
@@ -38,6 +40,8 @@ use Repas\Shared\Domain\Model\Dimension;
  * les produits de ces préférences sont lus (décision D22). Les préférences d'un autre magasin ne comptent pas : un produit connu
  * dont le magasin a changé n'existe plus, la ligne est `NEW`. Les rayons appris, eux, valent pour l'enseigne (pas pour un magasin).
  * La recherche mémorisée (DRV-650) vient de la préférence du magasin courant : jamais d'une autre enseigne ni d'un autre magasin.
+ * La contenance dans l'unité de la liste (DRV-652) vient de la ligne du produit dans cette même préférence (colonnes de
+ * `drive_choice_product`) : aucune requête de plus, et `PackCalculator` ne s'en sert que pour l'unité exacte de la ligne.
  */
 final readonly class DrivePlanPostgreSQLLoader implements DrivePlanLoader
 {
@@ -129,6 +133,8 @@ final readonly class DrivePlanPostgreSQLLoader implements DrivePlanLoader
                 'p.label AS label',
                 'p.contentValue AS contentValue',
                 'p.contentUnit AS contentUnit',
+                'cp.packSizeValue AS packSizeValue',
+                'cp.packSizeUnitSlug AS packSizeUnitSlug',
             )
             ->from(Choice::class, 'c')
             ->leftJoin(ChoiceProduct::class, 'cp', 'WITH', 'cp.choiceId = c.id')
@@ -205,7 +211,7 @@ final readonly class DrivePlanPostgreSQLLoader implements DrivePlanLoader
     private function line(ShoppingListLineForDrive $line, ?array $choice, array $rayonHints): DrivePlanLineDTO
     {
         $dimension = $line->unitDimension === null ? null : Dimension::from($line->unitDimension);
-        $quantity = new LineQuantity($line->quantity, $dimension, $line->unitBaseFactor);
+        $quantity = new LineQuantity($line->quantity, $dimension, $line->unitBaseFactor, $line->unitSlug);
         $status = match (true) {
             $choice !== null && $choice['haveAtHome'] => PlanLineStatus::HAVE_AT_HOME,
             $choice !== null && $choice['accepted'] !== [] => PlanLineStatus::KNOWN,
@@ -215,7 +221,7 @@ final readonly class DrivePlanPostgreSQLLoader implements DrivePlanLoader
         return new DrivePlanLineDTO(
             ingredientSlug: $line->ingredientSlug,
             ingredientName: $line->ingredientName,
-            needed: new DrivePlanNeededDTO($line->quantity, $this->unitLabel($line), $line->unitDimension, $line->unitBaseFactor),
+            needed: new DrivePlanNeededDTO($line->quantity, $this->unitLabel($line), $line->unitDimension, $line->unitBaseFactor, $line->unitSlug, $line->unitName),
             status: $status->value,
             products: array_map(fn(array $row): DrivePlanProductDTO => $this->product($row, $quantity), $choice['accepted'] ?? []),
             rejected: $choice['rejected'] ?? [],
@@ -241,14 +247,16 @@ final readonly class DrivePlanPostgreSQLLoader implements DrivePlanLoader
     }
 
     /**
-     * Chaque produit a son propre nombre de produits : les contenus diffèrent d'un produit à l'autre.
+     * Chaque produit a son propre nombre de produits : les contenus (et les contenances données par la personne, DRV-652) diffèrent
+     * d'un produit à l'autre.
      *
      * @param array<string, mixed> $row
      */
     private function product(array $row, LineQuantity $quantity): DrivePlanProductDTO
     {
         $content = $row['contentValue'] === null ? null : new ProductContent((float) $row['contentValue'], ContentUnit::from($row['contentUnit']));
-        $packs = $this->packCalculator->packsFor($quantity, $content);
+        $packSize = $row['packSizeValue'] === null || $row['packSizeUnitSlug'] === null ? null : PackSize::load((float) $row['packSizeValue'], $row['packSizeUnitSlug']);
+        $packs = $this->packCalculator->packsFor($quantity, $content, $packSize);
 
         return new DrivePlanProductDTO(
             rank: (int) $row['position'],
@@ -258,6 +266,7 @@ final readonly class DrivePlanPostgreSQLLoader implements DrivePlanLoader
             content: $content === null ? null : new ProductContentDTO($content->value, $content->unit->value),
             packs: $packs->packs,
             packsStatus: $packs->status->value,
+            packSize: $packSize === null ? null : new PackSizeDTO($packSize->value, $packSize->unitSlug),
         );
     }
 }

@@ -7,6 +7,7 @@ use DateTimeImmutable;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Repas\Drive\Domain\Interface\ChoiceRepository;
 use Repas\Drive\Domain\Model\Choice;
+use Repas\Drive\Domain\Model\PackSize;
 use Repas\Drive\Domain\Model\Retailer;
 use Repas\Drive\Domain\Model\SearchQuery;
 use Repas\Tests\Helper\Builder\ChoiceBuilder;
@@ -341,5 +342,170 @@ class ChoiceRepositoryTest extends DatabaseTestCase
 
         // Then : la recherche est dans la ligne du choix, elle part avec elle ; celle de l'autre reste
         $this->assertSame(['farine de blé'], $this->entityManager->getConnection()->fetchFirstColumn('SELECT search_query FROM drive_choice'));
+    }
+
+    public function testThePackSizeOfEachProductIsSavedReadBackReplacedAndForgotten(): void
+    {
+        // Given : deux produits acceptés, le premier compté en 20 tranches, un refusé
+        $this->repository->save(new ChoiceBuilder()->withId('choice-1')->withUserId('user-1')->withIngredientSlug('cheddar')
+            ->withAccepted(['a', 'b'])->withRejected(['x'])->withPackSize('a', 20, 'tranche')->build());
+
+        // When
+        $found = $this->repository->findOne('user-1', Retailer::LECLERC, '123456', 'cheddar');
+
+        // Then : une contenance par produit
+        $this->assertEquals(PackSize::of(20, 'tranche'), $found->getPackSize('a'));
+        $this->assertNull($found->getPackSize('b'));
+        $this->assertSame([
+            ['a', '20.000', 'tranche'],
+            ['b', null, null],
+        ], array_map(static fn(array $row): array => array_values($row), $this->entityManager->getConnection()->fetchAllAssociative(
+            "SELECT product_id, pack_size_value, pack_size_unit_slug FROM drive_choice_product WHERE verdict = 'ACCEPTED' ORDER BY rank",
+        )));
+        $this->assertSame([[null, null]], array_map(static fn(array $row): array => array_values($row), $this->entityManager->getConnection()->fetchAllAssociative(
+            "SELECT pack_size_value, pack_size_unit_slug FROM drive_choice_product WHERE verdict = 'REJECTED'",
+        )));
+
+        // When : un nouveau préféré décale les rangs, la contenance suit son produit
+        $this->repository->save($found->addPrimary('c')->rememberPackSize('c', PackSize::of(12.5, 'tranche')));
+
+        // Then
+        $found = $this->repository->findOne('user-1', Retailer::LECLERC, '123456', 'cheddar');
+        $this->assertSame(['c', 'a', 'b'], $found->getAcceptedProductIds());
+        $this->assertEquals(PackSize::of(12.5, 'tranche'), $found->getPackSize('c'));
+        $this->assertEquals(PackSize::of(20, 'tranche'), $found->getPackSize('a'));
+        $this->assertNull($found->getPackSize('b'));
+
+        // When : remplacée, puis oubliée
+        $this->repository->save($found->rememberPackSize('a', PackSize::of(24, 'tranche'))->forgetPackSize('c'));
+
+        // Then
+        $found = $this->repository->findOne('user-1', Retailer::LECLERC, '123456', 'cheddar');
+        $this->assertEquals(PackSize::of(24, 'tranche'), $found->getPackSize('a'));
+        $this->assertNull($found->getPackSize('c'));
+    }
+
+    public function testThePackSizeKeepsItsThreeDecimalsAndItsBounds(): void
+    {
+        // Given / When
+        $this->repository->save(new ChoiceBuilder()->withId('choice-1')->withUserId('user-1')->withAccepted(['a', 'b', 'c'])
+            ->withPackSize('a', 0.001, 'tranche')->withPackSize('b', 9999, 'tranche')->withPackSize('c', 1234.567, 'cuillere-a-soupe')->build());
+
+        // Then
+        $found = $this->repository->findOne('user-1', Retailer::LECLERC, '123456', 'farine');
+        $this->assertEquals(PackSize::of(0.001, 'tranche'), $found->getPackSize('a'));
+        $this->assertEquals(PackSize::of(9999, 'tranche'), $found->getPackSize('b'));
+        $this->assertEquals(PackSize::of(1234.567, 'cuillere-a-soupe'), $found->getPackSize('c'));
+    }
+
+    public function testAProductThatIsNoLongerAcceptedLeavesNoPackSizeInTheTable(): void
+    {
+        // Given
+        $this->repository->save(new ChoiceBuilder()->withId('choice-1')->withUserId('user-1')->withAccepted(['a', 'b'])->withPackSize('a', 20, 'tranche')->withPackSize('b', 12, 'tranche')->build());
+        $choice = $this->repository->findOne('user-1', Retailer::LECLERC, '123456', 'farine');
+
+        // When : a est refusé, b retiré
+        $this->repository->save($choice->reject('a')->remove('b'));
+
+        // Then : les lignes sont réécrites, aucune contenance ne reste
+        $this->assertSame(0, (int) $this->entityManager->getConnection()->fetchOne('SELECT COUNT(*) FROM drive_choice_product WHERE pack_size_value IS NOT NULL OR pack_size_unit_slug IS NOT NULL'));
+    }
+
+    public function testHavingItAtHomeErasesThePackSizesInTheTable(): void
+    {
+        // Given
+        $this->repository->save(new ChoiceBuilder()->withId('choice-1')->withUserId('user-1')->withAccepted(['a'])->withPackSize('a', 20, 'tranche')->build());
+        $choice = $this->repository->findOne('user-1', Retailer::LECLERC, '123456', 'farine');
+
+        // When
+        $this->repository->save($choice->markHaveAtHome());
+
+        // Then
+        $this->assertSame(0, (int) $this->entityManager->getConnection()->fetchOne('SELECT COUNT(*) FROM drive_choice_product'));
+    }
+
+    public function testARowWithOnlyHalfOfAPackSizeIsReadWithoutIt(): void
+    {
+        // Given : une ligne abîmée à la main (les deux colonnes vont ensemble)
+        $this->repository->save(new ChoiceBuilder()->withId('choice-1')->withUserId('user-1')->withAccepted(['a', 'b'])->build());
+        $connection = $this->entityManager->getConnection();
+        $connection->executeStatement("UPDATE drive_choice_product SET pack_size_value = 20 WHERE product_id = 'a'");
+        $connection->executeStatement("UPDATE drive_choice_product SET pack_size_unit_slug = 'tranche' WHERE product_id = 'b'");
+
+        // When
+        $found = $this->repository->findOne('user-1', Retailer::LECLERC, '123456', 'farine');
+
+        // Then
+        $this->assertNull($found->getPackSize('a'));
+        $this->assertNull($found->getPackSize('b'));
+    }
+
+    public function testThePackSizeBelongsToTheChoiceOfTheUserAndNotToTheProduct(): void
+    {
+        // Given : le même produit chez deux utilisateurs et dans deux préférences d'un même utilisateur
+        $this->repository->saveAll([
+            new ChoiceBuilder()->withUserId('user-1')->withIngredientSlug('cheddar')->withAccepted(['shared'])->withPackSize('shared', 20, 'tranche')->build(),
+            new ChoiceBuilder()->withUserId('user-1')->withIngredientSlug('emmental')->withAccepted(['shared'])->build(),
+            new ChoiceBuilder()->withUserId('user-2')->withIngredientSlug('cheddar')->withAccepted(['shared'])->withPackSize('shared', 30, 'tranche')->build(),
+        ]);
+
+        // When : user-1 change sa réponse
+        $choice = $this->repository->findOne('user-1', Retailer::LECLERC, '123456', 'cheddar');
+        $this->repository->save($choice->rememberPackSize('shared', PackSize::of(24, 'tranche')));
+
+        // Then
+        $this->assertEquals(PackSize::of(24, 'tranche'), $this->repository->findOne('user-1', Retailer::LECLERC, '123456', 'cheddar')->getPackSize('shared'));
+        $this->assertNull($this->repository->findOne('user-1', Retailer::LECLERC, '123456', 'emmental')->getPackSize('shared'));
+        $this->assertEquals(PackSize::of(30, 'tranche'), $this->repository->findOne('user-2', Retailer::LECLERC, '123456', 'cheddar')->getPackSize('shared'));
+    }
+
+    public function testPurgingAUserErasesTheirPackSizes(): void
+    {
+        // Given
+        $this->repository->saveAll([
+            new ChoiceBuilder()->withUserId('departing')->withIngredientSlug('cheddar')->withAccepted(['a'])->withPackSize('a', 20, 'tranche')->build(),
+            new ChoiceBuilder()->withUserId('departing')->withStoreId('654321')->withIngredientSlug('emmental')->withAccepted(['c'])->withPackSize('c', 15, 'tranche')->build(),
+            new ChoiceBuilder()->withUserId('staying')->withIngredientSlug('cheddar')->withAccepted(['a'])->withPackSize('a', 30, 'tranche')->build(),
+        ]);
+
+        // When
+        $this->repository->deleteProductsByUser('departing');
+        $this->repository->deleteByUser('departing');
+
+        // Then : la contenance est dans la ligne du produit, elle part avec elle ; celle de l'autre reste
+        $this->assertSame(
+            [['30.000', 'tranche']],
+            array_map(static fn(array $row): array => array_values($row), $this->entityManager->getConnection()->fetchAllAssociative('SELECT pack_size_value, pack_size_unit_slug FROM drive_choice_product')),
+        );
+    }
+
+    public function testForgettingAChoiceErasesItsPackSizes(): void
+    {
+        // Given
+        $this->repository->save(new ChoiceBuilder()->withId('choice-1')->withUserId('user-1')->withAccepted(['a'])->withPackSize('a', 20, 'tranche')->build());
+
+        // When
+        $this->repository->delete($this->repository->findOne('user-1', Retailer::LECLERC, '123456', 'farine'));
+
+        // Then
+        $this->assertSame(0, (int) $this->entityManager->getConnection()->fetchOne('SELECT COUNT(*) FROM drive_choice_product'));
+    }
+
+    public function testWritingABatchWithPackSizesCostsAFixedNumberOfQueries(): void
+    {
+        // Given : 30 préférences de trois produits, chacun avec sa contenance
+        $choices = [];
+        foreach (range(1, 30) as $i) {
+            $choices[] = new ChoiceBuilder()->withUserId('user-1')->withIngredientSlug("ingredient-$i")->withAccepted(["a$i", "b$i", "c$i"])
+                ->withPackSize("a$i", $i, 'tranche')->withPackSize("c$i", 2 * $i, 'tranche')->build();
+        }
+        $counter = static::getContainer()->get(QueryCounter::class);
+        $counter->reset();
+
+        // When
+        $this->repository->saveAll($choices);
+
+        // Then : une requête par table, plus la suppression des lignes (comme sans contenance)
+        $this->assertSame(['INSERT drive_choice' => 1, 'DELETE drive_choice_product' => 1, 'INSERT drive_choice_product' => 1], $counter->byTable());
     }
 }

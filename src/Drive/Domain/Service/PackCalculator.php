@@ -5,6 +5,7 @@ namespace Repas\Drive\Domain\Service;
 
 use Repas\Drive\Domain\Model\LineQuantity;
 use Repas\Drive\Domain\Model\PackResult;
+use Repas\Drive\Domain\Model\PackSize;
 use Repas\Drive\Domain\Model\ProductContent;
 use Repas\Shared\Domain\Model\Dimension;
 
@@ -20,20 +21,46 @@ final class PackCalculator
     /** Un quotient à moins de cette valeur d'un entier est cet entier (0,1 + 0,2 kg contre 300 g donne 1, pas 2). */
     public const float TOLERANCE = 1e-9;
 
-    public function packsFor(LineQuantity $line, ?ProductContent $content): PackResult
+    /**
+     * @param ProductContent|null $content  le contenu net du produit (fait public de sa fiche)
+     * @param PackSize|null       $packSize la contenance que la personne a donnée pour ce produit, dans l'unité de la liste
+     *                                      (DRV-652) : elle passe avant le contenu net, mais seulement si son unité est EXACTEMENT
+     *                                      celle de la ligne (la liste a pu changer d'unité depuis)
+     */
+    public function packsFor(LineQuantity $line, ?ProductContent $content, ?PackSize $packSize = null): PackResult
     {
         $quantity = $line->quantity;
         if (!is_finite($quantity) || $quantity <= 0) {
             return PackResult::toCheck(null);
         }
 
+        // La liste compte déjà des produits (paquets, boîtes…) : ni la contenance ni le contenu n'entrent dans le calcul
+        if ($line->dimension === Dimension::PACKAGE) {
+            return $this->round($quantity, true);
+        }
+
+        $sizeInTheUnitOfTheLine = $this->usableSizeFor($line, $packSize);
+        if ($sizeInTheUnitOfTheLine !== null) {
+            return $this->round($quantity / $sizeInTheUnitOfTheLine->value, true);
+        }
+
         return match ($line->dimension) {
-            // La liste compte déjà des produits (paquets, boîtes…) : le contenu n'entre pas dans le calcul
-            Dimension::PACKAGE => $this->round($quantity, true),
             Dimension::COUNT => $this->forCount($quantity, $this->usable($content)),
             Dimension::WEIGHT, Dimension::VOLUME => $this->forMeasure($line, $this->usable($content)),
             null => PackResult::toCheck(null),
         };
+    }
+
+    /**
+     * La contenance, si elle est exploitable (valeur finie et positive) et donnée dans l'unité exacte de la ligne.
+     */
+    private function usableSizeFor(LineQuantity $line, ?PackSize $packSize): ?PackSize
+    {
+        if ($packSize === null || $line->unitSlug === null || $packSize->unitSlug !== $line->unitSlug) {
+            return null;
+        }
+
+        return is_finite($packSize->value) && $packSize->value > 0 ? $packSize : null;
     }
 
     private function forCount(float $quantity, ?ProductContent $content): PackResult

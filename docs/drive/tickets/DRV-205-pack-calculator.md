@@ -70,3 +70,7 @@ Choix pour les cas que le ticket ne tranche pas (à connaître de DRV-206) :
 - Un poids ou un volume dont le `baseFactor` est absent, nul, négatif ou infini donne `null` à vérifier (l'unité n'est pas convertible). `COUNT` n'utilise pas `baseFactor` (tous les contenus en pièces valent 1).
 - La quantité invalide (≤ 0 ou non finie) est testée en premier : `null` à vérifier même pour `PACKAGE`. Un quotient infini (quantité énorme, contenu minuscule) donne 99 à vérifier.
 - Le plafond s'applique aussi aux résultats déjà « à vérifier » (`COUNT` sans contenu : 500 donne 99). Un résultat arrondi à 99 par la tolérance reste `COMPUTED`.
+
+## Évolution (DRV-652, 2026-10-20)
+
+`packsFor()` gagne un troisième paramètre facultatif, `?PackSize` (la contenance du produit dans l'unité de la liste, donnée par la personne), et `LineQuantity` un `unitSlug` facultatif : après la règle 1 (`PACKAGE`), une contenance dans l'unité **exacte** de la ligne donne `ceil(quantité / valeur)`, `COMPUTED`, avant les règles 2 à 4 (arrondi, minimum 1 et plafond 99 de la règle 5). Sans contenance, le comportement décrit ci-dessus ne change pas. Voir [`DRV-652`](DRV-652-memoriser-la-contenance-en-unite-de-la-liste.md) et [`../architecture.md`](../architecture.md) § 6.

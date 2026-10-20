@@ -10,6 +10,7 @@ use Repas\Drive\Domain\Model\ContentUnit;
 use Repas\Drive\Domain\Model\CostEstimate;
 use Repas\Drive\Domain\Model\EstimateLineInput;
 use Repas\Drive\Domain\Model\LineQuantity;
+use Repas\Drive\Domain\Model\PackSize;
 use Repas\Drive\Domain\Model\PreferredProduct;
 use Repas\Drive\Domain\Model\ProductContent;
 use Repas\Drive\Domain\Model\ProductPrice;
@@ -49,6 +50,30 @@ class ListCostEstimatorTest extends TestCase
 
         // Then
         $this->assertSame([$status, $packs, $unitPrice, $subtotal], [$line->status->value, $line->packs, $line->unitPriceCents, $line->subtotalCents]);
+    }
+
+    public function testASizeGivenByThePersonMakesALineWithoutDimensionEstimable(): void
+    {
+        // Given : 15 tranches de cheddar contre un produit de 340 g qui en contient 20 (DRV-652)
+        $slices = new LineQuantity(15, null, null, 'tranche');
+        $content = new ProductContent(340, ContentUnit::G);
+        $withSize = new PreferredProduct('Cheddar 20 tranches', $content, new ProductPrice(299), self::at('2026-10-12'), PackSize::of(20, 'tranche'));
+        $withoutSize = new PreferredProduct('Cheddar 20 tranches', $content, new ProductPrice(299), self::at('2026-10-12'));
+        $otherUnit = new PreferredProduct('Cheddar 20 tranches', $content, new ProductPrice(299), self::at('2026-10-12'), PackSize::of(20, 'portion'));
+
+        // When
+        $estimate = $this->estimator()->estimate([
+            self::line($slices, $withSize, 'avec'),
+            self::line($slices, $withoutSize, 'sans'),
+            self::line($slices, $otherUnit, 'autre-unite'),
+        ]);
+
+        // Then : estimée avec la réponse, à vérifier sans elle ou avec une réponse dans une autre unité
+        $this->assertSame(
+            [['ESTIMATED', 1, 299], ['TO_CHECK', null, null], ['TO_CHECK', null, null]],
+            array_map(static fn($line): array => [$line->status->value, $line->packs, $line->subtotalCents], $estimate->lines),
+        );
+        $this->assertSame(299, $estimate->totalCents);
     }
 
     public function testTheTotalIsTheSumOfTheEstimatedLinesAndTheOthersAreListedNotGuessed(): void

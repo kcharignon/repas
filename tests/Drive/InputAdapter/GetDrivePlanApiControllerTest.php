@@ -37,18 +37,18 @@ class GetDrivePlanApiControllerTest extends QueryBusWebTestCase
                 [
                     'ingredientSlug' => 'farine',
                     'ingredientName' => 'Farine',
-                    'needed' => ['quantity' => 300, 'unitSymbol' => 'g', 'dimension' => 'WEIGHT', 'baseFactor' => 1],
+                    'needed' => ['quantity' => 300, 'unitSymbol' => 'g', 'dimension' => 'WEIGHT', 'baseFactor' => 1, 'unitSlug' => 'gramme', 'unitName' => 'gramme'],
                     'status' => 'KNOWN',
                     'products' => [
-                        ['rank' => 1, 'retailerProductId' => '123456', 'ean' => null, 'label' => 'Farine de blé T55 1 kg', 'content' => ['value' => 1000, 'unit' => 'g'], 'packs' => 1, 'packsStatus' => 'COMPUTED'],
-                        ['rank' => 2, 'retailerProductId' => '222333', 'ean' => '3017620422003', 'label' => 'Farine T45', 'content' => null, 'packs' => 300, 'packsStatus' => 'TO_CHECK'],
+                        ['rank' => 1, 'retailerProductId' => '123456', 'ean' => null, 'label' => 'Farine de blé T55 1 kg', 'content' => ['value' => 1000, 'unit' => 'g'], 'packs' => 1, 'packsStatus' => 'COMPUTED', 'packSize' => null],
+                        ['rank' => 2, 'retailerProductId' => '222333', 'ean' => '3017620422003', 'label' => 'Farine T45', 'content' => null, 'packs' => 1, 'packsStatus' => 'COMPUTED', 'packSize' => ['value' => 500, 'unitSlug' => 'gramme']],
                     ],
                     'rejected' => [['retailerProductId' => '999000', 'label' => 'Farine complète bio 1 kg']],
                     'searchQuery' => 'Farine',
                     'rayonHints' => [4001, 4002],
                 ],
-                ['ingredientSlug' => 'poivre', 'ingredientName' => 'Poivre', 'needed' => ['quantity' => 1, 'unitSymbol' => 'paquet', 'dimension' => 'PACKAGE', 'baseFactor' => 1], 'status' => 'NEW', 'products' => [], 'rejected' => [], 'searchQuery' => 'Poivre', 'rayonHints' => []],
-                ['ingredientSlug' => 'sel', 'ingredientName' => 'Sel', 'needed' => ['quantity' => 2, 'unitSymbol' => 'cuillère à soupe', 'dimension' => null, 'baseFactor' => null], 'status' => 'HAVE_AT_HOME', 'products' => [], 'rejected' => [], 'searchQuery' => 'Sel', 'rayonHints' => []],
+                ['ingredientSlug' => 'poivre', 'ingredientName' => 'Poivre', 'needed' => ['quantity' => 1, 'unitSymbol' => 'paquet', 'dimension' => 'PACKAGE', 'baseFactor' => 1, 'unitSlug' => 'paquet', 'unitName' => 'paquet'], 'status' => 'NEW', 'products' => [], 'rejected' => [], 'searchQuery' => 'Poivre', 'rayonHints' => []],
+                ['ingredientSlug' => 'sel', 'ingredientName' => 'Sel', 'needed' => ['quantity' => 2, 'unitSymbol' => 'cuillère à soupe', 'dimension' => null, 'baseFactor' => null, 'unitSlug' => 'cuillere-a-soupe', 'unitName' => 'cuillère à soupe'], 'status' => 'HAVE_AT_HOME', 'products' => [], 'rejected' => [], 'searchQuery' => 'Sel', 'rayonHints' => []],
             ],
         ], $this->jsonBody());
     }

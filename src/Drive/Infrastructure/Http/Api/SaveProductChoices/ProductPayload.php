@@ -4,7 +4,9 @@ namespace Repas\Drive\Infrastructure\Http\Api\SaveProductChoices;
 
 
 use OpenApi\Attributes as OA;
+use Repas\Drive\Application\Command\SaveProductChoices\PackSizeChange;
 use Repas\Drive\Application\Command\SaveProductChoices\ProductInput;
+use Repas\Drive\Domain\Exception\DriveException;
 use Repas\Drive\Domain\Model\Product;
 use Symfony\Component\Validator\Constraints as Assert;
 
@@ -34,11 +36,29 @@ final readonly class ProductPayload
         #[Assert\Range(min: 1, max: Product::CATALOG_ID_MAX)]
         #[OA\Property(description: "Famille de l'enseigne, le niveau sous le rayon (`iIdFamille` chez Leclerc) : entier de 1 à 2147483647. Facultatif, mêmes règles que `rayonId`", minimum: 1, maximum: 2147483647, example: 4101, nullable: true)]
         public ?int $familyId = null,
+        #[Assert\Valid]
+        #[OA\Property(
+            description: "La contenance du produit dans l'unité de la liste de courses (DRV-652), pour `ADD_PRODUCT` seulement : combien d'unités de la liste (20 tranches) tiennent dans ce produit, répondu par la personne quand l'unité de la liste n'a pas de dimension (tranche, cuillère…) et que le contenu net ne permet pas de calculer le nombre de produits. Privée à l'utilisateur et propre à CE produit dans sa préférence : changer de produit ne la reprend jamais. L'unité doit exister, sinon `422` `DRIVE_PACK_SIZE_INVALID` (comme une valeur hors de 0,001 à 9 999 ou avec plus de trois décimales), et rien n'est enregistré. **Clé absente : la contenance déjà mémorisée pour ce produit est gardée** (une application qui ne connaît pas ce champ n'efface rien, un produit nouveau n'en a pas ; le `default: null` que le générateur écrit ici est un artefact, une clé absente n'est pas `null`). **`null` : elle est effacée.** Un objet : elle est remplacée. Sur une autre action, la mentionner (objet ou `null`) est `422` `DRIVE_CHOICE_INVALID`",
+            nullable: true,
+        )]
+        public ?PackSizePayload $packSize = null,
     ) {
     }
 
-    public function toInput(): ProductInput
+    /**
+     * @param bool $mentionsPackSize vrai si le corps de la requête porte la clé `packSize` pour ce produit, même à `null` : absente de
+     *                               la charge utile et `null` ne se distinguent pas, c'est le corps brut qui le dit
+     *
+     * @throws DriveException `packSizeInvalid()` (422) pour une contenance hors des bornes
+     */
+    public function toInput(bool $mentionsPackSize = false): ProductInput
     {
-        return new ProductInput($this->retailerProductId, $this->label, $this->ean, $this->content?->toContent(), $this->price?->toPrice(), $this->rayonId, $this->familyId);
+        $packSizeChange = match (true) {
+            !$mentionsPackSize => null,
+            $this->packSize === null => PackSizeChange::clear(),
+            default => PackSizeChange::set($this->packSize->toPackSize()),
+        };
+
+        return new ProductInput($this->retailerProductId, $this->label, $this->ean, $this->content?->toContent(), $this->price?->toPrice(), $this->rayonId, $this->familyId, $packSizeChange);
     }
 }

@@ -10,6 +10,7 @@ use Repas\Drive\Application\Command\ReplaceIngredientPreference\ReplaceIngredien
 use Repas\Drive\Application\Command\ReplaceIngredientPreference\ReplaceIngredientPreferenceHandler;
 use Repas\Drive\Domain\Exception\DriveException;
 use Repas\Drive\Domain\Model\Choice;
+use Repas\Drive\Domain\Model\PackSize;
 use Repas\Drive\Domain\Model\Product;
 use Repas\Drive\Domain\Model\Retailer;
 use Repas\Shared\Domain\Tool\UuidGenerator;
@@ -59,6 +60,30 @@ class ReplaceIngredientPreferenceHandlerTest extends TestCase
         $this->assertSame([$this->id('2'), $this->id('1')], $choice->getAcceptedProductIds());
         $this->assertSame([$this->id('3')], $choice->getRejectedProductIds());
         $this->assertEquals($this->now, $choice->getUpdatedAt());
+    }
+
+    public function testThePackSizesFollowTheirProductsWhenThePreferenceIsReplaced(): void
+    {
+        // Given : le produit 1 est compté en 20 tranches, le produit 2 en 12 (DRV-652)
+        $this->choices->save(new ChoiceBuilder()->withUserId('user-1')->withIngredientSlug('cheddar')
+            ->withAccepted([$this->id('1'), $this->id('2')])->withPackSize($this->id('1'), 20, 'tranche')->withPackSize($this->id('2'), 12, 'tranche')->build());
+
+        // When : l'écran de gestion inverse l'ordre, retire le produit 2 et accepte le produit 4
+        $this->replace('user-1', 'cheddar', accepted: ['4', '1'], rejected: []);
+
+        // Then : chaque produit garde sa contenance, le produit retiré perd la sienne, le nouveau n'en a pas
+        $choice = $this->choice('user-1', 'cheddar');
+        $this->assertSame([$this->id('4'), $this->id('1')], $choice->getAcceptedProductIds());
+        $this->assertNull($choice->getPackSize($this->id('4')));
+        $this->assertEquals(PackSize::of(20, 'tranche'), $choice->getPackSize($this->id('1')));
+        $this->assertNull($choice->getPackSize($this->id('2')));
+
+        // When : le produit 1 est refusé, puis de nouveau accepté
+        $this->replace('user-1', 'cheddar', accepted: ['4'], rejected: ['1']);
+        $this->replace('user-1', 'cheddar', accepted: ['4', '1'], rejected: []);
+
+        // Then : la contenance d'avant n'est pas revenue
+        $this->assertNull($this->choice('user-1', 'cheddar')->getPackSize($this->id('1')));
     }
 
     public function testRemovesAnAcceptedProductAndRefusesAnotherOne(): void

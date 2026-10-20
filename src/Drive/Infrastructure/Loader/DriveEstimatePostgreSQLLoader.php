@@ -14,6 +14,7 @@ use Repas\Drive\Domain\Model\ContentUnit;
 use Repas\Drive\Domain\Model\EstimatedLine;
 use Repas\Drive\Domain\Model\EstimateLineInput;
 use Repas\Drive\Domain\Model\LineQuantity;
+use Repas\Drive\Domain\Model\PackSize;
 use Repas\Drive\Domain\Model\PreferredProduct;
 use Repas\Drive\Domain\Model\ProductContent;
 use Repas\Drive\Domain\Model\ProductPrice;
@@ -103,6 +104,8 @@ final readonly class DriveEstimatePostgreSQLLoader implements DriveEstimateLoade
                 'p.contentUnit AS contentUnit',
                 'p.priceCents AS priceCents',
                 'p.priceSeenAt AS priceSeenAt',
+                'cp.packSizeValue AS packSizeValue',
+                'cp.packSizeUnitSlug AS packSizeUnitSlug',
             )
             ->from(Choice::class, 'c')
             ->leftJoin(ChoiceProduct::class, 'cp', 'WITH', 'cp.choiceId = c.id AND cp.verdict = :accepted')
@@ -141,6 +144,8 @@ final readonly class DriveEstimatePostgreSQLLoader implements DriveEstimateLoade
             content: $row['contentValue'] === null ? null : new ProductContent((float) $row['contentValue'], ContentUnit::from($row['contentUnit'])),
             price: $row['priceCents'] === null ? null : new ProductPrice($row['priceCents']),
             priceSeenAt: $row['priceSeenAt'] instanceof DateTimeImmutable ? $row['priceSeenAt'] : null,
+            // La contenance donnée par la personne pour ce produit, dans l'unité de la liste (DRV-652) : la même règle que le plan
+            packSize: $row['packSizeValue'] === null || $row['packSizeUnitSlug'] === null ? null : PackSize::load((float) $row['packSizeValue'], $row['packSizeUnitSlug']),
         );
     }
 
@@ -154,7 +159,7 @@ final readonly class DriveEstimatePostgreSQLLoader implements DriveEstimateLoade
         return new EstimateLineInput(
             $line->ingredientSlug,
             $line->ingredientName,
-            new LineQuantity($line->quantity, $dimension, $line->unitBaseFactor),
+            new LineQuantity($line->quantity, $dimension, $line->unitBaseFactor, $line->unitSlug),
             $choice['haveAtHome'] ?? false,
             $choice['product'] ?? null,
         );

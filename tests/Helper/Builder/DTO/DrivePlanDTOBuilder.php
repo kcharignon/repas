@@ -10,6 +10,7 @@ use Repas\Drive\Application\Query\GetDrivePlan\DrivePlanNeededDTO;
 use Repas\Drive\Application\Query\GetDrivePlan\DrivePlanProductDTO;
 use Repas\Drive\Application\Query\GetDrivePlan\DrivePlanRejectedDTO;
 use Repas\Drive\Application\Query\GetDriveSettings\DriveStoreDTO;
+use Repas\Drive\Application\Query\ListChoices\PackSizeDTO;
 use Repas\Drive\Application\Query\ListChoices\ProductContentDTO;
 use Repas\Tests\Helper\Builder\Builder;
 
@@ -31,18 +32,18 @@ class DrivePlanDTOBuilder implements Builder
                 new DrivePlanLineDTO(
                     'farine',
                     'Farine',
-                    new DrivePlanNeededDTO(300, 'g', 'WEIGHT', 1),
+                    new DrivePlanNeededDTO(300, 'g', 'WEIGHT', 1, 'gramme', 'gramme'),
                     'KNOWN',
                     [
-                        new DrivePlanProductDTO(1, '123456', null, 'Farine de blé T55 1 kg', new ProductContentDTO(1000, 'g'), 1, 'COMPUTED'),
-                        new DrivePlanProductDTO(2, '222333', '3017620422003', 'Farine T45', null, 300, 'TO_CHECK'),
+                        new DrivePlanProductDTO(1, '123456', null, 'Farine de blé T55 1 kg', new ProductContentDTO(1000, 'g'), 1, 'COMPUTED', null),
+                        new DrivePlanProductDTO(2, '222333', '3017620422003', 'Farine T45', null, 1, 'COMPUTED', new PackSizeDTO(500, 'gramme')),
                     ],
                     [new DrivePlanRejectedDTO('999000', 'Farine complète bio 1 kg')],
                     'Farine',
                     [4001, 4002],
                 ),
-                new DrivePlanLineDTO('poivre', 'Poivre', new DrivePlanNeededDTO(1, 'paquet', 'PACKAGE', 1), 'NEW', [], [], 'Poivre'),
-                new DrivePlanLineDTO('sel', 'Sel', new DrivePlanNeededDTO(2, 'cuillère à soupe', null, null), 'HAVE_AT_HOME', [], [], 'Sel'),
+                new DrivePlanLineDTO('poivre', 'Poivre', new DrivePlanNeededDTO(1, 'paquet', 'PACKAGE', 1, 'paquet', 'paquet'), 'NEW', [], [], 'Poivre'),
+                new DrivePlanLineDTO('sel', 'Sel', new DrivePlanNeededDTO(2, 'cuillère à soupe', null, null, 'cuillere-a-soupe', 'cuillère à soupe'), 'HAVE_AT_HOME', [], [], 'Sel'),
             ],
         );
     }

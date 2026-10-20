@@ -15,6 +15,10 @@ final readonly class DrivePlanNeededDTO
         public ?string $dimension,
         #[OA\Property(description: "Facteur qui ramène l'unité à l'unité de base de sa dimension (1 pour le gramme, 1000 pour le kilo), `null` sans dimension", nullable: true, example: 1)]
         public ?float $baseFactor,
+        #[OA\Property(description: "Slug de l'unité d'achat (DRV-652) : c'est dans cette unité qu'une contenance (`packSize` d'un produit) se compte et se compare. Le même que `unitSlug` d'une ligne de la liste de courses", example: 'tranche')]
+        public string $unitSlug,
+        #[OA\Property(description: "Nom de l'unité d'achat (DRV-652), au singulier, tel que Repas l'écrit : de quoi demander « Combien de tranches y a-t-il dans ce produit ? » sans deviner le nom depuis son symbole", example: 'tranche')]
+        public string $unitName,
     ) {
     }
 }

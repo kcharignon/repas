@@ -15,11 +15,16 @@ use Repas\Shared\Domain\Model\ModelTrait;
  *
  * Invariants, vrais après chaque méthode : un produit n'apparaît qu'une fois, jamais à la fois accepté et refusé ; les rangs
  * sont contigus de 1 à n (ils se déduisent de l'ordre de la liste) ; « j'en ai toujours » n'a ni produit accepté ni refusé
- * ni recherche mémorisée. Une méthode qui échoue (`DriveException::invalidChoice()`) ne change rien.
+ * ni recherche mémorisée ni contenance. Une méthode qui échoue (`DriveException::invalidChoice()`) ne change rien.
  *
  * La recherche mémorisée (DRV-650) est le texte qui a fait trouver le produit choisi sur le site de l'enseigne ; elle vit sur la
  * préférence, donc sous la même clé : propre à l'utilisateur, à l'enseigne et au magasin, jamais reprise d'une autre enseigne ni d'un
  * autre magasin.
+ *
+ * La contenance mémorisée (DRV-652) est la réponse de la personne à « combien de tranches dans ce produit ? » : elle vit sur la ligne
+ * du produit accepté (couple préférence, produit), jamais sur la préférence entière ni sur la fiche commune du produit. Invariant :
+ * seuls les produits acceptés en ont une ; un produit qui n'est plus accepté perd la sienne, et changer de produit ne réutilise
+ * jamais celle de l'ancien.
  */
 final class Choice implements ModelInterface
 {
@@ -49,6 +54,8 @@ final class Choice implements ModelInterface
         private array $rejected,
         private ?SearchQuery $searchQuery,
         private DateTimeImmutable $updatedAt,
+        /** @var array<string, PackSize> contenance par identifiant de produit ACCEPTÉ (jamais un produit refusé ou absent) */
+        private array $packSizes = [],
     ) {
     }
 
@@ -94,6 +101,13 @@ final class Choice implements ModelInterface
         $accepted = $datas['accepted'];
         usort($accepted, static fn(AcceptedProduct $a, AcceptedProduct $b): int => $a->rank <=> $b->rank);
 
+        $packSizes = [];
+        foreach ($accepted as $product) {
+            if ($product->packSize !== null) {
+                $packSizes[$product->productId] = $product->packSize;
+            }
+        }
+
         return new self(
             $datas['id'],
             $datas['user_id'],
@@ -106,6 +120,8 @@ final class Choice implements ModelInterface
             // Une version plus ancienne du code a pu repasser la ligne en « j'en ai toujours » sans effacer la recherche : elle est ignorée
             $datas['kind'] === ChoiceKind::HAVE_AT_HOME ? null : ($datas['search_query'] ?? null),
             $datas['updated_at'],
+            // Même précaution pour les contenances : « j'en ai toujours » n'en garde aucune
+            $datas['kind'] === ChoiceKind::HAVE_AT_HOME ? [] : $packSizes,
         );
     }
 
@@ -152,10 +168,19 @@ final class Choice implements ModelInterface
     public function getAccepted(): array
     {
         return array_map(
-            static fn(string $productId, int $index): AcceptedProduct => new AcceptedProduct($productId, $index + 1),
+            fn(string $productId, int $index): AcceptedProduct => new AcceptedProduct($productId, $index + 1, $this->packSizes[$productId] ?? null),
             $this->accepted,
             array_keys($this->accepted),
         );
+    }
+
+    /**
+     * La contenance que la personne a donnée pour ce produit accepté, dans l'unité de la liste ; `null` si elle n'en a pas donné
+     * (ou si le produit n'est pas accepté).
+     */
+    public function getPackSize(string $productId): ?PackSize
+    {
+        return $this->packSizes[$productId] ?? null;
     }
 
     /**
@@ -227,6 +252,33 @@ final class Choice implements ModelInterface
     }
 
     /**
+     * Mémorise (ou remplace) la contenance de ce produit accepté, dans l'unité de la liste (DRV-652). Une contenance par produit :
+     * celle des autres produits de la préférence ne change pas.
+     *
+     * @throws DriveException `invalidChoice()` si le produit n'est pas accepté dans cette préférence
+     */
+    public function rememberPackSize(string $productId, PackSize $packSize): self
+    {
+        if (!$this->isAccepted($productId)) {
+            throw DriveException::invalidChoice();
+        }
+
+        $this->packSizes[$productId] = $packSize;
+
+        return $this;
+    }
+
+    /**
+     * Oublie la contenance de ce produit : le calculateur retombe sur son contenu net, et à défaut l'agent redemande le nombre de produits.
+     */
+    public function forgetPackSize(string $productId): self
+    {
+        unset($this->packSizes[$productId]);
+
+        return $this;
+    }
+
+    /**
      * Le produit devient le préféré (rang 1), les autres descendent d'un rang. Déjà accepté : il remonte. Un produit refusé
      * qu'on accepte n'est plus refusé.
      *
@@ -267,6 +319,7 @@ final class Choice implements ModelInterface
         $this->accepted = array_values(array_diff($this->accepted, [$productId]));
         $this->rejected = $rejected;
         $this->kind = ChoiceKind::PRODUCTS;
+        $this->keepPackSizesOfAcceptedProducts();
 
         return $this;
     }
@@ -287,6 +340,7 @@ final class Choice implements ModelInterface
     public function remove(string $productId): self
     {
         $this->accepted = array_values(array_diff($this->accepted, [$productId]));
+        $this->keepPackSizesOfAcceptedProducts();
 
         return $this;
     }
@@ -316,7 +370,8 @@ final class Choice implements ModelInterface
      * Remplace d'un coup la préférence (écran de gestion des produits) : « j'en ai toujours », ou les produits acceptés dans
      * l'ordre donné (le préféré d'abord) et les produits refusés. Un produit n'apparaît qu'une fois dans l'ensemble des deux
      * listes ; « j'en ai toujours » n'a aucun produit. La recherche mémorisée est gardée, sauf pour
-     * « j'en ai toujours » (elle est effacée) : cet écran ne la modifie pas.
+     * « j'en ai toujours » (elle est effacée) : cet écran ne la modifie pas. Les contenances des produits qui restent acceptés sont
+     * gardées de même (DRV-652), celles des produits qui n'y sont plus sont perdues.
      *
      * @param list<string> $accepted
      * @param list<string> $rejected
@@ -341,12 +396,13 @@ final class Choice implements ModelInterface
         if ($haveAtHome) {
             $this->searchQuery = null;
         }
+        $this->keepPackSizesOfAcceptedProducts();
 
         return $this;
     }
 
     /**
-     * « J'en ai toujours » : les produits acceptés et refusés, et la recherche mémorisée, sont effacés.
+     * « J'en ai toujours » : les produits acceptés et refusés, la recherche mémorisée et les contenances sont effacés.
      */
     public function markHaveAtHome(): self
     {
@@ -354,6 +410,7 @@ final class Choice implements ModelInterface
         $this->accepted = [];
         $this->rejected = [];
         $this->searchQuery = null;
+        $this->packSizes = [];
 
         return $this;
     }
@@ -366,6 +423,14 @@ final class Choice implements ModelInterface
         $this->kind = ChoiceKind::PRODUCTS;
 
         return $this;
+    }
+
+    /**
+     * Invariant : seuls les produits acceptés ont une contenance.
+     */
+    private function keepPackSizesOfAcceptedProducts(): void
+    {
+        $this->packSizes = array_intersect_key($this->packSizes, array_flip($this->accepted));
     }
 
     /**

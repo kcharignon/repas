@@ -34,21 +34,26 @@ final readonly class SaveProductChoicesPayload
     }
 
     /**
-     * Les intentions du lot. La clé `searchQuery` d'une intention absente du corps (garder la recherche mémorisée) ne se distingue pas
-     * de `null` (l'effacer) dans la charge utile : on regarde le corps brut, intention par intention (même clé que dans le lot).
+     * Les intentions du lot. La clé `searchQuery` d'une intention (ou `packSize` de son produit, DRV-652) absente du corps (garder la
+     * valeur mémorisée) ne se distingue pas de `null` (l'effacer) dans la charge utile : on regarde le corps brut, intention par
+     * intention (même clé que dans le lot).
      *
      * @param array<array-key, mixed> $rawChoices le tableau `choices` du corps de la requête, tel que reçu
      *
      * @return list<ChoiceIntent>
      *
-     * @throws DriveException `searchQueryInvalid()` (422) pour une recherche hors des bornes
+     * @throws DriveException `searchQueryInvalid()` ou `packSizeInvalid()` (422) pour une valeur hors des bornes
      */
     public function toIntents(array $rawChoices): array
     {
         $intents = [];
         foreach ($this->choices as $key => $choice) {
             $raw = $rawChoices[$key] ?? null;
-            $intents[] = $choice->toIntent(is_array($raw) && array_key_exists('searchQuery', $raw));
+            $rawProduct = is_array($raw) ? ($raw['product'] ?? null) : null;
+            $intents[] = $choice->toIntent(
+                is_array($raw) && array_key_exists('searchQuery', $raw),
+                is_array($rawProduct) && array_key_exists('packSize', $rawProduct),
+            );
         }
 
         return $intents;

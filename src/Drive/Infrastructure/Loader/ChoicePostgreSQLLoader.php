@@ -7,6 +7,7 @@ use Repas\Drive\Application\Loader\ChoiceLoader;
 use Repas\Drive\Application\Query\ListChoices\AcceptedProductDTO;
 use Repas\Drive\Application\Query\ListChoices\ChoiceDTO;
 use Repas\Drive\Application\Query\ListChoices\ChoiceProductDTO;
+use Repas\Drive\Application\Query\ListChoices\PackSizeDTO;
 use Repas\Drive\Application\Query\ListChoices\ProductContentDTO;
 use Repas\Drive\Domain\Model\ChoiceKind;
 use Repas\Drive\Domain\Model\Retailer;
@@ -47,6 +48,8 @@ final readonly class ChoicePostgreSQLLoader implements ChoiceLoader
                 'p.label AS label',
                 'p.contentValue AS contentValue',
                 'p.contentUnit AS contentUnit',
+                'cp.packSizeValue AS packSizeValue',
+                'cp.packSizeUnitSlug AS packSizeUnitSlug',
             )
             ->from(Choice::class, 'c')
             // Le magasin courant : celui des réglages de l'utilisateur
@@ -107,6 +110,10 @@ final readonly class ChoicePostgreSQLLoader implements ChoiceLoader
             ean: $row['ean'],
             label: $row['label'],
             content: $row['contentValue'] === null ? null : new ProductContentDTO((float) $row['contentValue'], $row['contentUnit']),
+            // La contenance n'existe que pour un produit accepté (DRV-652) ; les deux colonnes vont ensemble
+            packSize: $row['verdict'] === self::ACCEPTED && $row['packSizeValue'] !== null && $row['packSizeUnitSlug'] !== null
+                ? new PackSizeDTO((float) $row['packSizeValue'], $row['packSizeUnitSlug'])
+                : null,
         );
     }
 }
