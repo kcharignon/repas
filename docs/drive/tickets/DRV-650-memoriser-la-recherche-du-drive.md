@@ -4,7 +4,7 @@
 - **Jalon** : M6 Simplicité d'usage
 - **Taille** : M (deux lots)
 - **Dépend de** : DRV-642 (rayon appris, fait), DRV-635 (indisponible n'est pas introuvable, fait)
-- **Statut** : **lot 1 (back) fait, PR back #… (2026-10-20)** ; lot 2 (agent, protocole, web, « Mes produits ») à faire. Demande de l'utilisateur du 2026-10-20. Effort de réalisation : `high`.
+- **Statut** : **lot 1 (back) fait, PR back #228 (2026-10-20)** ; lot 2 (agent, protocole, web, « Mes produits ») à faire. Demande de l'utilisateur du 2026-10-20. Effort de réalisation : `high`.
 - **Lire d'abord** : [`DRV-642`](DRV-642-chercher-dans-le-bon-rayon.md) (précédent exact : une donnée de catalogue apprise du choix, colonnes ajoutées, migration additive), [`../architecture.md`](../architecture.md) §§ 5.1, 5.3, 7, [`../note-vie-privee.md`](../note-vie-privee.md), la règle « Ne pas durcir Leclerc » de [`../consignes-agents.md`](../consignes-agents.md) et [`../multi-enseignes.md`](../multi-enseignes.md), skills `repas-drive-back`, `repas-agent-dev`, `repas-front-dev`, `repas-po`.
 
 ## Contexte
