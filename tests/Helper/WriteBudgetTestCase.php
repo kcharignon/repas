@@ -142,6 +142,16 @@ abstract class WriteBudgetTestCase extends DatabaseTestCase
         );
     }
 
+    /**
+     * Le catalogue de communs de la migration d'adoption (ING-003, 262 communs dont 105 conversions propres, créé une seule fois) et un
+     * volume de recettes, de listes (dont deux envoyées) et de choix du drive pour `$owner`, tous sur des communs.
+     */
+    public function savedAdoptionVolume(User $owner, int $recipes, int $rowsPerRecipe, int $lists, int $rowsPerList, int $choices): void
+    {
+        $withCatalog = (int) $this->entityManager->getConnection()->fetchOne("SELECT count(*) FROM ingredient WHERE slug LIKE 'commun-%'") === 0;
+        AdoptionDataset::createBulk($this->entityManager, $this->persister, $owner->getId(), $recipes, $rowsPerRecipe, $lists, $rowsPerList, $choices, $withCatalog);
+    }
+
     public function savedRecipe(User $author, RecipeBuilder $builder): Recipe
     {
         $recipe = $builder->withAuthor($author)->build();

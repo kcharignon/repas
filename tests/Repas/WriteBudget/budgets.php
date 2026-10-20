@@ -6,6 +6,7 @@
  * @return array<string, int>
  */
 return [
+    'adopter-catalogue' => 26,
     'adopter-ingredient' => 16,
     'ajouter-ingredient-liste' => 14,
     'ajouter-ingredient-liste-adoptant' => 25,

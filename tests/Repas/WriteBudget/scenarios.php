@@ -19,6 +19,7 @@ use Repas\Drive\Domain\Model\Retailer;
 use Repas\Drive\Domain\Model\SearchQuery;
 use Repas\Repas\Application\Command\ActivatedShoppingList\ActivatedShoppingListCommand;
 use Repas\Repas\Application\Command\AdoptCommonIngredient\AdoptCommonIngredientCommand;
+use Repas\Repas\Application\Command\AdoptCommonIngredientsForUser\AdoptCommonIngredientsForUserCommand;
 use Repas\Repas\Application\Command\AddIngredientToShoppingList\AddIngredientToShoppingListCommand;
 use Repas\Repas\Application\Command\CopyRecipe\CopyRecipeCommand;
 use Repas\Repas\Application\Command\CreateConversion\CreateConversionCommand;
@@ -364,6 +365,15 @@ return [
         );
 
         return new AdoptCommonIngredientCommand($owner->getId(), $butter->getSlug(), 'first-use');
+    },
+    // Migration d'adoption (ING-003) : TOUS les communs d'un compte en une commande, avec leurs conversions propres, le repointage de ses
+    // recettes, de ses listes (dont une envoyée) et de ses choix du drive, et les empreintes d'avant et d'après. Le nombre de requêtes ne
+    // dépend ni du nombre de communs, ni du nombre de lignes, ni du nombre de comptes (tests/Repas/WriteBudget/AdoptCatalogueBudgetTest).
+    'adopter-catalogue' => static function (WriteBudgetTestCase $t): object {
+        $owner = $t->savedUser();
+        $t->savedAdoptionVolume($owner, recipes: 3, rowsPerRecipe: 4, lists: 3, rowsPerList: 4, choices: 3);
+
+        return new AdoptCommonIngredientsForUserCommand($owner->getId(), 'migration-essai', true);
     },
     'creer-conversion' => static function (WriteBudgetTestCase $t): object {
         $t->persister->saveUnit(new UnitBuilder()->isLiter()->build());
