@@ -497,7 +497,8 @@
                 "tags": [
                     "Ingredients"
                 ],
-                "summary": "Cr\u00e9e un ingr\u00e9dient : personnalis\u00e9 pour un utilisateur, commun \u00e0 tous pour un administrateur",
+                "summary": "Cr\u00e9e un ingr\u00e9dient de l'utilisateur",
+                "description": "L'ingr\u00e9dient appartient \u00e0 l'utilisateur du jeton, administrateur compris : aucun autre compte ne le voit.",
                 "operationId": "post_api_create_ingredient",
                 "requestBody": {
                     "required": true,
@@ -528,7 +529,7 @@
                         "description": "Rayon ou unit\u00e9 inconnu"
                     },
                     "409": {
-                        "description": "Un ingr\u00e9dient de ce nom existe d\u00e9j\u00e0"
+                        "description": "L'utilisateur a d\u00e9j\u00e0 un ingr\u00e9dient de ce nom (m\u00eame nom une fois normalis\u00e9 : casse, accents, ponctuation)"
                     },
                     "422": {
                         "description": "Corps invalide, ou coefficient manquant alors que les unit\u00e9s diff\u00e8rent sans conversion connue"

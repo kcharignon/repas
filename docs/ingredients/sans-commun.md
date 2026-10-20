@@ -261,7 +261,7 @@ Règles qui en découlent : (1) R1 ne lit jamais « sans créateur » pour **dé
 
 | Sujet | Aujourd'hui | Après (ticket) |
 |---|---|---|
-| Création d'un ingrédient par l'administrateur | un commun (`creator` vide) | un ingrédient à lui, comme tout le monde (ING-012, **R1**) ; l'API ne change pas |
+| Création d'un ingrédient par l'administrateur | un commun (`creator` vide) | un ingrédient à lui, comme tout le monde (ING-012, **R1**, livré) ; l'API ne change pas |
 | Modifier, supprimer un ingrédient | `OwnerVoter` : un administrateur passe toujours | seul le créateur ; plus de passe-droit (ING-013, **R2**, D3) |
 | Fiche d'un ingrédient d'un autre | un administrateur la lit | `404` pour tous (ING-013) |
 | `canEdit` (liste du rayon, fiche, recherche) | « créateur = moi, ou administrateur et commun » | « créateur = moi », donc toujours vrai pour ce qui est visible ; le champ reste dans le contrat **et dans le front** (`v-if="ingredient.canEdit"` inchangé : toujours vrai, et il protège un compte pas encore amorcé d'un lien qui répondrait `403`) ; son retrait du contrat est hors chantier |
@@ -303,7 +303,7 @@ Chemins relatifs à `src/` ; les symboles comptent, les numéros de ligne bougen
 |---|---|
 | `Ingredient::isBase`, colonne `ingredient.is_base`, champ `isBase` des DTO, `canSetBase`, `IngredientPayload::$isBase` | ING-011 |
 | Port `Shared\Application\Interface\IngredientCatalogOwner` + implémentation `User` | ING-011 |
-| `CreateIngredientHandler` : toujours un ingrédient personnel (`CreateIngredientCommand::$isAdmin` retiré) | ING-012 |
+| `CreateIngredientHandler` : toujours un ingrédient personnel (`CreateIngredientCommand::$isAdmin` retiré), doublon par `IngredientRepository::existsForCreator` (slug **ou** nom normalisé du créateur, une requête ; `exists` ne change pas) | ING-012 (livré, PR #243) |
 | `Shared\Domain\Event\UserActivatedEvent` + dispatch par `VerifyEmailHandler`, `ResetPasswordHandler`, `ChangeUserStatusHandler` (et par la connexion Google, AUTH-006) + test d'architecture | ING-008 |
 | `SeedUserIngredients`, `repas:ingredients:seed`, écouteur `SeedIngredientsOnUserActivatedListener`, port `IngredientSeedingFeature`, `DriveIngredientReferences::referencedSlugs`, variable `INGREDIENT_SEEDING_ENABLED` (`deploy/compose.yaml`, `.env`, `deploy/.env.example`, `deploy/smoke-test.sh`) | ING-008 |
 | `repas:ingredients:hand-over-catalog`, `src/Repas/Infrastructure/Data/base-ingredients.json` (le TSV de `docs/`), scripts | ING-009 |

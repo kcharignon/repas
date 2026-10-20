@@ -15,7 +15,7 @@ Mots de l'interface : **ingrédient**, **recette**, **liste de courses** (le mot
 | # | Règle |
 |---|---|
 | 1 | **Même utilisateur seulement.** Les deux ingrédients ont `creator = l'utilisateur connecté`. Aucun autre cas. |
-| 2 | **Jamais un commun** (`creator` vide) : `422 CANNOT_MERGE_COMMON_INGREDIENT`. Un administrateur n'a aucun ingrédient personnel (il crée des communs) : la fusion ne le concerne pas pour l'instant. |
+| 2 | **Jamais un commun** (`creator` vide) : `422 CANNOT_MERGE_COMMON_INGREDIENT`. Depuis ING-012 un administrateur crée des ingrédients à lui comme tout le monde, et la fusion le concerne pour ceux-là ; il n'a encore aucun ingrédient personnel tant que la passation des anciens communs n'a pas eu lieu. |
 | 3 | **Jamais l'ingrédient d'un autre** : `404`, comme un ingrédient inconnu (on ne révèle pas son existence ; même règle que `findPurchaseUnitSlugUsableBy`). **L'exception administrateur de `OwnerVoter` ne s'applique pas** : le contrôle `creator = utilisateur du jeton` est fait par le cas d'usage lui-même, `ROLE_ADMIN` ou non. |
 | 4 | `A` et `B` doivent être **différents** : `422 CANNOT_MERGE_INTO_ITSELF`. |
 | 5 | **`A` garde tout** : nom, image, rayon, unités par défaut, unités compatibles, conversions propres, `adopted_from`. `B` ne lègue rien (voir § 3 pour les conversions). |
