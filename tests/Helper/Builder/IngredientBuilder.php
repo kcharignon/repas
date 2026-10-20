@@ -19,6 +19,7 @@ class IngredientBuilder implements Builder
     private UnitBuilder $defaultPurchaseUnitBuilder;
     private UserBuilder|User|null $creator;
     private ?string $adoptedFrom = null;
+    private bool $isBase = false;
     /** @var Tab<Unit>  */
     private Tab $compatibleUnits;
 
@@ -78,6 +79,7 @@ class IngredientBuilder implements Builder
             'creator_id' => ($this->creator instanceof UserBuilder ? $this->creator->build() : $this->creator)?->getId(),
             'compatible_units' => $this->compatibleUnits,
             'adopted_from' => $this->adoptedFrom,
+            'is_base' => $this->isBase,
         ]);
     }
 
@@ -218,6 +220,13 @@ class IngredientBuilder implements Builder
     public function withAdoptedFrom(?string $commonSlug): self
     {
         $this->adoptedFrom = $commonSlug;
+        return $this;
+    }
+
+    /** Marqueur « ingrédient de base » (ADR 0028, amendement) : faux par défaut, comme toute création. */
+    public function withBase(bool $isBase = true): self
+    {
+        $this->isBase = $isBase;
         return $this;
     }
 

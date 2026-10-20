@@ -28,6 +28,7 @@ use Repas\Tests\Helper\InMemoryRepository\DepartmentInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\IngredientAliasInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\IngredientInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\UnitInMemoryRepository;
+use Repas\Tests\Helper\IngredientCatalogOwnerInMemory;
 use Repas\Tests\Helper\RepasAssert;
 use Repas\Tests\Helper\InMemoryRepository\SpyEventDispatcher;
 
@@ -40,6 +41,7 @@ class CreateIngredientHandlerTest extends TestCase
     private readonly SpyEventDispatcher $eventDispatcher;
     private readonly ConversionRepository $conversionRepository;
     private readonly IngredientAliasInMemoryRepository $aliasRepository;
+    private readonly IngredientCatalogOwnerInMemory $catalogOwner;
 
     protected function setUp(): void
     {
@@ -50,6 +52,7 @@ class CreateIngredientHandlerTest extends TestCase
 
         $this->ingredientRepository = new IngredientInMemoryRepository();
         $this->aliasRepository = new IngredientAliasInMemoryRepository();
+        $this->catalogOwner = new IngredientCatalogOwnerInMemory('owner-id');
         $this->unitRepository = new UnitInMemoryRepository([$unite, $liter, $centiliter]);
         $this->departmentRepository = new DepartmentInMemoryRepository([$baby]);
         $this->eventDispatcher = new SpyEventDispatcher();
@@ -72,7 +75,8 @@ class CreateIngredientHandlerTest extends TestCase
             $this->ingredientRepository,
             $this->aliasRepository,
             $this->eventDispatcher,
-            $conversionService
+            $conversionService,
+            $this->catalogOwner,
         );
     }
 
@@ -410,5 +414,111 @@ class CreateIngredientHandlerTest extends TestCase
         } finally {
             $this->assertSame([], $this->eventDispatcher->eventDispatched);
         }
+    }
+
+    private function createCommand(string $userId, bool $isAdmin, bool $isBase = false): CreateIngredientCommand
+    {
+        return new CreateIngredientCommand("nom de l'ingredient", '', 'bebe', 'unite', 'unite', $userId, $isAdmin, null, $isBase);
+    }
+
+    public function testAnIngredientIsNotBaseByDefaultAndTheCatalogOwnerIsNotRead(): void
+    {
+        // Given
+        $command = new CreateIngredientCommand("nom de l'ingredient", '', 'bebe', 'unite', 'unite', 'user-id', false, null);
+
+        // When
+        $slug = ($this->handler)($command);
+
+        // Then : naître à faux ne demande l'avis de personne, donc aucune requête de plus
+        $this->assertFalse($this->ingredientRepository->findOneBySlug($slug)->isBase());
+        $this->assertSame(0, $this->catalogOwner->calls);
+    }
+
+    public function testNotAskingForTheMarkerIsAcceptedFromAnyUserWithoutReadingTheCatalogOwner(): void
+    {
+        // When : `false` explicite, d'un utilisateur ordinaire comme d'un administrateur qui n'est pas le propriétaire
+        $ordinary = ($this->handler)($this->createCommand('user-id', false, false));
+        $admin = ($this->handler)($this->createCommand('admin-id', true, false));
+
+        // Then
+        $this->assertFalse($this->ingredientRepository->findOneBySlug($ordinary)->isBase());
+        $this->assertFalse($this->ingredientRepository->findOneBySlug($admin)->isBase());
+        $this->assertSame(0, $this->catalogOwner->calls);
+    }
+
+    public function testTheCatalogOwnerCreatesABaseIngredientOfItsOwn(): void
+    {
+        // When
+        $slug = ($this->handler)($this->createCommand('owner-id', false, true));
+
+        // Then
+        $ingredient = $this->ingredientRepository->findOneBySlug($slug);
+        $this->assertTrue($ingredient->isBase());
+        $this->assertSame('owner-id', $ingredient->getCreatorId());
+        $this->assertSame(1, $this->catalogOwner->calls);
+        $this->assertEquals([new IngredientCreatedEvent('owner-id', $slug)], $this->eventDispatcher->eventDispatched);
+    }
+
+    public function testTheCatalogOwnerCreatesABaseIngredientWhileAdministratorsStillCreateCommons(): void
+    {
+        // When : jusqu'à ING-012, un administrateur crée un ingrédient sans créateur ; le propriétaire du catalogue l'est
+        $slug = ($this->handler)($this->createCommand('owner-id', true, true));
+
+        // Then
+        $ingredient = $this->ingredientRepository->findOneBySlug($slug);
+        $this->assertTrue($ingredient->isBase());
+        $this->assertNull($ingredient->getCreatorId());
+    }
+
+    public function testAnotherUserCannotCreateABaseIngredientAndNothingIsWritten(): void
+    {
+        // Given : une liaison d'alias qui serait défaite par la création, pour prouver qu'elle n'a pas eu lieu
+        $this->aliasRepository->save(IngredientAlias::create('user-id', 'nom-de-l-ingredientuser-id', 'autre-ingredient', AliasKind::MERGE, 'merge', new \DateTimeImmutable()));
+
+        // Then
+        $this->expectExceptionObject(IngredientException::baseMarkerForbidden());
+
+        // When
+        try {
+            ($this->handler)($this->createCommand('user-id', false, true));
+        } finally {
+            $this->assertFalse($this->ingredientRepository->exists('nom-de-l-ingredientuser-id'));
+            $this->assertSame([], $this->eventDispatcher->eventDispatched);
+            $this->assertNotNull($this->aliasRepository->find('user-id', 'nom-de-l-ingredientuser-id'));
+        }
+    }
+
+    public function testAnAdministratorWhoIsNotTheCatalogOwnerCannotCreateABaseIngredientEither(): void
+    {
+        // Then : un administrateur n'est pas le propriétaire du catalogue (D1)
+        $this->expectExceptionObject(IngredientException::baseMarkerForbidden());
+
+        // When
+        try {
+            ($this->handler)($this->createCommand('admin-id', true, true));
+        } finally {
+            $this->assertFalse($this->ingredientRepository->exists('nom-de-l-ingredient'));
+            $this->assertSame([], $this->eventDispatcher->eventDispatched);
+        }
+    }
+
+    public function testWithoutACatalogOwnerNobodyCanCreateABaseIngredient(): void
+    {
+        // Given : le compte propriétaire n'existe pas (base neuve, développement)
+        $handler = new CreateIngredientHandler(
+            $this->departmentRepository,
+            $this->unitRepository,
+            $this->ingredientRepository,
+            $this->aliasRepository,
+            $this->eventDispatcher,
+            new ConversionService($this->conversionRepository, $this->unitRepository),
+            new IngredientCatalogOwnerInMemory(null),
+        );
+
+        // Then
+        $this->expectExceptionObject(IngredientException::baseMarkerForbidden());
+
+        // When
+        $handler($this->createCommand('owner-id', false, true));
     }
 }

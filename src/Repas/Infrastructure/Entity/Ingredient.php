@@ -44,6 +44,13 @@ class Ingredient
     private ?string $adoptedFrom = null;
 
     /**
+     * Le marqueur « ingrédient de base » (ADR 0028, amendement du 2026-10-20) : l'ingrédient part aux nouveaux comptes. `NOT NULL`, faux par
+     * défaut côté base : le code précédent, qui ne mappe pas la colonne, la laisse à sa valeur.
+     */
+    #[ORM\Column(name: 'is_base', type: 'boolean', options: ['default' => false])]
+    private bool $isBase = false;
+
+    /**
      * @param array<string> $compatibleUnitSlugs
      */
     public function __construct(
@@ -57,6 +64,7 @@ class Ingredient
         ?string $creatorId,
         array $compatibleUnitSlugs,
         ?string $adoptedFrom = null,
+        bool $isBase = false,
     ) {
         $this->slug = $slug;
         $this->name = $name;
@@ -68,6 +76,7 @@ class Ingredient
         $this->creatorId = $creatorId;
         $this->compatibleUnitSlugs = $compatibleUnitSlugs;
         $this->adoptedFrom = $adoptedFrom;
+        $this->isBase = $isBase;
     }
 
 
@@ -173,6 +182,17 @@ class Ingredient
         return $this->adoptedFrom;
     }
 
+    public function isBase(): bool
+    {
+        return $this->isBase;
+    }
+
+    public function setIsBase(bool $isBase): Ingredient
+    {
+        $this->isBase = $isBase;
+        return $this;
+    }
+
     public static function fromModel(IngredientModel $ingredient): static
     {
         return new static(
@@ -186,6 +206,7 @@ class Ingredient
             creatorId: $ingredient->getCreatorId(),
             compatibleUnitSlugs: $ingredient->getCompatibleUnits()->map(fn(UnitModel $unit) => $unit->getSlug())->toArray(),
             adoptedFrom: $ingredient->getAdoptedFrom(),
+            isBase: $ingredient->isBase(),
         );
     }
 }

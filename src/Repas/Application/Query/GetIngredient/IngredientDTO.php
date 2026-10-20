@@ -39,6 +39,10 @@ final readonly class IngredientDTO
         public int $recipeCount,
         #[OA\Property(description: 'Nombre de listes de courses de l\'utilisateur qui utilisent cet ingrédient (une ligne ou un ingrédient ajouté à la main), toujours renseigné ; 0 si aucune, ou si l\'ingrédient est à quelqu\'un d\'autre', example: 2)]
         public int $listCount,
+        #[OA\Property(description: 'Marqueur « ingrédient de base » : l\'ingrédient est copié aux nouveaux comptes. Toujours écrit, jamais `null` ; vrai seulement pour le propriétaire du catalogue qui lit un ingrédient de son catalogue, faux pour tout autre lecteur')]
+        public bool $isBase,
+        #[OA\Property(description: 'Le lecteur peut poser le marqueur « de base » sur cet ingrédient : il est le propriétaire du catalogue et l\'ingrédient est à lui. Toujours écrit, jamais `null` : le front s\'appuie sur ce champ, pas sur le rôle administrateur')]
+        public bool $canSetBase,
     ) {
     }
 }

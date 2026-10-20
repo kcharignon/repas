@@ -3,12 +3,15 @@
 namespace Repas\Tests\Repas\Domain;
 
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Repas\Repas\Domain\Exception\IngredientException;
 use Repas\Repas\Domain\Model\Ingredient;
 use Repas\Repas\Domain\Model\Unit;
 use Repas\Shared\Domain\Tool\Tab;
+use Repas\Tests\Helper\Builder\DepartmentBuilder;
 use Repas\Tests\Helper\Builder\IngredientBuilder;
+use Repas\Tests\Helper\Builder\UnitBuilder;
 use Repas\Tests\Helper\Builder\UserBuilder;
 use Repas\Tests\Helper\RepasAssert;
 
@@ -182,5 +185,112 @@ class IngredientTest extends TestCase
         // Then
         $this->expectExceptionObject(IngredientException::notFound($ingredient->getSlug()));
         $ingredient->assertOwnedBy('another-id');
+    }
+
+    public function testAnIngredientIsNotBaseUnlessMarked(): void
+    {
+        // Given
+        $created = Ingredient::create('Praliné', '', new DepartmentBuilder()->isBakery()->build(), new UnitBuilder()->isGramme()->build(), new UnitBuilder()->isGramme()->build(), 'user-id');
+        $loadedWithoutTheKey = Ingredient::load([
+            'slug' => 'sel', 'name' => 'sel', 'image' => '', 'slugged_name' => 'sel',
+            'department' => new DepartmentBuilder()->isBakery()->build(), 'default_cooking_unit' => new UnitBuilder()->isGramme()->build(),
+            'default_purchase_unit' => new UnitBuilder()->isGramme()->build(), 'creator_id' => null, 'compatible_units' => Tab::newEmptyTyped(Unit::class),
+            'adopted_from' => null,
+        ]);
+
+        // Then : une création est à faux, un chargement sans la clé aussi (le code d'avant la colonne), un chargement avec la clé la lit
+        $this->assertFalse($created->isBase());
+        $this->assertFalse($loadedWithoutTheKey->isBase());
+        $this->assertTrue(new IngredientBuilder()->isButter()->withBase()->build()->isBase());
+        $this->assertFalse(new IngredientBuilder()->isButter()->withBase()->withBase(false)->build()->isBase());
+    }
+
+    public function testChangingTheBaseMarkerIsFluentAndReversible(): void
+    {
+        // Given
+        $ingredient = new IngredientBuilder()->isButter()->build();
+
+        // When / Then
+        $this->assertSame($ingredient, $ingredient->changeBase(true));
+        $this->assertTrue($ingredient->isBase());
+        $this->assertFalse($ingredient->changeBase(false)->isBase());
+    }
+
+    public function testUpdatingAnIngredientKeepsItsBaseMarker(): void
+    {
+        // Given
+        $ingredient = new IngredientBuilder()->isButter()->withBase()->build();
+
+        // When
+        $ingredient->update('Beurre demi-sel', $ingredient->getImage(), $ingredient->getDepartment(), $ingredient->getDefaultCookingUnit(), $ingredient->getDefaultPurchaseUnit(), $ingredient->getCompatibleUnits());
+
+        // Then
+        $this->assertTrue($ingredient->isBase());
+    }
+
+    public function testEveryCopyIsBornNotBaseWhateverItsSource(): void
+    {
+        // Given : le marqueur ne voyage pas, ni par une adoption, ni par une copie de recette, d'un commun comme d'un ingrédient à quelqu'un
+        $baseCommon = new IngredientBuilder()->isButter()->withBase()->build();
+        $basePersonal = new IngredientBuilder()->isButter()->withCreator(new UserBuilder()->withId('author-id')->build(), true)->withBase()->build();
+
+        // When
+        $copies = [
+            Ingredient::adopt($baseCommon, 'user-id', 'beurreuser-id'),
+            Ingredient::adopt($basePersonal, 'user-id', 'beurreuser-id'),
+            Ingredient::copyFromOriginal($baseCommon, 'user-id', 'beurreuser-id'),
+            Ingredient::copyFromOriginal($basePersonal, 'user-id', 'beurreuser-id'),
+        ];
+
+        // Then : et la source garde le sien
+        foreach ($copies as $copy) {
+            $this->assertFalse($copy->isBase());
+        }
+        $this->assertTrue($baseCommon->isBase());
+        $this->assertTrue($basePersonal->isBase());
+    }
+
+    /**
+     * La règle « qui pose le marqueur » : le propriétaire du catalogue, sur un ingrédient à lui (ou, jusqu'à ING-014, sans créateur) ; personne
+     * quand le propriétaire n'existe pas.
+     *
+     * @return iterable<string, array{string, ?string, ?string, bool}>
+     */
+    public static function baseMarkerCases(): iterable
+    {
+        // demandeur, propriétaire du catalogue, créateur de l'ingrédient, permis ?
+        yield 'le propriétaire sur son ingrédient' => ['owner-id', 'owner-id', 'owner-id', true];
+        yield 'le propriétaire sur un ancien commun' => ['owner-id', 'owner-id', null, true];
+        yield "le propriétaire sur l'ingrédient d'un autre" => ['owner-id', 'owner-id', 'user-id', false];
+        yield 'un utilisateur sur son ingrédient' => ['user-id', 'owner-id', 'user-id', false];
+        yield 'un utilisateur sur un ancien commun' => ['user-id', 'owner-id', null, false];
+        yield "un utilisateur sur l'ingrédient du propriétaire" => ['user-id', 'owner-id', 'owner-id', false];
+        yield "un administrateur qui n'est pas le propriétaire, sur un ancien commun" => ['admin-id', 'owner-id', null, false];
+        yield "le propriétaire n'existe pas, personne ne peut" => ['owner-id', null, 'owner-id', false];
+        yield "le propriétaire n'existe pas, pas même sur un ancien commun" => ['user-id', null, null, false];
+    }
+
+    #[DataProvider('baseMarkerCases')]
+    public function testOnlyTheCatalogOwnerSetsTheBaseMarkerOnItsOwnIngredient(string $userId, ?string $catalogOwnerId, ?string $creatorId, bool $allowed): void
+    {
+        // Given
+        $ingredient = new IngredientBuilder()->isButter()->withCreator($creatorId === null ? null : new UserBuilder()->withId($creatorId)->build(), true)->build();
+
+        // When / Then
+        if (!$allowed) {
+            $this->expectExceptionObject(IngredientException::baseMarkerForbidden());
+        }
+        $ingredient->assertBaseMarkerSettableBy($userId, $catalogOwnerId);
+        $this->assertTrue($allowed);
+    }
+
+    public function testTheRefusalIsAForbiddenWithAStableCode(): void
+    {
+        // When
+        $exception = IngredientException::baseMarkerForbidden();
+
+        // Then : le front distingue ce refus d'un refus d'accès ordinaire par ce code, qui ne se renomme pas
+        $this->assertSame('INGREDIENT_BASE_FORBIDDEN', $exception->getMessage());
+        $this->assertSame(403, $exception->getCode());
     }
 }

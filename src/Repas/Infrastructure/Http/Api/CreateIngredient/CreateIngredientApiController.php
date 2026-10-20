@@ -28,6 +28,7 @@ final class CreateIngredientApiController extends AbstractController
     #[OA\Tag(name: 'Ingredients')]
     #[OA\RequestBody(required: true, content: new OA\JsonContent(ref: new Model(type: IngredientPayload::class)))]
     #[OA\Response(response: 201, description: 'Ingrédient créé', headers: [new OA\Header(header: 'Location', description: "URL de l'ingrédient créé", schema: new OA\Schema(type: 'string'))])]
+    #[OA\Response(response: 403, description: "`INGREDIENT_BASE_FORBIDDEN` : `isBase` est vrai alors que l'utilisateur n'est pas le propriétaire du catalogue ; rien n'est créé")]
     #[OA\Response(response: 404, description: 'Rayon ou unité inconnu')]
     #[OA\Response(response: 409, description: 'Un ingrédient de ce nom existe déjà')]
     #[OA\Response(response: 422, description: 'Corps invalide, ou coefficient manquant alors que les unités diffèrent sans conversion connue')]
@@ -43,6 +44,7 @@ final class CreateIngredientApiController extends AbstractController
             userId: $user->getId(),
             isAdmin: $user->isAdmin(),
             coefficient: $payload->coefficient,
+            isBase: $payload->isBase ?? false,
         ));
 
         return new Response(status: Response::HTTP_CREATED, headers: ['Location' => $this->generateUrl('api_get_ingredient', ['slug' => $slug])]);

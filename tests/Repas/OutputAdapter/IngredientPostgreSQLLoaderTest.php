@@ -20,6 +20,7 @@ use Repas\Tests\Helper\Builder\UnitBuilder;
 use Repas\Tests\Helper\Builder\UserBuilder;
 use Repas\Tests\Helper\DatabaseTestCase;
 use Repas\Tests\Helper\DataPersister;
+use Repas\Tests\Helper\SqlBudget\QueryCounter;
 use Repas\User\Domain\Model\User;
 
 class IngredientPostgreSQLLoaderTest extends DatabaseTestCase
@@ -53,8 +54,8 @@ class IngredientPostgreSQLLoaderTest extends DatabaseTestCase
         $this->assertEquals(new DepartmentDTO('cereale', 'céréale', new DepartmentBuilder()->isCereal()->build()->getImage()), $result->department);
         $this->assertEquals(
             [
-                new IngredientRowDTO($own->getSlug(), 'aaa blé', '', true),
-                new IngredientRowDTO($common->getSlug(), 'zzz riz', 'g', false),
+                new IngredientRowDTO($own->getSlug(), 'aaa blé', '', true, false),
+                new IngredientRowDTO($common->getSlug(), 'zzz riz', 'g', false, false),
             ],
             $result->ingredients,
         );
@@ -130,6 +131,8 @@ class IngredientPostgreSQLLoaderTest extends DatabaseTestCase
             canEdit: true,
             recipeCount: 0,
             listCount: 0,
+            isBase: false,
+            canSetBase: false,
         ), $result);
     }
 
@@ -491,5 +494,167 @@ class IngredientPostgreSQLLoaderTest extends DatabaseTestCase
         $this->persister->saveIngredient($ingredient);
 
         return $ingredient;
+    }
+
+    // --- Le marqueur « de base » (ADR 0028, amendement du 2026-10-20) : montré au seul propriétaire du catalogue
+
+    private function savedCatalogOwner(): User
+    {
+        $owner = new UserBuilder()->isCatalogOwner()->build();
+        $this->persister->saveUser($owner);
+
+        return $owner;
+    }
+
+    public function testListByDepartmentShowsTheBaseMarkerToTheCatalogOwnerOnly(): void
+    {
+        // Given : le propriétaire a un ingrédient de base et un autre qui ne l'est pas ; un ancien commun est marqué (le classement des 261
+        // est posé avant la passation) ; un utilisateur ordinaire a aussi un ingrédient marqué (inerte : posé ailleurs que chez le propriétaire)
+        $owner = $this->savedCatalogOwner();
+        $user = $this->savedUser();
+        $department = new DepartmentBuilder()->isCereal();
+        $ownersBase = $this->savedIngredient(new IngredientBuilder()->withName('aaa riz')->withDepartment($department)->withCreator($owner, true)->withBase());
+        $ownersOther = $this->savedIngredient(new IngredientBuilder()->withName('bbb blé')->withDepartment($department)->withCreator($owner, true));
+        $markedCommon = $this->savedIngredient(new IngredientBuilder()->withName('ccc orge')->withDepartment($department)->withBase());
+        $usersStray = $this->savedIngredient(new IngredientBuilder()->withName('ddd seigle')->withDepartment($department)->withCreator($user, true)->withBase());
+
+        // When
+        $seenByOwner = $this->ingredientLoader->listByDepartment('cereale', $owner->getId(), true);
+        $seenByUser = $this->ingredientLoader->listByDepartment('cereale', $user->getId(), false);
+
+        // Then : le propriétaire voit son classement, l'ancien commun marqué compris ; l'utilisateur ne voit aucun marqueur, pas même le sien
+        $this->assertSame(
+            [[$ownersBase->getSlug(), true], [$ownersOther->getSlug(), false], [$markedCommon->getSlug(), true]],
+            array_map(static fn(IngredientRowDTO $row): array => [$row->slug, $row->isBase], $seenByOwner->ingredients),
+        );
+        $this->assertSame(
+            [[$markedCommon->getSlug(), false], [$usersStray->getSlug(), false]],
+            array_map(static fn(IngredientRowDTO $row): array => [$row->slug, $row->isBase], $seenByUser->ingredients),
+        );
+    }
+
+    public function testListByDepartmentHidesTheMarkerFromAnAdministratorWhoIsNotTheCatalogOwner(): void
+    {
+        // Given
+        $owner = $this->savedCatalogOwner();
+        $admin = new UserBuilder()->isAdmin()->build();
+        $this->persister->saveUser($admin);
+        $this->savedIngredient(new IngredientBuilder()->withName('aaa riz')->withDepartment(new DepartmentBuilder()->isCereal())->withCreator($owner, true)->withBase());
+        $common = $this->savedIngredient(new IngredientBuilder()->withName('bbb blé')->withDepartment(new DepartmentBuilder()->isCereal())->withBase());
+
+        // When : un administrateur voit les anciens communs (et ne voit pas les ingrédients du propriétaire)
+        $result = $this->ingredientLoader->listByDepartment('cereale', $admin->getId(), true);
+
+        // Then : être administrateur ne montre pas le classement
+        $this->assertSame([[$common->getSlug(), false]], array_map(static fn(IngredientRowDTO $row): array => [$row->slug, $row->isBase], $result->ingredients));
+    }
+
+    public function testListByDepartmentNeverLooksForTheCatalogOwnerWhenNothingIsMarked(): void
+    {
+        // Given : le cas de tous les comptes aujourd'hui, aucun ingrédient marqué
+        $user = $this->savedUser();
+        $this->savedIngredient(new IngredientBuilder()->withName('aaa riz')->withDepartment(new DepartmentBuilder()->isCereal())->withCreator($user, true));
+        $counter = static::getContainer()->get(QueryCounter::class);
+        $counter->reset();
+
+        // When
+        $this->ingredientLoader->listByDepartment('cereale', $user->getId(), false);
+
+        // Then : la liste du rayon, sans une requête de plus pour désigner le propriétaire
+        $this->assertSame(2, $counter->count());
+        $this->assertArrayNotHasKey('SELECT user', $counter->byTable());
+
+        // Given : un ancien commun marqué, donc une réponse qui dépend du propriétaire du catalogue
+        $this->savedIngredient(new IngredientBuilder()->withName('bbb blé')->withDepartment(new DepartmentBuilder()->isCereal())->withBase());
+        $counter->reset();
+
+        // When
+        $this->ingredientLoader->listByDepartment('cereale', $user->getId(), false);
+
+        // Then : une seule lecture du propriétaire, ce qui prouve que la mesure ci-dessus voit bien cette requête
+        $this->assertSame(1, $counter->byTable()['SELECT user'] ?? 0);
+    }
+
+    public function testGetTellsTheCatalogOwnerHeCanMarkHisOwnIngredient(): void
+    {
+        // Given
+        $owner = $this->savedCatalogOwner();
+        $base = $this->savedIngredient(new IngredientBuilder()->withName('aaa riz')->withCreator($owner, true)->withBase());
+        $notBase = $this->savedIngredient(new IngredientBuilder()->withName('bbb blé')->withCreator($owner, true));
+
+        // When
+        $baseResult = $this->ingredientLoader->get($base->getSlug(), $owner->getId(), true);
+        $notBaseResult = $this->ingredientLoader->get($notBase->getSlug(), $owner->getId(), true);
+
+        // Then
+        $this->assertSame([true, true], [$baseResult->isBase, $baseResult->canSetBase]);
+        $this->assertSame([false, true], [$notBaseResult->isBase, $notBaseResult->canSetBase]);
+    }
+
+    public function testGetDoesNotLetAnyoneButTheCatalogOwnerMarkAnything(): void
+    {
+        // Given : un utilisateur et son ingrédient marqué (inerte), un administrateur qui n'est pas le propriétaire et un ancien commun marqué
+        $this->savedCatalogOwner();
+        $user = $this->savedUser();
+        $admin = new UserBuilder()->isAdmin()->build();
+        $this->persister->saveUser($admin);
+        $usersStray = $this->savedIngredient(new IngredientBuilder()->withName('aaa riz')->withCreator($user, true)->withBase());
+        $usersOther = $this->savedIngredient(new IngredientBuilder()->withName('bbb blé')->withCreator($user, true));
+        $markedCommon = $this->savedIngredient(new IngredientBuilder()->withName('ccc orge')->withBase());
+
+        // When / Then : jamais vrai pour eux (le front s'appuie sur `canSetBase`, pas sur le rôle)
+        foreach ([
+            [$usersStray, $user, false],
+            [$usersOther, $user, false],
+            [$markedCommon, $user, false],
+            [$markedCommon, $admin, true],
+            [$usersStray, $admin, true],
+        ] as [$ingredient, $viewer, $viewerIsAdmin]) {
+            $result = $this->ingredientLoader->get($ingredient->getSlug(), $viewer->getId(), $viewerIsAdmin);
+            $this->assertSame([false, false], [$result->isBase, $result->canSetBase], $ingredient->getSlug());
+        }
+    }
+
+    public function testGetShowsTheOwnerTheMarkOfAnOldCommonButDoesNotLetHimSetItThere(): void
+    {
+        // Given : avant la passation, les anciens communs (sans créateur) sont les ingrédients du catalogue, ils ne sont pas encore à lui
+        $owner = $this->savedCatalogOwner();
+        $common = $this->savedIngredient(new IngredientBuilder()->withName('aaa riz')->withBase());
+        $another = $this->savedUser();
+        $anothers = $this->savedIngredient(new IngredientBuilder()->withName('bbb blé')->withCreator($another, true)->withBase());
+
+        // When : l'ingrédient d'un autre est lisible par un administrateur (passe-droit), propriétaire du catalogue compris
+        $commonResult = $this->ingredientLoader->get($common->getSlug(), $owner->getId(), true);
+        $anothersResult = $this->ingredientLoader->get($anothers->getSlug(), $owner->getId(), true);
+
+        // Then
+        $this->assertSame([true, false], [$commonResult->isBase, $commonResult->canSetBase]);
+        $this->assertSame([false, false], [$anothersResult->isBase, $anothersResult->canSetBase]);
+    }
+
+    public function testGetWithoutACatalogOwnerAccountMarksNothing(): void
+    {
+        // Given : le compte propriétaire n'existe pas (base neuve)
+        $user = $this->savedUser();
+        $ingredient = $this->savedIngredient(new IngredientBuilder()->withName('aaa riz')->withCreator($user, true)->withBase());
+
+        // When
+        $result = $this->ingredientLoader->get($ingredient->getSlug(), $user->getId(), false);
+
+        // Then
+        $this->assertSame([false, false], [$result->isBase, $result->canSetBase]);
+    }
+
+    public function testGetOfAnotherUsersIngredientIsStillUnknown(): void
+    {
+        // Given
+        $owner = $this->savedCatalogOwner();
+        $theirs = $this->savedIngredient(new IngredientBuilder()->withName('aaa riz')->withCreator($this->savedUser(), true));
+
+        // Then : le marqueur ne change rien à la visibilité
+        $this->expectExceptionObject(IngredientException::notFound($theirs->getSlug()));
+
+        // When
+        $this->ingredientLoader->get($theirs->getSlug(), $owner->getId(), false);
     }
 }

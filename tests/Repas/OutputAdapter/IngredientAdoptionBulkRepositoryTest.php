@@ -356,4 +356,29 @@ class IngredientAdoptionBulkRepositoryTest extends DatabaseTestCase
     {
         $this->dataset->insert('ingredient_alias', ['user_id' => $userId, 'alias_slug' => $aliasSlug, 'ingredient_slug' => $ingredientSlug, 'kind' => 'adoption', 'source' => $source, 'created_at' => '2026-10-01 10:00:00']);
     }
+
+    public function testEveryCopyIsBornNotBaseWhateverTheMarkerOfItsSource(): void
+    {
+        // Given : un commun du catalogue marqué « de base » (le classement des anciens communs), adopté pour A par le cas d'usage et pour B en masse
+        $dataset = $this->dataset;
+        $dataset->connection->executeStatement("UPDATE ingredient SET is_base = TRUE WHERE slug IN ('beurre', 'lait')");
+        $dataset->connection->executeStatement("DELETE FROM conversion WHERE ingredient = 'beurre'");
+        $persister = new DataPersister(static::getContainer());
+        $persister->saveIngredient(new IngredientBuilder()->isButter()->withBase()->build());
+        $a = $dataset->singleId;
+        $b = $dataset->copierId;
+
+        // When
+        static::getContainer()->get(CommandBusInterface::class)->dispatch(new AdoptCommonIngredientCommand($a, 'beurre', 'essai'));
+        $written = $this->repository->writeAliases($b, ['beurre' => 'beurre' . $b, 'lait' => 'lait' . $b], 'essai', $this->now);
+        $this->repository->copyIngredients($b, $written);
+
+        // Then : les trois copies sont à faux (colonne par colonne, jamais la valeur de la source), les sources gardent leur marqueur
+        $this->assertSame([false, false, false], [
+            (bool) $dataset->connection->fetchOne('SELECT is_base FROM ingredient WHERE slug = ?', ['beurre' . $a]),
+            (bool) $dataset->connection->fetchOne('SELECT is_base FROM ingredient WHERE slug = ?', ['beurre' . $b]),
+            (bool) $dataset->connection->fetchOne('SELECT is_base FROM ingredient WHERE slug = ?', ['lait' . $b]),
+        ]);
+        $this->assertSame(2, (int) $dataset->connection->fetchOne("SELECT count(*) FROM ingredient WHERE slug IN ('beurre', 'lait') AND is_base"));
+    }
 }

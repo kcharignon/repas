@@ -20,6 +20,7 @@ use Repas\Repas\Infrastructure\Entity\Ingredient;
 use Repas\Repas\Infrastructure\Entity\Unit;
 use Repas\Repas\Infrastructure\Merge\IngredientMergeUsageReader;
 use Repas\Repas\Infrastructure\Visibility\IngredientVisibility;
+use Repas\Shared\Application\Interface\IngredientCatalogOwner;
 use Repas\Shared\Domain\Tool\SearchRelevance;
 use Repas\Shared\Domain\Tool\StringTool;
 
@@ -31,6 +32,7 @@ final readonly class IngredientPostgreSQLLoader implements IngredientLoader
     public function __construct(
         private EntityManagerInterface $entityManager,
         private IngredientMergeUsageReader $usageReader,
+        private IngredientCatalogOwner $catalogOwner,
     ) {
     }
 
@@ -49,7 +51,7 @@ final readonly class IngredientPostgreSQLLoader implements IngredientLoader
         }
 
         $rows = $this->entityManager->createQueryBuilder()
-            ->select('i.slug AS slug', 'i.name AS name', 'i.creatorId AS creatorId', 'u.symbol AS purchaseUnitSymbol')
+            ->select('i.slug AS slug', 'i.name AS name', 'i.creatorId AS creatorId', 'i.isBase AS isBase', 'u.symbol AS purchaseUnitSymbol')
             ->from(Ingredient::class, 'i')
             ->innerJoin(Unit::class, 'u', Join::WITH, 'u.slug = i.defaultPurchaseUnitSlug')
             ->where('i.departmentSlug = :department')
@@ -66,6 +68,9 @@ final readonly class IngredientPostgreSQLLoader implements IngredientLoader
             array_map(
                 fn(array $row): IngredientRowDTO => new IngredientRowDTO(
                     $row['slug'], $row['name'], $row['purchaseUnitSymbol'], $this->canEdit($row['creatorId'], $viewerId, $viewerIsAdmin),
+                    // Les lignes sont celles que le lecteur voit : les siennes ou les anciens communs. Le marqueur n'est montré qu'au propriétaire
+                    // du catalogue, et son identifiant n'est lu que si une ligne est marquée (`&&` court-circuite) : zéro requête pour les autres
+                    $row['isBase'] && $this->isCatalogOwner($viewerId),
                 ),
                 $rows,
             ),
@@ -76,7 +81,7 @@ final readonly class IngredientPostgreSQLLoader implements IngredientLoader
     {
         $ingredient = $this->entityManager->createQueryBuilder()
             ->select(
-                'i.slug AS slug', 'i.name AS name', 'i.image AS image', 'i.creatorId AS creatorId',
+                'i.slug AS slug', 'i.name AS name', 'i.image AS image', 'i.creatorId AS creatorId', 'i.isBase AS isBase',
                 'd.slug AS departmentSlug', 'd.name AS departmentName',
                 'cu.slug AS cookingUnitSlug', 'cu.name AS cookingUnitName',
                 'pu.slug AS purchaseUnitSlug', 'pu.name AS purchaseUnitName', 'pu.symbol AS purchaseUnitSymbol',
@@ -101,6 +106,13 @@ final readonly class IngredientPostgreSQLLoader implements IngredientLoader
         // Combien de recettes et de listes DU LECTEUR l'utilisent (« Utilisé dans 7 recettes · 2 listes ») : ce qu'une fusion déplacerait
         $usage = $this->usageReader->counts($viewerId, [$slug])[$slug] ?? ['recipes' => 0, 'lists' => 0];
 
+        // Le marqueur « de base » n'a de sens que dans le catalogue du propriétaire : ses ingrédients, ou les anciens communs (sans créateur,
+        // jusqu'à ING-014). Pour tout autre lecteur il est faux et ne se pose pas ; le propriétaire du catalogue n'est lu que si la
+        // réponse en dépend (un ingrédient à soi, ou marqué).
+        $ownIngredient = $ingredient['creatorId'] === $viewerId;
+        $canSetBase = $ownIngredient && $this->isCatalogOwner($viewerId);
+        $isBase = $ingredient['isBase'] && ($ownIngredient || $ingredient['creatorId'] === null) && $this->isCatalogOwner($viewerId);
+
         return new IngredientDTO(
             slug: $ingredient['slug'],
             name: $ingredient['name'],
@@ -118,6 +130,8 @@ final readonly class IngredientPostgreSQLLoader implements IngredientLoader
             canEdit: $this->canEdit($ingredient['creatorId'], $viewerId, $viewerIsAdmin),
             recipeCount: $usage['recipes'],
             listCount: $usage['lists'],
+            isBase: $isBase,
+            canSetBase: $canSetBase,
         );
     }
 
@@ -232,6 +246,15 @@ final readonly class IngredientPostgreSQLLoader implements IngredientLoader
     private function canEdit(?string $creatorId, string $viewerId, bool $viewerIsAdmin): bool
     {
         return $creatorId === $viewerId || ($viewerIsAdmin && $creatorId === null);
+    }
+
+    /**
+     * Le lecteur est le propriétaire du catalogue (ADR 0028, amendement) : un seul compte, jamais « tout administrateur ». Le port mémorise
+     * sa réponse le temps de la requête ; l'appelant ne le demande que si la réponse change quelque chose.
+     */
+    private function isCatalogOwner(string $viewerId): bool
+    {
+        return $viewerId === $this->catalogOwner->ownerId();
     }
 
     /**

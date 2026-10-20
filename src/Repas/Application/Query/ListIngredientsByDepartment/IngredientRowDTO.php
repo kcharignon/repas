@@ -15,6 +15,8 @@ final readonly class IngredientRowDTO
         public string $purchaseUnitSymbol,
         #[OA\Property(description: 'L\'utilisateur peut modifier cet ingrédient : le sien, ou un ingrédient commun s\'il est administrateur')]
         public bool $canEdit,
+        #[OA\Property(description: 'Marqueur « ingrédient de base » : l\'ingrédient est copié aux nouveaux comptes. Toujours écrit, jamais `null` ; vrai seulement pour le propriétaire du catalogue, faux pour tout autre lecteur')]
+        public bool $isBase,
     ) {
     }
 }

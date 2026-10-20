@@ -3,7 +3,9 @@
 namespace Repas\Tests\Repas\InputAdapter;
 
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use Repas\Repas\Application\Command\UpdateIngredient\UpdateIngredientCommand;
+use Repas\Repas\Domain\Exception\IngredientException;
 use Repas\Repas\Domain\Model\Ingredient;
 use Repas\Tests\Helper\Builder\IngredientBuilder;
 use Repas\Tests\Helper\QueryBusWebTestCase;
@@ -25,7 +27,68 @@ class UpdateIngredientApiControllerTest extends QueryBusWebTestCase
 
         // Then
         $this->assertSame(204, $this->client->getResponse()->getStatusCode());
-        $this->assertEquals([new UpdateIngredientCommand($ingredient->getSlug(), 'Farine complète', null, 'epicerie', 'gramme', 'kilo', 1000.0)], $commandBus->dispatched());
+        $this->assertEquals([new UpdateIngredientCommand($ingredient->getSlug(), 'Farine complète', null, 'epicerie', 'gramme', 'kilo', 1000.0, $owner->getId())], $commandBus->dispatched());
+    }
+
+    /**
+     * @return iterable<string, array{array<string, mixed>, ?bool}>
+     */
+    public static function baseMarkerBodies(): iterable
+    {
+        yield 'vrai' => [['isBase' => true], true];
+        yield 'faux' => [['isBase' => false], false];
+        yield 'null explicite : inchangé' => [['isBase' => null], null];
+        yield 'champ absent (ancien client) : inchangé' => [[], null];
+    }
+
+    /**
+     * @param array<string, mixed> $extra
+     */
+    #[DataProvider('baseMarkerBodies')]
+    public function testTheBaseMarkerIsOptionalAndPassedAsSent(array $extra, ?bool $expected): void
+    {
+        // Given
+        $commandBus = $this->mockCommandBus();
+        $owner = $this->savedUser();
+        $ingredient = $this->savedIngredient($owner);
+
+        // When
+        $this->put($ingredient->getSlug(), $owner, $extra + self::BODY);
+
+        // Then : la commande porte l'utilisateur du jeton (jamais celui du corps) et le marqueur tel qu'envoyé, `null` quand il est absent
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->assertEquals([new UpdateIngredientCommand($ingredient->getSlug(), 'Farine complète', null, 'epicerie', 'gramme', 'kilo', 1000.0, $owner->getId(), $expected)], $commandBus->dispatched());
+    }
+
+    public function testRefusesABaseMarkerThatIsNotABoolean(): void
+    {
+        // Given
+        $commandBus = $this->mockCommandBus();
+        $owner = $this->savedUser();
+        $ingredient = $this->savedIngredient($owner);
+
+        // When
+        $this->put($ingredient->getSlug(), $owner, ['isBase' => 'oui'] + self::BODY);
+
+        // Then
+        $this->assertSame(422, $this->client->getResponse()->getStatusCode());
+        $this->assertSame([], $commandBus->dispatched());
+    }
+
+    public function testAnOrdinaryUserWhoMarksHisIngredientGetsAForbiddenWithAStableCode(): void
+    {
+        // Given : le handler refuse (seul le propriétaire du catalogue pose le marqueur)
+        $commandBus = $this->mockCommandBus()->willThrow(UpdateIngredientCommand::class, IngredientException::baseMarkerForbidden());
+        $owner = $this->savedUser();
+        $ingredient = $this->savedIngredient($owner);
+
+        // When
+        $this->put($ingredient->getSlug(), $owner, ['isBase' => true] + self::BODY);
+
+        // Then : 403, le code en majuscules est le message
+        $this->assertSame(403, $this->client->getResponse()->getStatusCode());
+        $this->assertSame(['error' => ['message' => 'INGREDIENT_BASE_FORBIDDEN']], $this->jsonBody());
+        $this->assertCount(1, $commandBus->dispatched());
     }
 
     public function testRefusesAnIngredientOfAnotherUser(): void

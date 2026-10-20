@@ -16,7 +16,7 @@ class ListIngredientsByDepartmentQueryHandlerTest extends TestCase
     public function testReturnsWhatTheLoaderReturns(): void
     {
         // Given
-        $result = new DepartmentIngredientsDTO(new DepartmentDTOBuilder()->build(), [new IngredientRowDTO('farine', 'farine', 'g', true)]);
+        $result = new DepartmentIngredientsDTO(new DepartmentDTOBuilder()->build(), [new IngredientRowDTO('farine', 'farine', 'g', true, false)]);
         $handler = new ListIngredientsByDepartmentQueryHandler(new IngredientInMemoryLoader(departmentIngredients: $result));
 
         // When

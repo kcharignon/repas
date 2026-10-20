@@ -114,8 +114,8 @@ readonly class IngredientAdoptionBulkPostgreSQLRepository implements IngredientA
     public function copyIngredients(string $userId, array $copySlugByCommonSlug): int
     {
         return (int) $this->connection()->executeStatement(
-            'INSERT INTO ingredient (slug, name, image, slugged_name, department, default_cooking_unit, default_purchase_unit, creator, compatible_units, adopted_from)'
-            . ' SELECT m.value, c.name, c.image, c.slugged_name, c.department, c.default_cooking_unit, c.default_purchase_unit, :u, c.compatible_units, c.slug'
+            'INSERT INTO ingredient (slug, name, image, slugged_name, department, default_cooking_unit, default_purchase_unit, creator, compatible_units, adopted_from, is_base)'
+            . ' SELECT m.value, c.name, c.image, c.slugged_name, c.department, c.default_cooking_unit, c.default_purchase_unit, :u, c.compatible_units, c.slug, FALSE'
             . ' FROM jsonb_each_text(CAST(:map AS jsonb)) AS m JOIN ingredient c ON c.slug = m.key AND ' . IngredientVisibility::isCommonSql('c'),
             ['u' => $userId, 'map' => $this->json($copySlugByCommonSlug)],
         );
