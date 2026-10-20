@@ -1,6 +1,6 @@
 # Ingrédients propres à chaque utilisateur : inventaire de l'existant
 
-Rédigé le 2026-10-20 par l'assistant architecte, qui n'implémente pas. Code lu sur `main` au commit `87e31ea`. Les références `fichier:ligne` sont celles de ce commit ; elles bougent, le nom du symbole reste. Décisions : [ADR 0028](../adr/0028-ingredients-propres-a-chaque-utilisateur.md). Suite : [`migration.md`](migration.md), [`rapprochement.md`](rapprochement.md), [`fusion.md`](fusion.md), [`roadmap.md`](roadmap.md).
+Rédigé le 2026-10-20 par l'assistant architecte, qui n'implémente pas. Code lu sur `main` au commit `cae13be` (contexte `Drive` relu après DRV-652 et DRV-653). Les références `fichier:ligne` sont celles de ce commit ; elles bougent, le nom du symbole reste. Décisions : [ADR 0028](../adr/0028-ingredients-propres-a-chaque-utilisateur.md). Suite : [`migration.md`](migration.md), [`rapprochement.md`](rapprochement.md), [`fusion.md`](fusion.md), [`roadmap.md`](roadmap.md).
 
 ## 1. Le besoin et ce qui existe
 
@@ -23,7 +23,7 @@ Ordres de grandeur en production (relevés en lecture seule le 2026-10-20, jamai
 | `shopping_list_row` | `ingredient` (une ligne par ingrédient et par liste, imposé par le domaine, pas par le schéma) | | `src/Repas/Infrastructure/Entity/ShoppingListRow.php:19` |
 | `shopping_list_ingredient` | `ingredient` (clé métier : liste + ingrédient + unité) | | `src/Repas/Infrastructure/Entity/ShoppingListIngredient.php:19` |
 | `drive_choice` | `ingredient_slug` | unique `(user_id, retailer, store_id, ingredient_slug)` | `src/Drive/Infrastructure/Entity/Choice.php:17` et `:33` |
-| `drive_choice_product` | aucune : rattachée à `drive_choice.id` | unique `(choice_id, rank)` | `src/Drive/Infrastructure/Entity/ChoiceProduct.php` |
+| `drive_choice_product` | aucune : rattachée à `drive_choice.id` ; porte, depuis DRV-652, la contenance du produit **dans l'unité de la liste** (`pack_size_value`, `pack_size_unit_slug` : un **slug d'unité**, pas d'ingrédient) | unique `(choice_id, rank)` | `src/Drive/Infrastructure/Entity/ChoiceProduct.php` |
 | `drive_department_rayon` | aucune : clé `(retailer, department_slug, rayon_id)`, par **rayon de Repas**, pas par ingrédient | | `src/Drive/Infrastructure/Entity/DepartmentRayon.php` |
 
 Aucune clé étrangère nulle part (ADR 0013, 0021) : une référence est un texte, rien ne se propage ni ne protège. `user.statistics` (JSON du contexte `User`) porte un compteur `ingredients`.
@@ -66,7 +66,7 @@ Pas de lecture « tous les ingrédients » pour l'utilisateur : tout passe par c
 | Créer / modifier / supprimer un ingrédient | `CreateIngredientHandler` (`:43` : un administrateur crée un commun), `UpdateIngredientHandler` (`:46`), `RemoveIngredientHandler` (`:35`, `:47`) | propriétaire (voter) ; suppression refusée si l'ingrédient est dans une recette ou dans `shopping_list_ingredient` seulement |
 | Créer / modifier une conversion | `CreateConversionApiController` et `UpdateConversionApiController` (`#[IsGranted('ROLE_ADMIN')]`) | **réservé aux administrateurs** : un utilisateur n'a que le coefficient unité d'achat / unité de recette de l'écran de son ingrédient |
 | Copier une recette | `CopyRecipeHandler` `src/Repas/Application/Command/CopyRecipe/CopyRecipeHandler.php:30` | voir § 6 |
-| Choix du drive | `SaveProductChoicesHandler` `src/Drive/Application/Command/SaveProductChoices/SaveProductChoicesHandler.php:94`, `:277` ; `ReplaceIngredientPreferenceHandler` `:60` ; `ForgetChoiceHandler` `:37` ; routes `/api/v1/drive/choices/{ingredientSlug}` | aucun contrôle de l'ingrédient (le slug doit seulement avoir la bonne forme, `Choice::SLUG_PATTERN`) |
+| Choix du drive | `SaveProductChoicesHandler` `src/Drive/Application/Command/SaveProductChoices/SaveProductChoicesHandler.php:111`, `:329` ; `ReplaceIngredientPreferenceHandler` `:60` ; `ForgetChoiceHandler` `:37` ; routes `/api/v1/drive/choices/{ingredientSlug}` | aucun contrôle de l'ingrédient (le slug doit seulement avoir la bonne forme, `Choice::SLUG_PATTERN`) |
 
 **Piège central** : le calcul d'une liste relit le **slug courant** des lignes de la recette (`PlannedMealHandler:51`, `removeMealFromPlanHandler:53`). Si une recette est repointée vers un autre slug sans que les lignes de liste le soient dans la même transaction, retirer ce repas ne retrouve plus la ligne (`subtractRow` ne trouve rien) : la quantité reste, fausse. Toute migration et toute fusion repointent recettes **et** listes **et** choix du drive ensemble.
 
@@ -124,15 +124,15 @@ Le drive référence un ingrédient par son slug dans **une seule table** : `dri
 
 | Endroit | Fichier:ligne | Effet d'un changement de slug |
 |---|---|---|
-| Plan d'envoi | `DrivePlanPostgreSQLLoader` `src/Drive/Infrastructure/Loader/DrivePlanPostgreSQLLoader.php:71`, `:139` | cherche le choix par `(utilisateur, enseigne, magasin, slug de la ligne)` : **une ligne dont le slug ne correspond plus à son choix perd ses produits mémorisés** |
-| Estimation du coût | `DriveEstimatePostgreSQLLoader` `:57`, `:113` | idem |
-| Lecture des choix | `ChoicePostgreSQLLoader` `:38`, `:80` | noms par slug (`IngredientNameLoader`) |
-| Enregistrement d'un lot de choix | `SaveProductChoicesHandler` `:94`, `:156`, `:277` ; `ChoicePostgreSQLRepository` `:93` (`INSERT … ON CONFLICT`) | crée un choix sous le slug reçu, **sans contrôler qu'il existe** |
+| Plan d'envoi | `DrivePlanPostgreSQLLoader` `src/Drive/Infrastructure/Loader/DrivePlanPostgreSQLLoader.php:75`, `:145` | cherche le choix par `(utilisateur, enseigne, magasin, slug de la ligne)` : **une ligne dont le slug ne correspond plus à son choix perd ses produits mémorisés** |
+| Estimation du coût | `DriveEstimatePostgreSQLLoader` `:58`, `:116` | idem |
+| Lecture des choix | `ChoicePostgreSQLLoader` `:39`, `:92` | noms par slug (`IngredientNameLoader`) |
+| Enregistrement d'un lot de choix | `SaveProductChoicesHandler` `:111`, `:179`, `:329` ; `ChoicePostgreSQLRepository` `:103` (`INSERT … ON CONFLICT`) | crée un choix sous le slug reçu, **sans contrôler qu'il existe** |
 | Remplacer / oublier | `ReplaceIngredientPreferenceHandler:60`, `ForgetChoiceHandler:37` | idem |
 | Liste vue par le drive | `ShoppingListForDrivePostgreSQLLoader:66` (port `Shared\Application\Dto\ShoppingListLineForDrive`) | slug, nom, rayon, unité d'achat de la ligne |
 | Rayon de l'enseigne | `IngredientDepartmentPostgreSQLResolver:28` | rayon de **Repas** de l'ingrédient (`department`), appris par rayon, pas par ingrédient |
 
-Points qui protègent les choix : la **contenance et le prix** sont sur le produit, pas sur l'ingrédient ; le nombre de produits se calcule à partir de l'unité d'achat de la ligne (`PackCalculator`, dimension et facteur de base de l'unité) : une copie qui garde les mêmes unités donne **le même plan** ; la recherche mémorisée (`drive_choice.search_query`, DRV-650) est portée par le choix et suit son slug. Aucune enseigne n'est nommée dans ce chantier : toutes les lignes `drive_choice` d'un utilisateur sont repointées quelle que soit l'enseigne.
+Points qui protègent les choix : le **contenu net et le prix** sont sur le produit (fait public), pas sur l'ingrédient ; la **contenance donnée par la personne** (« 20 tranches dans ce produit », DRV-652) est sur la ligne `drive_choice_product` (donc suit l'identifiant du choix, pas le slug) et ne sert que si son unité est **exactement** celle de la ligne de la liste (`PackCalculator::usableSizeFor` : « la liste a pu changer d'unité depuis ») ; le nombre de produits se calcule à partir de l'unité d'achat de la ligne (dimension et facteur de base) : une copie qui garde les mêmes unités donne **le même plan** ; la recherche mémorisée (`drive_choice.search_query`, DRV-650) est portée par le choix et suit son slug. Aucune enseigne n'est nommée dans ce chantier : toutes les lignes `drive_choice` d'un utilisateur sont repointées quelle que soit l'enseigne.
 
 ## 12. Le front (`kcharignon/repas-front`)
 
