@@ -1,6 +1,6 @@
 # 0028 — Ingrédients propres à chaque utilisateur : adoption des communs, alias, rapprochement à la copie, fusion
 
-- **Statut** : Proposed
+- **Statut** : Accepted (2026-10-20, les dix décisions validées par l’utilisateur ; l’administrateur n’est pas migré, la migration est lancée par l’assistant avec sauvegarde, test à blanc puis exécution réelle)
 - **Date** : 2026-10-20
 - **Liens** : analyse et plan [`docs/ingredients/`](../ingredients/roadmap.md) ([`analyse.md`](../ingredients/analyse.md), [`migration.md`](../ingredients/migration.md), [`rapprochement.md`](../ingredients/rapprochement.md), [`fusion.md`](../ingredients/fusion.md)), tickets `ING-001` à `ING-010` ; [0013](0013-agregats-references-par-identifiant.md) (références par identifiant, un modèle est une copie), [0016](0016-controle-de-version-etag-if-match.md) (versions), [0017](0017-deploiement-et-releases.md) règle 6 (migrations compatibles), [0019](0019-recherche-d-ingredients-par-pertinence.md) (Jaro-Winkler), [0021](0021-gestion-des-comptes-par-l-administrateur.md) (purge du compte), [0023](0023-liste-envoyee-au-drive.md) (liste `SENT`) ; textes exacts de l'interface : [`fusion.md`](../ingredients/fusion.md) § 9 ; maquette de décision : <https://claude.ai/artifact/AFNuwtZBADgFQ6LMZmZtQb>
 
