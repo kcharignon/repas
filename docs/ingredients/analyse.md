@@ -1,5 +1,7 @@
 # Ingrédients propres à chaque utilisateur : inventaire de l'existant
 
+> **Amendement du 2026-10-20 : plus d'ingrédient commun** ([`sans-commun.md`](sans-commun.md)). Cet inventaire décrit la situation **d'avant** : les passages sur les communs (§ 3 la règle « `creator` = moi ou vide », § 4 la création par l'administrateur, § 6 la copie de recette, § 14) deviennent historiques à la passation ; `sans-commun.md` § 9 et § 11 donnent ce qui change et ce qui meurt.
+
 Rédigé le 2026-10-20 par l'assistant architecte, qui n'implémente pas. Code lu sur `main` au commit `cae13be` (contexte `Drive` relu après DRV-652 et DRV-653). Les références `fichier:ligne` sont celles de ce commit ; elles bougent, le nom du symbole reste. Décisions : [ADR 0028](../adr/0028-ingredients-propres-a-chaque-utilisateur.md). Suite : [`migration.md`](migration.md), [`rapprochement.md`](rapprochement.md), [`fusion.md`](fusion.md), [`roadmap.md`](roadmap.md).
 
 ## 1. Le besoin et ce qui existe

@@ -1,5 +1,7 @@
 # Migration des ingrédients communs : une copie par utilisateur concerné
 
+> **Amendement du 2026-10-20 : plus d'ingrédient commun** ([`sans-commun.md`](sans-commun.md)). Cette migration (ING-003) est **exécutée** (6 comptes, le 2026-10-20) et reste vraie pour ce qu'elle a fait. Sa suite (§ 12 : adoption à la première utilisation, puis propriétaire du catalogue) est **remplacée** par la passation de `sans-commun.md`. Les blocs SQL marqués (`retour-arriere-sql`, `controles-sql`) restent ceux que `AdoptionDocumentedSqlTest` exécute tant qu'ING-014 n'a pas retiré la commande : ne pas les modifier.
+
 Plan de la migration de données (ticket [ING-003](tickets/ING-003-migration-de-donnees.md)), qui s'appuie sur le socle d'[ING-001](tickets/ING-001-socle-adoption.md) et d'[ING-002](tickets/ING-002-visibilite-et-resolution.md). Décisions : [ADR 0028](../adr/0028-ingredients-propres-a-chaque-utilisateur.md) décisions a à e. Inventaire : [`analyse.md`](analyse.md). **Aucune donnée de production n'est supprimée, jamais.**
 
 Mots employés : **adopter** un commun pour un utilisateur = lui en faire une **copie à lui** (modifiable) et noter la correspondance ; **alias** = la ligne de la table `ingredient_alias` qui dit « pour cet utilisateur, le commun `C` est son ingrédient `X` » ; **adoptant** = un utilisateur qui a au moins un alias d'adoption.

@@ -1,0 +1,262 @@
+slug	nom	rayon	de_base
+agaragar	agaragar	aide-patissier	0
+bicarbonate	bicarbonate	aide-patissier	1
+caramel	caramel	aide-patissier	1
+caramel-liquide	caramel liquide	aide-patissier	0
+chocolat	chocolat	aide-patissier	1
+chocolat-liquide	chocolat liquide	aide-patissier	0
+farine	farine	aide-patissier	1
+farine-brioche	farine brioche	aide-patissier	0
+farine-pain	farine pain	aide-patissier	0
+feuille-gelatine	feuille-gelatine	aide-patissier	0
+gelatine	gélatine	aide-patissier	1
+levure-boulangere	levure boulangère	aide-patissier	1
+levure-patissiere	levure patissière	aide-patissier	1
+maizena	maïzena	aide-patissier	1
+pepite-de-chocolat	pépite de chocolat	aide-patissier	1
+sucre	sucre	aide-patissier	1
+sucre-roux	sucre roux	aide-patissier	1
+sucre-vanille	sucre vanillé	aide-patissier	1
+vanille	vanille	aide-patissier	1
+biere-artisinale	bière artisinale	alcool	0
+biere-blonde	bière blonde	alcool	0
+vin-blanc-cuisine	vin blanc cuisine	alcool	1
+vin-blanc-table	vin blanc table	alcool	0
+vin-rouge-cuisine	vin rouge cuisine	alcool	1
+vin-rouge-table	vin rouge table	alcool	0
+croquette	croquette	animal	0
+litiere	litière	animal	0
+springle	Pringle	aperitif	0
+cacahuete	cacahuète	aperitif	1
+chips	chips	aperitif	1
+chips-aux-vinaigre	chips aux vinaigre	aperitif	0
+chips-ondule	chips ondulé	aperitif	0
+chipster	chipster	aperitif	0
+cone-3d	cone 3d	aperitif	0
+mini-pizza	mini pizza	aperitif	0
+couche	couche	bebe	0
+couche-taille-3	couche (taille 3)	bebe	0
+couche-taille-4	couche (taille 4)	bebe	0
+couche-taille-5	couche (taille 5)	bebe	0
+couche-taille-6	couche (taille 6)	bebe	0
+eau-micellaire	eau micellaire	bebe	0
+lait-1er-age	lait 1er âge	bebe	0
+lait-2e-age	lait 2e âge	bebe	0
+lait-3e-age	lait 3e âge	bebe	0
+lingettes-pour-bebe	lingettes pour bébé	bebe	0
+ice-tea-green	ice tea green	boisson	0
+schweps-tonic	schweps tonic	boisson	0
+sirop-fruit-rouge	sirop fruit rouge	boisson	0
+agneau	agneau	boucherie	1
+aiguilette-de-poulet	aiguilette de poulet	boucherie	0
+blanquette-de-veau	blanquette de veau	boucherie	0
+boeuf	bœuf	boucherie	1
+boeuf-bourguignon	bœuf bourguignon	boucherie	0
+chair-a-saucisse	chair à saucisse	boucherie	1
+charcuterie	charcuterie	boucherie	1
+chorizo	chorizo	boucherie	1
+cote-de-porc	cote de porc	boucherie	1
+cuisse-de-poulet	cuisse de poulet	boucherie	1
+dinde	dinde	boucherie	1
+jambon	jambon	boucherie	1
+jambon-blanc	jambon blanc	boucherie	1
+jambon-cru	jambon cru	boucherie	1
+knacki	knacki	boucherie	0
+lardon	lardon	boucherie	1
+merguez	merguez	boucherie	1
+poisson	poisson	boucherie	1
+poulet	poulet	boucherie	1
+saucisse	saucisse	boucherie	1
+saucisson	saucisson	boucherie	1
+saucisson-fouet	saucisson fouet	boucherie	0
+saucisson-st-agaune	saucisson st agaune	boucherie	0
+saumon	saumon	boucherie	1
+steack	steack	boucherie	1
+veau	veau	boucherie	1
+biscotte	biscotte	boulangerie	1
+brioche	brioche	boulangerie	1
+cracotte	cracotte	boulangerie	0
+pain	pain	boulangerie	1
+pain-au-lait	pain au lait	boulangerie	1
+pain-baggle	pain baggle	boulangerie	0
+pain-de-mie	pain de mie	boulangerie	1
+pain-panini	pain panini	boulangerie	0
+pain-tartine	pain tartine	boulangerie	0
+pain-a-burger	pain à burger	boulangerie	1
+ble	blé	cereale	0
+boulgour	boulgour	cereale	1
+boulgoure-fin	boulgoure fin	cereale	0
+coquilette	coquilette	cereale	1
+lentille	lentille	cereale	1
+nouille	nouille	cereale	1
+nouille-chinoise	nouille chinoise	cereale	0
+pate	pate	cereale	1
+pate-lasagne	pate lasagne	cereale	1
+pate-ramen	pate ramen	cereale	0
+puree	purée	cereale	1
+quinoa	quinoa	cereale	1
+raviole	raviole	cereale	1
+risotto	risotto	cereale	1
+riz	riz	cereale	1
+soja	soja	cereale	0
+spaguetti	spaguetti	cereale	1
+vermicelle	vermicelle	cereale	1
+capre	capre	conserve	0
+compote-en-bocal	compote en bocal	conserve	0
+concentre-de-tomate	concentré de tomate	conserve	1
+confiture-abricot	confiture abricot	conserve	0
+confiture-fraise	confiture fraise	conserve	1
+confiture-framboise	confiture framboise	conserve	0
+confiture-myrtille	confiture myrtille	conserve	0
+gratin-daufinois	gratin daufinois	conserve	0
+haricot	haricot	conserve	1
+mais	maïs	conserve	1
+nutella	nutella	conserve	0
+olive	olive	conserve	1
+olive-noir	olive noir	conserve	1
+olive-verte	olive verte	conserve	1
+petit-pois	petit pois	conserve	1
+petit-pois-carotte	petit pois carotte	conserve	1
+salade-de-fruit	salade de fruit	conserve	0
+curry	curry	cuisine-du-monde	1
+feuille-de-brique	feuille de brique	cuisine-du-monde	0
+ramen	ramen	cuisine-du-monde	0
+tortilla	tortilla	cuisine-du-monde	1
+epice	épice	cuisine-du-monde	1
+epice-guacamole	épice guacamole	cuisine-du-monde	0
+epice-viande	épice viande	cuisine-du-monde	1
+bouquet-garni	bouquet garni	divers	1
+chocolat-en-poudre	chocolat en poudre	divers	1
+cornichon	cornichon	divers	1
+lait	lait	divers	1
+miel	miel	divers	1
+poivre	poivre	divers	1
+sel	sel	divers	1
+oeuf	œuf	divers	1
+beurre	beurre	fromage	1
+cheddar-en-tranche	cheddar en tranche	fromage	0
+chevre	chèvre	fromage	1
+comte	comté	fromage	1
+creme-fraiche-liquide	crème fraiche liquide	fromage	1
+creme-fraiche-epaisse	crème fraiche épaisse	fromage	1
+divers	divers	fromage	0
+emmental-rape	emmental rapé	fromage	1
+fromage-fondue	fromage fondue	fromage	0
+fromage-frais	fromage frais	fromage	1
+fromage-a-croc-monssieur	fromage à croc monssieur	fromage	0
+kiri	kiri	fromage	0
+mascarpone	mascarpone	fromage	1
+mozzarella	mozzarella	fromage	1
+parmesan	parmesan	fromage	1
+raclette	raclette	fromage	0
+reblochon	reblochon	fromage	0
+vache-qui-rit	vache qui rit	fromage	0
+ail	ail	fruit-et-legume	1
+ananas	ananas	fruit-et-legume	1
+aubergine	aubergine	fruit-et-legume	1
+avocat	avocat	fruit-et-legume	1
+banane	banane	fruit-et-legume	1
+betternut	betternut	fruit-et-legume	0
+bettrave	bettrave	fruit-et-legume	1
+brocoli	brocoli	fruit-et-legume	1
+carotte	carotte	fruit-et-legume	1
+champignon	champignon	fruit-et-legume	1
+chou-blanc	chou blanc	fruit-et-legume	1
+chou-rouge	chou rouge	fruit-et-legume	1
+choux-fleur	choux fleur	fruit-et-legume	1
+citron	citron	fruit-et-legume	1
+concombre	concombre	fruit-et-legume	1
+courge	courge	fruit-et-legume	1
+courgette	courgette	fruit-et-legume	1
+courgette-a-farcir	courgette à farcir	fruit-et-legume	0
+endive	endive	fruit-et-legume	1
+haricot-frais	haricot frais	fruit-et-legume	1
+haricot-rouge	haricot rouge	fruit-et-legume	0
+melon	melon	fruit-et-legume	1
+oignon	oignon	fruit-et-legume	1
+oignon-blanc	oignon blanc	fruit-et-legume	0
+oignon-rouge	oignon rouge	fruit-et-legume	1
+persil	persil	fruit-et-legume	1
+poireau	poireau	fruit-et-legume	1
+poivron	poivron	fruit-et-legume	1
+pomme	pomme	fruit-et-legume	1
+pomme-de-terre	pomme de terre	fruit-et-legume	1
+pomme-golden	pomme golden	fruit-et-legume	0
+salade	salade	fruit-et-legume	1
+salade-verte	salade verte	fruit-et-legume	1
+tomate	tomate	fruit-et-legume	1
+tomate-cerise	tomate cerise	fruit-et-legume	1
+tomate-a-farcir	tomate à farcir	fruit-et-legume	0
+echalote	échalote	fruit-et-legume	1
+epinard	épinard	fruit-et-legume	1
+barquette-chocolat	barquette chocolat	gateau	0
+barquette-fraise	barquette fraise	gateau	0
+biscuit-cuillere	biscuit cuillère	gateau	1
+bn	bn	gateau	0
+boudoire	boudoire	gateau	0
+chamonix	chamonix	gateau	0
+figolu	figolu	gateau	0
+speculos	speculos	gateau	0
+the-lu	the lu	gateau	0
+apres-shampoing	Après shampoing	hygiene	0
+dentifrice-adulte	Dentifrice (adulte)	hygiene	1
+dentifrice-enfant	Dentifrice (enfant)	hygiene	0
+deodorant	Déodorant	hygiene	1
+savon	Savon	hygiene	1
+shampoing	Shampoing	hygiene	1
+bicarbonate-menager	bicarbonate ménager	produit-menager	1
+javel	javel	produit-menager	1
+lingette-menagere	lingette ménagère	produit-menager	1
+produit-wc	produit WC	produit-menager	1
+produit-pour-les-sols	produit pour les sols	produit-menager	1
+produit-pour-les-vitres	produit pour les vitres	produit-menager	1
+savon-noir	savon noir	produit-menager	0
+bbq	Sauce BBQ	sauce	0
+bolognaise	bolognaise	sauce	0
+bearnaise	béarnaise	sauce	0
+huile	huile	sauce	1
+huile-d-olive	huile d'olive	sauce	1
+ketchup	ketchup	sauce	1
+mayonnaise	mayonnaise	sauce	1
+pesto	pesto	sauce	0
+sauce-4-fromages	sauce 4 fromages	sauce	0
+sauce-napolitaine	sauce napolitaine	sauce	0
+sauce-nuoc-man	sauce nuoc man	sauce	0
+sauce-soja	sauce soja	sauce	1
+sauce-tomate	sauce tomate	sauce	1
+tartare	tartare	sauce	0
+vinaigre	vinaigre	sauce	1
+vinaigre-balsamique	vinaigre balsamique	sauce	1
+vinaigre-xeres	vinaigre xérès	sauce	0
+cordon-bleu	cordon bleu	surgele	0
+framboise-surgelee	framboise surgelée	surgele	0
+frite	frite	surgele	1
+nuggets	nuggets	surgele	0
+petit-pois-surgele	petit pois surgelé	surgele	1
+steack-hache	steack haché	surgele	1
+viande-hachee	viande hachée	surgele	1
+epinard-surgele	épinard surgelé	surgele	1
+bouillon	bouillon	traiteur	1
+bouillon-de-boeuf	bouillon de bœuf	traiteur	1
+bouillon-de-legume	bouillon de légume	traiteur	1
+galette	galette	traiteur	0
+gnocci	gnocci	traiteur	0
+hachis-parmentier	hachis parmentier	traiteur	0
+lasagne	lasagne	traiteur	0
+nem	nem	traiteur	0
+pate-brisee	pate brisée	traiteur	1
+pate-feuilletee	pate feuilletée	traiteur	1
+pate-pizza	pate pizza	traiteur	1
+pate-sablee	pate sablée	traiteur	0
+pizza	pizza	traiteur	0
+poisson-pane	poisson pané	traiteur	0
+quenelle	quenelle	traiteur	0
+riste-aubergine	riste aubergine	traiteur	0
+soupe	soupe	traiteur	0
+compote	compote	yaourt	1
+compote-en-pot	compote en pot	yaourt	0
+compote-a-boire	compote à boire	yaourt	0
+la-laitiere	la laitière	yaourt	0
+perle-de-lait	perle de lait	yaourt	0
+veloute	velouté	yaourt	0
+yaourt-nature	yaourt nature	yaourt	1

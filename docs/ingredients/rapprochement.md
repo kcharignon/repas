@@ -1,5 +1,7 @@
 # Rapprochement des ingrédients à la copie d'une recette
 
+> **Amendement du 2026-10-20 : plus d'ingrédient commun** ([`sans-commun.md`](sans-commun.md)). Après la passation, l'étape 0 (provenance) prend la clé d'alias `adopted_from` de l'ingrédient source, **sinon son slug**, sans branche « commun » ni adoption à la volée ; la copie retient toujours son origine (décision D7, ING-013). Le reste de l'algorithme (seuils, garde-fou, même rayon) ne change pas.
+
 Spécification de ce qui remplace le comportement décrit dans [`analyse.md`](analyse.md) § 6, **mesures à l'appui** (expérience reproductible dans [`experiments/`](experiments/)). Décision : [ADR 0028](../adr/0028-ingredients-propres-a-chaque-utilisateur.md) décision f. Ticket : [ING-004](tickets/ING-004-rapprochement-et-copie-de-recette.md).
 
 ## 1. Le principe : se tromper vers le doublon, jamais vers la fusion
