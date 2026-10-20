@@ -4,7 +4,7 @@
 - **Jalon** : M6 Simplicité d'usage
 - **Taille** : M à L (en deux lots)
 - **Dépend de** : —
-- **Statut** : **lot 1a (back) fait, PR back #217 ; lot 1b (agent 0.31.0, protocole, front) fait, PR front #166 (fusionnées le 2026-10-19) ; lot 2 à faire** : voir « Réalisation du lot 1a » et « Réalisation du lot 1b ». Conception retenue (lot 1, voir plus bas) (demande de l'utilisateur du 2026-10-19 : « quand on veut des produits frais on ne voit jamais les bons produits ; chercher dans le bon rayon, fruits et légumes par exemple, devrait aider »). Effort de réalisation : `high`.
+- **Statut** : **lot 1a (back) fait, PR back #217 ; lot 1b (agent 0.31.0, protocole, front) fait, PR front #166 (fusionnées le 2026-10-19) ; lot 2 « filtre du site » réalisé par [DRV-647](DRV-647-filtrer-le-choix-par-rayon-du-drive.md) (2026-10-20) ; graine de départ non faite** : voir « Réalisation du lot 1a » et « Réalisation du lot 1b ». Conception retenue (lot 1, voir plus bas) (demande de l'utilisateur du 2026-10-19 : « quand on veut des produits frais on ne voit jamais les bons produits ; chercher dans le bon rayon, fruits et légumes par exemple, devrait aider »). Effort de réalisation : `high`.
 - **Lire d'abord** : `docs/drive/recherche.md` (champs `iIdRayon`, `iIdFamille`, `niIdSousFamille` de chaque produit de la recherche), `docs/drive/hypotheses-site-reel.md`, ADR 0022, skills `repas-drive-back`, `repas-agent-dev`, `repas-po` (règle 3 : pas de réglage de plus).
 
 ## Contexte
@@ -60,7 +60,9 @@ Diagnostic de l'agent sur le vrai site (identifiants du catalogue, aucune donné
 | pomme | 196 | 284320:78, 284310:52, 284311:44 |
 | courgette | 33 | 284311:12, 284246:6, 284320:5 |
 
-Lecture : le rayon **284311** revient pour les trois produits frais (probablement « Fruits Légumes ») mais il est **minoritaire** (11 produits sur 181 pour « tomate », noyés parmi 130 produits d'un autre rayon) : c'est exactement ce qui fait qu'on ne voit « jamais les bons produits » en frais. Classer ces candidats en premier règle le problème sans en cacher aucun. Les noms des rayons ne figurent pas dans le JSON ; l'association se fait par identifiant, apprise.
+> **Corrigé le 2026-10-20** : l'hypothèse « 284311 = fruits et légumes » ci-dessous est fausse, 284311 est « Bébé » (voir « Cause racine retrouvée »).
+
+Lecture (hypothèse du 2026-10-19, fausse sur le nom du rayon) : le rayon **284311** revient pour les trois produits frais (probablement « Fruits Légumes ») mais il est **minoritaire** (11 produits sur 181 pour « tomate », noyés parmi 130 produits d'un autre rayon) : c'est exactement ce qui fait qu'on ne voit « jamais les bons produits » en frais. Classer ces candidats en premier règle le problème sans en cacher aucun. Les noms des rayons ne figurent pas dans le JSON ; l'association se fait par identifiant, apprise.
 
 ## Conception retenue du lot 1 (contrat)
 
@@ -105,4 +107,14 @@ Fait dans le back seulement ; rien n'est publié ni activé (aucune graine, aucu
 - Web : le plan recopie `rayonHints` seulement pour une application dont l'agent les connaît (`RAYON_HINTS_APP_VERSION`, à fixer sur la première version Android publiée avec l'agent 0.31.0) ; `PUT /drive/choices` recopie `rayonId` et `familyId`. Aucun texte visible nouveau.
 - Ordre de publication : back, puis front, puis application Android (un récepteur qui ne connaît pas une clé rejette le message entier).
 - Non vérifié : `make android-e2e` et le comportement sur le vrai site (recette sur téléphone avec « tomate », « pomme », « courgette »).
-- **Lot 2 resté à faire** : filtre de rayon du site (après mesure sur un téléphone), graine de départ seulement après vérification sur un second magasin.
+- **Lot 2** : filtre de rayon du site réalisé par DRV-647 (2026-10-20) ; graine de départ toujours non faite (aucune graine n'a été codée, et 284311 n'est pas les fruits et légumes : voir « Cause racine retrouvée »).
+
+## Cause racine retrouvée (2026-10-20)
+
+Mesures sur le téléphone de test, vrai site.
+
+- **Cause** : l'agent perdait en silence les produits dont l'objet contient d'autres produits (groupes de variantes, produits liés) ou dépasse 6 000 caractères. Les produits frais (tomates, courgettes…) étaient de ceux-là : c'est pourquoi « on ne voit jamais les bons produits en frais ». Ce n'était pas seulement un problème de classement.
+- **Correction** : PR front [#178](https://github.com/kcharignon/repas-front/pull/178) (agent 0.38.0, application 0.1.22) : lecture des champs de premier niveau pour ces objets, limite portée à 40 000 caractères, fusion des listes sans doublon, contrôle du rayon touché.
+- **Mesure** : « tomate » passe de 180 à 197 produits (rayon 284323 : de 3 à 20 ; famille « Legumes » : 16) ; « courgette » de 33 à 37 ; le choix « courgette » montre en tête « Courgette Eco+ 1kg » et « Courgettes Bio Bio Village Filet 750g ».
+- **Correction de l'hypothèse du 2026-10-19** : le rayon **284311** est « Bébé » (famille « Repas de bebe »), **pas** les fruits et légumes. Les fruits et légumes sont le rayon **284323** (famille « Jus de fruits et legumes frais » 284350, famille « Legumes »). Les lignes de « Mesure réelle des rayons » ci-dessus (284311 pour tomate, pomme, courgette) sont conservées comme mesure du 2026-10-19, mais leur lecture est périmée. Aucune graine n'a été codée.
+- **Lot 2** : le filtre du site est réalisé par DRV-647 (structure de réponse et facette « Rayons » : [`../recherche.md`](../recherche.md) § 10).

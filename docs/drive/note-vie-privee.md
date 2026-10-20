@@ -38,6 +38,8 @@ Envoyer ta liste au drive, c'est Repas qui prépare la liste et l'application qu
 - **Pour chaque produit** : son numéro chez Leclerc, son nom, son contenu (par exemple 1 kg), et son prix avec la date où il a été vu.
 - Les prix servent à estimer le coût d'une liste. L'estimation est indicative : elle est faite d'après les derniers prix vus, avec leur date, et le vrai prix est toujours celui de Leclerc. Elle ne compte que les articles dont le prix est connu, elle est peu fiable quand moins de la moitié en ont un, et Repas ne devine jamais un prix.
 - **Pour chaque liste** : le fait qu'elle a été « envoyée au drive » et la date de l'envoi.
+- **La version de l'application** : le numéro de version de l'application Repas de ton téléphone, avec la date où il a été vu, pour te dire quand une nouvelle version est prête. Seule la version est retenue : aucun identifiant de ton téléphone, aucun modèle de téléphone.
+  (Phrase recopiée de `driveTerms.saves.appVersion` du front, PR front #173, 2026-10-20 ; elle doit rester identique au fond dans les deux dépôts. [DRV-637](tickets/DRV-637-version-de-l-application-connue-du-serveur.md).)
 
 ### Ce que Repas ne voit et n'enregistre jamais
 
@@ -105,7 +107,7 @@ Il n'existe pas de registre des traitements dans ce dépôt. Cette fiche en tien
 | Traitement | Mémorisation des préférences d'achat au drive (magasin, produits choisis, produits à ne plus proposer, articles « J'en ai toujours », prix vus) et du statut d'envoi des listes |
 | Finalité | Remplir plus vite le panier du drive de l'utilisateur à partir de ses listes de courses ; estimer le coût d'une liste (estimation datée) |
 | Personnes concernées | Les utilisateurs de Repas qui activent la fonction (usage familial) |
-| Données | Magasin (numéro, adresse web, nom facultatif) ; pour chaque article : produits acceptés (ordre), à ne plus proposer, « J'en ai toujours », date de mise à jour ; description d'un produit (numéro de l'enseigne, nom, contenu, prix, date de vue) ; statut et date d'envoi d'une liste. Les choix peuvent révéler un régime alimentaire ou un état de santé : minimisation, aucune diffusion. |
+| Données | Magasin (numéro, adresse web, nom facultatif) ; pour chaque article : produits acceptés (ordre), à ne plus proposer, « J'en ai toujours », date de mise à jour ; description d'un produit (numéro de l'enseigne, nom, contenu, prix, date de vue) ; statut et date d'envoi d'une liste ; dernière version vue de l'application Android (trois nombres) et date. Les choix peuvent révéler un régime alimentaire ou un état de santé : minimisation, aucune diffusion. |
 | Données jamais collectées | Identifiants, mots de passe, codes, cookies et jetons de l'enseigne ; adresse, créneau, paiement ; contenu du panier de l'enseigne, commandes ; photos |
 | Base juridique | À qualifier par le propriétaire du service (usage familial sur demande de l'utilisateur) |
 | Destinataires | Aucun. Hébergeur du serveur : DigitalOcean (région non documentée dans le dépôt : à confirmer). L'enseigne n'est jamais destinataire de données par Repas : l'application agit dans la session de l'utilisateur |

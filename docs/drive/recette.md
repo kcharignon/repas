@@ -367,7 +367,7 @@ On rejoue la **même liste** : l'envoi se rejoue sans danger, car l'agent fixe l
 ### 10.1 Rouvrir la liste (interrupteur allumé)
 
 - **But** : vérifier la réouverture explicite.
-- **Geste** : touche « Rouvrir la liste » ; la fenêtre ne dit que « … la liste redevient modifiable. » ; confirme. Ajoute un article.
+- **Geste** : touche « ⋮ » puis « Rouvrir la liste » (depuis le site v0.5.11, les actions de la liste sont sur une seule rangée et le reste, dont « Renommer », « Mettre en pause », « Supprimer » et « Rouvrir la liste », est dans le menu « ⋮ ») ; la fenêtre ne dit que « … la liste redevient modifiable. » ; confirme. Ajoute un article.
 - **Attendu** : la liste est « En cours », modifiable, l'article s'ajoute. Si tu avais une autre liste en cours, elle est passée « En pause » (une seule liste active à la fois).
 - **Si ça diffère** : « Cette liste n'est plus envoyée au drive » : elle était déjà rouverte (autre appareil) ; recharge.
 
@@ -376,7 +376,7 @@ On rejoue la **même liste** : l'envoi se rejoue sans danger, car l'agent fixe l
 - **But** : vérifier qu'une coupure d'urgence ne fige pas les listes déjà envoyées (ADR 0023 §9, DRV-613).
 - **Geste** : touche « Envoyer au drive » puis confirme ; sur l'écran du plan, **ne touche pas** « Ouvrir le drive » : retourne à la liste (« Retour à la liste »). Elle est « Envoyée au drive le … ». L'assistant t'explique le script, puis tu lances :
   `! ssh -i ~/.ssh/id_ed25519 root@64.227.124.100 'bash -s -- false' < .claude/skills/repas-ops/references/ecrire-drive-enabled.sh`
-- **Attendu** : `OK : DRIVE_ENABLED=false, le conteneur php le voit et /api/v1/health répond.` Dans Repas (recharge la page) : « Moi » n'a plus de rubrique « Drive » (le « Menu de l'application » disparaît aussi ; le bouton ⋮ de la version de test reste) ; `/drive/reglages` dit que l'envoi n'est pas activé ; la liste reste « Envoyée au drive le … », lisible, **avec** « Rouvrir la liste » et « Terminer ». Touche « Rouvrir la liste » puis confirme : la liste redevient « En cours ». L'assistant peut le confirmer dans les journaux de la bordure (`docker compose logs --since 10m edge`, lecture seule) : l'appel `reopen` a réussi alors que le drive est coupé.
+- **Attendu** : `OK : DRIVE_ENABLED=false, le conteneur php le voit et /api/v1/health répond.` Dans Repas (recharge la page) : « Moi » n'a plus de rubrique « Drive » (le « Menu de l'application » disparaît aussi ; le bouton ⋮ de la version de test reste) ; `/drive/reglages` dit que l'envoi n'est pas activé ; la liste reste « Envoyée au drive le … », lisible, **avec** « Rouvrir la liste » et « Terminer ». Touche « ⋮ », puis « Rouvrir la liste », puis confirme (geste du site v0.5.11) : la liste redevient « En cours ». L'assistant peut le confirmer dans les journaux de la bordure (`docker compose logs --since 10m edge`, lecture seule) : l'appel `reopen` a réussi alors que le drive est coupé.
 - **Si ça diffère** : « Rouvrir la liste » absent ou grisé interrupteur coupé : c'est un défaut du front ; note-le. Si la réouverture échoue en `404`, c'est le back (`reopen` ne doit pas être derrière l'interrupteur) : arrête et préviens.
 
 ### 10.3 Rallumer, renvoyer, terminer
