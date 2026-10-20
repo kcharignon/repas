@@ -5,7 +5,7 @@
 - **Taille** : M
 - **Effort recommandé pour l'agent** : **high**
 - **Dépend de** : ING-004 (`IngredientNameMatcher::similar`), ING-005 (fusion, alias, nettoyage de paires)
-- **Statut** : fait (PR à renseigner)
+- **Statut** : fait (PR #239)
 - **Lire d'abord** : [`fusion.md`](../fusion.md) § 8 ; [`rapprochement.md`](../rapprochement.md) §§ 7.3 et 8 ; [ADR 0028](../../adr/0028-ingredients-propres-a-chaque-utilisateur.md) décision h ; skill `/repas-dev` (lecture : Query, QueryHandler, Loader, DTO ; écriture) ; ADR 0021 (purge).
 
 ## Contexte
