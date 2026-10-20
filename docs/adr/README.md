@@ -31,6 +31,7 @@ Décisions d'architecture du projet Repas. **À relire avant de développer ou d
 | [0025](0025-publication-sur-google-play.md) | Publication de l'application Android sur Google Play : paliers (test interne, test fermé, production), clé de signature importée, AAB, conformité (suppression de compte, confidentialité, contenus d'utilisateurs) | Proposed |
 | [0026](0026-mot-de-passe-oublie.md) | Mot de passe oublié : lien de 30 minutes à usage unique, jeton à part, aucune énumération de comptes | Accepted (livré, PR #206, en production depuis le back v0.6.2) |
 | [0027](0027-plusieurs-enseignes-de-drive.md) | Plusieurs enseignes de drive : registre par couche, enseigne choisie d'après les réglages, interrupteur par enseigne | Proposed |
+| [0028](0028-ingredients-propres-a-chaque-utilisateur.md) | Ingrédients propres à chaque utilisateur : adoption des communs (copie + alias), masquage, rapprochement à la copie d'une recette (Jaro-Winkler, même rayon), fusion de deux ingrédients, migration pour les seuls utilisateurs concernés | Proposed |
 
 ## Sources
 
