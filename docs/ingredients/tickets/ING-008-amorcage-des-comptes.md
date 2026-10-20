@@ -41,7 +41,7 @@ Il n'y aura plus d'ingrédient commun (amendement) : chaque compte a **ses** ing
 
 ### D. L'écouteur d'activation
 
-`Repas\Infrastructure\EventListener\SeedIngredientsOnUserActivatedListener` (`#[AsEventListener]`, modèle : `PurgeUserDataOnUserDeletedListener`) : si `IngredientSeedingFeature::isEnabled()`, dispatche `SeedUserIngredientsCommand(userId, 'activation')`. Synchrone, **dans la transaction de l'activation** : si l'amorçage échoue, l'activation échoue (D6) ; l'erreur est claire (`IngredientAdoptionException`, `500` journalisé, message sans donnée personnelle) et l'utilisateur réessaie. Interrupteur coupé : aucune requête de plus.
+`Repas\Infrastructure\EventListener\SeedIngredientsOnUserActivatedListener` (`#[AsEventListener]`, modèle : `PurgeUserDataOnUserDeletedListener`) : si `IngredientSeedingFeature::isEnabled()`, dispatche `SeedUserIngredientsCommand(userId, 'activation')`. Synchrone, **dans la transaction de l'activation** : si l'amorçage échoue, l'activation échoue (D6) ; l'erreur est claire (`IngredientAdoptionException`, `500` journalisé, message sans donnée personnelle) et l'utilisateur réessaie. Interrupteur coupé : aucune requête de plus. Hors production : `.env` laisse la variable à `false` (comme `DRIVE_ENABLED`, et la ligne de `deploy/compose.yaml` reste la seule qui compte en production) ; pour essayer l'inscription en développement, `INGREDIENT_SEEDING_ENABLED=true` dans `.env.local`.
 
 ### E. La commande de rattrapage `repas:ingredients:seed`
 
