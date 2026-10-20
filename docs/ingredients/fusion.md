@@ -1,5 +1,7 @@
 # Fusionner deux ingrédients
 
+> **Amendement du 2026-10-20 : plus d'ingrédient commun** ([`sans-commun.md`](sans-commun.md)). Après la passation, la règle 2 (« jamais un commun », `CANNOT_MERGE_COMMON_INGREDIENT`, `blockedBy: COMMON_INGREDIENT`) n'a plus d'objet et l'administrateur fusionne **ses** ingrédients comme tout le monde (ING-013). Un front qui tolère un `blockedBy` inconnu n'a rien à changer.
+
 Spécification du back (tickets [ING-005](tickets/ING-005-fusion-back.md) et [ING-006](tickets/ING-006-doublons-possibles.md)) et de l'interface ([ING-007](tickets/ING-007-front-fusion-et-doublons.md)). Décisions : [ADR 0028](../adr/0028-ingredients-propres-a-chaque-utilisateur.md) décisions g et h. Inventaire des endroits à repointer : [`analyse.md`](analyse.md). Le rapprochement qui sert aussi aux propositions : [`rapprochement.md`](rapprochement.md).
 
 ## 1. Le geste
