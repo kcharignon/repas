@@ -202,6 +202,46 @@ class SaveProductChoicesApiControllerTest extends QueryBusWebTestCase
         $this->assertSame('gros sel', $commandBus->dispatched()[0]->intents[0]->searchQuery->searchQuery->value);
     }
 
+    public function testNoteSearchIsPassedOnWithItsNormalizedSearchAndNoProduct(): void
+    {
+        // Given
+        $user = $this->savedUser();
+        $commandBus = $this->mockCommandBus();
+
+        // When : le produit n'est pas mémorisé, seule la recherche l'est ; une intention sans clé de recherche et une à `null` passent aussi
+        // au gestionnaire, qui les refuse (parcours : DriveChoicesApiFlowTest)
+        $this->put($user, ['retailer' => 'leclerc', 'storeId' => '123456', 'choices' => [
+            ['ingredientSlug' => 'cereale', 'action' => 'NOTE_SEARCH', 'searchQuery' => '  céréales   coussins '],
+            ['ingredientSlug' => 'lait', 'action' => 'NOTE_SEARCH'],
+            ['ingredientSlug' => 'sel', 'action' => 'NOTE_SEARCH', 'searchQuery' => null],
+        ]]);
+
+        // Then
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->assertEquals([new SaveProductChoicesCommand($user->getId(), Retailer::LECLERC, '123456', [
+            new ChoiceIntent('cereale', ChoiceAction::NOTE_SEARCH, null, null, SearchQueryChange::set(SearchQuery::of('céréales coussins'))),
+            new ChoiceIntent('lait', ChoiceAction::NOTE_SEARCH),
+            new ChoiceIntent('sel', ChoiceAction::NOTE_SEARCH, null, null, SearchQueryChange::clear()),
+        ])], $commandBus->dispatched());
+    }
+
+    #[DataProvider('invalidSearchQueries')]
+    public function testRefusesAnInvalidSearchQueryOfNoteSearchWithItsOwnMessage(mixed $searchQuery): void
+    {
+        // Given
+        $commandBus = $this->mockCommandBus();
+
+        // When
+        $this->put($this->savedUser(), ['retailer' => 'leclerc', 'storeId' => '123456', 'choices' => [
+            ['ingredientSlug' => 'cereale', 'action' => 'NOTE_SEARCH', 'searchQuery' => $searchQuery],
+        ]]);
+
+        // Then
+        $this->assertSame(422, $this->client->getResponse()->getStatusCode());
+        $this->assertSame(['error' => ['message' => 'DRIVE_SEARCH_QUERY_INVALID']], $this->jsonBody());
+        $this->assertSame([], $commandBus->dispatched());
+    }
+
     public function testThePackSizeIsKeptWhenAbsentForgottenWhenNullAndReplacedWhenAnObject(): void
     {
         // Given

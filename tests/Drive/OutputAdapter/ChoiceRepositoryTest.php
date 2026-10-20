@@ -333,6 +333,8 @@ class ChoiceRepositoryTest extends DatabaseTestCase
         $this->repository->saveAll([
             new ChoiceBuilder()->withUserId('departing')->withIngredientSlug('farine')->withAccepted(['a'])->withSearchQuery('céréales coussins')->build(),
             new ChoiceBuilder()->withUserId('departing')->withStoreId('654321')->withIngredientSlug('sel')->withAccepted(['c'])->withSearchQuery('gros sel')->build(),
+            // DRV-653 : une préférence qui ne garde que la recherche (aucun produit) part elle aussi
+            new ChoiceBuilder()->withUserId('departing')->withIngredientSlug('cereale')->withSearchQuery('céréales coussins')->build(),
             new ChoiceBuilder()->withUserId('staying')->withIngredientSlug('farine')->withAccepted(['a'])->withSearchQuery('farine de blé')->build(),
         ]);
 

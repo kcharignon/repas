@@ -135,6 +135,26 @@ class ChoicePostgreSQLLoaderTest extends DatabaseTestCase
         $this->assertSame(['cereale' => 'céréales coussins chocolat', 'farine' => null], array_column(array_map(static fn(ChoiceDTO $dto): array => [$dto->ingredientSlug, $dto->searchQuery], $result), 1, 0));
     }
 
+    public function testAChoiceThatOnlyKeepsASearchIsNotListedAsAProduct(): void
+    {
+        // Given : produit pris « cette fois seulement » (DRV-653) : une préférence sans produit accepté ni refusé, avec sa recherche ;
+        // un refus seul, « j'en ai toujours » et un produit habituel sont des lignes à montrer
+        $this->settings->save(new DriveSettingsBuilder()->withUserId('user-1')->build());
+        $this->choices->saveAll([
+            new ChoiceBuilder()->withUserId('user-1')->withIngredientSlug('cereale')->withSearchQuery('céréales coussins')->build(),
+            new ChoiceBuilder()->withUserId('user-1')->withIngredientSlug('farine')->withAccepted(['p-1'])->build(),
+            new ChoiceBuilder()->withUserId('user-1')->withIngredientSlug('lait')->withRejected(['p-2'])->withSearchQuery('lait demi écrémé')->build(),
+            new ChoiceBuilder()->withUserId('user-1')->withIngredientSlug('sel')->haveAtHome()->build(),
+        ]);
+        $this->products->saveAll([new ProductBuilder()->withRetailerProductId('1')->build(), new ProductBuilder()->withRetailerProductId('2')->build()]);
+
+        // When
+        $result = $this->loader()->list('user-1', Retailer::LECLERC);
+
+        // Then : « Mes produits » ne montre pas de ligne vide ; le plan, lui, lit la recherche de « cereale » (DrivePlanPostgreSQLLoaderTest)
+        $this->assertSame(['farine', 'lait', 'sel'], array_map(static fn(ChoiceDTO $choice): string => $choice->ingredientSlug, $result));
+    }
+
     public function testTheSearchOfAnotherRetailerAnotherUserOrAnOldStoreIsNeverListed(): void
     {
         // Given : le même ingrédient chez une autre enseigne (écrit en SQL : le code ne connaît qu'une enseigne), chez un autre

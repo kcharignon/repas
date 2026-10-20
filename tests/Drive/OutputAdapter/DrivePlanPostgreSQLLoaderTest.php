@@ -391,6 +391,8 @@ class DrivePlanPostgreSQLLoaderTest extends DatabaseTestCase
             new ChoiceBuilder()->withUserId('user-1')->withIngredientSlug('cereale')->withAccepted([$this->id('1')])->withSearchQuery('céréales coussins chocolat')->build(),
             new ChoiceBuilder()->withUserId('user-1')->withIngredientSlug('farine')->withAccepted([$this->id('2')])->build(),
             new ChoiceBuilder()->withUserId('user-1')->withIngredientSlug('lait')->withRejected([$this->id('2')])->withSearchQuery('lait demi écrémé')->build(),
+            // DRV-653 : ni produit accepté ni refusé, seulement la recherche (produit pris « cette fois seulement »)
+            new ChoiceBuilder()->withUserId('user-1')->withIngredientSlug('beurre')->withSearchQuery('beurre doux plaquette')->build(),
             new ChoiceBuilder()->withId('choice-sel')->withUserId('user-1')->withIngredientSlug('sel')->withAccepted([$this->id('1')])->withSearchQuery('gros sel')->build(),
         ]);
         $this->entityManager->getConnection()->executeStatement("UPDATE drive_choice SET kind = 'HAVE_AT_HOME' WHERE id = 'choice-sel'");
@@ -398,6 +400,7 @@ class DrivePlanPostgreSQLLoaderTest extends DatabaseTestCase
             new ShoppingListLineForDrive('cereale', 'Céréale coussin', 1, 'paquet', 'paquet', 'paquet', 'PACKAGE', 1.0),
             new ShoppingListLineForDrive('farine', 'Farine', 1, 'paquet', 'paquet', 'paquet', 'PACKAGE', 1.0),
             new ShoppingListLineForDrive('lait', 'Lait', 1, 'litre', 'litre', 'l', 'VOLUME', 1000.0),
+            new ShoppingListLineForDrive('beurre', 'Beurre', 1, 'paquet', 'paquet', 'paquet', 'PACKAGE', 1.0),
             new ShoppingListLineForDrive('poivre', 'Poivre', 1, 'paquet', 'paquet', 'paquet', 'PACKAGE', 1.0),
             new ShoppingListLineForDrive('sel', 'Sel', 1, 'paquet', 'paquet', 'paquet', 'PACKAGE', 1.0),
         ]);
@@ -411,6 +414,7 @@ class DrivePlanPostgreSQLLoaderTest extends DatabaseTestCase
                 ['Céréale coussin', 'céréales coussins chocolat', 'KNOWN'],
                 ['Farine', 'Farine', 'KNOWN'],
                 ['Lait', 'lait demi écrémé', 'NEW'],
+                ['Beurre', 'beurre doux plaquette', 'NEW'],
                 ['Poivre', 'Poivre', 'NEW'],
                 ['Sel', 'Sel', 'HAVE_AT_HOME'],
             ],

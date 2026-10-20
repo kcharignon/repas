@@ -20,8 +20,8 @@ final readonly class ChoiceIntentPayload
         #[OA\Property(description: "Slug de l'ingrédient (minuscules, chiffres et tirets, 255 au plus)", example: 'farine')]
         public string $ingredientSlug,
         #[OA\Property(
-            description: "`ADD_PRODUCT` (`product` avec `label` et `placement` requis) ; `REJECT_PRODUCT` (`product` avec `label` requis) ; `HAVE_AT_HOME` (ni produit ni placement) ; `REFRESH_PRICE` (`product` avec `retailerProductId` et `price` seulement : rafraîchit le prix d'un produit déjà accepté pour cet ingrédient, sans changer la préférence ; sans effet sinon)",
-            enum: ['ADD_PRODUCT', 'REJECT_PRODUCT', 'HAVE_AT_HOME', 'REFRESH_PRICE'],
+            description: "`ADD_PRODUCT` (`product` avec `label` et `placement` requis) ; `REJECT_PRODUCT` (`product` avec `label` requis) ; `HAVE_AT_HOME` (ni produit ni placement) ; `REFRESH_PRICE` (`product` avec `retailerProductId` et `price` seulement : rafraîchit le prix d'un produit déjà accepté pour cet ingrédient, sans changer la préférence ; sans effet sinon) ; `NOTE_SEARCH` (DRV-653 : ni produit ni placement, `searchQuery` obligatoire — mémorise la recherche de l'ingrédient sans toucher à ses produits, par exemple quand le produit n'est pris que pour cette fois ; crée la préférence si elle n'existe pas, sans produit accepté)",
+            enum: ['ADD_PRODUCT', 'REJECT_PRODUCT', 'HAVE_AT_HOME', 'REFRESH_PRICE', 'NOTE_SEARCH'],
             example: 'ADD_PRODUCT',
         )]
         public ChoiceAction $action,
@@ -31,7 +31,7 @@ final readonly class ChoiceIntentPayload
         #[OA\Property(description: 'Le produit concerné, selon `action`', nullable: true)]
         public ?ProductPayload $product = null,
         #[OA\Property(
-            description: "Le texte qui a fait trouver le produit sur le site de l'enseigne (DRV-650), pour `ADD_PRODUCT` seulement : espaces de bord retirées et suites d'espaces réduites à une seule, 2 à 80 caractères, aucun caractère de contrôle ni invisible (sinon `422` `DRIVE_SEARCH_QUERY_INVALID`, et rien n'est enregistré). **Clé absente : la recherche déjà mémorisée est gardée** (une application qui ne connaît pas ce champ n'efface rien ; le `default: null` que le générateur écrit ici est un artefact, une clé absente n'est pas `null`). **`null` : elle est effacée.** Un texte : elle est remplacée. La recherche est propre à l'enseigne, au magasin et à l'ingrédient de ce choix, et n'est jamais reprise d'ailleurs. Sur une autre action, la mentionner (texte ou `null`) est `422` `DRIVE_CHOICE_INVALID`",
+            description: "Le texte qui a fait trouver le produit sur le site de l'enseigne (DRV-650), pour `ADD_PRODUCT` et `NOTE_SEARCH` seulement : espaces de bord retirées et suites d'espaces réduites à une seule, 2 à 80 caractères, aucun caractère de contrôle ni invisible (sinon `422` `DRIVE_SEARCH_QUERY_INVALID`, et rien n'est enregistré). **Clé absente : la recherche déjà mémorisée est gardée** (une application qui ne connaît pas ce champ n'efface rien ; le `default: null` que le générateur écrit ici est un artefact, une clé absente n'est pas `null`). **`null` : elle est effacée.** Un texte : elle est remplacée. La recherche est propre à l'enseigne, au magasin et à l'ingrédient de ce choix, et n'est jamais reprise d'ailleurs. **Obligatoire (un texte) pour `NOTE_SEARCH`** : absente ou `null` y est `422` `DRIVE_CHOICE_INVALID`. Sur une autre action, la mentionner (texte ou `null`) est `422` `DRIVE_CHOICE_INVALID`",
             maxLength: 80,
             example: 'céréales coussins chocolat',
             nullable: true,
