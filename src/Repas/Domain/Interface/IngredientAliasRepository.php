@@ -63,4 +63,14 @@ interface IngredientAliasRepository
      * visible pour lui.
      */
     public function deleteByIngredientSlug(string $userId, string $ingredientSlug): void;
+
+    /**
+     * La correspondance d'une fusion (ING-005, `docs/ingredients/fusion.md` § 3 étape 5) : tout alias de l'utilisateur qui désignait
+     * l'ingrédient absorbé désigne désormais l'ingrédient gardé (le commun adopté reste masqué, derrière la copie qui reste), puis
+     * l'alias `absorbé -> gardé` (`kind` `merge`) est écrit pour que les anciens slugs (onglet ouvert, brouillon d'envoi) se résolvent et
+     * qu'un rejeu de la fusion se reconnaisse. Un alias dont la clé est le slug gardé est effacé (un ingrédient qui existe ne s'efface pas
+     * lui-même derrière un alias). Les alias déplacés prennent la source `merge` : ils ne sont plus ceux d'un lancement de la migration
+     * d'adoption (`--undo` n'y touche pas) et ne ressemblent plus à un commun, ce que sait la vérification d'ING-003.
+     */
+    public function mergeInto(string $userId, string $absorbedSlug, string $keptSlug, \DateTimeImmutable $now): void;
 }

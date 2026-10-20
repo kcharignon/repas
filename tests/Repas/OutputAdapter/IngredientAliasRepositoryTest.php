@@ -283,6 +283,91 @@ class IngredientAliasRepositoryTest extends DatabaseTestCase
         $this->assertSame(0, $this->rowCount('ingredient_alias', 'user_id', 'nobody-id'));
     }
 
+    public function testMergingMovesTheAliasesOfTheAbsorbedIngredientAndWritesTheAliasOfTheMerge(): void
+    {
+        // Given : un commun adopté dans « tomates », un ancien alias de fusion qui le désigne aussi, des alias qui ne le désignent pas, et ceux
+        // d'un autre utilisateur qui ont les mêmes clés
+        $this->ownIngredient(self::USER, 'tomateuser-id');
+        $this->aliasRepository->save($this->alias(self::USER, 'tomates-commun', 'tomatesuser-id', AliasKind::ADOPTION, 'migration-2026-10-20'));
+        $this->aliasRepository->save($this->alias(self::USER, 'ancienne-tomate', 'tomatesuser-id', AliasKind::MERGE, 'merge'));
+        $this->aliasRepository->save($this->alias(self::USER, 'beurre', 'beurreuser-id', AliasKind::ADOPTION, 'migration-2026-10-20'));
+        $this->aliasRepository->save($this->alias(self::OTHER, 'tomates-commun', 'tomatesother-id', AliasKind::ADOPTION, 'migration-2026-10-20'));
+        $this->aliasRepository->save($this->alias(self::OTHER, 'tomatesuser-id', 'tomateother-id', AliasKind::MERGE, 'merge'));
+
+        // When
+        $this->aliasRepository->mergeInto(self::USER, 'tomatesuser-id', 'tomateuser-id', new DateTimeImmutable('2026-10-22 08:00:00'));
+
+        // Then : tout ce qui désignait « tomates » désigne « tomate » (le commun reste adopté, l'ancien alias de fusion suit), la source dit la fusion
+        $this->assertSame(['tomateuser-id', AliasKind::ADOPTION, 'merge'], $this->describe(self::USER, 'tomates-commun'));
+        $this->assertSame(['tomateuser-id', AliasKind::MERGE, 'merge'], $this->describe(self::USER, 'ancienne-tomate'));
+        // l'alias de la fusion est écrit
+        $merged = $this->aliasRepository->find(self::USER, 'tomatesuser-id');
+        $this->assertSame(['tomateuser-id', AliasKind::MERGE, 'merge'], [$merged->getIngredientSlug(), $merged->getKind(), $merged->getSource()]);
+        $this->assertEquals(new DateTimeImmutable('2026-10-22 08:00:00'), $merged->getCreatedAt());
+        // un alias qui ne le désignait pas ne bouge pas, ni ceux d'un autre utilisateur, de même clé
+        $this->assertSame(['beurreuser-id', AliasKind::ADOPTION, 'migration-2026-10-20'], $this->describe(self::USER, 'beurre'));
+        $this->assertSame(['tomatesother-id', AliasKind::ADOPTION, 'migration-2026-10-20'], $this->describe(self::OTHER, 'tomates-commun'));
+        $this->assertSame(['tomateother-id', AliasKind::MERGE, 'merge'], $this->describe(self::OTHER, 'tomatesuser-id'));
+        // les anciens slugs se résolvent : le commun, l'ancien alias et le slug absorbé
+        $this->assertSame(
+            ['tomates-commun' => 'tomateuser-id', 'ancienne-tomate' => 'tomateuser-id', 'tomatesuser-id' => 'tomateuser-id'],
+            $this->aliasRepository->resolve(self::USER, ['tomates-commun', 'ancienne-tomate', 'tomatesuser-id']),
+        );
+    }
+
+    public function testMergingTwiceChangesNothingMore(): void
+    {
+        // Given
+        $this->ownIngredient(self::USER, 'tomateuser-id');
+        $this->aliasRepository->save($this->alias(self::USER, 'tomates-commun', 'tomatesuser-id'));
+        $this->aliasRepository->mergeInto(self::USER, 'tomatesuser-id', 'tomateuser-id', new DateTimeImmutable('2026-10-22 08:00:00'));
+        $once = $this->entityManager->getConnection()->fetchAllAssociative('SELECT * FROM ingredient_alias WHERE user_id = ? ORDER BY alias_slug', [self::USER]);
+
+        // When
+        $this->aliasRepository->mergeInto(self::USER, 'tomatesuser-id', 'tomateuser-id', new DateTimeImmutable('2026-10-22 08:00:00'));
+
+        // Then
+        $this->assertSame($once, $this->entityManager->getConnection()->fetchAllAssociative('SELECT * FROM ingredient_alias WHERE user_id = ? ORDER BY alias_slug', [self::USER]));
+    }
+
+    public function testMergingReplacesAnOldAliasThatHadTheKeyOfTheAbsorbedIngredientAndDropsOneKeyedByTheKeptIngredient(): void
+    {
+        // Given : un ancien alias orphelin à la clé de l'absorbé (un ingrédient de ce nom a existé puis a été supprimé), et un alias à la clé du
+        // gardé qui désignait l'absorbé (il ne doit pas détourner un ingrédient qui existe)
+        $this->ownIngredient(self::USER, 'tomateuser-id');
+        $this->aliasRepository->save($this->alias(self::USER, 'tomatesuser-id', 'disparu', AliasKind::MERGE, 'merge'));
+        $this->aliasRepository->save($this->alias(self::USER, 'tomateuser-id', 'tomatesuser-id', AliasKind::MERGE, 'merge'));
+
+        // When
+        $this->aliasRepository->mergeInto(self::USER, 'tomatesuser-id', 'tomateuser-id', new DateTimeImmutable('2026-10-22 08:00:00'));
+
+        // Then : « tomates » désigne « tomate », « tomate » ne désigne rien
+        $this->assertSame(['tomatesuser-id'], $this->aliasKeysOf(self::USER));
+        $this->assertSame(['tomateuser-id', AliasKind::MERGE, 'merge'], $this->describe(self::USER, 'tomatesuser-id'));
+    }
+
+    public function testMergingNeverMakesAnAliasPointToItself(): void
+    {
+        // Given : l'alias à la clé du gardé est le seul à désigner l'absorbé
+        $this->aliasRepository->save($this->alias(self::USER, 'tomateuser-id', 'tomatesuser-id', AliasKind::MERGE, 'merge'));
+
+        // When
+        $this->aliasRepository->mergeInto(self::USER, 'tomatesuser-id', 'tomateuser-id', new DateTimeImmutable('2026-10-22 08:00:00'));
+
+        // Then : aucun alias « tomate -> tomate »
+        $this->assertSame(0, (int) $this->entityManager->getConnection()->fetchOne('SELECT COUNT(*) FROM ingredient_alias WHERE alias_slug = ingredient_slug'));
+    }
+
+    /**
+     * @return array{string, AliasKind, string} le slug désigné, la nature et la source de l'alias
+     */
+    private function describe(string $userId, string $aliasSlug): array
+    {
+        $alias = $this->aliasRepository->find($userId, $aliasSlug);
+
+        return [$alias->getIngredientSlug(), $alias->getKind(), $alias->getSource()];
+    }
+
     /**
      * Un ingrédient à l'utilisateur, sous ce slug (les tests d'alias écrivent des slugs à la main).
      */

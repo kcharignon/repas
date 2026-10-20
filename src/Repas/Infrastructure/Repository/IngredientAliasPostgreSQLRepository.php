@@ -21,6 +21,9 @@ use Repas\Shared\Infrastructure\Repository\PostgreSQLRepository;
  */
 readonly class IngredientAliasPostgreSQLRepository extends PostgreSQLRepository implements IngredientAliasRepository
 {
+    /** Valeur de `ingredient_alias.source` d'un alias écrit ou déplacé par une fusion (ING-005). */
+    public const string SOURCE_MERGE = 'merge';
+
     public function __construct(
         ManagerRegistry $managerRegistry,
     ) {
@@ -142,6 +145,28 @@ readonly class IngredientAliasPostgreSQLRepository extends PostgreSQLRepository 
         $this->connection()->executeStatement(
             'DELETE FROM ingredient_alias WHERE user_id = ? AND ingredient_slug = ?',
             [$userId, $ingredientSlug],
+        );
+    }
+
+    public function mergeInto(string $userId, string $absorbedSlug, string $keptSlug, DateTimeImmutable $now): void
+    {
+        $connection = $this->connection();
+
+        // Les alias qui désignaient l'absorbé désignent le gardé ; celui dont la clé est le slug gardé disparaît (une seule requête : les
+        // deux lignes touchées sont distinctes, la clé gardée n'est jamais une valeur à déplacer)
+        $connection->executeStatement(
+            'WITH dropped AS (DELETE FROM ingredient_alias WHERE user_id = :u AND alias_slug = :kept RETURNING 1)'
+            . ' UPDATE ingredient_alias SET ingredient_slug = :kept, source = :source WHERE user_id = :u AND ingredient_slug = :absorbed AND alias_slug <> :kept',
+            ['u' => $userId, 'kept' => $keptSlug, 'absorbed' => $absorbedSlug, 'source' => self::SOURCE_MERGE],
+        );
+
+        // L'alias de la fusion lui-même : « absorbé -> gardé ». Un alias qui avait déjà cette clé (le slug d'un ingrédient disparu qui
+        // revient) est remplacé : l'ingrédient absorbé n'existe plus, rien d'autre ne peut y répondre.
+        $connection->executeStatement(
+            'INSERT INTO ingredient_alias (user_id, alias_slug, ingredient_slug, kind, source, created_at) VALUES (:u, :absorbed, :kept, :kind, :source, :now)'
+            . ' ON CONFLICT (user_id, alias_slug) DO UPDATE SET ingredient_slug = EXCLUDED.ingredient_slug, kind = EXCLUDED.kind, source = EXCLUDED.source, created_at = EXCLUDED.created_at',
+            ['u' => $userId, 'absorbed' => $absorbedSlug, 'kept' => $keptSlug, 'kind' => AliasKind::MERGE->value, 'source' => self::SOURCE_MERGE, 'now' => $now],
+            ['now' => Types::DATETIME_IMMUTABLE],
         );
     }
 

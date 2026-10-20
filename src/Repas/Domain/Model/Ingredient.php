@@ -3,6 +3,7 @@
 namespace Repas\Repas\Domain\Model;
 
 
+use Repas\Repas\Domain\Exception\IngredientException;
 use Repas\Shared\Domain\Model\ModelInterface;
 use Repas\Shared\Domain\Model\ModelTrait;
 use Repas\Shared\Domain\Tool\StringTool;
@@ -118,6 +119,33 @@ final class Ingredient implements ModelInterface
     {
         $this->creatorId = $creatorId;
         return $this;
+    }
+
+    /**
+     * Un ingrédient commun : sans créateur, visible par tous et géré par les administrateurs (ADR 0028).
+     */
+    public function isCommon(): bool
+    {
+        return $this->creatorId === null;
+    }
+
+    public function isOwnedBy(string $userId): bool
+    {
+        return $this->creatorId === $userId;
+    }
+
+    /**
+     * L'ingrédient est à cet utilisateur, sans exception : ni le commun, ni l'ingrédient d'un autre, pas même pour un administrateur.
+     * La fusion de deux ingrédients n'a pas de passe-droit (ADR 0028 décision 9). L'ingrédient d'un autre est traité comme inconnu :
+     * on ne révèle pas son existence.
+     *
+     * @throws IngredientException
+     */
+    public function assertOwnedBy(string $userId): void
+    {
+        if (!$this->isOwnedBy($userId)) {
+            throw IngredientException::notFound($this->slug);
+        }
     }
 
     /**

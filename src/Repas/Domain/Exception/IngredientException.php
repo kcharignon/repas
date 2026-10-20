@@ -9,6 +9,14 @@ use Repas\Shared\Domain\Exception\DomainException;
 
 final class IngredientException extends DomainException
 {
+    // Messages des cas de la fusion de deux ingrédients (ADR 0028 décision 9) : le front les distingue, ils ne se renomment pas
+    public const string CANNOT_MERGE_INTO_ITSELF = 'CANNOT_MERGE_INTO_ITSELF';
+    public const string CANNOT_MERGE_COMMON_INGREDIENT = 'CANNOT_MERGE_COMMON_INGREDIENT';
+    public const string MERGE_UNIT_MISSING = 'MERGE_UNIT_MISSING';
+    public const string INGREDIENT_IN_SENT_LIST = 'INGREDIENT_IN_SENT_LIST';
+    public const string INGREDIENT_USED_BY_ANOTHER_USER = 'INGREDIENT_USED_BY_ANOTHER_USER';
+    public const string INGREDIENT_MERGE_CONFLICT = 'INGREDIENT_MERGE_CONFLICT';
+
     public static function notFound(string $slug): static
     {
         return new static(sprintf("Ingredient '%s' not found", $slug), 404);
@@ -51,5 +59,57 @@ final class IngredientException extends DomainException
     public static function coefficientRequired(): self
     {
         return new self('A conversion coefficient is required when the cooking and purchase units differ.', 422);
+    }
+
+    /**
+     * Fusionner un ingrédient dans lui-même n'a pas de sens. Règle métier, `422`.
+     */
+    public static function cannotMergeIntoItself(): self
+    {
+        return new self(self::CANNOT_MERGE_INTO_ITSELF, 422);
+    }
+
+    /**
+     * Les ingrédients communs ne sont jamais fusionnés, ni absorbés ni gardés. Règle métier, `422`.
+     */
+    public static function cannotMergeCommon(): self
+    {
+        return new self(self::CANNOT_MERGE_COMMON_INGREDIENT, 422);
+    }
+
+    /**
+     * Une unité des recettes ou des listes de l'ingrédient absorbé ne se convertit pas par l'ingrédient gardé : la fusion s'arrête et
+     * rien n'est écrit. Règle métier, `422`.
+     */
+    public static function mergeUnitMissing(): self
+    {
+        return new self(self::MERGE_UNIT_MISSING, 422);
+    }
+
+    /**
+     * Une liste envoyée au drive utilise l'un des deux ingrédients : elle est immuable (ADR 0023), il faut la rouvrir ou la terminer.
+     * Conflit avec l'état courant, `409`.
+     */
+    public static function inSentList(): self
+    {
+        return new self(self::INGREDIENT_IN_SENT_LIST, 409);
+    }
+
+    /**
+     * Une ligne d'un autre utilisateur référence l'ingrédient absorbé (donnée héritée d'avant l'ADR 0021) : la fusion ne la touche pas
+     * et s'arrête. Conflit avec l'état courant, `409`.
+     */
+    public static function usedByAnotherUser(): self
+    {
+        return new self(self::INGREDIENT_USED_BY_ANOTHER_USER, 409);
+    }
+
+    /**
+     * Quelqu'un a écrit une référence à l'ingrédient absorbé pendant la fusion (une recette, une ligne de liste) : rien n'est écrit, la
+     * fusion se rejoue. Conflit avec l'état courant, `409`.
+     */
+    public static function mergeConflict(): self
+    {
+        return new self(self::INGREDIENT_MERGE_CONFLICT, 409);
     }
 }

@@ -4,6 +4,7 @@ namespace Repas\Shared\Application\Interface;
 
 
 use Repas\Shared\Application\Dto\DriveChoiceFingerprint;
+use Repas\Shared\Application\Dto\DriveMergeImpact;
 
 /**
  * Port qui laisse `Repas` repointer et vérifier les ingrédients que le contexte `Drive` mémorise (`drive_choice.ingredient_slug`)
@@ -13,8 +14,10 @@ use Repas\Shared\Application\Dto\DriveChoiceFingerprint;
  *
  * Il ne s'appelle volontairement pas `…Loader` (un `CommandHandler` en a besoin pendant une écriture, Deptrac
  * `no-loader-in-commandhandler`), et aucune enseigne n'y est nommée : toutes les enseignes et tous les magasins d'un utilisateur sont
- * traités ensemble. Il ne touche jamais aux produits (`drive_product`, `drive_choice_product`) : ils sont rattachés à l'identifiant du
- * choix, pas au slug.
+ * traités ensemble. Le repointage ne touche jamais aux produits (`drive_product`, `drive_choice_product`) : ils sont rattachés à
+ * l'identifiant du choix, pas au slug. La seule écriture qui en supprime est la fusion de deux ingrédients (ING-005, `merge()`), pour le
+ * choix de l'ingrédient absorbé quand l'ingrédient gardé a le sien : les produits des faits publics (`drive_product`) ne sont jamais
+ * supprimés.
  */
 interface DriveIngredientReferences
 {
@@ -34,4 +37,19 @@ interface DriveIngredientReferences
      * @return int le nombre de choix repointés
      */
     public function repoint(string $userId, array $slugMap): int;
+
+    /**
+     * Ce que `merge()` ferait, sans rien écrire (l'aperçu de la fusion de deux ingrédients, ING-005). Quelques requêtes, quel que soit le
+     * nombre de choix.
+     */
+    public function mergeImpact(string $userId, string $absorbedSlug, string $keptSlug): DriveMergeImpact;
+
+    /**
+     * La fusion de l'ingrédient `$absorbedSlug` dans `$keptSlug` pour cet utilisateur (ING-005), pour TOUTES ses enseignes et TOUS ses
+     * magasins, en une requête : dans un magasin où le gardé a un choix, le choix de l'absorbé est supprimé avec ses produits mémorisés ;
+     * ailleurs il passe sur le gardé, avec ses produits, ses contenances et sa recherche mémorisée, sans changer d'identifiant ni de
+     * date de mise à jour. Une contenance dont l'unité n'est pas celle de la ligne reste en base mais n'est jamais utilisée par le plan.
+     * Les choix d'un autre utilisateur ne sont jamais touchés. Rend ce qui a été fait.
+     */
+    public function merge(string $userId, string $absorbedSlug, string $keptSlug): DriveMergeImpact;
 }
