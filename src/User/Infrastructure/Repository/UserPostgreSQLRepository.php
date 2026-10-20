@@ -4,7 +4,10 @@ namespace Repas\User\Infrastructure\Repository;
 
 
 
+use DateTimeImmutable;
+use DateTimeZone;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
+use Doctrine\DBAL\Types\Types;
 use Doctrine\Persistence\ManagerRegistry;
 use Repas\Shared\Infrastructure\Repository\PostgreSQLRepository;
 use Repas\Shared\Domain\Tool\Tab;
@@ -76,6 +79,23 @@ readonly class UserPostgreSQLRepository extends PostgreSQLRepository implements 
         }
     }
 
+    /**
+     * Une seule instruction, qui ne nomme que `last_login_at` (aucune lecture, aucun `flush`, l'ORM n'y touche pas) : elle ne peut
+     * donc écraser ni un statut ni un mot de passe changés par une autre requête. Le `WHERE` empêche la date de reculer quand
+     * deux connexions se croisent, et ne trouve rien pour un compte supprimé entre-temps (la ligne ne renaît pas). Comme
+     * `PostgreSQLRepository::bumpVersion()`, elle laisse l'identity map de Doctrine telle quelle : l'entité déjà chargée garde
+     * l'ancienne date jusqu'à la fin de la requête, sans conséquence (aucun `flush` ne la réécrit : elle n'est pas modifiée).
+     */
+    public function recordLogin(string $userId, DateTimeImmutable $at): void
+    {
+        $this->entityManager->getConnection()->executeStatement(
+            'UPDATE "user" SET last_login_at = :at WHERE id = :id AND (last_login_at IS NULL OR last_login_at < :at)',
+            // Doctrine relit les dates dans le fuseau par défaut de PHP : on écrit dans le même, quel que soit celui de `$at`
+            ['at' => $at->setTimezone(new DateTimeZone(date_default_timezone_get())), 'id' => $userId],
+            ['at' => Types::DATETIME_IMMUTABLE],
+        );
+    }
+
     public function delete(User $user): void
     {
         $entity = $this->entityRepository->find($user->getId());
@@ -96,6 +116,7 @@ readonly class UserPostgreSQLRepository extends PostgreSQLRepository implements 
             'status' => $entity->getStatus(),
             'statistics' => $entity->getStatistics(),
             'credentials_version' => $entity->getCredentialsVersion(),
+            'last_login_at' => $entity->getLastLoginAt(),
         ]);
     }
 

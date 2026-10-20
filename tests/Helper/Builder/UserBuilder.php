@@ -17,6 +17,7 @@ class UserBuilder implements Builder
     private int $defaultServing;
     private Status $status;
     private array $statistics;
+    private ?DateTimeImmutable $lastLoginAt = null;
 
     private function initialize(): void
     {
@@ -40,7 +41,19 @@ class UserBuilder implements Builder
             'default_serving' => $this->defaultServing,
             'status' => $this->status,
             'statistics' => $this->statistics,
+            'last_login_at' => $this->lastLoginAt,
         ]);
+    }
+
+    /**
+     * Dernière connexion du MODÈLE construit (ce que `User::load()` recevrait de la base). `UserRepository::save()` ne l'écrit que
+     * pour un compte NOUVEAU, jamais pour un compte existant : pour la changer en base, un test passe par
+     * `UserRepository::recordLogin()`.
+     */
+    public function withLastLoginAt(?DateTimeImmutable $lastLoginAt): static
+    {
+        $this->lastLoginAt = $lastLoginAt;
+        return $this;
     }
 
     public function withEmail(string $email): static

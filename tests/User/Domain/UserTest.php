@@ -183,6 +183,82 @@ class UserTest extends TestCase
         $protected->assertCanBeDeleted();
     }
 
+    public function testAnAccountNeverSeenIsToBeRecorded(): void
+    {
+        // Given : un compte actif sans dernière connexion
+        $user = new UserBuilder()->build();
+
+        // Then
+        $this->assertNull($user->getLastLoginAt());
+        $this->assertTrue($user->shouldRecordLogin($this->now));
+    }
+
+    #[DataProvider('secondsSinceTheLastLogin')]
+    public function testALoginIsRecordedOnlyOncePerInterval(int $seconds, bool $expected): void
+    {
+        // Given
+        $user = new UserBuilder()->withLastLoginAt($this->now->modify("-{$seconds} seconds"))->build();
+
+        // Then
+        $this->assertSame($expected, $user->shouldRecordLogin($this->now));
+    }
+
+    /**
+     * @return iterable<string, array{int, bool}>
+     */
+    public static function secondsSinceTheLastLogin(): iterable
+    {
+        yield 'à l\'instant' => [0, false];
+        yield 'il y a 1 seconde' => [1, false];
+        yield 'il y a 9 minutes 59' => [599, false];
+        yield 'il y a 10 minutes pile' => [600, true];
+        yield 'il y a une heure' => [3600, true];
+        yield 'il y a un mois' => [30 * 86400, true];
+    }
+
+    public function testALastLoginInTheFutureIsNotRecordedAgain(): void
+    {
+        // Given : horloge qui a reculé entre deux machines, ou date écrite à la main
+        $user = new UserBuilder()->withLastLoginAt($this->now->modify('+1 hour'))->build();
+
+        // Then : on n'écrit pas une date plus ancienne par-dessus
+        $this->assertFalse($user->shouldRecordLogin($this->now));
+    }
+
+    #[DataProvider('statusesThatCannotAuthenticate')]
+    public function testAnAccountThatIsNotActiveIsNeverRecorded(UserStatus $status): void
+    {
+        // Given : même jamais vu
+        $user = $this->userWithStatus($status);
+
+        // Then
+        $this->assertFalse($user->shouldRecordLogin($this->now));
+    }
+
+    /**
+     * @return iterable<string, array{UserStatus}>
+     */
+    public static function statusesThatCannotAuthenticate(): iterable
+    {
+        yield 'en attente' => [UserStatus::PENDING];
+        yield 'désactivé' => [UserStatus::DISABLED];
+    }
+
+    public function testRecordingALoginMovesTheCopyForwardButNeverBack(): void
+    {
+        // Given
+        $user = new UserBuilder()->build();
+
+        // When
+        $user->recordLogin($this->now);
+        $user->recordLogin($this->now->modify('-1 hour'));
+
+        // Then
+        $this->assertEquals($this->now, $user->getLastLoginAt());
+        $this->assertFalse($user->shouldRecordLogin($this->now->modify('+5 minutes')));
+        $this->assertTrue($user->shouldRecordLogin($this->now->modify('+10 minutes')));
+    }
+
     private function userWithStatus(UserStatus $status, string $email = 'autre@example.com'): User
     {
         $builder = new UserBuilder()->withEmail($email);

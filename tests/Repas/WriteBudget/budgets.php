@@ -26,6 +26,7 @@ return [
     'creer-type-recette' => 3,
     'creer-unite' => 3,
     'decocher-ligne' => 7,
+    'derniere-connexion' => 2,
     'envoyer-liste' => 9,
     'inscription' => 4,
     'mettre-liste-en-pause' => 9,

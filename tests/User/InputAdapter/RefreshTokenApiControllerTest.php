@@ -3,9 +3,13 @@
 namespace Repas\Tests\User\InputAdapter;
 
 
+use DateTimeImmutable;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
+use Repas\Shared\Application\Interface\CommandBusInterface;
 use Repas\Tests\Helper\QueryBusWebTestCase;
+use Repas\User\Application\RecordUserLogin\RecordUserLoginCommand;
 use Repas\User\Application\RotateRefreshToken\RotateRefreshTokenCommand;
+use Repas\User\Domain\Interface\UserRepository;
 use Repas\User\Domain\Model\RefreshToken;
 use Symfony\Component\HttpFoundation\Cookie;
 
@@ -59,15 +63,77 @@ class RefreshTokenApiControllerTest extends QueryBusWebTestCase
         $this->assertEqualsWithDelta(time() + 30 * 86400, $cookie->getExpiresTime(), 5);
     }
 
+    public function testASuccessfulExchangeRecordsTheLastLoginOfTheAccount(): void
+    {
+        // Given : un compte dont la dernière connexion est inconnue
+        $user = $this->savedUser();
+        $commandBus = $this->mockCommandBus()->willReturn(RotateRefreshTokenCommand::class, $user->getEmail());
+
+        // When
+        $this->refresh('the-secret');
+
+        // Then : après l'échange, une commande dédiée avec l'identifiant du compte du jeton
+        $this->assertSame(200, $this->client->getResponse()->getStatusCode());
+        $this->assertEquals(
+            [RotateRefreshTokenCommand::class, RecordUserLoginCommand::class],
+            array_map(static fn(object $command): string => $command::class, $commandBus->dispatched()),
+        );
+        $this->assertEquals(new RecordUserLoginCommand($user->getId()), $commandBus->dispatched()[1]);
+    }
+
+    public function testAnExchangeWithinTenMinutesOfTheLastLoginRecordsNothing(): void
+    {
+        // Given : une connexion enregistrée il y a trois minutes
+        $user = $this->savedUser();
+        static::getContainer()->get(UserRepository::class)->recordLogin($user->getId(), new DateTimeImmutable('-3 minutes'));
+        $this->entityManager->clear(); // la requête qui suit lit la base, pas l'entité déjà chargée par le test
+        $commandBus = $this->mockCommandBus()->willReturn(RotateRefreshTokenCommand::class, $user->getEmail());
+
+        // When
+        $this->refresh('the-secret');
+
+        // Then : l'échange réussit, et rien d'autre n'est envoyé au bus (zéro requête de plus)
+        $this->assertSame(200, $this->client->getResponse()->getStatusCode());
+        $this->assertCount(1, $commandBus->dispatched());
+        $this->assertInstanceOf(RotateRefreshTokenCommand::class, $commandBus->dispatched()[0]);
+    }
+
+    public function testAFailureToRecordTheLoginDoesNotRefuseTheExchange(): void
+    {
+        // Given : le jeton est consommé, l'enregistrement de la connexion échoue
+        $user = $this->savedUser();
+        $failingBus = new class($user->getEmail()) implements CommandBusInterface {
+            public function __construct(private readonly string $email)
+            {
+            }
+
+            public function dispatch(object $command): mixed
+            {
+                return $command instanceof RotateRefreshTokenCommand ? $this->email : throw new \RuntimeException('base indisponible');
+            }
+        };
+        static::getContainer()->set(CommandBusInterface::class, $failingBus);
+
+        // When
+        $this->refresh('the-secret');
+
+        // Then : le navigateur reçoit quand même le JWT et le cookie suivant, sinon sa session serait coupée pour une simple date
+        $this->assertSame(200, $this->client->getResponse()->getStatusCode());
+        $this->assertArrayHasKey('token', $this->jsonBody());
+        $this->assertNotNull($this->refreshCookie()->getValue());
+    }
+
     public function testARefusedTokenGivesAnUnauthorizedAnswerAndClearsTheCookie(): void
     {
         // Given : le handler refuse (null)
-        $this->mockCommandBus();
+        $commandBus = $this->mockCommandBus();
 
         // When
         $this->refresh('dead-secret');
 
-        // Then
+        // Then : refus, et aucune connexion enregistrée
+        $this->assertCount(1, $commandBus->dispatched());
+        $this->assertInstanceOf(RotateRefreshTokenCommand::class, $commandBus->dispatched()[0]);
         $response = $this->client->getResponse();
         $this->assertSame(401, $response->getStatusCode());
         $this->assertSame(['error' => ['message' => 'Invalid refresh token.']], $this->jsonBody());

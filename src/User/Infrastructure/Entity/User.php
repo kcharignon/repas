@@ -4,6 +4,7 @@ namespace Repas\User\Infrastructure\Entity;
 
 use DateTimeImmutable;
 use DateTimeZone;
+use Doctrine\DBAL\Types\Types;
 use Exception;
 use Repas\User\Domain\Model\UserStatus as Status;
 use Doctrine\ORM\Mapping as ORM;
@@ -38,6 +39,15 @@ class User
     #[ORM\Column(name: 'credentials_version', type: 'integer', nullable: false)]
     private int $credentialsVersion = 0;
 
+    /**
+     * Date de la dernière authentification réussie (ADR 0021, amendement du 2026-10-20). Elle naît avec la ligne (`fromModel()` :
+     * `null` pour tout vrai compte) puis n'est écrite QUE par `UserPostgreSQLRepository::recordLogin()`, un `UPDATE` ciblé de
+     * cette colonne. `updateFromModel()` ne la touche jamais, pour qu'enregistrer un modèle `User` (dernier enregistrement
+     * gagnant) n'efface pas une connexion enregistrée entre-temps par une autre requête.
+     */
+    #[ORM\Column(name: 'last_login_at', type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?DateTimeImmutable $lastLoginAt;
+
     public function __construct(
         string $id,
         string $email,
@@ -47,6 +57,7 @@ class User
         Status $status,
         array $statistics,
         int $credentialsVersion = 0,
+        ?DateTimeImmutable $lastLoginAt = null,
     ) {
         $this->id = $id;
         $this->email = $email;
@@ -56,6 +67,7 @@ class User
         $this->status = $status;
         $this->statistics = $statistics;
         $this->credentialsVersion = $credentialsVersion;
+        $this->lastLoginAt = $lastLoginAt;
     }
 
     public function getId(): ?string
@@ -115,6 +127,11 @@ class User
         return $this->credentialsVersion;
     }
 
+    public function getLastLoginAt(): ?DateTimeImmutable
+    {
+        return $this->lastLoginAt;
+    }
+
     public function getStatus(): ?Status
     {
         return $this->status;
@@ -167,6 +184,7 @@ class User
             status: $user->getStatus(),
             statistics: $user->getStatistics(),
             credentialsVersion: $user->getCredentialsVersion(),
+            lastLoginAt: $user->getLastLoginAt(),
         );
     }
 

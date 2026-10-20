@@ -86,7 +86,7 @@ nelmio_api_doc:
                                         password: { type: string, format: password }
                     responses:
                         '200':
-                            description: Token JWT (durée de vie 3600 s). Pose aussi le cookie `repas_refresh` (HttpOnly, SameSite=Strict, `Path=/api/auth`), à échanger contre un nouveau JWT par `POST /api/auth/refresh` (ADR 0015)
+                            description: Token JWT (durée de vie 3600 s). Pose aussi le cookie `repas_refresh` (HttpOnly, SameSite=Strict, `Path=/api/auth`), à échanger contre un nouveau JWT par `POST /api/auth/refresh` (ADR 0015). Une connexion réussie fait avancer la dernière connexion du compte que voit l'administrateur (`lastLoginAt` de `GET /api/v1/users`), au plus une fois toutes les 10 minutes ; une connexion refusée n'écrit rien
                             headers:
                                 Set-Cookie:
                                     description: Refresh token, `HttpOnly; Secure; SameSite=Strict; Path=/api/auth`

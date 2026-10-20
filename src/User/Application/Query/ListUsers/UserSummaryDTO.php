@@ -4,6 +4,11 @@ namespace Repas\User\Application\Query\ListUsers;
 
 use OpenApi\Attributes as OA;
 
+/**
+ * `lastLoginAt` est TOUJOURS dans la réponse, à `null` pour un compte jamais vu : le contrat la déclare requise ET nullable
+ * (swagger-php ne met pas une propriété nullable dans `required` de lui-même, d'où le `OA\Schema`).
+ */
+#[OA\Schema(required: ['lastLoginAt'])]
 final readonly class UserSummaryDTO
 {
     public function __construct(
@@ -21,6 +26,13 @@ final readonly class UserSummaryDTO
         public int $shoppingListCount,
         #[OA\Property(description: 'Date d\'inscription (ATOM), vide si inconnue', example: '2026-10-13T08:56:40+02:00')]
         public string $createdAt,
+        #[OA\Property(
+            description: "Dernière connexion du compte (ATOM, UTC) : la dernière authentification réussie, par mot de passe ou par renouvellement de la session ouverte (une session reste active des jours : ce n'est pas la seule connexion par mot de passe). `null` : jamais vu depuis que Repas retient cette date. Retenue au plus toutes les 10 minutes, donc en retard de 10 minutes au plus ; réservée à l'administration (ni `GET /api/v1/me`, ni aucun autre endpoint)",
+            type: 'string',
+            example: '2026-10-20T08:30:12+00:00',
+            nullable: true,
+        )]
+        public ?string $lastLoginAt,
         #[OA\Property(description: 'Le compte est désactivé')]
         public bool $isDisabled,
         #[OA\Property(description: 'L\'utilisateur est administrateur')]
