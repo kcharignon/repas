@@ -23,7 +23,7 @@ final readonly class DrivePlanLineDTO
         public array $products,
         #[OA\Property(description: "Produits que l'utilisateur ne veut jamais, 20 au plus (aussi pour une ligne `NEW`) ; vide pour `HAVE_AT_HOME`", type: 'array', items: new OA\Items(ref: new Model(type: DrivePlanRejectedDTO::class)))]
         public array $rejected,
-        #[OA\Property(description: "Texte à chercher sur le site de l'enseigne : le nom de l'ingrédient", example: 'Farine')]
+        #[OA\Property(description: "Texte à chercher sur le site de l'enseigne : la recherche qui a fait trouver le produit choisi pour cet ingrédient (DRV-650, mémorisée pour cette enseigne et ce magasin, voir `searchQuery` de `GET /drive/choices`), sinon le nom de l'ingrédient. `ingredientName` reste le nom affiché", example: 'Farine')]
         public string $searchQuery,
         /** @var list<int> */
         #[OA\Property(

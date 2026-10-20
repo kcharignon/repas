@@ -54,7 +54,8 @@ class DriveChoicesApiFlowTest extends DatabaseTestCase
         $this->get($user);
         $farine = $this->jsonBody()['member'][0];
         $this->assertSame(2, $this->jsonBody()['totalItems']);
-        $this->assertSame(['ingredientSlug', 'ingredientName', 'haveAtHome', 'accepted', 'rejected', 'updatedAt'], array_keys($farine));
+        $this->assertSame(['ingredientSlug', 'ingredientName', 'haveAtHome', 'accepted', 'rejected', 'updatedAt', 'searchQuery'], array_keys($farine));
+        $this->assertNull($farine['searchQuery']);
         $this->assertSame(['farine', 'farine', false], [$farine['ingredientSlug'], $farine['ingredientName'], $farine['haveAtHome']]);
         $this->assertSame([[1, '555111', 'Farine de blé T55 1 kg'], [2, '222333', 'Farine de blé T45 1 kg']], array_map(static fn(array $a): array => [$a['rank'], $a['product']['retailerProductId'], $a['product']['label']], $farine['accepted']));
         $this->assertSame(['value' => 1000, 'unit' => 'g'], $farine['accepted'][0]['product']['content']);

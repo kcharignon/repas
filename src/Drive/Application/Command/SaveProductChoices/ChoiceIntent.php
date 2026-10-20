@@ -6,7 +6,9 @@ namespace Repas\Drive\Application\Command\SaveProductChoices;
 /**
  * Une intention de l'utilisateur sur un ingrédient. Cohérence exigée (sinon `DRIVE_CHOICE_INVALID`) : `ADD_PRODUCT` a un produit
  * (avec libellé) et un placement ; `REJECT_PRODUCT` un produit (avec libellé) sans placement ; `HAVE_AT_HOME` ni produit ni
- * placement ; `REFRESH_PRICE` un produit avec un prix, sans placement.
+ * placement ; `REFRESH_PRICE` un produit avec un prix, sans placement. Une recherche mémorisée (`searchQuery`, DRV-650) n'est
+ * permise que sur `ADD_PRODUCT` : le texte qui a fait trouver ce produit. `null` (pas de changement) garde celle qui est
+ * mémorisée ; `SearchQueryChange::clear()` l'efface ; `SearchQueryChange::set()` la remplace.
  */
 final readonly class ChoiceIntent
 {
@@ -15,6 +17,7 @@ final readonly class ChoiceIntent
         public ChoiceAction $action,
         public ?Placement $placement = null,
         public ?ProductInput $product = null,
+        public ?SearchQueryChange $searchQuery = null,
     ) {
     }
 }

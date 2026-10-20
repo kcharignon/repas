@@ -45,6 +45,11 @@ readonly class SaveProductChoicesHandler
      * une écriture par table, celle du compteur du jour dans les réglages, et un décompte des préférences quand le lot en crée.
      * L'existence de l'ingrédient n'est pas vérifiée (`Drive` ne connaît pas `Repas`).
      *
+     * **Recherche mémorisée (DRV-650)** : un `ADD_PRODUCT` peut porter le texte qui a fait trouver le produit sur le site de l'enseigne
+     * (`SearchQueryChange`) ; il est mémorisé sur la préférence, sous la clé (utilisateur, enseigne, magasin, ingrédient) et nulle
+     * part ailleurs. Intention sans recherche : celle qui est mémorisée est gardée ; recherche effacée explicitement : elle est
+     * oubliée ; recherche sur une autre action : `invalidChoice()`. Aucune requête de plus : le texte voyage avec la préférence.
+     *
      * **Apprentissage du rayon (DRV-642)** : chaque `ADD_PRODUCT` dont le produit connaît son rayon dans l'enseigne (donné par
      * l'agent ou déjà sur la fiche, la fiche faisant foi) compte un choix pour le couple (rayon de Repas de l'ingrédient, rayon de
      * l'enseigne) dans `drive_department_rayon`, ce qui nourrit les `rayonHints` du plan. Une lecture de plus (les rayons de Repas
@@ -108,6 +113,8 @@ readonly class SaveProductChoicesHandler
                 ChoiceAction::REJECT_PRODUCT => $choice->reject($productId),
                 ChoiceAction::HAVE_AT_HOME => $choice->markHaveAtHome(),
             };
+            // Après l'ajout : la préférence est alors une préférence de produits. Clé absente : la recherche mémorisée est gardée
+            $intent->searchQuery?->applyTo($choice);
             $touchedChoices[$slug] = $choice->touch($now);
         }
 
@@ -175,6 +182,7 @@ readonly class SaveProductChoicesHandler
             $wellFormed = preg_match(Choice::SLUG_PATTERN, $intent->ingredientSlug) === 1
                 && ($product === null || preg_match(Product::RETAILER_PRODUCT_ID_PATTERN, $product->retailerProductId) === 1)
                 && ($product === null || self::catalogIdsAreInBounds($product))
+                && ($intent->searchQuery === null || $intent->action === ChoiceAction::ADD_PRODUCT)
                 && match ($intent->action) {
                     ChoiceAction::ADD_PRODUCT => $intent->placement !== null && $product?->label !== null,
                     ChoiceAction::REJECT_PRODUCT => $intent->placement === null && $product?->label !== null,

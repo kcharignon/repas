@@ -11,6 +11,7 @@ use Repas\Drive\Domain\Model\AcceptedProduct;
 use Repas\Drive\Domain\Model\Choice;
 use Repas\Drive\Domain\Model\ChoiceKind;
 use Repas\Drive\Domain\Model\Retailer;
+use Repas\Drive\Domain\Model\SearchQuery;
 use Repas\Tests\Helper\Builder\ChoiceBuilder;
 
 class ChoiceTest extends TestCase
@@ -366,5 +367,113 @@ class ChoiceTest extends TestCase
         // Then
         $this->assertCount(5, $choice->getAcceptedProductIds());
         $this->assertCount(20, $choice->getRejectedProductIds());
+    }
+
+    public function testANewChoiceRemembersNoSearch(): void
+    {
+        // When
+        $choice = Choice::create('choice-1', 'user-1', Retailer::LECLERC, '123456', 'farine', new DateTimeImmutable());
+
+        // Then
+        $this->assertNull($choice->getSearchQuery());
+    }
+
+    public function testRememberSearchSetsThenReplacesTheSearchAndForgetSearchClearsIt(): void
+    {
+        // Given
+        $choice = new ChoiceBuilder()->withAccepted(['a'])->build();
+
+        // When
+        $choice->rememberSearch(SearchQuery::of('céréales coussins'));
+
+        // Then
+        $this->assertSame('céréales coussins', $choice->getSearchQuery()?->value);
+
+        // When
+        $choice->rememberSearch(SearchQuery::of('coussins chocolat'));
+
+        // Then
+        $this->assertSame('coussins chocolat', $choice->getSearchQuery()->value);
+        $this->assertSame(['a'], $choice->getAcceptedProductIds());
+
+        // When
+        $choice->forgetSearch();
+
+        // Then
+        $this->assertNull($choice->getSearchQuery());
+    }
+
+    public function testOnlyAChoiceOfProductsRemembersASearch(): void
+    {
+        // Given
+        $choice = new ChoiceBuilder()->haveAtHome()->build();
+
+        // Then
+        $this->expectExceptionObject(DriveException::invalidChoice());
+
+        // When
+        $choice->rememberSearch(SearchQuery::of('céréales coussins'));
+    }
+
+    public function testHavingItAtHomeForgetsTheSearch(): void
+    {
+        // Given
+        $choice = new ChoiceBuilder()->withAccepted(['a'])->withSearchQuery('céréales coussins')->build();
+
+        // When
+        $choice->markHaveAtHome();
+
+        // Then
+        $this->assertNull($choice->getSearchQuery());
+
+        // When : il rachète l'ingrédient
+        $choice->resumeBuying();
+
+        // Then : rien ne revient
+        $this->assertNull($choice->getSearchQuery());
+    }
+
+    public function testReplaceKeepsTheSearchUnlessItIsHaveAtHome(): void
+    {
+        // Given
+        $choice = new ChoiceBuilder()->withAccepted(['a', 'b'])->withSearchQuery('céréales coussins')->build();
+
+        // When : l'écran de gestion réordonne les produits
+        $choice->replace(false, ['b', 'a'], []);
+
+        // Then
+        $this->assertSame('céréales coussins', $choice->getSearchQuery()?->value);
+
+        // When
+        $choice->replace(true, [], []);
+
+        // Then
+        $this->assertNull($choice->getSearchQuery());
+    }
+
+    public function testAFailedReplaceKeepsTheSearch(): void
+    {
+        // Given
+        $choice = new ChoiceBuilder()->withAccepted(['a'])->withSearchQuery('céréales coussins')->build();
+
+        // When
+        try {
+            $choice->replace(true, ['a'], []);
+            $this->fail('DRIVE_CHOICE_INVALID attendu');
+        } catch (DriveException) {
+            // Then
+            $this->assertSame('céréales coussins', $choice->getSearchQuery()?->value);
+        }
+    }
+
+    public function testLoadRestoresTheSearchButIgnoresOneLeftOnAHaveAtHomeChoice(): void
+    {
+        // When : une version plus ancienne du code a pu repasser la ligne en « j'en ai toujours » sans effacer la recherche
+        $buying = new ChoiceBuilder()->withAccepted(['a'])->withSearchQuery('céréales coussins')->build();
+        $atHome = new ChoiceBuilder()->haveAtHome()->withSearchQuery('céréales coussins')->build();
+
+        // Then
+        $this->assertSame('céréales coussins', $buying->getSearchQuery()?->value);
+        $this->assertNull($atHome->getSearchQuery());
     }
 }

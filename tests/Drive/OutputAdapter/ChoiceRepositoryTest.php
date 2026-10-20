@@ -8,6 +8,7 @@ use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Repas\Drive\Domain\Interface\ChoiceRepository;
 use Repas\Drive\Domain\Model\Choice;
 use Repas\Drive\Domain\Model\Retailer;
+use Repas\Drive\Domain\Model\SearchQuery;
 use Repas\Tests\Helper\Builder\ChoiceBuilder;
 use Repas\Tests\Helper\DatabaseTestCase;
 use Repas\Tests\Helper\SqlBudget\QueryCounter;
@@ -151,7 +152,7 @@ class ChoiceRepositoryTest extends DatabaseTestCase
     {
         // Given
         $choices = array_map(
-            static fn(int $i): Choice => new ChoiceBuilder()->withUserId('user-1')->withIngredientSlug("ingredient-$i")->withAccepted(["a$i", "b$i"])->withRejected(["x$i"])->build(),
+            static fn(int $i): Choice => new ChoiceBuilder()->withUserId('user-1')->withIngredientSlug("ingredient-$i")->withAccepted(["a$i", "b$i"])->withRejected(["x$i"])->withSearchQuery("recherche $i")->build(),
             range(1, 40),
         );
         $slugs = array_map(static fn(Choice $choice): string => $choice->getIngredientSlug(), $choices);
@@ -226,5 +227,119 @@ class ChoiceRepositoryTest extends DatabaseTestCase
         // Then : plus aucune ligne de produit, la préférence reste
         $this->assertTrue($this->repository->findOne('user-1', Retailer::LECLERC, '123456', 'farine')->isHaveAtHome());
         $this->assertSame(0, (int) $this->entityManager->getConnection()->fetchOne('SELECT COUNT(*) FROM drive_choice_product'));
+    }
+
+    public function testTheSearchThatFoundTheProductIsSavedReadBackReplacedAndForgotten(): void
+    {
+        // Given
+        $this->repository->save(new ChoiceBuilder()->withId('choice-1')->withUserId('user-1')->withAccepted(['a'])->withSearchQuery('céréales coussins')->build());
+
+        // When
+        $found = $this->repository->findOne('user-1', Retailer::LECLERC, '123456', 'farine');
+
+        // Then
+        $this->assertSame('céréales coussins', $found->getSearchQuery()?->value);
+
+        // When : un autre produit, sans toucher à la recherche
+        $this->repository->save($found->addPrimary('b'));
+
+        // Then : elle est gardée
+        $found = $this->repository->findOne('user-1', Retailer::LECLERC, '123456', 'farine');
+        $this->assertSame('céréales coussins', $found->getSearchQuery()?->value);
+
+        // When : remplacée
+        $this->repository->save($found->rememberSearch(SearchQuery::of('coussins chocolat')));
+
+        // Then
+        $found = $this->repository->findOne('user-1', Retailer::LECLERC, '123456', 'farine');
+        $this->assertSame('coussins chocolat', $found->getSearchQuery()?->value);
+
+        // When : oubliée
+        $this->repository->save($found->forgetSearch());
+
+        // Then
+        $this->assertNull($this->repository->findOne('user-1', Retailer::LECLERC, '123456', 'farine')->getSearchQuery());
+        $this->assertNull($this->entityManager->getConnection()->fetchOne('SELECT search_query FROM drive_choice WHERE id = ?', ['choice-1']));
+    }
+
+    public function testAChoiceWithoutSearchIsStoredWithNull(): void
+    {
+        // When
+        $this->repository->save(new ChoiceBuilder()->withId('choice-1')->withUserId('user-1')->withAccepted(['a'])->build());
+
+        // Then
+        $this->assertNull($this->repository->findOne('user-1', Retailer::LECLERC, '123456', 'farine')->getSearchQuery());
+        $this->assertSame(1, (int) $this->entityManager->getConnection()->fetchOne('SELECT COUNT(*) FROM drive_choice WHERE id = ? AND search_query IS NULL', ['choice-1']));
+    }
+
+    public function testHavingItAtHomeErasesTheSearchInTheRow(): void
+    {
+        // Given
+        $this->repository->save(new ChoiceBuilder()->withId('choice-1')->withUserId('user-1')->withAccepted(['a'])->withSearchQuery('céréales coussins')->build());
+        $choice = $this->repository->findOne('user-1', Retailer::LECLERC, '123456', 'farine');
+
+        // When
+        $this->repository->save($choice->markHaveAtHome());
+
+        // Then : plus rien dans la ligne
+        $this->assertSame(1, (int) $this->entityManager->getConnection()->fetchOne('SELECT COUNT(*) FROM drive_choice WHERE id = ? AND search_query IS NULL', ['choice-1']));
+    }
+
+    public function testAnOldRowLeftHaveAtHomeWithASearchIsReadWithoutIt(): void
+    {
+        // Given : une version plus ancienne du code a repassé la ligne en « j'en ai toujours » sans effacer la colonne
+        $this->repository->save(new ChoiceBuilder()->withId('choice-1')->withUserId('user-1')->withAccepted(['a'])->withSearchQuery('céréales coussins')->build());
+        $this->entityManager->getConnection()->executeStatement("UPDATE drive_choice SET kind = 'HAVE_AT_HOME' WHERE id = 'choice-1'");
+
+        // When
+        $found = $this->repository->findOne('user-1', Retailer::LECLERC, '123456', 'farine');
+
+        // Then
+        $this->assertTrue($found->isHaveAtHome());
+        $this->assertNull($found->getSearchQuery());
+    }
+
+    public function testTheSearchIsKeptPerRetailerStoreAndUser(): void
+    {
+        // Given : la même combinaison utilisateur, magasin et ingrédient chez une autre enseigne (écrite en SQL : une seule enseigne
+        // est connue du code), puis un autre magasin et un autre utilisateur
+        $this->repository->saveAll([
+            new ChoiceBuilder()->withId('leclerc')->withUserId('user-1')->withAccepted(['a'])->withSearchQuery('recherche pour Leclerc')->build(),
+            new ChoiceBuilder()->withId('other-store')->withUserId('user-1')->withStoreId('654321')->withAccepted(['a'])->withSearchQuery('recherche de l\'autre magasin')->build(),
+            new ChoiceBuilder()->withId('other-user')->withUserId('user-2')->withAccepted(['a'])->withSearchQuery('recherche de user-2')->build(),
+        ]);
+        $this->entityManager->getConnection()->executeStatement(
+            "INSERT INTO drive_choice (id, user_id, retailer, store_id, ingredient_slug, kind, search_query, updated_at) VALUES ('other-retailer', 'user-1', 'autre-enseigne', '123456', 'farine', 'PRODUCTS', 'recherche pour une autre enseigne', '2026-10-18 10:00:00')",
+        );
+
+        // When : Leclerc change sa recherche
+        $choice = $this->repository->findOne('user-1', Retailer::LECLERC, '123456', 'farine');
+        $this->repository->save($choice->rememberSearch(SearchQuery::of('nouvelle recherche pour Leclerc')));
+
+        // Then : chaque clé garde la sienne, rien n'est repris ni écrasé d'une enseigne, d'un magasin ou d'un utilisateur à l'autre
+        $searches = $this->entityManager->getConnection()->fetchAllKeyValue('SELECT id, search_query FROM drive_choice ORDER BY id');
+        $this->assertSame([
+            'leclerc' => 'nouvelle recherche pour Leclerc',
+            'other-retailer' => 'recherche pour une autre enseigne',
+            'other-store' => 'recherche de l\'autre magasin',
+            'other-user' => 'recherche de user-2',
+        ], $searches);
+    }
+
+    public function testPurgingAUserErasesTheirRememberedSearches(): void
+    {
+        // Given
+        $this->repository->saveAll([
+            new ChoiceBuilder()->withUserId('departing')->withIngredientSlug('farine')->withAccepted(['a'])->withSearchQuery('céréales coussins')->build(),
+            new ChoiceBuilder()->withUserId('departing')->withStoreId('654321')->withIngredientSlug('sel')->withAccepted(['c'])->withSearchQuery('gros sel')->build(),
+            new ChoiceBuilder()->withUserId('staying')->withIngredientSlug('farine')->withAccepted(['a'])->withSearchQuery('farine de blé')->build(),
+        ]);
+
+        // When
+        $this->repository->deleteProductsByUser('departing');
+        $this->repository->deleteByUser('departing');
+
+        // Then : la recherche est dans la ligne du choix, elle part avec elle ; celle de l'autre reste
+        $this->assertSame(['farine de blé'], $this->entityManager->getConnection()->fetchFirstColumn('SELECT search_query FROM drive_choice'));
     }
 }

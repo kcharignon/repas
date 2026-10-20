@@ -24,6 +24,8 @@ final readonly class ChoiceDTO
         public array $rejected,
         #[OA\Property(description: 'Dernière modification de la préférence (ISO 8601)', example: '2026-10-18T10:00:00+02:00')]
         public string $updatedAt,
+        #[OA\Property(description: "Le texte qui a fait trouver le produit choisi sur le site de l'enseigne (DRV-650), propre à cette enseigne et à ce magasin : le plan le cherche en premier pour remplacer ce produit s'il n'est plus disponible. `null` quand rien n'est mémorisé (et toujours pour « j'en ai toujours »). Texte tapé par l'utilisateur : à afficher comme du texte, jamais comme du HTML", example: 'céréales coussins chocolat', nullable: true)]
+        public ?string $searchQuery,
     ) {
     }
 }

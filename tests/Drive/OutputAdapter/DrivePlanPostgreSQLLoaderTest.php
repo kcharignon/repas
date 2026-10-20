@@ -263,7 +263,7 @@ class DrivePlanPostgreSQLLoaderTest extends DatabaseTestCase
                 $products[] = new ProductBuilder()->withRetailerProductId((string) ($i + $offset))->build();
             }
             $choices[] = new ChoiceBuilder()->withUserId($owner->getId())->withIngredientSlug("ingredient-$i")
-                ->withAccepted([$this->id((string) ($i + 1)), $this->id((string) ($i + 101))])->withRejected([$this->id((string) ($i + 201))])->build();
+                ->withAccepted([$this->id((string) ($i + 1)), $this->id((string) ($i + 101))])->withRejected([$this->id((string) ($i + 201))])->withSearchQuery("recherche $i")->build();
         }
         static::getContainer()->get(ShoppingListRepository::class)->save($builder->build());
         $this->products->saveAll($products);
@@ -279,7 +279,75 @@ class DrivePlanPostgreSQLLoaderTest extends DatabaseTestCase
         $this->assertCount(12, $plan->lines);
         $this->assertSame(12, $plan->counts->known);
         $this->assertSame(5, $counter->count());
+        $searches = array_column(array_map(static fn(DrivePlanLineDTO $line): array => [$line->ingredientSlug, $line->searchQuery], $plan->lines), 1, 0);
+        $this->assertSame(['recherche 1', 'recherche 12'], [$searches['ingredient-1'], $searches['ingredient-12']]);
         $this->assertSame(1, $counter->byTable()['SELECT drive_department_rayon']);
+    }
+
+    public function testALineSearchesWithTheRememberedSearchOfItsChoiceElseWithTheIngredientName(): void
+    {
+        // Given : un choix avec une recherche, un sans, un choix sans produit accepté mais avec une recherche, un ingrédient sans choix,
+        // et « j'en ai toujours » dont la colonne a gardé une recherche d'une version plus ancienne du code
+        $this->settings->save(new DriveSettingsBuilder()->withUserId('user-1')->build());
+        $this->products->saveAll([new ProductBuilder()->withRetailerProductId('1')->build(), new ProductBuilder()->withRetailerProductId('2')->build()]);
+        $this->choices->saveAll([
+            new ChoiceBuilder()->withUserId('user-1')->withIngredientSlug('cereale')->withAccepted([$this->id('1')])->withSearchQuery('céréales coussins chocolat')->build(),
+            new ChoiceBuilder()->withUserId('user-1')->withIngredientSlug('farine')->withAccepted([$this->id('2')])->build(),
+            new ChoiceBuilder()->withUserId('user-1')->withIngredientSlug('lait')->withRejected([$this->id('2')])->withSearchQuery('lait demi écrémé')->build(),
+            new ChoiceBuilder()->withId('choice-sel')->withUserId('user-1')->withIngredientSlug('sel')->withAccepted([$this->id('1')])->withSearchQuery('gros sel')->build(),
+        ]);
+        $this->entityManager->getConnection()->executeStatement("UPDATE drive_choice SET kind = 'HAVE_AT_HOME' WHERE id = 'choice-sel'");
+        $list = $this->sentList('user-1', [
+            new ShoppingListLineForDrive('cereale', 'Céréale coussin', 1, 'paquet', 'paquet', 'paquet', 'PACKAGE', 1.0),
+            new ShoppingListLineForDrive('farine', 'Farine', 1, 'paquet', 'paquet', 'paquet', 'PACKAGE', 1.0),
+            new ShoppingListLineForDrive('lait', 'Lait', 1, 'litre', 'litre', 'l', 'VOLUME', 1000.0),
+            new ShoppingListLineForDrive('poivre', 'Poivre', 1, 'paquet', 'paquet', 'paquet', 'PACKAGE', 1.0),
+            new ShoppingListLineForDrive('sel', 'Sel', 1, 'paquet', 'paquet', 'paquet', 'PACKAGE', 1.0),
+        ]);
+
+        // When
+        $lines = $this->loader($list)->get('user-1', 'list-1')->lines;
+
+        // Then : la recherche mémorisée sinon le nom de l'ingrédient ; le nom affiché ne change jamais
+        $this->assertSame(
+            [
+                ['Céréale coussin', 'céréales coussins chocolat', 'KNOWN'],
+                ['Farine', 'Farine', 'KNOWN'],
+                ['Lait', 'lait demi écrémé', 'NEW'],
+                ['Poivre', 'Poivre', 'NEW'],
+                ['Sel', 'Sel', 'HAVE_AT_HOME'],
+            ],
+            array_map(static fn(DrivePlanLineDTO $line): array => [$line->ingredientName, $line->searchQuery, $line->status], $lines),
+        );
+    }
+
+    public function testTheSearchOfAnotherRetailerAnotherStoreOrAnotherUserIsNeverUsed(): void
+    {
+        // Given : le même ingrédient chez une autre enseigne (écrit en SQL : le code ne connaît qu'une enseigne), dans l'ancien magasin du
+        // même utilisateur, et chez un autre utilisateur ; « cereale » a aussi sa recherche à elle chez Leclerc
+        $this->settings->save(new DriveSettingsBuilder()->withUserId('user-1')->build());
+        $this->products->save(new ProductBuilder()->withRetailerProductId('1')->build());
+        $this->choices->saveAll([
+            new ChoiceBuilder()->withUserId('user-1')->withIngredientSlug('cereale')->withAccepted([$this->id('1')])->withSearchQuery('céréales coussins pour Leclerc')->build(),
+            new ChoiceBuilder()->withUserId('user-1')->withStoreId('654321')->withIngredientSlug('sel')->withAccepted([$this->id('1')])->withSearchQuery('recherche de l ancien magasin')->build(),
+            new ChoiceBuilder()->withUserId('user-2')->withIngredientSlug('sel')->withAccepted([$this->id('1')])->withSearchQuery('recherche de user-2')->build(),
+        ]);
+        foreach ([['cereale', 'cereales choco pour une autre enseigne'], ['sel', 'sel fin pour une autre enseigne']] as [$slug, $search]) {
+            $this->entityManager->getConnection()->executeStatement(
+                "INSERT INTO drive_choice (id, user_id, retailer, store_id, ingredient_slug, kind, search_query, updated_at) VALUES (?, 'user-1', 'autre-enseigne', '123456', ?, 'PRODUCTS', ?, '2026-10-18 10:00:00')",
+                ['other-retailer-' . $slug, $slug, $search],
+            );
+        }
+        $list = $this->sentList('user-1', [
+            new ShoppingListLineForDrive('cereale', 'Céréale coussin', 1, 'paquet', 'paquet', 'paquet', 'PACKAGE', 1.0),
+            new ShoppingListLineForDrive('sel', 'Sel', 1, 'paquet', 'paquet', 'paquet', 'PACKAGE', 1.0),
+        ]);
+
+        // When
+        $lines = $this->loader($list)->get('user-1', 'list-1')->lines;
+
+        // Then : chaque enseigne garde sa recherche, rien n'est repris d'une autre enseigne, d'un autre magasin ni d'un autre utilisateur
+        $this->assertSame(['céréales coussins pour Leclerc', 'Sel'], array_map(static fn(DrivePlanLineDTO $line): string => $line->searchQuery, $lines));
     }
 
     public function testTheLinesCarryTheRayonsOfTheStoreChainLearnedForTheirDepartment(): void
