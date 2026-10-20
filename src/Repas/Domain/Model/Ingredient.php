@@ -183,24 +183,34 @@ final class Ingredient implements ModelInterface
         );
     }
 
-    public static function copyFromOriginal(Ingredient $ingredient, string $authorId): self
+    /**
+     * La copie, pour `$authorId`, d'un ingrédient qui accompagne la copie d'une recette (ADR 0028 décision 8) : mêmes nom, image, rayon et
+     * unités ; les conversions propres sont copiées par le cas d'usage. Le slug est choisi par l'appelant (`IngredientSlugPolicy`, après
+     * avoir vérifié qu'il est libre) : une copie n'écrase JAMAIS un ingrédient existant de `$authorId`.
+     *
+     * La provenance voyage : la copie d'une adoption garde le commun dont elle vient, et la copie d'un commun (quand le copieur ne peut
+     * pas s'en servir tel quel) le retient aussi. Une copie qui retient une origine n'est pas une création (`isAdoption()`).
+     */
+    public static function copyFromOriginal(Ingredient $ingredient, string $authorId, string $slug): self
     {
-        $ingredientCopy = self::create(
-            $ingredient->getName(),
-            $ingredient->getImage(),
-            $ingredient->getDepartment(),
-            $ingredient->getDefaultCookingUnit(),
-            $ingredient->getDefaultPurchaseUnit(),
-            $authorId,
+        return new self(
+            slug: $slug,
+            name: $ingredient->getName(),
+            image: $ingredient->getImage(),
+            sluggedName: $ingredient->getSluggedName(),
+            department: $ingredient->getDepartment(),
+            defaultCookingUnit: $ingredient->getDefaultCookingUnit(),
+            defaultPurchaseUnit: $ingredient->getDefaultPurchaseUnit(),
+            creatorId: $authorId,
+            compatibleUnits: $ingredient->getCompatibleUnits()->slice(0, null, true),
+            adoptedFrom: $ingredient->getAdoptedFrom() ?? ($ingredient->getCreatorId() === null ? $ingredient->getSlug() : null),
         );
-        $ingredientCopy->setCompatibleUnits($ingredient->getCompatibleUnits());
-        return $ingredientCopy;
     }
 
     /**
      * L'adoption d'un commun par un utilisateur (ADR 0028) : une copie à lui, modifiable, qui garde le nom, l'image, le rayon et les
      * unités du commun. Le slug est choisi par l'appelant (`IngredientSlugPolicy::forAdoption()`, après avoir vérifié qu'il est libre) ;
-     * les conversions propres du commun sont copiées par le cas d'usage. Contrairement à `copyFromOriginal()`, elle retient d'où elle vient.
+     * les conversions propres du commun sont copiées par le cas d'usage. Comme `copyFromOriginal()`, elle retient d'où elle vient.
      */
     public static function adopt(Ingredient $common, string $userId, string $slug): self
     {

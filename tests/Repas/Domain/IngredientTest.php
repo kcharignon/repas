@@ -5,6 +5,8 @@ namespace Repas\Tests\Repas\Domain;
 
 use PHPUnit\Framework\TestCase;
 use Repas\Repas\Domain\Model\Ingredient;
+use Repas\Repas\Domain\Model\Unit;
+use Repas\Shared\Domain\Tool\Tab;
 use Repas\Tests\Helper\Builder\IngredientBuilder;
 use Repas\Tests\Helper\Builder\UserBuilder;
 use Repas\Tests\Helper\RepasAssert;
@@ -84,15 +86,66 @@ class IngredientTest extends TestCase
         $this->assertFalse($common->isAdoption());
     }
 
-    public function testACopyMadeWithARecipeIsNotAnAdoption(): void
+    public function testACopyMadeWithARecipeOfAPersonalIngredientIsNotAnAdoptionAndTakesTheGivenSlug(): void
     {
-        // Given : le motif existant de copie de recette ne retient pas d'origine (ING-004 y reviendra)
+        // Given
         $original = new IngredientBuilder()->isButter()->withCreator(new UserBuilder()->withId('author-id')->build(), true)->build();
 
         // When
-        $copy = Ingredient::copyFromOriginal($original, 'copier-id');
+        $copy = Ingredient::copyFromOriginal($original, 'copier-id', 'beurre-2copier-id');
+
+        // Then : le slug est celui que l'appelant a choisi libre, le reste est celui de l'original
+        $this->assertSame('beurre-2copier-id', $copy->getSlug());
+        $this->assertSame('copier-id', $copy->getCreatorId());
+        $this->assertFalse($copy->isAdoption());
+        $this->assertNull($copy->getAdoptedFrom());
+        $this->assertSame($original->getName(), $copy->getName());
+        $this->assertSame($original->getImage(), $copy->getImage());
+        $this->assertSame($original->getSluggedName(), $copy->getSluggedName());
+        $this->assertTrue($original->getDepartment()->isEqual($copy->getDepartment()));
+        $this->assertTrue($original->getDefaultPurchaseUnit()->isEqual($copy->getDefaultPurchaseUnit()));
+        $this->assertTrue($original->getDefaultCookingUnit()->isEqual($copy->getDefaultCookingUnit()));
+        $this->assertEquals($original->getCompatibleUnits()->toArray(), $copy->getCompatibleUnits()->toArray());
+        $this->assertSame('author-id', $original->getCreatorId(), 'L\'original n\'est pas touché.');
+    }
+
+    public function testTheCopyOfAnAdoptionKeepsTheCommonItComesFromAndIsStillNotACreation(): void
+    {
+        // Given : l'adoption d'un commun par l'auteur
+        $common = new IngredientBuilder()->isButter()->build();
+        $adoption = Ingredient::adopt($common, 'author-id', 'beurreauthor-id');
+
+        // When
+        $copy = Ingredient::copyFromOriginal($adoption, 'copier-id', 'beurrecopier-id');
+
+        // Then : la provenance voyage
+        $this->assertSame('beurre', $copy->getAdoptedFrom());
+        $this->assertTrue($copy->isAdoption());
+    }
+
+    public function testTheCopyOfACommonRetainsTheCommonAsItsOrigin(): void
+    {
+        // Given : un commun que le copieur ne peut pas utiliser tel quel
+        $common = new IngredientBuilder()->isButter()->build();
+
+        // When
+        $copy = Ingredient::copyFromOriginal($common, 'copier-id', 'beurre-2copier-id');
 
         // Then
-        $this->assertFalse($copy->isAdoption());
+        $this->assertSame('beurre', $copy->getAdoptedFrom());
+        $this->assertSame('copier-id', $copy->getCreatorId());
+    }
+
+    public function testTheCopyDoesNotShareItsCompatibleUnitsWithTheOriginal(): void
+    {
+        // Given
+        $original = new IngredientBuilder()->isButter()->withCreator(new UserBuilder()->withId('author-id')->build(), true)->build();
+        $copy = Ingredient::copyFromOriginal($original, 'copier-id', 'beurrecopier-id');
+
+        // When
+        $copy->setCompatibleUnits(Tab::newEmptyTyped(Unit::class));
+
+        // Then
+        $this->assertCount(3, $original->getCompatibleUnits());
     }
 }

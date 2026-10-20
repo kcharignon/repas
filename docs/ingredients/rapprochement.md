@@ -189,7 +189,7 @@ Les trois valeurs numériques (0,97 ; 0,90 ; 0,02) et la liste des mots vides so
 
 ## 9. Tests exigés par le ticket
 
-- `IngredientNameMatcherTest` (domaine, sans base) : le jeu `experiments/ground-truth.json`, copié dans `tests/Repas/Domain/Service/` (le ticket l'y déplace), rejoué avec les constantes de production : **zéro faux lien** sur toutes les lignes `expected: null`, **rappel de 100 %** sur les catégories `casse`, `ponctuation`, `accent`, `pluriel`, au moins 50 % sur `faute` ; plus des cas de départage (deux exacts, deux presque exacts à moins de 0,02, ordre alphabétique).
+- `IngredientNameMatcherTest` (domaine, sans base) : le jeu `experiments/ground-truth.json`, copié dans `tests/Repas/Domain/Service/IngredientNameMatching/` (le script d'expérience garde la sienne : si le jeu change, regénérer les deux), rejoué avec les constantes de production : **zéro faux lien** sur toutes les lignes `expected: null`, **rappel de 100 %** sur les catégories `casse`, `ponctuation`, `accent`, `pluriel`, au moins 50 % sur `faute` ; plus des cas de départage (deux exacts, deux presque exacts à moins de 0,02, ordre alphabétique).
 - Les mêmes constantes sont vérifiées par un test de non-régression de l'expérience : le script `evaluate.php` n'a pas de dépendance au reste de `src/` hors `JaroWinkler` et `StringTool`.
 - `CopyRecipeHandlerTest` (en mémoire) : provenance (étape 0, trois branches), exact, faute, ambiguïté, unité incompatible, rayon différent, copie de sa propre recette, absence d'écrasement, événement de statistiques (seulement les créations).
 - Test de base du port de candidats (rayon, communs cachés, ingrédients d'un autre jamais candidats).

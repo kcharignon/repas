@@ -96,17 +96,16 @@ final class RecipeRow implements ModelInterface
         return new self($id, $recipeId, $ingredient, $quantity, $unit);
     }
 
+    /**
+     * La ligne copiée dans une autre recette : même quantité, même unité, et l'ingrédient que le copieur a RETENU pour cette ligne
+     * (`CopyRecipeHandler` : le sien, un commun, ou une copie) - la ligne ne crée plus d'ingrédient.
+     */
     public static function copyFromOriginal(
         string $id,
         RecipeRow $originalRow,
         string $recipeId,
-        string $authorId,
+        Ingredient $ingredient,
     ): self {
-        if ($originalRow->getIngredient()->getCreatorId() !== null) {
-            $ingredient = Ingredient::copyFromOriginal($originalRow->getIngredient(), $authorId);
-        } else {
-            $ingredient = $originalRow->getIngredient();
-        }
         return self::create(
             id: $id,
             recipeId: $recipeId,

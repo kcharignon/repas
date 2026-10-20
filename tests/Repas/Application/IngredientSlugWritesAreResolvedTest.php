@@ -13,6 +13,8 @@ use Repas\Drive\Application\Command\SaveProductChoices\ChoiceIntent;
 use Repas\Drive\Application\Command\SaveProductChoices\SaveProductChoicesHandler;
 use Repas\Repas\Application\Command\AddIngredientToShoppingList\AddIngredientToShoppingListCommand;
 use Repas\Repas\Application\Command\AddIngredientToShoppingList\AddIngredientToShoppingListHandler;
+use Repas\Repas\Application\Command\CopyRecipe\CopyRecipeCommand;
+use Repas\Repas\Application\Command\CopyRecipe\CopyRecipeHandler;
 use Repas\Repas\Application\Command\CreateConversion\CreateConversionCommand;
 use Repas\Repas\Application\Command\CreateRecipe\CreateRecipeHandler;
 use Repas\Repas\Application\Command\CreateRecipe\CreateRecipeRowSubCommand;
@@ -22,6 +24,8 @@ use Repas\Repas\Application\Command\UpdateConversion\UpdateConversionCommand;
 use Repas\Repas\Application\Command\UpdateRecipe\UpdateRecipeHandler;
 use Repas\Repas\Application\Command\UpdateRecipe\UpdateRecipeRowSubCommand;
 use Repas\Repas\Application\Service\IngredientSlugResolver;
+use Repas\Repas\Domain\Interface\IngredientMatchCandidates;
+use Repas\Repas\Domain\Service\IngredientNameMatcher;
 use Repas\Shared\Application\Interface\IngredientAliasResolver;
 
 /**
@@ -35,8 +39,9 @@ use Repas\Shared\Application\Interface\IngredientAliasResolver;
  * les exemptions. Il vérifie aussi que chaque handler déclaré injecte son résolveur ET s'en sert.
  *
  * Les lectures par slug (`GET /ingredients/{slug}`, `ListCompatibleUnits`…) ne sont pas des écritures : un commun adopté se lit encore.
- * Les écritures qui reçoivent un identifiant de recette ou de liste (planifier un repas, copier une recette) lisent leurs slugs dans
- * l'agrégat déjà enregistré ; la copie d'une recette, qui les dépose sur une autre recette, est traitée par ING-004.
+ * Les écritures qui reçoivent un identifiant de recette ou de liste (planifier un repas) lisent leurs slugs dans l'agrégat déjà
+ * enregistré. La COPIE d'une recette les dépose sur une AUTRE recette, celle d'un autre utilisateur : elle ne porte aucun slug, le garde-fou
+ * ci-dessus ne peut pas la voir, elle est donc déclarée à part (`COPIES`) et vérifiée de la même façon (ING-004).
  */
 class IngredientSlugWritesAreResolvedTest extends TestCase
 {
@@ -53,6 +58,17 @@ class IngredientSlugWritesAreResolvedTest extends TestCase
         ChoiceIntent::class => SaveProductChoicesHandler::class,
         ReplaceIngredientPreferenceCommand::class => ReplaceIngredientPreferenceHandler::class,
         ForgetChoiceCommand::class => ForgetChoiceHandler::class,
+    ];
+
+    /**
+     * Les écritures qui reprennent les slugs d'ingrédients d'un agrégat existant pour les poser chez un AUTRE utilisateur, avec le handler qui
+     * les rapproche de ce que le copieur possède (`IngredientSlugResolver`, `IngredientMatchCandidates`). Une nouvelle écriture de ce genre
+     * (copier une liste, partager une recette…) s'ajoute ici.
+     *
+     * @var array<class-string, class-string>
+     */
+    private const array COPIES = [
+        CopyRecipeCommand::class => CopyRecipeHandler::class,
     ];
 
     /**
@@ -112,6 +128,30 @@ class IngredientSlugWritesAreResolvedTest extends TestCase
                 $source,
                 "$handler injecte son résolveur de slugs mais ne s'en sert pas.",
             );
+        }
+    }
+
+    public function testEveryCopyUsesTheResolverAndTheNameMatchingOfItsHandler(): void
+    {
+        foreach (self::COPIES as $command => $handler) {
+            // Given
+            $reflection = new ReflectionClass($handler);
+            $types = array_map(
+                static fn(\ReflectionParameter $parameter): string => (string) $parameter->getType(),
+                $reflection->getConstructor()?->getParameters() ?? [],
+            );
+            $source = (string) file_get_contents((string) $reflection->getFileName());
+
+            // Then : il résout par la provenance (alias, adoption à la volée) ET compare les noms sur ce que le copieur voit
+            $this->assertContains(IngredientSlugResolver::class, $types, "$handler doit injecter le résolveur de slugs.");
+            $this->assertContains(IngredientMatchCandidates::class, $types, "$handler doit injecter les candidats du rapprochement.");
+            $this->assertContains(IngredientNameMatcher::class, $types, "$handler doit injecter le rapprochement de noms.");
+            $this->assertMatchesRegularExpression('/\$this->\w+->resolveForUser\(/', $source, "$handler ne résout pas les slugs de la recette copiée.");
+            $this->assertMatchesRegularExpression('/\$this->\w+->visibleTo\(/', $source, "$handler ne lit pas les ingrédients que le copieur voit.");
+            $this->assertMatchesRegularExpression('/\$this->\w+->match\(/', $source, "$handler ne rapproche pas les noms.");
+            // Une copie ne doit jamais écraser : un slug libre, jamais celui d'un ingrédient existant
+            $this->assertMatchesRegularExpression('/\$this->\w+->forAdoption\(/', $source, "$handler doit choisir un slug libre (IngredientSlugPolicy).");
+            $this->assertTrue(class_exists($command), "$command n'existe plus : retire sa déclaration.");
         }
     }
 

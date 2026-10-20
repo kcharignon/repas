@@ -234,7 +234,8 @@
                 "tags": [
                     "Recipes"
                 ],
-                "summary": "Copie une recette dans celles de l'utilisateur connect\u00e9, avec les ingr\u00e9dients personnalis\u00e9s et leurs conversions",
+                "summary": "Copie une recette dans celles de l'utilisateur connect\u00e9",
+                "description": "Chaque ingr\u00e9dient de la recette est rapproch\u00e9 de ceux que l'utilisateur poss\u00e8de d\u00e9j\u00e0 (ce qu'il a adopt\u00e9, puis le m\u00eame nom dans le m\u00eame rayon, avec une unit\u00e9 compatible) ; \u00e0 d\u00e9faut, il re\u00e7oit une copie de l'ingr\u00e9dient avec ses conversions propres. Un ingr\u00e9dient existant de l'utilisateur n'est jamais modifi\u00e9.",
                 "operationId": "post_api_copy_recipe",
                 "parameters": [
                     {
