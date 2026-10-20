@@ -86,6 +86,7 @@ Détail et squelettes : `references/read-slice-template.md`. Ordre :
 - [ ] Nouvelle table ou colonne qui désigne un utilisateur (`owner`, `author`, `creator`, `user`) : elle est effacée à la suppression du compte (`DeleteUserHandler` côté `User`, `PurgeUserDataHandler` côté `Repas`, `PurgeUserDriveDataHandler` côté `Drive`, ADR 0021) et ajoutée à `UserOwnedDataCoverageTest`
 - [ ] Tests : `QueryHandler` (unitaire, `InMemoryLoader`, paramètres transmis), Loader (base réelle), controller API (clés JSON)
 - [ ] `docs/migration-roadmap.md` mis à jour (case cochée, bugs vus en passant notés dans « Hors périmètre »)
+- [ ] Écriture qui reçoit le slug d'un ingrédient (commande, ligne de recette, intention du drive) : elle le traduit par les alias de l'utilisateur (`IngredientSlugResolver`, ou `IngredientAliasResolver` côté `Drive`) et elle est déclarée dans `IngredientSlugWritesAreResolvedTest` (ADR 0028) ; une requête qui liste ou choisit des ingrédients pour un utilisateur applique `IngredientVisibility`
 - [ ] ADR ajouté ou amendé si une convention a changé (et `CLAUDE.md` + ce skill dans le même commit)
 
 ## 5. Interdits
