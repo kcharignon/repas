@@ -17,7 +17,7 @@ class GetIngredientApiControllerTest extends QueryBusWebTestCase
         $this->queryBus->willReturn(GetIngredientQuery::class, new IngredientDTOBuilder()
             ->withSlug('beurre')->withName('beurre')->withDepartment('cremerie', 'crèmerie')
             ->withCookingUnit('gramme', 'gramme')->withPurchaseUnit('plaquette', 'plaquette', '')->withCoefficient(250)
-            ->withCreatorId($user->getId())->editable()->build());
+            ->withCreatorId($user->getId())->editable()->withUsage(7, 2)->build());
 
         // When
         $this->client->request('GET', '/api/v1/ingredients/beurre', server: $this->bearerFor($user));
@@ -42,6 +42,8 @@ class GetIngredientApiControllerTest extends QueryBusWebTestCase
             'coefficient' => 250,
             'creatorId' => $user->getId(),
             'canEdit' => true,
+            'recipeCount' => 7,
+            'listCount' => 2,
         ], $this->jsonBody());
     }
 

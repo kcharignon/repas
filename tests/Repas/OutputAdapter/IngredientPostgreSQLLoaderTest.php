@@ -128,7 +128,62 @@ class IngredientPostgreSQLLoaderTest extends DatabaseTestCase
             coefficient: null,
             creatorId: $viewer->getId(),
             canEdit: true,
+            recipeCount: 0,
+            listCount: 0,
         ), $result);
+    }
+
+    public function testGetCountsTheRecipesAndTheListsOfTheViewerThatUseTheIngredient(): void
+    {
+        // Given : l'ingrédient est dans deux recettes du lecteur (dont une avec deux lignes), une liste (une ligne ET un ajout à la main), une
+        // autre liste (un ajout à la main) ; une recette et une liste d'un autre utilisateur ne comptent pas
+        $viewer = $this->savedUser();
+        $other = $this->savedUser();
+        $ingredient = $this->savedIngredient(new IngredientBuilder()->withName('zzz farine')->withCreator($viewer, true));
+        $this->usage($ingredient->getSlug(), $viewer->getId(), $other->getId());
+
+        // When
+        $result = $this->ingredientLoader->get($ingredient->getSlug(), $viewer->getId(), false);
+
+        // Then
+        $this->assertSame([2, 2], [$result->recipeCount, $result->listCount]);
+    }
+
+    public function testGetCountsNothingForAViewerWhoDoesNotUseTheIngredient(): void
+    {
+        // Given : un commun que seul un autre utilisateur utilise
+        $viewer = $this->savedUser();
+        $other = $this->savedUser();
+        $common = $this->savedIngredient(new IngredientBuilder()->withName('zzz riz'));
+        $this->usage($common->getSlug(), $other->getId(), $other->getId());
+
+        // When
+        $result = $this->ingredientLoader->get($common->getSlug(), $viewer->getId(), false);
+
+        // Then
+        $this->assertSame([0, 0], [$result->recipeCount, $result->listCount]);
+    }
+
+    /**
+     * L'ingrédient est dans deux recettes de `$userId` (une avec deux lignes), une liste (une ligne et un ajout à la main) et une autre liste
+     * (un ajout à la main) ; `$otherId` n'a que le bruit : une recette et une liste qui l'utilisent aussi.
+     */
+    private function usage(string $slug, string $userId, string $otherId): void
+    {
+        $connection = $this->entityManager->getConnection();
+        foreach ([[$userId, 'r1', 2], [$userId, 'r2', 1], [$otherId, 'r3', 1]] as [$author, $recipe, $rows]) {
+            $connection->insert('recipe', ['id' => $recipe, 'name' => $recipe, 'slug' => $recipe . $author, 'serving' => 4, 'author' => $author, 'type' => 'plat', 'orignal' => null, 'version' => 1]);
+            for ($position = 0; $position < $rows; ++$position) {
+                $connection->insert('recipe_row', ['id' => $recipe . '-' . $position, 'ingredient' => $slug, 'quantity' => 1, 'unit' => 'gramme', 'recipe' => $recipe, 'position' => $position]);
+            }
+        }
+        foreach ([[$userId, 'l1'], [$userId, 'l2'], [$otherId, 'l3']] as [$owner, $list]) {
+            $connection->insert('shopping_list', ['id' => $list, 'owner' => $owner, 'created_at' => '2026-10-01 10:00:00', 'status' => 'ACTIVE', 'name' => null, 'sent_at' => null, 'version' => 1]);
+        }
+        $connection->insert('shopping_list_row', ['id' => 'x1', 'shopping_list' => 'l1', 'ingredient' => $slug, 'quantity' => 1, 'unit' => 'gramme', 'checked' => 'f']);
+        $connection->insert('shopping_list_ingredient', ['id' => 'y1', 'shopping_list' => 'l1', 'ingredient' => $slug, 'unit' => 'gramme', 'quantity' => 1]);
+        $connection->insert('shopping_list_ingredient', ['id' => 'y2', 'shopping_list' => 'l2', 'ingredient' => $slug, 'unit' => 'gramme', 'quantity' => 1]);
+        $connection->insert('shopping_list_row', ['id' => 'x3', 'shopping_list' => 'l3', 'ingredient' => $slug, 'quantity' => 1, 'unit' => 'gramme', 'checked' => 'f']);
     }
 
     public function testGetFindsTheCoefficientFromPurchaseUnitToCookingUnit(): void

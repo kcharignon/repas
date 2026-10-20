@@ -20,6 +20,8 @@ class IngredientDTOBuilder implements Builder
     private ?float $coefficient = null;
     private ?string $creatorId = null;
     private bool $canEdit = false;
+    private int $recipeCount = 0;
+    private int $listCount = 0;
 
     public function withSlug(string $slug): self
     {
@@ -73,6 +75,13 @@ class IngredientDTOBuilder implements Builder
         return $this;
     }
 
+    public function withUsage(int $recipeCount, int $listCount): self
+    {
+        $this->recipeCount = $recipeCount;
+        $this->listCount = $listCount;
+        return $this;
+    }
+
     public function build(): IngredientDTO
     {
         return new IngredientDTO(
@@ -90,6 +99,8 @@ class IngredientDTOBuilder implements Builder
             coefficient: $this->coefficient,
             creatorId: $this->creatorId,
             canEdit: $this->canEdit,
+            recipeCount: $this->recipeCount,
+            listCount: $this->listCount,
         );
     }
 }

@@ -18,13 +18,17 @@ use Repas\Repas\Application\Command\CopyRecipe\CopyRecipeHandler;
 use Repas\Repas\Application\Command\CreateConversion\CreateConversionCommand;
 use Repas\Repas\Application\Command\CreateRecipe\CreateRecipeHandler;
 use Repas\Repas\Application\Command\CreateRecipe\CreateRecipeRowSubCommand;
+use Repas\Repas\Application\Command\MergeIngredients\MergeIngredientsCommand;
+use Repas\Repas\Application\Command\MergeIngredients\MergeIngredientsHandler;
 use Repas\Repas\Application\Command\RemoveIngredientToShoppingList\RemoveIngredientToShoppingListCommand;
 use Repas\Repas\Application\Command\RemoveIngredientToShoppingList\RemoveIngredientToShoppingListHandler;
 use Repas\Repas\Application\Command\UpdateConversion\UpdateConversionCommand;
 use Repas\Repas\Application\Command\UpdateRecipe\UpdateRecipeHandler;
 use Repas\Repas\Application\Command\UpdateRecipe\UpdateRecipeRowSubCommand;
 use Repas\Repas\Application\Service\IngredientSlugResolver;
+use Repas\Repas\Domain\Interface\IngredientAliasRepository;
 use Repas\Repas\Domain\Interface\IngredientMatchCandidates;
+use Repas\Repas\Domain\Service\IngredientMergePlanner;
 use Repas\Repas\Domain\Service\IngredientNameMatcher;
 use Repas\Shared\Application\Interface\IngredientAliasResolver;
 
@@ -69,6 +73,18 @@ class IngredientSlugWritesAreResolvedTest extends TestCase
      */
     private const array COPIES = [
         CopyRecipeCommand::class => CopyRecipeHandler::class,
+    ];
+
+    /**
+     * La fusion de deux ingrédients de l'utilisateur (ING-005) reçoit deux slugs (`absorbedSlug`, `keptSlug`) mais ne les « résout » pas : il
+     * faut que ce soient SES ingrédients, tels quels ; un commun, même adopté, est refusé (422), l'ingrédient d'un autre est inconnu (404).
+     * Son handler garde pourtant les alias à jour (`IngredientAliasRepository::mergeInto`) et reconnaît un rejeu par l'alias de l'absorbé
+     * (`find`) : c'est ce qui fait que les anciens slugs, envoyés par les écritures ci-dessus, atterrissent sur l'ingrédient gardé.
+     *
+     * @var array<class-string, class-string>
+     */
+    private const array MERGES = [
+        MergeIngredientsCommand::class => MergeIngredientsHandler::class,
     ];
 
     /**
@@ -151,6 +167,27 @@ class IngredientSlugWritesAreResolvedTest extends TestCase
             $this->assertMatchesRegularExpression('/\$this->\w+->match\(/', $source, "$handler ne rapproche pas les noms.");
             // Une copie ne doit jamais écraser : un slug libre, jamais celui d'un ingrédient existant
             $this->assertMatchesRegularExpression('/\$this->\w+->forAdoption\(/', $source, "$handler doit choisir un slug libre (IngredientSlugPolicy).");
+            $this->assertTrue(class_exists($command), "$command n'existe plus : retire sa déclaration.");
+        }
+    }
+
+    public function testEveryMergeKeepsTheAliasesAndRecognizesAReplay(): void
+    {
+        foreach (self::MERGES as $command => $handler) {
+            // Given
+            $reflection = new ReflectionClass($handler);
+            $types = array_map(
+                static fn(\ReflectionParameter $parameter): string => (string) $parameter->getType(),
+                $reflection->getConstructor()?->getParameters() ?? [],
+            );
+            $source = (string) file_get_contents((string) $reflection->getFileName());
+
+            // Then : les alias suivent la fusion, un rejeu se reconnaît, l'ingrédient d'un autre est inconnu et le verdict est celui du service de domaine
+            $this->assertContains(IngredientAliasRepository::class, $types, "$handler doit injecter les alias.");
+            $this->assertMatchesRegularExpression('/\$this->\w+->mergeInto\(/', $source, "$handler doit déplacer les alias de l'absorbé sur le gardé.");
+            $this->assertMatchesRegularExpression('/\$this->\w+->find\(/', $source, "$handler doit reconnaître le rejeu d'une fusion par l'alias de l'absorbé.");
+            $this->assertMatchesRegularExpression('/->assertOwnedBy\(/', $source, "$handler doit refuser l'ingrédient d'un autre (404), sans passe-droit d'administrateur.");
+            $this->assertContains(IngredientMergePlanner::class, $types, "$handler doit demander son verdict au service de domaine, le même que l'aperçu.");
             $this->assertTrue(class_exists($command), "$command n'existe plus : retire sa déclaration.");
         }
     }

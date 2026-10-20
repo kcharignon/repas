@@ -154,9 +154,11 @@ final readonly class IngredientAdoptionReportPostgreSQLLoader implements Ingredi
 
         array_push($anomalies, ...$this->anomalies($userId, $drive->ingredientSlugByChoice));
 
+        // Un alias d'adoption est valide quand la copie existe, est au compte et vient de ce commun. Une FUSION (ING-005) fait désigner à l'alias
+        // l'ingrédient gardé, qui peut venir d'ailleurs : elle marque alors l'alias `source = 'merge'`, et seule la copie compte (qui existe, à ce compte).
         $invalidAliases = (int) $connection->fetchOne(
             "SELECT count(*) FROM ingredient_alias a WHERE a.user_id = ? AND a.kind = 'adoption' AND NOT ("
-            . ' EXISTS (SELECT 1 FROM ingredient own WHERE own.slug = a.ingredient_slug AND own.creator = a.user_id AND own.adopted_from = a.alias_slug)'
+            . ' EXISTS (SELECT 1 FROM ingredient own WHERE own.slug = a.ingredient_slug AND own.creator = a.user_id AND (own.adopted_from = a.alias_slug OR a.source = \'merge\'))'
             . ' AND EXISTS (SELECT 1 FROM ingredient c WHERE c.slug = a.alias_slug AND ' . IngredientVisibility::isCommonSql('c') . '))',
             [$userId],
         );
