@@ -87,6 +87,7 @@ Détail et squelettes : `references/read-slice-template.md`. Ordre :
 - [ ] Tests : `QueryHandler` (unitaire, `InMemoryLoader`, paramètres transmis), Loader (base réelle), controller API (clés JSON)
 - [ ] `docs/migration-roadmap.md` mis à jour (case cochée, bugs vus en passant notés dans « Hors périmètre »)
 - [ ] Écriture qui reçoit le slug d'un ingrédient (commande, ligne de recette, intention du drive) : elle le traduit par les alias de l'utilisateur (`IngredientSlugResolver`, ou `IngredientAliasResolver` côté `Drive`) et elle est déclarée dans `IngredientSlugWritesAreResolvedTest` (ADR 0028) ; une requête qui liste ou choisit des ingrédients pour un utilisateur applique `IngredientVisibility`
+- [ ] Un gestionnaire qui rend un compte `ACTIF` (ou en crée un actif) dispatche `Shared\Domain\Event\UserActivatedEvent` après avoir enregistré le compte, dans la transaction du bus : c'est ce qui lui donne ses ingrédients (ING-008) ; `UserActivationDispatchesEventTest` échoue sinon. Tout `INSERT` SQL d'ingrédient nomme `is_base` (`FALSE` pour une copie)
 - [ ] Ingrédient copié ou créé par un nouveau chemin : il naît avec `is_base` à faux, jamais la valeur de la source (ADR 0028, amendement) ; pour savoir qui est le propriétaire du catalogue, port `Shared` `IngredientCatalogOwner` (le compte protégé), jamais `ROLE_ADMIN` ni `isAdmin()` ; une réponse qui montre le marqueur le calcule pour le seul propriétaire (`isBase`, `canSetBase`)
 - [ ] ADR ajouté ou amendé si une convention a changé (et `CLAUDE.md` + ce skill dans le même commit)
 
