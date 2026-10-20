@@ -8,6 +8,8 @@ Suivi vivant du chantier « Se connecter avec Google » (web `kantin.eu` et appl
 4. [`docs/drive/consignes-agents.md`](../drive/consignes-agents.md) (règles communes de livraison : une branche par ticket, commits courts en français sans `Co-Authored-By`, PR au gabarit Quoi / Vérifié / À relire sans pied d'attribution, fusion en squash seulement si la CI est verte) et les skills `repas-dev` (back), `repas-front-dev` (front), `repas-android-dev` (application), `repas-po` (tout écran, tout texte), `repas-ops` (tout ce qui touche `deploy/`).
 5. Le `CLAUDE.md` du dépôt où l'on travaille.
 
+> **État au 2026-10-20.** La console Google Cloud (AUTH-002) est prévue en fin de semaine. La PR front #171 (pont Google Android) reste non fusionnée jusqu'à ce que la console soit faite. Le calendrier de Google Play (démarche en novembre 2026, fin en janvier 2027 ou après) et la piste F-Droid (variante sans bibliothèques Play Services) sont dans [`docs/store/roadmap.md`](../store/roadmap.md).
+
 ## Le besoin
 
 Un proche touche « Se connecter avec Google », choisit son compte et c'est fini : ni mot de passe à créer ou à retenir, ni lien à chercher dans sa messagerie. Le mot de passe reste possible. Le critère de réussite est celui du produit : **un proche se connecte seul, en deux touches** ([`principes-produit.md`](../drive/principes-produit.md)).

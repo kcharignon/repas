@@ -96,3 +96,7 @@ Celle des deux dépôts ; ordre de publication : back (route inactive tant que l
 - **Vie privée** : une phrase dans les conditions d'utilisation (`driveTerms.saves.appVersion`), recopiée dans [`../note-vie-privee.md`](../note-vie-privee.md).
 - **Le site s'adapte à l'application** : principe écrit dans `android/PUBLICATION.md` du front (`MIN_DRIVE_APP_VERSION`, `RAYON_HINTS_APP_VERSION`).
 - **Exploitation** : `APP_LATEST_VERSION` est écrit par l'assistant avec `ecrire-app-version.sh` (skill `repas-ops`), **après** chaque publication de l'application (jamais avant) ; procédure dans [`../../production.md`](../../production.md).
+
+## Complément (2026-10-20)
+
+L'application vérifie aussi elle-même sa version : lecture de `version.json` de la release roulante `android-latest` et mise à jour intégrée, voir [DRV-639](DRV-639-mise-a-jour-dans-l-application.md) (PR front #191).

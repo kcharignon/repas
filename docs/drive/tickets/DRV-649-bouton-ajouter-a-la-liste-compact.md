@@ -4,7 +4,7 @@
 - **Jalon** : M6 Simplicité d'usage
 - **Taille** : S
 - **Dépend de** : —
-- **Statut** : en cours (agent lancé le 2026-10-20, demande de l'utilisateur)
+- **Statut** : fait (PR front #179, 2026-10-20 ; demande de l'utilisateur)
 
 ## Contexte
 
@@ -30,3 +30,7 @@ L'utilisateur, 2026-10-20 : le bouton « + Ajouter à la liste » prend trop de 
 
 - Given la liste des recettes sur 360 px, When un nom de recette est très long, Then il passe à la ligne sans troncature brutale et le bouton reste de 44 px.
 - Given une lectrice d'écran, Then le nom du bouton reste « Ajouter {nom} à la liste de courses ».
+
+## Réalisation (PR front #179, 2026-10-20)
+
+Bouton rond sur les cartes, pastille courte sur la fiche.
