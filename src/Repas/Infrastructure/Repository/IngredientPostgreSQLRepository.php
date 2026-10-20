@@ -115,6 +115,23 @@ readonly class IngredientPostgreSQLRepository extends PostgreSQLRepository imple
         return $this->entityRepository->find($slug) !== null;
     }
 
+    public function existsForCreator(string $slug, string $creatorId, string $sluggedName): bool
+    {
+        // Une seule requête : le slug, ou le nom normalisé chez ce créateur (un ancien commun passé au propriétaire a un slug sans identifiant)
+        $rows = $this->entityManager->createQueryBuilder()
+            ->select('i.slug AS slug')
+            ->from(IngredientEntity::class, 'i')
+            ->where('i.slug = :slug OR (i.creatorId = :creator AND i.sluggedName = :sluggedName)')
+            ->setParameter('slug', $slug)
+            ->setParameter('creator', $creatorId)
+            ->setParameter('sluggedName', $sluggedName)
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getArrayResult();
+
+        return $rows !== [];
+    }
+
     public function findAll(): Tab
     {
         $entities = $this->entityRepository->findBy([], ['sluggedName' => 'ASC']);

@@ -69,6 +69,14 @@ interface IngredientRepository
      */
     public function exists(string $slug): bool;
 
+    /**
+     * Créer cet ingrédient pour ce créateur ferait un doublon : le slug existe, **ou** le créateur a déjà un ingrédient de même nom normalisé
+     * (`slugged_name`), en une seule requête. Le second cas couvre un ancien commun passé au propriétaire du catalogue : son slug n'a pas
+     * l'identifiant du compte, donc `exists()` ne le verrait pas. Seule la création d'un ingrédient l'appelle ; `exists()` garde son sens
+     * (collision de slug) pour l'adoption, la copie de recette et la fusion.
+     */
+    public function existsForCreator(string $slug, string $creatorId, string $sluggedName): bool;
+
     public function save(Ingredient $ingredient): void;
 
     /**

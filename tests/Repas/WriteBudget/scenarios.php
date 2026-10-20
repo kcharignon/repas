@@ -332,7 +332,17 @@ return [
         $t->persister->saveDepartment($department);
         $t->persister->saveUnit($unit);
 
-        return new CreateIngredientCommand('Praliné', '', $department->getSlug(), $unit->getSlug(), $unit->getSlug(), $owner->getId(), false, null);
+        return new CreateIngredientCommand('Praliné', '', $department->getSlug(), $unit->getSlug(), $unit->getSlug(), $owner->getId(), null);
+    },
+    // Un administrateur crée un ingrédient (ING-012) : comme tout le monde, à lui ; le même budget que `creer-ingredient` (le rôle ne coûte rien).
+    'creer-ingredient-administrateur' => static function (WriteBudgetTestCase $t): object {
+        $admin = $t->savedUser(new UserBuilder()->isAdmin());
+        $department = new DepartmentBuilder()->isBakery()->build();
+        $unit = new UnitBuilder()->isGramme()->build();
+        $t->persister->saveDepartment($department);
+        $t->persister->saveUnit($unit);
+
+        return new CreateIngredientCommand('Praliné', '', $department->getSlug(), $unit->getSlug(), $unit->getSlug(), $admin->getId(), null);
     },
     // Le propriétaire du catalogue crée un ingrédient « de base » (ING-011) : une lecture de plus que `creer-ingredient`, celle du compte
     // propriétaire ; `creer-ingredient` (sans marqueur) ne le lit pas.
@@ -343,7 +353,7 @@ return [
         $t->persister->saveDepartment($department);
         $t->persister->saveUnit($unit);
 
-        return new CreateIngredientCommand('Praliné', '', $department->getSlug(), $unit->getSlug(), $unit->getSlug(), $owner->getId(), false, null, true);
+        return new CreateIngredientCommand('Praliné', '', $department->getSlug(), $unit->getSlug(), $unit->getSlug(), $owner->getId(), null, true);
     },
     'modifier-ingredient' => static function (WriteBudgetTestCase $t): object {
         $owner = $t->savedUser();

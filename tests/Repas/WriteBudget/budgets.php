@@ -23,6 +23,7 @@ return [
     'copier-recette-ingredient-rapproche' => 15,
     'creer-conversion' => 4,
     'creer-ingredient' => 10,
+    'creer-ingredient-administrateur' => 10,
     'creer-ingredient-base' => 11,
     'creer-liste' => 4,
     'creer-preference-drive' => 8,

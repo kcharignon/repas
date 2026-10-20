@@ -385,6 +385,66 @@ class IngredientRepositoryTest extends DatabaseTestCase
         return $value === false ? null : $value;
     }
 
+    public function testExistsForCreatorSeesAnIngredientBySlug(): void
+    {
+        // Arrange
+        $creator = new UserBuilder()->build();
+        $this->persister->saveUser($creator);
+        $butter = new IngredientBuilder()->isButter()->withCreator($creator, true)->build();
+        $this->persister->saveIngredient($butter);
+
+        // Act & Assert : le slug est pris, même pour un autre nom normalisé et un autre créateur
+        $this->assertTrue($this->ingredientRepository->existsForCreator($butter->getSlug(), 'another-user-id', 'autre-nom'));
+        $this->assertFalse($this->ingredientRepository->existsForCreator('libre', $creator->getId(), 'autre-nom'));
+    }
+
+    public function testExistsForCreatorSeesTheSameNormalizedNameOfTheCreatorWhateverTheSlug(): void
+    {
+        // Arrange : un ancien commun passé à son propriétaire (créateur posé, slug sans identifiant de compte)
+        $owner = new UserBuilder()->build();
+        $other = new UserBuilder()->build();
+        $this->persister->saveUser($owner);
+        $this->persister->saveUser($other);
+        $tomato = new IngredientBuilder()->withName('Tomate')->withSlug('tomate')->withCreator($owner)->build();
+        $this->persister->saveIngredient($tomato);
+        $this->assertSame('tomate', $tomato->getSlug());
+
+        // Act & Assert : le slug d'une création serait `tomate<identifiant>`, libre, mais le nom normalisé est déjà au créateur
+        $this->assertFalse($this->ingredientRepository->exists('tomate' . $owner->getId()));
+        $this->assertTrue($this->ingredientRepository->existsForCreator('tomate' . $owner->getId(), $owner->getId(), 'tomate'));
+        // pas pour un autre créateur, ni pour un autre nom
+        $this->assertFalse($this->ingredientRepository->existsForCreator('tomate' . $other->getId(), $other->getId(), 'tomate'));
+        $this->assertFalse($this->ingredientRepository->existsForCreator('tomate-cerise' . $owner->getId(), $owner->getId(), 'tomate-cerise'));
+    }
+
+    public function testExistsForCreatorIgnoresACommonIngredientOfTheSameName(): void
+    {
+        // Arrange : avant la passation, « Tomate » est un commun (sans créateur) : il n'est à personne
+        $user = new UserBuilder()->build();
+        $this->persister->saveUser($user);
+        $this->persister->saveIngredient(new IngredientBuilder()->withName('Tomate')->build());
+
+        // Act & Assert
+        $this->assertFalse($this->ingredientRepository->existsForCreator('tomate' . $user->getId(), $user->getId(), 'tomate'));
+    }
+
+    public function testExistsForCreatorCostsASingleQuery(): void
+    {
+        // Arrange
+        $user = new UserBuilder()->build();
+        $this->persister->saveUser($user);
+        $this->persister->saveIngredient(new IngredientBuilder()->withName('Tomate')->withCreator($user, true)->build());
+        static::getContainer()->get('doctrine')->getManager()->clear();
+        $counter = static::getContainer()->get(QueryCounter::class);
+        $counter->reset();
+
+        // Act
+        $this->ingredientRepository->existsForCreator('tomate' . $user->getId(), $user->getId(), 'tomate');
+
+        // Assert
+        $this->assertSame(['SELECT ingredient' => 1], $counter->byTable());
+    }
+
     /**
      * @param Tab<Ingredient> $ingredients
      * @return list<string>
