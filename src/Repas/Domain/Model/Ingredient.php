@@ -25,6 +25,7 @@ final class Ingredient implements ModelInterface
         private Unit       $defaultPurchaseUnit,
         private ?string    $creatorId,
         private Tab        $compatibleUnits,
+        private ?string    $adoptedFrom = null,
     ) {
     }
 
@@ -119,6 +120,24 @@ final class Ingredient implements ModelInterface
         return $this;
     }
 
+    /**
+     * Slug du commun dont cet ingrédient est l'adoption (ADR 0028), `null` pour un ingrédient créé ou copié avec une recette. Un fait
+     * immuable : l'ingrédient est né de cette adoption, quoi qu'il devienne ensuite (renommé, fusionné). L'association actuelle
+     * « pour cet utilisateur, ce commun est cet ingrédient » est dans `IngredientAlias`, qui suit les fusions.
+     */
+    public function getAdoptedFrom(): ?string
+    {
+        return $this->adoptedFrom;
+    }
+
+    /**
+     * Une adoption n'est pas une création (ADR 0028 décision 7) : elle n'entre pas dans la statistique « ingrédients créés ».
+     */
+    public function isAdoption(): bool
+    {
+        return $this->adoptedFrom !== null;
+    }
+
     public function hasSameUnitInCookingAndPurchase(): bool
     {
         return $this->defaultCookingUnit->isEqual($this->defaultPurchaseUnit);
@@ -178,6 +197,28 @@ final class Ingredient implements ModelInterface
         return $ingredientCopy;
     }
 
+    /**
+     * L'adoption d'un commun par un utilisateur (ADR 0028) : une copie à lui, modifiable, qui garde le nom, l'image, le rayon et les
+     * unités du commun. Le slug est choisi par l'appelant (`IngredientSlugPolicy::forAdoption()`, après avoir vérifié qu'il est libre) ;
+     * les conversions propres du commun sont copiées par le cas d'usage. Contrairement à `copyFromOriginal()`, elle retient d'où elle vient.
+     */
+    public static function adopt(Ingredient $common, string $userId, string $slug): self
+    {
+        return new self(
+            slug: $slug,
+            name: $common->getName(),
+            image: $common->getImage(),
+            sluggedName: $common->getSluggedName(),
+            department: $common->getDepartment(),
+            defaultCookingUnit: $common->getDefaultCookingUnit(),
+            defaultPurchaseUnit: $common->getDefaultPurchaseUnit(),
+            creatorId: $userId,
+            // Une copie du tableau : l'ingrédient adopté ne partage pas son tableau d'unités avec le commun
+            compatibleUnits: $common->getCompatibleUnits()->slice(0, null, true),
+            adoptedFrom: $common->getSlug(),
+        );
+    }
+
     public static function load(array $datas): self
     {
         return new Ingredient(
@@ -190,6 +231,7 @@ final class Ingredient implements ModelInterface
             defaultPurchaseUnit: $datas['default_purchase_unit'],
             creatorId: $datas['creator_id'],
             compatibleUnits: $datas['compatible_units'],
+            adoptedFrom: $datas['adopted_from'],
         );
     }
 

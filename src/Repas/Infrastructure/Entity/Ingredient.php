@@ -39,6 +39,10 @@ class Ingredient
     #[ORM\Column(name: 'compatible_units', type: 'json', nullable: false)]
     private array $compatibleUnitSlugs = [];
 
+    /** Le commun dont cet ingrédient est l'adoption (ADR 0028) : un fait immuable, jamais mis à jour après la création. */
+    #[ORM\Column(name: 'adopted_from', length: 255, nullable: true)]
+    private ?string $adoptedFrom = null;
+
     /**
      * @param array<string> $compatibleUnitSlugs
      */
@@ -51,7 +55,8 @@ class Ingredient
         ?string $defaultCookingUnit,
         ?string $defaultPurchaseUnit,
         ?string $creatorId,
-        array $compatibleUnitSlugs
+        array $compatibleUnitSlugs,
+        ?string $adoptedFrom = null,
     ) {
         $this->slug = $slug;
         $this->name = $name;
@@ -62,6 +67,7 @@ class Ingredient
         $this->defaultPurchaseUnitSlug = $defaultPurchaseUnit;
         $this->creatorId = $creatorId;
         $this->compatibleUnitSlugs = $compatibleUnitSlugs;
+        $this->adoptedFrom = $adoptedFrom;
     }
 
 
@@ -162,6 +168,11 @@ class Ingredient
         return $this;
     }
 
+    public function getAdoptedFrom(): ?string
+    {
+        return $this->adoptedFrom;
+    }
+
     public static function fromModel(IngredientModel $ingredient): static
     {
         return new static(
@@ -174,6 +185,7 @@ class Ingredient
             defaultPurchaseUnit: $ingredient->getDefaultPurchaseUnit()->getSlug(),
             creatorId: $ingredient->getCreatorId(),
             compatibleUnitSlugs: $ingredient->getCompatibleUnits()->map(fn(UnitModel $unit) => $unit->getSlug())->toArray(),
+            adoptedFrom: $ingredient->getAdoptedFrom(),
         );
     }
 }

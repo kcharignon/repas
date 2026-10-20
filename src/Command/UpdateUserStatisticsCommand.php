@@ -33,8 +33,8 @@ class UpdateUserStatisticsCommand extends Command
 
         $users = $this->userRepository->findAll();
         foreach ($users as $user) {
-            // Recuperation des Ingredient de l'utilisateur
-            $ingredients = $this->ingredientRepository->findByOwner($user->getId())->filter(fn(Ingredient $ingredient) => $ingredient->getCreatorId() === $user->getId())->count();
+            // Ingrédients créés par l'utilisateur : une copie d'adoption n'est pas une création (ADR 0028 décision 7)
+            $ingredients = $this->ingredientRepository->findByOwner($user->getId())->filter(fn(Ingredient $ingredient) => $ingredient->getCreatorId() === $user->getId() && !$ingredient->isAdoption())->count();
             $recipes = $this->recipeRepository->findByAuthor($user->getId())->count();
             $io->info("{$user->getEmail()} : {$ingredients} ingredient(s) et {$recipes} recipes");
 

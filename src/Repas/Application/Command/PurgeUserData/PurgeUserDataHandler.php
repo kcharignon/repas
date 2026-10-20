@@ -4,13 +4,14 @@ namespace Repas\Repas\Application\Command\PurgeUserData;
 
 
 use Repas\Repas\Domain\Interface\ConversionRepository;
+use Repas\Repas\Domain\Interface\IngredientAliasRepository;
 use Repas\Repas\Domain\Interface\IngredientRepository;
 use Repas\Repas\Domain\Interface\RecipeRepository;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 /**
- * Supprime les listes de courses, les recettes et les ingrédients personnalisés d'un compte supprimé, comme s'il n'avait
+ * Supprime les listes de courses, les recettes, les ingrédients personnalisés (copies d'adoption comprises) et les alias d'ingrédients d'un compte supprimé, comme s'il n'avait
  * jamais existé (ADR 0021). Les suppressions se font en masse, sans passer par `RemoveRecipe` ni `RemoveIngredient` : ces
  * cas d'usage refusent de supprimer ce qu'une liste utilise, et leurs événements mettraient à jour les statistiques d'un
  * compte qui n'existe plus.
@@ -23,6 +24,7 @@ readonly class PurgeUserDataHandler
         private RecipeRepository $recipeRepository,
         private ConversionRepository $conversionRepository,
         private IngredientRepository $ingredientRepository,
+        private IngredientAliasRepository $aliasRepository,
     ) {
     }
 
@@ -40,5 +42,6 @@ readonly class PurgeUserDataHandler
 
         $this->conversionRepository->deleteByIngredientCreator($command->userId);
         $this->ingredientRepository->deleteByCreator($command->userId);
+        $this->aliasRepository->deleteByUser($command->userId);
     }
 }

@@ -2843,9 +2843,9 @@
                 ],
                 "properties": {
                     "name": {
-                        "description": "Nom de l'ingr\u00e9dient",
+                        "description": "Nom de l'ingr\u00e9dient (200 caract\u00e8res au plus)",
                         "type": "string",
-                        "maxLength": 255,
+                        "maxLength": 200,
                         "example": "Pralin\u00e9"
                     },
                     "departmentSlug": {

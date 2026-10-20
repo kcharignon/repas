@@ -12,6 +12,10 @@ services:
         alias: 'Repas\Repas\Infrastructure\Repository\IngredientPostgreSQLRepository'
         public: true
 
+    Repas\Repas\Domain\Interface\IngredientAliasRepository:
+        alias: 'Repas\Repas\Infrastructure\Repository\IngredientAliasPostgreSQLRepository'
+        public: true
+
     Repas\Repas\Domain\Interface\RecipeRepository:
         alias: 'Repas\Repas\Infrastructure\Repository\RecipePostgreSQLRepository'
         public: true

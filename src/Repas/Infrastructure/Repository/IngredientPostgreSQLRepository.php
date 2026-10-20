@@ -164,6 +164,7 @@ readonly class IngredientPostgreSQLRepository extends PostgreSQLRepository imple
             "default_purchase_unit" => $this->unitRepository->findOneBySlug($ingredientEntity->getDefaultPurchaseUnitSlug()),
             "creator_id" => $ingredientEntity->getCreatorId(),
             "compatible_units" => $this->unitRepository->findBySlugs(new Tab($ingredientEntity->getCompatibleUnitSlugs(), 'string')),
+            "adopted_from" => $ingredientEntity->getAdoptedFrom(),
         ]);
     }
 

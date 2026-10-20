@@ -5,6 +5,7 @@ namespace Repas\Repas\Application\Command\RemoveIngredient;
 use Repas\Shared\Domain\Event\IngredientRemovedEvent;
 use Repas\Repas\Domain\Exception\IngredientException;
 use Repas\Repas\Domain\Interface\ConversionRepository;
+use Repas\Repas\Domain\Interface\IngredientAliasRepository;
 use Repas\Repas\Domain\Interface\IngredientRepository;
 use Repas\Repas\Domain\Interface\RecipeRepository;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
@@ -20,6 +21,7 @@ readonly class RemoveIngredientHandler
         private RecipeRepository $recipeRepository,
         private ShoppingListRepository $shoppingListRepository,
         private ConversionRepository $conversionRepository,
+        private IngredientAliasRepository $aliasRepository,
         private EventDispatcherInterface $eventDispatcher,
     ) {
     }
@@ -44,7 +46,12 @@ readonly class RemoveIngredientHandler
         $this->conversionRepository->deleteByIngredient($ingredient);
         $this->ingredientRepository->delete($ingredient);
         if ($ingredient->getCreatorId() !== null) {
-            $this->eventDispatcher->dispatch(new IngredientRemovedEvent($ingredient->getCreatorId(), $ingredient->getId()));
+            // Les alias qui désignaient cet ingrédient disparaissent avec lui : le commun adopté redevient visible pour son propriétaire (ADR 0028)
+            $this->aliasRepository->deleteByIngredientSlug($ingredient->getCreatorId(), $ingredient->getSlug());
+            // Une adoption n'est pas une création : la supprimer ne décrémente pas la statistique « ingrédients créés » (ADR 0028 décision 7)
+            if (!$ingredient->isAdoption()) {
+                $this->eventDispatcher->dispatch(new IngredientRemovedEvent($ingredient->getCreatorId(), $ingredient->getId()));
+            }
         }
     }
 }
