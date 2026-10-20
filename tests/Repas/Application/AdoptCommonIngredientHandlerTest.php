@@ -167,6 +167,41 @@ class AdoptCommonIngredientHandlerTest extends TestCase
         $this->assertTrue($this->ingredientRepository->exists($slug));
     }
 
+    public function testAnOrphanAliasIsErasedAndTheCommonIsAdoptedAgain(): void
+    {
+        // Given : le code d'avant ING-001 a supprimé la copie sans effacer son alias (retour arrière après la migration)
+        $orphan = IngredientAlias::create(self::USER, 'beurre', 'beurre-d-avant-' . self::USER, AliasKind::ADOPTION, 'migration-2026-10-21', new DateTimeImmutable(self::NOW));
+        $aliases = new IngredientAliasInMemoryRepository([$orphan], fn(string $userId, string $slug): bool => $this->ingredientRepository->exists($slug));
+        $conversions = count($this->conversionRepository->findAll());
+
+        // When
+        $slug = $this->handlerWith($aliases)(new AdoptCommonIngredientCommand(self::USER, 'beurre', 'first-use'));
+
+        // Then : une copie neuve, avec ses conversions, et un alias valide à la place de l'orphelin (jamais l'orphelin rendu)
+        $this->assertSame('beurre' . self::USER, $slug);
+        $this->assertTrue($this->ingredientRepository->exists($slug));
+        $this->assertCount($conversions + 2, $this->conversionRepository->findAll());
+        $alias = $aliases->find(self::USER, 'beurre');
+        $this->assertSame([$slug, 'first-use'], [$alias->getIngredientSlug(), $alias->getSource()]);
+        $this->assertCount(1, $aliases->all());
+    }
+
+    public function testAnAliasWhoseCopyStillExistsIsNotTouchedByTheOrphanCheck(): void
+    {
+        // Given
+        $aliases = new IngredientAliasInMemoryRepository([], fn(string $userId, string $slug): bool => $this->ingredientRepository->exists($slug));
+        $handler = $this->handlerWith($aliases);
+        $slug = $handler(new AdoptCommonIngredientCommand(self::USER, 'beurre', 'copy'));
+
+        // When
+        $again = $handler(new AdoptCommonIngredientCommand(self::USER, 'beurre', 'first-use'));
+
+        // Then : la même copie, le premier alias (sa source) intact
+        $this->assertSame($slug, $again);
+        $this->assertSame('copy', $aliases->find(self::USER, 'beurre')->getSource());
+        $this->assertCount(1, $aliases->all());
+    }
+
     public function testAnotherUserAdoptsHisOwnCopy(): void
     {
         // Given

@@ -4,19 +4,26 @@ namespace Repas\Tests\Helper\InMemoryRepository;
 
 
 use Repas\Repas\Domain\Interface\IngredientAliasRepository;
+use Repas\Repas\Domain\Model\AliasLookup;
 use Repas\Repas\Domain\Model\IngredientAlias;
 
 /**
  * Double en mémoire du port : il tient le même contrat que la table, une ligne par (utilisateur, slug d'alias) et le premier alias
- * écrit n'est jamais remplacé (`ON CONFLICT DO NOTHING`).
+ * écrit n'est jamais remplacé (`ON CONFLICT DO NOTHING`). Par défaut il ne modélise pas l'alias orphelin (dont l'ingrédient
+ * n'existe plus) : c'est le SQL du vrai dépôt qui l'ignore, prouvé sur base réelle (`IngredientAliasRepositoryTest`) ; un test qui en a besoin
+ * donne `$targetExists`.
  */
 class IngredientAliasInMemoryRepository implements IngredientAliasRepository
 {
     /** @var array<string, IngredientAlias> */
     private array $aliases = [];
 
-    /** @param list<IngredientAlias> $aliases */
-    public function __construct(array $aliases = [])
+    /**
+     * @param list<IngredientAlias> $aliases
+     * @param (\Closure(string, string): bool)|null $targetExists dit si l'ingrédient désigné par un alias existe et appartient à l'utilisateur (utilisateur,
+     *        slug de l'ingrédient) : programmé, le double ignore les alias orphelins comme le fait le SQL du vrai dépôt
+     */
+    public function __construct(array $aliases = [], private readonly ?\Closure $targetExists = null)
     {
         foreach ($aliases as $alias) {
             $this->aliases[$alias->getId()] = $alias;
@@ -33,12 +40,17 @@ class IngredientAliasInMemoryRepository implements IngredientAliasRepository
         $resolved = [];
         foreach ($slugs as $slug) {
             $alias = $this->find($userId, $slug);
-            if ($alias !== null) {
+            if ($alias !== null && ($this->targetExists === null || ($this->targetExists)($userId, $alias->getIngredientSlug()))) {
                 $resolved[$slug] = $alias->getIngredientSlug();
             }
         }
 
         return $resolved;
+    }
+
+    public function lookup(string $userId, array $slugs): AliasLookup
+    {
+        return new AliasLookup($this->resolve($userId, $slugs), $this->isAdopter($userId));
     }
 
     public function isAdopter(string $userId): bool

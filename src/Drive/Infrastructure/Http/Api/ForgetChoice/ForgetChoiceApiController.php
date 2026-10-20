@@ -28,7 +28,7 @@ final class ForgetChoiceApiController extends AbstractController
 
     #[Route(path: '/api/v1/drive/choices/{ingredientSlug}', name: 'api_forget_choice', requirements: ['ingredientSlug' => '[a-z0-9-]{1,255}'], methods: ['DELETE'])]
     #[IsGranted('ROLE_USER')]
-    #[OA\Delete(summary: "Oublie toute la préférence de l'utilisateur connecté pour un ingrédient : produits acceptés et refusés, ou « j'en ai toujours » (les produits restent connus)")]
+    #[OA\Delete(summary: "Oublie toute la préférence de l'utilisateur connecté pour un ingrédient : produits acceptés et refusés, ou « j'en ai toujours » (les produits restent connus). Le slug d'un commun que l'utilisateur a adopté désigne sa copie")]
     #[OA\Tag(name: 'Drive')]
     #[OA\Parameter(name: 'ingredientSlug', in: 'path', required: true, description: "Slug de l'ingrédient", schema: new OA\Schema(type: 'string', pattern: '^[a-z0-9-]{1,255}$'), example: 'farine')]
     #[OA\Parameter(name: 'retailer', in: 'query', required: true, description: 'Enseigne du drive', schema: new OA\Schema(type: 'string', enum: ['leclerc']), example: 'leclerc')]

@@ -3,6 +3,7 @@
 namespace Repas\Tests\Repas\Application;
 
 
+use DateTimeImmutable;
 use PHPUnit\Framework\TestCase;
 use Repas\Repas\Application\Command\UpdateRecipe\UpdateRecipeCommand;
 use Repas\Repas\Application\Command\UpdateRecipe\UpdateRecipeHandler;
@@ -14,6 +15,8 @@ use Repas\Repas\Domain\Interface\IngredientRepository;
 use Repas\Repas\Domain\Interface\RecipeRepository;
 use Repas\Repas\Domain\Interface\RecipeTypeRepository;
 use Repas\Repas\Domain\Interface\UnitRepository;
+use Repas\Repas\Domain\Model\AliasKind;
+use Repas\Repas\Domain\Model\IngredientAlias;
 use Repas\Shared\Domain\Tool\Tab;
 use Repas\Tests\Helper\Builder\IngredientBuilder;
 use Repas\Tests\Helper\Builder\RecipeBuilder;
@@ -23,6 +26,8 @@ use Repas\Repas\Domain\Service\ConversionService;
 use Repas\Tests\Helper\Builder\RecipeRowBuilder;
 use Repas\Tests\Helper\Builder\RecipeTypeBuilder;
 use Repas\Tests\Helper\Builder\UnitBuilder;
+use Repas\Tests\Helper\IngredientSlugResolverFactory;
+use Repas\Tests\Helper\InMemoryRepository\IngredientAliasInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\IngredientInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\RecipeInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\RecipeTypeInMemoryRepository;
@@ -35,6 +40,7 @@ class UpdateRecipeHandlerTest extends TestCase
     private readonly RecipeRepository $recipeRepository;
     private readonly RecipeTypeRepository $recipeTypeRepository;
     private readonly IngredientRepository $ingredientRepository;
+    private readonly IngredientAliasInMemoryRepository $aliasRepository;
     private readonly UnitRepository $unitRepository;
 
     protected function setUp(): void
@@ -51,6 +57,7 @@ class UpdateRecipeHandlerTest extends TestCase
             new UnitBuilder()->isGramme()->build(),
             new UnitBuilder()->isUnite()->build(),
         ]);
+        $this->aliasRepository = new IngredientAliasInMemoryRepository();
 
         $this->handler = new UpdateRecipeHandler(
             $this->recipeRepository,
@@ -58,6 +65,7 @@ class UpdateRecipeHandlerTest extends TestCase
             $this->ingredientRepository,
             $this->unitRepository,
             new ConversionService(new ConversionInMemoryRepository(), $this->unitRepository),
+            IngredientSlugResolverFactory::create($this->ingredientRepository, $this->aliasRepository),
         );
     }
 
@@ -113,6 +121,67 @@ class UpdateRecipeHandlerTest extends TestCase
         RepasAssert::assertRecipe($actual, $expectedRecipe, ["RecipeRow" => ["id"]]);
     }
 
+
+    public function testRowsOfACommonTheAuthorAdoptedLandOnHisCopy(): void
+    {
+        // Arrange : l'auteur de la recette a adopté les pâtes ; la mise à jour est envoyée avec l'ancien slug (onglet resté ouvert)
+        $recipe = new RecipeBuilder()->isPastaCarbonara()->build();
+        $this->recipeRepository->save($recipe);
+        $copy = new IngredientBuilder()->isPasta()->withCreator(new UserBuilder()->withId($recipe->getAuthorId())->build(), true)->withAdoptedFrom('pate')->build();
+        $this->ingredientRepository->save($copy);
+        $this->aliasRepository->save(IngredientAlias::create($recipe->getAuthorId(), 'pate', $copy->getSlug(), AliasKind::ADOPTION, 'migration-2026-10-21', new DateTimeImmutable()));
+
+        // Act
+        ($this->handler)(new UpdateRecipeCommand($recipe->getId(), 'Pates', 4, Tab::fromArray(new UpdateRecipeRowSubCommand('pate', 'gramme', 500), new UpdateRecipeRowSubCommand('parmesan', 'gramme', 50)), 'plat'));
+
+        // Assert : la copie pour les pâtes, le commun pour le parmesan qu'il n'a pas adopté (un adoptant l'adopte à la première utilisation)
+        $slugs = $this->slugsOf($recipe->getId());
+        $this->assertContains($copy->getSlug(), $slugs);
+        $this->assertNotContains('pate', $slugs);
+        $this->assertContains('parmesan' . $recipe->getAuthorId(), $slugs);
+        $this->assertNotContains('parmesan', $slugs);
+        $this->assertSame('first-use', $this->aliasRepository->find($recipe->getAuthorId(), 'parmesan')->getSource());
+    }
+
+    public function testTheSlugsAreReadForTheAuthorOfTheRecipeNotForWhoeverSendsThem(): void
+    {
+        // Arrange : un autre utilisateur a adopté les pâtes, pas l'auteur (un administrateur peut modifier la recette de n'importe qui)
+        $recipe = new RecipeBuilder()->isPastaCarbonara()->build();
+        $this->recipeRepository->save($recipe);
+        $this->aliasRepository->save(IngredientAlias::create('someone-else', 'pate', 'pate' . 'someone-else', AliasKind::ADOPTION, 'migration-2026-10-21', new DateTimeImmutable()));
+
+        // Act
+        ($this->handler)(new UpdateRecipeCommand($recipe->getId(), 'Pates', 4, Tab::fromArray(new UpdateRecipeRowSubCommand('pate', 'gramme', 500)), 'plat'));
+
+        // Assert : l'auteur n'a rien adopté, sa recette garde les communs partagés
+        $this->assertSame(['pate'], $this->slugsOf($recipe->getId()));
+    }
+
+    public function testWithoutAnyAliasTheRowsKeepTheSharedCommonsAndNothingIsAdopted(): void
+    {
+        // Arrange
+        $recipe = new RecipeBuilder()->isPastaCarbonara()->build();
+        $this->recipeRepository->save($recipe);
+
+        // Act
+        ($this->handler)(new UpdateRecipeCommand($recipe->getId(), 'Pates', 4, Tab::fromArray(new UpdateRecipeRowSubCommand('pate', 'gramme', 500), new UpdateRecipeRowSubCommand('parmesan', 'gramme', 50)), 'plat'));
+
+        // Assert
+        $this->assertEqualsCanonicalizing(['pate', 'parmesan'], $this->slugsOf($recipe->getId()));
+        $this->assertSame([], $this->aliasRepository->all());
+        $this->assertCount(2, $this->ingredientRepository->findAll());
+    }
+
+    /**
+     * @return list<string> les slugs d'ingrédient des lignes de la recette enregistrée
+     */
+    private function slugsOf(string $recipeId): array
+    {
+        return array_values(array_map(
+            static fn($row): string => $row->getIngredient()->getSlug(),
+            $this->recipeRepository->findOneById($recipeId)->getRows()->toArray(),
+        ));
+    }
 
     public function testFailedHandleUpdateRecipeUnknownRecipe(): void
     {

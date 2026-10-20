@@ -26,7 +26,7 @@ final class ListIngredientsByDepartmentApiController extends AbstractController
 
     #[Route(path: '/api/v1/departments/{slug}/ingredients', name: 'api_list_ingredients_by_department', methods: ['GET'])]
     #[IsGranted('ROLE_USER')]
-    #[OA\Get(summary: "Ingrédients communs et ingrédients de l'utilisateur authentifié dans un rayon, triés par nom")]
+    #[OA\Get(summary: "Ingrédients de l'utilisateur authentifié dans un rayon, triés par nom : les siens et les communs qu'il n'a pas adoptés (un commun adopté est remplacé par sa copie, qui est à lui)")]
     #[OA\Tag(name: 'Ingredients')]
     #[OA\Response(
         response: 200,

@@ -10,6 +10,7 @@ use Repas\Drive\Domain\Exception\DriveException;
 use Repas\Drive\Domain\Model\Retailer;
 use Repas\Tests\Helper\Builder\ChoiceBuilder;
 use Repas\Tests\Helper\Builder\DriveSettingsBuilder;
+use Repas\Tests\Helper\InMemoryLoader\IngredientAliasInMemoryResolver;
 use Repas\Tests\Helper\InMemoryRepository\ChoiceInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\DriveSettingsInMemoryRepository;
 
@@ -27,7 +28,7 @@ class ForgetChoiceHandlerTest extends TestCase
             new ChoiceBuilder()->withUserId('user-1')->withIngredientSlug('sel')->haveAtHome()->build(),
             new ChoiceBuilder()->withUserId('user-2')->withIngredientSlug('farine')->withAccepted(['a'])->build(),
         ]);
-        $this->handler = new ForgetChoiceHandler($this->settings, $this->choices);
+        $this->handler = new ForgetChoiceHandler($this->settings, $this->choices, new IngredientAliasInMemoryResolver());
     }
 
     public function testForgetsTheWholeChoiceOfOneIngredientOnly(): void
@@ -48,6 +49,39 @@ class ForgetChoiceHandlerTest extends TestCase
 
         // Then
         $this->assertNull($this->choices->findOne('user-1', Retailer::LECLERC, '123456', 'sel'));
+    }
+
+    public function testAnOldSlugOfACommonTheUserAdoptedForgetsThePreferenceOfHisCopy(): void
+    {
+        // Given : l'utilisateur a adopté la farine (ADR 0028) ; sa préférence est sous la copie, le client envoie encore le slug du commun
+        $this->choices->save(new ChoiceBuilder()->withUserId('user-1')->withIngredientSlug('farine-user-1')->withAccepted(['b'])->build());
+        $aliases = new IngredientAliasInMemoryResolver(['farine' => 'farine-user-1']);
+        $handler = new ForgetChoiceHandler($this->settings, $this->choices, $aliases);
+
+        // When
+        $handler(new ForgetChoiceCommand('user-1', Retailer::LECLERC, '123456', 'farine'));
+
+        // Then : la préférence de la copie est oubliée, l'autre (plus ancienne, sous le commun) n'est pas touchée
+        $this->assertNull($this->choices->findOne('user-1', Retailer::LECLERC, '123456', 'farine-user-1'));
+        $this->assertNotNull($this->choices->findOne('user-1', Retailer::LECLERC, '123456', 'farine'));
+        $this->assertSame([['user-1', ['farine']]], $aliases->resolveCalls);
+    }
+
+    public function testTheAliasIsNotReadWhenTheStoreIsNotTheCurrentOne(): void
+    {
+        // Given
+        $aliases = new IngredientAliasInMemoryResolver(['farine' => 'farine-user-1']);
+        $handler = new ForgetChoiceHandler($this->settings, $this->choices, $aliases);
+
+        // Then
+        $this->expectExceptionObject(DriveException::storeMismatch());
+
+        // When
+        try {
+            $handler(new ForgetChoiceCommand('user-1', Retailer::LECLERC, '654321', 'farine'));
+        } finally {
+            $this->assertSame([], $aliases->resolveCalls);
+        }
     }
 
     public function testAnIngredientWithoutChoiceIsNotFound(): void

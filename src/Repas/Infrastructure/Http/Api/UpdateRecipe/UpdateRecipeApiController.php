@@ -29,7 +29,7 @@ final class UpdateRecipeApiController extends AbstractController
     #[Route(path: '/api/v1/recipes/{id}', name: 'api_update_recipe', methods: ['PUT'])]
     #[IsGranted('ROLE_USER')]
     #[IsGranted('RECIPE_OWNER', 'id')]
-    #[OA\Put(summary: "Remplace une recette de l'utilisateur : nom, personnes, type et lignes (les lignes absentes du corps sont supprimées)")]
+    #[OA\Put(summary: "Remplace une recette de l'utilisateur : nom, personnes, type et lignes (les lignes absentes du corps sont supprimées). Le slug d'un commun que l'auteur a adopté est remplacé par celui de sa copie, comme à la création")]
     #[OA\Tag(name: 'Recipes')]
     #[OA\RequestBody(required: true, content: new OA\JsonContent(ref: new Model(type: RecipePayload::class)))]
     #[OA\Parameter(ref: '#/components/parameters/IfMatch')]

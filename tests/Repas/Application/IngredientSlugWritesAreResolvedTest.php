@@ -1,0 +1,201 @@
+<?php
+
+namespace Repas\Tests\Repas\Application;
+
+
+use PHPUnit\Framework\TestCase;
+use ReflectionClass;
+use Repas\Drive\Application\Command\ForgetChoice\ForgetChoiceCommand;
+use Repas\Drive\Application\Command\ForgetChoice\ForgetChoiceHandler;
+use Repas\Drive\Application\Command\ReplaceIngredientPreference\ReplaceIngredientPreferenceCommand;
+use Repas\Drive\Application\Command\ReplaceIngredientPreference\ReplaceIngredientPreferenceHandler;
+use Repas\Drive\Application\Command\SaveProductChoices\ChoiceIntent;
+use Repas\Drive\Application\Command\SaveProductChoices\SaveProductChoicesHandler;
+use Repas\Repas\Application\Command\AddIngredientToShoppingList\AddIngredientToShoppingListCommand;
+use Repas\Repas\Application\Command\AddIngredientToShoppingList\AddIngredientToShoppingListHandler;
+use Repas\Repas\Application\Command\CreateConversion\CreateConversionCommand;
+use Repas\Repas\Application\Command\CreateRecipe\CreateRecipeHandler;
+use Repas\Repas\Application\Command\CreateRecipe\CreateRecipeRowSubCommand;
+use Repas\Repas\Application\Command\RemoveIngredientToShoppingList\RemoveIngredientToShoppingListCommand;
+use Repas\Repas\Application\Command\RemoveIngredientToShoppingList\RemoveIngredientToShoppingListHandler;
+use Repas\Repas\Application\Command\UpdateConversion\UpdateConversionCommand;
+use Repas\Repas\Application\Command\UpdateRecipe\UpdateRecipeHandler;
+use Repas\Repas\Application\Command\UpdateRecipe\UpdateRecipeRowSubCommand;
+use Repas\Repas\Application\Service\IngredientSlugResolver;
+use Repas\Shared\Application\Interface\IngredientAliasResolver;
+
+/**
+ * Garde-fou de l'ADR 0028 (décision 4, risque R1) : une écriture qui reçoit le slug d'un ingrédient doit le traduire par les alias de
+ * l'utilisateur, sinon une ligne de recette, de liste ou de choix du drive retombe sur un commun que l'utilisateur a adopté et qui est
+ * masqué pour lui (`IngredientVisibility`). Rien dans le langage n'oblige à y penser : ce test oblige à le DIRE.
+ *
+ * Il parcourt le code de l'application (hors lectures) et échoue dès qu'une classe porte une propriété `ingredientSlug` ou
+ * `ingredientSlugs` sans figurer ci-dessous. Ajouter une écriture qui reçoit un slug d'ingrédient impose donc de la déclarer ici, soit
+ * avec le handler qui la résout (`IngredientSlugResolver` côté Repas, `IngredientAliasResolver` côté Drive), soit, motif écrit, parmi
+ * les exemptions. Il vérifie aussi que chaque handler déclaré injecte son résolveur ET s'en sert.
+ *
+ * Les lectures par slug (`GET /ingredients/{slug}`, `ListCompatibleUnits`…) ne sont pas des écritures : un commun adopté se lit encore.
+ * Les écritures qui reçoivent un identifiant de recette ou de liste (planifier un repas, copier une recette) lisent leurs slugs dans
+ * l'agrégat déjà enregistré ; la copie d'une recette, qui les dépose sur une autre recette, est traitée par ING-004.
+ */
+class IngredientSlugWritesAreResolvedTest extends TestCase
+{
+    /**
+     * Les classes qui portent un slug d'ingrédient reçu en écriture, avec le handler qui le traduit.
+     *
+     * @var array<class-string, class-string>
+     */
+    private const array RESOLVED = [
+        CreateRecipeRowSubCommand::class => CreateRecipeHandler::class,
+        UpdateRecipeRowSubCommand::class => UpdateRecipeHandler::class,
+        AddIngredientToShoppingListCommand::class => AddIngredientToShoppingListHandler::class,
+        RemoveIngredientToShoppingListCommand::class => RemoveIngredientToShoppingListHandler::class,
+        ChoiceIntent::class => SaveProductChoicesHandler::class,
+        ReplaceIngredientPreferenceCommand::class => ReplaceIngredientPreferenceHandler::class,
+        ForgetChoiceCommand::class => ForgetChoiceHandler::class,
+    ];
+
+    /**
+     * Les classes dispensées, avec la raison : elles ne sont jamais envoyées par un utilisateur qui a des alias.
+     *
+     * @var array<class-string, string>
+     */
+    private const array EXEMPT = [
+        CreateConversionCommand::class => "réservée aux administrateurs (#[IsGranted('ROLE_ADMIN')]), qui n'adoptent jamais : ils n'ont aucun alias",
+        UpdateConversionCommand::class => "réservée aux administrateurs (#[IsGranted('ROLE_ADMIN')]), qui n'adoptent jamais : ils n'ont aucun alias",
+    ];
+
+    public function testEveryApplicationClassThatReceivesAnIngredientSlugIsDeclared(): void
+    {
+        // Given
+        $carriers = self::carriersIn(dirname(__DIR__, 3) . '/src');
+
+        // When
+        $undeclared = self::undeclared($carriers);
+
+        // Then
+        $this->assertSame(
+            [],
+            $undeclared,
+            "Ces classes reçoivent un slug d'ingrédient en écriture sans être déclarées : résous le slug par les alias de l'utilisateur"
+            . " (IngredientSlugResolver côté Repas, IngredientAliasResolver côté Drive, ADR 0028 décision 4) puis ajoute-les à RESOLVED,"
+            . ' ou à EXEMPT avec la raison.',
+        );
+    }
+
+    public function testNoDeclarationIsLeftBehindOnceTheClassNoLongerCarriesASlug(): void
+    {
+        // Given
+        $carriers = self::carriersIn(dirname(__DIR__, 3) . '/src');
+
+        // Then : une liste qui garde des classes disparues ne protégerait plus rien
+        $this->assertSame([], array_values(array_diff(array_keys(self::RESOLVED), $carriers)), 'RESOLVED cite une classe qui ne porte plus de slug.');
+        $this->assertSame([], array_values(array_diff(array_keys(self::EXEMPT), $carriers)), 'EXEMPT cite une classe qui ne porte plus de slug.');
+    }
+
+    public function testEveryDeclaredHandlerInjectsItsResolverAndUsesIt(): void
+    {
+        foreach (array_unique(array_values(self::RESOLVED)) as $handler) {
+            // Given
+            $reflection = new ReflectionClass($handler);
+            $injected = array_filter(
+                $reflection->getConstructor()?->getParameters() ?? [],
+                static fn(\ReflectionParameter $parameter): bool => in_array((string) $parameter->getType(), [IngredientSlugResolver::class, IngredientAliasResolver::class], true),
+            );
+            $source = (string) file_get_contents((string) $reflection->getFileName());
+
+            // Then
+            $this->assertCount(1, $injected, "$handler doit injecter un résolveur de slugs (IngredientSlugResolver ou IngredientAliasResolver).");
+            $property = array_values($injected)[0]->getName();
+            $this->assertMatchesRegularExpression(
+                '/\$this->' . preg_quote($property, '/') . '->(resolveForUser|resolveExisting|resolve)\(/',
+                $source,
+                "$handler injecte son résolveur de slugs mais ne s'en sert pas.",
+            );
+        }
+    }
+
+    public function testTheExemptionsAreReallyReservedToAdministrators(): void
+    {
+        foreach (['CreateConversion', 'UpdateConversion'] as $useCase) {
+            // Given
+            $controller = (string) file_get_contents(dirname(__DIR__, 3) . "/src/Repas/Infrastructure/Http/Api/$useCase/{$useCase}ApiController.php");
+
+            // Then
+            $this->assertStringContainsString("#[IsGranted('ROLE_ADMIN')]", $controller, "$useCase n'est plus réservée aux administrateurs : retire l'exemption et résous son slug.");
+        }
+    }
+
+    public function testAnUndeclaredCommandWithAnIngredientSlugIsDetected(): void
+    {
+        // Given : un répertoire d'application qui contient une nouvelle écriture à slug d'ingrédient, et d'autres classes sans rapport
+        $directory = sys_get_temp_dir() . '/ingredient-slug-writes-' . bin2hex(random_bytes(4));
+        mkdir($directory . '/Repas/Application/Command/ArchiveIngredient', 0777, true);
+        mkdir($directory . '/Repas/Application/Query/GetIngredient', 0777, true);
+        mkdir($directory . '/Repas/Application/Loader', 0777, true);
+        file_put_contents($directory . '/Repas/Application/Command/ArchiveIngredient/ArchiveIngredientCommand.php', "<?php\nreadonly class ArchiveIngredientCommand\n{\n    public function __construct(\n        public string \$userId,\n        public string \$ingredientSlug,\n    ) {\n    }\n}\n");
+        file_put_contents($directory . '/Repas/Application/Command/ArchiveIngredient/ArchiveManyCommand.php', "<?php\nreadonly class ArchiveManyCommand\n{\n    /** @param list<string> \$ingredientSlugs */\n    public function __construct(public array \$ingredientSlugs)\n    {\n    }\n}\n");
+        file_put_contents($directory . '/Repas/Application/Command/ArchiveIngredient/OtherCommand.php', "<?php\nreadonly class OtherCommand\n{\n    public function __construct(public string \$departmentSlug, public ?string \$ingredientName)\n    {\n    }\n}\n");
+        file_put_contents($directory . '/Repas/Application/Query/GetIngredient/IngredientDTO.php', "<?php\nreadonly class IngredientDTO\n{\n    public function __construct(public string \$ingredientSlug)\n    {\n    }\n}\n");
+        file_put_contents($directory . '/Repas/Application/Loader/IngredientLoader.php', "<?php\ninterface IngredientLoader\n{\n    public function get(string \$ingredientSlug): array;\n}\n");
+
+        $carriers = [];
+        try {
+            // When
+            $carriers = self::carriersIn($directory);
+        } finally {
+            $cleanup = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($directory, \FilesystemIterator::SKIP_DOTS), \RecursiveIteratorIterator::CHILD_FIRST);
+            foreach ($cleanup as $entry) {
+                $entry->isDir() ? rmdir($entry->getPathname()) : unlink($entry->getPathname());
+            }
+            rmdir($directory);
+        }
+
+        // Then : les deux nouvelles écritures sont repérées, ni la lecture, ni le DTO, ni la classe sans slug d'ingrédient
+        sort($carriers);
+        $this->assertSame([
+            'Repas\Repas\Application\Command\ArchiveIngredient\ArchiveIngredientCommand',
+            'Repas\Repas\Application\Command\ArchiveIngredient\ArchiveManyCommand',
+        ], $carriers);
+        $this->assertSame($carriers, self::undeclared($carriers));
+    }
+
+    /**
+     * @param list<string> $carriers
+     * @return list<string> celles qui ne sont ni déclarées résolues, ni dispensées
+     */
+    private static function undeclared(array $carriers): array
+    {
+        $declared = [...array_keys(self::RESOLVED), ...array_keys(self::EXEMPT)];
+
+        return array_values(array_filter($carriers, static fn(string $class): bool => !in_array($class, $declared, true)));
+    }
+
+    /**
+     * Les classes du code d'application qui déclarent une propriété `ingredientSlug` ou `ingredientSlugs`, hors lectures (`Query`,
+     * `Loader`, `Dto`) : ce sont les commandes, leurs lignes et leurs intentions.
+     *
+     * @return list<string>
+     */
+    private static function carriersIn(string $sourceDirectory): array
+    {
+        $carriers = [];
+        $files = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($sourceDirectory, \FilesystemIterator::SKIP_DOTS));
+        foreach ($files as $fileInfo) {
+            $file = $fileInfo->getPathname();
+            $relative = substr($file, strlen($sourceDirectory) + 1, -strlen('.php'));
+            // Le code d'application, sans les lectures ni les objets de transfert de lecture (`Dto`)
+            if (!str_ends_with($file, '.php') || !str_contains("/$relative", '/Application/') || preg_match('#/Application/(Query|Loader|Dto)/#', "/$relative")) {
+                continue;
+            }
+            $source = (string) file_get_contents($file);
+            // Une propriété (déclarée ou promue par le constructeur), pas un paramètre de méthode ni une variable locale
+            if (preg_match('/\b(?:public|protected|private)\s+(?:readonly\s+)?\??[\w\\\\]+(?:\[\])?\s+\$ingredientSlugs?\b/', $source) === 1) {
+                $carriers[] = 'Repas\\' . str_replace('/', '\\', $relative);
+            }
+        }
+        sort($carriers);
+
+        return $carriers;
+    }
+}

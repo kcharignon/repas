@@ -24,7 +24,7 @@ final class GetIngredientApiController extends AbstractController
 
     #[Route(path: '/api/v1/ingredients/{slug}', name: 'api_get_ingredient', methods: ['GET'])]
     #[IsGranted('ROLE_USER')]
-    #[OA\Get(summary: 'Détail d\'un ingrédient commun ou créé par l\'utilisateur (un administrateur voit tous les ingrédients)')]
+    #[OA\Get(summary: 'Détail d\'un ingrédient commun ou créé par l\'utilisateur (un administrateur voit tous les ingrédients). Un commun que l\'utilisateur a adopté se lit encore, en lecture seule (`canEdit` faux) : une page ouverte avant l\'adoption peut s\'afficher')]
     #[OA\Tag(name: 'Ingredients')]
     #[OA\Response(
         response: 200,

@@ -18,6 +18,7 @@ use Repas\Repas\Infrastructure\Entity\Conversion;
 use Repas\Repas\Infrastructure\Entity\Department;
 use Repas\Repas\Infrastructure\Entity\Ingredient;
 use Repas\Repas\Infrastructure\Entity\Unit;
+use Repas\Repas\Infrastructure\Visibility\IngredientVisibility;
 use Repas\Shared\Domain\Tool\SearchRelevance;
 use Repas\Shared\Domain\Tool\StringTool;
 
@@ -50,7 +51,7 @@ final readonly class IngredientPostgreSQLLoader implements IngredientLoader
             ->from(Ingredient::class, 'i')
             ->innerJoin(Unit::class, 'u', Join::WITH, 'u.slug = i.defaultPurchaseUnitSlug')
             ->where('i.departmentSlug = :department')
-            ->andWhere('i.creatorId = :viewer OR i.creatorId IS NULL')
+            ->andWhere(IngredientVisibility::visibleBy('i', 'viewer'))
             ->setParameter('department', $departmentSlug)
             ->setParameter('viewer', $viewerId)
             ->orderBy('i.sluggedName', 'ASC')
@@ -87,7 +88,9 @@ final readonly class IngredientPostgreSQLLoader implements IngredientLoader
             ->getQuery()
             ->getOneOrNullResult();
 
-        // Un ingrédient créé par un autre utilisateur n'existe pas pour un utilisateur qui n'est pas administrateur
+        // Un ingrédient créé par un autre utilisateur n'existe pas pour un utilisateur qui n'est pas administrateur. Un commun que le
+        // lecteur a adopté (donc masqué des listes, `IngredientVisibility`) se lit encore, en lecture seule (`canEdit` faux) : une page
+        // ouverte avant l'adoption doit pouvoir s'afficher.
         if ($ingredient === null || (!$viewerIsAdmin && $ingredient['creatorId'] !== null && $ingredient['creatorId'] !== $viewerId)) {
             throw IngredientException::notFound($slug);
         }
@@ -156,7 +159,7 @@ final readonly class IngredientPostgreSQLLoader implements IngredientLoader
         $query = $this->entityManager->createQueryBuilder()
             ->select('i.slug AS slug', 'i.name AS name')
             ->from(Ingredient::class, 'i')
-            ->where('i.creatorId = :user OR i.creatorId IS NULL')
+            ->where(IngredientVisibility::visibleBy('i', 'user'))
             ->setParameter('user', $userId)
             ->orderBy('i.sluggedName', 'ASC')
             ->addOrderBy('i.slug', 'ASC');
@@ -190,7 +193,7 @@ final readonly class IngredientPostgreSQLLoader implements IngredientLoader
             ->from(Ingredient::class, 'i')
             ->innerJoin(Unit::class, 'u', Join::WITH, 'u.slug = i.defaultPurchaseUnitSlug')
             ->innerJoin(Department::class, 'd', Join::WITH, 'd.slug = i.departmentSlug')
-            ->where('i.creatorId = :viewer OR i.creatorId IS NULL')
+            ->where(IngredientVisibility::visibleBy('i', 'viewer'))
             ->setParameter('viewer', $viewerId)
             ->getQuery()
             ->getArrayResult();

@@ -29,7 +29,7 @@ final class ReplaceIngredientPreferenceApiController extends AbstractController
 
     #[Route(path: '/api/v1/drive/choices/{ingredientSlug}', name: 'api_replace_ingredient_preference', requirements: ['ingredientSlug' => '[a-z0-9-]{1,255}'], methods: ['PUT'])]
     #[IsGranted('ROLE_USER')]
-    #[OA\Put(summary: "Remplace d'un coup la préférence de l'utilisateur connecté pour un ingrédient : produits acceptés dans l'ordre, produits refusés, ou « j'en ai toujours » (sans produit ni « j'en ai toujours », la préférence est supprimée)")]
+    #[OA\Put(summary: "Remplace d'un coup la préférence de l'utilisateur connecté pour un ingrédient : produits acceptés dans l'ordre, produits refusés, ou « j'en ai toujours » (sans produit ni « j'en ai toujours », la préférence est supprimée). Le slug d'un commun que l'utilisateur a adopté désigne sa copie : la préférence est toujours celle de la copie")]
     #[OA\Tag(name: 'Drive')]
     #[OA\Parameter(name: 'ingredientSlug', in: 'path', required: true, description: "Slug de l'ingrédient", schema: new OA\Schema(type: 'string', pattern: '^[a-z0-9-]{1,255}$'), example: 'farine')]
     #[OA\RequestBody(required: true, content: new OA\JsonContent(ref: new Model(type: ReplaceIngredientPreferencePayload::class)))]

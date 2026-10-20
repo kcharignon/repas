@@ -26,7 +26,7 @@ final class SearchIngredientsApiController extends AbstractController
     // Priorité : sans elle, `GET /api/v1/ingredients/{slug}` capterait « search »
     #[Route(path: '/api/v1/ingredients/search', name: 'api_search_ingredients', methods: ['GET'], priority: 10)]
     #[IsGranted('ROLE_USER')]
-    #[OA\Get(summary: "Recherche d'ingrédients par nom, du plus pertinent au moins pertinent, avec leur rayon : communs et ceux de l'utilisateur authentifié")]
+    #[OA\Get(summary: "Recherche d'ingrédients par nom, du plus pertinent au moins pertinent, avec leur rayon : ceux de l'utilisateur authentifié et les communs qu'il n'a pas adoptés (un commun adopté est remplacé par sa copie, qui est à lui)")]
     #[OA\Tag(name: 'Ingredients')]
     #[OA\Parameter(name: 'q', in: 'query', required: true, description: 'Texte recherché, 100 caractères au plus ; ni la casse ni les accents ne comptent et une faute de frappe est tolérée (Jaro-Winkler)', schema: new OA\Schema(type: 'string', maxLength: 100), example: 'tomtae')]
     #[OA\Response(

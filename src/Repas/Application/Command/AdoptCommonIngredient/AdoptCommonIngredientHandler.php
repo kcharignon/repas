@@ -22,7 +22,8 @@ use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 /**
  * Adopte un commun pour un utilisateur (ADR 0028 décisions 1 et 7). Dans l'ordre :
  *
- * 1. l'utilisateur a déjà un alias pour ce slug : on renvoie l'ingrédient qu'il désigne, rien n'est écrit (rejouable) ;
+ * 1. l'utilisateur a déjà un alias valide pour ce slug (l'ingrédient qu'il désigne existe et est à lui) : on renvoie cet ingrédient,
+ *    rien n'est écrit (rejouable) ; un alias ORPHELIN (la copie a disparu, ING-002) est effacé et l'adoption recommence ;
  * 2. le slug n'est pas celui d'un commun : `IngredientException` ;
  * 3. sinon on choisit un slug libre pour la copie (`IngredientSlugPolicy`, jamais d'écrasement : `IngredientRepository::save()`
  *    remplace un ingrédient de même slug), on écrit l'alias, puis la copie et ses conversions propres.
@@ -57,9 +58,16 @@ readonly class AdoptCommonIngredientHandler
      */
     public function __invoke(AdoptCommonIngredientCommand $command): string
     {
-        $existing = $this->aliasRepository->find($command->userId, $command->commonSlug);
-        if ($existing !== null) {
-            return $existing->getIngredientSlug();
+        if ($this->aliasRepository->find($command->userId, $command->commonSlug) !== null) {
+            // Un alias valide : l'ingrédient qu'il désigne existe et est à l'utilisateur
+            $adopted = $this->aliasRepository->resolve($command->userId, [$command->commonSlug])[$command->commonSlug] ?? null;
+            if ($adopted !== null) {
+                return $adopted;
+            }
+
+            // Un alias orphelin (la copie a disparu : le code d'avant ING-001 supprime une copie sans effacer son alias) : on l'efface
+            // et on adopte de nouveau, sinon le commun resterait sans copie ni alias valide pour toujours
+            $this->aliasRepository->deleteByAliasSlug($command->userId, $command->commonSlug);
         }
 
         // Le commun est chargé une seule fois (ADR 0013 règle 7) : la copie et celle de ses conversions partent de cette instance

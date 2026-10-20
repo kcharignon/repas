@@ -13,6 +13,7 @@ use Repas\Drive\Domain\Interface\ProductRepository;
 use Repas\Drive\Domain\Model\Choice;
 use Repas\Drive\Domain\Model\DepartmentRayonChoice;
 use Repas\Drive\Domain\Model\Product;
+use Repas\Shared\Application\Interface\IngredientAliasResolver;
 use Repas\Shared\Application\Interface\IngredientDepartmentResolver;
 use Repas\Shared\Application\Interface\UnitSlugResolver;
 use Repas\Shared\Domain\Interface\UuidGenerator;
@@ -31,6 +32,7 @@ readonly class SaveProductChoicesHandler
         private DepartmentRayonRepository $departmentRayonRepository,
         private IngredientDepartmentResolver $ingredientDepartments,
         private UnitSlugResolver $unitSlugs,
+        private IngredientAliasResolver $ingredientAliases,
         private UuidGenerator $uuidGenerator,
         private ClockInterface $clock,
     ) {
@@ -43,7 +45,7 @@ readonly class SaveProductChoicesHandler
      * code-barres, jamais réécrits par un autre utilisateur (constat C1, DRV-613). Le prix d'une fiche connue ne change que par
      * `REFRESH_PRICE` ou par l'`ADD_PRODUCT` d'un produit que l'utilisateur accepte déjà pour cet ingrédient. Les préférences
      * sont créées si besoin. Tout ou rien : tout est validé avant la première écriture, et la commande est atomique. Nombre de
-     * requêtes constant, quelle que soit la taille du lot : une lecture des réglages, des produits et des préférences, puis
+     * requêtes constant, quelle que soit la taille du lot : une lecture des réglages, des alias d'ingrédients (ING-002), des produits et des préférences, puis
      * une écriture par table, celle du compteur du jour dans les réglages, et un décompte des préférences quand le lot en crée.
      * L'existence de l'ingrédient n'est pas vérifiée (`Drive` ne connaît pas `Repas`).
      *
@@ -91,6 +93,10 @@ readonly class SaveProductChoicesHandler
         if ($command->intents === []) {
             return;
         }
+
+        // Un ancien slug (brouillon d'envoi resté sur le téléphone, onglet ouvert) d'un commun que l'utilisateur a adopté désigne sa copie : jamais
+        // de préférence sous le slug d'un commun masqué (ADR 0028 décision 4). Une lecture, quel que soit le lot
+        $command = $this->withResolvedIngredients($command);
 
         $now = $this->clock->now();
         // Plafond du jour avant toute lecture de plus : les réglages sont déjà là, le compteur voyage avec eux (enregistré avec le reste)
@@ -151,6 +157,33 @@ readonly class SaveProductChoicesHandler
         if ($learned !== []) {
             $this->departmentRayonRepository->recordChoices($command->retailer, $learned);
         }
+    }
+
+    /**
+     * Les intentions dont le slug désigne, pour cet utilisateur, un ingrédient à lui (un commun qu'il a adopté) sont réécrites sur ce slug ; les
+     * autres, et toutes celles d'un utilisateur qui n'a aucun alias, ne changent pas.
+     */
+    private function withResolvedIngredients(SaveProductChoicesCommand $command): SaveProductChoicesCommand
+    {
+        $resolved = $this->ingredientAliases->resolve(
+            $command->userId,
+            array_values(array_unique(array_map(static fn(ChoiceIntent $intent): string => $intent->ingredientSlug, $command->intents))),
+        );
+        if ($resolved === []) {
+            return $command;
+        }
+
+        return new SaveProductChoicesCommand(
+            $command->userId,
+            $command->retailer,
+            $command->storeId,
+            array_map(
+                static fn(ChoiceIntent $intent): ChoiceIntent => isset($resolved[$intent->ingredientSlug])
+                    ? new ChoiceIntent($resolved[$intent->ingredientSlug], $intent->action, $intent->placement, $intent->product, $intent->searchQuery)
+                    : $intent,
+                $command->intents,
+            ),
+        );
     }
 
     /**

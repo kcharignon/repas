@@ -3,6 +3,7 @@
 namespace Repas\Repas\Domain\Interface;
 
 
+use Repas\Repas\Domain\Model\AliasLookup;
 use Repas\Repas\Domain\Model\IngredientAlias;
 
 /**
@@ -17,10 +18,22 @@ interface IngredientAliasRepository
      * Les ingrédients de l'utilisateur qui répondent à ces slugs, en une requête : `[slug d'alias => slug de l'ingrédient]`.
      * Un slug sans alias est absent du résultat (l'appelant garde alors le slug reçu).
      *
+     * Seul un alias VALIDE répond : l'ingrédient qu'il désigne existe et appartient à l'utilisateur. Un alias orphelin (laissé par le
+     * code d'avant ING-001, qui supprime une copie sans effacer son alias, après un retour arrière) est ignoré : le slug reçu reste
+     * celui du commun, qui n'est pas masqué non plus (`IngredientVisibility`).
+     *
      * @param list<string> $slugs
      * @return array<string, string>
      */
     public function resolve(string $userId, array $slugs): array;
+
+    /**
+     * Comme `resolve()`, et dit en plus, dans la MÊME requête, si l'utilisateur est adoptant (`isAdopter()`) : la résolution d'un slug
+     * reçu en écriture coûte ainsi une seule lecture, y compris pour celui qui n'a aucun alias (ING-002).
+     *
+     * @param list<string> $slugs
+     */
+    public function lookup(string $userId, array $slugs): AliasLookup;
 
     /**
      * L'utilisateur a adopté au moins un commun (alias d'adoption) : le monde « propre à l'utilisateur » (ADR 0028 décision 4).

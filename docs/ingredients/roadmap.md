@@ -2,7 +2,7 @@
 
 Suivi vivant. Cocher une case quand le ticket est fusionné (et noter la PR). Chaque ticket est un fichier autonome dans [`tickets/`](tickets/). Décisions : [ADR 0028](../adr/0028-ingredients-propres-a-chaque-utilisateur.md) (**Acceptée** le 2026-10-20 : les dix décisions sont validées par le propriétaire). **Point d'entrée pour tout agent** : lire l'ADR, puis ce fichier, puis [`analyse.md`](analyse.md), puis le ticket choisi, et les skills `repas-dev`, `repas-drive-back` (tout ce qui touche au drive), `repas-po` (tout écran ou texte), `repas-ops` (migration en production).
 
-Rédigé le 2026-10-20. Cadrage, puis réalisation ticket par ticket : ING-001 (le socle) est livré, le reste est à faire. Un agent d'implémentation travaille **un ticket = une PR** ([`../drive/consignes-agents.md`](../drive/consignes-agents.md), qui valent ici, sauf la règle « ne pas durcir une enseigne » : ce chantier ne nomme aucune enseigne).
+Rédigé le 2026-10-20. Cadrage, puis réalisation ticket par ticket : ING-001 (le socle) et ING-002 (visibilité et résolution) sont livrés, le reste est à faire. Un agent d'implémentation travaille **un ticket = une PR** ([`../drive/consignes-agents.md`](../drive/consignes-agents.md), qui valent ici, sauf la règle « ne pas durcir une enseigne » : ce chantier ne nomme aucune enseigne).
 
 **Dépôts** : `back` = `kcharignon/repas` ; `front` = `kcharignon/repas-front`.
 
@@ -24,7 +24,7 @@ Taille : S (quelques heures), M (une journée), L (plusieurs jours). Effort : le
 ### I1 — Socle
 
 - [x] [ING-001](tickets/ING-001-socle-adoption.md) (PR #233) back · M · **xhigh** · Adopter un commun : colonne `adopted_from`, table `ingredient_alias`, slug, copie avec conversions, statistiques, purge de compte · dépend de : —
-- [ ] [ING-002](tickets/ING-002-visibilite-et-resolution.md) back · L · **xhigh** · Masquer les communs adoptés, résoudre les anciens slugs dans les écritures et dans le drive, test qui interdit l'oubli · dépend de : 001
+- [x] [ING-002](tickets/ING-002-visibilite-et-resolution.md) (PR #234) back · L · **xhigh** · Masquer les communs adoptés, résoudre les anciens slugs dans les écritures et dans le drive, test qui interdit l'oubli · dépend de : 001
 
 ### I2 — Migration
 
