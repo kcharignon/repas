@@ -44,18 +44,22 @@ final readonly class IngredientSeedingReportPostgreSQLLoader implements Ingredie
     ) {
     }
 
-    public function report(array $only, array $except, bool $complete): SeedingReportDTO
+    public function report(array $only, array $except, bool $complete, ?array $assumedBaseSlugs = null): SeedingReportDTO
     {
         $connection = $this->connection();
         $ownerId = $this->catalogOwner->ownerId();
+        // Le rapport de la passation, avant le classement : les ingrédients du fichier sont lus comme « de base » (jamais en écriture)
+        $assumedBaseSlugs = $assumedBaseSlugs === [] ? null : $assumedBaseSlugs;
+        $assumed = $assumedBaseSlugs === null ? null : 'assumed';
 
         // Le catalogue : ce qu'on copie, jamais modifié par l'amorçage. Sans propriétaire (`null`), seuls les ingrédients sans créateur en font partie.
         [$catalog, $base, $longest, $conversions] = $connection->fetchNumeric(
-            'SELECT count(*), count(*) FILTER (WHERE ' . IngredientVisibility::isBaseCatalogSql('c', 'owner') . '),'
-            . ' coalesce(max(length(c.slug)) FILTER (WHERE ' . IngredientVisibility::isBaseCatalogSql('c', 'owner') . '), 0),'
-            . ' (SELECT count(*) FROM conversion v JOIN ingredient b ON b.slug = v.ingredient WHERE ' . IngredientVisibility::isBaseCatalogSql('b', 'owner') . ')'
+            'SELECT count(*), count(*) FILTER (WHERE ' . IngredientVisibility::isBaseCatalogSql('c', 'owner', $assumed) . '),'
+            . ' coalesce(max(length(c.slug)) FILTER (WHERE ' . IngredientVisibility::isBaseCatalogSql('c', 'owner', $assumed) . '), 0),'
+            . ' (SELECT count(*) FROM conversion v JOIN ingredient b ON b.slug = v.ingredient WHERE ' . IngredientVisibility::isBaseCatalogSql('b', 'owner', $assumed) . ')'
             . ' FROM ingredient c WHERE ' . IngredientVisibility::isCatalogSql('c', 'owner'),
-            ['owner' => $ownerId],
+            ['owner' => $ownerId] + ($assumed === null ? [] : [$assumed => array_values($assumedBaseSlugs)]),
+            $assumed === null ? [] : [$assumed => ArrayParameterType::STRING],
         );
 
         $accounts = $connection->fetchAllAssociative(
@@ -96,7 +100,7 @@ final readonly class IngredientSeedingReportPostgreSQLLoader implements Ingredie
                 'exclusion' => $exclusion,
             ];
 
-            $users[] = $exclusion === null ? $this->detail($id, $ownerId, $complete, $identity) : new SeedingUserReportDTO(...$identity);
+            $users[] = $exclusion === null ? $this->detail($id, $ownerId, $complete, $identity, $assumedBaseSlugs) : new SeedingUserReportDTO(...$identity);
         }
 
         $catalogAnomalies = [];
@@ -124,8 +128,9 @@ final readonly class IngredientSeedingReportPostgreSQLLoader implements Ingredie
      * Le détail d'un compte retenu.
      *
      * @param array{rank: int, reference: string, userId: string, status: string, owner: bool, seeded: bool, ingredients: int, recipes: int, selected: bool, exclusion: ?string} $base
+     * @param ?list<string> $assumedBaseSlugs voir `report()`
      */
-    private function detail(string $userId, ?string $ownerId, bool $complete, array $base): SeedingUserReportDTO
+    private function detail(string $userId, ?string $ownerId, bool $complete, array $base, ?array $assumedBaseSlugs = null): SeedingUserReportDTO
     {
         $connection = $this->connection();
         $anomalies = [];
@@ -134,7 +139,7 @@ final readonly class IngredientSeedingReportPostgreSQLLoader implements Ingredie
         if ($ownerId === null) {
             $anomalies[] = "le propriétaire du catalogue n'existe pas : rien ne peut être copié";
         } else {
-            $toSeed = $this->sourceReader->read($userId, $ownerId, $this->driveReferences->referencedSlugs($userId));
+            $toSeed = $this->sourceReader->read($userId, $ownerId, $this->driveReferences->referencedSlugs($userId), $assumedBaseSlugs);
             if (!$complete && array_filter($toSeed, static fn(IngredientToSeed $ingredient): bool => $ingredient->isBase) === []) {
                 // Le classement n'est pas posé : l'amorçage n'écrirait rien et le compte resterait non amorcé (voir le handler)
                 $anomalies[] = "aucun ingrédient « de base » dans le catalogue : l'amorçage n'écrirait rien et le compte resterait non amorcé";

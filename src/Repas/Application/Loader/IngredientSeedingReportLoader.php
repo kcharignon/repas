@@ -13,6 +13,8 @@ interface IngredientSeedingReportLoader
      * @param list<string> $only identifiants complets ou références courtes ; vide : le périmètre par défaut (comptes actifs non amorcés)
      * @param list<string> $except idem, à exclure
      * @param bool $complete retient aussi un compte déjà amorcé quand `$only` le désigne
+     * @param ?list<string> $assumedBaseSlugs seulement pour le rapport à blanc de la passation (ING-009) avant que le classement soit posé :
+     *        les ingrédients sans créateur de cette liste sont lus comme « de base » ; `null` : le marqueur de la base (l'amorçage écrit toujours ainsi)
      */
-    public function report(array $only, array $except, bool $complete): SeedingReportDTO;
+    public function report(array $only, array $except, bool $complete, ?array $assumedBaseSlugs = null): SeedingReportDTO;
 }

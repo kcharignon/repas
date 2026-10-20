@@ -10,6 +10,7 @@ use Repas\Drive\Domain\Interface\ProductRepository;
 use Repas\Drive\Domain\Model\Product;
 use Repas\Drive\Domain\Model\Retailer;
 use Repas\Repas\Application\Command\MergeIngredients\MergeIngredientsCommand;
+use Repas\Repas\Domain\Interface\BaseIngredientClassification;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Repas\Domain\Model\Recipe;
 use Repas\Repas\Domain\Model\ShoppingList;
@@ -153,6 +154,29 @@ abstract class WriteBudgetTestCase extends DatabaseTestCase
     {
         $withCatalog = (int) $this->entityManager->getConnection()->fetchOne("SELECT count(*) FROM ingredient WHERE slug LIKE 'commun-%'") === 0;
         AdoptionDataset::createBulk($this->entityManager, $this->persister, $owner->getId(), $recipes, $rowsPerRecipe, $lists, $rowsPerList, $choices, $withCatalog);
+    }
+
+    /**
+     * Le catalogue de la passation (ING-009) : le propriétaire du catalogue, les 262 anciens communs d'`AdoptionDataset::createBulk` (sans créateur ;
+     * « de base » un sur deux d'après le classement, remplacé par un double du fichier pour ce test) et, pour lui, un volume de recettes, de listes
+     * (dont deux envoyées) et de choix du drive sur ces communs. `$classified` : le marqueur est déjà posé (phase 1 faite).
+     */
+    public function savedHandoverCatalog(int $recipes, int $rowsPerRecipe, int $lists, int $rowsPerList, int $choices, bool $classified = true): void
+    {
+        $owner = new UserBuilder()->isCatalogOwner()->build();
+        $this->persister->saveUser($owner);
+        $this->savedAdoptionVolume($owner, $recipes, $rowsPerRecipe, $lists, $rowsPerList, $choices);
+
+        $connection = $this->entityManager->getConnection();
+        $slugs = array_map('strval', $connection->fetchFirstColumn("SELECT slug FROM ingredient WHERE slug LIKE 'commun-%' ORDER BY slug"));
+        $classification = [];
+        foreach ($slugs as $index => $slug) {
+            $classification[$slug] = $index % 2 === 0;
+        }
+        static::getContainer()->set(BaseIngredientClassification::class, new BaseIngredientClassificationInMemory($classification));
+        if ($classified) {
+            $connection->executeStatement("UPDATE ingredient SET is_base = (CAST(substr(slug, 8) AS integer) % 2 = 1) WHERE slug LIKE 'commun-%'");
+        }
     }
 
     /**

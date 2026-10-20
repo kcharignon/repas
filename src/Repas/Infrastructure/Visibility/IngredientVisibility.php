@@ -65,10 +65,25 @@ final class IngredientVisibility
     /**
      * SQL natif : un ingrédient du catalogue (`isCatalogSql()`) qui porte le marqueur « de base », c'est-à-dire qui part aux nouveaux comptes.
      * Un marqueur posé sur l'ingrédient d'un autre compte (un accès direct à la base) est inerte : la règle exige le catalogue.
+     *
+     * Avec `$assumedBaseParameter` (le nom d'un paramètre tableau de slugs), la règle est lue « comme si le classement était posé » : seul le
+     * rapport à blanc de la passation s'en sert, pour dire ce que l'amorçage copierait AVANT la phase 1. L'écriture lit toujours la colonne.
      */
-    public static function isBaseCatalogSql(string $ingredientAlias, string $ownerParameter): string
+    public static function isBaseCatalogSql(string $ingredientAlias, string $ownerParameter, ?string $assumedBaseParameter = null): string
     {
-        return sprintf('(%s AND %s.is_base)', self::isCatalogSql($ingredientAlias, $ownerParameter), $ingredientAlias);
+        if ($assumedBaseParameter === null) {
+            return sprintf('(%s AND %s.is_base)', self::isCatalogSql($ingredientAlias, $ownerParameter), $ingredientAlias);
+        }
+
+        // Le rapport à blanc de la passation (ING-009) avant que le classement soit posé : les ingrédients sans créateur sont « de base » s'ils
+        // sont dans la liste du fichier (le paramètre nommé, un tableau de slugs, jamais vide), les autres gardent leur marqueur
+        return sprintf(
+            '(%1$s AND ((%2$s AND %3$s.slug IN (:%4$s)) OR (NOT %2$s AND %3$s.is_base)))',
+            self::isCatalogSql($ingredientAlias, $ownerParameter),
+            self::isCommonSql($ingredientAlias),
+            $ingredientAlias,
+            $assumedBaseParameter,
+        );
     }
 
     /**

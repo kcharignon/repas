@@ -215,8 +215,15 @@ SELECT (SELECT count(*) FROM "user" u WHERE u.status = 'ACTIVE' AND NOT EXISTS (
 <!-- passation-retour-arriere-sql -->
 ```sql
 -- psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v ON_ERROR_STOP=1 --single-transaction -v owner=<identifiant du propriétaire> -f -
-UPDATE ingredient SET creator = NULL
- WHERE creator = :'owner' AND adopted_from IS NULL AND slug NOT LIKE '%' || :'owner';
+-- Une seule instruction : les anciens communs redeviennent sans créateur, et le compteur « ingrédients créés » du propriétaire (que la passation avait
+-- fait monter d'autant) est ramené à ce qu'il était
+WITH rendus AS (
+  UPDATE ingredient SET creator = NULL
+   WHERE creator = :'owner' AND adopted_from IS NULL AND slug NOT LIKE '%' || :'owner'
+   RETURNING slug)
+UPDATE "user" SET statistics = jsonb_set(statistics::jsonb, '{ingredients}',
+         to_jsonb(greatest(coalesce((statistics::jsonb ->> 'ingredients')::int, 0) - (SELECT count(*) FROM rendus), 0)))::json
+ WHERE id = :'owner';
 
 -- Contrôle (attendu : le nombre d'anciens communs qui existent encore, 261 si aucun n'a été supprimé depuis)
 SELECT count(*) AS sans_createur FROM ingredient WHERE creator IS NULL;
