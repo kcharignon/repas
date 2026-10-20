@@ -59,7 +59,7 @@ final readonly class UserPostgreSQLLoader implements UserLoader
     public function list(): array
     {
         $rows = $this->withAppVersion($this->entityManager->createQueryBuilder()
-            ->select('u.id AS id', 'u.email AS email', 'u.roles AS roles', 'u.defaultServing AS defaultServing', 'u.status AS status', 'u.statistics AS statistics')
+            ->select('u.id AS id', 'u.email AS email', 'u.roles AS roles', 'u.defaultServing AS defaultServing', 'u.status AS status', 'u.statistics AS statistics', 'u.lastLoginAt AS lastLoginAt')
             ->from(User::class, 'u'))
             ->orderBy('u.email', 'ASC')
             ->getQuery()
@@ -82,6 +82,8 @@ final readonly class UserPostgreSQLLoader implements UserLoader
                 createdAt: is_array($created) && isset($created['date'], $created['timezone'])
                     ? new \DateTimeImmutable($created['date'], new \DateTimeZone($created['timezone']))->format(DATE_ATOM)
                     : '',
+                // Toujours écrite : `null` pour un compte jamais vu depuis le suivi
+                lastLoginAt: $row['lastLoginAt']?->format(DATE_ATOM),
                 isDisabled: $row['status'] === UserStatus::DISABLED,
                 isAdmin: in_array('ROLE_ADMIN', $row['roles'], true),
                 status: $row['status']->value,

@@ -10,6 +10,7 @@ use Repas\User\Application\RotateRefreshToken\RotateRefreshTokenCommand;
 use Repas\User\Domain\Model\RefreshToken;
 use Repas\User\Domain\Service\UserProvider;
 use Repas\User\Infrastructure\Security\RefreshTokenCookie;
+use Repas\User\Infrastructure\Security\UserLoginTracker;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -23,13 +24,14 @@ final class RefreshTokenApiController extends AbstractController
         private readonly UserProvider $userProvider,
         private readonly JWTTokenManagerInterface $jwtManager,
         private readonly RefreshTokenCookie $cookie,
+        private readonly UserLoginTracker $loginTracker,
     ) {
     }
 
     #[Route(path: '/api/auth/refresh', name: 'api_auth_refresh', methods: ['POST'])]
     #[OA\Post(
         summary: 'Obtenir un nouveau JWT avec le cookie de rafraîchissement',
-        description: "Public : le JWT est expiré, l'identité vient du seul cookie `repas_refresh` (HttpOnly, SameSite=Strict, `Path=/api/auth`), posé à la connexion. Le jeton est à usage unique : la réponse en pose un nouveau (rotation). Présenter un jeton déjà utilisé révoque toute la connexion (ADR 0015).",
+        description: "Public : le JWT est expiré, l'identité vient du seul cookie `repas_refresh` (HttpOnly, SameSite=Strict, `Path=/api/auth`), posé à la connexion. Le jeton est à usage unique : la réponse en pose un nouveau (rotation). Présenter un jeton déjà utilisé révoque toute la connexion (ADR 0015). Un échange réussi compte comme une connexion : il fait avancer la dernière connexion du compte que voit l'administrateur (`lastLoginAt` de `GET /api/v1/users`), au plus une fois toutes les 10 minutes ; un refus n'écrit rien.",
         security: [],
     )]
     #[OA\Tag(name: 'Auth')]
@@ -57,9 +59,14 @@ final class RefreshTokenApiController extends AbstractController
             return $this->refused();
         }
 
-        $response = new JsonResponse(['token' => $this->jwtManager->create($this->userProvider->loadUserByIdentifier($identifier))]);
+        $user = $this->userProvider->loadUserByIdentifier($identifier);
+        $response = new JsonResponse(['token' => $this->jwtManager->create($user)]);
         $response->headers->setCookie($this->cookie->create($nextSecret));
         $response->headers->set('Cache-Control', 'no-store');
+
+        // Renouveler la session est une authentification réussie : la dernière connexion avance (au plus toutes les 10 minutes,
+        // jamais pour un refus, et un échec du suivi ne casse pas l'échange)
+        $this->loginTracker->authenticated($user);
 
         return $response;
     }

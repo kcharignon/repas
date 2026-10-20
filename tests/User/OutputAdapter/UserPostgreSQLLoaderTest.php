@@ -136,12 +136,36 @@ class UserPostgreSQLLoaderTest extends DatabaseTestCase
         // Then
         $this->assertEquals(
             [
-                new UserSummaryDTO('11111111-1111-4111-8111-111111111111', 'aaa@example.com', 6, 0, 0, 0, '2026-10-13T08:56:40+02:00', false, true, 'ACTIVE', null, false),
-                new UserSummaryDTO('33333333-3333-4333-8333-333333333333', 'mmm@example.com', 3, 0, 0, 0, '2026-10-13T08:56:40+02:00', false, false, 'PENDING', null, false),
-                new UserSummaryDTO('22222222-2222-4222-8222-222222222222', 'zzz@example.com', 2, 7, 5, 0, '2026-10-13T08:56:40+02:00', true, false, 'DISABLED', null, false),
+                new UserSummaryDTO('11111111-1111-4111-8111-111111111111', 'aaa@example.com', 6, 0, 0, 0, '2026-10-13T08:56:40+02:00', null, false, true, 'ACTIVE', null, false),
+                new UserSummaryDTO('33333333-3333-4333-8333-333333333333', 'mmm@example.com', 3, 0, 0, 0, '2026-10-13T08:56:40+02:00', null, false, false, 'PENDING', null, false),
+                new UserSummaryDTO('22222222-2222-4222-8222-222222222222', 'zzz@example.com', 2, 7, 5, 0, '2026-10-13T08:56:40+02:00', null, true, false, 'DISABLED', null, false),
             ],
             $result,
         );
+    }
+
+    public function testListShowsTheLastLoginOfEachAccountAndNullForAnAccountNeverSeen(): void
+    {
+        // Given : un compte connecté il y a peu, un compte connecté il y a longtemps, un compte jamais vu depuis le suivi
+        $this->userRepository->save(new UserBuilder()->withId('11111111-1111-4111-8111-111111111111')->withEmail('a-recent@example.com')->build());
+        $this->userRepository->save(new UserBuilder()->withId('22222222-2222-4222-8222-222222222222')->withEmail('b-ancien@example.com')->build());
+        $this->userRepository->save(new UserBuilder()->withId('33333333-3333-4333-8333-333333333333')->withEmail('c-jamais@example.com')->build());
+        $this->userRepository->recordLogin('11111111-1111-4111-8111-111111111111', new DateTimeImmutable('2026-10-20 08:30:12', new DateTimeZone('UTC')));
+        $this->userRepository->recordLogin('22222222-2222-4222-8222-222222222222', new DateTimeImmutable('2026-09-01 22:05:00', new DateTimeZone('UTC')));
+        $this->entityManager->clear();
+
+        // When
+        $result = $this->userLoader->list();
+
+        // Then : date ATOM, ou `null`, et la clé est toujours écrite (le DTO a toujours la propriété)
+        $this->assertSame(
+            ['a-recent@example.com' => '2026-10-20T08:30:12+00:00', 'b-ancien@example.com' => '2026-09-01T22:05:00+00:00', 'c-jamais@example.com' => null],
+            array_combine(
+                array_map(static fn(UserSummaryDTO $user): string => $user->email, $result),
+                array_map(static fn(UserSummaryDTO $user): ?string => $user->lastLoginAt, $result),
+            ),
+        );
+        $this->assertArrayHasKey('lastLoginAt', get_object_vars($result[2]));
     }
 
     public function testListShowsTheAppVersionOfEachAccountAndWhetherItIsToBeUpdated(): void

@@ -70,6 +70,7 @@ use Repas\Tests\Helper\Builder\UserBuilder;
 use Repas\Tests\Helper\WriteBudgetTestCase;
 use Repas\User\Application\ChangeUserStatus\ChangeUserStatusCommand;
 use Repas\User\Application\DeleteUser\DeleteUserCommand;
+use Repas\User\Application\RecordUserLogin\RecordUserLoginCommand;
 use Repas\User\Application\RegisterNewUser\RegisterNewUserCommand;
 use Repas\User\Application\ResetPassword\ResetPasswordCommand;
 use Repas\User\Application\SendEmailVerification\SendEmailVerificationCommand;
@@ -399,6 +400,15 @@ return [
         $t->savedUserAppVersion($user);
 
         return new UpdateUserAppVersionCommand($user->getId(), AppPlatform::ANDROID, '0.1.10');
+    },
+    // Dernière connexion (ADR 0021, amendement du 2026-10-20) : mesurée à froid, 2 requêtes (lecture du compte + un UPDATE ciblé de
+    // `last_login_at`). Dans une vraie connexion ou un vrai renouvellement le compte vient d'être chargé par l'authentification et
+    // `findOneById` est servi par l'identity map : UNE requête de plus, et ZÉRO quand la dernière connexion a moins de 10 minutes
+    // (la commande n'est alors même pas envoyée : `LastLoginFlowTest` le prouve de bout en bout).
+    'derniere-connexion' => static function (WriteBudgetTestCase $t): object {
+        $user = $t->savedUser();
+
+        return new RecordUserLoginCommand($user->getId());
     },
     // Pire cas : un compte actif connecté, avec un lien de confirmation, devient désactivé
     'changer-statut-compte' => static function (WriteBudgetTestCase $t): object {

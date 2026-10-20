@@ -40,7 +40,7 @@
                 },
                 "responses": {
                     "200": {
-                        "description": "Token JWT (dur\u00e9e de vie 3600 s). Pose aussi le cookie `repas_refresh` (HttpOnly, SameSite=Strict, `Path=/api/auth`), \u00e0 \u00e9changer contre un nouveau JWT par `POST /api/auth/refresh` (ADR 0015)",
+                        "description": "Token JWT (dur\u00e9e de vie 3600 s). Pose aussi le cookie `repas_refresh` (HttpOnly, SameSite=Strict, `Path=/api/auth`), \u00e0 \u00e9changer contre un nouveau JWT par `POST /api/auth/refresh` (ADR 0015). Une connexion r\u00e9ussie fait avancer la derni\u00e8re connexion du compte que voit l'administrateur (`lastLoginAt` de `GET /api/v1/users`), au plus une fois toutes les 10 minutes ; une connexion refus\u00e9e n'\u00e9crit rien",
                         "headers": {
                             "Set-Cookie": {
                                 "description": "Refresh token, `HttpOnly; Secure; SameSite=Strict; Path=/api/auth`",
@@ -2203,7 +2203,7 @@
                     "Auth"
                 ],
                 "summary": "Obtenir un nouveau JWT avec le cookie de rafra\u00eechissement",
-                "description": "Public : le JWT est expir\u00e9, l'identit\u00e9 vient du seul cookie `repas_refresh` (HttpOnly, SameSite=Strict, `Path=/api/auth`), pos\u00e9 \u00e0 la connexion. Le jeton est \u00e0 usage unique : la r\u00e9ponse en pose un nouveau (rotation). Pr\u00e9senter un jeton d\u00e9j\u00e0 utilis\u00e9 r\u00e9voque toute la connexion (ADR 0015).",
+                "description": "Public : le JWT est expir\u00e9, l'identit\u00e9 vient du seul cookie `repas_refresh` (HttpOnly, SameSite=Strict, `Path=/api/auth`), pos\u00e9 \u00e0 la connexion. Le jeton est \u00e0 usage unique : la r\u00e9ponse en pose un nouveau (rotation). Pr\u00e9senter un jeton d\u00e9j\u00e0 utilis\u00e9 r\u00e9voque toute la connexion (ADR 0015). Un \u00e9change r\u00e9ussi compte comme une connexion : il fait avancer la derni\u00e8re connexion du compte que voit l'administrateur (`lastLoginAt` de `GET /api/v1/users`), au plus une fois toutes les 10 minutes ; un refus n'\u00e9crit rien.",
                 "operationId": "post_api_auth_refresh",
                 "responses": {
                     "200": {
@@ -4539,6 +4539,7 @@
                     "ingredientCount",
                     "shoppingListCount",
                     "createdAt",
+                    "lastLoginAt",
                     "isDisabled",
                     "isAdmin",
                     "status",
@@ -4578,6 +4579,12 @@
                         "description": "Date d'inscription (ATOM), vide si inconnue",
                         "type": "string",
                         "example": "2026-10-13T08:56:40+02:00"
+                    },
+                    "lastLoginAt": {
+                        "description": "Derni\u00e8re connexion du compte (ATOM, UTC) : la derni\u00e8re authentification r\u00e9ussie, par mot de passe ou par renouvellement de la session ouverte (une session reste active des jours : ce n'est pas la seule connexion par mot de passe). `null` : jamais vu depuis que Repas retient cette date. Retenue au plus toutes les 10 minutes, donc en retard de 10 minutes au plus ; r\u00e9serv\u00e9e \u00e0 l'administration (ni `GET /api/v1/me`, ni aucun autre endpoint)",
+                        "type": "string",
+                        "example": "2026-10-20T08:30:12+00:00",
+                        "nullable": true
                     },
                     "isDisabled": {
                         "description": "Le compte est d\u00e9sactiv\u00e9",
