@@ -11,6 +11,7 @@ use Repas\Shared\Domain\Tool\StringTool;
 use Repas\Tests\Helper\AdoptionDataset;
 use Repas\Tests\Helper\DatabaseTestCase;
 use Repas\Tests\Helper\DataPersister;
+use Repas\Tests\Helper\SqlBudget\QueryCounter;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Tester\CommandTester;
@@ -37,14 +38,21 @@ class AdoptCommonIngredientsCommandTest extends DatabaseTestCase
     {
         // Given
         $before = $this->dataset->tableHashes();
+        $counter = static::getContainer()->get(QueryCounter::class);
+        $counter->reset();
 
         // When : sans option (à blanc) puis --check
         $dryRun = $this->tester->execute([]);
         $dryRunOutput = $this->display();
         $check = $this->tester->execute(['--check' => true]);
 
-        // Then : aucune ligne de aucune table n'a bougé
+        // Then : aucune ligne de aucune table n'a bougé, et aucune requête d'écriture ni verrou n'a même été envoyé
         $this->assertSame($before, $this->dataset->tableHashes());
+        $this->assertGreaterThan(20, $counter->count());
+        $this->assertSame([], array_values(array_filter(
+            $counter->statements(),
+            static fn(string $sql): bool => preg_match('/^\\s*(INSERT|UPDATE|DELETE)\\b|\\b(INSERT\\s+INTO|DELETE\\s+FROM|UPDATE\\s+\\w+\\s+SET)\\b|pg_advisory/i', $sql) === 1,
+        )));
         $this->assertSame(Command::SUCCESS, $dryRun);
         $this->assertSame(Command::FAILURE, $check, '--check dit qu\'il reste à faire');
         $this->assertStringContainsString('à blanc (lecture seule)', $dryRunOutput);

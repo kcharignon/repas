@@ -69,7 +69,7 @@ final readonly class AdoptionVerifier
     private function aggregates(string $label, array $before, array $after, bool $withState): array
     {
         $problems = [];
-        if (array_keys($before) !== array_keys($after) && array_diff_key($before, $after) + array_diff_key($after, $before) !== []) {
+        if (array_diff_key($before, $after) !== [] || array_diff_key($after, $before) !== []) {
             $problems[] = sprintf('%s : %d avant, %d après (une a disparu ou est apparue)', $label, count($before), count($after));
         }
 

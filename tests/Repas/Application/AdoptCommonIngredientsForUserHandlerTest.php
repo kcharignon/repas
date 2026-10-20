@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Repas\Repas\Application\Command\AdoptCommonIngredientsForUser\AdoptCommonIngredientsForUserCommand;
 use Repas\Repas\Application\Command\AdoptCommonIngredientsForUser\AdoptCommonIngredientsForUserHandler;
 use Repas\Repas\Application\Command\AdoptCommonIngredientsForUser\AdoptionResult;
+use Repas\Repas\Application\Command\UndoCommonIngredientsAdoptionForUser\UndoCommonIngredientsAdoptionForUserHandler;
 use Repas\Repas\Application\Service\AdoptionVerifier;
 use Repas\Repas\Domain\Exception\IngredientAdoptionException;
 use Repas\Repas\Domain\Service\IngredientSlugPolicy;
@@ -42,6 +43,18 @@ class AdoptCommonIngredientsForUserHandlerTest extends TestCase
             $this->bulk->ingredients[$slug] = ['name' => $name, 'department' => 'rayon', 'creator' => null, 'adoptedFrom' => null];
         }
         $this->bulk->conversions = [['id' => 'conversion-beurre', 'ingredient' => 'beurre'], ['id' => 'conversion-commune', 'ingredient' => null]];
+    }
+
+    public function testTheMigrationHandlersEmitNoEventAndHaveNoWayToDoIt(): void
+    {
+        // Une adoption n'est pas une création (ADR 0028 décision 7) : aucun répartiteur d'événements dans les dépendances des handlers
+        foreach ([AdoptCommonIngredientsForUserHandler::class, UndoCommonIngredientsAdoptionForUserHandler::class] as $handler) {
+            $types = array_map(
+                static fn(\ReflectionParameter $parameter): string => (string) $parameter->getType(),
+                (new \ReflectionClass($handler))->getConstructor()->getParameters(),
+            );
+            $this->assertSame([], array_values(array_filter($types, static fn(string $type): bool => str_contains($type, 'EventDispatcher') || str_contains($type, 'MessageBus') || str_contains($type, 'CommandBus'))), $handler);
+        }
     }
 
     public function testAnAdministratorIsNotConcernedAndNothingIsWritten(): void
