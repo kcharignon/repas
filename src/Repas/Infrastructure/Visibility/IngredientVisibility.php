@@ -51,6 +51,27 @@ final class IngredientVisibility
     }
 
     /**
+     * SQL natif : la ligne désignée par l'alias de table `$ingredientAlias` fait partie du CATALOGUE du propriétaire, celui qu'on copie aux
+     * comptes à leur amorçage (ING-008, `docs/ingredients/sans-commun.md` § 2.2) : son créateur est le propriétaire du catalogue
+     * (`:ownerParameter`, sans les deux-points) **ou est vide**. C'est l'UNIQUE endroit où cette règle transitoire est écrite : avant la
+     * passation (ING-009) les anciens communs n'ont pas de créateur, après elle ils sont au propriétaire, et la règle donne les mêmes
+     * ingrédients dans les deux formes de la base. Le « ou vide » disparaît ici avec les communs (ING-014).
+     */
+    public static function isCatalogSql(string $ingredientAlias, string $ownerParameter): string
+    {
+        return sprintf('(%1$s.creator = :%2$s OR %3$s)', $ingredientAlias, $ownerParameter, self::isCommonSql($ingredientAlias));
+    }
+
+    /**
+     * SQL natif : un ingrédient du catalogue (`isCatalogSql()`) qui porte le marqueur « de base », c'est-à-dire qui part aux nouveaux comptes.
+     * Un marqueur posé sur l'ingrédient d'un autre compte (un accès direct à la base) est inerte : la règle exige le catalogue.
+     */
+    public static function isBaseCatalogSql(string $ingredientAlias, string $ownerParameter): string
+    {
+        return sprintf('(%s AND %s.is_base)', self::isCatalogSql($ingredientAlias, $ownerParameter), $ingredientAlias);
+    }
+
+    /**
      * DQL : l'utilisateur du paramètre nommé `$viewerParameter` (sans les deux-points) voit l'ingrédient désigné par `$ingredient`.
      */
     public static function visibleBy(string $ingredient, string $viewerParameter): string

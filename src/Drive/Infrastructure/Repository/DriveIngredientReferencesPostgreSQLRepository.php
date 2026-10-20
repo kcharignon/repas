@@ -58,6 +58,25 @@ readonly class DriveIngredientReferencesPostgreSQLRepository extends PostgreSQLR
         return new DriveChoiceFingerprint(count($choices), $products, (string) $packSizeSum, (string) $contentHash, $slugByChoice, $productsByChoice);
     }
 
+    public function referencedSlugs(string $userId): array
+    {
+        /** @var list<string> */
+        return $this->connection()->fetchFirstColumn(
+            'SELECT DISTINCT ingredient_slug FROM drive_choice WHERE user_id = ? ORDER BY ingredient_slug',
+            [$userId],
+        );
+    }
+
+    public function referencedSlugsOfEveryUser(): array
+    {
+        $slugs = [];
+        foreach ($this->connection()->fetchAllNumeric('SELECT DISTINCT user_id, ingredient_slug FROM drive_choice ORDER BY user_id, ingredient_slug') as [$userId, $slug]) {
+            $slugs[$userId][] = $slug;
+        }
+
+        return $slugs;
+    }
+
     public function repoint(string $userId, array $slugMap): int
     {
         if ($slugMap === []) {

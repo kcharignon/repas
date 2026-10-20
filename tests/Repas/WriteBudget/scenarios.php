@@ -41,6 +41,7 @@ use Repas\Repas\Application\Command\RemoveMealFromPlan\removeMealFromPlanCommand
 use Repas\Repas\Application\Command\RemoveRecipe\RemoveRecipeCommand;
 use Repas\Repas\Application\Command\RemoveShoppingList\RemoveShoppingListCommand;
 use Repas\Repas\Application\Command\ReopenShoppingList\ReopenShoppingListCommand;
+use Repas\Repas\Application\Command\SeedUserIngredients\SeedUserIngredientsCommand;
 use Repas\Repas\Application\Command\SendShoppingList\SendShoppingListCommand;
 use Repas\Repas\Application\Command\StoppedShoppingList\StoppedShoppingListCommand;
 use Repas\Repas\Application\Command\TickLineOnShoppingList\TickLineOnShoppingListCommand;
@@ -428,6 +429,34 @@ return [
         $t->savedAdoptionVolume($owner, recipes: 3, rowsPerRecipe: 4, lists: 3, rowsPerList: 4, choices: 3);
 
         return new AdoptCommonIngredientsForUserCommand($owner->getId(), 'migration-essai', true);
+    },
+    // Amorçage des ingrédients à l'activation (ING-008, interrupteur ALLUMÉ) : la confirmation de l'adresse d'un compte en attente copie les
+    // ingrédients « de base » du propriétaire du catalogue, leurs conversions propres et leurs alias, dans la transaction de l'activation. Le
+    // nombre de requêtes ne dépend pas du nombre d'ingrédients (tests/Repas/WriteBudget/SeedingActivationBudgetTest, mesuré avec 5 puis 50) ;
+    // interrupteur coupé les scénarios `confirmation-email` et `changer-statut-compte` gardent leur budget d'avant.
+    'confirmer-adresse-amorcage' => static function (WriteBudgetTestCase $t): object {
+        $t->switchOnIngredientSeeding();
+        $t->savedSeedingCatalog(5);
+        $user = $t->savedUser(new UserBuilder()->isPending());
+        $t->savedEmailVerificationToken($user, 'le-secret');
+
+        return new VerifyEmailCommand(EmailVerificationToken::hash('le-secret'));
+    },
+    // L'amorçage d'un compte SEUL (le rattrapage `repas:ingredients:seed` : une commande par compte), compte neuf, catalogue de 5 ingrédients de
+    // base : c'est le coût fixe que les deux activations ci-dessus ajoutent à leur propre budget (constant en nombre d'ingrédients)
+    'amorcer-compte' => static function (WriteBudgetTestCase $t): object {
+        $t->savedSeedingCatalog(5);
+        $user = $t->savedUser();
+
+        return new SeedUserIngredientsCommand($user->getId(), 'rattrapage-essai');
+    },
+    // L'administrateur active un compte désactivé qui n'a jamais rien reçu : même amorçage
+    'activer-compte-amorcage' => static function (WriteBudgetTestCase $t): object {
+        $t->switchOnIngredientSeeding();
+        $t->savedSeedingCatalog(5);
+        $user = $t->savedUser(new UserBuilder()->isDisabled());
+
+        return new ChangeUserStatusCommand($user->getId(), UserStatus::ACTIVE);
     },
     // Fusion de deux ingrédients de l'utilisateur (ADR 0028, ING-005) : verrou, analyse (usage, graphe de conversion, choix du drive),
     // repointage en masse des recettes, des listes et des choix, alias, suppression de l'absorbé et statistique. Le nombre de requêtes ne

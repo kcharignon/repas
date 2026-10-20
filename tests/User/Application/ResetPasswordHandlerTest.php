@@ -5,12 +5,14 @@ namespace Repas\Tests\User\Application;
 
 use DateTimeImmutable;
 use PHPUnit\Framework\TestCase;
+use Repas\Shared\Domain\Event\UserActivatedEvent;
 use Repas\Tests\Helper\Builder\UserBuilder;
 use Repas\Tests\Helper\DummyPasswordHasher;
 use Repas\Tests\Helper\FrozenClock;
 use Repas\Tests\Helper\InMemoryRepository\EmailVerificationTokenInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\PasswordResetTokenInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\RefreshTokenInMemoryRepository;
+use Repas\Tests\Helper\InMemoryRepository\SpyEventDispatcher;
 use Repas\Tests\Helper\InMemoryRepository\UserInMemoryRepository;
 use Repas\User\Application\ResetPassword\ResetPasswordCommand;
 use Repas\User\Application\ResetPassword\ResetPasswordHandler;
@@ -28,6 +30,7 @@ class ResetPasswordHandlerTest extends TestCase
     private RefreshTokenInMemoryRepository $refreshTokenRepository;
     private EmailVerificationTokenInMemoryRepository $emailVerificationTokenRepository;
     private DateTimeImmutable $now;
+    private SpyEventDispatcher $eventDispatcher;
     private ResetPasswordHandler $handler;
 
     protected function setUp(): void
@@ -37,6 +40,7 @@ class ResetPasswordHandlerTest extends TestCase
         $this->tokenRepository = new PasswordResetTokenInMemoryRepository();
         $this->refreshTokenRepository = new RefreshTokenInMemoryRepository();
         $this->emailVerificationTokenRepository = new EmailVerificationTokenInMemoryRepository();
+        $this->eventDispatcher = new SpyEventDispatcher();
         $this->handler = new ResetPasswordHandler(
             $this->tokenRepository,
             $this->userRepository,
@@ -44,7 +48,50 @@ class ResetPasswordHandlerTest extends TestCase
             $this->emailVerificationTokenRepository,
             new DummyPasswordHasher(),
             new FrozenClock($this->now),
+            $this->eventDispatcher,
         );
+    }
+
+    public function testAPendingAccountThatTheLinkActivatesAnnouncesItsActivation(): void
+    {
+        // Given
+        $this->userRepository->save(new UserBuilder()->withId('user-id')->isPending()->build());
+        $this->issueLink('user-id');
+
+        // When
+        ($this->handler)(new ResetPasswordCommand(PasswordResetToken::hash('the-secret'), 'a new password'));
+
+        // Then : l'activation est annoncée une fois, avec l'identifiant du compte
+        $this->assertEquals([new UserActivatedEvent('user-id')], $this->eventDispatcher->eventDispatched);
+    }
+
+    public function testAnActiveAccountResettingItsPasswordAnnouncesNothing(): void
+    {
+        // Given
+        $this->userRepository->save(new UserBuilder()->withId('user-id')->build());
+        $this->issueLink('user-id');
+
+        // When
+        ($this->handler)(new ResetPasswordCommand(PasswordResetToken::hash('the-secret'), 'a new password'));
+
+        // Then : un compte déjà actif qui le reste n'émet rien (et ne reçoit donc rien de plus)
+        $this->assertSame([], $this->eventDispatcher->eventDispatched);
+    }
+
+    public function testADisabledAccountIsRefusedAndAnnouncesNothing(): void
+    {
+        // Given
+        $this->userRepository->save(new UserBuilder()->withId('user-id')->isDisabled()->build());
+        $this->issueLink('user-id');
+
+        // When
+        try {
+            ($this->handler)(new ResetPasswordCommand(PasswordResetToken::hash('the-secret'), 'a new password'));
+            $this->fail('Un compte désactivé ne change rien.');
+        } catch (UserException) {
+            // Then
+            $this->assertSame([], $this->eventDispatcher->eventDispatched);
+        }
     }
 
     public function testTheLinkFixesTheNewPasswordAndIsConsumed(): void

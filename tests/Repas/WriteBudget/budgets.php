@@ -6,10 +6,12 @@
  * @return array<string, int>
  */
 return [
+    'activer-compte-amorcage' => 32,
     'adopter-catalogue' => 26,
     'adopter-ingredient' => 16,
     'ajouter-ingredient-liste' => 14,
     'ajouter-ingredient-liste-adoptant' => 25,
+    'amorcer-compte' => 29,
     'assurer-liste-active' => 5,
     'changer-statut-compte' => 4,
     'choix-drive' => 11,
@@ -17,6 +19,7 @@ return [
     'choix-drive-lot' => 12,
     'choix-drive-recherche' => 7,
     'confirmation-email' => 4,
+    'confirmer-adresse-amorcage' => 33,
     'copier-recette' => 17,
     'copier-recette-adoptant' => 22,
     'copier-recette-ingredient-personnel' => 19,

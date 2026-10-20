@@ -1,5 +1,7 @@
 # Adopter les ingrédients communs (migration ING-003)
 
+> **Suite du chantier (amendement du 2026-10-20)** : l'adoption à la première utilisation est remplacée par l'amorçage des comptes à leur activation et par un rattrapage (ING-008) : `references/amorcage-ingredients.md`. Cette recette-ci reste celle de la migration déjà exécutée (et du retour arrière d'un lancement, y compris d'un lancement d'amorçage).
+
 Chantier « ingrédients propres à chaque utilisateur » ([ADR 0028](../../../../docs/adr/0028-ingredients-propres-a-chaque-utilisateur.md), ticket ING-003). **Les faits, les vérifications, les contrôles SQL et le retour arrière sont dans `docs/ingredients/migration.md` (§ 10 et § 13) et `docs/production.md`, section « Adoption des ingrédients »** : ne pas les redire ici, les citer.
 
 **Se déroule avec l'utilisateur, une étape par message** (SKILL.md §0). Pour chaque étape : le but en une phrase, ce qu'il doit voir si ça marche, puis on attend son résultat. Définir chaque mot nouveau (ingrédient commun, copie, rapport à blanc, sauvegarde, référence du compte). Il n'est pas devops.

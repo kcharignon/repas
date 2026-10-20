@@ -37,6 +37,25 @@ final class DriveIngredientReferencesInMemoryRepository implements DriveIngredie
         );
     }
 
+    public function referencedSlugs(string $userId): array
+    {
+        $slugs = array_values(array_unique(array_column(array_filter($this->choices, static fn(array $choice): bool => $choice['user'] === $userId), 'slug')));
+        sort($slugs);
+
+        return $slugs;
+    }
+
+    public function referencedSlugsOfEveryUser(): array
+    {
+        $slugs = [];
+        foreach (array_unique(array_column($this->choices, 'user')) as $userId) {
+            $slugs[$userId] = $this->referencedSlugs($userId);
+        }
+        ksort($slugs);
+
+        return $slugs;
+    }
+
     public function mergeImpact(string $userId, string $absorbedSlug, string $keptSlug): DriveMergeImpact
     {
         $moved = $dropped = $products = 0;

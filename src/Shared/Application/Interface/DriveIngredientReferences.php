@@ -27,6 +27,23 @@ interface DriveIngredientReferences
     public function fingerprint(string $userId): DriveChoiceFingerprint;
 
     /**
+     * Les slugs des ingrédients que les choix de cet utilisateur désignent (toutes enseignes, tous magasins), sans doublon, triés. Lecture
+     * seule, une requête. L'amorçage d'un compte (ING-008) s'en sert pour copier aussi, en plus des ingrédients « de base », ceux du
+     * catalogue que ses choix référencent : le contexte `Repas` ne lit pas les tables du drive.
+     *
+     * @return list<string>
+     */
+    public function referencedSlugs(string $userId): array;
+
+    /**
+     * Les slugs que les choix de CHAQUE utilisateur désignent : `[identifiant d'utilisateur => slugs triés, sans doublon]`, en une requête. Lecture
+     * seule. Sert à la requête de santé de l'amorçage (ING-008), qui vérifie qu'aucun choix ne désigne l'ingrédient d'un autre compte.
+     *
+     * @return array<string, list<string>>
+     */
+    public function referencedSlugsOfEveryUser(): array;
+
+    /**
      * Fait passer les choix de l'utilisateur d'un slug d'ingrédient à un autre, pour TOUTES ses enseignes et TOUS ses magasins, en une
      * requête : seul `ingredient_slug` change (ni l'identifiant du choix, ni `updated_at`, ni la recherche mémorisée, ni les produits).
      * Un choix dont le slug n'est pas dans la table, ou dont le slug cible est déjà pris par un autre choix de la même enseigne et du
