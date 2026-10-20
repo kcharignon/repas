@@ -78,6 +78,8 @@ Elles joignent toutes par `ingredient.slug`, sans regarder le créateur : aucune
 
 ## 6. La copie d'une recette aujourd'hui
 
+> **Corrigé par ING-004** ([`tickets/ING-004-rapprochement-et-copie-de-recette.md`](tickets/ING-004-rapprochement-et-copie-de-recette.md), section « Réalisation ») : ce paragraphe décrit le comportement d'AVANT, gardé pour mémoire.
+
 `POST /api/v1/recipes/{id}/copy` (`CopyRecipeApiController`, aucune règle sur la recette copiée : n'importe quel identifiant) → `CopyRecipeHandler` (`:30`) :
 
 1. charge la recette d'origine ;
