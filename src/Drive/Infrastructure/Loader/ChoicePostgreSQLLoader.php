@@ -68,7 +68,8 @@ final readonly class ChoicePostgreSQLLoader implements ChoiceLoader
 
         $choices = [];
         foreach ($rows as $row) {
-            $choices[$row['slug']] ??= ['row' => $row, 'accepted' => [], 'rejected' => []];
+            $choices[$row['slug']] ??= ['row' => $row, 'hasProductRows' => false, 'accepted' => [], 'rejected' => []];
+            $choices[$row['slug']]['hasProductRows'] = $choices[$row['slug']]['hasProductRows'] || $row['verdict'] !== null;
             if ($row['productId'] === null) {
                 continue;
             }
@@ -79,6 +80,14 @@ final readonly class ChoicePostgreSQLLoader implements ChoiceLoader
                 $choices[$row['slug']]['rejected'][] = $product;
             }
         }
+
+        // DRV-653 : une préférence qui ne garde que la recherche d'un ingrédient (`NOTE_SEARCH`, produit pris « cette fois seulement ») n'a
+        // aucune ligne de produit (ni accepté ni refusé) et n'est pas « j'en ai toujours » : « Mes produits » n'a rien à en montrer (un écran de produits en ferait une ligne vide).
+        // Le plan, lui, s'en sert.
+        $choices = array_filter(
+            $choices,
+            static fn(array $choice): bool => $choice['hasProductRows'] || $choice['row']['kind'] === ChoiceKind::HAVE_AT_HOME->value,
+        );
 
         $names = $this->ingredientNameLoader->namesBySlug(array_map('strval', array_keys($choices)));
 

@@ -434,6 +434,20 @@ return [
             new ChoiceIntent('farine', ChoiceAction::ADD_PRODUCT, Placement::PRIMARY, new ProductInput('3', 'Farine de blé T55 1 kg', null, new ProductContent(1000, ContentUnit::G), new ProductPrice(149), 4001, 4101, PackSizeChange::set(PackSize::of(20, 'tranche'))), SearchQueryChange::set(SearchQuery::of('farine de blé t55'))),
         ]);
     },
+    // La recherche seule d'un ingrédient sans préférence (DRV-653, produit pris « cette fois seulement ») : la préférence est créée sans
+    // produit. Aucun produit à lire ni à écrire, aucun apprentissage de rayon, aucune lecture d'unité : moins cher qu'un `ADD_PRODUCT`
+    // (pas de compteur du jour des écritures de produits). Le lot de 3 ingrédients coûte autant.
+    'choix-drive-recherche' => static function (WriteBudgetTestCase $t): object {
+        $user = $t->savedUser();
+        $t->savedDriveSettings($user);
+        $t->savedDriveChoice($user, 'farine', ['1', '2'], ['9']);
+
+        return new SaveProductChoicesCommand($user->getId(), Retailer::LECLERC, '123456', [
+            new ChoiceIntent('farine', ChoiceAction::NOTE_SEARCH, null, null, SearchQueryChange::set(SearchQuery::of('farine de blé t55'))),
+            new ChoiceIntent('cereale', ChoiceAction::NOTE_SEARCH, null, null, SearchQueryChange::set(SearchQuery::of('céréales coussins'))),
+            new ChoiceIntent('lait', ChoiceAction::NOTE_SEARCH, null, null, SearchQueryChange::set(SearchQuery::of('lait demi écrémé'))),
+        ]);
+    },
     'oublier-choix-drive' => static function (WriteBudgetTestCase $t): object {
         $user = $t->savedUser();
         $t->savedDriveSettings($user);

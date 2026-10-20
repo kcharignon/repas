@@ -977,6 +977,164 @@ class SaveProductChoicesHandlerTest extends TestCase
         $this->assertSame('recherche 7', $this->choices->findOne('user-1', Retailer::LECLERC, self::STORE, 'ingredient-7')->getSearchQuery()?->value);
     }
 
+    public function testNoteSearchCreatesAChoiceWithoutAnyProductAndRemembersTheSearch(): void
+    {
+        // When : le produit est pris « cette fois seulement » (rien n'est mémorisé), mais sa recherche reste la bonne
+        $this->save('user-1', [$this->noteSearch('cereale', '  céréales   coussins ')]);
+
+        // Then : une préférence de produits, vide, avec la recherche normalisée ; aucun produit n'est créé
+        $choice = $this->choices->findOne('user-1', Retailer::LECLERC, self::STORE, 'cereale');
+        $this->assertFalse($choice->isHaveAtHome());
+        $this->assertSame([], $choice->getAcceptedProductIds());
+        $this->assertSame([], $choice->getRejectedProductIds());
+        $this->assertSame('céréales coussins', $choice->getSearchQuery()?->value);
+        $this->assertEquals($this->now, $choice->getUpdatedAt());
+        $this->assertSame([], $this->products->all());
+        $this->assertSame([], $this->departmentRayons->all());
+    }
+
+    public function testNoteSearchKeepsTheAcceptedAndRejectedProductsAndReplacesTheSearch(): void
+    {
+        // Given : un produit habituel, un refus, une contenance et une recherche
+        $this->save('user-1', [
+            $this->addFoundBy('cheddar', Placement::PRIMARY, '1', 'cheddar tranches'),
+            $this->addWithSize('cheddar', Placement::FALLBACK, '2', PackSizeChange::set(PackSize::of(20, 'tranche'))),
+            $this->reject('cheddar', '3'),
+        ]);
+
+        // When
+        $this->save('user-1', [$this->noteSearch('cheddar', 'cheddar burger')]);
+
+        // Then : seule la recherche change
+        $choice = $this->choices->findOne('user-1', Retailer::LECLERC, self::STORE, 'cheddar');
+        $this->assertSame('cheddar burger', $choice->getSearchQuery()?->value);
+        $this->assertSame($this->productIds('1', '2'), $choice->getAcceptedProductIds());
+        $this->assertSame($this->productIds('3'), $choice->getRejectedProductIds());
+        $this->assertEquals(PackSize::of(20, 'tranche'), $choice->getPackSize($this->productId('2')));
+    }
+
+    public function testNoteSearchIsOrderedLikeAnyOtherIntentOfTheBatch(): void
+    {
+        // When : la recherche, puis un produit habituel sans clé de recherche (la recherche notée est gardée)
+        $this->save('user-1', [$this->noteSearch('cereale', 'céréales coussins'), $this->add('cereale', Placement::PRIMARY, '1')]);
+
+        // Then
+        $choice = $this->choices->findOne('user-1', Retailer::LECLERC, self::STORE, 'cereale');
+        $this->assertSame($this->productIds('1'), $choice->getAcceptedProductIds());
+        $this->assertSame('céréales coussins', $choice->getSearchQuery()?->value);
+
+        // When : « j'en ai toujours » après la recherche efface tout
+        $this->save('user-1', [$this->noteSearch('cereale', 'autre recherche'), new ChoiceIntent('cereale', ChoiceAction::HAVE_AT_HOME)]);
+
+        // Then
+        $choice = $this->choices->findOne('user-1', Retailer::LECLERC, self::STORE, 'cereale');
+        $this->assertTrue($choice->isHaveAtHome());
+        $this->assertNull($choice->getSearchQuery());
+    }
+
+    public function testTheLastSearchOfTheBatchWinsForAnIngredient(): void
+    {
+        // When
+        $this->save('user-1', [$this->noteSearch('cereale', 'première'), $this->noteSearch('cereale', 'seconde')]);
+
+        // Then
+        $this->assertSame('seconde', $this->choices->findOne('user-1', Retailer::LECLERC, self::STORE, 'cereale')->getSearchQuery()?->value);
+    }
+
+    public function testNoteSearchIsRefusedOnAHaveAtHomeChoiceAndNothingIsSaved(): void
+    {
+        // Given : l'utilisateur a déjà tout chez lui
+        $this->save('user-1', [new ChoiceIntent('cereale', ChoiceAction::HAVE_AT_HOME)]);
+
+        // When
+        $this->assertInvalid(fn() => $this->save('user-1', [$this->add('farine', Placement::PRIMARY, '9'), $this->noteSearch('cereale', 'céréales coussins')]));
+
+        // Then : « j'en ai toujours » reste, et le reste du lot n'est pas enregistré
+        $this->assertTrue($this->choices->findOne('user-1', Retailer::LECLERC, self::STORE, 'cereale')->isHaveAtHome());
+        $this->assertNull($this->choices->findOne('user-1', Retailer::LECLERC, self::STORE, 'farine'));
+        $this->assertSame([], $this->products->all());
+    }
+
+    /**
+     * @param list<ChoiceIntent> $intents
+     */
+    #[DataProvider('malformedNoteSearches')]
+    public function testAMalformedNoteSearchIsRefusedBeforeAnyReadAndNothingIsSaved(array $intents): void
+    {
+        // When
+        $this->assertInvalid(fn() => $this->save('user-1', [$this->add('sel', Placement::PRIMARY, '9'), ...$intents]));
+
+        // Then
+        $this->assertSame(0, $this->products->findByKeysCalls);
+        $this->assertSame([], $this->choices->all());
+    }
+
+    /**
+     * @return iterable<string, array{list<ChoiceIntent>}>
+     */
+    public static function malformedNoteSearches(): iterable
+    {
+        $text = SearchQueryChange::set(SearchQuery::of('céréales coussins'));
+
+        yield 'sans clé de recherche' => [[new ChoiceIntent('cereale', ChoiceAction::NOTE_SEARCH)]];
+        yield 'recherche à effacer' => [[new ChoiceIntent('cereale', ChoiceAction::NOTE_SEARCH, null, null, SearchQueryChange::clear())]];
+        yield 'avec un produit' => [[new ChoiceIntent('cereale', ChoiceAction::NOTE_SEARCH, null, new ProductInput('1', 'Céréales'), $text)]];
+        yield 'avec un placement' => [[new ChoiceIntent('cereale', ChoiceAction::NOTE_SEARCH, Placement::PRIMARY, null, $text)]];
+        yield 'slug mal formé' => [[new ChoiceIntent('Céréale', ChoiceAction::NOTE_SEARCH, null, null, $text)]];
+    }
+
+    public function testNoteSearchBelongsToTheUserTheStoreAndTheIngredientOfTheChoice(): void
+    {
+        // Given
+        $this->choices->saveAll([
+            new ChoiceBuilder()->withUserId('user-2')->withIngredientSlug('cereale')->withSearchQuery('recherche de user-2')->build(),
+            new ChoiceBuilder()->withUserId('user-1')->withStoreId('999999')->withIngredientSlug('cereale')->withSearchQuery('recherche de l\'ancien magasin')->build(),
+        ]);
+
+        // When
+        $this->save('user-1', [$this->noteSearch('cereale', 'céréales coussins')]);
+
+        // Then
+        $this->assertSame('céréales coussins', $this->choices->findOne('user-1', Retailer::LECLERC, self::STORE, 'cereale')->getSearchQuery()?->value);
+        $this->assertSame('recherche de user-2', $this->choices->findOne('user-2', Retailer::LECLERC, self::STORE, 'cereale')->getSearchQuery()?->value);
+        $this->assertSame('recherche de l\'ancien magasin', $this->choices->findOne('user-1', Retailer::LECLERC, '999999', 'cereale')->getSearchQuery()?->value);
+    }
+
+    public function testNoteSearchCostsNoProductReadNorWriteAndOneChoiceWritePerBatch(): void
+    {
+        // Given : 40 ingrédients dont la recherche est notée
+        $intents = [];
+        foreach (range(1, 40) as $i) {
+            $intents[] = $this->noteSearch("ingredient-$i", "recherche $i");
+        }
+
+        // When
+        $this->save('user-1', $intents);
+
+        // Then : ni lecture ni écriture de produits, une lecture et une écriture de préférences, le décompte des préférences nouvelles
+        $this->assertSame(0, $this->products->findByKeysCalls);
+        $this->assertSame([0], $this->products->saveAllSizes); // le vrai dépôt ne fait rien d'une liste vide
+        $this->assertSame(1, $this->choices->findByUserStoreAndSlugsCalls);
+        $this->assertSame([40], $this->choices->saveAllSizes);
+        $this->assertSame(1, $this->choices->countCalls);
+        $this->assertSame([], $this->unitSlugs->existingSlugsCalls);
+        $this->assertSame([], $this->ingredientDepartments->departmentSlugsByIngredientCalls);
+    }
+
+    public function testNoteSearchCountsForTheCeilingOfChoicesButNotForTheProductWritesOfTheDay(): void
+    {
+        // Given : le magasin est plein de préférences
+        $this->fillChoices('user-1', self::STORE, Choice::MAX_PER_USER_AND_STORE);
+
+        // When / Then : une préférence nouvelle de plus est refusée
+        try {
+            $this->save('user-1', [$this->noteSearch('nouveau-un', 'nouveau')]);
+            $this->fail('DRIVE_LIMIT_REACHED attendu');
+        } catch (DriveException $exception) {
+            $this->assertSame('DRIVE_LIMIT_REACHED', $exception->getMessage());
+        }
+    }
+
     public function testAPackSizeIsRememberedOnTheLineOfTheProductItWasGivenFor(): void
     {
         // When : le cheddar de la liste se compte en tranches, le produit en contient 20
@@ -1223,6 +1381,11 @@ class SaveProductChoicesHandlerTest extends TestCase
     private function packSize(string $userId, string $slug, string $retailerProductId): ?PackSize
     {
         return $this->choices->findOne($userId, Retailer::LECLERC, self::STORE, $slug)->getPackSize($this->productId($retailerProductId));
+    }
+
+    private function noteSearch(string $slug, string $searchQuery): ChoiceIntent
+    {
+        return new ChoiceIntent($slug, ChoiceAction::NOTE_SEARCH, null, null, SearchQueryChange::set(SearchQuery::of($searchQuery)));
     }
 
     private function addFoundBy(string $slug, Placement $placement, string $retailerProductId, string $searchQuery): ChoiceIntent

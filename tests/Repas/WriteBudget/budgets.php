@@ -12,6 +12,7 @@ return [
     'choix-drive' => 10,
     'choix-drive-contenance' => 11,
     'choix-drive-lot' => 11,
+    'choix-drive-recherche' => 6,
     'confirmation-email' => 4,
     'copier-recette' => 16,
     'creer-conversion' => 4,

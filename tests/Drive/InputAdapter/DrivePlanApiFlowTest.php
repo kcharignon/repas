@@ -159,6 +159,82 @@ class DrivePlanApiFlowTest extends DatabaseTestCase
         $this->assertSame([null], array_column($this->jsonBody()['member'], 'searchQuery'));
     }
 
+    /**
+     * DRV-653 de bout en bout : un produit pris « cette fois seulement » n'est pas mémorisé, mais la recherche qui l'a fait trouver
+     * l'est (`NOTE_SEARCH` de `PUT /drive/choices`) : le plan suivant fait chercher ce texte, la ligne reste `NEW` (aucun produit à
+     * proposer), et « Mes produits » ne montre aucune ligne vide. Les produits d'un ingrédient déjà mémorisé ne bougent pas.
+     */
+    public function testTheSearchOfAProductTakenOnlyOnceIsWhatThePlanSearchesNextTime(): void
+    {
+        // Given : Alice, une liste envoyée de lait et d'œufs, un lait habituel avec sa recherche
+        $alice = $this->savedUser();
+        static::getContainer()->get(DriveSettingsRepository::class)->save(new DriveSettingsBuilder()->withUserId($alice->getId())->build());
+        $listId = $this->savedList($alice, ShoppingListStatus::SENT);
+        $put = function (array $choices) use ($alice): void {
+            $this->request('PUT', '/api/v1/drive/choices', $alice, json_encode(['retailer' => 'leclerc', 'storeId' => '123456', 'choices' => $choices], JSON_THROW_ON_ERROR));
+        };
+        $put([['ingredientSlug' => 'lait', 'action' => 'ADD_PRODUCT', 'placement' => 'PRIMARY', 'product' => ['retailerProductId' => '555111', 'label' => 'Lait demi-écrémé 50 cl'], 'searchQuery' => 'lait demi écrémé']]);
+        $this->request('GET', "/api/v1/drive/plans/$listId", $alice);
+        $names = array_column($this->jsonBody()['lines'], 'ingredientName');
+
+        // When : les œufs sont pris cette fois seulement, avec la recherche qui les a fait trouver ; le lait aussi, avec une autre recherche
+        $put([
+            ['ingredientSlug' => 'oeuf', 'action' => 'NOTE_SEARCH', 'searchQuery' => '  œufs   plein air  '],
+            ['ingredientSlug' => 'lait', 'action' => 'NOTE_SEARCH', 'searchQuery' => 'lait uht'],
+        ]);
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->request('GET', "/api/v1/drive/plans/$listId", $alice);
+
+        // Then : la recherche est mémorisée, l'ingrédient sans produit reste « nouveau », le lait garde son produit habituel
+        $plan = $this->jsonBody();
+        $this->assertSame(['lait', 'oeuf'], array_column($plan['lines'], 'ingredientSlug'));
+        $this->assertSame($names, array_column($plan['lines'], 'ingredientName'));
+        $this->assertSame(['KNOWN', 'NEW'], array_column($plan['lines'], 'status'));
+        $this->assertSame(['lait uht', 'œufs plein air'], array_column($plan['lines'], 'searchQuery'));
+        $this->assertSame([[], []], array_column($plan['lines'], 'rejected'));
+        $this->assertSame([[], '555111'], [$plan['lines'][1]['products'], $plan['lines'][0]['products'][0]['retailerProductId']]);
+        $this->assertSame(['known' => 1, 'new' => 1, 'haveAtHome' => 0], $plan['counts']);
+
+        // Then : « Mes produits » ne montre que le lait, avec sa nouvelle recherche, jamais un produit pour les œufs
+        $this->request('GET', '/api/v1/drive/choices?retailer=leclerc', $alice);
+        $this->assertSame([['lait', 'lait uht', ['555111']]], array_map(static fn(array $choice): array => [$choice['ingredientSlug'], $choice['searchQuery'], array_column(array_column($choice['accepted'], 'product'), 'retailerProductId')], $this->jsonBody()['member']));
+
+        // When : la personne choisit ensuite un vrai produit pour les œufs, sans reparler de la recherche
+        $put([['ingredientSlug' => 'oeuf', 'action' => 'ADD_PRODUCT', 'placement' => 'PRIMARY', 'product' => ['retailerProductId' => '777001', 'label' => 'Œufs plein air x6']]]);
+        $this->request('GET', "/api/v1/drive/plans/$listId", $alice);
+
+        // Then
+        $this->assertSame(['KNOWN', 'KNOWN'], array_column($this->jsonBody()['lines'], 'status'));
+        $this->assertSame(['lait uht', 'œufs plein air'], array_column($this->jsonBody()['lines'], 'searchQuery'));
+    }
+
+    public function testNoteSearchIsRefusedWithoutASearchOnAHaveAtHomeIngredientOrWithAProduct(): void
+    {
+        // Given : Alice a tout chez elle pour le lait
+        $alice = $this->savedUser();
+        static::getContainer()->get(DriveSettingsRepository::class)->save(new DriveSettingsBuilder()->withUserId($alice->getId())->build());
+        $put = function (array $intent) use ($alice): array {
+            $this->request('PUT', '/api/v1/drive/choices', $alice, json_encode(['retailer' => 'leclerc', 'storeId' => '123456', 'choices' => [$intent]], JSON_THROW_ON_ERROR));
+
+            $content = (string) $this->client->getResponse()->getContent();
+
+            return [$this->client->getResponse()->getStatusCode(), $content === '' ? null : $this->jsonBody()['error']['message'] ?? null];
+        };
+        $put(['ingredientSlug' => 'lait', 'action' => 'HAVE_AT_HOME']);
+
+        // When / Then
+        $this->assertSame([422, 'DRIVE_CHOICE_INVALID'], $put(['ingredientSlug' => 'lait', 'action' => 'NOTE_SEARCH', 'searchQuery' => 'lait uht']));
+        $this->assertSame([422, 'DRIVE_CHOICE_INVALID'], $put(['ingredientSlug' => 'oeuf', 'action' => 'NOTE_SEARCH']));
+        $this->assertSame([422, 'DRIVE_CHOICE_INVALID'], $put(['ingredientSlug' => 'oeuf', 'action' => 'NOTE_SEARCH', 'searchQuery' => null]));
+        $this->assertSame([422, 'DRIVE_CHOICE_INVALID'], $put(['ingredientSlug' => 'oeuf', 'action' => 'NOTE_SEARCH', 'searchQuery' => 'œufs', 'placement' => 'PRIMARY']));
+        $this->assertSame([422, 'DRIVE_CHOICE_INVALID'], $put(['ingredientSlug' => 'oeuf', 'action' => 'NOTE_SEARCH', 'searchQuery' => 'œufs', 'product' => ['retailerProductId' => '1', 'label' => 'Œufs']]));
+        $this->assertSame([422, 'DRIVE_SEARCH_QUERY_INVALID'], $put(['ingredientSlug' => 'oeuf', 'action' => 'NOTE_SEARCH', 'searchQuery' => 'œ']));
+
+        // Then : rien n'a été créé, « j'en ai toujours » reste
+        $this->request('GET', '/api/v1/drive/choices?retailer=leclerc', $alice);
+        $this->assertSame([['lait', true]], array_map(static fn(array $choice): array => [$choice['ingredientSlug'], $choice['haveAtHome']], $this->jsonBody()['member']));
+    }
+
     public function testASearchIsPrivateAndRefusedWhenMalformedOrOnAnythingButAnAddedProduct(): void
     {
         // Given : Alice et Bob ont chacun leur lait et leur recherche pour la même liste d'ingrédients

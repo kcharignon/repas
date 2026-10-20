@@ -52,6 +52,11 @@ readonly class SaveProductChoicesHandler
      * part ailleurs. Intention sans recherche : celle qui est mémorisée est gardée ; recherche effacée explicitement : elle est
      * oubliée ; recherche sur une autre action : `invalidChoice()`. Aucune requête de plus : le texte voyage avec la préférence.
      *
+     * **Recherche sans produit (DRV-653)** : `NOTE_SEARCH` mémorise la recherche d'un ingrédient sans toucher à ses produits (un produit pris
+     * « cette fois seulement » n'est pas mémorisé, mais la recherche qui l'a fait trouver reste la bonne). La préférence est créée si elle
+     * n'existe pas, sans produit accepté : le plan la lit `NEW` et cherche le texte mémorisé. Refusée sur « j'en ai toujours »
+     * (`invalidChoice()`). Pas de produit à lire ni à écrire : jamais plus de requêtes qu'un `ADD_PRODUCT`.
+     *
      * **Contenance mémorisée (DRV-652)** : le produit d'un `ADD_PRODUCT` peut porter sa contenance dans l'unité de la liste (« 20 tranches
      * dans ce produit », `PackSizeChange`) ; elle est mémorisée sur la ligne de ce produit dans la préférence (couple préférence,
      * produit), privée, et nulle part ailleurs. Intention sans contenance : celle qui est mémorisée pour le MÊME produit est gardée
@@ -124,6 +129,8 @@ readonly class SaveProductChoicesHandler
                 ChoiceAction::ADD_PRODUCT => $intent->placement === Placement::PRIMARY ? $choice->addPrimary($productId) : $choice->addFallback($productId),
                 ChoiceAction::REJECT_PRODUCT => $choice->reject($productId),
                 ChoiceAction::HAVE_AT_HOME => $choice->markHaveAtHome(),
+                // Seule la recherche change (ci-dessous) : les produits acceptés et refusés restent tels quels
+                ChoiceAction::NOTE_SEARCH => $choice,
             };
             // Après l'ajout : la préférence est alors une préférence de produits. Clé absente : la recherche mémorisée est gardée
             $intent->searchQuery?->applyTo($choice);
@@ -198,13 +205,15 @@ readonly class SaveProductChoicesHandler
             $wellFormed = preg_match(Choice::SLUG_PATTERN, $intent->ingredientSlug) === 1
                 && ($product === null || preg_match(Product::RETAILER_PRODUCT_ID_PATTERN, $product->retailerProductId) === 1)
                 && ($product === null || self::catalogIdsAreInBounds($product))
-                && ($intent->searchQuery === null || $intent->action === ChoiceAction::ADD_PRODUCT)
+                && ($intent->searchQuery === null || $intent->action === ChoiceAction::ADD_PRODUCT || $intent->action === ChoiceAction::NOTE_SEARCH)
                 && ($product?->packSize === null || $intent->action === ChoiceAction::ADD_PRODUCT)
                 && match ($intent->action) {
                     ChoiceAction::ADD_PRODUCT => $intent->placement !== null && $product?->label !== null,
                     ChoiceAction::REJECT_PRODUCT => $intent->placement === null && $product?->label !== null,
                     ChoiceAction::HAVE_AT_HOME => $intent->placement === null && $product === null,
                     ChoiceAction::REFRESH_PRICE => $intent->placement === null && $product?->price !== null,
+                    // DRV-653 : une recherche à mémoriser, jamais une clé absente ni `null` (rien à noter, et l'effacer passe par `ADD_PRODUCT`)
+                    ChoiceAction::NOTE_SEARCH => $intent->placement === null && $product === null && $intent->searchQuery?->searchQuery !== null,
                 };
             if (!$wellFormed) {
                 throw DriveException::invalidChoice();
@@ -286,7 +295,8 @@ readonly class SaveProductChoicesHandler
         }
 
         $products = [];
-        foreach ($this->productRepository->findByKeys(array_values($keys)) as $product) {
+        // Un lot sans produit (`NOTE_SEARCH`) n'interroge pas le dépôt
+        foreach ($keys === [] ? [] : $this->productRepository->findByKeys(array_values($keys)) as $product) {
             $products[$product->getRetailerProductId()] = $product;
         }
 
