@@ -32,7 +32,7 @@ Taille : S (quelques heures), M (une journée), L (plusieurs jours). Effort : le
 
 ### I3 — Copie de recette
 
-- [x] [ING-004](tickets/ING-004-rapprochement-et-copie-de-recette.md) (PR #NNN) back · L · **high** · `IngredientNameMatcher` (seuils mesurés), copie de recette qui se branche sur l'existant · dépend de : 001 (le matcher seul : rien)
+- [x] [ING-004](tickets/ING-004-rapprochement-et-copie-de-recette.md) (PR #236) back · L · **high** · `IngredientNameMatcher` (seuils mesurés), copie de recette qui se branche sur l'existant · dépend de : 001 (le matcher seul : rien)
 
 ### I4 — Fusion
 

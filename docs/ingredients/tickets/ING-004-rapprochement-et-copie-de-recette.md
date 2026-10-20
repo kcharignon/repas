@@ -5,7 +5,7 @@
 - **Taille** : L
 - **Effort recommandé pour l'agent** : **high** (fonctionnalité ; le domaine est pur et testé par une vérité terrain fournie)
 - **Dépend de** : ING-001 (alias, adoption) ; la partie `IngredientNameMatcher` peut démarrer **dès maintenant** (aucune dépendance)
-- **Statut** : fait (PR #NNN)
+- **Statut** : fait (PR #236)
 - **Lire d'abord** : **[`rapprochement.md`](../rapprochement.md) en entier** (algorithme, seuils, mesures) ; [`analyse.md`](../analyse.md) § 6 (comportement actuel et ses défauts) ; [ADR 0028](../../adr/0028-ingredients-propres-a-chaque-utilisateur.md) décision f ; ADR 0019 (Jaro-Winkler) ; skill `/repas-dev` ; `experiments/ground-truth.json`.
 
 ## Contexte
@@ -53,7 +53,7 @@ L'écran de doublons et le chargeur de suggestions (ING-006, qui réutilise `sim
 - `IngredientPostgreSQLRepository::save` écrase par slug : toute création passe par `exists()` et `IngredientSlugPolicy`.
 - Garder `JaroWinkler` inchangé (`JaroWinklerTest` de référence) : seul le matcher est nouveau.
 
-## Réalisation (PR back #NNN)
+## Réalisation (PR back #236)
 
 Livré comme décrit ci-dessus, avec les écarts et ajouts suivants, tous décidés pour tenir l'intention du ticket. **Aucune migration de schéma, aucun changement de contrat** (seul le texte de description de la route `POST /recipes/{id}/copy` change dans `openapi.json`) : rien à craindre pour le retour arrière du code.
 
