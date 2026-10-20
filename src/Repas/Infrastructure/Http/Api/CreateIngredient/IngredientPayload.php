@@ -14,8 +14,10 @@ final readonly class IngredientPayload
 {
     public function __construct(
         #[Assert\NotBlank]
-        #[Assert\Length(max: 255)]
-        #[OA\Property(description: "Nom de l'ingrédient", example: 'Praliné')]
+        // 200 et non 255 : le slug d'un ingrédient personnel ou adopté est le nom suivi de l'identifiant de l'utilisateur (36 caractères) et
+        // doit tenir dans les 255 de la colonne, avec la marge d'un suffixe « -2 » d'adoption (ADR 0028)
+        #[Assert\Length(max: 200)]
+        #[OA\Property(description: "Nom de l'ingrédient (200 caractères au plus)", example: 'Praliné', maxLength: 200)]
         public string $name,
         #[Assert\NotBlank]
         #[OA\Property(description: 'Slug du rayon', example: 'fruit-et-legume')]
