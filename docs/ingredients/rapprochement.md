@@ -122,25 +122,25 @@ Résultats complets : [`experiments/resultats.md`](experiments/resultats.md) (re
 
 « Faux liens » = mauvais liens + liens à tort (sur 322 requêtes qui attendent *aucun* ou un autre candidat). « Doublons créés » : sur 1 355 requêtes qui attendent un lien.
 
-| Seuil | Base : rappel | Base : doublons créés | Base : **faux liens** | Recommandé : rappel | Recommandé : doublons créés | Recommandé : **faux liens** |
-|---|---|---|---|---|---|---|
-| 0,85 | 99,8 % | 2 | **172** | 97,0 % | 40 | **7** |
-| 0,86 | 99,8 % | 2 | 158 | 97,0 % | 40 | 7 |
-| 0,87 | 99,6 % | 4 | 146 | 97,0 % | 41 | 6 |
-| 0,88 | 99,6 % | 4 | 126 | 96,9 % | 42 | 6 |
-| 0,89 | 99,4 % | 7 | 105 | 96,7 % | 45 | 6 |
-| 0,90 | 99,0 % | 13 | **84** | 96,4 % | 49 | **6** |
-| 0,91 | 98,3 % | 22 | 51 | 95,8 % | 57 | 6 |
-| 0,92 | 97,9 % | 27 | 43 | 95,4 % | 62 | 6 |
-| 0,93 | 96,4 % | 48 | **23** | 94,2 % | 78 | **6** |
-| 0,94 | 94,7 % | 72 | 15 | 93,2 % | 92 | 4 |
-| 0,95 | 91,3 % | 118 | **12** | 90,9 % | 123 | **3** |
-| 0,96 | 87,2 % | 174 | 12 | 87,7 % | 166 | 3 |
-| **0,97** | 78,0 % | 298 | **5** | **83,4 %** | 225 | **0** |
-| 0,98 | 59,0 % | 556 | 0 | 75,1 % | 337 | 0 |
-| 0,99 | 44,3 % | 755 | 0 | 65,1 % | 473 | 0 |
+| Seuil | Base : précision | Base : rappel | Base : doublons créés | Base : **faux liens** | Recommandé : précision | Recommandé : rappel | Recommandé : doublons créés | Recommandé : **faux liens** |
+|---|---|---|---|---|---|---|---|---|
+| 0,85 | 88,7 % | 99,8 % | 2 | 172 | 99,5 % | 97,0 % | 40 | 7 |
+| 0,86 | 89,5 % | 99,8 % | 2 | 158 | 99,5 % | 97,0 % | 40 | 7 |
+| 0,87 | 90,2 % | 99,6 % | 4 | 146 | 99,5 % | 97,0 % | 41 | 6 |
+| 0,88 | 91,5 % | 99,6 % | 4 | 126 | 99,5 % | 96,9 % | 42 | 6 |
+| 0,89 | 92,8 % | 99,4 % | 7 | 105 | 99,5 % | 96,7 % | 45 | 6 |
+| 0,90 | 94,1 % | 99,0 % | 13 | **84** | 99,5 % | 96,4 % | 49 | **6** |
+| 0,91 | 96,3 % | 98,3 % | 22 | 51 | 99,5 % | 95,8 % | 57 | 6 |
+| 0,92 | 96,9 % | 97,9 % | 27 | 43 | 99,5 % | 95,4 % | 62 | 6 |
+| 0,93 | 98,3 % | 96,4 % | 48 | **23** | 99,5 % | 94,2 % | 78 | **6** |
+| 0,94 | 98,8 % | 94,7 % | 72 | 15 | 99,7 % | 93,2 % | 92 | 4 |
+| 0,95 | 99,0 % | 91,3 % | 118 | **12** | 99,8 % | 90,9 % | 123 | **3** |
+| 0,96 | 99,0 % | 87,2 % | 174 | 12 | 99,7 % | 87,7 % | 166 | 3 |
+| **0,97** | 99,5 % | 78,0 % | 298 | **5** | 100,0 % | 83,4 % | 225 | **0** |
+| 0,98 | 100,0 % | 59,0 % | 556 | 0 | 100,0 % | 75,1 % | 337 | 0 |
+| 0,99 | 100,0 % | 44,3 % | 755 | 0 | 100,0 % | 65,1 % | 473 | 0 |
 
-(Précision, c'est-à-dire bons liens / liens faits : 88,7 % à 0,85 en base, 99,5 % recommandé ; elle flatte car 95 % des cas attendent un lien ; **le nombre de faux liens est le chiffre qui compte**.)
+(La précision, c'est-à-dire bons liens / liens faits, flatte : 95 % des cas attendent un lien. **Le nombre de faux liens est le chiffre qui compte.**)
 
 **Lecture.**
 
