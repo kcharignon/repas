@@ -11,6 +11,7 @@ use Repas\Repas\Domain\Exception\IngredientException;
 use Repas\Repas\Domain\Model\AliasKind;
 use Repas\Repas\Domain\Model\Ingredient;
 use Repas\Repas\Domain\Model\IngredientAlias;
+use Repas\Repas\Domain\Model\IngredientDistinctPair;
 use Repas\Repas\Domain\Service\ConversionService;
 use Repas\Repas\Domain\Service\IngredientMergePlanner;
 use Repas\Shared\Domain\Event\IngredientRemovedEvent;
@@ -23,6 +24,7 @@ use Repas\Tests\Helper\FrozenClock;
 use Repas\Tests\Helper\InMemoryRepository\ConversionInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\DriveIngredientReferencesInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\IngredientAliasInMemoryRepository;
+use Repas\Tests\Helper\InMemoryRepository\IngredientDistinctInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\IngredientInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\IngredientMergeInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\SpyEventDispatcher;
@@ -45,6 +47,7 @@ class MergeIngredientsHandlerTest extends TestCase
     private ConversionInMemoryRepository $conversionRepository;
     private IngredientMergeInMemoryRepository $mergeRepository;
     private IngredientAliasInMemoryRepository $aliasRepository;
+    private IngredientDistinctInMemoryRepository $distinctRepository;
     private DriveIngredientReferencesInMemoryRepository $driveReferences;
     private SpyEventDispatcher $eventDispatcher;
     private MergeIngredientsHandler $handler;
@@ -62,6 +65,7 @@ class MergeIngredientsHandlerTest extends TestCase
         ]);
         $this->mergeRepository = new IngredientMergeInMemoryRepository();
         $this->aliasRepository = new IngredientAliasInMemoryRepository();
+        $this->distinctRepository = new IngredientDistinctInMemoryRepository();
         $this->driveReferences = new DriveIngredientReferencesInMemoryRepository();
         $this->eventDispatcher = new SpyEventDispatcher();
         $this->handler = $this->handlerFor($this->ingredientRepository, $this->conversionRepository);
@@ -73,6 +77,7 @@ class MergeIngredientsHandlerTest extends TestCase
             $ingredients,
             $this->mergeRepository,
             $this->aliasRepository,
+            $this->distinctRepository,
             $conversions,
             new ConversionService($conversions, new UnitInMemoryRepository()),
             new IngredientMergePlanner(),
@@ -526,6 +531,46 @@ class MergeIngredientsHandlerTest extends TestCase
         $this->assertSame('tomatesother-id', $this->aliasRepository->resolve(self::OTHER, ['tomates'])['tomates']);
         // l'adoption retournée vers « Tomate » reste une adoption (le commun reste masqué), marquée par la fusion
         $this->assertSame([AliasKind::ADOPTION, 'merge'], [$this->aliasRepository->find(self::USER, 'tomates')->getKind(), $this->aliasRepository->find(self::USER, 'tomates')->getSource()]);
+    }
+
+    public function testTheDistinctPairsThatNameTheAbsorbedIngredientAreForgottenAndOnlyThose(): void
+    {
+        // Given : « Tomates » est écartée de « Tomate » et d'un autre ingrédient ; « Tomate » l'est d'un troisième ; un autre utilisateur a écarté « Tomates »
+        $now = new DateTimeImmutable('2026-10-01 10:00:00');
+        $this->distinctRepository = new IngredientDistinctInMemoryRepository([
+            IngredientDistinctPair::create(self::USER, self::ABSORBED, self::KEPT, $now),
+            IngredientDistinctPair::create(self::USER, 'poivre-user-id', self::ABSORBED, $now),
+            IngredientDistinctPair::create(self::USER, self::KEPT, 'courgette-user-id', $now),
+            IngredientDistinctPair::create(self::OTHER, self::ABSORBED, 'poivre-other-id', $now),
+        ]);
+        $this->handler = $this->handlerFor($this->ingredientRepository, $this->conversionRepository);
+
+        // When
+        $this->merge();
+
+        // Then
+        $this->assertSame(
+            [self::USER . '|courgette-user-id|' . self::KEPT, self::OTHER . '|poivre-other-id|' . self::ABSORBED],
+            array_map(static fn(IngredientDistinctPair $pair): string => $pair->getId(), $this->distinctRepository->all()),
+        );
+    }
+
+    public function testAMergeThatIsRefusedForgetsNoDistinctPair(): void
+    {
+        // Given : une recette utilise des tranches que « Tomate » ne convertit pas
+        $this->recipe('r1', [self::ABSORBED], 'tranche');
+        $this->distinctRepository = new IngredientDistinctInMemoryRepository([IngredientDistinctPair::create(self::USER, self::ABSORBED, 'poivre-user-id', new DateTimeImmutable())]);
+        $this->handler = $this->handlerFor($this->ingredientRepository, $this->conversionRepository);
+
+        // When
+        try {
+            $this->merge();
+            $this->fail('La fusion aurait dû être refusée.');
+        } catch (IngredientException) {
+        }
+
+        // Then
+        $this->assertCount(1, $this->distinctRepository->all());
     }
 
     public function testMergingACreatedIngredientDecrementsTheStatistic(): void

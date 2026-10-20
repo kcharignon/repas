@@ -15,6 +15,7 @@ use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Repas\Domain\Model\AliasKind;
 use Repas\Repas\Domain\Model\Conversion;
 use Repas\Repas\Domain\Model\IngredientAlias;
+use Repas\Repas\Domain\Model\IngredientDistinctPair;
 use Repas\Tests\Helper\Builder\ConversionBuilder;
 use Repas\Tests\Helper\Builder\IngredientBuilder;
 use Repas\Tests\Helper\Builder\RecipeBuilder;
@@ -23,6 +24,7 @@ use Repas\Tests\Helper\Builder\UnitBuilder;
 use Repas\Tests\Helper\Builder\UserBuilder;
 use Repas\Tests\Helper\InMemoryRepository\ConversionInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\IngredientAliasInMemoryRepository;
+use Repas\Tests\Helper\InMemoryRepository\IngredientDistinctInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\IngredientInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\RecipeInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\ShoppingListInMemoryRepository;
@@ -36,6 +38,7 @@ class RemoveIngredientHandlerTest extends TestCase
     private readonly ShoppingListRepository $shoppingListRepository;
     private readonly ConversionRepository $conversionRepository;
     private readonly IngredientAliasInMemoryRepository $aliasRepository;
+    private readonly IngredientDistinctInMemoryRepository $distinctRepository;
     private readonly SpyEventDispatcher $eventDispatcher;
 
     protected function setUp(): void
@@ -67,6 +70,11 @@ class RemoveIngredientHandlerTest extends TestCase
             IngredientAlias::create('user-id', 'ancien-lait', 'lait', AliasKind::MERGE, 'merge', new \DateTimeImmutable()),
             IngredientAlias::create('other-id', 'beurre', 'beurreother-id', AliasKind::ADOPTION, 'first-use', new \DateTimeImmutable()),
         ]);
+        $this->distinctRepository = new IngredientDistinctInMemoryRepository([
+            IngredientDistinctPair::create('user-id', 'lait', 'beurreuser-id', new \DateTimeImmutable()),
+            IngredientDistinctPair::create('user-id', 'beurreuser-id', 'cremeuser-id', new \DateTimeImmutable()),
+            IngredientDistinctPair::create('other-id', 'beurreuser-id', 'cremeuser-id', new \DateTimeImmutable()),
+        ]);
         $this->eventDispatcher = new SpyEventDispatcher();
 
         $this->handler = new RemoveIngredientHandler(
@@ -75,6 +83,7 @@ class RemoveIngredientHandlerTest extends TestCase
             $this->shoppingListRepository,
             $this->conversionRepository,
             $this->aliasRepository,
+            $this->distinctRepository,
             $this->eventDispatcher,
         );
     }
@@ -145,6 +154,36 @@ class RemoveIngredientHandlerTest extends TestCase
 
         // Assert
         $this->assertCount(3, $this->aliasRepository->all());
+    }
+
+    public function testRemovingAnIngredientForgetsTheDistinctPairsThatNameItAndOnlyThose(): void
+    {
+        // Act
+        ($this->handler)(new RemoveIngredientCommand('lait'));
+
+        // Assert : la paire « lait / beurre » disparaît ; l'autre paire de l'utilisateur et celle d'un autre utilisateur restent
+        $this->assertSame(
+            ['user-id|beurreuser-id|cremeuser-id', 'other-id|beurreuser-id|cremeuser-id'],
+            array_map(static fn(IngredientDistinctPair $pair): string => $pair->getId(), $this->distinctRepository->all()),
+        );
+    }
+
+    public function testRemovingAnAdoptedCopyForgetsItsDistinctPairsOfItsOwnerOnly(): void
+    {
+        // Act
+        ($this->handler)(new RemoveIngredientCommand('beurreuser-id'));
+
+        // Assert : les deux paires de l'utilisateur qui nomment la copie disparaissent, pas celle d'un autre utilisateur
+        $this->assertSame(['other-id|beurreuser-id|cremeuser-id'], array_map(static fn(IngredientDistinctPair $pair): string => $pair->getId(), $this->distinctRepository->all()));
+    }
+
+    public function testRemovingACommonIngredientTouchesNoDistinctPair(): void
+    {
+        // Act
+        ($this->handler)(new RemoveIngredientCommand('sucre'));
+
+        // Assert
+        $this->assertCount(3, $this->distinctRepository->all());
     }
 
     public function testFailedHandleRemoveIngredientUnknownIngredient(): void

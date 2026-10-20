@@ -8,10 +8,12 @@ use Repas\Drive\Domain\Interface\ChoiceRepository;
 use Repas\Drive\Domain\Interface\DriveSettingsRepository;
 use Repas\Drive\Domain\Interface\ProductRepository;
 use Repas\Repas\Domain\Interface\IngredientAliasRepository;
+use Repas\Repas\Domain\Interface\IngredientDistinctRepository;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Repas\Domain\Model\AliasKind;
 use Repas\Repas\Domain\Model\Ingredient;
 use Repas\Repas\Domain\Model\IngredientAlias;
+use Repas\Repas\Domain\Model\IngredientDistinctPair;
 use Repas\Repas\Domain\Model\Recipe;
 use Repas\Repas\Domain\Model\ShoppingList;
 use Repas\Shared\Domain\Event\UserDeletedEvent;
@@ -337,6 +339,10 @@ class AccountAdministrationFlowTest extends DatabaseTestCase
         $aliases = static::getContainer()->get(IngredientAliasRepository::class);
         $aliases->save(IngredientAlias::create($leaving->getId(), 'beurre', $butter->getSlug(), AliasKind::ADOPTION, 'first-use', new \DateTimeImmutable()));
         $aliases->save(IngredientAlias::create($staying->getId(), 'beurre', 'beurre' . $staying->getId(), AliasKind::ADOPTION, 'first-use', new \DateTimeImmutable()));
+        // Given : chacun a écarté une paire d'ingrédients par « Pas le même » (préférence privée, ING-006)
+        $distinct = static::getContainer()->get(IngredientDistinctRepository::class);
+        $distinct->save(IngredientDistinctPair::create($leaving->getId(), 'beurre', 'farine', new \DateTimeImmutable()));
+        $distinct->save(IngredientDistinctPair::create($staying->getId(), 'beurre', 'farine', new \DateTimeImmutable()));
 
         // When
         $this->request('DELETE', '/api/v1/users/' . $leaving->getId(), $this->login('admin@example.com'));
@@ -355,6 +361,8 @@ class AccountAdministrationFlowTest extends DatabaseTestCase
         $this->assertSame(0, $this->rowCount('conversion', 'id', $conversion->getId()));
         $this->assertSame(0, $this->rowCount('ingredient_alias', 'user_id', $leaving->getId()));
         $this->assertSame(1, $this->rowCount('ingredient_alias', 'user_id', $staying->getId()));
+        $this->assertSame(0, $this->rowCount('ingredient_distinct', 'user_id', $leaving->getId()));
+        $this->assertSame(1, $this->rowCount('ingredient_distinct', 'user_id', $staying->getId()));
         $this->client->request('POST', '/api/login_check', content: json_encode(['email' => 'leaving@example.com', 'password' => self::PASSWORD], JSON_THROW_ON_ERROR), server: ['CONTENT_TYPE' => 'application/json']);
         $this->assertSame(401, $this->client->getResponse()->getStatusCode());
 

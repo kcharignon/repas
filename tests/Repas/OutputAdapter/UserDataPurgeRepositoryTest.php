@@ -5,12 +5,14 @@ namespace Repas\Tests\Repas\OutputAdapter;
 
 use Repas\Repas\Domain\Interface\ConversionRepository;
 use Repas\Repas\Domain\Interface\IngredientAliasRepository;
+use Repas\Repas\Domain\Interface\IngredientDistinctRepository;
 use Repas\Repas\Domain\Interface\IngredientRepository;
 use Repas\Repas\Domain\Interface\RecipeRepository;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Repas\Domain\Model\AliasKind;
 use Repas\Repas\Domain\Model\Ingredient;
 use Repas\Repas\Domain\Model\IngredientAlias;
+use Repas\Repas\Domain\Model\IngredientDistinctPair;
 use Repas\Repas\Domain\Model\Meal;
 use Repas\Repas\Domain\Model\Recipe;
 use Repas\Repas\Domain\Model\ShoppingList;
@@ -34,6 +36,7 @@ class UserDataPurgeRepositoryTest extends DatabaseTestCase
     private IngredientRepository $ingredientRepository;
     private ConversionRepository $conversionRepository;
     private IngredientAliasRepository $aliasRepository;
+    private IngredientDistinctRepository $distinctRepository;
     private DataPersister $persister;
     private User $departing;
     private User $staying;
@@ -48,6 +51,7 @@ class UserDataPurgeRepositoryTest extends DatabaseTestCase
         $this->ingredientRepository = $container->get(IngredientRepository::class);
         $this->conversionRepository = $container->get(ConversionRepository::class);
         $this->aliasRepository = $container->get(IngredientAliasRepository::class);
+        $this->distinctRepository = $container->get(IngredientDistinctRepository::class);
         $this->persister = new DataPersister($container);
 
         $this->departing = $this->savedUser();
@@ -232,6 +236,22 @@ class UserDataPurgeRepositoryTest extends DatabaseTestCase
         // Assert
         $this->assertSame(0, $this->countWhere('ingredient_alias', 'user_id', $this->departing->getId()));
         $this->assertSame(2, $this->countWhere('ingredient_alias', 'user_id', $this->staying->getId()));
+    }
+
+    public function testDeletingTheDistinctPairsOfAUserRemovesHisAndNotTheOthers(): void
+    {
+        // Arrange : chacun a écarté deux paires (préférence privée, ING-006)
+        foreach ([$this->departing, $this->staying] as $user) {
+            $this->distinctRepository->save(IngredientDistinctPair::create($user->getId(), 'beurre', 'farine', new \DateTimeImmutable()));
+            $this->distinctRepository->save(IngredientDistinctPair::create($user->getId(), 'beurre', 'sucre', new \DateTimeImmutable()));
+        }
+
+        // Act
+        $this->distinctRepository->deleteByUser($this->departing->getId());
+
+        // Assert
+        $this->assertSame(0, $this->countWhere('ingredient_distinct', 'user_id', $this->departing->getId()));
+        $this->assertSame(2, $this->countWhere('ingredient_distinct', 'user_id', $this->staying->getId()));
     }
 
     private function savedUser(): User

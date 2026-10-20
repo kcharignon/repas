@@ -9,6 +9,7 @@ use Repas\Repas\Domain\Exception\IngredientException;
 use Repas\Repas\Domain\Exception\UnitException;
 use Repas\Repas\Domain\Interface\ConversionRepository;
 use Repas\Repas\Domain\Interface\IngredientAliasRepository;
+use Repas\Repas\Domain\Interface\IngredientDistinctRepository;
 use Repas\Repas\Domain\Interface\IngredientMergeRepository;
 use Repas\Repas\Domain\Interface\IngredientRepository;
 use Repas\Repas\Domain\Model\Ingredient;
@@ -46,6 +47,7 @@ readonly class MergeIngredientsHandler
         private IngredientRepository $ingredientRepository,
         private IngredientMergeRepository $mergeRepository,
         private IngredientAliasRepository $aliasRepository,
+        private IngredientDistinctRepository $distinctRepository,
         private ConversionRepository $conversionRepository,
         private ConversionService $conversionService,
         private IngredientMergePlanner $planner,
@@ -103,6 +105,8 @@ readonly class MergeIngredientsHandler
         $this->mergeRepository->repoint($command->userId, $absorbed->getSlug(), $kept->getSlug(), $kept->getDefaultPurchaseUnit()->getSlug(), $plan->factors);
         $this->driveReferences->merge($command->userId, $absorbed->getSlug(), $kept->getSlug());
         $this->aliasRepository->mergeInto($command->userId, $absorbed->getSlug(), $kept->getSlug(), $this->clock->now());
+        // Les « Pas le même » qui nommaient l'absorbé n'ont plus d'objet (et ne doivent pas être hérités par un ingrédient qui reprendrait son slug)
+        $this->distinctRepository->deleteByIngredientSlug($command->userId, $absorbed->getSlug());
 
         // Les conversions propres de B ne sont pas reportées sur A : l'utilisateur ne peut pas en créer, ce serait une écriture silencieuse
         $this->conversionRepository->deleteByIngredient($absorbed);

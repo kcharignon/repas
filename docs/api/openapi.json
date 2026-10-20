@@ -87,6 +87,39 @@
                 "security": []
             }
         },
+        "/api/v1/ingredients/duplicates": {
+            "get": {
+                "tags": [
+                    "Ingredients"
+                ],
+                "summary": "Les doublons possibles de l'utilisateur : des paires de SES ingr\u00e9dients (jamais un commun, jamais ceux d'un autre), du m\u00eame rayon, dont les noms se ressemblent (m\u00eame nom une fois normalis\u00e9, \u00e0 une faute de frappe pr\u00e8s, ou assez proche : score de 0,90 au moins) et qu'il n'a pas \u00e9cart\u00e9es par \u00ab Pas le m\u00eame \u00bb. Tri\u00e9es de la plus probable \u00e0 la moins probable, 50 au plus, le m\u00eame ordre \u00e0 chaque appel. Chaque paire porte de quoi afficher sa carte (les deux ingr\u00e9dients avec leurs nombres de recettes et de listes, l'ingr\u00e9dient \u00e0 garder par d\u00e9faut). Vide pour un compte sans ingr\u00e9dient personnel, un administrateur compris. Ce que la fusion ferait exactement : `GET \u2026/merge-preview`",
+                "operationId": "get_api_list_duplicate_ingredients",
+                "responses": {
+                    "200": {
+                        "description": "Doublons possibles",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "member": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/DuplicateIngredientDTO"
+                                            }
+                                        },
+                                        "totalItems": {
+                                            "type": "integer",
+                                            "example": 3
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/ingredients/search": {
             "get": {
                 "tags": [
@@ -1717,6 +1750,46 @@
                 }
             }
         },
+        "/api/v1/ingredients/{slug}/distinct-from": {
+            "post": {
+                "tags": [
+                    "Ingredients"
+                ],
+                "summary": "\u00ab Pas le m\u00eame \u00bb : l'utilisateur dit que l'ingr\u00e9dient de l'URL et `other` ne sont pas un doublon. La paire (dans un sens ou dans l'autre) n'est plus jamais propos\u00e9e par `GET /ingredients/duplicates`, m\u00eame apr\u00e8s un renommage. Rien d'autre ne change : aucun ingr\u00e9dient, aucune recette, aucune liste. Rejou\u00e9e, elle r\u00e9pond 204 sans rien faire. Les deux ingr\u00e9dients doivent \u00eatre \u00e0 l'utilisateur, jamais un commun, m\u00eame pour un administrateur",
+                "operationId": "post_api_mark_ingredients_distinct",
+                "parameters": [
+                    {
+                        "name": "slug",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/MarkIngredientsDistinctPayload"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "204": {
+                        "description": "Paire m\u00e9moris\u00e9e, ou d\u00e9j\u00e0 m\u00e9moris\u00e9e"
+                    },
+                    "404": {
+                        "description": "Un des deux ingr\u00e9dients est inconnu, commun, ou appartient \u00e0 un autre utilisateur (m\u00eame pour un administrateur)"
+                    },
+                    "422": {
+                        "description": "Corps invalide, ou `CANNOT_BE_DISTINCT_FROM_ITSELF` : les deux ingr\u00e9dients sont le m\u00eame"
+                    }
+                }
+            }
+        },
         "/api/v1/ingredients/{slug}/merge": {
             "post": {
                 "tags": [
@@ -3208,6 +3281,20 @@
                 },
                 "type": "object"
             },
+            "MarkIngredientsDistinctPayload": {
+                "required": [
+                    "other"
+                ],
+                "properties": {
+                    "other": {
+                        "description": "Slug de l'autre ingr\u00e9dient de la paire",
+                        "type": "string",
+                        "maxLength": 255,
+                        "example": "tomates-0a1b2c3d"
+                    }
+                },
+                "type": "object"
+            },
             "MergeIngredientsPayload": {
                 "required": [
                     "into"
@@ -3806,6 +3893,92 @@
                             "$ref": "#/components/schemas/ChoiceIntentPayload"
                         },
                         "maxItems": 200
+                    }
+                },
+                "type": "object"
+            },
+            "DuplicateIngredientSideDTO": {
+                "required": [
+                    "slug",
+                    "name",
+                    "departmentSlug",
+                    "departmentName",
+                    "purchaseUnitName",
+                    "recipeCount",
+                    "listCount"
+                ],
+                "properties": {
+                    "slug": {
+                        "description": "Identifiant de l'ingr\u00e9dient (slug)",
+                        "type": "string",
+                        "example": "tomate-0a1b2c3d"
+                    },
+                    "name": {
+                        "type": "string",
+                        "example": "Tomate"
+                    },
+                    "departmentSlug": {
+                        "description": "Identifiant du rayon (slug) : le m\u00eame pour les deux ingr\u00e9dients de la proposition",
+                        "type": "string",
+                        "example": "fruit-et-legume"
+                    },
+                    "departmentName": {
+                        "type": "string",
+                        "example": "Fruit & l\u00e9gume"
+                    },
+                    "purchaseUnitName": {
+                        "description": "Nom de l'unit\u00e9 d'achat",
+                        "type": "string",
+                        "example": "kilo"
+                    },
+                    "recipeCount": {
+                        "description": "Nombre de recettes de l'utilisateur qui utilisent cet ingr\u00e9dient (0 s'il n'en a aucune)",
+                        "type": "integer",
+                        "example": 12
+                    },
+                    "listCount": {
+                        "description": "Nombre de listes de courses de l'utilisateur qui utilisent cet ingr\u00e9dient (0 s'il n'en a aucune)",
+                        "type": "integer",
+                        "example": 3
+                    }
+                },
+                "type": "object"
+            },
+            "DuplicateIngredientDTO": {
+                "required": [
+                    "first",
+                    "second",
+                    "score",
+                    "level",
+                    "suggestedKeep"
+                ],
+                "properties": {
+                    "first": {
+                        "$ref": "#/components/schemas/DuplicateIngredientSideDTO"
+                    },
+                    "second": {
+                        "$ref": "#/components/schemas/DuplicateIngredientSideDTO"
+                    },
+                    "score": {
+                        "description": "Ressemblance des noms normalis\u00e9s, de 0,90 \u00e0 1 (Jaro-Winkler, 1 pour deux noms identiques une fois normalis\u00e9s)",
+                        "type": "number",
+                        "format": "float",
+                        "example": 1
+                    },
+                    "level": {
+                        "description": "`EXACT` : le m\u00eame nom une fois normalis\u00e9 (casse, accents, pluriel, mots vides) ; `TYPO` : \u00e0 une faute de frappe pr\u00e8s (0,97 au moins) ; `SUGGESTION` : assez proche pour demander (de 0,90 \u00e0 0,97). Tol\u00e9rer une valeur inconnue",
+                        "type": "string",
+                        "enum": [
+                            "EXACT",
+                            "TYPO",
+                            "SUGGESTION"
+                        ],
+                        "example": "EXACT"
+                    },
+                    "suggestedKeep": {
+                        "description": "Slug de celui des deux \u00e0 garder par d\u00e9faut : le plus utilis\u00e9 en recettes, puis en listes, puis le nom le plus court, puis l'ordre alphab\u00e9tique. `first.slug` ou `second.slug`",
+                        "type": "string",
+                        "example": "tomate-0a1b2c3d"
                     }
                 },
                 "type": "object"

@@ -31,6 +31,7 @@ use Repas\Repas\Application\Command\CreateRecipeType\CreateRecipeTypeCommand;
 use Repas\Repas\Application\Command\CreateShoppingList\CreateShoppingListCommand;
 use Repas\Repas\Application\Command\CreateUnit\CreateUnitCommand;
 use Repas\Repas\Application\Command\EnsureActiveShoppingList\EnsureActiveShoppingListCommand;
+use Repas\Repas\Application\Command\MarkIngredientsDistinct\MarkIngredientsDistinctCommand;
 use Repas\Repas\Application\Command\MergeIngredients\MergeIngredientsCommand;
 use Repas\Repas\Application\Command\PausedShoppingList\PausedShoppingListCommand;
 use Repas\Repas\Application\Command\PlannedMeal\PlannedMealCommand;
@@ -354,6 +355,17 @@ return [
         $t->persister->saveIngredient($ingredient);
 
         return new RemoveIngredientCommand($ingredient->getSlug());
+    },
+    // « Pas le même » (ADR 0028 décision h, ING-006) : deux ingrédients de l'utilisateur, une ligne dans ingredient_distinct. Le nombre de
+    // requêtes ne dépend de rien d'autre que de ces deux ingrédients.
+    'pas-le-meme' => static function (WriteBudgetTestCase $t): object {
+        $owner = $t->savedUser();
+        $tomato = new IngredientBuilder()->withName('Tomate')->withCreator($owner, true)->build();
+        $tomatoes = new IngredientBuilder()->withName('Tomates')->withCreator($owner, true)->build();
+        $t->persister->saveIngredient($tomato);
+        $t->persister->saveIngredient($tomatoes);
+
+        return new MarkIngredientsDistinctCommand($owner->getId(), $tomatoes->getSlug(), $tomato->getSlug());
     },
     // Adoption d'un commun (ADR 0028, ING-001) : le beurre, avec deux conversions propres, que l'utilisateur n'a jamais adopté ; son slug est
     // libre (une requête de plus par slug déjà pris). C'est le coût de la première utilisation d'un commun.

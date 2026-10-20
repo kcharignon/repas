@@ -17,6 +17,9 @@ final class IngredientException extends DomainException
     public const string INGREDIENT_USED_BY_ANOTHER_USER = 'INGREDIENT_USED_BY_ANOTHER_USER';
     public const string INGREDIENT_MERGE_CONFLICT = 'INGREDIENT_MERGE_CONFLICT';
 
+    // Message du cas « Pas le même » (ING-006)
+    public const string CANNOT_BE_DISTINCT_FROM_ITSELF = 'CANNOT_BE_DISTINCT_FROM_ITSELF';
+
     public static function notFound(string $slug): static
     {
         return new static(sprintf("Ingredient '%s' not found", $slug), 404);
@@ -111,5 +114,13 @@ final class IngredientException extends DomainException
     public static function mergeConflict(): self
     {
         return new self(self::INGREDIENT_MERGE_CONFLICT, 409);
+    }
+
+    /**
+     * Dire qu'un ingrédient n'est pas le même que lui-même n'a pas de sens. Règle métier, `422`.
+     */
+    public static function cannotBeDistinctFromItself(): self
+    {
+        return new self(self::CANNOT_BE_DISTINCT_FROM_ITSELF, 422);
     }
 }

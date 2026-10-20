@@ -8,6 +8,7 @@ use Repas\Repas\Application\Command\PurgeUserData\PurgeUserDataCommand;
 use Repas\Repas\Application\Command\PurgeUserData\PurgeUserDataHandler;
 use Repas\Repas\Domain\Model\AliasKind;
 use Repas\Repas\Domain\Model\IngredientAlias;
+use Repas\Repas\Domain\Model\IngredientDistinctPair;
 use Repas\Repas\Domain\Model\Meal;
 use Repas\Tests\Helper\Builder\ConversionBuilder;
 use Repas\Tests\Helper\Builder\IngredientBuilder;
@@ -16,6 +17,7 @@ use Repas\Tests\Helper\Builder\ShoppingListBuilder;
 use Repas\Tests\Helper\Builder\UserBuilder;
 use Repas\Tests\Helper\InMemoryRepository\ConversionInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\IngredientAliasInMemoryRepository;
+use Repas\Tests\Helper\InMemoryRepository\IngredientDistinctInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\IngredientInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\RecipeInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\ShoppingListInMemoryRepository;
@@ -30,6 +32,7 @@ class PurgeUserDataHandlerTest extends TestCase
     private ConversionInMemoryRepository $conversionRepository;
     private IngredientInMemoryRepository $ingredientRepository;
     private IngredientAliasInMemoryRepository $aliasRepository;
+    private IngredientDistinctInMemoryRepository $distinctRepository;
     private PurgeUserDataHandler $handler;
 
     protected function setUp(): void
@@ -71,12 +74,18 @@ class PurgeUserDataHandlerTest extends TestCase
             IngredientAlias::create(self::OTHER, 'beurre', 'beurre-other', AliasKind::ADOPTION, 'first-use', new \DateTimeImmutable()),
         ]);
 
+        $this->distinctRepository = new IngredientDistinctInMemoryRepository([
+            IngredientDistinctPair::create(self::USER, 'beurre-user', 'farine-user', new \DateTimeImmutable()),
+            IngredientDistinctPair::create(self::OTHER, 'beurre-other', 'farine-other', new \DateTimeImmutable()),
+        ]);
+
         $this->handler = new PurgeUserDataHandler(
             $this->shoppingListRepository,
             $this->recipeRepository,
             $this->conversionRepository,
             $this->ingredientRepository,
             $this->aliasRepository,
+            $this->distinctRepository,
         );
     }
 
@@ -151,6 +160,15 @@ class PurgeUserDataHandlerTest extends TestCase
         $this->assertNotNull($this->aliasRepository->find(self::OTHER, 'beurre'));
     }
 
+    public function testTheDistinctPairsOfTheUserAreDeletedAndTheOthersKept(): void
+    {
+        // When
+        ($this->handler)(new PurgeUserDataCommand(self::USER));
+
+        // Then
+        $this->assertSame([self::OTHER . '|beurre-other|farine-other'], array_map(static fn(IngredientDistinctPair $pair): string => $pair->getId(), $this->distinctRepository->all()));
+    }
+
     public function testAUserWithoutAnyDataIsNotAnError(): void
     {
         // When
@@ -163,6 +181,7 @@ class PurgeUserDataHandlerTest extends TestCase
         $this->assertCount(1, $this->shoppingListRepository->findByOwner(self::OTHER));
         $this->assertCount(3, $this->ingredientRepository->findAll());
         $this->assertCount(3, $this->conversionRepository->findAll());
+        $this->assertCount(2, $this->distinctRepository->all());
     }
 
     /**

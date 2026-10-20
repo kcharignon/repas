@@ -7,6 +7,7 @@ use Repas\Drive\Infrastructure\Entity\Choice;
 use Repas\Drive\Infrastructure\Entity\DriveSettings;
 use Repas\Repas\Infrastructure\Entity\Ingredient;
 use Repas\Repas\Infrastructure\Entity\IngredientAlias;
+use Repas\Repas\Infrastructure\Entity\IngredientDistinct;
 use Repas\Repas\Infrastructure\Entity\Recipe;
 use Repas\Repas\Infrastructure\Entity\ShoppingList;
 use Repas\Tests\Helper\DatabaseTestCase;
@@ -31,6 +32,7 @@ class UserOwnedDataCoverageTest extends DatabaseTestCase
         Recipe::class => ['authorId'],
         Ingredient::class => ['creatorId'],
         IngredientAlias::class => ['userId'],
+        IngredientDistinct::class => ['userId'],
         ShoppingList::class => ['ownerId'],
         RefreshToken::class => ['userId'],
         DriveSettings::class => ['userId'],
