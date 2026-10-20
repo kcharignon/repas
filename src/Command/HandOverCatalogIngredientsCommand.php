@@ -81,7 +81,7 @@ final class HandOverCatalogIngredientsCommand extends Command
     {
         $this
             ->addOption('apply', null, InputOption::VALUE_NONE, "Écrit les phases 1 à 5 (classement, amorçage, passation, vérification). Sans cette option, rien n'est modifié.")
-            ->addOption('check', null, InputOption::VALUE_NONE, "Lecture seule : le rapport et la vérification (code de sortie 0 si et seulement si la passation est faite et conforme)")
+            ->addOption('check', null, InputOption::VALUE_NONE, "Lecture seule : le rapport et la vérification (code de sortie 0 si et seulement si la passation est faite et conforme ; avec --stop-before-handover, si le classement est posé et plus rien n'est à amorcer)")
             ->addOption('stop-before-handover', null, InputOption::VALUE_NONE, "S'arrête après l'amorçage (phases 1 et 2) ; la passation (phase 4) n'est pas faite. À blanc, dit si --apply avec cette option écrirait")
             ->addOption('accept-sent', null, InputOption::VALUE_NONE, "Autorise le repointage des listes déjà envoyées au drive d'un compte amorcé (immuables pour l'API) ; obligatoire dès que l'une est concernée")
             ->addOption('source', null, InputOption::VALUE_REQUIRED, "Nom du lancement de l'amorçage, écrit dans ingredient_alias.source (64 caractères au plus ; défaut rattrapage-AAAA-MM-JJ)");
@@ -96,11 +96,6 @@ final class HandOverCatalogIngredientsCommand extends Command
         $stop = (bool) $input->getOption('stop-before-handover');
         if ($apply && $check) {
             $io->error('--apply et --check s\'excluent : --check ne fait que lire.');
-
-            return Command::INVALID;
-        }
-        if ($stop && $check) {
-            $io->error('--stop-before-handover ne va pas avec --check : --check ne fait que lire et juge la passation entière.');
 
             return Command::INVALID;
         }
@@ -175,6 +170,17 @@ final class HandOverCatalogIngredientsCommand extends Command
             $io->warning(sprintf("%d liste(s) déjà envoyée(s) au drive seraient repointées : --apply exigera --accept-sent.", $report->seeding->sentShoppingListsToRepoint()));
         }
 
+        if ($check && $stop) {
+            // Le classement et l'amorçage seulement (le script d'exploitation, `--jusqu-a-l-amorcage`) : conforme quand le classement est posé et que plus rien n'est à amorcer
+            if ($report->isClassified() && $report->seeding->isNothingToDo()) {
+                $io->success('Rien à faire : classement posé, plus aucun compte à amorcer. Rien n\'a été modifié.');
+
+                return Command::SUCCESS;
+            }
+            $io->error('Il reste à faire : le classement n\'est pas posé ou des comptes sont à amorcer (voir ci-dessus). Rien n\'a été modifié.');
+
+            return Command::FAILURE;
+        }
         if ($report->isConform()) {
             $io->success('Rien à faire : passation faite et conforme. Rien n\'a été modifié.');
 

@@ -32,6 +32,45 @@ class CatalogHandoverDocumentedSqlTest extends DatabaseTestCase
         $this->tester = new CommandTester(new Application(self::$kernel)->find('repas:ingredients:hand-over-catalog'));
     }
 
+    public function testTheSixReadOnlySurveysOfTheOperationsGuideRunAndGiveTheNumbersOfTheState(): void
+    {
+        // Given : le bloc R1 à R6 du § 14, exécuté tel qu'il est écrit (l'assistant le lance en lecture seule avant l'étape 2)
+        $statements = $this->statements('passation-releves-sql');
+        $this->assertCount(6, $statements);
+        $connection = $this->dataset->connection;
+        $personal = $this->dataset->adoption->personalIngredient($this->dataset->ownerId, 'Ingredient perso du proprietaire', 'sauce');
+        $before = $this->dataset->hashesWithoutCreator();
+
+        // R1 : un seul administrateur, actif
+        $this->assertEquals([['ACTIVE', 1]], array_map(static fn(array $row): array => [$row[0], (int) $row[1]], $connection->fetchAllNumeric($statements[0])));
+        // R2 : le compte vide a ses listes (dont une envoyée) et ses choix sur des anciens communs ; les comptes en attente et désactivé, rien
+        $rows = $connection->fetchAllAssociative($statements[1]);
+        $this->assertCount(3, $rows);
+        $byStatus = array_column($rows, null, 'status');
+        $this->assertSame([2, 1, 5, 1, 2], array_map('intval', array_values(array_diff_key($byStatus['ACTIVE'], ['status' => 1]))));
+        $this->assertSame([0, 0, 0, 0, 0], array_map('intval', array_values(array_diff_key($byStatus['PENDING'], ['status' => 1]))));
+        // R3 : l'origine des alias : la migration seule
+        $this->assertEquals([['adoption', 'migration-essai', 3 * 261]], array_map(static fn(array $row): array => [$row[0], $row[1], (int) $row[2]], $connection->fetchAllNumeric($statements[2])));
+        // R4 : les comptes par statut
+        $this->assertEquals(['ACTIVE' => 5, 'DISABLED' => 1, 'PENDING' => 1], array_map('intval', array_column($connection->fetchAllNumeric($statements[3]), 1, 0)));
+        // R5 : la photographie, qui dit ce que les comptages directs disent
+        $snapshot = $connection->fetchAssociative($statements[4]);
+        foreach (['comptes' => '"user"', 'conversions' => 'conversion', 'alias' => 'ingredient_alias', 'lignes_de_recettes' => 'recipe_row', 'lignes_de_listes' => 'shopping_list_row', 'ingredients_de_listes' => 'shopping_list_ingredient', 'choix_du_drive' => 'drive_choice', 'produits_des_choix' => 'drive_choice_product'] as $column => $table) {
+            $this->assertSame((int) $connection->fetchOne('SELECT count(*) FROM ' . $table), (int) $snapshot[$column], $column);
+        }
+        $this->assertSame((int) $connection->fetchOne('SELECT count(*) FROM ingredient'), (int) $snapshot['ingredients']);
+        $this->assertSame((int) $connection->fetchOne("SELECT count(*) FROM shopping_list WHERE status = 'SENT'"), (int) $snapshot['listes_envoyees']);
+        $this->assertGreaterThanOrEqual(5, (int) $snapshot['listes_envoyees']);
+        $this->assertSame(261, (int) $snapshot['sans_createur']);
+        $this->assertMatchesRegularExpression('/^[0-9a-f]{32}$/', $snapshot['somme_des_listes']);
+        // R6 : le propriétaire a un ingrédient à lui, créé depuis R1 (son slug finit par son identifiant)
+        $this->assertSame([1, 1, 0], array_map('intval', $connection->fetchNumeric($statements[5])));
+        $this->assertSame($this->dataset->ownerId, $connection->fetchOne('SELECT creator FROM ingredient WHERE slug = ?', [$personal]));
+
+        // …et ces relevés n'écrivent rien
+        $this->assertSame($before, $this->dataset->hashesWithoutCreator());
+    }
+
     public function testTheBeforeChecksGiveWhatTheDocumentSaysBeforeAndAfterTheSeeding(): void
     {
         // Given : le document a cinq contrôles « avant »
@@ -121,7 +160,7 @@ class CatalogHandoverDocumentedSqlTest extends DatabaseTestCase
         $this->dataset->adoption->recipe($migrated, 'Recette de retard', ['farine', 'ingredient-fantome']);
 
         // Then : l'invariant voit la ligne sur « farine » (qui est au propriétaire), le contrôle 4 voit l'orphelin
-        $this->assertSame(1, (int) array_column($connection->fetchAllNumeric($after[2]), 1, 0)['recettes'] ?? 0);
+        $this->assertSame(1, (int) array_column($connection->fetchAllNumeric($after[2]), 1, 0)['recettes']);
         $this->assertSame(1, (int) array_column($connection->fetchAllNumeric($after[3]), 1, 0)['recipe_row']);
     }
 

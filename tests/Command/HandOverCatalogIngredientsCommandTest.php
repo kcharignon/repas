@@ -371,11 +371,24 @@ class HandOverCatalogIngredientsCommandTest extends DatabaseTestCase
         $before = $this->dataset->adoption->tableHashes();
 
         $this->assertSame(Command::INVALID, $this->tester->execute(['--apply' => true, '--check' => true]));
-        $this->assertSame(Command::INVALID, $this->tester->execute(['--check' => true, '--stop-before-handover' => true]));
-        $this->assertStringContainsString('--stop-before-handover ne va pas avec --check', $this->display());
         $this->assertSame(Command::INVALID, $this->tester->execute(['--apply' => true, '--source' => str_repeat('a', 65)]));
         $this->assertSame(Command::INVALID, $this->tester->execute(['--apply' => true, '--source' => 'un lancement']));
         $this->assertSame($before, $this->dataset->adoption->tableHashes());
+    }
+
+    public function testCheckWithStopBeforeHandoverJudgesOnlyTheClassificationAndTheSeeding(): void
+    {
+        // Given : rien n'est fait
+        $this->assertSame(Command::FAILURE, $this->tester->execute(['--check' => true, '--stop-before-handover' => true]), 'le classement n\'est pas posé');
+
+        // When : le classement et l'amorçage sont faits, la passation non
+        $this->assertSame(Command::SUCCESS, $this->tester->execute(['--apply' => true, '--stop-before-handover' => true, '--accept-sent' => true]), $this->display());
+
+        // Then : conforme pour les phases 1 et 2, pas pour la passation entière
+        $this->assertSame(Command::SUCCESS, $this->tester->execute(['--check' => true, '--stop-before-handover' => true]), $this->display());
+        $this->assertStringContainsString('Rien à faire : classement posé, plus aucun compte à amorcer.', $this->display());
+        $this->assertSame(Command::FAILURE, $this->tester->execute(['--check' => true]));
+        $this->assertStringContainsString('la passation n\'est pas faite', $this->display());
     }
 
     public function testTheDefaultRunNameIsDatedAndWrittenInEveryAlias(): void

@@ -102,7 +102,7 @@ class ClassifyBaseIngredientsHandlerTest extends TestCase
         // Then : il n'y a plus rien à classer, le choix du propriétaire est respecté
         $this->assertSame([0, 0, 0, 0], [$result->classified, $result->base, $result->specific, $result->changed]);
         $this->assertNotContains('classify', $this->repository->calls);
-        $this->assertFalse($this->repository->ingredients['beurre']['base']);
+        $this->assertSame(['beurre' => false, 'farine' => true, 'piment' => false, 'sauce' => false], $this->repository->state('owner-1', self::FILE)->fileSlugsAtOwner);
     }
 
     public function testTheRefusalMessageNamesNoIngredient(): void
