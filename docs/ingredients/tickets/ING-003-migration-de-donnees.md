@@ -5,7 +5,7 @@
 - **Taille** : L
 - **Effort recommandé pour l'agent** : **xhigh** (données de production, listes envoyées, choix du drive, aucun droit à l'erreur)
 - **Dépend de** : ING-001, ING-002 **déployés en production** pour l'exécution ; le code peut être écrit dès qu'ING-001 est fusionné
-- **Statut** : fait (PR back #PR) ; l'exécution en production est une étape humaine (l'assistant principal), voir « Réalisation »
+- **Statut** : fait (PR back #237) ; l'exécution en production est une étape humaine (l'assistant principal), voir « Réalisation »
 - **Lire d'abord** : **[`migration.md`](../migration.md) en entier** ; [ADR 0028](../../adr/0028-ingredients-propres-a-chaque-utilisateur.md) ; [ADR 0017](../../adr/0017-deploiement-et-releases.md) règle 6 ; [ADR 0023](../../adr/0023-liste-envoyee-au-drive.md) ; `.claude/skills/repas-ops/references/rouvrir-listes-envoyees.sh` (modèle du script) ; skills `/repas-dev`, `/repas-drive-back`, `/repas-ops`.
 
 ## Contexte
@@ -59,7 +59,7 @@ Handler en mémoire (périmètre, collision, idempotence, aucun événement) ; *
 - Les administrateurs sont reconnus par `user.roles` (JSON) en SQL ; **le contexte `Repas` n'importe pas `User`** : lecture SQL de la table `"user"` dans le Loader, comme `ConversionPostgreSQLLoader::emailsOf` (`:94`).
 - Ne jamais lancer `--apply` pendant qu'une autre release du back se déploie.
 
-## Réalisation (PR back #PR)
+## Réalisation (PR back #237)
 
 Livré comme décrit ci-dessus, avec les écarts et ajouts suivants, tous décidés pour tenir l'intention du ticket et de l'ADR 0028. **Aucune migration de schéma** (colonne et tables viennent d'ING-001) ; **rien n'a été exécuté en production** : la commande est lancée par l'assistant principal, avec sauvegarde, mode à blanc, puis exécution réelle (procédure exacte : [`migration.md`](../migration.md) § 13, `docs/production.md` « Adoption des ingrédients », skill `repas-ops` `references/ingredients.md`).
 

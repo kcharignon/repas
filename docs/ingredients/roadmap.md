@@ -28,7 +28,7 @@ Taille : S (quelques heures), M (une journée), L (plusieurs jours). Effort : le
 
 ### I2 — Migration
 
-- [x] [ING-003](tickets/ING-003-migration-de-donnees.md) (PR #PR) back · L · **xhigh** · Commande `repas:ingredients:adopt-commons` (à blanc, `--apply`, `--check`, `--undo`), script d'exploitation, test d'équivalence du drive · dépend de : 001, 002 · **le code est livré ; l'exécution en production reste à faire : humain (l'assistant principal), procédure dans [`migration.md`](migration.md) § 13**
+- [x] [ING-003](tickets/ING-003-migration-de-donnees.md) (PR #237) back · L · **xhigh** · Commande `repas:ingredients:adopt-commons` (à blanc, `--apply`, `--check`, `--undo`), script d'exploitation, test d'équivalence du drive · dépend de : 001, 002 · **le code est livré ; l'exécution en production reste à faire : humain (l'assistant principal), procédure dans [`migration.md`](migration.md) § 13**
 
 ### I3 — Copie de recette
 
