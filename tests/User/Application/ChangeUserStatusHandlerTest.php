@@ -6,9 +6,11 @@ namespace Repas\Tests\User\Application;
 use DateTimeImmutable;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
+use Repas\Shared\Domain\Event\UserActivatedEvent;
 use Repas\Tests\Helper\Builder\UserBuilder;
 use Repas\Tests\Helper\InMemoryRepository\EmailVerificationTokenInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\RefreshTokenInMemoryRepository;
+use Repas\Tests\Helper\InMemoryRepository\SpyEventDispatcher;
 use Repas\Tests\Helper\InMemoryRepository\UserInMemoryRepository;
 use Repas\User\Application\ChangeUserStatus\ChangeUserStatusCommand;
 use Repas\User\Application\ChangeUserStatus\ChangeUserStatusHandler;
@@ -24,6 +26,7 @@ class ChangeUserStatusHandlerTest extends TestCase
     private UserInMemoryRepository $userRepository;
     private RefreshTokenInMemoryRepository $refreshTokenRepository;
     private EmailVerificationTokenInMemoryRepository $emailVerificationTokenRepository;
+    private SpyEventDispatcher $eventDispatcher;
     private ChangeUserStatusHandler $handler;
 
     protected function setUp(): void
@@ -32,7 +35,37 @@ class ChangeUserStatusHandlerTest extends TestCase
         $this->userRepository = new UserInMemoryRepository();
         $this->refreshTokenRepository = new RefreshTokenInMemoryRepository();
         $this->emailVerificationTokenRepository = new EmailVerificationTokenInMemoryRepository();
-        $this->handler = new ChangeUserStatusHandler($this->userRepository, $this->refreshTokenRepository, $this->emailVerificationTokenRepository);
+        $this->eventDispatcher = new SpyEventDispatcher();
+        $this->handler = new ChangeUserStatusHandler($this->userRepository, $this->refreshTokenRepository, $this->emailVerificationTokenRepository, $this->eventDispatcher);
+    }
+
+    #[DataProvider('everyChangeOfStatus')]
+    public function testTheActivationIsAnnouncedExactlyWhenTheAccountBecomesActive(UserStatus $from, UserStatus $to): void
+    {
+        // Given
+        $this->userRepository->save($this->userWithStatus($from));
+
+        // When
+        ($this->handler)(new ChangeUserStatusCommand('user-id', $to));
+
+        // Then : un compte qui devient actif l'annonce ; un compte actif qui le reste, ou qui ne l'est pas, n'annonce rien
+        $becomesActive = $to === UserStatus::ACTIVE && $from !== UserStatus::ACTIVE;
+        $this->assertEquals($becomesActive ? [new UserActivatedEvent('user-id')] : [], $this->eventDispatcher->eventDispatched);
+    }
+
+    public function testNothingIsAnnouncedWhenTheProtectedAccountIsRefused(): void
+    {
+        // Given
+        $this->userRepository->save(new UserBuilder()->withId('user-id')->withEmail(User::PROTECTED_EMAIL)->build());
+
+        // When
+        try {
+            ($this->handler)(new ChangeUserStatusCommand('user-id', UserStatus::DISABLED));
+            $this->fail('Le compte protégé est intouchable.');
+        } catch (UserException) {
+            // Then
+            $this->assertSame([], $this->eventDispatcher->eventDispatched);
+        }
     }
 
     #[DataProvider('everyChangeOfStatus')]

@@ -22,6 +22,9 @@
         <!-- Le propriétaire du catalogue d'ingrédients des tests (UserBuilder::CATALOG_OWNER_EMAIL), plus fort que la valeur vide que compose injecte
              depuis .env (une variable réelle l'emporte sur .env.test) ; jamais l'adresse du compte protégé -->
         <server name="INGREDIENT_CATALOG_OWNER_EMAIL" value="catalog-owner@repas.test" force="true" />
+        <!-- L'amorçage des ingrédients à l'activation est COUPÉ en test (ING-008), plus fort que la valeur que compose injecte depuis .env ;
+             les tests qui amorcent allument le double ControlledIngredientSeedingFeature -->
+        <server name="INGREDIENT_SEEDING_ENABLED" value="false" force="true" />
     </php>
 
     <testsuites>

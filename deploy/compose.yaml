@@ -57,6 +57,9 @@ services:
       # Envoi de la liste au drive : coupé tant que l'humain ne l'allume pas. Variable listée ici avec sa valeur par défaut, sinon
       # la valeur du .env embarqué dans l'image (composer dump-env prod) s'appliquerait en silence.
       DRIVE_ENABLED: ${DRIVE_ENABLED:-false}
+      # Amorçage des ingrédients à l'activation d'un compte (ING-008, ADR 0028) : coupé tant que l'humain ne l'allume pas. Listée ici avec sa
+      # valeur par défaut pour la même raison que DRIVE_ENABLED (.env embarqué dans l'image).
+      INGREDIENT_SEEDING_ENABLED: ${INGREDIENT_SEEDING_ENABLED:-false}
       # Version de l'application Android (DRV-637) : dernière publiée et plus ancienne encore attendue (`0.1.10`). Vides par défaut :
       # personne n'est invité à mettre à jour. Listées ici pour la même raison que DRIVE_ENABLED (.env embarqué dans l'image).
       APP_LATEST_VERSION: ${APP_LATEST_VERSION:-}
