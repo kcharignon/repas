@@ -54,7 +54,7 @@ Quand l'utilisateur ne peut rien faire (Leclerc a changé son site), le texte le
 | Déjà chez soi, toujours | **J'en ai toujours** | Déjà à la maison, Tu en as déjà, HAVE_AT_HOME |
 | Pas pour cet envoi seulement | **Pas cette fois** | Passer cette fois, Ignoré, Passés |
 | Produit retenu pour un article | **produit habituel** ; son remplaçant : **produit de remplacement** | préféré, préférence, primaire, secours, fallback |
-| Garder un produit choisi pour les envois suivants | **Toujours prendre celui-ci** / **Cette fois seulement** (la question : « Toujours prendre ce produit ? ») | Mon nouveau produit habituel, préféré, secours, une seule fois |
+| Garder un produit choisi pour les envois suivants | **Choisir** (le produit devient ton produit habituel) / **Pas mon habituel** (le produit est au panier cette fois seulement, rien n'est gardé comme produit habituel ; l'article sera redemandé au prochain envoi). Le sélecteur n'a plus d'écran « Toujours prendre ce produit ? » : deux boutons par produit | Toujours prendre celui-ci, Cette fois seulement, Mon nouveau produit habituel, préféré, secours, une seule fois |
 | Passer plusieurs articles d'un coup | **Passer ces n articles** (n compte l'article affiché), puis **Revenir au choix** | Passer les n suivants, Tout passer, Ignorer le reste |
 | Un envoi qui n'a rien mis au panier ni fait choisir | **Le panier n'est pas rempli** (« Le panier est rempli en partie » seulement si au moins un article est au panier ou choisi) | Échec, Erreur, Résultat vide |
 | Produit exclu | **Ne plus proposer** | Refusé, rejeté |
