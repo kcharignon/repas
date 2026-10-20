@@ -96,6 +96,7 @@ Chaque phrase du texte a sa source. Si l'une change, mettre à jour ce texte **e
 | Rien d'autre n'est lu : adresse, créneau, paiement, panier, commandes | l'agent ne fait que lire le magasin, chercher, fixer une quantité, lire le produit ajouté (ADR 0022 règle 4) |
 | Pas de statistiques tierces, pas de partage | `architecture.md` § 10 ; aucune route ne liste les préférences d'un autre utilisateur |
 | Effacé avec le compte, sauf les descriptions de produits | `PurgeUserDriveDataHandler` (réglages, lignes de produits avec leur contenance, préférences avec la recherche mémorisée qui est dans leur ligne) ; `UserOwnedDataCoverageTest` ; ADR 0021. **Pas d'auto-suppression** : seul un administrateur supprime un compte |
+| Repas retient la date de la dernière connexion de chaque compte, vue de l'administrateur seul (§ 4 bis ; pas dans le texte des conditions du drive, ce n'est pas une donnée du drive) | colonne `user.last_login_at` (ADR 0021, amendement du 2026-10-20) ; écrite par `RecordUserLogin` au plus toutes les 10 minutes, après une authentification réussie seulement ; lue par `GET /api/v1/users` (administrateur), jamais par `GET /api/v1/me` ; sur la ligne du compte, donc effacée avec lui |
 | Changer de magasin ne supprime pas les anciens choix | `SaveDriveSettingsHandler` remplace le magasin sans purge ; les choix portent leur `store_id` |
 | Sauvegardes : 14 conservées, une par nuit | `deploy/backup.sh` ; [`../production.md`](../production.md) |
 | Les pages de Leclerc appellent leurs propres services (anti-robot, audience) ; Repas ne les voit pas | comportement d'un navigateur : la WebView du drive accepte les cookies de ces services (voulu, pour le défi anti-robot), celle de Repas non ; le cookie anti-robot est visible dans la WebView ([`spikes/DRV-011-rapport.md`](spikes/DRV-011-rapport.md)) ; phrase ajoutée à la note du front par repas-front#108 (revue de sécurité du front, [`revue-securite-drive.md`](https://github.com/kcharignon/repas-front/blob/main/docs/revue-securite-drive.md) constat D3), reportée ici |
@@ -120,6 +121,24 @@ Il n'existe pas de registre des traitements dans ce dépôt. Cette fiche en tien
 | Durée | Tant que le compte existe ou jusqu'à l'oubli par l'utilisateur ; descriptions de produits sans propriétaire conservées ; copies de sauvegarde : 14 dernières, environ deux semaines |
 | Suppression | Retrait d'un produit (efface sa contenance) ou « Oublier cet article » (efface aussi la recherche mémorisée et les contenances) ; suppression du compte par un administrateur (réglages, produits dont Repas se souvient, listes) en une transaction (ADR 0021) ; changement de magasin : anciens choix (et leurs recherches et contenances) conservés jusqu'à la suppression du compte, mais jamais repris pour le nouveau magasin |
 | Sécurité | Accès par jeton, l'utilisateur vient toujours du jeton et jamais du corps de la requête ; aucune route ne liste les préférences d'autrui ; entrées bornées et validées ; sauvegardes locales en mode `700` ; pas de chiffrement de la base au repos ([`analyse.md`](analyse.md) § 6) |
+| Droits | Accès, rectification, effacement : demande à l'administrateur du service |
+
+### 4 bis. Suivi de la dernière connexion (administration des comptes)
+
+Deuxième entrée du registre, hors du drive : ce traitement concerne **tous** les comptes de Repas, qu'ils utilisent le drive ou non.
+
+| Rubrique | Contenu |
+|---|---|
+| Traitement | Date de la dernière connexion de chaque compte, vue de l'administrateur (ADR 0021, amendement du 2026-10-20) |
+| Finalité | Permettre à l'administrateur de savoir quels comptes sont utilisés (gérer, désactiver ou supprimer un compte en connaissance de cause) |
+| Personnes concernées | Les utilisateurs de Repas (usage familial) |
+| Données | Une date par compte (`user.last_login_at`, UTC) : celle de la dernière authentification réussie, par mot de passe ou par renouvellement de la session ouverte. Rien d'autre : ni adresse IP, ni appareil, ni historique des connexions, ni lieu. Retenue au plus toutes les 10 minutes. Pour les comptes existants à la mise en place, rattrapée depuis la date du jeton de session le plus récent encore présent (jamais plus récente que la vraie), sinon vide |
+| Données jamais collectées | Historique des connexions (une seule date, remplacée), adresse IP, navigateur, appareil, position |
+| Base juridique | À qualifier par le propriétaire du service (usage familial, administration du compte) |
+| Destinataires | L'administrateur de Repas, seul (écran d'administration des comptes). Aucun autre utilisateur ne la voit, elle n'est dans aucune autre réponse de l'API (`GET /api/v1/me` compris). Hébergeur du serveur : DigitalOcean |
+| Durée | Tant que le compte existe (la date est remplacée à chaque nouvelle connexion) ; copies de sauvegarde : 14 dernières, environ deux semaines |
+| Suppression | Avec le compte : la date est sur la ligne du compte, la suppression par un administrateur (ADR 0021) l'efface en même temps, rien à ajouter à la purge |
+| Sécurité | Lecture réservée au rôle administrateur ; écriture par une instruction qui ne touche que cette colonne ; aucun avertissement ni écran pour l'utilisateur |
 | Droits | Accès, rectification, effacement : demande à l'administrateur du service |
 
 ---
