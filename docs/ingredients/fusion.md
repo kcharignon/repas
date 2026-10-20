@@ -16,7 +16,7 @@ Mots de l'interface : **ingrédient**, **recette**, **liste de courses** (le mot
 | 2 | **Jamais un commun** (`creator` vide) : `422 CANNOT_MERGE_COMMON_INGREDIENT`. Un administrateur n'a aucun ingrédient personnel (il crée des communs) : la fusion ne le concerne pas pour l'instant. |
 | 3 | **Jamais l'ingrédient d'un autre** : `404`, comme un ingrédient inconnu (on ne révèle pas son existence ; même règle que `findPurchaseUnitSlugUsableBy`). **L'exception administrateur de `OwnerVoter` ne s'applique pas** : le contrôle `creator = utilisateur du jeton` est fait par le cas d'usage lui-même, `ROLE_ADMIN` ou non. |
 | 4 | `A` et `B` doivent être **différents** : `422 CANNOT_MERGE_INTO_ITSELF`. |
-| 5 | **`A` garde tout** : nom, image, rayon, unités par défaut, unités compatibles, conversions propres, `adopted_from`. `B` ne lègue rien (voir § 4 pour les conversions). |
+| 5 | **`A` garde tout** : nom, image, rayon, unités par défaut, unités compatibles, conversions propres, `adopted_from`. `B` ne lègue rien (voir § 3 pour les conversions). |
 | 6 | **Le rayon peut différer** : le rayon de `A` l'emporte ; la confirmation le dit. |
 | 7 | **Les unités doivent suivre** (§ 5), sinon **la fusion s'arrête et rien ne bouge** : `422 MERGE_UNIT_MISSING`. |
 | 8 | **Les listes envoyées au drive (`SENT`) bloquent la fusion** : si `A` ou `B` figure dans une liste `SENT`, `409 INGREDIENT_IN_SENT_LIST`. Raison : une liste envoyée est immuable et sert de plan à un envoi peut-être en cours ([ADR 0023](../adr/0023-liste-envoyee-au-drive.md)) ; la migration de données est l'unique exception, justifiée ([`migration.md`](migration.md) § 4). L'utilisateur rouvre (`reopen`) ou termine la liste, puis fusionne. |
@@ -86,13 +86,13 @@ Toutes les routes : `#[IsGranted('ROLE_USER')]`, utilisateur pris dans le jeton 
   "driveChoiceCount": 1,
   "departmentChanges": false,
   "listQuantitiesConverted": false,
-  "missingUnits": [{"slug": "tranche", "name": "tranche"}],
+  "missingUnits": [],
   "blockedBy": null,
   "canMerge": true
 }
 ```
 
-`blockedBy` : `null`, `UNIT_MISSING`, `IN_SENT_LIST`, `COMMON_INGREDIENT`, `SAME_INGREDIENT`. `driveChoiceCount` = nombre de choix qui passent sur `A` (pas ceux qui sont supprimés).
+`missingUnits` contient par exemple `[{"slug": "tranche", "name": "tranche"}]` quand `blockedBy` vaut `UNIT_MISSING`. `blockedBy` : `null`, `UNIT_MISSING`, `IN_SENT_LIST`, `COMMON_INGREDIENT`, `SAME_INGREDIENT`. `driveChoiceCount` = nombre de choix qui passent sur `A` (pas ceux qui sont supprimés).
 
 **Codes d'erreur de `POST …/merge`** (message = code, comme `PROTECTED_ACCOUNT`) :
 
