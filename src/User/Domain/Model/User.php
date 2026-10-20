@@ -21,6 +21,12 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, Passwor
     /** Adresse du compte protégé (voir `isProtected()`). */
     public const string PROTECTED_EMAIL = 'kantincharignon@gmail.com';
 
+    /**
+     * Écart minimal, en secondes, entre deux enregistrements de la dernière connexion d'un même compte (voir
+     * `shouldRecordLogin()`) : une session ouverte se renouvelle toutes les heures, elle n'a pas besoin d'une écriture à chaque fois.
+     */
+    public const int LOGIN_RECORD_INTERVAL_SECONDS = 600;
+
     private function __construct(
         private string $id,
         private string $email,
@@ -30,6 +36,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, Passwor
         private Status $status,
         private array  $statistics,
         private int    $credentialsVersion,
+        private ?DateTimeImmutable $lastLoginAt = null,
     ) {
     }
 
@@ -103,6 +110,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, Passwor
             $datas['status'],
             $datas['statistics'],
             $datas['credentials_version'] ?? 0,
+            $datas['last_login_at'] ?? null,
         );
     }
 
@@ -148,6 +156,42 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, Passwor
     public function getCredentialsVersion(): int
     {
         return $this->credentialsVersion;
+    }
+
+    /**
+     * Date de la dernière authentification réussie du compte, telle qu'elle était à la lecture (`null` : jamais vue depuis que
+     * le suivi existe). C'est une copie : la valeur de la base peut avoir avancé depuis (`UserRepository::recordLogin()`).
+     */
+    public function getLastLoginAt(): ?DateTimeImmutable
+    {
+        return $this->lastLoginAt;
+    }
+
+    /**
+     * Faut-il enregistrer une authentification réussie à l'instant `$now` ? Oui pour un compte actif dont la dernière connexion
+     * est inconnue ou date d'au moins `LOGIN_RECORD_INTERVAL_SECONDS`. Se juge sur la valeur déjà chargée, sans requête : c'est ce
+     * qui rend la plupart des connexions et des renouvellements gratuits. Un compte qui n'est pas actif ne s'authentifie pas
+     * (ADR 0021) : s'il arrive ici, c'est une course avec un administrateur, et on n'écrit rien.
+     */
+    public function shouldRecordLogin(DateTimeImmutable $now): bool
+    {
+        if (!$this->isActive()) {
+            return false;
+        }
+
+        return $this->lastLoginAt === null
+            || $now->getTimestamp() - $this->lastLoginAt->getTimestamp() >= self::LOGIN_RECORD_INTERVAL_SECONDS;
+    }
+
+    /**
+     * Met à jour la copie en mémoire après un enregistrement de la connexion ; la base est écrite par
+     * `UserRepository::recordLogin()`. Ne recule jamais : une date plus ancienne que celle connue est ignorée.
+     */
+    public function recordLogin(DateTimeImmutable $at): void
+    {
+        if ($this->lastLoginAt === null || $at > $this->lastLoginAt) {
+            $this->lastLoginAt = $at;
+        }
     }
 
     public function getRoles(): array
