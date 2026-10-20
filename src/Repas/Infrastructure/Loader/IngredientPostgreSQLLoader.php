@@ -18,6 +18,7 @@ use Repas\Repas\Infrastructure\Entity\Conversion;
 use Repas\Repas\Infrastructure\Entity\Department;
 use Repas\Repas\Infrastructure\Entity\Ingredient;
 use Repas\Repas\Infrastructure\Entity\Unit;
+use Repas\Repas\Infrastructure\Merge\IngredientMergeUsageReader;
 use Repas\Repas\Infrastructure\Visibility\IngredientVisibility;
 use Repas\Shared\Domain\Tool\SearchRelevance;
 use Repas\Shared\Domain\Tool\StringTool;
@@ -29,6 +30,7 @@ final readonly class IngredientPostgreSQLLoader implements IngredientLoader
 
     public function __construct(
         private EntityManagerInterface $entityManager,
+        private IngredientMergeUsageReader $usageReader,
     ) {
     }
 
@@ -96,6 +98,8 @@ final readonly class IngredientPostgreSQLLoader implements IngredientLoader
         }
 
         $hasSameUnit = $ingredient['cookingUnitSlug'] === $ingredient['purchaseUnitSlug'];
+        // Combien de recettes et de listes DU LECTEUR l'utilisent (« Utilisé dans 7 recettes · 2 listes ») : ce qu'une fusion déplacerait
+        $usage = $this->usageReader->counts($viewerId, [$slug])[$slug] ?? ['recipes' => 0, 'lists' => 0];
 
         return new IngredientDTO(
             slug: $ingredient['slug'],
@@ -112,6 +116,8 @@ final readonly class IngredientPostgreSQLLoader implements IngredientLoader
             coefficient: $hasSameUnit ? null : $this->findCoefficient($slug, $ingredient['purchaseUnitSlug'], $ingredient['cookingUnitSlug']),
             creatorId: $ingredient['creatorId'],
             canEdit: $this->canEdit($ingredient['creatorId'], $viewerId, $viewerIsAdmin),
+            recipeCount: $usage['recipes'],
+            listCount: $usage['lists'],
         );
     }
 

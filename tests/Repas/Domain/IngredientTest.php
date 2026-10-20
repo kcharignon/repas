@@ -4,6 +4,7 @@ namespace Repas\Tests\Repas\Domain;
 
 
 use PHPUnit\Framework\TestCase;
+use Repas\Repas\Domain\Exception\IngredientException;
 use Repas\Repas\Domain\Model\Ingredient;
 use Repas\Repas\Domain\Model\Unit;
 use Repas\Shared\Domain\Tool\Tab;
@@ -147,5 +148,39 @@ class IngredientTest extends TestCase
 
         // Then
         $this->assertCount(3, $original->getCompatibleUnits());
+    }
+
+    public function testACommonIngredientIsOwnedByNobody(): void
+    {
+        // Given
+        $common = new IngredientBuilder()->isButter()->build();
+
+        // Then : un commun n'est à personne, pas même à l'utilisateur qui l'a adopté
+        $this->assertTrue($common->isCommon());
+        $this->assertFalse($common->isOwnedBy('user-id'));
+        $this->expectExceptionObject(IngredientException::notFound('beurre'));
+        $common->assertOwnedBy('user-id');
+    }
+
+    public function testAnIngredientIsOwnedByItsCreatorOnly(): void
+    {
+        // Given
+        $ingredient = new IngredientBuilder()->isButter()->withCreator(new UserBuilder()->withId('user-id')->build(), true)->build();
+
+        // Then
+        $this->assertFalse($ingredient->isCommon());
+        $this->assertTrue($ingredient->isOwnedBy('user-id'));
+        $ingredient->assertOwnedBy('user-id');
+        $this->assertFalse($ingredient->isOwnedBy('another-id'));
+    }
+
+    public function testTheIngredientOfAnotherUserIsUnknownLikeAnythingElse(): void
+    {
+        // Given : un administrateur n'y change rien, l'ingrédient est au moins l'ingrédient de quelqu'un d'autre
+        $ingredient = new IngredientBuilder()->isButter()->withCreator(new UserBuilder()->withId('user-id')->build(), true)->build();
+
+        // Then
+        $this->expectExceptionObject(IngredientException::notFound($ingredient->getSlug()));
+        $ingredient->assertOwnedBy('another-id');
     }
 }

@@ -4,6 +4,7 @@ namespace Repas\Tests\Helper\InMemoryRepository;
 
 
 use Repas\Shared\Application\Dto\DriveChoiceFingerprint;
+use Repas\Shared\Application\Dto\DriveMergeImpact;
 use Repas\Shared\Application\Interface\DriveIngredientReferences;
 
 /**
@@ -12,12 +13,14 @@ use Repas\Shared\Application\Interface\DriveIngredientReferences;
  */
 final class DriveIngredientReferencesInMemoryRepository implements DriveIngredientReferences
 {
-    /** @var array<string, array{user: string, slug: string, products: int}> */
+    /** @var array<string, array{user: string, slug: string, products: int, store?: string}> `store` : le magasin (enseigne comprise), `store` par défaut */
     public array $choices = [];
     /** @var list<array{user: string, map: array<string, string>}> */
     public array $repointCalls = [];
     /** Quand vrai, `repoint()` ne fait rien : l'empreinte doit voir des choix restés sur les anciens slugs. */
     public bool $ignoreRepoint = false;
+    /** @var list<array{user: string, absorbed: string, kept: string}> */
+    public array $mergeCalls = [];
 
     public function fingerprint(string $userId): DriveChoiceFingerprint
     {
@@ -32,6 +35,48 @@ final class DriveIngredientReferencesInMemoryRepository implements DriveIngredie
             array_map(static fn(array $choice): string => $choice['slug'], $mine),
             array_map(static fn(array $choice): int => $choice['products'], $mine),
         );
+    }
+
+    public function mergeImpact(string $userId, string $absorbedSlug, string $keptSlug): DriveMergeImpact
+    {
+        $moved = $dropped = $products = 0;
+        foreach ($this->choices as $choice) {
+            if ($choice['user'] !== $userId || $choice['slug'] !== $absorbedSlug) {
+                continue;
+            }
+            if ($this->keptHasAChoiceIn($userId, $choice['store'] ?? 'store', $keptSlug)) {
+                ++$dropped;
+                $products += $choice['products'];
+            } else {
+                ++$moved;
+            }
+        }
+        $foreign = array_any($this->choices, static fn(array $choice): bool => $choice['slug'] === $absorbedSlug && $choice['user'] !== $userId);
+
+        return new DriveMergeImpact($moved, $dropped, $products, $foreign);
+    }
+
+    public function merge(string $userId, string $absorbedSlug, string $keptSlug): DriveMergeImpact
+    {
+        $this->mergeCalls[] = ['user' => $userId, 'absorbed' => $absorbedSlug, 'kept' => $keptSlug];
+        $impact = $this->mergeImpact($userId, $absorbedSlug, $keptSlug);
+        foreach ($this->choices as $id => $choice) {
+            if ($choice['user'] !== $userId || $choice['slug'] !== $absorbedSlug) {
+                continue;
+            }
+            if ($this->keptHasAChoiceIn($userId, $choice['store'] ?? 'store', $keptSlug)) {
+                unset($this->choices[$id]);
+            } else {
+                $this->choices[$id]['slug'] = $keptSlug;
+            }
+        }
+
+        return new DriveMergeImpact($impact->choicesMoved, $impact->choicesDropped, $impact->productsDropped);
+    }
+
+    private function keptHasAChoiceIn(string $userId, string $store, string $keptSlug): bool
+    {
+        return array_any($this->choices, static fn(array $choice): bool => $choice['user'] === $userId && $choice['slug'] === $keptSlug && ($choice['store'] ?? 'store') === $store);
     }
 
     public function repoint(string $userId, array $slugMap): int

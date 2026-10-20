@@ -31,6 +31,7 @@ use Repas\Repas\Application\Command\CreateRecipeType\CreateRecipeTypeCommand;
 use Repas\Repas\Application\Command\CreateShoppingList\CreateShoppingListCommand;
 use Repas\Repas\Application\Command\CreateUnit\CreateUnitCommand;
 use Repas\Repas\Application\Command\EnsureActiveShoppingList\EnsureActiveShoppingListCommand;
+use Repas\Repas\Application\Command\MergeIngredients\MergeIngredientsCommand;
 use Repas\Repas\Application\Command\PausedShoppingList\PausedShoppingListCommand;
 use Repas\Repas\Application\Command\PlannedMeal\PlannedMealCommand;
 use Repas\Repas\Application\Command\RemoveIngredient\RemoveIngredientCommand;
@@ -374,6 +375,12 @@ return [
         $t->savedAdoptionVolume($owner, recipes: 3, rowsPerRecipe: 4, lists: 3, rowsPerList: 4, choices: 3);
 
         return new AdoptCommonIngredientsForUserCommand($owner->getId(), 'migration-essai', true);
+    },
+    // Fusion de deux ingrédients de l'utilisateur (ADR 0028, ING-005) : verrou, analyse (usage, graphe de conversion, choix du drive),
+    // repointage en masse des recettes, des listes et des choix, alias, suppression de l'absorbé et statistique. Le nombre de requêtes ne
+    // dépend ni du nombre de recettes ni du nombre de listes (tests/Repas/WriteBudget/MergeIngredientsBudgetTest).
+    'fusionner-ingredients' => static function (WriteBudgetTestCase $t): object {
+        return $t->savedMerge($t->savedUser(), recipes: 3, lists: 3);
     },
     'creer-conversion' => static function (WriteBudgetTestCase $t): object {
         $t->persister->saveUnit(new UnitBuilder()->isLiter()->build());

@@ -9,6 +9,7 @@ use Repas\Drive\Domain\Interface\DriveSettingsRepository;
 use Repas\Drive\Domain\Interface\ProductRepository;
 use Repas\Drive\Domain\Model\Product;
 use Repas\Drive\Domain\Model\Retailer;
+use Repas\Repas\Application\Command\MergeIngredients\MergeIngredientsCommand;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Repas\Domain\Model\Recipe;
 use Repas\Repas\Domain\Model\ShoppingList;
@@ -150,6 +151,23 @@ abstract class WriteBudgetTestCase extends DatabaseTestCase
     {
         $withCatalog = (int) $this->entityManager->getConnection()->fetchOne("SELECT count(*) FROM ingredient WHERE slug LIKE 'commun-%'") === 0;
         AdoptionDataset::createBulk($this->entityManager, $this->persister, $owner->getId(), $recipes, $rowsPerRecipe, $lists, $rowsPerList, $choices, $withCatalog);
+    }
+
+    /**
+     * Deux ingrédients voisins de `$owner` (« Tomate », gardé, et « Tomates », absorbé, chacun avec sa conversion propre) et un volume de
+     * recettes, de listes de courses et de choix du drive qui utilisent « Tomates » ; renvoie la commande qui fusionne.
+     */
+    public function savedMerge(User $owner, int $recipes, int $lists): MergeIngredientsCommand
+    {
+        $dataset = new MergeDataset($this->entityManager, $this->persister);
+        $dataset->units();
+        $kept = $dataset->ingredient('Tomate', $owner);
+        $absorbed = $dataset->ingredient('Tomates', $owner);
+        $dataset->conversion($kept);
+        $dataset->conversion($absorbed);
+        $dataset->volume($owner, $kept, $absorbed, $recipes, $lists);
+
+        return new MergeIngredientsCommand($owner->getId(), $absorbed->getSlug(), $kept->getSlug());
     }
 
     public function savedRecipe(User $author, RecipeBuilder $builder): Recipe

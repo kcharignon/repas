@@ -5,6 +5,7 @@ namespace Repas\Repas\Domain\Service;
 use Repas\Repas\Domain\Exception\IngredientException;
 use Repas\Repas\Domain\Interface\ConversionRepository;
 use Repas\Repas\Domain\Interface\UnitRepository;
+use Repas\Repas\Domain\Model\Conversion;
 use Repas\Repas\Domain\Model\Ingredient;
 use Repas\Repas\Domain\Model\RecipeRow;
 use Repas\Repas\Domain\Model\Unit;
@@ -145,34 +146,8 @@ readonly class ConversionService
      */
     private function findConversionCoefficientBFS(string $start, string $target, array $graph): ?float
     {
-        // La file d'attente contient des paires : [currentUnitId, cumulativeCoefficient]
-        $queue = [[$start, 1.0]];
-        // Tableau pour éviter de revisiter un nœud.
-        $visited = [];
-        $visited[$start] = true;
-
-        while (!empty($queue)) {
-            list($current, $coeff) = array_shift($queue);
-
-            if ($current === $target) {
-                return $coeff;
-            }
-
-            if (!isset($graph[$current])) {
-                continue;
-            }
-
-            foreach ($graph[$current] as $edge) {
-                $next = $edge['to'];
-                if (!isset($visited[$next])) {
-                    $visited[$next] = true;
-                    $newCoeff = $coeff * $edge['weight'];
-                    $queue[] = [$next, $newCoeff];
-                }
-            }
-        }
-
-        return null;
+        // Le parcours vit dans ConversionGraph : la fusion de deux ingrédients pose la même question sans passer par ce service
+        return ConversionGraph::coefficientIn($graph, $start, $target);
     }
 
     private function generateGraph(Ingredient $ingredient): array
@@ -185,20 +160,24 @@ readonly class ConversionService
             // Pour chaque conversion, on ajoute deux arêtes :
             // - De startUnit à endUnit avec un poids égal au coefficient.
             // - De endUnit à startUnit avec un poids égal à 1/coefficient.
-            $graph = [];
-            foreach ($conversions->toArray() as $conversion) {
-                $startSlug = $conversion->getStartUnit()->getSlug();
-                $endSlug   = $conversion->getEndUnit()->getSlug();
-                $coef    = $conversion->getCoefficient();
-
-                $graph[$startSlug][] = ['to' => $endSlug, 'weight' => $coef];
-                $graph[$endSlug][]   = ['to' => $startSlug, 'weight' => 1 / $coef];
-            }
+            $graph = ConversionGraph::edgesOf(array_map(
+                static fn(Conversion $conversion): array => [$conversion->getStartUnit()->getSlug(), $conversion->getEndUnit()->getSlug(), $conversion->getCoefficient()],
+                $conversions->toArray(),
+            ));
 
             $this->graphs->add($graph, $ingredient->getSlug());
         }
 
         return $this->graphs[$ingredient->getSlug()];
+    }
+
+    /**
+     * Le graphe de conversion de cet ingrédient (ses conversions propres et les conversions communes), tel que cette classe le parcourt
+     * pour convertir : la fusion de deux ingrédients s'en sert pour savoir, sans rien convertir, si une unité mène à l'unité d'achat.
+     */
+    public function graphOf(Ingredient $ingredient): ConversionGraph
+    {
+        return new ConversionGraph($this->generateGraph($ingredient));
     }
 
     /**

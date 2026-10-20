@@ -32,6 +32,7 @@ return [
     'decocher-ligne' => 7,
     'derniere-connexion' => 2,
     'envoyer-liste' => 9,
+    'fusionner-ingredients' => 21,
     'inscription' => 4,
     'mettre-liste-en-pause' => 9,
     'modifier-conversion' => 4,

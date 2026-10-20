@@ -4,6 +4,7 @@ namespace Repas\Tests\Helper;
 
 
 use Repas\Shared\Application\Interface\CommandBusInterface;
+use Throwable;
 
 /**
  * Bus de commandes de test : enregistre les commandes reçues et ne les exécute pas (aucun handler, aucune base).
@@ -15,6 +16,9 @@ class MockCommandBus implements CommandBusInterface
 
     /** @var array<class-string, mixed> */
     private array $results = [];
+
+    /** @var array<class-string, Throwable> */
+    private array $failures = [];
 
     /**
      * Résultat renvoyé par le handler de cette commande (ex. le slug d'un ingrédient créé).
@@ -28,9 +32,25 @@ class MockCommandBus implements CommandBusInterface
         return $this;
     }
 
+    /**
+     * Le handler de cette commande échoue (une exception de domaine, par exemple) : la commande est enregistrée, puis l'exception levée.
+     *
+     * @param class-string $commandClass
+     */
+    public function willThrow(string $commandClass, Throwable $exception): self
+    {
+        $this->failures[$commandClass] = $exception;
+
+        return $this;
+    }
+
     public function dispatch(object $command): mixed
     {
         $this->dispatched[] = $command;
+
+        if (isset($this->failures[$command::class])) {
+            throw $this->failures[$command::class];
+        }
 
         return $this->results[$command::class] ?? null;
     }

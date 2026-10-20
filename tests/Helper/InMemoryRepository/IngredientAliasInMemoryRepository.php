@@ -4,6 +4,7 @@ namespace Repas\Tests\Helper\InMemoryRepository;
 
 
 use Repas\Repas\Domain\Interface\IngredientAliasRepository;
+use Repas\Repas\Domain\Model\AliasKind;
 use Repas\Repas\Domain\Model\AliasLookup;
 use Repas\Repas\Domain\Model\IngredientAlias;
 
@@ -84,6 +85,26 @@ class IngredientAliasInMemoryRepository implements IngredientAliasRepository
             $this->aliases,
             static fn(IngredientAlias $alias): bool => $alias->getUserId() !== $userId || $alias->getIngredientSlug() !== $ingredientSlug,
         );
+    }
+
+    public function mergeInto(string $userId, string $absorbedSlug, string $keptSlug, \DateTimeImmutable $now): void
+    {
+        // Mêmes règles que le SQL : l'alias dont la clé est le gardé disparaît, ceux qui désignaient l'absorbé désignent le gardé (source
+        // `merge`), puis l'alias de la fusion remplace tout alias qui avait déjà la clé de l'absorbé
+        unset($this->aliases[$userId . '|' . $keptSlug]);
+        foreach ($this->aliases as $id => $alias) {
+            if ($alias->getUserId() === $userId && $alias->getIngredientSlug() === $absorbedSlug) {
+                $this->aliases[$id] = IngredientAlias::load([
+                    'user_id' => $userId,
+                    'alias_slug' => $alias->getAliasSlug(),
+                    'ingredient_slug' => $keptSlug,
+                    'kind' => $alias->getKind(),
+                    'source' => 'merge',
+                    'created_at' => $alias->getCreatedAt(),
+                ]);
+            }
+        }
+        $this->aliases[$userId . '|' . $absorbedSlug] = IngredientAlias::create($userId, $absorbedSlug, $keptSlug, AliasKind::MERGE, 'merge', $now);
     }
 
     /**

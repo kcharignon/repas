@@ -35,6 +35,10 @@ final readonly class IngredientDTO
         public ?string $creatorId,
         #[OA\Property(description: 'L\'utilisateur peut modifier cet ingrédient : le sien, ou un ingrédient commun s\'il est administrateur')]
         public bool $canEdit,
+        #[OA\Property(description: 'Nombre de recettes de l\'utilisateur qui utilisent cet ingrédient (« Utilisé dans 7 recettes · 2 listes »), toujours renseigné ; 0 si aucune, ou si l\'ingrédient est à quelqu\'un d\'autre', example: 7)]
+        public int $recipeCount,
+        #[OA\Property(description: 'Nombre de listes de courses de l\'utilisateur qui utilisent cet ingrédient (une ligne ou un ingrédient ajouté à la main), toujours renseigné ; 0 si aucune, ou si l\'ingrédient est à quelqu\'un d\'autre', example: 2)]
+        public int $listCount,
     ) {
     }
 }
