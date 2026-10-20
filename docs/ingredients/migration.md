@@ -29,7 +29,7 @@ Pour un commun `C` et un utilisateur `U` :
 
 | Colonne de `ingredient` | Valeur de la copie |
 |---|---|
-| `slug` | `C.slugged_name` suivi de l'identifiant de `U` (le motif des ingrédients personnels existants) ; en cas de collision, voir § 5 |
+| `slug` | `IngredientSlugPolicy::forAdoption(C.name, U, …)` : `slugify(nom . U)`, le slug que `Ingredient::create()` produirait (`C.slugged_name` suivi de l'identifiant de `U` pour un nom qui finit par une lettre ou un chiffre) ; en cas de collision, voir § 5 |
 | `name`, `slugged_name`, `image` | ceux de `C` (le chemin d'image est partagé : aucun fichier n'est copié) |
 | `department`, `default_cooking_unit`, `default_purchase_unit`, `compatible_units` | ceux de `C` |
 | `creator` | `U` |
@@ -67,9 +67,9 @@ Garde-fous : le lancement **s'arrête** s'il existe une liste `SENT` d'un utilis
 
 ## 5. Slugs et collisions
 
-Le slug de la copie est `C.slugged_name` + `U` : c'est exactement ce que `Ingredient::create()` produirait (`slugify(nom . créateur)` = `slugged_name` + identifiant, l'identifiant étant déjà un slug valide). **Longueur** : 24 caractères au plus pour les communs de production + 36 = 60, loin de 255 ; le rapport à blanc vérifie `longueur <= 255` pour tout le catalogue.
+Le slug de la copie est celui que `Ingredient::create()` produirait : `slugify(nom . U)`, calculé par `IngredientSlugPolicy::forAdoption()` (ING-001, **ING-003 l'appelle, il n'écrit pas sa propre formule en SQL**). Pour un nom qui finit par une lettre ou un chiffre, c'est `C.slugged_name` + `U`, l'identifiant étant déjà un slug valide. Pour un nom qui finit par un symbole (quatre communs du jeu de référence, « couche (taille N) »), `slugify` met un tiret avant l'identifiant (`couche-taille-4-<U>`) alors que `slugged_name` collé n'en met pas (`couche-taille-4<U>`) : seule la formule sur le nom colle au slug qu'aurait l'ingrédient créé à la main, donc seule elle détecte la collision avec un ingrédient personnel de même nom. **Longueur** : 24 caractères au plus pour les communs de production + 36 = 60, loin de 255 ; le rapport à blanc vérifie `longueur <= 255` pour tout le catalogue.
 
-**Collision** : l'utilisateur possède déjà un ingrédient de ce slug, donc de **même nom** (en production : 5 cas pour tous les comptes, dont 1 dans le même rayon que le commun). On **ne fusionne jamais automatiquement** (l'unité ou le rayon peuvent différer, un repointage vers lui casserait des conversions) : la copie prend le slug `C.slugged_name` + `-2` + `U` (puis `-3`…), tel que le premier libre. Le résultat est un **doublon de nom** pour l'utilisateur (« Tomate » personnel et « Tomate » adopté), qui est exactement ce que l'écran « Doublons possibles » ([`fusion.md`](fusion.md) § 8) propose de fusionner, avec la règle « même nom, même rayon ».
+**Collision** : l'utilisateur possède déjà un ingrédient de ce slug, donc de **même nom** (en production : 5 cas pour tous les comptes, dont 1 dans le même rayon que le commun). On **ne fusionne jamais automatiquement** (l'unité ou le rayon peuvent différer, un repointage vers lui casserait des conversions) : la copie prend le slug `-2` (`tomate-2<U>`, c'est-à-dire `slugify(nom . '-2' . U)`), puis `-3`…, le premier libre. Le résultat est un **doublon de nom** pour l'utilisateur (« Tomate » personnel et « Tomate » adopté), qui est exactement ce que l'écran « Doublons possibles » ([`fusion.md`](fusion.md) § 8) propose de fusionner, avec la règle « même nom, même rayon ».
 
 Le slug `tomate-2<U>` est aussi celui qu'aurait un ingrédient que l'utilisateur nommerait « Tomate 2 » : le contrôle d'existence (`IngredientRepository::exists`, `CreateIngredientHandler`) tranche dans les deux sens (`409` à la création, jamais d'écrasement).
 

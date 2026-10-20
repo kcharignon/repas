@@ -153,6 +153,20 @@ class AdoptCommonIngredientHandlerTest extends TestCase
         $this->assertSame('copy', $this->aliasRepository->find(self::USER, 'beurre')->getSource());
     }
 
+    public function testAnAdoptionAlreadyDoneStaysResolvedEvenIfTheCommonIsGone(): void
+    {
+        // Given : l'utilisateur a adopté le beurre, puis un administrateur a supprimé le commun
+        $slug = $this->adopt('beurre');
+        $this->ingredientRepository->delete($this->ingredientRepository->findOneBySlug('beurre'));
+
+        // When : l'alias répond, sans relire le commun
+        $again = $this->adopt('beurre');
+
+        // Then
+        $this->assertSame($slug, $again);
+        $this->assertTrue($this->ingredientRepository->exists($slug));
+    }
+
     public function testAnotherUserAdoptsHisOwnCopy(): void
     {
         // Given
