@@ -19,6 +19,9 @@
         <server name="DRIVE_ENABLED" value="true" force="true" />
         <!-- ID client Google FACTICE (connexion avec Google allumée en test), plus fort que la valeur vide injectée par compose -->
         <server name="GOOGLE_CLIENT_ID" value="123456-repastest.apps.googleusercontent.com" force="true" />
+        <!-- Le propriétaire du catalogue d'ingrédients des tests (UserBuilder::CATALOG_OWNER_EMAIL), plus fort que la valeur vide que compose injecte
+             depuis .env (une variable réelle l'emporte sur .env.test) ; jamais l'adresse du compte protégé -->
+        <server name="INGREDIENT_CATALOG_OWNER_EMAIL" value="catalog-owner@repas.test" force="true" />
     </php>
 
     <testsuites>

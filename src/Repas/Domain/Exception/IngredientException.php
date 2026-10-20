@@ -17,6 +17,9 @@ final class IngredientException extends DomainException
     public const string INGREDIENT_USED_BY_ANOTHER_USER = 'INGREDIENT_USED_BY_ANOTHER_USER';
     public const string INGREDIENT_MERGE_CONFLICT = 'INGREDIENT_MERGE_CONFLICT';
 
+    // Message du refus de poser le marqueur « de base » (ING-011) : le front le distingue d'un refus d'accès ordinaire, il ne se renomme pas
+    public const string INGREDIENT_BASE_FORBIDDEN = 'INGREDIENT_BASE_FORBIDDEN';
+
     // Message du cas « Pas le même » (ING-006)
     public const string CANNOT_BE_DISTINCT_FROM_ITSELF = 'CANNOT_BE_DISTINCT_FROM_ITSELF';
 
@@ -114,6 +117,15 @@ final class IngredientException extends DomainException
     public static function mergeConflict(): self
     {
         return new self(self::INGREDIENT_MERGE_CONFLICT, 409);
+    }
+
+    /**
+     * Seul le propriétaire du catalogue pose le marqueur « de base », sur un ingrédient qui est à lui (amendement du 2026-10-20 de
+     * l'ADR 0028, D2). Un refus d'autorisation : `403`, jamais ignoré en silence.
+     */
+    public static function baseMarkerForbidden(): self
+    {
+        return new self(self::INGREDIENT_BASE_FORBIDDEN, 403);
     }
 
     /**

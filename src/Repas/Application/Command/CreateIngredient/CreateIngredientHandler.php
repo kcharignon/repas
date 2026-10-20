@@ -15,6 +15,7 @@ use Repas\Repas\Domain\Interface\UnitRepository;
 use Repas\Repas\Domain\Model\Ingredient;
 use Repas\Repas\Domain\Model\Unit;
 use Repas\Repas\Domain\Service\ConversionService;
+use Repas\Shared\Application\Interface\IngredientCatalogOwner;
 use Repas\Shared\Domain\Tool\Tab;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
@@ -30,6 +31,7 @@ readonly class CreateIngredientHandler
         private IngredientAliasRepository $aliasRepository,
         private EventDispatcherInterface $eventDispatcher,
         private ConversionService $conversionService,
+        private IngredientCatalogOwner $catalogOwner,
     ) {
     }
 
@@ -52,6 +54,13 @@ readonly class CreateIngredientHandler
             defaultPurchaseUnit: $purchaseUnit,
             creatorId: $creatorId,
         );
+
+        // Le marqueur « de base » (ADR 0028, amendement) : seul le propriétaire du catalogue le pose, sinon `403` et rien n'est écrit. Un
+        // ingrédient naît à faux : sans le demander, le propriétaire du catalogue n'est pas lu (aucune requête de plus).
+        if ($command->isBase) {
+            $ingredient->assertBaseMarkerSettableBy($command->userId, $this->catalogOwner->ownerId());
+            $ingredient->changeBase(true);
+        }
 
         // Le slug dérive du nom et du créateur : enregistrer sous un slug existant écraserait l'ingrédient
         if ($this->ingredientRepository->exists($ingredient->getSlug())) {

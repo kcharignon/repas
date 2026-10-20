@@ -31,6 +31,8 @@ final readonly class IngredientPayload
         #[Assert\Positive]
         #[OA\Property(description: "Une unité d'achat vaut ce nombre d'unités de recette ; obligatoire quand les deux unités diffèrent et qu'aucune conversion ne les relie déjà", example: 1000, nullable: true)]
         public ?float $coefficient = null,
+        #[OA\Property(description: "Marqueur « ingrédient de base » : l'ingrédient est copié aux nouveaux comptes. Facultatif : absent ou `null`, il reste inchangé (`PUT`) ou faux (`POST`). Seul le propriétaire du catalogue peut le changer, sur un ingrédient à lui : tout autre compte reçoit `403` `INGREDIENT_BASE_FORBIDDEN` quand la valeur envoyée diffère de l'actuelle", example: false, nullable: true)]
+        public ?bool $isBase = null,
     ) {
     }
 }

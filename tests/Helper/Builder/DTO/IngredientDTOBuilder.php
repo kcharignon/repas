@@ -22,6 +22,8 @@ class IngredientDTOBuilder implements Builder
     private bool $canEdit = false;
     private int $recipeCount = 0;
     private int $listCount = 0;
+    private bool $isBase = false;
+    private bool $canSetBase = false;
 
     public function withSlug(string $slug): self
     {
@@ -82,6 +84,18 @@ class IngredientDTOBuilder implements Builder
         return $this;
     }
 
+    public function base(): self
+    {
+        $this->isBase = true;
+        return $this;
+    }
+
+    public function settableBase(): self
+    {
+        $this->canSetBase = true;
+        return $this;
+    }
+
     public function build(): IngredientDTO
     {
         return new IngredientDTO(
@@ -101,6 +115,8 @@ class IngredientDTOBuilder implements Builder
             canEdit: $this->canEdit,
             recipeCount: $this->recipeCount,
             listCount: $this->listCount,
+            isBase: $this->isBase,
+            canSetBase: $this->canSetBase,
         );
     }
 }

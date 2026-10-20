@@ -27,6 +27,7 @@ final class Ingredient implements ModelInterface
         private ?string    $creatorId,
         private Tab        $compatibleUnits,
         private ?string    $adoptedFrom = null,
+        private bool       $isBase = false,
     ) {
     }
 
@@ -166,6 +167,36 @@ final class Ingredient implements ModelInterface
         return $this->adoptedFrom !== null;
     }
 
+    /**
+     * Le marqueur « de base » (ADR 0028, amendement du 2026-10-20) : l'ingrédient part aux nouveaux comptes. Il n'a de sens que chez le
+     * propriétaire du catalogue ; toute copie (création, adoption, copie de recette, amorçage) naît à `false`, et `update()` n'y touche pas.
+     */
+    public function isBase(): bool
+    {
+        return $this->isBase;
+    }
+
+    public function changeBase(bool $isBase): Ingredient
+    {
+        $this->isBase = $isBase;
+        return $this;
+    }
+
+    /**
+     * Seul le propriétaire du catalogue (`$catalogOwnerId`, `null` s'il n'existe pas : alors personne) pose le marqueur « de base », et
+     * seulement sur un ingrédient qui est à lui ou, tant que les anciens communs existent (jusqu'à ING-014), sans créateur. Le marqueur
+     * d'un autre compte serait de toute façon inerte (l'amorçage ne lit que le catalogue du propriétaire) : le refuser vaut mieux que
+     * l'ignorer en silence.
+     *
+     * @throws IngredientException
+     */
+    public function assertBaseMarkerSettableBy(string $userId, ?string $catalogOwnerId): void
+    {
+        if ($catalogOwnerId === null || $userId !== $catalogOwnerId || !($this->creatorId === null || $this->creatorId === $userId)) {
+            throw IngredientException::baseMarkerForbidden();
+        }
+    }
+
     public function hasSameUnitInCookingAndPurchase(): bool
     {
         return $this->defaultCookingUnit->isEqual($this->defaultPurchaseUnit);
@@ -232,6 +263,8 @@ final class Ingredient implements ModelInterface
             creatorId: $authorId,
             compatibleUnits: $ingredient->getCompatibleUnits()->slice(0, null, true),
             adoptedFrom: $ingredient->getAdoptedFrom() ?? ($ingredient->getCreatorId() === null ? $ingredient->getSlug() : null),
+            // Une copie naît toujours à faux, quelle que soit la source : le marqueur « de base » ne se copie jamais (ADR 0028, amendement)
+            isBase: false,
         );
     }
 
@@ -254,6 +287,8 @@ final class Ingredient implements ModelInterface
             // Une copie du tableau : l'ingrédient adopté ne partage pas son tableau d'unités avec le commun
             compatibleUnits: $common->getCompatibleUnits()->slice(0, null, true),
             adoptedFrom: $common->getSlug(),
+            // Une copie naît toujours à faux, quelle que soit la source : le marqueur « de base » ne se copie jamais (ADR 0028, amendement)
+            isBase: false,
         );
     }
 
@@ -270,6 +305,7 @@ final class Ingredient implements ModelInterface
             creatorId: $datas['creator_id'],
             compatibleUnits: $datas['compatible_units'],
             adoptedFrom: $datas['adopted_from'],
+            isBase: $datas['is_base'] ?? false,
         );
     }
 

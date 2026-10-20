@@ -362,7 +362,8 @@ final class AdoptionDataset
     {
         $this->connection->insert($this->connection->quoteSingleIdentifier($table), array_combine(
             array_map(fn(string $column): string => $this->connection->quoteSingleIdentifier($column), array_keys($row)),
-            array_values($row),
+            // Une ligne lue par `SELECT *` rend les booléens (`is_base`) en booléens PHP, que DBAL enverrait comme une chaîne vide quand il est faux
+            array_map(static fn(mixed $value): mixed => is_bool($value) ? (int) $value : $value, array_values($row)),
         ));
     }
 

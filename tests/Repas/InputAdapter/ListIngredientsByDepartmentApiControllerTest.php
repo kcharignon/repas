@@ -18,7 +18,7 @@ class ListIngredientsByDepartmentApiControllerTest extends QueryBusWebTestCase
         $user = $this->savedUser();
         $this->queryBus->willReturn(ListIngredientsByDepartmentQuery::class, new DepartmentIngredientsDTO(
             new DepartmentDTOBuilder()->withSlug('cereale')->withName('céréale')->withImage('images/cereale.svg')->build(),
-            [new IngredientRowDTO('pate', 'pâtes', 'g', true), new IngredientRowDTO('riz', 'riz', 'g', false)],
+            [new IngredientRowDTO('pate', 'pâtes', 'g', true, true), new IngredientRowDTO('riz', 'riz', 'g', false, false)],
         ));
 
         // When
@@ -32,8 +32,8 @@ class ListIngredientsByDepartmentApiControllerTest extends QueryBusWebTestCase
         $this->assertSame([
             'department' => ['slug' => 'cereale', 'name' => 'céréale', 'image' => 'images/cereale.svg'],
             'member' => [
-                ['slug' => 'pate', 'name' => 'pâtes', 'purchaseUnitSymbol' => 'g', 'canEdit' => true],
-                ['slug' => 'riz', 'name' => 'riz', 'purchaseUnitSymbol' => 'g', 'canEdit' => false],
+                ['slug' => 'pate', 'name' => 'pâtes', 'purchaseUnitSymbol' => 'g', 'canEdit' => true, 'isBase' => true],
+                ['slug' => 'riz', 'name' => 'riz', 'purchaseUnitSymbol' => 'g', 'canEdit' => false, 'isBase' => false],
             ],
             'totalItems' => 2,
         ], $this->jsonBody());

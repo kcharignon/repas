@@ -334,6 +334,17 @@ return [
 
         return new CreateIngredientCommand('Praliné', '', $department->getSlug(), $unit->getSlug(), $unit->getSlug(), $owner->getId(), false, null);
     },
+    // Le propriétaire du catalogue crée un ingrédient « de base » (ING-011) : une lecture de plus que `creer-ingredient`, celle du compte
+    // propriétaire ; `creer-ingredient` (sans marqueur) ne le lit pas.
+    'creer-ingredient-base' => static function (WriteBudgetTestCase $t): object {
+        $owner = $t->savedUser(new UserBuilder()->isCatalogOwner());
+        $department = new DepartmentBuilder()->isBakery()->build();
+        $unit = new UnitBuilder()->isGramme()->build();
+        $t->persister->saveDepartment($department);
+        $t->persister->saveUnit($unit);
+
+        return new CreateIngredientCommand('Praliné', '', $department->getSlug(), $unit->getSlug(), $unit->getSlug(), $owner->getId(), false, null, true);
+    },
     'modifier-ingredient' => static function (WriteBudgetTestCase $t): object {
         $owner = $t->savedUser();
         $ingredient = new IngredientBuilder()->isFlour()->withCreator($owner, true)->build();
@@ -347,6 +358,26 @@ return [
             $ingredient->getDefaultCookingUnit()->getSlug(),
             $ingredient->getDefaultCookingUnit()->getSlug(),
             null,
+            $owner->getId(),
+        );
+    },
+    // Le propriétaire du catalogue marque un ingrédient « de base » (ING-011) : une lecture de plus que `modifier-ingredient`, celle du
+    // compte propriétaire (le seul cas où il est lu : sans marqueur, ou avec le même, le budget de la modification ne bouge pas).
+    'modifier-ingredient-base' => static function (WriteBudgetTestCase $t): object {
+        $owner = $t->savedUser(new UserBuilder()->isCatalogOwner());
+        $ingredient = new IngredientBuilder()->isFlour()->withCreator($owner, true)->build();
+        $t->persister->saveIngredient($ingredient);
+
+        return new UpdateIngredientCommand(
+            $ingredient->getSlug(),
+            'Farine complète',
+            '',
+            $ingredient->getDepartment()->getSlug(),
+            $ingredient->getDefaultCookingUnit()->getSlug(),
+            $ingredient->getDefaultCookingUnit()->getSlug(),
+            null,
+            $owner->getId(),
+            true,
         );
     },
     'supprimer-ingredient' => static function (WriteBudgetTestCase $t): object {

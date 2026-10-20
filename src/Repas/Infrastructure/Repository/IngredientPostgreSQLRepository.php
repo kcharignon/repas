@@ -171,6 +171,7 @@ readonly class IngredientPostgreSQLRepository extends PostgreSQLRepository imple
             ->setDefaultCookingUnitSlug($ingredient->getDefaultCookingUnit()->getSlug())
             ->setDefaultPurchaseUnitSlug($ingredient->getDefaultPurchaseUnit()->getSlug())
             ->setCompatibleUnitSlugs($ingredient->getCompatibleUnits()->map(fn(Unit $unit) => $unit->getSlug())->toArray())
+            ->setIsBase($ingredient->isBase())
         ;
     }
 
@@ -191,6 +192,7 @@ readonly class IngredientPostgreSQLRepository extends PostgreSQLRepository imple
             "creator_id" => $ingredientEntity->getCreatorId(),
             "compatible_units" => $this->unitRepository->findBySlugs(new Tab($ingredientEntity->getCompatibleUnitSlugs(), 'string')),
             "adopted_from" => $ingredientEntity->getAdoptedFrom(),
+            "is_base" => $ingredientEntity->isBase(),
         ]);
     }
 

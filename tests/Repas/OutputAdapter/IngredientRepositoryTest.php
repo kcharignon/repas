@@ -232,6 +232,61 @@ class IngredientRepositoryTest extends DatabaseTestCase
         $this->assertSame('beurre', $this->columnOf($adoption->getSlug(), 'adopted_from'));
     }
 
+    public function testTheBaseMarkerRoundTripsThroughTheDatabase(): void
+    {
+        // Arrange : un ingrédient marqué « de base » et un autre qui ne l'est pas
+        $owner = new UserBuilder()->isCatalogOwner()->build();
+        $this->persister->saveUser($owner);
+        $base = new IngredientBuilder()->isButter()->withCreator($owner, true)->withBase()->build();
+        $notBase = new IngredientBuilder()->isFlour()->withCreator($owner, true)->build();
+        $this->persister->saveIngredient($base);
+        $this->persister->saveIngredient($notBase);
+        $this->entityManager->clear();
+
+        // Act
+        $loadedBase = $this->ingredientRepository->findOneBySlug($base->getSlug());
+        $loadedNotBase = $this->ingredientRepository->findOneBySlug($notBase->getSlug());
+
+        // Assert : lu en base (l'identity map est vide)
+        $this->assertTrue($loadedBase->isBase());
+        $this->assertFalse($loadedNotBase->isBase());
+        $this->assertSame(true, $this->boolColumnOf($base->getSlug(), 'is_base'));
+        $this->assertSame(false, $this->boolColumnOf($notBase->getSlug(), 'is_base'));
+
+        // Act : un renommage garde le marqueur, puis le propriétaire le retire
+        $loadedBase->setName('Beurre demi-sel');
+        $this->ingredientRepository->save($loadedBase);
+        $this->entityManager->clear();
+        $renamed = $this->ingredientRepository->findOneBySlug($base->getSlug());
+        $this->assertTrue($renamed->isBase());
+        $renamed->changeBase(false);
+        $this->ingredientRepository->save($renamed);
+        $this->entityManager->clear();
+
+        // Assert
+        $this->assertFalse($this->ingredientRepository->findOneBySlug($base->getSlug())->isBase());
+        $this->assertSame(false, $this->boolColumnOf($base->getSlug(), 'is_base'));
+    }
+
+    public function testARowInsertedWithoutTheColumnIsNotBase(): void
+    {
+        // Arrange : un `INSERT` comme celui du code d'avant la colonne, qui ne la connaît pas (ADR 0017 règle 6)
+        $ingredient = new IngredientBuilder()->isButter()->build();
+        $this->persister->saveIngredientDependencies($ingredient);
+        $this->entityManager->getConnection()->executeStatement(
+            'INSERT INTO ingredient (slug, name, image, slugged_name, department, default_cooking_unit, default_purchase_unit, creator, compatible_units, adopted_from)'
+            . " VALUES ('beurre', 'beurre', '', 'beurre', ?, ?, ?, NULL, '[]', NULL)",
+            [$ingredient->getDepartment()->getSlug(), $ingredient->getDefaultCookingUnit()->getSlug(), $ingredient->getDefaultPurchaseUnit()->getSlug()],
+        );
+
+        // Act
+        $loaded = $this->ingredientRepository->findOneBySlug('beurre');
+
+        // Assert : la valeur par défaut de la base s'applique
+        $this->assertFalse($loaded->isBase());
+        $this->assertSame(false, $this->boolColumnOf('beurre', 'is_base'));
+    }
+
     public static function getByDepartmentDataProvider(): array
     {
         $creator = new UserBuilder()->build();
@@ -316,6 +371,11 @@ class IngredientRepositoryTest extends DatabaseTestCase
         $this->assertContains($system->getSlug(), $slugs);
         $this->assertContains($own->getSlug(), $slugs);
         $this->assertNotContains($notOwn->getSlug(), $slugs);
+    }
+
+    private function boolColumnOf(string $slug, string $column): bool
+    {
+        return (bool) $this->entityManager->getConnection()->fetchOne(sprintf('SELECT %s FROM ingredient WHERE slug = ?', $column), [$slug]);
     }
 
     private function columnOf(string $slug, string $column): ?string
