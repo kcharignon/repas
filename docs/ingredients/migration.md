@@ -79,36 +79,40 @@ Le slug `tomate-2<U>` est aussi celui qu'aurait un ingrédient que l'utilisateur
 
 ## 6. La commande, ses modes, son rapport
 
-`php bin/console repas:ingredients:adopt-commons` (contexte `Repas`, `src/Command/`, qui ne contient que de la boucle et de l'affichage : le travail est une commande `AdoptCommonIngredientsForUser` dispatchée par le bus, donc transactionnelle, testée en unitaire ; la lecture à blanc passe par un Loader).
+`php bin/console repas:ingredients:adopt-commons` (contexte `Repas`, `src/Command/AdoptCommonIngredientsCommand.php`, qui ne contient que de la boucle et de l'affichage : le travail d'un compte est la commande applicative `AdoptCommonIngredientsForUser`, dispatchée par le bus, donc transactionnelle, testée en unitaire avec des doubles en mémoire ; le rapport est la requête `GetAdoptionReport`, lue par `IngredientAdoptionReportLoader`, en lecture seule).
 
 | Option | Effet |
 |---|---|
-| (aucune) | **À blanc**, mode par défaut : lecture seule (aucun `INSERT`, `UPDATE`, `DELETE`, aucune transaction qui écrit), imprime le rapport |
-| `--apply` | écrit, **une transaction par utilisateur**, imprime le rapport |
-| `--user=<id>` (répétable) | se limite à ces utilisateurs (essai sur un seul compte d'abord) |
-| `--except=<id>` (répétable) | exclut ces utilisateurs |
-| `--accept-sent` | autorise le lancement malgré des listes `SENT` d'utilisateurs concernés |
-| `--check` | lecture seule, **vérifications** du § 8 seulement (à lancer après `--apply`) |
-| `--undo=<identifiant du lancement>` | retour arrière des **données** (§ 10), `--apply` requis |
-| `--run=<identifiant>` | nom du lancement écrit dans `ingredient_alias.source` (défaut : `migration-AAAA-MM-JJ`) |
+| (aucune) | **À blanc**, mode par défaut : lecture seule (aucun `INSERT`, `UPDATE`, `DELETE`, aucun verrou), imprime le rapport complet et « À blanc : rien n'a été modifié ». Code de sortie `0`, ou `1` si une anomalie bloquante interdirait d'écrire |
+| `--check` | lecture seule aussi : le même rapport et le **verdict** « Rien à faire : 0 à adopter, 0 à repointer, aucun alias invalide ». Code de sortie `0` si et seulement s'il n'y a plus rien à faire (à lancer après `--apply`), `1` sinon |
+| `--apply` | écrit, **une transaction par compte**, imprime une ligne par compte puis le rapport d'après lancement. Refuse d'écrire sans rien modifier : anomalie bloquante, liste envoyée sans `--accept-sent`, environnement autre que `prod` et `dev` (`repas.adoption.environments`), compte inconnu |
+| `--accept-sent` | autorise le repointage des listes envoyées au drive des comptes retenus. **Obligatoire** dès qu'une liste `SENT` a une ligne sur un commun ; sans rien à repointer sur une liste envoyée (second lancement), il n'est pas nécessaire |
+| `--user=<référence>` (répétable) | se limite à ces comptes (essai sur un seul compte d'abord). La **référence** est celle du rapport (`[a1b2c3d4]` : les 8 premiers caractères du SHA-256 de l'identifiant), ou l'identifiant complet |
+| `--except=<référence>` (répétable) | exclut ces comptes, mêmes formes |
+| `--source=<nom>` (synonyme `--run`) | nom du lancement écrit dans `ingredient_alias.source` : lettres, chiffres et `. _ : -`, 64 caractères au plus (défaut : `migration-AAAA-MM-JJ`) |
+| `--keep-going` | si un compte échoue (transaction annulée pour lui), continue avec les suivants. **Par défaut la commande s'arrête au premier échec** : une empreinte qui diverge peut être un défaut systématique, mieux vaut le lire avant de continuer |
+| `--undo=<lancement>` | retour arrière des **données** de ce lancement (§ 10), `--apply` requis |
 
-**Rapport**, par utilisateur (jamais d'adresse e-mail : l'identifiant suffit ; l'ops script affiche l'adresse en la lisant à part) : statut ; raison d'être concerné (ingrédients personnels : n ; recettes : n) ; **ou** raison de l'exclusion ; communs à adopter / déjà adoptés ; collisions de slug (nombre, puis détail) ; conversions à copier ; lignes à repointer par table (recettes distinctes, listes distinctes dont `SENT`, choix du drive) ; anomalies (§ 8). **Totaux** en fin de rapport, et la phrase « rien n'a été modifié » en mode à blanc.
+Un administrateur nommé par `--user` reste **ignoré**. Les options `--apply` et `--check` s'excluent.
+
+**Rapport**, un bloc par compte, **sans adresse e-mail, sans identifiant, sans nom d'ingrédient personnel** : les comptes sont numérotés (`n°1`…, par ordre d'identifiant) et désignés par leur référence courte. Pour chaque compte : le statut ; ce qu'il possède (ingrédients personnels, copies d'adoption, recettes dont copiées) ; **retenu** ou **ignoré** et pourquoi (administrateur ; ni ingrédient personnel ni recette ; écarté par `--except` ; hors de `--user`). Pour un compte retenu : communs à adopter / déjà adoptés ; collisions de slug (le nombre, puis le **nom du commun** concerné, public) ; conversions propres à copier ; lignes à repointer par table (recettes, lignes et ingrédients de listes dont celles **envoyées au drive**, choix du drive et leurs produits) ; l'**empreinte du contenu** (12 caractères, voir § 8) ; les anomalies et les alias invalides. En tête : le catalogue (communs, conversions propres, slug le plus long) ; en pied : les **totaux** et le verdict.
 
 ## 7. L'algorithme par utilisateur (transaction `U`)
 
-0. Verrou : `pg_advisory_xact_lock(hashtext('adopt:' || U))` (deux lancements ne se croisent pas) ; relire les critères de périmètre **dans** la transaction.
-1. `A` = communs (`ingredient.creator IS NULL`) sans alias d'adoption pour `U`.
-2. Slugs cibles calculés en PHP (§ 5), en une lecture des slugs déjà pris (`WHERE slug LIKE '%' || U`).
-3. `INSERT INTO ingredient` en lots de 100 (`adopted_from` renseigné), `INSERT INTO conversion` (identifiants générés par `UuidGenerator`), `INSERT INTO ingredient_alias`.
-4. Repointage (§ 4) par `UPDATE … FROM ingredient_alias a WHERE a.user_id = U AND a.kind = 'adoption' AND a.alias_slug = <colonne>` ; les versions des recettes et des listes touchées montent par `WITH changed AS (UPDATE … RETURNING recipe) UPDATE recipe SET version = version + 1 …`.
-5. Vérifications du § 8 **dans la transaction** ; à la moindre non-conformité : `ROLLBACK` de cet utilisateur, message, on passe au suivant (les autres utilisateurs ne sont pas touchés).
-6. `COMMIT`. **Aucun événement** n'est émis : une adoption n'est pas une création, les statistiques de l'utilisateur ne bougent pas.
+0. Verrou : `pg_advisory_xact_lock(hashtext('adopt:' || U))` (deux lancements ne se croisent pas) ; relire les critères de périmètre **dans** la transaction (compte inconnu, administrateur, ni ingrédient ni recette : rien n'est fait).
+1. **Empreinte d'avant** (§ 8), côté `Repas` et côté drive. Les listes `SENT` qui auraient une ligne sur un commun exigent `--accept-sent` : sinon la commande s'arrête **avant** d'écrire.
+2. `A` = communs (`ingredient.creator IS NULL`) **sans adoption valide** pour `U` (alias d'adoption dont la copie existe et est à `U`). Un alias **orphelin** (copie disparue) est remplacé sur place, jamais supprimé. Un ingrédient de `U` déjà né du commun (`adopted_from`), strictement conforme à lui (nom, image, rayon, unités, unités compatibles, conversions propres) et sans alias, est **désigné** par l'alias au lieu d'être doublé : c'est ce qui rend « retour arrière puis nouveau lancement » sans doublon.
+3. Slugs cibles calculés en PHP par `IngredientSlugPolicy` (§ 5), en **une** lecture des slugs déjà pris (ceux qui se terminent par l'identifiant de `U`).
+4. Les **alias d'abord** (`INSERT … ON CONFLICT … RETURNING` : ce qui est rendu est ce qui a été réellement écrit, une adoption simultanée l'emporte sur la clé de l'alias), puis les copies d'ingrédients (`INSERT … SELECT` depuis le commun, `adopted_from` renseigné), puis les conversions **propres** (identifiants neufs par `UuidGenerator`, unités et coefficient recopiés par la base, aucun aller-retour de flottant). Un `INSERT … SELECT` par lot : la taille du catalogue n'a pas d'effet sur le nombre de requêtes.
+5. Repointage (§ 4) par `UPDATE … FROM <adoptions valides de U>` ; les versions des recettes et des listes touchées montent dans la **même** requête (`WITH changed AS (UPDATE … RETURNING recipe) UPDATE recipe SET version = version + 1 …`). Recettes et listes ensemble, puis les choix du drive par le port `Shared` `DriveIngredientReferences`, **implémenté par `Drive`** (un contexte n'écrit pas les tables d'un autre, ADR 0013 règle 8 ; `Drive` garde la main sur sa clé unique et ses produits).
+6. **Empreinte d'après** comparée à celle d'avant (§ 8), dans la transaction ; à la moindre différence : `IngredientAdoptionException`, donc **ROLLBACK de ce compte**, message clair, et **arrêt** de la commande (`--keep-going` pour continuer avec les suivants : les autres comptes ne sont pas touchés).
+7. `COMMIT`. **Aucun événement** n'est émis : une adoption n'est pas une création, les statistiques de l'utilisateur ne bougent pas.
 
-Le nombre de requêtes est **constant** par utilisateur (quelques `INSERT … SELECT`/`VALUES` par lots et quatre `UPDATE`), pas proportionnel au nombre de lignes.
+Le nombre de requêtes est **constant** par utilisateur : **26** mesurées, pour 6 lignes comme pour 8 000 lignes à repointer, pour 1 comme pour 5 comptes (`tests/Repas/WriteBudget`, scénario `adopter-catalogue`, et `AdoptionPerformanceTest`). Environ 10 000 lignes (recettes, listes dont deux envoyées, 100 choix du drive avec leurs produits) se migrent en **moins d'une seconde** par compte sur la base de développement.
 
 ### Idempotence
 
-Rejouable sans doublon : l'étape 1 exclut les communs déjà aliasés ; l'étape 4 ne touche que les lignes qui référencent encore un commun aliasé (après le premier passage il n'y en a plus) ; une transaction interrompue n'a rien écrit. Rejouer sert aussi à **rattraper** une écriture concurrente (§ 9). Le deuxième passage d'un lancement complet imprime « 0 à adopter, 0 à repointer » pour tous.
+Rejouable sans doublon : l'étape 2 exclut les communs déjà adoptés ; l'étape 5 ne touche que les lignes qui référencent encore un commun adopté (après le premier passage il n'y en a plus) ; une transaction interrompue n'a rien écrit. Rejouer sert aussi à **rattraper** une écriture concurrente (§ 9). Le deuxième passage d'un lancement complet imprime « 0 à adopter, 0 à repointer, rien à faire » pour tous les comptes **sans ouvrir de transaction**, et n'écrit aucune ligne, versions comprises (prouvé par une somme de contrôle de toutes les tables avant et après, `AdoptCommonIngredientsCommandTest`). Un commun que l'utilisateur aurait **supprimé** depuis (sa copie et son alias disparaissent, ING-001) serait de nouveau adopté par un rejeu : le rapport à blanc le montre (« à adopter »).
 
 ### Utilisateur concerné plus tard
 
@@ -141,7 +145,15 @@ Un utilisateur qui n'était pas concerné au premier lancement (premier recette 
 | Statistiques `user.statistics.ingredients` | inchangées |
 | Utilisateurs non concernés | aucune ligne modifiée (comptage des lignes dont l'ingrédient a changé : 0) |
 
-**Test d'équivalence du drive** (avant la mise en production, sur la base de test) : pour un utilisateur avec des choix, des listes envoyées et non envoyées, la lecture du plan (`GetDrivePlan`) et de l'estimation (`GetDriveEstimate`) donne, avant et après la migration, **les mêmes lignes à l'ingrédient près (nom, quantité, unité, produits, nombre de produits à commander, prix)** ; seul le slug de chaque ligne change.
+**Ce qui est réellement vérifié, et où** (réalisation d'ING-003) :
+
+- **À blanc et `--check`** (`IngredientAdoptionReportPostgreSQLLoader`, lecture seule) : références orphelines et références à l'ingrédient personnel d'un autre compte, **par table et pour chaque compte retenu** (lignes de recettes, de listes, ingrédients de listes, choix du drive) ; slugs de copie de plus de 255 caractères ; alias d'adoption invalides (copie absente, à un autre compte, d'un autre commun) ; conversions rattachées à un ingrédient qui n'existe pas (anomalie du catalogue, sans effet sur la migration). Les premières interdisent `--apply` (aucune écriture) ; la dernière est seulement affichée.
+- **Dans la transaction de chaque compte** (`AdoptionVerifier`, comparaison de deux `AdoptionSnapshot` et de deux `DriveChoiceFingerprint`) : nombre de lignes et somme **exacte** des quantités (`numeric`, indépendante de l'ordre des lignes) pour `recipe_row`, `shopping_list_row` et `shopping_list_ingredient` ; somme de contrôle du **contenu de chaque recette et de chaque liste** (ensemble trié des `(nom de l'ingrédient, rayon, quantité, unité)`, jamais le slug) ; **situation de chaque liste** (statut, date d'envoi) ; **versions** : +1 pour chaque recette et liste dont une ligne a été repointée, inchangée pour toutes les autres ; `user.statistics` identique ; plus **aucune** ligne sur un commun ; côté drive : mêmes nombres de choix et de lignes de produits, même somme des contenances (`pack_size_value`), même somme de contrôle de tout ce qui n'est pas le slug (enseigne, magasin, nature, recherche mémorisée `search_query`, date de mise à jour, et pour chaque produit son identifiant, son verdict, son rang, sa contenance et son unité), et **chaque choix sur l'ingrédient attendu** (sa copie, ou le même slug s'il n'était pas un commun) ; aucun choix ne garde le slug d'un commun adopté ; chaque copie écrite par ce passage est **conforme** à son commun (créateur, `adopted_from`, nom, image, rayon, unités par défaut, unités compatibles, conversions propres identiques) ; plus aucun commun sans adoption valide.
+- **Après le lancement** : la commande relit le rapport (`--check`), compare l'**empreinte du contenu** de chaque compte à celle du rapport d'avant (elle ne dépend d'aucun slug : la même valeur avant et après) et dit « Rien à faire ».
+- **Comptes non concernés** : les `UPDATE` ne touchent que les recettes dont le compte est l'**auteur** et les listes dont il est le **propriétaire** ; l'administrateur et le compte sans recette ni ingrédient reçoivent zéro ligne (prouvé par une somme de contrôle de tout ce qui leur appartient, versions comprises). Les communs ne sont jamais écrits (somme de contrôle des communs et de leurs conversions identique après).
+- **Exhaustivité des références** : `IngredientReferencesAreAllRepointedTest` lit le schéma réel (`information_schema`) et échoue pour toute colonne dont le nom évoque un ingrédient ou un slug, ou toute colonne JSON, qui ne serait pas déclarée (repointée, ou écartée avec sa raison) ; il lit aussi les **valeurs** d'un jeu de données complet : seules les colonnes déclarées contiennent le slug d'un commun.
+
+**Test d'équivalence du drive** (`AdoptionDriveEquivalenceTest`, base de test, ingrédients et unités construits par le domaine) : pour un utilisateur avec des choix (rangs, refus, contenance, recherche mémorisée, prix), une liste envoyée et une liste active, la lecture du plan (`GetDrivePlan`) et de l'estimation (`GetDriveEstimate`) donne, avant et après la migration, **les mêmes lignes à l'ingrédient près (nom, quantité, unité, produits, nombre de produits à commander, prix)** ; seul le slug de chaque ligne change, et c'est celui de la copie.
 
 ## 9. Concurrence
 
@@ -151,7 +163,58 @@ Le site reste en ligne pendant le lancement (quelques secondes). Une écriture c
 
 - **Du code** : sans danger, voir § 11.
 - **Des données** : la sauvegarde `pg_dump` d'avant lancement (§ 13) est le filet ; sa restauration est une **décision humaine** ([ADR 0017](../adr/0017-deploiement-et-releases.md) règle 6).
-- **Annulation ciblée** : `--undo=<lancement> --apply` repointe vers le commun d'origine les lignes de l'utilisateur qui référencent encore une copie du lancement (`ingredient_alias.source`), supprime les alias de ce lancement, **mais laisse les copies d'ingrédients et de conversions en place** (jamais de suppression de donnée de production par ce chemin ; elles sont inertes, et l'ancien code les voit comme des ingrédients personnels ordinaires). Les copies qui ont été **modifiées, renommées ou utilisées depuis** par l'utilisateur ne sont pas défaites : le rapport les liste. C'est un outil de dernier recours, testé sur la base de test.
+- **Annulation ciblée** : `--undo=<lancement> --apply` repointe vers le commun d'origine les lignes de l'utilisateur qui référencent encore une copie du lancement (`ingredient_alias.source`) — recettes, listes (y compris envoyées, avec `--accept-sent`), choix du drive —, supprime les alias de ce lancement, **mais laisse les copies d'ingrédients et de conversions en place** (jamais de suppression de donnée de production par ce chemin ; elles sont inertes, et l'ancien code les voit comme des ingrédients personnels ordinaires). Même transaction par compte, mêmes empreintes que l'adoption (contenu inchangé, versions +1, choix du drive complets). Une copie **modifiée depuis** par l'utilisateur (nom, image, rayon, unités, unités compatibles, conversions propres) n'est pas défaite : elle porte son travail, son alias reste, et la commande dit « N copie(s) modifiée(s) depuis laissée(s) telle(s) quelle(s) ». Un nouveau `--apply` après un `--undo` **désigne** les copies restées en place au lieu de les doubler (§ 7, étape 2). Outil de dernier recours, testé (`AdoptCommonIngredientsFailureAndUndoTest`).
+- **Les mêmes données, en SQL, sans la commande** (le cas où la commande elle-même ne démarre plus). Lancée par l'humain, **après une sauvegarde**, en **une seule transaction** (`--single-transaction`), pour **tous** les comptes d'un lancement. Elle ne supprime que les alias du lancement, ne regarde pas si une copie a été modifiée (préférer `--undo` si c'est possible) et fait ce que fait `--undo` : repointe vers les communs les recettes, les listes (versions +1) et les choix du drive qui portent encore une copie du lancement. Le texte ci-dessous est celui que `AdoptionDocumentedSqlTest` exécute sur la base de test et compare au résultat de `--undo` :
+
+<!-- retour-arriere-sql -->
+```sql
+-- Les adoptions du lancement :  psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v ON_ERROR_STOP=1 --single-transaction -v run=migration-AAAA-MM-JJ -f -
+CREATE TEMP TABLE adoption_undo AS
+SELECT a.user_id, a.alias_slug AS common_slug, a.ingredient_slug AS copy_slug
+  FROM ingredient_alias a
+ WHERE a.kind = 'adoption' AND a.source = :'run';
+
+-- 1. Les recettes : lignes des recettes de leur auteur, puis +1 de version pour celles qui ont changé
+WITH changed AS (
+  UPDATE recipe_row rr SET ingredient = u.common_slug
+    FROM adoption_undo u, recipe r
+   WHERE rr.ingredient = u.copy_slug AND r.id = rr.recipe AND r.author = u.user_id
+  RETURNING rr.recipe)
+UPDATE recipe SET version = version + 1 WHERE id IN (SELECT recipe FROM changed);
+
+-- 2. Les listes de courses (toutes, les envoyées au drive aussi) : lignes et ingrédients, puis +1 de version
+WITH list_rows AS (
+  UPDATE shopping_list_row x SET ingredient = u.common_slug
+    FROM adoption_undo u, shopping_list l
+   WHERE x.ingredient = u.copy_slug AND l.id = x.shopping_list AND l.owner = u.user_id
+  RETURNING x.shopping_list),
+ list_ingredients AS (
+  UPDATE shopping_list_ingredient x SET ingredient = u.common_slug
+    FROM adoption_undo u, shopping_list l
+   WHERE x.ingredient = u.copy_slug AND l.id = x.shopping_list AND l.owner = u.user_id
+  RETURNING x.shopping_list)
+UPDATE shopping_list SET version = version + 1
+ WHERE id IN (SELECT shopping_list FROM list_rows UNION SELECT shopping_list FROM list_ingredients);
+
+-- 3. Les choix du drive (toutes enseignes, tous magasins) ; un choix dont le commun est déjà pris dans le même magasin n'est pas touché
+UPDATE drive_choice c SET ingredient_slug = u.common_slug
+  FROM adoption_undo u
+ WHERE c.user_id = u.user_id AND c.ingredient_slug = u.copy_slug
+   AND NOT EXISTS (SELECT 1 FROM drive_choice o WHERE o.user_id = c.user_id AND o.retailer = c.retailer AND o.store_id = c.store_id AND o.ingredient_slug = u.common_slug);
+
+-- 4. La correspondance du lancement disparaît : les communs redeviennent visibles. Les copies et leurs conversions RESTENT.
+DELETE FROM ingredient_alias a USING adoption_undo u
+ WHERE a.user_id = u.user_id AND a.alias_slug = u.common_slug AND a.kind = 'adoption' AND a.source = :'run';
+
+-- Contrôle (attendu : 0 partout) : des lignes sont-elles restées sur une copie du lancement ?
+SELECT (SELECT count(*) FROM recipe_row x JOIN adoption_undo u ON x.ingredient = u.copy_slug JOIN recipe r ON r.id = x.recipe AND r.author = u.user_id) AS recettes,
+       (SELECT count(*) FROM shopping_list_row x JOIN adoption_undo u ON x.ingredient = u.copy_slug JOIN shopping_list l ON l.id = x.shopping_list AND l.owner = u.user_id) AS lignes_de_liste,
+       (SELECT count(*) FROM shopping_list_ingredient x JOIN adoption_undo u ON x.ingredient = u.copy_slug JOIN shopping_list l ON l.id = x.shopping_list AND l.owner = u.user_id) AS ingredients_de_liste,
+       (SELECT count(*) FROM drive_choice c JOIN adoption_undo u ON c.user_id = u.user_id AND c.ingredient_slug = u.copy_slug) AS choix_du_drive;
+DROP TABLE adoption_undo;
+```
+
+Après l'une ou l'autre voie : relire les contrôles de fin du § 13 (les lignes sont revenues sur les communs, plus aucun alias du lancement) et ouvrir une recette, une liste et l'écran des produits du drive d'un compte concerné.
 
 ## 11. Compatibilité avec la version précédente du code (ADR 0017 règle 6)
 
@@ -179,10 +242,77 @@ Donc : la migration de schéma est **additive** (colonne nullable, deux tables),
 
 ## 13. Exploitation : script, sauvegarde, durée
 
-- **Script** `.claude/skills/repas-ops/references/adopter-ingredients.sh`, sur le modèle de `rouvrir-listes-envoyees.sh` : sans argument, **lecture seule** (rapport à blanc) ; avec `--appliquer`, **sauvegarde `./backup.sh avant-adoption-ingredients`** puis `docker compose exec -T php php bin/console repas:ingredients:adopt-commons --apply --run=…`, puis `--check`. Lancé par l'utilisateur (`!`), jamais par un agent de code ; aucun secret dans le chat ([skill `repas-ops`](../../.claude/skills/repas-ops/SKILL.md)).
-- **Sauvegarde** : le déploiement du back A en fait déjà une (`deploy/deploy.sh`) ; la sauvegarde propre au lancement la complète juste avant l'écriture. Elles contiennent des données personnelles et restent sur le serveur ([`../production.md`](../production.md) « Sauvegardes »).
-- **Durée estimée** : par utilisateur concerné, une copie de ~260 ingrédients, ~105 conversions et ~260 alias (environ 630 lignes insérées) puis quatre `UPDATE` sur quelques centaines de lignes : de l'ordre de **la seconde**. Avec 5 à 8 utilisateurs concernés, **moins d'une minute** au total. Le verrou le plus long est celui des `UPDATE` d'un utilisateur (millisecondes).
-- **Volume ajouté** en base : de l'ordre de **5 000 lignes** pour la production actuelle, négligeable.
+- **Script** `.claude/skills/repas-ops/references/adopter-ingredients.sh`, sur le modèle de `rouvrir-listes-envoyees.sh` : sans argument, **lecture seule** (rapport à blanc) ; avec `--appliquer`, le rapport à blanc, puis **la sauvegarde `./backup.sh avant-adoption-ingredients`**, puis `docker compose exec -T php php bin/console repas:ingredients:adopt-commons --apply …`, puis `--check`. S'arrête avant la sauvegarde si le rapport à blanc signale une anomalie bloquante. Lancé par l'utilisateur (`!`), **jamais par un agent de code** ; aucun secret dans le chat ([skill `repas-ops`](../../.claude/skills/repas-ops/SKILL.md), `references/ingredients.md`). Essayé sur une copie (`REPAS_DIR`) par `AdoptIngredientsScriptTest`.
+- **Sauvegarde** : le déploiement du back en fait déjà une (`deploy/deploy.sh`) ; la sauvegarde propre au lancement (`./backup.sh avant-adoption-ingredients`, un `pg_dump` lisible vérifié, 14 conservées dans `/opt/repas/backups/`) la complète juste avant l'écriture. Elles contiennent des données personnelles et restent sur le serveur ([`../production.md`](../production.md) « Sauvegardes »).
+- **Durée mesurée** (base de développement, PostgreSQL 16) : 26 requêtes et moins d'une seconde par compte, même avec 10 000 lignes à repointer et 262 communs ; la commande entière (rapport, écriture, vérification) 1,3 s pour un compte de 10 000 lignes ; le second lancement 0,6 s. Avec 6 comptes concernés : **quelques secondes** au total. Le verrou le plus long est celui des `UPDATE` d'un compte (millisecondes).
+- **Volume ajouté** en base : environ 630 lignes par compte concerné (260 copies, ~105 conversions propres, 260 alias), de l'ordre de **4 000 lignes** pour la production actuelle, négligeable.
+
+### Procédure pas à pas (avec l'assistant, une étape à la fois)
+
+Avant tout : ING-001, ING-002 et ING-004 sont **déployés** et ont tourné quelques heures ; **aucune autre release du back ce jour-là** ; la nuit ou un moment calme ; aucun envoi de liste en cours sur un téléphone (sinon attendre ou rouvrir la liste). `ssh …` veut dire `ssh -i ~/.ssh/id_ed25519 root@64.227.124.100`.
+
+1. **Mesurer l'état d'avant** (lecture seule, les relevés du § 14, plus la photographie globale ci-dessous) et la noter. Elle sert à comparer à la fin :
+   ```sql
+   SELECT (SELECT count(*) FROM recipe_row)               AS lignes_de_recettes,
+          (SELECT count(*) FROM shopping_list_row)        AS lignes_de_listes,
+          (SELECT count(*) FROM shopping_list_ingredient) AS ingredients_de_listes,
+          (SELECT count(*) FROM drive_choice)             AS choix_du_drive,
+          (SELECT count(*) FROM drive_choice_product)     AS produits_des_choix,
+          (SELECT count(*) FROM ingredient WHERE creator IS NULL) AS communs,
+          (SELECT md5(string_agg(t::text, ',' ORDER BY t.slug)) FROM ingredient t WHERE t.creator IS NULL) AS somme_des_communs,
+          (SELECT count(*) FROM ingredient_alias)         AS alias;
+   ```
+2. **Le rapport à blanc** : `! ssh … 'bash -s' < .claude/skills/repas-ops/references/adopter-ingredients.sh`. Rien n'est modifié. Le lire avec l'assistant : les comptes retenus et ignorés (l'administrateur et le compte sans recette ni ingrédient sont ignorés), les collisions de slug, **les listes envoyées** (le rapport dit « exigera --accept-sent »), les choix du drive à repointer, aucune « ANOMALIE BLOQUANTE ». Noter les **empreintes du contenu** de chaque compte.
+3. **Essayer sur un seul compte** si l'on veut (la référence est dans le rapport) : `… 'bash -s -- --appliquer --accepter-listes-envoyees --compte=<référence>' < …/adopter-ingredients.sh`. Ouvrir une recette, la liste et l'écran des produits du drive de ce compte.
+4. **L'écriture** : `! ssh … 'bash -s -- --appliquer --accepter-listes-envoyees' < .claude/skills/repas-ops/references/adopter-ingredients.sh`. Le script refait le rapport à blanc (il s'arrête s'il y a une anomalie bloquante, et s'il n'y a rien à faire), fait la **sauvegarde** `avant-adoption-ingredients` (la sortie donne le nom du fichier), écrit compte par compte (une ligne par compte : copies créées, conversions, lignes repointées, empreinte « identique »), puis relit tout et doit finir sur « Rien à faire : 0 à adopter, 0 à repointer, empreintes identiques à celles d'avant ». **Au premier échec il s'arrête** : le compte en cause n'a rien reçu (transaction annulée), les comptes déjà faits le restent, relancer est sans danger après avoir lu le message.
+5. **Le deuxième lancement** (doit ne rien écrire) : même commande ; le script lit le rapport, voit qu'il n'y a plus rien à faire et dit « Rien à faire : aucune sauvegarde, aucune écriture » (appelée directement, la commande dit pour chaque compte « 0 à adopter, 0 à repointer, rien à faire »). Puis **le verdict seul** : `! ssh … 'bash -s -- --verifier' < …/adopter-ingredients.sh` (code de sortie 0, « Rien à faire »).
+6. **Les contrôles SQL de fin** (lecture seule, ci-dessous), à comparer à la photographie de l'étape 1.
+7. **Voir à l'écran** (par un compte concerné, avec lui ou en lecture) : une recette (mêmes noms et quantités), la liste de courses, l'écran des produits du drive (mêmes produits mémorisés), le rayon d'un ingrédient (une seule fois chaque ingrédient, modifiable) ; un compte non concerné et l'administrateur : rien de changé.
+8. En cas de doute à n'importe quelle étape : ne rien relancer, lire § 10 (retour arrière).
+
+<!-- controles-sql -->
+```sql
+-- 1. Lignes qui référencent encore un commun, chez les comptes migrés (attendu : 0 partout)
+SELECT 'recettes' AS t, count(*) FROM recipe_row x JOIN recipe r ON r.id = x.recipe JOIN ingredient i ON i.slug = x.ingredient
+ WHERE i.creator IS NULL AND r.author IN (SELECT user_id FROM ingredient_alias WHERE kind = 'adoption')
+UNION ALL SELECT 'lignes de liste', count(*) FROM shopping_list_row x JOIN shopping_list l ON l.id = x.shopping_list JOIN ingredient i ON i.slug = x.ingredient
+ WHERE i.creator IS NULL AND l.owner IN (SELECT user_id FROM ingredient_alias WHERE kind = 'adoption')
+UNION ALL SELECT 'ingredients de liste', count(*) FROM shopping_list_ingredient x JOIN shopping_list l ON l.id = x.shopping_list JOIN ingredient i ON i.slug = x.ingredient
+ WHERE i.creator IS NULL AND l.owner IN (SELECT user_id FROM ingredient_alias WHERE kind = 'adoption')
+UNION ALL SELECT 'choix du drive', count(*) FROM drive_choice c JOIN ingredient i ON i.slug = c.ingredient_slug
+ WHERE i.creator IS NULL AND c.user_id IN (SELECT user_id FROM ingredient_alias WHERE kind = 'adoption');
+
+-- 2. Alias d'adoption invalides : la copie manque, n'est pas au compte ou ne vient pas du commun de l'alias (attendu : 0)
+SELECT count(*) AS alias_invalides FROM ingredient_alias a
+ WHERE a.kind = 'adoption' AND NOT EXISTS (SELECT 1 FROM ingredient o WHERE o.slug = a.ingredient_slug AND o.creator = a.user_id AND o.adopted_from = a.alias_slug);
+
+-- 3. Aucun administrateur n'a d'alias, aucun compte sans recette ni ingrédient personnel non plus (attendu : 0)
+SELECT count(*) AS alias_hors_perimetre FROM ingredient_alias a JOIN "user" u ON u.id = a.user_id
+ WHERE u.roles::jsonb @> '["ROLE_ADMIN"]'::jsonb
+    OR (NOT EXISTS (SELECT 1 FROM recipe r WHERE r.author = u.id) AND NOT EXISTS (SELECT 1 FROM ingredient i WHERE i.creator = u.id AND i.adopted_from IS NULL));
+
+-- 4. Le nombre de comptes migrés et d'alias par compte (attendu : un nombre d'alias égal au nombre de communs, pour chaque compte retenu)
+SELECT count(*) AS comptes_migres, min(n) AS alias_min, max(n) AS alias_max, (SELECT count(*) FROM ingredient WHERE creator IS NULL) AS communs
+  FROM (SELECT user_id, count(*) AS n FROM ingredient_alias WHERE kind = 'adoption' GROUP BY user_id) par_compte;
+
+-- 5. La photographie globale : mêmes nombres qu'avant l'écriture (rien n'est créé ni supprimé dans ces tables), mêmes communs
+SELECT (SELECT count(*) FROM recipe_row)               AS lignes_de_recettes,
+       (SELECT count(*) FROM shopping_list_row)        AS lignes_de_listes,
+       (SELECT count(*) FROM shopping_list_ingredient) AS ingredients_de_listes,
+       (SELECT count(*) FROM drive_choice)             AS choix_du_drive,
+       (SELECT count(*) FROM drive_choice_product)     AS produits_des_choix,
+       (SELECT count(*) FROM ingredient WHERE creator IS NULL) AS communs,
+       (SELECT md5(string_agg(t::text, ',' ORDER BY t.slug)) FROM ingredient t WHERE t.creator IS NULL) AS somme_des_communs,
+       (SELECT count(*) FROM ingredient_alias)         AS alias;
+
+-- 6. Références orphelines (attendu : 0 partout, comme avant)
+SELECT 'recipe_row' AS t, count(*) FROM recipe_row x WHERE NOT EXISTS (SELECT 1 FROM ingredient i WHERE i.slug = x.ingredient)
+UNION ALL SELECT 'shopping_list_row', count(*) FROM shopping_list_row x WHERE NOT EXISTS (SELECT 1 FROM ingredient i WHERE i.slug = x.ingredient)
+UNION ALL SELECT 'shopping_list_ingredient', count(*) FROM shopping_list_ingredient x WHERE NOT EXISTS (SELECT 1 FROM ingredient i WHERE i.slug = x.ingredient)
+UNION ALL SELECT 'drive_choice', count(*) FROM drive_choice x WHERE NOT EXISTS (SELECT 1 FROM ingredient i WHERE i.slug = x.ingredient_slug);
+```
+
+Les contrôles 1 à 3 et 6 doivent donner **0**, le contrôle 4 donne un nombre d'alias égal au nombre de communs, le 5 est **identique** à la photographie de l'étape 1 sauf `alias` (qui a augmenté du nombre de copies). Ces requêtes sont exécutées par `AdoptionDocumentedSqlTest` sur un jeu de données migré : le texte ci-dessus est celui qui est testé.
 
 ## 14. À relever en production avant le lancement (lecture seule)
 
@@ -235,13 +365,13 @@ Le contexte `Drive` ne référence un ingrédient que par `drive_choice.ingredie
 
 | Élément du drive | Impact | Protection (test ou règle) |
 |---|---|---|
-| `drive_choice.ingredient_slug` | repointé du commun vers la copie, **toutes enseignes et tous magasins** de l'utilisateur ; la clé unique `(user_id, retailer, store_id, ingredient_slug)` ne peut pas être violée (le slug de la copie est neuf) | `ChoiceRepositoryTest` + test de la migration : nombre de choix identique, aucun choix sous un slug de commun aliasé, aucune violation de clé |
-| `drive_choice_product` (produits acceptés, refusés, rang) | **inchangé** : rattaché à l'identifiant du choix, pas au slug | comptage avant/après dans `--check`, y compris les colonnes `pack_size_*` |
-| `drive_choice.search_query` (DRV-650) et `kind` | inchangés ; le texte cherché par défaut quand il n'y a pas de recherche mémorisée est le **nom** de l'ingrédient, identique dans la copie | test du plan : `searchQuery` identique avant/après |
+| `drive_choice.ingredient_slug` | repointé du commun vers la copie, **toutes enseignes et tous magasins** de l'utilisateur ; la clé unique `(user_id, retailer, store_id, ingredient_slug)` ne peut pas être violée (le slug de la copie est neuf) | `DriveIngredientReferencesRepositoryTest` (le port `Shared` de `Drive` : toutes enseignes et tous magasins, clé unique respectée, rien d'autre ne change) + `AdoptCommonIngredientsCommandTest` : nombre de choix identique, aucun choix sous un slug de commun adopté, aucune violation de clé |
+| `drive_choice_product` (produits acceptés, refusés, rang) | **inchangé** : rattaché à l'identifiant du choix, pas au slug | somme de contrôle avant/après dans la transaction de chaque compte (`DriveChoiceFingerprint`), y compris les colonnes `pack_size_*` |
+| `drive_choice.search_query` (DRV-650) et `kind` | inchangés ; le texte cherché par défaut quand il n'y a pas de recherche mémorisée est le **nom** de l'ingrédient, identique dans la copie | `AdoptionDriveEquivalenceTest` : `searchQuery` identique avant/après |
 | `drive_product` (contenu net, prix, étiquette) | inchangés : faits publics sans propriétaire | rien à tester de plus |
 | `drive_choice_product.pack_size_value` / `pack_size_unit_slug` (DRV-652 : « 20 tranches dans ce produit ») | **inchangés** par la migration (rattachés à l'identifiant du choix ; l'unité est un slug d'unité) ; ils ne servent que si leur unité est exactement celle de la ligne, ce qui reste vrai puisque la copie garde l'unité d'achat. **Fusion** : si l'unité d'achat de `B` diffère de celle de `A`, la contenance d'un produit de `B` qui passe sur `A` devient **inerte** (le calcul retombe sur le contenu net, comme pour une liste qui change d'unité) ; elle est supprimée avec le choix de `B` quand `A` en a un | `PackCalculatorTest` (unité différente ignorée, existant) ; `ChoiceRepositoryTest` : les `pack_size_*` suivent le choix repointé ; test de fusion : choix de `B` repointé avec une unité différente donne un plan sans contenance |
-| Plan d'envoi, nombre de produits (`PackCalculator`) | identiques : la copie garde les **mêmes unités d'achat** (dimension et facteur de base) | **test d'équivalence** : `GetDrivePlan` et `GetDriveEstimate` d'un utilisateur de test (choix, listes envoyées et non envoyées) donnent les mêmes lignes à l'ingrédient près, avant et après |
-| Listes `SENT` | repointées avec leurs choix (sinon leurs produits mémorisés disparaissent du plan) ; contenu, statut, `sent_at` inchangés | critères d'ING-003 |
+| Plan d'envoi, nombre de produits (`PackCalculator`) | identiques : la copie garde les **mêmes unités d'achat** (dimension et facteur de base) | **test d'équivalence** (`AdoptionDriveEquivalenceTest`) : `GetDrivePlan` et `GetDriveEstimate` d'un utilisateur de test (choix, listes envoyées et non envoyées) donnent les mêmes lignes à l'ingrédient près, avant et après |
+| Listes `SENT` | repointées avec leurs choix (sinon leurs produits mémorisés disparaissent du plan) ; contenu, statut, `sent_at` inchangés ; **`--accept-sent` obligatoire** | critères d'ING-003 (`AdoptCommonIngredientsCommandTest`, `AdoptCommonIngredientsForUserHandlerTest`) |
 | `drive_department_rayon` (rayon de l'enseigne appris par rayon de Repas) | inchangé ; si l'utilisateur change le rayon de sa copie, l'apprentissage suit le **nouveau** rayon (voulu) | `IngredientDepartmentPostgreSQLResolverTest` |
 | Écritures qui reçoivent un slug (`PUT/DELETE /drive/choices/{ingredientSlug}`, lot de choix de l'agent) | un ancien slug (brouillon d'envoi sur le téléphone, onglet ouvert) est **résolu** vers la copie ; jamais de choix créé sous un commun adopté | port `Shared` `IngredientAliasResolver` (ING-002 C) et ses tests ; `Drive` ne dépend que de `Shared` (Deptrac) |
 | Fusion | choix de `A` gagnant, celui de `B` supprimé avec ses produits, sinon passe sur `A` ; refus si une liste `SENT` est concernée | critères d'ING-005 |
