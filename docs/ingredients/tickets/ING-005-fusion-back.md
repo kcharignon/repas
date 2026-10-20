@@ -5,7 +5,7 @@
 - **Taille** : L
 - **Effort recommandé pour l'agent** : **xhigh** (réécrit des références dans quatre tables et le contexte `Drive`, droits, listes envoyées)
 - **Dépend de** : ING-001 (alias) ; ING-002 recommandé (la résolution des alias `merge`)
-- **Statut** : fait (PR back #PR)
+- **Statut** : fait (PR back #238)
 - **Lire d'abord** : **[`fusion.md`](../fusion.md) §§ 1 à 7 et 10, 11** ; [`analyse.md`](../analyse.md) §§ 4, 7, 11 ; [ADR 0028](../../adr/0028-ingredients-propres-a-chaque-utilisateur.md) décision g ; ADR 0016 (versions), 0023 (liste `SENT`), 0021 (purge) ; skills `/repas-dev`, `/repas-drive-back`.
 
 ## Contexte
@@ -61,7 +61,7 @@ Les doublons proposés et « Pas le même » (ING-006) ; l'écran (ING-007) ; re
 - Les `UPDATE` en masse ne passent pas par Doctrine : `clear()` si le test charge un agrégat avant et après.
 - Ne pas laisser un ingrédient « fantôme » : toute table qui référence un ingrédient doit être dans la liste de `fusion.md` § 3 ; si une nouvelle table apparaît (`grep ingredient` dans les entités), l'ajouter et un test.
 
-## Réalisation (PR back #PR)
+## Réalisation (PR back #238)
 
 Livré comme décrit ci-dessus, avec les écarts et ajouts suivants, tous décidés pour tenir l'intention du ticket et de l'ADR 0028. **Aucune migration de schéma** (ni table, ni colonne : les alias `merge` et la source `merge` tiennent dans `ingredient_alias` d'ING-001) ; **rien n'a été exécuté en production**.
 
