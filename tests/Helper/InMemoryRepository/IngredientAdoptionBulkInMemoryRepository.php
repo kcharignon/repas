@@ -9,6 +9,7 @@ use Repas\Repas\Domain\Model\AdoptionRepointed;
 use Repas\Repas\Domain\Model\AdoptionSnapshot;
 use Repas\Repas\Domain\Model\AggregateSnapshot;
 use Repas\Repas\Domain\Model\CommonIngredientToAdopt;
+use Repas\Repas\Domain\Model\IngredientToSeed;
 use Repas\Repas\Domain\Model\UndoableAdoption;
 
 /**
@@ -22,8 +23,10 @@ use Repas\Repas\Domain\Model\UndoableAdoption;
  */
 final class IngredientAdoptionBulkInMemoryRepository implements IngredientAdoptionBulkRepository
 {
-    /** @var array<string, array{name: string, department: string, creator: ?string, adoptedFrom: ?string}> par slug */
+    /** @var array<string, array{name: string, department: string, creator: ?string, adoptedFrom: ?string, isBase?: bool}> par slug (`isBase` : le marqueur « de base », faux quand il est absent) */
     public array $ingredients = [];
+    /** @var list<string> les comptes qui existent (l'amorçage vérifie l'existence du compte) */
+    public array $users = [];
     /** @var list<array{id: string, ingredient: ?string}> */
     public array $conversions = [];
     /** @var array<string, array<string, array{ingredient: string, kind: string, source: string}>> par utilisateur puis slug d'alias */
@@ -232,6 +235,72 @@ final class IngredientAdoptionBulkInMemoryRepository implements IngredientAdopti
         }
 
         return $deleted;
+    }
+
+    // ---- L'amorçage d'un compte (ING-008) : la source (catalogue du propriétaire, « de base ») et le périmètre
+
+    public function lockSeeding(string $userId): void
+    {
+        $this->calls[] = 'lockSeeding';
+    }
+
+    public function accountExists(string $userId): bool
+    {
+        return in_array($userId, $this->users, true);
+    }
+
+    public function isSeeded(string $userId): bool
+    {
+        return array_filter($this->aliases[$userId] ?? [], static fn(array $alias): bool => $alias['kind'] === 'adoption') !== [];
+    }
+
+    public function ingredientsToSeed(string $userId, string $ownerId, array $driveReferencedSlugs): array
+    {
+        $referenced = array_fill_keys($driveReferencedSlugs, true);
+        foreach ($this->recipes as $recipe) {
+            if ($recipe['author'] === $userId) {
+                foreach ($recipe['rows'] as $row) {
+                    $referenced[$row['ingredient']] = true;
+                }
+            }
+        }
+        foreach ($this->lists as $list) {
+            if ($list['owner'] === $userId) {
+                foreach ([...$list['rows'], ...$list['ingredients']] as $row) {
+                    $referenced[$row['ingredient']] = true;
+                }
+            }
+        }
+
+        $catalog = array_filter($this->ingredients, static fn(array $i): bool => $i['creator'] === null || $i['creator'] === $ownerId);
+        ksort($catalog);
+        $result = [];
+        foreach ($catalog as $slug => $ingredient) {
+            $isBase = $ingredient['isBase'] ?? false;
+            if ((!$isBase && !isset($referenced[$slug])) || $this->validAdoption($userId, $slug) !== null) {
+                continue;
+            }
+            $existing = null;
+            foreach ($this->ingredients as $candidate => $copy) {
+                if ($copy['creator'] === $userId && $copy['adoptedFrom'] === $slug && $copy['name'] === $ingredient['name'] && $copy['department'] === $ingredient['department']) {
+                    $existing = $candidate;
+                    break;
+                }
+            }
+            $result[] = new IngredientToSeed($slug, $ingredient['name'], $isBase, $existing);
+        }
+
+        return $result;
+    }
+
+    public function copyCatalogIngredients(string $userId, string $ownerId, array $copySlugBySourceSlug): int
+    {
+        $this->calls[] = 'copyCatalogIngredients';
+        foreach ($copySlugBySourceSlug as $source => $copy) {
+            $this->ingredients[$copy] = ['name' => $this->ingredients[$source]['name'], 'department' => $this->ingredients[$source]['department'], 'creator' => $userId, 'adoptedFrom' => $source, 'isBase' => false];
+        }
+
+        return count($copySlugBySourceSlug);
     }
 
     /**

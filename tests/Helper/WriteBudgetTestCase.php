@@ -23,6 +23,7 @@ use Repas\Tests\Helper\Builder\ShoppingListBuilder;
 use Repas\Tests\Helper\Builder\UserAppVersionBuilder;
 use Repas\Tests\Helper\Builder\UserBuilder;
 use Repas\Tests\Helper\Builder\UserIdentityBuilder;
+use Repas\Shared\Application\Interface\IngredientSeedingFeature;
 use Repas\Tests\Helper\SqlBudget\QueryCounter;
 use Repas\Shared\Domain\Tool\UuidGenerator;
 use Repas\User\Domain\Interface\EmailVerificationTokenRepository;
@@ -43,6 +44,7 @@ use Repas\User\Domain\Model\User;
 abstract class WriteBudgetTestCase extends DatabaseTestCase
 {
     public DataPersister $persister;
+    private bool $ingredientSeedingSwitchedOn = false;
 
     protected function setUp(): void
     {
@@ -151,6 +153,47 @@ abstract class WriteBudgetTestCase extends DatabaseTestCase
     {
         $withCatalog = (int) $this->entityManager->getConnection()->fetchOne("SELECT count(*) FROM ingredient WHERE slug LIKE 'commun-%'") === 0;
         AdoptionDataset::createBulk($this->entityManager, $this->persister, $owner->getId(), $recipes, $rowsPerRecipe, $lists, $rowsPerList, $choices, $withCatalog);
+    }
+
+    /**
+     * L'amorçage des ingrédients à l'activation (ING-008) allumé pour ce test : en test la variable d'environnement le coupe, comme la
+     * production par défaut, et les budgets des activations ordinaires sont mesurés interrupteur coupé.
+     */
+    public function switchOnIngredientSeeding(): void
+    {
+        // Un service déjà initialisé ne se remplace plus : une seule fois par test
+        if ($this->ingredientSeedingSwitchedOn) {
+            return;
+        }
+        static::getContainer()->set(IngredientSeedingFeature::class, new ControlledIngredientSeedingFeature(true));
+        $this->ingredientSeedingSwitchedOn = true;
+    }
+
+    /**
+     * Le catalogue de l'amorçage (ING-008) : le propriétaire du catalogue et `$baseIngredients` ingrédients « de base » à lui, dont un sur deux
+     * a deux conversions propres, créés en une fois par la base (`generate_series`). Un second appel n'ajoute rien.
+     */
+    public function savedSeedingCatalog(int $baseIngredients): void
+    {
+        $connection = $this->entityManager->getConnection();
+        if ((int) $connection->fetchOne("SELECT count(*) FROM ingredient WHERE slug LIKE 'base-%'") > 0) {
+            return;
+        }
+
+        $owner = new UserBuilder()->isCatalogOwner()->build();
+        $this->persister->saveUser($owner);
+        $connection->executeStatement(
+            "INSERT INTO ingredient (slug, name, image, slugged_name, department, default_cooking_unit, default_purchase_unit, creator, compatible_units, adopted_from, is_base)"
+            . " SELECT 'base-' || lpad(g::text, 3, '0'), 'Base ' || lpad(g::text, 3, '0'), 'images/x.png', 'base-' || lpad(g::text, 3, '0'), 'rayon-' || (g % 12), 'gramme', 'kilo', ?, '[\"gramme\",\"kilo\"]', NULL, TRUE"
+            . ' FROM generate_series(1, ?) g',
+            [$owner->getId(), $baseIngredients],
+        );
+        $connection->executeStatement(
+            "INSERT INTO conversion (id, start_unit, end_unit, coefficient, ingredient)"
+            . " SELECT gen_random_uuid()::text, u.start_unit, u.end_unit, 10 + g, 'base-' || lpad(g::text, 3, '0')"
+            . " FROM generate_series(1, ?) g, (VALUES ('unite', 'gramme'), ('tasse', 'gramme')) AS u(start_unit, end_unit) WHERE g % 2 = 0",
+            [$baseIngredients],
+        );
     }
 
     /**

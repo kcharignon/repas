@@ -27,6 +27,14 @@ final class IngredientAdoptionException extends DomainException
     }
 
     /**
+     * L'amorçage (ING-008) copie des ingrédients du catalogue du propriétaire, dont le nom n'est pas le sien : le message n'en cite aucun.
+     */
+    public static function seedSlugTooLong(int $length): static
+    {
+        return new static(sprintf('Le slug de la copie d\'un ingrédient du catalogue ferait %d caractères, le maximum est 255.', $length), 422);
+    }
+
+    /**
      * Une empreinte d'après ne correspond pas à celle d'avant : le travail de cet utilisateur est annulé en entier (la transaction n'est
      * pas validée), rien n'est écrit.
      *

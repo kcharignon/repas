@@ -7,6 +7,7 @@ use DateTimeImmutable;
 use Repas\Repas\Domain\Model\AdoptionRepointed;
 use Repas\Repas\Domain\Model\AdoptionSnapshot;
 use Repas\Repas\Domain\Model\CommonIngredientToAdopt;
+use Repas\Repas\Domain\Model\IngredientToSeed;
 use Repas\Repas\Domain\Model\UndoableAdoption;
 
 /**
@@ -140,4 +141,50 @@ interface IngredientAdoptionBulkRepository
      * @param list<string> $commonSlugs
      */
     public function deleteAdoptionAliases(string $userId, string $source, array $commonSlugs): int;
+
+    // ---------------------------------------------------------------------------------------------------------------------------------
+    // L'amorçage d'un compte (ING-008, ADR 0028 amendement du 2026-10-20, `docs/ingredients/sans-commun.md` § 2) : mêmes écritures en masse
+    // que ci-dessus (alias, conversions, repointage, empreintes) ; seules la SOURCE (les ingrédients de base du catalogue du propriétaire)
+    // et le PÉRIMÈTRE changent. Les méthodes ci-dessus ne bougent pas : la commande et le retour arrière d'ING-003 restent valables.
+    // ---------------------------------------------------------------------------------------------------------------------------------
+
+    /**
+     * Verrou consultatif de la transaction propre à l'AMORÇAGE de cet utilisateur (clé distincte de `lock()`) : deux activations
+     * simultanées du même compte ne se croisent pas, la seconde voit un compte déjà amorcé.
+     */
+    public function lockSeeding(string $userId): void;
+
+    /**
+     * Le compte existe. Relu dans la transaction.
+     */
+    public function accountExists(string $userId): bool;
+
+    /**
+     * Le compte est AMORCÉ : il a au moins un alias d'adoption (`IngredientAliasRepository::isAdopter()`, même définition, comparées par un
+     * test). Un compte qui a supprimé toutes ses copies ne l'est plus.
+     */
+    public function isSeeded(string $userId): bool;
+
+    /**
+     * Ce que le compte doit recevoir, trié par slug : les ingrédients du catalogue du propriétaire (créateur `$ownerId`, ou vide tant que
+     * la passation n'est pas faite : `sans-commun.md` § 2.2, écrit à un seul endroit, `IngredientVisibility::isCatalogSql()`) qui portent le
+     * marqueur « de base », PLUS ceux de ce catalogue que les lignes du compte référencent (recettes dont il est l'auteur, listes dont il est
+     * le propriétaire, et `$driveReferencedSlugs`, les ingrédients de ses choix du drive), sauf ceux qu'il a déjà adoptés (alias d'adoption
+     * VALIDE : la copie existe et lui appartient). Un marqueur posé sur l'ingrédient d'un autre compte est inerte.
+     *
+     * @param list<string> $driveReferencedSlugs les slugs que `DriveIngredientReferences::referencedSlugs()` rend pour ce compte
+     *
+     * @return list<IngredientToSeed>
+     */
+    public function ingredientsToSeed(string $userId, string $ownerId, array $driveReferencedSlugs): array;
+
+    /**
+     * Crée la copie de chaque ingrédient du catalogue `[slug de l'origine => slug de la copie]` : comme `copyIngredients()` (mêmes nom,
+     * image, rayon, unités par défaut et unités compatibles, `creator` = l'utilisateur, `adopted_from` = l'origine), mais l'origine est un
+     * ingrédient du catalogue du propriétaire (ou sans créateur), pas seulement un commun, et la copie naît avec le marqueur « de base »
+     * à FAUX, écrit explicitement. Une requête.
+     *
+     * @param array<string, string> $copySlugBySourceSlug
+     */
+    public function copyCatalogIngredients(string $userId, string $ownerId, array $copySlugBySourceSlug): int;
 }

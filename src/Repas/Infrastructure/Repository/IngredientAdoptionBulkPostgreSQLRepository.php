@@ -15,6 +15,7 @@ use Repas\Repas\Domain\Model\AliasKind;
 use Repas\Repas\Domain\Model\CommonIngredientToAdopt;
 use Repas\Repas\Domain\Model\UndoableAdoption;
 use Repas\Repas\Infrastructure\Adoption\AdoptionSnapshotReader;
+use Repas\Repas\Infrastructure\Adoption\SeedingSourceReader;
 use Repas\Repas\Infrastructure\Visibility\IngredientVisibility;
 
 /**
@@ -32,7 +33,7 @@ readonly class IngredientAdoptionBulkPostgreSQLRepository implements IngredientA
      * Ce qui sépare une copie `o` de son commun `c` : nom, image, rayon, unités, unités compatibles et conversions propres (unités et
      * coefficient). Faux pour une copie conforme.
      */
-    private const string COPY_DIFFERS_FROM_COMMON = 'o.name IS DISTINCT FROM c.name OR o.image IS DISTINCT FROM c.image OR o.slugged_name IS DISTINCT FROM c.slugged_name'
+    public const string COPY_DIFFERS_FROM_COMMON = 'o.name IS DISTINCT FROM c.name OR o.image IS DISTINCT FROM c.image OR o.slugged_name IS DISTINCT FROM c.slugged_name'
         . ' OR o.department IS DISTINCT FROM c.department OR o.default_cooking_unit IS DISTINCT FROM c.default_cooking_unit'
         . ' OR o.default_purchase_unit IS DISTINCT FROM c.default_purchase_unit OR o.compatible_units::text IS DISTINCT FROM c.compatible_units::text'
         . " OR (SELECT coalesce(string_agg(v.start_unit || '>' || v.end_unit || '=' || v.coefficient::text, ',' ORDER BY v.start_unit, v.end_unit, v.coefficient), '') FROM conversion v WHERE v.ingredient = o.slug)"
@@ -49,6 +50,7 @@ readonly class IngredientAdoptionBulkPostgreSQLRepository implements IngredientA
     public function __construct(
         private EntityManagerInterface $entityManager,
         private AdoptionSnapshotReader $snapshotReader,
+        private SeedingSourceReader $seedingSourceReader,
     ) {
     }
 
@@ -231,6 +233,39 @@ readonly class IngredientAdoptionBulkPostgreSQLRepository implements IngredientA
             "DELETE FROM ingredient_alias WHERE user_id = ? AND source = ? AND kind = 'adoption' AND alias_slug IN (?)",
             [$userId, $source, array_values($commonSlugs)],
             [2 => ArrayParameterType::STRING],
+        );
+    }
+
+    public function lockSeeding(string $userId): void
+    {
+        $this->connection()->executeQuery('SELECT pg_advisory_xact_lock(hashtext(?))', ['seed:' . $userId])->free();
+    }
+
+    public function accountExists(string $userId): bool
+    {
+        return $this->connection()->fetchOne('SELECT 1 FROM "user" WHERE id = ?', [$userId]) !== false;
+    }
+
+    public function isSeeded(string $userId): bool
+    {
+        return $this->connection()->fetchOne(
+            'SELECT 1 FROM ingredient_alias WHERE user_id = ? AND kind = ? LIMIT 1',
+            [$userId, AliasKind::ADOPTION->value],
+        ) !== false;
+    }
+
+    public function ingredientsToSeed(string $userId, string $ownerId, array $driveReferencedSlugs): array
+    {
+        return $this->seedingSourceReader->read($userId, $ownerId, $driveReferencedSlugs);
+    }
+
+    public function copyCatalogIngredients(string $userId, string $ownerId, array $copySlugBySourceSlug): int
+    {
+        return (int) $this->connection()->executeStatement(
+            'INSERT INTO ingredient (slug, name, image, slugged_name, department, default_cooking_unit, default_purchase_unit, creator, compatible_units, adopted_from, is_base)'
+            . ' SELECT m.value, c.name, c.image, c.slugged_name, c.department, c.default_cooking_unit, c.default_purchase_unit, :u, c.compatible_units, c.slug, FALSE'
+            . ' FROM jsonb_each_text(CAST(:map AS jsonb)) AS m JOIN ingredient c ON c.slug = m.key AND ' . IngredientVisibility::isCatalogSql('c', 'owner'),
+            ['u' => $userId, 'owner' => $ownerId, 'map' => $this->json($copySlugBySourceSlug)],
         );
     }
 
