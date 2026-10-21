@@ -13,11 +13,14 @@ use Repas\Repas\Domain\Interface\IngredientDistinctRepository;
 use Repas\Repas\Domain\Interface\IngredientMergeRepository;
 use Repas\Repas\Domain\Interface\IngredientRepository;
 use Repas\Repas\Domain\Model\Ingredient;
+use Repas\Repas\Domain\Model\IngredientMergePlan;
 use Repas\Repas\Domain\Model\MergeParty;
+use Repas\Repas\Domain\Model\Unit;
 use Repas\Repas\Domain\Service\ConversionService;
 use Repas\Repas\Domain\Service\IngredientMergePlanner;
 use Repas\Shared\Application\Interface\DriveIngredientReferences;
 use Repas\Shared\Domain\Event\IngredientRemovedEvent;
+use Repas\Shared\Domain\Interface\UuidGenerator;
 use Repas\Shared\Domain\Tool\Tab;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
@@ -30,11 +33,13 @@ use Symfony\Component\Messenger\Attribute\AsMessageHandler;
  *     faire) ou un ingrédient inconnu (`404`) ;
  *  2. l'utilisateur est le propriétaire des DEUX, sans exception pour un administrateur : l'ingrédient d'un autre est inconnu (`404`),
  *     un commun est refusé (`422`), le même ingrédient aussi ; une liste envoyée au drive qui utilise l'un des deux, une ligne d'un
- *     autre utilisateur sur `B` ou une unité de `B` que `A` ne sait pas convertir arrêtent la fusion avant la première écriture
- *     (`IngredientMergePlanner`, le même verdict que l'aperçu) ;
- *  3. les lignes de recettes, de listes et les choix du drive passent sur `A` (versions +1), les alias suivent, `B` et ses conversions
- *     propres sont supprimés (celles de `B` ne sont PAS reportées sur `A`) ;
- *  4. `IngredientRemovedEvent` si `B` n'est pas une adoption (la statistique « ingrédients créés » : une adoption n'a jamais compté).
+ *     autre utilisateur sur `B` ou une unité de `B` qui, MÊME APRÈS la récupération des conversions de `B` (étape 3), ne se convertit
+ *     pas par `A` arrêtent la fusion avant la première écriture (`IngredientMergePlanner`, le même verdict que l'aperçu) ;
+ *  3. `A` récupère les conversions propres de `B` qui lui manquent (une seule copie en masse, `A` garde les siennes en cas de conflit) et
+ *     les unités compatibles de `B` que ses lignes de recette déplacées utilisent ;
+ *  4. les lignes de recettes, de listes et les choix du drive passent sur `A` (versions +1), les alias suivent, `B` et ses conversions
+ *     propres sont supprimés (celles qui ont été copiées restent sur `A`) ;
+ *  5. `IngredientRemovedEvent` si `B` n'est pas une adoption (la statistique « ingrédients créés » : une adoption n'a jamais compté).
  *
  * Les recettes et les listes ne sont pas hydratées (SQL en masse) : un nombre de requêtes constant, quel que soit leur nombre. Une
  * écriture de recette ou de liste qui avait lu la version avant la fusion répond `412` (ou `409` si elle enregistre en même temps), au
@@ -54,6 +59,7 @@ readonly class MergeIngredientsHandler
         private DriveIngredientReferences $driveReferences,
         private EventDispatcherInterface $eventDispatcher,
         private ClockInterface $clock,
+        private UuidGenerator $uuidGenerator,
     ) {
     }
 
@@ -102,19 +108,49 @@ readonly class MergeIngredientsHandler
             throw $plan->block->toException();
         }
 
+        // Avant de repointer : `A` récupère ce qui lui manque de `B` (les conversions qu'il n'a pas, les unités compatibles que les lignes déplacées
+        // utilisent)
+        $this->recover($absorbed, $kept, $plan);
+
         $this->mergeRepository->repoint($command->userId, $absorbed->getSlug(), $kept->getSlug(), $kept->getDefaultPurchaseUnit()->getSlug(), $plan->factors);
         $this->driveReferences->merge($command->userId, $absorbed->getSlug(), $kept->getSlug());
         $this->aliasRepository->mergeInto($command->userId, $absorbed->getSlug(), $kept->getSlug(), $this->clock->now());
         // Les « Pas le même » qui nommaient l'absorbé n'ont plus d'objet (et ne doivent pas être hérités par un ingrédient qui reprendrait son slug)
         $this->distinctRepository->deleteByIngredientSlug($command->userId, $absorbed->getSlug());
 
-        // Les conversions propres de B ne sont pas reportées sur A : l'utilisateur ne peut pas en créer, ce serait une écriture silencieuse
+        // Les conversions propres de B disparaissent avec lui ; celles que A a récupérées sont déjà les siennes
         $this->conversionRepository->deleteByIngredient($absorbed);
         $this->ingredientRepository->delete($absorbed);
 
         // Une adoption n'a jamais été comptée comme une création : la supprimer ne décrémente pas la statistique (ADR 0028 décision 7)
         if (!$absorbed->isAdoption()) {
             $this->eventDispatcher->dispatch(new IngredientRemovedEvent($command->userId, $absorbed->getSlug()));
+        }
+    }
+
+    /**
+     * `A` récupère de `B` ce que le plan a décidé : les conversions propres qu'il n'avait pas (copiées en UNE requête, jamais une par
+     * conversion) et les unités compatibles que les lignes de recette déplacées utilisent. Le graphe de conversion de `A` mémorisé par
+     * `ConversionService` est oublié : il ne contient pas les conversions copiées.
+     *
+     * @throws IngredientException
+     */
+    private function recover(Ingredient $absorbed, Ingredient $kept, IngredientMergePlan $plan): void
+    {
+        if ($plan->recoveredConversions !== []) {
+            $newIdBySourceId = [];
+            foreach ($plan->recoveredConversions as $conversion) {
+                $newIdBySourceId[$conversion->id] = $this->uuidGenerator->generate();
+            }
+            $this->mergeRepository->recoverConversions($absorbed->getSlug(), $kept->getSlug(), $newIdBySourceId);
+            $this->conversionService->clear();
+        }
+
+        if ($plan->compatibleUnitSlugsToAdd !== []) {
+            $kept->addCompatibleUnits($absorbed->getCompatibleUnits()->filter(
+                static fn(Unit $unit): bool => in_array($unit->getSlug(), $plan->compatibleUnitSlugsToAdd, true),
+            ));
+            $this->ingredientRepository->save($kept);
         }
     }
 

@@ -80,6 +80,112 @@ class IngredientMergeRepositoryTest extends DatabaseTestCase
         $this->assertSame([0, false], [$usage->sentListCount, $usage->usedByAnotherUser]);
     }
 
+    public function testUsageTotalsAfterTheMergeAreTheUnionOfTheRecipesAndTheListsOfBothIngredients(): void
+    {
+        // Given : une recette et une liste qui utilisent les deux, une recette et une liste de chacun, une recette d'un autre utilisateur
+        $a = $this->kept->getSlug();
+        $b = $this->absorbed->getSlug();
+        $user = $this->user->getId();
+        $this->dataset->recipe('r-both', $user, [[$a, 1.0, 'gramme'], [$b, 1.0, 'gramme']]);
+        $this->dataset->recipe('r-b', $user, [[$b, 1.0, 'gramme']]);
+        $this->dataset->recipe('r-a', $user, [[$a, 1.0, 'gramme']]);
+        $this->dataset->recipe('r-theirs', $this->other->getId(), [[$a, 1.0, 'gramme']]);
+        $this->dataset->shoppingList('l-both', $user, rows: [['l1', $a, 1.0, 'kilo']], items: [['l2', $b, 1.0, 'kilo']]);
+        $this->dataset->shoppingList('l-b', $user, items: [['l3', $b, 1.0, 'kilo']]);
+        $this->dataset->shoppingList('l-a', $user, rows: [['l4', $a, 1.0, 'kilo']]);
+        $this->dataset->shoppingList('l-theirs', $this->other->getId(), rows: [['l5', $a, 1.0, 'kilo']]);
+
+        // When
+        $usage = $this->usage();
+
+        // Then : ce qui se déplace (celles de « Tomates »), et ce qui utilisera « Tomate » ensuite (l'union)
+        $this->assertSame([2, 2], [$usage->recipeCount, $usage->listCount]);
+        $this->assertSame([3, 3], [$usage->resultRecipeCount, $usage->resultListCount]);
+        // le total annoncé est celui de la base d'après
+        $this->repoint();
+        $used = $this->dataset->usedBy($user, $a);
+        $this->assertSame([3, 3], [$used['recipes'], $used['lists']]);
+    }
+
+    public function testUsageListsOnlyTheOwnConversionsOfTheAbsorbedIngredient(): void
+    {
+        // Given : « Tomates » a deux conversions propres ; « Tomate » en a une ; la conversion commune existe
+        $this->dataset->conversion($this->kept);
+        $this->dataset->conversion($this->absorbed, 160.0);
+        $this->dataset->conversion($this->absorbed, 0.1, new UnitBuilder()->isSlice(), new UnitBuilder()->isKilo());
+
+        // When
+        $conversions = $this->usage()->absorbedConversions;
+
+        // Then : les siennes seulement, dans l'ordre (départ, arrivée), coefficients exacts
+        $this->assertSame([['tranche', 'kilo', 0.1], ['unite', 'gramme', 160.0]], array_map(static fn($conversion): array => [$conversion->startUnitSlug, $conversion->endUnitSlug, $conversion->coefficient], $conversions));
+        $this->assertSame(2, count(array_unique(array_map(static fn($conversion): string => $conversion->id, $conversions))));
+    }
+
+    public function testAnIngredientWithoutAnyConversionOfItsOwnHasNoConversionToRecover(): void
+    {
+        // When / Then : la conversion commune (kilo <-> gramme) n'est à personne
+        $this->assertSame([], $this->usage()->absorbedConversions);
+    }
+
+    public function testRecoverConversionsCopiesTheConversionsOnTheKeptIngredientWithTheSameUnitsAndCoefficientAndLeavesTheOriginals(): void
+    {
+        // Given : deux conversions de « Tomates », dont un coefficient qui ne se représente pas exactement en décimal
+        $this->dataset->conversion($this->absorbed, 0.1, new UnitBuilder()->isSlice(), new UnitBuilder()->isKilo());
+        $this->dataset->conversion($this->absorbed, 160.0);
+        $conversions = $this->usage()->absorbedConversions;
+        $newIds = [];
+        foreach ($conversions as $index => $conversion) {
+            $newIds[$conversion->id] = "copy-$index";
+        }
+        $otherBefore = $this->dataset->hashOfUser($this->other->getId());
+
+        // When
+        $this->repository->recoverConversions($this->absorbed->getSlug(), $this->kept->getSlug(), $newIds);
+        $this->entityManager->clear();
+
+        // Then : « Tomate » a ses copies (nouveaux identifiants, mêmes unités, même coefficient au bit près), « Tomates » garde les siennes
+        $this->assertSame([['tranche', 'kilo', 0.1], ['unite', 'gramme', 160.0]], $this->dataset->ownConversions($this->kept->getSlug()));
+        $this->assertSame($this->dataset->ownConversions($this->absorbed->getSlug()), $this->dataset->ownConversions($this->kept->getSlug()));
+        $this->assertSame(['copy-0', 'copy-1'], $this->connection()->fetchFirstColumn('SELECT id FROM conversion WHERE ingredient = ? ORDER BY id', [$this->kept->getSlug()]));
+        $this->assertSame(2, $this->dataset->count('conversion', 'ingredient = ?', [$this->absorbed->getSlug()]));
+        $this->assertSame(1, $this->dataset->count('conversion', 'ingredient IS NULL'), 'la conversion commune n\'est pas copiée');
+        $this->assertSame($otherBefore, $this->dataset->hashOfUser($this->other->getId()));
+    }
+
+    public function testRecoverConversionsWithNothingToCopyWritesNothing(): void
+    {
+        // Given
+        $before = $this->dataset->tableHashes();
+
+        // When
+        $this->repository->recoverConversions($this->absorbed->getSlug(), $this->kept->getSlug(), []);
+
+        // Then
+        $this->assertSame($before, $this->dataset->tableHashes());
+    }
+
+    public function testRecoverConversionsRefusesAConversionThatIsNotOneOfTheAbsorbedIngredient(): void
+    {
+        // Given : la conversion de « Tomate » (le gardé) ne peut pas être « récupérée » de « Tomates » ; une inconnue non plus
+        $this->dataset->conversion($this->kept);
+        $this->dataset->conversion($this->absorbed, 0.1, new UnitBuilder()->isSlice(), new UnitBuilder()->isKilo());
+        $own = $this->usage()->absorbedConversions[0]->id;
+        $keptConversion = $this->connection()->fetchOne('SELECT id FROM conversion WHERE ingredient = ?', [$this->kept->getSlug()]);
+
+        foreach ([[$keptConversion => 'copy-1'], [$own => 'copy-2', 'inconnue' => 'copy-3']] as $newIds) {
+            try {
+                // When
+                $this->repository->recoverConversions($this->absorbed->getSlug(), $this->kept->getSlug(), $newIds);
+                $this->fail('une conversion qui n\'est pas celle de l\'absorbé ne se copie pas');
+            } catch (IngredientException $exception) {
+                // Then : conflit de fusion (la transaction du bus annule les copies déjà faites)
+                $this->assertSame(['INGREDIENT_MERGE_CONFLICT', 409], [$exception->getMessage(), $exception->getCode()]);
+            }
+        }
+        $this->assertSame(['copy-1' => 0, 'copy-2' => 1], ['copy-1' => $this->dataset->count('conversion', 'id = ?', ['copy-1']), 'copy-2' => $this->dataset->count('conversion', 'id = ?', ['copy-2'])], 'la copie sans suite est annulée par la transaction du bus, pas ici');
+    }
+
     public function testUsageSeesTheSentListsThatUseTheKeptOrTheAbsorbedIngredient(): void
     {
         // Given : deux listes envoyées, l'une utilise l'absorbé, l'autre le gardé ; une troisième envoyée n'utilise ni l'un ni l'autre

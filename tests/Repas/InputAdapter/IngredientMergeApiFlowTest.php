@@ -269,15 +269,16 @@ class IngredientMergeApiFlowTest extends DatabaseTestCase
         $this->assertSame([$a], $this->column('SELECT ingredient FROM shopping_list_row WHERE shopping_list = ?', $listId));
     }
 
-    public function testAnUnitTheKeptIngredientCannotConvertRefusesTheMergeWithoutWritingAnything(): void
+    public function testAnUnitNeitherIngredientCanConvertRefusesTheMergeWithoutWritingAnything(): void
     {
-        // Given : « Tomates » est utilisée en tranches dans une recette ; « Tomate » ne sait pas convertir la tranche
+        // Given : « Tomates » est utilisée en tranches dans une recette, mais ni « Tomates » ni « Tomate » ne savent convertir la tranche (une recette
+        // ancienne, d'avant le contrôle des unités à l'enregistrement)
         $user = $this->savedUser();
         $a = $this->createIngredient($user, 'Tomate');
         $b = $this->createIngredient($user, 'Tomates');
         $this->persister->saveUnit(new UnitBuilder()->isSlice()->build());
-        $this->persister->saveConversion(new ConversionBuilder()->withIngredient($this->persistedIngredient($b))->withStartUnit(new UnitBuilder()->isSlice())->withEndUnit(new UnitBuilder()->isGramme())->withCoefficient(25)->build());
-        $recipe = $this->createRecipe($user, 'Sandwich', [[$b, 4, 'tranche']]);
+        $recipe = $this->createRecipe($user, 'Sandwich', [[$b, 4]]);
+        $this->entityManager->getConnection()->executeStatement("UPDATE recipe_row SET unit = 'tranche' WHERE recipe = ?", [$recipe]);
         $hash = $this->tablesHash();
 
         // When : l'aperçu, puis la fusion
@@ -286,11 +287,86 @@ class IngredientMergeApiFlowTest extends DatabaseTestCase
         $this->request('POST', "/api/v1/ingredients/$b/merge", $user, ['into' => $a]);
 
         // Then : l'aperçu nomme l'unité, la fusion répond 422 sans rien écrire
-        $this->assertSame(['UNIT_MISSING', false, [['slug' => 'tranche', 'name' => 'tranche']]], [$preview['blockedBy'], $preview['canMerge'], $preview['missingUnits']]);
+        $this->assertSame(['UNIT_MISSING', false, [['slug' => 'tranche', 'name' => 'tranche']], 0], [$preview['blockedBy'], $preview['canMerge'], $preview['missingUnits'], $preview['recoveredConversionCount']]);
         $this->assertSame(422, $this->client->getResponse()->getStatusCode());
         $this->assertSame(['error' => ['message' => 'MERGE_UNIT_MISSING']], $this->jsonBody());
         $this->assertSame($hash, $this->tablesHash());
         $this->assertSame([[$b, 4.0, 'tranche']], $this->recipeRows($recipe));
+    }
+
+    public function testTwoIngredientsEachUsedByOneRecipeEndUpUsedByTwoRecipesAndNoLineIsLost(): void
+    {
+        // Given : « Melon » et « Melons », chacun dans UNE recette (le retour de l'utilisateur à la recette de la fusion)
+        $user = $this->savedUser();
+        $a = $this->createIngredient($user, 'Melon');
+        $b = $this->createIngredient($user, 'Melons');
+        $r1 = $this->createRecipe($user, 'Salade de melon', [[$a, 300]]);
+        $r2 = $this->createRecipe($user, 'Melon au jambon', [[$b, 500]]);
+
+        // When : l'aperçu
+        $this->request('GET', "/api/v1/ingredients/$b/merge-preview?into=$a", $user);
+        $preview = $this->jsonBody();
+
+        // Then : une recette se déplace, mais « Melon » sera utilisé dans DEUX recettes (et aucune liste) ; rien à récupérer
+        $this->assertSame([1, 0, 2, 0, 0, null, true], [$preview['recipeCount'], $preview['listCount'], $preview['resultRecipeCount'], $preview['resultListCount'], $preview['recoveredConversionCount'], $preview['blockedBy'], $preview['canMerge']]);
+
+        // When : la fusion
+        $this->request('POST', "/api/v1/ingredients/$b/merge", $user, ['into' => $a]);
+
+        // Then : « Melon » est bien utilisé dans deux recettes, celle de « Melons » pointe vers « Melon », aucune ligne n'a disparu
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->assertSame(2, $this->scalar("SELECT COUNT(DISTINCT recipe) FROM recipe_row WHERE ingredient = '$a'"));
+        $this->assertSame(2, $this->scalar('SELECT COUNT(*) FROM recipe_row'));
+        $this->assertSame([[$a, 300.0, 'gramme']], $this->recipeRows($r1));
+        $this->assertSame([[$a, 500.0, 'gramme']], $this->recipeRows($r2));
+        $this->request('GET', "/api/v1/recipes/$r2", $user);
+        $this->assertSame(200, $this->client->getResponse()->getStatusCode());
+        $this->assertSame(['Melon'], array_column($this->jsonBody()['rows'], 'ingredientName'));
+    }
+
+    public function testAConversionOfTheAbsorbedIngredientIsRecoveredSoThePlannedQuantityIsConvertedAndShown(): void
+    {
+        // Given : « Tomates » sait compter les tranches (25 g) et les propose ; « Tomate » ne le sait pas ; une recette de « Tomates » en utilise
+        $user = $this->savedUser();
+        $a = $this->createIngredient($user, 'Tomate');
+        $b = $this->createIngredient($user, 'Tomates');
+        $this->persister->saveUnit(new UnitBuilder()->isSlice()->build());
+        $this->persister->saveConversion(new ConversionBuilder()->withIngredient($this->persistedIngredient($b))->withStartUnit(new UnitBuilder()->isSlice())->withEndUnit(new UnitBuilder()->isGramme())->withCoefficient(25)->build());
+        $this->entityManager->getConnection()->executeStatement('UPDATE ingredient SET compatible_units = ? WHERE slug = ?', [json_encode(['gramme', 'kilo', 'tranche']), $b]);
+        $recipe = $this->createRecipe($user, 'Sandwich', [[$b, 4, 'tranche']]);
+        $this->request('GET', "/api/v1/ingredients/$a/units", $user);
+        $this->assertSame(['gramme', 'kilo'], array_column($this->jsonBody()['member'], 'slug'));
+
+        // When : l'aperçu — avant, il refusait (UNIT_MISSING)
+        $this->request('GET', "/api/v1/ingredients/$b/merge-preview?into=$a", $user);
+        $preview = $this->jsonBody();
+
+        // Then : la fusion est possible, une conversion sera récupérée, aucune unité ne manque
+        $this->assertSame([null, true, [], 1, 1, 1], [$preview['blockedBy'], $preview['canMerge'], $preview['missingUnits'], $preview['recoveredConversionCount'], $preview['recipeCount'], $preview['resultRecipeCount']]);
+        $this->assertSame(0, $this->scalar("SELECT COUNT(*) FROM conversion WHERE ingredient = '$a'"));
+
+        // When
+        $this->request('POST', "/api/v1/ingredients/$b/merge", $user, ['into' => $a]);
+
+        // Then : « Tomate » a la conversion de la tranche, la recette est sur « Tomate » avec ses 4 tranches
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->assertSame(1, $this->scalar("SELECT COUNT(*) FROM conversion WHERE ingredient = '$a' AND start_unit = 'tranche' AND end_unit = 'gramme' AND coefficient = 25"));
+        $this->assertSame(0, $this->scalar("SELECT COUNT(*) FROM conversion WHERE ingredient = '$b'"));
+        $this->assertSame([[$a, 4.0, 'tranche']], $this->recipeRows($recipe));
+        // l'éditeur de recette propose la tranche pour « Tomate »
+        $this->request('GET', "/api/v1/ingredients/$a/units", $user);
+        $this->assertSame(['gramme', 'kilo', 'tranche'], array_column($this->jsonBody()['member'], 'slug'));
+        // planifier la recette convertit les 4 tranches (100 g) en 0,1 kilo sur la ligne de « Tomate » de la liste ; la recette s'affiche toujours en tranches
+        $listId = $this->savedActiveList($user);
+        $this->request('PUT', "/api/v1/shopping-lists/active/recipes/$recipe", $user);
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->assertEqualsWithDelta([$a => 0.1], $this->listRows($listId), 1e-9);
+        $this->request('GET', "/api/v1/recipes/$recipe", $user);
+        $this->assertSame([['tranche', 4.0]], array_map(static fn(array $row): array => [$row['unitSlug'], (float) $row['quantity']], $this->jsonBody()['rows']));
+        // rejouée, la fusion ne copie rien de plus
+        $this->request('POST', "/api/v1/ingredients/$b/merge", $user, ['into' => $a]);
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->assertSame(1, $this->scalar("SELECT COUNT(*) FROM conversion WHERE ingredient = '$a'"));
     }
 
     public function testTheDriveChoiceOfTheKeptIngredientWinsElseTheAbsorbedOnePassesOverAndThePlanFindsItsProducts(): void

@@ -22,6 +22,7 @@ use Repas\Tests\Helper\Builder\ProductBuilder;
 use Repas\Tests\Helper\Builder\RecipeBuilder;
 use Repas\Tests\Helper\Builder\ShoppingListBuilder;
 use Repas\Tests\Helper\Builder\UserAppVersionBuilder;
+use Repas\Tests\Helper\Builder\UnitBuilder;
 use Repas\Tests\Helper\Builder\UserBuilder;
 use Repas\Tests\Helper\Builder\UserIdentityBuilder;
 use Repas\Shared\Application\Interface\IngredientSeedingFeature;
@@ -223,16 +224,27 @@ abstract class WriteBudgetTestCase extends DatabaseTestCase
     /**
      * Deux ingrédients voisins de `$owner` (« Tomate », gardé, et « Tomates », absorbé, chacun avec sa conversion propre) et un volume de
      * recettes, de listes de courses et de choix du drive qui utilisent « Tomates » ; renvoie la commande qui fusionne.
+     *
+     * Avec `$recoveredConversions` > 0, « Tomates » sait en plus compter autant d'unités (la tranche, la boîte, le bloc, la cuillère à soupe) que
+     * « Tomate » ne connaît pas : elles sont récupérées, et une recette de « Tomates » en tranches (unité qu'il déclare compatible) fait gagner
+     * la tranche aux unités compatibles de « Tomate ».
      */
-    public function savedMerge(User $owner, int $recipes, int $lists): MergeIngredientsCommand
+    public function savedMerge(User $owner, int $recipes, int $lists, int $recoveredConversions = 0): MergeIngredientsCommand
     {
         $dataset = new MergeDataset($this->entityManager, $this->persister);
         $dataset->units();
         $kept = $dataset->ingredient('Tomate', $owner);
-        $absorbed = $dataset->ingredient('Tomates', $owner);
+        $absorbed = $dataset->ingredient('Tomates', $owner, compatible: $recoveredConversions > 0 ? [new UnitBuilder()->isGramme(), new UnitBuilder()->isKilo(), new UnitBuilder()->isSlice()] : null);
         $dataset->conversion($kept);
         $dataset->conversion($absorbed);
         $dataset->volume($owner, $kept, $absorbed, $recipes, $lists);
+        if ($recoveredConversions > 0) {
+            foreach (array_slice([new UnitBuilder()->isSlice(), new UnitBuilder()->isBox(), new UnitBuilder()->isBlock(), new UnitBuilder()->isSoupSpoon()], 0, $recoveredConversions) as $unit) {
+                $this->persister->saveUnit($unit->build());
+                $dataset->conversion($absorbed, 25.0, $unit, new UnitBuilder()->isGramme());
+            }
+            $dataset->recipe('recovery-recipe-' . substr($owner->getId(), 0, 8), $owner->getId(), [[$absorbed->getSlug(), 4.0, 'tranche']]);
+        }
 
         return new MergeIngredientsCommand($owner->getId(), $absorbed->getSlug(), $kept->getSlug());
     }

@@ -7,6 +7,7 @@ use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Connection;
 use Doctrine\ORM\EntityManagerInterface;
 use Repas\Repas\Domain\Model\IngredientMergeUsage;
+use Repas\Repas\Domain\Model\MergeConversion;
 use Repas\Repas\Domain\Model\MergeUnitMove;
 
 /**
@@ -49,7 +50,16 @@ final readonly class IngredientMergeUsageReader
             // Une ligne de B qui n'est pas à l'utilisateur
             . ' (EXISTS (SELECT 1 FROM recipe_row x WHERE x.ingredient = :b AND NOT EXISTS (SELECT 1 FROM recipe r WHERE r.id = x.recipe AND r.author = :u))'
             . '  OR EXISTS (SELECT 1 FROM shopping_list_row x WHERE x.ingredient = :b AND NOT EXISTS (SELECT 1 FROM shopping_list l WHERE l.id = x.shopping_list AND l.owner = :u))'
-            . '  OR EXISTS (SELECT 1 FROM shopping_list_ingredient x WHERE x.ingredient = :b AND NOT EXISTS (SELECT 1 FROM shopping_list l WHERE l.id = x.shopping_list AND l.owner = :u))) AS foreign_use',
+            . '  OR EXISTS (SELECT 1 FROM shopping_list_ingredient x WHERE x.ingredient = :b AND NOT EXISTS (SELECT 1 FROM shopping_list l WHERE l.id = x.shopping_list AND l.owner = :u))) AS foreign_use,'
+            // Après la fusion, A sera utilisé par l'UNION des recettes et des listes de A et de B : une recette (ou une liste) qui utilisait déjà
+            // les deux compte une fois
+            . ' (SELECT count(DISTINCT r.id) FROM recipe_row x JOIN recipe r ON r.id = x.recipe WHERE x.ingredient IN (:a, :b) AND r.author = :u) AS result_recipes,'
+            . ' (SELECT count(*) FROM shopping_list l WHERE l.owner = :u AND ('
+            . '   EXISTS (SELECT 1 FROM shopping_list_row x WHERE x.shopping_list = l.id AND x.ingredient IN (:a, :b))'
+            . '   OR EXISTS (SELECT 1 FROM shopping_list_ingredient x WHERE x.shopping_list = l.id AND x.ingredient IN (:a, :b)))) AS result_lists,'
+            // Les conversions PROPRES de B, que A peut récupérer : dans un ordre fixe (le planificateur les retrie de toute façon)
+            . " (SELECT json_agg(json_build_object('id', c.id, 'start', c.start_unit, 'end', c.end_unit, 'coefficient', c.coefficient) ORDER BY c.start_unit, c.end_unit, c.id)"
+            . '   FROM conversion c WHERE c.ingredient = :b) AS absorbed_conversions',
             ['u' => $userId, 'a' => $keptSlug, 'b' => $absorbedSlug, 'pa' => $keptPurchaseUnitSlug],
         );
 
@@ -62,6 +72,9 @@ final readonly class IngredientMergeUsageReader
         }
         ksort($moves);
 
+        /** @var list<array{id: string, start: string, end: string, coefficient: int|float}> $conversions */
+        $conversions = $row['absorbed_conversions'] === null ? [] : json_decode($row['absorbed_conversions'], true, flags: JSON_THROW_ON_ERROR);
+
         return new IngredientMergeUsage(
             recipeCount: (int) $row['recipes'],
             listCount: (int) $row['lists'],
@@ -69,6 +82,12 @@ final readonly class IngredientMergeUsageReader
             listMoves: array_values($moves),
             sentListCount: (int) $row['sent'],
             usedByAnotherUser: (bool) $row['foreign_use'],
+            resultRecipeCount: (int) $row['result_recipes'],
+            resultListCount: (int) $row['result_lists'],
+            absorbedConversions: array_map(
+                static fn(array $conversion): MergeConversion => new MergeConversion($conversion['id'], $conversion['start'], $conversion['end'], (float) $conversion['coefficient']),
+                $conversions,
+            ),
         );
     }
 

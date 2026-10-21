@@ -28,13 +28,13 @@ final class MergeIngredientsApiController extends AbstractController
 
     #[Route(path: '/api/v1/ingredients/{slug}/merge', name: 'api_merge_ingredients', methods: ['POST'])]
     #[IsGranted('ROLE_USER')]
-    #[OA\Post(summary: "Fusionne deux ingrédients de l'utilisateur : celui de l'URL disparaît, `into` est gardé. Ses recettes, ses listes de courses et ses choix du drive qui utilisaient le premier utilisent le second ; les anciens slugs restent résolus. Les deux ingrédients doivent être à l'utilisateur, jamais un commun, même pour un administrateur. Rejouée après un succès, elle répond 204 sans rien faire. Aperçu sans écriture : `GET …/merge-preview`")]
+    #[OA\Post(summary: "Fusionne deux ingrédients de l'utilisateur : celui de l'URL disparaît, `into` est gardé. Ses recettes, ses listes de courses et ses choix du drive qui utilisaient le premier utilisent le second, qui récupère aussi les conversions du premier qui lui manquent (les siennes gagnent en cas de conflit) ; les anciens slugs restent résolus. Les deux ingrédients doivent être à l'utilisateur, jamais un commun, même pour un administrateur. Rejouée après un succès, elle répond 204 sans rien faire. Aperçu sans écriture : `GET …/merge-preview`")]
     #[OA\Tag(name: 'Ingredients')]
     #[OA\RequestBody(required: true, content: new OA\JsonContent(ref: new Model(type: MergeIngredientsPayload::class)))]
     #[OA\Response(response: 204, description: 'Fusion faite, ou rejeu d\'une fusion déjà faite : rien de plus à faire')]
     #[OA\Response(response: 404, description: "Un des deux ingrédients est inconnu ou appartient à un autre utilisateur (même pour un administrateur), ou l'ingrédient de l'URL n'existe plus et n'a pas été fusionné dans `into`")]
     #[OA\Response(response: 409, description: "`INGREDIENT_IN_SENT_LIST` : une liste envoyée au drive utilise l'un des deux (la rouvrir ou la terminer d'abord) ; `INGREDIENT_USED_BY_ANOTHER_USER` : une ligne d'un autre utilisateur utilise l'ingrédient de l'URL (donnée héritée) ; `INGREDIENT_MERGE_CONFLICT` : une écriture concurrente a posé une référence sur l'ingrédient de l'URL, rien n'a changé, réessayer")]
-    #[OA\Response(response: 422, description: "Corps invalide ; `CANNOT_MERGE_INTO_ITSELF` : les deux ingrédients sont le même ; `CANNOT_MERGE_COMMON_INGREDIENT` : l'un des deux est un commun ; `MERGE_UNIT_MISSING` : une unité de l'ingrédient de l'URL ne se convertit pas dans l'unité d'achat de `into`, rien n'a changé")]
+    #[OA\Response(response: 422, description: "Corps invalide ; `CANNOT_MERGE_INTO_ITSELF` : les deux ingrédients sont le même ; `CANNOT_MERGE_COMMON_INGREDIENT` : l'un des deux est un commun ; `MERGE_UNIT_MISSING` : une unité de l'ingrédient de l'URL ne se convertit pas dans l'unité d'achat de `into`, même après avoir récupéré les conversions de l'ingrédient de l'URL, rien n'a changé")]
     public function __invoke(string $slug, #[MapRequestPayload(validationFailedStatusCode: 422)] MergeIngredientsPayload $payload, #[CurrentUser] AuthenticatedUser $user): Response
     {
         $this->commandBus->dispatch(new MergeIngredientsCommand($user->getId(), $slug, $payload->into));

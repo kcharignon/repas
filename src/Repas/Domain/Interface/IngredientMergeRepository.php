@@ -26,11 +26,23 @@ interface IngredientMergeRepository
 
     /**
      * Ce que la fusion de `$absorbedSlug` dans `$keptSlug` touchera chez cet utilisateur (recettes, listes, unités, listes envoyées),
-     * et si une ligne d'un autre utilisateur référence l'ingrédient absorbé. Lecture seule.
+     * combien de recettes et de listes utiliseront `A` APRÈS la fusion (l'union, sans doublon), les conversions propres de `B`, et si une
+     * ligne d'un autre utilisateur référence l'ingrédient absorbé. Lecture seule, en UNE requête.
      *
      * @param string $keptPurchaseUnitSlug l'unité d'achat de `A` : l'unité cible des quantités de liste quand `A` n'a pas encore de ligne
      */
     public function usageOf(string $userId, string $absorbedSlug, string $keptSlug, string $keptPurchaseUnitSlug): IngredientMergeUsage;
+
+    /**
+     * L'étape 0b de `fusion.md` § 3 : copie sur `A` des conversions propres de `B` que `IngredientMergePlanner` a décidé de récupérer, EN UNE
+     * requête (unités et coefficient recopiés tels quels depuis la conversion d'origine, un nouvel identifiant chacune). Celles de `B`
+     * restent en place : elles disparaissent avec lui, plus tard.
+     *
+     * @param array<string, string> $newIdBySourceId l'identifiant de chaque conversion de `B` à copier -> l'identifiant de sa copie
+     *
+     * @throws IngredientException `INGREDIENT_MERGE_CONFLICT` si une conversion à copier n'existe plus chez `B` (écriture concurrente)
+     */
+    public function recoverConversions(string $absorbedSlug, string $keptSlug, array $newIdBySourceId): void;
 
     /**
      * Les étapes 1 à 3 de `fusion.md` § 3, ensemble (le calcul d'une liste relit le slug courant des lignes de la recette : l'un sans

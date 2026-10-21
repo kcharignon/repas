@@ -481,6 +481,11 @@ return [
     'fusionner-ingredients' => static function (WriteBudgetTestCase $t): object {
         return $t->savedMerge($t->savedUser(), recipes: 3, lists: 3);
     },
+    // La même fusion quand l'ingrédient gardé RÉCUPÈRE des conversions de l'absorbé (copie en une requête) et gagne une unité compatible : un nombre
+    // fixe de requêtes de plus, quel nombre de conversions et quel volume (tests/Repas/WriteBudget/MergeIngredientsBudgetTest).
+    'fusionner-ingredients-avec-recuperation' => static function (WriteBudgetTestCase $t): object {
+        return $t->savedMerge($t->savedUser(), recipes: 3, lists: 3, recoveredConversions: 2);
+    },
     'creer-conversion' => static function (WriteBudgetTestCase $t): object {
         $t->persister->saveUnit(new UnitBuilder()->isLiter()->build());
         $t->persister->saveUnit(new UnitBuilder()->isMillilitre()->build());

@@ -46,17 +46,19 @@ final class MergeDataset
 
     /**
      * Un ingrédient personnel de `$owner`, au kilo par défaut (cuisiné au gramme), dans le rayon des céréales.
+     *
+     * @param list<UnitBuilder>|null $compatible ses unités compatibles (le gramme et le kilo par défaut)
      */
-    public function ingredient(string $name, User $owner, ?UnitBuilder $purchase = null, ?DepartmentBuilder $department = null, ?string $adoptedFrom = null): Ingredient
+    public function ingredient(string $name, User $owner, ?UnitBuilder $purchase = null, ?DepartmentBuilder $department = null, ?string $adoptedFrom = null, ?array $compatible = null): Ingredient
     {
-        $ingredient = new IngredientBuilder()
+        $builder = new IngredientBuilder()
             ->withName($name)
             ->withDepartment($department ?? new DepartmentBuilder()->isCereal())
             ->withDefaultCookingUnit(new UnitBuilder()->isGramme())
             ->withDefaultPurchaseUnit($purchase ?? new UnitBuilder()->isKilo())
             ->withCreator($owner, true)
-            ->withAdoptedFrom($adoptedFrom)
-            ->build();
+            ->withAdoptedFrom($adoptedFrom);
+        $ingredient = ($compatible === null ? $builder : $builder->withCompatibleUnits($compatible))->build();
         $this->persister->saveIngredient($ingredient);
 
         return $ingredient;
@@ -83,6 +85,47 @@ final class MergeDataset
         $this->persister->saveConversion(
             new ConversionBuilder()->withIngredient($ingredient)->withStartUnit($from ?? new UnitBuilder()->isUnite())->withEndUnit($to ?? new UnitBuilder()->isGramme())->withCoefficient($coefficient)->build(),
         );
+    }
+
+    /**
+     * Les conversions PROPRES d'un ingrédient, `[unité de départ, unité d'arrivée, coefficient]`, triées.
+     *
+     * @return list<array{string, string, float}>
+     */
+    public function ownConversions(string $ingredientSlug): array
+    {
+        return array_map(
+            static fn(array $row): array => [$row[0], $row[1], (float) $row[2]],
+            $this->connection->fetchAllNumeric('SELECT start_unit, end_unit, coefficient FROM conversion WHERE ingredient = ? ORDER BY start_unit, end_unit', [$ingredientSlug]),
+        );
+    }
+
+    /**
+     * Les unités compatibles d'un ingrédient, dans l'ordre où elles sont enregistrées.
+     *
+     * @return list<string>
+     */
+    public function compatibleUnits(string $ingredientSlug): array
+    {
+        /** @var list<string> */
+        return json_decode((string) $this->connection->fetchOne('SELECT compatible_units FROM ingredient WHERE slug = ?', [$ingredientSlug]), true, flags: JSON_THROW_ON_ERROR);
+    }
+
+    /**
+     * Combien de recettes et de listes de l'utilisateur utilisent l'ingrédient, tels que la base les compte (recettes et listes DISTINCTES).
+     *
+     * @return array{recipes: int, lists: int}
+     */
+    public function usedBy(string $userId, string $ingredientSlug): array
+    {
+        // Calculé ici en PHP à partir de lignes brutes, pas avec le SQL de la lecture qu'on éprouve
+        $recipes = $this->connection->fetchFirstColumn('SELECT x.recipe FROM recipe_row x JOIN recipe r ON r.id = x.recipe WHERE r.author = ? AND x.ingredient = ?', [$userId, $ingredientSlug]);
+        $lists = [
+            ...$this->connection->fetchFirstColumn('SELECT x.shopping_list FROM shopping_list_row x JOIN shopping_list l ON l.id = x.shopping_list WHERE l.owner = ? AND x.ingredient = ?', [$userId, $ingredientSlug]),
+            ...$this->connection->fetchFirstColumn('SELECT x.shopping_list FROM shopping_list_ingredient x JOIN shopping_list l ON l.id = x.shopping_list WHERE l.owner = ? AND x.ingredient = ?', [$userId, $ingredientSlug]),
+        ];
+
+        return ['recipes' => count(array_unique($recipes)), 'lists' => count(array_unique($lists))];
     }
 
     /**

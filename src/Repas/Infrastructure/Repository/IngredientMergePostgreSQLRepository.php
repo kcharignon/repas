@@ -41,6 +41,35 @@ readonly class IngredientMergePostgreSQLRepository implements IngredientMergeRep
         return $this->usageReader->usageOf($userId, $absorbedSlug, $keptSlug, $keptPurchaseUnitSlug);
     }
 
+    public function recoverConversions(string $absorbedSlug, string $keptSlug, array $newIdBySourceId): void
+    {
+        if ($newIdBySourceId === []) {
+            return;
+        }
+
+        // Unités et coefficient sont recopiés par la base depuis la conversion d'origine (aucun aller-retour de flottant) ; la jointure sur
+        // `ingredient = B` n'accepte que des conversions propres de l'absorbé
+        $copied = (int) $this->connection()->executeStatement(
+            'INSERT INTO conversion (id, start_unit, end_unit, coefficient, ingredient)'
+            . ' SELECT x.new_id, c.start_unit, c.end_unit, c.coefficient, :a'
+            . ' FROM jsonb_to_recordset(CAST(:rows AS jsonb)) AS x(source_id text, new_id text)'
+            . ' JOIN conversion c ON c.id = x.source_id AND c.ingredient = :b',
+            [
+                'a' => $keptSlug,
+                'b' => $absorbedSlug,
+                'rows' => json_encode(
+                    array_map(static fn(string $sourceId, string $newId): array => ['source_id' => $sourceId, 'new_id' => $newId], array_keys($newIdBySourceId), array_values($newIdBySourceId)),
+                    JSON_THROW_ON_ERROR,
+                ),
+            ],
+        );
+
+        // Une conversion de B a disparu entre l'analyse et la copie : le bus annule la transaction, la fusion se rejoue
+        if ($copied !== count($newIdBySourceId)) {
+            throw IngredientException::mergeConflict();
+        }
+    }
+
     public function repoint(string $userId, string $absorbedSlug, string $keptSlug, string $keptPurchaseUnitSlug, array $factors): IngredientMergeRepointed
     {
         $connection = $this->connection();

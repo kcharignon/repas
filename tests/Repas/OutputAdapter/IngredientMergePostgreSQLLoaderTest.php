@@ -66,6 +66,110 @@ class IngredientMergePostgreSQLLoaderTest extends DatabaseTestCase
         $this->assertEquals(new MergeIngredientDTO($this->kept->getSlug(), 'Tomate', 'cereale', 'céréale', 'kilo'), $preview->keep);
         $this->assertEquals(new MergeIngredientDTO($b, 'Tomates', 'cereale', 'céréale', 'kilo'), $preview->absorbed);
         $this->assertSame([2, 2, 1, false, false, [], null, true], [$preview->recipeCount, $preview->listCount, $preview->driveChoiceCount, $preview->departmentChanges, $preview->listQuantitiesConverted, $preview->missingUnits, $preview->blockedBy, $preview->canMerge]);
+        // « Tomate » ne sert encore à rien : après la fusion il servira à tout ce qui servait à « Tomates » ; aucune conversion à récupérer
+        $this->assertSame([2, 2, 0], [$preview->resultRecipeCount, $preview->resultListCount, $preview->recoveredConversionCount]);
+    }
+
+    public function testThePreviewAnnouncesTheTotalAfterTheMergeNotOnlyWhatMoves(): void
+    {
+        // Given : deux ingrédients du même nom, chacun utilisé dans UNE recette (le cas de deux « Melon »)
+        $this->dataset->recipe('r1', $this->user->getId(), [[$this->kept->getSlug(), 1.0, 'gramme']]);
+        $this->dataset->recipe('r2', $this->user->getId(), [[$this->absorbed->getSlug(), 1.0, 'gramme']]);
+
+        // When
+        $preview = $this->preview();
+
+        // Then : une recette se déplace, mais « Tomate » sera utilisé dans DEUX recettes
+        $this->assertSame([1, 0, 2, 0], [$preview->recipeCount, $preview->listCount, $preview->resultRecipeCount, $preview->resultListCount]);
+    }
+
+    public function testARecipeOrAListThatUsesBothIngredientsCountsOnceInTheTotal(): void
+    {
+        // Given : une recette qui a les deux (trois lignes), une qui n'a que l'absorbé, une que le gardé, une d'un autre utilisateur qui a le gardé ;
+        // des listes de même (une ligne d'un côté, un ajout à la main de l'autre), et une liste qui n'a ni l'un ni l'autre
+        $a = $this->kept->getSlug();
+        $b = $this->absorbed->getSlug();
+        $user = $this->user->getId();
+        $this->dataset->recipe('both', $user, [[$a, 1.0, 'gramme'], [$b, 1.0, 'gramme'], [$b, 2.0, 'kilo']]);
+        $this->dataset->recipe('only-b', $user, [[$b, 1.0, 'gramme']]);
+        $this->dataset->recipe('only-a', $user, [[$a, 1.0, 'gramme']]);
+        $this->dataset->recipe('theirs', $this->other->getId(), [[$a, 1.0, 'gramme']]);
+        $this->dataset->shoppingList('l-both', $user, rows: [['x1', $a, 1.0, 'kilo']], items: [['y1', $b, 1.0, 'kilo']]);
+        $this->dataset->shoppingList('l-both-rows', $user, rows: [['x2', $a, 1.0, 'kilo'], ['x3', $b, 1.0, 'kilo']]);
+        $this->dataset->shoppingList('l-only-b', $user, items: [['y2', $b, 1.0, 'kilo']]);
+        $this->dataset->shoppingList('l-only-a', $user, 'PAUSED', rows: [['x4', $a, 1.0, 'kilo']]);
+        $this->dataset->shoppingList('l-none', $user, rows: [['x5', 'autre', 1.0, 'kilo']]);
+        $this->dataset->shoppingList('l-theirs', $this->other->getId(), rows: [['x6', $a, 1.0, 'kilo']]);
+
+        // When
+        $preview = $this->preview();
+
+        // Then : 2 recettes et 3 listes utilisent « Tomates » (elles se déplacent), mais 3 recettes et 4 listes utiliseront « Tomate »
+        $this->assertSame([2, 3, 3, 4], [$preview->recipeCount, $preview->listCount, $preview->resultRecipeCount, $preview->resultListCount]);
+    }
+
+    public function testThePreviewAnnouncesTheConversionsTheKeptIngredientWouldRecover(): void
+    {
+        // Given : « Tomates » sait compter les tranches (une conversion PROPRE) et une recette de « Tomates » en utilise ; « Tomate » ne le sait pas
+        $this->dataset->conversion($this->absorbed, 25.0, new UnitBuilder()->isSlice(), new UnitBuilder()->isGramme());
+        $this->dataset->recipe('r1', $this->user->getId(), [[$this->absorbed->getSlug(), 4.0, 'tranche']]);
+
+        // When
+        $preview = $this->preview();
+
+        // Then : avant, refusée (UNIT_MISSING) ; maintenant possible, une conversion récupérée, plus aucune unité ne manque
+        $this->assertSame([null, true, [], 1], [$preview->blockedBy, $preview->canMerge, $preview->missingUnits, $preview->recoveredConversionCount]);
+    }
+
+    public function testNothingIsRecoveredWhenTheKeptIngredientAlreadyHasThePairOrConflictsWithIt(): void
+    {
+        // Given : « Tomates » a la même paire (unité -> gramme) que « Tomate », avec un autre coefficient
+        $this->dataset->conversion($this->absorbed, 160.0);
+        $this->dataset->recipe('r1', $this->user->getId(), [[$this->absorbed->getSlug(), 2.0, 'unite']]);
+
+        // When
+        $preview = $this->preview();
+
+        // Then : celle du gardé gagne, rien n'est copié
+        $this->assertSame([null, 0], [$preview->blockedBy, $preview->recoveredConversionCount]);
+    }
+
+    public function testAnUnitThatStaysImpossibleAfterTheRecoveryIsStillListed(): void
+    {
+        // Given : la tranche se récupère, le litre ne se convertit nulle part
+        $this->dataset->conversion($this->absorbed, 25.0, new UnitBuilder()->isSlice(), new UnitBuilder()->isGramme());
+        $this->dataset->recipe('r1', $this->user->getId(), [[$this->absorbed->getSlug(), 4.0, 'tranche'], [$this->absorbed->getSlug(), 1.0, 'litre']]);
+
+        // When
+        $preview = $this->preview();
+
+        // Then : seule le litre manque ; la fusion serait refusée, donc aucune conversion ne serait copiée
+        $this->assertSame(['UNIT_MISSING', false, 0], [$preview->blockedBy, $preview->canMerge, $preview->recoveredConversionCount]);
+        $this->assertEquals([new MergeUnitDTO('litre', 'litre')], $preview->missingUnits);
+    }
+
+    public function testNoConversionIsAnnouncedWhenASentListRefusesTheMerge(): void
+    {
+        // Given : une conversion récupérable, mais une liste envoyée utilise « Tomate »
+        $this->dataset->conversion($this->absorbed, 25.0, new UnitBuilder()->isSlice(), new UnitBuilder()->isGramme());
+        $this->dataset->recipe('r1', $this->user->getId(), [[$this->absorbed->getSlug(), 4.0, 'tranche']]);
+        $this->dataset->shoppingList('sent', $this->user->getId(), 'SENT', rows: [['x1', $this->kept->getSlug(), 1.0, 'kilo']]);
+
+        // When
+        $preview = $this->preview();
+
+        // Then : rien ne serait copié ; les totaux d'après décrivent la fusion qui aurait lieu si la liste était rouverte
+        $this->assertSame(['IN_SENT_LIST', 0, 1, 1], [$preview->blockedBy, $preview->recoveredConversionCount, $preview->recipeCount, $preview->resultRecipeCount]);
+    }
+
+    public function testTheTotalsAreZeroWhenNothingIsReadForTheSameOrACommonIngredient(): void
+    {
+        // Given
+        $this->dataset->recipe('r1', $this->user->getId(), [[$this->absorbed->getSlug(), 1.0, 'gramme']]);
+        $same = $this->preview($this->absorbed, $this->absorbed);
+
+        // Then : toujours écrits, jamais null
+        $this->assertSame([0, 0, 0, 0, 0], [$same->recipeCount, $same->listCount, $same->resultRecipeCount, $same->resultListCount, $same->recoveredConversionCount]);
     }
 
     public function testThePreviewCountsOnlyTheChoicesThatPassOverNotTheOnesThatAreDropped(): void

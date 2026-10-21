@@ -219,6 +219,22 @@ final class Ingredient implements ModelInterface
         return $this;
     }
 
+    /**
+     * Ajoute des unités compatibles, sans doublon et sans toucher à celles qui existent (la fusion en apporte : `IngredientMergePlanner`).
+     *
+     * @param iterable<Unit> $units
+     */
+    public function addCompatibleUnits(iterable $units): Ingredient
+    {
+        foreach ($units as $unit) {
+            if ($this->compatibleUnits->find(static fn(Unit $known): bool => $known->isEqual($unit)) === null) {
+                $this->compatibleUnits[] = $unit;
+            }
+        }
+
+        return $this;
+    }
+
     public static function create(
         string $name,
         string $image,

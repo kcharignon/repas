@@ -47,6 +47,20 @@ final readonly class ConversionGraph
     }
 
     /**
+     * Le même graphe avec une conversion de plus (`début -> fin` au poids du coefficient, `fin -> début` à son inverse) : le graphe d'un
+     * ingrédient qui récupère la conversion d'un autre (fusion, `IngredientMergePlanner`). Le graphe d'origine ne change pas.
+     */
+    public function with(string $start, string $end, float $coefficient): self
+    {
+        $edges = $this->edges;
+        foreach (self::edgesOf([[$start, $end, $coefficient]]) as $unit => $unitEdges) {
+            $edges[$unit] = [...($edges[$unit] ?? []), ...$unitEdges];
+        }
+
+        return new self($edges);
+    }
+
+    /**
      * Le facteur qui convertit une quantité de `$start` en `$target`, ou `null` si aucune suite de conversions ne les relie.
      */
     public function coefficient(string $start, string $target): ?float
