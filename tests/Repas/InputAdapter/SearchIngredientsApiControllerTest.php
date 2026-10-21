@@ -23,7 +23,7 @@ class SearchIngredientsApiControllerTest extends QueryBusWebTestCase
 
         // Then
         $this->assertSame(200, $this->client->getResponse()->getStatusCode());
-        $this->assertEquals(new SearchIngredientsQuery('tomtae', $user->getId(), false), $this->queryBus->getLastAskedQuery());
+        $this->assertEquals(new SearchIngredientsQuery('tomtae', $user->getId()), $this->queryBus->getLastAskedQuery());
         $this->assertSame([
             'member' => [
                 [
@@ -39,16 +39,17 @@ class SearchIngredientsApiControllerTest extends QueryBusWebTestCase
         ], $this->jsonBody());
     }
 
-    public function testAnAdministratorIsAskedAsSuch(): void
+    public function testAnAdministratorIsAskedLikeAnyoneElse(): void
     {
-        // Given
+        // Given : plus de cas particulier pour l'administrateur (ADR 0028, amendement) : la question ne porte que le texte et le lecteur
         $this->queryBus->willReturn(SearchIngredientsQuery::class, []);
+        $admin = $this->savedUser(admin: true);
 
         // When
-        $this->client->request('GET', '/api/v1/ingredients/search?q=tom', server: $this->bearerFor($this->savedUser(admin: true)));
+        $this->client->request('GET', '/api/v1/ingredients/search?q=tom', server: $this->bearerFor($admin));
 
         // Then
-        $this->assertTrue($this->queryBus->getAskedQuery(SearchIngredientsQuery::class)->viewerIsAdmin);
+        $this->assertEquals(new SearchIngredientsQuery('tom', $admin->getId()), $this->queryBus->getAskedQuery(SearchIngredientsQuery::class));
         $this->assertSame(['member' => [], 'totalItems' => 0], $this->jsonBody());
     }
 

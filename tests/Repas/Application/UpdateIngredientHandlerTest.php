@@ -295,16 +295,17 @@ class UpdateIngredientHandlerTest extends TestCase
         $this->assertFalse($this->ingredientRepository->findOneBySlug($ingredient->getSlug())->isBase());
     }
 
-    public function testTheCatalogOwnerMarksAnOldCommonIngredient(): void
+    public function testNobodyMarksAnIngredientThatBelongsToNoOne(): void
     {
-        // Given : jusqu'à ING-014, les anciens communs (sans créateur) existent encore ; le propriétaire du catalogue est administrateur
-        $common = $this->savedPasta(null);
-
-        // When
-        ($this->handler)($this->rename($common, 'owner-id', true));
+        // Given : la forme de la base d'avant la passation (un ingrédient sans créateur) n'est plus traitée à part : le propriétaire du
+        // catalogue ne marque que SES ingrédients
+        $legacy = $this->savedPasta(null);
 
         // Then
-        $this->assertTrue($this->ingredientRepository->findOneBySlug($common->getSlug())->isBase());
+        $this->expectExceptionObject(IngredientException::baseMarkerForbidden());
+
+        // When
+        ($this->handler)($this->rename($legacy, 'owner-id', true));
     }
 
     public function testWithoutTheFieldTheMarkerIsNeverReset(): void

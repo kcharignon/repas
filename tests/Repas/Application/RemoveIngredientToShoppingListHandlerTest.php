@@ -19,7 +19,7 @@ use Repas\Repas\Domain\Model\ShoppingListStatus;
 use Repas\Tests\Helper\Builder\IngredientBuilder;
 use Repas\Tests\Helper\Builder\ShoppingListBuilder;
 use Repas\Tests\Helper\Builder\UserBuilder;
-use Repas\Tests\Helper\IngredientSlugResolverFactory;
+use Repas\Repas\Application\Service\IngredientSlugResolver;
 use Repas\Tests\Helper\InMemoryRepository\IngredientAliasInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\IngredientInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\ShoppingListInMemoryRepository;
@@ -43,7 +43,7 @@ class RemoveIngredientToShoppingListHandlerTest extends TestCase
         $this->handler = new RemoveIngredientToShoppingListHandler(
             $this->shoppingListRepository,
             $this->ingredientRepository,
-            IngredientSlugResolverFactory::create($this->ingredientRepository, $this->aliasRepository),
+            new IngredientSlugResolver($this->aliasRepository),
         );
 
         $this->user = new UserBuilder()->withId('user-id')->build();

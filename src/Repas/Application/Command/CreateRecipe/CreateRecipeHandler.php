@@ -43,8 +43,9 @@ readonly class CreateRecipeHandler
     {
         $type = $this->typeRepository->findOneBySlug($command->typeSlug);
 
-        // Un commun que l'auteur a adopté (ou adopte à la première utilisation) est remplacé par sa copie (ADR 0028 décision 4)
-        $resolved = $this->slugResolver->resolveForUser($command->authorId, $command->rows->map(fn(CreateRecipeRowSubCommand $subCmd) => $subCmd->ingredientSlug)->values());
+        // Un ancien slug (ancien commun dont l'auteur a reçu une copie, ingrédient fusionné) est remplacé par l'ingrédient actuel de
+        // l'auteur (ADR 0028 décision 4)
+        $resolved = $this->slugResolver->resolve($command->authorId, $command->rows->map(fn(CreateRecipeRowSubCommand $subCmd) => $subCmd->ingredientSlug)->values());
         $slugOf = static fn(CreateRecipeRowSubCommand $subCmd): string => $resolved[$subCmd->ingredientSlug] ?? $subCmd->ingredientSlug;
 
         // Ingrédients et unités des lignes : une lecture par type, pas une par ligne

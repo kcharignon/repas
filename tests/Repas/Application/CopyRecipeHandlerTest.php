@@ -7,6 +7,7 @@ use DateTimeImmutable;
 use PHPUnit\Framework\TestCase;
 use Repas\Repas\Application\Command\CopyRecipe\CopyRecipeCommand;
 use Repas\Repas\Application\Command\CopyRecipe\CopyRecipeHandler;
+use Repas\Repas\Application\Service\IngredientSlugResolver;
 use Repas\Repas\Domain\Exception\RecipeException;
 use Repas\Repas\Domain\Model\AliasKind;
 use Repas\Repas\Domain\Model\Ingredient;
@@ -16,7 +17,7 @@ use Repas\Repas\Domain\Service\ConversionService;
 use Repas\Repas\Domain\Service\IngredientNameMatcher;
 use Repas\Repas\Domain\Service\IngredientSlugPolicy;
 use Repas\Shared\Domain\Event\RecipesOrIngredientsCreatedEvent;
-use Repas\Shared\Domain\Tool\Tab;
+use Repas\Shared\Domain\Tool\StringTool;
 use Repas\Shared\Domain\Tool\UuidGenerator;
 use Repas\Tests\Helper\Builder\ConversionBuilder;
 use Repas\Tests\Helper\Builder\DepartmentBuilder;
@@ -25,7 +26,6 @@ use Repas\Tests\Helper\Builder\RecipeBuilder;
 use Repas\Tests\Helper\Builder\RecipeRowBuilder;
 use Repas\Tests\Helper\Builder\UnitBuilder;
 use Repas\Tests\Helper\Builder\UserBuilder;
-use Repas\Tests\Helper\IngredientSlugResolverFactory;
 use Repas\Tests\Helper\InMemoryRepository\ConversionInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\IngredientAliasInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\IngredientInMemoryRepository;
@@ -36,13 +36,16 @@ use Repas\Tests\Helper\InMemoryRepository\UnitInMemoryRepository;
 use Repas\Tests\Helper\RepasAssert;
 
 /**
- * La copie d'une recette et le rapprochement de ses ingrédients (ADR 0028 décision 8, ING-004) : un ingrédient du copieur n'est JAMAIS
- * écrasé ; on se branche sur ce qu'il a déjà quand c'est certain, sinon on lui crée une copie.
+ * La copie d'une recette et le rapprochement de ses ingrédients (ADR 0028 décision 8, ING-004, simplifiée par l'amendement du 2026-10-20) :
+ * tout ingrédient est à quelqu'un, il n'y a ni commun ni adoption à la volée. Un ingrédient du copieur n'est JAMAIS écrasé ; on se branche
+ * sur ce qu'il a déjà quand c'est certain (l'alias de la provenance, puis le nom), sinon on lui crée une copie qui retient son origine.
  */
 class CopyRecipeHandlerTest extends TestCase
 {
     private const string AUTHOR = 'author-id';
     private const string COPIER = 'copier-id';
+    /** Le propriétaire du catalogue : ses ingrédients sont ceux dont les comptes reçoivent une copie à leur activation. */
+    private const string OWNER = 'owner-id';
 
     private CopyRecipeHandler $handler;
     private RecipeInMemoryRepository $recipes;
@@ -67,7 +70,7 @@ class CopyRecipeHandlerTest extends TestCase
         $this->aliases = new IngredientAliasInMemoryRepository($aliases);
         $this->conversions = new ConversionInMemoryRepository($conversions);
         $this->recipes = new RecipeInMemoryRepository($recipes);
-        $this->candidates = new IngredientMatchCandidatesInMemoryRepository($this->ingredients, $this->aliases);
+        $this->candidates = new IngredientMatchCandidatesInMemoryRepository($this->ingredients);
         $this->events = new SpyEventDispatcher();
         $units = new UnitInMemoryRepository([
             new UnitBuilder()->isUnite()->build(),
@@ -79,7 +82,7 @@ class CopyRecipeHandlerTest extends TestCase
             $this->recipes,
             $this->ingredients,
             $this->conversions,
-            IngredientSlugResolverFactory::create($this->ingredients, $this->aliases, $this->conversions),
+            new IngredientSlugResolver($this->aliases),
             $this->candidates,
             new IngredientNameMatcher(),
             new IngredientSlugPolicy(),
@@ -89,9 +92,9 @@ class CopyRecipeHandlerTest extends TestCase
         );
     }
 
-    // --- Ce que le copieur n'a pas : une copie, comme avant -----------------------------------------------------------------------
+    // --- Ce que le copieur n'a pas : une copie qui retient son origine ------------------------------------------------------------
 
-    public function testAPersonalIngredientTheCopierDoesNotHaveIsCopiedWithItsOwnConversions(): void
+    public function testAnIngredientTheCopierDoesNotHaveIsCopiedWithItsOwnConversionsAndRetainsItsOrigin(): void
     {
         // Given
         $secret = $this->personal('ingredient secret', $this->cheese(), $this->unit()->isBox(), self::AUTHOR);
@@ -101,11 +104,11 @@ class CopyRecipeHandlerTest extends TestCase
         // When
         ($this->handler)(new CopyRecipeCommand('recipe-id', self::COPIER, 'copy-id'));
 
-        // Then : la recette copiée référence la copie, au nom du copieur
+        // Then : la recette copiée référence la copie, au nom du copieur, qui retient le slug de l'ingrédient copié (D7)
         $copy = $this->ingredients->findOneBySlug('ingredient-secret' . self::COPIER);
         RepasAssert::assertIngredient(
             new IngredientBuilder()->withName('ingredient secret')->withDepartment($this->cheese())->withDefaultCookingUnit($this->unit()->isBox())->withDefaultPurchaseUnit($this->unit()->isBox())
-                ->withImage($secret->getImage())->withCreator(new UserBuilder()->withId(self::COPIER)->build(), true)->build(),
+                ->withImage($secret->getImage())->withCreator(new UserBuilder()->withId(self::COPIER)->build(), true)->withAdoptedFrom($secret->getSlug())->build(),
             $copy,
         );
         $this->assertSame([$copy->getSlug()], $this->slugsOfCopy());
@@ -115,25 +118,41 @@ class CopyRecipeHandlerTest extends TestCase
         $this->assertSame(10.0, $copiedConversions->reset()->getCoefficient());
         $this->assertNotSame($conversion->getId(), $copiedConversions->reset()->getId());
         $this->assertCount(1, $this->conversions->findByIngredient($secret));
-        // la création est annoncée aux statistiques
-        $this->assertSame([$copy->getSlug()], $this->createdSlugs());
+        // une copie n'est jamais une création : rien n'est annoncé aux statistiques
+        $this->assertSame([], $this->createdSlugs());
+        // et aucun alias n'est écrit
+        $this->assertSame([], $this->aliases->all());
     }
 
-    public function testACommonIngredientStaysTheCommonOneForSomeoneWhoAdoptedNothing(): void
+    public function testACopyOfACopyRetainsTheOriginOfTheOriginalNotTheSlugOfTheCopy(): void
     {
-        // Given
-        $butter = $this->common('beurre', $this->cheese(), $this->unit()->isBox());
-        $this->assemble([$butter], recipes: [$this->recipe([$butter])]);
+        // Given : l'ingrédient de l'auteur est lui-même la copie de « tomate » du propriétaire du catalogue ; le copieur n'a rien
+        $catalog = $this->catalog('tomate', $this->vegetable(), $this->unit()->isKilo());
+        $authors = Ingredient::copyFromOriginal($catalog, self::AUTHOR, 'tomate' . self::AUTHOR);
+        $this->assemble([$catalog, $authors], recipes: [$this->recipe([$authors], unit: $this->unit()->isKilo())]);
 
         // When
         ($this->handler)(new CopyRecipeCommand('recipe-id', self::COPIER, 'copy-id'));
 
-        // Then : rien n'est créé, la ligne référence le commun, comme avant
-        $this->assertSame(['beurre'], $this->slugsOfCopy());
+        // Then : la nouvelle copie remonte à l'origine commune, comme celles des autres comptes
+        $this->assertSame(['tomate' . self::COPIER], $this->slugsOfCopy());
+        $this->assertSame('tomate', $this->ingredients->findOneBySlug('tomate' . self::COPIER)->getAdoptedFrom());
         $this->assertSame([], $this->createdSlugs());
-        $this->assertSame([], $this->aliases->all());
-        $this->assertCount(1, $this->ingredients->findAll());
-        $this->assertSame(0, $this->candidates->reads, 'Un commun se retient par sa provenance : aucune comparaison de noms.');
+    }
+
+    public function testNothingOfTheAuthorIsEverUsedByTheCopier(): void
+    {
+        // Given : le copieur n'a rien, l'auteur a un ingrédient
+        $butter = $this->catalog('beurre', $this->cheese(), $this->unit()->isBox());
+        $this->assemble([$butter], recipes: [$this->recipe([$butter], authorId: self::OWNER)]);
+
+        // When
+        ($this->handler)(new CopyRecipeCommand('recipe-id', self::COPIER, 'copy-id'));
+
+        // Then : la ligne copiée ne référence pas l'ingrédient de l'auteur (un autre compte), mais une copie à lui
+        $this->assertSame(['beurre' . self::COPIER], $this->slugsOfCopy());
+        $this->assertSame(self::COPIER, $this->ingredients->findOneBySlug('beurre' . self::COPIER)->getCreatorId());
+        $this->assertSame(self::OWNER, $this->ingredients->findOneBySlug('beurre')->getCreatorId(), 'celui du propriétaire est intact');
     }
 
     // --- Jamais d'écrasement -------------------------------------------------------------------------------------------------------
@@ -158,7 +177,7 @@ class CopyRecipeHandlerTest extends TestCase
         $this->assertSame(4.0, $this->conversions->findByIngredient($intact)->reset()->getCoefficient());
         $copy = $this->ingredients->findOneBySlug('creme-2' . self::COPIER);
         $this->assertSame($this->bakery()->build()->getSlug(), $copy->getDepartment()->getSlug());
-        $this->assertSame(['creme-2' . self::COPIER], $this->createdSlugs());
+        $this->assertSame([], $this->createdSlugs());
     }
 
     public function testASecondCopyOfTheSameRecipeLinksToTheFirstCopyAndCreatesNothing(): void
@@ -257,7 +276,7 @@ class CopyRecipeHandlerTest extends TestCase
 
         // Then : on ne choisit pas à la place du copieur
         $this->assertSame(['concombre' . self::COPIER], $this->slugsOfCopy());
-        $this->assertSame(['concombre' . self::COPIER], $this->createdSlugs());
+        $this->assertSame([], $this->createdSlugs());
     }
 
     public function testTwoExactCandidatesGiveTheFirstBySlug(): void
@@ -289,69 +308,32 @@ class CopyRecipeHandlerTest extends TestCase
 
         // Then
         $this->assertSame(['tomate' . self::COPIER], $this->slugsOfCopy());
-        $this->assertSame(['tomate' . self::COPIER], $this->createdSlugs());
-    }
-
-    public function testACommonIngredientWithTheSameNameIsLinkedForSomeoneWhoDidNotAdoptIt(): void
-    {
-        // Given : l'auteur a son « sucre » personnel, le copieur (sans alias) voit le commun « sucre »
-        $common = $this->common('sucre', $this->bakery(), $this->unit()->isKilo());
-        $authors = $this->personal('Sucre', $this->bakery(), $this->unit()->isKilo(), self::AUTHOR);
-        $this->assemble([$common, $authors], recipes: [$this->recipe([$authors], unit: $this->unit()->isKilo())]);
-
-        // When
-        ($this->handler)(new CopyRecipeCommand('recipe-id', self::COPIER, 'copy-id'));
-
-        // Then : il garde les communs partagés, comme avant
-        $this->assertSame(['sucre'], $this->slugsOfCopy());
         $this->assertSame([], $this->createdSlugs());
-        $this->assertSame([], $this->aliases->all());
     }
 
-    public function testAnAdopterLinkedByNameToACommonHeHasNotAdoptedYetAdoptsItFirst(): void
+    public function testTheIngredientOfTheCatalogOwnerWithTheSameNameIsNotACandidateEither(): void
     {
-        // Given : le copieur est adoptant (il a adopté la farine) ; le commun « sucre » lui est encore visible
-        $flour = $this->common('farine', $this->bakery(), $this->unit()->isKilo());
-        $flourCopy = Ingredient::adopt($flour, self::COPIER, 'farine' . self::COPIER);
-        $sugar = $this->common('sucre', $this->bakery(), $this->unit()->isKilo());
+        // Given : le propriétaire du catalogue (qui a un « sucre ») n'est ni l'auteur ni le copieur ; le copieur n'a pas de « sucre »
+        $catalog = $this->catalog('sucre', $this->bakery(), $this->unit()->isKilo());
         $authors = $this->personal('Sucre', $this->bakery(), $this->unit()->isKilo(), self::AUTHOR);
-        $this->assemble([$flour, $flourCopy, $sugar, $authors], [$this->alias('farine', $flourCopy->getSlug())], recipes: [$this->recipe([$authors], unit: $this->unit()->isKilo())]);
+        $this->assemble([$catalog, $authors], recipes: [$this->recipe([$authors], unit: $this->unit()->isKilo())]);
 
         // When
         ($this->handler)(new CopyRecipeCommand('recipe-id', self::COPIER, 'copy-id'));
 
-        // Then : la ligne référence sa copie à lui, adoptée à la volée (le commun lui est désormais masqué), ce n'est pas une création
+        // Then : il n'y a plus d'ingrédient partagé, le copieur reçoit sa copie
         $this->assertSame(['sucre' . self::COPIER], $this->slugsOfCopy());
-        $this->assertSame('sucre', $this->ingredients->findOneBySlug('sucre' . self::COPIER)->getAdoptedFrom());
-        $this->assertSame('sucre' . self::COPIER, $this->aliases->find(self::COPIER, 'sucre')?->getIngredientSlug());
-        $this->assertSame([], $this->createdSlugs());
-    }
-
-    public function testAnAdopterLinksByNameToHisOwnCopyOfACommonWhichIsHiddenForHim(): void
-    {
-        // Given : le copieur a adopté « tomate » (le commun lui est masqué) ; l'auteur a son « Tomates » personnel
-        $tomato = $this->common('tomate', $this->vegetable(), $this->unit()->isKilo());
-        $tomatoCopy = Ingredient::adopt($tomato, self::COPIER, 'tomate' . self::COPIER);
-        $authors = $this->personal('Tomates', $this->vegetable(), $this->unit()->isKilo(), self::AUTHOR);
-        $this->assemble([$tomato, $tomatoCopy, $authors], [$this->alias('tomate', $tomatoCopy->getSlug())], recipes: [$this->recipe([$authors], unit: $this->unit()->isKilo())]);
-
-        // When
-        ($this->handler)(new CopyRecipeCommand('recipe-id', self::COPIER, 'copy-id'));
-
-        // Then
-        $this->assertSame([$tomatoCopy->getSlug()], $this->slugsOfCopy());
-        $this->assertSame([], $this->createdSlugs());
-        $this->assertCount(3, $this->ingredients->findAll());
+        $this->assertSame([], $this->aliases->all());
     }
 
     // --- La provenance ------------------------------------------------------------------------------------------------------------
 
-    public function testTheCopiersAliasOfTheCommonTheAuthorAdoptedIsUsedWithoutCreatingAnything(): void
+    public function testTheCopiersAliasOfTheOriginOfTheAuthorsIngredientIsUsedWithoutComparingNames(): void
     {
-        // Given : l'auteur a adopté « tomate » (tomate<A>), le copieur aussi (tomate<C>)
-        $tomato = $this->common('tomate', $this->vegetable(), $this->unit()->isKilo());
-        $authorsCopy = Ingredient::adopt($tomato, self::AUTHOR, 'tomate' . self::AUTHOR);
-        $copiersCopy = Ingredient::adopt($tomato, self::COPIER, 'tomate' . self::COPIER);
+        // Given : le propriétaire du catalogue a « tomate » ; l'auteur et le copieur en ont reçu une copie (tomate<A>, tomate<C>)
+        $tomato = $this->catalog('tomate', $this->vegetable(), $this->unit()->isKilo());
+        $authorsCopy = Ingredient::copyFromOriginal($tomato, self::AUTHOR, 'tomate' . self::AUTHOR);
+        $copiersCopy = Ingredient::copyFromOriginal($tomato, self::COPIER, 'tomate' . self::COPIER);
         $this->assemble(
             [$tomato, $authorsCopy, $copiersCopy],
             [$this->alias('tomate', $copiersCopy->getSlug())],
@@ -368,12 +350,32 @@ class CopyRecipeHandlerTest extends TestCase
         $this->assertSame(0, $this->candidates->reads, 'La provenance suffit : aucune comparaison de noms.');
     }
 
+    public function testTheSlugOfAnIngredientWithoutOriginIsTheKeyOfTheProvenance(): void
+    {
+        // Given : la recette du propriétaire du catalogue est faite de SES ingrédients (sans origine) ; le copieur en a reçu les copies
+        $tomato = $this->catalog('tomate', $this->vegetable(), $this->unit()->isKilo());
+        $copiersCopy = Ingredient::copyFromOriginal($tomato, self::COPIER, 'tomate' . self::COPIER);
+        $this->assemble(
+            [$tomato, $copiersCopy],
+            [$this->alias('tomate', $copiersCopy->getSlug())],
+            recipes: [$this->recipe([$tomato], authorId: self::OWNER, unit: $this->unit()->isKilo())],
+        );
+
+        // When
+        ($this->handler)(new CopyRecipeCommand('recipe-id', self::COPIER, 'copy-id'));
+
+        // Then : la clé d'alias est le slug de l'ingrédient copié
+        $this->assertSame(['tomate' . self::COPIER], $this->slugsOfCopy());
+        $this->assertSame([], $this->createdSlugs());
+        $this->assertSame(0, $this->candidates->reads);
+    }
+
     public function testTheProvenanceWinsOverTheNameWhenTheCopiersIngredientWasRenamed(): void
     {
         // Given : le copieur a renommé sa copie de « tomate » en « Fruit rouge » ; l'auteur a gardé « tomate »
-        $tomato = $this->common('tomate', $this->vegetable(), $this->unit()->isKilo());
-        $authorsCopy = Ingredient::adopt($tomato, self::AUTHOR, 'tomate' . self::AUTHOR);
-        $copiersCopy = Ingredient::adopt($tomato, self::COPIER, 'tomate' . self::COPIER);
+        $tomato = $this->catalog('tomate', $this->vegetable(), $this->unit()->isKilo());
+        $authorsCopy = Ingredient::copyFromOriginal($tomato, self::AUTHOR, 'tomate' . self::AUTHOR);
+        $copiersCopy = Ingredient::copyFromOriginal($tomato, self::COPIER, 'tomate' . self::COPIER);
         $copiersCopy->update('Fruit rouge', '', $this->vegetable()->build(), $this->unit()->isKilo()->build(), $this->unit()->isKilo()->build(), $copiersCopy->getCompatibleUnits());
         $this->assemble(
             [$tomato, $authorsCopy, $copiersCopy],
@@ -389,13 +391,29 @@ class CopyRecipeHandlerTest extends TestCase
         $this->assertSame([], $this->createdSlugs());
     }
 
-    public function testAnAdopterWithoutAliasAdoptsTheCommonTheAuthorAdoptedOnTheFly(): void
+    public function testAMergeAliasAlsoLeadsToTheCopiersIngredient(): void
     {
-        // Given : le copieur est adoptant (farine), pas encore « tomate » que l'auteur a adoptée
-        $flour = $this->common('farine', $this->bakery(), $this->unit()->isKilo());
-        $flourCopy = Ingredient::adopt($flour, self::COPIER, 'farine' . self::COPIER);
-        $tomato = $this->common('tomate', $this->vegetable(), $this->unit()->isKilo());
-        $authorsCopy = Ingredient::adopt($tomato, self::AUTHOR, 'tomate' . self::AUTHOR);
+        // Given : le copieur a fusionné « tomates » dans « tomate » (alias de fusion) ; la recette de l'auteur utilise encore « tomates »
+        $kept = $this->personal('tomate', $this->vegetable(), $this->unit()->isKilo(), self::COPIER);
+        $authors = $this->personal('tomates', $this->vegetable(), $this->unit()->isKilo(), self::AUTHOR);
+        $merge = IngredientAlias::create(self::COPIER, $authors->getSlug(), $kept->getSlug(), AliasKind::MERGE, 'merge', new DateTimeImmutable('2026-10-20 10:00:00'));
+        $this->assemble([$kept, $authors], [$merge], recipes: [$this->recipe([$authors], unit: $this->unit()->isKilo())]);
+
+        // When
+        ($this->handler)(new CopyRecipeCommand('recipe-id', self::COPIER, 'copy-id'));
+
+        // Then
+        $this->assertSame([$kept->getSlug()], $this->slugsOfCopy());
+        $this->assertSame([], $this->createdSlugs());
+    }
+
+    public function testACopierWithoutAnAliasForTheOriginGetsACopyAndNothingIsAdoptedOnTheFly(): void
+    {
+        // Given : le copieur a reçu la farine (alias) mais pas « tomate » que l'auteur a reçue ; il n'a rien du même nom
+        $flour = $this->catalog('farine', $this->bakery(), $this->unit()->isKilo());
+        $flourCopy = Ingredient::copyFromOriginal($flour, self::COPIER, 'farine' . self::COPIER);
+        $tomato = $this->catalog('tomate', $this->vegetable(), $this->unit()->isKilo());
+        $authorsCopy = Ingredient::copyFromOriginal($tomato, self::AUTHOR, 'tomate' . self::AUTHOR);
         $this->assemble(
             [$flour, $flourCopy, $tomato, $authorsCopy],
             [$this->alias('farine', $flourCopy->getSlug())],
@@ -405,53 +423,37 @@ class CopyRecipeHandlerTest extends TestCase
         // When
         ($this->handler)(new CopyRecipeCommand('recipe-id', self::COPIER, 'copy-id'));
 
-        // Then : adoption à la volée, ni création ni statistique
+        // Then : une copie qui retient l'origine, sans alias écrit ni création annoncée
         $this->assertSame(['tomate' . self::COPIER], $this->slugsOfCopy());
         $this->assertSame('tomate', $this->ingredients->findOneBySlug('tomate' . self::COPIER)->getAdoptedFrom());
-        $this->assertSame('tomate' . self::COPIER, $this->aliases->find(self::COPIER, 'tomate')?->getIngredientSlug());
+        $this->assertNull($this->aliases->find(self::COPIER, 'tomate'));
+        $this->assertCount(1, $this->aliases->all());
         $this->assertSame([], $this->createdSlugs());
     }
 
-    public function testSomeoneWhoAdoptedNothingGetsTheCommonTheAuthorAdopted(): void
+    public function testCopyingTheRecipeOfTheCatalogOwnerLinksTheCopiesAndCopiesTheRest(): void
     {
-        // Given : le copieur n'a aucun alias, il voit les communs
-        $tomato = $this->common('tomate', $this->vegetable(), $this->unit()->isKilo());
-        $authorsCopy = Ingredient::adopt($tomato, self::AUTHOR, 'tomate' . self::AUTHOR);
-        $this->assemble([$tomato, $authorsCopy], recipes: [$this->recipe([$authorsCopy], unit: $this->unit()->isKilo())]);
-
-        // When
-        ($this->handler)(new CopyRecipeCommand('recipe-id', self::COPIER, 'copy-id'));
-
-        // Then : comme avant, la ligne référence le commun
-        $this->assertSame(['tomate'], $this->slugsOfCopy());
-        $this->assertCount(2, $this->ingredients->findAll());
-        $this->assertSame([], $this->createdSlugs());
-        $this->assertSame([], $this->aliases->all());
-    }
-
-    public function testAnAdopterCopiesARecipeMadeOfCommonsAndGetsHisOwnCopies(): void
-    {
-        // Given : l'auteur est un administrateur (ses ingrédients sont des communs), le copieur est adoptant
-        $tomato = $this->common('tomate', $this->vegetable(), $this->unit()->isKilo());
-        $flour = $this->common('farine', $this->bakery(), $this->unit()->isKilo());
-        $flourCopy = Ingredient::adopt($flour, self::COPIER, 'farine' . self::COPIER);
+        // Given : le propriétaire du catalogue a une recette (tomate, farine) ; le copieur n'a reçu que la farine
+        $tomato = $this->catalog('tomate', $this->vegetable(), $this->unit()->isKilo());
+        $flour = $this->catalog('farine', $this->bakery(), $this->unit()->isKilo());
+        $flourCopy = Ingredient::copyFromOriginal($flour, self::COPIER, 'farine' . self::COPIER);
         $this->assemble(
             [$tomato, $flour, $flourCopy],
             [$this->alias('farine', $flourCopy->getSlug())],
-            recipes: [$this->recipe([$tomato, $flour], unit: $this->unit()->isKilo())],
+            recipes: [$this->recipe([$tomato, $flour], authorId: self::OWNER, unit: $this->unit()->isKilo())],
         );
 
         // When
         ($this->handler)(new CopyRecipeCommand('recipe-id', self::COPIER, 'copy-id'));
 
-        // Then : l'alias existant, l'adoption à la volée pour la tomate ; jamais un commun masqué
+        // Then : l'alias existant pour la farine, une copie pour la tomate ; jamais un ingrédient du propriétaire
         $this->assertSame(['tomate' . self::COPIER, 'farine' . self::COPIER], $this->slugsOfCopy());
         $this->assertSame([], $this->createdSlugs());
     }
 
-    public function testWhenTheCommonTheAuthorAdoptedIsGoneTheNamesAreCompared(): void
+    public function testWhenNoAliasExistsForTheOriginTheNamesAreCompared(): void
     {
-        // Given : l'ingrédient de l'auteur vient d'un commun supprimé depuis ; le copieur a « tomate »
+        // Given : l'ingrédient de l'auteur vient de « tomate » ; le copieur a sa propre « tomate », sans alias
         $authorsCopy = new IngredientBuilder()->withName('tomate')->withDepartment($this->vegetable())->withDefaultCookingUnit($this->unit()->isKilo())
             ->withDefaultPurchaseUnit($this->unit()->isKilo())->withCreator(new UserBuilder()->withId(self::AUTHOR)->build(), true)->withAdoptedFrom('tomate')->build();
         $theirs = $this->personal('tomate', $this->vegetable(), $this->unit()->isKilo(), self::COPIER);
@@ -465,12 +467,12 @@ class CopyRecipeHandlerTest extends TestCase
         $this->assertSame([], $this->createdSlugs());
     }
 
-    public function testWhenTheCopiersCopyCannotConvertTheLineACopyKeepsTheOriginAndIsNotCounted(): void
+    public function testWhenTheCopiersIngredientCannotConvertTheLineACopyKeepsTheOriginAndIsNotCounted(): void
     {
-        // Given : le copieur a adopté « beurre » puis changé son unité d'achat en boîte ; la ligne de l'auteur est en kilos
-        $butter = $this->common('beurre', $this->cheese(), $this->unit()->isKilo());
-        $authorsCopy = Ingredient::adopt($butter, self::AUTHOR, 'beurre' . self::AUTHOR);
-        $copiersCopy = Ingredient::adopt($butter, self::COPIER, 'beurre' . self::COPIER);
+        // Given : le copieur a reçu « beurre » puis changé son unité d'achat en boîte ; la ligne de l'auteur est en kilos
+        $butter = $this->catalog('beurre', $this->cheese(), $this->unit()->isKilo());
+        $authorsCopy = Ingredient::copyFromOriginal($butter, self::AUTHOR, 'beurre' . self::AUTHOR);
+        $copiersCopy = Ingredient::copyFromOriginal($butter, self::COPIER, 'beurre' . self::COPIER);
         $copiersCopy->update('beurre', '', $this->cheese()->build(), $this->unit()->isBox()->build(), $this->unit()->isBox()->build(), $copiersCopy->getCompatibleUnits());
         $this->assemble(
             [$butter, $authorsCopy, $copiersCopy],
@@ -481,7 +483,7 @@ class CopyRecipeHandlerTest extends TestCase
         // When
         ($this->handler)(new CopyRecipeCommand('recipe-id', self::COPIER, 'copy-id'));
 
-        // Then : on ne branche pas sur ce qui ne peut pas servir la ligne ; la copie garde le commun d'origine (pas une création)
+        // Then : on ne branche pas sur ce qui ne peut pas servir la ligne ; la copie garde l'origine (pas une création)
         $this->assertSame(['beurre-2' . self::COPIER], $this->slugsOfCopy());
         $this->assertSame('beurre', $this->ingredients->findOneBySlug('beurre-2' . self::COPIER)->getAdoptedFrom());
         $this->assertSame([], $this->createdSlugs());
@@ -509,11 +511,11 @@ class CopyRecipeHandlerTest extends TestCase
         $this->assertSame(0, $this->candidates->reads);
     }
 
-    public function testAnAdopterCopyingHisOwnRecipeKeepsHisCopies(): void
+    public function testCopyingYourOwnRecipeMadeOfReceivedIngredientsKeepsThem(): void
     {
         // Given
-        $tomato = $this->common('tomate', $this->vegetable(), $this->unit()->isKilo());
-        $mine = Ingredient::adopt($tomato, self::COPIER, 'tomate' . self::COPIER);
+        $tomato = $this->catalog('tomate', $this->vegetable(), $this->unit()->isKilo());
+        $mine = Ingredient::copyFromOriginal($tomato, self::COPIER, 'tomate' . self::COPIER);
         $this->assemble([$tomato, $mine], [$this->alias('tomate', $mine->getSlug())], recipes: [$this->recipe([$mine], authorId: self::COPIER, unit: $this->unit()->isKilo())]);
 
         // When
@@ -541,7 +543,7 @@ class CopyRecipeHandlerTest extends TestCase
         $this->assertSame(['oeuf' . self::COPIER, 'oeuf' . self::COPIER], $this->slugsOfCopy());
         $this->assertCount(2, $this->ingredients->findAll());
         $this->assertCount(2, $this->conversions->findAll());
-        $this->assertSame(['oeuf' . self::COPIER], $this->createdSlugs());
+        $this->assertSame([], $this->createdSlugs());
     }
 
     public function testEveryRowKeepsItsQuantityAndUnitAndTheRecipeIsLinkedToItsOriginal(): void
@@ -567,13 +569,13 @@ class CopyRecipeHandlerTest extends TestCase
 
     // --- Statistiques -------------------------------------------------------------------------------------------------------------
 
-    public function testTheStatisticsEventIsDispatchedOnceWithOnlyTheCreations(): void
+    public function testTheStatisticsEventIsDispatchedOnceWithTheRecipeAndNoIngredientBecauseACopyIsNeverACreation(): void
     {
-        // Given : un ingrédient créé, un lié par le nom
+        // Given : un ingrédient copié, un lié par le nom (D7 : une copie retient son origine, elle n'est plus comptée)
         $theirs = $this->personal('tomate', $this->vegetable(), $this->unit()->isKilo(), self::COPIER);
         $linked = $this->personal('Tomates', $this->vegetable(), $this->unit()->isKilo(), self::AUTHOR);
-        $created = $this->personal('ingredient secret', $this->cheese(), $this->unit()->isKilo(), self::AUTHOR);
-        $this->assemble([$theirs, $linked, $created], recipes: [$this->recipe([$linked, $created], unit: $this->unit()->isKilo())]);
+        $copied = $this->personal('ingredient secret', $this->cheese(), $this->unit()->isKilo(), self::AUTHOR);
+        $this->assemble([$theirs, $linked, $copied], recipes: [$this->recipe([$linked, $copied], unit: $this->unit()->isKilo())]);
 
         // When
         ($this->handler)(new CopyRecipeCommand('recipe-id', self::COPIER, 'copy-id'));
@@ -583,8 +585,9 @@ class CopyRecipeHandlerTest extends TestCase
         $event = $this->events->eventDispatched[0];
         $this->assertInstanceOf(RecipesOrIngredientsCreatedEvent::class, $event);
         $this->assertSame(self::COPIER, $event->userId);
-        $this->assertSame(['ingredient-secret' . self::COPIER], $event->ingredientSlugs->toArray());
+        $this->assertSame([], $event->ingredientSlugs->toArray());
         $this->assertSame(['copy-id'], $event->recipeIds->toArray());
+        $this->assertTrue($this->ingredients->exists('ingredient-secret' . self::COPIER), 'la copie existe bien');
     }
 
     public function testAnUnknownRecipeIsRefused(): void
@@ -628,9 +631,13 @@ class CopyRecipeHandlerTest extends TestCase
         return $this->builder($name, $department, $purchaseUnit)->withCreator(new UserBuilder()->withId($creatorId)->build(), true)->build();
     }
 
-    private function common(string $name, DepartmentBuilder $department, UnitBuilder $purchaseUnit): Ingredient
+    /**
+     * Un ingrédient du propriétaire du catalogue : un ancien commun, au slug du nom seul (sans l'identifiant du compte), créateur le
+     * propriétaire.
+     */
+    private function catalog(string $name, DepartmentBuilder $department, UnitBuilder $purchaseUnit): Ingredient
     {
-        return $this->builder($name, $department, $purchaseUnit)->build();
+        return $this->builder($name, $department, $purchaseUnit)->withSlug(StringTool::slugify($name))->withCreator(new UserBuilder()->withId(self::OWNER)->build())->build();
     }
 
     private function builder(string $name, DepartmentBuilder $department, UnitBuilder $purchaseUnit): IngredientBuilder
@@ -638,9 +645,9 @@ class CopyRecipeHandlerTest extends TestCase
         return new IngredientBuilder()->withName($name)->withDepartment($department)->withDefaultCookingUnit($purchaseUnit)->withDefaultPurchaseUnit($purchaseUnit);
     }
 
-    private function alias(string $commonSlug, string $copySlug): IngredientAlias
+    private function alias(string $originSlug, string $copySlug): IngredientAlias
     {
-        return IngredientAlias::create(self::COPIER, $commonSlug, $copySlug, AliasKind::ADOPTION, 'first-use', new DateTimeImmutable('2026-10-20 10:00:00'));
+        return IngredientAlias::create(self::COPIER, $originSlug, $copySlug, AliasKind::ADOPTION, 'activation', new DateTimeImmutable('2026-10-20 10:00:00'));
     }
 
     /**

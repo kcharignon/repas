@@ -30,7 +30,6 @@ class MergePreviewMatchesTheMergeTest extends DatabaseTestCase
     /** Le code d'erreur de la fusion pour chaque refus de l'aperçu. */
     private const array ERROR_OF_BLOCK = [
         'SAME_INGREDIENT' => 'CANNOT_MERGE_INTO_ITSELF',
-        'COMMON_INGREDIENT' => 'CANNOT_MERGE_COMMON_INGREDIENT',
         'USED_BY_ANOTHER_USER' => 'INGREDIENT_USED_BY_ANOTHER_USER',
         'IN_SENT_LIST' => 'INGREDIENT_IN_SENT_LIST',
         'UNIT_MISSING' => 'MERGE_UNIT_MISSING',
@@ -144,11 +143,6 @@ class MergePreviewMatchesTheMergeTest extends DatabaseTestCase
 
         yield 'le même ingrédient' => [static function (MergeDataset $d, User $u, User $other, Ingredient &$a, Ingredient &$b): void {
             $b = $a;
-        }];
-
-        yield 'un commun' => [static function (MergeDataset $d, User $u, User $other, Ingredient &$a, Ingredient &$b): void {
-            $b = $d->ingredient('Tomate commune', $u);
-            $d->connection->executeStatement('UPDATE ingredient SET creator = NULL WHERE slug = ?', [$b->getSlug()]);
         }];
     }
 

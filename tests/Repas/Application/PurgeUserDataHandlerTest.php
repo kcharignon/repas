@@ -60,7 +60,8 @@ class PurgeUserDataHandlerTest extends TestCase
         $this->ingredientRepository = new IngredientInMemoryRepository([
             $userCustomButter->build(),
             $otherCustomButter->build(),
-            new IngredientBuilder()->isFlour()->build(),
+            // l'ingrédient du propriétaire du catalogue : à un autre compte, la purge d'un utilisateur n'y touche pas
+            new IngredientBuilder()->isFlour()->withCreator(new UserBuilder()->withId('owner-id')->build())->build(),
         ]);
         $this->conversionRepository = new ConversionInMemoryRepository([
             new ConversionBuilder()->isBlockToGrammeForButter()->withIngredient($userCustomButter)->withId('user-conversion')->build(),
@@ -134,7 +135,7 @@ class PurgeUserDataHandlerTest extends TestCase
         $this->assertSame(['other-recipe'], array_values($meals->map(fn(Meal $meal) => $meal->getRecipeId())->toArray()));
     }
 
-    public function testTheCustomIngredientsAndTheirConversionsAreDeletedButNotTheCommonOnes(): void
+    public function testTheIngredientsOfTheUserAndTheirConversionsAreDeletedButNotTheOthers(): void
     {
         // When
         ($this->handler)(new PurgeUserDataCommand(self::USER));

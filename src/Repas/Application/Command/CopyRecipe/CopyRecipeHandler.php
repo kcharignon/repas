@@ -28,9 +28,9 @@ use Symfony\Component\Messenger\Attribute\AsMessageHandler;
  * (traité UNE fois, même s'il est sur plusieurs lignes), le copieur utilisera, dans cet ordre :
  *
  * 1. celui qui est déjà à lui (il copie sa propre recette) ;
- * 2. la PROVENANCE, sans comparer de noms : si l'ingrédient est un commun ou l'adoption d'un commun `C`, ce que le copieur a fait de `C` -
- *    son alias, sinon l'adoption à la volée de `C` s'il est adoptant, sinon `C` lui-même (`IngredientSlugResolver`) ;
- * 3. à défaut, un ingrédient que le copieur voit DÉJÀ, du MÊME rayon, de même nom (`IngredientNameMatcher`, seuil 0,97, garde-fous) ;
+ * 2. la PROVENANCE, sans comparer de noms : l'origine de l'ingrédient (`adopted_from`, sinon son slug) et ce que le copieur en a fait, par
+ *    ses alias (un compte amorcé a un alias par ingrédient du catalogue qu'il a reçu ; une fusion en écrit un aussi) ;
+ * 3. à défaut, un ingrédient du copieur, du MÊME rayon, de même nom (`IngredientNameMatcher`, seuil 0,97, garde-fous) ;
  * 4. sinon une COPIE de l'ingrédient pour le copieur (ingrédient, unités, rayon, image, conversions propres ; les conversions communes
  *    restent partagées) : `IngredientSlugPolicy` lui trouve un slug libre, JAMAIS celui d'un ingrédient existant.
  *
@@ -38,9 +38,9 @@ use Symfony\Component\Messenger\Attribute\AsMessageHandler;
  * planification de la recette échouerait : il n'y a alors pas de lien et la copie est faite. Au moindre doute, on crée une copie : un
  * doublon se voit et se fusionne, un faux rapprochement ne se voit pas.
  *
- * Ce cas d'usage ne fusionne jamais deux ingrédients du copieur, n'en modifie aucun et n'écrit aucun alias (un alias d'adoption ferait
- * du copieur un « adoptant »). Seuls les ingrédients réellement CRÉÉS sont annoncés aux statistiques : une copie qui retient l'origine
- * d'une adoption n'est pas une création (décision 7).
+ * Il n'y a plus d'ingrédient commun (amendement du 2026-10-20) : aucune branche « commun », aucune adoption à la volée. Ce cas d'usage ne
+ * fusionne jamais deux ingrédients du copieur, n'en modifie aucun et n'écrit aucun alias. TOUTE copie retient l'origine de l'ingrédient
+ * copié (D7) : elle n'est donc jamais une création, et l'événement des statistiques ne porte aucun ingrédient.
  */
 #[AsMessageHandler]
 readonly class CopyRecipeHandler
@@ -83,16 +83,10 @@ readonly class CopyRecipeHandler
         /** @var array<string, Ingredient> $retained */
         $retained = $this->retainWithoutCreating($copierId, $sources, $unitsUsed);
 
-        // 4 : une copie pour chacun des autres, dans l'ordre de la recette
-        $created = Tab::newEmptyTyped('string');
+        // 4 : une copie pour chacun des autres, dans l'ordre de la recette ; une copie retient son origine : ce n'est pas une création
         foreach ($sources as $slug => $source) {
-            if (isset($retained[$slug])) {
-                continue;
-            }
-            $copy = $this->copyFor($copierId, $source);
-            $retained[$slug] = $copy;
-            if (!$copy->isAdoption()) {
-                $created[] = $copy->getSlug();
+            if (!isset($retained[$slug])) {
+                $retained[$slug] = $this->copyFor($copierId, $source);
             }
         }
 
@@ -107,7 +101,7 @@ readonly class CopyRecipeHandler
 
         $this->eventDispatcher->dispatch(new RecipesOrIngredientsCreatedEvent(
             userId: $copierId,
-            ingredientSlugs: $created,
+            ingredientSlugs: Tab::newEmptyTyped('string'),
             recipeIds: Tab::fromArray($recipe->getId())
         ));
     }
@@ -133,32 +127,23 @@ readonly class CopyRecipeHandler
             }
         }
 
-        // 2. La provenance : le commun dont l'ingrédient vient (ou qu'il est), et ce que le copieur en a fait
+        // 2. La provenance : l'origine de l'ingrédient (l'ingrédient dont il est la copie, sinon lui-même) et ce que le copieur en a fait
         $origins = [];
-        $knownCommons = [];
         foreach ($sources as $slug => $source) {
-            if ($source->getCreatorId() === null) {
-                $knownCommons[$slug] = true;
-            }
-            if (!isset($retained[$slug]) && ($origin = $source->getAdoptedFrom() ?? ($source->getCreatorId() === null ? $slug : null)) !== null) {
-                $origins[$slug] = $origin;
+            if (!isset($retained[$slug])) {
+                $origins[$slug] = $source->getAdoptedFrom() ?? $slug;
             }
         }
-        $byOrigin = $this->slugResolver->resolveForUser($copierId, array_values(array_unique($origins)));
-        // Un commun sans alias et que le copieur n'adopte pas (il n'est pas adoptant) reste le commun lui-même, tant qu'il existe
-        $toCheck = array_diff(array_unique($origins), array_keys($byOrigin), array_keys($knownCommons));
-        $stillCommon = array_flip($this->ingredientRepository->findCommonSlugs(array_values($toCheck)));
+        $byOrigin = $this->slugResolver->resolve($copierId, array_values(array_unique($origins)));
         foreach ($origins as $slug => $origin) {
-            $found = $byOrigin[$origin] ?? (isset($knownCommons[$origin]) || isset($stillCommon[$origin]) ? $origin : null);
-            if ($found !== null) {
-                $proposed[$slug] = $found;
+            // Sans alias, la provenance ne dit rien : on compare les noms
+            if (isset($byOrigin[$origin])) {
+                $proposed[$slug] = $byOrigin[$origin];
             }
-            // Un commun qui a disparu : la provenance ne dit plus rien, on compare les noms
         }
 
-        // 3. Le nom : ce que le copieur voit déjà, du même rayon
+        // 3. Le nom : ce que le copieur a déjà, du même rayon
         $candidates = null;
-        $namedCommons = [];
         foreach ($sources as $slug => $source) {
             if (isset($retained[$slug]) || isset($proposed[$slug])) {
                 continue;
@@ -167,28 +152,16 @@ readonly class CopyRecipeHandler
             $match = $this->nameMatcher->match($source->getName(), $source->getDepartment()->getSlug(), $candidates);
             if ($match !== null) {
                 $proposed[$slug] = $match->candidate->slug;
-                if ($match->candidate->isCommon()) {
-                    $namedCommons[$slug] = true;
-                }
             }
         }
 
         // 5. L'unité de chaque ligne doit se convertir dans l'unité d'achat de l'ingrédient proposé : sinon la recette copiée ne se
-        // planifierait pas. Un ingrédient qui se propose lui-même (un commun) sert déjà les lignes de l'original.
-        $models = $sources + $this->ingredientsBySlug(array_diff($proposed, array_keys($sources)));
+        // planifierait pas
+        $models = $this->ingredientsBySlug(array_values($proposed));
         foreach ($proposed as $slug => $targetSlug) {
-            if ($targetSlug !== $slug && !$this->canConvertAll($models[$targetSlug], $unitsUsed[$slug])) {
-                unset($proposed[$slug], $namedCommons[$slug]);
+            if (!$this->canConvertAll($models[$targetSlug], $unitsUsed[$slug])) {
+                unset($proposed[$slug]);
             }
-        }
-
-        // Un commun retenu par son nom, que le copieur n'a pas adopté : un adoptant l'adopte à la volée avant de s'en servir
-        if ($namedCommons !== []) {
-            $adopted = $this->slugResolver->resolveForUser($copierId, array_values(array_unique(array_map(static fn(string $slug): string => $proposed[$slug], array_keys($namedCommons)))));
-            foreach (array_keys($namedCommons) as $slug) {
-                $proposed[$slug] = $adopted[$proposed[$slug]] ?? $proposed[$slug];
-            }
-            $models += $this->ingredientsBySlug(array_diff($proposed, array_keys($models)));
         }
 
         foreach ($proposed as $slug => $targetSlug) {
@@ -197,7 +170,6 @@ readonly class CopyRecipeHandler
 
         return $retained;
     }
-
     /**
      * @param array<array-key, string> $slugs
      * @return array<string, Ingredient> par slug

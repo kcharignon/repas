@@ -47,7 +47,7 @@ final readonly class IngredientDuplicatePostgreSQLLoader implements IngredientDu
         $candidates = [];
         $details = [];
         foreach ($rows as $row) {
-            $candidates[] = new IngredientCandidate($row['slug'], $row['name'], $row['department_slug'], $row['unit_slug'], [], $userId, $row['adopted_from']);
+            $candidates[] = new IngredientCandidate($row['slug'], $row['name'], $row['department_slug'], $row['unit_slug'], [], $row['adopted_from']);
             $details[$row['slug']] = $row;
         }
 

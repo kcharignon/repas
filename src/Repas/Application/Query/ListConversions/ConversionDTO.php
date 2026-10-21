@@ -13,7 +13,7 @@ final readonly class ConversionDTO
         public ?string $ingredientSlug,
         #[OA\Property(example: 'beurre', nullable: true)]
         public ?string $ingredientName,
-        #[OA\Property(description: 'Email du créateur de l\'ingrédient, null pour un ingrédient commun ou une conversion commune', nullable: true)]
+        #[OA\Property(description: 'Email du propriétaire de l\'ingrédient (toujours le lecteur), null pour une conversion générale', nullable: true)]
         public ?string $creatorEmail,
         #[OA\Property(description: 'Identifiant de l\'unité de départ (slug)', example: 'plaquette')]
         public string $startUnitSlug,

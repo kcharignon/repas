@@ -21,10 +21,10 @@ final class RemoveIngredientApiController extends AbstractController
     #[Route(path: '/api/v1/ingredients/{slug}', name: 'api_remove_ingredient', methods: ['DELETE'])]
     #[IsGranted('ROLE_USER')]
     #[IsGranted('INGREDIENT_OWNER', 'slug')]
-    #[OA\Delete(summary: "Supprime un ingrédient de l'utilisateur, avec ses conversions (un ingrédient commun n'est supprimable que par un administrateur)")]
+    #[OA\Delete(summary: "Supprime un ingrédient de l'utilisateur, avec ses conversions (seul son propriétaire le supprime, un administrateur compris)")]
     #[OA\Tag(name: 'Ingredients')]
     #[OA\Response(response: 204, description: 'Ingrédient supprimé')]
-    #[OA\Response(response: 403, description: "L'ingrédient appartient à un autre utilisateur, ou il est commun")]
+    #[OA\Response(response: 403, description: "L'ingrédient appartient à un autre utilisateur (un administrateur n'a pas de passe-droit)")]
     #[OA\Response(response: 404, description: 'Ingrédient inconnu')]
     #[OA\Response(response: 409, description: 'Ingrédient présent dans une recette ou une liste de courses')]
     public function __invoke(string $slug): Response

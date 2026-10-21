@@ -31,7 +31,7 @@ class AdoptionAfterMergeTest extends DatabaseTestCase
         $dataset->units();
         $user = $dataset->user();
         $kept = $dataset->ingredient('Tomate', $user);
-        $common = new IngredientBuilder()->withName('Poivre')->withDepartment(new DepartmentBuilder()->isCereal())->withDefaultCookingUnit(new UnitBuilder()->isGramme())->withDefaultPurchaseUnit(new UnitBuilder()->isKilo())->build();
+        $common = new IngredientBuilder()->withName('Poivre')->withDepartment(new DepartmentBuilder()->isCereal())->withDefaultCookingUnit(new UnitBuilder()->isGramme())->withDefaultPurchaseUnit(new UnitBuilder()->isKilo())->withoutCreator()->build();
         $persister->saveIngredient($common);
         $dataset->recipe('r1', $user->getId(), [[$common->getSlug(), 5.0, 'gramme']]);
         $tester = new CommandTester(new Application(self::$kernel)->find('repas:ingredients:adopt-commons'));

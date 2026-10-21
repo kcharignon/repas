@@ -21,7 +21,7 @@ class SearchIngredientsQueryHandlerTest extends TestCase
         $handler = new SearchIngredientsQueryHandler(new IngredientInMemoryLoader(searchResults: $results));
 
         // When
-        $result = $handler(new SearchIngredientsQuery('tom', 'user-1', false));
+        $result = $handler(new SearchIngredientsQuery('tom', 'user-1'));
 
         // Then
         $this->assertSame($results, $result);
@@ -34,9 +34,9 @@ class SearchIngredientsQueryHandlerTest extends TestCase
         $handler = new SearchIngredientsQueryHandler($loader);
 
         // When
-        $handler(new SearchIngredientsQuery('tom', 'user-1', true));
+        $handler(new SearchIngredientsQuery('tom', 'user-1'));
 
         // Then
-        $this->assertSame([['tom', 'user-1', true]], $loader->searchCalls);
+        $this->assertSame([['tom', 'user-1']], $loader->searchCalls);
     }
 }

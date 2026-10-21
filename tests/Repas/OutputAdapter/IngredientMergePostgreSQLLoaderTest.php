@@ -162,7 +162,7 @@ class IngredientMergePostgreSQLLoaderTest extends DatabaseTestCase
         $this->assertSame(['IN_SENT_LIST', 0, 1, 1], [$preview->blockedBy, $preview->recoveredConversionCount, $preview->recipeCount, $preview->resultRecipeCount]);
     }
 
-    public function testTheTotalsAreZeroWhenNothingIsReadForTheSameOrACommonIngredient(): void
+    public function testTheTotalsAreZeroWhenNothingIsReadForTheSameIngredient(): void
     {
         // Given
         $this->dataset->recipe('r1', $this->user->getId(), [[$this->absorbed->getSlug(), 1.0, 'gramme']]);
@@ -256,17 +256,11 @@ class IngredientMergePostgreSQLLoaderTest extends DatabaseTestCase
         }
     }
 
-    public function testThePreviewRefusesTheSameIngredientAndTheCommonOnes(): void
+    public function testThePreviewRefusesTheSameIngredient(): void
     {
-        // Given
-        $common = new IngredientBuilder()->withName('Tomate commune')->withDepartment(new DepartmentBuilder()->isCereal())->withDefaultCookingUnit(new UnitBuilder()->isGramme())->withDefaultPurchaseUnit(new UnitBuilder()->isKilo())->build();
-        new DataPersister(static::getContainer())->saveIngredient($common);
-
-        // Then : les deux ingrédients sont connus, le verdict est dans le corps
+        // Then : l'ingrédient est connu, le verdict est dans le corps
         $same = $this->preview($this->absorbed, $this->absorbed);
         $this->assertSame(['SAME_INGREDIENT', false], [$same->blockedBy, $same->canMerge]);
-        $this->assertSame('COMMON_INGREDIENT', $this->preview($common, $this->kept)->blockedBy);
-        $this->assertSame('COMMON_INGREDIENT', $this->preview($this->absorbed, $common)->blockedBy);
     }
 
     public function testThePreviewDoesNotKnowTheIngredientOfAnotherUserOrAnUnknownSlug(): void
@@ -303,14 +297,13 @@ class IngredientMergePostgreSQLLoaderTest extends DatabaseTestCase
 
     public function testTheCandidatesAreTheIngredientsOfTheUserSameDepartmentFirstTheClosestFirst(): void
     {
-        // Given : le même rayon (céréales) et un autre ; un commun, l'ingrédient d'un autre et l'ingrédient lui-même n'en sont pas
+        // Given : le même rayon (céréales) et un autre ; l'ingrédient d'un autre et l'ingrédient lui-même n'en sont pas
         $user = $this->user;
         $this->dataset->ingredient('Poivre noir', $user, department: new DepartmentBuilder()->isMeat());
         $this->dataset->ingredient('Tomate cerise', $user);
         $this->dataset->ingredient('Tomatte', $user, department: new DepartmentBuilder()->isMeat());
         $this->dataset->ingredient('Concombre', $user);
         $this->dataset->ingredient('Tomate de quelqu un d autre', $this->other);
-        new DataPersister(static::getContainer())->saveIngredient(new IngredientBuilder()->withName('Tomate commune')->withDepartment(new DepartmentBuilder()->isCereal())->build());
 
         // When : on fusionne « Tomates » dans l'un d'eux
         $candidates = $this->loader->candidates($user->getId(), $this->absorbed->getSlug());
@@ -372,12 +365,10 @@ class IngredientMergePostgreSQLLoaderTest extends DatabaseTestCase
         $this->assertSame('Tomate', $candidates[0]->name);
     }
 
-    public function testTheCandidatesOfACommonOrOfSomeoneElsesIngredientAreRefused(): void
+    public function testTheCandidatesOfSomeoneElsesIngredientAreRefused(): void
     {
         // Given
         $theirs = $this->dataset->ingredient('Tomate du voisin', $this->other);
-        $common = new IngredientBuilder()->withName('Tomate commune')->withDepartment(new DepartmentBuilder()->isCereal())->build();
-        new DataPersister(static::getContainer())->saveIngredient($common);
 
         // Then
         try {
@@ -385,12 +376,6 @@ class IngredientMergePostgreSQLLoaderTest extends DatabaseTestCase
             $this->fail('l\'ingrédient d\'un autre est inconnu');
         } catch (IngredientException $exception) {
             $this->assertSame(404, $exception->getCode());
-        }
-        try {
-            $this->loader->candidates($this->user->getId(), $common->getSlug());
-            $this->fail('un commun ne se fusionne pas');
-        } catch (IngredientException $exception) {
-            $this->assertSame(['CANNOT_MERGE_COMMON_INGREDIENT', 422], [$exception->getMessage(), $exception->getCode()]);
         }
         $this->expectExceptionObject(IngredientException::notFound('inconnu'));
         $this->loader->candidates($this->user->getId(), 'inconnu');

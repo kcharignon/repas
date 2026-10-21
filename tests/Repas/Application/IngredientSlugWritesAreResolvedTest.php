@@ -34,15 +34,16 @@ use Repas\Shared\Application\Interface\IngredientAliasResolver;
 
 /**
  * Garde-fou de l'ADR 0028 (décision 4, risque R1) : une écriture qui reçoit le slug d'un ingrédient doit le traduire par les alias de
- * l'utilisateur, sinon une ligne de recette, de liste ou de choix du drive retombe sur un commun que l'utilisateur a adopté et qui est
- * masqué pour lui (`IngredientVisibility`). Rien dans le langage n'oblige à y penser : ce test oblige à le DIRE.
+ * l'utilisateur, sinon une ligne de recette, de liste ou de choix du drive retombe sur un ancien slug (celui d'un ancien commun dont
+ * l'utilisateur a reçu une copie, ou d'un ingrédient fusionné) qui n'est plus à lui. Rien dans le langage n'oblige à y penser : ce test
+ * oblige à le DIRE.
  *
  * Il parcourt le code de l'application (hors lectures) et échoue dès qu'une classe porte une propriété `ingredientSlug` ou
  * `ingredientSlugs` sans figurer ci-dessous. Ajouter une écriture qui reçoit un slug d'ingrédient impose donc de la déclarer ici, soit
  * avec le handler qui la résout (`IngredientSlugResolver` côté Repas, `IngredientAliasResolver` côté Drive), soit, motif écrit, parmi
  * les exemptions. Il vérifie aussi que chaque handler déclaré injecte son résolveur ET s'en sert.
  *
- * Les lectures par slug (`GET /ingredients/{slug}`, `ListCompatibleUnits`…) ne sont pas des écritures : un commun adopté se lit encore.
+ * Les lectures par slug (`GET /ingredients/{slug}`, `ListCompatibleUnits`…) ne sont pas des écritures.
  * Les écritures qui reçoivent un identifiant de recette ou de liste (planifier un repas) lisent leurs slugs dans l'agrégat déjà
  * enregistré. La COPIE d'une recette les dépose sur une AUTRE recette, celle d'un autre utilisateur : elle ne porte aucun slug, le garde-fou
  * ci-dessus ne peut pas la voir, elle est donc déclarée à part (`COPIES`) et vérifiée de la même façon (ING-004).
@@ -77,7 +78,7 @@ class IngredientSlugWritesAreResolvedTest extends TestCase
 
     /**
      * La fusion de deux ingrédients de l'utilisateur (ING-005) reçoit deux slugs (`absorbedSlug`, `keptSlug`) mais ne les « résout » pas : il
-     * faut que ce soient SES ingrédients, tels quels ; un commun, même adopté, est refusé (422), l'ingrédient d'un autre est inconnu (404).
+     * faut que ce soient SES ingrédients, tels quels ; l'ingrédient d'un autre est inconnu (404).
      * Son handler garde pourtant les alias à jour (`IngredientAliasRepository::mergeInto`) et reconnaît un rejeu par l'alias de l'absorbé
      * (`find`) : c'est ce qui fait que les anciens slugs, envoyés par les écritures ci-dessus, atterrissent sur l'ingrédient gardé.
      *
@@ -88,13 +89,13 @@ class IngredientSlugWritesAreResolvedTest extends TestCase
     ];
 
     /**
-     * Les classes dispensées, avec la raison : elles ne sont jamais envoyées par un utilisateur qui a des alias.
+     * Les classes dispensées, avec la raison : elles ne reçoivent jamais un ancien slug à traduire.
      *
      * @var array<class-string, string>
      */
     private const array EXEMPT = [
-        CreateConversionCommand::class => "réservée aux administrateurs (#[IsGranted('ROLE_ADMIN')]), qui n'adoptent jamais : ils n'ont aucun alias",
-        UpdateConversionCommand::class => "réservée aux administrateurs (#[IsGranted('ROLE_ADMIN')]), qui n'adoptent jamais : ils n'ont aucun alias",
+        CreateConversionCommand::class => "réservée aux administrateurs (#[IsGranted('ROLE_ADMIN')]) et à leurs PROPRES ingrédients (le handler refuse celui d'un autre, D4) : le slug est tel quel",
+        UpdateConversionCommand::class => "réservée aux administrateurs (#[IsGranted('ROLE_ADMIN')]) et à leurs PROPRES ingrédients (le handler refuse celui d'un autre, D4) : le slug est tel quel",
     ];
 
     public function testEveryApplicationClassThatReceivesAnIngredientSlugIsDeclared(): void
@@ -140,7 +141,7 @@ class IngredientSlugWritesAreResolvedTest extends TestCase
             $this->assertCount(1, $injected, "$handler doit injecter un résolveur de slugs (IngredientSlugResolver ou IngredientAliasResolver).");
             $property = array_values($injected)[0]->getName();
             $this->assertMatchesRegularExpression(
-                '/\$this->' . preg_quote($property, '/') . '->(resolveForUser|resolveExisting|resolve)\(/',
+                '/\$this->' . preg_quote($property, '/') . '->resolve\(/',
                 $source,
                 "$handler injecte son résolveur de slugs mais ne s'en sert pas.",
             );
@@ -158,11 +159,11 @@ class IngredientSlugWritesAreResolvedTest extends TestCase
             );
             $source = (string) file_get_contents((string) $reflection->getFileName());
 
-            // Then : il résout par la provenance (alias, adoption à la volée) ET compare les noms sur ce que le copieur voit
+            // Then : il résout par la provenance (alias) ET compare les noms sur ce que le copieur voit
             $this->assertContains(IngredientSlugResolver::class, $types, "$handler doit injecter le résolveur de slugs.");
             $this->assertContains(IngredientMatchCandidates::class, $types, "$handler doit injecter les candidats du rapprochement.");
             $this->assertContains(IngredientNameMatcher::class, $types, "$handler doit injecter le rapprochement de noms.");
-            $this->assertMatchesRegularExpression('/\$this->\w+->resolveForUser\(/', $source, "$handler ne résout pas les slugs de la recette copiée.");
+            $this->assertMatchesRegularExpression('/\$this->\w+->resolve\(/', $source, "$handler ne résout pas les slugs de la recette copiée.");
             $this->assertMatchesRegularExpression('/\$this->\w+->visibleTo\(/', $source, "$handler ne lit pas les ingrédients que le copieur voit.");
             $this->assertMatchesRegularExpression('/\$this->\w+->match\(/', $source, "$handler ne rapproche pas les noms.");
             // Une copie ne doit jamais écraser : un slug libre, jamais celui d'un ingrédient existant

@@ -14,7 +14,10 @@ class ConversionInMemoryLoader implements ConversionLoader
 {
     public int $listCalls = 0;
 
-    /** @var list<string> */
+    /** @var list<string> les identifiants de lecteur de chaque appel de `list()` */
+    public array $listViewers = [];
+
+    /** @var list<array{string, string}> */
     public array $getCalls = [];
 
     /**
@@ -26,16 +29,17 @@ class ConversionInMemoryLoader implements ConversionLoader
     ) {
     }
 
-    public function list(): array
+    public function list(string $viewerId): array
     {
         $this->listCalls++;
+        $this->listViewers[] = $viewerId;
 
         return $this->conversions;
     }
 
-    public function get(string $id): ConversionDTO
+    public function get(string $id, string $viewerId): ConversionDTO
     {
-        $this->getCalls[] = $id;
+        $this->getCalls[] = [$id, $viewerId];
 
         return $this->conversion ?? throw ConversionException::notFound($id);
     }

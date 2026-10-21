@@ -20,8 +20,8 @@ use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 
 /**
  * « Plus de nouveau commun » (ADR 0028, amendement du 2026-10-20, ING-012) de bout en bout : JWT, vrais bus, vraie base. Tout ingrédient créé
- * par l'API est à son créateur, un administrateur compris, et aucun autre compte ne le voit. Les anciens communs (sans créateur) existent
- * encore avant la passation : leur présence ne change rien à la création.
+ * par l'API est à son créateur, un administrateur compris, et aucun autre compte ne le voit (la passation des anciens communs au propriétaire du
+ * catalogue est faite : aucun ingrédient n'est plus sans créateur).
  */
 class IngredientNoNewCommonApiFlowTest extends DatabaseTestCase
 {
@@ -143,22 +143,6 @@ class IngredientNoNewCommonApiFlowTest extends DatabaseTestCase
         $this->assertSame('/api/v1/ingredients/praline-d-ete' . $user->getId(), $this->client->getResponse()->headers->get('Location'));
         $this->assertSame($user->getId(), $this->ingredients()->findOneBySlug('praline-d-ete' . $user->getId())->getCreatorId());
         $this->assertSame(1, static::getContainer()->get(UserRepository::class)->findOneById($user->getId())->getStatistics()['ingredients']);
-    }
-
-    public function testBeforeTheHandoverAnOldCommonDoesNotBlockTheCreationAndIsNotCreatedAgain(): void
-    {
-        // Given : avant la passation, « Tomate » est un ancien commun (sans créateur) ; le propriétaire du catalogue n'en est pas encore le créateur
-        $owner = $this->savedUser(new UserBuilder()->isCatalogOwner());
-        $this->savedIngredient(null, 'Tomate');
-
-        // When
-        $this->request('POST', '/api/v1/ingredients', $owner, $this->body('Tomate'));
-
-        // Then : le doublon est permis (il sera proposé par « Doublons possibles »), le nouvel ingrédient est à lui et l'ancien commun reste
-        $this->assertSame(201, $this->client->getResponse()->getStatusCode());
-        $this->assertSame('/api/v1/ingredients/tomate' . $owner->getId(), $this->client->getResponse()->headers->get('Location'));
-        $this->assertSame(1, $this->countIngredientsWithoutCreator());
-        $this->assertNull($this->ingredients()->findOneBySlug('tomate')->getCreatorId());
     }
 
     public function testAfterTheHandoverTheOwnerCannotCreateAgainAnIngredientHeAlreadyHas(): void

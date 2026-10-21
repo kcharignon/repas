@@ -20,9 +20,9 @@ final readonly class ConversionPostgreSQLLoader implements ConversionLoader
     ) {
     }
 
-    public function list(): array
+    public function list(string $viewerId): array
     {
-        return $this->toDTOs($this->query()
+        return $this->toDTOs($this->query($viewerId)
             ->orderBy('c.ingredientSlug', 'ASC')
             ->addOrderBy('c.startUnitSlug', 'ASC')
             ->addOrderBy('c.id', 'ASC')
@@ -30,10 +30,10 @@ final readonly class ConversionPostgreSQLLoader implements ConversionLoader
             ->getArrayResult());
     }
 
-    public function get(string $id): ConversionDTO
+    public function get(string $id, string $viewerId): ConversionDTO
     {
-        $rows = $this->query()
-            ->where('c.id = :id')
+        $rows = $this->query($viewerId)
+            ->andWhere('c.id = :id')
             ->setParameter('id', $id)
             ->getQuery()
             ->getArrayResult();
@@ -45,7 +45,10 @@ final readonly class ConversionPostgreSQLLoader implements ConversionLoader
         return $this->toDTOs($rows)[0];
     }
 
-    private function query(): QueryBuilder
+    /**
+     * Les conversions générales et celles des ingrédients du lecteur : l'ingrédient d'un autre n'existe pas pour lui, administrateur compris.
+     */
+    private function query(string $viewerId): QueryBuilder
     {
         return $this->entityManager->createQueryBuilder()
             ->select(
@@ -57,7 +60,9 @@ final readonly class ConversionPostgreSQLLoader implements ConversionLoader
             ->from(Conversion::class, 'c')
             ->leftJoin(Ingredient::class, 'i', Join::WITH, 'i.slug = c.ingredientSlug')
             ->innerJoin(Unit::class, 'su', Join::WITH, 'su.slug = c.startUnitSlug')
-            ->innerJoin(Unit::class, 'eu', Join::WITH, 'eu.slug = c.endUnitSlug');
+            ->innerJoin(Unit::class, 'eu', Join::WITH, 'eu.slug = c.endUnitSlug')
+            ->where('c.ingredientSlug IS NULL OR i.creatorId = :viewer')
+            ->setParameter('viewer', $viewerId);
     }
 
     /**

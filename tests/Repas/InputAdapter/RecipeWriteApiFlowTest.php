@@ -44,7 +44,7 @@ class RecipeWriteApiFlowTest extends DatabaseTestCase
     {
         // Given
         $author = $this->savedUser();
-        $pasta = new IngredientBuilder()->isPasta()->build();
+        $pasta = new IngredientBuilder()->isPasta()->withCreator($author)->build();
         $this->persister->saveIngredient($pasta);
         $this->persister->saveRecipeType(new RecipeTypeBuilder()->isMeal()->build());
 
@@ -79,7 +79,7 @@ class RecipeWriteApiFlowTest extends DatabaseTestCase
     {
         // Given
         $author = $this->savedUser();
-        $pasta = new IngredientBuilder()->isPasta()->build();
+        $pasta = new IngredientBuilder()->isPasta()->withCreator($author)->build();
         $this->persister->saveIngredient($pasta);
 
         // When
@@ -95,7 +95,7 @@ class RecipeWriteApiFlowTest extends DatabaseTestCase
         // Given
         $author = $this->savedUser();
         $recipe = $this->savedRecipe($author);
-        $butter = new IngredientBuilder()->isButter()->build();
+        $butter = new IngredientBuilder()->isButter()->withCreator($author)->build();
         $this->persister->saveIngredient($butter);
 
         // When
@@ -117,9 +117,9 @@ class RecipeWriteApiFlowTest extends DatabaseTestCase
     {
         // Given : trois ingrédients dont l'ordre alphabétique n'est pas celui de la saisie
         $author = $this->savedUser();
-        $butter = new IngredientBuilder()->isButter()->build();
-        $pasta = new IngredientBuilder()->isPasta()->build();
-        $egg = new IngredientBuilder()->isEgg()->build();
+        $butter = new IngredientBuilder()->isButter()->withCreator($author)->build();
+        $pasta = new IngredientBuilder()->isPasta()->withCreator($author)->build();
+        $egg = new IngredientBuilder()->isEgg()->withCreator($author)->build();
         foreach ([$butter, $pasta, $egg] as $ingredient) {
             $this->persister->saveIngredient($ingredient);
         }
@@ -150,7 +150,7 @@ class RecipeWriteApiFlowTest extends DatabaseTestCase
     {
         // Given : les pâtes s'achètent au gramme, rien ne convertit l'unité en gramme
         $author = $this->savedUser();
-        $pasta = new IngredientBuilder()->isPasta()->build();
+        $pasta = new IngredientBuilder()->isPasta()->withCreator($author)->build();
         $this->persister->saveIngredient($pasta);
         $this->persister->saveRecipeType(new RecipeTypeBuilder()->isMeal()->build());
         $this->persister->saveUnit(new UnitBuilder()->isUnite()->build());

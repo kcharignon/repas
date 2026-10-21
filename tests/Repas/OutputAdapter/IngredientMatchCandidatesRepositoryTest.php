@@ -53,31 +53,27 @@ class IngredientMatchCandidatesRepositoryTest extends DatabaseTestCase
         $this->assertSame($butter->getDepartment()->getSlug(), $candidate->departmentSlug);
         $this->assertSame('plaquette', $candidate->purchaseUnitSlug);
         $this->assertEqualsCanonicalizing(['plaquette', 'gramme', 'kilo'], $candidate->compatibleUnitSlugs);
-        $this->assertSame($user->getId(), $candidate->creatorId);
         $this->assertSame('beurre', $candidate->adoptedFrom);
         $this->assertSame(['beurre'], $candidate->tokens);
-        $this->assertFalse($candidate->isCommon());
     }
 
-    public function testACommonIsACandidateUntilTheUserAdoptsItAndNeverTheIngredientOfAnother(): void
+    public function testTheCandidatesAreTheIngredientsOfTheUserAndNeverThoseOfAnotherOrOfTheCatalogOwner(): void
     {
-        // Given
-        $adopter = $this->savedUser();
-        $plain = $this->savedUser();
+        // Given : le propriétaire du catalogue (ses 2 ingrédients), un compte qui a reçu une copie de la farine, un autre compte
+        $owner = $this->savedUser(admin: true);
+        $copier = $this->savedUser();
         $other = $this->savedUser();
-        $common = $this->saved(new IngredientBuilder()->isFlour());
-        $adopted = $this->saved(new IngredientBuilder()->isFlour()->withCreator($adopter, true)->withAdoptedFrom('farine'));
-        $this->aliases->save(IngredientAlias::create($adopter->getId(), 'farine', $adopted->getSlug(), AliasKind::ADOPTION, 'first-use', new DateTimeImmutable('2026-10-21 03:00:00')));
+        $catalogFlour = $this->saved(new IngredientBuilder()->isFlour()->withCreator($owner));
+        $catalogButter = $this->saved(new IngredientBuilder()->isButter()->withCreator($owner));
+        $copy = $this->saved(new IngredientBuilder()->isFlour()->withCreator($copier, true)->withAdoptedFrom('farine'));
+        $this->aliases->save(IngredientAlias::create($copier->getId(), 'farine', $copy->getSlug(), AliasKind::ADOPTION, 'activation', new DateTimeImmutable('2026-10-21 03:00:00')));
         $others = $this->saved(new IngredientBuilder()->isSugar()->withCreator($other, true));
-        $mine = $this->saved(new IngredientBuilder()->isButter()->withCreator($plain, true));
 
-        // When / Then : celui qui n'a rien adopté voit le commun et le sien
-        $this->assertEqualsCanonicalizing([$common->getSlug(), $mine->getSlug()], $this->slugs($plain));
-        $this->assertTrue($this->bySlug($this->candidates->visibleTo($plain->getId()), $common->getSlug())->isCommon());
-        // L'adoptant voit sa copie à la place du commun, pas celle d'un autre
-        $this->assertSame([$adopted->getSlug()], $this->slugs($adopter));
-        $this->assertNotContains($others->getSlug(), $this->slugs($adopter));
-        $this->assertNotContains($others->getSlug(), $this->slugs($plain));
+        // When / Then : chacun ne voit que les siens, administrateur compris ; jamais deux fois le même, jamais celui d'un autre
+        $this->assertSame([$copy->getSlug()], $this->slugs($copier));
+        $this->assertEqualsCanonicalizing([$catalogFlour->getSlug(), $catalogButter->getSlug()], $this->slugs($owner));
+        $this->assertSame([$others->getSlug()], $this->slugs($other));
+        $this->assertSame([], $this->slugs($this->savedUser()));
     }
 
     public function testTheCandidatesAreReadInOneQueryWhateverTheNumberOfIngredientsAndSortedBySlug(): void
@@ -122,9 +118,9 @@ class IngredientMatchCandidatesRepositoryTest extends DatabaseTestCase
         $this->fail("Le candidat $slug est absent.");
     }
 
-    private function savedUser(): User
+    private function savedUser(bool $admin = false): User
     {
-        $user = new UserBuilder()->build();
+        $user = $admin ? new UserBuilder()->isAdmin()->build() : new UserBuilder()->build();
         $this->persister->saveUser($user);
 
         return $user;

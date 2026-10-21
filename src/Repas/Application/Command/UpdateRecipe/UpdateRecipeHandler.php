@@ -49,9 +49,9 @@ readonly class UpdateRecipeHandler
             serving: $command->serving,
         );
 
-        // Les slugs reçus se lisent pour l'AUTEUR de la recette (un administrateur peut la modifier) : un commun qu'il a adopté, ou adopte
-        // à la première utilisation, est remplacé par sa copie (ADR 0028 décision 4)
-        $resolved = $this->slugResolver->resolveForUser($recipe->getAuthorId(), $command->rows->map(fn(UpdateRecipeRowSubCommand $row) => $row->ingredientSlug)->values());
+        // Les slugs reçus se lisent pour l'AUTEUR de la recette (un administrateur peut la modifier) : un ancien slug est remplacé par
+        // l'ingrédient actuel de l'auteur (ADR 0028 décision 4)
+        $resolved = $this->slugResolver->resolve($recipe->getAuthorId(), $command->rows->map(fn(UpdateRecipeRowSubCommand $row) => $row->ingredientSlug)->values());
         $slugOf = static fn(UpdateRecipeRowSubCommand $row): string => $resolved[$row->ingredientSlug] ?? $row->ingredientSlug;
 
         // Ingrédients et unités des lignes : une lecture par type, pas une par ligne

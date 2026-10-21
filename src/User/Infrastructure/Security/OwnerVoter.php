@@ -42,7 +42,9 @@ class OwnerVoter extends Voter
 
     protected function voteOnAttribute(string $attribute, mixed $subject, TokenInterface $token, ?Vote $vote = null): bool
     {
-        if ($this->accessDecisionManager->decide($token, ['ROLE_ADMIN'])) {
+        // Un administrateur passe pour les recettes, les listes et les repas des autres, JAMAIS pour les ingrédients : un ingrédient est à
+        // son propriétaire seul, sans passe-droit (ADR 0028, amendement du 2026-10-20, D3)
+        if ($attribute !== self::INGREDIENT_OWNER && $this->accessDecisionManager->decide($token, ['ROLE_ADMIN'])) {
             return true;
         }
 
@@ -66,7 +68,7 @@ class OwnerVoter extends Voter
             case self::HIMSELF:
                 return $user->getId() === $subject;
             case self::INGREDIENT_OWNER:
-                // Un ingrédient commun (sans créateur) n'appartient à personne : seul un administrateur peut le modifier
+                // Tout ingrédient a un propriétaire : lui seul le modifie ou le supprime, un administrateur compris
                 return $this->ownershipLoader->ingredientCreatorId($subject) === $user->getId();
             case self::SHOPPING_LIST_OWNER:
                 return $this->ownershipLoader->shoppingListOwnerId($subject) === $user->getId();

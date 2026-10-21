@@ -42,7 +42,7 @@ class HandOverCatalogDriveEquivalenceTest extends WriteBudgetTestCase
         $migrated = $this->savedUser();
         $subjects = [];
         foreach ([$owner, $migrated] as $user) {
-            $recipes = $this->typicalRecipes($user);
+            $recipes = $this->typicalRecipes($user, ownedByAuthor: false);
             $sent = $this->savedShoppingList($user, $recipes, null, static function (ShoppingList $list): void {
                 $list->send(new DateTimeImmutable('2026-10-10 12:00:00'));
             });
@@ -53,6 +53,8 @@ class HandOverCatalogDriveEquivalenceTest extends WriteBudgetTestCase
             $this->saveChoices($user->getId(), $slugs);
             $subjects[] = [$user, $sent, $active];
         }
+        // La passation part de la forme d'avant : les ingrédients du catalogue sont encore sans créateur
+        $this->turnDefaultIngredientsIntoOldCommons();
         $connection = $this->entityManager->getConnection();
         // Le compte migré par le vrai cas d'usage d'ING-003 : ses lignes pointent vers ses copies
         static::getContainer()->get(CommandBusInterface::class)->dispatch(new AdoptCommonIngredientsForUserCommand($migrated->getId(), 'migration-essai', true));

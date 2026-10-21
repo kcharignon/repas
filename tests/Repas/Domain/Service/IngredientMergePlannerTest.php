@@ -27,14 +27,14 @@ class IngredientMergePlannerTest extends TestCase
         $this->planner = new IngredientMergePlanner();
     }
 
-    private static function absorbed(string $purchaseUnit = 'kilo', bool $common = false): MergeParty
+    private static function absorbed(string $purchaseUnit = 'kilo'): MergeParty
     {
-        return new MergeParty('tomates', $common, $purchaseUnit);
+        return new MergeParty('tomates', $purchaseUnit);
     }
 
-    private static function kept(string $purchaseUnit = 'kilo', bool $common = false): MergeParty
+    private static function kept(string $purchaseUnit = 'kilo'): MergeParty
     {
-        return new MergeParty('tomate', $common, $purchaseUnit);
+        return new MergeParty('tomate', $purchaseUnit);
     }
 
     /** Le graphe de « Tomate » : kilo <-> gramme (1000), unité <-> gramme (150). */
@@ -140,22 +140,11 @@ class IngredientMergePlannerTest extends TestCase
 
     public function testTheSameIngredientIsRefusedFirst(): void
     {
-        // When : même slug, même si l'un est commun et que tout le reste est refusable
-        $plan = $this->planner->plan(new MergeParty('tomate', true, 'kilo'), new MergeParty('tomate', true, 'kilo'), self::graph(), new IngredientMergeUsage(sentListCount: 1, usedByAnotherUser: true));
+        // When : même slug, même si tout le reste est refusable
+        $plan = $this->planner->plan(new MergeParty('tomate', 'kilo'), new MergeParty('tomate', 'kilo'), self::graph(), new IngredientMergeUsage(sentListCount: 1, usedByAnotherUser: true));
 
         // Then
         $this->assertSame(MergeBlock::SAME_INGREDIENT, $plan->block);
-    }
-
-    public function testACommonIngredientIsRefusedWhicheverSideItIsOn(): void
-    {
-        foreach ([[self::absorbed('kilo', true), self::kept()], [self::absorbed(), self::kept('kilo', true)]] as [$absorbed, $kept]) {
-            // When
-            $plan = $this->planner->plan($absorbed, $kept, self::graph(), new IngredientMergeUsage(sentListCount: 1));
-
-            // Then : avant la liste envoyée et les unités, que l'utilisateur pourrait lever
-            $this->assertSame(MergeBlock::COMMON_INGREDIENT, $plan->block);
-        }
     }
 
     private static function conversion(string $id, string $start, string $end, float $coefficient): MergeConversion
@@ -267,11 +256,11 @@ class IngredientMergePlannerTest extends TestCase
     public function testNothingIsRecoveredNorAddedWhenAnotherRefusalStopsTheMerge(): void
     {
         // Given : une conversion récupérable et une unité compatible à ajouter, mais une liste envoyée utilise l'un des deux
-        $absorbed = new MergeParty('tomates', false, 'kilo', ['gramme', 'tranche']);
+        $absorbed = new MergeParty('tomates', 'kilo', ['gramme', 'tranche']);
         $usage = new IngredientMergeUsage(recipeCount: 1, recipeUnitSlugs: ['tranche'], sentListCount: 1, absorbedConversions: [self::conversion('slice', 'tranche', 'gramme', 25.0)]);
 
         // When
-        $plan = $this->planner->plan($absorbed, new MergeParty('tomate', false, 'kilo', ['gramme']), self::graph(), $usage);
+        $plan = $this->planner->plan($absorbed, new MergeParty('tomate', 'kilo', ['gramme']), self::graph(), $usage);
 
         // Then : refusée pour la liste envoyée, rien ne serait écrit (ni conversion, ni unité), et plus aucune unité ne manque
         $this->assertSame(MergeBlock::IN_SENT_LIST, $plan->block);
@@ -291,8 +280,8 @@ class IngredientMergePlannerTest extends TestCase
     public function testTheCompatibleUnitsOfTheAbsorbedIngredientUsedByTheMovedRowsJoinTheKeptOnes(): void
     {
         // Given : B déclare la tranche et la cuillère compatibles ; A le gramme seulement ; les lignes déplacées utilisent la tranche et le gramme
-        $absorbed = new MergeParty('tomates', false, 'kilo', ['gramme', 'tranche', 'cuillere']);
-        $kept = new MergeParty('tomate', false, 'kilo', ['gramme']);
+        $absorbed = new MergeParty('tomates', 'kilo', ['gramme', 'tranche', 'cuillere']);
+        $kept = new MergeParty('tomate', 'kilo', ['gramme']);
 
         // When
         $plan = $this->planWithConversions([self::conversion('slice', 'tranche', 'gramme', 25.0)], recipeUnits: ['gramme', 'tranche'], absorbed: $absorbed, kept: $kept);
@@ -304,7 +293,7 @@ class IngredientMergePlannerTest extends TestCase
     public function testNoCompatibleUnitIsAddedForAUnitThatTheAbsorbedIngredientNeverDeclared(): void
     {
         // When : la ligne utilise le gramme, que B ne déclare pas compatible
-        $plan = $this->planWithConversions([], recipeUnits: ['gramme'], absorbed: new MergeParty('tomates', false, 'kilo', ['kilo']), kept: new MergeParty('tomate', false, 'kilo', []));
+        $plan = $this->planWithConversions([], recipeUnits: ['gramme'], absorbed: new MergeParty('tomates', 'kilo', ['kilo']), kept: new MergeParty('tomate', 'kilo', []));
 
         // Then
         $this->assertSame([], $plan->compatibleUnitSlugsToAdd);
@@ -315,7 +304,6 @@ class IngredientMergePlannerTest extends TestCase
         // Then : message = code en majuscules (ADR 0007 §12), statut selon la grille 422 / 409
         $expected = [
             [MergeBlock::SAME_INGREDIENT, 'CANNOT_MERGE_INTO_ITSELF', 422],
-            [MergeBlock::COMMON_INGREDIENT, 'CANNOT_MERGE_COMMON_INGREDIENT', 422],
             [MergeBlock::USED_BY_ANOTHER_USER, 'INGREDIENT_USED_BY_ANOTHER_USER', 409],
             [MergeBlock::IN_SENT_LIST, 'INGREDIENT_IN_SENT_LIST', 409],
             [MergeBlock::UNIT_MISSING, 'MERGE_UNIT_MISSING', 422],

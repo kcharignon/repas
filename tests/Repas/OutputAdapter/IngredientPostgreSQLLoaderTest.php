@@ -23,6 +23,11 @@ use Repas\Tests\Helper\DataPersister;
 use Repas\Tests\Helper\SqlBudget\QueryCounter;
 use Repas\User\Domain\Model\User;
 
+/**
+ * Les lectures d'ingrédients de l'utilisateur sur la vraie base (ADR 0028, amendement du 2026-10-20) : il ne voit que les siens, sans exception
+ * pour un administrateur ; `canEdit` est donc toujours vrai. La règle de visibilité elle-même, pour toutes les lectures, est prouvée par
+ * `IngredientVisibilityTest`.
+ */
 class IngredientPostgreSQLLoaderTest extends DatabaseTestCase
 {
     private IngredientLoader $ingredientLoader;
@@ -36,47 +41,47 @@ class IngredientPostgreSQLLoaderTest extends DatabaseTestCase
         $this->persister = new DataPersister(static::getContainer());
     }
 
-    public function testListByDepartmentReturnsTheDepartmentAndTheVisibleIngredientsSortedByName(): void
+    public function testListByDepartmentReturnsTheDepartmentAndTheOwnIngredientsSortedByName(): void
     {
         // Given
         $viewer = $this->savedUser();
         $other = $this->savedUser();
         $department = new DepartmentBuilder()->isCereal();
-        $common = $this->savedIngredient(new IngredientBuilder()->withName('zzz riz')->withDepartment($department)->withDefaultCookingUnit(new UnitBuilder()->isGramme())->withDefaultPurchaseUnit(new UnitBuilder()->isGramme()));
+        $rice = $this->savedIngredient(new IngredientBuilder()->withName('zzz riz')->withDepartment($department)->withDefaultCookingUnit(new UnitBuilder()->isGramme())->withDefaultPurchaseUnit(new UnitBuilder()->isGramme())->withCreator($viewer, true));
         $own = $this->savedIngredient(new IngredientBuilder()->withName('aaa blé')->withDepartment($department)->withCreator($viewer, true));
         $this->savedIngredient(new IngredientBuilder()->withName('mmm orge')->withDepartment($department)->withCreator($other, true));
-        $this->savedIngredient(new IngredientBuilder()->withName('bbb autre rayon')->withDepartment(new DepartmentBuilder()->isBakery()));
+        $this->savedIngredient(new IngredientBuilder()->withName('bbb autre rayon')->withDepartment(new DepartmentBuilder()->isBakery())->withCreator($viewer, true));
 
         // When
-        $result = $this->ingredientLoader->listByDepartment('cereale', $viewer->getId(), false);
+        $result = $this->ingredientLoader->listByDepartment('cereale', $viewer->getId());
 
-        // Then
+        // Then : ni celui d'un autre, ni celui d'un autre rayon ; tout est modifiable par son propriétaire
         $this->assertEquals(new DepartmentDTO('cereale', 'céréale', new DepartmentBuilder()->isCereal()->build()->getImage()), $result->department);
         $this->assertEquals(
             [
                 new IngredientRowDTO($own->getSlug(), 'aaa blé', '', true, false),
-                new IngredientRowDTO($common->getSlug(), 'zzz riz', 'g', false, false),
+                new IngredientRowDTO($rice->getSlug(), 'zzz riz', 'g', true, false),
             ],
             $result->ingredients,
         );
     }
 
-    public function testListByDepartmentLetsAnAdministratorEditTheCommonIngredientsOnly(): void
+    public function testListByDepartmentShowsAnAdministratorHisOwnIngredientsOnly(): void
     {
-        // Given
-        $admin = $this->savedUser();
-        $other = $this->savedUser();
+        // Given : l'administrateur a le sien, un autre compte (le propriétaire du catalogue, par exemple) a les siens
+        $admin = $this->savedUser(admin: true);
+        $other = $this->savedUser(admin: true);
         $department = new DepartmentBuilder()->isCereal();
-        $common = $this->savedIngredient(new IngredientBuilder()->withName('aaa riz')->withDepartment($department));
+        $this->savedIngredient(new IngredientBuilder()->withName('aaa riz')->withDepartment($department)->withCreator($other, true));
         $own = $this->savedIngredient(new IngredientBuilder()->withName('bbb blé')->withDepartment($department)->withCreator($admin, true));
         $this->savedIngredient(new IngredientBuilder()->withName('ccc orge')->withDepartment($department)->withCreator($other, true));
 
         // When
-        $result = $this->ingredientLoader->listByDepartment('cereale', $admin->getId(), true);
+        $result = $this->ingredientLoader->listByDepartment('cereale', $admin->getId());
 
         // Then
         $this->assertSame(
-            [[$common->getSlug(), true], [$own->getSlug(), true]],
+            [[$own->getSlug(), true]],
             array_map(static fn(IngredientRowDTO $row): array => [$row->slug, $row->canEdit], $result->ingredients),
         );
     }
@@ -88,7 +93,7 @@ class IngredientPostgreSQLLoaderTest extends DatabaseTestCase
         $this->persister->saveDepartment(new DepartmentBuilder()->isCereal()->build());
 
         // When
-        $result = $this->ingredientLoader->listByDepartment('cereale', $viewer->getId(), false);
+        $result = $this->ingredientLoader->listByDepartment('cereale', $viewer->getId());
 
         // Then
         $this->assertSame([], $result->ingredients);
@@ -100,7 +105,7 @@ class IngredientPostgreSQLLoaderTest extends DatabaseTestCase
         $this->expectExceptionObject(DepartmentException::notFound());
 
         // When
-        $this->ingredientLoader->listByDepartment('inconnu', $this->savedUser()->getId(), false);
+        $this->ingredientLoader->listByDepartment('inconnu', $this->savedUser()->getId());
     }
 
     public function testGetReturnsTheIngredientWithItsDepartmentAndUnits(): void
@@ -111,7 +116,7 @@ class IngredientPostgreSQLLoaderTest extends DatabaseTestCase
             ->withDefaultCookingUnit(new UnitBuilder()->isGramme())->withDefaultPurchaseUnit(new UnitBuilder()->isGramme()));
 
         // When
-        $result = $this->ingredientLoader->get($ingredient->getSlug(), $viewer->getId(), false);
+        $result = $this->ingredientLoader->get($ingredient->getSlug(), $viewer->getId());
 
         // Then
         $this->assertEquals(new IngredientDTO(
@@ -146,22 +151,22 @@ class IngredientPostgreSQLLoaderTest extends DatabaseTestCase
         $this->usage($ingredient->getSlug(), $viewer->getId(), $other->getId());
 
         // When
-        $result = $this->ingredientLoader->get($ingredient->getSlug(), $viewer->getId(), false);
+        $result = $this->ingredientLoader->get($ingredient->getSlug(), $viewer->getId());
 
         // Then
         $this->assertSame([2, 2], [$result->recipeCount, $result->listCount]);
     }
 
-    public function testGetCountsNothingForAViewerWhoDoesNotUseTheIngredient(): void
+    public function testGetCountsNothingWhenOnlyAnotherUserUsesTheIngredient(): void
     {
-        // Given : un commun que seul un autre utilisateur utilise
+        // Given : un ingrédient du lecteur que seules des lignes d'un autre utilisateur désignent (donnée héritée d'avant l'ADR 0021)
         $viewer = $this->savedUser();
         $other = $this->savedUser();
-        $common = $this->savedIngredient(new IngredientBuilder()->withName('zzz riz'));
-        $this->usage($common->getSlug(), $other->getId(), $other->getId());
+        $own = $this->savedIngredient(new IngredientBuilder()->withName('zzz riz')->withCreator($viewer, true));
+        $this->usage($own->getSlug(), $other->getId(), $other->getId());
 
         // When
-        $result = $this->ingredientLoader->get($common->getSlug(), $viewer->getId(), false);
+        $result = $this->ingredientLoader->get($own->getSlug(), $viewer->getId());
 
         // Then
         $this->assertSame([0, 0], [$result->recipeCount, $result->listCount]);
@@ -198,7 +203,7 @@ class IngredientPostgreSQLLoaderTest extends DatabaseTestCase
         $this->persister->saveConversion(new ConversionBuilder()->withIngredient($ingredient)->withStartUnit(new UnitBuilder()->isBlock()->build())->withEndUnit(new UnitBuilder()->isGramme()->build())->withCoefficient(250)->build());
 
         // When
-        $result = $this->ingredientLoader->get($ingredient->getSlug(), $viewer->getId(), false);
+        $result = $this->ingredientLoader->get($ingredient->getSlug(), $viewer->getId());
 
         // Then
         $this->assertFalse($result->hasSameUnit);
@@ -213,10 +218,10 @@ class IngredientPostgreSQLLoaderTest extends DatabaseTestCase
             ->withDefaultCookingUnit(new UnitBuilder()->isGramme())->withDefaultPurchaseUnit(new UnitBuilder()->isKilo()));
         $this->persister->saveConversion(new ConversionBuilder()->withoutIngredient()->withStartUnit(new UnitBuilder()->isKilo()->build())->withEndUnit(new UnitBuilder()->isGramme()->build())->withCoefficient(1000)->build());
 
-        // When : seule la conversion commune existe
-        $common = $this->ingredientLoader->get($ingredient->getSlug(), $viewer->getId(), false);
+        // When : seule la conversion générale existe
+        $common = $this->ingredientLoader->get($ingredient->getSlug(), $viewer->getId());
         $this->persister->saveConversion(new ConversionBuilder()->withIngredient($ingredient)->withStartUnit(new UnitBuilder()->isKilo()->build())->withEndUnit(new UnitBuilder()->isGramme()->build())->withCoefficient(990)->build());
-        $specific = $this->ingredientLoader->get($ingredient->getSlug(), $viewer->getId(), false);
+        $specific = $this->ingredientLoader->get($ingredient->getSlug(), $viewer->getId());
 
         // Then
         $this->assertSame([1000.0, 990.0], [$common->coefficient, $specific->coefficient]);
@@ -230,40 +235,37 @@ class IngredientPostgreSQLLoaderTest extends DatabaseTestCase
             ->withDefaultCookingUnit(new UnitBuilder()->isGramme())->withDefaultPurchaseUnit(new UnitBuilder()->isLiter()));
 
         // When
-        $result = $this->ingredientLoader->get($ingredient->getSlug(), $viewer->getId(), false);
+        $result = $this->ingredientLoader->get($ingredient->getSlug(), $viewer->getId());
 
         // Then
         $this->assertNull($result->coefficient);
     }
 
-    public function testGetCannotEditACommonIngredientUnlessAdministrator(): void
+    public function testGetCanAlwaysEditWhatItShows(): void
     {
         // Given
-        $viewer = $this->savedUser();
-        $common = $this->savedIngredient(new IngredientBuilder()->withName('zzz sel'));
+        $viewer = $this->savedUser(admin: true);
+        $own = $this->savedIngredient(new IngredientBuilder()->withName('zzz sel')->withCreator($viewer, true));
 
         // When
-        $asUser = $this->ingredientLoader->get($common->getSlug(), $viewer->getId(), false);
-        $asAdmin = $this->ingredientLoader->get($common->getSlug(), $viewer->getId(), true);
+        $result = $this->ingredientLoader->get($own->getSlug(), $viewer->getId());
 
-        // Then
-        $this->assertSame([false, null, true], [$asUser->canEdit, $asUser->creatorId, $asAdmin->canEdit]);
+        // Then : un administrateur n'est pas un cas à part
+        $this->assertSame([true, $viewer->getId()], [$result->canEdit, $result->creatorId]);
     }
 
-    public function testGetHidesAnIngredientOfAnotherUserExceptToAnAdministrator(): void
+    public function testGetHidesAnIngredientOfAnotherUserEvenFromAnAdministrator(): void
     {
         // Given
         $owner = $this->savedUser();
         $ingredient = $this->savedIngredient(new IngredientBuilder()->withName('zzz secret')->withCreator($owner, true));
-        $viewer = $this->savedUser();
+        $admin = $this->savedUser(admin: true);
+
+        // Then : pas de passe-droit (D3)
+        $this->expectExceptionObject(IngredientException::notFound($ingredient->getSlug()));
 
         // When
-        $asAdmin = $this->ingredientLoader->get($ingredient->getSlug(), $viewer->getId(), true);
-
-        // Then
-        $this->assertFalse($asAdmin->canEdit);
-        $this->expectExceptionObject(IngredientException::notFound($ingredient->getSlug()));
-        $this->ingredientLoader->get($ingredient->getSlug(), $viewer->getId(), false);
+        $this->ingredientLoader->get($ingredient->getSlug(), $admin->getId());
     }
 
     public function testGetFailsForAnUnknownIngredient(): void
@@ -272,7 +274,7 @@ class IngredientPostgreSQLLoaderTest extends DatabaseTestCase
         $this->expectExceptionObject(IngredientException::notFound('inconnu'));
 
         // When
-        $this->ingredientLoader->get('inconnu', $this->savedUser()->getId(), false);
+        $this->ingredientLoader->get('inconnu', $this->savedUser()->getId());
     }
 
     public function testListCompatibleUnitsKeepsTheStoredOrderWithCapitalizedNames(): void
@@ -303,12 +305,12 @@ class IngredientPostgreSQLLoaderTest extends DatabaseTestCase
         $this->ingredientLoader->listCompatibleUnits('inconnu');
     }
 
-    public function testListAvailableReturnsTheCommonAndOwnIngredientsSortedByName(): void
+    public function testListAvailableReturnsTheOwnIngredientsSortedByName(): void
     {
         // Given
         $viewer = $this->savedUser();
         $other = $this->savedUser();
-        $common = $this->savedIngredient(new IngredientBuilder()->withName('mmm sel'));
+        $salt = $this->savedIngredient(new IngredientBuilder()->withName('mmm sel')->withCreator($viewer, true));
         $own = $this->savedIngredient(new IngredientBuilder()->withName('aaa farine')->withCreator($viewer, true));
         $this->savedIngredient(new IngredientBuilder()->withName('zzz secret')->withCreator($other, true));
 
@@ -317,7 +319,7 @@ class IngredientPostgreSQLLoaderTest extends DatabaseTestCase
 
         // Then
         $this->assertEquals(
-            [new IngredientOptionDTO($own->getSlug(), 'aaa farine'), new IngredientOptionDTO($common->getSlug(), 'mmm sel')],
+            [new IngredientOptionDTO($own->getSlug(), 'aaa farine'), new IngredientOptionDTO($salt->getSlug(), 'mmm sel')],
             $result,
         );
     }
@@ -327,8 +329,8 @@ class IngredientPostgreSQLLoaderTest extends DatabaseTestCase
         // Given
         $viewer = $this->savedUser();
         $other = $this->savedUser();
-        $cream = $this->savedIngredient(new IngredientBuilder()->withName('zzz Crème fraîche'));
-        $this->savedIngredient(new IngredientBuilder()->withName('zzz farine'));
+        $cream = $this->savedIngredient(new IngredientBuilder()->withName('zzz Crème fraîche')->withCreator($viewer, true));
+        $this->savedIngredient(new IngredientBuilder()->withName('zzz farine')->withCreator($viewer, true));
         $ownCream = $this->savedIngredient(new IngredientBuilder()->withName('aaa crème maison')->withCreator($viewer, true));
         $this->savedIngredient(new IngredientBuilder()->withName('zzz crème secrète')->withCreator($other, true));
 
@@ -336,7 +338,7 @@ class IngredientPostgreSQLLoaderTest extends DatabaseTestCase
         $byAccentedText = $this->ingredientLoader->listAvailable($viewer->getId(), '  CRÈME ');
         $byPartOfTwoWords = $this->ingredientLoader->listAvailable($viewer->getId(), 'me fra');
 
-        // Then : communs et propres, jamais ceux d'un autre, toujours triés par nom
+        // Then : les siens, jamais ceux d'un autre, toujours triés par nom
         $this->assertEquals(
             [new IngredientOptionDTO($ownCream->getSlug(), 'aaa crème maison'), new IngredientOptionDTO($cream->getSlug(), 'zzz Crème fraîche')],
             $byAccentedText,
@@ -348,7 +350,7 @@ class IngredientPostgreSQLLoaderTest extends DatabaseTestCase
     {
         // Given
         $viewer = $this->savedUser();
-        $this->savedIngredient(new IngredientBuilder()->withName('zzz sel'));
+        $this->savedIngredient(new IngredientBuilder()->withName('zzz sel')->withCreator($viewer, true));
 
         // When
         $result = $this->ingredientLoader->listAvailable($viewer->getId(), '   ');
@@ -371,18 +373,18 @@ class IngredientPostgreSQLLoaderTest extends DatabaseTestCase
         // Given
         $viewer = $this->savedUser();
         $cereal = new DepartmentBuilder()->isCereal();
-        $exact = $this->savedIngredient(new IngredientBuilder()->withName('Riz')->withDepartment($cereal));
-        $longer = $this->savedIngredient(new IngredientBuilder()->withName('Riz basmati')->withDepartment(new DepartmentBuilder()->isBakery()));
-        $this->savedIngredient(new IngredientBuilder()->withName('Chorizo')->withDepartment(new DepartmentBuilder()->isMeat()));
+        $exact = $this->savedIngredient(new IngredientBuilder()->withName('Riz')->withDepartment($cereal)->withCreator($viewer, true));
+        $longer = $this->savedIngredient(new IngredientBuilder()->withName('Riz basmati')->withDepartment(new DepartmentBuilder()->isBakery())->withCreator($viewer, true));
+        $this->savedIngredient(new IngredientBuilder()->withName('Chorizo')->withDepartment(new DepartmentBuilder()->isMeat())->withCreator($viewer, true));
 
         // When
-        $result = $this->ingredientLoader->search('  RIZ ', $viewer->getId(), false);
+        $result = $this->ingredientLoader->search('  RIZ ', $viewer->getId());
 
         // Then
         $this->assertEquals(
             [
-                new IngredientSearchResultDTO($exact->getSlug(), 'Riz', '', false, 'cereale', 'céréale', new DepartmentBuilder()->isCereal()->build()->getImage()),
-                new IngredientSearchResultDTO($longer->getSlug(), 'Riz basmati', '', false, 'boulangerie', 'boulangerie', new DepartmentBuilder()->isBakery()->build()->getImage()),
+                new IngredientSearchResultDTO($exact->getSlug(), 'Riz', '', true, 'cereale', 'céréale', new DepartmentBuilder()->isCereal()->build()->getImage()),
+                new IngredientSearchResultDTO($longer->getSlug(), 'Riz basmati', '', true, 'boulangerie', 'boulangerie', new DepartmentBuilder()->isBakery()->build()->getImage()),
             ],
             $result,
         );
@@ -392,12 +394,12 @@ class IngredientPostgreSQLLoaderTest extends DatabaseTestCase
     {
         // Given
         $viewer = $this->savedUser();
-        $cream = $this->savedIngredient(new IngredientBuilder()->withName('Crème fraîche'));
-        $this->savedIngredient(new IngredientBuilder()->withName('Caramel'));
+        $cream = $this->savedIngredient(new IngredientBuilder()->withName('Crème fraîche')->withCreator($viewer, true));
+        $this->savedIngredient(new IngredientBuilder()->withName('Caramel')->withCreator($viewer, true));
 
         // When
-        $byTypo = $this->ingredientLoader->search('creme frache', $viewer->getId(), false);
-        $byAccent = $this->ingredientLoader->search('CRÈME', $viewer->getId(), false);
+        $byTypo = $this->ingredientLoader->search('creme frache', $viewer->getId());
+        $byAccent = $this->ingredientLoader->search('CRÈME', $viewer->getId());
 
         // Then
         $this->assertSame([$cream->getSlug()], array_map(static fn(IngredientSearchResultDTO $result): string => $result->slug, $byTypo));
@@ -408,46 +410,46 @@ class IngredientPostgreSQLLoaderTest extends DatabaseTestCase
     {
         // Given
         $viewer = $this->savedUser();
-        $this->savedIngredient(new IngredientBuilder()->withName('Tomate séchée'));
-        $this->savedIngredient(new IngredientBuilder()->withName('Tomate cerise'));
+        $this->savedIngredient(new IngredientBuilder()->withName('Tomate séchée')->withCreator($viewer, true));
+        $this->savedIngredient(new IngredientBuilder()->withName('Tomate cerise')->withCreator($viewer, true));
 
         // When
-        $result = $this->ingredientLoader->search('tomate', $viewer->getId(), false);
+        $result = $this->ingredientLoader->search('tomate', $viewer->getId());
 
         // Then : mêmes mots, même longueur de nom
         $this->assertSame(['Tomate cerise', 'Tomate séchée'], array_map(static fn(IngredientSearchResultDTO $result): string => $result->name, $result));
     }
 
-    public function testSearchFindsTheCommonAndOwnIngredientsNeverThoseOfAnotherUser(): void
+    public function testSearchFindsTheOwnIngredientsNeverThoseOfAnotherUser(): void
     {
         // Given
         $viewer = $this->savedUser();
-        $other = $this->savedUser();
-        $this->savedIngredient(new IngredientBuilder()->withName('Sel'));
+        $other = $this->savedUser(admin: true);
+        $this->savedIngredient(new IngredientBuilder()->withName('Sel')->withCreator($viewer, true));
         $this->savedIngredient(new IngredientBuilder()->withName('Sel fin')->withCreator($viewer, true));
         $this->savedIngredient(new IngredientBuilder()->withName('Sel secret')->withCreator($other, true));
 
         // When
-        $result = $this->ingredientLoader->search('sel', $viewer->getId(), false);
+        $result = $this->ingredientLoader->search('sel', $viewer->getId());
 
         // Then
         $this->assertSame(['Sel', 'Sel fin'], array_map(static fn(IngredientSearchResultDTO $result): string => $result->name, $result));
     }
 
-    public function testSearchLetsAnAdministratorEditTheCommonIngredientsOnly(): void
+    public function testSearchByAnAdministratorFindsHisOwnIngredientsOnlyAndAllEditable(): void
     {
         // Given
-        $admin = $this->savedUser();
-        $this->savedIngredient(new IngredientBuilder()->withName('Sel'));
+        $admin = $this->savedUser(admin: true);
+        $other = $this->savedUser(admin: true);
+        $this->savedIngredient(new IngredientBuilder()->withName('Sel')->withCreator($other, true));
         $this->savedIngredient(new IngredientBuilder()->withName('Sel fin')->withCreator($admin, true));
 
         // When
-        $asAdmin = $this->ingredientLoader->search('sel', $admin->getId(), true);
-        $asUser = $this->ingredientLoader->search('sel', $admin->getId(), false);
+        $result = $this->ingredientLoader->search('sel', $admin->getId());
 
         // Then
-        $this->assertSame([true, true], array_map(static fn(IngredientSearchResultDTO $result): bool => $result->canEdit, $asAdmin));
-        $this->assertSame([false, true], array_map(static fn(IngredientSearchResultDTO $result): bool => $result->canEdit, $asUser));
+        $this->assertSame(['Sel fin'], array_map(static fn(IngredientSearchResultDTO $result): string => $result->name, $result));
+        $this->assertSame([true], array_map(static fn(IngredientSearchResultDTO $result): bool => $result->canEdit, $result));
     }
 
     public function testSearchKeepsTheThirtyMostRelevantResults(): void
@@ -455,11 +457,11 @@ class IngredientPostgreSQLLoaderTest extends DatabaseTestCase
         // Given
         $viewer = $this->savedUser();
         for ($i = 0; $i < 35; $i++) {
-            $this->savedIngredient(new IngredientBuilder()->withName('Fromage ' . $i));
+            $this->savedIngredient(new IngredientBuilder()->withName('Fromage ' . $i)->withCreator($viewer, true));
         }
 
         // When
-        $result = $this->ingredientLoader->search('fromage', $viewer->getId(), false);
+        $result = $this->ingredientLoader->search('fromage', $viewer->getId());
 
         // Then
         $this->assertCount(30, $result);
@@ -469,20 +471,20 @@ class IngredientPostgreSQLLoaderTest extends DatabaseTestCase
     {
         // Given
         $viewer = $this->savedUser();
-        $this->savedIngredient(new IngredientBuilder()->withName('Sel'));
+        $this->savedIngredient(new IngredientBuilder()->withName('Sel')->withCreator($viewer, true));
 
         // When
-        $unrelated = $this->ingredientLoader->search('zzzzzz', $viewer->getId(), false);
-        $withoutLetter = $this->ingredientLoader->search(' !? ', $viewer->getId(), false);
+        $unrelated = $this->ingredientLoader->search('zzzzzz', $viewer->getId());
+        $withoutLetter = $this->ingredientLoader->search(' !? ', $viewer->getId());
 
         // Then
         $this->assertSame([], $unrelated);
         $this->assertSame([], $withoutLetter);
     }
 
-    private function savedUser(): User
+    private function savedUser(bool $admin = false): User
     {
-        $user = new UserBuilder()->build();
+        $user = $admin ? new UserBuilder()->isAdmin()->build() : new UserBuilder()->build();
         $this->persister->saveUser($user);
 
         return $user;
@@ -508,45 +510,42 @@ class IngredientPostgreSQLLoaderTest extends DatabaseTestCase
 
     public function testListByDepartmentShowsTheBaseMarkerToTheCatalogOwnerOnly(): void
     {
-        // Given : le propriétaire a un ingrédient de base et un autre qui ne l'est pas ; un ancien commun est marqué (le classement des 261
-        // est posé avant la passation) ; un utilisateur ordinaire a aussi un ingrédient marqué (inerte : posé ailleurs que chez le propriétaire)
+        // Given : le propriétaire a un ingrédient de base et un autre qui ne l'est pas ; un utilisateur ordinaire a aussi un ingrédient marqué
+        // (inerte : posé ailleurs que chez le propriétaire)
         $owner = $this->savedCatalogOwner();
         $user = $this->savedUser();
         $department = new DepartmentBuilder()->isCereal();
         $ownersBase = $this->savedIngredient(new IngredientBuilder()->withName('aaa riz')->withDepartment($department)->withCreator($owner, true)->withBase());
         $ownersOther = $this->savedIngredient(new IngredientBuilder()->withName('bbb blé')->withDepartment($department)->withCreator($owner, true));
-        $markedCommon = $this->savedIngredient(new IngredientBuilder()->withName('ccc orge')->withDepartment($department)->withBase());
         $usersStray = $this->savedIngredient(new IngredientBuilder()->withName('ddd seigle')->withDepartment($department)->withCreator($user, true)->withBase());
 
         // When
-        $seenByOwner = $this->ingredientLoader->listByDepartment('cereale', $owner->getId(), true);
-        $seenByUser = $this->ingredientLoader->listByDepartment('cereale', $user->getId(), false);
+        $seenByOwner = $this->ingredientLoader->listByDepartment('cereale', $owner->getId());
+        $seenByUser = $this->ingredientLoader->listByDepartment('cereale', $user->getId());
 
-        // Then : le propriétaire voit son classement, l'ancien commun marqué compris ; l'utilisateur ne voit aucun marqueur, pas même le sien
+        // Then : le propriétaire voit son classement ; l'utilisateur ne voit que le sien et aucun marqueur, pas même celui qu'il aurait posé
         $this->assertSame(
-            [[$ownersBase->getSlug(), true], [$ownersOther->getSlug(), false], [$markedCommon->getSlug(), true]],
+            [[$ownersBase->getSlug(), true], [$ownersOther->getSlug(), false]],
             array_map(static fn(IngredientRowDTO $row): array => [$row->slug, $row->isBase], $seenByOwner->ingredients),
         );
         $this->assertSame(
-            [[$markedCommon->getSlug(), false], [$usersStray->getSlug(), false]],
+            [[$usersStray->getSlug(), false]],
             array_map(static fn(IngredientRowDTO $row): array => [$row->slug, $row->isBase], $seenByUser->ingredients),
         );
     }
 
     public function testListByDepartmentHidesTheMarkerFromAnAdministratorWhoIsNotTheCatalogOwner(): void
     {
-        // Given
-        $owner = $this->savedCatalogOwner();
-        $admin = new UserBuilder()->isAdmin()->build();
-        $this->persister->saveUser($admin);
-        $this->savedIngredient(new IngredientBuilder()->withName('aaa riz')->withDepartment(new DepartmentBuilder()->isCereal())->withCreator($owner, true)->withBase());
-        $common = $this->savedIngredient(new IngredientBuilder()->withName('bbb blé')->withDepartment(new DepartmentBuilder()->isCereal())->withBase());
+        // Given : le propriétaire du catalogue existe ; un autre administrateur a un ingrédient marqué (inerte)
+        $this->savedCatalogOwner();
+        $admin = $this->savedUser(admin: true);
+        $mine = $this->savedIngredient(new IngredientBuilder()->withName('bbb blé')->withDepartment(new DepartmentBuilder()->isCereal())->withCreator($admin, true)->withBase());
 
-        // When : un administrateur voit les anciens communs (et ne voit pas les ingrédients du propriétaire)
-        $result = $this->ingredientLoader->listByDepartment('cereale', $admin->getId(), true);
+        // When
+        $result = $this->ingredientLoader->listByDepartment('cereale', $admin->getId());
 
         // Then : être administrateur ne montre pas le classement
-        $this->assertSame([[$common->getSlug(), false]], array_map(static fn(IngredientRowDTO $row): array => [$row->slug, $row->isBase], $result->ingredients));
+        $this->assertSame([[$mine->getSlug(), false]], array_map(static fn(IngredientRowDTO $row): array => [$row->slug, $row->isBase], $result->ingredients));
     }
 
     public function testListByDepartmentNeverLooksForTheCatalogOwnerWhenNothingIsMarked(): void
@@ -558,18 +557,18 @@ class IngredientPostgreSQLLoaderTest extends DatabaseTestCase
         $counter->reset();
 
         // When
-        $this->ingredientLoader->listByDepartment('cereale', $user->getId(), false);
+        $this->ingredientLoader->listByDepartment('cereale', $user->getId());
 
         // Then : la liste du rayon, sans une requête de plus pour désigner le propriétaire
         $this->assertSame(2, $counter->count());
         $this->assertArrayNotHasKey('SELECT user', $counter->byTable());
 
-        // Given : un ancien commun marqué, donc une réponse qui dépend du propriétaire du catalogue
-        $this->savedIngredient(new IngredientBuilder()->withName('bbb blé')->withDepartment(new DepartmentBuilder()->isCereal())->withBase());
+        // Given : un ingrédient du lecteur marqué, donc une réponse qui dépend du propriétaire du catalogue
+        $this->savedIngredient(new IngredientBuilder()->withName('bbb blé')->withDepartment(new DepartmentBuilder()->isCereal())->withCreator($user, true)->withBase());
         $counter->reset();
 
         // When
-        $this->ingredientLoader->listByDepartment('cereale', $user->getId(), false);
+        $this->ingredientLoader->listByDepartment('cereale', $user->getId());
 
         // Then : une seule lecture du propriétaire, ce qui prouve que la mesure ci-dessus voit bien cette requête
         $this->assertSame(1, $counter->byTable()['SELECT user'] ?? 0);
@@ -583,8 +582,8 @@ class IngredientPostgreSQLLoaderTest extends DatabaseTestCase
         $notBase = $this->savedIngredient(new IngredientBuilder()->withName('bbb blé')->withCreator($owner, true));
 
         // When
-        $baseResult = $this->ingredientLoader->get($base->getSlug(), $owner->getId(), true);
-        $notBaseResult = $this->ingredientLoader->get($notBase->getSlug(), $owner->getId(), true);
+        $baseResult = $this->ingredientLoader->get($base->getSlug(), $owner->getId());
+        $notBaseResult = $this->ingredientLoader->get($notBase->getSlug(), $owner->getId());
 
         // Then
         $this->assertSame([true, true], [$baseResult->isBase, $baseResult->canSetBase]);
@@ -593,43 +592,19 @@ class IngredientPostgreSQLLoaderTest extends DatabaseTestCase
 
     public function testGetDoesNotLetAnyoneButTheCatalogOwnerMarkAnything(): void
     {
-        // Given : un utilisateur et son ingrédient marqué (inerte), un administrateur qui n'est pas le propriétaire et un ancien commun marqué
+        // Given : un utilisateur et ses ingrédients (l'un marqué, inerte), un administrateur qui n'est pas le propriétaire et son ingrédient marqué
         $this->savedCatalogOwner();
         $user = $this->savedUser();
-        $admin = new UserBuilder()->isAdmin()->build();
-        $this->persister->saveUser($admin);
+        $admin = $this->savedUser(admin: true);
         $usersStray = $this->savedIngredient(new IngredientBuilder()->withName('aaa riz')->withCreator($user, true)->withBase());
         $usersOther = $this->savedIngredient(new IngredientBuilder()->withName('bbb blé')->withCreator($user, true));
-        $markedCommon = $this->savedIngredient(new IngredientBuilder()->withName('ccc orge')->withBase());
+        $adminsStray = $this->savedIngredient(new IngredientBuilder()->withName('ccc orge')->withCreator($admin, true)->withBase());
 
         // When / Then : jamais vrai pour eux (le front s'appuie sur `canSetBase`, pas sur le rôle)
-        foreach ([
-            [$usersStray, $user, false],
-            [$usersOther, $user, false],
-            [$markedCommon, $user, false],
-            [$markedCommon, $admin, true],
-            [$usersStray, $admin, true],
-        ] as [$ingredient, $viewer, $viewerIsAdmin]) {
-            $result = $this->ingredientLoader->get($ingredient->getSlug(), $viewer->getId(), $viewerIsAdmin);
+        foreach ([[$usersStray, $user], [$usersOther, $user], [$adminsStray, $admin]] as [$ingredient, $viewer]) {
+            $result = $this->ingredientLoader->get($ingredient->getSlug(), $viewer->getId());
             $this->assertSame([false, false], [$result->isBase, $result->canSetBase], $ingredient->getSlug());
         }
-    }
-
-    public function testGetShowsTheOwnerTheMarkOfAnOldCommonButDoesNotLetHimSetItThere(): void
-    {
-        // Given : avant la passation, les anciens communs (sans créateur) sont les ingrédients du catalogue, ils ne sont pas encore à lui
-        $owner = $this->savedCatalogOwner();
-        $common = $this->savedIngredient(new IngredientBuilder()->withName('aaa riz')->withBase());
-        $another = $this->savedUser();
-        $anothers = $this->savedIngredient(new IngredientBuilder()->withName('bbb blé')->withCreator($another, true)->withBase());
-
-        // When : l'ingrédient d'un autre est lisible par un administrateur (passe-droit), propriétaire du catalogue compris
-        $commonResult = $this->ingredientLoader->get($common->getSlug(), $owner->getId(), true);
-        $anothersResult = $this->ingredientLoader->get($anothers->getSlug(), $owner->getId(), true);
-
-        // Then
-        $this->assertSame([true, false], [$commonResult->isBase, $commonResult->canSetBase]);
-        $this->assertSame([false, false], [$anothersResult->isBase, $anothersResult->canSetBase]);
     }
 
     public function testGetWithoutACatalogOwnerAccountMarksNothing(): void
@@ -639,22 +614,22 @@ class IngredientPostgreSQLLoaderTest extends DatabaseTestCase
         $ingredient = $this->savedIngredient(new IngredientBuilder()->withName('aaa riz')->withCreator($user, true)->withBase());
 
         // When
-        $result = $this->ingredientLoader->get($ingredient->getSlug(), $user->getId(), false);
+        $result = $this->ingredientLoader->get($ingredient->getSlug(), $user->getId());
 
         // Then
         $this->assertSame([false, false], [$result->isBase, $result->canSetBase]);
     }
 
-    public function testGetOfAnotherUsersIngredientIsStillUnknown(): void
+    public function testGetOfAnotherUsersIngredientIsStillUnknownToTheCatalogOwner(): void
     {
         // Given
         $owner = $this->savedCatalogOwner();
         $theirs = $this->savedIngredient(new IngredientBuilder()->withName('aaa riz')->withCreator($this->savedUser(), true));
 
-        // Then : le marqueur ne change rien à la visibilité
+        // Then : le marqueur et le rôle ne changent rien à la visibilité
         $this->expectExceptionObject(IngredientException::notFound($theirs->getSlug()));
 
         // When
-        $this->ingredientLoader->get($theirs->getSlug(), $owner->getId(), false);
+        $this->ingredientLoader->get($theirs->getSlug(), $owner->getId());
     }
 }

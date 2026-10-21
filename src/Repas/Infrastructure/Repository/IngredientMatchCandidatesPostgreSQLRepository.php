@@ -12,7 +12,7 @@ use Repas\Shared\Infrastructure\Repository\PostgreSQLRepository;
 
 /**
  * Une requête, sans hydrater d'entité ni de modèle : la règle de visibilité est `IngredientVisibility::visibleBy`, celle de toutes les
- * lectures d'ingrédients d'un utilisateur (un commun adopté lui est masqué, sa copie le remplace).
+ * lectures d'ingrédients d'un utilisateur : les siens, et seulement les siens.
  */
 readonly class IngredientMatchCandidatesPostgreSQLRepository extends PostgreSQLRepository implements IngredientMatchCandidates
 {
@@ -25,7 +25,7 @@ readonly class IngredientMatchCandidatesPostgreSQLRepository extends PostgreSQLR
     {
         $rows = $this->entityManager->createQueryBuilder()
             ->select('i.slug AS slug', 'i.name AS name', 'i.departmentSlug AS departmentSlug', 'i.defaultPurchaseUnitSlug AS purchaseUnitSlug')
-            ->addSelect('i.compatibleUnitSlugs AS compatibleUnitSlugs', 'i.creatorId AS creatorId', 'i.adoptedFrom AS adoptedFrom')
+            ->addSelect('i.compatibleUnitSlugs AS compatibleUnitSlugs', 'i.adoptedFrom AS adoptedFrom')
             ->from(IngredientEntity::class, 'i')
             ->where(IngredientVisibility::visibleBy('i', 'viewer'))
             ->setParameter('viewer', $userId)
@@ -40,7 +40,6 @@ readonly class IngredientMatchCandidatesPostgreSQLRepository extends PostgreSQLR
                 departmentSlug: $row['departmentSlug'],
                 purchaseUnitSlug: $row['purchaseUnitSlug'],
                 compatibleUnitSlugs: array_values($row['compatibleUnitSlugs']),
-                creatorId: $row['creatorId'],
                 adoptedFrom: $row['adoptedFrom'],
             ),
             $rows,

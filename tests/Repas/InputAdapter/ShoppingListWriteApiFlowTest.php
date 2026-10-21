@@ -137,7 +137,7 @@ class ShoppingListWriteApiFlowTest extends DatabaseTestCase
     {
         // Given
         $owner = $this->savedUser();
-        $egg = new IngredientBuilder()->isEgg()->build();
+        $egg = new IngredientBuilder()->isEgg()->withCreator($owner)->build();
         $this->persister->saveIngredient($egg);
         $shoppingList = new ShoppingListBuilder()->withOwner($owner)->addIngredient($egg)->build();
         $this->shoppingLists()->save($shoppingList);
@@ -156,7 +156,7 @@ class ShoppingListWriteApiFlowTest extends DatabaseTestCase
     {
         // Given
         $owner = $this->savedUser();
-        $egg = new IngredientBuilder()->isEgg()->build();
+        $egg = new IngredientBuilder()->isEgg()->withCreator($owner)->build();
         $this->persister->saveIngredient($egg);
         $shoppingList = new ShoppingListBuilder()->withOwner($owner)->addIngredient($egg)->build();
         $this->shoppingLists()->save($shoppingList);
@@ -244,7 +244,7 @@ class ShoppingListWriteApiFlowTest extends DatabaseTestCase
     {
         // Given : cocher la dernière ligne termine la liste
         $owner = $this->savedUser();
-        $egg = new IngredientBuilder()->isEgg()->build();
+        $egg = new IngredientBuilder()->isEgg()->withCreator($owner)->build();
         $this->persister->saveIngredient($egg);
         $shoppingList = new ShoppingListBuilder()->withOwner($owner)->addIngredient($egg)->build();
         $this->shoppingLists()->save($shoppingList);
@@ -295,11 +295,11 @@ class ShoppingListWriteApiFlowTest extends DatabaseTestCase
         $this->assertSame(404, $this->client->getResponse()->getStatusCode());
     }
 
-    public function testACommonIngredientCanBeAddedByAnyUser(): void
+    public function testAnIngredientOfTheUserCanBeAddedToTheActiveList(): void
     {
         // Given
         $owner = $this->savedUser();
-        $egg = new IngredientBuilder()->isEgg()->build();
+        $egg = new IngredientBuilder()->isEgg()->withCreator($owner)->build();
         $this->persister->saveIngredient($egg);
         $list = $this->savedList($owner);
 
@@ -315,7 +315,7 @@ class ShoppingListWriteApiFlowTest extends DatabaseTestCase
     {
         // Given
         $owner = $this->savedUser();
-        $egg = new IngredientBuilder()->isEgg()->build();
+        $egg = new IngredientBuilder()->isEgg()->withCreator($owner)->build();
         $this->persister->saveIngredient($egg);
         $shoppingList = $this->savedList($owner);
 
@@ -349,7 +349,7 @@ class ShoppingListWriteApiFlowTest extends DatabaseTestCase
     {
         // Given
         $owner = $this->savedUser();
-        $egg = new IngredientBuilder()->isEgg()->build();
+        $egg = new IngredientBuilder()->isEgg()->withCreator($owner)->build();
         $this->persister->saveIngredient($egg);
         $shoppingList = $this->savedList($owner);
         $increase = '/api/v1/shopping-lists/active/ingredients/' . $egg->getSlug() . '/increase';

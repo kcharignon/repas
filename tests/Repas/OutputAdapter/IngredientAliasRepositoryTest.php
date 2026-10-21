@@ -16,7 +16,7 @@ use Repas\Tests\Helper\SqlBudget\QueryCounter;
 /**
  * La table `ingredient_alias` sur la vraie base (ADR 0028). Aucune clé étrangère : les utilisateurs n'ont pas besoin d'exister, chaque test écrit
  * ses propres lignes. Les ingrédients désignés, eux, comptent depuis ING-002 : seul un alias VALIDE (l'ingrédient existe et est à l'utilisateur)
- * répond à `resolve()` et `lookup()`.
+ * répond à `resolve()`.
  */
 class IngredientAliasRepositoryTest extends DatabaseTestCase
 {
@@ -131,9 +131,9 @@ class IngredientAliasRepositoryTest extends DatabaseTestCase
         // When
         $resolved = $this->aliasRepository->resolve(self::USER, ['tomate', 'carotte']);
 
-        // Then : le commun reste lui-même, seul l'alias valide répond
+        // Then : le slug reçu reste tel quel, seul l'alias valide répond
         $this->assertEquals(['carotte' => 'carotteuser-id'], $resolved);
-        $this->assertSame([], $this->aliasRepository->lookup(self::USER, ['tomate'])->resolved);
+        $this->assertSame([], $this->aliasRepository->resolve(self::USER, ['tomate']));
     }
 
     public function testResolveIgnoresAnAliasWhoseIngredientBelongsToSomeoneElse(): void
@@ -146,61 +146,6 @@ class IngredientAliasRepositoryTest extends DatabaseTestCase
         $this->assertSame([], $this->aliasRepository->resolve(self::USER, ['tomate']));
     }
 
-    public function testLookupGivesTheValidAliasesAndTheAdopterFlagInOneQuery(): void
-    {
-        // Given : un adoptant (une adoption, une fusion), un utilisateur qui n'a qu'une fusion, un qui n'a rien
-        $this->ownIngredient(self::USER, 'tomateuser-id');
-        $this->ownIngredient(self::USER, 'oignonuser-id');
-        $this->aliasRepository->save($this->alias(self::USER, 'tomate', 'tomateuser-id'));
-        $this->aliasRepository->save($this->alias(self::USER, 'oignon-2user-id', 'oignonuser-id', AliasKind::MERGE, 'merge'));
-        $this->ownIngredient(self::OTHER, 'oignonother-id');
-        $this->aliasRepository->save($this->alias(self::OTHER, 'oignon-2other-id', 'oignonother-id', AliasKind::MERGE, 'merge'));
-        $counter = static::getContainer()->get(QueryCounter::class);
-        $counter->reset();
-
-        // When
-        $adopter = $this->aliasRepository->lookup(self::USER, ['tomate', 'oignon-2user-id', 'carotte']);
-
-        // Then
-        $this->assertSame(['SELECT ingredient_alias' => 1], $counter->byTable());
-        $this->assertEquals(['tomate' => 'tomateuser-id', 'oignon-2user-id' => 'oignonuser-id'], $adopter->resolved);
-        $this->assertTrue($adopter->adopter);
-
-        $mergeOnly = $this->aliasRepository->lookup(self::OTHER, ['oignon-2other-id', 'tomate']);
-        $this->assertEquals(['oignon-2other-id' => 'oignonother-id'], $mergeOnly->resolved);
-        $this->assertFalse($mergeOnly->adopter, 'un alias de fusion seul ne fait pas un adoptant');
-
-        $nobody = $this->aliasRepository->lookup('nobody-id', ['tomate']);
-        $this->assertSame([], $nobody->resolved);
-        $this->assertFalse($nobody->adopter);
-    }
-
-    public function testLookupKnowsAnAdopterEvenWhenNoRequestedSlugHasAnAlias(): void
-    {
-        // Given
-        $this->ownIngredient(self::USER, 'tomateuser-id');
-        $this->aliasRepository->save($this->alias(self::USER, 'tomate', 'tomateuser-id'));
-
-        // When
-        $lookup = $this->aliasRepository->lookup(self::USER, ['carotte']);
-
-        // Then
-        $this->assertSame([], $lookup->resolved);
-        $this->assertTrue($lookup->adopter);
-        $this->assertTrue($this->aliasRepository->lookup(self::USER, [])->adopter, 'sans slug, le drapeau se lit tout de même');
-        $this->assertFalse($this->aliasRepository->lookup(self::OTHER, [])->adopter);
-    }
-
-    public function testAnOrphanAdoptionAliasStillMakesAnAdopter(): void
-    {
-        // Given : toutes ses copies ont été supprimées par l'ancien code ; il reste adoptant, le prochain commun utilisé sera adopté de nouveau
-        $this->aliasRepository->save($this->alias(self::USER, 'tomate', 'tomateuser-id'));
-
-        // Then
-        $this->assertTrue($this->aliasRepository->lookup(self::USER, ['tomate'])->adopter);
-        $this->assertSame([], $this->aliasRepository->lookup(self::USER, ['tomate'])->resolved);
-    }
-
     public function testResolveOfNothingCostsNothing(): void
     {
         // Given
@@ -210,6 +155,16 @@ class IngredientAliasRepositoryTest extends DatabaseTestCase
         // Then
         $this->assertSame([], $this->aliasRepository->resolve(self::USER, []));
         $this->assertSame(0, $counter->count());
+    }
+
+    public function testAnOrphanAdoptionAliasStillCountsAsSeeded(): void
+    {
+        // Given : toutes ses copies ont été supprimées par l'utilisateur ; l'alias reste, le compte reste « amorcé » (ne recevra rien de plus)
+        $this->aliasRepository->save($this->alias(self::USER, 'tomate', 'tomateuser-id'));
+
+        // Then : la définition de « amorcé » ne regarde que les alias d'adoption, pas l'existence de la copie ; la résolution ne répond rien
+        $this->assertTrue($this->aliasRepository->isAdopter(self::USER));
+        $this->assertSame([], $this->aliasRepository->resolve(self::USER, ['tomate']));
     }
 
     public function testAUserIsAnAdopterWhenHeHasAtLeastOneAdoptionAlias(): void

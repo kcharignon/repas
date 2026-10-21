@@ -193,8 +193,9 @@ class IngredientAdoptionFlowTest extends DatabaseTestCase
      */
     private function savedCommonButter(): void
     {
-        $butter = new IngredientBuilder()->isButter()->build();
-        $this->persister->saveConversion(new ConversionBuilder()->isBlockToGrammeForButter()->build());
+        // Un ancien commun : la forme de la base d'avant la passation, la seule que ce cas d'usage unitaire adopte (il disparaît avec ING-014)
+        $butter = new IngredientBuilder()->isButter()->withoutCreator()->build();
+        $this->persister->saveConversion(new ConversionBuilder()->isBlockToGrammeForButter()->withIngredient($butter)->build());
         $this->persister->saveConversion(
             new ConversionBuilder()->withStartUnit(new UnitBuilder()->isSoupSpoon())->withEndUnit(new UnitBuilder()->isGramme())->withCoefficient(15)->withIngredient($butter)->build(),
         );

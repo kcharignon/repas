@@ -18,22 +18,22 @@ class GetConversionQueryHandlerTest extends TestCase
         $handler = new GetConversionQueryHandler(new ConversionInMemoryLoader(conversion: $conversion));
 
         // When
-        $result = $handler(new GetConversionQuery('conversion-1'));
+        $result = $handler(new GetConversionQuery('conversion-1', 'admin-1'));
 
         // Then
         $this->assertSame($conversion, $result);
     }
 
-    public function testForwardsTheIdentifierToTheLoader(): void
+    public function testForwardsTheIdentifierAndTheViewerToTheLoader(): void
     {
         // Given
         $loader = new ConversionInMemoryLoader(conversion: new ConversionDTOBuilder()->build());
         $handler = new GetConversionQueryHandler($loader);
 
         // When
-        $handler(new GetConversionQuery('conversion-1'));
+        $handler(new GetConversionQuery('conversion-1', 'admin-1'));
 
         // Then
-        $this->assertSame(['conversion-1'], $loader->getCalls);
+        $this->assertSame([['conversion-1', 'admin-1']], $loader->getCalls);
     }
 }

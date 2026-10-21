@@ -5,7 +5,6 @@ namespace Repas\Tests\Helper\InMemoryRepository;
 
 use Repas\Repas\Domain\Interface\IngredientAliasRepository;
 use Repas\Repas\Domain\Model\AliasKind;
-use Repas\Repas\Domain\Model\AliasLookup;
 use Repas\Repas\Domain\Model\IngredientAlias;
 
 /**
@@ -47,11 +46,6 @@ class IngredientAliasInMemoryRepository implements IngredientAliasRepository
         }
 
         return $resolved;
-    }
-
-    public function lookup(string $userId, array $slugs): AliasLookup
-    {
-        return new AliasLookup($this->resolve($userId, $slugs), $this->isAdopter($userId));
     }
 
     public function isAdopter(string $userId): bool

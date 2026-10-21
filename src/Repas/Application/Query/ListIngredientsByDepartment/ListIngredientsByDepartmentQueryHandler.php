@@ -19,6 +19,6 @@ final readonly class ListIngredientsByDepartmentQueryHandler
      */
     public function __invoke(ListIngredientsByDepartmentQuery $query): DepartmentIngredientsDTO
     {
-        return $this->ingredientLoader->listByDepartment($query->departmentSlug, $query->viewerId, $query->viewerIsAdmin);
+        return $this->ingredientLoader->listByDepartment($query->departmentSlug, $query->viewerId);
     }
 }

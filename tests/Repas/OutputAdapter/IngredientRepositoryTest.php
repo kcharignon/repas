@@ -44,20 +44,24 @@ class IngredientRepositoryTest extends DatabaseTestCase
         $this->assertSame($ingredient->getDefaultPurchaseUnit()->getSlug(), $this->ingredientRepository->findPurchaseUnitSlug($ingredient->getSlug()));
     }
 
-    public function testFindPurchaseUnitSlugUsableByGivesTheUnitOfACommonIngredientAndOfTheCreatorsOwn(): void
+    public function testFindPurchaseUnitSlugUsableByGivesTheUnitOfTheCreatorsOwnIngredientOnly(): void
     {
-        // Arrange
+        // Arrange : le propriétaire du catalogue (administrateur) et un autre compte ont chacun le leur
         $creator = new UserBuilder()->build();
+        $admin = new UserBuilder()->isAdmin()->build();
         $this->persister->saveUser($creator);
-        $common = new IngredientBuilder()->isPasta()->build();
+        $this->persister->saveUser($admin);
         $custom = new IngredientBuilder()->isButter()->withCreator($creator, true)->build();
-        $this->persister->saveIngredient($common);
+        $adminsOwn = new IngredientBuilder()->isPasta()->withCreator($admin)->build();
         $this->persister->saveIngredient($custom);
+        $this->persister->saveIngredient($adminsOwn);
 
         // Act & Assert
-        $this->assertSame($common->getDefaultPurchaseUnit()->getSlug(), $this->ingredientRepository->findPurchaseUnitSlugUsableBy($common->getSlug(), $creator->getId()));
-        $this->assertSame($common->getDefaultPurchaseUnit()->getSlug(), $this->ingredientRepository->findPurchaseUnitSlugUsableBy($common->getSlug(), 'another-user-id'));
         $this->assertSame($custom->getDefaultPurchaseUnit()->getSlug(), $this->ingredientRepository->findPurchaseUnitSlugUsableBy($custom->getSlug(), $creator->getId()));
+        $this->assertSame($adminsOwn->getDefaultPurchaseUnit()->getSlug(), $this->ingredientRepository->findPurchaseUnitSlugUsableBy($adminsOwn->getSlug(), $admin->getId()));
+        // et aucun passe-droit : l'administrateur n'utilise pas l'ingrédient d'un autre
+        $this->expectExceptionObject(IngredientException::notFound($custom->getSlug()));
+        $this->ingredientRepository->findPurchaseUnitSlugUsableBy($custom->getSlug(), $admin->getId());
     }
 
     public function testFindPurchaseUnitSlugUsableByFailsForTheCustomIngredientOfAnotherUserAndForAnUnknownOne(): void
@@ -297,18 +301,14 @@ class IngredientRepositoryTest extends DatabaseTestCase
             'with creator and called by admin' => [$creator, $admin, false],
             'with creator and called by other user' => [$creator, $otherUser, false],
             'with creator and called by himself' => [$creator, $creator, true],
-            'without creator and called by user' => [null, $otherUser, true],
-            'without creator and called admin' => [null, $admin, true],
         ];
     }
 
     #[DataProvider('getByDepartmentDataProvider')]
-    public function testGetByDepartment(?User $creator, User $user, bool $see): void
+    public function testGetByDepartment(User $creator, User $user, bool $see): void
     {
         // Arrange
-        if ($creator) {
-            $this->persister->saveUser($creator);
-        }
+        $this->persister->saveUser($creator);
         $this->persister->saveUser($user);
         $babyDepartment = new DepartmentBuilder()->isBaby()->build();
         $ingredient = new IngredientBuilder()
@@ -350,15 +350,14 @@ class IngredientRepositoryTest extends DatabaseTestCase
         $this->assertCount(0, $actual);
     }
 
-    public function testFindByOwnerReturnsSystemIngredientsAndTheOwnOnes(): void
+    public function testFindByOwnerReturnsOnlyTheOwnIngredients(): void
     {
         // Arrange
         $owner = new UserBuilder()->build();
         $other = new UserBuilder()->build();
-        $system = new IngredientBuilder()->isEgg()->build();
         $own = new IngredientBuilder()->isPasta()->withCreator($owner, true)->build();
         $notOwn = new IngredientBuilder()->isMilk()->withCreator($other, true)->build();
-        foreach ([$system, $own, $notOwn] as $ingredient) {
+        foreach ([$own, $notOwn] as $ingredient) {
             $this->persister->saveIngredient($ingredient);
         }
 
@@ -368,7 +367,7 @@ class IngredientRepositoryTest extends DatabaseTestCase
         // Assert
         RepasAssert::assertTabType(Tab::newEmptyTyped(Ingredient::class), $actual);
         $slugs = $this->slugsOf($actual);
-        $this->assertContains($system->getSlug(), $slugs);
+        $this->assertSame([$own->getSlug()], $slugs);
         $this->assertContains($own->getSlug(), $slugs);
         $this->assertNotContains($notOwn->getSlug(), $slugs);
     }

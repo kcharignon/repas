@@ -17,12 +17,14 @@ class ListConversionsApiControllerTest extends QueryBusWebTestCase
             new ConversionDTOBuilder()->withId('conversion-2')->withIngredient(null, null)->withUnits('kilo', 'kilo', 'gramme', 'gramme')->withCoefficient(1000)->build(),
         ]);
 
-        // When
-        $this->client->request('GET', '/api/v1/conversions', server: $this->bearerFor($this->savedUser(admin: true)));
+        $admin = $this->savedUser(admin: true);
 
-        // Then
+        // When
+        $this->client->request('GET', '/api/v1/conversions', server: $this->bearerFor($admin));
+
+        // Then : la question porte le lecteur, qui ne voit que ses conversions et les conversions générales
         $this->assertSame(200, $this->client->getResponse()->getStatusCode());
-        $this->assertInstanceOf(ListConversionsQuery::class, $this->queryBus->getLastAskedQuery());
+        $this->assertEquals(new ListConversionsQuery($admin->getId()), $this->queryBus->getLastAskedQuery());
         $this->assertSame([
             'member' => [
                 [

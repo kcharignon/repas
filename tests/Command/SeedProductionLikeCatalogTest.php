@@ -165,7 +165,7 @@ class SeedProductionLikeCatalogTest extends DatabaseTestCase
         $members = json_decode($client->getResponse()->getContent(), true)['member'];
         $expected = (int) $connection->fetchOne("SELECT count(*) FROM ingredient WHERE creator = ? AND department = 'fruit-et-legume'", [$userId]);
         $this->assertGreaterThan(5, $expected);
-        $this->assertCount($expected + (int) $connection->fetchOne("SELECT count(*) FROM ingredient WHERE creator IS NULL AND NOT is_base AND department = 'fruit-et-legume'"), $members, 'ses copies, plus les « spécifiques » encore partagés avant la passation');
+        $this->assertCount($expected, $members, 'ses copies, et rien d\'autre : plus aucun ingrédient partagé');
         $mine = array_values(array_filter($members, static fn(array $member): bool => str_ends_with($member['slug'], $userId)));
         $this->assertCount($expected, $mine);
         $this->assertSame([true], array_values(array_unique(array_column($mine, 'canEdit'))));

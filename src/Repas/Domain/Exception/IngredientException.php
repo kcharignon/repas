@@ -11,7 +11,6 @@ final class IngredientException extends DomainException
 {
     // Messages des cas de la fusion de deux ingrédients (ADR 0028 décision 9) : le front les distingue, ils ne se renomment pas
     public const string CANNOT_MERGE_INTO_ITSELF = 'CANNOT_MERGE_INTO_ITSELF';
-    public const string CANNOT_MERGE_COMMON_INGREDIENT = 'CANNOT_MERGE_COMMON_INGREDIENT';
     public const string MERGE_UNIT_MISSING = 'MERGE_UNIT_MISSING';
     public const string INGREDIENT_IN_SENT_LIST = 'INGREDIENT_IN_SENT_LIST';
     public const string INGREDIENT_USED_BY_ANOTHER_USER = 'INGREDIENT_USED_BY_ANOTHER_USER';
@@ -75,13 +74,6 @@ final class IngredientException extends DomainException
         return new self(self::CANNOT_MERGE_INTO_ITSELF, 422);
     }
 
-    /**
-     * Les ingrédients communs ne sont jamais fusionnés, ni absorbés ni gardés. Règle métier, `422`.
-     */
-    public static function cannotMergeCommon(): self
-    {
-        return new self(self::CANNOT_MERGE_COMMON_INGREDIENT, 422);
-    }
 
     /**
      * Une unité des recettes ou des listes de l'ingrédient absorbé ne se convertit pas par l'ingrédient gardé : la fusion s'arrête et

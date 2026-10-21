@@ -46,13 +46,14 @@ class MarkIngredientsDistinctHandlerTest extends TestCase
 
     private static function ingredient(string $name, ?string $creator): Ingredient
     {
-        return new IngredientBuilder()
+        $builder = new IngredientBuilder()
             ->withName($name)
             ->withDepartment(new DepartmentBuilder()->isCereal())
             ->withDefaultCookingUnit(new UnitBuilder()->isGramme())
-            ->withDefaultPurchaseUnit(new UnitBuilder()->isKilo())
-            ->withCreator($creator === null ? null : new UserBuilder()->withId($creator)->build(), true)
-            ->build();
+            ->withDefaultPurchaseUnit(new UnitBuilder()->isKilo());
+
+        // `null` : la forme de la base d'avant la passation, un ingrédient sans propriétaire, qui n'est plus traité à part (il n'est à personne)
+        return ($creator === null ? $builder->withoutCreator() : $builder->withCreator(new UserBuilder()->withId($creator)->build(), true))->build();
     }
 
     private function mark(string $slug, string $other, string $userId = self::USER): void
@@ -135,7 +136,7 @@ class MarkIngredientsDistinctHandlerTest extends TestCase
         $this->assertSame([], $this->distinct->all());
     }
 
-    public function testACommonIngredientIsNotTheUsers(): void
+    public function testAnIngredientWithoutAnOwnerIsNotTheUsers(): void
     {
         foreach ([['tomateuser-id', 'tomate'], ['tomate', 'tomateuser-id']] as [$slug, $other]) {
             try {

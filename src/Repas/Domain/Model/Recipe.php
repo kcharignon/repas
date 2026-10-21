@@ -245,15 +245,14 @@ final class Recipe implements ModelInterface
     }
 
     /**
-     * Un ingrédient commun est utilisable par tous, un ingrédient personnalisé seulement par son créateur : l'ingrédient
-     * d'un autre utilisateur est traité comme inconnu (on ne révèle pas son existence).
+     * Un ingrédient n'est utilisable que par son propriétaire (ADR 0028, amendement : plus d'ingrédient commun) : l'ingrédient d'un
+     * autre utilisateur est traité comme inconnu (on ne révèle pas son existence).
      *
      * @throws IngredientException
      */
     private function assertIngredientIsAvailable(Ingredient $ingredient): void
     {
-        $creatorId = $ingredient->getCreatorId();
-        if ($creatorId !== null && $creatorId !== $this->authorId) {
+        if (!$ingredient->isOwnedBy($this->authorId)) {
             throw IngredientException::notFound($ingredient->getSlug());
         }
     }

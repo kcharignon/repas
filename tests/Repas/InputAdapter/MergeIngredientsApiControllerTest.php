@@ -60,7 +60,6 @@ class MergeIngredientsApiControllerTest extends QueryBusWebTestCase
     {
         yield 'ingrédient inconnu ou à un autre utilisateur' => [IngredientException::notFound('tomates'), "Ingredient 'tomates' not found", 404];
         yield 'les deux ingrédients sont le même' => [IngredientException::cannotMergeIntoItself(), 'CANNOT_MERGE_INTO_ITSELF', 422];
-        yield 'un commun' => [IngredientException::cannotMergeCommon(), 'CANNOT_MERGE_COMMON_INGREDIENT', 422];
         yield 'une unité qui manque' => [IngredientException::mergeUnitMissing(), 'MERGE_UNIT_MISSING', 422];
         yield 'une liste envoyée au drive' => [IngredientException::inSentList(), 'INGREDIENT_IN_SENT_LIST', 409];
         yield 'la ligne d\'un autre utilisateur' => [IngredientException::usedByAnotherUser(), 'INGREDIENT_USED_BY_ANOTHER_USER', 409];

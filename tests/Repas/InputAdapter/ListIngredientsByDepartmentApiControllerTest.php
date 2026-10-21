@@ -28,7 +28,7 @@ class ListIngredientsByDepartmentApiControllerTest extends QueryBusWebTestCase
         $this->assertSame(200, $this->client->getResponse()->getStatusCode());
         $query = $this->queryBus->getLastAskedQuery();
         $this->assertInstanceOf(ListIngredientsByDepartmentQuery::class, $query);
-        $this->assertSame(['cereale', $user->getId(), false], [$query->departmentSlug, $query->viewerId, $query->viewerIsAdmin]);
+        $this->assertSame(['cereale', $user->getId()], [$query->departmentSlug, $query->viewerId]);
         $this->assertSame([
             'department' => ['slug' => 'cereale', 'name' => 'céréale', 'image' => 'images/cereale.svg'],
             'member' => [
@@ -39,16 +39,18 @@ class ListIngredientsByDepartmentApiControllerTest extends QueryBusWebTestCase
         ], $this->jsonBody());
     }
 
-    public function testAnAdministratorIsAskedAsSuch(): void
+    public function testAnAdministratorIsAskedLikeAnyoneElse(): void
     {
-        // Given
+        // Given : plus de cas particulier pour l'administrateur (ADR 0028, amendement) : la question ne porte que le rayon et le lecteur
         $this->queryBus->willReturn(ListIngredientsByDepartmentQuery::class, new DepartmentIngredientsDTO(new DepartmentDTOBuilder()->build(), []));
+        $admin = $this->savedUser(admin: true);
 
         // When
-        $this->client->request('GET', '/api/v1/departments/cereale/ingredients', server: $this->bearerFor($this->savedUser(admin: true)));
+        $this->client->request('GET', '/api/v1/departments/cereale/ingredients', server: $this->bearerFor($admin));
 
         // Then
-        $this->assertTrue($this->queryBus->getAskedQuery(ListIngredientsByDepartmentQuery::class)->viewerIsAdmin);
+        $query = $this->queryBus->getAskedQuery(ListIngredientsByDepartmentQuery::class);
+        $this->assertEquals(new ListIngredientsByDepartmentQuery('cereale', $admin->getId()), $query);
     }
 
     public function testReturns404ForAnUnknownDepartment(): void

@@ -15,15 +15,17 @@ class CreateConversionApiControllerTest extends QueryBusWebTestCase
         // Given
         $commandBus = $this->mockCommandBus();
 
+        $admin = $this->savedUser(admin: true);
+
         // When
-        $this->post($this->savedUser(admin: true), ['startUnitSlug' => 'plaquette', 'endUnitSlug' => 'gramme', 'coefficient' => 250, 'ingredientSlug' => 'beurre']);
+        $this->post($admin, ['startUnitSlug' => 'plaquette', 'endUnitSlug' => 'gramme', 'coefficient' => 250, 'ingredientSlug' => 'beurre']);
 
         // Then
         $this->assertSame(201, $this->client->getResponse()->getStatusCode());
         $this->assertCount(1, $commandBus->dispatched());
         $command = $commandBus->dispatched()[0];
         $this->assertInstanceOf(CreateConversionCommand::class, $command);
-        $this->assertSame(['plaquette', 'gramme', 250.0, 'beurre'], [$command->startUnitSlug, $command->endUnitSlug, $command->coefficient, $command->ingredientSlug]);
+        $this->assertSame(['plaquette', 'gramme', 250.0, 'beurre', $admin->getId()], [$command->startUnitSlug, $command->endUnitSlug, $command->coefficient, $command->ingredientSlug, $command->userId], "l'utilisateur vient du jeton");
         $this->assertSame('/api/v1/conversions/' . $command->id, $this->client->getResponse()->headers->get('Location'));
     }
 

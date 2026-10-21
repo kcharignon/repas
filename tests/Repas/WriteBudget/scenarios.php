@@ -58,6 +58,7 @@ use Repas\Repas\Application\Command\UpdateServingMeal\UpdateServingMealCommand;
 use Repas\Repas\Application\Command\UpdateShoppingList\UpdateShoppingListCommand;
 use Repas\Repas\Application\Command\UpdateUnit\UpdateUnitCommand;
 use Repas\Repas\Domain\Model\AliasKind;
+use Repas\Repas\Domain\Model\Ingredient;
 use Repas\Repas\Domain\Model\IngredientAlias;
 use Repas\Repas\Domain\Model\Recipe;
 use Repas\Repas\Domain\Model\ShoppingList;
@@ -170,35 +171,18 @@ return [
     'ajouter-ingredient-liste' => static function (WriteBudgetTestCase $t): object {
         $owner = $t->savedUser();
         $t->savedShoppingList($owner, $t->typicalRecipes($owner));
-        $milk = new IngredientBuilder()->isMilk()->build();
+        $milk = new IngredientBuilder()->isMilk()->withCreator($owner)->build();
         $t->persister->saveIngredient($milk);
 
         return new AddIngredientToShoppingListCommand($owner->getId(), $milk->getSlug());
     },
     'retirer-ingredient-liste' => static function (WriteBudgetTestCase $t): object {
         $owner = $t->savedUser();
-        $milk = new IngredientBuilder()->isMilk()->build();
+        $milk = new IngredientBuilder()->isMilk()->withCreator($owner)->build();
         $t->persister->saveIngredient($milk);
         $t->savedShoppingList($owner, $t->typicalRecipes($owner), static fn(ShoppingListBuilder $b) => $b->addIngredient($milk));
 
         return new RemoveIngredientToShoppingListCommand($owner->getId(), $milk->getSlug());
-    },
-    // Un ADOPTANT (il a déjà adopté la farine) pose dans sa liste un commun qu'il n'a jamais utilisé, le lait : le commun est adopté à la
-    // volée (ADR 0028, ING-002), ce qui ajoute au cas ordinaire la reconnaissance des communs parmi les slugs sans alias et le coût
-    // d'une adoption (`adopter-ingredient`, sans conversion propre ici). C'est le prix de la PREMIÈRE utilisation d'un commun ; les
-    // suivantes ne paient que la lecture de l'alias.
-    'ajouter-ingredient-liste-adoptant' => static function (WriteBudgetTestCase $t): object {
-        $owner = $t->savedUser();
-        $t->savedShoppingList($owner, $t->typicalRecipes($owner));
-        $flour = new IngredientBuilder()->isFlour()->build();
-        $flourCopy = new IngredientBuilder()->isFlour()->withCreator($owner, true)->withAdoptedFrom($flour->getSlug())->build();
-        $t->persister->saveIngredient($flour);
-        $t->persister->saveIngredient($flourCopy);
-        $t->persister->saveIngredientAlias(IngredientAlias::create($owner->getId(), $flour->getSlug(), $flourCopy->getSlug(), AliasKind::ADOPTION, 'migration-2026-10-21', new \DateTimeImmutable()));
-        $milk = new IngredientBuilder()->isMilk()->build();
-        $t->persister->saveIngredient($milk);
-
-        return new AddIngredientToShoppingListCommand($owner->getId(), $milk->getSlug());
     },
     'terminer-liste' => static function (WriteBudgetTestCase $t): object {
         $owner = $t->savedUser();
@@ -272,12 +256,33 @@ return [
 
         return new UpdateRecipeCommand($recipe->getId(), 'Carbonara revisitée', 4, $updateRows($recipe), $recipe->getType()->getSlug());
     },
+    // Le cas ordinaire (ADR 0028, amendement) : le copieur a reçu à son activation une copie de chacun des ingrédients de la recette (et son alias,
+    // qui a pour clé le slug de l'ingrédient copié) : toutes les lignes se retrouvent par la provenance, rien n'est créé.
     'copier-recette' => static function (WriteBudgetTestCase $t): object {
         $author = $t->savedUser();
-        $other = $t->savedUser();
+        $copier = $t->savedUser();
         $recipe = $t->savedRecipe($author, new RecipeBuilder()->isPastaCarbonara());
+        $t->savedConversionsFor([$recipe]);
+        foreach ($recipe->getRows() as $row) {
+            $origin = $row->getIngredient();
+            $copy = Ingredient::copyFromOriginal($origin, $copier->getId(), $origin->getSlug() . $copier->getId());
+            $t->persister->saveIngredient($copy);
+            $t->persister->saveIngredientAlias(IngredientAlias::create($copier->getId(), $origin->getSlug(), $copy->getSlug(), AliasKind::ADOPTION, 'activation', new \DateTimeImmutable()));
+            if (!$row->getUnit()->isEqual($copy->getDefaultPurchaseUnit())) {
+                $t->persister->saveConversion(new ConversionBuilder()->withIngredient($copy)->withStartUnit($copy->getDefaultPurchaseUnit())->withEndUnit($row->getUnit())->withCoefficient(100.0)->build());
+            }
+        }
 
-        return new CopyRecipeCommand($recipe->getId(), $other->getId(), UuidGenerator::new());
+        return new CopyRecipeCommand($recipe->getId(), $copier->getId(), UuidGenerator::new());
+    },
+    // Le copieur n'a reçu aucun de ces ingrédients : une copie pour chacun, avec ses conversions propres (une copie retient son origine, D7)
+    'copier-recette-sans-ingredients' => static function (WriteBudgetTestCase $t): object {
+        $author = $t->savedUser();
+        $copier = $t->savedUser();
+        $recipe = $t->savedRecipe($author, new RecipeBuilder()->isPastaCarbonara());
+        $t->savedConversionsFor([$recipe]);
+
+        return new CopyRecipeCommand($recipe->getId(), $copier->getId(), UuidGenerator::new());
     },
     // Les ingrédients de la recette sont lus UNE fois pour tout le copieur (candidats du rapprochement, alias), quel que soit le nombre de
     // lignes ; une copie d'ingrédient coûte ses écritures (ingrédient et conversions propres), un lien n'en coûte aucune. ING-004.
@@ -301,22 +306,6 @@ return [
             $t->persister->saveConversion(new ConversionBuilder()->withIngredient($butter)->withStartUnit(new UnitBuilder()->isBlock())->withEndUnit(new UnitBuilder()->isGramme())->withCoefficient(250)->build());
         }
         $recipe = $t->savedRecipe($author, new RecipeBuilder()->addRow(new RecipeRowBuilder()->withIngredient($authorsButter)->withUnit(new UnitBuilder()->isGramme())->withQuantity(100)));
-
-        return new CopyRecipeCommand($recipe->getId(), $copier->getId(), UuidGenerator::new());
-    },
-    'copier-recette-adoptant' => static function (WriteBudgetTestCase $t): object {
-        $author = $t->savedUser();
-        $copier = $t->savedUser();
-        $flour = new IngredientBuilder()->isFlour()->build();
-        $authorsFlour = new IngredientBuilder()->isFlour()->withCreator($author, true)->withAdoptedFrom($flour->getSlug())->build();
-        $milk = new IngredientBuilder()->isMilk()->build();
-        $copiersMilk = new IngredientBuilder()->isMilk()->withCreator($copier, true)->withAdoptedFrom($milk->getSlug())->build();
-        foreach ([$flour, $authorsFlour, $milk, $copiersMilk] as $ingredient) {
-            $t->persister->saveIngredient($ingredient);
-        }
-        $t->persister->saveConversion(new ConversionBuilder()->isKiloToGramme()->build());
-        $t->persister->saveIngredientAlias(IngredientAlias::create($copier->getId(), $milk->getSlug(), $copiersMilk->getSlug(), AliasKind::ADOPTION, 'migration-2026-10-21', new \DateTimeImmutable()));
-        $recipe = $t->savedRecipe($author, new RecipeBuilder()->addRow(new RecipeRowBuilder()->withIngredient($authorsFlour)->withUnit(new UnitBuilder()->isGramme())->withQuantity(250)));
 
         return new CopyRecipeCommand($recipe->getId(), $copier->getId(), UuidGenerator::new());
     },
@@ -415,8 +404,9 @@ return [
     // libre (une requête de plus par slug déjà pris). C'est le coût de la première utilisation d'un commun.
     'adopter-ingredient' => static function (WriteBudgetTestCase $t): object {
         $owner = $t->savedUser();
-        $butter = new IngredientBuilder()->isButter()->build();
-        $t->persister->saveConversion(new ConversionBuilder()->isBlockToGrammeForButter()->build());
+        // Un ancien commun : la forme de la base d'avant la passation, la seule que ce cas d'usage unitaire adopte (il disparaît avec ING-014)
+        $butter = new IngredientBuilder()->isButter()->withoutCreator()->build();
+        $t->persister->saveConversion(new ConversionBuilder()->isBlockToGrammeForButter()->withIngredient($butter)->build());
         $t->persister->saveConversion(
             new ConversionBuilder()->withStartUnit(new UnitBuilder()->isSoupSpoon())->withEndUnit(new UnitBuilder()->isGramme())->withCoefficient(15)->withIngredient($butter)->build(),
         );
@@ -490,13 +480,13 @@ return [
         $t->persister->saveUnit(new UnitBuilder()->isLiter()->build());
         $t->persister->saveUnit(new UnitBuilder()->isMillilitre()->build());
 
-        return new CreateConversionCommand(UuidGenerator::new(), 'litre', 'millilitre', 1000.0, null);
+        return new CreateConversionCommand(UuidGenerator::new(), 'litre', 'millilitre', 1000.0, null, $t->savedUser(new UserBuilder()->isAdmin())->getId());
     },
     'modifier-conversion' => static function (WriteBudgetTestCase $t): object {
         $conversion = new ConversionBuilder()->isKiloToGramme()->build();
         $t->persister->saveConversion($conversion);
 
-        return new UpdateConversionCommand($conversion->getId(), 'kilo', 'gramme', 1001.0, null);
+        return new UpdateConversionCommand($conversion->getId(), 'kilo', 'gramme', 1001.0, null, $t->savedUser(new UserBuilder()->isAdmin())->getId());
     },
 
     // --- Référentiels

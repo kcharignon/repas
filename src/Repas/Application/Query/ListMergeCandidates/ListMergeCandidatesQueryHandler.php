@@ -16,7 +16,7 @@ final readonly class ListMergeCandidatesQueryHandler
 
     /**
      * @return list<MergeCandidateDTO>
-     * @throws IngredientException l'ingrédient est inconnu ou à un autre utilisateur (404), ou commun (422)
+     * @throws IngredientException l'ingrédient est inconnu ou à un autre utilisateur (404)
      */
     public function __invoke(ListMergeCandidatesQuery $query): array
     {

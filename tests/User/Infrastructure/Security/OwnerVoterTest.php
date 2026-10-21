@@ -34,18 +34,38 @@ class OwnerVoterTest extends TestCase
 
     public function testOnlyTheCreatorOwnsAnIngredient(): void
     {
-        $loader = new OwnershipInMemoryLoader(ingredientCreators: ['mine' => 'owner-id', 'common' => null]);
+        $loader = new OwnershipInMemoryLoader(ingredientCreators: ['mine' => 'owner-id']);
 
         $this->assertSame(VoterInterface::ACCESS_GRANTED, $this->vote($this->owner, OwnerVoter::INGREDIENT_OWNER, 'mine', $loader));
         $this->assertSame(VoterInterface::ACCESS_DENIED, $this->vote($this->other, OwnerVoter::INGREDIENT_OWNER, 'mine', $loader));
     }
 
-    public function testACommonIngredientBelongsToNobodyButAnAdministratorMayEditIt(): void
+    public function testAnAdministratorHasNoPassThroughOnTheIngredientOfAnotherUser(): void
     {
-        $loader = new OwnershipInMemoryLoader(ingredientCreators: ['common' => null]);
+        // Given : l'ingrédient est à owner-id, l'administrateur est un autre compte (ADR 0028, amendement du 2026-10-20, D3)
+        $loader = new OwnershipInMemoryLoader(ingredientCreators: ['mine' => 'owner-id']);
 
-        $this->assertSame(VoterInterface::ACCESS_DENIED, $this->vote($this->owner, OwnerVoter::INGREDIENT_OWNER, 'common', $loader));
-        $this->assertSame(VoterInterface::ACCESS_GRANTED, $this->vote($this->owner, OwnerVoter::INGREDIENT_OWNER, 'common', $loader, admin: true));
+        // Then : son rôle ne lui donne rien sur les ingrédients des autres ; le propriétaire, administrateur ou non, garde les siens
+        $this->assertSame(VoterInterface::ACCESS_DENIED, $this->vote($this->other, OwnerVoter::INGREDIENT_OWNER, 'mine', $loader, admin: true));
+        $this->assertSame(VoterInterface::ACCESS_GRANTED, $this->vote($this->owner, OwnerVoter::INGREDIENT_OWNER, 'mine', $loader, admin: true));
+    }
+
+    public function testAnAdministratorStillHasThePassThroughOnTheOtherResources(): void
+    {
+        // Then : seul INGREDIENT_OWNER change, les recettes, les listes, les repas et les lignes gardent leur passe-droit
+        $loader = new OwnershipInMemoryLoader(recipeAuthors: ['recipe-1' => 'owner-id'], shoppingListOwners: ['list-1' => 'owner-id'], mealOwners: ['meal-1' => 'owner-id']);
+        $this->assertSame(VoterInterface::ACCESS_GRANTED, $this->vote($this->other, OwnerVoter::RECIPE_OWNER, 'recipe-1', $loader, admin: true));
+        $this->assertSame(VoterInterface::ACCESS_GRANTED, $this->vote($this->other, OwnerVoter::SHOPPING_LIST_OWNER, 'list-1', $loader, admin: true));
+        $this->assertSame(VoterInterface::ACCESS_GRANTED, $this->vote($this->other, OwnerVoter::MEAL_OWNER, 'meal-1', $loader, admin: true));
+        $this->assertSame(VoterInterface::ACCESS_GRANTED, $this->vote($this->other, OwnerVoter::HIMSELF, 'owner-id', admin: true));
+    }
+
+    public function testAnUnknownIngredientIsNotFoundEvenForAnAdministrator(): void
+    {
+        // Then : sans passe-droit, la ressource est cherchée : un slug inconnu donne 404, pas un accès accordé
+        $this->expectException(NotFoundHttpException::class);
+
+        $this->vote($this->owner, OwnerVoter::INGREDIENT_OWNER, 'unknown', admin: true);
     }
 
     public function testOnlyTheOwnerOwnsAShoppingList(): void

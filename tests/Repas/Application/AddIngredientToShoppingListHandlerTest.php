@@ -17,7 +17,7 @@ use Repas\Repas\Domain\Model\ShoppingListStatus;
 use Repas\Tests\Helper\Builder\IngredientBuilder;
 use Repas\Tests\Helper\Builder\ShoppingListBuilder;
 use Repas\Tests\Helper\Builder\UserBuilder;
-use Repas\Tests\Helper\IngredientSlugResolverFactory;
+use Repas\Repas\Application\Service\IngredientSlugResolver;
 use Repas\Tests\Helper\InMemoryRepository\IngredientAliasInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\IngredientInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\ShoppingListInMemoryRepository;
@@ -39,7 +39,7 @@ class AddIngredientToShoppingListHandlerTest extends TestCase
         $this->handler =  new AddIngredientToShoppingListHandler(
             shoppingListRepository: $this->shoppingListRepository,
             ingredientRepository: $this->ingredientRepository,
-            slugResolver: IngredientSlugResolverFactory::create($this->ingredientRepository, $this->aliasRepository),
+            slugResolver: new IngredientSlugResolver($this->aliasRepository),
         );
     }
 
@@ -47,7 +47,7 @@ class AddIngredientToShoppingListHandlerTest extends TestCase
     {
         // Arrange
         $user = new UserBuilder()->build();
-        $egg = new IngredientBuilder()->isEgg()->build();
+        $egg = new IngredientBuilder()->isEgg()->withCreator($user)->build();
         $this->ingredientRepository->save($egg);
         $shoppingList = new ShoppingListBuilder()->withOwner($user)->build();
         $this->shoppingListRepository->save($shoppingList);
@@ -68,7 +68,7 @@ class AddIngredientToShoppingListHandlerTest extends TestCase
     {
         // Arrange
         $user = new UserBuilder()->build();
-        $egg = new IngredientBuilder()->isEgg()->build();
+        $egg = new IngredientBuilder()->isEgg()->withCreator($user)->build();
         $this->ingredientRepository->save($egg);
 
         $command = new AddIngredientToShoppingListCommand($user->getId(), $egg->getSlug());
@@ -98,7 +98,7 @@ class AddIngredientToShoppingListHandlerTest extends TestCase
 
     public function testHandleRefusesTheCustomIngredientOfAnotherUserAsUnknown(): void
     {
-        // Arrange : l'ingrédient personnalisé d'un autre n'est ni à l'utilisateur ni commun
+        // Arrange : l'ingrédient d'un autre n'est pas à l'utilisateur, et il n'y a plus de commun
         $user = new UserBuilder()->build();
         $butter = new IngredientBuilder()->isButter()->withCreator(new UserBuilder()->build(), true)->build();
         $this->ingredientRepository->save($butter);
@@ -117,11 +117,11 @@ class AddIngredientToShoppingListHandlerTest extends TestCase
         }
     }
 
-    public function testAddsTheCopyOfACommonTheOwnerAdopted(): void
+    public function testAddsTheCopyOfAnOldCommonTheOwnerReceived(): void
     {
-        // Arrange : le propriétaire a adopté l'œuf ; son client envoie encore l'ancien slug (liste en cache)
+        // Arrange : le propriétaire a reçu une copie de l'œuf du catalogue ; son client envoie encore l'ancien slug (liste en cache)
         $user = new UserBuilder()->build();
-        $egg = new IngredientBuilder()->isEgg()->build();
+        $egg = new IngredientBuilder()->isEgg()->withCreator(new UserBuilder()->withId('owner-id')->build())->build();
         $copy = new IngredientBuilder()->isEgg()->withCreator($user, true)->withAdoptedFrom($egg->getSlug())->build();
         $this->ingredientRepository->save($egg);
         $this->ingredientRepository->save($copy);
@@ -138,64 +138,48 @@ class AddIngredientToShoppingListHandlerTest extends TestCase
         $this->assertSame([$copy->getSlug()], array_values(array_map(static fn($row) => $row->getIngredientSlug(), $shoppingList->getRows()->toArray())));
     }
 
-    public function testAnAdopterAdoptsOnTheFlyACommonHeNeverUsed(): void
+    public function testAnOldSlugWithoutAnAliasForThisUserIsUnknownAndNothingIsAdopted(): void
     {
-        // Arrange : il a adopté le beurre, pas l'œuf
+        // Arrange : le propriétaire a reçu une copie du beurre, pas de l'œuf du catalogue ; il n'y a plus d'adoption à la première utilisation
         $user = new UserBuilder()->build();
-        $egg = new IngredientBuilder()->isEgg()->build();
-        $butter = new IngredientBuilder()->isButter()->build();
+        $owner = new UserBuilder()->withId('owner-id')->build();
+        $egg = new IngredientBuilder()->isEgg()->withCreator($owner)->build();
+        $butter = new IngredientBuilder()->isButter()->withCreator($owner)->build();
         $butterCopy = new IngredientBuilder()->isButter()->withCreator($user, true)->withAdoptedFrom($butter->getSlug())->build();
         foreach ([$egg, $butter, $butterCopy] as $ingredient) {
             $this->ingredientRepository->save($ingredient);
         }
-        $this->aliasRepository->save(IngredientAlias::create($user->getId(), $butter->getSlug(), $butterCopy->getSlug(), AliasKind::ADOPTION, 'migration-2026-10-21', new DateTimeImmutable()));
+        $this->aliasRepository->save(IngredientAlias::create($user->getId(), $butter->getSlug(), $butterCopy->getSlug(), AliasKind::ADOPTION, 'activation', new DateTimeImmutable()));
         $shoppingList = new ShoppingListBuilder()->withOwner($user)->build();
         $this->shoppingListRepository->save($shoppingList);
 
         // Act
-        ($this->handler)(new AddIngredientToShoppingListCommand($user->getId(), $egg->getSlug()));
-
-        // Assert : l'œuf est adopté à la première utilisation, la liste reçoit la copie
-        $adopted = $egg->getSlug() . $user->getId();
-        $this->assertSame([$adopted], array_values(array_map(static fn($row) => $row->getIngredientSlug(), $shoppingList->getRows()->toArray())));
-        $this->assertSame([$adopted, 'first-use'], [$this->aliasRepository->find($user->getId(), $egg->getSlug())->getIngredientSlug(), $this->aliasRepository->find($user->getId(), $egg->getSlug())->getSource()]);
-        $this->assertSame($egg->getSlug(), $this->ingredientRepository->findOneBySlug($adopted)->getAdoptedFrom());
+        try {
+            ($this->handler)(new AddIngredientToShoppingListCommand($user->getId(), $egg->getSlug()));
+            $this->fail("L'ingrédient du catalogue n'est pas à l'utilisateur : rien ne l'adopte à sa place.");
+        } catch (IngredientException $exception) {
+            // Assert : ingrédient inconnu, aucune copie, aucun alias de plus, la liste est intacte
+            $this->assertEquals(IngredientException::notFound($egg->getSlug()), $exception);
+            $this->assertCount(3, $this->ingredientRepository->findAll());
+            $this->assertCount(1, $this->aliasRepository->all());
+            $this->assertCount(0, $shoppingList->getRows());
+        }
     }
 
-    public function testWithoutAnyAliasTheSharedCommonIsAddedAndNothingIsAdopted(): void
+    public function testAnAdministratorIsAnOrdinaryUserAndDoesNotAddTheIngredientOfAnother(): void
     {
-        // Arrange : le comportement de tous les comptes avant la migration
-        $user = new UserBuilder()->build();
-        $egg = new IngredientBuilder()->isEgg()->build();
+        // Arrange : l'administrateur (ni propriétaire ni détenteur de l'œuf) n'a aucun passe-droit
+        $admin = new UserBuilder()->isAdmin()->build();
+        $egg = new IngredientBuilder()->isEgg()->withCreator(new UserBuilder()->withId('owner-id')->build())->build();
         $this->ingredientRepository->save($egg);
-        $shoppingList = new ShoppingListBuilder()->withOwner($user)->build();
+        $shoppingList = new ShoppingListBuilder()->withOwner($admin)->build();
         $this->shoppingListRepository->save($shoppingList);
 
-        // Act
-        ($this->handler)(new AddIngredientToShoppingListCommand($user->getId(), $egg->getSlug()));
-
         // Assert
-        $this->assertSame([$egg->getSlug()], array_values(array_map(static fn($row) => $row->getIngredientSlug(), $shoppingList->getRows()->toArray())));
-        $this->assertSame([], $this->aliasRepository->all());
-        $this->assertCount(1, $this->ingredientRepository->findAll());
-    }
-
-    public function testTheCommonAdoptedByAnotherUserStaysAddableByTheOwner(): void
-    {
-        // Arrange : un autre utilisateur a adopté l'œuf
-        $user = new UserBuilder()->build();
-        $other = new UserBuilder()->build();
-        $egg = new IngredientBuilder()->isEgg()->build();
-        $this->ingredientRepository->save($egg);
-        $this->aliasRepository->save(IngredientAlias::create($other->getId(), $egg->getSlug(), $egg->getSlug() . $other->getId(), AliasKind::ADOPTION, 'migration-2026-10-21', new DateTimeImmutable()));
-        $shoppingList = new ShoppingListBuilder()->withOwner($user)->build();
-        $this->shoppingListRepository->save($shoppingList);
+        $this->expectExceptionObject(IngredientException::notFound($egg->getSlug()));
 
         // Act
-        ($this->handler)(new AddIngredientToShoppingListCommand($user->getId(), $egg->getSlug()));
-
-        // Assert
-        $this->assertSame([$egg->getSlug()], array_values(array_map(static fn($row) => $row->getIngredientSlug(), $shoppingList->getRows()->toArray())));
+        ($this->handler)(new AddIngredientToShoppingListCommand($admin->getId(), $egg->getSlug()));
     }
 
     public function testHandleAddsIngredientToShoppingListWithUnknownIngredient(): void
@@ -219,7 +203,7 @@ class AddIngredientToShoppingListHandlerTest extends TestCase
     {
         // Arrange : la liste est à la version 1, le client croit à la 2
         $user = new UserBuilder()->build();
-        $egg = new IngredientBuilder()->isEgg()->build();
+        $egg = new IngredientBuilder()->isEgg()->withCreator($user)->build();
         $this->ingredientRepository->save($egg);
         $shoppingList = new ShoppingListBuilder()->withOwner($user)->build();
         $this->shoppingListRepository->save($shoppingList);
@@ -240,7 +224,7 @@ class AddIngredientToShoppingListHandlerTest extends TestCase
     {
         // Arrange : le propriétaire n'a qu'une liste envoyée au drive (ADR 0023)
         $user = new UserBuilder()->build();
-        $egg = new IngredientBuilder()->isEgg()->build();
+        $egg = new IngredientBuilder()->isEgg()->withCreator($user)->build();
         $this->ingredientRepository->save($egg);
         $sent = new ShoppingListBuilder()->withOwner($user)->addIngredient(new IngredientBuilder()->isEgg())->withStatus(ShoppingListStatus::SENT)->build();
         $this->shoppingListRepository->save($sent);

@@ -94,8 +94,8 @@ readonly class SaveProductChoicesHandler
             return;
         }
 
-        // Un ancien slug (brouillon d'envoi resté sur le téléphone, onglet ouvert) d'un commun que l'utilisateur a adopté désigne sa copie : jamais
-        // de préférence sous le slug d'un commun masqué (ADR 0028 décision 4). Une lecture, quel que soit le lot
+        // Un ancien slug (brouillon d'envoi resté sur le téléphone, onglet ouvert) d'un ancien commun dont l'utilisateur a reçu une copie, ou d'un ingrédient fusionné, désigne son ingrédient actuel : jamais
+        // de préférence sous un ancien slug (ADR 0028 décision 4). Une lecture, quel que soit le lot
         $command = $this->withResolvedIngredients($command);
 
         $now = $this->clock->now();
@@ -160,7 +160,7 @@ readonly class SaveProductChoicesHandler
     }
 
     /**
-     * Les intentions dont le slug désigne, pour cet utilisateur, un ingrédient à lui (un commun qu'il a adopté) sont réécrites sur ce slug ; les
+     * Les intentions dont le slug désigne, pour cet utilisateur, un autre ingrédient à lui (un ancien slug) sont réécrites sur ce slug ; les
      * autres, et toutes celles d'un utilisateur qui n'a aucun alias, ne changent pas.
      */
     private function withResolvedIngredients(SaveProductChoicesCommand $command): SaveProductChoicesCommand

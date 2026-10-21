@@ -44,7 +44,8 @@ class RemoveIngredientHandlerTest extends TestCase
     protected function setUp(): void
     {
         $this->ingredientRepository = new IngredientInMemoryRepository([
-            new IngredientBuilder()->isSugar()->build(),
+            // Un ingrédient du propriétaire du catalogue (un ancien commun)
+            new IngredientBuilder()->isSugar()->withCreator(new UserBuilder()->withId('owner-id')->build())->build(),
             new IngredientBuilder()->isFlour()->build(),
             new IngredientBuilder()->isPasta()->build(),
             new IngredientBuilder()->isMilk()->withCreator(new UserBuilder()->withId('user-id'))->build(),
@@ -89,7 +90,7 @@ class RemoveIngredientHandlerTest extends TestCase
     }
 
 
-    public function testRemoveIngredientSuccessForAdminIngredient(): void
+    public function testRemoveIngredientSuccessForTheIngredientOfTheCatalogOwner(): void
     {
         // Arrange
         $command = new RemoveIngredientCommand('sucre');
@@ -101,7 +102,8 @@ class RemoveIngredientHandlerTest extends TestCase
         $conversions = $this->conversionRepository->findByIngredientOrCommon(new IngredientBuilder()->isSugar()->build())->filter(fn(Conversion $conversion) => $conversion->getIngredient() !== null);
         $this->assertCount(0, $conversions);
 
-        $this->assertFalse(end($this->eventDispatcher->eventDispatched));
+        // Tout ingrédient a un propriétaire : sa suppression est annoncée aux statistiques de celui-ci, comme pour tout autre
+        $this->assertEquals(new IngredientRemovedEvent('owner-id', 'sucre'), $this->eventDispatcher->getLastEventDispatched());
 
         $this->expectExceptionObject(IngredientException::notFound('sucre'));
         $this->ingredientRepository->findOneBySlug('sucre');

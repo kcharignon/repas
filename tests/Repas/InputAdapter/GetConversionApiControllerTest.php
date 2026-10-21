@@ -15,14 +15,16 @@ class GetConversionApiControllerTest extends QueryBusWebTestCase
         // Given
         $this->queryBus->willReturn(GetConversionQuery::class, new ConversionDTOBuilder()->withId('conversion-1')->build());
 
-        // When
-        $this->client->request('GET', '/api/v1/conversions/conversion-1', server: $this->bearerFor($this->savedUser(admin: true)));
+        $admin = $this->savedUser(admin: true);
 
-        // Then
+        // When
+        $this->client->request('GET', '/api/v1/conversions/conversion-1', server: $this->bearerFor($admin));
+
+        // Then : la question porte le lecteur, qui ne voit que ses conversions et les conversions générales
         $this->assertSame(200, $this->client->getResponse()->getStatusCode());
         $query = $this->queryBus->getLastAskedQuery();
         $this->assertInstanceOf(GetConversionQuery::class, $query);
-        $this->assertSame('conversion-1', $query->conversionId);
+        $this->assertSame(['conversion-1', $admin->getId()], [$query->conversionId, $query->viewerId]);
         $this->assertSame(
             ['id', 'ingredientSlug', 'ingredientName', 'creatorEmail', 'startUnitSlug', 'startUnitName', 'endUnitSlug', 'endUnitName', 'coefficient'],
             array_keys($this->jsonBody()),

@@ -59,9 +59,9 @@ class ListMergeCandidatesApiControllerTest extends QueryBusWebTestCase
         $this->assertSame(0, $this->queryBus->countAskedQueries());
     }
 
-    public function testACommonIngredientIsRefusedWith422AndAnUnknownOneWith404(): void
+    public function testAnUnknownOrForeignIngredientIsAnswered404(): void
     {
-        foreach ([[IngredientException::cannotMergeCommon(), 422, 'CANNOT_MERGE_COMMON_INGREDIENT'], [IngredientException::notFound('tomates'), 404, "Ingredient 'tomates' not found"]] as [$failure, $status, $message]) {
+        foreach ([[IngredientException::notFound('tomates'), 404, "Ingredient 'tomates' not found"]] as [$failure, $status, $message]) {
             // Given
             $this->queryBus->willThrow(ListMergeCandidatesQuery::class, $failure);
 

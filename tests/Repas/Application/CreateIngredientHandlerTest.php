@@ -182,7 +182,7 @@ class CreateIngredientHandlerTest extends TestCase
         // Assert : les deux événements, dans l'ordre
         $this->assertEquals([
             new IngredientCreatedEvent($user->getId(), 'nom-de-l-ingredientuser-id'),
-            new CreateIngredientWithConversionEvent($expected->getSlug(), 25),
+            new CreateIngredientWithConversionEvent($expected->getSlug(), 25, $expected->getCreatorId()),
         ], $this->eventDispatcher->eventDispatched);
         $actual = $this->ingredientRepository->findOneBySlug($expected->getSlug());
         RepasAssert::assertIngredient($expected, $actual);
