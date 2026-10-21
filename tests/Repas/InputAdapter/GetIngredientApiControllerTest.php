@@ -26,7 +26,7 @@ class GetIngredientApiControllerTest extends QueryBusWebTestCase
         $this->assertSame(200, $this->client->getResponse()->getStatusCode());
         $query = $this->queryBus->getLastAskedQuery();
         $this->assertInstanceOf(GetIngredientQuery::class, $query);
-        $this->assertSame(['beurre', $user->getId(), false], [$query->slug, $query->viewerId, $query->viewerIsAdmin]);
+        $this->assertSame(['beurre', $user->getId()], [$query->slug, $query->viewerId]);
         $this->assertSame([
             'slug' => 'beurre',
             'name' => 'beurre',

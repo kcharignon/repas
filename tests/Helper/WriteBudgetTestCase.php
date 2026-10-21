@@ -18,6 +18,7 @@ use Repas\Shared\Application\Interface\CommandBusInterface;
 use Repas\Tests\Helper\Builder\ChoiceBuilder;
 use Repas\Tests\Helper\Builder\ConversionBuilder;
 use Repas\Tests\Helper\Builder\DriveSettingsBuilder;
+use Repas\Tests\Helper\Builder\IngredientBuilder;
 use Repas\Tests\Helper\Builder\ProductBuilder;
 use Repas\Tests\Helper\Builder\RecipeBuilder;
 use Repas\Tests\Helper\Builder\ShoppingListBuilder;
@@ -249,9 +250,30 @@ abstract class WriteBudgetTestCase extends DatabaseTestCase
         return new MergeIngredientsCommand($owner->getId(), $absorbed->getSlug(), $kept->getSlug());
     }
 
-    public function savedRecipe(User $author, RecipeBuilder $builder): Recipe
+    /**
+     * Les ingrédients de test par défaut (propriétaire `IngredientBuilder::DEFAULT_CREATOR_ID`) deviennent des ANCIENS COMMUNS : la forme de
+     * la base d'avant la passation (sans créateur). Réservé aux tests des commandes d'exploitation de la migration (`adopt-commons`, `seed`,
+     * `hand-over-catalog`), qui partent de cette forme ; ils disparaissent avec ces commandes (ING-014).
+     */
+    public function turnDefaultIngredientsIntoOldCommons(): void
+    {
+        $this->entityManager->getConnection()->executeStatement('UPDATE ingredient SET creator = NULL WHERE creator = ?', [IngredientBuilder::DEFAULT_CREATOR_ID]);
+        $this->entityManager->clear();
+    }
+
+    /**
+     * @param bool $ownedByAuthor les ingrédients de la recette sont à son auteur (le monde sans ingrédient commun, ADR 0028 amendement) ; faux,
+     *        ils gardent le propriétaire de test par défaut (`IngredientBuilder::DEFAULT_CREATOR_ID`), de quoi en faire des anciens communs
+     *        (`turnDefaultIngredientsIntoOldCommons()`)
+     */
+    public function savedRecipe(User $author, RecipeBuilder $builder, bool $ownedByAuthor = true): Recipe
     {
         $recipe = $builder->withAuthor($author)->build();
+        if ($ownedByAuthor) {
+            foreach ($recipe->getRows() as $row) {
+                $row->getIngredient()->setCreatorId($author->getId());
+            }
+        }
         $this->persister->saveRecipe($recipe);
 
         return $recipe;
@@ -294,12 +316,12 @@ abstract class WriteBudgetTestCase extends DatabaseTestCase
      *
      * @return list<Recipe>
      */
-    public function typicalRecipes(User $author): array
+    public function typicalRecipes(User $author, bool $ownedByAuthor = true): array
     {
         $recipes = [
-            $this->savedRecipe($author, new RecipeBuilder()->isPastaCarbonara()),
-            $this->savedRecipe($author, new RecipeBuilder()->isSoftBoiledEggs()),
-            $this->savedRecipe($author, new RecipeBuilder()->isBasqueCake()),
+            $this->savedRecipe($author, new RecipeBuilder()->isPastaCarbonara(), $ownedByAuthor),
+            $this->savedRecipe($author, new RecipeBuilder()->isSoftBoiledEggs(), $ownedByAuthor),
+            $this->savedRecipe($author, new RecipeBuilder()->isBasqueCake(), $ownedByAuthor),
         ];
         $this->savedConversionsFor($recipes);
 

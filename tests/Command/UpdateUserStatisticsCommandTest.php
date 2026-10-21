@@ -15,9 +15,9 @@ use Symfony\Component\Console\Tester\CommandTester;
 
 class UpdateUserStatisticsCommandTest extends TestCase
 {
-    public function testTheIngredientsCountedAreTheOnesTheUserCreatedNotTheAdoptedCommons(): void
+    public function testTheIngredientsCountedAreTheOnesTheUserCreatedNotTheCopiedOnes(): void
     {
-        // Given : deux ingrédients créés par l'utilisateur, deux copies d'adoption de communs, et l'ingrédient d'un autre
+        // Given : deux ingrédients créés par l'utilisateur, deux copies (reçues du catalogue ou faites avec une recette), et l'ingrédient d'un autre
         $user = new UserBuilder()->withId('user-id')->withEmail('user@example.com')->build();
         $other = new UserBuilder()->withId('other-id')->withEmail('other@example.com')->build();
         $users = new UserInMemoryRepository([$user, $other]);
@@ -27,7 +27,7 @@ class UpdateUserStatisticsCommandTest extends TestCase
             new IngredientBuilder()->isButter()->withCreator($user, true)->withAdoptedFrom('beurre')->build(),
             new IngredientBuilder()->isSugar()->withCreator($user, true)->withAdoptedFrom('sucre')->build(),
             new IngredientBuilder()->isPasta()->withCreator($other, true)->build(),
-            new IngredientBuilder()->isEgg()->build(),
+            new IngredientBuilder()->isEgg()->withCreator(new UserBuilder()->withId('third-id')->build(), true)->build(),
         ]);
         $tester = new CommandTester(new UpdateUserStatisticsCommand($users, $ingredients, new RecipeInMemoryRepository([
             new RecipeBuilder()->isPastaCarbonara()->withAuthor($user)->build(),
@@ -36,7 +36,7 @@ class UpdateUserStatisticsCommandTest extends TestCase
         // When
         $status = $tester->execute([]);
 
-        // Then : une adoption n'est pas une création (ADR 0028 décision 7)
+        // Then : une copie n'est pas une création (ADR 0028 décision 7 et D7)
         $this->assertSame(0, $status);
         $this->assertSame(2, $users->findOneById('user-id')->getStatistics()['ingredients']);
         $this->assertSame(1, $users->findOneById('user-id')->getStatistics()['recipes']);

@@ -48,7 +48,7 @@ readonly class RemoveIngredientHandler
         $this->conversionRepository->deleteByIngredient($ingredient);
         $this->ingredientRepository->delete($ingredient);
         if ($ingredient->getCreatorId() !== null) {
-            // Les alias qui désignaient cet ingrédient disparaissent avec lui : le commun adopté redevient visible pour son propriétaire (ADR 0028)
+            // Les alias qui désignaient cet ingrédient disparaissent avec lui : un alias ne désigne jamais un ingrédient qui n'existe plus (ADR 0028)
             $this->aliasRepository->deleteByIngredientSlug($ingredient->getCreatorId(), $ingredient->getSlug());
             // Idem pour ses « Pas le même » : la paire parlait de cet ingrédient
             $this->distinctRepository->deleteByIngredientSlug($ingredient->getCreatorId(), $ingredient->getSlug());

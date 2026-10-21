@@ -9,7 +9,6 @@ final readonly class SearchIngredientsQuery implements QueryInterface
     public function __construct(
         public string $search,
         public string $viewerId,
-        public bool $viewerIsAdmin,
     ) {
     }
 }

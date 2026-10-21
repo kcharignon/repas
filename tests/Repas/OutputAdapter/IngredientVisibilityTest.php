@@ -24,14 +24,14 @@ use Repas\Tests\Helper\SqlBudget\QueryCounter;
 use Repas\User\Domain\Model\User;
 
 /**
- * La règle de visibilité des ingrédients (ADR 0028 décision 3, `IngredientVisibility`) sur la vraie base, pour TOUTES les lectures qui
- * la portent : un commun que l'utilisateur a adopté est masqué pour lui et pour lui seul ; il reste visible de tous les autres, des
- * administrateurs (qui n'ont aucun alias) et de qui n'a rien adopté. Les communs sont `tomate`, `oignon` et `carotte`, dans le même rayon.
+ * LA règle de visibilité des ingrédients (ADR 0028, amendement du 2026-10-20, `IngredientVisibility`) sur la vraie base, pour TOUTES les
+ * lectures qui la portent : un ingrédient est visible par son créateur, et par lui seul. Aucun ingrédient commun, aucun passe-droit
+ * d'administrateur, aucun masquage par alias.
  *
- *  - `adopter` a adopté `tomate` : il a sa copie, et l'alias ;
- *  - `orphan` a un alias pour `oignon` dont la copie n'existe plus (l'ancien code l'a supprimée) : `oignon` n'est pas masqué ;
- *  - `stranger` a un alias pour `carotte` vers la ligne de quelqu'un d'autre : donnée incohérente, `carotte` n'est pas masquée ;
- *  - `plain` et `admin` n'ont aucun alias.
+ *  - `owner` est le propriétaire du catalogue (administrateur) : `tomate`, `oignon` et `carotte` sont à lui, au slug du nom seul ;
+ *  - `copier` a reçu une copie de `tomate` (et son alias) et a créé `poireau` ;
+ *  - `plain` a créé `radis`, `admin` est un autre administrateur qui a créé `navet` ;
+ *  - `empty` n'a rien.
  */
 class IngredientVisibilityTest extends DatabaseTestCase
 {
@@ -41,18 +41,19 @@ class IngredientVisibilityTest extends DatabaseTestCase
     private IngredientMatchCandidates $matchCandidates;
     private DataPersister $persister;
 
-    private User $adopter;
-    private User $orphan;
-    private User $stranger;
+    private User $owner;
+    private User $copier;
     private User $plain;
     private User $admin;
+    private User $empty;
 
     private Ingredient $tomate;
     private Ingredient $oignon;
     private Ingredient $carotte;
-    private Ingredient $adopterCopy;
-    private Ingredient $adopterOwn;
-    private Ingredient $plainOwn;
+    private Ingredient $copierTomate;
+    private Ingredient $copierPoireau;
+    private Ingredient $plainRadis;
+    private Ingredient $adminNavet;
 
     protected function setUp(): void
     {
@@ -64,172 +65,135 @@ class IngredientVisibilityTest extends DatabaseTestCase
         $this->matchCandidates = static::getContainer()->get(IngredientMatchCandidates::class);
         $this->persister = new DataPersister(static::getContainer());
 
-        $this->adopter = $this->savedUser();
-        $this->orphan = $this->savedUser();
-        $this->stranger = $this->savedUser();
+        $this->owner = $this->savedUser(admin: true);
+        $this->copier = $this->savedUser();
         $this->plain = $this->savedUser();
         $this->admin = $this->savedUser(admin: true);
+        $this->empty = $this->savedUser();
 
-        $this->tomate = $this->savedCommon('tomate');
-        $this->oignon = $this->savedCommon('oignon');
-        $this->carotte = $this->savedCommon('carotte');
-        $this->adopterCopy = $this->savedOwn('tomate', $this->adopter, adoptedFrom: 'tomate');
-        $this->adopterOwn = $this->savedOwn('poireau', $this->adopter);
-        $this->plainOwn = $this->savedOwn('radis', $this->plain);
-        $this->alias($this->adopter, 'tomate', $this->adopterCopy->getSlug());
-        $this->alias($this->orphan, 'oignon', 'oignon-disparu-' . $this->orphan->getId());
-        $this->alias($this->stranger, 'carotte', $this->plainOwn->getSlug());
+        $this->tomate = $this->saved('tomate', $this->owner, ownSlug: false);
+        $this->oignon = $this->saved('oignon', $this->owner, ownSlug: false);
+        $this->carotte = $this->saved('carotte', $this->owner, ownSlug: false);
+        $this->copierTomate = $this->saved('tomate', $this->copier, adoptedFrom: 'tomate');
+        $this->copierPoireau = $this->saved('poireau', $this->copier);
+        $this->plainRadis = $this->saved('radis', $this->plain);
+        $this->adminNavet = $this->saved('navet', $this->admin);
+        $this->alias($this->copier, 'tomate', $this->copierTomate->getSlug());
     }
 
-    public function testTheAdopterNoLongerSeesTheCommonHeAdoptedButSeesItsCopyAndTheOthers(): void
+    public function testEachAccountSeesItsOwnIngredientsAndNothingElse(): void
     {
-        // Then : le rayon, le choix pour une recette, la recherche et le port de domaine disent la même chose
-        $expected = [$this->carotte->getSlug(), $this->oignon->getSlug(), $this->adopterOwn->getSlug(), $this->adopterCopy->getSlug()];
-        $this->assertVisibleSlugs($expected, $this->adopter);
-        $this->assertNotContains($this->tomate->getSlug(), $this->visibleInTheDepartment($this->adopter));
+        // Then : le rayon, le choix pour une recette, la recherche, le port de domaine et les candidats du rapprochement disent la même chose
+        $this->assertVisibleSlugs([$this->tomate->getSlug(), $this->oignon->getSlug(), $this->carotte->getSlug()], $this->owner);
+        $this->assertVisibleSlugs([$this->copierTomate->getSlug(), $this->copierPoireau->getSlug()], $this->copier);
+        $this->assertVisibleSlugs([$this->plainRadis->getSlug()], $this->plain);
+        $this->assertVisibleSlugs([$this->adminNavet->getSlug()], $this->admin);
+        $this->assertVisibleSlugs([], $this->empty);
     }
 
-    public function testSearchingTheAdoptedIngredientGivesOneResultForTheAdopterAndOneForEveryoneElse(): void
+    public function testAnAdministratorSeesOnlyHisOwnIngredientsLikeAnyone(): void
+    {
+        // Then : ni le propriétaire du catalogue ni l'autre administrateur ne voient ceux des autres comptes, ni l'inverse
+        $this->assertNotContains($this->tomate->getSlug(), $this->visibleInTheDepartment($this->admin));
+        $this->assertNotContains($this->adminNavet->getSlug(), $this->visibleInTheDepartment($this->owner));
+        $this->assertNotContains($this->copierPoireau->getSlug(), $this->visibleInTheDepartment($this->admin));
+        $this->assertNotContains($this->tomate->getSlug(), $this->visibleInTheDepartment($this->copier));
+    }
+
+    public function testSearchingGivesOneResultPerAccountAndNeverTheIngredientOfAnother(): void
     {
         // When
-        $forTheAdopter = $this->ingredientLoader->search('tomate', $this->adopter->getId(), false);
-        $forAnother = $this->ingredientLoader->search('tomate', $this->plain->getId(), false);
-        $forTheAdmin = $this->ingredientLoader->search('tomate', $this->admin->getId(), true);
-
-        // Then : sa copie pour celui qui a adopté, le commun pour les autres (jamais les deux)
         $slugOf = static fn(array $results): array => array_map(static fn(IngredientSearchResultDTO $r): string => $r->slug, $results);
-        $this->assertSame([$this->adopterCopy->getSlug()], $slugOf($forTheAdopter));
-        $this->assertSame([$this->tomate->getSlug()], $slugOf($forAnother));
-        $this->assertSame([$this->tomate->getSlug()], $slugOf($forTheAdmin));
-        $this->assertTrue($forTheAdopter[0]->canEdit, 'la copie est modifiable par son propriétaire');
-        $this->assertFalse($forAnother[0]->canEdit);
-        $this->assertTrue($forTheAdmin[0]->canEdit, 'un administrateur modifie les communs');
+
+        // Then : « tomate » existe chez le propriétaire et chez le compte qui en a reçu une copie, chacun voit le sien, une seule fois
+        $this->assertSame([$this->tomate->getSlug()], $slugOf($this->ingredientLoader->search('tomate', $this->owner->getId())));
+        $this->assertSame([$this->copierTomate->getSlug()], $slugOf($this->ingredientLoader->search('tomate', $this->copier->getId())));
+        $this->assertSame([], $slugOf($this->ingredientLoader->search('tomate', $this->plain->getId())));
+        $this->assertSame([], $slugOf($this->ingredientLoader->search('tomate', $this->admin->getId())));
+        $this->assertTrue($this->ingredientLoader->search('tomate', $this->copier->getId())[0]->canEdit, 'tout ce qui est visible est modifiable par son propriétaire');
     }
 
-    public function testEveryoneElseKeepsTheCommonsAndNeverSeesTheCopyOfAnother(): void
+    public function testTheSheetOfAnIngredientOfAnotherAccountIsUnknownEvenForAnAdministrator(): void
+    {
+        // Then : 404 pour tout autre compte (D3), le sien se lit
+        foreach ([[$this->tomate, $this->admin], [$this->tomate, $this->copier], [$this->copierPoireau, $this->owner], [$this->plainRadis, $this->admin]] as [$ingredient, $viewer]) {
+            try {
+                $this->ingredientLoader->get($ingredient->getSlug(), $viewer->getId());
+                $this->fail('La fiche de l\'ingrédient d\'un autre est inconnue : ' . $ingredient->getSlug());
+            } catch (IngredientException $exception) {
+                $this->assertEquals(IngredientException::notFound($ingredient->getSlug()), $exception);
+            }
+        }
+        $sheet = $this->ingredientLoader->get($this->tomate->getSlug(), $this->owner->getId());
+        $this->assertSame([$this->tomate->getSlug(), true, $this->owner->getId()], [$sheet->slug, $sheet->canEdit, $sheet->creatorId]);
+    }
+
+    public function testAnOldSlugIsNoLongerReadableByTheAccountThatReceivedACopy(): void
+    {
+        // When / Then : l'ancien commun « tomate » est maintenant celui du propriétaire ; le compte qui en a reçu une copie ne le lit plus
+        $this->expectExceptionObject(IngredientException::notFound($this->tomate->getSlug()));
+        $this->ingredientLoader->get($this->tomate->getSlug(), $this->copier->getId());
+    }
+
+    public function testAnIngredientIsUsableByItsOwnerOnly(): void
     {
         // Then
-        $commons = [$this->carotte->getSlug(), $this->oignon->getSlug(), $this->tomate->getSlug()];
-        $this->assertVisibleSlugs([...$commons, $this->plainOwn->getSlug()], $this->plain);
-        $this->assertVisibleSlugs($commons, $this->admin);
-    }
-
-    public function testAnAliasWhoseCopyNoLongerExistsHidesNothing(): void
-    {
-        // Then : le commun reste visible et utilisable, comme avant l'adoption
-        $this->assertVisibleSlugs([$this->carotte->getSlug(), $this->oignon->getSlug(), $this->tomate->getSlug()], $this->orphan);
-        $this->assertSame($this->oignon->getDefaultPurchaseUnit()->getSlug(), $this->ingredientRepository->findPurchaseUnitSlugUsableBy($this->oignon->getSlug(), $this->orphan->getId()));
-    }
-
-    public function testAnAliasToTheIngredientOfSomeoneElseHidesNothing(): void
-    {
-        // Then
-        $this->assertContains($this->carotte->getSlug(), $this->visibleInTheDepartment($this->stranger));
-        $this->assertNotContains($this->plainOwn->getSlug(), $this->visibleInTheDepartment($this->stranger));
-    }
-
-    public function testTheSheetOfAnAdoptedCommonIsStillReadableInReadOnly(): void
-    {
-        // When : une page ouverte avant l'adoption doit pouvoir s'afficher
-        $sheet = $this->ingredientLoader->get($this->tomate->getSlug(), $this->adopter->getId(), false);
-
-        // Then
-        $this->assertSame([$this->tomate->getSlug(), false], [$sheet->slug, $sheet->canEdit]);
-        $this->assertNull($sheet->creatorId);
-    }
-
-    public function testACommonAdoptedByAnotherUserIsStillUsableByTheOthers(): void
-    {
-        // Then : poser `tomate` dans la liste de quelqu'un qui ne l'a pas adopté reste possible, pas dans celle de l'adoptant
         $unit = $this->tomate->getDefaultPurchaseUnit()->getSlug();
-        $this->assertSame($unit, $this->ingredientRepository->findPurchaseUnitSlugUsableBy($this->tomate->getSlug(), $this->plain->getId()));
-        $this->assertSame($unit, $this->ingredientRepository->findPurchaseUnitSlugUsableBy($this->tomate->getSlug(), $this->admin->getId()));
-        $this->assertSame($unit, $this->ingredientRepository->findPurchaseUnitSlugUsableBy($this->adopterCopy->getSlug(), $this->adopter->getId()));
+        $this->assertSame($unit, $this->ingredientRepository->findPurchaseUnitSlugUsableBy($this->tomate->getSlug(), $this->owner->getId()));
+        $this->assertSame($unit, $this->ingredientRepository->findPurchaseUnitSlugUsableBy($this->copierTomate->getSlug(), $this->copier->getId()));
 
-        try {
-            $this->ingredientRepository->findPurchaseUnitSlugUsableBy($this->tomate->getSlug(), $this->adopter->getId());
-            $this->fail("Un commun adopté n'est plus utilisable tel quel : le cas d'usage résout le slug avant.");
-        } catch (IngredientException $exception) {
-            $this->assertEquals(IngredientException::notFound($this->tomate->getSlug()), $exception);
+        foreach ([[$this->tomate, $this->admin], [$this->tomate, $this->copier], [$this->copierTomate, $this->owner], [$this->copierTomate, $this->plain]] as [$ingredient, $user]) {
+            try {
+                $this->ingredientRepository->findPurchaseUnitSlugUsableBy($ingredient->getSlug(), $user->getId());
+                $this->fail('L\'ingrédient d\'un autre est inconnu : ' . $ingredient->getSlug());
+            } catch (IngredientException $exception) {
+                $this->assertEquals(IngredientException::notFound($ingredient->getSlug()), $exception);
+            }
         }
     }
 
-    public function testTheCopyOfAnotherUserIsNeverUsable(): void
-    {
-        // Then
-        $this->expectExceptionObject(IngredientException::notFound($this->adopterCopy->getSlug()));
-
-        // When
-        $this->ingredientRepository->findPurchaseUnitSlugUsableBy($this->adopterCopy->getSlug(), $this->plain->getId());
-    }
-
-    public function testUsableByCostsOneQueryEvenThoughTheRuleLooksAtTheAliases(): void
+    public function testUsableByCostsOneQuery(): void
     {
         // Given
         $counter = static::getContainer()->get(QueryCounter::class);
         $counter->reset();
 
         // When
-        $this->ingredientRepository->findPurchaseUnitSlugUsableBy($this->tomate->getSlug(), $this->plain->getId());
+        $this->ingredientRepository->findPurchaseUnitSlugUsableBy($this->tomate->getSlug(), $this->owner->getId());
 
         // Then
         $this->assertSame(1, $counter->count());
     }
 
-    public function testFindCommonSlugsKeepsOnlyTheCommonsInOneQuery(): void
+    public function testAnAliasHidesNothingAndGivesNothing(): void
     {
-        // Given
-        $counter = static::getContainer()->get(QueryCounter::class);
-        $counter->reset();
+        // Given : un alias d'adoption vers la copie (déjà là), un alias dont la copie n'existe plus, et un alias vers l'ingrédient d'un autre
+        $this->alias($this->plain, 'oignon', 'oignon-disparu-' . $this->plain->getId());
+        $this->alias($this->empty, 'radis', $this->plainRadis->getSlug());
 
-        // When
-        $commons = $this->ingredientRepository->findCommonSlugs([$this->tomate->getSlug(), $this->adopterCopy->getSlug(), 'inconnu', $this->carotte->getSlug(), $this->tomate->getSlug()]);
-
-        // Then : ni un ingrédient personnel (même une adoption), ni un slug inconnu
-        sort($commons);
-        $this->assertSame([$this->carotte->getSlug(), $this->tomate->getSlug()], $commons);
-        $this->assertSame(1, $counter->count());
-        $this->assertSame([], $this->ingredientRepository->findCommonSlugs([]));
+        // Then : la visibilité ne regarde que le créateur, les alias ne servent qu'à résoudre les anciens slugs
+        $this->assertVisibleSlugs([$this->plainRadis->getSlug()], $this->plain);
+        $this->assertVisibleSlugs([], $this->empty);
+        $this->assertVisibleSlugs([$this->copierTomate->getSlug(), $this->copierPoireau->getSlug()], $this->copier);
     }
 
-    public function testTheRuleAgreesWithTheAliasResolutionForEveryUserAndEveryCommon(): void
+    public function testEveryReadAgreesWithTheSingleDefinitionForEveryAccount(): void
     {
-        // Given : la règle de visibilité (DQL) et la résolution des alias (SQL) définissent un alias valide chacune de leur côté
-        $commons = [$this->tomate->getSlug(), $this->oignon->getSlug(), $this->carotte->getSlug()];
+        foreach ([$this->owner, $this->copier, $this->plain, $this->admin, $this->empty] as $user) {
+            // When : la définition en SQL brut, « créateur = moi »
+            $expected = $this->fetchSlugs('SELECT slug FROM ingredient WHERE creator = ?', [$user->getId()]);
+            $expectedInTheDepartment = $this->fetchSlugs("SELECT slug FROM ingredient WHERE department = 'cereale' AND creator = ?", [$user->getId()]);
 
-        foreach ([$this->adopter, $this->orphan, $this->stranger, $this->plain, $this->admin] as $user) {
-            // When
-            $masked = array_keys($this->aliasRepository->resolve($user->getId(), $commons));
-            $visibleCommons = array_values(array_intersect($this->visibleInTheDepartment($user), $commons));
-
-            // Then
-            sort($visibleCommons);
-            $expected = array_values(array_diff($commons, $masked));
-            sort($expected);
-            $this->assertSame($expected, $visibleCommons, 'les communs visibles sont ceux sans alias valide, pour ' . $user->getId());
-        }
-    }
-
-    public function testWithoutAnyAliasEveryReadGivesExactlyWhatTheOldRuleGave(): void
-    {
-        // Given : le jeu de données sans aucun alias (la situation de la production avant la migration), des ingrédients de plusieurs utilisateurs
-        $this->entityManager->getConnection()->executeStatement('DELETE FROM ingredient_alias');
-
-        foreach ([$this->adopter, $this->orphan, $this->plain, $this->admin] as $user) {
-            // When
-            $old = $this->fetchSlugs('SELECT slug FROM ingredient WHERE creator = ? OR creator IS NULL', [$user->getId()]);
-            $oldInTheDepartment = $this->fetchSlugs("SELECT slug FROM ingredient WHERE department = 'cereale' AND (creator = ? OR creator IS NULL)", [$user->getId()]);
-
-            // Then : « creator = moi ou vide », ni plus ni moins, partout
-            $this->assertSame($old, $this->slugsOfOptions($this->ingredientLoader->listAvailable($user->getId())), 'GET /ingredients');
-            $this->assertSame($oldInTheDepartment, $this->visibleInTheDepartment($user), 'rayon');
-            $this->assertSame($old, $this->slugsOfRepository($this->ingredientRepository->findByOwner($user->getId())), 'findByOwner');
-            $this->assertSame($old, $this->slugsOfCandidates($user), 'candidats du rapprochement');
+            // Then : chaque lecture la donne, ni plus ni moins
+            $this->assertSame($expected, $this->slugsOfOptions($this->ingredientLoader->listAvailable($user->getId())), 'GET /ingredients');
+            $this->assertSame($expectedInTheDepartment, $this->visibleInTheDepartment($user), 'rayon');
+            $this->assertSame($expected, $this->slugsOfRepository($this->ingredientRepository->findByOwner($user->getId())), 'findByOwner');
+            $this->assertSame($expected, $this->slugsOfCandidates($user), 'candidats du rapprochement');
             $department = new DepartmentBuilder()->isCereal()->build();
-            $this->assertSame($oldInTheDepartment, $this->slugsOfRepository($this->ingredientRepository->findByDepartmentAndOwner($department, $user->getId())), 'findByDepartmentAndOwner');
-            foreach (['tomate', 'oignon', 'carotte', 'poireau', 'radis'] as $needle) {
-                $searched = array_map(static fn(IngredientSearchResultDTO $r): string => $r->slug, $this->ingredientLoader->search($needle, $user->getId(), $user === $this->admin));
-                $oldSearch = array_values(array_filter($old, static fn(string $slug): bool => str_starts_with($slug, $needle)));
+            $this->assertSame($expectedInTheDepartment, $this->slugsOfRepository($this->ingredientRepository->findByDepartmentAndOwner($department, $user->getId())), 'findByDepartmentAndOwner');
+            foreach (['tomate', 'oignon', 'carotte', 'poireau', 'radis', 'navet'] as $needle) {
+                $searched = array_map(static fn(IngredientSearchResultDTO $r): string => $r->slug, $this->ingredientLoader->search($needle, $user->getId()));
+                $oldSearch = array_values(array_filter($expected, static fn(string $slug): bool => str_starts_with($slug, $needle)));
                 sort($searched);
                 $this->assertSame($oldSearch, $searched, 'recherche « ' . $needle . ' »');
             }
@@ -252,8 +216,8 @@ class IngredientVisibilityTest extends DatabaseTestCase
         $this->assertSame($expected, $this->slugsOfRepository($this->ingredientRepository->findByDepartmentAndOwner($department, $user->getId())), 'findByDepartmentAndOwner');
         $this->assertSame($expected, $this->slugsOfCandidates($user), 'candidats du rapprochement à la copie d\'une recette');
         $found = [];
-        foreach (['tomate', 'oignon', 'carotte', 'poireau', 'radis'] as $needle) {
-            foreach ($this->ingredientLoader->search($needle, $user->getId(), $user === $this->admin) as $result) {
+        foreach (['tomate', 'oignon', 'carotte', 'poireau', 'radis', 'navet'] as $needle) {
+            foreach ($this->ingredientLoader->search($needle, $user->getId()) as $result) {
                 $found[$result->slug] = true;
             }
         }
@@ -269,7 +233,7 @@ class IngredientVisibilityTest extends DatabaseTestCase
     {
         $slugs = array_map(
             static fn(IngredientRowDTO $row): string => $row->slug,
-            $this->ingredientLoader->listByDepartment('cereale', $user->getId(), $user === $this->admin)->ingredients,
+            $this->ingredientLoader->listByDepartment('cereale', $user->getId())->ingredients,
         );
         sort($slugs);
 
@@ -334,18 +298,15 @@ class IngredientVisibilityTest extends DatabaseTestCase
         return $user;
     }
 
-    private function savedCommon(string $name): Ingredient
+    /**
+     * Un ingrédient du rayon des céréales. `$ownSlug` faux : le slug du nom seul, comme un ancien commun passé au propriétaire du catalogue.
+     */
+    private function saved(string $name, User $creator, ?string $adoptedFrom = null, bool $ownSlug = true): Ingredient
     {
-        return $this->saved(new IngredientBuilder()->withName($name)->withDepartment(new DepartmentBuilder()->isCereal()));
-    }
-
-    private function savedOwn(string $name, User $creator, ?string $adoptedFrom = null): Ingredient
-    {
-        return $this->saved(new IngredientBuilder()->withName($name)->withDepartment(new DepartmentBuilder()->isCereal())->withCreator($creator, true)->withAdoptedFrom($adoptedFrom));
-    }
-
-    private function saved(IngredientBuilder $builder): Ingredient
-    {
+        $builder = new IngredientBuilder()->withName($name)->withDepartment(new DepartmentBuilder()->isCereal())->withCreator($creator, $ownSlug)->withAdoptedFrom($adoptedFrom);
+        if (!$ownSlug) {
+            $builder->withSlug($name);
+        }
         $ingredient = $builder->build();
         $this->persister->saveIngredient($ingredient);
 
@@ -354,6 +315,6 @@ class IngredientVisibilityTest extends DatabaseTestCase
 
     private function alias(User $user, string $aliasSlug, string $ingredientSlug): void
     {
-        $this->aliasRepository->save(IngredientAlias::create($user->getId(), $aliasSlug, $ingredientSlug, AliasKind::ADOPTION, 'first-use', new DateTimeImmutable('2026-10-21 03:00:00')));
+        $this->aliasRepository->save(IngredientAlias::create($user->getId(), $aliasSlug, $ingredientSlug, AliasKind::ADOPTION, 'activation', new DateTimeImmutable('2026-10-21 03:00:00')));
     }
 }

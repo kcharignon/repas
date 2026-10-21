@@ -6,4 +6,8 @@ use Repas\Shared\Application\Interface\QueryInterface;
 
 final readonly class ListConversionsQuery implements QueryInterface
 {
+    public function __construct(
+        public string $viewerId,
+    ) {
+    }
 }

@@ -32,7 +32,7 @@ use Symfony\Component\Messenger\Attribute\AsMessageHandler;
  *  1. les deux ingrédients sont verrouillés ; si `B` n'existe plus, c'est peut-être un rejeu (l'alias `B -> A` existe : `204` sans rien
  *     faire) ou un ingrédient inconnu (`404`) ;
  *  2. l'utilisateur est le propriétaire des DEUX, sans exception pour un administrateur : l'ingrédient d'un autre est inconnu (`404`),
- *     un commun est refusé (`422`), le même ingrédient aussi ; une liste envoyée au drive qui utilise l'un des deux, une ligne d'un
+ *     le même ingrédient est refusé (`422`) ; une liste envoyée au drive qui utilise l'un des deux, une ligne d'un
  *     autre utilisateur sur `B` ou une unité de `B` qui, MÊME APRÈS la récupération des conversions de `B` (étape 3), ne se convertit
  *     pas par `A` arrêtent la fusion avant la première écriture (`IngredientMergePlanner`, le même verdict que l'aperçu) ;
  *  3. `A` récupère les conversions propres de `B` qui lui manquent (une seule copie en masse, `A` garde les siennes en cas de conflit) et
@@ -88,13 +88,9 @@ readonly class MergeIngredientsHandler
         $absorbed = $ingredients->find(fn(Ingredient $ingredient) => $ingredient->getSlug() === $command->absorbedSlug);
         $kept = $ingredients->find(fn(Ingredient $ingredient) => $ingredient->getSlug() === $command->keptSlug);
 
-        // L'ingrédient d'un autre est inconnu (404) AVANT tout autre refus : on ne révèle rien de lui. Un commun n'est à personne : il est
-        // refusé plus bas (422). Pas de passe-droit d'administrateur.
-        foreach ([$absorbed, $kept] as $ingredient) {
-            if (!$ingredient->isCommon()) {
-                $ingredient->assertOwnedBy($command->userId);
-            }
-        }
+        // L'ingrédient d'un autre est inconnu (404) AVANT tout autre refus : on ne révèle rien de lui. Pas de passe-droit d'administrateur.
+        $absorbed->assertOwnedBy($command->userId);
+        $kept->assertOwnedBy($command->userId);
 
         $usage = $this->mergeRepository->usageOf($command->userId, $absorbed->getSlug(), $kept->getSlug(), $kept->getDefaultPurchaseUnit()->getSlug());
         $plan = $this->planner->plan(

@@ -26,11 +26,11 @@ final class ListIngredientsByDepartmentApiController extends AbstractController
 
     #[Route(path: '/api/v1/departments/{slug}/ingredients', name: 'api_list_ingredients_by_department', methods: ['GET'])]
     #[IsGranted('ROLE_USER')]
-    #[OA\Get(summary: "Ingrédients de l'utilisateur authentifié dans un rayon, triés par nom : les siens et les communs qu'il n'a pas adoptés (un commun adopté est remplacé par sa copie, qui est à lui)")]
+    #[OA\Get(summary: "Ingrédients de l'utilisateur authentifié dans un rayon, triés par nom : les siens seulement, jamais ceux d'un autre (un administrateur compris)")]
     #[OA\Tag(name: 'Ingredients')]
     #[OA\Response(
         response: 200,
-        description: 'Le rayon et ses ingrédients (collection `member`) ; `canEdit` indique si l\'utilisateur peut modifier l\'ingrédient',
+        description: 'Le rayon et ses ingrédients (collection `member`) ; `canEdit` est toujours vrai (l\'ingrédient est à l\'utilisateur) ; le champ reste pour les clients existants',
         content: new OA\JsonContent(properties: [
             new OA\Property(property: 'department', ref: new Model(type: DepartmentDTO::class)),
             new OA\Property(property: 'member', type: 'array', items: new OA\Items(ref: new Model(type: IngredientRowDTO::class))),
@@ -41,7 +41,7 @@ final class ListIngredientsByDepartmentApiController extends AbstractController
     public function __invoke(string $slug, #[CurrentUser] AuthenticatedUser $user): JsonResponse
     {
         /** @var DepartmentIngredientsDTO $departmentIngredients */
-        $departmentIngredients = $this->queryBus->ask(new ListIngredientsByDepartmentQuery($slug, $user->getId(), $this->isGranted('ROLE_ADMIN')));
+        $departmentIngredients = $this->queryBus->ask(new ListIngredientsByDepartmentQuery($slug, $user->getId()));
 
         return new JsonResponse([
             'department' => $departmentIngredients->department,

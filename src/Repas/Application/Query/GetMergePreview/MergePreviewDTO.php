@@ -32,7 +32,7 @@ final readonly class MergePreviewDTO
         #[OA\Property(description: 'Les unités de l\'ingrédient absorbé que l\'ingrédient gardé ne sait pas convertir en son unité d\'achat, MÊME APRÈS avoir récupéré les conversions de l\'absorbé (recoveredConversionCount) : une vraie impossibilité ; vide si rien ne manque. Renseignée même quand un autre refus passe avant', type: 'array', items: new OA\Items(ref: new Model(type: MergeUnitDTO::class)))]
         public array $missingUnits,
         #[OA\Property(
-            description: 'Pourquoi la fusion serait refusée (le premier cas dans l\'ordre de la liste), null si elle est possible. SAME_INGREDIENT : les deux ingrédients sont le même. COMMON_INGREDIENT : l\'un est un ingrédient commun. USED_BY_ANOTHER_USER : une ligne d\'un autre utilisateur utilise l\'ingrédient absorbé. IN_SENT_LIST : une liste envoyée au drive utilise l\'un des deux. UNIT_MISSING : voir missingUnits',
+            description: 'Pourquoi la fusion serait refusée (le premier cas dans l\'ordre de la liste), null si elle est possible. SAME_INGREDIENT : les deux ingrédients sont le même. COMMON_INGREDIENT : n\'est plus rendu (il n\'y a plus d\'ingrédient commun), déclaré pour les clients existants. USED_BY_ANOTHER_USER : une ligne d\'un autre utilisateur utilise l\'ingrédient absorbé. IN_SENT_LIST : une liste envoyée au drive utilise l\'un des deux. UNIT_MISSING : voir missingUnits',
             type: 'string',
             enum: ['SAME_INGREDIENT', 'COMMON_INGREDIENT', 'USED_BY_ANOTHER_USER', 'IN_SENT_LIST', 'UNIT_MISSING'],
             nullable: true,

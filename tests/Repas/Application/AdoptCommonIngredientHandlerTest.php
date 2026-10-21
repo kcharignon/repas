@@ -44,13 +44,13 @@ class AdoptCommonIngredientHandlerTest extends TestCase
     protected function setUp(): void
     {
         $this->ingredientRepository = new IngredientInMemoryRepository([
-            new IngredientBuilder()->isButter()->build(),
-            new IngredientBuilder()->isFlour()->build(),
+            new IngredientBuilder()->isButter()->withoutCreator()->build(),
+            new IngredientBuilder()->isFlour()->withoutCreator()->build(),
             new IngredientBuilder()->isMilk()->withCreator(new UserBuilder()->withId(self::OTHER)->build(), true)->build(),
         ]);
         $this->conversionRepository = new ConversionInMemoryRepository([
             new ConversionBuilder()->isBlockToGrammeForButter()->build(),
-            new ConversionBuilder()->withId('butter-spoon')->withStartUnit(new UnitBuilder()->isSoupSpoon())->withEndUnit(new UnitBuilder()->isGramme())->withCoefficient(15)->withIngredient(new IngredientBuilder()->isButter())->build(),
+            new ConversionBuilder()->withId('butter-spoon')->withStartUnit(new UnitBuilder()->isSoupSpoon())->withEndUnit(new UnitBuilder()->isGramme())->withCoefficient(15)->withIngredient(new IngredientBuilder()->isButter()->withoutCreator())->build(),
             new ConversionBuilder()->isKiloToGramme()->withId('common-kilo')->build(),
             new ConversionBuilder()->isUnitToGrammeForEgg()->withId('egg-unit')->build(),
         ]);
@@ -67,7 +67,7 @@ class AdoptCommonIngredientHandlerTest extends TestCase
         // Then : l'ingrédient de l'utilisateur, copie conforme à l'origine près (créateur, origine)
         $this->assertSame('beurre' . self::USER, $slug);
         $copy = $this->ingredientRepository->findOneBySlug($slug);
-        $common = new IngredientBuilder()->isButter()->build();
+        $common = new IngredientBuilder()->isButter()->withoutCreator()->build();
         $this->assertSame([self::USER, 'beurre', true], [$copy->getCreatorId(), $copy->getAdoptedFrom(), $copy->isAdoption()]);
         $this->assertSame([$common->getName(), $common->getSluggedName(), $common->getImage()], [$copy->getName(), $copy->getSluggedName(), $copy->getImage()]);
         RepasAssert::assertDepartment($common->getDepartment(), $copy->getDepartment());

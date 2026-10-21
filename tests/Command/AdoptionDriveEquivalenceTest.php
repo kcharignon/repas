@@ -36,7 +36,7 @@ class AdoptionDriveEquivalenceTest extends WriteBudgetTestCase
         // Given : un compte avec trois recettes (communs), une liste ENVOYÉE et une liste active, des choix de produits (rangs, refus,
         // contenance, recherche mémorisée, prix) pour la plupart des lignes
         $user = $this->savedUser();
-        $recipes = $this->typicalRecipes($user);
+        $recipes = $this->typicalRecipes($user, ownedByAuthor: false);
         $sentList = $this->savedShoppingList($user, $recipes, null, static function (ShoppingList $list): void {
             $list->send(new DateTimeImmutable('2026-10-10 12:00:00'));
         });
@@ -48,7 +48,8 @@ class AdoptionDriveEquivalenceTest extends WriteBudgetTestCase
 
         // Un autre compte concerné, que la migration ne doit pas toucher dans cet essai (--user)
         $bystander = $this->savedUser();
-        $this->savedRecipe($bystander, new \Repas\Tests\Helper\Builder\RecipeBuilder()->isPastaCarbonara());
+        $this->savedRecipe($bystander, new \Repas\Tests\Helper\Builder\RecipeBuilder()->isPastaCarbonara(), ownedByAuthor: false);
+        $this->turnDefaultIngredientsIntoOldCommons();
 
         $bus = static::getContainer()->get(QueryBusInterface::class);
         /** @return array{plan: array<string, mixed>, estimate: array<string, mixed>} le plan et l'estimation d'une liste, tels que l'API les sert */

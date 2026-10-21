@@ -12,12 +12,12 @@ use Repas\Repas\Domain\Model\IngredientDistinctPair;
  * `docs/ingredients/fusion.md` § 8, ING-006). Pur : ni base ni horloge, les ingrédients lui sont donnés.
  *
  * Une paire est proposée quand, ensemble :
- *  1. les deux ingrédients sont à l'utilisateur (un commun, `creatorId` vide, n'est jamais comparé : il n'est pas à lui) ;
+ *  1. les deux ingrédients sont à l'utilisateur (l'appelant ne lui donne que les siens, `IngredientMatchCandidates`) ;
  *  2. ils sont dans le MÊME rayon ;
  *  3. `IngredientNameMatcher` les juge ressemblants, avec ses garde-fous (même nombre de mots, chaque mot identique ou à une faute près) :
  *     `EXACT` (même nom une fois normalisé), `TYPO` (0,97 au moins) ou `SUGGESTION` (de 0,90 à 0,97) ;
- *  4. ils ne sont pas l'adoption de deux communs DIFFÉRENTS (l'administrateur les a voulus distincts) ; deux adoptions du même commun,
- *     ou un ingrédient créé et une adoption, sont proposés ;
+ *  4. ils ne sont pas la copie de deux ingrédients d'origine DIFFÉRENTE (`adopted_from` : le propriétaire du catalogue les a voulus
+ *     distincts) ; deux copies de la même origine, ou un ingrédient créé et une copie, sont proposés ;
  *  5. l'utilisateur n'a pas dit « Pas le même » pour cette paire, dans un sens ou dans l'autre : jamais reproposée.
  *
  * Le résultat est trié du plus probable au moins probable (score décroissant, puis slugs : deux appels donnent la même liste) et borné.
@@ -44,7 +44,7 @@ final readonly class DuplicateIngredientFinder
         // Rayon, puis nombre de mots : seuls ces ingrédients peuvent se ressembler
         $groups = [];
         foreach ($candidates as $candidate) {
-            if ($candidate->isCommon() || $candidate->tokens === []) {
+            if ($candidate->tokens === []) {
                 continue;
             }
             $groups[$candidate->departmentSlug][count($candidate->tokens)][] = $candidate;
@@ -76,7 +76,7 @@ final readonly class DuplicateIngredientFinder
      */
     private function pairOf(IngredientCandidate $one, IngredientCandidate $other, array $distinct): ?DuplicatePair
     {
-        // Deux adoptions de communs différents : voulus distincts par l'administrateur
+        // Deux copies d'origines différentes : voulues distinctes par le propriétaire du catalogue
         if ($one->adoptedFrom !== null && $other->adoptedFrom !== null && $one->adoptedFrom !== $other->adoptedFrom) {
             return null;
         }

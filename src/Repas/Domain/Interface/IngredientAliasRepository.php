@@ -3,12 +3,13 @@
 namespace Repas\Repas\Domain\Interface;
 
 
-use Repas\Repas\Domain\Model\AliasLookup;
 use Repas\Repas\Domain\Model\IngredientAlias;
 
 /**
  * Les alias d'ingrédients (ADR 0028) : « pour cet utilisateur, `aliasSlug` est son ingrédient `ingredientSlug` ». Une ligne par
- * (utilisateur, slug d'alias). Aucune hydratation d'ingrédient : des slugs, des booléens et des lignes d'alias.
+ * (utilisateur, slug d'alias). Aucune hydratation d'ingrédient : des slugs, des booléens et des lignes d'alias. Depuis l'amendement du
+ * 2026-10-20 un alias ne masque plus rien : il résout un ancien slug (copie d'un ancien commun, ingrédient absorbé par une fusion) et
+ * garde la provenance d'une copie.
  */
 interface IngredientAliasRepository
 {
@@ -20,7 +21,7 @@ interface IngredientAliasRepository
      *
      * Seul un alias VALIDE répond : l'ingrédient qu'il désigne existe et appartient à l'utilisateur. Un alias orphelin (laissé par le
      * code d'avant ING-001, qui supprime une copie sans effacer son alias, après un retour arrière) est ignoré : le slug reçu reste
-     * celui du commun, qui n'est pas masqué non plus (`IngredientVisibility`).
+     * tel quel.
      *
      * @param list<string> $slugs
      * @return array<string, string>
@@ -28,15 +29,8 @@ interface IngredientAliasRepository
     public function resolve(string $userId, array $slugs): array;
 
     /**
-     * Comme `resolve()`, et dit en plus, dans la MÊME requête, si l'utilisateur est adoptant (`isAdopter()`) : la résolution d'un slug
-     * reçu en écriture coûte ainsi une seule lecture, y compris pour celui qui n'a aucun alias (ING-002).
-     *
-     * @param list<string> $slugs
-     */
-    public function lookup(string $userId, array $slugs): AliasLookup;
-
-    /**
-     * L'utilisateur a adopté au moins un commun (alias d'adoption) : le monde « propre à l'utilisateur » (ADR 0028 décision 4).
+     * L'utilisateur a au moins un alias d'adoption : son compte a reçu ses ingrédients (migration ou amorçage). Sert à la définition de
+     * « amorcé » que la requête de santé de l'amorçage compare (`IngredientAdoptionBulkRepository::isSeeded`).
      */
     public function isAdopter(string $userId): bool;
 
@@ -59,14 +53,14 @@ interface IngredientAliasRepository
     public function deleteByAliasSlug(string $userId, string $aliasSlug): void;
 
     /**
-     * Efface les alias de cet utilisateur qui désignent cet ingrédient, quand l'ingrédient est supprimé : le commun adopté redevient
-     * visible pour lui.
+     * Efface les alias de cet utilisateur qui désignent cet ingrédient, quand l'ingrédient est supprimé : un alias ne désigne jamais
+     * un ingrédient qui n'existe plus.
      */
     public function deleteByIngredientSlug(string $userId, string $ingredientSlug): void;
 
     /**
      * La correspondance d'une fusion (ING-005, `docs/ingredients/fusion.md` § 3 étape 5) : tout alias de l'utilisateur qui désignait
-     * l'ingrédient absorbé désigne désormais l'ingrédient gardé (le commun adopté reste masqué, derrière la copie qui reste), puis
+     * l'ingrédient absorbé désigne désormais l'ingrédient gardé (l'ancienne origine continue de se résoudre vers la copie qui reste), puis
      * l'alias `absorbé -> gardé` (`kind` `merge`) est écrit pour que les anciens slugs (onglet ouvert, brouillon d'envoi) se résolvent et
      * qu'un rejeu de la fusion se reconnaisse. Un alias dont la clé est le slug gardé est effacé (un ingrédient qui existe ne s'efface pas
      * lui-même derrière un alias). Les alias déplacés prennent la source `merge` : ils ne sont plus ceux d'un lancement de la migration

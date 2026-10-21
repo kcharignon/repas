@@ -39,12 +39,14 @@ class SeedingDriveEquivalenceTest extends WriteBudgetTestCase
         // des choix de produits pour la plupart des lignes
         $this->persister->saveUser(new UserBuilder()->isCatalogOwner()->build());
         $user = $this->savedUser();
-        $recipes = $this->typicalRecipes($user);
+        $recipes = $this->typicalRecipes($user, ownedByAuthor: false);
         $sentList = $this->savedShoppingList($user, $recipes, null, static function (ShoppingList $list): void {
             $list->send(new DateTimeImmutable('2026-10-10 12:00:00'));
         });
         $activeList = $this->savedShoppingList($user, $recipes);
         $this->savedDriveSettings($user);
+        // Le rattrapage part de la forme d'avant la passation : les ingrédients du catalogue sont encore sans créateur
+        $this->turnDefaultIngredientsIntoOldCommons();
         $connection = $this->entityManager->getConnection();
         $slugs = $connection->fetchFirstColumn('SELECT ingredient FROM shopping_list_row WHERE shopping_list = ? ORDER BY ingredient', [$sentList->getId()]);
         $this->assertGreaterThanOrEqual(5, count($slugs));

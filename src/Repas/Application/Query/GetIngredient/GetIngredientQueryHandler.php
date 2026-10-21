@@ -19,6 +19,6 @@ final readonly class GetIngredientQueryHandler
      */
     public function __invoke(GetIngredientQuery $query): IngredientDTO
     {
-        return $this->ingredientLoader->get($query->slug, $query->viewerId, $query->viewerIsAdmin);
+        return $this->ingredientLoader->get($query->slug, $query->viewerId);
     }
 }

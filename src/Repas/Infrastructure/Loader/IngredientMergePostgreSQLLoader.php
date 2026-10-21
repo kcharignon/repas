@@ -14,7 +14,7 @@ use Repas\Repas\Application\Query\ListMergeCandidates\MergeCandidateDTO;
 use Repas\Repas\Domain\Exception\IngredientException;
 use Repas\Repas\Domain\Model\IngredientMergeUsage;
 use Repas\Repas\Domain\Model\MatchLevel;
-use Repas\Repas\Domain\Model\MergeBlock;
+
 use Repas\Repas\Domain\Model\MergeParty;
 use Repas\Repas\Domain\Service\ConversionGraph;
 use Repas\Repas\Domain\Service\IngredientMergePlanner;
@@ -52,11 +52,11 @@ final readonly class IngredientMergePostgreSQLLoader implements IngredientMergeL
         $absorbed = $ingredients[$absorbedSlug];
         $kept = $ingredients[$keptSlug];
 
-        $absorbedParty = new MergeParty($absorbed['slug'], $absorbed['creator'] === null, $absorbed['unit_slug'], self::unitSlugsOf($absorbed['compatible_units']));
-        $keptParty = new MergeParty($kept['slug'], $kept['creator'] === null, $kept['unit_slug'], self::unitSlugsOf($kept['compatible_units']));
+        $absorbedParty = new MergeParty($absorbed['slug'], $absorbed['unit_slug'], self::unitSlugsOf($absorbed['compatible_units']));
+        $keptParty = new MergeParty($kept['slug'], $kept['unit_slug'], self::unitSlugsOf($kept['compatible_units']));
 
-        // Le même ingrédient ou un commun : rien n'est lu de plus, le verdict est donné d'avance (comme l'écriture, qui s'arrête là)
-        $mergeable = $absorbedSlug !== $keptSlug && !$absorbedParty->isCommon && !$keptParty->isCommon;
+        // Le même ingrédient : rien n'est lu de plus, le verdict est donné d'avance (comme l'écriture, qui s'arrête là)
+        $mergeable = $absorbedSlug !== $keptSlug;
         $usage = $mergeable ? $this->usageReader->usageOf($userId, $absorbedSlug, $keptSlug, $kept['unit_slug']) : new IngredientMergeUsage();
         $drive = $mergeable ? $this->driveReferences->mergeImpact($userId, $absorbedSlug, $keptSlug) : new DriveMergeImpact();
 
@@ -82,9 +82,6 @@ final readonly class IngredientMergePostgreSQLLoader implements IngredientMergeL
     public function candidates(string $userId, string $slug, ?string $search = null): array
     {
         $source = $this->ingredientsOf($userId, [$slug])[$slug];
-        if ($source['creator'] === null) {
-            throw MergeBlock::COMMON_INGREDIENT->toException();
-        }
 
         $needle = $search === null ? '' : StringTool::slugify($search);
         $rows = $this->connection()->fetchAllAssociative(
@@ -137,7 +134,7 @@ final readonly class IngredientMergePostgreSQLLoader implements IngredientMergeL
 
     /**
      * Les ingrédients de ces slugs, avec leur rayon et leur unité d'achat. L'ingrédient d'un autre utilisateur est inconnu, comme un
-     * slug qui n'existe pas : sans exception pour un administrateur (ADR 0028 décision 9). Un commun est rendu : le verdict l'écarte.
+     * slug qui n'existe pas : sans exception pour un administrateur (ADR 0028 décision 9).
      *
      * @param list<string> $slugs
      * @return array<string, array{slug: string, name: string, creator: ?string, department_slug: string, department_name: string, unit_slug: string, unit_name: string, compatible_units: string}>
@@ -159,7 +156,7 @@ final readonly class IngredientMergePostgreSQLLoader implements IngredientMergeL
         }
         foreach ($slugs as $slug) {
             $row = $ingredients[$slug] ?? null;
-            if ($row === null || ($row['creator'] !== null && $row['creator'] !== $userId)) {
+            if ($row === null || $row['creator'] !== $userId) {
                 throw IngredientException::notFound($slug);
             }
         }

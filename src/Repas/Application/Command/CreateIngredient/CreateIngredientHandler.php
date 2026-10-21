@@ -91,6 +91,7 @@ readonly class CreateIngredientHandler
             $this->eventDispatcher->dispatch(new CreateIngredientWithConversionEvent(
                 $ingredient->getSlug(),
                 $command->coefficient,
+                $creatorId,
             ));
         }
 

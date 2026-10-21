@@ -105,30 +105,46 @@ class UpdateIngredientApiControllerTest extends QueryBusWebTestCase
         $this->assertSame([], $commandBus->dispatched());
     }
 
-    public function testAUserCannotChangeACommonIngredientButAnAdministratorCan(): void
+    public function testAnAdministratorChangesHisOwnIngredientAsAnyoneElse(): void
     {
         // Given
         $commandBus = $this->mockCommandBus();
-        $common = new IngredientBuilder()->isFlour()->build();
-        $this->persister->saveIngredient($common);
+        $admin = $this->savedUser(admin: true);
+        $mine = new IngredientBuilder()->isFlour()->withCreator($admin)->build();
+        $this->persister->saveIngredient($mine);
 
         // When
-        $this->put($common->getSlug(), $this->savedUser(admin: true), self::BODY);
+        $this->put($mine->getSlug(), $admin, self::BODY);
 
         // Then
         $this->assertSame(204, $this->client->getResponse()->getStatusCode());
         $this->assertCount(1, $commandBus->dispatched());
     }
 
-    public function testRefusesACommonIngredientToAUser(): void
+    public function testAnAdministratorHasNoPassThroughOnTheIngredientOfAnotherUser(): void
     {
-        // Given
+        // Given : l'ingrédient est à un autre compte (le propriétaire du catalogue, par exemple) : le rôle n'y change rien (D3)
         $commandBus = $this->mockCommandBus();
-        $common = new IngredientBuilder()->isFlour()->build();
-        $this->persister->saveIngredient($common);
+        $theirs = new IngredientBuilder()->isFlour()->withCreator($this->savedUser(admin: true))->build();
+        $this->persister->saveIngredient($theirs);
 
         // When
-        $this->put($common->getSlug(), $this->savedUser(), self::BODY);
+        $this->put($theirs->getSlug(), $this->savedUser(admin: true), self::BODY);
+
+        // Then
+        $this->assertSame(403, $this->client->getResponse()->getStatusCode());
+        $this->assertSame([], $commandBus->dispatched());
+    }
+
+    public function testRefusesAnIngredientWithoutAnOwnerToAnyone(): void
+    {
+        // Given : la forme de la base d'avant la passation, plus traitée à part : personne n'en est le propriétaire
+        $commandBus = $this->mockCommandBus();
+        $legacy = new IngredientBuilder()->isFlour()->withoutCreator()->build();
+        $this->persister->saveIngredient($legacy);
+
+        // When
+        $this->put($legacy->getSlug(), $this->savedUser(admin: true), self::BODY);
 
         // Then
         $this->assertSame(403, $this->client->getResponse()->getStatusCode());

@@ -8,9 +8,11 @@ use OpenApi\Attributes as OA;
 use Repas\Repas\Application\Query\ListConversions\ConversionDTO;
 use Repas\Repas\Application\Query\ListConversions\ListConversionsQuery;
 use Repas\Shared\Application\Interface\QueryBusInterface;
+use Repas\Shared\Domain\Interface\AuthenticatedUser;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Security\Http\Attribute\CurrentUser;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 final class ListConversionsApiController extends AbstractController
@@ -22,7 +24,7 @@ final class ListConversionsApiController extends AbstractController
 
     #[Route(path: '/api/v1/conversions', name: 'api_list_conversions', methods: ['GET'])]
     #[IsGranted('ROLE_ADMIN')]
-    #[OA\Get(summary: 'Conversions entre unités (administrateur), triées par ingrédient puis par unité de départ')]
+    #[OA\Get(summary: 'Conversions entre unités (administrateur), triées par ingrédient puis par unité de départ : les conversions générales et celles de SES ingrédients, jamais celles des ingrédients d\'un autre utilisateur')]
     #[OA\Tag(name: 'Conversions')]
     #[OA\Response(
         response: 200,
@@ -33,10 +35,10 @@ final class ListConversionsApiController extends AbstractController
         ]),
     )]
     #[OA\Response(response: 403, description: 'Réservé aux administrateurs')]
-    public function __invoke(): JsonResponse
+    public function __invoke(#[CurrentUser] AuthenticatedUser $user): JsonResponse
     {
         /** @var list<ConversionDTO> $conversions */
-        $conversions = $this->queryBus->ask(new ListConversionsQuery());
+        $conversions = $this->queryBus->ask(new ListConversionsQuery($user->getId()));
 
         return new JsonResponse(['member' => $conversions, 'totalItems' => count($conversions)]);
     }

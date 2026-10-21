@@ -29,7 +29,7 @@ final class GetMergePreviewApiController extends AbstractController
 
     #[Route(path: '/api/v1/ingredients/{slug}/merge-preview', name: 'api_get_merge_preview', methods: ['GET'])]
     #[IsGranted('ROLE_USER')]
-    #[OA\Get(summary: "Ce que la fusion de l'ingrédient de l'URL (absorbé) dans `into` (gardé) ferait, sans rien écrire : recettes, listes et choix du drive qui se déplacent, nombre de recettes et de listes qui utiliseront le gardé APRÈS la fusion, conversions que le gardé récupérerait, unités qui manqueraient encore, pourquoi elle serait refusée. Même verdict que `POST …/merge`. Toujours 200 quand les deux ingrédients sont à l'utilisateur ou communs : un refus de règle est dans `blockedBy`")]
+    #[OA\Get(summary: "Ce que la fusion de l'ingrédient de l'URL (absorbé) dans `into` (gardé) ferait, sans rien écrire : recettes, listes et choix du drive qui se déplacent, nombre de recettes et de listes qui utiliseront le gardé APRÈS la fusion, conversions que le gardé récupérerait, unités qui manqueraient encore, pourquoi elle serait refusée. Même verdict que `POST …/merge`. Toujours 200 quand les deux ingrédients sont à l'utilisateur : un refus de règle est dans `blockedBy`")]
     #[OA\Tag(name: 'Ingredients')]
     #[OA\Parameter(name: 'into', in: 'query', required: true, description: "Slug de l'ingrédient à garder", schema: new OA\Schema(type: 'string', maxLength: 255), example: 'tomate-0a1b2c3d')]
     #[OA\Response(response: 200, description: 'Ce que la fusion ferait', content: new OA\JsonContent(ref: new Model(type: MergePreviewDTO::class)))]

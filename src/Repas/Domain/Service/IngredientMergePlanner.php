@@ -34,8 +34,8 @@ use Repas\Repas\Domain\Model\UnitFactor;
  * Les unités compatibles de `B` que ses lignes de recette déplacées utilisent, et que `A` n'avait pas, s'ajoutent à celles de `A` : l'éditeur
  * de recette les lui propose, et elles sont désormais jointes à son unité d'achat.
  *
- * Premier refus dans l'ordre de `MergeBlock` : le même ingrédient, un commun, une ligne d'un autre utilisateur, une liste envoyée au
- * drive, une unité qui manque. Les unités manquantes sont rendues même quand un refus plus haut les masque (une liste envoyée, par
+ * Premier refus dans l'ordre de `MergeBlock` : le même ingrédient, une ligne d'un autre utilisateur, une liste envoyée au drive, une
+ * unité qui manque. Les unités manquantes sont rendues même quand un refus plus haut les masque (une liste envoyée, par
  * exemple) : l'utilisateur sait tout ce qui l'attend.
  */
 final readonly class IngredientMergePlanner
@@ -52,9 +52,6 @@ final readonly class IngredientMergePlanner
     ): IngredientMergePlan {
         if ($absorbed->slug === $kept->slug) {
             return new IngredientMergePlan(MergeBlock::SAME_INGREDIENT);
-        }
-        if ($absorbed->isCommon || $kept->isCommon) {
-            return new IngredientMergePlan(MergeBlock::COMMON_INGREDIENT);
         }
 
         [$graph, $recovered] = $this->recover($keptGraph, $usage->absorbedConversions);

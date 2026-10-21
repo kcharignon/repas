@@ -36,7 +36,7 @@ readonly class ForgetChoiceHandler
             throw DriveException::storeMismatch();
         }
 
-        // Un ancien slug d'un commun que l'utilisateur a adopté désigne sa copie (ADR 0028 décision 4)
+        // Un ancien slug (ancien commun dont l'utilisateur a reçu une copie, ingrédient fusionné) désigne son ingrédient actuel (ADR 0028 décision 4)
         $ingredientSlug = $this->ingredientAliases->resolve($command->userId, [$command->ingredientSlug])[$command->ingredientSlug] ?? $command->ingredientSlug;
 
         $choice = $this->choiceRepository->findOne($command->userId, $command->retailer, $command->storeId, $ingredientSlug);

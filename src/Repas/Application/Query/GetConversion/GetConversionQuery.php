@@ -8,6 +8,7 @@ final readonly class GetConversionQuery implements QueryInterface
 {
     public function __construct(
         public string $conversionId,
+        public string $viewerId,
     ) {
     }
 }

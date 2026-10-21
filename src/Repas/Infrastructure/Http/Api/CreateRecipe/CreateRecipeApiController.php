@@ -27,7 +27,7 @@ final class CreateRecipeApiController extends AbstractController
 
     #[Route(path: '/api/v1/recipes', name: 'api_create_recipe', methods: ['POST'])]
     #[IsGranted('ROLE_USER')]
-    #[OA\Post(summary: "Crée une recette de l'utilisateur connecté. Le slug d'un commun que l'utilisateur a adopté est remplacé par celui de sa copie ; un utilisateur qui a déjà adopté des communs adopte à la volée celui qu'il utilise pour la première fois")]
+    #[OA\Post(summary: "Crée une recette de l'utilisateur connecté. Un ancien slug (ancien commun dont l'utilisateur a reçu une copie, ingrédient fusionné) est remplacé par celui de son ingrédient actuel ; l'ingrédient d'un autre utilisateur est inconnu")]
     #[OA\Tag(name: 'Recipes')]
     #[OA\RequestBody(required: true, content: new OA\JsonContent(ref: new Model(type: RecipePayload::class)))]
     #[OA\Response(response: 201, description: 'Recette créée', headers: [new OA\Header(header: 'Location', description: 'URL de la recette créée', schema: new OA\Schema(type: 'string'))])]

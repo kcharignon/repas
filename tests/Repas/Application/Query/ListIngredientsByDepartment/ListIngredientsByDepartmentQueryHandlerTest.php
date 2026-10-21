@@ -20,7 +20,7 @@ class ListIngredientsByDepartmentQueryHandlerTest extends TestCase
         $handler = new ListIngredientsByDepartmentQueryHandler(new IngredientInMemoryLoader(departmentIngredients: $result));
 
         // When
-        $actual = $handler(new ListIngredientsByDepartmentQuery('cereale', 'user-1', false));
+        $actual = $handler(new ListIngredientsByDepartmentQuery('cereale', 'user-1'));
 
         // Then
         $this->assertSame($result, $actual);
@@ -33,9 +33,9 @@ class ListIngredientsByDepartmentQueryHandlerTest extends TestCase
         $handler = new ListIngredientsByDepartmentQueryHandler($loader);
 
         // When
-        $handler(new ListIngredientsByDepartmentQuery('cereale', 'user-1', true));
+        $handler(new ListIngredientsByDepartmentQuery('cereale', 'user-1'));
 
         // Then
-        $this->assertSame([['cereale', 'user-1', true]], $loader->listByDepartmentCalls);
+        $this->assertSame([['cereale', 'user-1']], $loader->listByDepartmentCalls);
     }
 }

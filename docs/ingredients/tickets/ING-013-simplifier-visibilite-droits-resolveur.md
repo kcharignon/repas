@@ -5,7 +5,7 @@
 - **Taille** : L
 - **Effort recommandé pour l'agent** : **xhigh** (règles d'accès à tous les ingrédients, `OwnerVoter`, toutes les écritures qui reçoivent un slug)
 - **Dépend de** : **la passation exécutée et contrôlée** (`sans-commun.md` § 4, étape 12) ; R1 en production
-- **Statut** : à faire — **la PR se prépare dès R1 mais ne se fusionne qu'après l'étape 12** (sinon une sortie accidentelle rendrait le propriétaire aveugle)
+- **Statut** : fait (PR #247) — **ne se fusionne qu'après l'étape 12 de la passation (faite le 2026-10-21)** ; R2 avec ING-014
 - **Sortie** : **R2**, avec ING-014, **un autre jour que la passation**
 - **Lire d'abord** : [ADR 0028](../../adr/0028-ingredients-propres-a-chaque-utilisateur.md) amendement du 2026-10-20 (décisions 1, 2, 8 ; tableau « Ce qui devient obsolète » ; D3, D4, D7) ; **[`sans-commun.md`](../sans-commun.md) §§ 7, 9, 11** ; [`analyse.md`](../analyse.md) §§ 3, 4 (l'inventaire d'origine) ; ING-002, ING-004, ING-005, ING-006 et leurs sections « Réalisation » (ce qu'on simplifie) ; ADR 0007 §§ 11 à 13 ; skills `/repas-dev`, `/repas-drive-back`.
 
@@ -56,3 +56,42 @@ Tout ce qui précède sur base réelle (`OutputAdapter`) ; `OwnerVoterTest` (adm
 - `OwnerVoter` : ne pas retirer le passe-droit des autres attributs (recettes, listes) ; seul `INGREDIENT_OWNER` change.
 - La statistique : `UpdateUserStatisticsCommand` compte déjà « créés = sans origine » : cohérent avec D7.
 - **Fiche lue par un ancien slug** (onglet ouvert avant la migration d'ING-003, adopté depuis) : `GET /ingredients/{ancien slug}` répond `404` après ce ticket, alors qu'ING-002 la laissait lisible en lecture seule. C'est acceptable (écran périmé, le rayon se recharge) ; si l'on veut le tolérer, résoudre le slug par les alias en lecture, dans un ticket à part.
+
+## Réalisation (PR back #247)
+
+Livré comme décrit ci-dessus, avec les écarts listés plus bas. **Rien n'a été exécuté en production**, aucun schéma ni aucune donnée ne change, aucune migration. **Le contrat JSON ne change pas** : `docs/api/openapi.json` ne diffère que par des descriptions (aucune clé, aucun type, aucune valeur d'énumération retirés ; `make openapi-check` vert).
+
+**Retiré**
+
+- `IngredientVisibility::visibleBy` n'est plus que « `creator` = moi » (plus de `isCommon` DQL, de `slugsAdoptedBy`, de `NOT IN`). Appliquée par le Loader (rayon, recherche, disponibles), les dépôts et `IngredientMatchCandidatesPostgreSQLRepository`.
+- `$viewerIsAdmin` : port `IngredientLoader`, `GetIngredientQuery`, `ListIngredientsByDepartmentQuery`, `SearchIngredientsQuery`, leurs handlers et les trois controllers ; `AuthenticatedUser::isAdmin()` (plus personne ne l'appelle). `canEdit` est écrit `true` (le champ reste). `isBase` / `canSetBase` : propriétaire du catalogue, lu une fois.
+- `OwnerVoter` : plus de passe-droit `ROLE_ADMIN` pour `INGREDIENT_OWNER` seulement (recettes, listes, repas et lignes : inchangé).
+- `IngredientSlugResolver` : `resolve(userId, slugs)` seulement, ne dépend plus que des alias ; plus d'adoption à la volée ni d'adoptant. `IngredientRepository::findCommonSlugs`, `IngredientAliasRepository::lookup`, `AliasLookup` (modèle supprimé).
+- `Ingredient::isCommon`, `IngredientCandidate::isCommon` (et son argument `creatorId`), `MergeParty::isCommon`, `MergeBlock::COMMON_INGREDIENT`, `IngredientException::cannotMergeCommon` / `CANNOT_MERGE_COMMON_INGREDIENT`, et les branches de `IngredientMergePlanner`, `IngredientMergePostgreSQLLoader`, `MergeIngredientsHandler`, `DuplicateIngredientFinder`.
+- `Recipe::assertIngredientIsAvailable` : l'ingrédient est à l'auteur, sinon `404`.
+- Copie de recette : `CopyRecipeHandler` n'a plus de branche « commun » ni d'adoption à la volée. Étape 0 : clé d'alias = `adopted_from` de l'ingrédient source, sinon son slug, résolue par les alias du copieur ; sinon l'ingrédient du copieur de même nom ; sinon une copie. **Toute copie retient son origine** (`adopted_from` = celle de l'original, sinon son slug, `Ingredient::copyFromOriginal`, D7) et `RecipesOrIngredientsCreatedEvent` ne porte plus aucun ingrédient pour une copie de recette (jamais comptée comme une création).
+
+**Conversions (D4)** : `ConversionLoader::list(viewerId)` et `::get(id, viewerId)` ne rendent que les conversions générales et celles des ingrédients du lecteur (`GET /conversions/{id}` d'un autre : `404`). `CreateConversionCommand` et `UpdateConversionCommand` portent `userId` (le jeton) ; leurs handlers refusent avec `404` un ingrédient qui n'est pas à lui, et `UpdateConversionHandler` refuse aussi une conversion dont l'ingrédient est à un autre. Les routes restent `ROLE_ADMIN`. `CreateIngredientWithConversionEvent` gagne `userId` (3e argument), parce que `CreateConversionEventListener` dispatche une `CreateConversionCommand` imbriquée qui en a besoin : sans cela, créer un ingrédient avec une conversion donnait `500`.
+
+**Ce qui change pour un administrateur qui n'est pas le propriétaire (D3)** : plus aucun passe-droit sur les ingrédients. `GET /ingredients/{slug}` d'un autre : `404` ; `PUT` et `DELETE` : `403` (voter) ; fusion, doublons, « Pas le même » : les siens seulement ; écran des conversions : générales + celles de ses ingrédients. Le propriétaire du catalogue est dans le même cas pour les ingrédients des autres.
+
+**Gardé exprès pour ING-014** (le ticket le dit, ou les commandes d'exploitation de la migration en dépendent) : `IngredientVisibility::isCommonSql` / `isCatalogSql` / `isBaseCatalogSql` (le « ou vide » de l'amorçage, de la passation et de `adopt-commons`) ; les commandes `adopt-commons`, `seed`, `hand-over-catalog` et leurs tests ; `Command\AdoptCommonIngredient\*`, `Ingredient::adopt`, `Ingredient::create(?string)`, `getCreatorId(): ?string`, `IngredientException::notCommon`, `IngredientAliasRepository::isAdopter` (l'amorçage s'en sert pour « déjà amorcé ») ; la garde `getCreatorId() !== null` de `RemoveIngredientHandler` ; `OwnershipLoader::ingredientCreatorId(): ?string` ; les fixtures.
+
+**Compatibilité (ADR 0017 règle 6)** : le code lit la base d'après la passation (aucun créateur vide). Il ne fonctionne **pas** sur une base d'avant : le propriétaire ne verrait plus les anciens communs. C'est pourquoi ce ticket ne se fusionne qu'après la passation, et que la migration-garde d'ING-014 doit refuser le démarrage tant qu'un ingrédient sans créateur existe. Ce que le code écrit est lu par le code précédent : aucune forme de donnée nouvelle (alias, `adopted_from`, conversions inchangés).
+
+**Écarts avec le ticket**
+
+- **Le contrat garde `COMMON_INGREDIENT`** : le ticket dit que les codes retirés disparaissent de la documentation ; la consigne de ne casser aucun client en cache l'emporte. `blockedBy` garde la valeur `COMMON_INGREDIENT` dans l'énumération OpenAPI et le `422` garde la mention du code, avec « n'est plus renvoyé » dans la description ; le code, lui, ne la produit plus.
+- **Budgets : trois scénarios montent d'une ou deux requêtes** (le ticket exigeait qu'aucun ne monte). `copier-recette-ingredient-personnel` 19 → 20 et `copier-recette-ingredient-rapproche` 15 → 16 : l'étape 0 lit désormais **toujours** les alias du copieur (la clé est le slug de la source quand elle n'a pas d'`adopted_from`, comme le ticket le prescrit), alors qu'avant elle ne les lisait que pour un commun ou une adoption. `copier-recette` est redéfini : le copieur est maintenant un compte amorcé (copies et alias des cinq ingrédients), 17 → **19** ; l'ancien cas « le copieur n'a rien » devient `copier-recette-sans-ingredients` (**40**, tout est créé). Les scénarios `ajouter-ingredient-liste-adoptant` (25) et `copier-recette-adoptant` (22) sont retirés avec l'adoption à la volée. Les autres budgets ne bougent pas (mesurés) : la lecture d'alias reste une requête (`lookup` devient `resolve`). Aucune économie qui compense n'a été trouvée sans s'écarter de la règle de provenance du ticket ; à valider par le relecteur.
+- **Les fixtures de développement** (`IngredientFixture`, `ConversionFixture`, `RecipeFixture`, `Demo*Fixture`) créent encore des ingrédients sans créateur, que la visibilité ne montre plus à personne : ING-014 les réécrit ; en attendant, `make fixtures-load-dev` ne donne plus d'ingrédient visible.
+- `HandOverCatalogNonRegressionTest` ne compare plus « avant / pendant / après la passation » (le code d'après ne marche que sur la base d'après) : il prouve l'après (chaque compte voit et fait tout avec ses ingrédients seulement) et l'amorçage d'un compte neuf.
+- `IngredientBuilder` : un ingrédient de test naît chez un utilisateur de test (`DEFAULT_CREATOR_ID`), appliqué à la construction seulement pour ne pas changer son slug ; `withoutCreator()` ne sert plus qu'aux tests des commandes d'exploitation.
+
+**Preuves** : `IngredientVisibilityTest` (une seule définition, tous les chargeurs et dépôts comparés), `IngredientPostgreSQLLoaderTest`, `ConversionPostgreSQLLoaderTest`, `OwnerVoterTest` (D3), `IngredientVisibilityApiFlowTest` (vrais bus, JWT : compte neuf, compte avec copies, propriétaire, **autre administrateur**), `RecipeCopyApiFlowTest` (copie, planification, envoi au drive), `ConversionAdminApiFlowTest` (D4 de bout en bout), `CopyRecipeHandlerTest`, `IngredientSlugResolverTest`, `HandOverCatalogNonRegressionTest` ; les tests du drive (`tests/Drive`) n'ont pas été modifiés et passent : le plan, l'estimation et les choix sont inchangés. Suite complète (3987 tests), PHPStan, Deptrac (7 configurations), `api-doc-validate`, `api-doc-coverage` et `openapi-check` verts.
+
+**Points d'attention**
+
+- **ING-014** : la migration-garde ; la colonne `creator` `NOT NULL` ; le reste du code mort listé ci-dessus ; `NoSharedIngredientTest` ; les fixtures ; les bandeaux de la documentation. `Ingredient::getCreatorId()` pourra devenir `string`.
+- **ING-015 / front** : `canEdit` est toujours vrai (le champ reste) ; `creatorId` n'est plus jamais vide ; `blockedBy: COMMON_INGREDIENT` n'est plus renvoyé ; l'écran des conversions de l'administrateur est plus court (générales + les siennes) ; la fiche d'un ancien slug répond `404` (le rayon se recharge).
+
+**Non vérifié** : le comportement sur une base d'avant la passation (voulu : refusé par ING-014) ; le retour arrière du code précédent après ce ticket n'a pas été rejoué (il relit ce que ce code écrit, aucune forme de donnée n'a changé).

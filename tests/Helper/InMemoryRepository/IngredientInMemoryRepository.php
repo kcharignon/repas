@@ -29,19 +29,11 @@ class IngredientInMemoryRepository extends AbstractInMemoryRepository implements
     public function findPurchaseUnitSlugUsableBy(string $slug, string $userId): string
     {
         $ingredient = $this->findOneBySlug($slug);
-        if ($ingredient->getCreatorId() !== null && $ingredient->getCreatorId() !== $userId) {
+        if ($ingredient->getCreatorId() !== $userId) {
             throw IngredientException::notFound($slug);
         }
 
         return $ingredient->getDefaultPurchaseUnit()->getSlug();
-    }
-
-    public function findCommonSlugs(array $slugs): array
-    {
-        return array_values(array_filter(
-            array_unique($slugs),
-            fn(string $slug): bool => isset($this->models[$slug]) && $this->models[$slug]->getCreatorId() === null,
-        ));
     }
 
     public function exists(string $slug): bool

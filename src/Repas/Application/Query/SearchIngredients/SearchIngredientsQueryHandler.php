@@ -18,6 +18,6 @@ final readonly class SearchIngredientsQueryHandler
      */
     public function __invoke(SearchIngredientsQuery $query): array
     {
-        return $this->ingredientLoader->search($query->search, $query->viewerId, $query->viewerIsAdmin);
+        return $this->ingredientLoader->search($query->search, $query->viewerId);
     }
 }

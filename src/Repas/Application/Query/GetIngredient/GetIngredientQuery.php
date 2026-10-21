@@ -9,7 +9,6 @@ final readonly class GetIngredientQuery implements QueryInterface
     public function __construct(
         public string $slug,
         public string $viewerId,
-        public bool $viewerIsAdmin,
     ) {
     }
 }

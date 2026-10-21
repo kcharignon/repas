@@ -9,7 +9,6 @@ final readonly class ListIngredientsByDepartmentQuery implements QueryInterface
     public function __construct(
         public string $departmentSlug,
         public string $viewerId,
-        public bool $viewerIsAdmin,
     ) {
     }
 }

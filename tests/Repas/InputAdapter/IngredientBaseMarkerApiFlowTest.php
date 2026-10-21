@@ -119,41 +119,29 @@ class IngredientBaseMarkerApiFlowTest extends DatabaseTestCase
 
     public function testAnAdministratorWhoIsNotTheCatalogOwnerCannotMarkAnythingEither(): void
     {
-        // Given : un autre administrateur, l'ingrédient d'un utilisateur et un ancien commun (un administrateur les modifie, passe-droit)
+        // Given : un autre administrateur, son ingrédient, et celui d'un utilisateur (aucun passe-droit sur les ingrédients des autres, D3)
         $this->savedUser(new UserBuilder()->isCatalogOwner());
         $admin = $this->savedUser(new UserBuilder()->isAdmin());
+        $mine = $this->savedIngredient($admin, name: 'riz');
         $theirs = $this->savedIngredient($this->savedUser());
-        $common = $this->savedIngredient(null, name: 'riz');
 
-        // When / Then : il peut modifier (comme avant), pas marquer
-        foreach ([$theirs, $common] as $ingredient) {
-            $this->request('PUT', '/api/v1/ingredients/' . $ingredient->getSlug(), $admin, ['isBase' => true] + $this->body('Nom changé'));
-            $this->assertSame(403, $this->client->getResponse()->getStatusCode(), $ingredient->getSlug());
-            $this->assertSame(['error' => ['message' => IngredientException::INGREDIENT_BASE_FORBIDDEN]], $this->jsonBody());
-            $this->assertFalse($this->ingredients()->findOneBySlug($ingredient->getSlug())->isBase());
-            $this->assertNotSame('Nom changé', $this->ingredients()->findOneBySlug($ingredient->getSlug())->getName());
-        }
-        $this->request('PUT', '/api/v1/ingredients/' . $common->getSlug(), $admin, $this->body('Riz complet'));
+        // When / Then : sur le sien, il modifie (comme tout le monde) mais ne marque pas
+        $this->request('PUT', '/api/v1/ingredients/' . $mine->getSlug(), $admin, ['isBase' => true] + $this->body('Nom changé'));
+        $this->assertSame(403, $this->client->getResponse()->getStatusCode());
+        $this->assertSame(['error' => ['message' => IngredientException::INGREDIENT_BASE_FORBIDDEN]], $this->jsonBody());
+        $this->assertFalse($this->ingredients()->findOneBySlug($mine->getSlug())->isBase());
+        $this->assertNotSame('Nom changé', $this->ingredients()->findOneBySlug($mine->getSlug())->getName());
+        $this->request('PUT', '/api/v1/ingredients/' . $mine->getSlug(), $admin, $this->body('Riz complet'));
         $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->request('GET', '/api/v1/ingredients/' . $mine->getSlug(), $admin);
+        $this->assertSame([false, false], [$this->jsonBody()['isBase'], $this->jsonBody()['canSetBase']]);
+
+        // …et l'ingrédient d'un utilisateur lui est fermé : ni le modifier (403 du voter), ni même le lire (404)
+        $this->request('PUT', '/api/v1/ingredients/' . $theirs->getSlug(), $admin, $this->body('Nom changé'));
+        $this->assertSame(403, $this->client->getResponse()->getStatusCode());
+        $this->assertNotSame('Nom changé', $this->ingredients()->findOneBySlug($theirs->getSlug())->getName());
         $this->request('GET', '/api/v1/ingredients/' . $theirs->getSlug(), $admin);
-        $this->assertSame([false, false], [$this->jsonBody()['isBase'], $this->jsonBody()['canSetBase']]);
-    }
-
-    public function testTheCatalogOwnerMarksAnOldCommonIngredientButTheFicheDoesNotOfferItYet(): void
-    {
-        // Given : avant la passation, les anciens communs n'ont pas de créateur
-        $owner = $this->savedUser(new UserBuilder()->isCatalogOwner());
-        $common = $this->savedIngredient(null, name: 'riz');
-
-        // When
-        $this->request('PUT', '/api/v1/ingredients/' . $common->getSlug(), $owner, ['isBase' => true] + $this->body('Riz'));
-
-        // Then : le back l'accepte, la fiche ne propose le réglage que sur un ingrédient à lui
-        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
-        $this->request('GET', '/api/v1/ingredients/' . $common->getSlug(), $owner);
-        $this->assertSame([true, false], [$this->jsonBody()['isBase'], $this->jsonBody()['canSetBase']]);
-        $this->request('GET', '/api/v1/ingredients/' . $common->getSlug(), $this->savedUser());
-        $this->assertSame([false, false], [$this->jsonBody()['isBase'], $this->jsonBody()['canSetBase']]);
+        $this->assertSame(404, $this->client->getResponse()->getStatusCode());
     }
 
     public function testNobodyMarksAnythingWhenTheCatalogOwnerAccountDoesNotExist(): void

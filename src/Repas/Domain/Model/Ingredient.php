@@ -108,8 +108,9 @@ final class Ingredient implements ModelInterface
     }
 
     /**
-     * Identifiant de l'utilisateur qui a créé l'ingrédient, `null` pour un ingrédient commun (ADR 0013 : un agrégat référence
-     * un autre par identifiant).
+     * Identifiant de l'utilisateur qui possède l'ingrédient (ADR 0013 : un agrégat référence un autre par identifiant). Tout ingrédient a un
+     * propriétaire depuis la passation des anciens communs au propriétaire du catalogue (ADR 0028, amendement du 2026-10-20) ; le type reste
+     * nullable tant que la colonne l'est (ING-014 le resserre).
      */
     public function getCreatorId(): ?string
     {
@@ -122,23 +123,15 @@ final class Ingredient implements ModelInterface
         return $this;
     }
 
-    /**
-     * Un ingrédient commun : sans créateur, visible par tous et géré par les administrateurs (ADR 0028).
-     */
-    public function isCommon(): bool
-    {
-        return $this->creatorId === null;
-    }
-
     public function isOwnedBy(string $userId): bool
     {
         return $this->creatorId === $userId;
     }
 
     /**
-     * L'ingrédient est à cet utilisateur, sans exception : ni le commun, ni l'ingrédient d'un autre, pas même pour un administrateur.
-     * La fusion de deux ingrédients n'a pas de passe-droit (ADR 0028 décision 9). L'ingrédient d'un autre est traité comme inconnu :
-     * on ne révèle pas son existence.
+     * L'ingrédient est à cet utilisateur, sans exception : pas même pour un administrateur. Ni la fusion de deux ingrédients ni les
+     * conversions n'ont de passe-droit (ADR 0028 décision 9 et amendement, D3). L'ingrédient d'un autre est traité comme inconnu : on ne
+     * révèle pas son existence.
      *
      * @throws IngredientException
      */
@@ -150,9 +143,10 @@ final class Ingredient implements ModelInterface
     }
 
     /**
-     * Slug du commun dont cet ingrédient est l'adoption (ADR 0028), `null` pour un ingrédient créé ou copié avec une recette. Un fait
-     * immuable : l'ingrédient est né de cette adoption, quoi qu'il devienne ensuite (renommé, fusionné). L'association actuelle
-     * « pour cet utilisateur, ce commun est cet ingrédient » est dans `IngredientAlias`, qui suit les fusions.
+     * Slug de l'ingrédient dont celui-ci est la copie (ADR 0028) : celui d'un ingrédient du catalogue copié à l'activation du compte (ou,
+     * avant la passation, d'un ancien commun), ou celui qui a été copié avec une recette ; `null` pour un ingrédient créé par son
+     * propriétaire. Un fait immuable : l'ingrédient est né de cette copie, quoi qu'il devienne ensuite (renommé, fusionné).
+     * L'association actuelle « pour cet utilisateur, cette origine est cet ingrédient » est dans `IngredientAlias`, qui suit les fusions.
      */
     public function getAdoptedFrom(): ?string
     {
@@ -184,15 +178,14 @@ final class Ingredient implements ModelInterface
 
     /**
      * Seul le propriétaire du catalogue (`$catalogOwnerId`, `null` s'il n'existe pas : alors personne) pose le marqueur « de base », et
-     * seulement sur un ingrédient qui est à lui ou, tant que les anciens communs existent (jusqu'à ING-014), sans créateur. Le marqueur
-     * d'un autre compte serait de toute façon inerte (l'amorçage ne lit que le catalogue du propriétaire) : le refuser vaut mieux que
-     * l'ignorer en silence.
+     * seulement sur un ingrédient qui est à lui. Le marqueur d'un autre compte serait de toute façon inerte (l'amorçage ne lit que le
+     * catalogue du propriétaire) : le refuser vaut mieux que l'ignorer en silence.
      *
      * @throws IngredientException
      */
     public function assertBaseMarkerSettableBy(string $userId, ?string $catalogOwnerId): void
     {
-        if ($catalogOwnerId === null || $userId !== $catalogOwnerId || !($this->creatorId === null || $this->creatorId === $userId)) {
+        if ($catalogOwnerId === null || $userId !== $catalogOwnerId || $this->creatorId !== $userId) {
             throw IngredientException::baseMarkerForbidden();
         }
     }
@@ -263,8 +256,9 @@ final class Ingredient implements ModelInterface
      * unités ; les conversions propres sont copiées par le cas d'usage. Le slug est choisi par l'appelant (`IngredientSlugPolicy`, après
      * avoir vérifié qu'il est libre) : une copie n'écrase JAMAIS un ingrédient existant de `$authorId`.
      *
-     * La provenance voyage : la copie d'une adoption garde le commun dont elle vient, et la copie d'un commun (quand le copieur ne peut
-     * pas s'en servir tel quel) le retient aussi. Une copie qui retient une origine n'est pas une création (`isAdoption()`).
+     * La provenance voyage, pour TOUTE copie (ADR 0028, amendement, D7) : la copie d'une copie garde l'origine de l'original (`adopted_from`),
+     * et la copie d'un ingrédient qui n'a pas d'origine le retient lui-même (son slug). Une copie retient donc toujours une origine : elle
+     * n'est jamais une création (`isAdoption()`), la statistique « ingrédients créés » ne la compte pas.
      */
     public static function copyFromOriginal(Ingredient $ingredient, string $authorId, string $slug): self
     {
@@ -278,7 +272,7 @@ final class Ingredient implements ModelInterface
             defaultPurchaseUnit: $ingredient->getDefaultPurchaseUnit(),
             creatorId: $authorId,
             compatibleUnits: $ingredient->getCompatibleUnits()->slice(0, null, true),
-            adoptedFrom: $ingredient->getAdoptedFrom() ?? ($ingredient->getCreatorId() === null ? $ingredient->getSlug() : null),
+            adoptedFrom: $ingredient->getAdoptedFrom() ?? $ingredient->getSlug(),
             // Une copie naît toujours à faux, quelle que soit la source : le marqueur « de base » ne se copie jamais (ADR 0028, amendement)
             isBase: false,
         );

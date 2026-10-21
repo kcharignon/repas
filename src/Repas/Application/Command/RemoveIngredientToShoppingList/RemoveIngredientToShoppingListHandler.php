@@ -32,9 +32,9 @@ readonly class RemoveIngredientToShoppingListHandler
         }
         $activeShoppingList->assertVersion($command->expectedVersion);
 
-        // Un ancien slug de commun que le propriétaire a adopté désigne sa copie (ADR 0028 décision 4). On ne fait que retrouver ce que la
-        // liste contient : aucune adoption ici
-        $ingredientSlug = $this->slugResolver->resolveExisting($command->ownerId, [$command->ingredientSlug])[$command->ingredientSlug] ?? $command->ingredientSlug;
+        // Un ancien slug (ancien commun dont le propriétaire a reçu une copie, ingrédient fusionné) désigne l'ingrédient actuel du
+        // propriétaire (ADR 0028 décision 4). On ne fait que retrouver ce que la liste contient
+        $ingredientSlug = $this->slugResolver->resolve($command->ownerId, [$command->ingredientSlug])[$command->ingredientSlug] ?? $command->ingredientSlug;
 
         $purchaseUnitSlug = $this->ingredientRepository->findPurchaseUnitSlug($ingredientSlug);
 

@@ -42,8 +42,8 @@ class IngredientTest extends TestCase
 
     public function testAdoptingLeavesTheCommonUntouchedAndDoesNotShareItsUnitsList(): void
     {
-        // Given
-        $common = new IngredientBuilder()->isButter()->build();
+        // Given : un ancien commun, sans créateur (la forme de la base d'avant la passation)
+        $common = new IngredientBuilder()->isButter()->withoutCreator()->build();
         $before = $common->toArray();
 
         // When
@@ -90,7 +90,7 @@ class IngredientTest extends TestCase
         $this->assertFalse($common->isAdoption());
     }
 
-    public function testACopyMadeWithARecipeOfAPersonalIngredientIsNotAnAdoptionAndTakesTheGivenSlug(): void
+    public function testACopyMadeWithARecipeTakesTheGivenSlugAndRetainsItsOrigin(): void
     {
         // Given
         $original = new IngredientBuilder()->isButter()->withCreator(new UserBuilder()->withId('author-id')->build(), true)->build();
@@ -101,8 +101,9 @@ class IngredientTest extends TestCase
         // Then : le slug est celui que l'appelant a choisi libre, le reste est celui de l'original
         $this->assertSame('beurre-2copier-id', $copy->getSlug());
         $this->assertSame('copier-id', $copy->getCreatorId());
-        $this->assertFalse($copy->isAdoption());
-        $this->assertNull($copy->getAdoptedFrom());
+        // D7 : toute copie retient son origine (ici l'original n'en a pas : son slug), elle n'est donc jamais une création
+        $this->assertTrue($copy->isAdoption());
+        $this->assertSame($original->getSlug(), $copy->getAdoptedFrom());
         $this->assertSame($original->getName(), $copy->getName());
         $this->assertSame($original->getImage(), $copy->getImage());
         $this->assertSame($original->getSluggedName(), $copy->getSluggedName());
@@ -113,9 +114,9 @@ class IngredientTest extends TestCase
         $this->assertSame('author-id', $original->getCreatorId(), 'L\'original n\'est pas touché.');
     }
 
-    public function testTheCopyOfAnAdoptionKeepsTheCommonItComesFromAndIsStillNotACreation(): void
+    public function testTheCopyOfACopyKeepsTheOriginItComesFromAndIsStillNotACreation(): void
     {
-        // Given : l'adoption d'un commun par l'auteur
+        // Given : la copie, par l'auteur, d'un ingrédient du catalogue
         $common = new IngredientBuilder()->isButter()->build();
         $adoption = Ingredient::adopt($common, 'author-id', 'beurreauthor-id');
 
@@ -127,13 +128,13 @@ class IngredientTest extends TestCase
         $this->assertTrue($copy->isAdoption());
     }
 
-    public function testTheCopyOfACommonRetainsTheCommonAsItsOrigin(): void
+    public function testTheCopyOfAnIngredientWithoutOriginRetainsItsSlugAsItsOrigin(): void
     {
-        // Given : un commun que le copieur ne peut pas utiliser tel quel
-        $common = new IngredientBuilder()->isButter()->build();
+        // Given : un ingrédient du propriétaire du catalogue (un ancien commun), sans origine
+        $original = new IngredientBuilder()->isButter()->build();
 
         // When
-        $copy = Ingredient::copyFromOriginal($common, 'copier-id', 'beurre-2copier-id');
+        $copy = Ingredient::copyFromOriginal($original, 'copier-id', 'beurre-2copier-id');
 
         // Then
         $this->assertSame('beurre', $copy->getAdoptedFrom());
@@ -167,16 +168,15 @@ class IngredientTest extends TestCase
         $this->assertSame([...$before, 'tranche'], array_map(static fn(Unit $unit): string => $unit->getSlug(), $butter->getCompatibleUnits()->toArray()));
     }
 
-    public function testACommonIngredientIsOwnedByNobody(): void
+    public function testAnIngredientWithoutAnOwnerBelongsToNobody(): void
     {
-        // Given
-        $common = new IngredientBuilder()->isButter()->build();
+        // Given : la forme de la base d'avant la passation, qu'aucun code ne traite plus à part
+        $legacy = new IngredientBuilder()->isButter()->withoutCreator()->build();
 
-        // Then : un commun n'est à personne, pas même à l'utilisateur qui l'a adopté
-        $this->assertTrue($common->isCommon());
-        $this->assertFalse($common->isOwnedBy('user-id'));
+        // Then : il n'est à personne, il n'y a pas de cas particulier
+        $this->assertFalse($legacy->isOwnedBy('user-id'));
         $this->expectExceptionObject(IngredientException::notFound('beurre'));
-        $common->assertOwnedBy('user-id');
+        $legacy->assertOwnedBy('user-id');
     }
 
     public function testAnIngredientIsOwnedByItsCreatorOnly(): void
@@ -185,7 +185,6 @@ class IngredientTest extends TestCase
         $ingredient = new IngredientBuilder()->isButter()->withCreator(new UserBuilder()->withId('user-id')->build(), true)->build();
 
         // Then
-        $this->assertFalse($ingredient->isCommon());
         $this->assertTrue($ingredient->isOwnedBy('user-id'));
         $ingredient->assertOwnedBy('user-id');
         $this->assertFalse($ingredient->isOwnedBy('another-id'));
@@ -274,14 +273,13 @@ class IngredientTest extends TestCase
     {
         // demandeur, propriétaire du catalogue, créateur de l'ingrédient, permis ?
         yield 'le propriétaire sur son ingrédient' => ['owner-id', 'owner-id', 'owner-id', true];
-        yield 'le propriétaire sur un ancien commun' => ['owner-id', 'owner-id', null, true];
+        yield 'le propriétaire sur un ingrédient sans propriétaire (plus traité à part)' => ['owner-id', 'owner-id', null, false];
         yield "le propriétaire sur l'ingrédient d'un autre" => ['owner-id', 'owner-id', 'user-id', false];
         yield 'un utilisateur sur son ingrédient' => ['user-id', 'owner-id', 'user-id', false];
-        yield 'un utilisateur sur un ancien commun' => ['user-id', 'owner-id', null, false];
         yield "un utilisateur sur l'ingrédient du propriétaire" => ['user-id', 'owner-id', 'owner-id', false];
-        yield "un administrateur qui n'est pas le propriétaire, sur un ancien commun" => ['admin-id', 'owner-id', null, false];
+        yield "un administrateur qui n'est pas le propriétaire, sur son ingrédient" => ['admin-id', 'owner-id', 'admin-id', false];
         yield "le propriétaire n'existe pas, personne ne peut" => ['owner-id', null, 'owner-id', false];
-        yield "le propriétaire n'existe pas, pas même sur un ancien commun" => ['user-id', null, null, false];
+        yield "le propriétaire n'existe pas, pas même sur l'ingrédient de l'utilisateur" => ['user-id', null, 'user-id', false];
     }
 
     #[DataProvider('baseMarkerCases')]

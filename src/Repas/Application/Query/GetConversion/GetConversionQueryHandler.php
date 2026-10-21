@@ -20,6 +20,6 @@ final readonly class GetConversionQueryHandler
      */
     public function __invoke(GetConversionQuery $query): ConversionDTO
     {
-        return $this->conversionLoader->get($query->conversionId);
+        return $this->conversionLoader->get($query->conversionId, $query->viewerId);
     }
 }

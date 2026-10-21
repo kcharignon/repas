@@ -24,7 +24,7 @@ final class RemoveIngredientToShoppingListApiController extends AbstractControll
 
     #[Route(path: '/api/v1/shopping-lists/active/ingredients/{slug}/decrease', name: 'api_decrease_ingredient', methods: ['POST'])]
     #[IsGranted('ROLE_USER')]
-    #[OA\Post(summary: 'Retire 1 à la quantité d\'un ingrédient dans la liste active de l\'utilisateur (la ligne disparaît à zéro). Le slug d\'un commun que l\'utilisateur a adopté désigne sa copie, qui est celle de la liste')]
+    #[OA\Post(summary: 'Retire 1 à la quantité d\'un ingrédient dans la liste active de l\'utilisateur (la ligne disparaît à zéro). Un ancien slug (ancien commun dont l\'utilisateur a reçu une copie, ingrédient fusionné) désigne son ingrédient actuel, qui est celui de la liste')]
     #[OA\Tag(name: 'Shopping lists')]
     #[OA\Parameter(ref: '#/components/parameters/IfMatch')]
     #[OA\Response(response: 204, description: 'Quantité diminuée')]

@@ -28,7 +28,7 @@ use Repas\Tests\Helper\Builder\UnitBuilder;
 use Repas\Tests\Helper\Builder\UserBuilder;
 use Repas\Tests\Helper\InMemoryRepository\ConversionInMemoryRepository;
 use Repas\Repas\Domain\Service\ConversionService;
-use Repas\Tests\Helper\IngredientSlugResolverFactory;
+use Repas\Repas\Application\Service\IngredientSlugResolver;
 use Repas\Tests\Helper\InMemoryRepository\IngredientAliasInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\IngredientInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\RecipeInMemoryRepository;
@@ -72,7 +72,7 @@ class CreateRecipeHandlerTest extends TestCase
             $this->recipeRepository,
             new ConversionService(new ConversionInMemoryRepository(), $this->unitRepository),
             $this->eventDispatcher,
-            IngredientSlugResolverFactory::create($this->ingredientRepository, $this->aliasRepository),
+            new IngredientSlugResolver($this->aliasRepository),
         );
     }
 
@@ -261,11 +261,12 @@ class CreateRecipeHandlerTest extends TestCase
         }
     }
 
-    public function testRowsOfACommonTheAuthorAdoptedLandOnHisCopy(): void
+    public function testRowsWithTheOldSlugOfACommonTheAuthorReceivedACopyOfLandOnHisCopy(): void
     {
-        // Arrange : la copie des pâtes de l'auteur, et l'alias qui la désigne (ADR 0028) ; la recette est envoyée avec l'ancien slug
+        // Arrange : « pate » est maintenant l'ingrédient du propriétaire du catalogue ; la copie des pâtes de l'auteur, et l'alias qui la désigne
+        // (ADR 0028) ; la recette est envoyée avec l'ancien slug
         $user = new UserBuilder()->withId('user-id')->build();
-        $this->ingredientRepository->save(new IngredientBuilder()->isPasta()->build());
+        $this->ingredientRepository->save(new IngredientBuilder()->isPasta()->withCreator(new UserBuilder()->withId('owner-id')->build())->build());
         $copy = new IngredientBuilder()->isPasta()->withCreator($user, true)->withAdoptedFrom('pate')->build();
         $this->ingredientRepository->save($copy);
         $this->aliasRepository->save(IngredientAlias::create('user-id', 'pate', $copy->getSlug(), AliasKind::ADOPTION, 'migration-2026-10-21', new DateTimeImmutable()));
@@ -273,48 +274,52 @@ class CreateRecipeHandlerTest extends TestCase
         // Act
         ($this->handler)($this->commandWith('pate', $user));
 
-        // Assert : la ligne porte la copie, jamais le commun masqué
+        // Assert : la ligne porte la copie de l'auteur, jamais l'ingrédient du propriétaire du catalogue
         $this->assertSame([$copy->getSlug()], $this->slugsOfTheRecipe());
     }
 
-    public function testAnAdopterAdoptsOnTheFlyACommonHeNeverUsedAndTheRowLandsOnTheCopy(): void
+    public function testAnIngredientOfTheCatalogOwnerTheAuthorNeverReceivedIsUnknownAndNothingIsAdopted(): void
     {
-        // Arrange : il a adopté le parmesan, pas les pâtes
+        // Arrange : l'auteur a reçu le parmesan, pas les pâtes du propriétaire du catalogue ; il n'y a plus d'adoption à la première utilisation
         $user = new UserBuilder()->withId('user-id')->build();
-        $this->ingredientRepository->save(new IngredientBuilder()->isPasta()->build());
-        $this->ingredientRepository->save(new IngredientBuilder()->isParmesan()->build());
+        $owner = new UserBuilder()->withId('owner-id')->build();
+        $this->ingredientRepository->save(new IngredientBuilder()->isPasta()->withCreator($owner)->build());
+        $this->ingredientRepository->save(new IngredientBuilder()->isParmesan()->withCreator($owner)->build());
         $parmesanCopy = new IngredientBuilder()->isParmesan()->withCreator($user, true)->withAdoptedFrom('parmesan')->build();
         $this->ingredientRepository->save($parmesanCopy);
-        $this->aliasRepository->save(IngredientAlias::create('user-id', 'parmesan', $parmesanCopy->getSlug(), AliasKind::ADOPTION, 'migration-2026-10-21', new DateTimeImmutable()));
+        $this->aliasRepository->save(IngredientAlias::create('user-id', 'parmesan', $parmesanCopy->getSlug(), AliasKind::ADOPTION, 'activation', new DateTimeImmutable()));
+
+        // Assert : l'ingrédient d'un autre est inconnu
+        $this->expectExceptionObject(IngredientException::notFound('pate'));
 
         // Act
-        ($this->handler)($this->commandWith('pate', $user));
-
-        // Assert : les pâtes sont adoptées à la volée (alias `first-use`), la ligne porte la copie, le commun n'a pas bougé
-        $this->assertSame(['pate' . 'user-id'], $this->slugsOfTheRecipe());
-        $this->assertSame('first-use', $this->aliasRepository->find('user-id', 'pate')->getSource());
-        $this->assertNull($this->ingredientRepository->findOneBySlug('pate')->getCreatorId());
-        $this->assertSame('pate', $this->ingredientRepository->findOneBySlug('pateuser-id')->getAdoptedFrom());
+        try {
+            ($this->handler)($this->commandWith('pate', $user));
+        } finally {
+            // aucune copie, aucun alias de plus
+            $this->assertCount(3, $this->ingredientRepository->findAll());
+            $this->assertCount(1, $this->aliasRepository->all());
+        }
     }
 
-    public function testWithoutAnyAliasTheRowsKeepTheSharedCommonAndNothingIsAdopted(): void
+    public function testWithoutAnyAliasTheRowsKeepTheirSlugsAndNothingIsAdopted(): void
     {
-        // Arrange : l'utilisateur n'a rien adopté (la situation de tous les comptes avant la migration)
+        // Arrange : l'utilisateur n'a aucun alias, « pate » est son ingrédient
         $user = new UserBuilder()->withId('user-id')->build();
         $this->ingredientRepository->save(new IngredientBuilder()->isPasta()->build());
 
         // Act
         ($this->handler)($this->commandWith('pate', $user));
 
-        // Assert : le comportement d'avant ce chantier
+        // Assert
         $this->assertSame(['pate'], $this->slugsOfTheRecipe());
         $this->assertSame([], $this->aliasRepository->all());
         $this->assertCount(1, $this->ingredientRepository->findAll());
     }
 
-    public function testTheCommonOfSomeoneWhoAdoptedItStaysTheOneOfAnotherAuthor(): void
+    public function testTheAliasOfAnotherUserIsNeverAppliedToTheAuthor(): void
     {
-        // Arrange : `other-id` a adopté les pâtes, pas l'auteur de la recette
+        // Arrange : `other-id` a une copie des pâtes, pas l'auteur de la recette
         $other = new UserBuilder()->withId('other-id')->build();
         $this->ingredientRepository->save(new IngredientBuilder()->isPasta()->build());
         $copy = new IngredientBuilder()->isPasta()->withCreator($other, true)->withAdoptedFrom('pate')->build();

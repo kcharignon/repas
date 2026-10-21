@@ -32,8 +32,9 @@ readonly class AddIngredientToShoppingListHandler
         }
         $shoppingListActive->assertVersion($command->expectedVersion);
 
-        // Le commun que le propriétaire a adopté (ou adopte à la première utilisation) est remplacé par sa copie (ADR 0028 décision 4)
-        $ingredientSlug = $this->slugResolver->resolveForUser($command->ownerId, [$command->ingredientSlug])[$command->ingredientSlug] ?? $command->ingredientSlug;
+        // Un ancien slug (ancien commun dont le propriétaire a reçu une copie, ingrédient fusionné) est remplacé par l'ingrédient actuel
+        // du propriétaire (ADR 0028 décision 4)
+        $ingredientSlug = $this->slugResolver->resolve($command->ownerId, [$command->ingredientSlug])[$command->ingredientSlug] ?? $command->ingredientSlug;
 
         $purchaseUnitSlug = $this->ingredientRepository->findPurchaseUnitSlugUsableBy($ingredientSlug, $command->ownerId);
         $shoppingListActive->addIngredient($ingredientSlug, $purchaseUnitSlug);

@@ -17,7 +17,7 @@ use Symfony\Component\Messenger\Attribute\AsMessageHandler;
  * change.
  *
  * Les deux ingrédients doivent être à l'utilisateur, sans exception pour un administrateur : l'ingrédient d'un autre ou un slug inconnu
- * est inconnu (`404`, on ne révèle rien), un commun n'est à personne (aussi `404` : jamais proposé, donc jamais écarté). Deux fois le même
+ * est inconnu (`404`, on ne révèle rien). Deux fois le même
  * est une erreur de l'appelant (`422`). Idempotent : la repose répond comme la première fois.
  */
 #[AsMessageHandler]

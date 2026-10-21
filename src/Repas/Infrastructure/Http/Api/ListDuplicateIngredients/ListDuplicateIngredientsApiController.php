@@ -29,7 +29,7 @@ final class ListDuplicateIngredientsApiController extends AbstractController
 
     #[Route(path: '/api/v1/ingredients/duplicates', name: 'api_list_duplicate_ingredients', methods: ['GET'], priority: 10)]
     #[IsGranted('ROLE_USER')]
-    #[OA\Get(summary: "Les doublons possibles de l'utilisateur : des paires de SES ingrédients (jamais un commun, jamais ceux d'un autre), du même rayon, dont les noms se ressemblent (même nom une fois normalisé, à une faute de frappe près, ou assez proche : score de 0,90 au moins) et qu'il n'a pas écartées par « Pas le même ». Triées de la plus probable à la moins probable, 50 au plus, le même ordre à chaque appel. Chaque paire porte de quoi afficher sa carte (les deux ingrédients avec leurs nombres de recettes et de listes, l'ingrédient à garder par défaut). Vide pour un compte sans ingrédient personnel, un administrateur compris. Ce que la fusion ferait exactement : `GET …/merge-preview`")]
+    #[OA\Get(summary: "Les doublons possibles de l'utilisateur : des paires de SES ingrédients (jamais ceux d'un autre, un administrateur compris), du même rayon, dont les noms se ressemblent (même nom une fois normalisé, à une faute de frappe près, ou assez proche : score de 0,90 au moins) et qu'il n'a pas écartées par « Pas le même ». Triées de la plus probable à la moins probable, 50 au plus, le même ordre à chaque appel. Chaque paire porte de quoi afficher sa carte (les deux ingrédients avec leurs nombres de recettes et de listes, l'ingrédient à garder par défaut). Vide pour un compte qui n'a pas deux ingrédients. Ce que la fusion ferait exactement : `GET …/merge-preview`")]
     #[OA\Tag(name: 'Ingredients')]
     #[OA\Response(
         response: 200,

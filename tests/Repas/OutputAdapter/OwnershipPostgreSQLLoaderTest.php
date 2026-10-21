@@ -30,18 +30,18 @@ class OwnershipPostgreSQLLoaderTest extends DatabaseTestCase
         $this->persister = new DataPersister(static::getContainer());
     }
 
-    public function testIngredientCreatorIsTheCreatorOrNullForACommonIngredient(): void
+    public function testIngredientCreatorIsTheOwnerOfTheIngredient(): void
     {
         // Given
         $creator = new UserBuilder()->build();
         $own = new IngredientBuilder()->withName('zzz perso')->withCreator($creator, true)->build();
-        $common = new IngredientBuilder()->withName('zzz commun')->build();
+        $another = new IngredientBuilder()->withName('zzz autre')->withCreator(new UserBuilder()->build(), true)->build();
         $this->persister->saveIngredient($own);
-        $this->persister->saveIngredient($common);
+        $this->persister->saveIngredient($another);
 
         // When & Then
         $this->assertSame($creator->getId(), $this->ownershipLoader->ingredientCreatorId($own->getSlug()));
-        $this->assertNull($this->ownershipLoader->ingredientCreatorId($common->getSlug()));
+        $this->assertSame($another->getCreatorId(), $this->ownershipLoader->ingredientCreatorId($another->getSlug()));
     }
 
     public function testIngredientCreatorFailsForAnUnknownIngredient(): void

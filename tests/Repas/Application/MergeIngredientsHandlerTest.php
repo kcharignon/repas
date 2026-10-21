@@ -627,26 +627,6 @@ class MergeIngredientsHandlerTest extends TestCase
         }
     }
 
-    public function testACommonIngredientIsRefusedOnEitherSide(): void
-    {
-        foreach ([[self::ABSORBED, 'farine'], ['farine', self::KEPT]] as [$absorbed, $kept]) {
-            // Given : un commun
-            $this->setUp();
-            $this->ingredientRepository->save(new IngredientBuilder()->isFlour()->build());
-            $this->handler = $this->handlerFor($this->ingredientRepository, $this->conversionRepository);
-
-            try {
-                // When
-                $this->merge(self::USER, $absorbed, $kept);
-                $this->fail('un commun ne se fusionne jamais');
-            } catch (IngredientException $exception) {
-                // Then
-                $this->assertSame(['CANNOT_MERGE_COMMON_INGREDIENT', 422], [$exception->getMessage(), $exception->getCode()]);
-                $this->assertSame(['lock', 'usageOf'], $this->mergeRepository->calls);
-            }
-        }
-    }
-
     public function testAnIngredientIsNotMergedIntoItself(): void
     {
         // Then

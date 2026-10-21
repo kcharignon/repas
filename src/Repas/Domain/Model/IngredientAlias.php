@@ -10,8 +10,9 @@ use Repas\Shared\Domain\Model\ModelTrait;
 
 /**
  * « Pour cet utilisateur, `aliasSlug` est son ingrédient `ingredientSlug` » (ADR 0028 décision 2) : la table de correspondance
- * permanente entre un commun adopté (ou un ingrédient fusionné) et l'ingrédient de l'utilisateur. Elle sert à masquer le commun, à
- * résoudre un ancien slug reçu en écriture, à auditer une migration et à rejouer une fusion. Identifiants seulement (ADR 0013) :
+ * permanente entre un ancien slug (celui d'un ingrédient du catalogue dont l'utilisateur a reçu une copie, ou d'un ingrédient fusionné)
+ * et l'ingrédient de l'utilisateur. Elle ne masque plus rien depuis l'amendement du 2026-10-20 : elle sert à résoudre un ancien slug
+ * reçu en écriture, à retrouver la provenance d'une copie de recette, à auditer une migration et à rejouer une fusion. Identifiants seulement (ADR 0013) :
  * aucun ingrédient, aucun utilisateur chargé.
  *
  * `source` dit d'où vient la ligne : `first-use`, `copy`, `migration-AAAA-MM-JJ` ou `merge`. Elle suit les fusions (l'ingrédient

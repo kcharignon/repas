@@ -78,7 +78,7 @@ readonly class IngredientPostgreSQLRepository extends PostgreSQLRepository imple
     public function findPurchaseUnitSlugUsableBy(string $slug, string $userId): string
     {
         // Une seule requête, comme `find()` : la visibilité (`IngredientVisibility`) est dans la condition, donc l'ingrédient d'un autre
-        // et un commun que l'utilisateur a adopté sont traités comme inconnus
+        // est traité comme inconnu
         $row = $this->entityManager->createQueryBuilder()
             ->select('i.defaultPurchaseUnitSlug AS purchaseUnitSlug')
             ->from(IngredientEntity::class, 'i')
@@ -90,24 +90,6 @@ readonly class IngredientPostgreSQLRepository extends PostgreSQLRepository imple
             ->getOneOrNullResult();
 
         return $row['purchaseUnitSlug'] ?? throw IngredientException::notFound($slug);
-    }
-
-    public function findCommonSlugs(array $slugs): array
-    {
-        if ($slugs === []) {
-            return [];
-        }
-
-        $rows = $this->entityManager->createQueryBuilder()
-            ->select('i.slug AS slug')
-            ->from(IngredientEntity::class, 'i')
-            ->where('i.slug IN (:slugs)')
-            ->andWhere(IngredientVisibility::isCommon('i'))
-            ->setParameter('slugs', array_values(array_unique($slugs)))
-            ->getQuery()
-            ->getArrayResult();
-
-        return array_column($rows, 'slug');
     }
 
     public function exists(string $slug): bool

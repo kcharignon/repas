@@ -18,8 +18,6 @@ use Repas\Repas\Domain\Service\IngredientNameMatcher;
  */
 class DuplicateIngredientFinderTest extends TestCase
 {
-    private const string USER = 'user-id';
-
     private DuplicateIngredientFinder $finder;
 
     protected function setUp(): void
@@ -27,9 +25,9 @@ class DuplicateIngredientFinderTest extends TestCase
         $this->finder = new DuplicateIngredientFinder(new IngredientNameMatcher());
     }
 
-    private static function own(string $slug, string $name, string $department = 'fruit-et-legume', ?string $adoptedFrom = null, ?string $creator = self::USER): IngredientCandidate
+    private static function own(string $slug, string $name, string $department = 'fruit-et-legume', ?string $adoptedFrom = null): IngredientCandidate
     {
-        return new IngredientCandidate($slug, $name, $department, 'kilo', [], $creator, $adoptedFrom);
+        return new IngredientCandidate($slug, $name, $department, 'kilo', [], $adoptedFrom);
     }
 
     /**
@@ -85,22 +83,9 @@ class DuplicateIngredientFinderTest extends TestCase
         $this->assertSame([], $this->finder->find($candidates));
     }
 
-    public function testACommonIngredientIsNeverProposed(): void
+    public function testTwoCopiesOfDifferentOriginsAreNeverProposedButTwoOfTheSameOriginAre(): void
     {
-        // Given : un commun (sans créateur) du même nom qu'un ingrédient de l'utilisateur, et deux communs entre eux
-        $candidates = [
-            self::own('tomate-u', 'Tomate'),
-            self::own('tomate', 'Tomate', creator: null),
-            self::own('tomates', 'Tomates', creator: null),
-        ];
-
-        // When / Then
-        $this->assertSame([], $this->finder->find($candidates));
-    }
-
-    public function testTwoAdoptionsOfDifferentCommonsAreNeverProposedButTwoOfTheSameCommonAre(): void
-    {
-        // Given : l'administrateur a voulu « confiture fraise » et « confiture framboise » distincts ; deux adoptions du même commun, non
+        // Given : le propriétaire du catalogue a voulu « confiture fraise » et « confiture fraisse » distincts ; deux copies de la même origine, non
         $candidates = [
             self::own('fraise-u', 'Confiture fraise', 'epicerie', 'confiture-fraise'),
             self::own('fraise-2-u', 'Confiture fraises', 'epicerie', 'confiture-fraise'),
@@ -116,7 +101,7 @@ class DuplicateIngredientFinderTest extends TestCase
 
     public function testAnAdoptionAndAnIngredientTheUserCreatedAreProposed(): void
     {
-        // Given : la copie d'un commun et un ingrédient créé à la main (ou copié avec une recette)
+        // Given : la copie d'un ingrédient du catalogue et un ingrédient créé à la main
         $candidates = [self::own('tomate-u', 'Tomate', adoptedFrom: 'tomate'), self::own('tomates-u', 'Tomates')];
 
         // When / Then

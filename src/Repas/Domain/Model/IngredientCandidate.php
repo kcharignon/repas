@@ -8,7 +8,7 @@ use Repas\Repas\Domain\Service\IngredientNameMatcher;
 /**
  * Un ingrédient que le rapprochement peut retenir (ADR 0028 décision 8) : une valeur légère, lue sans hydrater de modèle
  * (`IngredientMatchCandidates`). Elle ne porte que ce que le rapprochement compare ou contrôle : identité, nom, rayon, unités, origine.
- * Les références sont des slugs (ADR 0013).
+ * Les références sont des slugs (ADR 0013). Un candidat est toujours un ingrédient de l'utilisateur qui copie ou qui cherche ses doublons.
  */
 final readonly class IngredientCandidate
 {
@@ -17,8 +17,7 @@ final readonly class IngredientCandidate
 
     /**
      * @param list<string> $compatibleUnitSlugs
-     * @param ?string $creatorId le propriétaire du candidat, `null` pour un commun
-     * @param ?string $adoptedFrom le slug du commun dont le candidat est l'adoption
+     * @param ?string $adoptedFrom le slug de l'ingrédient dont le candidat est la copie
      */
     public function __construct(
         public string $slug,
@@ -26,7 +25,6 @@ final readonly class IngredientCandidate
         public string $departmentSlug,
         public string $purchaseUnitSlug,
         public array $compatibleUnitSlugs = [],
-        public ?string $creatorId = null,
         public ?string $adoptedFrom = null,
     ) {
         $this->tokens = IngredientNameMatcher::tokens($name);
@@ -38,10 +36,5 @@ final readonly class IngredientCandidate
     public function normalizedName(): string
     {
         return implode('-', $this->tokens);
-    }
-
-    public function isCommon(): bool
-    {
-        return $this->creatorId === null;
     }
 }

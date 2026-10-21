@@ -199,21 +199,20 @@ class IngredientMergeApiFlowTest extends DatabaseTestCase
         $a = $this->createIngredient($user, 'Tomate');
         $b = $this->createIngredient($user, 'Tomates');
         $theirs = $this->createIngredient($other, 'Tomate');
+        // L'ingrédient du propriétaire du catalogue : à un autre compte, pour tous les autres
         $this->persister->saveIngredient(new IngredientBuilder()->isFlour()->build());
-        $common = 'farine';
+        $catalogOwners = 'farine';
         $this->createRecipe($user, 'Sauce', [[$b, 500, 'gramme']]);
         $hash = $this->tablesHash();
 
         /** @var array<string, array{User, string, array<string, string>, int, ?string}> $cases */
         $cases = [
             'le même ingrédient' => [$user, $b, ['into' => $b], 422, 'CANNOT_MERGE_INTO_ITSELF'],
-            'un commun absorbé' => [$user, $common, ['into' => $a], 422, 'CANNOT_MERGE_COMMON_INGREDIENT'],
-            'un commun gardé' => [$user, $b, ['into' => $common], 422, 'CANNOT_MERGE_COMMON_INGREDIENT'],
             'l\'ingrédient d\'un autre absorbé' => [$user, $theirs, ['into' => $a], 404, null],
             'l\'ingrédient d\'un autre gardé' => [$user, $b, ['into' => $theirs], 404, null],
             'un ingrédient inconnu' => [$user, 'inconnu', ['into' => $a], 404, null],
             'un administrateur n\'a pas de passe-droit (ingrédient d\'un autre)' => [$admin, $b, ['into' => $a], 404, null],
-            'un administrateur ne fusionne pas un commun' => [$admin, $common, ['into' => $a], 404, null],
+            'un administrateur ne fusionne pas l\'ingrédient du propriétaire du catalogue' => [$admin, $catalogOwners, ['into' => $a], 404, null],
             'sans cible' => [$user, $b, [], 422, null],
         ];
         foreach ($cases as $label => [$caller, $slug, $body, $status, $message]) {

@@ -59,7 +59,7 @@ readonly class ReplaceIngredientPreferenceHandler
 
         $this->assertProductsOfTheStore($command, array_values(array_unique([...$accepted, ...$rejected])));
 
-        // Un ancien slug d'un commun que l'utilisateur a adopté désigne sa copie : jamais de préférence sous un commun masqué (ADR 0028 décision 4)
+        // Un ancien slug (ancien commun dont l'utilisateur a reçu une copie, ingrédient fusionné) désigne son ingrédient actuel : jamais de préférence sous un ancien slug (ADR 0028 décision 4)
         $ingredientSlug = $this->ingredientAliases->resolve($command->userId, [$command->ingredientSlug])[$command->ingredientSlug] ?? $command->ingredientSlug;
 
         $choice = $this->choiceRepository->findOne($command->userId, $command->retailer, $command->storeId, $ingredientSlug);

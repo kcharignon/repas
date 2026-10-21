@@ -3,12 +3,13 @@
 namespace Repas\Tests\Repas\InputAdapter;
 
 
+use DateTimeImmutable;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use Repas\Drive\Domain\Interface\DriveSettingsRepository;
-use Repas\Repas\Application\Command\AdoptCommonIngredient\AdoptCommonIngredientCommand;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
+use Repas\Repas\Domain\Model\AliasKind;
 use Repas\Repas\Domain\Model\Ingredient;
-use Repas\Shared\Application\Interface\CommandBusInterface;
+use Repas\Repas\Domain\Model\IngredientAlias;
 use Repas\Tests\Helper\Builder\ConversionBuilder;
 use Repas\Tests\Helper\Builder\DepartmentBuilder;
 use Repas\Tests\Helper\Builder\DriveSettingsBuilder;
@@ -25,15 +26,17 @@ use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 
 /**
  * Copier la recette d'un autre, de bout en bout, avec les vrais bus, la vraie base, les listeners et le voter (ADR 0028 décision 8,
- * ING-004) : le rapprochement des ingrédients, JAMAIS d'écrasement d'un ingrédient du copieur, puis la suite d'un parcours réel
- * (planifier la copie, liste de courses, plan d'envoi du drive qui lit les produits mémorisés du copieur).
+ * ING-004, simplifiée par l'amendement du 2026-10-20) : le rapprochement des ingrédients, JAMAIS d'écrasement d'un ingrédient du copieur,
+ * puis la suite d'un parcours réel (planifier la copie, liste de courses, plan d'envoi du drive qui lit les produits mémorisés du copieur).
+ * Tout ingrédient est à quelqu'un : une copie retient son origine et n'est jamais comptée comme une création.
  *
- * Les communs sont la farine et le sucre (rayon boulangerie, achetés au kilo, comptés au gramme).
+ * Le catalogue du propriétaire : la farine et le sucre (rayon boulangerie, achetés au kilo, comptés au gramme), aux slugs `farine` et `sucre`.
  */
 class RecipeCopyApiFlowTest extends DatabaseTestCase
 {
     private KernelBrowser $client;
     private DataPersister $persister;
+    private User $owner;
 
     protected function setUp(): void
     {
@@ -43,20 +46,21 @@ class RecipeCopyApiFlowTest extends DatabaseTestCase
         $this->persister = new DataPersister(static::getContainer());
         $this->persister->saveRecipeType(new RecipeTypeBuilder()->isMeal()->build());
         $this->persister->saveConversion(new ConversionBuilder()->isKiloToGramme()->build());
-        $this->persister->saveIngredient(new IngredientBuilder()->isFlour()->build());
-        $this->persister->saveIngredient(new IngredientBuilder()->isSugar()->build());
+        $this->owner = $this->savedUser();
+        $this->persister->saveIngredient(new IngredientBuilder()->isFlour()->withCreator($this->owner)->build());
+        $this->persister->saveIngredient(new IngredientBuilder()->isSugar()->withCreator($this->owner)->build());
     }
 
-    public function testACopierWhoAdoptedGetsHisOwnIngredientsAndKeepsEveryExistingOneThenPlansAndSendsTheCopy(): void
+    public function testACopierThatReceivedSomeCatalogIngredientsGetsHisOwnAndKeepsEveryExistingOneThenPlansAndSendsTheCopy(): void
     {
-        // Given : l'auteur a adopté farine et sucre et a son « Praliné » ; le copieur a adopté la farine, a son propre « Praliné » (même rayon,
+        // Given : l'auteur a reçu farine et sucre et a son « Praliné » ; le copieur a reçu la farine seulement, a son propre « Praliné » (même rayon,
         // même unité, une conversion à lui) et mémorisé un produit du drive pour sa farine
         $author = $this->savedUser();
         $copier = $this->savedUser();
-        $authorFlour = $this->adopt($author, 'farine');
-        $authorSugar = $this->adopt($author, 'sucre');
+        $authorFlour = $this->received($author, new IngredientBuilder()->isFlour());
+        $authorSugar = $this->received($author, new IngredientBuilder()->isSugar());
         $authorPraline = $this->savedPersonal('Praliné', $author);
-        $copierFlour = $this->adopt($copier, 'farine');
+        $copierFlour = $this->received($copier, new IngredientBuilder()->isFlour());
         $copierPraline = $this->savedPersonal('Praliné', $copier);
         $this->persister->saveConversion(new ConversionBuilder()->withIngredient($copierPraline)->withStartUnit(new UnitBuilder()->isKilo())->withEndUnit(new UnitBuilder()->isGramme())->withCoefficient(900)->build());
         static::getContainer()->get(DriveSettingsRepository::class)->save(new DriveSettingsBuilder()->withUserId($copier->getId())->build());
@@ -67,22 +71,24 @@ class RecipeCopyApiFlowTest extends DatabaseTestCase
         $this->assertSame(201, $this->client->getResponse()->getStatusCode());
         $original = basename($this->client->getResponse()->headers->get('Location'));
         $ingredientsBefore = $this->scalar('SELECT COUNT(*) FROM ingredient');
-        $conversionsBefore = $this->scalar('SELECT COUNT(*) FROM conversion');
+        $aliasesBefore = $this->scalar('SELECT COUNT(*) FROM ingredient_alias');
         $prelineBefore = $this->row('SELECT name, department, default_cooking_unit, default_purchase_unit, image, adopted_from FROM ingredient WHERE slug = ?', $copierPraline->getSlug());
 
         // When : le copieur copie la recette de l'auteur
         $this->request('POST', "/api/v1/recipes/$original/copy", $copier);
 
-        // Then : 201, et la copie utilise SES ingrédients : farine (alias), sucre (adopté à la volée), Praliné (le sien, même nom et même rayon)
+        // Then : 201, et la copie utilise SES ingrédients : farine (alias), sucre (il ne l'a pas reçu : une copie, jamais adopté à la volée),
+        // Praliné (le sien, même nom et même rayon)
         $this->assertSame(201, $this->client->getResponse()->getStatusCode());
         $copy = basename($this->client->getResponse()->headers->get('Location'));
         $this->assertEqualsCanonicalizing([$copierFlour, 'sucre' . $copier->getId(), $copierPraline->getSlug()], $this->recipeSlugs($copy));
-        // Rien d'écrasé, pas de doublon : un seul ingrédient de plus (le sucre adopté), ses conversions ne sont pas dupliquées
+        // Rien d'écrasé, pas de doublon : un seul ingrédient de plus (le sucre copié), aucun alias écrit, aucune conversion dupliquée
         $this->assertSame($ingredientsBefore + 1, $this->scalar('SELECT COUNT(*) FROM ingredient'));
-        $this->assertSame($conversionsBefore, $this->scalar('SELECT COUNT(*) FROM conversion'), 'Le sucre n\'a pas de conversion propre ; aucune autre n\'est dupliquée.');
+        $this->assertSame($aliasesBefore, $this->scalar('SELECT COUNT(*) FROM ingredient_alias'));
+        $this->assertSame('sucre', $this->row('SELECT adopted_from FROM ingredient WHERE slug = ?', 'sucre' . $copier->getId())[0], 'la copie retient l\'origine de l\'ingrédient copié');
         $this->assertSame($prelineBefore, $this->row('SELECT name, department, default_cooking_unit, default_purchase_unit, image, adopted_from FROM ingredient WHERE slug = ?', $copierPraline->getSlug()));
         $this->assertSame(1, $this->scalar('SELECT COUNT(*) FROM conversion WHERE ingredient = ?', $copierPraline->getSlug()));
-        // Une adoption et des liens ne sont pas des créations
+        // Une copie n'est pas une création
         $this->assertSame(0, $this->createdIngredients($copier));
         // L'original n'a pas bougé
         $this->assertEqualsCanonicalizing([$authorFlour, $authorSugar, $authorPraline->getSlug()], $this->recipeSlugs($original));
@@ -129,53 +135,56 @@ class RecipeCopyApiFlowTest extends DatabaseTestCase
         $this->assertSame(['praline-2' . $copier->getId()], $this->recipeSlugs($copy));
         $this->assertSame($before, $this->row('SELECT name, department, default_cooking_unit, default_purchase_unit, image, compatible_units FROM ingredient WHERE slug = ?', $theirs->getSlug()));
         $this->assertSame([900.0], array_map('floatval', $this->column('SELECT coefficient FROM conversion WHERE ingredient = ?', $theirs->getSlug())));
-        // La copie a les unités, le rayon, l'image et la conversion de l'auteur
-        $this->assertSame(['Praliné', 'fromage', 'unite', 'unite', 'images/author.png'], $this->row('SELECT name, department, default_cooking_unit, default_purchase_unit, image FROM ingredient WHERE slug = ?', 'praline-2' . $copier->getId()));
+        // La copie a les unités, le rayon, l'image et la conversion de l'auteur, et retient son origine
+        $this->assertSame(['Praliné', 'fromage', 'unite', 'unite', 'images/author.png', $authors->getSlug()], $this->row('SELECT name, department, default_cooking_unit, default_purchase_unit, image, adopted_from FROM ingredient WHERE slug = ?', 'praline-2' . $copier->getId()));
         $this->assertSame([35.0], array_map('floatval', $this->column('SELECT coefficient FROM conversion WHERE ingredient = ?', 'praline-2' . $copier->getId())));
-        // Une vraie création : elle est comptée
-        $this->assertSame(1, $this->createdIngredients($copier));
+        // Une copie n'est pas une création : elle n'est pas comptée (D7)
+        $this->assertSame(0, $this->createdIngredients($copier));
     }
 
-    public function testSomeoneWhoAdoptedNothingKeepsTheCommonsAndGetsACopyOfThePersonalIngredients(): void
+    public function testACopierWithNothingGetsACopyOfEveryIngredientOfTheCatalogOwnersRecipe(): void
     {
-        // Given : un auteur et un copieur sans aucun alias (la production aujourd'hui) ; la recette mêle des communs et un ingrédient personnel
-        $author = $this->savedUser();
+        // Given : un copieur sans aucun alias ni ingrédient copie la recette du propriétaire du catalogue, faite de SES ingrédients
         $copier = $this->savedUser();
-        $authorPraline = $this->savedPersonal('Praliné', $author);
-        $this->persister->saveConversion(new ConversionBuilder()->withIngredient($authorPraline)->withStartUnit(new UnitBuilder()->isKilo())->withEndUnit(new UnitBuilder()->isGramme())->withCoefficient(950)->build());
-        $this->request('POST', '/api/v1/recipes', $author, $this->recipeBody('farine', 'sucre', $authorPraline->getSlug()));
+        $ownersPraline = $this->savedPersonal('Praliné', $this->owner);
+        $this->persister->saveConversion(new ConversionBuilder()->withIngredient($ownersPraline)->withStartUnit(new UnitBuilder()->isKilo())->withEndUnit(new UnitBuilder()->isGramme())->withCoefficient(950)->build());
+        $this->request('POST', '/api/v1/recipes', $this->owner, $this->recipeBody('farine', 'sucre', $ownersPraline->getSlug()));
+        $this->assertSame(201, $this->client->getResponse()->getStatusCode());
         $original = basename($this->client->getResponse()->headers->get('Location'));
 
         // When
         $this->request('POST', "/api/v1/recipes/$original/copy", $copier);
 
-        // Then : comme avant, les communs partagés et une copie personnelle avec sa conversion, sans alias ni adoption
+        // Then : une copie pour chacun, jamais l'ingrédient du propriétaire, sans alias ; la conversion propre suit
         $this->assertSame(201, $this->client->getResponse()->getStatusCode());
         $copy = basename($this->client->getResponse()->headers->get('Location'));
-        $this->assertEqualsCanonicalizing(['farine', 'sucre', 'praline' . $copier->getId()], $this->recipeSlugs($copy));
+        $mine = ['farine' . $copier->getId(), 'sucre' . $copier->getId(), 'praline' . $copier->getId()];
+        $this->assertEqualsCanonicalizing($mine, $this->recipeSlugs($copy));
         $this->assertSame(0, $this->scalar('SELECT COUNT(*) FROM ingredient_alias'));
-        $this->assertSame([null], $this->column('SELECT adopted_from FROM ingredient WHERE slug = ?', 'praline' . $copier->getId()));
+        $this->assertSame(['farine', 'sucre', $ownersPraline->getSlug()], array_map(fn(string $slug): string => $this->row('SELECT adopted_from FROM ingredient WHERE slug = ?', $slug)[0], $mine));
         $this->assertSame([950.0], array_map('floatval', $this->column('SELECT coefficient FROM conversion WHERE ingredient = ?', 'praline' . $copier->getId())));
-        $this->assertSame(1, $this->createdIngredients($copier));
+        $this->assertSame(0, $this->createdIngredients($copier));
 
         // When : il copie la même recette une seconde fois
         $this->request('POST', "/api/v1/recipes/$original/copy", $copier);
 
-        // Then : il retrouve sa copie, aucun doublon, aucune conversion de plus
+        // Then : il retrouve ses copies, aucun doublon, aucune conversion de plus
         $second = basename($this->client->getResponse()->headers->get('Location'));
-        $this->assertEqualsCanonicalizing(['farine', 'sucre', 'praline' . $copier->getId()], $this->recipeSlugs($second));
-        $this->assertSame(1, $this->scalar('SELECT COUNT(*) FROM ingredient WHERE creator = ?', $copier->getId()));
+        $this->assertEqualsCanonicalizing($mine, $this->recipeSlugs($second));
+        $this->assertSame(3, $this->scalar('SELECT COUNT(*) FROM ingredient WHERE creator = ?', $copier->getId()));
         $this->assertSame(1, $this->scalar('SELECT COUNT(*) FROM conversion WHERE ingredient = ?', 'praline' . $copier->getId()));
-        $this->assertSame(1, $this->createdIngredients($copier));
+        $this->assertSame(0, $this->createdIngredients($copier));
     }
 
     public function testCopyingYourOwnRecipeCreatesNothingAndDuplicatesNoConversion(): void
     {
         // Given
         $user = $this->savedUser();
+        $flour = $this->received($user, new IngredientBuilder()->isFlour());
+        $sugar = $this->received($user, new IngredientBuilder()->isSugar());
         $praline = $this->savedPersonal('Praliné', $user);
         $this->persister->saveConversion(new ConversionBuilder()->withIngredient($praline)->withStartUnit(new UnitBuilder()->isKilo())->withEndUnit(new UnitBuilder()->isGramme())->withCoefficient(950)->build());
-        $this->request('POST', '/api/v1/recipes', $user, $this->recipeBody('farine', 'sucre', $praline->getSlug()));
+        $this->request('POST', '/api/v1/recipes', $user, $this->recipeBody($flour, $sugar, $praline->getSlug()));
         $original = basename($this->client->getResponse()->headers->get('Location'));
         $ingredients = $this->scalar('SELECT COUNT(*) FROM ingredient');
         $conversions = $this->scalar('SELECT COUNT(*) FROM conversion');
@@ -200,7 +209,9 @@ class RecipeCopyApiFlowTest extends DatabaseTestCase
         $third = $this->savedUser();
         $thirds = $this->savedPersonal('Praliné', $third);
         $authors = $this->savedPersonal('Praliné', $author);
-        $this->request('POST', '/api/v1/recipes', $author, $this->recipeBody('farine', 'sucre', $authors->getSlug()));
+        $flour = $this->received($author, new IngredientBuilder()->isFlour());
+        $sugar = $this->received($author, new IngredientBuilder()->isSugar());
+        $this->request('POST', '/api/v1/recipes', $author, $this->recipeBody($flour, $sugar, $authors->getSlug()));
         $original = basename($this->client->getResponse()->headers->get('Location'));
 
         // When
@@ -239,9 +250,17 @@ class RecipeCopyApiFlowTest extends DatabaseTestCase
         ]];
     }
 
-    private function adopt(User $user, string $commonSlug): string
+    /**
+     * La copie, reçue à l'activation du compte, d'un ingrédient du propriétaire du catalogue : son slug, son origine et son alias.
+     */
+    private function received(User $user, IngredientBuilder $builder): string
     {
-        return static::getContainer()->get(CommandBusInterface::class)->dispatch(new AdoptCommonIngredientCommand($user->getId(), $commonSlug, 'migration-2026-10-21'));
+        $origin = $builder->build()->getSlug();
+        $copy = $builder->withCreator($user, true)->withAdoptedFrom($origin)->build();
+        $this->persister->saveIngredient($copy);
+        $this->persister->saveIngredientAlias(IngredientAlias::create($user->getId(), $origin, $copy->getSlug(), AliasKind::ADOPTION, 'activation', new DateTimeImmutable('2026-10-21 03:00:00')));
+
+        return $copy->getSlug();
     }
 
     private function savedPersonal(string $name, User $creator): Ingredient

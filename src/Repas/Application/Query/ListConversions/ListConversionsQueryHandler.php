@@ -18,6 +18,6 @@ final readonly class ListConversionsQueryHandler
      */
     public function __invoke(ListConversionsQuery $query): array
     {
-        return $this->conversionLoader->list();
+        return $this->conversionLoader->list($query->viewerId);
     }
 }

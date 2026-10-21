@@ -14,7 +14,7 @@ final readonly class DepartmentIngredientsDTO
     public function __construct(
         #[OA\Property(ref: new Model(type: DepartmentDTO::class), description: 'Le rayon demandé')]
         public DepartmentDTO $department,
-        #[OA\Property(description: 'Ingrédients de l\'utilisateur dans ce rayon (les siens et les communs qu\'il n\'a pas adoptés), triés par nom', type: 'array', items: new OA\Items(ref: new Model(type: IngredientRowDTO::class)))]
+        #[OA\Property(description: 'Ingrédients de l\'utilisateur dans ce rayon (les siens), triés par nom', type: 'array', items: new OA\Items(ref: new Model(type: IngredientRowDTO::class)))]
         public array $ingredients,
     ) {
     }

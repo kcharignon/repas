@@ -34,31 +34,21 @@ interface IngredientRepository
 
     /**
      * Comme `findPurchaseUnitSlug()`, pour poser l'ingrédient dans la liste d'un utilisateur : un ingrédient est utilisable par
-     * celui qui le voit (ADR 0028) : un commun qu'il n'a pas adopté ou son ingrédient personnel. L'ingrédient d'un autre, et un commun
-     * que l'utilisateur a adopté (sa copie le remplace : le cas d'usage résout le slug avant), sont traités comme inconnus.
+     * celui qui le voit (ADR 0028, amendement) : le sien. L'ingrédient d'un autre est traité comme inconnu, administrateur compris.
      *
      * @throws IngredientException
      */
     public function findPurchaseUnitSlugUsableBy(string $slug, string $userId): string;
 
     /**
-     * Ceux de ces slugs qui désignent un ingrédient commun (sans créateur), en une requête ; un slug inconnu ou personnel est absent.
-     * Sert à la résolution des slugs reçus en écriture (ADR 0028 décision 4) : seul un commun s'adopte.
-     *
-     * @param list<string> $slugs
-     * @return list<string>
-     */
-    public function findCommonSlugs(array $slugs): array;
-
-    /**
-     * Les ingrédients que cet utilisateur voit dans ce rayon (ADR 0028 : les siens et les communs qu'il n'a pas adoptés).
+     * Les ingrédients que cet utilisateur voit dans ce rayon : les siens (ADR 0028, amendement).
      *
      * @return Tab<Ingredient>
      */
     public function findByDepartmentAndOwner(Department $department, string $ownerId): Tab;
 
     /**
-     * Les ingrédients que cet utilisateur voit (ADR 0028 : les siens et les communs qu'il n'a pas adoptés).
+     * Les ingrédients que cet utilisateur voit : les siens (ADR 0028, amendement).
      *
      * @return Tab<Ingredient>
      */
@@ -73,7 +63,7 @@ interface IngredientRepository
      * Créer cet ingrédient pour ce créateur ferait un doublon : le slug existe, **ou** le créateur a déjà un ingrédient de même nom normalisé
      * (`slugged_name`), en une seule requête. Le second cas couvre un ancien commun passé au propriétaire du catalogue : son slug n'a pas
      * l'identifiant du compte, donc `exists()` ne le verrait pas. Seule la création d'un ingrédient l'appelle ; `exists()` garde son sens
-     * (collision de slug) pour l'adoption, la copie de recette et la fusion.
+     * (collision de slug) pour la copie de recette et la fusion.
      */
     public function existsForCreator(string $slug, string $creatorId, string $sluggedName): bool;
 

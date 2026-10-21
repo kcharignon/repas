@@ -23,11 +23,13 @@ use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Tester\CommandTester;
 
 /**
- * Non-régression de la passation (ING-009, ADR 0017 règle 6) : le code déployé AVANT (R1, la base d'aujourd'hui), PENDANT (le classement posé, le
- * compte vide amorcé) et APRÈS la passation fait la même chose pour le propriétaire, un compte migré et l'ancien compte vide : lire les rayons,
- * chercher, ouvrir un ingrédient, écrire une recette, planifier et retirer un repas, lire sa liste de courses, copier la recette d'un autre,
- * lister les doublons, aperçu de fusion, et amorcer un nouveau compte. Seule différence permise, et documentée : l'ancien compte vide ne voit plus
- * les « spécifiques » partagés qu'il voyait avant d'avoir ses propres ingrédients (décision D5 de l'amendement).
+ * Non-régression de la passation (ING-009, ADR 0017 règle 6), sur le code de nettoyage (ING-013, qui ne fonctionne qu'APRÈS la passation, la
+ * migration-garde d'ING-014 l'y oblige) : une fois les 261 anciens communs passés au propriétaire, le propriétaire, un compte migré et l'ancien
+ * compte vide lisent leurs rayons, cherchent, ouvrent un ingrédient, écrivent une recette, planifient et retirent un repas, lisent leur liste de
+ * courses, copient la recette d'un autre, listent les doublons, demandent un aperçu de fusion, et un nouveau compte est amorcé : chacun ne voit
+ * et ne modifie que SES ingrédients, le propriétaire exactement les mêmes qu'avant. L'ancien compte vide ne voit plus les « spécifiques »
+ * partagés qu'il voyait avant d'avoir ses propres ingrédients (décision D5 de l'amendement). La preuve « avant/pendant » de R1 est dans
+ * l'historique de ce fichier (PR #245) : le nettoyage ne fonctionne plus sur la base d'avant.
  *
  * Les vrais bus, la vraie base, le voter et les écouteurs ; les requêtes passent par l'API avec un JWT.
  */
@@ -52,94 +54,75 @@ class HandOverCatalogNonRegressionTest extends DatabaseTestCase
         $this->tester = new CommandTester(new Application(self::$kernel)->find('repas:ingredients:hand-over-catalog'));
     }
 
-    public function testEveryReadAndWriteWorksBeforeDuringAndAfterTheHandOver(): void
+    public function testAfterTheHandOverEveryAccountSeesAndDoesEverythingWithItsOwnIngredientsOnly(): void
     {
-        // Given : l'état d'aujourd'hui (F0) ; chaque compte de l'essai
+        // Given : l'état d'aujourd'hui (F0, 261 anciens communs sans créateur), la passation faite (classement et amorçage, puis passation)
         $owner = $this->user($this->dataset->ownerId);
         $migrated = $this->user($this->dataset->migratedIds[0]);
         $formerlyEmpty = $this->user($this->dataset->emptyId);
         $accounts = ['owner' => $owner, 'migrated' => $migrated, 'formerlyEmpty' => $formerlyEmpty];
-
-        // AVANT
-        $before = $this->observeAll($accounts, 'avant');
-
-        // PENDANT : le classement posé et le compte vide amorcé, les anciens communs toujours sans créateur
+        $connection = $this->dataset->connection;
+        $formerCommons = array_map('strval', $connection->fetchFirstColumn('SELECT slug FROM ingredient WHERE creator IS NULL ORDER BY slug COLLATE "C"'));
+        $this->assertCount(261, $formerCommons);
         $this->assertSame(Command::SUCCESS, $this->tester->execute(['--apply' => true, '--stop-before-handover' => true, '--accept-sent' => true]), $this->tester->getDisplay());
-        $during = $this->observeAll($accounts, 'pendant');
-
-        // APRÈS : la passation
         $this->assertSame(Command::SUCCESS, $this->tester->execute(['--apply' => true]), $this->tester->getDisplay());
+        $this->assertSame(0, (int) $connection->fetchOne('SELECT count(*) FROM ingredient WHERE creator IS NULL'), 'aucun ingrédient sans créateur');
+
+        // When : chacun lit et écrit (rayon, recherche, fiche, recette, planification, liste, copie de la recette du propriétaire, doublons, fusion)
         $after = $this->observeAll($accounts, 'apres');
 
-        // Then : le propriétaire et le compte migré voient et font EXACTEMENT la même chose aux trois moments (hors marqueur « de base », posé pendant)
-        foreach (['owner', 'migrated'] as $who) {
-            // (l'aperçu de fusion du propriétaire est la seule différence : voir plus bas)
-            foreach (['all', 'department', 'search', 'ingredient', 'recipeRows', 'listRead', 'plannedRows', 'duplicates', 'unplannedRows'] as $point) {
-                $this->assertEquals($before[$who][$point], $during[$who][$point], "$who : $point, avant/pendant");
-                $this->assertEquals($during[$who][$point], $after[$who][$point], "$who : $point, pendant/après");
-            }
-            $this->assertEquals($before[$who]['statuses'], $during[$who]['statuses'], "$who : statuts, avant/pendant");
-            $this->assertEquals($during[$who]['statuses'], $after[$who]['statuses'], "$who : statuts, pendant/après");
-            $this->assertEquals($during[$who]['copyRecipeRows'] ?? null, $after[$who]['copyRecipeRows'] ?? null, "$who : recopie de recette, pendant/après");
+        // Then : chacun ne voit que les siens, sans doublon ; le propriétaire voit exactement les anciens communs (plus ce qu'il avait créé)
+        foreach ($accounts as $who => $user) {
+            $visible = $this->visibleSlugs($user);
+            $own = array_map('strval', $connection->fetchFirstColumn('SELECT slug FROM ingredient WHERE creator = ? ORDER BY slug COLLATE "C"', [$user->getId()]));
+            $this->assertSame($own, $visible, "$who : le choix pour une recette est exactement ce qui est à lui");
+            $this->assertSame(count($visible), count(array_unique($visible)), "$who : jamais deux fois le même ingrédient");
+            $this->assertSame([true], array_values(array_unique($after[$who]['canEdit'])), "$who : tout ce qu'il voit est modifiable par lui");
         }
-        // Le compte migré fusionne ses copies avant comme après ; le propriétaire ne le pouvait pas (un ancien commun n'est à personne) et le peut
-        // désormais : ses ingrédients sont à lui, comme ceux de tout le monde (amendement du 2026-10-20, "plus de traitement particulier")
-        $this->assertEquals($before['migrated']['mergePreview'], $after['migrated']['mergePreview']);
-        $this->assertSame(200, $after['migrated']['statuses']['mergePreview']);
-        $this->assertSame('COMMON_INGREDIENT', $before['owner']['mergePreview'][0]);
-        $this->assertSame('COMMON_INGREDIENT', $during['owner']['mergePreview'][0]);
-        $this->assertNull($after['owner']['mergePreview'][0]);
-        $this->assertSame(200, $after['owner']['statuses']['mergePreview']);
-
-        // Copier la recette du propriétaire : 201 à chaque moment pour les deux autres comptes, et elle se branche sur LEURS ingrédients sans en créer
-        foreach (['migrated' => [$before, $during, $after], 'formerlyEmpty' => [$during, $after]] as $who => $states) {
-            foreach ($states as $index => $state) {
-                $this->assertSame(201, $state[$who]['statuses']['copy'], "$who : copie, état $index");
-                $this->assertSame(0, $state[$who]['copyCreatedIngredients'], "$who : aucun ingrédient créé par la copie, état $index");
-            }
+        $this->assertSame([], array_diff($formerCommons, $this->visibleSlugs($owner)), 'le propriétaire voit les mêmes ingrédients qu\'avant : les 261 anciens communs');
+        foreach (['migrated', 'formerlyEmpty'] as $who) {
+            $this->assertSame([], array_intersect($formerCommons, $this->visibleSlugs($accounts[$who])), "$who ne voit plus aucun des anciens slugs : il a ses copies");
         }
-        $this->assertEquals($during['formerlyEmpty']['copyRecipeRows'], $after['formerlyEmpty']['copyRecipeRows']);
+        $this->assertCount(156, $this->visibleSlugs($formerlyEmpty), 'le compte vide d\'avant : ses 156 copies (les « spécifiques » restent chez le propriétaire, D5)');
 
-        // Le marqueur « de base » n'est montré qu'au propriétaire : faux partout avant le classement, vrai pour 151 de ses ingrédients ensuite
-        $this->assertSame([], array_filter($before['owner']['bases']), 'avant le classement, aucun marqueur');
-        $this->assertGreaterThan(5, count(array_filter($during['owner']['bases'])));
-        $this->assertEquals($during['owner']['bases'], $after['owner']['bases']);
+        // Then : tout a répondu sans erreur
+        foreach ($accounts as $who => $user) {
+            foreach ($after[$who]['statuses'] as $step => $status) {
+                $this->assertLessThan(400, $status, "$who : $step");
+            }
+            $this->assertNull($after[$who]['mergePreview'][0], "$who : l'aperçu de fusion de ses deux ingrédients voisins est possible");
+        }
+
+        // Then : copier la recette du propriétaire : 201 pour les deux autres comptes, elle se branche sur LEURS ingrédients sans en créer
+        foreach (['migrated', 'formerlyEmpty'] as $who) {
+            $this->assertSame(201, $after[$who]['statuses']['copy'], "$who : copie");
+            $this->assertSame(0, $after[$who]['copyCreatedIngredients'], "$who : aucun ingrédient créé par la copie");
+        }
+
+        // Then : le marqueur « de base » n'est montré qu'au propriétaire : vrai pour 151 de ses ingrédients, faux partout ailleurs
+        $this->assertGreaterThan(5, count(array_filter($after['owner']['bases'])));
         foreach (['migrated', 'formerlyEmpty'] as $other) {
-            foreach ([$before, $during, $after] as $state) {
-                $this->assertSame([], array_filter($state[$other]['bases']), "$other ne voit jamais un marqueur");
-            }
+            $this->assertSame([], array_filter($after[$other]['bases']), "$other ne voit jamais un marqueur");
         }
 
-        // Le propriétaire modifie ses ingrédients comme avant (canEdit) ; un compte migré aussi
-        $this->assertSame([true], array_values(array_unique($before['owner']['canEdit'])));
-        $this->assertSame([true], array_values(array_unique($after['owner']['canEdit'])));
-        $this->assertSame([true], array_values(array_unique($after['migrated']['canEdit'])));
-
-        // L'ancien compte vide : avant, il voit les 261 anciens communs partagés ; pendant (amorcé, rien ne change pour ce qu'il voit : ses copies et
-        // les « spécifiques » encore partagés), les mêmes 261 ; APRÈS la passation, seulement ses 156 copies (les 105 « spécifiques » restent chez le
-        // propriétaire : décision D5)
-        $this->assertCount(261, $before['formerlyEmpty']['all']);
-        $this->assertEquals($before['formerlyEmpty']['all'], $during['formerlyEmpty']['all']);
-        $this->assertCount(156, $after['formerlyEmpty']['all']);
-        $this->assertSame([], array_diff($after['formerlyEmpty']['all'], $during['formerlyEmpty']['all']));
-        $this->assertContains('tomate-a-farcir', $during['formerlyEmpty']['search'], 'un « spécifique » encore partagé avant la passation');
-        $this->assertNotContains('tomate-a-farcir', $after['formerlyEmpty']['search'], 'chez le propriétaire seulement après la passation');
-        $this->assertSame([], array_diff($after['formerlyEmpty']['search'], $during['formerlyEmpty']['search']));
-        $this->assertContains('tomate', $after['formerlyEmpty']['search']);
-        $this->assertEquals($during['formerlyEmpty']['recipeRows'], $after['formerlyEmpty']['recipeRows']);
-        $this->assertSame([], array_diff($after['formerlyEmpty']['department'], $during['formerlyEmpty']['department']), 'son rayon, après la passation, est celui de ses copies');
-        $this->assertLessThan(count($during['formerlyEmpty']['department']), count($after['formerlyEmpty']['department']));
-        $this->assertEquals($during['formerlyEmpty']['listRead'], $after['formerlyEmpty']['listRead']);
-        $this->assertEquals($during['formerlyEmpty']['unplannedRows'], $after['formerlyEmpty']['unplannedRows']);
-        $this->assertSame($during['formerlyEmpty']['statuses'], $after['formerlyEmpty']['statuses']);
-        foreach ($after['formerlyEmpty']['statuses'] as $step => $status) {
-            $this->assertLessThan(400, $status, "formerlyEmpty : $step après la passation");
-        }
-
-        // Aucun ingrédient sans créateur, aucune statistique du propriétaire autre que les 261
-        $this->assertSame(0, (int) $this->dataset->connection->fetchOne('SELECT count(*) FROM ingredient WHERE creator IS NULL'));
+        // Then : aucune statistique du propriétaire autre que les 261
+        $this->assertSame(0, (int) $connection->fetchOne('SELECT count(*) FROM ingredient WHERE creator IS NULL'));
     }
 
+    /**
+     * Les slugs que ce compte voit dans le choix pour une recette, triés.
+     *
+     * @return list<string>
+     */
+    private function visibleSlugs(User $user): array
+    {
+        $this->request('GET', '/api/v1/ingredients', $user);
+        $this->assertSame(200, $this->httpStatus());
+        $slugs = array_map('strval', array_column($this->jsonBody()['member'], 'slug'));
+        usort($slugs, static fn(string $a, string $b): int => strcmp($a, $b));
+
+        return $slugs;
+    }
     public function testANewAccountIsSeededWithTheSameIngredientsBeforeAndAfterTheHandOver(): void
     {
         // Given : le classement posé, un compte s'inscrit et confirme son adresse

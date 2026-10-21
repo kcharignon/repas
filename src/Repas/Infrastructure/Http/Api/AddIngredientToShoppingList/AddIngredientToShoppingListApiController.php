@@ -24,7 +24,7 @@ final class AddIngredientToShoppingListApiController extends AbstractController
 
     #[Route(path: '/api/v1/shopping-lists/active/ingredients/{slug}/increase', name: 'api_increase_ingredient', methods: ['POST'])]
     #[IsGranted('ROLE_USER')]
-    #[OA\Post(summary: 'Ajoute 1 à la quantité d\'un ingrédient dans la liste active de l\'utilisateur. Le slug d\'un commun que l\'utilisateur a adopté désigne sa copie, qui est celle de la liste ; un utilisateur qui a déjà adopté des communs adopte à la volée celui qu\'il utilise pour la première fois')]
+    #[OA\Post(summary: 'Ajoute 1 à la quantité d\'un ingrédient dans la liste active de l\'utilisateur. Un ancien slug (ancien commun dont l\'utilisateur a reçu une copie, ingrédient fusionné) désigne son ingrédient actuel, qui est celui de la liste ; l\'ingrédient d\'un autre utilisateur est inconnu')]
     #[OA\Tag(name: 'Shopping lists')]
     #[OA\Parameter(ref: '#/components/parameters/IfMatch')]
     #[OA\Response(response: 204, description: 'Quantité augmentée')]
