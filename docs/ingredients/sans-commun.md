@@ -60,6 +60,17 @@ Un compte est **amorcé** quand il a au moins un alias `adoption` (`IngredientAl
 - **La requête de santé** (`SeedingHealthDTO`, affichée par le rapport) : (1) comptes actifs hors propriétaire sans aucun alias d'adoption, (2) comptes actifs sans aucun ingrédient à eux, (3) lignes (recettes, lignes et ingrédients de liste, choix du drive) d'un compte hors propriétaire sur un ingrédient qui n'est pas à lui — **quel que soit son statut** : un compte en attente ou désactivé qui garde des lignes sur les anciens communs la rend rouge, et c'est voulu (P2 de la passation) ; il se sert avec `--user` —, (4) les mêmes lignes pour le propriétaire. **Tant qu'il reste un ingrédient sans créateur, le propriétaire n'entre ni dans (2) ni dans (4)** (il utilise les anciens communs) ; dès qu'il n'en reste aucun, il y entre.
 - **Le retour arrière des données** n'a pas de commande propre : la commande d'ING-003 (`repas:ingredients:adopt-commons --undo=<source>`, intacte jusqu'à ING-014) défait un lancement d'amorçage par la `source` de ses alias (prouvé par `SeedingUndoByTheMigrationCommandTest`) ; sinon la sauvegarde `avant-amorcage-ingredients`.
 
+### 2.6 Livré par ING-013 ([PR #247](tickets/ING-013-simplifier-visibilite-droits-resolveur.md), R2 avec ING-014)
+
+- **Une seule règle de visibilité** : `IngredientVisibility::visibleBy` = « `creator` = moi », appliquée par tous les chargeurs et dépôts (comparés par `IngredientVisibilityTest`). Les fragments `isCommonSql` / `isCatalogSql` / `isBaseCatalogSql` **restent** : ce ne sont pas des règles de visibilité, ils servent les commandes d'exploitation (`adopt-commons`, `seed`, `hand-over-catalog`) ; ING-014 les retire avec le « ou vide ».
+- **Droits** : plus de `$viewerIsAdmin` nulle part ; `canEdit` toujours vrai (le champ reste) ; `OwnerVoter` sans passe-droit `ROLE_ADMIN` pour `INGREDIENT_OWNER` (D3) ; la fiche d'un autre est `404`, `PUT`/`DELETE` `403`.
+- **Résolveur** : `IngredientSlugResolver::resolve`, alias valides seulement (un ancien slug), plus d'adoption à la volée ni d'adoptant.
+- **Copie de recette** : provenance par la clé `adopted_from` sinon le slug de la source ; toute copie retient son origine (D7) et n'est jamais comptée comme une création.
+- **Fusion et doublons** : plus de cas « commun » (`MergeBlock::COMMON_INGREDIENT` et `CANNOT_MERGE_COMMON_INGREDIENT` ne sont plus produits ; la valeur reste décrite dans le contrat OpenAPI pour les clients en cache, « n'est plus renvoyé »).
+- **Conversions (D4)** : l'écran de l'administrateur ne montre que les conversions générales et celles de ses ingrédients ; créer ou modifier une conversion d'un ingrédient d'un autre : `404`.
+- **Budgets** : trois scénarios montent d'une ou deux requêtes (la provenance lit toujours les alias), deux scénarios d'adoption à la volée disparaissent ; voir la « Réalisation » du ticket.
+- **Ce code ne marche que sur la base d'après la passation** (§ 7, colonne F1) : la migration-garde d'ING-014 l'impose.
+
 ## 3. Réponses aux points de cadrage (a) à (m)
 
 | | Question | Réponse |
@@ -282,6 +293,8 @@ Règles qui en découlent : (1) R1 ne lit jamais « sans créateur » pour **dé
 - **Échec de l'amorçage à l'activation** : l'activation échoue avec lui (même transaction, décision D6) : la personne voit une erreur à la confirmation et réessaie ; rien n'est à moitié fait. Une défaillance systématique se coupe par l'interrupteur.
 
 ## 9. Impact sur l'existant (l)
+
+> **Livré par ING-013** (PR #247) : toutes les lignes marquées ING-013 sont en vigueur dans le code ; la colonne « Après » est l'état du code, pas une cible.
 
 | Sujet | Aujourd'hui | Après (ticket) |
 |---|---|---|

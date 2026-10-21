@@ -9,7 +9,7 @@ namespace Repas\Repas\Domain\Model;
  */
 enum AliasKind: string
 {
-    /** Le slug d'alias est celui d'un commun que l'utilisateur a adopté : le commun est masqué pour lui. */
+    /** Le slug d'alias est celui d'un ingrédient du catalogue dont l'utilisateur a reçu une copie (amorçage, migration) : l'ancien slug se résout vers elle. */
     case ADOPTION = 'adoption';
 
     /** Le slug d'alias est celui d'un ingrédient de l'utilisateur absorbé par une fusion (ING-005). */

@@ -14,7 +14,7 @@ use Repas\Shared\Domain\Tool\StringTool;
 final readonly class IngredientSlugPolicy
 {
     /**
-     * Le premier slug libre pour la copie du commun nommé `$name` chez `$userId` : `tomate<U>`, puis `tomate-2<U>`, `tomate-3<U>`…
+     * Le premier slug libre pour la copie de l'ingrédient nommé `$name` chez `$userId` : `tomate<U>`, puis `tomate-2<U>`, `tomate-3<U>`…
      *
      * Le premier candidat est EXACTEMENT celui que `Ingredient::create($name, …, $userId)` produirait, calculé sur le nom et non sur
      * `slugged_name . U` : les deux diffèrent quand le nom finit par un symbole (« couche (taille 4) » donne `couche-taille-4-<U>`
@@ -22,7 +22,7 @@ final readonly class IngredientSlugPolicy
      * (sans quoi la collision avec un ingrédient personnel de même nom passerait inaperçue). Pour un nom qui finit par une lettre ou un
      * chiffre, c'est `slugged_name . U`, `slugged_name . '-2' . U`.
      *
-     * @param string $name le nom du commun (pas son `slugged_name`)
+     * @param string $name le nom de l'ingrédient copié (pas son `slugged_name`)
      * @param array<string>|callable(string): bool $taken les slugs déjà pris, ou une fonction qui dit si un slug l'est (une question
      *        d'existence posée au port, sans hydrater d'ingrédient)
      */

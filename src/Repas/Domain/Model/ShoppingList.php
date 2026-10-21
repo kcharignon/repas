@@ -225,7 +225,7 @@ final class ShoppingList implements ModelInterface
     {
         $this->assertEditable();
 
-        // Une liste ne planifie que les recettes de son propriétaire : leurs ingrédients sont les siens ou des ingrédients communs
+        // Une liste ne planifie que les recettes de son propriétaire : leurs ingrédients sont donc les siens (`Recipe::assertIngredientIsAvailable`)
         if ($recipe->getAuthorId() !== $this->ownerId) {
             throw RecipeException::notFound($recipe->getId());
         }

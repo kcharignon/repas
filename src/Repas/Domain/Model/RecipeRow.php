@@ -98,7 +98,7 @@ final class RecipeRow implements ModelInterface
 
     /**
      * La ligne copiée dans une autre recette : même quantité, même unité, et l'ingrédient que le copieur a RETENU pour cette ligne
-     * (`CopyRecipeHandler` : le sien, un commun, ou une copie) - la ligne ne crée plus d'ingrédient.
+     * (`CopyRecipeHandler` : le sien, retrouvé par sa provenance ou son nom, ou une copie) - la ligne ne crée plus d'ingrédient.
      */
     public static function copyFromOriginal(
         string $id,

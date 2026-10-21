@@ -39,7 +39,7 @@ class Ingredient
     #[ORM\Column(name: 'compatible_units', type: 'json', nullable: false)]
     private array $compatibleUnitSlugs = [];
 
-    /** Le commun dont cet ingrédient est l'adoption (ADR 0028) : un fait immuable, jamais mis à jour après la création. */
+    /** L'ingrédient dont celui-ci est la copie (ADR 0028) : un fait immuable, jamais mis à jour après la création. */
     #[ORM\Column(name: 'adopted_from', length: 255, nullable: true)]
     private ?string $adoptedFrom = null;
 
