@@ -92,6 +92,26 @@ class MergeDriveEquivalenceTest extends WriteBudgetTestCase
         $this->assertSame(0, $this->entityManager->getConnection()->fetchOne("SELECT count(*) FROM drive_choice WHERE ingredient_slug = ?", [$this->absorbed->getSlug()]));
     }
 
+    public function testThePlanAndTheEstimateAreTheSameWhenTheKeptIngredientRecoversAConversionOfTheAbsorbedOne(): void
+    {
+        // Given : « Tomate » ne sait pas compter l'unité en grammes, « Tomates » le sait (150) ; « Tomates » a son choix
+        $connection = $this->entityManager->getConnection();
+        $connection->executeStatement('DELETE FROM conversion WHERE ingredient = ?', [$this->kept->getSlug()]);
+        $this->assertSame([], $this->dataset->ownConversions($this->kept->getSlug()));
+        $this->saveChoices($this->absorbed->getSlug(), 700000, true);
+        [$planBefore, $estimateBefore] = $this->readPlanAndEstimate();
+        $this->reopen();
+
+        // When
+        $this->merge();
+        [$planAfter, $estimateAfter] = $this->readPlanAndEstimate();
+
+        // Then : « Tomate » a récupéré la conversion, et le plan et l'estimation sont inchangés à l'ingrédient près (le drive ne lit pas les conversions)
+        $this->assertSame([['unite', 'gramme', 150.0]], $this->dataset->ownConversions($this->kept->getSlug()));
+        $this->assertSame(self::normalize($planBefore), self::normalize($planAfter));
+        $this->assertSame(self::normalize($estimateBefore), self::normalize($estimateAfter));
+    }
+
     public function testTheChoiceOfTheKeptIngredientServesThePlanWhenBothHadOne(): void
     {
         // Given : « Tomate » et « Tomates » ont chacun leurs produits

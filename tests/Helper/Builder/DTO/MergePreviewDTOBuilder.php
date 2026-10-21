@@ -13,6 +13,10 @@ class MergePreviewDTOBuilder implements Builder
     private int $recipeCount = 7;
     private int $listCount = 2;
     private int $driveChoiceCount = 1;
+    /** Le total APRÈS la fusion : par défaut ce qui se déplace plus ce que le gardé utilisait déjà (5 recettes, 1 liste) */
+    private int $resultRecipeCount = 12;
+    private int $resultListCount = 3;
+    private int $recoveredConversionCount = 0;
     private bool $departmentChanges = false;
     private bool $listQuantitiesConverted = false;
     /** @var list<MergeUnitDTO> */
@@ -24,6 +28,19 @@ class MergePreviewDTOBuilder implements Builder
         $this->recipeCount = $recipes;
         $this->listCount = $lists;
         $this->driveChoiceCount = $driveChoices;
+        return $this;
+    }
+
+    public function withResult(int $recipes, int $lists): self
+    {
+        $this->resultRecipeCount = $recipes;
+        $this->resultListCount = $lists;
+        return $this;
+    }
+
+    public function withRecoveredConversions(int $count): self
+    {
+        $this->recoveredConversionCount = $count;
         return $this;
     }
 
@@ -65,6 +82,9 @@ class MergePreviewDTOBuilder implements Builder
             missingUnits: $this->missingUnits,
             blockedBy: $this->blockedBy,
             canMerge: $this->blockedBy === null,
+            resultRecipeCount: $this->resultRecipeCount,
+            resultListCount: $this->resultListCount,
+            recoveredConversionCount: $this->recoveredConversionCount,
         );
     }
 }

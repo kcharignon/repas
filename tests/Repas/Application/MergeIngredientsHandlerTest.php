@@ -12,9 +12,11 @@ use Repas\Repas\Domain\Model\AliasKind;
 use Repas\Repas\Domain\Model\Ingredient;
 use Repas\Repas\Domain\Model\IngredientAlias;
 use Repas\Repas\Domain\Model\IngredientDistinctPair;
+use Repas\Repas\Domain\Model\Unit;
 use Repas\Repas\Domain\Service\ConversionService;
 use Repas\Repas\Domain\Service\IngredientMergePlanner;
 use Repas\Shared\Domain\Event\IngredientRemovedEvent;
+use Repas\Shared\Domain\Tool\UuidGenerator;
 use Repas\Tests\Helper\Builder\ConversionBuilder;
 use Repas\Tests\Helper\Builder\DepartmentBuilder;
 use Repas\Tests\Helper\Builder\IngredientBuilder;
@@ -73,6 +75,10 @@ class MergeIngredientsHandlerTest extends TestCase
 
     private function handlerFor(IngredientInMemoryRepository $ingredients, ConversionInMemoryRepository $conversions): MergeIngredientsHandler
     {
+        // Le double du port lit et écrit les conversions et les ingrédients de CE handler (ceux du test)
+        $this->mergeRepository->conversions = $conversions;
+        $this->mergeRepository->ingredients = $ingredients;
+
         return new MergeIngredientsHandler(
             $ingredients,
             $this->mergeRepository,
@@ -84,19 +90,31 @@ class MergeIngredientsHandlerTest extends TestCase
             $this->driveReferences,
             $this->eventDispatcher,
             new FrozenClock(new DateTimeImmutable('2026-10-21 03:00:00')),
+            new UuidGenerator(),
         );
     }
 
-    private static function tomato(string $name, ?string $creator, ?string $adoptedFrom = null, ?UnitBuilder $purchase = null, ?DepartmentBuilder $department = null): Ingredient
+    /**
+     * @param list<UnitBuilder>|null $compatible les unités compatibles (le gramme et le kilo par défaut)
+     */
+    private static function tomato(string $name, ?string $creator, ?string $adoptedFrom = null, ?UnitBuilder $purchase = null, ?DepartmentBuilder $department = null, ?array $compatible = null): Ingredient
     {
-        return new IngredientBuilder()
+        $builder = new IngredientBuilder()
             ->withName($name)
             ->withDepartment($department ?? new DepartmentBuilder()->isCereal())
             ->withDefaultCookingUnit(new UnitBuilder()->isGramme())
             ->withDefaultPurchaseUnit($purchase ?? new UnitBuilder()->isKilo())
             ->withCreator($creator === null ? null : new UserBuilder()->withId($creator)->build(), true)
-            ->withAdoptedFrom($adoptedFrom)
-            ->build();
+            ->withAdoptedFrom($adoptedFrom);
+
+        return ($compatible === null ? $builder : $builder->withCompatibleUnits($compatible))->build();
+    }
+
+    /** Une conversion PROPRE : `tranche` -> `gramme` (25 g la tranche par défaut). */
+    private static function sliceConversion(string $id, string $ingredientName, ?string $creator, float $coefficient = 25.0)
+    {
+        return new ConversionBuilder()->withId($id)->withStartUnit(new UnitBuilder()->isSlice())->withEndUnit(new UnitBuilder()->isGramme())->withCoefficient($coefficient)
+            ->withIngredient(new IngredientBuilder()->withName($ingredientName)->withCreator($creator === null ? null : new UserBuilder()->withId($creator)->build(), true))->build();
     }
 
     private static function unitConversion(string $id, string $ingredientName, ?string $creator)
@@ -314,6 +332,211 @@ class MergeIngredientsHandlerTest extends TestCase
 
         // Then
         $this->assertFalse($this->ingredientRepository->exists(self::ABSORBED));
+    }
+
+    public function testTwoIngredientsEachUsedByOneRecipeEndUpUsedByTwoAndNoLineIsLost(): void
+    {
+        // Given : « Tomate » est dans la recette R1, « Tomates » dans la recette R2 (le cas de deux « Melon », chacun dans une recette)
+        $this->recipe('r1', [self::KEPT]);
+        $this->recipe('r2', [self::ABSORBED]);
+        $usage = $this->mergeRepository->usageOf(self::USER, self::ABSORBED, self::KEPT, 'kilo');
+
+        // When
+        $this->merge();
+
+        // Then : l'aperçu annonçait 1 recette qui se déplace et 2 qui utiliseront « Tomate » ; la recette de « Tomates » pointe vers « Tomate »
+        $this->assertSame([1, 2], [$usage->recipeCount, $usage->resultRecipeCount]);
+        $this->assertSame([self::KEPT], array_column($this->mergeRepository->recipes['r2']['rows'], 'ingredient'));
+        $this->assertSame([self::KEPT], array_column($this->mergeRepository->recipes['r1']['rows'], 'ingredient'));
+        $after = $this->mergeRepository->usageOf(self::USER, 'rien', self::KEPT, 'kilo');
+        $this->assertSame(2, $after->resultRecipeCount, 'après la fusion, deux recettes utilisent « Tomate »');
+    }
+
+    public function testTheUsageCountsARecipeAndAListThatUseBothIngredientsOnceInTheTotalAfterTheMerge(): void
+    {
+        // Given : R1 utilise les deux, R2 seulement « Tomates », R3 seulement « Tomate » ; même chose pour trois listes (une ligne ou un ajout à la main)
+        $this->recipe('r1', [self::KEPT, self::ABSORBED]);
+        $this->recipe('r2', [self::ABSORBED]);
+        $this->recipe('r3', [self::KEPT]);
+        $this->list('l1', [self::row('x1', self::KEPT, 1.0)], [self::item('y1', self::ABSORBED, 1.0)]);
+        $this->list('l2', [self::row('x2', self::ABSORBED, 1.0)]);
+        $this->list('l3', [self::row('x3', self::KEPT, 1.0)]);
+
+        // When
+        $usage = $this->mergeRepository->usageOf(self::USER, self::ABSORBED, self::KEPT, 'kilo');
+
+        // Then : 2 recettes et 2 listes se déplacent, mais 3 recettes et 3 listes utiliseront « Tomate » (l'union)
+        $this->assertSame([2, 2, 3, 3], [$usage->recipeCount, $usage->listCount, $usage->resultRecipeCount, $usage->resultListCount]);
+    }
+
+    private function absorbedKnowsTheSlice(): void
+    {
+        // « Tomates » sait compter les tranches (25 g) et les déclare compatibles ; « Tomate » ne sait rien des tranches
+        $this->ingredientRepository = new IngredientInMemoryRepository([
+            self::tomato('Tomate', self::USER),
+            self::tomato('Tomates', self::USER, compatible: [new UnitBuilder()->isGramme(), new UnitBuilder()->isKilo(), new UnitBuilder()->isSlice()]),
+        ]);
+        $this->conversionRepository->save(self::sliceConversion('absorbed-slice', 'Tomates', self::USER));
+        $this->handler = $this->handlerFor($this->ingredientRepository, $this->conversionRepository);
+    }
+
+    public function testAConversionTheKeptIngredientLacksIsRecoveredFromTheAbsorbedOneInsteadOfRefusingTheMerge(): void
+    {
+        // Given : une recette de « Tomates » en tranches ; avant, la fusion était refusée (« Tomate » ne convertit pas la tranche)
+        $this->absorbedKnowsTheSlice();
+        $this->recipe('r1', [self::ABSORBED], 'tranche');
+
+        // When
+        $this->merge();
+
+        // Then : la fusion a lieu, la recette est sur « Tomate », toujours en tranches
+        $this->assertFalse($this->ingredientRepository->exists(self::ABSORBED));
+        $this->assertSame([[self::KEPT, 'tranche']], array_map(static fn(array $row): array => [$row['ingredient'], $row['unit']], $this->mergeRepository->recipes['r1']['rows']));
+        // la conversion a été copiée sur « Tomate » (nouvel identifiant, mêmes unités et même coefficient), celles de « Tomates » ont disparu
+        $conversions = $this->conversionRepository->findAll()->toArray();
+        $copy = array_values(array_filter($conversions, static fn($conversion): bool => $conversion->getIngredient()?->getSlug() === self::KEPT && $conversion->getStartUnit()->getSlug() === 'tranche'));
+        $this->assertCount(1, $copy);
+        $this->assertSame(['tranche', 'gramme', 25.0], [$copy[0]->getStartUnit()->getSlug(), $copy[0]->getEndUnit()->getSlug(), $copy[0]->getCoefficient()]);
+        $this->assertNotSame('absorbed-slice', $copy[0]->getId());
+        $this->assertSame([], array_filter($conversions, static fn($conversion): bool => $conversion->getIngredient()?->getSlug() === self::ABSORBED));
+        $this->assertCount(3, $conversions, 'la commune, la sienne, la sienne récupérée et rien de plus');
+        // et les quantités de la recette se convertissent désormais : 4 tranches = 100 g = 0,1 kilo
+        $service = new ConversionService($this->conversionRepository, new UnitInMemoryRepository());
+        $this->assertEqualsWithDelta(0.1, $service->convertTo($this->ingredientRepository->findOneBySlug(self::KEPT), 4, new UnitBuilder()->isSlice()->build(), new UnitBuilder()->isKilo()->build()), 1e-12);
+        // l'ordre : la conversion est récupérée AVANT de repointer les lignes
+        $this->assertSame(['lock', 'usageOf', 'recoverConversions', 'repoint'], $this->mergeRepository->calls);
+    }
+
+    public function testTheCompatibleUnitsOfTheAbsorbedIngredientThatTheMovedRowsUseJoinTheKeptOnes(): void
+    {
+        // Given
+        $this->absorbedKnowsTheSlice();
+        $this->recipe('r1', [self::ABSORBED], 'tranche');
+
+        // When
+        $this->merge();
+
+        // Then : l'éditeur de recette propose la tranche pour « Tomate », sans perdre ses unités
+        $this->assertSame(['gramme', 'kilo', 'tranche'], array_map(static fn(Unit $unit): string => $unit->getSlug(), $this->ingredientRepository->findOneBySlug(self::KEPT)->getCompatibleUnits()->toArray()));
+    }
+
+    public function testAnUnusedCompatibleUnitOfTheAbsorbedIngredientIsNotAdded(): void
+    {
+        // Given : « Tomates » déclare la tranche compatible mais aucune ligne ne l'utilise
+        $this->absorbedKnowsTheSlice();
+        $this->recipe('r1', [self::ABSORBED], 'gramme');
+
+        // When
+        $this->merge();
+
+        // Then : « Tomate » garde ses unités, la conversion de la tranche est tout de même récupérée (elle lui manquait)
+        $this->assertSame(['gramme', 'kilo'], array_map(static fn(Unit $unit): string => $unit->getSlug(), $this->ingredientRepository->findOneBySlug(self::KEPT)->getCompatibleUnits()->toArray()));
+        $this->assertSame(['lock', 'usageOf', 'recoverConversions', 'repoint'], $this->mergeRepository->calls);
+    }
+
+    public function testWhenTheCoefficientsDifferTheKeptIngredientWinsAndNothingIsCopied(): void
+    {
+        // Given : « Tomates » compte 160 g l'unité, « Tomate » 150 g
+        $this->conversionRepository = new ConversionInMemoryRepository([
+            new ConversionBuilder()->isKiloToGramme()->withId('common-kilo')->build(),
+            self::unitConversion('kept-unit', 'Tomate', self::USER),
+            new ConversionBuilder()->withId('absorbed-unit')->withStartUnit(new UnitBuilder()->isUnite())->withEndUnit(new UnitBuilder()->isGramme())->withCoefficient(160)
+                ->withIngredient(new IngredientBuilder()->withName('Tomates')->withCreator(new UserBuilder()->withId(self::USER)->build(), true))->build(),
+        ]);
+        $this->handler = $this->handlerFor($this->ingredientRepository, $this->conversionRepository);
+        $this->recipe('r1', [self::ABSORBED], 'unite');
+
+        // When
+        $this->merge();
+
+        // Then : la fusion a lieu, celle de « Tomate » n'est pas écrasée, rien n'est copié
+        $conversions = $this->conversionRepository->findAll();
+        $this->assertSame(['common-kilo', 'kept-unit'], array_values(array_map(static fn($conversion): string => $conversion->getId(), $conversions->toArray())));
+        $this->assertSame(150.0, $this->conversionRepository->findById('kept-unit')->getCoefficient());
+        $this->assertSame(['lock', 'usageOf', 'repoint'], $this->mergeRepository->calls);
+    }
+
+    public function testAConversionThatLiftsAListUnitRefusalAlsoConvertsTheListQuantities(): void
+    {
+        // Given : « Tomates » s'achète au litre et sait qu'un litre pèse 1 000 g ; « Tomate » s'achète au kilo et ne connaît pas le litre
+        $this->ingredientRepository = new IngredientInMemoryRepository([
+            self::tomato('Tomate', self::USER),
+            self::tomato('Tomates', self::USER, purchase: new UnitBuilder()->isLiter()),
+        ]);
+        $this->conversionRepository->save(new ConversionBuilder()->withId('absorbed-liter')->withStartUnit(new UnitBuilder()->isLiter())->withEndUnit(new UnitBuilder()->isGramme())->withCoefficient(1000)
+            ->withIngredient(new IngredientBuilder()->withName('Tomates')->withCreator(new UserBuilder()->withId(self::USER)->build(), true))->build());
+        $this->handler = $this->handlerFor($this->ingredientRepository, $this->conversionRepository);
+        $this->list('l1', [self::row('x1', self::ABSORBED, 2.0, 'litre')]);
+
+        // When
+        $this->merge();
+
+        // Then : refusée avant, acceptée maintenant ; 2 litres = 2 000 g = 2 kilos
+        $this->assertSame([[self::KEPT, 2.0, 'kilo']], array_map(static fn(array $row): array => [$row['ingredient'], $row['quantity'], $row['unit']], $this->mergeRepository->lists['l1']['rows']));
+    }
+
+    public function testAnUnitThatStaysImpossibleAfterTheRecoveryRefusesTheMergeAndCopiesNothing(): void
+    {
+        // Given : « Tomates » sait compter les tranches, mais une autre recette utilise des litres que personne ne convertit
+        $this->absorbedKnowsTheSlice();
+        $this->recipe('r1', [self::ABSORBED], 'tranche');
+        $this->recipe('r2', [self::ABSORBED], 'litre');
+        $recipesBefore = $this->mergeRepository->recipes;
+        $conversionsBefore = $this->conversionRepository->findAll()->toArray();
+
+        try {
+            // When
+            $this->merge();
+            $this->fail('La fusion aurait dû être refusée : le litre ne se convertit nulle part.');
+        } catch (IngredientException $exception) {
+            // Then : 422, rien n'a été copié ni déplacé, les conversions de « Tomates » sont encore là
+            $this->assertSame(['MERGE_UNIT_MISSING', 422], [$exception->getMessage(), $exception->getCode()]);
+        }
+        $this->assertSame(['lock', 'usageOf'], $this->mergeRepository->calls);
+        $this->assertSame($recipesBefore, $this->mergeRepository->recipes);
+        $this->assertEquals($conversionsBefore, $this->conversionRepository->findAll()->toArray());
+        $this->assertTrue($this->ingredientRepository->exists(self::ABSORBED));
+        $this->assertSame(['gramme', 'kilo'], array_map(static fn(Unit $unit): string => $unit->getSlug(), $this->ingredientRepository->findOneBySlug(self::KEPT)->getCompatibleUnits()->toArray()));
+    }
+
+    public function testAConversionThatDisappearsDuringTheCopyCancelsTheMerge(): void
+    {
+        // Given : une écriture concurrente retire la conversion de « Tomates » entre l'analyse et la copie
+        $this->absorbedKnowsTheSlice();
+        $this->recipe('r1', [self::ABSORBED], 'tranche');
+        $this->mergeRepository->loseAConversion = true;
+        $recipesBefore = $this->mergeRepository->recipes;
+
+        // Then
+        $this->expectExceptionObject(IngredientException::mergeConflict());
+
+        try {
+            // When
+            $this->merge();
+        } finally {
+            // Then : rien n'est repointé, supprimé ni compté
+            $this->assertSame(['lock', 'usageOf', 'recoverConversions'], $this->mergeRepository->calls);
+            $this->assertSame($recipesBefore, $this->mergeRepository->recipes);
+            $this->assertTrue($this->ingredientRepository->exists(self::ABSORBED));
+            $this->assertSame([], $this->aliasRepository->all());
+            $this->assertSame([], $this->eventDispatcher->eventDispatched);
+        }
+    }
+
+    public function testReplayingARecoveringMergeCopiesNothingAgain(): void
+    {
+        // Given : la fusion avec récupération a réussi
+        $this->absorbedKnowsTheSlice();
+        $this->recipe('r1', [self::ABSORBED], 'tranche');
+        $this->merge();
+        $conversionIds = array_map(static fn($conversion): string => $conversion->getId(), $this->conversionRepository->findAll()->toArray());
+
+        // When : le client renvoie la même demande
+        $this->merge();
+
+        // Then : les mêmes conversions, une seule récupération
+        $this->assertSame($conversionIds, array_map(static fn($conversion): string => $conversion->getId(), $this->conversionRepository->findAll()->toArray()));
+        $this->assertSame(1, count(array_filter($this->mergeRepository->calls, static fn(string $call): bool => $call === 'recoverConversions')));
     }
 
     public function testASentListThatUsesTheAbsorbedOrTheKeptIngredientRefusesTheMerge(): void

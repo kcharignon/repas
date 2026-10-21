@@ -33,7 +33,23 @@ class GetMergePreviewApiControllerTest extends QueryBusWebTestCase
             'missingUnits' => [],
             'blockedBy' => null,
             'canMerge' => true,
+            'resultRecipeCount' => 12,
+            'resultListCount' => 3,
+            'recoveredConversionCount' => 0,
         ], $this->jsonBody());
+    }
+
+    public function testTheTotalsAfterTheMergeAndTheRecoveredConversionsAreAlwaysWrittenAsIntegers(): void
+    {
+        // Given : 1 recette et 1 liste se déplacent, le gardé en avait déjà une chacune ; une conversion est récupérée
+        $this->queryBus->willReturn(GetMergePreviewQuery::class, new MergePreviewDTOBuilder()->withUsage(1, 1, 0)->withResult(2, 2)->withRecoveredConversions(1)->build());
+
+        // When
+        $this->client->request('GET', '/api/v1/ingredients/tomates/merge-preview?into=tomate', server: $this->bearerFor($this->savedUser()));
+
+        // Then : ce qui se déplace et le total d'après sont deux clés distinctes, jamais null
+        $body = $this->jsonBody();
+        $this->assertSame([1, 1, 2, 2, 1], [$body['recipeCount'], $body['listCount'], $body['resultRecipeCount'], $body['resultListCount'], $body['recoveredConversionCount']]);
     }
 
     public function testAMissingUnitComesBackInTheBodyNotAsAnError(): void

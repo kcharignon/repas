@@ -5,8 +5,10 @@ namespace Repas\Tests\Helper\InMemoryRepository;
 
 use Repas\Repas\Domain\Exception\IngredientException;
 use Repas\Repas\Domain\Interface\IngredientMergeRepository;
+use Repas\Repas\Domain\Model\Conversion;
 use Repas\Repas\Domain\Model\IngredientMergeRepointed;
 use Repas\Repas\Domain\Model\IngredientMergeUsage;
+use Repas\Repas\Domain\Model\MergeConversion;
 use Repas\Repas\Domain\Model\MergeUnitMove;
 use Repas\Repas\Domain\Model\UnitFactor;
 
@@ -30,10 +32,33 @@ final class IngredientMergeInMemoryRepository implements IngredientMergeReposito
     public array $calls = [];
     /** Quand vrai, `repoint()` laisse une référence à l'absorbé (écriture concurrente) : `INGREDIENT_MERGE_CONFLICT`. */
     public bool $leaveAReference = false;
+    /** Les conversions du test : `usageOf()` y lit celles de l'absorbé, `recoverConversions()` y copie celles du gardé (la même source que le handler). */
+    public ?ConversionInMemoryRepository $conversions = null;
+    /** Les ingrédients du test : le gardé à qui `recoverConversions()` rattache les copies. */
+    public ?IngredientInMemoryRepository $ingredients = null;
+    /** Quand vrai, `recoverConversions()` ne trouve plus une conversion à copier (écriture concurrente) : `INGREDIENT_MERGE_CONFLICT`. */
+    public bool $loseAConversion = false;
 
     public function lock(string $firstSlug, string $secondSlug): void
     {
         $this->calls[] = 'lock';
+    }
+
+    public function recoverConversions(string $absorbedSlug, string $keptSlug, array $newIdBySourceId): void
+    {
+        $this->calls[] = 'recoverConversions';
+
+        if ($this->loseAConversion) {
+            throw IngredientException::mergeConflict();
+        }
+        $kept = $this->ingredients->findOneBySlug($keptSlug);
+        foreach ($newIdBySourceId as $sourceId => $newId) {
+            $source = $this->conversions->findById($sourceId);
+            if ($source->getIngredient()?->getSlug() !== $absorbedSlug) {
+                throw IngredientException::mergeConflict();
+            }
+            $this->conversions->save(Conversion::copyFromOriginal($newId, $source, $kept));
+        }
     }
 
     public function usageOf(string $userId, string $absorbedSlug, string $keptSlug, string $keptPurchaseUnitSlug): IngredientMergeUsage
@@ -59,7 +84,13 @@ final class IngredientMergeInMemoryRepository implements IngredientMergeReposito
         }
         ksort($recipeUnits);
 
-        $listCount = $sentListCount = 0;
+        // Après la fusion, A sera utilisé par l'union des recettes de A et de B de l'utilisateur
+        $resultRecipeCount = count(array_filter(
+            $this->recipes,
+            static fn(array $recipe): bool => $recipe['author'] === $userId && (self::has($recipe['rows'], $absorbedSlug) || self::has($recipe['rows'], $keptSlug)),
+        ));
+
+        $listCount = $sentListCount = $resultListCount = 0;
         $moves = [];
         foreach ($this->lists as $list) {
             $usesAbsorbed = self::has($list['rows'], $absorbedSlug) || self::has($list['items'], $absorbedSlug);
@@ -72,6 +103,7 @@ final class IngredientMergeInMemoryRepository implements IngredientMergeReposito
             }
             $usesKept = self::has($list['rows'], $keptSlug) || self::has($list['items'], $keptSlug);
             $listCount += $usesAbsorbed ? 1 : 0;
+            $resultListCount += $usesAbsorbed || $usesKept ? 1 : 0;
             $sentListCount += ($usesAbsorbed || $usesKept) && $list['status'] === 'SENT' ? 1 : 0;
             foreach ($list['rows'] as $row) {
                 if ($row['ingredient'] === $absorbedSlug) {
@@ -87,7 +119,25 @@ final class IngredientMergeInMemoryRepository implements IngredientMergeReposito
         }
         ksort($moves);
 
-        return new IngredientMergeUsage($recipeCount, $listCount, array_values($recipeUnits), array_values($moves), $sentListCount, $foreign);
+        $absorbedConversions = [];
+        foreach ($this->conversions?->findAll() ?? [] as $conversion) {
+            /** @var Conversion $conversion */
+            if ($conversion->getIngredient()?->getSlug() === $absorbedSlug) {
+                $absorbedConversions[] = new MergeConversion($conversion->getId(), $conversion->getStartUnit()->getSlug(), $conversion->getEndUnit()->getSlug(), $conversion->getCoefficient());
+            }
+        }
+
+        return new IngredientMergeUsage(
+            $recipeCount,
+            $listCount,
+            array_values($recipeUnits),
+            array_values($moves),
+            $sentListCount,
+            $foreign,
+            $resultRecipeCount,
+            $resultListCount,
+            $absorbedConversions,
+        );
     }
 
     public function repoint(string $userId, string $absorbedSlug, string $keptSlug, string $keptPurchaseUnitSlug, array $factors): IngredientMergeRepointed

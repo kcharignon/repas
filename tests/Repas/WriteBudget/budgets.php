@@ -39,6 +39,7 @@ return [
     'derniere-connexion' => 2,
     'envoyer-liste' => 9,
     'fusionner-ingredients' => 22,
+    'fusionner-ingredients-avec-recuperation' => 24,
     'inscription' => 4,
     'mettre-liste-en-pause' => 9,
     'modifier-conversion' => 4,

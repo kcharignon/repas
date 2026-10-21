@@ -52,8 +52,8 @@ final readonly class IngredientMergePostgreSQLLoader implements IngredientMergeL
         $absorbed = $ingredients[$absorbedSlug];
         $kept = $ingredients[$keptSlug];
 
-        $absorbedParty = new MergeParty($absorbed['slug'], $absorbed['creator'] === null, $absorbed['unit_slug']);
-        $keptParty = new MergeParty($kept['slug'], $kept['creator'] === null, $kept['unit_slug']);
+        $absorbedParty = new MergeParty($absorbed['slug'], $absorbed['creator'] === null, $absorbed['unit_slug'], self::unitSlugsOf($absorbed['compatible_units']));
+        $keptParty = new MergeParty($kept['slug'], $kept['creator'] === null, $kept['unit_slug'], self::unitSlugsOf($kept['compatible_units']));
 
         // Le même ingrédient ou un commun : rien n'est lu de plus, le verdict est donné d'avance (comme l'écriture, qui s'arrête là)
         $mergeable = $absorbedSlug !== $keptSlug && !$absorbedParty->isCommon && !$keptParty->isCommon;
@@ -73,6 +73,9 @@ final readonly class IngredientMergePostgreSQLLoader implements IngredientMergeL
             missingUnits: $this->unitDtos($plan->missingUnitSlugs),
             blockedBy: $plan->block?->value,
             canMerge: $plan->canMerge(),
+            resultRecipeCount: $usage->resultRecipeCount,
+            resultListCount: $usage->resultListCount,
+            recoveredConversionCount: count($plan->recoveredConversions),
         );
     }
 
@@ -137,14 +140,14 @@ final readonly class IngredientMergePostgreSQLLoader implements IngredientMergeL
      * slug qui n'existe pas : sans exception pour un administrateur (ADR 0028 décision 9). Un commun est rendu : le verdict l'écarte.
      *
      * @param list<string> $slugs
-     * @return array<string, array{slug: string, name: string, creator: ?string, department_slug: string, department_name: string, unit_slug: string, unit_name: string}>
+     * @return array<string, array{slug: string, name: string, creator: ?string, department_slug: string, department_name: string, unit_slug: string, unit_name: string, compatible_units: string}>
      * @throws IngredientException
      */
     private function ingredientsOf(string $userId, array $slugs): array
     {
         $rows = $this->connection()->fetchAllAssociative(
             'SELECT i.slug, i.name, i.creator, i.department AS department_slug, d.name AS department_name,'
-            . ' i.default_purchase_unit AS unit_slug, u.name AS unit_name'
+            . ' i.default_purchase_unit AS unit_slug, u.name AS unit_name, i.compatible_units'
             . ' FROM ingredient i JOIN department d ON d.slug = i.department JOIN unit u ON u.slug = i.default_purchase_unit WHERE i.slug IN (:slugs)',
             ['slugs' => array_values(array_unique($slugs))],
             ['slugs' => ArrayParameterType::STRING],
@@ -175,6 +178,17 @@ final readonly class IngredientMergePostgreSQLLoader implements IngredientMergeL
         );
 
         return ConversionGraph::fromConversions(array_map(static fn(array $row): array => [$row[0], $row[1], (float) $row[2]], $rows));
+    }
+
+    /**
+     * Les slugs d'unités de la colonne JSON `compatible_units` d'un ingrédient.
+     *
+     * @return list<string>
+     */
+    private static function unitSlugsOf(string $json): array
+    {
+        /** @var list<string> */
+        return array_values(json_decode($json, true, flags: JSON_THROW_ON_ERROR));
     }
 
     /**

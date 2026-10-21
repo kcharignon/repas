@@ -42,7 +42,7 @@ Taille : S (quelques heures), M (une journée), L (plusieurs jours). Effort : le
 
 ### I4 — Fusion
 
-- [x] [ING-005](tickets/ING-005-fusion-back.md) (PR #238) back · L · **xhigh** · Aperçu, candidats et écriture de la fusion · dépend de : 001 (002 recommandé)
+- [x] [ING-005](tickets/ING-005-fusion-back.md) (PR #238 ; **amendé le 2026-10-21** : totaux dans l'aperçu et conversions récupérées de l'absorbé) back · L · **xhigh** · Aperçu, candidats et écriture de la fusion · dépend de : 001 (002 recommandé)
 - [x] [ING-006](tickets/ING-006-doublons-possibles.md) (PR #239) back · M · **high** · Liste des doublons possibles, « Pas le même » · dépend de : 004, 005
 
 ### I5 — Front

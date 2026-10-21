@@ -45,4 +45,30 @@ class ConversionGraphTest extends TestCase
             $this->assertEqualsWithDelta($expected, $coefficient, 1e-12);
         }
     }
+
+    public function testWithAddsAConversionInBothDirectionsAndLeavesTheOriginalGraphUntouched(): void
+    {
+        // Given : kilo <-> gramme ; la tranche n'est reliée à rien
+        $graph = ConversionGraph::fromConversions([['kilo', 'gramme', 1000.0]]);
+
+        // When
+        $extended = $graph->with('tranche', 'gramme', 25.0);
+
+        // Then : la tranche se convertit en gramme, en kilo, et inversement ; le graphe d'origine ne la connaît toujours pas
+        $this->assertEqualsWithDelta(25.0, $extended->coefficient('tranche', 'gramme'), 1e-12);
+        $this->assertEqualsWithDelta(0.025, $extended->coefficient('tranche', 'kilo'), 1e-12);
+        $this->assertEqualsWithDelta(0.04, $extended->coefficient('gramme', 'tranche'), 1e-12);
+        $this->assertNull($graph->coefficient('tranche', 'gramme'));
+        $this->assertEqualsWithDelta(1000.0, $extended->coefficient('kilo', 'gramme'), 1e-12);
+    }
+
+    public function testWithOnAnEmptyGraphCreatesItsFirstEdges(): void
+    {
+        // When
+        $graph = new ConversionGraph([])->with('a', 'b', 4.0);
+
+        // Then
+        $this->assertEqualsWithDelta(4.0, $graph->coefficient('a', 'b'), 1e-12);
+        $this->assertEqualsWithDelta(0.25, $graph->coefficient('b', 'a'), 1e-12);
+    }
 }

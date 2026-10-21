@@ -1,7 +1,7 @@
 # 0028 — Ingrédients propres à chaque utilisateur : adoption des communs, alias, rapprochement à la copie, fusion
 
 - **Statut** : Accepted (2026-10-20, les dix décisions validées par l’utilisateur ; l’administrateur n’est pas migré, la migration est lancée par l’assistant avec sauvegarde, test à blanc puis exécution réelle)
-- **Date** : 2026-10-20 (amendé le 2026-10-20 : [plus d'ingrédient commun](#amendement-du-2026-10-20--plus-dingrédient-commun))
+- **Date** : 2026-10-20 (amendé le 2026-10-20 : [plus d'ingrédient commun](#amendement-du-2026-10-20--plus-dingrédient-commun) ; amendé le 2026-10-21 : [la fusion récupère les conversions de l'absorbé et annonce le total](#amendement-du-2026-10-21--la-fusion-récupère-les-conversions-de-labsorbé-et-annonce-le-total))
 - **Liens** : plan de l'amendement [`docs/ingredients/sans-commun.md`](../ingredients/sans-commun.md) ; analyse et plan [`docs/ingredients/`](../ingredients/roadmap.md) ([`analyse.md`](../ingredients/analyse.md), [`migration.md`](../ingredients/migration.md), [`rapprochement.md`](../ingredients/rapprochement.md), [`fusion.md`](../ingredients/fusion.md)), tickets `ING-001` à `ING-010` ; [0013](0013-agregats-references-par-identifiant.md) (références par identifiant, un modèle est une copie), [0016](0016-controle-de-version-etag-if-match.md) (versions), [0017](0017-deploiement-et-releases.md) règle 6 (migrations compatibles), [0019](0019-recherche-d-ingredients-par-pertinence.md) (Jaro-Winkler), [0021](0021-gestion-des-comptes-par-l-administrateur.md) (purge du compte), [0023](0023-liste-envoyee-au-drive.md) (liste `SENT`) ; textes exacts de l'interface : [`fusion.md`](../ingredients/fusion.md) § 9 ; maquette de décision : <https://claude.ai/artifact/AFNuwtZBADgFQ6LMZmZtQb>
 
 ## Contexte
@@ -148,3 +148,29 @@ Ce que coûte le « commun » dans le code (inventaire : `sans-commun.md` § 11)
 - **Garder l'adoption à la première utilisation comme filet** : c'est le « traitement particulier » à supprimer ; la garantie vient de l'atomicité de l'activation et du contrôle de santé.
 - **Un déclencheur de base ou un écouteur Doctrine qui amorce sur tout passage à `ACTIVE`** : code d'infrastructure caché qui s'exécute pendant un `flush` ; les gestionnaires qui activent un compte dispatchent un événement explicite, gardé par un test d'architecture.
 - **Marquer le propriétaire comme « adoptant » avec des alias vers lui-même** : des lignes tautologiques, contraires à l'invariant « jamais d'alias dont la clé est un ingrédient existant du même compte ».
+
+## Amendement du 2026-10-21 : la fusion récupère les conversions de l'absorbé et annonce le total
+
+- **Statut de l'ADR** : inchangé (Accepted). Cet amendement remplace la décision **g** (option G2 « convertir quand c'est possible, sinon refuser » avec G3 « reporter les conversions de `B` sur `A` » écartée) et la phrase de la décision 9 « chaque unité utilisée par `B` doit se convertir par `A`, sinon la fusion s'arrête ». Le reste de la fusion (même utilisateur, jamais l'ingrédient d'un autre, liste `SENT` bloquante, une transaction, idempotence, alias, choix du drive) ne change pas.
+- **Règles complètes et ordre exact** : [`docs/ingredients/fusion.md`](../ingredients/fusion.md) (rappel en tête, règles 5 et 7, § 3 étape 0b, § 5, § 7, § 9.3) ; ticket [ING-005](../ingredients/tickets/ING-005-fusion-back.md) (« Amendement du 2026-10-21 »).
+
+### Contexte
+
+Premier test de la fusion sur des données réelles (2026-10-21, fusion de « Melon » et « Melon », chacun utilisé dans une recette). Mot pour mot : « Lors de la fusion pour les épices à guacamole pas de soucis, en revanche pour melon et Melon chacun est utilisé dans une recette. Or quand je clique sur la fusion on me prévient que Melon utilisera une recette… ben non justement : le but de fusionner c'est que le Melon restant sera utilisé dans DEUX recettes, et que le Melon supprimé sera remplacé dans la recette par celui qu'on garde. Et s'il y a des conversions qui manquent sur celui qu'on garde, on les récupère de celui qui disparaît. » Deux écarts : l'aperçu ne disait que ce qui se déplaçait (« 1 recette »), jamais le total d'après (« 2 recettes ») ; et la décision g refusait la fusion quand l'ingrédient gardé ne savait pas convertir une unité de l'absorbé, alors que l'absorbé savait le faire.
+
+### Décision
+
+1. **L'aperçu annonce le total d'après.** `GET …/merge-preview` gagne `resultRecipeCount` et `resultListCount` (recettes et listes distinctes de l'utilisateur qui utiliseront le gardé : l'union, sans doublon) et `recoveredConversionCount`. Ajouts seulement, toujours écrits, jamais `null` ; `recipeCount` et `listCount` gardent leur sens (ce qui se déplace).
+2. **Le gardé récupère les conversions de l'absorbé.** Avant de repointer, chaque conversion **propre** de l'absorbé dont les deux unités ne sont pas déjà reliées dans le graphe du gardé (conversions propres, communes, ou déjà récupérées) est copiée sur le gardé. Si elles sont déjà reliées, **celle du gardé gagne** (rien à copier si c'est identique, jamais d'écrasement sinon). Les unités compatibles de l'absorbé que ses lignes de recette déplacées utilisent s'ajoutent à celles du gardé. La copie est une seule requête, dans la transaction de la fusion.
+3. **`UNIT_MISSING` ne reste que pour une vraie impossibilité** : une unité d'une ligne déplacée qui n'a toujours aucun chemin de conversion **après** la récupération. L'aperçu applique la même règle (même service de domaine, mêmes faits).
+
+### Pourquoi G3 n'est plus écartée
+
+L'objection d'origine était « écriture silencieuse sur un ingrédient que l'utilisateur garde ». Elle tombe pour trois raisons : l'utilisateur a demandé ce comportement lui-même ; l'écriture n'est pas silencieuse (l'aperçu dit combien de conversions sont ajoutées, la confirmation les montre) ; et elle est bornée (jamais d'écrasement : en cas de conflit le gardé gagne, les conversions copiées ne relient que des unités jusque-là séparées, donc aucun calcul existant du gardé ne change). Refuser et renvoyer l'utilisateur vers l'éditeur d'ingrédient lui demandait de recréer à la main ce que l'ingrédient qui disparaît savait déjà.
+
+### Conséquences
+
+- **Positives** : la confirmation dit ce que la fusion fait vraiment (« sera utilisé dans 2 recettes ») ; une fusion de deux copies d'un même ingrédient n'est plus bloquée parce que l'une savait compter une unité que l'autre ignorait ; rien ne se perd (les conversions de l'absorbé qui comblent un trou survivent à sa suppression).
+- **Coûts** : deux requêtes de plus seulement quand il y a quelque chose à récupérer (scénario `fusionner-ingredients-avec-recuperation` : 24 contre 22), aucune sinon ; le gardé peut gagner des conversions et des unités compatibles qu'il n'avait pas (voulu).
+- **Compatibilité (ADR 0017 règle 6)** : aucun changement de schéma ; une conversion copiée est une ligne ordinaire de `conversion` que le code précédent lit sans difficulté ; le retour arrière du code ne défait pas une fusion faite (comme avant). Contrat : trois entiers ajoutés à l'aperçu, un front qui ne les lit pas continue de fonctionner.
+- **Garde-fous** : `MergePreviewMatchesTheMergeTest` (totaux et nombre de conversions annoncés = base d'après), `MergeFingerprintTest` (empreinte des conversions), `IngredientMergePlannerTest` (règles en table), budget SQL, `MergeRecoveredConversionsArePurgedTest` (la purge du compte efface les conversions copiées).

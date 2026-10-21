@@ -56,6 +56,49 @@ class MergePreviewMatchesTheMergeTest extends DatabaseTestCase
             $d->choice('c3', $u->getId(), $b->getSlug(), '222222');
         }];
 
+        yield 'deux ingrédients, chacun utilisé dans une seule recette (le cas de deux « Melon »)' => [static function (MergeDataset $d, User $u, User $other, Ingredient $a, Ingredient $b): void {
+            $d->recipe('r1', $u->getId(), [[$a->getSlug(), 1.0, 'gramme']]);
+            $d->recipe('r2', $u->getId(), [[$b->getSlug(), 1.0, 'gramme']]);
+        }];
+
+        yield 'des recettes et des listes qui utilisent déjà les deux comptent une fois' => [static function (MergeDataset $d, User $u, User $other, Ingredient $a, Ingredient $b): void {
+            $d->recipe('both', $u->getId(), [[$a->getSlug(), 1.0, 'gramme'], [$b->getSlug(), 2.0, 'gramme'], [$b->getSlug(), 3.0, 'kilo']]);
+            $d->recipe('only-b', $u->getId(), [[$b->getSlug(), 1.0, 'gramme']]);
+            $d->recipe('only-a', $u->getId(), [[$a->getSlug(), 1.0, 'gramme']]);
+            $d->recipe('theirs', $other->getId(), [[$a->getSlug(), 1.0, 'gramme']]);
+            $d->shoppingList('l-both', $u->getId(), rows: [['x1', $a->getSlug(), 1.0, 'kilo']], items: [['y1', $b->getSlug(), 1.0, 'kilo']]);
+            $d->shoppingList('l-only-b', $u->getId(), rows: [['x2', $b->getSlug(), 1.0, 'kilo']], items: [['y2', $b->getSlug(), 1.0, 'kilo']]);
+            $d->shoppingList('l-only-a', $u->getId(), 'PAUSED', items: [['y3', $a->getSlug(), 1.0, 'kilo']]);
+            $d->shoppingList('l-none', $u->getId(), rows: [['x4', 'autre', 1.0, 'kilo']]);
+        }];
+
+        yield 'une conversion du gardé qui lui manque, récupérée de l\'absorbé' => [static function (MergeDataset $d, User $u, User $other, Ingredient $a, Ingredient $b): void {
+            $d->conversion($b, 25.0, new UnitBuilder()->isSlice(), new UnitBuilder()->isGramme());
+            $d->recipe('r1', $u->getId(), [[$b->getSlug(), 4.0, 'tranche']]);
+        }];
+
+        yield 'deux conversions de l\'absorbé qui relient la même unité nouvelle : une seule est copiée' => [static function (MergeDataset $d, User $u, User $other, Ingredient $a, Ingredient $b): void {
+            $d->conversion($b, 25.0, new UnitBuilder()->isSlice(), new UnitBuilder()->isGramme());
+            $d->conversion($b, 0.03, new UnitBuilder()->isSlice(), new UnitBuilder()->isKilo());
+            $d->recipe('r1', $u->getId(), [[$b->getSlug(), 4.0, 'tranche']]);
+        }];
+
+        yield 'un coefficient en conflit : celui du gardé gagne, rien n\'est copié' => [static function (MergeDataset $d, User $u, User $other, Ingredient $a, Ingredient $b): void {
+            $d->conversion($b, 160.0);
+            $d->recipe('r1', $u->getId(), [[$b->getSlug(), 2.0, 'unite']]);
+        }];
+
+        yield 'une unité impossible même après la récupération' => [static function (MergeDataset $d, User $u, User $other, Ingredient $a, Ingredient $b): void {
+            $d->conversion($b, 25.0, new UnitBuilder()->isSlice(), new UnitBuilder()->isGramme());
+            $d->recipe('r1', $u->getId(), [[$b->getSlug(), 4.0, 'tranche'], [$b->getSlug(), 1.0, 'litre']]);
+        }];
+
+        yield 'une unité de liste débloquée par la conversion de l\'absorbé' => [static function (MergeDataset $d, User $u, User $other, Ingredient &$a, Ingredient &$b): void {
+            $b = $d->ingredient('Tomates au litre', $u, new UnitBuilder()->isLiter());
+            $d->conversion($b, 1000.0, new UnitBuilder()->isLiter(), new UnitBuilder()->isGramme());
+            $d->shoppingList('l1', $u->getId(), rows: [['x1', $b->getSlug(), 2.0, 'litre']], items: [['y1', $b->getSlug(), 1.0, 'litre']]);
+        }];
+
         yield 'une liste en pause, une liste terminée et les lignes d\'un autre utilisateur sur le gardé' => [static function (MergeDataset $d, User $u, User $other, Ingredient $a, Ingredient $b): void {
             $d->shoppingList('paused', $u->getId(), 'PAUSED', rows: [['x1', $b->getSlug(), 1.0, 'kilo']]);
             $d->shoppingList('done', $u->getId(), 'COMPLETED', items: [['y1', $b->getSlug(), 1.0, 'kilo']]);
@@ -129,6 +172,7 @@ class MergePreviewMatchesTheMergeTest extends DatabaseTestCase
         $recipeVersions = $dataset->recipeVersions();
         $listVersions = $dataset->listVersions();
         $choicesBefore = $dataset->choiceSlugs();
+        $conversionsBefore = $dataset->ownConversions($kept->getSlug());
         $unitsBefore = $this->listUnits($dataset);
         $hashes = $dataset->tableHashes();
         $this->entityManager->clear();
@@ -146,6 +190,8 @@ class MergePreviewMatchesTheMergeTest extends DatabaseTestCase
             // refusée : la même raison, et rien n'a bougé nulle part
             $this->assertSame(self::ERROR_OF_BLOCK[$preview->blockedBy], $error);
             $this->assertSame($hashes, $dataset->tableHashes());
+            // rien n'est écrit, donc aucune conversion n'est copiée : l'aperçu ne l'annonce pas non plus
+            $this->assertSame(0, $preview->recoveredConversionCount);
 
             return;
         }
@@ -165,6 +211,26 @@ class MergePreviewMatchesTheMergeTest extends DatabaseTestCase
         $unitsAfter = $this->listUnits($dataset);
         $changed = array_filter($unitsAfter, static fn(string $unit, string $id): bool => ($unitsBefore[$id] ?? $unit) !== $unit, ARRAY_FILTER_USE_BOTH);
         $this->assertSame($preview->listQuantitiesConverted, $changed !== []);
+        // le TOTAL annoncé est celui de la base d'après : les recettes et les listes DISTINCTES de l'utilisateur qui utilisent le gardé
+        $used = $dataset->usedBy($user->getId(), $kept->getSlug());
+        $this->assertSame([$preview->resultRecipeCount, $preview->resultListCount], [$used['recipes'], $used['lists']]);
+        // autant de conversions ont été copiées sur le gardé que l'aperçu en annonçait, et seulement celles-là
+        $this->assertSame($preview->recoveredConversionCount, count($dataset->ownConversions($kept->getSlug())) - count($conversionsBefore));
+        $this->assertSame($conversionsBefore, $this->keptOriginals($dataset->ownConversions($kept->getSlug()), $conversionsBefore), 'celles du gardé n\'ont pas bougé');
+        // et rien n'est resté sur l'absorbé
+        $this->assertSame(0, $dataset->count('conversion', 'ingredient = ?', [$absorbed->getSlug()]));
+    }
+
+    /**
+     * Parmi les conversions du gardé d'après, celles qu'il avait avant (les siennes ne changent jamais : ni unités, ni coefficient).
+     *
+     * @param list<array{string, string, float}> $after
+     * @param list<array{string, string, float}> $before
+     * @return list<array{string, string, float}>
+     */
+    private function keptOriginals(array $after, array $before): array
+    {
+        return array_values(array_filter($after, static fn(array $conversion): bool => in_array($conversion, $before, true)));
     }
 
     /**

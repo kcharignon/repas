@@ -153,6 +153,20 @@ class IngredientTest extends TestCase
         $this->assertCount(3, $original->getCompatibleUnits());
     }
 
+    public function testAddingCompatibleUnitsKeepsTheExistingOnesAndNeverDuplicates(): void
+    {
+        // Given : du beurre, compatible en gramme, kilo et bloc
+        $butter = new IngredientBuilder()->isButter()->build();
+        $before = array_map(static fn(Unit $unit): string => $unit->getSlug(), $butter->getCompatibleUnits()->toArray());
+
+        // When : on ajoute la tranche, puis le gramme (déjà compatible) et la tranche encore
+        $result = $butter->addCompatibleUnits([new UnitBuilder()->isSlice()->build(), new UnitBuilder()->isGramme()->build(), new UnitBuilder()->isSlice()->build()]);
+
+        // Then : fluent, les anciennes unités dans le même ordre, la tranche une seule fois à la fin
+        $this->assertSame($butter, $result);
+        $this->assertSame([...$before, 'tranche'], array_map(static fn(Unit $unit): string => $unit->getSlug(), $butter->getCompatibleUnits()->toArray()));
+    }
+
     public function testACommonIngredientIsOwnedByNobody(): void
     {
         // Given
