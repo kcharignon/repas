@@ -4,7 +4,7 @@
 - **Jalon** : M5 Intégration et livraison
 - **Taille** : M
 - **Dépend de** : M2, M3, M4 terminés
-- **Statut** : en cours (partie back faite, PR #156, 2026-10-18 ; partie front faite, repas-front#106 ; `recette.md` écrite le 2026-10-18 ; reste le parcours réel dans l'émulateur (DRV-319 partie 2) et `BASKET_PATH`, relevé à la recette)
+- **Statut** : fait (2026-10-24) : partie back (PR #156), partie front (repas-front#106), `recette.md` écrite (2026-10-18) et déroulée (DRV-505 signée le 2026-10-19), parcours dans l'émulateur fait (DRV-319, repas-front#90 et #119) ; `BASKET_PATH` n'existe plus dans le front
 - **Lire d'abord** : tout `docs/drive/` ; `docs/production.md` ; `make start` du back et `make up` du front (voir `CLAUDE.md`).
 
 ## Portée
@@ -38,7 +38,7 @@ Objectif : que le front vérifie que le back et l'agent parlent la même langue 
 - **Unité sans symbole** (écart de contrat corrigé) : le plan renvoyait `needed.unitSymbol: ""` pour l'unité « unité » (les œufs), que `plan.schema.json` refuse (`minLength: 1`, `maxLength: 32`). Le plan renvoie désormais, à défaut de symbole (vide ou espaces), **le nom de l'unité** (« unité »), puis son slug, coupé à 32 caractères. Le port `Shared` `ShoppingListLineForDrive` gagne `unitName` ; la règle est dans `DrivePlanPostgreSQLLoader::unitLabel()` (test `testTheUnitIsNamedByItsNameWhenItHasNoSymbol`). La clé reste `unitSymbol` (le front fige le contrat) ; `GET /shopping-lists/{id}` n'est pas touché. Note dans `architecture.md` § 7.
 - **Comment le front les utilise** : l'agent d'intégration du front lit `plan.sample.json` (copie ou lecture depuis le dépôt du back, jamais depuis un site), le traduit par `buildPlanMessage` (`src/features/drive/buildPlanMessage.ts` : `retailerProductId` devient `id`, `ingredientName` devient `name`; `needed` n'est gardé que si son symbole est utilisable, ce que l'unité « unité » devient avec ce correctif) et **valide le message obtenu contre `drive-agent/protocol/plan.schema.json`** (test Vitest à écrire côté front : un champ renommé ou retiré dans le DTO du back fait échouer ce test quand l'exemple est régénéré). Les trois autres exemples servent de réponses simulées aux tests des écrans (réglages, « Mes produits », estimation) et à vérifier le client OpenAPI généré.
 - **Rustine du front à retirer** : `neededOf` de `buildPlanMessage.ts` omet `needed` quand `unitSymbol` est vide ; le plan ne le renvoie plus vide, le test de concordance du front doit donc voir `needed` conservé pour les œufs (`unité`).
-- **Reste à faire pour fermer DRV-501** : le parcours bout en bout en développement avec le faux site Leclerc dans l'émulateur Android (DRV-319 partie 2), `BASKET_PATH` (adresse de la page panier, relevée à l'étape 8.4 de la recette), les contrôles qualité des deux dépôts. La case n'est pas cochée.
+- **Reste à faire pour fermer DRV-501 (soldé le 2026-10-24, voir le statut)** : le parcours bout en bout en développement avec le faux site Leclerc dans l'émulateur Android (DRV-319 partie 2), `BASKET_PATH` (adresse de la page panier, relevée à l'étape 8.4 de la recette), les contrôles qualité des deux dépôts. La case n'est pas cochée.
 
 ## Réalisation `recette.md` (2026-10-18)
 
