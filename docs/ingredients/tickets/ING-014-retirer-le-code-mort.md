@@ -5,7 +5,7 @@
 - **Taille** : M
 - **Effort recommandé pour l'agent** : **high** (suppression d'un grand volume de code testé ; peu de logique neuve, mais un garde de séquence de production)
 - **Dépend de** : ING-013 (même sortie R2, même condition : après l'étape 12)
-- **Statut** : à faire
+- **Statut** : fait (PR #250) — sauf le retrait de la commande de passation et du « ou vide » du catalogue, qui reste à faire dans une PR à part (voir « Réalisation »)
 - **Sortie** : **R2**
 - **Lire d'abord** : [`sans-commun.md`](../sans-commun.md) § 11 (**la liste exacte de ce qui meurt**) et §§ 5, 7 ; ADR 0017 règles 5 et 6 ; ADR 0028 amendement ; ING-003 (ce qu'on retire) ; skill `/repas-dev`.
 
@@ -51,3 +51,12 @@ Ceux qui disparaissent avec le code ; `NoSharedIngredientTest` ; test de la migr
 - La migration-garde ne doit **pas** rendre le développement impossible : seul `prod` abandonne.
 - Un test d'architecture qui grep `src/` doit exclure son propre fichier et les migrations (qui contiennent l'historique).
 - Ne pas oublier `tests/Helper` (InMemory…) : les doubles qui modélisent « commun » ou « adoptant » (`IngredientAliasInMemoryRepository`, `IngredientSlugResolverFactory`).
+
+## Réalisation (PR #250, 2026-10-24)
+
+- **Fait** : tout ce que la portée liste, sauf le retrait de la passation. Le détail de ce qui est retiré et de ce qui reste est dans [`sans-commun.md`](../sans-commun.md) § 2.7. 35 fichiers supprimés (17 dans `src/`, 17 dans `tests/`, le script `adopter-ingredients.sh`), 5 347 lignes retirées pour 565 ajoutées ; `make test` 3 911 tests, `make quality` et `make deploy-smoke` verts.
+- **Écart au ticket, volontaire** : `hand-over-catalog` (ING-009), le classement et l'amorçage de son compte vide dépendent encore du « ou vide » (`IngredientVisibility::isCommonSql`, `isCatalogSql`) et de l'état d'avant la passation ; ses ~100 tests aussi. Les retirer demande de supprimer la commande, son script `passer-communs-a-l-administrateur.sh`, `HandoverDataset`, `BaseIngredientClassification` côté commande et de simplifier `SeedingSourceReader` (plus d'état « supposé »). `NoSharedIngredientTest` liste donc cinq fichiers d'exception avec leur raison, et **échoue quand l'un d'eux n'en a plus besoin** : la liste ne peut que rétrécir. À faire dans une PR à part, dès que le propriétaire n'a plus besoin de rejouer la passation.
+- **Plus de retour arrière des données par commande** : `adopt-commons --undo` est retiré avec le reste ; la sauvegarde `avant-amorcage-ingredients` est la seule voie (décision humaine).
+- **Production** : relevé en lecture seule le 2026-10-24, 0 ingrédient sans créateur sur 1 823 ; la migration-garde passera.
+- **Fixtures** : les trois ingrédients « spécifiques » des recettes de démonstration (`aiguilette-de-poulet`, `haricot-rouge`, `pomme-golden`) sont remplacés par leurs équivalents « de base » (`poulet`, `haricot`, `pomme`), car un compte de démonstration ne reçoit que les ingrédients « de base ».
+- **Hors portée de l'ancienne rédaction, ajouté** : `make test` lit `phpunit.dist.xml` (plus de copie locale qui se périme), le journal du conteneur est un `NullLogger` en test et les mesures de performance ne s'affichent qu'avec `TEST_PERF_REPORT=1` (PR #249).
