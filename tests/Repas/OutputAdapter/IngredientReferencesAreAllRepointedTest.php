@@ -3,6 +3,7 @@
 namespace Repas\Tests\Repas\OutputAdapter;
 
 
+use Doctrine\DBAL\ArrayParameterType;
 use Repas\Repas\Application\Command\MergeIngredients\MergeIngredientsCommand;
 use Repas\Repas\Domain\Model\AdoptionSnapshot;
 use Repas\Shared\Application\Interface\CommandBusInterface;
@@ -151,7 +152,7 @@ class IngredientReferencesAreAllRepointedTest extends DatabaseTestCase
             $value = $connection->quoteSingleIdentifier($column);
             $holds = str_contains($type, 'json')
                 ? $connection->fetchOne(sprintf('SELECT EXISTS (SELECT 1 FROM %s WHERE %s::text ~ ?)', $from, $value), [$pattern])
-                : $connection->fetchOne(sprintf('SELECT EXISTS (SELECT 1 FROM %s WHERE %s IN (SELECT slug FROM ingredient WHERE creator IS NULL))', $from, $value));
+                : $connection->fetchOne(sprintf('SELECT EXISTS (SELECT 1 FROM %s WHERE %s IN (?))', $from, $value), [$dataset->commons], [ArrayParameterType::STRING]);
             if ($holds) {
                 $found[] = $table . '.' . $column;
             }

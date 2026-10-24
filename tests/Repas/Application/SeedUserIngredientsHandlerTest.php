@@ -301,7 +301,7 @@ class SeedUserIngredientsHandlerTest extends TestCase
         $this->list('l2', self::USER, 'SENT', ['mayonnaise-maison']);
         $this->drive->choices['c1'] = ['user' => self::USER, 'slug' => 'piment-special', 'products' => 3];
         $this->drive->choices['c2'] = ['user' => self::USER, 'slug' => 'beurre', 'products' => 1];
-        $before = $this->bulk->snapshot(self::USER)->contentFingerprint();
+        $before = $this->bulk->snapshot(self::USER, [])->contentFingerprint();
 
         // When
         $result = $this->seed();
@@ -321,7 +321,7 @@ class SeedUserIngredientsHandlerTest extends TestCase
         $this->assertSame(1, $result->sentShoppingListsRepointed);
         $this->assertSame(2, $result->driveChoicesRepointed);
         // Le contenu vu par les noms est identique avant et après
-        $this->assertSame($before, $this->bulk->snapshot(self::USER)->contentFingerprint());
+        $this->assertSame($before, $this->bulk->snapshot(self::USER, [])->contentFingerprint());
         $this->assertSame($before, $result->fingerprint);
     }
 

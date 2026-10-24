@@ -11,7 +11,8 @@ use Repas\Tests\Helper\Builder\UserBuilder;
  * un compte de recettes copiées, un compte à un seul ingrédient, le « compte vide » qui n'a qu'une liste et un choix du drive, un compte
  * désactivé, un autre administrateur), plus le PROPRIÉTAIRE du catalogue (l'adresse de `UserBuilder::CATALOG_OWNER_EMAIL`, avec une recette),
  * un compte actif tout neuf et un compte en attente, et le CLASSEMENT : huit des douze anciens communs sont « de base », quatre sont
- * « spécifiques ». `handOver()` joue la passation d'ING-009 (les anciens communs passent au propriétaire, mêmes slugs).
+ * « spécifiques ». Comme en production après la passation (ING-009), les douze anciens communs appartiennent au propriétaire du catalogue (mêmes slugs).
+ * (Il n'y a plus d'ingrédient sans créateur : les tests d'`AdoptionDataset` seul gardent la forme d'avant, pour la fusion et les doublons.)
  *
  * Valeurs factices uniquement : aucun nom réel d'ingrédient personnel, aucune adresse réelle.
  */
@@ -43,6 +44,8 @@ final class SeedingDataset
         if ($classified) {
             $dataset->markBase(self::BASE);
         }
+        // La passation est faite : plus aucun ingrédient sans créateur, le catalogue est celui du propriétaire
+        $dataset->adoption->connection->executeStatement('UPDATE ingredient SET creator = ? WHERE creator IS NULL', [$dataset->ownerId]);
 
         return $dataset;
     }
@@ -68,14 +71,6 @@ final class SeedingDataset
         foreach ($slugs as $slug) {
             $this->adoption->connection->executeStatement('UPDATE ingredient SET is_base = TRUE WHERE slug = ?', [$slug]);
         }
-    }
-
-    /**
-     * La passation (ING-009) : les anciens communs passent au propriétaire, les slugs ne changent pas.
-     */
-    public function handOver(): void
-    {
-        $this->adoption->connection->executeStatement('UPDATE ingredient SET creator = ? WHERE creator IS NULL', [$this->ownerId]);
     }
 
     /**

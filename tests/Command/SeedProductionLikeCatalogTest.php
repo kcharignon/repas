@@ -20,10 +20,10 @@ use Repas\User\Domain\Interface\EmailVerificationTokenRepository;
 use Repas\User\Domain\Model\EmailVerificationToken;
 
 /**
- * L'amorçage sur un catalogue de la taille de la production (ING-008) : les 261 anciens communs du fichier validé
+ * L'amorçage sur un catalogue de la taille de la production (ING-008) : les 261 anciens communs du fichier validé (aujourd'hui les ingrédients du propriétaire)
  * `docs/ingredients/base-ingredients.tsv`, dont 151 « de base » et 110 « spécifiques », avec une centaine de conversions propres (le fichier
  * est la donnée réelle de la passation ; ni nom d'ingrédient personnel ni identifiant ne sont en jeu). Un compte reçoit les 151 et seulement
- * eux, dans les deux formes de la base (avant et après la passation), pour le même nombre de requêtes que 5 ingrédients.
+ * eux,, pour le même nombre de requêtes que 5 ingrédients.
  */
 class SeedProductionLikeCatalogTest extends DatabaseTestCase
 {
@@ -59,7 +59,7 @@ class SeedProductionLikeCatalogTest extends DatabaseTestCase
                 'department' => $row['department'],
                 'default_cooking_unit' => 'gramme',
                 'default_purchase_unit' => 'kilo',
-                'creator' => null,
+                'creator' => $this->ownerId,
                 'compatible_units' => '["gramme","kilo"]',
                 'adopted_from' => null,
                 'is_base' => $row['base'] ? 1 : 0,
@@ -85,50 +85,46 @@ class SeedProductionLikeCatalogTest extends DatabaseTestCase
         $this->assertSame('3776a0ad5d1fbc427f9431656c14b7e2', md5(implode(',', $base)));
     }
 
-    public function testAnAccountReceivesExactlyTheBaseIngredientsBeforeAndAfterTheHandOver(): void
+    public function testAnAccountReceivesExactlyTheBaseIngredients(): void
     {
         $connection = $this->entityManager->getConnection();
         $base = array_column(array_filter($this->rows, static fn(array $row): bool => $row['base']), 'slug');
         sort($base, SORT_STRING);
         $expectedConversions = (int) $connection->fetchOne('SELECT count(*) FROM conversion c JOIN ingredient i ON i.slug = c.ingredient WHERE i.is_base');
 
-        foreach (['avant la passation' => false, 'après la passation' => true] as $label => $handedOver) {
-            // Given
-            if ($handedOver) {
-                $connection->executeStatement('UPDATE ingredient SET creator = ? WHERE creator IS NULL', [$this->ownerId]);
-            }
-            $user = new UserBuilder()->build();
-            new DataPersister(static::getContainer())->saveUser($user);
-            $this->entityManager->clear();
-            // Une requête neuve : le propriétaire du catalogue est relu (il est mémorisé le temps d'une requête)
-            static::getContainer()->get(IngredientCatalogOwner::class)->reset();
-            $counter = static::getContainer()->get(QueryCounter::class);
-            $counter->reset();
-            $started = hrtime(true);
+        $label = 'compte neuf';
+        // Given
+        $user = new UserBuilder()->build();
+        new DataPersister(static::getContainer())->saveUser($user);
+        $this->entityManager->clear();
+        // Une requête neuve : le propriétaire du catalogue est relu (il est mémorisé le temps d'une requête)
+        static::getContainer()->get(IngredientCatalogOwner::class)->reset();
+        $counter = static::getContainer()->get(QueryCounter::class);
+        $counter->reset();
+        $started = hrtime(true);
 
-            // When
-            $result = static::getContainer()->get(CommandBusInterface::class)->dispatch(new SeedUserIngredientsCommand($user->getId(), 'activation'));
-            $seconds = (hrtime(true) - $started) / 1e9;
-            $queries = $counter->count();
+        // When
+        $result = static::getContainer()->get(CommandBusInterface::class)->dispatch(new SeedUserIngredientsCommand($user->getId(), 'activation'));
+        $seconds = (hrtime(true) - $started) / 1e9;
+        $queries = $counter->count();
 
-            // Then : les 151, et seulement eux
-            $this->assertInstanceOf(SeedResult::class, $result);
-            $this->assertSame(SeedOutcome::SEEDED, $result->outcome, $label);
-            $this->assertSame(151, $result->seeded, $label);
-            $copies = $connection->fetchAllKeyValue("SELECT alias_slug, ingredient_slug FROM ingredient_alias WHERE user_id = ? AND kind = 'adoption' ORDER BY alias_slug COLLATE \"C\"", [$user->getId()]);
-            $this->assertSame($base, array_keys($copies), $label);
-            $this->assertSame(151, (int) $connection->fetchOne('SELECT count(*) FROM ingredient WHERE creator = ? AND adopted_from IS NOT NULL AND NOT is_base', [$user->getId()]), $label);
-            $this->assertSame(151, (int) $connection->fetchOne('SELECT count(*) FROM ingredient WHERE creator = ?', [$user->getId()]), $label);
-            $this->assertSame($expectedConversions, $result->conversionsCopied, $label);
-            $this->assertSame($expectedConversions, (int) $connection->fetchOne('SELECT count(*) FROM conversion c JOIN ingredient i ON i.slug = c.ingredient WHERE i.creator = ?', [$user->getId()]), $label);
-            // Les 110 « spécifiques » ne sont pas copiés
-            $this->assertSame(0, (int) $connection->fetchOne('SELECT count(*) FROM ingredient WHERE creator = ? AND adopted_from IN (SELECT slug FROM ingredient WHERE NOT is_base)', [$user->getId()]), $label);
-            // Le catalogue est intact : 261 ingrédients, 151 de base
-            $this->assertSame(261, (int) $connection->fetchOne('SELECT count(*) FROM ingredient WHERE adopted_from IS NULL AND (creator IS NULL OR creator = ?)', [$this->ownerId]), $label);
-            // Le coût : constant, celui des scénarios de budget, quelle que soit la taille du catalogue ; et rapide
-            $this->assertSame((require dirname(__DIR__) . '/Repas/WriteBudget/budgets.php')['amorcer-compte'], $queries, $label);
-            $this->assertLessThan(2.0, $seconds, $label . ' : ' . round($seconds, 2) . ' s');
-        }
+        // Then : les 151, et seulement eux
+        $this->assertInstanceOf(SeedResult::class, $result);
+        $this->assertSame(SeedOutcome::SEEDED, $result->outcome, $label);
+        $this->assertSame(151, $result->seeded, $label);
+        $copies = $connection->fetchAllKeyValue("SELECT alias_slug, ingredient_slug FROM ingredient_alias WHERE user_id = ? AND kind = 'adoption' ORDER BY alias_slug COLLATE \"C\"", [$user->getId()]);
+        $this->assertSame($base, array_keys($copies), $label);
+        $this->assertSame(151, (int) $connection->fetchOne('SELECT count(*) FROM ingredient WHERE creator = ? AND adopted_from IS NOT NULL AND NOT is_base', [$user->getId()]), $label);
+        $this->assertSame(151, (int) $connection->fetchOne('SELECT count(*) FROM ingredient WHERE creator = ?', [$user->getId()]), $label);
+        $this->assertSame($expectedConversions, $result->conversionsCopied, $label);
+        $this->assertSame($expectedConversions, (int) $connection->fetchOne('SELECT count(*) FROM conversion c JOIN ingredient i ON i.slug = c.ingredient WHERE i.creator = ?', [$user->getId()]), $label);
+        // Les 110 « spécifiques » ne sont pas copiés
+        $this->assertSame(0, (int) $connection->fetchOne('SELECT count(*) FROM ingredient WHERE creator = ? AND adopted_from IN (SELECT slug FROM ingredient WHERE NOT is_base)', [$user->getId()]), $label);
+        // Le catalogue est intact : 261 ingrédients, 151 de base
+        $this->assertSame(261, (int) $connection->fetchOne('SELECT count(*) FROM ingredient WHERE adopted_from IS NULL AND creator = ?', [$this->ownerId]), $label);
+        // Le coût : constant, celui des scénarios de budget, quelle que soit la taille du catalogue ; et rapide
+        $this->assertSame((require dirname(__DIR__) . '/Repas/WriteBudget/budgets.php')['amorcer-compte'], $queries, $label);
+        $this->assertLessThan(2.0, $seconds, $label . ' : ' . round($seconds, 2) . ' s');
     }
 
     public function testARegisteredVisitorWhoConfirmsTheirAddressGetsTheHundredAndFiftyOneIngredientsAndSeesThemThroughTheApi(): void

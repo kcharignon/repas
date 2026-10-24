@@ -136,7 +136,7 @@ readonly class IngredientAdoptionBulkPostgreSQLRepository implements IngredientA
         return $this->repoint($userId, self::VALID_ADOPTIONS, ['u' => $userId]);
     }
 
-    public function snapshot(string $userId, ?array $watchedSlugs = null): AdoptionSnapshot
+    public function snapshot(string $userId, array $watchedSlugs): AdoptionSnapshot
     {
         return $this->snapshotReader->read($userId, $watchedSlugs);
     }

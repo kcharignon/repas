@@ -19,7 +19,7 @@ class IngredientSeedingReportInMemoryLoader implements IngredientSeedingReportLo
     ) {
     }
 
-    public function report(array $only, array $except, bool $complete, ?array $assumedBaseSlugs = null): SeedingReportDTO
+    public function report(array $only, array $except, bool $complete): SeedingReportDTO
     {
         $this->reportCalls[] = [$only, $except, $complete];
 

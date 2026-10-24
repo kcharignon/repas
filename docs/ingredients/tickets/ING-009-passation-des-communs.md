@@ -5,7 +5,7 @@
 - **Taille** : L
 - **Effort recommandé pour l'agent** : **xhigh** (réécrit le propriétaire de tout le catalogue en production, préconditions de visibilité de tous les comptes)
 - **Dépend de** : ING-011 (marqueur, propriétaire du catalogue) et ING-008 (le rattrapage que la commande appelle)
-- **Statut** : **code livré** (PR #245, voir « Réalisation » en bas) ; **l'exécution en production n'est pas faite** (étape humaine) — **remplace** l'ancien ING-009 (« les communs deviennent les ingrédients de l'administrateur », plus tard), qui supposait une adoption préalable de tous par la première utilisation
+- **Statut** : **fait** : code livré (PR #245, voir « Réalisation » en bas), **passation exécutée en production le 2026-10-21**, code retiré par ING-014 (PR #252) — **remplace** l'ancien ING-009 (« les communs deviennent les ingrédients de l'administrateur », plus tard), qui supposait une adoption préalable de tous par la première utilisation
 - **Sortie** : **R1** ; l'**exécution** en production est une étape humaine (`sans-commun.md` § 4, étapes 6 à 12), jamais celle de l'agent
 - **Lire d'abord** : [ADR 0028](../../adr/0028-ingredients-propres-a-chaque-utilisateur.md) amendement du 2026-10-20 (décisions 1, 4, 6, 7, 9) ; **[`sans-commun.md`](../sans-commun.md) en entier** (surtout §§ 2, 4 à 7) ; [`base-ingredients.tsv`](../base-ingredients.tsv) (le classement validé) ; ING-003 et sa section « Réalisation » (le style de la commande, du rapport, du script, des tests) ; ADR 0017 règle 6, 0021 ; skills `/repas-dev`, `/repas-ops`.
 

@@ -12,7 +12,7 @@ use Repas\Repas\Application\Command\CreateIngredient\CreateIngredientCommand;
  *
  * Il parcourt `src/{Contexte}/Application` et échoue dès qu'un appel à `Ingredient::create(` ne donne pas, au paramètre `creatorId`, une
  * simple variable ou propriété (jamais `null`, `''`, ni une expression qui peut en valoir un). Les fixtures et les tests de domaine ne sont pas
- * parcourus : ils construisent des ingrédients exprès. `Ingredient::create(?string)` garde sa signature jusqu'à ING-014.
+ * parcourus : ils construisent des ingrédients exprès. `Ingredient::create()` exige un créateur (`string`, ING-014) ; `NoSharedIngredientTest` le garde.
  */
 class NoNewCommonIngredientTest extends TestCase
 {

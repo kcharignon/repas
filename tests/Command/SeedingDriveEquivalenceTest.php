@@ -37,7 +37,8 @@ class SeedingDriveEquivalenceTest extends WriteBudgetTestCase
     {
         // Given : le propriétaire du catalogue, et un compte avec trois recettes (ingrédients du catalogue), une liste ENVOYÉE et une liste active,
         // des choix de produits pour la plupart des lignes
-        $this->persister->saveUser(new UserBuilder()->isCatalogOwner()->build());
+        $owner = new UserBuilder()->isCatalogOwner()->build();
+        $this->persister->saveUser($owner);
         $user = $this->savedUser();
         $recipes = $this->typicalRecipes($user, ownedByAuthor: false);
         $sentList = $this->savedShoppingList($user, $recipes, null, static function (ShoppingList $list): void {
@@ -45,14 +46,14 @@ class SeedingDriveEquivalenceTest extends WriteBudgetTestCase
         });
         $activeList = $this->savedShoppingList($user, $recipes);
         $this->savedDriveSettings($user);
-        // Le rattrapage part de la forme d'avant la passation : les ingrédients du catalogue sont encore sans créateur
-        $this->turnDefaultIngredientsIntoOldCommons();
+        // Les ingrédients du catalogue sont ceux du propriétaire, d'où le rattrapage les copie
+        $this->giveDefaultIngredientsToTheCatalogOwner($owner->getId());
         $connection = $this->entityManager->getConnection();
         $slugs = $connection->fetchFirstColumn('SELECT ingredient FROM shopping_list_row WHERE shopping_list = ? ORDER BY ingredient', [$sentList->getId()]);
         $this->assertGreaterThanOrEqual(5, count($slugs));
         $this->saveChoices($user->getId(), $slugs);
         // Le classement : tous les ingrédients du catalogue sont « de base » sauf le premier des ingrédients de la liste (il sera copié parce que les lignes le référencent)
-        $connection->executeStatement('UPDATE ingredient SET is_base = TRUE WHERE creator IS NULL');
+        $connection->executeStatement('UPDATE ingredient SET is_base = TRUE WHERE creator = ?', [$owner->getId()]);
         $connection->executeStatement('UPDATE ingredient SET is_base = FALSE WHERE slug = ?', [$slugs[0]]);
 
         $bus = static::getContainer()->get(QueryBusInterface::class);

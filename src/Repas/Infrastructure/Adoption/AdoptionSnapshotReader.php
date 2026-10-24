@@ -9,12 +9,11 @@ use Doctrine\ORM\EntityManagerInterface;
 use Repas\Repas\Domain\Model\AdoptionSnapshot;
 use Repas\Repas\Domain\Model\AggregateSnapshot;
 use Repas\Repas\Domain\Model\ShoppingListStatus;
-use Repas\Repas\Infrastructure\Visibility\IngredientVisibility;
 
 /**
  * Lit, en LECTURE SEULE et en quatre requêtes quel que soit le volume, l'empreinte d'un utilisateur côté `Repas` (`AdoptionSnapshot`) :
- * celle que la migration d'adoption compare avant et après (dans sa transaction) et que le rapport à blanc affiche. Partagée par
- * `IngredientAdoptionBulkPostgreSQLRepository` et `IngredientAdoptionReportPostgreSQLLoader`, pour qu'elles disent la même chose.
+ * celle que l'amorçage d'un compte compare avant et après (dans sa transaction) et que le rapport à blanc affiche. Partagée par
+ * `IngredientAdoptionBulkPostgreSQLRepository` et `IngredientSeedingReportPostgreSQLLoader`, pour qu'elles disent la même chose.
  *
  * Le contenu d'une recette ou d'une liste est la somme de contrôle de ses lignes `(nom de l'ingrédient, rayon, quantité, unité)` triées :
  * le NOM et le rayon, pas le slug, donc insensible à un repointage vers une copie de même nom et de même rayon. `COLLATE "C"` rend
@@ -28,17 +27,14 @@ final readonly class AdoptionSnapshotReader
     }
 
     /**
-     * @param list<string>|null $watchedSlugs les ingrédients dont on attend le repointage ; `null` : tous les communs
+     * @param list<string> $watchedSlugs les ingrédients dont on attend le repointage
      */
-    public function read(string $userId, ?array $watchedSlugs = null): AdoptionSnapshot
+    public function read(string $userId, array $watchedSlugs): AdoptionSnapshot
     {
         $connection = $this->connection();
         $params = ['u' => $userId];
         $types = [];
-        if ($watchedSlugs === null) {
-            // Un ingrédient absent de la table (référence orpheline) n'est jamais « surveillé » : il n'a pas de copie
-            $watched = static fn(string $ingredient, string $column): string => sprintf('(%1$s.slug IS NOT NULL AND %2$s)', $ingredient, IngredientVisibility::isCommonSql($ingredient));
-        } elseif ($watchedSlugs === []) {
+        if ($watchedSlugs === []) {
             $watched = static fn(string $ingredient, string $column): string => 'FALSE';
         } else {
             $params['watched'] = $watchedSlugs;

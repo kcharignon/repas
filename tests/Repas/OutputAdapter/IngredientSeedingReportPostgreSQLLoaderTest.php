@@ -188,26 +188,25 @@ class IngredientSeedingReportPostgreSQLLoaderTest extends DatabaseTestCase
         // When
         $health = $this->loader->report([], [], false)->health;
 
-        // Then : six comptes actifs sans amorçage, quatre sans aucun ingrédient, des lignes sur les anciens communs, le propriétaire hors des contrôles
+        // Then : six comptes actifs sans amorçage, quatre sans aucun ingrédient, des lignes sur les anciens communs, le propriétaire dans les contrôles (rien à signaler chez lui)
         $this->assertSame(6, $health->activeNotSeeded);
         $this->assertSame(4, $health->activeWithoutIngredient);
         $this->assertSame(['recettes', 'lignes de liste', 'ingrédients de liste', 'choix du drive'], array_keys($health->foreignLines));
-        $this->assertNull($health->ownerForeignLines);
-        $this->assertSame(12, $health->ingredientsWithoutCreator);
+        $this->assertSame([], $health->ownerForeignLines);
+        $this->assertSame(0, $health->ingredientsWithoutCreator);
         $this->assertFalse($health->isHealthy());
     }
 
-    public function testTheOwnerEntersTheHealthChecksOnceNoIngredientWithoutCreatorRemains(): void
+    public function testTheOwnerEntersTheHealthChecks(): void
     {
-        // Given : la passation, puis une ligne de recette du propriétaire sur l'ingrédient d'un autre compte
-        $this->dataset->handOver();
+        // Given : une ligne de recette du propriétaire sur l'ingrédient d'un autre compte
         $recipeId = $this->dataset->adoption->connection->fetchOne('SELECT id FROM recipe WHERE author = ? LIMIT 1', [$this->dataset->ownerId]);
         $this->dataset->adoption->connection->executeStatement('UPDATE recipe_row SET ingredient = ? WHERE recipe = ? AND position = 0', ['praline' . $this->dataset->adoption->bigId, $recipeId]);
 
         // When
         $health = $this->loader->report([], [], false)->health;
 
-        // Then : le propriétaire a des ingrédients à lui (les 12), et sa ligne est comptée ; plus aucun ancien commun
+        // Then : le propriétaire a des ingrédients à lui (les 12), et sa ligne est comptée ; aucun ingrédient sans propriétaire
         $this->assertSame(0, $health->ingredientsWithoutCreator);
         $this->assertSame(['recettes' => 1], $health->ownerForeignLines);
         $this->assertSame(4, $health->activeWithoutIngredient, 'le propriétaire n\'est pas sans ingrédient');

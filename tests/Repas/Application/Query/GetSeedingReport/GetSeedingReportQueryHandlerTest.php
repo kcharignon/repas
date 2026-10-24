@@ -60,8 +60,8 @@ class GetSeedingReportQueryHandlerTest extends TestCase
     {
         // Given
         $clean = $this->user(1, selected: true);
-        $green = new SeedingHealthDTO(0, 0, [], null, 12);
-        $red = new SeedingHealthDTO(1, 0, [], null, 12);
+        $green = new SeedingHealthDTO(0, 0, [], null, 0);
+        $red = new SeedingHealthDTO(1, 0, [], null, 0);
 
         // Then
         $this->assertTrue($this->report([$clean], $green)->isConform());
@@ -70,6 +70,7 @@ class GetSeedingReportQueryHandlerTest extends TestCase
         $this->assertFalse($this->report([$clean], new SeedingHealthDTO(0, 0, ['recettes' => 2], null, 0))->isConform(), 'des lignes sur l\'ingrédient d\'un autre compte');
         $this->assertFalse($this->report([$clean], new SeedingHealthDTO(0, 0, [], ['recettes' => 1], 0))->isConform(), 'des lignes du propriétaire sur un ingrédient qui n\'est pas à lui');
         $this->assertTrue($this->report([$clean], new SeedingHealthDTO(0, 0, [], [], 0))->isConform(), 'le propriétaire évalué et conforme');
+        $this->assertFalse($this->report([$clean], new SeedingHealthDTO(0, 0, [], [], 3))->isConform(), 'des ingrédients sans propriétaire existant');
         $this->assertFalse($this->report([$this->user(2, selected: true, toSeed: 3)], $green)->isConform());
         $this->assertFalse($this->report([$this->user(3, selected: true, anomalies: ['x'])], $green)->isConform());
     }

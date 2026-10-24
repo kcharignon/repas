@@ -1,4 +1,6 @@
-# Passer les anciens communs à l'administrateur (ING-009)
+# Passer les anciens communs à l'administrateur (ING-009) — HISTORIQUE
+
+> **Historique (ING-014, 2026-10-24).** La passation a été exécutée en production le 2026-10-21. Sa commande (`repas:ingredients:hand-over-catalog`), son script `passer-communs-a-l-administrateur.sh`, le classement et leurs tests ont été retirés du code : ne plus proposer cette recette. Elle reste pour mémoire. Pour amorcer un compte : `references/amorcage-ingredients.md`.
 
 Chantier « plus d'ingrédient commun » ([ADR 0028](../../../../docs/adr/0028-ingredients-propres-a-chaque-utilisateur.md), amendement du 2026-10-20, ticket ING-009). **Les faits, les préconditions, les contrôles SQL (« avant », « après », retour arrière) et le pas à pas détaillé sont dans `docs/ingredients/sans-commun.md` (§§ 5, 6 et 14) et `docs/production.md`, section « Passation du catalogue »** : ne pas les redire ici, les citer.
 
