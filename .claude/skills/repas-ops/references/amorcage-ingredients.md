@@ -41,8 +41,7 @@ Du plus léger au plus lourd ; s'arrêter dès que c'est réglé.
 
 1. **L'interrupteur** : le couper (`false`). L'activation continue de marcher, sans amorçage.
 2. **Le code** : sans danger, l'ancien code lit tout (`references/incident.md` § 2).
-3. **Les données d'un lancement** : `adopter-ingredients.sh --appliquer --annuler=<source> --accepter-listes-envoyees` (`activation` ou `rattrapage-AAAA-MM-JJ`, dans le rapport). Sauvegarde `avant-annulation-adoption-ingredients`, lignes et choix du drive repointés vers les origines, alias du lancement effacés, **copies conservées**.
-4. **La base** : restaurer `avant-amorcage-ingredients` (`references/incident.md` § 3), décision humaine, jamais automatique.
+3. **La base** : restaurer `avant-amorcage-ingredients` (`references/incident.md` § 3), décision humaine, jamais automatique.
 
 ## Pièges
 

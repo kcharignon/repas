@@ -1,4 +1,6 @@
-# Adopter les ingrédients communs (migration ING-003)
+# Adopter les ingrédients communs (migration ING-003) — HISTORIQUE
+
+> **Historique (ING-014, 2026-10-24).** La migration a été exécutée en production le 2026-10-20. Sa commande (`repas:ingredients:adopt-commons`), son script `adopter-ingredients.sh`, son retour arrière (`--undo`) et leurs tests ont été retirés du code : ne plus proposer cette recette. Elle reste pour mémoire. Pour amorcer un compte : `references/amorcage-ingredients.md` ; pour défaire des données : la sauvegarde seule (`references/incident.md` § 3), décision humaine.
 
 > **Suite du chantier (amendement du 2026-10-20)** : l'adoption à la première utilisation est remplacée par l'amorçage des comptes à leur activation et par un rattrapage (ING-008) : `references/amorcage-ingredients.md`. Cette recette-ci reste celle de la migration déjà exécutée (et du retour arrière d'un lancement, y compris d'un lancement d'amorçage).
 
