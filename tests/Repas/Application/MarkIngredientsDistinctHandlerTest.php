@@ -38,13 +38,12 @@ class MarkIngredientsDistinctHandlerTest extends TestCase
             self::ingredient('Tomates', self::USER),
             self::ingredient('Courgette', self::USER),
             self::ingredient('Tomate', self::OTHER),
-            self::ingredient('Tomate', null),
         ]);
         $this->distinct = new IngredientDistinctInMemoryRepository();
         $this->handler = new MarkIngredientsDistinctHandler($this->ingredients, $this->distinct, new FrozenClock(new DateTimeImmutable('2026-10-21 08:00:00')));
     }
 
-    private static function ingredient(string $name, ?string $creator): Ingredient
+    private static function ingredient(string $name, string $creator): Ingredient
     {
         $builder = new IngredientBuilder()
             ->withName($name)
@@ -52,8 +51,7 @@ class MarkIngredientsDistinctHandlerTest extends TestCase
             ->withDefaultCookingUnit(new UnitBuilder()->isGramme())
             ->withDefaultPurchaseUnit(new UnitBuilder()->isKilo());
 
-        // `null` : la forme de la base d'avant la passation, un ingrédient sans propriétaire, qui n'est plus traité à part (il n'est à personne)
-        return ($creator === null ? $builder->withoutCreator() : $builder->withCreator(new UserBuilder()->withId($creator)->build(), true))->build();
+        return $builder->withCreator(new UserBuilder()->withId($creator)->build(), true)->build();
     }
 
     private function mark(string $slug, string $other, string $userId = self::USER): void
@@ -130,19 +128,6 @@ class MarkIngredientsDistinctHandlerTest extends TestCase
                 $this->fail('Le refus attendu n\'a pas eu lieu.');
             } catch (IngredientException $exception) {
                 // Then : inconnu, comme un slug qui n'existe pas : on ne révèle rien de l'ingrédient d'un autre
-                $this->assertSame(404, $exception->getCode());
-            }
-        }
-        $this->assertSame([], $this->distinct->all());
-    }
-
-    public function testAnIngredientWithoutAnOwnerIsNotTheUsers(): void
-    {
-        foreach ([['tomateuser-id', 'tomate'], ['tomate', 'tomateuser-id']] as [$slug, $other]) {
-            try {
-                $this->mark($slug, $other);
-                $this->fail('Le refus attendu n\'a pas eu lieu.');
-            } catch (IngredientException $exception) {
                 $this->assertSame(404, $exception->getCode());
             }
         }

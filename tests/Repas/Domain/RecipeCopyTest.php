@@ -56,20 +56,6 @@ class RecipeCopyTest extends TestCase
         Recipe::copyFromOriginal('copy', $original, 'copier-id', [$authors->getSlug() => $authors], static fn(): string => 'new-row');
     }
 
-    public function testAnIngredientWithoutAnOwnerIsAvailableToNobody(): void
-    {
-        // Given : la forme de la base d'avant la passation, qui n'est plus traitée à part : un ingrédient sans propriétaire n'est à personne
-        $author = new UserBuilder()->withId('author-id')->build();
-        $legacy = new IngredientBuilder()->isButter()->withoutCreator()->build();
-        $original = new RecipeBuilder()->withId('original')->withAuthor($author)->addRow(new RecipeRowBuilder()->withIngredient($legacy))->build();
-
-        // Then
-        $this->expectExceptionObject(IngredientException::notFound('beurre'));
-
-        // When
-        Recipe::copyFromOriginal('copy', $original, 'copier-id', [$legacy->getSlug() => $legacy], static fn(): string => 'new-row');
-    }
-
     public function testAnIngredientTheCaseUseDidNotRetainIsRefused(): void
     {
         // Given

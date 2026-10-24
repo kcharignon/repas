@@ -279,7 +279,7 @@ class IngredientRepositoryTest extends DatabaseTestCase
         $this->persister->saveIngredientDependencies($ingredient);
         $this->entityManager->getConnection()->executeStatement(
             'INSERT INTO ingredient (slug, name, image, slugged_name, department, default_cooking_unit, default_purchase_unit, creator, compatible_units, adopted_from)'
-            . " VALUES ('beurre', 'beurre', '', 'beurre', ?, ?, ?, NULL, '[]', NULL)",
+            . " VALUES ('beurre', 'beurre', '', 'beurre', ?, ?, ?, 'user-id', '[]', NULL)",
             [$ingredient->getDepartment()->getSlug(), $ingredient->getDefaultCookingUnit()->getSlug(), $ingredient->getDefaultPurchaseUnit()->getSlug()],
         );
 
