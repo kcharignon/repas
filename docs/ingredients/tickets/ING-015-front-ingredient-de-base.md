@@ -5,7 +5,7 @@
 - **Taille** : M
 - **Effort recommandé pour l'agent** : **high** (écran visible, textes à la voix du produit, captures lues)
 - **Dépend de** : ING-011 **en production** (champs `isBase`, `canSetBase`, `isBase` des lignes du rayon, `403 INGREDIENT_BASE_FORBIDDEN`). Il peut sortir avant la passation (l'interrupteur n'apparaît que pour le propriétaire du catalogue **sur un ingrédient à lui**, donc pas avant la passation) ; son essai de bout en bout se fait après (`sans-commun.md` § 4, étape 12)
-- **Statut** : à faire
+- **Statut** : fait (front PR #195 ; en production)
 - **Lire d'abord** : [`sans-commun.md`](../sans-commun.md) §§ 1, 10 ; [ADR 0028](../../adr/0028-ingredients-propres-a-chaque-utilisateur.md) amendement du 2026-10-20 (décision 4, D2) ; `CLAUDE.md` du front ; skills `repas-front-dev` et **`repas-po`** (`docs/drive/principes-produit.md` du dépôt back : tutoiement, aucun avertissement hors conditions d'utilisation, glossaire, erreurs en trois phrases) ; `docs/ingredients/analyse.md` § 12 du dépôt back.
 
 ## Contexte
