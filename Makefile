@@ -49,8 +49,7 @@ restart: ## Restart the project
 
 test: ## Run PHPUnit tests
 	@echo "🧪 Exécution des tests avec PHPUnit..."
-	@test -f phpunit.xml || cp phpunit.dist.xml phpunit.xml
-	@$(EXEC_PHP) vendor/bin/phpunit --configuration phpunit.xml --no-coverage --display-notices --display-phpunit-notices --display-phpunit-deprecations
+	@$(EXEC_PHP) vendor/bin/phpunit --no-coverage --display-notices --display-phpunit-notices --display-phpunit-deprecations
 
 test-coverage: ## Run PHPUnit tests with code coverage
 	@if test -f phpunit.xml; then \

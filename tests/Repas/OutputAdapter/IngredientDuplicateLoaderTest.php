@@ -16,6 +16,7 @@ use Repas\Tests\Helper\Builder\UserBuilder;
 use Repas\Tests\Helper\DatabaseTestCase;
 use Repas\Tests\Helper\DataPersister;
 use Repas\Tests\Helper\MergeDataset;
+use Repas\Tests\Helper\PerformanceReport;
 use Repas\Tests\Helper\SqlBudget\QueryCounter;
 use Repas\User\Domain\Model\User;
 
@@ -495,7 +496,7 @@ class IngredientDuplicateLoaderTest extends DatabaseTestCase
         }
 
         // Then : quelques dizaines de millisecondes visées ; la marge protège d'une machine chargée, pas d'une boucle sur tous les couples
-        fwrite(STDERR, sprintf("\n[ING-006] 367 ingrédients, doublons possibles : %.1f ms\n", $best));
+        PerformanceReport::line(sprintf("\n[ING-006] 367 ingrédients, doublons possibles : %.1f ms\n", $best));
         $this->assertLessThan(200.0, $best);
     }
 }

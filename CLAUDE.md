@@ -148,6 +148,7 @@ src/{Context}/
 - Buses : `QueryBus` / `CommandBus` se testent en unitaire avec `MockMessageBus` ; `BusWiringTest` prouve le câblage réel avec les handlers factices de `tests/Helper/Bus/` ; `QueryConventionTest` impose `#[AsMessageHandler(bus: 'query.bus')]` et un handler par query (ADR 0006). Les controllers se testent avec `MockQueryBus` (`MockCommandBus` enregistre les commandes reçues sans les exécuter).
 - **Budget SQL des écritures** : `tests/Repas/WriteBudget` mesure chaque use case d'écriture de bout en bout (requêtes SQL) et fige le résultat dans `budgets.php`, en cliquet (ADR 0010 règle 12). Un use case plus gourmand fait échouer `make test` ; un use case allégé impose `make sql-budget-update`.
 - Structure `// Given` / `// When` / `// Then`.
+- **Sortie propre** : `make test` n'affiche que les points et le verdict. Un test n'écrit jamais sur la sortie : les mesures de performance passent par `PerformanceReport::line()` (visibles avec `TEST_PERF_REPORT=1`, comme `SQL_BUDGET_VERBOSE` pour le budget SQL) et le journal du conteneur est un `NullLogger` en test (une panne provoquée exprès n'affiche pas d'exception ; un test qui lit un journal injecte son propre espion). `make test` lit `phpunit.dist.xml` (pas de copie locale `phpunit.xml` à tenir à jour : une copie périmée fait échouer les tests de passation et dépasser la mémoire).
 
 ## Quand tu ajoutes une fonctionnalité
 
