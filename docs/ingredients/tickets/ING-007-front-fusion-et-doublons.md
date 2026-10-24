@@ -5,7 +5,7 @@
 - **Taille** : L
 - **Effort recommandé pour l'agent** : **high** (écrans et textes : suivre `/repas-po`)
 - **Dépend de** : ING-005 et ING-006 **en production** (le front n'appelle jamais une route absente, ADR 0017 : le back d'abord) ; contrat `docs/api/openapi.json` du back à jour (`npm run api:update`)
-- **Statut** : à faire
+- **Statut** : fait (front PR #194, #196 ; en production)
 - **Lire d'abord** : [`fusion.md`](../fusion.md) **§ 9 en entier** (les textes exacts) ; maquette Claude Design (lien dans l'[ADR 0028](../../adr/0028-ingredients-propres-a-chaque-utilisateur.md)) ; `CLAUDE.md` du front ; skills `repas-front-dev` et **`repas-po`** (`docs/drive/principes-produit.md` du dépôt back : tutoiement, aucun avertissement hors conditions d'utilisation, glossaire, erreurs en trois phrases) ; `docs/ingredients/analyse.md` § 12 du dépôt back.
 
 ## Contexte
