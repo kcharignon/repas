@@ -4,7 +4,7 @@
 
 ## Dépôts et outils
 
-- **Back** : `/home/kantin/Projet/Repas` (`kcharignon/repas`, Symfony 8.1 / PHP 8.4). Tout passe par le Makefile et Docker (voir le skill `.claude/skills/repas-dev/`). Avant de committer : `make test` puis `make quality` ; `make openapi` si l'API change ; `make deploy-smoke` si `deploy/`, le Dockerfile ou l'entrypoint changent ; `make audit` si `composer.*` change.
+- **Back** : `/home/kantin/Projet/Repas` (`kcharignon/repas`, Symfony 8.1 / PHP 8.5). Tout passe par le Makefile et Docker (voir le skill `.claude/skills/repas-dev/`). Avant de committer : `make test` puis `make quality` ; `make openapi` si l'API change ; `make deploy-smoke` si `deploy/`, le Dockerfile ou l'entrypoint changent ; `make audit` si `composer.*` change.
 - **Front** : `/home/kantin/Projet/repas-front` (`kcharignon/repas-front`, Vue.js + TypeScript, dossiers `drive-agent/` pour l'agent et `android/` pour l'application). Tout passe par le Makefile et Docker. `make check` avant chaque commit ; `make agent-verify` si l'agent change ; `make android-test` si l'application change.
 - Les deux dépôts sont **publics**.
 

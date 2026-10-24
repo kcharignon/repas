@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Guide d'architecture pour ce projet (Symfony 8.1 / PHP 8.4). L'objectif: rester cohérent avec le style DDD / Hexagonal / CQRS / Repository / SOLID déjà en place dans `src/`. Ne pas réinventer, suivre les patterns existants ci-dessous.
+Guide d'architecture pour ce projet (Symfony 8.1 / PHP 8.5). L'objectif: rester cohérent avec le style DDD / Hexagonal / CQRS / Repository / SOLID déjà en place dans `src/`. Ne pas réinventer, suivre les patterns existants ci-dessous.
 
 ## Source de vérité : ADR, roadmap, skill
 
