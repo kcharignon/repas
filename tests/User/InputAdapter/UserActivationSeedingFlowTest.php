@@ -80,8 +80,8 @@ class UserActivationSeedingFlowTest extends DatabaseTestCase
         $this->assertSame(3, (int) $connection->fetchOne('SELECT count(*) FROM conversion c JOIN ingredient i ON i.slug = c.ingredient WHERE i.creator = ?', [$userId]));
         // Les statistiques n'ont pas bougé : un amorçage n'est pas une création
         $this->assertSame(0, (int) (json_decode($connection->fetchOne('SELECT statistics::text FROM "user" WHERE id = ?', [$userId]), true)['ingredients'] ?? 0));
-        // Les ingrédients du catalogue n'ont pas bougé
-        $this->assertSame(12, (int) $connection->fetchOne('SELECT count(*) FROM ingredient WHERE creator IS NULL'));
+        // Les ingrédients du catalogue n'ont pas bougé : ils sont toujours les douze du propriétaire, et aucun n'est sans créateur
+        $this->assertSame(12, (int) $connection->fetchOne('SELECT count(*) FROM ingredient WHERE creator = ?', [$this->dataset->ownerId]));
 
         // When : il se connecte et ouvre un de ses ingrédients, puis son rayon
         $jwt = $this->login('alexiane@example.com');
@@ -93,38 +93,13 @@ class UserActivationSeedingFlowTest extends DatabaseTestCase
         $slugs = array_column($this->jsonBody()['member'], 'slug');
 
         // Then : sa copie est à lui, modifiable, jamais « de base » ; dans son rayon, ses copies remplacent les anciens communs de même nom
-        // (les « spécifiques » restent partagés jusqu'à la passation)
+        // (les « spécifiques » ne lui sont pas copiés)
         $this->assertSame(200, $own);
         $this->assertFalse($body['isBase'], 'une copie reçue n\'est jamais « de base »');
         $this->assertTrue($body['canEdit']);
         $this->assertContains($this->copiesOf($userId)['tomate'], $slugs);
         $this->assertNotContains('tomate', $slugs);
         $this->assertNotContains('farine', $slugs);
-    }
-
-    public function testTheResultIsTheSameAfterTheHandOverOfTheOldCommonsToTheOwner(): void
-    {
-        // Given : l'interrupteur est allumé et la passation est faite (les anciens communs sont au propriétaire, mêmes slugs)
-        $this->switchOn();
-        $this->dataset->handOver();
-        $userId = $this->savedPendingUser('apres@example.com');
-
-        // When
-        $this->confirmWithRepositoryToken($userId);
-
-        // Then : exactement les mêmes huit ingrédients
-        $this->assertSame($this->sortedBase(), array_keys($this->copiesOf($userId)));
-        $this->assertSame(0, (int) $this->connection()->fetchOne('SELECT count(*) FROM ingredient WHERE creator IS NULL'));
-
-        // …et le compte ne voit plus que les siens : dans son rayon, uniquement ses quatre copies (les « spécifiques » ne lui sont pas copiés)
-        $this->post('/api/login_check', ['email' => 'apres@example.com', 'password' => 'test']);
-        $jwt = $this->jsonBody()['token'];
-        $this->get('/api/v1/departments/rayon-a/ingredients', $jwt);
-        $slugs = array_column($this->jsonBody()['member'], 'slug');
-        sort($slugs);
-        $expected = array_values(array_filter($this->copiesOf($userId), static fn(string $copy, string $origin): bool => in_array($origin, ['tomate', 'farine', 'lait', 'oeuf'], true), ARRAY_FILTER_USE_BOTH));
-        sort($expected);
-        $this->assertSame($expected, $slugs);
     }
 
     public function testTheForgottenPasswordLinkThatActivatesAPendingAccountSeedsItToo(): void

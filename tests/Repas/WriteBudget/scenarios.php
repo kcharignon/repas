@@ -19,7 +19,6 @@ use Repas\Drive\Domain\Model\Retailer;
 use Repas\Drive\Domain\Model\SearchQuery;
 use Repas\Repas\Application\Command\ActivatedShoppingList\ActivatedShoppingListCommand;
 use Repas\Repas\Application\Command\AddIngredientToShoppingList\AddIngredientToShoppingListCommand;
-use Repas\Repas\Application\Command\ClassifyBaseIngredients\ClassifyBaseIngredientsCommand;
 use Repas\Repas\Application\Command\CopyRecipe\CopyRecipeCommand;
 use Repas\Repas\Application\Command\CreateConversion\CreateConversionCommand;
 use Repas\Repas\Application\Command\CreateDepartment\CreateDepartmentCommand;
@@ -30,7 +29,6 @@ use Repas\Repas\Application\Command\CreateRecipeType\CreateRecipeTypeCommand;
 use Repas\Repas\Application\Command\CreateShoppingList\CreateShoppingListCommand;
 use Repas\Repas\Application\Command\CreateUnit\CreateUnitCommand;
 use Repas\Repas\Application\Command\EnsureActiveShoppingList\EnsureActiveShoppingListCommand;
-use Repas\Repas\Application\Command\HandOverCatalog\HandOverCatalogCommand;
 use Repas\Repas\Application\Command\MarkIngredientsDistinct\MarkIngredientsDistinctCommand;
 use Repas\Repas\Application\Command\MergeIngredients\MergeIngredientsCommand;
 use Repas\Repas\Application\Command\PausedShoppingList\PausedShoppingListCommand;
@@ -417,21 +415,6 @@ return [
         $user = $t->savedUser();
 
         return new SeedUserIngredientsCommand($user->getId(), 'rattrapage-essai');
-    },
-    // La passation du catalogue (ING-009) : phase 1, le classement des anciens communs d'après le fichier (verrou, ingrédients sans créateur, un
-    // seul UPDATE), puis phase 4, les préconditions relues, les empreintes d'avant et d'après, UN UPDATE du créateur et la statistique du
-    // propriétaire. Le nombre de requêtes ne dépend ni du nombre de lignes, ni de listes, ni de choix du drive du propriétaire
-    // (tests/Repas/WriteBudget/HandOverBudgetTest).
-    'classer-ingredients-de-base' => static function (WriteBudgetTestCase $t): object {
-        $t->savedHandoverCatalog(recipes: 3, rowsPerRecipe: 4, lists: 3, rowsPerList: 4, choices: 3, classified: false);
-
-        return new ClassifyBaseIngredientsCommand();
-    },
-    'passation-communs' => static function (WriteBudgetTestCase $t): object {
-        $t->switchOnIngredientSeeding();
-        $t->savedHandoverCatalog(recipes: 3, rowsPerRecipe: 4, lists: 3, rowsPerList: 4, choices: 3);
-
-        return new HandOverCatalogCommand();
     },
     // L'administrateur active un compte désactivé qui n'a jamais rien reçu : même amorçage
     'activer-compte-amorcage' => static function (WriteBudgetTestCase $t): object {

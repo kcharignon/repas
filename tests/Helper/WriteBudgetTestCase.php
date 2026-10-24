@@ -10,7 +10,7 @@ use Repas\Drive\Domain\Interface\ProductRepository;
 use Repas\Drive\Domain\Model\Product;
 use Repas\Drive\Domain\Model\Retailer;
 use Repas\Repas\Application\Command\MergeIngredients\MergeIngredientsCommand;
-use Repas\Repas\Domain\Interface\BaseIngredientClassification;
+
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Repas\Domain\Model\Recipe;
 use Repas\Repas\Domain\Model\ShoppingList;
@@ -159,29 +159,6 @@ abstract class WriteBudgetTestCase extends DatabaseTestCase
     }
 
     /**
-     * Le catalogue de la passation (ING-009) : le propriétaire du catalogue, les 262 anciens communs d'`AdoptionDataset::createBulk` (sans créateur ;
-     * « de base » un sur deux d'après le classement, remplacé par un double du fichier pour ce test) et, pour lui, un volume de recettes, de listes
-     * (dont deux envoyées) et de choix du drive sur ces communs. `$classified` : le marqueur est déjà posé (phase 1 faite).
-     */
-    public function savedHandoverCatalog(int $recipes, int $rowsPerRecipe, int $lists, int $rowsPerList, int $choices, bool $classified = true): void
-    {
-        $owner = new UserBuilder()->isCatalogOwner()->build();
-        $this->persister->saveUser($owner);
-        $this->savedAdoptionVolume($owner, $recipes, $rowsPerRecipe, $lists, $rowsPerList, $choices);
-
-        $connection = $this->entityManager->getConnection();
-        $slugs = array_map('strval', $connection->fetchFirstColumn("SELECT slug FROM ingredient WHERE slug LIKE 'commun-%' ORDER BY slug"));
-        $classification = [];
-        foreach ($slugs as $index => $slug) {
-            $classification[$slug] = $index % 2 === 0;
-        }
-        static::getContainer()->set(BaseIngredientClassification::class, new BaseIngredientClassificationInMemory($classification));
-        if ($classified) {
-            $connection->executeStatement("UPDATE ingredient SET is_base = (CAST(substr(slug, 8) AS integer) % 2 = 1) WHERE slug LIKE 'commun-%'");
-        }
-    }
-
-    /**
      * L'amorçage des ingrédients à l'activation (ING-008) allumé pour ce test : en test la variable d'environnement le coupe, comme la
      * production par défaut, et les budgets des activations ordinaires sont mesurés interrupteur coupé.
      */
@@ -251,20 +228,19 @@ abstract class WriteBudgetTestCase extends DatabaseTestCase
     }
 
     /**
-     * Les ingrédients de test par défaut (propriétaire `IngredientBuilder::DEFAULT_CREATOR_ID`) deviennent des ANCIENS COMMUNS : la forme de
-     * la base d'avant la passation (sans créateur). Réservé aux tests des commandes d'exploitation de la migration (`adopt-commons`, `seed`,
-     * `hand-over-catalog`), qui partent de cette forme ; ils disparaissent avec ces commandes (ING-014).
+     * Les ingrédients de test par défaut (propriétaire `IngredientBuilder::DEFAULT_CREATOR_ID`) passent au propriétaire du catalogue `$ownerId` :
+     * son catalogue, d'où l'amorçage copie les ingrédients « de base » vers un compte.
      */
-    public function turnDefaultIngredientsIntoOldCommons(): void
+    public function giveDefaultIngredientsToTheCatalogOwner(string $ownerId): void
     {
-        $this->entityManager->getConnection()->executeStatement('UPDATE ingredient SET creator = NULL WHERE creator = ?', [IngredientBuilder::DEFAULT_CREATOR_ID]);
+        $this->entityManager->getConnection()->executeStatement('UPDATE ingredient SET creator = ? WHERE creator = ?', [$ownerId, IngredientBuilder::DEFAULT_CREATOR_ID]);
         $this->entityManager->clear();
     }
 
     /**
      * @param bool $ownedByAuthor les ingrédients de la recette sont à son auteur (le monde sans ingrédient commun, ADR 0028 amendement) ; faux,
-     *        ils gardent le propriétaire de test par défaut (`IngredientBuilder::DEFAULT_CREATOR_ID`), de quoi en faire des anciens communs
-     *        (`turnDefaultIngredientsIntoOldCommons()`)
+     *        ils gardent le propriétaire de test par défaut (`IngredientBuilder::DEFAULT_CREATOR_ID`), de quoi les donner au propriétaire du catalogue
+     *        (`giveDefaultIngredientsToTheCatalogOwner()`)
      */
     public function savedRecipe(User $author, RecipeBuilder $builder, bool $ownedByAuthor = true): Recipe
     {

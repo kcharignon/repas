@@ -73,7 +73,7 @@ class SeedIngredientsCommandTest extends DatabaseTestCase
         // La requête de santé est rouge avant l'écriture : des comptes actifs sans amorçage, et des lignes sur les anciens communs
         $this->assertStringContainsString('comptes actifs sans amorçage (hors propriétaire) : 6', $dryRunOutput);
         $this->assertStringContainsString('verdict : ROUGE', $dryRunOutput);
-        $this->assertStringContainsString('lignes du propriétaire sur un ingrédient qui n\'est pas à lui : sans objet', $dryRunOutput);
+        $this->assertStringContainsString('lignes du propriétaire sur un ingrédient qui n\'est pas à lui : aucune', $dryRunOutput);
     }
 
     public function testTheOutputNeverContainsAnEmailAnAccountIdentifierOrAPersonalIngredientName(): void
@@ -151,8 +151,8 @@ class SeedIngredientsCommandTest extends DatabaseTestCase
         $this->assertSame(0, (int) $connection->fetchOne('SELECT count(*) FROM ingredient_alias WHERE user_id IN (?, ?, ?)', $untouched));
         // Le catalogue : intact (aucun supprimé, aucun modifié, le marqueur non plus, leurs conversions non plus)
         $this->assertSame($catalogHash, $this->catalogHash());
-        $this->assertSame(12, (int) $connection->fetchOne('SELECT count(*) FROM ingredient WHERE creator IS NULL'));
-        $this->assertSame(8, (int) $connection->fetchOne('SELECT count(*) FROM ingredient WHERE creator IS NULL AND is_base'));
+        $this->assertSame(12, (int) $connection->fetchOne('SELECT count(*) FROM ingredient WHERE creator = ?', [$dataset->ownerId]));
+        $this->assertSame(8, (int) $connection->fetchOne('SELECT count(*) FROM ingredient WHERE creator = ? AND is_base', [$dataset->ownerId]));
 
         // Ce que chaque compte a reçu : les huit « de base », plus ce que ses lignes référençaient
         $expected = ['big' => [...SeedingDataset::BASE, ...SeedingDataset::SPECIFIC], 'copier' => [...SeedingDataset::BASE, 'ingredient-008']];
@@ -425,11 +425,8 @@ class SeedIngredientsCommandTest extends DatabaseTestCase
         $this->assertSame($before, $this->dataset->adoption->tableHashes());
     }
 
-    public function testTheResultIsTheSameAfterTheHandOver(): void
+    public function testTheCatchUpGivesEveryoneTheSameCopiesAndTheHealthIsGreen(): void
     {
-        // Given : après la passation (les anciens communs sont au propriétaire, mêmes slugs), le propriétaire a même une recette sur les siens
-        $this->dataset->handOver();
-
         // When
         $this->catchUpEveryone();
 
@@ -442,10 +439,9 @@ class SeedIngredientsCommandTest extends DatabaseTestCase
         $this->assertSame(Command::SUCCESS, $this->check(), $this->display());
     }
 
-    public function testTheOwnerIsIncludedInTheHealthChecksOnceNoIngredientWithoutCreatorRemains(): void
+    public function testTheOwnerIsIncludedInTheHealthChecks(): void
     {
-        // Given : après la passation, le propriétaire a une ligne de recette sur un ingrédient qui n'est pas à lui (un ingrédient d'un autre compte)
-        $this->dataset->handOver();
+        // Given : le propriétaire a une ligne de recette sur un ingrédient qui n'est pas à lui (un ingrédient d'un autre compte)
         $dataset = $this->dataset;
         $connection = $dataset->adoption->connection;
         $recipeId = $connection->fetchOne('SELECT id FROM recipe WHERE author = ? LIMIT 1', [$dataset->ownerId]);

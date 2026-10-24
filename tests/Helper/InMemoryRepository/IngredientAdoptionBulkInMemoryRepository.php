@@ -104,11 +104,9 @@ final class IngredientAdoptionBulkInMemoryRepository implements IngredientAdopti
         return $this->repoint($userId, $this->adoptions($userId));
     }
 
-    public function snapshot(string $userId, ?array $watchedSlugs = null): AdoptionSnapshot
+    public function snapshot(string $userId, array $watchedSlugs): AdoptionSnapshot
     {
-        $isWatched = fn(string $slug): bool => $watchedSlugs === null
-            ? isset($this->ingredients[$slug]) && $this->ingredients[$slug]['creator'] === null
-            : in_array($slug, $watchedSlugs, true);
+        $isWatched = fn(string $slug): bool => in_array($slug, $watchedSlugs, true);
         $line = fn(array $row): string => ($this->ingredients[$row['ingredient']]['name'] ?? '?') . '|' . ($this->ingredients[$row['ingredient']]['department'] ?? '?') . '|' . $row['quantity'] . '|' . $row['unit'];
 
         $counts = $sums = $watchedCounts = ['recipe_row' => 0, 'shopping_list_row' => 0, 'shopping_list_ingredient' => 0];

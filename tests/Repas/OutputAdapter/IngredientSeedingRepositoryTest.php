@@ -66,9 +66,9 @@ class IngredientSeedingRepositoryTest extends DatabaseTestCase
         }
     }
 
-    public function testTheSourceIsTheBaseIngredientsOfTheCatalogInTheFormBeforeTheHandOver(): void
+    public function testTheSourceIsTheBaseIngredientsOfTheCatalog(): void
     {
-        // When : un compte neuf, avant la passation (les anciens communs n'ont pas de créateur)
+        // When : un compte neuf
         $toSeed = $this->repository->ingredientsToSeed($this->dataset->freshId, $this->dataset->ownerId, []);
 
         // Then : les huit « de base », triés par slug, aucun des quatre spécifiques
@@ -76,20 +76,6 @@ class IngredientSeedingRepositoryTest extends DatabaseTestCase
         $this->assertSame([true], array_values(array_unique(array_map(static fn(IngredientToSeed $i): bool => $i->isBase, $toSeed))));
         $this->assertSame('Beurre', $toSeed[0]->name);
         $this->assertNull($toSeed[0]->existingCopySlug);
-    }
-
-    public function testTheSourceIsTheSameAfterTheHandOver(): void
-    {
-        // Given
-        $before = $this->slugs($this->repository->ingredientsToSeed($this->dataset->freshId, $this->dataset->ownerId, []));
-
-        // When : la passation (mêmes slugs, créateur = propriétaire)
-        $this->dataset->handOver();
-        $after = $this->slugs($this->repository->ingredientsToSeed($this->dataset->freshId, $this->dataset->ownerId, []));
-
-        // Then
-        $this->assertCount(8, $before);
-        $this->assertSame($before, $after);
     }
 
     public function testAnIngredientCreatedByTheOwnerAfterTheFirstReleaseWithAnAccountSlugIsIncludedWhenMarked(): void
@@ -226,21 +212,7 @@ class IngredientSeedingRepositoryTest extends DatabaseTestCase
         }
         $this->assertFalse($connection->fetchOne("SELECT 1 FROM ingredient WHERE slug = ?", ['secret' . $user]));
         // La source n'a pas bougé
-        $this->assertSame('beurre', $connection->fetchOne("SELECT slug FROM ingredient WHERE slug = 'beurre' AND creator IS NULL AND is_base AND adopted_from IS NULL"));
-    }
-
-    public function testTheCopiesWorkTheSameAfterTheHandOver(): void
-    {
-        // Given : après la passation, les sources sont au propriétaire
-        $this->dataset->handOver();
-        $user = $this->dataset->freshId;
-
-        // When
-        $written = $this->repository->copyCatalogIngredients($user, $this->dataset->ownerId, ['beurre' => 'beurre' . $user]);
-
-        // Then
-        $this->assertSame(1, $written);
-        $this->assertSame('beurre', $this->dataset->adoption->connection->fetchOne('SELECT adopted_from FROM ingredient WHERE slug = ?', ['beurre' . $user]));
+        $this->assertSame('beurre', $connection->fetchOne("SELECT slug FROM ingredient WHERE slug = 'beurre' AND creator = ? AND is_base AND adopted_from IS NULL", [$this->dataset->ownerId]));
     }
 
     /**

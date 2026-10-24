@@ -16,23 +16,9 @@ use ReflectionMethod;
  * `creator IS NULL`, `creatorId IS NULL`, `creator IS DISTINCT`, `getCreatorId() === null`, `isCommon…` ni `creatorId: null` : un
  * ingrédient est à quelqu'un, et c'est tout. Les conversions GÉNÉRALES (`conversion.ingredient` vide) sont un autre sujet et restent permises.
  *
- * Exception, listée ci-dessous avec sa raison : les outils d'exploitation de la passation des anciens communs (`hand-over-catalog`), de la
- * sonde de santé de l'amorçage et le « ou vide » du catalogue, qui raisonnent par nature sur la base d'AVANT la passation. Le test échoue
- * aussi quand un de ces fichiers n'a plus besoin de son exception : la liste ne fait que rétrécir.
  */
 class NoSharedIngredientTest extends TestCase
 {
-    /**
-     * @var array<string, string> fichier (relatif à la racine) => pourquoi il parle encore d'un ingrédient sans créateur
-     */
-    private const array OPERATIONS_OF_THE_HANDOVER = [
-        'src/Repas/Infrastructure/Visibility/IngredientVisibility.php' => 'le « ou vide » du catalogue (isCommonSql), tant que la passation est rejouable',
-        'src/Repas/Infrastructure/Repository/IngredientCatalogHandoverPostgreSQLRepository.php' => 'la passation écrit le créateur des anciens communs',
-        'src/Repas/Infrastructure/Adoption/CatalogHandoverReader.php' => 'les relevés avant/après de la passation',
-        'src/Repas/Infrastructure/Loader/IngredientSeedingReportPostgreSQLLoader.php' => 'la sonde de santé compte les ingrédients restés sans créateur',
-        'src/Repas/Infrastructure/Adoption/AdoptionSnapshotReader.php' => 'l\'empreinte « surveille » les anciens communs tant que la passation est rejouable',
-    ];
-
     private const string FORBIDDEN = '/creator(?:Id)?\s+IS\s+NULL|creator\s+IS\s+DISTINCT|getCreatorId\(\)\s*===\s*null|isCommon|creatorId:\s*null/i';
 
     public function testNoSourceFileTreatsAnIngredientWithoutCreatorApart(): void
@@ -45,29 +31,15 @@ class NoSharedIngredientTest extends TestCase
         // When
         foreach (self::sourceFiles($root) as $path) {
             ++$seen;
-            $relative = substr($path, strlen($root) + 1);
-            if (isset(self::OPERATIONS_OF_THE_HANDOVER[$relative])) {
-                continue;
-            }
             $violations = self::violationsIn((string) file_get_contents($path));
             if ($violations !== []) {
-                $offenders[$relative] = $violations;
+                $offenders[substr($path, strlen($root) + 1)] = $violations;
             }
         }
 
         // Then : le test parcourt bien du code, et aucun fichier ne traite un ingrédient sans créateur à part
         $this->assertGreaterThan(500, $seen, 'Le garde-fou ne parcourt plus le code : il ne vérifie plus rien.');
         $this->assertSame([], $offenders, "Un ingrédient est toujours à quelqu'un : plus de cas « sans créateur » (ING-014).");
-    }
-
-    public function testEveryExceptionIsStillNeeded(): void
-    {
-        // Then : une exception dont le fichier n'a plus rien d'interdit est une exception à retirer de la liste
-        $root = dirname(__DIR__, 3);
-        foreach (self::OPERATIONS_OF_THE_HANDOVER as $relative => $reason) {
-            $this->assertFileExists($root . '/' . $relative, "L'exception « $reason » désigne un fichier qui n'existe plus : la retirer de la liste.");
-            $this->assertNotSame([], self::violationsIn((string) file_get_contents($root . '/' . $relative)), "$relative n'a plus rien d'interdit : retirer son exception.");
-        }
     }
 
     #[DataProvider('forbiddenSources')]

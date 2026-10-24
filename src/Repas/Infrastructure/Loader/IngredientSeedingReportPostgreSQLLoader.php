@@ -44,22 +44,17 @@ final readonly class IngredientSeedingReportPostgreSQLLoader implements Ingredie
     ) {
     }
 
-    public function report(array $only, array $except, bool $complete, ?array $assumedBaseSlugs = null): SeedingReportDTO
+    public function report(array $only, array $except, bool $complete): SeedingReportDTO
     {
         $connection = $this->connection();
         $ownerId = $this->catalogOwner->ownerId();
-        // Le rapport de la passation, avant le classement : les ingrédients du fichier sont lus comme « de base » (jamais en écriture)
-        $assumedBaseSlugs = $assumedBaseSlugs === [] ? null : $assumedBaseSlugs;
-        $assumed = $assumedBaseSlugs === null ? null : 'assumed';
-
-        // Le catalogue : ce qu'on copie, jamais modifié par l'amorçage. Sans propriétaire (`null`), seuls les ingrédients sans créateur en font partie.
+        // Le catalogue : ce qu'on copie, jamais modifié par l'amorçage. Sans propriétaire (`null`), le catalogue est vide.
         [$catalog, $base, $longest, $conversions] = $connection->fetchNumeric(
-            'SELECT count(*), count(*) FILTER (WHERE ' . IngredientVisibility::isBaseCatalogSql('c', 'owner', $assumed) . '),'
-            . ' coalesce(max(length(c.slug)) FILTER (WHERE ' . IngredientVisibility::isBaseCatalogSql('c', 'owner', $assumed) . '), 0),'
-            . ' (SELECT count(*) FROM conversion v JOIN ingredient b ON b.slug = v.ingredient WHERE ' . IngredientVisibility::isBaseCatalogSql('b', 'owner', $assumed) . ')'
+            'SELECT count(*), count(*) FILTER (WHERE ' . IngredientVisibility::isBaseCatalogSql('c', 'owner') . '),'
+            . ' coalesce(max(length(c.slug)) FILTER (WHERE ' . IngredientVisibility::isBaseCatalogSql('c', 'owner') . '), 0),'
+            . ' (SELECT count(*) FROM conversion v JOIN ingredient b ON b.slug = v.ingredient WHERE ' . IngredientVisibility::isBaseCatalogSql('b', 'owner') . ')'
             . ' FROM ingredient c WHERE ' . IngredientVisibility::isCatalogSql('c', 'owner'),
-            ['owner' => $ownerId] + ($assumed === null ? [] : [$assumed => array_values($assumedBaseSlugs)]),
-            $assumed === null ? [] : [$assumed => ArrayParameterType::STRING],
+            ['owner' => $ownerId],
         );
 
         $accounts = $connection->fetchAllAssociative(
@@ -100,7 +95,7 @@ final readonly class IngredientSeedingReportPostgreSQLLoader implements Ingredie
                 'exclusion' => $exclusion,
             ];
 
-            $users[] = $exclusion === null ? $this->detail($id, $ownerId, $complete, $identity, $assumedBaseSlugs) : new SeedingUserReportDTO(...$identity);
+            $users[] = $exclusion === null ? $this->detail($id, $ownerId, $complete, $identity) : new SeedingUserReportDTO(...$identity);
         }
 
         $catalogAnomalies = [];
@@ -128,9 +123,8 @@ final readonly class IngredientSeedingReportPostgreSQLLoader implements Ingredie
      * Le détail d'un compte retenu.
      *
      * @param array{rank: int, reference: string, userId: string, status: string, owner: bool, seeded: bool, ingredients: int, recipes: int, selected: bool, exclusion: ?string} $base
-     * @param ?list<string> $assumedBaseSlugs voir `report()`
      */
-    private function detail(string $userId, ?string $ownerId, bool $complete, array $base, ?array $assumedBaseSlugs = null): SeedingUserReportDTO
+    private function detail(string $userId, ?string $ownerId, bool $complete, array $base): SeedingUserReportDTO
     {
         $connection = $this->connection();
         $anomalies = [];
@@ -139,7 +133,7 @@ final readonly class IngredientSeedingReportPostgreSQLLoader implements Ingredie
         if ($ownerId === null) {
             $anomalies[] = "le propriétaire du catalogue n'existe pas : rien ne peut être copié";
         } else {
-            $toSeed = $this->sourceReader->read($userId, $ownerId, $this->driveReferences->referencedSlugs($userId), $assumedBaseSlugs);
+            $toSeed = $this->sourceReader->read($userId, $ownerId, $this->driveReferences->referencedSlugs($userId));
             if (!$complete && array_filter($toSeed, static fn(IngredientToSeed $ingredient): bool => $ingredient->isBase) === []) {
                 // Le classement n'est pas posé : l'amorçage n'écrirait rien et le compte resterait non amorcé (voir le handler)
                 $anomalies[] = "aucun ingrédient « de base » dans le catalogue : l'amorçage n'écrirait rien et le compte resterait non amorcé";
@@ -267,9 +261,10 @@ final readonly class IngredientSeedingReportPostgreSQLLoader implements Ingredie
     {
         $connection = $this->connection();
         $owner = $ownerId ?? '';
-        $withoutCreator = (int) $connection->fetchOne('SELECT count(*) FROM ingredient WHERE creator IS NULL');
-        // Tant qu'il reste des ingrédients sans créateur, le propriétaire utilise légitimement ces anciens communs : il n'entre pas dans les contrôles 2 et 4
-        $ownerIncluded = $withoutCreator === 0 && $ownerId !== null;
+        // Un ingrédient est toujours à quelqu'un : ceux dont le créateur n'est aucun compte existant (créateur vide compris) sont une anomalie
+        $withoutCreator = (int) $connection->fetchOne('SELECT count(*) FROM ingredient i WHERE NOT EXISTS (SELECT 1 FROM "user" u WHERE u.id = i.creator)');
+        // Le propriétaire du catalogue entre dans les contrôles 2 et 4 dès qu'il existe (la passation est faite)
+        $ownerIncluded = $ownerId !== null;
 
         $notSeeded = (int) $connection->fetchOne(
             "SELECT count(*) FROM \"user\" u WHERE u.status = 'ACTIVE' AND u.id <> :owner"
@@ -283,7 +278,7 @@ final readonly class IngredientSeedingReportPostgreSQLLoader implements Ingredie
             ['included' => ParameterType::BOOLEAN],
         );
 
-        $foreign = static fn(string $account): string => sprintf('i.creator IS DISTINCT FROM %s', $account);
+        $foreign = static fn(string $account): string => sprintf("COALESCE(i.creator, '') <> %s", $account);
         $lines = $connection->fetchAllKeyValue(
             'SELECT t, n FROM ('
             . "   SELECT 'recettes' AS t, count(*) AS n FROM recipe_row x JOIN recipe o ON o.id = x.recipe JOIN ingredient i ON i.slug = x.ingredient WHERE o.author <> :owner AND " . $foreign('o.author')

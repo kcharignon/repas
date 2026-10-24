@@ -31,6 +31,8 @@ class IngredientAdoptionBulkRepositoryTest extends DatabaseTestCase
 
         $this->repository = static::getContainer()->get(IngredientAdoptionBulkRepository::class);
         $this->dataset = AdoptionDataset::create($this->entityManager, new DataPersister(static::getContainer()));
+        // Le catalogue d'où l'on copie est celui du propriétaire (ici l'administrateur du jeu) : plus d'ingrédient sans créateur
+        $this->dataset->connection->executeStatement('UPDATE ingredient SET creator = ? WHERE creator IS NULL', [$this->dataset->adminId]);
         $this->now = new DateTimeImmutable('2026-10-21 03:00:00');
     }
 
@@ -126,10 +128,10 @@ class IngredientAdoptionBulkRepositoryTest extends DatabaseTestCase
         $this->repository->lock($user);
 
         // When
-        $before = $this->repository->snapshot($user);
+        $before = $this->repository->snapshot($user, $dataset->commons);
         $this->adoptEverything($user);
         $this->repository->repointToCopies($user);
-        $after = $this->repository->snapshot($user);
+        $after = $this->repository->snapshot($user, $dataset->commons);
 
         // Then : les mêmes comptages, sommes et contenus (par le nom) avant et après ; les versions seules ont bougé
         $this->assertSame($before->rowCounts, $after->rowCounts);
@@ -154,7 +156,7 @@ class IngredientAdoptionBulkRepositoryTest extends DatabaseTestCase
     {
         $dataset = $this->dataset;
         $user = $dataset->singleId;
-        $base = $this->repository->snapshot($user)->contentFingerprint();
+        $base = $this->repository->snapshot($user, [])->contentFingerprint();
         $changes = [
             'une quantité' => "UPDATE shopping_list_row SET quantity = quantity + 0.001 WHERE shopping_list IN (SELECT id FROM shopping_list WHERE owner = '$user')",
             'une unité' => "UPDATE shopping_list_row SET unit = 'kilo' WHERE shopping_list IN (SELECT id FROM shopping_list WHERE owner = '$user')",
@@ -166,9 +168,9 @@ class IngredientAdoptionBulkRepositoryTest extends DatabaseTestCase
         foreach ($changes as $label => $sql) {
             $dataset->connection->beginTransaction();
             $dataset->connection->executeStatement($sql);
-            $this->assertNotSame($base, $this->repository->snapshot($user)->contentFingerprint(), "l'empreinte doit voir $label");
+            $this->assertNotSame($base, $this->repository->snapshot($user, [])->contentFingerprint(), "l'empreinte doit voir $label");
             $dataset->connection->rollBack();
-            $this->assertSame($base, $this->repository->snapshot($user)->contentFingerprint(), "l'empreinte revient quand $label revient");
+            $this->assertSame($base, $this->repository->snapshot($user, [])->contentFingerprint(), "l'empreinte revient quand $label revient");
         }
     }
 

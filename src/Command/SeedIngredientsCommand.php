@@ -387,8 +387,9 @@ final class SeedIngredientsCommand extends Command
         $io->text(sprintf('    comptes actifs sans aucun ingrédient : %d', $health->activeWithoutIngredient));
         $io->text(sprintf('    lignes d\'un compte (hors propriétaire) sur un ingrédient qui n\'est pas à lui : %s', $lines($health->foreignLines)));
         $io->text($health->ownerForeignLines === null
-            ? sprintf('    lignes du propriétaire sur un ingrédient qui n\'est pas à lui : sans objet (%d ingrédient(s) sans créateur, ou pas de propriétaire)', $health->ingredientsWithoutCreator)
+            ? sprintf('    lignes du propriétaire sur un ingrédient qui n\'est pas à lui : sans objet (pas de propriétaire du catalogue)')
             : sprintf('    lignes du propriétaire sur un ingrédient qui n\'est pas à lui : %s', $lines($health->ownerForeignLines)));
+        $io->text(sprintf('    ingrédients sans propriétaire existant : %d', $health->ingredientsWithoutCreator));
         $io->text('    verdict : ' . ($health->isHealthy() ? 'VERT' : 'ROUGE'));
     }
 

@@ -79,11 +79,11 @@ interface IngredientAdoptionBulkRepository
 
     /**
      * L'empreinte de l'utilisateur. `$watchedSlugs` désigne les ingrédients dont on attend le repointage (leurs recettes et listes
-     * doivent voir leur version monter) ; `null` : tous les anciens communs.
+     * doivent voir leur version monter).
      *
-     * @param list<string>|null $watchedSlugs
+     * @param list<string> $watchedSlugs
      */
-    public function snapshot(string $userId, ?array $watchedSlugs = null): AdoptionSnapshot;
+    public function snapshot(string $userId, array $watchedSlugs): AdoptionSnapshot;
 
     /**
      * Les ingrédients dont la copie, écrite par ce lancement (`$adoptions`), n'est PAS conforme à l'origine : copie absente, créateur,

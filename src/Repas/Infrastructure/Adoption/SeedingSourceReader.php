@@ -16,7 +16,7 @@ use Repas\Repas\Infrastructure\Visibility\IngredientVisibility;
  * référencent, sauf ceux qu'il a déjà adoptés. Partagée par `IngredientAdoptionBulkPostgreSQLRepository` (qui écrit) et
  * `IngredientSeedingReportPostgreSQLLoader` (qui rapporte à blanc), pour qu'elles disent la même chose — comme `AdoptionSnapshotReader`.
  *
- * La règle « de base ET créateur propriétaire ou vide » n'est écrite qu'à un seul endroit, `IngredientVisibility::isBaseCatalogSql()`.
+ * La règle « de base ET créateur propriétaire du catalogue » n'est écrite qu'à un seul endroit, `IngredientVisibility::isBaseCatalogSql()`.
  */
 final readonly class SeedingSourceReader
 {
@@ -27,14 +27,11 @@ final readonly class SeedingSourceReader
 
     /**
      * @param list<string> $driveReferencedSlugs les slugs que `DriveIngredientReferences::referencedSlugs()` rend pour ce compte
-     * @param ?list<string> $assumedBaseSlugs seulement pour le rapport à blanc de la passation (ING-009), AVANT que le classement soit posé : les
-     *        ingrédients sans créateur de cette liste sont lus comme « de base » ; `null` (l'écriture, toujours) : le marqueur de la colonne
      *
      * @return list<IngredientToSeed> triés par slug
      */
-    public function read(string $userId, string $ownerId, array $driveReferencedSlugs, ?array $assumedBaseSlugs = null): array
+    public function read(string $userId, string $ownerId, array $driveReferencedSlugs): array
     {
-        $assumedBaseSlugs = $assumedBaseSlugs === [] ? null : $assumedBaseSlugs;
         // Les lignes du compte qui référencent l'ingrédient `c` : recettes dont il est l'auteur, listes dont il est le propriétaire, et (passés
         // en paramètre, le contexte `Drive` garde ses tables) les ingrédients de ses choix du drive. Une sous-requête NON corrélée, lue une fois :
         // trois `EXISTS` corrélés, eux, coûtent pour le planificateur leur prix MULTIPLIÉ par le nombre d'ingrédients, franchissent
@@ -45,11 +42,6 @@ final readonly class SeedingSourceReader
             . ' UNION SELECT x.ingredient FROM shopping_list_ingredient x JOIN shopping_list l ON l.id = x.shopping_list WHERE l.owner = :u)';
         $params = ['u' => $userId, 'owner' => $ownerId];
         $types = [];
-        $assumed = $assumedBaseSlugs === null ? null : 'assumed';
-        if ($assumed !== null) {
-            $params[$assumed] = array_values($assumedBaseSlugs);
-            $types[$assumed] = ArrayParameterType::STRING;
-        }
         if ($driveReferencedSlugs !== []) {
             $referenced .= ' OR c.slug IN (:drive)';
             $params['drive'] = array_values(array_unique($driveReferencedSlugs));
@@ -61,12 +53,12 @@ final readonly class SeedingSourceReader
         // corrélée qui relirait toute la table `ingredient` pour chaque candidat (de l'ordre de la seconde par lecture avec 800 ingrédients, qui croît
         // avec le nombre de comptes amorcés : l'activation d'un compte la lit deux fois)
         $rows = $this->connection()->fetchAllNumeric(
-            'SELECT c.slug, c.name, ' . IngredientVisibility::isBaseCatalogSql('c', 'owner', $assumed) . ' AS is_base, existing.copy_slug AS existing_copy'
+            'SELECT c.slug, c.name, ' . IngredientVisibility::isBaseCatalogSql('c', 'owner') . ' AS is_base, existing.copy_slug AS existing_copy'
             . ' FROM ingredient c LEFT JOIN ('
             . '   SELECT o.adopted_from AS origin, min(o.slug) AS copy_slug FROM ingredient o JOIN ingredient c ON c.slug = o.adopted_from'
             . '   WHERE o.creator = :u AND NOT (' . IngredientAdoptionBulkPostgreSQLRepository::COPY_DIFFERS_FROM_COMMON . ') GROUP BY o.adopted_from'
             . ' ) existing ON existing.origin = c.slug'
-            . ' WHERE (' . IngredientVisibility::isBaseCatalogSql('c', 'owner', $assumed)
+            . ' WHERE (' . IngredientVisibility::isBaseCatalogSql('c', 'owner')
             . '   OR (' . IngredientVisibility::isCatalogSql('c', 'owner') . ' AND (' . $referenced . ')))'
             . ' AND NOT EXISTS (SELECT 1 FROM ingredient_alias a JOIN ingredient own ON own.slug = a.ingredient_slug AND own.creator = a.user_id'
             . "   WHERE a.user_id = :u AND a.alias_slug = c.slug AND a.kind = 'adoption')"
