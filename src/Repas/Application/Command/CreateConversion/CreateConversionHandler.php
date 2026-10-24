@@ -2,6 +2,7 @@
 
 namespace Repas\Repas\Application\Command\CreateConversion;
 
+use Repas\Repas\Domain\Exception\IngredientException;
 use Repas\Repas\Domain\Interface\ConversionRepository;
 use Repas\Repas\Domain\Interface\IngredientRepository;
 use Repas\Repas\Domain\Interface\UnitRepository;
@@ -19,11 +20,18 @@ readonly class CreateConversionHandler
     ) {
     }
 
+    /**
+     * Sans ingrédient, la conversion est générale (commune à tous les ingrédients) ; avec un ingrédient, il doit être à l'utilisateur :
+     * celui d'un autre est inconnu, un administrateur compris (ADR 0028, amendement, D4).
+     *
+     * @throws IngredientException
+     */
     public function __invoke(CreateConversionCommand $command): void
     {
         $startUnit = $this->unitRepository->findOneBySlug($command->startUnitSlug);
         $endUnit = $this->unitRepository->findOneBySlug($command->endUnitSlug);
         $ingredient = ($command->ingredientSlug) ? $this->ingredientRepository->findOneBySlug($command->ingredientSlug) : null;
+        $ingredient?->assertOwnedBy($command->userId);
 
         $conversion = Conversion::create(
             id: $command->id,

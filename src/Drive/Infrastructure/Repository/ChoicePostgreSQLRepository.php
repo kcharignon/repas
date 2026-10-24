@@ -11,7 +11,9 @@ use Repas\Drive\Domain\Interface\ChoiceRepository;
 use Repas\Drive\Domain\Model\AcceptedProduct;
 use Repas\Drive\Domain\Model\Choice;
 use Repas\Drive\Domain\Model\ChoiceKind;
+use Repas\Drive\Domain\Model\PackSize;
 use Repas\Drive\Domain\Model\Retailer;
+use Repas\Drive\Domain\Model\SearchQuery;
 use Repas\Drive\Infrastructure\Entity\Choice as ChoiceEntity;
 use Repas\Shared\Infrastructure\Repository\PostgreSQLRepository;
 
@@ -77,27 +79,37 @@ readonly class ChoicePostgreSQLRepository extends PostgreSQLRepository implement
                 $choice->getStoreId(),
                 $choice->getIngredientSlug(),
                 $choice->getKind()->value,
+                $choice->getSearchQuery()?->value,
                 $choice->getUpdatedAt()->format(self::DATE_FORMAT),
             );
             foreach ($choice->getAccepted() as $accepted) {
-                array_push($productParams, $choice->getId(), $accepted->productId, self::ACCEPTED, $accepted->rank);
+                array_push(
+                    $productParams,
+                    $choice->getId(),
+                    $accepted->productId,
+                    self::ACCEPTED,
+                    $accepted->rank,
+                    // Les deux colonnes vont ensemble ; la valeur est écrite en texte à trois décimales (numeric(7,3))
+                    $accepted->packSize === null ? null : number_format($accepted->packSize->value, PackSize::DECIMALS, '.', ''),
+                    $accepted->packSize?->unitSlug,
+                );
             }
             foreach ($choice->getRejectedProductIds() as $productId) {
-                array_push($productParams, $choice->getId(), $productId, self::REJECTED, null);
+                array_push($productParams, $choice->getId(), $productId, self::REJECTED, null, null, null);
             }
         }
 
         $connection->executeStatement(
-            'INSERT INTO drive_choice (id, user_id, retailer, store_id, ingredient_slug, kind, updated_at) VALUES '
-            . implode(', ', array_fill(0, count($choices), '(?, ?, ?, ?, ?, ?, ?)'))
-            . ' ON CONFLICT (id) DO UPDATE SET kind = EXCLUDED.kind, updated_at = EXCLUDED.updated_at',
+            'INSERT INTO drive_choice (id, user_id, retailer, store_id, ingredient_slug, kind, search_query, updated_at) VALUES '
+            . implode(', ', array_fill(0, count($choices), '(?, ?, ?, ?, ?, ?, ?, ?)'))
+            . ' ON CONFLICT (id) DO UPDATE SET kind = EXCLUDED.kind, search_query = EXCLUDED.search_query, updated_at = EXCLUDED.updated_at',
             $choiceParams,
         );
         $connection->executeStatement('DELETE FROM drive_choice_product WHERE choice_id IN (?)', [$ids], [ArrayParameterType::STRING]);
         if ($productParams !== []) {
             $connection->executeStatement(
-                'INSERT INTO drive_choice_product (choice_id, product_id, verdict, rank) VALUES '
-                . implode(', ', array_fill(0, intdiv(count($productParams), 4), '(?, ?, ?, ?)')),
+                'INSERT INTO drive_choice_product (choice_id, product_id, verdict, rank, pack_size_value, pack_size_unit_slug) VALUES '
+                . implode(', ', array_fill(0, intdiv(count($productParams), 6), '(?, ?, ?, ?, ?, ?)')),
                 $productParams,
             );
         }
@@ -139,7 +151,7 @@ readonly class ChoicePostgreSQLRepository extends PostgreSQLRepository implement
     private function fetch(string $where, array $params, array $types): array
     {
         $rows = $this->connection()->fetchAllAssociative(
-            'SELECT c.id, c.user_id, c.retailer, c.store_id, c.ingredient_slug, c.kind, c.updated_at, cp.product_id, cp.verdict, cp.rank '
+            'SELECT c.id, c.user_id, c.retailer, c.store_id, c.ingredient_slug, c.kind, c.search_query, c.updated_at, cp.product_id, cp.verdict, cp.rank, cp.pack_size_value, cp.pack_size_unit_slug '
             . 'FROM drive_choice c LEFT JOIN drive_choice_product cp ON cp.choice_id = c.id '
             . 'WHERE ' . $where . ' ORDER BY c.id, cp.rank, cp.product_id',
             $params,
@@ -150,7 +162,7 @@ readonly class ChoicePostgreSQLRepository extends PostgreSQLRepository implement
         foreach ($rows as $row) {
             $choices[$row['id']] ??= ['row' => $row, 'accepted' => [], 'rejected' => []];
             if ($row['verdict'] === self::ACCEPTED) {
-                $choices[$row['id']]['accepted'][] = new AcceptedProduct($row['product_id'], (int) $row['rank']);
+                $choices[$row['id']]['accepted'][] = new AcceptedProduct($row['product_id'], (int) $row['rank'], $this->packSizeOf($row));
             } elseif ($row['verdict'] === self::REJECTED) {
                 $choices[$row['id']]['rejected'][] = $row['product_id'];
             }
@@ -166,10 +178,25 @@ readonly class ChoicePostgreSQLRepository extends PostgreSQLRepository implement
                 'kind' => ChoiceKind::from($choice['row']['kind']),
                 'accepted' => $choice['accepted'],
                 'rejected' => $choice['rejected'],
+                'search_query' => $choice['row']['search_query'] === null ? null : SearchQuery::load($choice['row']['search_query']),
                 'updated_at' => new DateTimeImmutable($choice['row']['updated_at']),
             ]),
             $choices,
         ));
+    }
+
+    /**
+     * La contenance de la ligne, si les deux colonnes sont remplies (une seule remplie : ligne ignorée, comme si elle était vide).
+     *
+     * @param array<string, mixed> $row
+     */
+    private function packSizeOf(array $row): ?PackSize
+    {
+        if ($row['pack_size_value'] === null || $row['pack_size_unit_slug'] === null) {
+            return null;
+        }
+
+        return PackSize::load((float) $row['pack_size_value'], (string) $row['pack_size_unit_slug']);
     }
 
     private function connection(): Connection

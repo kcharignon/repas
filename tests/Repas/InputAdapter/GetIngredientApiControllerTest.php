@@ -17,7 +17,7 @@ class GetIngredientApiControllerTest extends QueryBusWebTestCase
         $this->queryBus->willReturn(GetIngredientQuery::class, new IngredientDTOBuilder()
             ->withSlug('beurre')->withName('beurre')->withDepartment('cremerie', 'crèmerie')
             ->withCookingUnit('gramme', 'gramme')->withPurchaseUnit('plaquette', 'plaquette', '')->withCoefficient(250)
-            ->withCreatorId($user->getId())->editable()->build());
+            ->withCreatorId($user->getId())->editable()->withUsage(7, 2)->base()->settableBase()->build());
 
         // When
         $this->client->request('GET', '/api/v1/ingredients/beurre', server: $this->bearerFor($user));
@@ -26,7 +26,7 @@ class GetIngredientApiControllerTest extends QueryBusWebTestCase
         $this->assertSame(200, $this->client->getResponse()->getStatusCode());
         $query = $this->queryBus->getLastAskedQuery();
         $this->assertInstanceOf(GetIngredientQuery::class, $query);
-        $this->assertSame(['beurre', $user->getId(), false], [$query->slug, $query->viewerId, $query->viewerIsAdmin]);
+        $this->assertSame(['beurre', $user->getId()], [$query->slug, $query->viewerId]);
         $this->assertSame([
             'slug' => 'beurre',
             'name' => 'beurre',
@@ -42,6 +42,10 @@ class GetIngredientApiControllerTest extends QueryBusWebTestCase
             'coefficient' => 250,
             'creatorId' => $user->getId(),
             'canEdit' => true,
+            'recipeCount' => 7,
+            'listCount' => 2,
+            'isBase' => true,
+            'canSetBase' => true,
         ], $this->jsonBody());
     }
 

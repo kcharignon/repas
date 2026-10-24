@@ -33,19 +33,23 @@ interface IngredientRepository
     public function findPurchaseUnitSlug(string $slug): string;
 
     /**
-     * Comme `findPurchaseUnitSlug()`, pour poser l'ingrédient dans la liste d'un utilisateur : un ingrédient commun est
-     * utilisable par tous, un ingrédient personnalisé seulement par son créateur, celui d'un autre est traité comme inconnu.
+     * Comme `findPurchaseUnitSlug()`, pour poser l'ingrédient dans la liste d'un utilisateur : un ingrédient est utilisable par
+     * celui qui le voit (ADR 0028, amendement) : le sien. L'ingrédient d'un autre est traité comme inconnu, administrateur compris.
      *
      * @throws IngredientException
      */
     public function findPurchaseUnitSlugUsableBy(string $slug, string $userId): string;
 
     /**
+     * Les ingrédients que cet utilisateur voit dans ce rayon : les siens (ADR 0028, amendement).
+     *
      * @return Tab<Ingredient>
      */
     public function findByDepartmentAndOwner(Department $department, string $ownerId): Tab;
 
     /**
+     * Les ingrédients que cet utilisateur voit : les siens (ADR 0028, amendement).
+     *
      * @return Tab<Ingredient>
      */
     public function findByOwner(string $ownerId): Tab;
@@ -54,6 +58,14 @@ interface IngredientRepository
      * Un ingrédient porte ce slug (le slug dérive du nom et du créateur : deux créations du même nom se télescoperaient).
      */
     public function exists(string $slug): bool;
+
+    /**
+     * Créer cet ingrédient pour ce créateur ferait un doublon : le slug existe, **ou** le créateur a déjà un ingrédient de même nom normalisé
+     * (`slugged_name`), en une seule requête. Le second cas couvre un ancien commun passé au propriétaire du catalogue : son slug n'a pas
+     * l'identifiant du compte, donc `exists()` ne le verrait pas. Seule la création d'un ingrédient l'appelle ; `exists()` garde son sens
+     * (collision de slug) pour la copie de recette et la fusion.
+     */
+    public function existsForCreator(string $slug, string $creatorId, string $sluggedName): bool;
 
     public function save(Ingredient $ingredient): void;
 

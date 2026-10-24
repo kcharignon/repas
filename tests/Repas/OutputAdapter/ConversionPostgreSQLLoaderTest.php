@@ -13,11 +13,17 @@ use Repas\Tests\Helper\Builder\UnitBuilder;
 use Repas\Tests\Helper\Builder\UserBuilder;
 use Repas\Tests\Helper\DatabaseTestCase;
 use Repas\Tests\Helper\DataPersister;
+use Repas\User\Domain\Model\User;
 
+/**
+ * L'écran des conversions de l'administrateur (ADR 0028, amendement du 2026-10-20, D4) : les conversions générales et celles de SES
+ * ingrédients, jamais celles des ingrédients d'un autre compte, même pour un administrateur.
+ */
 class ConversionPostgreSQLLoaderTest extends DatabaseTestCase
 {
     private ConversionLoader $conversionLoader;
     private DataPersister $persister;
+    private User $admin;
 
     protected function setUp(): void
     {
@@ -25,53 +31,75 @@ class ConversionPostgreSQLLoaderTest extends DatabaseTestCase
 
         $this->conversionLoader = static::getContainer()->get(ConversionLoader::class);
         $this->persister = new DataPersister(static::getContainer());
+        $this->admin = new UserBuilder()->withEmail('admin@example.com')->isAdmin()->build();
+        $this->persister->saveUser($this->admin);
     }
 
-    public function testListReturnsEveryConversionWithItsIngredientCreatorAndUnits(): void
+    public function testListReturnsTheConversionsOfTheViewersIngredientsWithTheirOwnerAndUnits(): void
     {
         // Given
-        $creator = new UserBuilder()->withEmail('createur@example.com')->build();
-        $this->persister->saveUser($creator);
-        $ingredient = new IngredientBuilder()->withName('zzz beurre')->withCreator($creator, true)->build();
+        $ingredient = new IngredientBuilder()->withName('zzz beurre')->withCreator($this->admin, true)->build();
         $conversion = new ConversionBuilder()->withIngredient($ingredient)->withStartUnit(new UnitBuilder()->isBlock()->build())
             ->withEndUnit(new UnitBuilder()->isGramme()->build())->withCoefficient(250)->build();
         $this->persister->saveConversion($conversion);
 
         // When
-        $result = $this->conversionLoader->list();
+        $result = $this->conversionLoader->list($this->admin->getId());
 
         // Then
         $this->assertEquals(
-            [new ConversionDTO($conversion->getId(), $ingredient->getSlug(), 'zzz beurre', 'createur@example.com', 'plaquette', 'plaquette', 'gramme', 'gramme', 250.0)],
+            [new ConversionDTO($conversion->getId(), $ingredient->getSlug(), 'zzz beurre', 'admin@example.com', 'plaquette', 'plaquette', 'gramme', 'gramme', 250.0)],
             $result,
         );
     }
 
-    public function testListShowsNoCreatorForACommonIngredientNorForACommonConversion(): void
+    public function testListNeverReturnsTheConversionsOfTheIngredientsOfAnotherAccount(): void
     {
-        // Given
-        $common = new ConversionBuilder()->withoutIngredient()->withStartUnit(new UnitBuilder()->isKilo()->build())->withEndUnit(new UnitBuilder()->isGramme()->build())->withCoefficient(1000)->build();
-        $commonIngredient = new IngredientBuilder()->isEgg()->build();
-        $forCommonIngredient = new ConversionBuilder()->withIngredient($commonIngredient)->withStartUnit(new UnitBuilder()->isUnite()->build())->withEndUnit(new UnitBuilder()->isGramme()->build())->withCoefficient(60)->build();
-        $this->persister->saveConversion($common);
-        $this->persister->saveConversion($forCommonIngredient);
+        // Given : le propriétaire du catalogue (un autre administrateur) et un utilisateur ont des conversions propres ; l'administrateur lecteur
+        // a la sienne, et il existe une conversion générale
+        $other = new UserBuilder()->isAdmin()->build();
+        $user = new UserBuilder()->build();
+        $this->persister->saveUser($other);
+        $this->persister->saveUser($user);
+        $mine = $this->saved($this->admin, 'mon beurre');
+        $theirs = $this->saved($other, 'son beurre');
+        $users = $this->saved($user, 'beurre perso');
+        $general = new ConversionBuilder()->withoutIngredient()->withStartUnit(new UnitBuilder()->isKilo()->build())->withEndUnit(new UnitBuilder()->isGramme()->build())->withCoefficient(1000)->build();
+        $this->persister->saveConversion($general);
 
         // When
-        $result = $this->conversionLoader->list();
+        $result = $this->conversionLoader->list($this->admin->getId());
 
-        // Then
-        $byId = array_column(array_map(static fn(ConversionDTO $c): array => [$c->id, $c], $result), 1, 0);
-        $this->assertSame([null, null, null], [$byId[$common->getId()]->ingredientSlug, $byId[$common->getId()]->ingredientName, $byId[$common->getId()]->creatorEmail]);
-        $this->assertSame(['oeuf', null], [$byId[$forCommonIngredient->getId()]->ingredientSlug, $byId[$forCommonIngredient->getId()]->creatorEmail]);
+        // Then : la sienne et la générale, ni celle de l'autre administrateur ni celle de l'utilisateur
+        $ids = array_map(static fn(ConversionDTO $c): string => $c->id, $result);
+        sort($ids);
+        $expected = [$mine->getId(), $general->getId()];
+        sort($expected);
+        $this->assertSame($expected, $ids);
+        $this->assertNotContains($theirs->getId(), $ids);
+        $this->assertNotContains($users->getId(), $ids);
     }
 
-    public function testListIsSortedByIngredientThenByStartUnitWithCommonConversionsLast(): void
+    public function testListShowsNoOwnerForAGeneralConversion(): void
     {
         // Given
-        $egg = new IngredientBuilder()->isEgg()->build();
-        $pasta = new IngredientBuilder()->isPasta()->build();
+        $general = new ConversionBuilder()->withoutIngredient()->withStartUnit(new UnitBuilder()->isKilo()->build())->withEndUnit(new UnitBuilder()->isGramme()->build())->withCoefficient(1000)->build();
+        $this->persister->saveConversion($general);
+
+        // When
+        $result = $this->conversionLoader->list($this->admin->getId());
+
+        // Then
+        $this->assertSame([null, null, null], [$result[0]->ingredientSlug, $result[0]->ingredientName, $result[0]->creatorEmail]);
+    }
+
+    public function testListIsSortedByIngredientThenByStartUnitWithGeneralConversionsLast(): void
+    {
+        // Given
+        $egg = new IngredientBuilder()->isEgg()->withCreator($this->admin)->build();
+        $pasta = new IngredientBuilder()->isPasta()->withCreator($this->admin)->build();
         $conversions = [
-            'common' => new ConversionBuilder()->withoutIngredient()->withStartUnit(new UnitBuilder()->isKilo()->build())->withEndUnit(new UnitBuilder()->isGramme()->build())->build(),
+            'general' => new ConversionBuilder()->withoutIngredient()->withStartUnit(new UnitBuilder()->isKilo()->build())->withEndUnit(new UnitBuilder()->isGramme()->build())->build(),
             'pasta' => new ConversionBuilder()->withIngredient($pasta)->withStartUnit(new UnitBuilder()->isKilo()->build())->withEndUnit(new UnitBuilder()->isGramme()->build())->build(),
             'egg-unite' => new ConversionBuilder()->withIngredient($egg)->withStartUnit(new UnitBuilder()->isUnite()->build())->withEndUnit(new UnitBuilder()->isGramme()->build())->build(),
             'egg-box' => new ConversionBuilder()->withIngredient($egg)->withStartUnit(new UnitBuilder()->isBox()->build())->withEndUnit(new UnitBuilder()->isUnite()->build())->build(),
@@ -81,11 +109,11 @@ class ConversionPostgreSQLLoaderTest extends DatabaseTestCase
         }
 
         // When
-        $result = $this->conversionLoader->list();
+        $result = $this->conversionLoader->list($this->admin->getId());
 
-        // Then : œuf (boîte puis unité), pâtes, puis la conversion commune
+        // Then : œuf (boîte puis unité), pâtes, puis la conversion générale
         $this->assertSame(
-            array_map(static fn(Conversion $c): string => $c->getId(), [$conversions['egg-box'], $conversions['egg-unite'], $conversions['pasta'], $conversions['common']]),
+            array_map(static fn(Conversion $c): string => $c->getId(), [$conversions['egg-box'], $conversions['egg-unite'], $conversions['pasta'], $conversions['general']]),
             array_map(static fn(ConversionDTO $c): string => $c->id, $result),
         );
     }
@@ -93,23 +121,49 @@ class ConversionPostgreSQLLoaderTest extends DatabaseTestCase
     public function testListIsEmptyWithoutConversion(): void
     {
         // When
-        $result = $this->conversionLoader->list();
+        $result = $this->conversionLoader->list($this->admin->getId());
 
         // Then
         $this->assertSame([], $result);
     }
 
-    public function testGetReturnsTheConversionWithSlugsForTheForm(): void
+    public function testGetReturnsTheConversionOfTheViewersIngredientWithSlugsForTheForm(): void
     {
         // Given
-        $conversion = new ConversionBuilder()->isBlockToGrammeForButter()->build();
-        $this->persister->saveConversion($conversion);
+        $conversion = $this->saved($this->admin, 'beurre');
 
         // When
-        $result = $this->conversionLoader->get($conversion->getId());
+        $result = $this->conversionLoader->get($conversion->getId(), $this->admin->getId());
 
         // Then
-        $this->assertEquals(new ConversionDTO($conversion->getId(), 'beurre', 'beurre', null, 'plaquette', 'plaquette', 'gramme', 'gramme', 250.0), $result);
+        $this->assertEquals(new ConversionDTO($conversion->getId(), $conversion->getIngredient()->getSlug(), 'beurre', 'admin@example.com', 'plaquette', 'plaquette', 'gramme', 'gramme', 250.0), $result);
+    }
+
+    public function testGetReturnsAGeneralConversionToAnyAdministrator(): void
+    {
+        // Given
+        $general = new ConversionBuilder()->isKiloToGramme()->build();
+        $this->persister->saveConversion($general);
+
+        // When
+        $result = $this->conversionLoader->get($general->getId(), $this->admin->getId());
+
+        // Then
+        $this->assertSame([null, 'kilo', 'gramme'], [$result->ingredientSlug, $result->startUnitSlug, $result->endUnitSlug]);
+    }
+
+    public function testGetDoesNotKnowTheConversionOfTheIngredientOfAnotherAccount(): void
+    {
+        // Given
+        $other = new UserBuilder()->isAdmin()->build();
+        $this->persister->saveUser($other);
+        $theirs = $this->saved($other, 'son beurre');
+
+        // Then : inconnue, un administrateur compris
+        $this->expectExceptionObject(ConversionException::notFound($theirs->getId()));
+
+        // When
+        $this->conversionLoader->get($theirs->getId(), $this->admin->getId());
     }
 
     public function testGetFailsForAnUnknownConversion(): void
@@ -118,6 +172,16 @@ class ConversionPostgreSQLLoaderTest extends DatabaseTestCase
         $this->expectExceptionObject(ConversionException::notFound('inconnue'));
 
         // When
-        $this->conversionLoader->get('inconnue');
+        $this->conversionLoader->get('inconnue', $this->admin->getId());
+    }
+
+    private function saved(User $creator, string $name): Conversion
+    {
+        $ingredient = new IngredientBuilder()->withName($name)->withCreator($creator, true)->build();
+        $conversion = new ConversionBuilder()->withIngredient($ingredient)->withStartUnit(new UnitBuilder()->isBlock()->build())
+            ->withEndUnit(new UnitBuilder()->isGramme()->build())->withCoefficient(250)->build();
+        $this->persister->saveConversion($conversion);
+
+        return $conversion;
     }
 }

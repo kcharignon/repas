@@ -4,14 +4,16 @@ Chantier « envoyer la liste de courses au drive Leclerc » ([ADR 0022](../../..
 
 **Se déroule avec l'utilisateur, une étape par message** (SKILL.md §0). Pour chaque étape : le but en une phrase, ce qu'il doit voir si ça marche, puis on attend son résultat. Définir chaque mot nouveau (interrupteur, migration, sauvegarde). Il n'est pas devops.
 
-**Ce que je ne fais jamais** : approuver un déploiement, créer une release (`vX.Y.Z`) ou une étiquette `android-vX.Y.Z`, allumer `DRIVE_ENABLED`, toucher un secret GitHub ou la clé de signature de l'application, contacter Leclerc (ni `curl`, ni navigateur, ni depuis le serveur). Je prépare, j'explique, je vérifie en lecture seule ; les écritures sont des scripts que l'utilisateur lance (`!`). Aucun secret dans le chat.
+**Depuis le 2026-10-20 (phase bêta, jusqu'à la 1.0.0)** : plus d'approbation du déploiement ; je crée moi-même les releases (`vX.Y.Z`, `android-vX.Y.Z`) et le déploiement part quand la CI est verte (ADR 0017). Les points ci-dessous qui disent « l'utilisateur publie la release, approuve » sont l'historique.
+
+**Ce que je ne fais jamais** : allumer `DRIVE_ENABLED`, toucher un secret GitHub ou la clé de signature de l'application, contacter Leclerc (ni `curl`, ni navigateur, ni depuis le serveur). Je prépare, j'explique, je vérifie en lecture seule ; les écritures sont des scripts que l'utilisateur lance (`!`). Aucun secret dans le chat.
 
 ## A. Mettre la fonction en production (interrupteur coupé)
 
 Ordre fixe : back, front, application, stabilité, puis l'utilisateur allume. Ne jamais proposer d'allumer avant la fin de l'étape 4.
 
 1. **Contrôler avant** (lecture seule, moi) : CI verte sur `main`, `make deploy-smoke` vert (job `deploy-config`), migrations du chantier relues (5, additives), `DRIVE_ENABLED` absent ou `false` dans `/opt/repas/.env`, une sauvegarde récente. Résumer en trois lignes à l'utilisateur.
-2. **Back** : l'utilisateur décide de la version et du moment (`references/release.md`), publie la release, approuve le déploiement (« Review deployments »). Puis je contrôle (lecture) : `state/ok-back`, `docker compose ps`, `printenv DRIVE_ENABLED` = `false`, migrations à jour, `/api/v1/health`. Attendu : rien ne change pour les utilisateurs.
+2. **Back** : je décide de la version et du moment, je publie la release (`references/release.md`) et le déploiement part sans approbation (phase bêta, ligne 7). Puis je contrôle (lecture) : `state/ok-back`, `docker compose ps`, `printenv DRIVE_ENABLED` = `false`, migrations à jour, `/api/v1/health`. Attendu : rien ne change pour les utilisateurs.
 3. **Front** : même chose dans `kcharignon/repas-front`. Attendu : le site se charge, la connexion et les listes marchent, aucune fonction du drive n'est active.
 4. **Application Android** : (si le protocole de l'agent a changé : le site web d'abord, point 3) étapes humaines du dépôt front (`android/README.md`) : clé de signature créée et gardée par l'utilisateur, secrets GitHub posés par lui, étiquette `android-vX.Y.Z` décidée par lui, installation du fichier sur les téléphones, `assetlinks.json`. Je guide chaque étape séparément, sans jamais voir la clé ni les mots de passe. Attendu : l'application s'ouvre sur Repas ; « Version et mode d'emploi » donne la version et une ligne « Agent : version …, empreinte … » (et non « absent » ni « empreinte inattendue »). Tant que l'APK signé n'existe pas (DRV-315), c'est la pré-version de test `android-dev-…` qu'on installe en essai (publique, débogable, signée d'une clé publique : empreinte SHA-256 vérifiée avant, désinstallée après la recette ; revue de sécurité du front, D2 et C6).
 5. **Laisser tourner** : critères conseillés : aucune erreur `5xx` (`docker compose logs --tail 100 php`), une sauvegarde de nuit réussie, l'application installée sur le téléphone de l'utilisateur. La recette (DRV-505) ne se fait qu'allumé : elle suit l'allumage.
@@ -45,3 +47,7 @@ La règle (une liste `ACTIVE` par propriétaire au plus, les autres en `PAUSED`)
 - Une release du back ne change jamais `DRIVE_ENABLED` : le `.env` du serveur n'est pas copié par la CI, seuls `compose.yaml`, `Caddyfile`, `deploy.sh`, `backup.sh` et `.env.example` le sont.
 - Un APK de débogage (`android-dev-AAAA-MM-JJ`) n'est pas signé avec la clé de publication : l'installer demande de désinstaller l'application de production (la connexion à Leclerc dans l'application est alors effacée).
 - Android refuse d'installer une version plus ancienne par-dessus : corriger par une version plus récente, pas par un retour.
+
+## Ordre de publication et contrôle après le back (2026-10-20)
+
+Site tolérant (il ignore ou laisse passer un champ nouveau du back, liste blanche vers l'agent), puis back, puis application. Après chaque release du back qui touche `/api/v1/drive/*` ou les ingrédients : un envoi réel sur le téléphone de test (« Reprendre l'envoi » jusqu'au choix ou « panier rempli », puis abandon). Ne pas faire `adb shell am force-stop` juste après un renouvellement de session (la session est perdue). Nommer les téléphones (test, kantin, bich) ; le téléphone de test est connecté au compte de l'administrateur, il ne prouve rien sur un compte migré. Incident d'origine et détail : `docs/drive/consignes-agents.md` et `docs/production.md`.

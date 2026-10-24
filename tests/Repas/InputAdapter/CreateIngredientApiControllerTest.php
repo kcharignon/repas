@@ -5,6 +5,7 @@ namespace Repas\Tests\Repas\InputAdapter;
 
 use PHPUnit\Framework\Attributes\DataProvider;
 use Repas\Repas\Application\Command\CreateIngredient\CreateIngredientCommand;
+use Repas\Repas\Domain\Exception\IngredientException;
 use Repas\Tests\Helper\QueryBusWebTestCase;
 use Repas\User\Domain\Model\User;
 
@@ -21,8 +22,93 @@ class CreateIngredientApiControllerTest extends QueryBusWebTestCase
 
         // Then
         $this->assertSame(201, $this->client->getResponse()->getStatusCode());
-        $this->assertEquals([new CreateIngredientCommand('Praliné', '', 'epicerie', 'gramme', 'kilo', $user->getId(), false, 1000.0)], $commandBus->dispatched());
+        $this->assertEquals([new CreateIngredientCommand('Praliné', '', 'epicerie', 'gramme', 'kilo', $user->getId(), 1000.0)], $commandBus->dispatched());
         $this->assertSame('/api/v1/ingredients/praline-user', $this->client->getResponse()->headers->get('Location'));
+    }
+
+    public function testAnAdministratorDispatchesTheSameCommandAsAnyUser(): void
+    {
+        // Given : le contrôleur ne transmet plus le rôle (la commande n'a plus de champ `isAdmin`), la création est la même pour tous
+        $commandBus = $this->mockCommandBus()->willReturn(CreateIngredientCommand::class, 'praline-admin');
+        $admin = $this->savedUser(admin: true);
+
+        // When
+        $this->post($admin, ['name' => 'Praliné', 'departmentSlug' => 'epicerie', 'defaultCookingUnitSlug' => 'gramme', 'defaultPurchaseUnitSlug' => 'kilo', 'coefficient' => 1000, 'isAdmin' => true]);
+
+        // Then : même un corps qui annonce `isAdmin` ne change rien
+        $this->assertSame(201, $this->client->getResponse()->getStatusCode());
+        $this->assertEquals([new CreateIngredientCommand('Praliné', '', 'epicerie', 'gramme', 'kilo', $admin->getId(), 1000.0)], $commandBus->dispatched());
+    }
+
+    public function testAnIngredientOfTheSameNameIsAConflict(): void
+    {
+        // Given
+        $commandBus = $this->mockCommandBus()->willThrow(CreateIngredientCommand::class, IngredientException::alreadyExists('praline-user'));
+
+        // When
+        $this->post($this->savedUser(), ['name' => 'Praliné', 'departmentSlug' => 'epicerie', 'defaultCookingUnitSlug' => 'gramme', 'defaultPurchaseUnitSlug' => 'gramme']);
+
+        // Then
+        $this->assertSame(409, $this->client->getResponse()->getStatusCode());
+        $this->assertArrayHasKey('error', $this->jsonBody());
+        $this->assertNull($this->client->getResponse()->headers->get('Location'));
+        $this->assertCount(1, $commandBus->dispatched());
+    }
+    /**
+     * @return iterable<string, array{array<string, mixed>, bool}>
+     */
+    public static function baseMarkerBodies(): iterable
+    {
+        yield 'vrai' => [['isBase' => true], true];
+        yield 'faux' => [['isBase' => false], false];
+        yield 'null explicite : faux' => [['isBase' => null], false];
+        yield 'champ absent (ancien client) : faux' => [[], false];
+    }
+
+    /**
+     * @param array<string, mixed> $extra
+     */
+    #[DataProvider('baseMarkerBodies')]
+    public function testTheBaseMarkerIsOptionalAndNeverTrueByDefault(array $extra, bool $expected): void
+    {
+        // Given
+        $commandBus = $this->mockCommandBus()->willReturn(CreateIngredientCommand::class, 'praline-user');
+        $user = $this->savedUser();
+
+        // When
+        $this->post($user, $extra + ['name' => 'Praliné', 'departmentSlug' => 'epicerie', 'defaultCookingUnitSlug' => 'gramme', 'defaultPurchaseUnitSlug' => 'kilo', 'coefficient' => 1000]);
+
+        // Then
+        $this->assertSame(201, $this->client->getResponse()->getStatusCode());
+        $this->assertEquals([new CreateIngredientCommand('Praliné', '', 'epicerie', 'gramme', 'kilo', $user->getId(), 1000.0, $expected)], $commandBus->dispatched());
+    }
+
+    public function testRefusesABaseMarkerThatIsNotABoolean(): void
+    {
+        // Given
+        $commandBus = $this->mockCommandBus();
+
+        // When
+        $this->post($this->savedUser(), ['name' => 'Sel', 'departmentSlug' => 'epicerie', 'defaultCookingUnitSlug' => 'gramme', 'defaultPurchaseUnitSlug' => 'gramme', 'isBase' => 'oui']);
+
+        // Then
+        $this->assertSame(422, $this->client->getResponse()->getStatusCode());
+        $this->assertSame([], $commandBus->dispatched());
+    }
+
+    public function testAnOrdinaryUserWhoCreatesABaseIngredientGetsAForbiddenWithAStableCode(): void
+    {
+        // Given : le handler refuse (seul le propriétaire du catalogue pose le marqueur) et rien n'est créé
+        $commandBus = $this->mockCommandBus()->willThrow(CreateIngredientCommand::class, IngredientException::baseMarkerForbidden());
+
+        // When
+        $this->post($this->savedUser(), ['name' => 'Sel', 'departmentSlug' => 'epicerie', 'defaultCookingUnitSlug' => 'gramme', 'defaultPurchaseUnitSlug' => 'gramme', 'isBase' => true]);
+
+        // Then
+        $this->assertSame(403, $this->client->getResponse()->getStatusCode());
+        $this->assertSame(['error' => ['message' => 'INGREDIENT_BASE_FORBIDDEN']], $this->jsonBody());
+        $this->assertNull($this->client->getResponse()->headers->get('Location'));
+        $this->assertCount(1, $commandBus->dispatched());
     }
 
     public function testTheCoefficientIsOptional(): void

@@ -44,20 +44,24 @@ class IngredientRepositoryTest extends DatabaseTestCase
         $this->assertSame($ingredient->getDefaultPurchaseUnit()->getSlug(), $this->ingredientRepository->findPurchaseUnitSlug($ingredient->getSlug()));
     }
 
-    public function testFindPurchaseUnitSlugUsableByGivesTheUnitOfACommonIngredientAndOfTheCreatorsOwn(): void
+    public function testFindPurchaseUnitSlugUsableByGivesTheUnitOfTheCreatorsOwnIngredientOnly(): void
     {
-        // Arrange
+        // Arrange : le propriétaire du catalogue (administrateur) et un autre compte ont chacun le leur
         $creator = new UserBuilder()->build();
+        $admin = new UserBuilder()->isAdmin()->build();
         $this->persister->saveUser($creator);
-        $common = new IngredientBuilder()->isPasta()->build();
+        $this->persister->saveUser($admin);
         $custom = new IngredientBuilder()->isButter()->withCreator($creator, true)->build();
-        $this->persister->saveIngredient($common);
+        $adminsOwn = new IngredientBuilder()->isPasta()->withCreator($admin)->build();
         $this->persister->saveIngredient($custom);
+        $this->persister->saveIngredient($adminsOwn);
 
         // Act & Assert
-        $this->assertSame($common->getDefaultPurchaseUnit()->getSlug(), $this->ingredientRepository->findPurchaseUnitSlugUsableBy($common->getSlug(), $creator->getId()));
-        $this->assertSame($common->getDefaultPurchaseUnit()->getSlug(), $this->ingredientRepository->findPurchaseUnitSlugUsableBy($common->getSlug(), 'another-user-id'));
         $this->assertSame($custom->getDefaultPurchaseUnit()->getSlug(), $this->ingredientRepository->findPurchaseUnitSlugUsableBy($custom->getSlug(), $creator->getId()));
+        $this->assertSame($adminsOwn->getDefaultPurchaseUnit()->getSlug(), $this->ingredientRepository->findPurchaseUnitSlugUsableBy($adminsOwn->getSlug(), $admin->getId()));
+        // et aucun passe-droit : l'administrateur n'utilise pas l'ingrédient d'un autre
+        $this->expectExceptionObject(IngredientException::notFound($custom->getSlug()));
+        $this->ingredientRepository->findPurchaseUnitSlugUsableBy($custom->getSlug(), $admin->getId());
     }
 
     public function testFindPurchaseUnitSlugUsableByFailsForTheCustomIngredientOfAnotherUserAndForAnUnknownOne(): void
@@ -182,6 +186,111 @@ class IngredientRepositoryTest extends DatabaseTestCase
         $this->ingredientRepository->findOneBySlug($ingredient->getSlug());
     }
 
+    public function testTheOriginOfAnAdoptionSurvivesTheDatabaseAndAnUpdate(): void
+    {
+        // Arrange : la copie d'un commun par un utilisateur, et un ingrédient créé par lui
+        $user = new UserBuilder()->build();
+        $this->persister->saveUser($user);
+        $adoption = new IngredientBuilder()->isButter()->withCreator($user, true)->withAdoptedFrom('beurre')->build();
+        $created = new IngredientBuilder()->isFlour()->withCreator($user, true)->build();
+        $this->persister->saveIngredient($adoption);
+        $this->persister->saveIngredient($created);
+        $this->entityManager->clear();
+
+        // Act
+        $loadedAdoption = $this->ingredientRepository->findOneBySlug($adoption->getSlug());
+        $loadedCreated = $this->ingredientRepository->findOneBySlug($created->getSlug());
+
+        // Assert : lu en base (l'identity map est vide), pas rendu par le modèle enregistré
+        RepasAssert::assertIngredient($adoption, $loadedAdoption);
+        $this->assertSame('beurre', $loadedAdoption->getAdoptedFrom());
+        $this->assertTrue($loadedAdoption->isAdoption());
+        $this->assertNull($loadedCreated->getAdoptedFrom());
+        $this->assertSame('beurre', $this->columnOf($adoption->getSlug(), 'adopted_from'));
+        $this->assertNull($this->columnOf($created->getSlug(), 'adopted_from'));
+
+        // Act : la copie est renommée par son propriétaire
+        $loadedAdoption->setName('Beurre demi-sel');
+        $this->ingredientRepository->save($loadedAdoption);
+        $this->entityManager->clear();
+
+        // Assert : l'origine est un fait immuable
+        $renamed = $this->ingredientRepository->findOneBySlug($adoption->getSlug());
+        $this->assertSame(['Beurre demi-sel', 'beurre'], [$renamed->getName(), $renamed->getAdoptedFrom()]);
+    }
+
+    public function testSavingAModelWithoutOriginDoesNotEraseTheOriginOfTheRow(): void
+    {
+        // Arrange : une ligne née d'une adoption, réécrite par un modèle qui ne connaît pas l'origine (le code précédent, une copie)
+        $user = new UserBuilder()->build();
+        $this->persister->saveUser($user);
+        $adoption = new IngredientBuilder()->isButter()->withCreator($user, true)->withAdoptedFrom('beurre')->build();
+        $this->persister->saveIngredient($adoption);
+        $withoutOrigin = new IngredientBuilder()->isButter()->withCreator($user, true)->withName('Beurre')->build();
+
+        // Act
+        $this->ingredientRepository->save($withoutOrigin);
+        $this->entityManager->clear();
+
+        // Assert
+        $this->assertSame('beurre', $this->columnOf($adoption->getSlug(), 'adopted_from'));
+    }
+
+    public function testTheBaseMarkerRoundTripsThroughTheDatabase(): void
+    {
+        // Arrange : un ingrédient marqué « de base » et un autre qui ne l'est pas
+        $owner = new UserBuilder()->isCatalogOwner()->build();
+        $this->persister->saveUser($owner);
+        $base = new IngredientBuilder()->isButter()->withCreator($owner, true)->withBase()->build();
+        $notBase = new IngredientBuilder()->isFlour()->withCreator($owner, true)->build();
+        $this->persister->saveIngredient($base);
+        $this->persister->saveIngredient($notBase);
+        $this->entityManager->clear();
+
+        // Act
+        $loadedBase = $this->ingredientRepository->findOneBySlug($base->getSlug());
+        $loadedNotBase = $this->ingredientRepository->findOneBySlug($notBase->getSlug());
+
+        // Assert : lu en base (l'identity map est vide)
+        $this->assertTrue($loadedBase->isBase());
+        $this->assertFalse($loadedNotBase->isBase());
+        $this->assertSame(true, $this->boolColumnOf($base->getSlug(), 'is_base'));
+        $this->assertSame(false, $this->boolColumnOf($notBase->getSlug(), 'is_base'));
+
+        // Act : un renommage garde le marqueur, puis le propriétaire le retire
+        $loadedBase->setName('Beurre demi-sel');
+        $this->ingredientRepository->save($loadedBase);
+        $this->entityManager->clear();
+        $renamed = $this->ingredientRepository->findOneBySlug($base->getSlug());
+        $this->assertTrue($renamed->isBase());
+        $renamed->changeBase(false);
+        $this->ingredientRepository->save($renamed);
+        $this->entityManager->clear();
+
+        // Assert
+        $this->assertFalse($this->ingredientRepository->findOneBySlug($base->getSlug())->isBase());
+        $this->assertSame(false, $this->boolColumnOf($base->getSlug(), 'is_base'));
+    }
+
+    public function testARowInsertedWithoutTheColumnIsNotBase(): void
+    {
+        // Arrange : un `INSERT` comme celui du code d'avant la colonne, qui ne la connaît pas (ADR 0017 règle 6)
+        $ingredient = new IngredientBuilder()->isButter()->build();
+        $this->persister->saveIngredientDependencies($ingredient);
+        $this->entityManager->getConnection()->executeStatement(
+            'INSERT INTO ingredient (slug, name, image, slugged_name, department, default_cooking_unit, default_purchase_unit, creator, compatible_units, adopted_from)'
+            . " VALUES ('beurre', 'beurre', '', 'beurre', ?, ?, ?, NULL, '[]', NULL)",
+            [$ingredient->getDepartment()->getSlug(), $ingredient->getDefaultCookingUnit()->getSlug(), $ingredient->getDefaultPurchaseUnit()->getSlug()],
+        );
+
+        // Act
+        $loaded = $this->ingredientRepository->findOneBySlug('beurre');
+
+        // Assert : la valeur par défaut de la base s'applique
+        $this->assertFalse($loaded->isBase());
+        $this->assertSame(false, $this->boolColumnOf('beurre', 'is_base'));
+    }
+
     public static function getByDepartmentDataProvider(): array
     {
         $creator = new UserBuilder()->build();
@@ -192,18 +301,14 @@ class IngredientRepositoryTest extends DatabaseTestCase
             'with creator and called by admin' => [$creator, $admin, false],
             'with creator and called by other user' => [$creator, $otherUser, false],
             'with creator and called by himself' => [$creator, $creator, true],
-            'without creator and called by user' => [null, $otherUser, true],
-            'without creator and called admin' => [null, $admin, true],
         ];
     }
 
     #[DataProvider('getByDepartmentDataProvider')]
-    public function testGetByDepartment(?User $creator, User $user, bool $see): void
+    public function testGetByDepartment(User $creator, User $user, bool $see): void
     {
         // Arrange
-        if ($creator) {
-            $this->persister->saveUser($creator);
-        }
+        $this->persister->saveUser($creator);
         $this->persister->saveUser($user);
         $babyDepartment = new DepartmentBuilder()->isBaby()->build();
         $ingredient = new IngredientBuilder()
@@ -245,15 +350,14 @@ class IngredientRepositoryTest extends DatabaseTestCase
         $this->assertCount(0, $actual);
     }
 
-    public function testFindByOwnerReturnsSystemIngredientsAndTheOwnOnes(): void
+    public function testFindByOwnerReturnsOnlyTheOwnIngredients(): void
     {
         // Arrange
         $owner = new UserBuilder()->build();
         $other = new UserBuilder()->build();
-        $system = new IngredientBuilder()->isEgg()->build();
         $own = new IngredientBuilder()->isPasta()->withCreator($owner, true)->build();
         $notOwn = new IngredientBuilder()->isMilk()->withCreator($other, true)->build();
-        foreach ([$system, $own, $notOwn] as $ingredient) {
+        foreach ([$own, $notOwn] as $ingredient) {
             $this->persister->saveIngredient($ingredient);
         }
 
@@ -263,9 +367,81 @@ class IngredientRepositoryTest extends DatabaseTestCase
         // Assert
         RepasAssert::assertTabType(Tab::newEmptyTyped(Ingredient::class), $actual);
         $slugs = $this->slugsOf($actual);
-        $this->assertContains($system->getSlug(), $slugs);
+        $this->assertSame([$own->getSlug()], $slugs);
         $this->assertContains($own->getSlug(), $slugs);
         $this->assertNotContains($notOwn->getSlug(), $slugs);
+    }
+
+    private function boolColumnOf(string $slug, string $column): bool
+    {
+        return (bool) $this->entityManager->getConnection()->fetchOne(sprintf('SELECT %s FROM ingredient WHERE slug = ?', $column), [$slug]);
+    }
+
+    private function columnOf(string $slug, string $column): ?string
+    {
+        $value = $this->entityManager->getConnection()->fetchOne(sprintf('SELECT %s FROM ingredient WHERE slug = ?', $column), [$slug]);
+
+        return $value === false ? null : $value;
+    }
+
+    public function testExistsForCreatorSeesAnIngredientBySlug(): void
+    {
+        // Arrange
+        $creator = new UserBuilder()->build();
+        $this->persister->saveUser($creator);
+        $butter = new IngredientBuilder()->isButter()->withCreator($creator, true)->build();
+        $this->persister->saveIngredient($butter);
+
+        // Act & Assert : le slug est pris, même pour un autre nom normalisé et un autre créateur
+        $this->assertTrue($this->ingredientRepository->existsForCreator($butter->getSlug(), 'another-user-id', 'autre-nom'));
+        $this->assertFalse($this->ingredientRepository->existsForCreator('libre', $creator->getId(), 'autre-nom'));
+    }
+
+    public function testExistsForCreatorSeesTheSameNormalizedNameOfTheCreatorWhateverTheSlug(): void
+    {
+        // Arrange : un ancien commun passé à son propriétaire (créateur posé, slug sans identifiant de compte)
+        $owner = new UserBuilder()->build();
+        $other = new UserBuilder()->build();
+        $this->persister->saveUser($owner);
+        $this->persister->saveUser($other);
+        $tomato = new IngredientBuilder()->withName('Tomate')->withSlug('tomate')->withCreator($owner)->build();
+        $this->persister->saveIngredient($tomato);
+        $this->assertSame('tomate', $tomato->getSlug());
+
+        // Act & Assert : le slug d'une création serait `tomate<identifiant>`, libre, mais le nom normalisé est déjà au créateur
+        $this->assertFalse($this->ingredientRepository->exists('tomate' . $owner->getId()));
+        $this->assertTrue($this->ingredientRepository->existsForCreator('tomate' . $owner->getId(), $owner->getId(), 'tomate'));
+        // pas pour un autre créateur, ni pour un autre nom
+        $this->assertFalse($this->ingredientRepository->existsForCreator('tomate' . $other->getId(), $other->getId(), 'tomate'));
+        $this->assertFalse($this->ingredientRepository->existsForCreator('tomate-cerise' . $owner->getId(), $owner->getId(), 'tomate-cerise'));
+    }
+
+    public function testExistsForCreatorIgnoresACommonIngredientOfTheSameName(): void
+    {
+        // Arrange : avant la passation, « Tomate » est un commun (sans créateur) : il n'est à personne
+        $user = new UserBuilder()->build();
+        $this->persister->saveUser($user);
+        $this->persister->saveIngredient(new IngredientBuilder()->withName('Tomate')->build());
+
+        // Act & Assert
+        $this->assertFalse($this->ingredientRepository->existsForCreator('tomate' . $user->getId(), $user->getId(), 'tomate'));
+    }
+
+    public function testExistsForCreatorCostsASingleQuery(): void
+    {
+        // Arrange
+        $user = new UserBuilder()->build();
+        $this->persister->saveUser($user);
+        $this->persister->saveIngredient(new IngredientBuilder()->withName('Tomate')->withCreator($user, true)->build());
+        static::getContainer()->get('doctrine')->getManager()->clear();
+        $counter = static::getContainer()->get(QueryCounter::class);
+        $counter->reset();
+
+        // Act
+        $this->ingredientRepository->existsForCreator('tomate' . $user->getId(), $user->getId(), 'tomate');
+
+        // Assert
+        $this->assertSame(['SELECT ingredient' => 1], $counter->byTable());
     }
 
     /**

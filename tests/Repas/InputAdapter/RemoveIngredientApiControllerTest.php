@@ -40,15 +40,31 @@ class RemoveIngredientApiControllerTest extends QueryBusWebTestCase
         $this->assertSame([], $commandBus->dispatched());
     }
 
-    public function testRefusesACommonIngredientToAUser(): void
+    public function testAnAdministratorRemovesHisOwnIngredientAsAnyoneElse(): void
     {
         // Given
         $commandBus = $this->mockCommandBus();
-        $common = new IngredientBuilder()->isFlour()->build();
-        $this->persister->saveIngredient($common);
+        $admin = $this->savedUser(admin: true);
+        $ingredient = new IngredientBuilder()->isFlour()->withCreator($admin, true)->build();
+        $this->persister->saveIngredient($ingredient);
 
         // When
-        $this->client->request('DELETE', '/api/v1/ingredients/' . $common->getSlug(), server: $this->bearerFor($this->savedUser()));
+        $this->client->request('DELETE', '/api/v1/ingredients/' . $ingredient->getSlug(), server: $this->bearerFor($admin));
+
+        // Then
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->assertEquals([new RemoveIngredientCommand($ingredient->getSlug())], $commandBus->dispatched());
+    }
+
+    public function testAnAdministratorHasNoPassThroughOnTheIngredientOfAnotherUser(): void
+    {
+        // Given : l'ingrédient est à un autre compte, le propriétaire du catalogue par exemple (ADR 0028, amendement, D3)
+        $commandBus = $this->mockCommandBus();
+        $theirs = new IngredientBuilder()->isFlour()->withCreator($this->savedUser(admin: true), true)->build();
+        $this->persister->saveIngredient($theirs);
+
+        // When
+        $this->client->request('DELETE', '/api/v1/ingredients/' . $theirs->getSlug(), server: $this->bearerFor($this->savedUser(admin: true)));
 
         // Then
         $this->assertSame(403, $this->client->getResponse()->getStatusCode());

@@ -11,6 +11,7 @@ use Repas\Repas\Domain\Interface\ConversionRepository;
 use Repas\Repas\Domain\Interface\DepartmentRepository;
 use Repas\Repas\Domain\Interface\IngredientRepository;
 use Repas\Repas\Domain\Interface\UnitRepository;
+use Repas\Repas\Domain\Model\Ingredient;
 use Repas\Repas\Domain\Service\ConversionService;
 use Repas\Tests\Helper\Builder\ConversionBuilder;
 use Repas\Tests\Helper\Builder\DepartmentBuilder;
@@ -21,6 +22,7 @@ use Repas\Tests\Helper\InMemoryRepository\ConversionInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\DepartmentInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\IngredientInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\UnitInMemoryRepository;
+use Repas\Tests\Helper\IngredientCatalogOwnerInMemory;
 use Repas\Tests\Helper\RepasAssert;
 
 class UpdateIngredientHandlerTest extends TestCase
@@ -30,7 +32,7 @@ class UpdateIngredientHandlerTest extends TestCase
     private readonly UnitRepository $unitRepository;
     private readonly IngredientRepository $ingredientRepository;
     private readonly ConversionRepository $conversionRepository;
-
+    private readonly IngredientCatalogOwnerInMemory $catalogOwner;
 
     protected function setUp(): void
     {
@@ -46,6 +48,7 @@ class UpdateIngredientHandlerTest extends TestCase
         ]);
         $this->ingredientRepository = new IngredientInMemoryRepository();
         $this->conversionRepository = new ConversionInMemoryRepository();
+        $this->catalogOwner = new IngredientCatalogOwnerInMemory('owner-id');
 
         $conversionService = new ConversionService(
             $this->conversionRepository,
@@ -57,6 +60,7 @@ class UpdateIngredientHandlerTest extends TestCase
             $this->ingredientRepository,
             $this->conversionRepository,
             $conversionService,
+            $this->catalogOwner,
         );
     }
 
@@ -74,6 +78,7 @@ class UpdateIngredientHandlerTest extends TestCase
             'boite',
             'boite',
             null,
+            'user-id',
         );
 
         // Act
@@ -120,6 +125,7 @@ class UpdateIngredientHandlerTest extends TestCase
             'gramme',
             'unite',
             60,
+            'user-id',
         );
 
         // Act
@@ -163,6 +169,7 @@ class UpdateIngredientHandlerTest extends TestCase
             'gramme',
             'unite',
             60,
+            'user-id',
         );
 
         // Act
@@ -197,7 +204,7 @@ class UpdateIngredientHandlerTest extends TestCase
         // Arrange
         $ingredient = new IngredientBuilder()->isPasta()->withImage('images/pate.png')->build();
         $this->ingredientRepository->save($ingredient);
-        $command = new UpdateIngredientCommand($ingredient->getSlug(), 'Pasta', null, 'conserve', 'boite', 'boite', null);
+        $command = new UpdateIngredientCommand($ingredient->getSlug(), 'Pasta', null, 'conserve', 'boite', 'boite', null, 'user-id');
 
         // Act
         ($this->handler)($command);
@@ -211,7 +218,7 @@ class UpdateIngredientHandlerTest extends TestCase
         // Arrange
         $ingredient = new IngredientBuilder()->isPasta()->build();
         $this->ingredientRepository->save($ingredient);
-        $command = new UpdateIngredientCommand($ingredient->getSlug(), 'Pasta', null, 'conserve', 'gramme', 'boite', null);
+        $command = new UpdateIngredientCommand($ingredient->getSlug(), 'Pasta', null, 'conserve', 'gramme', 'boite', null, 'user-id');
 
         // Assert
         $this->expectExceptionObject(IngredientException::coefficientRequired());
@@ -232,6 +239,7 @@ class UpdateIngredientHandlerTest extends TestCase
             'gramme',
             'unite',
             60,
+            'user-id',
         );
 
         // Assert
@@ -239,5 +247,176 @@ class UpdateIngredientHandlerTest extends TestCase
 
         // Act
         ($this->handler)($command);
+    }
+
+    /**
+     * Un ingrédient de pâtes à `$creatorId` (`null` : un ancien commun), marqué ou non, enregistré.
+     */
+    private function savedPasta(?string $creatorId, bool $isBase = false): Ingredient
+    {
+        $ingredient = new IngredientBuilder()->isPasta()->withCreator($creatorId === null ? null : new UserBuilder()->withId($creatorId)->build(), true)->withBase($isBase)->build();
+        $this->ingredientRepository->save($ingredient);
+
+        return $ingredient;
+    }
+
+    /**
+     * Un `PUT` qui ne change que le nom (les mêmes unités, aucune conversion), avec le marqueur demandé (`null` : absent du corps).
+     */
+    private function rename(Ingredient $ingredient, string $userId, ?bool $isBase): UpdateIngredientCommand
+    {
+        return new UpdateIngredientCommand($ingredient->getSlug(), 'Pasta', null, 'conserve', 'gramme', 'gramme', null, $userId, $isBase);
+    }
+
+    public function testTheCatalogOwnerMarksItsIngredientAsBase(): void
+    {
+        // Given
+        $ingredient = $this->savedPasta('owner-id');
+
+        // When
+        ($this->handler)($this->rename($ingredient, 'owner-id', true));
+
+        // Then : le marqueur est posé, avec le reste de la modification
+        $updated = $this->ingredientRepository->findOneBySlug($ingredient->getSlug());
+        $this->assertTrue($updated->isBase());
+        $this->assertSame('Pasta', $updated->getName());
+        $this->assertSame(1, $this->catalogOwner->calls);
+    }
+
+    public function testTheCatalogOwnerRemovesTheMarker(): void
+    {
+        // Given
+        $ingredient = $this->savedPasta('owner-id', isBase: true);
+
+        // When
+        ($this->handler)($this->rename($ingredient, 'owner-id', false));
+
+        // Then
+        $this->assertFalse($this->ingredientRepository->findOneBySlug($ingredient->getSlug())->isBase());
+    }
+
+    public function testNobodyMarksAnIngredientThatBelongsToNoOne(): void
+    {
+        // Given : la forme de la base d'avant la passation (un ingrédient sans créateur) n'est plus traitée à part : le propriétaire du
+        // catalogue ne marque que SES ingrédients
+        $legacy = $this->savedPasta(null);
+
+        // Then
+        $this->expectExceptionObject(IngredientException::baseMarkerForbidden());
+
+        // When
+        ($this->handler)($this->rename($legacy, 'owner-id', true));
+    }
+
+    public function testWithoutTheFieldTheMarkerIsNeverReset(): void
+    {
+        // Given : un ancien client ne connaît pas le champ ; il ne doit jamais remettre le marqueur à zéro, que ce soit le propriétaire du
+        // catalogue ou n'importe quel créateur d'un ingrédient marqué
+        $ownersIngredient = $this->savedPasta('owner-id', isBase: true);
+
+        // When
+        ($this->handler)($this->rename($ownersIngredient, 'owner-id', null));
+
+        // Then
+        $this->assertTrue($this->ingredientRepository->findOneBySlug($ownersIngredient->getSlug())->isBase());
+        $this->assertSame('Pasta', $this->ingredientRepository->findOneBySlug($ownersIngredient->getSlug())->getName());
+        $this->assertSame(0, $this->catalogOwner->calls, 'Absent, le marqueur ne coûte aucune lecture du propriétaire du catalogue.');
+    }
+
+    public function testTheSameValueIsAcceptedFromAnyCreatorWithoutReadingTheCatalogOwner(): void
+    {
+        // Given : un utilisateur ordinaire renvoie ce qu'il a lu (faux) ; un marqueur déjà posé (inerte, ailleurs que chez le propriétaire) aussi
+        $notBase = $this->savedPasta('user-id');
+
+        // When
+        ($this->handler)($this->rename($notBase, 'user-id', false));
+
+        // Then
+        $this->assertFalse($this->ingredientRepository->findOneBySlug($notBase->getSlug())->isBase());
+        $this->assertSame(0, $this->catalogOwner->calls);
+    }
+
+    public function testAnOrdinaryUserCannotMarkItsIngredientAndNothingIsWritten(): void
+    {
+        // Given : un PUT qui changerait aussi les unités, donc créerait une conversion
+        $ingredient = $this->savedPasta('user-id');
+        $command = new UpdateIngredientCommand($ingredient->getSlug(), 'Pasta', 'new.png', 'conserve', 'gramme', 'boite', 500.0, 'user-id', true);
+
+        // Then
+        $this->expectExceptionObject(IngredientException::baseMarkerForbidden());
+
+        // When
+        try {
+            ($this->handler)($command);
+        } finally {
+            $unchanged = $this->ingredientRepository->findOneBySlug($ingredient->getSlug());
+            $this->assertFalse($unchanged->isBase());
+            $this->assertSame('pate', $unchanged->getName());
+            $this->assertNull($this->conversionRepository->findByIngredientAndStartUnitAndEndUnit($unchanged, new UnitBuilder()->isBox()->build(), new UnitBuilder()->isGramme()->build()));
+        }
+    }
+
+    public function testAnOrdinaryUserCannotRemoveAMarkerEither(): void
+    {
+        // Given : un marqueur posé ailleurs que chez le propriétaire (par un défaut ou un accès direct à la base)
+        $ingredient = $this->savedPasta('user-id', isBase: true);
+
+        // Then : « différent de l'actuel » suffit au refus, dans les deux sens
+        $this->expectExceptionObject(IngredientException::baseMarkerForbidden());
+
+        // When
+        try {
+            ($this->handler)($this->rename($ingredient, 'user-id', false));
+        } finally {
+            $this->assertTrue($this->ingredientRepository->findOneBySlug($ingredient->getSlug())->isBase());
+        }
+    }
+
+    public function testAnAdministratorWhoIsNotTheCatalogOwnerCannotMarkAnIngredient(): void
+    {
+        // Given : un administrateur modifie les anciens communs (passe-droit), mais ne pose pas le marqueur
+        $common = $this->savedPasta(null);
+
+        // Then
+        $this->expectExceptionObject(IngredientException::baseMarkerForbidden());
+
+        // When
+        try {
+            ($this->handler)($this->rename($common, 'admin-id', true));
+        } finally {
+            $this->assertFalse($this->ingredientRepository->findOneBySlug($common->getSlug())->isBase());
+        }
+    }
+
+    public function testTheCatalogOwnerCannotMarkTheIngredientOfAnotherUser(): void
+    {
+        // Given
+        $theirs = $this->savedPasta('user-id');
+
+        // Then : un marqueur n'a de sens que dans le catalogue du propriétaire
+        $this->expectExceptionObject(IngredientException::baseMarkerForbidden());
+
+        // When
+        ($this->handler)($this->rename($theirs, 'owner-id', true));
+    }
+
+    public function testWithoutACatalogOwnerNobodyCanMarkAnIngredient(): void
+    {
+        // Given : le compte propriétaire n'existe pas
+        $ingredient = $this->savedPasta('owner-id');
+        $handler = new UpdateIngredientHandler(
+            $this->departmentRepository,
+            $this->unitRepository,
+            $this->ingredientRepository,
+            $this->conversionRepository,
+            new ConversionService($this->conversionRepository, $this->unitRepository),
+            new IngredientCatalogOwnerInMemory(null),
+        );
+
+        // Then
+        $this->expectExceptionObject(IngredientException::baseMarkerForbidden());
+
+        // When
+        $handler($this->rename($ingredient, 'owner-id', true));
     }
 }

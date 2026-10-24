@@ -18,7 +18,7 @@ class ListIngredientsByDepartmentApiControllerTest extends QueryBusWebTestCase
         $user = $this->savedUser();
         $this->queryBus->willReturn(ListIngredientsByDepartmentQuery::class, new DepartmentIngredientsDTO(
             new DepartmentDTOBuilder()->withSlug('cereale')->withName('céréale')->withImage('images/cereale.svg')->build(),
-            [new IngredientRowDTO('pate', 'pâtes', 'g', true), new IngredientRowDTO('riz', 'riz', 'g', false)],
+            [new IngredientRowDTO('pate', 'pâtes', 'g', true, true), new IngredientRowDTO('riz', 'riz', 'g', false, false)],
         ));
 
         // When
@@ -28,27 +28,29 @@ class ListIngredientsByDepartmentApiControllerTest extends QueryBusWebTestCase
         $this->assertSame(200, $this->client->getResponse()->getStatusCode());
         $query = $this->queryBus->getLastAskedQuery();
         $this->assertInstanceOf(ListIngredientsByDepartmentQuery::class, $query);
-        $this->assertSame(['cereale', $user->getId(), false], [$query->departmentSlug, $query->viewerId, $query->viewerIsAdmin]);
+        $this->assertSame(['cereale', $user->getId()], [$query->departmentSlug, $query->viewerId]);
         $this->assertSame([
             'department' => ['slug' => 'cereale', 'name' => 'céréale', 'image' => 'images/cereale.svg'],
             'member' => [
-                ['slug' => 'pate', 'name' => 'pâtes', 'purchaseUnitSymbol' => 'g', 'canEdit' => true],
-                ['slug' => 'riz', 'name' => 'riz', 'purchaseUnitSymbol' => 'g', 'canEdit' => false],
+                ['slug' => 'pate', 'name' => 'pâtes', 'purchaseUnitSymbol' => 'g', 'canEdit' => true, 'isBase' => true],
+                ['slug' => 'riz', 'name' => 'riz', 'purchaseUnitSymbol' => 'g', 'canEdit' => false, 'isBase' => false],
             ],
             'totalItems' => 2,
         ], $this->jsonBody());
     }
 
-    public function testAnAdministratorIsAskedAsSuch(): void
+    public function testAnAdministratorIsAskedLikeAnyoneElse(): void
     {
-        // Given
+        // Given : plus de cas particulier pour l'administrateur (ADR 0028, amendement) : la question ne porte que le rayon et le lecteur
         $this->queryBus->willReturn(ListIngredientsByDepartmentQuery::class, new DepartmentIngredientsDTO(new DepartmentDTOBuilder()->build(), []));
+        $admin = $this->savedUser(admin: true);
 
         // When
-        $this->client->request('GET', '/api/v1/departments/cereale/ingredients', server: $this->bearerFor($this->savedUser(admin: true)));
+        $this->client->request('GET', '/api/v1/departments/cereale/ingredients', server: $this->bearerFor($admin));
 
         // Then
-        $this->assertTrue($this->queryBus->getAskedQuery(ListIngredientsByDepartmentQuery::class)->viewerIsAdmin);
+        $query = $this->queryBus->getAskedQuery(ListIngredientsByDepartmentQuery::class);
+        $this->assertEquals(new ListIngredientsByDepartmentQuery('cereale', $admin->getId()), $query);
     }
 
     public function testReturns404ForAnUnknownDepartment(): void

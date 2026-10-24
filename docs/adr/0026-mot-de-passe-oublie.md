@@ -1,6 +1,6 @@
 # 0026 — Mot de passe oublié : lien de 30 minutes à usage unique, jeton à part
 
-- **Statut** : Proposed
+- **Statut** : Accepted (2026-10-19) ; livré (PR #206, en production depuis le back v0.6.2)
 - **Date** : 2026-10-19
 - **Liens** : [0007](0007-api-rest-v1.md) §11 à 14, [0008](0008-auth-session-et-jwt.md) §7, §12, [0015](0015-refresh-token-du-spa.md), [0017](0017-deploiement-et-releases.md) règle 6, [0020](0020-confirmation-d-adresse-email.md), [0021](0021-gestion-des-comptes-par-l-administrateur.md), [0024](0024-connexion-avec-google.md) décision 10, issue `kcharignon/repas-front#31`
 

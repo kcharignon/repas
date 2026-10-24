@@ -3,6 +3,7 @@
 namespace Repas\Tests\Helper\InMemoryRepository;
 
 
+use DateTimeImmutable;
 use Repas\Shared\Domain\Tool\Tab;
 use Repas\User\Domain\Exception\UserException;
 use Repas\User\Domain\Interface\UserRepository;
@@ -12,6 +13,9 @@ class UserInMemoryRepository implements UserRepository
 {
     /** @var Tab<User>  */
     private Tab $users;
+
+    /** @var list<array{string, DateTimeImmutable}> les appels à `recordLogin()`, dans l'ordre (compte, date) */
+    public array $recordLoginCalls = [];
 
     /**
      * @param array<User>|null $users
@@ -43,6 +47,14 @@ class UserInMemoryRepository implements UserRepository
     public function save(User $user): void
     {
         $this->users[$user->getId()] = $user;
+    }
+
+    public function recordLogin(string $userId, DateTimeImmutable $at): void
+    {
+        $this->recordLoginCalls[] = [$userId, $at];
+
+        // Comme la base : un compte supprimé entre-temps ne reçoit rien, et la date ne recule jamais
+        ($this->users[$userId] ?? null)?->recordLogin($at);
     }
 
     public function delete(User $user): void

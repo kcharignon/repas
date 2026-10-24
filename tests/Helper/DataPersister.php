@@ -6,6 +6,7 @@ namespace Repas\Tests\Helper;
 use Psr\Container\ContainerInterface;
 use Repas\Repas\Domain\Interface\ConversionRepository;
 use Repas\Repas\Domain\Interface\DepartmentRepository;
+use Repas\Repas\Domain\Interface\IngredientAliasRepository;
 use Repas\Repas\Domain\Interface\IngredientRepository;
 use Repas\Repas\Domain\Interface\RecipeRepository;
 use Repas\Repas\Domain\Interface\RecipeTypeRepository;
@@ -13,6 +14,7 @@ use Repas\Repas\Domain\Interface\UnitRepository;
 use Repas\Repas\Domain\Model\Conversion;
 use Repas\Repas\Domain\Model\Department;
 use Repas\Repas\Domain\Model\Ingredient;
+use Repas\Repas\Domain\Model\IngredientAlias;
 use Repas\Repas\Domain\Model\Recipe;
 use Repas\Repas\Domain\Model\RecipeRow;
 use Repas\Repas\Domain\Model\RecipeType;
@@ -69,6 +71,14 @@ final readonly class DataPersister
     {
         $this->saveIngredientDependencies($ingredient);
         $this->container->get(IngredientRepository::class)->save($ingredient);
+    }
+
+    /**
+     * Un alias n'a pas de dépendance à enregistrer : aucune clé étrangère, ni l'utilisateur ni l'ingrédient désigné n'ont besoin d'exister.
+     */
+    public function saveIngredientAlias(IngredientAlias $alias): void
+    {
+        $this->container->get(IngredientAliasRepository::class)->save($alias);
     }
 
     public function saveConversionDependencies(Conversion $conversion): void

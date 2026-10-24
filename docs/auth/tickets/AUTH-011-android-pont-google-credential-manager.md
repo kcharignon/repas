@@ -5,7 +5,7 @@
 - **Taille** : M
 - **Dépend de** : AUTH-015 (tronc commun Kotlin : le pont est écrit derrière l'interface `IdentityProvider`) ; le contrat des messages est écrit ici ; AUTH-002 pour l'essai réel (AUTH-013)
 - **Faisable sans téléphone** : en grande partie (validation des messages en Kotlin pur, fournisseur factice dans l'émulateur de test) ; le vrai Credential Manager n'est prouvé qu'à la recette
-- **Statut** : à faire
+- **Statut** : code fait, PR front [#171](https://github.com/kcharignon/repas-front/pull/171) ouverte, CI verte, **non fusionnée volontairement** : décision de l'utilisateur à prendre (2026-10-20). Points à trancher : APK de publication +2,67 Mo (1 164 316 → 3 835 613 octets, non minifié) ; dépendance aux services Play en préversion (`play-services-identity-credentials` 16.0.0-alpha08, tirée par Credential Manager lui-même) ; trois permissions apportées par des bibliothèques retirées du manifeste ; `googleid` 1.2.0 au lieu de 1.2.1 (la 1.2.1 est compilée par Kotlin 2.4, que notre Kotlin 2.2.21 refuse : elle suivra une montée de Kotlin). Le vrai Credential Manager n'est prouvé qu'à la recette AUTH-013.
 - **Lire d'abord** : [`../connexion-google.md`](../connexion-google.md) §§ 2, 5.5 ; [ADR 0024](../../adr/0024-connexion-avec-google.md) décision 3 ; skill `repas-android-dev` ; `android/README.md` (« Le pont natif `repasNative` ») ; `NativeBridge.kt`, `MainActivity.kt` ; [guide Google](https://developer.android.com/identity/sign-in/credential-manager-siwg-implementation) (2026-10-16).
 
 ## Contexte

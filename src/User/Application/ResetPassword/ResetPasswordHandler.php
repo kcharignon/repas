@@ -4,12 +4,14 @@ namespace Repas\User\Application\ResetPassword;
 
 
 use Psr\Clock\ClockInterface;
+use Repas\Shared\Domain\Event\UserActivatedEvent;
 use Repas\User\Domain\Exception\UserException;
 use Repas\User\Domain\Interface\EmailVerificationTokenRepository;
 use Repas\User\Domain\Interface\PasswordResetTokenRepository;
 use Repas\User\Domain\Interface\RefreshTokenRepository;
 use Repas\User\Domain\Interface\UserRepository;
 use Repas\User\Domain\Model\User;
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 use Symfony\Component\PasswordHasher\Hasher\PasswordHasherFactoryInterface;
 
@@ -23,13 +25,15 @@ readonly class ResetPasswordHandler
         private EmailVerificationTokenRepository $emailVerificationTokenRepository,
         private PasswordHasherFactoryInterface $passwordHasherFactory,
         private ClockInterface $clock,
+        private EventDispatcherInterface $eventDispatcher,
     ) {
     }
 
     /**
      * Le lien prouve la possession de l'adresse : il fixe le mot de passe sans connaître l'ancien (qui peut être celui d'un tiers
      * ou n'exister pas, compte créé par Google) et il active un compte en attente. Il révoque toutes les connexions du compte
-     * (la version des identifiants monte, ses refresh tokens sont supprimés) et ne sert qu'une fois (ADR 0026).
+     * (la version des identifiants monte, ses refresh tokens sont supprimés) et ne sert qu'une fois (ADR 0026). Quand il active un compte en
+     * attente, l'activation est annoncée (`UserActivatedEvent`) dans la même transaction, pour que le compte reçoive ses ingrédients (ING-008).
      *
      * Un compte désactivé ne change rien : même refus qu'un lien inconnu, et le bus de commandes annule toute écriture (ADR 0021).
      *
@@ -65,6 +69,7 @@ readonly class ResetPasswordHandler
         // L'adresse est confirmée par ce lien : celui de l'inscription ne sert plus
         if ($wasPending) {
             $this->emailVerificationTokenRepository->deleteAllOfUser($user->getId());
+            $this->eventDispatcher->dispatch(new UserActivatedEvent($user->getId()));
         }
     }
 }

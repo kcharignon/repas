@@ -54,7 +54,7 @@ Quand l'utilisateur ne peut rien faire (Leclerc a changé son site), le texte le
 | Déjà chez soi, toujours | **J'en ai toujours** | Déjà à la maison, Tu en as déjà, HAVE_AT_HOME |
 | Pas pour cet envoi seulement | **Pas cette fois** | Passer cette fois, Ignoré, Passés |
 | Produit retenu pour un article | **produit habituel** ; son remplaçant : **produit de remplacement** | préféré, préférence, primaire, secours, fallback |
-| Garder un produit choisi pour les envois suivants | **Toujours prendre celui-ci** / **Cette fois seulement** (la question : « Toujours prendre ce produit ? ») | Mon nouveau produit habituel, préféré, secours, une seule fois |
+| Garder un produit choisi pour les envois suivants | **Choisir** (le produit devient ton produit habituel) / **Pas mon habituel** (le produit est au panier cette fois seulement, rien n'est gardé comme produit habituel ; l'article sera redemandé au prochain envoi). Le sélecteur n'a plus d'écran « Toujours prendre ce produit ? » : deux boutons par produit | Toujours prendre celui-ci, Cette fois seulement, Mon nouveau produit habituel, préféré, secours, une seule fois |
 | Passer plusieurs articles d'un coup | **Passer ces n articles** (n compte l'article affiché), puis **Revenir au choix** | Passer les n suivants, Tout passer, Ignorer le reste |
 | Un envoi qui n'a rien mis au panier ni fait choisir | **Le panier n'est pas rempli** (« Le panier est rempli en partie » seulement si au moins un article est au panier ou choisi) | Échec, Erreur, Résultat vide |
 | Produit exclu | **Ne plus proposer** | Refusé, rejeté |
@@ -63,6 +63,8 @@ Quand l'utilisateur ne peut rien faire (Leclerc a changé son site), le texte le
 | Écran de fin d'un envoi | **Récapitulatif** | Résumé, Retour du drive, Résultat |
 | Le magasin Leclerc de l'utilisateur | **ton magasin** | point de retrait, drive (pour un magasin), id |
 | Mettre l'appli à jour | **Mettre à jour l'application** | Installer l'application (quand elle l'est déjà) |
+| Première installation de l'application | **Installer l'application** (page `/installer` : bouton **Télécharger l'application**, puis « Touche « Installer » » ; si Play Protect s'affiche : « Installer sans analyser », puis empreinte ou code) | APK, sideload, sources inconnues, mise à niveau |
+| Le nombre de produits d'un article en unités de la liste | **Combien de tranches y a-t-il dans « … » ?** (jamais « Combien de unités » : l'unité prend son « de » élidé, « d'unités ») ; titre **Vérifie la quantité**, aperçu « Il te faut 15 tranches : 1 produit » | contenance (à l'écran), conditionnement, pack size |
 | L'écran du profil et des réglages | **Moi** : le nom de l'onglet, repris tel quel dans le titre de la page et dans tous les textes qui y renvoient (aujourd'hui le titre de la page dit « Mon compte » : à aligner, DRV-621) | Mon compte |
 | Repli sans automatisation | **Chercher à la main** | mode assisté |
 | Si Leclerc change son site | « Leclerc a changé son site, l'envoi automatique est arrêté » | contrat modifié, CONTRACT_CHANGED |

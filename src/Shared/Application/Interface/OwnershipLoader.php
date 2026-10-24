@@ -12,7 +12,8 @@ use Repas\Shared\Domain\Exception\DomainException;
 interface OwnershipLoader
 {
     /**
-     * Identifiant du créateur d'un ingrédient, null pour un ingrédient commun.
+     * Identifiant du propriétaire d'un ingrédient (son créateur). Il n'y a plus d'ingrédient commun ; le type reste nullable tant que
+     * la colonne l'est (ING-014).
      *
      * @throws DomainException
      */

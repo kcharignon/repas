@@ -155,25 +155,40 @@ final class Recipe implements ModelInterface
         return $recipe;
     }
 
+    /**
+     * La copie d'une recette pour `$authorId`. Elle ne crée ni ne cherche aucun ingrédient : le cas d'usage a retenu, pour chaque
+     * ingrédient de l'original, celui que le copieur utilisera (ADR 0028 décision 8), et le donne ici par slug d'origine.
+     *
+     * @param array<string, Ingredient> $ingredients l'ingrédient du copieur par slug d'ingrédient de l'original
+     * @param callable(): string $newRowId l'identifiant d'une nouvelle ligne
+     * @throws IngredientException un ingrédient retenu n'est pas disponible pour le copieur (celui d'un autre) ou n'a pas été retenu
+     */
     public static function copyFromOriginal(
         string $id,
         Recipe $original,
         string $authorId,
+        array $ingredients,
+        callable $newRowId,
     ): self {
-        return new self(
+        $copy = new self(
             id: $id,
             name: $original->getName(),
             serving: $original->getServing(),
             authorId: $authorId,
             type: $original->getType(),
             rows: $original->getRows()->map(fn(RecipeRow $row) => RecipeRow::copyFromOriginal(
-                id: UuidGenerator::new(),
+                id: $newRowId(),
                 originalRow: $row,
                 recipeId: $id,
-                authorId: $authorId,
+                ingredient: $ingredients[$row->getIngredient()->getSlug()] ?? throw IngredientException::notFound($row->getIngredient()->getSlug()),
             )),
             originalId: $original->getId()
         );
+        foreach ($copy->rows as $row) {
+            $copy->assertIngredientIsAvailable($row->getIngredient());
+        }
+
+        return $copy;
     }
 
     public function isType(Type $type): bool
@@ -230,15 +245,14 @@ final class Recipe implements ModelInterface
     }
 
     /**
-     * Un ingrédient commun est utilisable par tous, un ingrédient personnalisé seulement par son créateur : l'ingrédient
-     * d'un autre utilisateur est traité comme inconnu (on ne révèle pas son existence).
+     * Un ingrédient n'est utilisable que par son propriétaire (ADR 0028, amendement : plus d'ingrédient commun) : l'ingrédient d'un
+     * autre utilisateur est traité comme inconnu (on ne révèle pas son existence).
      *
      * @throws IngredientException
      */
     private function assertIngredientIsAvailable(Ingredient $ingredient): void
     {
-        $creatorId = $ingredient->getCreatorId();
-        if ($creatorId !== null && $creatorId !== $this->authorId) {
+        if (!$ingredient->isOwnedBy($this->authorId)) {
             throw IngredientException::notFound($ingredient->getSlug());
         }
     }

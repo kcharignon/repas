@@ -13,7 +13,7 @@ final readonly class IngredientSearchResultDTO
         public string $name,
         #[OA\Property(description: 'Symbole de l\'unité d\'achat (peut être vide)', example: 'g')]
         public string $purchaseUnitSymbol,
-        #[OA\Property(description: 'L\'utilisateur peut modifier cet ingrédient : le sien, ou un ingrédient commun s\'il est administrateur')]
+        #[OA\Property(description: 'Toujours vrai : l\'ingrédient est à l\'utilisateur. Le champ reste pour les clients existants')]
         public bool $canEdit,
         #[OA\Property(description: 'Identifiant du rayon de l\'ingrédient (slug)', example: 'cremerie')]
         public string $departmentSlug,

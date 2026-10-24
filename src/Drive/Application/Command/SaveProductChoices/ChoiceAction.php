@@ -19,4 +19,10 @@ enum ChoiceAction: string
      * ne change pas. Sans effet si le produit n'est pas accepté pour cet ingrédient.
      */
     case REFRESH_PRICE = 'REFRESH_PRICE';
+    /**
+     * DRV-653 : la recherche qui a fait trouver un produit pris « cette fois seulement » reste la bonne recherche de l'ingrédient : elle
+     * est mémorisée sans toucher aux produits acceptés ni refusés. La préférence est créée si elle n'existe pas (aucun produit accepté :
+     * la ligne du plan reste `NEW`). Ni produit ni placement ; `searchQuery` obligatoire (un texte).
+     */
+    case NOTE_SEARCH = 'NOTE_SEARCH';
 }

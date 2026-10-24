@@ -40,7 +40,7 @@
                 },
                 "responses": {
                     "200": {
-                        "description": "Token JWT (dur\u00e9e de vie 3600 s). Pose aussi le cookie `repas_refresh` (HttpOnly, SameSite=Strict, `Path=/api/auth`), \u00e0 \u00e9changer contre un nouveau JWT par `POST /api/auth/refresh` (ADR 0015)",
+                        "description": "Token JWT (dur\u00e9e de vie 3600 s). Pose aussi le cookie `repas_refresh` (HttpOnly, SameSite=Strict, `Path=/api/auth`), \u00e0 \u00e9changer contre un nouveau JWT par `POST /api/auth/refresh` (ADR 0015). Une connexion r\u00e9ussie fait avancer la derni\u00e8re connexion du compte que voit l'administrateur (`lastLoginAt` de `GET /api/v1/users`), au plus une fois toutes les 10 minutes ; une connexion refus\u00e9e n'\u00e9crit rien",
                         "headers": {
                             "Set-Cookie": {
                                 "description": "Refresh token, `HttpOnly; Secure; SameSite=Strict; Path=/api/auth`",
@@ -87,12 +87,45 @@
                 "security": []
             }
         },
+        "/api/v1/ingredients/duplicates": {
+            "get": {
+                "tags": [
+                    "Ingredients"
+                ],
+                "summary": "Les doublons possibles de l'utilisateur : des paires de SES ingr\u00e9dients (jamais ceux d'un autre, un administrateur compris), du m\u00eame rayon, dont les noms se ressemblent (m\u00eame nom une fois normalis\u00e9, \u00e0 une faute de frappe pr\u00e8s, ou assez proche : score de 0,90 au moins) et qu'il n'a pas \u00e9cart\u00e9es par \u00ab Pas le m\u00eame \u00bb. Tri\u00e9es de la plus probable \u00e0 la moins probable, 50 au plus, le m\u00eame ordre \u00e0 chaque appel. Chaque paire porte de quoi afficher sa carte (les deux ingr\u00e9dients avec leurs nombres de recettes et de listes, l'ingr\u00e9dient \u00e0 garder par d\u00e9faut). Vide pour un compte qui n'a pas deux ingr\u00e9dients. Ce que la fusion ferait exactement : `GET \u2026/merge-preview`",
+                "operationId": "get_api_list_duplicate_ingredients",
+                "responses": {
+                    "200": {
+                        "description": "Doublons possibles",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "member": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/DuplicateIngredientDTO"
+                                            }
+                                        },
+                                        "totalItems": {
+                                            "type": "integer",
+                                            "example": 3
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/ingredients/search": {
             "get": {
                 "tags": [
                     "Ingredients"
                 ],
-                "summary": "Recherche d'ingr\u00e9dients par nom, du plus pertinent au moins pertinent, avec leur rayon : communs et ceux de l'utilisateur authentifi\u00e9",
+                "summary": "Recherche d'ingr\u00e9dients par nom, du plus pertinent au moins pertinent, avec leur rayon : ceux de l'utilisateur authentifi\u00e9, jamais ceux d'un autre (un administrateur compris)",
                 "operationId": "get_api_search_ingredients",
                 "parameters": [
                     {
@@ -201,7 +234,7 @@
                 "tags": [
                     "Shopping lists"
                 ],
-                "summary": "Ajoute 1 \u00e0 la quantit\u00e9 d'un ingr\u00e9dient dans la liste active de l'utilisateur",
+                "summary": "Ajoute 1 \u00e0 la quantit\u00e9 d'un ingr\u00e9dient dans la liste active de l'utilisateur. Un ancien slug (ancien commun dont l'utilisateur a re\u00e7u une copie, ingr\u00e9dient fusionn\u00e9) d\u00e9signe son ingr\u00e9dient actuel, qui est celui de la liste ; l'ingr\u00e9dient d'un autre utilisateur est inconnu",
                 "operationId": "post_api_increase_ingredient",
                 "parameters": [
                     {
@@ -234,7 +267,8 @@
                 "tags": [
                     "Recipes"
                 ],
-                "summary": "Copie une recette dans celles de l'utilisateur connect\u00e9, avec les ingr\u00e9dients personnalis\u00e9s et leurs conversions",
+                "summary": "Copie une recette dans celles de l'utilisateur connect\u00e9",
+                "description": "Chaque ingr\u00e9dient de la recette est rapproch\u00e9 de ceux que l'utilisateur poss\u00e8de d\u00e9j\u00e0 (ce qu'il a adopt\u00e9, puis le m\u00eame nom dans le m\u00eame rayon, avec une unit\u00e9 compatible) ; \u00e0 d\u00e9faut, il re\u00e7oit une copie de l'ingr\u00e9dient avec ses conversions propres. Un ingr\u00e9dient existant de l'utilisateur n'est jamais modifi\u00e9.",
                 "operationId": "post_api_copy_recipe",
                 "parameters": [
                     {
@@ -269,7 +303,7 @@
                 "tags": [
                     "Conversions"
                 ],
-                "summary": "Conversions entre unit\u00e9s (administrateur), tri\u00e9es par ingr\u00e9dient puis par unit\u00e9 de d\u00e9part",
+                "summary": "Conversions entre unit\u00e9s (administrateur), tri\u00e9es par ingr\u00e9dient puis par unit\u00e9 de d\u00e9part : les conversions g\u00e9n\u00e9rales et celles de SES ingr\u00e9dients, jamais celles des ingr\u00e9dients d'un autre utilisateur",
                 "operationId": "get_api_list_conversions",
                 "responses": {
                     "200": {
@@ -303,7 +337,7 @@
                 "tags": [
                     "Conversions"
                 ],
-                "summary": "Cr\u00e9e une conversion entre deux unit\u00e9s (administrateur), propre \u00e0 un ingr\u00e9dient ou commune \u00e0 tous",
+                "summary": "Cr\u00e9e une conversion entre deux unit\u00e9s (administrateur), propre \u00e0 l'un de SES ingr\u00e9dients ou g\u00e9n\u00e9rale (commune \u00e0 tous les ingr\u00e9dients)",
                 "operationId": "post_api_create_conversion",
                 "requestBody": {
                     "required": true,
@@ -331,7 +365,7 @@
                         "description": "R\u00e9serv\u00e9 aux administrateurs"
                     },
                     "404": {
-                        "description": "Unit\u00e9 ou ingr\u00e9dient inconnu"
+                        "description": "Unit\u00e9 ou ingr\u00e9dient inconnu, ou ingr\u00e9dient d'un autre utilisateur (un administrateur n'a pas de passe-droit)"
                     },
                     "422": {
                         "description": "Corps de la requ\u00eate invalide"
@@ -416,7 +450,7 @@
                 "tags": [
                     "Ingredients"
                 ],
-                "summary": "Ingr\u00e9dients que l'utilisateur authentifi\u00e9 peut utiliser (communs et les siens), tri\u00e9s par nom : choix des recettes",
+                "summary": "Ingr\u00e9dients que l'utilisateur authentifi\u00e9 peut utiliser, tri\u00e9s par nom : les siens seulement, jamais ceux d'un autre (un administrateur compris) ; choix des recettes",
                 "operationId": "get_api_list_available_ingredients",
                 "parameters": [
                     {
@@ -463,7 +497,8 @@
                 "tags": [
                     "Ingredients"
                 ],
-                "summary": "Cr\u00e9e un ingr\u00e9dient : personnalis\u00e9 pour un utilisateur, commun \u00e0 tous pour un administrateur",
+                "summary": "Cr\u00e9e un ingr\u00e9dient de l'utilisateur",
+                "description": "L'ingr\u00e9dient appartient \u00e0 l'utilisateur du jeton, administrateur compris : aucun autre compte ne le voit.",
                 "operationId": "post_api_create_ingredient",
                 "requestBody": {
                     "required": true,
@@ -487,11 +522,14 @@
                             }
                         }
                     },
+                    "403": {
+                        "description": "`INGREDIENT_BASE_FORBIDDEN` : `isBase` est vrai alors que l'utilisateur n'est pas le propri\u00e9taire du catalogue ; rien n'est cr\u00e9\u00e9"
+                    },
                     "404": {
                         "description": "Rayon ou unit\u00e9 inconnu"
                     },
                     "409": {
-                        "description": "Un ingr\u00e9dient de ce nom existe d\u00e9j\u00e0"
+                        "description": "L'utilisateur a d\u00e9j\u00e0 un ingr\u00e9dient de ce nom (m\u00eame nom une fois normalis\u00e9 : casse, accents, ponctuation)"
                     },
                     "422": {
                         "description": "Corps invalide, ou coefficient manquant alors que les unit\u00e9s diff\u00e8rent sans conversion connue"
@@ -504,7 +542,7 @@
                 "tags": [
                     "Recipes"
                 ],
-                "summary": "Cr\u00e9e une recette de l'utilisateur connect\u00e9",
+                "summary": "Cr\u00e9e une recette de l'utilisateur connect\u00e9. Un ancien slug (ancien commun dont l'utilisateur a re\u00e7u une copie, ingr\u00e9dient fusionn\u00e9) est remplac\u00e9 par celui de son ingr\u00e9dient actuel ; l'ingr\u00e9dient d'un autre utilisateur est inconnu",
                 "operationId": "post_api_create_recipe",
                 "requestBody": {
                     "required": true,
@@ -774,7 +812,7 @@
                 "tags": [
                     "Conversions"
                 ],
-                "summary": "D\u00e9tail d'une conversion entre unit\u00e9s (administrateur)",
+                "summary": "D\u00e9tail d'une conversion entre unit\u00e9s (administrateur) : une conversion g\u00e9n\u00e9rale ou celle de l'un de SES ingr\u00e9dients",
                 "operationId": "get_api_get_conversion",
                 "parameters": [
                     {
@@ -801,7 +839,7 @@
                         "description": "R\u00e9serv\u00e9 aux administrateurs"
                     },
                     "404": {
-                        "description": "Conversion inconnue"
+                        "description": "Conversion inconnue, ou propre \u00e0 l'ingr\u00e9dient d'un autre utilisateur (un administrateur n'a pas de passe-droit)"
                     }
                 }
             },
@@ -809,7 +847,7 @@
                 "tags": [
                     "Conversions"
                 ],
-                "summary": "Remplace une conversion entre unit\u00e9s (administrateur)",
+                "summary": "Remplace une conversion entre unit\u00e9s (administrateur) : une conversion g\u00e9n\u00e9rale ou celle de l'un de SES ingr\u00e9dients",
                 "operationId": "put_api_update_conversion",
                 "parameters": [
                     {
@@ -839,7 +877,7 @@
                         "description": "R\u00e9serv\u00e9 aux administrateurs"
                     },
                     "404": {
-                        "description": "Conversion, unit\u00e9 ou ingr\u00e9dient inconnu"
+                        "description": "Conversion, unit\u00e9 ou ingr\u00e9dient inconnu, ou conversion ou ingr\u00e9dient d'un autre utilisateur (un administrateur n'a pas de passe-droit)"
                     },
                     "422": {
                         "description": "Corps de la requ\u00eate invalide"
@@ -927,7 +965,7 @@
                 "tags": [
                     "Ingredients"
                 ],
-                "summary": "D\u00e9tail d'un ingr\u00e9dient commun ou cr\u00e9\u00e9 par l'utilisateur (un administrateur voit tous les ingr\u00e9dients)",
+                "summary": "D\u00e9tail d'un ingr\u00e9dient de l'utilisateur authentifi\u00e9. Celui d'un autre utilisateur, un administrateur compris, est inconnu (404) ; un ancien slug (commun adopt\u00e9, ingr\u00e9dient fusionn\u00e9) ne se lit plus",
                 "operationId": "get_api_get_ingredient",
                 "parameters": [
                     {
@@ -951,7 +989,7 @@
                         }
                     },
                     "404": {
-                        "description": "Ingr\u00e9dient inconnu, ou cr\u00e9\u00e9 par un autre utilisateur"
+                        "description": "Ingr\u00e9dient inconnu, ou \u00e0 un autre utilisateur (un administrateur n'a pas de passe-droit)"
                     }
                 }
             },
@@ -959,7 +997,8 @@
                 "tags": [
                     "Ingredients"
                 ],
-                "summary": "Remplace un ingr\u00e9dient de l'utilisateur (un ingr\u00e9dient commun n'est modifiable que par un administrateur) ; son image est conserv\u00e9e",
+                "summary": "Remplace un ingr\u00e9dient de l'utilisateur (seul son propri\u00e9taire le modifie, un administrateur compris) ; son image est conserv\u00e9e",
+                "description": "Le champ facultatif `isBase` pose le marqueur \u00ab ingr\u00e9dient de base \u00bb : absent ou `null`, il reste inchang\u00e9. Seul le propri\u00e9taire du catalogue peut le changer, sur un ingr\u00e9dient \u00e0 lui : toute autre valeur que l'actuelle venant d'un autre compte donne `403` `INGREDIENT_BASE_FORBIDDEN`, et rien n'est \u00e9crit.",
                 "operationId": "put_api_update_ingredient",
                 "parameters": [
                     {
@@ -986,7 +1025,7 @@
                         "description": "Ingr\u00e9dient modifi\u00e9"
                     },
                     "403": {
-                        "description": "L'ingr\u00e9dient appartient \u00e0 un autre utilisateur, ou il est commun"
+                        "description": "L'ingr\u00e9dient appartient \u00e0 un autre utilisateur (un administrateur n'a pas de passe-droit)"
                     },
                     "404": {
                         "description": "Ingr\u00e9dient, rayon ou unit\u00e9 inconnu"
@@ -1000,7 +1039,7 @@
                 "tags": [
                     "Ingredients"
                 ],
-                "summary": "Supprime un ingr\u00e9dient de l'utilisateur, avec ses conversions (un ingr\u00e9dient commun n'est supprimable que par un administrateur)",
+                "summary": "Supprime un ingr\u00e9dient de l'utilisateur, avec ses conversions (seul son propri\u00e9taire le supprime, un administrateur compris)",
                 "operationId": "delete_api_remove_ingredient",
                 "parameters": [
                     {
@@ -1017,13 +1056,61 @@
                         "description": "Ingr\u00e9dient supprim\u00e9"
                     },
                     "403": {
-                        "description": "L'ingr\u00e9dient appartient \u00e0 un autre utilisateur, ou il est commun"
+                        "description": "L'ingr\u00e9dient appartient \u00e0 un autre utilisateur (un administrateur n'a pas de passe-droit)"
                     },
                     "404": {
                         "description": "Ingr\u00e9dient inconnu"
                     },
                     "409": {
                         "description": "Ingr\u00e9dient pr\u00e9sent dans une recette ou une liste de courses"
+                    }
+                }
+            }
+        },
+        "/api/v1/ingredients/{slug}/merge-preview": {
+            "get": {
+                "tags": [
+                    "Ingredients"
+                ],
+                "summary": "Ce que la fusion de l'ingr\u00e9dient de l'URL (absorb\u00e9) dans `into` (gard\u00e9) ferait, sans rien \u00e9crire : recettes, listes et choix du drive qui se d\u00e9placent, nombre de recettes et de listes qui utiliseront le gard\u00e9 APR\u00c8S la fusion, conversions que le gard\u00e9 r\u00e9cup\u00e9rerait, unit\u00e9s qui manqueraient encore, pourquoi elle serait refus\u00e9e. M\u00eame verdict que `POST \u2026/merge`. Toujours 200 quand les deux ingr\u00e9dients sont \u00e0 l'utilisateur : un refus de r\u00e8gle est dans `blockedBy`",
+                "operationId": "get_api_get_merge_preview",
+                "parameters": [
+                    {
+                        "name": "into",
+                        "in": "query",
+                        "description": "Slug de l'ingr\u00e9dient \u00e0 garder",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "maxLength": 255
+                        },
+                        "example": "tomate-0a1b2c3d"
+                    },
+                    {
+                        "name": "slug",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Ce que la fusion ferait",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/MergePreviewDTO"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Un des deux ingr\u00e9dients est inconnu ou appartient \u00e0 un autre utilisateur (m\u00eame pour un administrateur)"
+                    },
+                    "422": {
+                        "description": "Param\u00e8tre `into` absent ou trop long"
                     }
                 }
             }
@@ -1075,7 +1162,7 @@
                 "tags": [
                     "Recipes"
                 ],
-                "summary": "Remplace une recette de l'utilisateur : nom, personnes, type et lignes (les lignes absentes du corps sont supprim\u00e9es)",
+                "summary": "Remplace une recette de l'utilisateur : nom, personnes, type et lignes (les lignes absentes du corps sont supprim\u00e9es). Un ancien slug est remplac\u00e9 par celui de l'ingr\u00e9dient actuel de l'auteur, comme \u00e0 la cr\u00e9ation",
                 "operationId": "put_api_update_recipe",
                 "parameters": [
                     {
@@ -1482,7 +1569,7 @@
                 "tags": [
                     "Ingredients"
                 ],
-                "summary": "Ingr\u00e9dients communs et ingr\u00e9dients de l'utilisateur authentifi\u00e9 dans un rayon, tri\u00e9s par nom",
+                "summary": "Ingr\u00e9dients de l'utilisateur authentifi\u00e9 dans un rayon, tri\u00e9s par nom : les siens seulement, jamais ceux d'un autre (un administrateur compris)",
                 "operationId": "get_api_list_ingredients_by_department",
                 "parameters": [
                     {
@@ -1496,7 +1583,7 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "Le rayon et ses ingr\u00e9dients (collection `member`) ; `canEdit` indique si l'utilisateur peut modifier l'ingr\u00e9dient",
+                        "description": "Le rayon et ses ingr\u00e9dients (collection `member`) ; `canEdit` est toujours vrai (l'ingr\u00e9dient est \u00e0 l'utilisateur) ; le champ reste pour les clients existants",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -1522,6 +1609,66 @@
                     },
                     "404": {
                         "description": "Rayon inconnu"
+                    }
+                }
+            }
+        },
+        "/api/v1/ingredients/{slug}/merge-candidates": {
+            "get": {
+                "tags": [
+                    "Ingredients"
+                ],
+                "summary": "Les ingr\u00e9dients de l'utilisateur (les siens) avec lesquels l'ingr\u00e9dient de l'URL peut \u00eatre fusionn\u00e9, 30 au plus : ceux du m\u00eame rayon d'abord, les plus ressemblants en t\u00eate, puis les autres rayons. Choix de l'ingr\u00e9dient \u00e0 garder",
+                "operationId": "get_api_list_merge_candidates",
+                "parameters": [
+                    {
+                        "name": "q",
+                        "in": "query",
+                        "description": "Ne garde que les ingr\u00e9dients dont le nom contient ce texte (sans tenir compte de la casse ni des accents), 100 caract\u00e8res au plus",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "maxLength": 100
+                        },
+                        "example": "tom"
+                    },
+                    {
+                        "name": "slug",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Candidats \u00e0 la fusion",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "member": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/MergeCandidateDTO"
+                                            }
+                                        },
+                                        "totalItems": {
+                                            "type": "integer",
+                                            "example": 12
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "L'ingr\u00e9dient est inconnu ou appartient \u00e0 un autre utilisateur (m\u00eame pour un administrateur)"
+                    },
+                    "422": {
+                        "description": "Param\u00e8tre `q` invalide (trop long). `CANNOT_MERGE_COMMON_INGREDIENT` n'est plus renvoy\u00e9 (il n'y a plus d'ingr\u00e9dient commun), gard\u00e9 pour les clients existants"
                     }
                 }
             }
@@ -1604,6 +1751,89 @@
                     },
                     "404": {
                         "description": "Type de recette inconnu"
+                    }
+                }
+            }
+        },
+        "/api/v1/ingredients/{slug}/distinct-from": {
+            "post": {
+                "tags": [
+                    "Ingredients"
+                ],
+                "summary": "\u00ab Pas le m\u00eame \u00bb : l'utilisateur dit que l'ingr\u00e9dient de l'URL et `other` ne sont pas un doublon. La paire (dans un sens ou dans l'autre) n'est plus jamais propos\u00e9e par `GET /ingredients/duplicates`, m\u00eame apr\u00e8s un renommage. Rien d'autre ne change : aucun ingr\u00e9dient, aucune recette, aucune liste. Rejou\u00e9e, elle r\u00e9pond 204 sans rien faire. Les deux ingr\u00e9dients doivent \u00eatre \u00e0 l'utilisateur, m\u00eame pour un administrateur",
+                "operationId": "post_api_mark_ingredients_distinct",
+                "parameters": [
+                    {
+                        "name": "slug",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/MarkIngredientsDistinctPayload"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "204": {
+                        "description": "Paire m\u00e9moris\u00e9e, ou d\u00e9j\u00e0 m\u00e9moris\u00e9e"
+                    },
+                    "404": {
+                        "description": "Un des deux ingr\u00e9dients est inconnu, ou appartient \u00e0 un autre utilisateur (m\u00eame pour un administrateur)"
+                    },
+                    "422": {
+                        "description": "Corps invalide, ou `CANNOT_BE_DISTINCT_FROM_ITSELF` : les deux ingr\u00e9dients sont le m\u00eame"
+                    }
+                }
+            }
+        },
+        "/api/v1/ingredients/{slug}/merge": {
+            "post": {
+                "tags": [
+                    "Ingredients"
+                ],
+                "summary": "Fusionne deux ingr\u00e9dients de l'utilisateur : celui de l'URL dispara\u00eet, `into` est gard\u00e9. Ses recettes, ses listes de courses et ses choix du drive qui utilisaient le premier utilisent le second, qui r\u00e9cup\u00e8re aussi les conversions du premier qui lui manquent (les siennes gagnent en cas de conflit) ; les anciens slugs restent r\u00e9solus. Les deux ingr\u00e9dients doivent \u00eatre \u00e0 l'utilisateur, m\u00eame pour un administrateur. Rejou\u00e9e apr\u00e8s un succ\u00e8s, elle r\u00e9pond 204 sans rien faire. Aper\u00e7u sans \u00e9criture : `GET \u2026/merge-preview`",
+                "operationId": "post_api_merge_ingredients",
+                "parameters": [
+                    {
+                        "name": "slug",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/MergeIngredientsPayload"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "204": {
+                        "description": "Fusion faite, ou rejeu d'une fusion d\u00e9j\u00e0 faite : rien de plus \u00e0 faire"
+                    },
+                    "404": {
+                        "description": "Un des deux ingr\u00e9dients est inconnu ou appartient \u00e0 un autre utilisateur (m\u00eame pour un administrateur), ou l'ingr\u00e9dient de l'URL n'existe plus et n'a pas \u00e9t\u00e9 fusionn\u00e9 dans `into`"
+                    },
+                    "409": {
+                        "description": "`INGREDIENT_IN_SENT_LIST` : une liste envoy\u00e9e au drive utilise l'un des deux (la rouvrir ou la terminer d'abord) ; `INGREDIENT_USED_BY_ANOTHER_USER` : une ligne d'un autre utilisateur utilise l'ingr\u00e9dient de l'URL (donn\u00e9e h\u00e9rit\u00e9e) ; `INGREDIENT_MERGE_CONFLICT` : une \u00e9criture concurrente a pos\u00e9 une r\u00e9f\u00e9rence sur l'ingr\u00e9dient de l'URL, rien n'a chang\u00e9, r\u00e9essayer"
+                    },
+                    "422": {
+                        "description": "Corps invalide ; `CANNOT_MERGE_INTO_ITSELF` : les deux ingr\u00e9dients sont le m\u00eame ; `CANNOT_MERGE_COMMON_INGREDIENT` : n'est plus renvoy\u00e9 (il n'y a plus d'ingr\u00e9dient commun), gard\u00e9 pour les clients existants ; `MERGE_UNIT_MISSING` : une unit\u00e9 de l'ingr\u00e9dient de l'URL ne se convertit pas dans l'unit\u00e9 d'achat de `into`, m\u00eame apr\u00e8s avoir r\u00e9cup\u00e9r\u00e9 les conversions de l'ingr\u00e9dient de l'URL, rien n'a chang\u00e9"
                     }
                 }
             }
@@ -1710,7 +1940,7 @@
                 "tags": [
                     "Shopping lists"
                 ],
-                "summary": "Retire 1 \u00e0 la quantit\u00e9 d'un ingr\u00e9dient dans la liste active de l'utilisateur (la ligne dispara\u00eet \u00e0 z\u00e9ro)",
+                "summary": "Retire 1 \u00e0 la quantit\u00e9 d'un ingr\u00e9dient dans la liste active de l'utilisateur (la ligne dispara\u00eet \u00e0 z\u00e9ro). Un ancien slug (ancien commun dont l'utilisateur a re\u00e7u une copie, ingr\u00e9dient fusionn\u00e9) d\u00e9signe son ingr\u00e9dient actuel, qui est celui de la liste",
                 "operationId": "post_api_decrease_ingredient",
                 "parameters": [
                     {
@@ -2203,7 +2433,7 @@
                     "Auth"
                 ],
                 "summary": "Obtenir un nouveau JWT avec le cookie de rafra\u00eechissement",
-                "description": "Public : le JWT est expir\u00e9, l'identit\u00e9 vient du seul cookie `repas_refresh` (HttpOnly, SameSite=Strict, `Path=/api/auth`), pos\u00e9 \u00e0 la connexion. Le jeton est \u00e0 usage unique : la r\u00e9ponse en pose un nouveau (rotation). Pr\u00e9senter un jeton d\u00e9j\u00e0 utilis\u00e9 r\u00e9voque toute la connexion (ADR 0015).",
+                "description": "Public : le JWT est expir\u00e9, l'identit\u00e9 vient du seul cookie `repas_refresh` (HttpOnly, SameSite=Strict, `Path=/api/auth`), pos\u00e9 \u00e0 la connexion. Le jeton est \u00e0 usage unique : la r\u00e9ponse en pose un nouveau (rotation). Pr\u00e9senter un jeton d\u00e9j\u00e0 utilis\u00e9 r\u00e9voque toute la connexion (ADR 0015). Un \u00e9change r\u00e9ussi compte comme une connexion : il fait avancer la derni\u00e8re connexion du compte que voit l'administrateur (`lastLoginAt` de `GET /api/v1/users`), au plus une fois toutes les 10 minutes ; un refus n'\u00e9crit rien.",
                 "operationId": "post_api_auth_refresh",
                 "responses": {
                     "200": {
@@ -2335,6 +2565,34 @@
                 "security": []
             }
         },
+        "/api/v1/users/me/app-version": {
+            "put": {
+                "tags": [
+                    "Current user"
+                ],
+                "summary": "Retient la version de l'application install\u00e9e pour l'utilisateur connect\u00e9",
+                "description": "Une ligne par compte et par plateforme, remplac\u00e9e \u00e0 chaque appel (idempotent). Seule la version est retenue, avec l'heure : aucun identifiant d'appareil, aucun mod\u00e8le de t\u00e9l\u00e9phone. Au plus une \u00e9criture par minute et par compte : au-del\u00e0, la r\u00e9ponse reste `204` et rien n'est \u00e9crit. La version ne sert qu'\u00e0 informer (`appUpdate` de `GET /api/v1/me`, liste des comptes de l'administration), jamais \u00e0 accorder un droit.",
+                "operationId": "put_api_update_user_app_version",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateUserAppVersionPayload"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "204": {
+                        "description": "Version retenue (ou ignor\u00e9e sans erreur : une version a d\u00e9j\u00e0 \u00e9t\u00e9 retenue pour ce compte dans la minute)"
+                    },
+                    "422": {
+                        "description": "Corps invalide : plateforme autre que `android`, version qui n'est pas trois nombres s\u00e9par\u00e9s par des points, ou de plus de 20 caract\u00e8res"
+                    }
+                }
+            }
+        },
         "/api/v1/me/settings": {
             "put": {
                 "tags": [
@@ -2399,7 +2657,7 @@
                 "tags": [
                     "Drive"
                 ],
-                "summary": "Remplace d'un coup la pr\u00e9f\u00e9rence de l'utilisateur connect\u00e9 pour un ingr\u00e9dient : produits accept\u00e9s dans l'ordre, produits refus\u00e9s, ou \u00ab j'en ai toujours \u00bb (sans produit ni \u00ab j'en ai toujours \u00bb, la pr\u00e9f\u00e9rence est supprim\u00e9e)",
+                "summary": "Remplace d'un coup la pr\u00e9f\u00e9rence de l'utilisateur connect\u00e9 pour un ingr\u00e9dient : produits accept\u00e9s dans l'ordre, produits refus\u00e9s, ou \u00ab j'en ai toujours \u00bb (sans produit ni \u00ab j'en ai toujours \u00bb, la pr\u00e9f\u00e9rence est supprim\u00e9e). Un ancien slug (ancien commun dont l'utilisateur a re\u00e7u une copie, ingr\u00e9dient fusionn\u00e9) d\u00e9signe son ingr\u00e9dient actuel : la pr\u00e9f\u00e9rence est toujours celle de l'ingr\u00e9dient actuel",
                 "operationId": "put_api_replace_ingredient_preference",
                 "parameters": [
                     {
@@ -2446,7 +2704,7 @@
                 "tags": [
                     "Drive"
                 ],
-                "summary": "Oublie toute la pr\u00e9f\u00e9rence de l'utilisateur connect\u00e9 pour un ingr\u00e9dient : produits accept\u00e9s et refus\u00e9s, ou \u00ab j'en ai toujours \u00bb (les produits restent connus)",
+                "summary": "Oublie toute la pr\u00e9f\u00e9rence de l'utilisateur connect\u00e9 pour un ingr\u00e9dient : produits accept\u00e9s et refus\u00e9s, ou \u00ab j'en ai toujours \u00bb (les produits restent connus). Un ancien slug (ancien commun dont l'utilisateur a re\u00e7u une copie, ingr\u00e9dient fusionn\u00e9) d\u00e9signe son ingr\u00e9dient actuel",
                 "operationId": "delete_api_forget_choice",
                 "parameters": [
                     {
@@ -2703,7 +2961,7 @@
                 "tags": [
                     "Drive"
                 ],
-                "summary": "M\u00e9morise un lot d'intentions de l'agent (produits choisis, refus\u00e9s, \u00ab j'en ai toujours \u00bb) dans les pr\u00e9f\u00e9rences de l'utilisateur connect\u00e9. La fiche d'un produit d\u00e9j\u00e0 connu (commune au magasin) n'est compl\u00e9t\u00e9e que l\u00e0 o\u00f9 elle est vide : libell\u00e9, contenu et code-barres ne sont jamais r\u00e9\u00e9crits ; le prix ne change que par `REFRESH_PRICE` ou par l'ajout d'un produit que l'utilisateur accepte d\u00e9j\u00e0",
+                "summary": "M\u00e9morise un lot d'intentions de l'agent (produits choisis, refus\u00e9s, \u00ab j'en ai toujours \u00bb) dans les pr\u00e9f\u00e9rences de l'utilisateur connect\u00e9. Un ancien slug (ancien commun dont l'utilisateur a re\u00e7u une copie, ingr\u00e9dient fusionn\u00e9) est remplac\u00e9 par celui de son ingr\u00e9dient actuel : aucune pr\u00e9f\u00e9rence n'est cr\u00e9\u00e9e sous un ancien slug. La fiche d'un produit d\u00e9j\u00e0 connu (commune au magasin) n'est compl\u00e9t\u00e9e que l\u00e0 o\u00f9 elle est vide : libell\u00e9, contenu et code-barres ne sont jamais r\u00e9\u00e9crits ; le prix ne change que par `REFRESH_PRICE` ou par l'ajout d'un produit que l'utilisateur accepte d\u00e9j\u00e0. Un `ADD_PRODUCT` peut porter la recherche qui a fait trouver le produit (`searchQuery`, m\u00e9moris\u00e9e avec la pr\u00e9f\u00e9rence de cette enseigne et de ce magasin ; cl\u00e9 absente : gard\u00e9e, `null` : effac\u00e9e) ; l'intention `NOTE_SEARCH` (DRV-653) m\u00e9morise cette recherche seule, sans produit, quand le produit n'est pas m\u00e9moris\u00e9 (pris pour cette fois seulement) et la contenance du produit dans l'unit\u00e9 de la liste (`product.packSize`, DRV-652, priv\u00e9e \u00e0 l'utilisateur et propre \u00e0 ce produit ; cl\u00e9 absente : gard\u00e9e pour le m\u00eame produit, `null` : effac\u00e9e)",
                 "operationId": "put_api_save_product_choices",
                 "requestBody": {
                     "required": true,
@@ -2726,7 +2984,7 @@
                         "description": "Pas de magasin enregistr\u00e9 (message `DRIVE_NOT_CONFIGURED`), ou `storeId` n'est pas le magasin courant (message `DRIVE_STORE_MISMATCH`)"
                     },
                     "422": {
-                        "description": "Corps invalide, ou intention refus\u00e9e (message `DRIVE_CHOICE_INVALID`) : identifiant, libell\u00e9, contenu ou prix hors des bornes, plus de 200 intentions, plus de 5 produits accept\u00e9s ou 20 refus\u00e9s pour un ingr\u00e9dient, produit \u00e0 la fois choisi et refus\u00e9 pour un ingr\u00e9dient ; ou plafond atteint (message `DRIVE_LIMIT_REACHED`) : plus de 5 000 \u00e9critures de produits dans la journ\u00e9e UTC, ou plus de 1 000 pr\u00e9f\u00e9rences dans le magasin. Rien n'est enregistr\u00e9"
+                        "description": "Corps invalide, ou intention refus\u00e9e (message `DRIVE_CHOICE_INVALID`) : identifiant, libell\u00e9, contenu ou prix hors des bornes, plus de 200 intentions, plus de 5 produits accept\u00e9s ou 20 refus\u00e9s pour un ingr\u00e9dient, produit \u00e0 la fois choisi et refus\u00e9 pour un ingr\u00e9dient, recherche m\u00e9moris\u00e9e sur une autre action que `ADD_PRODUCT` ou `NOTE_SEARCH` (m\u00eame `null`), `NOTE_SEARCH` sans recherche (cl\u00e9 absente ou `null`), avec un produit ou un placement, ou sur un ingr\u00e9dient \u00ab j'en ai toujours \u00bb, contenance (`product.packSize`, m\u00eame `null`) sur une autre action que `ADD_PRODUCT` ; ou recherche m\u00e9moris\u00e9e refus\u00e9e (message `DRIVE_SEARCH_QUERY_INVALID`) : moins de 2 ou plus de 80 caract\u00e8res une fois les espaces r\u00e9duites, caract\u00e8re de contr\u00f4le ou invisible ; ou contenance refus\u00e9e (message `DRIVE_PACK_SIZE_INVALID`) : valeur hors de 0,001 \u00e0 9 999 ou avec plus de trois d\u00e9cimales, slug d'unit\u00e9 mal form\u00e9 ou qui n'existe pas ; ou plafond atteint (message `DRIVE_LIMIT_REACHED`) : plus de 5 000 \u00e9critures de produits dans la journ\u00e9e UTC, ou plus de 1 000 pr\u00e9f\u00e9rences dans le magasin. Rien n'est enregistr\u00e9"
                     },
                     "429": {
                         "$ref": "#/components/responses/DriveWriteRateLimited"
@@ -2815,9 +3073,9 @@
                 ],
                 "properties": {
                     "name": {
-                        "description": "Nom de l'ingr\u00e9dient",
+                        "description": "Nom de l'ingr\u00e9dient (200 caract\u00e8res au plus)",
                         "type": "string",
-                        "maxLength": 255,
+                        "maxLength": 200,
                         "example": "Pralin\u00e9"
                     },
                     "departmentSlug": {
@@ -2844,6 +3102,13 @@
                         "exclusiveMinimum": true,
                         "example": 1000,
                         "nullable": true
+                    },
+                    "isBase": {
+                        "description": "Marqueur \u00ab ingr\u00e9dient de base \u00bb : l'ingr\u00e9dient est copi\u00e9 aux nouveaux comptes. Facultatif : absent ou `null`, il reste inchang\u00e9 (`PUT`) ou faux (`POST`). Seul le propri\u00e9taire du catalogue peut le changer, sur un ingr\u00e9dient \u00e0 lui : tout autre compte re\u00e7oit `403` `INGREDIENT_BASE_FORBIDDEN` quand la valeur envoy\u00e9e diff\u00e8re de l'actuelle",
+                        "type": "boolean",
+                        "default": null,
+                        "example": false,
+                        "nullable": true
                     }
                 },
                 "type": "object"
@@ -2856,7 +3121,7 @@
                 ],
                 "properties": {
                     "ingredientSlug": {
-                        "description": "Slug de l'ingr\u00e9dient (commun, ou personnalis\u00e9 par l'auteur de la recette)",
+                        "description": "Slug de l'ingr\u00e9dient (un ingr\u00e9dient de l'auteur de la recette)",
                         "type": "string",
                         "example": "pate"
                     },
@@ -2994,6 +3259,18 @@
                 },
                 "type": "object"
             },
+            "GetMergePreviewRequestQuery": {
+                "required": [
+                    "into"
+                ],
+                "properties": {
+                    "into": {
+                        "type": "string",
+                        "maxLength": 255
+                    }
+                },
+                "type": "object"
+            },
             "ListAvailableIngredientsRequestQuery": {
                 "properties": {
                     "q": {
@@ -3001,6 +3278,45 @@
                         "default": null,
                         "maxLength": 100,
                         "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "ListMergeCandidatesRequestQuery": {
+                "properties": {
+                    "q": {
+                        "type": "string",
+                        "default": null,
+                        "maxLength": 100,
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "MarkIngredientsDistinctPayload": {
+                "required": [
+                    "other"
+                ],
+                "properties": {
+                    "other": {
+                        "description": "Slug de l'autre ingr\u00e9dient de la paire",
+                        "type": "string",
+                        "maxLength": 255,
+                        "example": "tomates-0a1b2c3d"
+                    }
+                },
+                "type": "object"
+            },
+            "MergeIngredientsPayload": {
+                "required": [
+                    "into"
+                ],
+                "properties": {
+                    "into": {
+                        "description": "Slug de l'ingr\u00e9dient \u00e0 garder : celui de l'URL dispara\u00eet et tout ce qui l'utilisait utilise celui-ci",
+                        "type": "string",
+                        "maxLength": 255,
+                        "example": "tomate-0a1b2c3d"
                     }
                 },
                 "type": "object"
@@ -3127,6 +3443,30 @@
                         "type": "string",
                         "maxLength": 255,
                         "example": "alexiane@example.com"
+                    }
+                },
+                "type": "object"
+            },
+            "UpdateUserAppVersionPayload": {
+                "required": [
+                    "platform",
+                    "version"
+                ],
+                "properties": {
+                    "platform": {
+                        "description": "Plateforme de l'application install\u00e9e : `android` seulement",
+                        "type": "string",
+                        "enum": [
+                            "android"
+                        ],
+                        "example": "android"
+                    },
+                    "version": {
+                        "description": "Version de l'application : trois nombres s\u00e9par\u00e9s par des points, 20 caract\u00e8res au plus (ni suffixe, ni quatri\u00e8me nombre)",
+                        "type": "string",
+                        "maxLength": 20,
+                        "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+                        "example": "0.1.8"
                     }
                 },
                 "type": "object"
@@ -3302,7 +3642,8 @@
                     "ADD_PRODUCT",
                     "REJECT_PRODUCT",
                     "HAVE_AT_HOME",
-                    "REFRESH_PRICE"
+                    "REFRESH_PRICE",
+                    "NOTE_SEARCH"
                 ]
             },
             "Placement": {
@@ -3389,6 +3730,29 @@
                 },
                 "type": "object"
             },
+            "PackSizePayload": {
+                "required": [
+                    "value",
+                    "unitSlug"
+                ],
+                "properties": {
+                    "value": {
+                        "description": "Combien d'unit\u00e9s de la liste tiennent dans le produit : de 0,001 \u00e0 9 999, trois d\u00e9cimales au plus",
+                        "type": "number",
+                        "format": "float",
+                        "maximum": 9999,
+                        "minimum": 0.001,
+                        "example": 20
+                    },
+                    "unitSlug": {
+                        "description": "Slug de l'unit\u00e9 de la liste dans laquelle la valeur est compt\u00e9e (`needed.unitSlug` de la ligne du plan) : une unit\u00e9 qui existe dans Repas",
+                        "type": "string",
+                        "pattern": "^[a-z0-9-]{1,255}$",
+                        "example": "tranche"
+                    }
+                },
+                "type": "object"
+            },
             "ProductPayload": {
                 "required": [
                     "retailerProductId"
@@ -3453,6 +3817,16 @@
                         "minimum": 1,
                         "example": 4101,
                         "nullable": true
+                    },
+                    "packSize": {
+                        "description": "La contenance du produit dans l'unit\u00e9 de la liste de courses (DRV-652), pour `ADD_PRODUCT` seulement : combien d'unit\u00e9s de la liste (20 tranches) tiennent dans ce produit, r\u00e9pondu par la personne quand l'unit\u00e9 de la liste n'a pas de dimension (tranche, cuill\u00e8re\u2026) et que le contenu net ne permet pas de calculer le nombre de produits. Priv\u00e9e \u00e0 l'utilisateur et propre \u00e0 CE produit dans sa pr\u00e9f\u00e9rence : changer de produit ne la reprend jamais. L'unit\u00e9 doit exister, sinon `422` `DRIVE_PACK_SIZE_INVALID` (comme une valeur hors de 0,001 \u00e0 9 999 ou avec plus de trois d\u00e9cimales), et rien n'est enregistr\u00e9. **Cl\u00e9 absente : la contenance d\u00e9j\u00e0 m\u00e9moris\u00e9e pour ce produit est gard\u00e9e** (une application qui ne conna\u00eet pas ce champ n'efface rien, un produit nouveau n'en a pas ; le `default: null` que le g\u00e9n\u00e9rateur \u00e9crit ici est un artefact, une cl\u00e9 absente n'est pas `null`). **`null` : elle est effac\u00e9e.** Un objet : elle est remplac\u00e9e. Sur une autre action, la mentionner (objet ou `null`) est `422` `DRIVE_CHOICE_INVALID`",
+                        "default": null,
+                        "nullable": true,
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/PackSizePayload"
+                            }
+                        ]
                     }
                 },
                 "type": "object"
@@ -3496,6 +3870,14 @@
                                 "$ref": "#/components/schemas/ProductPayload"
                             }
                         ]
+                    },
+                    "searchQuery": {
+                        "description": "Le texte qui a fait trouver le produit sur le site de l'enseigne (DRV-650), pour `ADD_PRODUCT` et `NOTE_SEARCH` seulement : espaces de bord retir\u00e9es et suites d'espaces r\u00e9duites \u00e0 une seule, 2 \u00e0 80 caract\u00e8res, aucun caract\u00e8re de contr\u00f4le ni invisible (sinon `422` `DRIVE_SEARCH_QUERY_INVALID`, et rien n'est enregistr\u00e9). **Cl\u00e9 absente : la recherche d\u00e9j\u00e0 m\u00e9moris\u00e9e est gard\u00e9e** (une application qui ne conna\u00eet pas ce champ n'efface rien ; le `default: null` que le g\u00e9n\u00e9rateur \u00e9crit ici est un artefact, une cl\u00e9 absente n'est pas `null`). **`null` : elle est effac\u00e9e.** Un texte : elle est remplac\u00e9e. La recherche est propre \u00e0 l'enseigne, au magasin et \u00e0 l'ingr\u00e9dient de ce choix, et n'est jamais reprise d'ailleurs. **Obligatoire (un texte) pour `NOTE_SEARCH`** : absente ou `null` y est `422` `DRIVE_CHOICE_INVALID`. Sur une autre action, la mentionner (texte ou `null`) est `422` `DRIVE_CHOICE_INVALID`",
+                        "type": "string",
+                        "default": null,
+                        "maxLength": 80,
+                        "example": "c\u00e9r\u00e9ales coussins chocolat",
+                        "nullable": true
                     }
                 },
                 "type": "object"
@@ -3527,6 +3909,92 @@
                 },
                 "type": "object"
             },
+            "DuplicateIngredientSideDTO": {
+                "required": [
+                    "slug",
+                    "name",
+                    "departmentSlug",
+                    "departmentName",
+                    "purchaseUnitName",
+                    "recipeCount",
+                    "listCount"
+                ],
+                "properties": {
+                    "slug": {
+                        "description": "Identifiant de l'ingr\u00e9dient (slug)",
+                        "type": "string",
+                        "example": "tomate-0a1b2c3d"
+                    },
+                    "name": {
+                        "type": "string",
+                        "example": "Tomate"
+                    },
+                    "departmentSlug": {
+                        "description": "Identifiant du rayon (slug) : le m\u00eame pour les deux ingr\u00e9dients de la proposition",
+                        "type": "string",
+                        "example": "fruit-et-legume"
+                    },
+                    "departmentName": {
+                        "type": "string",
+                        "example": "Fruit & l\u00e9gume"
+                    },
+                    "purchaseUnitName": {
+                        "description": "Nom de l'unit\u00e9 d'achat",
+                        "type": "string",
+                        "example": "kilo"
+                    },
+                    "recipeCount": {
+                        "description": "Nombre de recettes de l'utilisateur qui utilisent cet ingr\u00e9dient (0 s'il n'en a aucune)",
+                        "type": "integer",
+                        "example": 12
+                    },
+                    "listCount": {
+                        "description": "Nombre de listes de courses de l'utilisateur qui utilisent cet ingr\u00e9dient (0 s'il n'en a aucune)",
+                        "type": "integer",
+                        "example": 3
+                    }
+                },
+                "type": "object"
+            },
+            "DuplicateIngredientDTO": {
+                "required": [
+                    "first",
+                    "second",
+                    "score",
+                    "level",
+                    "suggestedKeep"
+                ],
+                "properties": {
+                    "first": {
+                        "$ref": "#/components/schemas/DuplicateIngredientSideDTO"
+                    },
+                    "second": {
+                        "$ref": "#/components/schemas/DuplicateIngredientSideDTO"
+                    },
+                    "score": {
+                        "description": "Ressemblance des noms normalis\u00e9s, de 0,90 \u00e0 1 (Jaro-Winkler, 1 pour deux noms identiques une fois normalis\u00e9s)",
+                        "type": "number",
+                        "format": "float",
+                        "example": 1
+                    },
+                    "level": {
+                        "description": "`EXACT` : le m\u00eame nom une fois normalis\u00e9 (casse, accents, pluriel, mots vides) ; `TYPO` : \u00e0 une faute de frappe pr\u00e8s (0,97 au moins) ; `SUGGESTION` : assez proche pour demander (de 0,90 \u00e0 0,97). Tol\u00e9rer une valeur inconnue",
+                        "type": "string",
+                        "enum": [
+                            "EXACT",
+                            "TYPO",
+                            "SUGGESTION"
+                        ],
+                        "example": "EXACT"
+                    },
+                    "suggestedKeep": {
+                        "description": "Slug de celui des deux \u00e0 garder par d\u00e9faut : le plus utilis\u00e9 en recettes, puis en listes, puis le nom le plus court, puis l'ordre alphab\u00e9tique. `first.slug` ou `second.slug`",
+                        "type": "string",
+                        "example": "tomate-0a1b2c3d"
+                    }
+                },
+                "type": "object"
+            },
             "IngredientSearchResultDTO": {
                 "required": [
                     "slug",
@@ -3553,7 +4021,7 @@
                         "example": "g"
                     },
                     "canEdit": {
-                        "description": "L'utilisateur peut modifier cet ingr\u00e9dient : le sien, ou un ingr\u00e9dient commun s'il est administrateur",
+                        "description": "Toujours vrai : l'ingr\u00e9dient est \u00e0 l'utilisateur. Le champ reste pour les clients existants",
                         "type": "boolean"
                     },
                     "departmentSlug": {
@@ -3601,7 +4069,7 @@
                         "nullable": true
                     },
                     "creatorEmail": {
-                        "description": "Email du cr\u00e9ateur de l'ingr\u00e9dient, null pour un ingr\u00e9dient commun ou une conversion commune",
+                        "description": "Email du propri\u00e9taire de l'ingr\u00e9dient (toujours le lecteur), null pour une conversion g\u00e9n\u00e9rale",
                         "type": "string",
                         "nullable": true
                     },
@@ -3863,7 +4331,11 @@
                     "purchaseUnitName",
                     "purchaseUnitSymbol",
                     "hasSameUnit",
-                    "canEdit"
+                    "canEdit",
+                    "recipeCount",
+                    "listCount",
+                    "isBase",
+                    "canSetBase"
                 ],
                 "properties": {
                     "slug": {
@@ -3924,13 +4396,170 @@
                         "nullable": true
                     },
                     "creatorId": {
-                        "description": "Identifiant du cr\u00e9ateur, null pour un ingr\u00e9dient commun",
+                        "description": "Identifiant du propri\u00e9taire de l'ingr\u00e9dient (le lecteur)",
                         "type": "string",
                         "nullable": true
                     },
                     "canEdit": {
-                        "description": "L'utilisateur peut modifier cet ingr\u00e9dient : le sien, ou un ingr\u00e9dient commun s'il est administrateur",
+                        "description": "Toujours vrai : l'ingr\u00e9dient est \u00e0 l'utilisateur. Le champ reste pour les clients existants",
                         "type": "boolean"
+                    },
+                    "recipeCount": {
+                        "description": "Nombre de recettes de l'utilisateur qui utilisent cet ingr\u00e9dient (\u00ab Utilis\u00e9 dans 7 recettes \u00b7 2 listes \u00bb), toujours renseign\u00e9 ; 0 si aucune, ou si l'ingr\u00e9dient est \u00e0 quelqu'un d'autre",
+                        "type": "integer",
+                        "example": 7
+                    },
+                    "listCount": {
+                        "description": "Nombre de listes de courses de l'utilisateur qui utilisent cet ingr\u00e9dient (une ligne ou un ingr\u00e9dient ajout\u00e9 \u00e0 la main), toujours renseign\u00e9 ; 0 si aucune, ou si l'ingr\u00e9dient est \u00e0 quelqu'un d'autre",
+                        "type": "integer",
+                        "example": 2
+                    },
+                    "isBase": {
+                        "description": "Marqueur \u00ab ingr\u00e9dient de base \u00bb : l'ingr\u00e9dient est copi\u00e9 aux nouveaux comptes. Toujours \u00e9crit, jamais `null` ; vrai seulement pour le propri\u00e9taire du catalogue qui lit un ingr\u00e9dient de son catalogue, faux pour tout autre lecteur",
+                        "type": "boolean"
+                    },
+                    "canSetBase": {
+                        "description": "Le lecteur peut poser le marqueur \u00ab de base \u00bb sur cet ingr\u00e9dient : il est le propri\u00e9taire du catalogue et l'ingr\u00e9dient est \u00e0 lui. Toujours \u00e9crit, jamais `null` : le front s'appuie sur ce champ, pas sur le r\u00f4le administrateur",
+                        "type": "boolean"
+                    }
+                },
+                "type": "object"
+            },
+            "MergeIngredientDTO": {
+                "required": [
+                    "slug",
+                    "name",
+                    "departmentSlug",
+                    "departmentName",
+                    "purchaseUnitName"
+                ],
+                "properties": {
+                    "slug": {
+                        "description": "Identifiant de l'ingr\u00e9dient (slug)",
+                        "type": "string",
+                        "example": "tomate"
+                    },
+                    "name": {
+                        "type": "string",
+                        "example": "Tomate"
+                    },
+                    "departmentSlug": {
+                        "description": "Identifiant du rayon (slug)",
+                        "type": "string",
+                        "example": "fruit-et-legume"
+                    },
+                    "departmentName": {
+                        "type": "string",
+                        "example": "Fruit & l\u00e9gume"
+                    },
+                    "purchaseUnitName": {
+                        "description": "Nom de l'unit\u00e9 d'achat",
+                        "type": "string",
+                        "example": "kilo"
+                    }
+                },
+                "type": "object"
+            },
+            "MergeUnitDTO": {
+                "required": [
+                    "slug",
+                    "name"
+                ],
+                "properties": {
+                    "slug": {
+                        "description": "Identifiant de l'unit\u00e9 (slug)",
+                        "type": "string",
+                        "example": "tranche"
+                    },
+                    "name": {
+                        "type": "string",
+                        "example": "tranche"
+                    }
+                },
+                "type": "object"
+            },
+            "MergePreviewDTO": {
+                "required": [
+                    "keep",
+                    "absorbed",
+                    "recipeCount",
+                    "listCount",
+                    "driveChoiceCount",
+                    "departmentChanges",
+                    "listQuantitiesConverted",
+                    "missingUnits",
+                    "canMerge",
+                    "resultRecipeCount",
+                    "resultListCount",
+                    "recoveredConversionCount"
+                ],
+                "properties": {
+                    "keep": {
+                        "$ref": "#/components/schemas/MergeIngredientDTO"
+                    },
+                    "absorbed": {
+                        "$ref": "#/components/schemas/MergeIngredientDTO"
+                    },
+                    "recipeCount": {
+                        "description": "Nombre de recettes de l'utilisateur qui utilisent l'ingr\u00e9dient absorb\u00e9 (elles passent sur le gard\u00e9). Ce n'est PAS le total d'apr\u00e8s la fusion : voir resultRecipeCount",
+                        "type": "integer",
+                        "example": 7
+                    },
+                    "listCount": {
+                        "description": "Nombre de listes de courses de l'utilisateur qui utilisent l'ingr\u00e9dient absorb\u00e9 (elles passent sur le gard\u00e9). Ce n'est PAS le total d'apr\u00e8s la fusion : voir resultListCount",
+                        "type": "integer",
+                        "example": 2
+                    },
+                    "driveChoiceCount": {
+                        "description": "Nombre de choix du drive de l'ingr\u00e9dient absorb\u00e9 qui passent sur le gard\u00e9, toutes enseignes et tous magasins ; pas ceux qui sont supprim\u00e9s parce que le gard\u00e9 a d\u00e9j\u00e0 le sien dans le m\u00eame magasin",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "departmentChanges": {
+                        "description": "Le rayon de l'ingr\u00e9dient absorb\u00e9 n'est pas celui du gard\u00e9 : le rayon du gard\u00e9 l'emporte",
+                        "type": "boolean"
+                    },
+                    "listQuantitiesConverted": {
+                        "description": "Des quantit\u00e9s de listes de courses sont r\u00e9-exprim\u00e9es dans l'unit\u00e9 d'achat de l'ingr\u00e9dient gard\u00e9 (les unit\u00e9s d'achat diff\u00e8rent) ; les quantit\u00e9s des recettes ne changent jamais",
+                        "type": "boolean"
+                    },
+                    "missingUnits": {
+                        "description": "Les unit\u00e9s de l'ingr\u00e9dient absorb\u00e9 que l'ingr\u00e9dient gard\u00e9 ne sait pas convertir en son unit\u00e9 d'achat, M\u00caME APR\u00c8S avoir r\u00e9cup\u00e9r\u00e9 les conversions de l'absorb\u00e9 (recoveredConversionCount) : une vraie impossibilit\u00e9 ; vide si rien ne manque. Renseign\u00e9e m\u00eame quand un autre refus passe avant",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/MergeUnitDTO"
+                        }
+                    },
+                    "blockedBy": {
+                        "description": "Pourquoi la fusion serait refus\u00e9e (le premier cas dans l'ordre de la liste), null si elle est possible. SAME_INGREDIENT : les deux ingr\u00e9dients sont le m\u00eame. COMMON_INGREDIENT : n'est plus rendu (il n'y a plus d'ingr\u00e9dient commun), d\u00e9clar\u00e9 pour les clients existants. USED_BY_ANOTHER_USER : une ligne d'un autre utilisateur utilise l'ingr\u00e9dient absorb\u00e9. IN_SENT_LIST : une liste envoy\u00e9e au drive utilise l'un des deux. UNIT_MISSING : voir missingUnits",
+                        "type": "string",
+                        "enum": [
+                            "SAME_INGREDIENT",
+                            "COMMON_INGREDIENT",
+                            "USED_BY_ANOTHER_USER",
+                            "IN_SENT_LIST",
+                            "UNIT_MISSING"
+                        ],
+                        "nullable": true
+                    },
+                    "canMerge": {
+                        "description": "La fusion est possible : blockedBy est null",
+                        "type": "boolean"
+                    },
+                    "resultRecipeCount": {
+                        "description": "Nombre de recettes DISTINCTES de l'utilisateur qui utiliseront l'ingr\u00e9dient gard\u00e9 APR\u00c8S la fusion : celles qui l'utilisent d\u00e9j\u00e0, plus celles de l'ingr\u00e9dient absorb\u00e9 ; une recette qui utilisait d\u00e9j\u00e0 les deux compte une fois. C'est le total \u00e0 annoncer (\"sera utilis\u00e9 dans N recettes\"), alors que recipeCount ne compte que ce qui se d\u00e9place. Toujours renseign\u00e9 (0 quand les deux ingr\u00e9dients sont le m\u00eame ou qu'un commun est en jeu : rien n'est lu)",
+                        "type": "integer",
+                        "example": 8
+                    },
+                    "resultListCount": {
+                        "description": "Nombre de listes de courses DISTINCTES de l'utilisateur qui utiliseront l'ingr\u00e9dient gard\u00e9 APR\u00c8S la fusion (une ligne ou un ingr\u00e9dient ajout\u00e9 \u00e0 la main ; une liste qui avait d\u00e9j\u00e0 les deux compte une fois). Toujours renseign\u00e9, comme resultRecipeCount",
+                        "type": "integer",
+                        "example": 3
+                    },
+                    "recoveredConversionCount": {
+                        "description": "Nombre de conversions de l'ingr\u00e9dient absorb\u00e9 que l'ingr\u00e9dient gard\u00e9 n'avait pas et qui lui sont copi\u00e9es par la fusion : celles dont les deux unit\u00e9s ne sont pas encore reli\u00e9es chez lui ; si elles le sont, celles du gard\u00e9 gagnent et rien n'est copi\u00e9. Toujours 0 quand la fusion est refus\u00e9e (canMerge faux) : rien n'est \u00e9crit",
+                        "type": "integer",
+                        "example": 1
                     }
                 },
                 "type": "object"
@@ -4301,7 +4930,8 @@
                     "slug",
                     "name",
                     "purchaseUnitSymbol",
-                    "canEdit"
+                    "canEdit",
+                    "isBase"
                 ],
                 "properties": {
                     "slug": {
@@ -4319,7 +4949,68 @@
                         "example": "g"
                     },
                     "canEdit": {
-                        "description": "L'utilisateur peut modifier cet ingr\u00e9dient : le sien, ou un ingr\u00e9dient commun s'il est administrateur",
+                        "description": "Toujours vrai : l'ingr\u00e9dient est \u00e0 l'utilisateur. Le champ reste pour les clients existants",
+                        "type": "boolean"
+                    },
+                    "isBase": {
+                        "description": "Marqueur \u00ab ingr\u00e9dient de base \u00bb : l'ingr\u00e9dient est copi\u00e9 aux nouveaux comptes. Toujours \u00e9crit, jamais `null` ; vrai seulement pour le propri\u00e9taire du catalogue, faux pour tout autre lecteur",
+                        "type": "boolean"
+                    }
+                },
+                "type": "object"
+            },
+            "MergeCandidateDTO": {
+                "required": [
+                    "slug",
+                    "name",
+                    "departmentSlug",
+                    "departmentName",
+                    "purchaseUnitName",
+                    "recipeCount",
+                    "listCount",
+                    "sameDepartment",
+                    "veryClose"
+                ],
+                "properties": {
+                    "slug": {
+                        "description": "Identifiant de l'ingr\u00e9dient (slug)",
+                        "type": "string",
+                        "example": "tomate"
+                    },
+                    "name": {
+                        "type": "string",
+                        "example": "Tomate"
+                    },
+                    "departmentSlug": {
+                        "description": "Identifiant du rayon (slug)",
+                        "type": "string",
+                        "example": "fruit-et-legume"
+                    },
+                    "departmentName": {
+                        "type": "string",
+                        "example": "Fruit & l\u00e9gume"
+                    },
+                    "purchaseUnitName": {
+                        "description": "Nom de l'unit\u00e9 d'achat",
+                        "type": "string",
+                        "example": "kilo"
+                    },
+                    "recipeCount": {
+                        "description": "Nombre de recettes de l'utilisateur qui utilisent cet ingr\u00e9dient",
+                        "type": "integer",
+                        "example": 12
+                    },
+                    "listCount": {
+                        "description": "Nombre de listes de courses de l'utilisateur qui utilisent cet ingr\u00e9dient",
+                        "type": "integer",
+                        "example": 3
+                    },
+                    "sameDepartment": {
+                        "description": "Le rayon est celui de l'ingr\u00e9dient qu'on veut fusionner",
+                        "type": "boolean"
+                    },
+                    "veryClose": {
+                        "description": "Le nom est le m\u00eame (casse, accents, pluriel) ou \u00e0 une faute de frappe pr\u00e8s : le meilleur choix probable",
                         "type": "boolean"
                     }
                 },
@@ -4367,13 +5058,39 @@
                 },
                 "type": "object"
             },
+            "AppUpdateDTO": {
+                "required": [
+                    "outdated"
+                ],
+                "properties": {
+                    "latest": {
+                        "description": "Derni\u00e8re version publi\u00e9e de l'application (`APP_LATEST_VERSION` du serveur), `null` si le serveur ne la conna\u00eet pas",
+                        "type": "string",
+                        "example": "0.1.10",
+                        "nullable": true
+                    },
+                    "minimum": {
+                        "description": "Plus ancienne version de l'application encore attendue (`APP_MIN_VERSION` du serveur), `null` si aucune",
+                        "type": "string",
+                        "example": "0.1.9",
+                        "nullable": true
+                    },
+                    "outdated": {
+                        "description": "Vrai si la derni\u00e8re version de l'application vue pour ce compte est plus ancienne que `latest` ou que `minimum` (comparaison nombre par nombre). Faux si aucune version n'est connue pour ce compte (navigateur seul, application qui ne l'a jamais envoy\u00e9e) ou si le serveur ne conna\u00eet ni `latest` ni `minimum`",
+                        "type": "boolean",
+                        "example": false
+                    }
+                },
+                "type": "object"
+            },
             "CurrentUserDTO": {
                 "required": [
                     "id",
                     "email",
                     "roles",
                     "isAdmin",
-                    "defaultServing"
+                    "defaultServing",
+                    "appUpdate"
                 ],
                 "properties": {
                     "id": {
@@ -4403,6 +5120,9 @@
                         "description": "Nombre de personnes propos\u00e9 par d\u00e9faut pour une recette",
                         "type": "integer",
                         "example": 4
+                    },
+                    "appUpdate": {
+                        "$ref": "#/components/schemas/AppUpdateDTO"
                     }
                 },
                 "type": "object"
@@ -4416,9 +5136,11 @@
                     "ingredientCount",
                     "shoppingListCount",
                     "createdAt",
+                    "lastLoginAt",
                     "isDisabled",
                     "isAdmin",
-                    "status"
+                    "status",
+                    "appOutdated"
                 ],
                 "properties": {
                     "id": {
@@ -4455,6 +5177,12 @@
                         "type": "string",
                         "example": "2026-10-13T08:56:40+02:00"
                     },
+                    "lastLoginAt": {
+                        "description": "Derni\u00e8re connexion du compte (ATOM, UTC) : la derni\u00e8re authentification r\u00e9ussie, par mot de passe ou par renouvellement de la session ouverte (une session reste active des jours : ce n'est pas la seule connexion par mot de passe). `null` : jamais vu depuis que Repas retient cette date. Retenue au plus toutes les 10 minutes, donc en retard de 10 minutes au plus ; r\u00e9serv\u00e9e \u00e0 l'administration (ni `GET /api/v1/me`, ni aucun autre endpoint)",
+                        "type": "string",
+                        "example": "2026-10-20T08:30:12+00:00",
+                        "nullable": true
+                    },
                     "isDisabled": {
                         "description": "Le compte est d\u00e9sactiv\u00e9",
                         "type": "boolean"
@@ -4472,6 +5200,17 @@
                             "DISABLED"
                         ],
                         "example": "ACTIVE"
+                    },
+                    "appVersion": {
+                        "description": "Derni\u00e8re version de l'application Android vue pour ce compte (DRV-637), `null` si inconnue (navigateur seul, application qui ne l'a jamais envoy\u00e9e)",
+                        "type": "string",
+                        "example": "0.1.8",
+                        "nullable": true
+                    },
+                    "appOutdated": {
+                        "description": "\u00ab \u00c0 mettre \u00e0 jour \u00bb : vrai si `appVersion` est plus ancienne que la derni\u00e8re version publi\u00e9e (`APP_LATEST_VERSION`) ou que la minimale (`APP_MIN_VERSION`) ; faux si la version est inconnue ou si le serveur ne conna\u00eet aucune des deux",
+                        "type": "boolean",
+                        "example": false
                     }
                 },
                 "type": "object"
@@ -4672,7 +5411,9 @@
             "DrivePlanNeededDTO": {
                 "required": [
                     "quantity",
-                    "unitSymbol"
+                    "unitSymbol",
+                    "unitSlug",
+                    "unitName"
                 ],
                 "properties": {
                     "quantity": {
@@ -4704,6 +5445,16 @@
                         "format": "float",
                         "example": 1,
                         "nullable": true
+                    },
+                    "unitSlug": {
+                        "description": "Slug de l'unit\u00e9 d'achat (DRV-652) : c'est dans cette unit\u00e9 qu'une contenance (`packSize` d'un produit) se compte et se compare. Le m\u00eame que `unitSlug` d'une ligne de la liste de courses",
+                        "type": "string",
+                        "example": "tranche"
+                    },
+                    "unitName": {
+                        "description": "Nom de l'unit\u00e9 d'achat (DRV-652), au singulier, tel que Repas l'\u00e9crit : de quoi demander \u00ab Combien de tranches y a-t-il dans ce produit ? \u00bb sans deviner le nom depuis son symbole",
+                        "type": "string",
+                        "example": "tranche"
                     }
                 },
                 "type": "object"
@@ -4732,6 +5483,26 @@
                             "piece"
                         ],
                         "example": "g"
+                    }
+                },
+                "type": "object"
+            },
+            "PackSizeDTO": {
+                "required": [
+                    "value",
+                    "unitSlug"
+                ],
+                "properties": {
+                    "value": {
+                        "description": "Combien de l'unit\u00e9 ci-dessous tient dans le produit : de 0,001 \u00e0 9 999, trois d\u00e9cimales au plus",
+                        "type": "number",
+                        "format": "float",
+                        "example": 20
+                    },
+                    "unitSlug": {
+                        "description": "Slug de l'unit\u00e9 de la liste dans laquelle la personne a compt\u00e9 le produit (`unitSlug` d'une ligne du plan)",
+                        "type": "string",
+                        "example": "tranche"
                     }
                 },
                 "type": "object"
@@ -4775,7 +5546,7 @@
                         ]
                     },
                     "packs": {
-                        "description": "Nombre de produits \u00e0 mettre au panier pour la quantit\u00e9 demand\u00e9e (1 \u00e0 99), calcul\u00e9 avec le contenu de ce produit ; `null` quand il ne se calcule pas",
+                        "description": "Nombre de produits \u00e0 mettre au panier pour la quantit\u00e9 demand\u00e9e (1 \u00e0 99), calcul\u00e9 avec la contenance m\u00e9moris\u00e9e de ce produit si elle est dans l'unit\u00e9 de la ligne (DRV-652), sinon avec son contenu net ; `null` quand il ne se calcule pas",
                         "type": "integer",
                         "maximum": 99,
                         "minimum": 1,
@@ -4790,6 +5561,15 @@
                             "TO_CHECK"
                         ],
                         "example": "COMPUTED"
+                    },
+                    "packSize": {
+                        "description": "La contenance que la personne a donn\u00e9e pour CE produit, dans l'unit\u00e9 de la liste (DRV-652), ou `null` si elle n'en a pas donn\u00e9. Quand son `unitSlug` est celui de la ligne (`needed.unitSlug`), `packs` est calcul\u00e9 avec elle et vaut `COMPUTED`, sans question ; une contenance dans une autre unit\u00e9 est ignor\u00e9e par le calcul (mais reste renvoy\u00e9e)",
+                        "nullable": true,
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/PackSizeDTO"
+                            }
+                        ]
                     }
                 },
                 "type": "object"
@@ -4862,7 +5642,7 @@
                         }
                     },
                     "searchQuery": {
-                        "description": "Texte \u00e0 chercher sur le site de l'enseigne : le nom de l'ingr\u00e9dient",
+                        "description": "Texte \u00e0 chercher sur le site de l'enseigne : la recherche qui a fait trouver le produit choisi pour cet ingr\u00e9dient (DRV-650, m\u00e9moris\u00e9e pour cette enseigne et ce magasin, voir `searchQuery` de `GET /drive/choices`), sinon le nom de l'ingr\u00e9dient. `ingredientName` reste le nom affich\u00e9",
                         "type": "string",
                         "example": "Farine"
                     },
@@ -5001,6 +5781,15 @@
                                 "$ref": "#/components/schemas/ProductContentDTO"
                             }
                         ]
+                    },
+                    "packSize": {
+                        "description": "Combien d'unit\u00e9s de la liste tiennent dans ce produit, tel que la personne l'a r\u00e9pondu (DRV-652) : \u00ab 20 tranches \u00bb pour un cheddar que la liste compte en tranches. Propre \u00e0 l'utilisateur et \u00e0 ce produit dans cette pr\u00e9f\u00e9rence ; `null` si elle n'a rien r\u00e9pondu (et toujours pour un produit refus\u00e9). Elle ne sert au calcul que pour la m\u00eame unit\u00e9 : si la liste change d'unit\u00e9, elle est ignor\u00e9e",
+                        "nullable": true,
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/PackSizeDTO"
+                            }
+                        ]
                     }
                 },
                 "type": "object"
@@ -5065,6 +5854,12 @@
                         "description": "Derni\u00e8re modification de la pr\u00e9f\u00e9rence (ISO 8601)",
                         "type": "string",
                         "example": "2026-10-18T10:00:00+02:00"
+                    },
+                    "searchQuery": {
+                        "description": "Le texte qui a fait trouver le produit choisi sur le site de l'enseigne (DRV-650), propre \u00e0 cette enseigne et \u00e0 ce magasin : le plan le cherche en premier pour remplacer ce produit s'il n'est plus disponible. `null` quand rien n'est m\u00e9moris\u00e9 (et toujours pour \u00ab j'en ai toujours \u00bb). Texte tap\u00e9 par l'utilisateur : \u00e0 afficher comme du texte, jamais comme du HTML",
+                        "type": "string",
+                        "example": "c\u00e9r\u00e9ales coussins chocolat",
+                        "nullable": true
                     }
                 },
                 "type": "object"

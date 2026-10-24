@@ -14,7 +14,7 @@ class ListUsersQueryHandlerTest extends TestCase
     public function testReturnsWhatTheLoaderReturns(): void
     {
         // Given
-        $users = [new UserSummaryDTO('user-1', 'a@example.com', 4, 3, 2, 1, '2026-10-13T08:56:40+02:00', false, true, 'ACTIVE')];
+        $users = [new UserSummaryDTO('user-1', 'a@example.com', 4, 3, 2, 1, '2026-10-13T08:56:40+02:00', '2026-10-20T08:30:12+00:00', false, true, 'ACTIVE', '0.1.8', false)];
         $loader = new UserInMemoryLoader(users: $users);
         $handler = new ListUsersQueryHandler($loader);
 

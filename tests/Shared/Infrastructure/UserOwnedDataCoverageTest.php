@@ -6,12 +6,16 @@ namespace Repas\Tests\Shared\Infrastructure;
 use Repas\Drive\Infrastructure\Entity\Choice;
 use Repas\Drive\Infrastructure\Entity\DriveSettings;
 use Repas\Repas\Infrastructure\Entity\Ingredient;
+use Repas\Repas\Infrastructure\Entity\IngredientAlias;
+use Repas\Repas\Infrastructure\Entity\IngredientDistinct;
 use Repas\Repas\Infrastructure\Entity\Recipe;
 use Repas\Repas\Infrastructure\Entity\ShoppingList;
 use Repas\Tests\Helper\DatabaseTestCase;
 use Repas\User\Infrastructure\Entity\EmailVerificationToken;
 use Repas\User\Infrastructure\Entity\PasswordResetToken;
 use Repas\User\Infrastructure\Entity\RefreshToken;
+use Repas\User\Infrastructure\Entity\UserAppVersion;
+use Repas\User\Infrastructure\Entity\UserIdentity;
 
 /**
  * Garde-fou de la suppression d'un compte (ADR 0021) : aucune clé étrangère ne lie les tables à `user`, donc supprimer un
@@ -27,12 +31,16 @@ class UserOwnedDataCoverageTest extends DatabaseTestCase
     private const array ERASED_WITH_THE_USER = [
         Recipe::class => ['authorId'],
         Ingredient::class => ['creatorId'],
+        IngredientAlias::class => ['userId'],
+        IngredientDistinct::class => ['userId'],
         ShoppingList::class => ['ownerId'],
         RefreshToken::class => ['userId'],
         DriveSettings::class => ['userId'],
         Choice::class => ['userId'],
         EmailVerificationToken::class => ['userId'],
         PasswordResetToken::class => ['userId'],
+        UserIdentity::class => ['userId'],
+        UserAppVersion::class => ['userId'],
     ];
 
     public function testEveryColumnThatPointsToAUserIsErasedWithHim(): void

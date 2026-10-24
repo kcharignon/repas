@@ -20,6 +20,8 @@ final readonly class CurrentUserDTO
         public bool $isAdmin,
         #[OA\Property(description: 'Nombre de personnes proposé par défaut pour une recette', example: 4)]
         public int $defaultServing,
+        #[OA\Property(description: "Mise à jour de l'application Android (DRV-637) : dernière version publiée, minimale, et si celle de ce compte est à mettre à jour")]
+        public AppUpdateDTO $appUpdate,
     ) {
     }
 }

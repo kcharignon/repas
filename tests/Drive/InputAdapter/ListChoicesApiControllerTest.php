@@ -7,6 +7,7 @@ use Repas\Drive\Application\Query\ListChoices\AcceptedProductDTO;
 use Repas\Drive\Application\Query\ListChoices\ChoiceDTO;
 use Repas\Drive\Application\Query\ListChoices\ChoiceProductDTO;
 use Repas\Drive\Application\Query\ListChoices\ListChoicesQuery;
+use Repas\Drive\Application\Query\ListChoices\PackSizeDTO;
 use Repas\Drive\Application\Query\ListChoices\ProductContentDTO;
 use Repas\Drive\Domain\Model\Retailer;
 use Repas\Shared\Application\Interface\DriveFeature;
@@ -24,11 +25,12 @@ class ListChoicesApiControllerTest extends QueryBusWebTestCase
                 'farine',
                 'Farine',
                 false,
-                [new AcceptedProductDTO(1, new ChoiceProductDTO('p-1', '555111', '3017620422003', 'Farine T55 1 kg', new ProductContentDTO(1000, 'g')))],
-                [new ChoiceProductDTO('p-2', '999000', null, 'Farine complète bio 1 kg', null)],
+                [new AcceptedProductDTO(1, new ChoiceProductDTO('p-1', '555111', '3017620422003', 'Farine T55 1 kg', new ProductContentDTO(1000, 'g'), new PackSizeDTO(20, 'tranche')))],
+                [new ChoiceProductDTO('p-2', '999000', null, 'Farine complète bio 1 kg', null, null)],
                 '2026-10-18T10:00:00+02:00',
+                'farine de blé t55',
             ),
-            new ChoiceDTO('sel', 'Sel', true, [], [], '2026-10-18T11:00:00+02:00'),
+            new ChoiceDTO('sel', 'Sel', true, [], [], '2026-10-18T11:00:00+02:00', null),
         ]);
 
         // When
@@ -43,11 +45,12 @@ class ListChoicesApiControllerTest extends QueryBusWebTestCase
                     'ingredientSlug' => 'farine',
                     'ingredientName' => 'Farine',
                     'haveAtHome' => false,
-                    'accepted' => [['rank' => 1, 'product' => ['productId' => 'p-1', 'retailerProductId' => '555111', 'ean' => '3017620422003', 'label' => 'Farine T55 1 kg', 'content' => ['value' => 1000, 'unit' => 'g']]]],
-                    'rejected' => [['productId' => 'p-2', 'retailerProductId' => '999000', 'ean' => null, 'label' => 'Farine complète bio 1 kg', 'content' => null]],
+                    'accepted' => [['rank' => 1, 'product' => ['productId' => 'p-1', 'retailerProductId' => '555111', 'ean' => '3017620422003', 'label' => 'Farine T55 1 kg', 'content' => ['value' => 1000, 'unit' => 'g'], 'packSize' => ['value' => 20, 'unitSlug' => 'tranche']]]],
+                    'rejected' => [['productId' => 'p-2', 'retailerProductId' => '999000', 'ean' => null, 'label' => 'Farine complète bio 1 kg', 'content' => null, 'packSize' => null]],
                     'updatedAt' => '2026-10-18T10:00:00+02:00',
+                    'searchQuery' => 'farine de blé t55',
                 ],
-                ['ingredientSlug' => 'sel', 'ingredientName' => 'Sel', 'haveAtHome' => true, 'accepted' => [], 'rejected' => [], 'updatedAt' => '2026-10-18T11:00:00+02:00'],
+                ['ingredientSlug' => 'sel', 'ingredientName' => 'Sel', 'haveAtHome' => true, 'accepted' => [], 'rejected' => [], 'updatedAt' => '2026-10-18T11:00:00+02:00', 'searchQuery' => null],
             ],
             'totalItems' => 2,
         ], $this->jsonBody());

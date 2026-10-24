@@ -126,6 +126,15 @@ final class DriveContractSamplesTest extends DatabaseTestCase
      * Rayons (DRV-642, identifiants inventés) : l'agent rapporte le rayon 4001 pour la farine (rayon de Repas « boulangerie », celui
      * du sucre aussi) et 4002 pour le lait (rayon « divers », celui des œufs aussi) ; il n'en rapporte pas pour le sel. Le plan
      * propose donc `[4001]` à la farine et au sucre, `[4002]` au lait et aux œufs, et `[]` au sel.
+     *
+     * Recherche mémorisée (DRV-650) : la farine est choisie avec la recherche « farine de blé t55 » ; le plan la fait chercher à la place du
+     * nom de l'ingrédient ('Farine'), les autres lignes cherchent toujours leur nom, et `GET /drive/choices` la montre pour la farine
+     * seulement (`null` ailleurs).
+     *
+     * Contenance mémorisée (DRV-652) : le produit de secours du sel (« Sel fin 250 g ») est choisi avec sa contenance, 14 cuillères à soupe
+     * (réponse de la personne : la cuillère n'a pas de dimension, le contenu en grammes ne permet pas de calculer). Le plan en tire
+     * 1 produit (2 cuillères pour 14), `COMPUTED`, alors que le produit préféré du sel, sans contenance, reste `null` / `TO_CHECK` ;
+     * l'estimation (qui ne regarde que le produit préféré) ne change pas.
      */
     private function playTheJourney(): User
     {
@@ -146,7 +155,7 @@ final class DriveContractSamplesTest extends DatabaseTestCase
             ['ingredientSlug' => 'farine', 'action' => 'ADD_PRODUCT', 'placement' => 'PRIMARY', 'product' => [
                 'retailerProductId' => '555101', 'ean' => '2000000000008', 'label' => 'Farine de blé T55 1 kg', 'content' => ['value' => 1, 'unit' => 'kg'],
                 'price' => ['cents' => 195, 'perMeasure' => ['cents' => 195, 'unit' => 'kg']], 'rayonId' => 4001, 'familyId' => 4101,
-            ]],
+            ], 'searchQuery' => 'farine de blé t55'],
             ['ingredientSlug' => 'farine', 'action' => 'ADD_PRODUCT', 'placement' => 'FALLBACK', 'product' => [
                 'retailerProductId' => '555102', 'label' => 'Farine de blé T45 500 g', 'content' => ['value' => 500, 'unit' => 'g'],
                 'price' => ['cents' => 109, 'perMeasure' => ['cents' => 218, 'unit' => 'kg']],
@@ -160,6 +169,10 @@ final class DriveContractSamplesTest extends DatabaseTestCase
             ['ingredientSlug' => 'sel', 'action' => 'ADD_PRODUCT', 'placement' => 'PRIMARY', 'product' => [
                 'retailerProductId' => '555401', 'label' => 'Sel fin 1 kg', 'content' => ['value' => 1, 'unit' => 'kg'],
                 'price' => ['cents' => 45],
+            ]],
+            ['ingredientSlug' => 'sel', 'action' => 'ADD_PRODUCT', 'placement' => 'FALLBACK', 'product' => [
+                'retailerProductId' => '555402', 'label' => 'Sel fin 250 g', 'content' => ['value' => 250, 'unit' => 'g'],
+                'packSize' => ['value' => 14, 'unitSlug' => 'cuillere-a-soupe'],
             ]],
             ['ingredientSlug' => 'sucre', 'action' => 'HAVE_AT_HOME'],
         ]]);

@@ -13,7 +13,9 @@ use Repas\Drive\Domain\Interface\ProductRepository;
 use Repas\Drive\Domain\Model\Choice;
 use Repas\Drive\Domain\Model\DepartmentRayonChoice;
 use Repas\Drive\Domain\Model\Product;
+use Repas\Shared\Application\Interface\IngredientAliasResolver;
 use Repas\Shared\Application\Interface\IngredientDepartmentResolver;
+use Repas\Shared\Application\Interface\UnitSlugResolver;
 use Repas\Shared\Domain\Interface\UuidGenerator;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
@@ -29,6 +31,8 @@ readonly class SaveProductChoicesHandler
         private ChoiceRepository $choiceRepository,
         private DepartmentRayonRepository $departmentRayonRepository,
         private IngredientDepartmentResolver $ingredientDepartments,
+        private UnitSlugResolver $unitSlugs,
+        private IngredientAliasResolver $ingredientAliases,
         private UuidGenerator $uuidGenerator,
         private ClockInterface $clock,
     ) {
@@ -41,9 +45,26 @@ readonly class SaveProductChoicesHandler
      * code-barres, jamais réécrits par un autre utilisateur (constat C1, DRV-613). Le prix d'une fiche connue ne change que par
      * `REFRESH_PRICE` ou par l'`ADD_PRODUCT` d'un produit que l'utilisateur accepte déjà pour cet ingrédient. Les préférences
      * sont créées si besoin. Tout ou rien : tout est validé avant la première écriture, et la commande est atomique. Nombre de
-     * requêtes constant, quelle que soit la taille du lot : une lecture des réglages, des produits et des préférences, puis
+     * requêtes constant, quelle que soit la taille du lot : une lecture des réglages, des alias d'ingrédients (ING-002), des produits et des préférences, puis
      * une écriture par table, celle du compteur du jour dans les réglages, et un décompte des préférences quand le lot en crée.
      * L'existence de l'ingrédient n'est pas vérifiée (`Drive` ne connaît pas `Repas`).
+     *
+     * **Recherche mémorisée (DRV-650)** : un `ADD_PRODUCT` peut porter le texte qui a fait trouver le produit sur le site de l'enseigne
+     * (`SearchQueryChange`) ; il est mémorisé sur la préférence, sous la clé (utilisateur, enseigne, magasin, ingrédient) et nulle
+     * part ailleurs. Intention sans recherche : celle qui est mémorisée est gardée ; recherche effacée explicitement : elle est
+     * oubliée ; recherche sur une autre action : `invalidChoice()`. Aucune requête de plus : le texte voyage avec la préférence.
+     *
+     * **Recherche sans produit (DRV-653)** : `NOTE_SEARCH` mémorise la recherche d'un ingrédient sans toucher à ses produits (un produit pris
+     * « cette fois seulement » n'est pas mémorisé, mais la recherche qui l'a fait trouver reste la bonne). La préférence est créée si elle
+     * n'existe pas, sans produit accepté : le plan la lit `NEW` et cherche le texte mémorisé. Refusée sur « j'en ai toujours »
+     * (`invalidChoice()`). Pas de produit à lire ni à écrire : jamais plus de requêtes qu'un `ADD_PRODUCT`.
+     *
+     * **Contenance mémorisée (DRV-652)** : le produit d'un `ADD_PRODUCT` peut porter sa contenance dans l'unité de la liste (« 20 tranches
+     * dans ce produit », `PackSizeChange`) ; elle est mémorisée sur la ligne de ce produit dans la préférence (couple préférence,
+     * produit), privée, et nulle part ailleurs. Intention sans contenance : celle qui est mémorisée pour le MÊME produit est gardée
+     * (un produit nouveau n'en a pas) ; contenance effacée explicitement : oubliée ; contenance sur une autre action :
+     * `invalidChoice()`. L'unité doit exister dans Repas (`UnitSlugResolver`, une requête, seulement quand le lot donne une
+     * contenance) sinon `packSizeInvalid()`. Le reste voyage avec la préférence : aucune autre requête.
      *
      * **Apprentissage du rayon (DRV-642)** : chaque `ADD_PRODUCT` dont le produit connaît son rayon dans l'enseigne (donné par
      * l'agent ou déjà sur la fiche, la fiche faisant foi) compte un choix pour le couple (rayon de Repas de l'ingrédient, rayon de
@@ -55,7 +76,8 @@ readonly class SaveProductChoicesHandler
      *                        fois ajouté et refusé pour un ingrédient, plus de 5 produits acceptés ou 20 refusés ;
      *                        `limitReached()` (422) au-delà de 5 000 écritures de produits dans la journée ou de 1 000
      *                        préférences dans le magasin ; `notConfigured()` et `storeMismatch()` (409) si `storeId` n'est
-     *                        pas le magasin courant
+     *                        pas le magasin courant ; `packSizeInvalid()` (422) si le lot donne une contenance dans une unité qui
+     *                        n'existe pas (les valeurs mal formées sont refusées plus tôt, à la construction de `PackSize`)
      */
     public function __invoke(SaveProductChoicesCommand $command): void
     {
@@ -72,12 +94,18 @@ readonly class SaveProductChoicesHandler
             return;
         }
 
+        // Un ancien slug (brouillon d'envoi resté sur le téléphone, onglet ouvert) d'un ancien commun dont l'utilisateur a reçu une copie, ou d'un ingrédient fusionné, désigne son ingrédient actuel : jamais
+        // de préférence sous un ancien slug (ADR 0028 décision 4). Une lecture, quel que soit le lot
+        $command = $this->withResolvedIngredients($command);
+
         $now = $this->clock->now();
         // Plafond du jour avant toute lecture de plus : les réglages sont déjà là, le compteur voyage avec eux (enregistré avec le reste)
         $productWrites = count(array_filter($command->intents, static fn(ChoiceIntent $intent): bool => $intent->product !== null));
         if ($productWrites > 0) {
             $settings->recordProductWrites($productWrites, $now);
         }
+
+        $this->assertPackSizeUnitsExist($command->intents);
 
         [$products, $changedProducts] = $this->productsOf($command, $now);
         $choices = $this->existingChoices($command);
@@ -107,7 +135,15 @@ readonly class SaveProductChoicesHandler
                 ChoiceAction::ADD_PRODUCT => $intent->placement === Placement::PRIMARY ? $choice->addPrimary($productId) : $choice->addFallback($productId),
                 ChoiceAction::REJECT_PRODUCT => $choice->reject($productId),
                 ChoiceAction::HAVE_AT_HOME => $choice->markHaveAtHome(),
+                // Seule la recherche change (ci-dessous) : les produits acceptés et refusés restent tels quels
+                ChoiceAction::NOTE_SEARCH => $choice,
             };
+            // Après l'ajout : la préférence est alors une préférence de produits. Clé absente : la recherche mémorisée est gardée
+            $intent->searchQuery?->applyTo($choice);
+            if ($intent->action === ChoiceAction::ADD_PRODUCT) {
+                // Le produit est accepté : clé absente, la contenance déjà mémorisée pour CE produit est gardée (un produit nouveau n'en a pas)
+                $input->packSize?->applyTo($choice, $productId);
+            }
             $touchedChoices[$slug] = $choice->touch($now);
         }
 
@@ -121,6 +157,33 @@ readonly class SaveProductChoicesHandler
         if ($learned !== []) {
             $this->departmentRayonRepository->recordChoices($command->retailer, $learned);
         }
+    }
+
+    /**
+     * Les intentions dont le slug désigne, pour cet utilisateur, un autre ingrédient à lui (un ancien slug) sont réécrites sur ce slug ; les
+     * autres, et toutes celles d'un utilisateur qui n'a aucun alias, ne changent pas.
+     */
+    private function withResolvedIngredients(SaveProductChoicesCommand $command): SaveProductChoicesCommand
+    {
+        $resolved = $this->ingredientAliases->resolve(
+            $command->userId,
+            array_values(array_unique(array_map(static fn(ChoiceIntent $intent): string => $intent->ingredientSlug, $command->intents))),
+        );
+        if ($resolved === []) {
+            return $command;
+        }
+
+        return new SaveProductChoicesCommand(
+            $command->userId,
+            $command->retailer,
+            $command->storeId,
+            array_map(
+                static fn(ChoiceIntent $intent): ChoiceIntent => isset($resolved[$intent->ingredientSlug])
+                    ? new ChoiceIntent($resolved[$intent->ingredientSlug], $intent->action, $intent->placement, $intent->product, $intent->searchQuery)
+                    : $intent,
+                $command->intents,
+            ),
+        );
     }
 
     /**
@@ -175,11 +238,15 @@ readonly class SaveProductChoicesHandler
             $wellFormed = preg_match(Choice::SLUG_PATTERN, $intent->ingredientSlug) === 1
                 && ($product === null || preg_match(Product::RETAILER_PRODUCT_ID_PATTERN, $product->retailerProductId) === 1)
                 && ($product === null || self::catalogIdsAreInBounds($product))
+                && ($intent->searchQuery === null || $intent->action === ChoiceAction::ADD_PRODUCT || $intent->action === ChoiceAction::NOTE_SEARCH)
+                && ($product?->packSize === null || $intent->action === ChoiceAction::ADD_PRODUCT)
                 && match ($intent->action) {
                     ChoiceAction::ADD_PRODUCT => $intent->placement !== null && $product?->label !== null,
                     ChoiceAction::REJECT_PRODUCT => $intent->placement === null && $product?->label !== null,
                     ChoiceAction::HAVE_AT_HOME => $intent->placement === null && $product === null,
                     ChoiceAction::REFRESH_PRICE => $intent->placement === null && $product?->price !== null,
+                    // DRV-653 : une recherche à mémoriser, jamais une clé absente ni `null` (rien à noter, et l'effacer passe par `ADD_PRODUCT`)
+                    ChoiceAction::NOTE_SEARCH => $intent->placement === null && $product === null && $intent->searchQuery?->searchQuery !== null,
                 };
             if (!$wellFormed) {
                 throw DriveException::invalidChoice();
@@ -197,6 +264,31 @@ readonly class SaveProductChoicesHandler
             if (array_intersect_key($productIds, $rejected[$slug] ?? []) !== []) {
                 throw DriveException::invalidChoice();
             }
+        }
+    }
+
+    /**
+     * Chaque unité des contenances données par le lot existe dans Repas (une seule lecture, aucune quand le lot n'en donne pas ou n'en
+     * efface que). Une contenance dans une unité inconnue ne servirait jamais : aucune ligne de liste ne l'emploie.
+     *
+     * @param list<ChoiceIntent> $intents
+     */
+    private function assertPackSizeUnitsExist(array $intents): void
+    {
+        $unitSlugs = [];
+        foreach ($intents as $intent) {
+            $packSize = $intent->product?->packSize?->packSize;
+            if ($packSize !== null) {
+                $unitSlugs[$packSize->unitSlug] = true;
+            }
+        }
+        if ($unitSlugs === []) {
+            return;
+        }
+
+        $requested = array_map('strval', array_keys($unitSlugs));
+        if (array_diff($requested, $this->unitSlugs->existingSlugs($requested)) !== []) {
+            throw DriveException::packSizeInvalid();
         }
     }
 
@@ -236,7 +328,8 @@ readonly class SaveProductChoicesHandler
         }
 
         $products = [];
-        foreach ($this->productRepository->findByKeys(array_values($keys)) as $product) {
+        // Un lot sans produit (`NOTE_SEARCH`) n'interroge pas le dépôt
+        foreach ($keys === [] ? [] : $this->productRepository->findByKeys(array_values($keys)) as $product) {
             $products[$product->getRetailerProductId()] = $product;
         }
 

@@ -13,10 +13,4 @@ interface AuthenticatedUser
     public function getId(): string;
 
     public function getDefaultServing(): int;
-
-    /**
-     * Vrai pour un administrateur : il crée des ingrédients communs (sans créateur) là où un utilisateur crée des ingrédients
-     * personnalisés. Les handlers du contexte Repas ne chargent pas le modèle `User`, c'est le controller qui le transmet.
-     */
-    public function isAdmin(): bool;
 }

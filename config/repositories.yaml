@@ -12,6 +12,22 @@ services:
         alias: 'Repas\Repas\Infrastructure\Repository\IngredientPostgreSQLRepository'
         public: true
 
+    Repas\Repas\Domain\Interface\IngredientAliasRepository:
+        alias: 'Repas\Repas\Infrastructure\Repository\IngredientAliasPostgreSQLRepository'
+        public: true
+
+    Repas\Repas\Domain\Interface\IngredientAdoptionBulkRepository:
+        alias: 'Repas\Repas\Infrastructure\Repository\IngredientAdoptionBulkPostgreSQLRepository'
+        public: true
+
+    Repas\Repas\Domain\Interface\IngredientCatalogHandoverRepository:
+        alias: 'Repas\Repas\Infrastructure\Repository\IngredientCatalogHandoverPostgreSQLRepository'
+        public: true
+
+    Repas\Repas\Domain\Interface\IngredientMergeRepository:
+        alias: 'Repas\Repas\Infrastructure\Repository\IngredientMergePostgreSQLRepository'
+        public: true
+
     Repas\Repas\Domain\Interface\RecipeRepository:
         alias: 'Repas\Repas\Infrastructure\Repository\RecipePostgreSQLRepository'
         public: true
@@ -42,6 +58,14 @@ services:
 
     Repas\User\Domain\Interface\PasswordResetTokenRepository:
         alias: 'Repas\User\Infrastructure\Repository\PasswordResetTokenPostgreSQLRepository'
+        public: true
+
+    Repas\User\Domain\Interface\UserIdentityRepository:
+        alias: 'Repas\User\Infrastructure\Repository\UserIdentityPostgreSQLRepository'
+        public: true
+
+    Repas\User\Domain\Interface\UserAppVersionRepository:
+        alias: 'Repas\User\Infrastructure\Repository\UserAppVersionPostgreSQLRepository'
         public: true
 
     Repas\Drive\Domain\Interface\DriveSettingsRepository:

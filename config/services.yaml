@@ -7,6 +7,9 @@ parameters:
     # Le cookie du refresh token (ADR 0015) n'est envoyé qu'en HTTPS ; le client de test parle en HTTP
     app.refresh_cookie_secure: true
 
+    # Environnements où la migration d'adoption des communs (ING-003) accepte d'écrire (--apply, --undo) ; `test` s'y ajoute en test
+    repas.adoption.environments: ['prod', 'dev']
+
 services:
     # default configuration for services in *this* file
     _defaults:
@@ -44,6 +47,7 @@ services:
 when@test:
     parameters:
         app.refresh_cookie_secure: false
+        repas.adoption.environments: ['prod', 'dev', 'test']
 
     services:
         # État des limiteurs (inscription, connexion) : en mémoire, conservé tant que le noyau de test vit (un pool du framework

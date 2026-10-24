@@ -448,6 +448,7 @@ Défauts décidés par le PO, réversibles (non demandés) : titre « Repas : re
 |---|---|---|---|---|
 | Adresse e-mail | oui | non | oui | fonctionnement de l'application, gestion du compte |
 | Identifiants (identifiant du compte ; identifiant Google si connexion Google) | oui | non | oui | gestion du compte |
+| Date de dernière connexion (une seule date, remplacée à chaque connexion, vue de l'administrateur seul ; `docs/drive/note-vie-privee.md` § 4 bis) | oui | non | oui | gestion du compte |
 | Contenu produit par l'utilisateur (recettes, listes, ingrédients personnalisés) | oui | non | oui | fonctionnement de l'application |
 | Activité dans l'application (produits choisis pour le drive, prix vus, magasin) | oui | non | non (fonction facultative) | fonctionnement de l'application |
 | Mot de passe | (catégorie à lire dans le formulaire ; haché côté serveur) | non | oui | gestion du compte |

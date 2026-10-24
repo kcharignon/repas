@@ -87,6 +87,12 @@ check "le profileur est coupé en production (pas d'en-tête X-Debug-Token)" bas
 check "les clés JWT existent dans le volume" docker compose exec -T php test -f /app/config/jwt/private.pem
 # DRIVE_ENABLED n'est pas dans le .env de cet essai : la valeur par défaut de compose (false) doit gagner sur celle du .env embarqué dans l'image.
 check "l'envoi de la liste au drive est coupé par défaut (DRIVE_ENABLED=false)" test "$(docker compose exec -T php printenv DRIVE_ENABLED < /dev/null)" = false
+# Même chose pour l'amorçage des ingrédients à l'activation (ING-008) : absente du .env de cet essai, la valeur par défaut de compose (false) doit gagner.
+check "l'amorçage des ingrédients à l'activation est coupé par défaut (INGREDIENT_SEEDING_ENABLED=false)" test "$(docker compose exec -T php printenv INGREDIENT_SEEDING_ENABLED < /dev/null)" = false
+# Ni APP_LATEST_VERSION ni APP_MIN_VERSION dans le .env de cet essai : compose les transmet vides (DRV-637), personne n'est invité à mettre à jour.
+# Le shell du conteneur doit lire les variables : guillemets simples voulus.
+# shellcheck disable=SC2016
+check "aucune invitation à mettre à jour par défaut (APP_LATEST_VERSION et APP_MIN_VERSION vides)" docker compose exec -T php sh -c 'test "${APP_LATEST_VERSION-absente}" = "" && test "${APP_MIN_VERSION-absente}" = ""'
 
 echo "== Inscription et connexion (JWT, cookie du SPA)"
 email="smoke-$RANDOM@example.com"

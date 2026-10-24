@@ -7,8 +7,13 @@ use Doctrine\DBAL\Connection;
 use Repas\Drive\Domain\Interface\ChoiceRepository;
 use Repas\Drive\Domain\Interface\DriveSettingsRepository;
 use Repas\Drive\Domain\Interface\ProductRepository;
+use Repas\Repas\Domain\Interface\IngredientAliasRepository;
+use Repas\Repas\Domain\Interface\IngredientDistinctRepository;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
+use Repas\Repas\Domain\Model\AliasKind;
 use Repas\Repas\Domain\Model\Ingredient;
+use Repas\Repas\Domain\Model\IngredientAlias;
+use Repas\Repas\Domain\Model\IngredientDistinctPair;
 use Repas\Repas\Domain\Model\Recipe;
 use Repas\Repas\Domain\Model\ShoppingList;
 use Repas\Shared\Domain\Event\UserDeletedEvent;
@@ -20,10 +25,14 @@ use Repas\Tests\Helper\Builder\IngredientBuilder;
 use Repas\Tests\Helper\Builder\ProductBuilder;
 use Repas\Tests\Helper\Builder\RecipeBuilder;
 use Repas\Tests\Helper\Builder\ShoppingListBuilder;
+use Repas\Tests\Helper\Builder\UserAppVersionBuilder;
 use Repas\Tests\Helper\Builder\UserBuilder;
+use Repas\Tests\Helper\Builder\UserIdentityBuilder;
 use Repas\Tests\Helper\DatabaseTestCase;
 use Repas\Tests\Helper\DataPersister;
 use Repas\User\Domain\Interface\EmailVerificationTokenRepository;
+use Repas\User\Domain\Interface\UserAppVersionRepository;
+use Repas\User\Domain\Interface\UserIdentityRepository;
 use Repas\User\Domain\Interface\UserRepository;
 use Repas\User\Domain\Model\EmailVerificationToken;
 use Repas\User\Domain\Model\User;
@@ -326,6 +335,15 @@ class AccountAdministrationFlowTest extends DatabaseTestCase
         $stayingRecipe = $this->savedRecipe($staying, new RecipeBuilder()->isSoftBoiledEggs());
         $stayingList = $this->savedListPlanning($staying, $stayingRecipe);
 
+        // Given : chacun a adopté le commun « beurre » (alias d'ingrédient, ADR 0028)
+        $aliases = static::getContainer()->get(IngredientAliasRepository::class);
+        $aliases->save(IngredientAlias::create($leaving->getId(), 'beurre', $butter->getSlug(), AliasKind::ADOPTION, 'first-use', new \DateTimeImmutable()));
+        $aliases->save(IngredientAlias::create($staying->getId(), 'beurre', 'beurre' . $staying->getId(), AliasKind::ADOPTION, 'first-use', new \DateTimeImmutable()));
+        // Given : chacun a écarté une paire d'ingrédients par « Pas le même » (préférence privée, ING-006)
+        $distinct = static::getContainer()->get(IngredientDistinctRepository::class);
+        $distinct->save(IngredientDistinctPair::create($leaving->getId(), 'beurre', 'farine', new \DateTimeImmutable()));
+        $distinct->save(IngredientDistinctPair::create($staying->getId(), 'beurre', 'farine', new \DateTimeImmutable()));
+
         // When
         $this->request('DELETE', '/api/v1/users/' . $leaving->getId(), $this->login('admin@example.com'));
 
@@ -341,6 +359,10 @@ class AccountAdministrationFlowTest extends DatabaseTestCase
         }
         $this->assertSame(0, $this->rowCount('ingredient', 'slug', $butter->getSlug()));
         $this->assertSame(0, $this->rowCount('conversion', 'id', $conversion->getId()));
+        $this->assertSame(0, $this->rowCount('ingredient_alias', 'user_id', $leaving->getId()));
+        $this->assertSame(1, $this->rowCount('ingredient_alias', 'user_id', $staying->getId()));
+        $this->assertSame(0, $this->rowCount('ingredient_distinct', 'user_id', $leaving->getId()));
+        $this->assertSame(1, $this->rowCount('ingredient_distinct', 'user_id', $staying->getId()));
         $this->client->request('POST', '/api/login_check', content: json_encode(['email' => 'leaving@example.com', 'password' => self::PASSWORD], JSON_THROW_ON_ERROR), server: ['CONTENT_TYPE' => 'application/json']);
         $this->assertSame(401, $this->client->getResponse()->getStatusCode());
 
@@ -388,12 +410,54 @@ class AccountAdministrationFlowTest extends DatabaseTestCase
         $this->assertSame(3, (int) $this->connection()->fetchOne('SELECT COUNT(*) FROM drive_product'));
     }
 
+    public function testADeletedAccountTakesItsGoogleLinkWithItAndLeavesTheOthers(): void
+    {
+        // Given : chacun a un lien Google (sujets factices)
+        $leaving = $this->savedUser(new UserBuilder()->withEmail('leaving@example.com'));
+        $staying = $this->savedUser(new UserBuilder()->withEmail('staying@example.com'));
+        $identities = static::getContainer()->get(UserIdentityRepository::class);
+        $identities->save(new UserIdentityBuilder()->withUser($leaving)->withSubject('sujet-test-depart')->build());
+        $identities->save(new UserIdentityBuilder()->withUser($staying)->withSubject('sujet-test-reste')->build());
+
+        // When
+        $this->request('DELETE', '/api/v1/users/' . $leaving->getId(), $this->login('admin@example.com'));
+
+        // Then : son lien a disparu avec le compte, aucune ligne ne reste ; celui de l'autre compte est intact
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->assertSame(0, $this->rowCount('user', 'id', $leaving->getId()));
+        $this->assertSame(0, $this->rowCount('user_identity', 'user_id', $leaving->getId()));
+        $this->assertSame(0, $this->rowCount('user_identity', 'subject', 'sujet-test-depart'));
+        $this->assertSame(1, $this->rowCount('user_identity', 'user_id', $staying->getId()));
+        $this->assertSame(0, (int) $this->connection()->fetchOne('SELECT COUNT(*) FROM user_identity WHERE user_id NOT IN (SELECT id FROM "user")'));
+    }
+
+    public function testADeletedAccountTakesItsAppVersionWithItAndLeavesTheOthers(): void
+    {
+        // Given : chacun a annoncé la version de son application (DRV-637)
+        $leaving = $this->savedUser(new UserBuilder()->withEmail('leaving@example.com'));
+        $staying = $this->savedUser(new UserBuilder()->withEmail('staying@example.com'));
+        $appVersions = static::getContainer()->get(UserAppVersionRepository::class);
+        $appVersions->save(new UserAppVersionBuilder()->withUser($leaving)->withVersion('0.1.8')->build());
+        $appVersions->save(new UserAppVersionBuilder()->withUser($staying)->withVersion('0.1.10')->build());
+
+        // When
+        $this->request('DELETE', '/api/v1/users/' . $leaving->getId(), $this->login('admin@example.com'));
+
+        // Then : sa ligne a disparu avec le compte ; celle de l'autre compte est intacte
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->assertSame(0, $this->rowCount('user_app_version', 'user_id', $leaving->getId()));
+        $this->assertSame(1, $this->rowCount('user_app_version', 'user_id', $staying->getId()));
+        $this->assertSame(0, (int) $this->connection()->fetchOne('SELECT COUNT(*) FROM user_app_version WHERE user_id NOT IN (SELECT id FROM "user")'));
+    }
+
     public function testNothingIsDeletedWhenTheErasureFailsHalfway(): void
     {
-        // Given : un compte avec des données, et un écouteur qui échoue après la purge
+        // Given : un compte avec des données, un lien Google et une version d'application, et un écouteur qui échoue après la purge
         $leaving = $this->savedUser(new UserBuilder()->withEmail('leaving@example.com'));
         $recipe = $this->savedRecipe($leaving, new RecipeBuilder()->isPastaCarbonara());
         $list = $this->savedListPlanning($leaving, $recipe);
+        static::getContainer()->get(UserIdentityRepository::class)->save(new UserIdentityBuilder()->withUser($leaving)->build());
+        static::getContainer()->get(UserAppVersionRepository::class)->save(new UserAppVersionBuilder()->withUser($leaving)->build());
         $token = $this->login('admin@example.com');
         $this->client->disableReboot();
         static::getContainer()->get('event_dispatcher')->addListener(
@@ -405,9 +469,11 @@ class AccountAdministrationFlowTest extends DatabaseTestCase
         // When
         $this->request('DELETE', '/api/v1/users/' . $leaving->getId(), $token);
 
-        // Then : la requête échoue et rien n'a été supprimé, ni le compte ni ses données
+        // Then : la requête échoue et rien n'a été supprimé, ni le compte ni ses données, ni son lien (même transaction)
         $this->assertSame(500, $this->client->getResponse()->getStatusCode());
         $this->assertSame(1, $this->rowCount('user', 'id', $leaving->getId()));
+        $this->assertSame(1, $this->rowCount('user_identity', 'user_id', $leaving->getId()));
+        $this->assertSame(1, $this->rowCount('user_app_version', 'user_id', $leaving->getId()));
         $this->assertSame(1, $this->rowCount('recipe', 'id', $recipe->getId()));
         $this->assertSame(1, $this->rowCount('shopping_list', 'id', $list->getId()));
         $this->assertGreaterThan(0, $this->rowCount('meal', 'shopping_list', $list->getId()));

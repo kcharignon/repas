@@ -10,7 +10,7 @@ final readonly class RecipeRowPayload
 {
     public function __construct(
         #[Assert\NotBlank]
-        #[OA\Property(description: "Slug de l'ingrédient (commun, ou personnalisé par l'auteur de la recette)", example: 'pate')]
+        #[OA\Property(description: "Slug de l'ingrédient (un ingrédient de l'auteur de la recette)", example: 'pate')]
         public string $ingredientSlug,
         #[Assert\NotBlank]
         #[OA\Property(description: "Slug de l'unité de la quantité", example: 'gramme')]

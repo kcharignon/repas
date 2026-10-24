@@ -26,7 +26,7 @@ final class SearchIngredientsApiController extends AbstractController
     // Priorité : sans elle, `GET /api/v1/ingredients/{slug}` capterait « search »
     #[Route(path: '/api/v1/ingredients/search', name: 'api_search_ingredients', methods: ['GET'], priority: 10)]
     #[IsGranted('ROLE_USER')]
-    #[OA\Get(summary: "Recherche d'ingrédients par nom, du plus pertinent au moins pertinent, avec leur rayon : communs et ceux de l'utilisateur authentifié")]
+    #[OA\Get(summary: "Recherche d'ingrédients par nom, du plus pertinent au moins pertinent, avec leur rayon : ceux de l'utilisateur authentifié, jamais ceux d'un autre (un administrateur compris)")]
     #[OA\Tag(name: 'Ingredients')]
     #[OA\Parameter(name: 'q', in: 'query', required: true, description: 'Texte recherché, 100 caractères au plus ; ni la casse ni les accents ne comptent et une faute de frappe est tolérée (Jaro-Winkler)', schema: new OA\Schema(type: 'string', maxLength: 100), example: 'tomtae')]
     #[OA\Response(
@@ -41,7 +41,7 @@ final class SearchIngredientsApiController extends AbstractController
     public function __invoke(#[CurrentUser] AuthenticatedUser $user, #[MapQueryString(validationFailedStatusCode: 422)] SearchIngredientsRequestQuery $filter): JsonResponse
     {
         /** @var list<IngredientSearchResultDTO> $ingredients */
-        $ingredients = $this->queryBus->ask(new SearchIngredientsQuery($filter->q, $user->getId(), $this->isGranted('ROLE_ADMIN')));
+        $ingredients = $this->queryBus->ask(new SearchIngredientsQuery($filter->q, $user->getId()));
 
         return new JsonResponse(['member' => $ingredients, 'totalItems' => count($ingredients)]);
     }

@@ -18,7 +18,7 @@ class GetIngredientQueryHandlerTest extends TestCase
         $handler = new GetIngredientQueryHandler(new IngredientInMemoryLoader(ingredient: $ingredient));
 
         // When
-        $result = $handler(new GetIngredientQuery('farine', 'user-1', false));
+        $result = $handler(new GetIngredientQuery('farine', 'user-1'));
 
         // Then
         $this->assertSame($ingredient, $result);
@@ -31,9 +31,9 @@ class GetIngredientQueryHandlerTest extends TestCase
         $handler = new GetIngredientQueryHandler($loader);
 
         // When
-        $handler(new GetIngredientQuery('farine', 'user-1', true));
+        $handler(new GetIngredientQuery('farine', 'user-1'));
 
         // Then
-        $this->assertSame([['farine', 'user-1', true]], $loader->getCalls);
+        $this->assertSame([['farine', 'user-1']], $loader->getCalls);
     }
 }

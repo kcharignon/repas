@@ -2,6 +2,7 @@
 
 namespace Repas\Repas\Application\Command\RemoveIngredientToShoppingList;
 
+use Repas\Repas\Application\Service\IngredientSlugResolver;
 use Repas\Repas\Domain\Exception\IngredientException;
 use Repas\Repas\Domain\Exception\ShoppingListException;
 use Repas\Repas\Domain\Interface\IngredientRepository;
@@ -15,6 +16,7 @@ readonly class RemoveIngredientToShoppingListHandler
     public function __construct(
         private ShoppingListRepository $shoppingListRepository,
         private IngredientRepository $ingredientRepository,
+        private IngredientSlugResolver $slugResolver,
     ) {
     }
 
@@ -30,12 +32,16 @@ readonly class RemoveIngredientToShoppingListHandler
         }
         $activeShoppingList->assertVersion($command->expectedVersion);
 
-        $purchaseUnitSlug = $this->ingredientRepository->findPurchaseUnitSlug($command->ingredientSlug);
+        // Un ancien slug (ancien commun dont le propriétaire a reçu une copie, ingrédient fusionné) désigne l'ingrédient actuel du
+        // propriétaire (ADR 0028 décision 4). On ne fait que retrouver ce que la liste contient
+        $ingredientSlug = $this->slugResolver->resolve($command->ownerId, [$command->ingredientSlug])[$command->ingredientSlug] ?? $command->ingredientSlug;
 
-        $activeShoppingList->removeIngredient($command->ingredientSlug, $purchaseUnitSlug);
+        $purchaseUnitSlug = $this->ingredientRepository->findPurchaseUnitSlug($ingredientSlug);
+
+        $activeShoppingList->removeIngredient($ingredientSlug, $purchaseUnitSlug);
 
         // On ajoute une quantité d'achat
-        $activeShoppingList->subtractRow($command->ingredientSlug, 1);
+        $activeShoppingList->subtractRow($ingredientSlug, 1);
 
         $this->shoppingListRepository->save($activeShoppingList);
     }

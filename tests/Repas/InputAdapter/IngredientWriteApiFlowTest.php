@@ -58,14 +58,18 @@ class IngredientWriteApiFlowTest extends DatabaseTestCase
         $this->assertSame(1, static::getContainer()->get(UserRepository::class)->findOneById($user->getId())->getStatistics()['ingredients']);
     }
 
-    public function testAnAdministratorCreatesACommonIngredient(): void
+    public function testAnAdministratorCreatesAnIngredientOfHisOwnAndHisStatisticsFollow(): void
     {
-        // When
-        $this->request('POST', '/api/v1/ingredients', $this->savedUser(admin: true), $this->body('Praliné'));
+        // Given
+        $admin = $this->savedUser(admin: true);
 
-        // Then
+        // When
+        $this->request('POST', '/api/v1/ingredients', $admin, $this->body('Praliné'));
+
+        // Then : plus de commun, l'ingrédient est à lui (le parcours complet est dans `IngredientNoNewCommonApiFlowTest`)
         $this->assertSame(201, $this->client->getResponse()->getStatusCode());
-        $this->assertNull($this->ingredients()->findOneBySlug(basename($this->client->getResponse()->headers->get('Location')))->getCreatorId());
+        $this->assertSame($admin->getId(), $this->ingredients()->findOneBySlug(basename($this->client->getResponse()->headers->get('Location')))->getCreatorId());
+        $this->assertSame(1, static::getContainer()->get(UserRepository::class)->findOneById($admin->getId())->getStatistics()['ingredients']);
     }
 
     public function testCreatingTheSameIngredientTwiceIsAConflict(): void

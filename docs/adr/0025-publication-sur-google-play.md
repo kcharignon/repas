@@ -18,6 +18,8 @@ Faits vérifiés (détail, sources et dates dans l'analyse) :
 - La page des conditions d'utilisation est aujourd'hui derrière la connexion ([AUTH-010](../auth/tickets/AUTH-010-conditions-d-utilisation-publiques.md) la rend publique) ; il n'existe pas de page de confidentialité publique.
 - Le client OAuth Android de la connexion Google ([AUTH-002](../auth/tickets/AUTH-002-console-google-cloud.md) étapes 11 à 13) se lie à l'**empreinte du certificat qui signe réellement l'application installée** : avec Play App Signing, c'est celle que Google détient.
 
+> Note du 2026-10-20 : la variante Play de l'application est `play` : pas de mise à jour intégrée, pas de `REQUEST_INSTALL_PACKAGES` ; le bandeau et l'aide renvoient vers la fiche Play (ticket STORE-xxx à écrire quand la fiche existera). La démarche Play démarre en novembre 2026 (calendrier : [`docs/store/roadmap.md`](../store/roadmap.md)).
+
 ## Décision
 
 1. **Canal et paliers.** L'application est publiée sur Google Play par paliers : (1) **test interne** pour la famille (100 testeurs au plus, tout de suite) ; (2) **test fermé** de 12 testeurs au moins pendant 14 jours (obligatoire pour la production avec un compte personnel) ; (3) **production, en France seulement**, public cible 18 ans et plus. L'APK de la release GitHub reste le canal de secours pendant la transition, puis est retiré (ticket de transition).

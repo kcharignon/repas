@@ -16,6 +16,7 @@ use Repas\Repas\Domain\Model\Ingredient as IngredientModel;
 use Repas\Repas\Domain\Model\Unit;
 use Repas\Repas\Infrastructure\Entity\Ingredient as IngredientEntity;
 use Repas\Repas\Infrastructure\Entity\RecipeRow;
+use Repas\Repas\Infrastructure\Visibility\IngredientVisibility;
 use Repas\Shared\Domain\Tool\Tab;
 
 readonly class IngredientPostgreSQLRepository extends PostgreSQLRepository implements IngredientRepository
@@ -76,17 +77,41 @@ readonly class IngredientPostgreSQLRepository extends PostgreSQLRepository imple
 
     public function findPurchaseUnitSlugUsableBy(string $slug, string $userId): string
     {
-        $entity = $this->entityRepository->find($slug) ?? throw IngredientException::notFound($slug);
-        if ($entity->getCreatorId() !== null && $entity->getCreatorId() !== $userId) {
-            throw IngredientException::notFound($slug);
-        }
+        // Une seule requête, comme `find()` : la visibilité (`IngredientVisibility`) est dans la condition, donc l'ingrédient d'un autre
+        // est traité comme inconnu
+        $row = $this->entityManager->createQueryBuilder()
+            ->select('i.defaultPurchaseUnitSlug AS purchaseUnitSlug')
+            ->from(IngredientEntity::class, 'i')
+            ->where('i.slug = :slug')
+            ->andWhere(IngredientVisibility::visibleBy('i', 'user'))
+            ->setParameter('slug', $slug)
+            ->setParameter('user', $userId)
+            ->getQuery()
+            ->getOneOrNullResult();
 
-        return $entity->getDefaultPurchaseUnitSlug();
+        return $row['purchaseUnitSlug'] ?? throw IngredientException::notFound($slug);
     }
 
     public function exists(string $slug): bool
     {
         return $this->entityRepository->find($slug) !== null;
+    }
+
+    public function existsForCreator(string $slug, string $creatorId, string $sluggedName): bool
+    {
+        // Une seule requête : le slug, ou le nom normalisé chez ce créateur (un ancien commun passé au propriétaire a un slug sans identifiant)
+        $rows = $this->entityManager->createQueryBuilder()
+            ->select('i.slug AS slug')
+            ->from(IngredientEntity::class, 'i')
+            ->where('i.slug = :slug OR (i.creatorId = :creator AND i.sluggedName = :sluggedName)')
+            ->setParameter('slug', $slug)
+            ->setParameter('creator', $creatorId)
+            ->setParameter('sluggedName', $sluggedName)
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getArrayResult();
+
+        return $rows !== [];
     }
 
     public function findAll(): Tab
@@ -100,7 +125,7 @@ readonly class IngredientPostgreSQLRepository extends PostgreSQLRepository imple
     {
         $entities = $this->entityRepository->createQueryBuilder('i')
             ->where('i.departmentSlug = :department')
-            ->andWhere('i.creatorId = :owner or i.creatorId is null')
+            ->andWhere(IngredientVisibility::visibleBy('i', 'owner'))
             ->setParameter('department', $department->getId())
             ->setParameter('owner', $ownerId)
             ->orderBy('i.sluggedName', 'ASC')
@@ -113,7 +138,7 @@ readonly class IngredientPostgreSQLRepository extends PostgreSQLRepository imple
     public function findByOwner(string $ownerId): Tab
     {
         $entities = $this->entityRepository->createQueryBuilder('i')
-            ->where('i.creatorId = :owner or i.creatorId is null')
+            ->where(IngredientVisibility::visibleBy('i', 'owner'))
             ->setParameter('owner', $ownerId)
             ->orderBy('i.sluggedName', 'ASC')
             ->getQuery()
@@ -145,6 +170,7 @@ readonly class IngredientPostgreSQLRepository extends PostgreSQLRepository imple
             ->setDefaultCookingUnitSlug($ingredient->getDefaultCookingUnit()->getSlug())
             ->setDefaultPurchaseUnitSlug($ingredient->getDefaultPurchaseUnit()->getSlug())
             ->setCompatibleUnitSlugs($ingredient->getCompatibleUnits()->map(fn(Unit $unit) => $unit->getSlug())->toArray())
+            ->setIsBase($ingredient->isBase())
         ;
     }
 
@@ -164,6 +190,8 @@ readonly class IngredientPostgreSQLRepository extends PostgreSQLRepository imple
             "default_purchase_unit" => $this->unitRepository->findOneBySlug($ingredientEntity->getDefaultPurchaseUnitSlug()),
             "creator_id" => $ingredientEntity->getCreatorId(),
             "compatible_units" => $this->unitRepository->findBySlugs(new Tab($ingredientEntity->getCompatibleUnitSlugs(), 'string')),
+            "adopted_from" => $ingredientEntity->getAdoptedFrom(),
+            "is_base" => $ingredientEntity->isBase(),
         ]);
     }
 

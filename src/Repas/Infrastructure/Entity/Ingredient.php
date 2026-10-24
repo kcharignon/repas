@@ -39,6 +39,17 @@ class Ingredient
     #[ORM\Column(name: 'compatible_units', type: 'json', nullable: false)]
     private array $compatibleUnitSlugs = [];
 
+    /** L'ingrédient dont celui-ci est la copie (ADR 0028) : un fait immuable, jamais mis à jour après la création. */
+    #[ORM\Column(name: 'adopted_from', length: 255, nullable: true)]
+    private ?string $adoptedFrom = null;
+
+    /**
+     * Le marqueur « ingrédient de base » (ADR 0028, amendement du 2026-10-20) : l'ingrédient part aux nouveaux comptes. `NOT NULL`, faux par
+     * défaut côté base : le code précédent, qui ne mappe pas la colonne, la laisse à sa valeur.
+     */
+    #[ORM\Column(name: 'is_base', type: 'boolean', options: ['default' => false])]
+    private bool $isBase = false;
+
     /**
      * @param array<string> $compatibleUnitSlugs
      */
@@ -51,7 +62,9 @@ class Ingredient
         ?string $defaultCookingUnit,
         ?string $defaultPurchaseUnit,
         ?string $creatorId,
-        array $compatibleUnitSlugs
+        array $compatibleUnitSlugs,
+        ?string $adoptedFrom = null,
+        bool $isBase = false,
     ) {
         $this->slug = $slug;
         $this->name = $name;
@@ -62,6 +75,8 @@ class Ingredient
         $this->defaultPurchaseUnitSlug = $defaultPurchaseUnit;
         $this->creatorId = $creatorId;
         $this->compatibleUnitSlugs = $compatibleUnitSlugs;
+        $this->adoptedFrom = $adoptedFrom;
+        $this->isBase = $isBase;
     }
 
 
@@ -162,6 +177,22 @@ class Ingredient
         return $this;
     }
 
+    public function getAdoptedFrom(): ?string
+    {
+        return $this->adoptedFrom;
+    }
+
+    public function isBase(): bool
+    {
+        return $this->isBase;
+    }
+
+    public function setIsBase(bool $isBase): Ingredient
+    {
+        $this->isBase = $isBase;
+        return $this;
+    }
+
     public static function fromModel(IngredientModel $ingredient): static
     {
         return new static(
@@ -174,6 +205,8 @@ class Ingredient
             defaultPurchaseUnit: $ingredient->getDefaultPurchaseUnit()->getSlug(),
             creatorId: $ingredient->getCreatorId(),
             compatibleUnitSlugs: $ingredient->getCompatibleUnits()->map(fn(UnitModel $unit) => $unit->getSlug())->toArray(),
+            adoptedFrom: $ingredient->getAdoptedFrom(),
+            isBase: $ingredient->isBase(),
         );
     }
 }

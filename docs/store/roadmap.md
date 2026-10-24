@@ -8,6 +8,8 @@ Suivi vivant du chantier « publier Repas sur Google Play » (application Androi
 4. [`docs/drive/consignes-agents.md`](../drive/consignes-agents.md) (livraison : une branche par ticket, commits courts en français sans `Co-Authored-By`, PR au gabarit Quoi / Vérifié / À relire sans pied d'attribution, fusion en squash seulement si la CI est verte) et les skills `repas-dev` (back), `repas-front-dev` (front), `repas-android-dev` (application), `repas-po` (tout écran, tout texte), `repas-ops` (secrets, déploiement, guidage pas à pas de l'humain).
 5. Le `CLAUDE.md` du dépôt où l'on travaille.
 
+> **État au 2026-10-20 (décision de l'utilisateur).** La démarche Google Play (compte, testeurs, décisions D1 à D5) **démarre en novembre 2026** et se termine en janvier 2027 ou après. F-Droid reste possible : les bibliothèques Play Services de la connexion Google y seraient signalées, il faudrait donc prévoir une variante sans Google. La variante Play de l'application est `play` : pas de mise à jour intégrée, pas de permission `REQUEST_INSTALL_PACKAGES` (DRV-639, ADR front 0009) ; le bandeau de mise à jour et l'aide renverront vers la fiche Play (ticket STORE-xxx à écrire quand la fiche existera). Tant que la fiche n'existe pas, la variante `direct` (mise à jour intégrée, release roulante `android-latest`) est la seule distribuée.
+
 ## Le besoin
 
 Les proches installent et mettent à jour « Repas » depuis Google Play, sans « sources inconnues », sans avertissement Play Protect et sans télécharger un `.apk` ; plus tard, n'importe qui en France peut l'installer. Le critère de réussite est celui du produit : **un proche installe l'application seul, depuis un lien, en trois touches** ([`principes-produit.md`](../drive/principes-produit.md)).

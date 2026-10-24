@@ -6,6 +6,7 @@ namespace Repas\Drive\Application\Command\ForgetChoice;
 use Repas\Drive\Domain\Exception\DriveException;
 use Repas\Drive\Domain\Interface\ChoiceRepository;
 use Repas\Drive\Domain\Interface\DriveSettingsRepository;
+use Repas\Shared\Application\Interface\IngredientAliasResolver;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 #[AsMessageHandler]
@@ -14,6 +15,7 @@ readonly class ForgetChoiceHandler
     public function __construct(
         private DriveSettingsRepository $driveSettingsRepository,
         private ChoiceRepository $choiceRepository,
+        private IngredientAliasResolver $ingredientAliases,
     ) {
     }
 
@@ -34,7 +36,10 @@ readonly class ForgetChoiceHandler
             throw DriveException::storeMismatch();
         }
 
-        $choice = $this->choiceRepository->findOne($command->userId, $command->retailer, $command->storeId, $command->ingredientSlug);
+        // Un ancien slug (ancien commun dont l'utilisateur a reçu une copie, ingrédient fusionné) désigne son ingrédient actuel (ADR 0028 décision 4)
+        $ingredientSlug = $this->ingredientAliases->resolve($command->userId, [$command->ingredientSlug])[$command->ingredientSlug] ?? $command->ingredientSlug;
+
+        $choice = $this->choiceRepository->findOne($command->userId, $command->retailer, $command->storeId, $ingredientSlug);
         if ($choice === null) {
             throw DriveException::choiceNotFound();
         }

@@ -36,6 +36,9 @@ class Choice
     #[ORM\Column(type: Types::STRING, length: 16)]
     public string $kind;
 
+    #[ORM\Column(name: 'search_query', type: Types::STRING, length: 80, nullable: true)]
+    public ?string $searchQuery = null;
+
     #[ORM\Column(name: 'updated_at', type: Types::DATETIME_IMMUTABLE)]
     public DateTimeImmutable $updatedAt;
 }

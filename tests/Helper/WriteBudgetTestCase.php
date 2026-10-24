@@ -9,6 +9,8 @@ use Repas\Drive\Domain\Interface\DriveSettingsRepository;
 use Repas\Drive\Domain\Interface\ProductRepository;
 use Repas\Drive\Domain\Model\Product;
 use Repas\Drive\Domain\Model\Retailer;
+use Repas\Repas\Application\Command\MergeIngredients\MergeIngredientsCommand;
+use Repas\Repas\Domain\Interface\BaseIngredientClassification;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Repas\Domain\Model\Recipe;
 use Repas\Repas\Domain\Model\ShoppingList;
@@ -16,14 +18,21 @@ use Repas\Shared\Application\Interface\CommandBusInterface;
 use Repas\Tests\Helper\Builder\ChoiceBuilder;
 use Repas\Tests\Helper\Builder\ConversionBuilder;
 use Repas\Tests\Helper\Builder\DriveSettingsBuilder;
+use Repas\Tests\Helper\Builder\IngredientBuilder;
 use Repas\Tests\Helper\Builder\ProductBuilder;
 use Repas\Tests\Helper\Builder\RecipeBuilder;
 use Repas\Tests\Helper\Builder\ShoppingListBuilder;
+use Repas\Tests\Helper\Builder\UserAppVersionBuilder;
+use Repas\Tests\Helper\Builder\UnitBuilder;
 use Repas\Tests\Helper\Builder\UserBuilder;
+use Repas\Tests\Helper\Builder\UserIdentityBuilder;
+use Repas\Shared\Application\Interface\IngredientSeedingFeature;
 use Repas\Tests\Helper\SqlBudget\QueryCounter;
 use Repas\Shared\Domain\Tool\UuidGenerator;
 use Repas\User\Domain\Interface\EmailVerificationTokenRepository;
 use Repas\User\Domain\Interface\PasswordResetTokenRepository;
+use Repas\User\Domain\Interface\UserAppVersionRepository;
+use Repas\User\Domain\Interface\UserIdentityRepository;
 use Repas\User\Domain\Model\EmailVerificationToken;
 use Repas\User\Domain\Model\PasswordResetToken;
 use Repas\User\Domain\Model\User;
@@ -38,6 +47,7 @@ use Repas\User\Domain\Model\User;
 abstract class WriteBudgetTestCase extends DatabaseTestCase
 {
     public DataPersister $persister;
+    private bool $ingredientSeedingSwitchedOn = false;
 
     protected function setUp(): void
     {
@@ -94,6 +104,22 @@ abstract class WriteBudgetTestCase extends DatabaseTestCase
     }
 
     /**
+     * Lien Google de `$user` (sujet factice).
+     */
+    public function savedUserIdentity(User $user): void
+    {
+        static::getContainer()->get(UserIdentityRepository::class)->save(new UserIdentityBuilder()->withUser($user)->build());
+    }
+
+    /**
+     * Version de l'application vue pour `$user` (`0.1.8`, Android).
+     */
+    public function savedUserAppVersion(User $user): void
+    {
+        static::getContainer()->get(UserAppVersionRepository::class)->save(new UserAppVersionBuilder()->withUser($user)->build());
+    }
+
+    /**
      * Réglages du drive de `$user` (magasin factice) : un `SaveDriveSettings` ultérieur les remplace.
      */
     public function savedDriveSettings(User $user): void
@@ -122,9 +148,132 @@ abstract class WriteBudgetTestCase extends DatabaseTestCase
         );
     }
 
-    public function savedRecipe(User $author, RecipeBuilder $builder): Recipe
+    /**
+     * Le catalogue de communs de la migration d'adoption (ING-003, 262 communs dont 105 conversions propres, créé une seule fois) et un
+     * volume de recettes, de listes (dont deux envoyées) et de choix du drive pour `$owner`, tous sur des communs.
+     */
+    public function savedAdoptionVolume(User $owner, int $recipes, int $rowsPerRecipe, int $lists, int $rowsPerList, int $choices): void
+    {
+        $withCatalog = (int) $this->entityManager->getConnection()->fetchOne("SELECT count(*) FROM ingredient WHERE slug LIKE 'commun-%'") === 0;
+        AdoptionDataset::createBulk($this->entityManager, $this->persister, $owner->getId(), $recipes, $rowsPerRecipe, $lists, $rowsPerList, $choices, $withCatalog);
+    }
+
+    /**
+     * Le catalogue de la passation (ING-009) : le propriétaire du catalogue, les 262 anciens communs d'`AdoptionDataset::createBulk` (sans créateur ;
+     * « de base » un sur deux d'après le classement, remplacé par un double du fichier pour ce test) et, pour lui, un volume de recettes, de listes
+     * (dont deux envoyées) et de choix du drive sur ces communs. `$classified` : le marqueur est déjà posé (phase 1 faite).
+     */
+    public function savedHandoverCatalog(int $recipes, int $rowsPerRecipe, int $lists, int $rowsPerList, int $choices, bool $classified = true): void
+    {
+        $owner = new UserBuilder()->isCatalogOwner()->build();
+        $this->persister->saveUser($owner);
+        $this->savedAdoptionVolume($owner, $recipes, $rowsPerRecipe, $lists, $rowsPerList, $choices);
+
+        $connection = $this->entityManager->getConnection();
+        $slugs = array_map('strval', $connection->fetchFirstColumn("SELECT slug FROM ingredient WHERE slug LIKE 'commun-%' ORDER BY slug"));
+        $classification = [];
+        foreach ($slugs as $index => $slug) {
+            $classification[$slug] = $index % 2 === 0;
+        }
+        static::getContainer()->set(BaseIngredientClassification::class, new BaseIngredientClassificationInMemory($classification));
+        if ($classified) {
+            $connection->executeStatement("UPDATE ingredient SET is_base = (CAST(substr(slug, 8) AS integer) % 2 = 1) WHERE slug LIKE 'commun-%'");
+        }
+    }
+
+    /**
+     * L'amorçage des ingrédients à l'activation (ING-008) allumé pour ce test : en test la variable d'environnement le coupe, comme la
+     * production par défaut, et les budgets des activations ordinaires sont mesurés interrupteur coupé.
+     */
+    public function switchOnIngredientSeeding(): void
+    {
+        // Un service déjà initialisé ne se remplace plus : une seule fois par test
+        if ($this->ingredientSeedingSwitchedOn) {
+            return;
+        }
+        static::getContainer()->set(IngredientSeedingFeature::class, new ControlledIngredientSeedingFeature(true));
+        $this->ingredientSeedingSwitchedOn = true;
+    }
+
+    /**
+     * Le catalogue de l'amorçage (ING-008) : le propriétaire du catalogue et `$baseIngredients` ingrédients « de base » à lui, dont un sur deux
+     * a deux conversions propres, créés en une fois par la base (`generate_series`). Un second appel n'ajoute rien.
+     */
+    public function savedSeedingCatalog(int $baseIngredients): void
+    {
+        $connection = $this->entityManager->getConnection();
+        if ((int) $connection->fetchOne("SELECT count(*) FROM ingredient WHERE slug LIKE 'base-%'") > 0) {
+            return;
+        }
+
+        $owner = new UserBuilder()->isCatalogOwner()->build();
+        $this->persister->saveUser($owner);
+        $connection->executeStatement(
+            "INSERT INTO ingredient (slug, name, image, slugged_name, department, default_cooking_unit, default_purchase_unit, creator, compatible_units, adopted_from, is_base)"
+            . " SELECT 'base-' || lpad(g::text, 3, '0'), 'Base ' || lpad(g::text, 3, '0'), 'images/x.png', 'base-' || lpad(g::text, 3, '0'), 'rayon-' || (g % 12), 'gramme', 'kilo', ?, '[\"gramme\",\"kilo\"]', NULL, TRUE"
+            . ' FROM generate_series(1, ?) g',
+            [$owner->getId(), $baseIngredients],
+        );
+        $connection->executeStatement(
+            "INSERT INTO conversion (id, start_unit, end_unit, coefficient, ingredient)"
+            . " SELECT gen_random_uuid()::text, u.start_unit, u.end_unit, 10 + g, 'base-' || lpad(g::text, 3, '0')"
+            . " FROM generate_series(1, ?) g, (VALUES ('unite', 'gramme'), ('tasse', 'gramme')) AS u(start_unit, end_unit) WHERE g % 2 = 0",
+            [$baseIngredients],
+        );
+    }
+
+    /**
+     * Deux ingrédients voisins de `$owner` (« Tomate », gardé, et « Tomates », absorbé, chacun avec sa conversion propre) et un volume de
+     * recettes, de listes de courses et de choix du drive qui utilisent « Tomates » ; renvoie la commande qui fusionne.
+     *
+     * Avec `$recoveredConversions` > 0, « Tomates » sait en plus compter autant d'unités (la tranche, la boîte, le bloc, la cuillère à soupe) que
+     * « Tomate » ne connaît pas : elles sont récupérées, et une recette de « Tomates » en tranches (unité qu'il déclare compatible) fait gagner
+     * la tranche aux unités compatibles de « Tomate ».
+     */
+    public function savedMerge(User $owner, int $recipes, int $lists, int $recoveredConversions = 0): MergeIngredientsCommand
+    {
+        $dataset = new MergeDataset($this->entityManager, $this->persister);
+        $dataset->units();
+        $kept = $dataset->ingredient('Tomate', $owner);
+        $absorbed = $dataset->ingredient('Tomates', $owner, compatible: $recoveredConversions > 0 ? [new UnitBuilder()->isGramme(), new UnitBuilder()->isKilo(), new UnitBuilder()->isSlice()] : null);
+        $dataset->conversion($kept);
+        $dataset->conversion($absorbed);
+        $dataset->volume($owner, $kept, $absorbed, $recipes, $lists);
+        if ($recoveredConversions > 0) {
+            foreach (array_slice([new UnitBuilder()->isSlice(), new UnitBuilder()->isBox(), new UnitBuilder()->isBlock(), new UnitBuilder()->isSoupSpoon()], 0, $recoveredConversions) as $unit) {
+                $this->persister->saveUnit($unit->build());
+                $dataset->conversion($absorbed, 25.0, $unit, new UnitBuilder()->isGramme());
+            }
+            $dataset->recipe('recovery-recipe-' . substr($owner->getId(), 0, 8), $owner->getId(), [[$absorbed->getSlug(), 4.0, 'tranche']]);
+        }
+
+        return new MergeIngredientsCommand($owner->getId(), $absorbed->getSlug(), $kept->getSlug());
+    }
+
+    /**
+     * Les ingrédients de test par défaut (propriétaire `IngredientBuilder::DEFAULT_CREATOR_ID`) deviennent des ANCIENS COMMUNS : la forme de
+     * la base d'avant la passation (sans créateur). Réservé aux tests des commandes d'exploitation de la migration (`adopt-commons`, `seed`,
+     * `hand-over-catalog`), qui partent de cette forme ; ils disparaissent avec ces commandes (ING-014).
+     */
+    public function turnDefaultIngredientsIntoOldCommons(): void
+    {
+        $this->entityManager->getConnection()->executeStatement('UPDATE ingredient SET creator = NULL WHERE creator = ?', [IngredientBuilder::DEFAULT_CREATOR_ID]);
+        $this->entityManager->clear();
+    }
+
+    /**
+     * @param bool $ownedByAuthor les ingrédients de la recette sont à son auteur (le monde sans ingrédient commun, ADR 0028 amendement) ; faux,
+     *        ils gardent le propriétaire de test par défaut (`IngredientBuilder::DEFAULT_CREATOR_ID`), de quoi en faire des anciens communs
+     *        (`turnDefaultIngredientsIntoOldCommons()`)
+     */
+    public function savedRecipe(User $author, RecipeBuilder $builder, bool $ownedByAuthor = true): Recipe
     {
         $recipe = $builder->withAuthor($author)->build();
+        if ($ownedByAuthor) {
+            foreach ($recipe->getRows() as $row) {
+                $row->getIngredient()->setCreatorId($author->getId());
+            }
+        }
         $this->persister->saveRecipe($recipe);
 
         return $recipe;
@@ -167,12 +316,12 @@ abstract class WriteBudgetTestCase extends DatabaseTestCase
      *
      * @return list<Recipe>
      */
-    public function typicalRecipes(User $author): array
+    public function typicalRecipes(User $author, bool $ownedByAuthor = true): array
     {
         $recipes = [
-            $this->savedRecipe($author, new RecipeBuilder()->isPastaCarbonara()),
-            $this->savedRecipe($author, new RecipeBuilder()->isSoftBoiledEggs()),
-            $this->savedRecipe($author, new RecipeBuilder()->isBasqueCake()),
+            $this->savedRecipe($author, new RecipeBuilder()->isPastaCarbonara(), $ownedByAuthor),
+            $this->savedRecipe($author, new RecipeBuilder()->isSoftBoiledEggs(), $ownedByAuthor),
+            $this->savedRecipe($author, new RecipeBuilder()->isBasqueCake(), $ownedByAuthor),
         ];
         $this->savedConversionsFor($recipes);
 

@@ -19,10 +19,11 @@ class ListConversionsQueryHandlerTest extends TestCase
         $handler = new ListConversionsQueryHandler($loader);
 
         // When
-        $result = $handler(new ListConversionsQuery());
+        $result = $handler(new ListConversionsQuery('admin-1'));
 
         // Then
         $this->assertSame($conversions, $result);
         $this->assertSame(1, $loader->listCalls);
+        $this->assertSame(['admin-1'], $loader->listViewers);
     }
 }

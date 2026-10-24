@@ -7,7 +7,9 @@ use DateTimeImmutable;
 use Repas\Drive\Domain\Model\AcceptedProduct;
 use Repas\Drive\Domain\Model\Choice;
 use Repas\Drive\Domain\Model\ChoiceKind;
+use Repas\Drive\Domain\Model\PackSize;
 use Repas\Drive\Domain\Model\Retailer;
+use Repas\Drive\Domain\Model\SearchQuery;
 use Repas\Shared\Domain\Tool\UuidGenerator;
 
 /**
@@ -20,10 +22,13 @@ class ChoiceBuilder implements Builder
     private string $storeId;
     private string $ingredientSlug;
     private ChoiceKind $kind;
+    private ?SearchQuery $searchQuery = null;
     /** @var list<string> */
     private array $accepted = [];
     /** @var list<string> */
     private array $rejected = [];
+    /** @var array<string, PackSize> contenance par identifiant de produit accepté */
+    private array $packSizes = [];
     private DateTimeImmutable $updatedAt;
 
     private function initialize(): void
@@ -78,6 +83,21 @@ class ChoiceBuilder implements Builder
         return $this;
     }
 
+    public function withSearchQuery(string $searchQuery): self
+    {
+        $this->searchQuery = SearchQuery::of($searchQuery);
+        return $this;
+    }
+
+    /**
+     * La contenance (dans l'unité de la liste) d'un produit accepté : à appeler après `withAccepted()`.
+     */
+    public function withPackSize(string $productId, float $value, string $unitSlug): self
+    {
+        $this->packSizes[$productId] = PackSize::of($value, $unitSlug);
+        return $this;
+    }
+
     public function haveAtHome(): self
     {
         $this->kind = ChoiceKind::HAVE_AT_HOME;
@@ -100,8 +120,9 @@ class ChoiceBuilder implements Builder
             'store_id' => $this->storeId,
             'ingredient_slug' => $this->ingredientSlug,
             'kind' => $this->kind,
-            'accepted' => array_map(static fn(string $productId, int $index): AcceptedProduct => new AcceptedProduct($productId, $index + 1), $this->accepted, array_keys($this->accepted)),
+            'accepted' => array_map(fn(string $productId, int $index): AcceptedProduct => new AcceptedProduct($productId, $index + 1, $this->packSizes[$productId] ?? null), $this->accepted, array_keys($this->accepted)),
             'rejected' => $this->rejected,
+            'search_query' => $this->searchQuery,
             'updated_at' => $this->updatedAt,
         ]);
     }

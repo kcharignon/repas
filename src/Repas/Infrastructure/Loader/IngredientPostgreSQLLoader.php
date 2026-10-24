@@ -18,6 +18,9 @@ use Repas\Repas\Infrastructure\Entity\Conversion;
 use Repas\Repas\Infrastructure\Entity\Department;
 use Repas\Repas\Infrastructure\Entity\Ingredient;
 use Repas\Repas\Infrastructure\Entity\Unit;
+use Repas\Repas\Infrastructure\Merge\IngredientMergeUsageReader;
+use Repas\Repas\Infrastructure\Visibility\IngredientVisibility;
+use Repas\Shared\Application\Interface\IngredientCatalogOwner;
 use Repas\Shared\Domain\Tool\SearchRelevance;
 use Repas\Shared\Domain\Tool\StringTool;
 
@@ -28,10 +31,12 @@ final readonly class IngredientPostgreSQLLoader implements IngredientLoader
 
     public function __construct(
         private EntityManagerInterface $entityManager,
+        private IngredientMergeUsageReader $usageReader,
+        private IngredientCatalogOwner $catalogOwner,
     ) {
     }
 
-    public function listByDepartment(string $departmentSlug, string $viewerId, bool $viewerIsAdmin): DepartmentIngredientsDTO
+    public function listByDepartment(string $departmentSlug, string $viewerId): DepartmentIngredientsDTO
     {
         $department = $this->entityManager->createQueryBuilder()
             ->select('d.slug AS slug', 'd.name AS name', 'd.image AS image')
@@ -46,11 +51,11 @@ final readonly class IngredientPostgreSQLLoader implements IngredientLoader
         }
 
         $rows = $this->entityManager->createQueryBuilder()
-            ->select('i.slug AS slug', 'i.name AS name', 'i.creatorId AS creatorId', 'u.symbol AS purchaseUnitSymbol')
+            ->select('i.slug AS slug', 'i.name AS name', 'i.isBase AS isBase', 'u.symbol AS purchaseUnitSymbol')
             ->from(Ingredient::class, 'i')
             ->innerJoin(Unit::class, 'u', Join::WITH, 'u.slug = i.defaultPurchaseUnitSlug')
             ->where('i.departmentSlug = :department')
-            ->andWhere('i.creatorId = :viewer OR i.creatorId IS NULL')
+            ->andWhere(IngredientVisibility::visibleBy('i', 'viewer'))
             ->setParameter('department', $departmentSlug)
             ->setParameter('viewer', $viewerId)
             ->orderBy('i.sluggedName', 'ASC')
@@ -62,18 +67,22 @@ final readonly class IngredientPostgreSQLLoader implements IngredientLoader
             new DepartmentDTO($department['slug'], $department['name'], $department['image']),
             array_map(
                 fn(array $row): IngredientRowDTO => new IngredientRowDTO(
-                    $row['slug'], $row['name'], $row['purchaseUnitSymbol'], $this->canEdit($row['creatorId'], $viewerId, $viewerIsAdmin),
+                    // `canEdit` : toujours vrai, les lignes sont celles du lecteur (`IngredientVisibility`). Le champ reste dans le contrat.
+                    $row['slug'], $row['name'], $row['purchaseUnitSymbol'], true,
+                    // Le marqueur n'est montré qu'au propriétaire du catalogue, et son identifiant n'est lu que si une ligne est marquée
+                    // (`&&` court-circuite) : zéro requête pour les autres
+                    $row['isBase'] && $this->isCatalogOwner($viewerId),
                 ),
                 $rows,
             ),
         );
     }
 
-    public function get(string $slug, string $viewerId, bool $viewerIsAdmin): IngredientDTO
+    public function get(string $slug, string $viewerId): IngredientDTO
     {
         $ingredient = $this->entityManager->createQueryBuilder()
             ->select(
-                'i.slug AS slug', 'i.name AS name', 'i.image AS image', 'i.creatorId AS creatorId',
+                'i.slug AS slug', 'i.name AS name', 'i.image AS image', 'i.creatorId AS creatorId', 'i.isBase AS isBase',
                 'd.slug AS departmentSlug', 'd.name AS departmentName',
                 'cu.slug AS cookingUnitSlug', 'cu.name AS cookingUnitName',
                 'pu.slug AS purchaseUnitSlug', 'pu.name AS purchaseUnitName', 'pu.symbol AS purchaseUnitSymbol',
@@ -87,12 +96,21 @@ final readonly class IngredientPostgreSQLLoader implements IngredientLoader
             ->getQuery()
             ->getOneOrNullResult();
 
-        // Un ingrédient créé par un autre utilisateur n'existe pas pour un utilisateur qui n'est pas administrateur
-        if ($ingredient === null || (!$viewerIsAdmin && $ingredient['creatorId'] !== null && $ingredient['creatorId'] !== $viewerId)) {
+        // L'ingrédient d'un autre n'existe pas pour le lecteur, administrateur compris (ADR 0028, amendement, D3). Un ancien slug (commun
+        // adopté ou ingrédient fusionné) ne se lit plus : l'écran périmé se recharge.
+        if ($ingredient === null || $ingredient['creatorId'] !== $viewerId) {
             throw IngredientException::notFound($slug);
         }
 
         $hasSameUnit = $ingredient['cookingUnitSlug'] === $ingredient['purchaseUnitSlug'];
+        // Combien de recettes et de listes DU LECTEUR l'utilisent (« Utilisé dans 7 recettes · 2 listes ») : ce qu'une fusion déplacerait
+        $usage = $this->usageReader->counts($viewerId, [$slug])[$slug] ?? ['recipes' => 0, 'lists' => 0];
+
+        // Le marqueur « de base » n'a de sens que chez le propriétaire du catalogue ; pour tout autre lecteur il est faux et ne se pose pas.
+        // L'ingrédient est à lui (404 sinon) : le propriétaire du catalogue est lu une fois.
+        $isCatalogOwner = $this->isCatalogOwner($viewerId);
+        $canSetBase = $isCatalogOwner;
+        $isBase = $ingredient['isBase'] && $isCatalogOwner;
 
         return new IngredientDTO(
             slug: $ingredient['slug'],
@@ -108,7 +126,11 @@ final readonly class IngredientPostgreSQLLoader implements IngredientLoader
             hasSameUnit: $hasSameUnit,
             coefficient: $hasSameUnit ? null : $this->findCoefficient($slug, $ingredient['purchaseUnitSlug'], $ingredient['cookingUnitSlug']),
             creatorId: $ingredient['creatorId'],
-            canEdit: $this->canEdit($ingredient['creatorId'], $viewerId, $viewerIsAdmin),
+            canEdit: true,
+            recipeCount: $usage['recipes'],
+            listCount: $usage['lists'],
+            isBase: $isBase,
+            canSetBase: $canSetBase,
         );
     }
 
@@ -156,7 +178,7 @@ final readonly class IngredientPostgreSQLLoader implements IngredientLoader
         $query = $this->entityManager->createQueryBuilder()
             ->select('i.slug AS slug', 'i.name AS name')
             ->from(Ingredient::class, 'i')
-            ->where('i.creatorId = :user OR i.creatorId IS NULL')
+            ->where(IngredientVisibility::visibleBy('i', 'user'))
             ->setParameter('user', $userId)
             ->orderBy('i.sluggedName', 'ASC')
             ->addOrderBy('i.slug', 'ASC');
@@ -172,7 +194,7 @@ final readonly class IngredientPostgreSQLLoader implements IngredientLoader
         return array_map(static fn(array $row): IngredientOptionDTO => new IngredientOptionDTO($row['slug'], $row['name']), $rows);
     }
 
-    public function search(string $search, string $viewerId, bool $viewerIsAdmin): array
+    public function search(string $search, string $viewerId): array
     {
         // `slugged_name` est le nom sans accent ni majuscule, séparé par des tirets : on cherche le texte dans la même forme
         $needle = StringTool::slugify($search);
@@ -183,14 +205,14 @@ final readonly class IngredientPostgreSQLLoader implements IngredientLoader
         // Le score est calculé en PHP (Jaro-Winkler n'existe pas en SQL) sur tous les ingrédients visibles : quelques centaines
         $rows = $this->entityManager->createQueryBuilder()
             ->select(
-                'i.slug AS slug', 'i.name AS name', 'i.sluggedName AS sluggedName', 'i.creatorId AS creatorId',
+                'i.slug AS slug', 'i.name AS name', 'i.sluggedName AS sluggedName',
                 'u.symbol AS purchaseUnitSymbol',
                 'd.slug AS departmentSlug', 'd.name AS departmentName', 'd.image AS departmentImage',
             )
             ->from(Ingredient::class, 'i')
             ->innerJoin(Unit::class, 'u', Join::WITH, 'u.slug = i.defaultPurchaseUnitSlug')
             ->innerJoin(Department::class, 'd', Join::WITH, 'd.slug = i.departmentSlug')
-            ->where('i.creatorId = :viewer OR i.creatorId IS NULL')
+            ->where(IngredientVisibility::visibleBy('i', 'viewer'))
             ->setParameter('viewer', $viewerId)
             ->getQuery()
             ->getArrayResult();
@@ -211,7 +233,7 @@ final readonly class IngredientPostgreSQLLoader implements IngredientLoader
                 slug: $match['row']['slug'],
                 name: $match['row']['name'],
                 purchaseUnitSymbol: $match['row']['purchaseUnitSymbol'],
-                canEdit: $this->canEdit($match['row']['creatorId'], $viewerId, $viewerIsAdmin),
+                canEdit: true,
                 departmentSlug: $match['row']['departmentSlug'],
                 departmentName: $match['row']['departmentName'],
                 departmentImage: $match['row']['departmentImage'],
@@ -220,9 +242,13 @@ final readonly class IngredientPostgreSQLLoader implements IngredientLoader
         );
     }
 
-    private function canEdit(?string $creatorId, string $viewerId, bool $viewerIsAdmin): bool
+    /**
+     * Le lecteur est le propriétaire du catalogue (ADR 0028, amendement) : un seul compte, jamais « tout administrateur ». Le port mémorise
+     * sa réponse le temps de la requête ; l'appelant ne le demande que si la réponse change quelque chose.
+     */
+    private function isCatalogOwner(string $viewerId): bool
     {
-        return $creatorId === $viewerId || ($viewerIsAdmin && $creatorId === null);
+        return $viewerId === $this->catalogOwner->ownerId();
     }
 
     /**

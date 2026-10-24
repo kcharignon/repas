@@ -24,18 +24,18 @@ final class GetIngredientApiController extends AbstractController
 
     #[Route(path: '/api/v1/ingredients/{slug}', name: 'api_get_ingredient', methods: ['GET'])]
     #[IsGranted('ROLE_USER')]
-    #[OA\Get(summary: 'Détail d\'un ingrédient commun ou créé par l\'utilisateur (un administrateur voit tous les ingrédients)')]
+    #[OA\Get(summary: 'Détail d\'un ingrédient de l\'utilisateur authentifié. Celui d\'un autre utilisateur, un administrateur compris, est inconnu (404) ; un ancien slug (commun adopté, ingrédient fusionné) ne se lit plus')]
     #[OA\Tag(name: 'Ingredients')]
     #[OA\Response(
         response: 200,
         description: 'Détail de l\'ingrédient',
         content: new OA\JsonContent(ref: new Model(type: IngredientDTO::class)),
     )]
-    #[OA\Response(response: 404, description: 'Ingrédient inconnu, ou créé par un autre utilisateur')]
+    #[OA\Response(response: 404, description: 'Ingrédient inconnu, ou à un autre utilisateur (un administrateur n\'a pas de passe-droit)')]
     public function __invoke(string $slug, #[CurrentUser] AuthenticatedUser $user): JsonResponse
     {
         /** @var IngredientDTO $ingredient */
-        $ingredient = $this->queryBus->ask(new GetIngredientQuery($slug, $user->getId(), $this->isGranted('ROLE_ADMIN')));
+        $ingredient = $this->queryBus->ask(new GetIngredientQuery($slug, $user->getId()));
 
         return new JsonResponse($ingredient);
     }

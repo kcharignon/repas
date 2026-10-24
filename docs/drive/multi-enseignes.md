@@ -1,5 +1,7 @@
 # Plusieurs enseignes de drive : audit du couplage à Leclerc et conception cible
 
+> **En pause depuis le 2026-10-20** (décision de l’utilisateur) : rien de ce document ne se met en œuvre tant qu’il ne l’a pas relancé. Seule règle active : ne pas dépendre de l’implémentation de Leclerc dans le nouveau code.
+
 Cadrage du 2026-10-19 (jalon M7 de [`roadmap.md`](roadmap.md)), rédigé par l'assistant de cadrage ; **aucun code de produit n'est écrit ici**. Décision d'architecture : [ADR 0027](../adr/0027-plusieurs-enseignes-de-drive.md) (`Proposed`). Tickets : [`DRV-701` à `DRV-717`](tickets/). État lu : back `main` au commit `556e63f`, front `main` au commit `5b8779f`.
 
 ## 1. Le besoin
@@ -33,8 +35,8 @@ Lu le 2026-10-19 dans les deux dépôts. « Nomme Leclerc » = le mot, un hôte,
 |---|---|---|
 | `drive_settings` | PK `(user_id, retailer)` | Un réglage **par utilisateur et par enseigne** : plusieurs enseignes coexistent déjà en base. `src/Drive/Infrastructure/Entity/DriveSettings.php`, `DriveSettingsRepository::findOneByUser($userId, $retailer)`. |
 | `drive_product` | UNIQUE `(retailer, store_id, retailer_product_id)` | Un produit d'une enseigne ne peut pas heurter celui d'une autre. Les prix et le contenu restent des faits publics **par enseigne et magasin**. |
-| `drive_choice` | UNIQUE `(user_id, retailer, store_id, ingredient_slug)` | Les choix mémorisés (produits habituels, remplacements, produits refusés, « j'en ai toujours ») sont **par enseigne et par magasin** : rien n'est mélangé. `ChoicePostgreSQLRepository::findByUserStoreAndSlugs` filtre déjà sur `retailer`. |
-| `drive_choice_product` | PK `(choice_id, product_id)` | Dépend du choix, donc de l'enseigne. |
+| `drive_choice` | UNIQUE `(user_id, retailer, store_id, ingredient_slug)` | Les choix mémorisés (produits habituels, remplacements, produits refusés, « j'en ai toujours ») sont **par enseigne et par magasin** : rien n'est mélangé. La recherche mémorisée de DRV-650 (`search_query`, le texte qui a fait trouver le produit choisi) vit sur cette même ligne : elle est donc propre à l'enseigne, jamais reprise d'une enseigne à l'autre. `ChoicePostgreSQLRepository::findByUserStoreAndSlugs` filtre déjà sur `retailer`. |
+| `drive_choice_product` | PK `(choice_id, product_id)` | Dépend du choix, donc de l'enseigne. La contenance mémorisée de DRV-652 (`pack_size_value`, `pack_size_unit_slug` : « 20 tranches » dans ce produit) vit sur cette ligne : privée à l'utilisateur, propre à l'enseigne par le choix qui la porte, et exprimée en **slug d'unité de Repas** (rien de propre à une enseigne). |
 
 Les colonnes `retailer` sont des `VARCHAR(20)` (assez pour `auchan`, `intermarche`). **Aucune migration de schéma n'est nécessaire pour les clés.** Les routes d'écriture portent déjà `retailer` dans le corps (`PUT /drive/settings`, `PUT /drive/choices`, `PUT /drive/choices/{slug}`) ou dans la requête (`GET` et `DELETE /drive/choices`). La purge du compte supprime par utilisateur, sans condition d'enseigne (`ChoicePostgreSQLRepository::deleteByUser`, `DriveSettingsRepository::deleteByUser`). Le verrou `SENT` d'une liste est **indépendant de l'enseigne** (`ShoppingList` n'a pas de champ enseigne ; `send` ne prend aucun paramètre d'enseigne).
 

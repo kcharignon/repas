@@ -5,16 +5,23 @@ use Repas\Drive\Application\Command\ReplaceIngredientPreference\ReplaceIngredien
 use Repas\Drive\Application\Command\SaveDriveSettings\SaveDriveSettingsCommand;
 use Repas\Drive\Application\Command\SaveProductChoices\ChoiceAction;
 use Repas\Drive\Application\Command\SaveProductChoices\ChoiceIntent;
+use Repas\Drive\Application\Command\SaveProductChoices\PackSizeChange;
 use Repas\Drive\Application\Command\SaveProductChoices\Placement;
 use Repas\Drive\Application\Command\SaveProductChoices\ProductInput;
 use Repas\Drive\Application\Command\SaveProductChoices\SaveProductChoicesCommand;
+use Repas\Drive\Application\Command\SaveProductChoices\SearchQueryChange;
 use Repas\Drive\Domain\Model\ContentUnit;
+use Repas\Drive\Domain\Model\PackSize;
 use Repas\Drive\Domain\Model\Product;
 use Repas\Drive\Domain\Model\ProductContent;
 use Repas\Drive\Domain\Model\ProductPrice;
 use Repas\Drive\Domain\Model\Retailer;
+use Repas\Drive\Domain\Model\SearchQuery;
 use Repas\Repas\Application\Command\ActivatedShoppingList\ActivatedShoppingListCommand;
+use Repas\Repas\Application\Command\AdoptCommonIngredient\AdoptCommonIngredientCommand;
+use Repas\Repas\Application\Command\AdoptCommonIngredientsForUser\AdoptCommonIngredientsForUserCommand;
 use Repas\Repas\Application\Command\AddIngredientToShoppingList\AddIngredientToShoppingListCommand;
+use Repas\Repas\Application\Command\ClassifyBaseIngredients\ClassifyBaseIngredientsCommand;
 use Repas\Repas\Application\Command\CopyRecipe\CopyRecipeCommand;
 use Repas\Repas\Application\Command\CreateConversion\CreateConversionCommand;
 use Repas\Repas\Application\Command\CreateDepartment\CreateDepartmentCommand;
@@ -25,6 +32,9 @@ use Repas\Repas\Application\Command\CreateRecipeType\CreateRecipeTypeCommand;
 use Repas\Repas\Application\Command\CreateShoppingList\CreateShoppingListCommand;
 use Repas\Repas\Application\Command\CreateUnit\CreateUnitCommand;
 use Repas\Repas\Application\Command\EnsureActiveShoppingList\EnsureActiveShoppingListCommand;
+use Repas\Repas\Application\Command\HandOverCatalog\HandOverCatalogCommand;
+use Repas\Repas\Application\Command\MarkIngredientsDistinct\MarkIngredientsDistinctCommand;
+use Repas\Repas\Application\Command\MergeIngredients\MergeIngredientsCommand;
 use Repas\Repas\Application\Command\PausedShoppingList\PausedShoppingListCommand;
 use Repas\Repas\Application\Command\PlannedMeal\PlannedMealCommand;
 use Repas\Repas\Application\Command\RemoveIngredient\RemoveIngredientCommand;
@@ -33,6 +43,7 @@ use Repas\Repas\Application\Command\RemoveMealFromPlan\removeMealFromPlanCommand
 use Repas\Repas\Application\Command\RemoveRecipe\RemoveRecipeCommand;
 use Repas\Repas\Application\Command\RemoveShoppingList\RemoveShoppingListCommand;
 use Repas\Repas\Application\Command\ReopenShoppingList\ReopenShoppingListCommand;
+use Repas\Repas\Application\Command\SeedUserIngredients\SeedUserIngredientsCommand;
 use Repas\Repas\Application\Command\SendShoppingList\SendShoppingListCommand;
 use Repas\Repas\Application\Command\StoppedShoppingList\StoppedShoppingListCommand;
 use Repas\Repas\Application\Command\TickLineOnShoppingList\TickLineOnShoppingListCommand;
@@ -46,6 +57,9 @@ use Repas\Repas\Application\Command\UpdateRecipeType\UpdateRecipeTypeCommand;
 use Repas\Repas\Application\Command\UpdateServingMeal\UpdateServingMealCommand;
 use Repas\Repas\Application\Command\UpdateShoppingList\UpdateShoppingListCommand;
 use Repas\Repas\Application\Command\UpdateUnit\UpdateUnitCommand;
+use Repas\Repas\Domain\Model\AliasKind;
+use Repas\Repas\Domain\Model\Ingredient;
+use Repas\Repas\Domain\Model\IngredientAlias;
 use Repas\Repas\Domain\Model\Recipe;
 use Repas\Repas\Domain\Model\ShoppingList;
 use Repas\Repas\Domain\Model\ShoppingListRow;
@@ -56,6 +70,7 @@ use Repas\Tests\Helper\Builder\ConversionBuilder;
 use Repas\Tests\Helper\Builder\DepartmentBuilder;
 use Repas\Tests\Helper\Builder\IngredientBuilder;
 use Repas\Tests\Helper\Builder\RecipeBuilder;
+use Repas\Tests\Helper\Builder\RecipeRowBuilder;
 use Repas\Tests\Helper\Builder\RecipeTypeBuilder;
 use Repas\Tests\Helper\Builder\ShoppingListBuilder;
 use Repas\Tests\Helper\Builder\UnitBuilder;
@@ -63,12 +78,15 @@ use Repas\Tests\Helper\Builder\UserBuilder;
 use Repas\Tests\Helper\WriteBudgetTestCase;
 use Repas\User\Application\ChangeUserStatus\ChangeUserStatusCommand;
 use Repas\User\Application\DeleteUser\DeleteUserCommand;
+use Repas\User\Application\RecordUserLogin\RecordUserLoginCommand;
 use Repas\User\Application\RegisterNewUser\RegisterNewUserCommand;
 use Repas\User\Application\ResetPassword\ResetPasswordCommand;
 use Repas\User\Application\SendEmailVerification\SendEmailVerificationCommand;
 use Repas\User\Application\SendPasswordReset\SendPasswordResetCommand;
+use Repas\User\Application\UpdateUserAppVersion\UpdateUserAppVersionCommand;
 use Repas\User\Application\UpdateUserSettings\UpdateUserSettingsCommand;
 use Repas\User\Application\VerifyEmail\VerifyEmailCommand;
+use Repas\User\Domain\Model\AppPlatform;
 use Repas\User\Domain\Model\EmailVerificationToken;
 use Repas\User\Domain\Model\PasswordResetToken;
 use Repas\User\Domain\Model\UserStatus;
@@ -153,14 +171,14 @@ return [
     'ajouter-ingredient-liste' => static function (WriteBudgetTestCase $t): object {
         $owner = $t->savedUser();
         $t->savedShoppingList($owner, $t->typicalRecipes($owner));
-        $milk = new IngredientBuilder()->isMilk()->build();
+        $milk = new IngredientBuilder()->isMilk()->withCreator($owner)->build();
         $t->persister->saveIngredient($milk);
 
         return new AddIngredientToShoppingListCommand($owner->getId(), $milk->getSlug());
     },
     'retirer-ingredient-liste' => static function (WriteBudgetTestCase $t): object {
         $owner = $t->savedUser();
-        $milk = new IngredientBuilder()->isMilk()->build();
+        $milk = new IngredientBuilder()->isMilk()->withCreator($owner)->build();
         $t->persister->saveIngredient($milk);
         $t->savedShoppingList($owner, $t->typicalRecipes($owner), static fn(ShoppingListBuilder $b) => $b->addIngredient($milk));
 
@@ -238,12 +256,58 @@ return [
 
         return new UpdateRecipeCommand($recipe->getId(), 'Carbonara revisitée', 4, $updateRows($recipe), $recipe->getType()->getSlug());
     },
+    // Le cas ordinaire (ADR 0028, amendement) : le copieur a reçu à son activation une copie de chacun des ingrédients de la recette (et son alias,
+    // qui a pour clé le slug de l'ingrédient copié) : toutes les lignes se retrouvent par la provenance, rien n'est créé.
     'copier-recette' => static function (WriteBudgetTestCase $t): object {
         $author = $t->savedUser();
-        $other = $t->savedUser();
+        $copier = $t->savedUser();
         $recipe = $t->savedRecipe($author, new RecipeBuilder()->isPastaCarbonara());
+        $t->savedConversionsFor([$recipe]);
+        foreach ($recipe->getRows() as $row) {
+            $origin = $row->getIngredient();
+            $copy = Ingredient::copyFromOriginal($origin, $copier->getId(), $origin->getSlug() . $copier->getId());
+            $t->persister->saveIngredient($copy);
+            $t->persister->saveIngredientAlias(IngredientAlias::create($copier->getId(), $origin->getSlug(), $copy->getSlug(), AliasKind::ADOPTION, 'activation', new \DateTimeImmutable()));
+            if (!$row->getUnit()->isEqual($copy->getDefaultPurchaseUnit())) {
+                $t->persister->saveConversion(new ConversionBuilder()->withIngredient($copy)->withStartUnit($copy->getDefaultPurchaseUnit())->withEndUnit($row->getUnit())->withCoefficient(100.0)->build());
+            }
+        }
 
-        return new CopyRecipeCommand($recipe->getId(), $other->getId(), UuidGenerator::new());
+        return new CopyRecipeCommand($recipe->getId(), $copier->getId(), UuidGenerator::new());
+    },
+    // Le copieur n'a reçu aucun de ces ingrédients : une copie pour chacun, avec ses conversions propres (une copie retient son origine, D7)
+    'copier-recette-sans-ingredients' => static function (WriteBudgetTestCase $t): object {
+        $author = $t->savedUser();
+        $copier = $t->savedUser();
+        $recipe = $t->savedRecipe($author, new RecipeBuilder()->isPastaCarbonara());
+        $t->savedConversionsFor([$recipe]);
+
+        return new CopyRecipeCommand($recipe->getId(), $copier->getId(), UuidGenerator::new());
+    },
+    // Les ingrédients de la recette sont lus UNE fois pour tout le copieur (candidats du rapprochement, alias), quel que soit le nombre de
+    // lignes ; une copie d'ingrédient coûte ses écritures (ingrédient et conversions propres), un lien n'en coûte aucune. ING-004.
+    'copier-recette-ingredient-personnel' => static function (WriteBudgetTestCase $t): object {
+        $author = $t->savedUser();
+        $copier = $t->savedUser();
+        $butter = new IngredientBuilder()->isButter()->withCreator($author, true)->build();
+        $t->persister->saveIngredient($butter);
+        $t->persister->saveConversion(new ConversionBuilder()->withIngredient($butter)->withStartUnit(new UnitBuilder()->isBlock())->withEndUnit(new UnitBuilder()->isGramme())->withCoefficient(250)->build());
+        $recipe = $t->savedRecipe($author, new RecipeBuilder()->addRow(new RecipeRowBuilder()->withIngredient($butter)->withUnit(new UnitBuilder()->isGramme())->withQuantity(100)));
+
+        return new CopyRecipeCommand($recipe->getId(), $copier->getId(), UuidGenerator::new());
+    },
+    'copier-recette-ingredient-rapproche' => static function (WriteBudgetTestCase $t): object {
+        $author = $t->savedUser();
+        $copier = $t->savedUser();
+        $authorsButter = new IngredientBuilder()->isButter()->withCreator($author, true)->build();
+        $copiersButter = new IngredientBuilder()->isButter()->withCreator($copier, true)->build();
+        foreach ([$authorsButter, $copiersButter] as $butter) {
+            $t->persister->saveIngredient($butter);
+            $t->persister->saveConversion(new ConversionBuilder()->withIngredient($butter)->withStartUnit(new UnitBuilder()->isBlock())->withEndUnit(new UnitBuilder()->isGramme())->withCoefficient(250)->build());
+        }
+        $recipe = $t->savedRecipe($author, new RecipeBuilder()->addRow(new RecipeRowBuilder()->withIngredient($authorsButter)->withUnit(new UnitBuilder()->isGramme())->withQuantity(100)));
+
+        return new CopyRecipeCommand($recipe->getId(), $copier->getId(), UuidGenerator::new());
     },
     'supprimer-recette' => static function (WriteBudgetTestCase $t): object {
         $owner = $t->savedUser();
@@ -260,7 +324,28 @@ return [
         $t->persister->saveDepartment($department);
         $t->persister->saveUnit($unit);
 
-        return new CreateIngredientCommand('Praliné', '', $department->getSlug(), $unit->getSlug(), $unit->getSlug(), $owner->getId(), false, null);
+        return new CreateIngredientCommand('Praliné', '', $department->getSlug(), $unit->getSlug(), $unit->getSlug(), $owner->getId(), null);
+    },
+    // Un administrateur crée un ingrédient (ING-012) : comme tout le monde, à lui ; le même budget que `creer-ingredient` (le rôle ne coûte rien).
+    'creer-ingredient-administrateur' => static function (WriteBudgetTestCase $t): object {
+        $admin = $t->savedUser(new UserBuilder()->isAdmin());
+        $department = new DepartmentBuilder()->isBakery()->build();
+        $unit = new UnitBuilder()->isGramme()->build();
+        $t->persister->saveDepartment($department);
+        $t->persister->saveUnit($unit);
+
+        return new CreateIngredientCommand('Praliné', '', $department->getSlug(), $unit->getSlug(), $unit->getSlug(), $admin->getId(), null);
+    },
+    // Le propriétaire du catalogue crée un ingrédient « de base » (ING-011) : une lecture de plus que `creer-ingredient`, celle du compte
+    // propriétaire ; `creer-ingredient` (sans marqueur) ne le lit pas.
+    'creer-ingredient-base' => static function (WriteBudgetTestCase $t): object {
+        $owner = $t->savedUser(new UserBuilder()->isCatalogOwner());
+        $department = new DepartmentBuilder()->isBakery()->build();
+        $unit = new UnitBuilder()->isGramme()->build();
+        $t->persister->saveDepartment($department);
+        $t->persister->saveUnit($unit);
+
+        return new CreateIngredientCommand('Praliné', '', $department->getSlug(), $unit->getSlug(), $unit->getSlug(), $owner->getId(), null, true);
     },
     'modifier-ingredient' => static function (WriteBudgetTestCase $t): object {
         $owner = $t->savedUser();
@@ -275,6 +360,26 @@ return [
             $ingredient->getDefaultCookingUnit()->getSlug(),
             $ingredient->getDefaultCookingUnit()->getSlug(),
             null,
+            $owner->getId(),
+        );
+    },
+    // Le propriétaire du catalogue marque un ingrédient « de base » (ING-011) : une lecture de plus que `modifier-ingredient`, celle du
+    // compte propriétaire (le seul cas où il est lu : sans marqueur, ou avec le même, le budget de la modification ne bouge pas).
+    'modifier-ingredient-base' => static function (WriteBudgetTestCase $t): object {
+        $owner = $t->savedUser(new UserBuilder()->isCatalogOwner());
+        $ingredient = new IngredientBuilder()->isFlour()->withCreator($owner, true)->build();
+        $t->persister->saveIngredient($ingredient);
+
+        return new UpdateIngredientCommand(
+            $ingredient->getSlug(),
+            'Farine complète',
+            '',
+            $ingredient->getDepartment()->getSlug(),
+            $ingredient->getDefaultCookingUnit()->getSlug(),
+            $ingredient->getDefaultCookingUnit()->getSlug(),
+            null,
+            $owner->getId(),
+            true,
         );
     },
     'supprimer-ingredient' => static function (WriteBudgetTestCase $t): object {
@@ -284,17 +389,104 @@ return [
 
         return new RemoveIngredientCommand($ingredient->getSlug());
     },
+    // « Pas le même » (ADR 0028 décision h, ING-006) : deux ingrédients de l'utilisateur, une ligne dans ingredient_distinct. Le nombre de
+    // requêtes ne dépend de rien d'autre que de ces deux ingrédients.
+    'pas-le-meme' => static function (WriteBudgetTestCase $t): object {
+        $owner = $t->savedUser();
+        $tomato = new IngredientBuilder()->withName('Tomate')->withCreator($owner, true)->build();
+        $tomatoes = new IngredientBuilder()->withName('Tomates')->withCreator($owner, true)->build();
+        $t->persister->saveIngredient($tomato);
+        $t->persister->saveIngredient($tomatoes);
+
+        return new MarkIngredientsDistinctCommand($owner->getId(), $tomatoes->getSlug(), $tomato->getSlug());
+    },
+    // Adoption d'un commun (ADR 0028, ING-001) : le beurre, avec deux conversions propres, que l'utilisateur n'a jamais adopté ; son slug est
+    // libre (une requête de plus par slug déjà pris). C'est le coût de la première utilisation d'un commun.
+    'adopter-ingredient' => static function (WriteBudgetTestCase $t): object {
+        $owner = $t->savedUser();
+        // Un ancien commun : la forme de la base d'avant la passation, la seule que ce cas d'usage unitaire adopte (il disparaît avec ING-014)
+        $butter = new IngredientBuilder()->isButter()->withoutCreator()->build();
+        $t->persister->saveConversion(new ConversionBuilder()->isBlockToGrammeForButter()->withIngredient($butter)->build());
+        $t->persister->saveConversion(
+            new ConversionBuilder()->withStartUnit(new UnitBuilder()->isSoupSpoon())->withEndUnit(new UnitBuilder()->isGramme())->withCoefficient(15)->withIngredient($butter)->build(),
+        );
+
+        return new AdoptCommonIngredientCommand($owner->getId(), $butter->getSlug(), 'first-use');
+    },
+    // Migration d'adoption (ING-003) : TOUS les communs d'un compte en une commande, avec leurs conversions propres, le repointage de ses
+    // recettes, de ses listes (dont une envoyée) et de ses choix du drive, et les empreintes d'avant et d'après. Le nombre de requêtes ne
+    // dépend ni du nombre de communs, ni du nombre de lignes, ni du nombre de comptes (tests/Repas/WriteBudget/AdoptCatalogueBudgetTest).
+    'adopter-catalogue' => static function (WriteBudgetTestCase $t): object {
+        $owner = $t->savedUser();
+        $t->savedAdoptionVolume($owner, recipes: 3, rowsPerRecipe: 4, lists: 3, rowsPerList: 4, choices: 3);
+
+        return new AdoptCommonIngredientsForUserCommand($owner->getId(), 'migration-essai', true);
+    },
+    // Amorçage des ingrédients à l'activation (ING-008, interrupteur ALLUMÉ) : la confirmation de l'adresse d'un compte en attente copie les
+    // ingrédients « de base » du propriétaire du catalogue, leurs conversions propres et leurs alias, dans la transaction de l'activation. Le
+    // nombre de requêtes ne dépend pas du nombre d'ingrédients (tests/Repas/WriteBudget/SeedingActivationBudgetTest, mesuré avec 5 puis 50) ;
+    // interrupteur coupé les scénarios `confirmation-email` et `changer-statut-compte` gardent leur budget d'avant.
+    'confirmer-adresse-amorcage' => static function (WriteBudgetTestCase $t): object {
+        $t->switchOnIngredientSeeding();
+        $t->savedSeedingCatalog(5);
+        $user = $t->savedUser(new UserBuilder()->isPending());
+        $t->savedEmailVerificationToken($user, 'le-secret');
+
+        return new VerifyEmailCommand(EmailVerificationToken::hash('le-secret'));
+    },
+    // L'amorçage d'un compte SEUL (le rattrapage `repas:ingredients:seed` : une commande par compte), compte neuf, catalogue de 5 ingrédients de
+    // base : c'est le coût fixe que les deux activations ci-dessus ajoutent à leur propre budget (constant en nombre d'ingrédients)
+    'amorcer-compte' => static function (WriteBudgetTestCase $t): object {
+        $t->savedSeedingCatalog(5);
+        $user = $t->savedUser();
+
+        return new SeedUserIngredientsCommand($user->getId(), 'rattrapage-essai');
+    },
+    // La passation du catalogue (ING-009) : phase 1, le classement des anciens communs d'après le fichier (verrou, ingrédients sans créateur, un
+    // seul UPDATE), puis phase 4, les préconditions relues, les empreintes d'avant et d'après, UN UPDATE du créateur et la statistique du
+    // propriétaire. Le nombre de requêtes ne dépend ni du nombre de lignes, ni de listes, ni de choix du drive du propriétaire
+    // (tests/Repas/WriteBudget/HandOverBudgetTest).
+    'classer-ingredients-de-base' => static function (WriteBudgetTestCase $t): object {
+        $t->savedHandoverCatalog(recipes: 3, rowsPerRecipe: 4, lists: 3, rowsPerList: 4, choices: 3, classified: false);
+
+        return new ClassifyBaseIngredientsCommand();
+    },
+    'passation-communs' => static function (WriteBudgetTestCase $t): object {
+        $t->switchOnIngredientSeeding();
+        $t->savedHandoverCatalog(recipes: 3, rowsPerRecipe: 4, lists: 3, rowsPerList: 4, choices: 3);
+
+        return new HandOverCatalogCommand();
+    },
+    // L'administrateur active un compte désactivé qui n'a jamais rien reçu : même amorçage
+    'activer-compte-amorcage' => static function (WriteBudgetTestCase $t): object {
+        $t->switchOnIngredientSeeding();
+        $t->savedSeedingCatalog(5);
+        $user = $t->savedUser(new UserBuilder()->isDisabled());
+
+        return new ChangeUserStatusCommand($user->getId(), UserStatus::ACTIVE);
+    },
+    // Fusion de deux ingrédients de l'utilisateur (ADR 0028, ING-005) : verrou, analyse (usage, graphe de conversion, choix du drive),
+    // repointage en masse des recettes, des listes et des choix, alias, suppression de l'absorbé et statistique. Le nombre de requêtes ne
+    // dépend ni du nombre de recettes ni du nombre de listes (tests/Repas/WriteBudget/MergeIngredientsBudgetTest).
+    'fusionner-ingredients' => static function (WriteBudgetTestCase $t): object {
+        return $t->savedMerge($t->savedUser(), recipes: 3, lists: 3);
+    },
+    // La même fusion quand l'ingrédient gardé RÉCUPÈRE des conversions de l'absorbé (copie en une requête) et gagne une unité compatible : un nombre
+    // fixe de requêtes de plus, quel nombre de conversions et quel volume (tests/Repas/WriteBudget/MergeIngredientsBudgetTest).
+    'fusionner-ingredients-avec-recuperation' => static function (WriteBudgetTestCase $t): object {
+        return $t->savedMerge($t->savedUser(), recipes: 3, lists: 3, recoveredConversions: 2);
+    },
     'creer-conversion' => static function (WriteBudgetTestCase $t): object {
         $t->persister->saveUnit(new UnitBuilder()->isLiter()->build());
         $t->persister->saveUnit(new UnitBuilder()->isMillilitre()->build());
 
-        return new CreateConversionCommand(UuidGenerator::new(), 'litre', 'millilitre', 1000.0, null);
+        return new CreateConversionCommand(UuidGenerator::new(), 'litre', 'millilitre', 1000.0, null, $t->savedUser(new UserBuilder()->isAdmin())->getId());
     },
     'modifier-conversion' => static function (WriteBudgetTestCase $t): object {
         $conversion = new ConversionBuilder()->isKiloToGramme()->build();
         $t->persister->saveConversion($conversion);
 
-        return new UpdateConversionCommand($conversion->getId(), 'kilo', 'gramme', 1001.0, null);
+        return new UpdateConversionCommand($conversion->getId(), 'kilo', 'gramme', 1001.0, null, $t->savedUser(new UserBuilder()->isAdmin())->getId());
     },
 
     // --- Référentiels
@@ -353,6 +545,24 @@ return [
 
         return new UpdateUserSettingsCommand($user->getId(), null, 5);
     },
+    // Pire cas : une version déjà connue, remplacée par la nouvelle (DRV-637). Une seule requête : l'écriture conditionnelle
+    // (le compte existe) qui verrouille la ligne du compte, sans lecture préalable. Un deuxième appel dans la minute n'arrive pas
+    // jusqu'ici (limiteur, aucune requête).
+    'version-application' => static function (WriteBudgetTestCase $t): object {
+        $user = $t->savedUser();
+        $t->savedUserAppVersion($user);
+
+        return new UpdateUserAppVersionCommand($user->getId(), AppPlatform::ANDROID, '0.1.10');
+    },
+    // Dernière connexion (ADR 0021, amendement du 2026-10-20) : mesurée à froid, 2 requêtes (lecture du compte + un UPDATE ciblé de
+    // `last_login_at`). Dans une vraie connexion ou un vrai renouvellement le compte vient d'être chargé par l'authentification et
+    // `findOneById` est servi par l'identity map : UNE requête de plus, et ZÉRO quand la dernière connexion a moins de 10 minutes
+    // (la commande n'est alors même pas envoyée : `LastLoginFlowTest` le prouve de bout en bout).
+    'derniere-connexion' => static function (WriteBudgetTestCase $t): object {
+        $user = $t->savedUser();
+
+        return new RecordUserLoginCommand($user->getId());
+    },
     // Pire cas : un compte actif connecté, avec un lien de confirmation, devient désactivé
     'changer-statut-compte' => static function (WriteBudgetTestCase $t): object {
         $user = $t->savedUser();
@@ -371,6 +581,8 @@ return [
     // du compteur du jour des écritures de produits, dans les réglages (plafond par utilisateur, DRV-613) + 2 pour l'apprentissage du
     // rayon (DRV-642) : la lecture du rayon de Repas des ingrédients et l'écriture du compteur, seulement quand un choix porte un rayon
     // de l'enseigne et que l'ingrédient a un rayon de Repas (ici : l'ingrédient existe, c'est le pire cas)
+    // Le choix porte aussi la recherche qui a fait trouver le produit (DRV-650) : elle voyage dans l'écriture de la préférence, aucune
+    // requête de plus (le budget est celui d'avant)
     'choix-drive' => static function (WriteBudgetTestCase $t): object {
         $user = $t->savedUser();
         $t->savedDriveSettings($user);
@@ -378,13 +590,14 @@ return [
         $t->savedDriveChoice($user, 'farine', ['1', '2'], ['9']);
 
         return new SaveProductChoicesCommand($user->getId(), Retailer::LECLERC, '123456', [
-            new ChoiceIntent('farine', ChoiceAction::ADD_PRODUCT, Placement::PRIMARY, new ProductInput('3', 'Farine de blé T55 1 kg', null, new ProductContent(1000, ContentUnit::G), new ProductPrice(149), 4001, 4101)),
+            new ChoiceIntent('farine', ChoiceAction::ADD_PRODUCT, Placement::PRIMARY, new ProductInput('3', 'Farine de blé T55 1 kg', null, new ProductContent(1000, ContentUnit::G), new ProductPrice(149), 4001, 4101), SearchQueryChange::set(SearchQuery::of('farine de blé t55'))),
         ]);
     },
     // Le même use case avec un lot de 41 intentions sur 11 ingrédients, dont dix déjà mémorisés et un nouveau : constant quelle que soit
     // la taille du lot, et une requête de plus que ci-dessus, le décompte des préférences (plafond par utilisateur, DRV-613), lu
     // seulement quand le lot crée une préférence. Chaque produit choisi porte un rayon de l'enseigne et les ingrédients existent : la
     // lecture des rayons de Repas et l'écriture des compteurs (DRV-642) restent deux requêtes pour tout le lot
+    // Les dix produits préférés portent aussi leur recherche mémorisée (DRV-650) : aucune requête de plus
     'choix-drive-lot' => static function (WriteBudgetTestCase $t): object {
         $user = $t->savedUser();
         $t->savedDriveSettings($user);
@@ -393,7 +606,7 @@ return [
             $slug = "ingredient-$i";
             $t->persister->saveIngredient(new IngredientBuilder()->isMilk()->withSlug($slug)->withName("Ingrédient $i")->build());
             $t->savedDriveChoice($user, $slug, [(string) $i, (string) ($i + 100)], [(string) ($i + 200)]);
-            $intents[] = new ChoiceIntent($slug, ChoiceAction::ADD_PRODUCT, Placement::PRIMARY, new ProductInput((string) ($i + 300), "Produit $i", null, new ProductContent(500, ContentUnit::G), new ProductPrice(100 + $i), 4000 + ($i % 3), 4100));
+            $intents[] = new ChoiceIntent($slug, ChoiceAction::ADD_PRODUCT, Placement::PRIMARY, new ProductInput((string) ($i + 300), "Produit $i", null, new ProductContent(500, ContentUnit::G), new ProductPrice(100 + $i), 4000 + ($i % 3), 4100), SearchQueryChange::set(SearchQuery::of("recherche $i")));
             $intents[] = new ChoiceIntent($slug, ChoiceAction::ADD_PRODUCT, Placement::FALLBACK, new ProductInput((string) ($i + 400), "Produit de secours $i"));
             $intents[] = new ChoiceIntent($slug, ChoiceAction::REJECT_PRODUCT, null, new ProductInput((string) $i, "Produit refusé $i"));
             $intents[] = new ChoiceIntent($slug, ChoiceAction::REFRESH_PRICE, null, new ProductInput((string) ($i + 100), null, null, null, new ProductPrice(200 + $i)));
@@ -401,6 +614,34 @@ return [
         $intents[] = new ChoiceIntent('sel', ChoiceAction::HAVE_AT_HOME);
 
         return new SaveProductChoicesCommand($user->getId(), Retailer::LECLERC, '123456', $intents);
+    },
+    // Le même use case quand le lot donne la contenance du produit dans l'unité de la liste (DRV-652, « 20 tranches ») : elle voyage dans la
+    // réécriture des lignes de produits (aucune requête de plus pour la porter), mais l'unité doit exister dans Repas, une lecture de plus
+    // (une seule quel que soit le nombre de contenances du lot, aucune quand le lot n'en donne pas : `choix-drive*` ne changent pas)
+    'choix-drive-contenance' => static function (WriteBudgetTestCase $t): object {
+        $user = $t->savedUser();
+        $t->savedDriveSettings($user);
+        $t->persister->saveIngredient(new IngredientBuilder()->isFlour()->build());
+        $t->persister->saveUnit(new UnitBuilder()->isSlice()->build());
+        $t->savedDriveChoice($user, 'farine', ['1', '2'], ['9']);
+
+        return new SaveProductChoicesCommand($user->getId(), Retailer::LECLERC, '123456', [
+            new ChoiceIntent('farine', ChoiceAction::ADD_PRODUCT, Placement::PRIMARY, new ProductInput('3', 'Farine de blé T55 1 kg', null, new ProductContent(1000, ContentUnit::G), new ProductPrice(149), 4001, 4101, PackSizeChange::set(PackSize::of(20, 'tranche'))), SearchQueryChange::set(SearchQuery::of('farine de blé t55'))),
+        ]);
+    },
+    // La recherche seule d'un ingrédient sans préférence (DRV-653, produit pris « cette fois seulement ») : la préférence est créée sans
+    // produit. Aucun produit à lire ni à écrire, aucun apprentissage de rayon, aucune lecture d'unité : moins cher qu'un `ADD_PRODUCT`
+    // (pas de compteur du jour des écritures de produits). Le lot de 3 ingrédients coûte autant.
+    'choix-drive-recherche' => static function (WriteBudgetTestCase $t): object {
+        $user = $t->savedUser();
+        $t->savedDriveSettings($user);
+        $t->savedDriveChoice($user, 'farine', ['1', '2'], ['9']);
+
+        return new SaveProductChoicesCommand($user->getId(), Retailer::LECLERC, '123456', [
+            new ChoiceIntent('farine', ChoiceAction::NOTE_SEARCH, null, null, SearchQueryChange::set(SearchQuery::of('farine de blé t55'))),
+            new ChoiceIntent('cereale', ChoiceAction::NOTE_SEARCH, null, null, SearchQueryChange::set(SearchQuery::of('céréales coussins'))),
+            new ChoiceIntent('lait', ChoiceAction::NOTE_SEARCH, null, null, SearchQueryChange::set(SearchQuery::of('lait demi écrémé'))),
+        ]);
     },
     'oublier-choix-drive' => static function (WriteBudgetTestCase $t): object {
         $user = $t->savedUser();
@@ -431,13 +672,17 @@ return [
 
         return new ReplaceIngredientPreferenceCommand($user->getId(), Retailer::LECLERC, '123456', 'sucre', false, [$id('2'), $id('3')], [$id('4')]);
     },
-    // Compte qui a trois recettes planifiées dans une liste (dont une est copiée par un autre utilisateur), un magasin et une préférence de produits
+    // Compte qui a un lien Google, une version d'application connue (DRV-637), trois recettes planifiées dans une liste (dont une est
+    // copiée par un autre utilisateur), un magasin, une préférence de produits et un alias d'ingrédient (ADR 0028)
     'supprimer-compte' => static function (WriteBudgetTestCase $t): object {
         $owner = $t->savedUser();
+        $t->savedUserIdentity($owner);
+        $t->savedUserAppVersion($owner);
         $recipes = $t->typicalRecipes($owner);
         $t->savedShoppingList($owner, $recipes);
         $t->savedDriveSettings($owner);
         $t->savedDriveChoice($owner, 'farine', ['1', '2'], ['9']);
+        $t->persister->saveIngredientAlias(IngredientAlias::create($owner->getId(), 'beurre', 'beurre' . $owner->getId(), AliasKind::ADOPTION, 'first-use', new \DateTimeImmutable()));
         $t->savedRecipe($t->savedUser(), new RecipeBuilder()->isPastaCarbonara()->withOriginalId($recipes[0]->getId()));
 
         return new DeleteUserCommand($owner->getId(), 'administrateur');

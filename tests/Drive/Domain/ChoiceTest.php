@@ -10,7 +10,9 @@ use Repas\Drive\Domain\Exception\DriveException;
 use Repas\Drive\Domain\Model\AcceptedProduct;
 use Repas\Drive\Domain\Model\Choice;
 use Repas\Drive\Domain\Model\ChoiceKind;
+use Repas\Drive\Domain\Model\PackSize;
 use Repas\Drive\Domain\Model\Retailer;
+use Repas\Drive\Domain\Model\SearchQuery;
 use Repas\Tests\Helper\Builder\ChoiceBuilder;
 
 class ChoiceTest extends TestCase
@@ -366,5 +368,314 @@ class ChoiceTest extends TestCase
         // Then
         $this->assertCount(5, $choice->getAcceptedProductIds());
         $this->assertCount(20, $choice->getRejectedProductIds());
+    }
+
+    public function testANewChoiceRemembersNoSearch(): void
+    {
+        // When
+        $choice = Choice::create('choice-1', 'user-1', Retailer::LECLERC, '123456', 'farine', new DateTimeImmutable());
+
+        // Then
+        $this->assertNull($choice->getSearchQuery());
+    }
+
+    public function testRememberSearchSetsThenReplacesTheSearchAndForgetSearchClearsIt(): void
+    {
+        // Given
+        $choice = new ChoiceBuilder()->withAccepted(['a'])->build();
+
+        // When
+        $choice->rememberSearch(SearchQuery::of('céréales coussins'));
+
+        // Then
+        $this->assertSame('céréales coussins', $choice->getSearchQuery()?->value);
+
+        // When
+        $choice->rememberSearch(SearchQuery::of('coussins chocolat'));
+
+        // Then
+        $this->assertSame('coussins chocolat', $choice->getSearchQuery()->value);
+        $this->assertSame(['a'], $choice->getAcceptedProductIds());
+
+        // When
+        $choice->forgetSearch();
+
+        // Then
+        $this->assertNull($choice->getSearchQuery());
+    }
+
+    public function testOnlyAChoiceOfProductsRemembersASearch(): void
+    {
+        // Given
+        $choice = new ChoiceBuilder()->haveAtHome()->build();
+
+        // Then
+        $this->expectExceptionObject(DriveException::invalidChoice());
+
+        // When
+        $choice->rememberSearch(SearchQuery::of('céréales coussins'));
+    }
+
+    public function testHavingItAtHomeForgetsTheSearch(): void
+    {
+        // Given
+        $choice = new ChoiceBuilder()->withAccepted(['a'])->withSearchQuery('céréales coussins')->build();
+
+        // When
+        $choice->markHaveAtHome();
+
+        // Then
+        $this->assertNull($choice->getSearchQuery());
+
+        // When : il rachète l'ingrédient
+        $choice->resumeBuying();
+
+        // Then : rien ne revient
+        $this->assertNull($choice->getSearchQuery());
+    }
+
+    public function testReplaceKeepsTheSearchUnlessItIsHaveAtHome(): void
+    {
+        // Given
+        $choice = new ChoiceBuilder()->withAccepted(['a', 'b'])->withSearchQuery('céréales coussins')->build();
+
+        // When : l'écran de gestion réordonne les produits
+        $choice->replace(false, ['b', 'a'], []);
+
+        // Then
+        $this->assertSame('céréales coussins', $choice->getSearchQuery()?->value);
+
+        // When
+        $choice->replace(true, [], []);
+
+        // Then
+        $this->assertNull($choice->getSearchQuery());
+    }
+
+    public function testAFailedReplaceKeepsTheSearch(): void
+    {
+        // Given
+        $choice = new ChoiceBuilder()->withAccepted(['a'])->withSearchQuery('céréales coussins')->build();
+
+        // When
+        try {
+            $choice->replace(true, ['a'], []);
+            $this->fail('DRIVE_CHOICE_INVALID attendu');
+        } catch (DriveException) {
+            // Then
+            $this->assertSame('céréales coussins', $choice->getSearchQuery()?->value);
+        }
+    }
+
+    public function testLoadRestoresTheSearchButIgnoresOneLeftOnAHaveAtHomeChoice(): void
+    {
+        // When : une version plus ancienne du code a pu repasser la ligne en « j'en ai toujours » sans effacer la recherche
+        $buying = new ChoiceBuilder()->withAccepted(['a'])->withSearchQuery('céréales coussins')->build();
+        $atHome = new ChoiceBuilder()->haveAtHome()->withSearchQuery('céréales coussins')->build();
+
+        // Then
+        $this->assertSame('céréales coussins', $buying->getSearchQuery()?->value);
+        $this->assertNull($atHome->getSearchQuery());
+    }
+
+    public function testANewChoiceRemembersNoPackSize(): void
+    {
+        // When
+        $choice = Choice::create('choice-1', 'user-1', Retailer::LECLERC, '123456', 'cheddar', new DateTimeImmutable('2026-10-18 10:00:00'));
+        $choice->addPrimary('a');
+
+        // Then
+        $this->assertNull($choice->getPackSize('a'));
+        $this->assertSame([null], array_map(static fn(AcceptedProduct $product): ?PackSize => $product->packSize, $choice->getAccepted()));
+    }
+
+    public function testEachAcceptedProductHasItsOwnPackSize(): void
+    {
+        // Given
+        $choice = new ChoiceBuilder()->withAccepted(['a', 'b', 'c'])->build();
+
+        // When
+        $choice->rememberPackSize('a', PackSize::of(20, 'tranche'))->rememberPackSize('c', PackSize::of(12, 'tranche'));
+
+        // Then : b n'en a pas, et les rangs ne bougent pas
+        $this->assertEquals(PackSize::of(20, 'tranche'), $choice->getPackSize('a'));
+        $this->assertNull($choice->getPackSize('b'));
+        $this->assertEquals(PackSize::of(12, 'tranche'), $choice->getPackSize('c'));
+        $this->assertEquals(
+            [new AcceptedProduct('a', 1, PackSize::of(20, 'tranche')), new AcceptedProduct('b', 2), new AcceptedProduct('c', 3, PackSize::of(12, 'tranche'))],
+            $choice->getAccepted(),
+        );
+
+        // When : la contenance d'un produit est remplacée, puis oubliée
+        $choice->rememberPackSize('a', PackSize::of(24, 'tranche'));
+
+        // Then
+        $this->assertEquals(PackSize::of(24, 'tranche'), $choice->getPackSize('a'));
+        $this->assertEquals(PackSize::of(12, 'tranche'), $choice->getPackSize('c'));
+
+        // When
+        $choice->forgetPackSize('a');
+
+        // Then
+        $this->assertNull($choice->getPackSize('a'));
+        $this->assertEquals(PackSize::of(12, 'tranche'), $choice->getPackSize('c'));
+    }
+
+    public function testForgettingAPackSizeThatIsNotThereChangesNothing(): void
+    {
+        // Given
+        $choice = new ChoiceBuilder()->withAccepted(['a'])->build();
+
+        // When
+        $choice->forgetPackSize('a')->forgetPackSize('inconnu');
+
+        // Then
+        $this->assertSame(['a'], $choice->getAcceptedProductIds());
+        $this->assertNull($choice->getPackSize('a'));
+    }
+
+    public function testOnlyAnAcceptedProductRemembersAPackSize(): void
+    {
+        // Given : b est refusé, c n'est pas dans la préférence
+        $choice = new ChoiceBuilder()->withAccepted(['a'])->withRejected(['b'])->build();
+
+        foreach (['b', 'c'] as $productId) {
+            // When
+            try {
+                $choice->rememberPackSize($productId, PackSize::of(20, 'tranche'));
+                $this->fail('DRIVE_CHOICE_INVALID attendu');
+            } catch (DriveException $exception) {
+                // Then
+                $this->assertSame('DRIVE_CHOICE_INVALID', $exception->getMessage());
+                $this->assertNull($choice->getPackSize($productId));
+            }
+        }
+    }
+
+    public function testAHaveAtHomeChoiceRemembersNoPackSize(): void
+    {
+        // Given
+        $choice = new ChoiceBuilder()->haveAtHome()->build();
+
+        // Then
+        $this->expectExceptionObject(DriveException::invalidChoice());
+
+        // When
+        $choice->rememberPackSize('a', PackSize::of(20, 'tranche'));
+    }
+
+    public function testAProductThatIsNoLongerAcceptedLosesItsPackSizeAndGetsNoneBack(): void
+    {
+        // Given
+        $choice = new ChoiceBuilder()->withAccepted(['a', 'b'])->withPackSize('a', 20, 'tranche')->withPackSize('b', 12, 'tranche')->build();
+
+        // When : a est refusé
+        $choice->reject('a');
+
+        // Then
+        $this->assertNull($choice->getPackSize('a'));
+        $this->assertEquals(PackSize::of(12, 'tranche'), $choice->getPackSize('b'));
+
+        // When : a est accepté de nouveau
+        $choice->addFallback('a');
+
+        // Then : la contenance d'avant n'est pas revenue
+        $this->assertNull($choice->getPackSize('a'));
+        $this->assertEquals(PackSize::of(12, 'tranche'), $choice->getPackSize('b'));
+
+        // When : b est retiré sans être refusé, puis ajouté de nouveau
+        $choice->remove('b')->addPrimary('b');
+
+        // Then
+        $this->assertNull($choice->getPackSize('b'));
+    }
+
+    public function testChangingTheOrderOrAddingAnotherProductKeepsThePackSizes(): void
+    {
+        // Given
+        $choice = new ChoiceBuilder()->withAccepted(['a', 'b'])->withPackSize('a', 20, 'tranche')->build();
+
+        // When : un nouveau préféré décale les autres, puis l'écran de gestion réordonne
+        $choice->addPrimary('c');
+        $choice->reorder(['b', 'a', 'c']);
+        $choice->addFallback('a');
+
+        // Then : chaque produit garde la sienne, le nouveau n'a jamais celle de l'ancien
+        $this->assertEquals(PackSize::of(20, 'tranche'), $choice->getPackSize('a'));
+        $this->assertNull($choice->getPackSize('b'));
+        $this->assertNull($choice->getPackSize('c'));
+    }
+
+    public function testHavingItAtHomeForgetsThePackSizes(): void
+    {
+        // Given
+        $choice = new ChoiceBuilder()->withAccepted(['a'])->withPackSize('a', 20, 'tranche')->build();
+
+        // When
+        $choice->markHaveAtHome()->resumeBuying()->addPrimary('a');
+
+        // Then : rien ne revient
+        $this->assertNull($choice->getPackSize('a'));
+    }
+
+    public function testReplaceKeepsThePackSizesOfTheProductsThatStayAccepted(): void
+    {
+        // Given
+        $choice = new ChoiceBuilder()->withAccepted(['a', 'b'])->withPackSize('a', 20, 'tranche')->withPackSize('b', 12, 'tranche')->build();
+
+        // When : l'écran de gestion inverse l'ordre, retire b, accepte c et refuse d
+        $choice->replace(false, ['a', 'c'], ['d']);
+
+        // Then
+        $this->assertEquals(PackSize::of(20, 'tranche'), $choice->getPackSize('a'));
+        $this->assertNull($choice->getPackSize('b'));
+        $this->assertNull($choice->getPackSize('c'));
+        $this->assertEquals([new AcceptedProduct('a', 1, PackSize::of(20, 'tranche')), new AcceptedProduct('c', 2)], $choice->getAccepted());
+
+        // When
+        $choice->replace(true, [], []);
+
+        // Then
+        $this->assertNull($choice->getPackSize('a'));
+    }
+
+    public function testAFailedMethodKeepsThePackSizes(): void
+    {
+        // Given : cinq produits acceptés dont un a une contenance
+        $choice = new ChoiceBuilder()->withAccepted(['a', 'b', 'c', 'd', 'e'])->withPackSize('a', 20, 'tranche')->build();
+
+        // When : un sixième produit est refusé par le plafond
+        try {
+            $choice->addFallback('f');
+            $this->fail('DRIVE_CHOICE_INVALID attendu');
+        } catch (DriveException) {
+            // Then
+            $this->assertEquals(PackSize::of(20, 'tranche'), $choice->getPackSize('a'));
+        }
+
+        // When : un remplacement invalide
+        try {
+            $choice->replace(true, ['a'], []);
+            $this->fail('DRIVE_CHOICE_INVALID attendu');
+        } catch (DriveException) {
+            // Then
+            $this->assertEquals(PackSize::of(20, 'tranche'), $choice->getPackSize('a'));
+        }
+    }
+
+    public function testLoadRestoresThePackSizesButIgnoresOnesLeftOnAHaveAtHomeChoice(): void
+    {
+        // When : une ligne « j'en ai toujours » n'a aucun produit accepté ; ses contenances éventuelles sont ignorées
+        $buying = new ChoiceBuilder()->withAccepted(['a', 'b'])->withPackSize('b', 20, 'tranche')->build();
+        $atHome = Choice::load([
+            'id' => 'choice-2', 'user_id' => 'user-1', 'retailer' => Retailer::LECLERC, 'store_id' => '123456', 'ingredient_slug' => 'cheddar',
+            'kind' => ChoiceKind::HAVE_AT_HOME, 'accepted' => [new AcceptedProduct('a', 1, PackSize::of(20, 'tranche'))], 'rejected' => [],
+            'updated_at' => new DateTimeImmutable('2026-10-18 10:00:00'),
+        ]);
+
+        // Then
+        $this->assertNull($buying->getPackSize('a'));
+        $this->assertEquals(PackSize::of(20, 'tranche'), $buying->getPackSize('b'));
+        $this->assertNull($atHome->getPackSize('a'));
     }
 }

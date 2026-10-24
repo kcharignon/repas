@@ -38,3 +38,7 @@ Celle du dépôt front. Part avec une release du site.
 ## Pièges connus
 
 - Ne pas toucher à l'agent ni à `android/agent.js.sha384` (web seulement).
+
+## Suite
+
+La page d'aide est devenue « un bouton qui fait tout » avec la page publique `/installer` (DRV-639, PR front #191).

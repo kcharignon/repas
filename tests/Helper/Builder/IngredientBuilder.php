@@ -11,6 +11,15 @@ use Repas\User\Domain\Model\User;
 
 class IngredientBuilder implements Builder
 {
+    /**
+     * Le propriétaire d'un ingrédient de test quand le test n'en donne pas : l'utilisateur de test partagé des tests unitaires (`'user-id'`),
+     * jamais « personne ». Il n'y a plus d'ingrédient commun (ADR 0028, amendement) : tout ingrédient naît chez un utilisateur. Sans compte
+     * derrière (aucune clé étrangère) : un test de base qui veut que l'ingrédient soit à un compte réel passe par `withCreator()`. Le slug
+     * d'un ingrédient construit sans propriétaire reste celui du nom seul : seul un propriétaire donné par `withCreator(…, true)` l'entre dans
+     * le slug.
+     */
+    public const string DEFAULT_CREATOR_ID = 'user-id';
+
     private string $slug;
     private string $name;
     private string $image;
@@ -18,6 +27,9 @@ class IngredientBuilder implements Builder
     private UnitBuilder $defaultCookingUnitBuilder;
     private UnitBuilder $defaultPurchaseUnitBuilder;
     private UserBuilder|User|null $creator;
+    private ?string $adoptedFrom = null;
+    private bool $isBase = false;
+    private bool $withoutCreator = false;
     /** @var Tab<Unit>  */
     private Tab $compatibleUnits;
 
@@ -74,8 +86,12 @@ class IngredientBuilder implements Builder
             'department' => $this->departmentBuilder->build(),
             'default_cooking_unit' => $this->defaultCookingUnitBuilder->build(),
             'default_purchase_unit' => $this->defaultPurchaseUnitBuilder->build(),
-            'creator_id' => ($this->creator instanceof UserBuilder ? $this->creator->build() : $this->creator)?->getId(),
+            'creator_id' => $this->withoutCreator
+                ? null
+                : (($this->creator instanceof UserBuilder ? $this->creator->build() : $this->creator)?->getId() ?? self::DEFAULT_CREATOR_ID),
             'compatible_units' => $this->compatibleUnits,
+            'adopted_from' => $this->adoptedFrom,
+            'is_base' => $this->isBase,
         ]);
     }
 
@@ -209,6 +225,31 @@ class IngredientBuilder implements Builder
         if ($refreshSlug) {
             $this->slug = $this->calculateSlug();
         }
+        return $this;
+    }
+
+    /**
+     * Un ingrédient SANS propriétaire : la forme de la base d'avant la passation des anciens communs. Réservé aux tests des commandes
+     * d'exploitation de la migration (`adopt-commons`, `seed`, `hand-over-catalog`) et de l'adoption unitaire, qui disparaissent avec
+     * ING-014 ; aucun autre test n'en a besoin.
+     */
+    public function withoutCreator(): self
+    {
+        $this->withoutCreator = true;
+        return $this;
+    }
+
+    /** Un ingrédient né de l'adoption du commun de ce slug (ADR 0028). */
+    public function withAdoptedFrom(?string $commonSlug): self
+    {
+        $this->adoptedFrom = $commonSlug;
+        return $this;
+    }
+
+    /** Marqueur « ingrédient de base » (ADR 0028, amendement) : faux par défaut, comme toute création. */
+    public function withBase(bool $isBase = true): self
+    {
+        $this->isBase = $isBase;
         return $this;
     }
 

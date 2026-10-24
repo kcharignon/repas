@@ -16,12 +16,14 @@ class UpdateConversionApiControllerTest extends QueryBusWebTestCase
         // Given
         $commandBus = $this->mockCommandBus();
 
-        // When
-        $this->put($this->savedUser(admin: true), self::BODY);
+        $admin = $this->savedUser(admin: true);
 
-        // Then
+        // When
+        $this->put($admin, self::BODY);
+
+        // Then : l'utilisateur vient du jeton
         $this->assertSame(204, $this->client->getResponse()->getStatusCode());
-        $this->assertEquals([new UpdateConversionCommand('conversion-1', 'plaquette', 'gramme', 250.0, 'beurre')], $commandBus->dispatched());
+        $this->assertEquals([new UpdateConversionCommand('conversion-1', 'plaquette', 'gramme', 250.0, 'beurre', $admin->getId())], $commandBus->dispatched());
     }
 
     public function testRefusesAUserWhoIsNotAnAdministrator(): void

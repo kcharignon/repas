@@ -45,7 +45,10 @@ class UserWriteApiFlowTest extends DatabaseTestCase
 
         // Then
         $this->assertSame(200, $this->client->getResponse()->getStatusCode());
-        $this->assertSame(['email' => 'alexiane@example.com', 'roles' => ['ROLE_USER'], 'isAdmin' => false, 'defaultServing' => 3], array_diff_key($this->jsonBody(), ['id' => true]));
+        $this->assertSame(
+            ['email' => 'alexiane@example.com', 'roles' => ['ROLE_USER'], 'isAdmin' => false, 'defaultServing' => 3, 'appUpdate' => ['latest' => null, 'minimum' => null, 'outdated' => false]],
+            array_diff_key($this->jsonBody(), ['id' => true]),
+        );
         $this->assertSame($location, '/api/v1/users/' . $this->jsonBody()['id']);
     }
 

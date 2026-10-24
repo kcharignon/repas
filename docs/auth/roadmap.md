@@ -8,6 +8,8 @@ Suivi vivant du chantier « Se connecter avec Google » (web `kantin.eu` et appl
 4. [`docs/drive/consignes-agents.md`](../drive/consignes-agents.md) (règles communes de livraison : une branche par ticket, commits courts en français sans `Co-Authored-By`, PR au gabarit Quoi / Vérifié / À relire sans pied d'attribution, fusion en squash seulement si la CI est verte) et les skills `repas-dev` (back), `repas-front-dev` (front), `repas-android-dev` (application), `repas-po` (tout écran, tout texte), `repas-ops` (tout ce qui touche `deploy/`).
 5. Le `CLAUDE.md` du dépôt où l'on travaille.
 
+> **État au 2026-10-20.** La console Google Cloud (AUTH-002) est prévue en fin de semaine. La PR front #171 (pont Google Android) reste non fusionnée jusqu'à ce que la console soit faite. Le calendrier de Google Play (démarche en novembre 2026, fin en janvier 2027 ou après) et la piste F-Droid (variante sans bibliothèques Play Services) sont dans [`docs/store/roadmap.md`](../store/roadmap.md).
+
 ## Le besoin
 
 Un proche touche « Se connecter avec Google », choisit son compte et c'est fini : ni mot de passe à créer ou à retenir, ni lien à chercher dans sa messagerie. Le mot de passe reste possible. Le critère de réussite est celui du produit : **un proche se connecte seul, en deux touches** ([`principes-produit.md`](../drive/principes-produit.md)).
@@ -28,9 +30,9 @@ Un proche touche « Se connecter avec Google », choisit son compte et c'est fin
 
 ## M1 — Back `User`
 
-- [ ] [AUTH-003](tickets/AUTH-003-verificateur-de-jeton-google.md) back · M · Vérificateur de jeton d'identité Google (port, adaptateur `lcobucci/jwt`, clés en cache) · dépend de : —
+- [x] [AUTH-003](tickets/AUTH-003-verificateur-de-jeton-google.md) back · M · Vérificateur de jeton d'identité Google (port, adaptateur `lcobucci/jwt`, clés en cache) · dépend de : — · fait (PR #220)
 - [ ] [AUTH-004](tickets/AUTH-004-nonce-de-connexion.md) back · S · Nonce à usage unique et `POST /api/auth/google/nonce` (interrupteur `GOOGLE_CLIENT_ID`) · dépend de : 003
-- [ ] [AUTH-005](tickets/AUTH-005-identite-externe-migration-purge.md) back · M · Identité externe : `UserIdentity`, table `user_identity`, purge du compte · dépend de : —
+- [x] [AUTH-005](tickets/AUTH-005-identite-externe-migration-purge.md) back · M · Identité externe : `UserIdentity`, table `user_identity`, purge du compte · dépend de : — · fait (PR #222)
 - [ ] [AUTH-006](tickets/AUTH-006-cas-d-usage-se-connecter-avec-google.md) back · L · Cas d'usage : retrouver, lier, créer ou refuser un compte · dépend de : 003, 004, 005, 001
 - [ ] [AUTH-007](tickets/AUTH-007-route-connexion-google.md) back · M · `POST /api/auth/google` : JWT, cookie, plafond, OpenAPI, parcours complet · dépend de : 006
 - [ ] [AUTH-008](tickets/AUTH-008-deploiement-et-exploitation.md) back · S · Déploiement : variable, essai de bout en bout, script d'allumage, runbook · dépend de : 007
@@ -43,7 +45,7 @@ Un proche touche « Se connecter avec Google », choisit son compte et c'est fin
 ## M3 — Application Android
 
 - [x] [AUTH-015](tickets/AUTH-015-tronc-commun-kotlin.md) front (`android/`) · M · Isoler un tronc commun Kotlin (cœur sans dépendance Android, interfaces de plateforme) pour un iPhone plus tard (décision D5) · dépend de : —
-- [ ] [AUTH-011](tickets/AUTH-011-android-pont-google-credential-manager.md) front (`android/`) · M · Pont `google.signIn` et Credential Manager · dépend de : 015
+- [ ] [AUTH-011](tickets/AUTH-011-android-pont-google-credential-manager.md) front (`android/`) · M · Pont `google.signIn` et Credential Manager · dépend de : 015 · **code fait, PR front #171 ouverte, CI verte, non fusionnée volontairement** (décision de l'utilisateur à prendre : APK +2,67 Mo, dépendance aux services Play en préversion, permissions retirées du manifeste, `googleid` 1.2.0 au lieu de 1.2.1 à cause de Kotlin)
 - [ ] [AUTH-012](tickets/AUTH-012-bouton-google-dans-l-application.md) front · S · Bouton natif dans l'application (côté page) · dépend de : 009, 011
 
 ## M4 — Recette et mise en service

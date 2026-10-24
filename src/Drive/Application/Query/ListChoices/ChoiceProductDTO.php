@@ -17,6 +17,8 @@ final readonly class ChoiceProductDTO
         public string $label,
         #[OA\Property(description: 'Contenu net, `null` si inconnu', nullable: true)]
         public ?ProductContentDTO $content,
+        #[OA\Property(description: "Combien d'unités de la liste tiennent dans ce produit, tel que la personne l'a répondu (DRV-652) : « 20 tranches » pour un cheddar que la liste compte en tranches. Propre à l'utilisateur et à ce produit dans cette préférence ; `null` si elle n'a rien répondu (et toujours pour un produit refusé). Elle ne sert au calcul que pour la même unité : si la liste change d'unité, elle est ignorée", nullable: true)]
+        public ?PackSizeDTO $packSize,
     ) {
     }
 }

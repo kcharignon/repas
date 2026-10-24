@@ -17,10 +17,10 @@ use Repas\Repas\Domain\Exception\IngredientException;
  */
 class IngredientInMemoryLoader implements IngredientLoader
 {
-    /** @var list<array{string, string, bool}> */
+    /** @var list<array{string, string}> */
     public array $listByDepartmentCalls = [];
 
-    /** @var list<array{string, string, bool}> */
+    /** @var list<array{string, string}> */
     public array $getCalls = [];
 
     /** @var list<string> */
@@ -29,7 +29,7 @@ class IngredientInMemoryLoader implements IngredientLoader
     /** @var list<string> */
     public array $listAvailableCalls = [];
 
-    /** @var list<array{string, string, bool}> */
+    /** @var list<array{string, string}> */
     public array $searchCalls = [];
 
     /**
@@ -46,16 +46,16 @@ class IngredientInMemoryLoader implements IngredientLoader
     ) {
     }
 
-    public function listByDepartment(string $departmentSlug, string $viewerId, bool $viewerIsAdmin): DepartmentIngredientsDTO
+    public function listByDepartment(string $departmentSlug, string $viewerId): DepartmentIngredientsDTO
     {
-        $this->listByDepartmentCalls[] = [$departmentSlug, $viewerId, $viewerIsAdmin];
+        $this->listByDepartmentCalls[] = [$departmentSlug, $viewerId];
 
         return $this->departmentIngredients ?? throw DepartmentException::notFound();
     }
 
-    public function get(string $slug, string $viewerId, bool $viewerIsAdmin): IngredientDTO
+    public function get(string $slug, string $viewerId): IngredientDTO
     {
-        $this->getCalls[] = [$slug, $viewerId, $viewerIsAdmin];
+        $this->getCalls[] = [$slug, $viewerId];
 
         return $this->ingredient ?? throw IngredientException::notFound($slug);
     }
@@ -73,9 +73,9 @@ class IngredientInMemoryLoader implements IngredientLoader
         return $this->availableIngredients;
     }
 
-    public function search(string $search, string $viewerId, bool $viewerIsAdmin): array
+    public function search(string $search, string $viewerId): array
     {
-        $this->searchCalls[] = [$search, $viewerId, $viewerIsAdmin];
+        $this->searchCalls[] = [$search, $viewerId];
 
         return $this->searchResults;
     }

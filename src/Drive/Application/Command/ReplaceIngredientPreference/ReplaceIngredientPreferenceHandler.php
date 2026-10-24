@@ -10,6 +10,7 @@ use Repas\Drive\Domain\Interface\DriveSettingsRepository;
 use Repas\Drive\Domain\Interface\ProductRepository;
 use Repas\Drive\Domain\Model\Choice;
 use Repas\Drive\Domain\Model\Product;
+use Repas\Shared\Application\Interface\IngredientAliasResolver;
 use Repas\Shared\Domain\Interface\UuidGenerator;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
@@ -20,6 +21,7 @@ readonly class ReplaceIngredientPreferenceHandler
         private DriveSettingsRepository $driveSettingsRepository,
         private ProductRepository $productRepository,
         private ChoiceRepository $choiceRepository,
+        private IngredientAliasResolver $ingredientAliases,
         private UuidGenerator $uuidGenerator,
         private ClockInterface $clock,
     ) {
@@ -29,7 +31,7 @@ readonly class ReplaceIngredientPreferenceHandler
      * Remplace d'un coup la préférence d'un ingrédient dans le magasin courant (écran de gestion) : produits acceptés dans
      * l'ordre donné, produits refusés, ou « j'en ai toujours ». Préférence absente : créée ; ni produit ni « j'en ai
      * toujours » : la préférence est supprimée (rien à faire si elle n'existe pas). Nombre de requêtes constant : réglages,
-     * produits, préférence, puis l'écriture (et un décompte des préférences quand on en crée une).
+     * produits, alias d'ingrédients (ING-002), préférence, puis l'écriture (et un décompte des préférences quand on en crée une).
      *
      * @throws DriveException `notConfigured()` et `storeMismatch()` (409) ; `invalidChoice()` (422) pour un produit inconnu ou
      *                        d'un autre magasin, un doublon, un produit à la fois accepté et refusé, plus de 5 produits
@@ -57,7 +59,10 @@ readonly class ReplaceIngredientPreferenceHandler
 
         $this->assertProductsOfTheStore($command, array_values(array_unique([...$accepted, ...$rejected])));
 
-        $choice = $this->choiceRepository->findOne($command->userId, $command->retailer, $command->storeId, $command->ingredientSlug);
+        // Un ancien slug (ancien commun dont l'utilisateur a reçu une copie, ingrédient fusionné) désigne son ingrédient actuel : jamais de préférence sous un ancien slug (ADR 0028 décision 4)
+        $ingredientSlug = $this->ingredientAliases->resolve($command->userId, [$command->ingredientSlug])[$command->ingredientSlug] ?? $command->ingredientSlug;
+
+        $choice = $this->choiceRepository->findOne($command->userId, $command->retailer, $command->storeId, $ingredientSlug);
         if (!$command->haveAtHome && $accepted === [] && $rejected === []) {
             if ($choice !== null) {
                 $this->choiceRepository->delete($choice);
@@ -72,7 +77,7 @@ readonly class ReplaceIngredientPreferenceHandler
         }
 
         $now = $this->clock->now();
-        $choice ??= Choice::create($this->uuidGenerator->generate(), $command->userId, $command->retailer, $command->storeId, $command->ingredientSlug, $now);
+        $choice ??= Choice::create($this->uuidGenerator->generate(), $command->userId, $command->retailer, $command->storeId, $ingredientSlug, $now);
         $this->choiceRepository->save($choice->replace($command->haveAtHome, $accepted, $rejected)->touch($now));
     }
 

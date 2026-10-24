@@ -9,11 +9,13 @@ use Repas\Repas\Domain\Exception\DepartmentException;
 use Repas\Repas\Domain\Exception\IngredientException;
 use Repas\Repas\Domain\Exception\UnitException;
 use Repas\Repas\Domain\Interface\DepartmentRepository;
+use Repas\Repas\Domain\Interface\IngredientAliasRepository;
 use Repas\Repas\Domain\Interface\IngredientRepository;
 use Repas\Repas\Domain\Interface\UnitRepository;
 use Repas\Repas\Domain\Model\Ingredient;
 use Repas\Repas\Domain\Model\Unit;
 use Repas\Repas\Domain\Service\ConversionService;
+use Repas\Shared\Application\Interface\IngredientCatalogOwner;
 use Repas\Shared\Domain\Tool\Tab;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
@@ -26,8 +28,10 @@ readonly class CreateIngredientHandler
         private DepartmentRepository $departmentRepository,
         private UnitRepository $unitRepository,
         private IngredientRepository $ingredientRepository,
+        private IngredientAliasRepository $aliasRepository,
         private EventDispatcherInterface $eventDispatcher,
         private ConversionService $conversionService,
+        private IngredientCatalogOwner $catalogOwner,
     ) {
     }
 
@@ -39,8 +43,8 @@ readonly class CreateIngredientHandler
     {
         $cookingUnit = $this->unitRepository->findOneBySlug($command->defaultCookingUnitSlug);
         $purchaseUnit = $this->unitRepository->findOneBySlug($command->defaultPurchaseUnitSlug);
-        // Un administrateur crée des ingrédients communs (sans créateur), un utilisateur des ingrédients personnalisés
-        $creatorId = $command->isAdmin ? null : $command->userId;
+        // Tout ingrédient est à celui qui le crée, administrateur compris : plus aucun nouvel ingrédient commun (ADR 0028, amendement)
+        $creatorId = $command->userId;
 
         $ingredient = Ingredient::create(
             name: $command->name,
@@ -51,16 +55,25 @@ readonly class CreateIngredientHandler
             creatorId: $creatorId,
         );
 
-        // Le slug dérive du nom et du créateur : enregistrer sous un slug existant écraserait l'ingrédient
-        if ($this->ingredientRepository->exists($ingredient->getSlug())) {
+        // Le marqueur « de base » (ADR 0028, amendement) : seul le propriétaire du catalogue le pose, sinon `403` et rien n'est écrit. Un
+        // ingrédient naît à faux : sans le demander, le propriétaire du catalogue n'est pas lu (aucune requête de plus).
+        if ($command->isBase) {
+            $ingredient->assertBaseMarkerSettableBy($command->userId, $this->catalogOwner->ownerId());
+            $ingredient->changeBase(true);
+        }
+
+        // Le slug dérive du nom et du créateur : enregistrer sous un slug existant écraserait l'ingrédient. Le nom normalisé du créateur est
+        // vérifié dans la même requête : un ancien commun passé à son propriétaire a un slug sans identifiant du compte.
+        if ($this->ingredientRepository->existsForCreator($ingredient->getSlug(), $creatorId, $ingredient->getSluggedName())) {
             throw IngredientException::alreadyExists($ingredient->getSlug());
         }
 
         $this->ingredientRepository->save($ingredient);
 
-        if ($creatorId !== null) {
-            $this->eventDispatcher->dispatch(new IngredientCreatedEvent($creatorId, $ingredient->getSlug()));
-        }
+        // Un alias de l'utilisateur dont la clé est ce slug (ingrédient absorbé par une fusion, puis recréé) détournerait le nouvel
+        // ingrédient vers l'ancien : la création le défait (ADR 0028).
+        $this->aliasRepository->deleteByAliasSlug($creatorId, $ingredient->getSlug());
+        $this->eventDispatcher->dispatch(new IngredientCreatedEvent($creatorId, $ingredient->getSlug()));
 
         // On récupère les unités compatibles à la conversion après la création de l'ingrédient
         $compatibleUnit = $this->getCompatibleUnit($ingredient);
@@ -78,6 +91,7 @@ readonly class CreateIngredientHandler
             $this->eventDispatcher->dispatch(new CreateIngredientWithConversionEvent(
                 $ingredient->getSlug(),
                 $command->coefficient,
+                $creatorId,
             ));
         }
 

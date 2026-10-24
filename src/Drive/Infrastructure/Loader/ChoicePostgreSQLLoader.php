@@ -7,6 +7,7 @@ use Repas\Drive\Application\Loader\ChoiceLoader;
 use Repas\Drive\Application\Query\ListChoices\AcceptedProductDTO;
 use Repas\Drive\Application\Query\ListChoices\ChoiceDTO;
 use Repas\Drive\Application\Query\ListChoices\ChoiceProductDTO;
+use Repas\Drive\Application\Query\ListChoices\PackSizeDTO;
 use Repas\Drive\Application\Query\ListChoices\ProductContentDTO;
 use Repas\Drive\Domain\Model\ChoiceKind;
 use Repas\Drive\Domain\Model\Retailer;
@@ -37,6 +38,7 @@ final readonly class ChoicePostgreSQLLoader implements ChoiceLoader
             ->select(
                 'c.ingredientSlug AS slug',
                 'c.kind AS kind',
+                'c.searchQuery AS searchQuery',
                 'c.updatedAt AS updatedAt',
                 'cp.verdict AS verdict',
                 'cp.rank AS position',
@@ -46,6 +48,8 @@ final readonly class ChoicePostgreSQLLoader implements ChoiceLoader
                 'p.label AS label',
                 'p.contentValue AS contentValue',
                 'p.contentUnit AS contentUnit',
+                'cp.packSizeValue AS packSizeValue',
+                'cp.packSizeUnitSlug AS packSizeUnitSlug',
             )
             ->from(Choice::class, 'c')
             // Le magasin courant : celui des réglages de l'utilisateur
@@ -64,7 +68,8 @@ final readonly class ChoicePostgreSQLLoader implements ChoiceLoader
 
         $choices = [];
         foreach ($rows as $row) {
-            $choices[$row['slug']] ??= ['row' => $row, 'accepted' => [], 'rejected' => []];
+            $choices[$row['slug']] ??= ['row' => $row, 'hasProductRows' => false, 'accepted' => [], 'rejected' => []];
+            $choices[$row['slug']]['hasProductRows'] = $choices[$row['slug']]['hasProductRows'] || $row['verdict'] !== null;
             if ($row['productId'] === null) {
                 continue;
             }
@@ -75,6 +80,14 @@ final readonly class ChoicePostgreSQLLoader implements ChoiceLoader
                 $choices[$row['slug']]['rejected'][] = $product;
             }
         }
+
+        // DRV-653 : une préférence qui ne garde que la recherche d'un ingrédient (`NOTE_SEARCH`, produit pris « cette fois seulement ») n'a
+        // aucune ligne de produit (ni accepté ni refusé) et n'est pas « j'en ai toujours » : « Mes produits » n'a rien à en montrer (un écran de produits en ferait une ligne vide).
+        // Le plan, lui, s'en sert.
+        $choices = array_filter(
+            $choices,
+            static fn(array $choice): bool => $choice['hasProductRows'] || $choice['row']['kind'] === ChoiceKind::HAVE_AT_HOME->value,
+        );
 
         $names = $this->ingredientNameLoader->namesBySlug(array_map('strval', array_keys($choices)));
 
@@ -87,6 +100,8 @@ final readonly class ChoicePostgreSQLLoader implements ChoiceLoader
                 accepted: $choice['accepted'],
                 rejected: $choice['rejected'],
                 updatedAt: $choice['row']['updatedAt']->format(DATE_ATOM),
+                // « J'en ai toujours » ne cherche rien : une recherche restée d'une version plus ancienne du code est ignorée
+                searchQuery: $choice['row']['kind'] === ChoiceKind::HAVE_AT_HOME->value ? null : $choice['row']['searchQuery'],
             );
         }
 
@@ -104,6 +119,10 @@ final readonly class ChoicePostgreSQLLoader implements ChoiceLoader
             ean: $row['ean'],
             label: $row['label'],
             content: $row['contentValue'] === null ? null : new ProductContentDTO((float) $row['contentValue'], $row['contentUnit']),
+            // La contenance n'existe que pour un produit accepté (DRV-652) ; les deux colonnes vont ensemble
+            packSize: $row['verdict'] === self::ACCEPTED && $row['packSizeValue'] !== null && $row['packSizeUnitSlug'] !== null
+                ? new PackSizeDTO((float) $row['packSizeValue'], $row['packSizeUnitSlug'])
+                : null,
         );
     }
 }

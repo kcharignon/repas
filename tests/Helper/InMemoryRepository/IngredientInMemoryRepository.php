@@ -29,7 +29,7 @@ class IngredientInMemoryRepository extends AbstractInMemoryRepository implements
     public function findPurchaseUnitSlugUsableBy(string $slug, string $userId): string
     {
         $ingredient = $this->findOneBySlug($slug);
-        if ($ingredient->getCreatorId() !== null && $ingredient->getCreatorId() !== $userId) {
+        if ($ingredient->getCreatorId() !== $userId) {
             throw IngredientException::notFound($slug);
         }
 
@@ -39,6 +39,12 @@ class IngredientInMemoryRepository extends AbstractInMemoryRepository implements
     public function exists(string $slug): bool
     {
         return isset($this->models[$slug]);
+    }
+
+    public function existsForCreator(string $slug, string $creatorId, string $sluggedName): bool
+    {
+        return isset($this->models[$slug])
+            || $this->models->find(fn(Ingredient $ingredient) => $ingredient->getCreatorId() === $creatorId && $ingredient->getSluggedName() === $sluggedName) !== null;
     }
 
     public function findOneBySlug(string $slug): Ingredient

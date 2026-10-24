@@ -33,6 +33,7 @@ readonly class CreateConversionEventListener
             endUnitSlug: $ingredient->getDefaultCookingUnit()->getSlug(),
             coefficient: $event->coefficient,
             ingredientSlug: $ingredient->getSlug(),
+            userId: $event->userId,
         );
 
         $this->commandBus->dispatch($command);
