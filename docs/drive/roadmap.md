@@ -6,7 +6,7 @@ Suivi vivant. Cocher une case quand le ticket est fusionné (et noter la PR). Le
 
 **Règle du chantier** : G1 (DRV-005) est décidée (GO, 2026-10-17) : les tickets M1 à M5 peuvent démarrer selon leurs dépendances. Le spike `android-lab`, le banc `lab` et le contenu de `drive-agent/lab/` ont été retirés du dépôt front (PR front #134, 2026-10-19), après l'essai réel ; la pré-version `android-dev-*` (workflow `android.yml`) reste, le runbook s'en sert pour le « Test automatique ».
 
-**Épiques GitHub** (dépôt back) : M1 à M4 fermées le 2026-10-24 ; [M0 #88](https://github.com/kcharignon/repas/issues/88) · [M1 #89](https://github.com/kcharignon/repas/issues/89) · [M2 #90](https://github.com/kcharignon/repas/issues/90) · [M3 #91](https://github.com/kcharignon/repas/issues/91) · [M4 #92](https://github.com/kcharignon/repas/issues/92) · [M5 #93](https://github.com/kcharignon/repas/issues/93). Une issue par ticket, dans le dépôt indiqué (labels `drive`, `spike`, `agent`, `humain`, `epic`).
+**Épiques GitHub** (dépôt back) : M1 à M5 fermées le 2026-10-24 ; [M0 #88](https://github.com/kcharignon/repas/issues/88) · [M1 #89](https://github.com/kcharignon/repas/issues/89) · [M2 #90](https://github.com/kcharignon/repas/issues/90) · [M3 #91](https://github.com/kcharignon/repas/issues/91) · [M4 #92](https://github.com/kcharignon/repas/issues/92) · [M5 #93](https://github.com/kcharignon/repas/issues/93). Une issue par ticket, dans le dépôt indiqué (labels `drive`, `spike`, `agent`, `humain`, `epic`).
 
 ## M0 — Découverte (spikes, décision G1)
 
@@ -125,7 +125,7 @@ La recette réelle sur téléphone (DRV-505) a montré des défauts que le faux 
 - [x] [DRV-501](tickets/DRV-501-integration-dev.md) back+front · M · Intégration en développement et checklist de recette · dépend de : M2, M3, M3b, M4 · Issue : [#83](https://github.com/kcharignon/repas/issues/83) · fait (2026-10-24) : partie back (PR #156), partie front (repas-front#106), `recette.md` déroulée (DRV-505 signée le 2026-10-19), parcours dans l'émulateur fait (DRV-319), `BASKET_PATH` n'existe plus dans le front
 - [x] [DRV-502](tickets/DRV-502-deploiement.md) back · S · Déploiement, interrupteur, retour arrière · dépend de : 501 · Issue : [#84](https://github.com/kcharignon/repas/issues/84)
 - [x] [DRV-503](tickets/DRV-503-runbook-leclerc-change.md) back · S · Runbook « Leclerc a changé » · dépend de : 501 · Issue : [#85](https://github.com/kcharignon/repas/issues/85)
-- [ ] [DRV-504](tickets/DRV-504-note-vie-privee.md) back+front · S · Note de vie privée (partie back faite : texte et registre, PR #152 ; partie front faite : repas-front#101, #105 et #106 ; reste la relecture des textes par l'utilisateur) · dépend de : 204 · Issue : [#86](https://github.com/kcharignon/repas/issues/86)
+- [x] [DRV-504](tickets/DRV-504-note-vie-privee.md) back+front · S · Note de vie privée (partie back faite : texte et registre, PR #152 ; partie front faite : repas-front#101, #105 et #106 ; textes relus par l'utilisateur le 2026-10-24) · dépend de : 204 · Issue : [#86](https://github.com/kcharignon/repas/issues/86)
 - [x] [DRV-505](tickets/DRV-505-recette-reelle.md) humain · S · Recette en conditions réelles et activation (procédure écrite : [`recette.md`](recette.md), à dérouler sur le téléphone, interrupteur allumé ; **signée par l'utilisateur le 2026-10-19, `DRIVE_ENABLED` reste allumé**, voir le compte rendu § 17 bis de `recette.md`) · dépend de : 502, 503 · Issue : [#87](https://github.com/kcharignon/repas/issues/87)
 
 ## M6 — Simplicité d'usage (audit du PO, 2026-10-19)
