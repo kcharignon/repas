@@ -188,8 +188,9 @@ fixtures-demo: ## Create the demo accounts and data (admin@repas.fr, user@repas.
 fixtures-load-test: ## Load fixtures into the test database
 	@$(EXEC_PHP) bin/console doctrine:fixtures:load --env=test -n
 
-fixtures-load-dev: ## Load fixtures into the development database
-	@$(EXEC_PHP) bin/console doctrine:fixtures:load --env=dev -n
+fixtures-load-dev: ## Load fixtures into the development database (reference data, then the demo accounts)
+	@$(EXEC_PHP) bin/console doctrine:fixtures:load --env=dev --group=dev -n
+	@$(MAKE) --no-print-directory fixtures-demo
 
 fixtures-load-append-dev: ## Append the fixtures instead of flushing the database
 	@$(EXEC_PHP) bin/console doctrine:fixtures:load --env=dev --append -n
