@@ -3,6 +3,7 @@
 namespace Repas\Repas\Domain\Model;
 
 
+use LogicException;
 use Repas\Repas\Domain\Exception\IngredientException;
 use Repas\Shared\Domain\Model\ModelInterface;
 use Repas\Shared\Domain\Model\ModelTrait;
@@ -24,7 +25,7 @@ final class Ingredient implements ModelInterface
         private Department $department,
         private Unit       $defaultCookingUnit,
         private Unit       $defaultPurchaseUnit,
-        private ?string    $creatorId,
+        private string     $creatorId,
         private Tab        $compatibleUnits,
         private ?string    $adoptedFrom = null,
         private bool       $isBase = false,
@@ -109,15 +110,15 @@ final class Ingredient implements ModelInterface
 
     /**
      * Identifiant de l'utilisateur qui possède l'ingrédient (ADR 0013 : un agrégat référence un autre par identifiant). Tout ingrédient a un
-     * propriétaire depuis la passation des anciens communs au propriétaire du catalogue (ADR 0028, amendement du 2026-10-20) ; le type reste
-     * nullable tant que la colonne l'est (ING-014 le resserre).
+     * propriétaire depuis la passation des anciens communs au propriétaire du catalogue (ADR 0028, amendement du 2026-10-20) ; seule la colonne
+     * reste nullable (le code précédent la lit encore), `load()` refuse une ligne sans créateur.
      */
-    public function getCreatorId(): ?string
+    public function getCreatorId(): string
     {
         return $this->creatorId;
     }
 
-    public function setCreatorId(?string $creatorId): Ingredient
+    public function setCreatorId(string $creatorId): Ingredient
     {
         $this->creatorId = $creatorId;
         return $this;
@@ -234,9 +235,9 @@ final class Ingredient implements ModelInterface
         Department $department,
         Unit $defaultCookingUnit,
         Unit $defaultPurchaseUnit,
-        ?string $creatorId,
+        string $creatorId,
     ): self {
-        $slug = StringTool::slugify($name.($creatorId ?? ''));
+        $slug = StringTool::slugify($name.$creatorId);
         $sluggedName = StringTool::slugify($name);
         return new self(
             $slug,
@@ -279,31 +280,15 @@ final class Ingredient implements ModelInterface
     }
 
     /**
-     * L'adoption d'un commun par un utilisateur (ADR 0028) : une copie à lui, modifiable, qui garde le nom, l'image, le rayon et les
-     * unités du commun. Le slug est choisi par l'appelant (`IngredientSlugPolicy::forAdoption()`, après avoir vérifié qu'il est libre) ;
-     * les conversions propres du commun sont copiées par le cas d'usage. Comme `copyFromOriginal()`, elle retient d'où elle vient.
+     * @throws LogicException un ingrédient sans créateur : la base n'a pas passé la passation des anciens communs (ADR 0028, amendement du
+     *                         2026-10-20), ce code ne la lit pas ; `docs/ingredients/sans-commun.md`.
      */
-    public static function adopt(Ingredient $common, string $userId, string $slug): self
-    {
-        return new self(
-            slug: $slug,
-            name: $common->getName(),
-            image: $common->getImage(),
-            sluggedName: $common->getSluggedName(),
-            department: $common->getDepartment(),
-            defaultCookingUnit: $common->getDefaultCookingUnit(),
-            defaultPurchaseUnit: $common->getDefaultPurchaseUnit(),
-            creatorId: $userId,
-            // Une copie du tableau : l'ingrédient adopté ne partage pas son tableau d'unités avec le commun
-            compatibleUnits: $common->getCompatibleUnits()->slice(0, null, true),
-            adoptedFrom: $common->getSlug(),
-            // Une copie naît toujours à faux, quelle que soit la source : le marqueur « de base » ne se copie jamais (ADR 0028, amendement)
-            isBase: false,
-        );
-    }
-
     public static function load(array $datas): self
     {
+        if (empty($datas['creator_id'])) {
+            throw new LogicException(sprintf("L'ingrédient « %s » n'a pas de créateur : la passation des anciens communs n'est pas faite, voir docs/ingredients/sans-commun.md.", $datas['slug'] ?? '?'));
+        }
+
         return new Ingredient(
             slug: $datas['slug'],
             name: $datas['name'],

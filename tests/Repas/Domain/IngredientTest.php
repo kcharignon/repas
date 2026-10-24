@@ -3,6 +3,7 @@
 namespace Repas\Tests\Repas\Domain;
 
 
+use LogicException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Repas\Repas\Domain\Exception\IngredientException;
@@ -17,51 +18,10 @@ use Repas\Tests\Helper\RepasAssert;
 
 class IngredientTest extends TestCase
 {
-    public function testAdoptingACommonMakesAPersonalCopyThatRemembersWhereItComesFrom(): void
-    {
-        // Given
-        $common = new IngredientBuilder()->isButter()->build();
-
-        // When
-        $adoption = Ingredient::adopt($common, 'user-id', 'beurreuser-id');
-
-        // Then : mêmes nom, image, rayon, unités et unités compatibles ; créateur et origine posés
-        $this->assertSame('beurreuser-id', $adoption->getSlug());
-        $this->assertSame('user-id', $adoption->getCreatorId());
-        $this->assertSame('beurre', $adoption->getAdoptedFrom());
-        $this->assertTrue($adoption->isAdoption());
-        $this->assertSame([$common->getName(), $common->getSluggedName(), $common->getImage()], [$adoption->getName(), $adoption->getSluggedName(), $adoption->getImage()]);
-        RepasAssert::assertDepartment($common->getDepartment(), $adoption->getDepartment());
-        RepasAssert::assertUnit($common->getDefaultCookingUnit(), $adoption->getDefaultCookingUnit());
-        RepasAssert::assertUnit($common->getDefaultPurchaseUnit(), $adoption->getDefaultPurchaseUnit());
-        $this->assertSame(
-            array_map(static fn($unit) => $unit->getSlug(), array_values($common->getCompatibleUnits()->toArray())),
-            array_map(static fn($unit) => $unit->getSlug(), array_values($adoption->getCompatibleUnits()->toArray())),
-        );
-    }
-
-    public function testAdoptingLeavesTheCommonUntouchedAndDoesNotShareItsUnitsList(): void
-    {
-        // Given : un ancien commun, sans créateur (la forme de la base d'avant la passation)
-        $common = new IngredientBuilder()->isButter()->withoutCreator()->build();
-        $before = $common->toArray();
-
-        // When
-        $adoption = Ingredient::adopt($common, 'user-id', 'beurreuser-id');
-        $adoption->setCompatibleUnits($adoption->getCompatibleUnits()->slice(0, 1));
-        $adoption->setName('Beurre doux');
-
-        // Then
-        $this->assertSame($before, $common->toArray());
-        $this->assertNull($common->getCreatorId());
-        $this->assertFalse($common->isAdoption());
-        $this->assertCount(3, $common->getCompatibleUnits());
-    }
-
     public function testRenamingAnAdoptionKeepsItsOriginAndItsSlug(): void
     {
         // Given
-        $adoption = Ingredient::adopt(new IngredientBuilder()->isButter()->build(), 'user-id', 'beurreuser-id');
+        $adoption = Ingredient::copyFromOriginal(new IngredientBuilder()->isButter()->build(), 'user-id', 'beurreuser-id');
 
         // When
         $adoption->update(
@@ -118,7 +78,7 @@ class IngredientTest extends TestCase
     {
         // Given : la copie, par l'auteur, d'un ingrédient du catalogue
         $common = new IngredientBuilder()->isButter()->build();
-        $adoption = Ingredient::adopt($common, 'author-id', 'beurreauthor-id');
+        $adoption = Ingredient::copyFromOriginal($common, 'author-id', 'beurreauthor-id');
 
         // When
         $copy = Ingredient::copyFromOriginal($adoption, 'copier-id', 'beurrecopier-id');
@@ -168,15 +128,14 @@ class IngredientTest extends TestCase
         $this->assertSame([...$before, 'tranche'], array_map(static fn(Unit $unit): string => $unit->getSlug(), $butter->getCompatibleUnits()->toArray()));
     }
 
-    public function testAnIngredientWithoutAnOwnerBelongsToNobody(): void
+    public function testAnIngredientWithoutAnOwnerIsRefusedAtLoadWithAClearMessage(): void
     {
-        // Given : la forme de la base d'avant la passation, qu'aucun code ne traite plus à part
-        $legacy = new IngredientBuilder()->isButter()->withoutCreator()->build();
+        // Given : la forme de la base d'avant la passation, que ce code ne lit plus
+        $this->expectException(LogicException::class);
+        $this->expectExceptionMessage("n'a pas de créateur");
 
-        // Then : il n'est à personne, il n'y a pas de cas particulier
-        $this->assertFalse($legacy->isOwnedBy('user-id'));
-        $this->expectExceptionObject(IngredientException::notFound('beurre'));
-        $legacy->assertOwnedBy('user-id');
+        // When
+        new IngredientBuilder()->isButter()->withoutCreator()->build();
     }
 
     public function testAnIngredientIsOwnedByItsCreatorOnly(): void
@@ -207,7 +166,7 @@ class IngredientTest extends TestCase
         $loadedWithoutTheKey = Ingredient::load([
             'slug' => 'sel', 'name' => 'sel', 'image' => '', 'slugged_name' => 'sel',
             'department' => new DepartmentBuilder()->isBakery()->build(), 'default_cooking_unit' => new UnitBuilder()->isGramme()->build(),
-            'default_purchase_unit' => new UnitBuilder()->isGramme()->build(), 'creator_id' => null, 'compatible_units' => Tab::newEmptyTyped(Unit::class),
+            'default_purchase_unit' => new UnitBuilder()->isGramme()->build(), 'creator_id' => 'user-id', 'compatible_units' => Tab::newEmptyTyped(Unit::class),
             'adopted_from' => null,
         ]);
 
@@ -243,14 +202,12 @@ class IngredientTest extends TestCase
 
     public function testEveryCopyIsBornNotBaseWhateverItsSource(): void
     {
-        // Given : le marqueur ne voyage pas, ni par une adoption, ni par une copie de recette, d'un commun comme d'un ingrédient à quelqu'un
+        // Given : le marqueur ne voyage pas, ni par une copie à l'activation, ni par une copie de recette, d'un ingrédient du catalogue comme de celui de quelqu'un
         $baseCommon = new IngredientBuilder()->isButter()->withBase()->build();
         $basePersonal = new IngredientBuilder()->isButter()->withCreator(new UserBuilder()->withId('author-id')->build(), true)->withBase()->build();
 
         // When
         $copies = [
-            Ingredient::adopt($baseCommon, 'user-id', 'beurreuser-id'),
-            Ingredient::adopt($basePersonal, 'user-id', 'beurreuser-id'),
             Ingredient::copyFromOriginal($baseCommon, 'user-id', 'beurreuser-id'),
             Ingredient::copyFromOriginal($basePersonal, 'user-id', 'beurreuser-id'),
         ];

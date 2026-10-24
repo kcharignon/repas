@@ -56,7 +56,7 @@ Taille : S (quelques heures), M (une journée), L (plusieurs jours). Effort : le
 - [x] [ING-008](tickets/ING-008-amorcage-des-comptes.md) (PR #244) back · L · **xhigh** · Amorçage à l'activation (événement, cas d'usage, écouteur, interrupteur coupé), rattrapage (`repas:ingredients:seed`), script · dépend de : 011 · **R1** · *remplace l'ancien ING-008*
 - [x] [ING-009](tickets/ING-009-passation-des-communs.md) (PR #245) back · L · **xhigh** · La passation : classement 151/110, amorçage du compte vide, préconditions, les 261 au propriétaire ; données, commande, script · dépend de : 011, 008 · **R1** (code livré ; **exécution en production : opérations humaines, `sans-commun.md` § 4 et § 14**, pas encore faite) · *remplace l'ancien ING-009*
 - [x] [ING-013](tickets/ING-013-simplifier-visibilite-droits-resolveur.md) (PR #247) back · L · **xhigh** · Simplifier : visibilité « créateur = moi », droits, résolveur, copie de recette, fusion, doublons, conversions · dépend de : **passation exécutée et contrôlée** · **R2**
-- [ ] [ING-014](tickets/ING-014-retirer-le-code-mort.md) back · M · **high** · Retirer le code mort, `NoSharedIngredientTest`, migration-garde, fixtures, documents · dépend de : 013 · **R2**
+- [x] [ING-014](tickets/ING-014-retirer-le-code-mort.md) (PR #250 ; **la passation `hand-over-catalog` et le « ou vide » du catalogue restent, retrait à part**) back · M · **high** · Retirer le code mort, `NoSharedIngredientTest`, migration-garde, fixtures, documents · dépend de : 013 · **R2**
 - [ ] [ING-015](tickets/ING-015-front-ingredient-de-base.md) **front** · M · **high** · L'interrupteur « Ingrédient de base » et sa pastille (propriétaire seulement) · dépend de : 011 en production
 
 ### Transverse

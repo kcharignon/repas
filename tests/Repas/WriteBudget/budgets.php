@@ -7,8 +7,6 @@
  */
 return [
     'activer-compte-amorcage' => 32,
-    'adopter-catalogue' => 26,
-    'adopter-ingredient' => 16,
     'ajouter-ingredient-liste' => 14,
     'amorcer-compte' => 29,
     'assurer-liste-active' => 5,

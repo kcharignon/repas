@@ -4,10 +4,8 @@ namespace Repas\Tests\Repas\OutputAdapter;
 
 
 use DateTimeImmutable;
-use Repas\Repas\Application\Command\AdoptCommonIngredient\AdoptCommonIngredientCommand;
 use Repas\Repas\Domain\Interface\IngredientAdoptionBulkRepository;
 use Repas\Repas\Domain\Model\AdoptionSnapshot;
-use Repas\Shared\Application\Interface\CommandBusInterface;
 use Repas\Shared\Domain\Tool\StringTool;
 use Repas\Shared\Domain\Tool\UuidGenerator;
 use Repas\Tests\Helper\AdoptionDataset;
@@ -36,19 +34,6 @@ class IngredientAdoptionBulkRepositoryTest extends DatabaseTestCase
         $this->now = new DateTimeImmutable('2026-10-21 03:00:00');
     }
 
-    public function testTheScopeIsNonAdministratorsWithARecipeOrAPersonalIngredient(): void
-    {
-        $dataset = $this->dataset;
-
-        $this->assertTrue($this->repository->isConcerned($dataset->bigId), 'recettes et ingrédients personnels');
-        $this->assertTrue($this->repository->isConcerned($dataset->copierId), 'seulement des recettes copiées');
-        $this->assertTrue($this->repository->isConcerned($dataset->singleId), 'seulement un ingrédient personnel');
-        $this->assertTrue($this->repository->isConcerned($dataset->disabledId), 'le statut du compte ne change pas le périmètre');
-        $this->assertFalse($this->repository->isConcerned($dataset->emptyId), 'une liste et un choix du drive ne suffisent pas');
-        $this->assertFalse($this->repository->isConcerned($dataset->adminId), 'un administrateur garde les communs');
-        $this->assertFalse($this->repository->isConcerned('00000000-0000-4000-8000-00000000dead'), 'un compte inconnu');
-    }
-
     public function testTheLockIsAnAdvisoryLockOfTheTransactionOnThatUser(): void
     {
         // When
@@ -58,38 +43,6 @@ class IngredientAdoptionBulkRepositoryTest extends DatabaseTestCase
 
         // Then : un verrou consultatif par utilisateur, tenu jusqu'à la fin de la transaction (celui qui l'a posé le reprend sans attendre)
         $this->assertSame(2, (int) $this->dataset->connection->fetchOne("SELECT count(*) FROM pg_locks WHERE locktype = 'advisory' AND pid = pg_backend_pid()"));
-    }
-
-    public function testTheCommonsToAdoptAreThoseWithoutAValidAdoptionAndAnIdenticalExistingCopyIsOffered(): void
-    {
-        $dataset = $this->dataset;
-        $user = $dataset->bigId;
-
-        // Given : un alias valide (beurre), un alias ORPHELIN (farine : la copie n'existe pas), une copie conforme sans alias (lait)
-        $dataset->insert('ingredient', ['slug' => 'beurre' . $user, 'name' => 'Beurre', 'image' => 'images/beurre.png', 'slugged_name' => 'beurre', 'department' => 'rayon-a', 'default_cooking_unit' => 'gramme', 'default_purchase_unit' => 'kilo', 'creator' => $user, 'compatible_units' => '["gramme","kilo"]', 'adopted_from' => 'beurre']);
-        $this->insertAlias($user, 'beurre', 'beurre' . $user);
-        $this->insertAlias($user, 'farine', 'farine' . $user);
-        $milk = $this->dataset->connection->fetchAssociative("SELECT * FROM ingredient WHERE slug = 'lait'");
-        $dataset->insert('ingredient', [...$milk, 'slug' => 'lait' . $user, 'creator' => $user, 'adopted_from' => 'lait']);
-
-        // When
-        $commons = $this->repository->commonsToAdopt($user);
-
-        // Then : tous sauf le beurre ; la farine (alias orphelin) reste à adopter ; le lait désigne la copie conforme
-        $slugs = array_map(static fn($common): string => $common->slug, $commons);
-        $this->assertSame(11, count($slugs));
-        $this->assertNotContains('beurre', $slugs);
-        $this->assertContains('farine', $slugs);
-        $this->assertSame($slugs, array_values(array_unique($slugs)));
-        $byCommon = array_column(array_map(static fn($c): array => [$c->slug, $c->existingCopySlug], $commons), 1, 0);
-        $this->assertSame('lait' . $user, $byCommon['lait']);
-        $this->assertNull($byCommon['farine']);
-
-        // When : la copie du lait a été modifiée
-        $dataset->connection->executeStatement("UPDATE ingredient SET department = 'rayon-b' WHERE slug = ?", ['lait' . $user]);
-
-        // Then : elle n'est plus proposée
-        $this->assertNull(array_column(array_map(static fn($c): array => [$c->slug, $c->existingCopySlug], $this->repository->commonsToAdopt($user)), 1, 0)['lait']);
     }
 
     public function testTheTakenSlugsAreThoseThatEndWithTheUserIdentifier(): void
@@ -135,51 +88,6 @@ class IngredientAdoptionBulkRepositoryTest extends DatabaseTestCase
         // Then
         $this->assertSame([], $written);
         $this->assertSame('merge', $this->dataset->connection->fetchOne("SELECT kind FROM ingredient_alias WHERE user_id = ? AND alias_slug = 'sel'", [$user]));
-    }
-
-    public function testTheBulkCopyWritesTheSameLinesAsTheIndividualAdoptionOfACommon(): void
-    {
-        // Given : le beurre (deux conversions propres), construit par le domaine (le cas d'usage d'ING-001 charge unités et rayon), adopté pour A
-        // par ce cas d'usage, pour B en masse
-        $dataset = $this->dataset;
-        $dataset->connection->executeStatement("DELETE FROM conversion WHERE ingredient = 'beurre'");
-        $persister = new DataPersister(static::getContainer());
-        $persister->saveIngredient(new IngredientBuilder()->isButter()->build());
-        $persister->saveConversion(new ConversionBuilder()->isBlockToGrammeForButter()->build());
-        $persister->saveConversion(new ConversionBuilder()->withStartUnit(new UnitBuilder()->isSoupSpoon())->withEndUnit(new UnitBuilder()->isGramme())->withCoefficient(15)->withIngredient(new IngredientBuilder()->isButter())->build());
-        $a = $dataset->singleId;
-        $b = $dataset->copierId;
-        static::getContainer()->get(CommandBusInterface::class)->dispatch(new AdoptCommonIngredientCommand($a, 'beurre', 'migration-essai'));
-        $copySlug = 'beurre' . $b;
-        $written = $this->repository->writeAliases($b, ['beurre' => $copySlug], 'migration-essai', $this->now);
-        $this->repository->copyIngredients($b, $written);
-        $conversions = $this->repository->ownConversionsOf(['beurre']);
-        $this->repository->copyConversions(array_map(static fn(array $c): array => ['sourceId' => $c['id'], 'newId' => UuidGenerator::new(), 'copySlug' => $copySlug], $conversions));
-
-        // Then : mêmes colonnes (au slug et au créateur près), mêmes conversions (nouveaux identifiants), même alias
-        $columns = 'name, image, slugged_name, department, default_cooking_unit, default_purchase_unit, compatible_units::text, adopted_from';
-        $this->assertSame(
-            $dataset->connection->fetchNumeric("SELECT $columns FROM ingredient WHERE slug = ?", ['beurre' . $a]),
-            $dataset->connection->fetchNumeric("SELECT $columns FROM ingredient WHERE slug = ?", [$copySlug]),
-        );
-        $this->assertSame(
-            $dataset->connection->fetchAllNumeric('SELECT start_unit, end_unit, coefficient FROM conversion WHERE ingredient = ? ORDER BY start_unit, end_unit', ['beurre' . $a]),
-            $dataset->connection->fetchAllNumeric('SELECT start_unit, end_unit, coefficient FROM conversion WHERE ingredient = ? ORDER BY start_unit, end_unit', [$copySlug]),
-        );
-        $this->assertCount(2, $conversions);
-        $this->assertSame(
-            $dataset->connection->fetchNumeric("SELECT kind, source FROM ingredient_alias WHERE user_id = ? AND alias_slug = 'beurre'", [$a]),
-            $dataset->connection->fetchNumeric("SELECT kind, source FROM ingredient_alias WHERE user_id = ? AND alias_slug = 'beurre'", [$b]),
-        );
-        $this->assertSame(
-            [],
-            array_intersect(
-                $dataset->connection->fetchFirstColumn('SELECT id FROM conversion WHERE ingredient = ?', ['beurre' . $a]),
-                $dataset->connection->fetchFirstColumn('SELECT id FROM conversion WHERE ingredient = ?', [$copySlug]),
-            ),
-            'nouveaux identifiants de conversions',
-        );
-        $this->assertSame(1, (int) $dataset->connection->fetchOne('SELECT count(*) FROM conversion WHERE ingredient IS NULL'), 'la conversion commune n\'est pas copiée');
     }
 
     public function testRepointingChangesOnlyTheLinesOfTheUserAndBumpsOnlyTheVersionsOfWhatChanged(): void
@@ -296,56 +204,23 @@ class IngredientAdoptionBulkRepositoryTest extends DatabaseTestCase
         $this->assertSame(['beurre'], $this->repository->nonConformingCopies($user, $adoptions));
     }
 
-    public function testTheRunsAdoptionsAreListedWithTheSignOfAModifiedCopyAndRepointedBackWithoutDeletingAnyCopy(): void
-    {
-        $dataset = $this->dataset;
-        $user = $dataset->copierId;
-        $this->adoptEverything($user, 'lancement-a');
-        $this->adoptEverything($dataset->singleId, 'lancement-b');
-        $this->repository->repointToCopies($user);
-        $dataset->connection->executeStatement("UPDATE ingredient SET name = 'Farine de blé' WHERE slug = ?", ['farine' . $user]);
-        $copies = (int) $dataset->connection->fetchOne('SELECT count(*) FROM ingredient WHERE creator = ?', [$user]);
-
-        // When
-        $adoptions = $this->repository->adoptionsOfRun($user, 'lancement-a');
-
-        // Then : 12 adoptions du lancement, la farine modifiée seule est signalée ; un autre lancement n'en voit aucune
-        $this->assertCount(12, $adoptions);
-        $this->assertSame(['farine'], array_values(array_map(static fn($a): string => $a->commonSlug, array_filter($adoptions, static fn($a): bool => $a->modified))));
-        $this->assertSame([], $this->repository->adoptionsOfRun($user, 'lancement-c'));
-
-        // When : retour arrière de celles qui ne sont pas modifiées
-        $undoable = array_filter($adoptions, static fn($a): bool => !$a->modified);
-        $map = array_column(array_map(static fn($a): array => [$a->copySlug, $a->commonSlug], $undoable), 1, 0);
-        $repointed = $this->repository->repointToCommons($user, $map);
-        $deleted = $this->repository->deleteAdoptionAliases($user, 'lancement-a', array_values($map));
-
-        // Then : les lignes sont revenues sur les communs sauf celles de la copie modifiée, 11 alias effacés, aucune copie supprimée
-        $this->assertGreaterThan(0, $repointed->recipeRows);
-        $this->assertSame(11, $deleted);
-        $this->assertSame($copies, (int) $dataset->connection->fetchOne('SELECT count(*) FROM ingredient WHERE creator = ?', [$user]));
-        $this->assertSame(['farine'], $dataset->connection->fetchFirstColumn('SELECT alias_slug FROM ingredient_alias WHERE user_id = ?', [$user]));
-        $this->assertSame(12, (int) $dataset->connection->fetchOne("SELECT count(*) FROM ingredient_alias WHERE user_id = ? AND source = 'lancement-b'", [$dataset->singleId]), 'un autre compte n\'est pas touché');
-        $this->assertSame(0, $this->repository->deleteAdoptionAliases($user, 'lancement-a', []));
-        $this->assertTrue($this->repository->repointToCommons($user, [])->isEmpty());
-    }
-
     // --- Aides
 
     private function adoptEverything(string $userId, string $source = 'migration-essai'): void
     {
         $toAdopt = [];
         $taken = array_flip($this->repository->takenSlugs($userId));
-        foreach ($this->repository->commonsToAdopt($userId) as $common) {
-            $slug = StringTool::slugify($common->name . $userId);
+        foreach ($this->dataset->commons as $commonSlug) {
+            $name = $this->dataset->commonNames[$commonSlug];
+            $slug = StringTool::slugify($name . $userId);
             for ($attempt = 2; isset($taken[$slug]); ++$attempt) {
-                $slug = StringTool::slugify($common->name . '-' . $attempt . $userId);
+                $slug = StringTool::slugify($name . '-' . $attempt . $userId);
             }
             $taken[$slug] = true;
-            $toAdopt[$common->slug] = $slug;
+            $toAdopt[$commonSlug] = $slug;
         }
         $written = $this->repository->writeAliases($userId, $toAdopt, $source, $this->now);
-        $this->repository->copyIngredients($userId, $written);
+        $this->repository->copyCatalogIngredients($userId, $this->dataset->adminId, $written);
         $this->repository->copyConversions(array_map(
             static fn(array $c): array => ['sourceId' => $c['id'], 'newId' => UuidGenerator::new(), 'copySlug' => $written[$c['commonSlug']]],
             $this->repository->ownConversionsOf(array_keys($written)),
@@ -357,28 +232,4 @@ class IngredientAdoptionBulkRepositoryTest extends DatabaseTestCase
         $this->dataset->insert('ingredient_alias', ['user_id' => $userId, 'alias_slug' => $aliasSlug, 'ingredient_slug' => $ingredientSlug, 'kind' => 'adoption', 'source' => $source, 'created_at' => '2026-10-01 10:00:00']);
     }
 
-    public function testEveryCopyIsBornNotBaseWhateverTheMarkerOfItsSource(): void
-    {
-        // Given : un commun du catalogue marqué « de base » (le classement des anciens communs), adopté pour A par le cas d'usage et pour B en masse
-        $dataset = $this->dataset;
-        $dataset->connection->executeStatement("UPDATE ingredient SET is_base = TRUE WHERE slug IN ('beurre', 'lait')");
-        $dataset->connection->executeStatement("DELETE FROM conversion WHERE ingredient = 'beurre'");
-        $persister = new DataPersister(static::getContainer());
-        $persister->saveIngredient(new IngredientBuilder()->isButter()->withBase()->build());
-        $a = $dataset->singleId;
-        $b = $dataset->copierId;
-
-        // When
-        static::getContainer()->get(CommandBusInterface::class)->dispatch(new AdoptCommonIngredientCommand($a, 'beurre', 'essai'));
-        $written = $this->repository->writeAliases($b, ['beurre' => 'beurre' . $b, 'lait' => 'lait' . $b], 'essai', $this->now);
-        $this->repository->copyIngredients($b, $written);
-
-        // Then : les trois copies sont à faux (colonne par colonne, jamais la valeur de la source), les sources gardent leur marqueur
-        $this->assertSame([false, false, false], [
-            (bool) $dataset->connection->fetchOne('SELECT is_base FROM ingredient WHERE slug = ?', ['beurre' . $a]),
-            (bool) $dataset->connection->fetchOne('SELECT is_base FROM ingredient WHERE slug = ?', ['beurre' . $b]),
-            (bool) $dataset->connection->fetchOne('SELECT is_base FROM ingredient WHERE slug = ?', ['lait' . $b]),
-        ]);
-        $this->assertSame(2, (int) $dataset->connection->fetchOne("SELECT count(*) FROM ingredient WHERE slug IN ('beurre', 'lait') AND is_base"));
-    }
 }

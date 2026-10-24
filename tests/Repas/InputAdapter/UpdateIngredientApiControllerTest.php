@@ -136,21 +136,6 @@ class UpdateIngredientApiControllerTest extends QueryBusWebTestCase
         $this->assertSame([], $commandBus->dispatched());
     }
 
-    public function testRefusesAnIngredientWithoutAnOwnerToAnyone(): void
-    {
-        // Given : la forme de la base d'avant la passation, plus traitée à part : personne n'en est le propriétaire
-        $commandBus = $this->mockCommandBus();
-        $legacy = new IngredientBuilder()->isFlour()->withoutCreator()->build();
-        $this->persister->saveIngredient($legacy);
-
-        // When
-        $this->put($legacy->getSlug(), $this->savedUser(admin: true), self::BODY);
-
-        // Then
-        $this->assertSame(403, $this->client->getResponse()->getStatusCode());
-        $this->assertSame([], $commandBus->dispatched());
-    }
-
     public function testReturns404ForAnUnknownIngredient(): void
     {
         // Given

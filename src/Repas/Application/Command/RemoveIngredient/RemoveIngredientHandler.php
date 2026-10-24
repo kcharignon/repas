@@ -47,15 +47,13 @@ readonly class RemoveIngredientHandler
 
         $this->conversionRepository->deleteByIngredient($ingredient);
         $this->ingredientRepository->delete($ingredient);
-        if ($ingredient->getCreatorId() !== null) {
-            // Les alias qui désignaient cet ingrédient disparaissent avec lui : un alias ne désigne jamais un ingrédient qui n'existe plus (ADR 0028)
-            $this->aliasRepository->deleteByIngredientSlug($ingredient->getCreatorId(), $ingredient->getSlug());
-            // Idem pour ses « Pas le même » : la paire parlait de cet ingrédient
-            $this->distinctRepository->deleteByIngredientSlug($ingredient->getCreatorId(), $ingredient->getSlug());
-            // Une adoption n'est pas une création : la supprimer ne décrémente pas la statistique « ingrédients créés » (ADR 0028 décision 7)
-            if (!$ingredient->isAdoption()) {
-                $this->eventDispatcher->dispatch(new IngredientRemovedEvent($ingredient->getCreatorId(), $ingredient->getId()));
-            }
+        // Les alias qui désignaient cet ingrédient disparaissent avec lui : un alias ne désigne jamais un ingrédient qui n'existe plus (ADR 0028)
+        $this->aliasRepository->deleteByIngredientSlug($ingredient->getCreatorId(), $ingredient->getSlug());
+        // Idem pour ses « Pas le même » : la paire parlait de cet ingrédient
+        $this->distinctRepository->deleteByIngredientSlug($ingredient->getCreatorId(), $ingredient->getSlug());
+        // Une adoption n'est pas une création : la supprimer ne décrémente pas la statistique « ingrédients créés » (ADR 0028 décision 7)
+        if (!$ingredient->isAdoption()) {
+            $this->eventDispatcher->dispatch(new IngredientRemovedEvent($ingredient->getCreatorId(), $ingredient->getId()));
         }
     }
 }

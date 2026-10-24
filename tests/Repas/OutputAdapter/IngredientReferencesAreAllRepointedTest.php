@@ -10,22 +10,23 @@ use Repas\Tests\Helper\AdoptionDataset;
 use Repas\Tests\Helper\DatabaseTestCase;
 use Repas\Tests\Helper\DataPersister;
 use Repas\Tests\Helper\MergeDataset;
+use Repas\Tests\Helper\SeedingDataset;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Component\Console\Tester\CommandTester;
 
 /**
- * Le garde-fou de la migration d'adoption (ING-003, `docs/ingredients/migration.md` § 4) : AUCUNE colonne de la base qui peut désigner un
+ * Le garde-fou du repointage (le moteur d'ING-003, devenu celui de l'amorçage, `docs/ingredients/migration.md` § 4) : AUCUNE colonne de la base qui peut désigner un
  * ingrédient n'échappe au repointage. Le test lit le schéma RÉEL (`information_schema`, donc aussi les tables sans entité) et exige que
  * toute colonne dont le nom contient `ingredient` ou `slug`, et toute colonne JSON, soit déclarée ci-dessous dans l'une des trois
  * catégories, avec sa raison. Une nouvelle table ou colonne qui référence un ingrédient fait échouer ce test : on la déclare ici, ce qui
- * oblige à décider si la migration (et la fusion, ING-005) doit la repointer.
+ * oblige à décider si l'amorçage (et la fusion, ING-005) doit la repointer.
  *
  * Un second garde-fou lit les VALEURS : sur un jeu de données qui remplit toutes les tables utiles, les seules colonnes qui contiennent le
- * slug d'un commun avant la migration sont celles qui sont déclarées (une colonne au nom trompeur, comme `ingredient.adopted_from`, qui
- * ne contient ni « ingredient » ni « slug » dans un nom évident, serait trahie par sa valeur), et la migration n'en fait apparaître aucune autre.
+ * slug d'un ancien commun avant l'amorçage sont celles qui sont déclarées (une colonne au nom trompeur, comme `ingredient.adopted_from`, qui
+ * ne contient ni « ingredient » ni « slug » dans un nom évident, serait trahie par sa valeur), et l'amorçage n'en fait apparaître aucune autre.
  *
  * Les colonnes REPOINTÉES le sont par `IngredientAdoptionBulkPostgreSQLRepository` (recettes, listes) et par le port
- * `DriveIngredientReferences` (choix du drive) ; `AdoptCommonIngredientsCommandTest` prouve qu'il n'en reste aucune ligne sur un commun.
+ * `DriveIngredientReferences` (choix du drive) ; `SeedIngredientsCommandTest` prouve qu'il n'en reste aucune ligne sur un ancien commun.
  *
  * La FUSION de deux ingrédients (ING-005) repointe EXACTEMENT les mêmes colonnes (`IngredientMergePostgreSQLRepository` et le même port), plus la
  * correspondance (`ingredient_alias`) qu'elle déplace elle-même et les conversions propres de l'absorbé qu'elle supprime avec lui : un troisième
@@ -105,28 +106,26 @@ class IngredientReferencesAreAllRepointedTest extends DatabaseTestCase
         $this->assertSame(count($declared), count(array_unique($declared)), 'Une colonne est déclarée deux fois.');
     }
 
-    public function testTheOnlyColumnsThatHoldTheSlugOfACommonAreTheDeclaredOnesBeforeAndAfterTheMigration(): void
+    public function testTheOnlyColumnsThatHoldTheSlugOfAnOldCommonAreTheDeclaredOnesBeforeAndAfterTheSeeding(): void
     {
-        // Given : le jeu de données de la production, avant la migration
-        $dataset = AdoptionDataset::create($this->entityManager, new DataPersister(static::getContainer()));
+        // Given : le jeu de données de l'amorçage (celui de la production d'avant la passation), avant l'amorçage
+        $dataset = SeedingDataset::create($this->entityManager, new DataPersister(static::getContainer()))->adoption;
 
-        // Then : avant, les colonnes qui contiennent un slug de commun sont les références repointées, celles des conversions propres, la clé et son nom normalisé
+        // Then : avant, les colonnes qui contiennent un slug d'ancien commun sont les références repointées, celles des conversions propres, la clé et son nom normalisé
         $this->assertSame(
             ['conversion.ingredient', 'drive_choice.ingredient_slug', 'ingredient.slug', 'ingredient.slugged_name', 'recipe_row.ingredient', 'shopping_list_ingredient.ingredient', 'shopping_list_row.ingredient'],
             $this->columnsHoldingTheSlugOfACommon($dataset),
         );
 
         // When
-        $tester = new CommandTester(new Application(self::$kernel)->find('repas:ingredients:adopt-commons'));
+        $tester = new CommandTester(new Application(self::$kernel)->find('repas:ingredients:seed'));
         $tester->execute(['--apply' => true, '--accept-sent' => true]);
 
-        // Then : après, aucune AUTRE colonne n'en contient : seules s'ajoutent la provenance et la correspondance. (Les colonnes repointées en
-        // contiennent encore, ce sont les lignes de l'administrateur et du compte vide, que la migration ne touche pas ; qu'aucune ligne d'un
-        // compte migré n'en garde est prouvé par `AdoptCommonIngredientsCommandTest`.)
+        // Then : après, aucune AUTRE colonne n'en contient : seules s'ajoutent la provenance et la correspondance, et les choix du drive ont tous
+        // quitté les anciens communs. (Les autres colonnes repointées en contiennent encore : les lignes des comptes que l'amorçage ne touche pas.)
         $this->assertSame(
             [
                 'conversion.ingredient',
-                'drive_choice.ingredient_slug',
                 'ingredient.adopted_from',
                 'ingredient.slug',
                 'ingredient.slugged_name',

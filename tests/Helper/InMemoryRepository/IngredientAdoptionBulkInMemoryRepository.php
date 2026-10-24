@@ -8,9 +8,7 @@ use Repas\Repas\Domain\Interface\IngredientAdoptionBulkRepository;
 use Repas\Repas\Domain\Model\AdoptionRepointed;
 use Repas\Repas\Domain\Model\AdoptionSnapshot;
 use Repas\Repas\Domain\Model\AggregateSnapshot;
-use Repas\Repas\Domain\Model\CommonIngredientToAdopt;
 use Repas\Repas\Domain\Model\IngredientToSeed;
-use Repas\Repas\Domain\Model\UndoableAdoption;
 
 /**
  * Le port des écritures en masse de la migration d'adoption (ING-003) sur de simples tableaux, pour tester l'orchestration du handler
@@ -49,36 +47,6 @@ final class IngredientAdoptionBulkInMemoryRepository implements IngredientAdopti
         $this->calls[] = 'lock';
     }
 
-    public function isConcerned(string $userId): bool
-    {
-        if (in_array($userId, $this->administrators, true)) {
-            return false;
-        }
-
-        return array_filter($this->ingredients, static fn(array $i): bool => $i['creator'] === $userId) !== []
-            || array_filter($this->recipes, static fn(array $r): bool => $r['author'] === $userId) !== [];
-    }
-
-    public function commonsToAdopt(string $userId): array
-    {
-        $result = [];
-        foreach ($this->commons() as $slug => $common) {
-            if ($this->validAdoption($userId, $slug) !== null) {
-                continue;
-            }
-            $existing = null;
-            foreach ($this->ingredients as $candidate => $copy) {
-                if ($copy['creator'] === $userId && $copy['adoptedFrom'] === $slug && $copy['name'] === $common['name'] && $copy['department'] === $common['department']) {
-                    $existing = $candidate;
-                    break;
-                }
-            }
-            $result[] = new CommonIngredientToAdopt($slug, $common['name'], $existing);
-        }
-
-        return $result;
-    }
-
     public function takenSlugs(string $userId): array
     {
         return array_values(array_filter(array_keys($this->ingredients), static fn(string $slug): bool => str_ends_with($slug, $userId)));
@@ -97,16 +65,6 @@ final class IngredientAdoptionBulkInMemoryRepository implements IngredientAdopti
         }
 
         return $written;
-    }
-
-    public function copyIngredients(string $userId, array $copySlugByCommonSlug): int
-    {
-        $this->calls[] = 'copyIngredients';
-        foreach ($copySlugByCommonSlug as $common => $copy) {
-            $this->ingredients[$copy] = ['name' => $this->ingredients[$common]['name'], 'department' => $this->ingredients[$common]['department'], 'creator' => $userId, 'adoptedFrom' => $common];
-        }
-
-        return count($copySlugByCommonSlug);
     }
 
     public function ownConversionsOf(array $commonSlugs): array
@@ -201,42 +159,6 @@ final class IngredientAdoptionBulkInMemoryRepository implements IngredientAdopti
         return $bad;
     }
 
-    public function adoptionsOfRun(string $userId, string $source): array
-    {
-        $result = [];
-        foreach ($this->aliases[$userId] ?? [] as $common => $alias) {
-            if ($alias['kind'] !== 'adoption' || $alias['source'] !== $source) {
-                continue;
-            }
-            $copy = $this->ingredients[$alias['ingredient']] ?? null;
-            $commonRow = $this->ingredients[$common] ?? null;
-            $modified = $commonRow === null || ($copy !== null && $copy['creator'] === $userId && ($copy['name'] !== $commonRow['name'] || $copy['department'] !== $commonRow['department']));
-            $result[] = new UndoableAdoption($common, $alias['ingredient'], $modified);
-        }
-
-        return $result;
-    }
-
-    public function repointToCommons(string $userId, array $communBySlugOfCopy): AdoptionRepointed
-    {
-        $this->calls[] = 'repointToCommons';
-
-        return $this->repoint($userId, $communBySlugOfCopy);
-    }
-
-    public function deleteAdoptionAliases(string $userId, string $source, array $commonSlugs): int
-    {
-        $deleted = 0;
-        foreach ($commonSlugs as $common) {
-            if (($this->aliases[$userId][$common]['source'] ?? null) === $source) {
-                unset($this->aliases[$userId][$common]);
-                ++$deleted;
-            }
-        }
-
-        return $deleted;
-    }
-
     // ---- L'amorçage d'un compte (ING-008) : la source (catalogue du propriétaire, « de base ») et le périmètre
 
     public function lockSeeding(string $userId): void
@@ -301,17 +223,6 @@ final class IngredientAdoptionBulkInMemoryRepository implements IngredientAdopti
         }
 
         return count($copySlugBySourceSlug);
-    }
-
-    /**
-     * @return array<string, array{name: string, department: string, creator: ?string, adoptedFrom: ?string}>
-     */
-    private function commons(): array
-    {
-        $commons = array_filter($this->ingredients, static fn(array $i): bool => $i['creator'] === null);
-        ksort($commons);
-
-        return $commons;
     }
 
     private function validAdoption(string $userId, string $common): ?string

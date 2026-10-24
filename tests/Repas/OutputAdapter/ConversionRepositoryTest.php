@@ -154,7 +154,7 @@ class ConversionRepositoryTest extends DatabaseTestCase
 
     public function testTheOwnConversionsOfACommonCopiedToAnAdoptionAreTheCopysAndTheCommonOnesStayShared(): void
     {
-        // Arrange : un commun avec deux conversions propres, plus une conversion commune (kilo -> gramme) ; l'utilisateur l'adopte
+        // Arrange : un ingrédient du catalogue avec deux conversions propres, plus une conversion générale (kilo -> gramme) ; l'utilisateur en reçoit une copie
         $user = new UserBuilder()->build();
         $this->persister->saveUser($user);
         $common = new IngredientBuilder()->isButter()->build();
@@ -164,11 +164,11 @@ class ConversionRepositoryTest extends DatabaseTestCase
         foreach ([$block, $spoon, $kilo] as $conversion) {
             $this->persister->saveConversion($conversion);
         }
-        $adoption = Ingredient::adopt($common, $user->getId(), 'beurre' . $user->getId());
+        $adoption = Ingredient::copyFromOriginal($common, $user->getId(), 'beurre' . $user->getId());
         $this->persister->saveIngredientDependencies($adoption);
         static::getContainer()->get(IngredientRepository::class)->save($adoption);
 
-        // Act : ce que fait AdoptCommonIngredient
+        // Act : ce que font la copie d'une recette et l'amorçage d'un compte
         $copies = [];
         foreach ($this->conversionRepository->findByIngredient($common) as $conversion) {
             $copy = Conversion::copyFromOriginal(UuidGenerator::new(), $conversion, $adoption);

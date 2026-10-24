@@ -10,7 +10,7 @@ use Repas\Drive\Domain\Interface\ChoiceRepository;
 use Repas\Drive\Domain\Interface\ProductRepository;
 use Repas\Drive\Domain\Model\Product;
 use Repas\Drive\Domain\Model\Retailer;
-use Repas\Repas\Application\Command\AdoptCommonIngredientsForUser\AdoptCommonIngredientsForUserCommand;
+use Repas\Repas\Application\Command\SeedUserIngredients\SeedUserIngredientsCommand;
 use Repas\Repas\Domain\Interface\BaseIngredientClassification;
 use Repas\Repas\Domain\Model\ShoppingList;
 use Repas\Shared\Application\Interface\CommandBusInterface;
@@ -25,9 +25,9 @@ use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Tester\CommandTester;
 
 /**
- * Le test d'équivalence du drive pour la PASSATION (ING-009, comme `AdoptionDriveEquivalenceTest` pour ING-003 et `SeedingDriveEquivalenceTest`
- * pour ING-008) : le plan d'envoi (`GetDrivePlan`) et l'estimation du coût (`GetDriveEstimate`) du propriétaire du catalogue ET d'un compte déjà
- * migré donnent, avant et après la passation, EXACTEMENT les mêmes lignes — nom, quantité, unité, produits et leur rang, nombre à commander,
+ * Le test d'équivalence du drive pour la PASSATION (ING-009, comme `SeedingDriveEquivalenceTest` pour ING-008) : le plan d'envoi
+ * (`GetDrivePlan`) et l'estimation du coût (`GetDriveEstimate`) du propriétaire du catalogue ET d'un autre compte (dont les lignes
+ * désignent les anciens communs) donnent, avant et après la passation, EXACTEMENT les mêmes lignes — nom, quantité, unité, produits et leur rang, nombre à commander,
  * contenance, recherche mémorisée, prix, et jusqu'au slug de chaque ligne : la passation ne repointe rien. Ce sont les vraies requêtes du
  * drive, sur les vraies listes (dont une ENVOYÉE), avec des ingrédients construits par les builders du domaine.
  */
@@ -35,7 +35,7 @@ class HandOverCatalogDriveEquivalenceTest extends WriteBudgetTestCase
 {
     public function testThePlanAndTheEstimateOfTheOwnerAndOfAMigratedAccountAreIdenticalBeforeAndAfterTheHandOver(): void
     {
-        // Given : le propriétaire du catalogue et un compte migré, chacun avec trois recettes, une liste ENVOYÉE et une liste active sur les anciens
+        // Given : le propriétaire du catalogue et un autre compte, chacun avec trois recettes, une liste ENVOYÉE et une liste active sur les anciens
         // communs, des réglages du drive et des choix de produits
         $owner = new UserBuilder()->isCatalogOwner()->build();
         $this->persister->saveUser($owner);
@@ -56,8 +56,9 @@ class HandOverCatalogDriveEquivalenceTest extends WriteBudgetTestCase
         // La passation part de la forme d'avant : les ingrédients du catalogue sont encore sans créateur
         $this->turnDefaultIngredientsIntoOldCommons();
         $connection = $this->entityManager->getConnection();
-        // Le compte migré par le vrai cas d'usage d'ING-003 : ses lignes pointent vers ses copies
-        static::getContainer()->get(CommandBusInterface::class)->dispatch(new AdoptCommonIngredientsForUserCommand($migrated->getId(), 'migration-essai', true));
+        // L'autre compte est déjà amorcé (activé avant la passation) : ses lignes pointent vers ses copies, la passation n'y touche pas
+        $connection->executeStatement('UPDATE ingredient SET is_base = TRUE WHERE creator IS NULL');
+        static::getContainer()->get(CommandBusInterface::class)->dispatch(new SeedUserIngredientsCommand($migrated->getId(), 'amorcage-essai'));
         $this->assertSame(0, (int) $connection->fetchOne('SELECT count(*) FROM shopping_list_row x JOIN shopping_list l ON l.id = x.shopping_list JOIN ingredient i ON i.slug = x.ingredient WHERE l.owner = ? AND i.creator IS NULL', [$migrated->getId()]));
         // Le classement du fichier est remplacé par celui des anciens communs de ce jeu (tous « de base »), l'interrupteur de l'amorçage est allumé
         $oldCommons = array_map('strval', $connection->fetchFirstColumn('SELECT slug FROM ingredient WHERE creator IS NULL ORDER BY slug'));
@@ -87,7 +88,7 @@ class HandOverCatalogDriveEquivalenceTest extends WriteBudgetTestCase
         $this->assertSame(0, (int) $connection->fetchOne('SELECT count(*) FROM ingredient WHERE creator IS NULL'));
         $this->entityManager->clear();
 
-        // Then : les mêmes documents, au slug près (pour le propriétaire comme pour le compte migré), seul l'horodatage de génération peut changer
+        // Then : les mêmes documents, au slug près (pour le propriétaire comme pour l'autre compte), seul l'horodatage de génération peut changer
         foreach ($subjects as $index => [$user, $sent, $active]) {
             $after = ['sent' => $ask($user->getId(), $sent->getId(), true), 'active' => $ask($user->getId(), $active->getId(), false)];
             foreach (['plan', 'estimate'] as $document) {

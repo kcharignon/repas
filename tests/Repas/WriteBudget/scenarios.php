@@ -18,8 +18,6 @@ use Repas\Drive\Domain\Model\ProductPrice;
 use Repas\Drive\Domain\Model\Retailer;
 use Repas\Drive\Domain\Model\SearchQuery;
 use Repas\Repas\Application\Command\ActivatedShoppingList\ActivatedShoppingListCommand;
-use Repas\Repas\Application\Command\AdoptCommonIngredient\AdoptCommonIngredientCommand;
-use Repas\Repas\Application\Command\AdoptCommonIngredientsForUser\AdoptCommonIngredientsForUserCommand;
 use Repas\Repas\Application\Command\AddIngredientToShoppingList\AddIngredientToShoppingListCommand;
 use Repas\Repas\Application\Command\ClassifyBaseIngredients\ClassifyBaseIngredientsCommand;
 use Repas\Repas\Application\Command\CopyRecipe\CopyRecipeCommand;
@@ -399,28 +397,6 @@ return [
         $t->persister->saveIngredient($tomatoes);
 
         return new MarkIngredientsDistinctCommand($owner->getId(), $tomatoes->getSlug(), $tomato->getSlug());
-    },
-    // Adoption d'un commun (ADR 0028, ING-001) : le beurre, avec deux conversions propres, que l'utilisateur n'a jamais adopté ; son slug est
-    // libre (une requête de plus par slug déjà pris). C'est le coût de la première utilisation d'un commun.
-    'adopter-ingredient' => static function (WriteBudgetTestCase $t): object {
-        $owner = $t->savedUser();
-        // Un ancien commun : la forme de la base d'avant la passation, la seule que ce cas d'usage unitaire adopte (il disparaît avec ING-014)
-        $butter = new IngredientBuilder()->isButter()->withoutCreator()->build();
-        $t->persister->saveConversion(new ConversionBuilder()->isBlockToGrammeForButter()->withIngredient($butter)->build());
-        $t->persister->saveConversion(
-            new ConversionBuilder()->withStartUnit(new UnitBuilder()->isSoupSpoon())->withEndUnit(new UnitBuilder()->isGramme())->withCoefficient(15)->withIngredient($butter)->build(),
-        );
-
-        return new AdoptCommonIngredientCommand($owner->getId(), $butter->getSlug(), 'first-use');
-    },
-    // Migration d'adoption (ING-003) : TOUS les communs d'un compte en une commande, avec leurs conversions propres, le repointage de ses
-    // recettes, de ses listes (dont une envoyée) et de ses choix du drive, et les empreintes d'avant et d'après. Le nombre de requêtes ne
-    // dépend ni du nombre de communs, ni du nombre de lignes, ni du nombre de comptes (tests/Repas/WriteBudget/AdoptCatalogueBudgetTest).
-    'adopter-catalogue' => static function (WriteBudgetTestCase $t): object {
-        $owner = $t->savedUser();
-        $t->savedAdoptionVolume($owner, recipes: 3, rowsPerRecipe: 4, lists: 3, rowsPerList: 4, choices: 3);
-
-        return new AdoptCommonIngredientsForUserCommand($owner->getId(), 'migration-essai', true);
     },
     // Amorçage des ingrédients à l'activation (ING-008, interrupteur ALLUMÉ) : la confirmation de l'adresse d'un compte en attente copie les
     // ingrédients « de base » du propriétaire du catalogue, leurs conversions propres et leurs alias, dans la transaction de l'activation. Le

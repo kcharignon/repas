@@ -12,8 +12,6 @@ use Repas\Repas\Domain\Interface\IngredientAdoptionBulkRepository;
 use Repas\Repas\Domain\Model\AdoptionRepointed;
 use Repas\Repas\Domain\Model\AdoptionSnapshot;
 use Repas\Repas\Domain\Model\AliasKind;
-use Repas\Repas\Domain\Model\CommonIngredientToAdopt;
-use Repas\Repas\Domain\Model\UndoableAdoption;
 use Repas\Repas\Infrastructure\Adoption\AdoptionSnapshotReader;
 use Repas\Repas\Infrastructure\Adoption\SeedingSourceReader;
 use Repas\Repas\Infrastructure\Visibility\IngredientVisibility;
@@ -59,31 +57,6 @@ readonly class IngredientAdoptionBulkPostgreSQLRepository implements IngredientA
         $this->connection()->executeQuery('SELECT pg_advisory_xact_lock(hashtext(?))', ['adopt:' . $userId])->free();
     }
 
-    public function isConcerned(string $userId): bool
-    {
-        return (bool) $this->connection()->fetchOne(
-            'SELECT NOT (u.roles::jsonb @> CAST(\'["ROLE_ADMIN"]\' AS jsonb))'
-            . ' AND (EXISTS (SELECT 1 FROM ingredient i WHERE i.creator = u.id) OR EXISTS (SELECT 1 FROM recipe r WHERE r.author = u.id))'
-            . ' FROM "user" u WHERE u.id = ?',
-            [$userId],
-        );
-    }
-
-    public function commonsToAdopt(string $userId): array
-    {
-        // La colonne `existing_copy` : un ingrédient de l'utilisateur né de ce commun (`adopted_from`), sans alias, et strictement conforme au commun
-        $rows = $this->connection()->fetchAllNumeric(
-            'SELECT c.slug, c.name, (SELECT min(o.slug) FROM ingredient o WHERE o.creator = :u AND o.adopted_from = c.slug AND NOT (' . self::COPY_DIFFERS_FROM_COMMON . ')) AS existing_copy'
-            . ' FROM ingredient c WHERE ' . IngredientVisibility::isCommonSql('c')
-            . ' AND NOT EXISTS (SELECT 1 FROM ingredient_alias a JOIN ingredient own ON own.slug = a.ingredient_slug AND own.creator = a.user_id'
-            . "   WHERE a.user_id = :u AND a.alias_slug = c.slug AND a.kind = 'adoption')"
-            . ' ORDER BY c.slug',
-            ['u' => $userId],
-        );
-
-        return array_map(static fn(array $row): CommonIngredientToAdopt => new CommonIngredientToAdopt($row[0], $row[1], $row[2]), $rows);
-    }
-
     public function takenSlugs(string $userId): array
     {
         /** @var list<string> */
@@ -111,16 +84,6 @@ readonly class IngredientAdoptionBulkPostgreSQLRepository implements IngredientA
         }
 
         return $written;
-    }
-
-    public function copyIngredients(string $userId, array $copySlugByCommonSlug): int
-    {
-        return (int) $this->connection()->executeStatement(
-            'INSERT INTO ingredient (slug, name, image, slugged_name, department, default_cooking_unit, default_purchase_unit, creator, compatible_units, adopted_from, is_base)'
-            . ' SELECT m.value, c.name, c.image, c.slugged_name, c.department, c.default_cooking_unit, c.default_purchase_unit, :u, c.compatible_units, c.slug, FALSE'
-            . ' FROM jsonb_each_text(CAST(:map AS jsonb)) AS m JOIN ingredient c ON c.slug = m.key AND ' . IngredientVisibility::isCommonSql('c'),
-            ['u' => $userId, 'map' => $this->json($copySlugByCommonSlug)],
-        );
     }
 
     public function ownConversionsOf(array $commonSlugs): array
@@ -188,51 +151,10 @@ readonly class IngredientAdoptionBulkPostgreSQLRepository implements IngredientA
         return $this->connection()->fetchFirstColumn(
             'SELECT m.key FROM jsonb_each_text(CAST(:map AS jsonb)) AS m'
             . ' LEFT JOIN ingredient c ON c.slug = m.key LEFT JOIN ingredient o ON o.slug = m.value'
-            . ' WHERE c.slug IS NULL OR o.slug IS NULL OR o.creator IS DISTINCT FROM :u OR o.adopted_from IS DISTINCT FROM c.slug'
+            . ' WHERE c.slug IS NULL OR o.slug IS NULL OR COALESCE(o.creator, \'\') <> :u OR o.adopted_from IS DISTINCT FROM c.slug'
             . '    OR ' . self::COPY_DIFFERS_FROM_COMMON
             . ' ORDER BY m.key',
             ['u' => $userId, 'map' => $this->json($adoptions)],
-        );
-    }
-
-    public function adoptionsOfRun(string $userId, string $source): array
-    {
-        // « Modifiée » : la copie existe, est à l'utilisateur, et ne ressemble plus à son commun (ou le commun a disparu : le repointer
-        // créerait des références orphelines). Une copie absente n'est pas « modifiée » : il n'y a rien à garder, seulement l'alias à effacer.
-        $rows = $this->connection()->fetchAllNumeric(
-            'SELECT a.alias_slug, a.ingredient_slug,'
-            . ' (c.slug IS NULL OR (o.slug IS NOT NULL AND o.creator = a.user_id AND (' . self::COPY_DIFFERS_FROM_COMMON . '))) AS modified'
-            . ' FROM ingredient_alias a LEFT JOIN ingredient c ON c.slug = a.alias_slug LEFT JOIN ingredient o ON o.slug = a.ingredient_slug'
-            . " WHERE a.user_id = :u AND a.kind = 'adoption' AND a.source = :source ORDER BY a.alias_slug",
-            ['u' => $userId, 'source' => $source],
-        );
-
-        return array_map(static fn(array $row): UndoableAdoption => new UndoableAdoption($row[0], $row[1], (bool) $row[2]), $rows);
-    }
-
-    public function repointToCommons(string $userId, array $communBySlugOfCopy): AdoptionRepointed
-    {
-        if ($communBySlugOfCopy === []) {
-            return new AdoptionRepointed();
-        }
-
-        return $this->repoint(
-            $userId,
-            'SELECT m.key AS from_slug, m.value AS to_slug FROM jsonb_each_text(CAST(:map AS jsonb)) AS m',
-            ['u' => $userId, 'map' => $this->json($communBySlugOfCopy)],
-        );
-    }
-
-    public function deleteAdoptionAliases(string $userId, string $source, array $commonSlugs): int
-    {
-        if ($commonSlugs === []) {
-            return 0;
-        }
-
-        return (int) $this->connection()->executeStatement(
-            "DELETE FROM ingredient_alias WHERE user_id = ? AND source = ? AND kind = 'adoption' AND alias_slug IN (?)",
-            [$userId, $source, array_values($commonSlugs)],
-            [2 => ArrayParameterType::STRING],
         );
     }
 
