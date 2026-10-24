@@ -61,7 +61,7 @@ Taille : S (quelques heures), M (une journée), L (plusieurs jours). Effort : le
 
 ### Transverse
 
-- [ ] [ING-010](tickets/ING-010-documentation-recette-exploitation.md) (recette écrite : [`recette.md`](recette.md), **à jouer et signer par le propriétaire** ; le reste fait au fil des PR) back · S · **medium** · `CLAUDE.md`, skills, `docs/production.md`, pas à pas d'exploitation, recette · se fait au fil des autres, se clôt après 015 *(réécrit)*
+- [x] [ING-010](tickets/ING-010-documentation-recette-exploitation.md) (recette écrite : [`recette.md`](recette.md), **relue et validée par le propriétaire le 2026-10-24** ; le reste fait au fil des PR) back · S · **medium** · `CLAUDE.md`, skills, `docs/production.md`, pas à pas d'exploitation, recette · se fait au fil des autres, se clôt après 015 *(réécrit)*
 
 ## Ordre de livraison et dépendances
 
@@ -117,7 +117,7 @@ Amendement du 2026-10-20 (sans ingrédient commun) :
 | Après l'interrupteur allumé | un compte d'essai confirmé a ses ~150 ingrédients et leurs conversions ; sa suppression efface tout |
 | Après la passation | contrôles SQL « après » de `sans-commun.md` § 5 : zéro sans créateur, 261 chez le propriétaire (sommes de contrôle identiques), invariant « toute ligne désigne un ingrédient de son compte » à zéro, listes envoyées et versions inchangées ; l'administrateur voit les mêmes ingrédients qu'avant |
 | Après R2 | migration-garde passée ; l'administrateur ne modifie plus les ingrédients des autres ; budgets SQL en baisse |
-| Après ING-007 et ING-015 | recette signée (`recette.md`, écrite par ING-010) |
+| Après ING-007 et ING-015 | recette relue et validée par le propriétaire le 2026-10-24 (`recette.md`, écrite par ING-010) |
 
 ## Risques et inconnues
 
