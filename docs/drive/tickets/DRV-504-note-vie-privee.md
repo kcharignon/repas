@@ -4,7 +4,7 @@
 - **Jalon** : M5 Intégration et livraison
 - **Taille** : S
 - **Dépend de** : DRV-204
-- **Statut** : partie back faite (PR [#152](https://github.com/kcharignon/repas/pull/152), 2026-10-18) ; partie front faite (note complète dans l'aide : repas-front#101 ; note courte : repas-front#105 ; posée dans les réglages : repas-front#106) ; reste la relecture des textes par l'utilisateur
+- **Statut** : partie back faite (PR [#152](https://github.com/kcharignon/repas/pull/152), 2026-10-18) ; partie front faite (note complète dans l'aide : repas-front#101 ; note courte : repas-front#105 ; posée dans les réglages : repas-front#106) ; textes relus par l'utilisateur le 2026-10-24 : **fait**
 - **Lire d'abord** : [`../architecture.md`](../architecture.md) § 10 ; page de confidentialité ou mentions existantes du front si elles existent.
 
 ## Portée
