@@ -47,21 +47,21 @@ Taille : S (quelques heures), M (une journée), L (plusieurs jours). Effort : le
 
 ### I5 — Front
 
-- [ ] [ING-007](tickets/ING-007-front-fusion-et-doublons.md) **front** · L · **high** · Écrans A (doublons), B (depuis la fiche), confirmation commune · dépend de : 005, 006 en production
+- [x] [ING-007](tickets/ING-007-front-fusion-et-doublons.md) (front PR #194, corrigée par #196, en production : front v0.5.27) **front** · L · **high** · Écrans A (doublons), B (depuis la fiche), confirmation commune · dépend de : 005, 006 en production
 
 ### I6 — Plus d'ingrédient commun (amendement du 2026-10-20)
 
 - [x] [ING-011](tickets/ING-011-marqueur-de-base.md) (PR #242) back · M · **xhigh** · Le marqueur « de base » (`ingredient.is_base`), le propriétaire du catalogue (port `Shared`), le champ d'API et son contrôle `403` · dépend de : cadrage · sortie **R1**
 - [x] [ING-012](tickets/ING-012-plus-de-nouveau-commun.md) (PR #243) back · S · **high** · Plus de nouveau commun : l'administrateur crée des ingrédients à lui · dépend de : 011 · **R1**
 - [x] [ING-008](tickets/ING-008-amorcage-des-comptes.md) (PR #244) back · L · **xhigh** · Amorçage à l'activation (événement, cas d'usage, écouteur, interrupteur coupé), rattrapage (`repas:ingredients:seed`), script · dépend de : 011 · **R1** · *remplace l'ancien ING-008*
-- [x] [ING-009](tickets/ING-009-passation-des-communs.md) (PR #245) back · L · **xhigh** · La passation : classement 151/110, amorçage du compte vide, préconditions, les 261 au propriétaire ; données, commande, script · dépend de : 011, 008 · **R1** (code livré ; **exécution en production : opérations humaines, `sans-commun.md` § 4 et § 14**, pas encore faite) · *remplace l'ancien ING-009*
+- [x] [ING-009](tickets/ING-009-passation-des-communs.md) (PR #245) back · L · **xhigh** · La passation : classement 151/110, amorçage du compte vide, préconditions, les 261 au propriétaire ; données, commande, script · dépend de : 011, 008 · **R1** (code livré ; **passation exécutée en production le 2026-10-21**, `sans-commun.md` § 4 et § 14) · *remplace l'ancien ING-009*
 - [x] [ING-013](tickets/ING-013-simplifier-visibilite-droits-resolveur.md) (PR #247) back · L · **xhigh** · Simplifier : visibilité « créateur = moi », droits, résolveur, copie de recette, fusion, doublons, conversions · dépend de : **passation exécutée et contrôlée** · **R2**
 - [x] [ING-014](tickets/ING-014-retirer-le-code-mort.md) (PR #250 et sa seconde partie, la passation retirée, PR #252) back · M · **high** · Retirer le code mort, `NoSharedIngredientTest`, migration-garde, fixtures, documents · dépend de : 013 · **R2**
-- [ ] [ING-015](tickets/ING-015-front-ingredient-de-base.md) **front** · M · **high** · L'interrupteur « Ingrédient de base » et sa pastille (propriétaire seulement) · dépend de : 011 en production
+- [x] [ING-015](tickets/ING-015-front-ingredient-de-base.md) (front PR #195, en production : front v0.5.26) **front** · M · **high** · L'interrupteur « Ingrédient de base » et sa pastille (propriétaire seulement) · dépend de : 011 en production
 
 ### Transverse
 
-- [ ] [ING-010](tickets/ING-010-documentation-recette-exploitation.md) back · S · **medium** · `CLAUDE.md`, skills, `docs/production.md`, pas à pas d'exploitation, recette · se fait au fil des autres, se clôt après 015 *(réécrit)*
+- [ ] [ING-010](tickets/ING-010-documentation-recette-exploitation.md) (recette écrite : [`recette.md`](recette.md), **à jouer et signer par le propriétaire** ; le reste fait au fil des PR) back · S · **medium** · `CLAUDE.md`, skills, `docs/production.md`, pas à pas d'exploitation, recette · se fait au fil des autres, se clôt après 015 *(réécrit)*
 
 ## Ordre de livraison et dépendances
 
