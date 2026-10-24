@@ -11,6 +11,7 @@ use Repas\Tests\Helper\ControlledIngredientSeedingFeature;
 use Repas\Tests\Helper\DatabaseTestCase;
 use Repas\Tests\Helper\DataPersister;
 use Repas\Tests\Helper\HandoverDataset;
+use Repas\Tests\Helper\PerformanceReport;
 use Repas\Tests\Helper\SqlBudget\QueryCounter;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Component\Console\Command\Command;
@@ -48,7 +49,7 @@ class HandOverCatalogPerformanceTest extends DatabaseTestCase
             $timings[$label] = [(hrtime(true) - $started) / 1e9, $counter->count()];
             $this->assertSame($expected, $status, $label . "\n" . $tester->getDisplay());
         }
-        fwrite(STDERR, sprintf("\n[ING-009 perf] %d lignes du propriétaire : %s\n", $lines, implode(' ; ', array_map(static fn(string $label, array $t): string => sprintf('%s %.2f s (%d requêtes)', $label, $t[0], $t[1]), array_keys($timings), $timings))));
+        PerformanceReport::line(sprintf("\n[ING-009 perf] %d lignes du propriétaire : %s\n", $lines, implode(' ; ', array_map(static fn(string $label, array $t): string => sprintf('%s %.2f s (%d requêtes)', $label, $t[0], $t[1]), array_keys($timings), $timings))));
 
         // Then : quelques secondes, jamais des minutes
         foreach ($timings as $label => [$seconds]) {
@@ -73,7 +74,7 @@ class HandOverCatalogPerformanceTest extends DatabaseTestCase
             $rows = $reader->read($dataset->emptyId, $dataset->ownerId, []);
         }
         $seconds = (hrtime(true) - $started) / 1e9 / 5;
-        fwrite(STDERR, sprintf("\n[ING-009 perf] lecture de la source de l'amorçage : %.3f s par lecture\n", $seconds));
+        PerformanceReport::line(sprintf("\n[ING-009 perf] lecture de la source de l'amorçage : %.3f s par lecture\n", $seconds));
 
         // Then
         $this->assertCount(155, $rows, 'les 151 « de base » et les quatre voisins que ses lignes référencent');
@@ -96,7 +97,7 @@ class HandOverCatalogPerformanceTest extends DatabaseTestCase
         $started = hrtime(true);
         $result = static::getContainer()->get(CommandBusInterface::class)->dispatch(new HandOverCatalogCommand());
         $seconds = (hrtime(true) - $started) / 1e9;
-        fwrite(STDERR, sprintf("[ING-009 perf] phase 4 seule : %.3f s, %d requêtes SQL, %d ingrédients passés\n", $seconds, $counter->count(), $result->handedOver));
+        PerformanceReport::line(sprintf("[ING-009 perf] phase 4 seule : %.3f s, %d requêtes SQL, %d ingrédients passés\n", $seconds, $counter->count(), $result->handedOver));
 
         // Then : le même nombre de requêtes que le budget (31, mesuré sur un petit propriétaire), en moins de deux secondes
         $this->assertSame(261, $result->handedOver);

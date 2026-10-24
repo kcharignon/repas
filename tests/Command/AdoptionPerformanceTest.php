@@ -9,6 +9,7 @@ use Repas\Tests\Helper\AdoptionDataset;
 use Repas\Tests\Helper\Builder\UserBuilder;
 use Repas\Tests\Helper\DatabaseTestCase;
 use Repas\Tests\Helper\DataPersister;
+use Repas\Tests\Helper\PerformanceReport;
 use Repas\Tests\Helper\SqlBudget\QueryCounter;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Component\Console\Command\Command;
@@ -48,7 +49,7 @@ class AdoptionPerformanceTest extends DatabaseTestCase
             $result = $bus->dispatch(new AdoptCommonIngredientsForUserCommand($userId, 'migration-essai', true));
             $seconds = (hrtime(true) - $started) / 1e9;
             $queries[$name] = $counter->count();
-            fwrite(STDERR, sprintf("\n[ING-003 perf] compte %s : %d requêtes SQL, %.2f s, %d copies, %d lignes de recettes, %d de listes\n", $name, $queries[$name], $seconds, $result->adopted, $result->repointed->recipeRows, $result->repointed->shoppingListRows));
+            PerformanceReport::line(sprintf("\n[ING-003 perf] compte %s : %d requêtes SQL, %.2f s, %d copies, %d lignes de recettes, %d de listes\n", $name, $queries[$name], $seconds, $result->adopted, $result->repointed->recipeRows, $result->repointed->shoppingListRows));
             $this->assertSame(262, $result->adopted);
             $this->assertLessThan(30.0, $seconds, "le compte « $name » doit se migrer en quelques secondes");
         }
@@ -76,7 +77,7 @@ class AdoptionPerformanceTest extends DatabaseTestCase
         $started = hrtime(true);
         $replay = $tester->execute(['--apply' => true]);
         $replaySeconds = (hrtime(true) - $started) / 1e9;
-        fwrite(STDERR, sprintf("\n[ING-003 perf] commande complète : à blanc %.2f s, --apply %.2f s, second --apply %.2f s\n", $dryRunSeconds, $applySeconds, $replaySeconds));
+        PerformanceReport::line(sprintf("\n[ING-003 perf] commande complète : à blanc %.2f s, --apply %.2f s, second --apply %.2f s\n", $dryRunSeconds, $applySeconds, $replaySeconds));
 
         // Then
         $this->assertSame([Command::SUCCESS, Command::SUCCESS, Command::SUCCESS], [$dryRun, $apply, $replay], $tester->getDisplay());

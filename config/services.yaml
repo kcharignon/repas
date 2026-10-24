@@ -50,6 +50,11 @@ when@test:
         repas.adoption.environments: ['prod', 'dev', 'test']
 
     services:
+        # Pas de journal sur la sortie d'erreur : les tests qui provoquent une panne exprès (suppression ou amorçage qui échoue) n'affichent
+        # plus de « Uncaught PHP Exception » ; ceux qui lisent un journal injectent leur propre espion (SpyLogger, BufferingLogger).
+        logger:
+            class: Psr\Log\NullLogger
+
         # État des limiteurs (inscription, connexion) : en mémoire, conservé tant que le noyau de test vit (un pool du framework
         # serait vidé à chaque requête par `kernel.reset`), perdu quand il est reconstruit entre deux tests.
         test.rate_limiter_pool:
