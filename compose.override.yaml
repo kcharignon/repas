@@ -15,7 +15,6 @@ services:
       - ./export:/app/var/export
 
     environment:
-      MERCURE_EXTRA_DIRECTIVES: demo
       # See https://xdebug.org/docs/all_settings#mode
       XDEBUG_MODE: "${XDEBUG_MODE:-off}"
     extra_hosts:

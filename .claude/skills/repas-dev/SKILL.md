@@ -1,6 +1,6 @@
 ---
 name: repas-dev
-description: Développer une fonctionnalité du projet Repas (Symfony 8.1 / PHP 8.4, hexagonal + DDD + CQRS). À utiliser pour ajouter un use case de lecture (Query, QueryHandler, Loader, DTO), un endpoint API `/api/v1` (JWT) ou un use case d'écriture (Command). Charge les ADR et la roadmap avant d'écrire du code.
+description: Développer une fonctionnalité du projet Repas (Symfony 8.1 / PHP 8.5, hexagonal + DDD + CQRS). À utiliser pour ajouter un use case de lecture (Query, QueryHandler, Loader, DTO), un endpoint API `/api/v1` (JWT) ou un use case d'écriture (Command). Charge les ADR et la roadmap avant d'écrire du code.
 ---
 
 # repas-dev — développer Repas selon les ADR

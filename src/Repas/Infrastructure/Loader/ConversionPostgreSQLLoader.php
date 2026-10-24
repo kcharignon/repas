@@ -78,7 +78,7 @@ final readonly class ConversionPostgreSQLLoader implements ConversionLoader
                 id: $row['id'],
                 ingredientSlug: $row['ingredientSlug'],
                 ingredientName: $row['ingredientName'],
-                creatorEmail: $emails[$row['creatorId']] ?? null,
+                creatorEmail: $row['creatorId'] === null ? null : ($emails[$row['creatorId']] ?? null),
                 startUnitSlug: $row['startUnitSlug'],
                 startUnitName: $row['startUnitName'],
                 endUnitSlug: $row['endUnitSlug'],
