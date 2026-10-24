@@ -151,7 +151,7 @@ readonly class IngredientAdoptionBulkPostgreSQLRepository implements IngredientA
         return $this->connection()->fetchFirstColumn(
             'SELECT m.key FROM jsonb_each_text(CAST(:map AS jsonb)) AS m'
             . ' LEFT JOIN ingredient c ON c.slug = m.key LEFT JOIN ingredient o ON o.slug = m.value'
-            . ' WHERE c.slug IS NULL OR o.slug IS NULL OR o.creator IS DISTINCT FROM :u OR o.adopted_from IS DISTINCT FROM c.slug'
+            . ' WHERE c.slug IS NULL OR o.slug IS NULL OR COALESCE(o.creator, \'\') <> :u OR o.adopted_from IS DISTINCT FROM c.slug'
             . '    OR ' . self::COPY_DIFFERS_FROM_COMMON
             . ' ORDER BY m.key',
             ['u' => $userId, 'map' => $this->json($adoptions)],

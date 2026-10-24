@@ -6,7 +6,6 @@
     "department": "fruit-et-legume",
     "default_cooking_unit": "unite",
     "default_purchase_unit": "unite",
-    "creator": null,
     "compatible_units": [
       "unite"
     ]
@@ -18,7 +17,6 @@
     "department": "fruit-et-legume",
     "default_cooking_unit": "unite",
     "default_purchase_unit": "unite",
-    "creator": null,
     "compatible_units": [
       "unite",
       "gramme",
@@ -32,7 +30,6 @@
     "department": "fruit-et-legume",
     "default_cooking_unit": "unite",
     "default_purchase_unit": "unite",
-    "creator": null,
     "compatible_units": [
       "unite"
     ]
@@ -44,7 +41,6 @@
     "department": "gateau",
     "default_cooking_unit": "paquet",
     "default_purchase_unit": "paquet",
-    "creator": null,
     "compatible_units": [
       "paquet",
       "sachet",
@@ -60,7 +56,6 @@
     "department": "fruit-et-legume",
     "default_cooking_unit": "unite",
     "default_purchase_unit": "unite",
-    "creator": null,
     "compatible_units": [
       "unite"
     ]
@@ -72,7 +67,6 @@
     "department": "fruit-et-legume",
     "default_cooking_unit": "unite",
     "default_purchase_unit": "unite",
-    "creator": null,
     "compatible_units": [
       "unite",
       "gramme",
@@ -86,7 +80,6 @@
     "department": "fromage",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "plaquette",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo",
@@ -100,7 +93,6 @@
     "department": "gateau",
     "default_cooking_unit": "paquet",
     "default_purchase_unit": "paquet",
-    "creator": null,
     "compatible_units": [
       "paquet",
       "sachet",
@@ -116,7 +108,6 @@
     "department": "gateau",
     "default_cooking_unit": "paquet",
     "default_purchase_unit": "paquet",
-    "creator": null,
     "compatible_units": [
       "paquet",
       "sachet",
@@ -132,7 +123,6 @@
     "department": "aperitif",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo"
@@ -145,7 +135,6 @@
     "department": "fruit-et-legume",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo",
@@ -159,7 +148,6 @@
     "department": "gateau",
     "default_cooking_unit": "paquet",
     "default_purchase_unit": "paquet",
-    "creator": null,
     "compatible_units": [
       "paquet",
       "sachet",
@@ -175,7 +163,6 @@
     "department": "fromage",
     "default_cooking_unit": "tranche",
     "default_purchase_unit": "tranche",
-    "creator": null,
     "compatible_units": [
       "tranche",
       "unite"
@@ -188,7 +175,6 @@
     "department": "fromage",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "buche",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo",
@@ -202,7 +188,6 @@
     "department": "aperitif",
     "default_cooking_unit": "paquet",
     "default_purchase_unit": "paquet",
-    "creator": null,
     "compatible_units": [
       "paquet",
       "sachet",
@@ -218,7 +203,6 @@
     "department": "fruit-et-legume",
     "default_cooking_unit": "unite",
     "default_purchase_unit": "unite",
-    "creator": null,
     "compatible_units": [
       "unite",
       "gramme",
@@ -232,7 +216,6 @@
     "department": "fruit-et-legume",
     "default_cooking_unit": "unite",
     "default_purchase_unit": "unite",
-    "creator": null,
     "compatible_units": [
       "unite",
       "gramme",
@@ -246,7 +229,6 @@
     "department": "fruit-et-legume",
     "default_cooking_unit": "unite",
     "default_purchase_unit": "unite",
-    "creator": null,
     "compatible_units": [
       "unite"
     ]
@@ -258,7 +240,6 @@
     "department": "yaourt",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo"
@@ -271,7 +252,6 @@
     "department": "yaourt",
     "default_cooking_unit": "unite",
     "default_purchase_unit": "paquet",
-    "creator": null,
     "compatible_units": [
       "unite",
       "paquet",
@@ -288,7 +268,6 @@
     "department": "fromage",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo"
@@ -301,7 +280,6 @@
     "department": "fruit-et-legume",
     "default_cooking_unit": "unite",
     "default_purchase_unit": "unite",
-    "creator": null,
     "compatible_units": [
       "unite",
       "gramme",
@@ -315,7 +293,6 @@
     "department": "bebe",
     "default_cooking_unit": "paquet",
     "default_purchase_unit": "paquet",
-    "creator": null,
     "compatible_units": [
       "paquet",
       "sachet",
@@ -331,7 +308,6 @@
     "department": "bebe",
     "default_cooking_unit": "paquet",
     "default_purchase_unit": "paquet",
-    "creator": null,
     "compatible_units": [
       "paquet",
       "sachet",
@@ -347,7 +323,6 @@
     "department": "bebe",
     "default_cooking_unit": "paquet",
     "default_purchase_unit": "paquet",
-    "creator": null,
     "compatible_units": [
       "paquet",
       "sachet",
@@ -363,7 +338,6 @@
     "department": "fruit-et-legume",
     "default_cooking_unit": "unite",
     "default_purchase_unit": "unite",
-    "creator": null,
     "compatible_units": [
       "unite",
       "gramme",
@@ -377,7 +351,6 @@
     "department": "fruit-et-legume",
     "default_cooking_unit": "unite",
     "default_purchase_unit": "unite",
-    "creator": null,
     "compatible_units": [
       "unite",
       "gramme",
@@ -391,7 +364,6 @@
     "department": "fruit-et-legume",
     "default_cooking_unit": "unite",
     "default_purchase_unit": "unite",
-    "creator": null,
     "compatible_units": [
       "unite"
     ]
@@ -403,7 +375,6 @@
     "department": "fromage",
     "default_cooking_unit": "millilitre",
     "default_purchase_unit": "centilitre",
-    "creator": null,
     "compatible_units": [
       "millilitre",
       "litre",
@@ -422,7 +393,6 @@
     "department": "fromage",
     "default_cooking_unit": "boite",
     "default_purchase_unit": "boite",
-    "creator": null,
     "compatible_units": [
       "boite",
       "paquet",
@@ -438,7 +408,6 @@
     "department": "fruit-et-legume",
     "default_cooking_unit": "unite",
     "default_purchase_unit": "unite",
-    "creator": null,
     "compatible_units": [
       "unite"
     ]
@@ -450,7 +419,6 @@
     "department": "fromage",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo"
@@ -463,7 +431,6 @@
     "department": "fruit-et-legume",
     "default_cooking_unit": "unite",
     "default_purchase_unit": "unite",
-    "creator": null,
     "compatible_units": [
       "unite"
     ]
@@ -475,7 +442,6 @@
     "department": "gateau",
     "default_cooking_unit": "paquet",
     "default_purchase_unit": "paquet",
-    "creator": null,
     "compatible_units": [
       "paquet",
       "sachet",
@@ -491,7 +457,6 @@
     "department": "fromage",
     "default_cooking_unit": "tranche",
     "default_purchase_unit": "tranche",
-    "creator": null,
     "compatible_units": [
       "tranche"
     ]
@@ -503,7 +468,6 @@
     "department": "fromage",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo"
@@ -516,7 +480,6 @@
     "department": "fromage",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo"
@@ -529,7 +492,6 @@
     "department": "fruit-et-legume",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo"
@@ -542,7 +504,6 @@
     "department": "fromage",
     "default_cooking_unit": "boite",
     "default_purchase_unit": "boite",
-    "creator": null,
     "compatible_units": [
       "boite",
       "paquet",
@@ -558,7 +519,6 @@
     "department": "bebe",
     "default_cooking_unit": "boite",
     "default_purchase_unit": "boite",
-    "creator": null,
     "compatible_units": [
       "boite",
       "paquet",
@@ -574,7 +534,6 @@
     "department": "bebe",
     "default_cooking_unit": "boite",
     "default_purchase_unit": "boite",
-    "creator": null,
     "compatible_units": [
       "boite",
       "paquet",
@@ -590,7 +549,6 @@
     "department": "bebe",
     "default_cooking_unit": "paquet",
     "default_purchase_unit": "paquet",
-    "creator": null,
     "compatible_units": [
       "paquet",
       "sachet",
@@ -606,7 +564,6 @@
     "department": "fromage",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo"
@@ -619,7 +576,6 @@
     "department": "fruit-et-legume",
     "default_cooking_unit": "unite",
     "default_purchase_unit": "unite",
-    "creator": null,
     "compatible_units": [
       "unite"
     ]
@@ -631,7 +587,6 @@
     "department": "fromage",
     "default_cooking_unit": "unite",
     "default_purchase_unit": "unite",
-    "creator": null,
     "compatible_units": [
       "unite",
       "gramme",
@@ -645,7 +600,6 @@
     "department": "fruit-et-legume",
     "default_cooking_unit": "unite",
     "default_purchase_unit": "unite",
-    "creator": null,
     "compatible_units": [
       "unite"
     ]
@@ -657,7 +611,6 @@
     "department": "fruit-et-legume",
     "default_cooking_unit": "unite",
     "default_purchase_unit": "unite",
-    "creator": null,
     "compatible_units": [
       "unite"
     ]
@@ -669,7 +622,6 @@
     "department": "fromage",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo"
@@ -682,7 +634,6 @@
     "department": "yaourt",
     "default_cooking_unit": "paquet",
     "default_purchase_unit": "paquet",
-    "creator": null,
     "compatible_units": [
       "paquet",
       "sachet",
@@ -698,7 +649,6 @@
     "department": "fruit-et-legume",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo"
@@ -711,7 +661,6 @@
     "department": "conserve",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo"
@@ -724,7 +673,6 @@
     "department": "fruit-et-legume",
     "default_cooking_unit": "unite",
     "default_purchase_unit": "unite",
-    "creator": null,
     "compatible_units": [
       "unite"
     ]
@@ -736,7 +684,6 @@
     "department": "fruit-et-legume",
     "default_cooking_unit": "unite",
     "default_purchase_unit": "unite",
-    "creator": null,
     "compatible_units": [
       "unite"
     ]
@@ -748,7 +695,6 @@
     "department": "fruit-et-legume",
     "default_cooking_unit": "unite",
     "default_purchase_unit": "unite",
-    "creator": null,
     "compatible_units": [
       "unite",
       "gramme",
@@ -762,7 +708,6 @@
     "department": "fruit-et-legume",
     "default_cooking_unit": "unite",
     "default_purchase_unit": "unite",
-    "creator": null,
     "compatible_units": [
       "unite",
       "gramme",
@@ -776,7 +721,6 @@
     "department": "fromage",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo"
@@ -789,7 +733,6 @@
     "department": "fromage",
     "default_cooking_unit": "unite",
     "default_purchase_unit": "unite",
-    "creator": null,
     "compatible_units": [
       "unite"
     ]
@@ -801,7 +744,6 @@
     "department": "fruit-et-legume",
     "default_cooking_unit": "unite",
     "default_purchase_unit": "unite",
-    "creator": null,
     "compatible_units": [
       "unite",
       "gramme",
@@ -815,7 +757,6 @@
     "department": "fruit-et-legume",
     "default_cooking_unit": "unite",
     "default_purchase_unit": "unite",
-    "creator": null,
     "compatible_units": [
       "unite",
       "gramme",
@@ -829,7 +770,6 @@
     "department": "gateau",
     "default_cooking_unit": "paquet",
     "default_purchase_unit": "paquet",
-    "creator": null,
     "compatible_units": [
       "paquet",
       "sachet",
@@ -845,7 +785,6 @@
     "department": "fruit-et-legume",
     "default_cooking_unit": "unite",
     "default_purchase_unit": "unite",
-    "creator": null,
     "compatible_units": [
       "unite"
     ]
@@ -857,7 +796,6 @@
     "department": "fruit-et-legume",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo"
@@ -870,7 +808,6 @@
     "department": "fromage",
     "default_cooking_unit": "boite",
     "default_purchase_unit": "boite",
-    "creator": null,
     "compatible_units": [
       "boite",
       "paquet",
@@ -886,7 +823,6 @@
     "department": "yaourt",
     "default_cooking_unit": "unite",
     "default_purchase_unit": "paquet",
-    "creator": null,
     "compatible_units": [
       "unite",
       "paquet",
@@ -903,7 +839,6 @@
     "department": "yaourt",
     "default_cooking_unit": "unite",
     "default_purchase_unit": "paquet",
-    "creator": null,
     "compatible_units": [
       "unite",
       "paquet",
@@ -920,7 +855,6 @@
     "department": "boucherie",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo"
@@ -933,7 +867,6 @@
     "department": "boucherie",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo"
@@ -946,7 +879,6 @@
     "department": "alcool",
     "default_cooking_unit": "millilitre",
     "default_purchase_unit": "centilitre",
-    "creator": null,
     "compatible_units": [
       "millilitre",
       "litre",
@@ -965,7 +897,6 @@
     "department": "cereale",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo"
@@ -978,7 +909,6 @@
     "department": "boucherie",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo"
@@ -991,7 +921,6 @@
     "department": "boucherie",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo"
@@ -1004,7 +933,6 @@
     "department": "cereale",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo"
@@ -1017,7 +945,6 @@
     "department": "cereale",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo"
@@ -1030,7 +957,6 @@
     "department": "conserve",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo"
@@ -1043,7 +969,6 @@
     "department": "boucherie",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo"
@@ -1056,7 +981,6 @@
     "department": "boucherie",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo"
@@ -1069,7 +993,6 @@
     "department": "aperitif",
     "default_cooking_unit": "paquet",
     "default_purchase_unit": "paquet",
-    "creator": null,
     "compatible_units": [
       "paquet",
       "sachet",
@@ -1085,7 +1008,6 @@
     "department": "aperitif",
     "default_cooking_unit": "paquet",
     "default_purchase_unit": "paquet",
-    "creator": null,
     "compatible_units": [
       "paquet",
       "sachet",
@@ -1101,7 +1023,6 @@
     "department": "aperitif",
     "default_cooking_unit": "paquet",
     "default_purchase_unit": "paquet",
-    "creator": null,
     "compatible_units": [
       "paquet",
       "sachet",
@@ -1117,7 +1038,6 @@
     "department": "aide-patissier",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo"
@@ -1130,7 +1050,6 @@
     "department": "boucherie",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo"
@@ -1143,7 +1062,6 @@
     "department": "conserve",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo"
@@ -1156,7 +1074,6 @@
     "department": "aperitif",
     "default_cooking_unit": "paquet",
     "default_purchase_unit": "paquet",
-    "creator": null,
     "compatible_units": [
       "paquet",
       "sachet",
@@ -1172,7 +1089,6 @@
     "department": "conserve",
     "default_cooking_unit": "pot",
     "default_purchase_unit": "pot",
-    "creator": null,
     "compatible_units": [
       "pot",
       "boite",
@@ -1188,7 +1104,6 @@
     "department": "conserve",
     "default_cooking_unit": "pot",
     "default_purchase_unit": "pot",
-    "creator": null,
     "compatible_units": [
       "pot",
       "boite",
@@ -1204,7 +1119,6 @@
     "department": "conserve",
     "default_cooking_unit": "pot",
     "default_purchase_unit": "pot",
-    "creator": null,
     "compatible_units": [
       "pot",
       "boite",
@@ -1220,7 +1134,6 @@
     "department": "surgele",
     "default_cooking_unit": "unite",
     "default_purchase_unit": "unite",
-    "creator": null,
     "compatible_units": [
       "unite"
     ]
@@ -1232,7 +1145,6 @@
     "department": "boucherie",
     "default_cooking_unit": "unite",
     "default_purchase_unit": "unite",
-    "creator": null,
     "compatible_units": [
       "unite"
     ]
@@ -1244,7 +1156,6 @@
     "department": "boucherie",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo"
@@ -1257,7 +1168,6 @@
     "department": "boucherie",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo"
@@ -1270,7 +1180,6 @@
     "department": "aide-patissier",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "kilo",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo"
@@ -1283,7 +1192,6 @@
     "department": "aide-patissier",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "kilo",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo"
@@ -1296,7 +1204,6 @@
     "department": "aide-patissier",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "kilo",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo"
@@ -1309,7 +1216,6 @@
     "department": "surgele",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo"
@@ -1322,7 +1228,6 @@
     "department": "surgele",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo"
@@ -1335,7 +1240,6 @@
     "department": "conserve",
     "default_cooking_unit": "boite",
     "default_purchase_unit": "boite",
-    "creator": null,
     "compatible_units": [
       "boite",
       "paquet",
@@ -1351,7 +1255,6 @@
     "department": "conserve",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo"
@@ -1364,7 +1267,6 @@
     "department": "boucherie",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo"
@@ -1377,7 +1279,6 @@
     "department": "boucherie",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo",
@@ -1391,7 +1292,6 @@
     "department": "boucherie",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo",
@@ -1405,7 +1305,6 @@
     "department": "boucherie",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo"
@@ -1418,7 +1317,6 @@
     "department": "boucherie",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo"
@@ -1431,7 +1329,6 @@
     "department": "aide-patissier",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo"
@@ -1444,7 +1341,6 @@
     "department": "conserve",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo"
@@ -1457,7 +1353,6 @@
     "department": "aide-patissier",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo"
@@ -1470,7 +1365,6 @@
     "department": "boucherie",
     "default_cooking_unit": "unite",
     "default_purchase_unit": "unite",
-    "creator": null,
     "compatible_units": [
       "unite"
     ]
@@ -1482,7 +1376,6 @@
     "department": "aperitif",
     "default_cooking_unit": "paquet",
     "default_purchase_unit": "paquet",
-    "creator": null,
     "compatible_units": [
       "paquet",
       "sachet",
@@ -1498,7 +1391,6 @@
     "department": "cereale",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo"
@@ -1511,7 +1403,6 @@
     "department": "surgele",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo",
@@ -1525,7 +1416,6 @@
     "department": "conserve",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo"
@@ -1538,7 +1428,6 @@
     "department": "conserve",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo"
@@ -1551,7 +1440,6 @@
     "department": "conserve",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo"
@@ -1564,7 +1452,6 @@
     "department": "cereale",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo"
@@ -1577,7 +1464,6 @@
     "department": "cereale",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo"
@@ -1590,7 +1476,6 @@
     "department": "cereale",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo"
@@ -1603,7 +1488,6 @@
     "department": "conserve",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo"
@@ -1616,7 +1500,6 @@
     "department": "surgele",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo"
@@ -1629,7 +1512,6 @@
     "department": "boucherie",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo"
@@ -1642,7 +1524,6 @@
     "department": "boucherie",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo"
@@ -1655,7 +1536,6 @@
     "department": "cereale",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo"
@@ -1668,7 +1548,6 @@
     "department": "cereale",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo"
@@ -1681,7 +1560,6 @@
     "department": "cereale",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo"
@@ -1694,7 +1572,6 @@
     "department": "boucherie",
     "default_cooking_unit": "unite",
     "default_purchase_unit": "unite",
-    "creator": null,
     "compatible_units": [
       "unite"
     ]
@@ -1706,7 +1583,6 @@
     "department": "boucherie",
     "default_cooking_unit": "unite",
     "default_purchase_unit": "unite",
-    "creator": null,
     "compatible_units": [
       "unite"
     ]
@@ -1718,7 +1594,6 @@
     "department": "boucherie",
     "default_cooking_unit": "unite",
     "default_purchase_unit": "unite",
-    "creator": null,
     "compatible_units": [
       "unite"
     ]
@@ -1730,7 +1605,6 @@
     "department": "boucherie",
     "default_cooking_unit": "unite",
     "default_purchase_unit": "unite",
-    "creator": null,
     "compatible_units": [
       "unite"
     ]
@@ -1742,7 +1616,6 @@
     "department": "boucherie",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo",
@@ -1756,7 +1629,6 @@
     "department": "cereale",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo"
@@ -1769,7 +1641,6 @@
     "department": "aperitif",
     "default_cooking_unit": "paquet",
     "default_purchase_unit": "paquet",
-    "creator": null,
     "compatible_units": [
       "paquet",
       "sachet",
@@ -1785,7 +1656,6 @@
     "department": "boucherie",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo"
@@ -1798,7 +1668,6 @@
     "department": "surgele",
     "default_cooking_unit": "unite",
     "default_purchase_unit": "unite",
-    "creator": null,
     "compatible_units": [
       "unite",
       "gramme",
@@ -1812,7 +1681,6 @@
     "department": "aide-patissier",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo"
@@ -1825,7 +1693,6 @@
     "department": "aide-patissier",
     "default_cooking_unit": "sachet",
     "default_purchase_unit": "sachet",
-    "creator": null,
     "compatible_units": [
       "sachet",
       "paquet",
@@ -1842,7 +1709,6 @@
     "department": "aide-patissier",
     "default_cooking_unit": "gousse",
     "default_purchase_unit": "gousse",
-    "creator": null,
     "compatible_units": [
       "gousse",
       "gramme",
@@ -1856,7 +1722,6 @@
     "department": "boucherie",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo"
@@ -1869,7 +1734,6 @@
     "department": "surgele",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo"
@@ -1882,7 +1746,6 @@
     "department": "alcool",
     "default_cooking_unit": "millilitre",
     "default_purchase_unit": "centilitre",
-    "creator": null,
     "compatible_units": [
       "millilitre",
       "litre",
@@ -1901,7 +1764,6 @@
     "department": "alcool",
     "default_cooking_unit": "millilitre",
     "default_purchase_unit": "centilitre",
-    "creator": null,
     "compatible_units": [
       "millilitre",
       "litre",
@@ -1920,7 +1782,6 @@
     "department": "aide-patissier",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo"
@@ -1933,7 +1794,6 @@
     "department": "fruit-et-legume",
     "default_cooking_unit": "unite",
     "default_purchase_unit": "unite",
-    "creator": null,
     "compatible_units": [
       "unite",
       "gramme",
@@ -1947,7 +1807,6 @@
     "department": "fruit-et-legume",
     "default_cooking_unit": "unite",
     "default_purchase_unit": "unite",
-    "creator": null,
     "compatible_units": [
       "unite"
     ]
@@ -1959,7 +1818,6 @@
     "department": "gateau",
     "default_cooking_unit": "paquet",
     "default_purchase_unit": "paquet",
-    "creator": null,
     "compatible_units": [
       "paquet",
       "sachet",
@@ -1975,7 +1833,6 @@
     "department": "sauce",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo"
@@ -1988,7 +1845,6 @@
     "department": "sauce",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo",
@@ -2009,7 +1865,6 @@
     "department": "aide-patissier",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo",
@@ -2030,7 +1885,6 @@
     "department": "produit-menager",
     "default_cooking_unit": "paquet",
     "default_purchase_unit": "paquet",
-    "creator": null,
     "compatible_units": [
       "paquet",
       "sachet",
@@ -2046,7 +1900,6 @@
     "department": "alcool",
     "default_cooking_unit": "millilitre",
     "default_purchase_unit": "centilitre",
-    "creator": null,
     "compatible_units": [
       "millilitre",
       "litre",
@@ -2065,7 +1918,6 @@
     "department": "boulangerie",
     "default_cooking_unit": "unite",
     "default_purchase_unit": "paquet",
-    "creator": null,
     "compatible_units": [
       "unite",
       "paquet",
@@ -2082,7 +1934,6 @@
     "department": "gateau",
     "default_cooking_unit": "paquet",
     "default_purchase_unit": "paquet",
-    "creator": null,
     "compatible_units": [
       "paquet",
       "unite",
@@ -2099,7 +1950,6 @@
     "department": "boucherie",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo"
@@ -2112,7 +1962,6 @@
     "department": "sauce",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo"
@@ -2125,7 +1974,6 @@
     "department": "traiteur",
     "default_cooking_unit": "cube",
     "default_purchase_unit": "cube",
-    "creator": null,
     "compatible_units": [
       "cube"
     ]
@@ -2137,7 +1985,6 @@
     "department": "traiteur",
     "default_cooking_unit": "cube",
     "default_purchase_unit": "cube",
-    "creator": null,
     "compatible_units": [
       "cube",
       "unite"
@@ -2150,7 +1997,6 @@
     "department": "traiteur",
     "default_cooking_unit": "cube",
     "default_purchase_unit": "cube",
-    "creator": null,
     "compatible_units": [
       "cube",
       "gramme",
@@ -2164,7 +2010,6 @@
     "department": "divers",
     "default_cooking_unit": "unite",
     "default_purchase_unit": "unite",
-    "creator": null,
     "compatible_units": [
       "unite"
     ]
@@ -2176,7 +2021,6 @@
     "department": "boulangerie",
     "default_cooking_unit": "paquet",
     "default_purchase_unit": "paquet",
-    "creator": null,
     "compatible_units": [
       "paquet",
       "sachet",
@@ -2192,7 +2036,6 @@
     "department": "fruit-et-legume",
     "default_cooking_unit": "unite",
     "default_purchase_unit": "unite",
-    "creator": null,
     "compatible_units": [
       "unite",
       "gramme",
@@ -2206,7 +2049,6 @@
     "department": "aide-patissier",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo"
@@ -2219,7 +2061,6 @@
     "department": "divers",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "paquet",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo",
@@ -2237,7 +2078,6 @@
     "department": "divers",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo"
@@ -2250,7 +2090,6 @@
     "department": "animal",
     "default_cooking_unit": "paquet",
     "default_purchase_unit": "paquet",
-    "creator": null,
     "compatible_units": [
       "paquet",
       "sachet",
@@ -2266,7 +2105,6 @@
     "department": "cuisine-du-monde",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo"
@@ -2279,7 +2117,6 @@
     "department": "bebe",
     "default_cooking_unit": "flacon",
     "default_purchase_unit": "flacon",
-    "creator": null,
     "compatible_units": [
       "flacon"
     ]
@@ -2291,7 +2128,6 @@
     "department": "cuisine-du-monde",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo"
@@ -2304,7 +2140,6 @@
     "department": "cuisine-du-monde",
     "default_cooking_unit": "sachet",
     "default_purchase_unit": "sachet",
-    "creator": null,
     "compatible_units": [
       "sachet",
       "paquet",
@@ -2320,7 +2155,6 @@
     "department": "aide-patissier",
     "default_cooking_unit": "unite",
     "default_purchase_unit": "unite",
-    "creator": null,
     "compatible_units": [
       "unite"
     ]
@@ -2332,7 +2166,6 @@
     "department": "traiteur",
     "default_cooking_unit": "unite",
     "default_purchase_unit": "unite",
-    "creator": null,
     "compatible_units": [
       "unite"
     ]
@@ -2344,7 +2177,6 @@
     "department": "traiteur",
     "default_cooking_unit": "paquet",
     "default_purchase_unit": "paquet",
-    "creator": null,
     "compatible_units": [
       "paquet",
       "sachet",
@@ -2360,7 +2192,6 @@
     "department": "traiteur",
     "default_cooking_unit": "unite",
     "default_purchase_unit": "unite",
-    "creator": null,
     "compatible_units": [
       "unite"
     ]
@@ -2372,7 +2203,6 @@
     "department": "sauce",
     "default_cooking_unit": "cuillere-a-soupe",
     "default_purchase_unit": "centilitre",
-    "creator": null,
     "compatible_units": [
       "cuillere-a-soupe",
       "millilitre",
@@ -2391,7 +2221,6 @@
     "department": "produit-menager",
     "default_cooking_unit": "flacon",
     "default_purchase_unit": "flacon",
-    "creator": null,
     "compatible_units": [
       "flacon"
     ]
@@ -2403,7 +2232,6 @@
     "department": "divers",
     "default_cooking_unit": "litre",
     "default_purchase_unit": "litre",
-    "creator": null,
     "compatible_units": [
       "litre",
       "centilitre",
@@ -2422,7 +2250,6 @@
     "department": "traiteur",
     "default_cooking_unit": "unite",
     "default_purchase_unit": "unite",
-    "creator": null,
     "compatible_units": [
       "unite"
     ]
@@ -2434,7 +2261,6 @@
     "department": "animal",
     "default_cooking_unit": "paquet",
     "default_purchase_unit": "paquet",
-    "creator": null,
     "compatible_units": [
       "paquet",
       "sachet",
@@ -2450,7 +2276,6 @@
     "department": "traiteur",
     "default_cooking_unit": "unite",
     "default_purchase_unit": "unite",
-    "creator": null,
     "compatible_units": [
       "unite"
     ]
@@ -2462,7 +2287,6 @@
     "department": "cereale",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo"
@@ -2475,7 +2299,6 @@
     "department": "divers",
     "default_cooking_unit": "unite",
     "default_purchase_unit": "unite",
-    "creator": null,
     "compatible_units": [
       "unite"
     ]
@@ -2487,7 +2310,6 @@
     "department": "boulangerie",
     "default_cooking_unit": "unite",
     "default_purchase_unit": "unite",
-    "creator": null,
     "compatible_units": [
       "unite",
       "gramme",
@@ -2501,7 +2323,6 @@
     "department": "boulangerie",
     "default_cooking_unit": "paquet",
     "default_purchase_unit": "paquet",
-    "creator": null,
     "compatible_units": [
       "paquet",
       "unite",
@@ -2518,7 +2339,6 @@
     "department": "boulangerie",
     "default_cooking_unit": "paquet",
     "default_purchase_unit": "paquet",
-    "creator": null,
     "compatible_units": [
       "paquet",
       "sachet",
@@ -2534,7 +2354,6 @@
     "department": "boulangerie",
     "default_cooking_unit": "unite",
     "default_purchase_unit": "unite",
-    "creator": null,
     "compatible_units": [
       "unite"
     ]
@@ -2546,7 +2365,6 @@
     "department": "boulangerie",
     "default_cooking_unit": "tranche",
     "default_purchase_unit": "tranche",
-    "creator": null,
     "compatible_units": [
       "tranche"
     ]
@@ -2558,7 +2376,6 @@
     "department": "boulangerie",
     "default_cooking_unit": "unite",
     "default_purchase_unit": "unite",
-    "creator": null,
     "compatible_units": [
       "unite"
     ]
@@ -2570,7 +2387,6 @@
     "department": "traiteur",
     "default_cooking_unit": "unite",
     "default_purchase_unit": "unite",
-    "creator": null,
     "compatible_units": [
       "unite"
     ]
@@ -2582,7 +2398,6 @@
     "department": "traiteur",
     "default_cooking_unit": "unite",
     "default_purchase_unit": "unite",
-    "creator": null,
     "compatible_units": [
       "unite"
     ]
@@ -2594,7 +2409,6 @@
     "department": "traiteur",
     "default_cooking_unit": "unite",
     "default_purchase_unit": "unite",
-    "creator": null,
     "compatible_units": [
       "unite"
     ]
@@ -2606,7 +2420,6 @@
     "department": "traiteur",
     "default_cooking_unit": "unite",
     "default_purchase_unit": "unite",
-    "creator": null,
     "compatible_units": [
       "unite"
     ]
@@ -2618,7 +2431,6 @@
     "department": "sauce",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo"
@@ -2631,7 +2443,6 @@
     "department": "traiteur",
     "default_cooking_unit": "unite",
     "default_purchase_unit": "unite",
-    "creator": null,
     "compatible_units": [
       "unite"
     ]
@@ -2643,7 +2454,6 @@
     "department": "divers",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo"
@@ -2656,7 +2466,6 @@
     "department": "produit-menager",
     "default_cooking_unit": "flacon",
     "default_purchase_unit": "flacon",
-    "creator": null,
     "compatible_units": [
       "flacon"
     ]
@@ -2668,7 +2477,6 @@
     "department": "produit-menager",
     "default_cooking_unit": "flacon",
     "default_purchase_unit": "flacon",
-    "creator": null,
     "compatible_units": [
       "flacon"
     ]
@@ -2680,7 +2488,6 @@
     "department": "produit-menager",
     "default_cooking_unit": "flacon",
     "default_purchase_unit": "flacon",
-    "creator": null,
     "compatible_units": [
       "flacon"
     ]
@@ -2692,7 +2499,6 @@
     "department": "cereale",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo"
@@ -2705,7 +2511,6 @@
     "department": "cuisine-du-monde",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo"
@@ -2718,7 +2523,6 @@
     "department": "cereale",
     "default_cooking_unit": "sachet",
     "default_purchase_unit": "sachet",
-    "creator": null,
     "compatible_units": [
       "sachet",
       "paquet",
@@ -2734,7 +2538,6 @@
     "department": "sauce",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo"
@@ -2747,7 +2550,6 @@
     "department": "sauce",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo"
@@ -2760,7 +2562,6 @@
     "department": "sauce",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo",
@@ -2781,7 +2582,6 @@
     "department": "produit-menager",
     "default_cooking_unit": "flacon",
     "default_purchase_unit": "flacon",
-    "creator": null,
     "compatible_units": [
       "flacon"
     ]
@@ -2793,7 +2593,6 @@
     "department": "divers",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo"
@@ -2806,7 +2605,6 @@
     "department": "cereale",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo"
@@ -2819,7 +2617,6 @@
     "department": "sauce",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo"
@@ -2832,7 +2629,6 @@
     "department": "cuisine-du-monde",
     "default_cooking_unit": "unite",
     "default_purchase_unit": "paquet",
-    "creator": null,
     "compatible_units": [
       "unite",
       "paquet",
@@ -2849,7 +2645,6 @@
     "department": "cereale",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo"
@@ -2862,7 +2657,6 @@
     "department": "sauce",
     "default_cooking_unit": "cuillere-a-soupe",
     "default_purchase_unit": "centilitre",
-    "creator": null,
     "compatible_units": [
       "cuillere-a-soupe",
       "millilitre",
@@ -2881,7 +2675,6 @@
     "department": "aide-patissier",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo",
@@ -2902,7 +2695,6 @@
     "department": "fruit-et-legume",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo"
@@ -2915,7 +2707,6 @@
     "department": "aide-patissier",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo"
@@ -2928,7 +2719,6 @@
     "department": "fruit-et-legume",
     "default_cooking_unit": "unite",
     "default_purchase_unit": "unite",
-    "creator": null,
     "compatible_units": [
       "unite",
       "gramme",
@@ -2942,7 +2732,6 @@
     "department": "conserve",
     "default_cooking_unit": "boite",
     "default_purchase_unit": "boite",
-    "creator": null,
     "compatible_units": [
       "boite",
       "paquet",
@@ -2958,7 +2747,6 @@
     "department": "yaourt",
     "default_cooking_unit": "unite",
     "default_purchase_unit": "paquet",
-    "creator": null,
     "compatible_units": [
       "unite",
       "paquet",
@@ -2975,7 +2763,6 @@
     "department": "conserve",
     "default_cooking_unit": "pot",
     "default_purchase_unit": "pot",
-    "creator": null,
     "compatible_units": [
       "pot",
       "boite",
@@ -2991,7 +2778,6 @@
     "department": "cereale",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo"
@@ -3004,7 +2790,6 @@
     "department": "bebe",
     "default_cooking_unit": "paquet",
     "default_purchase_unit": "paquet",
-    "creator": null,
     "compatible_units": [
       "paquet",
       "sachet",
@@ -3020,7 +2805,6 @@
     "department": "bebe",
     "default_cooking_unit": "paquet",
     "default_purchase_unit": "paquet",
-    "creator": null,
     "compatible_units": [
       "paquet",
       "sachet",
@@ -3036,7 +2820,6 @@
     "department": "boulangerie",
     "default_cooking_unit": "unite",
     "default_purchase_unit": "paquet",
-    "creator": null,
     "compatible_units": [
       "unite",
       "paquet",
@@ -3053,7 +2836,6 @@
     "department": "fromage",
     "default_cooking_unit": "centilitre",
     "default_purchase_unit": "centilitre",
-    "creator": null,
     "compatible_units": [
       "centilitre",
       "litre",
@@ -3074,7 +2856,6 @@
     "department": "cuisine-du-monde",
     "default_cooking_unit": "sachet",
     "default_purchase_unit": "sachet",
-    "creator": null,
     "compatible_units": [
       "sachet",
       "paquet",
@@ -3090,7 +2871,6 @@
     "department": "fruit-et-legume",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo"
@@ -3103,7 +2883,6 @@
     "department": "surgele",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo"
@@ -3116,7 +2895,6 @@
     "department": "cuisine-du-monde",
     "default_cooking_unit": "paquet",
     "default_purchase_unit": "paquet",
-    "creator": null,
     "compatible_units": [
       "paquet",
       "unite",
@@ -3133,7 +2911,6 @@
     "department": "aide-patissier",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo"
@@ -3146,7 +2923,6 @@
     "department": "fruit-et-legume",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo"
@@ -3159,7 +2935,6 @@
     "department": "sauce",
     "default_cooking_unit": "cuillere-a-soupe",
     "default_purchase_unit": "centilitre",
-    "creator": null,
     "compatible_units": [
       "cuillere-a-soupe",
       "millilitre",
@@ -3178,7 +2953,6 @@
     "department": "boisson",
     "default_cooking_unit": "millilitre",
     "default_purchase_unit": "centilitre",
-    "creator": null,
     "compatible_units": [
       "millilitre",
       "litre",
@@ -3197,7 +2971,6 @@
     "department": "sauce",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo",
@@ -3218,7 +2991,6 @@
     "department": "yaourt",
     "default_cooking_unit": "unite",
     "default_purchase_unit": "paquet",
-    "creator": null,
     "compatible_units": [
       "unite",
       "paquet",
@@ -3235,7 +3007,6 @@
     "department": "bebe",
     "default_cooking_unit": "boite",
     "default_purchase_unit": "boite",
-    "creator": null,
     "compatible_units": [
       "boite",
       "paquet",
@@ -3251,7 +3022,6 @@
     "department": "cereale",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo"
@@ -3264,7 +3034,6 @@
     "department": "aide-patissier",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "sachet",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo",
@@ -3282,7 +3051,6 @@
     "department": "produit-menager",
     "default_cooking_unit": "paquet",
     "default_purchase_unit": "paquet",
-    "creator": null,
     "compatible_units": [
       "paquet",
       "sachet",
@@ -3298,7 +3066,6 @@
     "department": "sauce",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo",
@@ -3319,7 +3086,6 @@
     "department": "divers",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo",
@@ -3340,7 +3106,6 @@
     "department": "conserve",
     "default_cooking_unit": "pot",
     "default_purchase_unit": "pot",
-    "creator": null,
     "compatible_units": [
       "pot",
       "kilo",
@@ -3358,7 +3123,6 @@
     "department": "fruit-et-legume",
     "default_cooking_unit": "unite",
     "default_purchase_unit": "unite",
-    "creator": null,
     "compatible_units": [
       "unite"
     ]
@@ -3370,7 +3134,6 @@
     "department": "boulangerie",
     "default_cooking_unit": "unite",
     "default_purchase_unit": "unite",
-    "creator": null,
     "compatible_units": [
       "unite",
       "tranche"
@@ -3383,7 +3146,6 @@
     "department": "aide-patissier",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo"
@@ -3396,7 +3158,6 @@
     "department": "yaourt",
     "default_cooking_unit": "unite",
     "default_purchase_unit": "paquet",
-    "creator": null,
     "compatible_units": [
       "unite",
       "paquet",
@@ -3413,7 +3174,6 @@
     "department": "traiteur",
     "default_cooking_unit": "unite",
     "default_purchase_unit": "unite",
-    "creator": null,
     "compatible_units": [
       "unite"
     ]
@@ -3425,7 +3185,6 @@
     "department": "fruit-et-legume",
     "default_cooking_unit": "unite",
     "default_purchase_unit": "unite",
-    "creator": null,
     "compatible_units": [
       "unite",
       "gramme",
@@ -3439,7 +3198,6 @@
     "department": "traiteur",
     "default_cooking_unit": "unite",
     "default_purchase_unit": "unite",
-    "creator": null,
     "compatible_units": [
       "unite",
       "paquet",
@@ -3456,7 +3214,6 @@
     "department": "traiteur",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo"
@@ -3469,7 +3226,6 @@
     "department": "conserve",
     "default_cooking_unit": "boite",
     "default_purchase_unit": "boite",
-    "creator": null,
     "compatible_units": [
       "boite",
       "paquet",
@@ -3485,7 +3241,6 @@
     "department": "sauce",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo",
@@ -3506,7 +3261,6 @@
     "department": "sauce",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "gramme",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo",
@@ -3527,7 +3281,6 @@
     "department": "boisson",
     "default_cooking_unit": "millilitre",
     "default_purchase_unit": "centilitre",
-    "creator": null,
     "compatible_units": [
       "millilitre",
       "litre",
@@ -3546,7 +3299,6 @@
     "department": "boisson",
     "default_cooking_unit": "millilitre",
     "default_purchase_unit": "centilitre",
-    "creator": null,
     "compatible_units": [
       "millilitre",
       "litre",
@@ -3565,7 +3317,6 @@
     "department": "traiteur",
     "default_cooking_unit": "brique",
     "default_purchase_unit": "brique",
-    "creator": null,
     "compatible_units": [
       "brique",
       "litre",
@@ -3585,7 +3336,6 @@
     "department": "gateau",
     "default_cooking_unit": "paquet",
     "default_purchase_unit": "paquet",
-    "creator": null,
     "compatible_units": [
       "paquet",
       "sachet",
@@ -3601,7 +3351,6 @@
     "department": "aide-patissier",
     "default_cooking_unit": "gramme",
     "default_purchase_unit": "kilo",
-    "creator": null,
     "compatible_units": [
       "gramme",
       "kilo",
@@ -3622,7 +3371,6 @@
     "department": "fruit-et-legume",
     "default_cooking_unit": "unite",
     "default_purchase_unit": "unite",
-    "creator": null,
     "compatible_units": [
       "unite"
     ]
@@ -3634,7 +3382,6 @@
     "department": "alcool",
     "default_cooking_unit": "millilitre",
     "default_purchase_unit": "centilitre",
-    "creator": null,
     "compatible_units": [
       "millilitre",
       "litre",
@@ -3653,7 +3400,6 @@
     "department": "alcool",
     "default_cooking_unit": "millilitre",
     "default_purchase_unit": "centilitre",
-    "creator": null,
     "compatible_units": [
       "millilitre",
       "litre",
@@ -3672,7 +3418,6 @@
     "department": "sauce",
     "default_cooking_unit": "cuillere-a-soupe",
     "default_purchase_unit": "centilitre",
-    "creator": null,
     "compatible_units": [
       "cuillere-a-soupe",
       "millilitre",
@@ -3691,7 +3436,6 @@
     "department": "sauce",
     "default_cooking_unit": "cuillere-a-soupe",
     "default_purchase_unit": "centilitre",
-    "creator": null,
     "compatible_units": [
       "cuillere-a-soupe",
       "millilitre",
