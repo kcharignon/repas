@@ -134,4 +134,4 @@ La signature du propriétaire est demandée **avant** d'allumer ou de laisser al
 | 6. Copier une recette, fusionner | propriétaire | | |
 | 7. Rejouer ne change rien | assistant (lecture) | | |
 
-Signature du propriétaire du catalogue : ______________________  Date : ____________
+Signature du propriétaire du catalogue : Kantin Charignon  Date : 24 octobre 2026
