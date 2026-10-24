@@ -120,6 +120,8 @@ Procédure à dérouler **par le propriétaire du catalogue, dans le navigateur 
 
 ## Signature
 
+**Relue par le propriétaire le 2026-10-24 : « tout me semble ok ».** Le tableau ci-dessous n'a pas été rempli ligne à ligne ; il reste le modèle à remplir si la recette est rejouée (nouvelle enseigne, nouvelle passation, reprise après incident).
+
 La signature du propriétaire est demandée **avant** d'allumer ou de laisser allumé l'interrupteur d'amorçage pour de nouveaux comptes (aujourd'hui allumé : ce tableau fait foi de ce qui a été vu).
 
 | Partie | Vu par | Date | Résultat (OK / écart noté) |
