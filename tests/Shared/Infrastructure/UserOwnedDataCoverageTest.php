@@ -16,6 +16,7 @@ use Repas\User\Infrastructure\Entity\PasswordResetToken;
 use Repas\User\Infrastructure\Entity\RefreshToken;
 use Repas\User\Infrastructure\Entity\UserAppVersion;
 use Repas\User\Infrastructure\Entity\UserIdentity;
+use Repas\Voice\Infrastructure\Entity\AccessGrant;
 use Repas\Voice\Infrastructure\Entity\AuthorizationCode;
 use Repas\Voice\Infrastructure\Entity\VoiceLink;
 
@@ -45,6 +46,7 @@ class UserOwnedDataCoverageTest extends DatabaseTestCase
         UserAppVersion::class => ['userId'],
         VoiceLink::class => ['userId'],
         AuthorizationCode::class => ['userId'],
+        AccessGrant::class => ['userId'],
     ];
 
     public function testEveryColumnThatPointsToAUserIsErasedWithHim(): void
