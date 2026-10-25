@@ -26,10 +26,11 @@ class SpokenListLookupAdapterTest extends TestCase
      * @param ?list<ListedLine>     $lines      les lignes de la liste active (`null` : aucune)
      * @param list<SpokenCandidate> $candidates
      * @param array<string, string> $remembered
+     * @param bool                  $hasSentList l'utilisateur a une liste envoyée au drive (sans liste active)
      */
-    private function adapter(?array $lines, array $candidates, array $remembered = []): SpokenListLookupAdapter
+    private function adapter(?array $lines, array $candidates, array $remembered = [], bool $hasSentList = false): SpokenListLookupAdapter
     {
-        $this->linesLoader = new ActiveShoppingListLinesInMemoryLoader($lines);
+        $this->linesLoader = new ActiveShoppingListLinesInMemoryLoader($lines, $hasSentList);
         $this->candidatesLoader = new SpokenIngredientCandidatesInMemoryLoader($candidates);
 
         return new SpokenListLookupAdapter($this->linesLoader, $this->candidatesLoader, new SpokenPhraseMemoryInMemoryLoader($remembered));
@@ -189,6 +190,153 @@ class SpokenListLookupAdapterTest extends TestCase
         $this->assertFalse($result->isTied());
         $this->assertSame([], $result->lines);
         $this->assertSame('tomate', $result->absentName);
+    }
+
+    // ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
+    // Revue du 2026-10-25 : habitudes qui tranchent, doublons, liste envoyée
+    // ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
+
+    /**
+     * @return list<SpokenCandidate>
+     */
+    private function twoTomatoes(int $freshUses, int $frozenUses): array
+    {
+        return [
+            new SpokenCandidate('tomate', 'tomate', 'tomate', 'fruits et légumes', $freshUses, 'fruit-et-legume'),
+            new SpokenCandidate('tomate-surgelee', 'tomate', 'tomate', 'surgelé', $frozenUses, 'surgele'),
+        ];
+    }
+
+    /**
+     * @return list<SpokenCandidate>
+     */
+    private function twoDuplicates(): array
+    {
+        return [
+            new SpokenCandidate('tomate-1', 'tomate', 'tomate', 'fruits et légumes', 0, 'fruit-et-legume'),
+            new SpokenCandidate('tomate-2', 'tomate', 'tomate', 'fruits et légumes', 0, 'fruit-et-legume'),
+        ];
+    }
+
+    public function testTheTomatoInTheListIsFoundEvenWhenTheHabitsPickTheOtherOne(): void
+    {
+        // Given : les habitudes tranchent pour la tomate fraîche (40 usages contre 2, `PROBABLE`), mais seule la surgelée est dans la liste
+        $frozen = self::line('tomate-surgelee', 'tomate', 'surgele', 'surgelé', 2.0);
+        $adapter = $this->adapter([$frozen], $this->twoTomatoes(40, 2));
+
+        // When : « enlève des tomates » / « est-ce qu'il y a des tomates ? »
+        $result = $adapter->find('user-id', 'des tomates');
+
+        // Then : la ligne de la liste, pas « pas dans ta liste »
+        $this->assertEquals(SpokenListLookupResult::found($frozen), $result);
+    }
+
+    public function testBothTomatoesInTheListAreReturnedToBeToldApartWhateverTheHabits(): void
+    {
+        // Given : les habitudes tranchent, mais les deux sont dans la liste
+        $fresh = self::line('tomate', 'tomate', 'fruit-et-legume', 'fruits et légumes', 2.0);
+        $frozen = self::line('tomate-surgelee', 'tomate', 'surgele', 'surgelé', 1.0);
+        $adapter = $this->adapter([$frozen, $fresh], $this->twoTomatoes(40, 2));
+
+        // When
+        $result = $adapter->find('user-id', 'des tomates');
+
+        // Then : les deux lignes, la plus utilisée d'abord
+        $this->assertTrue($result->isTied());
+        $this->assertEquals([$fresh, $frozen], $result->lines);
+    }
+
+    public function testNeitherTomatoInTheListIsAbsentWithTheNameTheClassifierWouldHaveChosen(): void
+    {
+        // Given
+        $adapter = $this->adapter([self::line('farine', 'farine', 'epicerie', 'épicerie')], [...$this->twoTomatoes(40, 2), new SpokenCandidate('farine', 'farine', 'farine', 'épicerie')]);
+
+        // When
+        $result = $adapter->find('user-id', 'des tomates');
+
+        // Then
+        $this->assertEquals(SpokenListLookupResult::notInList('tomate'), $result);
+    }
+
+    public function testTheDuplicateInTheListIsFoundEvenWhenTheClassifierChoosesTheOtherDuplicate(): void
+    {
+        // Given : deux « tomate » de même nom ET de même rayon (non fusionnées) ; `ties()` ne les départage pas, `rank()` choisit la première
+        $adapter = $this->adapter([self::line('tomate-2', 'tomate', 'fruit-et-legume', 'fruits et légumes', 3.0)], $this->twoDuplicates());
+
+        // When
+        $result = $adapter->find('user-id', 'des tomates');
+
+        // Then : celle de la liste, pas « pas dans ta liste »
+        $this->assertSame(['tomate-2'], array_map(static fn(ListedLine $line): string => $line->slug, $result->lines));
+        $this->assertFalse($result->isTied());
+    }
+
+    public function testTwoDuplicatesBothInTheListKeepTheOneWithTheGreatestQuantityAndAskNothing(): void
+    {
+        // Given : les deux doublons sont dans la liste (2 et 5) : une question ne les distinguerait pas
+        $small = self::line('tomate-1', 'tomate', 'fruit-et-legume', 'fruits et légumes', 2.0);
+        $big = self::line('tomate-2', 'tomate', 'fruit-et-legume', 'fruits et légumes', 5.0);
+        $adapter = $this->adapter([$small, $big], $this->twoDuplicates());
+
+        // When
+        $result = $adapter->find('user-id', 'des tomates');
+
+        // Then : la plus grande quantité, aucune question
+        $this->assertEquals(SpokenListLookupResult::found($big), $result);
+    }
+
+    public function testDuplicatesAndAnotherDepartmentAreKeptOnePerNameAndDepartment(): void
+    {
+        // Given : deux doublons en fruit et légume (1 et 4) et une surgelée (2), toutes dans la liste
+        $adapter = $this->adapter(
+            [
+                self::line('tomate-1', 'tomate', 'fruit-et-legume', 'fruits et légumes', 1.0),
+                self::line('tomate-2', 'tomate', 'fruit-et-legume', 'fruits et légumes', 4.0),
+                self::line('tomate-surgelee', 'tomate', 'surgele', 'surgelé', 2.0),
+            ],
+            [...$this->twoDuplicates(), new SpokenCandidate('tomate-surgelee', 'tomate', 'tomate', 'surgelé', 0, 'surgele')],
+        );
+
+        // When
+        $result = $adapter->find('user-id', 'des tomates');
+
+        // Then : deux rayons à départager, le doublon de plus grande quantité représente le sien
+        $this->assertTrue($result->isTied());
+        $this->assertEqualsCanonicalizing(['tomate-2', 'tomate-surgelee'], array_map(static fn(ListedLine $line): string => $line->slug, $result->lines));
+    }
+
+    public function testAListSentToTheDriveIsSaidApartFromNoList(): void
+    {
+        // Given : aucune liste active, une liste envoyée, puis aucune liste du tout
+        $sent = $this->adapter(null, [new SpokenCandidate('tomate', 'tomate', 'tomate', 'fruits et légumes')], hasSentList: true);
+        $sentLoader = $this->linesLoader;
+        $none = $this->adapter(null, [new SpokenCandidate('tomate', 'tomate', 'tomate', 'fruits et légumes')]);
+
+        // When
+        $sentResult = $sent->find('user-id', 'des tomates');
+        $noneResult = $none->find('user-id', 'des tomates');
+
+        // Then : la liste envoyée n'est jamais lue ; seule la question « en a-t-il une ? » est posée
+        $this->assertEquals(SpokenListLookupResult::sentList(), $sentResult);
+        $this->assertTrue($sentResult->listSent);
+        $this->assertFalse($sentResult->hasList);
+        $this->assertSame(['user-id'], $sentLoader->sentCalls);
+        $this->assertEquals(SpokenListLookupResult::noList(), $noneResult);
+        $this->assertFalse($noneResult->listSent);
+    }
+
+    public function testTheSentListIsNotLookedForWhenAnActiveListExists(): void
+    {
+        // Given
+        $adapter = $this->adapter([self::line('farine', 'farine', 'epicerie', 'épicerie')], [new SpokenCandidate('farine', 'farine', 'farine', 'épicerie')], hasSentList: true);
+
+        // When
+        $result = $adapter->find('user-id', 'de la farine');
+
+        // Then : une liste active gagne, la question « envoyée ? » n'est pas posée
+        $this->assertTrue($result->hasList);
+        $this->assertFalse($result->listSent);
+        $this->assertSame([], $this->linesLoader->sentCalls);
     }
 
     public function testNothingIsWritten(): void

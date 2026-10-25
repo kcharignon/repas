@@ -154,6 +154,66 @@ class ActiveShoppingListLinesPostgreSQLLoaderTest extends DatabaseTestCase
         $this->assertSame(2, $withTwenty);
     }
 
+    public function testItSaysWhetherTheUserHasAListSentToTheDriveInOneQuery(): void
+    {
+        // Given : un utilisateur avec une liste envoyée, un autre sans rien, un troisième avec une liste active seulement
+        $sender = $this->savedUser();
+        $nobody = $this->savedUser();
+        $active = $this->savedUser();
+        $counter = static::getContainer()->get(QueryCounter::class);
+        $egg = $this->savedIngredient($sender, new IngredientBuilder()->isEgg());
+        $this->shoppingLists->save(new ShoppingListBuilder()->withOwner($sender)->addIngredient($egg)->withStatus(ShoppingListStatus::SENT)->build());
+        $this->shoppingLists->save(new ShoppingListBuilder()->withOwner($active)->build());
+        $this->entityManager->clear();
+        $counter->reset();
+
+        // When
+        $hasSent = $this->loader->hasSentList($sender->getId());
+        $queries = $counter->count();
+
+        // Then : une seule requête, la liste envoyée n'est pas lue ; ni l'utilisateur sans liste ni celui qui n'a qu'une liste active n'en ont une
+        $this->assertTrue($hasSent);
+        $this->assertSame(1, $queries);
+        $this->assertFalse($this->loader->hasSentList($nobody->getId()));
+        $this->assertFalse($this->loader->hasSentList($active->getId()));
+    }
+
+    /**
+     * @return iterable<string, array{ShoppingListStatus}>
+     */
+    public static function notSentStatuses(): iterable
+    {
+        yield 'active' => [ShoppingListStatus::ACTIVE];
+        yield 'en pause' => [ShoppingListStatus::PAUSED];
+        yield 'terminée' => [ShoppingListStatus::COMPLETED];
+    }
+
+    #[DataProvider('notSentStatuses')]
+    public function testOnlyASentListCountsAsSent(ShoppingListStatus $status): void
+    {
+        // Given
+        $user = $this->savedUser();
+        $this->shoppingLists->save(new ShoppingListBuilder()->withOwner($user)->withStatus($status)->build());
+        $this->entityManager->clear();
+
+        // When / Then
+        $this->assertFalse($this->loader->hasSentList($user->getId()));
+    }
+
+    public function testTheSentListOfAnotherUserIsNotMine(): void
+    {
+        // Given
+        $user = $this->savedUser();
+        $other = $this->savedUser();
+        $egg = $this->savedIngredient($other, new IngredientBuilder()->isEgg());
+        $this->shoppingLists->save(new ShoppingListBuilder()->withOwner($other)->addIngredient($egg)->withStatus(ShoppingListStatus::SENT)->build());
+        $this->entityManager->clear();
+
+        // When / Then
+        $this->assertFalse($this->loader->hasSentList($user->getId()));
+        $this->assertTrue($this->loader->hasSentList($other->getId()));
+    }
+
     /**
      * @param list<ListedLine> $lines
      *

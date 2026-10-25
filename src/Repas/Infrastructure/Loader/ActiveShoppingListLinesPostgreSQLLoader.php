@@ -59,4 +59,18 @@ final readonly class ActiveShoppingListLinesPostgreSQLLoader implements ActiveSh
             $rows,
         );
     }
+
+    public function hasSentList(string $userId): bool
+    {
+        return $this->entityManager->createQueryBuilder()
+            ->select('l.id')
+            ->from(ShoppingList::class, 'l')
+            ->where('l.ownerId = :owner')
+            ->andWhere('l.status = :status')
+            ->setParameter('owner', $userId)
+            ->setParameter('status', ShoppingListStatus::SENT)
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getArrayResult() !== [];
+    }
 }

@@ -14,11 +14,15 @@ class ActiveShoppingListLinesInMemoryLoader implements ActiveShoppingListLines
     /** @var list<string> */
     public array $calls = [];
 
+    /** @var list<string> les appels à `hasSentList` */
+    public array $sentCalls = [];
+
     /**
      * @param ?list<ListedLine> $lines
      */
     public function __construct(
         private readonly ?array $lines = null,
+        private readonly bool $hasSentList = false,
     ) {
     }
 
@@ -27,5 +31,12 @@ class ActiveShoppingListLinesInMemoryLoader implements ActiveShoppingListLines
         $this->calls[] = $userId;
 
         return $this->lines;
+    }
+
+    public function hasSentList(string $userId): bool
+    {
+        $this->sentCalls[] = $userId;
+
+        return $this->hasSentList;
     }
 }

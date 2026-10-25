@@ -16,4 +16,10 @@ interface ActiveShoppingListLines
      * @return ?list<ListedLine> `null` : l'utilisateur n'a pas de liste active ; une liste active vide donne une liste vide
      */
     public function forUser(string $userId): ?array;
+
+    /**
+     * L'utilisateur a une liste envoyée au drive (statut `SENT`) : de quoi dire « ta liste est déjà partie » plutôt que « pas de liste en cours »
+     * quand il n'en a pas d'active. Une seule requête ; la liste envoyée n'est jamais lue.
+     */
+    public function hasSentList(string $userId): bool;
 }
