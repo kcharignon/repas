@@ -16,8 +16,10 @@ use Repas\Shared\Domain\Tool\SearchRelevance;
  * 1. Normalisation : `IngredientNameMatcher::tokens` (accents, casse et ponctuation retirés, pluriels repliés, mots vides retirés : ses
  *    `STOP_WORDS` couvrent déjà « du », « de la », « des », « un », « une »). Une phrase sans aucun mot qui compte : rien.
  * 2. Mémoire de phrase : si l'ingrédient retenu pour cette phrase est parmi les candidats, il l'emporte sur tout, `SURE`.
- * 3. Sinon, seuls les candidats d'une pertinence d'au moins `SearchRelevance::MINIMUM` restent (une habitude ne fait jamais passer un nom
- *    trop différent), notés `pertinence + HABIT_WEIGHT × n / (n + HABIT_SOFTNESS)`.
+ * 3. Sinon, seuls restent les candidats que le classeur choisit SANS DEMANDER (`isChosenByItself`) : une pertinence d'au moins
+ *    `SearchRelevance::MINIMUM` ET un nom identique, une phrase qui commence le nom ou l'un de ses mots (« pain » donne *pain de mie*), ou
+ *    une simple faute de frappe (`TYPO_THRESHOLD`). Le seuil de recherche seul est trop généreux pour deviner : « ciboulette » ressemble à
+ *    *coquilette* (0,907) sans que ce soit le même produit. Une habitude ne fait jamais passer un nom trop différent. Notés `pertinence + HABIT_WEIGHT × n / (n + HABIT_SOFTNESS)`.
  * 4. Un nom identique à la phrase (une fois normalisés) passe avant tout nom qui n'est que proche : « tomate » donne *tomate* même si
  *    *tomates pelées* est acheté bien plus souvent, car le bonus d'habitude (jusqu'à 0,1) peut dépasser l'écart de pertinence (0,95 contre 1).
  *    L'habitude ne départage donc que des noms de même rang.
@@ -39,6 +41,14 @@ final readonly class SpokenIngredientRanker
 
     /** Le score d'un ingrédient mémorisé pour la phrase : au-dessus de tout score calculé (au plus 0,999 + HABIT_WEIGHT). */
     public const float REMEMBERED_SCORE = 2.0;
+
+    /**
+     * Le seuil du choix AUTOMATIQUE d'une faute de frappe : un nom proche mais ni identique ni commencé par la phrase n'est choisi sans demander
+     * qu'à partir de ce score (« ciboulete » contre *ciboulette* 0,98). Plus strict que `SearchRelevance::MINIMUM` (0,85), qui reste celui de la
+     * recherche : chercher peut montrer des noms approchants, mais deviner à la place de l'utilisateur un produit qui n'existe pas (« ciboulette »
+     * devinée *coquilette* à 0,907) ruine le dialogue.
+     */
+    public const float TYPO_THRESHOLD = 0.94;
 
     /** Le plancher de proximité des propositions : au-dessous, un nom n'a plus de rapport avec la phrase (voir `suggest()`). */
     public const float SUGGESTION_FLOOR = 0.80;
@@ -78,7 +88,7 @@ final readonly class SpokenIngredientRanker
         foreach ($candidates as $candidate) {
             $name = self::normalize($candidate->sluggedName);
             $relevance = SearchRelevance::score($search, $name);
-            if ($relevance < SearchRelevance::MINIMUM) {
+            if (!self::isChosenByItself($search, $name, $relevance)) {
                 continue;
             }
             $scored[] = [
@@ -109,7 +119,7 @@ final readonly class SpokenIngredientRanker
      * Les ingrédients les plus proches d'une phrase que `rank()` ne choisit PAS tout seul : « De quoi tu parles ? » (ADR 0029 décision 11).
      * Au plus `MAX_SUGGESTIONS`, classés comme `rank()` (pertinence + bonus d'habitude), et seulement ceux qui passent le plancher :
      *
-     * - une pertinence d'au moins `SUGGESTION_FLOOR` et inférieure à `SearchRelevance::MINIMUM` (au-dessus, `rank()` choisit sans demander) ;
+     * - une pertinence d'au moins `SUGGESTION_FLOOR` et un nom que `rank()` ne choisit pas tout seul (`isChosenByItself`) ;
      * - ET un début de mot en commun avec la phrase (`SHARED_PREFIX` lettres) : Jaro-Winkler seul note 0,81 « fenouil » contre « nouille » ou
      *   « basilic » contre « ail », deux noms sans rapport. Le début en commun ne retient que de vraies ressemblances (« sirop de menthe »
      *   et « sirop fruit rouge »).
@@ -132,7 +142,7 @@ final readonly class SpokenIngredientRanker
         foreach ($candidates as $candidate) {
             $nameWords = self::words($candidate->sluggedName);
             $relevance = SearchRelevance::score($search, implode('-', $nameWords));
-            if ($relevance < self::SUGGESTION_FLOOR || $relevance >= SearchRelevance::MINIMUM || !self::sharesAPrefix($searchWords, $nameWords)) {
+            if ($relevance < self::SUGGESTION_FLOOR || self::isChosenByItself($search, implode('-', $nameWords), $relevance) || !self::sharesAPrefix($searchWords, $nameWords)) {
                 continue;
             }
             $scored[] = ['candidate' => $candidate, 'score' => $relevance + self::habit($candidate->uses12m)];
@@ -167,6 +177,20 @@ final readonly class SpokenIngredientRanker
         }
 
         return $best - $next >= self::CLEAR_MARGIN - self::EPSILON ? Confidence::PROBABLE : Confidence::UNSURE;
+    }
+
+    /**
+     * Un candidat que `rank()` retient sans demander : une pertinence d'au moins `SearchRelevance::MINIMUM` ET (un nom identique à la phrase, OU
+     * une phrase qui commence le nom ou l'un de ses mots — la branche « contient » de `SearchRelevance` : « pain » donne *pain de mie* —, OU une
+     * pertinence d'au moins `TYPO_THRESHOLD`, la simple faute de frappe). Tout le reste est au plus une proposition.
+     */
+    private static function isChosenByItself(string $search, string $name, float $relevance): bool
+    {
+        if ($relevance < SearchRelevance::MINIMUM) {
+            return false;
+        }
+
+        return $name === $search || str_contains('-' . $name, '-' . $search) || $relevance >= self::TYPO_THRESHOLD;
     }
 
     /** Le bonus d'habitude, de 0 (jamais utilisé) à `HABIT_WEIGHT` (très utilisé). */
