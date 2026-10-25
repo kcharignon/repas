@@ -36,7 +36,7 @@
             },
             {
               "name": "quantity",
-              "type": "AMAZON.NUMBER"
+              "type": "QUANTITY"
             },
             {
               "name": "unit",
@@ -2088,6 +2088,706 @@
                 "synonyms": [
                   "bottes"
                 ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "QUANTITY",
+          "values": [
+            {
+              "id": "1",
+              "name": {
+                "value": "un",
+                "synonyms": [
+                  "une"
+                ]
+              }
+            },
+            {
+              "id": "2",
+              "name": {
+                "value": "deux",
+                "synonyms": []
+              }
+            },
+            {
+              "id": "3",
+              "name": {
+                "value": "trois",
+                "synonyms": []
+              }
+            },
+            {
+              "id": "4",
+              "name": {
+                "value": "quatre",
+                "synonyms": []
+              }
+            },
+            {
+              "id": "5",
+              "name": {
+                "value": "cinq",
+                "synonyms": []
+              }
+            },
+            {
+              "id": "6",
+              "name": {
+                "value": "six",
+                "synonyms": []
+              }
+            },
+            {
+              "id": "7",
+              "name": {
+                "value": "sept",
+                "synonyms": []
+              }
+            },
+            {
+              "id": "8",
+              "name": {
+                "value": "huit",
+                "synonyms": []
+              }
+            },
+            {
+              "id": "9",
+              "name": {
+                "value": "neuf",
+                "synonyms": []
+              }
+            },
+            {
+              "id": "10",
+              "name": {
+                "value": "dix",
+                "synonyms": []
+              }
+            },
+            {
+              "id": "11",
+              "name": {
+                "value": "onze",
+                "synonyms": []
+              }
+            },
+            {
+              "id": "12",
+              "name": {
+                "value": "douze",
+                "synonyms": []
+              }
+            },
+            {
+              "id": "13",
+              "name": {
+                "value": "treize",
+                "synonyms": []
+              }
+            },
+            {
+              "id": "14",
+              "name": {
+                "value": "quatorze",
+                "synonyms": []
+              }
+            },
+            {
+              "id": "15",
+              "name": {
+                "value": "quinze",
+                "synonyms": []
+              }
+            },
+            {
+              "id": "16",
+              "name": {
+                "value": "seize",
+                "synonyms": []
+              }
+            },
+            {
+              "id": "17",
+              "name": {
+                "value": "dix sept",
+                "synonyms": []
+              }
+            },
+            {
+              "id": "18",
+              "name": {
+                "value": "dix huit",
+                "synonyms": []
+              }
+            },
+            {
+              "id": "19",
+              "name": {
+                "value": "dix neuf",
+                "synonyms": []
+              }
+            },
+            {
+              "id": "20",
+              "name": {
+                "value": "vingt",
+                "synonyms": []
+              }
+            },
+            {
+              "id": "21",
+              "name": {
+                "value": "vingt et un",
+                "synonyms": []
+              }
+            },
+            {
+              "id": "22",
+              "name": {
+                "value": "vingt deux",
+                "synonyms": []
+              }
+            },
+            {
+              "id": "23",
+              "name": {
+                "value": "vingt trois",
+                "synonyms": []
+              }
+            },
+            {
+              "id": "24",
+              "name": {
+                "value": "vingt quatre",
+                "synonyms": []
+              }
+            },
+            {
+              "id": "25",
+              "name": {
+                "value": "vingt cinq",
+                "synonyms": []
+              }
+            },
+            {
+              "id": "26",
+              "name": {
+                "value": "vingt six",
+                "synonyms": []
+              }
+            },
+            {
+              "id": "27",
+              "name": {
+                "value": "vingt sept",
+                "synonyms": []
+              }
+            },
+            {
+              "id": "28",
+              "name": {
+                "value": "vingt huit",
+                "synonyms": []
+              }
+            },
+            {
+              "id": "29",
+              "name": {
+                "value": "vingt neuf",
+                "synonyms": []
+              }
+            },
+            {
+              "id": "30",
+              "name": {
+                "value": "trente",
+                "synonyms": []
+              }
+            },
+            {
+              "id": "31",
+              "name": {
+                "value": "trente et un",
+                "synonyms": []
+              }
+            },
+            {
+              "id": "32",
+              "name": {
+                "value": "trente deux",
+                "synonyms": []
+              }
+            },
+            {
+              "id": "33",
+              "name": {
+                "value": "trente trois",
+                "synonyms": []
+              }
+            },
+            {
+              "id": "34",
+              "name": {
+                "value": "trente quatre",
+                "synonyms": []
+              }
+            },
+            {
+              "id": "35",
+              "name": {
+                "value": "trente cinq",
+                "synonyms": []
+              }
+            },
+            {
+              "id": "36",
+              "name": {
+                "value": "trente six",
+                "synonyms": []
+              }
+            },
+            {
+              "id": "37",
+              "name": {
+                "value": "trente sept",
+                "synonyms": []
+              }
+            },
+            {
+              "id": "38",
+              "name": {
+                "value": "trente huit",
+                "synonyms": []
+              }
+            },
+            {
+              "id": "39",
+              "name": {
+                "value": "trente neuf",
+                "synonyms": []
+              }
+            },
+            {
+              "id": "40",
+              "name": {
+                "value": "quarante",
+                "synonyms": []
+              }
+            },
+            {
+              "id": "41",
+              "name": {
+                "value": "quarante et un",
+                "synonyms": []
+              }
+            },
+            {
+              "id": "42",
+              "name": {
+                "value": "quarante deux",
+                "synonyms": []
+              }
+            },
+            {
+              "id": "43",
+              "name": {
+                "value": "quarante trois",
+                "synonyms": []
+              }
+            },
+            {
+              "id": "44",
+              "name": {
+                "value": "quarante quatre",
+                "synonyms": []
+              }
+            },
+            {
+              "id": "45",
+              "name": {
+                "value": "quarante cinq",
+                "synonyms": []
+              }
+            },
+            {
+              "id": "46",
+              "name": {
+                "value": "quarante six",
+                "synonyms": []
+              }
+            },
+            {
+              "id": "47",
+              "name": {
+                "value": "quarante sept",
+                "synonyms": []
+              }
+            },
+            {
+              "id": "48",
+              "name": {
+                "value": "quarante huit",
+                "synonyms": []
+              }
+            },
+            {
+              "id": "49",
+              "name": {
+                "value": "quarante neuf",
+                "synonyms": []
+              }
+            },
+            {
+              "id": "50",
+              "name": {
+                "value": "cinquante",
+                "synonyms": []
+              }
+            },
+            {
+              "id": "51",
+              "name": {
+                "value": "cinquante et un",
+                "synonyms": []
+              }
+            },
+            {
+              "id": "52",
+              "name": {
+                "value": "cinquante deux",
+                "synonyms": []
+              }
+            },
+            {
+              "id": "53",
+              "name": {
+                "value": "cinquante trois",
+                "synonyms": []
+              }
+            },
+            {
+              "id": "54",
+              "name": {
+                "value": "cinquante quatre",
+                "synonyms": []
+              }
+            },
+            {
+              "id": "55",
+              "name": {
+                "value": "cinquante cinq",
+                "synonyms": []
+              }
+            },
+            {
+              "id": "56",
+              "name": {
+                "value": "cinquante six",
+                "synonyms": []
+              }
+            },
+            {
+              "id": "57",
+              "name": {
+                "value": "cinquante sept",
+                "synonyms": []
+              }
+            },
+            {
+              "id": "58",
+              "name": {
+                "value": "cinquante huit",
+                "synonyms": []
+              }
+            },
+            {
+              "id": "59",
+              "name": {
+                "value": "cinquante neuf",
+                "synonyms": []
+              }
+            },
+            {
+              "id": "60",
+              "name": {
+                "value": "soixante",
+                "synonyms": []
+              }
+            },
+            {
+              "id": "61",
+              "name": {
+                "value": "soixante et un",
+                "synonyms": []
+              }
+            },
+            {
+              "id": "62",
+              "name": {
+                "value": "soixante deux",
+                "synonyms": []
+              }
+            },
+            {
+              "id": "63",
+              "name": {
+                "value": "soixante trois",
+                "synonyms": []
+              }
+            },
+            {
+              "id": "64",
+              "name": {
+                "value": "soixante quatre",
+                "synonyms": []
+              }
+            },
+            {
+              "id": "65",
+              "name": {
+                "value": "soixante cinq",
+                "synonyms": []
+              }
+            },
+            {
+              "id": "66",
+              "name": {
+                "value": "soixante six",
+                "synonyms": []
+              }
+            },
+            {
+              "id": "67",
+              "name": {
+                "value": "soixante sept",
+                "synonyms": []
+              }
+            },
+            {
+              "id": "68",
+              "name": {
+                "value": "soixante huit",
+                "synonyms": []
+              }
+            },
+            {
+              "id": "69",
+              "name": {
+                "value": "soixante neuf",
+                "synonyms": []
+              }
+            },
+            {
+              "id": "70",
+              "name": {
+                "value": "soixante dix",
+                "synonyms": []
+              }
+            },
+            {
+              "id": "71",
+              "name": {
+                "value": "soixante et onze",
+                "synonyms": []
+              }
+            },
+            {
+              "id": "72",
+              "name": {
+                "value": "soixante douze",
+                "synonyms": []
+              }
+            },
+            {
+              "id": "73",
+              "name": {
+                "value": "soixante treize",
+                "synonyms": []
+              }
+            },
+            {
+              "id": "74",
+              "name": {
+                "value": "soixante quatorze",
+                "synonyms": []
+              }
+            },
+            {
+              "id": "75",
+              "name": {
+                "value": "soixante quinze",
+                "synonyms": []
+              }
+            },
+            {
+              "id": "76",
+              "name": {
+                "value": "soixante seize",
+                "synonyms": []
+              }
+            },
+            {
+              "id": "77",
+              "name": {
+                "value": "soixante dix sept",
+                "synonyms": []
+              }
+            },
+            {
+              "id": "78",
+              "name": {
+                "value": "soixante dix huit",
+                "synonyms": []
+              }
+            },
+            {
+              "id": "79",
+              "name": {
+                "value": "soixante dix neuf",
+                "synonyms": []
+              }
+            },
+            {
+              "id": "80",
+              "name": {
+                "value": "quatre vingts",
+                "synonyms": []
+              }
+            },
+            {
+              "id": "81",
+              "name": {
+                "value": "quatre vingt un",
+                "synonyms": []
+              }
+            },
+            {
+              "id": "82",
+              "name": {
+                "value": "quatre vingt deux",
+                "synonyms": []
+              }
+            },
+            {
+              "id": "83",
+              "name": {
+                "value": "quatre vingt trois",
+                "synonyms": []
+              }
+            },
+            {
+              "id": "84",
+              "name": {
+                "value": "quatre vingt quatre",
+                "synonyms": []
+              }
+            },
+            {
+              "id": "85",
+              "name": {
+                "value": "quatre vingt cinq",
+                "synonyms": []
+              }
+            },
+            {
+              "id": "86",
+              "name": {
+                "value": "quatre vingt six",
+                "synonyms": []
+              }
+            },
+            {
+              "id": "87",
+              "name": {
+                "value": "quatre vingt sept",
+                "synonyms": []
+              }
+            },
+            {
+              "id": "88",
+              "name": {
+                "value": "quatre vingt huit",
+                "synonyms": []
+              }
+            },
+            {
+              "id": "89",
+              "name": {
+                "value": "quatre vingt neuf",
+                "synonyms": []
+              }
+            },
+            {
+              "id": "90",
+              "name": {
+                "value": "quatre vingt dix",
+                "synonyms": []
+              }
+            },
+            {
+              "id": "91",
+              "name": {
+                "value": "quatre vingt onze",
+                "synonyms": []
+              }
+            },
+            {
+              "id": "92",
+              "name": {
+                "value": "quatre vingt douze",
+                "synonyms": []
+              }
+            },
+            {
+              "id": "93",
+              "name": {
+                "value": "quatre vingt treize",
+                "synonyms": []
+              }
+            },
+            {
+              "id": "94",
+              "name": {
+                "value": "quatre vingt quatorze",
+                "synonyms": []
+              }
+            },
+            {
+              "id": "95",
+              "name": {
+                "value": "quatre vingt quinze",
+                "synonyms": []
+              }
+            },
+            {
+              "id": "96",
+              "name": {
+                "value": "quatre vingt seize",
+                "synonyms": []
+              }
+            },
+            {
+              "id": "97",
+              "name": {
+                "value": "quatre vingt dix sept",
+                "synonyms": []
+              }
+            },
+            {
+              "id": "98",
+              "name": {
+                "value": "quatre vingt dix huit",
+                "synonyms": []
+              }
+            },
+            {
+              "id": "99",
+              "name": {
+                "value": "quatre vingt dix neuf",
+                "synonyms": []
               }
             }
           ]

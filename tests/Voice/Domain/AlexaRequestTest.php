@@ -190,6 +190,50 @@ class AlexaRequestTest extends TestCase
         $this->assertFalse($request->hasUnusableQuantity());
     }
 
+    public function testTheQuantityTypeResolutionIdWinsOverTheSaidText(): void
+    {
+        // Given : « deux » entendu, rapproché de la valeur « 2 » du type QUANTITY du modèle
+        $body = AlexaTestRequest::addItem()->toArray();
+        $body['request']['intent']['slots']['quantity'] = [
+            'name' => 'quantity',
+            'value' => 'deux',
+            'resolutions' => ['resolutionsPerAuthority' => [[
+                'authority' => 'amzn1.er-authority.echo-sdk.amzn1.ask.skill.test.QUANTITY',
+                'status' => ['code' => 'ER_SUCCESS_MATCH'],
+                'values' => [['value' => ['name' => '2', 'id' => '2']]],
+            ]]],
+        ];
+
+        // When
+        $request = AlexaRequest::fromDecoded($body);
+
+        // Then : la quantité est 2, entendue et utilisable
+        $this->assertSame(2, $request->quantity);
+        $this->assertTrue($request->quantityHeard);
+        $this->assertFalse($request->hasUnusableQuantity());
+    }
+
+    public function testAQuantityWordAlexaDidNotMatchToTheModelIsHeardButUnusable(): void
+    {
+        // Given : « deux cent » n'est pas une valeur du type (1 à 99)
+        $body = AlexaTestRequest::addItem()->toArray();
+        $body['request']['intent']['slots']['quantity'] = [
+            'name' => 'quantity',
+            'value' => 'deux cent',
+            'resolutions' => ['resolutionsPerAuthority' => [[
+                'authority' => 'amzn1.er-authority.echo-sdk.amzn1.ask.skill.test.QUANTITY',
+                'status' => ['code' => 'ER_SUCCESS_NO_MATCH'],
+            ]]],
+        ];
+
+        // When
+        $request = AlexaRequest::fromDecoded($body);
+
+        // Then : on redemande « combien ? », rien n'est écrit
+        $this->assertNull($request->quantity);
+        $this->assertTrue($request->hasUnusableQuantity());
+    }
+
     public function testTheQuantityIsOnlyReadFromAnIntentRequest(): void
     {
         // Given : un créneau qui traîne dans un lancement

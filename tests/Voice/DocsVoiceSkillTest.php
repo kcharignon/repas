@@ -83,15 +83,36 @@ class DocsVoiceSkillTest extends KernelTestCase
         }
     }
 
+    public function testTheQuantityTypeHoldsOneToNinetyNineWithTheNumberAsIdentifierAndTheWordsAsValues(): void
+    {
+        // Given
+        $type = array_values(array_filter($this->languageModel()['types'], static fn(array $type): bool => $type['name'] === 'QUANTITY'))[0];
+
+        // Then : le webhook lit l'identifiant comme un nombre (AlexaRequest::quantity) ; Amazon refuse les chiffres dans une valeur : « deux » rend « 2 »
+        $this->assertCount(99, $type['values']);
+        $words = [];
+        foreach ($type['values'] as $index => $value) {
+            $this->assertSame((string) ($index + 1), $value['id']);
+            foreach ([$value['name']['value'], ...$value['name']['synonyms']] as $word) {
+                $this->assertMatchesRegularExpression('/^\p{Ll}+(?: \p{Ll}+)*$/u', $word, 'des lettres et des espaces, sans chiffre ni trait d\'union');
+                $words[] = $word;
+            }
+        }
+        $this->assertSame(array_values(array_unique($words)), $words, 'aucun mot en double entre deux nombres');
+        $this->assertContains('vingt et un', $words);
+        $this->assertContains('quatre vingt dix neuf', $words);
+    }
+
     public function testTheAddItemIntentHasItsItemQuantityAndUnitSlotsAndWellFormedSamples(): void
     {
         // Given
         $intent = $this->intent('AddItemIntent');
 
-        // Then : les créneaux que le webhook lit (`request.intent.slots.item`, `quantity`, `unit`), de notre type ; la quantité est un nombre d'Amazon
+        // Then : les créneaux que le webhook lit (`request.intent.slots.item`, `quantity`, `unit`), tous de nos types (le `AMAZON.NUMBER` d'Amazon
+        // laissait la quantité vide devant une unité : essai réel du 2026-10-25)
         $this->assertSame([
             ['name' => 'item', 'type' => 'INGREDIENT'],
-            ['name' => 'quantity', 'type' => 'AMAZON.NUMBER'],
+            ['name' => 'quantity', 'type' => 'QUANTITY'],
             ['name' => 'unit', 'type' => 'UNIT'],
         ], $intent['slots']);
         $this->assertContains('INGREDIENT', array_map(static fn(array $type): string => $type['name'], $this->languageModel()['types']));
