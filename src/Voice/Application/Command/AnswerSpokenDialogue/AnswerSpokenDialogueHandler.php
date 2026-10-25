@@ -27,8 +27,9 @@ use Symfony\Component\Messenger\Attribute\AsMessageHandler;
  *   le slug de l'état n'est jamais cru, les deux ports vérifient que l'ingrédient est à l'utilisateur ;
  * - « un nouveau produit » : la question du rayon, puis de l'unité (les catalogues sont lus à ces étapes, `SpokenIngredientCreator`), puis la
  *   confirmation « Je crée X, rayon, unité. C'est bon ? » ; « oui » : le produit est créé (rayon et unité vérifiés par `Repas`) puis ajouté ;
- * - « non » : on abandonne, rien n'est écrit ; un autre article : le dialogue est abandonné et la phrase traitée comme un ajout normal
- *   (`AddSpokenItemHandler`) ;
+ * - « non » : on abandonne, rien n'est écrit ; un autre article : le dialogue est abandonné et la phrase traitée comme un ajout
+ *   (`AddSpokenItemHandler`, une seule lecture) ; s'il désigne un ingrédient de l'utilisateur, il corrige la proposition : la phrase
+ *   d'ORIGINE est retenue pour lui aussi (« patates » puis « pomme de terre ») ; s'il est inconnu, le dialogue repart pour lui, rien n'est retenu ;
  * - une réponse incomprise : on la redemande une fois (`SpokenDialogueState::missed`), la deuxième fois de suite dans la même étape on
  *   abandonne poliment (jamais de boucle sans fin).
  *
@@ -54,7 +55,7 @@ readonly class AnswerSpokenDialogueHandler
         $answer = $this->interpreter->interpret($command->request, $state, $this->catalogueFor($state));
 
         return match ($answer->kind) {
-            SpokenAnswerKind::NEW_REQUEST => ($this->addSpokenItem)(new AddSpokenItemCommand($command->userId, $answer->phrase ?? '', sessionIsOpen: true)),
+            SpokenAnswerKind::NEW_REQUEST => ($this->addSpokenItem)(new AddSpokenItemCommand($command->userId, $answer->phrase ?? '', sessionIsOpen: true, rememberAs: $state->phrase)),
             SpokenAnswerKind::PICK_OPTION => $this->pickOption($command, $answer),
             SpokenAnswerKind::START_CREATION => $this->ask($state->askingDepartment()),
             SpokenAnswerKind::PICK_DEPARTMENT => $this->ask($state->withDepartment($answer->option ?? throw new \LogicException('PICK_DEPARTMENT sans rayon.'))),

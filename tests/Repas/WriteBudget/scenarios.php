@@ -752,6 +752,16 @@ return [
 
         return new AnswerSpokenDialogueCommand($owner->getId(), AlexaRequest::fromDecoded(AlexaTestRequest::chooseOption('le premier', '1')->inOpenSession()->toArray()), $state);
     },
+    // L'utilisateur répond aux propositions en nommant un autre ingrédient qu'il a : choix par le classeur (une seule lecture), ajout à la liste
+    // active, puis la phrase d'ORIGINE retenue pour lui (alias, vérification, upsert)
+    'corriger-proposition-alexa' => static function (WriteBudgetTestCase $t): object {
+        $owner = $t->savedUser();
+        $t->savedShoppingList($owner, $t->typicalRecipes($owner));
+        $t->persister->saveIngredient(new IngredientBuilder()->isBread()->withCreator($owner)->build());
+        $state = SpokenDialogueState::choose('des patates', [new DialogueOption('pate', 'pâte')], 'patates');
+
+        return new AnswerSpokenDialogueCommand($owner->getId(), AlexaRequest::fromDecoded(AlexaTestRequest::addItem('du pain')->inOpenSession()->toArray()), $state);
+    },
     // « Dans quel rayon ? » -> « les fruits et légumes » : une seule lecture des rayons du catalogue, aucune écriture
     'rayon-dit-a-alexa' => static function (WriteBudgetTestCase $t): object {
         $owner = $t->savedUser();

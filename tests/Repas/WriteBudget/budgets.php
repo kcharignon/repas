@@ -27,6 +27,7 @@ return [
     'copier-recette-ingredient-personnel' => 20,
     'copier-recette-ingredient-rapproche' => 16,
     'copier-recette-sans-ingredients' => 40,
+    'corriger-proposition-alexa' => 20,
     'creer-conversion' => 4,
     'creer-ingredient' => 10,
     'creer-ingredient-administrateur' => 10,

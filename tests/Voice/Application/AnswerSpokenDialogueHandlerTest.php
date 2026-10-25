@@ -3,6 +3,7 @@
 namespace Repas\Tests\Voice\Application;
 
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Repas\Shared\Application\Dto\ResolvedIngredient;
 use Repas\Shared\Application\Interface\AddedItem;
@@ -127,10 +128,77 @@ class AnswerSpokenDialogueHandlerTest extends TestCase
         // When
         $result = $this->answer(AlexaTestRequest::addItem('du pain'), self::choose(['persil', 'basilic']));
 
-        // Then : ajouté comme n'importe quelle demande, rien n'est retenu pour la phrase abandonnée
+        // Then : ajouté, et la phrase d'origine est retenue pour cet article (il corrige la proposition)
         $this->assertSame([[self::USER, 'pain-u']], $this->shoppingList->added);
-        $this->assertSame([], $this->resolver->remembered);
-        $this->assertEquals(new AddSpokenItemResult("C'est noté : pain. Autre chose ?", keepSessionOpen: true, added: true), $result);
+        $this->assertSame([[self::USER, 'de la ciboulette', 'pain-u']], $this->resolver->remembered);
+        $this->assertEquals(new AddSpokenItemResult("C'est noté : pain. Je m'en souviendrai. Autre chose ?", keepSessionOpen: true, added: true), $result);
+        $this->assertSame([[self::USER, 'du pain']], $this->resolver->asked);
+    }
+
+    #[DataProvider('confidences')]
+    public function testAnotherArticleCorrectsTheProposalWhateverTheConfidence(string $confidence): void
+    {
+        // Given : « patates » -> pâte, pâte brisée, pâte feuilletée ; « non, pomme de terre »
+        $this->resolver->willResolve('de la pomme de terre', new ResolvedIngredient('pomme-de-terre-u', 'pomme de terre', 'fruits et légumes', $confidence));
+        $state = SpokenDialogueState::choose('des patates', [new DialogueOption('pate-u', 'pâte'), new DialogueOption('pate-brisee-u', 'pâte brisée'), new DialogueOption('pate-feuilletee-u', 'pâte feuilletée')], 'patates');
+
+        // When
+        $result = $this->answer(AlexaTestRequest::addItem('de la pomme de terre'), $state);
+
+        // Then : ajouté, "patates" retenu pour pomme de terre (la phrase originale, pas la nouvelle), une seule lecture
+        $this->assertSame([[self::USER, 'pomme-de-terre-u']], $this->shoppingList->added);
+        $this->assertSame([[self::USER, 'des patates', 'pomme-de-terre-u']], $this->resolver->remembered);
+        $this->assertSame([[self::USER, 'de la pomme de terre']], $this->resolver->asked);
+        $this->assertEquals(new AddSpokenItemResult("C'est noté : pomme de terre. Je m'en souviendrai. Autre chose ?", keepSessionOpen: true, added: true), $result);
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function confidences(): iterable
+    {
+        yield 'sûr' => [ResolvedIngredient::SURE];
+        yield 'probable' => [ResolvedIngredient::PROBABLE];
+        yield 'incertain' => [ResolvedIngredient::UNSURE];
+    }
+
+    public function testCorrectingTheProposalOnAFreshListSaysSoAndStillRemembers(): void
+    {
+        // Given
+        $this->resolver->willResolve('du pain', new ResolvedIngredient('pain-u', 'pain', 'boulangerie', ResolvedIngredient::SURE));
+        $this->shoppingList->willReturn(new AddedItem(listCreated: true, previousListSent: true));
+
+        // When
+        $result = $this->answer(AlexaTestRequest::addItem('du pain'), self::choose(['persil']));
+
+        // Then
+        $this->assertSame("J'ai commencé une nouvelle liste avec pain. Ta liste précédente est partie au drive. Autre chose ?", $result->speech);
+        $this->assertSame([[self::USER, 'de la ciboulette', 'pain-u']], $this->resolver->remembered);
+    }
+
+    public function testAFailureOfTheMemoryWhenCorrectingIsNotCaught(): void
+    {
+        // Given
+        $this->resolver->willResolve('du pain', new ResolvedIngredient('pain-u', 'pain', 'boulangerie', ResolvedIngredient::SURE));
+        $this->resolver->willFailToRemember(new class('INGREDIENT_NOT_FOUND', 404) extends DomainException {
+        });
+
+        // Then
+        $this->expectException(DomainException::class);
+        $this->answer(AlexaTestRequest::addItem('du pain'), self::choose(['persil']));
+    }
+
+    public function testNamingOneOfTheProposalsIsStillAPickNotACorrection(): void
+    {
+        // Given : "du persil" existe aussi comme ingrédient sûr, mais la proposition passe avant : aucune lecture de plus
+        $this->resolver->willResolve('du persil', new ResolvedIngredient('autre-u', 'autre', 'x', ResolvedIngredient::SURE));
+
+        // When
+        $this->answer(AlexaTestRequest::addItem('du persil'), self::choose(['persil', 'basilic']));
+
+        // Then
+        $this->assertSame([[self::USER, 'persil-u']], $this->shoppingList->added);
+        $this->assertSame([], $this->resolver->asked);
     }
 
     public function testAnotherUnknownArticleStartsANewDialogue(): void
@@ -138,7 +206,9 @@ class AnswerSpokenDialogueHandlerTest extends TestCase
         // When
         $result = $this->answer(AlexaTestRequest::addItem('de la menthe'), self::choose(['persil', 'basilic']));
 
-        // Then
+        // Then : rien n'est retenu, le dialogue repart pour la NOUVELLE phrase
+        $this->assertSame([], $this->resolver->remembered);
+        $this->assertSame([], $this->shoppingList->added);
         $this->assertSame('Je ne connais pas menthe. Je le crée ?', $result->speech);
         $this->assertSame(['de la menthe', 'menthe', DialogueStep::CHOOSE], [$result->nextState?->phrase, $result->nextState?->name, $result->nextState?->step]);
     }

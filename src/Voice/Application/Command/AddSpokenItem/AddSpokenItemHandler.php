@@ -26,6 +26,10 @@ use Symfony\Component\Messenger\Attribute\AsMessageHandler;
  * Un choix sûr se dit court (« C'est noté : pain. »), un choix probable ou incertain dit aussi le rayon, pour que l'erreur se voie. En séance
  * ouverte la réponse invite à continuer.
  *
+ * Quand l'utilisateur répond à des propositions en nommant autre chose (`AddSpokenItemCommand::rememberAs`), le choix automatique est pris
+ * quelle que soit sa confiance (il l'a dit en entier) et la phrase d'origine est retenue pour cet ingrédient (« C'est noté : pomme de terre.
+ * Je m'en souviendrai. ») ; si cette nouvelle phrase est inconnue elle aussi, rien n'est retenu et le dialogue repart pour elle.
+ *
  * Produit inconnu : le nom à créer est tiré de la phrase (`SpokenIngredientNamer`) ; `SpokenIngredientResolver` a déjà rendu, dans la même lecture, les
  * trois ingrédients les plus proches. Alexa les propose avec l'issue « un nouveau produit » (aucun proche : « Je le crée ? »), la séance reste
  * ouverte même en appel direct, et le dialogue continue dans `AnswerSpokenDialogueHandler` (l'état voyage dans `nextState`). Un nom
@@ -54,6 +58,13 @@ readonly class AddSpokenItemHandler
         }
 
         $added = $this->shoppingList->addItem($command->userId, $ingredient->slug);
+
+        if ($command->rememberAs !== null) {
+            // Corrige une proposition : l'article est ajouté PUIS la phrase d'origine est retenue pour lui (le port vérifie l'ingrédient)
+            $this->ingredientResolver->remember($command->userId, $command->rememberAs, $ingredient->slug);
+
+            return $this->result(VoiceReplies::remembered($ingredient->name, $added->listCreated, $added->previousListSent), $command, added: true);
+        }
 
         return $this->result(
             VoiceReplies::added($ingredient->name, $ingredient->departmentName, $ingredient->confidence === ResolvedIngredient::SURE, $added->listCreated, $added->previousListSent),

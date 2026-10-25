@@ -18,7 +18,8 @@ Décision du propriétaire du 2026-10-25, qui **remplace** le défaut D3 (« ne 
 2. **Mémoire de phrase** : table `spoken_phrase_choice` (migration additive), commande `RememberSpokenPhrase` (alias résolus, ingrédient à l'utilisateur, upsert qui compte `times`), port `SpokenIngredientResolver::remember`, lecture AVANT le classement (`resolve`) par `SpokenPhraseMemory` ; purgée avec le compte, effacée avec l'ingrédient, repointée par la fusion.
 3. **Création guidée** : « Dans quel rayon ? », « Quelle unité ? Par exemple pièce, kilo ou litre. » (une seule pour l'achat et la cuisine), « Je crée X, rayon, unité. C'est bon ? » ; port `SpokenIngredientCreator` (catalogue des rayons et unités, création par `CreateIngredientHandler`, `image: ''`), nom tiré de la phrase par `SpokenIngredientNamer`.
 4. **Dialogue d'état** : `SpokenDialogueState` (étapes `choose`, `department`, `unit`, `confirm`) dans `session.attributes.dialogue` / `sessionAttributes.dialogue`, lu comme une entrée non fiable ; `SpokenAnswerInterpreter` (toute la matrice état × intention) ; commandes `AddSpokenItem` (étendue) et `AnswerSpokenDialogue` ; tous les textes dans `VoiceReplies`.
-5. **Skill** : six intentions de plus (`ChooseOptionIntent`, `CreateItemIntent`, `AnswerDepartmentIntent`, `AnswerUnitIntent`, `AMAZON.YesIntent`, `AMAZON.NoIntent`), types `DEPARTMENT`, `UNIT`, `OPTION_RANK`, forme réduite au créneau (`{item}`, `{department}`…), modèle généré par `docs/voice/skill/generate-model.mjs` (`make voice-model`, `make voice-model-check`).
+5. **Corriger une proposition** (ajouté le 2026-10-25 après l'essai sur le vrai catalogue : « patates » → pâte, pâte brisée, pâte feuilletée → « pomme de terre ») : à l'étape `choose`, un autre ingrédient de l'utilisateur ajoute cet article ET retient la phrase d'ORIGINE pour lui (`AddSpokenItemCommand::rememberAs`, « C'est noté : pomme de terre. Je m'en souviendrai. »), quelle que soit la confiance du choix ; inconnu, il ouvre un nouveau dialogue sans rien retenir ; une seule lecture, budget `corriger-proposition-alexa` (20 requêtes).
+6. **Skill** : six intentions de plus (`ChooseOptionIntent`, `CreateItemIntent`, `AnswerDepartmentIntent`, `AnswerUnitIntent`, `AMAZON.YesIntent`, `AMAZON.NoIntent`), types `DEPARTMENT`, `UNIT`, `OPTION_RANK`, forme réduite au créneau (`{item}`, `{department}`…), modèle généré par `docs/voice/skill/generate-model.mjs` (`make voice-model`, `make voice-model-check`).
 
 ## Décisions prises à l'écriture
 
@@ -34,6 +35,7 @@ Décision du propriétaire du 2026-10-25, qui **remplace** le défaut D3 (« ne 
 ## Critères d'acceptation
 
 - « ajoute du sirop de menthe » (qui n'existe pas) → propose *sirop fruit rouge* ; « oui » → ajouté, « Je m'en souviendrai » ; plus tard « du sirop de menthe » donne directement *sirop fruit rouge*.
+- « ajoute des patates » (absentes) → propose *pâte*, *pâte brisée*, *pâte feuilletée* ; « pomme de terre » → ajoutée, « Je m'en souviendrai » ; plus tard « des patates » donne directement *pomme de terre*. Une réponse inconnue (« xyz ») rouvre la question pour « xyz » et ne retient rien.
 - « ajoute de la ciboulette » (rien de proche) → « Je le crée ? » → rayon → unité → confirmation → l'ingrédient existe pour l'utilisateur, avec une seule unité, et il est dans sa liste ; « non » à la confirmation n'écrit rien.
 - Un état forgé (slug d'un ingrédient d'un autre) n'ajoute rien, ne mémorise rien, et la réponse reste polie.
 - `make test` et `make quality` verts.
