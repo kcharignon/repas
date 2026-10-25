@@ -51,7 +51,7 @@ class SpokenIngredientResolverAdapterTest extends TestCase
         ]);
 
         // When
-        $resolved = $adapter->resolve('user-id', 'des tomates');
+        $resolved = $adapter->resolveOrSuggest('user-id', 'des tomates')->ingredient;
 
         // Then
         $this->assertEquals(new ResolvedIngredient('tomate', 'tomate', 'fruits et légumes', 'sure'), $resolved);
@@ -67,7 +67,7 @@ class SpokenIngredientResolverAdapterTest extends TestCase
         ]);
 
         // When
-        $resolved = $adapter->resolve('user-id', 'tomate');
+        $resolved = $adapter->resolveOrSuggest('user-id', 'tomate')->ingredient;
 
         // Then
         $this->assertSame('unsure', $resolved?->confidence);
@@ -79,7 +79,7 @@ class SpokenIngredientResolverAdapterTest extends TestCase
         $adapter = $this->adapter([], ['pain' => 'pain']);
 
         // When
-        $resolved = $adapter->resolve('user-id', 'du pain');
+        $resolved = $adapter->resolveOrSuggest('user-id', 'du pain')->ingredient;
 
         // Then
         $this->assertNull($resolved);
@@ -93,7 +93,7 @@ class SpokenIngredientResolverAdapterTest extends TestCase
         $adapter = $this->adapter([new SpokenCandidate('pain', 'pain', 'pain', 'boulangerie', 9)]);
 
         // When
-        $resolved = $adapter->resolve('user-id', 'xyz');
+        $resolved = $adapter->resolveOrSuggest('user-id', 'xyz')->ingredient;
 
         // Then
         $this->assertNull($resolved);
@@ -108,7 +108,7 @@ class SpokenIngredientResolverAdapterTest extends TestCase
         );
 
         // When
-        $resolved = $adapter->resolve('user-id', 'de la ciboulette');
+        $resolved = $adapter->resolveOrSuggest('user-id', 'de la ciboulette')->ingredient;
 
         // Then
         $this->assertEquals(new ResolvedIngredient('persil-u', 'persil', 'fruits et légumes', 'sure'), $resolved);
@@ -121,7 +121,7 @@ class SpokenIngredientResolverAdapterTest extends TestCase
         $adapter = $this->adapter([new SpokenCandidate('tomate-u', 'tomate', 'tomate', 'fruits et légumes', 0)], ['tomate' => 'supprime-u']);
 
         // When
-        $resolved = $adapter->resolve('user-id', 'tomate');
+        $resolved = $adapter->resolveOrSuggest('user-id', 'tomate')->ingredient;
 
         // Then
         $this->assertSame('tomate-u', $resolved?->slug);
@@ -133,7 +133,7 @@ class SpokenIngredientResolverAdapterTest extends TestCase
         $adapter = $this->adapter([new SpokenCandidate('tomate-u', 'tomate', 'tomate', 'fruits et légumes', 0)]);
 
         // When
-        $resolved = $adapter->resolve('user-id', 'de la');
+        $resolved = $adapter->resolveOrSuggest('user-id', 'de la')->ingredient;
 
         // Then
         $this->assertNull($resolved);
@@ -149,7 +149,7 @@ class SpokenIngredientResolverAdapterTest extends TestCase
         ]);
 
         // When
-        $suggestions = $adapter->suggest('user-id', 'sirop de menthe');
+        $suggestions = $adapter->resolveOrSuggest('user-id', 'sirop de menthe')->suggestions;
 
         // Then
         $this->assertEquals([new IngredientSuggestion('sirop-u', 'Sirop fruit rouge', 'boisson')], $suggestions);
@@ -162,8 +162,34 @@ class SpokenIngredientResolverAdapterTest extends TestCase
         $adapter = $this->adapter([new SpokenCandidate('melon-u', 'melon', 'Melon', 'fruits', 0)]);
 
         // Then
-        $this->assertSame([], $adapter->suggest('user-id', 'zébulon'));
-        $this->assertSame([], $this->adapter([])->suggest('user-id', 'zébulon'));
+        $this->assertSame([], $adapter->resolveOrSuggest('user-id', 'zébulon')->suggestions);
+        $this->assertSame([], $this->adapter([])->resolveOrSuggest('user-id', 'zébulon')->suggestions);
+    }
+
+    public function testTheCandidatesAreReadOnlyOnceToChooseOrToPropose(): void
+    {
+        // Given : rien ne se choisit tout seul, des propositions sont faites
+        $adapter = $this->adapter([new SpokenCandidate('sirop-u', 'sirop-fruit-rouge', 'Sirop fruit rouge', 'boisson', 0)]);
+
+        // When
+        $resolution = $adapter->resolveOrSuggest('user-id', 'sirop de menthe');
+
+        // Then : une seule lecture des ingrédients, une seule de la mémoire
+        $this->assertNull($resolution->ingredient);
+        $this->assertCount(1, $resolution->suggestions);
+        $this->assertSame(['user-id'], $this->candidatesLoader->calls);
+        $this->assertSame([['user-id', 'sirop-menthe']], $this->memory->calls);
+    }
+
+    public function testAProductThatDoesNotExistIsNotGuessedFromAResemblingNameButAFaultIsForgiven(): void
+    {
+        // Given : « ciboulette » ressemble à *coquilette* (0,907), qui n'est pas le même produit
+        $without = $this->adapter([new SpokenCandidate('coquilette-u', 'coquilette', 'Coquilette', 'épicerie', 9)]);
+        $with = $this->adapter([new SpokenCandidate('ciboulette-u', 'ciboulette', 'Ciboulette', 'fruits et légumes', 0), new SpokenCandidate('coquilette-u', 'coquilette', 'Coquilette', 'épicerie', 9)]);
+
+        // Then : on demande ; avec *ciboulette* présente, « ciboulete » est une faute de frappe
+        $this->assertEquals(\Repas\Shared\Application\Dto\SpokenResolution::unknown(), $without->resolveOrSuggest('user-id', 'ciboulette'));
+        $this->assertSame('ciboulette-u', $with->resolveOrSuggest('user-id', 'ciboulete')->ingredient?->slug);
     }
 
     public function testRememberingDispatchesTheCommandWithThePhraseAsHeard(): void

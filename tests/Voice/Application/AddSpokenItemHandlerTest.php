@@ -108,7 +108,6 @@ class AddSpokenItemHandlerTest extends TestCase
 
         // Then : rien n'est écrit, le port de la liste n'est même pas appelé ; la séance reste ouverte même en appel direct
         $this->assertSame([['user-1', 'de la ciboulette']], $this->resolver->asked);
-        $this->assertSame([['user-1', 'de la ciboulette']], $this->resolver->suggested);
         $this->assertSame([], $this->shoppingList->added);
         $state = SpokenDialogueState::choose('de la ciboulette', [], 'ciboulette');
         $this->assertEquals(new AddSpokenItemResult('Je ne connais pas ciboulette. Je le crée ?', keepSessionOpen: true, added: false, nextState: $state, reprompt: 'Je ne connais pas ciboulette. Je le crée ?'), $result);
@@ -164,8 +163,8 @@ class AddSpokenItemHandlerTest extends TestCase
         // When
         $result = ($this->handler)(new AddSpokenItemCommand('user-1', 'du pain', sessionIsOpen: false));
 
-        // Then : ajouté, aucune proposition n'est même demandée
-        $this->assertSame([], $this->resolver->suggested);
+        // Then : ajouté, les propositions du port sont ignorées
+        $this->assertSame([['user-1', 'du pain']], $this->resolver->asked);
         $this->assertNull($result->nextState);
     }
 
@@ -175,11 +174,10 @@ class AddSpokenItemHandlerTest extends TestCase
         $digits = ($this->handler)(new AddSpokenItemCommand('user-1', '12', sessionIsOpen: false));
         $tooLong = ($this->handler)(new AddSpokenItemCommand('user-1', str_repeat('a', 70), sessionIsOpen: true));
 
-        // Then : « Je n'ai pas compris. Que veux-tu ajouter ? », la séance reste ouverte, aucun état, rien de demandé à Repas
+        // Then : « Je n'ai pas compris. Que veux-tu ajouter ? », la séance reste ouverte, aucun état, rien n'est écrit
         foreach ([$digits, $tooLong] as $result) {
             $this->assertEquals(new AddSpokenItemResult("Je n'ai pas compris. Que veux-tu ajouter ?", keepSessionOpen: true, added: false), $result);
         }
-        $this->assertSame([], $this->resolver->suggested);
         $this->assertSame([], $this->shoppingList->added);
     }
 

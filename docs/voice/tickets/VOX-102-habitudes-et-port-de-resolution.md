@@ -23,7 +23,7 @@ Le ranker (VOX-101) a besoin, pour un utilisateur, de ses ingrédients et de leu
 
 - Sur une base réelle (`DatabaseTestCase`) : l'utilisateur A ne reçoit **jamais** un ingrédient de B ; `uses12m` compte lignes de listes et de recettes, ignore ce qui a plus de douze mois ; un ingrédient jamais utilisé a `uses12m = 0`.
 - Nombre de requêtes constant (test avec 5 puis 50 ingrédients).
-- `resolve` d'un compte sans ingrédient → `null`.
+- `resolve` d'un compte sans ingrédient → `null` (depuis VOX-303 le port n'a plus que `resolveOrSuggest`, qui rend le choix ou les propositions en une lecture).
 
 ## Tests exigés
 

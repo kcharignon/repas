@@ -414,7 +414,7 @@ class AlexaWebhookApiFlowTest extends DatabaseTestCase
 
         // When : « les fruits et légumes » -> l'unité
         $this->converse(AlexaTestRequest::answerDepartment('les fruits et légumes', 'cereale'), $this->attributes());
-        $this->assertSame('Quelle unité ?', $this->speech());
+        $this->assertSame('Quelle unité ? Par exemple pièce, kilo ou litre.', $this->speech());
 
         // When : « des pièces » -> la confirmation
         $this->converse(AlexaTestRequest::answerUnit('des pièces', 'unite'), $this->attributes());

@@ -89,7 +89,7 @@ class VoiceRepliesTest extends TestCase
     public function testTheSpokenAnswersOfTheDialogueOfAnUnknownProductAreTheOnesTheOwnerGives(): void
     {
         $this->assertSame('Dans quel rayon ?', $this->said('ASK_DEPARTMENT'));
-        $this->assertSame('Quelle unité ?', $this->said('ASK_UNIT'));
+        $this->assertSame('Quelle unité ? Par exemple pièce, kilo ou litre.', $this->said('ASK_UNIT'));
         $this->assertSame("D'accord, je ne crée rien.", $this->said('DECLINED'));
         $this->assertSame("C'est noté : persil. Je m'en souviendrai.", VoiceReplies::remembered('persil', false, false));
         $this->assertSame('Je ne connais pas ciboulette. Tu veux dire persil, basilic ou coriandre ? Ou un nouveau produit ?', VoiceReplies::unknown('ciboulette', ['persil', 'basilic', 'coriandre']));
@@ -111,7 +111,7 @@ class VoiceRepliesTest extends TestCase
         $this->assertSame('Tu veux dire persil ou basilic ? Ou un nouveau produit ?', VoiceReplies::question($choose));
         $this->assertSame('Je ne connais pas ciboulette. Je le crée ?', VoiceReplies::question($none));
         $this->assertSame('Dans quel rayon ?', VoiceReplies::question($department));
-        $this->assertSame('Quelle unité ?', VoiceReplies::question($unit));
+        $this->assertSame('Quelle unité ? Par exemple pièce, kilo ou litre.', VoiceReplies::question($unit));
         $this->assertSame("Je crée ciboulette, fruit et légume, unité. C'est bon ?", VoiceReplies::question($confirm), '« & » se dit « et », les majuscules du catalogue tombent');
         $this->assertSame("Je n'ai pas compris. Dans quel rayon ?", VoiceReplies::notUnderstood($department));
         $this->assertSame('Lequel ? persil ou basilic. Ou un nouveau produit ?', VoiceReplies::whichAgain($choose));

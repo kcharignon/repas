@@ -47,7 +47,7 @@ final class VoiceReplies
     /** Le produit dit est inconnu et rien ne lui ressemble. */
     public const string ASK_CREATE = 'Je ne connais pas %s. Je le crée ?';
     public const string ASK_DEPARTMENT = 'Dans quel rayon ?';
-    public const string ASK_UNIT = 'Quelle unité ?';
+    public const string ASK_UNIT = 'Quelle unité ? Par exemple pièce, kilo ou litre.';
     public const string ASK_CONFIRM = "Je crée %s, %s, %s. C'est bon ?";
     public const string NOT_UNDERSTOOD = "Je n'ai pas compris.";
     /** Deux réponses incomprises de suite dans la même étape. */

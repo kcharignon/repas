@@ -26,8 +26,8 @@ use Symfony\Component\Messenger\Attribute\AsMessageHandler;
  * Un choix sûr se dit court (« C'est noté : pain. »), un choix probable ou incertain dit aussi le rayon, pour que l'erreur se voie. En séance
  * ouverte la réponse invite à continuer.
  *
- * Produit inconnu : le nom à créer est tiré de la phrase (`SpokenIngredientNamer`) ; `SpokenIngredientResolver::suggest` donne les trois
- * ingrédients les plus proches. Alexa les propose avec l'issue « un nouveau produit » (aucun proche : « Je le crée ? »), la séance reste
+ * Produit inconnu : le nom à créer est tiré de la phrase (`SpokenIngredientNamer`) ; `SpokenIngredientResolver` a déjà rendu, dans la même lecture, les
+ * trois ingrédients les plus proches. Alexa les propose avec l'issue « un nouveau produit » (aucun proche : « Je le crée ? »), la séance reste
  * ouverte même en appel direct, et le dialogue continue dans `AnswerSpokenDialogueHandler` (l'état voyage dans `nextState`). Un nom
  * impossible (sans lettre, trop long) : on redemande.
  *
@@ -47,9 +47,10 @@ readonly class AddSpokenItemHandler
 
     public function __invoke(AddSpokenItemCommand $command): AddSpokenItemResult
     {
-        $ingredient = $this->ingredientResolver->resolve($command->userId, $command->phrase);
+        $resolution = $this->ingredientResolver->resolveOrSuggest($command->userId, $command->phrase);
+        $ingredient = $resolution->ingredient;
         if ($ingredient === null) {
-            return $this->unknown($command);
+            return $this->unknown($command, $resolution->suggestions);
         }
 
         $added = $this->shoppingList->addItem($command->userId, $ingredient->slug);
@@ -64,7 +65,10 @@ readonly class AddSpokenItemHandler
     /**
      * « De quoi tu parles ? » : rien d'écrit, une question, la séance reste ouverte.
      */
-    private function unknown(AddSpokenItemCommand $command): AddSpokenItemResult
+    /**
+     * @param list<IngredientSuggestion> $suggestions
+     */
+    private function unknown(AddSpokenItemCommand $command, array $suggestions): AddSpokenItemResult
     {
         $name = $this->namer->nameFrom($command->phrase);
         if ($name === null) {
@@ -73,7 +77,7 @@ readonly class AddSpokenItemHandler
 
         $options = array_map(
             static fn(IngredientSuggestion $suggestion): DialogueOption => new DialogueOption($suggestion->slug, $suggestion->name),
-            $this->ingredientResolver->suggest($command->userId, $command->phrase),
+            $suggestions,
         );
         $state = SpokenDialogueState::choose($command->phrase, $options, $name);
 

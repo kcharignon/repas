@@ -45,8 +45,8 @@ class SpokenIngredientResolverFlowTest extends DatabaseTestCase
         $this->persister->saveIngredient(new IngredientBuilder()->isMilk()->withCreator($other, true)->build());
 
         // When
-        $found = $this->resolver->resolve($user->getId(), 'du pain');
-        $notFound = $this->resolver->resolve($user->getId(), 'du lait');
+        $found = $this->resolver->resolveOrSuggest($user->getId(), 'du pain')->ingredient;
+        $notFound = $this->resolver->resolveOrSuggest($user->getId(), 'du lait')->ingredient;
 
         // Then
         $this->assertSame([$bread->getSlug(), 'sure'], [$found?->slug, $found?->confidence]);
@@ -59,7 +59,7 @@ class SpokenIngredientResolverFlowTest extends DatabaseTestCase
         $user = $this->savedUser();
         $bread = new IngredientBuilder()->isBread()->withCreator($user, true)->build();
         $this->persister->saveIngredient($bread);
-        $this->assertNull($this->resolver->resolve($user->getId(), 'de la ciboulette'));
+        $this->assertNull($this->resolver->resolveOrSuggest($user->getId(), 'de la ciboulette')->ingredient);
 
         // When
         $this->resolver->remember($user->getId(), 'de la ciboulette', $bread->getSlug());
@@ -67,7 +67,7 @@ class SpokenIngredientResolverFlowTest extends DatabaseTestCase
 
         // Then : la même phrase, et sa variante au pluriel sans article, donnent le pain, sûr
         foreach (['de la ciboulette', 'ciboulettes', 'la ciboulette'] as $phrase) {
-            $resolved = $this->resolver->resolve($user->getId(), $phrase);
+            $resolved = $this->resolver->resolveOrSuggest($user->getId(), $phrase)->ingredient;
             $this->assertSame([$bread->getSlug(), 'sure'], [$resolved?->slug, $resolved?->confidence], $phrase);
         }
         $this->assertSame(1, (int) $this->entityManager->getConnection()->fetchOne('SELECT COUNT(*) FROM spoken_phrase_choice'));
@@ -84,7 +84,7 @@ class SpokenIngredientResolverFlowTest extends DatabaseTestCase
         $this->resolver->remember($user->getId(), 'ciboulette', $bread->getSlug());
 
         // Then
-        $this->assertNull($this->resolver->resolve($other->getId(), 'ciboulette'));
+        $this->assertNull($this->resolver->resolveOrSuggest($other->getId(), 'ciboulette')->ingredient);
     }
 
     public function testTheIngredientOfAnotherUserCannotBeRememberedAndNothingIsWritten(): void
@@ -113,7 +113,7 @@ class SpokenIngredientResolverFlowTest extends DatabaseTestCase
         $this->entityManager->getConnection()->insert('spoken_phrase_choice', ['user_id' => $user->getId(), 'phrase' => 'pain', 'ingredient_slug' => 'disparu', 'times' => 1, 'updated_at' => '2026-10-25 10:00:00']);
 
         // When
-        $resolved = $this->resolver->resolve($user->getId(), 'du pain');
+        $resolved = $this->resolver->resolveOrSuggest($user->getId(), 'du pain')->ingredient;
 
         // Then
         $this->assertSame($bread->getSlug(), $resolved?->slug);
@@ -129,10 +129,10 @@ class SpokenIngredientResolverFlowTest extends DatabaseTestCase
         $this->persister->saveIngredient(new IngredientBuilder()->withName('Sirop de menthe glaciale')->withCreator($other, true)->build());
 
         // When
-        $suggestions = $this->resolver->suggest($user->getId(), 'sirop de menthe');
+        $suggestions = $this->resolver->resolveOrSuggest($user->getId(), 'sirop de menthe')->suggestions;
 
         // Then
         $this->assertSame([$syrup->getSlug()], array_map(static fn($suggestion): string => $suggestion->slug, $suggestions));
-        $this->assertSame([], $this->resolver->suggest($user->getId(), 'zébulon'));
+        $this->assertSame([], $this->resolver->resolveOrSuggest($user->getId(), 'zébulon')->suggestions);
     }
 }

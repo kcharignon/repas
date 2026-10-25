@@ -8,7 +8,7 @@
 return [
     'activer-compte-amorcage' => 32,
     'ajouter-article-dit-a-alexa' => 17,
-    'ajouter-article-dit-a-alexa-introuvable' => 7,
+    'ajouter-article-dit-a-alexa-introuvable' => 4,
     'ajouter-article-dit-a-alexa-sans-liste' => 23,
     'ajouter-ingredient-liste' => 14,
     'ajouter-ingredient-par-la-voix' => 14,

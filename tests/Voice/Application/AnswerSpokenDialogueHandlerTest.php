@@ -157,7 +157,7 @@ class AnswerSpokenDialogueHandlerTest extends TestCase
 
         // Then : une question à chaque étape, la séance reste ouverte, le dialogue avance d'un état à l'autre
         $this->assertSame(['Dans quel rayon ?', DialogueStep::DEPARTMENT], [$department->speech, $department->nextState?->step]);
-        $this->assertSame(['Quelle unité ?', DialogueStep::UNIT], [$unit->speech, $unit->nextState?->step]);
+        $this->assertSame(['Quelle unité ? Par exemple pièce, kilo ou litre.', DialogueStep::UNIT], [$unit->speech, $unit->nextState?->step]);
         $this->assertSame(["Je crée ciboulette, fruit et légume, unité. C'est bon ?", DialogueStep::CONFIRM], [$confirm->speech, $confirm->nextState?->step]);
         $this->assertSame(["Je crée ciboulette, fruit et légume, unité. C'est bon ?"], [$confirm->reprompt]);
         foreach ([$department, $unit, $confirm] as $step) {
@@ -192,7 +192,7 @@ class AnswerSpokenDialogueHandlerTest extends TestCase
         $result = $this->answer(AlexaTestRequest::answerDepartment('produits ménagers', null), $state);
 
         // Then
-        $this->assertSame('Quelle unité ?', $result->speech);
+        $this->assertSame('Quelle unité ? Par exemple pièce, kilo ou litre.', $result->speech);
         $this->assertSame('produit-menager', $result->nextState?->department?->slug);
     }
 
@@ -271,7 +271,7 @@ class AnswerSpokenDialogueHandlerTest extends TestCase
 
         // Then : la première incompréhension de l'étape suivante ne met pas fin au dialogue
         $this->assertSame(0, $unit->nextState?->misses);
-        $this->assertSame(["Je n'ai pas compris. Quelle unité ?", 1], [$missedUnit->speech, $missedUnit->nextState?->misses]);
+        $this->assertSame(["Je n'ai pas compris. Quelle unité ? Par exemple pièce, kilo ou litre.", 1], [$missedUnit->speech, $missedUnit->nextState?->misses]);
     }
 
     public function testYesWithSeveralProposalsAsksWhichOneAndCountsAsAMiss(): void

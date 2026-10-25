@@ -5,6 +5,7 @@ namespace Repas\Tests\Helper;
 
 use Repas\Shared\Application\Dto\IngredientSuggestion;
 use Repas\Shared\Application\Dto\ResolvedIngredient;
+use Repas\Shared\Application\Dto\SpokenResolution;
 use Repas\Shared\Application\Interface\SpokenIngredientResolver;
 use Throwable;
 
@@ -22,11 +23,8 @@ final class SpokenIngredientResolverInMemory implements SpokenIngredientResolver
 
     private ?Throwable $rememberFailure = null;
 
-    /** @var list<array{string, string}> les appels à `resolve` `[userId, phrase]`, dans l'ordre */
+    /** @var list<array{string, string}> les appels à `resolveOrSuggest` `[userId, phrase]`, dans l'ordre */
     public array $asked = [];
-
-    /** @var list<array{string, string}> les appels à `suggest` `[userId, phrase]`, dans l'ordre */
-    public array $suggested = [];
 
     /** @var list<array{string, string, string}> les appels à `remember` `[userId, phrase, slug]`, dans l'ordre */
     public array $remembered = [];
@@ -55,18 +53,11 @@ final class SpokenIngredientResolverInMemory implements SpokenIngredientResolver
         return $this;
     }
 
-    public function resolve(string $userId, string $phrase): ?ResolvedIngredient
+    public function resolveOrSuggest(string $userId, string $phrase): SpokenResolution
     {
         $this->asked[] = [$userId, $phrase];
 
-        return $this->answers[$phrase] ?? null;
-    }
-
-    public function suggest(string $userId, string $phrase): array
-    {
-        $this->suggested[] = [$userId, $phrase];
-
-        return $this->suggestions[$phrase] ?? [];
+        return isset($this->answers[$phrase]) ? SpokenResolution::found($this->answers[$phrase]) : SpokenResolution::unknown($this->suggestions[$phrase] ?? []);
     }
 
     public function remember(string $userId, string $phrase, string $ingredientSlug): void
