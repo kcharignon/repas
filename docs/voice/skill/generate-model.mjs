@@ -108,6 +108,7 @@ const UNIT_SYNONYMS = {
   pot: ['pots'],
   gousse: ['gousses'],
   flacon: ['flacons'],
+  botte: ['bottes'],
 };
 
 /** Un rang parlé, de 1 à 3 : l'identifiant est le rang. Les articles sont dans les phrases d'exemple, pas dans les valeurs. */

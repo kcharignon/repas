@@ -2110,6 +2110,15 @@
                   "flacons"
                 ]
               }
+            },
+            {
+              "id": "botte",
+              "name": {
+                "value": "botte",
+                "synonyms": [
+                  "bottes"
+                ]
+              }
             }
           ]
         },
