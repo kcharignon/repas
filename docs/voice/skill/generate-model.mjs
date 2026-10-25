@@ -26,7 +26,7 @@ const modelPath = join(root, 'docs', 'voice', 'skill', 'interaction-model.fr-FR.
 /** Les formes réduites à un créneau seul (« {item} », « {department} »…) : à retirer si la console les refuse (`--no-bare`). */
 const BARE_FORMS = !process.argv.includes('--no-bare');
 
-const INVOCATION_NAME = 'mes courses';
+const INVOCATION_NAME = 'jarvis';
 
 // ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
 // Ingrédients : les noms du catalogue de base, écrits comme on les dit
