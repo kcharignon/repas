@@ -22,6 +22,8 @@ use Repas\Repas\Application\Command\CreateRecipe\CreateRecipeHandler;
 use Repas\Repas\Application\Command\CreateRecipe\CreateRecipeRowSubCommand;
 use Repas\Repas\Application\Command\MergeIngredients\MergeIngredientsCommand;
 use Repas\Repas\Application\Command\MergeIngredients\MergeIngredientsHandler;
+use Repas\Repas\Application\Command\RememberSpokenPhrase\RememberSpokenPhraseCommand;
+use Repas\Repas\Application\Command\RememberSpokenPhrase\RememberSpokenPhraseHandler;
 use Repas\Repas\Application\Command\RemoveIngredientToShoppingList\RemoveIngredientToShoppingListCommand;
 use Repas\Repas\Application\Command\RemoveIngredientToShoppingList\RemoveIngredientToShoppingListHandler;
 use Repas\Repas\Application\Command\UpdateConversion\UpdateConversionCommand;
@@ -62,6 +64,7 @@ class IngredientSlugWritesAreResolvedTest extends TestCase
         UpdateRecipeRowSubCommand::class => UpdateRecipeHandler::class,
         AddIngredientToShoppingListCommand::class => AddIngredientToShoppingListHandler::class,
         AddSpokenIngredientCommand::class => AddSpokenIngredientHandler::class,
+        RememberSpokenPhraseCommand::class => RememberSpokenPhraseHandler::class,
         RemoveIngredientToShoppingListCommand::class => RemoveIngredientToShoppingListHandler::class,
         ChoiceIntent::class => SaveProductChoicesHandler::class,
         ReplaceIngredientPreferenceCommand::class => ReplaceIngredientPreferenceHandler::class,

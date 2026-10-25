@@ -9,10 +9,11 @@ use Repas\Repas\Domain\Interface\IngredientDistinctRepository;
 use Repas\Repas\Domain\Interface\IngredientRepository;
 use Repas\Repas\Domain\Interface\RecipeRepository;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
+use Repas\Repas\Domain\Interface\SpokenPhraseChoiceRepository;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 /**
- * Supprime les listes de courses, les recettes, les ingrédients personnalisés (copies d'adoption comprises), les alias d'ingrédients et les « Pas le même » d'un compte supprimé, comme s'il n'avait
+ * Supprime les listes de courses, les recettes, les ingrédients personnalisés (copies d'adoption comprises), les alias d'ingrédients, les « Pas le même » et la mémoire de phrase de la commande vocale d'un compte supprimé, comme s'il n'avait
  * jamais existé (ADR 0021). Les suppressions se font en masse, sans passer par `RemoveRecipe` ni `RemoveIngredient` : ces
  * cas d'usage refusent de supprimer ce qu'une liste utilise, et leurs événements mettraient à jour les statistiques d'un
  * compte qui n'existe plus.
@@ -27,6 +28,7 @@ readonly class PurgeUserDataHandler
         private IngredientRepository $ingredientRepository,
         private IngredientAliasRepository $aliasRepository,
         private IngredientDistinctRepository $distinctRepository,
+        private SpokenPhraseChoiceRepository $spokenPhraseRepository,
     ) {
     }
 
@@ -47,5 +49,7 @@ readonly class PurgeUserDataHandler
         $this->aliasRepository->deleteByUser($command->userId);
         // Ses « Pas le même » sont une préférence privée : ils partent avec lui
         $this->distinctRepository->deleteByUser($command->userId);
+        // Ce qu'il avait appris à Alexa (mémoire de phrase) aussi
+        $this->spokenPhraseRepository->deleteByUser($command->userId);
     }
 }

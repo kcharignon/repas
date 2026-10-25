@@ -4,9 +4,11 @@ namespace Repas\Voice\Domain\Model;
 
 
 /**
- * Ce que le webhook retient d'une requête d'Alexa DÉJÀ VÉRIFIÉE (ADR 0029, `AlexaRequestVerifier`) : son type, l'intention et la phrase
- * dite, la langue, si c'est la première requête de la séance, le jeton d'accès de la liaison de compte et l'identifiant d'utilisateur
- * Alexa. Rien d'autre : le reste du corps n'est jamais lu, gardé, ni journalisé (il contient la voix transcrite).
+ * Ce que le webhook retient d'une requête d'Alexa DÉJÀ VÉRIFIÉE (ADR 0029, `AlexaRequestVerifier`) : son type, l'intention et ses
+ * créneaux (`item`, `rank`, `department`, `unit` : le texte dit et l'identifiant de la valeur rapprochée), l'état du dialogue de la séance
+ * (`session.attributes.dialogue`, décision 11), la langue, si c'est la première requête de la séance, le jeton d'accès de la liaison de
+ * compte et l'identifiant d'utilisateur Alexa. Rien d'autre : le reste du corps n'est jamais lu, gardé, ni journalisé (il contient la
+ * voix transcrite).
  *
  * La lecture est TOLÉRANTE : un champ absent ou d'une forme inattendue donne `null` (ou le défaut le plus prudent), jamais une exception,
  * pour qu'une requête authentique mais étrange reçoive une réponse vocale polie plutôt qu'une erreur.
@@ -33,6 +35,10 @@ final readonly class AlexaRequest
         public string $type,
         public ?string $intentName,
         public ?string $phrase,
+        public ?SlotValue $rank,
+        public ?SlotValue $department,
+        public ?SlotValue $unit,
+        public ?SpokenDialogueState $dialogueState,
         public ?string $locale,
         public bool $isFirstOfSession,
         public ?string $accessToken,
@@ -51,6 +57,10 @@ final readonly class AlexaRequest
             type: $type ?? '',
             intentName: $isIntent ? self::stringAt($data, ['request', 'intent', 'name']) : null,
             phrase: $isIntent ? self::cleanPhrase(self::stringAt($data, ['request', 'intent', 'slots', 'item', 'value'])) : null,
+            rank: $isIntent ? SlotValue::fromDecoded(self::valueAt($data, ['request', 'intent', 'slots', 'rank'])) : null,
+            department: $isIntent ? SlotValue::fromDecoded(self::valueAt($data, ['request', 'intent', 'slots', 'department'])) : null,
+            unit: $isIntent ? SlotValue::fromDecoded(self::valueAt($data, ['request', 'intent', 'slots', 'unit'])) : null,
+            dialogueState: $isIntent ? SpokenDialogueState::fromArray(self::valueAt($data, ['session', 'attributes', SpokenDialogueState::ATTRIBUTE])) : null,
             locale: self::stringAt($data, ['request', 'locale']),
             // Une séance déjà ouverte le dit expressément (`false`) ; absent ou autre chose : appel direct, la séance sera fermée
             isFirstOfSession: self::valueAt($data, ['session', 'new']) !== false,
@@ -88,22 +98,25 @@ final readonly class AlexaRequest
     }
 
     /**
+     * Tout ce qu'Alexa a entendu dans les créneaux de l'intention, sans doublon : de quoi rapprocher une réponse brève d'une proposition quelle
+     * que soit l'intention qu'Alexa a choisie.
+     *
+     * @return list<string>
+     */
+    public function heardTexts(): array
+    {
+        $texts = array_filter([$this->phrase, $this->department?->text, $this->unit?->text, $this->rank?->text], static fn(?string $text): bool => $text !== null);
+
+        return array_values(array_unique($texts));
+    }
+
+    /**
      * La phrase du créneau `item` : espaces réduits, caractères de contrôle retirés. `null` si elle manque, est vide, ne contient aucune
      * lettre ni chiffre (Alexa écrit « ? » quand elle n'a rien compris) ou dépasse `MAX_PHRASE_LENGTH`.
      */
     private static function cleanPhrase(?string $value): ?string
     {
-        if ($value === null) {
-            return null;
-        }
-
-        $phrase = preg_replace(['/\p{C}+/u', '/\s+/u'], ' ', $value);
-        $phrase = $phrase === null ? '' : trim($phrase);
-        if ($phrase === '' || mb_strlen($phrase) > self::MAX_PHRASE_LENGTH || preg_match('/[\p{L}\p{N}]/u', $phrase) !== 1) {
-            return null;
-        }
-
-        return $phrase;
+        return SlotValue::cleanText($value);
     }
 
     private static function boundedString(?string $value, int $maxLength): ?string

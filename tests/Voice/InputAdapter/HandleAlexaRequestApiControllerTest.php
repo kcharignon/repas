@@ -15,7 +15,10 @@ use Repas\Tests\Helper\MockCommandBus;
 use Repas\Tests\Helper\QueryBusWebTestCase;
 use Repas\Voice\Application\Command\AddSpokenItem\AddSpokenItemCommand;
 use Repas\Voice\Application\Command\AddSpokenItem\AddSpokenItemResult;
+use Repas\Voice\Application\Command\AnswerSpokenDialogue\AnswerSpokenDialogueCommand;
 use Repas\Voice\Application\Command\RecordVoiceLinkUse\RecordVoiceLinkUseCommand;
+use Repas\Voice\Domain\Model\DialogueOption;
+use Repas\Voice\Domain\Model\SpokenDialogueState;
 use Repas\Voice\Application\Query\ResolveAccessGrant\ResolveAccessGrantQuery;
 use Repas\Voice\Application\Query\ResolveAccessGrant\ResolvedAccessGrantDTO;
 use Repas\Voice\Domain\Interface\AlexaRequestVerifier;
@@ -77,6 +80,7 @@ class HandleAlexaRequestApiControllerTest extends QueryBusWebTestCase
         $this->assertSame(200, $this->statusCode());
         $this->assertSame([
             'version' => '1.0',
+            'sessionAttributes' => [],
             'response' => [
                 'outputSpeech' => ['type' => 'PlainText', 'text' => "C'est noté : pain. Autre chose ?"],
                 'reprompt' => ['outputSpeech' => ['type' => 'PlainText', 'text' => 'Que veux-tu ajouter ?']],
@@ -119,6 +123,124 @@ class HandleAlexaRequestApiControllerTest extends QueryBusWebTestCase
         $this->assertSame($endsSession, !isset($response['reprompt']));
         $this->assertArrayNotHasKey('card', $response);
         $this->assertSame([RecordVoiceLinkUseCommand::class], array_map(static fn(object $command): string => $command::class, $this->commandBus->dispatched()));
+    }
+
+    public function testAnUnknownProductAsksAndWritesTheDialogueInTheSessionAttributes(): void
+    {
+        // Given : le cas d'usage a posé la question et rend l'état du dialogue
+        $this->linkedAccount();
+        $state = SpokenDialogueState::choose('de la ciboulette', [new DialogueOption('persil-u', 'persil')], 'ciboulette');
+        $this->commandBus->willReturn(AddSpokenItemCommand::class, new AddSpokenItemResult(
+            'Je ne connais pas ciboulette. Tu veux dire persil ? Ou un nouveau produit ?',
+            keepSessionOpen: true,
+            added: false,
+            nextState: $state,
+            reprompt: 'Tu veux dire persil ? Ou un nouveau produit ?',
+        ));
+
+        // When : un appel direct, la séance reste pourtant ouverte pour la réponse
+        $this->post(AlexaTestRequest::addItem('de la ciboulette')->withAccessToken(self::TOKEN));
+
+        // Then
+        $this->assertSame(200, $this->statusCode());
+        $this->assertSame([
+            'version' => '1.0',
+            'sessionAttributes' => ['dialogue' => $state->toArray()],
+            'response' => [
+                'outputSpeech' => ['type' => 'PlainText', 'text' => 'Je ne connais pas ciboulette. Tu veux dire persil ? Ou un nouveau produit ?'],
+                'reprompt' => ['outputSpeech' => ['type' => 'PlainText', 'text' => 'Tu veux dire persil ? Ou un nouveau produit ?']],
+                'shouldEndSession' => false,
+            ],
+        ], $this->jsonBody());
+    }
+
+    public function testTheAnswerToAQuestionGoesToTheDialogueUseCaseWithTheStateTheSessionGaveBack(): void
+    {
+        // Given : l'état d'une réponse précédente, rendu par Alexa
+        $this->linkedAccount();
+        $state = SpokenDialogueState::choose('de la ciboulette', [new DialogueOption('persil-u', 'persil')], 'ciboulette');
+        $this->commandBus->willReturn(AnswerSpokenDialogueCommand::class, new AddSpokenItemResult(
+            'Dans quel rayon ?',
+            keepSessionOpen: true,
+            added: false,
+            nextState: $state->askingDepartment(),
+            reprompt: 'Dans quel rayon ?',
+        ));
+
+        // When : « un nouveau produit »
+        $this->post(AlexaTestRequest::createItem()->withAccessToken(self::TOKEN)->withSessionAttributes(['dialogue' => $state->toArray()]));
+
+        // Then : la commande porte l'utilisateur du jeton, la requête et l'état lu ; la réponse écrit l'état suivant
+        $command = $this->commandBus->dispatched()[0];
+        $this->assertInstanceOf(AnswerSpokenDialogueCommand::class, $command);
+        $this->assertSame('user-1', $command->userId);
+        $this->assertEquals($state, $command->state);
+        $this->assertSame('CreateItemIntent', $command->request->intentName);
+        $this->assertSame('Dans quel rayon ?', $this->jsonBody()['response']['outputSpeech']['text']);
+        $this->assertSame('department', $this->jsonBody()['sessionAttributes']['dialogue']['step']);
+        $this->assertSame('Dans quel rayon ?', $this->jsonBody()['response']['reprompt']['outputSpeech']['text']);
+        $this->assertFalse($this->jsonBody()['response']['shouldEndSession']);
+    }
+
+    public function testWhenTheDialogueIsOverTheAttributesAreEmptyAndTheSessionStaysOpen(): void
+    {
+        // Given
+        $this->linkedAccount();
+        $state = SpokenDialogueState::choose('de la ciboulette', [new DialogueOption('persil-u', 'persil')], 'ciboulette');
+        $this->commandBus->willReturn(AnswerSpokenDialogueCommand::class, new AddSpokenItemResult("C'est noté : persil. Je m'en souviendrai. Autre chose ?", keepSessionOpen: true, added: true));
+
+        // When
+        $this->post(AlexaTestRequest::yes()->withAccessToken(self::TOKEN)->withSessionAttributes(['dialogue' => $state->toArray()]));
+
+        // Then : `{}` (Alexa oublie l'état) et « Que veux-tu ajouter ? » après un silence
+        $this->assertStringContainsString('"sessionAttributes":{}', (string) $this->client->getResponse()->getContent());
+        $this->assertSame('Que veux-tu ajouter ?', $this->jsonBody()['response']['reprompt']['outputSpeech']['text']);
+    }
+
+    public function testStopInTheMiddleOfADialogueClosesTheSessionWithoutTheUseCase(): void
+    {
+        // Given
+        $this->linkedAccount();
+        $state = SpokenDialogueState::choose('de la ciboulette', [], 'ciboulette');
+
+        // When
+        $this->post(AlexaTestRequest::intent('AMAZON.StopIntent')->withAccessToken(self::TOKEN)->withSessionAttributes(['dialogue' => $state->toArray()]));
+
+        // Then : à bientôt, rien d'écrit à part le suivi de la liaison
+        $this->assertSame(['À bientôt.', true], [$this->jsonBody()['response']['outputSpeech']['text'], $this->jsonBody()['response']['shouldEndSession']]);
+        $this->assertArrayNotHasKey('sessionAttributes', $this->jsonBody());
+        $this->assertSame([RecordVoiceLinkUseCommand::class], array_map(static fn(object $command): string => $command::class, $this->commandBus->dispatched()));
+    }
+
+    public function testAnUnreadableStateIsIgnoredAndTheAnswerIsTheOneWithoutADialogue(): void
+    {
+        // Given : un état forgé (étape inconnue)
+        $this->linkedAccount();
+
+        // When : « un nouveau produit » sans dialogue lisible
+        $this->post(AlexaTestRequest::createItem()->withAccessToken(self::TOKEN)->withSessionAttributes(['dialogue' => ['step' => 'hack', 'phrase' => 'x', 'name' => 'x', 'options' => []]]));
+
+        // Then : le repli, aucun cas d'usage du dialogue
+        $this->assertSame('Dis par exemple : ajoute du pain.', $this->jsonBody()['response']['outputSpeech']['text']);
+        $this->assertSame([RecordVoiceLinkUseCommand::class], array_map(static fn(object $command): string => $command::class, $this->commandBus->dispatched()));
+    }
+
+    public function testAFailureOfTheDialogueUseCaseIsAnsweredWithASentenceAndNoState(): void
+    {
+        // Given : l'état portait le slug d'un autre utilisateur, ou une panne
+        $this->linkedAccount();
+        $state = SpokenDialogueState::choose('de la ciboulette', [new DialogueOption('persil-u', 'persil')], 'ciboulette');
+        $this->commandBus->willThrow(AnswerSpokenDialogueCommand::class, new class('INGREDIENT_NOT_FOUND', 404) extends DomainException {
+        });
+
+        // When
+        $this->post(AlexaTestRequest::yes()->withAccessToken(self::TOKEN)->withSessionAttributes(['dialogue' => $state->toArray()]));
+
+        // Then
+        $this->assertSame(200, $this->statusCode());
+        $this->assertSame("Je n'ai pas pu faire ça. Réessaie dans un instant.", $this->jsonBody()['response']['outputSpeech']['text']);
+        $this->assertArrayNotHasKey('sessionAttributes', $this->jsonBody());
+        $this->assertStringNotContainsString('persil', (string) $this->client->getResponse()->getContent());
     }
 
     public function testTheEndOfASessionGetsNoSpeechAndNothingIsAskedOrWritten(): void

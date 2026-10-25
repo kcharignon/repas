@@ -105,6 +105,148 @@ class DocsVoiceSkillTest extends KernelTestCase
         }
     }
 
+    // ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
+    // Le dialogue d'un produit inconnu (ADR 0029 décision 11, VOX-303) : intentions, créneaux, types de valeurs
+    // ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
+
+    /**
+     * @return iterable<string, array{string, ?string, ?string}> l'intention, son créneau, le type du créneau
+     */
+    public static function dialogueIntents(): iterable
+    {
+        yield 'ChooseOptionIntent' => ['ChooseOptionIntent', 'rank', 'OPTION_RANK'];
+        yield 'CreateItemIntent' => ['CreateItemIntent', null, null];
+        yield 'AnswerDepartmentIntent' => ['AnswerDepartmentIntent', 'department', 'DEPARTMENT'];
+        yield 'AnswerUnitIntent' => ['AnswerUnitIntent', 'unit', 'UNIT'];
+        yield 'AddItemIntent' => ['AddItemIntent', 'item', 'INGREDIENT'];
+    }
+
+    #[DataProvider('dialogueIntents')]
+    public function testEachIntentOfTheDialogueHasItsSlotAndSixToTenWellFormedSamplesWithTheBareFormOfItsSlot(string $name, ?string $slot, ?string $type): void
+    {
+        // Given
+        $intent = $this->intent($name);
+
+        // Then : le créneau que le webhook lit (`request.intent.slots.<nom>`), du bon type
+        $this->assertSame($slot === null ? null : [['name' => $slot, 'type' => $type]], $intent['slots'] ?? null, $name);
+        $samples = $intent['samples'];
+        $this->assertSame(array_values(array_unique($samples)), $samples, "$name : aucune phrase en double");
+        if ($name !== 'AddItemIntent') {
+            $this->assertGreaterThanOrEqual(6, count($samples), $name);
+            $this->assertLessThanOrEqual(10, count($samples), $name);
+        }
+        foreach ($samples as $sample) {
+            $this->assertSame($sample, trim($sample), $name);
+            $this->assertSame(mb_strtolower($sample), $sample, "$name : « $sample » en minuscules");
+            $this->assertDoesNotMatchRegularExpression('/\d/', $sample, "$name : « $sample » : pas de chiffre dans une phrase d\'exemple");
+            $withoutSlot = $slot === null ? $sample : str_replace('{' . $slot . '}', '', $sample);
+            $this->assertSame($slot === null ? 0 : 1, substr_count($sample, $slot === null ? '{' : '{' . $slot . '}'), "$name : « $sample » : exactement un créneau, le sien");
+            $this->assertSame(0, substr_count($withoutSlot, '{'), "$name : « $sample » : un seul créneau");
+        }
+        if ($slot !== null) {
+            $this->assertContains('{' . $slot . '}', $samples, "$name : la forme réduite au créneau, pour la réponse brève");
+        }
+    }
+
+    public function testTheNewBuiltInIntentsAreDeclared(): void
+    {
+        $names = array_map(static fn(array $intent): string => $intent['name'], $this->languageModel()['intents']);
+
+        $this->assertContains('AMAZON.YesIntent', $names);
+        $this->assertContains('AMAZON.NoIntent', $names);
+    }
+
+    public function testTheDepartmentValuesAreTheDepartmentsOfTheFixturesByTheirSlug(): void
+    {
+        // Given
+        $ids = array_map(static fn(array $value): string => $value['id'], $this->type('DEPARTMENT')['values']);
+
+        // Then : mêmes identifiants que le catalogue (`resolutionsPerAuthority[].values[].value.id` = le slug du rayon)
+        $expected = $this->fixtureSlugs('department.json');
+        sort($ids);
+        sort($expected);
+        $this->assertSame($expected, $ids);
+    }
+
+    public function testTheUnitValuesAreTheUnitsOfTheFixturesByTheirSlug(): void
+    {
+        // Given
+        $ids = array_map(static fn(array $value): string => $value['id'], $this->type('UNIT')['values']);
+
+        // Then
+        $expected = $this->fixtureSlugs('unit.json');
+        sort($ids);
+        sort($expected);
+        $this->assertSame($expected, $ids);
+    }
+
+    public function testTheRankValuesAreTheRanksOneToThree(): void
+    {
+        // Then : l'identifiant est le rang (les identifiants peuvent être des chiffres, pas les valeurs)
+        $this->assertSame(['1', '2', '3'], array_map(static fn(array $value): string => $value['id'], $this->type('OPTION_RANK')['values']));
+    }
+
+    public function testUnitsAreSaidInTheWordsOfEverydayLife(): void
+    {
+        // Given : les synonymes de l'unité « unité » et du kilo
+        $byId = [];
+        foreach ($this->type('UNIT')['values'] as $value) {
+            $byId[$value['id']] = $value['name']['synonyms'] ?? [];
+        }
+
+        // Then
+        $this->assertContains('pièces', $byId['unite']);
+        $this->assertContains('pièce', $byId['unite']);
+        $this->assertContains('kilos', $byId['kilo']);
+        $this->assertContains('grammes', $byId['gramme']);
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function catalogueTypes(): iterable
+    {
+        yield 'INGREDIENT' => ['INGREDIENT'];
+        yield 'DEPARTMENT' => ['DEPARTMENT'];
+        yield 'UNIT' => ['UNIT'];
+        yield 'OPTION_RANK' => ['OPTION_RANK'];
+    }
+
+    #[DataProvider('catalogueTypes')]
+    public function testEveryValueAndSynonymOfATypeIsUniqueWithoutDigitsParenthesesOrCapitalsAndShortEnough(string $typeName): void
+    {
+        // Given : les valeurs et leurs synonymes (Amazon refuse chiffres et parenthèses dans un type personnalisé)
+        $forms = [];
+        foreach ($this->type($typeName)['values'] as $value) {
+            $forms[] = $value['name']['value'];
+            array_push($forms, ...($value['name']['synonyms'] ?? []));
+        }
+
+        // Then
+        $this->assertNotEmpty($forms);
+        foreach ($forms as $form) {
+            $this->assertSame(trim($form), $form, $typeName);
+            $this->assertNotSame('', $form, $typeName);
+            $this->assertLessThanOrEqual(self::MAX_VALUE_LENGTH, mb_strlen($form), "$typeName : « $form »");
+            $this->assertDoesNotMatchRegularExpression('/[\d()&]/u', $form, "$typeName : « $form » : chiffre, parenthèse ou esperluette");
+            $this->assertSame(mb_strtolower($form), $form, "$typeName : « $form » en minuscules");
+        }
+        $this->assertSame(array_values(array_unique($forms)), $forms, "$typeName : une valeur ou un synonyme est écrit deux fois");
+    }
+
+    public function testTheGeneratorScriptIsVersionedAndReadsTheSourcesOfTheModel(): void
+    {
+        // Given
+        $script = (string) file_get_contents(dirname(__DIR__, 2) . '/docs/voice/skill/generate-model.mjs');
+
+        // Then : le modèle n'a aucune valeur écrite à la main, et le script dit d'où elles viennent
+        $this->assertStringContainsString('base-ingredients.tsv', $script);
+        $this->assertStringContainsString('department.json', $script);
+        $this->assertStringContainsString('unit.json', $script);
+        $this->assertStringContainsString('--check', $script);
+        $this->assertFileExists(dirname(__DIR__, 2) . '/src/Repas/Infrastructure/DataFixture/Data/department.json');
+    }
+
     public function testTheBuiltInIntentsCarryNoSamplesOfTheirOwn(): void
     {
         foreach ($this->languageModel()['intents'] as $intent) {
@@ -221,6 +363,30 @@ class DocsVoiceSkillTest extends KernelTestCase
         }
 
         $this->fail('Le type INGREDIENT est absent du modèle.');
+    }
+
+    /**
+     * @return array<string, mixed> le type de valeurs du modèle
+     */
+    private function type(string $name): array
+    {
+        foreach ($this->languageModel()['types'] as $type) {
+            if ($type['name'] === $name) {
+                return $type;
+            }
+        }
+
+        $this->fail("Le type $name est absent du modèle.");
+    }
+
+    /**
+     * @return list<string> les slugs du fichier de fixtures du catalogue commun (`department.json`, `unit.json`)
+     */
+    private function fixtureSlugs(string $file): array
+    {
+        $items = json_decode((string) file_get_contents(dirname(__DIR__, 2) . '/src/Repas/Infrastructure/DataFixture/Data/' . $file), true, 512, JSON_THROW_ON_ERROR);
+
+        return array_map(static fn(array $item): string => $item['slug'], $items);
     }
 
     /**

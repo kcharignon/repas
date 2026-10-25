@@ -27,6 +27,7 @@ use Repas\Tests\Helper\InMemoryRepository\ConversionInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\DriveIngredientReferencesInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\IngredientAliasInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\IngredientDistinctInMemoryRepository;
+use Repas\Tests\Helper\InMemoryRepository\SpokenPhraseChoiceInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\IngredientInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\IngredientMergeInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\SpyEventDispatcher;
@@ -50,6 +51,7 @@ class MergeIngredientsHandlerTest extends TestCase
     private IngredientMergeInMemoryRepository $mergeRepository;
     private IngredientAliasInMemoryRepository $aliasRepository;
     private IngredientDistinctInMemoryRepository $distinctRepository;
+    private SpokenPhraseChoiceInMemoryRepository $spokenPhraseRepository;
     private DriveIngredientReferencesInMemoryRepository $driveReferences;
     private SpyEventDispatcher $eventDispatcher;
     private MergeIngredientsHandler $handler;
@@ -68,6 +70,7 @@ class MergeIngredientsHandlerTest extends TestCase
         $this->mergeRepository = new IngredientMergeInMemoryRepository();
         $this->aliasRepository = new IngredientAliasInMemoryRepository();
         $this->distinctRepository = new IngredientDistinctInMemoryRepository();
+        $this->spokenPhraseRepository = new SpokenPhraseChoiceInMemoryRepository();
         $this->driveReferences = new DriveIngredientReferencesInMemoryRepository();
         $this->eventDispatcher = new SpyEventDispatcher();
         $this->handler = $this->handlerFor($this->ingredientRepository, $this->conversionRepository);
@@ -84,6 +87,7 @@ class MergeIngredientsHandlerTest extends TestCase
             $this->mergeRepository,
             $this->aliasRepository,
             $this->distinctRepository,
+            $this->spokenPhraseRepository,
             $conversions,
             new ConversionService($conversions, new UnitInMemoryRepository()),
             new IngredientMergePlanner(),
@@ -756,6 +760,41 @@ class MergeIngredientsHandlerTest extends TestCase
             [self::USER . '|courgette-user-id|' . self::KEPT, self::OTHER . '|poivre-other-id|' . self::ABSORBED],
             array_map(static fn(IngredientDistinctPair $pair): string => $pair->getId(), $this->distinctRepository->all()),
         );
+    }
+
+    public function testThePhrasesTaughtToAlexaForTheAbsorbedIngredientNowPointToTheKeptOneForThisUserOnly(): void
+    {
+        // Given : l'utilisateur a appris « tomates » à Alexa pour l'absorbé et « tomate » pour le gardé ; un autre utilisateur a la même phrase sur le même slug
+        $now = new DateTimeImmutable('2026-10-01 10:00:00');
+        $this->spokenPhraseRepository->remember(self::USER, 'tomates', self::ABSORBED, $now);
+        $this->spokenPhraseRepository->remember(self::USER, 'tomate', self::KEPT, $now);
+        $this->spokenPhraseRepository->remember(self::OTHER, 'tomates', self::ABSORBED, $now);
+
+        // When
+        $this->merge();
+
+        // Then
+        $this->assertSame(
+            [[self::USER, 'tomates', self::KEPT], [self::USER, 'tomate', self::KEPT], [self::OTHER, 'tomates', self::ABSORBED]],
+            array_map(static fn(array $row): array => [$row['userId'], $row['phrase'], $row['slug']], $this->spokenPhraseRepository->all()),
+        );
+    }
+
+    public function testAMergeThatIsRefusedLeavesThePhrasesTaughtToAlexaAlone(): void
+    {
+        // Given
+        $this->recipe('r1', [self::ABSORBED], 'tranche');
+        $this->spokenPhraseRepository->remember(self::USER, 'tomates', self::ABSORBED, new DateTimeImmutable());
+
+        // When
+        try {
+            $this->merge();
+            $this->fail('La fusion aurait dû être refusée.');
+        } catch (IngredientException) {
+        }
+
+        // Then
+        $this->assertSame(self::ABSORBED, $this->spokenPhraseRepository->all()[0]['slug']);
     }
 
     public function testAMergeThatIsRefusedForgetsNoDistinctPair(): void

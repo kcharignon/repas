@@ -5,10 +5,12 @@ namespace Repas\Tests\Voice\Domain;
 
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
+use Repas\Voice\Domain\Model\DialogueOption;
+use Repas\Voice\Domain\Model\SpokenDialogueState;
 use Repas\Voice\Domain\Model\VoiceReplies;
 
 /**
- * Le catalogue de ce qu'Alexa dit (VOX-204, skill `repas-po`, `docs/drive/principes-produit.md`) : la voix du produit. Un proche doit
+ * Le catalogue de ce qu'Alexa dit (VOX-204, VOX-303, skill `repas-po`, `docs/drive/principes-produit.md`) : la voix du produit. Un proche doit
  * pouvoir dire chaque phrase à voix haute : tutoiement, une à deux phrases, 15 mots au plus par phrase, aucun jargon, aucun
  * avertissement, aucun point d'exclamation.
  */
@@ -20,6 +22,12 @@ class VoiceRepliesTest extends TestCase
         'identifiant', 'session', 'système', 'base de données', 'code', 'plan', 'agent', 'passage', 'fallback', 'intent', 'intention',
     ];
 
+    /**
+     * La seule exception à « deux phrases » (ADR 0029 décision 11) : la question « de quoi tu parles ? » d'un produit inconnu dit ce qui n'est pas
+     * connu, les propositions et l'issue « un nouveau produit ». Trois phrases, chacune de 15 mots au plus ; pas une de plus.
+     */
+    private const array THREE_SENTENCES = ['ASK_WHICH', 'ASK_WHICH_AGAIN'];
+
     public function testEveryReplyOfTheCatalogueIsAtMostTwoShortSentences(): void
     {
         foreach ($this->catalogue() as $name => $text) {
@@ -27,7 +35,8 @@ class VoiceRepliesTest extends TestCase
             $sentences = $this->sentences($text);
 
             // Then
-            $this->assertLessThanOrEqual(2, count($sentences), "$name : « $text » fait plus de deux phrases");
+            $limit = in_array($name, self::THREE_SENTENCES, true) ? 3 : 2;
+            $this->assertLessThanOrEqual($limit, count($sentences), "$name : « $text » fait plus de $limit phrases");
             foreach ($sentences as $sentence) {
                 $this->assertLessThanOrEqual(15, count(preg_split('/\s+/u', $sentence)), "$name : « $sentence » fait plus de 15 mots");
             }
@@ -69,13 +78,98 @@ class VoiceRepliesTest extends TestCase
         $this->assertSame("J'ai commencé une nouvelle liste avec pain.", VoiceReplies::added('pain', 'boulangerie', true, true, false));
         $this->assertSame("J'ai commencé une nouvelle liste avec pain. Ta liste précédente est partie au drive.", VoiceReplies::added('pain', 'boulangerie', true, true, true));
         $this->assertSame("J'ai commencé une nouvelle liste avec tomate, fruits et légumes.", VoiceReplies::added('tomate', 'fruits et légumes', false, true, false));
-        $this->assertSame('Je ne trouve pas xyz dans tes ingrédients.', VoiceReplies::notFound('xyz'));
         $this->assertSame("C'est noté : pain. Autre chose ?", VoiceReplies::withInvitation("C'est noté : pain."));
         $this->assertSame('Que veux-tu ajouter ?', $this->said('LAUNCH'));
         $this->assertSame('À bientôt.', $this->said('GOODBYE'));
         $this->assertSame('Dis par exemple : ajoute du pain.', $this->said('FALLBACK'));
         $this->assertSame("Ouvre l'application Alexa pour lier ton compte Repas.", $this->said('LINK_ACCOUNT'));
         $this->assertSame('Un instant, réessaie dans une minute.', $this->said('SLOW_DOWN'));
+    }
+
+    public function testTheSpokenAnswersOfTheDialogueOfAnUnknownProductAreTheOnesTheOwnerGives(): void
+    {
+        $this->assertSame('Dans quel rayon ?', $this->said('ASK_DEPARTMENT'));
+        $this->assertSame('Quelle unité ? Par exemple pièce, kilo ou litre.', $this->said('ASK_UNIT'));
+        $this->assertSame("D'accord, je ne crée rien.", $this->said('DECLINED'));
+        $this->assertSame("C'est noté : persil. Je m'en souviendrai.", VoiceReplies::remembered('persil', false, false));
+        $this->assertSame('Je ne connais pas ciboulette. Tu veux dire persil, basilic ou coriandre ? Ou un nouveau produit ?', VoiceReplies::unknown('ciboulette', ['persil', 'basilic', 'coriandre']));
+        $this->assertSame('Je ne connais pas ciboulette. Tu veux dire persil ou basilic ? Ou un nouveau produit ?', VoiceReplies::unknown('ciboulette', ['persil', 'basilic']));
+        $this->assertSame('Je ne connais pas ciboulette. Tu veux dire persil ? Ou un nouveau produit ?', VoiceReplies::unknown('ciboulette', ['persil']));
+        $this->assertSame('Je ne connais pas ciboulette. Je le crée ?', VoiceReplies::unknown('ciboulette', []));
+    }
+
+    public function testTheQuestionOfEachStepIsRepeatedInFewWords(): void
+    {
+        // Given
+        $choose = SpokenDialogueState::choose('de la ciboulette', [new DialogueOption('p', 'persil'), new DialogueOption('b', 'basilic')], 'ciboulette');
+        $none = SpokenDialogueState::choose('de la ciboulette', [], 'ciboulette');
+        $department = $none->askingDepartment();
+        $unit = $department->withDepartment(new DialogueOption('fruit-et-legume', 'Fruit & légume'));
+        $confirm = $unit->withUnit(new DialogueOption('unite', 'unité'));
+
+        // Then
+        $this->assertSame('Tu veux dire persil ou basilic ? Ou un nouveau produit ?', VoiceReplies::question($choose));
+        $this->assertSame('Je ne connais pas ciboulette. Je le crée ?', VoiceReplies::question($none));
+        $this->assertSame('Dans quel rayon ?', VoiceReplies::question($department));
+        $this->assertSame('Quelle unité ? Par exemple pièce, kilo ou litre.', VoiceReplies::question($unit));
+        $this->assertSame("Je crée ciboulette, fruit et légume, unité. C'est bon ?", VoiceReplies::question($confirm), '« & » se dit « et », les majuscules du catalogue tombent');
+        $this->assertSame("Je n'ai pas compris. Dans quel rayon ?", VoiceReplies::notUnderstood($department));
+        $this->assertSame('Lequel ? persil ou basilic. Ou un nouveau produit ?', VoiceReplies::whichAgain($choose));
+    }
+
+    public function testEveryAssembledReplyOfTheDialogueStaysShortWithRealisticNames(): void
+    {
+        // Given : des noms d'un à trois mots, comme ceux du catalogue
+        $options = array_map(
+            static fn(string $name): DialogueOption => new DialogueOption('s', $name),
+            ['pâte feuilletée', 'tomates cerises pelées', 'crème fraîche épaisse'],
+        );
+        $state = SpokenDialogueState::choose('de la ciboulette fraîche', $options, 'ciboulette fraîche');
+        $confirm = $state->askingDepartment()
+            ->withDepartment(new DialogueOption('d', 'fruit & légume'))
+            ->withUnit(new DialogueOption('u', 'cuillère à soupe'));
+
+        $replies = [
+            'unknown' => VoiceReplies::unknown('ciboulette fraîche', array_map(static fn(DialogueOption $option): string => $option->name, $options)),
+            'unknown sans proposition' => VoiceReplies::unknown('ciboulette fraîche', []),
+            'question choisir' => VoiceReplies::question($state),
+            'question confirmer' => VoiceReplies::question($confirm),
+            'pas compris choisir' => VoiceReplies::notUnderstood($state),
+            'pas compris confirmer' => VoiceReplies::notUnderstood($confirm),
+            'lequel' => VoiceReplies::whichAgain($state),
+            'abandon' => VoiceReplies::withInvitation(VoiceReplies::DECLINED),
+            'renoncement' => VoiceReplies::withInvitation(VoiceReplies::GIVE_UP),
+        ];
+        foreach ([false, true] as $listCreated) {
+            foreach ([false, true] as $previousListSent) {
+                $replies["retenu $listCreated $previousListSent"] = VoiceReplies::withInvitation(VoiceReplies::remembered('tomates cerises pelées', $listCreated, $previousListSent));
+                $replies["créé $listCreated $previousListSent"] = VoiceReplies::withInvitation(VoiceReplies::created('tomates cerises pelées', $listCreated, $previousListSent));
+            }
+        }
+
+        foreach ($replies as $label => $reply) {
+            // Then : phrases de 15 mots au plus, trois phrases au plus (« Autre chose ? » comprise), tutoiement
+            $sentences = $this->sentences($reply);
+            $this->assertLessThanOrEqual(3, count($sentences), "$label : « $reply »");
+            foreach ($sentences as $sentence) {
+                $this->assertLessThanOrEqual(15, count(preg_split('/\s+/u', $sentence)), "$label : « $sentence »");
+            }
+            $this->assertDoesNotMatchRegularExpression('/(?<![\p{L}])(vous|votre|vos)(?![\p{L}])/u', mb_strtolower($reply), $label);
+            $this->assertStringNotContainsString('!', $reply, $label);
+            $this->assertStringNotContainsString('&', $reply, "$label : « & » se dit « et »");
+            $this->assertStringNotContainsString('%', $reply, "$label : un modèle n'est pas rempli");
+        }
+    }
+
+    public function testASentListIsOnlyMentionedWhenAListWasStartedAndTheMemoryPromiseGivesWayToIt(): void
+    {
+        $this->assertStringNotContainsString('drive', VoiceReplies::remembered('persil', false, true));
+        $this->assertStringNotContainsString('drive', VoiceReplies::created('persil', false, true));
+        $this->assertSame("J'ai commencé une nouvelle liste avec persil. Je m'en souviendrai.", VoiceReplies::remembered('persil', true, false));
+        $this->assertSame("J'ai commencé une nouvelle liste avec persil. Ta liste précédente est partie au drive.", VoiceReplies::remembered('persil', true, true));
+        $this->assertSame("C'est créé et noté : persil.", VoiceReplies::created('persil', false, false));
+        $this->assertSame("J'ai créé persil et commencé une nouvelle liste.", VoiceReplies::created('persil', true, false));
+        $this->assertSame("J'ai créé persil et commencé une nouvelle liste. Ta liste précédente est partie au drive.", VoiceReplies::created('persil', true, true));
     }
 
     public function testAPreviousSentListIsOnlyMentionedWhenAListWasCreated(): void
@@ -114,13 +208,19 @@ class VoiceRepliesTest extends TestCase
         $this->assertSame(60, mb_strlen(VoiceReplies::speakable(str_repeat('é', 200))));
     }
 
+    public function testTheSignAmpersandIsSpokenAsAnd(): void
+    {
+        $this->assertSame('fruit et légume', VoiceReplies::speakable('Fruit & légume'));
+        $this->assertSame('fruit et légume', VoiceReplies::speakable('fruit&légume'));
+    }
+
     public function testAPhraseTheUserSaidIsSpokenBackSafely(): void
     {
-        $answer = VoiceReplies::notFound("<speak>XYZ</speak>\u{0007}" . str_repeat('z', 200));
+        $answer = VoiceReplies::unknown("<speak>XYZ</speak>\u{0007}" . str_repeat('z', 200), []);
 
-        $this->assertLessThanOrEqual(60 + mb_strlen(VoiceReplies::NOT_FOUND), mb_strlen($answer));
+        $this->assertLessThanOrEqual(60 + mb_strlen(VoiceReplies::ASK_CREATE), mb_strlen($answer));
         $this->assertStringNotContainsString("\u{0007}", $answer);
-        $this->assertStringStartsWith('Je ne trouve pas <speak>xyz</speak>', $answer, 'texte brut : la balise n\'est que du texte pour PlainText, jamais du SSML');
+        $this->assertStringStartsWith('Je ne connais pas <speak>xyz</speak>', $answer, "texte brut : la balise n'est que du texte pour PlainText, jamais du SSML");
     }
 
     private function said(string $constant): string
@@ -142,7 +242,7 @@ class VoiceRepliesTest extends TestCase
                 $catalogue[$constant->getName()] = str_replace('%s', 'farine complète', $value);
             }
         }
-        $this->assertGreaterThanOrEqual(14, count($catalogue), 'le catalogue n\'est plus lu');
+        $this->assertGreaterThanOrEqual(25, count($catalogue), 'le catalogue n\'est plus lu');
 
         return $catalogue;
     }

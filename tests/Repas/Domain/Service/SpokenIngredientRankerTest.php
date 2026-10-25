@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Repas\Repas\Domain\Model\Confidence;
 use Repas\Repas\Domain\Model\SpokenCandidate;
 use Repas\Repas\Domain\Service\SpokenIngredientRanker;
+use Repas\Shared\Domain\Tool\SearchRelevance;
 use Repas\Shared\Domain\Tool\StringTool;
 
 /**
@@ -113,6 +114,57 @@ class SpokenIngredientRankerTest extends TestCase
             => ['des', [self::own('Tomate', 5)], null, null, 'Tomate'];
     }
 
+    /**
+     * Le choix AUTOMATIQUE (`isChosenByItself`) : seuil de recherche (0,85) ET nom identique, phrase qui commence le nom ou un mot du nom, ou faute
+     * de frappe d'au moins `TYPO_THRESHOLD` (0,94). Les scores viennent de `SearchRelevance` : « ciboulette » contre *coquilette* 0,907 ;
+     * « ciboulete » contre *ciboulette* 0,98 ; « mozarella » contre *mozzarella di bufala* 0,879 ; « laitue » contre *lait* 0,933 ; « steak haché »
+     * contre *steack haché* 0,947 ; « pain de campagne » contre *pain de mie* 0,883.
+     *
+     * @param list<SpokenCandidate> $candidates
+     */
+    #[DataProvider('automaticChoiceCases')]
+    public function testItOnlyChoosesByItselfWhatIsCertainEnoughToNotAsk(string $phrase, array $candidates, ?string $expectedName): void
+    {
+        $this->assertSame($expectedName, $this->ranker->rank($phrase, $candidates)?->name);
+    }
+
+    /**
+     * @return iterable<string, array{string, list<SpokenCandidate>, ?string}>
+     */
+    public static function automaticChoiceCases(): iterable
+    {
+        yield '« ciboulette » n\'est PAS *coquilette* (0,907) : on demande'
+            => ['ciboulette', [self::own('Coquilette'), self::own('Croquette'), self::own('Courgette')], null];
+        yield '« ciboulete » est *ciboulette* : une faute de frappe (0,98)'
+            => ['ciboulete', [self::own('Ciboulette'), self::own('Coquilette')], 'Ciboulette'];
+        yield '« steak haché » est *steack haché* (0,947)'
+            => ['steak haché', [self::own('Steack haché')], 'Steack haché'];
+        yield '« laitue » n\'est pas *lait* (0,933, sous le seuil des fautes de frappe)'
+            => ['laitue', [self::own('Lait'), self::own('La laitière')], null];
+        yield '« mozarella » n\'est pas deviné contre *mozzarella di bufala*'
+            => ['mozarella', [self::own('Mozzarella di bufala')], null];
+        yield 'mais *mozzarella* seule, elle, est une faute de frappe (0,977)'
+            => ['mozarella', [self::own('Mozzarella'), self::own('Mozzarella di bufala')], 'Mozzarella'];
+        yield '« pain » commence *pain de mie* : choisi'
+            => ['pain', [self::own('Pain de mie')], 'Pain de mie'];
+        yield '« pain » commence un mot de *farine pain* : choisi'
+            => ['pain', [self::own('Farine pain')], 'Farine pain'];
+        yield '« pain de campagne » ne commence pas *pain de mie* : on demande'
+            => ['pain de campagne', [self::own('Pain de mie'), self::own('Pain')], null];
+        yield '« jambon de dinde » ne devine pas *jambon* : le nom est plus court que la phrase'
+            => ['jambon de dinde', [self::own('Jambon'), self::own('Jambon blanc')], null];
+        yield '« lardons » est *lardon* : le pluriel est replié, nom identique'
+            => ['lardons', [self::own('Lardon')], 'Lardon'];
+        yield '« tomates pelées » : le nom identique, pas *tomate*'
+            => ['tomates pelées', [self::own('Tomate'), self::own('Tomates pelées')], 'Tomates pelées'];
+    }
+
+    public function testTheThresholdOfATypoIsStricterThanTheOneOfTheSearchButNotTheFloorOfTheProposals(): void
+    {
+        $this->assertGreaterThan(SearchRelevance::MINIMUM, SpokenIngredientRanker::TYPO_THRESHOLD);
+        $this->assertGreaterThan(SpokenIngredientRanker::SUGGESTION_FLOOR, SearchRelevance::MINIMUM);
+    }
+
     public function testTheResultCarriesTheDepartmentTheSlugAndAScore(): void
     {
         // Given
@@ -179,5 +231,149 @@ class SpokenIngredientRankerTest extends TestCase
 
         // Then
         $this->assertSame([Confidence::PROBABLE, Confidence::UNSURE], [$clear->confidence, $close->confidence]);
+    }
+
+    // ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
+    // Les propositions : « De quoi tu parles ? » (ADR 0029 décision 11)
+    // ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
+
+    /**
+     * @param list<SpokenCandidate> $candidates
+     * @param list<string> $expectedNames
+     */
+    #[DataProvider('suggestionCases')]
+    public function testItSuggestsTheClosestIngredientsThatAreNotChosenByThemselves(string $phrase, array $candidates, array $expectedNames): void
+    {
+        // When
+        $suggestions = $this->ranker->suggest($phrase, $candidates);
+
+        // Then
+        $this->assertSame($expectedNames, array_map(static fn($ranked): string => $ranked->name, $suggestions));
+    }
+
+    /**
+     * La table de cas qui fixe le plancher (`SUGGESTION_FLOOR`, début de mot en commun). Les scores viennent de `SearchRelevance` : « sirop
+     * de menthe » contre « sirop fruit rouge » 0,827 ; « zébulon » contre « melon » 0,79 ; « fenouil » contre « nouille » 0,81 sans début en
+     * commun ; « crevettes » contre « courgette » 0,825 sans début en commun.
+     *
+     * @return iterable<string, array{0: string, 1: list<SpokenCandidate>, 2: list<string>}>
+     */
+    public static function suggestionCases(): iterable
+    {
+        yield 'un nom qui commence pareil et ressemble assez'
+            => ['sirop de menthe', [self::own('Sirop fruit rouge'), self::own('Farine'), self::own('Tomate')], ['Sirop fruit rouge']];
+        yield '« zébulon » : rien d\'assez proche, on propose de créer'
+            => ['zébulon', [self::own('Melon'), self::own('Bouillon'), self::own('Reblochon')], []];
+        yield '« fenouil » : une ressemblance de lettres sans début en commun n\'est pas une proposition'
+            => ['fenouil', [self::own('Nouille'), self::own('Feuille de brique')], []];
+        yield '« basilic » ne propose pas « ail »'
+            => ['basilic', [self::own('Ail')], []];
+        yield '« crevettes » ne propose ni « courgette » ni « croquette »'
+            => ['crevettes', [self::own('Courgette'), self::own('Croquette')], []];
+        yield '« xyz » : rien'
+            => ['xyz', [self::own('Riz'), self::own('Pizza')], []];
+        yield 'ce que le classeur choisit tout seul n\'est pas une proposition'
+            => ['tomate cerise', [self::own('Tomate cerise'), self::own('Sauce tomate')], ['Sauce tomate']];
+        yield 'trois propositions au plus, classées par score puis par nom'
+            => ['pâtes à pizza', [self::own('Pâte sablée'), self::own('Pâte lasagne'), self::own('Pâte ramen'), self::own('Pâte brisée'), self::own('Sauce tomate')], ['Pâte ramen', 'Pâte brisée', 'Pâte sablée']];
+        yield 'l\'habitude remonte une proposition'
+            => ['pâtes à pizza', [self::own('Pâte ramen', 0), self::own('Pâte brisée', 20), self::own('Pâte sablée', 0)], ['Pâte brisée', 'Pâte ramen', 'Pâte sablée']];
+        yield '« ciboulette » ne propose pas *coquilette* (0,907) : aucun début de mot en commun'
+            => ['ciboulette', [self::own('Coquilette'), self::own('Croquette'), self::own('Courgette')], []];
+        yield '« mozarella » (une faute) propose *mozzarella di bufala*, trop long pour être deviné (0,879)'
+            => ['mozarella', [self::own('Mozzarella di bufala'), self::own('Farine')], ['Mozzarella di bufala']];
+        yield '« laitue » propose *lait* (0,933) mais ne le choisit pas : ce n\'est pas la même chose'
+            => ['laitue', [self::own('Lait'), self::own('La laitière')], ['Lait', 'La laitière']];
+        yield '« pain de campagne » demande plutôt que de deviner *pain de mie*'
+            => ['pain de campagne', [self::own('Pain de mie'), self::own('Pain')], ['Pain de mie', 'Pain']];
+        yield '« jambon de dinde » demande plutôt que de deviner *jambon*'
+            => ['jambon de dinde', [self::own('Jambon'), self::own('Jambon blanc')], ['Jambon', 'Jambon blanc']];
+        yield 'aucun ingrédient'
+            => ['sirop de menthe', [], []];
+        yield 'que des mots vides'
+            => ['des du de la', [self::own('Sirop fruit rouge')], []];
+        yield 'phrase vide'
+            => ['', [self::own('Sirop fruit rouge')], []];
+    }
+
+    public function testSuggestionsAreInTheSameOrderWhateverTheOrderOfTheCandidates(): void
+    {
+        // Given : deux noms au même score (pâte brisée et pâte sablée), dans les deux ordres
+        $brisee = self::own('Pâte brisée');
+        $sablee = self::own('Pâte sablée');
+
+        // When
+        $first = $this->ranker->suggest('pâtes à pizza', [$sablee, $brisee]);
+        $second = $this->ranker->suggest('pâtes à pizza', [$brisee, $sablee]);
+
+        // Then
+        $this->assertEquals($first, $second);
+        $this->assertSame(['Pâte brisée', 'Pâte sablée'], array_map(static fn($ranked): string => $ranked->name, $first));
+    }
+
+    public function testTheNumberOfSuggestionsIsBoundedByTheLimitAndNeverNegative(): void
+    {
+        // Given
+        $candidates = [self::own('Pâte brisée'), self::own('Pâte sablée'), self::own('Pâte ramen'), self::own('Pâte lasagne')];
+
+        // Then
+        $this->assertCount(SpokenIngredientRanker::MAX_SUGGESTIONS, $this->ranker->suggest('pâtes à pizza', $candidates));
+        $this->assertCount(1, $this->ranker->suggest('pâtes à pizza', $candidates, 1));
+        $this->assertSame([], $this->ranker->suggest('pâtes à pizza', $candidates, 0));
+        $this->assertSame([], $this->ranker->suggest('pâtes à pizza', $candidates, -2));
+    }
+
+    public function testASuggestionIsNeverSureAndCarriesItsDepartment(): void
+    {
+        // When
+        $suggestion = $this->ranker->suggest('sirop de menthe', [self::own('Sirop fruit rouge', 0, 'Boissons')])[0];
+
+        // Then
+        $this->assertSame(['sirop-fruit-rouge-u', 'Boissons', Confidence::UNSURE], [$suggestion->slug, $suggestion->departmentName, $suggestion->confidence]);
+        $this->assertGreaterThanOrEqual(SpokenIngredientRanker::SUGGESTION_FLOOR, $suggestion->score);
+    }
+
+    public function testTheFloorIsBelowTheThresholdOfTheAutomaticChoice(): void
+    {
+        $this->assertLessThan(SearchRelevance::MINIMUM, SpokenIngredientRanker::SUGGESTION_FLOOR);
+    }
+
+    #[DataProvider('phraseKeys')]
+    public function testThePhraseKeyIsTheNormalizedPhraseTheRankerReads(string $phrase, string $expectedKey): void
+    {
+        $this->assertSame($expectedKey, SpokenIngredientRanker::phraseKey($phrase));
+    }
+
+    /**
+     * @return iterable<string, array{string, string}>
+     */
+    public static function phraseKeys(): iterable
+    {
+        yield 'articles, accents et casse' => ['Du Pain', 'pain'];
+        yield 'pluriel replié' => ['des pains', 'pain'];
+        yield 'plusieurs mots' => ['des pommes de terre', 'pomme-terre'];
+        yield 'ponctuation' => [' Crème   fraîche ?!', 'creme-fraiche'];
+        yield 'rien qui compte' => ['de la', ''];
+        yield 'vide' => ['', ''];
+    }
+
+    public function testThePhraseKeyIsBoundedToTheSizeOfTheColumn(): void
+    {
+        // Given : une phrase très longue (cent mots de quatre lettres)
+        $phrase = implode(' ', array_fill(0, 100, 'abcd'));
+
+        // Then
+        $this->assertSame(SpokenIngredientRanker::MAX_KEY_LENGTH, mb_strlen(SpokenIngredientRanker::phraseKey($phrase)));
+    }
+
+    public function testTwoWaysToSayTheSameThingHaveTheSameKeyAndTheMemoryBeatsTheResemblance(): void
+    {
+        // Given
+        $candidates = [self::own('Persil')];
+
+        // Then : la clé d'écriture est la clé de lecture
+        $this->assertSame(SpokenIngredientRanker::phraseKey('un persil'), SpokenIngredientRanker::phraseKey('le persil'));
+        // Then : la mémoire l'emporte même sans la moindre ressemblance
+        $this->assertSame('Persil', $this->ranker->rank('ciboulette', $candidates, 'persil-u')?->name);
     }
 }

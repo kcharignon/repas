@@ -10,6 +10,7 @@ use Repas\Repas\Infrastructure\Entity\IngredientAlias;
 use Repas\Repas\Infrastructure\Entity\IngredientDistinct;
 use Repas\Repas\Infrastructure\Entity\Recipe;
 use Repas\Repas\Infrastructure\Entity\ShoppingList;
+use Repas\Repas\Infrastructure\Entity\SpokenPhraseChoice;
 use Repas\Tests\Helper\DatabaseTestCase;
 use Repas\User\Infrastructure\Entity\EmailVerificationToken;
 use Repas\User\Infrastructure\Entity\PasswordResetToken;
@@ -37,6 +38,7 @@ class UserOwnedDataCoverageTest extends DatabaseTestCase
         IngredientAlias::class => ['userId'],
         IngredientDistinct::class => ['userId'],
         ShoppingList::class => ['ownerId'],
+        SpokenPhraseChoice::class => ['userId'],
         RefreshToken::class => ['userId'],
         DriveSettings::class => ['userId'],
         Choice::class => ['userId'],

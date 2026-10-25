@@ -21,6 +21,7 @@ final readonly class AlexaTestRequest
 
     /**
      * @param array<string, mixed> $slots
+     * @param ?array<string, mixed> $sessionAttributes
      */
     private function __construct(
         private string $type,
@@ -33,6 +34,7 @@ final readonly class AlexaTestRequest
         private string $applicationId,
         private ?DateTimeImmutable $at,
         private bool $tokenInContext,
+        private ?array $sessionAttributes = null,
     ) {
     }
 
@@ -52,6 +54,41 @@ final readonly class AlexaTestRequest
         return self::of('IntentRequest', $name, []);
     }
 
+    /** « oui » : `AMAZON.YesIntent`. */
+    public static function yes(): self
+    {
+        return self::intent('AMAZON.YesIntent');
+    }
+
+    public static function no(): self
+    {
+        return self::intent('AMAZON.NoIntent');
+    }
+
+    /** « le deuxième » : `ChooseOptionIntent`, créneau `rank` rapproché du rang `$rank` (« 2 »). */
+    public static function chooseOption(?string $heard, ?string $rank): self
+    {
+        return self::of('IntentRequest', 'ChooseOptionIntent', [])->withSlot('rank', $heard, $rank);
+    }
+
+    /** « un nouveau produit » : `CreateItemIntent`. */
+    public static function createItem(): self
+    {
+        return self::intent('CreateItemIntent');
+    }
+
+    /** « fruits et légumes » : `AnswerDepartmentIntent`, créneau `department` rapproché du rayon `$departmentSlug`. */
+    public static function answerDepartment(?string $heard, ?string $departmentSlug): self
+    {
+        return self::of('IntentRequest', 'AnswerDepartmentIntent', [])->withSlot('department', $heard, $departmentSlug);
+    }
+
+    /** « kilos » : `AnswerUnitIntent`, créneau `unit` rapproché de l'unité `$unitSlug`. */
+    public static function answerUnit(?string $heard, ?string $unitSlug): self
+    {
+        return self::of('IntentRequest', 'AnswerUnitIntent', [])->withSlot('unit', $heard, $unitSlug);
+    }
+
     public static function sessionEnded(): self
     {
         return self::of('SessionEndedRequest', null, []);
@@ -61,6 +98,35 @@ final readonly class AlexaTestRequest
     public static function ofType(string $type): self
     {
         return self::of($type, null, []);
+    }
+
+    /**
+     * Un créneau de plus. `$id` : l'identifiant de la valeur du modèle d'interaction à laquelle Alexa l'a rapproché (résolution d'entité
+     * `ER_SUCCESS_MATCH`) ; `null` : aucun rapprochement (`ER_SUCCESS_NO_MATCH`).
+     */
+    public function withSlot(string $name, ?string $heard, ?string $id = null): self
+    {
+        $slot = ['name' => $name];
+        if ($heard !== null) {
+            $slot['value'] = $heard;
+        }
+        $slot['resolutions'] = ['resolutionsPerAuthority' => [[
+            'authority' => 'amzn1.er-authority.echo-sdk.' . self::SKILL_ID . '.' . strtoupper($name),
+            'status' => ['code' => $id === null ? 'ER_SUCCESS_NO_MATCH' : 'ER_SUCCESS_MATCH'],
+            'values' => $id === null ? [] : [['value' => ['name' => $heard, 'id' => $id]]],
+        ]]];
+
+        return $this->copy(slots: [...$this->slots, $name => $slot]);
+    }
+
+    /**
+     * L'état que la réponse précédente a mis dans `sessionAttributes` et qu'Alexa rend (`session.attributes`).
+     *
+     * @param array<string, mixed> $attributes
+     */
+    public function withSessionAttributes(array $attributes): self
+    {
+        return $this->copy(sessionAttributes: $attributes)->inOpenSession();
     }
 
     public function withAccessToken(?string $accessToken): self
@@ -126,6 +192,9 @@ final readonly class AlexaTestRequest
                 'application' => ['applicationId' => $this->applicationId],
                 'user' => $user,
             ];
+            if ($this->sessionAttributes !== null) {
+                $body['session']['attributes'] = $this->sessionAttributes === [] ? new \stdClass() : $this->sessionAttributes;
+            }
         }
         $body['context'] = ['System' => [
             'application' => ['applicationId' => $this->applicationId],
@@ -159,11 +228,13 @@ final readonly class AlexaTestRequest
         ?string $applicationId = null,
         ?DateTimeImmutable $at = null,
         ?bool $tokenInContext = null,
+        ?array $slots = null,
+        ?array $sessionAttributes = null,
     ): self {
         return new self(
             $this->type,
             $this->intentName,
-            $this->slots,
+            $slots ?? $this->slots,
             $locale ?? $this->locale,
             $isNewSession ?? $this->isNewSession,
             $withAccessToken ? $accessToken : $this->accessToken,
@@ -171,6 +242,7 @@ final readonly class AlexaTestRequest
             $applicationId ?? $this->applicationId,
             $at ?? $this->at,
             $tokenInContext ?? $this->tokenInContext,
+            $sessionAttributes ?? $this->sessionAttributes,
         );
     }
 }

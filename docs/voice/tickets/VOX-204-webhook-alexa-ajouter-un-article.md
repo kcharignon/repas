@@ -19,7 +19,7 @@ Le cœur de la fonction : une phrase arrive, un ingrédient est choisi, la liste
 3. Commande `AddSpokenItem` (`Voice\Application`) : `SpokenIngredientResolver` puis `VoiceShoppingList`. Textes (catalogue de constantes de `Voice\Domain`, tutoiement, une ou deux phrases) :
    - sûr : « C'est noté : tomate. » ; probable ou incertain : « J'ai mis tomate, fruits et légumes. » ;
    - liste créée : « J'ai commencé une nouvelle liste avec pain. » (+ « Ta liste précédente est partie au drive. » si `previousListSent`) ;
-   - introuvable : « Je ne trouve pas xyz dans tes ingrédients. » ;
+   - introuvable : remplacé le 2026-10-25 par le dialogue du produit inconnu (VOX-303 : trois propositions, mémoire de phrase, création guidée) — ce ticket livrait « Je ne trouve pas xyz dans tes ingrédients. » ;
    - compte désactivé : « Ton compte Repas est désactivé. » ;
    - en séance, ajouter « Autre chose ? » et laisser la séance ouverte ; en appel direct, la fermer.
 4. Mise à jour de `last_used_at` de la liaison (au plus toutes les 10 minutes, comme `shouldRecordLogin`).

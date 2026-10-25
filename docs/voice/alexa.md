@@ -1,6 +1,6 @@
 # Commande vocale Alexa — analyse
 
-Cadrage du 2026-10-25. Décision : [ADR 0029](../adr/0029-commande-vocale-alexa.md) (`Proposed`). Suivi : [`roadmap.md`](roadmap.md).
+Cadrage du 2026-10-25 ; dialogue du produit inconnu ajouté le même jour (décision 11 de l'[ADR 0029](../adr/0029-commande-vocale-alexa.md), `Proposed`). Suivi : [`roadmap.md`](roadmap.md).
 
 ## 1. Faits vérifiés (2026-10-25) et réserves
 
@@ -18,6 +18,11 @@ Cadrage du 2026-10-25. Décision : [ADR 0029](../adr/0029-commande-vocale-alexa.
 - Appel direct : « Alexa, demande à *mes courses* d'ajouter du pain ».
 - Séance : « Alexa, ouvre *mes courses* » → « Que veux-tu ajouter ? » → « du pain » → « C'est noté : pain. Autre chose ? » → « des tomates » → … → « non, merci ».
 - Aide : « Alexa, demande à *mes courses* de l'aide ».
+- Produit inconnu : « ajoute de la ciboulette » → « Je ne connais pas ciboulette. Tu veux dire persil, basilic ou coriandre ? Ou un nouveau produit ? » ; trois façons de répondre :
+  - une proposition, par son nom (« le basilic »), son rang (« le deuxième ») ou « oui » s'il n'y en a qu'une → « C'est noté : basilic. Je m'en souviendrai. Autre chose ? » : la phrase est retenue, la prochaine fois « de la ciboulette » donne directement le basilic ;
+  - « un nouveau produit » (ou « aucun », « non ») → « Dans quel rayon ? » → « fruits et légumes » → « Quelle unité ? » → « des pièces » → « Je crée ciboulette, fruit et légume, unité. C'est bon ? » → « oui » → « C'est créé et noté : ciboulette. » (« non » : « D'accord, je ne crée rien. ») ;
+  - un autre article (« du lait ») : le dialogue est abandonné, « du lait » est traité comme une nouvelle demande.
+  Rien de proche : « Je ne connais pas ciboulette. Je le crée ? » (oui → les deux questions). Deux réponses incomprises de suite dans la même étape : « Je n'ai pas compris. On laisse tomber. » ; « stop » et « annule » ferment la séance à tout moment ; « aide » répète la question.
 - Annuler (phase 2) : « annule » retire la dernière ligne ajoutée dans la séance.
 
 « Alexa, ajoute du pain à *ma liste de courses* » reste la liste d'Amazon : on ne peut pas la détourner. À écrire dans l'aide du front, une fois, simplement.
@@ -48,16 +53,22 @@ Amazon ─> POST /api/voice/oauth/token  (grant authorization_code | refresh_tok
 
 ```
 src/Voice/
-  Domain/Model       VoiceLink, AuthorizationCode, AccessGrant (hachés), AlexaRequest, AlexaResponse, AlexaIntent, VoiceReplies (tous les textes)
+  Domain/Model       VoiceLink, AuthorizationCode, AccessGrant (hachés), AlexaRequest, AlexaResponse, AlexaIntent, VoiceReplies (tous les textes), SpokenDialogueState (l'état du dialogue)
   Domain/Interface   VoiceLinkRepository, AuthorizationCodeRepository, AlexaRequestVerifier
-  Domain/Service     AlexaDialogue (lancement, aide, stop, repli), LinkRevoker
+  Domain/Service     AlexaDialogue (lancement, aide, stop, repli), SpokenAnswerInterpreter (la réponse selon l'état), SpokenIngredientNamer, LinkRevoker
   Domain/Exception   VoiceException
-  Application/Command   IssueAuthorizationCode, ExchangeAuthorizationCode, RefreshAccessGrant, RevokeVoiceLink, AddSpokenItem, RecordVoiceLinkUse, PurgeUserVoiceData
+  Application/Command   IssueAuthorizationCode, ExchangeAuthorizationCode, RefreshAccessGrant, RevokeVoiceLink, AddSpokenItem, AnswerSpokenDialogue, RecordVoiceLinkUse, PurgeUserVoiceData
   Application/Query     ListVoiceLinks, ResolveAccessGrant
   Infrastructure/Http/Api  …ApiController, HandleAlexaRequestApiController (le webhook), VoiceLinkRateLimiter ; listeners d'interrupteur et de plafond
 ```
 
-Ports de `Shared` (la seule couture avec `Repas`) : `SpokenIngredientResolver::resolve(userId, phrase): ?ResolvedIngredient{slug, name, departmentName, confidence}` et `VoiceShoppingList::addItem(userId, ingredientSlug): AddedItem{listCreated, previousListSent}`, implémentés dans `Repas\Infrastructure`.
+Ports de `Shared` (la seule couture avec `Repas`), implémentés dans `Repas\Infrastructure\Voice` :
+
+- `SpokenIngredientResolver::resolveOrSuggest(userId, phrase): SpokenResolution` — soit `ResolvedIngredient{slug, name, departmentName, confidence}` (mémoire de phrase d'abord, puis classement sûr), soit au plus trois `IngredientSuggestion{slug, name, departmentName}` — en UNE lecture des ingrédients de l'utilisateur ; `remember(userId, phrase, slug): void` (commande `RememberSpokenPhrase`) ;
+- `VoiceShoppingList::addItem(userId, ingredientSlug): AddedItem{listCreated, previousListSent}` ;
+- `SpokenIngredientCreator` : `departments()` et `units()` (le catalogue commun, listes `SpokenChoice{slug, name}`), `create(userId, name, departmentSlug, unitSlug): CreatedIngredient{slug, name, departmentName}` (par le `CreateIngredientHandler` existant, une seule unité pour l'achat et la cuisine, aucun coefficient).
+
+Le dialogue d'un produit inconnu (décision 11) : `AddSpokenItem` rend, quand rien n'est reconnu, la question et le **prochain état** (`SpokenDialogueState`, dans `AddSpokenItemResult`) ; l'état voyage dans `sessionAttributes.dialogue` (réponse) puis `session.attributes.dialogue` (requête suivante) ; `AnswerSpokenDialogue` interprète la réponse d'après l'ÉTAT (`SpokenAnswerInterpreter`, pur : Alexa choisit l'intention sans connaître notre état) et lit/écrit par les ports. Étapes : `choose` (propositions, ou « Je le crée ? »), `department`, `unit`, `confirm`.
 
 ## 4. Choisir l'ingrédient le plus probable
 
@@ -65,10 +76,33 @@ Entrée : la phrase reconnue (« des tomates », « du pain de mie »). Sortie :
 
 1. **Normalisation** : `StringTool::slugify`, mots vides retirés (`IngredientNameMatcher::STOP_WORDS` + « du », « de la », « des », « un », « une »), pluriels repliés (`IngredientNameMatcher::tokens`).
 2. **Candidats** : les ingrédients de l'utilisateur (`IngredientVisibility::visibleBy`), avec pour chacun `uses12m` = lignes de ses listes + lignes de ses recettes sur douze mois (une requête agrégée, comme `search()`).
-3. **Mémoire de phrase** : une ligne `voice_phrase_choice(user_id, phrase, ingredient_slug, times)` pour la phrase normalisée → cet ingrédient, `SURE`. Écrite quand l'utilisateur corrige un ajout vocal (VOX-301).
-4. **Sinon** pour chaque candidat avec `SearchRelevance::score ≥ 0,85` : `score = pertinence + 0,1 × n/(n+3)`, `n = uses12m`. **Un nom identique à la phrase (une fois normalisés) passe avant tout nom seulement proche** : le bonus d'habitude (jusqu'à 0,1) dépasserait sinon l'écart de pertinence (« tomate » 1,0 contre *tomates pelées* 0,95 : 0,95 + 0,093 > 1,0). L'habitude ne départage donc que des noms de même rang (VOX-101, constatée à l'écriture des tests).
+3. **Mémoire de phrase** : une ligne `spoken_phrase_choice(user_id, phrase, ingredient_slug, times, updated_at)` pour la **clé** de la phrase (`SpokenIngredientRanker::phraseKey` : les mots du classeur joints par « - », 100 caractères au plus, la même clé à l'écriture et à la lecture) → cet ingrédient, `SURE`. Écrite quand l'utilisateur choisit l'une des propositions d'Alexa (VOX-303, `RememberSpokenPhrase`, le dernier choix l'emporte et `times` compte les mêmes choix de suite) ; la correction depuis l'application (VOX-301) l'écrira aussi. Lue AVANT le classement par l'adaptateur du port ; ignorée si l'ingrédient n'existe plus. **Limite connue** : si l'utilisateur crée plus tard un ingrédient au nom exact d'une phrase retenue, la mémoire gagne encore (la règle 3 passe avant le nom identique de la règle 4).
+4. **Sinon** pour chaque candidat que le classeur choisit SANS DEMANDER (`isChosenByItself`, amendement du 2026-10-25 : le seuil de choix est plus strict que celui de la recherche, voir plus bas) : `score = pertinence + 0,1 × n/(n+3)`, `n = uses12m`. **Un nom identique à la phrase (une fois normalisés) passe avant tout nom seulement proche** : le bonus d'habitude (jusqu'à 0,1) dépasserait sinon l'écart de pertinence (« tomate » 1,0 contre *tomates pelées* 0,95 : 0,95 + 0,093 > 1,0). L'habitude ne départage donc que des noms de même rang (VOX-101, constatée à l'écriture des tests).
 5. **Confiance** : `SURE` pour le seul nom identique (ou la mémoire de phrase) ; `PROBABLE` si le premier devance le suivant d'au moins 0,03, ou n'a pas de suivant (un seul candidat proche) ; sinon `UNSURE` (deux noms qui se touchent : on ajoute le premier et on le dit).
 6. **Ordre déterministe** : à score égal, nom puis slug (comme `search()`).
+
+### Les propositions (rien de choisi tout seul)
+
+`SpokenIngredientRanker::suggest` : quand `rank` ne choisit rien, au plus trois ingrédients de l'utilisateur, classés comme `rank` (pertinence + bonus d'habitude, ordre déterministe), dont la pertinence est **au moins** `SUGGESTION_FLOOR` (0,80), qui ne sont **pas** choisis tout seuls, ET qui partagent un début de mot (trois lettres) avec la phrase. La bande ne s'arrête donc plus à 0,85 : *jambon* (0,900) est proposé pour « jambon de dinde », pas deviné. Les propositions sont rendues par le même appel que le choix (`SpokenIngredientResolver::resolveOrSuggest`), avec UNE seule lecture des ingrédients de l'utilisateur.
+
+**Le choix automatique** (`isChosenByItself`) exige `SearchRelevance::score ≥ 0,85` (le seuil de la RECHERCHE, ADR 0019, inchangé) ET : un nom identique à la phrase, OU une phrase qui commence le nom ou l'un de ses mots (la branche « contient » de `SearchRelevance` : « pain » → *pain de mie*), OU une simple faute de frappe, `TYPO_THRESHOLD` (0,94). Raison : chercher peut montrer des noms approchants, mais deviner à la place de l'utilisateur un produit qui n'existe pas ruine le dialogue (« ciboulette » était devinée *coquilette*, 0,907, sans question ; « laitue » *lait* à 0,933). 0,94 et non 0,93 : *lait* contre « laitue » vaut 0,933.
+
+Table de cas figée (`SpokenIngredientRankerTest`, scores de `SearchRelevance`) :
+
+| Phrase | Ingrédients de l'utilisateur | Choisi tout seul | Proposé |
+|---|---|---|---|
+| ciboulette | *coquilette*, *croquette*, *courgette* | rien (0,907, 0,843, 0,843) | rien (aucun début de mot en commun) : « Je le crée ? » |
+| ciboulete | *ciboulette*, *coquilette* | *ciboulette* (0,98, faute de frappe) | — |
+| steak haché | *steack haché* | *steack haché* (0,947) | — |
+| mozarella | *mozzarella di bufala* | rien (0,879) | *mozzarella di bufala* |
+| mozarella | *mozzarella*, *mozzarella di bufala* | *mozzarella* (0,977) | — |
+| laitue | *lait*, *la laitière* | rien (0,933) | *lait*, *la laitière* |
+| pain | *pain de mie* | *pain de mie* (la phrase commence le nom) | — |
+| pain de campagne | *pain de mie*, *pain* | rien (0,883, 0,862) | *pain de mie*, *pain* |
+| jambon de dinde | *jambon*, *jambon blanc* | rien (le nom est plus court que la phrase) | *jambon*, *jambon blanc* |
+| tomate, tomates pelées, lardons | *tomate*, *tomates pelées*, *lardon* | le nom identique | — |
+| sirop de menthe | *sirop fruit rouge* | rien | *sirop fruit rouge* (0,827) |
+| zébulon, fenouil, basilic, crevettes | *melon*, *nouille*, *ail*, *courgette*… | rien | rien (sous 0,80, ou sans début en commun) |
 
 Pourquoi ce n'est pas `IngredientNameMatcher` : lui sert à dire « c'est le même ingrédient » avec certitude, en se trompant vers le doublon (ADR 0028). Ici l'utilisateur veut le plus probable, et l'erreur se répare d'un geste dans l'application.
 
@@ -85,6 +119,9 @@ Table de cas figée par VOX-101 (exemples à confirmer sur les données réelles
 | Un compte créé par Google n'a pas de mot de passe ; Google refuse sa connexion dans une WebView | La page d'autorisation accepte le mot de passe ; sinon passer par « poser un premier mot de passe » (AUTH-014) ; ne pas bloquer le chantier dessus. |
 | Plusieurs personnes derrière un même Echo | Un Echo = un compte Amazon = une liaison = un compte Repas. Les profils vocaux (`personId`) sont hors périmètre. |
 | Vie privée (voix) | Aucun audio ni transcription conservés ; voir ADR 0029 décision 10 ; ajouter une phrase à `docs/drive/note-vie-privee.md` si publié. |
+| Un état de dialogue forgé (slug d'un ingrédient d'un autre, rayon inventé) | L'état est une entrée non fiable : lecture tolérante et bornée (`SpokenDialogueState::fromArray`), slugs jamais crus (l'ajout, la mémoire et la création les vérifient auprès de `Repas`), tout échec annule la commande entière et Alexa répond « Je n'ai pas pu faire ça. » sans état. |
+| Boucle sans fin dans un dialogue | Deux réponses incomprises de suite dans la même étape abandonnent poliment ; « stop » ferme la séance dans tout état. |
+| Alexa choisit l'intention sans connaître l'état (« persil » reçu comme un article, « kilos » comme une unité) | L'interprétation part de l'état et des textes entendus, pas de l'intention seule (`SpokenAnswerInterpreter`, table de cas). |
 
 ## 6. Ce qui exige l'humain
 

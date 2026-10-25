@@ -9,6 +9,8 @@ use Repas\Tests\Helper\Alexa\AlexaTestRequest;
 use Repas\Voice\Domain\Model\AlexaIntent;
 use Repas\Voice\Domain\Model\AlexaRequest;
 use Repas\Voice\Domain\Model\AlexaResponse;
+use Repas\Voice\Domain\Model\DialogueOption;
+use Repas\Voice\Domain\Model\SpokenDialogueState;
 use Repas\Voice\Domain\Model\VoiceReplies;
 use Repas\Voice\Domain\Service\AlexaDialogue;
 
@@ -148,6 +150,90 @@ class AlexaDialogueTest extends TestCase
             $this->assertInstanceOf(AlexaResponse::class, $answer, $intent->value);
         }
     }
+
+    // ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
+    // Le dialogue d'un produit inconnu (ADR 0029 décision 11, VOX-303)
+    // ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
+
+    public function testYesWithoutAQuestionAsksWhatToAdd(): void
+    {
+        $this->assertEquals(AlexaResponse::ask(VoiceReplies::LAUNCH, VoiceReplies::LAUNCH), $this->dialogue->answer($this->read(AlexaTestRequest::yes())));
+    }
+
+    public function testNoWithoutAQuestionIsTheAnswerToAnythingElseAndEndsTheSession(): void
+    {
+        $this->assertEquals(AlexaResponse::say('À bientôt.'), $this->dialogue->answer($this->read(AlexaTestRequest::no())));
+    }
+
+    /**
+     * @return iterable<string, array{AlexaTestRequest}>
+     */
+    public static function dialogueAnswersWithoutADialogue(): iterable
+    {
+        yield 'un rang' => [AlexaTestRequest::chooseOption('le premier', '1')];
+        yield 'un nouveau produit' => [AlexaTestRequest::createItem()];
+        yield 'un rayon' => [AlexaTestRequest::answerDepartment('boucherie', 'boucherie')];
+        yield 'une unité' => [AlexaTestRequest::answerUnit('kilos', 'kilo')];
+    }
+
+    #[DataProvider('dialogueAnswersWithoutADialogue')]
+    public function testAnAnswerToAQuestionNobodyAskedGetsTheFallback(AlexaTestRequest $request): void
+    {
+        // Given : séance trop vieille, état perdu, ou Alexa qui devine mal
+        $this->assertEquals(AlexaResponse::ask(VoiceReplies::FALLBACK, VoiceReplies::LAUNCH), $this->dialogue->answer($this->read($request->inOpenSession())));
+    }
+
+    /**
+     * @return iterable<string, array{AlexaTestRequest}>
+     */
+    public static function everyIntentThatCanAnswerAQuestion(): iterable
+    {
+        yield 'oui' => [AlexaTestRequest::yes()];
+        yield 'non' => [AlexaTestRequest::no()];
+        yield 'un rang' => [AlexaTestRequest::chooseOption('le premier', '1')];
+        yield 'un nouveau produit' => [AlexaTestRequest::createItem()];
+        yield 'un rayon' => [AlexaTestRequest::answerDepartment('boucherie', 'boucherie')];
+        yield 'une unité' => [AlexaTestRequest::answerUnit('kilos', 'kilo')];
+        yield 'un article' => [AlexaTestRequest::addItem('du pain')];
+        yield 'un article incompris' => [AlexaTestRequest::addItem(null)];
+        yield 'aide' => [AlexaTestRequest::intent('AMAZON.HelpIntent')];
+        yield 'repli' => [AlexaTestRequest::intent('AMAZON.FallbackIntent')];
+        yield 'intention inconnue' => [AlexaTestRequest::intent('AMAZON.NavigateHomeIntent')];
+    }
+
+    #[DataProvider('everyIntentThatCanAnswerAQuestion')]
+    public function testWhenAQuestionIsAskedTheAnswerIsLeftToTheUseCaseWhateverTheIntent(AlexaTestRequest $request): void
+    {
+        // Given : une séance qui porte l'état d'un dialogue
+        $state = SpokenDialogueState::choose('de la ciboulette', [new DialogueOption('persil-u', 'persil')], 'ciboulette');
+
+        // Then : l'état décide, pas l'intention
+        $this->assertNull($this->dialogue->answer($this->read($request->withSessionAttributes(['dialogue' => $state->toArray()]))));
+    }
+
+    #[DataProvider('stopIntents')]
+    public function testStopAndCancelCloseTheSessionInTheMiddleOfADialogue(string $intent): void
+    {
+        // Given
+        $state = SpokenDialogueState::choose('de la ciboulette', [], 'ciboulette')->askingDepartment();
+
+        // Then
+        $this->assertEquals(
+            AlexaResponse::say('À bientôt.'),
+            $this->dialogue->answer($this->read(AlexaTestRequest::intent($intent)->withSessionAttributes(['dialogue' => $state->toArray()]))),
+        );
+    }
+
+    public function testALaunchOfANewSessionIgnoresAStateAndInvites(): void
+    {
+        // Given : un lancement qui porterait un état (jamais envoyé par Alexa, forgé)
+        $body = AlexaTestRequest::launch()->toArray();
+        $body['session']['attributes'] = ['dialogue' => SpokenDialogueState::choose('x', [], 'x')->toArray()];
+
+        // Then
+        $this->assertEquals(AlexaResponse::ask(VoiceReplies::LAUNCH, VoiceReplies::LAUNCH), $this->dialogue->answer(AlexaRequest::fromDecoded($body)));
+    }
+
 
     private function read(AlexaTestRequest $request): AlexaRequest
     {

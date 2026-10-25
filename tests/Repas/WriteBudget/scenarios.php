@@ -34,6 +34,7 @@ use Repas\Repas\Application\Command\MarkIngredientsDistinct\MarkIngredientsDisti
 use Repas\Repas\Application\Command\MergeIngredients\MergeIngredientsCommand;
 use Repas\Repas\Application\Command\PausedShoppingList\PausedShoppingListCommand;
 use Repas\Repas\Application\Command\PlannedMeal\PlannedMealCommand;
+use Repas\Repas\Application\Command\RememberSpokenPhrase\RememberSpokenPhraseCommand;
 use Repas\Repas\Application\Command\RemoveIngredient\RemoveIngredientCommand;
 use Repas\Repas\Application\Command\RemoveIngredientToShoppingList\RemoveIngredientToShoppingListCommand;
 use Repas\Repas\Application\Command\RemoveMealFromPlan\removeMealFromPlanCommand;
@@ -64,6 +65,7 @@ use Repas\Repas\Domain\Model\ShoppingListStatus;
 use Repas\Shared\Domain\Tool\Tab;
 use Repas\Shared\Domain\Tool\UuidGenerator;
 use Repas\Tests\Helper\Alexa\AlexaTestClient;
+use Repas\Tests\Helper\Alexa\AlexaTestRequest;
 use Repas\Tests\Helper\Builder\ConversionBuilder;
 use Repas\Tests\Helper\Builder\DepartmentBuilder;
 use Repas\Tests\Helper\Builder\IngredientBuilder;
@@ -89,11 +91,15 @@ use Repas\User\Domain\Model\EmailVerificationToken;
 use Repas\User\Domain\Model\PasswordResetToken;
 use Repas\User\Domain\Model\UserStatus;
 use Repas\Voice\Application\Command\AddSpokenItem\AddSpokenItemCommand;
+use Repas\Voice\Application\Command\AnswerSpokenDialogue\AnswerSpokenDialogueCommand;
 use Repas\Voice\Application\Command\ExchangeAuthorizationCode\ExchangeAuthorizationCodeCommand;
 use Repas\Voice\Application\Command\IssueAuthorizationCode\IssueAuthorizationCodeCommand;
 use Repas\Voice\Application\Command\RecordVoiceLinkUse\RecordVoiceLinkUseCommand;
 use Repas\Voice\Application\Command\RefreshAccessGrant\RefreshAccessGrantCommand;
 use Repas\Voice\Application\Command\RevokeVoiceLink\RevokeVoiceLinkCommand;
+use Repas\Voice\Domain\Model\AlexaRequest;
+use Repas\Voice\Domain\Model\DialogueOption;
+use Repas\Voice\Domain\Model\SpokenDialogueState;
 
 /**
  * Un scénario = un use case d'écriture mesuré sur une situation typique : un utilisateur avec trois recettes
@@ -725,6 +731,47 @@ return [
         $t->persister->saveIngredient(new IngredientBuilder()->isBread()->withCreator($owner)->build());
 
         return new AddSpokenItemCommand($owner->getId(), 'xyz', true);
+    },
+    // Mémoire de phrase (ADR 0029 décision 11, VOX-303) : l'utilisateur a choisi une proposition, la phrase est retenue pour lui. Le slug est
+    // traduit par les alias (une lecture), l'ingrédient vérifié (une lecture), la ligne écrite (un upsert).
+    'memoriser-phrase-alexa' => static function (WriteBudgetTestCase $t): object {
+        $owner = $t->savedUser();
+        $parsley = new IngredientBuilder()->withName('persil')->withCreator($owner, true)->build();
+        $t->persister->saveIngredient($parsley);
+
+        return new RememberSpokenPhraseCommand($owner->getId(), 'de la ciboulette', $parsley->getSlug());
+    },
+    // Dialogue d'un produit inconnu (ADR 0029 décision 11, VOX-303). Une proposition choisie : l'article est ajouté à la liste active ET la phrase
+    // est retenue (alias, vérification de l'ingrédient, upsert).
+    'choisir-proposition-alexa' => static function (WriteBudgetTestCase $t): object {
+        $owner = $t->savedUser();
+        $t->savedShoppingList($owner, $t->typicalRecipes($owner));
+        $parsley = new IngredientBuilder()->withName('persil')->withCreator($owner, true)->build();
+        $t->persister->saveIngredient($parsley);
+        $state = SpokenDialogueState::choose('de la ciboulette', [new DialogueOption($parsley->getSlug(), 'persil')], 'ciboulette');
+
+        return new AnswerSpokenDialogueCommand($owner->getId(), AlexaRequest::fromDecoded(AlexaTestRequest::chooseOption('le premier', '1')->inOpenSession()->toArray()), $state);
+    },
+    // « Dans quel rayon ? » -> « les fruits et légumes » : une seule lecture des rayons du catalogue, aucune écriture
+    'rayon-dit-a-alexa' => static function (WriteBudgetTestCase $t): object {
+        $owner = $t->savedUser();
+        $t->persister->saveDepartment(new DepartmentBuilder()->isCereal()->build());
+        $state = SpokenDialogueState::choose('de la ciboulette', [], 'ciboulette')->askingDepartment();
+
+        return new AnswerSpokenDialogueCommand($owner->getId(), AlexaRequest::fromDecoded(AlexaTestRequest::answerDepartment('céréales', 'cereale')->inOpenSession()->toArray()), $state);
+    },
+    // « Je crée ciboulette, céréale, unité. C'est bon ? » -> « oui » : le produit est créé (rayon, unités, conversions compatibles, statistiques
+    // du créateur) puis ajouté à la liste active
+    'creer-ingredient-par-la-voix' => static function (WriteBudgetTestCase $t): object {
+        $owner = $t->savedUser();
+        $t->savedShoppingList($owner, $t->typicalRecipes($owner));
+        $t->persister->saveDepartment(new DepartmentBuilder()->isCereal()->build());
+        $t->persister->saveUnit(new UnitBuilder()->isUnite()->build());
+        $state = SpokenDialogueState::choose('de la ciboulette', [], 'ciboulette')->askingDepartment()
+            ->withDepartment(new DialogueOption('cereale', 'céréale'))
+            ->withUnit(new DialogueOption('unite', 'unité'));
+
+        return new AnswerSpokenDialogueCommand($owner->getId(), AlexaRequest::fromDecoded(AlexaTestRequest::yes()->inOpenSession()->toArray()), $state);
     },
     // Suivi de la liaison (VOX-204), première requête d'Alexa : l'identifiant d'utilisateur Alexa est posé, l'ancienne liaison du même Echo
     // est révoquée avec ses jetons, la date de dernier usage est écrite

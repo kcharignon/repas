@@ -18,6 +18,7 @@ use Repas\Tests\Helper\Builder\UserBuilder;
 use Repas\Tests\Helper\InMemoryRepository\ConversionInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\IngredientAliasInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\IngredientDistinctInMemoryRepository;
+use Repas\Tests\Helper\InMemoryRepository\SpokenPhraseChoiceInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\IngredientInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\RecipeInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\ShoppingListInMemoryRepository;
@@ -33,6 +34,7 @@ class PurgeUserDataHandlerTest extends TestCase
     private IngredientInMemoryRepository $ingredientRepository;
     private IngredientAliasInMemoryRepository $aliasRepository;
     private IngredientDistinctInMemoryRepository $distinctRepository;
+    private SpokenPhraseChoiceInMemoryRepository $spokenPhraseRepository;
     private PurgeUserDataHandler $handler;
 
     protected function setUp(): void
@@ -80,6 +82,10 @@ class PurgeUserDataHandlerTest extends TestCase
             IngredientDistinctPair::create(self::OTHER, 'beurre-other', 'farine-other', new \DateTimeImmutable()),
         ]);
 
+        $this->spokenPhraseRepository = new SpokenPhraseChoiceInMemoryRepository();
+        $this->spokenPhraseRepository->remember(self::USER, 'beurre', 'beurre-user', new \DateTimeImmutable());
+        $this->spokenPhraseRepository->remember(self::OTHER, 'beurre', 'beurre-other', new \DateTimeImmutable());
+
         $this->handler = new PurgeUserDataHandler(
             $this->shoppingListRepository,
             $this->recipeRepository,
@@ -87,6 +93,7 @@ class PurgeUserDataHandlerTest extends TestCase
             $this->ingredientRepository,
             $this->aliasRepository,
             $this->distinctRepository,
+            $this->spokenPhraseRepository,
         );
     }
 
@@ -170,6 +177,15 @@ class PurgeUserDataHandlerTest extends TestCase
         $this->assertSame([self::OTHER . '|beurre-other|farine-other'], array_map(static fn(IngredientDistinctPair $pair): string => $pair->getId(), $this->distinctRepository->all()));
     }
 
+    public function testWhatTheUserTaughtAlexaIsDeletedAndTheOthersKept(): void
+    {
+        // When
+        ($this->handler)(new PurgeUserDataCommand(self::USER));
+
+        // Then
+        $this->assertSame([[self::OTHER, 'beurre']], array_map(static fn(array $row): array => [$row['userId'], $row['phrase']], $this->spokenPhraseRepository->all()));
+    }
+
     public function testAUserWithoutAnyDataIsNotAnError(): void
     {
         // When
@@ -183,6 +199,7 @@ class PurgeUserDataHandlerTest extends TestCase
         $this->assertCount(3, $this->ingredientRepository->findAll());
         $this->assertCount(3, $this->conversionRepository->findAll());
         $this->assertCount(2, $this->distinctRepository->all());
+        $this->assertCount(2, $this->spokenPhraseRepository->all());
     }
 
     /**

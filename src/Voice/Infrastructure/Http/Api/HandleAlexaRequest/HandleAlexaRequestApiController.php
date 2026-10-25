@@ -11,6 +11,7 @@ use Repas\Shared\Application\Interface\QueryBusInterface;
 use Repas\Shared\Infrastructure\Http\RequiresVoice;
 use Repas\Voice\Application\Command\AddSpokenItem\AddSpokenItemCommand;
 use Repas\Voice\Application\Command\AddSpokenItem\AddSpokenItemResult;
+use Repas\Voice\Application\Command\AnswerSpokenDialogue\AnswerSpokenDialogueCommand;
 use Repas\Voice\Application\Command\RecordVoiceLinkUse\RecordVoiceLinkUseCommand;
 use Repas\Voice\Application\Query\ResolveAccessGrant\ResolveAccessGrantQuery;
 use Repas\Voice\Application\Query\ResolveAccessGrant\ResolvedAccessGrantDTO;
@@ -46,8 +47,9 @@ use Throwable;
  *
  * Une fois la requête authentique la réponse est TOUJOURS `200` avec une réponse vocale valide : une panne inattendue donne la phrase d'échec
  * (la classe et l'endroit de l'exception sont journalisés, jamais son message ni le corps, qui contient la voix transcrite). Le controller
- * traduit le protocole : la conversation est dans `AlexaDialogue`, l'ajout dans `AddSpokenItem`, le suivi de la liaison dans
- * `RecordVoiceLinkUse`, que le webhook lance en dernier et dont un échec ne change pas la réponse.
+ * traduit le protocole : la conversation est dans `AlexaDialogue`, l'ajout dans `AddSpokenItem`, la réponse à une question d'un produit inconnu
+ * dans `AnswerSpokenDialogue` (l'état du dialogue voyage dans `session.attributes` à l'aller et `sessionAttributes` au retour, ADR 0029
+ * décision 11), le suivi de la liaison dans `RecordVoiceLinkUse`, que le webhook lance en dernier et dont un échec ne change pas la réponse.
  */
 #[RequiresVoice]
 #[VoiceRateLimited(VoiceRateLimit::WEBHOOK)]
@@ -69,7 +71,7 @@ final class HandleAlexaRequestApiController extends AbstractController
     #[Route(path: '/api/voice/alexa', name: 'api_voice_alexa', methods: ['POST'])]
     #[OA\Post(
         summary: "Webhook du skill Alexa « mes courses » : reçoit une requête d'Alexa et répond par une réponse vocale (route publique, appelée par Amazon)",
-        description: "Le corps est la requête JSON d'un skill personnalisé (`LaunchRequest`, `IntentRequest`, `SessionEndedRequest`), signée par Amazon : les en-têtes `SignatureCertChainUrl` et `Signature-256` sont vérifiés avant tout traitement (chaîne de certificats d'Amazon, signature du corps brut, horodatage à 150 s, identifiant du skill `ALEXA_SKILL_ID`). Une requête qui ne le prouve pas reçoit `400 INVALID_ALEXA_REQUEST`, sans autre détail. Une requête authentique reçoit TOUJOURS `200` et une réponse vocale (`outputSpeech` de type `PlainText`, `shouldEndSession`) : intentions `AddItemIntent` (créneau `item` : l'article est ajouté à la liste de courses de l'utilisateur, une liste est créée s'il n'en a pas d'active), `AMAZON.HelpIntent`, `AMAZON.StopIntent`, `AMAZON.CancelIntent`, `AMAZON.FallbackIntent` ; seule la langue `fr-FR` est servie ; `SessionEndedRequest` reçoit une réponse sans parole. L'utilisateur est celui du jeton d'accès de la liaison de compte (`session.user.accessToken`, à défaut `context.System.user.accessToken`) ; sans jeton valable (absent, inconnu, expiré, liaison retirée ou compte inactif : on ne les distingue pas) la réponse porte la carte `LinkAccount`. Plafonds : 60 requêtes par minute et par adresse IP (`429`), puis 60 par minute et par liaison (réponse vocale « Un instant, réessaie dans une minute. »). Le corps (la voix transcrite) n'est jamais journalisé.",
+        description: "Le corps est la requête JSON d'un skill personnalisé (`LaunchRequest`, `IntentRequest`, `SessionEndedRequest`), signée par Amazon : les en-têtes `SignatureCertChainUrl` et `Signature-256` sont vérifiés avant tout traitement (chaîne de certificats d'Amazon, signature du corps brut, horodatage à 150 s, identifiant du skill `ALEXA_SKILL_ID`). Une requête qui ne le prouve pas reçoit `400 INVALID_ALEXA_REQUEST`, sans autre détail. Une requête authentique reçoit TOUJOURS `200` et une réponse vocale (`outputSpeech` de type `PlainText`, `shouldEndSession`) : intentions `AddItemIntent` (créneau `item` : l'article est ajouté à la liste de courses de l'utilisateur, une liste est créée s'il n'en a pas d'active ; un produit inconnu ouvre un dialogue), `ChooseOptionIntent` (créneau `rank`, 1 à 3), `CreateItemIntent`, `AnswerDepartmentIntent` (créneau `department`), `AnswerUnitIntent` (créneau `unit`), `AMAZON.YesIntent`, `AMAZON.NoIntent`, `AMAZON.HelpIntent`, `AMAZON.StopIntent`, `AMAZON.CancelIntent`, `AMAZON.FallbackIntent` ; l'état du dialogue d'un produit inconnu (trois propositions, création guidée : rayon, unité, confirmation) voyage dans les attributs de séance (`session.attributes.dialogue` à l'aller, `sessionAttributes.dialogue` au retour, rien n'est écrit en base hors l'article, le produit créé et la mémoire de phrase), lu comme une entrée non fiable ; seule la langue `fr-FR` est servie ; `SessionEndedRequest` reçoit une réponse sans parole. L'utilisateur est celui du jeton d'accès de la liaison de compte (`session.user.accessToken`, à défaut `context.System.user.accessToken`) ; sans jeton valable (absent, inconnu, expiré, liaison retirée ou compte inactif : on ne les distingue pas) la réponse porte la carte `LinkAccount`. Plafonds : 60 requêtes par minute et par adresse IP (`429`), puis 60 par minute et par liaison (réponse vocale « Un instant, réessaie dans une minute. »). Le corps (la voix transcrite) n'est jamais journalisé.",
         security: [],
         parameters: [
             new OA\Parameter(name: 'SignatureCertChainUrl', in: 'header', required: true, description: "Adresse de la chaîne de certificats d'Amazon (`https://s3.amazonaws.com/echo.api/…`)", schema: new OA\Schema(type: 'string')),
@@ -77,7 +79,7 @@ final class HandleAlexaRequestApiController extends AbstractController
         ],
         requestBody: new OA\RequestBody(
             required: true,
-            description: "La requête d'Alexa, telle qu'Amazon l'envoie (non modélisée ici : seuls `request.type`, `request.locale`, `request.intent`, `session.new`, `session.user` et le jeton d'accès sont lus)",
+            description: "La requête d'Alexa, telle qu'Amazon l'envoie (non modélisée ici : seuls `request.type`, `request.locale`, `request.intent` (et ses créneaux), `session.new`, `session.attributes.dialogue`, `session.user` et le jeton d'accès sont lus)",
             content: new OA\JsonContent(type: 'object', example: [
                 'version' => '1.0',
                 'session' => ['new' => true, 'user' => ['userId' => 'amzn1.ask.account.EXAMPLE', 'accessToken' => '3Qa5mVq1xT0Zb8nWc2YpLkR7sHdJ9eUfGhAoIiNtBvM']],
@@ -97,6 +99,7 @@ final class HandleAlexaRequestApiController extends AbstractController
         content: new OA\JsonContent(
             properties: [
                 new OA\Property(property: 'version', type: 'string', example: '1.0'),
+                new OA\Property(property: 'sessionAttributes', type: 'object', description: "Seulement quand la séance reste ouverte : l'état du dialogue d'un produit inconnu (`dialogue`), `{}` quand il n'y en a pas. Alexa le rend dans `session.attributes` à la requête suivante"),
                 new OA\Property(property: 'response', type: 'object', properties: [
                     new OA\Property(property: 'outputSpeech', type: 'object', properties: [
                         new OA\Property(property: 'type', type: 'string', example: 'PlainText'),
@@ -173,22 +176,33 @@ final class HandleAlexaRequestApiController extends AbstractController
             return AlexaResponse::say(VoiceReplies::SLOW_DOWN);
         }
 
-        $response = $this->dialogue->answer($alexa) ?? $this->addItem($alexa, $grant);
+        $response = $this->dialogue->answer($alexa) ?? $this->useCase($alexa, $grant);
         $this->recordUse($alexa, $grant);
 
         return $response;
     }
 
-    private function addItem(AlexaRequest $alexa, ResolvedAccessGrantDTO $grant): AlexaResponse
+    /**
+     * Ce que le dialogue n'a pas pu répondre seul : la réponse à une question en cours si la séance porte un état, sinon l'ajout d'un article.
+     */
+    private function useCase(AlexaRequest $alexa, ResolvedAccessGrantDTO $grant): AlexaResponse
     {
-        $phrase = $alexa->phrase ?? throw new LogicException("AddItemIntent sans phrase doit être redemandé par le dialogue.");
-
-        $result = $this->commandBus->dispatch(new AddSpokenItemCommand($grant->userId, $phrase, $alexa->isInOpenSession()));
-        if (!$result instanceof AddSpokenItemResult) {
-            throw new LogicException('AddSpokenItemHandler doit renvoyer un AddSpokenItemResult.');
+        if ($alexa->dialogueState !== null) {
+            return $this->spoken($this->commandBus->dispatch(new AnswerSpokenDialogueCommand($grant->userId, $alexa, $alexa->dialogueState)));
         }
 
-        return AlexaResponse::reply($result->speech, $result->keepSessionOpen, VoiceReplies::LAUNCH);
+        $phrase = $alexa->phrase ?? throw new LogicException("AddItemIntent sans phrase doit être redemandé par le dialogue.");
+
+        return $this->spoken($this->commandBus->dispatch(new AddSpokenItemCommand($grant->userId, $phrase, $alexa->isInOpenSession())));
+    }
+
+    private function spoken(mixed $result): AlexaResponse
+    {
+        if (!$result instanceof AddSpokenItemResult) {
+            throw new LogicException("Le cas d'usage vocal doit renvoyer un AddSpokenItemResult.");
+        }
+
+        return AlexaResponse::reply($result->speech, $result->keepSessionOpen, $result->reprompt ?? VoiceReplies::LAUNCH, $result->nextState);
     }
 
     /**

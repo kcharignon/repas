@@ -11,7 +11,9 @@ use stdClass;
  *
  * Quatre formes seulement :
  * - `say()` : une phrase, la séance se ferme ;
- * - `ask()` : une phrase, la séance reste ouverte, et si l'utilisateur ne dit rien Alexa répète `$reprompt` ;
+ * - `ask()` : une phrase, la séance reste ouverte, et si l'utilisateur ne dit rien Alexa répète `$reprompt`. Une réponse qui laisse la
+ *   séance ouverte écrit TOUJOURS `sessionAttributes` (ADR 0029 décision 11) : l'état du dialogue en cours, ou `{}` quand il n'y en a plus.
+ *   Alexa ne rend à la requête suivante que ce qu'on lui a donné : sans la clé, l'état serait oublié ;
  * - `linkAccount()` : une phrase et la carte `LinkAccount` (l'application Alexa propose de lier le compte), la séance se ferme ;
  * - `silence()` : aucune parole (la fin d'une séance, `SessionEndedRequest`, n'en accepte pas).
  */
@@ -22,6 +24,7 @@ final readonly class AlexaResponse
         public bool $endsSession,
         public ?string $reprompt = null,
         public bool $linksAccount = false,
+        public ?SpokenDialogueState $state = null,
     ) {
     }
 
@@ -30,9 +33,12 @@ final readonly class AlexaResponse
         return new self($speech, true);
     }
 
-    public static function ask(string $speech, string $reprompt): self
+    /**
+     * @param ?SpokenDialogueState $state le dialogue en cours, rendu par Alexa à la requête suivante ; `null` : aucun
+     */
+    public static function ask(string $speech, string $reprompt, ?SpokenDialogueState $state = null): self
     {
-        return new self($speech, false, $reprompt);
+        return new self($speech, false, $reprompt, false, $state);
     }
 
     public static function linkAccount(string $speech): self
@@ -48,13 +54,13 @@ final readonly class AlexaResponse
     /**
      * Le même texte, avec la séance ouverte ou fermée selon `$keepOpen` (la séance ouverte redemande `$reprompt` après un silence).
      */
-    public static function reply(string $speech, bool $keepOpen, string $reprompt): self
+    public static function reply(string $speech, bool $keepOpen, string $reprompt, ?SpokenDialogueState $state = null): self
     {
-        return $keepOpen ? self::ask($speech, $reprompt) : self::say($speech);
+        return $keepOpen ? self::ask($speech, $reprompt, $state) : self::say($speech);
     }
 
     /**
-     * @return array{version: string, response: array<string, mixed>|stdClass}
+     * @return array{version: string, sessionAttributes?: array<string, mixed>|stdClass, response: array<string, mixed>|stdClass}
      */
     public function toArray(): array
     {
@@ -72,6 +78,13 @@ final readonly class AlexaResponse
         }
         $response['shouldEndSession'] = $this->endsSession;
 
-        return ['version' => '1.0', 'response' => $response];
+        if ($this->endsSession) {
+            return ['version' => '1.0', 'response' => $response];
+        }
+
+        // `{}` et non `[]` : un objet JSON, comme Alexa l'attend
+        $attributes = $this->state === null ? new stdClass() : [SpokenDialogueState::ATTRIBUTE => $this->state->toArray()];
+
+        return ['version' => '1.0', 'sessionAttributes' => $attributes, 'response' => $response];
     }
 }

@@ -51,6 +51,11 @@ services:
         alias: Repas\Repas\Infrastructure\Voice\SpokenIngredientResolverAdapter
         public: true
 
+    # Port de la commande vocale (ADR 0029 décision 11, VOX-303) : le contexte `Voice` crée l'ingrédient qu'Alexa ne connaît pas, sans importer `Repas`
+    Repas\Shared\Application\Interface\SpokenIngredientCreator:
+        alias: Repas\Repas\Infrastructure\Voice\SpokenIngredientCreatorAdapter
+        public: true
+
     # Vérificateur des requêtes d'Alexa (ADR 0029 décision 7, VOX-203) : OpenSSL, la chaîne d'Amazon téléchargée puis gardée 24 h.
     # Aucune racine n'est injectée en production : le magasin du système. L'identifiant du skill vient de `ALEXA_SKILL_ID`.
     Repas\Voice\Domain\Interface\AlexaRequestVerifier:
