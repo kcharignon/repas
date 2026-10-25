@@ -8,7 +8,7 @@ Suivi vivant du chantier « Alexa, demande à *mes courses* d'ajouter du pain »
 4. [`docs/drive/consignes-agents.md`](../drive/consignes-agents.md) (règles communes de livraison) et les skills `repas-dev` (back), `repas-front-dev` (front), `repas-android-dev` (application), `repas-po` (tout écran, tout texte, **toute réponse d'Alexa**), `repas-ops` (variables, scripts).
 5. Le `CLAUDE.md` du dépôt où l'on travaille.
 
-> **État au 2026-10-25.** Cadrage écrit, rien de codé. Décisions D1 à D6 de l'ADR 0029 en attente (défauts retenus). La liste d'Amazon n'est plus accessible aux tiers : la phrase contient donc le nom du skill.
+> **État au 2026-10-25.** Cadrage écrit ; le back est complet jusqu'au webhook (VOX-101 à 103, 201 à 205, PR #267 pour le dernier) : une phrase signée par Amazon ajoute un article à la liste, sans Echo ni console. Reste : les écrans (VOX-401), l'exploitation (VOX-601), le compte Amazon (VOX-002) et la recette sur l'Echo (VOX-602). Décisions D1 à D6 de l'ADR 0029 en attente (défauts retenus). La liste d'Amazon n'est plus accessible aux tiers : la phrase contient donc le nom du skill.
 
 ## Règles du chantier
 
@@ -36,8 +36,8 @@ Suivi vivant du chantier « Alexa, demande à *mes courses* d'ajouter du pain »
 - [x] [VOX-201](tickets/VOX-201-squelette-voice-interrupteur-purge.md) back · M · Contexte `Voice`, interrupteur, Deptrac, migration, purge du compte · dépend de : —
 - [x] [VOX-202](tickets/VOX-202-liaison-de-compte-oauth.md) back · L · Serveur d'autorisation : code, jetons hachés, PKCE, `authorize`, `token`, liaisons listées et supprimées · dépend de : 201
 - [x] [VOX-203](tickets/VOX-203-verification-des-requetes-alexa.md) back · L · Vérificateur de requêtes Alexa (certificat, signature, horodatage, `applicationId`) · dépend de : 201
-- [ ] [VOX-204](tickets/VOX-204-webhook-alexa-ajouter-un-article.md) back · L · `POST /api/voice/alexa` : lancement, ajout, aide, arrêt, repli ; réponses françaises · dépend de : 102, 103, 202, 203
-- [ ] [VOX-205](tickets/VOX-205-paquet-du-skill.md) assistant · S · Manifeste et modèle d'interaction `fr-FR` (types de valeurs d'après le catalogue de base) · dépend de : 204
+- [x] [VOX-204](tickets/VOX-204-webhook-alexa-ajouter-un-article.md) back · L · `POST /api/voice/alexa` : lancement, ajout, aide, arrêt, repli ; réponses françaises · dépend de : 102, 103, 202, 203
+- [x] [VOX-205](tickets/VOX-205-paquet-du-skill.md) assistant · S · Manifeste et modèle d'interaction `fr-FR` (types de valeurs d'après le catalogue de base) · dépend de : 204
 
 ## M3 — Habitudes qui apprennent (après la première recette)
 
