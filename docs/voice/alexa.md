@@ -65,8 +65,8 @@ Entrée : la phrase reconnue (« des tomates », « du pain de mie »). Sortie :
 1. **Normalisation** : `StringTool::slugify`, mots vides retirés (`IngredientNameMatcher::STOP_WORDS` + « du », « de la », « des », « un », « une »), pluriels repliés (`IngredientNameMatcher::tokens`).
 2. **Candidats** : les ingrédients de l'utilisateur (`IngredientVisibility::visibleBy`), avec pour chacun `uses12m` = lignes de ses listes + lignes de ses recettes sur douze mois (une requête agrégée, comme `search()`).
 3. **Mémoire de phrase** : une ligne `voice_phrase_choice(user_id, phrase, ingredient_slug, times)` pour la phrase normalisée → cet ingrédient, `SURE`. Écrite quand l'utilisateur corrige un ajout vocal (VOX-301).
-4. **Sinon** pour chaque candidat avec `SearchRelevance::score ≥ 0,85` : `score = pertinence + 0,1 × n/(n+3)`, `n = uses12m`.
-5. **Confiance** : `SURE` si le premier est un nom identique et qu'aucun autre candidat ne le dépasse de moins de 0,03 ; `PROBABLE` si l'écart au second est d'au moins 0,03 ; sinon `UNSURE` (on ajoute le premier et on le dit).
+4. **Sinon** pour chaque candidat avec `SearchRelevance::score ≥ 0,85` : `score = pertinence + 0,1 × n/(n+3)`, `n = uses12m`. **Un nom identique à la phrase (une fois normalisés) passe avant tout nom seulement proche** : le bonus d'habitude (jusqu'à 0,1) dépasserait sinon l'écart de pertinence (« tomate » 1,0 contre *tomates pelées* 0,95 : 0,95 + 0,093 > 1,0). L'habitude ne départage donc que des noms de même rang (VOX-101, constatée à l'écriture des tests).
+5. **Confiance** : `SURE` pour le seul nom identique (ou la mémoire de phrase) ; `PROBABLE` si le premier devance le suivant d'au moins 0,03, ou n'a pas de suivant (un seul candidat proche) ; sinon `UNSURE` (deux noms qui se touchent : on ajoute le premier et on le dit).
 6. **Ordre déterministe** : à score égal, nom puis slug (comme `search()`).
 
 Pourquoi ce n'est pas `IngredientNameMatcher` : lui sert à dire « c'est le même ingrédient » avec certitude, en se trompant vers le doublon (ADR 0028). Ici l'utilisateur veut le plus probable, et l'erreur se répare d'un geste dans l'application.
