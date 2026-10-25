@@ -141,6 +141,43 @@ function catalogueValues(file, synonymsTable, label) {
   });
 }
 
+const SMALL_NUMBERS = ['', 'un', 'deux', 'trois', 'quatre', 'cinq', 'six', 'sept', 'huit', 'neuf', 'dix', 'onze', 'douze', 'treize', 'quatorze', 'quinze', 'seize'];
+const TENS = { 2: 'vingt', 3: 'trente', 4: 'quarante', 5: 'cinquante', 6: 'soixante' };
+
+/** Un nombre de 1 à 99 en lettres, sans trait d'union (« vingt deux », « quatre vingt dix neuf ») : Amazon n'en veut pas dans une valeur. */
+function frenchNumber(number) {
+  if (number <= 16) {
+    return SMALL_NUMBERS[number];
+  }
+  if (number < 20) {
+    return `dix ${SMALL_NUMBERS[number - 10]}`;
+  }
+  if (number < 70) {
+    const tens = TENS[Math.floor(number / 10)];
+    const units = number % 10;
+
+    return units === 0 ? tens : units === 1 ? `${tens} et un` : `${tens} ${SMALL_NUMBERS[units]}`;
+  }
+  if (number < 80) {
+    return number === 71 ? 'soixante et onze' : `soixante ${frenchNumber(number - 60)}`;
+  }
+
+  return number === 80 ? 'quatre vingts' : `quatre vingt ${frenchNumber(number - 80)}`;
+}
+
+/**
+ * Les quantités dites, de 1 à 99 : un type à nous plutôt que `AMAZON.NUMBER`, qu'Amazon laissait vide quand le nombre précédait une unité (« deux paquets
+ * de croquettes », essai réel du 2026-10-25). Amazon refuse les chiffres dans une valeur : la valeur est le nombre en lettres, l'identifiant est le nombre
+ * lui-même (les `id` peuvent être des chiffres) et le webhook le lit tel quel.
+ */
+function quantityValues() {
+  return Array.from({ length: 99 }, (_, index) => {
+    const number = index + 1;
+
+    return { id: String(number), name: { value: frenchNumber(number), synonyms: number === 1 ? ['une'] : [] } };
+  });
+}
+
 function rankValues() {
   return RANKS.map((rank) => ({ id: rank.id, name: { value: rank.name, synonyms: rank.synonyms } }));
 }
@@ -165,7 +202,7 @@ function addItemSamples() {
   }
 
   // La quantité dite (« trois croquettes », décision 5 de l'ADR 0029, amendée le 2026-10-25), avec ou sans unité. Amazon veut une espace après
-  // l'apostrophe (« d' {item} »). Le créneau `quantity` est un `AMAZON.NUMBER` : Alexa le rend en chiffres. Sans verbe, la quantité ouvre la phrase.
+  // l'apostrophe (« d' {item} »). Le créneau `quantity` est du type `QUANTITY` (1 à 99, identifiant = le nombre). Sans verbe, la quantité ouvre la phrase.
   const quantified = ['{quantity} {item}', '{quantity} de {item}', '{quantity} {unit} de {item}', "{quantity} {unit} d' {item}"];
   for (const verb of ADD_VERBS) {
     for (const form of quantified) {
@@ -216,7 +253,7 @@ function intents() {
     { name: 'AMAZON.NoIntent', samples: [] },
     {
       name: 'AddItemIntent',
-      slots: [{ name: 'item', type: 'INGREDIENT' }, { name: 'quantity', type: 'AMAZON.NUMBER' }, { name: 'unit', type: 'UNIT' }],
+      slots: [{ name: 'item', type: 'INGREDIENT' }, { name: 'quantity', type: 'QUANTITY' }, { name: 'unit', type: 'UNIT' }],
       samples: addItemSamples(),
     },
     {
@@ -264,6 +301,7 @@ function model() {
           { name: 'INGREDIENT', values: ingredientValues() },
           { name: 'DEPARTMENT', values: catalogueValues('department.json', DEPARTMENT_SYNONYMS, 'Rayons') },
           { name: 'UNIT', values: catalogueValues('unit.json', UNIT_SYNONYMS, 'Unités') },
+          { name: 'QUANTITY', values: quantityValues() },
           { name: 'OPTION_RANK', values: rankValues() },
         ],
       },

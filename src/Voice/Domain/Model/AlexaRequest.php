@@ -6,7 +6,7 @@ use Repas\Voice\Domain\Service\SpokenUnits;
 
 /**
  * Ce que le webhook retient d'une requête d'Alexa DÉJÀ VÉRIFIÉE (ADR 0029, `AlexaRequestVerifier`) : son type, l'intention et ses
- * créneaux (`item`, `rank`, `department`, `unit` : le texte dit et l'identifiant de la valeur rapprochée ; `quantity` : un entier de 1 à 99), l'état du dialogue de la séance
+ * créneaux (`item`, `rank`, `department`, `unit` : le texte dit et l'identifiant de la valeur rapprochée ; `quantity` : un entier de 1 à 99, lu d'abord dans l'identifiant du type `QUANTITY`), l'état du dialogue de la séance
  * (`session.attributes.dialogue`, décision 11), la langue, si c'est la première requête de la séance, le jeton d'accès de la liaison de
  * compte et l'identifiant d'utilisateur Alexa. Rien d'autre : le reste du corps n'est jamais lu, gardé, ni journalisé (il contient la
  * voix transcrite).
@@ -62,8 +62,12 @@ final readonly class AlexaRequest
         $type = self::stringAt($data, ['request', 'type']);
         $isIntent = $type === self::INTENT;
         $spokenQuantity = self::valueAt($data, ['request', 'intent', 'slots', 'quantity', 'value']);
-        // Alexa écrit un nombre en texte ; un vrai nombre JSON est lu de même (tolérance)
-        $quantityText = $isIntent ? SlotValue::cleanText(is_int($spokenQuantity) || is_float($spokenQuantity) ? (string) $spokenQuantity : $spokenQuantity) : null;
+        // Le type `QUANTITY` du modèle a pour identifiant le nombre lui-même (« deux » et « 2 » rendent « 2 ») : il passe avant le texte dit.
+        // Un vrai nombre JSON est lu comme du texte (tolérance)
+        $quantityText = $isIntent
+            ? SlotValue::fromDecoded(self::valueAt($data, ['request', 'intent', 'slots', 'quantity']))->id
+                ?? SlotValue::cleanText(is_int($spokenQuantity) || is_float($spokenQuantity) ? (string) $spokenQuantity : $spokenQuantity)
+            : null;
 
         return new self(
             type: $type ?? '',
