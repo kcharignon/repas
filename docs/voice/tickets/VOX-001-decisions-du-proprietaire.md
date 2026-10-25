@@ -16,7 +16,7 @@ Un point change tout pour l'utilisateur : « Alexa, ajoute du pain à la liste �
 
 Poser **une question à la fois**, en français simple, avec le défaut recommandé (voir `feedback-drive-role-po-sans-code`) :
 
-1. D1 le nom d'invocation (au moins deux mots ; défaut « mes courses ») ;
+1. D1 le nom d'invocation (au moins deux mots ; décidé le 2026-10-25 : « Jarvis ») ;
 2. D4 qui s'en sert (défaut : son compte Amazon seulement) ;
 3. D2, D5, D6 : confirmer les défauts d'un seul message. **D3 est décidée (2026-10-25)** : produit inconnu = trois propositions, mémoire de phrase, création guidée (ADR 0029 décision 11, VOX-303).
 

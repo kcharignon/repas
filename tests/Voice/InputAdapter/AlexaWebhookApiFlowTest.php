@@ -89,7 +89,7 @@ class AlexaWebhookApiFlowTest extends DatabaseTestCase
         $this->savedBread($user);
         $list = $this->savedActiveList($user);
 
-        // When : « Alexa, demande à mes courses d'ajouter du pain »
+        // When : « Alexa, demande à Jarvis d'ajouter du pain »
         $this->say(AlexaTestRequest::addItem('du pain'));
 
         // Then
@@ -233,7 +233,7 @@ class AlexaWebhookApiFlowTest extends DatabaseTestCase
 
     public function testInAnOpenSessionTheAnswerIsAPlainStatementAndTheSessionStaysOpenWithoutAReprompt(): void
     {
-        // Given : « Alexa, ouvre mes courses », puis « du pain », puis « du pain » encore
+        // Given : « Alexa, ouvre Jarvis », puis « du pain », puis « du pain » encore
         $user = $this->linkedUser();
         $this->savedBread($user);
 
@@ -267,7 +267,7 @@ class AlexaWebhookApiFlowTest extends DatabaseTestCase
         $this->persister->saveIngredient(new IngredientBuilder()->withName('croquettes')->withCreator($user, true)->build());
         $list = $this->savedActiveList($user);
 
-        // When : « Alexa, demande à mes courses d'ajouter trois croquettes »
+        // When : « Alexa, demande à Jarvis d'ajouter trois croquettes »
         $this->say(AlexaTestRequest::addQuantified('croquettes', '3'));
 
         // Then

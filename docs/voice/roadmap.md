@@ -1,6 +1,6 @@
 # Chantier : commande vocale Alexa
 
-Suivi vivant du chantier « Alexa, demande à *mes courses* d'ajouter du pain ». Cadrage du 2026-10-25 ; décision d'architecture : [ADR 0029](../adr/0029-commande-vocale-alexa.md) (`Proposed` jusqu'à VOX-001, amendée le 2026-10-25 : décision 11). **À lire en premier par tout agent qui reprend ce chantier**, dans cet ordre :
+Suivi vivant du chantier « Alexa, demande à *Jarvis* d'ajouter du pain ». Cadrage du 2026-10-25 ; décision d'architecture : [ADR 0029](../adr/0029-commande-vocale-alexa.md) (`Accepted` le 2026-10-25, amendée le même jour : décisions 5 et 11). **À lire en premier par tout agent qui reprend ce chantier**, dans cet ordre :
 
 1. Ce fichier.
 2. [`alexa.md`](alexa.md) : faits vérifiés (avec leurs réserves), architecture, algorithme de choix de l'ingrédient, risques.

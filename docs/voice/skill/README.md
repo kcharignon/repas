@@ -1,4 +1,4 @@
-# Paquet du skill Alexa « mes courses »
+# Paquet du skill Alexa « Jarvis »
 
 Deux fichiers, à coller dans la console Amazon (ticket [VOX-002](../tickets/VOX-002-compte-amazon-et-skill.md)). Ils ne contiennent aucun secret.
 
@@ -19,7 +19,7 @@ Le script lit `docs/ingredients/base-ingredients.tsv` (type `INGREDIENT`), `src/
 
 ## Le modèle d'interaction
 
-- **Nom d'invocation** : `mes courses` (défaut de la décision D1 de l'[ADR 0029](../../adr/0029-commande-vocale-alexa.md)). S'il change, modifier la constante `INVOCATION_NAME` du script, puis `alexa.md` § 2. La console peut refuser un nom : prévoir un second choix.
+- **Nom d'invocation** : `jarvis` (décision D1 du propriétaire, [ADR 0029](../../adr/0029-commande-vocale-alexa.md) ; la console l'a accepté en développement). S'il change, modifier la constante `INVOCATION_NAME` du script, puis `alexa.md` § 2. **Recoller le modèle dans la console renomme le skill** : toujours coller le fichier généré à jour, jamais un ancien.
 - **Intentions** (douze, exactement celles de `AlexaIntent`, que `DocsVoiceSkillTest` impose) :
 
   | Intention | Créneau (type) | Quand |
