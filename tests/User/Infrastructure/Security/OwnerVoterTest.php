@@ -6,6 +6,7 @@ namespace Repas\Tests\User\Infrastructure\Security;
 use PHPUnit\Framework\TestCase;
 use Repas\Tests\Helper\Builder\UserBuilder;
 use Repas\Tests\Helper\InMemoryLoader\OwnershipInMemoryLoader;
+use Repas\Tests\Helper\InMemoryLoader\VoiceLinkOwnershipInMemoryLoader;
 use Repas\User\Domain\Model\User;
 use Repas\User\Infrastructure\Security\OwnerVoter;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -101,6 +102,26 @@ class OwnerVoterTest extends TestCase
         $this->assertSame(VoterInterface::ACCESS_GRANTED, $this->vote($this->other, OwnerVoter::SHOPPING_LIST_ROW_OWNER, 'row-1', $loader, admin: true));
     }
 
+    public function testOnlyTheOwnerOwnsAVoiceLinkAndAnAdministratorHasNoPassThrough(): void
+    {
+        // Given : la liaison avec Alexa est à owner-id (ADR 0029)
+        $links = new VoiceLinkOwnershipInMemoryLoader(['link-1' => 'owner-id']);
+
+        // Then : le propriétaire la retire, un autre compte non, et un administrateur non plus : retirer la liaison d'un autre couperait sa commande vocale
+        $this->assertSame(VoterInterface::ACCESS_GRANTED, $this->vote($this->owner, OwnerVoter::VOICE_LINK_OWNER, 'link-1', voiceLinks: $links));
+        $this->assertSame(VoterInterface::ACCESS_DENIED, $this->vote($this->other, OwnerVoter::VOICE_LINK_OWNER, 'link-1', voiceLinks: $links));
+        $this->assertSame(VoterInterface::ACCESS_DENIED, $this->vote($this->other, OwnerVoter::VOICE_LINK_OWNER, 'link-1', admin: true, voiceLinks: $links));
+        $this->assertSame(VoterInterface::ACCESS_GRANTED, $this->vote($this->owner, OwnerVoter::VOICE_LINK_OWNER, 'link-1', admin: true, voiceLinks: $links));
+    }
+
+    public function testAnUnknownVoiceLinkIsNotFoundEvenForAnAdministrator(): void
+    {
+        // Then : sans passe-droit, la liaison est cherchée : un identifiant inconnu donne 404
+        $this->expectException(NotFoundHttpException::class);
+
+        $this->vote($this->owner, OwnerVoter::VOICE_LINK_OWNER, 'unknown-link', admin: true);
+    }
+
     public function testAnAdministratorOwnsEverythingWithoutLookingTheResourceUp(): void
     {
         $this->assertSame(VoterInterface::ACCESS_GRANTED, $this->vote($this->other, OwnerVoter::SHOPPING_LIST_OWNER, 'unknown-list', admin: true));
@@ -126,7 +147,7 @@ class OwnerVoterTest extends TestCase
         $this->assertSame(VoterInterface::ACCESS_ABSTAIN, $this->vote($this->owner, 'OTHER', 'owner-id'));
     }
 
-    private function vote(User $user, string $attribute, string $subject, ?OwnershipInMemoryLoader $loader = null, bool $admin = false): int
+    private function vote(User $user, string $attribute, string $subject, ?OwnershipInMemoryLoader $loader = null, bool $admin = false, ?VoiceLinkOwnershipInMemoryLoader $voiceLinks = null): int
     {
         $decisionManager = new class($admin) implements AccessDecisionManagerInterface {
             public function __construct(private readonly bool $admin)
@@ -138,7 +159,7 @@ class OwnerVoterTest extends TestCase
                 return $this->admin;
             }
         };
-        $voter = new OwnerVoter($decisionManager, $loader ?? new OwnershipInMemoryLoader());
+        $voter = new OwnerVoter($decisionManager, $loader ?? new OwnershipInMemoryLoader(), $voiceLinks ?? new VoiceLinkOwnershipInMemoryLoader());
 
         return $voter->vote(new UsernamePasswordToken($user, 'main', $user->getRoles()), $subject, [$attribute]);
     }

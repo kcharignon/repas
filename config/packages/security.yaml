@@ -13,6 +13,14 @@ security:
         auth:
             pattern: ^/api/auth
             security: false
+        # Commande vocale Alexa (ADR 0029) : l'échange des jetons de la liaison de compte et, plus tard, le webhook sont appelés par
+        # Amazon, qui n'a pas de JWT. Hors sécurité par construction : le client s'authentifie par ses identifiants OAuth (échange des
+        # jetons) ou par la signature d'Amazon (webhook), et le plafond de débit et l'interrupteur `ALEXA_ENABLED` sont posés par les
+        # controllers (`#[VoiceRateLimited]`, `#[RequiresVoice]`). Un jeton d'accès Alexa est opaque : il n'est JAMAIS accepté par le firewall
+        # `api` (JWT) ci-dessous, et l'autorisation (`/api/v1/voice/…`) reste derrière le JWT de l'utilisateur.
+        voice:
+            pattern: ^/api/voice(/|$)
+            security: false
         # Connexion : échange email + mot de passe contre un JWT (ADR 0008).
         login:
             pattern: ^/api/login

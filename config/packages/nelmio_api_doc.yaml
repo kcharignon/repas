@@ -59,6 +59,42 @@ nelmio_api_doc:
                                         type: object
                                         properties:
                                             message: { type: string, example: DRIVE_RATE_LIMITED }
+            # Réponses 429 de la liaison de compte Alexa (VOX-202), référencées par #[OA\Response(response: 429, ref: '#/components/responses/…')]
+            # (même définition `responses` que ci-dessus : une seule clé par composant)
+                VoiceTokenRateLimited:
+                    description: >-
+                        Trop d'échanges de jetons depuis cette adresse IP : plus de 30 par heure (`POST /api/voice/oauth/token`, route
+                        publique). Message `VOICE_RATE_LIMITED` ; patienter au moins le délai de `Retry-After`.
+                    headers:
+                        Retry-After:
+                            description: Secondes à attendre au minimum avant de réessayer
+                            schema: { type: integer, minimum: 1, example: 120 }
+                    content:
+                        application/json:
+                            schema:
+                                type: object
+                                properties:
+                                    error:
+                                        type: object
+                                        properties:
+                                            message: { type: string, example: VOICE_RATE_LIMITED }
+                VoiceAuthorizeRateLimited:
+                    description: >-
+                        Trop de codes d'autorisation émis par cet utilisateur : plus de 20 par heure (`POST /api/v1/voice/alexa/authorize`).
+                        Message `VOICE_RATE_LIMITED` ; patienter au moins le délai de `Retry-After`.
+                    headers:
+                        Retry-After:
+                            description: Secondes à attendre au minimum avant de réessayer
+                            schema: { type: integer, minimum: 1, example: 120 }
+                    content:
+                        application/json:
+                            schema:
+                                type: object
+                                properties:
+                                    error:
+                                        type: object
+                                        properties:
+                                            message: { type: string, example: VOICE_RATE_LIMITED }
             securitySchemes:
                 Bearer:
                     type: http

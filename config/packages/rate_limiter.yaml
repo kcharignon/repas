@@ -46,6 +46,19 @@ framework:
             policy: sliding_window
             limit: 1
             interval: '1 minute'
+        # Échange des jetons de la liaison de compte Alexa (POST /api/voice/oauth/token, VOX-202), par adresse IP
+        # (VoiceRateLimitListener, #[VoiceRateLimited(VoiceRateLimit::TOKEN)]) : route PUBLIQUE, dont le seul garde-fou avec
+        # l'authentification du client est ce plafond. Alexa n'appelle qu'à la liaison puis une fois par heure et par utilisateur.
+        voice_token:
+            policy: sliding_window
+            limit: 30
+            interval: '1 hour'
+        # Émission du code d'autorisation (POST /api/v1/voice/alexa/authorize, VOX-202), PAR UTILISATEUR (VoiceRateLimitListener) :
+        # une personne relie Alexa une fois ou deux.
+        voice_authorize:
+            policy: sliding_window
+            limit: 20
+            interval: '1 hour'
 
 when@test:
     framework:
@@ -63,4 +76,8 @@ when@test:
             drive_read:
                 cache_pool: test.rate_limiter_pool
             app_version:
+                cache_pool: test.rate_limiter_pool
+            voice_token:
+                cache_pool: test.rate_limiter_pool
+            voice_authorize:
                 cache_pool: test.rate_limiter_pool
