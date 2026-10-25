@@ -97,9 +97,9 @@ Dans l'ordre, en regardant la liste dans l'application Repas :
 2. Echo : « Alexa, demande à mes courses d'ajouter du pain ». Attendu : « C'est noté : pain. »
 3. « Alexa, ouvre mes courses » → « du pain de mie » → « Autre chose ? » → « non merci ».
 4. **Tomate** : « … d'ajouter des tomates » → *tomate* (pas *tomates pelées*).
-5. **Produit inconnu** : « … d'ajouter de la ciboulete » → trois propositions ; choisir « le deuxième » ; recommencer la même phrase : doit tomber tout de suite sur le bon (mémoire).
+5. **Produit proche** : « … d'ajouter du pain de campagne » (si *pain de mie* et *pain* existent mais pas *pain de campagne*) → « Je ne connais pas pain de campagne. Tu veux dire pain de mie, … ou un nouveau produit ? » ; choisir « le premier » ; recommencer la même phrase : doit tomber tout de suite sur le bon (mémoire). Une faute de frappe d'un produit existant (« ciboulete » avec *ciboulette*) est choisie sans question.
 6. **Corriger une proposition** : « … d'ajouter des patates » (le catalogue n'a pas « patates ») → trois pâtes proposées ; répondre « pomme de terre » → « C'est noté : pomme de terre. Je m'en souviendrai. » ; recommencer « … d'ajouter des patates » : doit donner tout de suite la pomme de terre, sans question.
-7. **Nouveau produit** : un nom inventé → « nouveau » → rayon → unité → « oui » ; il est dans sa liste et dans ses ingrédients.
+7. **Nouveau produit sans rien de proche** : « … d'ajouter de la ciboulette » (si elle n'existe pas) → « Je ne connais pas ciboulette. Je le crée ? » → « oui » → « Dans quel rayon ? » → « fruits et légumes » → « Quelle unité ? » → « pièce » → « Je crée ciboulette, … C'est bon ? » → « oui » ; il est dans sa liste et dans ses ingrédients (vérifier le rayon et l'unité dans l'application). Variante : refuser à la confirmation (« non ») ne crée rien.
 8. **Liste envoyée au drive** : si possible, vérifier qu'Alexa crée une nouvelle liste et le dit.
 9. Un proche (compte Amazon différent) : doit entendre l'invitation à lier le compte, rien d'autre (D4).
 
