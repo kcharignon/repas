@@ -516,6 +516,52 @@ class VoiceRepliesTest extends TestCase
         $this->assertSame('Dis par exemple : enlève du pain.', $this->said('REMOVE_EXAMPLE'));
     }
 
+    public function testAWholeLineRemovedWithALongNameSkipsTheSecondSentenceToStayShort(): void
+    {
+        // Given : « 2 cuillères à soupe de crème fraîche épaisse entière » : la réponse entière ferait 19 mots
+        $long = new RemovedLine(2.0, 0.0, 'cuillere-a-soupe', 'cuillère à soupe', unitCited: true);
+        $short = new RemovedLine(1.0, 0.0, 'unite', 'unité');
+
+        // When
+        $longAnswer = VoiceReplies::removed('crème fraîche épaisse entière', $long);
+        $shortAnswer = VoiceReplies::removed('croquette', $short);
+
+        // Then : la seconde phrase saute quand la première est longue, et reste sinon ; jamais plus de 15 mots en tout
+        $this->assertSame("C'est retiré : 2 cuillères à soupe de crème fraîche épaisse entière.", $longAnswer);
+        $this->assertSame("C'est retiré : croquette. Il n'y en a plus dans ta liste.", $shortAnswer);
+        $this->assertLessThanOrEqual(15, count(preg_split('/\s+/u', $longAnswer)));
+        $this->assertLessThanOrEqual(15, count(preg_split('/\s+/u', $shortAnswer)));
+        // Un nom d'unité long et un nom d'ingrédient long, toutes les combinaisons : la réponse entière reste dans la limite
+        foreach (['cuillère à soupe', 'cuillère à café', 'tasse à café', 'boîte'] as $unit) {
+            foreach (['crème fraîche', 'crème fraîche épaisse entière', 'sauce tomate cuisinée aux petits légumes'] as $name) {
+                $answer = VoiceReplies::removed($name, new RemovedLine(2.0, 0.0, 'autre', $unit, unitCited: true));
+                $this->assertLessThanOrEqual(15, count(preg_split('/\s+/u', $answer)), $answer);
+            }
+        }
+    }
+
+    public function testALineWithAnInsignificantLeftoverIsGoneAndNeverSaysItHasZeroLeft(): void
+    {
+        // Given : le domaine supprime la ligne sous 0,005 (`ShoppingList::NEGLIGIBLE_QUANTITY`), jamais « il t'en reste 0 litre »
+        $almost = new RemovedLine(0.996, 0.004, 'litre', 'litre');
+        $left = new RemovedLine(0.994, 0.006, 'litre', 'litre');
+
+        // Then
+        $this->assertTrue($almost->isGone());
+        $this->assertFalse($left->isGone());
+        $this->assertStringStartsWith("C'est retiré : ", VoiceReplies::removed('lait', $almost));
+        $this->assertStringNotContainsString('reste 0 ', VoiceReplies::removed('lait', $almost));
+        $this->assertSame("C'est retiré, il t'en reste 0,01 litre dans ta liste.", VoiceReplies::removed('lait', $left));
+    }
+
+    public function testASentListIsSaidApartFromNoList(): void
+    {
+        $this->assertSame('Ta liste est déjà partie au drive.', VoiceReplies::noActiveList(true));
+        $this->assertSame("Tu n'as pas de liste en cours.", VoiceReplies::noActiveList(false));
+        $this->assertSame('Ta liste est déjà partie au drive.', $this->said('LIST_SENT'));
+        $this->assertSame("C'est retiré : %s.", $this->said('REMOVED_GONE_SHORT'));
+    }
+
     public function testTheAnswersToAQuestionAboutTheListAreTheOnesTheOwnerGives(): void
     {
         $this->assertSame('Oui, tu en as 2 paquets.', VoiceReplies::inList(new ListLine('croquette', 'animal', 2.0, 'paquet', 'paquet')));

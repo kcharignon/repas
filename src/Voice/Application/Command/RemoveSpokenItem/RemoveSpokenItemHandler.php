@@ -18,8 +18,8 @@ use Symfony\Component\Messenger\Attribute\AsMessageHandler;
  * `Shared` :
  *
  * 1. le nombre et l'unité qu'Amazon a laissés en tête du créneau `item` sont lus comme pour l'ajout (`SpokenIngredientNamer::splitSpoken`) ;
- * 2. `SpokenListLookup` cherche le produit parmi les lignes de la liste ACTIVE (lecture seule) : pas de liste active (aucune, ou partie au
- *    drive : elle n'est jamais modifiée), produit absent ou inconnu de l'utilisateur, une ligne, ou plusieurs lignes qui se valent ;
+ * 2. `SpokenListLookup` cherche le produit parmi les lignes de la liste ACTIVE (lecture seule) : pas de liste active (aucune : « Tu n'as pas de liste en cours. » ; partie au
+ *    drive : « Ta liste est déjà partie au drive. », elle n'est jamais lue ni modifiée), produit absent ou inconnu de l'utilisateur, une ligne, ou plusieurs lignes qui se valent ;
  * 3. une ligne : `VoiceShoppingList::removeItem` retire la quantité dite (1 par défaut) ; la ligne disparaît quand elle est épuisée ;
  * 4. plusieurs lignes (« tomate » en fruit et légume ET en surgelé, toutes deux dans la liste) : on demande le rayon, par le dialogue de
  *    départage de l'ajout (`SpokenDialogueState::chooseToRemove`, l'état dit « retirer ») ; la réponse est traitée par `AnswerSpokenDialogueHandler`.
@@ -47,7 +47,7 @@ readonly class RemoveSpokenItemHandler
 
         $found = $this->lookup->find($command->userId, $phrase);
         if (!$found->hasList) {
-            return $this->said(VoiceReplies::NO_LIST, $command);
+            return $this->said(VoiceReplies::noActiveList($found->listSent), $command);
         }
         if ($found->lines === []) {
             $name = $found->absentName ?? $this->namer->nameFrom($phrase);

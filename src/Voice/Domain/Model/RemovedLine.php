@@ -11,6 +11,12 @@ use Repas\Voice\Domain\Service\SpokenUnits;
  */
 final readonly class RemovedLine
 {
+    /**
+     * Au-dessous de cette quantité, la ligne est épuisée : Alexa dit une quantité à deux décimales, « il t'en reste 0 litre » n'a pas de sens. Le même
+     * seuil que `Repas\Domain\Model\ShoppingList::NEGLIGIBLE_QUANTITY`, qui décide de supprimer la ligne (un test les compare).
+     */
+    public const float NEGLIGIBLE_QUANTITY = 0.005;
+
     public function __construct(
         /** La quantité retirée, dans l'unité de la ligne. */
         public float $removed,
@@ -27,7 +33,7 @@ final readonly class RemovedLine
 
     public function isGone(): bool
     {
-        return $this->remaining <= 0.0;
+        return $this->remaining < self::NEGLIGIBLE_QUANTITY;
     }
 
     /** L'unité de la ligne est l'unité « unité » : elle ne se dit pas. */

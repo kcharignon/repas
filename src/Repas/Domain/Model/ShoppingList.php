@@ -17,6 +17,12 @@ final class ShoppingList implements ModelInterface
     use ModelTrait;
 
     /**
+     * Ce qui reste d'une ligne après un retrait à la voix, au-dessous de quoi la ligne est épuisée : Alexa dit une quantité à deux décimales
+     * (« 0 » pour 0,004), jamais « il t'en reste 0 ». Le même seuil que `Voice\Domain\Model\RemovedLine::NEGLIGIBLE_QUANTITY` (un test les compare).
+     */
+    public const float NEGLIGIBLE_QUANTITY = 0.005;
+
+    /**
      * @param Tab<Meal> $meals
      * @param Tab<ShoppingListIngredient> $ingredients
      * @param Tab<Row> $rows
@@ -299,8 +305,8 @@ final class ShoppingList implements ModelInterface
         }
         $row = $this->rows[$rowKey];
 
-        // Trois décimales : une conversion en grammes ne laisse pas de poussière de virgule flottante
-        if (round($row->getQuantity() - $quantity, 3) <= 0.0) {
+        // Un reste inférieur à `NEGLIGIBLE_QUANTITY` est épuisé : ni poussière de virgule flottante, ni « il t'en reste 0 » dit par Alexa
+        if ($row->getQuantity() - $quantity < self::NEGLIGIBLE_QUANTITY) {
             unset($this->rows[$rowKey]);
             foreach ($this->ingredients->keys() as $key) {
                 if ($this->ingredients[$key]->hasIngredient($ingredientSlug)) {

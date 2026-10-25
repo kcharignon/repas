@@ -47,14 +47,18 @@ final class VoiceReplies
     public const string REMOVE_EXAMPLE = 'Dis par exemple : enlève du pain.';
     /** « Est-ce qu'il y a » dit sans produit : même règle. */
     public const string CHECK_EXAMPLE = "Dis par exemple : est-ce qu'il y a du pain dans ma liste ?";
-    /** Retirer ou consulter ne crée jamais de liste : sans liste active (ou si elle est partie au drive), il n'y a rien à lire ni à retirer. */
+    /** Retirer ou consulter ne crée jamais de liste : sans liste active, il n'y a rien à lire ni à retirer. */
     public const string NO_LIST = "Tu n'as pas de liste en cours.";
+    /** La seule liste de l'utilisateur est partie au drive : elle n'est ni lue ni modifiée, et la phrase dit pourquoi (plutôt que « pas de liste »). */
+    public const string LIST_SENT = 'Ta liste est déjà partie au drive.';
     /** Retirer un produit qui n'est pas dans la liste (X : « de croquette », « d'ail »). */
     public const string NOT_IN_LIST = "Il n'y a pas %s dans ta liste.";
     /** Consulter un produit qui n'est pas dans la liste. */
     public const string NOT_IN_LIST_NO = "Non, il n'y a pas %s dans ta liste.";
     /** La ligne disparaît : tout ce qu'elle contenait est retiré (X : ce qui a été retiré, comme « C'est noté : X »). */
     public const string REMOVED_GONE = "C'est retiré : %s. Il n'y en a plus dans ta liste.";
+    /** La même, sans la seconde phrase : quand ce qui a été retiré est long à dire (« 2 cuillères à soupe de crème fraîche épaisse »), la réponse entière reste courte. */
+    public const string REMOVED_GONE_SHORT = "C'est retiré : %s.";
     /** La ligne diminue : on dit ce qui reste (X : « 2 paquets », « 3 »). */
     public const string REMOVED_LEFT = "C'est retiré, il t'en reste %s dans ta liste.";
     /** La même, quand l'unité dite n'est pas celle de la ligne (inconnue de l'ingrédient, ou convertie) : on nomme l'unité de la ligne. */
@@ -109,6 +113,9 @@ final class VoiceReplies
     /** Le produit est créé et ajouté. */
     public const string CREATED = "C'est créé et noté : %s, rayon %s.";
     public const string CREATED_LIST_STARTED = "J'ai créé %s, rayon %s, et commencé une nouvelle liste.";
+
+    /** Au-delà de ce nombre de mots, la réponse « C'est retiré : X. Il n'y en a plus dans ta liste. » perd sa seconde phrase. */
+    private const int MAX_REMOVED_WORDS = 15;
 
     /** Longueur au-delà de laquelle un nom cité est coupé : une réponse parlée reste courte. */
     private const int MAX_SPOKEN_NAME_LENGTH = 60;
@@ -343,8 +350,12 @@ final class VoiceReplies
     {
         if ($line->isGone()) {
             $gone = new AddedLine($line->removed, 0.0, $line->unitSlug, $line->unitName, existed: true, unitCited: $line->unitCited, unitSubstituted: $line->unitSubstituted);
+            $item = self::item($ingredientName, $gone);
 
-            return sprintf(self::REMOVED_GONE, self::item($ingredientName, $gone));
+            // Une réponse parlée reste courte : quand ce qui a été retiré est long à dire, la seconde phrase (« Il n'y en a plus… ») saute
+            $full = sprintf(self::REMOVED_GONE, $item);
+
+            return count(preg_split('/\s+/u', $full)) > self::MAX_REMOVED_WORDS ? sprintf(self::REMOVED_GONE_SHORT, $item) : $full;
         }
 
         $left = self::amount($line->remaining, $line->unitName, $line->isCount());
@@ -352,6 +363,12 @@ final class VoiceReplies
         return $line->unitSubstituted
             ? sprintf(self::REMOVED_LEFT_IN_UNIT, self::pluralize(self::speakable($line->unitName)), $left)
             : sprintf(self::REMOVED_LEFT, $left);
+    }
+
+    /** Sans liste active : celle qui est partie au drive se dit à part (« Ta liste est déjà partie au drive. »), sinon « Tu n'as pas de liste en cours. ». */
+    public static function noActiveList(bool $listSent): string
+    {
+        return $listSent ? self::LIST_SENT : self::NO_LIST;
     }
 
     /** Retirer un produit qui n'est pas dans la liste (le nom de l'ingrédient reconnu, à défaut celui qui a été entendu). */

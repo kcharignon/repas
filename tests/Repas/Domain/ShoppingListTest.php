@@ -9,6 +9,7 @@ use PHPUnit\Framework\TestCase;
 use Repas\Repas\Domain\Exception\ShoppingListException;
 use Repas\Repas\Domain\Model\Recipe;
 use Repas\Repas\Domain\Model\ShoppingList;
+use Repas\Voice\Domain\Model\RemovedLine;
 use Repas\Repas\Domain\Model\ShoppingListStatus as Status;
 use Repas\Tests\Helper\Builder\IngredientBuilder;
 use Repas\Tests\Helper\Builder\RecipeBuilder;
@@ -340,6 +341,41 @@ class ShoppingListTest extends TestCase
         // Then : la ligne est épuisée, pas de reste de 0,00000000000000005
         $this->assertSame(0.0, $left);
         $this->assertNull($list->findRow('oeuf'));
+    }
+
+    /**
+     * @return iterable<string, array{float, bool}> ce qui reste après le retrait, et si la ligne est épuisée
+     */
+    public static function leftovers(): iterable
+    {
+        yield 'zéro' => [0.0, true];
+        yield 'un millième' => [0.001, true];
+        yield 'quatre millièmes (Alexa dirait « il t\'en reste 0 »)' => [0.004, true];
+        yield 'juste sous le seuil' => [0.0049, true];
+        yield 'juste au-dessus du seuil : « 0,01 » à voix haute' => [0.0051, false];
+        yield 'six millièmes' => [0.006, false];
+        yield 'un centième' => [0.01, false];
+        yield 'un demi' => [0.5, false];
+    }
+
+    #[DataProvider('leftovers')]
+    public function testALeftoverBelowTheNegligibleQuantityMeansTheLineIsUsedUp(float $leftover, bool $usedUp): void
+    {
+        // Given : une ligne de 2 litres, dont on retire de quoi laisser `$leftover`
+        $list = $this->listWithEgg(2.0, 0);
+
+        // When
+        $left = $list->removeQuantity('oeuf', 2.0 - $leftover);
+
+        // Then : épuisée, ou un reste qu'Alexa sait dire (jamais « 0 »)
+        $this->assertSame($usedUp, $left === 0.0);
+        $this->assertSame($usedUp, $list->findRow('oeuf') === null);
+    }
+
+    public function testTheNegligibleQuantityIsTheOneTheAnswerUsesToSayTheLineIsGone(): void
+    {
+        // Then : le domaine supprime la ligne et la réponse vocale la dit épuisée au même seuil (`RemovedLine::isGone`)
+        $this->assertSame(constant(ShoppingList::class . '::NEGLIGIBLE_QUANTITY'), constant(RemovedLine::class . '::NEGLIGIBLE_QUANTITY'));
     }
 
     public function testASentListKeepsItsSentDateWhenLoaded(): void

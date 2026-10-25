@@ -9,6 +9,7 @@ use Repas\Tests\Helper\SpokenListLookupInMemory;
 use Repas\Voice\Application\Query\GetSpokenItemInList\GetSpokenItemInListQuery;
 use Repas\Voice\Application\Query\GetSpokenItemInList\GetSpokenItemInListQueryHandler;
 use Repas\Voice\Application\Query\GetSpokenItemInList\SpokenItemInListDTO;
+use Repas\Voice\Application\Query\GetSpokenItemInList\SpokenListAnswerer;
 use Repas\Voice\Domain\Service\SpokenIngredientNamer;
 
 /**
@@ -23,7 +24,7 @@ class GetSpokenItemInListQueryHandlerTest extends TestCase
     protected function setUp(): void
     {
         $this->lookup = new SpokenListLookupInMemory();
-        $this->handler = new GetSpokenItemInListQueryHandler($this->lookup, new SpokenIngredientNamer());
+        $this->handler = new GetSpokenItemInListQueryHandler(new SpokenListAnswerer($this->lookup, new SpokenIngredientNamer()));
     }
 
     private static function line(string $slug, string $name, string $departmentName, float $quantity, string $unitSlug = 'unite', string $unitName = 'unité'): ListedLine
@@ -143,6 +144,18 @@ class GetSpokenItemInListQueryHandlerTest extends TestCase
         // Then
         $this->assertSame([['user-1', 'croquettes']], $this->lookup->asked);
         $this->assertSame('Oui, tu en as 5 paquets.', $dto->speech);
+    }
+
+    public function testASentListIsSaidToBeGoneToTheDriveNotAbsent(): void
+    {
+        // Given : la seule liste de l'utilisateur est partie au drive (elle n'est pas lue)
+        $this->lookup->willFind('du pain', SpokenListLookupResult::sentList());
+
+        // When
+        $dto = ($this->handler)(new GetSpokenItemInListQuery('user-1', 'du pain', sessionIsOpen: false));
+
+        // Then : une phrase vraie et courte, pas « Tu n'as pas de liste en cours. »
+        $this->assertSame('Ta liste est déjà partie au drive.', $dto->speech);
     }
 
     public function testTheSessionStaysOpenWhenItWasOpen(): void

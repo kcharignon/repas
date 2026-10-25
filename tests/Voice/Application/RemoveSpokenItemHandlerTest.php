@@ -107,6 +107,20 @@ class RemoveSpokenItemHandlerTest extends TestCase
         $this->assertSame([], $this->shoppingList->removed);
     }
 
+    public function testASentListIsSaidToBeGoneToTheDriveNotAbsentAndNothingIsWritten(): void
+    {
+        // Given : la seule liste de l'utilisateur est partie au drive (elle n'est ni lue ni modifiée)
+        $this->lookup->willFind('du pain', SpokenListLookupResult::sentList());
+
+        // When
+        $result = ($this->handler)(new RemoveSpokenItemCommand('user-1', 'du pain', sessionIsOpen: false));
+
+        // Then : une phrase vraie et courte, pas « Tu n'as pas de liste en cours. »
+        $this->assertSame('Ta liste est déjà partie au drive.', $result->speech);
+        $this->assertSame([], $this->shoppingList->removed);
+        $this->assertNull($result->nextState);
+    }
+
     public function testAProductThatIsNotInTheListIsSaidWithItsNameAndNothingIsWritten(): void
     {
         // Given : l'ingrédient est connu (« croquette ») mais pas dans la liste
