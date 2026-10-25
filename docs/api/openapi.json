@@ -3133,6 +3133,129 @@
                 "security": []
             }
         },
+        "/api/voice/alexa": {
+            "post": {
+                "tags": [
+                    "Voice"
+                ],
+                "summary": "Webhook du skill Alexa \u00ab mes courses \u00bb : re\u00e7oit une requ\u00eate d'Alexa et r\u00e9pond par une r\u00e9ponse vocale (route publique, appel\u00e9e par Amazon)",
+                "description": "Le corps est la requ\u00eate JSON d'un skill personnalis\u00e9 (`LaunchRequest`, `IntentRequest`, `SessionEndedRequest`), sign\u00e9e par Amazon : les en-t\u00eates `SignatureCertChainUrl` et `Signature-256` sont v\u00e9rifi\u00e9s avant tout traitement (cha\u00eene de certificats d'Amazon, signature du corps brut, horodatage \u00e0 150 s, identifiant du skill `ALEXA_SKILL_ID`). Une requ\u00eate qui ne le prouve pas re\u00e7oit `400 INVALID_ALEXA_REQUEST`, sans autre d\u00e9tail. Une requ\u00eate authentique re\u00e7oit TOUJOURS `200` et une r\u00e9ponse vocale (`outputSpeech` de type `PlainText`, `shouldEndSession`) : intentions `AddItemIntent` (cr\u00e9neau `item` : l'article est ajout\u00e9 \u00e0 la liste de courses de l'utilisateur, une liste est cr\u00e9\u00e9e s'il n'en a pas d'active), `AMAZON.HelpIntent`, `AMAZON.StopIntent`, `AMAZON.CancelIntent`, `AMAZON.FallbackIntent` ; seule la langue `fr-FR` est servie ; `SessionEndedRequest` re\u00e7oit une r\u00e9ponse sans parole. L'utilisateur est celui du jeton d'acc\u00e8s de la liaison de compte (`session.user.accessToken`, \u00e0 d\u00e9faut `context.System.user.accessToken`) ; sans jeton valable (absent, inconnu, expir\u00e9, liaison retir\u00e9e ou compte inactif : on ne les distingue pas) la r\u00e9ponse porte la carte `LinkAccount`. Plafonds : 60 requ\u00eates par minute et par adresse IP (`429`), puis 60 par minute et par liaison (r\u00e9ponse vocale \u00ab Un instant, r\u00e9essaie dans une minute. \u00bb). Le corps (la voix transcrite) n'est jamais journalis\u00e9.",
+                "operationId": "post_api_voice_alexa",
+                "parameters": [
+                    {
+                        "name": "SignatureCertChainUrl",
+                        "in": "header",
+                        "description": "Adresse de la cha\u00eene de certificats d'Amazon (`https://s3.amazonaws.com/echo.api/\u2026`)",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "Signature-256",
+                        "in": "header",
+                        "description": "Signature RSA SHA-256 du corps brut, en base64",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "description": "La requ\u00eate d'Alexa, telle qu'Amazon l'envoie (non mod\u00e9lis\u00e9e ici : seuls `request.type`, `request.locale`, `request.intent`, `session.new`, `session.user` et le jeton d'acc\u00e8s sont lus)",
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object"
+                            },
+                            "example": {
+                                "version": "1.0",
+                                "session": {
+                                    "new": true,
+                                    "user": {
+                                        "userId": "amzn1.ask.account.EXAMPLE",
+                                        "accessToken": "3Qa5mVq1xT0Zb8nWc2YpLkR7sHdJ9eUfGhAoIiNtBvM"
+                                    }
+                                },
+                                "request": {
+                                    "type": "IntentRequest",
+                                    "locale": "fr-FR",
+                                    "timestamp": "2026-10-25T12:00:00Z",
+                                    "intent": {
+                                        "name": "AddItemIntent",
+                                        "slots": {
+                                            "item": {
+                                                "name": "item",
+                                                "value": "du pain"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "La r\u00e9ponse vocale d'Alexa (`SessionEndedRequest` : `response` vide). Avec la carte `LinkAccount` quand le compte n'est pas li\u00e9",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "version": {
+                                            "type": "string",
+                                            "example": "1.0"
+                                        },
+                                        "response": {
+                                            "properties": {
+                                                "outputSpeech": {
+                                                    "properties": {
+                                                        "type": {
+                                                            "type": "string",
+                                                            "example": "PlainText"
+                                                        },
+                                                        "text": {
+                                                            "type": "string",
+                                                            "example": "C'est not\u00e9 : pain."
+                                                        }
+                                                    },
+                                                    "type": "object"
+                                                },
+                                                "reprompt": {
+                                                    "description": "Seulement quand la s\u00e9ance reste ouverte : ce qu'Alexa r\u00e9p\u00e8te apr\u00e8s un silence",
+                                                    "type": "object"
+                                                },
+                                                "card": {
+                                                    "description": "`{\"type\": \"LinkAccount\"}` quand le compte n'est pas li\u00e9",
+                                                    "type": "object"
+                                                },
+                                                "shouldEndSession": {
+                                                    "type": "boolean",
+                                                    "example": true
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Requ\u00eate qui ne prouve pas venir d'Alexa ou ne vise pas ce skill (message `INVALID_ALEXA_REQUEST`, sans autre d\u00e9tail)"
+                    },
+                    "404": {
+                        "description": "Commande vocale coup\u00e9e (message `VOICE_DISABLED`)"
+                    },
+                    "429": {
+                        "$ref": "#/components/responses/VoiceWebhookRateLimited"
+                    }
+                },
+                "security": []
+            }
+        },
         "/api/v1/voice/alexa/authorize": {
             "post": {
                 "tags": [
@@ -6290,6 +6413,37 @@
                             "type": "integer",
                             "minimum": 1,
                             "example": 120
+                        }
+                    }
+                },
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "properties": {
+                                "error": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "VOICE_RATE_LIMITED"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            },
+                            "type": "object"
+                        }
+                    }
+                }
+            },
+            "VoiceWebhookRateLimited": {
+                "description": "Trop de requ\u00eates depuis cette adresse IP : plus de 60 par minute (`POST /api/voice/alexa`, route publique, plafond pos\u00e9 AVANT la v\u00e9rification de la signature). Message `VOICE_RATE_LIMITED` ; patienter au moins le d\u00e9lai de `Retry-After`. Le plafond par liaison, lui, ne donne jamais d'erreur HTTP : Alexa r\u00e9pond \u00ab Un instant, r\u00e9essaie dans une minute. \u00bb.",
+                "headers": {
+                    "Retry-After": {
+                        "description": "Secondes \u00e0 attendre au minimum avant de r\u00e9essayer",
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "example": 30
                         }
                     }
                 },

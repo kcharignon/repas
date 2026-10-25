@@ -59,7 +59,7 @@ nelmio_api_doc:
                                         type: object
                                         properties:
                                             message: { type: string, example: DRIVE_RATE_LIMITED }
-            # Réponses 429 de la liaison de compte Alexa (VOX-202), référencées par #[OA\Response(response: 429, ref: '#/components/responses/…')]
+            # Réponses 429 de la commande vocale Alexa (VOX-202, VOX-204), référencées par #[OA\Response(response: 429, ref: '#/components/responses/…')]
             # (même définition `responses` que ci-dessus : une seule clé par composant)
                 VoiceTokenRateLimited:
                     description: >-
@@ -86,6 +86,24 @@ nelmio_api_doc:
                         Retry-After:
                             description: Secondes à attendre au minimum avant de réessayer
                             schema: { type: integer, minimum: 1, example: 120 }
+                    content:
+                        application/json:
+                            schema:
+                                type: object
+                                properties:
+                                    error:
+                                        type: object
+                                        properties:
+                                            message: { type: string, example: VOICE_RATE_LIMITED }
+                VoiceWebhookRateLimited:
+                    description: >-
+                        Trop de requêtes depuis cette adresse IP : plus de 60 par minute (`POST /api/voice/alexa`, route publique, plafond posé
+                        AVANT la vérification de la signature). Message `VOICE_RATE_LIMITED` ; patienter au moins le délai de `Retry-After`. Le
+                        plafond par liaison, lui, ne donne jamais d'erreur HTTP : Alexa répond « Un instant, réessaie dans une minute. ».
+                    headers:
+                        Retry-After:
+                            description: Secondes à attendre au minimum avant de réessayer
+                            schema: { type: integer, minimum: 1, example: 30 }
                     content:
                         application/json:
                             schema:
