@@ -60,6 +60,14 @@ services:
       # Amorçage des ingrédients à l'activation d'un compte (ING-008, ADR 0028) : coupé tant que l'humain ne l'allume pas. Listée ici avec sa
       # valeur par défaut pour la même raison que DRIVE_ENABLED (.env embarqué dans l'image).
       INGREDIENT_SEEDING_ENABLED: ${INGREDIENT_SEEDING_ENABLED:-false}
+      # Commande vocale Alexa (ADR 0029) : coupée tant que l'humain ne l'allume pas. Les cinq variables sont listées ici avec leur valeur par
+      # défaut pour la même raison que DRIVE_ENABLED (.env embarqué dans l'image) ; l'identifiant du skill, l'empreinte du secret du client
+      # OAuth et les adresses de retour naissent dans la console Amazon (VOX-002) et sont écrites dans /opt/repas/.env par un script.
+      ALEXA_ENABLED: ${ALEXA_ENABLED:-false}
+      ALEXA_SKILL_ID: ${ALEXA_SKILL_ID:-}
+      ALEXA_OAUTH_CLIENT_ID: ${ALEXA_OAUTH_CLIENT_ID:-repas-alexa}
+      ALEXA_OAUTH_CLIENT_SECRET_HASH: ${ALEXA_OAUTH_CLIENT_SECRET_HASH:-}
+      ALEXA_REDIRECT_URIS: ${ALEXA_REDIRECT_URIS:-}
       # Version de l'application Android (DRV-637) : dernière publiée et plus ancienne encore attendue (`0.1.10`). Vides par défaut :
       # personne n'est invité à mettre à jour. Listées ici pour la même raison que DRIVE_ENABLED (.env embarqué dans l'image).
       APP_LATEST_VERSION: ${APP_LATEST_VERSION:-}

@@ -93,6 +93,12 @@ check "l'amorçage des ingrédients à l'activation est coupé par défaut (INGR
 # Le shell du conteneur doit lire les variables : guillemets simples voulus.
 # shellcheck disable=SC2016
 check "aucune invitation à mettre à jour par défaut (APP_LATEST_VERSION et APP_MIN_VERSION vides)" docker compose exec -T php sh -c 'test "${APP_LATEST_VERSION-absente}" = "" && test "${APP_MIN_VERSION-absente}" = ""'
+# La commande vocale Alexa (ADR 0029) : aucune des cinq variables n'est dans le .env de cet essai, les valeurs par défaut de compose doivent
+# gagner sur celles du .env embarqué dans l'image — coupée, et aucune valeur propre au déploiement (skill, empreinte du secret, adresses de retour).
+check "la commande vocale Alexa est coupée par défaut (ALEXA_ENABLED=false)" test "$(docker compose exec -T php printenv ALEXA_ENABLED < /dev/null)" = false
+# Le shell du conteneur doit lire les variables : guillemets simples voulus.
+# shellcheck disable=SC2016
+check "aucune valeur propre au déploiement par défaut (ALEXA_SKILL_ID, ALEXA_OAUTH_CLIENT_SECRET_HASH et ALEXA_REDIRECT_URIS vides, client repas-alexa)" docker compose exec -T php sh -c 'test "${ALEXA_SKILL_ID-absente}" = "" && test "${ALEXA_OAUTH_CLIENT_SECRET_HASH-absente}" = "" && test "${ALEXA_REDIRECT_URIS-absente}" = "" && test "${ALEXA_OAUTH_CLIENT_ID-absente}" = "repas-alexa"'
 
 echo "== Inscription et connexion (JWT, cookie du SPA)"
 email="smoke-$RANDOM@example.com"
