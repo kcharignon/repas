@@ -7,12 +7,11 @@ use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
 /**
- * Mapping de `voice_authorization_code` (ADR 0029 décision 6, VOX-201) : le code à usage unique que l'utilisateur donne à Alexa en
+ * Mapping de `voice_authorization_code` (ADR 0029 décision 6) : le code à usage unique que l'utilisateur donne à Alexa en
  * autorisant la liaison, échangé ensuite contre des jetons. Seul le HACHÉ du code (SHA-256, hexadécimal) est stocké, jamais le code :
- * c'est la clé primaire. `code_challenge` est celui de PKCE (S256), `used_at` marque l'usage unique. Aucune clé étrangère : `userId`
- * est effacé avec le compte (`PurgeUserVoiceData`, ADR 0021).
- *
- * Mapping seul pour l'instant : VOX-202 ajoute le modèle de domaine, le repository et les conversions.
+ * c'est la clé primaire. `code_challenge` est celui de PKCE (S256), `used_at` marque l'usage unique et `link_id` (VOX-202) la liaison
+ * créée en l'échangeant : rejouer le code la révoque. Aucune clé étrangère : `userId` est effacé avec le compte
+ * (`PurgeUserVoiceData`, ADR 0021).
  */
 #[ORM\Entity]
 #[ORM\Table(name: 'voice_authorization_code')]
@@ -40,4 +39,7 @@ class AuthorizationCode
 
     #[ORM\Column(name: 'used_at', type: Types::DATETIME_IMMUTABLE, nullable: true)]
     public ?DateTimeImmutable $usedAt = null;
+
+    #[ORM\Column(name: 'link_id', type: Types::STRING, length: 36, nullable: true)]
+    public ?string $linkId = null;
 }

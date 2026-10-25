@@ -21,8 +21,8 @@ readonly class UserVoiceDataPostgreSQLRepository extends PostgreSQLRepository im
 
     /**
      * Une seule instruction pour les trois tables (budget SQL de `supprimer-compte`) : les liaisons du compte sont effacées et rendent
-     * leurs identifiants, par lesquels leurs jetons sont effacés à leur tour (`voice_access_grant` n'a pas de colonne `user_id`), puis les
-     * codes d'autorisation du compte. PostgreSQL exécute toujours jusqu'au bout une instruction qui modifie des données dans un `WITH`,
+     * leurs identifiants ; les jetons du compte sont effacés par leur colonne `user_id` (VOX-202) ou, par précaution, par l'identifiant
+     * de l'une de ses liaisons ; puis les codes d'autorisation du compte. PostgreSQL exécute toujours jusqu'au bout une instruction qui modifie des données dans un `WITH`,
      * même si la requête principale ne lit pas son résultat.
      *
      * Ne pas lire une liaison, un code ou un jeton par l'ORM avant d'appeler cette méthode dans la même requête : l'entité resterait dans
@@ -32,7 +32,7 @@ readonly class UserVoiceDataPostgreSQLRepository extends PostgreSQLRepository im
     {
         $this->entityManager->getConnection()->executeStatement(
             'WITH erased_links AS (DELETE FROM voice_link WHERE user_id = :userId RETURNING id), '
-            . 'erased_grants AS (DELETE FROM voice_access_grant WHERE link_id IN (SELECT id FROM erased_links)) '
+            . 'erased_grants AS (DELETE FROM voice_access_grant WHERE user_id = :userId OR link_id IN (SELECT id FROM erased_links)) '
             . 'DELETE FROM voice_authorization_code WHERE user_id = :userId',
             ['userId' => $userId],
         );

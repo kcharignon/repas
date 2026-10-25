@@ -34,7 +34,7 @@ Suivi vivant du chantier « Alexa, demande à *mes courses* d'ajouter du pain »
 ## M2 — Back `Voice` : liaison et webhook
 
 - [x] [VOX-201](tickets/VOX-201-squelette-voice-interrupteur-purge.md) back · M · Contexte `Voice`, interrupteur, Deptrac, migration, purge du compte · dépend de : —
-- [ ] [VOX-202](tickets/VOX-202-liaison-de-compte-oauth.md) back · L · Serveur d'autorisation : code, jetons hachés, PKCE, `authorize`, `token`, liaisons listées et supprimées · dépend de : 201
+- [x] [VOX-202](tickets/VOX-202-liaison-de-compte-oauth.md) back · L · Serveur d'autorisation : code, jetons hachés, PKCE, `authorize`, `token`, liaisons listées et supprimées · dépend de : 201
 - [x] [VOX-203](tickets/VOX-203-verification-des-requetes-alexa.md) back · L · Vérificateur de requêtes Alexa (certificat, signature, horodatage, `applicationId`) · dépend de : 201
 - [ ] [VOX-204](tickets/VOX-204-webhook-alexa-ajouter-un-article.md) back · L · `POST /api/voice/alexa` : lancement, ajout, aide, arrêt, repli ; réponses françaises · dépend de : 102, 103, 202, 203
 - [ ] [VOX-205](tickets/VOX-205-paquet-du-skill.md) assistant · S · Manifeste et modèle d'interaction `fr-FR` (types de valeurs d'après le catalogue de base) · dépend de : 204

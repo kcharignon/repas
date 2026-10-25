@@ -2991,6 +2991,263 @@
                     }
                 }
             }
+        },
+        "/api/voice/oauth/token": {
+            "post": {
+                "tags": [
+                    "Voice"
+                ],
+                "summary": "Point d'acc\u00e8s aux jetons de la liaison de compte (OAuth 2.0) : \u00e9change le code d'autorisation, ou le jeton de rafra\u00eechissement, contre des jetons (route publique, appel\u00e9e par Amazon)",
+                "description": "Corps `application/x-www-form-urlencoded` (RFC 6749). Le client est authentifi\u00e9 par `client_id` et `client_secret` dans le corps, ou par `Authorization: Basic` ; le secret est compar\u00e9 \u00e0 l'empreinte `ALEXA_OAUTH_CLIENT_SECRET_HASH` (vide : tout client est refus\u00e9). `grant_type=authorization_code` demande `code`, `redirect_uri` (la m\u00eame qu'\u00e0 l'autorisation) et `code_verifier` (PKCE S256) ; `grant_type=refresh_token` demande `refresh_token`. Les jetons sont opaques ; le jeton d'acc\u00e8s vaut 3600 s, le jeton de rafra\u00eechissement 90 jours et ne sert qu'une fois : chaque \u00e9change en rend un nouveau (rotation), et pr\u00e9senter un jeton de rafra\u00eechissement d\u00e9j\u00e0 \u00e9chang\u00e9, ou un code d\u00e9j\u00e0 \u00e9chang\u00e9, r\u00e9voque la liaison. Les erreurs suivent la RFC 6749 5.2 (`{\"error\": \"\u2026\"}`), sans dire pourquoi un \u00e9change est refus\u00e9 : `invalid_grant` pour un code ou un jeton refus\u00e9 quelle qu'en soit la raison (Alexa d\u00e9connecte alors le compte), `invalid_client` pour un client inconnu ou un secret faux, `invalid_request` pour un param\u00e8tre manquant, `unsupported_grant_type` pour un autre type. 30 appels par heure et par adresse IP. Jamais de mise en cache.",
+                "operationId": "post_api_voice_oauth_token",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "required": [
+                                    "grant_type"
+                                ],
+                                "properties": {
+                                    "grant_type": {
+                                        "type": "string",
+                                        "enum": [
+                                            "authorization_code",
+                                            "refresh_token"
+                                        ]
+                                    },
+                                    "code": {
+                                        "description": "Avec `authorization_code` : le code re\u00e7u \u00e0 l'autorisation",
+                                        "type": "string"
+                                    },
+                                    "redirect_uri": {
+                                        "description": "Avec `authorization_code` : l'adresse de retour de l'autorisation, la m\u00eame",
+                                        "type": "string"
+                                    },
+                                    "code_verifier": {
+                                        "description": "Avec `authorization_code` : le v\u00e9rificateur PKCE (43 \u00e0 128 caract\u00e8res) dont le SHA-256 est le `code_challenge` de l'autorisation",
+                                        "type": "string"
+                                    },
+                                    "refresh_token": {
+                                        "description": "Avec `refresh_token` : le jeton de rafra\u00eechissement re\u00e7u en dernier",
+                                        "type": "string"
+                                    },
+                                    "client_id": {
+                                        "description": "Authentification dans le corps (ou `Authorization: Basic`)",
+                                        "type": "string"
+                                    },
+                                    "client_secret": {
+                                        "description": "Authentification dans le corps (ou `Authorization: Basic`)",
+                                        "type": "string"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Une paire de jetons. `Cache-Control: no-store`",
+                        "headers": {
+                            "Cache-Control": {
+                                "description": "`no-store`",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "access_token": {
+                                            "type": "string",
+                                            "example": "3Qa5mVq1xT0Zb8nWc2YpLkR7sHdJ9eUfGhAoIiNtBvM"
+                                        },
+                                        "token_type": {
+                                            "type": "string",
+                                            "example": "Bearer"
+                                        },
+                                        "expires_in": {
+                                            "type": "integer",
+                                            "example": 3600
+                                        },
+                                        "refresh_token": {
+                                            "type": "string",
+                                            "example": "Zt4Lw9RkEoPq2YhXn6VbGcJdUaSf8MiH1TgNyQr0eKs"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Erreur OAuth `{\"error\": \"invalid_request\" | \"invalid_grant\" | \"unsupported_grant_type\"}`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "error": {
+                                            "type": "string",
+                                            "example": "invalid_grant"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Erreur OAuth `{\"error\": \"invalid_client\"}` : client inconnu, secret faux ou absent",
+                        "headers": {
+                            "WWW-Authenticate": {
+                                "description": "`Basic realm=\"Repas\"`",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "error": {
+                                            "type": "string",
+                                            "example": "invalid_client"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Commande vocale coup\u00e9e (message `VOICE_DISABLED`)"
+                    },
+                    "429": {
+                        "$ref": "#/components/responses/VoiceTokenRateLimited"
+                    }
+                },
+                "security": []
+            }
+        },
+        "/api/v1/voice/alexa/authorize": {
+            "post": {
+                "tags": [
+                    "Voice"
+                ],
+                "summary": "Autorise Alexa \u00e0 agir sur les courses de l'utilisateur connect\u00e9 : \u00e9met le code d'autorisation de la liaison de compte (OAuth 2.0, code + PKCE)",
+                "description": "Appel\u00e9e par la page `/alexa/lier` du front quand l'utilisateur, connect\u00e9, touche \u00ab Autoriser \u00bb. Le corps reprend les param\u00e8tres de la demande d'Alexa. La r\u00e9ponse donne l'adresse o\u00f9 envoyer l'utilisateur : l'adresse de retour (`redirectUri`, choisie dans la configuration) suivie de `code` et `state`. Le code est opaque, valable 10 minutes, \u00e0 usage unique ; Repas n'en garde que le hach\u00e9. Refus sans dire pourquoi (client inconnu, adresse de retour qui n'est pas exactement l'une des adresses autoris\u00e9es, m\u00e9thode autre que `S256`, d\u00e9fi ou `state` mal form\u00e9) : `422 VOICE_AUTHORIZATION_REFUSED`, et le front ne redirige alors nulle part. 20 \u00e9missions par heure et par utilisateur.",
+                "operationId": "post_api_issue_voice_authorization_code",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/IssueAuthorizationCodePayload"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "O\u00f9 renvoyer l'utilisateur : `redirectUri?state=\u2026&code=\u2026`. `Cache-Control: no-store`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "redirectUrl": {
+                                            "type": "string",
+                                            "example": "https://pitangui.amazon.com/api/skill/link/M2AAAAAAAAAAAA?state=xyz123&code=3Qa5mVq1xT0Zb8nWc2YpLkR7sHdJ9eUfGhAoIiNtBvM"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Commande vocale coup\u00e9e (message `VOICE_DISABLED`)"
+                    },
+                    "422": {
+                        "description": "Corps invalide, ou demande d'autorisation refus\u00e9e (message `VOICE_AUTHORIZATION_REFUSED`)"
+                    },
+                    "429": {
+                        "$ref": "#/components/responses/VoiceAuthorizeRateLimited"
+                    }
+                }
+            }
+        },
+        "/api/v1/voice/links": {
+            "get": {
+                "tags": [
+                    "Voice"
+                ],
+                "summary": "Les liaisons de l'utilisateur connect\u00e9 avec un assistant vocal (Alexa), pour l'\u00e9cran \u00ab Moi \u00bb : la plus r\u00e9cente d'abord. Une liaison retir\u00e9e n'y figure plus. Jamais de jeton.",
+                "operationId": "get_api_list_voice_links",
+                "responses": {
+                    "200": {
+                        "description": "Les liaisons de l'utilisateur (liste vide tant qu'il n'a pas reli\u00e9 Alexa)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "member": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/VoiceLinkDTO"
+                                            }
+                                        },
+                                        "totalItems": {
+                                            "type": "integer",
+                                            "example": 1
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Commande vocale coup\u00e9e (message `VOICE_DISABLED`)"
+                    }
+                }
+            }
+        },
+        "/api/v1/voice/links/{id}": {
+            "delete": {
+                "tags": [
+                    "Voice"
+                ],
+                "summary": "Retire la liaison de l'utilisateur avec Alexa : la liaison et tous ses jetons. Le jeton d'acc\u00e8s qu'Alexa tenait ne r\u00e9sout plus rien. Idempotent. Propri\u00e9taire seul, administrateur compris.",
+                "operationId": "delete_api_revoke_voice_link",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "Identifiant de la liaison (celui de `GET /voice/links`)",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "pattern": "^[A-Za-z0-9-]{1,36}$"
+                        },
+                        "example": "4f1c0a5e-7d1b-4c6a-8e2f-0b9d7c5a3e1f"
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Liaison retir\u00e9e, jetons effac\u00e9s"
+                    },
+                    "403": {
+                        "description": "La liaison n'est pas \u00e0 l'utilisateur (aucun passe-droit administrateur)"
+                    },
+                    "404": {
+                        "description": "Commande vocale coup\u00e9e (message `VOICE_DISABLED`), ou liaison inconnue (message `VOICE_LINK_NOT_FOUND`)"
+                    }
+                }
+            }
         }
     },
     "components": {
@@ -3905,6 +4162,48 @@
                             "$ref": "#/components/schemas/ChoiceIntentPayload"
                         },
                         "maxItems": 200
+                    }
+                },
+                "type": "object"
+            },
+            "IssueAuthorizationCodePayload": {
+                "required": [
+                    "clientId",
+                    "redirectUri",
+                    "state",
+                    "codeChallenge",
+                    "codeChallengeMethod"
+                ],
+                "properties": {
+                    "clientId": {
+                        "description": "Param\u00e8tre `client_id` de la demande d'Alexa : l'identifiant du client OAuth (`ALEXA_OAUTH_CLIENT_ID`)",
+                        "type": "string",
+                        "maxLength": 100,
+                        "example": "repas-alexa"
+                    },
+                    "redirectUri": {
+                        "description": "Param\u00e8tre `redirect_uri` de la demande d'Alexa : doit \u00eatre EXACTEMENT l'une des adresses autoris\u00e9es (`ALEXA_REDIRECT_URIS`)",
+                        "type": "string",
+                        "maxLength": 2048,
+                        "example": "https://pitangui.amazon.com/api/skill/link/M2AAAAAAAAAAAA"
+                    },
+                    "state": {
+                        "description": "Param\u00e8tre `state` de la demande d'Alexa, rendu tel quel dans l'adresse de retour (1024 caract\u00e8res imprimables au plus)",
+                        "type": "string",
+                        "maxLength": 1024,
+                        "example": "xyz123"
+                    },
+                    "codeChallenge": {
+                        "description": "Param\u00e8tre `code_challenge` : SHA-256 du v\u00e9rificateur en base64url sans remplissage (43 caract\u00e8res)",
+                        "type": "string",
+                        "maxLength": 128,
+                        "example": "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM"
+                    },
+                    "codeChallengeMethod": {
+                        "description": "Param\u00e8tre `code_challenge_method` : `S256` seul est accept\u00e9 (`plain` est refus\u00e9)",
+                        "type": "string",
+                        "maxLength": 16,
+                        "example": "S256"
                     }
                 },
                 "type": "object"
@@ -5863,6 +6162,29 @@
                     }
                 },
                 "type": "object"
+            },
+            "VoiceLinkDTO": {
+                "required": [
+                    "id",
+                    "provider",
+                    "createdAt"
+                ],
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "provider": {
+                        "type": "string"
+                    },
+                    "createdAt": {
+                        "type": "string"
+                    },
+                    "lastUsedAt": {
+                        "type": "string",
+                        "nullable": true
+                    }
+                },
+                "type": "object"
             }
         },
         "responses": {
@@ -5918,6 +6240,68 @@
                                         "message": {
                                             "type": "string",
                                             "example": "DRIVE_RATE_LIMITED"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            },
+                            "type": "object"
+                        }
+                    }
+                }
+            },
+            "VoiceTokenRateLimited": {
+                "description": "Trop d'\u00e9changes de jetons depuis cette adresse IP : plus de 30 par heure (`POST /api/voice/oauth/token`, route publique). Message `VOICE_RATE_LIMITED` ; patienter au moins le d\u00e9lai de `Retry-After`.",
+                "headers": {
+                    "Retry-After": {
+                        "description": "Secondes \u00e0 attendre au minimum avant de r\u00e9essayer",
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "example": 120
+                        }
+                    }
+                },
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "properties": {
+                                "error": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "VOICE_RATE_LIMITED"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            },
+                            "type": "object"
+                        }
+                    }
+                }
+            },
+            "VoiceAuthorizeRateLimited": {
+                "description": "Trop de codes d'autorisation \u00e9mis par cet utilisateur : plus de 20 par heure (`POST /api/v1/voice/alexa/authorize`). Message `VOICE_RATE_LIMITED` ; patienter au moins le d\u00e9lai de `Retry-After`.",
+                "headers": {
+                    "Retry-After": {
+                        "description": "Secondes \u00e0 attendre au minimum avant de r\u00e9essayer",
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "example": 120
+                        }
+                    }
+                },
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "properties": {
+                                "error": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "VOICE_RATE_LIMITED"
                                         }
                                     },
                                     "type": "object"
@@ -5990,6 +6374,9 @@
         },
         {
             "name": "Drive"
+        },
+        {
+            "name": "Voice"
         }
     ]
 }

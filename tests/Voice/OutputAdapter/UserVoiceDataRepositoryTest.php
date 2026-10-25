@@ -33,10 +33,10 @@ class UserVoiceDataRepositoryTest extends DatabaseTestCase
         $this->saveLink('link-departing-2', 'departing', null);
         $this->saveLink('link-staying-1', 'staying', 'amzn-staying-1');
         $this->saveLink('link-staying-2', 'staying', null);
-        $this->saveGrant('departing-access-1', 'link-departing-1');
-        $this->saveGrant('departing-access-2', 'link-departing-2');
-        $this->saveGrant('staying-access-1', 'link-staying-1');
-        $this->saveGrant('staying-access-2', 'link-staying-2');
+        $this->saveGrant('departing-access-1', 'link-departing-1', 'departing');
+        $this->saveGrant('departing-access-2', 'link-departing-2', 'departing');
+        $this->saveGrant('staying-access-1', 'link-staying-1', 'staying');
+        $this->saveGrant('staying-access-2', 'link-staying-2', 'staying');
         $this->saveCode('departing-code-1', 'departing', false);
         $this->saveCode('departing-code-2', 'departing', true);
         $this->saveCode('staying-code-1', 'staying', false);
@@ -50,6 +50,7 @@ class UserVoiceDataRepositoryTest extends DatabaseTestCase
         $this->assertSame(0, $this->rows('voice_authorization_code', 'user_id', 'departing'));
         $this->assertSame(0, $this->rows('voice_access_grant', 'link_id', 'link-departing-1'));
         $this->assertSame(0, $this->rows('voice_access_grant', 'link_id', 'link-departing-2'));
+        $this->assertSame(0, $this->rows('voice_access_grant', 'user_id', 'departing'));
         $this->assertSame(2, $this->rows('voice_link', 'user_id', 'staying'));
         $this->assertSame(2, $this->rows('voice_authorization_code', 'user_id', 'staying'));
         $this->assertSame(2, $this->scalar('SELECT COUNT(*) FROM voice_access_grant'));
@@ -60,7 +61,7 @@ class UserVoiceDataRepositoryTest extends DatabaseTestCase
     {
         // Given : une liaison retirée par l'utilisateur, dont les jetons existent encore
         $this->saveLink('link-revoked', 'departing', 'amzn-departing', revoked: true);
-        $this->saveGrant('departing-access', 'link-revoked');
+        $this->saveGrant('departing-access', 'link-revoked', 'departing');
 
         // When
         $this->repository->deleteByUser('departing');
@@ -70,11 +71,24 @@ class UserVoiceDataRepositoryTest extends DatabaseTestCase
         $this->assertSame(0, $this->scalar('SELECT COUNT(*) FROM voice_access_grant'));
     }
 
+    public function testDeleteByUserErasesAGrantOfHisLinkEvenWhenItsUserColumnIsWrong(): void
+    {
+        // Given : une ligne de jeton incohérente (sa liaison est au compte parti, sa colonne user_id à un autre) : précaution de la purge
+        $this->saveLink('link-departing', 'departing', null);
+        $this->saveGrant('inconsistent-access', 'link-departing', 'someone-else');
+
+        // When
+        $this->repository->deleteByUser('departing');
+
+        // Then
+        $this->assertSame(0, $this->scalar('SELECT COUNT(*) FROM voice_access_grant'));
+    }
+
     public function testAUserWithoutVoiceDataIsNotAnError(): void
     {
         // Given : seul un autre compte a des données
         $this->saveLink('link-staying', 'staying', 'amzn-staying');
-        $this->saveGrant('staying-access', 'link-staying');
+        $this->saveGrant('staying-access', 'link-staying', 'staying');
         $this->saveCode('staying-code', 'staying', false);
 
         // When
@@ -90,7 +104,7 @@ class UserVoiceDataRepositoryTest extends DatabaseTestCase
     {
         // Given
         $this->saveLink('link-departing', 'departing', null);
-        $this->saveGrant('departing-access', 'link-departing');
+        $this->saveGrant('departing-access', 'link-departing', 'departing');
         $this->saveCode('departing-code', 'departing', false);
         $counter = static::getContainer()->get(QueryCounter::class);
         $counter->reset();
@@ -114,12 +128,13 @@ class UserVoiceDataRepositoryTest extends DatabaseTestCase
         $this->entityManager->flush();
     }
 
-    private function saveGrant(string $accessHash, string $linkId): void
+    private function saveGrant(string $accessHash, string $linkId, string $userId): void
     {
         $grant = new AccessGrant();
         $grant->accessHash = $accessHash;
         $grant->refreshHash = 'refresh-of-' . $accessHash;
         $grant->linkId = $linkId;
+        $grant->userId = $userId;
         $grant->expiresAt = new DateTimeImmutable('2026-10-25 11:00:00');
         $grant->refreshExpiresAt = new DateTimeImmutable('2026-11-25 10:00:00');
         $this->entityManager->persist($grant);

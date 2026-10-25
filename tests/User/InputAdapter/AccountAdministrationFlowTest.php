@@ -457,7 +457,7 @@ class AccountAdministrationFlowTest extends DatabaseTestCase
         $staying = $this->savedUser(new UserBuilder()->withEmail('staying@example.com'));
         foreach ([$leaving, $staying] as $i => $user) {
             $this->connection()->insert('voice_link', ['id' => 'link-' . $i, 'user_id' => $user->getId(), 'created_at' => '2026-10-25 10:00:00']);
-            $this->connection()->insert('voice_access_grant', ['access_hash' => 'access-' . $i, 'refresh_hash' => 'refresh-' . $i, 'link_id' => 'link-' . $i, 'expires_at' => '2026-10-25 11:00:00', 'refresh_expires_at' => '2026-11-25 10:00:00']);
+            $this->connection()->insert('voice_access_grant', ['access_hash' => 'access-' . $i, 'refresh_hash' => 'refresh-' . $i, 'link_id' => 'link-' . $i, 'user_id' => $user->getId(), 'expires_at' => '2026-10-25 11:00:00', 'refresh_expires_at' => '2026-11-25 10:00:00']);
             $this->connection()->insert('voice_authorization_code', ['code_hash' => 'code-' . $i, 'user_id' => $user->getId(), 'client_id' => 'repas-alexa', 'redirect_uri' => 'https://redirect.example.test/callback', 'code_challenge' => 'challenge-' . $i, 'expires_at' => '2026-10-25 10:10:00']);
         }
 
@@ -468,6 +468,7 @@ class AccountAdministrationFlowTest extends DatabaseTestCase
         $this->assertSame(204, $this->client->getResponse()->getStatusCode());
         $this->assertSame(0, $this->rowCount('voice_link', 'user_id', $leaving->getId()));
         $this->assertSame(0, $this->rowCount('voice_access_grant', 'link_id', 'link-0'));
+        $this->assertSame(0, $this->rowCount('voice_access_grant', 'user_id', $leaving->getId()));
         $this->assertSame(0, $this->rowCount('voice_authorization_code', 'user_id', $leaving->getId()));
         $this->assertSame(1, $this->rowCount('voice_link', 'user_id', $staying->getId()));
         $this->assertSame(1, $this->rowCount('voice_access_grant', 'link_id', 'link-1'));

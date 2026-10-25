@@ -19,6 +19,11 @@
         <server name="DRIVE_ENABLED" value="true" force="true" />
         <!-- Commande vocale Alexa allumée en test (ADR 0029), plus forte que la valeur coupée que compose injecte depuis .env : voir .env.test -->
         <server name="ALEXA_ENABLED" value="true" force="true" />
+        <!-- Client OAuth d'Alexa FACTICE (VOX-202) : l'empreinte du secret de tests/Helper/Alexa/AlexaTestClient.php et deux adresses de retour
+             factices, plus fortes que les valeurs vides que compose injecte depuis .env : voir .env.test -->
+        <server name="ALEXA_OAUTH_CLIENT_ID" value="repas-alexa" force="true" />
+        <server name="ALEXA_OAUTH_CLIENT_SECRET_HASH" value="e5cea9a0b4d40315990eb02d0ae04f5c36c4131aa251d9e0d4e4e731161c9f74" force="true" />
+        <server name="ALEXA_REDIRECT_URIS" value="https://alexa.example.test/api/skill/link/TESTVENDOR,https://alexa-eu.example.test/api/skill/link/TESTVENDOR" force="true" />
         <!-- ID client Google FACTICE (connexion avec Google allumée en test), plus fort que la valeur vide injectée par compose -->
         <server name="GOOGLE_CLIENT_ID" value="123456-repastest.apps.googleusercontent.com" force="true" />
         <!-- Le propriétaire du catalogue d'ingrédients des tests (UserBuilder::CATALOG_OWNER_EMAIL), plus fort que la valeur vide que compose injecte

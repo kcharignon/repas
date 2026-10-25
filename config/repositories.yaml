@@ -83,3 +83,15 @@ services:
     Repas\Voice\Domain\Interface\UserVoiceDataRepository:
         alias: 'Repas\Voice\Infrastructure\Repository\UserVoiceDataPostgreSQLRepository'
         public: true
+
+    Repas\Voice\Domain\Interface\VoiceLinkRepository:
+        alias: 'Repas\Voice\Infrastructure\Repository\VoiceLinkPostgreSQLRepository'
+        public: true
+
+    Repas\Voice\Domain\Interface\AuthorizationCodeRepository:
+        alias: 'Repas\Voice\Infrastructure\Repository\AuthorizationCodePostgreSQLRepository'
+        public: true
+
+    Repas\Voice\Domain\Interface\AccessGrantRepository:
+        alias: 'Repas\Voice\Infrastructure\Repository\AccessGrantPostgreSQLRepository'
+        public: true
