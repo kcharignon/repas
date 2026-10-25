@@ -215,6 +215,55 @@ function addItemSamples() {
   return samples;
 }
 
+// Retirer de la liste (décision 12 de l'ADR 0029) : les mêmes formes que l'ajout (un produit, avec ou sans article, avec ou sans quantité et unité),
+// avec les verbes de la demande du propriétaire. Jamais « un » ni « une » comme mot de liaison (ce sont des nombres, voir `addItemSamples`).
+const REMOVE_VERBS = ['enlève', 'enlever', 'retire', 'retirer', 'déduis', 'déduire', 'supprime', 'supprimer', 'ôte', 'ôter'];
+const REMOVE_ENDINGS = ['', 'de la liste', 'de ma liste'];
+
+function removeItemSamples() {
+  const forms = [
+    ...['', 'du', 'de la', 'des'].map((article) => [article, '{item}'].filter(Boolean).join(' ')),
+    '{quantity} {item}',
+    '{quantity} de {item}',
+    '{quantity} {unit} de {item}',
+    "{quantity} {unit} d' {item}",
+  ];
+  const samples = [];
+  for (const verb of REMOVE_VERBS) {
+    for (const form of forms) {
+      for (const ending of REMOVE_ENDINGS) {
+        samples.push([verb, form, ending].filter(Boolean).join(' '));
+      }
+    }
+  }
+
+  return samples;
+}
+
+// Demander ce que la liste contient (décision 12) : « est-ce qu'il y a des croquettes dans la liste ? », « combien de croquettes dans la liste ».
+// Écrit sans trait d'union (aucun exemple du modèle n'en a) ; seul le créneau `item`, la réponse dit combien il y en a.
+const CHECK_STARTERS = ["est ce qu'il y a", "est ce qu'il y a encore", 'y a t il', 'il y a', "est ce que j'ai", "j'ai", 'ai je'];
+const CHECK_ENDINGS = ['', 'dans la liste', 'dans ma liste', 'sur la liste', 'sur ma liste'];
+const CHECK_COUNTS = ['combien de {item}', "combien d' {item}", "j'ai combien de {item}", "j'ai combien d' {item}", 'il y a combien de {item}', "il y a combien d' {item}"];
+
+function checkItemSamples() {
+  const samples = [];
+  for (const starter of CHECK_STARTERS) {
+    for (const article of ['', 'du', 'de la', 'des']) {
+      for (const ending of CHECK_ENDINGS) {
+        samples.push([starter, article, '{item}', ending].filter(Boolean).join(' '));
+      }
+    }
+  }
+  for (const count of CHECK_COUNTS) {
+    for (const ending of ['', 'dans la liste', 'dans ma liste', 'sur la liste']) {
+      samples.push([count, ending].filter(Boolean).join(' '));
+    }
+  }
+
+  return samples;
+}
+
 function withBare(samples, bare) {
   return BARE_FORMS ? [bare, ...samples] : samples;
 }
@@ -255,6 +304,16 @@ function intents() {
       name: 'AddItemIntent',
       slots: [{ name: 'item', type: 'INGREDIENT' }, { name: 'quantity', type: 'QUANTITY' }, { name: 'unit', type: 'UNIT' }],
       samples: addItemSamples(),
+    },
+    {
+      name: 'RemoveItemIntent',
+      slots: [{ name: 'item', type: 'INGREDIENT' }, { name: 'quantity', type: 'QUANTITY' }, { name: 'unit', type: 'UNIT' }],
+      samples: removeItemSamples(),
+    },
+    {
+      name: 'CheckItemIntent',
+      slots: [{ name: 'item', type: 'INGREDIENT' }],
+      samples: checkItemSamples(),
     },
     {
       name: 'ChooseOptionIntent',
