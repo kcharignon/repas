@@ -64,7 +64,7 @@ src/Voice/
 
 Ports de `Shared` (la seule couture avec `Repas`), implémentés dans `Repas\Infrastructure\Voice` :
 
-- `SpokenIngredientResolver::resolve(userId, phrase): ?ResolvedIngredient{slug, name, departmentName, confidence}` (mémoire de phrase d'abord, puis classement) ; `suggest(userId, phrase): list<IngredientSuggestion{slug, name, departmentName}>` (trois au plus) ; `remember(userId, phrase, slug): void` (commande `RememberSpokenPhrase`) ;
+- `SpokenIngredientResolver::resolveOrSuggest(userId, phrase): SpokenResolution` — soit `ResolvedIngredient{slug, name, departmentName, confidence}` (mémoire de phrase d'abord, puis classement sûr), soit au plus trois `IngredientSuggestion{slug, name, departmentName}` — en UNE lecture des ingrédients de l'utilisateur ; `remember(userId, phrase, slug): void` (commande `RememberSpokenPhrase`) ;
 - `VoiceShoppingList::addItem(userId, ingredientSlug): AddedItem{listCreated, previousListSent}` ;
 - `SpokenIngredientCreator` : `departments()` et `units()` (le catalogue commun, listes `SpokenChoice{slug, name}`), `create(userId, name, departmentSlug, unitSlug): CreatedIngredient{slug, name, departmentName}` (par le `CreateIngredientHandler` existant, une seule unité pour l'achat et la cuisine, aucun coefficient).
 
@@ -77,13 +77,32 @@ Entrée : la phrase reconnue (« des tomates », « du pain de mie »). Sortie :
 1. **Normalisation** : `StringTool::slugify`, mots vides retirés (`IngredientNameMatcher::STOP_WORDS` + « du », « de la », « des », « un », « une »), pluriels repliés (`IngredientNameMatcher::tokens`).
 2. **Candidats** : les ingrédients de l'utilisateur (`IngredientVisibility::visibleBy`), avec pour chacun `uses12m` = lignes de ses listes + lignes de ses recettes sur douze mois (une requête agrégée, comme `search()`).
 3. **Mémoire de phrase** : une ligne `spoken_phrase_choice(user_id, phrase, ingredient_slug, times, updated_at)` pour la **clé** de la phrase (`SpokenIngredientRanker::phraseKey` : les mots du classeur joints par « - », 100 caractères au plus, la même clé à l'écriture et à la lecture) → cet ingrédient, `SURE`. Écrite quand l'utilisateur choisit l'une des propositions d'Alexa (VOX-303, `RememberSpokenPhrase`, le dernier choix l'emporte et `times` compte les mêmes choix de suite) ; la correction depuis l'application (VOX-301) l'écrira aussi. Lue AVANT le classement par l'adaptateur du port ; ignorée si l'ingrédient n'existe plus. **Limite connue** : si l'utilisateur crée plus tard un ingrédient au nom exact d'une phrase retenue, la mémoire gagne encore (la règle 3 passe avant le nom identique de la règle 4).
-4. **Sinon** pour chaque candidat avec `SearchRelevance::score ≥ 0,85` : `score = pertinence + 0,1 × n/(n+3)`, `n = uses12m`. **Un nom identique à la phrase (une fois normalisés) passe avant tout nom seulement proche** : le bonus d'habitude (jusqu'à 0,1) dépasserait sinon l'écart de pertinence (« tomate » 1,0 contre *tomates pelées* 0,95 : 0,95 + 0,093 > 1,0). L'habitude ne départage donc que des noms de même rang (VOX-101, constatée à l'écriture des tests).
+4. **Sinon** pour chaque candidat que le classeur choisit SANS DEMANDER (`isChosenByItself`, amendement du 2026-10-25 : le seuil de choix est plus strict que celui de la recherche, voir plus bas) : `score = pertinence + 0,1 × n/(n+3)`, `n = uses12m`. **Un nom identique à la phrase (une fois normalisés) passe avant tout nom seulement proche** : le bonus d'habitude (jusqu'à 0,1) dépasserait sinon l'écart de pertinence (« tomate » 1,0 contre *tomates pelées* 0,95 : 0,95 + 0,093 > 1,0). L'habitude ne départage donc que des noms de même rang (VOX-101, constatée à l'écriture des tests).
 5. **Confiance** : `SURE` pour le seul nom identique (ou la mémoire de phrase) ; `PROBABLE` si le premier devance le suivant d'au moins 0,03, ou n'a pas de suivant (un seul candidat proche) ; sinon `UNSURE` (deux noms qui se touchent : on ajoute le premier et on le dit).
 6. **Ordre déterministe** : à score égal, nom puis slug (comme `search()`).
 
 ### Les propositions (rien de choisi tout seul)
 
-`SpokenIngredientRanker::suggest` : quand `rank` ne choisit rien, au plus trois ingrédients de l'utilisateur, classés comme `rank` (pertinence + bonus d'habitude, ordre déterministe), dont la pertinence est **sous** `SearchRelevance::MINIMUM` (0,85 : au-dessus ils auraient été choisis) et **au moins** `SUGGESTION_FLOOR` (0,80), ET qui partagent un début de mot (trois lettres) avec la phrase. Table de cas figée (`SpokenIngredientRankerTest`) : « sirop de menthe » propose *sirop fruit rouge* (0,827) ; « zébulon » ne propose rien (*melon* 0,79) ; « fenouil » ne propose pas *nouille* (0,81, aucun début en commun) ; « basilic » ne propose pas *ail* ; « crevettes » ne propose ni *courgette* (0,825) ni *croquette*. Sans le début en commun, Jaro-Winkler seul proposerait ces noms sans rapport. Aucune proposition : « Je le crée ? ». **Réserve** : un nom très proche d'une faute de frappe (« ciboulete » contre *ciboulette*, 0,98) est au-dessus de 0,85 : il est choisi tout seul (`PROBABLE`, Alexa le dit : « J'ai mis ciboulette, … »), il n'y a pas de question.
+`SpokenIngredientRanker::suggest` : quand `rank` ne choisit rien, au plus trois ingrédients de l'utilisateur, classés comme `rank` (pertinence + bonus d'habitude, ordre déterministe), dont la pertinence est **au moins** `SUGGESTION_FLOOR` (0,80), qui ne sont **pas** choisis tout seuls, ET qui partagent un début de mot (trois lettres) avec la phrase. La bande ne s'arrête donc plus à 0,85 : *jambon* (0,900) est proposé pour « jambon de dinde », pas deviné. Les propositions sont rendues par le même appel que le choix (`SpokenIngredientResolver::resolveOrSuggest`), avec UNE seule lecture des ingrédients de l'utilisateur.
+
+**Le choix automatique** (`isChosenByItself`) exige `SearchRelevance::score ≥ 0,85` (le seuil de la RECHERCHE, ADR 0019, inchangé) ET : un nom identique à la phrase, OU une phrase qui commence le nom ou l'un de ses mots (la branche « contient » de `SearchRelevance` : « pain » → *pain de mie*), OU une simple faute de frappe, `TYPO_THRESHOLD` (0,94). Raison : chercher peut montrer des noms approchants, mais deviner à la place de l'utilisateur un produit qui n'existe pas ruine le dialogue (« ciboulette » était devinée *coquilette*, 0,907, sans question ; « laitue » *lait* à 0,933). 0,94 et non 0,93 : *lait* contre « laitue » vaut 0,933.
+
+Table de cas figée (`SpokenIngredientRankerTest`, scores de `SearchRelevance`) :
+
+| Phrase | Ingrédients de l'utilisateur | Choisi tout seul | Proposé |
+|---|---|---|---|
+| ciboulette | *coquilette*, *croquette*, *courgette* | rien (0,907, 0,843, 0,843) | rien (aucun début de mot en commun) : « Je le crée ? » |
+| ciboulete | *ciboulette*, *coquilette* | *ciboulette* (0,98, faute de frappe) | — |
+| steak haché | *steack haché* | *steack haché* (0,947) | — |
+| mozarella | *mozzarella di bufala* | rien (0,879) | *mozzarella di bufala* |
+| mozarella | *mozzarella*, *mozzarella di bufala* | *mozzarella* (0,977) | — |
+| laitue | *lait*, *la laitière* | rien (0,933) | *lait*, *la laitière* |
+| pain | *pain de mie* | *pain de mie* (la phrase commence le nom) | — |
+| pain de campagne | *pain de mie*, *pain* | rien (0,883, 0,862) | *pain de mie*, *pain* |
+| jambon de dinde | *jambon*, *jambon blanc* | rien (le nom est plus court que la phrase) | *jambon*, *jambon blanc* |
+| tomate, tomates pelées, lardons | *tomate*, *tomates pelées*, *lardon* | le nom identique | — |
+| sirop de menthe | *sirop fruit rouge* | rien | *sirop fruit rouge* (0,827) |
+| zébulon, fenouil, basilic, crevettes | *melon*, *nouille*, *ail*, *courgette*… | rien | rien (sous 0,80, ou sans début en commun) |
 
 Pourquoi ce n'est pas `IngredientNameMatcher` : lui sert à dire « c'est le même ingrédient » avec certitude, en se trompant vers le doublon (ADR 0028). Ici l'utilisateur veut le plus probable, et l'erreur se répare d'un geste dans l'application.
 
