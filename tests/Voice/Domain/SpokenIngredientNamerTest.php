@@ -64,4 +64,22 @@ class SpokenIngredientNamerTest extends TestCase
     {
         $this->assertSame(str_repeat('a', 60), new SpokenIngredientNamer()->nameFrom('de la ' . str_repeat('a', 60)));
     }
+
+    /**
+     * La création repasse le nom de l'état par ce normalisateur (l'état est une entrée non fiable) : un nom déjà normalisé doit rester tel quel.
+     */
+    #[DataProvider('phrases')]
+    public function testANameAlreadyNormalisedIsLeftUnchanged(string $phrase, ?string $ignored): void
+    {
+        $namer = new SpokenIngredientNamer();
+        $name = $namer->nameFrom($phrase);
+
+        if ($name === null) {
+            $this->addToAssertionCount(1);
+
+            return;
+        }
+
+        $this->assertSame($name, $namer->nameFrom($name));
+    }
 }

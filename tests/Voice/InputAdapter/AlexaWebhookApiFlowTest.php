@@ -624,6 +624,46 @@ class AlexaWebhookApiFlowTest extends DatabaseTestCase
         $this->assertSame(0, $this->rowCount('shopping_list'));
     }
 
+    public function testAForgedNameAtTheConfirmationIsNormalisedBeforeTheProductIsStored(): void
+    {
+        // Given : l'état de confirmation porte un nom qui n'est jamais passé par le normalisateur, avec un rayon et une unité réels
+        $user = $this->linkedUser();
+        $this->savedCatalogue();
+        $this->savedActiveList($user);
+        $forged = SpokenDialogueState::choose('de la ciboulette', [], '<b>ÉVIL</b> "Ingrédient" & xxxx')->askingDepartment()
+            ->withDepartment(new DialogueOption('cereale', 'céréale'))
+            ->withUnit(new DialogueOption('unite', 'unité'));
+
+        // When
+        $this->converse(AlexaTestRequest::yes(), ['dialogue' => $forged->toArray()]);
+
+        // Then : stocké sous le nom normalisé, jamais tel que reçu
+        $this->assertSame("C'est créé et noté : b évil b ingrédient xxxx. Autre chose ?", $this->speech());
+        $this->assertSame(1, $this->rowCount('ingredient'));
+        $this->assertSame('b évil b ingrédient xxxx', $this->connection()->fetchOne('SELECT name FROM ingredient'));
+        $this->assertSame(1, $this->rowCount('shopping_list_row'));
+    }
+
+    public function testAForgedNameTheNormaliserRefusesCreatesNothingAndAsksAgain(): void
+    {
+        // Given
+        $user = $this->linkedUser();
+        $this->savedCatalogue();
+        $this->savedActiveList($user);
+        $forged = SpokenDialogueState::choose('de la ciboulette', [], '12 34')->askingDepartment()
+            ->withDepartment(new DialogueOption('cereale', 'céréale'))
+            ->withUnit(new DialogueOption('unite', 'unité'));
+
+        // When
+        $this->converse(AlexaTestRequest::yes(), ['dialogue' => $forged->toArray()]);
+
+        // Then : on redemande comme pour une réponse incomprise, rien n'est créé ni ajouté
+        $this->assertSame("Je n'ai pas compris. Je crée 12 34, céréale, unité. C'est bon ?", $this->speech());
+        $this->assertSame(1, $this->attributes()['dialogue']['misses']);
+        $this->assertSame(0, $this->rowCount('ingredient'));
+        $this->assertSame(0, $this->rowCount('shopping_list_row'));
+    }
+
     public function testAForgedStateTheServerCannotReadIsIgnored(): void
     {
         // Given
