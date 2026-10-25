@@ -526,6 +526,27 @@ class HandleAlexaRequestApiControllerTest extends QueryBusWebTestCase
         $this->assertSame(400, $this->statusCode());
     }
 
+    public function testChangingTheIpv6AddressInsideTheSameSlash64DoesNotEscapeTheLimit(): void
+    {
+        // Given : le scénario de la revue de sécurité du 2026-10-25, soixante-dix requêtes depuis 2001:db8:2::1 à 2001:db8:2::46
+        $this->useVerifier(AlexaRequestVerifierDouble::refusing());
+
+        // When
+        $statuses = [];
+        for ($i = 1; $i <= 70; $i++) {
+            $this->postRaw('{}', ip: sprintf('2001:db8:2::%x', $i));
+            $statuses[] = $this->statusCode();
+        }
+
+        // Then : soixante refus du vérificateur (400), puis dix 429 avant toute vérification
+        $this->assertSame([400 => 60, 429 => 10], array_count_values($statuses));
+        $this->assertCount(60, $this->verifier()->verified);
+
+        // Then : une adresse d'un autre /64 n'est pas touchée
+        $this->postRaw('{}', ip: '2001:db8:3::1');
+        $this->assertSame(400, $this->statusCode());
+    }
+
     public function testALinkIsLimitedToSixtyRequestsPerMinuteAndTheSixtyFirstIsAskedToWait(): void
     {
         // Given : deux liaisons, des adresses différentes à chaque requête (le plafond par adresse est un autre sujet)

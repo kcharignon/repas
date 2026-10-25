@@ -82,6 +82,49 @@ class VoiceRateLimitListenerTest extends TestCase
         $this->addToAssertionCount(1);
     }
 
+    public function testChangingTheIpv6AddressInsideTheSameSlash64DoesNotEscapeTheWebhookLimit(): void
+    {
+        // Given : quatre requêtes (plafond de test) depuis quatre adresses différentes d'un même /64
+        $listener = $this->listener();
+        foreach (['2001:db8:1::1', '2001:db8:1::2', '2001:db8:1:0:aaaa:bbbb:cccc:dddd', '2001:db8:1::ffff'] as $ip) {
+            $listener($this->event($this->webhookController(), $ip));
+        }
+
+        // When / Then : une cinquième adresse du même /64 est refusée, comme l'abrégée ou la complète de la première
+        $this->assertSame(429, $this->refusedBy($listener, $this->webhookController(), '2001:db8:1::5')->getStatusCode());
+        $this->assertSame(429, $this->refusedBy($listener, $this->webhookController(), '2001:0db8:0001:0000:0000:0000:0000:0001')->getStatusCode());
+
+        // Then : un autre /64 n'est pas touché
+        $listener($this->event($this->webhookController(), '2001:db8:2::1'));
+        $this->addToAssertionCount(1);
+    }
+
+    public function testAnIpv4AddressMappedInIpv6SharesTheCounterOfTheIpv4Address(): void
+    {
+        // Given : le plafond de l'adresse IPv4 est atteint
+        $listener = $this->listener();
+        for ($i = 0; $i < 4; $i++) {
+            $listener($this->event($this->webhookController(), '203.0.113.9'));
+        }
+
+        // When / Then : la même adresse, écrite en IPv6 mappée, est refusée aussi ; l'adresse voisine passe
+        $this->assertSame(429, $this->refusedBy($listener, $this->webhookController(), '::ffff:203.0.113.9')->getStatusCode());
+        $listener($this->event($this->webhookController(), '::ffff:203.0.113.10'));
+        $this->addToAssertionCount(1);
+    }
+
+    public function testAnAddressThatIsNotValidIsCountedUnderOneStableKey(): void
+    {
+        // Given : le plafond de la clé « unknown » est atteint par des chaînes qui ne sont pas des adresses
+        $listener = $this->listener();
+        foreach (['n\'importe quoi', '999.1.1.1', '', 'fe80::1%eth0'] as $ip) {
+            $listener($this->event($this->webhookController(), $ip));
+        }
+
+        // When / Then : la suivante, différente, est refusée aussi (pas de contournement en variant le texte)
+        $this->assertSame(429, $this->refusedBy($listener, $this->webhookController(), 'encore autre chose')->getStatusCode());
+    }
+
     public function testRetryAfterIsTheDelayGivenByTheLimiterCountedFromTheInjectedClock(): void
     {
         // Given : un limiteur qui refuse en annonçant 17 secondes, une horloge figée
