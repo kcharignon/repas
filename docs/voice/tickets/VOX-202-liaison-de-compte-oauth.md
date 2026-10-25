@@ -5,7 +5,7 @@
 - **Taille** : L
 - **Dépend de** : VOX-201
 - **Faisable sans téléphone** : oui
-- **Statut** : à faire
+- **Statut** : fait (PR #265, 2026-10-25)
 - **Lire d'abord** : [ADR 0029](../../adr/0029-commande-vocale-alexa.md) décisions 6, 8 ; [`../alexa.md`](../alexa.md) §§ 1, 3 ; page Amazon « Configure authorization code grant » (relire au moment du ticket : requête de jeton, authentification du client) ; ADR 0015 (refresh token, rotation) ; ADR 0008 ; `RotateRefreshToken` ; **skill `repas-dev`**. Effort conseillé : **xhigh** (sécurité).
 
 ## Contexte
