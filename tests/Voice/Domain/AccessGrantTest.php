@@ -23,7 +23,7 @@ class AccessGrantTest extends TestCase
 
         // Then
         $this->assertSame('2026-10-25 13:00:00', $grant->getExpiresAt()->format('Y-m-d H:i:s'));
-        $this->assertSame('2027-01-23 12:00:00', $grant->getRefreshExpiresAt()->format('Y-m-d H:i:s'));
+        $this->assertSame('2027-04-23 12:00:00', $grant->getRefreshExpiresAt()->format('Y-m-d H:i:s'));
         $this->assertSame('access-hash', $grant->getId());
         $this->assertSame(['refresh-hash', 'link-1', 'user-1'], [$grant->getRefreshHash(), $grant->getLinkId(), $grant->getUserId()]);
         $this->assertFalse($grant->isRefreshUsed());
@@ -49,7 +49,7 @@ class AccessGrantTest extends TestCase
         // Then : la liaison et le compte ne changent pas, les durées repartent de maintenant, la paire d'origine n'est pas touchée
         $this->assertSame(['access-2', 'refresh-2', 'link-1', 'user-1'], [$next->getId(), $next->getRefreshHash(), $next->getLinkId(), $next->getUserId()]);
         $this->assertSame('2026-10-25 13:50:00', $next->getExpiresAt()->format('Y-m-d H:i:s'));
-        $this->assertSame('2027-01-23 12:50:00', $next->getRefreshExpiresAt()->format('Y-m-d H:i:s'));
+        $this->assertSame('2027-04-23 12:50:00', $next->getRefreshExpiresAt()->format('Y-m-d H:i:s'));
         $this->assertFalse($next->isRefreshUsed());
         $this->assertSame('2026-10-25 13:00:00', $grant->getExpiresAt()->format('Y-m-d H:i:s'));
     }

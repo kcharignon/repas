@@ -9,7 +9,7 @@ use Repas\Shared\Domain\Model\ModelInterface;
 use Repas\Shared\Domain\Model\ModelTrait;
 
 /**
- * Une paire de jetons d'une liaison (ADR 0029 décision 6) : un jeton d'accès (une heure) et un jeton de rafraîchissement (90 jours)
+ * Une paire de jetons d'une liaison (ADR 0029 décision 6) : un jeton d'accès (une heure) et un jeton de rafraîchissement (180 jours)
  * qui ne sert qu'une fois. Les jetons n'existent jamais ici : seuls leurs hachés (`OpaqueToken::hash`) sont conservés, celui de
  * l'accès sert d'identifiant.
  *
@@ -23,8 +23,8 @@ final class AccessGrant implements ModelInterface
 
     /** Durée de vie du jeton d'accès, en secondes : `expires_in` de la réponse (Amazon : au moins 3600). */
     public const int ACCESS_TTL_SECONDS = 3600;
-    /** Durée de vie du jeton de rafraîchissement, renouvelée à chaque rotation : une liaison utilisée au moins tous les 90 jours dure. */
-    public const string REFRESH_TTL = 'P90D';
+    /** Durée de vie du jeton de rafraîchissement, renouvelée à chaque rotation : une liaison utilisée au moins tous les 180 jours dure (Amazon recommande au moins 180 jours). */
+    public const string REFRESH_TTL = 'P180D';
 
     private function __construct(
         private string $accessHash,
