@@ -334,6 +334,24 @@ class ShoppingListRepositoryTest extends DatabaseTestCase
         return $shoppingList;
     }
 
+    public function testHasSentShoppingListTellsIfTheUserHasAListSentToTheDrive(): void
+    {
+        // Arrange : l'un a une liste envoyée parmi d'autres, l'autre aucune, le troisième n'a que des listes non envoyées
+        $withSent = $this->savedUser();
+        $this->savedShoppingList($withSent, ShoppingListStatus::COMPLETED);
+        $this->savedShoppingList($withSent, ShoppingListStatus::SENT);
+        $withoutSent = $this->savedUser();
+        $this->savedShoppingList($withoutSent, ShoppingListStatus::ACTIVE);
+        $this->savedShoppingList($withoutSent, ShoppingListStatus::PAUSED);
+        $this->savedShoppingList($withoutSent, ShoppingListStatus::COMPLETED);
+
+        // Act & Assert
+        $this->assertTrue($this->shoppingListRepository->hasSentShoppingList($withSent->getId()));
+        $this->assertFalse($this->shoppingListRepository->hasSentShoppingList($withoutSent->getId()));
+        $this->assertFalse($this->shoppingListRepository->hasSentShoppingList($this->savedUser()->getId()));
+        $this->assertFalse($this->shoppingListRepository->hasSentShoppingList('unknown-id'));
+    }
+
     public function testIsSentTellsIfTheListIsSentToTheDrive(): void
     {
         // Arrange

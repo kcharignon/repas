@@ -41,6 +41,11 @@ services:
         tags:
             - { name: kernel.reset, method: clear }
 
+    # Port de la commande vocale (ADR 0029, VOX-103) : le contexte `Voice` ajoute à la liste de courses sans importer `Repas`
+    Repas\Shared\Application\Interface\VoiceShoppingList:
+        alias: Repas\Repas\Infrastructure\Voice\VoiceShoppingListAdapter
+        public: true
+
     Repas\User\Domain\Service\UserChecker: ~
     
 

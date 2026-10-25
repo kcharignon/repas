@@ -129,6 +129,11 @@ readonly class ShoppingListPostgreSQLRepository extends PostgreSQLRepository imp
         return $this->entityRepository->findOneBy(['ownerId' => $ownerId, 'status' => ShoppingListStatus::ACTIVE]) !== null;
     }
 
+    public function hasSentShoppingList(string $ownerId): bool
+    {
+        return $this->entityRepository->findOneBy(['ownerId' => $ownerId, 'status' => ShoppingListStatus::SENT]) !== null;
+    }
+
     public function isSent(string $shoppingListId): bool
     {
         return $this->entityManager->createQueryBuilder()

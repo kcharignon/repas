@@ -8,6 +8,8 @@
 return [
     'activer-compte-amorcage' => 32,
     'ajouter-ingredient-liste' => 14,
+    'ajouter-ingredient-par-la-voix' => 14,
+    'ajouter-ingredient-par-la-voix-sans-liste' => 19,
     'amorcer-compte' => 29,
     'assurer-liste-active' => 5,
     'changer-statut-compte' => 4,
