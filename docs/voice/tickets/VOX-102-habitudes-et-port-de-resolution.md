@@ -5,7 +5,7 @@
 - **Taille** : M
 - **Dépend de** : VOX-101
 - **Faisable sans téléphone** : oui
-- **Statut** : à faire
+- **Statut** : fait (PR #261, 2026-10-25)
 - **Lire d'abord** : [`../alexa.md`](../alexa.md) §§ 3, 4 ; [ADR 0004](../../adr/0004-repository-vs-loader.md) ; `IngredientPostgreSQLLoader::search()` (même forme : une requête, scoring en PHP) ; `IngredientVisibility::visibleBy`.
 
 ## Contexte

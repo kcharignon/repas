@@ -5,7 +5,7 @@
 - **Taille** : M
 - **Dépend de** : —
 - **Faisable sans téléphone** : oui
-- **Statut** : à faire
+- **Statut** : fait (PR #262, 2026-10-25)
 - **Lire d'abord** : [ADR 0029](../../adr/0029-commande-vocale-alexa.md) décisions 2, 8, 9 ; `src/Shared/Infrastructure/Feature/EnvDriveFeature.php`, `RequiresDrive` et son listener ; `deptrac*.yaml` ; [ADR 0021](../../adr/0021-gestion-des-comptes-par-l-administrateur.md) §10 (`PurgeUserDriveData`, `UserOwnedDataCoverageTest`).
 
 ## Contexte

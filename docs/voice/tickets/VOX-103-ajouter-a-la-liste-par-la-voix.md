@@ -5,7 +5,7 @@
 - **Taille** : M
 - **Dépend de** : —
 - **Faisable sans téléphone** : oui
-- **Statut** : à faire
+- **Statut** : fait (PR #260, 2026-10-25)
 - **Lire d'abord** : [ADR 0029](../../adr/0029-commande-vocale-alexa.md) décision 5 ; [ADR 0023](../../adr/0023-liste-envoyee-au-drive.md) ; `EnsureActiveShoppingListHandler`, `AddIngredientToShoppingListHandler`, `CreateShoppingListHandler` (met l'ancienne liste en pause) ; `tests/Repas/WriteBudget`.
 
 ## Contexte
