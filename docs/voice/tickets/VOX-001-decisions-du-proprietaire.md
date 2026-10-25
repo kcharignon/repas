@@ -18,7 +18,7 @@ Poser **une question à la fois**, en français simple, avec le défaut recomman
 
 1. D1 le nom d'invocation (au moins deux mots ; défaut « mes courses ») ;
 2. D4 qui s'en sert (défaut : son compte Amazon seulement) ;
-3. D2, D3, D5, D6 : confirmer les défauts d'un seul message.
+3. D2, D5, D6 : confirmer les défauts d'un seul message. **D3 est décidée (2026-10-25)** : produit inconnu = trois propositions, mémoire de phrase, création guidée (ADR 0029 décision 11, VOX-303).
 
 Reporter les réponses dans l'ADR 0029 (tableau, statut `Accepted`), dans `docs/adr/README.md` et dans cette roadmap.
 

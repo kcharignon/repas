@@ -1,6 +1,6 @@
 # Chantier : commande vocale Alexa
 
-Suivi vivant du chantier « Alexa, demande à *mes courses* d'ajouter du pain ». Cadrage du 2026-10-25 ; décision d'architecture : [ADR 0029](../adr/0029-commande-vocale-alexa.md) (`Proposed` jusqu'à VOX-001). **À lire en premier par tout agent qui reprend ce chantier**, dans cet ordre :
+Suivi vivant du chantier « Alexa, demande à *mes courses* d'ajouter du pain ». Cadrage du 2026-10-25 ; décision d'architecture : [ADR 0029](../adr/0029-commande-vocale-alexa.md) (`Proposed` jusqu'à VOX-001, amendée le 2026-10-25 : décision 11). **À lire en premier par tout agent qui reprend ce chantier**, dans cet ordre :
 
 1. Ce fichier.
 2. [`alexa.md`](alexa.md) : faits vérifiés (avec leurs réserves), architecture, algorithme de choix de l'ingrédient, risques.
@@ -8,7 +8,7 @@ Suivi vivant du chantier « Alexa, demande à *mes courses* d'ajouter du pain »
 4. [`docs/drive/consignes-agents.md`](../drive/consignes-agents.md) (règles communes de livraison) et les skills `repas-dev` (back), `repas-front-dev` (front), `repas-android-dev` (application), `repas-po` (tout écran, tout texte, **toute réponse d'Alexa**), `repas-ops` (variables, scripts).
 5. Le `CLAUDE.md` du dépôt où l'on travaille.
 
-> **État au 2026-10-25.** Cadrage écrit ; le back est complet jusqu'au webhook (VOX-101 à 103, 201 à 205, PR #267 pour le dernier) : une phrase signée par Amazon ajoute un article à la liste, sans Echo ni console. Reste : les écrans (VOX-401), l'exploitation (VOX-601), le compte Amazon (VOX-002) et la recette sur l'Echo (VOX-602). Décisions D1 à D6 de l'ADR 0029 en attente (défauts retenus). La liste d'Amazon n'est plus accessible aux tiers : la phrase contient donc le nom du skill.
+> **État au 2026-10-25.** Cadrage écrit ; le back est complet jusqu'au webhook (VOX-101 à 103, 201 à 205, PR #267 pour le dernier) : une phrase signée par Amazon ajoute un article à la liste, sans Echo ni console. Depuis le 2026-10-25 un produit inconnu ouvre un dialogue (trois propositions, mémoire de phrase, création guidée : VOX-303). Reste : les écrans (VOX-401), l'exploitation (VOX-601), le compte Amazon (VOX-002) et la recette sur l'Echo (VOX-602). Décisions D1, D2, D4 à D6 de l'ADR 0029 en attente (défauts retenus) ; D3 décidée par le propriétaire le 2026-10-25. La liste d'Amazon n'est plus accessible aux tiers : la phrase contient donc le nom du skill.
 
 ## Règles du chantier
 
@@ -17,7 +17,7 @@ Suivi vivant du chantier « Alexa, demande à *mes courses* d'ajouter du pain »
 - **Aucun secret dans les dépôts ni dans le chat** : `ALEXA_OAUTH_CLIENT_SECRET` et `ALEXA_SKILL_ID` naissent dans la console Amazon et vont dans `/opt/repas/.env` par un script que l'utilisateur lance (modèle : `ecrire-mailer-env.sh`).
 - Le contexte `Voice` ne dépend que de `Shared` (Deptrac, aucune baseline) ; ce qui doit circuler vers `Repas` passe par un port de `Shared`.
 - Un agent ne déploie pas, ne crée aucune étiquette, ne touche ni aux secrets GitHub ni au serveur.
-- Les réponses d'Alexa suivent `repas-po` : tutoiement, une à deux phrases, aucun avertissement.
+- Les réponses d'Alexa suivent `repas-po` : tutoiement, une à deux phrases, aucun avertissement. Seule exception : la question « de quoi tu parles ? » d'un produit inconnu, trois phrases (ADR 0029 décision 11).
 - Changer une convention = mettre à jour l'ADR 0029, `CLAUDE.md`, le skill concerné et cette roadmap dans le même commit.
 
 ## M0 — Décisions et compte Amazon
@@ -41,7 +41,8 @@ Suivi vivant du chantier « Alexa, demande à *mes courses* d'ajouter du pain »
 
 ## M3 — Habitudes qui apprennent (après la première recette)
 
-- [ ] [VOX-301](tickets/VOX-301-corriger-un-ajout-vocal.md) back puis front · M · Origine « voix » des lignes, correction « Pas le bon ? », mémoire de phrase · dépend de : 204
+- [x] [VOX-303](tickets/VOX-303-produit-inconnu-propositions-et-creation.md) back · L · Produit inconnu : trois propositions, mémoire de phrase (`spoken_phrase_choice`), création guidée (rayon, unité, confirmation), état du dialogue dans la séance · dépend de : 204, 205
+- [ ] [VOX-301](tickets/VOX-301-corriger-un-ajout-vocal.md) back puis front · M · Origine « voix » des lignes, correction « Pas le bon ? » depuis l'application (la mémoire de phrase existe, VOX-303) · dépend de : 204
 - [ ] [VOX-302](tickets/VOX-302-boite-a-trier-et-quantites.md) back puis front · M · Facultatif : produits introuvables mis de côté, quantité dite · dépend de : 301
 
 ## M4 — Front web
