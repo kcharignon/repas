@@ -77,6 +77,12 @@ final readonly class AlexaTestRequest
         return self::intent('CreateItemIntent');
     }
 
+    /** « lesquels ? » : `ListChoicesIntent`, sans créneau. */
+    public static function listChoices(): self
+    {
+        return self::intent('ListChoicesIntent');
+    }
+
     /** « fruits et légumes » : `AnswerDepartmentIntent`, créneau `department` rapproché du rayon `$departmentSlug`. */
     public static function answerDepartment(?string $heard, ?string $departmentSlug): self
     {

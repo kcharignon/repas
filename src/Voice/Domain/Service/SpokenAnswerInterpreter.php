@@ -29,7 +29,8 @@ use Repas\Voice\Domain\Model\SpokenDialogueState;
  * | `unit`       | l'unité, de la même façon                                                                                              |
  * | `confirm`    | « oui » = créer ; « non » = on abandonne                                                                                |
  *
- * « Aide » répète la question de l'étape. Le reste est `UNCLEAR` : l'appelant compte l'échec (`SpokenDialogueState::missed`). « Stop » et
+ * « Lesquels ? » (`ListChoicesIntent`) et « aide » (`AMAZON.HelpIntent`) sont la même demande : aux étapes `department` et `unit`, la liste des
+ * rayons ou des unités (`LIST_CHOICES`) ; aux étapes `choose` et `confirm`, la question de l'étape est répétée (`REPEAT`). Le reste est `UNCLEAR` : l'appelant compte l'échec (`SpokenDialogueState::missed`). « Stop » et
  * « annule » ne passent pas ici : `AlexaDialogue` les traite avant, dans tous les états.
  */
 final readonly class SpokenAnswerInterpreter
@@ -58,8 +59,12 @@ final readonly class SpokenAnswerInterpreter
     public function interpret(AlexaRequest $request, SpokenDialogueState $state, array $catalogue = []): SpokenAnswer
     {
         $intent = $request->intent();
-        if ($intent === AlexaIntent::HELP) {
-            return SpokenAnswer::of(SpokenAnswerKind::REPEAT);
+        // « Lesquels ? » et « aide » sont la même demande ; la réponse dépend de l'étape, pas de l'intention
+        if ($intent === AlexaIntent::HELP || $intent === AlexaIntent::LIST_CHOICES) {
+            return SpokenAnswer::of(match ($state->step) {
+                DialogueStep::DEPARTMENT, DialogueStep::UNIT => SpokenAnswerKind::LIST_CHOICES,
+                DialogueStep::CHOOSE, DialogueStep::CONFIRM => SpokenAnswerKind::REPEAT,
+            });
         }
 
         return match ($state->step) {

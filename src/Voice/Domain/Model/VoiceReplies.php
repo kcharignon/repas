@@ -12,6 +12,10 @@ namespace Repas\Voice\Domain\Model;
  * Une seule exception à « deux phrases » : la question « de quoi tu parles ? » d'un produit inconnu (`ASK_WHICH`, `ASK_WHICH_AGAIN`), trois
  * phrases, parce qu'elle dit ce qui n'est pas connu, les propositions et l'issue « un nouveau produit » (ADR 0029 décision 11).
  *
+ * Deux autres écarts, voulus par le propriétaire après le premier essai réel (2026-10-25) : la question de l'unité fait trois phrases (elle dit
+ * aussi qu'on peut demander la liste), et la réponse à « lesquels ? » (`choices()`) lit tout le catalogue des rayons ou des unités, jusqu'à
+ * 25 noms : deux phrases, dont la première, l'énumération, n'a pas de limite de mots (`VoiceRepliesTest`).
+ *
  * Les modèles de phrase (`%s`) reçoivent le nom d'un ingrédient, celui d'un rayon ou la phrase entendue, toujours passés par
  * `speakable()` : bornés en longueur et débarrassés des caractères de contrôle.
  */
@@ -46,8 +50,12 @@ final class VoiceReplies
     public const string ASK_WHICH_AGAIN = 'Lequel ? %s. Ou un nouveau produit ?';
     /** Le produit dit est inconnu et rien ne lui ressemble. */
     public const string ASK_CREATE = 'Je ne connais pas %s. Je le crée ?';
-    public const string ASK_DEPARTMENT = 'Dans quel rayon ?';
-    public const string ASK_UNIT = 'Quelle unité ? Par exemple pièce, kilo ou litre.';
+    public const string ASK_DEPARTMENT = 'Dans quel rayon ? Dis lesquels pour les entendre.';
+    public const string ASK_UNIT = 'Quelle unité ? Par exemple pièce, kilo ou litre. Dis lesquelles pour les entendre.';
+    /** « Lesquels ? » au rayon : tous les rayons du catalogue (`%s`), puis la question. */
+    public const string LIST_DEPARTMENTS = 'Les rayons : %s. Lequel ?';
+    /** « Lesquelles ? » à l'unité : toutes les unités du catalogue (`%s`), puis la question. */
+    public const string LIST_UNITS = 'Les unités : %s. Laquelle ?';
     public const string ASK_CONFIRM = "Je crée %s, %s, %s. C'est bon ?";
     public const string NOT_UNDERSTOOD = "Je n'ai pas compris.";
     /** Deux réponses incomprises de suite dans la même étape. */
@@ -58,8 +66,8 @@ final class VoiceReplies
     public const string REMEMBERED = "C'est noté : %s. Je m'en souviendrai.";
     public const string LIST_STARTED_REMEMBERED = "J'ai commencé une nouvelle liste avec %s. Je m'en souviendrai.";
     /** Le produit est créé et ajouté. */
-    public const string CREATED = "C'est créé et noté : %s.";
-    public const string CREATED_LIST_STARTED = "J'ai créé %s et commencé une nouvelle liste.";
+    public const string CREATED = "C'est créé et noté : %s, rayon %s.";
+    public const string CREATED_LIST_STARTED = "J'ai créé %s, rayon %s, et commencé une nouvelle liste.";
     /** Ajoutée à la réponse quand la séance reste ouverte. */
     public const string ANYTHING_ELSE = 'Autre chose ?';
 
@@ -148,6 +156,28 @@ final class VoiceReplies
         };
     }
 
+    /**
+     * « Lesquels ? » : tous les choix de l'étape (les rayons ou les unités du catalogue), séparés par des virgules, puis la question « Lequel ? » /
+     * « Laquelle ? ». Deux phrases ; la première est une énumération, la seule qui échappe à « 15 mots au plus » (elle ne s'écrit pas en
+     * phrase : l'utilisateur écoute la liste pour choisir). `null` aux autres étapes ou quand le catalogue est vide (rien à énumérer).
+     *
+     * @param list<string> $names
+     */
+    public static function choices(SpokenDialogueState $state, array $names): ?string
+    {
+        $template = match ($state->step) {
+            DialogueStep::DEPARTMENT => self::LIST_DEPARTMENTS,
+            DialogueStep::UNIT => self::LIST_UNITS,
+            default => null,
+        };
+        $spoken = array_values(array_filter(array_map(self::speakable(...), $names), static fn(string $name): bool => $name !== ''));
+        if ($template === null || $spoken === []) {
+            return null;
+        }
+
+        return sprintf($template, implode(', ', $spoken));
+    }
+
     /** Une réponse qui n'a pas été comprise : on le dit, puis on repose la question de l'étape. */
     public static function notUnderstood(SpokenDialogueState $state): string
     {
@@ -178,17 +208,19 @@ final class VoiceReplies
     }
 
     /**
-     * Le produit est créé puis ajouté à la liste.
+     * Le produit est créé puis ajouté à la liste. Alexa répète le rayon où il vient d'être rangé (l'utilisateur l'a choisi à voix haute : il
+     * entend ce qu'il a produit).
      */
-    public static function created(string $ingredientName, bool $listCreated, bool $previousListSent): string
+    public static function created(string $ingredientName, string $departmentName, bool $listCreated, bool $previousListSent): string
     {
         $ingredient = self::speakable($ingredientName);
+        $department = self::speakable($departmentName);
 
         if (!$listCreated) {
-            return sprintf(self::CREATED, $ingredient);
+            return sprintf(self::CREATED, $ingredient, $department);
         }
 
-        $started = sprintf(self::CREATED_LIST_STARTED, $ingredient);
+        $started = sprintf(self::CREATED_LIST_STARTED, $ingredient, $department);
 
         return $previousListSent ? $started . ' ' . self::PREVIOUS_LIST_SENT : $started;
     }

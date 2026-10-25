@@ -35,6 +35,8 @@ use Symfony\Component\Messenger\Attribute\AsMessageHandler;
  *   avec une confiance sûre ou probable, il corrige la proposition : la phrase d'ORIGINE est retenue pour lui aussi (« patates » puis
  *   « pomme de terre »). Sans proposition faite (« Je le crée ? »), ou si deux noms se touchent, c'est un ajout ordinaire : rien n'est
  *   retenu ni promis (`SpokenDialogueState::rememberablePhrase`). S'il est inconnu, le dialogue repart pour lui, rien n'est retenu ;
+ * - « lesquels ? » (ou « aide ») aux étapes du rayon et de l'unité : la liste de tout le catalogue de l'étape, déjà lu pour l'interpréter, puis
+ *   la question ; l'état et le compte des réponses incomprises ne bougent pas (aux autres étapes, la question est répétée) ;
  * - une réponse incomprise : on la redemande une fois (`SpokenDialogueState::missed`), la deuxième fois de suite dans la même étape on
  *   abandonne poliment (jamais de boucle sans fin).
  *
@@ -58,9 +60,11 @@ readonly class AnswerSpokenDialogueHandler
     public function __invoke(AnswerSpokenDialogueCommand $command): AddSpokenItemResult
     {
         $state = $command->state;
-        $answer = $this->interpreter->interpret($command->request, $state, $this->catalogueFor($state));
+        $catalogue = $this->catalogueFor($state);
+        $answer = $this->interpreter->interpret($command->request, $state, $catalogue);
 
         return match ($answer->kind) {
+            SpokenAnswerKind::LIST_CHOICES => $this->listChoices($state, $catalogue),
             SpokenAnswerKind::NEW_REQUEST => ($this->addSpokenItem)(new AddSpokenItemCommand($command->userId, $answer->phrase ?? '', sessionIsOpen: true, rememberAs: $state->rememberablePhrase())),
             SpokenAnswerKind::PICK_OPTION => $this->pickOption($command, $answer),
             SpokenAnswerKind::START_CREATION => $this->ask($state->askingDepartment()),
@@ -118,7 +122,7 @@ readonly class AnswerSpokenDialogueHandler
         $added = $this->shoppingList->addItem($command->userId, $created->slug);
 
         // Le nom du produit est exact : rien à retenir pour la phrase
-        return $this->finish(VoiceReplies::created($created->name, $added->listCreated, $added->previousListSent), added: true);
+        return $this->finish(VoiceReplies::created($created->name, $created->departmentName, $added->listCreated, $added->previousListSent), added: true);
     }
 
     /** La question de l'étape (nouvelle ou répétée), et le dialogue continue. */
@@ -127,6 +131,21 @@ readonly class AnswerSpokenDialogueHandler
         $question = VoiceReplies::question($state);
 
         return new AddSpokenItemResult($question, keepSessionOpen: true, added: false, nextState: $state, reprompt: $question);
+    }
+
+    /**
+     * « Lesquels ? » : les rayons ou les unités que l'étape vient de lire, dits en entier, puis la question. L'état ne change pas et la demande
+     * ne compte pas comme une réponse incomprise (`misses` reste ce qu'il était) : on peut la refaire autant qu'on veut. Aucune lecture de plus.
+     *
+     * @param list<DialogueOption> $catalogue
+     */
+    private function listChoices(SpokenDialogueState $state, array $catalogue): AddSpokenItemResult
+    {
+        $names = array_map(static fn(DialogueOption $choice): string => $choice->name, $catalogue);
+        // Un catalogue vide n'a rien à énumérer : la question suffit
+        $speech = VoiceReplies::choices($state, $names) ?? VoiceReplies::question($state);
+
+        return new AddSpokenItemResult($speech, keepSessionOpen: true, added: false, nextState: $state, reprompt: VoiceReplies::question($state));
     }
 
     /** Une réponse incomprise : on la redemande, et à la deuxième de suite on abandonne. */

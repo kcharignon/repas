@@ -160,11 +160,11 @@ class HandleAlexaRequestApiControllerTest extends QueryBusWebTestCase
         $this->linkedAccount();
         $state = SpokenDialogueState::choose('de la ciboulette', [new DialogueOption('persil-u', 'persil')], 'ciboulette');
         $this->commandBus->willReturn(AnswerSpokenDialogueCommand::class, new AddSpokenItemResult(
-            'Dans quel rayon ?',
+            'Dans quel rayon ? Dis lesquels pour les entendre.',
             keepSessionOpen: true,
             added: false,
             nextState: $state->askingDepartment(),
-            reprompt: 'Dans quel rayon ?',
+            reprompt: 'Dans quel rayon ? Dis lesquels pour les entendre.',
         ));
 
         // When : « un nouveau produit »
@@ -176,9 +176,9 @@ class HandleAlexaRequestApiControllerTest extends QueryBusWebTestCase
         $this->assertSame('user-1', $command->userId);
         $this->assertEquals($state, $command->state);
         $this->assertSame('CreateItemIntent', $command->request->intentName);
-        $this->assertSame('Dans quel rayon ?', $this->jsonBody()['response']['outputSpeech']['text']);
+        $this->assertSame('Dans quel rayon ? Dis lesquels pour les entendre.', $this->jsonBody()['response']['outputSpeech']['text']);
         $this->assertSame('department', $this->jsonBody()['sessionAttributes']['dialogue']['step']);
-        $this->assertSame('Dans quel rayon ?', $this->jsonBody()['response']['reprompt']['outputSpeech']['text']);
+        $this->assertSame('Dans quel rayon ? Dis lesquels pour les entendre.', $this->jsonBody()['response']['reprompt']['outputSpeech']['text']);
         $this->assertFalse($this->jsonBody()['response']['shouldEndSession']);
     }
 

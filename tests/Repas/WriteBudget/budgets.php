@@ -65,6 +65,7 @@ return [
     'planifier-repas' => 24,
     'rafraichir-jeton-alexa' => 6,
     'rayon-dit-a-alexa' => 1,
+    'rayons-lus-a-alexa' => 1,
     'reactiver-liste' => 10,
     'reglages-drive' => 2,
     'reglages-utilisateur' => 2,
@@ -86,5 +87,6 @@ return [
     'terminer-liste' => 11,
     'tick-derniere-ligne' => 15,
     'tick-ligne' => 4,
+    'unites-lues-a-alexa' => 1,
     'version-application' => 1,
 ];

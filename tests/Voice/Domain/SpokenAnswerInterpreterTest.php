@@ -136,7 +136,9 @@ class SpokenAnswerInterpreterTest extends TestCase
         yield 'AddItemIntent sans phrase' => [AlexaTestRequest::addItem(null), $three, SpokenAnswerKind::UNCLEAR, null, null];
 
         // Le reste
-        yield 'aide : on répète la question' => [AlexaTestRequest::intent('AMAZON.HelpIntent'), $three, SpokenAnswerKind::REPEAT, null, null];
+        yield 'aide : on répète les propositions' => [AlexaTestRequest::intent('AMAZON.HelpIntent'), $three, SpokenAnswerKind::REPEAT, null, null];
+        yield '« lesquels » : on répète les propositions' => [AlexaTestRequest::listChoices(), $three, SpokenAnswerKind::REPEAT, null, null];
+        yield '« lesquels » sans proposition : on répète la question' => [AlexaTestRequest::listChoices(), [], SpokenAnswerKind::REPEAT, null, null];
         yield 'repli' => [AlexaTestRequest::intent('AMAZON.FallbackIntent'), $three, SpokenAnswerKind::UNCLEAR, null, null];
         yield 'intention inconnue' => [AlexaTestRequest::intent('AMAZON.NavigateHomeIntent'), $three, SpokenAnswerKind::UNCLEAR, null, null];
         yield 'une réponse de rayon n\'a pas de sens ici' => [AlexaTestRequest::answerDepartment('boucherie', 'boucherie'), $three, SpokenAnswerKind::UNCLEAR, null, null];
@@ -194,7 +196,8 @@ class SpokenAnswerInterpreterTest extends TestCase
         yield '« oui » n\'est pas un rayon' => [AlexaTestRequest::yes(), SpokenAnswerKind::UNCLEAR, null];
         yield 'un rang n\'est pas un rayon' => [AlexaTestRequest::chooseOption('un', '1'), SpokenAnswerKind::UNCLEAR, null];
         yield '« un nouveau produit » n\'est pas un rayon' => [AlexaTestRequest::createItem(), SpokenAnswerKind::UNCLEAR, null];
-        yield 'aide : on répète la question' => [AlexaTestRequest::intent('AMAZON.HelpIntent'), SpokenAnswerKind::REPEAT, null];
+        yield 'aide : on lit les rayons' => [AlexaTestRequest::intent('AMAZON.HelpIntent'), SpokenAnswerKind::LIST_CHOICES, null];
+        yield '« lesquels » : on lit les rayons' => [AlexaTestRequest::listChoices(), SpokenAnswerKind::LIST_CHOICES, null];
         yield 'repli' => [AlexaTestRequest::intent('AMAZON.FallbackIntent'), SpokenAnswerKind::UNCLEAR, null];
     }
 
@@ -225,7 +228,8 @@ class SpokenAnswerInterpreterTest extends TestCase
         yield '« non » : on abandonne' => [AlexaTestRequest::no(), SpokenAnswerKind::ABANDON, null];
         yield '« oui » n\'est pas une unité' => [AlexaTestRequest::yes(), SpokenAnswerKind::UNCLEAR, null];
         yield 'un rayon n\'est pas une unité' => [AlexaTestRequest::answerDepartment('boucherie', 'boucherie'), SpokenAnswerKind::UNCLEAR, null];
-        yield 'aide : on répète la question' => [AlexaTestRequest::intent('AMAZON.HelpIntent'), SpokenAnswerKind::REPEAT, null];
+        yield 'aide : on lit les unités' => [AlexaTestRequest::intent('AMAZON.HelpIntent'), SpokenAnswerKind::LIST_CHOICES, null];
+        yield '« lesquelles » : on lit les unités' => [AlexaTestRequest::listChoices(), SpokenAnswerKind::LIST_CHOICES, null];
         yield 'repli' => [AlexaTestRequest::intent('AMAZON.FallbackIntent'), SpokenAnswerKind::UNCLEAR, null];
     }
 
@@ -261,6 +265,7 @@ class SpokenAnswerInterpreterTest extends TestCase
         yield '« oui » : on crée' => [AlexaTestRequest::yes(), SpokenAnswerKind::CONFIRM];
         yield '« non » : on abandonne' => [AlexaTestRequest::no(), SpokenAnswerKind::ABANDON];
         yield 'aide : on répète la question' => [AlexaTestRequest::intent('AMAZON.HelpIntent'), SpokenAnswerKind::REPEAT];
+        yield '« lesquels » : on répète la question' => [AlexaTestRequest::listChoices(), SpokenAnswerKind::REPEAT];
         yield 'repli' => [AlexaTestRequest::intent('AMAZON.FallbackIntent'), SpokenAnswerKind::UNCLEAR];
         yield 'un article n\'est pas une confirmation' => [AlexaTestRequest::addItem('du lait'), SpokenAnswerKind::UNCLEAR];
         yield 'un nouveau produit n\'est pas une confirmation' => [AlexaTestRequest::createItem(), SpokenAnswerKind::UNCLEAR];

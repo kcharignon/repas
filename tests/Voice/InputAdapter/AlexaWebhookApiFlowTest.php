@@ -409,12 +409,12 @@ class AlexaWebhookApiFlowTest extends DatabaseTestCase
 
         // When : « oui » -> le rayon
         $this->converse(AlexaTestRequest::yes(), $this->attributes());
-        $this->assertSame('Dans quel rayon ?', $this->speech());
+        $this->assertSame('Dans quel rayon ? Dis lesquels pour les entendre.', $this->speech());
         $this->assertSame($ingredientsBefore, $this->rowCount('ingredient'), "rien n'est créé avant la confirmation");
 
         // When : « les fruits et légumes » -> l'unité
         $this->converse(AlexaTestRequest::answerDepartment('les fruits et légumes', 'cereale'), $this->attributes());
-        $this->assertSame('Quelle unité ? Par exemple pièce, kilo ou litre.', $this->speech());
+        $this->assertSame('Quelle unité ? Par exemple pièce, kilo ou litre. Dis lesquelles pour les entendre.', $this->speech());
 
         // When : « des pièces » -> la confirmation
         $this->converse(AlexaTestRequest::answerUnit('des pièces', 'unite'), $this->attributes());
@@ -425,7 +425,7 @@ class AlexaWebhookApiFlowTest extends DatabaseTestCase
         $this->converse(AlexaTestRequest::yes(), $this->attributes());
 
         // Then : créé pour l'utilisateur, avec une seule unité, et ajouté à sa liste ; plus d'état ; rien n'est retenu pour la phrase
-        $this->assertSame("C'est créé et noté : ciboulette. Autre chose ?", $this->speech());
+        $this->assertSame("C'est créé et noté : ciboulette, rayon céréale. Autre chose ?", $this->speech());
         $this->assertSame([], $this->attributes());
         $this->assertSame($ingredientsBefore + 1, $this->rowCount('ingredient'));
         $created = $this->connection()->fetchAssociative("SELECT * FROM ingredient WHERE name = 'ciboulette'");
@@ -441,6 +441,68 @@ class AlexaWebhookApiFlowTest extends DatabaseTestCase
 
         // Then
         $this->assertSame("C'est noté : ciboulette.", $this->speech());
+    }
+
+    public function testAskingWhichOnesReadsTheDepartmentsThenTheUnitsAndTheCreationGoesOn(): void
+    {
+        // Given : rien ne ressemble à « ciboulette »
+        $user = $this->linkedUser();
+        $this->savedCatalogue();
+        $this->savedActiveList($user);
+        $ingredientsBefore = $this->rowCount('ingredient');
+
+        // When : « ajoute de la ciboulette » -> « un nouveau produit » -> « lesquels ? »
+        $this->converse(AlexaTestRequest::addItem('de la ciboulette'));
+        $this->converse(AlexaTestRequest::createItem(), $this->attributes());
+        $asked = $this->attributes();
+        $this->converse(AlexaTestRequest::listChoices(), $asked);
+
+        // Then : tous les rayons du catalogue, puis la question ; l'état est le même, la séance reste ouverte
+        $this->assertSame('Les rayons : céréale. Lequel ?', $this->speech());
+        $this->assertSame($asked, $this->attributes());
+        $this->assertSame(0, $this->attributes()['dialogue']['misses']);
+        $this->assertFalse($this->jsonBody()['response']['shouldEndSession']);
+        $this->assertSame('Dans quel rayon ? Dis lesquels pour les entendre.', $this->jsonBody()['response']['reprompt']['outputSpeech']['text']);
+
+        // When : « aide » donne la même liste, puis un rayon
+        $this->converse(AlexaTestRequest::intent('AMAZON.HelpIntent'), $this->attributes());
+        $this->assertSame('Les rayons : céréale. Lequel ?', $this->speech());
+        $this->converse(AlexaTestRequest::answerDepartment('céréales', 'cereale'), $this->attributes());
+        $this->assertSame('Quelle unité ? Par exemple pièce, kilo ou litre. Dis lesquelles pour les entendre.', $this->speech());
+
+        // When : « lesquelles ? »
+        $this->converse(AlexaTestRequest::listChoices(), $this->attributes());
+
+        // Then : toutes les unités du catalogue
+        $this->assertMatchesRegularExpression('/^Les unités : (kilo, unité|unité, kilo)\. Laquelle \?$/u', $this->speech());
+        $this->assertSame(0, $this->attributes()['dialogue']['misses']);
+        $this->assertSame($ingredientsBefore, $this->rowCount('ingredient'));
+
+        // When : une unité, puis « oui »
+        $this->converse(AlexaTestRequest::answerUnit('des pièces', 'unite'), $this->attributes());
+        $this->assertSame("Je crée ciboulette, céréale, unité. C'est bon ?", $this->speech());
+        $this->converse(AlexaTestRequest::yes(), $this->attributes());
+
+        // Then : créé, rangé dans le rayon dit à voix haute, ajouté
+        $this->assertSame("C'est créé et noté : ciboulette, rayon céréale. Autre chose ?", $this->speech());
+        $this->assertSame([], $this->attributes());
+        $this->assertSame($ingredientsBefore + 1, $this->rowCount('ingredient'));
+        $this->assertSame(1, $this->rowCount('shopping_list_row'));
+    }
+
+    public function testAskingWhichOnesWithoutAnyDialogueGetsTheFallback(): void
+    {
+        // Given
+        $this->linkedUser();
+
+        // When : séance sans état
+        $this->converse(AlexaTestRequest::listChoices());
+
+        // Then
+        $this->assertSame(200, $this->statusCode());
+        $this->assertSame('Dis par exemple : ajoute du pain.', $this->speech());
+        $this->assertFalse($this->jsonBody()['response']['shouldEndSession']);
+        $this->assertSame(0, $this->rowCount('shopping_list'));
     }
 
     public function testRefusingAtTheConfirmationCreatesAndAddsNothing(): void
@@ -479,7 +541,7 @@ class AlexaWebhookApiFlowTest extends DatabaseTestCase
         $this->converse(AlexaTestRequest::answerDepartment('zébulon', null), $this->attributes());
 
         // Then : une première fois, on redemande
-        $this->assertSame("Je n'ai pas compris. Dans quel rayon ?", $this->speech());
+        $this->assertSame("Je n'ai pas compris. Dans quel rayon ? Dis lesquels pour les entendre.", $this->speech());
         $this->assertSame(1, $this->attributes()['dialogue']['misses']);
 
         // When : une seconde fois
@@ -638,7 +700,7 @@ class AlexaWebhookApiFlowTest extends DatabaseTestCase
         $this->converse(AlexaTestRequest::yes(), ['dialogue' => $forged->toArray()]);
 
         // Then : stocké sous le nom normalisé, jamais tel que reçu
-        $this->assertSame("C'est créé et noté : b évil b ingrédient xxxx. Autre chose ?", $this->speech());
+        $this->assertSame("C'est créé et noté : b évil b ingrédient xxxx, rayon céréale. Autre chose ?", $this->speech());
         $this->assertSame(1, $this->rowCount('ingredient'));
         $this->assertSame('b évil b ingrédient xxxx', $this->connection()->fetchOne('SELECT name FROM ingredient'));
         $this->assertSame(1, $this->rowCount('shopping_list_row'));

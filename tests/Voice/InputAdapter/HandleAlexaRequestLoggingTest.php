@@ -129,7 +129,7 @@ class HandleAlexaRequestLoggingTest extends TestCase
     {
         // Given
         $state = SpokenDialogueState::choose(self::SECRET_PHRASE, [], 'secret-name');
-        $this->commandBus->willReturn(AnswerSpokenDialogueCommand::class, new \Repas\Voice\Application\Command\AddSpokenItem\AddSpokenItemResult('Dans quel rayon ?', true, false, $state->askingDepartment(), 'Dans quel rayon ?'));
+        $this->commandBus->willReturn(AnswerSpokenDialogueCommand::class, new \Repas\Voice\Application\Command\AddSpokenItem\AddSpokenItemResult('Dans quel rayon ? Dis lesquels pour les entendre.', true, false, $state->askingDepartment(), 'Dans quel rayon ? Dis lesquels pour les entendre.'));
 
         // When
         $response = $this->controller()($this->request(AlexaTestRequest::yes()->withAccessToken(self::SECRET_TOKEN)->withSessionAttributes(['dialogue' => $state->toArray()])->toJson()));

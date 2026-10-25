@@ -67,7 +67,7 @@ final readonly class AlexaDialogue
             AlexaIntent::NO => AlexaResponse::say(VoiceReplies::GOODBYE),
             AlexaIntent::HELP => AlexaResponse::ask(VoiceReplies::HELP, VoiceReplies::LAUNCH),
             // Le repli : le repli d'Amazon, une intention qu'il n'a pas déclarée, et les réponses de dialogue (un rang, un nouveau produit, un
-            // rayon, une unité) sans dialogue en cours — séance trop vieille, état perdu. « Stop » et « annule » sont traités plus haut.
+            // rayon, une unité, « lesquels ? » de `ListChoicesIntent`) sans dialogue en cours — séance trop vieille, état perdu. « Stop » et « annule » sont traités plus haut.
             default => AlexaResponse::ask(VoiceReplies::FALLBACK, VoiceReplies::LAUNCH),
         };
     }

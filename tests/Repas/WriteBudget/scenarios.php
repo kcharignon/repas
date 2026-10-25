@@ -770,6 +770,22 @@ return [
 
         return new AnswerSpokenDialogueCommand($owner->getId(), AlexaRequest::fromDecoded(AlexaTestRequest::answerDepartment('céréales', 'cereale')->inOpenSession()->toArray()), $state);
     },
+    // « Dans quel rayon ? » -> « lesquels ? » : la même unique lecture des rayons du catalogue, qui sert à les lire tous ; aucune écriture
+    'rayons-lus-a-alexa' => static function (WriteBudgetTestCase $t): object {
+        $owner = $t->savedUser();
+        $t->persister->saveDepartment(new DepartmentBuilder()->isCereal()->build());
+        $state = SpokenDialogueState::choose('de la ciboulette', [], 'ciboulette')->askingDepartment();
+
+        return new AnswerSpokenDialogueCommand($owner->getId(), AlexaRequest::fromDecoded(AlexaTestRequest::listChoices()->inOpenSession()->toArray()), $state);
+    },
+    // « Quelle unité ? » -> « lesquelles ? » : une seule lecture des unités du catalogue, aucune écriture
+    'unites-lues-a-alexa' => static function (WriteBudgetTestCase $t): object {
+        $owner = $t->savedUser();
+        $t->persister->saveUnit(new UnitBuilder()->isUnite()->build());
+        $state = SpokenDialogueState::choose('de la ciboulette', [], 'ciboulette')->askingDepartment()->withDepartment(new DialogueOption('cereale', 'céréale'));
+
+        return new AnswerSpokenDialogueCommand($owner->getId(), AlexaRequest::fromDecoded(AlexaTestRequest::listChoices()->inOpenSession()->toArray()), $state);
+    },
     // « Je crée ciboulette, céréale, unité. C'est bon ? » -> « oui » : le produit est créé (rayon, unités, conversions compatibles, statistiques
     // du créateur) puis ajouté à la liste active
     'creer-ingredient-par-la-voix' => static function (WriteBudgetTestCase $t): object {
