@@ -40,6 +40,18 @@ final readonly class SpokenIngredientRanker
     /** Le score d'un ingrédient mémorisé pour la phrase : au-dessus de tout score calculé (au plus 0,999 + HABIT_WEIGHT). */
     public const float REMEMBERED_SCORE = 2.0;
 
+    /** Le plancher de proximité des propositions : au-dessous, un nom n'a plus de rapport avec la phrase (voir `suggest()`). */
+    public const float SUGGESTION_FLOOR = 0.80;
+
+    /** Le nombre de propositions faites à l'utilisateur (trois se disent, quatre se retiennent mal). */
+    public const int MAX_SUGGESTIONS = 3;
+
+    /** Un nom proposé commence comme un mot de la phrase par au moins ce nombre de lettres (ou en est un mot plus court en entier). */
+    public const int SHARED_PREFIX = 3;
+
+    /** Longueur de la clé de la mémoire de phrase (`spoken_phrase_choice.phrase`). */
+    public const int MAX_KEY_LENGTH = 100;
+
     /** Tolérance des comparaisons de scores à virgule flottante (l'écart de 0,03 compte, même avec l'arrondi des flottants). */
     private const float EPSILON = 1e-9;
 
@@ -94,6 +106,57 @@ final readonly class SpokenIngredientRanker
     }
 
     /**
+     * Les ingrédients les plus proches d'une phrase que `rank()` ne choisit PAS tout seul : « De quoi tu parles ? » (ADR 0029 décision 11).
+     * Au plus `MAX_SUGGESTIONS`, classés comme `rank()` (pertinence + bonus d'habitude), et seulement ceux qui passent le plancher :
+     *
+     * - une pertinence d'au moins `SUGGESTION_FLOOR` et inférieure à `SearchRelevance::MINIMUM` (au-dessus, `rank()` choisit sans demander) ;
+     * - ET un début de mot en commun avec la phrase (`SHARED_PREFIX` lettres) : Jaro-Winkler seul note 0,81 « fenouil » contre « nouille » ou
+     *   « basilic » contre « ail », deux noms sans rapport. Le début en commun ne retient que de vraies ressemblances (« sirop de menthe »
+     *   et « sirop fruit rouge »).
+     *
+     * L'ordre est déterministe (score, puis nom, puis slug). Aucun ingrédient assez proche : liste vide, et l'appelant propose de créer.
+     *
+     * @param list<SpokenCandidate> $candidates les ingrédients de l'utilisateur
+     *
+     * @return list<RankedIngredient>
+     */
+    public function suggest(string $phrase, array $candidates, int $limit = self::MAX_SUGGESTIONS): array
+    {
+        $searchWords = self::words($phrase);
+        if ($searchWords === [] || $candidates === []) {
+            return [];
+        }
+        $search = implode('-', $searchWords);
+
+        $scored = [];
+        foreach ($candidates as $candidate) {
+            $nameWords = self::words($candidate->sluggedName);
+            $relevance = SearchRelevance::score($search, implode('-', $nameWords));
+            if ($relevance < self::SUGGESTION_FLOOR || $relevance >= SearchRelevance::MINIMUM || !self::sharesAPrefix($searchWords, $nameWords)) {
+                continue;
+            }
+            $scored[] = ['candidate' => $candidate, 'score' => $relevance + self::habit($candidate->uses12m)];
+        }
+
+        usort($scored, static fn(array $first, array $second): int => [$second['score'], $first['candidate']->sluggedName, $first['candidate']->slug]
+            <=> [$first['score'], $second['candidate']->sluggedName, $second['candidate']->slug]);
+
+        return array_map(
+            static fn(array $entry): RankedIngredient => self::ranked($entry['candidate'], $entry['score'], Confidence::UNSURE),
+            array_slice($scored, 0, max(0, $limit)),
+        );
+    }
+
+    /**
+     * La clé de la mémoire de phrase : la phrase normalisée comme le classeur la lit (`rank()`), bornée à `MAX_KEY_LENGTH`. « du pain » et
+     * « le pains » ont la même clé. Vide si aucun mot ne compte : il n'y a alors rien à mémoriser.
+     */
+    public static function phraseKey(string $phrase): string
+    {
+        return mb_substr(self::normalize($phrase), 0, self::MAX_KEY_LENGTH);
+    }
+
+    /**
      * `SURE` : le seul nom identique à la phrase. `PROBABLE` : le premier devance le suivant d'au moins `CLEAR_MARGIN`, ou n'a pas de
      * suivant. `UNSURE` : le premier et le suivant se touchent (deux noms identiques ou deux noms proches d'habitudes voisines).
      */
@@ -117,12 +180,38 @@ final readonly class SpokenIngredientRanker
     /** Le nom ou la phrase normalisés (mots joints par « - ») ; vide si aucun mot ne compte. */
     private static function normalize(string $text): string
     {
-        $words = array_filter(
+        return implode('-', self::words($text));
+    }
+
+    /**
+     * @return list<string> les mots qui comptent (pluriels repliés, mots vides retirés)
+     */
+    private static function words(string $text): array
+    {
+        return array_values(array_filter(
             IngredientNameMatcher::tokens($text),
             static fn(string $word): bool => !in_array($word, IngredientNameMatcher::STOP_WORDS, true),
-        );
+        ));
+    }
 
-        return implode('-', $words);
+    /**
+     * Un mot de la phrase et un mot du nom commencent pareil, sur `SHARED_PREFIX` lettres (ou sur toute la longueur du plus court).
+     *
+     * @param list<string> $searchWords
+     * @param list<string> $nameWords
+     */
+    private static function sharesAPrefix(array $searchWords, array $nameWords): bool
+    {
+        foreach ($searchWords as $searchWord) {
+            foreach ($nameWords as $nameWord) {
+                $length = min(self::SHARED_PREFIX, strlen($searchWord), strlen($nameWord));
+                if ($length > 0 && substr($searchWord, 0, $length) === substr($nameWord, 0, $length)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     private static function ranked(SpokenCandidate $candidate, float $score, Confidence $confidence): RankedIngredient

@@ -12,6 +12,7 @@ use Repas\Repas\Domain\Interface\IngredientAliasRepository;
 use Repas\Repas\Domain\Interface\IngredientDistinctRepository;
 use Repas\Repas\Domain\Interface\IngredientMergeRepository;
 use Repas\Repas\Domain\Interface\IngredientRepository;
+use Repas\Repas\Domain\Interface\SpokenPhraseChoiceRepository;
 use Repas\Repas\Domain\Model\Ingredient;
 use Repas\Repas\Domain\Model\IngredientMergePlan;
 use Repas\Repas\Domain\Model\MergeParty;
@@ -37,7 +38,7 @@ use Symfony\Component\Messenger\Attribute\AsMessageHandler;
  *     pas par `A` arrêtent la fusion avant la première écriture (`IngredientMergePlanner`, le même verdict que l'aperçu) ;
  *  3. `A` récupère les conversions propres de `B` qui lui manquent (une seule copie en masse, `A` garde les siennes en cas de conflit) et
  *     les unités compatibles de `B` que ses lignes de recette déplacées utilisent ;
- *  4. les lignes de recettes, de listes et les choix du drive passent sur `A` (versions +1), les alias suivent, `B` et ses conversions
+ *  4. les lignes de recettes, de listes et les choix du drive passent sur `A` (versions +1), les alias et les phrases apprises à Alexa suivent (`SpokenPhraseChoiceRepository::repoint`), `B` et ses conversions
  *     propres sont supprimés (celles qui ont été copiées restent sur `A`) ;
  *  5. `IngredientRemovedEvent` si `B` n'est pas une adoption (la statistique « ingrédients créés » : une adoption n'a jamais compté).
  *
@@ -53,6 +54,7 @@ readonly class MergeIngredientsHandler
         private IngredientMergeRepository $mergeRepository,
         private IngredientAliasRepository $aliasRepository,
         private IngredientDistinctRepository $distinctRepository,
+        private SpokenPhraseChoiceRepository $spokenPhraseRepository,
         private ConversionRepository $conversionRepository,
         private ConversionService $conversionService,
         private IngredientMergePlanner $planner,
@@ -113,6 +115,8 @@ readonly class MergeIngredientsHandler
         $this->aliasRepository->mergeInto($command->userId, $absorbed->getSlug(), $kept->getSlug(), $this->clock->now());
         // Les « Pas le même » qui nommaient l'absorbé n'ont plus d'objet (et ne doivent pas être hérités par un ingrédient qui reprendrait son slug)
         $this->distinctRepository->deleteByIngredientSlug($command->userId, $absorbed->getSlug());
+        // Les phrases apprises à Alexa pour l'absorbé désignent désormais le gardé
+        $this->spokenPhraseRepository->repoint($command->userId, $absorbed->getSlug(), $kept->getSlug());
 
         // Les conversions propres de B disparaissent avec lui ; celles que A a récupérées sont déjà les siennes
         $this->conversionRepository->deleteByIngredient($absorbed);

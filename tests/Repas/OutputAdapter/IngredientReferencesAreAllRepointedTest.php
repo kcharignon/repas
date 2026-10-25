@@ -43,6 +43,9 @@ class IngredientReferencesAreAllRepointedTest extends DatabaseTestCase
         'shopping_list_row.ingredient' => AdoptionSnapshot::SHOPPING_LIST_ROW,
         'shopping_list_ingredient.ingredient' => AdoptionSnapshot::SHOPPING_LIST_INGREDIENT,
         'drive_choice.ingredient_slug' => 'DriveChoiceFingerprint::ingredientSlugByChoice',
+        // La mémoire de phrase de la commande vocale (ADR 0029 décision 11) : la fusion la repointe (`SpokenPhraseChoiceRepository::repoint`) ; la migration d'adoption
+        // (ING-003) ne l'a jamais connue, aucune ligne n'existe avant elle
+        'spoken_phrase_choice.ingredient_slug' => 'SpokenPhraseChoiceRepository::repoint',
     ];
 
     /**
@@ -176,12 +179,13 @@ class IngredientReferencesAreAllRepointedTest extends DatabaseTestCase
         $merge->recipe('r1', $user->getId(), [[$absorbed->getSlug(), 1.0, 'gramme']]);
         $merge->shoppingList('l1', $user->getId(), rows: [['x1', $absorbed->getSlug(), 1.0, 'kilo']], items: [['y1', $absorbed->getSlug(), 1.0, 'kilo']]);
         $merge->choice('c1', $user->getId(), $absorbed->getSlug());
+        $this->entityManager->getConnection()->insert('spoken_phrase_choice', ['user_id' => $user->getId(), 'phrase' => 'tomates', 'ingredient_slug' => $absorbed->getSlug(), 'times' => 2, 'updated_at' => '2026-10-20 03:00:00']);
         $this->entityManager->getConnection()->insert('ingredient_alias', ['user_id' => $user->getId(), 'alias_slug' => 'tomates', 'ingredient_slug' => $absorbed->getSlug(), 'kind' => 'adoption', 'source' => 'migration-essai', 'created_at' => '2026-10-20 03:00:00']);
         $holding = fn(): array => $this->columnsHolding($merge->connection, $absorbed->getSlug());
 
         // Then : avant, toutes les colonnes qui peuvent désigner un ingrédient le contiennent
         $this->assertSame(
-            ['conversion.ingredient', 'drive_choice.ingredient_slug', 'ingredient.slug', 'ingredient_alias.ingredient_slug', 'recipe_row.ingredient', 'shopping_list_ingredient.ingredient', 'shopping_list_row.ingredient'],
+            ['conversion.ingredient', 'drive_choice.ingredient_slug', 'ingredient.slug', 'ingredient_alias.ingredient_slug', 'recipe_row.ingredient', 'shopping_list_ingredient.ingredient', 'shopping_list_row.ingredient', 'spoken_phrase_choice.ingredient_slug'],
             $holding(),
         );
 

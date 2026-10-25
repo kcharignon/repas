@@ -25,6 +25,7 @@ use Repas\Tests\Helper\Builder\UserBuilder;
 use Repas\Tests\Helper\InMemoryRepository\ConversionInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\IngredientAliasInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\IngredientDistinctInMemoryRepository;
+use Repas\Tests\Helper\InMemoryRepository\SpokenPhraseChoiceInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\IngredientInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\RecipeInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\ShoppingListInMemoryRepository;
@@ -39,6 +40,7 @@ class RemoveIngredientHandlerTest extends TestCase
     private readonly ConversionRepository $conversionRepository;
     private readonly IngredientAliasInMemoryRepository $aliasRepository;
     private readonly IngredientDistinctInMemoryRepository $distinctRepository;
+    private readonly SpokenPhraseChoiceInMemoryRepository $spokenPhraseRepository;
     private readonly SpyEventDispatcher $eventDispatcher;
 
     protected function setUp(): void
@@ -76,6 +78,10 @@ class RemoveIngredientHandlerTest extends TestCase
             IngredientDistinctPair::create('user-id', 'beurreuser-id', 'cremeuser-id', new \DateTimeImmutable()),
             IngredientDistinctPair::create('other-id', 'beurreuser-id', 'cremeuser-id', new \DateTimeImmutable()),
         ]);
+        $this->spokenPhraseRepository = new SpokenPhraseChoiceInMemoryRepository();
+        $this->spokenPhraseRepository->remember('user-id', 'beurre', 'beurreuser-id', new \DateTimeImmutable());
+        $this->spokenPhraseRepository->remember('user-id', 'lait', 'lait', new \DateTimeImmutable());
+        $this->spokenPhraseRepository->remember('other-id', 'beurre', 'beurreuser-id', new \DateTimeImmutable());
         $this->eventDispatcher = new SpyEventDispatcher();
 
         $this->handler = new RemoveIngredientHandler(
@@ -85,6 +91,7 @@ class RemoveIngredientHandlerTest extends TestCase
             $this->conversionRepository,
             $this->aliasRepository,
             $this->distinctRepository,
+            $this->spokenPhraseRepository,
             $this->eventDispatcher,
         );
     }
@@ -177,6 +184,18 @@ class RemoveIngredientHandlerTest extends TestCase
 
         // Assert : les deux paires de l'utilisateur qui nomment la copie disparaissent, pas celle d'un autre utilisateur
         $this->assertSame(['other-id|beurreuser-id|cremeuser-id'], array_map(static fn(IngredientDistinctPair $pair): string => $pair->getId(), $this->distinctRepository->all()));
+    }
+
+    public function testRemovingAnIngredientForgetsWhatTheUserTaughtAlexaAboutItAndOnlyThat(): void
+    {
+        // Act
+        ($this->handler)(new RemoveIngredientCommand('beurreuser-id'));
+
+        // Assert : la phrase « beurre » de l'utilisateur disparaît (un slug recréé n'en hériterait pas) ; ses autres phrases et celles d'un autre restent
+        $this->assertSame(
+            [['user-id', 'lait'], ['other-id', 'beurre']],
+            array_map(static fn(array $row): array => [$row['userId'], $row['phrase']], $this->spokenPhraseRepository->all()),
+        );
     }
 
     public function testRemovingACommonIngredientTouchesNoDistinctPair(): void

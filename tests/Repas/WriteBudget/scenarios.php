@@ -34,6 +34,7 @@ use Repas\Repas\Application\Command\MarkIngredientsDistinct\MarkIngredientsDisti
 use Repas\Repas\Application\Command\MergeIngredients\MergeIngredientsCommand;
 use Repas\Repas\Application\Command\PausedShoppingList\PausedShoppingListCommand;
 use Repas\Repas\Application\Command\PlannedMeal\PlannedMealCommand;
+use Repas\Repas\Application\Command\RememberSpokenPhrase\RememberSpokenPhraseCommand;
 use Repas\Repas\Application\Command\RemoveIngredient\RemoveIngredientCommand;
 use Repas\Repas\Application\Command\RemoveIngredientToShoppingList\RemoveIngredientToShoppingListCommand;
 use Repas\Repas\Application\Command\RemoveMealFromPlan\removeMealFromPlanCommand;
@@ -725,6 +726,15 @@ return [
         $t->persister->saveIngredient(new IngredientBuilder()->isBread()->withCreator($owner)->build());
 
         return new AddSpokenItemCommand($owner->getId(), 'xyz', true);
+    },
+    // Mémoire de phrase (ADR 0029 décision 11, VOX-303) : l'utilisateur a choisi une proposition, la phrase est retenue pour lui. Le slug est
+    // traduit par les alias (une lecture), l'ingrédient vérifié (une lecture), la ligne écrite (un upsert).
+    'memoriser-phrase-alexa' => static function (WriteBudgetTestCase $t): object {
+        $owner = $t->savedUser();
+        $parsley = new IngredientBuilder()->withName('persil')->withCreator($owner, true)->build();
+        $t->persister->saveIngredient($parsley);
+
+        return new RememberSpokenPhraseCommand($owner->getId(), 'de la ciboulette', $parsley->getSlug());
     },
     // Suivi de la liaison (VOX-204), première requête d'Alexa : l'identifiant d'utilisateur Alexa est posé, l'ancienne liaison du même Echo
     // est révoquée avec ses jetons, la date de dernier usage est écrite

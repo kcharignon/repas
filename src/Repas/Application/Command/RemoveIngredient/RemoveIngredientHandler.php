@@ -10,6 +10,7 @@ use Repas\Repas\Domain\Interface\IngredientDistinctRepository;
 use Repas\Repas\Domain\Interface\IngredientRepository;
 use Repas\Repas\Domain\Interface\RecipeRepository;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
+use Repas\Repas\Domain\Interface\SpokenPhraseChoiceRepository;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
@@ -24,6 +25,7 @@ readonly class RemoveIngredientHandler
         private ConversionRepository $conversionRepository,
         private IngredientAliasRepository $aliasRepository,
         private IngredientDistinctRepository $distinctRepository,
+        private SpokenPhraseChoiceRepository $spokenPhraseRepository,
         private EventDispatcherInterface $eventDispatcher,
     ) {
     }
@@ -51,6 +53,8 @@ readonly class RemoveIngredientHandler
         $this->aliasRepository->deleteByIngredientSlug($ingredient->getCreatorId(), $ingredient->getSlug());
         // Idem pour ses « Pas le même » : la paire parlait de cet ingrédient
         $this->distinctRepository->deleteByIngredientSlug($ingredient->getCreatorId(), $ingredient->getSlug());
+        // Et les phrases que l'utilisateur avait apprises à Alexa pour cet ingrédient : un slug recréé ne doit pas en hériter
+        $this->spokenPhraseRepository->deleteByIngredientSlug($ingredient->getCreatorId(), $ingredient->getSlug());
         // Une adoption n'est pas une création : la supprimer ne décrémente pas la statistique « ingrédients créés » (ADR 0028 décision 7)
         if (!$ingredient->isAdoption()) {
             $this->eventDispatcher->dispatch(new IngredientRemovedEvent($ingredient->getCreatorId(), $ingredient->getId()));
