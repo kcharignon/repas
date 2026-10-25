@@ -63,6 +63,7 @@ use Repas\Repas\Domain\Model\ShoppingListRow;
 use Repas\Repas\Domain\Model\ShoppingListStatus;
 use Repas\Shared\Domain\Tool\Tab;
 use Repas\Shared\Domain\Tool\UuidGenerator;
+use Repas\Tests\Helper\Alexa\AlexaTestClient;
 use Repas\Tests\Helper\Builder\ConversionBuilder;
 use Repas\Tests\Helper\Builder\DepartmentBuilder;
 use Repas\Tests\Helper\Builder\IngredientBuilder;
@@ -87,6 +88,10 @@ use Repas\User\Domain\Model\AppPlatform;
 use Repas\User\Domain\Model\EmailVerificationToken;
 use Repas\User\Domain\Model\PasswordResetToken;
 use Repas\User\Domain\Model\UserStatus;
+use Repas\Voice\Application\Command\ExchangeAuthorizationCode\ExchangeAuthorizationCodeCommand;
+use Repas\Voice\Application\Command\IssueAuthorizationCode\IssueAuthorizationCodeCommand;
+use Repas\Voice\Application\Command\RefreshAccessGrant\RefreshAccessGrantCommand;
+use Repas\Voice\Application\Command\RevokeVoiceLink\RevokeVoiceLinkCommand;
 
 /**
  * Un scénario = un use case d'écriture mesuré sur une situation typique : un utilisateur avec trois recettes
@@ -647,6 +652,55 @@ return [
         $id = static fn(string $retailerProductId): string => Product::idFor(Retailer::LECLERC, '123456', $retailerProductId);
 
         return new ReplaceIngredientPreferenceCommand($user->getId(), Retailer::LECLERC, '123456', 'sucre', false, [$id('2'), $id('3')], [$id('4')]);
+    },
+    // Liaison de compte Alexa (VOX-202) : émettre un code d'autorisation (avec le ménage des codes expirés du compte)
+    'emettre-code-alexa' => static function (WriteBudgetTestCase $t): object {
+        $user = $t->savedUser();
+        $t->savedAuthorizationCode($user, AlexaTestClient::token('old-code'), AlexaTestClient::pkce()['challenge'], '-1 day');
+
+        return new IssueAuthorizationCodeCommand($user->getId(), AlexaTestClient::CLIENT_ID, AlexaTestClient::REDIRECT_URI, 'state-budget', AlexaTestClient::pkce()['challenge'], 'S256');
+    },
+    // Premier échange du code : la liaison est créée, avec sa paire de jetons
+    'echanger-code-alexa' => static function (WriteBudgetTestCase $t): object {
+        $user = $t->savedUser();
+        $t->savedAuthorizationCode($user, AlexaTestClient::token('code-budget'), AlexaTestClient::pkce()['challenge']);
+
+        return new ExchangeAuthorizationCodeCommand(AlexaTestClient::CLIENT_ID, AlexaTestClient::token('code-budget'), AlexaTestClient::REDIRECT_URI, AlexaTestClient::pkce()['verifier']);
+    },
+    // Relier de nouveau avant qu'Alexa ait utilisé la liaison : la liaison est réutilisée, sa paire de jetons est remplacée
+    'echanger-code-alexa-liaison-attendue' => static function (WriteBudgetTestCase $t): object {
+        $user = $t->savedUser();
+        $link = $t->savedVoiceLink($user);
+        $t->savedAccessGrant($link, AlexaTestClient::token('old-access'), AlexaTestClient::token('old-refresh'));
+        $t->savedAuthorizationCode($user, AlexaTestClient::token('code-budget'), AlexaTestClient::pkce()['challenge']);
+
+        return new ExchangeAuthorizationCodeCommand(AlexaTestClient::CLIENT_ID, AlexaTestClient::token('code-budget'), AlexaTestClient::REDIRECT_URI, AlexaTestClient::pkce()['verifier']);
+    },
+    // Rafraîchissement : la paire est consommée, la suivante émise, les paires périmées de la liaison effacées
+    'rafraichir-jeton-alexa' => static function (WriteBudgetTestCase $t): object {
+        $user = $t->savedUser();
+        $link = $t->savedVoiceLink($user);
+        $t->savedAccessGrant($link, AlexaTestClient::token('old-access'), AlexaTestClient::token('old-refresh'), '-100 days', refreshUsed: true);
+        $t->savedAccessGrant($link, AlexaTestClient::token('access'), AlexaTestClient::token('refresh'));
+
+        return new RefreshAccessGrantCommand(AlexaTestClient::token('refresh'));
+    },
+    // Rejeu d'un jeton de rafraîchissement déjà échangé : la liaison est révoquée, ses jetons effacés
+    'rejouer-jeton-alexa' => static function (WriteBudgetTestCase $t): object {
+        $user = $t->savedUser();
+        $link = $t->savedVoiceLink($user);
+        $t->savedAccessGrant($link, AlexaTestClient::token('access'), AlexaTestClient::token('refresh'), refreshUsed: true);
+        $t->savedAccessGrant($link, AlexaTestClient::token('access-2'), AlexaTestClient::token('refresh-2'));
+
+        return new RefreshAccessGrantCommand(AlexaTestClient::token('refresh'));
+    },
+    'retirer-liaison-alexa' => static function (WriteBudgetTestCase $t): object {
+        $user = $t->savedUser();
+        $link = $t->savedVoiceLink($user);
+        $t->savedAccessGrant($link, AlexaTestClient::token('access'), AlexaTestClient::token('refresh'), refreshUsed: true);
+        $t->savedAccessGrant($link, AlexaTestClient::token('access-2'), AlexaTestClient::token('refresh-2'));
+
+        return new RevokeVoiceLinkCommand($user->getId(), $link->getId());
     },
     // Compte qui a un lien Google, une version d'application connue (DRV-637), trois recettes planifiées dans une liste (dont une est
     // copiée par un autre utilisateur), un magasin, une préférence de produits et un alias d'ingrédient (ADR 0028). La purge des données

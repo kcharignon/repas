@@ -15,6 +15,7 @@ use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Repas\Domain\Model\Recipe;
 use Repas\Repas\Domain\Model\ShoppingList;
 use Repas\Shared\Application\Interface\CommandBusInterface;
+use Repas\Tests\Helper\Alexa\AlexaTestClient;
 use Repas\Tests\Helper\Builder\ChoiceBuilder;
 use Repas\Tests\Helper\Builder\ConversionBuilder;
 use Repas\Tests\Helper\Builder\DriveSettingsBuilder;
@@ -36,6 +37,13 @@ use Repas\User\Domain\Interface\UserIdentityRepository;
 use Repas\User\Domain\Model\EmailVerificationToken;
 use Repas\User\Domain\Model\PasswordResetToken;
 use Repas\User\Domain\Model\User;
+use Repas\Voice\Domain\Interface\AccessGrantRepository;
+use Repas\Voice\Domain\Interface\AuthorizationCodeRepository;
+use Repas\Voice\Domain\Interface\VoiceLinkRepository;
+use Repas\Voice\Domain\Model\AccessGrant;
+use Repas\Voice\Domain\Model\AuthorizationCode;
+use Repas\Voice\Domain\Model\OpaqueToken;
+use Repas\Voice\Domain\Model\VoiceLink;
 
 /**
  * Mesure le nombre de requêtes SQL d'un use case d'écriture, de bout en bout : bus de commandes, handler, repositories
@@ -117,6 +125,39 @@ abstract class WriteBudgetTestCase extends DatabaseTestCase
     public function savedUserAppVersion(User $user): void
     {
         static::getContainer()->get(UserAppVersionRepository::class)->save(new UserAppVersionBuilder()->withUser($user)->build());
+    }
+
+    /**
+     * Liaison de `$user` avec Alexa (VOX-202), qu'Alexa n'a pas encore utilisée.
+     */
+    public function savedVoiceLink(User $user, string $id = 'link-budget'): VoiceLink
+    {
+        $link = VoiceLink::create($id, $user->getId(), new DateTimeImmutable('-1 day'));
+        static::getContainer()->get(VoiceLinkRepository::class)->save($link);
+
+        return $link;
+    }
+
+    /**
+     * Paire de jetons de la liaison (VOX-202), dont les secrets sont `$accessToken` et `$refreshToken` (la base n'en garde que le haché).
+     */
+    public function savedAccessGrant(VoiceLink $link, string $accessToken, string $refreshToken, string $age = '-1 hour', bool $refreshUsed = false): void
+    {
+        $repository = static::getContainer()->get(AccessGrantRepository::class);
+        $repository->add(AccessGrant::issue(OpaqueToken::hash($accessToken), OpaqueToken::hash($refreshToken), $link->getId(), $link->getUserId(), new DateTimeImmutable($age)));
+        if ($refreshUsed) {
+            $repository->consumeRefresh(OpaqueToken::hash($refreshToken), new DateTimeImmutable('-30 minutes'));
+        }
+    }
+
+    /**
+     * Code d'autorisation déjà émis à `$user` (VOX-202), dont le secret est `$code` : l'échanger demande `$challenge` (le défi PKCE).
+     */
+    public function savedAuthorizationCode(User $user, string $code, string $challenge, string $age = '-1 minute'): void
+    {
+        static::getContainer()->get(AuthorizationCodeRepository::class)->add(
+            AuthorizationCode::issue(OpaqueToken::hash($code), $user->getId(), AlexaTestClient::CLIENT_ID, AlexaTestClient::REDIRECT_URI, $challenge, new DateTimeImmutable($age)),
+        );
     }
 
     /**
