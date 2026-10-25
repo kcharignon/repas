@@ -17,3 +17,7 @@
 ## Critères d'acceptation
 
 - Le JSON se colle sans erreur dans la console (vérifié à VOX-002) ; aucun nom d'ingrédient de plus de 140 caractères ; au plus les valeurs permises par Amazon par type (relire la limite).
+
+## Avancement
+
+- 2026-10-25 : le paquet est écrit (`docs/voice/skill/` : modèle d'interaction, manifeste, mode d'emploi). Le test de cohérence (`DocsVoiceSkillTest` : JSON valide, chaque intention gérée par le webhook, valeurs uniques) reste à ajouter **avec VOX-204**, une fois le webhook écrit ; le ticket n'est coché qu'à ce moment-là.

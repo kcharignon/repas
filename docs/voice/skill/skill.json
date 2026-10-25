@@ -1,0 +1,39 @@
+{
+  "manifest": {
+    "manifestVersion": "1.0",
+    "publishingInformation": {
+      "locales": {
+        "fr-FR": {
+          "name": "Mes courses",
+          "summary": "Ajoute des produits à ta liste de courses Repas.",
+          "description": "Dis à Alexa ce qu'il te faut et le produit arrive dans ta liste de courses Repas, sur ton téléphone.",
+          "examplePhrases": [
+            "Alexa, demande à mes courses d'ajouter du pain",
+            "Alexa, ouvre mes courses",
+            "Alexa, demande à mes courses d'ajouter des tomates"
+          ],
+          "keywords": ["courses", "liste", "repas"]
+        }
+      },
+      "isAvailableWorldwide": false,
+      "distributionCountries": ["FR"],
+      "testingInstructions": "Skill privé (développement) : réservé au compte Amazon du propriétaire de Repas.",
+      "category": "ORGANIZERS_AND_ASSISTANTS"
+    },
+    "apis": {
+      "custom": {
+        "endpoint": {
+          "uri": "https://kantin.eu/api/voice/alexa",
+          "sslCertificateType": "Trusted"
+        }
+      }
+    },
+    "privacyAndCompliance": {
+      "allowsPurchases": false,
+      "usesPersonalInfo": true,
+      "isChildDirected": false,
+      "isExportCompliant": true,
+      "containsAds": false
+    }
+  }
+}
