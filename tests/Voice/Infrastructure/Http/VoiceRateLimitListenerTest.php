@@ -63,12 +63,31 @@ class VoiceRateLimitListenerTest extends TestCase
         $this->assertLessThanOrEqual(3600, $retryAfter);
     }
 
+    public function testTheWebhookCounterIsPerIpAddressWhoeverTheTokenBelongsToAndIsIndependentOfTheOthers(): void
+    {
+        // Given : une adresse a épuisé ses 4 requêtes du webhook (plafond de test), avec un utilisateur connecté qui ne change rien
+        $listener = $this->listener();
+        $this->logIn(new UserBuilder()->build());
+        for ($i = 0; $i < 4; $i++) {
+            $listener($this->event($this->webhookController(), '203.0.113.9'));
+        }
+
+        // When / Then : la cinquième est refusée
+        $exception = $this->refusedBy($listener, $this->webhookController(), '203.0.113.9');
+        $this->assertSame([429, 'VOICE_RATE_LIMITED'], [$exception->getStatusCode(), $exception->getMessage()]);
+
+        // Then : une autre adresse n'est pas touchée, et l'échange de jetons de la même adresse non plus
+        $listener($this->event($this->webhookController(), '203.0.113.10'));
+        $listener($this->event($this->tokenController(), '203.0.113.9'));
+        $this->addToAssertionCount(1);
+    }
+
     public function testRetryAfterIsTheDelayGivenByTheLimiterCountedFromTheInjectedClock(): void
     {
         // Given : un limiteur qui refuse en annonçant 17 secondes, une horloge figée
         $clock = new FrozenClock(new DateTimeImmutable('2026-10-25 10:00:00'));
         $refusing = $this->refusingFactory($clock->now()->modify('+17 seconds'));
-        $listener = new VoiceRateLimitListener($refusing, $refusing, $this->tokens, $clock);
+        $listener = new VoiceRateLimitListener($refusing, $refusing, $refusing, $this->tokens, $clock);
 
         // When
         $exception = $this->refusedBy($listener, $this->tokenController());
@@ -84,7 +103,7 @@ class VoiceRateLimitListenerTest extends TestCase
         $past = $this->refusingFactory($clock->now()->modify('-5 seconds'));
 
         // When
-        $exception = $this->refusedBy(new VoiceRateLimitListener($past, $past, $this->tokens, $clock), $this->tokenController());
+        $exception = $this->refusedBy(new VoiceRateLimitListener($past, $past, $past, $this->tokens, $clock), $this->tokenController());
 
         // Then
         $this->assertSame(1, $exception->getHeaders()['Retry-After']);
@@ -201,7 +220,7 @@ class VoiceRateLimitListenerTest extends TestCase
     public function testAControllerWithoutTheMarkIsNeverCounted(): void
     {
         // Given
-        $listener = new VoiceRateLimitListener($this->factory('voice_token', 1), $this->factory('voice_authorize', 1), $this->tokens, new FrozenClock());
+        $listener = new VoiceRateLimitListener($this->factory('voice_token', 1), $this->factory('voice_authorize', 1), $this->factory('voice_webhook', 1), $this->tokens, new FrozenClock());
         $controller = new class {
             public function __invoke(): void
             {
@@ -263,7 +282,7 @@ class VoiceRateLimitListenerTest extends TestCase
 
     private function listener(): VoiceRateLimitListener
     {
-        return new VoiceRateLimitListener($this->factory('voice_token', 3), $this->factory('voice_authorize', 2), $this->tokens, new FrozenClock());
+        return new VoiceRateLimitListener($this->factory('voice_token', 3), $this->factory('voice_authorize', 2), $this->factory('voice_webhook', 4), $this->tokens, new FrozenClock());
     }
 
     private function factory(string $name, int $limit): RateLimiterFactory
@@ -292,6 +311,15 @@ class VoiceRateLimitListenerTest extends TestCase
     private function tokenController(): object
     {
         return new #[VoiceRateLimited(VoiceRateLimit::TOKEN)] class {
+            public function __invoke(): void
+            {
+            }
+        };
+    }
+
+    private function webhookController(): object
+    {
+        return new #[VoiceRateLimited(VoiceRateLimit::WEBHOOK)] class {
             public function __invoke(): void
             {
             }

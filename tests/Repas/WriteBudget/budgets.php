@@ -7,6 +7,9 @@
  */
 return [
     'activer-compte-amorcage' => 32,
+    'ajouter-article-dit-a-alexa' => 16,
+    'ajouter-article-dit-a-alexa-introuvable' => 3,
+    'ajouter-article-dit-a-alexa-sans-liste' => 22,
     'ajouter-ingredient-liste' => 14,
     'ajouter-ingredient-par-la-voix' => 14,
     'ajouter-ingredient-par-la-voix-sans-liste' => 19,
@@ -68,6 +71,9 @@ return [
     'retirer-liaison-alexa' => 3,
     'retirer-repas' => 17,
     'rouvrir-liste' => 18,
+    'suivre-liaison-alexa' => 1,
+    'suivre-liaison-alexa-premiere-requete' => 5,
+    'suivre-liaison-alexa-recente' => 0,
     'supprimer-compte' => 24,
     'supprimer-ingredient' => 12,
     'supprimer-liste' => 8,

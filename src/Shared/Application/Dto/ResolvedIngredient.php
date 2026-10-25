@@ -8,6 +8,11 @@ namespace Repas\Shared\Application\Dto;
  */
 final readonly class ResolvedIngredient
 {
+    /** Les trois confiances (voir `$confidence`) ; `ResolvedIngredientConfidenceTest` les garde d'accord avec `Repas\Domain\Model\Confidence`. */
+    public const string SURE = 'sure';
+    public const string PROBABLE = 'probable';
+    public const string UNSURE = 'unsure';
+
     /**
      * @param string $confidence `sure`, `probable` ou `unsure` (voir `docs/voice/alexa.md` § 4.5) : comment l'annoncer à l'utilisateur
      */

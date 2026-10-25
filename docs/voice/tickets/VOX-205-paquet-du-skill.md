@@ -5,7 +5,7 @@
 - **Taille** : S
 - **Dépend de** : VOX-204 (les noms d'intentions et de créneaux), VOX-001 (nom d'invocation)
 - **Faisable sans téléphone** : oui
-- **Statut** : à faire
+- **Statut** : fait (PR #267, 2026-10-25)
 - **Lire d'abord** : [`../alexa.md`](../alexa.md) § 2 ; documentation Amazon du modèle d'interaction (JSON : `interactionModel.languageModel`) ; `docs/ingredients/base-ingredients.tsv`.
 
 ## Portée
@@ -20,4 +20,4 @@
 
 ## Avancement
 
-- 2026-10-25 : le paquet est écrit (`docs/voice/skill/` : modèle d'interaction, manifeste, mode d'emploi). Le test de cohérence (`DocsVoiceSkillTest` : JSON valide, chaque intention gérée par le webhook, valeurs uniques) reste à ajouter **avec VOX-204**, une fois le webhook écrit ; le ticket n'est coché qu'à ce moment-là.
+- 2026-10-25 : le paquet est écrit (`docs/voice/skill/` : modèle d'interaction, manifeste, mode d'emploi). Le test de cohérence (`DocsVoiceSkillTest` : JSON valide, chaque intention gérée par le webhook, valeurs uniques) est ajouté avec le webhook (VOX-204, PR #267), qui sait désormais les intentions que le modèle déclare. Il vérifie aussi le manifeste (route du webhook, aucune permission) et la couverture du catalogue de base. Ce que la console d'Amazon accepte (JSON collé, nombre de valeurs par type) reste à vérifier à VOX-002.

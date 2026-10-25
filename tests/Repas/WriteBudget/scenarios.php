@@ -88,8 +88,10 @@ use Repas\User\Domain\Model\AppPlatform;
 use Repas\User\Domain\Model\EmailVerificationToken;
 use Repas\User\Domain\Model\PasswordResetToken;
 use Repas\User\Domain\Model\UserStatus;
+use Repas\Voice\Application\Command\AddSpokenItem\AddSpokenItemCommand;
 use Repas\Voice\Application\Command\ExchangeAuthorizationCode\ExchangeAuthorizationCodeCommand;
 use Repas\Voice\Application\Command\IssueAuthorizationCode\IssueAuthorizationCodeCommand;
+use Repas\Voice\Application\Command\RecordVoiceLinkUse\RecordVoiceLinkUseCommand;
 use Repas\Voice\Application\Command\RefreshAccessGrant\RefreshAccessGrantCommand;
 use Repas\Voice\Application\Command\RevokeVoiceLink\RevokeVoiceLinkCommand;
 
@@ -701,6 +703,54 @@ return [
         $t->savedAccessGrant($link, AlexaTestClient::token('access-2'), AlexaTestClient::token('refresh-2'));
 
         return new RevokeVoiceLinkCommand($user->getId(), $link->getId());
+    },
+    // Commande vocale (VOX-204) : ce que dit Alexa, de bout en bout (choix de l'ingrédient parmi ceux de l'utilisateur, puis ajout à la liste).
+    // Séance ouverte, liste active : lectures du classeur (ingrédients, usage des listes et des recettes), ajout d'une ligne
+    'ajouter-article-dit-a-alexa' => static function (WriteBudgetTestCase $t): object {
+        $owner = $t->savedUser();
+        $t->savedShoppingList($owner, $t->typicalRecipes($owner));
+        $t->persister->saveIngredient(new IngredientBuilder()->isBread()->withCreator($owner)->build());
+
+        return new AddSpokenItemCommand($owner->getId(), 'du pain', true);
+    },
+    'ajouter-article-dit-a-alexa-sans-liste' => static function (WriteBudgetTestCase $t): object {
+        $owner = $t->savedUser();
+        $t->persister->saveIngredient(new IngredientBuilder()->isBread()->withCreator($owner)->build());
+
+        return new AddSpokenItemCommand($owner->getId(), 'du pain', false);
+    },
+    // Introuvable : seules les lectures du classeur, aucune écriture
+    'ajouter-article-dit-a-alexa-introuvable' => static function (WriteBudgetTestCase $t): object {
+        $owner = $t->savedUser();
+        $t->persister->saveIngredient(new IngredientBuilder()->isBread()->withCreator($owner)->build());
+
+        return new AddSpokenItemCommand($owner->getId(), 'xyz', true);
+    },
+    // Suivi de la liaison (VOX-204), première requête d'Alexa : l'identifiant d'utilisateur Alexa est posé, l'ancienne liaison du même Echo
+    // est révoquée avec ses jetons, la date de dernier usage est écrite
+    'suivre-liaison-alexa-premiere-requete' => static function (WriteBudgetTestCase $t): object {
+        $user = $t->savedUser();
+        $old = $t->savedVoiceLink($user, 'link-old', 'amzn1.ask.account.TEST', new \DateTimeImmutable('-1 day'));
+        $t->savedAccessGrant($old, AlexaTestClient::token('old-access'), AlexaTestClient::token('old-refresh'));
+        $t->savedVoiceLink($user);
+
+        return new RecordVoiceLinkUseCommand('link-budget', $user->getId(), 'amzn1.ask.account.TEST', null, null);
+    },
+    // Liaison connue dont la date date de plus de dix minutes : une seule instruction ciblée
+    'suivre-liaison-alexa' => static function (WriteBudgetTestCase $t): object {
+        $user = $t->savedUser();
+        $lastUsedAt = new \DateTimeImmutable('-1 hour');
+        $t->savedVoiceLink($user, 'link-budget', 'amzn1.ask.account.TEST', $lastUsedAt);
+
+        return new RecordVoiceLinkUseCommand('link-budget', $user->getId(), 'amzn1.ask.account.TEST', 'amzn1.ask.account.TEST', $lastUsedAt);
+    },
+    // Liaison connue utilisée il y a une minute : aucune requête SQL (la plupart des requêtes d'Alexa)
+    'suivre-liaison-alexa-recente' => static function (WriteBudgetTestCase $t): object {
+        $user = $t->savedUser();
+        $lastUsedAt = new \DateTimeImmutable('-1 minute');
+        $t->savedVoiceLink($user, 'link-budget', 'amzn1.ask.account.TEST', $lastUsedAt);
+
+        return new RecordVoiceLinkUseCommand('link-budget', $user->getId(), 'amzn1.ask.account.TEST', 'amzn1.ask.account.TEST', $lastUsedAt);
     },
     // Compte qui a un lien Google, une version d'application connue (DRV-637), trois recettes planifiées dans une liste (dont une est
     // copiée par un autre utilisateur), un magasin, une préférence de produits et un alias d'ingrédient (ADR 0028). La purge des données

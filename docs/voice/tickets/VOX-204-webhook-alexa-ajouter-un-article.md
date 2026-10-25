@@ -5,7 +5,7 @@
 - **Taille** : L
 - **Dépend de** : VOX-102, VOX-103, VOX-202, VOX-203
 - **Faisable sans téléphone** : oui
-- **Statut** : à faire
+- **Statut** : fait (PR #267, 2026-10-25)
 - **Lire d'abord** : [ADR 0029](../../adr/0029-commande-vocale-alexa.md) ; [`../alexa.md`](../alexa.md) §§ 2, 3 ; `.claude/skills/repas-po/SKILL.md` + `docs/drive/principes-produit.md` (**toute réponse d'Alexa**) ; documentation Amazon du format requête/réponse (relire : `LaunchRequest`, `IntentRequest`, `SessionEndedRequest`, `shouldEndSession`).
 
 ## Contexte

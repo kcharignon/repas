@@ -48,15 +48,16 @@ Amazon ─> POST /api/voice/oauth/token  (grant authorization_code | refresh_tok
 
 ```
 src/Voice/
-  Domain/Model       VoiceLink, AuthorizationCode, AccessGrant (hachés), SpokenPhrase
-  Domain/Interface   VoiceLinkRepository, AuthorizationCodeRepository, AlexaRequestVerifier, VoiceFeature
+  Domain/Model       VoiceLink, AuthorizationCode, AccessGrant (hachés), AlexaRequest, AlexaResponse, AlexaIntent, VoiceReplies (tous les textes)
+  Domain/Interface   VoiceLinkRepository, AuthorizationCodeRepository, AlexaRequestVerifier
+  Domain/Service     AlexaDialogue (lancement, aide, stop, repli), LinkRevoker
   Domain/Exception   VoiceException
-  Application/Command   IssueAuthorizationCode, ExchangeAuthorizationCode, RefreshAccessGrant, RevokeVoiceLink, AddSpokenItem, PurgeUserVoiceData
+  Application/Command   IssueAuthorizationCode, ExchangeAuthorizationCode, RefreshAccessGrant, RevokeVoiceLink, AddSpokenItem, RecordVoiceLinkUse, PurgeUserVoiceData
   Application/Query     ListVoiceLinks, ResolveAccessGrant
-  Infrastructure/Http/Api  …ApiController, AlexaWebhookController, listener d'interrupteur, listener de plafond
+  Infrastructure/Http/Api  …ApiController, HandleAlexaRequestApiController (le webhook), VoiceLinkRateLimiter ; listeners d'interrupteur et de plafond
 ```
 
-Ports de `Shared` (la seule couture avec `Repas`) : `SpokenIngredientResolver::resolve(userId, phrase): ?ResolvedIngredient{slug, name, departmentName, confidence}` et `VoiceShoppingList::addItem(userId, ingredientSlug): AddedItem{listCreated, rowId}`, implémentés dans `Repas\Infrastructure`.
+Ports de `Shared` (la seule couture avec `Repas`) : `SpokenIngredientResolver::resolve(userId, phrase): ?ResolvedIngredient{slug, name, departmentName, confidence}` et `VoiceShoppingList::addItem(userId, ingredientSlug): AddedItem{listCreated, previousListSent}`, implémentés dans `Repas\Infrastructure`.
 
 ## 4. Choisir l'ingrédient le plus probable
 

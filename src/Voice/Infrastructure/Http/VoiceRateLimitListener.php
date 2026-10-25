@@ -16,12 +16,14 @@ use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
 use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
 
 /**
- * Plafonne les routes de la liaison de compte marquées `#[VoiceRateLimited]` (VOX-202).
+ * Plafonne les routes de la commande vocale marquées `#[VoiceRateLimited]` (VOX-202, VOX-204).
  *
  * - L'échange de jetons (`voice_token`, 30 par heure) est PUBLIC (firewall sans sécurité) : son seul garde-fou avec l'authentification du
  *   client est ce plafond, par adresse IP. L'émission du code (`voice_authorize`, 20 par heure) est celle d'un utilisateur connecté :
  *   le compteur est celui de l'utilisateur du jeton, pas de l'adresse IP (repli sur l'adresse sans utilisateur, plutôt que sur aucun
- *   plafond).
+ *   plafond). Le webhook d'Alexa (`voice_webhook`, 60 par minute) est PUBLIC aussi, plafonné par adresse IP AVANT la vérification de la
+ *   signature (chaque requête à l'adresse de chaîne inventée coûte un téléchargement de certificat) ; son plafond par liaison est celui de
+ *   `VoiceLinkRateLimiter`, posé par le controller une fois le jeton résolu.
  * - Passe APRÈS `VoiceEnabledListener` (priorité plus basse) : interrupteur coupé, `404 VOICE_DISABLED` et aucun jeton consommé.
  *   Passe avant la résolution des arguments : une requête au corps invalide compte aussi.
  * - Au-delà du plafond : `429` + `Retry-After` en secondes, message `VOICE_RATE_LIMITED` (`ApiExceptionListener` met la réponse en
@@ -36,6 +38,8 @@ final readonly class VoiceRateLimitListener
         private RateLimiterFactoryInterface $tokenLimiter,
         #[Autowire(service: 'limiter.voice_authorize')]
         private RateLimiterFactoryInterface $authorizeLimiter,
+        #[Autowire(service: 'limiter.voice_webhook')]
+        private RateLimiterFactoryInterface $webhookLimiter,
         private TokenStorageInterface $tokenStorage,
         private ClockInterface $clock,
     ) {
@@ -74,6 +78,7 @@ final readonly class VoiceRateLimitListener
         return match ($limit) {
             VoiceRateLimit::TOKEN => $this->tokenLimiter,
             VoiceRateLimit::AUTHORIZE => $this->authorizeLimiter,
+            VoiceRateLimit::WEBHOOK => $this->webhookLimiter,
         };
     }
 }

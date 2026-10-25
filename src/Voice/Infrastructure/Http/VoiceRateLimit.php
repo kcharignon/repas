@@ -4,8 +4,8 @@ namespace Repas\Voice\Infrastructure\Http;
 
 
 /**
- * Les deux plafonds de débit de la liaison de compte (VOX-202). La valeur est le nom du limiteur déclaré dans
- * `config/packages/rate_limiter.yaml` (`limiter.voice_token`, `limiter.voice_authorize`), où se trouvent les chiffres.
+ * Les plafonds de débit de la commande vocale (VOX-202, VOX-204). La valeur est le nom du limiteur déclaré dans
+ * `config/packages/rate_limiter.yaml` (`limiter.voice_token`, `limiter.voice_authorize`, `limiter.voice_webhook`), où se trouvent les chiffres.
  */
 enum VoiceRateLimit: string
 {
@@ -14,6 +14,13 @@ enum VoiceRateLimit: string
 
     /** `POST /api/v1/voice/alexa/authorize` : par utilisateur du jeton (20 par heure). */
     case AUTHORIZE = 'voice_authorize';
+
+    /**
+     * `POST /api/voice/alexa`, route PUBLIQUE : par adresse IP (60 par minute), AVANT la vérification de la signature, car chaque requête dont
+     * l'adresse de chaîne est inventée coûte un téléchargement de certificat. Le plafond PAR LIAISON (60 par minute) se pose dans le
+     * controller, une fois le jeton résolu : voir `VoiceLinkRateLimiter`.
+     */
+    case WEBHOOK = 'voice_webhook';
 
     /** Le compteur est celui de l'utilisateur connecté (sinon celui de l'adresse IP). */
     public function isPerUser(): bool

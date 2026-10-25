@@ -100,11 +100,11 @@ class RefreshAccessGrantHandlerTest extends TestCase
 
     public function testAnOldTokenThatServedIsAReplayEvenOnceItsLifetimeIsOver(): void
     {
-        // Given : le jeton a servi, et on le présente 100 jours plus tard (un jeton déjà échangé n'a rien à faire dans les mains de personne)
+        // Given : le jeton a servi, et on le présente 200 jours plus tard (un jeton déjà échangé n'a rien à faire dans les mains de personne)
         $this->refresh('refresh-0');
 
         // When
-        $replay = $this->refresh('refresh-0', now: $this->issuedAt->modify('+100 days'));
+        $replay = $this->refresh('refresh-0', now: $this->issuedAt->modify('+200 days'));
 
         // Then : la liaison est révoquée, pas seulement refusée
         $this->assertNull($replay);
@@ -152,8 +152,8 @@ class RefreshAccessGrantHandlerTest extends TestCase
 
     public function testAnExpiredRefreshTokenIsRefusedAndNothingChanges(): void
     {
-        // Given : 90 jours exactement après l'émission
-        $now = $this->issuedAt->modify('+90 days');
+        // Given : 180 jours exactement après l'émission
+        $now = $this->issuedAt->modify('+180 days');
 
         // When
         $tokens = $this->refresh('refresh-0', now: $now);
@@ -208,7 +208,7 @@ class RefreshAccessGrantHandlerTest extends TestCase
     public function testThePairsOfTheLinkWhoseRefreshTokenExpiredAreCleanedUpAndOthersStay(): void
     {
         // Given : une vieille paire consommée de cette liaison (expirée), une paire consommée récente, et une paire d'une autre liaison expirée
-        $old = $this->issuedAt->modify('-100 days');
+        $old = $this->issuedAt->modify('-200 days');
         $this->grants->add(AccessGrant::issue('old-access', 'old-refresh', self::LINK, self::USER, $old));
         $this->grants->add(AccessGrant::issue('other-access', 'other-refresh', 'link-2', self::USER, $old));
 

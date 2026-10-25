@@ -19,6 +19,13 @@ final class VoiceLink implements ModelInterface
     /** Le seul fournisseur de commande vocale pour l'instant : le contrat d'API le dit, pour qu'un autre puisse s'ajouter. */
     public const string PROVIDER = 'alexa';
 
+    /**
+     * Écart minimal, en secondes, entre deux enregistrements de la date de dernier usage d'une même liaison (voir `isUseRecordDue()`) :
+     * une séance parlée envoie plusieurs requêtes, elles n'ont pas besoin d'une écriture chacune. Même valeur que
+     * `User::LOGIN_RECORD_INTERVAL_SECONDS`.
+     */
+    public const int USE_RECORD_INTERVAL_SECONDS = 600;
+
     private function __construct(
         private string $id,
         private string $userId,
@@ -44,6 +51,16 @@ final class VoiceLink implements ModelInterface
             lastUsedAt: $datas['last_used_at'],
             revokedAt: $datas['revoked_at'],
         );
+    }
+
+    /**
+     * Faut-il écrire la date de dernier usage à l'instant `$now` ? Oui si elle est inconnue ou date d'au moins
+     * `USE_RECORD_INTERVAL_SECONDS`. Se juge sur la valeur DÉJÀ lue en résolvant le jeton (`ResolvedAccessGrantDTO`), sans requête : c'est
+     * ce qui rend la plupart des requêtes d'Alexa gratuites (comme `User::shouldRecordLogin()`).
+     */
+    public static function isUseRecordDue(?DateTimeImmutable $lastUsedAt, DateTimeImmutable $now): bool
+    {
+        return $lastUsedAt === null || $now->getTimestamp() - $lastUsedAt->getTimestamp() >= self::USE_RECORD_INTERVAL_SECONDS;
     }
 
     public function getId(): string

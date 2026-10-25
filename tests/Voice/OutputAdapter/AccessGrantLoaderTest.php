@@ -41,6 +41,20 @@ class AccessGrantLoaderTest extends DatabaseTestCase
         $this->assertEquals(new ResolvedAccessGrantDTO('user-1', 'link-1'), $this->loader->resolve('access-1', $this->now->modify('+10 minutes')));
     }
 
+    public function testTheResolutionCarriesWhatTheLinkAlreadyKnowsOfAlexa(): void
+    {
+        // Given : une liaison qu'Alexa a déjà utilisée
+        $this->links->save(VoiceLink::load(['id' => 'link-1', 'user_id' => 'user-1', 'alexa_user_id' => 'amzn1.ask.account.TEST', 'created_at' => $this->now->modify('-1 day'), 'last_used_at' => $this->now->modify('-5 minutes'), 'revoked_at' => null]));
+        $this->entityManager->clear();
+
+        // When
+        $resolved = $this->loader->resolve('access-1', $this->now);
+
+        // Then : de quoi juger, sans requête de plus, s'il faut compléter l'identifiant ou rafraîchir la date
+        $this->assertSame(['user-1', 'link-1', 'amzn1.ask.account.TEST'], [$resolved->userId, $resolved->linkId, $resolved->alexaUserId]);
+        $this->assertEquals($this->now->modify('-5 minutes'), $resolved->lastUsedAt);
+    }
+
     public function testAnUnknownHashResolvesToNothing(): void
     {
         $this->assertNull($this->loader->resolve('unknown', $this->now));

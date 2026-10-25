@@ -11,7 +11,7 @@ use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Routing\RouterInterface;
 
 /**
- * Garde-fou des plafonds de débit de la liaison de compte (VOX-202) : toute route de `/api/voice/*` et de `/api/v1/voice/*` est soit
+ * Garde-fou des plafonds de débit de la commande vocale (VOX-202, VOX-204) : toute route de `/api/voice/*` et de `/api/v1/voice/*` est soit
  * plafonnée par le compteur attendu, soit dans la liste des exceptions ci-dessous. Une route ajoutée sans l'un ni l'autre fait échouer
  * le test : plafonner ou ne pas plafonner se décide. Une route plafonnée documente aussi sa réponse `429` dans OpenAPI.
  *
@@ -27,6 +27,7 @@ class VoiceRoutesAreRateLimitedTest extends KernelTestCase
     private const array LIMITED = [
         'api_voice_oauth_token' => VoiceRateLimit::TOKEN,
         'api_issue_voice_authorization_code' => VoiceRateLimit::AUTHORIZE,
+        'api_voice_alexa' => VoiceRateLimit::WEBHOOK,
     ];
 
     /**
@@ -52,8 +53,8 @@ class VoiceRoutesAreRateLimitedTest extends KernelTestCase
             $actual[$name] = $this->limitOf($controller);
         }
 
-        // Then : les quatre routes connues sont toutes vues, chacune a le compteur attendu
-        $this->assertGreaterThanOrEqual(4, count($routes), implode(', ', array_keys($routes)));
+        // Then : les cinq routes connues sont toutes vues, chacune a le compteur attendu
+        $this->assertGreaterThanOrEqual(5, count($routes), implode(', ', array_keys($routes)));
         $unknown = array_diff(array_keys($routes), array_keys(self::LIMITED), self::UNLIMITED);
         $this->assertSame([], array_values($unknown), 'Route de la commande vocale ni plafonnée ni listée en exception (#[VoiceRateLimited]) : ' . implode(', ', $unknown));
         foreach (self::LIMITED as $name => $expected) {

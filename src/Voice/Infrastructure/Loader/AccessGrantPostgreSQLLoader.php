@@ -14,7 +14,8 @@ use Repas\Voice\Infrastructure\Entity\VoiceLink;
 
 /**
  * Une seule requête pour résoudre un jeton d'accès (une par requête d'Alexa) : la paire par son haché, non expirée, et sa liaison, non
- * révoquée et du même compte (colonne `user_id` de la paire et de la liaison : si elles divergeaient, rien ne se résout).
+ * révoquée et du même compte (colonne `user_id` de la paire et de la liaison : si elles divergeaient, rien ne se résout). La même ligne porte
+ * l'identifiant d'utilisateur Alexa et la date de dernier usage de la liaison, pour que le suivi de la liaison n'ait pas à la relire.
  */
 final readonly class AccessGrantPostgreSQLLoader implements AccessGrantLoader
 {
@@ -26,7 +27,7 @@ final readonly class AccessGrantPostgreSQLLoader implements AccessGrantLoader
     public function resolve(string $accessHash, DateTimeImmutable $now): ?ResolvedAccessGrantDTO
     {
         $row = $this->entityManager->createQueryBuilder()
-            ->select('g.userId AS userId', 'g.linkId AS linkId')
+            ->select('g.userId AS userId', 'g.linkId AS linkId', 'l.alexaUserId AS alexaUserId', 'l.lastUsedAt AS lastUsedAt')
             ->from(AccessGrant::class, 'g')
             ->innerJoin(VoiceLink::class, 'l', Join::WITH, 'l.id = g.linkId')
             ->where('g.accessHash = :accessHash')
@@ -39,6 +40,6 @@ final readonly class AccessGrantPostgreSQLLoader implements AccessGrantLoader
             ->getQuery()
             ->getOneOrNullResult();
 
-        return $row === null ? null : new ResolvedAccessGrantDTO($row['userId'], $row['linkId']);
+        return $row === null ? null : new ResolvedAccessGrantDTO($row['userId'], $row['linkId'], $row['alexaUserId'], $row['lastUsedAt']);
     }
 }

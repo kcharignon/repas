@@ -59,6 +59,20 @@ framework:
             policy: sliding_window
             limit: 20
             interval: '1 hour'
+        # Webhook d'Alexa (POST /api/voice/alexa, VOX-204), PAR ADRESSE IP et AVANT la vérification de la signature
+        # (VoiceRateLimitListener, #[VoiceRateLimited(VoiceRateLimit::WEBHOOK)]) : route PUBLIQUE, et chaque requête dont l'adresse de chaîne
+        # de certificats est inventée coûte un téléchargement. Une séance parlée envoie trois ou quatre requêtes ; 60 par minute laissent de la
+        # marge à tous les Echo d'une famille, même derrière les mêmes adresses d'Amazon.
+        voice_webhook:
+            policy: sliding_window
+            limit: 60
+            interval: '1 minute'
+        # Webhook d'Alexa, PAR LIAISON, une fois la requête authentique et le jeton résolu (VoiceLinkRateLimiter, VOX-204) : au-delà,
+        # Alexa répond « Un instant, réessaie dans une minute. » (jamais une erreur HTTP).
+        voice_webhook_link:
+            policy: sliding_window
+            limit: 60
+            interval: '1 minute'
 
 when@test:
     framework:
@@ -80,4 +94,8 @@ when@test:
             voice_token:
                 cache_pool: test.rate_limiter_pool
             voice_authorize:
+                cache_pool: test.rate_limiter_pool
+            voice_webhook:
+                cache_pool: test.rate_limiter_pool
+            voice_webhook_link:
                 cache_pool: test.rate_limiter_pool
