@@ -224,6 +224,16 @@ return [
 
         return new RemoveSpokenIngredientCommand($owner->getId(), $milk->getSlug());
     },
+    // Réduction partielle : le lait est deux fois dans la liste (ligne de 2, part ajoutée à la main de 2), on en retire un : la ligne et la part sont
+    // mises à jour (UPDATE), rien n'est supprimé
+    'retirer-ingredient-par-la-voix-partiel' => static function (WriteBudgetTestCase $t): object {
+        $owner = $t->savedUser();
+        $milk = new IngredientBuilder()->isMilk()->withCreator($owner)->build();
+        $t->persister->saveIngredient($milk);
+        $t->savedShoppingList($owner, $t->typicalRecipes($owner), static fn(ShoppingListBuilder $b) => $b->addIngredient($milk)->addIngredient($milk));
+
+        return new RemoveSpokenIngredientCommand($owner->getId(), $milk->getSlug());
+    },
     // Sans liste active : une seule lecture, aucune écriture, aucune liste créée
     'retirer-ingredient-par-la-voix-sans-liste' => static function (WriteBudgetTestCase $t): object {
         $owner = $t->savedUser();
