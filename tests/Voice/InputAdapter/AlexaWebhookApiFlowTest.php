@@ -502,10 +502,19 @@ class AlexaWebhookApiFlowTest extends DatabaseTestCase
         // When : « du pain », à la question « Je le crée ? »
         $this->converse(AlexaTestRequest::addItem('du pain'), $this->attributes());
 
-        // Then : ajouté ; ce n'est pas une proposition mais un autre article : la phrase d'origine est retenue pour lui
-        $this->assertSame("J'ai commencé une nouvelle liste avec pain. Je m'en souviendrai. Autre chose ?", $this->speech());
+        // Then : ajouté comme un ajout ordinaire ; aucune proposition n'avait été faite, il n'y avait rien à corriger : rien n'est retenu ni promis
+        $this->assertSame("J'ai commencé une nouvelle liste avec pain. Autre chose ?", $this->speech());
         $this->assertSame([], $this->attributes());
-        $this->assertSame('ciboulette', $this->connection()->fetchOne('SELECT phrase FROM spoken_phrase_choice'));
+        $this->assertSame(1, $this->rowCount('shopping_list_row'));
+        $this->assertSame(0, $this->rowCount('spoken_phrase_choice'));
+
+        // When : plus tard, « de la ciboulette » de nouveau, en appel direct
+        $this->say(AlexaTestRequest::addItem('de la ciboulette'));
+
+        // Then : la question revient, ciboulette n'est pas devenue du pain
+        $this->assertSame('Je ne connais pas ciboulette. Je le crée ?', $this->speech());
+        $this->assertSame('choose', $this->attributes()['dialogue']['step']);
+        $this->assertSame(1, $this->rowCount('shopping_list_row'));
     }
 
     public function testNamingAnotherIngredientAfterTheProposalsAddsItAndRemembersTheOriginalPhrase(): void

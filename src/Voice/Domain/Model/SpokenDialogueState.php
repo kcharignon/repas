@@ -72,6 +72,16 @@ final readonly class SpokenDialogueState
         return new self(DialogueStep::CONFIRM, $this->phrase, [], $this->name, $this->department, $unit, 0);
     }
 
+    /**
+     * La phrase d'origine qu'un autre article, dit à la place des propositions, peut faire retenir pour lui (« patates » puis « pomme de
+     * terre »). Seulement quand des propositions ont été FAITES : à « Je le crée ? » (aucune proposition) l'utilisateur ne corrige rien,
+     * il change d'avis, et ce qu'il dit alors est un ajout ordinaire. `null` aux autres étapes (rayon, unité, confirmation).
+     */
+    public function rememberablePhrase(): ?string
+    {
+        return $this->step === DialogueStep::CHOOSE && $this->options !== [] ? $this->phrase : null;
+    }
+
     /** Une réponse de plus qui n'a pas été comprise dans la même étape. */
     public function missed(): self
     {

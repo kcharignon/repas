@@ -135,8 +135,8 @@ class AnswerSpokenDialogueHandlerTest extends TestCase
         $this->assertSame([[self::USER, 'du pain']], $this->resolver->asked);
     }
 
-    #[DataProvider('confidences')]
-    public function testAnotherArticleCorrectsTheProposalWhateverTheConfidence(string $confidence): void
+    #[DataProvider('rememberedConfidences')]
+    public function testAnotherArticleCorrectsTheProposalWhenTheChoiceIsSureOrProbable(string $confidence): void
     {
         // Given : « patates » -> pâte, pâte brisée, pâte feuilletée ; « non, pomme de terre »
         $this->resolver->willResolve('de la pomme de terre', new ResolvedIngredient('pomme-de-terre-u', 'pomme de terre', 'fruits et légumes', $confidence));
@@ -155,11 +155,66 @@ class AnswerSpokenDialogueHandlerTest extends TestCase
     /**
      * @return iterable<string, array{string}>
      */
-    public static function confidences(): iterable
+    public static function rememberedConfidences(): iterable
+    {
+        yield 'sûr' => [ResolvedIngredient::SURE];
+        yield 'probable' => [ResolvedIngredient::PROBABLE];
+    }
+
+    public function testAnotherArticleWhoseChoiceIsUnsureIsAddedButNothingIsRememberedNorPromised(): void
+    {
+        // Given : « patates » -> propositions ; « pomme de terre » touche deux ingrédients (incertain)
+        $this->resolver->willResolve('de la pomme de terre', new ResolvedIngredient('pomme-de-terre-u', 'pomme de terre', 'fruits et légumes', ResolvedIngredient::UNSURE));
+        $state = SpokenDialogueState::choose('des patates', [new DialogueOption('pate-u', 'pâte'), new DialogueOption('pate-brisee-u', 'pâte brisée')], 'patates');
+
+        // When
+        $result = $this->answer(AlexaTestRequest::addItem('de la pomme de terre'), $state);
+
+        // Then : l'article est ajouté et dit avec son rayon (le choix est incertain), aucune mémoire, aucune promesse
+        $this->assertSame([[self::USER, 'pomme-de-terre-u']], $this->shoppingList->added);
+        $this->assertSame([], $this->resolver->remembered);
+        $this->assertEquals(new AddSpokenItemResult("J'ai mis pomme de terre, fruits et légumes. Autre chose ?", keepSessionOpen: true, added: true), $result);
+    }
+
+    #[DataProvider('allConfidences')]
+    public function testAnotherArticleWhenNothingWasProposedIsAnOrdinaryAddAndNothingIsRemembered(string $confidence): void
+    {
+        // Given : « de la ciboulette » -> « Je le crée ? » (aucune proposition) ; « non, du pain » : il change d'avis, il ne corrige rien
+        $this->resolver->willResolve('du pain', new ResolvedIngredient('pain-u', 'pain', 'boulangerie', $confidence));
+
+        // When
+        $result = $this->answer(AlexaTestRequest::addItem('du pain'), self::choose([]));
+
+        // Then : ajouté comme un ajout ordinaire, "ciboulette" n'est JAMAIS retenue pour le pain, aucune promesse
+        $this->assertSame([[self::USER, 'pain-u']], $this->shoppingList->added);
+        $this->assertSame([], $this->resolver->remembered);
+        $this->assertStringNotContainsString('souviendrai', $result->speech);
+        $this->assertSame($confidence === ResolvedIngredient::SURE ? "C'est noté : pain. Autre chose ?" : "J'ai mis pain, boulangerie. Autre chose ?", $result->speech);
+        $this->assertNull($result->nextState);
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function allConfidences(): iterable
     {
         yield 'sûr' => [ResolvedIngredient::SURE];
         yield 'probable' => [ResolvedIngredient::PROBABLE];
         yield 'incertain' => [ResolvedIngredient::UNSURE];
+    }
+
+    public function testAnOrdinaryAddAfterNothingWasProposedSaysSoOnAFreshListToo(): void
+    {
+        // Given
+        $this->resolver->willResolve('du pain', new ResolvedIngredient('pain-u', 'pain', 'boulangerie', ResolvedIngredient::SURE));
+        $this->shoppingList->willReturn(new AddedItem(listCreated: true, previousListSent: false));
+
+        // When
+        $result = $this->answer(AlexaTestRequest::addItem('du pain'), self::choose([]));
+
+        // Then
+        $this->assertSame("J'ai commencé une nouvelle liste avec pain. Autre chose ?", $result->speech);
+        $this->assertSame([], $this->resolver->remembered);
     }
 
     public function testCorrectingTheProposalOnAFreshListSaysSoAndStillRemembers(): void

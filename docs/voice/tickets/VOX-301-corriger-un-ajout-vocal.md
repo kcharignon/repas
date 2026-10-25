@@ -12,6 +12,8 @@
 
 La **mémoire de phrase existe depuis VOX-303** : quand l'utilisateur choisit l'une des propositions d'Alexa, Repas retient « cette phrase veut dire cet ingrédient » (`spoken_phrase_choice`, lue par `resolve` avant le classement, purgée, effacée avec l'ingrédient, repointée par la fusion). Reste ici de corriger **après coup**, depuis l'application, un ajout que le classeur avait choisi tout seul (« J'ai mis tomate cerise, fruit et légume » : ce n'était pas la bonne).
 
+**Aussi à construire ici (relevé par la revue de sécurité du 2026-10-25) : oublier une phrase apprise.** Aujourd'hui aucun moyen, ni par la voix ni depuis l'application, de défaire une ligne de `spoken_phrase_choice` : une phrase retenue à tort (ou devenue fausse) donne l'ingrédient sans question jusqu'à ce qu'un autre choix la remplace. Deux garde-fous existent déjà (la phrase n'est retenue que si des propositions ont été faites et que le choix est `SURE` ou `PROBABLE`) mais ne remplacent pas la sortie de secours : « Moi » (VOX-402) ou l'écran de correction doit pouvoir lister les phrases retenues et en retirer une, et la voix « oublie… » peut venir ensuite. Table de cas à ajouter : la phrase oubliée repasse par le classeur.
+
 ## Portée
 
 1. **Origine de la ligne** : colonne `shopping_list_row.origin` (nullable, `voice`), migration additive ; posée par `VoiceShoppingList::addItem` ; exposée en lecture (`ShoppingListRowDTO.origin`, clé toujours écrite) ; **jamais** utilisée pour une règle métier.
