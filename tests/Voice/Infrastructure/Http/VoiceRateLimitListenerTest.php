@@ -61,6 +61,24 @@ class VoiceRateLimitListenerTest extends TestCase
         $retryAfter = (int) $exception->getHeaders()['Retry-After'];
         $this->assertGreaterThanOrEqual(1, $retryAfter);
         $this->assertLessThanOrEqual(3600, $retryAfter);
+        $this->assertSame('no-store', $exception->getHeaders()['Cache-Control'], "la réponse du point d'accès aux jetons n'est jamais mise en cache");
+    }
+
+    public function testOnlyTheRefusalOfTheTokenEndpointIsNeverCached(): void
+    {
+        // Given : les trois plafonds atteints
+        $listener = $this->listener();
+        $this->logIn(new UserBuilder()->build());
+        for ($i = 0; $i < 4; $i++) {
+            $listener($this->event($this->webhookController(), '203.0.113.9'));
+        }
+        for ($i = 0; $i < 2; $i++) {
+            $listener($this->event($this->authorizeController(), '203.0.113.9'));
+        }
+
+        // When / Then : ni le webhook ni l'autorisation n'ajoutent d'en-tête de cache à leur 429 (seul `Retry-After`)
+        $this->assertSame(['Retry-After'], array_keys($this->refusedBy($listener, $this->webhookController(), '203.0.113.9')->getHeaders()));
+        $this->assertSame(['Retry-After'], array_keys($this->refusedBy($listener, $this->authorizeController(), '203.0.113.9')->getHeaders()));
     }
 
     public function testTheWebhookCounterIsPerIpAddressWhoeverTheTokenBelongsToAndIsIndependentOfTheOthers(): void

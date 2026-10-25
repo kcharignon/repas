@@ -433,6 +433,8 @@ class VoiceLinkingApiFlowTest extends DatabaseTestCase
         $this->assertSame(429, $this->statusCode());
         $this->assertSame(['error' => ['message' => 'VOICE_RATE_LIMITED']], $this->jsonBody());
         $this->assertGreaterThanOrEqual(1, (int) $this->client->getResponse()->headers->get('Retry-After'));
+        $this->assertStringContainsString('no-store', (string) $this->client->getResponse()->headers->get('Cache-Control'));
+        $this->assertSame('no-cache', $this->client->getResponse()->headers->get('Pragma'));
 
         // Then : une autre adresse n'est pas touchée
         $request('203.0.113.51');

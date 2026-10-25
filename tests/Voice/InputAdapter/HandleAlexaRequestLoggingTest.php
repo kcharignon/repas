@@ -6,6 +6,8 @@ namespace Repas\Tests\Voice\InputAdapter;
 use DateTimeImmutable;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
+use Repas\Shared\Application\Interface\CommandBusInterface;
+use Repas\Shared\Application\Service\CommandBus;
 use Repas\Tests\Helper\Alexa\AlexaTestRequest;
 use Repas\Tests\Helper\AlexaRequestVerifierDouble;
 use Repas\Tests\Helper\ContextSpyLogger;
@@ -23,6 +25,10 @@ use Repas\Voice\Domain\Service\AlexaDialogue;
 use Repas\Voice\Infrastructure\Http\Api\HandleAlexaRequest\HandleAlexaRequestApiController;
 use Repas\Voice\Infrastructure\Http\VoiceLinkRateLimiter;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\Messenger\Exception\HandlerFailedException;
+use Symfony\Component\Messenger\Handler\HandlersLocator;
+use Symfony\Component\Messenger\MessageBus;
+use Symfony\Component\Messenger\Middleware\HandleMessageMiddleware;
 use Symfony\Component\RateLimiter\RateLimiterFactory;
 use Symfony\Component\RateLimiter\Storage\InMemoryStorage;
 
@@ -63,6 +69,41 @@ class HandleAlexaRequestLoggingTest extends TestCase
         $this->assertSame(RuntimeException::class, $this->logger->records[0]['context']['exception']);
         $this->assertMatchesRegularExpression('/^HandleAlexaRequestLoggingTest\.php:\d+$/', $this->logger->records[0]['context']['location']);
         $this->assertNothingSecretWasLoggedNorAnswered($response->getContent());
+    }
+
+    public function testAFailureWrappedByTheRealBusIsLoggedWithTheClassAndPlaceOfTheOriginalException(): void
+    {
+        // Given : le VRAI bus de commandes, qui n'ouvre que les `DomainException` : toute autre panne d'un handler arrive enveloppée dans un
+        // `HandlerFailedException` ; le message de la panne d'origine cite la phrase dite et le jeton
+        $bus = $this->realBusFailing(AddSpokenItemCommand::class, new RuntimeException('échec pour ' . self::SECRET_PHRASE . ' avec ' . self::SECRET_TOKEN));
+
+        // When
+        $response = $this->controller(commandBus: $bus)($this->request(AlexaTestRequest::addItem(self::SECRET_PHRASE)->withAccessToken(self::SECRET_TOKEN)->toJson()));
+
+        // Then : toujours 200 et la phrase d'échec ; le journal dit l'enveloppe ET l'exception d'origine (classe et endroit), jamais un message
+        $this->assertSame(200, $response->getStatusCode());
+        $this->assertCount(1, $this->logger->records);
+        $context = $this->logger->records[0]['context'];
+        $this->assertSame(['exception', 'location', 'previous', 'previous_location'], array_keys($context));
+        $this->assertSame(HandlerFailedException::class, $context['exception']);
+        $this->assertSame(RuntimeException::class, $context['previous']);
+        $this->assertMatchesRegularExpression('/^HandleAlexaRequestLoggingTest\.php:\d+$/', $context['previous_location'], "l'endroit de la panne d'origine, pas un fichier de Messenger");
+        $this->assertDoesNotMatchRegularExpression('/Messenger|HandleMessageMiddleware/', $context['previous_location']);
+        $this->assertNothingSecretWasLoggedNorAnswered($response->getContent());
+    }
+
+    public function testADomainFailureThroughTheRealBusIsLoggedByItsOwnClassWithoutAPrevious(): void
+    {
+        // Given : le bus déballe les `DomainException` : le journal reçoit la classe métier elle-même
+        $bus = $this->realBusFailing(AddSpokenItemCommand::class, VoiceException::invalidRequest());
+
+        // When
+        $this->controller(commandBus: $bus)($this->request(AlexaTestRequest::addItem(self::SECRET_PHRASE)->withAccessToken(self::SECRET_TOKEN)->toJson()));
+
+        // Then
+        $this->assertCount(1, $this->logger->records);
+        $this->assertSame(['exception', 'location'], array_keys($this->logger->records[0]['context']));
+        $this->assertSame(VoiceException::class, $this->logger->records[0]['context']['exception']);
     }
 
     public function testAFailureOfTheDialogueIsLoggedByClassAndPlaceNeverTheStateTheSentenceOrTheMessage(): void
@@ -163,13 +204,26 @@ class HandleAlexaRequestLoggingTest extends TestCase
         $this->assertStringNotContainsString(self::SECRET_TOKEN, (string) $answer);
     }
 
-    private function controller(?AlexaRequestVerifierDouble $verifier = null): HandleAlexaRequestApiController
+    /**
+     * Le vrai `CommandBus` de l'application au-dessus d'un vrai bus Messenger dont le handler de `$commandClass` échoue avec `$failure`
+     * (les autres commandes n'ont pas de handler : le suivi de la liaison échoue, ce qui ne change rien à la réponse).
+     */
+    private function realBusFailing(string $commandClass, \Throwable $failure): CommandBusInterface
+    {
+        $handler = static function (object $command) use ($failure): never {
+            throw $failure;
+        };
+
+        return new CommandBus(new MessageBus([new HandleMessageMiddleware(new HandlersLocator([$commandClass => [$handler]]))]));
+    }
+
+    private function controller(?AlexaRequestVerifierDouble $verifier = null, ?CommandBusInterface $commandBus = null): HandleAlexaRequestApiController
     {
         return new HandleAlexaRequestApiController(
             $verifier ?? AlexaRequestVerifierDouble::accepting(),
             new AlexaDialogue(),
             $this->queryBus,
-            $this->commandBus,
+            $commandBus ?? $this->commandBus,
             new VoiceLinkRateLimiter(new RateLimiterFactory(['id' => 'test', 'policy' => 'sliding_window', 'limit' => 60, 'interval' => '1 minute'], new InMemoryStorage())),
             $this->logger,
         );

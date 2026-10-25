@@ -27,4 +27,15 @@ enum VoiceRateLimit: string
     {
         return $this === self::AUTHORIZE;
     }
+
+    /**
+     * Les en-têtes que porte la réponse `429` en plus de `Retry-After` : celle du point d'accès aux jetons n'est jamais mise en cache, comme
+     * toutes les réponses de cette route (RFC 6749 5.1 et 5.2).
+     *
+     * @return array<string, string>
+     */
+    public function refusalHeaders(): array
+    {
+        return $this === self::TOKEN ? ['Cache-Control' => 'no-store', 'Pragma' => 'no-cache'] : [];
+    }
 }

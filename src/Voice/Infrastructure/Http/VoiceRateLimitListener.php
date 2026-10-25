@@ -62,7 +62,7 @@ final readonly class VoiceRateLimitListener
 
             $retryAfter = max(1, $limit->getRetryAfter()->getTimestamp() - $this->clock->now()->getTimestamp());
 
-            throw new TooManyRequestsHttpException($retryAfter, VoiceException::RATE_LIMITED, VoiceException::rateLimited());
+            throw new TooManyRequestsHttpException($retryAfter, VoiceException::RATE_LIMITED, VoiceException::rateLimited(), headers: $attribute->limit->refusalHeaders());
         }
     }
 

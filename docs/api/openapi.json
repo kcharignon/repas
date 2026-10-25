@@ -6378,7 +6378,7 @@
                 }
             },
             "VoiceTokenRateLimited": {
-                "description": "Trop d'\u00e9changes de jetons depuis cette adresse IP : plus de 30 par heure (`POST /api/voice/oauth/token`, route publique). Message `VOICE_RATE_LIMITED` ; patienter au moins le d\u00e9lai de `Retry-After`.",
+                "description": "Trop d'\u00e9changes de jetons depuis cette adresse IP : plus de 30 par heure (`POST /api/voice/oauth/token`, route publique ; une adresse IPv6 compte par son pr\u00e9fixe /64). Message `VOICE_RATE_LIMITED` au format du d\u00e9p\u00f4t (`{error:{message}}`), pas celui d'OAuth ; patienter au moins le d\u00e9lai de `Retry-After`. Jamais de mise en cache.",
                 "headers": {
                     "Retry-After": {
                         "description": "Secondes \u00e0 attendre au minimum avant de r\u00e9essayer",
@@ -6386,6 +6386,13 @@
                             "type": "integer",
                             "minimum": 1,
                             "example": 120
+                        }
+                    },
+                    "Cache-Control": {
+                        "description": "`no-store`",
+                        "schema": {
+                            "type": "string",
+                            "example": "no-store"
                         }
                     }
                 },
@@ -6440,7 +6447,7 @@
                 }
             },
             "VoiceWebhookRateLimited": {
-                "description": "Trop de requ\u00eates depuis cette adresse IP : plus de 60 par minute (`POST /api/voice/alexa`, route publique, plafond pos\u00e9 AVANT la v\u00e9rification de la signature). Message `VOICE_RATE_LIMITED` ; patienter au moins le d\u00e9lai de `Retry-After`. Le plafond par liaison, lui, ne donne jamais d'erreur HTTP : Alexa r\u00e9pond \u00ab Un instant, r\u00e9essaie dans une minute. \u00bb.",
+                "description": "Trop de requ\u00eates depuis cette adresse IP : plus de 60 par minute (`POST /api/voice/alexa`, route publique, plafond pos\u00e9 AVANT la v\u00e9rification de la signature ; une adresse IPv6 compte par son pr\u00e9fixe /64). Message `VOICE_RATE_LIMITED` ; patienter au moins le d\u00e9lai de `Retry-After`. Le plafond par liaison, lui, ne donne jamais d'erreur HTTP : Alexa r\u00e9pond \u00ab Un instant, r\u00e9essaie dans une minute. \u00bb.",
                 "headers": {
                     "Retry-After": {
                         "description": "Secondes \u00e0 attendre au minimum avant de r\u00e9essayer",
