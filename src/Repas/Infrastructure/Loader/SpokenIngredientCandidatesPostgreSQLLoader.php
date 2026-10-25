@@ -37,9 +37,9 @@ final readonly class SpokenIngredientCandidatesPostgreSQLLoader implements Spoke
 
     public function forUser(string $userId): array
     {
-        /** @var list<array{slug: string, sluggedName: string, name: string, departmentName: string}> $ingredients */
+        /** @var list<array{slug: string, sluggedName: string, name: string, departmentName: string, departmentSlug: string}> $ingredients */
         $ingredients = $this->entityManager->createQueryBuilder()
-            ->select('i.slug AS slug', 'i.sluggedName AS sluggedName', 'i.name AS name', 'd.name AS departmentName')
+            ->select('i.slug AS slug', 'i.sluggedName AS sluggedName', 'i.name AS name', 'd.name AS departmentName', 'd.slug AS departmentSlug')
             ->from(Ingredient::class, 'i')
             ->innerJoin(Department::class, 'd', Join::WITH, 'd.slug = i.departmentSlug')
             ->where(IngredientVisibility::visibleBy('i', 'viewer'))
@@ -57,7 +57,7 @@ final readonly class SpokenIngredientCandidatesPostgreSQLLoader implements Spoke
         }
 
         return array_map(
-            static fn(array $row): SpokenCandidate => new SpokenCandidate($row['slug'], $row['sluggedName'], $row['name'], $row['departmentName'], $uses[$row['slug']] ?? 0),
+            static fn(array $row): SpokenCandidate => new SpokenCandidate($row['slug'], $row['sluggedName'], $row['name'], $row['departmentName'], $uses[$row['slug']] ?? 0, $row['departmentSlug']),
             $ingredients,
         );
     }

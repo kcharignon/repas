@@ -8,7 +8,7 @@ namespace Repas\Voice\Domain\Model;
  * modèle d'interaction leur donne. `DocsVoiceSkillTest` impose l'égalité des deux listes : une intention ajoutée au modèle sans être
  * gérée ici (ou l'inverse) fait échouer le test.
  *
- * Les six dernières servent au dialogue d'un produit inconnu (décision 11) : Alexa choisit l'intention SANS connaître notre état, donc
+ * Les sept suivantes (de `ChooseOptionIntent` à `AMAZON.NoIntent`) servent au dialogue d'un produit inconnu (décision 11) : Alexa choisit l'intention SANS connaître notre état, donc
  * `SpokenAnswerInterpreter` interprète toujours la réponse d'après l'état de la séance, pas d'après l'intention seule.
  */
 enum AlexaIntent: string
@@ -23,6 +23,8 @@ enum AlexaIntent: string
     case ANSWER_DEPARTMENT = 'AnswerDepartmentIntent';
     /** « pièces », « kilos » : le créneau `unit` porte l'unité. */
     case ANSWER_UNIT = 'AnswerUnitIntent';
+    /** « lesquels ? », « la liste », « je ne sais pas » : pendant le dialogue, lire les rayons ou les unités possibles (sans créneau). */
+    case LIST_CHOICES = 'ListChoicesIntent';
     case YES = 'AMAZON.YesIntent';
     case NO = 'AMAZON.NoIntent';
     case HELP = 'AMAZON.HelpIntent';

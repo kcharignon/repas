@@ -5,6 +5,7 @@ namespace Repas\Repas\Infrastructure\Voice;
 use Repas\Repas\Application\Command\RememberSpokenPhrase\RememberSpokenPhraseCommand;
 use Repas\Repas\Application\Loader\SpokenIngredientCandidates;
 use Repas\Repas\Application\Loader\SpokenPhraseMemory;
+use Repas\Repas\Domain\Model\Confidence;
 use Repas\Repas\Domain\Model\RankedIngredient;
 use Repas\Repas\Domain\Service\SpokenIngredientRanker;
 use Repas\Shared\Application\Dto\IngredientSuggestion;
@@ -43,13 +44,21 @@ final readonly class SpokenIngredientResolverAdapter implements SpokenIngredient
 
         $ranked = $this->ranker->rank($phrase, $candidates, rememberedSlug: $remembered);
         if ($ranked !== null) {
+            // Le classeur hésite entre des ingrédients qui se valent : on ne devine pas, on les rend pour que l'utilisateur départage (le rayon)
+            $ties = $ranked->confidence === Confidence::UNSURE ? $this->ranker->ties($phrase, $candidates, $remembered) : [];
+            if ($ties !== []) {
+                return SpokenResolution::tied(array_map(self::suggestion(...), $ties));
+            }
+
             return SpokenResolution::found(new ResolvedIngredient($ranked->slug, $ranked->name, $ranked->departmentName, $ranked->confidence->value));
         }
 
-        return SpokenResolution::unknown(array_map(
-            static fn(RankedIngredient $suggested): IngredientSuggestion => new IngredientSuggestion($suggested->slug, $suggested->name, $suggested->departmentName),
-            $this->ranker->suggest($phrase, $candidates),
-        ));
+        return SpokenResolution::unknown(array_map(self::suggestion(...), $this->ranker->suggest($phrase, $candidates)));
+    }
+
+    private static function suggestion(RankedIngredient $ranked): IngredientSuggestion
+    {
+        return new IngredientSuggestion($ranked->slug, $ranked->name, $ranked->departmentName, $ranked->departmentSlug);
     }
 
     public function remember(string $userId, string $phrase, string $ingredientSlug): void

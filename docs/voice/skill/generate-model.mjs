@@ -191,6 +191,15 @@ function intents() {
       ],
     },
     {
+      // « Lesquels ? » aux questions « Dans quel rayon ? » et « Quelle unité ? » : sans créneau, le back lit la liste d'après l'état de la séance.
+      // Aucun chiffre ni ponctuation (règles d'Amazon) ; chaque phrase est unique dans tout le modèle.
+      name: 'ListChoicesIntent',
+      samples: [
+        'lesquels', 'lesquelles', 'la liste', 'liste', 'liste les rayons', 'liste moi les rayons', 'quels sont les rayons',
+        'quelles sont les unités', 'lesquels sont possibles', 'énumère', 'je ne sais pas', 'donne moi les choix',
+      ],
+    },
+    {
       name: 'AnswerDepartmentIntent',
       slots: [{ name: 'department', type: 'DEPARTMENT' }],
       samples: withBare(['rayon {department}', 'le rayon {department}', 'dans le rayon {department}', 'au rayon {department}', 'dans {department}'], '{department}'),

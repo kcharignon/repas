@@ -165,6 +165,23 @@
           ]
         },
         {
+          "name": "ListChoicesIntent",
+          "samples": [
+            "lesquels",
+            "lesquelles",
+            "la liste",
+            "liste",
+            "liste les rayons",
+            "liste moi les rayons",
+            "quels sont les rayons",
+            "quelles sont les unités",
+            "lesquels sont possibles",
+            "énumère",
+            "je ne sais pas",
+            "donne moi les choix"
+          ]
+        },
+        {
           "name": "AnswerDepartmentIntent",
           "slots": [
             {

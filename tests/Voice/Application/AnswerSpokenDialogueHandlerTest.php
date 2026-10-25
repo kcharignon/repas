@@ -81,7 +81,7 @@ class AnswerSpokenDialogueHandlerTest extends TestCase
         // Then : l'article est ajouté, la phrase entendue est retenue pour l'ingrédient, le dialogue est fini et la séance reste ouverte
         $this->assertSame([[self::USER, 'basilic-u']], $this->shoppingList->added);
         $this->assertSame([[self::USER, 'de la ciboulette', 'basilic-u']], $this->resolver->remembered);
-        $this->assertEquals(new AddSpokenItemResult("C'est noté : basilic. Je m'en souviendrai. Autre chose ?", keepSessionOpen: true, added: true), $result);
+        $this->assertEquals(new AddSpokenItemResult("C'est noté : basilic. Je m'en souviendrai.", keepSessionOpen: false, added: true), $result);
     }
 
     public function testSayingTheNameOfAProposalWorksToo(): void
@@ -91,7 +91,7 @@ class AnswerSpokenDialogueHandlerTest extends TestCase
 
         // Then
         $this->assertSame([[self::USER, 'persil-u']], $this->shoppingList->added);
-        $this->assertSame("C'est noté : persil. Je m'en souviendrai. Autre chose ?", $result->speech);
+        $this->assertSame("C'est noté : persil. Je m'en souviendrai.", $result->speech);
     }
 
     public function testYesWithASingleProposalChoosesIt(): void
@@ -116,8 +116,8 @@ class AnswerSpokenDialogueHandlerTest extends TestCase
         $sent = $this->answer(AlexaTestRequest::chooseOption('un', '1'), self::choose(['persil']));
 
         // Then : la phrase est retenue dans les deux cas
-        $this->assertSame("J'ai commencé une nouvelle liste avec persil. Je m'en souviendrai. Autre chose ?", $started->speech);
-        $this->assertSame("J'ai commencé une nouvelle liste avec persil. Ta liste précédente est partie au drive. Autre chose ?", $sent->speech);
+        $this->assertSame("J'ai commencé une nouvelle liste avec persil. Je m'en souviendrai.", $started->speech);
+        $this->assertSame("J'ai commencé une nouvelle liste avec persil. Ta liste précédente est partie au drive.", $sent->speech);
         $this->assertCount(2, $this->resolver->remembered);
     }
 
@@ -132,7 +132,7 @@ class AnswerSpokenDialogueHandlerTest extends TestCase
         // Then : ajouté, et la phrase d'origine est retenue pour cet article (il corrige la proposition)
         $this->assertSame([[self::USER, 'pain-u']], $this->shoppingList->added);
         $this->assertSame([[self::USER, 'de la ciboulette', 'pain-u']], $this->resolver->remembered);
-        $this->assertEquals(new AddSpokenItemResult("C'est noté : pain. Je m'en souviendrai. Autre chose ?", keepSessionOpen: true, added: true), $result);
+        $this->assertEquals(new AddSpokenItemResult("C'est noté : pain. Je m'en souviendrai.", keepSessionOpen: false, added: true), $result);
         $this->assertSame([[self::USER, 'du pain']], $this->resolver->asked);
     }
 
@@ -150,7 +150,7 @@ class AnswerSpokenDialogueHandlerTest extends TestCase
         $this->assertSame([[self::USER, 'pomme-de-terre-u']], $this->shoppingList->added);
         $this->assertSame([[self::USER, 'des patates', 'pomme-de-terre-u']], $this->resolver->remembered);
         $this->assertSame([[self::USER, 'de la pomme de terre']], $this->resolver->asked);
-        $this->assertEquals(new AddSpokenItemResult("C'est noté : pomme de terre. Je m'en souviendrai. Autre chose ?", keepSessionOpen: true, added: true), $result);
+        $this->assertEquals(new AddSpokenItemResult("C'est noté : pomme de terre. Je m'en souviendrai.", keepSessionOpen: false, added: true), $result);
     }
 
     /**
@@ -174,7 +174,7 @@ class AnswerSpokenDialogueHandlerTest extends TestCase
         // Then : l'article est ajouté et dit avec son rayon (le choix est incertain), aucune mémoire, aucune promesse
         $this->assertSame([[self::USER, 'pomme-de-terre-u']], $this->shoppingList->added);
         $this->assertSame([], $this->resolver->remembered);
-        $this->assertEquals(new AddSpokenItemResult("J'ai mis pomme de terre, fruits et légumes. Autre chose ?", keepSessionOpen: true, added: true), $result);
+        $this->assertEquals(new AddSpokenItemResult("J'ai mis pomme de terre, fruits et légumes.", keepSessionOpen: false, added: true), $result);
     }
 
     #[DataProvider('allConfidences')]
@@ -190,7 +190,7 @@ class AnswerSpokenDialogueHandlerTest extends TestCase
         $this->assertSame([[self::USER, 'pain-u']], $this->shoppingList->added);
         $this->assertSame([], $this->resolver->remembered);
         $this->assertStringNotContainsString('souviendrai', $result->speech);
-        $this->assertSame($confidence === ResolvedIngredient::SURE ? "C'est noté : pain. Autre chose ?" : "J'ai mis pain, boulangerie. Autre chose ?", $result->speech);
+        $this->assertSame($confidence === ResolvedIngredient::SURE ? "C'est noté : pain." : "J'ai mis pain, boulangerie.", $result->speech);
         $this->assertNull($result->nextState);
     }
 
@@ -214,7 +214,7 @@ class AnswerSpokenDialogueHandlerTest extends TestCase
         $result = $this->answer(AlexaTestRequest::addItem('du pain'), self::choose([]));
 
         // Then
-        $this->assertSame("J'ai commencé une nouvelle liste avec pain. Autre chose ?", $result->speech);
+        $this->assertSame("J'ai commencé une nouvelle liste avec pain.", $result->speech);
         $this->assertSame([], $this->resolver->remembered);
     }
 
@@ -228,7 +228,7 @@ class AnswerSpokenDialogueHandlerTest extends TestCase
         $result = $this->answer(AlexaTestRequest::addItem('du pain'), self::choose(['persil']));
 
         // Then
-        $this->assertSame("J'ai commencé une nouvelle liste avec pain. Ta liste précédente est partie au drive. Autre chose ?", $result->speech);
+        $this->assertSame("J'ai commencé une nouvelle liste avec pain. Ta liste précédente est partie au drive.", $result->speech);
         $this->assertSame([[self::USER, 'de la ciboulette', 'pain-u']], $this->resolver->remembered);
     }
 
@@ -282,8 +282,8 @@ class AnswerSpokenDialogueHandlerTest extends TestCase
         $created = $this->answer(AlexaTestRequest::yes(), $confirm->nextState);
 
         // Then : une question à chaque étape, la séance reste ouverte, le dialogue avance d'un état à l'autre
-        $this->assertSame(['Dans quel rayon ?', DialogueStep::DEPARTMENT], [$department->speech, $department->nextState?->step]);
-        $this->assertSame(['Quelle unité ? Par exemple pièce, kilo ou litre.', DialogueStep::UNIT], [$unit->speech, $unit->nextState?->step]);
+        $this->assertSame(['Dans quel rayon ? Dis lesquels pour les entendre.', DialogueStep::DEPARTMENT], [$department->speech, $department->nextState?->step]);
+        $this->assertSame(['Quelle unité ? Par exemple pièce, kilo ou litre. Dis lesquelles pour les entendre.', DialogueStep::UNIT], [$unit->speech, $unit->nextState?->step]);
         $this->assertSame(["Je crée ciboulette, fruit et légume, unité. C'est bon ?", DialogueStep::CONFIRM], [$confirm->speech, $confirm->nextState?->step]);
         $this->assertSame(["Je crée ciboulette, fruit et légume, unité. C'est bon ?"], [$confirm->reprompt]);
         foreach ([$department, $unit, $confirm] as $step) {
@@ -295,7 +295,7 @@ class AnswerSpokenDialogueHandlerTest extends TestCase
         $this->assertSame([[self::USER, 'ciboulette', 'fruit-et-legume', 'unite']], $this->creator->created);
         $this->assertSame([[self::USER, 'ciboulette-' . self::USER]], $this->shoppingList->added);
         $this->assertSame([], $this->resolver->remembered);
-        $this->assertEquals(new AddSpokenItemResult("C'est créé et noté : ciboulette. Autre chose ?", keepSessionOpen: true, added: true), $created);
+        $this->assertEquals(new AddSpokenItemResult("C'est créé et noté : ciboulette, rayon fruit et légume.", keepSessionOpen: false, added: true), $created);
     }
 
     #[DataProvider('spokenPhrases')]
@@ -367,7 +367,7 @@ class AnswerSpokenDialogueHandlerTest extends TestCase
         $this->assertStringStartsWith("Je n'ai pas compris. Je crée ", $first->speech);
         $this->assertStringEndsWith("C'est bon ?", $first->speech);
         $this->assertSame([DialogueStep::CONFIRM, 1], [$first->nextState?->step, $first->nextState?->misses]);
-        $this->assertEquals(new AddSpokenItemResult("Je n'ai pas compris. On laisse tomber. Autre chose ?", keepSessionOpen: true, added: false), $second);
+        $this->assertEquals(new AddSpokenItemResult("Je n'ai pas compris. On laisse tomber.", keepSessionOpen: false, added: false), $second);
     }
 
     /**
@@ -387,7 +387,7 @@ class AnswerSpokenDialogueHandlerTest extends TestCase
         $result = $this->answer(AlexaTestRequest::yes(), self::choose([]));
 
         // Then
-        $this->assertSame('Dans quel rayon ?', $result->speech);
+        $this->assertSame('Dans quel rayon ? Dis lesquels pour les entendre.', $result->speech);
         $this->assertSame(DialogueStep::DEPARTMENT, $result->nextState?->step);
         $this->assertSame([], $this->creator->created);
     }
@@ -401,7 +401,7 @@ class AnswerSpokenDialogueHandlerTest extends TestCase
         $result = $this->answer(AlexaTestRequest::answerDepartment('produits ménagers', null), $state);
 
         // Then
-        $this->assertSame('Quelle unité ? Par exemple pièce, kilo ou litre.', $result->speech);
+        $this->assertSame('Quelle unité ? Par exemple pièce, kilo ou litre. Dis lesquelles pour les entendre.', $result->speech);
         $this->assertSame('produit-menager', $result->nextState?->department?->slug);
     }
 
@@ -416,7 +416,7 @@ class AnswerSpokenDialogueHandlerTest extends TestCase
         // Then : rien n'est écrit, on invite à continuer, plus d'état
         $this->assertSame([], $this->creator->created);
         $this->assertSame([], $this->shoppingList->added);
-        $this->assertEquals(new AddSpokenItemResult("D'accord, je ne crée rien. Autre chose ?", keepSessionOpen: true, added: false), $result);
+        $this->assertEquals(new AddSpokenItemResult("D'accord, je ne crée rien.", keepSessionOpen: false, added: false), $result);
     }
 
     public function testRefusingAtAnyQuestionAbandonsPolitely(): void
@@ -426,7 +426,7 @@ class AnswerSpokenDialogueHandlerTest extends TestCase
             $result = $this->answer(AlexaTestRequest::no(), $state);
 
             // Then
-            $this->assertSame("D'accord, je ne crée rien. Autre chose ?", $result->speech, $state->step->value);
+            $this->assertSame("D'accord, je ne crée rien.", $result->speech, $state->step->value);
             $this->assertNull($result->nextState, $state->step->value);
         }
         $this->assertSame([], $this->creator->created);
@@ -463,9 +463,9 @@ class AnswerSpokenDialogueHandlerTest extends TestCase
         $second = $this->answer(AlexaTestRequest::answerDepartment('zébulon', null), $first->nextState);
 
         // Then
-        $this->assertSame(["Je n'ai pas compris. Dans quel rayon ?", 1, 'Dans quel rayon ?'], [$first->speech, $first->nextState?->misses, $first->reprompt]);
+        $this->assertSame(["Je n'ai pas compris. Dans quel rayon ? Dis lesquels pour les entendre.", 1, 'Dans quel rayon ? Dis lesquels pour les entendre.'], [$first->speech, $first->nextState?->misses, $first->reprompt]);
         $this->assertTrue($first->keepSessionOpen);
-        $this->assertEquals(new AddSpokenItemResult("Je n'ai pas compris. On laisse tomber. Autre chose ?", keepSessionOpen: true, added: false), $second);
+        $this->assertEquals(new AddSpokenItemResult("Je n'ai pas compris. On laisse tomber.", keepSessionOpen: false, added: false), $second);
         $this->assertSame([], $this->creator->created);
     }
 
@@ -480,7 +480,7 @@ class AnswerSpokenDialogueHandlerTest extends TestCase
 
         // Then : la première incompréhension de l'étape suivante ne met pas fin au dialogue
         $this->assertSame(0, $unit->nextState?->misses);
-        $this->assertSame(["Je n'ai pas compris. Quelle unité ? Par exemple pièce, kilo ou litre.", 1], [$missedUnit->speech, $missedUnit->nextState?->misses]);
+        $this->assertSame(["Je n'ai pas compris. Quelle unité ? Par exemple pièce, kilo ou litre. Dis lesquelles pour les entendre.", 1], [$missedUnit->speech, $missedUnit->nextState?->misses]);
     }
 
     public function testYesWithSeveralProposalsAsksWhichOneAndCountsAsAMiss(): void
@@ -494,7 +494,7 @@ class AnswerSpokenDialogueHandlerTest extends TestCase
 
         // Then
         $this->assertSame(['Lequel ? persil ou basilic. Ou un nouveau produit ?', 1], [$first->speech, $first->nextState?->misses]);
-        $this->assertSame("Je n'ai pas compris. On laisse tomber. Autre chose ?", $second->speech);
+        $this->assertSame("Je n'ai pas compris. On laisse tomber.", $second->speech);
         $this->assertNull($second->nextState);
         $this->assertSame([], $this->shoppingList->added);
     }
@@ -511,6 +511,158 @@ class AnswerSpokenDialogueHandlerTest extends TestCase
         $this->assertSame('Tu veux dire persil ou basilic ? Ou un nouveau produit ?', $result->speech);
         $this->assertEquals($state, $result->nextState);
         $this->assertTrue($result->keepSessionOpen);
+    }
+
+    public function testWhichOnesAtTheDepartmentReadsEveryDepartmentThenAsksAgainWithoutChangingAnything(): void
+    {
+        // Given : une première réponse incomprise (misses = 1), puis l'utilisateur demande la liste
+        $state = $this->answer(AlexaTestRequest::answerDepartment('zébulon', null), self::choose([])->askingDepartment())->nextState;
+
+        // When
+        $result = $this->answer(AlexaTestRequest::listChoices(), $state);
+
+        // Then : tous les rayons du catalogue, puis la question ; l'état est celui d'avant, les réponses incomprises n'ont pas bougé
+        $this->assertSame('Les rayons : boucherie, fruit et légume, produit ménager. Lequel ?', $result->speech);
+        $this->assertSame('Dans quel rayon ? Dis lesquels pour les entendre.', $result->reprompt);
+        $this->assertEquals($state, $result->nextState);
+        $this->assertSame(1, $result->nextState?->misses);
+        $this->assertTrue($result->keepSessionOpen);
+        $this->assertFalse($result->added);
+        $this->assertSame([], $this->creator->created);
+        $this->assertSame([], $this->shoppingList->added);
+
+        // When : on peut la redemander autant de fois qu'on veut, sans jamais abandonner
+        $again = $this->answer(AlexaTestRequest::listChoices(), $result->nextState);
+        $third = $this->answer(AlexaTestRequest::intent('AMAZON.HelpIntent'), $again->nextState);
+
+        // Then
+        $this->assertSame($result->speech, $again->speech);
+        $this->assertSame($result->speech, $third->speech, "« aide » donne la même liste");
+        $this->assertSame(1, $third->nextState?->misses);
+    }
+
+    public function testWhichOnesAtTheUnitReadsEveryUnitThenAsksAgainWithoutChangingAnything(): void
+    {
+        // Given
+        $state = self::choose([])->askingDepartment()->withDepartment(new DialogueOption('boucherie', 'boucherie'));
+
+        // When
+        $result = $this->answer(AlexaTestRequest::listChoices(), $state);
+
+        // Then
+        $this->assertSame('Les unités : kilo, unité, paquet. Laquelle ?', $result->speech);
+        $this->assertSame('Quelle unité ? Par exemple pièce, kilo ou litre. Dis lesquelles pour les entendre.', $result->reprompt);
+        $this->assertEquals($state, $result->nextState);
+        $this->assertSame(0, $result->nextState?->misses);
+        $this->assertSame($result->speech, $this->answer(AlexaTestRequest::intent('AMAZON.HelpIntent'), $state)->speech);
+    }
+
+    public function testWhichOnesAtTheOtherStepsRepeatsTheQuestion(): void
+    {
+        // Given
+        $confirm = self::choose([])->askingDepartment()->withDepartment(new DialogueOption('boucherie', 'boucherie'))->withUnit(new DialogueOption('kilo', 'kilo'));
+        $choose = self::choose(['persil', 'basilic']);
+
+        // When
+        $onConfirm = $this->answer(AlexaTestRequest::listChoices(), $confirm);
+        $onChoose = $this->answer(AlexaTestRequest::listChoices(), $choose);
+
+        // Then : la question de l'étape, pas de liste, l'état intact
+        $this->assertSame("Je crée ciboulette, boucherie, kilo. C'est bon ?", $onConfirm->speech);
+        $this->assertSame('Tu veux dire persil ou basilic ? Ou un nouveau produit ?', $onChoose->speech);
+        $this->assertEquals($confirm, $onConfirm->nextState);
+        $this->assertEquals($choose, $onChoose->nextState);
+    }
+
+    public function testWhichOnesWithAnEmptyCatalogueJustAsksTheQuestion(): void
+    {
+        // Given : un catalogue vide (ne devrait pas arriver)
+        $empty = new SpokenIngredientCreatorInMemory();
+        $empty->setCatalogues([], []);
+        $handler = new AnswerSpokenDialogueHandler(new SpokenAnswerInterpreter(), $empty, $this->resolver, $this->shoppingList, new AddSpokenItemHandler($this->resolver, $this->shoppingList, new SpokenIngredientNamer()), new SpokenIngredientNamer());
+        $state = self::choose([])->askingDepartment();
+
+        // When
+        $result = $handler(new AnswerSpokenDialogueCommand(self::USER, AlexaRequest::fromDecoded(AlexaTestRequest::listChoices()->inOpenSession()->toArray()), $state));
+
+        // Then
+        $this->assertSame('Dans quel rayon ? Dis lesquels pour les entendre.', $result->speech);
+        $this->assertEquals($state, $result->nextState);
+    }
+
+    public function testACreatedProductRepeatsItsDepartmentAlsoWhenANewListIsStarted(): void
+    {
+        // Given
+        $confirm = self::choose([])->askingDepartment()->withDepartment(new DialogueOption('fruit-et-legume', 'fruit & légume'))->withUnit(new DialogueOption('unite', 'unité'));
+        $this->shoppingList->willReturn(new AddedItem(listCreated: true, previousListSent: true));
+
+        // When
+        $result = $this->answer(AlexaTestRequest::yes(), $confirm);
+
+        // Then
+        $this->assertSame("J'ai créé ciboulette, rayon fruit et légume, et commencé une nouvelle liste. Ta liste précédente est partie au drive.", $result->speech);
+    }
+
+    private static function tie(): SpokenDialogueState
+    {
+        return SpokenDialogueState::choose('des tomates', [
+            new DialogueOption('tomate-fl', 'Tomate', 'fruit-et-legume', 'Fruit & légume'),
+            new DialogueOption('tomate-sg', 'Tomate', 'surgele', 'Surgelé'),
+        ], 'tomate');
+    }
+
+    public function testTellingIngredientsApartByDepartmentAddsThemRemembersThePhraseAndRepeatsTheDepartment(): void
+    {
+        // When : « en surgelé »
+        $result = $this->answer(AlexaTestRequest::answerDepartment('surgelé', 'surgele'), self::tie());
+
+        // Then : l'article est ajouté, la phrase d'ORIGINE est retenue pour lui, le rayon est répété, la séance se ferme
+        $this->assertSame([[self::USER, 'tomate-sg']], $this->shoppingList->added);
+        $this->assertSame([[self::USER, 'des tomates', 'tomate-sg']], $this->resolver->remembered);
+        $this->assertEquals(new AddSpokenItemResult("C'est noté : tomate, surgelé. Je m'en souviendrai.", keepSessionOpen: false, added: true), $result);
+    }
+
+    public function testTheListStartedAndTheSentListAreSaidInsteadOfThePromiseWhenTellingApart(): void
+    {
+        // Given
+        $this->shoppingList->willReturn(new AddedItem(listCreated: true, previousListSent: true));
+
+        // When
+        $result = $this->answer(AlexaTestRequest::chooseOption('le premier', '1'), self::tie());
+
+        // Then : la phrase est retenue quand même
+        $this->assertSame("J'ai commencé une nouvelle liste avec tomate, fruit et légume. Ta liste précédente est partie au drive.", $result->speech);
+        $this->assertSame([[self::USER, 'des tomates', 'tomate-fl']], $this->resolver->remembered);
+    }
+
+    public function testTwoSameDepartmentAnswersAskWhichOneAndTwoMissesGiveUp(): void
+    {
+        // Given : un rayon que les deux propositions partagent
+        $sameDepartment = SpokenDialogueState::choose('des tomates', [
+            new DialogueOption('a', 'Tomate', 'conserve', 'Conserve'),
+            new DialogueOption('b', 'Tomate bio', 'conserve', 'Conserve'),
+        ], 'tomate');
+
+        // When
+        $first = $this->answer(AlexaTestRequest::answerDepartment('conserve', 'conserve'), $sameDepartment);
+        $second = $this->answer(AlexaTestRequest::answerDepartment('conserve', 'conserve'), $first->nextState);
+
+        // Then : on redemande par le nom et le rayon, puis on abandonne ; rien n'est écrit
+        $this->assertSame(['Tu veux dire tomate en conserve ou tomate bio en conserve ?', 1], [$first->speech, $first->nextState?->misses]);
+        $this->assertEquals(new AddSpokenItemResult("Je n'ai pas compris. On laisse tomber.", keepSessionOpen: false, added: false), $second);
+        $this->assertSame([], $this->shoppingList->added);
+        $this->assertSame([], $this->resolver->remembered);
+    }
+
+    public function testRefusingTheDepartmentQuestionAddsNothingAndHasNoNewProductIssue(): void
+    {
+        $refused = $this->answer(AlexaTestRequest::no(), self::tie());
+        $newProduct = $this->answer(AlexaTestRequest::createItem(), self::tie());
+
+        $this->assertEquals(new AddSpokenItemResult("D'accord, je n'ajoute rien.", keepSessionOpen: false, added: false), $refused);
+        $this->assertSame(['Je n\'ai pas compris. Tomate : en fruit et légume ou en surgelé ?', DialogueStep::CHOOSE], [$newProduct->speech, $newProduct->nextState?->step]);
+        $this->assertSame([], $this->creator->created);
+        $this->assertSame([], $this->shoppingList->added);
     }
 
     public function testTheFallbackIsAMiss(): void

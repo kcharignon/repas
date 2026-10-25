@@ -174,6 +174,7 @@ class AlexaDialogueTest extends TestCase
         yield 'un nouveau produit' => [AlexaTestRequest::createItem()];
         yield 'un rayon' => [AlexaTestRequest::answerDepartment('boucherie', 'boucherie')];
         yield 'une unité' => [AlexaTestRequest::answerUnit('kilos', 'kilo')];
+        yield 'lesquels' => [AlexaTestRequest::listChoices()];
     }
 
     #[DataProvider('dialogueAnswersWithoutADialogue')]
@@ -197,6 +198,7 @@ class AlexaDialogueTest extends TestCase
         yield 'un article' => [AlexaTestRequest::addItem('du pain')];
         yield 'un article incompris' => [AlexaTestRequest::addItem(null)];
         yield 'aide' => [AlexaTestRequest::intent('AMAZON.HelpIntent')];
+        yield 'lesquels' => [AlexaTestRequest::listChoices()];
         yield 'repli' => [AlexaTestRequest::intent('AMAZON.FallbackIntent')];
         yield 'intention inconnue' => [AlexaTestRequest::intent('AMAZON.NavigateHomeIntent')];
     }

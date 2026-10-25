@@ -29,7 +29,8 @@ use Repas\Voice\Domain\Model\SpokenDialogueState;
  * | `unit`       | l'unité, de la même façon                                                                                              |
  * | `confirm`    | « oui » = créer ; « non » = on abandonne                                                                                |
  *
- * « Aide » répète la question de l'étape. Le reste est `UNCLEAR` : l'appelant compte l'échec (`SpokenDialogueState::missed`). « Stop » et
+ * « Lesquels ? » (`ListChoicesIntent`) et « aide » (`AMAZON.HelpIntent`) sont la même demande : aux étapes `department` et `unit`, la liste des
+ * rayons ou des unités (`LIST_CHOICES`) ; aux étapes `choose` et `confirm`, la question de l'étape est répétée (`REPEAT`). Le reste est `UNCLEAR` : l'appelant compte l'échec (`SpokenDialogueState::missed`). « Stop » et
  * « annule » ne passent pas ici : `AlexaDialogue` les traite avant, dans tous les états.
  */
 final readonly class SpokenAnswerInterpreter
@@ -58,12 +59,18 @@ final readonly class SpokenAnswerInterpreter
     public function interpret(AlexaRequest $request, SpokenDialogueState $state, array $catalogue = []): SpokenAnswer
     {
         $intent = $request->intent();
-        if ($intent === AlexaIntent::HELP) {
-            return SpokenAnswer::of(SpokenAnswerKind::REPEAT);
+        // « Lesquels ? » et « aide » sont la même demande ; la réponse dépend de l'étape, pas de l'intention
+        if ($intent === AlexaIntent::HELP || $intent === AlexaIntent::LIST_CHOICES) {
+            return SpokenAnswer::of(match ($state->step) {
+                DialogueStep::DEPARTMENT, DialogueStep::UNIT => SpokenAnswerKind::LIST_CHOICES,
+                DialogueStep::CHOOSE, DialogueStep::CONFIRM => SpokenAnswerKind::REPEAT,
+            });
         }
 
         return match ($state->step) {
-            DialogueStep::CHOOSE => $this->interpretChoice($request, $intent, $state->options),
+            DialogueStep::CHOOSE => $state->isTieBreak()
+                ? $this->interpretTie($request, $intent, $state->options)
+                : $this->interpretChoice($request, $intent, $state->options),
             DialogueStep::DEPARTMENT => $this->interpretCatalogue($request, $intent, $request->department, $catalogue, true),
             DialogueStep::UNIT => $this->interpretCatalogue($request, $intent, $request->unit, $catalogue, false),
             DialogueStep::CONFIRM => match ($intent) {
@@ -72,6 +79,74 @@ final readonly class SpokenAnswerInterpreter
                 default => SpokenAnswer::of(SpokenAnswerKind::UNCLEAR),
             },
         };
+    }
+
+    /**
+     * Plusieurs ingrédients de l'utilisateur se valent (`SpokenDialogueState::isTieBreak`) : « lequel ? » se répond par un rang, par le RAYON dit
+     * (`AnswerDepartmentIntent`, ou le texte entendu rapproché des rayons des propositions) ou par le nom en entier. Deux propositions du même
+     * rayon : « laquelle ? ». Il n'y a pas d'issue « un nouveau produit » (le produit existe) : « non » abandonne, « un nouveau produit » n'est pas compris.
+     *
+     * @param list<DialogueOption> $options
+     */
+    private function interpretTie(AlexaRequest $request, ?AlexaIntent $intent, array $options): SpokenAnswer
+    {
+        switch ($intent) {
+            case AlexaIntent::CHOOSE_OPTION:
+                $rank = $this->rankOf($request->rank);
+
+                return $rank !== null && $rank >= 1 && $rank <= count($options)
+                    ? SpokenAnswer::pickOption($options[$rank - 1])
+                    : SpokenAnswer::of(SpokenAnswerKind::UNCLEAR);
+            case AlexaIntent::NO:
+                return SpokenAnswer::of(SpokenAnswerKind::ABANDON);
+            case AlexaIntent::YES:
+                return SpokenAnswer::of(SpokenAnswerKind::WHICH_ONE);
+            case AlexaIntent::CREATE_ITEM:
+                return SpokenAnswer::of(SpokenAnswerKind::UNCLEAR);
+            default:
+                $inDepartment = $this->optionsInTheSaidDepartment($request, $options);
+                if (count($inDepartment) === 1) {
+                    return SpokenAnswer::pickOption($inDepartment[0]);
+                }
+                if (count($inDepartment) > 1) {
+                    return SpokenAnswer::of(SpokenAnswerKind::WHICH_ONE);
+                }
+
+                $option = $this->matchOption($request->heardTexts(), $options);
+                if ($option !== null) {
+                    return SpokenAnswer::pickOption($option);
+                }
+
+                return $intent === AlexaIntent::ADD_ITEM && $request->phrase !== null
+                    ? SpokenAnswer::newRequest($request->phrase)
+                    : SpokenAnswer::of(SpokenAnswerKind::UNCLEAR);
+        }
+    }
+
+    /**
+     * Les propositions du rayon que l'utilisateur vient de dire : l'identifiant de la résolution d'entité (le slug du rayon), à défaut le texte
+     * entendu rapproché des rayons des propositions. Vide si aucun rayon n'est reconnu.
+     *
+     * @param list<DialogueOption> $options
+     *
+     * @return list<DialogueOption>
+     */
+    private function optionsInTheSaidDepartment(AlexaRequest $request, array $options): array
+    {
+        $departments = [];
+        foreach ($options as $option) {
+            if ($option->departmentSlug !== null && $option->departmentName !== null) {
+                $departments[$option->departmentSlug] = new DialogueOption($option->departmentSlug, $option->departmentName);
+            }
+        }
+        $departments = array_values($departments);
+
+        $department = $this->byId($request->department?->id, $departments) ?? $this->matchCatalogue($request->heardTexts(), $departments);
+        if ($department === null) {
+            return [];
+        }
+
+        return array_values(array_filter($options, static fn(DialogueOption $option): bool => $option->departmentSlug === $department->slug));
     }
 
     /**

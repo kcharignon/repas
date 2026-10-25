@@ -60,10 +60,10 @@ class SpokenIngredientResolverAdapterTest extends TestCase
 
     public function testTheConfidenceIsGivenAsItsStringValue(): void
     {
-        // Given : deux noms proches d'habitudes voisines, le classeur n'est pas sûr
+        // Given : deux ingrédients indiscernables (même nom, même rayon), le classeur n'est pas sûr et une question ne les départagerait pas
         $adapter = $this->adapter([
-            new SpokenCandidate('tomate-cerise', 'tomate-cerise', 'tomate cerise', 'fruits et légumes', 2),
-            new SpokenCandidate('tomate-ronde', 'tomate-ronde', 'tomate ronde', 'fruits et légumes', 2),
+            new SpokenCandidate('tomate-a', 'tomate', 'tomate', 'fruits et légumes', 2, 'fruit-et-legume'),
+            new SpokenCandidate('tomate-b', 'tomate', 'tomate', 'fruits et légumes', 2, 'fruit-et-legume'),
         ]);
 
         // When
@@ -71,6 +71,59 @@ class SpokenIngredientResolverAdapterTest extends TestCase
 
         // Then
         $this->assertSame('unsure', $resolved?->confidence);
+    }
+
+    public function testTwoIngredientsOfTheSameNameInTwoDepartmentsAreReturnedToBeToldApart(): void
+    {
+        // Given : « tomate » en fruit et légume et en surgelé, aucune habitude qui tranche
+        $adapter = $this->adapter([
+            new SpokenCandidate('tomate-fl', 'tomate', 'Tomate', 'Fruit & légume', 0, 'fruit-et-legume'),
+            new SpokenCandidate('tomate-sg', 'tomate', 'Tomate', 'Surgelé', 0, 'surgele'),
+            new SpokenCandidate('farine', 'farine', 'Farine', 'Épicerie', 0, 'epicerie'),
+        ]);
+
+        // When
+        $resolution = $adapter->resolveOrSuggest('user-id', 'des tomates');
+
+        // Then : rien n'est choisi, ni proposé comme inconnu : les deux ex æquo, avec leur rayon ; une seule lecture
+        $this->assertNull($resolution->ingredient);
+        $this->assertSame([], $resolution->suggestions);
+        $this->assertEquals([
+            new IngredientSuggestion('tomate-fl', 'Tomate', 'Fruit & légume', 'fruit-et-legume'),
+            new IngredientSuggestion('tomate-sg', 'Tomate', 'Surgelé', 'surgele'),
+        ], $resolution->ties);
+        $this->assertSame(['user-id'], $this->candidatesLoader->calls);
+    }
+
+    public function testTheHabitsStillDecideWithoutAQuestion(): void
+    {
+        // Given : « tomate » acheté 50 fois en fruit et légume, jamais en surgelé
+        $adapter = $this->adapter([
+            new SpokenCandidate('tomate-fl', 'tomate', 'Tomate', 'Fruit & légume', 50, 'fruit-et-legume'),
+            new SpokenCandidate('tomate-sg', 'tomate', 'Tomate', 'Surgelé', 0, 'surgele'),
+        ]);
+
+        // When
+        $resolution = $adapter->resolveOrSuggest('user-id', 'tomate');
+
+        // Then
+        $this->assertSame(['tomate-fl', 'probable'], [$resolution->ingredient?->slug, $resolution->ingredient?->confidence]);
+        $this->assertSame([], $resolution->ties);
+    }
+
+    public function testASingleIngredientOrARememberedChoiceIsNeverAQuestion(): void
+    {
+        // Given : deux « tomate » mais la phrase a déjà été départagée
+        $candidates = [
+            new SpokenCandidate('tomate-fl', 'tomate', 'Tomate', 'Fruit & légume', 0, 'fruit-et-legume'),
+            new SpokenCandidate('tomate-sg', 'tomate', 'Tomate', 'Surgelé', 0, 'surgele'),
+        ];
+        $remembered = $this->adapter($candidates, ['tomate' => 'tomate-sg'])->resolveOrSuggest('user-id', 'tomate');
+        $single = $this->adapter([$candidates[0]])->resolveOrSuggest('user-id', 'tomate');
+
+        // Then
+        $this->assertSame(['tomate-sg', 'sure', []], [$remembered->ingredient?->slug, $remembered->ingredient?->confidence, $remembered->ties]);
+        $this->assertSame(['tomate-fl', 'sure', []], [$single->ingredient?->slug, $single->ingredient?->confidence, $single->ties]);
     }
 
     public function testAnAccountWithoutIngredientGetsNullAndTheMemoryIsNotRead(): void

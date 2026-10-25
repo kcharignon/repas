@@ -62,12 +62,12 @@ final readonly class AlexaDialogue
         return match ($intent) {
             // Un nom compris : à `AddSpokenItem`. Sinon on redemande
             AlexaIntent::ADD_ITEM => $request->phrase === null ? $this->invite() : null,
-            // « Oui » à rien : on redemande ce qu'il veut ajouter ; « non » : la réponse à « Autre chose ? »
+            // « Oui » à rien : on redemande ce qu'il veut ajouter ; « non » : la réponse à rien, on dit au revoir
             AlexaIntent::YES => $this->invite(),
             AlexaIntent::NO => AlexaResponse::say(VoiceReplies::GOODBYE),
             AlexaIntent::HELP => AlexaResponse::ask(VoiceReplies::HELP, VoiceReplies::LAUNCH),
             // Le repli : le repli d'Amazon, une intention qu'il n'a pas déclarée, et les réponses de dialogue (un rang, un nouveau produit, un
-            // rayon, une unité) sans dialogue en cours — séance trop vieille, état perdu. « Stop » et « annule » sont traités plus haut.
+            // rayon, une unité, « lesquels ? » de `ListChoicesIntent`) sans dialogue en cours — séance trop vieille, état perdu. « Stop » et « annule » sont traités plus haut.
             default => AlexaResponse::ask(VoiceReplies::FALLBACK, VoiceReplies::LAUNCH),
         };
     }

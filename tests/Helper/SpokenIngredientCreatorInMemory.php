@@ -39,6 +39,18 @@ final class SpokenIngredientCreatorInMemory implements SpokenIngredientCreator
         ];
     }
 
+    /**
+     * @param list<SpokenChoice> $departments
+     * @param list<SpokenChoice> $units
+     */
+    public function setCatalogues(array $departments, array $units): self
+    {
+        $this->departments = $departments;
+        $this->units = $units;
+
+        return $this;
+    }
+
     public function willFail(Throwable $failure): self
     {
         $this->failure = $failure;

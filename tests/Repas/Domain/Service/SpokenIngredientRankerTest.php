@@ -234,6 +234,81 @@ class SpokenIngredientRankerTest extends TestCase
     }
 
     // ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
+    // Les ex æquo : Alexa demande le rayon au lieu de deviner (ADR 0029 décision 3, amendement du 2026-10-25)
+    // ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
+
+    private static function inDepartment(string $name, string $department, int $uses = 0): SpokenCandidate
+    {
+        $slugged = StringTool::slugify($name);
+        $departmentSlug = StringTool::slugify($department);
+
+        return new SpokenCandidate($slugged . '-' . $departmentSlug, $slugged, $name, $department, $uses, $departmentSlug);
+    }
+
+    public function testTwoIngredientsOfTheSameNameInTwoDepartmentsAreTiedAndCarryTheirDepartment(): void
+    {
+        // Given
+        $candidates = [self::inDepartment('Tomate', 'Surgelé'), self::inDepartment('Tomate', 'Fruit & légume'), self::own('Farine')];
+
+        // When
+        $ranked = $this->ranker->rank('tomate', $candidates);
+        $ties = $this->ranker->ties('tomate', $candidates);
+
+        // Then : le classeur n'est pas sûr, et les deux ex æquo sont rendus dans un ordre déterministe, avec le slug de leur rayon
+        $this->assertSame(Confidence::UNSURE, $ranked?->confidence);
+        $this->assertSame([['tomate-fruit-et-legume', 'fruit-et-legume'], ['tomate-surgele', 'surgele']], array_map(static fn($tie): array => [$tie->slug, $tie->departmentSlug], $ties));
+        $this->assertSame(['Fruit & légume', 'Surgelé'], array_map(static fn($tie): string => $tie->departmentName, $ties));
+        $this->assertEquals($ties, $this->ranker->ties('tomate', array_reverse($candidates)), "l'ordre des candidats n'y change rien");
+    }
+
+    public function testHabitsThatDecideLeaveNoTie(): void
+    {
+        // Given : « tomate » acheté 50 fois en fruit et légume
+        $candidates = [self::inDepartment('Tomate', 'Surgelé'), self::inDepartment('Tomate', 'Fruit & légume', 50)];
+
+        // Then : PROBABLE, sans question
+        $this->assertSame(Confidence::PROBABLE, $this->ranker->rank('tomate', $candidates)?->confidence);
+        $this->assertSame([], $this->ranker->ties('tomate', $candidates));
+    }
+
+    public function testASingleIngredientTheMemoryOrAnEmptyPhraseLeaveNoTie(): void
+    {
+        $both = [self::inDepartment('Tomate', 'Surgelé'), self::inDepartment('Tomate', 'Fruit & légume')];
+
+        $this->assertSame([], $this->ranker->ties('tomate', [$both[0]]));
+        $this->assertSame([], $this->ranker->ties('tomate', $both, 'tomate-surgele'), 'la mémoire de phrase passe avant tout');
+        $this->assertSame([], $this->ranker->ties('des', $both));
+        $this->assertSame([], $this->ranker->ties('tomate', []));
+        $this->assertSame([], $this->ranker->ties('xyz', $both));
+    }
+
+    public function testTiesAreAtMostThreeAndCiteTheNameWhenTheNamesDiffer(): void
+    {
+        // Given : quatre noms voisins de même rayon
+        $candidates = [self::inDepartment('Farine de blé', 'Épicerie'), self::inDepartment('Farine de riz', 'Épicerie'), self::inDepartment('Farine de maïs', 'Épicerie'), self::inDepartment('Farine de seigle', 'Épicerie')];
+
+        // When
+        $ties = $this->ranker->ties('farine', $candidates);
+
+        // Then : trois au plus, des noms différents (on les départage par le nom)
+        $this->assertCount(3, $ties);
+        $this->assertCount(3, array_unique(array_map(static fn($tie): string => $tie->name, $ties)));
+    }
+
+    public function testTwoTiedIngredientsThatSaySameNameAndDepartmentAreNotAQuestion(): void
+    {
+        // Given : deux « tomate » dans le même rayon, une question ne les départagerait pas
+        $candidates = [
+            new SpokenCandidate('a', 'tomate', 'Tomate', 'Fruit & légume', 0, 'fruit-et-legume'),
+            new SpokenCandidate('b', 'tomate', 'Tomate', 'Fruit & légume', 0, 'fruit-et-legume'),
+        ];
+
+        // Then : le classeur garde son premier choix incertain
+        $this->assertSame(Confidence::UNSURE, $this->ranker->rank('tomate', $candidates)?->confidence);
+        $this->assertSame([], $this->ranker->ties('tomate', $candidates));
+    }
+
+    // ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
     // Les propositions : « De quoi tu parles ? » (ADR 0029 décision 11)
     // ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
 

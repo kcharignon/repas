@@ -21,6 +21,8 @@ enum SpokenAnswerKind
     case ABANDON;
     /** Il demande de l'aide : on répète la question. */
     case REPEAT;
+    /** Il demande les choix possibles (« lesquels ? », ou « aide ») à l'étape du rayon ou de l'unité : on les lit, puis on repose la question. */
+    case LIST_CHOICES;
     /** « Oui » alors qu'il y a plusieurs propositions : on redemande laquelle. */
     case WHICH_ONE;
     /** Rien de compréhensible pour cette étape. */

@@ -19,7 +19,7 @@ final readonly class AddSpokenItemResult
         public bool $added,
         /** Le dialogue d'un produit inconnu en cours : écrit dans `sessionAttributes`, rendu par Alexa à la requête suivante. `null` : aucun. */
         public ?SpokenDialogueState $nextState = null,
-        /** Ce qu'Alexa répète après un silence : la question en cours. `null` : « Que veux-tu ajouter ? ». */
+        /** Ce qu'Alexa répète après un silence : la question en cours. `null` : rien (une séance ouverte sans question, jamais de relance). */
         public ?string $reprompt = null,
     ) {
     }

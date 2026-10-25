@@ -24,7 +24,7 @@ use Symfony\Component\Messenger\Attribute\AsMessageHandler;
  *    modifiée). Une seule écriture.
  *
  * Un choix sûr se dit court (« C'est noté : pain. »), un choix probable ou incertain dit aussi le rayon, pour que l'erreur se voie. En séance
- * ouverte la réponse invite à continuer.
+ * ouverte la réponse reste une simple affirmation : la séance reste ouverte, sans question ni relance (« Autre chose ? » n'existe plus).
  *
  * Quand l'utilisateur répond à des propositions en nommant autre chose (`AddSpokenItemCommand::rememberAs`, posé seulement si des
  * propositions ont été faites), la phrase d'origine n'est retenue pour cet ingrédient (« C'est noté : pomme de terre. Je m'en
@@ -54,6 +54,11 @@ readonly class AddSpokenItemHandler
     public function __invoke(AddSpokenItemCommand $command): AddSpokenItemResult
     {
         $resolution = $this->ingredientResolver->resolveOrSuggest($command->userId, $command->phrase);
+        // Plusieurs ingrédients de l'utilisateur se valent (même nom dans deux rayons) : rien n'est deviné, on demande le rayon
+        if ($resolution->ties !== []) {
+            return $this->tied($command, $resolution->ties);
+        }
+
         $ingredient = $resolution->ingredient;
         if ($ingredient === null) {
             return $this->unknown($command, $resolution->suggestions);
@@ -76,16 +81,33 @@ readonly class AddSpokenItemHandler
     }
 
     /**
-     * « De quoi tu parles ? » : rien d'écrit, une question, la séance reste ouverte.
+     * Des ingrédients qui se valent : « Tomate : en fruit et légume ou en surgelé ? ». Rien n'est écrit, la séance reste ouverte, et la réponse
+     * ajoutera l'article ET retiendra la phrase (`AnswerSpokenDialogueHandler`). Sans « un nouveau produit » : le produit existe.
+     *
+     * @param list<IngredientSuggestion> $ties
      */
+    private function tied(AddSpokenItemCommand $command, array $ties): AddSpokenItemResult
+    {
+        $options = array_map(
+            static fn(IngredientSuggestion $tie): DialogueOption => new DialogueOption($tie->slug, $tie->name, $tie->departmentSlug, $tie->departmentName),
+            $ties,
+        );
+        $state = SpokenDialogueState::choose($command->phrase, $options, $this->namer->nameFrom($command->phrase) ?? $options[0]->name);
+        $question = VoiceReplies::question($state);
+
+        return new AddSpokenItemResult($question, keepSessionOpen: true, added: false, nextState: $state, reprompt: $question);
+    }
+
     /**
+     * « De quoi tu parles ? » : rien d'écrit, une question, la séance reste ouverte.
+     *
      * @param list<IngredientSuggestion> $suggestions
      */
     private function unknown(AddSpokenItemCommand $command, array $suggestions): AddSpokenItemResult
     {
         $name = $this->namer->nameFrom($command->phrase);
         if ($name === null) {
-            return new AddSpokenItemResult(VoiceReplies::NOT_UNDERSTOOD . ' ' . VoiceReplies::LAUNCH, keepSessionOpen: true, added: false);
+            return new AddSpokenItemResult(VoiceReplies::NOT_UNDERSTOOD . ' ' . VoiceReplies::LAUNCH, keepSessionOpen: true, added: false, reprompt: VoiceReplies::LAUNCH);
         }
 
         $options = array_map(
@@ -105,8 +127,7 @@ readonly class AddSpokenItemHandler
 
     private function result(string $speech, AddSpokenItemCommand $command, bool $added): AddSpokenItemResult
     {
-        return $command->sessionIsOpen
-            ? new AddSpokenItemResult(VoiceReplies::withInvitation($speech), keepSessionOpen: true, added: $added)
-            : new AddSpokenItemResult($speech, keepSessionOpen: false, added: $added);
+        // Une affirmation, jamais de relance : dans une séance déjà ouverte elle reste ouverte sans rien demander, en appel direct elle se ferme
+        return new AddSpokenItemResult($speech, keepSessionOpen: $command->sessionIsOpen, added: $added);
     }
 }

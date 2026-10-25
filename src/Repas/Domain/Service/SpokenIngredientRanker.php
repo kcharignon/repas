@@ -24,6 +24,8 @@ use Repas\Shared\Domain\Tool\SearchRelevance;
  *    *tomates pelées* est acheté bien plus souvent, car le bonus d'habitude (jusqu'à 0,1) peut dépasser l'écart de pertinence (0,95 contre 1).
  *    L'habitude ne départage donc que des noms de même rang.
  * 5. Confiance : voir `confidenceOf()`. Ordre déterministe : score, puis nom, puis slug.
+ * 6. `UNSURE` : le premier et le suivant se touchent. `ties()` rend alors les ex æquo (trois au plus) : Alexa DEMANDE le rayon (ou le nom)
+ *    au lieu de deviner (ADR 0029 décision 3, amendement du 2026-10-25). Les habitudes continuent de trancher quand elles le peuvent.
  *
  * Ce n'est pas `IngredientNameMatcher::compare` : lui dit « c'est le même ingrédient » avec certitude, en se trompant vers le doublon.
  * Ici l'utilisateur veut le plus probable, et l'erreur se répare d'un geste dans l'application.
@@ -71,17 +73,100 @@ final readonly class SpokenIngredientRanker
      */
     public function rank(string $phrase, array $candidates, ?string $rememberedSlug = null): ?RankedIngredient
     {
-        $search = self::normalize($phrase);
-        if ($search === '' || $candidates === []) {
+        if (self::normalize($phrase) === '') {
             return null;
         }
 
-        if ($rememberedSlug !== null) {
-            foreach ($candidates as $candidate) {
-                if ($candidate->slug === $rememberedSlug) {
-                    return self::ranked($candidate, self::REMEMBERED_SCORE, Confidence::SURE);
-                }
+        $remembered = $this->remembered($candidates, $rememberedSlug);
+        if ($remembered !== null) {
+            return $remembered;
+        }
+
+        $pool = $this->pool($phrase, $candidates);
+        if ($pool === []) {
+            return null;
+        }
+
+        $best = $pool[0];
+        $confidence = self::confidenceOf($best['exact'], $best['score'], $pool[1]['score'] ?? null);
+
+        return self::ranked($best['candidate'], $best['score'], $confidence);
+    }
+
+    /**
+     * Les ex æquo à départager par une question, quand `rank()` n'est pas sûr (`UNSURE`) : le meilleur et ceux dont le score est à moins de
+     * `CLEAR_MARGIN` du sien (trois au plus, le meilleur d'abord, ordre déterministe). L'habitude a déjà tranché si elle le pouvait
+     * (`PROBABLE`, aucun ex æquo) et la mémoire de phrase passe avant tout (aucun ex æquo). Vide aussi quand deux ex æquo ne se distinguent
+     * ni par le nom ni par le rayon : une question ne les départagerait pas, l'appelant garde le premier de `rank()`.
+     *
+     * @param list<SpokenCandidate> $candidates les ingrédients de l'utilisateur
+     *
+     * @return list<RankedIngredient> deux à `MAX_SUGGESTIONS` ingrédients, ou aucun
+     */
+    public function ties(string $phrase, array $candidates, ?string $rememberedSlug = null): array
+    {
+        if (self::normalize($phrase) === '' || $this->remembered($candidates, $rememberedSlug) !== null) {
+            return [];
+        }
+
+        $pool = $this->pool($phrase, $candidates);
+        if (count($pool) < 2) {
+            return [];
+        }
+        $best = $pool[0];
+        if (self::confidenceOf($best['exact'], $best['score'], $pool[1]['score']) !== Confidence::UNSURE) {
+            return [];
+        }
+
+        $tied = [];
+        foreach ($pool as $entry) {
+            if ($best['score'] - $entry['score'] >= self::CLEAR_MARGIN - self::EPSILON) {
+                break;
             }
+            $tied[] = $entry;
+        }
+        $tied = array_slice($tied, 0, self::MAX_SUGGESTIONS);
+
+        // Une question départage par le nom ET le rayon : deux ex æquo qui disent la même chose ne se départagent pas
+        $labels = array_map(static fn(array $entry): string => $entry['candidate']->sluggedName . '|' . $entry['candidate']->departmentName, $tied);
+        if (count(array_unique($labels)) !== count($labels)) {
+            return [];
+        }
+
+        return array_map(static fn(array $entry): RankedIngredient => self::ranked($entry['candidate'], $entry['score'], Confidence::UNSURE), $tied);
+    }
+
+    /**
+     * L'ingrédient que l'utilisateur a déjà choisi pour la phrase, s'il est parmi les candidats.
+     *
+     * @param list<SpokenCandidate> $candidates
+     */
+    private function remembered(array $candidates, ?string $rememberedSlug): ?RankedIngredient
+    {
+        if ($rememberedSlug === null) {
+            return null;
+        }
+        foreach ($candidates as $candidate) {
+            if ($candidate->slug === $rememberedSlug) {
+                return self::ranked($candidate, self::REMEMBERED_SCORE, Confidence::SURE);
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Les candidats que le classeur retient sans demander, du meilleur au moins bon (les noms identiques à la phrase seuls, s'il y en a).
+     *
+     * @param list<SpokenCandidate> $candidates
+     *
+     * @return list<array{candidate: SpokenCandidate, exact: bool, score: float}>
+     */
+    private function pool(string $phrase, array $candidates): array
+    {
+        $search = self::normalize($phrase);
+        if ($search === '' || $candidates === []) {
+            return [];
         }
 
         $scored = [];
@@ -98,7 +183,7 @@ final readonly class SpokenIngredientRanker
             ];
         }
         if ($scored === []) {
-            return null;
+            return [];
         }
 
         // Les noms identiques à la phrase seuls, s'il y en a ; sinon tous les noms assez proches
@@ -109,10 +194,7 @@ final readonly class SpokenIngredientRanker
         usort($pool, static fn(array $first, array $second): int => [$second['score'], $first['candidate']->sluggedName, $first['candidate']->slug]
             <=> [$first['score'], $second['candidate']->sluggedName, $second['candidate']->slug]);
 
-        $best = $pool[0];
-        $confidence = self::confidenceOf($best['exact'], $best['score'], $pool[1]['score'] ?? null);
-
-        return self::ranked($best['candidate'], $best['score'], $confidence);
+        return $pool;
     }
 
     /**
@@ -240,6 +322,6 @@ final readonly class SpokenIngredientRanker
 
     private static function ranked(SpokenCandidate $candidate, float $score, Confidence $confidence): RankedIngredient
     {
-        return new RankedIngredient($candidate->slug, $candidate->name, $candidate->departmentName, $score, $confidence);
+        return new RankedIngredient($candidate->slug, $candidate->name, $candidate->departmentName, $score, $confidence, $candidate->departmentSlug);
     }
 }

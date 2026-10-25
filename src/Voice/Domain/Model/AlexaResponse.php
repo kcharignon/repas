@@ -9,8 +9,10 @@ use stdClass;
  * carte qui invite à lier le compte. Toujours du texte brut (`PlainText`) : jamais de SSML, jamais de contenu venu de la requête hors
  * de ce que `VoiceReplies` cite.
  *
- * Quatre formes seulement :
+ * Cinq formes seulement :
  * - `say()` : une phrase, la séance se ferme ;
+ * - `stayOpen()` : une phrase, la séance reste ouverte SANS `reprompt` ni question : un ajout dit dans une séance déjà ouverte (« ouvre mes
+ *   courses », puis « du pain ») répond une simple affirmation et laisse l'utilisateur enchaîner, sans jamais rien lui demander (2026-10-25) ;
  * - `ask()` : une phrase, la séance reste ouverte, et si l'utilisateur ne dit rien Alexa répète `$reprompt`. Une réponse qui laisse la
  *   séance ouverte écrit TOUJOURS `sessionAttributes` (ADR 0029 décision 11) : l'état du dialogue en cours, ou `{}` quand il n'y en a plus.
  *   Alexa ne rend à la requête suivante que ce qu'on lui a donné : sans la clé, l'état serait oublié ;
@@ -33,6 +35,11 @@ final readonly class AlexaResponse
         return new self($speech, true);
     }
 
+    public static function stayOpen(string $speech): self
+    {
+        return new self($speech, false);
+    }
+
     /**
      * @param ?SpokenDialogueState $state le dialogue en cours, rendu par Alexa à la requête suivante ; `null` : aucun
      */
@@ -52,11 +59,16 @@ final readonly class AlexaResponse
     }
 
     /**
-     * Le même texte, avec la séance ouverte ou fermée selon `$keepOpen` (la séance ouverte redemande `$reprompt` après un silence).
+     * Le même texte, avec la séance ouverte ou fermée selon `$keepOpen` (la séance ouverte redemande `$reprompt` après un silence ; `null` :
+     * la séance reste ouverte sans rien redemander, voir `stayOpen()`).
      */
-    public static function reply(string $speech, bool $keepOpen, string $reprompt, ?SpokenDialogueState $state = null): self
+    public static function reply(string $speech, bool $keepOpen, ?string $reprompt, ?SpokenDialogueState $state = null): self
     {
-        return $keepOpen ? self::ask($speech, $reprompt, $state) : self::say($speech);
+        if (!$keepOpen) {
+            return self::say($speech);
+        }
+
+        return $reprompt === null ? self::stayOpen($speech) : self::ask($speech, $reprompt, $state);
     }
 
     /**

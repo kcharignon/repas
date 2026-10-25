@@ -50,9 +50,9 @@ class SpokenIngredientCandidatesPostgreSQLLoaderTest extends DatabaseTestCase
         // When
         $candidates = $this->loader->forUser($user->getId());
 
-        // Then : le nom, le nom normalisé et le rayon (nom affichable) de l'ingrédient du seul utilisateur
+        // Then : le nom, le nom normalisé et le rayon (nom affichable et slug) de l'ingrédient du seul utilisateur
         $this->assertEquals(
-            [new SpokenCandidate($own->getSlug(), $own->getSluggedName(), 'tomates pelées', new DepartmentBuilder()->isCereal()->build()->getName(), 0)],
+            [new SpokenCandidate($own->getSlug(), $own->getSluggedName(), 'tomates pelées', new DepartmentBuilder()->isCereal()->build()->getName(), 0, new DepartmentBuilder()->isCereal()->build()->getSlug())],
             $candidates,
         );
         $this->assertSame([], $this->loader->forUser($this->savedUser()->getId()));

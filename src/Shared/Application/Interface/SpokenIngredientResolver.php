@@ -17,7 +17,9 @@ interface SpokenIngredientResolver
     /**
      * Charge les ingrédients de l'utilisateur UNE fois, puis : la mémoire de phrase passe avant tout classement (si l'utilisateur a déjà
      * choisi un ingrédient pour cette phrase, c'est lui) ; sinon le classeur choisit s'il est sûr ; sinon les trois ingrédients les plus
-     * proches sont proposés.
+     * proches sont proposés. Quand le classeur hésite entre des ingrédients qui se valent (même nom dans deux rayons, habitudes qui ne
+     * tranchent pas), il ne devine pas : `SpokenResolution::ties` les rend (deux ou trois, chacun avec son rayon) pour que l'utilisateur
+     * choisisse.
      *
      * @param string $phrase la phrase reconnue (« des tomates », « du pain de mie »), telle quelle
      *
