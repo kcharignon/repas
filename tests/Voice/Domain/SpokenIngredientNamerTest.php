@@ -91,6 +91,40 @@ class SpokenIngredientNamerTest extends TestCase
         yield 'l\'unité n\'est retirée qu\'en tête' => ['croquettes en paquets de dix', 'croquettes en paquets de dix', null];
     }
 
+    #[DataProvider('phrasesWithAQuantity')]
+    public function testALeadingNumberIsRemovedFromThePhraseAndSaidAsTheQuantity(string $phrase, string $expectedPhrase, ?int $expectedQuantity): void
+    {
+        // When
+        $result = new SpokenIngredientNamer()->withoutLeadingQuantity($phrase);
+
+        // Then
+        $this->assertSame(['phrase' => $expectedPhrase, 'quantity' => $expectedQuantity], $result);
+    }
+
+    /**
+     * @return iterable<string, array{string, string, ?int}>
+     */
+    public static function phrasesWithAQuantity(): iterable
+    {
+        yield '« 10 croquettes » (essai réel)' => ['10 croquettes', 'croquettes', 10];
+        yield 'un chiffre' => ['2 croquettes', 'croquettes', 2];
+        yield 'avec une unité derrière' => ['2 paquets de croquettes', 'paquets de croquettes', 2];
+        yield 'en lettres' => ['deux croquettes', 'croquettes', 2];
+        yield 'en lettres, majuscules et espaces' => ["  Trois   Paquets de croquettes", 'paquets de croquettes', 3];
+        yield 'vingt' => ['vingt tomates', 'tomates', 20];
+        yield '99' => ['99 tomates', 'tomates', 99];
+        yield 'un nom qui contient un nombre plus loin' => ['sauce 4 fromages', 'sauce 4 fromages', null];
+        yield 'sans nombre' => ['du pain', 'du pain', null];
+        yield '« un » reste un article' => ['un pain', 'un pain', null];
+        yield '« une » reste un article' => ['une baguette', 'une baguette', null];
+        yield 'zéro n\'est pas une quantité' => ['0 croquette', '0 croquette', null];
+        yield 'trois chiffres sont refusés' => ['100 croquettes', '100 croquettes', null];
+        yield 'un nombre seul est un nom' => ['10', '10', null];
+        yield 'un nombre en lettres seul est un nom' => ['dix', 'dix', null];
+        yield 'un nom qui commence comme un nombre' => ['sixtine', 'sixtine', null];
+        yield 'vide' => ['', '', null];
+    }
+
     public function testTheNameOfAProductIsStillTheWholeNameEvenWhenItStartsWithAUnit(): void
     {
         // « pot de miel » nommé à la création est un nom : seul `withoutLeadingUnit` retire l'unité, pas `nameFrom`

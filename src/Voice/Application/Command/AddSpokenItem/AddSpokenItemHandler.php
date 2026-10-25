@@ -58,23 +58,33 @@ readonly class AddSpokenItemHandler
 
     public function __invoke(AddSpokenItemCommand $command): AddSpokenItemResult
     {
+        // Le nombre qu'Alexa a laissé en tête du créneau `item` (« 10 croquettes ») : retiré de la phrase et retenu comme quantité dite, tant que le
+        // créneau `quantity` n'a rien donné (1 par défaut ; une quantité dite par le créneau gagne toujours)
+        $quantity = $command->quantity;
+        $spoken = $command->phrase;
+        $counted = $this->namer->withoutLeadingQuantity($spoken);
+        if ($quantity === 1 && $counted['quantity'] !== null) {
+            $quantity = $counted['quantity'];
+            $spoken = $counted['phrase'];
+        }
+
         // L'unité qu'Alexa a laissée en tête du créneau `item` (« paquets de croquettes ») : retirée de la phrase, retenue comme unité dite
-        $split = $this->namer->withoutLeadingUnit($command->phrase);
+        $split = $this->namer->withoutLeadingUnit($spoken);
         $phrase = $split['phrase'];
         $unitSlug = $command->unitSlug ?? $split['unitSlug'];
 
         $resolution = $this->ingredientResolver->resolveOrSuggest($command->userId, $phrase);
         // Plusieurs ingrédients de l'utilisateur se valent (même nom dans deux rayons) : rien n'est deviné, on demande le rayon
         if ($resolution->ties !== []) {
-            return $this->tied($phrase, $command->quantity, $unitSlug, $resolution->ties);
+            return $this->tied($phrase, $quantity, $unitSlug, $resolution->ties);
         }
 
         $ingredient = $resolution->ingredient;
         if ($ingredient === null) {
-            return $this->unknown($phrase, $command->quantity, $unitSlug, $resolution->suggestions);
+            return $this->unknown($phrase, $quantity, $unitSlug, $resolution->suggestions);
         }
 
-        $added = $this->shoppingList->addItem($command->userId, $ingredient->slug, $command->quantity, $unitSlug);
+        $added = $this->shoppingList->addItem($command->userId, $ingredient->slug, $quantity, $unitSlug);
         $line = AddedLineFactory::from($added, unitCited: $unitSlug !== null);
 
         if ($command->rememberAs !== null && $ingredient->confidence !== ResolvedIngredient::UNSURE) {

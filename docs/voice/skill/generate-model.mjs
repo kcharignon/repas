@@ -153,10 +153,12 @@ const ADD_VERBS = ['ajoute', 'ajouter', 'mets', 'mettre', 'rajoute', 'rajouter',
 
 function addItemSamples() {
   const samples = BARE_FORMS ? ['{item}'] : [];
-  // Les réponses brèves à « Que veux-tu ajouter ? »
-  samples.push('du {item}', 'de la {item}', 'des {item}', 'un {item}', 'une {item}');
+  // Les réponses brèves à « Que veux-tu ajouter ? ». Jamais « un » ni « une » comme simple mot de liaison : ce sont des nombres, et en en faisant de
+  // la décoration on apprend à Amazon que « deux » et « trois » en sont aussi (essai réel du 2026-10-25 : le créneau `quantity` restait vide).
+  // « un pain » se lit par le créneau `quantity` (1), ce qui revient au même pour le webhook.
+  samples.push('du {item}', 'de la {item}', 'des {item}');
   for (const verb of ADD_VERBS) {
-    for (const article of ['', 'du', 'de la', 'des', 'un', 'une']) {
+    for (const article of ['', 'du', 'de la', 'des']) {
       const phrase = [verb, article, '{item}'].filter(Boolean).join(' ');
       samples.push(phrase, `${phrase} à la liste`);
     }

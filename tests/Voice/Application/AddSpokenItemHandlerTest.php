@@ -232,6 +232,56 @@ class AddSpokenItemHandlerTest extends TestCase
         $this->assertSame([[1, 'paquet']], $this->shoppingList->addedWith);
     }
 
+    public function testANumberLeftInTheItemSlotIsRemovedFromThePhraseAndUsedAsTheSaidQuantity(): void
+    {
+        // Given : Amazon a mis « 10 croquettes » dans le créneau `item`, `quantity` vide (essai réel du 2026-10-25)
+        $this->resolver->willResolve('croquettes', new ResolvedIngredient('croquette', 'Croquette', 'Animal', ResolvedIngredient::SURE));
+
+        // When
+        ($this->handler)(new AddSpokenItemCommand('user-1', '10 croquettes', sessionIsOpen: false));
+
+        // Then : l'ingrédient cherché est « croquettes », la quantité dite 10, aucune unité
+        $this->assertSame([['user-1', 'croquettes']], $this->resolver->asked);
+        $this->assertSame([[10, null]], $this->shoppingList->addedWith);
+    }
+
+    public function testANumberAndAUnitLeftInTheItemSlotAreBothUsed(): void
+    {
+        // Given
+        $this->resolver->willResolve('croquettes', new ResolvedIngredient('croquette', 'Croquette', 'Animal', ResolvedIngredient::SURE));
+
+        // When
+        ($this->handler)(new AddSpokenItemCommand('user-1', 'deux paquets de croquettes', sessionIsOpen: false));
+
+        // Then
+        $this->assertSame([['user-1', 'croquettes']], $this->resolver->asked);
+        $this->assertSame([[2, 'paquet']], $this->shoppingList->addedWith);
+    }
+
+    public function testTheQuantitySlotWinsOverANumberLeftInTheItemSlot(): void
+    {
+        // Given
+        $this->resolver->willResolve('3 croquettes', new ResolvedIngredient('croquette', 'Croquette', 'Animal', ResolvedIngredient::SURE));
+
+        // When : `quantity` dit 4, le créneau `item` garde un « 3 » : la phrase reste telle quelle
+        ($this->handler)(new AddSpokenItemCommand('user-1', '3 croquettes', sessionIsOpen: false, quantity: 4));
+
+        // Then
+        $this->assertSame([['user-1', '3 croquettes']], $this->resolver->asked);
+        $this->assertSame([[4, null]], $this->shoppingList->addedWith);
+    }
+
+    public function testAnUnknownProductKeepsTheNumberLeftInTheItemSlotAsTheQuantityOfTheDialogue(): void
+    {
+        // When
+        $result = ($this->handler)(new AddSpokenItemCommand('user-1', '3 ciboulettes', sessionIsOpen: false));
+
+        // Then : le nom à créer est sans le nombre, la quantité part dans l'état du dialogue
+        $this->assertSame([['user-1', 'ciboulettes']], $this->resolver->asked);
+        $this->assertSame(3, $result->nextState?->quantity);
+        $this->assertSame('ciboulettes', $result->nextState->phrase);
+    }
+
     public function testTheUnitSlotWinsOverAUnitLeftInTheItemSlot(): void
     {
         // Given
