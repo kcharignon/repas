@@ -43,7 +43,7 @@ Suivi vivant du chantier « Alexa, demande à *mes courses* d'ajouter du pain »
 
 - [x] [VOX-303](tickets/VOX-303-produit-inconnu-propositions-et-creation.md) back · L · Produit inconnu : trois propositions, mémoire de phrase (`spoken_phrase_choice`), création guidée (rayon, unité, confirmation), état du dialogue dans la séance · dépend de : 204, 205
 - [ ] [VOX-301](tickets/VOX-301-corriger-un-ajout-vocal.md) back puis front · M · Origine « voix » des lignes, correction « Pas le bon ? » depuis l'application (la mémoire de phrase existe, VOX-303) · dépend de : 204
-- [ ] [VOX-302](tickets/VOX-302-boite-a-trier-et-quantites.md) back puis front · M · Facultatif : produits introuvables mis de côté, quantité dite · dépend de : 301
+- [ ] [VOX-302](tickets/VOX-302-boite-a-trier-et-quantites.md) back puis front · M · Facultatif : produits introuvables mis de côté (la quantité dite est faite, VOX-303 point 11) · dépend de : 301
 
 ## M4 — Front web
 

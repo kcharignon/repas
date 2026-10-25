@@ -38,6 +38,8 @@ Décision du propriétaire du 2026-10-25, qui **remplace** le défaut D3 (« ne 
 
 10. **Ingrédients qui se valent : on demande le rayon** (ajouté le 2026-10-25) : voir l'ADR 0029 décision 11. `SpokenIngredientRanker::ties`, `SpokenResolution::tied`, `DialogueOption` avec rayon, `SpokenDialogueState::isTieBreak`, `SpokenAnswerInterpreter::interpretTie`, `VoiceReplies::tieQuestion` / `rememberedIn` / `DECLINED_TIE`.
 
+11. **Quantité et unité dites** (ajouté le 2026-10-25, décision du propriétaire : ADR 0029 décision 5 et D6 amendées ; reprend le point 2 de [VOX-302](VOX-302-boite-a-trier-et-quantites.md)) : `AddItemIntent` gagne les créneaux `quantity` (`AMAZON.NUMBER`) et `unit` (`UNIT`) et 59 phrases d'exemple (`{quantity} {item}`, `ajoute {quantity} {unit} de {item}`, `{quantity} {unit} d' {item}`…) ; `AlexaRequest::quantity` (1 à 99) et `unitSlug()`, `SpokenIngredientNamer::withoutLeadingUnit` (`SpokenUnits`) ; `VoiceShoppingList::addItem(userId, slug, quantity, unitSlug)` et `AddedItem` (total, unité, `lineExisted`, `unitSubstituted`) ; le handler `AddSpokenIngredient` utilise l'unité dite si l'ingrédient la connaît, la convertit dans celle d'une ligne existante, sinon la met de côté et le dit ; la quantité et l'unité voyagent dans l'état du dialogue. **Ligne déjà présente** : « C'est ajouté, tu en as maintenant X dans ta liste. » remplace « C'est noté » (`VoiceReplies::TOTAL_ADDED`). Budgets : +1 requête (le nom de l'unité de la ligne) sur les ajouts vocaux, scénario `ajouter-ingredient-par-la-voix-unite-convertie` (17). Phrases de `ListChoicesIntent` élargies à 56 (« lequel », « rappelle moi les rayons qui existent »…, `DocsVoiceSkillTest` : aucune phrase d'exemple partagée entre deux intentions). Unité « botte » ajoutée aux fixtures et au modèle (elle existe déjà en production, créée par l'application).
+
 ## Critères d'acceptation
 
 - « ajoute du sirop de menthe » (qui n'existe pas) → propose *sirop fruit rouge* ; « oui » → ajouté, « Je m'en souviendrai » ; plus tard « du sirop de menthe » donne directement *sirop fruit rouge*.
@@ -46,6 +48,7 @@ Décision du propriétaire du 2026-10-25, qui **remplace** le défaut D3 (« ne 
 - « ajoute des tomates » avec deux « tomate » (fruit et légume, surgelé) → « Tomate : en fruit et légume ou en surgelé ? » → « en surgelé » → « C'est noté : tomate, surgelé. Je m'en souviendrai. » ; la fois suivante, directement le surgelé. Habitudes qui tranchent : aucune question.
 - « ajoute de la ciboulette » (rien de proche) → « Je le crée ? » → rayon → unité → confirmation → l'ingrédient existe pour l'utilisateur, avec une seule unité, et il est dans sa liste ; « non » à la confirmation n'écrit rien.
 - Un état forgé (slug d'un ingrédient d'un autre) n'ajoute rien, ne mémorise rien, et la réponse reste polie.
+- « ajoute trois croquettes » → « C'est noté : 3 croquettes. », la ligne vaut 3 ; « ajoute deux kilos de tomates » (la tomate ne connaît pas le kilo) → « C'est noté : 2 tomates. » ; « ajoute deux kilos de farine » (achetée au kilo) → « C'est noté : 2 kilos de farine. » ; « du pain » deux fois → « C'est ajouté, tu en as maintenant 2 dans ta liste. » ; « ajoute zéro croquette » → « Combien ? … », rien n'est écrit.
 - `make test` et `make quality` verts.
 
 ## Tests exigés (livrés)
