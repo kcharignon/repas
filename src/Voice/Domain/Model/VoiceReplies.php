@@ -48,6 +48,10 @@ final class VoiceReplies
     public const string ASK_WHICH_SHORT = 'Tu veux dire %s ? Ou un nouveau produit ?';
     /** « Oui » alors qu'il y a plusieurs propositions. */
     public const string ASK_WHICH_AGAIN = 'Lequel ? %s. Ou un nouveau produit ?';
+    /** Plusieurs ingrédients de l'utilisateur ont le même nom, dans des rayons différents : on demande le rayon (jamais « un nouveau produit »). */
+    public const string ASK_TIE_SAME_NAME = '%s : %s ?';
+    /** Plusieurs ingrédients se valent par des noms voisins : on cite le nom ET le rayon. */
+    public const string ASK_TIE_NAMES = 'Tu veux dire %s ?';
     /** Le produit dit est inconnu et rien ne lui ressemble. */
     public const string ASK_CREATE = 'Je ne connais pas %s. Je le crée ?';
     public const string ASK_DEPARTMENT = 'Dans quel rayon ? Dis lesquels pour les entendre.';
@@ -62,9 +66,14 @@ final class VoiceReplies
     public const string GIVE_UP = "Je n'ai pas compris. On laisse tomber.";
     /** L'utilisateur refuse de créer le produit. */
     public const string DECLINED = "D'accord, je ne crée rien.";
+    /** Il refuse de départager des ingrédients qui se valent : rien n'est ajouté. */
+    public const string DECLINED_TIE = "D'accord, je n'ajoute rien.";
     /** Il a choisi une proposition : l'article est ajouté et la phrase retenue. */
     public const string REMEMBERED = "C'est noté : %s. Je m'en souviendrai.";
     public const string LIST_STARTED_REMEMBERED = "J'ai commencé une nouvelle liste avec %s. Je m'en souviendrai.";
+    /** Il a départagé des ingrédients de même nom par leur rayon : on répète le rayon, et la phrase est retenue. */
+    public const string REMEMBERED_IN = "C'est noté : %s, %s. Je m'en souviendrai.";
+    public const string LIST_STARTED_REMEMBERED_IN = "J'ai commencé une nouvelle liste avec %s, %s. Je m'en souviendrai.";
     /** Le produit est créé et ajouté. */
     public const string CREATED = "C'est créé et noté : %s, rayon %s.";
     public const string CREATED_LIST_STARTED = "J'ai créé %s, rayon %s, et commencé une nouvelle liste.";
@@ -87,6 +96,18 @@ final class VoiceReplies
         $last = array_pop($spoken);
 
         return $spoken === [] ? (string) $last : implode(', ', $spoken) . ' ou ' . $last;
+    }
+
+    /**
+     * « a », « a ou b », « a, b ou c » pour des morceaux de phrase déjà prêts à être dits.
+     *
+     * @param list<string> $parts
+     */
+    private static function joinSpoken(array $parts): string
+    {
+        $last = array_pop($parts);
+
+        return $parts === [] ? (string) $last : implode(', ', $parts) . ' ou ' . $last;
     }
 
     /**
@@ -140,9 +161,11 @@ final class VoiceReplies
     public static function question(SpokenDialogueState $state): string
     {
         return match ($state->step) {
-            DialogueStep::CHOOSE => $state->options === []
-                ? sprintf(self::ASK_CREATE, self::speakable($state->name))
-                : sprintf(self::ASK_WHICH_SHORT, self::joinNames(self::namesOf($state->options))),
+            DialogueStep::CHOOSE => match (true) {
+                $state->isTieBreak() => self::tieQuestion($state->options),
+                $state->options === [] => sprintf(self::ASK_CREATE, self::speakable($state->name)),
+                default => sprintf(self::ASK_WHICH_SHORT, self::joinNames(self::namesOf($state->options))),
+            },
             DialogueStep::DEPARTMENT => self::ASK_DEPARTMENT,
             DialogueStep::UNIT => self::ASK_UNIT,
             DialogueStep::CONFIRM => sprintf(
@@ -185,7 +208,51 @@ final class VoiceReplies
     /** « Oui », mais plusieurs propositions : laquelle ? */
     public static function whichAgain(SpokenDialogueState $state): string
     {
+        if ($state->isTieBreak()) {
+            return self::tieQuestion($state->options);
+        }
+
         return sprintf(self::ASK_WHICH_AGAIN, self::joinNames(self::namesOf($state->options)));
+    }
+
+    /**
+     * « Tomate : en fruit et légume ou en surgelé ? » quand les noms sont les mêmes ; « Tu veux dire tomate en surgelé ou tomates pelées en
+     * conserve ? » quand ils diffèrent. Les noms de rayons sont dits par `speakable()`.
+     *
+     * @param list<DialogueOption> $options
+     */
+    public static function tieQuestion(array $options): string
+    {
+        $names = array_unique(array_map(static fn(DialogueOption $option): string => self::speakable($option->name), $options));
+
+        if (count($names) === 1) {
+            $departments = array_map(static fn(DialogueOption $option): string => 'en ' . self::speakable($option->departmentName ?? ''), $options);
+            $name = (string) reset($names);
+
+            return sprintf(self::ASK_TIE_SAME_NAME, mb_strtoupper(mb_substr($name, 0, 1)) . mb_substr($name, 1), self::joinSpoken($departments));
+        }
+
+        $labels = array_map(static fn(DialogueOption $option): string => self::speakable($option->name) . ' en ' . self::speakable($option->departmentName ?? ''), $options);
+
+        return sprintf(self::ASK_TIE_NAMES, self::joinSpoken($labels));
+    }
+
+    /**
+     * Il a départagé par le rayon : l'article est ajouté, la phrase retenue, et Alexa répète le rayon qu'il a choisi. Une liste envoyée au drive
+     * remplacée se dit à la place de la promesse, comme pour `remembered()`.
+     */
+    public static function rememberedIn(string $ingredientName, string $departmentName, bool $listCreated, bool $previousListSent): string
+    {
+        $ingredient = self::speakable($ingredientName);
+        $department = self::speakable($departmentName);
+
+        if (!$listCreated) {
+            return sprintf(self::REMEMBERED_IN, $ingredient, $department);
+        }
+
+        return $previousListSent
+            ? sprintf(self::LIST_STARTED_GUESSED, $ingredient, $department) . ' ' . self::PREVIOUS_LIST_SENT
+            : sprintf(self::LIST_STARTED_REMEMBERED_IN, $ingredient, $department);
     }
 
     /**

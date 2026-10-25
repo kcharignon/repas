@@ -145,6 +145,36 @@ class VoiceRepliesTest extends TestCase
         $this->assertNull(VoiceReplies::choices($department, [' ', "\n"]));
     }
 
+    public function testTheQuestionToTellIngredientsApartCitesTheDepartmentAndTheNameWhenTheyDiffer(): void
+    {
+        $same = [new DialogueOption('a', 'Tomate', 'fruit-et-legume', 'Fruit & légume'), new DialogueOption('b', 'Tomate', 'surgele', 'Surgelé')];
+        $three = [...$same, new DialogueOption('c', 'tomate', 'conserve', 'Conserve')];
+        $names = [new DialogueOption('a', 'Tomate', 'surgele', 'Surgelé'), new DialogueOption('b', 'Tomates pelées', 'conserve', 'Conserve')];
+
+        $this->assertSame('Tomate : en fruit et légume ou en surgelé ?', VoiceReplies::tieQuestion($same));
+        $this->assertSame('Tomate : en fruit et légume, en surgelé ou en conserve ?', VoiceReplies::tieQuestion($three));
+        $this->assertSame('Tu veux dire tomate en surgelé ou tomates pelées en conserve ?', VoiceReplies::tieQuestion($names));
+        $state = SpokenDialogueState::choose('des tomates', $same, 'tomate');
+        $this->assertSame('Tomate : en fruit et légume ou en surgelé ?', VoiceReplies::question($state));
+        $this->assertSame("Je n'ai pas compris. Tomate : en fruit et légume ou en surgelé ?", VoiceReplies::notUnderstood($state));
+        $this->assertSame(VoiceReplies::question($state), VoiceReplies::whichAgain($state));
+        foreach ([VoiceReplies::tieQuestion($same), VoiceReplies::tieQuestion($three), VoiceReplies::tieQuestion($names), VoiceReplies::notUnderstood($state)] as $reply) {
+            $this->assertLessThanOrEqual(2, count($this->sentences($reply)), $reply);
+            $this->assertStringNotContainsString('nouveau produit', $reply);
+            foreach ($this->sentences($reply) as $sentence) {
+                $this->assertLessThanOrEqual(15, count(preg_split('/\s+/u', $sentence)), $sentence);
+            }
+        }
+    }
+
+    public function testChoosingByDepartmentRepeatsTheDepartmentAndPromisesToRemember(): void
+    {
+        $this->assertSame("C'est noté : tomate, fruit et légume. Je m'en souviendrai.", VoiceReplies::rememberedIn('Tomate', 'Fruit & légume', false, false));
+        $this->assertSame("J'ai commencé une nouvelle liste avec tomate, fruit et légume. Je m'en souviendrai.", VoiceReplies::rememberedIn('Tomate', 'Fruit & légume', true, false));
+        $this->assertSame("J'ai commencé une nouvelle liste avec tomate, fruit et légume. Ta liste précédente est partie au drive.", VoiceReplies::rememberedIn('Tomate', 'Fruit & légume', true, true));
+        $this->assertStringNotContainsString('drive', VoiceReplies::rememberedIn('Tomate', 'Fruit & légume', false, true));
+    }
+
     public function testTheQuestionsOfTheDepartmentAndTheUnitTellThatTheyCanBeListed(): void
     {
         $this->assertStringContainsString('Dis lesquels pour les entendre.', VoiceReplies::ASK_DEPARTMENT);

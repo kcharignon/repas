@@ -18,6 +18,8 @@ final readonly class SpokenCandidate
         public string $name,
         public string $departmentName,
         public int $uses12m = 0,
+        /** Le slug du rayon : l'identifiant que le modèle d'interaction donne au rayon dit (`AnswerDepartmentIntent`). */
+        public string $departmentSlug = '',
     ) {
     }
 }

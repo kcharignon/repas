@@ -36,11 +36,14 @@ Décision du propriétaire du 2026-10-25, qui **remplace** le défaut D3 (« ne 
 8. **Le rayon répété à la création** : « C'est créé et noté : ciboulette, rayon fruit et légume. » / « J'ai créé ciboulette, rayon fruit et légume, et commencé une nouvelle liste. ».
 9. **Plus jamais de relance** : « Autre chose ? » supprimé ; les fins de dialogue ferment la séance, un ajout en séance déjà ouverte la laisse ouverte sans `reprompt`.
 
+10. **Ingrédients qui se valent : on demande le rayon** (ajouté le 2026-10-25) : voir l'ADR 0029 décision 11. `SpokenIngredientRanker::ties`, `SpokenResolution::tied`, `DialogueOption` avec rayon, `SpokenDialogueState::isTieBreak`, `SpokenAnswerInterpreter::interpretTie`, `VoiceReplies::tieQuestion` / `rememberedIn` / `DECLINED_TIE`.
+
 ## Critères d'acceptation
 
 - « ajoute du sirop de menthe » (qui n'existe pas) → propose *sirop fruit rouge* ; « oui » → ajouté, « Je m'en souviendrai » ; plus tard « du sirop de menthe » donne directement *sirop fruit rouge*.
 - « ajoute des patates » (absentes) → propose *pâte*, *pâte brisée*, *pâte feuilletée* ; « pomme de terre » → ajoutée, « Je m'en souviendrai » ; plus tard « des patates » donne directement *pomme de terre*. Une réponse inconnue (« xyz ») rouvre la question pour « xyz » et ne retient rien.
 - « ajoute de la ciboulette » (rien de proche) → « Je le crée ? » ; « non, du pain » → « C'est noté : pain. » (ajout ordinaire) ; plus tard « de la ciboulette » pose de nouveau la question : rien n'a été retenu. Même chose pour une correction `UNSURE` après des propositions.
+- « ajoute des tomates » avec deux « tomate » (fruit et légume, surgelé) → « Tomate : en fruit et légume ou en surgelé ? » → « en surgelé » → « C'est noté : tomate, surgelé. Je m'en souviendrai. » ; la fois suivante, directement le surgelé. Habitudes qui tranchent : aucune question.
 - « ajoute de la ciboulette » (rien de proche) → « Je le crée ? » → rayon → unité → confirmation → l'ingrédient existe pour l'utilisateur, avec une seule unité, et il est dans sa liste ; « non » à la confirmation n'écrit rien.
 - Un état forgé (slug d'un ingrédient d'un autre) n'ajoute rien, ne mémorise rien, et la réponse reste polie.
 - `make test` et `make quality` verts.

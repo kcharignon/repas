@@ -12,6 +12,8 @@ final readonly class IngredientSuggestion
         public string $slug,
         public string $name,
         public string $departmentName,
+        /** Le slug du rayon, pour reconnaître le rayon dit à voix haute quand deux ingrédients de même nom se départagent. */
+        public string $departmentSlug = '',
     ) {
     }
 }

@@ -62,6 +62,54 @@ class SpokenDialogueStateTest extends TestCase
         $this->assertNull($proposed->askingDepartment()->withDepartment(new DialogueOption('boucherie', 'boucherie'))->withUnit(new DialogueOption('kilo', 'kilo'))->rememberablePhrase());
     }
 
+    private static function tie(): SpokenDialogueState
+    {
+        return SpokenDialogueState::choose('des tomates', [
+            new DialogueOption('tomate-fl', 'tomate', 'fruit-et-legume', 'fruit & légume'),
+            new DialogueOption('tomate-sg', 'tomate', 'surgele', 'surgelé'),
+        ], 'tomate');
+    }
+
+    public function testIngredientsToBeToldApartCarryTheirDepartmentThroughTheSessionAttributes(): void
+    {
+        // Given
+        $tie = self::tie();
+
+        // When
+        $readBack = SpokenDialogueState::fromArray(json_decode(json_encode($tie->toArray(), JSON_THROW_ON_ERROR), true, flags: JSON_THROW_ON_ERROR));
+
+        // Then : le rayon voyage, c'est un état « à départager », la phrase d'origine ne se retient pas comme une correction
+        $this->assertEquals($tie, $readBack);
+        $this->assertSame('surgele', $tie->toArray()['options'][1]['departmentSlug']);
+        $this->assertTrue($readBack->isTieBreak());
+        $this->assertNull($readBack->rememberablePhrase());
+    }
+
+    public function testOrdinaryProposalsAreNotATieBreakAndKeepTheirShape(): void
+    {
+        $proposals = SpokenDialogueState::choose('de la ciboulette', [self::persil(), new DialogueOption('basilic-u', 'basilic')], 'ciboulette');
+
+        $this->assertFalse($proposals->isTieBreak());
+        $this->assertSame(['slug' => 'persil-u', 'name' => 'persil'], $proposals->toArray()['options'][0]);
+        $this->assertSame('de la ciboulette', $proposals->rememberablePhrase());
+        $this->assertFalse(SpokenDialogueState::choose('x', [], 'x')->isTieBreak());
+        $this->assertFalse(SpokenDialogueState::choose('x', [new DialogueOption('a', 'a', 's', 'S')], 'x')->isTieBreak(), 'il en faut au moins deux');
+    }
+
+    public function testAnOddDepartmentOnAProposalIsReadAsNoDepartment(): void
+    {
+        $data = self::tie()->toArray();
+        $data['options'][0]['departmentName'] = str_repeat('x', 101);
+        $data['options'][1]['departmentSlug'] = "bad\u{0007}";
+
+        $read = SpokenDialogueState::fromArray($data);
+
+        $this->assertNotNull($read);
+        $this->assertFalse($read->isTieBreak());
+        $this->assertSame(['slug' => 'tomate-fl', 'name' => 'tomate'], $read->toArray()['options'][0]);
+        $this->assertSame(['slug' => 'tomate-sg', 'name' => 'tomate'], $read->toArray()['options'][1]);
+    }
+
     public function testChoosingKeepsAtMostThreeOptions(): void
     {
         // When

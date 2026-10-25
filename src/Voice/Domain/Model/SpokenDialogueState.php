@@ -6,7 +6,7 @@ namespace Repas\Voice\Domain\Model;
  * Où en est le dialogue d'un produit inconnu (ADR 0029 décision 11, VOX-303) : ce que la réponse précédente a mis dans `sessionAttributes`
  * et qu'Alexa nous renvoie à la requête suivante. Immuable : chaque étape produit un nouvel état.
  *
- * Étapes (`DialogueStep`) : `choose` (les propositions, ou « Je le crée ? » sans proposition), `department`, `unit`, `confirm`. L'état garde
+ * Étapes (`DialogueStep`) : `choose` (les propositions, « Je le crée ? » sans proposition, ou — ingrédients à départager, `isTieBreak()` — deux ou trois ingrédients avec leur rayon), `department`, `unit`, `confirm`. L'état garde
  * la phrase entendue, les propositions, le nom du produit à créer, le rayon et l'unité déjà choisis, et `misses` : le nombre de fois de suite
  * où la réponse n'a pas été comprise DANS CETTE ÉTAPE (il repart à zéro quand l'étape change ; à `MAX_MISSES` le dialogue est abandonné).
  *
@@ -79,7 +79,26 @@ final readonly class SpokenDialogueState
      */
     public function rememberablePhrase(): ?string
     {
-        return $this->step === DialogueStep::CHOOSE && $this->options !== [] ? $this->phrase : null;
+        return $this->step === DialogueStep::CHOOSE && $this->options !== [] && !$this->isTieBreak() ? $this->phrase : null;
+    }
+
+    /**
+     * Plusieurs ingrédients de l'utilisateur se valent pour la phrase (« tomate » en fruit et légume et en surgelé) : la question est
+     * « lequel ? » par le rayon, SANS l'issue « un nouveau produit » (le produit existe), et un autre article dit à la place n'est pas une
+     * correction. Chaque proposition porte alors son rayon. Un état forgé qui prétend l'être n'y gagne rien : les slugs sont vérifiés.
+     */
+    public function isTieBreak(): bool
+    {
+        if ($this->step !== DialogueStep::CHOOSE || count($this->options) < 2) {
+            return false;
+        }
+        foreach ($this->options as $option) {
+            if (!$option->hasDepartment()) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /** Une réponse de plus qui n'a pas été comprise dans la même étape. */
@@ -177,7 +196,12 @@ final readonly class SpokenDialogueState
             if ($option === null) {
                 return null;
             }
-            $options[] = $option;
+            // Le rayon de la proposition est facultatif ; la paire doit être valide en entier, sinon la proposition n'en a pas
+            $departmentSlug = self::text($item['departmentSlug'] ?? null, self::MAX_SLUG_LENGTH);
+            $departmentName = self::text($item['departmentName'] ?? null, self::MAX_NAME_LENGTH);
+            $options[] = $departmentSlug !== null && $departmentName !== null
+                ? new DialogueOption($option->slug, $option->name, $departmentSlug, $departmentName)
+                : $option;
         }
 
         return $options;

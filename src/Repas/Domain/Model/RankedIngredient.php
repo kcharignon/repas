@@ -14,6 +14,7 @@ final readonly class RankedIngredient
         public string $departmentName,
         public float $score,
         public Confidence $confidence,
+        public string $departmentSlug = '',
     ) {
     }
 }

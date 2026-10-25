@@ -72,7 +72,7 @@ readonly class AnswerSpokenDialogueHandler
             SpokenAnswerKind::PICK_DEPARTMENT => $this->ask($state->withDepartment($answer->option ?? throw new \LogicException('PICK_DEPARTMENT sans rayon.'))),
             SpokenAnswerKind::PICK_UNIT => $this->ask($state->withUnit($answer->option ?? throw new \LogicException('PICK_UNIT sans unité.'))),
             SpokenAnswerKind::CONFIRM => $this->create($command),
-            SpokenAnswerKind::ABANDON => $this->finish(VoiceReplies::DECLINED),
+            SpokenAnswerKind::ABANDON => $this->finish($state->isTieBreak() ? VoiceReplies::DECLINED_TIE : VoiceReplies::DECLINED),
             SpokenAnswerKind::REPEAT => $this->ask($state),
             SpokenAnswerKind::WHICH_ONE => $this->miss($state, VoiceReplies::whichAgain($state)),
             SpokenAnswerKind::UNCLEAR => $this->miss($state, VoiceReplies::notUnderstood($state)),
@@ -101,6 +101,11 @@ readonly class AnswerSpokenDialogueHandler
 
         $added = $this->shoppingList->addItem($command->userId, $option->slug);
         $this->ingredientResolver->remember($command->userId, $command->state->phrase, $option->slug);
+
+        // Des ingrédients à départager par leur rayon : on répète le rayon choisi (« C'est noté : tomate, surgelé. Je m'en souviendrai. »)
+        if ($command->state->isTieBreak()) {
+            return $this->finish(VoiceReplies::rememberedIn($option->name, $option->departmentName ?? '', $added->listCreated, $added->previousListSent), added: true);
+        }
 
         return $this->finish(VoiceReplies::remembered($option->name, $added->listCreated, $added->previousListSent), added: true);
     }

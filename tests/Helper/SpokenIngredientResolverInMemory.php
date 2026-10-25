@@ -21,6 +21,9 @@ final class SpokenIngredientResolverInMemory implements SpokenIngredientResolver
     /** @var array<string, list<IngredientSuggestion>> */
     private array $suggestions = [];
 
+    /** @var array<string, list<IngredientSuggestion>> */
+    private array $ties = [];
+
     private ?Throwable $rememberFailure = null;
 
     /** @var list<array{string, string}> les appels à `resolveOrSuggest` `[userId, phrase]`, dans l'ordre */
@@ -46,6 +49,16 @@ final class SpokenIngredientResolverInMemory implements SpokenIngredientResolver
         return $this;
     }
 
+    /**
+     * @param list<IngredientSuggestion> $ties des ingrédients qui se valent pour cette phrase (le rayon les départage)
+     */
+    public function willTie(string $phrase, array $ties): self
+    {
+        $this->ties[$phrase] = $ties;
+
+        return $this;
+    }
+
     public function willFailToRemember(Throwable $failure): self
     {
         $this->rememberFailure = $failure;
@@ -56,6 +69,10 @@ final class SpokenIngredientResolverInMemory implements SpokenIngredientResolver
     public function resolveOrSuggest(string $userId, string $phrase): SpokenResolution
     {
         $this->asked[] = [$userId, $phrase];
+
+        if (isset($this->ties[$phrase])) {
+            return SpokenResolution::tied($this->ties[$phrase]);
+        }
 
         return isset($this->answers[$phrase]) ? SpokenResolution::found($this->answers[$phrase]) : SpokenResolution::unknown($this->suggestions[$phrase] ?? []);
     }

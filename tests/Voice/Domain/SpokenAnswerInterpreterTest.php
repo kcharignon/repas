@@ -174,6 +174,62 @@ class SpokenAnswerInterpreterTest extends TestCase
     }
 
     // ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
+    // Étape « choose » avec des ingrédients à départager par leur rayon
+    // ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
+
+    private static function tie(bool $sameDepartment = false): SpokenDialogueState
+    {
+        return SpokenDialogueState::choose('des tomates', [
+            new DialogueOption('tomate-fl', 'tomate', 'fruit-et-legume', 'fruit & légume'),
+            new DialogueOption('tomate-sg', 'tomate', $sameDepartment ? 'fruit-et-legume' : 'surgele', $sameDepartment ? 'fruit & légume' : 'surgelé'),
+            new DialogueOption('tomate-pelee', 'tomates pelées', 'conserve', 'conserve'),
+        ], 'tomate');
+    }
+
+    /**
+     * @return iterable<string, array{AlexaTestRequest, SpokenAnswerKind, ?string}>
+     */
+    public static function tieCases(): iterable
+    {
+        yield 'le rayon par la résolution' => [AlexaTestRequest::answerDepartment('surgelé', 'surgele'), SpokenAnswerKind::PICK_OPTION, 'tomate-sg'];
+        yield 'le rayon par la résolution (fruit et légume)' => [AlexaTestRequest::answerDepartment('fruits et légumes', 'fruit-et-legume'), SpokenAnswerKind::PICK_OPTION, 'tomate-fl'];
+        yield 'le rayon par le texte seul' => [AlexaTestRequest::answerDepartment('les surgelés', null), SpokenAnswerKind::PICK_OPTION, 'tomate-sg'];
+        yield 'le rayon dit comme un article' => [AlexaTestRequest::addItem('conserve'), SpokenAnswerKind::PICK_OPTION, 'tomate-pelee'];
+        yield 'un rayon qui n\'est pas dans les propositions' => [AlexaTestRequest::answerDepartment('boucherie', 'boucherie'), SpokenAnswerKind::UNCLEAR, null];
+        yield 'le rang' => [AlexaTestRequest::chooseOption('le deuxième', '2'), SpokenAnswerKind::PICK_OPTION, 'tomate-sg'];
+        yield 'rang hors propositions' => [AlexaTestRequest::chooseOption('quatre', '4'), SpokenAnswerKind::UNCLEAR, null];
+        yield 'le nom en entier (tomates pelées)' => [AlexaTestRequest::addItem('tomates pelées'), SpokenAnswerKind::PICK_OPTION, 'tomate-pelee'];
+        yield '« tomate » seul ne départage pas' => [AlexaTestRequest::addItem('tomate'), SpokenAnswerKind::NEW_REQUEST, null];
+        yield '« oui » : lequel ?' => [AlexaTestRequest::yes(), SpokenAnswerKind::WHICH_ONE, null];
+        yield '« non » abandonne' => [AlexaTestRequest::no(), SpokenAnswerKind::ABANDON, null];
+        yield 'pas de « nouveau produit »' => [AlexaTestRequest::createItem(), SpokenAnswerKind::UNCLEAR, null];
+        yield 'un autre article' => [AlexaTestRequest::addItem('du lait'), SpokenAnswerKind::NEW_REQUEST, null];
+        yield 'aide : on répète la question' => [AlexaTestRequest::intent('AMAZON.HelpIntent'), SpokenAnswerKind::REPEAT, null];
+        yield '« lesquels » : on répète la question' => [AlexaTestRequest::listChoices(), SpokenAnswerKind::REPEAT, null];
+        yield 'repli' => [AlexaTestRequest::intent('AMAZON.FallbackIntent'), SpokenAnswerKind::UNCLEAR, null];
+    }
+
+    #[DataProvider('tieCases')]
+    public function testAnswerToTheQuestionThatTellsIngredientsApart(AlexaTestRequest $request, SpokenAnswerKind $kind, ?string $slug): void
+    {
+        $answer = $this->interpreter->interpret(AlexaRequest::fromDecoded($request->toArray()), self::tie());
+
+        $this->assertSame([$kind, $slug], [$answer->kind, $answer->option?->slug]);
+    }
+
+    public function testTwoProposalsOfTheSameDepartmentAskWhichOne(): void
+    {
+        $answer = $this->interpreter->interpret(AlexaRequest::fromDecoded(AlexaTestRequest::answerDepartment('fruits et légumes', 'fruit-et-legume')->toArray()), self::tie(sameDepartment: true));
+
+        $this->assertSame([SpokenAnswerKind::WHICH_ONE, null], [$answer->kind, $answer->option?->slug]);
+    }
+
+    public function testASaidNewArticleIsNeverTakenForACorrection(): void
+    {
+        $this->assertNull(self::tie()->rememberablePhrase());
+    }
+
+    // ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
     // Étape « department »
     // ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
 

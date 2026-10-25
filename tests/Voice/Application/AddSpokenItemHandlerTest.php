@@ -243,6 +243,29 @@ class AddSpokenItemHandlerTest extends TestCase
         $this->assertEquals(new AddSpokenItemResult("C'est noté : pain.", keepSessionOpen: true, added: true), $found);
     }
 
+    public function testIngredientsThatTieAreNotGuessedButAskedByDepartment(): void
+    {
+        // Given : « tomate » en fruit et légume et en surgelé
+        $this->resolver->willTie('des tomates', [
+            new IngredientSuggestion('tomate-fl', 'Tomate', 'Fruit & légume', 'fruit-et-legume'),
+            new IngredientSuggestion('tomate-sg', 'Tomate', 'Surgelé', 'surgele'),
+        ]);
+
+        // When
+        $result = ($this->handler)(new AddSpokenItemCommand('user-1', 'des tomates', sessionIsOpen: false));
+
+        // Then : rien n'est ajouté ni retenu, la question du rayon (sans « nouveau produit »), la séance reste ouverte, l'état porte les rayons
+        $this->assertSame([], $this->shoppingList->added);
+        $this->assertSame([], $this->resolver->remembered);
+        $this->assertSame('Tomate : en fruit et légume ou en surgelé ?', $result->speech);
+        $this->assertTrue($result->keepSessionOpen);
+        $this->assertFalse($result->added);
+        $this->assertSame($result->speech, $result->reprompt);
+        $this->assertTrue($result->nextState->isTieBreak());
+        $this->assertSame(['tomate-fl', 'surgele'], [$result->nextState->options[0]->slug, $result->nextState->options[1]->departmentSlug]);
+        $this->assertSame('des tomates', $result->nextState->phrase);
+    }
+
     public function testADirectCallClosesTheSessionAndDoesNotAskForMore(): void
     {
         // Given
