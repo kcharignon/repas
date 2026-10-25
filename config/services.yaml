@@ -51,6 +51,16 @@ services:
         alias: Repas\Repas\Infrastructure\Voice\SpokenIngredientResolverAdapter
         public: true
 
+    # Vérificateur des requêtes d'Alexa (ADR 0029 décision 7, VOX-203) : OpenSSL, la chaîne d'Amazon téléchargée puis gardée 24 h.
+    # Aucune racine n'est injectée en production : le magasin du système. L'identifiant du skill vient de `ALEXA_SKILL_ID`.
+    Repas\Voice\Domain\Interface\AlexaRequestVerifier:
+        alias: Repas\Voice\Infrastructure\Security\OpenSslAlexaRequestVerifier
+        public: true
+
+    Repas\Voice\Domain\Interface\CertificateChainFetcher:
+        alias: Repas\Voice\Infrastructure\Security\HttpCertificateChainFetcher
+        public: true
+
     Repas\User\Domain\Service\UserChecker: ~
     
 
