@@ -37,6 +37,7 @@ use Repas\Repas\Application\Command\PlannedMeal\PlannedMealCommand;
 use Repas\Repas\Application\Command\RememberSpokenPhrase\RememberSpokenPhraseCommand;
 use Repas\Repas\Application\Command\RemoveIngredient\RemoveIngredientCommand;
 use Repas\Repas\Application\Command\RemoveIngredientToShoppingList\RemoveIngredientToShoppingListCommand;
+use Repas\Repas\Application\Command\RemoveSpokenIngredient\RemoveSpokenIngredientCommand;
 use Repas\Repas\Application\Command\RemoveMealFromPlan\removeMealFromPlanCommand;
 use Repas\Repas\Application\Command\RemoveRecipe\RemoveRecipeCommand;
 use Repas\Repas\Application\Command\RemoveShoppingList\RemoveShoppingListCommand;
@@ -96,6 +97,7 @@ use Repas\Voice\Application\Command\ExchangeAuthorizationCode\ExchangeAuthorizat
 use Repas\Voice\Application\Command\IssueAuthorizationCode\IssueAuthorizationCodeCommand;
 use Repas\Voice\Application\Command\RecordVoiceLinkUse\RecordVoiceLinkUseCommand;
 use Repas\Voice\Application\Command\RefreshAccessGrant\RefreshAccessGrantCommand;
+use Repas\Voice\Application\Command\RemoveSpokenItem\RemoveSpokenItemCommand;
 use Repas\Voice\Application\Command\RevokeVoiceLink\RevokeVoiceLinkCommand;
 use Repas\Voice\Domain\Model\AlexaRequest;
 use Repas\Voice\Domain\Model\DialogueOption;
@@ -212,6 +214,33 @@ return [
         $t->savedShoppingList($owner, $t->typicalRecipes($owner), static fn(ShoppingListBuilder $b) => $b->addIngredient($pasta));
 
         return new AddSpokenIngredientCommand($owner->getId(), $pasta->getSlug(), UuidGenerator::new(), 2, 'kilo');
+    },
+    // Retrait dit à la voix (ADR 0029 décision 12) : la ligne du lait, seule dans la liste active avec les recettes, perd sa quantité et disparaît
+    'retirer-ingredient-par-la-voix' => static function (WriteBudgetTestCase $t): object {
+        $owner = $t->savedUser();
+        $milk = new IngredientBuilder()->isMilk()->withCreator($owner)->build();
+        $t->persister->saveIngredient($milk);
+        $t->savedShoppingList($owner, $t->typicalRecipes($owner), static fn(ShoppingListBuilder $b) => $b->addIngredient($milk));
+
+        return new RemoveSpokenIngredientCommand($owner->getId(), $milk->getSlug());
+    },
+    // Sans liste active : une seule lecture, aucune écriture, aucune liste créée
+    'retirer-ingredient-par-la-voix-sans-liste' => static function (WriteBudgetTestCase $t): object {
+        $owner = $t->savedUser();
+        $milk = new IngredientBuilder()->isMilk()->withCreator($owner)->build();
+        $t->persister->saveIngredient($milk);
+
+        return new RemoveSpokenIngredientCommand($owner->getId(), $milk->getSlug());
+    },
+    // Unité dite (« un kilo de pâtes ») alors que la ligne est au gramme : l'ingrédient est lu, la conversion calculée, la ligne diminuée
+    'retirer-ingredient-par-la-voix-unite-convertie' => static function (WriteBudgetTestCase $t): object {
+        $owner = $t->savedUser();
+        $pasta = new IngredientBuilder()->isPasta()->withCreator($owner)->build();
+        $t->persister->saveIngredient($pasta);
+        $t->persister->saveConversion(new ConversionBuilder()->isKiloToGramme()->build());
+        $t->savedShoppingList($owner, $t->typicalRecipes($owner), static fn(ShoppingListBuilder $b) => $b->addIngredient($pasta));
+
+        return new RemoveSpokenIngredientCommand($owner->getId(), $pasta->getSlug(), 1, 'kilo');
     },
     'retirer-ingredient-liste' => static function (WriteBudgetTestCase $t): object {
         $owner = $t->savedUser();
@@ -742,6 +771,31 @@ return [
         $t->persister->saveIngredient(new IngredientBuilder()->isBread()->withCreator($owner)->build());
 
         return new AddSpokenItemCommand($owner->getId(), 'xyz', true);
+    },
+    // Retrait dit à Alexa (ADR 0029 décision 12) : « enlève du pain », de bout en bout (lecture de la liste active et des ingrédients, choix de
+    // l'ingrédient parmi ceux de la liste, retrait de la ligne)
+    'retirer-article-dit-a-alexa' => static function (WriteBudgetTestCase $t): object {
+        $owner = $t->savedUser();
+        $bread = new IngredientBuilder()->isBread()->withCreator($owner)->build();
+        $t->persister->saveIngredient($bread);
+        $t->savedShoppingList($owner, $t->typicalRecipes($owner), static fn(ShoppingListBuilder $b) => $b->addIngredient($bread));
+
+        return new RemoveSpokenItemCommand($owner->getId(), 'du pain', true);
+    },
+    // Sans liste active : seule la lecture de la liste, ni les ingrédients ni aucune écriture
+    'retirer-article-dit-a-alexa-sans-liste' => static function (WriteBudgetTestCase $t): object {
+        $owner = $t->savedUser();
+        $t->persister->saveIngredient(new IngredientBuilder()->isBread()->withCreator($owner)->build());
+
+        return new RemoveSpokenItemCommand($owner->getId(), 'du pain', false);
+    },
+    // Introuvable : seules les lectures, aucune écriture
+    'retirer-article-dit-a-alexa-introuvable' => static function (WriteBudgetTestCase $t): object {
+        $owner = $t->savedUser();
+        $t->savedShoppingList($owner, $t->typicalRecipes($owner));
+        $t->persister->saveIngredient(new IngredientBuilder()->isBread()->withCreator($owner)->build());
+
+        return new RemoveSpokenItemCommand($owner->getId(), 'xyz', true);
     },
     // Mémoire de phrase (ADR 0029 décision 11, VOX-303) : l'utilisateur a choisi une proposition, la phrase est retenue pour lui. Le slug est
     // traduit par les alias (une lecture), l'ingrédient vérifié (une lecture), la ligne écrite (un upsert).

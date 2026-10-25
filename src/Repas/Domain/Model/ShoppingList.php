@@ -279,6 +279,52 @@ final class ShoppingList implements ModelInterface
         }
     }
 
+    /**
+     * Retire `$quantity` de la ligne de cet ingrédient (le retrait dit à voix haute, ADR 0029 décision 12), symétrique de `addIngredient` +
+     * `addRow` : la ligne perd la quantité, et la part ajoutée à la main de la même unité aussi (jamais plus qu'elle n'en a). Si la quantité retirée
+     * est au moins celle de la ligne, la ligne disparaît avec tout ce qui a été ajouté à la main pour cet ingrédient : jamais de quantité nulle
+     * ou négative, jamais une part orpheline.
+     *
+     * @return ?float la quantité qui reste dans la ligne, 0.0 si elle a disparu, `null` si l'ingrédient n'a pas de ligne (rien n'est modifié)
+     *
+     * @throws ShoppingListException la liste est envoyée au drive
+     */
+    public function removeQuantity(string $ingredientSlug, float $quantity): ?float
+    {
+        $this->assertEditable();
+
+        $rowKey = $this->rows->findKey(fn(Row $row) => $row->getIngredientSlug() === $ingredientSlug);
+        if ($rowKey === null) {
+            return null;
+        }
+        $row = $this->rows[$rowKey];
+
+        // Trois décimales : une conversion en grammes ne laisse pas de poussière de virgule flottante
+        if (round($row->getQuantity() - $quantity, 3) <= 0.0) {
+            unset($this->rows[$rowKey]);
+            foreach ($this->ingredients->keys() as $key) {
+                if ($this->ingredients[$key]->hasIngredient($ingredientSlug)) {
+                    unset($this->ingredients[$key]);
+                }
+            }
+
+            return 0.0;
+        }
+
+        $row->subtractQuantity($quantity);
+
+        $manualKey = $this->ingredients->findKey(fn(ShoppingListIngredient $manual) => $manual->hasIngredient($ingredientSlug) && $manual->getUnitSlug() === $row->getUnitSlug());
+        if ($manualKey !== null) {
+            $manual = $this->ingredients[$manualKey];
+            $manual->subtractQuantity(min($quantity, $manual->getQuantity()));
+            if ($manual->getQuantity() <= 0) {
+                unset($this->ingredients[$manualKey]);
+            }
+        }
+
+        return $row->getQuantity();
+    }
+
     public function setStatus(?Status $status): void
     {
         $this->status = $status;

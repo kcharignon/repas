@@ -3,10 +3,12 @@
 namespace Repas\Tests\Repas\Infrastructure\Voice;
 
 use Repas\Repas\Domain\Exception\IngredientException;
+use Repas\Repas\Domain\Exception\ShoppingListException;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Repas\Domain\Model\Ingredient;
 use Repas\Repas\Domain\Model\ShoppingListStatus;
 use Repas\Shared\Application\Interface\AddedItem;
+use Repas\Shared\Application\Interface\RemovedItem;
 use Repas\Shared\Application\Interface\VoiceShoppingList;
 use Repas\Tests\Helper\Builder\ConversionBuilder;
 use Repas\Tests\Helper\Builder\IngredientBuilder;
@@ -178,6 +180,153 @@ class VoiceShoppingListFlowTest extends DatabaseTestCase
             $this->assertEquals(IngredientException::notFound($milk->getSlug()), $exception);
             $this->entityManager->clear();
             $this->assertCount(0, $this->shoppingListRepository->findByOwner($user->getId()));
+        }
+    }
+
+    // ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
+    // Retirer de la liste (ADR 0029 décision 12)
+    // ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
+
+    public function testRemovesTheSaidQuantityFromTheActiveLineAndSavesIt(): void
+    {
+        // Given : cinq litres de lait dans la liste active
+        $user = $this->savedUser();
+        $milk = $this->savedMilk($user);
+        $this->voiceShoppingList->addItem($user->getId(), $milk->getSlug(), 5);
+        $this->entityManager->clear();
+        $version = $this->shoppingListRepository->findOneActivateByOwner($user->getId())->getVersion();
+        $this->entityManager->clear();
+
+        // When : « enlève deux litres de lait »
+        $result = $this->voiceShoppingList->removeItem($user->getId(), $milk->getSlug(), 2);
+        $this->entityManager->clear();
+
+        // Then : il en reste 3, la même ligne, la liste a une version de plus
+        $this->assertEquals(new RemovedItem(found: true, remaining: 3.0, removed: 2.0, unitSlug: 'litre', unitName: 'litre', unitSubstituted: false), $result);
+        $reloaded = $this->shoppingListRepository->findOneActivateByOwner($user->getId());
+        $this->assertSame(3.0, $reloaded->getRows()->reset()->getQuantity());
+        $this->assertSame(3.0, $reloaded->getIngredients()->reset()->getQuantity());
+        $this->assertSame($version + 1, $reloaded->getVersion());
+        $this->assertCount(1, $this->shoppingListRepository->findByOwner($user->getId()));
+    }
+
+    public function testRemovesTheWholeLineAndLeavesNoRowNorHandAddedPartBehind(): void
+    {
+        // Given
+        $user = $this->savedUser();
+        $milk = $this->savedMilk($user);
+        $this->voiceShoppingList->addItem($user->getId(), $milk->getSlug(), 2);
+        $this->entityManager->clear();
+
+        // When : plus que ce qu'il y a
+        $result = $this->voiceShoppingList->removeItem($user->getId(), $milk->getSlug(), 10);
+        $this->entityManager->clear();
+
+        // Then
+        $this->assertTrue($result->lineDeleted());
+        $this->assertSame(2.0, $result->removed);
+        $reloaded = $this->shoppingListRepository->findOneActivateByOwner($user->getId());
+        $this->assertCount(0, $reloaded->getRows());
+        $this->assertCount(0, $reloaded->getIngredients());
+    }
+
+    public function testRemovingNeverCreatesAListNorTouchesASentOne(): void
+    {
+        // Given : la seule liste est partie au drive
+        $user = $this->savedUser();
+        $milk = $this->savedMilk($user);
+        $sent = new ShoppingListBuilder()->withOwner($user)->addIngredient($milk)->withStatus(ShoppingListStatus::SENT)->build();
+        $this->shoppingListRepository->save($sent);
+        $this->entityManager->clear();
+
+        // When
+        $result = $this->voiceShoppingList->removeItem($user->getId(), $milk->getSlug());
+        $this->entityManager->clear();
+
+        // Then : rien n'est trouvé, la liste envoyée est intacte et aucune liste n'a été créée
+        $this->assertFalse($result->found);
+        $reloaded = $this->shoppingListRepository->findOneById($sent->getId());
+        $this->assertSame(ShoppingListStatus::SENT, $reloaded->getStatus());
+        $this->assertSame($sent->getVersion(), $reloaded->getVersion());
+        $this->assertCount(1, $reloaded->getRows());
+        $this->assertCount(1, $this->shoppingListRepository->findByOwner($user->getId()));
+    }
+
+    public function testRemovingFromAUserWithoutAnyListCreatesNothing(): void
+    {
+        // Given
+        $user = $this->savedUser();
+        $milk = $this->savedMilk($user);
+
+        // When
+        $result = $this->voiceShoppingList->removeItem($user->getId(), $milk->getSlug());
+        $this->entityManager->clear();
+
+        // Then
+        $this->assertFalse($result->found);
+        $this->assertCount(0, $this->shoppingListRepository->findByOwner($user->getId()));
+    }
+
+    public function testRemovingAnIngredientThatIsNotInTheListChangesNothing(): void
+    {
+        // Given : du lait dans la liste, on retire du beurre
+        $user = $this->savedUser();
+        $milk = $this->savedMilk($user);
+        $butter = new IngredientBuilder()->isButter()->withCreator($user)->build();
+        $this->persister->saveIngredient($butter);
+        $this->voiceShoppingList->addItem($user->getId(), $milk->getSlug());
+        $this->entityManager->clear();
+        $version = $this->shoppingListRepository->findOneActivateByOwner($user->getId())->getVersion();
+        $this->entityManager->clear();
+
+        // When
+        $result = $this->voiceShoppingList->removeItem($user->getId(), $butter->getSlug());
+        $this->entityManager->clear();
+
+        // Then : même version, même ligne
+        $this->assertFalse($result->found);
+        $reloaded = $this->shoppingListRepository->findOneActivateByOwner($user->getId());
+        $this->assertSame($version, $reloaded->getVersion());
+        $this->assertCount(1, $reloaded->getRows());
+    }
+
+    public function testTheSaidUnitIsConvertedIntoTheUnitOfTheLineWhenRemoving(): void
+    {
+        // Given : 2 kilos de pâtes ajoutés (au gramme, 1 puis 2000), et la conversion kilo -> gramme
+        $user = $this->savedUser();
+        $pasta = new IngredientBuilder()->isPasta()->withCreator($user)->build();
+        $this->persister->saveIngredient($pasta);
+        $this->persister->saveConversion(new ConversionBuilder()->isKiloToGramme()->build());
+        $this->voiceShoppingList->addItem($user->getId(), $pasta->getSlug());
+        $this->voiceShoppingList->addItem($user->getId(), $pasta->getSlug(), 2, 'kilo');
+        $this->entityManager->clear();
+
+        // When : « enlève un kilo de pâtes »
+        $result = $this->voiceShoppingList->removeItem($user->getId(), $pasta->getSlug(), 1, 'kilo');
+        $this->entityManager->clear();
+
+        // Then : mille grammes de moins
+        $this->assertEquals(new RemovedItem(found: true, remaining: 1001.0, removed: 1000.0, unitSlug: 'gramme', unitName: 'gramme', unitSubstituted: true), $result);
+        $this->assertSame(1001.0, $this->shoppingListRepository->findOneActivateByOwner($user->getId())->getRows()->reset()->getQuantity());
+    }
+
+    public function testRefusesAQuantityOutsideOneToNinetyNineWhenRemoving(): void
+    {
+        // Given
+        $user = $this->savedUser();
+        $milk = $this->savedMilk($user);
+        $this->voiceShoppingList->addItem($user->getId(), $milk->getSlug(), 3);
+        $this->entityManager->clear();
+
+        // When
+        try {
+            $this->voiceShoppingList->removeItem($user->getId(), $milk->getSlug(), 100);
+            $this->fail('Une quantité hors de 1 à 99 ne se retire pas.');
+        } catch (ShoppingListException $exception) {
+            // Then : rien n'est écrit
+            $this->entityManager->clear();
+            $this->assertEquals(ShoppingListException::invalidSpokenQuantity(100), $exception);
+            $this->assertSame(3.0, $this->shoppingListRepository->findOneActivateByOwner($user->getId())->getRows()->reset()->getQuantity());
         }
     }
 
