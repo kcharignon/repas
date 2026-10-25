@@ -10,7 +10,8 @@ use Repas\Shared\Domain\Model\ModelTrait;
 /**
  * La liaison d'un compte Repas avec un compte Alexa (ADR 0029 décision 6). Elle naît au premier échange de jetons réussi ; son
  * identifiant d'utilisateur Alexa n'est connu qu'à la première requête d'Alexa (VOX-204) et ne sert qu'à reconnaître une liaison
- * existante (décision 10). Retirée par l'utilisateur ou par un rejeu de jeton, elle est révoquée : ses jetons ne servent plus.
+ * existante (décision 10). Retirée par l'utilisateur ou par un rejeu de jeton, elle est révoquée : ses jetons ne servent plus et son
+ * identifiant d'utilisateur Alexa est effacé.
  */
 final class VoiceLink implements ModelInterface
 {
@@ -99,11 +100,13 @@ final class VoiceLink implements ModelInterface
     }
 
     /**
-     * Retire la liaison. Idempotent : une liaison déjà révoquée garde la date de sa première révocation.
+     * Retire la liaison. Idempotent : une liaison déjà révoquée garde la date de sa première révocation. L'identifiant d'utilisateur Alexa est
+     * effacé : il ne sert qu'à reconnaître une liaison existante (ADR 0029 décision 10), une liaison révoquée n'existe plus.
      */
     public function revoke(DateTimeImmutable $now): self
     {
         $this->revokedAt ??= $now;
+        $this->alexaUserId = null;
 
         return $this;
     }

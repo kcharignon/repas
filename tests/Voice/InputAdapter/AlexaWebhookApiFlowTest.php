@@ -854,6 +854,7 @@ class AlexaWebhookApiFlowTest extends DatabaseTestCase
         $this->assertEqualsWithDelta(time(), $current->getLastUsedAt()->getTimestamp(), 5);
         $this->assertFalse($current->isRevoked());
         $this->assertTrue($links->findOneById($old)->isRevoked());
+        $this->assertNull($this->connection()->fetchOne('SELECT alexa_user_id FROM voice_link WHERE id = ?', [$old]), "l'ancienne liaison n'a plus d'identifiant d'utilisateur Alexa");
         $this->assertSame(1, (int) $this->connection()->fetchOne('SELECT COUNT(*) FROM voice_access_grant WHERE link_id = ?', [$this->linkIdOf(self::ACCESS_TOKEN_SEED)]));
         $this->assertSame(0, (int) $this->connection()->fetchOne('SELECT COUNT(*) FROM voice_access_grant WHERE link_id = ?', [$old]));
 

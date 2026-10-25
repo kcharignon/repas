@@ -36,6 +36,39 @@ class LinkRevokerTest extends TestCase
         $this->assertSame(['old-access-link-2', 'access-link-2'], array_map(static fn(AccessGrant $grant): string => $grant->getId(), $grants->all()));
     }
 
+    public function testTheAlexaUserIdIsErasedWithTheRevocation(): void
+    {
+        // Given : deux liaisons que le webhook a reconnues
+        $now = new DateTimeImmutable('2026-10-25 12:00:00');
+        $links = new VoiceLinkInMemoryRepository();
+        $grants = new AccessGrantInMemoryRepository();
+        foreach (['link-1', 'link-2'] as $id) {
+            $links->save(VoiceLink::load(['id' => $id, 'user_id' => 'user-1', 'alexa_user_id' => 'amzn1.ask.account.TEST', 'created_at' => $now, 'last_used_at' => $now, 'revoked_at' => null]));
+        }
+
+        // When
+        new LinkRevoker($links, $grants)->revoke($links->findOneById('link-1'), $now->modify('+1 hour'));
+
+        // Then : l'identifiant de la liaison retirée est effacé, celui de l'autre est intact
+        $this->assertNull($links->findOneById('link-1')->getAlexaUserId());
+        $this->assertSame('amzn1.ask.account.TEST', $links->findOneById('link-2')->getAlexaUserId());
+    }
+
+    public function testALinkRevokedBeforeTheIdWasErasedIsCleanedAndKeepsItsDate(): void
+    {
+        // Given : une ancienne ligne révoquée qui porte encore son identifiant
+        $now = new DateTimeImmutable('2026-10-25 12:00:00');
+        $links = new VoiceLinkInMemoryRepository();
+        $links->save(VoiceLink::load(['id' => 'link-1', 'user_id' => 'user-1', 'alexa_user_id' => 'amzn1.ask.account.TEST', 'created_at' => $now, 'last_used_at' => null, 'revoked_at' => $now]));
+
+        // When
+        new LinkRevoker($links, new AccessGrantInMemoryRepository())->revoke($links->findOneById('link-1'), $now->modify('+1 hour'));
+
+        // Then
+        $this->assertNull($links->findOneById('link-1')->getAlexaUserId());
+        $this->assertSame('2026-10-25 12:00:00', $links->findOneById('link-1')->getRevokedAt()->format('Y-m-d H:i:s'));
+    }
+
     public function testRevokingAnAlreadyRevokedLinkKeepsItsDateAndStillErasesItsGrants(): void
     {
         // Given

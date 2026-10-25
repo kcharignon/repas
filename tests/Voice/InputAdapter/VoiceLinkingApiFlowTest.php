@@ -88,11 +88,14 @@ class VoiceLinkingApiFlowTest extends DatabaseTestCase
         $this->assertEquals($resolved, $this->resolve($second['access_token']));
         $this->assertEquals($resolved, $this->resolve($first['access_token']));
 
-        // When : l'utilisateur délie Alexa
+        // When : Alexa a reconnu la liaison (le webhook a posé l'identifiant d'utilisateur Alexa), puis l'utilisateur délie Alexa
+        $this->entityManager->getConnection()->executeStatement('UPDATE voice_link SET alexa_user_id = ? WHERE id = ?', ['amzn1.ask.account.TEST', $resolved->linkId]);
         $this->call('DELETE', '/api/v1/voice/links/' . $resolved->linkId, $this->bearerFor($user));
 
         // Then : plus aucun jeton ne résout, plus aucun rafraîchissement ne passe, la liste est vide
         $this->assertSame(204, $this->statusCode());
+        $this->assertNull($this->entityManager->getConnection()->fetchOne('SELECT alexa_user_id FROM voice_link WHERE id = ?', [$resolved->linkId]));
+        $this->assertNotNull($this->entityManager->getConnection()->fetchOne('SELECT revoked_at FROM voice_link WHERE id = ?', [$resolved->linkId]));
         $this->assertNull($this->resolve($first['access_token']));
         $this->assertNull($this->resolve($second['access_token']));
         $this->refresh($second['refresh_token']);
