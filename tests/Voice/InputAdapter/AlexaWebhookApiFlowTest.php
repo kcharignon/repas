@@ -1355,8 +1355,8 @@ class AlexaWebhookApiFlowTest extends DatabaseTestCase
         // When
         $this->say(AlexaTestRequest::removeItem('du pain'));
 
-        // Then : comme sans liste ; la liste envoyée est intacte, aucune autre n'est créée
-        $this->assertSame("Tu n'as pas de liste en cours.", $this->speech());
+        // Then : la liste envoyée n'est ni lue ni modifiée, aucune autre n'est créée, et la phrase dit pourquoi (pas « pas de liste en cours »)
+        $this->assertSame('Ta liste est déjà partie au drive.', $this->speech());
         $this->entityManager->clear();
         $reloaded = $this->lists->findOneById($sent->getId());
         $this->assertSame([ShoppingListStatus::SENT, $sent->getVersion(), 1], [$reloaded->getStatus(), $reloaded->getVersion(), $reloaded->getRows()->count()]);
@@ -1601,8 +1601,100 @@ class AlexaWebhookApiFlowTest extends DatabaseTestCase
         // When
         $this->say(AlexaTestRequest::checkItem('du pain'));
 
-        // Then : limite connue, la liste envoyée n'est pas « en cours »
-        $this->assertSame("Tu n'as pas de liste en cours.", $this->speech());
+        // Then : limite connue, la liste envoyée n'est pas lue ; la phrase le dit, sans prétendre que la liste n'existe pas
+        $this->assertSame('Ta liste est déjà partie au drive.', $this->speech());
+    }
+
+    public function testTheTomatoOfTheListIsRemovedAndCountedEvenWhenTheHabitsPickTheOtherOne(): void
+    {
+        // Given : « tomate » en conserve, utilisée dans six listes terminées (l'habitude tranche : `PROBABLE`), et en céréale, seule dans la liste active (2)
+        $user = $this->linkedUser();
+        $canned = new IngredientBuilder()->withName('tomate')->withDepartment(new DepartmentBuilder()->isConserve())->withCreator($user)->withSlug('tomate-conserve-' . $user->getId())->build();
+        $cereal = new IngredientBuilder()->withName('tomate')->withDepartment(new DepartmentBuilder()->isCereal())->withCreator($user)->withSlug('tomate-cereale-' . $user->getId())->build();
+        $this->persister->saveIngredient($canned);
+        $this->persister->saveIngredient($cereal);
+        for ($index = 0; $index < 6; ++$index) {
+            $this->lists->save(new ShoppingListBuilder()->withOwner($user)->addIngredient($canned)->withStatus(ShoppingListStatus::COMPLETED)->build());
+        }
+        $list = $this->savedListWith($user, [[$cereal, 2]]);
+
+        // When : « est-ce qu'il y a des tomates ? » puis « enlève des tomates »
+        $this->say(AlexaTestRequest::checkItem('des tomates'));
+        $check = $this->speech();
+        $this->say(AlexaTestRequest::removeItem('des tomates'));
+        $removal = $this->speech();
+
+        // Then : la ligne de la liste, pas « pas de tomate dans ta liste »
+        $this->assertSame('Oui, tu en as 2.', $check);
+        $this->assertSame("C'est retiré, il t'en reste 1 dans ta liste.", $removal);
+        $this->entityManager->clear();
+        $this->assertSame(1.0, $this->lists->findOneById($list->getId())->getRows()->reset()->getQuantity());
+    }
+
+    public function testTheDuplicateOfTheListIsRemovedEvenWhenItIsNotTheFirstOne(): void
+    {
+        // Given : deux « tomate » de même nom ET de même rayon (non fusionnées), seule la seconde est dans la liste (3)
+        $user = $this->linkedUser();
+        $first = new IngredientBuilder()->withName('tomate')->withDepartment(new DepartmentBuilder()->isConserve())->withCreator($user)->withSlug('tomate-a-' . $user->getId())->build();
+        $second = new IngredientBuilder()->withName('tomate')->withDepartment(new DepartmentBuilder()->isConserve())->withCreator($user)->withSlug('tomate-b-' . $user->getId())->build();
+        $this->persister->saveIngredient($first);
+        $this->persister->saveIngredient($second);
+        // La première est un peu plus utilisée (deux listes terminées) : le classeur la préfère, mais elle n'est pas dans la liste active
+        for ($index = 0; $index < 2; ++$index) {
+            $this->lists->save(new ShoppingListBuilder()->withOwner($user)->addIngredient($first)->withStatus(ShoppingListStatus::COMPLETED)->build());
+        }
+        $list = $this->savedListWith($user, [[$second, 3]]);
+
+        // When
+        $this->say(AlexaTestRequest::removeItem('des tomates'));
+
+        // Then : celle de la liste perd un, aucune question
+        $this->assertSame("C'est retiré, il t'en reste 2 dans ta liste.", $this->speech());
+        $this->assertTrue($this->jsonBody()['response']['shouldEndSession']);
+        $this->entityManager->clear();
+        $this->assertSame([$second->getSlug(), 2.0], [$this->lists->findOneById($list->getId())->getRows()->reset()->getIngredientSlug(), $this->lists->findOneById($list->getId())->getRows()->reset()->getQuantity()]);
+    }
+
+    public function testARemovalSaidInTheMiddleOfAQuestionIsDoneAndTheDialogueIsDropped(): void
+    {
+        // Given : du pain dans la liste (3), puis « de la ciboulette » ouvre le dialogue d'un produit inconnu
+        $user = $this->linkedUser();
+        $bread = new IngredientBuilder()->isBread()->withCreator($user, true)->build();
+        $this->persister->saveIngredient($bread);
+        $list = $this->savedListWith($user, [[$bread, 3]]);
+        $this->say(AlexaTestRequest::addItem('de la ciboulette'));
+        $ingredients = $this->rowCount('ingredient');
+
+        // When : « enlève du pain » à la question
+        $this->converse(AlexaTestRequest::removeItem('du pain'), $this->attributes());
+
+        // Then : le retrait est fait, la séance se ferme, plus d'état, aucun produit créé
+        $this->assertSame("C'est retiré, il t'en reste 2 dans ta liste.", $this->speech());
+        $this->assertTrue($this->jsonBody()['response']['shouldEndSession']);
+        $this->assertArrayNotHasKey('sessionAttributes', $this->jsonBody());
+        $this->assertSame($ingredients, $this->rowCount('ingredient'));
+        $this->entityManager->clear();
+        $this->assertSame(2.0, $this->lists->findOneById($list->getId())->getRows()->reset()->getQuantity());
+    }
+
+    public function testACheckSaidInTheMiddleOfAQuestionIsAnsweredAndTheDialogueIsDropped(): void
+    {
+        // Given
+        $user = $this->linkedUser();
+        $bread = new IngredientBuilder()->isBread()->withCreator($user, true)->build();
+        $this->persister->saveIngredient($bread);
+        $list = $this->savedListWith($user, [[$bread, 3]]);
+        $this->say(AlexaTestRequest::addItem('de la ciboulette'));
+
+        // When : « est-ce qu'il y a du pain dans la liste ? » à la question
+        $this->converse(AlexaTestRequest::checkItem('du pain'), $this->attributes());
+
+        // Then : la réponse, la séance se ferme, rien n'est écrit
+        $this->assertSame('Oui, tu en as 3.', $this->speech());
+        $this->assertTrue($this->jsonBody()['response']['shouldEndSession']);
+        $this->assertArrayNotHasKey('sessionAttributes', $this->jsonBody());
+        $this->entityManager->clear();
+        $this->assertSame([3.0, $list->getVersion()], [$this->lists->findOneById($list->getId())->getRows()->reset()->getQuantity(), $this->lists->findOneById($list->getId())->getVersion()]);
     }
 
     /**

@@ -12,6 +12,9 @@ use Repas\Voice\Application\Command\AddSpokenItem\AddSpokenItemCommand;
 use Repas\Voice\Application\Command\AddSpokenItem\AddSpokenItemHandler;
 use Repas\Voice\Application\Command\AddSpokenItem\AddSpokenItemResult;
 use Repas\Voice\Application\Command\RemoveSpokenItem\RemovedLineFactory;
+use Repas\Voice\Application\Command\RemoveSpokenItem\RemoveSpokenItemCommand;
+use Repas\Voice\Application\Command\RemoveSpokenItem\RemoveSpokenItemHandler;
+use Repas\Voice\Application\Query\GetSpokenItemInList\SpokenListAnswerer;
 use Repas\Voice\Domain\Model\DialogueOption;
 use Repas\Voice\Domain\Model\DialogueStep;
 use Repas\Voice\Domain\Model\SpokenAnswer;
@@ -34,6 +37,8 @@ use Symfony\Component\Messenger\Attribute\AsMessageHandler;
  *   confirmation « Je crée X, rayon, unité. C'est bon ? » ; « oui » : le produit est créé (rayon et unité vérifiés par `Repas`) puis ajouté ;
  * - la création repasse le nom de l'état par `SpokenIngredientNamer` (l'état est une entrée non fiable) : le nom d'un état honnête passe
  *   inchangé, un nom forgé est normalisé, un nom refusé ne crée rien (même réponse qu'une réponse incomprise) ;
+ * - « enlève … » ou « est-ce qu'il y a … ? » dit au milieu d'une question : le dialogue est abandonné, la phrase est une nouvelle demande de retrait
+ *   (`RemoveSpokenItemHandler`) ou de consultation (`SpokenListAnswerer`), dite comme si elle était seule (ADR 0029 décision 12) ;
  * - « non » : on abandonne, rien n'est écrit ; un autre article : le dialogue est abandonné et la phrase traitée comme un ajout
  *   (`AddSpokenItemHandler`, une seule lecture) ; si des propositions avaient été faites et qu'il désigne un ingrédient de l'utilisateur
  *   avec une confiance sûre ou probable, il corrige la proposition : la phrase d'ORIGINE est retenue pour lui aussi (« patates » puis
@@ -62,6 +67,8 @@ readonly class AnswerSpokenDialogueHandler
         private VoiceShoppingList $shoppingList,
         private AddSpokenItemHandler $addSpokenItem,
         private SpokenIngredientNamer $namer,
+        private RemoveSpokenItemHandler $removeSpokenItem,
+        private SpokenListAnswerer $listAnswerer,
     ) {
     }
 
@@ -81,6 +88,16 @@ readonly class AnswerSpokenDialogueHandler
                 quantity: $command->request->quantity ?? 1,
                 unitSlug: $command->request->unitSlug(),
             )),
+            // « Enlève … » ou « est-ce qu'il y a … ? » dit au milieu d'une question (ADR 0029 décision 12) : le dialogue est abandonné, c'est une nouvelle
+            // demande, traitée comme si elle était dite seule, et la séance se ferme
+            SpokenAnswerKind::NEW_REMOVAL => ($this->removeSpokenItem)(new RemoveSpokenItemCommand(
+                $command->userId,
+                $answer->phrase ?? '',
+                sessionIsOpen: false,
+                quantity: $command->request->quantity ?? 1,
+                unitSlug: $command->request->unitSlug(),
+            )),
+            SpokenAnswerKind::NEW_CHECK => $this->finish($this->listAnswerer->speech($command->userId, $answer->phrase ?? '')),
             SpokenAnswerKind::PICK_OPTION => $this->pickOption($command, $answer),
             SpokenAnswerKind::START_CREATION => $this->ask($state->askingDepartment()),
             SpokenAnswerKind::PICK_DEPARTMENT => $this->ask($state->withDepartment($answer->option ?? throw new \LogicException('PICK_DEPARTMENT sans rayon.'))),

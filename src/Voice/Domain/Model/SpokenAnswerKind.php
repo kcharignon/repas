@@ -13,6 +13,10 @@ enum SpokenAnswerKind
     case START_CREATION;
     /** Il a dit un autre article (`SpokenAnswer::$phrase`) : le dialogue est abandonné, la phrase est une nouvelle demande. */
     case NEW_REQUEST;
+    /** Il a dit « enlève … » (`SpokenAnswer::$phrase`) : le dialogue est abandonné, la phrase est une demande de retrait (décision 12). */
+    case NEW_REMOVAL;
+    /** Il a demandé « est-ce qu'il y a … ? » (`SpokenAnswer::$phrase`) : le dialogue est abandonné, la phrase est une consultation de la liste (décision 12). */
+    case NEW_CHECK;
     case PICK_DEPARTMENT;
     case PICK_UNIT;
     /** Il confirme la création. */

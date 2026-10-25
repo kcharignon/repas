@@ -164,6 +164,39 @@ class SpokenAnswerInterpreterTest extends TestCase
         $this->assertSame([SpokenAnswerKind::UNCLEAR, null, null], $this->interpret(AlexaTestRequest::addQuantified('tomates', 0), $state));
     }
 
+    /**
+     * @return iterable<string, array{AlexaTestRequest, SpokenAnswerKind, ?string}>
+     */
+    public static function newDemands(): iterable
+    {
+        yield 'enlève du pain' => [AlexaTestRequest::removeItem('du pain'), SpokenAnswerKind::NEW_REMOVAL, 'du pain'];
+        yield 'enlève deux kilos de tomates' => [AlexaTestRequest::removeItem('tomates')->withQuantity(2)->withSlot('unit', 'kilos', 'kilo'), SpokenAnswerKind::NEW_REMOVAL, 'tomates'];
+        yield 'est-ce qu\'il y a du pain' => [AlexaTestRequest::checkItem('du pain'), SpokenAnswerKind::NEW_CHECK, 'du pain'];
+        yield 'ajoute du lait' => [AlexaTestRequest::addItem('du lait'), SpokenAnswerKind::NEW_REQUEST, 'du lait'];
+        yield 'enlève sans produit compris' => [AlexaTestRequest::removeItem(null), SpokenAnswerKind::UNCLEAR, null];
+        yield 'est-ce qu\'il y a sans produit compris' => [AlexaTestRequest::checkItem('?'), SpokenAnswerKind::UNCLEAR, null];
+        yield 'enlève zéro tomate : quantité inutilisable' => [AlexaTestRequest::removeItem('tomates')->withQuantity(0), SpokenAnswerKind::UNCLEAR, null];
+    }
+
+    #[DataProvider('newDemands')]
+    public function testARemovalOrACheckSaidInTheMiddleOfAQuestionIsANewDemand(AlexaTestRequest $request, SpokenAnswerKind $kind, ?string $phrase): void
+    {
+        // Given : des propositions de produit inconnu, puis un ingrédient à départager : même réponse aux deux questions
+        // When / Then : ajouter, retirer et consulter sont de nouvelles demandes (jamais une réponse incomprise, comme avant la revue)
+        $this->assertSame([$kind, null, $phrase], $this->interpret($request, self::choose(['pâte', 'pâte brisée'])));
+        $this->assertSame([$kind, null, $phrase], $this->interpret($request, self::choose([])));
+        $this->assertSame([$kind, null, $phrase], $this->interpret($request, SpokenDialogueState::chooseToRemove('des tomates', [
+            new DialogueOption('tomate-fl', 'tomate', 'fruit-et-legume', 'fruit & légume'),
+            new DialogueOption('tomate-sg', 'tomate', 'surgele', 'surgelé'),
+        ], 'tomate')));
+    }
+
+    public function testARemovalSaidAtTheDepartmentOrUnitQuestionIsNotANewDemand(): void
+    {
+        // Then : aux étapes de la création (rayon, unité) l'article d'un ajout ne l'est pas non plus : ce n'est pas un rayon, on redemande
+        $this->assertSame([SpokenAnswerKind::UNCLEAR, null, null], $this->interpret(AlexaTestRequest::removeItem('du pain'), self::department(), self::departments()));
+    }
+
     public function testTwoPropositionsThatTheHeardNameCannotTellApartAreNotChosenForTheUser(): void
     {
         // Given : « persil » se dit en entier mais deux propositions s'appellent presque pareil

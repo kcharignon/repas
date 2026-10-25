@@ -5,18 +5,23 @@ namespace Repas\Tests\Voice\Application;
 
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
+use Repas\Shared\Application\Dto\ListedLine;
 use Repas\Shared\Application\Dto\ResolvedIngredient;
+use Repas\Shared\Application\Dto\SpokenListLookupResult;
 use Repas\Shared\Application\Interface\AddedItem;
 use Repas\Shared\Application\Interface\RemovedItem;
 use Repas\Shared\Domain\Exception\DomainException;
 use Repas\Tests\Helper\Alexa\AlexaTestRequest;
 use Repas\Tests\Helper\SpokenIngredientCreatorInMemory;
 use Repas\Tests\Helper\SpokenIngredientResolverInMemory;
+use Repas\Tests\Helper\SpokenListLookupInMemory;
 use Repas\Tests\Helper\VoiceShoppingListInMemory;
 use Repas\Voice\Application\Command\AddSpokenItem\AddSpokenItemHandler;
 use Repas\Voice\Application\Command\AddSpokenItem\AddSpokenItemResult;
 use Repas\Voice\Application\Command\AnswerSpokenDialogue\AnswerSpokenDialogueCommand;
 use Repas\Voice\Application\Command\AnswerSpokenDialogue\AnswerSpokenDialogueHandler;
+use Repas\Voice\Application\Command\RemoveSpokenItem\RemoveSpokenItemHandler;
+use Repas\Voice\Application\Query\GetSpokenItemInList\SpokenListAnswerer;
 use Repas\Voice\Domain\Model\AlexaRequest;
 use Repas\Voice\Domain\Model\DialogueOption;
 use Repas\Voice\Domain\Model\DialogueStep;
@@ -36,6 +41,7 @@ class AnswerSpokenDialogueHandlerTest extends TestCase
     private SpokenIngredientResolverInMemory $resolver;
     private VoiceShoppingListInMemory $shoppingList;
     private SpokenIngredientCreatorInMemory $creator;
+    private SpokenListLookupInMemory $lookup;
     private AnswerSpokenDialogueHandler $handler;
 
     protected function setUp(): void
@@ -43,13 +49,23 @@ class AnswerSpokenDialogueHandlerTest extends TestCase
         $this->resolver = new SpokenIngredientResolverInMemory();
         $this->shoppingList = new VoiceShoppingListInMemory();
         $this->creator = new SpokenIngredientCreatorInMemory();
-        $this->handler = new AnswerSpokenDialogueHandler(
+        $this->lookup = new SpokenListLookupInMemory();
+        $this->handler = $this->handlerWith($this->creator);
+    }
+
+    private function handlerWith(SpokenIngredientCreatorInMemory $creator): AnswerSpokenDialogueHandler
+    {
+        $namer = new SpokenIngredientNamer();
+
+        return new AnswerSpokenDialogueHandler(
             new SpokenAnswerInterpreter(),
-            $this->creator,
+            $creator,
             $this->resolver,
             $this->shoppingList,
-            new AddSpokenItemHandler($this->resolver, $this->shoppingList, new SpokenIngredientNamer()),
-            new SpokenIngredientNamer(),
+            new AddSpokenItemHandler($this->resolver, $this->shoppingList, $namer),
+            $namer,
+            new RemoveSpokenItemHandler($this->lookup, $this->shoppingList, $namer),
+            new SpokenListAnswerer($this->lookup, $namer),
         );
     }
 
@@ -624,7 +640,7 @@ class AnswerSpokenDialogueHandlerTest extends TestCase
         // Given : un catalogue vide (ne devrait pas arriver)
         $empty = new SpokenIngredientCreatorInMemory();
         $empty->setCatalogues([], []);
-        $handler = new AnswerSpokenDialogueHandler(new SpokenAnswerInterpreter(), $empty, $this->resolver, $this->shoppingList, new AddSpokenItemHandler($this->resolver, $this->shoppingList, new SpokenIngredientNamer()), new SpokenIngredientNamer());
+        $handler = $this->handlerWith($empty);
         $state = self::choose([])->askingDepartment();
 
         // When
@@ -823,6 +839,83 @@ class AnswerSpokenDialogueHandlerTest extends TestCase
         // Then
         $this->assertSame('Tomate : en fruit et légume ou en surgelé ?', $result->speech);
         $this->assertTrue($result->nextState?->isRemoval());
+    }
+
+    // ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
+    // « Enlève … » et « est-ce qu'il y a … ? » dits au milieu d'une question : de nouvelles demandes (revue du 2026-10-25, ADR 0029 décision 12)
+    // ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
+
+    public function testARemovalSaidInTheMiddleOfAQuestionIsDoneAsIfItWasSaidAlone(): void
+    {
+        // Given : des propositions sont faites pour « de la ciboulette » ; la liste porte trois croquettes
+        $this->lookup->willFind('croquettes', SpokenListLookupResult::found(new ListedLine('croquette', 'croquette', 'animal', 'animal', 3.0, 'unite', 'unité')));
+        $this->shoppingList->willRemove(new RemovedItem(found: true, remaining: 2.0, removed: 1.0));
+
+        // When : « enlève des croquettes » à « Tu veux dire persil ou basilic ? »
+        $result = $this->answer(AlexaTestRequest::removeItem('croquettes'), self::choose(['persil', 'basilic']));
+
+        // Then : la demande est faite (retirer un), le dialogue est abandonné, la séance se ferme, rien n'est ajouté ni retenu
+        $this->assertSame([[self::USER, 'croquette']], $this->shoppingList->removed);
+        $this->assertSame([[1, null]], $this->shoppingList->removedWith);
+        $this->assertSame([], $this->shoppingList->added);
+        $this->assertSame([], $this->resolver->remembered);
+        $this->assertEquals(new AddSpokenItemResult("C'est retiré, il t'en reste 2 dans ta liste.", keepSessionOpen: false, added: false), $result);
+    }
+
+    public function testASaidQuantityAndUnitFollowTheRemovalSaidInTheMiddleOfAQuestion(): void
+    {
+        // Given
+        $this->lookup->willFind('tomates', SpokenListLookupResult::found(new ListedLine('tomate', 'tomate', 'fruit-et-legume', 'fruit & légume', 5.0, 'kilo', 'kilo')));
+        $this->shoppingList->willRemove(new RemovedItem(found: true, remaining: 3.0, removed: 2.0, unitSlug: 'kilo', unitName: 'kilo'));
+
+        // When : « enlève deux kilos de tomates » pendant un départage de retrait
+        $this->answer(AlexaTestRequest::removeItem('tomates')->withQuantity(2)->withSlot('unit', 'kilos', 'kilo'), self::removalTie());
+
+        // Then
+        $this->assertSame([[2, 'kilo']], $this->shoppingList->removedWith);
+    }
+
+    public function testANewRemovalThatTiesAgainStartsANewRemovalDialogue(): void
+    {
+        // Given : deux lignes qui se valent pour la nouvelle demande
+        $this->lookup->willFind('tomates', SpokenListLookupResult::tied([
+            new ListedLine('tomate-fl', 'tomate', 'fruit-et-legume', 'fruit & légume', 2.0, 'unite', 'unité'),
+            new ListedLine('tomate-sg', 'tomate', 'surgele', 'surgelé', 1.0, 'unite', 'unité'),
+        ]));
+
+        // When : « enlève des tomates » au milieu d'une question sur la ciboulette
+        $result = $this->answer(AlexaTestRequest::removeItem('tomates'), self::choose(['persil']));
+
+        // Then : la question du rayon, un état « retirer », rien d'écrit
+        $this->assertSame('Tomate : en fruit et légume ou en surgelé ?', $result->speech);
+        $this->assertTrue($result->nextState?->isRemoval());
+        $this->assertSame([], $this->shoppingList->removed);
+    }
+
+    public function testACheckSaidInTheMiddleOfAQuestionIsAnsweredAndTheDialogueIsDropped(): void
+    {
+        // Given : deux paquets de croquettes dans la liste
+        $this->lookup->willFind('des croquettes', SpokenListLookupResult::found(new ListedLine('croquette', 'croquette', 'animal', 'animal', 2.0, 'paquet', 'paquet')));
+
+        // When : « est-ce qu'il y a des croquettes dans la liste ? » à « Je le crée ? »
+        $result = $this->answer(AlexaTestRequest::checkItem('des croquettes'), self::choose([]));
+
+        // Then : la réponse, la séance se ferme, plus d'état ; une lecture : rien n'est écrit
+        $this->assertEquals(new AddSpokenItemResult('Oui, tu en as 2 paquets.', keepSessionOpen: false, added: false), $result);
+        $this->assertSame([[self::USER, 'des croquettes']], $this->lookup->asked);
+        $this->assertSame([], $this->shoppingList->added);
+        $this->assertSame([], $this->shoppingList->removed);
+        $this->assertSame([], $this->resolver->remembered);
+    }
+
+    public function testACheckSaidInTheMiddleOfAQuestionWithoutAnyListSaysSo(): void
+    {
+        // When : le double répond « pas de liste » par défaut
+        $result = $this->answer(AlexaTestRequest::checkItem('du pain'), self::removalTie());
+
+        // Then
+        $this->assertSame("Tu n'as pas de liste en cours.", $result->speech);
+        $this->assertFalse($result->keepSessionOpen);
     }
 
     public function testTheFallbackIsAMiss(): void
