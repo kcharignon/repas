@@ -60,8 +60,13 @@ final readonly class AlexaDialogue
         }
 
         return match ($intent) {
-            // Un nom compris : à `AddSpokenItem`. Sinon on redemande
-            AlexaIntent::ADD_ITEM => $request->phrase === null ? $this->invite() : null,
+            // Un nom compris : à `AddSpokenItem`. Sinon on redemande ; une quantité que nous ne savons pas écrire (zéro, plus de 99, un
+            // décimal) : rien n'est écrit, on redemande combien
+            AlexaIntent::ADD_ITEM => match (true) {
+                $request->phrase === null => $this->invite(),
+                $request->hasUnusableQuantity() => AlexaResponse::ask(VoiceReplies::HOW_MANY, VoiceReplies::LAUNCH),
+                default => null,
+            },
             // « Oui » à rien : on redemande ce qu'il veut ajouter ; « non » : la réponse à rien, on dit au revoir
             AlexaIntent::YES => $this->invite(),
             AlexaIntent::NO => AlexaResponse::say(VoiceReplies::GOODBYE),

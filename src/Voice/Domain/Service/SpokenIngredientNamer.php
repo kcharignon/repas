@@ -12,6 +12,9 @@ namespace Repas\Voice\Domain\Service;
  * - les caractères qui ne sont ni lettre, chiffre, espace, apostrophe ni tiret sont remplacés par une espace (la voix transcrite n'en
  *   contient pas, un nom saisi ne doit pas en porter) ;
  * - refus (`null`) d'un nom sans aucune lettre (« 12 ») ou plus long que `MAX_LENGTH` : Alexa a mal compris, on redemande.
+ *
+ * `withoutLeadingUnit()` retire, EN TÊTE de la phrase entendue, une unité et son « de » ou « d' » quand Alexa les a laissés dans le créneau
+ * `item` (« paquets de croquettes » : l'unité « paquet » et la phrase « croquettes »).
  */
 final readonly class SpokenIngredientNamer
 {
@@ -19,6 +22,26 @@ final readonly class SpokenIngredientNamer
     public const int MAX_LENGTH = 60;
 
     private const string LEADING_ARTICLE = "/^(?:de\\s+l'|de\\s+la\\s+|du\\s+|des\\s+|de\\s+|d'|l'|un\\s+|une\\s+|le\\s+|la\\s+|les\\s+)/u";
+
+    private SpokenUnits $units;
+
+    public function __construct(?SpokenUnits $units = null)
+    {
+        $this->units = $units ?? new SpokenUnits();
+    }
+
+    /**
+     * La phrase débarrassée de l'unité qu'elle commence par nommer (« paquets de croquettes » donne « croquettes » et l'unité `paquet`),
+     * ou telle quelle avec une unité `null` quand elle n'en commence par aucune ou que rien ne la suit.
+     *
+     * @return array{phrase: string, unitSlug: ?string}
+     */
+    public function withoutLeadingUnit(string $phrase): array
+    {
+        $split = $this->units->splitLeading($phrase);
+
+        return $split === null ? ['phrase' => $phrase, 'unitSlug' => null] : ['phrase' => $split['rest'], 'unitSlug' => $split['unitSlug']];
+    }
 
     public function nameFrom(string $phrase): ?string
     {

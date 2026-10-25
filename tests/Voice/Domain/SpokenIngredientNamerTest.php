@@ -52,6 +52,50 @@ class SpokenIngredientNamerTest extends TestCase
         yield 'vide' => ['', null];
     }
 
+    #[DataProvider('phrasesWithAUnit')]
+    public function testALeadingUnitAndItsDeAreRemovedFromThePhrase(string $phrase, string $expectedPhrase, ?string $expectedUnit): void
+    {
+        // When
+        $result = new SpokenIngredientNamer()->withoutLeadingUnit($phrase);
+
+        // Then
+        $this->assertSame(['phrase' => $expectedPhrase, 'unitSlug' => $expectedUnit], $result);
+    }
+
+    /**
+     * @return iterable<string, array{string, string, ?string}>
+     */
+    public static function phrasesWithAUnit(): iterable
+    {
+        yield '« paquets de croquettes »' => ['paquets de croquettes', 'croquettes', 'paquet'];
+        yield '« paquet de croquettes »' => ['paquet de croquettes', 'croquettes', 'paquet'];
+        yield '« kilos de tomates »' => ['kilos de tomates', 'tomates', 'kilo'];
+        yield '« kilo de tomates »' => ['kilo de tomates', 'tomates', 'kilo'];
+        yield '« kilos d\'ail »' => ["kilos d'ail", 'ail', 'kilo'];
+        yield 'apostrophe typographique' => ['kilos d’ail', 'ail', 'kilo'];
+        yield 'majuscules' => ['Paquets De Croquettes', 'croquettes', 'paquet'];
+        yield 'espaces' => ["  paquets   de  croquettes ", 'croquettes', 'paquet'];
+        yield 'unité de plusieurs mots' => ['cuillères à soupe de sucre', 'sucre', 'cuillere-a-soupe'];
+        yield 'le plus long d\'abord' => ['tasses à café de lait', 'lait', 'tasse-a-cafe'];
+        yield 'tasse seule' => ['tasse de lait', 'lait', 'tasse-a-cafe'];
+        yield 'boîte avec accent' => ['boîtes de thon', 'thon', 'boite'];
+        yield 'boite sans accent' => ['boite de thon', 'thon', 'boite'];
+        yield 'pièces' => ['pièces de boeuf', 'boeuf', 'unite'];
+        yield 'un nom sans unité' => ['du pain', 'du pain', null];
+        yield 'un nom sans unité, « de » au milieu' => ['pain de mie', 'pain de mie', null];
+        yield 'une unité sans « de » n\'est pas retirée' => ['paquets croquettes', 'paquets croquettes', null];
+        yield 'une unité seule est un nom' => ['paquets', 'paquets', null];
+        yield 'une unité suivie de « de » seul est un nom' => ['paquets de', 'paquets de', null];
+        yield 'un nom qui commence comme une unité' => ['bolognaise', 'bolognaise', null];
+        yield 'un nom qui commence par pot' => ['potiron', 'potiron', null];
+        yield 'l\'unité n\'est retirée qu\'en tête' => ['croquettes en paquets de dix', 'croquettes en paquets de dix', null];
+    }
+
+    public function testTheNameOfAProductIsStillTheWholeNameEvenWhenItStartsWithAUnit(): void
+    {
+        // « pot de miel » nommé à la création est un nom : seul `withoutLeadingUnit` retire l'unité, pas `nameFrom`
+        $this->assertSame('pot de miel', new SpokenIngredientNamer()->nameFrom('un pot de miel'));
+    }
     public function testANameOfSixtyCharactersFitsAndSixtyOneIsRefused(): void
     {
         $namer = new SpokenIngredientNamer();

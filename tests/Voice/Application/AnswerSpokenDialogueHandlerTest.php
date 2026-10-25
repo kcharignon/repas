@@ -273,6 +273,50 @@ class AnswerSpokenDialogueHandlerTest extends TestCase
     // Création guidée : rayon, unité, confirmation
     // ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
 
+    public function testTheQuantityAndUnitSaidAtTheStartApplyToTheChosenProposal(): void
+    {
+        // Given : « trois paquets de ciboulette » -> des propositions
+        $state = SpokenDialogueState::choose('ciboulette', [new DialogueOption('persil-u', 'persil')], 'ciboulette', 3, 'paquet');
+        $this->shoppingList->willReturn(new AddedItem(listCreated: false, previousListSent: false, quantity: 3.0, unitSlug: 'paquet', unitName: 'paquet', addedQuantity: 3.0));
+
+        // When : « oui »
+        $result = $this->answer(AlexaTestRequest::yes(), $state);
+
+        // Then : trois paquets de persil, dits
+        $this->assertSame([[3, 'paquet']], $this->shoppingList->addedWith);
+        $this->assertSame("C'est noté : 3 paquets de persil. Je m'en souviendrai.", $result->speech);
+    }
+
+    public function testTheQuantityAndUnitSaidAtTheStartApplyToTheCreatedProduct(): void
+    {
+        // Given : « trois ciboulettes » -> « un nouveau produit » -> ... -> « oui »
+        $state = SpokenDialogueState::choose('ciboulette', [], 'ciboulette', 3);
+        $this->shoppingList->willReturn(new AddedItem(listCreated: false, previousListSent: false, quantity: 3.0, addedQuantity: 3.0));
+        $department = $this->answer(AlexaTestRequest::yes(), $state);
+        $unit = $this->answer(AlexaTestRequest::answerDepartment('fruits et légumes', 'fruit-et-legume'), $department->nextState);
+        $confirm = $this->answer(AlexaTestRequest::answerUnit('pièces', 'unite'), $unit->nextState);
+
+        // When
+        $created = $this->answer(AlexaTestRequest::yes(), $confirm->nextState);
+
+        // Then : la quantité a traversé toutes les étapes
+        $this->assertSame([[3, null]], $this->shoppingList->addedWith);
+        $this->assertSame("C'est créé et noté : 3 ciboulettes, rayon fruit et légume.", $created->speech);
+    }
+
+    public function testAnotherArticleSaidWithItsOwnQuantityAndUnitCarriesThemToTheNewRequest(): void
+    {
+        // Given : des propositions faites pour « trois croquettes », puis « deux kilos de tomates »
+        $this->resolver->willResolve('tomates', new ResolvedIngredient('tomate', 'Tomate', 'Fruits et légumes', ResolvedIngredient::SURE));
+        $state = SpokenDialogueState::choose('croquettes', [new DialogueOption('pate-u', 'pâte')], 'croquettes', 3);
+
+        // When
+        $this->answer(AlexaTestRequest::addQuantified('tomates', 2, 'kilos', 'kilo'), $state);
+
+        // Then : la quantité et l'unité du nouvel article, pas celles de l'ancien
+        $this->assertSame([[2, 'kilo']], $this->shoppingList->addedWith);
+    }
+
     public function testTheWholeCreationFromTheProposalsToTheShoppingList(): void
     {
         // When : « un nouveau produit » -> « les fruits et légumes » -> « des pièces » -> « oui »

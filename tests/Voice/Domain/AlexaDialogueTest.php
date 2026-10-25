@@ -92,6 +92,40 @@ class AlexaDialogueTest extends TestCase
         yield 'point d\'interrogation' => ['?'];
     }
 
+    public function testAddingAnItemWithAQuantityAndAUnitIsLeftToTheUseCase(): void
+    {
+        $this->assertNull($this->dialogue->answer($this->read(AlexaTestRequest::addQuantified('croquettes', 3))));
+        $this->assertNull($this->dialogue->answer($this->read(AlexaTestRequest::addQuantified('tomates', 2, 'kilos', 'kilo'))));
+    }
+
+    #[DataProvider('unusableQuantities')]
+    public function testAQuantityWeCannotWriteIsAskedAgainWithoutAnything(string|int|float $said): void
+    {
+        // Then : « Combien ? », la séance reste ouverte (rien n'est écrit : le cas d'usage n'est pas appelé)
+        $this->assertEquals(
+            AlexaResponse::ask(VoiceReplies::HOW_MANY, VoiceReplies::LAUNCH),
+            $this->dialogue->answer($this->read(AlexaTestRequest::addQuantified('croquettes', $said))),
+        );
+    }
+
+    /**
+     * @return iterable<string, array{string|int|float}>
+     */
+    public static function unusableQuantities(): iterable
+    {
+        yield 'zéro' => ['0'];
+        yield 'cent' => ['100'];
+        yield 'négative' => ['-3'];
+        yield 'décimale' => ['2.5'];
+        yield 'un mot' => ['beaucoup'];
+        yield 'énorme' => ['99999999999999999999'];
+    }
+
+    public function testAQuantityWithoutAnItemAsksWhatToAdd(): void
+    {
+        $this->assertEquals(AlexaResponse::ask(VoiceReplies::LAUNCH, VoiceReplies::LAUNCH), $this->dialogue->answer($this->read(AlexaTestRequest::addQuantified('?', 3))));
+    }
+
     public function testHelpGivesAnExampleAndKeepsTheSessionOpen(): void
     {
         $this->assertEquals(AlexaResponse::ask(VoiceReplies::HELP, VoiceReplies::LAUNCH), $this->dialogue->answer($this->read(AlexaTestRequest::intent('AMAZON.HelpIntent'))));

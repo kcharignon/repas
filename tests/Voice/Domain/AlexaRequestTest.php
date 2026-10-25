@@ -134,6 +134,99 @@ class AlexaRequestTest extends TestCase
         yield 'plus de cent caractères' => [str_repeat('a', 101), null];
     }
 
+    // ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
+    // La quantité et l'unité dites (ADR 0029 décision 5)
+    // ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
+
+    #[DataProvider('quantities')]
+    public function testTheQuantityIsAWholeNumberFromOneToNinetyNineOtherwiseUnusable(string|int|float|null $said, ?int $expected, bool $heard): void
+    {
+        // When
+        $request = AlexaRequest::fromDecoded(AlexaTestRequest::addQuantified('des tomates', $said)->toArray());
+
+        // Then : la valeur, ou rien ; et si quelque chose a été entendu sans être utilisable, `hasUnusableQuantity`
+        $this->assertSame($expected, $request->quantity);
+        $this->assertSame($heard, $request->quantityHeard);
+        $this->assertSame($heard && $expected === null, $request->hasUnusableQuantity());
+    }
+
+    /**
+     * @return iterable<string, array{string|int|float|null, ?int, bool}>
+     */
+    public static function quantities(): iterable
+    {
+        yield 'absente' => [null, null, false];
+        yield 'un' => ['1', 1, true];
+        yield 'trois' => ['3', 3, true];
+        yield 'quatre-vingt-dix-neuf' => ['99', 99, true];
+        yield 'avec des espaces' => [' 3 ', 3, true];
+        yield 'un vrai nombre JSON' => [4, 4, true];
+        yield 'zéro' => ['0', null, true];
+        yield 'cent' => ['100', null, true];
+        yield 'énorme' => ['99999999999999999999', null, true];
+        yield 'décimal' => ['1.5', null, true];
+        yield 'décimal JSON' => [2.5, null, true];
+        yield 'virgule' => ['1,5', null, true];
+        yield 'négative' => ['-2', null, true];
+        yield 'avec un signe plus' => ['+2', null, true];
+        yield 'un mot' => ['beaucoup', null, true];
+        yield 'mélange' => ['3 paquets', null, true];
+        yield 'point d\'interrogation d\'Alexa' => ['?', null, false];
+        yield 'vide' => ['', null, false];
+        yield 'espaces seuls' => ['   ', null, false];
+    }
+
+    public function testAQuantityThatIsNotAScalarIsNotHeard(): void
+    {
+        // Given
+        $body = AlexaTestRequest::addItem()->toArray();
+        $body['request']['intent']['slots']['quantity'] = ['name' => 'quantity', 'value' => ['3']];
+
+        // When
+        $request = AlexaRequest::fromDecoded($body);
+
+        // Then : ni utilisable ni entendue, jamais d'exception
+        $this->assertNull($request->quantity);
+        $this->assertFalse($request->hasUnusableQuantity());
+    }
+
+    public function testTheQuantityIsOnlyReadFromAnIntentRequest(): void
+    {
+        // Given : un créneau qui traîne dans un lancement
+        $body = AlexaTestRequest::launch()->toArray();
+        $body['request']['intent'] = ['name' => 'AddItemIntent', 'slots' => ['quantity' => ['value' => '3']]];
+
+        // When / Then
+        $this->assertNull(AlexaRequest::fromDecoded($body)->quantity);
+        $this->assertFalse(AlexaRequest::fromDecoded($body)->quantityHeard);
+    }
+
+    public function testTheUnitIsReadWithItsTextAndTheIdOfItsResolution(): void
+    {
+        // When
+        $request = AlexaRequest::fromDecoded(AlexaTestRequest::addQuantified('croquettes', 3, 'paquets', 'paquet')->toArray());
+
+        // Then
+        $this->assertEquals(new SlotValue('paquets', 'paquet'), $request->unit);
+        $this->assertSame('paquet', $request->unitSlug());
+        $this->assertSame(3, $request->quantity);
+        $this->assertSame('croquettes', $request->phrase);
+    }
+
+    public function testTheUnitSlugFallsBackOnTheHeardTextWhenAlexaDidNotResolveIt(): void
+    {
+        // When : « kilos » entendu, mais sans identifiant de résolution
+        $request = AlexaRequest::fromDecoded(AlexaTestRequest::addQuantified('tomates', 2, 'Kilos')->toArray());
+
+        // Then : le catalogue des unités le rapproche
+        $this->assertSame('kilo', $request->unitSlug());
+    }
+
+    public function testNoUnitAndAnUnknownUnitGiveNoSlug(): void
+    {
+        $this->assertNull(AlexaRequest::fromDecoded(AlexaTestRequest::addQuantified('tomates', 2)->toArray())->unitSlug());
+        $this->assertNull(AlexaRequest::fromDecoded(AlexaTestRequest::addQuantified('tomates', 2, 'poignées')->toArray())->unitSlug());
+    }
     public function testAPhraseThatIsNotAStringIsDropped(): void
     {
         // Given

@@ -8,7 +8,9 @@ namespace Repas\Voice\Domain\Model;
  *
  * Étapes (`DialogueStep`) : `choose` (les propositions, « Je le crée ? » sans proposition, ou — ingrédients à départager, `isTieBreak()` — deux ou trois ingrédients avec leur rayon), `department`, `unit`, `confirm`. L'état garde
  * la phrase entendue, les propositions, le nom du produit à créer, le rayon et l'unité déjà choisis, et `misses` : le nombre de fois de suite
- * où la réponse n'a pas été comprise DANS CETTE ÉTAPE (il repart à zéro quand l'étape change ; à `MAX_MISSES` le dialogue est abandonné).
+ * où la réponse n'a pas été comprise DANS CETTE ÉTAPE (il repart à zéro quand l'étape change ; à `MAX_MISSES` le dialogue est abandonné). Il garde
+ * aussi la quantité et l'unité DITES au départ (« trois paquets de croquettes ») pour qu'elles s'appliquent à l'article quand le dialogue
+ * aboutit ; sans rien dit, une unité d'achat.
  *
  * L'état revient de l'extérieur : il est lu comme une ENTRÉE NON FIABLE (`fromArray`), tolérant (une forme inattendue donne « pas d'état »,
  * jamais une exception), borné (chaînes, trois propositions au plus, étape connue, champs requis par l'étape). Les slugs qu'il porte ne
@@ -29,6 +31,9 @@ final readonly class SpokenDialogueState
     /** Un slug (`ingredient.slug` : 255) et le nom d'une proposition (`ingredient.name` : 255). */
     public const int MAX_SLUG_LENGTH = 255;
 
+    /** Un identifiant d'unité du catalogue (slug) tient en peu de caractères. */
+    public const int MAX_UNIT_SLUG_LENGTH = 100;
+
     /** La clé des attributs de séance sous laquelle l'état est écrit. */
     public const string ATTRIBUTE = 'dialogue';
 
@@ -43,6 +48,10 @@ final readonly class SpokenDialogueState
         public ?DialogueOption $department,
         public ?DialogueOption $unit,
         public int $misses,
+        /** La quantité dite au départ (1 à 99), 1 si rien n'a été dit. */
+        public int $quantity = 1,
+        /** L'unité dite au départ (slug), `null` si rien n'a été dit. Distincte de `unit` : celle du produit à créer. */
+        public ?string $spokenUnitSlug = null,
     ) {
     }
 
@@ -51,25 +60,25 @@ final readonly class SpokenDialogueState
      *
      * @param list<DialogueOption> $options
      */
-    public static function choose(string $phrase, array $options, string $name): self
+    public static function choose(string $phrase, array $options, string $name, int $quantity = 1, ?string $spokenUnitSlug = null): self
     {
-        return new self(DialogueStep::CHOOSE, $phrase, array_slice(array_values($options), 0, self::MAX_OPTIONS), $name, null, null, 0);
+        return new self(DialogueStep::CHOOSE, $phrase, array_slice(array_values($options), 0, self::MAX_OPTIONS), $name, null, null, 0, $quantity, $spokenUnitSlug);
     }
 
     /** L'utilisateur veut créer le produit : première des deux questions. */
     public function askingDepartment(): self
     {
-        return new self(DialogueStep::DEPARTMENT, $this->phrase, [], $this->name, null, null, 0);
+        return new self(DialogueStep::DEPARTMENT, $this->phrase, [], $this->name, null, null, 0, $this->quantity, $this->spokenUnitSlug);
     }
 
     public function withDepartment(DialogueOption $department): self
     {
-        return new self(DialogueStep::UNIT, $this->phrase, [], $this->name, $department, null, 0);
+        return new self(DialogueStep::UNIT, $this->phrase, [], $this->name, $department, null, 0, $this->quantity, $this->spokenUnitSlug);
     }
 
     public function withUnit(DialogueOption $unit): self
     {
-        return new self(DialogueStep::CONFIRM, $this->phrase, [], $this->name, $this->department, $unit, 0);
+        return new self(DialogueStep::CONFIRM, $this->phrase, [], $this->name, $this->department, $unit, 0, $this->quantity, $this->spokenUnitSlug);
     }
 
     /**
@@ -104,7 +113,7 @@ final readonly class SpokenDialogueState
     /** Une réponse de plus qui n'a pas été comprise dans la même étape. */
     public function missed(): self
     {
-        return new self($this->step, $this->phrase, $this->options, $this->name, $this->department, $this->unit, $this->misses + 1);
+        return new self($this->step, $this->phrase, $this->options, $this->name, $this->department, $this->unit, $this->misses + 1, $this->quantity, $this->spokenUnitSlug);
     }
 
     /** Assez de réponses incomprises de suite : on arrête de demander. */
@@ -125,6 +134,13 @@ final readonly class SpokenDialogueState
             'name' => $this->name,
             'misses' => $this->misses,
         ];
+        // Seulement quand quelque chose a été dit : l'état d'une demande ordinaire ne change pas (la séance a une taille limite)
+        if ($this->quantity !== 1) {
+            $data['quantity'] = $this->quantity;
+        }
+        if ($this->spokenUnitSlug !== null) {
+            $data['spokenUnit'] = $this->spokenUnitSlug;
+        }
         if ($this->department !== null) {
             $data['departmentSlug'] = $this->department->slug;
             $data['departmentName'] = $this->department->name;
@@ -158,6 +174,10 @@ final readonly class SpokenDialogueState
         $department = self::option($data['departmentSlug'] ?? null, $data['departmentName'] ?? null, self::MAX_NAME_LENGTH);
         $unit = self::option($data['unitSlug'] ?? null, $data['unitName'] ?? null, self::MAX_NAME_LENGTH);
         $misses = is_int($data['misses'] ?? null) ? min(max($data['misses'], 0), self::MAX_MISSES) : 0;
+        // Une quantité hors de 1 à 99 ou une unité qui n'est pas un slug n'est pas crue : une unité d'achat, rien de dit
+        $quantity = is_int($data['quantity'] ?? null) && $data['quantity'] >= AlexaRequest::MIN_QUANTITY && $data['quantity'] <= AlexaRequest::MAX_QUANTITY ? $data['quantity'] : 1;
+        $spokenUnit = $data['spokenUnit'] ?? null;
+        $spokenUnit = is_string($spokenUnit) && mb_strlen($spokenUnit) <= self::MAX_UNIT_SLUG_LENGTH && preg_match('/^[a-z0-9-]+$/', $spokenUnit) === 1 ? $spokenUnit : null;
 
         // Ce que chaque étape suppose déjà connu : le rayon avant l'unité, les deux avant la confirmation
         $consistent = match ($step) {
@@ -178,6 +198,8 @@ final readonly class SpokenDialogueState
             $step === DialogueStep::DEPARTMENT || $step === DialogueStep::CHOOSE ? null : $department,
             $step === DialogueStep::CONFIRM ? $unit : null,
             $misses,
+            $quantity,
+            $spokenUnit,
         );
     }
 

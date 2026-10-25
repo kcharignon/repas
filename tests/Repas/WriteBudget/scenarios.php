@@ -202,6 +202,17 @@ return [
 
         return new AddSpokenIngredientCommand($owner->getId(), $milk->getSlug(), UuidGenerator::new());
     },
+    // Quantité et unité dites (ADR 0029 décision 5) : la ligne existe déjà au gramme, on dit « deux kilos » ; l'ingrédient est lu, l'unité de la
+    // ligne aussi, la conversion kilo -> gramme est calculée (conversions de l'ingrédient et communes)
+    'ajouter-ingredient-par-la-voix-unite-convertie' => static function (WriteBudgetTestCase $t): object {
+        $owner = $t->savedUser();
+        $pasta = new IngredientBuilder()->isPasta()->withCreator($owner)->build();
+        $t->persister->saveIngredient($pasta);
+        $t->persister->saveConversion(new ConversionBuilder()->isKiloToGramme()->build());
+        $t->savedShoppingList($owner, $t->typicalRecipes($owner), static fn(ShoppingListBuilder $b) => $b->addIngredient($pasta));
+
+        return new AddSpokenIngredientCommand($owner->getId(), $pasta->getSlug(), UuidGenerator::new(), 2, 'kilo');
+    },
     'retirer-ingredient-liste' => static function (WriteBudgetTestCase $t): object {
         $owner = $t->savedUser();
         $milk = new IngredientBuilder()->isMilk()->withCreator($owner)->build();

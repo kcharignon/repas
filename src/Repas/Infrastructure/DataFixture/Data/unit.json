@@ -173,5 +173,12 @@
     "symbol": "flacon",
     "dimension": "PACKAGE",
     "baseFactor": 1
+  },
+  {
+    "slug": "botte",
+    "name": "botte",
+    "symbol": "botte",
+    "dimension": null,
+    "baseFactor": null
   }
 ]

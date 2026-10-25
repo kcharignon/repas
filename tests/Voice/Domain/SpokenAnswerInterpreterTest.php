@@ -154,6 +154,16 @@ class SpokenAnswerInterpreterTest extends TestCase
         $this->assertSame([$kind, $optionName, $phrase], $this->interpret($request, self::choose($options)));
     }
 
+    public function testANewArticleSaidWithAQuantityIsANewRequestButAnUnusableQuantityIsNotUnderstood(): void
+    {
+        // Given : des propositions, puis « deux kilos de tomates » (une nouvelle demande) ou « zéro tomate »
+        $state = self::choose(['pâte', 'pâte brisée']);
+
+        // When / Then : le cas d'usage reprend la quantité et l'unité dites ; une quantité inutilisable est une réponse incomprise
+        $this->assertSame([SpokenAnswerKind::NEW_REQUEST, null, 'tomates'], $this->interpret(AlexaTestRequest::addQuantified('tomates', 2, 'kilos', 'kilo'), $state));
+        $this->assertSame([SpokenAnswerKind::UNCLEAR, null, null], $this->interpret(AlexaTestRequest::addQuantified('tomates', 0), $state));
+    }
+
     public function testTwoPropositionsThatTheHeardNameCannotTellApartAreNotChosenForTheUser(): void
     {
         // Given : « persil » se dit en entier mais deux propositions s'appellent presque pareil

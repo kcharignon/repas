@@ -16,6 +16,9 @@ final class VoiceShoppingListInMemory implements VoiceShoppingList
     /** @var list<array{string, string}> les ajouts demandés `[userId, ingredientSlug]`, dans l'ordre */
     public array $added = [];
 
+    /** @var list<array{int, ?string}> la quantité et l'unité dite de chaque ajout, dans le même ordre que `$added` */
+    public array $addedWith = [];
+
     private AddedItem $result;
     private ?Throwable $failure = null;
 
@@ -38,13 +41,14 @@ final class VoiceShoppingListInMemory implements VoiceShoppingList
         return $this;
     }
 
-    public function addItem(string $userId, string $ingredientSlug): AddedItem
+    public function addItem(string $userId, string $ingredientSlug, int $quantity = 1, ?string $unitSlug = null): AddedItem
     {
         if ($this->failure !== null) {
             throw $this->failure;
         }
 
         $this->added[] = [$userId, $ingredientSlug];
+        $this->addedWith[] = [$quantity, $unitSlug];
 
         return $this->result;
     }
