@@ -154,6 +154,10 @@ class RecordVoiceLinkUseHandlerTest extends TestCase
         // Then : l'ancienne liaison du même Echo est révoquée, ses jetons effacés ; rien d'autre ne bouge
         $this->assertTrue($this->links->findOneById('old')->isRevoked());
         $this->assertEquals($this->now, $this->links->findOneById('old')->getRevokedAt());
+        $this->assertNull($this->links->findOneById('old')->getAlexaUserId(), "l'identifiant d'utilisateur Alexa est effacé avec la révocation");
+        $this->assertSame(self::ME, $this->links->findOneById('link-1')->getAlexaUserId());
+        $this->assertSame('amzn1.ask.account.OTHER', $this->links->findOneById('other-echo')->getAlexaUserId());
+        $this->assertSame(self::ME, $this->links->findOneById('other-account')->getAlexaUserId());
         $this->assertFalse($this->links->findOneById('link-1')->isRevoked());
         $this->assertFalse($this->links->findOneById('other-echo')->isRevoked());
         $this->assertFalse($this->links->findOneById('other-account')->isRevoked());

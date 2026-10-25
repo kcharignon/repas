@@ -64,11 +64,15 @@ nelmio_api_doc:
                 VoiceTokenRateLimited:
                     description: >-
                         Trop d'échanges de jetons depuis cette adresse IP : plus de 30 par heure (`POST /api/voice/oauth/token`, route
-                        publique). Message `VOICE_RATE_LIMITED` ; patienter au moins le délai de `Retry-After`.
+                        publique ; une adresse IPv6 compte par son préfixe /64). Message `VOICE_RATE_LIMITED` au format du dépôt
+                        (`{error:{message}}`), pas celui d'OAuth ; patienter au moins le délai de `Retry-After`. Jamais de mise en cache.
                     headers:
                         Retry-After:
                             description: Secondes à attendre au minimum avant de réessayer
                             schema: { type: integer, minimum: 1, example: 120 }
+                        Cache-Control:
+                            description: '`no-store`'
+                            schema: { type: string, example: no-store }
                     content:
                         application/json:
                             schema:
@@ -98,7 +102,7 @@ nelmio_api_doc:
                 VoiceWebhookRateLimited:
                     description: >-
                         Trop de requêtes depuis cette adresse IP : plus de 60 par minute (`POST /api/voice/alexa`, route publique, plafond posé
-                        AVANT la vérification de la signature). Message `VOICE_RATE_LIMITED` ; patienter au moins le délai de `Retry-After`. Le
+                        AVANT la vérification de la signature ; une adresse IPv6 compte par son préfixe /64). Message `VOICE_RATE_LIMITED` ; patienter au moins le délai de `Retry-After`. Le
                         plafond par liaison, lui, ne donne jamais d'erreur HTTP : Alexa répond « Un instant, réessaie dans une minute. ».
                     headers:
                         Retry-After:

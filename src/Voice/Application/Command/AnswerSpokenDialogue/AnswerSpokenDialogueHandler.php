@@ -17,6 +17,7 @@ use Repas\Voice\Domain\Model\SpokenAnswerKind;
 use Repas\Voice\Domain\Model\SpokenDialogueState;
 use Repas\Voice\Domain\Model\VoiceReplies;
 use Repas\Voice\Domain\Service\SpokenAnswerInterpreter;
+use Repas\Voice\Domain\Service\SpokenIngredientNamer;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 /**
@@ -27,9 +28,13 @@ use Symfony\Component\Messenger\Attribute\AsMessageHandler;
  *   le slug de l'état n'est jamais cru, les deux ports vérifient que l'ingrédient est à l'utilisateur ;
  * - « un nouveau produit » : la question du rayon, puis de l'unité (les catalogues sont lus à ces étapes, `SpokenIngredientCreator`), puis la
  *   confirmation « Je crée X, rayon, unité. C'est bon ? » ; « oui » : le produit est créé (rayon et unité vérifiés par `Repas`) puis ajouté ;
+ * - la création repasse le nom de l'état par `SpokenIngredientNamer` (l'état est une entrée non fiable) : le nom d'un état honnête passe
+ *   inchangé, un nom forgé est normalisé, un nom refusé ne crée rien (même réponse qu'une réponse incomprise) ;
  * - « non » : on abandonne, rien n'est écrit ; un autre article : le dialogue est abandonné et la phrase traitée comme un ajout
- *   (`AddSpokenItemHandler`, une seule lecture) ; s'il désigne un ingrédient de l'utilisateur, il corrige la proposition : la phrase
- *   d'ORIGINE est retenue pour lui aussi (« patates » puis « pomme de terre ») ; s'il est inconnu, le dialogue repart pour lui, rien n'est retenu ;
+ *   (`AddSpokenItemHandler`, une seule lecture) ; si des propositions avaient été faites et qu'il désigne un ingrédient de l'utilisateur
+ *   avec une confiance sûre ou probable, il corrige la proposition : la phrase d'ORIGINE est retenue pour lui aussi (« patates » puis
+ *   « pomme de terre »). Sans proposition faite (« Je le crée ? »), ou si deux noms se touchent, c'est un ajout ordinaire : rien n'est
+ *   retenu ni promis (`SpokenDialogueState::rememberablePhrase`). S'il est inconnu, le dialogue repart pour lui, rien n'est retenu ;
  * - une réponse incomprise : on la redemande une fois (`SpokenDialogueState::missed`), la deuxième fois de suite dans la même étape on
  *   abandonne poliment (jamais de boucle sans fin).
  *
@@ -46,6 +51,7 @@ readonly class AnswerSpokenDialogueHandler
         private SpokenIngredientResolver $ingredientResolver,
         private VoiceShoppingList $shoppingList,
         private AddSpokenItemHandler $addSpokenItem,
+        private SpokenIngredientNamer $namer,
     ) {
     }
 
@@ -55,7 +61,7 @@ readonly class AnswerSpokenDialogueHandler
         $answer = $this->interpreter->interpret($command->request, $state, $this->catalogueFor($state));
 
         return match ($answer->kind) {
-            SpokenAnswerKind::NEW_REQUEST => ($this->addSpokenItem)(new AddSpokenItemCommand($command->userId, $answer->phrase ?? '', sessionIsOpen: true, rememberAs: $state->phrase)),
+            SpokenAnswerKind::NEW_REQUEST => ($this->addSpokenItem)(new AddSpokenItemCommand($command->userId, $answer->phrase ?? '', sessionIsOpen: true, rememberAs: $state->rememberablePhrase())),
             SpokenAnswerKind::PICK_OPTION => $this->pickOption($command, $answer),
             SpokenAnswerKind::START_CREATION => $this->ask($state->askingDepartment()),
             SpokenAnswerKind::PICK_DEPARTMENT => $this->ask($state->withDepartment($answer->option ?? throw new \LogicException('PICK_DEPARTMENT sans rayon.'))),
@@ -100,7 +106,15 @@ readonly class AnswerSpokenDialogueHandler
         $department = $state->department ?? throw new \LogicException('CONFIRM sans rayon.');
         $unit = $state->unit ?? throw new \LogicException('CONFIRM sans unité.');
 
-        $created = $this->creator->create($command->userId, $state->name, $department->slug, $unit->slug);
+        // Le nom de l'état vient d'Alexa comme le reste de l'état (entrée non fiable) : il repasse par la normalisation. Celui d'un état honnête
+        // y reste inchangé (il vient déjà de `SpokenIngredientNamer`) ; un nom forgé est normalisé ; un nom que le normalisateur refuse ne crée
+        // rien et reçoit la réponse d'une réponse incomprise (on redemande, puis on abandonne).
+        $name = $this->namer->nameFrom($state->name);
+        if ($name === null) {
+            return $this->miss($state, VoiceReplies::notUnderstood($state));
+        }
+
+        $created = $this->creator->create($command->userId, $name, $department->slug, $unit->slug);
         $added = $this->shoppingList->addItem($command->userId, $created->slug);
 
         // Le nom du produit est exact : rien à retenir pour la phrase

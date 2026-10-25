@@ -24,6 +24,8 @@ use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInt
  *   plafond). Le webhook d'Alexa (`voice_webhook`, 60 par minute) est PUBLIC aussi, plafonné par adresse IP AVANT la vérification de la
  *   signature (chaque requête à l'adresse de chaîne inventée coûte un téléchargement de certificat) ; son plafond par liaison est celui de
  *   `VoiceLinkRateLimiter`, posé par le controller une fois le jeton résolu.
+ * - « Par adresse IP » compte par `ClientAddressKey` : une adresse IPv6 est ramenée à son préfixe /64 (un abonné y choisit autant d'adresses
+ *   qu'il veut), une adresse IPv4 mappée en IPv6 est l'adresse IPv4 qu'elle porte.
  * - Passe APRÈS `VoiceEnabledListener` (priorité plus basse) : interrupteur coupé, `404 VOICE_DISABLED` et aucun jeton consommé.
  *   Passe avant la résolution des arguments : une requête au corps invalide compte aussi.
  * - Au-delà du plafond : `429` + `Retry-After` en secondes, message `VOICE_RATE_LIMITED` (`ApiExceptionListener` met la réponse en
@@ -60,7 +62,7 @@ final readonly class VoiceRateLimitListener
 
             $retryAfter = max(1, $limit->getRetryAfter()->getTimestamp() - $this->clock->now()->getTimestamp());
 
-            throw new TooManyRequestsHttpException($retryAfter, VoiceException::RATE_LIMITED, VoiceException::rateLimited());
+            throw new TooManyRequestsHttpException($retryAfter, VoiceException::RATE_LIMITED, VoiceException::rateLimited(), headers: $attribute->limit->refusalHeaders());
         }
     }
 
@@ -70,7 +72,7 @@ final readonly class VoiceRateLimitListener
 
         return $user instanceof AuthenticatedUser
             ? 'user-' . $user->getId()
-            : 'ip-' . ($request->getClientIp() ?? 'unknown');
+            : 'ip-' . ClientAddressKey::of($request->getClientIp());
     }
 
     private function factoryFor(VoiceRateLimit $limit): RateLimiterFactoryInterface

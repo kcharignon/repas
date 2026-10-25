@@ -47,6 +47,21 @@ class SpokenDialogueStateTest extends TestCase
         $this->assertTrue($state->missed()->missed()->hasMissedTooMuch());
     }
 
+    public function testThePhraseIsRememberableOnlyWhenProposalsWereMade(): void
+    {
+        // Given : des propositions faites ; aucune proposition (« Je le crée ? ») ; les étapes suivantes
+        $proposed = SpokenDialogueState::choose('des patates', [self::persil()], 'patates');
+        $nothingProposed = SpokenDialogueState::choose('de la ciboulette', [], 'ciboulette');
+
+        // Then : seule l'étape `choose` AVEC propositions donne une phrase à retenir
+        $this->assertSame('des patates', $proposed->rememberablePhrase());
+        $this->assertSame('des patates', $proposed->missed()->rememberablePhrase());
+        $this->assertNull($nothingProposed->rememberablePhrase());
+        $this->assertNull($proposed->askingDepartment()->rememberablePhrase());
+        $this->assertNull($proposed->askingDepartment()->withDepartment(new DialogueOption('boucherie', 'boucherie'))->rememberablePhrase());
+        $this->assertNull($proposed->askingDepartment()->withDepartment(new DialogueOption('boucherie', 'boucherie'))->withUnit(new DialogueOption('kilo', 'kilo'))->rememberablePhrase());
+    }
+
     public function testChoosingKeepsAtMostThreeOptions(): void
     {
         // When

@@ -44,6 +44,24 @@ class VoiceLinkRepositoryTest extends DatabaseTestCase
         $this->assertEquals($link, $read);
     }
 
+    public function testARevokedLinkIsStoredWithoutItsAlexaUserId(): void
+    {
+        // Given : une liaison que le webhook a reconnue, puis retirée (le chemin de la révocation passe par `revoke()`)
+        $this->repository->save(VoiceLink::load(['id' => 'link-1', 'user_id' => 'user-1', 'alexa_user_id' => 'amzn1.ask.account.TEST', 'created_at' => new DateTimeImmutable('2026-10-25 10:00:00'), 'last_used_at' => null, 'revoked_at' => null]));
+        $this->repository->save(VoiceLink::load(['id' => 'link-2', 'user_id' => 'user-1', 'alexa_user_id' => 'amzn1.ask.account.TEST', 'created_at' => new DateTimeImmutable('2026-10-25 10:00:00'), 'last_used_at' => null, 'revoked_at' => null]));
+        $this->entityManager->clear();
+
+        // When
+        $this->repository->save($this->repository->findOneById('link-1')->revoke(new DateTimeImmutable('2026-10-25 12:00:00')));
+        $this->entityManager->clear();
+
+        // Then : la colonne est vide pour la liaison retirée (pas seulement le modèle relu), intacte pour l'autre
+        $connection = $this->entityManager->getConnection();
+        $this->assertNull($connection->fetchOne('SELECT alexa_user_id FROM voice_link WHERE id = ?', ['link-1']));
+        $this->assertSame('amzn1.ask.account.TEST', $connection->fetchOne('SELECT alexa_user_id FROM voice_link WHERE id = ?', ['link-2']));
+        $this->assertNotNull($connection->fetchOne('SELECT revoked_at FROM voice_link WHERE id = ?', ['link-1']));
+    }
+
     public function testSavingAnExistingLinkUpdatesItInsteadOfDuplicatingIt(): void
     {
         // Given

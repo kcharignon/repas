@@ -48,6 +48,7 @@ class AnswerSpokenDialogueHandlerTest extends TestCase
             $this->resolver,
             $this->shoppingList,
             new AddSpokenItemHandler($this->resolver, $this->shoppingList, new SpokenIngredientNamer()),
+            new SpokenIngredientNamer(),
         );
     }
 
@@ -135,8 +136,8 @@ class AnswerSpokenDialogueHandlerTest extends TestCase
         $this->assertSame([[self::USER, 'du pain']], $this->resolver->asked);
     }
 
-    #[DataProvider('confidences')]
-    public function testAnotherArticleCorrectsTheProposalWhateverTheConfidence(string $confidence): void
+    #[DataProvider('rememberedConfidences')]
+    public function testAnotherArticleCorrectsTheProposalWhenTheChoiceIsSureOrProbable(string $confidence): void
     {
         // Given : « patates » -> pâte, pâte brisée, pâte feuilletée ; « non, pomme de terre »
         $this->resolver->willResolve('de la pomme de terre', new ResolvedIngredient('pomme-de-terre-u', 'pomme de terre', 'fruits et légumes', $confidence));
@@ -155,11 +156,66 @@ class AnswerSpokenDialogueHandlerTest extends TestCase
     /**
      * @return iterable<string, array{string}>
      */
-    public static function confidences(): iterable
+    public static function rememberedConfidences(): iterable
+    {
+        yield 'sûr' => [ResolvedIngredient::SURE];
+        yield 'probable' => [ResolvedIngredient::PROBABLE];
+    }
+
+    public function testAnotherArticleWhoseChoiceIsUnsureIsAddedButNothingIsRememberedNorPromised(): void
+    {
+        // Given : « patates » -> propositions ; « pomme de terre » touche deux ingrédients (incertain)
+        $this->resolver->willResolve('de la pomme de terre', new ResolvedIngredient('pomme-de-terre-u', 'pomme de terre', 'fruits et légumes', ResolvedIngredient::UNSURE));
+        $state = SpokenDialogueState::choose('des patates', [new DialogueOption('pate-u', 'pâte'), new DialogueOption('pate-brisee-u', 'pâte brisée')], 'patates');
+
+        // When
+        $result = $this->answer(AlexaTestRequest::addItem('de la pomme de terre'), $state);
+
+        // Then : l'article est ajouté et dit avec son rayon (le choix est incertain), aucune mémoire, aucune promesse
+        $this->assertSame([[self::USER, 'pomme-de-terre-u']], $this->shoppingList->added);
+        $this->assertSame([], $this->resolver->remembered);
+        $this->assertEquals(new AddSpokenItemResult("J'ai mis pomme de terre, fruits et légumes. Autre chose ?", keepSessionOpen: true, added: true), $result);
+    }
+
+    #[DataProvider('allConfidences')]
+    public function testAnotherArticleWhenNothingWasProposedIsAnOrdinaryAddAndNothingIsRemembered(string $confidence): void
+    {
+        // Given : « de la ciboulette » -> « Je le crée ? » (aucune proposition) ; « non, du pain » : il change d'avis, il ne corrige rien
+        $this->resolver->willResolve('du pain', new ResolvedIngredient('pain-u', 'pain', 'boulangerie', $confidence));
+
+        // When
+        $result = $this->answer(AlexaTestRequest::addItem('du pain'), self::choose([]));
+
+        // Then : ajouté comme un ajout ordinaire, "ciboulette" n'est JAMAIS retenue pour le pain, aucune promesse
+        $this->assertSame([[self::USER, 'pain-u']], $this->shoppingList->added);
+        $this->assertSame([], $this->resolver->remembered);
+        $this->assertStringNotContainsString('souviendrai', $result->speech);
+        $this->assertSame($confidence === ResolvedIngredient::SURE ? "C'est noté : pain. Autre chose ?" : "J'ai mis pain, boulangerie. Autre chose ?", $result->speech);
+        $this->assertNull($result->nextState);
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function allConfidences(): iterable
     {
         yield 'sûr' => [ResolvedIngredient::SURE];
         yield 'probable' => [ResolvedIngredient::PROBABLE];
         yield 'incertain' => [ResolvedIngredient::UNSURE];
+    }
+
+    public function testAnOrdinaryAddAfterNothingWasProposedSaysSoOnAFreshListToo(): void
+    {
+        // Given
+        $this->resolver->willResolve('du pain', new ResolvedIngredient('pain-u', 'pain', 'boulangerie', ResolvedIngredient::SURE));
+        $this->shoppingList->willReturn(new AddedItem(listCreated: true, previousListSent: false));
+
+        // When
+        $result = $this->answer(AlexaTestRequest::addItem('du pain'), self::choose([]));
+
+        // Then
+        $this->assertSame("J'ai commencé une nouvelle liste avec pain. Autre chose ?", $result->speech);
+        $this->assertSame([], $this->resolver->remembered);
     }
 
     public function testCorrectingTheProposalOnAFreshListSaysSoAndStillRemembers(): void
@@ -240,6 +296,89 @@ class AnswerSpokenDialogueHandlerTest extends TestCase
         $this->assertSame([[self::USER, 'ciboulette-' . self::USER]], $this->shoppingList->added);
         $this->assertSame([], $this->resolver->remembered);
         $this->assertEquals(new AddSpokenItemResult("C'est créé et noté : ciboulette. Autre chose ?", keepSessionOpen: true, added: true), $created);
+    }
+
+    #[DataProvider('spokenPhrases')]
+    public function testTheNameOfAnHonestStateIsCreatedUnchanged(string $phrase, string $expectedName): void
+    {
+        // Given : un état comme le dialogue le fabrique (le nom vient de `SpokenIngredientNamer`)
+        $name = new SpokenIngredientNamer()->nameFrom($phrase);
+        $confirm = SpokenDialogueState::choose($phrase, [], $name ?? '')->askingDepartment()
+            ->withDepartment(new DialogueOption('boucherie', 'boucherie'))
+            ->withUnit(new DialogueOption('kilo', 'kilo'));
+
+        // When
+        $this->answer(AlexaTestRequest::yes(), $confirm);
+
+        // Then : exactement ce nom, ni retouché ni abrégé
+        $this->assertSame($expectedName, $name);
+        $this->assertSame([[self::USER, $expectedName, 'boucherie', 'kilo']], $this->creator->created);
+    }
+
+    /**
+     * @return iterable<string, array{string, string}>
+     */
+    public static function spokenPhrases(): iterable
+    {
+        yield 'article du' => ['du boudin noir', 'boudin noir'];
+        yield 'article de la' => ['de la ciboulette', 'ciboulette'];
+        yield 'article de l\'' => ['de l\'huile d\'olive', 'huile d\'olive'];
+        yield 'des et accents' => ['des Tomates Cerises', 'tomates cerises'];
+        yield 'tiret' => ['du porc-épic', 'porc-épic'];
+        yield 'apostrophe typographique' => ['de l’ail', 'ail'];
+        yield 'article seul' => ['la', 'la'];
+        yield 'nom de soixante caractères' => [str_repeat('a', 60), str_repeat('a', 60)];
+    }
+
+    public function testAForgedNameIsNormalisedBeforeTheProductIsCreated(): void
+    {
+        // Given : à la confirmation, un état forgé porte un nom qui n'est jamais passé par le normalisateur
+        $confirm = SpokenDialogueState::choose('de la ciboulette', [], '<b>ÉVIL</b> "Ingrédient" & ' . str_repeat('x', 20))->askingDepartment()
+            ->withDepartment(new DialogueOption('boucherie', 'boucherie'))
+            ->withUnit(new DialogueOption('kilo', 'kilo'));
+
+        // When
+        $result = $this->answer(AlexaTestRequest::yes(), $confirm);
+
+        // Then : le produit est créé sous le nom normalisé (minuscules, plus aucun signe), jamais sous le nom reçu
+        $this->assertSame([[self::USER, 'b évil b ingrédient xxxxxxxxxxxxxxxxxxxx', 'boucherie', 'kilo']], $this->creator->created);
+        $this->assertSame([[self::USER, 'b évil b ingrédient xxxxxxxxxxxxxxxxxxxx-' . self::USER]], $this->shoppingList->added);
+        $this->assertTrue($result->added);
+    }
+
+    #[DataProvider('refusedNames')]
+    public function testAForgedNameTheNormaliserRefusesCreatesNothingAndAsksAgain(string $forgedName): void
+    {
+        // Given
+        $confirm = SpokenDialogueState::choose('de la ciboulette', [], $forgedName)->askingDepartment()
+            ->withDepartment(new DialogueOption('boucherie', 'boucherie'))
+            ->withUnit(new DialogueOption('kilo', 'kilo'));
+
+        // When : « oui », deux fois
+        $first = $this->answer(AlexaTestRequest::yes(), $confirm);
+        $second = $this->answer(AlexaTestRequest::yes(), $first->nextState);
+
+        // Then : rien n'est créé ni ajouté ; la première fois « Je n'ai pas compris » et la question de l'étape (comme une réponse incomprise), la
+        // seconde fois on abandonne
+        $this->assertSame([], $this->creator->created);
+        $this->assertSame([], $this->shoppingList->added);
+        $this->assertTrue($first->keepSessionOpen);
+        $this->assertFalse($first->added);
+        $this->assertStringStartsWith("Je n'ai pas compris. Je crée ", $first->speech);
+        $this->assertStringEndsWith("C'est bon ?", $first->speech);
+        $this->assertSame([DialogueStep::CONFIRM, 1], [$first->nextState?->step, $first->nextState?->misses]);
+        $this->assertEquals(new AddSpokenItemResult("Je n'ai pas compris. On laisse tomber. Autre chose ?", keepSessionOpen: true, added: false), $second);
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function refusedNames(): iterable
+    {
+        yield 'sans aucune lettre' => ['12 34'];
+        yield 'que des signes' => ['<<>> "" &&'];
+        yield 'trop long' => [str_repeat('a', 61)];
+        yield 'dans la limite de l\'état mais trop long pour un nom' => [str_repeat('ab ', 33)];
     }
 
     public function testWithNoProposalYesToCreateStartsTheQuestions(): void

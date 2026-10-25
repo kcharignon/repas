@@ -75,6 +75,56 @@ class AddSpokenItemHandlerTest extends TestCase
         yield 'confiance inconnue' => ['whatever'];
     }
 
+    #[DataProvider('rememberedConfidences')]
+    public function testASureOrProbableChoiceRetainsTheOriginalPhraseWhenToldTo(string $confidence): void
+    {
+        // Given : l'utilisateur répond à des propositions en nommant un autre ingrédient
+        $this->resolver->willResolve('de la pomme de terre', new ResolvedIngredient('pomme-de-terre', 'Pomme de terre', 'Fruits et légumes', $confidence));
+
+        // When
+        $result = ($this->handler)(new AddSpokenItemCommand('user-1', 'de la pomme de terre', sessionIsOpen: true, rememberAs: 'des patates'));
+
+        // Then : ajouté, la phrase d'ORIGINE est retenue, et Alexa le promet
+        $this->assertSame([['user-1', 'pomme-de-terre']], $this->shoppingList->added);
+        $this->assertSame([['user-1', 'des patates', 'pomme-de-terre']], $this->resolver->remembered);
+        $this->assertSame("C'est noté : pomme de terre. Je m'en souviendrai. Autre chose ?", $result->speech);
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function rememberedConfidences(): iterable
+    {
+        yield 'sûr' => [ResolvedIngredient::SURE];
+        yield 'probable' => [ResolvedIngredient::PROBABLE];
+    }
+
+    public function testAnUnsureChoiceNeverRetainsThePhraseNorPromisesIt(): void
+    {
+        // Given : deux noms qui se touchent
+        $this->resolver->willResolve('de la pomme de terre', new ResolvedIngredient('pomme-de-terre', 'Pomme de terre', 'Fruits et légumes', ResolvedIngredient::UNSURE));
+
+        // When
+        $result = ($this->handler)(new AddSpokenItemCommand('user-1', 'de la pomme de terre', sessionIsOpen: true, rememberAs: 'des patates'));
+
+        // Then : un ajout ordinaire, dit avec son rayon
+        $this->assertSame([['user-1', 'pomme-de-terre']], $this->shoppingList->added);
+        $this->assertSame([], $this->resolver->remembered);
+        $this->assertSame('J\'ai mis pomme de terre, fruits et légumes. Autre chose ?', $result->speech);
+    }
+
+    public function testAnOrdinaryAddNeverRetainsAPhrase(): void
+    {
+        // Given
+        $this->resolver->willResolve('du pain', new ResolvedIngredient('pain', 'Pain', 'Boulangerie', ResolvedIngredient::SURE));
+
+        // When : pas de `rememberAs` (ajout direct, ou rien n'avait été proposé)
+        ($this->handler)(new AddSpokenItemCommand('user-1', 'du pain', sessionIsOpen: true));
+
+        // Then
+        $this->assertSame([], $this->resolver->remembered);
+    }
+
     public function testANewListIsSaid(): void
     {
         // Given

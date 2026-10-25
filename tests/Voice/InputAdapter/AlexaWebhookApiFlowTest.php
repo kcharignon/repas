@@ -502,10 +502,19 @@ class AlexaWebhookApiFlowTest extends DatabaseTestCase
         // When : « du pain », à la question « Je le crée ? »
         $this->converse(AlexaTestRequest::addItem('du pain'), $this->attributes());
 
-        // Then : ajouté ; ce n'est pas une proposition mais un autre article : la phrase d'origine est retenue pour lui
-        $this->assertSame("J'ai commencé une nouvelle liste avec pain. Je m'en souviendrai. Autre chose ?", $this->speech());
+        // Then : ajouté comme un ajout ordinaire ; aucune proposition n'avait été faite, il n'y avait rien à corriger : rien n'est retenu ni promis
+        $this->assertSame("J'ai commencé une nouvelle liste avec pain. Autre chose ?", $this->speech());
         $this->assertSame([], $this->attributes());
-        $this->assertSame('ciboulette', $this->connection()->fetchOne('SELECT phrase FROM spoken_phrase_choice'));
+        $this->assertSame(1, $this->rowCount('shopping_list_row'));
+        $this->assertSame(0, $this->rowCount('spoken_phrase_choice'));
+
+        // When : plus tard, « de la ciboulette » de nouveau, en appel direct
+        $this->say(AlexaTestRequest::addItem('de la ciboulette'));
+
+        // Then : la question revient, ciboulette n'est pas devenue du pain
+        $this->assertSame('Je ne connais pas ciboulette. Je le crée ?', $this->speech());
+        $this->assertSame('choose', $this->attributes()['dialogue']['step']);
+        $this->assertSame(1, $this->rowCount('shopping_list_row'));
     }
 
     public function testNamingAnotherIngredientAfterTheProposalsAddsItAndRemembersTheOriginalPhrase(): void
@@ -613,6 +622,46 @@ class AlexaWebhookApiFlowTest extends DatabaseTestCase
         $this->assertSame("Je n'ai pas pu faire ça. Réessaie dans un instant.", $this->speech());
         $this->assertSame($ingredientsBefore, $this->rowCount('ingredient'));
         $this->assertSame(0, $this->rowCount('shopping_list'));
+    }
+
+    public function testAForgedNameAtTheConfirmationIsNormalisedBeforeTheProductIsStored(): void
+    {
+        // Given : l'état de confirmation porte un nom qui n'est jamais passé par le normalisateur, avec un rayon et une unité réels
+        $user = $this->linkedUser();
+        $this->savedCatalogue();
+        $this->savedActiveList($user);
+        $forged = SpokenDialogueState::choose('de la ciboulette', [], '<b>ÉVIL</b> "Ingrédient" & xxxx')->askingDepartment()
+            ->withDepartment(new DialogueOption('cereale', 'céréale'))
+            ->withUnit(new DialogueOption('unite', 'unité'));
+
+        // When
+        $this->converse(AlexaTestRequest::yes(), ['dialogue' => $forged->toArray()]);
+
+        // Then : stocké sous le nom normalisé, jamais tel que reçu
+        $this->assertSame("C'est créé et noté : b évil b ingrédient xxxx. Autre chose ?", $this->speech());
+        $this->assertSame(1, $this->rowCount('ingredient'));
+        $this->assertSame('b évil b ingrédient xxxx', $this->connection()->fetchOne('SELECT name FROM ingredient'));
+        $this->assertSame(1, $this->rowCount('shopping_list_row'));
+    }
+
+    public function testAForgedNameTheNormaliserRefusesCreatesNothingAndAsksAgain(): void
+    {
+        // Given
+        $user = $this->linkedUser();
+        $this->savedCatalogue();
+        $this->savedActiveList($user);
+        $forged = SpokenDialogueState::choose('de la ciboulette', [], '12 34')->askingDepartment()
+            ->withDepartment(new DialogueOption('cereale', 'céréale'))
+            ->withUnit(new DialogueOption('unite', 'unité'));
+
+        // When
+        $this->converse(AlexaTestRequest::yes(), ['dialogue' => $forged->toArray()]);
+
+        // Then : on redemande comme pour une réponse incomprise, rien n'est créé ni ajouté
+        $this->assertSame("Je n'ai pas compris. Je crée 12 34, céréale, unité. C'est bon ?", $this->speech());
+        $this->assertSame(1, $this->attributes()['dialogue']['misses']);
+        $this->assertSame(0, $this->rowCount('ingredient'));
+        $this->assertSame(0, $this->rowCount('shopping_list_row'));
     }
 
     public function testAForgedStateTheServerCannotReadIsIgnored(): void
@@ -774,13 +823,15 @@ class AlexaWebhookApiFlowTest extends DatabaseTestCase
         $this->linkedUser();
         $token = $this->tokenOf(self::ACCESS_TOKEN_SEED);
 
+        // Chaque requête est construite au moment de l'envoi : l'horodatage à 151 s ne doit pas glisser sous la limite de 150 s pendant que les
+        // requêtes précédentes sont traitées (suite complète, machine chargée)
         foreach ([
-            'autre skill' => AlexaTestRequest::addItem('du pain')->withAccessToken($token)->withApplicationId('amzn1.ask.skill.00000000-other-0000-0000-000000000002'),
-            'horodatage vieux de 151 s' => AlexaTestRequest::addItem('du pain')->withAccessToken($token)->at(new DateTimeImmutable('-151 seconds')),
-            'horodatage dans 151 s' => AlexaTestRequest::addItem('du pain')->withAccessToken($token)->at(new DateTimeImmutable('+151 seconds')),
-        ] as $name => $request) {
+            'autre skill' => static fn(): AlexaTestRequest => AlexaTestRequest::addItem('du pain')->withAccessToken($token)->withApplicationId('amzn1.ask.skill.00000000-other-0000-0000-000000000002'),
+            'horodatage vieux de 151 s' => static fn(): AlexaTestRequest => AlexaTestRequest::addItem('du pain')->withAccessToken($token)->at(new DateTimeImmutable('-151 seconds')),
+            'horodatage dans 151 s' => static fn(): AlexaTestRequest => AlexaTestRequest::addItem('du pain')->withAccessToken($token)->at(new DateTimeImmutable('+151 seconds')),
+        ] as $name => $buildRequest) {
             // When
-            $this->signedPost($request);
+            $this->signedPost($buildRequest());
 
             // Then
             $this->assertSame(400, $this->statusCode(), $name);
@@ -805,6 +856,7 @@ class AlexaWebhookApiFlowTest extends DatabaseTestCase
         $this->assertEqualsWithDelta(time(), $current->getLastUsedAt()->getTimestamp(), 5);
         $this->assertFalse($current->isRevoked());
         $this->assertTrue($links->findOneById($old)->isRevoked());
+        $this->assertNull($this->connection()->fetchOne('SELECT alexa_user_id FROM voice_link WHERE id = ?', [$old]), "l'ancienne liaison n'a plus d'identifiant d'utilisateur Alexa");
         $this->assertSame(1, (int) $this->connection()->fetchOne('SELECT COUNT(*) FROM voice_access_grant WHERE link_id = ?', [$this->linkIdOf(self::ACCESS_TOKEN_SEED)]));
         $this->assertSame(0, (int) $this->connection()->fetchOne('SELECT COUNT(*) FROM voice_access_grant WHERE link_id = ?', [$old]));
 

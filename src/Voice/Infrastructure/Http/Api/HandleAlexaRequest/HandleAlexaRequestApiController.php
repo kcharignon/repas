@@ -46,7 +46,8 @@ use Throwable;
  * 4. le plafond PAR LIAISON (60 par minute) : au-delà, une phrase (« Un instant… »), jamais une erreur.
  *
  * Une fois la requête authentique la réponse est TOUJOURS `200` avec une réponse vocale valide : une panne inattendue donne la phrase d'échec
- * (la classe et l'endroit de l'exception sont journalisés, jamais son message ni le corps, qui contient la voix transcrite). Le controller
+ * (la classe et l'endroit de l'exception, et ceux de son exception d'origine quand le bus l'a enveloppée, sont journalisés, jamais son message
+ * ni le corps, qui contient la voix transcrite). Le controller
  * traduit le protocole : la conversation est dans `AlexaDialogue`, l'ajout dans `AddSpokenItem`, la réponse à une question d'un produit inconnu
  * dans `AnswerSpokenDialogue` (l'état du dialogue voyage dans `session.attributes` à l'aller et `sessionAttributes` au retour, ADR 0029
  * décision 11), le suivi de la liaison dans `RecordVoiceLinkUse`, que le webhook lance en dernier et dont un échec ne change pas la réponse.
@@ -122,12 +123,37 @@ final class HandleAlexaRequestApiController extends AbstractController
         try {
             $response = $this->dialogue->beforeAuthentication($alexa) ?? $this->answerLinkedUser($alexa);
         } catch (Throwable $exception) {
-            // Jamais le message (il peut citer une donnée), jamais le corps : la classe et l'endroit suffisent à retrouver la panne
-            $this->logger->error('Réponse à Alexa impossible.', ['exception' => $exception::class, 'location' => basename($exception->getFile()) . ':' . $exception->getLine()]);
+            $this->logger->error('Réponse à Alexa impossible.', $this->failureContext($exception));
             $response = AlexaResponse::say(VoiceReplies::FAILURE);
         }
 
         return new JsonResponse($response->toArray());
+    }
+
+    /**
+     * Ce que le journal garde d'une panne : jamais le message (il peut citer une donnée), jamais le corps ; la classe et l'endroit suffisent à
+     * retrouver la panne. `CommandBus::dispatch` ne déballe que les `DomainException` : toute autre panne d'un handler arrive enveloppée dans un
+     * `HandlerFailedException` dont la classe et l'endroit sont ceux de Messenger. La classe et l'endroit de l'exception d'origine
+     * (`getPrevious()`) s'ajoutent donc quand elle existe.
+     *
+     * @return array<string, string>
+     */
+    private function failureContext(Throwable $exception): array
+    {
+        $context = ['exception' => $exception::class, 'location' => $this->placeOf($exception)];
+
+        $previous = $exception->getPrevious();
+        if ($previous !== null) {
+            $context['previous'] = $previous::class;
+            $context['previous_location'] = $this->placeOf($previous);
+        }
+
+        return $context;
+    }
+
+    private function placeOf(Throwable $exception): string
+    {
+        return basename($exception->getFile()) . ':' . $exception->getLine();
     }
 
     /**

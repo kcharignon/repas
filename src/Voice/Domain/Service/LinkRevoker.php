@@ -9,9 +9,10 @@ use Repas\Voice\Domain\Interface\VoiceLinkRepository;
 use Repas\Voice\Domain\Model\VoiceLink;
 
 /**
- * Retire une liaison avec Alexa (ADR 0029 décision 6) : la liaison est marquée révoquée ET toutes ses paires de jetons sont effacées,
- * pour que plus aucun jeton ne serve. Une seule règle pour les trois façons de la retirer : l'utilisateur la supprime, un jeton de
- * rafraîchissement est rejoué, un code d'autorisation est rejoué.
+ * Retire une liaison avec Alexa (ADR 0029 décision 6) : la liaison est marquée révoquée (son identifiant d'utilisateur Alexa est effacé,
+ * décision 10 : il ne sert qu'à reconnaître une liaison existante) ET toutes ses paires de jetons sont effacées, pour que plus aucun jeton ne
+ * serve. Une seule règle pour les quatre façons de la retirer : l'utilisateur la supprime, un jeton de rafraîchissement est rejoué, un code
+ * d'autorisation est rejoué, le même Echo est relié une seconde fois (`RecordVoiceLinkUse`).
  */
 final readonly class LinkRevoker
 {
@@ -23,7 +24,8 @@ final readonly class LinkRevoker
 
     public function revoke(VoiceLink $link, DateTimeImmutable $now): void
     {
-        if (!$link->isRevoked()) {
+        // Une liaison déjà révoquée n'est réécrite que si elle porte encore un identifiant d'utilisateur Alexa (révoquée avant qu'il soit effacé)
+        if (!$link->isRevoked() || $link->getAlexaUserId() !== null) {
             $this->linkRepository->save($link->revoke($now));
         }
 

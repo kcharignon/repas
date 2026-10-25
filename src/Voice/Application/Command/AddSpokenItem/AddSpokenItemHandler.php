@@ -26,9 +26,11 @@ use Symfony\Component\Messenger\Attribute\AsMessageHandler;
  * Un choix sûr se dit court (« C'est noté : pain. »), un choix probable ou incertain dit aussi le rayon, pour que l'erreur se voie. En séance
  * ouverte la réponse invite à continuer.
  *
- * Quand l'utilisateur répond à des propositions en nommant autre chose (`AddSpokenItemCommand::rememberAs`), le choix automatique est pris
- * quelle que soit sa confiance (il l'a dit en entier) et la phrase d'origine est retenue pour cet ingrédient (« C'est noté : pomme de terre.
- * Je m'en souviendrai. ») ; si cette nouvelle phrase est inconnue elle aussi, rien n'est retenu et le dialogue repart pour elle.
+ * Quand l'utilisateur répond à des propositions en nommant autre chose (`AddSpokenItemCommand::rememberAs`, posé seulement si des
+ * propositions ont été faites), la phrase d'origine n'est retenue pour cet ingrédient (« C'est noté : pomme de terre. Je m'en
+ * souviendrai. ») que si le choix est `SURE` ou `PROBABLE` : un choix `UNSURE` (deux noms qui se touchent) ajoute l'article comme un ajout
+ * ordinaire, sans rien retenir ni promettre ; si cette nouvelle phrase est inconnue elle aussi, rien n'est retenu et le dialogue repart
+ * pour elle.
  *
  * Produit inconnu : le nom à créer est tiré de la phrase (`SpokenIngredientNamer`) ; `SpokenIngredientResolver` a déjà rendu, dans la même lecture, les
  * trois ingrédients les plus proches. Alexa les propose avec l'issue « un nouveau produit » (aucun proche : « Je le crée ? »), la séance reste
@@ -59,7 +61,7 @@ readonly class AddSpokenItemHandler
 
         $added = $this->shoppingList->addItem($command->userId, $ingredient->slug);
 
-        if ($command->rememberAs !== null) {
+        if ($command->rememberAs !== null && $ingredient->confidence !== ResolvedIngredient::UNSURE) {
             // Corrige une proposition : l'article est ajouté PUIS la phrase d'origine est retenue pour lui (le port vérifie l'ingrédient)
             $this->ingredientResolver->remember($command->userId, $command->rememberAs, $ingredient->slug);
 
