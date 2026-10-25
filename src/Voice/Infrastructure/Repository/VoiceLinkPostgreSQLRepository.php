@@ -3,6 +3,9 @@
 namespace Repas\Voice\Infrastructure\Repository;
 
 
+use DateTimeImmutable;
+use DateTimeZone;
+use Doctrine\DBAL\Types\Types;
 use Doctrine\Persistence\ManagerRegistry;
 use Repas\Shared\Infrastructure\Repository\PostgreSQLRepository;
 use Repas\Voice\Domain\Interface\VoiceLinkRepository;
@@ -58,6 +61,48 @@ readonly class VoiceLinkPostgreSQLRepository extends PostgreSQLRepository implem
         $entity->revokedAt = $link->getRevokedAt();
 
         $this->entityManager->flush();
+    }
+
+    /**
+     * Une seule instruction, qui ne touche que `last_used_at` : ni `save()` du modèle, ni l'entité (l'identity map de Doctrine reste telle
+     * quelle, sans conséquence : aucun `flush` ne réécrit une entité qui n'a pas changé).
+     */
+    public function recordUse(string $linkId, DateTimeImmutable $at): void
+    {
+        $this->entityManager->getConnection()->executeStatement(
+            'UPDATE voice_link SET last_used_at = :at WHERE id = :id AND revoked_at IS NULL AND (last_used_at IS NULL OR last_used_at < :at)',
+            // Doctrine relit les dates dans le fuseau par défaut de PHP : on écrit dans le même, quel que soit celui de `$at`
+            ['at' => $at->setTimezone(new DateTimeZone(date_default_timezone_get())), 'id' => $linkId],
+            ['at' => Types::DATETIME_IMMUTABLE],
+        );
+    }
+
+    public function identifyAlexaUser(string $linkId, string $alexaUserId): bool
+    {
+        return $this->entityManager->getConnection()->executeStatement(
+            'UPDATE voice_link SET alexa_user_id = :alexaUserId WHERE id = :id AND alexa_user_id IS NULL AND revoked_at IS NULL',
+            ['alexaUserId' => $alexaUserId, 'id' => $linkId],
+        ) === 1;
+    }
+
+    public function findOthersOfAlexaUser(string $userId, string $alexaUserId, string $exceptLinkId): array
+    {
+        $entities = $this->entityManager->createQueryBuilder()
+            ->select('l')
+            ->from(VoiceLinkEntity::class, 'l')
+            ->where('l.userId = :userId')
+            ->andWhere('l.alexaUserId = :alexaUserId')
+            ->andWhere('l.id <> :exceptLinkId')
+            ->andWhere('l.revokedAt IS NULL')
+            ->orderBy('l.createdAt', 'ASC')
+            ->addOrderBy('l.id', 'ASC')
+            ->setParameter('userId', $userId)
+            ->setParameter('alexaUserId', $alexaUserId)
+            ->setParameter('exceptLinkId', $exceptLinkId)
+            ->getQuery()
+            ->getResult();
+
+        return array_map(fn(VoiceLinkEntity $entity): VoiceLink => $this->convertEntityToModel($entity), $entities);
     }
 
     private function convertEntityToModel(VoiceLinkEntity $entity): VoiceLink

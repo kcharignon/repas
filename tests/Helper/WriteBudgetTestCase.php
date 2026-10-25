@@ -128,11 +128,18 @@ abstract class WriteBudgetTestCase extends DatabaseTestCase
     }
 
     /**
-     * Liaison de `$user` avec Alexa (VOX-202), qu'Alexa n'a pas encore utilisée.
+     * Liaison de `$user` avec Alexa (VOX-202), qu'Alexa n'a pas encore utilisée (sauf si `$alexaUserId` ou `$lastUsedAt` disent le contraire, VOX-204).
      */
-    public function savedVoiceLink(User $user, string $id = 'link-budget'): VoiceLink
+    public function savedVoiceLink(User $user, string $id = 'link-budget', ?string $alexaUserId = null, ?DateTimeImmutable $lastUsedAt = null): VoiceLink
     {
-        $link = VoiceLink::create($id, $user->getId(), new DateTimeImmutable('-1 day'));
+        $link = VoiceLink::load([
+            'id' => $id,
+            'user_id' => $user->getId(),
+            'alexa_user_id' => $alexaUserId,
+            'created_at' => new DateTimeImmutable('-1 day'),
+            'last_used_at' => $lastUsedAt,
+            'revoked_at' => null,
+        ]);
         static::getContainer()->get(VoiceLinkRepository::class)->save($link);
 
         return $link;

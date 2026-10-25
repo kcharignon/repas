@@ -3,6 +3,7 @@
 namespace Repas\Voice\Domain\Interface;
 
 
+use DateTimeImmutable;
 use Repas\Voice\Domain\Model\VoiceLink;
 
 /**
@@ -20,4 +21,26 @@ interface VoiceLinkRepository
     public function findAwaitingAlexaOfUser(string $userId): ?VoiceLink;
 
     public function save(VoiceLink $link): void;
+
+    /**
+     * Retient que la liaison vient de servir : une SEULE instruction qui ne touche que `last_used_at` (jamais `save()`, qui recopierait
+     * tout le modèle et écraserait ce qu'une autre requête vient de changer, une révocation par exemple). Sans effet sur une liaison
+     * révoquée, et ne recule jamais la date.
+     */
+    public function recordUse(string $linkId, DateTimeImmutable $at): void;
+
+    /**
+     * Donne à la liaison l'identifiant d'utilisateur Alexa vu dans sa première requête, SI elle n'en a pas encore et n'est pas révoquée :
+     * une seule instruction conditionnelle, qui ne change jamais un identifiant déjà connu. Dit si c'est CET appel qui l'a posé (de deux
+     * requêtes simultanées, une seule le pose).
+     */
+    public function identifyAlexaUser(string $linkId, string $alexaUserId): bool;
+
+    /**
+     * Les AUTRES liaisons du compte, non révoquées, qui portent déjà cet identifiant d'utilisateur Alexa : un même Echo relié deux fois.
+     * Jamais celles d'un autre compte. Plus ancienne d'abord.
+     *
+     * @return list<VoiceLink>
+     */
+    public function findOthersOfAlexaUser(string $userId, string $alexaUserId, string $exceptLinkId): array;
 }
