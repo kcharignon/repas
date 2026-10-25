@@ -98,6 +98,20 @@ class RefreshAccessGrantHandlerTest extends TestCase
         $this->assertNull($this->refresh($first->refreshToken));
     }
 
+    public function testAnOldTokenThatServedIsAReplayEvenOnceItsLifetimeIsOver(): void
+    {
+        // Given : le jeton a servi, et on le présente 100 jours plus tard (un jeton déjà échangé n'a rien à faire dans les mains de personne)
+        $this->refresh('refresh-0');
+
+        // When
+        $replay = $this->refresh('refresh-0', now: $this->issuedAt->modify('+100 days'));
+
+        // Then : la liaison est révoquée, pas seulement refusée
+        $this->assertNull($replay);
+        $this->assertTrue($this->links->findOneById(self::LINK)->isRevoked());
+        $this->assertSame([], $this->grants->all());
+    }
+
     public function testOfTwoSimultaneousExchangesOfTheSameTokenTheSecondIsAReplay(): void
     {
         // Given : un autre échange du même jeton gagne la course entre la lecture et l'écriture
