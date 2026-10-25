@@ -5,7 +5,7 @@
 - **Taille** : L
 - **Dépend de** : VOX-204, VOX-205
 - **Faisable sans téléphone** : oui (faux Amazon, signatures de test)
-- **Statut** : fait (2026-10-25, PR « feat/voice-produit-inconnu »)
+- **Statut** : fait (2026-10-25, PR #270)
 - **Lire d'abord** : [`../alexa.md`](../alexa.md) §§ 2 à 4 ; [ADR 0029](../../adr/0029-commande-vocale-alexa.md) décisions 3, 4 et 11 ; `.claude/skills/repas-po/SKILL.md` (les textes d'Alexa) ; `docs/ingredients/fusion.md` (une table qui référence un ingrédient est repointée par la fusion).
 
 ## Contexte
