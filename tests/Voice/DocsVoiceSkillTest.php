@@ -9,6 +9,7 @@ use Repas\Voice\Domain\Model\AlexaIntent;
 use Repas\Voice\Domain\Model\AlexaRequest;
 use Repas\Voice\Domain\Model\AlexaResponse;
 use Repas\Voice\Domain\Service\AlexaDialogue;
+use Repas\Voice\Domain\Service\SpokenUnits;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Routing\RouterInterface;
 
@@ -83,13 +84,17 @@ class DocsVoiceSkillTest extends KernelTestCase
         }
     }
 
-    public function testTheAddItemIntentHasOneItemSlotOfTheIngredientTypeAndWellFormedSamples(): void
+    public function testTheAddItemIntentHasItsItemQuantityAndUnitSlotsAndWellFormedSamples(): void
     {
         // Given
         $intent = $this->intent('AddItemIntent');
 
-        // Then : le créneau que le webhook lit (`request.intent.slots.item`), de notre type
-        $this->assertSame([['name' => 'item', 'type' => 'INGREDIENT']], $intent['slots']);
+        // Then : les créneaux que le webhook lit (`request.intent.slots.item`, `quantity`, `unit`), de notre type ; la quantité est un nombre d'Amazon
+        $this->assertSame([
+            ['name' => 'item', 'type' => 'INGREDIENT'],
+            ['name' => 'quantity', 'type' => 'AMAZON.NUMBER'],
+            ['name' => 'unit', 'type' => 'UNIT'],
+        ], $intent['slots']);
         $this->assertContains('INGREDIENT', array_map(static fn(array $type): string => $type['name'], $this->languageModel()['types']));
 
         $samples = $intent['samples'];
@@ -98,7 +103,11 @@ class DocsVoiceSkillTest extends KernelTestCase
         foreach ($samples as $sample) {
             $this->assertIsString($sample);
             $this->assertSame(1, substr_count($sample, '{item}'), $sample);
-            $this->assertSame(0, substr_count(str_replace('{item}', '', $sample), '{'), "« $sample » : un seul créneau, {item}");
+            // Le nom du produit, et au plus une fois la quantité et l'unité : aucun autre créneau
+            $this->assertSame(0, substr_count(str_replace(['{item}', '{quantity}', '{unit}'], '', $sample), '{'), "« $sample » : {item}, {quantity} et {unit} seulement");
+            $this->assertLessThanOrEqual(1, substr_count($sample, '{quantity}'), $sample);
+            $this->assertLessThanOrEqual(1, substr_count($sample, '{unit}'), $sample);
+            $this->assertFalse(str_contains($sample, '{unit}') && !str_contains($sample, '{quantity}'), "« $sample » : une unité se dit avec sa quantité");
             $this->assertSame($sample, trim($sample));
             $this->assertDoesNotMatchRegularExpression('/\d/', $sample, "« $sample » : pas de chiffre dans une phrase d'exemple");
             $this->assertSame(mb_strtolower($sample), $sample, "« $sample » : en minuscules");
@@ -118,7 +127,6 @@ class DocsVoiceSkillTest extends KernelTestCase
         yield 'CreateItemIntent' => ['CreateItemIntent', null, null];
         yield 'AnswerDepartmentIntent' => ['AnswerDepartmentIntent', 'department', 'DEPARTMENT'];
         yield 'AnswerUnitIntent' => ['AnswerUnitIntent', 'unit', 'UNIT'];
-        yield 'AddItemIntent' => ['AddItemIntent', 'item', 'INGREDIENT'];
     }
 
     #[DataProvider('dialogueIntents')]
@@ -131,10 +139,8 @@ class DocsVoiceSkillTest extends KernelTestCase
         $this->assertSame($slot === null ? null : [['name' => $slot, 'type' => $type]], $intent['slots'] ?? null, $name);
         $samples = $intent['samples'];
         $this->assertSame(array_values(array_unique($samples)), $samples, "$name : aucune phrase en double");
-        if ($name !== 'AddItemIntent') {
-            $this->assertGreaterThanOrEqual(6, count($samples), $name);
-            $this->assertLessThanOrEqual(10, count($samples), $name);
-        }
+        $this->assertGreaterThanOrEqual(6, count($samples), $name);
+        $this->assertLessThanOrEqual(10, count($samples), $name);
         foreach ($samples as $sample) {
             $this->assertSame($sample, trim($sample), $name);
             $this->assertSame(mb_strtolower($sample), $sample, "$name : « $sample » en minuscules");
@@ -145,6 +151,136 @@ class DocsVoiceSkillTest extends KernelTestCase
         }
         if ($slot !== null) {
             $this->assertContains('{' . $slot . '}', $samples, "$name : la forme réduite au créneau, pour la réponse brève");
+        }
+    }
+
+    #[DataProvider('quantifiedForms')]
+    public function testTheAddItemIntentSaysTheQuantityAndTheUnit(string $sample): void
+    {
+        // Then : les formes demandées par le propriétaire (2026-10-25), avec l'espace d'Amazon après l'apostrophe de « d' »
+        $this->assertContains($sample, $this->intent('AddItemIntent')['samples']);
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function quantifiedForms(): iterable
+    {
+        foreach (['ajoute', 'ajouter', 'mets', 'mettre', 'rajoute', 'rajouter', 'note'] as $verb) {
+            foreach (['{quantity} {item}', '{quantity} de {item}', '{quantity} {unit} de {item}', "{quantity} {unit} d' {item}"] as $form) {
+                yield "$verb $form" => ["$verb $form"];
+            }
+        }
+        yield '{quantity} {item}' => ['{quantity} {item}'];
+        yield '{quantity} {unit} de {item}' => ['{quantity} {unit} de {item}'];
+        yield "{quantity} {unit} d' {item}" => ["{quantity} {unit} d' {item}"];
+        // Les formes d'avant la quantité restent valables
+        yield 'ajoute {item}' => ['ajoute {item}'];
+        yield 'ajoute du {item}' => ['ajoute du {item}'];
+        yield '{item}' => ['{item}'];
+    }
+
+    public function testEverySlotOfTheModelIsReadByTheWebhook(): void
+    {
+        // Given : chaque créneau déclaré par une intention du modèle, dit avec une valeur
+        $readBy = [
+            'item' => static fn(AlexaRequest $request): mixed => $request->phrase,
+            'rank' => static fn(AlexaRequest $request): mixed => $request->rank?->text,
+            'department' => static fn(AlexaRequest $request): mixed => $request->department?->text,
+            'unit' => static fn(AlexaRequest $request): mixed => $request->unit?->text,
+            'quantity' => static fn(AlexaRequest $request): mixed => $request->quantity,
+        ];
+
+        foreach ($this->languageModel()['intents'] as $intent) {
+            foreach ($intent['slots'] ?? [] as $slot) {
+                $this->assertArrayHasKey($slot['name'], $readBy, "{$intent['name']} : AlexaRequest ne lit pas le créneau {$slot['name']}");
+
+                // When
+                $body = AlexaTestRequest::intent($intent['name'])->withSlot($slot['name'], '2')->toArray();
+                $request = AlexaRequest::fromDecoded($body);
+
+                // Then
+                $this->assertNotNull($readBy[$slot['name']]($request), "{$intent['name']} : le créneau {$slot['name']} n'est pas lu");
+            }
+        }
+    }
+
+    public function testEveryWayOfSayingAUnitInTheModelIsKnownToTheWebhookAndEveryUnitOfTheCatalogueIsSpoken(): void
+    {
+        // Given
+        $units = new SpokenUnits();
+        $values = $this->type('UNIT')['values'];
+
+        // Then : chaque mot du type UNIT du modèle désigne la même unité pour le webhook (retrait de l'unité laissée en tête de `item`)
+        foreach ($values as $value) {
+            $words = [$value['name']['value'], ...($value['name']['synonyms'] ?? [])];
+            foreach ($words as $word) {
+                $this->assertSame($value['id'], $units->slugOf($word), "« $word » : l'unité {$value['id']} n'est pas connue de SpokenUnits sous ce nom");
+                $this->assertSame(['unitSlug' => $value['id'], 'rest' => 'croquettes'], $units->splitLeading("$word de croquettes"), $word);
+            }
+        }
+        // Then : et tout slug du catalogue est dit
+        $expected = $this->fixtureSlugs('unit.json');
+        $known = array_keys(SpokenUnits::FORMS);
+        sort($expected);
+        sort($known);
+        $this->assertSame($expected, $known);
+    }
+
+    public function testNoSampleUtteranceIsSharedBetweenTwoIntents(): void
+    {
+        // Given : Amazon refuse (ou tranche au hasard) une phrase d'exemple écrite pour deux intentions
+        $owners = [];
+        foreach ($this->languageModel()['intents'] as $intent) {
+            foreach ($intent['samples'] as $sample) {
+                $owners[mb_strtolower($sample)][] = $intent['name'];
+            }
+        }
+
+        // Then
+        foreach ($owners as $sample => $intents) {
+            $this->assertCount(1, $intents, "« $sample » est une phrase d'exemple de " . implode(' et de ', $intents));
+        }
+    }
+
+    public function testTheListChoicesIntentHasManySpokenFormsWithoutSlotDigitsOrPunctuation(): void
+    {
+        // Given
+        $intent = $this->intent('ListChoicesIntent');
+        $samples = $intent['samples'];
+
+        // Then : pas de créneau ; de 40 à 60 phrases, uniques, en minuscules, lettres et espaces, avec l'apostrophe seulement
+        $this->assertArrayNotHasKey('slots', $intent);
+        $this->assertGreaterThanOrEqual(40, count($samples));
+        $this->assertLessThanOrEqual(60, count($samples));
+        $this->assertSame(array_values(array_unique($samples)), $samples);
+        foreach ($samples as $sample) {
+            $this->assertMatchesRegularExpression("/^[\\p{Ll}' ]+\$/u", $sample, "« $sample » : lettres, espaces et apostrophe seulement");
+            $this->assertStringNotContainsString('  ', $sample);
+            $this->assertDoesNotMatchRegularExpression("/(?:^|\\s)(?:qu|d|l)'[\\p{Ll}]/u", $sample, "« $sample » : Amazon veut une espace après l'apostrophe de « qu' », « d' », « l' »");
+        }
+    }
+
+    #[DataProvider('listChoicesForms')]
+    public function testTheOwnerCanAskWhichOnesInManyWays(string $sample): void
+    {
+        $this->assertContains($sample, $this->intent('ListChoicesIntent')['samples']);
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function listChoicesForms(): iterable
+    {
+        foreach ([
+            'lequel', 'laquelle', 'lesquels', 'lesquelles', 'la liste', 'liste moi les rayons', 'liste moi les unités', 'rappelle moi les rayons',
+            'rappelle moi les rayons qui existent', 'rappelle moi les unités', 'quels rayons existent', 'quelles unités existent', 'quels sont les rayons',
+            'quels sont les rayons possibles', 'dis moi les rayons', 'dis moi les unités', 'donne moi la liste des rayons', 'donne moi la liste des unités',
+            "c'est quoi les rayons", "c'est quoi les unités", "qu' est ce qu' il y a comme rayons", "qu' est ce qu' il y a comme unités",
+            'je ne connais pas les rayons', 'je ne sais pas', 'je ne me souviens plus', 'énumère les rayons', 'énumère les unités', 'répète les choix',
+            'redis moi les choix', 'les choix possibles', 'quelles sont les options',
+        ] as $sample) {
+            yield $sample => [$sample];
         }
     }
 

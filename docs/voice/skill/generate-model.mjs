@@ -148,16 +148,29 @@ function rankValues() {
 // Intentions
 // ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
 
+const ADD_VERBS = ['ajoute', 'ajouter', 'mets', 'mettre', 'rajoute', 'rajouter', 'note'];
+
 function addItemSamples() {
   const samples = BARE_FORMS ? ['{item}'] : [];
   // Les réponses brèves à « Que veux-tu ajouter ? »
   samples.push('du {item}', 'de la {item}', 'des {item}', 'un {item}', 'une {item}');
-  for (const verb of ['ajoute', 'ajouter', 'mets', 'mettre', 'rajoute', 'rajouter', 'note']) {
+  for (const verb of ADD_VERBS) {
     for (const article of ['', 'du', 'de la', 'des', 'un', 'une']) {
       const phrase = [verb, article, '{item}'].filter(Boolean).join(' ');
       samples.push(phrase, `${phrase} à la liste`);
     }
   }
+
+  // La quantité dite (« trois croquettes », décision 5 de l'ADR 0029, amendée le 2026-10-25), avec ou sans unité. Amazon veut une espace après
+  // l'apostrophe (« d' {item} »). Le créneau `quantity` est un `AMAZON.NUMBER` : Alexa le rend en chiffres. Sans verbe, la quantité ouvre la phrase.
+  const quantified = ['{quantity} {item}', '{quantity} de {item}', '{quantity} {unit} de {item}', "{quantity} {unit} d' {item}"];
+  for (const verb of ADD_VERBS) {
+    for (const form of quantified) {
+      const phrase = `${verb} ${form}`;
+      samples.push(phrase, `${phrase} à la liste`);
+    }
+  }
+  samples.push('{quantity} {item}', '{quantity} {unit} de {item}', "{quantity} {unit} d' {item}");
 
   return samples;
 }
@@ -165,6 +178,30 @@ function addItemSamples() {
 function withBare(samples, bare) {
   return BARE_FORMS ? [bare, ...samples] : samples;
 }
+
+/** Les façons de demander « lesquels ? » à voix haute, par famille. Amazon généralise un peu à partir des exemples, pas à l'infini. */
+const LIST_CHOICES_SAMPLES = [
+  // Lequel, laquelle, lesquels, lesquelles
+  'lequel', 'laquelle', 'lesquels', 'lesquelles', 'lesquels sont possibles', 'lesquelles sont possibles',
+  // La liste
+  'la liste', 'liste', 'la liste des rayons', 'la liste des unités', 'liste les rayons', 'liste les unités', 'liste moi les rayons', 'liste moi les unités',
+  // Rappelle-moi
+  'rappelle les rayons', 'rappelle les unités', 'rappelle moi les rayons', 'rappelle moi les unités', 'rappelle moi les rayons qui existent',
+  'rappelle moi les unités qui existent',
+  // Quels sont
+  'quels rayons', 'quelles unités', 'quels rayons existent', 'quelles unités existent', 'quels sont les rayons', 'quelles sont les unités',
+  'quels sont les rayons possibles', 'quelles sont les unités possibles', 'quels sont les choix', 'quelles sont les options',
+  // Dis-moi, donne-moi
+  'dis moi les rayons', 'dis moi les unités', 'dis moi les choix', 'donne moi les rayons', 'donne moi les unités', 'donne moi les choix',
+  'donne moi la liste des rayons', 'donne moi la liste des unités',
+  // C'est quoi, qu'est-ce qu'il y a
+  "c'est quoi les rayons", "c'est quoi les unités", "qu' est ce qu' il y a comme rayons", "qu' est ce qu' il y a comme unités",
+  // Je ne sais pas
+  'je ne sais pas', 'je ne sais plus', 'je ne me souviens plus', 'je ne connais pas les rayons', 'je ne connais pas les unités',
+  // Énumère, répète
+  'énumère', 'énumère les rayons', 'énumère les unités', 'énumère moi les choix', 'répète les choix', 'redis moi les choix', 'les choix possibles',
+  'les choix', 'les options',
+];
 
 function intents() {
   return [
@@ -174,7 +211,11 @@ function intents() {
     { name: 'AMAZON.FallbackIntent', samples: [] },
     { name: 'AMAZON.YesIntent', samples: [] },
     { name: 'AMAZON.NoIntent', samples: [] },
-    { name: 'AddItemIntent', slots: [{ name: 'item', type: 'INGREDIENT' }], samples: addItemSamples() },
+    {
+      name: 'AddItemIntent',
+      slots: [{ name: 'item', type: 'INGREDIENT' }, { name: 'quantity', type: 'AMAZON.NUMBER' }, { name: 'unit', type: 'UNIT' }],
+      samples: addItemSamples(),
+    },
     {
       name: 'ChooseOptionIntent',
       slots: [{ name: 'rank', type: 'OPTION_RANK' }],
@@ -191,13 +232,11 @@ function intents() {
       ],
     },
     {
-      // « Lesquels ? » aux questions « Dans quel rayon ? » et « Quelle unité ? » : sans créneau, le back lit la liste d'après l'état de la séance.
-      // Aucun chiffre ni ponctuation (règles d'Amazon) ; chaque phrase est unique dans tout le modèle.
+      // « Lesquels ? » aux questions « Dans quel rayon ? » et « Quelle unité ? » : sans créneau, le back lit la liste d'après l'état de la séance
+      // (rayon ou unité : tous les choix ; ailleurs : la question répétée). Aucun chiffre ni ponctuation sauf l'apostrophe (suivie d'une espace
+      // pour « qu' » ; dans un mot, « c'est »). Chaque phrase est unique dans tout le modèle (`DocsVoiceSkillTest`).
       name: 'ListChoicesIntent',
-      samples: [
-        'lesquels', 'lesquelles', 'la liste', 'liste', 'liste les rayons', 'liste moi les rayons', 'quels sont les rayons',
-        'quelles sont les unités', 'lesquels sont possibles', 'énumère', 'je ne sais pas', 'donne moi les choix',
-      ],
+      samples: LIST_CHOICES_SAMPLES,
     },
     {
       name: 'AnswerDepartmentIntent',
