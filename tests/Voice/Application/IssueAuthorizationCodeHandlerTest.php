@@ -103,16 +103,29 @@ class IssueAuthorizationCodeHandlerTest extends TestCase
         yield 'challenge with padding' => [['challenge' => str_repeat('a', 42) . '=']];
         yield 'empty challenge' => [['challenge' => '']];
         yield 'empty state' => [['state' => '']];
-        yield 'state too long' => [['state' => str_repeat('a', 1025)]];
+        yield 'state too long' => [['state' => str_repeat('a', 4097)]];
         yield 'state with a line break' => [['state' => "ab\ncd"]];
         yield 'state with a non ascii character' => [['state' => 'étape']];
     }
 
     public function testAStateOfTheMaximumLengthPasses(): void
     {
-        $redirectUrl = ($this->handler)($this->command(state: str_repeat('a', 1024)));
+        $redirectUrl = ($this->handler)($this->command(state: str_repeat('a', 4096)));
 
-        $this->assertStringContainsString('state=' . str_repeat('a', 1024) . '&code=', $redirectUrl);
+        $this->assertStringContainsString('state=' . str_repeat('a', 4096) . '&code=', $redirectUrl);
+    }
+
+    public function testTheStateOfARealAlexaRequestPasses(): void
+    {
+        // Given : le `state` constaté à la première liaison réelle (2026-10-25) : 1100 caractères, plus que la limite de 1024 d'origine
+        $state = 'Amase' . str_repeat('yJ2YWxpZGF0aW9uTm9uY2U', 50);
+        $this->assertGreaterThan(1024, strlen($state));
+
+        // When
+        $redirectUrl = ($this->handler)($this->command(state: $state));
+
+        // Then : rendu tel quel dans l'adresse de retour
+        $this->assertStringContainsString('state=' . $state . '&code=', $redirectUrl);
     }
 
     public function testTheExpiredCodesOfTheUserLeaveAndNobodyElsesStay(): void

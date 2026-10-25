@@ -96,7 +96,7 @@ class IssueAuthorizationCodeApiControllerTest extends QueryBusWebTestCase
         }
         yield 'client id too long' => [['clientId' => str_repeat('a', 101)] + $valid];
         yield 'redirect uri too long' => [['redirectUri' => str_repeat('a', 2049)] + $valid];
-        yield 'state too long' => [['state' => str_repeat('a', 1025)] + $valid];
+        yield 'state too long' => [['state' => str_repeat('a', 4097)] + $valid];
         yield 'challenge too long' => [['codeChallenge' => str_repeat('a', 129)] + $valid];
         yield 'method too long' => [['codeChallengeMethod' => str_repeat('S', 17)] + $valid];
     }
