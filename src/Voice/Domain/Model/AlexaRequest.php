@@ -121,7 +121,7 @@ final readonly class AlexaRequest
     }
 
     /**
-     * La séance est déjà ouverte : ce n'est pas la première requête de la séance (« Alexa, ouvre mes courses », puis « du pain »).
+     * La séance est déjà ouverte : ce n'est pas la première requête de la séance (« Alexa, ouvre Jarvis », puis « du pain »).
      */
     public function isInOpenSession(): bool
     {

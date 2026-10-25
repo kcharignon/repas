@@ -38,6 +38,29 @@ echo "Actuellement : skill=${current_skill:-(vide)}  adresses de retour=${curren
 echo "Identifiant du client OAuth : $client_id (à saisir tel quel dans la console Amazon)"
 echo
 
+# Le secret d'abord : il vient du presse-papiers (ctrl+V), et les deux valeurs suivantes se copient ensuite depuis la console
+secret_hash=$current_hash
+read -rsp "Secret du client (rien ne s'affiche), Entrée pour garder l'actuel : " secret <&3
+echo
+if [[ -n $secret ]]; then
+	[[ ${#secret} -ge 32 && ${#secret} -le 256 && $secret =~ ^[[:graph:]]+$ ]] || {
+		echo "ECHEC : le secret doit faire au moins 32 caractères visibles, sans espace"
+		exit 1
+	}
+	read -rsp "Le secret une seconde fois : " again <&3
+	echo
+	[[ $secret == "$again" ]] || {
+		echo "ECHEC : les deux saisies diffèrent"
+		exit 1
+	}
+	secret_hash=$(printf '%s' "$secret" | sha256sum | cut -d' ' -f1)
+	unset secret again
+fi
+[[ $secret_hash =~ ^[0-9a-f]{64}$ ]] || {
+	echo "ECHEC : aucun secret n'est configuré (saisir le secret)"
+	exit 1
+}
+
 read -rp "Identifiant du skill (amzn1.ask.skill.…), Entrée pour garder : " skill <&3
 skill=${skill:-$current_skill}
 [[ $skill =~ ^amzn1\.ask\.skill\.[0-9a-fA-F-]{20,64}$ ]] || {
@@ -61,28 +84,6 @@ for uri in "${list[@]}"; do
 		exit 1
 	}
 done
-
-secret_hash=$current_hash
-read -rsp "Secret du client (rien ne s'affiche), Entrée pour garder l'actuel : " secret <&3
-echo
-if [[ -n $secret ]]; then
-	[[ ${#secret} -ge 32 && ${#secret} -le 256 && $secret =~ ^[[:graph:]]+$ ]] || {
-		echo "ECHEC : le secret doit faire au moins 32 caractères visibles, sans espace"
-		exit 1
-	}
-	read -rsp "Le secret une seconde fois : " again <&3
-	echo
-	[[ $secret == "$again" ]] || {
-		echo "ECHEC : les deux saisies diffèrent"
-		exit 1
-	}
-	secret_hash=$(printf '%s' "$secret" | sha256sum | cut -d' ' -f1)
-	unset secret again
-fi
-[[ $secret_hash =~ ^[0-9a-f]{64}$ ]] || {
-	echo "ECHEC : aucun secret n'est configuré (saisir le secret)"
-	exit 1
-}
 
 cp -p "$env_file" "$env_file.avant-alexa"
 { grep -v -E '^(ALEXA_SKILL_ID|ALEXA_REDIRECT_URIS|ALEXA_OAUTH_CLIENT_ID|ALEXA_OAUTH_CLIENT_SECRET_HASH)=' "$env_file.avant-alexa" || true; } > "$env_file.nouveau"

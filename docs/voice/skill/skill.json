@@ -4,13 +4,13 @@
     "publishingInformation": {
       "locales": {
         "fr-FR": {
-          "name": "Mes courses",
+          "name": "Jarvis",
           "summary": "Ajoute des produits à ta liste de courses Repas.",
           "description": "Dis à Alexa ce qu'il te faut et le produit arrive dans ta liste de courses Repas, sur ton téléphone.",
           "examplePhrases": [
-            "Alexa, demande à mes courses d'ajouter du pain",
-            "Alexa, ouvre mes courses",
-            "Alexa, demande à mes courses d'ajouter des tomates"
+            "Alexa, demande à Jarvis d'ajouter du pain",
+            "Alexa, ouvre Jarvis",
+            "Alexa, demande à Jarvis d'ajouter des tomates"
           ],
           "keywords": ["courses", "liste", "repas"]
         }

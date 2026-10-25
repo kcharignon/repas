@@ -35,11 +35,10 @@ class DocsVoiceSkillTest extends KernelTestCase
         // When
         $language = $this->languageModel();
 
-        // Then : deux mots au moins, en minuscules, sans le mot d'appel d'Alexa
+        // Then : en minuscules, sans le mot d'appel d'Alexa (un seul mot suffit en développement : « jarvis », décision D1)
         $invocation = $language['invocationName'];
         $this->assertIsString($invocation);
         $this->assertMatchesRegularExpression("/^[\\p{Ll}' ]+$/u", $invocation, 'minuscules et espaces seulement');
-        $this->assertGreaterThanOrEqual(2, count(explode(' ', $invocation)), 'au moins deux mots');
         $this->assertDoesNotMatchRegularExpression('/\b(alexa|amazon|echo|computer)\b/i', $invocation);
     }
 

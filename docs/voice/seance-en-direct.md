@@ -27,7 +27,7 @@ Si le run échoue : le retour arrière est automatique ; lire le journal du run,
 
 Poser D1 à D6 de l'ADR 0029 en français simple, une par message, avec la valeur par défaut déjà choisie. À la fin : ADR 0029 `Accepted`, case VOX-001 cochée (PR de ma part).
 
-- D1 nom du skill (« mes courses »). **Risque connu** : Amazon peut refuser le nom à l'étape 4 (règles françaises : pas d'article seul avec un autre mot, pas de verbe d'appel comme « ouvre » ou « demande »). Repli à proposer à ce moment : « mes emplettes », « courses maison », « ma liste du soir ».
+- D1 nom du skill (« Jarvis »). **Risque connu** : Amazon peut refuser le nom à l'étape 4 (règles françaises : pas d'article seul avec un autre mot, pas de verbe d'appel comme « ouvre » ou « demande »). Repli à proposer à ce moment : « mes emplettes », « courses maison », « ma liste du soir ».
 - D2 réponses courtes, D3 produit inconnu (**réécrite le 2026-10-25** : trois propositions, mémoire, création guidée), D4 qui peut s'en servir, D5 aucune liste active, D6 quantité.
 
 ## Étape 3 : accès SSH en lecture seule (10 min)
@@ -98,9 +98,9 @@ Il colle l'identifiant du skill, les trois adresses (séparées par des virgules
 
 Dans l'ordre, en regardant la liste dans l'application Repas :
 
-1. Console, onglet *Test* → « Development » → écrire `ouvre mes courses` puis `ajoute du pain` (trace JSON visible).
-2. Echo : « Alexa, demande à mes courses d'ajouter du pain ». Attendu : « C'est noté : pain. »
-3. « Alexa, ouvre mes courses » → « du pain de mie » → « C'est noté : pain de mie. » (aucune relance ; la séance reste ouverte sans question) → « stop ».
+1. Console, onglet *Test* → « Development » → écrire `ouvre Jarvis` puis `ajoute du pain` (trace JSON visible).
+2. Echo : « Alexa, demande à Jarvis d'ajouter du pain ». Attendu : « C'est noté : pain. »
+3. « Alexa, ouvre Jarvis » → « du pain de mie » → « C'est noté : pain de mie. » (aucune relance ; la séance reste ouverte sans question) → « stop ».
 4. **Tomate** : « … d'ajouter des tomates » → *tomate* (pas *tomates pelées*).
 5. **Produit proche** : « … d'ajouter du pain de campagne » (si *pain de mie* et *pain* existent mais pas *pain de campagne*) → « Je ne connais pas pain de campagne. Tu veux dire pain de mie, … ou un nouveau produit ? » ; choisir « le premier » ; recommencer la même phrase : doit tomber tout de suite sur le bon (mémoire). Une faute de frappe d'un produit existant (« ciboulete » avec *ciboulette*) est choisie sans question.
 6. **Corriger une proposition** : « … d'ajouter des patates » (le catalogue n'a pas « patates ») → trois pâtes proposées ; répondre « pomme de terre » → « C'est noté : pomme de terre. Je m'en souviendrai. » ; recommencer « … d'ajouter des patates » : doit donner tout de suite la pomme de terre, sans question. **Variante, rien à corriger** : « … d'ajouter de la ciboulette » (rien de proche → « Je le crée ? ») puis « non, du pain » → « C'est noté : pain. » SANS « Je m'en souviendrai » ; plus tard « … de la ciboulette » doit reposer la question (la phrase n'est retenue que si des propositions ont été faites).

@@ -11,8 +11,8 @@
 
 Une section « Assistant vocal » dans l'écran « Moi », visible seulement quand la fonction est allumée (`voiceEnabled` dans `GET /api/v1/me`, clé toujours écrite, ajoutée côté back dans ce ticket jumeau) :
 
-- liaison présente : « Alexa est liée. Dis : « Alexa, demande à *mes courses* d'ajouter du pain ». » + bouton « Délier Alexa » (`DELETE /api/v1/voice/links/{id}`, confirmation en un geste) ;
-- aucune liaison : « Pour lier Alexa, ouvre l'application Alexa, Skills, *mes courses*. » ;
+- liaison présente : « Alexa est liée. Dis : « Alexa, demande à *Jarvis* d'ajouter du pain ». » + bouton « Délier Alexa » (`DELETE /api/v1/voice/links/{id}`, confirmation en un geste) ;
+- aucune liaison : « Pour lier Alexa, ouvre l'application Alexa, Skills, *Jarvis*. » ;
 - une seule ligne d'aide : « Alexa ne voit pas ta liste de courses d'Amazon : dis bien le nom du skill. »
 
 ## Critères d'acceptation

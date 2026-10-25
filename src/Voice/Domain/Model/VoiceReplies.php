@@ -21,7 +21,7 @@ namespace Repas\Voice\Domain\Model;
  */
 final class VoiceReplies
 {
-    /** La séance s'ouvre (« Alexa, ouvre mes courses »), ou le nom à ajouter n'a pas été compris. */
+    /** La séance s'ouvre (« Alexa, ouvre Jarvis »), ou le nom à ajouter n'a pas été compris. */
     public const string LAUNCH = 'Que veux-tu ajouter ?';
     public const string HELP = 'Dis par exemple : ajoute du pain. Je le mets dans ta liste de courses.';
     public const string FALLBACK = 'Dis par exemple : ajoute du pain.';
