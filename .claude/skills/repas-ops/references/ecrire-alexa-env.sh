@@ -3,19 +3,24 @@
 # de la liaison de compte et EMPREINTE du secret du client OAuth. N'allume PAS la fonction (voir ecrire-alexa-enabled.sh).
 # À lancer par l'utilisateur, DANS SON PROPRE TERMINAL (pas avec « ! » de Claude Code : la saisie du secret se fait sur le terminal et
 # ne doit jamais atterrir dans la conversation) :
-#   ssh -t -i ~/.ssh/id_ed25519 root@64.227.124.100 'bash -s' < .claude/skills/repas-ops/references/ecrire-alexa-env.sh
+#   ssh -t -i ~/.ssh/id_ed25519 root@64.227.124.100 "$(cat .claude/skills/repas-ops/references/ecrire-alexa-env.sh)"
+# Le script est passé comme TEXTE de la commande, pas redirigé vers « bash -s » : avec « < script », ssh n'alloue pas de terminal
+# (« Pseudo-terminal will not be allocated because stdin is not a terminal ») et la saisie du secret n'aurait nulle part où se faire.
 #
 # Le secret : l'utilisateur le fabrique lui-même (par exemple `openssl rand -base64 36 | tr -d '\n=+/'` sur son poste), le colle dans la
 # console Amazon (Build > Account Linking > Client Secret) puis ici. Il est saisi sans écho, deux fois ; seule son empreinte SHA-256 est
 # écrite dans le .env, le secret lui-même n'est écrit nulle part. Laisser une réponse vide garde la valeur actuelle.
 # REPAS_DIR (défaut /opt/repas) et REPAS_TTY (défaut /dev/tty) ne servent qu'à essayer ce script sur une copie.
 set -euo pipefail
+# Le .env porte tous les secrets : rien de ce que ce script crée n'est lisible par un autre compte, même interrompu
+umask 077
 
 dir=${REPAS_DIR:-/opt/repas}
 tty=${REPAS_TTY:-/dev/tty}
 # Un seul descripteur pour toute la saisie : chaque question lit la ligne suivante
 exec 3< "$tty"
 env_file=$dir/.env
+trap 'rm -f "$env_file.nouveau"' EXIT
 [[ -f $env_file ]] || {
 	echo "ECHEC : $env_file introuvable"
 	exit 1
@@ -96,7 +101,16 @@ echo "Écrit dans $env_file (copie de l'ancien fichier : $env_file.avant-alexa).
 if [[ $(get ALEXA_ENABLED) == true ]]; then
 	cd "$dir"
 	docker compose up -d --wait --wait-timeout 240 php < /dev/null
-	echo "La fonction est allumée : php a été recréé pour relire la configuration."
+	# Le service php n'a pas de contrôle de santé propre : on attend que la bordure retrouve le back, comme deploy.sh
+	for _ in $(seq 1 30); do
+		if docker compose exec -T edge wget -q -O - http://php/api/v1/health < /dev/null > /dev/null 2>&1; then
+			echo "La fonction est allumée : php a été recréé pour relire la configuration et /api/v1/health répond."
+			exit 0
+		fi
+		sleep 2
+	done
+	echo "ECHEC : /api/v1/health ne répond pas après le redémarrage de php (voir : docker compose logs --tail 60 php)."
+	exit 1
 else
 	echo "La fonction est coupée : rien d'autre à faire. Pour l'allumer : ecrire-alexa-enabled.sh true."
 fi

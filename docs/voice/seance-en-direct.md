@@ -38,7 +38,12 @@ But : qu'il n'y ait plus de clé root dans mes mains. Une seule commande `!` pou
 ! ssh-keygen -t ed25519 -N '' -C repas-lecture-seule -f ~/.ssh/repas_lecture_seule && ssh -i ~/.ssh/id_ed25519 root@64.227.124.100 "bash -s -- '$(cat ~/.ssh/repas_lecture_seule.pub)'" < .claude/skills/repas-ops/references/installer-acces-lecture-seule.sh
 ```
 
-Attendu : `OK : accès en lecture seule installé…`. Puis moi, trois essais : `… deploy@64.227.124.100 aide`, `… etat`, et la preuve du refus `… "ls /root"` → `Demande refusée`. Le premier essai déclenche une demande de permission : il choisit « Yes, and don't ask again » (cela crée la règle étroite lui-même). Ensuite il retire l'ancienne règle large `Bash(ssh * root@64.227.124.100 *)` (`/permissions`, onglet Allow, la supprimer) ; je lui montre où cliquer. Je ne modifie jamais mes propres permissions sans qu'il me le dise.
+Attendu : `OK : accès en lecture seule installé…`. Puis, une étape par message :
+
+1. Il installe l'enveloppe locale, hors du dépôt (je ne peux pas la modifier en passant) : `! mkdir -p ~/repas-outils && install -m 755 .claude/skills/repas-ops/references/lecture.sh ~/repas-outils/lecture.sh`. Elle fixe la clé, l'hôte et les options ; la revue du 2026-10-25 a montré qu'une règle `ssh -i … deploy@hôte *` laisserait passer `-o ProxyCommand=…` placé après l'hôte.
+2. Moi, trois essais : `~/repas-outils/lecture.sh aide`, `… etat`, et la preuve du refus côté serveur (`ssh -i ~/.ssh/repas_lecture_seule -o BatchMode=yes -o IdentitiesOnly=yes deploy@64.227.124.100 "ls /root"` → `Demande refusée`). Le premier essai déclenche une demande de permission : il choisit « Yes, and don't ask again » (la règle `Bash(~/repas-outils/lecture.sh *)`).
+3. Il retire l'ancienne règle large `Bash(ssh * root@64.227.124.100 *)` (`/permissions`, onglet Allow ; je lui montre où cliquer).
+4. **Les trois portes que la revue a trouvées**, une question chacune, en une phrase : (a) les règles `Bash(docker run *)` et `Bash(bash -e -c ' *)` sont des portes ouvertes (on peut monter `~/.ssh` dans un conteneur) : les retirer ? (b) interdire à l'assistant de lire ses clés (`deny` : `Read(~/.ssh/id_ed25519)`, `Read(~/.ssh/repas_deploy)`, `Bash(ssh *)`) ? (c) mettre une phrase de passe sur ces deux clés ? Il décide ; je ne modifie jamais mes propres permissions sans qu'il me le dise.
 
 Si `deploy` n'existe pas ou ne peut pas lancer docker : lire le message, corriger le script (PR), ne pas élargir la clé.
 
@@ -74,7 +79,7 @@ Le secret : il le fabrique **sans l'afficher** et le met dans son presse-papiers
 But : le serveur connaît l'identifiant du skill, les adresses de retour et l'empreinte du secret (jamais le secret). **Dans son propre terminal, sans `!`** (la saisie du secret ne doit pas passer par la conversation) :
 
 ```
-ssh -t -i ~/.ssh/id_ed25519 root@64.227.124.100 'bash -s' < .claude/skills/repas-ops/references/ecrire-alexa-env.sh
+ssh -t -i ~/.ssh/id_ed25519 root@64.227.124.100 "$(cat .claude/skills/repas-ops/references/ecrire-alexa-env.sh)"
 ```
 
 Il colle l'identifiant du skill, les trois adresses (séparées par des virgules, exactement comme affichées), puis le secret (toujours dans le presse-papiers, collé deux fois, sans écho). Attendu : `Écrit dans /opt/repas/.env … Empreinte du secret : xxxxxxxx…`. Je contrôle : `drapeau ALEXA_ENABLED` répond `false` et la santé reste `200`.
