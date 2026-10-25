@@ -43,6 +43,29 @@ final class VoiceReplies
     public const string TOTAL_ADDED_IN_UNIT = "C'est ajouté en %s, tu en as maintenant %s dans ta liste.";
     public const string REMEMBER_PROMISE = "Je m'en souviendrai.";
 
+    /** « Enlève » dit sans produit : on ne pose pas de question ouverte (la réponse brève « du pain » serait comprise comme un ajout), on donne l'exemple. */
+    public const string REMOVE_EXAMPLE = 'Dis par exemple : enlève du pain.';
+    /** « Est-ce qu'il y a » dit sans produit : même règle. */
+    public const string CHECK_EXAMPLE = "Dis par exemple : est-ce qu'il y a du pain dans ma liste ?";
+    /** Retirer ou consulter ne crée jamais de liste : sans liste active (ou si elle est partie au drive), il n'y a rien à lire ni à retirer. */
+    public const string NO_LIST = "Tu n'as pas de liste en cours.";
+    /** Retirer un produit qui n'est pas dans la liste (X : « de croquette », « d'ail »). */
+    public const string NOT_IN_LIST = "Il n'y a pas %s dans ta liste.";
+    /** Consulter un produit qui n'est pas dans la liste. */
+    public const string NOT_IN_LIST_NO = "Non, il n'y a pas %s dans ta liste.";
+    /** La ligne disparaît : tout ce qu'elle contenait est retiré (X : ce qui a été retiré, comme « C'est noté : X »). */
+    public const string REMOVED_GONE = "C'est retiré : %s. Il n'y en a plus dans ta liste.";
+    /** La ligne diminue : on dit ce qui reste (X : « 2 paquets », « 3 »). */
+    public const string REMOVED_LEFT = "C'est retiré, il t'en reste %s dans ta liste.";
+    /** La même, quand l'unité dite n'est pas celle de la ligne (inconnue de l'ingrédient, ou convertie) : on nomme l'unité de la ligne. */
+    public const string REMOVED_LEFT_IN_UNIT = "C'est retiré en %s, il t'en reste %s dans ta liste.";
+    /** Il refuse de départager des lignes qui se valent : rien n'est retiré. */
+    public const string DECLINED_REMOVAL = "D'accord, je ne retire rien.";
+    /** Consulter : le produit est dans la liste (X : « 2 paquets », « 3 »). */
+    public const string IN_LIST = 'Oui, tu en as %s.';
+    /** Consulter : plusieurs lignes portent le produit (X : « 2 tomates en fruit et légume, 1 en surgelé »). */
+    public const string IN_LIST_MANY = 'Oui : %s.';
+
     /** Le nom entendu est celui de l'ingrédient. */
     public const string ADDED_SURE = "C'est noté : %s.";
     /** Le choix est probable ou incertain : Alexa dit ce qu'elle a mis et dans quel rayon, pour que l'erreur se voie. */
@@ -309,6 +332,87 @@ final class VoiceReplies
         $started = sprintf(self::CREATED_LIST_STARTED, $ingredient, $department);
 
         return $previousListSent ? $started . ' ' . self::PREVIOUS_LIST_SENT : $started;
+    }
+
+    /**
+     * La réponse à un article retiré (ADR 0029 décision 12) : « C'est retiré : croquette. Il n'y en a plus dans ta liste. » quand la ligne disparaît,
+     * « C'est retiré, il t'en reste 2 paquets dans ta liste. » quand elle diminue, et, quand l'unité dite n'est pas celle de la ligne, « C'est retiré
+     * en paquets, il t'en reste 2 dans ta liste. ».
+     */
+    public static function removed(string $ingredientName, RemovedLine $line): string
+    {
+        if ($line->isGone()) {
+            $gone = new AddedLine($line->removed, 0.0, $line->unitSlug, $line->unitName, existed: true, unitCited: $line->unitCited, unitSubstituted: $line->unitSubstituted);
+
+            return sprintf(self::REMOVED_GONE, self::item($ingredientName, $gone));
+        }
+
+        $left = self::amount($line->remaining, $line->unitName, $line->isCount());
+
+        return $line->unitSubstituted
+            ? sprintf(self::REMOVED_LEFT_IN_UNIT, self::pluralize(self::speakable($line->unitName)), $left)
+            : sprintf(self::REMOVED_LEFT, $left);
+    }
+
+    /** Retirer un produit qui n'est pas dans la liste (le nom de l'ingrédient reconnu, à défaut celui qui a été entendu). */
+    public static function notInList(string $name): string
+    {
+        return sprintf(self::NOT_IN_LIST, self::of(self::speakable($name)));
+    }
+
+    /** Consulter un produit qui n'est pas dans la liste. */
+    public static function notInListAnswer(string $name): string
+    {
+        return sprintf(self::NOT_IN_LIST_NO, self::of(self::speakable($name)));
+    }
+
+    /** Consulter un produit qui est dans la liste : « Oui, tu en as 2 paquets. », « Oui, tu en as 3. » (unité « unité »). */
+    public static function inList(ListLine $line): string
+    {
+        return sprintf(self::IN_LIST, self::amount($line->quantity, $line->unitName, $line->isCount()));
+    }
+
+    /**
+     * Consulter un produit porté par plusieurs lignes (même nom dans deux rayons) : une courte énumération, une quantité par rayon, « Oui : 2
+     * tomates en fruit et légume, 1 en surgelé. ». La seule réponse de consultation qui énumère, comme `choices()` : deux ou trois lignes au plus.
+     *
+     * @param list<ListLine> $lines
+     */
+    public static function inListMany(array $lines): string
+    {
+        $labels = [];
+        foreach (array_values($lines) as $index => $line) {
+            $labels[] = self::lineLabel($line, $index === 0);
+        }
+
+        return sprintf(self::IN_LIST_MANY, implode(', ', $labels));
+    }
+
+    /**
+     * Une ligne dans l'énumération : « 2 tomates en fruit et légume » pour la première (elle dit le produit), « 1 en surgelé » pour les suivantes ;
+     * avec une unité, « 2 paquets de croquette en … » / « 1 paquet en … ».
+     */
+    private static function lineLabel(ListLine $line, bool $withName): string
+    {
+        $name = self::speakable($line->name);
+        $count = self::number($line->quantity);
+        $department = 'en ' . self::speakable($line->departmentName);
+
+        if ($line->isCount()) {
+            return $withName ? $count . ' ' . ($line->quantity >= 2 ? self::pluralize($name) : $name) . ' ' . $department : $count . ' ' . $department;
+        }
+
+        $quantity = $count . ' ' . self::unitWord($line->unitName, $line->quantity);
+
+        return $withName ? $quantity . ' ' . self::of($name) . ' ' . $department : $quantity . ' ' . $department;
+    }
+
+    /** Une quantité dite : « 3 » (unité « unité »), « 2 paquets » (sinon, l'unité au pluriel dès deux). */
+    private static function amount(float $quantity, string $unitName, bool $isCount): string
+    {
+        $count = self::number($quantity);
+
+        return $isCount ? $count : $count . ' ' . self::unitWord($unitName, $quantity);
     }
 
     /**

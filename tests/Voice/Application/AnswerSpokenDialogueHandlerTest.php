@@ -7,6 +7,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Repas\Shared\Application\Dto\ResolvedIngredient;
 use Repas\Shared\Application\Interface\AddedItem;
+use Repas\Shared\Application\Interface\RemovedItem;
 use Repas\Shared\Domain\Exception\DomainException;
 use Repas\Tests\Helper\Alexa\AlexaTestRequest;
 use Repas\Tests\Helper\SpokenIngredientCreatorInMemory;
@@ -707,6 +708,121 @@ class AnswerSpokenDialogueHandlerTest extends TestCase
         $this->assertSame(['Je n\'ai pas compris. Tomate : en fruit et légume ou en surgelé ?', DialogueStep::CHOOSE], [$newProduct->speech, $newProduct->nextState?->step]);
         $this->assertSame([], $this->creator->created);
         $this->assertSame([], $this->shoppingList->added);
+    }
+
+    // ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
+    // Départager deux lignes de la liste à RETIRER (ADR 0029 décision 12) : la ligne choisie perd la quantité dite, rien n'est ajouté ni retenu
+    // ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
+
+    private static function removalTie(int $quantity = 1, ?string $unitSlug = null): SpokenDialogueState
+    {
+        return SpokenDialogueState::chooseToRemove('des tomates', [
+            new DialogueOption('tomate-fl', 'Tomate', 'fruit-et-legume', 'Fruit & légume'),
+            new DialogueOption('tomate-sg', 'Tomate', 'surgele', 'Surgelé'),
+        ], 'tomate', $quantity, $unitSlug);
+    }
+
+    public function testTellingLinesApartByDepartmentRemovesFromTheChosenLineAndRemembersNothing(): void
+    {
+        // Given : il reste 2 tomates surgelées après le retrait
+        $this->shoppingList->willRemove(new RemovedItem(found: true, remaining: 2.0, removed: 1.0));
+
+        // When : « en surgelé »
+        $result = $this->answer(AlexaTestRequest::answerDepartment('surgelé', 'surgele'), self::removalTie());
+
+        // Then : la ligne surgelée perd un, rien n'est ajouté, aucune phrase n'est retenue, la séance se ferme
+        $this->assertSame([[self::USER, 'tomate-sg']], $this->shoppingList->removed);
+        $this->assertSame([[1, null]], $this->shoppingList->removedWith);
+        $this->assertSame([], $this->shoppingList->added);
+        $this->assertSame([], $this->resolver->remembered);
+        $this->assertEquals(new AddSpokenItemResult("C'est retiré, il t'en reste 2 dans ta liste.", keepSessionOpen: false, added: false), $result);
+    }
+
+    public function testTheSaidQuantityAndUnitOfTheRemovalTravelWithTheState(): void
+    {
+        // Given
+        $this->shoppingList->willRemove(new RemovedItem(found: true, remaining: 0.0, removed: 2.0, unitSlug: 'kilo', unitName: 'kilo'));
+
+        // When : « le premier », pour un retrait de deux kilos
+        $this->answer(AlexaTestRequest::chooseOption('le premier', '1'), self::removalTie(2, 'kilo'));
+
+        // Then
+        $this->assertSame([[self::USER, 'tomate-fl']], $this->shoppingList->removed);
+        $this->assertSame([[2, 'kilo']], $this->shoppingList->removedWith);
+    }
+
+    public function testTheWholeLineIsSaidGoneWhenTheChosenLineIsUsedUp(): void
+    {
+        // Given
+        $this->shoppingList->willRemove(new RemovedItem(found: true, remaining: 0.0, removed: 1.0));
+
+        // When
+        $result = $this->answer(AlexaTestRequest::answerDepartment('fruits et légumes', 'fruit-et-legume'), self::removalTie());
+
+        // Then
+        $this->assertSame("C'est retiré : tomate. Il n'y en a plus dans ta liste.", $result->speech);
+    }
+
+    public function testAChosenLineThatIsNoLongerInTheListIsSaidAbsent(): void
+    {
+        // Given : l'état est une entrée non fiable : la ligne a disparu, ou le slug est celui d'un autre
+        $this->shoppingList->willRemove(new RemovedItem(found: false));
+
+        // When
+        $result = $this->answer(AlexaTestRequest::chooseOption('le deuxième', '2'), self::removalTie());
+
+        // Then
+        $this->assertSame("Il n'y a pas de tomate dans ta liste.", $result->speech);
+        $this->assertSame([], $this->shoppingList->added);
+    }
+
+    public function testRefusingToTellTheLinesApartRemovesNothing(): void
+    {
+        // When
+        $refused = $this->answer(AlexaTestRequest::no(), self::removalTie());
+
+        // Then : « je ne retire rien », pas « je n'ajoute rien »
+        $this->assertEquals(new AddSpokenItemResult("D'accord, je ne retire rien.", keepSessionOpen: false, added: false), $refused);
+        $this->assertSame([], $this->shoppingList->removed);
+        $this->assertSame([], $this->shoppingList->added);
+    }
+
+    public function testTwoUnclearAnswersGiveUpWithoutRemovingAnything(): void
+    {
+        // When
+        $first = $this->answer(AlexaTestRequest::intent('AMAZON.FallbackIntent'), self::removalTie());
+        $second = $this->answer(AlexaTestRequest::intent('AMAZON.FallbackIntent'), $first->nextState);
+
+        // Then : l'état garde « retirer » entre les deux demandes
+        $this->assertTrue($first->nextState?->isRemoval());
+        $this->assertSame('Je n\'ai pas compris. Tomate : en fruit et légume ou en surgelé ?', $first->speech);
+        $this->assertEquals(new AddSpokenItemResult("Je n'ai pas compris. On laisse tomber.", keepSessionOpen: false, added: false), $second);
+        $this->assertSame([], $this->shoppingList->removed);
+    }
+
+    public function testSayingAnotherItemToAddInsteadIsAnOrdinaryAddNeverARemoval(): void
+    {
+        // Given
+        $this->resolver->willResolve('du pain', new ResolvedIngredient('pain', 'Pain', 'Boulangerie', ResolvedIngredient::SURE));
+
+        // When : « ajoute du pain » au milieu d'un départage de retrait
+        $result = $this->answer(AlexaTestRequest::addItem('du pain'), self::removalTie());
+
+        // Then : un ajout ordinaire, rien n'est retiré ni retenu
+        $this->assertSame([[self::USER, 'pain']], $this->shoppingList->added);
+        $this->assertSame([], $this->shoppingList->removed);
+        $this->assertSame([], $this->resolver->remembered);
+        $this->assertSame("C'est noté : pain.", $result->speech);
+    }
+
+    public function testTheDepartmentQuestionIsAskedAgainWithTheSameWordsForARemoval(): void
+    {
+        // When : « oui » ne dit pas laquelle
+        $result = $this->answer(AlexaTestRequest::yes(), self::removalTie());
+
+        // Then
+        $this->assertSame('Tomate : en fruit et légume ou en surgelé ?', $result->speech);
+        $this->assertTrue($result->nextState?->isRemoval());
     }
 
     public function testTheFallbackIsAMiss(): void

@@ -63,6 +63,18 @@ final readonly class AlexaTestRequest
         return $unitHeard === null ? $request : $request->withSlot('unit', $unitHeard, $unitSlug);
     }
 
+    /** « enlève du pain » : l'intention `RemoveItemIntent` et son créneau `item` (ADR 0029 décision 12). */
+    public static function removeItem(?string $item = 'du pain'): self
+    {
+        return self::of('IntentRequest', 'RemoveItemIntent', $item === null ? ['item' => ['name' => 'item']] : ['item' => ['name' => 'item', 'value' => $item]]);
+    }
+
+    /** « est-ce qu'il y a du pain dans la liste ? » : l'intention `CheckItemIntent` et son créneau `item` (ADR 0029 décision 12). */
+    public static function checkItem(?string $item = 'du pain'): self
+    {
+        return self::of('IntentRequest', 'CheckItemIntent', $item === null ? ['item' => ['name' => 'item']] : ['item' => ['name' => 'item', 'value' => $item]]);
+    }
+
     /** Le créneau `quantity` : un nombre d'Amazon, sans résolution d'entité. */
     public function withQuantity(string|int|float $quantity): self
     {

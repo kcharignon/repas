@@ -15,6 +15,10 @@ enum AlexaIntent: string
 {
     /** « ajoute du pain » : le créneau `item` porte la phrase. */
     case ADD_ITEM = 'AddItemIntent';
+    /** « enlève du pain », « retire deux paquets de croquettes » : le créneau `item` porte la phrase, `quantity` et `unit` ce qui est retiré (décision 12). */
+    case REMOVE_ITEM = 'RemoveItemIntent';
+    /** « est-ce qu'il y a des croquettes dans la liste ? » : le créneau `item` porte la phrase, la réponse est une lecture (décision 12). */
+    case CHECK_ITEM = 'CheckItemIntent';
     /** « le deuxième », « la première » : le créneau `rank` porte le rang (1 à 3) parmi les propositions. */
     case CHOOSE_OPTION = 'ChooseOptionIntent';
     /** « un nouveau produit », « aucun des trois » : aucune proposition ne convient. */

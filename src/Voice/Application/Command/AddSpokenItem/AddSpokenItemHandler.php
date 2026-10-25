@@ -58,20 +58,9 @@ readonly class AddSpokenItemHandler
 
     public function __invoke(AddSpokenItemCommand $command): AddSpokenItemResult
     {
-        // Le nombre qu'Alexa a laissé en tête du créneau `item` (« 10 croquettes ») : retiré de la phrase et retenu comme quantité dite, tant que le
-        // créneau `quantity` n'a rien donné (1 par défaut ; une quantité dite par le créneau gagne toujours)
-        $quantity = $command->quantity;
-        $spoken = $command->phrase;
-        $counted = $this->namer->withoutLeadingQuantity($spoken);
-        if ($quantity === 1 && $counted['quantity'] !== null) {
-            $quantity = $counted['quantity'];
-            $spoken = $counted['phrase'];
-        }
-
-        // L'unité qu'Alexa a laissée en tête du créneau `item` (« paquets de croquettes ») : retirée de la phrase, retenue comme unité dite
-        $split = $this->namer->withoutLeadingUnit($spoken);
-        $phrase = $split['phrase'];
-        $unitSlug = $command->unitSlug ?? $split['unitSlug'];
+        // Le nombre (« 10 croquettes ») et l'unité (« paquets de croquettes ») qu'Amazon a laissés en tête du créneau `item` sont retirés de la phrase
+        // et retenus comme quantité et unité dites, tant que les créneaux `quantity` et `unit` n'ont rien donné
+        ['phrase' => $phrase, 'quantity' => $quantity, 'unitSlug' => $unitSlug] = $this->namer->splitSpoken($command->phrase, $command->quantity, $command->unitSlug);
 
         $resolution = $this->ingredientResolver->resolveOrSuggest($command->userId, $phrase);
         // Plusieurs ingrédients de l'utilisateur se valent (même nom dans deux rayons) : rien n'est deviné, on demande le rayon

@@ -12,6 +12,10 @@ namespace Repas\Voice\Domain\Model;
  * aussi la quantité et l'unité DITES au départ (« trois paquets de croquettes ») pour qu'elles s'appliquent à l'article quand le dialogue
  * aboutit ; sans rien dit, une unité d'achat.
  *
+ * `action` (ADR 0029 décision 12) : `add` par défaut ; `remove` quand le dialogue départage des lignes de la liste à RETIRER (« enlève des
+ * tomates » alors que la liste porte des tomates en fruit et légume ET en surgelé) : seule l'étape `choose` d'un départage existe alors, et la
+ * réponse retire l'article choisi, sans rien retenir.
+ *
  * L'état revient de l'extérieur : il est lu comme une ENTRÉE NON FIABLE (`fromArray`), tolérant (une forme inattendue donne « pas d'état »,
  * jamais une exception), borné (chaînes, trois propositions au plus, étape connue, champs requis par l'étape). Les slugs qu'il porte ne
  * sont jamais crus : l'ajout, la mémoire de phrase et la création les vérifient auprès de `Repas`. Il ne contient que ce qu'Alexa vient
@@ -52,6 +56,8 @@ final readonly class SpokenDialogueState
         public int $quantity = 1,
         /** L'unité dite au départ (slug), `null` si rien n'a été dit. Distincte de `unit` : celle du produit à créer. */
         public ?string $spokenUnitSlug = null,
+        /** Ce que la réponse déclenche : ajouter l'article choisi (par défaut) ou le retirer (départager deux lignes de la liste). */
+        public SpokenAction $action = SpokenAction::ADD,
     ) {
     }
 
@@ -60,25 +66,42 @@ final readonly class SpokenDialogueState
      *
      * @param list<DialogueOption> $options
      */
-    public static function choose(string $phrase, array $options, string $name, int $quantity = 1, ?string $spokenUnitSlug = null): self
+    public static function choose(string $phrase, array $options, string $name, int $quantity = 1, ?string $spokenUnitSlug = null, SpokenAction $action = SpokenAction::ADD): self
     {
-        return new self(DialogueStep::CHOOSE, $phrase, array_slice(array_values($options), 0, self::MAX_OPTIONS), $name, null, null, 0, $quantity, $spokenUnitSlug);
+        return new self(DialogueStep::CHOOSE, $phrase, array_slice(array_values($options), 0, self::MAX_OPTIONS), $name, null, null, 0, $quantity, $spokenUnitSlug, $action);
+    }
+
+    /**
+     * Deux lignes de la liste se valent (« tomate » en fruit et légume et en surgelé) : on demande le rayon avant de RETIRER l'une d'elles. Sans
+     * « un nouveau produit » (le produit existe), comme tout départage (`isTieBreak()`).
+     *
+     * @param list<DialogueOption> $options au moins deux, chacune avec son rayon
+     */
+    public static function chooseToRemove(string $phrase, array $options, string $name, int $quantity = 1, ?string $spokenUnitSlug = null): self
+    {
+        return self::choose($phrase, $options, $name, $quantity, $spokenUnitSlug, SpokenAction::REMOVE);
     }
 
     /** L'utilisateur veut créer le produit : première des deux questions. */
     public function askingDepartment(): self
     {
-        return new self(DialogueStep::DEPARTMENT, $this->phrase, [], $this->name, null, null, 0, $this->quantity, $this->spokenUnitSlug);
+        return new self(DialogueStep::DEPARTMENT, $this->phrase, [], $this->name, null, null, 0, $this->quantity, $this->spokenUnitSlug, $this->action);
     }
 
     public function withDepartment(DialogueOption $department): self
     {
-        return new self(DialogueStep::UNIT, $this->phrase, [], $this->name, $department, null, 0, $this->quantity, $this->spokenUnitSlug);
+        return new self(DialogueStep::UNIT, $this->phrase, [], $this->name, $department, null, 0, $this->quantity, $this->spokenUnitSlug, $this->action);
     }
 
     public function withUnit(DialogueOption $unit): self
     {
-        return new self(DialogueStep::CONFIRM, $this->phrase, [], $this->name, $this->department, $unit, 0, $this->quantity, $this->spokenUnitSlug);
+        return new self(DialogueStep::CONFIRM, $this->phrase, [], $this->name, $this->department, $unit, 0, $this->quantity, $this->spokenUnitSlug, $this->action);
+    }
+
+    /** Le dialogue départage des lignes à RETIRER : l'article choisi sera retiré, jamais ajouté, ni retenu pour la phrase. */
+    public function isRemoval(): bool
+    {
+        return $this->action === SpokenAction::REMOVE;
     }
 
     /**
@@ -113,7 +136,7 @@ final readonly class SpokenDialogueState
     /** Une réponse de plus qui n'a pas été comprise dans la même étape. */
     public function missed(): self
     {
-        return new self($this->step, $this->phrase, $this->options, $this->name, $this->department, $this->unit, $this->misses + 1, $this->quantity, $this->spokenUnitSlug);
+        return new self($this->step, $this->phrase, $this->options, $this->name, $this->department, $this->unit, $this->misses + 1, $this->quantity, $this->spokenUnitSlug, $this->action);
     }
 
     /** Assez de réponses incomprises de suite : on arrête de demander. */
@@ -140,6 +163,10 @@ final readonly class SpokenDialogueState
         }
         if ($this->spokenUnitSlug !== null) {
             $data['spokenUnit'] = $this->spokenUnitSlug;
+        }
+        // Seulement pour un retrait : l'état d'un ajout garde sa forme
+        if ($this->action !== SpokenAction::ADD) {
+            $data['action'] = $this->action->value;
         }
         if ($this->department !== null) {
             $data['departmentSlug'] = $this->department->slug;
@@ -190,7 +217,10 @@ final readonly class SpokenDialogueState
             return null;
         }
 
-        return new self(
+        // Une action inconnue n'est pas crue : un ajout, comme avant
+        $action = ($data['action'] ?? null) === SpokenAction::REMOVE->value ? SpokenAction::REMOVE : SpokenAction::ADD;
+
+        $state = new self(
             $step,
             $phrase,
             $options,
@@ -200,7 +230,11 @@ final readonly class SpokenDialogueState
             $misses,
             $quantity,
             $spokenUnit,
+            $action,
         );
+
+        // Un retrait ne départage que des lignes qui se valent : un état qui prétend retirer autre chose n'est pas cru
+        return $action === SpokenAction::REMOVE && !$state->isTieBreak() ? null : $state;
     }
 
     /**
