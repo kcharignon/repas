@@ -22,8 +22,8 @@ final readonly class IssueAuthorizationCodePayload
         #[OA\Property(description: "Paramètre `redirect_uri` de la demande d'Alexa : doit être EXACTEMENT l'une des adresses autorisées (`ALEXA_REDIRECT_URIS`)", example: 'https://pitangui.amazon.com/api/skill/link/M2AAAAAAAAAAAA')]
         public string $redirectUri,
         #[Assert\NotBlank]
-        #[Assert\Length(max: 1024)]
-        #[OA\Property(description: "Paramètre `state` de la demande d'Alexa, rendu tel quel dans l'adresse de retour (1024 caractères imprimables au plus)", example: 'xyz123')]
+        #[Assert\Length(max: 4096)]
+        #[OA\Property(description: "Paramètre `state` de la demande d'Alexa, rendu tel quel dans l'adresse de retour (4096 caractères imprimables au plus ; celui d'Alexa en fait environ 1100)", example: 'xyz123')]
         public string $state,
         #[Assert\NotBlank]
         #[Assert\Length(max: 128)]

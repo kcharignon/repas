@@ -20,7 +20,7 @@ use Symfony\Component\Messenger\Attribute\AsMessageHandler;
  *
  * Tout est refusé (`VoiceException::authorizationRefused()`, une seule réponse) sauf si TOUT ceci est vrai : le client est le nôtre,
  * l'adresse de retour est EXACTEMENT l'une de celles configurées, la méthode PKCE est `S256` (jamais `plain`), le défi a la forme d'un
- * SHA-256 en base64url, le `state` est une chaîne imprimable de 1024 caractères au plus. Rien n'est écrit en cas de refus.
+ * SHA-256 en base64url, le `state` est une chaîne imprimable de 4096 caractères au plus. Rien n'est écrit en cas de refus.
  *
  * Le code (32 octets aléatoires) est valable 10 minutes, ne sert qu'une fois, et n'est JAMAIS gardé : la base reçoit son haché. Cette
  * commande renvoie donc une valeur (la seule occasion où le code existe en clair), comme `RotateRefreshToken` (ADR 0015 §12).
@@ -28,8 +28,14 @@ use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 #[AsMessageHandler]
 readonly class IssueAuthorizationCodeHandler
 {
-    /** `state` (RFC 6749 A.5) : des caractères imprimables, 1024 au plus (Alexa en envoie un court, opaque). */
-    private const string STATE_PATTERN = '/\A[\x20-\x7E]{1,1024}\z/';
+    /**
+     * `state` (RFC 6749 A.5) : des caractères imprimables, `MAX_STATE_LENGTH` au plus. Le `state` d'Alexa est un blob opaque et signé d'environ 1,1 Kio
+     * (1100 caractères constatés à la première liaison réelle, 2026-10-25) : une limite de 1024 refusait toute liaison. L'adresse de retour qui le porte
+     * reste très en deçà de la limite d'une adresse (8 Kio) des navigateurs et des serveurs d'Amazon.
+     */
+    public const int MAX_STATE_LENGTH = 4096;
+
+    private const string STATE_PATTERN = '/\A[\x20-\x7E]{1,4096}\z/';
 
     public function __construct(
         private AuthorizationCodeRepository $codeRepository,

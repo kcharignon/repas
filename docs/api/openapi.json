@@ -4315,9 +4315,9 @@
                         "example": "https://pitangui.amazon.com/api/skill/link/M2AAAAAAAAAAAA"
                     },
                     "state": {
-                        "description": "Param\u00e8tre `state` de la demande d'Alexa, rendu tel quel dans l'adresse de retour (1024 caract\u00e8res imprimables au plus)",
+                        "description": "Param\u00e8tre `state` de la demande d'Alexa, rendu tel quel dans l'adresse de retour (4096 caract\u00e8res imprimables au plus ; celui d'Alexa en fait environ 1100)",
                         "type": "string",
-                        "maxLength": 1024,
+                        "maxLength": 4096,
                         "example": "xyz123"
                     },
                     "codeChallenge": {
