@@ -823,13 +823,15 @@ class AlexaWebhookApiFlowTest extends DatabaseTestCase
         $this->linkedUser();
         $token = $this->tokenOf(self::ACCESS_TOKEN_SEED);
 
+        // Chaque requête est construite au moment de l'envoi : l'horodatage à 151 s ne doit pas glisser sous la limite de 150 s pendant que les
+        // requêtes précédentes sont traitées (suite complète, machine chargée)
         foreach ([
-            'autre skill' => AlexaTestRequest::addItem('du pain')->withAccessToken($token)->withApplicationId('amzn1.ask.skill.00000000-other-0000-0000-000000000002'),
-            'horodatage vieux de 151 s' => AlexaTestRequest::addItem('du pain')->withAccessToken($token)->at(new DateTimeImmutable('-151 seconds')),
-            'horodatage dans 151 s' => AlexaTestRequest::addItem('du pain')->withAccessToken($token)->at(new DateTimeImmutable('+151 seconds')),
-        ] as $name => $request) {
+            'autre skill' => static fn(): AlexaTestRequest => AlexaTestRequest::addItem('du pain')->withAccessToken($token)->withApplicationId('amzn1.ask.skill.00000000-other-0000-0000-000000000002'),
+            'horodatage vieux de 151 s' => static fn(): AlexaTestRequest => AlexaTestRequest::addItem('du pain')->withAccessToken($token)->at(new DateTimeImmutable('-151 seconds')),
+            'horodatage dans 151 s' => static fn(): AlexaTestRequest => AlexaTestRequest::addItem('du pain')->withAccessToken($token)->at(new DateTimeImmutable('+151 seconds')),
+        ] as $name => $buildRequest) {
             // When
-            $this->signedPost($request);
+            $this->signedPost($buildRequest());
 
             // Then
             $this->assertSame(400, $this->statusCode(), $name);
