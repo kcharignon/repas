@@ -53,9 +53,9 @@ But : Amazon sait où envoyer ce que dit l'Echo.
 
 1. Vérifier le compte de l'Echo : application Alexa → *Plus* → *Paramètres* → *Compte Alexa* (l'adresse e-mail affichée). C'est ce compte qui doit ouvrir la console.
 2. `https://developer.amazon.com/alexa/console/ask` → se connecter avec ce compte → accepter les conditions (usage personnel, pas commercial).
-3. *Create Skill* → nom `Mes courses` → langue **French (FR)** → type *Other* / modèle **Custom** → hébergement **Provision your own** → modèle de départ **Start from scratch** → *Create skill*. Attendre « Full Build Successful ».
-4. Mettre le fichier du modèle dans son presse-papiers sans l'afficher : `! clip.exe < docs/voice/skill/interaction-model.fr-FR.json`. Console : *Build* → *Interaction Model* → *JSON Editor* → tout sélectionner, coller → *Save Model* → *Build Model*. S'il y a une erreur, il me lit la ligne rouge ; je corrige le fichier (PR) et on recommence. Erreur probable : nom d'invocation refusé (voir D1).
-5. *Build* → *Endpoint* : **HTTPS**, région par défaut `https://kantin.eu/api/voice/alexa`, certificat « *My development endpoint has a certificate from a trusted certificate authority* ». *Save Endpoints*. Il me donne l'**identifiant du skill** (`amzn1.ask.skill.…`, ce n'est pas un secret).
+3. *Create Skill* → nom `Jarvis` → langue **French (FR)** → type *Other* / modèle **Custom** → hébergement **Provision your own** → modèle de départ **Start from scratch** → *Create skill*. Attendre « Full Build Successful ».
+4. Mettre le fichier du modèle dans son presse-papiers **par PowerShell, jamais `clip.exe`** (il casse les accents : « à » devient « ├á » et Amazon refuse le modèle) : c'est moi qui le fais depuis WSL, `powershell.exe -NoProfile -Command "Set-Clipboard -Value (Get-Content -Raw -Encoding UTF8 -LiteralPath '<chemin Windows du fichier>')"`, puis je relis le presse-papiers (nom `jarvis`, `ListChoicesIntent` présent, aucun « ├ »). Console : *Build* → *Interaction Model* → *JSON Editor* → tout sélectionner, coller → *Save* → *Build skill* (selon la version de la console : *Save Model* / *Build Model*). Le nom d'invocation vient du JSON : **coller un ancien modèle renomme le skill**. S'il y a une erreur, il me lit la ligne rouge ; je corrige le fichier (PR) et on recommence.
+5. *Build* → *Endpoint* : **HTTPS**, région par défaut `https://kantin.eu/api/voice/alexa`, certificat « *My development endpoint has a certificate from a trusted certificate authority* ». *Save Endpoints*. Il me donne l'**identifiant du skill** (`amzn1.ask.skill.…`, ce n'est pas un secret). **Revérifier cet écran après chaque collage du modèle** : le 2026-10-25 il est revenu seul sur « AWS Lambda ARN » avec la démo d'Amazon (voir « Si Alexa répond bizarrement »).
 
 ## Étape 5 : liaison de compte dans la console (10 min)
 
@@ -90,7 +90,7 @@ Il colle l'identifiant du skill, les trois adresses (séparées par des virgules
 
 ## Étape 8 : lier le compte depuis le téléphone (10 min, VOX-501 constaté ici)
 
-1. Application Alexa → *Plus* → *Skills et jeux* → *Vos skills* → onglet **Développement** → *Mes courses* → *Activer pour utiliser*.
+1. Application Alexa → *Plus* → *Skills et jeux* → *Vos skills* → onglet **Développement** → *Jarvis* → *Activer pour utiliser*.
 2. La page d'autorisation de Repas s'ouvre : il se connecte, touche « Autoriser ». **Constat VOX-501** : la page s'ouvre-t-elle dans le navigateur d'Alexa, ou l'application Repas l'avale-t-elle ? Si l'application l'avale : noter ce qui se passe, corriger les liens d'application d'Android (dépôt de l'application) plus tard ; contournement du soir : ouvrir le lien depuis un autre navigateur.
 3. Moi, pendant ce temps : `journal php 100` à la recherche de `voice` / `alexa`. Refus de requête Amazon = une catégorie (`chain`, `certificate`, `signature`, `application`…). Si `invalid_client` : secret ou identifiant différents entre console et serveur (étape 6). Si `invalid_grant` à l'échange : regarder si Amazon envoie `redirect_uri` (inconnue levée ici).
 
@@ -107,14 +107,28 @@ Dans l'ordre, en regardant la liste dans l'application Repas :
 7. **Nouveau produit sans rien de proche** : « … d'ajouter de la ciboulette » (si elle n'existe pas) → « Je ne connais pas ciboulette. Je le crée ? » → « oui » → « Dans quel rayon ? Dis lesquels pour les entendre. » → **« lesquels ? »** (Alexa lit les rayons, puis « Lequel ? ») → « fruits et légumes » → « Quelle unité ? … » → **« lesquelles ? »** (les unités) → « pièce » → « Je crée ciboulette, … C'est bon ? » → « oui » → « C'est créé et noté : ciboulette, rayon fruit et légume. » (le rayon est répété) ; il est dans sa liste et dans ses ingrédients (vérifier le rayon et l'unité dans l'application). Variante : refuser à la confirmation (« non ») ne crée rien.
 8. **Deux ingrédients de même nom** (à essayer avec deux « tomate » dans deux rayons, par exemple créés à la main dans l'application) : « … d'ajouter des tomates » → « Tomate : en fruit et légume ou en surgelé ? » → « en surgelé » → « C'est noté : tomate, surgelé. Je m'en souviendrai. » ; recommencer : directement le surgelé. Si l'un des deux est très acheté (habitude), aucune question.
 9. **Liste envoyée au drive** : si possible, vérifier qu'Alexa crée une nouvelle liste et le dit.
-10. **Quantité** : « … d'ajouter trois croquettes » → « C'est noté : 3 croquettes. » (vérifier la ligne dans l'application : 3). « … d'ajouter deux kilos de tomates » → si la tomate ne connaît pas le kilo, « C'est noté : 2 tomates. » (pas de kilos) ; si elle le connaît, « C'est noté : 2 kilos de tomate. ». « … d'ajouter zéro tomate » → « Combien ? Redis ta demande avec un nombre de 1 à 99. », rien d'écrit. Noter ce qu'Alexa met dans les créneaux `quantity`, `unit` et `item` (console, onglet *Test*, trace JSON) : « deux » à l'étape *choisir une proposition* doit rester un rang.
+10. **Quantité** (validée le 2026-10-25 sur le compte de l'auteur avec la version 1.1.5, type de créneau `QUANTITY`) : « … d'ajouter trois croquettes » → « C'est noté : 3 croquettes. » (vérifier la ligne dans l'application : 3). « … d'ajouter deux paquets de croquettes » → la ligne gagne 2 (« C'est ajouté, tu en as maintenant N paquets dans ta liste. » si elle existait). « … d'ajouter deux kilos de tomates » → si la tomate ne connaît pas le kilo, « C'est noté : 2 tomates. » (pas de kilos) ; si elle le connaît, « C'est noté : 2 kilos de tomate. ». « … d'ajouter zéro tomate » → « Combien ? Redis ta demande avec un nombre de 1 à 99. », rien d'écrit. Noter ce qu'Alexa met dans les créneaux `quantity`, `unit` et `item` (console, onglet *Test*, trace JSON, **sans copier les blocs `session` et `context`** : jeton d'accès) : « deux » à l'étape *choisir une proposition* doit rester un rang.
 11. **Ligne déjà présente** : « … d'ajouter du pain » deux fois de suite → la seconde : « C'est ajouté, tu en as maintenant 2 dans ta liste. ».
 12. Un proche (compte Amazon différent) : doit entendre l'invitation à lier le compte, rien d'autre (D4).
 
 À chaque échec : copier la réponse d'Alexa et la trace de la console, lire le journal, corriger, relancer. Noter les surprises dans `docs/voice/roadmap.md` (inconnues levées : certificat « serveur TLS », `redirect_uri`, nom d'invocation, « du pain » dit seul).
 
+## Si Alexa répond bizarrement (appris le 2026-10-25)
+
+| Ce qu'on voit | Cause | Remède |
+|---|---|---|
+| Alexa répond « Intent: AddItemIntent. Locale: fr-FR. Slots: … » | l'endpoint de la console est revenu sur « AWS Lambda ARN » (`ReflectorTemplateSkill`, démo d'Amazon) ; aucun `POST /api/voice/alexa` dans `journal php` | *Build* → *Endpoint* → **HTTPS** → adresse du webhook → *Save Endpoints* |
+| L'éditeur JSON montre `"change me"` et `HelloWorldIntent` | vue périmée de la console (squelette par défaut) | recoller le modèle : tout est écrasé |
+| La quantité dite est perdue (« deux paquets » ajoute 1) | `AMAZON.NUMBER` reste vide devant une unité ou un produit | déjà réglé : le créneau `quantity` est du type `QUANTITY` (1 à 99, `id` = le nombre) ; si ça revient, regarder la trace JSON de l'onglet *Test* |
+| « Combien ? Redis ta demande avec un nombre de 1 à 99 » | Amazon a bien entendu un nombre mais le serveur n'a pas su le lire (ancienne version du serveur, ou nombre hors de 1 à 99) | vérifier `BACK_TAG` (1.1.5 au moins) |
+| Le skill n'est plus appelé « Jarvis » | un ancien modèle a été collé (le nom vient du JSON) | recoller le modèle à jour |
+
+Tester sans parler : l'application Alexa du téléphone a un champ « Demandez à Alexa » où l'on peut taper « demande à Jarvis d'ajouter … » ; l'onglet *Test* de la console fait de même (et montre le JSON reçu).
+
 ## Clôture
 
 - Cocher VOX-002, VOX-501 (constat), VOX-602 ; ADR 0029 `Accepted` ; roadmap et mémoire à jour (PR).
+- **Séance du 2026-10-25 (soir)** : étapes 1 à 8 faites avec le compte Amazon de l'auteur (test), recette de la quantité, de l'unité et de la création réussie sur l'application Alexa de son téléphone (versions 1.1.1 à 1.1.5).
+- **Séance suivante : chez sa compagne (Echo à elle, lundi 2026-10-26 au soir)** : refaire les étapes 4 à 8 avec SON compte (e-mail, mot de passe et double authentification à elle ; l'inscription développeur peut redemander l'identité) : nouveau skill `Jarvis`, modèle collé par PowerShell, endpoint HTTPS, liaison de compte avec un **nouveau secret**, puis `ecrire-alexa-env.sh` dans le terminal de l'auteur (identifiant du skill, adresses de retour et secret nouveaux, **secret saisi en premier**) : le skill de l'auteur ne sera plus accepté par le serveur (un seul identifiant à la fois). Elle active le skill dans l'onglet *Développement* de son application Alexa et le lie à **un compte Repas à choisir avec eux**. Recette sur l'Echo avec les scénarios 2, 4, 7, 10 et 11 ci-dessus.
 - Rappeler : couper = `ecrire-alexa-enabled.sh false` (les liaisons restent) ; retirer une liaison = « Moi → Assistant vocal ».
 - Demander s'il veut les proches (test bêta Amazon ou publication) : décision D4 pour une autre séance.
