@@ -11,6 +11,10 @@ use Repas\Voice\Application\Command\AddSpokenItem\AddedLineFactory;
 use Repas\Voice\Application\Command\AddSpokenItem\AddSpokenItemCommand;
 use Repas\Voice\Application\Command\AddSpokenItem\AddSpokenItemHandler;
 use Repas\Voice\Application\Command\AddSpokenItem\AddSpokenItemResult;
+use Repas\Voice\Application\Command\RemoveSpokenItem\RemovedLineFactory;
+use Repas\Voice\Application\Command\RemoveSpokenItem\RemoveSpokenItemCommand;
+use Repas\Voice\Application\Command\RemoveSpokenItem\RemoveSpokenItemHandler;
+use Repas\Voice\Application\Query\GetSpokenItemInList\SpokenListAnswerer;
 use Repas\Voice\Domain\Model\DialogueOption;
 use Repas\Voice\Domain\Model\DialogueStep;
 use Repas\Voice\Domain\Model\SpokenAnswer;
@@ -27,10 +31,14 @@ use Symfony\Component\Messenger\Attribute\AsMessageHandler;
  *
  * - une proposition choisie : l'article est ajouté (`VoiceShoppingList`) PUIS la phrase est retenue (`SpokenIngredientResolver::remember`) ;
  *   le slug de l'état n'est jamais cru, les deux ports vérifient que l'ingrédient est à l'utilisateur ;
+ * - un départage de lignes à RETIRER (`SpokenDialogueState::isRemoval`, ADR 0029 décision 12 : « tomate » en fruit et légume ET en surgelé, toutes
+ *   deux dans la liste) : la ligne choisie perd la quantité dite, rien n'est retenu pour la phrase ; « non » : « D'accord, je ne retire rien. » ;
  * - « un nouveau produit » : la question du rayon, puis de l'unité (les catalogues sont lus à ces étapes, `SpokenIngredientCreator`), puis la
  *   confirmation « Je crée X, rayon, unité. C'est bon ? » ; « oui » : le produit est créé (rayon et unité vérifiés par `Repas`) puis ajouté ;
  * - la création repasse le nom de l'état par `SpokenIngredientNamer` (l'état est une entrée non fiable) : le nom d'un état honnête passe
  *   inchangé, un nom forgé est normalisé, un nom refusé ne crée rien (même réponse qu'une réponse incomprise) ;
+ * - « enlève … » ou « est-ce qu'il y a … ? » dit au milieu d'une question : le dialogue est abandonné, la phrase est une nouvelle demande de retrait
+ *   (`RemoveSpokenItemHandler`) ou de consultation (`SpokenListAnswerer`), dite comme si elle était seule (ADR 0029 décision 12) ;
  * - « non » : on abandonne, rien n'est écrit ; un autre article : le dialogue est abandonné et la phrase traitée comme un ajout
  *   (`AddSpokenItemHandler`, une seule lecture) ; si des propositions avaient été faites et qu'il désigne un ingrédient de l'utilisateur
  *   avec une confiance sûre ou probable, il corrige la proposition : la phrase d'ORIGINE est retenue pour lui aussi (« patates » puis
@@ -59,6 +67,8 @@ readonly class AnswerSpokenDialogueHandler
         private VoiceShoppingList $shoppingList,
         private AddSpokenItemHandler $addSpokenItem,
         private SpokenIngredientNamer $namer,
+        private RemoveSpokenItemHandler $removeSpokenItem,
+        private SpokenListAnswerer $listAnswerer,
     ) {
     }
 
@@ -78,12 +88,26 @@ readonly class AnswerSpokenDialogueHandler
                 quantity: $command->request->quantity ?? 1,
                 unitSlug: $command->request->unitSlug(),
             )),
+            // « Enlève … » ou « est-ce qu'il y a … ? » dit au milieu d'une question (ADR 0029 décision 12) : le dialogue est abandonné, c'est une nouvelle
+            // demande, traitée comme si elle était dite seule, et la séance se ferme
+            SpokenAnswerKind::NEW_REMOVAL => ($this->removeSpokenItem)(new RemoveSpokenItemCommand(
+                $command->userId,
+                $answer->phrase ?? '',
+                sessionIsOpen: false,
+                quantity: $command->request->quantity ?? 1,
+                unitSlug: $command->request->unitSlug(),
+            )),
+            SpokenAnswerKind::NEW_CHECK => $this->finish($this->listAnswerer->speech($command->userId, $answer->phrase ?? '')),
             SpokenAnswerKind::PICK_OPTION => $this->pickOption($command, $answer),
             SpokenAnswerKind::START_CREATION => $this->ask($state->askingDepartment()),
             SpokenAnswerKind::PICK_DEPARTMENT => $this->ask($state->withDepartment($answer->option ?? throw new \LogicException('PICK_DEPARTMENT sans rayon.'))),
             SpokenAnswerKind::PICK_UNIT => $this->ask($state->withUnit($answer->option ?? throw new \LogicException('PICK_UNIT sans unité.'))),
             SpokenAnswerKind::CONFIRM => $this->create($command),
-            SpokenAnswerKind::ABANDON => $this->finish($state->isTieBreak() ? VoiceReplies::DECLINED_TIE : VoiceReplies::DECLINED),
+            SpokenAnswerKind::ABANDON => $this->finish(match (true) {
+                $state->isRemoval() => VoiceReplies::DECLINED_REMOVAL,
+                $state->isTieBreak() => VoiceReplies::DECLINED_TIE,
+                default => VoiceReplies::DECLINED,
+            }),
             SpokenAnswerKind::REPEAT => $this->ask($state),
             SpokenAnswerKind::WHICH_ONE => $this->miss($state, VoiceReplies::whichAgain($state)),
             SpokenAnswerKind::UNCLEAR => $this->miss($state, VoiceReplies::notUnderstood($state)),
@@ -110,7 +134,17 @@ readonly class AnswerSpokenDialogueHandler
     {
         $option = $answer->option ?? throw new \LogicException('PICK_OPTION sans proposition.');
 
-        $added = $this->shoppingList->addItem($command->userId, $option->slug, $command->state->quantity, $command->state->spokenUnitSlug);
+        // Le départage de lignes à retirer : la ligne choisie perd la quantité dite, rien n'est ajouté ni retenu (le slug de l'état n'est pas cru :
+        // une ligne qui n'est pas dans la liste de l'utilisateur répond « pas dans ta liste », rien n'est écrit)
+        if ($command->state->isRemoval()) {
+            $removed = $this->shoppingList->removeItem($command->userId, $option->slug, $command->state->quantity, $command->state->spokenUnitSlug);
+
+            return $this->finish($removed->found
+                ? VoiceReplies::removed($option->name, RemovedLineFactory::from($removed, unitCited: $command->state->spokenUnitSlug !== null))
+                : VoiceReplies::notInList($option->name));
+        }
+
+        $added =$this->shoppingList->addItem($command->userId, $option->slug, $command->state->quantity, $command->state->spokenUnitSlug);
         $line = AddedLineFactory::from($added, unitCited: $command->state->spokenUnitSlug !== null);
         $this->ingredientResolver->remember($command->userId, $command->state->phrase, $option->slug);
 

@@ -125,6 +125,32 @@ class SpokenIngredientNamerTest extends TestCase
         yield 'vide' => ['', '', null];
     }
 
+    #[DataProvider('spokenSplits')]
+    public function testSplitSpokenTakesTheLeadingNumberAndUnitOffThePhraseUnlessTheSlotsGaveThem(string $phrase, int $quantity, ?string $unitSlug, string $expectedPhrase, int $expectedQuantity, ?string $expectedUnit): void
+    {
+        // When
+        $result = new SpokenIngredientNamer()->splitSpoken($phrase, $quantity, $unitSlug);
+
+        // Then
+        $this->assertSame(['phrase' => $expectedPhrase, 'quantity' => $expectedQuantity, 'unitSlug' => $expectedUnit], $result);
+    }
+
+    /**
+     * @return iterable<string, array{string, int, ?string, string, int, ?string}>
+     */
+    public static function spokenSplits(): iterable
+    {
+        yield 'rien à retirer' => ['des croquettes', 1, null, 'des croquettes', 1, null];
+        yield 'un nombre' => ['10 croquettes', 1, null, 'croquettes', 10, null];
+        yield 'un nombre et une unité' => ['2 paquets de croquettes', 1, null, 'croquettes', 2, 'paquet'];
+        yield 'en lettres' => ['deux kilos de tomates', 1, null, 'tomates', 2, 'kilo'];
+        yield 'une unité sans nombre' => ['paquets de croquettes', 1, null, 'croquettes', 1, 'paquet'];
+        yield 'la quantité du créneau gagne sur un nombre resté dans le produit' => ['3 croquettes', 4, null, '3 croquettes', 4, null];
+        yield 'l\'unité du créneau gagne sur une unité restée dans le produit' => ['2 paquets de croquettes', 1, 'kilo', 'croquettes', 2, 'kilo'];
+        yield 'le créneau dit un, le produit un nombre : le nombre du produit' => ['5 croquettes', 1, null, 'croquettes', 5, null];
+        yield 'un nom qui contient un nombre plus loin' => ['sauce 4 fromages', 1, null, 'sauce 4 fromages', 1, null];
+    }
+
     public function testTheNameOfAProductIsStillTheWholeNameEvenWhenItStartsWithAUnit(): void
     {
         // « pot de miel » nommé à la création est un nom : seul `withoutLeadingUnit` retire l'unité, pas `nameFrom`

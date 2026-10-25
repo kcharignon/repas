@@ -121,6 +121,60 @@ class AlexaDialogueTest extends TestCase
         yield 'énorme' => ['99999999999999999999'];
     }
 
+    // ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
+    // Retirer et consulter (ADR 0029 décision 12, VOX-304)
+    // ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
+
+    public function testRemovingAndCheckingAnItemAreLeftToTheirUseCases(): void
+    {
+        $this->assertNull($this->dialogue->answer($this->read(AlexaTestRequest::removeItem('du pain'))));
+        $this->assertNull($this->dialogue->answer($this->read(AlexaTestRequest::removeItem('croquettes')->withQuantity(3)->withSlot('unit', 'paquets', 'paquet'))));
+        $this->assertNull($this->dialogue->answer($this->read(AlexaTestRequest::checkItem('des croquettes'))));
+    }
+
+    #[DataProvider('itemsNotUnderstood')]
+    public function testARemovalOrACheckWithoutAnItemGetsAnExampleNeverAnOpenQuestion(?string $said): void
+    {
+        // Then : l'exemple, la séance se ferme ; pas de question ouverte (« du pain » dit ensuite serait compris comme un ajout)
+        $this->assertEquals(AlexaResponse::say(VoiceReplies::REMOVE_EXAMPLE), $this->dialogue->answer($this->read(AlexaTestRequest::removeItem($said))));
+        $this->assertEquals(AlexaResponse::say(VoiceReplies::CHECK_EXAMPLE), $this->dialogue->answer($this->read(AlexaTestRequest::checkItem($said))));
+    }
+
+    /**
+     * @return iterable<string, array{?string}>
+     */
+    public static function itemsNotUnderstood(): iterable
+    {
+        yield 'créneau sans valeur' => [null];
+        yield 'point d\'interrogation d\'Alexa' => ['?'];
+        yield 'vide' => [''];
+    }
+
+    public function testInAnOpenSessionTheExampleLeavesTheSessionOpenWithoutAQuestion(): void
+    {
+        // Then
+        $this->assertEquals(AlexaResponse::stayOpen(VoiceReplies::REMOVE_EXAMPLE), $this->dialogue->answer($this->read(AlexaTestRequest::removeItem(null)->inOpenSession())));
+        $this->assertEquals(AlexaResponse::stayOpen(VoiceReplies::CHECK_EXAMPLE), $this->dialogue->answer($this->read(AlexaTestRequest::checkItem(null)->inOpenSession())));
+    }
+
+    #[DataProvider('unusableQuantities')]
+    public function testAQuantityWeCannotWriteIsAskedAgainWhenRemovingWithoutAnythingBeingWritten(string|int|float $said): void
+    {
+        // Then : « Combien ? », sans question ouverte : la séance se ferme, rien n'est retiré
+        $this->assertEquals(AlexaResponse::say(VoiceReplies::HOW_MANY), $this->dialogue->answer($this->read(AlexaTestRequest::removeItem('croquettes')->withQuantity($said))));
+        $this->assertEquals(AlexaResponse::stayOpen(VoiceReplies::HOW_MANY), $this->dialogue->answer($this->read(AlexaTestRequest::removeItem('croquettes')->withQuantity($said)->inOpenSession())));
+    }
+
+    public function testWhenAQuestionIsAskedARemovalOrACheckSaidMeanwhileIsLeftToTheDialogue(): void
+    {
+        // Given : une question du dialogue d'un produit inconnu est posée
+        $state = SpokenDialogueState::choose('de la ciboulette', [new DialogueOption('persil-u', 'persil')], 'ciboulette');
+
+        // Then : l'état prime, comme pour tout (la réponse dépend de l'état, pas de l'intention)
+        $this->assertNull($this->dialogue->answer($this->read(AlexaTestRequest::removeItem('des croquettes')->withSessionAttributes([SpokenDialogueState::ATTRIBUTE => $state->toArray()])->inOpenSession())));
+        $this->assertNull($this->dialogue->answer($this->read(AlexaTestRequest::checkItem('des croquettes')->withSessionAttributes([SpokenDialogueState::ATTRIBUTE => $state->toArray()])->inOpenSession())));
+    }
+
     public function testAQuantityWithoutAnItemAsksWhatToAdd(): void
     {
         $this->assertEquals(AlexaResponse::ask(VoiceReplies::LAUNCH, VoiceReplies::LAUNCH), $this->dialogue->answer($this->read(AlexaTestRequest::addQuantified('?', 3))));

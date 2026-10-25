@@ -5,9 +5,11 @@ namespace Repas\Tests\Repas\Infrastructure\Voice;
 use LogicException;
 use PHPUnit\Framework\TestCase;
 use Repas\Repas\Application\Command\AddSpokenIngredient\AddSpokenIngredientCommand;
+use Repas\Repas\Application\Command\RemoveSpokenIngredient\RemoveSpokenIngredientCommand;
 use Repas\Repas\Domain\Exception\IngredientException;
 use Repas\Repas\Infrastructure\Voice\VoiceShoppingListAdapter;
 use Repas\Shared\Application\Interface\AddedItem;
+use Repas\Shared\Application\Interface\RemovedItem;
 use Repas\Tests\Helper\MockCommandBus;
 
 /**
@@ -71,5 +73,33 @@ class VoiceShoppingListAdapterTest extends TestCase
 
         // When
         new VoiceShoppingListAdapter($bus)->addItem('user-id', 'pain');
+    }
+
+    public function testItDispatchesTheRemovalAndReturnsTheResultOfTheHandler(): void
+    {
+        // Given
+        $result = new RemovedItem(found: true, remaining: 2.0, removed: 1.0);
+        $bus = new MockCommandBus()->willReturn(RemoveSpokenIngredientCommand::class, $result);
+
+        // When
+        $removed = new VoiceShoppingListAdapter($bus)->removeItem('user-id', 'pain', 3, 'kilo');
+
+        // Then : la commande porte l'utilisateur, l'ingrédient, la quantité et l'unité dits ; le résultat est rendu tel quel
+        $this->assertSame($result, $removed);
+        $command = $bus->dispatched()[0];
+        $this->assertInstanceOf(RemoveSpokenIngredientCommand::class, $command);
+        $this->assertSame(['user-id', 'pain', 3, 'kilo'], [$command->ownerId, $command->ingredientSlug, $command->quantity, $command->unitSlug]);
+    }
+
+    public function testARemovalThatReturnsNothingIsABug(): void
+    {
+        // Given
+        $bus = new MockCommandBus();
+
+        // Then
+        $this->expectException(LogicException::class);
+
+        // When
+        new VoiceShoppingListAdapter($bus)->removeItem('user-id', 'pain');
     }
 }

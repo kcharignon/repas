@@ -60,14 +60,19 @@ class DocsVoiceSkillTest extends KernelTestCase
     {
         // Given
         $dialogue = new AlexaDialogue();
-        $request = $intent === 'AddItemIntent' ? AlexaTestRequest::addItem('du pain') : AlexaTestRequest::intent($intent);
+        $request = match ($intent) {
+            'AddItemIntent' => AlexaTestRequest::addItem('du pain'),
+            'RemoveItemIntent' => AlexaTestRequest::removeItem('du pain'),
+            'CheckItemIntent' => AlexaTestRequest::checkItem('du pain'),
+            default => AlexaTestRequest::intent($intent),
+        };
 
         // When
         $answer = $dialogue->answer(AlexaRequest::fromDecoded($request->toArray()));
 
-        // Then : une réponse parlée, ou (ajout d'un article compris) le cas d'usage d'ajout
-        if ($intent === 'AddItemIntent') {
-            $this->assertNull($answer, 'AddItemIntent avec un article est confié au cas d\'usage AddSpokenItem');
+        // Then : une réponse parlée, ou (un article compris) le cas d'usage qui l'ajoute, le retire ou le cherche dans la liste
+        if (in_array($intent, ['AddItemIntent', 'RemoveItemIntent', 'CheckItemIntent'], true)) {
+            $this->assertNull($answer, "$intent avec un article est confié à son cas d'usage");
         } else {
             $this->assertInstanceOf(AlexaResponse::class, $answer, $intent);
         }
@@ -132,6 +137,65 @@ class DocsVoiceSkillTest extends KernelTestCase
             $this->assertDoesNotMatchRegularExpression('/\d/', $sample, "« $sample » : pas de chiffre dans une phrase d'exemple");
             $this->assertSame(mb_strtolower($sample), $sample, "« $sample » : en minuscules");
         }
+    }
+
+    public function testTheRemoveItemIntentHasTheSameSlotsAsTheAddAndWellFormedSamples(): void
+    {
+        // Given
+        $intent = $this->intent('RemoveItemIntent');
+
+        // Then : les mêmes créneaux que l'ajout (ADR 0029 décision 12), tous de nos types
+        $this->assertSame($this->intent('AddItemIntent')['slots'], $intent['slots']);
+
+        $samples = $intent['samples'];
+        $this->assertGreaterThanOrEqual(50, count($samples));
+        $this->assertSame(array_values(array_unique($samples)), $samples, 'aucune phrase en double');
+        $verbs = [];
+        foreach ($samples as $sample) {
+            $this->assertSame(1, substr_count($sample, '{item}'), $sample);
+            $this->assertSame(0, substr_count(str_replace(['{item}', '{quantity}', '{unit}'], '', $sample), '{'), "« $sample » : {item}, {quantity} et {unit} seulement");
+            $this->assertLessThanOrEqual(1, substr_count($sample, '{quantity}'), $sample);
+            $this->assertLessThanOrEqual(1, substr_count($sample, '{unit}'), $sample);
+            $this->assertFalse(str_contains($sample, '{unit}') && !str_contains($sample, '{quantity}'), "« $sample » : une unité se dit avec sa quantité");
+            $this->assertStringNotContainsString("'{", $sample, "« $sample » : une espace après l'apostrophe, avant un créneau");
+            $this->assertDoesNotMatchRegularExpression('/(?<![\p{L}])(un|une)(?![\p{L}])/u', $sample, "« $sample » : « un » et « une » sont des nombres, jamais un mot de liaison");
+            $this->assertDoesNotMatchRegularExpression('/\d|-/', $sample, "« $sample » : ni chiffre ni trait d'union");
+            $this->assertSame(trim($sample), $sample);
+            $this->assertSame(mb_strtolower($sample), $sample, "« $sample » : en minuscules");
+            $verbs[explode(' ', $sample)[0]] = true;
+        }
+        // Les verbes de la demande du propriétaire : enlève, retire, déduis, supprime, ôte
+        foreach (['enlève', 'retire', 'déduis', 'supprime', 'ôte'] as $verb) {
+            $this->assertArrayHasKey($verb, $verbs);
+        }
+        // Aucun verbe d'ajout dans les phrases de retrait
+        foreach (['ajoute', 'ajouter', 'mets', 'mettre', 'rajoute', 'rajouter', 'note'] as $verb) {
+            $this->assertArrayNotHasKey($verb, $verbs);
+        }
+    }
+
+    public function testTheCheckItemIntentHasOnlyTheItemSlotAndWellFormedSamples(): void
+    {
+        // Given
+        $intent = $this->intent('CheckItemIntent');
+
+        // Then : un seul créneau, le produit ; la réponse dit combien il y en a (ADR 0029 décision 12)
+        $this->assertSame([['name' => 'item', 'type' => 'INGREDIENT']], $intent['slots']);
+
+        $samples = $intent['samples'];
+        $this->assertGreaterThanOrEqual(50, count($samples));
+        $this->assertSame(array_values(array_unique($samples)), $samples, 'aucune phrase en double');
+        foreach ($samples as $sample) {
+            $this->assertSame(1, substr_count($sample, '{item}'), $sample);
+            $this->assertSame(0, substr_count(str_replace('{item}', '', $sample), '{'), "« $sample » : {item} seulement");
+            $this->assertStringNotContainsString("'{", $sample, "« $sample » : une espace après l'apostrophe, avant un créneau");
+            $this->assertDoesNotMatchRegularExpression('/(?<![\p{L}])(un|une)(?![\p{L}])/u', $sample, "« $sample » : « un » et « une » sont des nombres, jamais un mot de liaison");
+            $this->assertDoesNotMatchRegularExpression('/\d|-/', $sample, "« $sample » : ni chiffre ni trait d'union");
+            $this->assertSame(trim($sample), $sample);
+            $this->assertSame(mb_strtolower($sample), $sample, "« $sample » : en minuscules");
+        }
+        $this->assertContains("est ce qu'il y a des {item} dans la liste", $samples);
+        $this->assertContains("combien de {item} dans la liste", $samples);
     }
 
     // ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————

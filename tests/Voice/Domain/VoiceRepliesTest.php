@@ -8,6 +8,8 @@ use PHPUnit\Framework\TestCase;
 use ReflectionClass;
 use Repas\Voice\Domain\Model\AddedLine;
 use Repas\Voice\Domain\Model\DialogueOption;
+use Repas\Voice\Domain\Model\ListLine;
+use Repas\Voice\Domain\Model\RemovedLine;
 use Repas\Voice\Domain\Model\SpokenDialogueState;
 use Repas\Voice\Domain\Model\VoiceReplies;
 
@@ -489,6 +491,137 @@ class VoiceRepliesTest extends TestCase
     {
         $this->assertSame(['Combien ?', 'Redis ta demande avec un nombre de 1 à 99.'], $this->sentences($this->said('HOW_MANY')));
     }
+
+    // ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
+    // Retirer et consulter (ADR 0029 décision 12, VOX-304)
+    // ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
+
+    public function testTheAnswersToARemovalAreTheOnesTheOwnerGives(): void
+    {
+        // La ligne disparaît, ou diminue, avec ou sans unité
+        $this->assertSame("C'est retiré : croquette. Il n'y en a plus dans ta liste.", VoiceReplies::removed('croquette', new RemovedLine(1.0, 0.0, 'unite', 'unité')));
+        $this->assertSame("C'est retiré, il t'en reste 2 paquets dans ta liste.", VoiceReplies::removed('croquette', new RemovedLine(1.0, 2.0, 'paquet', 'paquet')));
+        $this->assertSame("C'est retiré, il t'en reste 3 dans ta liste.", VoiceReplies::removed('pain', new RemovedLine(1.0, 3.0, 'unite', 'unité')));
+        $this->assertSame("C'est retiré, il t'en reste 1,5 litre dans ta liste.", VoiceReplies::removed('lait', new RemovedLine(0.5, 1.5, 'litre', 'litre')));
+        // Ce qui disparaît est dit avec sa quantité et son unité
+        $this->assertSame("C'est retiré : 2 croquettes. Il n'y en a plus dans ta liste.", VoiceReplies::removed('croquette', new RemovedLine(2.0, 0.0, 'unite', 'unité')));
+        $this->assertSame("C'est retiré : 2 kilos de tomate. Il n'y en a plus dans ta liste.", VoiceReplies::removed('tomate', new RemovedLine(2.0, 0.0, 'kilo', 'kilo', unitCited: true)));
+        // L'unité dite n'est pas celle de la ligne : on nomme celle de la ligne
+        $this->assertSame("C'est retiré en grammes, il t'en reste 1500 grammes dans ta liste.", VoiceReplies::removed('pâtes', new RemovedLine(1000.0, 1500.0, 'gramme', 'gramme', unitCited: true, unitSubstituted: true)));
+        // Pas dans la liste, avec « de » ou « d' »
+        $this->assertSame("Il n'y a pas de croquette dans ta liste.", VoiceReplies::notInList('croquette'));
+        $this->assertSame("Il n'y a pas d'ail dans ta liste.", VoiceReplies::notInList('ail'));
+        $this->assertSame("Tu n'as pas de liste en cours.", $this->said('NO_LIST'));
+        $this->assertSame("D'accord, je ne retire rien.", $this->said('DECLINED_REMOVAL'));
+        $this->assertSame('Dis par exemple : enlève du pain.', $this->said('REMOVE_EXAMPLE'));
+    }
+
+    public function testAWholeLineRemovedWithALongNameSkipsTheSecondSentenceToStayShort(): void
+    {
+        // Given : « 2 cuillères à soupe de crème fraîche épaisse entière » : la réponse entière ferait 19 mots
+        $long = new RemovedLine(2.0, 0.0, 'cuillere-a-soupe', 'cuillère à soupe', unitCited: true);
+        $short = new RemovedLine(1.0, 0.0, 'unite', 'unité');
+
+        // When
+        $longAnswer = VoiceReplies::removed('crème fraîche épaisse entière', $long);
+        $shortAnswer = VoiceReplies::removed('croquette', $short);
+
+        // Then : la seconde phrase saute quand la première est longue, et reste sinon ; jamais plus de 15 mots en tout
+        $this->assertSame("C'est retiré : 2 cuillères à soupe de crème fraîche épaisse entière.", $longAnswer);
+        $this->assertSame("C'est retiré : croquette. Il n'y en a plus dans ta liste.", $shortAnswer);
+        $this->assertLessThanOrEqual(15, count(preg_split('/\s+/u', $longAnswer)));
+        $this->assertLessThanOrEqual(15, count(preg_split('/\s+/u', $shortAnswer)));
+        // Un nom d'unité long et un nom d'ingrédient long, toutes les combinaisons : la réponse entière reste dans la limite
+        foreach (['cuillère à soupe', 'cuillère à café', 'tasse à café', 'boîte'] as $unit) {
+            foreach (['crème fraîche', 'crème fraîche épaisse entière', 'sauce tomate cuisinée aux petits légumes'] as $name) {
+                $answer = VoiceReplies::removed($name, new RemovedLine(2.0, 0.0, 'autre', $unit, unitCited: true));
+                $this->assertLessThanOrEqual(15, count(preg_split('/\s+/u', $answer)), $answer);
+            }
+        }
+    }
+
+    public function testALineWithAnInsignificantLeftoverIsGoneAndNeverSaysItHasZeroLeft(): void
+    {
+        // Given : le domaine supprime la ligne sous 0,005 (`ShoppingList::NEGLIGIBLE_QUANTITY`), jamais « il t'en reste 0 litre »
+        $almost = new RemovedLine(0.996, 0.004, 'litre', 'litre');
+        $left = new RemovedLine(0.994, 0.006, 'litre', 'litre');
+
+        // Then
+        $this->assertTrue($almost->isGone());
+        $this->assertFalse($left->isGone());
+        $this->assertStringStartsWith("C'est retiré : ", VoiceReplies::removed('lait', $almost));
+        $this->assertStringNotContainsString('reste 0 ', VoiceReplies::removed('lait', $almost));
+        $this->assertSame("C'est retiré, il t'en reste 0,01 litre dans ta liste.", VoiceReplies::removed('lait', $left));
+    }
+
+    public function testASentListIsSaidApartFromNoList(): void
+    {
+        $this->assertSame('Ta liste est déjà partie au drive.', VoiceReplies::noActiveList(true));
+        $this->assertSame("Tu n'as pas de liste en cours.", VoiceReplies::noActiveList(false));
+        $this->assertSame('Ta liste est déjà partie au drive.', $this->said('LIST_SENT'));
+        $this->assertSame("C'est retiré : %s.", $this->said('REMOVED_GONE_SHORT'));
+    }
+
+    public function testTheAnswersToAQuestionAboutTheListAreTheOnesTheOwnerGives(): void
+    {
+        $this->assertSame('Oui, tu en as 2 paquets.', VoiceReplies::inList(new ListLine('croquette', 'animal', 2.0, 'paquet', 'paquet')));
+        $this->assertSame('Oui, tu en as 3.', VoiceReplies::inList(new ListLine('pain', 'boulangerie', 3.0, 'unite', 'unité')));
+        $this->assertSame('Oui, tu en as 1 litre.', VoiceReplies::inList(new ListLine('lait', 'crèmerie', 1.0, 'litre', 'litre')));
+        $this->assertSame("Non, il n'y a pas de croquette dans ta liste.", VoiceReplies::notInListAnswer('croquette'));
+        $this->assertSame("Non, il n'y a pas d'ail dans ta liste.", VoiceReplies::notInListAnswer('ail'));
+        $this->assertSame("Dis par exemple : est-ce qu'il y a du pain dans ma liste ?", $this->said('CHECK_EXAMPLE'));
+    }
+
+    public function testSeveralLinesAreEnumeratedOnePerDepartmentInTwoShortSentencesAtMost(): void
+    {
+        // Given : « tomate » en fruit et légume, en surgelé et en conserve
+        $answer = VoiceReplies::inListMany([
+            new ListLine('tomate', 'fruit & légume', 2.0, 'unite', 'unité'),
+            new ListLine('tomate', 'surgelé', 1.0, 'unite', 'unité'),
+            new ListLine('tomate', 'conserve', 3.0, 'unite', 'unité'),
+        ]);
+
+        // Then : la première dit le produit, les suivantes seulement leur rayon
+        $this->assertSame('Oui : 2 tomates en fruit et légume, 1 en surgelé, 3 en conserve.', $answer);
+        $this->assertLessThanOrEqual(2, count($this->sentences($answer)));
+        $this->assertStringNotContainsString('&', $answer);
+    }
+
+    public function testALineWithAUnitIsEnumeratedWithItsUnit(): void
+    {
+        $this->assertSame(
+            'Oui : 2 litres de lait en crèmerie, 1 litre en bébé.',
+            VoiceReplies::inListMany([new ListLine('lait', 'crèmerie', 2.0, 'litre', 'litre'), new ListLine('lait', 'bébé', 1.0, 'litre', 'litre')]),
+        );
+        $this->assertSame(
+            "Oui : 2 kilos d'ail en épicerie, 3 en fruit et légume.",
+            VoiceReplies::inListMany([new ListLine('ail', 'épicerie', 2.0, 'kilo', 'kilo'), new ListLine('ail', 'fruit et légume', 3.0, 'unite', 'unité')]),
+        );
+    }
+
+    public function testTheNewAnswersObeyTheVoiceOfTheProduct(): void
+    {
+        // Given : tout ce que retirer et consulter peuvent dire, avec un nom long et des quantités variées
+        $answers = [
+            VoiceReplies::removed('croquette pour chat adulte stérilisé', new RemovedLine(2.0, 0.0, 'paquet', 'paquet', unitCited: true)),
+            VoiceReplies::removed('croquette', new RemovedLine(1.0, 12.0, 'paquet', 'paquet', unitSubstituted: true)),
+            VoiceReplies::notInList('croquette pour chat adulte stérilisé'),
+            VoiceReplies::notInListAnswer('croquette pour chat adulte stérilisé'),
+            VoiceReplies::inList(new ListLine('croquette', 'animal', 12.5, 'paquet', 'paquet')),
+            VoiceReplies::inListMany([new ListLine('tomate', 'fruit & légume', 2.0, 'unite', 'unité'), new ListLine('tomate', 'surgelé', 1.0, 'unite', 'unité')]),
+        ];
+
+        foreach ($answers as $answer) {
+            // Then : une à deux phrases, 15 mots au plus chacune, tutoiement, jamais de relance ni de jargon
+            $this->assertLessThanOrEqual(2, count($this->sentences($answer)), $answer);
+            foreach ($this->sentences($answer) as $sentence) {
+                $this->assertLessThanOrEqual(15, count(preg_split('/\s+/u', $sentence)), $sentence);
+            }
+            $this->assertStringNotContainsStringIgnoringCase('autre chose', $answer);
+            $this->assertDoesNotMatchRegularExpression('/(?<![\p{L}])(vous|votre|vos)(?![\p{L}])/u', mb_strtolower($answer), $answer);
+        }
+    }
+
     private function said(string $constant): string
     {
         return constant(VoiceReplies::class . '::' . $constant);

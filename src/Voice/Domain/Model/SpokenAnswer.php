@@ -39,4 +39,16 @@ final readonly class SpokenAnswer
     {
         return new self(SpokenAnswerKind::NEW_REQUEST, null, $phrase);
     }
+
+    /** « Enlève … » dit au milieu d'une question : une nouvelle demande, de retrait (ADR 0029 décision 12). */
+    public static function newRemoval(string $phrase): self
+    {
+        return new self(SpokenAnswerKind::NEW_REMOVAL, null, $phrase);
+    }
+
+    /** « Est-ce qu'il y a … ? » dit au milieu d'une question : une nouvelle demande, de consultation de la liste (ADR 0029 décision 12). */
+    public static function newCheck(string $phrase): self
+    {
+        return new self(SpokenAnswerKind::NEW_CHECK, null, $phrase);
+    }
 }

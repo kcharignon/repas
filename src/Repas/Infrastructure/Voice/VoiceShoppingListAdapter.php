@@ -3,8 +3,10 @@
 namespace Repas\Repas\Infrastructure\Voice;
 
 use Repas\Repas\Application\Command\AddSpokenIngredient\AddSpokenIngredientCommand;
+use Repas\Repas\Application\Command\RemoveSpokenIngredient\RemoveSpokenIngredientCommand;
 use Repas\Shared\Application\Interface\AddedItem;
 use Repas\Shared\Application\Interface\CommandBusInterface;
+use Repas\Shared\Application\Interface\RemovedItem;
 use Repas\Shared\Application\Interface\VoiceShoppingList;
 use Repas\Shared\Domain\Tool\UuidGenerator;
 
@@ -23,6 +25,16 @@ final readonly class VoiceShoppingListAdapter implements VoiceShoppingList
         $result = $this->commandBus->dispatch(new AddSpokenIngredientCommand($userId, $ingredientSlug, UuidGenerator::new(), $quantity, $unitSlug));
         if (!$result instanceof AddedItem) {
             throw new \LogicException('AddSpokenIngredientHandler doit renvoyer un AddedItem.');
+        }
+
+        return $result;
+    }
+
+    public function removeItem(string $userId, string $ingredientSlug, int $quantity = 1, ?string $unitSlug = null): RemovedItem
+    {
+        $result = $this->commandBus->dispatch(new RemoveSpokenIngredientCommand($userId, $ingredientSlug, $quantity, $unitSlug));
+        if (!$result instanceof RemovedItem) {
+            throw new \LogicException('RemoveSpokenIngredientHandler doit renvoyer un RemovedItem.');
         }
 
         return $result;

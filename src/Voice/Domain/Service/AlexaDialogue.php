@@ -17,9 +17,11 @@ use Repas\Voice\Domain\Model\VoiceReplies;
  * - `beforeAuthentication()` : ce qu'on peut répondre sans savoir qui parle (la fin d'une séance ne reçoit aucune parole ; une autre
  *   langue que le français reçoit un repli poli) ;
  * - `answer()` : la réponse d'un utilisateur lié, ou `null` quand un cas d'usage doit lire ou écrire : ajouter un article
- *   (`AddItemIntent` avec une phrase : `AddSpokenItem`), ou répondre à une question du dialogue d'un produit inconnu (la séance porte un
- *   état : `AnswerSpokenDialogue`, qui interprète la réponse d'après l'ÉTAT, `SpokenAnswerInterpreter`). Seuls « stop » et « annule » sont
- *   traités ici dans tous les états.
+ *   (`AddItemIntent` avec une phrase : `AddSpokenItem`), le retirer (`RemoveItemIntent` : `RemoveSpokenItem`), demander s'il est dans la liste
+ *   (`CheckItemIntent` : la lecture `GetSpokenItemInList`, ADR 0029 décision 12), ou répondre à une question du dialogue d'un produit inconnu
+ *   (la séance porte un état : `AnswerSpokenDialogue`, qui interprète la réponse d'après l'ÉTAT, `SpokenAnswerInterpreter`). Seuls « stop » et
+ *   « annule » sont traités ici dans tous les états. Un retrait ou une consultation sans produit reçoivent un exemple, jamais une question ouverte :
+ *   la réponse brève (« du pain ») serait comprise comme un ajout.
  *
  * Tout ce que le modèle d'interaction ne prévoit pas (autre type de requête, autre intention d'Amazon) reçoit le repli : l'exemple de
  * phrase à dire. Une séance ouverte ne se ferme que sur « stop » ou « annule ».
@@ -67,6 +69,14 @@ final readonly class AlexaDialogue
                 $request->hasUnusableQuantity() => AlexaResponse::ask(VoiceReplies::HOW_MANY, VoiceReplies::LAUNCH),
                 default => null,
             },
+            // Retirer : un produit compris et une quantité écrivable, sinon l'exemple (séance fermée sauf si elle était ouverte : jamais de question)
+            AlexaIntent::REMOVE_ITEM => match (true) {
+                $request->phrase === null => AlexaResponse::reply(VoiceReplies::REMOVE_EXAMPLE, $request->isInOpenSession(), null),
+                $request->hasUnusableQuantity() => AlexaResponse::reply(VoiceReplies::HOW_MANY, $request->isInOpenSession(), null),
+                default => null,
+            },
+            // Consulter : un produit compris, sinon l'exemple
+            AlexaIntent::CHECK_ITEM => $request->phrase === null ? AlexaResponse::reply(VoiceReplies::CHECK_EXAMPLE, $request->isInOpenSession(), null) : null,
             // « Oui » à rien : on redemande ce qu'il veut ajouter ; « non » : la réponse à rien, on dit au revoir
             AlexaIntent::YES => $this->invite(),
             AlexaIntent::NO => AlexaResponse::say(VoiceReplies::GOODBYE),

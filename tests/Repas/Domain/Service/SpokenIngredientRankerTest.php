@@ -6,6 +6,7 @@ namespace Repas\Tests\Repas\Domain\Service;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Repas\Repas\Domain\Model\Confidence;
+use Repas\Repas\Domain\Model\RankedIngredient;
 use Repas\Repas\Domain\Model\SpokenCandidate;
 use Repas\Repas\Domain\Service\SpokenIngredientRanker;
 use Repas\Shared\Domain\Tool\SearchRelevance;
@@ -450,5 +451,98 @@ class SpokenIngredientRankerTest extends TestCase
         $this->assertSame(SpokenIngredientRanker::phraseKey('un persil'), SpokenIngredientRanker::phraseKey('le persil'));
         // Then : la mémoire l'emporte même sans la moindre ressemblance
         $this->assertSame('Persil', $this->ranker->rank('ciboulette', $candidates, 'persil-u')?->name);
+    }
+
+    // ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
+    // Les équivalents : tout ce qui vaut la phrase par le nom, quelle que soit la confiance (ADR 0029 décision 12)
+    // ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
+
+    /**
+     * @param list<RankedIngredient> $ranked
+     *
+     * @return list<string>
+     */
+    private static function slugsOf(array $ranked): array
+    {
+        return array_map(static fn($entry): string => $entry->slug, $ranked);
+    }
+
+    public function testHabitsThatDecideDoNotHideTheOtherIngredientOfTheSameName(): void
+    {
+        // Given : « tomate » en fruit et légume (40 usages) et en surgelé (2) : les habitudes tranchent (`PROBABLE`), pas d'ex æquo
+        $fresh = new SpokenCandidate('tomate-fl', 'tomate', 'tomate', 'Fruit & légume', 40, 'fruit-et-legume');
+        $frozen = new SpokenCandidate('tomate-sg', 'tomate', 'tomate', 'Surgelé', 2, 'surgele');
+
+        // When
+        $ranked = $this->ranker->rank('des tomates', [$frozen, $fresh]);
+        $ties = $this->ranker->ties('des tomates', [$frozen, $fresh]);
+        $equivalents = $this->ranker->equivalents('des tomates', [$frozen, $fresh]);
+
+        // Then : le classeur choisit la fraîche, rien à départager, mais les DEUX sont équivalentes (la plus utilisée d'abord)
+        $this->assertSame([Confidence::PROBABLE, []], [$ranked?->confidence, $ties]);
+        $this->assertSame(['tomate-fl', 'tomate-sg'], self::slugsOf($equivalents));
+    }
+
+    public function testEquivalentsAreIndependentOfTheOrderOfTheCandidates(): void
+    {
+        // Given
+        $a = new SpokenCandidate('a', 'tomate', 'tomate', 'Conserve', 3, 'conserve');
+        $b = new SpokenCandidate('b', 'tomate', 'tomate', 'Surgelé', 3, 'surgele');
+        $c = new SpokenCandidate('c', 'tomate', 'tomate', 'Fruit', 3, 'fruit');
+
+        // Then
+        $this->assertSame(self::slugsOf($this->ranker->equivalents('tomate', [$a, $b, $c])), self::slugsOf($this->ranker->equivalents('tomate', [$c, $a, $b])));
+        $this->assertCount(3, $this->ranker->equivalents('tomate', [$a, $b, $c]), 'tous rendus, sans la limite de trois des propositions');
+    }
+
+    public function testTwoIngredientsOfTheSameNameAndDepartmentAreBothEquivalentsEvenWhenTiesRefuseThem(): void
+    {
+        // Given : des doublons non fusionnés (même nom, même rayon) : `ties()` ne les départage pas par une question
+        $first = new SpokenCandidate('tomate-1', 'tomate', 'tomate', 'Fruit & légume', 0, 'fruit-et-legume');
+        $second = new SpokenCandidate('tomate-2', 'tomate', 'tomate', 'Fruit & légume', 0, 'fruit-et-legume');
+
+        // Then
+        $this->assertSame([], $this->ranker->ties('tomate', [$first, $second]));
+        $this->assertSame(['tomate-1', 'tomate-2'], self::slugsOf($this->ranker->equivalents('tomate', [$second, $first])));
+    }
+
+    public function testAnIdenticalNameExcludesTheNamesThatAreOnlyClose(): void
+    {
+        // Given : « tomate » existe exactement ; « tomates pelées » est bien plus utilisée mais n'est que proche
+        $exact = self::own('Tomate', 1);
+        $close = self::own('Tomates pelées', 50);
+
+        // Then : comme `rank()`, le nom identique passe seul
+        $this->assertSame(['tomate-u'], self::slugsOf($this->ranker->equivalents('des tomates', [$close, $exact])));
+    }
+
+    public function testCloseNamesWithinTheClearMarginAreEquivalentsAndTheFartherOneIsNot(): void
+    {
+        // Given : aucun nom identique à « pain » ; deux noms qui le commencent, de pertinence voisine, et un plus long
+        $mie = self::own('Pain de mie', 0);
+        $complet = self::own('Pain complet', 0);
+        $campagne = self::own('Pain au levain de campagne', 0);
+
+        // When
+        $equivalents = $this->ranker->equivalents('pain', [$campagne, $complet, $mie]);
+
+        // Then : les deux premiers, jamais celui dont le nom est bien plus éloigné
+        $this->assertEqualsCanonicalizing(['pain-complet-u', 'pain-de-mie-u'], array_slice(self::slugsOf($equivalents), 0, 2));
+        $this->assertNotContains('pain-au-levain-de-campagne-u', self::slugsOf($equivalents));
+    }
+
+    public function testTheMemoryAloneIsTheEquivalentAndNothingChoosesNothing(): void
+    {
+        // Given
+        $persil = self::own('Persil');
+        $fresh = new SpokenCandidate('tomate-fl', 'tomate', 'tomate', 'Fruit & légume', 0, 'fruit-et-legume');
+        $frozen = new SpokenCandidate('tomate-sg', 'tomate', 'tomate', 'Surgelé', 0, 'surgele');
+
+        // Then : l'ingrédient mémorisé passe avant tout, seul ; une phrase sans rapport ou vide ne rend rien
+        $this->assertSame(['persil-u'], self::slugsOf($this->ranker->equivalents('ciboulette', [$persil], 'persil-u')));
+        $this->assertSame(['tomate-sg'], self::slugsOf($this->ranker->equivalents('des tomates', [$fresh, $frozen], 'tomate-sg')));
+        $this->assertSame([], $this->ranker->equivalents('ciboulette', [$persil]));
+        $this->assertSame([], $this->ranker->equivalents('de la', [$persil]));
+        $this->assertSame([], $this->ranker->equivalents('persil', []));
     }
 }

@@ -242,4 +242,84 @@ class SpokenDialogueStateTest extends TestCase
             $this->assertNull(SpokenDialogueState::fromArray($value));
         }
     }
+
+    // ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
+    // L'action du dialogue : ajouter (par défaut) ou retirer (ADR 0029 décision 12)
+    // ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
+
+    private static function removalOptions(): array
+    {
+        return [
+            new DialogueOption('tomate-fl', 'tomate', 'fruit-et-legume', 'fruit et légume'),
+            new DialogueOption('tomate-sg', 'tomate', 'surgele', 'surgelé'),
+        ];
+    }
+
+    public function testAnOrdinaryStateIsAnAddAndWritesNoAction(): void
+    {
+        // Given
+        $state = SpokenDialogueState::choose('de la ciboulette', [], 'ciboulette');
+
+        // Then : la forme d'un ajout ne change pas
+        $this->assertFalse($state->isRemoval());
+        $this->assertArrayNotHasKey('action', $state->toArray());
+        $this->assertFalse(SpokenDialogueState::fromArray($state->toArray())?->isRemoval());
+    }
+
+    public function testARemovalStateWritesItsActionAndSurvivesTheTripWithItsQuantityAndUnit(): void
+    {
+        // Given : « enlève deux kilos de tomates » avec deux lignes qui se valent
+        $state = SpokenDialogueState::chooseToRemove('des tomates', self::removalOptions(), 'tomate', 2, 'kilo');
+
+        // When
+        $data = $state->toArray();
+        $back = SpokenDialogueState::fromArray($data);
+
+        // Then
+        $this->assertTrue($state->isRemoval());
+        $this->assertTrue($state->isTieBreak());
+        $this->assertNull($state->rememberablePhrase());
+        $this->assertSame('remove', $data['action']);
+        $this->assertEquals($state, $back);
+        $this->assertSame([true, 2, 'kilo'], [$back?->isRemoval(), $back?->quantity, $back?->spokenUnitSlug]);
+    }
+
+    public function testTheActionSurvivesAMiss(): void
+    {
+        // Given
+        $state = SpokenDialogueState::chooseToRemove('des tomates', self::removalOptions(), 'tomate');
+
+        // When / Then
+        $this->assertTrue($state->missed()->isRemoval());
+        $this->assertSame(1, $state->missed()->misses);
+    }
+
+    public function testAnUnknownActionIsReadAsAnAdd(): void
+    {
+        // Given
+        $data = SpokenDialogueState::choose('de la ciboulette', [], 'ciboulette')->toArray();
+        $data['action'] = 'supprimer-tout';
+
+        // When
+        $state = SpokenDialogueState::fromArray($data);
+
+        // Then
+        $this->assertNotNull($state);
+        $this->assertFalse($state->isRemoval());
+    }
+
+    public function testAForgedRemovalThatIsNotATieBreakIsNotBelieved(): void
+    {
+        // Given : un état « retirer » sans deux lignes qui se valent avec leur rayon (propositions simples, ou étape du rayon)
+        $plain = SpokenDialogueState::choose('de la ciboulette', [new DialogueOption('persil', 'persil')], 'ciboulette')->toArray();
+        $plain['action'] = 'remove';
+        $department = SpokenDialogueState::choose('de la ciboulette', [], 'ciboulette')->askingDepartment()->toArray();
+        $department['action'] = 'remove';
+        $single = SpokenDialogueState::chooseToRemove('des tomates', [new DialogueOption('tomate-fl', 'tomate', 'fruit-et-legume', 'fruit et légume')], 'tomate')->toArray();
+
+        // Then : jamais d'état qui prétend retirer autre chose qu'un départage
+        $this->assertNull(SpokenDialogueState::fromArray($plain));
+        $this->assertNull(SpokenDialogueState::fromArray($department));
+        $this->assertNull(SpokenDialogueState::fromArray($single));
+    }
 }

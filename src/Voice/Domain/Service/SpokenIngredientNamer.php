@@ -73,6 +73,29 @@ final readonly class SpokenIngredientNamer
         return ['phrase' => $matches[2], 'quantity' => $quantity];
     }
 
+    /**
+     * Ce qu'Amazon a laissé dans le créneau `item` : le nombre (« 10 croquettes ») puis l'unité (« paquets de croquettes ») en tête sont retirés de
+     * la phrase et retenus comme quantité et unité dites. Le nombre seulement tant que le créneau `quantity` n'a rien donné (`$quantity` vaut 1 ;
+     * une quantité dite par le créneau gagne toujours) et l'unité seulement tant que le créneau `unit` n'a rien donné. Sert à ajouter comme à retirer.
+     *
+     * @param int     $quantity la quantité du créneau `quantity` (1 par défaut)
+     * @param ?string $unitSlug l'unité du créneau `unit`
+     *
+     * @return array{phrase: string, quantity: int, unitSlug: ?string}
+     */
+    public function splitSpoken(string $phrase, int $quantity = 1, ?string $unitSlug = null): array
+    {
+        $counted = $this->withoutLeadingQuantity($phrase);
+        if ($quantity === 1 && $counted['quantity'] !== null) {
+            $quantity = $counted['quantity'];
+            $phrase = $counted['phrase'];
+        }
+
+        $split = $this->withoutLeadingUnit($phrase);
+
+        return ['phrase' => $split['phrase'], 'quantity' => $quantity, 'unitSlug' => $unitSlug ?? $split['unitSlug']];
+    }
+
     public function nameFrom(string $phrase): ?string
     {
         $name = mb_strtolower(str_replace('’', "'", $phrase));

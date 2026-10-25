@@ -24,7 +24,7 @@ use Repas\Voice\Domain\Model\SpokenDialogueState;
  * |--------------|------------------------------------------------------------------------------------------------------------------------|
  * | `choose`     | un rang (1 à n) ; un nom proche d'une proposition dit en entier (quelle que soit l'intention) ; « nouveau produit »,   |
  * |              | « non » (avec propositions) = créer ; « oui » = la proposition s'il n'y en a qu'une, la création s'il n'y en a aucune, |
- * |              | sinon « laquelle ? » ; « non » sans proposition = on abandonne ; un autre article (`AddItemIntent`) = nouvelle demande |
+ * |              | sinon « laquelle ? » ; « non » sans proposition = on abandonne ; un autre article (`AddItemIntent`, `RemoveItemIntent`, `CheckItemIntent`) = nouvelle demande |
  * | `department` | le rayon (id de la résolution d'entité, à défaut le texte entendu rapproché des rayons) ; « non » = on abandonne        |
  * | `unit`       | l'unité, de la même façon                                                                                              |
  * | `confirm`    | « oui » = créer ; « non » = on abandonne                                                                                |
@@ -117,9 +117,7 @@ final readonly class SpokenAnswerInterpreter
                     return SpokenAnswer::pickOption($option);
                 }
 
-                return $intent === AlexaIntent::ADD_ITEM && $request->phrase !== null && !$request->hasUnusableQuantity()
-                    ? SpokenAnswer::newRequest($request->phrase)
-                    : SpokenAnswer::of(SpokenAnswerKind::UNCLEAR);
+                return $this->newDemand($request, $intent);
         }
     }
 
@@ -181,10 +179,27 @@ final readonly class SpokenAnswerInterpreter
                 }
 
                 // Un autre article, sans rapport avec les propositions : une nouvelle demande
-                return $intent === AlexaIntent::ADD_ITEM && $request->phrase !== null && !$request->hasUnusableQuantity()
-                    ? SpokenAnswer::newRequest($request->phrase)
-                    : SpokenAnswer::of(SpokenAnswerKind::UNCLEAR);
+                return $this->newDemand($request, $intent);
         }
+    }
+
+    /**
+     * Un article dit au milieu d'une question, sans rapport avec les propositions : une NOUVELLE demande, d'ajout (« ajoute du pain »), de retrait
+     * (« enlève du pain ») ou de consultation (« est-ce qu'il y a du pain dans la liste ? », ADR 0029 décision 12). Sans article compris, ou avec une
+     * quantité que nous ne savons pas écrire (une demande d'ajout ou de retrait), la réponse n'est pas comprise.
+     */
+    private function newDemand(AlexaRequest $request, ?AlexaIntent $intent): SpokenAnswer
+    {
+        if ($request->phrase === null || $request->hasUnusableQuantity()) {
+            return SpokenAnswer::of(SpokenAnswerKind::UNCLEAR);
+        }
+
+        return match ($intent) {
+            AlexaIntent::ADD_ITEM => SpokenAnswer::newRequest($request->phrase),
+            AlexaIntent::REMOVE_ITEM => SpokenAnswer::newRemoval($request->phrase),
+            AlexaIntent::CHECK_ITEM => SpokenAnswer::newCheck($request->phrase),
+            default => SpokenAnswer::of(SpokenAnswerKind::UNCLEAR),
+        };
     }
 
     /**
