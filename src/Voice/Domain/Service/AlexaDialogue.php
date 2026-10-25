@@ -62,7 +62,7 @@ final readonly class AlexaDialogue
         return match ($intent) {
             // Un nom compris : à `AddSpokenItem`. Sinon on redemande
             AlexaIntent::ADD_ITEM => $request->phrase === null ? $this->invite() : null,
-            // « Oui » à rien : on redemande ce qu'il veut ajouter ; « non » : la réponse à « Autre chose ? »
+            // « Oui » à rien : on redemande ce qu'il veut ajouter ; « non » : la réponse à rien, on dit au revoir
             AlexaIntent::YES => $this->invite(),
             AlexaIntent::NO => AlexaResponse::say(VoiceReplies::GOODBYE),
             AlexaIntent::HELP => AlexaResponse::ask(VoiceReplies::HELP, VoiceReplies::LAUNCH),

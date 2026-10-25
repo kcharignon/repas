@@ -21,7 +21,7 @@ Le cœur de la fonction : une phrase arrive, un ingrédient est choisi, la liste
    - liste créée : « J'ai commencé une nouvelle liste avec pain. » (+ « Ta liste précédente est partie au drive. » si `previousListSent`) ;
    - introuvable : remplacé le 2026-10-25 par le dialogue du produit inconnu (VOX-303 : trois propositions, mémoire de phrase, création guidée) — ce ticket livrait « Je ne trouve pas xyz dans tes ingrédients. » ;
    - compte désactivé : « Ton compte Repas est désactivé. » ;
-   - en séance, ajouter « Autre chose ? » et laisser la séance ouverte ; en appel direct, la fermer.
+   - en séance, laisser la séance ouverte ; en appel direct, la fermer. (« Autre chose ? » livré ici a été supprimé le 2026-10-25 : jamais de relance, la séance reste ouverte sans `reprompt`.)
 4. Mise à jour de `last_used_at` de la liaison (au plus toutes les 10 minutes, comme `shouldRecordLogin`).
 5. Scénario `WriteBudget`, `make openapi`.
 

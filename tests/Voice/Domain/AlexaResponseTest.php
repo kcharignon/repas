@@ -41,6 +41,17 @@ class AlexaResponseTest extends TestCase
         ]], $json);
     }
 
+    public function testStayingOpenSaysItWithoutAReprompt(): void
+    {
+        $json = $this->json(AlexaResponse::stayOpen("C'est noté : pain."));
+
+        $this->assertSame(['version' => '1.0', 'sessionAttributes' => [], 'response' => [
+            'outputSpeech' => ['type' => 'PlainText', 'text' => "C'est noté : pain."],
+            'shouldEndSession' => false,
+        ]], $json);
+        $this->assertEquals(AlexaResponse::stayOpen('Oui.'), AlexaResponse::reply('Oui.', true, null));
+    }
+
     public function testLinkingTheAccountAddsTheCardAndEndsTheSession(): void
     {
         // When

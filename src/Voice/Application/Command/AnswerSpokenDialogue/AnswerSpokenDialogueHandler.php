@@ -40,7 +40,8 @@ use Symfony\Component\Messenger\Attribute\AsMessageHandler;
  * - une réponse incomprise : on la redemande une fois (`SpokenDialogueState::missed`), la deuxième fois de suite dans la même étape on
  *   abandonne poliment (jamais de boucle sans fin).
  *
- * La séance est toujours ouverte (on est au milieu d'un échange) : chaque réponse finale invite à continuer. Aucune exception n'est attrapée :
+ * La séance reste ouverte tant qu'une question est posée ; une réponse finale (article ajouté, produit créé, refus, abandon) est une simple
+ * affirmation, sans relance, et ferme la séance : le dialogue avait été ouvert pour une demande, elle est traitée. Aucune exception n'est attrapée :
  * un échec (slug d'un autre utilisateur, rayon inconnu, produit déjà possédé, panne) annule la commande entière, le bus étant transactionnel,
  * et le webhook répond par la phrase d'échec sans état.
  */
@@ -65,7 +66,7 @@ readonly class AnswerSpokenDialogueHandler
 
         return match ($answer->kind) {
             SpokenAnswerKind::LIST_CHOICES => $this->listChoices($state, $catalogue),
-            SpokenAnswerKind::NEW_REQUEST => ($this->addSpokenItem)(new AddSpokenItemCommand($command->userId, $answer->phrase ?? '', sessionIsOpen: true, rememberAs: $state->rememberablePhrase())),
+            SpokenAnswerKind::NEW_REQUEST => ($this->addSpokenItem)(new AddSpokenItemCommand($command->userId, $answer->phrase ?? '', sessionIsOpen: false, rememberAs: $state->rememberablePhrase())),
             SpokenAnswerKind::PICK_OPTION => $this->pickOption($command, $answer),
             SpokenAnswerKind::START_CREATION => $this->ask($state->askingDepartment()),
             SpokenAnswerKind::PICK_DEPARTMENT => $this->ask($state->withDepartment($answer->option ?? throw new \LogicException('PICK_DEPARTMENT sans rayon.'))),
@@ -159,9 +160,9 @@ readonly class AnswerSpokenDialogueHandler
         return new AddSpokenItemResult($retry, keepSessionOpen: true, added: false, nextState: $missed, reprompt: VoiceReplies::question($missed));
     }
 
-    /** Le dialogue est fini : la phrase, l'invitation à continuer, plus d'état. */
+    /** Le dialogue est fini (demande traitée ou abandonnée) : la phrase seule, plus d'état, la séance se ferme. */
     private function finish(string $speech, bool $added = false): AddSpokenItemResult
     {
-        return new AddSpokenItemResult(VoiceReplies::withInvitation($speech), keepSessionOpen: true, added: $added);
+        return new AddSpokenItemResult($speech, keepSessionOpen: false, added: $added);
     }
 }

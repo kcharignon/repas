@@ -20,13 +20,14 @@ Le script lit `docs/ingredients/base-ingredients.tsv` (type `INGREDIENT`), `src/
 ## Le modèle d'interaction
 
 - **Nom d'invocation** : `mes courses` (défaut de la décision D1 de l'[ADR 0029](../../adr/0029-commande-vocale-alexa.md)). S'il change, modifier la constante `INVOCATION_NAME` du script, puis `alexa.md` § 2. La console peut refuser un nom : prévoir un second choix.
-- **Intentions** (onze, exactement celles de `AlexaIntent`, que `DocsVoiceSkillTest` impose) :
+- **Intentions** (douze, exactement celles de `AlexaIntent`, que `DocsVoiceSkillTest` impose) :
 
   | Intention | Créneau (type) | Quand |
   |---|---|---|
   | `AddItemIntent` | `item` (`INGREDIENT`) | « ajoute du pain » ; en séance, la réponse brève « du pain » ou « pain » |
   | `ChooseOptionIntent` | `rank` (`OPTION_RANK`) | « le deuxième » : choisir l'une des trois propositions |
   | `CreateItemIntent` | — | « un nouveau produit », « aucun », « aucun des trois », « crée-le », « ni l'un ni l'autre » |
+  | `ListChoicesIntent` | — | « lesquels », « lesquelles », « la liste », « je ne sais pas », « énumère » : aux questions du rayon et de l'unité, lire tous les choix (douze phrases d'exemple) |
   | `AnswerDepartmentIntent` | `department` (`DEPARTMENT`) | « fruits et légumes » : la réponse à « Dans quel rayon ? » |
   | `AnswerUnitIntent` | `unit` (`UNIT`) | « des pièces », « en kilos » : la réponse à « Quelle unité ? » |
   | `AMAZON.YesIntent`, `AMAZON.NoIntent` | — | « oui », « non » : à « Tu veux dire … ? », « Je le crée ? », « C'est bon ? » |

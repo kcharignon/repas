@@ -87,7 +87,7 @@ class AddSpokenItemHandlerTest extends TestCase
         // Then : ajouté, la phrase d'ORIGINE est retenue, et Alexa le promet
         $this->assertSame([['user-1', 'pomme-de-terre']], $this->shoppingList->added);
         $this->assertSame([['user-1', 'des patates', 'pomme-de-terre']], $this->resolver->remembered);
-        $this->assertSame("C'est noté : pomme de terre. Je m'en souviendrai. Autre chose ?", $result->speech);
+        $this->assertSame("C'est noté : pomme de terre. Je m'en souviendrai.", $result->speech);
     }
 
     /**
@@ -110,7 +110,7 @@ class AddSpokenItemHandlerTest extends TestCase
         // Then : un ajout ordinaire, dit avec son rayon
         $this->assertSame([['user-1', 'pomme-de-terre']], $this->shoppingList->added);
         $this->assertSame([], $this->resolver->remembered);
-        $this->assertSame('J\'ai mis pomme de terre, fruits et légumes. Autre chose ?', $result->speech);
+        $this->assertSame('J\'ai mis pomme de terre, fruits et légumes.', $result->speech);
     }
 
     public function testAnOrdinaryAddNeverRetainsAPhrase(): void
@@ -226,7 +226,7 @@ class AddSpokenItemHandlerTest extends TestCase
 
         // Then : « Je n'ai pas compris. Que veux-tu ajouter ? », la séance reste ouverte, aucun état, rien n'est écrit
         foreach ([$digits, $tooLong] as $result) {
-            $this->assertEquals(new AddSpokenItemResult("Je n'ai pas compris. Que veux-tu ajouter ?", keepSessionOpen: true, added: false), $result);
+            $this->assertEquals(new AddSpokenItemResult("Je n'ai pas compris. Que veux-tu ajouter ?", keepSessionOpen: true, added: false, reprompt: 'Que veux-tu ajouter ?'), $result);
         }
         $this->assertSame([], $this->shoppingList->added);
     }
@@ -240,7 +240,7 @@ class AddSpokenItemHandlerTest extends TestCase
         $found = ($this->handler)(new AddSpokenItemCommand('user-1', 'du pain', sessionIsOpen: true));
 
         // Then
-        $this->assertEquals(new AddSpokenItemResult("C'est noté : pain. Autre chose ?", keepSessionOpen: true, added: true), $found);
+        $this->assertEquals(new AddSpokenItemResult("C'est noté : pain.", keepSessionOpen: true, added: true), $found);
     }
 
     public function testADirectCallClosesTheSessionAndDoesNotAskForMore(): void

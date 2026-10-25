@@ -68,8 +68,6 @@ final class VoiceReplies
     /** Le produit est créé et ajouté. */
     public const string CREATED = "C'est créé et noté : %s, rayon %s.";
     public const string CREATED_LIST_STARTED = "J'ai créé %s, rayon %s, et commencé une nouvelle liste.";
-    /** Ajoutée à la réponse quand la séance reste ouverte. */
-    public const string ANYTHING_ELSE = 'Autre chose ?';
 
     /** Longueur au-delà de laquelle un nom cité est coupé : une réponse parlée reste courte. */
     private const int MAX_SPOKEN_NAME_LENGTH = 60;
@@ -192,7 +190,7 @@ final class VoiceReplies
 
     /**
      * La proposition choisie est ajoutée, et Alexa promet de s'en souvenir. Quand une liste envoyée au drive est remplacée, on le dit à la
-     * place de la promesse (trois phrases avec « Autre chose ? » au plus) : la phrase est retenue quand même.
+     * place de la promesse : la phrase est retenue quand même.
      */
     public static function remembered(string $ingredientName, bool $listCreated, bool $previousListSent): string
     {
@@ -223,14 +221,6 @@ final class VoiceReplies
         $started = sprintf(self::CREATED_LIST_STARTED, $ingredient, $department);
 
         return $previousListSent ? $started . ' ' . self::PREVIOUS_LIST_SENT : $started;
-    }
-
-    /**
-     * La même réponse, suivie de l'invitation à continuer (séance ouverte).
-     */
-    public static function withInvitation(string $reply): string
-    {
-        return $reply . ' ' . self::ANYTHING_ELSE;
     }
 
     /**

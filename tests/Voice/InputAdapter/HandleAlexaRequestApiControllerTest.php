@@ -67,11 +67,11 @@ class HandleAlexaRequestApiControllerTest extends QueryBusWebTestCase
         $this->assertEquals(new AddSpokenItemCommand('user-1', 'du pain', false), $this->commandBus->dispatched()[0]);
     }
 
-    public function testInAnOpenSessionTheSessionStaysOpenWithAReprompt(): void
+    public function testInAnOpenSessionTheSessionStaysOpenWithoutAReprompt(): void
     {
         // Given
         $this->linkedAccount();
-        $this->commandBus->willReturn(AddSpokenItemCommand::class, new AddSpokenItemResult("C'est noté : pain. Autre chose ?", keepSessionOpen: true, added: true));
+        $this->commandBus->willReturn(AddSpokenItemCommand::class, new AddSpokenItemResult("C'est noté : pain.", keepSessionOpen: true, added: true));
 
         // When
         $this->post(AlexaTestRequest::addItem('du pain')->withAccessToken(self::TOKEN)->inOpenSession());
@@ -82,8 +82,7 @@ class HandleAlexaRequestApiControllerTest extends QueryBusWebTestCase
             'version' => '1.0',
             'sessionAttributes' => [],
             'response' => [
-                'outputSpeech' => ['type' => 'PlainText', 'text' => "C'est noté : pain. Autre chose ?"],
-                'reprompt' => ['outputSpeech' => ['type' => 'PlainText', 'text' => 'Que veux-tu ajouter ?']],
+                'outputSpeech' => ['type' => 'PlainText', 'text' => "C'est noté : pain."],
                 'shouldEndSession' => false,
             ],
         ], $this->jsonBody());
@@ -182,19 +181,20 @@ class HandleAlexaRequestApiControllerTest extends QueryBusWebTestCase
         $this->assertFalse($this->jsonBody()['response']['shouldEndSession']);
     }
 
-    public function testWhenTheDialogueIsOverTheAttributesAreEmptyAndTheSessionStaysOpen(): void
+    public function testWhenTheDialogueIsOverTheSessionIsClosedWithoutAReprompt(): void
     {
         // Given
         $this->linkedAccount();
         $state = SpokenDialogueState::choose('de la ciboulette', [new DialogueOption('persil-u', 'persil')], 'ciboulette');
-        $this->commandBus->willReturn(AnswerSpokenDialogueCommand::class, new AddSpokenItemResult("C'est noté : persil. Je m'en souviendrai. Autre chose ?", keepSessionOpen: true, added: true));
+        $this->commandBus->willReturn(AnswerSpokenDialogueCommand::class, new AddSpokenItemResult("C'est noté : persil. Je m'en souviendrai.", keepSessionOpen: false, added: true));
 
         // When
         $this->post(AlexaTestRequest::yes()->withAccessToken(self::TOKEN)->withSessionAttributes(['dialogue' => $state->toArray()]));
 
-        // Then : `{}` (Alexa oublie l'état) et « Que veux-tu ajouter ? » après un silence
-        $this->assertStringContainsString('"sessionAttributes":{}', (string) $this->client->getResponse()->getContent());
-        $this->assertSame('Que veux-tu ajouter ?', $this->jsonBody()['response']['reprompt']['outputSpeech']['text']);
+        // Then : la séance se ferme (rien à envoyer en attributs), aucune relance
+        $this->assertTrue($this->jsonBody()['response']['shouldEndSession']);
+        $this->assertArrayNotHasKey('reprompt', $this->jsonBody()['response']);
+        $this->assertArrayNotHasKey('sessionAttributes', $this->jsonBody());
     }
 
     public function testStopInTheMiddleOfADialogueClosesTheSessionWithoutTheUseCase(): void

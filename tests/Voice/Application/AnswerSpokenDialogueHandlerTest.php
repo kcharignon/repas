@@ -81,7 +81,7 @@ class AnswerSpokenDialogueHandlerTest extends TestCase
         // Then : l'article est ajouté, la phrase entendue est retenue pour l'ingrédient, le dialogue est fini et la séance reste ouverte
         $this->assertSame([[self::USER, 'basilic-u']], $this->shoppingList->added);
         $this->assertSame([[self::USER, 'de la ciboulette', 'basilic-u']], $this->resolver->remembered);
-        $this->assertEquals(new AddSpokenItemResult("C'est noté : basilic. Je m'en souviendrai. Autre chose ?", keepSessionOpen: true, added: true), $result);
+        $this->assertEquals(new AddSpokenItemResult("C'est noté : basilic. Je m'en souviendrai.", keepSessionOpen: false, added: true), $result);
     }
 
     public function testSayingTheNameOfAProposalWorksToo(): void
@@ -91,7 +91,7 @@ class AnswerSpokenDialogueHandlerTest extends TestCase
 
         // Then
         $this->assertSame([[self::USER, 'persil-u']], $this->shoppingList->added);
-        $this->assertSame("C'est noté : persil. Je m'en souviendrai. Autre chose ?", $result->speech);
+        $this->assertSame("C'est noté : persil. Je m'en souviendrai.", $result->speech);
     }
 
     public function testYesWithASingleProposalChoosesIt(): void
@@ -116,8 +116,8 @@ class AnswerSpokenDialogueHandlerTest extends TestCase
         $sent = $this->answer(AlexaTestRequest::chooseOption('un', '1'), self::choose(['persil']));
 
         // Then : la phrase est retenue dans les deux cas
-        $this->assertSame("J'ai commencé une nouvelle liste avec persil. Je m'en souviendrai. Autre chose ?", $started->speech);
-        $this->assertSame("J'ai commencé une nouvelle liste avec persil. Ta liste précédente est partie au drive. Autre chose ?", $sent->speech);
+        $this->assertSame("J'ai commencé une nouvelle liste avec persil. Je m'en souviendrai.", $started->speech);
+        $this->assertSame("J'ai commencé une nouvelle liste avec persil. Ta liste précédente est partie au drive.", $sent->speech);
         $this->assertCount(2, $this->resolver->remembered);
     }
 
@@ -132,7 +132,7 @@ class AnswerSpokenDialogueHandlerTest extends TestCase
         // Then : ajouté, et la phrase d'origine est retenue pour cet article (il corrige la proposition)
         $this->assertSame([[self::USER, 'pain-u']], $this->shoppingList->added);
         $this->assertSame([[self::USER, 'de la ciboulette', 'pain-u']], $this->resolver->remembered);
-        $this->assertEquals(new AddSpokenItemResult("C'est noté : pain. Je m'en souviendrai. Autre chose ?", keepSessionOpen: true, added: true), $result);
+        $this->assertEquals(new AddSpokenItemResult("C'est noté : pain. Je m'en souviendrai.", keepSessionOpen: false, added: true), $result);
         $this->assertSame([[self::USER, 'du pain']], $this->resolver->asked);
     }
 
@@ -150,7 +150,7 @@ class AnswerSpokenDialogueHandlerTest extends TestCase
         $this->assertSame([[self::USER, 'pomme-de-terre-u']], $this->shoppingList->added);
         $this->assertSame([[self::USER, 'des patates', 'pomme-de-terre-u']], $this->resolver->remembered);
         $this->assertSame([[self::USER, 'de la pomme de terre']], $this->resolver->asked);
-        $this->assertEquals(new AddSpokenItemResult("C'est noté : pomme de terre. Je m'en souviendrai. Autre chose ?", keepSessionOpen: true, added: true), $result);
+        $this->assertEquals(new AddSpokenItemResult("C'est noté : pomme de terre. Je m'en souviendrai.", keepSessionOpen: false, added: true), $result);
     }
 
     /**
@@ -174,7 +174,7 @@ class AnswerSpokenDialogueHandlerTest extends TestCase
         // Then : l'article est ajouté et dit avec son rayon (le choix est incertain), aucune mémoire, aucune promesse
         $this->assertSame([[self::USER, 'pomme-de-terre-u']], $this->shoppingList->added);
         $this->assertSame([], $this->resolver->remembered);
-        $this->assertEquals(new AddSpokenItemResult("J'ai mis pomme de terre, fruits et légumes. Autre chose ?", keepSessionOpen: true, added: true), $result);
+        $this->assertEquals(new AddSpokenItemResult("J'ai mis pomme de terre, fruits et légumes.", keepSessionOpen: false, added: true), $result);
     }
 
     #[DataProvider('allConfidences')]
@@ -190,7 +190,7 @@ class AnswerSpokenDialogueHandlerTest extends TestCase
         $this->assertSame([[self::USER, 'pain-u']], $this->shoppingList->added);
         $this->assertSame([], $this->resolver->remembered);
         $this->assertStringNotContainsString('souviendrai', $result->speech);
-        $this->assertSame($confidence === ResolvedIngredient::SURE ? "C'est noté : pain. Autre chose ?" : "J'ai mis pain, boulangerie. Autre chose ?", $result->speech);
+        $this->assertSame($confidence === ResolvedIngredient::SURE ? "C'est noté : pain." : "J'ai mis pain, boulangerie.", $result->speech);
         $this->assertNull($result->nextState);
     }
 
@@ -214,7 +214,7 @@ class AnswerSpokenDialogueHandlerTest extends TestCase
         $result = $this->answer(AlexaTestRequest::addItem('du pain'), self::choose([]));
 
         // Then
-        $this->assertSame("J'ai commencé une nouvelle liste avec pain. Autre chose ?", $result->speech);
+        $this->assertSame("J'ai commencé une nouvelle liste avec pain.", $result->speech);
         $this->assertSame([], $this->resolver->remembered);
     }
 
@@ -228,7 +228,7 @@ class AnswerSpokenDialogueHandlerTest extends TestCase
         $result = $this->answer(AlexaTestRequest::addItem('du pain'), self::choose(['persil']));
 
         // Then
-        $this->assertSame("J'ai commencé une nouvelle liste avec pain. Ta liste précédente est partie au drive. Autre chose ?", $result->speech);
+        $this->assertSame("J'ai commencé une nouvelle liste avec pain. Ta liste précédente est partie au drive.", $result->speech);
         $this->assertSame([[self::USER, 'de la ciboulette', 'pain-u']], $this->resolver->remembered);
     }
 
@@ -295,7 +295,7 @@ class AnswerSpokenDialogueHandlerTest extends TestCase
         $this->assertSame([[self::USER, 'ciboulette', 'fruit-et-legume', 'unite']], $this->creator->created);
         $this->assertSame([[self::USER, 'ciboulette-' . self::USER]], $this->shoppingList->added);
         $this->assertSame([], $this->resolver->remembered);
-        $this->assertEquals(new AddSpokenItemResult("C'est créé et noté : ciboulette, rayon fruit et légume. Autre chose ?", keepSessionOpen: true, added: true), $created);
+        $this->assertEquals(new AddSpokenItemResult("C'est créé et noté : ciboulette, rayon fruit et légume.", keepSessionOpen: false, added: true), $created);
     }
 
     #[DataProvider('spokenPhrases')]
@@ -367,7 +367,7 @@ class AnswerSpokenDialogueHandlerTest extends TestCase
         $this->assertStringStartsWith("Je n'ai pas compris. Je crée ", $first->speech);
         $this->assertStringEndsWith("C'est bon ?", $first->speech);
         $this->assertSame([DialogueStep::CONFIRM, 1], [$first->nextState?->step, $first->nextState?->misses]);
-        $this->assertEquals(new AddSpokenItemResult("Je n'ai pas compris. On laisse tomber. Autre chose ?", keepSessionOpen: true, added: false), $second);
+        $this->assertEquals(new AddSpokenItemResult("Je n'ai pas compris. On laisse tomber.", keepSessionOpen: false, added: false), $second);
     }
 
     /**
@@ -416,7 +416,7 @@ class AnswerSpokenDialogueHandlerTest extends TestCase
         // Then : rien n'est écrit, on invite à continuer, plus d'état
         $this->assertSame([], $this->creator->created);
         $this->assertSame([], $this->shoppingList->added);
-        $this->assertEquals(new AddSpokenItemResult("D'accord, je ne crée rien. Autre chose ?", keepSessionOpen: true, added: false), $result);
+        $this->assertEquals(new AddSpokenItemResult("D'accord, je ne crée rien.", keepSessionOpen: false, added: false), $result);
     }
 
     public function testRefusingAtAnyQuestionAbandonsPolitely(): void
@@ -426,7 +426,7 @@ class AnswerSpokenDialogueHandlerTest extends TestCase
             $result = $this->answer(AlexaTestRequest::no(), $state);
 
             // Then
-            $this->assertSame("D'accord, je ne crée rien. Autre chose ?", $result->speech, $state->step->value);
+            $this->assertSame("D'accord, je ne crée rien.", $result->speech, $state->step->value);
             $this->assertNull($result->nextState, $state->step->value);
         }
         $this->assertSame([], $this->creator->created);
@@ -465,7 +465,7 @@ class AnswerSpokenDialogueHandlerTest extends TestCase
         // Then
         $this->assertSame(["Je n'ai pas compris. Dans quel rayon ? Dis lesquels pour les entendre.", 1, 'Dans quel rayon ? Dis lesquels pour les entendre.'], [$first->speech, $first->nextState?->misses, $first->reprompt]);
         $this->assertTrue($first->keepSessionOpen);
-        $this->assertEquals(new AddSpokenItemResult("Je n'ai pas compris. On laisse tomber. Autre chose ?", keepSessionOpen: true, added: false), $second);
+        $this->assertEquals(new AddSpokenItemResult("Je n'ai pas compris. On laisse tomber.", keepSessionOpen: false, added: false), $second);
         $this->assertSame([], $this->creator->created);
     }
 
@@ -494,7 +494,7 @@ class AnswerSpokenDialogueHandlerTest extends TestCase
 
         // Then
         $this->assertSame(['Lequel ? persil ou basilic. Ou un nouveau produit ?', 1], [$first->speech, $first->nextState?->misses]);
-        $this->assertSame("Je n'ai pas compris. On laisse tomber. Autre chose ?", $second->speech);
+        $this->assertSame("Je n'ai pas compris. On laisse tomber.", $second->speech);
         $this->assertNull($second->nextState);
         $this->assertSame([], $this->shoppingList->added);
     }
@@ -600,7 +600,7 @@ class AnswerSpokenDialogueHandlerTest extends TestCase
         $result = $this->answer(AlexaTestRequest::yes(), $confirm);
 
         // Then
-        $this->assertSame("J'ai créé ciboulette, rayon fruit et légume, et commencé une nouvelle liste. Ta liste précédente est partie au drive. Autre chose ?", $result->speech);
+        $this->assertSame("J'ai créé ciboulette, rayon fruit et légume, et commencé une nouvelle liste. Ta liste précédente est partie au drive.", $result->speech);
     }
 
     public function testTheFallbackIsAMiss(): void

@@ -45,6 +45,13 @@ class VoiceRepliesTest extends TestCase
         }
     }
 
+    public function testNoReplyEverAsksForMoreAfterAnAnswer(): void
+    {
+        foreach ($this->catalogue() as $name => $text) {
+            $this->assertStringNotContainsStringIgnoringCase('autre chose', $text, "$name : pas de relance, jamais");
+        }
+    }
+
     public function testNoReplyUsesJargonOrAWarningTone(): void
     {
         foreach ($this->catalogue() as $name => $text) {
@@ -80,7 +87,6 @@ class VoiceRepliesTest extends TestCase
         $this->assertSame("J'ai commencé une nouvelle liste avec pain.", VoiceReplies::added('pain', 'boulangerie', true, true, false));
         $this->assertSame("J'ai commencé une nouvelle liste avec pain. Ta liste précédente est partie au drive.", VoiceReplies::added('pain', 'boulangerie', true, true, true));
         $this->assertSame("J'ai commencé une nouvelle liste avec tomate, fruits et légumes.", VoiceReplies::added('tomate', 'fruits et légumes', false, true, false));
-        $this->assertSame("C'est noté : pain. Autre chose ?", VoiceReplies::withInvitation("C'est noté : pain."));
         $this->assertSame('Que veux-tu ajouter ?', $this->said('LAUNCH'));
         $this->assertSame('À bientôt.', $this->said('GOODBYE'));
         $this->assertSame('Dis par exemple : ajoute du pain.', $this->said('FALLBACK'));
@@ -157,7 +163,7 @@ class VoiceRepliesTest extends TestCase
     {
         foreach ([false, true] as $listCreated) {
             foreach ([false, true] as $previousListSent) {
-                $reply = VoiceReplies::withInvitation(VoiceReplies::created('tomates cerises pelées', 'Fruit & légume', $listCreated, $previousListSent));
+                $reply = VoiceReplies::created('tomates cerises pelées', 'Fruit & légume', $listCreated, $previousListSent);
 
                 $this->assertStringContainsString('rayon fruit et légume', $reply);
                 $this->assertLessThanOrEqual(3, count($this->sentences($reply)), $reply);
@@ -207,18 +213,18 @@ class VoiceRepliesTest extends TestCase
             'pas compris choisir' => VoiceReplies::notUnderstood($state),
             'pas compris confirmer' => VoiceReplies::notUnderstood($confirm),
             'lequel' => VoiceReplies::whichAgain($state),
-            'abandon' => VoiceReplies::withInvitation(VoiceReplies::DECLINED),
-            'renoncement' => VoiceReplies::withInvitation(VoiceReplies::GIVE_UP),
+            'abandon' => VoiceReplies::DECLINED,
+            'renoncement' => VoiceReplies::GIVE_UP,
         ];
         foreach ([false, true] as $listCreated) {
             foreach ([false, true] as $previousListSent) {
-                $replies["retenu $listCreated $previousListSent"] = VoiceReplies::withInvitation(VoiceReplies::remembered('tomates cerises pelées', $listCreated, $previousListSent));
-                $replies["créé $listCreated $previousListSent"] = VoiceReplies::withInvitation(VoiceReplies::created('tomates cerises pelées', 'fruit & légume', $listCreated, $previousListSent));
+                $replies["retenu $listCreated $previousListSent"] = VoiceReplies::remembered('tomates cerises pelées', $listCreated, $previousListSent);
+                $replies["créé $listCreated $previousListSent"] = VoiceReplies::created('tomates cerises pelées', 'fruit & légume', $listCreated, $previousListSent);
             }
         }
 
         foreach ($replies as $label => $reply) {
-            // Then : phrases de 15 mots au plus, trois phrases au plus (« Autre chose ? » comprise), tutoiement
+            // Then : phrases de 15 mots au plus, trois phrases au plus, tutoiement
             $sentences = $this->sentences($reply);
             $this->assertLessThanOrEqual(3, count($sentences), "$label : « $reply »");
             foreach ($sentences as $sentence) {
@@ -254,13 +260,11 @@ class VoiceRepliesTest extends TestCase
                 foreach ([true, false] as $previousListSent) {
                     // When
                     $answer = VoiceReplies::added('farine de blé', 'épicerie', $isSure, $listCreated, $previousListSent);
-                    $inSession = VoiceReplies::withInvitation($answer);
 
-                    // Then : deux phrases d'information au plus ; en séance, l'invitation à continuer s'y ajoute et rien d'autre
+                    // Then : deux phrases au plus, jamais de relance (la réponse est une affirmation)
                     $this->assertLessThanOrEqual(2, count($this->sentences($answer)), $answer);
-                    $this->assertLessThanOrEqual(3, count($this->sentences($inSession)), $inSession);
-                    $this->assertStringEndsWith(' Autre chose ?', $inSession);
-                    foreach ($this->sentences($inSession) as $sentence) {
+                    $this->assertStringNotContainsString('Autre chose', $answer);
+                    foreach ($this->sentences($answer) as $sentence) {
                         $this->assertLessThanOrEqual(15, count(preg_split('/\s+/u', $sentence)), $sentence);
                     }
                 }

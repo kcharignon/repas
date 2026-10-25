@@ -24,7 +24,7 @@ use Symfony\Component\Messenger\Attribute\AsMessageHandler;
  *    modifiée). Une seule écriture.
  *
  * Un choix sûr se dit court (« C'est noté : pain. »), un choix probable ou incertain dit aussi le rayon, pour que l'erreur se voie. En séance
- * ouverte la réponse invite à continuer.
+ * ouverte la réponse reste une simple affirmation : la séance reste ouverte, sans question ni relance (« Autre chose ? » n'existe plus).
  *
  * Quand l'utilisateur répond à des propositions en nommant autre chose (`AddSpokenItemCommand::rememberAs`, posé seulement si des
  * propositions ont été faites), la phrase d'origine n'est retenue pour cet ingrédient (« C'est noté : pomme de terre. Je m'en
@@ -85,7 +85,7 @@ readonly class AddSpokenItemHandler
     {
         $name = $this->namer->nameFrom($command->phrase);
         if ($name === null) {
-            return new AddSpokenItemResult(VoiceReplies::NOT_UNDERSTOOD . ' ' . VoiceReplies::LAUNCH, keepSessionOpen: true, added: false);
+            return new AddSpokenItemResult(VoiceReplies::NOT_UNDERSTOOD . ' ' . VoiceReplies::LAUNCH, keepSessionOpen: true, added: false, reprompt: VoiceReplies::LAUNCH);
         }
 
         $options = array_map(
@@ -105,8 +105,7 @@ readonly class AddSpokenItemHandler
 
     private function result(string $speech, AddSpokenItemCommand $command, bool $added): AddSpokenItemResult
     {
-        return $command->sessionIsOpen
-            ? new AddSpokenItemResult(VoiceReplies::withInvitation($speech), keepSessionOpen: true, added: $added)
-            : new AddSpokenItemResult($speech, keepSessionOpen: false, added: $added);
+        // Une affirmation, jamais de relance : dans une séance déjà ouverte elle reste ouverte sans rien demander, en appel direct elle se ferme
+        return new AddSpokenItemResult($speech, keepSessionOpen: $command->sessionIsOpen, added: $added);
     }
 }
