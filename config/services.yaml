@@ -46,6 +46,11 @@ services:
         alias: Repas\Repas\Infrastructure\Voice\VoiceShoppingListAdapter
         public: true
 
+    # Port de la commande vocale (ADR 0029, VOX-102) : le contexte `Voice` trouve l'ingrédient d'une phrase sans importer `Repas`
+    Repas\Shared\Application\Interface\SpokenIngredientResolver:
+        alias: Repas\Repas\Infrastructure\Voice\SpokenIngredientResolverAdapter
+        public: true
+
     Repas\User\Domain\Service\UserChecker: ~
     
 
