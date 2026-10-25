@@ -13,6 +13,11 @@ use Repas\Tests\Helper\VoiceShoppingListInMemory;
 use Repas\Voice\Application\Command\AddSpokenItem\AddSpokenItemCommand;
 use Repas\Voice\Application\Command\AddSpokenItem\AddSpokenItemHandler;
 use Repas\Voice\Application\Command\AddSpokenItem\AddSpokenItemResult;
+use Repas\Shared\Application\Dto\IngredientSuggestion;
+use Repas\Voice\Domain\Model\DialogueOption;
+use Repas\Voice\Domain\Model\DialogueStep;
+use Repas\Voice\Domain\Model\SpokenDialogueState;
+use Repas\Voice\Domain\Service\SpokenIngredientNamer;
 
 /**
  * Ajouter à la liste ce que l'utilisateur vient de dire (VOX-204), avec les deux ports de `Shared` en mémoire : aucune base, aucun noyau.
@@ -29,7 +34,7 @@ class AddSpokenItemHandlerTest extends TestCase
     {
         $this->resolver = new SpokenIngredientResolverInMemory();
         $this->shoppingList = new VoiceShoppingListInMemory();
-        $this->handler = new AddSpokenItemHandler($this->resolver, $this->shoppingList);
+        $this->handler = new AddSpokenItemHandler($this->resolver, $this->shoppingList, new SpokenIngredientNamer());
     }
 
     public function testASureChoiceIsAddedAndSaidInFewWords(): void
@@ -96,15 +101,86 @@ class AddSpokenItemHandlerTest extends TestCase
         $this->assertSame("J'ai commencé une nouvelle liste avec pain. Ta liste précédente est partie au drive.", $result->speech);
     }
 
-    public function testAnItemThatCannotBeFoundIsNotAddedAndSaysSo(): void
+    public function testAnUnknownProductWithNothingCloseAsksWhetherToCreateItAndWritesNothing(): void
     {
         // When
-        $result = ($this->handler)(new AddSpokenItemCommand('user-1', 'xyz', sessionIsOpen: false));
+        $result = ($this->handler)(new AddSpokenItemCommand('user-1', 'de la ciboulette', sessionIsOpen: false));
 
-        // Then : rien n'est écrit, le port de la liste n'est même pas appelé
-        $this->assertSame([['user-1', 'xyz']], $this->resolver->asked);
+        // Then : rien n'est écrit, le port de la liste n'est même pas appelé ; la séance reste ouverte même en appel direct
+        $this->assertSame([['user-1', 'de la ciboulette']], $this->resolver->asked);
+        $this->assertSame([['user-1', 'de la ciboulette']], $this->resolver->suggested);
         $this->assertSame([], $this->shoppingList->added);
-        $this->assertEquals(new AddSpokenItemResult('Je ne trouve pas xyz dans tes ingrédients.', keepSessionOpen: false, added: false), $result);
+        $state = SpokenDialogueState::choose('de la ciboulette', [], 'ciboulette');
+        $this->assertEquals(new AddSpokenItemResult('Je ne connais pas ciboulette. Je le crée ?', keepSessionOpen: true, added: false, nextState: $state, reprompt: 'Je ne connais pas ciboulette. Je le crée ?'), $result);
+    }
+
+    public function testAnUnknownProductWithCloseIngredientsProposesThemAndTheNewProduct(): void
+    {
+        // Given
+        $this->resolver->willSuggest('de la ciboulette', [
+            new IngredientSuggestion('persil-u', 'persil', 'fruit & légume'),
+            new IngredientSuggestion('basilic-u', 'basilic', 'fruit & légume'),
+            new IngredientSuggestion('coriandre-u', 'coriandre', 'épicerie'),
+        ]);
+
+        // When
+        $result = ($this->handler)(new AddSpokenItemCommand('user-1', 'de la ciboulette', sessionIsOpen: true));
+
+        // Then : « de quoi tu parles ? », les trois propositions dans l'ordre reçu, l'état porte les slugs, la phrase et le nom à créer
+        $this->assertSame('Je ne connais pas ciboulette. Tu veux dire persil, basilic ou coriandre ? Ou un nouveau produit ?', $result->speech);
+        $this->assertTrue($result->keepSessionOpen);
+        $this->assertFalse($result->added);
+        $this->assertSame([], $this->shoppingList->added);
+        $this->assertSame('Tu veux dire persil, basilic ou coriandre ? Ou un nouveau produit ?', $result->reprompt);
+        $this->assertSame(DialogueStep::CHOOSE, $result->nextState?->step);
+        $this->assertEquals(
+            [new DialogueOption('persil-u', 'persil'), new DialogueOption('basilic-u', 'basilic'), new DialogueOption('coriandre-u', 'coriandre')],
+            $result->nextState->options,
+        );
+        $this->assertSame(['de la ciboulette', 'ciboulette'], [$result->nextState->phrase, $result->nextState->name]);
+    }
+
+    public function testNoMoreThanThreeProposalsAreKeptWhateverThePortGives(): void
+    {
+        // Given : un port qui ne respecterait pas sa limite
+        $this->resolver->willSuggest('de la ciboulette', array_map(
+            static fn(int $i): IngredientSuggestion => new IngredientSuggestion("s$i-u", "s$i", 'divers'),
+            range(1, 5),
+        ));
+
+        // When
+        $result = ($this->handler)(new AddSpokenItemCommand('user-1', 'de la ciboulette', sessionIsOpen: false));
+
+        // Then
+        $this->assertCount(3, $result->nextState->options ?? []);
+    }
+
+    public function testAKnownProductIsNeverProposed(): void
+    {
+        // Given
+        $this->resolver->willResolve('du pain', new ResolvedIngredient('pain', 'Pain', 'Boulangerie', ResolvedIngredient::SURE));
+        $this->resolver->willSuggest('du pain', [new IngredientSuggestion('persil-u', 'persil', 'fruit & légume')]);
+
+        // When
+        $result = ($this->handler)(new AddSpokenItemCommand('user-1', 'du pain', sessionIsOpen: false));
+
+        // Then : ajouté, aucune proposition n'est même demandée
+        $this->assertSame([], $this->resolver->suggested);
+        $this->assertNull($result->nextState);
+    }
+
+    public function testAPhraseThatCannotBecomeANameIsAskedAgainWithoutADialogue(): void
+    {
+        // When : que des chiffres, puis un nom beaucoup trop long
+        $digits = ($this->handler)(new AddSpokenItemCommand('user-1', '12', sessionIsOpen: false));
+        $tooLong = ($this->handler)(new AddSpokenItemCommand('user-1', str_repeat('a', 70), sessionIsOpen: true));
+
+        // Then : « Je n'ai pas compris. Que veux-tu ajouter ? », la séance reste ouverte, aucun état, rien de demandé à Repas
+        foreach ([$digits, $tooLong] as $result) {
+            $this->assertEquals(new AddSpokenItemResult("Je n'ai pas compris. Que veux-tu ajouter ?", keepSessionOpen: true, added: false), $result);
+        }
+        $this->assertSame([], $this->resolver->suggested);
+        $this->assertSame([], $this->shoppingList->added);
     }
 
     public function testInAnOpenSessionTheAnswerAsksForMoreAndTheSessionStaysOpen(): void
@@ -114,11 +190,9 @@ class AddSpokenItemHandlerTest extends TestCase
 
         // When
         $found = ($this->handler)(new AddSpokenItemCommand('user-1', 'du pain', sessionIsOpen: true));
-        $notFound = ($this->handler)(new AddSpokenItemCommand('user-1', 'xyz', sessionIsOpen: true));
 
         // Then
         $this->assertEquals(new AddSpokenItemResult("C'est noté : pain. Autre chose ?", keepSessionOpen: true, added: true), $found);
-        $this->assertEquals(new AddSpokenItemResult('Je ne trouve pas xyz dans tes ingrédients. Autre chose ?', keepSessionOpen: true, added: false), $notFound);
     }
 
     public function testADirectCallClosesTheSessionAndDoesNotAskForMore(): void
@@ -134,6 +208,7 @@ class AddSpokenItemHandlerTest extends TestCase
         $this->assertStringNotContainsString('Autre chose', $result->speech);
     }
 
+
     public function testTheNameSpokenBackIsLowercasedAndBounded(): void
     {
         // Given
@@ -141,11 +216,11 @@ class AddSpokenItemHandlerTest extends TestCase
 
         // When
         $result = ($this->handler)(new AddSpokenItemCommand('user-1', 'Crème', sessionIsOpen: false));
-        $notFound = ($this->handler)(new AddSpokenItemCommand('user-1', str_repeat('Z', 100), sessionIsOpen: false));
+        $unknown = ($this->handler)(new AddSpokenItemCommand('user-1', 'ZÉBULON ' . str_repeat('Z', 40), sessionIsOpen: false));
 
         // Then
         $this->assertSame("J'ai mis crème fraîche épaisse, produits laitiers.", $result->speech);
-        $this->assertSame('Je ne trouve pas ' . str_repeat('z', 60) . ' dans tes ingrédients.', $notFound->speech);
+        $this->assertSame('Je ne connais pas zébulon ' . str_repeat('z', 40) . '. Je le crée ?', $unknown->speech);
     }
 
     public function testAFailureOfTheListPortIsNotCaughtSoTheTransactionIsCancelled(): void

@@ -16,8 +16,10 @@ use Repas\Voice\Domain\Model\VoiceReplies;
  *
  * - `beforeAuthentication()` : ce qu'on peut répondre sans savoir qui parle (la fin d'une séance ne reçoit aucune parole ; une autre
  *   langue que le français reçoit un repli poli) ;
- * - `answer()` : la réponse d'un utilisateur lié, ou `null` quand il faut ajouter un article (`AddItemIntent` avec une phrase), ce que
- *   fait le cas d'usage `AddSpokenItem`.
+ * - `answer()` : la réponse d'un utilisateur lié, ou `null` quand un cas d'usage doit lire ou écrire : ajouter un article
+ *   (`AddItemIntent` avec une phrase : `AddSpokenItem`), ou répondre à une question du dialogue d'un produit inconnu (la séance porte un
+ *   état : `AnswerSpokenDialogue`, qui interprète la réponse d'après l'ÉTAT, `SpokenAnswerInterpreter`). Seuls « stop » et « annule » sont
+ *   traités ici dans tous les états.
  *
  * Tout ce que le modèle d'interaction ne prévoit pas (autre type de requête, autre intention d'Amazon) reçoit le repli : l'exemple de
  * phrase à dire. Une séance ouverte ne se ferme que sur « stop » ou « annule ».
@@ -45,12 +47,28 @@ final readonly class AlexaDialogue
 
     private function answerIntent(AlexaRequest $request): ?AlexaResponse
     {
-        return match ($request->intent()) {
+        $intent = $request->intent();
+
+        // « Stop » et « annule » ferment la séance dans tous les états, même au milieu d'un dialogue
+        if ($intent === AlexaIntent::STOP || $intent === AlexaIntent::CANCEL) {
+            return AlexaResponse::say(VoiceReplies::GOODBYE);
+        }
+
+        // Une question est posée : la réponse dépend de l'état, pas de l'intention seule
+        if ($request->dialogueState !== null) {
+            return null;
+        }
+
+        return match ($intent) {
             // Un nom compris : à `AddSpokenItem`. Sinon on redemande
             AlexaIntent::ADD_ITEM => $request->phrase === null ? $this->invite() : null,
+            // « Oui » à rien : on redemande ce qu'il veut ajouter ; « non » : la réponse à « Autre chose ? »
+            AlexaIntent::YES => $this->invite(),
+            AlexaIntent::NO => AlexaResponse::say(VoiceReplies::GOODBYE),
             AlexaIntent::HELP => AlexaResponse::ask(VoiceReplies::HELP, VoiceReplies::LAUNCH),
-            AlexaIntent::STOP, AlexaIntent::CANCEL => AlexaResponse::say(VoiceReplies::GOODBYE),
-            AlexaIntent::FALLBACK, null => AlexaResponse::ask(VoiceReplies::FALLBACK, VoiceReplies::LAUNCH),
+            // Le repli : le repli d'Amazon, une intention qu'il n'a pas déclarée, et les réponses de dialogue (un rang, un nouveau produit, un
+            // rayon, une unité) sans dialogue en cours — séance trop vieille, état perdu. « Stop » et « annule » sont traités plus haut.
+            default => AlexaResponse::ask(VoiceReplies::FALLBACK, VoiceReplies::LAUNCH),
         };
     }
 

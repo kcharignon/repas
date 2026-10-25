@@ -20,6 +20,14 @@
           "samples": []
         },
         {
+          "name": "AMAZON.YesIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.NoIntent",
+          "samples": []
+        },
+        {
           "name": "AddItemIntent",
           "slots": [
             {
@@ -28,6 +36,7 @@
             }
           ],
           "samples": [
+            "{item}",
             "du {item}",
             "de la {item}",
             "des {item}",
@@ -117,6 +126,77 @@
             "note un {item} à la liste",
             "note une {item}",
             "note une {item} à la liste"
+          ]
+        },
+        {
+          "name": "ChooseOptionIntent",
+          "slots": [
+            {
+              "name": "rank",
+              "type": "OPTION_RANK"
+            }
+          ],
+          "samples": [
+            "{rank}",
+            "le {rank}",
+            "la {rank}",
+            "je veux le {rank}",
+            "je veux la {rank}",
+            "prends le {rank}",
+            "prends la {rank}",
+            "choisis le {rank}",
+            "ce sera le {rank}",
+            "numéro {rank}"
+          ]
+        },
+        {
+          "name": "CreateItemIntent",
+          "samples": [
+            "nouveau",
+            "nouveau produit",
+            "un nouveau produit",
+            "un nouveau",
+            "aucun",
+            "aucune",
+            "aucun des trois",
+            "crée le",
+            "crée un nouveau produit",
+            "ni l'un ni l'autre"
+          ]
+        },
+        {
+          "name": "AnswerDepartmentIntent",
+          "slots": [
+            {
+              "name": "department",
+              "type": "DEPARTMENT"
+            }
+          ],
+          "samples": [
+            "{department}",
+            "rayon {department}",
+            "le rayon {department}",
+            "dans le rayon {department}",
+            "au rayon {department}",
+            "dans {department}"
+          ]
+        },
+        {
+          "name": "AnswerUnitIntent",
+          "slots": [
+            {
+              "name": "unit",
+              "type": "UNIT"
+            }
+          ],
+          "samples": [
+            "{unit}",
+            "en {unit}",
+            "au {unit}",
+            "des {unit}",
+            "un {unit}",
+            "une {unit}",
+            "à la {unit}"
           ]
         }
       ],
@@ -1422,6 +1502,523 @@
             {
               "name": {
                 "value": "yaourt nature"
+              }
+            }
+          ]
+        },
+        {
+          "name": "DEPARTMENT",
+          "values": [
+            {
+              "id": "fruit-et-legume",
+              "name": {
+                "value": "fruit et légume",
+                "synonyms": [
+                  "fruits et légumes",
+                  "légumes",
+                  "fruits",
+                  "fruit",
+                  "légume",
+                  "fruits légumes",
+                  "primeur"
+                ]
+              }
+            },
+            {
+              "id": "fromage",
+              "name": {
+                "value": "fromage",
+                "synonyms": [
+                  "fromages",
+                  "crèmerie"
+                ]
+              }
+            },
+            {
+              "id": "yaourt",
+              "name": {
+                "value": "yaourt",
+                "synonyms": [
+                  "yaourts",
+                  "laitages",
+                  "desserts"
+                ]
+              }
+            },
+            {
+              "id": "gateau",
+              "name": {
+                "value": "gâteau",
+                "synonyms": [
+                  "gâteaux",
+                  "gâteaux secs",
+                  "biscuits",
+                  "biscuiterie"
+                ]
+              }
+            },
+            {
+              "id": "bebe",
+              "name": {
+                "value": "bébé",
+                "synonyms": [
+                  "bébés",
+                  "produits bébé",
+                  "produits pour bébé"
+                ]
+              }
+            },
+            {
+              "id": "aperitif",
+              "name": {
+                "value": "apéritif",
+                "synonyms": [
+                  "apéritifs",
+                  "apéro"
+                ]
+              }
+            },
+            {
+              "id": "boucherie",
+              "name": {
+                "value": "boucherie",
+                "synonyms": [
+                  "viande",
+                  "viandes",
+                  "la boucherie"
+                ]
+              }
+            },
+            {
+              "id": "alcool",
+              "name": {
+                "value": "alcool",
+                "synonyms": [
+                  "alcools",
+                  "vin",
+                  "vins",
+                  "spiritueux"
+                ]
+              }
+            },
+            {
+              "id": "boisson",
+              "name": {
+                "value": "boisson",
+                "synonyms": [
+                  "boissons",
+                  "jus",
+                  "sodas"
+                ]
+              }
+            },
+            {
+              "id": "surgele",
+              "name": {
+                "value": "surgelé",
+                "synonyms": [
+                  "surgelés",
+                  "les surgelés",
+                  "congelé",
+                  "congelés"
+                ]
+              }
+            },
+            {
+              "id": "conserve",
+              "name": {
+                "value": "conserve",
+                "synonyms": [
+                  "conserves",
+                  "boîtes de conserve"
+                ]
+              }
+            },
+            {
+              "id": "aide-patissier",
+              "name": {
+                "value": "aide pâtissier",
+                "synonyms": [
+                  "aides pâtissiers",
+                  "pâtisserie",
+                  "produits de pâtisserie"
+                ]
+              }
+            },
+            {
+              "id": "cereale",
+              "name": {
+                "value": "céréale",
+                "synonyms": [
+                  "céréales",
+                  "petit déjeuner"
+                ]
+              }
+            },
+            {
+              "id": "traiteur",
+              "name": {
+                "value": "traiteur",
+                "synonyms": [
+                  "plats cuisinés",
+                  "charcuterie"
+                ]
+              }
+            },
+            {
+              "id": "produit-menager",
+              "name": {
+                "value": "produit ménager",
+                "synonyms": [
+                  "produits ménagers",
+                  "ménager",
+                  "entretien",
+                  "ménage"
+                ]
+              }
+            },
+            {
+              "id": "boulangerie",
+              "name": {
+                "value": "boulangerie",
+                "synonyms": [
+                  "pain",
+                  "viennoiserie"
+                ]
+              }
+            },
+            {
+              "id": "sauce",
+              "name": {
+                "value": "sauce",
+                "synonyms": [
+                  "sauces",
+                  "condiments"
+                ]
+              }
+            },
+            {
+              "id": "animal",
+              "name": {
+                "value": "animal",
+                "synonyms": [
+                  "animaux",
+                  "animalerie",
+                  "produits pour animaux"
+                ]
+              }
+            },
+            {
+              "id": "divers",
+              "name": {
+                "value": "divers",
+                "synonyms": [
+                  "autre",
+                  "autres",
+                  "tout le reste"
+                ]
+              }
+            },
+            {
+              "id": "cuisine-du-monde",
+              "name": {
+                "value": "cuisine du monde",
+                "synonyms": [
+                  "cuisines du monde",
+                  "produits du monde",
+                  "épicerie du monde"
+                ]
+              }
+            },
+            {
+              "id": "hygiene",
+              "name": {
+                "value": "hygiène",
+                "synonyms": [
+                  "produits hygiène",
+                  "salle de bain",
+                  "beauté"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "UNIT",
+          "values": [
+            {
+              "id": "unite",
+              "name": {
+                "value": "unité",
+                "synonyms": [
+                  "unités",
+                  "pièce",
+                  "pièces"
+                ]
+              }
+            },
+            {
+              "id": "kilo",
+              "name": {
+                "value": "kilo",
+                "synonyms": [
+                  "kilos",
+                  "kilogramme",
+                  "kilogrammes"
+                ]
+              }
+            },
+            {
+              "id": "gramme",
+              "name": {
+                "value": "gramme",
+                "synonyms": [
+                  "grammes"
+                ]
+              }
+            },
+            {
+              "id": "litre",
+              "name": {
+                "value": "litre",
+                "synonyms": [
+                  "litres"
+                ]
+              }
+            },
+            {
+              "id": "millilitre",
+              "name": {
+                "value": "millilitre",
+                "synonyms": [
+                  "millilitres"
+                ]
+              }
+            },
+            {
+              "id": "centilitre",
+              "name": {
+                "value": "centilitre",
+                "synonyms": [
+                  "centilitres"
+                ]
+              }
+            },
+            {
+              "id": "cuillere-a-soupe",
+              "name": {
+                "value": "cuillère à soupe",
+                "synonyms": [
+                  "cuillères à soupe",
+                  "cuillerée à soupe",
+                  "cuillerées à soupe"
+                ]
+              }
+            },
+            {
+              "id": "cuillere-a-cafe",
+              "name": {
+                "value": "cuillère à café",
+                "synonyms": [
+                  "cuillères à café",
+                  "cuillerée à café",
+                  "cuillerées à café"
+                ]
+              }
+            },
+            {
+              "id": "tasse-a-cafe",
+              "name": {
+                "value": "tasse à café",
+                "synonyms": [
+                  "tasses à café",
+                  "tasse",
+                  "tasses"
+                ]
+              }
+            },
+            {
+              "id": "verre",
+              "name": {
+                "value": "verre",
+                "synonyms": [
+                  "verres"
+                ]
+              }
+            },
+            {
+              "id": "bol",
+              "name": {
+                "value": "bol",
+                "synonyms": [
+                  "bols"
+                ]
+              }
+            },
+            {
+              "id": "plaquette",
+              "name": {
+                "value": "plaquette",
+                "synonyms": [
+                  "plaquettes"
+                ]
+              }
+            },
+            {
+              "id": "tablette",
+              "name": {
+                "value": "tablette",
+                "synonyms": [
+                  "tablettes"
+                ]
+              }
+            },
+            {
+              "id": "tranche",
+              "name": {
+                "value": "tranche",
+                "synonyms": [
+                  "tranches"
+                ]
+              }
+            },
+            {
+              "id": "paquet",
+              "name": {
+                "value": "paquet",
+                "synonyms": [
+                  "paquets"
+                ]
+              }
+            },
+            {
+              "id": "boite",
+              "name": {
+                "value": "boîte",
+                "synonyms": [
+                  "boîtes",
+                  "boite",
+                  "boites"
+                ]
+              }
+            },
+            {
+              "id": "sachet",
+              "name": {
+                "value": "sachet",
+                "synonyms": [
+                  "sachets"
+                ]
+              }
+            },
+            {
+              "id": "bouteille",
+              "name": {
+                "value": "bouteille",
+                "synonyms": [
+                  "bouteilles"
+                ]
+              }
+            },
+            {
+              "id": "conserve",
+              "name": {
+                "value": "conserve",
+                "synonyms": [
+                  "conserves"
+                ]
+              }
+            },
+            {
+              "id": "cube",
+              "name": {
+                "value": "cube",
+                "synonyms": [
+                  "cubes"
+                ]
+              }
+            },
+            {
+              "id": "buche",
+              "name": {
+                "value": "bûche",
+                "synonyms": [
+                  "bûches"
+                ]
+              }
+            },
+            {
+              "id": "brique",
+              "name": {
+                "value": "brique",
+                "synonyms": [
+                  "briques"
+                ]
+              }
+            },
+            {
+              "id": "pot",
+              "name": {
+                "value": "pot",
+                "synonyms": [
+                  "pots"
+                ]
+              }
+            },
+            {
+              "id": "gousse",
+              "name": {
+                "value": "gousse",
+                "synonyms": [
+                  "gousses"
+                ]
+              }
+            },
+            {
+              "id": "flacon",
+              "name": {
+                "value": "flacon",
+                "synonyms": [
+                  "flacons"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "OPTION_RANK",
+          "values": [
+            {
+              "id": "1",
+              "name": {
+                "value": "premier",
+                "synonyms": [
+                  "première",
+                  "un",
+                  "une"
+                ]
+              }
+            },
+            {
+              "id": "2",
+              "name": {
+                "value": "deuxième",
+                "synonyms": [
+                  "second",
+                  "seconde",
+                  "deux"
+                ]
+              }
+            },
+            {
+              "id": "3",
+              "name": {
+                "value": "troisième",
+                "synonyms": [
+                  "dernier",
+                  "dernière",
+                  "trois"
+                ]
               }
             }
           ]

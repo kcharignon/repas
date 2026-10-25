@@ -3139,7 +3139,7 @@
                     "Voice"
                 ],
                 "summary": "Webhook du skill Alexa \u00ab mes courses \u00bb : re\u00e7oit une requ\u00eate d'Alexa et r\u00e9pond par une r\u00e9ponse vocale (route publique, appel\u00e9e par Amazon)",
-                "description": "Le corps est la requ\u00eate JSON d'un skill personnalis\u00e9 (`LaunchRequest`, `IntentRequest`, `SessionEndedRequest`), sign\u00e9e par Amazon : les en-t\u00eates `SignatureCertChainUrl` et `Signature-256` sont v\u00e9rifi\u00e9s avant tout traitement (cha\u00eene de certificats d'Amazon, signature du corps brut, horodatage \u00e0 150 s, identifiant du skill `ALEXA_SKILL_ID`). Une requ\u00eate qui ne le prouve pas re\u00e7oit `400 INVALID_ALEXA_REQUEST`, sans autre d\u00e9tail. Une requ\u00eate authentique re\u00e7oit TOUJOURS `200` et une r\u00e9ponse vocale (`outputSpeech` de type `PlainText`, `shouldEndSession`) : intentions `AddItemIntent` (cr\u00e9neau `item` : l'article est ajout\u00e9 \u00e0 la liste de courses de l'utilisateur, une liste est cr\u00e9\u00e9e s'il n'en a pas d'active), `AMAZON.HelpIntent`, `AMAZON.StopIntent`, `AMAZON.CancelIntent`, `AMAZON.FallbackIntent` ; seule la langue `fr-FR` est servie ; `SessionEndedRequest` re\u00e7oit une r\u00e9ponse sans parole. L'utilisateur est celui du jeton d'acc\u00e8s de la liaison de compte (`session.user.accessToken`, \u00e0 d\u00e9faut `context.System.user.accessToken`) ; sans jeton valable (absent, inconnu, expir\u00e9, liaison retir\u00e9e ou compte inactif : on ne les distingue pas) la r\u00e9ponse porte la carte `LinkAccount`. Plafonds : 60 requ\u00eates par minute et par adresse IP (`429`), puis 60 par minute et par liaison (r\u00e9ponse vocale \u00ab Un instant, r\u00e9essaie dans une minute. \u00bb). Le corps (la voix transcrite) n'est jamais journalis\u00e9.",
+                "description": "Le corps est la requ\u00eate JSON d'un skill personnalis\u00e9 (`LaunchRequest`, `IntentRequest`, `SessionEndedRequest`), sign\u00e9e par Amazon : les en-t\u00eates `SignatureCertChainUrl` et `Signature-256` sont v\u00e9rifi\u00e9s avant tout traitement (cha\u00eene de certificats d'Amazon, signature du corps brut, horodatage \u00e0 150 s, identifiant du skill `ALEXA_SKILL_ID`). Une requ\u00eate qui ne le prouve pas re\u00e7oit `400 INVALID_ALEXA_REQUEST`, sans autre d\u00e9tail. Une requ\u00eate authentique re\u00e7oit TOUJOURS `200` et une r\u00e9ponse vocale (`outputSpeech` de type `PlainText`, `shouldEndSession`) : intentions `AddItemIntent` (cr\u00e9neau `item` : l'article est ajout\u00e9 \u00e0 la liste de courses de l'utilisateur, une liste est cr\u00e9\u00e9e s'il n'en a pas d'active ; un produit inconnu ouvre un dialogue), `ChooseOptionIntent` (cr\u00e9neau `rank`, 1 \u00e0 3), `CreateItemIntent`, `AnswerDepartmentIntent` (cr\u00e9neau `department`), `AnswerUnitIntent` (cr\u00e9neau `unit`), `AMAZON.YesIntent`, `AMAZON.NoIntent`, `AMAZON.HelpIntent`, `AMAZON.StopIntent`, `AMAZON.CancelIntent`, `AMAZON.FallbackIntent` ; l'\u00e9tat du dialogue d'un produit inconnu (trois propositions, cr\u00e9ation guid\u00e9e : rayon, unit\u00e9, confirmation) voyage dans les attributs de s\u00e9ance (`session.attributes.dialogue` \u00e0 l'aller, `sessionAttributes.dialogue` au retour, rien n'est \u00e9crit en base hors l'article, le produit cr\u00e9\u00e9 et la m\u00e9moire de phrase), lu comme une entr\u00e9e non fiable ; seule la langue `fr-FR` est servie ; `SessionEndedRequest` re\u00e7oit une r\u00e9ponse sans parole. L'utilisateur est celui du jeton d'acc\u00e8s de la liaison de compte (`session.user.accessToken`, \u00e0 d\u00e9faut `context.System.user.accessToken`) ; sans jeton valable (absent, inconnu, expir\u00e9, liaison retir\u00e9e ou compte inactif : on ne les distingue pas) la r\u00e9ponse porte la carte `LinkAccount`. Plafonds : 60 requ\u00eates par minute et par adresse IP (`429`), puis 60 par minute et par liaison (r\u00e9ponse vocale \u00ab Un instant, r\u00e9essaie dans une minute. \u00bb). Le corps (la voix transcrite) n'est jamais journalis\u00e9.",
                 "operationId": "post_api_voice_alexa",
                 "parameters": [
                     {
@@ -3162,7 +3162,7 @@
                     }
                 ],
                 "requestBody": {
-                    "description": "La requ\u00eate d'Alexa, telle qu'Amazon l'envoie (non mod\u00e9lis\u00e9e ici : seuls `request.type`, `request.locale`, `request.intent`, `session.new`, `session.user` et le jeton d'acc\u00e8s sont lus)",
+                    "description": "La requ\u00eate d'Alexa, telle qu'Amazon l'envoie (non mod\u00e9lis\u00e9e ici : seuls `request.type`, `request.locale`, `request.intent` (et ses cr\u00e9neaux), `session.new`, `session.attributes.dialogue`, `session.user` et le jeton d'acc\u00e8s sont lus)",
                     "required": true,
                     "content": {
                         "application/json": {
@@ -3206,6 +3206,10 @@
                                         "version": {
                                             "type": "string",
                                             "example": "1.0"
+                                        },
+                                        "sessionAttributes": {
+                                            "description": "Seulement quand la s\u00e9ance reste ouverte : l'\u00e9tat du dialogue d'un produit inconnu (`dialogue`), `{}` quand il n'y en a pas. Alexa le rend dans `session.attributes` \u00e0 la requ\u00eate suivante",
+                                            "type": "object"
                                         },
                                         "response": {
                                             "properties": {

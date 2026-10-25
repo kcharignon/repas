@@ -275,7 +275,6 @@ class SpokenIngredientRankerTest extends TestCase
     public function testTheFloorIsBelowTheThresholdOfTheAutomaticChoice(): void
     {
         $this->assertLessThan(SearchRelevance::MINIMUM, SpokenIngredientRanker::SUGGESTION_FLOOR);
-        $this->assertSame(3, SpokenIngredientRanker::MAX_SUGGESTIONS);
     }
 
     #[DataProvider('phraseKeys')]

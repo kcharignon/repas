@@ -9,6 +9,9 @@ namespace Repas\Voice\Domain\Model;
  * avertissement, aucun mot technique (« ingrédient » n'apparaît que dans « tes ingrédients »). Un proche doit pouvoir dire chaque phrase à voix
  * haute ; `VoiceRepliesTest` impose la longueur et le vocabulaire.
  *
+ * Une seule exception à « deux phrases » : la question « de quoi tu parles ? » d'un produit inconnu (`ASK_WHICH`, `ASK_WHICH_AGAIN`), trois
+ * phrases, parce qu'elle dit ce qui n'est pas connu, les propositions et l'issue « un nouveau produit » (ADR 0029 décision 11).
+ *
  * Les modèles de phrase (`%s`) reçoivent le nom d'un ingrédient, celui d'un rayon ou la phrase entendue, toujours passés par
  * `speakable()` : bornés en longueur et débarrassés des caractères de contrôle.
  */
@@ -34,7 +37,29 @@ final class VoiceReplies
     public const string LIST_STARTED = "J'ai commencé une nouvelle liste avec %s.";
     public const string LIST_STARTED_GUESSED = "J'ai commencé une nouvelle liste avec %s, %s.";
     public const string PREVIOUS_LIST_SENT = 'Ta liste précédente est partie au drive.';
-    public const string NOT_FOUND = 'Je ne trouve pas %s dans tes ingrédients.';
+
+    /** Le produit dit est inconnu et des ingrédients de l'utilisateur lui ressemblent : « de quoi tu parles ? » (trois phrases). */
+    public const string ASK_WHICH = 'Je ne connais pas %s. Tu veux dire %s ? Ou un nouveau produit ?';
+    /** La même question, sans rappeler le produit (aide, silence). */
+    public const string ASK_WHICH_SHORT = 'Tu veux dire %s ? Ou un nouveau produit ?';
+    /** « Oui » alors qu'il y a plusieurs propositions. */
+    public const string ASK_WHICH_AGAIN = 'Lequel ? %s. Ou un nouveau produit ?';
+    /** Le produit dit est inconnu et rien ne lui ressemble. */
+    public const string ASK_CREATE = 'Je ne connais pas %s. Je le crée ?';
+    public const string ASK_DEPARTMENT = 'Dans quel rayon ?';
+    public const string ASK_UNIT = 'Quelle unité ?';
+    public const string ASK_CONFIRM = "Je crée %s, %s, %s. C'est bon ?";
+    public const string NOT_UNDERSTOOD = "Je n'ai pas compris.";
+    /** Deux réponses incomprises de suite dans la même étape. */
+    public const string GIVE_UP = "Je n'ai pas compris. On laisse tomber.";
+    /** L'utilisateur refuse de créer le produit. */
+    public const string DECLINED = "D'accord, je ne crée rien.";
+    /** Il a choisi une proposition : l'article est ajouté et la phrase retenue. */
+    public const string REMEMBERED = "C'est noté : %s. Je m'en souviendrai.";
+    public const string LIST_STARTED_REMEMBERED = "J'ai commencé une nouvelle liste avec %s. Je m'en souviendrai.";
+    /** Le produit est créé et ajouté. */
+    public const string CREATED = "C'est créé et noté : %s.";
+    public const string CREATED_LIST_STARTED = "J'ai créé %s et commencé une nouvelle liste.";
     /** Ajoutée à la réponse quand la séance reste ouverte. */
     public const string ANYTHING_ELSE = 'Autre chose ?';
 
@@ -43,6 +68,29 @@ final class VoiceReplies
 
     private function __construct()
     {
+    }
+
+    /**
+     * @param list<string> $names
+     *
+     * @return string « a », « a ou b », « a, b ou c » (trois au plus : le dialogue n'en propose pas davantage)
+     */
+    private static function joinNames(array $names): string
+    {
+        $spoken = array_map(self::speakable(...), $names);
+        $last = array_pop($spoken);
+
+        return $spoken === [] ? (string) $last : implode(', ', $spoken) . ' ou ' . $last;
+    }
+
+    /**
+     * @param list<DialogueOption> $options
+     *
+     * @return list<string>
+     */
+    private static function namesOf(array $options): array
+    {
+        return array_map(static fn(DialogueOption $option): string => $option->name, $options);
     }
 
     /**
@@ -67,9 +115,82 @@ final class VoiceReplies
         return $previousListSent ? $started . ' ' . self::PREVIOUS_LIST_SENT : $started;
     }
 
-    public static function notFound(string $phrase): string
+    /**
+     * « De quoi tu parles ? » : le produit `$name` est inconnu ; `$optionNames` sont les ingrédients de l'utilisateur qui lui ressemblent
+     * (aucun : on propose de le créer).
+     *
+     * @param list<string> $optionNames
+     */
+    public static function unknown(string $name, array $optionNames): string
     {
-        return sprintf(self::NOT_FOUND, self::speakable($phrase));
+        return $optionNames === []
+            ? sprintf(self::ASK_CREATE, self::speakable($name))
+            : sprintf(self::ASK_WHICH, self::speakable($name), self::joinNames($optionNames));
+    }
+
+    /**
+     * La question de l'étape où en est le dialogue (réponse à « aide », texte à répéter après un silence).
+     */
+    public static function question(SpokenDialogueState $state): string
+    {
+        return match ($state->step) {
+            DialogueStep::CHOOSE => $state->options === []
+                ? sprintf(self::ASK_CREATE, self::speakable($state->name))
+                : sprintf(self::ASK_WHICH_SHORT, self::joinNames(self::namesOf($state->options))),
+            DialogueStep::DEPARTMENT => self::ASK_DEPARTMENT,
+            DialogueStep::UNIT => self::ASK_UNIT,
+            DialogueStep::CONFIRM => sprintf(
+                self::ASK_CONFIRM,
+                self::speakable($state->name),
+                self::speakable($state->department->name ?? ''),
+                self::speakable($state->unit->name ?? ''),
+            ),
+        };
+    }
+
+    /** Une réponse qui n'a pas été comprise : on le dit, puis on repose la question de l'étape. */
+    public static function notUnderstood(SpokenDialogueState $state): string
+    {
+        return self::NOT_UNDERSTOOD . ' ' . self::question($state);
+    }
+
+    /** « Oui », mais plusieurs propositions : laquelle ? */
+    public static function whichAgain(SpokenDialogueState $state): string
+    {
+        return sprintf(self::ASK_WHICH_AGAIN, self::joinNames(self::namesOf($state->options)));
+    }
+
+    /**
+     * La proposition choisie est ajoutée, et Alexa promet de s'en souvenir. Quand une liste envoyée au drive est remplacée, on le dit à la
+     * place de la promesse (trois phrases avec « Autre chose ? » au plus) : la phrase est retenue quand même.
+     */
+    public static function remembered(string $ingredientName, bool $listCreated, bool $previousListSent): string
+    {
+        $ingredient = self::speakable($ingredientName);
+
+        if (!$listCreated) {
+            return sprintf(self::REMEMBERED, $ingredient);
+        }
+
+        return $previousListSent
+            ? sprintf(self::LIST_STARTED, $ingredient) . ' ' . self::PREVIOUS_LIST_SENT
+            : sprintf(self::LIST_STARTED_REMEMBERED, $ingredient);
+    }
+
+    /**
+     * Le produit est créé puis ajouté à la liste.
+     */
+    public static function created(string $ingredientName, bool $listCreated, bool $previousListSent): string
+    {
+        $ingredient = self::speakable($ingredientName);
+
+        if (!$listCreated) {
+            return sprintf(self::CREATED, $ingredient);
+        }
+
+        $started = sprintf(self::CREATED_LIST_STARTED, $ingredient);
+
+        return $previousListSent ? $started . ' ' . self::PREVIOUS_LIST_SENT : $started;
     }
 
     /**
@@ -86,7 +207,8 @@ final class VoiceReplies
      */
     public static function speakable(string $text): string
     {
-        $clean = preg_replace(['/\p{C}+/u', '/\s+/u'], ' ', $text);
+        // « fruit & légume » : Alexa lit mieux « et » que le signe
+        $clean = preg_replace(['/\p{C}+/u', '/\s*&\s*/u', '/\s+/u'], [' ', ' et ', ' '], $text);
         $clean = mb_strtolower(trim($clean ?? ''));
 
         return mb_strlen($clean) > self::MAX_SPOKEN_NAME_LENGTH ? rtrim(mb_substr($clean, 0, self::MAX_SPOKEN_NAME_LENGTH)) : $clean;

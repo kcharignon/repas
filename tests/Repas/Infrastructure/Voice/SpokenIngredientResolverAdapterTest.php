@@ -22,6 +22,8 @@ use Repas\Tests\Helper\MockCommandBus;
 class SpokenIngredientResolverAdapterTest extends TestCase
 {
     private MockCommandBus $bus;
+    private SpokenIngredientCandidatesInMemoryLoader $candidatesLoader;
+    private SpokenPhraseMemoryInMemoryLoader $memory;
 
     protected function setUp(): void
     {
@@ -32,12 +34,12 @@ class SpokenIngredientResolverAdapterTest extends TestCase
      * @param list<SpokenCandidate> $candidates
      * @param array<string, string> $remembered
      */
-    private function adapter(array $candidates, array $remembered = [], ?SpokenPhraseMemoryInMemoryLoader &$memory = null, ?SpokenIngredientCandidatesInMemoryLoader &$loader = null): SpokenIngredientResolverAdapter
+    private function adapter(array $candidates, array $remembered = []): SpokenIngredientResolverAdapter
     {
-        $loader = new SpokenIngredientCandidatesInMemoryLoader($candidates);
-        $memory = new SpokenPhraseMemoryInMemoryLoader($remembered);
+        $this->candidatesLoader = new SpokenIngredientCandidatesInMemoryLoader($candidates);
+        $this->memory = new SpokenPhraseMemoryInMemoryLoader($remembered);
 
-        return new SpokenIngredientResolverAdapter($loader, $memory, $this->bus);
+        return new SpokenIngredientResolverAdapter($this->candidatesLoader, $this->memory, $this->bus);
     }
 
     public function testItLoadsTheCandidatesOfTheUserAndMapsTheChoiceToTheSharedDto(): void
@@ -46,14 +48,14 @@ class SpokenIngredientResolverAdapterTest extends TestCase
         $adapter = $this->adapter([
             new SpokenCandidate('tomate', 'tomate', 'tomate', 'fruits et légumes', 4),
             new SpokenCandidate('farine', 'farine', 'farine', 'épicerie', 0),
-        ], loader: $candidates);
+        ]);
 
         // When
         $resolved = $adapter->resolve('user-id', 'des tomates');
 
         // Then
         $this->assertEquals(new ResolvedIngredient('tomate', 'tomate', 'fruits et légumes', 'sure'), $resolved);
-        $this->assertSame(['user-id'], $candidates->calls);
+        $this->assertSame(['user-id'], $this->candidatesLoader->calls);
     }
 
     public function testTheConfidenceIsGivenAsItsStringValue(): void
@@ -74,15 +76,15 @@ class SpokenIngredientResolverAdapterTest extends TestCase
     public function testAnAccountWithoutIngredientGetsNullAndTheMemoryIsNotRead(): void
     {
         // Given
-        $adapter = $this->adapter([], ['pain' => 'pain'], $memory, $candidates);
+        $adapter = $this->adapter([], ['pain' => 'pain']);
 
         // When
         $resolved = $adapter->resolve('user-id', 'du pain');
 
         // Then
         $this->assertNull($resolved);
-        $this->assertSame(['user-id'], $candidates->calls);
-        $this->assertSame([], $memory->calls, 'aucun ingrédient : pas de requête pour la mémoire');
+        $this->assertSame(['user-id'], $this->candidatesLoader->calls);
+        $this->assertSame([], $this->memory->calls, 'aucun ingrédient : pas de requête pour la mémoire');
     }
 
     public function testAPhraseThatResemblesNoIngredientGetsNull(): void
@@ -103,7 +105,6 @@ class SpokenIngredientResolverAdapterTest extends TestCase
         $adapter = $this->adapter(
             [new SpokenCandidate('persil-u', 'persil', 'persil', 'fruits et légumes', 0), new SpokenCandidate('tomate-u', 'tomate', 'tomate', 'fruits et légumes', 0)],
             ['ciboulette' => 'persil-u'],
-            $memory,
         );
 
         // When
@@ -111,7 +112,7 @@ class SpokenIngredientResolverAdapterTest extends TestCase
 
         // Then
         $this->assertEquals(new ResolvedIngredient('persil-u', 'persil', 'fruits et légumes', 'sure'), $resolved);
-        $this->assertSame([['user-id', 'ciboulette']], $memory->calls);
+        $this->assertSame([['user-id', 'ciboulette']], $this->memory->calls);
     }
 
     public function testAMemoryThatNamesAnIngredientThatNoLongerExistsIsIgnored(): void
@@ -129,14 +130,14 @@ class SpokenIngredientResolverAdapterTest extends TestCase
     public function testAPhraseWithoutAnyMeaningfulWordDoesNotReadTheMemory(): void
     {
         // Given
-        $adapter = $this->adapter([new SpokenCandidate('tomate-u', 'tomate', 'tomate', 'fruits et légumes', 0)], [], $memory);
+        $adapter = $this->adapter([new SpokenCandidate('tomate-u', 'tomate', 'tomate', 'fruits et légumes', 0)]);
 
         // When
         $resolved = $adapter->resolve('user-id', 'de la');
 
         // Then
         $this->assertNull($resolved);
-        $this->assertSame([], $memory->calls);
+        $this->assertSame([], $this->memory->calls);
     }
 
     public function testItSuggestsTheClosestIngredientsOfTheUserAsSharedDtos(): void
@@ -145,14 +146,14 @@ class SpokenIngredientResolverAdapterTest extends TestCase
         $adapter = $this->adapter([
             new SpokenCandidate('sirop-u', 'sirop-fruit-rouge', 'Sirop fruit rouge', 'boisson', 0),
             new SpokenCandidate('farine-u', 'farine', 'Farine', 'épicerie', 0),
-        ], loader: $candidates);
+        ]);
 
         // When
         $suggestions = $adapter->suggest('user-id', 'sirop de menthe');
 
         // Then
         $this->assertEquals([new IngredientSuggestion('sirop-u', 'Sirop fruit rouge', 'boisson')], $suggestions);
-        $this->assertSame(['user-id'], $candidates->calls);
+        $this->assertSame(['user-id'], $this->candidatesLoader->calls);
     }
 
     public function testNothingCloseMeansNoSuggestion(): void

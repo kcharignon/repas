@@ -68,6 +68,6 @@ final class SpokenIngredientCreatorInMemory implements SpokenIngredientCreator
             $department = $candidate->slug === $departmentSlug ? $candidate : $department;
         }
 
-        return new CreatedIngredient($name . '-' . $userId, $name, $department?->name ?? $departmentSlug);
+        return new CreatedIngredient($name . '-' . $userId, $name, $department->name ?? $departmentSlug);
     }
 }

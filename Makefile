@@ -45,7 +45,7 @@ restart: ## Restart the project
 	@$(MAKE) start
 
 ## —— Code quality 📋 ————————————————————————————————————————————————————————
-.PHONY: test test-coverage deptrac phpstan api-doc-validate api-doc-coverage openapi openapi-check jwt-keys quality sql-budget-update drive-samples deploy-smoke
+.PHONY: test test-coverage deptrac phpstan api-doc-validate api-doc-coverage openapi openapi-check jwt-keys quality sql-budget-update voice-model voice-model-check drive-samples deploy-smoke
 
 test: ## Run PHPUnit tests
 	@echo "🧪 Exécution des tests avec PHPUnit..."
@@ -115,6 +115,12 @@ outdated: ## List direct dependencies with a newer version, majors included (ADR
 
 sql-budget-update: ## Régénère les budgets SQL des use cases d'écriture après un allègement (tests/Repas/WriteBudget)
 	@$(DOCKER_COMPOSE) exec -T -e UPDATE_SQL_BUDGETS=1 php vendor/bin/phpunit --no-coverage tests/Repas/WriteBudget
+
+voice-model: ## Régénère le modèle d'interaction du skill Alexa (docs/voice/skill, node sur la machine, aucune dépendance) : relis le diff
+	@node docs/voice/skill/generate-model.mjs
+
+voice-model-check: ## Échoue si le modèle d'interaction du skill Alexa n'est pas celui que le script produit (catalogue de base, rayons, unités)
+	@node docs/voice/skill/generate-model.mjs --check
 
 drive-samples: ## Régénère docs/drive/samples/*.sample.json depuis les réponses réelles de l'API Drive (DRV-501) : relis le diff
 	@$(DOCKER_COMPOSE) exec -T -e UPDATE_DRIVE_SAMPLES=1 php vendor/bin/phpunit --no-coverage tests/Drive/Contract

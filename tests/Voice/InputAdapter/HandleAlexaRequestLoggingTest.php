@@ -12,7 +12,10 @@ use Repas\Tests\Helper\ContextSpyLogger;
 use Repas\Tests\Helper\MockCommandBus;
 use Repas\Tests\Helper\MockQueryBus;
 use Repas\Voice\Application\Command\AddSpokenItem\AddSpokenItemCommand;
+use Repas\Voice\Application\Command\AnswerSpokenDialogue\AnswerSpokenDialogueCommand;
 use Repas\Voice\Application\Command\RecordVoiceLinkUse\RecordVoiceLinkUseCommand;
+use Repas\Voice\Domain\Model\DialogueOption;
+use Repas\Voice\Domain\Model\SpokenDialogueState;
 use Repas\Voice\Application\Query\ResolveAccessGrant\ResolveAccessGrantQuery;
 use Repas\Voice\Application\Query\ResolveAccessGrant\ResolvedAccessGrantDTO;
 use Repas\Voice\Domain\Exception\VoiceException;
@@ -60,6 +63,38 @@ class HandleAlexaRequestLoggingTest extends TestCase
         $this->assertSame(RuntimeException::class, $this->logger->records[0]['context']['exception']);
         $this->assertMatchesRegularExpression('/^HandleAlexaRequestLoggingTest\.php:\d+$/', $this->logger->records[0]['context']['location']);
         $this->assertNothingSecretWasLoggedNorAnswered($response->getContent());
+    }
+
+    public function testAFailureOfTheDialogueIsLoggedByClassAndPlaceNeverTheStateTheSentenceOrTheMessage(): void
+    {
+        // Given : l'état de la séance porte la phrase entendue et un nom ; le message de l'exception les cite aussi
+        $state = SpokenDialogueState::choose(self::SECRET_PHRASE, [new DialogueOption('persil-u', 'persil')], 'secret-name');
+        $this->commandBus->willThrow(AnswerSpokenDialogueCommand::class, new RuntimeException('échec pour ' . self::SECRET_PHRASE . ' avec ' . self::SECRET_TOKEN));
+
+        // When
+        $response = $this->controller()($this->request(AlexaTestRequest::yes()->withAccessToken(self::SECRET_TOKEN)->withSessionAttributes(['dialogue' => $state->toArray()])->toJson()));
+
+        // Then : un seul enregistrement, de la classe et de l'endroit seulement
+        $this->assertSame(200, $response->getStatusCode());
+        $this->assertCount(1, $this->logger->records);
+        $this->assertSame(['exception', 'location'], array_keys($this->logger->records[0]['context']));
+        $this->assertStringNotContainsString('secret-name', $this->logger->everything());
+        $this->assertStringNotContainsString('persil-u', $this->logger->everything());
+        $this->assertStringNotContainsString('secret-name', (string) $response->getContent());
+        $this->assertNothingSecretWasLoggedNorAnswered($response->getContent());
+    }
+
+    public function testTheDialogueIsNeverLoggedWhenItGoesWell(): void
+    {
+        // Given
+        $state = SpokenDialogueState::choose(self::SECRET_PHRASE, [], 'secret-name');
+        $this->commandBus->willReturn(AnswerSpokenDialogueCommand::class, new \Repas\Voice\Application\Command\AddSpokenItem\AddSpokenItemResult('Dans quel rayon ?', true, false, $state->askingDepartment(), 'Dans quel rayon ?'));
+
+        // When
+        $response = $this->controller()($this->request(AlexaTestRequest::yes()->withAccessToken(self::SECRET_TOKEN)->withSessionAttributes(['dialogue' => $state->toArray()])->toJson()));
+
+        // Then : la phrase revient dans l'état de la séance (c'est son rôle), jamais au journal
+        $this->assertSame([], $this->logger->records);
     }
 
     public function testAFailureOfTheTrackingIsLoggedByClassOnly(): void
