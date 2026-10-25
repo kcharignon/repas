@@ -4,7 +4,7 @@
 - **Jalon** : M6
 - **Taille** : S
 - **Dépend de** : VOX-204
-- **Statut** : à faire
+- **Statut** : fait (2026-10-25)
 - **Lire d'abord** : skill `repas-ops` ; `.claude/skills/repas-ops/references/ecrire-mailer-env.sh` et `ecrire-drive-enabled.sh` (modèles) ; `docs/production.md` (« Envoi de la liste au drive »).
 
 ## Portée

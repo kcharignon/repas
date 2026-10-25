@@ -56,7 +56,7 @@ Suivi vivant du chantier « Alexa, demande à *mes courses* d'ajouter du pain »
 
 ## M6 — Mise en service
 
-- [ ] [VOX-601](tickets/VOX-601-variables-script-et-runbook.md) back · S · Variables, script d'écriture, `docs/production.md`, runbook · dépend de : 204
+- [x] [VOX-601](tickets/VOX-601-variables-script-et-runbook.md) back · S · Variables, script d'écriture, `docs/production.md`, runbook · dépend de : 204
 - [ ] [VOX-602](tickets/VOX-602-recette-sur-l-echo.md) humain · M · Recette : liaison depuis le téléphone, phrases, listes vide / envoyée, un proche · dépend de : 002, 204, 401, 601
 
 ## Chemin critique et parallélisme
