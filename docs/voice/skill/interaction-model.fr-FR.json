@@ -1,0 +1,1427 @@
+{
+  "interactionModel": {
+    "languageModel": {
+      "invocationName": "mes courses",
+      "intents": [
+        {
+          "name": "AMAZON.CancelIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.HelpIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.StopIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.FallbackIntent",
+          "samples": []
+        },
+        {
+          "name": "AddItemIntent",
+          "slots": [
+            {
+              "name": "item",
+              "type": "INGREDIENT"
+            }
+          ],
+          "samples": [
+            "ajoute {item}",
+            "ajoute {item} à la liste",
+            "ajoute du {item}",
+            "ajoute du {item} à la liste",
+            "ajoute de la {item}",
+            "ajoute de la {item} à la liste",
+            "ajoute des {item}",
+            "ajoute des {item} à la liste",
+            "ajoute un {item}",
+            "ajoute un {item} à la liste",
+            "ajoute une {item}",
+            "ajoute une {item} à la liste",
+            "ajouter {item}",
+            "ajouter {item} à la liste",
+            "ajouter du {item}",
+            "ajouter du {item} à la liste",
+            "ajouter de la {item}",
+            "ajouter de la {item} à la liste",
+            "ajouter des {item}",
+            "ajouter des {item} à la liste",
+            "ajouter un {item}",
+            "ajouter un {item} à la liste",
+            "ajouter une {item}",
+            "ajouter une {item} à la liste",
+            "mets {item}",
+            "mets {item} à la liste",
+            "mets du {item}",
+            "mets du {item} à la liste",
+            "mets de la {item}",
+            "mets de la {item} à la liste",
+            "mets des {item}",
+            "mets des {item} à la liste",
+            "mets un {item}",
+            "mets un {item} à la liste",
+            "mets une {item}",
+            "mets une {item} à la liste",
+            "mettre {item}",
+            "mettre {item} à la liste",
+            "mettre du {item}",
+            "mettre du {item} à la liste",
+            "mettre de la {item}",
+            "mettre de la {item} à la liste",
+            "mettre des {item}",
+            "mettre des {item} à la liste",
+            "mettre un {item}",
+            "mettre un {item} à la liste",
+            "mettre une {item}",
+            "mettre une {item} à la liste",
+            "rajoute {item}",
+            "rajoute {item} à la liste",
+            "rajoute du {item}",
+            "rajoute du {item} à la liste",
+            "rajoute de la {item}",
+            "rajoute de la {item} à la liste",
+            "rajoute des {item}",
+            "rajoute des {item} à la liste",
+            "rajoute un {item}",
+            "rajoute un {item} à la liste",
+            "rajoute une {item}",
+            "rajoute une {item} à la liste",
+            "rajouter {item}",
+            "rajouter {item} à la liste",
+            "rajouter du {item}",
+            "rajouter du {item} à la liste",
+            "rajouter de la {item}",
+            "rajouter de la {item} à la liste",
+            "rajouter des {item}",
+            "rajouter des {item} à la liste",
+            "rajouter un {item}",
+            "rajouter un {item} à la liste",
+            "rajouter une {item}",
+            "rajouter une {item} à la liste",
+            "note {item}",
+            "note {item} à la liste",
+            "note du {item}",
+            "note du {item} à la liste",
+            "note de la {item}",
+            "note de la {item} à la liste",
+            "note des {item}",
+            "note des {item} à la liste",
+            "note un {item}",
+            "note un {item} à la liste",
+            "note une {item}",
+            "note une {item} à la liste"
+          ]
+        }
+      ],
+      "types": [
+        {
+          "name": "INGREDIENT",
+          "values": [
+            {
+              "name": {
+                "value": "agaragar"
+              }
+            },
+            {
+              "name": {
+                "value": "agneau"
+              }
+            },
+            {
+              "name": {
+                "value": "aiguilette de poulet"
+              }
+            },
+            {
+              "name": {
+                "value": "ail"
+              }
+            },
+            {
+              "name": {
+                "value": "ananas"
+              }
+            },
+            {
+              "name": {
+                "value": "après shampoing"
+              }
+            },
+            {
+              "name": {
+                "value": "aubergine"
+              }
+            },
+            {
+              "name": {
+                "value": "avocat"
+              }
+            },
+            {
+              "name": {
+                "value": "banane"
+              }
+            },
+            {
+              "name": {
+                "value": "barquette chocolat"
+              }
+            },
+            {
+              "name": {
+                "value": "barquette fraise"
+              }
+            },
+            {
+              "name": {
+                "value": "béarnaise"
+              }
+            },
+            {
+              "name": {
+                "value": "betternut"
+              }
+            },
+            {
+              "name": {
+                "value": "bettrave"
+              }
+            },
+            {
+              "name": {
+                "value": "beurre"
+              }
+            },
+            {
+              "name": {
+                "value": "bicarbonate"
+              }
+            },
+            {
+              "name": {
+                "value": "bicarbonate ménager"
+              }
+            },
+            {
+              "name": {
+                "value": "bière artisinale"
+              }
+            },
+            {
+              "name": {
+                "value": "bière blonde"
+              }
+            },
+            {
+              "name": {
+                "value": "biscotte"
+              }
+            },
+            {
+              "name": {
+                "value": "biscuit cuillère"
+              }
+            },
+            {
+              "name": {
+                "value": "blanquette de veau"
+              }
+            },
+            {
+              "name": {
+                "value": "blé"
+              }
+            },
+            {
+              "name": {
+                "value": "bn"
+              }
+            },
+            {
+              "name": {
+                "value": "bœuf"
+              }
+            },
+            {
+              "name": {
+                "value": "bœuf bourguignon"
+              }
+            },
+            {
+              "name": {
+                "value": "bolognaise"
+              }
+            },
+            {
+              "name": {
+                "value": "boudoire"
+              }
+            },
+            {
+              "name": {
+                "value": "bouillon"
+              }
+            },
+            {
+              "name": {
+                "value": "bouillon de bœuf"
+              }
+            },
+            {
+              "name": {
+                "value": "bouillon de légume"
+              }
+            },
+            {
+              "name": {
+                "value": "boulgour"
+              }
+            },
+            {
+              "name": {
+                "value": "boulgoure fin"
+              }
+            },
+            {
+              "name": {
+                "value": "bouquet garni"
+              }
+            },
+            {
+              "name": {
+                "value": "brioche"
+              }
+            },
+            {
+              "name": {
+                "value": "brocoli"
+              }
+            },
+            {
+              "name": {
+                "value": "cacahuète"
+              }
+            },
+            {
+              "name": {
+                "value": "capre"
+              }
+            },
+            {
+              "name": {
+                "value": "caramel"
+              }
+            },
+            {
+              "name": {
+                "value": "caramel liquide"
+              }
+            },
+            {
+              "name": {
+                "value": "carotte"
+              }
+            },
+            {
+              "name": {
+                "value": "chair à saucisse"
+              }
+            },
+            {
+              "name": {
+                "value": "chamonix"
+              }
+            },
+            {
+              "name": {
+                "value": "champignon"
+              }
+            },
+            {
+              "name": {
+                "value": "charcuterie"
+              }
+            },
+            {
+              "name": {
+                "value": "cheddar en tranche"
+              }
+            },
+            {
+              "name": {
+                "value": "chèvre"
+              }
+            },
+            {
+              "name": {
+                "value": "chips"
+              }
+            },
+            {
+              "name": {
+                "value": "chips aux vinaigre"
+              }
+            },
+            {
+              "name": {
+                "value": "chips ondulé"
+              }
+            },
+            {
+              "name": {
+                "value": "chipster"
+              }
+            },
+            {
+              "name": {
+                "value": "chocolat"
+              }
+            },
+            {
+              "name": {
+                "value": "chocolat en poudre"
+              }
+            },
+            {
+              "name": {
+                "value": "chocolat liquide"
+              }
+            },
+            {
+              "name": {
+                "value": "chorizo"
+              }
+            },
+            {
+              "name": {
+                "value": "chou blanc"
+              }
+            },
+            {
+              "name": {
+                "value": "chou rouge"
+              }
+            },
+            {
+              "name": {
+                "value": "choux fleur"
+              }
+            },
+            {
+              "name": {
+                "value": "citron"
+              }
+            },
+            {
+              "name": {
+                "value": "compote"
+              }
+            },
+            {
+              "name": {
+                "value": "compote à boire"
+              }
+            },
+            {
+              "name": {
+                "value": "compote en bocal"
+              }
+            },
+            {
+              "name": {
+                "value": "compote en pot"
+              }
+            },
+            {
+              "name": {
+                "value": "comté"
+              }
+            },
+            {
+              "name": {
+                "value": "concentré de tomate"
+              }
+            },
+            {
+              "name": {
+                "value": "concombre"
+              }
+            },
+            {
+              "name": {
+                "value": "confiture abricot"
+              }
+            },
+            {
+              "name": {
+                "value": "confiture fraise"
+              }
+            },
+            {
+              "name": {
+                "value": "confiture framboise"
+              }
+            },
+            {
+              "name": {
+                "value": "confiture myrtille"
+              }
+            },
+            {
+              "name": {
+                "value": "coquilette"
+              }
+            },
+            {
+              "name": {
+                "value": "cordon bleu"
+              }
+            },
+            {
+              "name": {
+                "value": "cornichon"
+              }
+            },
+            {
+              "name": {
+                "value": "cote de porc"
+              }
+            },
+            {
+              "name": {
+                "value": "couche"
+              }
+            },
+            {
+              "name": {
+                "value": "couche taille cinq"
+              }
+            },
+            {
+              "name": {
+                "value": "couche taille quatre"
+              }
+            },
+            {
+              "name": {
+                "value": "couche taille six"
+              }
+            },
+            {
+              "name": {
+                "value": "couche taille trois"
+              }
+            },
+            {
+              "name": {
+                "value": "courge"
+              }
+            },
+            {
+              "name": {
+                "value": "courgette"
+              }
+            },
+            {
+              "name": {
+                "value": "courgette à farcir"
+              }
+            },
+            {
+              "name": {
+                "value": "cracotte"
+              }
+            },
+            {
+              "name": {
+                "value": "crème fraiche épaisse"
+              }
+            },
+            {
+              "name": {
+                "value": "crème fraiche liquide"
+              }
+            },
+            {
+              "name": {
+                "value": "croquette"
+              }
+            },
+            {
+              "name": {
+                "value": "cuisse de poulet"
+              }
+            },
+            {
+              "name": {
+                "value": "curry"
+              }
+            },
+            {
+              "name": {
+                "value": "dentifrice adulte"
+              }
+            },
+            {
+              "name": {
+                "value": "dentifrice enfant"
+              }
+            },
+            {
+              "name": {
+                "value": "déodorant"
+              }
+            },
+            {
+              "name": {
+                "value": "dinde"
+              }
+            },
+            {
+              "name": {
+                "value": "divers"
+              }
+            },
+            {
+              "name": {
+                "value": "eau micellaire"
+              }
+            },
+            {
+              "name": {
+                "value": "échalote"
+              }
+            },
+            {
+              "name": {
+                "value": "emmental rapé"
+              }
+            },
+            {
+              "name": {
+                "value": "endive"
+              }
+            },
+            {
+              "name": {
+                "value": "épice"
+              }
+            },
+            {
+              "name": {
+                "value": "épice guacamole"
+              }
+            },
+            {
+              "name": {
+                "value": "épice viande"
+              }
+            },
+            {
+              "name": {
+                "value": "épinard"
+              }
+            },
+            {
+              "name": {
+                "value": "épinard surgelé"
+              }
+            },
+            {
+              "name": {
+                "value": "farine"
+              }
+            },
+            {
+              "name": {
+                "value": "farine brioche"
+              }
+            },
+            {
+              "name": {
+                "value": "farine pain"
+              }
+            },
+            {
+              "name": {
+                "value": "feuille de brique"
+              }
+            },
+            {
+              "name": {
+                "value": "feuille-gelatine"
+              }
+            },
+            {
+              "name": {
+                "value": "figolu"
+              }
+            },
+            {
+              "name": {
+                "value": "framboise surgelée"
+              }
+            },
+            {
+              "name": {
+                "value": "frite"
+              }
+            },
+            {
+              "name": {
+                "value": "fromage à croc monssieur"
+              }
+            },
+            {
+              "name": {
+                "value": "fromage fondue"
+              }
+            },
+            {
+              "name": {
+                "value": "fromage frais"
+              }
+            },
+            {
+              "name": {
+                "value": "galette"
+              }
+            },
+            {
+              "name": {
+                "value": "gélatine"
+              }
+            },
+            {
+              "name": {
+                "value": "gnocci"
+              }
+            },
+            {
+              "name": {
+                "value": "gratin daufinois"
+              }
+            },
+            {
+              "name": {
+                "value": "hachis parmentier"
+              }
+            },
+            {
+              "name": {
+                "value": "haricot"
+              }
+            },
+            {
+              "name": {
+                "value": "haricot frais"
+              }
+            },
+            {
+              "name": {
+                "value": "haricot rouge"
+              }
+            },
+            {
+              "name": {
+                "value": "huile"
+              }
+            },
+            {
+              "name": {
+                "value": "huile d'olive"
+              }
+            },
+            {
+              "name": {
+                "value": "ice tea green"
+              }
+            },
+            {
+              "name": {
+                "value": "jambon"
+              }
+            },
+            {
+              "name": {
+                "value": "jambon blanc"
+              }
+            },
+            {
+              "name": {
+                "value": "jambon cru"
+              }
+            },
+            {
+              "name": {
+                "value": "javel"
+              }
+            },
+            {
+              "name": {
+                "value": "ketchup"
+              }
+            },
+            {
+              "name": {
+                "value": "kiri"
+              }
+            },
+            {
+              "name": {
+                "value": "knacki"
+              }
+            },
+            {
+              "name": {
+                "value": "la laitière"
+              }
+            },
+            {
+              "name": {
+                "value": "lait"
+              }
+            },
+            {
+              "name": {
+                "value": "lait deuxième âge"
+              }
+            },
+            {
+              "name": {
+                "value": "lait premier âge"
+              }
+            },
+            {
+              "name": {
+                "value": "lait troisième âge"
+              }
+            },
+            {
+              "name": {
+                "value": "lardon"
+              }
+            },
+            {
+              "name": {
+                "value": "lasagne"
+              }
+            },
+            {
+              "name": {
+                "value": "lentille"
+              }
+            },
+            {
+              "name": {
+                "value": "levure boulangère"
+              }
+            },
+            {
+              "name": {
+                "value": "levure patissière"
+              }
+            },
+            {
+              "name": {
+                "value": "lingette ménagère"
+              }
+            },
+            {
+              "name": {
+                "value": "lingettes pour bébé"
+              }
+            },
+            {
+              "name": {
+                "value": "litière"
+              }
+            },
+            {
+              "name": {
+                "value": "maïs"
+              }
+            },
+            {
+              "name": {
+                "value": "maïzena"
+              }
+            },
+            {
+              "name": {
+                "value": "mascarpone"
+              }
+            },
+            {
+              "name": {
+                "value": "mayonnaise"
+              }
+            },
+            {
+              "name": {
+                "value": "melon"
+              }
+            },
+            {
+              "name": {
+                "value": "merguez"
+              }
+            },
+            {
+              "name": {
+                "value": "miel"
+              }
+            },
+            {
+              "name": {
+                "value": "mini pizza"
+              }
+            },
+            {
+              "name": {
+                "value": "mozzarella"
+              }
+            },
+            {
+              "name": {
+                "value": "nem"
+              }
+            },
+            {
+              "name": {
+                "value": "nouille"
+              }
+            },
+            {
+              "name": {
+                "value": "nouille chinoise"
+              }
+            },
+            {
+              "name": {
+                "value": "nuggets"
+              }
+            },
+            {
+              "name": {
+                "value": "nutella"
+              }
+            },
+            {
+              "name": {
+                "value": "œuf"
+              }
+            },
+            {
+              "name": {
+                "value": "oignon"
+              }
+            },
+            {
+              "name": {
+                "value": "oignon blanc"
+              }
+            },
+            {
+              "name": {
+                "value": "oignon rouge"
+              }
+            },
+            {
+              "name": {
+                "value": "olive"
+              }
+            },
+            {
+              "name": {
+                "value": "olive noir"
+              }
+            },
+            {
+              "name": {
+                "value": "olive verte"
+              }
+            },
+            {
+              "name": {
+                "value": "pain"
+              }
+            },
+            {
+              "name": {
+                "value": "pain à burger"
+              }
+            },
+            {
+              "name": {
+                "value": "pain au lait"
+              }
+            },
+            {
+              "name": {
+                "value": "pain baggle"
+              }
+            },
+            {
+              "name": {
+                "value": "pain de mie"
+              }
+            },
+            {
+              "name": {
+                "value": "pain panini"
+              }
+            },
+            {
+              "name": {
+                "value": "pain tartine"
+              }
+            },
+            {
+              "name": {
+                "value": "parmesan"
+              }
+            },
+            {
+              "name": {
+                "value": "pate"
+              }
+            },
+            {
+              "name": {
+                "value": "pate brisée"
+              }
+            },
+            {
+              "name": {
+                "value": "pate feuilletée"
+              }
+            },
+            {
+              "name": {
+                "value": "pate lasagne"
+              }
+            },
+            {
+              "name": {
+                "value": "pate pizza"
+              }
+            },
+            {
+              "name": {
+                "value": "pate ramen"
+              }
+            },
+            {
+              "name": {
+                "value": "pate sablée"
+              }
+            },
+            {
+              "name": {
+                "value": "pépite de chocolat"
+              }
+            },
+            {
+              "name": {
+                "value": "perle de lait"
+              }
+            },
+            {
+              "name": {
+                "value": "persil"
+              }
+            },
+            {
+              "name": {
+                "value": "pesto"
+              }
+            },
+            {
+              "name": {
+                "value": "petit pois"
+              }
+            },
+            {
+              "name": {
+                "value": "petit pois carotte"
+              }
+            },
+            {
+              "name": {
+                "value": "petit pois surgelé"
+              }
+            },
+            {
+              "name": {
+                "value": "pizza"
+              }
+            },
+            {
+              "name": {
+                "value": "poireau"
+              }
+            },
+            {
+              "name": {
+                "value": "poisson"
+              }
+            },
+            {
+              "name": {
+                "value": "poisson pané"
+              }
+            },
+            {
+              "name": {
+                "value": "poivre"
+              }
+            },
+            {
+              "name": {
+                "value": "poivron"
+              }
+            },
+            {
+              "name": {
+                "value": "pomme"
+              }
+            },
+            {
+              "name": {
+                "value": "pomme de terre"
+              }
+            },
+            {
+              "name": {
+                "value": "pomme golden"
+              }
+            },
+            {
+              "name": {
+                "value": "poulet"
+              }
+            },
+            {
+              "name": {
+                "value": "pringle"
+              }
+            },
+            {
+              "name": {
+                "value": "produit pour les sols"
+              }
+            },
+            {
+              "name": {
+                "value": "produit pour les vitres"
+              }
+            },
+            {
+              "name": {
+                "value": "produit wc"
+              }
+            },
+            {
+              "name": {
+                "value": "purée"
+              }
+            },
+            {
+              "name": {
+                "value": "quenelle"
+              }
+            },
+            {
+              "name": {
+                "value": "quinoa"
+              }
+            },
+            {
+              "name": {
+                "value": "raclette"
+              }
+            },
+            {
+              "name": {
+                "value": "ramen"
+              }
+            },
+            {
+              "name": {
+                "value": "raviole"
+              }
+            },
+            {
+              "name": {
+                "value": "reblochon"
+              }
+            },
+            {
+              "name": {
+                "value": "risotto"
+              }
+            },
+            {
+              "name": {
+                "value": "riste aubergine"
+              }
+            },
+            {
+              "name": {
+                "value": "riz"
+              }
+            },
+            {
+              "name": {
+                "value": "salade"
+              }
+            },
+            {
+              "name": {
+                "value": "salade de fruit"
+              }
+            },
+            {
+              "name": {
+                "value": "salade verte"
+              }
+            },
+            {
+              "name": {
+                "value": "sauce bbq"
+              }
+            },
+            {
+              "name": {
+                "value": "sauce napolitaine"
+              }
+            },
+            {
+              "name": {
+                "value": "sauce nuoc man"
+              }
+            },
+            {
+              "name": {
+                "value": "sauce quatre fromages"
+              }
+            },
+            {
+              "name": {
+                "value": "sauce soja"
+              }
+            },
+            {
+              "name": {
+                "value": "sauce tomate"
+              }
+            },
+            {
+              "name": {
+                "value": "saucisse"
+              }
+            },
+            {
+              "name": {
+                "value": "saucisson"
+              }
+            },
+            {
+              "name": {
+                "value": "saucisson fouet"
+              }
+            },
+            {
+              "name": {
+                "value": "saucisson st agaune"
+              }
+            },
+            {
+              "name": {
+                "value": "saumon"
+              }
+            },
+            {
+              "name": {
+                "value": "savon"
+              }
+            },
+            {
+              "name": {
+                "value": "savon noir"
+              }
+            },
+            {
+              "name": {
+                "value": "schweps tonic"
+              }
+            },
+            {
+              "name": {
+                "value": "sel"
+              }
+            },
+            {
+              "name": {
+                "value": "shampoing"
+              }
+            },
+            {
+              "name": {
+                "value": "sirop fruit rouge"
+              }
+            },
+            {
+              "name": {
+                "value": "soja"
+              }
+            },
+            {
+              "name": {
+                "value": "soupe"
+              }
+            },
+            {
+              "name": {
+                "value": "spaguetti"
+              }
+            },
+            {
+              "name": {
+                "value": "speculos"
+              }
+            },
+            {
+              "name": {
+                "value": "steack"
+              }
+            },
+            {
+              "name": {
+                "value": "steack haché"
+              }
+            },
+            {
+              "name": {
+                "value": "sucre"
+              }
+            },
+            {
+              "name": {
+                "value": "sucre roux"
+              }
+            },
+            {
+              "name": {
+                "value": "sucre vanillé"
+              }
+            },
+            {
+              "name": {
+                "value": "tartare"
+              }
+            },
+            {
+              "name": {
+                "value": "the lu"
+              }
+            },
+            {
+              "name": {
+                "value": "tomate"
+              }
+            },
+            {
+              "name": {
+                "value": "tomate à farcir"
+              }
+            },
+            {
+              "name": {
+                "value": "tomate cerise"
+              }
+            },
+            {
+              "name": {
+                "value": "tortilla"
+              }
+            },
+            {
+              "name": {
+                "value": "vache qui rit"
+              }
+            },
+            {
+              "name": {
+                "value": "vanille"
+              }
+            },
+            {
+              "name": {
+                "value": "veau"
+              }
+            },
+            {
+              "name": {
+                "value": "velouté"
+              }
+            },
+            {
+              "name": {
+                "value": "vermicelle"
+              }
+            },
+            {
+              "name": {
+                "value": "viande hachée"
+              }
+            },
+            {
+              "name": {
+                "value": "vin blanc cuisine"
+              }
+            },
+            {
+              "name": {
+                "value": "vin blanc table"
+              }
+            },
+            {
+              "name": {
+                "value": "vin rouge cuisine"
+              }
+            },
+            {
+              "name": {
+                "value": "vin rouge table"
+              }
+            },
+            {
+              "name": {
+                "value": "vinaigre"
+              }
+            },
+            {
+              "name": {
+                "value": "vinaigre balsamique"
+              }
+            },
+            {
+              "name": {
+                "value": "vinaigre xérès"
+              }
+            },
+            {
+              "name": {
+                "value": "yaourt nature"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  }
+}
