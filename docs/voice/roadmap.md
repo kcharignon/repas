@@ -29,7 +29,7 @@ Suivi vivant du chantier « Alexa, demande à *mes courses* d'ajouter du pain »
 
 - [x] [VOX-101](tickets/VOX-101-classeur-d-ingredients-parles.md) back · M · Service de domaine pur `SpokenIngredientRanker` + table de cas · dépend de : —
 - [ ] [VOX-102](tickets/VOX-102-habitudes-et-port-de-resolution.md) back · M · Chargeur des habitudes (une requête), port `Shared\SpokenIngredientResolver` · dépend de : 101
-- [ ] [VOX-103](tickets/VOX-103-ajouter-a-la-liste-par-la-voix.md) back · M · Port `Shared\VoiceShoppingList` : liste active ou nouvelle liste, ligne ajoutée · dépend de : —
+- [x] [VOX-103](tickets/VOX-103-ajouter-a-la-liste-par-la-voix.md) back · M · Port `Shared\VoiceShoppingList` : liste active ou nouvelle liste, ligne ajoutée · dépend de : —
 
 ## M2 — Back `Voice` : liaison et webhook
 

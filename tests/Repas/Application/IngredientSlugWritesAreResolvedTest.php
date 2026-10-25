@@ -13,6 +13,8 @@ use Repas\Drive\Application\Command\SaveProductChoices\ChoiceIntent;
 use Repas\Drive\Application\Command\SaveProductChoices\SaveProductChoicesHandler;
 use Repas\Repas\Application\Command\AddIngredientToShoppingList\AddIngredientToShoppingListCommand;
 use Repas\Repas\Application\Command\AddIngredientToShoppingList\AddIngredientToShoppingListHandler;
+use Repas\Repas\Application\Command\AddSpokenIngredient\AddSpokenIngredientCommand;
+use Repas\Repas\Application\Command\AddSpokenIngredient\AddSpokenIngredientHandler;
 use Repas\Repas\Application\Command\CopyRecipe\CopyRecipeCommand;
 use Repas\Repas\Application\Command\CopyRecipe\CopyRecipeHandler;
 use Repas\Repas\Application\Command\CreateConversion\CreateConversionCommand;
@@ -59,6 +61,7 @@ class IngredientSlugWritesAreResolvedTest extends TestCase
         CreateRecipeRowSubCommand::class => CreateRecipeHandler::class,
         UpdateRecipeRowSubCommand::class => UpdateRecipeHandler::class,
         AddIngredientToShoppingListCommand::class => AddIngredientToShoppingListHandler::class,
+        AddSpokenIngredientCommand::class => AddSpokenIngredientHandler::class,
         RemoveIngredientToShoppingListCommand::class => RemoveIngredientToShoppingListHandler::class,
         ChoiceIntent::class => SaveProductChoicesHandler::class,
         ReplaceIngredientPreferenceCommand::class => ReplaceIngredientPreferenceHandler::class,

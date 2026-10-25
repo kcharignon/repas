@@ -19,6 +19,7 @@ use Repas\Drive\Domain\Model\Retailer;
 use Repas\Drive\Domain\Model\SearchQuery;
 use Repas\Repas\Application\Command\ActivatedShoppingList\ActivatedShoppingListCommand;
 use Repas\Repas\Application\Command\AddIngredientToShoppingList\AddIngredientToShoppingListCommand;
+use Repas\Repas\Application\Command\AddSpokenIngredient\AddSpokenIngredientCommand;
 use Repas\Repas\Application\Command\CopyRecipe\CopyRecipeCommand;
 use Repas\Repas\Application\Command\CreateConversion\CreateConversionCommand;
 use Repas\Repas\Application\Command\CreateDepartment\CreateDepartmentCommand;
@@ -171,6 +172,22 @@ return [
         $t->persister->saveIngredient($milk);
 
         return new AddIngredientToShoppingListCommand($owner->getId(), $milk->getSlug());
+    },
+    // Commande vocale (VOX-103) : la ligne arrive dans la liste active, ou dans une liste créée faute de liste active
+    'ajouter-ingredient-par-la-voix' => static function (WriteBudgetTestCase $t): object {
+        $owner = $t->savedUser();
+        $t->savedShoppingList($owner, $t->typicalRecipes($owner));
+        $milk = new IngredientBuilder()->isMilk()->withCreator($owner)->build();
+        $t->persister->saveIngredient($milk);
+
+        return new AddSpokenIngredientCommand($owner->getId(), $milk->getSlug(), UuidGenerator::new());
+    },
+    'ajouter-ingredient-par-la-voix-sans-liste' => static function (WriteBudgetTestCase $t): object {
+        $owner = $t->savedUser();
+        $milk = new IngredientBuilder()->isMilk()->withCreator($owner)->build();
+        $t->persister->saveIngredient($milk);
+
+        return new AddSpokenIngredientCommand($owner->getId(), $milk->getSlug(), UuidGenerator::new());
     },
     'retirer-ingredient-liste' => static function (WriteBudgetTestCase $t): object {
         $owner = $t->savedUser();

@@ -29,6 +29,12 @@ interface ShoppingListRepository
      */
     public function isSent(string $shoppingListId): bool;
 
+    /**
+     * L'utilisateur a-t-il une liste envoyée au drive (`SENT`) ? Une requête, sans hydrater l'agrégat (commande vocale : dire que la
+     * nouvelle liste remplace une liste envoyée, ADR 0029 décision 5).
+     */
+    public function hasSentShoppingList(string $ownerId): bool;
+
     public function save(ShoppingList $shoppingList): void;
 
     public function delete(ShoppingList $shoppingList): void;
