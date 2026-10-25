@@ -62,7 +62,7 @@ return [
     'retirer-ingredient-liste' => 10,
     'retirer-repas' => 17,
     'rouvrir-liste' => 18,
-    'supprimer-compte' => 23,
+    'supprimer-compte' => 24,
     'supprimer-ingredient' => 12,
     'supprimer-liste' => 8,
     'supprimer-recette' => 11,

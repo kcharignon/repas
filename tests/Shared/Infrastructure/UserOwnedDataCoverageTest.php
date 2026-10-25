@@ -16,12 +16,14 @@ use Repas\User\Infrastructure\Entity\PasswordResetToken;
 use Repas\User\Infrastructure\Entity\RefreshToken;
 use Repas\User\Infrastructure\Entity\UserAppVersion;
 use Repas\User\Infrastructure\Entity\UserIdentity;
+use Repas\Voice\Infrastructure\Entity\AuthorizationCode;
+use Repas\Voice\Infrastructure\Entity\VoiceLink;
 
 /**
  * Garde-fou de la suppression d'un compte (ADR 0021) : aucune clé étrangère ne lie les tables à `user`, donc supprimer un
  * compte « comme s'il n'avait jamais existé » repose sur une liste écrite à la main. Ce test échoue dès qu'une entité
  * gagne une colonne qui désigne un utilisateur : il faut alors effacer ces données à la suppression du compte
- * (`DeleteUserHandler` pour le contexte `User`, `PurgeUserDataHandler` pour `Repas`, `PurgeUserDriveDataHandler` pour `Drive`) puis ajouter la colonne ci-dessous.
+ * (`DeleteUserHandler` pour le contexte `User`, `PurgeUserDataHandler` pour `Repas`, `PurgeUserDriveDataHandler` pour `Drive`, `PurgeUserVoiceDataHandler` pour `Voice`) puis ajouter la colonne ci-dessous.
  */
 class UserOwnedDataCoverageTest extends DatabaseTestCase
 {
@@ -41,6 +43,8 @@ class UserOwnedDataCoverageTest extends DatabaseTestCase
         PasswordResetToken::class => ['userId'],
         UserIdentity::class => ['userId'],
         UserAppVersion::class => ['userId'],
+        VoiceLink::class => ['userId'],
+        AuthorizationCode::class => ['userId'],
     ];
 
     public function testEveryColumnThatPointsToAUserIsErasedWithHim(): void
