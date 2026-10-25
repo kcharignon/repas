@@ -15,6 +15,11 @@ final readonly class AddSpokenItemCommand
         public string $phrase,
         /** La séance était déjà ouverte : la réponse invite à continuer et la séance reste ouverte. Sinon (appel direct), elle se ferme. */
         public bool $sessionIsOpen,
+        /**
+         * Seulement quand l'utilisateur répond à une proposition d'Alexa en nommant autre chose (ADR 0029 décision 11) : la phrase d'ORIGINE
+         * (« patates »), à retenir pour l'ingrédient que cette nouvelle phrase désigne (« pomme de terre »). `null` : un ajout ordinaire.
+         */
+        public ?string $rememberAs = null,
     ) {
     }
 }

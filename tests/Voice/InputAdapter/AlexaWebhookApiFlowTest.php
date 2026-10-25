@@ -502,9 +502,64 @@ class AlexaWebhookApiFlowTest extends DatabaseTestCase
         // When : « du pain », à la question « Je le crée ? »
         $this->converse(AlexaTestRequest::addItem('du pain'), $this->attributes());
 
-        // Then
-        $this->assertSame("J'ai commencé une nouvelle liste avec pain. Autre chose ?", $this->speech());
+        // Then : ajouté ; ce n'est pas une proposition mais un autre article : la phrase d'origine est retenue pour lui
+        $this->assertSame("J'ai commencé une nouvelle liste avec pain. Je m'en souviendrai. Autre chose ?", $this->speech());
         $this->assertSame([], $this->attributes());
+        $this->assertSame('ciboulette', $this->connection()->fetchOne('SELECT phrase FROM spoken_phrase_choice'));
+    }
+
+    public function testNamingAnotherIngredientAfterTheProposalsAddsItAndRemembersTheOriginalPhrase(): void
+    {
+        // Given : il a de la pomme de terre et trois pâtes, pas de « patates »
+        $user = $this->linkedUser();
+        $potato = new IngredientBuilder()->withName('Pomme de terre')->withCreator($user, true)->build();
+        $this->persister->saveIngredient($potato);
+        foreach (['Pâte', 'Pâte brisée', 'Pâte feuilletée'] as $name) {
+            $this->persister->saveIngredient(new IngredientBuilder()->withName($name)->withCreator($user, true)->build());
+        }
+        $this->savedActiveList($user);
+
+        // When : « patates » -> des propositions -> « non, pomme de terre »
+        $this->say(AlexaTestRequest::addItem('des patates'));
+        $this->assertSame('choose', $this->attributes()['dialogue']['step']);
+        $this->assertSame(0, $this->rowCount('spoken_phrase_choice'));
+        $this->converse(AlexaTestRequest::addItem('pomme de terre'), $this->attributes());
+
+        // Then : ajoutée, "patates" retenu pour elle, dialogue fini
+        $this->assertSame("C'est noté : pomme de terre. Je m'en souviendrai. Autre chose ?", $this->speech());
+        $this->assertSame([], $this->attributes());
+        $this->assertSame(1, $this->rowCount('shopping_list_row'));
+        $this->assertSame(
+            [[$user->getId(), 'patate', $potato->getSlug(), 1]],
+            array_map(static fn(array $row): array => [$row['user_id'], $row['phrase'], $row['ingredient_slug'], (int) $row['times']], $this->connection()->fetchAllAssociative('SELECT * FROM spoken_phrase_choice')),
+        );
+
+        // When : plus tard, « patates » de nouveau, en appel direct
+        $this->say(AlexaTestRequest::addItem('des patates'));
+
+        // Then : directement la pomme de terre, sans question
+        $this->assertSame("C'est noté : pomme de terre.", $this->speech());
+        $this->assertTrue($this->jsonBody()['response']['shouldEndSession']);
+        $this->assertArrayNotHasKey('sessionAttributes', $this->jsonBody());
+        $this->assertSame(1, $this->rowCount('shopping_list_row'), 'même ingrédient, même unité : la ligne existante');
+    }
+
+    public function testNamingAnotherUnknownIngredientAfterTheProposalsStartsANewDialogueAndRemembersNothing(): void
+    {
+        // Given
+        $user = $this->linkedUser();
+        $this->persister->saveIngredient(new IngredientBuilder()->withName('Pâte brisée')->withCreator($user, true)->build());
+        $this->savedActiveList($user);
+        $this->say(AlexaTestRequest::addItem('des patates'));
+
+        // When
+        $this->converse(AlexaTestRequest::addItem('xyzzy'), $this->attributes());
+
+        // Then : un nouveau dialogue, pour la nouvelle phrase ; rien d'écrit
+        $this->assertSame('xyzzy', $this->attributes()['dialogue']['name']);
+        $this->assertSame('choose', $this->attributes()['dialogue']['step']);
+        $this->assertSame(0, $this->rowCount('spoken_phrase_choice'));
+        $this->assertSame(0, $this->rowCount('shopping_list_row'));
     }
 
     public function testStopInTheMiddleOfTheQuestionsClosesTheSession(): void

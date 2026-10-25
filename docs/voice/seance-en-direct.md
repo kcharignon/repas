@@ -98,9 +98,10 @@ Dans l'ordre, en regardant la liste dans l'application Repas :
 3. « Alexa, ouvre mes courses » → « du pain de mie » → « Autre chose ? » → « non merci ».
 4. **Tomate** : « … d'ajouter des tomates » → *tomate* (pas *tomates pelées*).
 5. **Produit inconnu** : « … d'ajouter de la ciboulete » → trois propositions ; choisir « le deuxième » ; recommencer la même phrase : doit tomber tout de suite sur le bon (mémoire).
-6. **Nouveau produit** : un nom inventé → « nouveau » → rayon → unité → « oui » ; il est dans sa liste et dans ses ingrédients.
-7. **Liste envoyée au drive** : si possible, vérifier qu'Alexa crée une nouvelle liste et le dit.
-8. Un proche (compte Amazon différent) : doit entendre l'invitation à lier le compte, rien d'autre (D4).
+6. **Corriger une proposition** : « … d'ajouter des patates » (le catalogue n'a pas « patates ») → trois pâtes proposées ; répondre « pomme de terre » → « C'est noté : pomme de terre. Je m'en souviendrai. » ; recommencer « … d'ajouter des patates » : doit donner tout de suite la pomme de terre, sans question.
+7. **Nouveau produit** : un nom inventé → « nouveau » → rayon → unité → « oui » ; il est dans sa liste et dans ses ingrédients.
+8. **Liste envoyée au drive** : si possible, vérifier qu'Alexa crée une nouvelle liste et le dit.
+9. Un proche (compte Amazon différent) : doit entendre l'invitation à lier le compte, rien d'autre (D4).
 
 À chaque échec : copier la réponse d'Alexa et la trace de la console, lire le journal, corriger, relancer. Noter les surprises dans `docs/voice/roadmap.md` (inconnues levées : certificat « serveur TLS », `redirect_uri`, nom d'invocation, « du pain » dit seul).
 
