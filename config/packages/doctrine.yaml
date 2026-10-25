@@ -28,6 +28,12 @@ doctrine:
                 dir: '%kernel.project_dir%/src/Drive/Infrastructure/Entity'
                 prefix: 'Repas\Drive\Infrastructure\Entity'
                 alias: Drive
+            Voice:
+                type: attribute
+                is_bundle: false
+                dir: '%kernel.project_dir%/src/Voice/Infrastructure/Entity'
+                prefix: 'Repas\Voice\Infrastructure\Entity'
+                alias: Voice
 
 when@test:
     doctrine:

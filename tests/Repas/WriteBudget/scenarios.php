@@ -649,7 +649,8 @@ return [
         return new ReplaceIngredientPreferenceCommand($user->getId(), Retailer::LECLERC, '123456', 'sucre', false, [$id('2'), $id('3')], [$id('4')]);
     },
     // Compte qui a un lien Google, une version d'application connue (DRV-637), trois recettes planifiées dans une liste (dont une est
-    // copiée par un autre utilisateur), un magasin, une préférence de produits et un alias d'ingrédient (ADR 0028)
+    // copiée par un autre utilisateur), un magasin, une préférence de produits et un alias d'ingrédient (ADR 0028). La purge des données
+    // vocales (VOX-201 : liaisons, jetons, codes) est une seule instruction, quel que soit leur nombre : elle compte pour une requête.
     'supprimer-compte' => static function (WriteBudgetTestCase $t): object {
         $owner = $t->savedUser();
         $t->savedUserIdentity($owner);

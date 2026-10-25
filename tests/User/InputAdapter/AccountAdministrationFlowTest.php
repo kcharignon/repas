@@ -450,14 +450,40 @@ class AccountAdministrationFlowTest extends DatabaseTestCase
         $this->assertSame(0, (int) $this->connection()->fetchOne('SELECT COUNT(*) FROM user_app_version WHERE user_id NOT IN (SELECT id FROM "user")'));
     }
 
+    public function testADeletedAccountTakesItsVoiceLinksTokensAndCodesWithItAndLeavesTheOthers(): void
+    {
+        // Given : chacun a une liaison avec Alexa, ses jetons et un code d'autorisation (valeurs factices)
+        $leaving = $this->savedUser(new UserBuilder()->withEmail('leaving@example.com'));
+        $staying = $this->savedUser(new UserBuilder()->withEmail('staying@example.com'));
+        foreach ([$leaving, $staying] as $i => $user) {
+            $this->connection()->insert('voice_link', ['id' => 'link-' . $i, 'user_id' => $user->getId(), 'created_at' => '2026-10-25 10:00:00']);
+            $this->connection()->insert('voice_access_grant', ['access_hash' => 'access-' . $i, 'refresh_hash' => 'refresh-' . $i, 'link_id' => 'link-' . $i, 'expires_at' => '2026-10-25 11:00:00', 'refresh_expires_at' => '2026-11-25 10:00:00']);
+            $this->connection()->insert('voice_authorization_code', ['code_hash' => 'code-' . $i, 'user_id' => $user->getId(), 'client_id' => 'repas-alexa', 'redirect_uri' => 'https://redirect.example.test/callback', 'code_challenge' => 'challenge-' . $i, 'expires_at' => '2026-10-25 10:10:00']);
+        }
+
+        // When
+        $this->request('DELETE', '/api/v1/users/' . $leaving->getId(), $this->login('admin@example.com'));
+
+        // Then : ses liaisons, ses jetons et ses codes ont disparu avec le compte, aucune ligne orpheline ; ceux de l'autre compte sont intacts
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->assertSame(0, $this->rowCount('voice_link', 'user_id', $leaving->getId()));
+        $this->assertSame(0, $this->rowCount('voice_access_grant', 'link_id', 'link-0'));
+        $this->assertSame(0, $this->rowCount('voice_authorization_code', 'user_id', $leaving->getId()));
+        $this->assertSame(1, $this->rowCount('voice_link', 'user_id', $staying->getId()));
+        $this->assertSame(1, $this->rowCount('voice_access_grant', 'link_id', 'link-1'));
+        $this->assertSame(1, $this->rowCount('voice_authorization_code', 'user_id', $staying->getId()));
+        $this->assertSame(0, (int) $this->connection()->fetchOne('SELECT COUNT(*) FROM voice_access_grant WHERE link_id NOT IN (SELECT id FROM voice_link)'));
+    }
+
     public function testNothingIsDeletedWhenTheErasureFailsHalfway(): void
     {
-        // Given : un compte avec des données, un lien Google et une version d'application, et un écouteur qui échoue après la purge
+        // Given : un compte avec des données, un lien Google, une version d'application et une liaison Alexa, et un écouteur qui échoue après la purge
         $leaving = $this->savedUser(new UserBuilder()->withEmail('leaving@example.com'));
         $recipe = $this->savedRecipe($leaving, new RecipeBuilder()->isPastaCarbonara());
         $list = $this->savedListPlanning($leaving, $recipe);
         static::getContainer()->get(UserIdentityRepository::class)->save(new UserIdentityBuilder()->withUser($leaving)->build());
         static::getContainer()->get(UserAppVersionRepository::class)->save(new UserAppVersionBuilder()->withUser($leaving)->build());
+        $this->connection()->insert('voice_link', ['id' => 'link-leaving', 'user_id' => $leaving->getId(), 'created_at' => '2026-10-25 10:00:00']);
         $token = $this->login('admin@example.com');
         $this->client->disableReboot();
         static::getContainer()->get('event_dispatcher')->addListener(
@@ -474,6 +500,7 @@ class AccountAdministrationFlowTest extends DatabaseTestCase
         $this->assertSame(1, $this->rowCount('user', 'id', $leaving->getId()));
         $this->assertSame(1, $this->rowCount('user_identity', 'user_id', $leaving->getId()));
         $this->assertSame(1, $this->rowCount('user_app_version', 'user_id', $leaving->getId()));
+        $this->assertSame(1, $this->rowCount('voice_link', 'user_id', $leaving->getId()));
         $this->assertSame(1, $this->rowCount('recipe', 'id', $recipe->getId()));
         $this->assertSame(1, $this->rowCount('shopping_list', 'id', $list->getId()));
         $this->assertGreaterThan(0, $this->rowCount('meal', 'shopping_list', $list->getId()));
