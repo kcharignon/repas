@@ -49,6 +49,26 @@ final readonly class AlexaTestRequest
         return self::of('IntentRequest', 'AddItemIntent', $item === null ? ['item' => ['name' => 'item']] : ['item' => ['name' => 'item', 'value' => $item]]);
     }
 
+    /**
+     * « ajoute trois paquets de croquettes » : `AddItemIntent` avec les créneaux `quantity` (un nombre, sans résolution : `AMAZON.NUMBER`) et
+     * `unit` (rapproché de l'unité `$unitSlug`). $quantity peut être n'importe quel texte que la reconnaissance a rendu (« 3 », « 1.5 », « beaucoup »).
+     */
+    public static function addQuantified(string $item, string|int|float|null $quantity, ?string $unitHeard = null, ?string $unitSlug = null): self
+    {
+        $request = self::addItem($item);
+        if ($quantity !== null) {
+            $request = $request->withQuantity($quantity);
+        }
+
+        return $unitHeard === null ? $request : $request->withSlot('unit', $unitHeard, $unitSlug);
+    }
+
+    /** Le créneau `quantity` : un nombre d'Amazon, sans résolution d'entité. */
+    public function withQuantity(string|int|float $quantity): self
+    {
+        return $this->copy(slots: [...$this->slots, 'quantity' => ['name' => 'quantity', 'value' => $quantity]]);
+    }
+
     public static function intent(string $name): self
     {
         return self::of('IntentRequest', $name, []);

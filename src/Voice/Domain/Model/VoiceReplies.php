@@ -34,6 +34,15 @@ final class VoiceReplies
     /** Une panne inattendue : jamais le détail, jamais une trace. */
     public const string FAILURE = "Je n'ai pas pu faire ça. Réessaie dans un instant.";
 
+    /** Une quantité que nous ne savons pas écrire (zéro, plus de 99, un décimal) : rien n'est écrit, la demande est à refaire. */
+    public const string HOW_MANY = 'Combien ? Redis ta demande avec un nombre de 1 à 99.';
+
+    /** L'article était déjà dans la liste : on l'ajoute et on dit le total (X : « 3 paquets », « 5 »). Remplace « C'est noté » seulement alors. */
+    public const string TOTAL_ADDED = "C'est ajouté, tu en as maintenant %s dans ta liste.";
+    /** La même, quand l'unité dite n'est pas celle de la ligne (inconnue de l'ingrédient, ou convertie) : on nomme l'unité de la ligne. */
+    public const string TOTAL_ADDED_IN_UNIT = "C'est ajouté en %s, tu en as maintenant %s dans ta liste.";
+    public const string REMEMBER_PROMISE = "Je m'en souviendrai.";
+
     /** Le nom entendu est celui de l'ingrédient. */
     public const string ADDED_SURE = "C'est noté : %s.";
     /** Le choix est probable ou incertain : Alexa dit ce qu'elle a mis et dans quel rayon, pour que l'erreur se voie. */
@@ -124,12 +133,18 @@ final class VoiceReplies
      * La réponse à un article ajouté. `$isSure` : le nom entendu est exactement celui de l'ingrédient ; sinon Alexa cite aussi le
      * rayon. `$previousListSent` ne compte que si une liste a été créée.
      */
-    public static function added(string $ingredientName, string $departmentName, bool $isSure, bool $listCreated, bool $previousListSent): string
+    public static function added(string $ingredientName, string $departmentName, bool $isSure, bool $listCreated, bool $previousListSent, ?AddedLine $line = null): string
     {
-        $ingredient = self::speakable($ingredientName);
+        $line ??= AddedLine::single();
+        $ingredient = self::item($ingredientName, $line);
         $department = self::speakable($departmentName);
 
         if (!$listCreated) {
+            // Un choix sûr sur une ligne déjà dans la liste : on dit le total ; un choix deviné dit d'abord ce qui a été mis et où
+            if ($line->existed && $isSure) {
+                return self::alreadyInList($line);
+            }
+
             return $isSure
                 ? sprintf(self::ADDED_SURE, $ingredient)
                 : sprintf(self::ADDED_GUESSED, $ingredient, $department);
@@ -241,13 +256,16 @@ final class VoiceReplies
      * Il a départagé par le rayon : l'article est ajouté, la phrase retenue, et Alexa répète le rayon qu'il a choisi. Une liste envoyée au drive
      * remplacée se dit à la place de la promesse, comme pour `remembered()`.
      */
-    public static function rememberedIn(string $ingredientName, string $departmentName, bool $listCreated, bool $previousListSent): string
+    public static function rememberedIn(string $ingredientName, string $departmentName, bool $listCreated, bool $previousListSent, ?AddedLine $line = null): string
     {
-        $ingredient = self::speakable($ingredientName);
+        $line ??= AddedLine::single();
+        $ingredient = self::item($ingredientName, $line);
         $department = self::speakable($departmentName);
 
         if (!$listCreated) {
-            return sprintf(self::REMEMBERED_IN, $ingredient, $department);
+            return $line->existed
+                ? self::alreadyInList($line) . ' ' . self::REMEMBER_PROMISE
+                : sprintf(self::REMEMBERED_IN, $ingredient, $department);
         }
 
         return $previousListSent
@@ -259,12 +277,15 @@ final class VoiceReplies
      * La proposition choisie est ajoutée, et Alexa promet de s'en souvenir. Quand une liste envoyée au drive est remplacée, on le dit à la
      * place de la promesse : la phrase est retenue quand même.
      */
-    public static function remembered(string $ingredientName, bool $listCreated, bool $previousListSent): string
+    public static function remembered(string $ingredientName, bool $listCreated, bool $previousListSent, ?AddedLine $line = null): string
     {
-        $ingredient = self::speakable($ingredientName);
+        $line ??= AddedLine::single();
+        $ingredient = self::item($ingredientName, $line);
 
         if (!$listCreated) {
-            return sprintf(self::REMEMBERED, $ingredient);
+            return $line->existed
+                ? self::alreadyInList($line) . ' ' . self::REMEMBER_PROMISE
+                : sprintf(self::REMEMBERED, $ingredient);
         }
 
         return $previousListSent
@@ -276,9 +297,9 @@ final class VoiceReplies
      * Le produit est créé puis ajouté à la liste. Alexa répète le rayon où il vient d'être rangé (l'utilisateur l'a choisi à voix haute : il
      * entend ce qu'il a produit).
      */
-    public static function created(string $ingredientName, string $departmentName, bool $listCreated, bool $previousListSent): string
+    public static function created(string $ingredientName, string $departmentName, bool $listCreated, bool $previousListSent, ?AddedLine $line = null): string
     {
-        $ingredient = self::speakable($ingredientName);
+        $ingredient = self::item($ingredientName, $line ?? AddedLine::single());
         $department = self::speakable($departmentName);
 
         if (!$listCreated) {
@@ -288,6 +309,78 @@ final class VoiceReplies
         $started = sprintf(self::CREATED_LIST_STARTED, $ingredient, $department);
 
         return $previousListSent ? $started . ' ' . self::PREVIOUS_LIST_SENT : $started;
+    }
+
+    /**
+     * Ce qui a été ajouté, dit en peu de mots : « pain » (une unité, rien de cité), « 3 croquettes » (une quantité), « 2 kilos de tomate »
+     * (une unité citée, jamais l'unité « unité »). Quand l'unité dite n'a pas servi, c'est l'unité de la ligne qui se dit (« 2 paquets de
+     * croquette ») ; si la ligne compte des unités, « 2 tomates » ne laisse pas croire à des kilos.
+     */
+    public static function item(string $ingredientName, AddedLine $line): string
+    {
+        $name = self::speakable($ingredientName);
+        $count = self::number($line->added);
+
+        if ($line->unitCited && !$line->isCount()) {
+            return $count . ' ' . self::unitWord($line->unitName, $line->added) . ' ' . self::of($name);
+        }
+        if (abs($line->added - 1.0) < 0.0001) {
+            return $name;
+        }
+
+        return $count . ' ' . ($line->added >= 2 ? self::pluralize($name) : $name);
+    }
+
+    /**
+     * Le total de la ligne quand l'article y était déjà : « C'est ajouté, tu en as maintenant 3 paquets dans ta liste. », « … maintenant 5 dans
+     * ta liste. » (unité « unité »), ou, quand l'unité dite n'est pas celle de la ligne, « C'est ajouté en paquets, tu en as maintenant 5 dans ta liste. ».
+     */
+    private static function alreadyInList(AddedLine $line): string
+    {
+        $total = self::number($line->total);
+        if ($line->unitSubstituted) {
+            return sprintf(self::TOTAL_ADDED_IN_UNIT, self::pluralize(self::speakable($line->unitName)), $total);
+        }
+
+        return sprintf(self::TOTAL_ADDED, $line->isCount() ? $total : $total . ' ' . self::unitWord($line->unitName, $line->total));
+    }
+
+    /** Le nom d'une unité, au pluriel dès deux : « 1,5 kilo », « 2 kilos », « 3 cuillères à soupe ». */
+    private static function unitWord(string $unitName, float $quantity): string
+    {
+        $unit = self::speakable($unitName);
+
+        return $quantity >= 2 ? self::pluralize($unit) : $unit;
+    }
+
+    /** Un entier se dit sans virgule (« 3 »), un décimal avec une virgule et deux chiffres au plus (« 1,5 »). */
+    private static function number(float $quantity): string
+    {
+        $rounded = round($quantity, 2);
+        if (abs($rounded - round($rounded)) < 0.0001) {
+            return (string) (int) round($rounded);
+        }
+
+        return str_replace('.', ',', rtrim(rtrim(number_format($rounded, 2, '.', ''), '0'), '.'));
+    }
+
+    /** Le pluriel du premier mot : « paquet » donne « paquets », « cuillère à soupe » donne « cuillères à soupe ». Sans règle fine : c'est dit, pas écrit. */
+    private static function pluralize(string $text): string
+    {
+        $words = explode(' ', $text, 2);
+        if ($words[0] !== '' && preg_match('/[sxz]$/u', $words[0]) !== 1) {
+            $words[0] .= 's';
+        }
+
+        return implode(' ', $words);
+    }
+
+    /** « de tomate », « d'ail » (voyelle ou h muet). */
+    private static function of(string $name): string
+    {
+        $aspirated = preg_match('/^h(?:aricot|achis|amburger|omard|areng|oumous|arissa|alva)/u', $name) === 1;
+
+        return preg_match('/^[aeiouyàâäéèêëîïôöùûüœæ]/u', $name) === 1 || (!$aspirated && str_starts_with($name, 'h')) ? "d'" . $name : 'de ' . $name;
     }
 
     /**

@@ -3,6 +3,7 @@
 namespace Repas\Tests\Voice\Domain;
 
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Repas\Voice\Domain\Model\DialogueOption;
 use Repas\Voice\Domain\Model\DialogueStep;
@@ -134,6 +135,70 @@ class SpokenDialogueStateTest extends TestCase
             // Then
             $this->assertEquals($state, $back, $state->step->value);
         }
+    }
+
+    public function testTheQuantityAndTheUnitSaidAtTheStartTravelWithTheDialogue(): void
+    {
+        // Given : « trois paquets de croquettes », produit inconnu
+        $choose = SpokenDialogueState::choose('croquettes', [self::persil()], 'croquettes', 3, 'paquet');
+        $states = [$choose, $choose->missed(), $choose->askingDepartment(), $choose->askingDepartment()->withDepartment(new DialogueOption('animal', 'animal')),
+            $choose->askingDepartment()->withDepartment(new DialogueOption('animal', 'animal'))->withUnit(new DialogueOption('unite', 'unité'))];
+
+        foreach ($states as $state) {
+            // When : à chaque étape, puis après le voyage par les attributs de séance
+            $back = SpokenDialogueState::fromArray(json_decode(json_encode($state->toArray(), JSON_THROW_ON_ERROR), true));
+
+            // Then
+            $this->assertSame([3, 'paquet'], [$state->quantity, $state->spokenUnitSlug], $state->step->value);
+            $this->assertEquals($state, $back, $state->step->value);
+        }
+        $this->assertSame(3, $choose->toArray()['quantity']);
+        $this->assertSame('paquet', $choose->toArray()['spokenUnit']);
+    }
+
+    public function testAnOrdinaryRequestWritesNeitherQuantityNorUnit(): void
+    {
+        // Given : l'état d'avant la quantité, le plus petit possible
+        $state = SpokenDialogueState::choose('de la ciboulette', [], 'ciboulette');
+
+        // Then
+        $this->assertArrayNotHasKey('quantity', $state->toArray());
+        $this->assertArrayNotHasKey('spokenUnit', $state->toArray());
+        $this->assertSame([1, null], [$state->quantity, $state->spokenUnitSlug]);
+    }
+
+    #[DataProvider('forgedQuantities')]
+    public function testAForgedQuantityOrUnitIsNotBelieved(mixed $quantity, mixed $unit, int $expectedQuantity, ?string $expectedUnit): void
+    {
+        // Given
+        $data = SpokenDialogueState::choose('de la ciboulette', [], 'ciboulette')->toArray();
+        $data['quantity'] = $quantity;
+        $data['spokenUnit'] = $unit;
+
+        // When
+        $state = SpokenDialogueState::fromArray($data);
+
+        // Then : une unité d'achat, rien de dit ; l'état reste lisible
+        $this->assertNotNull($state);
+        $this->assertSame([$expectedQuantity, $expectedUnit], [$state->quantity, $state->spokenUnitSlug]);
+    }
+
+    /**
+     * @return iterable<string, array{mixed, mixed, int, ?string}>
+     */
+    public static function forgedQuantities(): iterable
+    {
+        yield 'valide' => [7, 'kilo', 7, 'kilo'];
+        yield 'zéro' => [0, 'kilo', 1, 'kilo'];
+        yield 'cent' => [100, 'kilo', 1, 'kilo'];
+        yield 'négative' => [-1, null, 1, null];
+        yield 'texte' => ['3', 'kilo', 1, 'kilo'];
+        yield 'décimale' => [1.5, null, 1, null];
+        yield 'tableau' => [[3], ['kilo'], 1, null];
+        yield 'unité avec majuscule' => [2, 'Kilo', 2, null];
+        yield 'unité avec balise' => [2, '<b>x</b>', 2, null];
+        yield 'unité trop longue' => [2, str_repeat('a', 101), 2, null];
+        yield 'unité vide' => [2, '', 2, null];
     }
 
     public function testTheAttributeKeyAndTheShapeAreTheOnesTheDocumentationGives(): void

@@ -117,7 +117,7 @@ final readonly class SpokenAnswerInterpreter
                     return SpokenAnswer::pickOption($option);
                 }
 
-                return $intent === AlexaIntent::ADD_ITEM && $request->phrase !== null
+                return $intent === AlexaIntent::ADD_ITEM && $request->phrase !== null && !$request->hasUnusableQuantity()
                     ? SpokenAnswer::newRequest($request->phrase)
                     : SpokenAnswer::of(SpokenAnswerKind::UNCLEAR);
         }
@@ -181,7 +181,7 @@ final readonly class SpokenAnswerInterpreter
                 }
 
                 // Un autre article, sans rapport avec les propositions : une nouvelle demande
-                return $intent === AlexaIntent::ADD_ITEM && $request->phrase !== null
+                return $intent === AlexaIntent::ADD_ITEM && $request->phrase !== null && !$request->hasUnusableQuantity()
                     ? SpokenAnswer::newRequest($request->phrase)
                     : SpokenAnswer::of(SpokenAnswerKind::UNCLEAR);
         }

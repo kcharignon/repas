@@ -248,13 +248,164 @@ class AlexaWebhookApiFlowTest extends DatabaseTestCase
         $this->assertSame(['Que veux-tu ajouter ?', false], [$launch['outputSpeech']['text'], $launch['shouldEndSession']]);
         $this->assertSame(["J'ai commencé une nouvelle liste avec pain.", false], [$first['outputSpeech']['text'], $first['shouldEndSession']]);
         $this->assertArrayNotHasKey('reprompt', $first, 'une affirmation, aucune question ni relance');
-        $this->assertSame("C'est noté : pain.", $this->speech());
+        // La ligne de pain est déjà dans la liste : on ajoute et on dit le total
+        $this->assertSame("C'est ajouté, tu en as maintenant 2 dans ta liste.", $this->speech());
         $this->assertFalse($this->jsonBody()['response']['shouldEndSession']);
         $this->assertArrayNotHasKey('reprompt', $this->jsonBody()['response']);
         $this->entityManager->clear();
         $this->assertCount(1, $this->lists->findByOwner($user->getId()), 'une seule liste pour toute la séance');
     }
 
+    // ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
+    // La quantité et l'unité dites, le total de la ligne (ADR 0029 décision 5, amendée le 2026-10-25)
+    // ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
+
+    public function testThreeCroquettesAreAddedAsThreeUnitsAndAlexaSaysSo(): void
+    {
+        // Given : des croquettes qui se comptent à l'unité, une liste active
+        $user = $this->linkedUser();
+        $this->persister->saveIngredient(new IngredientBuilder()->withName('croquettes')->withCreator($user, true)->build());
+        $list = $this->savedActiveList($user);
+
+        // When : « Alexa, demande à mes courses d'ajouter trois croquettes »
+        $this->say(AlexaTestRequest::addQuantified('croquettes', '3'));
+
+        // Then
+        $this->assertSame("C'est noté : 3 croquettes.", $this->speech());
+        $this->assertTrue($this->jsonBody()['response']['shouldEndSession']);
+        $this->entityManager->clear();
+        $row = $this->lists->findOneById($list->getId())->getRows()->reset();
+        $this->assertSame([3.0, 'unite'], [$row->getQuantity(), $row->getUnitSlug()]);
+    }
+
+    public function testTwoKilosOfAnIngredientThatDoesNotKnowTheKiloAreAddedInItsOwnUnitAndAlexaSaysIt(): void
+    {
+        // Given : des tomates qui se comptent à l'unité
+        $user = $this->linkedUser();
+        $this->persister->saveIngredient(new IngredientBuilder()->withName('tomates')->withCreator($user, true)->build());
+        $list = $this->savedActiveList($user);
+
+        // When : « ajoute deux kilos de tomates »
+        $this->say(AlexaTestRequest::addQuantified('tomates', '2', 'kilos', 'kilo'));
+
+        // Then : deux tomates, et Alexa ne laisse pas croire à des kilos
+        $this->assertSame("C'est noté : 2 tomates.", $this->speech());
+        $this->assertStringNotContainsString('kilo', $this->speech());
+        $this->entityManager->clear();
+        $row = $this->lists->findOneById($list->getId())->getRows()->reset();
+        $this->assertSame([2.0, 'unite'], [$row->getQuantity(), $row->getUnitSlug()]);
+    }
+
+    public function testTwoKilosOfAnIngredientThatKnowsTheKiloStartTheLineInKilosThenTheTotalIsSaidInKilos(): void
+    {
+        // Given : de la farine, achetée au kilo
+        $user = $this->linkedUser();
+        $this->persister->saveIngredient(new IngredientBuilder()->isFlour()->withCreator($user, true)->build());
+        $list = $this->savedActiveList($user);
+
+        // When : « ajoute deux kilos de farine », puis « ajoute un kilo de farine »
+        $this->say(AlexaTestRequest::addQuantified('farine', '2', 'kilos', 'kilo'));
+        $first = $this->speech();
+        $this->say(AlexaTestRequest::addQuantified('farine', '1', 'kilo', 'kilo'));
+
+        // Then
+        $this->assertSame("C'est noté : 2 kilos de farine.", $first);
+        $this->assertSame("C'est ajouté, tu en as maintenant 3 kilos dans ta liste.", $this->speech());
+        $this->entityManager->clear();
+        $rows = $this->lists->findOneById($list->getId())->getRows();
+        $this->assertCount(1, $rows);
+        $this->assertSame([3.0, 'kilo'], [$rows->reset()->getQuantity(), $rows->reset()->getUnitSlug()]);
+    }
+
+    public function testAUnitAlexaLeftInTheItemSlotIsStrippedFromThePhrase(): void
+    {
+        // Given : « un paquet de farine » ; Alexa a laissé « paquets de farine » dans le créneau `item`
+        $user = $this->linkedUser();
+        $this->persister->saveIngredient(new IngredientBuilder()->isFlour()->withCreator($user, true)->build());
+        $list = $this->savedActiveList($user);
+
+        // When
+        $this->say(AlexaTestRequest::addItem('paquets de farine'));
+
+        // Then : la farine est retrouvée, une unité d'achat (le paquet est inconnu de la farine : le kilo de la ligne se dit)
+        $this->assertSame("C'est noté : 1 kilo de farine.", $this->speech());
+        $this->entityManager->clear();
+        $this->assertCount(1, $this->lists->findOneById($list->getId())->getRows());
+    }
+
+    #[DataProvider('unusableSpokenQuantities')]
+    public function testAQuantityWeCannotWriteIsAskedAgainAndNothingIsWritten(string $quantity): void
+    {
+        // Given
+        $user = $this->linkedUser();
+        $this->persister->saveIngredient(new IngredientBuilder()->withName('croquettes')->withCreator($user, true)->build());
+        $list = $this->savedActiveList($user);
+
+        // When
+        $this->say(AlexaTestRequest::addQuantified('croquettes', $quantity));
+
+        // Then : 200 et une question, la séance reste ouverte, la liste n'a pas bougé
+        $this->assertSame(200, $this->statusCode());
+        $this->assertSame('Combien ? Redis ta demande avec un nombre de 1 à 99.', $this->speech());
+        $this->assertFalse($this->jsonBody()['response']['shouldEndSession']);
+        $this->entityManager->clear();
+        $reloaded = $this->lists->findOneById($list->getId());
+        $this->assertCount(0, $reloaded->getRows());
+        $this->assertSame($list->getVersion(), $reloaded->getVersion());
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function unusableSpokenQuantities(): iterable
+    {
+        yield 'zéro' => ['0'];
+        yield 'cent' => ['100'];
+        yield 'décimale' => ['1.5'];
+        yield 'négative' => ['-2'];
+        yield 'un mot' => ['beaucoup'];
+    }
+
+    public function testSayingBreadTwiceInADirectCallAddsTheSecondOneAndSaysTheTotal(): void
+    {
+        // Given
+        $user = $this->linkedUser();
+        $this->savedBread($user);
+        $list = $this->savedActiveList($user);
+
+        // When : deux appels directs
+        $this->say(AlexaTestRequest::addItem('du pain'));
+        $first = $this->speech();
+        $this->say(AlexaTestRequest::addItem('du pain'));
+
+        // Then
+        $this->assertSame("C'est noté : pain.", $first);
+        $this->assertSame("C'est ajouté, tu en as maintenant 2 dans ta liste.", $this->speech());
+        $this->assertTrue($this->jsonBody()['response']['shouldEndSession']);
+        $this->entityManager->clear();
+        $this->assertSame(2.0, $this->lists->findOneById($list->getId())->getRows()->reset()->getQuantity());
+    }
+
+    public function testTheSaidQuantityFollowsTheDialogueOfAnUnknownProduct(): void
+    {
+        // Given : « trois ciboulettes », inconnues, puis création guidée
+        $user = $this->linkedUser();
+        $this->savedCatalogue();
+        $list = $this->savedActiveList($user);
+
+        // When
+        $this->say(AlexaTestRequest::addQuantified('ciboulette', '3'));
+        $this->assertSame(3, $this->attributes()['dialogue']['quantity']);
+        $this->converse(AlexaTestRequest::yes(), $this->attributes());
+        $this->converse(AlexaTestRequest::answerDepartment('céréales', 'cereale'), $this->attributes());
+        $this->converse(AlexaTestRequest::answerUnit('pièces', 'unite'), $this->attributes());
+        $this->converse(AlexaTestRequest::yes(), $this->attributes());
+
+        // Then : trois ciboulettes dans la liste
+        $this->assertSame('C\'est créé et noté : 3 ciboulettes, rayon céréale.', $this->speech());
+        $this->entityManager->clear();
+        $this->assertSame(3.0, $this->lists->findOneById($list->getId())->getRows()->reset()->getQuantity());
+    }
     public function testHelpStopAndFallbackAreSpoken(): void
     {
         // Given
@@ -357,7 +508,7 @@ class AlexaWebhookApiFlowTest extends DatabaseTestCase
         $this->say(AlexaTestRequest::addItem('du sirop de menthe'));
 
         // Then : directement l'ingrédient retenu, comme un nom exact, sans question
-        $this->assertSame("C'est noté : sirop fruit rouge.", $this->speech());
+        $this->assertSame("C'est ajouté, tu en as maintenant 2 dans ta liste.", $this->speech());
         $this->assertTrue($this->jsonBody()['response']['shouldEndSession']);
         $this->assertArrayNotHasKey('sessionAttributes', $this->jsonBody());
         $this->entityManager->clear();
@@ -441,8 +592,8 @@ class AlexaWebhookApiFlowTest extends DatabaseTestCase
         // When : la prochaine fois, le produit existe
         $this->say(AlexaTestRequest::addItem('de la ciboulette'));
 
-        // Then
-        $this->assertSame("C'est noté : ciboulette.", $this->speech());
+        // Then : la ligne existe déjà, on dit le total
+        $this->assertSame("C'est ajouté, tu en as maintenant 2 dans ta liste.", $this->speech());
     }
 
     public function testAskingWhichOnesReadsTheDepartmentsThenTheUnitsAndTheCreationGoesOn(): void
@@ -611,7 +762,7 @@ class AlexaWebhookApiFlowTest extends DatabaseTestCase
         $this->say(AlexaTestRequest::addItem('des patates'));
 
         // Then : directement la pomme de terre, sans question
-        $this->assertSame("C'est noté : pomme de terre.", $this->speech());
+        $this->assertSame("C'est ajouté, tu en as maintenant 2 dans ta liste.", $this->speech());
         $this->assertTrue($this->jsonBody()['response']['shouldEndSession']);
         $this->assertArrayNotHasKey('sessionAttributes', $this->jsonBody());
         $this->assertSame(1, $this->rowCount('shopping_list_row'), 'même ingrédient, même unité : la ligne existante');
@@ -690,7 +841,7 @@ class AlexaWebhookApiFlowTest extends DatabaseTestCase
         $this->say(AlexaTestRequest::addItem('des tomates'));
 
         // Then : directement le même ingrédient, sans question
-        $this->assertSame("C'est noté : tomate.", $this->speech());
+        $this->assertSame("C'est ajouté, tu en as maintenant 2 dans ta liste.", $this->speech());
         $this->assertTrue($this->jsonBody()['response']['shouldEndSession']);
     }
 

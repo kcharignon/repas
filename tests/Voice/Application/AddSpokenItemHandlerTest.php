@@ -125,6 +125,152 @@ class AddSpokenItemHandlerTest extends TestCase
         $this->assertSame([], $this->resolver->remembered);
     }
 
+    public function testWithoutAQuantityOneIsAddedInThePurchaseUnit(): void
+    {
+        // Given
+        $this->resolver->willResolve('du pain', new ResolvedIngredient('pain', 'Pain', 'Boulangerie', ResolvedIngredient::SURE));
+
+        // When
+        ($this->handler)(new AddSpokenItemCommand('user-1', 'du pain', sessionIsOpen: false));
+
+        // Then : une unité, aucune unité dite
+        $this->assertSame([[1, null]], $this->shoppingList->addedWith);
+    }
+
+    public function testASaidQuantityGoesToTheListAndIsSaid(): void
+    {
+        // Given : « trois croquettes »
+        $this->resolver->willResolve('croquettes', new ResolvedIngredient('croquette', 'Croquette', 'Animal', ResolvedIngredient::SURE));
+        $this->shoppingList->willReturn(new AddedItem(listCreated: false, previousListSent: false, quantity: 3.0, addedQuantity: 3.0));
+
+        // When
+        $result = ($this->handler)(new AddSpokenItemCommand('user-1', 'croquettes', sessionIsOpen: false, quantity: 3));
+
+        // Then
+        $this->assertSame([[3, null]], $this->shoppingList->addedWith);
+        $this->assertSame("C'est noté : 3 croquettes.", $result->speech);
+    }
+
+    public function testASaidUnitGoesToTheListAndIsSaidWhenTheIngredientKnowsIt(): void
+    {
+        // Given : « deux kilos de tomates », la ligne naît au kilo
+        $this->resolver->willResolve('tomates', new ResolvedIngredient('tomate', 'Tomate', 'Fruits et légumes', ResolvedIngredient::SURE));
+        $this->shoppingList->willReturn(new AddedItem(listCreated: false, previousListSent: false, quantity: 2.0, unitSlug: 'kilo', unitName: 'kilo', addedQuantity: 2.0));
+
+        // When
+        $result = ($this->handler)(new AddSpokenItemCommand('user-1', 'tomates', sessionIsOpen: false, quantity: 2, unitSlug: 'kilo'));
+
+        // Then
+        $this->assertSame([[2, 'kilo']], $this->shoppingList->addedWith);
+        $this->assertSame("C'est noté : 2 kilos de tomate.", $result->speech);
+    }
+
+    public function testAnUnknownUnitIsSaidAsTheUnitTheLineKeeps(): void
+    {
+        // Given : « deux kilos de croquettes », mais les croquettes se comptent en paquets
+        $this->resolver->willResolve('croquettes', new ResolvedIngredient('croquette', 'Croquette', 'Animal', ResolvedIngredient::SURE));
+        $this->shoppingList->willReturn(new AddedItem(listCreated: false, previousListSent: false, quantity: 2.0, unitSlug: 'paquet', unitName: 'paquet', unitSubstituted: true, addedQuantity: 2.0));
+
+        // When
+        $result = ($this->handler)(new AddSpokenItemCommand('user-1', 'croquettes', sessionIsOpen: false, quantity: 2, unitSlug: 'kilo'));
+
+        // Then : jamais de kilos là où la liste compte des paquets
+        $this->assertSame("C'est noté : 2 paquets de croquette.", $result->speech);
+    }
+
+    public function testAnIngredientAlreadyInTheListSaysTheTotal(): void
+    {
+        // Given : le pain est déjà dans la liste, 2 maintenant
+        $this->resolver->willResolve('du pain', new ResolvedIngredient('pain', 'Pain', 'Boulangerie', ResolvedIngredient::SURE));
+        $this->shoppingList->willReturn(new AddedItem(listCreated: false, previousListSent: false, quantity: 2.0, lineExisted: true));
+
+        // When
+        $result = ($this->handler)(new AddSpokenItemCommand('user-1', 'du pain', sessionIsOpen: false));
+
+        // Then
+        $this->assertSame("C'est ajouté, tu en as maintenant 2 dans ta liste.", $result->speech);
+        $this->assertTrue($result->added);
+    }
+
+    public function testAnExistingLineKeepsItsUnitInTheTotal(): void
+    {
+        // Given : « un paquet de croquettes » de plus, 3 paquets maintenant
+        $this->resolver->willResolve('croquettes', new ResolvedIngredient('croquette', 'Croquette', 'Animal', ResolvedIngredient::SURE));
+        $this->shoppingList->willReturn(new AddedItem(listCreated: false, previousListSent: false, quantity: 3.0, unitSlug: 'paquet', unitName: 'paquet', lineExisted: true));
+
+        // When
+        $result = ($this->handler)(new AddSpokenItemCommand('user-1', 'croquettes', sessionIsOpen: false, unitSlug: 'paquet'));
+
+        // Then
+        $this->assertSame("C'est ajouté, tu en as maintenant 3 paquets dans ta liste.", $result->speech);
+    }
+
+    public function testTheTotalIsAlsoSaidWhenThePhraseIsRememberedAfterACorrection(): void
+    {
+        // Given
+        $this->resolver->willResolve('pomme de terre', new ResolvedIngredient('pomme-de-terre', 'Pomme de terre', 'Fruits et légumes', ResolvedIngredient::SURE));
+        $this->shoppingList->willReturn(new AddedItem(listCreated: false, previousListSent: false, quantity: 2.0, lineExisted: true));
+
+        // When
+        $result = ($this->handler)(new AddSpokenItemCommand('user-1', 'pomme de terre', sessionIsOpen: false, rememberAs: 'des patates'));
+
+        // Then : le total remplace « C'est noté », la promesse reste
+        $this->assertSame("C'est ajouté, tu en as maintenant 2 dans ta liste. Je m'en souviendrai.", $result->speech);
+        $this->assertSame([['user-1', 'des patates', 'pomme-de-terre']], $this->resolver->remembered);
+    }
+
+    public function testAUnitLeftInTheItemSlotIsRemovedFromThePhraseAndUsedAsTheSaidUnit(): void
+    {
+        // Given : Alexa a mis « paquets de croquettes » dans le créneau `item`, sans créneau `unit`
+        $this->resolver->willResolve('croquettes', new ResolvedIngredient('croquette', 'Croquette', 'Animal', ResolvedIngredient::SURE));
+
+        // When
+        ($this->handler)(new AddSpokenItemCommand('user-1', 'paquets de croquettes', sessionIsOpen: false));
+
+        // Then : l'ingrédient cherché est « croquettes », l'unité dite « paquet », une unité
+        $this->assertSame([['user-1', 'croquettes']], $this->resolver->asked);
+        $this->assertSame([[1, 'paquet']], $this->shoppingList->addedWith);
+    }
+
+    public function testTheUnitSlotWinsOverAUnitLeftInTheItemSlot(): void
+    {
+        // Given
+        $this->resolver->willResolve('croquettes', new ResolvedIngredient('croquette', 'Croquette', 'Animal', ResolvedIngredient::SURE));
+
+        // When : Alexa a rempli `unit` (kilo) ET laissé « paquets de » dans `item`
+        ($this->handler)(new AddSpokenItemCommand('user-1', 'paquets de croquettes', sessionIsOpen: false, quantity: 2, unitSlug: 'kilo'));
+
+        // Then
+        $this->assertSame([[2, 'kilo']], $this->shoppingList->addedWith);
+        $this->assertSame([['user-1', 'croquettes']], $this->resolver->asked);
+    }
+
+    public function testAnUnknownProductKeepsTheSaidQuantityAndUnitInTheDialogue(): void
+    {
+        // When : « trois paquets de ciboulette », inconnue
+        $result = ($this->handler)(new AddSpokenItemCommand('user-1', 'ciboulette', sessionIsOpen: false, quantity: 3, unitSlug: 'paquet'));
+
+        // Then : rien n'est écrit, l'état garde la quantité et l'unité pour la suite
+        $this->assertSame([], $this->shoppingList->added);
+        $this->assertSame([3, 'paquet'], [$result->nextState->quantity, $result->nextState->spokenUnitSlug]);
+    }
+
+    public function testIngredientsThatTieKeepTheSaidQuantityAndUnitInTheDialogue(): void
+    {
+        // Given
+        $this->resolver->willTie('tomates', [
+            new IngredientSuggestion('tomate-fl', 'Tomate', 'Fruit & légume', 'fruit-et-legume'),
+            new IngredientSuggestion('tomate-sg', 'Tomate', 'Surgelé', 'surgele'),
+        ]);
+
+        // When
+        $result = ($this->handler)(new AddSpokenItemCommand('user-1', 'kilos de tomates', sessionIsOpen: false, quantity: 2));
+
+        // Then : la phrase de l'état est celle sans l'unité, qui voyage à part
+        $this->assertSame('tomates', $result->nextState->phrase);
+        $this->assertSame([2, 'kilo'], [$result->nextState->quantity, $result->nextState->spokenUnitSlug]);
+    }
+
     public function testANewListIsSaid(): void
     {
         // Given

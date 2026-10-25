@@ -7,6 +7,7 @@ use Repas\Shared\Application\Dto\SpokenChoice;
 use Repas\Shared\Application\Interface\SpokenIngredientCreator;
 use Repas\Shared\Application\Interface\SpokenIngredientResolver;
 use Repas\Shared\Application\Interface\VoiceShoppingList;
+use Repas\Voice\Application\Command\AddSpokenItem\AddedLineFactory;
 use Repas\Voice\Application\Command\AddSpokenItem\AddSpokenItemCommand;
 use Repas\Voice\Application\Command\AddSpokenItem\AddSpokenItemHandler;
 use Repas\Voice\Application\Command\AddSpokenItem\AddSpokenItemResult;
@@ -40,6 +41,9 @@ use Symfony\Component\Messenger\Attribute\AsMessageHandler;
  * - une réponse incomprise : on la redemande une fois (`SpokenDialogueState::missed`), la deuxième fois de suite dans la même étape on
  *   abandonne poliment (jamais de boucle sans fin).
  *
+ * La quantité et l'unité dites au départ (« trois croquettes ») voyagent dans l'état (`SpokenDialogueState::quantity`) et s'appliquent à l'article
+ * qui aboutit, ajouté ou créé ; un autre article dit à la place porte les siennes (`AlexaRequest`).
+ *
  * La séance reste ouverte tant qu'une question est posée ; une réponse finale (article ajouté, produit créé, refus, abandon) est une simple
  * affirmation, sans relance, et ferme la séance : le dialogue avait été ouvert pour une demande, elle est traitée. Aucune exception n'est attrapée :
  * un échec (slug d'un autre utilisateur, rayon inconnu, produit déjà possédé, panne) annule la commande entière, le bus étant transactionnel,
@@ -66,7 +70,14 @@ readonly class AnswerSpokenDialogueHandler
 
         return match ($answer->kind) {
             SpokenAnswerKind::LIST_CHOICES => $this->listChoices($state, $catalogue),
-            SpokenAnswerKind::NEW_REQUEST => ($this->addSpokenItem)(new AddSpokenItemCommand($command->userId, $answer->phrase ?? '', sessionIsOpen: false, rememberAs: $state->rememberablePhrase())),
+            SpokenAnswerKind::NEW_REQUEST => ($this->addSpokenItem)(new AddSpokenItemCommand(
+                $command->userId,
+                $answer->phrase ?? '',
+                sessionIsOpen: false,
+                rememberAs: $state->rememberablePhrase(),
+                quantity: $command->request->quantity ?? 1,
+                unitSlug: $command->request->unitSlug(),
+            )),
             SpokenAnswerKind::PICK_OPTION => $this->pickOption($command, $answer),
             SpokenAnswerKind::START_CREATION => $this->ask($state->askingDepartment()),
             SpokenAnswerKind::PICK_DEPARTMENT => $this->ask($state->withDepartment($answer->option ?? throw new \LogicException('PICK_DEPARTMENT sans rayon.'))),
@@ -99,15 +110,16 @@ readonly class AnswerSpokenDialogueHandler
     {
         $option = $answer->option ?? throw new \LogicException('PICK_OPTION sans proposition.');
 
-        $added = $this->shoppingList->addItem($command->userId, $option->slug);
+        $added = $this->shoppingList->addItem($command->userId, $option->slug, $command->state->quantity, $command->state->spokenUnitSlug);
+        $line = AddedLineFactory::from($added, unitCited: $command->state->spokenUnitSlug !== null);
         $this->ingredientResolver->remember($command->userId, $command->state->phrase, $option->slug);
 
         // Des ingrédients à départager par leur rayon : on répète le rayon choisi (« C'est noté : tomate, surgelé. Je m'en souviendrai. »)
         if ($command->state->isTieBreak()) {
-            return $this->finish(VoiceReplies::rememberedIn($option->name, $option->departmentName ?? '', $added->listCreated, $added->previousListSent), added: true);
+            return $this->finish(VoiceReplies::rememberedIn($option->name, $option->departmentName ?? '', $added->listCreated, $added->previousListSent, $line), added: true);
         }
 
-        return $this->finish(VoiceReplies::remembered($option->name, $added->listCreated, $added->previousListSent), added: true);
+        return $this->finish(VoiceReplies::remembered($option->name, $added->listCreated, $added->previousListSent, $line), added: true);
     }
 
     private function create(AnswerSpokenDialogueCommand $command): AddSpokenItemResult
@@ -125,10 +137,10 @@ readonly class AnswerSpokenDialogueHandler
         }
 
         $created = $this->creator->create($command->userId, $name, $department->slug, $unit->slug);
-        $added = $this->shoppingList->addItem($command->userId, $created->slug);
+        $added = $this->shoppingList->addItem($command->userId, $created->slug, $state->quantity, $state->spokenUnitSlug);
 
         // Le nom du produit est exact : rien à retenir pour la phrase
-        return $this->finish(VoiceReplies::created($created->name, $created->departmentName, $added->listCreated, $added->previousListSent), added: true);
+        return $this->finish(VoiceReplies::created($created->name, $created->departmentName, $added->listCreated, $added->previousListSent, AddedLineFactory::from($added, unitCited: $state->spokenUnitSlug !== null)), added: true);
     }
 
     /** La question de l'étape (nouvelle ou répétée), et le dialogue continue. */

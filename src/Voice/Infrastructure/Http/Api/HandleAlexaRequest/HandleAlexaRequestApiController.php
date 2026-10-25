@@ -219,7 +219,7 @@ final class HandleAlexaRequestApiController extends AbstractController
 
         $phrase = $alexa->phrase ?? throw new LogicException("AddItemIntent sans phrase doit être redemandé par le dialogue.");
 
-        return $this->spoken($this->commandBus->dispatch(new AddSpokenItemCommand($grant->userId, $phrase, $alexa->isInOpenSession())));
+        return $this->spoken($this->commandBus->dispatch(new AddSpokenItemCommand($grant->userId, $phrase, $alexa->isInOpenSession(), quantity: $alexa->quantity ?? 1, unitSlug: $alexa->unitSlug())));
     }
 
     private function spoken(mixed $result): AlexaResponse

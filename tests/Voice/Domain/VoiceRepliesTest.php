@@ -3,8 +3,10 @@
 namespace Repas\Tests\Voice\Domain;
 
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
+use Repas\Voice\Domain\Model\AddedLine;
 use Repas\Voice\Domain\Model\DialogueOption;
 use Repas\Voice\Domain\Model\SpokenDialogueState;
 use Repas\Voice\Domain\Model\VoiceReplies;
@@ -327,6 +329,166 @@ class VoiceRepliesTest extends TestCase
         $this->assertStringStartsWith('Je ne connais pas <speak>xyz</speak>', $answer, "texte brut : la balise n'est que du texte pour PlainText, jamais du SSML");
     }
 
+    // ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
+    // La quantité dite et le total de la ligne (ADR 0029 décision 5, amendée le 2026-10-25)
+    // ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
+
+    /**
+     * @return AddedLine une première ligne, `$added` dans l'unité `$unit`
+     */
+    private static function line(float $added, string $unitSlug = 'unite', string $unitName = 'unité', bool $cited = false, bool $substituted = false): AddedLine
+    {
+        return new AddedLine($added, $added, $unitSlug, $unitName, existed: false, unitCited: $cited, unitSubstituted: $substituted);
+    }
+
+    /**
+     * @return AddedLine une ligne qui existait déjà et vaut maintenant `$total`
+     */
+    private static function existing(float $added, float $total, string $unitSlug = 'unite', string $unitName = 'unité', bool $cited = false, bool $substituted = false): AddedLine
+    {
+        return new AddedLine($added, $total, $unitSlug, $unitName, existed: true, unitCited: $cited, unitSubstituted: $substituted);
+    }
+
+    #[DataProvider('items')]
+    public function testWhatWasAddedIsSaidWithItsQuantityAndItsUnitOnlyWhenItHelps(string $expected, string $name, AddedLine $line): void
+    {
+        $this->assertSame($expected, VoiceReplies::item($name, $line));
+    }
+
+    /**
+     * @return iterable<string, array{string, string, AddedLine}>
+     */
+    public static function items(): iterable
+    {
+        yield 'une unité, rien dit' => ['pain', 'pain', AddedLine::single()];
+        yield 'plusieurs, rien dit' => ['3 croquettes', 'croquette', self::line(3)];
+        yield 'plusieurs, nom déjà au pluriel' => ['3 croquettes', 'croquettes', self::line(3)];
+        yield 'plusieurs, nom en plusieurs mots' => ['2 pommes de terre', 'pomme de terre', self::line(2)];
+        yield 'plusieurs, nom en s' => ['2 pois', 'pois', self::line(2)];
+        yield 'deux kilos' => ['2 kilos de tomate', 'tomate', self::line(2, 'kilo', 'kilo', cited: true)];
+        yield 'un kilo' => ['1 kilo de tomate', 'tomate', self::line(1, 'kilo', 'kilo', cited: true)];
+        yield 'un kilo et demi' => ['1,5 kilo de farine', 'farine', self::line(1.5, 'kilo', 'kilo', cited: true)];
+        yield 'trois paquets' => ['3 paquets de croquettes', 'croquettes', self::line(3, 'paquet', 'paquet', cited: true)];
+        yield 'une unité à plusieurs mots' => ['2 cuillères à soupe de sucre', 'sucre', self::line(2, 'cuillere-a-soupe', 'cuillère à soupe', cited: true)];
+        yield 'voyelle' => ["2 kilos d'ail", 'ail', self::line(2, 'kilo', 'kilo', cited: true)];
+        yield 'h muet' => ["2 kilos d'huile", 'huile', self::line(2, 'kilo', 'kilo', cited: true)];
+        yield 'h aspiré' => ['2 kilos de haricots', 'haricots', self::line(2, 'kilo', 'kilo', cited: true)];
+        yield 'l\'unité « unité » citée ne se dit pas' => ['2 pains', 'pain', self::line(2, 'unite', 'unité', cited: true)];
+        yield 'l\'unité dite n\'a pas servi' => ['2 paquets de croquettes', 'croquettes', self::line(2, 'paquet', 'paquet', cited: true, substituted: true)];
+        yield 'l\'unité dite n\'a pas servi, la ligne compte des unités' => ['2 croquettes', 'croquettes', self::line(2, 'unite', 'unité', cited: true, substituted: true)];
+        yield 'une unité non citée ne se dit pas' => ['3 croquettes', 'croquettes', self::line(3, 'paquet', 'paquet')];
+        yield 'un seul, unité non citée' => ['croquettes', 'croquettes', self::line(1, 'paquet', 'paquet')];
+    }
+
+    public function testAFirstAdditionKeepsTheExistingVariantsWithTheQuantity(): void
+    {
+        $three = self::line(3);
+        $kilos = self::line(2, 'kilo', 'kilo', cited: true);
+
+        $this->assertSame("C'est noté : 3 croquettes.", VoiceReplies::added('croquettes', 'animal', true, false, false, $three));
+        $this->assertSame("C'est noté : 2 kilos de tomate.", VoiceReplies::added('tomate', 'fruit et légume', true, false, false, $kilos));
+        $this->assertSame("J'ai mis 3 croquettes, animal.", VoiceReplies::added('croquettes', 'animal', false, false, false, $three));
+        $this->assertSame("J'ai commencé une nouvelle liste avec 3 croquettes.", VoiceReplies::added('croquettes', 'animal', true, true, false, $three));
+        $this->assertSame("J'ai commencé une nouvelle liste avec 2 kilos de tomate. Ta liste précédente est partie au drive.", VoiceReplies::added('tomate', 'fruit et légume', true, true, true, $kilos));
+        $this->assertSame("C'est noté : 3 croquettes. Je m'en souviendrai.", VoiceReplies::remembered('croquettes', false, false, $three));
+        $this->assertSame("C'est noté : 3 croquettes, animal. Je m'en souviendrai.", VoiceReplies::rememberedIn('croquettes', 'animal', false, false, $three));
+        $this->assertSame("C'est créé et noté : 3 croquettes, rayon animal.", VoiceReplies::created('croquettes', 'animal', false, false, $three));
+        $this->assertSame("J'ai créé 3 croquettes, rayon animal, et commencé une nouvelle liste.", VoiceReplies::created('croquettes', 'animal', true, false, $three));
+        // Sans ligne passée, le texte d'avant la quantité
+        $this->assertSame("C'est noté : pain.", VoiceReplies::added('pain', 'boulangerie', true, false, false));
+    }
+
+    #[DataProvider('totals')]
+    public function testAnIngredientAlreadyInTheListSaysTheTotal(string $expected, AddedLine $line): void
+    {
+        $this->assertSame($expected, VoiceReplies::added('pain', 'boulangerie', true, false, false, $line));
+    }
+
+    /**
+     * @return iterable<string, array{string, AddedLine}>
+     */
+    public static function totals(): iterable
+    {
+        yield 'deux unités' => ["C'est ajouté, tu en as maintenant 2 dans ta liste.", self::existing(1, 2)];
+        yield 'cinq unités' => ["C'est ajouté, tu en as maintenant 5 dans ta liste.", self::existing(2, 5)];
+        yield 'trois paquets' => ["C'est ajouté, tu en as maintenant 3 paquets dans ta liste.", self::existing(1, 3, 'paquet', 'paquet')];
+        yield 'deux kilos' => ["C'est ajouté, tu en as maintenant 2 kilos dans ta liste.", self::existing(1, 2, 'kilo', 'kilo', cited: true)];
+        yield 'un kilo et demi' => ["C'est ajouté, tu en as maintenant 1,5 kilo dans ta liste.", self::existing(0.5, 1.5, 'kilo', 'kilo')];
+        yield 'deux cuillères à soupe' => ["C'est ajouté, tu en as maintenant 2 cuillères à soupe dans ta liste.", self::existing(1, 2, 'cuillere-a-soupe', 'cuillère à soupe')];
+        yield 'un quart' => ["C'est ajouté, tu en as maintenant 0,25 kilo dans ta liste.", self::existing(0.25, 0.25, 'kilo', 'kilo')];
+        yield 'poussière de virgule flottante' => ["C'est ajouté, tu en as maintenant 2001 grammes dans ta liste.", self::existing(2000.0000001, 2001.0000001, 'gramme', 'gramme')];
+        yield 'l\'unité dite n\'est pas celle de la ligne' => ["C'est ajouté en paquets, tu en as maintenant 5 dans ta liste.", self::existing(2, 5, 'paquet', 'paquet', cited: true, substituted: true)];
+        yield 'la ligne compte des unités' => ["C'est ajouté en unités, tu en as maintenant 5 dans ta liste.", self::existing(2, 5, 'unite', 'unité', cited: true, substituted: true)];
+    }
+
+    public function testTheTotalReplacesCestNoteOnlyWhenTheLineExistedAndKeepsThePromiseOfTheMemory(): void
+    {
+        $line = self::existing(1, 2);
+
+        // La phrase du total remplace « C'est noté » seulement quand la ligne existait déjà
+        $this->assertSame("C'est ajouté, tu en as maintenant 2 dans ta liste. Je m'en souviendrai.", VoiceReplies::remembered('pain', false, false, $line));
+        $this->assertSame("C'est ajouté, tu en as maintenant 2 dans ta liste. Je m'en souviendrai.", VoiceReplies::rememberedIn('tomate', 'surgelé', false, false, $line));
+        // Un choix deviné dit d'abord ce qui a été mis et où
+        $this->assertSame("J'ai mis pain, boulangerie.", VoiceReplies::added('pain', 'boulangerie', false, false, false, $line));
+        // Une liste neuve n'a pas de ligne existante : jamais de total
+        $this->assertSame("J'ai commencé une nouvelle liste avec pain.", VoiceReplies::added('pain', 'boulangerie', true, true, false, $line));
+    }
+
+    public function testEveryAssembledReplyWithAQuantityStaysShortWithRealisticNames(): void
+    {
+        $lines = [
+            'plusieurs' => self::line(12),
+            'au kilo' => self::line(2, 'kilo', 'kilo', cited: true),
+            'boîtes' => self::line(3, 'boite', 'boîte', cited: true),
+            'écartée' => self::line(2, 'unite', 'unité', cited: true, substituted: true),
+            'total' => self::existing(1, 12, 'cuillere-a-cafe', 'cuillère à café'),
+            'total converti' => self::existing(2000, 2001, 'cuillere-a-soupe', 'cuillère à soupe', cited: true, substituted: true),
+        ];
+
+        foreach ($lines as $label => $line) {
+            foreach ([true, false] as $isSure) {
+                foreach ([true, false] as $listCreated) {
+                    foreach ([true, false] as $previousListSent) {
+                        $answers = [
+                            VoiceReplies::added('farine de blé', 'épicerie', $isSure, $listCreated, $previousListSent, $line),
+                            VoiceReplies::remembered('farine de blé', $listCreated, $previousListSent, $line),
+                            VoiceReplies::rememberedIn('farine de blé', 'épicerie', $listCreated, $previousListSent, $line),
+                        ];
+                        // Un produit tout juste créé n'avait pas de ligne : jamais de total
+                        if (!$line->existed) {
+                            $answers[] = VoiceReplies::created('farine de blé', 'épicerie', $listCreated, $previousListSent, $line);
+                        }
+                        foreach ($answers as $answer) {
+                            // Then : deux phrases au plus (trois pour la création d'une liste suivie du drive), 15 mots par phrase, jamais de relance
+                            $this->assertLessThanOrEqual(3, count($this->sentences($answer)), "$label : $answer");
+                            $this->assertStringNotContainsString('Autre chose', $answer);
+                            $this->assertStringNotContainsString('%', $answer);
+                            foreach ($this->sentences($answer) as $sentence) {
+                                $this->assertLessThanOrEqual(15, count(preg_split('/\s+/u', $sentence)), "$label : « $sentence »");
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    public function testTheTotalAnswerIsTwoShortSentencesAtMost(): void
+    {
+        foreach ([self::existing(1, 2), self::existing(2, 12, 'cuillere-a-soupe', 'cuillère à soupe', cited: true, substituted: true)] as $line) {
+            $answer = VoiceReplies::added('pain', 'boulangerie', true, false, false, $line);
+
+            $this->assertLessThanOrEqual(2, count($this->sentences($answer)), $answer);
+            foreach ($this->sentences($answer) as $sentence) {
+                $this->assertLessThanOrEqual(15, count(preg_split('/\s+/u', $sentence)), $sentence);
+            }
+        }
+    }
+
+    public function testAnUnusableQuantityIsAskedAgainPolitely(): void
+    {
+        $this->assertSame(['Combien ?', 'Redis ta demande avec un nombre de 1 à 99.'], $this->sentences($this->said('HOW_MANY')));
+    }
     private function said(string $constant): string
     {
         return constant(VoiceReplies::class . '::' . $constant);

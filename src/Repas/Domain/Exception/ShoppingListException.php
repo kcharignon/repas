@@ -64,6 +64,14 @@ final class ShoppingListException extends DomainException
         return new static(sprintf("Shopping list '%s' was modified by someone else, try again", $id), 409);
     }
 
+    /**
+     * Une quantité dite à voix haute hors de 1 à 99 : rien n'est écrit. Règle métier, `422`.
+     */
+    public static function invalidSpokenQuantity(int $quantity): static
+    {
+        return new static(sprintf('Invalid spoken quantity (%d), expected 1 to 99.', $quantity), 422);
+    }
+
     public static function recipeAlreadyInList(string $recipe): static
     {
         return new static(sprintf("Recipe (%s) already present in list", $recipe), 409);

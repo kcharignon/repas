@@ -8,6 +8,7 @@ use Repas\Repas\Domain\Model\Ingredient;
 use Repas\Repas\Domain\Model\ShoppingListStatus;
 use Repas\Shared\Application\Interface\AddedItem;
 use Repas\Shared\Application\Interface\VoiceShoppingList;
+use Repas\Tests\Helper\Builder\ConversionBuilder;
 use Repas\Tests\Helper\Builder\IngredientBuilder;
 use Repas\Tests\Helper\Builder\ShoppingListBuilder;
 use Repas\Tests\Helper\Builder\UserBuilder;
@@ -47,7 +48,7 @@ class VoiceShoppingListFlowTest extends DatabaseTestCase
         $this->entityManager->clear();
 
         // Then
-        $this->assertEquals(new AddedItem(listCreated: false, previousListSent: false), $result);
+        $this->assertEquals(new AddedItem(listCreated: false, previousListSent: false, unitSlug: 'litre', unitName: 'litre'), $result);
         $reloaded = $this->shoppingListRepository->findOneById($active->getId());
         $this->assertCount(1, $reloaded->getRows());
         $this->assertSame($active->getVersion() + 1, $reloaded->getVersion());
@@ -65,7 +66,7 @@ class VoiceShoppingListFlowTest extends DatabaseTestCase
         $this->entityManager->clear();
 
         // Then
-        $this->assertEquals(new AddedItem(listCreated: true, previousListSent: false), $result);
+        $this->assertEquals(new AddedItem(listCreated: true, previousListSent: false, unitSlug: 'litre', unitName: 'litre'), $result);
         $lists = $this->shoppingListRepository->findByOwner($user->getId());
         $this->assertCount(1, $lists);
         $this->assertSame(ShoppingListStatus::ACTIVE, $lists->reset()->getStatus());
@@ -88,13 +89,78 @@ class VoiceShoppingListFlowTest extends DatabaseTestCase
         $this->entityManager->clear();
 
         // Then
-        $this->assertEquals(new AddedItem(listCreated: true, previousListSent: true), $result);
+        $this->assertEquals(new AddedItem(listCreated: true, previousListSent: true, unitSlug: 'litre', unitName: 'litre'), $result);
         $reloaded = $this->shoppingListRepository->findOneById($sent->getId());
         $this->assertSame(ShoppingListStatus::SENT, $reloaded->getStatus());
         $this->assertSame($sent->getVersion(), $reloaded->getVersion());
         $this->assertCount(1, $reloaded->getRows());
         $this->assertCount(2, $this->shoppingListRepository->findByOwner($user->getId()));
         $this->assertNotNull($this->shoppingListRepository->findOneActivateByOwner($user->getId()));
+    }
+
+    public function testSayingTheSameIngredientTwiceRaisesTheLineAndTheTotalIsTheLineOne(): void
+    {
+        // Given : une ligne de lait existe déjà dans la liste active
+        $user = $this->savedUser();
+        $milk = $this->savedMilk($user);
+        $this->voiceShoppingList->addItem($user->getId(), $milk->getSlug());
+        $this->entityManager->clear();
+
+        // When : deux litres de plus
+        $result = $this->voiceShoppingList->addItem($user->getId(), $milk->getSlug(), 2);
+        $this->entityManager->clear();
+
+        // Then : la même ligne, 3 litres au total, dans l'unité de la ligne
+        $this->assertEquals(new AddedItem(listCreated: false, previousListSent: false, quantity: 3.0, unitSlug: 'litre', unitName: 'litre', lineExisted: true, unitSubstituted: false, addedQuantity: 2.0), $result);
+        $rows = $this->shoppingListRepository->findOneActivateByOwner($user->getId())->getRows();
+        $this->assertCount(1, $rows);
+        $this->assertSame(3.0, $rows->reset()->getQuantity());
+        $this->assertSame('litre', $rows->reset()->getUnitSlug());
+    }
+
+    public function testTheSaidUnitIsConvertedIntoTheUnitOfTheExistingLine(): void
+    {
+        // Given : des pâtes au gramme déjà dans la liste, et la conversion kilo -> gramme
+        $user = $this->savedUser();
+        $pasta = new IngredientBuilder()->isPasta()->withCreator($user)->build();
+        $this->persister->saveIngredient($pasta);
+        $this->persister->saveConversion(new ConversionBuilder()->isKiloToGramme()->build());
+        $this->voiceShoppingList->addItem($user->getId(), $pasta->getSlug());
+        $this->entityManager->clear();
+
+        // When : deux kilos
+        $result = $this->voiceShoppingList->addItem($user->getId(), $pasta->getSlug(), 2, 'kilo');
+        $this->entityManager->clear();
+
+        // Then
+        $this->assertEquals(new AddedItem(listCreated: false, previousListSent: false, quantity: 2001.0, unitSlug: 'gramme', unitName: 'gramme', lineExisted: true, unitSubstituted: true, addedQuantity: 2000.0), $result);
+        $this->assertSame(2001.0, $this->shoppingListRepository->findOneActivateByOwner($user->getId())->getRows()->reset()->getQuantity());
+    }
+
+    public function testAKnownUnitStartsTheLineInThatUnitAndAnUnknownOneIsSetAside(): void
+    {
+        // Given
+        $user = $this->savedUser();
+        $pasta = new IngredientBuilder()->isPasta()->withCreator($user)->build();
+        $milk = $this->savedMilk($user);
+        $this->persister->saveIngredient($pasta);
+
+        // When
+        $kilo = $this->voiceShoppingList->addItem($user->getId(), $pasta->getSlug(), 2, 'kilo');
+        $setAside = $this->voiceShoppingList->addItem($user->getId(), $milk->getSlug(), 3, 'paquet');
+        $this->entityManager->clear();
+
+        // Then : les pâtes au kilo, le lait garde le litre et le dit
+        $this->assertSame('kilo', $kilo->unitSlug);
+        $this->assertFalse($kilo->unitSubstituted);
+        $this->assertSame('litre', $setAside->unitSlug);
+        $this->assertTrue($setAside->unitSubstituted);
+        $units = [];
+        foreach ($this->shoppingListRepository->findOneActivateByOwner($user->getId())->getRows() as $row) {
+            $units[$row->getIngredientSlug()] = [$row->getUnitSlug(), $row->getQuantity()];
+        }
+        $this->assertSame(['kilo', 2.0], $units[$pasta->getSlug()]);
+        $this->assertSame(['litre', 3.0], $units[$milk->getSlug()]);
     }
 
     public function testRefusesTheIngredientOfAnotherUserAndWritesNothing(): void

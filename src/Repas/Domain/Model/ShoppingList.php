@@ -244,6 +244,14 @@ final class ShoppingList implements ModelInterface
         );
     }
 
+    /**
+     * La ligne de cet ingrédient, `null` s'il n'est pas dans la liste (une ligne n'a qu'une unité : celle de sa création).
+     */
+    public function findRow(string $ingredientSlug): ?Row
+    {
+        return $this->rows->find(fn(Row $row) => $row->getIngredientSlug() === $ingredientSlug);
+    }
+
     public function addRow(string $ingredientSlug, string $purchaseUnitSlug, float $quantity): void
     {
         $this->assertEditable();
@@ -293,21 +301,21 @@ final class ShoppingList implements ModelInterface
         return $this;
     }
 
-    public function addIngredient(string $ingredientSlug, string $purchaseUnitSlug): void
+    public function addIngredient(string $ingredientSlug, string $purchaseUnitSlug, float $quantity = 1): void
     {
         $this->assertEditable();
 
         // Recherche de l'ingrédient dans l'unité d'achat dans la liste
         if (($shopListIngredient = $this->ingredients->find(fn(ShoppingListIngredient $sli) => $sli->hasIngredient($ingredientSlug) && $sli->getUnitSlug() === $purchaseUnitSlug)) !== null) {
-            // Si on le trouve on incrémente de 1 la quantité
-            $shopListIngredient->addQuantity(1);
+            // Si on le trouve on incrémente la quantité (de 1 par défaut)
+            $shopListIngredient->addQuantity($quantity);
         } else {
-            // Sinon on le créer avec une quantité de 1
+            // Sinon on le créer avec cette quantité (1 par défaut)
             $this->ingredients[] = ShoppingListIngredient::create(
                 shoppingListId: $this->id,
                 ingredientSlug: $ingredientSlug,
                 unitSlug: $purchaseUnitSlug,
-                quantity: 1
+                quantity: $quantity
             );
         }
     }

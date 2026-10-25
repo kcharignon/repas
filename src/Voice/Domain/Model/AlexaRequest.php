@@ -2,10 +2,11 @@
 
 namespace Repas\Voice\Domain\Model;
 
+use Repas\Voice\Domain\Service\SpokenUnits;
 
 /**
  * Ce que le webhook retient d'une requête d'Alexa DÉJÀ VÉRIFIÉE (ADR 0029, `AlexaRequestVerifier`) : son type, l'intention et ses
- * créneaux (`item`, `rank`, `department`, `unit` : le texte dit et l'identifiant de la valeur rapprochée), l'état du dialogue de la séance
+ * créneaux (`item`, `rank`, `department`, `unit` : le texte dit et l'identifiant de la valeur rapprochée ; `quantity` : un entier de 1 à 99), l'état du dialogue de la séance
  * (`session.attributes.dialogue`, décision 11), la langue, si c'est la première requête de la séance, le jeton d'accès de la liaison de
  * compte et l'identifiant d'utilisateur Alexa. Rien d'autre : le reste du corps n'est jamais lu, gardé, ni journalisé (il contient la
  * voix transcrite).
@@ -25,6 +26,10 @@ final readonly class AlexaRequest
     /** Un nom d'ingrédient dit à voix haute tient en quelques mots : au-delà, la reconnaissance a déraillé, on redemande. */
     public const int MAX_PHRASE_LENGTH = 100;
 
+    /** La quantité dite (« trois croquettes ») : un entier de 1 à 99. Au-delà, ou « zéro », on redemande. */
+    public const int MIN_QUANTITY = 1;
+    public const int MAX_QUANTITY = 99;
+
     /** Taille de la colonne `voice_link.alexa_user_id`. */
     public const int MAX_ALEXA_USER_ID_LENGTH = 255;
 
@@ -38,6 +43,10 @@ final readonly class AlexaRequest
         public ?SlotValue $rank,
         public ?SlotValue $department,
         public ?SlotValue $unit,
+        /** La quantité dite, entière et de 1 à 99 ; `null` si elle manque OU si elle est inutilisable (voir `hasUnusableQuantity`). */
+        public ?int $quantity,
+        /** Le créneau `quantity` portait une valeur lisible (Alexa a entendu quelque chose), utilisable ou non. */
+        public bool $quantityHeard,
         public ?SpokenDialogueState $dialogueState,
         public ?string $locale,
         public bool $isFirstOfSession,
@@ -52,6 +61,9 @@ final readonly class AlexaRequest
 
         $type = self::stringAt($data, ['request', 'type']);
         $isIntent = $type === self::INTENT;
+        $spokenQuantity = self::valueAt($data, ['request', 'intent', 'slots', 'quantity', 'value']);
+        // Alexa écrit un nombre en texte ; un vrai nombre JSON est lu de même (tolérance)
+        $quantityText = $isIntent ? SlotValue::cleanText(is_int($spokenQuantity) || is_float($spokenQuantity) ? (string) $spokenQuantity : $spokenQuantity) : null;
 
         return new self(
             type: $type ?? '',
@@ -60,6 +72,8 @@ final readonly class AlexaRequest
             rank: $isIntent ? SlotValue::fromDecoded(self::valueAt($data, ['request', 'intent', 'slots', 'rank'])) : null,
             department: $isIntent ? SlotValue::fromDecoded(self::valueAt($data, ['request', 'intent', 'slots', 'department'])) : null,
             unit: $isIntent ? SlotValue::fromDecoded(self::valueAt($data, ['request', 'intent', 'slots', 'unit'])) : null,
+            quantity: $isIntent ? self::quantityIn($quantityText) : null,
+            quantityHeard: $isIntent && $quantityText !== null,
             dialogueState: $isIntent ? SpokenDialogueState::fromArray(self::valueAt($data, ['session', 'attributes', SpokenDialogueState::ATTRIBUTE])) : null,
             locale: self::stringAt($data, ['request', 'locale']),
             // Une séance déjà ouverte le dit expressément (`false`) ; absent ou autre chose : appel direct, la séance sera fermée
@@ -82,6 +96,23 @@ final readonly class AlexaRequest
     public function intent(): ?AlexaIntent
     {
         return $this->intentName === null ? null : AlexaIntent::tryFrom($this->intentName);
+    }
+
+    /**
+     * Alexa a entendu une quantité que nous ne savons pas écrire : un décimal, un négatif, zéro, plus de 99, un mot (« beaucoup »). Rien
+     * n'est écrit, on redemande (`VoiceReplies::HOW_MANY`).
+     */
+    public function hasUnusableQuantity(): bool
+    {
+        return $this->quantityHeard && $this->quantity === null;
+    }
+
+    /**
+     * L'unité dite (`unit`), d'après l'identifiant de la résolution d'entité ou, à défaut, le texte entendu rapproché du catalogue des unités.
+     */
+    public function unitSlug(): ?string
+    {
+        return $this->unit->id ?? new SpokenUnits()->slugOf($this->unit?->text);
     }
 
     public function hasSupportedLocale(): bool
@@ -117,6 +148,20 @@ final readonly class AlexaRequest
     private static function cleanPhrase(?string $value): ?string
     {
         return SlotValue::cleanText($value);
+    }
+
+    /**
+     * Les chiffres seuls, de 1 à 99. Alexa écrit un nombre dit (« trois ») en chiffres (`AMAZON.NUMBER`) ; « 1.5 », « -2 », « 0 », « 100 » et
+     * tout texte donnent `null`.
+     */
+    private static function quantityIn(?string $text): ?int
+    {
+        if ($text === null || preg_match('/^\d{1,3}$/', $text) !== 1) {
+            return null;
+        }
+        $quantity = (int) $text;
+
+        return $quantity >= self::MIN_QUANTITY && $quantity <= self::MAX_QUANTITY ? $quantity : null;
     }
 
     private static function boundedString(?string $value, int $maxLength): ?string

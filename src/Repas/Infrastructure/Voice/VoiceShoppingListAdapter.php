@@ -18,9 +18,9 @@ final readonly class VoiceShoppingListAdapter implements VoiceShoppingList
     ) {
     }
 
-    public function addItem(string $userId, string $ingredientSlug): AddedItem
+    public function addItem(string $userId, string $ingredientSlug, int $quantity = 1, ?string $unitSlug = null): AddedItem
     {
-        $result = $this->commandBus->dispatch(new AddSpokenIngredientCommand($userId, $ingredientSlug, UuidGenerator::new()));
+        $result = $this->commandBus->dispatch(new AddSpokenIngredientCommand($userId, $ingredientSlug, UuidGenerator::new(), $quantity, $unitSlug));
         if (!$result instanceof AddedItem) {
             throw new \LogicException('AddSpokenIngredientHandler doit renvoyer un AddedItem.');
         }
