@@ -27,12 +27,20 @@ Tout le reste reste à l'utilisateur, comme aujourd'hui : écrire un drapeau, ro
 1. Sur le poste : `ssh-keygen -t ed25519 -N '' -C repas-lecture-seule -f ~/.ssh/repas_lecture_seule`
 2. `! ssh -i ~/.ssh/id_ed25519 root@64.227.124.100 "bash -s -- '$(cat ~/.ssh/repas_lecture_seule.pub)'" < .claude/skills/repas-ops/references/installer-acces-lecture-seule.sh`
    Attendu : `OK : accès en lecture seule installé…`. Le script copie le programme dans `/usr/local/sbin/repas-lecture-seule` (propriété de root) et ajoute la clé à `~deploy/.ssh/authorized_keys` avec `restrict,command="…"` : pas de terminal, pas de redirection de port, pas d'autre commande.
-3. Essai : `ssh -i ~/.ssh/repas_lecture_seule -o BatchMode=yes -o IdentitiesOnly=yes deploy@64.227.124.100 aide` (liste des demandes), puis `… etat`. Et la preuve du refus : `… "ls /root"` doit répondre `Demande refusée`.
-4. Remplacer dans `.claude/settings.local.json` la règle large par la règle étroite :
-   - retirer `Bash(ssh * root@64.227.124.100 *)` ;
-   - ajouter `Bash(ssh -i ~/.ssh/repas_lecture_seule -o BatchMode=yes -o IdentitiesOnly=yes deploy@64.227.124.100 *)`.
-   La clé ne peut de toute façon rien d'autre : la règle n'est plus la seule barrière.
-5. Mettre à jour dans le même commit : `SKILL.md` § 1, `docs/production.md`, `CLAUDE.md` (règle d'exploitation, ADR 0017).
+3. Installer l'**enveloppe locale**, hors du dépôt : `mkdir -p ~/repas-outils && install -m 755 .claude/skills/repas-ops/references/lecture.sh ~/repas-outils/lecture.sh`. Elle fixe la clé, l'hôte et les options, et refuse tout argument qui n'est pas fait de lettres, chiffres et `_` (jamais de `-`). **Pourquoi** : une règle `Bash(ssh -i … deploy@64.227.124.100 *)` laisse passer des options placées APRÈS l'hôte (`-o ProxyCommand=…`, `-o LocalCommand=…`, un autre `-i`), qu'OpenSSH lit (revue du 2026-10-25, preuve avec `ssh -G`).
+4. Essai : `~/repas-outils/lecture.sh aide` (liste des demandes), puis `… etat`. Et la preuve du refus côté serveur : `ssh -i ~/.ssh/repas_lecture_seule -o BatchMode=yes -o IdentitiesOnly=yes deploy@64.227.124.100 "ls /root"` doit répondre `Demande refusée`.
+5. Dans `.claude/settings.local.json` : **retirer** `Bash(ssh * root@64.227.124.100 *)` et **ajouter** `Bash(~/repas-outils/lecture.sh *)`. C'est l'utilisateur qui pose les règles, jamais l'assistant.
+6. Mettre à jour dans le même commit : `SKILL.md` § 1, `docs/production.md`, `CLAUDE.md` (règle d'exploitation, ADR 0017).
+
+## Ce que la barrière ne couvre PAS (revue du 2026-10-25)
+
+Le serveur n'impose la lecture seule qu'à CETTE clé. Tant que d'autres clés puissantes restent lisibles par l'assistant sur le poste, rien ne l'empêche de les utiliser : `~/.ssh/id_ed25519` (root) et `~/.ssh/repas_deploy` (la clé de la CI, utilisateur `deploy` du groupe `docker`, donc équivalent root). Deux règles `allow` déjà présentes sont aussi des portes ouvertes : `Bash(docker run *)` (on monte `~/.ssh` dans un conteneur) et `Bash(bash -e -c ' *)` (exécute n'importe quoi). Pour que la barrière soit réelle, l'utilisateur choisit parmi :
+
+- retirer ces deux règles `allow` ;
+- ajouter des règles `deny` : `Read(~/.ssh/id_ed25519)`, `Read(~/.ssh/repas_deploy)`, `Bash(ssh *)` (l'enveloppe `lecture.sh` reste permise par sa propre règle, plus précise) ;
+- ou protéger les deux clés par une phrase de passe (`ssh-keygen -p -f ~/.ssh/id_ed25519`) et ne jamais charger d'agent SSH dans l'environnement de l'assistant.
+
+Aucune règle ne remplace la confiance : elles couvrent l'accident et l'injection (un texte lu dans un journal qui pousserait à lancer une commande), pas un assistant qui voudrait contourner. Le programme du serveur, lui, doit être relu à chaque `case` ajouté : le compte `deploy` étant dans le groupe `docker`, il est la seule chose qui sépare cette clé de root.
 
 ## Retirer
 

@@ -14,10 +14,17 @@
 set -euo pipefail
 
 PUBKEY=${1:-}
-[[ $PUBKEY =~ ^ssh-ed25519\ [A-Za-z0-9+/=]+(\ [^\"\']*)?$ ]] || {
-	echo "Clé publique ed25519 attendue en argument (contenu de ~/.ssh/repas_lecture_seule.pub)." >&2
+[[ $PUBKEY != *$'\n'* && $PUBKEY =~ ^ssh-ed25519\ [A-Za-z0-9+/=]+(\ [^\"\']*)?$ ]] || {
+	echo "Clé publique ed25519 attendue en argument (contenu de ~/.ssh/repas_lecture_seule.pub), sur une seule ligne." >&2
 	exit 2
 }
+# Une clé tronquée passerait la forme ci-dessus et rendrait l'accès muet : ssh-keygen la relit vraiment
+if command -v ssh-keygen > /dev/null; then
+	ssh-keygen -l -f /dev/stdin <<< "$PUBKEY" > /dev/null 2>&1 || {
+		echo "Cette clé publique n'est pas valide (ssh-keygen la refuse)." >&2
+		exit 2
+	}
+fi
 KEYBODY=$(awk '{print $2}' <<< "$PUBKEY")
 
 id deploy > /dev/null 2>&1 || { echo "L'utilisateur « deploy » n'existe pas sur ce serveur." >&2; exit 2; }
@@ -29,12 +36,18 @@ cat > /usr/local/sbin/repas-lecture-seule.new <<'LECTURE_SEULE'
 # la découpe sur les espaces SANS l'interpréter (ni eval, ni globbing) et ne connaît que les verbes ci-dessous.
 set -euo pipefail
 set -f
+# Environnement connu : aucun chemin ni script de démarrage hérité de la connexion
+export PATH=/usr/local/bin:/usr/bin:/bin
+unset BASH_ENV ENV
 cd /opt/repas
+
+refuse() { echo "Demande refusée : $*" >&2; exit 2; }
+# Une demande tient sur une seule ligne : le reste serait ignoré sans bruit
+[[ ${SSH_ORIGINAL_COMMAND:-} != *$'\n'* && ${SSH_ORIGINAL_COMMAND:-} != *$'\r'* ]] || refuse "une seule ligne"
 
 read -r -a ARGS <<< "${SSH_ORIGINAL_COMMAND:-}"
 VERB=${ARGS[0]:-aide}
 
-refuse() { echo "Demande refusée : $*" >&2; exit 2; }
 # Chaque demande a un nombre d'arguments fixe : tout ce qui dépasse est refusé, jamais ignoré
 arity() { ((${#ARGS[@]} <= $1)) || refuse "trop d'arguments"; }
 
@@ -69,7 +82,10 @@ AIDE
 		SERVICE=${ARGS[1]:-}
 		N=${ARGS[2]:-100}
 		[[ $SERVICE =~ ^(php|edge|front|database)$ ]] || refuse "service inconnu (php, edge, front, database)"
-		[[ $N =~ ^[0-9]{1,3}$ ]] && ((N >= 1 && N <= 500)) || refuse "nombre de lignes de 1 à 500"
+		[[ $N =~ ^[0-9]{1,3}$ ]] || refuse "nombre de lignes de 1 à 500"
+		# 10# : « 08 » et « 010 » sont des nombres décimaux, pas de l'octal
+		N=$((10#$N))
+		((N >= 1 && N <= 500)) || refuse "nombre de lignes de 1 à 500"
 		docker compose logs --no-color --tail "$N" "$SERVICE" < /dev/null
 		;;
 	disque)
@@ -82,6 +98,8 @@ AIDE
 		NAME=${ARGS[1]:-}
 		[[ $NAME =~ ^(DRIVE_ENABLED|INGREDIENT_SEEDING_ENABLED|ALEXA_ENABLED|APP_LATEST_VERSION|APP_MIN_VERSION)$ ]] \
 			|| refuse "drapeau non permis"
+		# Un conteneur arrêté n'est pas un drapeau absent : on le dit, au lieu de laisser croire que l'interrupteur est coupé
+		docker compose ps --status running --services < /dev/null | grep -qx php || refuse "le conteneur php ne tourne pas"
 		printf '%s=' "$NAME"
 		docker compose exec -T php printenv "$NAME" < /dev/null || echo '(absent)'
 		;;
@@ -124,8 +142,11 @@ install -d -m 700 -o deploy -g deploy "$SSH_DIR"
 touch "$AUTH"
 chown deploy:deploy "$AUTH"
 chmod 600 "$AUTH"
-# Retire toute ancienne ligne de cette clé (rejouable), ajoute la nouvelle
-grep -vF " repas-lecture-seule" "$AUTH" > "$AUTH.tmp" || true
+# Retire toute ancienne ligne de cette clé (rejouable), ajoute la nouvelle. grep rend 1 quand il ne reste aucune ligne (normal), 2 sur
+# une vraie erreur (disque plein, droits) : dans ce cas on s'arrête avant de remplacer authorized_keys, qui porte aussi la clé de la CI.
+rc=0
+grep -vF " repas-lecture-seule" "$AUTH" > "$AUTH.tmp" || rc=$?
+((rc <= 1)) || { rm -f "$AUTH.tmp"; echo "ECHEC : lecture de $AUTH impossible, rien n'est modifié." >&2; exit 1; }
 printf 'restrict,command="/usr/local/sbin/repas-lecture-seule" ssh-ed25519 %s repas-lecture-seule\n' "$KEYBODY" >> "$AUTH.tmp"
 chown deploy:deploy "$AUTH.tmp"
 chmod 600 "$AUTH.tmp"

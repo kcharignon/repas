@@ -7,6 +7,8 @@
 # secondes (le conteneur php redémarre). Couper ne supprime rien : les liaisons de compte restent.
 # REPAS_DIR (défaut /opt/repas) ne sert qu'à essayer ce script sur une copie.
 set -euo pipefail
+# Le .env porte tous les secrets : rien de ce que ce script crée n'est lisible par un autre compte, même interrompu
+umask 077
 
 value=${1:-}
 case $value in
@@ -19,6 +21,7 @@ esac
 
 dir=${REPAS_DIR:-/opt/repas}
 env_file=$dir/.env
+trap 'rm -f "$env_file.nouveau"' EXIT
 [[ -f $env_file ]] || {
 	echo "ECHEC : $env_file introuvable"
 	exit 1
@@ -57,9 +60,10 @@ fi
 # Recrée php seulement si sa configuration a changé (sans effet sinon). Même attente que deploy.sh.
 docker compose up -d --wait --wait-timeout 240 php < /dev/null
 
-seen=$(docker compose exec -T php printenv ALEXA_ENABLED < /dev/null | tr -d '\r')
+# printenv échoue quand la variable est absente : sans « || true », set -e arrêterait le script sans un mot
+seen=$(docker compose exec -T php printenv ALEXA_ENABLED < /dev/null 2> /dev/null | tr -d '\r' || true)
 if [[ $seen != "$value" ]]; then
-	echo "ECHEC : le conteneur php voit ALEXA_ENABLED=$seen au lieu de $value."
+	echo "ECHEC : le conteneur php voit ALEXA_ENABLED=${seen:-(absente)} au lieu de $value."
 	exit 1
 fi
 

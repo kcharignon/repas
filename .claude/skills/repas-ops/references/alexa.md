@@ -22,7 +22,7 @@ Prérequis : le back de la version qui contient la commande vocale est déployé
 
 1. **Fabriquer le secret** sur le poste de l'utilisateur, dans son terminal : `openssl rand -base64 36 | tr -d '\n=+/'`. Il le colle dans la console Amazon (*Build → Account Linking → Client Secret*), avec l'identifiant de client `repas-alexa`. Il ne me le montre jamais.
 2. **Écrire la configuration** (DANS SON PROPRE TERMINAL, pas avec `!` : la saisie du secret ne doit pas atterrir dans la conversation) :
-   `ssh -t -i ~/.ssh/id_ed25519 root@64.227.124.100 'bash -s' < .claude/skills/repas-ops/references/ecrire-alexa-env.sh`
+   `ssh -t -i ~/.ssh/id_ed25519 root@64.227.124.100 "$(cat .claude/skills/repas-ops/references/ecrire-alexa-env.sh)"` (le script est passé comme TEXTE de la commande : avec `'bash -s' < script`, ssh n'alloue pas de terminal et la saisie du secret échoue)
    Le script demande l'identifiant du skill, les adresses de retour, puis le secret (sans écho, deux fois), n'écrit que l'**empreinte**, garde une copie `.env.avant-alexa` et ne touche pas à l'interrupteur. Attendu : `Écrit dans /opt/repas/.env … Empreinte du secret : xxxxxxxx…`.
 3. **Contrôle en lecture seule** (par moi) : `docker compose exec -T php printenv ALEXA_ENABLED` répond `false`, `/api/v1/health` répond `200`, et `POST https://kantin.eu/api/voice/alexa` répond `404` (fonction coupée).
 
