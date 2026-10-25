@@ -137,6 +137,45 @@ final readonly class SpokenIngredientRanker
     }
 
     /**
+     * Tous les ingrédients qui valent la phrase pour ce qui est de leur NOM, quelle que soit la confiance de `rank()` (ADR 0029 décision 12) :
+     * ceux dont la pertinence, SANS le bonus d'habitude, est à moins de `CLEAR_MARGIN` de la meilleure (les noms identiques à la phrase seuls,
+     * s'il y en a). Pour retirer un produit de la liste ou demander s'il y est, l'habitude ne doit pas faire oublier un ingrédient qui est dans la
+     * liste : « tomate » en fruit et légume (40 usages, `PROBABLE`) et en surgelé (2 usages) sont équivalents, et c'est celui de la liste qui compte.
+     * Le meilleur d'abord (score avec habitude, puis nom, puis slug), tous rendus, sans limite : l'appelant choisit parmi eux. La mémoire de
+     * phrase passe avant tout (l'ingrédient mémorisé seul). Vide quand `rank()` ne choisirait rien.
+     *
+     * @param list<SpokenCandidate> $candidates les ingrédients de l'utilisateur
+     *
+     * @return list<RankedIngredient> au moins un ingrédient quand `rank()` en choisit un, sinon aucun
+     */
+    public function equivalents(string $phrase, array $candidates, ?string $rememberedSlug = null): array
+    {
+        if (self::normalize($phrase) === '') {
+            return [];
+        }
+        $remembered = $this->remembered($candidates, $rememberedSlug);
+        if ($remembered !== null) {
+            return [$remembered];
+        }
+
+        $pool = $this->pool($phrase, $candidates);
+        if ($pool === []) {
+            return [];
+        }
+
+        $bestRelevance = max(array_map(static fn(array $entry): float => $entry['relevance'], $pool));
+        $equivalents = array_values(array_filter(
+            $pool,
+            static fn(array $entry): bool => $bestRelevance - $entry['relevance'] < self::CLEAR_MARGIN - self::EPSILON,
+        ));
+
+        return array_map(
+            static fn(array $entry): RankedIngredient => self::ranked($entry['candidate'], $entry['score'], $entry['exact'] ? Confidence::SURE : Confidence::PROBABLE),
+            $equivalents,
+        );
+    }
+
+    /**
      * L'ingrédient que l'utilisateur a déjà choisi pour la phrase, s'il est parmi les candidats.
      *
      * @param list<SpokenCandidate> $candidates
@@ -160,7 +199,7 @@ final readonly class SpokenIngredientRanker
      *
      * @param list<SpokenCandidate> $candidates
      *
-     * @return list<array{candidate: SpokenCandidate, exact: bool, score: float}>
+     * @return list<array{candidate: SpokenCandidate, exact: bool, score: float, relevance: float}>
      */
     private function pool(string $phrase, array $candidates): array
     {
@@ -180,6 +219,7 @@ final readonly class SpokenIngredientRanker
                 'candidate' => $candidate,
                 'exact' => $name === $search,
                 'score' => $relevance + self::habit($candidate->uses12m),
+                'relevance' => $relevance,
             ];
         }
         if ($scored === []) {
