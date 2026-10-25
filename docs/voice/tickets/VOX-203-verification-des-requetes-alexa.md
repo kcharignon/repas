@@ -5,7 +5,7 @@
 - **Taille** : L
 - **Dépend de** : VOX-201
 - **Faisable sans téléphone** : oui
-- **Statut** : à faire
+- **Statut** : fait (PR #263, 2026-10-25)
 - **Lire d'abord** : [ADR 0029](../../adr/0029-commande-vocale-alexa.md) décision 7 ; page Amazon « Host a custom skill as a web service » (procédure de vérification, relire) ; `src/User/Infrastructure/Security` (modèle d'adaptateur avec horloge injectée). Effort conseillé : **xhigh** (sécurité).
 
 ## Contexte

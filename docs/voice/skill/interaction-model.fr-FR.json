@@ -28,6 +28,11 @@
             }
           ],
           "samples": [
+            "du {item}",
+            "de la {item}",
+            "des {item}",
+            "un {item}",
+            "une {item}",
             "ajoute {item}",
             "ajoute {item} à la liste",
             "ajoute du {item}",

@@ -5,7 +5,7 @@
 - **Taille** : M
 - **Dépend de** : —
 - **Faisable sans téléphone** : oui
-- **Statut** : à faire
+- **Statut** : fait (PR #258, 2026-10-25)
 - **Lire d'abord** : [`../alexa.md`](../alexa.md) § 4 ; [ADR 0029](../../adr/0029-commande-vocale-alexa.md) décision 3 ; [ADR 0019](../../adr/0019-recherche-d-ingredients-par-pertinence.md) ; `src/Shared/Domain/Tool/SearchRelevance.php` ; `src/Repas/Domain/Service/IngredientNameMatcher.php` (`tokens`, `STOP_WORDS`) ; `.claude/skills/repas-dev/SKILL.md`.
 
 ## Contexte
