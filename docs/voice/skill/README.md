@@ -9,6 +9,9 @@ Tout ce qu'il faut pour refaire le skill dans la console Amazon (ticket [VOX-002
 | `interaction-model.fr-FR.json` | le nom d'invocation, les intentions (ajouter un article, répondre aux questions d'un produit inconnu, aide, stop, oui, non…) et les types de valeurs `INGREDIENT`, `DEPARTMENT`, `UNIT`, `OPTION_RANK`. **Généré** par `generate-model.mjs`, jamais modifié à la main | console → *Build* → *Interaction Model* → *JSON Editor* → *Save* puis *Build* |
 | `skill.json` | le manifeste, tel que saisi dans la console le 2026-10-25 : nom public « Repas - Jarvis », textes, phrases d'exemple, catégorie « Food & Drink → Cooking & Recipes » (`COOKING_AND_RECIPE`), adresse du webhook, adresse de la politique de confidentialité, déclarations (pas d'achat, données personnelles oui, pas d'enfants, pas de publicité). Avec la console on saisit ces champs à la main ; avec l'ASK CLI (facultatif, jamais utilisé ici) `ask deploy` les envoie | console → *Distribution* → *Skill Preview* et *Privacy & Compliance* |
 | `generate-model.mjs` | le script qui produit le modèle d'interaction (node pur, aucune dépendance, aucun appel réseau) | `make voice-model` pour l'écrire, `make voice-model-check` pour vérifier qu'il est à jour |
+| `nlu-cases.fr-FR.json` | la copie versionnée des phrases à tester et de ce qu'Amazon doit en comprendre (VOX-307) : intention et créneaux attendus, avec la raison de chaque cas | **rien à coller dans la console** : le fichier reste dans le dépôt, `make voice-nlu-check` le rejoue |
+| `nlu-check.mjs` | le script qui rejoue ces cas contre le profileur d'énoncés d'Amazon, par la CLI officielle (node pur, aucune dépendance) | `make voice-nlu-check` (voir « Vérifier ce qu'Amazon comprend ») |
+| `test/` | l'auto-test du script avec un faux `ask` (aucun appel chez Amazon) | `make voice-nlu-selftest` |
 
 ## Régénérer le modèle
 
@@ -52,6 +55,36 @@ Le script lit `docs/ingredients/base-ingredients.tsv` (type `INGREDIENT`), `src/
 
 `tests/Voice/DocsVoiceSkillTest.php` (lancé par `make test`) vérifie, sans rien appeler chez Amazon : que les deux JSON sont valides ; que les intentions du modèle sont exactement celles du webhook ; que chaque intention a son créneau, du bon type, et de 6 à 10 phrases d'exemple bien formées dont la forme réduite au créneau ; que les valeurs et synonymes de chaque type sont uniques, sans chiffre ni parenthèse ni majuscule, de 140 caractères au plus ; que les `id` de `DEPARTMENT` et `UNIT` sont ceux des fixtures et ceux d'`OPTION_RANK` « 1 » à « 3 » ; que `INGREDIENT` couvre le catalogue de base ; que le manifeste désigne la route du webhook, sans permission ni accès à la liste d'Amazon.
 
+## Vérifier ce qu'Amazon comprend (VOX-307)
+
+**À quoi ça sert.** Nos tests (`make test`) vérifient notre serveur ; ils ne peuvent pas savoir quelle intention et quels créneaux **Amazon** retient d'une phrase. C'est pourtant là que sont nées les pannes réelles : « deux paquets de croquettes » ajoutait 1 (le nombre restait vide, 2026-10-25), « planifier une fondue » n'était pas compris (pas d'article dans les phrases d'exemple, 2026-10-26). `nlu-cases.fr-FR.json` garde, pour chaque phrase, ce qu'Amazon doit en comprendre ; `make voice-nlu-check` les rejoue toutes après chaque *Build skill* et dit celles qui ont régressé. Cela remplace « retester à la main » après un reset ou une mise à jour du modèle : **le fichier reste dans le dépôt**, il n'y a rien à recoller dans la console (seul le modèle s'y colle).
+
+**Ce que c'est, ce que ça ne fait pas.** Le script lance, pour chaque phrase, la commande `ask smapi profile-nlu -u "<phrase>" -s <skill> -g development -l fr-FR` : le **profileur d'énoncés** d'Amazon ([référence de l'API](https://developer.amazon.com/docs/smapi/utterance-profiler-api.html), [commande de la CLI](https://developer.amazon.com/docs/alexa/smapi/ask-cli-command-reference.html)) répond avec l'intention retenue, ses créneaux (valeur dite et identifiant résolu) et les intentions écartées. Il **n'appelle ni notre serveur ni le skill, n'écrit rien chez Amazon et ne touche à aucune liste** : c'est une lecture, sans effet. Il ne juge pas non plus ce que notre serveur répond (cela reste l'affaire des tests PHP et de [`../seance-en-direct.md`](../seance-en-direct.md)) ni un dialogue à plusieurs tours (une phrase à la fois, sans l'état de notre dialogue : c'est pourquoi une réponse brève comme « deux » admet plusieurs intentions, `alsoIntents`).
+
+**Pourquoi le profileur.** L'outil « NLU Evaluation » d'Amazon (jeux d'annotations de phrases attendues, relancés à chaque changement du modèle) est **déprécié et n'est plus supporté** ([fonctions dépréciées](https://developer.amazon.com/docs/alexa/ask-overviews/deprecated-features.html)), de même que l'API de détection de conflits d'énoncés (depuis le 2023-05-17) : on ne peut donc plus y coller un fichier d'attendus. Le profileur est ce qui reste, et la CLI permet de le piloter. Les conflits entre phrases d'exemple se vérifient hors ligne : `DocsVoiceNluCasesTest` fige la liste des ambiguïtés connues (une phrase d'exemple portée par deux intentions, ou qui devient celle d'une autre quand on lui retire un créneau) et échoue à la première nouvelle.
+
+**Mise en place, une seule fois (c'est le propriétaire qui se connecte : aucun agent ne contacte Amazon, aucun identifiant n'entre dans le dépôt).**
+
+1. *Node* 14 ou plus (la machine a déjà celui du modèle).
+2. Installer la CLI officielle ([guide](https://developer.amazon.com/docs/alexa/smapi/quick-start-alexa-skills-kit-command-line-interface.html), `npm install -g ask-cli`) **dans un dossier à part** plutôt qu'en global : `npm install --prefix ~/ask-cli ask-cli`, puis `export ASK_BIN=~/ask-cli/node_modules/.bin/ask`. Contrôle : `$ASK_BIN --version`.
+3. Se connecter : `$ASK_BIN configure --no-browser` (WSL : pas de navigateur) ; la CLI affiche une adresse à ouvrir sur un autre appareil, la connexion à ton compte développeur Amazon se fait là, puis un code à saisir dans le terminal. Elle garde la connexion dans `~/.ask` : ce dossier est à toi, ne le commit jamais, le script ne le lit pas. Si elle propose de lier un compte AWS, passe cette question (le skill n'est pas hébergé chez AWS).
+4. L'identifiant du skill (console, *Skill ID*, `amzn1.ask.skill.…` ; pas un secret, mais il n'est écrit dans aucun fichier du dépôt) : `export ALEXA_SKILL_ID=amzn1.ask.skill.…`.
+
+**Lancer** (après chaque *Build skill*) :
+
+```
+make voice-nlu-check                              # tous les cas (environ 130, deux à trois minutes)
+make voice-nlu-check NLU_ARGS="--only AddMealIntent"   # une intention ; ou des identifiants de cas : --only add-deux-paquets,remove-un-paquet
+make voice-nlu-check NLU_ARGS="--dry-run"          # liste les commandes sans rien lancer
+make voice-nlu-check NLU_ARGS="--json"             # résultats bruts (avec la réponse du profileur)
+```
+
+Le rapport dit « 97 / 133 OK, 4 échecs, 3 écarts connus », puis, pour chaque échec, la phrase, ce qui était attendu, ce qu'Amazon a retenu et les intentions envisagées. Code de sortie : 0 tout va bien, 1 au moins un échec, 2 le script ne peut pas travailler (CLI absente, pas connecté, pas d'identifiant). Il attend entre deux demandes, reprend (quatre fois au plus, en doublant l'attente) sur « trop de demandes » ou une panne d'Amazon, et s'arrête tout de suite si la connexion est refusée.
+
+**Un échec** : soit le modèle a régressé (corriger `generate-model.mjs`, `make voice-model`, recoller, relancer), soit le cas se trompe (le corriger). **Un échec qu'on accepte pour l'instant** (une limite d'Amazon qu'on contourne côté serveur) reçoit `"knownGap": true` et la raison dans sa `note` : il est compté à part et, le jour où il réussit, le rapport demande de retirer la marque. **Un cas** s'ajoute à chaque nouvelle panne réelle : `id`, `utterance` (comme Amazon la transcrit, en minuscules, **sans** « demande à Jarvis »), `intent`, `slots` (`{"value":"…"}` la valeur dite, `{"id":"…"}` l'identifiant résolu d'un type personnalisé, `null` = doit rester vide ; les créneaux non listés sont libres), `alsoIntents` si le webhook comprend aussi la phrase rangée ailleurs, `note` (pourquoi ce cas existe). `DocsVoiceNluCasesTest` (`make test`) refuse un fichier incohérent avec le modèle.
+
+**Limites connues.** Elle ne tourne **pas en CI** : elle demande ta connexion à Amazon (et `.github/workflows/` n'est pas modifiable par l'assistant : l'auto-test du script, `make voice-nlu-selftest`, ne tourne donc que sur la machine). Le format exact de la sortie de `ask smapi profile-nlu` n'a pas pu être essayé sans connexion : le script lit le JSON de l'API (avec ou sans l'enveloppe de `--full-response`) et dit « sortie illisible » s'il ne le reconnaît pas ; la référence de la CLI marque `--multi-turn-token` comme obligatoire alors que l'API le déclare facultatif : le script ne l'envoie pas, et si la CLI le réclame, la première exécution le dira (à corriger alors dans `nlu-check.mjs`). Les phrases à chiffres (« ajoute 10 croquettes ») ne jugent que l'intention : on ne sait pas comment Amazon transcrit ni résout un chiffre devant un type personnalisé, et le serveur lit le nombre resté dans le produit.
+
 ## Refaire le skill de zéro (ou le restaurer)
 
 À faire avec l'assistant, une étape à la fois, dans cet ordre (le déroulé détaillé est dans [`../seance-en-direct.md`](../seance-en-direct.md), étapes 4 à 8) :
@@ -68,7 +101,7 @@ Ce qui n'est **pas** dans le dépôt, volontairement : le secret de la liaison d
 
 ## Après un changement
 
-Reconstruire dans la console (*Save* puis *Build*) puis rejouer, avec l'Echo, une phrase de chaque intention (VOX-602). Un changement du catalogue de base n'oblige pas à mettre le modèle à jour : il ne sert qu'à orienter la reconnaissance. Un changement des rayons ou des unités (`department.json`, `unit.json`) oblige à régénérer le modèle (`make voice-model`) et à le recoller.
+Reconstruire dans la console (*Save* puis *Build*) puis rejouer, avec l'Echo, une phrase de chaque intention (VOX-602). Un changement du catalogue de base n'oblige pas à mettre le modèle à jour : il ne sert qu'à orienter la reconnaissance. Un changement des rayons ou des unités (`department.json`, `unit.json`) oblige à régénérer le modèle (`make voice-model`) et à le recoller. Après *Build skill* : `make voice-nlu-check` (voir plus haut) pour savoir tout de suite ce qu'Amazon comprend encore.
 
 ## Réserves (non vérifiables sans la console)
 
