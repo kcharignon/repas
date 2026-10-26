@@ -399,6 +399,35 @@ class SpokenIngredientRankerTest extends TestCase
         $this->assertSame([], $this->ranker->suggest('pâtes à pizza', $candidates, -2));
     }
 
+    public function testTheClosestAreTheBestRankedEvenWhenFarWithoutFloorNorSharedPrefix(): void
+    {
+        // Given : aucune recette ne ressemble à « blanquette de veaux » : `suggest()` n'en propose aucune (plancher), `closest()` rend les trois meilleures
+        $candidates = [self::own('Lasagnes'), self::own('Blanquette de dinde'), self::own('Hachis parmentier'), self::own('Gratin dauphinois')];
+
+        // When
+        $closest = $this->ranker->closest('blanquette de veaux', $candidates);
+
+        // Then : trois, la plus proche d'abord, jamais plus ; un nom sans rapport n'est pas écarté
+        $this->assertCount(SpokenIngredientRanker::MAX_SUGGESTIONS, $closest);
+        $this->assertSame('Blanquette de dinde', $closest[0]->name);
+        $this->assertSame([], $this->ranker->suggest('zzz qqq', [self::own('Lasagnes')]), 'les produits gardent leur plancher');
+        $this->assertCount(1, $this->ranker->closest('zzz qqq', [self::own('Lasagnes')]), 'les recettes, non');
+    }
+
+    public function testTheClosestIsOrderedDeterministicallyBoundedAndEmptyWithoutWordsOrCandidates(): void
+    {
+        // Given
+        $a = self::own('Pâte brisée');
+        $b = self::own('Pâte sablée');
+
+        // Then : l'ordre ne dépend pas de celui des candidats ; les bornes sont celles de `suggest()`
+        $this->assertEquals($this->ranker->closest('pâte', [$a, $b]), $this->ranker->closest('pâte', [$b, $a]));
+        $this->assertCount(1, $this->ranker->closest('pâte', [$a, $b], 1));
+        $this->assertSame([], $this->ranker->closest('pâte', [$a, $b], 0));
+        $this->assertSame([], $this->ranker->closest('pâte', []));
+        $this->assertSame([], $this->ranker->closest('   ', [$a]));
+    }
+
     public function testASuggestionIsNeverSureAndCarriesItsDepartment(): void
     {
         // When

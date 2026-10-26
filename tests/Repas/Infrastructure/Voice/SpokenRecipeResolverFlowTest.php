@@ -66,18 +66,51 @@ class SpokenRecipeResolverFlowTest extends DatabaseTestCase
         $found = $this->resolver->resolveOrSuggest($user->getId(), 'le gratin dauphinois');
         $notFound = $this->resolver->resolveOrSuggest($user->getId(), 'hachis parmentier');
 
-        // Then : la recette de l'autre n'existe pas pour lui, ni trouvée ni proposée
+        // Then : la recette de l'autre n'existe pas pour lui, ni trouvée ni proposée (seule la sienne, lointaine, est proposée)
         $this->assertSame([$gratin, 'Gratin dauphinois'], [$found->recipe?->id, $found->recipe?->name]);
         $this->assertNull($notFound->recipe);
-        $this->assertSame([], $notFound->suggestions);
+        $this->assertEquals([new RecipeSuggestion($gratin, 'Gratin dauphinois')], $notFound->suggestions);
     }
 
-    public function testAUserWithoutAnyRecipeGetsNothing(): void
+    public function testAUserWithoutAnyRecipeGetsNothingAndTheResolutionSaysSo(): void
     {
         $resolution = $this->resolver->resolveOrSuggest($this->savedUser()->getId(), 'gratin');
 
         $this->assertNull($resolution->recipe);
         $this->assertSame([], $resolution->suggestions);
+        $this->assertFalse($resolution->hasRecipes, 'Alexa le dit : « Tu n\'as encore aucune recette dans Repas. »');
+    }
+
+    public function testTheThreeClosestRecipesAreProposedEvenWhenTheyAreFarFromWhatWasSaid(): void
+    {
+        // Given : « blanquette de veaux » (2026-10-26) et quatre recettes sans rapport évident ; « blanquette de veau » n'existe pas
+        $user = $this->savedUser();
+        $this->savedRecipe($user, 'Lasagnes');
+        $dinde = $this->savedRecipe($user, 'Blanquette de dinde');
+        $this->savedRecipe($user, 'Hachis parmentier');
+        $this->savedRecipe($user, 'Gratin dauphinois');
+
+        // When
+        $resolution = $this->resolver->resolveOrSuggest($user->getId(), 'blanquette de volaille');
+
+        // Then : trois propositions, la plus proche d'abord, jamais un silence ; la recette n'est pas devinée pour autant
+        $this->assertNull($resolution->recipe);
+        $this->assertTrue($resolution->hasRecipes);
+        $this->assertCount(3, $resolution->suggestions);
+        $this->assertSame($dinde, $resolution->suggestions[0]->id);
+    }
+
+    public function testALoneRecipeVeryFarFromWhatWasSaidIsStillProposed(): void
+    {
+        // Given
+        $user = $this->savedUser();
+        $lasagnes = $this->savedRecipe($user, 'Lasagnes');
+
+        // When
+        $resolution = $this->resolver->resolveOrSuggest($user->getId(), 'blanquette de veaux');
+
+        // Then
+        $this->assertEquals([new RecipeSuggestion($lasagnes, 'Lasagnes')], $resolution->suggestions);
     }
 
     public function testTheRecipeWhoseNameIsTheOneSaidWinsOverALongerOne(): void
@@ -122,9 +155,9 @@ class SpokenRecipeResolverFlowTest extends DatabaseTestCase
         // When : une faute de frappe trop forte pour être devinée
         $resolution = $this->resolver->resolveOrSuggest($user->getId(), 'gratin dofinois');
 
-        // Then : proposée, jamais planifiée toute seule ; le hachis, qui n'a rien à voir, n'est pas proposé
+        // Then : proposée, jamais planifiée toute seule ; le hachis, sans rapport, ne passe qu'ensuite (les trois plus proches, même lointaines)
         $this->assertNull($resolution->recipe);
-        $this->assertEquals([new RecipeSuggestion($gratin, 'Gratin dauphinois')], $resolution->suggestions);
+        $this->assertEquals(new RecipeSuggestion($gratin, 'Gratin dauphinois'), $resolution->suggestions[0]);
     }
 
     public function testAProductNeverStealsARecipeAndARecipeNeverStealsAProduct(): void

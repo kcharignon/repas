@@ -8,6 +8,7 @@ use OpenApi\Attributes as OA;
 use Psr\Log\LoggerInterface;
 use Repas\Shared\Application\Interface\CommandBusInterface;
 use Repas\Shared\Application\Interface\QueryBusInterface;
+use Repas\Shared\Domain\Exception\SpokenMealFailure;
 use Repas\Shared\Infrastructure\Http\RequiresVoice;
 use Repas\Voice\Application\Command\AddSpokenItem\AddSpokenItemCommand;
 use Repas\Voice\Application\Command\AddSpokenItem\AddSpokenItemResult;
@@ -131,8 +132,16 @@ final class HandleAlexaRequestApiController extends AbstractController
         try {
             $response = $this->dialogue->beforeAuthentication($alexa) ?? $this->answerLinkedUser($alexa);
         } catch (Throwable $exception) {
-            $this->logger->error('Réponse à Alexa impossible.', $this->failureContext($exception));
-            $response = AlexaResponse::say(VoiceReplies::FAILURE);
+            $context = $this->failureContext($exception);
+            $known = $this->knownMealFailure($exception);
+            if ($known !== null) {
+                // Un échec CONNU d'un repas : une phrase claire (rien n'est écrit, le bus a tout annulé) ; la raison suffit au journal, jamais le nom de la recette
+                $this->logger->warning(sprintf('Repas impossible : %s.', $known->reason), $context);
+                $response = AlexaResponse::say((string) VoiceReplies::mealFailure($known->reason, $known->recipeName));
+            } else {
+                $this->logger->error($this->failureMessage($context), $context);
+                $response = AlexaResponse::say(VoiceReplies::FAILURE);
+            }
         }
 
         return new JsonResponse($response->toArray());
@@ -157,6 +166,38 @@ final class HandleAlexaRequestApiController extends AbstractController
         }
 
         return $context;
+    }
+
+    /**
+     * L'échec connu d'un repas que cette panne porte, ou `null` : `CommandBus::dispatch` rend une `DomainException` telle quelle, mais un bus imbriqué ou
+     * Messenger peut l'envelopper (`getPrevious()`), on remonte donc la chaîne. Seule une raison que `VoiceReplies::mealFailure` sait dire compte.
+     */
+    private function knownMealFailure(Throwable $exception): ?SpokenMealFailure
+    {
+        for ($current = $exception; $current !== null; $current = $current->getPrevious()) {
+            if ($current instanceof SpokenMealFailure && VoiceReplies::mealFailure($current->reason, $current->recipeName) !== null) {
+                return $current;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * La ligne du journal de production : le contexte d'un enregistrement n'y apparaît pas (seul le message est écrit), donc la classe et l'endroit de la
+     * panne, et ceux de sa cause quand le bus l'a enveloppée, sont DANS le message (2026-10-26 : quatre « Réponse à Alexa impossible. » sans rien pour
+     * retrouver la panne). Jamais le message de l'exception ni le corps.
+     *
+     * @param array<string, string> $context
+     */
+    private function failureMessage(array $context): string
+    {
+        $message = sprintf('Réponse à Alexa impossible (%s à %s', $context['exception'], $context['location']);
+        if (isset($context['previous'], $context['previous_location'])) {
+            $message .= sprintf(', cause : %s à %s', $context['previous'], $context['previous_location']);
+        }
+
+        return $message . ').';
     }
 
     private function placeOf(Throwable $exception): string

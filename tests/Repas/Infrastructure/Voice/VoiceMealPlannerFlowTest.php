@@ -5,6 +5,7 @@ namespace Repas\Tests\Repas\Infrastructure\Voice;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Repas\Repas\Domain\Exception\IngredientException;
 use Repas\Repas\Domain\Exception\RecipeException;
+use Repas\Shared\Domain\Exception\SpokenMealFailure;
 use Repas\Repas\Domain\Exception\ShoppingListException;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Repas\Domain\Model\Meal;
@@ -247,7 +248,8 @@ class VoiceMealPlannerFlowTest extends DatabaseTestCase
         $this->entityManager->clear();
 
         // Then
-        $this->expectExceptionObject(RecipeException::notFound($theirs->getId()));
+        // Une recette d'un autre compte ou inconnue : une phrase claire (`SpokenMealFailure`), rien d'écrit
+        $this->expectExceptionObject(SpokenMealFailure::recipeGone());
         try {
             $this->planner->plan($user->getId(), $theirs->getId());
         } finally {
@@ -260,7 +262,7 @@ class VoiceMealPlannerFlowTest extends DatabaseTestCase
     {
         $user = $this->savedUser();
 
-        $this->expectExceptionObject(RecipeException::notFound('does-not-exist'));
+        $this->expectExceptionObject(SpokenMealFailure::recipeGone());
         $this->planner->plan($user->getId(), 'does-not-exist');
     }
 
@@ -296,8 +298,9 @@ class VoiceMealPlannerFlowTest extends DatabaseTestCase
         try {
             $this->planner->plan($user->getId(), $recipe->getId());
             $this->fail('Une recette dont un ingrédient ne se convertit pas ne se planifie pas.');
-        } catch (IngredientException) {
-            // Then : comme dans l'application, tout est annulé (y compris la liste neuve)
+        } catch (SpokenMealFailure $exception) {
+            // Then : une phrase claire (le nom de la recette), et comme dans l'application tout est annulé (y compris la liste neuve)
+            $this->assertSame([SpokenMealFailure::MISSING_CONVERSION, $recipe->getName()], [$exception->reason, $exception->recipeName]);
             $this->entityManager->clear();
             $this->assertCount(0, $this->shoppingListRepository->findByOwner($user->getId()));
         }
@@ -404,7 +407,8 @@ class VoiceMealPlannerFlowTest extends DatabaseTestCase
         $this->entityManager->clear();
 
         // Then
-        $this->expectExceptionObject(RecipeException::notFound($theirs->getId()));
+        // Une recette d'un autre compte ou inconnue : une phrase claire (`SpokenMealFailure`), rien d'écrit
+        $this->expectExceptionObject(SpokenMealFailure::recipeGone());
         $this->planner->changeServings($user->getId(), $theirs->getId(), 6);
     }
 
@@ -566,9 +570,9 @@ class VoiceMealPlannerFlowTest extends DatabaseTestCase
             // When
             $this->planner->removeMeal($user->getId(), $theirs->getId());
             $this->fail('La recette d\'un autre compte doit être refusée.');
-        } catch (RecipeException $exception) {
-            // Then : 404, et la liste de l'autre n'a pas bougé
-            $this->assertEquals(RecipeException::notFound($theirs->getId()), $exception);
+        } catch (SpokenMealFailure $exception) {
+            // Then : une phrase claire, et la liste de l'autre n'a pas bougé
+            $this->assertSame(SpokenMealFailure::RECIPE_GONE, $exception->reason);
         }
         $this->entityManager->clear();
         $this->assertCount(1, $this->shoppingListRepository->findOneById($theirList->getId())->getMeals());
@@ -578,7 +582,7 @@ class VoiceMealPlannerFlowTest extends DatabaseTestCase
     {
         $user = $this->savedUser();
 
-        $this->expectException(RecipeException::class);
+        $this->expectExceptionObject(SpokenMealFailure::recipeGone());
         $this->planner->removeMeal($user->getId(), 'recette-qui-n-existe-pas');
     }
 
@@ -625,8 +629,9 @@ class VoiceMealPlannerFlowTest extends DatabaseTestCase
             // When
             $this->planner->removeMeal($user->getId(), $recipe->getId());
             $this->fail('Un ingrédient sans conversion doit faire échouer la commande.');
-        } catch (IngredientException) {
-            // Then : le bus transactionnel a tout annulé, le repas est toujours dans la liste
+        } catch (SpokenMealFailure $exception) {
+            // Then : une phrase claire, le bus transactionnel a tout annulé, le repas est toujours dans la liste
+            $this->assertSame(SpokenMealFailure::MISSING_CONVERSION, $exception->reason);
         }
         $this->entityManager->clear();
         $this->assertCount(1, $this->shoppingListRepository->findOneById($active->getId())->getMeals());

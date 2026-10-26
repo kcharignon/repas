@@ -26,7 +26,8 @@ use Symfony\Component\Messenger\Attribute\AsMessageHandler;
  * combien de personnes elle est prévue et demande le nouveau total ou de ne rien changer (le dialogue continue à l'étape `servings`, dans
  * `AnswerSpokenDialogueHandler`).
  *
- * Recette inconnue : « Je ne trouve pas la recette X. Tu veux dire A, B ou C ? Ou un produit ? » (aucune proche : « C'est un produit ? »). L'issue « un
+ * Recette inconnue : « Je ne trouve pas la recette X. Tu veux dire A, B ou C ? Ou un produit ? » : les trois recettes les PLUS PROCHES, même lointaines (jamais
+ * un silence) ; s'il n'a aucune recette : « Tu n'as encore aucune recette dans Repas. C'est un produit ? ». L'issue « un
  * produit » n'est proposée que si les produits n'ont pas déjà été cherchés pour cette phrase (`AddSpokenMealCommand::$otherSideTried`) ; une fois les
  * deux essayés et rien trouvé : « Je ne trouve rien qui s'appelle X. ». Choisir une proposition planifie le repas ET retient la phrase.
  *
@@ -55,7 +56,7 @@ readonly class AddSpokenMealHandler
 
         $resolution = $this->recipeResolver->resolveOrSuggest($command->userId, $name);
         if ($resolution->recipe === null) {
-            return $this->unknown($command, $name, $resolution->suggestions);
+            return $this->unknown($command, $name, $resolution->suggestions, $resolution->hasRecipes);
         }
 
         return $this->plan(
@@ -117,9 +118,9 @@ readonly class AddSpokenMealHandler
      * « Je ne trouve pas la recette X » : rien d'écrit, une question, la séance reste ouverte. Sans proposition, et quand les produits ont déjà été
      * cherchés, il n'y a plus rien à demander : « Je ne trouve rien qui s'appelle X. ».
      *
-     * @param list<RecipeSuggestion> $suggestions
+     * @param list<RecipeSuggestion> $suggestions les trois recettes les plus proches, même lointaines ; vide seulement si l'utilisateur n'en a aucune
      */
-    private function unknown(AddSpokenMealCommand $command, string $name, array $suggestions): AddSpokenItemResult
+    private function unknown(AddSpokenMealCommand $command, string $name, array $suggestions, bool $hasRecipes): AddSpokenItemResult
     {
         if ($suggestions === [] && $command->otherSideTried) {
             return new AddSpokenItemResult(VoiceReplies::nothingFound($name), keepSessionOpen: $command->sessionIsOpen, added: false);
@@ -132,7 +133,7 @@ readonly class AddSpokenMealHandler
         $state = SpokenDialogueState::chooseRecipe($name, $options, $name, $command->servings, $command->otherSideTried, $command->originalPhrase);
 
         return new AddSpokenItemResult(
-            VoiceReplies::unknownMeal($name, array_map(static fn(DialogueOption $option): string => $option->name, $state->options), offerItem: !$command->otherSideTried),
+            VoiceReplies::unknownMeal($name, array_map(static fn(DialogueOption $option): string => $option->name, $state->options), offerItem: !$command->otherSideTried, hasRecipes: $hasRecipes),
             keepSessionOpen: true,
             added: false,
             nextState: $state,

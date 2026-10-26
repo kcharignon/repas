@@ -13,7 +13,9 @@ use Repas\Tests\Helper\AlexaRequestVerifierDouble;
 use Repas\Tests\Helper\ContextSpyLogger;
 use Repas\Tests\Helper\MockCommandBus;
 use Repas\Tests\Helper\MockQueryBus;
+use Repas\Shared\Domain\Exception\SpokenMealFailure;
 use Repas\Voice\Application\Command\AddSpokenItem\AddSpokenItemCommand;
+use Repas\Voice\Application\Command\AddSpokenMeal\AddSpokenMealCommand;
 use Repas\Voice\Application\Command\AnswerSpokenDialogue\AnswerSpokenDialogueCommand;
 use Repas\Voice\Application\Command\RecordVoiceLinkUse\RecordVoiceLinkUseCommand;
 use Repas\Voice\Domain\Model\DialogueOption;
@@ -68,6 +70,8 @@ class HandleAlexaRequestLoggingTest extends TestCase
         $this->assertSame('error', $this->logger->records[0]['level']);
         $this->assertSame(RuntimeException::class, $this->logger->records[0]['context']['exception']);
         $this->assertMatchesRegularExpression('/^HandleAlexaRequestLoggingTest\.php:\d+$/', $this->logger->records[0]['context']['location']);
+        // La ligne du journal de production n'affiche que le message : la classe et l'endroit y sont (2026-10-26), jamais le message de l'exception
+        $this->assertMatchesRegularExpression('/^Réponse à Alexa impossible \(RuntimeException à HandleAlexaRequestLoggingTest\.php:\d+\)\.$/', $this->logger->records[0]['message']);
         $this->assertNothingSecretWasLoggedNorAnswered($response->getContent());
     }
 
@@ -89,7 +93,41 @@ class HandleAlexaRequestLoggingTest extends TestCase
         $this->assertSame(RuntimeException::class, $context['previous']);
         $this->assertMatchesRegularExpression('/^HandleAlexaRequestLoggingTest\.php:\d+$/', $context['previous_location'], "l'endroit de la panne d'origine, pas un fichier de Messenger");
         $this->assertDoesNotMatchRegularExpression('/Messenger|HandleMessageMiddleware/', $context['previous_location']);
+        // … et le message de la ligne nomme la cause, pas seulement l'enveloppe de Messenger
+        $message = $this->logger->records[0]['message'];
+        $this->assertStringStartsWith('Réponse à Alexa impossible (' . HandlerFailedException::class . ' à ', $message);
+        $this->assertMatchesRegularExpression('/, cause : RuntimeException à HandleAlexaRequestLoggingTest\.php:\d+\)\.$/', $message);
         $this->assertNothingSecretWasLoggedNorAnswered($response->getContent());
+    }
+
+    public function testAKnownMealFailureIsSaidClearlyAndLoggedByItsReasonNeverByTheRecipeName(): void
+    {
+        // Given : un ingrédient de la recette n'a pas de conversion (le nom de la recette est celui de l'utilisateur)
+        $this->commandBus->willThrow(AddSpokenMealCommand::class, SpokenMealFailure::missingConversion('Blanquette secrète'));
+
+        // When
+        $response = $this->controller()($this->request(AlexaTestRequest::addMeal(self::SECRET_PHRASE)->withAccessToken(self::SECRET_TOKEN)->toJson()));
+
+        // Then : 200 et la phrase claire (le nom de la recette y est : c'est sa voix), jamais la phrase d'échec générique ; une alerte, pas une erreur
+        $this->assertSame(200, $response->getStatusCode());
+        $this->assertSame('Je ne peux pas calculer les quantités de blanquette secrète. Ouvre la recette dans Repas.', json_decode((string) $response->getContent(), true)['response']['outputSpeech']['text']);
+        $this->assertCount(1, $this->logger->records);
+        $this->assertSame(['warning', 'Repas impossible : MISSING_CONVERSION.'], [$this->logger->records[0]['level'], $this->logger->records[0]['message']]);
+        $this->assertStringNotContainsString('secrète', $this->logger->everything());
+        $this->assertNothingSecretWasLoggedNorAnswered($response->getContent());
+    }
+
+    public function testAKnownMealFailureWrappedByAnotherExceptionIsStillFound(): void
+    {
+        // Given : un bus imbriqué ou Messenger enveloppe l'échec connu
+        $this->commandBus->willThrow(AddSpokenMealCommand::class, new RuntimeException('enveloppe', 0, SpokenMealFailure::recipeGone()));
+
+        // When
+        $response = $this->controller()($this->request(AlexaTestRequest::addMeal('hachis')->withAccessToken(self::SECRET_TOKEN)->toJson()));
+
+        // Then
+        $this->assertSame('Je ne retrouve plus cette recette dans Repas.', json_decode((string) $response->getContent(), true)['response']['outputSpeech']['text']);
+        $this->assertSame('Repas impossible : RECIPE_GONE.', $this->logger->records[0]['message']);
     }
 
     public function testADomainFailureThroughTheRealBusIsLoggedByItsOwnClassWithoutAPrevious(): void

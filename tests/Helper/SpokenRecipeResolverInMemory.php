@@ -23,6 +23,8 @@ final class SpokenRecipeResolverInMemory implements SpokenRecipeResolver
 
     private ?Throwable $rememberFailure = null;
 
+    private bool $hasRecipes = true;
+
     /** @var list<array{string, string}> les appels à `resolveOrSuggest` `[userId, phrase]`, dans l'ordre */
     public array $asked = [];
 
@@ -46,6 +48,14 @@ final class SpokenRecipeResolverInMemory implements SpokenRecipeResolver
         return $this;
     }
 
+    /** L'utilisateur n'a AUCUNE recette : la résolution le dit (`hasRecipes` faux) au lieu de ne rien proposer. */
+    public function withoutAnyRecipe(): self
+    {
+        $this->hasRecipes = false;
+
+        return $this;
+    }
+
     public function willFailToRemember(Throwable $failure): self
     {
         $this->rememberFailure = $failure;
@@ -57,7 +67,7 @@ final class SpokenRecipeResolverInMemory implements SpokenRecipeResolver
     {
         $this->asked[] = [$userId, $phrase];
 
-        return isset($this->answers[$phrase]) ? SpokenRecipeResolution::found($this->answers[$phrase]) : SpokenRecipeResolution::unknown($this->suggestions[$phrase] ?? []);
+        return isset($this->answers[$phrase]) ? SpokenRecipeResolution::found($this->answers[$phrase]) : SpokenRecipeResolution::unknown($this->suggestions[$phrase] ?? [], $this->hasRecipes);
     }
 
     public function remember(string $userId, string $phrase, string $recipeId): void
