@@ -18,6 +18,11 @@ use Repas\User\Domain\Model\User;
 
 class ShoppingListBuilder implements Builder
 {
+    /**
+     * Date fixe par défaut : deux listes construites à une seconde d'écart ne doivent pas différer par leur date (un test compare une liste attendue à une liste construite plus tôt).
+     */
+    public const string DEFAULT_DATE = '2026-01-15T10:00:00+00:00';
+
     private ?string $id = null;
     private UserBuilder|User|null $owner = null;
     private ?DateTimeImmutable $createdAt = null;
@@ -51,7 +56,7 @@ class ShoppingListBuilder implements Builder
             'ingredients' => Tab::newEmptyTyped(ShoppingListIngredient::class),
             'rows' => Tab::newEmptyTyped(ShoppingListRow::class),
             'version' => $this->version,
-            'sent_at' => $this->status === ShoppingListStatus::SENT ? ($this->sentAt ?? new DateTimeImmutable()) : null,
+            'sent_at' => $this->status === ShoppingListStatus::SENT ? ($this->sentAt ?? new DateTimeImmutable(self::DEFAULT_DATE)) : null,
         ]);
 
         // On ajoute les repas(recette)
@@ -101,7 +106,7 @@ class ShoppingListBuilder implements Builder
     {
         $this->id ??= UuidGenerator::new();
         $this->owner ??= new UserBuilder();
-        $this->createdAt ??= new DateTimeImmutable();
+        $this->createdAt ??= new DateTimeImmutable(self::DEFAULT_DATE);
         $this->status ??= ShoppingListStatus::ACTIVE;
         $this->name ??= null;
         $this->recipes ??= Tab::newEmptyTyped(Recipe::class);
