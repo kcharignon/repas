@@ -1,11 +1,13 @@
 # Paquet du skill Alexa « Jarvis »
 
-Deux fichiers, à coller dans la console Amazon (ticket [VOX-002](../tickets/VOX-002-compte-amazon-et-skill.md)). Ils ne contiennent aucun secret.
+Tout ce qu'il faut pour refaire le skill dans la console Amazon (ticket [VOX-002](../tickets/VOX-002-compte-amazon-et-skill.md)) : aucun secret n'y figure (le secret de la liaison de compte n'est jamais dans le dépôt, seule son empreinte est sur le serveur).
 
 | Fichier | À quoi il sert | Où on le colle |
 |---|---|---|
+| `account-linking.json` | les réglages de la liaison de compte (adresses, identifiant de client, portée, PKCE), **sans le secret** (`clientSecret` s'ajoute au déploiement) | console → *Build* → *Account Linking* (saisis les mêmes valeurs) |
+| `assets/` | les deux icônes de la fiche : `fr-FR_smallIcon.png` (108 × 108) et `fr-FR_largeIcon.png` (512 × 512), tirées de l'icône de l'application Repas | console → *Distribution* → *Skill Preview* → *Small / Large Skill Icon* |
 | `interaction-model.fr-FR.json` | le nom d'invocation, les intentions (ajouter un article, répondre aux questions d'un produit inconnu, aide, stop, oui, non…) et les types de valeurs `INGREDIENT`, `DEPARTMENT`, `UNIT`, `OPTION_RANK`. **Généré** par `generate-model.mjs`, jamais modifié à la main | console → *Build* → *Interaction Model* → *JSON Editor* → *Save* puis *Build* |
-| `skill.json` | le manifeste (nom, description, adresse du webhook). **Seulement si l'on utilise l'ASK CLI** ; avec la console on saisit ces champs à la main | `ask deploy` (facultatif) |
+| `skill.json` | le manifeste, tel que saisi dans la console le 2026-10-25 : nom public « Repas - Jarvis », textes, phrases d'exemple, catégorie « Food & Drink → Cooking & Recipes » (`COOKING_AND_RECIPE`), adresse du webhook, adresse de la politique de confidentialité, déclarations (pas d'achat, données personnelles oui, pas d'enfants, pas de publicité). Avec la console on saisit ces champs à la main ; avec l'ASK CLI (facultatif, jamais utilisé ici) `ask deploy` les envoie | console → *Distribution* → *Skill Preview* et *Privacy & Compliance* |
 | `generate-model.mjs` | le script qui produit le modèle d'interaction (node pur, aucune dépendance, aucun appel réseau) | `make voice-model` pour l'écrire, `make voice-model-check` pour vérifier qu'il est à jour |
 
 ## Régénérer le modèle
@@ -43,6 +45,20 @@ Le script lit `docs/ingredients/base-ingredients.tsv` (type `INGREDIENT`), `src/
 ## Le test de cohérence
 
 `tests/Voice/DocsVoiceSkillTest.php` (lancé par `make test`) vérifie, sans rien appeler chez Amazon : que les deux JSON sont valides ; que les intentions du modèle sont exactement celles du webhook ; que chaque intention a son créneau, du bon type, et de 6 à 10 phrases d'exemple bien formées dont la forme réduite au créneau ; que les valeurs et synonymes de chaque type sont uniques, sans chiffre ni parenthèse ni majuscule, de 140 caractères au plus ; que les `id` de `DEPARTMENT` et `UNIT` sont ceux des fixtures et ceux d'`OPTION_RANK` « 1 » à « 3 » ; que `INGREDIENT` couvre le catalogue de base ; que le manifeste désigne la route du webhook, sans permission ni accès à la liste d'Amazon.
+
+## Refaire le skill de zéro (ou le restaurer)
+
+À faire avec l'assistant, une étape à la fois, dans cet ordre (le déroulé détaillé est dans [`../seance-en-direct.md`](../seance-en-direct.md), étapes 4 à 8) :
+
+1. Console Amazon → *Create Skill* : nom « Jarvis », langue French (FR), modèle **Custom**, hébergement **Provision your own**, *Start from scratch*.
+2. *Build* → *Interaction Model* → *JSON Editor* : coller `interaction-model.fr-FR.json` **par le presse-papiers de PowerShell** (jamais `clip.exe` : il casse les accents), *Save*, *Build skill*.
+3. *Build* → *Endpoint* : **HTTPS**, `https://kantin.eu/api/voice/alexa`, certificat d'une autorité reconnue. À revérifier après chaque collage du modèle.
+4. *Build* → *Account Linking* : les valeurs de `account-linking.json`, un **nouveau secret** fabriqué sans l'afficher (`openssl rand -base64 36 | tr -d '\n=+/'`), jamais écrit dans le dépôt ni dans le chat ; la console affiche alors les adresses de retour d'Alexa.
+5. *Distribution* → *Skill Preview* (fr-FR) et *Privacy & Compliance* : les valeurs de `skill.json` et les deux icônes de `assets/` ; *Certification* → *Validation* → *Run* doit répondre zéro erreur.
+6. Serveur : relancer `ecrire-alexa-env.sh` dans le terminal du propriétaire (identifiant du skill, adresses de retour, secret **saisi en premier**), puis contrôler `ALEXA_ENABLED`.
+7. Pour des testeurs : *Distribution* → *Availability* → *Beta Test* → *Start Test* (adresse e-mail du compte Amazon de chaque testeur, lien à leur envoyer eux-mêmes). **Un test bêta dure 90 jours au plus et ne se prolonge pas** : en recréer un avant l'échéance. Son état est propre à la console, il n'est pas dans le dépôt.
+
+Ce qui n'est **pas** dans le dépôt, volontairement : le secret de la liaison de compte, l'identifiant du skill (`ALEXA_SKILL_ID`, variable du serveur), l'état du test bêta et la liste des testeurs.
 
 ## Après un changement
 

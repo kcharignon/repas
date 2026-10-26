@@ -1,0 +1,17 @@
+{
+  "accountLinkingRequest": {
+    "type": "AUTH_CODE",
+    "authorizationUrl": "https://kantin.eu/alexa/lier",
+    "accessTokenUrl": "https://kantin.eu/api/voice/oauth/token",
+    "clientId": "repas-alexa",
+    "accessTokenScheme": "HTTP_BASIC",
+    "scopes": ["voice:shopping_list:write"],
+    "domains": [],
+    "defaultTokenExpirationInSeconds": 3600,
+    "skipOnEnablement": false,
+    "pkceConfiguration": {
+      "status": "ENABLED",
+      "codeChallengeMethod": "S256"
+    }
+  }
+}

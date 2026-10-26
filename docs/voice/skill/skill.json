@@ -4,21 +4,23 @@
     "publishingInformation": {
       "locales": {
         "fr-FR": {
-          "name": "Jarvis",
-          "summary": "Ajoute des produits à ta liste de courses Repas.",
-          "description": "Dis à Alexa ce qu'il te faut et le produit arrive dans ta liste de courses Repas, sur ton téléphone.",
+          "name": "Repas - Jarvis",
+          "summary": "Ajoute des produits à ta liste de courses Repas à la voix, avec la quantité et l'unité.",
+          "description": "Jarvis ajoute les produits que tu dictes à ta liste de courses de l'application Repas. Dis par exemple : « Alexa, demande à Jarvis d'ajouter deux paquets de croquettes ». Jarvis choisit le produit que tu veux dire parmi les tiens, te demande de préciser quand deux produits se ressemblent, retient tes choix et peut créer un produit qui n'existe pas encore. Il faut un compte Repas : tu le lies une seule fois dans l'application Alexa.",
           "examplePhrases": [
-            "Alexa, demande à Jarvis d'ajouter du pain",
             "Alexa, ouvre Jarvis",
-            "Alexa, demande à Jarvis d'ajouter des tomates"
+            "Alexa, demande à Jarvis d'ajouter du pain",
+            "Alexa, demande à Jarvis d'ajouter deux paquets de croquettes"
           ],
-          "keywords": ["courses", "liste", "repas"]
+          "keywords": ["courses", "liste", "repas", "cuisine", "recettes"],
+          "smallIconUri": "file://assets/fr-FR_smallIcon.png",
+          "largeIconUri": "file://assets/fr-FR_largeIcon.png"
         }
       },
       "isAvailableWorldwide": false,
       "distributionCountries": ["FR"],
-      "testingInstructions": "Skill privé (développement) : réservé au compte Amazon du propriétaire de Repas.",
-      "category": "ORGANIZERS_AND_ASSISTANTS"
+      "testingInstructions": "Skill privé (test bêta) : réservé aux comptes Amazon des testeurs invités par le propriétaire de Repas. Il faut un compte Repas pour lier le skill.",
+      "category": "COOKING_AND_RECIPE"
     },
     "apis": {
       "custom": {
@@ -33,7 +35,12 @@
       "usesPersonalInfo": true,
       "isChildDirected": false,
       "isExportCompliant": true,
-      "containsAds": false
+      "containsAds": false,
+      "locales": {
+        "fr-FR": {
+          "privacyPolicyUrl": "https://kantin.eu/confidentialite"
+        }
+      }
     }
   }
 }
