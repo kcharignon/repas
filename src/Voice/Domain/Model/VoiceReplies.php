@@ -157,6 +157,31 @@ final class VoiceReplies
     /** Ni produit ni recette ne portent ce nom : plus d'issue. */
     public const string NOTHING_FOUND = "Je ne trouve rien qui s'appelle %s.";
 
+    // ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
+    // Retirer un repas, et proposer ce que la liste contient quand on ne comprend pas (ADR 0029 décision 12 amendée, VOX-306)
+    // ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
+
+    /** « Enlève » dit avec « le repas » mais sans recette : un exemple, jamais une question ouverte. */
+    public const string REMOVE_MEAL_EXAMPLE = 'Dis par exemple : enlève le repas hachis parmentier.';
+    /** Le repas quitte la liste (X : « hachis parmentier »). Si seul un nombre de personnes baisse : `MEAL_SERVINGS_CHANGED`. */
+    public const string MEAL_REMOVED = "C'est retiré : le repas %s.";
+    /** Le repas à retirer n'est pas dans la liste : les repas planifiés qui lui ressemblent, puis l'issue « ou un produit ? » tant que les produits n'ont pas été cherchés. */
+    public const string ASK_REMOVE_MEAL_WHICH = 'Je ne trouve pas le repas %s dans ta liste. Tu veux dire %s ?';
+    public const string ASK_REMOVE_MEAL_WHICH_OR_ITEM = 'Je ne trouve pas le repas %s dans ta liste. Tu veux dire %s ? Ou un produit ?';
+    /** Aucun repas de la liste ne ressemble à la phrase : on demande si c'est un produit. */
+    public const string ASK_REMOVE_MEAL_ITEM = "Je ne trouve pas le repas %s dans ta liste. C'est un produit ?";
+    /** Le produit à retirer n'est pas dans la liste et la phrase ne désigne aucun de tes produits : les lignes qui lui ressemblent, puis l'issue « ou un repas ? ». */
+    public const string ASK_REMOVE_ITEM_WHICH = "Il n'y a pas %s dans ta liste. Tu veux dire %s ?";
+    public const string ASK_REMOVE_ITEM_WHICH_OR_MEAL = "Il n'y a pas %s dans ta liste. Tu veux dire %s ? Ou un repas ?";
+    public const string ASK_REMOVE_ITEM_WHICH_SHORT = 'Tu veux dire %s ?';
+    public const string ASK_REMOVE_ITEM_WHICH_SHORT_OR_MEAL = 'Tu veux dire %s ? Ou un repas ?';
+    public const string ASK_REMOVE_ITEM_WHICH_AGAIN = 'Lequel ? %s.';
+    public const string ASK_REMOVE_ITEM_WHICH_AGAIN_OR_MEAL = 'Lequel ? %s. Ou un repas ?';
+    /** Aucune ligne de la liste ne ressemble à la phrase : on demande si c'est un repas. */
+    public const string ASK_REMOVE_ITEM_MEAL = "Il n'y a pas %s dans ta liste. C'est un repas ?";
+    /** Ni produit ni repas de la liste ne portent ce nom : plus d'issue. */
+    public const string NOTHING_FOUND_IN_LIST = "Je ne trouve rien qui s'appelle %s dans ta liste.";
+
     /** Au-delà de ce nombre de mots, la réponse « C'est retiré : X. Il n'y en a plus dans ta liste. » perd sa seconde phrase. */
     private const int MAX_REMOVED_WORDS = 15;
 
@@ -252,6 +277,7 @@ final class VoiceReplies
     {
         return match ($state->step) {
             DialogueStep::CHOOSE => match (true) {
+                $state->isRemovalProposal() => $state->isMeal() ? self::removeMealQuestion($state) : self::removeItemQuestion($state),
                 $state->isMeal() => self::mealQuestion($state),
                 $state->isTieBreak() => self::tieQuestion($state->options),
                 $state->options === [] => sprintf($state->otherSideTried ? self::ASK_CREATE : self::ASK_CREATE_OR_MEAL, self::speakable($state->name)),
@@ -300,6 +326,13 @@ final class VoiceReplies
     /** « Oui », mais plusieurs propositions : laquelle ? */
     public static function whichAgain(SpokenDialogueState $state): string
     {
+        if ($state->isRemovalProposal()) {
+            $names = self::joinNames(self::namesOf($state->options));
+
+            return $state->isMeal()
+                ? sprintf($state->otherSideTried ? self::ASK_MEAL_WHICH_AGAIN : self::ASK_MEAL_WHICH_AGAIN_OR_ITEM, $names)
+                : sprintf($state->otherSideTried ? self::ASK_REMOVE_ITEM_WHICH_AGAIN : self::ASK_REMOVE_ITEM_WHICH_AGAIN_OR_MEAL, $names);
+        }
         if ($state->isMeal()) {
             return sprintf($state->otherSideTried ? self::ASK_MEAL_WHICH_AGAIN : self::ASK_MEAL_WHICH_AGAIN_OR_ITEM, self::joinNames(self::namesOf($state->options)));
         }
@@ -452,6 +485,70 @@ final class VoiceReplies
         }
 
         return sprintf($state->otherSideTried ? self::ASK_MEAL_WHICH_SHORT : self::ASK_MEAL_WHICH_SHORT_OR_ITEM, self::joinNames(self::namesOf($state->options)));
+    }
+
+    /** Le repas quitte la liste. */
+    public static function mealRemoved(string $recipeName): string
+    {
+        return sprintf(self::MEAL_REMOVED, self::speakable($recipeName));
+    }
+
+    /**
+     * « Je ne trouve pas le repas X dans ta liste. Tu veux dire A, B ou C ? Ou un produit ? » : aucun repas planifié ne se laisse choisir ; `$optionNames` sont
+     * les repas de la liste qui lui ressemblent (aucun : on demande si c'est un produit). `$offerItem` : les produits n'ont pas encore été cherchés. Sans
+     * proposition ni issue : « Je ne trouve rien qui s'appelle X dans ta liste. ».
+     *
+     * @param list<string> $optionNames
+     */
+    public static function unknownMealToRemove(string $name, array $optionNames, bool $offerItem): string
+    {
+        if ($optionNames === []) {
+            return sprintf($offerItem ? self::ASK_REMOVE_MEAL_ITEM : self::NOTHING_FOUND_IN_LIST, self::speakable($name));
+        }
+
+        return sprintf($offerItem ? self::ASK_REMOVE_MEAL_WHICH_OR_ITEM : self::ASK_REMOVE_MEAL_WHICH, self::speakable($name), self::joinNames($optionNames));
+    }
+
+    /**
+     * « Il n'y a pas de X dans ta liste. Tu veux dire A, B ou C ? Ou un repas ? » : la phrase ne désigne aucun de tes produits et aucune ligne de la liste ne
+     * la porte ; `$optionNames` sont les lignes qui lui ressemblent (aucune : on demande si c'est un repas). `$offerMeal` : les repas n'ont pas encore été
+     * cherchés. Sans proposition ni issue : « Je ne trouve rien qui s'appelle X dans ta liste. ».
+     *
+     * @param list<string> $optionNames
+     */
+    public static function unknownItemToRemove(string $name, array $optionNames, bool $offerMeal): string
+    {
+        if ($optionNames === []) {
+            return $offerMeal ? sprintf(self::ASK_REMOVE_ITEM_MEAL, self::of(self::speakable($name))) : self::nothingFoundInList($name);
+        }
+
+        return sprintf($offerMeal ? self::ASK_REMOVE_ITEM_WHICH_OR_MEAL : self::ASK_REMOVE_ITEM_WHICH, self::of(self::speakable($name)), self::joinNames($optionNames));
+    }
+
+    /** Ni produit ni repas de la liste ne portent ce nom. */
+    public static function nothingFoundInList(string $name): string
+    {
+        return sprintf(self::NOTHING_FOUND_IN_LIST, self::speakable($name));
+    }
+
+    /** La question de l'étape « quel repas retirer ? » (à répéter après un silence ou une réponse incomprise). */
+    private static function removeMealQuestion(SpokenDialogueState $state): string
+    {
+        if ($state->options === []) {
+            return sprintf($state->otherSideTried ? self::NOTHING_FOUND_IN_LIST : self::ASK_REMOVE_MEAL_ITEM, self::speakable($state->name));
+        }
+
+        return sprintf($state->otherSideTried ? self::ASK_MEAL_WHICH_SHORT : self::ASK_MEAL_WHICH_SHORT_OR_ITEM, self::joinNames(self::namesOf($state->options)));
+    }
+
+    /** La question de l'étape « quel produit retirer ? » (à répéter après un silence ou une réponse incomprise). */
+    private static function removeItemQuestion(SpokenDialogueState $state): string
+    {
+        if ($state->options === []) {
+            return $state->otherSideTried ? self::nothingFoundInList($state->name) : sprintf(self::ASK_REMOVE_ITEM_MEAL, self::of(self::speakable($state->name)));
+        }
+
+        return sprintf($state->otherSideTried ? self::ASK_REMOVE_ITEM_WHICH_SHORT : self::ASK_REMOVE_ITEM_WHICH_SHORT_OR_MEAL, self::joinNames(self::namesOf($state->options)));
     }
 
     /** « 1 personne », « 4 personnes ». */

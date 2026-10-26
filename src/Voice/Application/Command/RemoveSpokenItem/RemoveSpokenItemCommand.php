@@ -20,6 +20,8 @@ final readonly class RemoveSpokenItemCommand
         public int $quantity = 1,
         /** L'unité dite (slug du catalogue), convertie dans celle de la ligne quand l'ingrédient la connaît. `null` : rien de dit. */
         public ?string $unitSlug = null,
+        /** Les repas ont déjà été cherchés pour cette phrase (l'utilisateur a répondu « un produit » à une question de repas) : « ou un repas ? » n'est plus proposé. */
+        public bool $otherSideTried = false,
     ) {
     }
 }

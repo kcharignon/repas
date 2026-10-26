@@ -30,6 +30,7 @@ use Repas\Voice\Domain\Model\SpokenDialogueState;
  * | `confirm`    | « oui » = créer ; « non » = on abandonne                                                                                |
  * | `choose` (repas) | un rang ; un nom de recette proche dit en entier ; « une recette »/« un produit » ; « oui » = la proposition s'il n'y en a qu'une, le produit s'il n'y en a aucune ; « non » = on abandonne ; « planifie le repas … » = nouvelle demande de repas |
  * | `servings`   | un nombre (« 6 », « six personnes », « pour six ») = le nouveau total ; « non », « rien », « ne change rien » = on ne change rien |
+ * | `choose` (retrait proposé, produit ou repas, VOX-306) | un rang ; un nom proche d'une proposition ; « un repas » (côté produits) ou « un produit » (côté repas) = l'autre recherche, une fois ; « non » = on abandonne ; « oui » = la proposition s'il n'y en a qu'une, l'autre recherche s'il n'y en a aucune ; jamais de création |
  *
  * Aiguillage (ADR 0029 décision 13) : « une recette » à la question d'un produit inconnu cherche la phrase d'origine dans les recettes (`SWITCH_TO_MEAL`),
  * « un produit » à la question d'une recette inconnue la cherche dans les produits (`SWITCH_TO_ITEM`), tant que l'autre côté n'a pas déjà été essayé
@@ -83,6 +84,7 @@ final readonly class SpokenAnswerInterpreter
 
         return match ($state->step) {
             DialogueStep::CHOOSE => match (true) {
+                $state->isRemovalProposal() => $this->interpretRemovalChoice($request, $intent, $state),
                 $state->isMeal() => $this->interpretMealChoice($request, $intent, $state),
                 $state->isTieBreak() => $this->interpretTie($request, $intent, $state->options),
                 default => $this->interpretChoice($request, $intent, $state),
@@ -226,6 +228,12 @@ final readonly class SpokenAnswerInterpreter
      */
     private function newDemand(AlexaRequest $request, ?AlexaIntent $intent): SpokenAnswer
     {
+        // « Enlève le repas … » (ou « retire la recette … ») : une nouvelle demande de retrait d'un repas (ADR 0029 décision 12, VOX-306)
+        $removal = $this->meals->removalOf($request);
+        if ($removal !== null) {
+            return $removal->recipe === '' || $removal->unusableServings || $request->hasUnusableServings() ? SpokenAnswer::of(SpokenAnswerKind::UNCLEAR) : SpokenAnswer::newMealRemoval($removal->recipe, $removal->servings, $removal->original);
+        }
+
         // « Planifie le repas … » (ou « ajoute le repas … ») : une nouvelle demande de repas (ADR 0029 décision 13)
         $meal = $this->meals->requestOf($request);
         if ($meal !== null) {
@@ -242,6 +250,65 @@ final readonly class SpokenAnswerInterpreter
             AlexaIntent::CHECK_ITEM => SpokenAnswer::newCheck($request->phrase),
             default => SpokenAnswer::of(SpokenAnswerKind::UNCLEAR),
         };
+    }
+
+    /**
+     * Un retrait dont la phrase n'est pas dans la liste (ADR 0029 décision 12, VOX-306) : « lequel ? » se répond par un rang, par le nom d'une proposition
+     * dit en entier, ou par l'autre type (« un repas » quand on cherchait un produit, « un produit » quand on cherchait un repas), une seule fois.
+     * Jamais de création : « non » abandonne, « un nouveau produit » ne crée rien (comme « aucun », il aiguille vers l'autre type tant qu'il est offert).
+     */
+    private function interpretRemovalChoice(AlexaRequest $request, ?AlexaIntent $intent, SpokenDialogueState $state): SpokenAnswer
+    {
+        $options = $state->options;
+        $count = count($options);
+        $kind = $this->kindHeard($request);
+        // L'autre recherche : les repas pour une phrase de produit, les produits pour une phrase de repas
+        $otherKind = $state->isMeal() ? 'item' : 'meal';
+        $switch = $state->isMeal() ? SpokenAnswerKind::SWITCH_TO_ITEM : SpokenAnswerKind::SWITCH_TO_MEAL;
+
+        if ($kind === $otherKind || $intent === AlexaIntent::CREATE_ITEM) {
+            if (!$state->otherSideTried) {
+                return SpokenAnswer::of($switch);
+            }
+
+            return SpokenAnswer::of($intent === AlexaIntent::CREATE_ITEM ? SpokenAnswerKind::ABANDON : SpokenAnswerKind::UNCLEAR);
+        }
+        // Le même type que celui qu'on cherche (« un produit » à une question de produits) : laquelle des propositions ?
+        if ($kind !== null) {
+            return SpokenAnswer::of($count === 0 ? SpokenAnswerKind::UNCLEAR : SpokenAnswerKind::WHICH_ONE);
+        }
+
+        // « Deux » nu, qu'Amazon a rangé dans un autre créneau que `rank` : c'est tout de même le deuxième choix
+        $number = $this->numberAsRank($request, $count);
+        if ($number !== null) {
+            return SpokenAnswer::pickOption($options[$number - 1]);
+        }
+
+        switch ($intent) {
+            case AlexaIntent::CHOOSE_OPTION:
+                $rank = $this->rankOf($request->rank);
+
+                return $rank !== null && $rank >= 1 && $rank <= $count
+                    ? SpokenAnswer::pickOption($options[$rank - 1])
+                    : SpokenAnswer::of(SpokenAnswerKind::UNCLEAR);
+            case AlexaIntent::NO:
+                return SpokenAnswer::of(SpokenAnswerKind::ABANDON);
+            case AlexaIntent::YES:
+                // Sans proposition la question était « C'est un repas ? » / « C'est un produit ? » : oui aiguille vers l'autre type
+                return match (true) {
+                    $count === 0 => SpokenAnswer::of($state->otherSideTried ? SpokenAnswerKind::ABANDON : $switch),
+                    $count === 1 => SpokenAnswer::pickOption($options[0]),
+                    default => SpokenAnswer::of(SpokenAnswerKind::WHICH_ONE),
+                };
+            default:
+                // Un nom proche d'une proposition, dit en entier, quelle que soit l'intention qu'Alexa a choisie
+                $option = $this->matchOption($request->heardTexts(), $options);
+                if ($option !== null) {
+                    return SpokenAnswer::pickOption($option);
+                }
+
+                return $this->newDemand($request, $intent);
+        }
     }
 
     /**
@@ -322,6 +389,12 @@ final readonly class SpokenAnswerInterpreter
         $meal = $this->meals->requestOf($request);
         if ($meal !== null && $meal->recipe !== '' && $this->meals->numberSaid($meal->recipe) === null) {
             return $meal->unusableServings || $request->hasUnusableServings() ? SpokenAnswer::of(SpokenAnswerKind::UNCLEAR) : SpokenAnswer::newMeal($meal->recipe, $meal->servings, $meal->original);
+        }
+
+        // « Enlève le repas lasagnes pour deux » à la question du total : un retrait, jamais le total « deux » (le nombre est celui du retrait)
+        $removal = $this->meals->removalOf($request);
+        if ($removal !== null && $removal->recipe !== '' && $this->meals->numberSaid($removal->recipe) === null) {
+            return $removal->unusableServings || $request->hasUnusableServings() ? SpokenAnswer::of(SpokenAnswerKind::UNCLEAR) : SpokenAnswer::newMealRemoval($removal->recipe, $removal->servings, $removal->original);
         }
 
         if ($request->hasUnusableServings() || $request->hasUnusableQuantity() || $this->saysAnUnusableNumber($request)) {

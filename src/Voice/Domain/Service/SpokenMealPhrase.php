@@ -14,6 +14,8 @@ use Repas\Voice\Domain\Model\SpokenMealRequest;
  *   `AddItemIntent` dont la phrase commence par « repas » ou « recette » (« ajoute le repas hachis parmentier » : Amazon range parfois ce qui
  *   ressemble à « ajoute … » dans l'intention des produits ; c'est le MOT qui aiguille, pas l'intention). « Ajoute un hachis parmentier » sans ce mot
  *   reste un produit.
+ * - `removalOf()` (VOX-306) : la demande de RETIRER un repas, sur le même principe : `RemoveMealIntent` ou `RemoveItemIntent` dont la phrase commence par
+ *   « repas » ou « recette » (« enlève le repas hachis parmentier pour deux personnes »). « Enlève du pain » sans ce mot reste un produit.
  * - la phrase est débarrassée du mot qui annonce le repas (« le repas », « la recette de ») et du nombre de personnes dit en queue (« pour six
  *   personnes », « pour 6 », « pour trente », « pour 100 personnes ») : il reste le nom de la recette. Le créneau `servings` d'Alexa, s'il est rempli,
  *   passe avant la queue de la phrase. Tout nombre LU par `SpokenNumber` est retiré du nom ; hors de 1 à 99 il n'est pas gardé et la demande le dit
@@ -59,6 +61,21 @@ final readonly class SpokenMealPhrase
         return match ($request->intent()) {
             AlexaIntent::ADD_MEAL => $this->parse($request->recipePhrase ?? '', $request->servings),
             AlexaIntent::ADD_ITEM => $request->phrase !== null && $this->announcesMeal($request->phrase) ? $this->parse($request->phrase, $request->servings) : null,
+            default => null,
+        };
+    }
+
+    /**
+     * La demande de RETIRER un repas que cette requête exprime (VOX-306), `null` si ce n'en est pas une : `RemoveMealIntent` (« enlève le repas hachis
+     * parmentier ») ou `RemoveItemIntent` dont la phrase commence par « repas » ou « recette » (« enlève le repas hachis parmentier » rangé par Amazon
+     * dans l'intention des produits : c'est le MOT qui aiguille). « Enlève du pain » sans ce mot reste un produit. Le nombre de personnes est celui qu'on
+     * ENLÈVE (`null` : le repas entier).
+     */
+    public function removalOf(AlexaRequest $request): ?SpokenMealRequest
+    {
+        return match ($request->intent()) {
+            AlexaIntent::REMOVE_MEAL => $this->parse($request->recipePhrase ?? '', $request->servings),
+            AlexaIntent::REMOVE_ITEM => $request->phrase !== null && $this->announcesMeal($request->phrase) ? $this->parse($request->phrase, $request->servings) : null,
             default => null,
         };
     }

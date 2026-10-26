@@ -439,4 +439,80 @@ class AlexaDialogueTest extends TestCase
             $this->dialogue->answer($this->read(AlexaTestRequest::intent('AMAZON.StopIntent')->withSessionAttributes([SpokenDialogueState::ATTRIBUTE => $state->toArray()]))),
         );
     }
+
+    // ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
+    // Retirer un repas (ADR 0029 décision 12, VOX-306)
+    // ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
+
+    public function testARemovalOfAMealWithARecipeIsLeftToTheUseCase(): void
+    {
+        $this->assertNull($this->dialogue->answer($this->read(AlexaTestRequest::removeMeal('hachis parmentier'))));
+        $this->assertNull($this->dialogue->answer($this->read(AlexaTestRequest::removeMeal('hachis parmentier', 'deux', '2'))));
+        $this->assertNull($this->dialogue->answer($this->read(AlexaTestRequest::removeItem('le repas hachis parmentier pour deux personnes'))));
+        $this->assertNull($this->dialogue->answer($this->read(AlexaTestRequest::removeItem('la recette de gratin'))));
+    }
+
+    public function testARemovalWithoutTheWordStaysAProduct(): void
+    {
+        // When : « enlève du pain » : rien n'annonce un repas, c'est le cas d'usage des produits
+        $this->assertNull($this->dialogue->answer($this->read(AlexaTestRequest::removeItem('du pain'))));
+    }
+
+    #[DataProvider('removalOfAMealWithoutARecipe')]
+    public function testARemovalOfAMealWithoutARecipeGetsAnExampleNeverAnOpenQuestion(AlexaTestRequest $request): void
+    {
+        // When
+        $direct = $this->dialogue->answer($this->read($request));
+        $inOpenSession = $this->dialogue->answer($this->read($request->inOpenSession()));
+
+        // Then : « Dis par exemple : enlève le repas hachis parmentier. » (la réponse brève « hachis » serait comprise comme un ajout)
+        $this->assertEquals(AlexaResponse::say(VoiceReplies::REMOVE_MEAL_EXAMPLE), $direct);
+        $this->assertEquals(AlexaResponse::stayOpen(VoiceReplies::REMOVE_MEAL_EXAMPLE), $inOpenSession);
+    }
+
+    /**
+     * @return iterable<string, array{AlexaTestRequest}>
+     */
+    public static function removalOfAMealWithoutARecipe(): iterable
+    {
+        yield 'enlève sans recette' => [AlexaTestRequest::removeMeal(null)];
+        yield 'enlève avec seulement le mot' => [AlexaTestRequest::removeMeal('le repas')];
+        yield 'enlève le repas, dit aux produits' => [AlexaTestRequest::removeItem('le repas')];
+        yield 'enlève la recette, dit aux produits' => [AlexaTestRequest::removeItem('la recette')];
+    }
+
+    #[DataProvider('unusableServingsToTakeOff')]
+    public function testANumberOfPeopleToTakeOffThatCannotBeWrittenIsAskedAgainAndNothingIsWritten(AlexaTestRequest $request): void
+    {
+        // When
+        $answer = $this->dialogue->answer($this->read($request));
+
+        // Then
+        $this->assertEquals(AlexaResponse::say(VoiceReplies::HOW_MANY), $answer);
+    }
+
+    /**
+     * @return iterable<string, array{AlexaTestRequest}>
+     */
+    public static function unusableServingsToTakeOff(): iterable
+    {
+        yield 'dans le créneau' => [AlexaTestRequest::removeMeal('hachis parmentier', '0')];
+        yield 'pour 100 personnes' => [AlexaTestRequest::removeMeal('hachis parmentier pour 100 personnes')];
+        yield 'pour cent personnes, dit aux produits' => [AlexaTestRequest::removeItem('le repas hachis parmentier pour cent personnes')];
+    }
+
+    public function testARemovalStateDefersEveryAnswerToTheUseCase(): void
+    {
+        // Given : un repas à retirer, proposé
+        $state = SpokenDialogueState::chooseMealToRemove('gratin', [new DialogueOption('recipe-1', 'gratin')]);
+
+        // When / Then : l'état décide, quelle que soit l'intention ; seuls « stop » et « annule » sont traités ici
+        foreach ([AlexaTestRequest::chooseOption('le premier', '1'), AlexaTestRequest::yes(), AlexaTestRequest::no(), AlexaTestRequest::chooseKind('un produit', 'item'), AlexaTestRequest::removeMeal('lasagnes')] as $request) {
+            $this->assertNull($this->dialogue->answer($this->read($request->withSessionAttributes([SpokenDialogueState::ATTRIBUTE => $state->toArray()]))));
+        }
+        $this->assertEquals(
+            AlexaResponse::say(VoiceReplies::GOODBYE),
+            $this->dialogue->answer($this->read(AlexaTestRequest::intent('AMAZON.CancelIntent')->withSessionAttributes([SpokenDialogueState::ATTRIBUTE => $state->toArray()]))),
+        );
+    }
 }

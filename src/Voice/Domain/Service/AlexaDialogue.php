@@ -20,7 +20,8 @@ use Repas\Voice\Domain\Model\VoiceReplies;
  *   (`AddItemIntent` avec une phrase : `AddSpokenItem`), le retirer (`RemoveItemIntent` : `RemoveSpokenItem`), demander s'il est dans la liste
  *   (`CheckItemIntent` : la lecture `GetSpokenItemInList`, ADR 0029 décision 12), ou répondre à une question du dialogue d'un produit inconnu
  *   (la séance porte un état : `AnswerSpokenDialogue`, qui interprète la réponse d'après l'ÉTAT, `SpokenAnswerInterpreter`), ou planifier un repas
- *   (`AddMealIntent`, ou `AddItemIntent` dont la phrase commence par « repas » ou « recette » : `AddSpokenMeal`, ADR 0029 décision 13). Seuls « stop » et
+ *   (`AddMealIntent`, ou `AddItemIntent` dont la phrase commence par « repas » ou « recette » : `AddSpokenMeal`, ADR 0029 décision 13), ou en retirer un
+ *   (`RemoveMealIntent`, ou `RemoveItemIntent` dont la phrase commence par « repas » ou « recette » : `RemoveSpokenMeal`, décision 12, VOX-306). Seuls « stop » et
  *   « annule » sont traités ici dans tous les états. Un retrait ou une consultation sans produit reçoivent un exemple, jamais une question ouverte :
  *   la réponse brève (« du pain ») serait comprise comme un ajout.
  *
@@ -78,6 +79,17 @@ final readonly class AlexaDialogue
                 $meal->recipe === '' => AlexaResponse::reply(VoiceReplies::MEAL_EXAMPLE, $request->isInOpenSession(), null),
                 // Un nombre de personnes dit mais hors de 1 à 99 (créneau ou fin de phrase : « pour 100 personnes », « pour 0 ») : on redemande, rien n'est écrit
                 $request->hasUnusableServings() || $meal->unusableServings => AlexaResponse::reply(VoiceReplies::HOW_MANY, $request->isInOpenSession(), null),
+                default => null,
+            };
+        }
+
+        // Un repas à retirer (décision 12, VOX-306) : « enlève le repas … » ou l'intention des repas, avant celle des produits. Une recette comprise et un nombre
+        // de personnes écrivable : à `RemoveSpokenMeal`. Sinon un exemple, jamais une question ouverte, ou on redemande combien
+        $removal = $this->meals->removalOf($request);
+        if ($removal !== null) {
+            return match (true) {
+                $removal->recipe === '' => AlexaResponse::reply(VoiceReplies::REMOVE_MEAL_EXAMPLE, $request->isInOpenSession(), null),
+                $request->hasUnusableServings() || $removal->unusableServings => AlexaResponse::reply(VoiceReplies::HOW_MANY, $request->isInOpenSession(), null),
                 default => null,
             };
         }

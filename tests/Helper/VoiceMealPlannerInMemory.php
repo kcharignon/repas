@@ -5,6 +5,7 @@ namespace Repas\Tests\Helper;
 
 use Repas\Shared\Application\Dto\ChangedMealServings;
 use Repas\Shared\Application\Dto\PlannedSpokenMeal;
+use Repas\Shared\Application\Dto\RemovedSpokenMeal;
 use Repas\Shared\Application\Interface\VoiceMealPlanner;
 use Throwable;
 
@@ -20,6 +21,10 @@ final class VoiceMealPlannerInMemory implements VoiceMealPlanner
     /** @var list<array{string, string, int}> les changements demandés `[userId, recipeId, servings]`, dans l'ordre */
     public array $changed = [];
 
+    /** @var list<array{string, string, ?int}> les retraits demandés `[userId, recipeId, servings]`, dans l'ordre */
+    public array $removed = [];
+
+    private ?RemovedSpokenMeal $removal = null;
     private ?PlannedSpokenMeal $result = null;
     private ?ChangedMealServings $change = null;
     private ?Throwable $failure = null;
@@ -34,6 +39,13 @@ final class VoiceMealPlannerInMemory implements VoiceMealPlanner
     public function willChange(ChangedMealServings $change): self
     {
         $this->change = $change;
+
+        return $this;
+    }
+
+    public function willRemove(RemovedSpokenMeal $removal): self
+    {
+        $this->removal = $removal;
 
         return $this;
     }
@@ -63,5 +75,15 @@ final class VoiceMealPlannerInMemory implements VoiceMealPlanner
         $this->changed[] = [$userId, $recipeId, $servings];
 
         return $this->change ?? ChangedMealServings::changed($recipeId, $servings);
+    }
+
+    public function removeMeal(string $userId, string $recipeId, ?int $servings = null): RemovedSpokenMeal
+    {
+        if ($this->failure !== null) {
+            throw $this->failure;
+        }
+        $this->removed[] = [$userId, $recipeId, $servings];
+
+        return $this->removal ?? RemovedSpokenMeal::removed($recipeId);
     }
 }

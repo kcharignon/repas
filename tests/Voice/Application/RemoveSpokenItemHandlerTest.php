@@ -135,19 +135,67 @@ class RemoveSpokenItemHandlerTest extends TestCase
         $this->assertNull($result->nextState);
     }
 
-    public function testAnUnknownProductIsSaidWithTheHeardNameAndNothingIsProposedOrCreated(): void
+    public function testAnUnknownProductAsksIfItIsAMealAndNothingIsRemovedOrCreated(): void
     {
-        // Given : rien ne ressemble à la phrase
+        // Given : rien ne ressemble à la phrase, ni dans la liste ni parmi les ingrédients
         $this->lookup->willFind('de la ciboulette', SpokenListLookupResult::notInList(null));
 
         // When
         $result = ($this->handler)(new RemoveSpokenItemCommand('user-1', 'de la ciboulette', sessionIsOpen: false));
 
-        // Then : « pas de ciboulette », jamais « de quoi tu parles ? »
-        $this->assertSame("Il n'y a pas de ciboulette dans ta liste.", $result->speech);
+        // Then : « pas de ciboulette », jamais « de quoi tu parles ? » ; la seule issue est l'autre type ; rien d'écrit
+        $this->assertSame("Il n'y a pas de ciboulette dans ta liste. C'est un repas ?", $result->speech);
+        $this->assertTrue($result->keepSessionOpen);
+        $this->assertSame([], $this->shoppingList->removed);
+        $state = $result->nextState;
+        $this->assertNotNull($state);
+        $this->assertTrue($state->isRemovalProposal());
+        $this->assertSame([[], false, false, 'ciboulette'], [$state->options, $state->isTieBreak(), $state->otherSideTried, $state->name]);
+    }
+
+    public function testAnUnknownProductProposesTheLinesOfTheListThatLookLikeIt(): void
+    {
+        // Given : la phrase ne désigne aucun ingrédient, deux lignes de la liste lui ressemblent
+        $this->lookup->willFind('des pâtes à pizza', SpokenListLookupResult::notInList(null, [self::line('pate-brisee', 'Pâte brisée', 'frais', 'frais'), self::line('pate-sablee', 'Pâte sablée', 'frais', 'frais')]));
+
+        // When
+        $result = ($this->handler)(new RemoveSpokenItemCommand('user-1', 'des pâtes à pizza', sessionIsOpen: false, quantity: 2, unitSlug: 'paquet'));
+
+        // Then : les lignes DE LA LISTE, sans rayon (ce n'est pas un départage), l'issue vers les repas ; la quantité et l'unité dites voyagent
+        $this->assertSame("Il n'y a pas de pâtes à pizza dans ta liste. Tu veux dire pâte brisée ou pâte sablée ? Ou un repas ?", $result->speech);
+        $state = $result->nextState;
+        $this->assertNotNull($state);
+        $this->assertEquals([new DialogueOption('pate-brisee', 'Pâte brisée'), new DialogueOption('pate-sablee', 'Pâte sablée')], $state->options);
+        $this->assertSame([true, false, 2, 'paquet'], [$state->isRemovalProposal(), $state->isTieBreak(), $state->quantity, $state->spokenUnitSlug]);
+        $this->assertNull($state->rememberablePhrase());
+        $this->assertSame([], $this->shoppingList->removed);
+    }
+
+    public function testOnceTheMealsHaveBeenSearchedNothingMoreIsOfferedAndTheSessionStaysAsItWas(): void
+    {
+        // Given : l'utilisateur a répondu « un produit » à une question de repas ; rien ne ressemble à la phrase
+        $this->lookup->willFind('le hachis', SpokenListLookupResult::notInList(null));
+
+        // When
+        $result = ($this->handler)(new RemoveSpokenItemCommand('user-1', 'le hachis', sessionIsOpen: false, otherSideTried: true));
+
+        // Then : plus d'issue, une affirmation seule, la séance se ferme
+        $this->assertSame("Je ne trouve rien qui s'appelle hachis dans ta liste.", $result->speech);
         $this->assertNull($result->nextState);
         $this->assertFalse($result->keepSessionOpen);
-        $this->assertSame([], $this->shoppingList->removed);
+    }
+
+    public function testOnceTheMealsHaveBeenSearchedTheProposalsHaveNoOtherWayOut(): void
+    {
+        // Given
+        $this->lookup->willFind('des pâtes à pizza', SpokenListLookupResult::notInList(null, [self::line('pate-brisee', 'Pâte brisée', 'frais', 'frais')]));
+
+        // When
+        $result = ($this->handler)(new RemoveSpokenItemCommand('user-1', 'des pâtes à pizza', sessionIsOpen: false, otherSideTried: true));
+
+        // Then : la proposition, sans « ou un repas ? »
+        $this->assertSame("Il n'y a pas de pâtes à pizza dans ta liste. Tu veux dire pâte brisée ?", $result->speech);
+        $this->assertTrue($result->nextState?->otherSideTried);
     }
 
     public function testAnIngredientStartingWithAVowelUsesAnApostrophe(): void

@@ -36,6 +36,8 @@ class VoiceRepliesTest extends TestCase
         'ASK_WHICH', 'ASK_WHICH_AGAIN', 'ASK_UNIT',
         // L'issue « ou une recette ? » d'un produit inconnu et « ou un produit ? » d'une recette inconnue (ADR 0029 décision 13)
         'ASK_WHICH_OR_MEAL', 'ASK_WHICH_AGAIN_OR_MEAL', 'ASK_CREATE_OR_MEAL', 'ASK_MEAL_WHICH_OR_ITEM', 'ASK_MEAL_WHICH_AGAIN_OR_ITEM',
+        // Retirer ce que la liste ne porte pas (VOX-306) : « il n'y a pas X dans ta liste », les propositions de la liste, et l'issue vers l'autre type
+        'ASK_REMOVE_MEAL_WHICH_OR_ITEM', 'ASK_REMOVE_ITEM_WHICH_OR_MEAL', 'ASK_REMOVE_ITEM_WHICH_AGAIN_OR_MEAL',
     ];
 
     public function testEveryReplyOfTheCatalogueIsAtMostTwoShortSentences(): void
@@ -763,5 +765,93 @@ class VoiceRepliesTest extends TestCase
     private function sentences(string $text): array
     {
         return preg_split('/(?<=[.!?])\s+/u', trim($text), -1, PREG_SPLIT_NO_EMPTY);
+    }
+
+    // ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
+    // Retirer un repas, et proposer ce que la liste contient (ADR 0029 décision 12, VOX-306)
+    // ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
+
+    public function testTheAnswersToARemovedMealAreTheOnesTheOwnerGives(): void
+    {
+        $this->assertSame("C'est retiré : le repas hachis parmentier.", VoiceReplies::mealRemoved('Hachis parmentier'));
+        // Le nombre de personnes qui baisse se dit comme un changement de total
+        $this->assertSame("C'est changé : hachis parmentier, pour 2 personnes.", VoiceReplies::mealServingsChanged('Hachis parmentier', 2));
+    }
+
+    public function testTheQuestionsOfAMealToRemoveOfferTheProductOnlyUntilItWasTried(): void
+    {
+        // Les produits n'ont pas encore été cherchés
+        $this->assertSame('Je ne trouve pas le repas gratin dans ta liste. Tu veux dire gratin dauphinois, gratin de pâtes ou gratin de courgettes ? Ou un produit ?', VoiceReplies::unknownMealToRemove('gratin', ['gratin dauphinois', 'gratin de pâtes', 'gratin de courgettes'], true));
+        $this->assertSame("Je ne trouve pas le repas gratin dans ta liste. C'est un produit ?", VoiceReplies::unknownMealToRemove('gratin', [], true));
+        // Les produits ont déjà été cherchés : plus d'issue
+        $this->assertSame('Je ne trouve pas le repas gratin dans ta liste. Tu veux dire gratin dauphinois ou gratin de pâtes ?', VoiceReplies::unknownMealToRemove('gratin', ['gratin dauphinois', 'gratin de pâtes'], false));
+        $this->assertSame("Je ne trouve rien qui s'appelle gratin dans ta liste.", VoiceReplies::unknownMealToRemove('gratin', [], false));
+        $this->assertSame("Je ne trouve rien qui s'appelle gratin dans ta liste.", VoiceReplies::nothingFoundInList('Gratin'));
+
+        $options = [new DialogueOption('r1', 'gratin dauphinois'), new DialogueOption('r2', 'gratin de pâtes')];
+        $open = SpokenDialogueState::chooseMealToRemove('gratin', $options);
+        $closed = SpokenDialogueState::chooseMealToRemove('gratin', $options, otherSideTried: true);
+        $this->assertSame('Tu veux dire gratin dauphinois ou gratin de pâtes ? Ou un produit ?', VoiceReplies::question($open));
+        $this->assertSame('Tu veux dire gratin dauphinois ou gratin de pâtes ?', VoiceReplies::question($closed));
+        $this->assertSame("Je ne trouve pas le repas gratin dans ta liste. C'est un produit ?", VoiceReplies::question(SpokenDialogueState::chooseMealToRemove('gratin', [])));
+        $this->assertSame("Je ne trouve rien qui s'appelle gratin dans ta liste.", VoiceReplies::question(SpokenDialogueState::chooseMealToRemove('gratin', [], otherSideTried: true)));
+        $this->assertSame('Laquelle ? gratin dauphinois ou gratin de pâtes. Ou un produit ?', VoiceReplies::whichAgain($open));
+        $this->assertSame('Laquelle ? gratin dauphinois ou gratin de pâtes.', VoiceReplies::whichAgain($closed));
+    }
+
+    public function testTheQuestionsOfAProductToRemoveOfferAMealOnlyUntilItWasTried(): void
+    {
+        // Les repas n'ont pas encore été cherchés
+        $this->assertSame("Il n'y a pas de pâtes à pizza dans ta liste. Tu veux dire pâte brisée ou pâte sablée ? Ou un repas ?", VoiceReplies::unknownItemToRemove('pâtes à pizza', ['pâte brisée', 'pâte sablée'], true));
+        $this->assertSame("Il n'y a pas de ciboulette dans ta liste. C'est un repas ?", VoiceReplies::unknownItemToRemove('ciboulette', [], true));
+        $this->assertSame("Il n'y a pas d'ail dans ta liste. C'est un repas ?", VoiceReplies::unknownItemToRemove('ail', [], true));
+        // Les repas ont déjà été cherchés : plus d'issue
+        $this->assertSame("Il n'y a pas de pâtes à pizza dans ta liste. Tu veux dire pâte brisée ?", VoiceReplies::unknownItemToRemove('pâtes à pizza', ['pâte brisée'], false));
+        $this->assertSame("Je ne trouve rien qui s'appelle ciboulette dans ta liste.", VoiceReplies::unknownItemToRemove('ciboulette', [], false));
+
+        $options = [new DialogueOption('p1', 'pâte brisée'), new DialogueOption('p2', 'pâte sablée')];
+        $open = SpokenDialogueState::proposeToRemove('des pâtes', $options, 'pâtes');
+        $closed = SpokenDialogueState::proposeToRemove('des pâtes', $options, 'pâtes', otherSideTried: true);
+        $this->assertSame('Tu veux dire pâte brisée ou pâte sablée ? Ou un repas ?', VoiceReplies::question($open));
+        $this->assertSame('Tu veux dire pâte brisée ou pâte sablée ?', VoiceReplies::question($closed));
+        $this->assertSame("Il n'y a pas de pâtes dans ta liste. C'est un repas ?", VoiceReplies::question(SpokenDialogueState::proposeToRemove('des pâtes', [], 'pâtes')));
+        $this->assertSame('Lequel ? pâte brisée ou pâte sablée. Ou un repas ?', VoiceReplies::whichAgain($open));
+        $this->assertSame('Lequel ? pâte brisée ou pâte sablée.', VoiceReplies::whichAgain($closed));
+    }
+
+    public function testNoRemovalReplyIsLongOrDoesTheJargonEvenWithRealisticNames(): void
+    {
+        // Given : des noms de trois mots
+        $name = 'hachis parmentier maison';
+        $names = ['gratin de pâtes', 'gratin de courgettes', 'gratin dauphinois'];
+        $options = array_map(static fn(string $recipe): DialogueOption => new DialogueOption('r', $recipe), $names);
+        $replies = [
+            VoiceReplies::mealRemoved($name),
+            VoiceReplies::unknownMealToRemove($name, $names, true),
+            VoiceReplies::unknownMealToRemove($name, [], true),
+            VoiceReplies::unknownMealToRemove($name, [], false),
+            VoiceReplies::unknownItemToRemove($name, $names, true),
+            VoiceReplies::unknownItemToRemove($name, [], true),
+            VoiceReplies::nothingFoundInList($name),
+            VoiceReplies::question(SpokenDialogueState::chooseMealToRemove($name, $options)),
+            VoiceReplies::whichAgain(SpokenDialogueState::chooseMealToRemove($name, $options)),
+            VoiceReplies::notUnderstood(SpokenDialogueState::chooseMealToRemove($name, $options)),
+            VoiceReplies::question(SpokenDialogueState::proposeToRemove($name, $options, $name)),
+            VoiceReplies::whichAgain(SpokenDialogueState::proposeToRemove($name, $options, $name)),
+            VoiceReplies::notUnderstood(SpokenDialogueState::proposeToRemove($name, $options, $name)),
+        ];
+
+        foreach ($replies as $reply) {
+            // Then : cinq phrases au plus (« Je n'ai pas compris. » puis une question de trois), 15 mots chacune, tutoiement, jamais de relance
+            $sentences = $this->sentences($reply);
+            $this->assertLessThanOrEqual(5, count($sentences), $reply);
+            foreach ($sentences as $sentence) {
+                $this->assertLessThanOrEqual(15, count(preg_split('/\s+/u', $sentence)), $sentence);
+            }
+            $this->assertStringNotContainsString('%', $reply);
+            $this->assertStringNotContainsString('!', $reply);
+            $this->assertStringNotContainsStringIgnoringCase('autre chose', $reply);
+            $this->assertDoesNotMatchRegularExpression('/(?<![\p{L}])(vous|votre|vos)(?![\p{L}])/u', mb_strtolower($reply), $reply);
+        }
     }
 }

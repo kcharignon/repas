@@ -24,8 +24,11 @@ use Symfony\Component\Messenger\Attribute\AsMessageHandler;
  * 4. plusieurs lignes (« tomate » en fruit et légume ET en surgelé, toutes deux dans la liste) : on demande le rayon, par le dialogue de
  *    départage de l'ajout (`SpokenDialogueState::chooseToRemove`, l'état dit « retirer ») ; la réponse est traitée par `AnswerSpokenDialogueHandler`.
  *
- * Jamais de liste créée, jamais de proposition ni de création de produit, jamais de mémoire de phrase : un produit qui n'est pas dans la liste est
- * simplement « pas dans ta liste ». Les textes sont dans `VoiceReplies`. La séance reste ouverte sans rien redemander quand elle l'était (comme un
+ * Jamais de liste créée, jamais de création de produit, jamais de mémoire de phrase. Un produit reconnu qui n'est pas dans la liste est simplement « pas
+ * dans ta liste ». Une phrase qui ne désigne AUCUN de ses ingrédients (VOX-306 : « enlève le hachis parmentier ») n'est pas comprise : Alexa propose les
+ * lignes de la liste qui lui ressemblent (trois au plus, `SpokenListLookupResult::$suggestions`), puis l'issue « ou un repas ? » tant que les repas n'ont
+ * pas été cherchés pour cette phrase (`RemoveSpokenItemCommand::$otherSideTried`) ; rien trouvé de part et d'autre : « Je ne trouve rien qui s'appelle X
+ * dans ta liste. ». Le dialogue continue dans `AnswerSpokenDialogueHandler`. Les textes sont dans `VoiceReplies`. La séance reste ouverte sans rien redemander quand elle l'était (comme un
  * ajout), sinon elle se ferme ; seule la question du rayon la garde ouverte, avec son `reprompt`.
  *
  * Aucune exception n'est attrapée : un échec (panne) annule la commande entière, le bus étant transactionnel, et le webhook répond par la phrase
@@ -50,9 +53,15 @@ readonly class RemoveSpokenItemHandler
             return $this->said(VoiceReplies::noActiveList($found->listSent), $command);
         }
         if ($found->lines === []) {
-            $name = $found->absentName ?? $this->namer->nameFrom($phrase);
+            // Un ingrédient reconnu mais absent de la liste : la réponse est définitive
+            if ($found->absentName !== null) {
+                return $this->said(VoiceReplies::notInList($found->absentName), $command);
+            }
 
-            return $this->said($name === null ? VoiceReplies::NOT_UNDERSTOOD : VoiceReplies::notInList($name), $command);
+            // La phrase ne désigne aucun ingrédient : on propose ce que la liste contient, et l'issue vers les repas
+            $name = $this->namer->nameFrom($phrase);
+
+            return $name === null ? $this->said(VoiceReplies::NOT_UNDERSTOOD, $command) : $this->unknown($command, $name, $found->suggestions, $quantity, $unitSlug);
         }
         if ($found->isTied()) {
             return $this->askWhich($phrase, $found->lines, $quantity, $unitSlug);
@@ -84,6 +93,30 @@ readonly class RemoveSpokenItemHandler
         $question = VoiceReplies::question($state);
 
         return new AddSpokenItemResult($question, keepSessionOpen: true, added: false, nextState: $state, reprompt: $question);
+    }
+
+    /**
+     * La phrase n'est pas dans la liste et ne désigne aucun de ses produits : rien n'est retiré, une question, la séance reste ouverte (ADR 0029 décision 12
+     * amendée, VOX-306). Sans proposition, et quand les repas ont déjà été cherchés, il n'y a plus rien à demander.
+     *
+     * @param list<ListedLine> $suggestions
+     */
+    private function unknown(RemoveSpokenItemCommand $command, string $name, array $suggestions, int $quantity, ?string $unitSlug): AddSpokenItemResult
+    {
+        if ($suggestions === [] && $command->otherSideTried) {
+            return $this->said(VoiceReplies::nothingFoundInList($name), $command);
+        }
+
+        $options = array_map(static fn(ListedLine $line): DialogueOption => new DialogueOption($line->slug, $line->name), $suggestions);
+        $state = SpokenDialogueState::proposeToRemove($name, $options, $name, $quantity, $unitSlug, $command->otherSideTried);
+
+        return new AddSpokenItemResult(
+            VoiceReplies::unknownItemToRemove($name, array_map(static fn(DialogueOption $option): string => $option->name, $state->options), offerMeal: !$command->otherSideTried),
+            keepSessionOpen: true,
+            added: false,
+            nextState: $state,
+            reprompt: VoiceReplies::question($state),
+        );
     }
 
     /** Une affirmation seule : la séance reste ouverte, sans relance, quand elle l'était ; sinon elle se ferme. */

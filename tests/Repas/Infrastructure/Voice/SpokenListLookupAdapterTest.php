@@ -7,33 +7,44 @@ use Repas\Repas\Domain\Model\SpokenCandidate;
 use Repas\Repas\Domain\Service\SpokenIngredientRanker;
 use Repas\Repas\Infrastructure\Voice\SpokenListLookupAdapter;
 use Repas\Shared\Application\Dto\ListedLine;
+use Repas\Shared\Application\Dto\ListedMeal;
 use Repas\Shared\Application\Dto\SpokenListLookupResult;
+use Repas\Shared\Application\Dto\SpokenMealLookupResult;
 use Repas\Tests\Helper\InMemoryLoader\ActiveShoppingListLinesInMemoryLoader;
+use Repas\Tests\Helper\InMemoryLoader\PlannedMealsInActiveListInMemoryLoader;
 use Repas\Tests\Helper\InMemoryLoader\SpokenIngredientCandidatesInMemoryLoader;
 use Repas\Tests\Helper\InMemoryLoader\SpokenPhraseMemoryInMemoryLoader;
+use Repas\Tests\Helper\InMemoryLoader\SpokenRecipePhraseMemoryInMemoryLoader;
 
 /**
  * L'adaptateur seulement (ports de lecture simulés) : il lit la liste active, laisse le classeur de l'ajout désigner l'ingrédient, puis ne garde que
  * ce qui est DANS la liste (ADR 0029 décision 12, VOX-304). Le classement est prouvé par `SpokenIngredientRankerTest`, la lecture SQL par
- * `ActiveShoppingListLinesPostgreSQLLoaderTest` et `SpokenListLookupFlowTest`.
+ * `ActiveShoppingListLinesPostgreSQLLoaderTest` et `SpokenListLookupFlowTest`. Les repas planifiés (VOX-306) se cherchent de même, parmi les seules recettes de la
+ * liste active, avec la mémoire de phrase des recettes.
  */
 class SpokenListLookupAdapterTest extends TestCase
 {
     private ActiveShoppingListLinesInMemoryLoader $linesLoader;
     private SpokenIngredientCandidatesInMemoryLoader $candidatesLoader;
+    private PlannedMealsInActiveListInMemoryLoader $mealsLoader;
+    private SpokenRecipePhraseMemoryInMemoryLoader $recipeMemory;
 
     /**
      * @param ?list<ListedLine>     $lines      les lignes de la liste active (`null` : aucune)
      * @param list<SpokenCandidate> $candidates
      * @param array<string, string> $remembered
      * @param bool                  $hasSentList l'utilisateur a une liste envoyée au drive (sans liste active)
+     * @param ?list<ListedMeal>     $meals       les repas de la liste active (`null` : aucune liste active)
+     * @param array<string, string> $rememberedRecipes clé de phrase => identifiant de recette
      */
-    private function adapter(?array $lines, array $candidates, array $remembered = [], bool $hasSentList = false): SpokenListLookupAdapter
+    private function adapter(?array $lines, array $candidates, array $remembered = [], bool $hasSentList = false, ?array $meals = [], array $rememberedRecipes = []): SpokenListLookupAdapter
     {
         $this->linesLoader = new ActiveShoppingListLinesInMemoryLoader($lines, $hasSentList);
         $this->candidatesLoader = new SpokenIngredientCandidatesInMemoryLoader($candidates);
+        $this->mealsLoader = new PlannedMealsInActiveListInMemoryLoader($meals);
+        $this->recipeMemory = new SpokenRecipePhraseMemoryInMemoryLoader($rememberedRecipes);
 
-        return new SpokenListLookupAdapter($this->linesLoader, $this->candidatesLoader, new SpokenPhraseMemoryInMemoryLoader($remembered));
+        return new SpokenListLookupAdapter($this->linesLoader, $this->candidatesLoader, new SpokenPhraseMemoryInMemoryLoader($remembered), $this->mealsLoader, $this->recipeMemory);
     }
 
     private static function line(string $slug, string $name, string $departmentSlug, string $departmentName, float $quantity = 1.0): ListedLine
@@ -339,6 +350,172 @@ class SpokenListLookupAdapterTest extends TestCase
         $this->assertSame([], $this->linesLoader->sentCalls);
     }
 
+    // ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
+    // Une phrase qui ne désigne aucun ingrédient : les lignes de la liste qui lui ressemblent (VOX-306)
+    // ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
+
+    public function testAPhraseThatMatchesNoIngredientGetsTheLinesOfTheListThatLookLikeIt(): void
+    {
+        // Given : la liste porte deux pâtes ; la phrase dite ne désigne aucun ingrédient de l'utilisateur
+        $brisee = self::line('pate-brisee', 'Pâte brisée', 'frais', 'frais');
+        $sablee = self::line('pate-sablee', 'Pâte sablée', 'frais', 'frais');
+        $adapter = $this->adapter(
+            [$brisee, $sablee],
+            [new SpokenCandidate('pate-brisee', 'pate-brisee', 'Pâte brisée', 'frais'), new SpokenCandidate('pate-sablee', 'pate-sablee', 'Pâte sablée', 'frais')],
+        );
+
+        // When
+        $result = $adapter->find('user-id', 'pâtes à pizza');
+
+        // Then : rien dans la liste, pas d'ingrédient reconnu, et les deux lignes proches sont proposées
+        $this->assertEquals(SpokenListLookupResult::notInList(null, [$brisee, $sablee]), $result);
+        $this->assertNull($result->absentName);
+    }
+
+    public function testOnlyTheIngredientsInTheListAreSuggestedAndAnAbsentOneIsNot(): void
+    {
+        // Given : deux pâtes connues, une seule dans la liste
+        $brisee = self::line('pate-brisee', 'Pâte brisée', 'frais', 'frais');
+        $adapter = $this->adapter(
+            [$brisee],
+            [new SpokenCandidate('pate-brisee', 'pate-brisee', 'Pâte brisée', 'frais'), new SpokenCandidate('pate-sablee', 'pate-sablee', 'Pâte sablée', 'frais')],
+        );
+
+        // When
+        $result = $adapter->find('user-id', 'pâtes à pizza');
+
+        // Then : la pâte qui n'est pas dans la liste n'est pas proposée
+        $this->assertEquals([$brisee], $result->suggestions);
+    }
+
+    public function testAnIngredientKnownButAbsentGetsNoSuggestion(): void
+    {
+        // Given : « tomate » est connue, absente de la liste
+        $adapter = $this->adapter(
+            [self::line('farine', 'farine', 'epicerie', 'épicerie')],
+            [new SpokenCandidate('tomate', 'tomate', 'tomate', 'fruits et légumes'), new SpokenCandidate('farine', 'farine', 'farine', 'épicerie')],
+        );
+
+        // When
+        $result = $adapter->find('user-id', 'des tomates');
+
+        // Then : la réponse est définitive (« pas de tomate dans ta liste »)
+        $this->assertSame([], $result->suggestions);
+    }
+
+    // ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
+    // Les repas planifiés (VOX-306)
+    // ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
+
+    public function testWithoutAnActiveListNoMealIsFoundAndNothingElseIsRead(): void
+    {
+        // Given
+        $adapter = $this->adapter(null, [], meals: null);
+
+        // When
+        $result = $adapter->findMeal('user-id', 'hachis parmentier');
+
+        // Then
+        $this->assertEquals(SpokenMealLookupResult::noList(), $result);
+        $this->assertSame(['user-id'], $this->mealsLoader->calls);
+        $this->assertSame([], $this->linesLoader->calls);
+        $this->assertSame([], $this->candidatesLoader->calls);
+    }
+
+    public function testAListSentToTheDriveIsSaidApartForMealsToo(): void
+    {
+        // Given
+        $adapter = $this->adapter(null, [], hasSentList: true, meals: null);
+
+        // When
+        $result = $adapter->findMeal('user-id', 'hachis parmentier');
+
+        // Then : jamais lue ni modifiée
+        $this->assertEquals(SpokenMealLookupResult::sentList(), $result);
+        $this->assertTrue($result->listSent);
+    }
+
+    public function testThePlannedMealThePhraseNamesIsFound(): void
+    {
+        // Given
+        $hachis = new ListedMeal('recipe-1', 'Hachis parmentier', 4);
+        $adapter = $this->adapter([], [], meals: [$hachis, new ListedMeal('recipe-2', 'Gratin dauphinois', 2)]);
+
+        // When
+        $result = $adapter->findMeal('user-id', 'hachis parmentier');
+
+        // Then
+        $this->assertEquals(SpokenMealLookupResult::found($hachis), $result);
+    }
+
+    public function testOnlyThePlannedMealsAreSearchedNeverTheOtherRecipesOfTheUser(): void
+    {
+        // Given : la liste ne planifie que le gratin ; le hachis existe peut-être parmi les recettes, il n'est pas dans la liste
+        $gratin = new ListedMeal('recipe-2', 'Gratin dauphinois', 2);
+        $adapter = $this->adapter([], [], meals: [$gratin]);
+
+        // When
+        $result = $adapter->findMeal('user-id', 'hachis parmentier');
+
+        // Then : pas dans la liste, rien d'assez proche
+        $this->assertEquals(SpokenMealLookupResult::notPlanned(), $result);
+    }
+
+    public function testAnActiveListWithoutMealsHasNoMeal(): void
+    {
+        // Given
+        $adapter = $this->adapter([], [], meals: []);
+
+        // When
+        $result = $adapter->findMeal('user-id', 'hachis parmentier');
+
+        // Then : une liste active (le dialogue peut continuer), mais aucun repas
+        $this->assertEquals(SpokenMealLookupResult::notPlanned(), $result);
+        $this->assertTrue($result->hasList);
+    }
+
+    public function testTheClosestPlannedMealsAreProposedWhenNoneIsSure(): void
+    {
+        // Given : deux pâtes planifiées, la phrase n'en désigne aucune
+        $brisee = new ListedMeal('recipe-1', 'Pâte brisée', 4);
+        $sablee = new ListedMeal('recipe-2', 'Pâte sablée', 2);
+        $adapter = $this->adapter([], [], meals: [$brisee, $sablee]);
+
+        // When
+        $result = $adapter->findMeal('user-id', 'pâtes à pizza');
+
+        // Then : proposées, jamais devinées
+        $this->assertEquals(SpokenMealLookupResult::notPlanned([$brisee, $sablee]), $result);
+        $this->assertNull($result->meal);
+    }
+
+    public function testAPhraseTheUserRememberedForARecipeWinsWhenItIsPlanned(): void
+    {
+        // Given : « hachis » a été retenu pour la recette 1, planifiée
+        $hachis = new ListedMeal('recipe-1', 'Hachis parmentier', 4);
+        $adapter = $this->adapter([], [], meals: [$hachis, new ListedMeal('recipe-2', 'Gratin dauphinois', 2)], rememberedRecipes: [SpokenIngredientRanker::phraseKey('hachis') => 'recipe-1']);
+
+        // When
+        $result = $adapter->findMeal('user-id', 'hachis');
+
+        // Then
+        $this->assertEquals(SpokenMealLookupResult::found($hachis), $result);
+        $this->assertSame([['user-id', SpokenIngredientRanker::phraseKey('hachis')]], $this->recipeMemory->calls);
+    }
+
+    public function testAPhraseRememberedForARecipeThatIsNotPlannedIsNotBelieved(): void
+    {
+        // Given : « hachis » a été retenu pour la recette 3, qui n'est pas dans la liste
+        $gratin = new ListedMeal('recipe-2', 'Gratin dauphinois', 2);
+        $adapter = $this->adapter([], [], meals: [$gratin], rememberedRecipes: [SpokenIngredientRanker::phraseKey('hachis') => 'recipe-3']);
+
+        // When
+        $result = $adapter->findMeal('user-id', 'hachis');
+
+        // Then : la mémoire ne fait pas trouver ce qui n'est pas planifié
+        $this->assertNull($result->meal);
+    }
+
     public function testNothingIsWritten(): void
     {
         // Given : l'adaptateur n'a ni bus ni dépôt dans son constructeur
@@ -350,6 +527,8 @@ class SpokenListLookupAdapterTest extends TestCase
             'Repas\Repas\Application\Loader\ActiveShoppingListLines',
             'Repas\Repas\Application\Loader\SpokenIngredientCandidates',
             'Repas\Repas\Application\Loader\SpokenPhraseMemory',
+            'Repas\Repas\Application\Loader\PlannedMealsInActiveList',
+            'Repas\Repas\Application\Loader\SpokenRecipePhraseMemory',
         ], $types);
     }
 }

@@ -18,6 +18,8 @@ use Repas\Repas\Domain\Model\ShoppingListStatus;
 use Repas\Shared\Application\Dto\ResolvedIngredient;
 use Repas\Shared\Application\Interface\SpokenIngredientResolver;
 use Repas\Shared\Application\Interface\VoiceFeature;
+use Repas\Shared\Application\Interface\VoiceMealPlanner;
+use Repas\Shared\Application\Interface\VoiceShoppingList;
 use Repas\Tests\Helper\Alexa\AlexaTestAuthority;
 use Repas\Tests\Helper\Alexa\AlexaTestClient;
 use Repas\Tests\Helper\Alexa\AlexaTestLeaf;
@@ -1367,7 +1369,7 @@ class AlexaWebhookApiFlowTest extends DatabaseTestCase
         $this->assertSame(1, $this->rowCount('shopping_list'));
     }
 
-    public function testRemovingAProductThatIsNotInTheListOrUnknownIsSaidAndNothingIsProposedNorCreated(): void
+    public function testRemovingAProductThatIsNotInTheListIsSaidAndAnUnknownOneAsksIfItIsAMealWithoutCreatingAnything(): void
     {
         // Given : la liste a du pain ; la farine est connue mais absente de la liste ; la ciboulette est inconnue
         $user = $this->linkedUser();
@@ -1384,10 +1386,10 @@ class AlexaWebhookApiFlowTest extends DatabaseTestCase
         $this->say(AlexaTestRequest::removeItem('de la ciboulette'));
         $unknown = $this->speech();
 
-        // Then : la phrase, le nom reconnu ou entendu ; jamais « de quoi tu parles ? », aucune création, aucun état de dialogue
+        // Then : un produit reconnu mais absent se dit, définitif ; un produit inconnu propose l'autre type, sans « de quoi tu parles ? » ni création
         $this->assertSame("Il n'y a pas de farine dans ta liste.", $absent);
-        $this->assertSame("Il n'y a pas de ciboulette dans ta liste.", $unknown);
-        $this->assertArrayNotHasKey('sessionAttributes', $this->jsonBody());
+        $this->assertSame("Il n'y a pas de ciboulette dans ta liste. C'est un repas ?", $unknown);
+        $this->assertSame('remove', $this->attributes()['dialogue']['action']);
         $this->assertSame($ingredients, $this->rowCount('ingredient'));
         $this->entityManager->clear();
         $this->assertSame([2.0, $list->getVersion()], [$this->lists->findOneById($list->getId())->getRows()->reset()->getQuantity(), $this->lists->findOneById($list->getId())->getVersion()]);
@@ -2443,5 +2445,323 @@ class AlexaWebhookApiFlowTest extends DatabaseTestCase
     private function connection(): Connection
     {
         return $this->entityManager->getConnection();
+    }
+
+    // ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
+    // Retirer un repas, et proposer ce que la liste contient (ADR 0029 décision 12, VOX-306)
+    // ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
+
+    /**
+     * Le repas de `$recipe` dans la liste active de `$user` (une liste neuve s'il n'en a pas), pour `$servings` personnes, planifié par le vrai port : les
+     * lignes des ingrédients sont celles que la planification écrit.
+     */
+    private function plannedMeal(User $user, Recipe $recipe, int $servings): void
+    {
+        static::getContainer()->get(VoiceMealPlanner::class)->plan($user->getId(), $recipe->getId(), $servings);
+        $this->entityManager->clear();
+    }
+
+    /**
+     * Les quantités des lignes de la liste active de l'utilisateur, par ingrédient.
+     *
+     * @return array<string, float>
+     */
+    private function activeQuantities(User $user): array
+    {
+        $this->entityManager->clear();
+        $quantities = [];
+        foreach ($this->lists->findOneActivateByOwner($user->getId())?->getRows() ?? [] as $row) {
+            $quantities[$row->getIngredientSlug()] = $row->getQuantity();
+        }
+
+        return $quantities;
+    }
+
+    public function testAPlannedMealIsRemovedWholeAndItsLinesGoWithIt(): void
+    {
+        // Given : le hachis est planifié pour quatre personnes
+        $user = $this->linkedUserFor(4);
+        $recipe = $this->savedRecipe($user, 'Hachis parmentier');
+        $this->plannedMeal($user, $recipe, 4);
+        $this->assertNotEmpty($this->activeQuantities($user));
+
+        // When : « Alexa, demande à Jarvis d'enlever le repas hachis parmentier »
+        $this->say(AlexaTestRequest::removeMeal('le repas hachis parmentier'));
+
+        // Then : retiré, ses lignes disparaissent, la séance se ferme sans relance
+        $this->assertSame(["C'est retiré : le repas hachis parmentier.", true], [$this->speech(), $this->jsonBody()['response']['shouldEndSession']]);
+        $this->assertArrayNotHasKey('reprompt', $this->jsonBody()['response']);
+        $this->assertNull($this->mealOf($user, $recipe));
+        $this->assertSame([], $this->activeQuantities($user));
+        $this->assertCount(1, $this->lists->findByOwner($user->getId()), 'retirer ne crée jamais de liste');
+    }
+
+    public function testSomeServingsAreTakenOffAndTheLinesFollow(): void
+    {
+        // Given : un repas pour quatre
+        $user = $this->linkedUserFor(4);
+        $recipe = $this->savedRecipe($user, 'Hachis parmentier');
+        $this->plannedMeal($user, $recipe, 4);
+        $forFour = $this->activeQuantities($user);
+
+        // When : « enlève le repas hachis parmentier pour deux personnes »
+        $this->say(AlexaTestRequest::removeMeal('hachis parmentier', 'deux', '2'));
+
+        // Then : on déduit (4 - 2 = 2), le repas reste, les lignes ont suivi
+        $this->assertSame('C\'est changé : hachis parmentier, pour 2 personnes.', $this->speech());
+        $this->assertSame(2, $this->mealOf($user, $recipe)?->getServing());
+        foreach ($forFour as $slug => $quantity) {
+            $this->assertEqualsWithDelta($quantity / 2, $this->activeQuantities($user)[$slug], 0.0001, $slug);
+        }
+
+        // When : « enlève la recette hachis parmentier pour six personnes » (plus que ce qui reste), dit à l'intention des produits
+        $this->say(AlexaTestRequest::removeItem('la recette hachis parmentier pour six personnes'));
+
+        // Then : le repas quitte la liste
+        $this->assertSame("C'est retiré : le repas hachis parmentier.", $this->speech());
+        $this->assertNull($this->mealOf($user, $recipe));
+        $this->assertSame([], $this->activeQuantities($user));
+    }
+
+    public function testRemovingWithoutTheWordMealStaysAProductAndKeepsTheMeals(): void
+    {
+        // Given : un repas planifié et du pain dans la liste
+        $user = $this->linkedUserFor(4);
+        $recipe = $this->savedRecipe($user, 'Hachis parmentier');
+        $this->plannedMeal($user, $recipe, 4);
+        $bread = new IngredientBuilder()->isBread()->withCreator($user, true)->build();
+        $this->persister->saveIngredient($bread);
+        static::getContainer()->get(VoiceShoppingList::class)->addItem($user->getId(), $bread->getSlug(), 2);
+        $this->entityManager->clear();
+
+        // When : « enlève du pain »
+        $this->say(AlexaTestRequest::removeItem('du pain'));
+
+        // Then : le pain diminue, le repas est intact
+        $this->assertSame("C'est retiré, il t'en reste 1 dans ta liste.", $this->speech());
+        $this->assertSame(4, $this->mealOf($user, $recipe)?->getServing());
+    }
+
+    public function testAMealThatIsNotInTheListProposesThePlannedMealsAndTheChoiceIsRemoved(): void
+    {
+        // Given : deux gratins planifiés, un troisième gratin d'un autre compte (jamais proposé), une recette qui n'est pas dans la liste
+        $user = $this->linkedUserFor(4);
+        $dauphinois = $this->savedRecipe($user, 'Gratin dauphinois');
+        $pates = $this->savedRecipe($user, 'Gratin de pâtes');
+        $this->savedRecipe($user, 'Gratin de chou-fleur');
+        $this->savedRecipe($this->savedUser(), 'Gratin de courgettes');
+        $this->plannedMeal($user, $dauphinois, 4);
+        $this->plannedMeal($user, $pates, 2);
+
+        // When : « enlève le gratin »
+        $this->say(AlexaTestRequest::removeMeal('gratin'));
+
+        // Then : les deux repas DE LA LISTE et l'issue « un produit », l'état voyage, rien n'est retiré
+        $this->assertSame('Je ne trouve pas le repas gratin dans ta liste. Tu veux dire gratin de pâtes ou gratin dauphinois ? Ou un produit ?', $this->speech());
+        $this->assertFalse($this->jsonBody()['response']['shouldEndSession']);
+        $this->assertSame(['remove', 'meal'], [$this->attributes()['dialogue']['action'], $this->attributes()['dialogue']['target']]);
+        $this->assertSame(4, $this->mealOf($user, $dauphinois)?->getServing());
+        $this->assertSame(0, $this->rowCount('spoken_recipe_phrase_choice'), 'retirer ne retient aucune phrase');
+
+        // When : « le deuxième »
+        $this->converse(AlexaTestRequest::chooseOption('le deuxième', '2'), $this->attributes());
+
+        // Then : le deuxième proposé quitte la liste, rien n'est retenu
+        $this->assertSame("C'est retiré : le repas gratin dauphinois.", $this->speech());
+        $this->assertSame([], $this->attributes());
+        $this->assertNull($this->mealOf($user, $dauphinois));
+        $this->assertSame(2, $this->mealOf($user, $pates)?->getServing());
+        $this->assertSame(0, $this->rowCount('spoken_recipe_phrase_choice'));
+    }
+
+    public function testTheServingsToTakeOffSurviveTheProposals(): void
+    {
+        // Given : deux gratins planifiés pour quatre
+        $user = $this->linkedUserFor(4);
+        $dauphinois = $this->savedRecipe($user, 'Gratin dauphinois');
+        $pates = $this->savedRecipe($user, 'Gratin de pâtes');
+        $this->plannedMeal($user, $dauphinois, 4);
+        $this->plannedMeal($user, $pates, 4);
+
+        // When : « enlève le gratin pour deux personnes », puis « le premier »
+        $this->say(AlexaTestRequest::removeMeal('gratin', 'deux', '2'));
+        $this->converse(AlexaTestRequest::chooseOption('le premier', '1'), $this->attributes());
+
+        // Then : deux personnes de moins pour la proposition choisie (gratin de pâtes, la première), l'autre repas est intact
+        $this->assertSame('C\'est changé : gratin de pâtes, pour 2 personnes.', $this->speech());
+        $this->assertSame(2, $this->mealOf($user, $pates)?->getServing());
+        $this->assertSame(4, $this->mealOf($user, $dauphinois)?->getServing());
+    }
+
+    public function testAMealThatIsNotInTheListThenAProductRemovesTheProductFoundUnderItsWholeName(): void
+    {
+        // Given : le produit « repas pour chien » est dans la liste, aucun repas ne lui ressemble
+        $user = $this->linkedUserFor(4);
+        $dog = new IngredientBuilder()->withName('repas pour chien')->withCreator($user, true)->build();
+        $this->persister->saveIngredient($dog);
+        $this->savedActiveList($user);
+        static::getContainer()->get(VoiceShoppingList::class)->addItem($user->getId(), $dog->getSlug(), 3);
+        $this->entityManager->clear();
+
+        // When : « enlève le repas pour chien »
+        $this->say(AlexaTestRequest::removeItem('le repas pour chien'));
+
+        // Then : aucun repas planifié ne ressemble, « C'est un produit ? », l'état garde la phrase entière
+        $this->assertSame("Je ne trouve pas le repas pour chien dans ta liste. C'est un produit ?", $this->speech());
+        $this->assertSame('le repas pour chien', $this->attributes()['dialogue']['originalPhrase']);
+
+        // When : « oui »
+        $this->converse(AlexaTestRequest::yes(), $this->attributes());
+
+        // Then : le produit est cherché sous son nom entier dans la liste et diminue d'un
+        $this->assertSame("C'est retiré, il t'en reste 2 dans ta liste.", $this->speech());
+        $this->assertSame([], $this->attributes());
+    }
+
+    public function testAProductNotUnderstoodProposesTheLinesOfTheListThenAMealRemovesTheMeal(): void
+    {
+        // Given : le hachis est planifié ; la phrase « le hachis parmentier » ne désigne aucun produit
+        $user = $this->linkedUserFor(4);
+        $recipe = $this->savedRecipe($user, 'Hachis parmentier');
+        $this->plannedMeal($user, $recipe, 4);
+
+        // When : « enlève le hachis parmentier » (sans le mot « repas »)
+        $this->say(AlexaTestRequest::removeItem('le hachis parmentier'));
+
+        // Then : un produit inconnu, rien de proche dans la liste : « C'est un repas ? »
+        $this->assertSame("Il n'y a pas de hachis parmentier dans ta liste. C'est un repas ?", $this->speech());
+        $this->assertSame('remove', $this->attributes()['dialogue']['action']);
+        $this->assertSame(4, $this->mealOf($user, $recipe)?->getServing());
+
+        // When : « oui »
+        $this->converse(AlexaTestRequest::yes(), $this->attributes());
+
+        // Then : le repas de la liste est cherché et retiré
+        $this->assertSame("C'est retiré : le repas hachis parmentier.", $this->speech());
+        $this->assertNull($this->mealOf($user, $recipe));
+        $this->assertSame([], $this->attributes());
+    }
+
+    public function testWhenNeitherTheProductNorTheMealIsInTheListNothingMoreIsOfferedAndNothingIsRemoved(): void
+    {
+        // Given : une liste active qui porte un repas sans rapport
+        $user = $this->linkedUserFor(4);
+        $recipe = $this->savedRecipe($user, 'Hachis parmentier');
+        $this->plannedMeal($user, $recipe, 4);
+
+        // When : « enlève la ciboulette » puis « un repas »
+        $this->say(AlexaTestRequest::removeItem('de la ciboulette'));
+        $first = $this->speech();
+        $this->converse(AlexaTestRequest::chooseKind('un repas', 'meal'), $this->attributes());
+
+        // Then : plus d'issue après les deux recherches, plus d'état, rien d'écrit
+        $this->assertSame("Il n'y a pas de ciboulette dans ta liste. C'est un repas ?", $first);
+        $this->assertSame("Je ne trouve rien qui s'appelle ciboulette dans ta liste.", $this->speech());
+        $this->assertTrue($this->jsonBody()['response']['shouldEndSession']);
+        $this->assertArrayNotHasKey('sessionAttributes', $this->jsonBody());
+        $this->assertSame(4, $this->mealOf($user, $recipe)?->getServing());
+    }
+
+    public function testRemovingAMealWithoutAnActiveListOrWithASentListTouchesNothing(): void
+    {
+        // Given : aucune liste
+        $user = $this->linkedUserFor(4);
+        $recipe = $this->savedRecipe($user, 'Hachis parmentier');
+
+        // When
+        $this->say(AlexaTestRequest::removeMeal('hachis parmentier'));
+        $none = $this->speech();
+
+        // Given : une liste envoyée au drive qui porte le repas
+        $sent = new ShoppingListBuilder()->withOwner($user)->addRecipe($recipe)->build();
+        foreach ($recipe->getRows() as $row) {
+            $sent->addRow($row->getIngredient()->getSlug(), $row->getIngredient()->getDefaultPurchaseUnit()->getSlug(), $row->getQuantity());
+        }
+        $sent->send(new DateTimeImmutable());
+        $this->lists->save($sent);
+        $this->entityManager->clear();
+
+        // When
+        $this->say(AlexaTestRequest::removeMeal('hachis parmentier'));
+        $sentSpeech = $this->speech();
+
+        // Then : jamais lue ni modifiée, aucune liste créée
+        $this->assertSame("Tu n'as pas de liste en cours.", $none);
+        $this->assertSame('Ta liste est déjà partie au drive.', $sentSpeech);
+        $this->entityManager->clear();
+        $reloaded = $this->lists->findOneById($sent->getId());
+        $this->assertSame([ShoppingListStatus::SENT, $sent->getVersion(), 1], [$reloaded->getStatus(), $reloaded->getVersion(), count($reloaded->getMeals())]);
+        $this->assertCount(1, $this->lists->findByOwner($user->getId()));
+    }
+
+    public function testTheMealOfAnotherUserIsNeverFoundNorRemoved(): void
+    {
+        // Given : le hachis est planifié dans la liste d'un autre compte
+        $user = $this->linkedUserFor(4);
+        $this->savedActiveList($user);
+        $other = $this->savedUser();
+        $theirs = $this->savedRecipe($other, 'Hachis parmentier');
+        $this->plannedMeal($other, $theirs, 4);
+
+        // When
+        $this->say(AlexaTestRequest::removeMeal('hachis parmentier'));
+
+        // Then : introuvable pour lui, et jamais cité
+        $this->assertSame("Je ne trouve pas le repas hachis parmentier dans ta liste. C'est un produit ?", $this->speech());
+        $this->assertStringNotContainsString('Hachis parmentier', (string) $this->client->getResponse()->getContent());
+        $this->assertSame(4, $this->mealOf($other, $theirs)?->getServing());
+    }
+
+    public function testAForgedRemovalStateWithTheRecipeOfAnotherUserRemovesNothingAndAnswersPolitely(): void
+    {
+        // Given : l'état désigne le repas d'un AUTRE utilisateur
+        $user = $this->linkedUserFor(4);
+        $other = $this->savedUser();
+        $theirs = $this->savedRecipe($other, 'Hachis parmentier');
+        $this->plannedMeal($other, $theirs, 4);
+        $forged = SpokenDialogueState::chooseMealToRemove('gratin', [new DialogueOption($theirs->getId(), 'hachis parmentier')]);
+
+        // When : « le premier »
+        $this->converse(AlexaTestRequest::chooseOption('le premier', '1'), ['dialogue' => $forged->toArray()]);
+
+        // Then : une phrase polie, le repas de l'autre est intact, rien n'est créé
+        $this->assertSame(200, $this->statusCode());
+        $this->assertSame("Je n'ai pas pu faire ça. Réessaie dans un instant.", $this->speech());
+        $this->assertArrayNotHasKey('sessionAttributes', $this->jsonBody());
+        $this->assertSame(4, $this->mealOf($other, $theirs)?->getServing());
+        $this->assertCount(0, $this->lists->findByOwner($user->getId()));
+    }
+
+    public function testAMealToRemoveWithoutARecipeGetsAnExampleAndAnUnusableNumberAsksAgain(): void
+    {
+        // Given
+        $user = $this->linkedUserFor(4);
+        $recipe = $this->savedRecipe($user, 'Hachis parmentier');
+        $this->plannedMeal($user, $recipe, 4);
+
+        // When / Then
+        $this->say(AlexaTestRequest::removeMeal(null));
+        $this->assertSame('Dis par exemple : enlève le repas hachis parmentier.', $this->speech());
+        $this->say(AlexaTestRequest::removeMeal('hachis parmentier pour cent personnes'));
+        $this->assertSame('Combien ? Redis ta demande avec un nombre de 1 à 99.', $this->speech());
+        $this->assertSame(4, $this->mealOf($user, $recipe)?->getServing());
+    }
+
+    public function testAnIngredientOfTheMealThatCannotBeConvertedAnswersPolitelyAndKeepsTheMeal(): void
+    {
+        // Given : un repas planifié dont les conversions ont disparu depuis
+        $user = $this->linkedUserFor(4);
+        $recipe = $this->savedRecipe($user, 'Hachis parmentier', withConversions: false);
+        $list = new ShoppingListBuilder()->withOwner($user)->addRecipe($recipe)->build();
+        $this->lists->save($list);
+        $this->entityManager->clear();
+
+        // When
+        $this->say(AlexaTestRequest::removeMeal('hachis parmentier'));
+
+        // Then : la phrase d'échec, le bus a tout annulé, le repas est toujours dans la liste
+        $this->assertSame(200, $this->statusCode());
+        $this->assertSame("Je n'ai pas pu faire ça. Réessaie dans un instant.", $this->speech());
+        $this->assertNotNull($this->mealOf($user, $recipe));
     }
 }

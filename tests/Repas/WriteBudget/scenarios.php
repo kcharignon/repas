@@ -41,6 +41,7 @@ use Repas\Repas\Application\Command\RememberSpokenRecipePhrase\RememberSpokenRec
 use Repas\Repas\Application\Command\RemoveIngredient\RemoveIngredientCommand;
 use Repas\Repas\Application\Command\RemoveIngredientToShoppingList\RemoveIngredientToShoppingListCommand;
 use Repas\Repas\Application\Command\RemoveSpokenIngredient\RemoveSpokenIngredientCommand;
+use Repas\Repas\Application\Command\RemoveSpokenMeal\RemoveSpokenMealCommand;
 use Repas\Repas\Application\Command\RemoveMealFromPlan\removeMealFromPlanCommand;
 use Repas\Repas\Application\Command\RemoveRecipe\RemoveRecipeCommand;
 use Repas\Repas\Application\Command\RemoveShoppingList\RemoveShoppingListCommand;
@@ -102,6 +103,7 @@ use Repas\Voice\Application\Command\IssueAuthorizationCode\IssueAuthorizationCod
 use Repas\Voice\Application\Command\RecordVoiceLinkUse\RecordVoiceLinkUseCommand;
 use Repas\Voice\Application\Command\RefreshAccessGrant\RefreshAccessGrantCommand;
 use Repas\Voice\Application\Command\RemoveSpokenItem\RemoveSpokenItemCommand;
+use Repas\Voice\Application\Command\RemoveSpokenMeal\RemoveSpokenMealCommand as SpokenMealRemovalCommand;
 use Repas\Voice\Application\Command\RevokeVoiceLink\RevokeVoiceLinkCommand;
 use Repas\Voice\Domain\Model\AlexaRequest;
 use Repas\Voice\Domain\Model\DialogueOption;
@@ -944,6 +946,52 @@ return [
         $t->savedShoppingList($owner, $recipes);
 
         return new ChangeSpokenMealServingsCommand($owner->getId(), $recipes[0]->getId(), 6);
+    },
+    // Retrait d'un repas dit à la voix (ADR 0029 décision 12, VOX-306) : le repas quitte la liste active et ses lignes diminuent de ce qu'il apportait
+    'retirer-repas-par-la-voix' => static function (WriteBudgetTestCase $t): object {
+        $owner = $t->savedUser();
+        $recipes = $t->typicalRecipes($owner);
+        $t->savedShoppingList($owner, $recipes);
+
+        return new RemoveSpokenMealCommand($owner->getId(), $recipes[0]->getId());
+    },
+    // Une personne de moins : le nombre de personnes baisse et les lignes sont ajustées de la différence
+    'retirer-repas-par-la-voix-partiel' => static function (WriteBudgetTestCase $t): object {
+        $owner = $t->savedUser();
+        $recipes = $t->typicalRecipes($owner);
+        $t->savedShoppingList($owner, $recipes);
+
+        return new RemoveSpokenMealCommand($owner->getId(), $recipes[0]->getId(), 1);
+    },
+    // Sans liste active : rien n'est écrit, aucune liste n'est créée (seules les lectures)
+    'retirer-repas-par-la-voix-sans-liste' => static function (WriteBudgetTestCase $t): object {
+        $owner = $t->savedUser();
+        [$first] = $t->typicalRecipes($owner);
+
+        return new RemoveSpokenMealCommand($owner->getId(), $first->getId());
+    },
+    // La seule liste est partie au drive : elle n'est ni lue ni modifiée (seules les lectures)
+    'retirer-repas-par-la-voix-liste-envoyee' => static function (WriteBudgetTestCase $t): object {
+        $owner = $t->savedUser();
+        $recipes = $t->typicalRecipes($owner);
+        $t->savedShoppingList($owner, $recipes, beforeSave: static fn(ShoppingList $list) => $list->send(new \DateTimeImmutable()));
+
+        return new RemoveSpokenMealCommand($owner->getId(), $recipes[0]->getId(), 1);
+    },
+    // De bout en bout, comme un retrait dit à Alexa : « enlève le repas … » (lecture des repas de la liste puis retrait)
+    'retirer-repas-dit-a-alexa' => static function (WriteBudgetTestCase $t): object {
+        $owner = $t->savedUser();
+        $recipes = $t->typicalRecipes($owner);
+        $t->savedShoppingList($owner, $recipes);
+
+        return new SpokenMealRemovalCommand($owner->getId(), $recipes[0]->getName(), true);
+    },
+    // Introuvable : seules les lectures (la liste et ses repas), aucune écriture
+    'retirer-repas-dit-a-alexa-introuvable' => static function (WriteBudgetTestCase $t): object {
+        $owner = $t->savedUser();
+        $t->savedShoppingList($owner, $t->typicalRecipes($owner));
+
+        return new SpokenMealRemovalCommand($owner->getId(), 'xyz', true);
     },
     // Mémoire de phrase des recettes : la recette est vérifiée (une lecture), la ligne écrite (un upsert)
     'memoriser-phrase-de-recette-alexa' => static function (WriteBudgetTestCase $t): object {

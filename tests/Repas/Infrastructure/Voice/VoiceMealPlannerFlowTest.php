@@ -2,6 +2,7 @@
 
 namespace Repas\Tests\Repas\Infrastructure\Voice;
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use Repas\Repas\Domain\Exception\IngredientException;
 use Repas\Repas\Domain\Exception\RecipeException;
 use Repas\Repas\Domain\Exception\ShoppingListException;
@@ -12,6 +13,7 @@ use Repas\Repas\Domain\Model\ShoppingList;
 use Repas\Repas\Domain\Model\ShoppingListStatus;
 use Repas\Shared\Application\Dto\ChangedMealServings;
 use Repas\Shared\Application\Dto\PlannedSpokenMeal;
+use Repas\Shared\Application\Dto\RemovedSpokenMeal;
 use Repas\Shared\Application\Interface\VoiceMealPlanner;
 use Repas\Tests\Helper\Builder\ConversionBuilder;
 use Repas\Tests\Helper\Builder\RecipeBuilder;
@@ -413,5 +415,220 @@ class VoiceMealPlannerFlowTest extends DatabaseTestCase
 
         $this->expectExceptionObject(ShoppingListException::invalidSpokenServings(100));
         $this->planner->changeServings($user->getId(), $recipe->getId(), 100);
+    }
+
+    // ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
+    // Retirer un repas, ou baisser son nombre de personnes (ADR 0029 décision 12, VOX-306)
+    // ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
+
+    public function testTheWholeMealLeavesTheListAndItsLinesGoBackToWhatTheyWere(): void
+    {
+        // Given : deux repas planifiés, les lignes de la liste portent les deux
+        $user = $this->savedUser(4);
+        $carbonara = $this->savedRecipe($user, new RecipeBuilder()->isPastaCarbonara());
+        $eggs = $this->savedRecipe($user, new RecipeBuilder()->isSoftBoiledEggs());
+        $active = $this->savedList($user, []);
+        $this->entityManager->clear();
+        $this->planner->plan($user->getId(), $carbonara->getId(), 4);
+        $this->entityManager->clear();
+        $onlyCarbonara = $this->quantitiesOf($active);
+        $this->planner->plan($user->getId(), $eggs->getId(), 4);
+        $this->entityManager->clear();
+
+        // When : « enlève le repas œufs mollets »
+        $result = $this->planner->removeMeal($user->getId(), $eggs->getId());
+        $this->entityManager->clear();
+
+        // Then : le repas a quitté la liste, l'autre reste, et les lignes sont revenues à ce qu'elles étaient avec la carbonara seule
+        $this->assertEquals(RemovedSpokenMeal::removed($eggs->getName()), $result);
+        $reloaded = $this->shoppingListRepository->findOneById($active->getId());
+        $this->assertCount(1, $reloaded->getMeals());
+        $this->assertNull($this->mealOf($reloaded, $eggs));
+        $this->assertNotNull($this->mealOf($reloaded, $carbonara));
+        $after = $this->quantitiesOf($active);
+        foreach ($onlyCarbonara as $slug => $quantity) {
+            $this->assertEqualsWithDelta($quantity, $after[$slug] ?? 0.0, 0.0001, $slug);
+        }
+        $this->assertCount(1, $this->shoppingListRepository->findByOwner($user->getId()), 'retirer ne crée jamais de liste');
+    }
+
+    public function testSomeServingsAreTakenOffAndTheLinesFollow(): void
+    {
+        // Given : un repas pour 4
+        $user = $this->savedUser(4);
+        $recipe = $this->savedRecipe($user, new RecipeBuilder()->isPastaCarbonara());
+        $active = $this->savedList($user, []);
+        $this->entityManager->clear();
+        $this->planner->plan($user->getId(), $recipe->getId(), 4);
+        $this->entityManager->clear();
+        $forFour = $this->quantitiesOf($active);
+
+        // When : « enlève le repas carbonara pour 1 personne », puis « pour 2 personnes »
+        $first = $this->planner->removeMeal($user->getId(), $recipe->getId(), 1);
+        $this->entityManager->clear();
+        $forThree = $this->quantitiesOf($active);
+        $second = $this->planner->removeMeal($user->getId(), $recipe->getId(), 2);
+        $this->entityManager->clear();
+        $forOne = $this->quantitiesOf($active);
+
+        // Then : on déduit, on ne fixe pas (4 - 1 = 3, 3 - 2 = 1) et les lignes ont suivi, linéairement
+        $this->assertEquals(RemovedSpokenMeal::lowered($recipe->getName(), 3), $first);
+        $this->assertEquals(RemovedSpokenMeal::lowered($recipe->getName(), 1), $second);
+        $this->assertSame(1, $this->mealOf($this->shoppingListRepository->findOneById($active->getId()), $recipe)?->getServing());
+        $this->assertNotEmpty($forFour);
+        foreach ($forFour as $slug => $quantityForFour) {
+            $this->assertEqualsWithDelta($quantityForFour * 3 / 4, $forThree[$slug], 0.0001, "$slug pour trois");
+            $this->assertEqualsWithDelta($quantityForFour * 1 / 4, $forOne[$slug], 0.0001, "$slug pour un");
+        }
+    }
+
+    #[DataProvider('asManyOrMoreServings')]
+    public function testTakingOffAsManyServingsAsTheMealHasOrMoreRemovesTheWholeMeal(int $taken): void
+    {
+        // Given : un repas pour 4
+        $user = $this->savedUser(4);
+        $recipe = $this->savedRecipe($user, new RecipeBuilder()->isPastaCarbonara());
+        $active = $this->savedList($user, []);
+        $this->entityManager->clear();
+        $this->planner->plan($user->getId(), $recipe->getId(), 4);
+        $this->entityManager->clear();
+
+        // When
+        $result = $this->planner->removeMeal($user->getId(), $recipe->getId(), $taken);
+        $this->entityManager->clear();
+
+        // Then : jamais un nombre de personnes nul ou négatif, le repas quitte la liste et ses lignes disparaissent
+        $this->assertEquals(RemovedSpokenMeal::removed($recipe->getName()), $result);
+        $reloaded = $this->shoppingListRepository->findOneById($active->getId());
+        $this->assertCount(0, $reloaded->getMeals());
+        $this->assertSame([], $this->quantitiesOf($active));
+    }
+
+    /**
+     * @return iterable<string, array{int}>
+     */
+    public static function asManyOrMoreServings(): iterable
+    {
+        yield 'autant' => [4];
+        yield 'plus' => [5];
+        yield 'beaucoup plus' => [99];
+    }
+
+    public function testARecipeThatIsNotInTheListSaysSoAndWritesNothing(): void
+    {
+        // Given : une liste active sans ce repas, puis aucune liste du tout
+        $user = $this->savedUser();
+        $recipe = $this->savedRecipe($user, new RecipeBuilder()->isPastaCarbonara());
+        $active = $this->savedList($user, []);
+        $this->entityManager->clear();
+
+        // When / Then
+        $this->assertEquals(RemovedSpokenMeal::notPlanned($recipe->getName()), $this->planner->removeMeal($user->getId(), $recipe->getId()));
+        $this->entityManager->clear();
+        $this->assertSame($active->getVersion(), $this->shoppingListRepository->findOneById($active->getId())->getVersion());
+
+        $alone = $this->savedUser();
+        $aloneRecipe = $this->savedRecipe($alone, new RecipeBuilder()->isSoftBoiledEggs());
+        $this->assertEquals(RemovedSpokenMeal::notPlanned($aloneRecipe->getName()), $this->planner->removeMeal($alone->getId(), $aloneRecipe->getId(), 2));
+        $this->assertCount(0, $this->shoppingListRepository->findByOwner($alone->getId()), 'retirer ne crée jamais de liste');
+    }
+
+    public function testASentListIsNeverChangedByARemoval(): void
+    {
+        // Given : le repas est dans la seule liste, envoyée au drive
+        $user = $this->savedUser();
+        $recipe = $this->savedRecipe($user, new RecipeBuilder()->isPastaCarbonara());
+        $sent = $this->savedList($user, [$recipe], ShoppingListStatus::SENT);
+        $this->entityManager->clear();
+
+        // When
+        $whole = $this->planner->removeMeal($user->getId(), $recipe->getId());
+        $part = $this->planner->removeMeal($user->getId(), $recipe->getId(), 1);
+        $this->entityManager->clear();
+
+        // Then : seule la liste ACTIVE compte, la liste envoyée reste telle quelle
+        $this->assertEquals(RemovedSpokenMeal::notPlanned($recipe->getName()), $whole);
+        $this->assertEquals(RemovedSpokenMeal::notPlanned($recipe->getName()), $part);
+        $reloaded = $this->shoppingListRepository->findOneById($sent->getId());
+        $this->assertSame([ShoppingListStatus::SENT, $sent->getVersion(), 1], [$reloaded->getStatus(), $reloaded->getVersion(), $reloaded->getMeals()->count()]);
+    }
+
+    public function testRemovingTheRecipeOfAnotherUserIsRefusedAndNothingIsWritten(): void
+    {
+        // Given : le repas de l'autre est dans la liste de l'autre
+        $user = $this->savedUser();
+        $other = $this->savedUser();
+        $theirs = $this->savedRecipe($other, new RecipeBuilder()->isPastaCarbonara());
+        $theirList = $this->savedList($other, [$theirs]);
+        $this->entityManager->clear();
+
+        try {
+            // When
+            $this->planner->removeMeal($user->getId(), $theirs->getId());
+            $this->fail('La recette d\'un autre compte doit être refusée.');
+        } catch (RecipeException $exception) {
+            // Then : 404, et la liste de l'autre n'a pas bougé
+            $this->assertEquals(RecipeException::notFound($theirs->getId()), $exception);
+        }
+        $this->entityManager->clear();
+        $this->assertCount(1, $this->shoppingListRepository->findOneById($theirList->getId())->getMeals());
+    }
+
+    public function testAnUnknownRecipeIsRefusedWhenRemoving(): void
+    {
+        $user = $this->savedUser();
+
+        $this->expectException(RecipeException::class);
+        $this->planner->removeMeal($user->getId(), 'recette-qui-n-existe-pas');
+    }
+
+    #[DataProvider('servingsToTakeOffOutOfRange')]
+    public function testAnUnusableNumberOfServingsToTakeOffIsRefusedAndNothingIsWritten(int $taken): void
+    {
+        // Given
+        $user = $this->savedUser(4);
+        $recipe = $this->savedRecipe($user, new RecipeBuilder()->isPastaCarbonara());
+        $active = $this->savedList($user, [$recipe]);
+        $this->entityManager->clear();
+
+        try {
+            // When
+            $this->planner->removeMeal($user->getId(), $recipe->getId(), $taken);
+            $this->fail('Un nombre de personnes hors de 1 à 99 doit être refusé.');
+        } catch (ShoppingListException $exception) {
+            // Then
+            $this->assertEquals(ShoppingListException::invalidSpokenServings($taken), $exception);
+        }
+        $this->entityManager->clear();
+        $this->assertSame($active->getVersion(), $this->shoppingListRepository->findOneById($active->getId())->getVersion());
+    }
+
+    /**
+     * @return iterable<string, array{int}>
+     */
+    public static function servingsToTakeOffOutOfRange(): iterable
+    {
+        yield 'zéro' => [0];
+        yield 'négatif' => [-3];
+        yield 'cent' => [100];
+    }
+
+    public function testAnIngredientWithoutConversionFailsTheWholeRemovalAndWritesNothing(): void
+    {
+        // Given : un repas planifié dont un ingrédient n'a plus de conversion (supprimée depuis)
+        $user = $this->savedUser(4);
+        $recipe = $this->savedRecipe($user, new RecipeBuilder()->isPastaCarbonara(), withConversions: false);
+        $active = $this->savedList($user, [$recipe]);
+        $this->entityManager->clear();
+
+        try {
+            // When
+            $this->planner->removeMeal($user->getId(), $recipe->getId());
+            $this->fail('Un ingrédient sans conversion doit faire échouer la commande.');
+        } catch (IngredientException) {
+            // Then : le bus transactionnel a tout annulé, le repas est toujours dans la liste
+        }
+        $this->entityManager->clear();
+        $this->assertCount(1, $this->shoppingListRepository->findOneById($active->getId())->getMeals());
     }
 }

@@ -86,6 +86,17 @@ final readonly class AlexaTestRequest
         return $servingsHeard === null ? $request : $request->withSlot('servings', $servingsHeard, $servingsId);
     }
 
+    /**
+     * « enlève le repas hachis parmentier pour deux personnes » : l'intention `RemoveMealIntent`, son créneau `recipe` et, si on le donne, `servings` (le nombre
+     * de personnes ENLEVÉ, rapproché du nombre `$servingsId`).
+     */
+    public static function removeMeal(?string $recipe = 'hachis parmentier', ?string $servingsHeard = null, ?string $servingsId = null): self
+    {
+        $request = self::of('IntentRequest', 'RemoveMealIntent', $recipe === null ? ['recipe' => ['name' => 'recipe']] : ['recipe' => ['name' => 'recipe', 'value' => $recipe]]);
+
+        return $servingsHeard === null ? $request : $request->withSlot('servings', $servingsHeard, $servingsId);
+    }
+
     /** « six » : `AnswerServingsIntent`, créneau `servings` rapproché du nombre `$servingsId` (« 6 »). */
     public static function answerServings(?string $heard, ?string $servingsId): self
     {

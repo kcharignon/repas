@@ -45,6 +45,12 @@ final readonly class SpokenAnswer
         return new self(SpokenAnswerKind::NEW_MEAL, null, $phrase, $servings, $original);
     }
 
+    /** « Enlève le repas … » dit au milieu d'une question : une nouvelle demande, de retrait d'un repas (ADR 0029 décision 12, VOX-306). */
+    public static function newMealRemoval(string $phrase, ?int $servings, ?string $original = null): self
+    {
+        return new self(SpokenAnswerKind::NEW_MEAL_REMOVAL, null, $phrase, $servings, $original);
+    }
+
     /** Le nouveau total de personnes d'un repas déjà planifié. */
     public static function pickServings(int $servings): self
     {

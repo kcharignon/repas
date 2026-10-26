@@ -18,6 +18,8 @@ use Repas\Voice\Application\Command\AddSpokenItem\AddSpokenItemResult;
 use Repas\Voice\Application\Command\AddSpokenMeal\AddSpokenMealCommand;
 use Repas\Voice\Application\Command\AnswerSpokenDialogue\AnswerSpokenDialogueCommand;
 use Repas\Voice\Application\Command\RecordVoiceLinkUse\RecordVoiceLinkUseCommand;
+use Repas\Voice\Application\Command\RemoveSpokenItem\RemoveSpokenItemCommand;
+use Repas\Voice\Application\Command\RemoveSpokenMeal\RemoveSpokenMealCommand;
 use Repas\Voice\Domain\Model\DialogueOption;
 use Repas\Voice\Domain\Model\SpokenDialogueState;
 use Repas\Voice\Application\Query\ResolveAccessGrant\ResolveAccessGrantQuery;
@@ -670,5 +672,48 @@ class HandleAlexaRequestApiControllerTest extends QueryBusWebTestCase
     private function statusCode(): int
     {
         return $this->client->getResponse()->getStatusCode();
+    }
+
+    public function testARemovedMealGoesToTheMealRemovalUseCaseNotToTheProductOne(): void
+    {
+        // Given
+        $this->linkedAccount();
+        $this->commandBus->willReturn(RemoveSpokenMealCommand::class, new AddSpokenItemResult("C'est changé : hachis parmentier, pour 2 personnes.", keepSessionOpen: false, added: false));
+
+        // When : « enlève le repas hachis parmentier pour deux personnes »
+        $this->post(AlexaTestRequest::removeMeal('le repas hachis parmentier pour deux personnes')->withAccessToken(self::TOKEN));
+
+        // Then : la recette sans le mot ni la queue, le nombre de personnes enlevé, aucun retrait de produit
+        $this->assertSame(200, $this->statusCode());
+        $this->assertSame("C'est changé : hachis parmentier, pour 2 personnes.", $this->jsonBody()['response']['outputSpeech']['text']);
+        $this->assertCount(2, $this->commandBus->dispatched(), 'le retrait, puis le suivi de la liaison');
+        $this->assertEquals(new RemoveSpokenMealCommand('user-1', 'hachis parmentier', false, 2, originalPhrase: 'le repas hachis parmentier'), $this->commandBus->dispatched()[0]);
+    }
+
+    public function testAMealRemovedByTheWordButRangedInTheProductIntentGoesToTheMealRemovalUseCase(): void
+    {
+        // Given
+        $this->linkedAccount();
+        $this->commandBus->willReturn(RemoveSpokenMealCommand::class, new AddSpokenItemResult("C'est retiré : le repas gratin.", keepSessionOpen: true, added: false));
+
+        // When : « retire la recette gratin » rangé dans l'intention des produits, séance ouverte
+        $this->post(AlexaTestRequest::removeItem('la recette gratin')->withAccessToken(self::TOKEN)->inOpenSession());
+
+        // Then
+        $this->assertEquals(new RemoveSpokenMealCommand('user-1', 'gratin', true, null, originalPhrase: 'la recette gratin'), $this->commandBus->dispatched()[0]);
+        $this->assertFalse($this->jsonBody()['response']['shouldEndSession']);
+    }
+
+    public function testRemovingAProductWithoutTheWordStaysAProductRemoval(): void
+    {
+        // Given
+        $this->linkedAccount();
+        $this->commandBus->willReturn(RemoveSpokenItemCommand::class, new AddSpokenItemResult("C'est retiré : pain.", keepSessionOpen: false, added: false));
+
+        // When
+        $this->post(AlexaTestRequest::removeItem('du pain')->withAccessToken(self::TOKEN));
+
+        // Then
+        $this->assertInstanceOf(RemoveSpokenItemCommand::class, $this->commandBus->dispatched()[0]);
     }
 }
