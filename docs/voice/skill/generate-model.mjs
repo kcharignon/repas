@@ -300,11 +300,14 @@ function checkItemSamples() {
 }
 
 // Planifier un repas (VOX-305, décision 13 de l'ADR 0029) : le MOT « repas » ou « recette », ou un verbe de planification, annonce une recette ; sans cela,
-// « ajoute … » est un produit (AddItemIntent). Le nombre de personnes se dit en fin de phrase (« pour {servings} personnes »). Jamais « un » ni « une » comme
-// mot de liaison (ce sont des nombres, voir `addItemSamples`). Le webhook reconnaît aussi « le repas » / « la recette » quand Amazon range la phrase dans
-// AddItemIntent, et lit « pour six personnes » en queue de phrase.
+// « ajoute … » est un produit (AddItemIntent). Le nombre de personnes se dit en fin de phrase (« pour {servings} personnes »). Après un VERBE DE PLANIFICATION,
+// l'article se dit (« planifie une fondue », essai réel du 2026-10-26 : sans lui Amazon ne comprenait pas) : « un » et « une » y sont des articles, sans risque
+// de confusion avec une quantité puisque le seul nombre de la phrase vient après « pour » ; partout ailleurs ils restent bannis (voir `addItemSamples`). Le
+// webhook retire l'article et le mot « repas » / « recette » du nom (`SpokenMealPhrase::parse`, `SpokenIngredientNamer`), reconnaît aussi « le repas » /
+// « la recette » quand Amazon range la phrase dans AddItemIntent, et lit « pour six personnes » en queue de phrase.
 const PLAN_VERBS = ['planifie', 'planifier', 'prévois', 'prévoir', 'prépare', 'préparer', 'mets au menu', 'mettre au menu'];
 const PLAN_MARKERS = ['', 'le repas', 'la recette'];
+const PLAN_ARTICLES = ['un', 'une', 'des', 'le', 'la'];
 const MEAL_ADD_MARKERS = ['le repas', 'la recette', 'le repas de', 'la recette de'];
 const MEAL_FORMS = ['{recipe}', '{recipe} pour {servings} personnes', '{recipe} pour {servings}'];
 
@@ -314,6 +317,11 @@ function addMealSamples() {
     for (const marker of PLAN_MARKERS) {
       for (const form of MEAL_FORMS) {
         samples.push([verb, marker, form].filter(Boolean).join(' '));
+      }
+    }
+    for (const article of PLAN_ARTICLES) {
+      for (const form of MEAL_FORMS) {
+        samples.push([verb, article, form].join(' '));
       }
     }
   }
