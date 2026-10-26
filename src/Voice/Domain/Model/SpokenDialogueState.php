@@ -78,6 +78,12 @@ final readonly class SpokenDialogueState
         public ?int $servings = null,
         /** Étape `servings` : le nombre de personnes pour lequel la recette est déjà planifiée (1 à 99). */
         public ?int $plannedServings = null,
+        /**
+         * Question de recette (`choose` d'un repas) : la phrase telle que dite, AVEC le mot « repas » ou « recette » (« le repas pour chien »), quand elle
+         * diffère de `phrase` (le nom de la recette sans le mot). C'est elle que la recherche de produits reprend après « un produit », pour qu'un produit
+         * dont le nom commence par ce mot soit retrouvé sous son nom entier. Borné (100 caractères) et lu comme une entrée non fiable.
+         */
+        public ?string $originalPhrase = null,
     ) {
     }
 
@@ -107,10 +113,13 @@ final readonly class SpokenDialogueState
      * @param list<DialogueOption> $options des recettes : le `slug` est l'identifiant de la recette
      * @param ?int $servings le nombre de personnes dit au départ
      * @param bool $otherSideTried les produits ont déjà été cherchés pour cette phrase : « ou un produit ? » n'est plus proposé
+     * @param ?string $originalPhrase la phrase telle que dite, avec le mot « repas » ou « recette » ; gardée seulement si elle diffère de `$phrase` et tient dans la borne
      */
-    public static function chooseRecipe(string $phrase, array $options, string $name, ?int $servings = null, bool $otherSideTried = false): self
+    public static function chooseRecipe(string $phrase, array $options, string $name, ?int $servings = null, bool $otherSideTried = false, ?string $originalPhrase = null): self
     {
-        return new self(DialogueStep::CHOOSE, $phrase, array_slice(array_values($options), 0, self::MAX_OPTIONS), $name, null, null, 0, 1, null, SpokenAction::ADD, SpokenTarget::MEAL, $otherSideTried, $servings);
+        $original = $originalPhrase !== null && $originalPhrase !== $phrase && mb_strlen($originalPhrase) <= AlexaRequest::MAX_PHRASE_LENGTH ? $originalPhrase : null;
+
+        return new self(DialogueStep::CHOOSE, $phrase, array_slice(array_values($options), 0, self::MAX_OPTIONS), $name, null, null, 0, 1, null, SpokenAction::ADD, SpokenTarget::MEAL, $otherSideTried, $servings, null, $original);
     }
 
     /**
@@ -240,6 +249,9 @@ final readonly class SpokenDialogueState
         if ($this->plannedServings !== null) {
             $data['plannedServings'] = $this->plannedServings;
         }
+        if ($this->originalPhrase !== null) {
+            $data['originalPhrase'] = $this->originalPhrase;
+        }
         if ($this->department !== null) {
             $data['departmentSlug'] = $this->department->slug;
             $data['departmentName'] = $this->department->name;
@@ -282,6 +294,8 @@ final readonly class SpokenDialogueState
         $otherSideTried = ($data['otherSideTried'] ?? null) === true;
         $servings = self::servings($data['servings'] ?? null);
         $plannedServings = self::servings($data['plannedServings'] ?? null);
+        // La phrase d'origine n'a de sens que pour la question d'une recette : ailleurs elle est ignorée
+        $originalPhrase = $target === SpokenTarget::MEAL && $step === DialogueStep::CHOOSE ? self::text($data['originalPhrase'] ?? null, AlexaRequest::MAX_PHRASE_LENGTH) : null;
 
         // Ce que chaque étape suppose déjà connu : le rayon avant l'unité, les deux avant la confirmation ; pour un repas, seulement le choix d'une
         // recette ou le nombre de personnes d'une recette déjà planifiée (aucun rayon, aucune unité, aucune création)
@@ -314,6 +328,7 @@ final readonly class SpokenDialogueState
             $otherSideTried,
             $target === SpokenTarget::MEAL ? $servings : null,
             $step === DialogueStep::SERVINGS ? $plannedServings : null,
+            $originalPhrase,
         );
 
         // Un retrait ne départage que des lignes qui se valent : un état qui prétend retirer autre chose (un repas, par exemple, VOX-306) n'est pas cru

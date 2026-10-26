@@ -76,7 +76,8 @@ final readonly class AlexaDialogue
         if ($meal !== null) {
             return match (true) {
                 $meal->recipe === '' => AlexaResponse::reply(VoiceReplies::MEAL_EXAMPLE, $request->isInOpenSession(), null),
-                $request->hasUnusableServings() => AlexaResponse::reply(VoiceReplies::HOW_MANY, $request->isInOpenSession(), null),
+                // Un nombre de personnes dit mais hors de 1 à 99 (créneau ou fin de phrase : « pour 100 personnes », « pour 0 ») : on redemande, rien n'est écrit
+                $request->hasUnusableServings() || $meal->unusableServings => AlexaResponse::reply(VoiceReplies::HOW_MANY, $request->isInOpenSession(), null),
                 default => null,
             };
         }

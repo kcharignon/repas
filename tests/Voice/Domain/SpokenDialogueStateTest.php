@@ -472,4 +472,44 @@ class SpokenDialogueStateTest extends TestCase
         $this->assertTrue($confirm->otherSideTried);
         $this->assertEquals($confirm, SpokenDialogueState::fromArray($confirm->toArray()));
     }
+
+    public function testTheOriginalPhraseOfARecipeQuestionTravelsOnlyWhenItDiffersFromThePhrase(): void
+    {
+        // Given : « le repas pour chien » dit pour un produit : la recette cherchée est « pour chien », la phrase d'origine garde le mot
+        $state = SpokenDialogueState::chooseRecipe('pour chien', [], 'pour chien', null, false, 'le repas pour chien');
+        $same = SpokenDialogueState::chooseRecipe('gratin', [], 'gratin', null, false, 'gratin');
+
+        // Then : écrite seulement quand elle diffère (la séance a une taille limite), et elle revient
+        $this->assertSame('le repas pour chien', $state->toArray()['originalPhrase']);
+        $this->assertArrayNotHasKey('originalPhrase', $same->toArray());
+        $this->assertEquals($state, SpokenDialogueState::fromArray(json_decode(json_encode($state->toArray(), JSON_THROW_ON_ERROR), true, 512, JSON_THROW_ON_ERROR)));
+        $this->assertSame('le repas pour chien', $state->originalPhrase);
+        $this->assertNull($same->originalPhrase);
+    }
+
+    public function testTheOriginalPhraseSurvivesAMiss(): void
+    {
+        $state = SpokenDialogueState::chooseRecipe('pour chien', [], 'pour chien', null, false, 'le repas pour chien')->missed();
+
+        $this->assertSame(['le repas pour chien', 1], [$state->originalPhrase, $state->misses]);
+    }
+
+    public function testAForgedOriginalPhraseIsBoundedAndNeverBelievedOutsideARecipeQuestion(): void
+    {
+        $base = ['phrase' => 'pour chien', 'name' => 'pour chien', 'misses' => 0, 'options' => [], 'step' => 'choose'];
+
+        // Trop longue, avec un caractère de contrôle, pas une chaîne, vide : ignorée, l'état reste lisible
+        foreach ([str_repeat('a', 101), "le repas\u{0007}", 12, '', ['x']] as $forged) {
+            $state = SpokenDialogueState::fromArray([...$base, 'target' => 'meal', 'originalPhrase' => $forged]);
+            $this->assertNotNull($state);
+            $this->assertNull($state->originalPhrase);
+        }
+        // Seule une question de recette la porte : un produit, ou l'étape du nombre de personnes, l'ignorent
+        $this->assertNull(SpokenDialogueState::fromArray([...$base, 'originalPhrase' => 'le repas pour chien'])?->originalPhrase);
+        $servings = SpokenDialogueState::fromArray(['step' => 'servings', 'phrase' => 'gratin', 'name' => 'gratin', 'misses' => 0, 'target' => 'meal', 'options' => [['slug' => 'r1', 'name' => 'gratin']], 'plannedServings' => 4, 'originalPhrase' => 'le repas gratin']);
+        $this->assertNotNull($servings);
+        $this->assertNull($servings->originalPhrase);
+        // Une phrase d'origine de cent caractères tient
+        $this->assertSame(str_repeat('a', 100), SpokenDialogueState::fromArray([...$base, 'target' => 'meal', 'originalPhrase' => str_repeat('a', 100)])?->originalPhrase);
+    }
 }

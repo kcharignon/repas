@@ -103,7 +103,7 @@ class HandleAlexaRequestApiControllerTest extends QueryBusWebTestCase
         $this->assertSame(200, $this->statusCode());
         $this->assertSame("C'est noté : hachis parmentier, pour 6 personnes.", $this->jsonBody()['response']['outputSpeech']['text']);
         $this->assertCount(2, $this->commandBus->dispatched(), 'le repas, puis le suivi de la liaison');
-        $this->assertEquals(new AddSpokenMealCommand('user-1', 'hachis parmentier', false, 6), $this->commandBus->dispatched()[0]);
+        $this->assertEquals(new AddSpokenMealCommand('user-1', 'hachis parmentier', false, 6, originalPhrase: 'le repas hachis parmentier'), $this->commandBus->dispatched()[0]);
     }
 
     public function testAnItemThatAnnouncesAMealGoesToTheMealUseCaseInAnOpenSession(): void
@@ -116,7 +116,7 @@ class HandleAlexaRequestApiControllerTest extends QueryBusWebTestCase
         $this->post(AlexaTestRequest::addItem('la recette gratin')->withAccessToken(self::TOKEN)->inOpenSession());
 
         // Then
-        $this->assertEquals(new AddSpokenMealCommand('user-1', 'gratin', true, null), $this->commandBus->dispatched()[0]);
+        $this->assertEquals(new AddSpokenMealCommand('user-1', 'gratin', true, null, originalPhrase: 'la recette gratin'), $this->commandBus->dispatched()[0]);
         $this->assertFalse($this->jsonBody()['response']['shouldEndSession']);
     }
 

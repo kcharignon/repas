@@ -129,7 +129,7 @@ readonly class AddSpokenMealHandler
             static fn(RecipeSuggestion $suggestion): DialogueOption => new DialogueOption($suggestion->id, $suggestion->name),
             $suggestions,
         );
-        $state = SpokenDialogueState::chooseRecipe($name, $options, $name, $command->servings, $command->otherSideTried);
+        $state = SpokenDialogueState::chooseRecipe($name, $options, $name, $command->servings, $command->otherSideTried, $command->originalPhrase);
 
         return new AddSpokenItemResult(
             VoiceReplies::unknownMeal($name, array_map(static fn(DialogueOption $option): string => $option->name, $state->options), offerItem: !$command->otherSideTried),

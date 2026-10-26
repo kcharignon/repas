@@ -51,7 +51,9 @@ class SpokenMealPhraseTest extends TestCase
     #[DataProvider('parsed')]
     public function testItKeepsTheNameOfTheRecipeAndTheNumberOfPeople(string $phrase, ?int $slot, string $recipe, ?int $servings): void
     {
-        $this->assertEquals(new SpokenMealRequest($recipe, $servings), $this->meal->parse($phrase, $slot), $phrase);
+        $request = $this->meal->parse($phrase, $slot);
+
+        $this->assertSame([$recipe, $servings, false], [$request->recipe, $request->servings, $request->unusableServings], $phrase);
     }
 
     /**
@@ -72,11 +74,59 @@ class SpokenMealPhraseTest extends TestCase
         yield 'le créneau passe avant la queue de la phrase' => ['gratin pour six personnes', 4, 'gratin', 4];
         yield 'la queue est retirée même avec le créneau' => ['le repas gratin pour 6', 2, 'gratin', 2];
         yield 'pour quelqu\'un d\'autre n\'est pas un nombre' => ['gratin pour le chat', null, 'gratin pour le chat', null];
-        yield 'zéro n\'est pas un nombre de personnes' => ['gratin pour 0 personnes', null, 'gratin pour 0 personnes', null];
+        yield 'pour trente personnes' => ['gratin pour trente personnes', null, 'gratin', 30];
+        yield 'pour vingt et un' => ['gratin pour vingt et un', null, 'gratin', 21];
+        yield 'pour quatre vingt dix neuf personnes' => ['gratin pour quatre vingt dix neuf personnes', null, 'gratin', 99];
+        yield 'pour 99' => ['gratin pour 99', null, 'gratin', 99];
         yield 'le mot seul' => ['le repas', null, '', null];
         yield 'la recette seule' => ['la recette', 3, '', 3];
         yield 'espaces et majuscules' => ["  Le   REPAS  Hachis  POUR  Six  Personnes ", null, 'hachis', 6];
         yield 'le nom contient « repas »' => ['repas du dimanche', null, 'dimanche', null];
+    }
+
+    /**
+     * @return iterable<string, array{string, string}>
+     */
+    public static function unusableServings(): iterable
+    {
+        // Un nombre LU mais hors de 1 à 99 : la recette ne le garde pas dans son nom, et Alexa redemande combien
+        yield 'pour 100 personnes' => ['hachis parmentier pour 100 personnes', 'hachis parmentier'];
+        yield 'pour 0' => ['hachis parmentier pour 0', 'hachis parmentier'];
+        yield 'pour 0 personnes' => ['le repas hachis parmentier pour 0 personnes', 'hachis parmentier'];
+        yield 'pour 999 personnes' => ['hachis parmentier pour 999 personnes', 'hachis parmentier'];
+        yield 'pour cent personnes' => ['hachis parmentier pour cent personnes', 'hachis parmentier'];
+    }
+
+    #[DataProvider('unusableServings')]
+    public function testANumberOfPeopleThatIsReadButOutOfRangeIsNotKeptInTheNameAndIsAskedAgain(string $phrase, string $recipe): void
+    {
+        // When
+        $request = $this->meal->parse($phrase);
+
+        // Then : rien n'est écrit, le nombre de personnes n'existe pas, et l'indication de redemander est posée
+        $this->assertSame($recipe, $request->recipe);
+        $this->assertNull($request->servings);
+        $this->assertTrue($request->unusableServings);
+    }
+
+    public function testASlotThatIsUsableWinsOverAnUnusableTailAndTheTailIsStillRemoved(): void
+    {
+        $request = $this->meal->parse('hachis pour 100 personnes', 4);
+
+        $this->assertSame(['hachis', 4, false], [$request->recipe, $request->servings, $request->unusableServings]);
+    }
+
+    public function testTheOriginalPhraseKeepsTheWordButNotTheNumberOfPeople(): void
+    {
+        // « ajoute le repas pour chien » dit pour un PRODUIT : la phrase d'origine (avec le mot) est ce que la recherche de produits reprendra
+        $request = $this->meal->parse('Le repas pour chien');
+        $this->assertSame(['pour chien', 'le repas pour chien'], [$request->recipe, $request->original]);
+
+        $withServings = $this->meal->parse('la recette de gratin pour six personnes');
+        $this->assertSame(['gratin', 'la recette de gratin', 6], [$withServings->recipe, $withServings->original, $withServings->servings]);
+
+        $plain = $this->meal->parse('hachis parmentier');
+        $this->assertSame(['hachis parmentier', 'hachis parmentier'], [$plain->recipe, $plain->original]);
     }
 
     public function testTheRequestIsAMealForTheMealIntentAndForAnItemPhraseThatAnnouncesOne(): void
@@ -90,12 +140,12 @@ class SpokenMealPhraseTest extends TestCase
         $noRecipe = AlexaRequest::fromDecoded(AlexaTestRequest::addMeal(null)->toArray());
 
         // Then
-        $this->assertEquals(new SpokenMealRequest('hachis parmentier', 6), $this->meal->requestOf($mealIntent));
-        $this->assertEquals(new SpokenMealRequest('hachis parmentier', null), $this->meal->requestOf($itemWithTheWord));
+        $this->assertSame(['hachis parmentier', 6], $this->recipeAndServings($this->meal->requestOf($mealIntent)));
+        $this->assertSame(['hachis parmentier', null], $this->recipeAndServings($this->meal->requestOf($itemWithTheWord)));
         $this->assertNull($this->meal->requestOf($plainItem), '« ajoute un hachis parmentier » reste un produit');
         $this->assertNull($this->meal->requestOf($remove), 'retirer un repas est VOX-306 : « enlève » reste réservé aux produits');
-        $this->assertEquals(new SpokenMealRequest('hachis', 5), $this->meal->requestOf($withSlot));
-        $this->assertEquals(new SpokenMealRequest('', null), $this->meal->requestOf($noRecipe));
+        $this->assertSame(['hachis', 5], $this->recipeAndServings($this->meal->requestOf($withSlot)));
+        $this->assertSame(['', null], $this->recipeAndServings($this->meal->requestOf($noRecipe)));
         $this->assertNull($this->meal->requestOf(AlexaRequest::fromDecoded(AlexaTestRequest::launch()->toArray())));
     }
 
@@ -122,6 +172,8 @@ class SpokenMealPhraseTest extends TestCase
         yield '99' => ['99', 99];
         yield 'zéro' => ['0', null];
         yield 'trois chiffres' => ['100', null];
+        yield 'trente' => ['trente', 30];
+        yield 'pour quarante cinq personnes' => ['pour quarante cinq personnes', 45];
         yield 'un mot qui n\'est pas un nombre' => ['pain', null];
         yield 'une phrase' => ['six croquettes de poulet', null];
         yield 'vide' => ['', null];
@@ -174,5 +226,15 @@ class SpokenMealPhraseTest extends TestCase
         yield 'des croquettes' => ['des croquettes', null];
         yield 'un nouveau produit' => ['un nouveau produit', null];
         yield 'vide' => ['', null];
+    }
+
+    /**
+     * @return array{string, ?int}
+     */
+    private function recipeAndServings(?SpokenMealRequest $request): array
+    {
+        $this->assertNotNull($request);
+
+        return [$request->recipe, $request->servings];
     }
 }

@@ -387,6 +387,32 @@ class AlexaDialogueTest extends TestCase
         $this->assertEquals(AlexaResponse::say(VoiceReplies::HOW_MANY), $answer);
     }
 
+    #[DataProvider('unusableServingsSaidInThePhrase')]
+    public function testANumberOfPeopleSaidInThePhraseButOutOfRangeIsAskedAgainAndNothingIsWritten(AlexaTestRequest $request): void
+    {
+        // When
+        $answer = $this->dialogue->answer($this->read($request));
+
+        // Then : « Combien ? Redis ta demande avec un nombre de 1 à 99. » plutôt qu'une recette qui s'appelle « … pour 100 personnes »
+        $this->assertEquals(AlexaResponse::say(VoiceReplies::HOW_MANY), $answer);
+    }
+
+    /**
+     * @return iterable<string, array{AlexaTestRequest}>
+     */
+    public static function unusableServingsSaidInThePhrase(): iterable
+    {
+        yield 'pour 100 personnes' => [AlexaTestRequest::addMeal('hachis parmentier pour 100 personnes')];
+        yield 'pour 0' => [AlexaTestRequest::addMeal('hachis parmentier pour 0')];
+        yield 'pour cent personnes' => [AlexaTestRequest::addMeal('hachis parmentier pour cent personnes')];
+        yield 'dit à l\'intention des produits' => [AlexaTestRequest::addItem('le repas hachis parmentier pour 100 personnes')];
+    }
+
+    public function testANumberOfPeopleInTheServingsSlotBeatsAnUnusableOneInThePhrase(): void
+    {
+        $this->assertNull($this->dialogue->answer($this->read(AlexaTestRequest::addMeal('hachis parmentier pour 100 personnes', 'quatre', '4'))));
+    }
+
     public function testTheAnswersOfTheMealDialogueWithoutAnyQuestionInProgressGetTheFallback(): void
     {
         // Given : séance trop vieille, état perdu

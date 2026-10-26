@@ -24,6 +24,11 @@ final readonly class AddSpokenMealCommand
         public ?string $rememberAs = null,
         /** Les produits ont déjà été cherchés pour cette phrase (l'utilisateur a répondu « une recette ») : « ou un produit ? » n'est plus proposé. */
         public bool $otherSideTried = false,
+        /**
+         * La phrase telle que dite, avec le mot « repas » ou « recette » (`SpokenMealRequest::$original`) : un produit dont le nom commence par ce mot est
+         * cherché sous son nom entier quand l'utilisateur répond « un produit » à une recette inconnue. `null` : la phrase de la recette suffit.
+         */
+        public ?string $originalPhrase = null,
     ) {
     }
 }

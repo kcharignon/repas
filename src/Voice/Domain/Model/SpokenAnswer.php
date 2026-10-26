@@ -14,6 +14,8 @@ final readonly class SpokenAnswer
         public ?string $phrase = null,
         /** Un nombre de personnes : celui de `PICK_SERVINGS`, ou celui qu'une nouvelle demande de repas (`NEW_MEAL`) a dit (`null` : celui du compte). */
         public ?int $number = null,
+        /** La phrase d'une nouvelle demande de repas telle que dite, avec le mot « repas » ou « recette » (`SpokenMealRequest::$original`). */
+        public ?string $original = null,
     ) {
     }
 
@@ -38,9 +40,9 @@ final readonly class SpokenAnswer
     }
 
     /** « Planifie le repas … » dit au milieu d'une question : une nouvelle demande, de repas (ADR 0029 décision 13). */
-    public static function newMeal(string $phrase, ?int $servings): self
+    public static function newMeal(string $phrase, ?int $servings, ?string $original = null): self
     {
-        return new self(SpokenAnswerKind::NEW_MEAL, null, $phrase, $servings);
+        return new self(SpokenAnswerKind::NEW_MEAL, null, $phrase, $servings, $original);
     }
 
     /** Le nouveau total de personnes d'un repas déjà planifié. */

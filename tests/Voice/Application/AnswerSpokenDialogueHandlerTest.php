@@ -1163,6 +1163,31 @@ class AnswerSpokenDialogueHandlerTest extends TestCase
         $this->assertSame("C'est noté : hachis.", $result->speech);
     }
 
+    public function testAProductWhoseNameStartsWithTheWordMealIsSearchedUnderItsWholeNameAfterTheProductSwitch(): void
+    {
+        // Given : « ajoute le repas pour chien », dit pour un produit : le mot est retiré de la recette (« pour chien ») mais gardé dans la phrase d'origine
+        $this->resolver->willResolve('repas pour chien', new ResolvedIngredient('repas-pour-chien', 'Repas pour chien', 'Animalerie', ResolvedIngredient::SURE));
+        $state = SpokenDialogueState::chooseRecipe('pour chien', [], 'pour chien', null, false, 'le repas pour chien');
+
+        // When : « un produit »
+        $result = $this->answer(AlexaTestRequest::chooseKind('un produit', 'item'), $state);
+
+        // Then : le produit « repas pour chien » est cherché (l'article retiré) et ajouté, pas « pour chien »
+        $this->assertSame([[self::USER, 'repas pour chien']], $this->resolver->asked);
+        $this->assertSame([[self::USER, 'repas-pour-chien']], $this->shoppingList->added);
+        $this->assertSame("C'est noté : repas pour chien.", $result->speech);
+    }
+
+    public function testANewMealSaidInTheMiddleOfAQuestionKeepsItsOriginalPhraseInTheNextQuestion(): void
+    {
+        // When : « ajoute le repas pour chien » à une question de produits, aucune recette ne ressemble
+        $result = $this->answer(AlexaTestRequest::addItem('le repas pour chien'), self::choose(['persil']));
+
+        // Then : « C'est un produit ? » et l'état porte la phrase entière
+        $this->assertSame("Je ne trouve pas la recette pour chien. C'est un produit ?", $result->speech);
+        $this->assertSame('le repas pour chien', $result->nextState?->originalPhrase);
+    }
+
     public function testNoProductAfterARecipeSwitchProposesTheUsualQuestionsWithoutOfferingARecipeAgain(): void
     {
         // Given : ni recette ni produit proche

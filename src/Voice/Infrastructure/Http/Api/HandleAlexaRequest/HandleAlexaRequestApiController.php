@@ -228,7 +228,7 @@ final class HandleAlexaRequestApiController extends AbstractController
         // Un repas à planifier : l'intention des repas, ou un « repas » / « recette » dit à l'intention des produits (décision 13)
         $meal = $this->mealPhrase->requestOf($alexa);
         if ($meal !== null) {
-            return $this->spoken($this->commandBus->dispatch(new AddSpokenMealCommand($grant->userId, $meal->recipe, $alexa->isInOpenSession(), $meal->servings)));
+            return $this->spoken($this->commandBus->dispatch(new AddSpokenMealCommand($grant->userId, $meal->recipe, $alexa->isInOpenSession(), $meal->servings, originalPhrase: $meal->original)));
         }
 
         $phrase = $alexa->phrase ?? throw new LogicException("Une intention sur un article sans phrase doit être redemandée par le dialogue.");

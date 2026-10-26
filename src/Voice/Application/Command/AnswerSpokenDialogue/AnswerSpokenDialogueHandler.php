@@ -117,10 +117,12 @@ readonly class AnswerSpokenDialogueHandler
                 sessionIsOpen: false,
                 servings: $answer->number,
                 rememberAs: $state->isMeal() ? $state->rememberablePhrase() : null,
+                originalPhrase: $answer->original,
             )),
             // Aiguillage (décision 13) : la phrase d'origine est cherchée de l'autre côté, une seule fois
             SpokenAnswerKind::SWITCH_TO_MEAL => ($this->addSpokenMeal)(new AddSpokenMealCommand($command->userId, $state->phrase, sessionIsOpen: false, otherSideTried: true)),
-            SpokenAnswerKind::SWITCH_TO_ITEM => ($this->addSpokenItem)(new AddSpokenItemCommand($command->userId, $state->phrase, sessionIsOpen: false, otherSideTried: true)),
+            // Les produits cherchent la phrase d'origine ENTIÈRE (« le repas pour chien » : un produit dont le nom commence par le mot « repas »), sans l'article
+            SpokenAnswerKind::SWITCH_TO_ITEM => ($this->addSpokenItem)(new AddSpokenItemCommand($command->userId, $this->namer->nameFrom($state->originalPhrase ?? $state->phrase) ?? $state->phrase, sessionIsOpen: false, otherSideTried: true)),
             SpokenAnswerKind::PICK_SERVINGS => $this->addSpokenMeal->changeServings(
                 $command->userId,
                 $state->options[0] ?? throw new \LogicException('PICK_SERVINGS sans recette.'),

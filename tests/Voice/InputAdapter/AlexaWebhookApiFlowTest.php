@@ -2154,6 +2154,131 @@ class AlexaWebhookApiFlowTest extends DatabaseTestCase
         $this->assertSame(0, $this->rowCount('shopping_list'));
     }
 
+    public function testAProductWhoseNameStartsWithTheWordMealIsFoundUnderItsWholeNameAfterTheProductSwitch(): void
+    {
+        // Given : le produit « repas pour chien », aucune recette de ce nom
+        $user = $this->linkedUserFor(3);
+        $this->persister->saveIngredient(new IngredientBuilder()->withName('repas pour chien')->withCreator($user, true)->build());
+        $this->savedActiveList($user);
+
+        // When : « ajoute le repas pour chien » (dit pour un produit : le mot annonce une recette)
+        $this->say(AlexaTestRequest::addItem('le repas pour chien'));
+
+        // Then : aucune recette ne ressemble, « C'est un produit ? » ; l'état garde la phrase entière
+        $this->assertSame("Je ne trouve pas la recette pour chien. C'est un produit ?", $this->speech());
+        $this->assertSame('le repas pour chien', $this->attributes()['dialogue']['originalPhrase']);
+
+        // When : « oui »
+        $this->converse(AlexaTestRequest::yes(), $this->attributes());
+
+        // Then : le produit est cherché sous son nom entier, retrouvé et ajouté (pas « pour chien »)
+        $this->assertSame("C'est noté : repas pour chien.", $this->speech());
+        $this->assertSame([], $this->attributes());
+        $this->assertSame(1, $this->rowCount('shopping_list_row'));
+        $this->assertSame(0, $this->rowCount('meal'));
+    }
+
+    #[DataProvider('servingsOutOfRange')]
+    public function testANumberOfPeopleOutOfOneToNinetyNineInThePhraseIsAskedAgainAndNothingIsWritten(AlexaTestRequest $request): void
+    {
+        // Given
+        $user = $this->linkedUserFor(3);
+        $this->savedRecipe($user, 'Hachis parmentier');
+
+        // When
+        $this->say($request);
+
+        // Then : pas une recette qui s'appelle « … pour 100 personnes »
+        $this->assertSame('Combien ? Redis ta demande avec un nombre de 1 à 99.', $this->speech());
+        $this->assertSame(0, $this->rowCount('shopping_list'));
+        $this->assertSame(0, $this->rowCount('meal'));
+    }
+
+    /**
+     * @return iterable<string, array{AlexaTestRequest}>
+     */
+    public static function servingsOutOfRange(): iterable
+    {
+        yield 'pour 100 personnes' => [AlexaTestRequest::addMeal('hachis parmentier pour 100 personnes')];
+        yield 'pour 0' => [AlexaTestRequest::addMeal('hachis parmentier pour 0')];
+        yield 'pour cent personnes' => [AlexaTestRequest::addMeal('hachis parmentier pour cent personnes')];
+        yield 'dit à l\'intention des produits' => [AlexaTestRequest::addItem('le repas hachis parmentier pour 100 personnes')];
+    }
+
+    public function testAServingsNumberInWordsAboveTwentyIsRead(): void
+    {
+        // Given
+        $user = $this->linkedUserFor(3);
+        $recipe = $this->savedRecipe($user, 'Hachis parmentier');
+        $this->savedActiveList($user);
+
+        // When : « … pour trente personnes »
+        $this->say(AlexaTestRequest::addMeal('hachis parmentier pour trente personnes'));
+
+        // Then
+        $this->assertSame("C'est noté : hachis parmentier, pour 30 personnes.", $this->speech());
+        $this->assertSame(30, $this->mealOf($user, $recipe)?->getServing());
+    }
+
+    #[DataProvider('totalsSaidAsARecipe')]
+    public function testTheTotalSaidAsARecipeByAmazonIsStillTheTotal(AlexaTestRequest $answer, string $speech, int $serving): void
+    {
+        // Given : planifié pour trois, puis redit
+        $user = $this->linkedUserFor(3);
+        $recipe = $this->savedRecipe($user, 'Hachis parmentier');
+        $this->say(AlexaTestRequest::addMeal('hachis parmentier'));
+        $this->say(AlexaTestRequest::addMeal('hachis parmentier'));
+
+        // When : Amazon range la réponse dans le créneau `recipe` d'AddMealIntent
+        $this->converse($answer, $this->attributes());
+
+        // Then : une réponse à « combien ? », pas « Je ne trouve pas la recette six personnes »
+        $this->assertSame($speech, $this->speech());
+        $this->assertSame([], $this->attributes());
+        $this->assertSame($serving, $this->mealOf($user, $recipe)?->getServing());
+    }
+
+    /**
+     * @return iterable<string, array{AlexaTestRequest, string, int}>
+     */
+    public static function totalsSaidAsARecipe(): iterable
+    {
+        yield 'six personnes' => [AlexaTestRequest::addMeal('six personnes'), "C'est changé : hachis parmentier, pour 6 personnes.", 6];
+        yield 'pour six' => [AlexaTestRequest::addMeal('pour six'), "C'est changé : hachis parmentier, pour 6 personnes.", 6];
+        yield 'rien' => [AlexaTestRequest::addMeal('rien'), "D'accord, je ne change rien.", 3];
+        yield 'non' => [AlexaTestRequest::addMeal('non'), "D'accord, je ne change rien.", 3];
+        yield 'ne change rien' => [AlexaTestRequest::addMeal('ne change rien'), "D'accord, je ne change rien.", 3];
+    }
+
+    #[DataProvider('ranksSaidAsANumber')]
+    public function testASecondChoiceSaidAsANumberAnywhereIsTheSecondChoice(AlexaTestRequest $answer): void
+    {
+        // Given : « du sirop de menthe » inconnu, deux sirops proposés
+        $user = $this->linkedUser();
+        $this->persister->saveIngredient(new IngredientBuilder()->withName('Sirop fruit rouge')->withCreator($user, true)->build());
+        $grenadine = new IngredientBuilder()->withName('Sirop de grenadine')->withCreator($user, true)->build();
+        $this->persister->saveIngredient($grenadine);
+        $this->savedActiveList($user);
+        $this->say(AlexaTestRequest::addItem('du sirop de menthe'));
+        $names = array_map(static fn(array $option): string => $option['name'], $this->attributes()['dialogue']['options']);
+
+        // When : « deux », rangé par Amazon ailleurs que dans `rank`
+        $this->converse($answer, $this->attributes());
+
+        // Then : le deuxième proposé est choisi et ajouté
+        $this->assertSame("C'est noté : " . mb_strtolower($names[1]) . ". Je m'en souviendrai.", $this->speech());
+        $this->assertSame(1, $this->rowCount('shopping_list_row'));
+    }
+
+    /**
+     * @return iterable<string, array{AlexaTestRequest}>
+     */
+    public static function ranksSaidAsANumber(): iterable
+    {
+        yield 'le créneau servings' => [AlexaTestRequest::answerServings('deux', '2')];
+        yield 'le créneau quantity' => [AlexaTestRequest::addItem(null)->withSlot('quantity', 'deux', '2')];
+    }
+
     public function testAPhraseRememberedForARecipeGivesItDirectlyNextTimeWithoutAnyQuestion(): void
     {
         // Given : « le plat du dimanche » a déjà été retenu pour le hachis

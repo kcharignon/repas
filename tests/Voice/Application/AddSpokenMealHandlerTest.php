@@ -265,4 +265,15 @@ class AddSpokenMealHandlerTest extends TestCase
         // Then
         $this->assertEquals(new AddSpokenItemResult("Ce repas n'est plus dans ta liste.", keepSessionOpen: false, added: false), $result);
     }
+
+    public function testTheOriginalPhraseOfAnUnknownRecipeIsKeptInTheStateForTheProductSearch(): void
+    {
+        // When : « ajoute le repas pour chien », dit pour un produit
+        $result = ($this->handler)(new AddSpokenMealCommand('user-1', 'pour chien', sessionIsOpen: false, originalPhrase: 'le repas pour chien'));
+
+        // Then : la recette cherchée est « pour chien », l'état garde la phrase entière
+        $this->assertSame("Je ne trouve pas la recette pour chien. C'est un produit ?", $result->speech);
+        $this->assertSame('pour chien', $result->nextState?->phrase);
+        $this->assertSame('le repas pour chien', $result->nextState->originalPhrase);
+    }
 }

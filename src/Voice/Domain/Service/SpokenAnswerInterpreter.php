@@ -107,6 +107,11 @@ final readonly class SpokenAnswerInterpreter
      */
     private function interpretTie(AlexaRequest $request, ?AlexaIntent $intent, array $options): SpokenAnswer
     {
+        $rank = $this->numberAsRank($request, count($options));
+        if ($rank !== null) {
+            return SpokenAnswer::pickOption($options[$rank - 1]);
+        }
+
         switch ($intent) {
             case AlexaIntent::CHOOSE_OPTION:
                 $rank = $this->rankOf($request->rank);
@@ -178,6 +183,12 @@ final readonly class SpokenAnswerInterpreter
             return SpokenAnswer::of(SpokenAnswerKind::START_CREATION);
         }
 
+        // « Deux » nu, qu'Amazon a rangé dans un autre créneau que `rank` : c'est tout de même le deuxième choix
+        $number = $this->numberAsRank($request, $count);
+        if ($number !== null) {
+            return SpokenAnswer::pickOption($options[$number - 1]);
+        }
+
         switch ($intent) {
             case AlexaIntent::CHOOSE_OPTION:
                 $rank = $this->rankOf($request->rank);
@@ -218,7 +229,7 @@ final readonly class SpokenAnswerInterpreter
         // « Planifie le repas … » (ou « ajoute le repas … ») : une nouvelle demande de repas (ADR 0029 décision 13)
         $meal = $this->meals->requestOf($request);
         if ($meal !== null) {
-            return $meal->recipe === '' || $request->hasUnusableServings() ? SpokenAnswer::of(SpokenAnswerKind::UNCLEAR) : SpokenAnswer::newMeal($meal->recipe, $meal->servings);
+            return $meal->recipe === '' || $meal->unusableServings || $request->hasUnusableServings() ? SpokenAnswer::of(SpokenAnswerKind::UNCLEAR) : SpokenAnswer::newMeal($meal->recipe, $meal->servings, $meal->original);
         }
 
         if ($request->phrase === null || $request->hasUnusableQuantity()) {
@@ -250,6 +261,12 @@ final readonly class SpokenAnswerInterpreter
             }
 
             return SpokenAnswer::of($intent === AlexaIntent::CREATE_ITEM ? SpokenAnswerKind::ABANDON : SpokenAnswerKind::UNCLEAR);
+        }
+
+        // « Deux » nu, qu'Amazon a rangé dans un autre créneau que `rank` : c'est tout de même le deuxième choix
+        $number = $this->numberAsRank($request, $count);
+        if ($number !== null) {
+            return SpokenAnswer::pickOption($options[$number - 1]);
         }
 
         switch ($intent) {
@@ -300,13 +317,14 @@ final readonly class SpokenAnswerInterpreter
             }
         }
 
-        // « Planifie les lasagnes pour six » n'est pas un total : c'est un autre repas
+        // « Planifie les lasagnes pour six » n'est pas un total : c'est un autre repas. Mais l'étape est « combien de personnes ? » : un `recipe` qui n'est
+        // qu'un nombre (« six personnes », « pour six », « cent ») est la réponse, rangée dans le mauvais créneau par Amazon, pas un repas à chercher
         $meal = $this->meals->requestOf($request);
-        if ($meal !== null && $meal->recipe !== '') {
-            return $request->hasUnusableServings() ? SpokenAnswer::of(SpokenAnswerKind::UNCLEAR) : SpokenAnswer::newMeal($meal->recipe, $meal->servings);
+        if ($meal !== null && $meal->recipe !== '' && $this->meals->numberSaid($meal->recipe) === null) {
+            return $meal->unusableServings || $request->hasUnusableServings() ? SpokenAnswer::of(SpokenAnswerKind::UNCLEAR) : SpokenAnswer::newMeal($meal->recipe, $meal->servings, $meal->original);
         }
 
-        if ($request->hasUnusableServings() || $request->hasUnusableQuantity()) {
+        if ($request->hasUnusableServings() || $request->hasUnusableQuantity() || $this->saysAnUnusableNumber($request)) {
             return SpokenAnswer::of(SpokenAnswerKind::UNCLEAR);
         }
         $servings = $this->servingsHeard($request);
@@ -316,6 +334,34 @@ final readonly class SpokenAnswerInterpreter
 
         // « Oui » ne dit pas pour combien ; le reste est une nouvelle demande, ou n'est pas compris
         return $intent === AlexaIntent::YES ? SpokenAnswer::of(SpokenAnswerKind::UNCLEAR) : $this->newDemand($request, $intent);
+    }
+
+    /**
+     * Un nombre dit à lui seul, rangé dans un autre créneau que `rank` : `servings` ou `quantity` quand `rank` est vide et que rien d'autre n'a été dit
+     * (ni produit ni recette : sinon c'est une nouvelle demande, « deux croquettes »). Utilisable seulement de 1 au nombre de propositions.
+     */
+    private function numberAsRank(AlexaRequest $request, int $count): ?int
+    {
+        if ($count < 1 || $this->rankOf($request->rank) !== null || $request->phrase !== null || $request->recipePhrase !== null) {
+            return null;
+        }
+
+        $number = $request->servings ?? $request->quantity;
+
+        return $number !== null && $number >= 1 && $number <= $count ? $number : null;
+    }
+
+    /** Un des textes entendus n'est qu'un nombre hors de 1 à 99 (« zéro », « cent personnes ») : pas un nombre de personnes, et pas un produit non plus. */
+    private function saysAnUnusableNumber(AlexaRequest $request): bool
+    {
+        foreach ($request->heardTexts() as $text) {
+            $number = $this->meals->numberSaid($text);
+            if ($number !== null && ($number < 1 || $number > 99)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /** Le nombre de personnes entendu, où qu'Alexa l'ait mis : `servings`, `quantity`, l'identifiant de `rank`, ou le texte de l'article. */

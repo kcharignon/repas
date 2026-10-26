@@ -13,6 +13,13 @@ final readonly class SpokenMealRequest
         public string $recipe,
         /** Le nombre de personnes dit (1 à 99) ; `null` : celui du compte. */
         public ?int $servings,
+        /** Un nombre de personnes a été dit mais il est hors de 1 à 99 (« pour 0 », « pour 100 personnes »), jamais gardé dans le nom : on redemande combien. */
+        public bool $unusableServings = false,
+        /**
+         * La phrase telle que dite, SANS le nombre de personnes mais AVEC le mot « repas » ou « recette » (« le repas pour chien ») : un produit dont le nom
+         * commence par ce mot est cherché sous son nom entier quand l'utilisateur répond « un produit » à « C'est un produit ? ».
+         */
+        public ?string $original = null,
     ) {
     }
 }
