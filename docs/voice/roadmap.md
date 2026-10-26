@@ -13,7 +13,7 @@ Suivi vivant du chantier « Alexa, demande à *Jarvis* d'ajouter du pain ». Cad
 ## Règles du chantier
 
 - **L'interrupteur `ALEXA_ENABLED` est coupé par défaut** ; coupé, `/api/voice/*` et les routes d'autorisation répondent `404` avant tout traitement. Seul l'humain l'allume (script de `repas-ops`).
-- **Aucun agent ne contacte Amazon** (ni la console, ni S3 pour les certificats, ni Login with Amazon) : signatures RSA et certificat de test générés dans les tests, faux client HTTP, faux webhook. Le vrai Alexa ne se voit qu'à la recette, par l'utilisateur.
+- **Aucun agent ne contacte Amazon** (ni la console, ni S3 pour les certificats, ni Login with Amazon) : signatures RSA et certificat de test générés dans les tests, faux client HTTP, faux webhook. Le vrai Alexa ne se voit qu'à la recette, par l'utilisateur. **Exception voulue par le propriétaire le 2026-10-26** : le fil principal (jamais un sous-agent) peut, avec la connexion `ask configure` du propriétaire, lancer le profileur d'énoncés (`ask smapi profile-nlu`, lecture) et envoyer le modèle du dépôt au skill en développement (`ask smapi set-interaction-model`), pour rejouer les cas de VOX-307 ; jamais publier, certifier, supprimer ni lire les fichiers de jetons.
 - **Aucun secret dans les dépôts ni dans le chat** : `ALEXA_OAUTH_CLIENT_SECRET` et `ALEXA_SKILL_ID` naissent dans la console Amazon et vont dans `/opt/repas/.env` par un script que l'utilisateur lance (modèle : `ecrire-mailer-env.sh`).
 - Le contexte `Voice` ne dépend que de `Shared` (Deptrac, aucune baseline) ; ce qui doit circuler vers `Repas` passe par un port de `Shared`.
 - Un agent ne déploie pas, ne crée aucune étiquette, ne touche ni aux secrets GitHub ni au serveur.

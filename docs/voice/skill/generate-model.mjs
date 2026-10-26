@@ -309,7 +309,7 @@ const PLAN_VERBS = ['planifie', 'planifier', 'prévois', 'prévoir', 'prépare',
 const PLAN_MARKERS = ['', 'le repas', 'la recette'];
 const PLAN_ARTICLES = ['un', 'une', 'des', 'le', 'la'];
 const MEAL_ADD_MARKERS = ['le repas', 'la recette', 'le repas de', 'la recette de'];
-const MEAL_FORMS = ['{recipe}', '{recipe} pour {servings} personnes', '{recipe} pour {servings}'];
+const MEAL_FORMS = ['{recipe}'];
 
 function addMealSamples() {
   const samples = [];
@@ -332,6 +332,11 @@ function addMealSamples() {
       }
     }
   }
+  // Le mot seul, sans verbe (« la recette fondue ») : réponse à « Que veux-tu ajouter ? » ; sans cet exemple exact, Amazon rangeait la phrase dans RemoveMealIntent
+  // (profileur d'énoncés, 2026-10-26) dont les exemples commencent par un verbe qu'il laisse tomber
+
+  // « la recette fondue » dit seul : réponse à « Que veux-tu ajouter ? » (sans cet exemple exact Amazon la rangeait dans RemoveMealIntent)
+  samples.push('le repas {recipe}', 'la recette {recipe}');
 
   return samples;
 }
@@ -405,12 +410,12 @@ function intents() {
     },
     {
       name: 'AddMealIntent',
-      slots: [{ name: 'recipe', type: 'RECIPE' }, { name: 'servings', type: 'QUANTITY' }],
+      slots: [{ name: 'recipe', type: 'AMAZON.SearchQuery' }],
       samples: addMealSamples(),
     },
     {
       name: 'RemoveMealIntent',
-      slots: [{ name: 'recipe', type: 'RECIPE' }, { name: 'servings', type: 'QUANTITY' }],
+      slots: [{ name: 'recipe', type: 'AMAZON.SearchQuery' }],
       samples: removeMealSamples(),
     },
     {
@@ -477,7 +482,6 @@ function model() {
           { name: 'DEPARTMENT', values: catalogueValues('department.json', DEPARTMENT_SYNONYMS, 'Rayons') },
           { name: 'UNIT', values: catalogueValues('unit.json', UNIT_SYNONYMS, 'Unités') },
           { name: 'QUANTITY', values: quantityValues() },
-          { name: 'RECIPE', values: recipeValues() },
           { name: 'KIND', values: kindValues() },
           { name: 'OPTION_RANK', values: rankValues() },
         ],

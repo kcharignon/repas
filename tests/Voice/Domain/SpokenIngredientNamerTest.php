@@ -47,6 +47,12 @@ class SpokenIngredientNamerTest extends TestCase
         yield 'signes retirés' => ['de la ciboulette !', 'ciboulette'];
         yield 'balises retirées' => ['<speak>ciboulette</speak>', 'speak ciboulette speak'];
         yield 'un article seul reste le nom' => ['la', 'la'];
+        yield 'politesse « s\'il te plait » retirée' => ['pain s\'il te plait', 'pain'];
+        yield 'politesse « s\'il vous plaît » retirée, avec article' => ['du pain s’il vous plaît', 'pain'];
+        yield 'politesse « stp » retirée' => ['des tomates stp', 'tomates'];
+        yield 'politesse « svp » retirée' => ['de la ciboulette svp', 'ciboulette'];
+        yield 'la politesse seule reste le nom' => ['s\'il te plait', 's\'il te plait'];
+        yield 'un nom qui finit comme « stp » reste' => ['stpierre', 'stpierre'];
         yield 'aucune lettre' => ['12', null];
         yield 'signes seulement' => ['?!', null];
         yield 'vide' => ['', null];

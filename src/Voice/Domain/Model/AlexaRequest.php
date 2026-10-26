@@ -71,15 +71,24 @@ final readonly class AlexaRequest
         $isIntent = $type === self::INTENT;
         $quantityText = $isIntent ? self::numberText($data, 'quantity') : null;
         $servingsText = $isIntent ? self::numberText($data, 'servings') : null;
+        $unit = $isIntent ? SlotValue::fromDecoded(self::valueAt($data, ['request', 'intent', 'slots', 'unit'])) : null;
+        $intentName = $isIntent ? self::stringAt($data, ['request', 'intent', 'name']) : null;
+        $phrase = $isIntent ? self::cleanPhrase(self::stringAt($data, ['request', 'intent', 'slots', 'item', 'value'])) : null;
+        // « ajoute vingt et un yaourts » : Amazon range « yaourts » dans `unit` et laisse `item` vide (profileur d'énoncés, 2026-10-26). Un mot d'unité que
+        // l'unité ne reconnaît pas (ni identifiant résolu, ni mot du catalogue) est le produit ; seulement pour les intentions qui ont les deux créneaux
+        if ($phrase === null && $unit !== null && $unit->id === null && in_array($intentName, [AlexaIntent::ADD_ITEM->value, AlexaIntent::REMOVE_ITEM->value], true) && new SpokenUnits()->slugOf($unit->text) === null) {
+            $phrase = self::cleanPhrase($unit->text);
+            $unit = null;
+        }
 
         return new self(
             type: $type ?? '',
-            intentName: $isIntent ? self::stringAt($data, ['request', 'intent', 'name']) : null,
-            phrase: $isIntent ? self::cleanPhrase(self::stringAt($data, ['request', 'intent', 'slots', 'item', 'value'])) : null,
+            intentName: $intentName,
+            phrase: $phrase,
             recipePhrase: $isIntent ? self::cleanPhrase(self::stringAt($data, ['request', 'intent', 'slots', 'recipe', 'value'])) : null,
             rank: $isIntent ? SlotValue::fromDecoded(self::valueAt($data, ['request', 'intent', 'slots', 'rank'])) : null,
             department: $isIntent ? SlotValue::fromDecoded(self::valueAt($data, ['request', 'intent', 'slots', 'department'])) : null,
-            unit: $isIntent ? SlotValue::fromDecoded(self::valueAt($data, ['request', 'intent', 'slots', 'unit'])) : null,
+            unit: $unit,
             kind: $isIntent ? SlotValue::fromDecoded(self::valueAt($data, ['request', 'intent', 'slots', 'kind'])) : null,
             servings: self::quantityIn($servingsText),
             servingsHeard: $servingsText !== null,

@@ -24,6 +24,9 @@ final readonly class SpokenIngredientNamer
     /** Un nom d'ingrédient dit à voix haute tient en quelques mots. */
     public const int MAX_LENGTH = 60;
 
+    /** La politesse dite en fin de phrase (« du pain s'il te plaît ») : Amazon la laisse dans le créneau `item` (profileur d'énoncés, 2026-10-26). */
+    private const string TRAILING_POLITENESS = "/\\s+(?:s'il\\s+(?:te|vous)\\s+pla[iî]t|stp|svp)$/u";
+
     private const string LEADING_ARTICLE = "/^(?:de\\s+l'|de\\s+la\\s+|du\\s+|des\\s+|de\\s+|d'|l'|un\\s+|une\\s+|le\\s+|la\\s+|les\\s+)/u";
 
     private SpokenUnits $units;
@@ -99,6 +102,10 @@ final readonly class SpokenIngredientNamer
         $name = mb_strtolower(str_replace('’', "'", $phrase));
         $name = preg_replace(["/[^\\p{L}\\p{N}\\s'\\-]+/u", '/\\s+/u'], ' ', $name) ?? '';
         $name = trim($name, " -'");
+        $withoutPoliteness = trim((string) preg_replace(self::TRAILING_POLITENESS, '', $name), " -'");
+        if ($withoutPoliteness !== '') {
+            $name = $withoutPoliteness;
+        }
 
         // Un article à la fois, tant qu'il en reste un et qu'il reste un nom derrière
         while (preg_match(self::LEADING_ARTICLE, $name) === 1) {
