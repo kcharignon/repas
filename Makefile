@@ -45,7 +45,7 @@ restart: ## Restart the project
 	@$(MAKE) start
 
 ## —— Code quality 📋 ————————————————————————————————————————————————————————
-.PHONY: test test-fast test-coverage deptrac phpstan api-doc-validate api-doc-coverage openapi openapi-check jwt-keys quality sql-budget-update voice-model voice-model-check drive-samples deploy-smoke
+.PHONY: test test-fast test-coverage deptrac phpstan api-doc-validate api-doc-coverage openapi openapi-check jwt-keys quality sql-budget-update voice-model voice-model-check voice-nlu-check voice-nlu-selftest drive-samples deploy-smoke
 
 # Nombre de processus de `make test-fast` : celui des cœurs de la machine, 12 au plus (plus haut, aucun gain mesuré) ; `make test-fast TEST_PROCESSES=4` le force.
 TEST_PROCESSES ?=
@@ -129,6 +129,12 @@ voice-model: ## Régénère le modèle d'interaction du skill Alexa (docs/voice/
 
 voice-model-check: ## Échoue si le modèle d'interaction du skill Alexa n'est pas celui que le script produit (catalogue de base, rayons, unités)
 	@node docs/voice/skill/generate-model.mjs --check
+
+voice-nlu-check: ## Rejoue les cas de compréhension d'Alexa contre le profileur d'énoncés d'Amazon (VOX-307) : demande ALEXA_SKILL_ID et la CLI `ask` connectée par le propriétaire, jamais en CI ; NLU_ARGS="--only AddMealIntent"
+	@node docs/voice/skill/nlu-check.mjs $(NLU_ARGS)
+
+voice-nlu-selftest: ## Auto-test du script de compréhension avec un faux `ask` (aucun appel chez Amazon, aucun identifiant)
+	@node --test docs/voice/skill/test/nlu-check.selftest.mjs
 
 drive-samples: ## Régénère docs/drive/samples/*.sample.json depuis les réponses réelles de l'API Drive (DRV-501) : relis le diff
 	@$(DOCKER_COMPOSE) exec -T -e UPDATE_DRIVE_SAMPLES=1 php vendor/bin/phpunit --no-coverage tests/Drive/Contract
