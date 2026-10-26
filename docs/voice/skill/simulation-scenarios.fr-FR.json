@@ -1,0 +1,149 @@
+{
+  "locale": "fr-FR",
+  "description": "Les dialogues de bout en bout du skill Jarvis rejoués EN LECTURE SEULE par `simulation-check.mjs` (VOX-308) : ce que le client dit à Alexa (`say`), ce que le profileur d'énoncés doit retenir pour la phrase après l'invocation (`heard`, hors lancement : sert de garde d'écriture), et ce que NOTRE serveur doit recevoir puis répondre (`intent`, `slots`, `replyMatches`, `sessionEnds`, `reprompt`, `sessionNew`). Aucun scénario n'écrit dans la liste (`writes: false` partout, vérifié par tests/Voice/DocsVoiceSimulationScenariosTest.php). `replyConstants` et `replyExamples` ne servent qu'au test PHP : l'expression régulière doit reconnaître les vrais textes de VoiceReplies, jamais la phrase d'échec.",
+  "scenarios": [
+    {
+      "id": "lancement",
+      "note": "« Alexa, ouvre Jarvis » : la bienvenue, la séance reste ouverte avec une relance.",
+      "writes": false,
+      "turns": [
+        {"say":"ouvre jarvis","sessionMode":"FORCE_NEW_SESSION","launch":true,"intent":"LaunchRequest","replyMatches":"^Que veux-tu ajouter \\?$","replyConstants":["LAUNCH"],"sessionEnds":false,"reprompt":true}
+      ]
+    },
+    {
+      "id": "lancement-puis-aide",
+      "note": "« aide » dans la séance ouverte : l'exemple de phrase, la séance reste ouverte.",
+      "writes": false,
+      "turns": [
+        {"say":"ouvre jarvis","sessionMode":"FORCE_NEW_SESSION","launch":true,"intent":"LaunchRequest","replyMatches":"^Que veux-tu ajouter \\?$","replyConstants":["LAUNCH"],"sessionEnds":false,"reprompt":true},
+        {"say":"aide","heard":"aide","sessionMode":"DEFAULT","sessionNew":false,"intent":"AMAZON.HelpIntent","replyMatches":"^Dis par exemple : ajoute du pain\\. Je le mets dans ta liste de courses\\.$","replyConstants":["HELP"],"sessionEnds":false,"reprompt":true}
+      ]
+    },
+    {
+      "id": "aide-appel-direct",
+      "note": "L'aide demandée en appel direct (hors séance ouverte) : même texte, la séance s'ouvre pour la suite.",
+      "writes": false,
+      "turns": [
+        {"say":"demande à jarvis aide","heard":"aide","sessionMode":"FORCE_NEW_SESSION","intent":"AMAZON.HelpIntent","replyMatches":"^Dis par exemple : ajoute du pain\\. Je le mets dans ta liste de courses\\.$","replyConstants":["HELP"],"sessionEnds":false,"reprompt":true,"sessionNew":true}
+      ]
+    },
+    {
+      "id": "lancement-puis-stop",
+      "note": "« stop » ferme la séance : « À bientôt. », sans relance.",
+      "writes": false,
+      "turns": [
+        {"say":"ouvre jarvis","sessionMode":"FORCE_NEW_SESSION","launch":true,"intent":"LaunchRequest","replyMatches":"^Que veux-tu ajouter \\?$","replyConstants":["LAUNCH"],"sessionEnds":false,"reprompt":true},
+        {"say":"stop","heard":"stop","sessionMode":"DEFAULT","sessionNew":false,"intent":"AMAZON.StopIntent","replyMatches":"^À bientôt\\.$","replyConstants":["GOODBYE"],"sessionEnds":true,"reprompt":false}
+      ]
+    },
+    {
+      "id": "lancement-puis-annule",
+      "note": "« annule » ferme la séance comme « stop ».",
+      "writes": false,
+      "turns": [
+        {"say":"ouvre jarvis","sessionMode":"FORCE_NEW_SESSION","launch":true,"intent":"LaunchRequest","replyMatches":"^Que veux-tu ajouter \\?$","replyConstants":["LAUNCH"],"sessionEnds":false,"reprompt":true},
+        {"say":"annule","heard":"annule","sessionMode":"DEFAULT","sessionNew":false,"intent":"AMAZON.CancelIntent","replyMatches":"^À bientôt\\.$","replyConstants":["GOODBYE"],"sessionEnds":true,"reprompt":false}
+      ]
+    },
+    {
+      "id": "lancement-puis-arrete",
+      "note": "« arrête » est un synonyme de « stop » chez Amazon.",
+      "writes": false,
+      "turns": [
+        {"say":"ouvre jarvis","sessionMode":"FORCE_NEW_SESSION","launch":true,"intent":"LaunchRequest","replyMatches":"^Que veux-tu ajouter \\?$","replyConstants":["LAUNCH"],"sessionEnds":false,"reprompt":true},
+        {"say":"arrête","heard":"arrête","sessionMode":"DEFAULT","sessionNew":false,"intent":"AMAZON.StopIntent","replyMatches":"^À bientôt\\.$","replyConstants":["GOODBYE"],"sessionEnds":true,"reprompt":false}
+      ]
+    },
+    {
+      "id": "consulter-du-pain-appel-direct",
+      "note": "Consulter la liste en appel direct (phrase validée en simulation le 2026-10-26) : une phrase de lecture, la séance se ferme. Le contenu de la liste varie : toutes les issues de lecture sont admises.",
+      "writes": false,
+      "turns": [
+        {"say":"demande à jarvis s'il y a du pain dans la liste","heard":"s'il y a du pain dans la liste","sessionMode":"FORCE_NEW_SESSION","intent":"CheckItemIntent","slots":{"item":"pain"},"replyMatches":"^(Oui, tu en as .+\\.|Oui : .+\\.|Non, il n'y a pas .+ dans ta liste\\.|Tu n'as pas de liste en cours\\.|Ta liste est déjà partie au drive\\.)$","replyConstants":["NO_LIST","LIST_SENT"],"replyExamples":["Oui, tu en as 5,5.","Oui : 2 tomates en fruit et légume, 1 en surgelé.","Non, il n'y a pas de croquette dans ta liste."],"sessionEnds":true,"reprompt":false,"sessionNew":true}
+      ]
+    },
+    {
+      "id": "consulter-des-croquettes-appel-direct",
+      "note": "Même chose avec « des » et un nom pluriel.",
+      "writes": false,
+      "turns": [
+        {"say":"demande à jarvis est ce qu'il y a des croquettes dans la liste","heard":"est ce qu'il y a des croquettes dans la liste","sessionMode":"FORCE_NEW_SESSION","intent":"CheckItemIntent","slots":{"item":"croquettes"},"replyMatches":"^(Oui, tu en as .+\\.|Oui : .+\\.|Non, il n'y a pas .+ dans ta liste\\.|Tu n'as pas de liste en cours\\.|Ta liste est déjà partie au drive\\.)$","replyConstants":["NO_LIST","LIST_SENT"],"replyExamples":["Oui, tu en as 5,5.","Oui : 2 tomates en fruit et légume, 1 en surgelé.","Non, il n'y a pas de croquette dans ta liste."],"sessionEnds":true,"reprompt":false,"sessionNew":true}
+      ]
+    },
+    {
+      "id": "consulter-farine-seance-ouverte",
+      "note": "Séance ouverte puis consultation : la séance RESTE ouverte, SANS relance (décision du propriétaire du 2026-10-25 : jamais « Autre chose ? »).",
+      "writes": false,
+      "turns": [
+        {"say":"ouvre jarvis","sessionMode":"FORCE_NEW_SESSION","launch":true,"intent":"LaunchRequest","replyMatches":"^Que veux-tu ajouter \\?$","replyConstants":["LAUNCH"],"sessionEnds":false,"reprompt":true},
+        {"say":"est ce qu'il y a de la farine sur ma liste","heard":"est ce qu'il y a de la farine sur ma liste","sessionMode":"DEFAULT","sessionNew":false,"intent":"CheckItemIntent","slots":{"item":"farine"},"replyMatches":"^(Oui, tu en as .+\\.|Oui : .+\\.|Non, il n'y a pas .+ dans ta liste\\.|Tu n'as pas de liste en cours\\.|Ta liste est déjà partie au drive\\.)$","replyConstants":["NO_LIST","LIST_SENT"],"replyExamples":["Oui, tu en as 5,5.","Oui : 2 tomates en fruit et légume, 1 en surgelé.","Non, il n'y a pas de croquette dans ta liste."],"sessionEnds":false,"reprompt":false}
+      ]
+    },
+    {
+      "id": "consulter-produit-inexistant",
+      "note": "Un produit qui n'existe sûrement pas : « Non, il n'y a pas de xylophone dans ta liste. » (ou l'issue sans liste, ou liste envoyée). Rien n'est créé.",
+      "writes": false,
+      "turns": [
+        {"say":"ouvre jarvis","sessionMode":"FORCE_NEW_SESSION","launch":true,"intent":"LaunchRequest","replyMatches":"^Que veux-tu ajouter \\?$","replyConstants":["LAUNCH"],"sessionEnds":false,"reprompt":true},
+        {"say":"est ce qu'il y a du xylophone dans la liste","heard":"est ce qu'il y a du xylophone dans la liste","sessionMode":"DEFAULT","sessionNew":false,"intent":"CheckItemIntent","slots":{"item":"xylophone"},"replyMatches":"^(Non, il n'y a pas de xylophone dans ta liste\\.|Tu n'as pas de liste en cours\\.|Ta liste est déjà partie au drive\\.)$","replyConstants":["NO_LIST","LIST_SENT"],"replyExamples":["Non, il n'y a pas de xylophone dans ta liste."],"sessionEnds":false,"reprompt":false}
+      ]
+    },
+    {
+      "id": "consulter-deux-fois-seance-ouverte",
+      "note": "Deux consultations de suite dans la même séance : elle reste ouverte, aucune relance.",
+      "writes": false,
+      "turns": [
+        {"say":"ouvre jarvis","sessionMode":"FORCE_NEW_SESSION","launch":true,"intent":"LaunchRequest","replyMatches":"^Que veux-tu ajouter \\?$","replyConstants":["LAUNCH"],"sessionEnds":false,"reprompt":true},
+        {"say":"est ce qu'il y a du pain dans la liste","heard":"est ce qu'il y a du pain dans la liste","sessionMode":"DEFAULT","sessionNew":false,"intent":"CheckItemIntent","slots":{"item":"pain"},"replyMatches":"^(Oui, tu en as .+\\.|Oui : .+\\.|Non, il n'y a pas .+ dans ta liste\\.|Tu n'as pas de liste en cours\\.|Ta liste est déjà partie au drive\\.)$","replyConstants":["NO_LIST","LIST_SENT"],"replyExamples":["Oui, tu en as 5,5.","Oui : 2 tomates en fruit et légume, 1 en surgelé.","Non, il n'y a pas de croquette dans ta liste."],"sessionEnds":false,"reprompt":false},
+        {"say":"est ce qu'il y a des tomates dans la liste","heard":"est ce qu'il y a des tomates dans la liste","sessionMode":"DEFAULT","sessionNew":false,"intent":"CheckItemIntent","slots":{"item":"tomates"},"replyMatches":"^(Oui, tu en as .+\\.|Oui : .+\\.|Non, il n'y a pas .+ dans ta liste\\.|Tu n'as pas de liste en cours\\.|Ta liste est déjà partie au drive\\.)$","replyConstants":["NO_LIST","LIST_SENT"],"replyExamples":["Oui, tu en as 5,5.","Oui : 2 tomates en fruit et légume, 1 en surgelé.","Non, il n'y a pas de croquette dans ta liste."],"sessionEnds":false,"reprompt":false}
+      ]
+    },
+    {
+      "id": "repli-hors-sujet-seance-ouverte",
+      "note": "Une phrase hors sujet que le profileur range dans le repli d'Amazon : l'exemple de phrase, la séance reste ouverte. Rien n'est écrit.",
+      "writes": false,
+      "turns": [
+        {"say":"ouvre jarvis","sessionMode":"FORCE_NEW_SESSION","launch":true,"intent":"LaunchRequest","replyMatches":"^Que veux-tu ajouter \\?$","replyConstants":["LAUNCH"],"sessionEnds":false,"reprompt":true},
+        {"say":"quel temps fait il demain","heard":"quel temps fait il demain","sessionMode":"DEFAULT","sessionNew":false,"intent":"AMAZON.FallbackIntent","replyMatches":"^Dis par exemple : ajoute du pain\\.$","replyConstants":["FALLBACK"],"sessionEnds":false,"reprompt":true}
+      ]
+    },
+    {
+      "id": "oui-sans-question",
+      "note": "« oui » sans question en cours : on redemande ce qu'il veut ajouter (aucun état de dialogue : le « oui » ne confirme rien).",
+      "writes": false,
+      "turns": [
+        {"say":"ouvre jarvis","sessionMode":"FORCE_NEW_SESSION","launch":true,"intent":"LaunchRequest","replyMatches":"^Que veux-tu ajouter \\?$","replyConstants":["LAUNCH"],"sessionEnds":false,"reprompt":true},
+        {"say":"oui","heard":"oui","sessionMode":"DEFAULT","sessionNew":false,"intent":"AMAZON.YesIntent","replyMatches":"^Que veux-tu ajouter \\?$","replyConstants":["LAUNCH"],"sessionEnds":false,"reprompt":true}
+      ]
+    },
+    {
+      "id": "non-sans-question",
+      "note": "« non » sans question en cours : « À bientôt. », la séance se ferme.",
+      "writes": false,
+      "turns": [
+        {"say":"ouvre jarvis","sessionMode":"FORCE_NEW_SESSION","launch":true,"intent":"LaunchRequest","replyMatches":"^Que veux-tu ajouter \\?$","replyConstants":["LAUNCH"],"sessionEnds":false,"reprompt":true},
+        {"say":"non","heard":"non","sessionMode":"DEFAULT","sessionNew":false,"intent":"AMAZON.NoIntent","replyMatches":"^À bientôt\\.$","replyConstants":["GOODBYE"],"sessionEnds":true,"reprompt":false}
+      ]
+    },
+    {
+      "id": "aide-puis-consulter-puis-stop",
+      "note": "Un parcours entier : bienvenue, aide, consultation, stop. La séance reste ouverte jusqu'au « stop ».",
+      "writes": false,
+      "turns": [
+        {"say":"ouvre jarvis","sessionMode":"FORCE_NEW_SESSION","launch":true,"intent":"LaunchRequest","replyMatches":"^Que veux-tu ajouter \\?$","replyConstants":["LAUNCH"],"sessionEnds":false,"reprompt":true},
+        {"say":"aide","heard":"aide","sessionMode":"DEFAULT","sessionNew":false,"intent":"AMAZON.HelpIntent","replyMatches":"^Dis par exemple : ajoute du pain\\. Je le mets dans ta liste de courses\\.$","replyConstants":["HELP"],"sessionEnds":false,"reprompt":true},
+        {"say":"est ce qu'il y a du lait dans la liste","heard":"est ce qu'il y a du lait dans la liste","sessionMode":"DEFAULT","sessionNew":false,"intent":"CheckItemIntent","slots":{"item":"lait"},"replyMatches":"^(Oui, tu en as .+\\.|Oui : .+\\.|Non, il n'y a pas .+ dans ta liste\\.|Tu n'as pas de liste en cours\\.|Ta liste est déjà partie au drive\\.)$","replyConstants":["NO_LIST","LIST_SENT"],"replyExamples":["Oui, tu en as 5,5.","Oui : 2 tomates en fruit et légume, 1 en surgelé.","Non, il n'y a pas de croquette dans ta liste."],"sessionEnds":false,"reprompt":false},
+        {"say":"stop","heard":"stop","sessionMode":"DEFAULT","sessionNew":false,"intent":"AMAZON.StopIntent","replyMatches":"^À bientôt\\.$","replyConstants":["GOODBYE"],"sessionEnds":true,"reprompt":false}
+      ]
+    },
+    {
+      "id": "deux-appels-directs-de-suite",
+      "note": "Deux appels directs séparés (nouvelle séance à chaque fois) : chacun se ferme.",
+      "writes": false,
+      "turns": [
+        {"say":"demande à jarvis s'il y a du pain dans la liste","heard":"s'il y a du pain dans la liste","sessionMode":"FORCE_NEW_SESSION","intent":"CheckItemIntent","slots":{"item":"pain"},"replyMatches":"^(Oui, tu en as .+\\.|Oui : .+\\.|Non, il n'y a pas .+ dans ta liste\\.|Tu n'as pas de liste en cours\\.|Ta liste est déjà partie au drive\\.)$","replyConstants":["NO_LIST","LIST_SENT"],"replyExamples":["Oui, tu en as 5,5.","Oui : 2 tomates en fruit et légume, 1 en surgelé.","Non, il n'y a pas de croquette dans ta liste."],"sessionEnds":true,"reprompt":false,"sessionNew":true},
+        {"say":"demande à jarvis est ce qu'il y a des tomates dans la liste","heard":"est ce qu'il y a des tomates dans la liste","sessionMode":"FORCE_NEW_SESSION","intent":"CheckItemIntent","slots":{"item":"tomates"},"replyMatches":"^(Oui, tu en as .+\\.|Oui : .+\\.|Non, il n'y a pas .+ dans ta liste\\.|Tu n'as pas de liste en cours\\.|Ta liste est déjà partie au drive\\.)$","replyConstants":["NO_LIST","LIST_SENT"],"replyExamples":["Oui, tu en as 5,5.","Oui : 2 tomates en fruit et légume, 1 en surgelé.","Non, il n'y a pas de croquette dans ta liste."],"sessionEnds":true,"reprompt":false,"sessionNew":true}
+      ]
+    }
+  ]
+}

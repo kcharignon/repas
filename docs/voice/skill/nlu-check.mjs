@@ -57,15 +57,15 @@ function parseArgs(argv) {
   return args;
 }
 
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-const normalize = (text) => String(text ?? '').normalize('NFC').toLowerCase().replace(/[’‘]/g, "'").replace(/\s+/g, ' ').trim();
+export const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+export const normalize = (text) => String(text ?? '').normalize('NFC').toLowerCase().replace(/[’‘]/g, "'").replace(/\s+/g, ' ').trim();
 
 /** La commande de profilage d'une phrase, sans interpréteur de commandes (aucune injection possible par une phrase). */
 function profileCommand(askBin, args, utterance) {
   return [askBin, ['smapi', 'profile-nlu', '-u', utterance, '-s', args.skillId || '<ALEXA_SKILL_ID>', '-g', args.stage, '-l', args.locale]];
 }
 
-function run(bin, binArgs) {
+export function run(bin, binArgs) {
   return new Promise((resolve) => {
     execFile(bin, binArgs, { timeout: CALL_TIMEOUT_MS, maxBuffer: 4 * 1024 * 1024, encoding: 'utf8' }, (error, stdout, stderr) => {
       resolve({ error, stdout: stdout ?? '', stderr: stderr ?? '' });
@@ -74,12 +74,12 @@ function run(bin, binArgs) {
 }
 
 /** Un incident qui justifie d'attendre et de réessayer : « trop de demandes » ou une panne d'Amazon. */
-function isRetryable(text) {
+export function isRetryable(text) {
   return /\b429\b|too many requests|throttl|\b5\d\d\b|service unavailable|ETIMEDOUT|ECONNRESET|EAI_AGAIN/i.test(text);
 }
 
 /** Un incident qui rend tout le travail impossible : on s'arrête tout de suite plutôt que de compter 133 échecs. */
-function fatalReason(text) {
+export function fatalReason(text) {
   if (/\b401\b|\b403\b|unauthori[sz]ed|forbidden|no profile|not configured|ask configure|invalid_grant|expired/i.test(text)) {
     return 'Amazon refuse la connexion de la CLI. Relance `ask configure` (c\'est toi qui te connectes), puis recommence.';
   }
@@ -91,7 +91,7 @@ function fatalReason(text) {
 }
 
 /** Le JSON du profileur dans la sortie de la CLI (elle peut écrire une ligne d'information avant) ; `null` si illisible. */
-function extractJson(stdout) {
+export function extractJson(stdout) {
   const start = stdout.indexOf('{');
   const end = stdout.lastIndexOf('}');
   if (start === -1 || end <= start) return null;

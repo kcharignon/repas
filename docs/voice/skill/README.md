@@ -11,7 +11,9 @@ Tout ce qu'il faut pour refaire le skill dans la console Amazon (ticket [VOX-002
 | `generate-model.mjs` | le script qui produit le modèle d'interaction (node pur, aucune dépendance, aucun appel réseau) | `make voice-model` pour l'écrire, `make voice-model-check` pour vérifier qu'il est à jour |
 | `nlu-cases.fr-FR.json` | la copie versionnée des phrases à tester et de ce qu'Amazon doit en comprendre (VOX-307) : intention et créneaux attendus, avec la raison de chaque cas | **rien à coller dans la console** : le fichier reste dans le dépôt, `make voice-nlu-check` le rejoue |
 | `nlu-check.mjs` | le script qui rejoue ces cas contre le profileur d'énoncés d'Amazon, par la CLI officielle (node pur, aucune dépendance) | `make voice-nlu-check` (voir « Vérifier ce qu'Amazon comprend ») |
-| `test/` | l'auto-test du script avec un faux `ask` (aucun appel chez Amazon) | `make voice-nlu-selftest` |
+| `simulation-scenarios.fr-FR.json` | la copie versionnée de dialogues entiers à rejouer, EN LECTURE SEULE, contre le vrai webhook (VOX-308) : ce que le client dit, ce que le profileur doit retenir, ce que notre serveur doit recevoir et répondre | **rien à coller dans la console** : le fichier reste dans le dépôt, `make voice-sim-check` le rejoue |
+| `simulation-check.mjs` | le script qui rejoue ces dialogues par la simulation d'Amazon (`ask smapi simulate-skill`, node pur, aucune dépendance), avec quatre gardes contre l'écriture | `make voice-sim-check` (voir « Rejouer des dialogues de bout en bout ») |
+| `test/` | l'auto-test des deux scripts avec un faux `ask` (aucun appel chez Amazon) | `make voice-nlu-selftest`, `make voice-sim-selftest` |
 
 ## Régénérer le modèle
 
@@ -84,6 +86,35 @@ Le rapport dit « 97 / 133 OK, 4 échecs, 3 écarts connus », puis, pour chaque
 **Un échec** : soit le modèle a régressé (corriger `generate-model.mjs`, `make voice-model`, recoller, relancer), soit le cas se trompe (le corriger). **Un échec qu'on accepte pour l'instant** (une limite d'Amazon qu'on contourne côté serveur) reçoit `"knownGap": true` et la raison dans sa `note` : il est compté à part et, le jour où il réussit, le rapport demande de retirer la marque. **Un cas** s'ajoute à chaque nouvelle panne réelle : `id`, `utterance` (comme Amazon la transcrit, en minuscules, **sans** « demande à Jarvis »), `intent`, `slots` (`{"value":"…"}` la valeur dite, `{"id":"…"}` l'identifiant résolu d'un type personnalisé, `null` = doit rester vide ; les créneaux non listés sont libres), `alsoIntents` si le webhook comprend aussi la phrase rangée ailleurs, `note` (pourquoi ce cas existe). `DocsVoiceNluCasesTest` (`make test`) refuse un fichier incohérent avec le modèle.
 
 **Limites connues.** Elle ne tourne **pas en CI** : elle demande ta connexion à Amazon (et `.github/workflows/` n'est pas modifiable par l'assistant : l'auto-test du script, `make voice-nlu-selftest`, ne tourne donc que sur la machine). Le format exact de la sortie de `ask smapi profile-nlu` n'a pas pu être essayé sans connexion : le script lit le JSON de l'API (avec ou sans l'enveloppe de `--full-response`) et dit « sortie illisible » s'il ne le reconnaît pas ; la référence de la CLI marque `--multi-turn-token` comme obligatoire alors que l'API le déclare facultatif : le script ne l'envoie pas, et si la CLI le réclame, la première exécution le dira (à corriger alors dans `nlu-check.mjs`). Les phrases à chiffres (« ajoute 10 croquettes ») ne jugent que l'intention : on ne sait pas comment Amazon transcrit ni résout un chiffre devant un type personnalisé, et le serveur lit le nombre resté dans le produit.
+
+## Rejouer des dialogues de bout en bout (VOX-308)
+
+**À quoi ça sert.** Le profileur (section précédente) dit ce qu'Amazon COMPREND ; il n'appelle pas notre serveur. Ici Amazon simule ce que dit le client (`ask smapi simulate-skill --input-content "demande à jarvis …"`, [référence](https://developer.amazon.com/docs/alexa/smapi/ask-cli-command-reference.html)) et appelle **notre vrai webhook** avec le compte lié du propriétaire ; `ask smapi get-skill-simulation` rend ce que notre serveur a reçu et répondu. On vérifie ainsi toute la chaîne : Amazon, la liaison de compte, le webhook, la lecture de la liste, le texte dit et l'ouverture ou la fermeture de la séance, sur plusieurs tours (`--session-mode DEFAULT` continue la séance ouverte).
+
+**La limite, voulue : lecture seule.** Ce rejeu appelle le VRAI serveur sur le compte du propriétaire : il ne joue donc que des scénarios qui n'écrivent RIEN dans sa liste (lancement, aide, stop, annule, oui/non sans question, repli, consulter un produit). **Ce qui écrit (ajouter, retirer, planifier, créer) reste prouvé par les tests PHP** (`make test`, le webhook avec un faux Amazon) **et par le profileur** (`make voice-nlu-check`), jamais par ce rejeu. Pour jouer des scénarios qui écrivent il faudrait un compte Repas de test lié au skill (`--allow-writes`, non utilisé).
+
+**Quatre gardes, dans le script et dans `DocsVoiceSimulationScenariosTest`.**
+
+1. Un scénario dont `writes` n'est pas exactement `false` est refusé avant toute commande.
+2. AVANT chaque tour (hors lancement), le profileur dit quelle intention Amazon retient pour la phrase (celle d'après l'invocation, `heard`) : si elle n'est pas de lecture seule (`CheckItemIntent`, `AMAZON.HelpIntent`, `AMAZON.FallbackIntent`, `AMAZON.StopIntent`, `AMAZON.CancelIntent`, `AMAZON.YesIntent`, `AMAZON.NoIntent`), le tour est **bloqué** et aucune simulation n'est lancée.
+3. APRÈS chaque simulation, l'intention que notre serveur a REÇUE doit être de lecture seule (ou un lancement, ou la fin de séance) ; sinon **arrêt immédiat** (code 3), en le disant très fort : le dégât éventuel est connu.
+4. APRÈS chaque simulation, notre réponse ne doit porter aucun état de dialogue (une question en attente ferait écrire le tour suivant) ; sinon arrêt immédiat.
+
+**Le jeton n'est jamais montré.** La requête que notre serveur reçoit porte le jeton d'accès de la liaison : le script n'en garde que le type, l'intention, les valeurs des créneaux et `session.new`, masque toute valeur secrète croisée et ne lit jamais `~/.ask`. La sortie `--json` n'en contient aucun.
+
+**Lancer** (même mise en place que le profileur : CLI officielle connectée, `ALEXA_SKILL_ID`, `ASK_BIN` ; c'est le fil principal, avec l'accord du propriétaire, ou le propriétaire qui le lance) :
+
+```
+make voice-sim-check                                   # les 16 scénarios (environ cinq minutes : une demande à la fois, avec des pauses)
+make voice-sim-check SIM_ARGS="--only lancement,consulter-farine-seance-ouverte"
+make voice-sim-check SIM_ARGS="--dry-run"              # liste les commandes sans rien lancer
+make voice-sim-check SIM_ARGS="--json"                 # le détail, sans jeton
+make voice-sim-selftest                                # l'auto-test, avec un faux ask : aucun appel chez Amazon
+```
+
+Le rapport dit « 14 / 16 scénarios OK, 2 avec un écart », puis, pour chaque écart, le tour, la phrase dite, l'attendu et l'obtenu. Codes de sortie : 0 tout va bien, 1 au moins un écart, 2 le script ne peut pas travailler (CLI absente, pas connecté, pas d'identifiant, scénario qui écrit), 3 arrêt de sécurité. **Un tour bloqué n'est pas un défaut du serveur** : Amazon a rangé la phrase ailleurs (c'est le profileur qui le dit) ; corriger la phrase du scénario ou le modèle (VOX-307).
+
+**Limites.** Le contenu de la liste varie : les scénarios de consultation acceptent toutes les issues de lecture (« Oui, tu en as … », « Non, il n'y a pas de … », pas de liste, liste partie au drive). Le format exact de la sortie de `get-skill-simulation` n'a été vu qu'une fois (2026-10-26) ; un format qui change se voit comme un écart « Amazon n'a pas appelé le skill » ou « sortie illisible ». Les résultats d'Amazon ne sont gardés que dix minutes (le script les relit tout de suite). Ce rejeu ne tourne pas en CI (il demande la connexion du propriétaire ; `.github/workflows/` n'est pas modifiable par l'assistant).
 
 ## Refaire le skill de zéro (ou le restaurer)
 
