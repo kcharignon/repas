@@ -12,6 +12,7 @@ Tout ce qu'il faut pour refaire le skill dans la console Amazon (ticket [VOX-002
 | `nlu-cases.fr-FR.json` | la copie versionnée des phrases à tester et de ce qu'Amazon doit en comprendre (VOX-307) : intention et créneaux attendus, avec la raison de chaque cas | **rien à coller dans la console** : le fichier reste dans le dépôt, `make voice-nlu-check` le rejoue |
 | `nlu-check.mjs` | le script qui rejoue ces cas contre le profileur d'énoncés d'Amazon, par la CLI officielle (node pur, aucune dépendance) | `make voice-nlu-check` (voir « Vérifier ce qu'Amazon comprend ») |
 | `simulation-scenarios.fr-FR.json` | la copie versionnée de dialogues entiers à rejouer, EN LECTURE SEULE, contre le vrai webhook (VOX-308) : ce que le client dit, ce que le profileur doit retenir, ce que notre serveur doit recevoir et répondre | **rien à coller dans la console** : le fichier reste dans le dépôt, `make voice-sim-check` le rejoue |
+| `push-model.mjs` | envoie le modèle du dépôt au skill EN DÉVELOPPEMENT et attend le build (`ask smapi set-interaction-model`, node pur) : remplace le collage dans la console | `make voice-model-push` (voir « Envoyer le modèle sans la console ») |
 | `simulation-check.mjs` | le script qui rejoue ces dialogues par la simulation d'Amazon (`ask smapi simulate-skill`, node pur, aucune dépendance), avec quatre gardes contre l'écriture | `make voice-sim-check` (voir « Rejouer des dialogues de bout en bout ») |
 | `test/` | l'auto-test des deux scripts avec un faux `ask` (aucun appel chez Amazon) | `make voice-nlu-selftest`, `make voice-sim-selftest` |
 
@@ -116,12 +117,16 @@ Le rapport dit « 14 / 16 scénarios OK, 2 avec un écart », puis, pour chaque 
 
 **Limites.** Le contenu de la liste varie : les scénarios de consultation acceptent toutes les issues de lecture (« Oui, tu en as … », « Non, il n'y a pas de … », pas de liste, liste partie au drive). Le format exact de la sortie de `get-skill-simulation` n'a été vu qu'une fois (2026-10-26) ; un format qui change se voit comme un écart « Amazon n'a pas appelé le skill » ou « sortie illisible ». Les résultats d'Amazon ne sont gardés que dix minutes (le script les relit tout de suite). Ce rejeu ne tourne pas en CI (il demande la connexion du propriétaire ; `.github/workflows/` n'est pas modifiable par l'assistant).
 
+## Envoyer le modèle sans la console (VOX-309)
+
+Après `make voice-model` (et le commit du modèle), `ALEXA_SKILL_ID=amzn1.ask.skill.… ASK_BIN=~/ask-cli/node_modules/.bin/ask make voice-model-push` envoie `interaction-model.fr-FR.json` au skill en **développement** (`ask smapi set-interaction-model`) et attend la fin du build (`ask smapi get-skill-status`) : plus de *JSON Editor*, de presse-papiers ni de *Build skill* à la main. Il refuse un modèle périmé (même contrôle que `make voice-model-check`), ne publie rien, ne certifie rien et ne lit jamais les fichiers de jetons de la CLI. **Revérifier ensuite *Build* → *Endpoint*** (HTTPS, `https://kantin.eu/api/voice/alexa`) : Amazon l'a déjà fait sauter vers une démo après un collage manuel (rien de tel constaté par la CLI, mais le contrôle ne coûte rien), puis `make voice-nlu-check` et `make voice-sim-check`. Un test sans Amazon : `make voice-push-selftest`.
+
 ## Refaire le skill de zéro (ou le restaurer)
 
 À faire avec l'assistant, une étape à la fois, dans cet ordre (le déroulé détaillé est dans [`../seance-en-direct.md`](../seance-en-direct.md), étapes 4 à 8) :
 
 1. Console Amazon → *Create Skill* : nom « Jarvis », langue French (FR), modèle **Custom**, hébergement **Provision your own**, *Start from scratch*.
-2. *Build* → *Interaction Model* → *JSON Editor* : coller `interaction-model.fr-FR.json` **par le presse-papiers de PowerShell** (jamais `clip.exe` : il casse les accents), *Save*, *Build skill*.
+2. Le modèle : `make voice-model-push` (voir plus haut), ou, sans la CLI, *Build* → *Interaction Model* → *JSON Editor* : coller `interaction-model.fr-FR.json` **par le presse-papiers de PowerShell** (jamais `clip.exe` : il casse les accents), *Save*, *Build skill*.
 3. *Build* → *Endpoint* : **HTTPS**, `https://kantin.eu/api/voice/alexa`, certificat d'une autorité reconnue. À revérifier après chaque collage du modèle.
 4. *Build* → *Account Linking* : les valeurs de `account-linking.json`, un **nouveau secret** fabriqué sans l'afficher (`openssl rand -base64 36 | tr -d '\n=+/'`), jamais écrit dans le dépôt ni dans le chat ; la console affiche alors les adresses de retour d'Alexa.
 5. *Distribution* → *Skill Preview* (fr-FR) et *Privacy & Compliance* : les valeurs de `skill.json` et les deux icônes de `assets/` ; *Certification* → *Validation* → *Run* doit répondre zéro erreur.
