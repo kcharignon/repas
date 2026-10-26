@@ -93,6 +93,22 @@ class VoiceMealPlannerFlowTest extends DatabaseTestCase
         return $list;
     }
 
+    /**
+     * Les quantités des lignes de la liste, relues en base, par ingrédient.
+     *
+     * @return array<string, float>
+     */
+    private function quantitiesOf(ShoppingList $list): array
+    {
+        $this->entityManager->clear();
+        $quantities = [];
+        foreach ($this->shoppingListRepository->findOneById($list->getId())->getRows() as $row) {
+            $quantities[$row->getIngredientSlug()] = $row->getQuantity();
+        }
+
+        return $quantities;
+    }
+
     private function mealOf(ShoppingList $list, Recipe $recipe): ?Meal
     {
         return $list->getMeals()->find(static fn(Meal $meal): bool => $meal->getRecipeId() === $recipe->getId());
@@ -295,18 +311,32 @@ class VoiceMealPlannerFlowTest extends DatabaseTestCase
         $this->planner->plan($user->getId(), $recipe->getId(), 4);
         $this->entityManager->clear();
 
+        $forFour = $this->quantitiesOf($active);
+
         // When : « six » puis « deux »
         $up = $this->planner->changeServings($user->getId(), $recipe->getId(), 6);
         $this->entityManager->clear();
         $afterUp = $this->mealOf($this->shoppingListRepository->findOneById($active->getId()), $recipe)?->getServing();
+        $forSix = $this->quantitiesOf($active);
         $down = $this->planner->changeServings($user->getId(), $recipe->getId(), 2);
         $this->entityManager->clear();
+        $forTwo = $this->quantitiesOf($active);
 
         // Then : le nouveau total remplace l'ancien, dans les deux sens
         $this->assertEquals(ChangedMealServings::changed($recipe->getName(), 6), $up);
         $this->assertSame(6, $afterUp);
         $this->assertEquals(ChangedMealServings::changed($recipe->getName(), 2), $down);
         $this->assertSame(2, $this->mealOf($this->shoppingListRepository->findOneById($active->getId()), $recipe)?->getServing());
+
+        // Then : et les QUANTITÉS DES LIGNES ont suivi, la preuve de bout en bout (4 -> 6 -> 2, linéaire en nombre de personnes)
+        $this->assertNotEmpty($forFour);
+        $this->assertSame(array_keys($forFour), array_keys($forSix));
+        $this->assertSame(array_keys($forFour), array_keys($forTwo));
+        foreach ($forFour as $slug => $quantityForFour) {
+            $this->assertGreaterThan(0.0, $quantityForFour, $slug);
+            $this->assertEqualsWithDelta($quantityForFour * 6 / 4, $forSix[$slug], 0.0001, "$slug pour six");
+            $this->assertEqualsWithDelta($quantityForFour * 2 / 4, $forTwo[$slug], 0.0001, "$slug pour deux");
+        }
     }
 
     public function testChangingToTheSameTotalWritesNothing(): void
