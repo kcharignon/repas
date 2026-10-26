@@ -19,7 +19,8 @@ use Repas\Voice\Domain\Model\VoiceReplies;
  * - `answer()` : la réponse d'un utilisateur lié, ou `null` quand un cas d'usage doit lire ou écrire : ajouter un article
  *   (`AddItemIntent` avec une phrase : `AddSpokenItem`), le retirer (`RemoveItemIntent` : `RemoveSpokenItem`), demander s'il est dans la liste
  *   (`CheckItemIntent` : la lecture `GetSpokenItemInList`, ADR 0029 décision 12), ou répondre à une question du dialogue d'un produit inconnu
- *   (la séance porte un état : `AnswerSpokenDialogue`, qui interprète la réponse d'après l'ÉTAT, `SpokenAnswerInterpreter`). Seuls « stop » et
+ *   (la séance porte un état : `AnswerSpokenDialogue`, qui interprète la réponse d'après l'ÉTAT, `SpokenAnswerInterpreter`), ou planifier un repas
+ *   (`AddMealIntent`, ou `AddItemIntent` dont la phrase commence par « repas » ou « recette » : `AddSpokenMeal`, ADR 0029 décision 13). Seuls « stop » et
  *   « annule » sont traités ici dans tous les états. Un retrait ou une consultation sans produit reçoivent un exemple, jamais une question ouverte :
  *   la réponse brève (« du pain ») serait comprise comme un ajout.
  *
@@ -28,6 +29,13 @@ use Repas\Voice\Domain\Model\VoiceReplies;
  */
 final readonly class AlexaDialogue
 {
+    private SpokenMealPhrase $meals;
+
+    public function __construct(?SpokenMealPhrase $meals = null)
+    {
+        $this->meals = $meals ?? new SpokenMealPhrase();
+    }
+
     public function beforeAuthentication(AlexaRequest $request): ?AlexaResponse
     {
         if ($request->type === AlexaRequest::SESSION_ENDED) {
@@ -59,6 +67,19 @@ final readonly class AlexaDialogue
         // Une question est posée : la réponse dépend de l'état, pas de l'intention seule
         if ($request->dialogueState !== null) {
             return null;
+        }
+
+        // Un repas à planifier (ADR 0029 décision 13) : le mot « repas » ou « recette », ou l'intention des repas, aiguille avant l'intention des produits. Une
+        // recette comprise et un nombre de personnes écrivable : à `AddSpokenMeal`. Sinon un exemple, jamais une question ouverte (la réponse brève serait
+        // comprise comme un produit), ou on redemande combien
+        $meal = $this->meals->requestOf($request);
+        if ($meal !== null) {
+            return match (true) {
+                $meal->recipe === '' => AlexaResponse::reply(VoiceReplies::MEAL_EXAMPLE, $request->isInOpenSession(), null),
+                // Un nombre de personnes dit mais hors de 1 à 99 (créneau ou fin de phrase : « pour 100 personnes », « pour 0 ») : on redemande, rien n'est écrit
+                $request->hasUnusableServings() || $meal->unusableServings => AlexaResponse::reply(VoiceReplies::HOW_MANY, $request->isInOpenSession(), null),
+                default => null,
+            };
         }
 
         return match ($intent) {

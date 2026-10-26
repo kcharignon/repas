@@ -26,17 +26,14 @@ final readonly class SpokenIngredientNamer
 
     private const string LEADING_ARTICLE = "/^(?:de\\s+l'|de\\s+la\\s+|du\\s+|des\\s+|de\\s+|d'|l'|un\\s+|une\\s+|le\\s+|la\\s+|les\\s+)/u";
 
-    /** Les nombres dits en lettres que l'on reconnaît en tête d'une phrase (« un » et « une » restent des articles : ils valent la quantité 1 par défaut). */
-    private const array NUMBER_WORDS = [
-        'deux' => 2, 'trois' => 3, 'quatre' => 4, 'cinq' => 5, 'six' => 6, 'sept' => 7, 'huit' => 8, 'neuf' => 9, 'dix' => 10, 'onze' => 11,
-        'douze' => 12, 'treize' => 13, 'quatorze' => 14, 'quinze' => 15, 'seize' => 16, 'vingt' => 20,
-    ];
-
     private SpokenUnits $units;
 
-    public function __construct(?SpokenUnits $units = null)
+    private SpokenNumber $numbers;
+
+    public function __construct(?SpokenUnits $units = null, ?SpokenNumber $numbers = null)
     {
         $this->units = $units ?? new SpokenUnits();
+        $this->numbers = $numbers ?? new SpokenNumber();
     }
 
     /**
@@ -54,7 +51,7 @@ final readonly class SpokenIngredientNamer
 
     /**
      * La phrase débarrassée du nombre qu'elle commence par dire (« 10 croquettes » donne « croquettes » et la quantité 10), de 1 à 99 en
-     * chiffres, de 2 à 20 en lettres ; telle quelle avec une quantité `null` sinon, ou quand rien ne suit le nombre (« dix » seul est un nom).
+     * chiffres, de 2 à 99 en lettres (un seul mot : « vingt », « trente »…) ; telle quelle avec une quantité `null` sinon, ou quand rien ne suit le nombre (« dix » seul est un nom).
      *
      * @return array{phrase: string, quantity: ?int}
      */
@@ -65,8 +62,9 @@ final readonly class SpokenIngredientNamer
             return ['phrase' => $phrase, 'quantity' => null];
         }
 
-        $quantity = ctype_digit($matches[1]) ? (int) $matches[1] : (self::NUMBER_WORDS[$matches[1]] ?? null);
-        if ($quantity === null || $quantity < 1) {
+        // Les mots viennent du lecteur de nombres commun (`SpokenNumber`), de « deux » à « quatre vingt dix neuf » ; « un » et « une » restent des articles
+        $quantity = ctype_digit($matches[1]) ? (int) $matches[1] : $this->numbers->parse($matches[1]);
+        if ($quantity === null || $quantity < 1 || (!ctype_digit($matches[1]) && ($quantity === 1 || $quantity > 99))) {
             return ['phrase' => $phrase, 'quantity' => null];
         }
 

@@ -11,6 +11,8 @@ use Repas\Voice\Application\Command\AddSpokenItem\AddedLineFactory;
 use Repas\Voice\Application\Command\AddSpokenItem\AddSpokenItemCommand;
 use Repas\Voice\Application\Command\AddSpokenItem\AddSpokenItemHandler;
 use Repas\Voice\Application\Command\AddSpokenItem\AddSpokenItemResult;
+use Repas\Voice\Application\Command\AddSpokenMeal\AddSpokenMealCommand;
+use Repas\Voice\Application\Command\AddSpokenMeal\AddSpokenMealHandler;
 use Repas\Voice\Application\Command\RemoveSpokenItem\RemovedLineFactory;
 use Repas\Voice\Application\Command\RemoveSpokenItem\RemoveSpokenItemCommand;
 use Repas\Voice\Application\Command\RemoveSpokenItem\RemoveSpokenItemHandler;
@@ -49,6 +51,13 @@ use Symfony\Component\Messenger\Attribute\AsMessageHandler;
  * - une réponse incomprise : on la redemande une fois (`SpokenDialogueState::missed`), la deuxième fois de suite dans la même étape on
  *   abandonne poliment (jamais de boucle sans fin).
  *
+ * Les repas (ADR 0029 décision 13, VOX-305) suivent les mêmes règles, avec `SpokenTarget::MEAL` : une proposition choisie planifie le repas ET retient la
+ * phrase (`AddSpokenMealHandler::plan`) ; « une recette » à la question d'un produit inconnu (`SWITCH_TO_MEAL`) cherche la phrase d'origine dans les
+ * recettes, « un produit » à la question d'une recette inconnue (`SWITCH_TO_ITEM`) la cherche dans les produits, chaque côté une seule fois (l'état retient
+ * l'autre côté essayé) ; l'étape `servings` d'un repas déjà planifié change son nombre de personnes (`AddSpokenMealHandler::changeServings`, le nouveau
+ * TOTAL ; le même nombre, « non » ou « rien » ne change rien) ; « planifie le repas … » au milieu d'une question est une nouvelle demande de repas
+ * (`NEW_MEAL`) ; un produit dit à la place des recettes proposées ne retient rien pour une recette, et inversement.
+ *
  * La quantité et l'unité dites au départ (« trois croquettes ») voyagent dans l'état (`SpokenDialogueState::quantity`) et s'appliquent à l'article
  * qui aboutit, ajouté ou créé ; un autre article dit à la place porte les siennes (`AlexaRequest`).
  *
@@ -69,6 +78,7 @@ readonly class AnswerSpokenDialogueHandler
         private SpokenIngredientNamer $namer,
         private RemoveSpokenItemHandler $removeSpokenItem,
         private SpokenListAnswerer $listAnswerer,
+        private AddSpokenMealHandler $addSpokenMeal,
     ) {
     }
 
@@ -84,7 +94,8 @@ readonly class AnswerSpokenDialogueHandler
                 $command->userId,
                 $answer->phrase ?? '',
                 sessionIsOpen: false,
-                rememberAs: $state->rememberablePhrase(),
+                // Un produit dit à la place de RECETTES proposées ne retient rien pour une recette
+                rememberAs: $state->isMeal() ? null : $state->rememberablePhrase(),
                 quantity: $command->request->quantity ?? 1,
                 unitSlug: $command->request->unitSlug(),
             )),
@@ -98,12 +109,34 @@ readonly class AnswerSpokenDialogueHandler
                 unitSlug: $command->request->unitSlug(),
             )),
             SpokenAnswerKind::NEW_CHECK => $this->finish($this->listAnswerer->speech($command->userId, $answer->phrase ?? '')),
+            // « Planifie le repas … » dit au milieu d'une question (ADR 0029 décision 13) : une nouvelle demande de repas, qui corrige les recettes proposées
+            // si elles l'étaient, jamais les produits proposés
+            SpokenAnswerKind::NEW_MEAL => ($this->addSpokenMeal)(new AddSpokenMealCommand(
+                $command->userId,
+                $answer->phrase ?? '',
+                sessionIsOpen: false,
+                servings: $answer->number,
+                rememberAs: $state->isMeal() ? $state->rememberablePhrase() : null,
+                originalPhrase: $answer->original,
+            )),
+            // Aiguillage (décision 13) : la phrase d'origine est cherchée de l'autre côté, une seule fois
+            SpokenAnswerKind::SWITCH_TO_MEAL => ($this->addSpokenMeal)(new AddSpokenMealCommand($command->userId, $state->phrase, sessionIsOpen: false, otherSideTried: true)),
+            // Les produits cherchent la phrase d'origine ENTIÈRE (« le repas pour chien » : un produit dont le nom commence par le mot « repas »), sans l'article
+            SpokenAnswerKind::SWITCH_TO_ITEM => ($this->addSpokenItem)(new AddSpokenItemCommand($command->userId, $this->namer->nameFrom($state->originalPhrase ?? $state->phrase) ?? $state->phrase, sessionIsOpen: false, otherSideTried: true)),
+            SpokenAnswerKind::PICK_SERVINGS => $this->addSpokenMeal->changeServings(
+                $command->userId,
+                $state->options[0] ?? throw new \LogicException('PICK_SERVINGS sans recette.'),
+                $state->plannedServings ?? throw new \LogicException('PICK_SERVINGS sans nombre de personnes.'),
+                $answer->number ?? throw new \LogicException('PICK_SERVINGS sans nombre.'),
+            ),
             SpokenAnswerKind::PICK_OPTION => $this->pickOption($command, $answer),
             SpokenAnswerKind::START_CREATION => $this->ask($state->askingDepartment()),
             SpokenAnswerKind::PICK_DEPARTMENT => $this->ask($state->withDepartment($answer->option ?? throw new \LogicException('PICK_DEPARTMENT sans rayon.'))),
             SpokenAnswerKind::PICK_UNIT => $this->ask($state->withUnit($answer->option ?? throw new \LogicException('PICK_UNIT sans unité.'))),
             SpokenAnswerKind::CONFIRM => $this->create($command),
             SpokenAnswerKind::ABANDON => $this->finish(match (true) {
+                $state->step === DialogueStep::SERVINGS => VoiceReplies::MEAL_UNCHANGED,
+                $state->isMeal() => VoiceReplies::DECLINED_MEAL,
                 $state->isRemoval() => VoiceReplies::DECLINED_REMOVAL,
                 $state->isTieBreak() => VoiceReplies::DECLINED_TIE,
                 default => VoiceReplies::DECLINED,
@@ -133,6 +166,11 @@ readonly class AnswerSpokenDialogueHandler
     private function pickOption(AnswerSpokenDialogueCommand $command, SpokenAnswer $answer): AddSpokenItemResult
     {
         $option = $answer->option ?? throw new \LogicException('PICK_OPTION sans proposition.');
+
+        // Une recette proposée, choisie (décision 13) : le repas est planifié ET la phrase retenue. L'identifiant de l'état n'est pas cru (le port vérifie)
+        if ($command->state->isMeal()) {
+            return $this->addSpokenMeal->plan($command->userId, $option, $command->state->servings, $command->state->phrase, keepSessionOpen: false);
+        }
 
         // Le départage de lignes à retirer : la ligne choisie perd la quantité dite, rien n'est ajouté ni retenu (le slug de l'état n'est pas cru :
         // une ligne qui n'est pas dans la liste de l'utilisateur répond « pas dans ta liste », rien n'est écrit)

@@ -64,6 +64,7 @@ class DocsVoiceSkillTest extends KernelTestCase
             'AddItemIntent' => AlexaTestRequest::addItem('du pain'),
             'RemoveItemIntent' => AlexaTestRequest::removeItem('du pain'),
             'CheckItemIntent' => AlexaTestRequest::checkItem('du pain'),
+            'AddMealIntent' => AlexaTestRequest::addMeal('hachis parmentier'),
             default => AlexaTestRequest::intent($intent),
         };
 
@@ -71,7 +72,7 @@ class DocsVoiceSkillTest extends KernelTestCase
         $answer = $dialogue->answer(AlexaRequest::fromDecoded($request->toArray()));
 
         // Then : une réponse parlée, ou (un article compris) le cas d'usage qui l'ajoute, le retire ou le cherche dans la liste
-        if (in_array($intent, ['AddItemIntent', 'RemoveItemIntent', 'CheckItemIntent'], true)) {
+        if (in_array($intent, ['AddItemIntent', 'RemoveItemIntent', 'CheckItemIntent', 'AddMealIntent'], true)) {
             $this->assertNull($answer, "$intent avec un article est confié à son cas d'usage");
         } else {
             $this->assertInstanceOf(AlexaResponse::class, $answer, $intent);
@@ -138,6 +139,97 @@ class DocsVoiceSkillTest extends KernelTestCase
             $this->assertSame(mb_strtolower($sample), $sample, "« $sample » : en minuscules");
         }
     }
+
+    public function testTheAddMealIntentHasItsRecipeAndServingsSlotsAndWellFormedSamples(): void
+    {
+        // Given
+        $intent = $this->intent('AddMealIntent');
+
+        // Then : les créneaux que le webhook lit (`recipe`, `servings`), du type des recettes et du type des quantités
+        $this->assertSame([['name' => 'recipe', 'type' => 'RECIPE'], ['name' => 'servings', 'type' => 'QUANTITY']], $intent['slots']);
+
+        $samples = $intent['samples'];
+        $this->assertGreaterThanOrEqual(100, count($samples));
+        $this->assertSame(array_values(array_unique($samples)), $samples, 'aucune phrase en double');
+        $verbs = [];
+        $markers = [];
+        foreach ($samples as $sample) {
+            $this->assertSame(1, substr_count($sample, '{recipe}'), $sample);
+            $this->assertSame(0, substr_count(str_replace(['{recipe}', '{servings}'], '', $sample), '{'), "« $sample » : {recipe} et {servings} seulement");
+            $this->assertLessThanOrEqual(1, substr_count($sample, '{servings}'), $sample);
+            $this->assertStringNotContainsString("'{", $sample, "« $sample » : une espace après l'apostrophe, avant un créneau");
+            $this->assertDoesNotMatchRegularExpression('/(?<![\p{L}])(un|une)(?![\p{L}])/u', $sample, "« $sample » : « un » et « une » sont des nombres, jamais un mot de liaison");
+            $this->assertDoesNotMatchRegularExpression('/\d|-/', $sample, "« $sample » : ni chiffre ni trait d'union");
+            $this->assertSame(trim($sample), $sample);
+            $this->assertSame(mb_strtolower($sample), $sample, "« $sample » : en minuscules");
+            // Une quantité de personnes se dit en fin de phrase, après « pour »
+            if (str_contains($sample, '{servings}')) {
+                $this->assertMatchesRegularExpression('/ pour \{servings\}( personnes)?$/u', $sample);
+            }
+            $verbs[preg_replace('/ (le repas|la recette)( de)?.*$| \{recipe\}.*$/u', '', $sample)] = true;
+            if (preg_match('/(le repas|la recette)/u', $sample, $match) === 1) {
+                $markers[$match[1]] = true;
+            }
+        }
+        // Les verbes de la décision du propriétaire (2026-10-26) : planifie, prévois, prépare, mets au menu, ajoute le repas / la recette
+        foreach (['planifie', 'prévois', 'prépare', 'mets au menu', 'ajoute', 'planifier', 'prévoir', 'préparer', 'mettre au menu', 'ajouter'] as $verb) {
+            $this->assertArrayHasKey($verb, $verbs, "le verbe « $verb » manque");
+        }
+        $this->assertSame(['le repas' => true, 'la recette' => true], $markers);
+        $this->assertContains('planifie {recipe}', $samples);
+        $this->assertContains('planifie le repas {recipe} pour {servings} personnes', $samples);
+        $this->assertContains('ajoute la recette {recipe}', $samples);
+        $this->assertContains('ajoute le repas {recipe} pour {servings}', $samples);
+        // « ajoute » seul reste un produit : jamais d'échantillon d'ajout de repas sans le mot
+        foreach (['ajoute {recipe}', 'mets {recipe}', 'note {recipe}', 'ajouter {recipe}'] as $bare) {
+            $this->assertNotContains($bare, $samples);
+        }
+    }
+
+    public function testTheRecipeTypeIsAHintOfCommonDishesAndTheKindTypeHasTheTwoAnswers(): void
+    {
+        // Given
+        $recipes = array_map(static fn(array $value): string => $value['name']['value'], $this->type('RECIPE')['values']);
+        $kinds = [];
+        foreach ($this->type('KIND')['values'] as $value) {
+            $kinds[$value['id']] = [$value['name']['value'], ...$value['name']['synonyms']];
+        }
+
+        // Then : des plats courants (un indice pour la reconnaissance vocale, pas une limite), et « une recette » / « un produit » comme le webhook les lit
+        $this->assertGreaterThanOrEqual(50, count($recipes));
+        $this->assertContains('hachis parmentier', $recipes);
+        $this->assertContains('lasagnes', $recipes);
+        $this->assertSame(['meal', 'item'], array_keys($kinds));
+        $this->assertContains('recette', $kinds['meal']);
+        $this->assertContains('repas', $kinds['meal']);
+        $this->assertContains('produit', $kinds['item']);
+        $this->assertContains('article', $kinds['item']);
+    }
+
+    public function testEveryWordOfTheKindTypeIsUnderstoodByTheWebhookAsTheSameKind(): void
+    {
+        // Given
+        $meal = new \Repas\Voice\Domain\Service\SpokenMealPhrase();
+
+        // Then : le texte seul (sans la résolution d'entité) dit la même chose que l'identifiant du modèle
+        foreach ($this->type('KIND')['values'] as $value) {
+            foreach ([$value['name']['value'], ...$value['name']['synonyms']] as $word) {
+                $this->assertSame($value['id'], $meal->kindOf($word), $word);
+            }
+        }
+    }
+
+    public function testTheKeepMealIntentIsUnderstoodByTheWebhookAsNothingToChange(): void
+    {
+        // Given
+        $meal = new \Repas\Voice\Domain\Service\SpokenMealPhrase();
+
+        // Then : chaque phrase du modèle est comprise comme « rien » même quand Amazon choisit une autre intention
+        foreach ($this->intent('KeepMealIntent')['samples'] as $sample) {
+            $this->assertTrue($meal->isKeepAnswer($sample), $sample);
+        }
+    }
+
 
     public function testTheRemoveItemIntentHasTheSameSlotsAsTheAddAndWellFormedSamples(): void
     {
@@ -211,6 +303,10 @@ class DocsVoiceSkillTest extends KernelTestCase
         yield 'CreateItemIntent' => ['CreateItemIntent', null, null];
         yield 'AnswerDepartmentIntent' => ['AnswerDepartmentIntent', 'department', 'DEPARTMENT'];
         yield 'AnswerUnitIntent' => ['AnswerUnitIntent', 'unit', 'UNIT'];
+        // Le repas (ADR 0029 décision 13, VOX-305) : aiguiller un produit ou une recette non compris, nouveau total de personnes, ne rien changer
+        yield 'ChooseKindIntent' => ['ChooseKindIntent', 'kind', 'KIND'];
+        yield 'AnswerServingsIntent' => ['AnswerServingsIntent', 'servings', 'QUANTITY'];
+        yield 'KeepMealIntent' => ['KeepMealIntent', null, null];
     }
 
     #[DataProvider('dialogueIntents')]
@@ -273,6 +369,9 @@ class DocsVoiceSkillTest extends KernelTestCase
             'department' => static fn(AlexaRequest $request): mixed => $request->department?->text,
             'unit' => static fn(AlexaRequest $request): mixed => $request->unit?->text,
             'quantity' => static fn(AlexaRequest $request): mixed => $request->quantity,
+            'recipe' => static fn(AlexaRequest $request): mixed => $request->recipePhrase,
+            'servings' => static fn(AlexaRequest $request): mixed => $request->servings,
+            'kind' => static fn(AlexaRequest $request): mixed => $request->kind?->text,
         ];
 
         foreach ($this->languageModel()['intents'] as $intent) {
@@ -430,6 +529,8 @@ class DocsVoiceSkillTest extends KernelTestCase
         yield 'DEPARTMENT' => ['DEPARTMENT'];
         yield 'UNIT' => ['UNIT'];
         yield 'OPTION_RANK' => ['OPTION_RANK'];
+        yield 'RECIPE' => ['RECIPE'];
+        yield 'KIND' => ['KIND'];
     }
 
     #[DataProvider('catalogueTypes')]

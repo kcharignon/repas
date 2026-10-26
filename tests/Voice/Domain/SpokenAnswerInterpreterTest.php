@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Repas\Tests\Helper\Alexa\AlexaTestRequest;
 use Repas\Voice\Domain\Model\AlexaRequest;
 use Repas\Voice\Domain\Model\DialogueOption;
+use Repas\Voice\Domain\Model\DialogueStep;
 use Repas\Voice\Domain\Model\SpokenAnswerKind;
 use Repas\Voice\Domain\Model\SpokenDialogueState;
 use Repas\Voice\Domain\Service\SpokenAnswerInterpreter;
@@ -383,5 +384,319 @@ class SpokenAnswerInterpreterTest extends TestCase
             $this->assertSame(SpokenAnswerKind::UNCLEAR, $this->interpret(AlexaTestRequest::intent('AMAZON.StopIntent'), $state, self::departments())[0]);
             $this->assertSame(SpokenAnswerKind::UNCLEAR, $this->interpret(AlexaTestRequest::intent('AMAZON.CancelIntent'), $state, self::departments())[0]);
         }
+    }
+
+    // ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
+    // Un repas (ADR 0029 décision 13, VOX-305) : l'aiguillage entre produit et recette, le choix d'une recette, le nombre de personnes
+    // ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
+
+    /**
+     * @param list<string> $names
+     */
+    private static function recipes(array $names, bool $otherSideTried = false, ?int $servings = null): SpokenDialogueState
+    {
+        return SpokenDialogueState::chooseRecipe('gratin', array_map(static fn(string $name): DialogueOption => new DialogueOption($name . '-id', $name), $names), 'gratin', $servings, $otherSideTried);
+    }
+
+    private static function planned(): SpokenDialogueState
+    {
+        return SpokenDialogueState::askingServings(new DialogueOption('gratin-id', 'gratin dauphinois'), 4);
+    }
+
+    /**
+     * @return iterable<string, array{AlexaTestRequest, bool, SpokenAnswerKind}>
+     */
+    public static function productSideKinds(): iterable
+    {
+        // « Je ne connais pas X. Tu veux dire A, B ou C ? Ou un nouveau produit, ou une recette ? »
+        yield 'une recette par le créneau' => [AlexaTestRequest::chooseKind('une recette', 'meal'), false, SpokenAnswerKind::SWITCH_TO_MEAL];
+        yield 'une recette par le texte seul' => [AlexaTestRequest::chooseKind('une recette', null), false, SpokenAnswerKind::SWITCH_TO_MEAL];
+        yield 'le repas par le texte seul' => [AlexaTestRequest::chooseKind('le repas', null), false, SpokenAnswerKind::SWITCH_TO_MEAL];
+        yield 'recette dite à l\'intention des produits' => [AlexaTestRequest::addItem('une recette'), false, SpokenAnswerKind::SWITCH_TO_MEAL];
+        yield 'c\'est une recette dit à l\'intention des produits' => [AlexaTestRequest::addItem("c'est une recette"), false, SpokenAnswerKind::SWITCH_TO_MEAL];
+        yield 'les recettes ont déjà été cherchées' => [AlexaTestRequest::chooseKind('une recette', 'meal'), true, SpokenAnswerKind::UNCLEAR];
+        yield 'un produit veut dire un nouveau produit' => [AlexaTestRequest::chooseKind('un produit', 'item'), false, SpokenAnswerKind::START_CREATION];
+        yield 'un produit par le texte seul' => [AlexaTestRequest::addItem('un produit'), false, SpokenAnswerKind::START_CREATION];
+        yield 'un produit, recettes déjà cherchées' => [AlexaTestRequest::chooseKind('un produit', 'item'), true, SpokenAnswerKind::START_CREATION];
+    }
+
+    #[DataProvider('productSideKinds')]
+    public function testARecipeSaidToTheQuestionOfAnUnknownProductSwitchesToTheRecipesOnce(AlexaTestRequest $request, bool $otherSideTried, SpokenAnswerKind $expected): void
+    {
+        // Given : deux propositions de produits
+        $state = SpokenDialogueState::choose('gratin', [self::option('persil'), self::option('basilic')], 'gratin', otherSideTried: $otherSideTried);
+
+        // Then
+        $this->assertSame($expected, $this->interpret($request, $state)[0]);
+        // Et sans aucune proposition (« Je le crée ? »)
+        $none = SpokenDialogueState::choose('gratin', [], 'gratin', otherSideTried: $otherSideTried);
+        $this->assertSame($expected, $this->interpret($request, $none)[0]);
+    }
+
+    /**
+     * @return iterable<string, array{AlexaTestRequest, list<string>, bool, SpokenAnswerKind, ?string}>
+     */
+    public static function mealChooseCases(): iterable
+    {
+        $three = ['gratin dauphinois', 'gratin de pâtes', 'gratin de courgettes'];
+
+        yield 'rang 2' => [AlexaTestRequest::chooseOption('le deuxième', '2'), $three, false, SpokenAnswerKind::PICK_OPTION, 'gratin de pâtes'];
+        yield 'rang 3 sans résolution' => [AlexaTestRequest::chooseOption('trois', null), $three, false, SpokenAnswerKind::PICK_OPTION, 'gratin de courgettes'];
+        yield 'rang hors des propositions' => [AlexaTestRequest::chooseOption('trois', '3'), ['gratin dauphinois'], false, SpokenAnswerKind::UNCLEAR, null];
+        yield 'le nom en entier, dit à l\'intention des repas' => [AlexaTestRequest::addMeal('gratin de pâtes'), $three, false, SpokenAnswerKind::PICK_OPTION, 'gratin de pâtes'];
+        yield 'le nom en entier, dit à l\'intention des produits' => [AlexaTestRequest::addItem('gratin de pâtes'), $three, false, SpokenAnswerKind::PICK_OPTION, 'gratin de pâtes'];
+        yield 'le nom avec le mot recette' => [AlexaTestRequest::addItem('la recette gratin dauphinois'), $three, false, SpokenAnswerKind::NEW_MEAL, null];
+        yield 'oui avec une seule proposition' => [AlexaTestRequest::yes(), ['gratin dauphinois'], false, SpokenAnswerKind::PICK_OPTION, 'gratin dauphinois'];
+        yield 'oui avec plusieurs propositions' => [AlexaTestRequest::yes(), $three, false, SpokenAnswerKind::WHICH_ONE, null];
+        yield 'oui sans proposition : c\'est un produit' => [AlexaTestRequest::yes(), [], false, SpokenAnswerKind::SWITCH_TO_ITEM, null];
+        yield 'oui sans proposition, produits déjà cherchés' => [AlexaTestRequest::yes(), [], true, SpokenAnswerKind::ABANDON, null];
+        yield 'non avec propositions : on abandonne, jamais de création' => [AlexaTestRequest::no(), $three, false, SpokenAnswerKind::ABANDON, null];
+        yield 'non sans proposition' => [AlexaTestRequest::no(), [], false, SpokenAnswerKind::ABANDON, null];
+        yield 'un produit' => [AlexaTestRequest::chooseKind('un produit', 'item'), $three, false, SpokenAnswerKind::SWITCH_TO_ITEM, null];
+        yield 'un produit par le texte seul' => [AlexaTestRequest::addItem("c'est un produit"), $three, false, SpokenAnswerKind::SWITCH_TO_ITEM, null];
+        yield 'un nouveau produit' => [AlexaTestRequest::createItem(), $three, false, SpokenAnswerKind::SWITCH_TO_ITEM, null];
+        yield 'un produit, produits déjà cherchés' => [AlexaTestRequest::chooseKind('un produit', 'item'), $three, true, SpokenAnswerKind::UNCLEAR, null];
+        yield 'aucun, produits déjà cherchés' => [AlexaTestRequest::createItem(), $three, true, SpokenAnswerKind::ABANDON, null];
+        yield 'une recette à une question de recettes' => [AlexaTestRequest::chooseKind('une recette', 'meal'), $three, false, SpokenAnswerKind::WHICH_ONE, null];
+        yield 'une recette sans proposition' => [AlexaTestRequest::chooseKind('une recette', 'meal'), [], false, SpokenAnswerKind::UNCLEAR, null];
+        yield 'un autre produit' => [AlexaTestRequest::addItem('du pain'), $three, false, SpokenAnswerKind::NEW_REQUEST, null];
+        yield 'un retrait' => [AlexaTestRequest::removeItem('du pain'), $three, false, SpokenAnswerKind::NEW_REMOVAL, null];
+        yield 'rien de compris' => [AlexaTestRequest::answerUnit('kilos', 'kilo'), $three, false, SpokenAnswerKind::UNCLEAR, null];
+        yield 'l\'intention d\'un nombre' => [AlexaTestRequest::answerServings('six', '6'), $three, false, SpokenAnswerKind::UNCLEAR, null];
+    }
+
+    /**
+     * @param list<string> $names
+     */
+    #[DataProvider('mealChooseCases')]
+    public function testTheQuestionOfAnUnknownRecipeIsAnsweredByTheStateWhateverTheIntent(AlexaTestRequest $request, array $names, bool $otherSideTried, SpokenAnswerKind $expected, ?string $option): void
+    {
+        // When
+        [$kind, $picked] = $this->interpret($request, self::recipes($names, $otherSideTried));
+
+        // Then
+        $this->assertSame($expected, $kind);
+        $this->assertSame($option, $picked);
+    }
+
+    public function testANewMealSaidInTheMiddleOfAQuestionIsANewRequestWithItsServings(): void
+    {
+        // Given
+        $request = AlexaRequest::fromDecoded(AlexaTestRequest::addMeal('lasagnes', 'six', '6')->toArray());
+
+        // When : à la question d'une recette, d'un produit, d'un départage et d'un nombre de personnes
+        foreach ([self::recipes(['gratin dauphinois']), self::choose(['persil']), self::choose([])->askingDepartment(), self::planned(), SpokenDialogueState::choose('tomate', [new DialogueOption('a', 'Tomate', 'fruit-et-legume', 'Fruit & légume'), new DialogueOption('b', 'Tomate', 'surgele', 'Surgelé')], 'tomate')] as $state) {
+            $answer = $this->interpreter->interpret($request, $state, self::departments());
+
+            // Then : pas aux étapes du rayon et de l'unité, qui ne comprennent que leur catalogue
+            if ($state->step === DialogueStep::DEPARTMENT) {
+                $this->assertSame(SpokenAnswerKind::UNCLEAR, $answer->kind);
+                continue;
+            }
+            $this->assertSame(SpokenAnswerKind::NEW_MEAL, $answer->kind);
+            $this->assertSame(['lasagnes', 6], [$answer->phrase, $answer->number]);
+        }
+    }
+
+    public function testANewMealWithoutARecipeOrWithAnUnusableNumberIsNotUnderstood(): void
+    {
+        foreach ([AlexaTestRequest::addMeal(null), AlexaTestRequest::addMeal('lasagnes', '0')] as $request) {
+            $answer = $this->interpreter->interpret(AlexaRequest::fromDecoded($request->toArray()), self::recipes(['gratin dauphinois']));
+
+            $this->assertSame(SpokenAnswerKind::UNCLEAR, $answer->kind);
+        }
+    }
+
+    /**
+     * @return iterable<string, array{AlexaTestRequest, SpokenAnswerKind, ?int}>
+     */
+    public static function servingsCases(): iterable
+    {
+        // Le nouveau total, où qu'Alexa l'ait mis
+        yield 'le créneau servings' => [AlexaTestRequest::answerServings('six', '6'), SpokenAnswerKind::PICK_SERVINGS, 6];
+        yield 'le créneau servings sans résolution : le texte seul n\'est pas un nombre' => [AlexaTestRequest::answerServings('six', null), SpokenAnswerKind::UNCLEAR, null];
+        yield 'le créneau quantity' => [AlexaTestRequest::addItem('personnes')->withSlot('quantity', 'huit', '8'), SpokenAnswerKind::PICK_SERVINGS, 8];
+        yield 'le rang' => [AlexaTestRequest::chooseOption('deux', '2'), SpokenAnswerKind::PICK_SERVINGS, 2];
+        yield 'le nombre dit comme un produit' => [AlexaTestRequest::addItem('six'), SpokenAnswerKind::PICK_SERVINGS, 6];
+        yield 'six personnes dit comme un produit' => [AlexaTestRequest::addItem('six personnes'), SpokenAnswerKind::PICK_SERVINGS, 6];
+        yield 'pour six personnes dit comme un produit' => [AlexaTestRequest::addItem('pour six personnes'), SpokenAnswerKind::PICK_SERVINGS, 6];
+        yield 'en chiffres' => [AlexaTestRequest::addItem('6 personnes'), SpokenAnswerKind::PICK_SERVINGS, 6];
+        yield 'le même nombre qu\'avant (rien ne sera écrit par le handler)' => [AlexaTestRequest::answerServings('quatre', '4'), SpokenAnswerKind::PICK_SERVINGS, 4];
+        // Ne rien changer
+        yield 'non' => [AlexaTestRequest::no(), SpokenAnswerKind::ABANDON, null];
+        yield 'rien (intention)' => [AlexaTestRequest::keepMeal(), SpokenAnswerKind::ABANDON, null];
+        yield 'rien dit comme un produit' => [AlexaTestRequest::addItem('rien'), SpokenAnswerKind::ABANDON, null];
+        yield 'ne change rien dit comme un produit' => [AlexaTestRequest::addItem('ne change rien'), SpokenAnswerKind::ABANDON, null];
+        // Pas compris
+        yield 'oui ne dit pas pour combien' => [AlexaTestRequest::yes(), SpokenAnswerKind::UNCLEAR, null];
+        yield 'zéro' => [AlexaTestRequest::answerServings('zéro', '0'), SpokenAnswerKind::UNCLEAR, null];
+        yield 'cent' => [AlexaTestRequest::addMeal(null, 'cent', '100'), SpokenAnswerKind::UNCLEAR, null];
+        yield 'un rayon' => [AlexaTestRequest::answerDepartment('boucherie', 'boucherie'), SpokenAnswerKind::UNCLEAR, null];
+        yield 'rien d\'entendu' => [AlexaTestRequest::intent('AMAZON.FallbackIntent'), SpokenAnswerKind::UNCLEAR, null];
+        // Une nouvelle demande
+        yield 'un autre produit' => [AlexaTestRequest::addItem('du pain'), SpokenAnswerKind::NEW_REQUEST, null];
+        yield 'un retrait' => [AlexaTestRequest::removeItem('du pain'), SpokenAnswerKind::NEW_REMOVAL, null];
+        yield 'une consultation' => [AlexaTestRequest::checkItem('du pain'), SpokenAnswerKind::NEW_CHECK, null];
+        yield 'un autre repas' => [AlexaTestRequest::addMeal('lasagnes'), SpokenAnswerKind::NEW_MEAL, null];
+    }
+
+    #[DataProvider('servingsCases')]
+    public function testTheNumberOfPeopleAnsweredIsTheNewTotalAndNothingIsTheSame(AlexaTestRequest $request, SpokenAnswerKind $expected, ?int $number): void
+    {
+        // When
+        $answer = $this->interpreter->interpret(AlexaRequest::fromDecoded($request->toArray()), self::planned());
+
+        // Then
+        $this->assertSame($expected, $answer->kind);
+        if ($expected === SpokenAnswerKind::PICK_SERVINGS) {
+            $this->assertSame($number, $answer->number);
+        }
+    }
+
+    public function testTheWordMealSaidAloneToAQuestionOfRecipesAsksWhichOne(): void
+    {
+        // « le repas » à « Tu veux dire gratin dauphinois ou gratin de pâtes ? » : laquelle ?
+        $state = self::recipes(['gratin dauphinois', 'gratin de pâtes']);
+
+        $this->assertSame(SpokenAnswerKind::WHICH_ONE, $this->interpret(AlexaTestRequest::addMeal('le repas'), $state)[0]);
+    }
+
+    public function testHelpAndWhichOnesRepeatTheQuestionOfTheMealSteps(): void
+    {
+        foreach ([AlexaTestRequest::intent('AMAZON.HelpIntent'), AlexaTestRequest::listChoices()] as $request) {
+            foreach ([self::planned(), self::recipes(['gratin dauphinois'])] as $state) {
+                $this->assertSame(SpokenAnswerKind::REPEAT, $this->interpret($request, $state)[0]);
+            }
+        }
+    }
+
+    // ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
+    // Un rang dit comme un nombre : Amazon range « deux » nu dans `servings` ou `quantity` (revue de VOX-305)
+    // ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
+
+    /**
+     * @return iterable<string, array{SpokenDialogueState, AlexaTestRequest, ?string}>
+     */
+    public static function numbersSaidAsARank(): iterable
+    {
+        $products = self::choose(['persil', 'basilic', 'coriandre']);
+        $tie = SpokenDialogueState::choose('tomate', [new DialogueOption('a', 'Tomate', 'fruit-et-legume', 'Fruit & légume'), new DialogueOption('b', 'Tomates pelées', 'conserve', 'Conserve'), new DialogueOption('c', 'Tomate', 'surgele', 'Surgelé')], 'tomate');
+        $recipes = self::recipes(['gratin dauphinois', 'gratin de pâtes', 'gratin de courgettes']);
+
+        $requests = [
+            'AnswerServingsIntent, servings' => [AlexaTestRequest::answerServings('deux', '2'), 2],
+            'AnswerServingsIntent, servings (le 3)' => [AlexaTestRequest::answerServings('trois', '3'), 3],
+            'AddItemIntent sans produit, quantity' => [AlexaTestRequest::addItem(null)->withSlot('quantity', 'deux', '2'), 2],
+            'AddMealIntent sans recette, servings' => [AlexaTestRequest::addMeal(null, 'trois', '3'), 3],
+            'ChooseOptionIntent sans rang, quantity' => [AlexaTestRequest::intent('ChooseOptionIntent')->withSlot('quantity', 'deux', '2'), 2],
+        ];
+        foreach (['produit inconnu' => $products, 'départage' => $tie, 'recette inconnue' => $recipes] as $stepName => $state) {
+            foreach ($requests as $requestName => [$request, $rank]) {
+                yield "$stepName : $requestName" => [$state, $request, $state->options[$rank - 1]->name];
+            }
+        }
+    }
+
+    #[DataProvider('numbersSaidAsARank')]
+    public function testANumberSaidAloneInAnotherSlotIsReadAsTheRankOfTheProposal(SpokenDialogueState $state, AlexaTestRequest $request, string $expected): void
+    {
+        // When
+        $answer = $this->interpreter->interpret(AlexaRequest::fromDecoded($request->toArray()), $state);
+
+        // Then : « deux » reste un rang quelle que soit l'intention qu'Amazon a choisie
+        $this->assertSame(SpokenAnswerKind::PICK_OPTION, $answer->kind);
+        $this->assertSame($expected, $answer->option?->name);
+    }
+
+    /**
+     * @return iterable<string, array{SpokenDialogueState}>
+     */
+    public static function choiceSteps(): iterable
+    {
+        yield 'produit inconnu' => [self::choose(['persil', 'basilic'])];
+        yield 'départage' => [SpokenDialogueState::choose('tomate', [new DialogueOption('a', 'Tomate', 'fruit-et-legume', 'Fruit & légume'), new DialogueOption('b', 'Tomate', 'surgele', 'Surgelé')], 'tomate')];
+        yield 'recette inconnue' => [self::recipes(['gratin dauphinois', 'gratin de pâtes'])];
+    }
+
+    #[DataProvider('choiceSteps')]
+    public function testANumberBeyondTheProposalsOrUnusableIsNotARank(SpokenDialogueState $state): void
+    {
+        foreach ([AlexaTestRequest::answerServings('trois', '3'), AlexaTestRequest::answerServings('zéro', '0'), AlexaTestRequest::addItem(null)->withSlot('quantity', 'sept', '7'), AlexaTestRequest::answerServings('cent', '100')] as $request) {
+            $this->assertSame(SpokenAnswerKind::UNCLEAR, $this->interpreter->interpret(AlexaRequest::fromDecoded($request->toArray()), $state)->kind);
+        }
+    }
+
+    #[DataProvider('choiceSteps')]
+    public function testARankIsNotReadFromANumberWhenSomethingElseWasSaidOrTheRankIsThere(SpokenDialogueState $state): void
+    {
+        // « deux croquettes » est une nouvelle demande de produit, pas le deuxième choix
+        $newRequest = $this->interpreter->interpret(AlexaRequest::fromDecoded(AlexaTestRequest::addQuantified('croquettes', 2)->toArray()), $state);
+        $this->assertSame(SpokenAnswerKind::NEW_REQUEST, $newRequest->kind);
+        $this->assertSame('croquettes', $newRequest->phrase);
+
+        // Le rang dit comme un rang gagne sur le nombre
+        $both = $this->interpreter->interpret(AlexaRequest::fromDecoded(AlexaTestRequest::chooseOption('le premier', '1')->withSlot('servings', 'deux', '2')->toArray()), $state);
+        $this->assertSame($state->options[0]->name, $both->option?->name);
+    }
+
+    public function testANumberSaidToAQuestionWithoutProposalsIsNotARank(): void
+    {
+        // « Je le crée ? » : aucune proposition, donc rien à choisir
+        $this->assertSame(SpokenAnswerKind::UNCLEAR, $this->interpret(AlexaTestRequest::answerServings('deux', '2'), self::choose([]))[0]);
+    }
+
+    // ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
+    // Le nombre de personnes dit où qu'Amazon l'ait rangé, dont le créneau `recipe` d'`AddMealIntent` (revue de VOX-305)
+    // ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
+
+    /**
+     * @return iterable<string, array{AlexaTestRequest, SpokenAnswerKind, ?int}>
+     */
+    public static function briefAnswersSaidAsARecipe(): iterable
+    {
+        yield 'six personnes' => [AlexaTestRequest::addMeal('six personnes'), SpokenAnswerKind::PICK_SERVINGS, 6];
+        yield 'pour six' => [AlexaTestRequest::addMeal('pour six'), SpokenAnswerKind::PICK_SERVINGS, 6];
+        yield 'pour six personnes' => [AlexaTestRequest::addMeal('pour six personnes'), SpokenAnswerKind::PICK_SERVINGS, 6];
+        yield 'six' => [AlexaTestRequest::addMeal('six'), SpokenAnswerKind::PICK_SERVINGS, 6];
+        yield '6' => [AlexaTestRequest::addMeal('6'), SpokenAnswerKind::PICK_SERVINGS, 6];
+        yield 'trente' => [AlexaTestRequest::addMeal('trente'), SpokenAnswerKind::PICK_SERVINGS, 30];
+        yield 'rien' => [AlexaTestRequest::addMeal('rien'), SpokenAnswerKind::ABANDON, null];
+        yield 'non' => [AlexaTestRequest::addMeal('non'), SpokenAnswerKind::ABANDON, null];
+        yield 'ne change rien' => [AlexaTestRequest::addMeal('ne change rien'), SpokenAnswerKind::ABANDON, null];
+        yield 'laisse comme ça' => [AlexaTestRequest::addMeal('laisse comme ça'), SpokenAnswerKind::ABANDON, null];
+        yield 'zéro' => [AlexaTestRequest::addMeal('zéro'), SpokenAnswerKind::UNCLEAR, null];
+        yield '0' => [AlexaTestRequest::addMeal('0'), SpokenAnswerKind::UNCLEAR, null];
+        yield 'cent personnes' => [AlexaTestRequest::addMeal('cent personnes'), SpokenAnswerKind::UNCLEAR, null];
+        yield 'un vrai autre repas' => [AlexaTestRequest::addMeal('lasagnes'), SpokenAnswerKind::NEW_MEAL, null];
+        yield 'un autre repas pour six' => [AlexaTestRequest::addMeal('lasagnes pour six personnes'), SpokenAnswerKind::NEW_MEAL, 6];
+        yield 'le repas dit comme un produit' => [AlexaTestRequest::addItem('six personnes'), SpokenAnswerKind::PICK_SERVINGS, 6];
+    }
+
+    #[DataProvider('briefAnswersSaidAsARecipe')]
+    public function testABriefAnswerSaidAsARecipeAtTheQuestionOfTheTotalIsTheAnswerNotANewMeal(AlexaTestRequest $request, SpokenAnswerKind $expected, ?int $number): void
+    {
+        // When
+        $answer = $this->interpreter->interpret(AlexaRequest::fromDecoded($request->toArray()), self::planned());
+
+        // Then : l'étape est « combien de personnes ? » : un nombre est un total, « rien » ne change rien
+        $this->assertSame($expected, $answer->kind);
+        $this->assertSame($number, $answer->number);
+    }
+
+    public function testAnUnusableNumberOfPeopleInANewMealAtTheQuestionOfTheTotalIsNotUnderstood(): void
+    {
+        $answer = $this->interpreter->interpret(AlexaRequest::fromDecoded(AlexaTestRequest::addMeal('lasagnes pour 100 personnes')->toArray()), self::planned());
+
+        $this->assertSame(SpokenAnswerKind::UNCLEAR, $answer->kind);
+    }
+
+    public function testTheOriginalPhraseOfANewMealTravelsWithIt(): void
+    {
+        // Given : « le repas pour chien », dit pour un produit
+        $answer = $this->interpreter->interpret(AlexaRequest::fromDecoded(AlexaTestRequest::addItem('le repas pour chien')->toArray()), self::recipes(['gratin dauphinois']));
+
+        // Then
+        $this->assertSame(SpokenAnswerKind::NEW_MEAL, $answer->kind);
+        $this->assertSame(['pour chien', 'le repas pour chien'], [$answer->phrase, $answer->original]);
     }
 }

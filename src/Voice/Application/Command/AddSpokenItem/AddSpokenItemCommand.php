@@ -26,6 +26,8 @@ final readonly class AddSpokenItemCommand
         public int $quantity = 1,
         /** L'unité dite (slug du catalogue), utilisée seulement si l'ingrédient la connaît. `null` : rien de dit. */
         public ?string $unitSlug = null,
+        /** Les recettes ont déjà été cherchées pour cette phrase (l'utilisateur a répondu « un produit » à une recette inconnue) : « ou une recette ? » n'est plus proposé. */
+        public bool $otherSideTried = false,
     ) {
     }
 }

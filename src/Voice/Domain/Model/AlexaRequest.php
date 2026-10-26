@@ -6,7 +6,7 @@ use Repas\Voice\Domain\Service\SpokenUnits;
 
 /**
  * Ce que le webhook retient d'une requête d'Alexa DÉJÀ VÉRIFIÉE (ADR 0029, `AlexaRequestVerifier`) : son type, l'intention et ses
- * créneaux (`item`, `rank`, `department`, `unit` : le texte dit et l'identifiant de la valeur rapprochée ; `quantity` : un entier de 1 à 99, lu d'abord dans l'identifiant du type `QUANTITY`), l'état du dialogue de la séance
+ * créneaux (`item`, `recipe`, `rank`, `department`, `unit`, `kind` : le texte dit et l'identifiant de la valeur rapprochée ; `quantity` et `servings` : un entier de 1 à 99, lu d'abord dans l'identifiant du type `QUANTITY`), l'état du dialogue de la séance
  * (`session.attributes.dialogue`, décision 11), la langue, si c'est la première requête de la séance, le jeton d'accès de la liaison de
  * compte et l'identifiant d'utilisateur Alexa. Rien d'autre : le reste du corps n'est jamais lu, gardé, ni journalisé (il contient la
  * voix transcrite).
@@ -40,9 +40,17 @@ final readonly class AlexaRequest
         public string $type,
         public ?string $intentName,
         public ?string $phrase,
+        /** La recette dite (créneau `recipe` d'`AddMealIntent`, ADR 0029 décision 13), nettoyée comme `phrase`. */
+        public ?string $recipePhrase,
         public ?SlotValue $rank,
         public ?SlotValue $department,
         public ?SlotValue $unit,
+        /** « une recette », « un produit » (créneau `kind` de `ChooseKindIntent`, décision 13) : l'identifiant est `meal` ou `item`. */
+        public ?SlotValue $kind,
+        /** Le nombre de personnes dit (créneau `servings`, type `QUANTITY`), entier de 1 à 99 ; `null` s'il manque OU s'il est inutilisable (voir `hasUnusableServings`). */
+        public ?int $servings,
+        /** Le créneau `servings` portait une valeur lisible, utilisable ou non. */
+        public bool $servingsHeard,
         /** La quantité dite, entière et de 1 à 99 ; `null` si elle manque OU si elle est inutilisable (voir `hasUnusableQuantity`). */
         public ?int $quantity,
         /** Le créneau `quantity` portait une valeur lisible (Alexa a entendu quelque chose), utilisable ou non. */
@@ -61,21 +69,20 @@ final readonly class AlexaRequest
 
         $type = self::stringAt($data, ['request', 'type']);
         $isIntent = $type === self::INTENT;
-        $spokenQuantity = self::valueAt($data, ['request', 'intent', 'slots', 'quantity', 'value']);
-        // Le type `QUANTITY` du modèle a pour identifiant le nombre lui-même (« deux » et « 2 » rendent « 2 ») : il passe avant le texte dit.
-        // Un vrai nombre JSON est lu comme du texte (tolérance)
-        $quantityText = $isIntent
-            ? SlotValue::fromDecoded(self::valueAt($data, ['request', 'intent', 'slots', 'quantity']))->id
-                ?? SlotValue::cleanText(is_int($spokenQuantity) || is_float($spokenQuantity) ? (string) $spokenQuantity : $spokenQuantity)
-            : null;
+        $quantityText = $isIntent ? self::numberText($data, 'quantity') : null;
+        $servingsText = $isIntent ? self::numberText($data, 'servings') : null;
 
         return new self(
             type: $type ?? '',
             intentName: $isIntent ? self::stringAt($data, ['request', 'intent', 'name']) : null,
             phrase: $isIntent ? self::cleanPhrase(self::stringAt($data, ['request', 'intent', 'slots', 'item', 'value'])) : null,
+            recipePhrase: $isIntent ? self::cleanPhrase(self::stringAt($data, ['request', 'intent', 'slots', 'recipe', 'value'])) : null,
             rank: $isIntent ? SlotValue::fromDecoded(self::valueAt($data, ['request', 'intent', 'slots', 'rank'])) : null,
             department: $isIntent ? SlotValue::fromDecoded(self::valueAt($data, ['request', 'intent', 'slots', 'department'])) : null,
             unit: $isIntent ? SlotValue::fromDecoded(self::valueAt($data, ['request', 'intent', 'slots', 'unit'])) : null,
+            kind: $isIntent ? SlotValue::fromDecoded(self::valueAt($data, ['request', 'intent', 'slots', 'kind'])) : null,
+            servings: self::quantityIn($servingsText),
+            servingsHeard: $servingsText !== null,
             quantity: $isIntent ? self::quantityIn($quantityText) : null,
             quantityHeard: $isIntent && $quantityText !== null,
             dialogueState: $isIntent ? SpokenDialogueState::fromArray(self::valueAt($data, ['session', 'attributes', SpokenDialogueState::ATTRIBUTE])) : null,
@@ -112,6 +119,15 @@ final readonly class AlexaRequest
     }
 
     /**
+     * Alexa a entendu un nombre de personnes que nous ne savons pas écrire (zéro, plus de 99, un décimal, un mot) : rien n'est écrit, on redemande
+     * (`VoiceReplies::HOW_MANY`).
+     */
+    public function hasUnusableServings(): bool
+    {
+        return $this->servingsHeard && $this->servings === null;
+    }
+
+    /**
      * L'unité dite (`unit`), d'après l'identifiant de la résolution d'entité ou, à défaut, le texte entendu rapproché du catalogue des unités.
      */
     public function unitSlug(): ?string
@@ -140,7 +156,7 @@ final readonly class AlexaRequest
      */
     public function heardTexts(): array
     {
-        $texts = array_filter([$this->phrase, $this->department?->text, $this->unit?->text, $this->rank?->text], static fn(?string $text): bool => $text !== null);
+        $texts = array_filter([$this->phrase, $this->recipePhrase, $this->department?->text, $this->unit?->text, $this->rank?->text, $this->kind?->text], static fn(?string $text): bool => $text !== null);
 
         return array_values(array_unique($texts));
     }
@@ -166,6 +182,20 @@ final readonly class AlexaRequest
         $quantity = (int) $text;
 
         return $quantity >= self::MIN_QUANTITY && $quantity <= self::MAX_QUANTITY ? $quantity : null;
+    }
+
+    /**
+     * Le nombre d'un créneau de type `QUANTITY` (`quantity`, `servings`), sous forme de texte : le type du modèle a pour identifiant le nombre lui-même
+     * (« deux » et « 2 » rendent « 2 »), qui passe avant le texte dit. Un vrai nombre JSON est lu comme du texte (tolérance).
+     *
+     * @param array<mixed> $data
+     */
+    private static function numberText(array $data, string $slot): ?string
+    {
+        $spoken = self::valueAt($data, ['request', 'intent', 'slots', $slot, 'value']);
+
+        return SlotValue::fromDecoded(self::valueAt($data, ['request', 'intent', 'slots', $slot]))->id
+            ?? SlotValue::cleanText(is_int($spoken) || is_float($spoken) ? (string) $spoken : $spoken);
     }
 
     private static function boundedString(?string $value, int $maxLength): ?string

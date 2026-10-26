@@ -70,7 +70,7 @@ readonly class AddSpokenItemHandler
 
         $ingredient = $resolution->ingredient;
         if ($ingredient === null) {
-            return $this->unknown($phrase, $quantity, $unitSlug, $resolution->suggestions);
+            return $this->unknown($phrase, $quantity, $unitSlug, $resolution->suggestions, $command->otherSideTried);
         }
 
         $added = $this->shoppingList->addItem($command->userId, $ingredient->slug, $quantity, $unitSlug);
@@ -113,7 +113,7 @@ readonly class AddSpokenItemHandler
      *
      * @param list<IngredientSuggestion> $suggestions
      */
-    private function unknown(string $phrase, int $quantity, ?string $unitSlug, array $suggestions): AddSpokenItemResult
+    private function unknown(string $phrase, int $quantity, ?string $unitSlug, array $suggestions, bool $otherSideTried): AddSpokenItemResult
     {
         $name = $this->namer->nameFrom($phrase);
         if ($name === null) {
@@ -124,10 +124,11 @@ readonly class AddSpokenItemHandler
             static fn(IngredientSuggestion $suggestion): DialogueOption => new DialogueOption($suggestion->slug, $suggestion->name),
             $suggestions,
         );
-        $state = SpokenDialogueState::choose($phrase, $options, $name, $quantity, $unitSlug);
+        $state = SpokenDialogueState::choose($phrase, $options, $name, $quantity, $unitSlug, otherSideTried: $otherSideTried);
 
         return new AddSpokenItemResult(
-            VoiceReplies::unknown($name, array_map(static fn(DialogueOption $option): string => $option->name, $state->options)),
+            // L'issue « ou une recette ? » tant que les recettes n'ont pas été cherchées pour cette phrase (ADR 0029 décision 13)
+            VoiceReplies::unknown($name, array_map(static fn(DialogueOption $option): string => $option->name, $state->options), offerMeal: !$otherSideTried),
             keepSessionOpen: true,
             added: false,
             nextState: $state,

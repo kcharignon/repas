@@ -17,6 +17,14 @@ enum SpokenAnswerKind
     case NEW_REMOVAL;
     /** Il a demandé « est-ce qu'il y a … ? » (`SpokenAnswer::$phrase`) : le dialogue est abandonné, la phrase est une consultation de la liste (décision 12). */
     case NEW_CHECK;
+    /** Il a dit « planifie le repas … » (`SpokenAnswer::$phrase`, `$number` : les personnes dites) : le dialogue est abandonné, c'est une nouvelle demande de repas (décision 13). */
+    case NEW_MEAL;
+    /** Un produit non compris : c'est une recette (« une recette », décision 13) ; on cherche la phrase d'origine dans ses recettes. */
+    case SWITCH_TO_MEAL;
+    /** Une recette non comprise : c'est un produit (« un produit », décision 13) ; on cherche la phrase d'origine dans ses produits. */
+    case SWITCH_TO_ITEM;
+    /** Le nouveau total de personnes d'un repas déjà planifié (`SpokenAnswer::$number`, décision 13). */
+    case PICK_SERVINGS;
     case PICK_DEPARTMENT;
     case PICK_UNIT;
     /** Il confirme la création. */

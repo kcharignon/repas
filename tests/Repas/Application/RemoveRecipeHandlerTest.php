@@ -15,6 +15,7 @@ use Repas\Tests\Helper\Builder\ShoppingListBuilder;
 use Repas\Tests\Helper\Builder\UserBuilder;
 use Repas\Tests\Helper\InMemoryRepository\RecipeInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\ShoppingListInMemoryRepository;
+use Repas\Tests\Helper\InMemoryRepository\SpokenRecipePhraseChoiceInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\SpyEventDispatcher;
 
 class RemoveRecipeHandlerTest extends TestCase
@@ -23,6 +24,7 @@ class RemoveRecipeHandlerTest extends TestCase
     private readonly RecipeRepository $recipeRepository;
     private readonly ShoppingListRepository $shoppingListRepository;
     private readonly SpyEventDispatcher $eventDispatcher;
+    private readonly SpokenRecipePhraseChoiceInMemoryRepository $spokenRecipePhraseRepository;
 
     protected function setUp(): void
     {
@@ -37,10 +39,15 @@ class RemoveRecipeHandlerTest extends TestCase
 
         $this->eventDispatcher = new SpyEventDispatcher();
 
+        $this->spokenRecipePhraseRepository = new SpokenRecipePhraseChoiceInMemoryRepository();
+        $this->spokenRecipePhraseRepository->remember('user-id', 'oeufs', 'recipe-free', new \DateTimeImmutable());
+        $this->spokenRecipePhraseRepository->remember('user-id', 'coque', 'recipe-used', new \DateTimeImmutable());
+
         $this->handler = new RemoveRecipeHandler(
             $this->recipeRepository,
             $this->shoppingListRepository,
-            $this->eventDispatcher
+            $this->eventDispatcher,
+            $this->spokenRecipePhraseRepository,
         );
     }
 
@@ -59,6 +66,15 @@ class RemoveRecipeHandlerTest extends TestCase
 
         $this->expectExceptionObject(RecipeException::notFound('recipe-free'));
         $this->recipeRepository->findOneById('recipe-free');
+    }
+
+    public function testWhatTheUserTaughtAlexaAboutTheRemovedRecipeIsForgottenAndTheRestKept(): void
+    {
+        // When
+        ($this->handler)(new RemoveRecipeCommand('recipe-free'));
+
+        // Then : la phrase de la recette supprimée part, celle d'une autre recette reste
+        $this->assertSame([['user-id', 'coque']], array_map(static fn(array $row): array => [$row['userId'], $row['phrase']], $this->spokenRecipePhraseRepository->all()));
     }
 
     public function testFailedHandleRemoveRecipeAlreadyUsedInShoppingList(): void

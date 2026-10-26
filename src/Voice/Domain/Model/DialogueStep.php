@@ -16,4 +16,6 @@ enum DialogueStep: string
     case UNIT = 'unit';
     /** « Je crée X, rayon, unité. C'est bon ? » */
     case CONFIRM = 'confirm';
+    /** « Hachis parmentier est déjà prévu pour 4 personnes. Tu le veux pour combien ? » (un repas, décision 13). */
+    case SERVINGS = 'servings';
 }
