@@ -36,6 +36,47 @@ class AlexaRequestTest extends TestCase
         $this->assertSame('amzn1.ask.account.ME', $request->alexaUserId);
     }
 
+    public function testAProductAmazonPutsInTheUnitSlotIsTheProductWhenTheItemSlotIsEmpty(): void
+    {
+        // Given : « ajoute vingt et un yaourts » (profileur d'énoncés, 2026-10-26) : `item` vide, `unit` = « yaourts » sans identifiant, `quantity` = 21
+        $body = AlexaTestRequest::addItem(null)->withQuantity('21')->withSlot('unit', 'yaourts')->toArray();
+
+        // When
+        $request = AlexaRequest::fromDecoded($body);
+
+        // Then : « yaourts » n'est pas une unité : c'est le produit, et la quantité reste
+        $this->assertSame('yaourts', $request->phrase);
+        $this->assertNull($request->unit);
+        $this->assertNull($request->unitSlug());
+        $this->assertSame(21, $request->quantity);
+    }
+
+    public function testAKnownUnitStaysTheUnitAndAnAnsweredUnitIsNeverTheProduct(): void
+    {
+        // Given : « ajoute deux kilos » (unité connue sans identifiant) ; un identifiant résolu ; la réponse à « en quelle unité ? »
+        $heardKnown = AlexaRequest::fromDecoded(AlexaTestRequest::addItem(null)->withQuantity('2')->withSlot('unit', 'kilos')->toArray());
+        $resolved = AlexaRequest::fromDecoded(AlexaTestRequest::addItem(null)->withQuantity('2')->withSlot('unit', 'machin', 'kilo')->toArray());
+        $answer = AlexaRequest::fromDecoded(AlexaTestRequest::answerUnit('casseroles', null)->toArray());
+
+        // Then : l'unité reste l'unité, aucun produit n'est inventé
+        $this->assertNull($heardKnown->phrase);
+        $this->assertSame('kilos', $heardKnown->unit?->text);
+        $this->assertNull($resolved->phrase);
+        $this->assertSame('kilo', $resolved->unit?->id);
+        $this->assertNull($answer->phrase);
+        $this->assertSame('casseroles', $answer->unit?->text);
+    }
+
+    public function testAProductInTheUnitSlotOfARemovalIsTheProductToo(): void
+    {
+        // Given
+        $request = AlexaRequest::fromDecoded(AlexaTestRequest::removeItem(null)->withQuantity('2')->withSlot('unit', 'yaourts')->toArray());
+
+        // Then
+        $this->assertSame('yaourts', $request->phrase);
+        $this->assertNull($request->unit);
+    }
+
     public function testASessionThatIsNotNewIsOpen(): void
     {
         $request = AlexaRequest::fromDecoded(AlexaTestRequest::addItem()->inOpenSession()->toArray());

@@ -604,290 +604,104 @@
           "slots": [
             {
               "name": "recipe",
-              "type": "RECIPE"
-            },
-            {
-              "name": "servings",
-              "type": "QUANTITY"
+              "type": "AMAZON.SearchQuery"
             }
           ],
           "samples": [
             "planifie {recipe}",
-            "planifie {recipe} pour {servings} personnes",
-            "planifie {recipe} pour {servings}",
             "planifie le repas {recipe}",
-            "planifie le repas {recipe} pour {servings} personnes",
-            "planifie le repas {recipe} pour {servings}",
             "planifie la recette {recipe}",
-            "planifie la recette {recipe} pour {servings} personnes",
-            "planifie la recette {recipe} pour {servings}",
             "planifie un {recipe}",
-            "planifie un {recipe} pour {servings} personnes",
-            "planifie un {recipe} pour {servings}",
             "planifie une {recipe}",
-            "planifie une {recipe} pour {servings} personnes",
-            "planifie une {recipe} pour {servings}",
             "planifie des {recipe}",
-            "planifie des {recipe} pour {servings} personnes",
-            "planifie des {recipe} pour {servings}",
             "planifie le {recipe}",
-            "planifie le {recipe} pour {servings} personnes",
-            "planifie le {recipe} pour {servings}",
             "planifie la {recipe}",
-            "planifie la {recipe} pour {servings} personnes",
-            "planifie la {recipe} pour {servings}",
             "planifier {recipe}",
-            "planifier {recipe} pour {servings} personnes",
-            "planifier {recipe} pour {servings}",
             "planifier le repas {recipe}",
-            "planifier le repas {recipe} pour {servings} personnes",
-            "planifier le repas {recipe} pour {servings}",
             "planifier la recette {recipe}",
-            "planifier la recette {recipe} pour {servings} personnes",
-            "planifier la recette {recipe} pour {servings}",
             "planifier un {recipe}",
-            "planifier un {recipe} pour {servings} personnes",
-            "planifier un {recipe} pour {servings}",
             "planifier une {recipe}",
-            "planifier une {recipe} pour {servings} personnes",
-            "planifier une {recipe} pour {servings}",
             "planifier des {recipe}",
-            "planifier des {recipe} pour {servings} personnes",
-            "planifier des {recipe} pour {servings}",
             "planifier le {recipe}",
-            "planifier le {recipe} pour {servings} personnes",
-            "planifier le {recipe} pour {servings}",
             "planifier la {recipe}",
-            "planifier la {recipe} pour {servings} personnes",
-            "planifier la {recipe} pour {servings}",
             "prévois {recipe}",
-            "prévois {recipe} pour {servings} personnes",
-            "prévois {recipe} pour {servings}",
             "prévois le repas {recipe}",
-            "prévois le repas {recipe} pour {servings} personnes",
-            "prévois le repas {recipe} pour {servings}",
             "prévois la recette {recipe}",
-            "prévois la recette {recipe} pour {servings} personnes",
-            "prévois la recette {recipe} pour {servings}",
             "prévois un {recipe}",
-            "prévois un {recipe} pour {servings} personnes",
-            "prévois un {recipe} pour {servings}",
             "prévois une {recipe}",
-            "prévois une {recipe} pour {servings} personnes",
-            "prévois une {recipe} pour {servings}",
             "prévois des {recipe}",
-            "prévois des {recipe} pour {servings} personnes",
-            "prévois des {recipe} pour {servings}",
             "prévois le {recipe}",
-            "prévois le {recipe} pour {servings} personnes",
-            "prévois le {recipe} pour {servings}",
             "prévois la {recipe}",
-            "prévois la {recipe} pour {servings} personnes",
-            "prévois la {recipe} pour {servings}",
             "prévoir {recipe}",
-            "prévoir {recipe} pour {servings} personnes",
-            "prévoir {recipe} pour {servings}",
             "prévoir le repas {recipe}",
-            "prévoir le repas {recipe} pour {servings} personnes",
-            "prévoir le repas {recipe} pour {servings}",
             "prévoir la recette {recipe}",
-            "prévoir la recette {recipe} pour {servings} personnes",
-            "prévoir la recette {recipe} pour {servings}",
             "prévoir un {recipe}",
-            "prévoir un {recipe} pour {servings} personnes",
-            "prévoir un {recipe} pour {servings}",
             "prévoir une {recipe}",
-            "prévoir une {recipe} pour {servings} personnes",
-            "prévoir une {recipe} pour {servings}",
             "prévoir des {recipe}",
-            "prévoir des {recipe} pour {servings} personnes",
-            "prévoir des {recipe} pour {servings}",
             "prévoir le {recipe}",
-            "prévoir le {recipe} pour {servings} personnes",
-            "prévoir le {recipe} pour {servings}",
             "prévoir la {recipe}",
-            "prévoir la {recipe} pour {servings} personnes",
-            "prévoir la {recipe} pour {servings}",
             "prépare {recipe}",
-            "prépare {recipe} pour {servings} personnes",
-            "prépare {recipe} pour {servings}",
             "prépare le repas {recipe}",
-            "prépare le repas {recipe} pour {servings} personnes",
-            "prépare le repas {recipe} pour {servings}",
             "prépare la recette {recipe}",
-            "prépare la recette {recipe} pour {servings} personnes",
-            "prépare la recette {recipe} pour {servings}",
             "prépare un {recipe}",
-            "prépare un {recipe} pour {servings} personnes",
-            "prépare un {recipe} pour {servings}",
             "prépare une {recipe}",
-            "prépare une {recipe} pour {servings} personnes",
-            "prépare une {recipe} pour {servings}",
             "prépare des {recipe}",
-            "prépare des {recipe} pour {servings} personnes",
-            "prépare des {recipe} pour {servings}",
             "prépare le {recipe}",
-            "prépare le {recipe} pour {servings} personnes",
-            "prépare le {recipe} pour {servings}",
             "prépare la {recipe}",
-            "prépare la {recipe} pour {servings} personnes",
-            "prépare la {recipe} pour {servings}",
             "préparer {recipe}",
-            "préparer {recipe} pour {servings} personnes",
-            "préparer {recipe} pour {servings}",
             "préparer le repas {recipe}",
-            "préparer le repas {recipe} pour {servings} personnes",
-            "préparer le repas {recipe} pour {servings}",
             "préparer la recette {recipe}",
-            "préparer la recette {recipe} pour {servings} personnes",
-            "préparer la recette {recipe} pour {servings}",
             "préparer un {recipe}",
-            "préparer un {recipe} pour {servings} personnes",
-            "préparer un {recipe} pour {servings}",
             "préparer une {recipe}",
-            "préparer une {recipe} pour {servings} personnes",
-            "préparer une {recipe} pour {servings}",
             "préparer des {recipe}",
-            "préparer des {recipe} pour {servings} personnes",
-            "préparer des {recipe} pour {servings}",
             "préparer le {recipe}",
-            "préparer le {recipe} pour {servings} personnes",
-            "préparer le {recipe} pour {servings}",
             "préparer la {recipe}",
-            "préparer la {recipe} pour {servings} personnes",
-            "préparer la {recipe} pour {servings}",
             "mets au menu {recipe}",
-            "mets au menu {recipe} pour {servings} personnes",
-            "mets au menu {recipe} pour {servings}",
             "mets au menu le repas {recipe}",
-            "mets au menu le repas {recipe} pour {servings} personnes",
-            "mets au menu le repas {recipe} pour {servings}",
             "mets au menu la recette {recipe}",
-            "mets au menu la recette {recipe} pour {servings} personnes",
-            "mets au menu la recette {recipe} pour {servings}",
             "mets au menu un {recipe}",
-            "mets au menu un {recipe} pour {servings} personnes",
-            "mets au menu un {recipe} pour {servings}",
             "mets au menu une {recipe}",
-            "mets au menu une {recipe} pour {servings} personnes",
-            "mets au menu une {recipe} pour {servings}",
             "mets au menu des {recipe}",
-            "mets au menu des {recipe} pour {servings} personnes",
-            "mets au menu des {recipe} pour {servings}",
             "mets au menu le {recipe}",
-            "mets au menu le {recipe} pour {servings} personnes",
-            "mets au menu le {recipe} pour {servings}",
             "mets au menu la {recipe}",
-            "mets au menu la {recipe} pour {servings} personnes",
-            "mets au menu la {recipe} pour {servings}",
             "mettre au menu {recipe}",
-            "mettre au menu {recipe} pour {servings} personnes",
-            "mettre au menu {recipe} pour {servings}",
             "mettre au menu le repas {recipe}",
-            "mettre au menu le repas {recipe} pour {servings} personnes",
-            "mettre au menu le repas {recipe} pour {servings}",
             "mettre au menu la recette {recipe}",
-            "mettre au menu la recette {recipe} pour {servings} personnes",
-            "mettre au menu la recette {recipe} pour {servings}",
             "mettre au menu un {recipe}",
-            "mettre au menu un {recipe} pour {servings} personnes",
-            "mettre au menu un {recipe} pour {servings}",
             "mettre au menu une {recipe}",
-            "mettre au menu une {recipe} pour {servings} personnes",
-            "mettre au menu une {recipe} pour {servings}",
             "mettre au menu des {recipe}",
-            "mettre au menu des {recipe} pour {servings} personnes",
-            "mettre au menu des {recipe} pour {servings}",
             "mettre au menu le {recipe}",
-            "mettre au menu le {recipe} pour {servings} personnes",
-            "mettre au menu le {recipe} pour {servings}",
             "mettre au menu la {recipe}",
-            "mettre au menu la {recipe} pour {servings} personnes",
-            "mettre au menu la {recipe} pour {servings}",
             "ajoute le repas {recipe}",
-            "ajoute le repas {recipe} pour {servings} personnes",
-            "ajoute le repas {recipe} pour {servings}",
             "ajoute la recette {recipe}",
-            "ajoute la recette {recipe} pour {servings} personnes",
-            "ajoute la recette {recipe} pour {servings}",
             "ajoute le repas de {recipe}",
-            "ajoute le repas de {recipe} pour {servings} personnes",
-            "ajoute le repas de {recipe} pour {servings}",
             "ajoute la recette de {recipe}",
-            "ajoute la recette de {recipe} pour {servings} personnes",
-            "ajoute la recette de {recipe} pour {servings}",
             "ajouter le repas {recipe}",
-            "ajouter le repas {recipe} pour {servings} personnes",
-            "ajouter le repas {recipe} pour {servings}",
             "ajouter la recette {recipe}",
-            "ajouter la recette {recipe} pour {servings} personnes",
-            "ajouter la recette {recipe} pour {servings}",
             "ajouter le repas de {recipe}",
-            "ajouter le repas de {recipe} pour {servings} personnes",
-            "ajouter le repas de {recipe} pour {servings}",
             "ajouter la recette de {recipe}",
-            "ajouter la recette de {recipe} pour {servings} personnes",
-            "ajouter la recette de {recipe} pour {servings}",
             "mets le repas {recipe}",
-            "mets le repas {recipe} pour {servings} personnes",
-            "mets le repas {recipe} pour {servings}",
             "mets la recette {recipe}",
-            "mets la recette {recipe} pour {servings} personnes",
-            "mets la recette {recipe} pour {servings}",
             "mets le repas de {recipe}",
-            "mets le repas de {recipe} pour {servings} personnes",
-            "mets le repas de {recipe} pour {servings}",
             "mets la recette de {recipe}",
-            "mets la recette de {recipe} pour {servings} personnes",
-            "mets la recette de {recipe} pour {servings}",
             "mettre le repas {recipe}",
-            "mettre le repas {recipe} pour {servings} personnes",
-            "mettre le repas {recipe} pour {servings}",
             "mettre la recette {recipe}",
-            "mettre la recette {recipe} pour {servings} personnes",
-            "mettre la recette {recipe} pour {servings}",
             "mettre le repas de {recipe}",
-            "mettre le repas de {recipe} pour {servings} personnes",
-            "mettre le repas de {recipe} pour {servings}",
             "mettre la recette de {recipe}",
-            "mettre la recette de {recipe} pour {servings} personnes",
-            "mettre la recette de {recipe} pour {servings}",
             "rajoute le repas {recipe}",
-            "rajoute le repas {recipe} pour {servings} personnes",
-            "rajoute le repas {recipe} pour {servings}",
             "rajoute la recette {recipe}",
-            "rajoute la recette {recipe} pour {servings} personnes",
-            "rajoute la recette {recipe} pour {servings}",
             "rajoute le repas de {recipe}",
-            "rajoute le repas de {recipe} pour {servings} personnes",
-            "rajoute le repas de {recipe} pour {servings}",
             "rajoute la recette de {recipe}",
-            "rajoute la recette de {recipe} pour {servings} personnes",
-            "rajoute la recette de {recipe} pour {servings}",
             "rajouter le repas {recipe}",
-            "rajouter le repas {recipe} pour {servings} personnes",
-            "rajouter le repas {recipe} pour {servings}",
             "rajouter la recette {recipe}",
-            "rajouter la recette {recipe} pour {servings} personnes",
-            "rajouter la recette {recipe} pour {servings}",
             "rajouter le repas de {recipe}",
-            "rajouter le repas de {recipe} pour {servings} personnes",
-            "rajouter le repas de {recipe} pour {servings}",
             "rajouter la recette de {recipe}",
-            "rajouter la recette de {recipe} pour {servings} personnes",
-            "rajouter la recette de {recipe} pour {servings}",
             "note le repas {recipe}",
-            "note le repas {recipe} pour {servings} personnes",
-            "note le repas {recipe} pour {servings}",
             "note la recette {recipe}",
-            "note la recette {recipe} pour {servings} personnes",
-            "note la recette {recipe} pour {servings}",
             "note le repas de {recipe}",
-            "note le repas de {recipe} pour {servings} personnes",
-            "note le repas de {recipe} pour {servings}",
             "note la recette de {recipe}",
-            "note la recette de {recipe} pour {servings} personnes",
-            "note la recette de {recipe} pour {servings}"
+            "le repas {recipe}",
+            "la recette {recipe}"
           ]
         },
         {
@@ -895,134 +709,50 @@
           "slots": [
             {
               "name": "recipe",
-              "type": "RECIPE"
-            },
-            {
-              "name": "servings",
-              "type": "QUANTITY"
+              "type": "AMAZON.SearchQuery"
             }
           ],
           "samples": [
             "enlève le repas {recipe}",
-            "enlève le repas {recipe} pour {servings} personnes",
-            "enlève le repas {recipe} pour {servings}",
             "enlève la recette {recipe}",
-            "enlève la recette {recipe} pour {servings} personnes",
-            "enlève la recette {recipe} pour {servings}",
             "enlève le repas de {recipe}",
-            "enlève le repas de {recipe} pour {servings} personnes",
-            "enlève le repas de {recipe} pour {servings}",
             "enlève la recette de {recipe}",
-            "enlève la recette de {recipe} pour {servings} personnes",
-            "enlève la recette de {recipe} pour {servings}",
             "enlever le repas {recipe}",
-            "enlever le repas {recipe} pour {servings} personnes",
-            "enlever le repas {recipe} pour {servings}",
             "enlever la recette {recipe}",
-            "enlever la recette {recipe} pour {servings} personnes",
-            "enlever la recette {recipe} pour {servings}",
             "enlever le repas de {recipe}",
-            "enlever le repas de {recipe} pour {servings} personnes",
-            "enlever le repas de {recipe} pour {servings}",
             "enlever la recette de {recipe}",
-            "enlever la recette de {recipe} pour {servings} personnes",
-            "enlever la recette de {recipe} pour {servings}",
             "retire le repas {recipe}",
-            "retire le repas {recipe} pour {servings} personnes",
-            "retire le repas {recipe} pour {servings}",
             "retire la recette {recipe}",
-            "retire la recette {recipe} pour {servings} personnes",
-            "retire la recette {recipe} pour {servings}",
             "retire le repas de {recipe}",
-            "retire le repas de {recipe} pour {servings} personnes",
-            "retire le repas de {recipe} pour {servings}",
             "retire la recette de {recipe}",
-            "retire la recette de {recipe} pour {servings} personnes",
-            "retire la recette de {recipe} pour {servings}",
             "retirer le repas {recipe}",
-            "retirer le repas {recipe} pour {servings} personnes",
-            "retirer le repas {recipe} pour {servings}",
             "retirer la recette {recipe}",
-            "retirer la recette {recipe} pour {servings} personnes",
-            "retirer la recette {recipe} pour {servings}",
             "retirer le repas de {recipe}",
-            "retirer le repas de {recipe} pour {servings} personnes",
-            "retirer le repas de {recipe} pour {servings}",
             "retirer la recette de {recipe}",
-            "retirer la recette de {recipe} pour {servings} personnes",
-            "retirer la recette de {recipe} pour {servings}",
             "déduis le repas {recipe}",
-            "déduis le repas {recipe} pour {servings} personnes",
-            "déduis le repas {recipe} pour {servings}",
             "déduis la recette {recipe}",
-            "déduis la recette {recipe} pour {servings} personnes",
-            "déduis la recette {recipe} pour {servings}",
             "déduis le repas de {recipe}",
-            "déduis le repas de {recipe} pour {servings} personnes",
-            "déduis le repas de {recipe} pour {servings}",
             "déduis la recette de {recipe}",
-            "déduis la recette de {recipe} pour {servings} personnes",
-            "déduis la recette de {recipe} pour {servings}",
             "déduire le repas {recipe}",
-            "déduire le repas {recipe} pour {servings} personnes",
-            "déduire le repas {recipe} pour {servings}",
             "déduire la recette {recipe}",
-            "déduire la recette {recipe} pour {servings} personnes",
-            "déduire la recette {recipe} pour {servings}",
             "déduire le repas de {recipe}",
-            "déduire le repas de {recipe} pour {servings} personnes",
-            "déduire le repas de {recipe} pour {servings}",
             "déduire la recette de {recipe}",
-            "déduire la recette de {recipe} pour {servings} personnes",
-            "déduire la recette de {recipe} pour {servings}",
             "supprime le repas {recipe}",
-            "supprime le repas {recipe} pour {servings} personnes",
-            "supprime le repas {recipe} pour {servings}",
             "supprime la recette {recipe}",
-            "supprime la recette {recipe} pour {servings} personnes",
-            "supprime la recette {recipe} pour {servings}",
             "supprime le repas de {recipe}",
-            "supprime le repas de {recipe} pour {servings} personnes",
-            "supprime le repas de {recipe} pour {servings}",
             "supprime la recette de {recipe}",
-            "supprime la recette de {recipe} pour {servings} personnes",
-            "supprime la recette de {recipe} pour {servings}",
             "supprimer le repas {recipe}",
-            "supprimer le repas {recipe} pour {servings} personnes",
-            "supprimer le repas {recipe} pour {servings}",
             "supprimer la recette {recipe}",
-            "supprimer la recette {recipe} pour {servings} personnes",
-            "supprimer la recette {recipe} pour {servings}",
             "supprimer le repas de {recipe}",
-            "supprimer le repas de {recipe} pour {servings} personnes",
-            "supprimer le repas de {recipe} pour {servings}",
             "supprimer la recette de {recipe}",
-            "supprimer la recette de {recipe} pour {servings} personnes",
-            "supprimer la recette de {recipe} pour {servings}",
             "ôte le repas {recipe}",
-            "ôte le repas {recipe} pour {servings} personnes",
-            "ôte le repas {recipe} pour {servings}",
             "ôte la recette {recipe}",
-            "ôte la recette {recipe} pour {servings} personnes",
-            "ôte la recette {recipe} pour {servings}",
             "ôte le repas de {recipe}",
-            "ôte le repas de {recipe} pour {servings} personnes",
-            "ôte le repas de {recipe} pour {servings}",
             "ôte la recette de {recipe}",
-            "ôte la recette de {recipe} pour {servings} personnes",
-            "ôte la recette de {recipe} pour {servings}",
             "ôter le repas {recipe}",
-            "ôter le repas {recipe} pour {servings} personnes",
-            "ôter le repas {recipe} pour {servings}",
             "ôter la recette {recipe}",
-            "ôter la recette {recipe} pour {servings} personnes",
-            "ôter la recette {recipe} pour {servings}",
             "ôter le repas de {recipe}",
-            "ôter le repas de {recipe} pour {servings} personnes",
-            "ôter le repas de {recipe} pour {servings}",
-            "ôter la recette de {recipe}",
-            "ôter la recette de {recipe} pour {servings} personnes",
-            "ôter la recette de {recipe} pour {servings}"
+            "ôter la recette de {recipe}"
           ]
         },
         {
@@ -3700,421 +3430,6 @@
               "name": {
                 "value": "quatre vingt dix neuf",
                 "synonyms": []
-              }
-            }
-          ]
-        },
-        {
-          "name": "RECIPE",
-          "values": [
-            {
-              "name": {
-                "value": "blanquette de veau"
-              }
-            },
-            {
-              "name": {
-                "value": "boeuf bourguignon"
-              }
-            },
-            {
-              "name": {
-                "value": "brandade de morue"
-              }
-            },
-            {
-              "name": {
-                "value": "burger maison"
-              }
-            },
-            {
-              "name": {
-                "value": "chili con carne"
-              }
-            },
-            {
-              "name": {
-                "value": "clafoutis"
-              }
-            },
-            {
-              "name": {
-                "value": "cordon bleu"
-              }
-            },
-            {
-              "name": {
-                "value": "côtes de porc"
-              }
-            },
-            {
-              "name": {
-                "value": "couscous"
-              }
-            },
-            {
-              "name": {
-                "value": "crêpes"
-              }
-            },
-            {
-              "name": {
-                "value": "crêpes jambon fromage"
-              }
-            },
-            {
-              "name": {
-                "value": "croque madame"
-              }
-            },
-            {
-              "name": {
-                "value": "croque monsieur"
-              }
-            },
-            {
-              "name": {
-                "value": "croziflette"
-              }
-            },
-            {
-              "name": {
-                "value": "curry de légumes"
-              }
-            },
-            {
-              "name": {
-                "value": "dal de lentilles"
-              }
-            },
-            {
-              "name": {
-                "value": "endives au jambon"
-              }
-            },
-            {
-              "name": {
-                "value": "escalope de dinde"
-              }
-            },
-            {
-              "name": {
-                "value": "escalope milanaise"
-              }
-            },
-            {
-              "name": {
-                "value": "fajitas"
-              }
-            },
-            {
-              "name": {
-                "value": "falafels"
-              }
-            },
-            {
-              "name": {
-                "value": "far breton"
-              }
-            },
-            {
-              "name": {
-                "value": "filet de poisson"
-              }
-            },
-            {
-              "name": {
-                "value": "flamiche aux poireaux"
-              }
-            },
-            {
-              "name": {
-                "value": "fondue savoyarde"
-              }
-            },
-            {
-              "name": {
-                "value": "galettes de blé noir"
-              }
-            },
-            {
-              "name": {
-                "value": "gâteau au chocolat"
-              }
-            },
-            {
-              "name": {
-                "value": "gratin dauphinois"
-              }
-            },
-            {
-              "name": {
-                "value": "gratin de chou fleur"
-              }
-            },
-            {
-              "name": {
-                "value": "gratin de courgettes"
-              }
-            },
-            {
-              "name": {
-                "value": "gratin de pâtes"
-              }
-            },
-            {
-              "name": {
-                "value": "hachis parmentier"
-              }
-            },
-            {
-              "name": {
-                "value": "lasagnes"
-              }
-            },
-            {
-              "name": {
-                "value": "moules frites"
-              }
-            },
-            {
-              "name": {
-                "value": "nems"
-              }
-            },
-            {
-              "name": {
-                "value": "nuggets maison"
-              }
-            },
-            {
-              "name": {
-                "value": "oeuf au plat"
-              }
-            },
-            {
-              "name": {
-                "value": "oeufs à la coque"
-              }
-            },
-            {
-              "name": {
-                "value": "oeufs durs"
-              }
-            },
-            {
-              "name": {
-                "value": "omelette aux champignons"
-              }
-            },
-            {
-              "name": {
-                "value": "paella"
-              }
-            },
-            {
-              "name": {
-                "value": "pâtes à la bolognaise"
-              }
-            },
-            {
-              "name": {
-                "value": "pâtes au pesto"
-              }
-            },
-            {
-              "name": {
-                "value": "pâtes au saumon"
-              }
-            },
-            {
-              "name": {
-                "value": "pâtes carbonara"
-              }
-            },
-            {
-              "name": {
-                "value": "pizza maison"
-              }
-            },
-            {
-              "name": {
-                "value": "pizza margherita"
-              }
-            },
-            {
-              "name": {
-                "value": "poisson pané"
-              }
-            },
-            {
-              "name": {
-                "value": "pot au feu"
-              }
-            },
-            {
-              "name": {
-                "value": "poulet à la crème"
-              }
-            },
-            {
-              "name": {
-                "value": "poulet au citron"
-              }
-            },
-            {
-              "name": {
-                "value": "poulet basquaise"
-              }
-            },
-            {
-              "name": {
-                "value": "poulet curry"
-              }
-            },
-            {
-              "name": {
-                "value": "poulet rôti"
-              }
-            },
-            {
-              "name": {
-                "value": "purée de pommes de terre"
-              }
-            },
-            {
-              "name": {
-                "value": "quiche lorraine"
-              }
-            },
-            {
-              "name": {
-                "value": "raclette"
-              }
-            },
-            {
-              "name": {
-                "value": "ratatouille"
-              }
-            },
-            {
-              "name": {
-                "value": "risotto aux champignons"
-              }
-            },
-            {
-              "name": {
-                "value": "risotto aux courgettes"
-              }
-            },
-            {
-              "name": {
-                "value": "riz au lait"
-              }
-            },
-            {
-              "name": {
-                "value": "riz cantonais"
-              }
-            },
-            {
-              "name": {
-                "value": "rôti de porc"
-              }
-            },
-            {
-              "name": {
-                "value": "salade césar"
-              }
-            },
-            {
-              "name": {
-                "value": "salade de pâtes"
-              }
-            },
-            {
-              "name": {
-                "value": "salade niçoise"
-              }
-            },
-            {
-              "name": {
-                "value": "saucisses purée"
-              }
-            },
-            {
-              "name": {
-                "value": "saumon en papillote"
-              }
-            },
-            {
-              "name": {
-                "value": "soupe à l'oignon"
-              }
-            },
-            {
-              "name": {
-                "value": "soupe de légumes"
-              }
-            },
-            {
-              "name": {
-                "value": "spaghetti bolognaise"
-              }
-            },
-            {
-              "name": {
-                "value": "steak frites"
-              }
-            },
-            {
-              "name": {
-                "value": "taboulé"
-              }
-            },
-            {
-              "name": {
-                "value": "tacos"
-              }
-            },
-            {
-              "name": {
-                "value": "tajine de poulet"
-              }
-            },
-            {
-              "name": {
-                "value": "tarte à la tomate"
-              }
-            },
-            {
-              "name": {
-                "value": "tarte aux poireaux"
-              }
-            },
-            {
-              "name": {
-                "value": "tarte aux pommes"
-              }
-            },
-            {
-              "name": {
-                "value": "tartiflette"
-              }
-            },
-            {
-              "name": {
-                "value": "velouté de champignons"
-              }
-            },
-            {
-              "name": {
-                "value": "velouté de potiron"
-              }
-            },
-            {
-              "name": {
-                "value": "wraps au poulet"
               }
             }
           ]

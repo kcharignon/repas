@@ -145,11 +145,13 @@ class DocsVoiceSkillTest extends KernelTestCase
         // Given
         $intent = $this->intent('AddMealIntent');
 
-        // Then : les créneaux que le webhook lit (`recipe`, `servings`), du type des recettes et du type des quantités
-        $this->assertSame([['name' => 'recipe', 'type' => 'RECIPE'], ['name' => 'servings', 'type' => 'QUANTITY']], $intent['slots']);
+        // Then : le nom de la recette est du TEXTE LIBRE (`AMAZON.SearchQuery`) : avec un type à nous, « planifie une fondue » partait vers les intentions des produits ou des réponses
+        // (profileur d'énoncés, 2026-10-26). Amazon interdit de combiner ce type avec un autre créneau dans un exemple : le nombre de personnes (« pour six personnes »)
+        // reste au bout du texte, que le webhook lit (`SpokenMealPhrase::parse`)
+        $this->assertSame([['name' => 'recipe', 'type' => 'AMAZON.SearchQuery']], $intent['slots']);
 
         $samples = $intent['samples'];
-        $this->assertGreaterThanOrEqual(100, count($samples));
+        $this->assertGreaterThanOrEqual(80, count($samples));
         $this->assertSame(array_values(array_unique($samples)), $samples, 'aucune phrase en double');
         $verbs = [];
         $markers = [];
@@ -179,9 +181,17 @@ class DocsVoiceSkillTest extends KernelTestCase
         }
         $this->assertSame(['le repas' => true, 'la recette' => true], $markers);
         $this->assertContains('planifie {recipe}', $samples);
-        $this->assertContains('planifie le repas {recipe} pour {servings} personnes', $samples);
+        $this->assertContains('planifie le repas {recipe}', $samples);
+        // Le nombre de personnes ne se dit pas dans un exemple : `AMAZON.SearchQuery` ne se combine avec aucun autre créneau (il reste au bout du texte)
+        foreach ($samples as $sample) {
+            $this->assertStringNotContainsString('{servings}', $sample);
+            $this->assertNotSame('{recipe}', $sample, 'une phrase d\'exemple avec un texte libre porte toujours un mot d\'accroche');
+        }
+        // Le mot seul, sans verbe (« la recette fondue ») : sinon Amazon la rangeait dans RemoveMealIntent
+        $this->assertContains('la recette {recipe}', $samples);
+        $this->assertContains('le repas {recipe}', $samples);
         // L'article se dit après un verbe de planification (essai réel du 2026-10-26 : « planifier une fondue » n'était pas compris)
-        foreach (['planifie une {recipe}', 'planifier un {recipe} pour {servings} personnes', 'prévois des {recipe}', 'mets au menu la {recipe}', 'préparer le {recipe} pour {servings}'] as $withArticle) {
+        foreach (['planifie une {recipe}', 'planifier un {recipe}', 'prévois des {recipe}', 'mets au menu la {recipe}', 'préparer le {recipe}'] as $withArticle) {
             $this->assertContains($withArticle, $samples);
         }
         // … mais jamais après « ajoute » (« ajoute un hachis » reste un produit)
@@ -189,26 +199,23 @@ class DocsVoiceSkillTest extends KernelTestCase
             $this->assertNotContains($notAMeal, $samples);
         }
         $this->assertContains('ajoute la recette {recipe}', $samples);
-        $this->assertContains('ajoute le repas {recipe} pour {servings}', $samples);
+        $this->assertContains('ajoute le repas {recipe}', $samples);
         // « ajoute » seul reste un produit : jamais d'échantillon d'ajout de repas sans le mot
         foreach (['ajoute {recipe}', 'mets {recipe}', 'note {recipe}', 'ajouter {recipe}'] as $bare) {
             $this->assertNotContains($bare, $samples);
         }
     }
 
-    public function testTheRecipeTypeIsAHintOfCommonDishesAndTheKindTypeHasTheTwoAnswers(): void
+    public function testTheRecipeIsFreeTextAndTheKindTypeHasTheTwoAnswers(): void
     {
         // Given
-        $recipes = array_map(static fn(array $value): string => $value['name']['value'], $this->type('RECIPE')['values']);
         $kinds = [];
         foreach ($this->type('KIND')['values'] as $value) {
             $kinds[$value['id']] = [$value['name']['value'], ...$value['name']['synonyms']];
         }
 
-        // Then : des plats courants (un indice pour la reconnaissance vocale, pas une limite), et « une recette » / « un produit » comme le webhook les lit
-        $this->assertGreaterThanOrEqual(50, count($recipes));
-        $this->assertContains('hachis parmentier', $recipes);
-        $this->assertContains('lasagnes', $recipes);
+        // Then : plus de type des recettes (texte libre), et « une recette » / « un produit » comme le webhook les lit
+        $this->assertArrayNotHasKey('RECIPE', array_column($this->languageModel()['types'], null, 'name'));
         $this->assertSame(['meal', 'item'], array_keys($kinds));
         $this->assertContains('recette', $kinds['meal']);
         $this->assertContains('repas', $kinds['meal']);
@@ -377,7 +384,8 @@ class DocsVoiceSkillTest extends KernelTestCase
             'item' => static fn(AlexaRequest $request): mixed => $request->phrase,
             'rank' => static fn(AlexaRequest $request): mixed => $request->rank?->text,
             'department' => static fn(AlexaRequest $request): mixed => $request->department?->text,
-            'unit' => static fn(AlexaRequest $request): mixed => $request->unit?->text,
+            // Un « mot d'unité » que l'unité ne connaît pas est le produit quand `item` est vide (« vingt et un yaourts ») : le créneau est lu dans les deux cas
+            'unit' => static fn(AlexaRequest $request): mixed => $request->unit->text ?? $request->phrase,
             'quantity' => static fn(AlexaRequest $request): mixed => $request->quantity,
             'recipe' => static fn(AlexaRequest $request): mixed => $request->recipePhrase,
             'servings' => static fn(AlexaRequest $request): mixed => $request->servings,
@@ -539,7 +547,6 @@ class DocsVoiceSkillTest extends KernelTestCase
         yield 'DEPARTMENT' => ['DEPARTMENT'];
         yield 'UNIT' => ['UNIT'];
         yield 'OPTION_RANK' => ['OPTION_RANK'];
-        yield 'RECIPE' => ['RECIPE'];
         yield 'KIND' => ['KIND'];
     }
 
