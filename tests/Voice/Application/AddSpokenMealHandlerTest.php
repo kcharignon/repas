@@ -136,6 +136,34 @@ class AddSpokenMealHandlerTest extends TestCase
         $this->assertTrue($result->keepSessionOpen, 'une question garde la séance ouverte, même en appel direct');
     }
 
+    public function testAUserWithoutAnyRecipeIsToldSoAndAskedWhetherItIsAProduct(): void
+    {
+        // Given
+        $this->resolver->withoutAnyRecipe();
+
+        // When
+        $result = ($this->handler)(new AddSpokenMealCommand('user-1', 'blanquette de veaux', sessionIsOpen: false));
+
+        // Then : « aucune recette » plutôt qu'un « je ne trouve pas » qui n'aide pas ; la question garde la séance ouverte
+        $this->assertSame("Tu n'as encore aucune recette dans Repas. C'est un produit ?", $result->speech);
+        $this->assertSame(DialogueStep::CHOOSE, $result->nextState?->step);
+        $this->assertTrue($result->keepSessionOpen);
+        $this->assertSame([], $this->planner->planned);
+    }
+
+    public function testAUserWithoutAnyRecipeWhoseProductWasAlreadyTriedHearsThatNothingWasFound(): void
+    {
+        // Given : l'utilisateur a répondu « une recette » après un produit inconnu
+        $this->resolver->withoutAnyRecipe();
+
+        // When
+        $result = ($this->handler)(new AddSpokenMealCommand('user-1', 'xyz', sessionIsOpen: true, otherSideTried: true));
+
+        // Then : plus d'issue
+        $this->assertSame('Je ne trouve rien qui s\'appelle xyz.', $result->speech);
+        $this->assertNull($result->nextState);
+    }
+
     public function testOnlyThreeSuggestionsAreKept(): void
     {
         // Given : le port en rend quatre (il ne devrait pas)

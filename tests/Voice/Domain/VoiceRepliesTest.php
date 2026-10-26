@@ -11,6 +11,7 @@ use Repas\Voice\Domain\Model\DialogueOption;
 use Repas\Voice\Domain\Model\ListLine;
 use Repas\Voice\Domain\Model\RemovedLine;
 use Repas\Voice\Domain\Model\SpokenDialogueState;
+use Repas\Shared\Domain\Exception\SpokenMealFailure;
 use Repas\Voice\Domain\Model\VoiceReplies;
 
 /**
@@ -291,6 +292,30 @@ class VoiceRepliesTest extends TestCase
     public function testAPreviousSentListIsOnlyMentionedWhenAListWasCreated(): void
     {
         $this->assertStringNotContainsString('drive', VoiceReplies::added('pain', 'boulangerie', true, false, true));
+    }
+
+    public function testEachKnownMealFailureHasItsClearSentenceAndAnyOtherReasonHasNone(): void
+    {
+        // Then : une seule table ; le nom de la recette est dit en minuscules, la phrase reste courte avec un nom réaliste de trois mots
+        $missing = VoiceReplies::mealFailure(SpokenMealFailure::MISSING_CONVERSION, 'Blanquette de Veau');
+        $this->assertSame('Je ne peux pas calculer les quantités de blanquette de veau. Ouvre la recette dans Repas.', $missing);
+        $this->assertSame(VoiceReplies::MEAL_GONE, VoiceReplies::mealFailure(SpokenMealFailure::RECIPE_GONE, null));
+        $this->assertNull(VoiceReplies::mealFailure('UNE_RAISON_INCONNUE', 'Hachis'));
+        foreach ([$missing, VoiceReplies::MEAL_GONE] as $answer) {
+            $this->assertLessThanOrEqual(2, count($this->sentences($answer)), $answer);
+            foreach ($this->sentences($answer) as $sentence) {
+                $this->assertLessThanOrEqual(15, count(preg_split('/\s+/u', $sentence)), $sentence);
+            }
+            $this->assertStringNotContainsString('Je n\'ai pas pu faire ça', $answer, 'une phrase qui dit quoi faire, pas la phrase générique');
+        }
+    }
+
+    public function testAnUnknownMealAsksWhatToDoWhateverTheUserHas(): void
+    {
+        // Then : des propositions lointaines (jamais un silence), puis « ou un produit ? » ; aucune recette du tout : on le dit
+        $this->assertSame('Je ne trouve pas la recette blanquette de veaux. Tu veux dire lasagnes, hachis parmentier ou quiche ? Ou un produit ?', VoiceReplies::unknownMeal('blanquette de veaux', ['lasagnes', 'hachis parmentier', 'quiche'], offerItem: true));
+        $this->assertSame("Tu n'as encore aucune recette dans Repas. C'est un produit ?", VoiceReplies::unknownMeal('xyz', [], offerItem: true, hasRecipes: false));
+        $this->assertSame("Je ne trouve rien qui s'appelle xyz.", VoiceReplies::unknownMeal('xyz', [], offerItem: false, hasRecipes: false));
     }
 
     public function testEveryAssembledAnswerStaysShort(): void

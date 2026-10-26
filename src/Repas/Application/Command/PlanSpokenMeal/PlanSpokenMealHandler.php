@@ -15,6 +15,7 @@ use Repas\Repas\Domain\Model\Meal;
 use Repas\Repas\Domain\Model\ShoppingList;
 use Repas\Shared\Application\Dto\PlannedSpokenMeal;
 use Repas\Shared\Application\Interface\UserDefaultServing;
+use Repas\Shared\Domain\Exception\SpokenMealFailure;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 /**
@@ -30,7 +31,7 @@ use Symfony\Component\Messenger\Attribute\AsMessageHandler;
  *   existait avant.
  *
  * Un ingrédient de la recette sans conversion vers son unité d'achat fait échouer toute la commande (le bus est transactionnel : rien n'est écrit),
- * comme dans l'application.
+ * comme dans l'application, mais par une `SpokenMealFailure` que le webhook dit clairement (« Je ne peux pas calculer les quantités de … »).
  */
 #[AsMessageHandler]
 readonly class PlanSpokenMealHandler
@@ -55,10 +56,14 @@ readonly class PlanSpokenMealHandler
             throw ShoppingListException::invalidSpokenServings($command->servings);
         }
 
-        // La recette d'un autre ou inconnue est refusée (404) avant toute écriture
-        $recipe = $this->recipeRepository->findOneById($command->recipeId);
+        // La recette d'un autre ou inconnue est refusée (404) avant toute écriture ; la commande vocale en tire une phrase claire (`SpokenMealFailure`)
+        try {
+            $recipe = $this->recipeRepository->findOneById($command->recipeId);
+        } catch (RecipeException) {
+            throw SpokenMealFailure::recipeGone();
+        }
         if ($recipe->getAuthorId() !== $command->ownerId) {
-            throw RecipeException::notFound($command->recipeId);
+            throw SpokenMealFailure::recipeGone();
         }
 
         $shoppingList = $this->shoppingListRepository->findOneActivateByOwner($command->ownerId);
@@ -78,7 +83,12 @@ readonly class PlanSpokenMealHandler
             ($this->createShoppingListHandler)(new CreateShoppingListCommand($command->newShoppingListId, $command->ownerId));
         }
 
-        ($this->plannedMealHandler)(new PlannedMealCommand($command->ownerId, $command->recipeId, $servings));
+        // Un ingrédient sans conversion vers son unité d'achat : les quantités ne se calculent pas. Phrase claire, et toujours rien d'écrit (le bus annule tout)
+        try {
+            ($this->plannedMealHandler)(new PlannedMealCommand($command->ownerId, $command->recipeId, $servings));
+        } catch (IngredientException $exception) {
+            throw $exception->isMissingConversion() ? SpokenMealFailure::missingConversion($recipe->getName()) : $exception;
+        }
 
         return new PlannedSpokenMeal($recipe->getName(), $servings, alreadyPlanned: false, listCreated: $listCreated, previousListSent: $previousListSent);
     }

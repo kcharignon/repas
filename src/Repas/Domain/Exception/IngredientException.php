@@ -9,6 +9,9 @@ use Repas\Shared\Domain\Exception\DomainException;
 
 final class IngredientException extends DomainException
 {
+    /** Posé par `cannotConvertToUnit()` seulement : la commande vocale en tire une phrase claire (le message, lui, ne se lit jamais). */
+    private bool $missingConversion = false;
+
     // Messages des cas de la fusion de deux ingrédients (ADR 0028 décision 9) : le front les distingue, ils ne se renomment pas
     public const string CANNOT_MERGE_INTO_ITSELF = 'CANNOT_MERGE_INTO_ITSELF';
     public const string MERGE_UNIT_MISSING = 'MERGE_UNIT_MISSING';
@@ -34,12 +37,23 @@ final class IngredientException extends DomainException
 
     public static function cannotConvertToUnit(Ingredient $ingredient, Unit $startUnit, Unit $endUnit): static
     {
-        return new static(sprintf(
+        $exception = new static(sprintf(
             "No conversion path found from unit '%s' to purchase unit '%s' for '%s' ingredient.",
             $startUnit->getName(),
             $endUnit->getName(),
             $ingredient->getName(),
         ), 422);
+        $exception->missingConversion = true;
+
+        return $exception;
+    }
+
+    /**
+     * Aucune conversion ne mène de l'unité de la recette à l'unité d'achat de l'ingrédient (`cannotConvertToUnit()`).
+     */
+    public function isMissingConversion(): bool
+    {
+        return $this->missingConversion;
     }
 
     public static function cannotBeRemoveExistInRecipe(string $ingredientId): static

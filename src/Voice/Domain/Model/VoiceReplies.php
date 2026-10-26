@@ -2,6 +2,8 @@
 
 namespace Repas\Voice\Domain\Model;
 
+use Repas\Shared\Domain\Exception\SpokenMealFailure;
+
 
 /**
  * Tout ce qu'Alexa dit de la part de Repas (ADR 0029 décision 2, skill `repas-po`) : le catalogue des textes, au même endroit pour
@@ -154,6 +156,12 @@ final class VoiceReplies
     public const string ASK_MEAL_WHICH_AGAIN_OR_ITEM = 'Laquelle ? %s. Ou un produit ?';
     /** Aucune recette ne ressemble à la phrase : on demande si c'est un produit. */
     public const string ASK_MEAL_ITEM = "Je ne trouve pas la recette %s. C'est un produit ?";
+    /** L'utilisateur n'a AUCUNE recette : on le lui dit, au lieu d'un « je ne trouve pas » qui ne l'aide pas (2026-10-26). */
+    public const string ASK_MEAL_NO_RECIPES_ITEM = "Tu n'as encore aucune recette dans Repas. C'est un produit ?";
+    /** Un ingrédient de la recette n'a pas de conversion vers son unité d'achat : les quantités de la liste ne se calculent pas (X : le nom de la recette). */
+    public const string MEAL_MISSING_CONVERSION = 'Je ne peux pas calculer les quantités de %s. Ouvre la recette dans Repas.';
+    /** La recette n'existe plus dans Repas, ou n'est pas à l'utilisateur. */
+    public const string MEAL_GONE = 'Je ne retrouve plus cette recette dans Repas.';
     /** Ni produit ni recette ne portent ce nom : plus d'issue. */
     public const string NOTHING_FOUND = "Je ne trouve rien qui s'appelle %s.";
 
@@ -461,14 +469,31 @@ final class VoiceReplies
      * « ou un produit ? » est proposée. Sans proposition ni issue, il n'y a plus rien à dire que « Je ne trouve rien qui s'appelle X. ».
      *
      * @param list<string> $optionNames
+     * @param bool         $hasRecipes   l'utilisateur a au moins une recette (sinon il n'a aucune proposition à entendre : Alexa le lui dit)
      */
-    public static function unknownMeal(string $name, array $optionNames, bool $offerItem): string
+    public static function unknownMeal(string $name, array $optionNames, bool $offerItem, bool $hasRecipes = true): string
     {
+        if (!$hasRecipes) {
+            return $offerItem ? self::ASK_MEAL_NO_RECIPES_ITEM : sprintf(self::NOTHING_FOUND, self::speakable($name));
+        }
         if ($optionNames === []) {
             return sprintf($offerItem ? self::ASK_MEAL_ITEM : self::NOTHING_FOUND, self::speakable($name));
         }
 
         return sprintf($offerItem ? self::ASK_MEAL_WHICH_OR_ITEM : self::ASK_MEAL_WHICH, self::speakable($name), self::joinNames($optionNames));
+    }
+
+    /**
+     * La phrase claire d'un échec CONNU de la commande d'un repas (`SpokenMealFailure`, une seule table) ; `null` pour toute autre panne, qui garde
+     * `FAILURE`.
+     */
+    public static function mealFailure(string $reason, ?string $recipeName): ?string
+    {
+        return match ($reason) {
+            SpokenMealFailure::MISSING_CONVERSION => sprintf(self::MEAL_MISSING_CONVERSION, self::speakable($recipeName ?? '')),
+            SpokenMealFailure::RECIPE_GONE => self::MEAL_GONE,
+            default => null,
+        };
     }
 
     /** Ni produit ni recette ne portent ce nom. */

@@ -5,6 +5,7 @@ namespace Repas\Repas\Application\Command\ChangeSpokenMealServings;
 use Repas\Repas\Application\Command\PlanSpokenMeal\PlanSpokenMealCommand;
 use Repas\Repas\Application\Command\UpdateServingMeal\UpdateServingMealCommand;
 use Repas\Repas\Application\Command\UpdateServingMeal\UpdateServingMealHandler;
+use Repas\Repas\Domain\Exception\IngredientException;
 use Repas\Repas\Domain\Exception\RecipeException;
 use Repas\Repas\Domain\Exception\ShoppingListException;
 use Repas\Repas\Domain\Interface\RecipeRepository;
@@ -12,6 +13,7 @@ use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Repas\Domain\Model\Meal;
 use Repas\Repas\Domain\Model\ShoppingList;
 use Repas\Shared\Application\Dto\ChangedMealServings;
+use Repas\Shared\Domain\Exception\SpokenMealFailure;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 /**
@@ -42,9 +44,13 @@ readonly class ChangeSpokenMealServingsHandler
             throw ShoppingListException::invalidSpokenServings($command->servings);
         }
 
-        $recipe = $this->recipeRepository->findOneById($command->recipeId);
+        try {
+            $recipe = $this->recipeRepository->findOneById($command->recipeId);
+        } catch (RecipeException) {
+            throw SpokenMealFailure::recipeGone();
+        }
         if ($recipe->getAuthorId() !== $command->ownerId) {
-            throw RecipeException::notFound($command->recipeId);
+            throw SpokenMealFailure::recipeGone();
         }
 
         $shoppingList = $this->shoppingListRepository->findOneActivateByOwner($command->ownerId);
@@ -54,7 +60,11 @@ readonly class ChangeSpokenMealServingsHandler
         }
 
         if ($meal->getServing() !== $command->servings) {
-            ($this->updateServingMealHandler)(new UpdateServingMealCommand($meal->getId(), $command->servings));
+            try {
+                ($this->updateServingMealHandler)(new UpdateServingMealCommand($meal->getId(), $command->servings));
+            } catch (IngredientException $exception) {
+                throw $exception->isMissingConversion() ? SpokenMealFailure::missingConversion($recipe->getName()) : $exception;
+            }
         }
 
         return ChangedMealServings::changed($recipe->getName(), $command->servings);

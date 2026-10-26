@@ -280,6 +280,39 @@ final readonly class SpokenIngredientRanker
     }
 
     /**
+     * Les noms les PLUS PROCHES d'une phrase, sans plancher et sans début de mot en commun : au plus `$limit`, classés par pertinence (puis habitude, nom,
+     * slug), même très éloignés. Pour les RECETTES (2026-10-26 : « blanquette de veaux » sans recette proche ne recevait aucune proposition, un silence) :
+     * il n'y a pas de « nouveau produit » à créer et mieux vaut trois recettes lointaines qu'aucune. Les produits gardent `suggest()` et son plancher
+     * (Jaro-Winkler seul note 0,81 « fenouil » contre « nouille » : un produit sans rapport ne se propose pas, il se crée).
+     *
+     * @param list<SpokenCandidate> $candidates
+     *
+     * @return list<RankedIngredient>
+     */
+    public function closest(string $phrase, array $candidates, int $limit = self::MAX_SUGGESTIONS): array
+    {
+        $searchWords = self::words($phrase);
+        if ($searchWords === [] || $candidates === []) {
+            return [];
+        }
+        $search = implode('-', $searchWords);
+
+        $scored = [];
+        foreach ($candidates as $candidate) {
+            $relevance = SearchRelevance::score($search, implode('-', self::words($candidate->sluggedName)));
+            $scored[] = ['candidate' => $candidate, 'score' => $relevance + self::habit($candidate->uses12m)];
+        }
+
+        usort($scored, static fn(array $first, array $second): int => [$second['score'], $first['candidate']->sluggedName, $first['candidate']->slug]
+            <=> [$first['score'], $second['candidate']->sluggedName, $second['candidate']->slug]);
+
+        return array_map(
+            static fn(array $entry): RankedIngredient => self::ranked($entry['candidate'], $entry['score'], Confidence::UNSURE),
+            array_slice($scored, 0, max(0, $limit)),
+        );
+    }
+
+    /**
      * La clé de la mémoire de phrase : la phrase normalisée comme le classeur la lit (`rank()`), bornée à `MAX_KEY_LENGTH`. « du pain » et
      * « le pains » ont la même clé. Vide si aucun mot ne compte : il n'y a alors rien à mémoriser.
      */

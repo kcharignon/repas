@@ -6,6 +6,7 @@ use Repas\Repas\Application\Command\RemoveMealFromPlan\removeMealFromPlanCommand
 use Repas\Repas\Application\Command\RemoveMealFromPlan\removeMealFromPlanHandler;
 use Repas\Repas\Application\Command\UpdateServingMeal\UpdateServingMealCommand;
 use Repas\Repas\Application\Command\UpdateServingMeal\UpdateServingMealHandler;
+use Repas\Repas\Domain\Exception\IngredientException;
 use Repas\Repas\Domain\Exception\RecipeException;
 use Repas\Repas\Domain\Exception\ShoppingListException;
 use Repas\Repas\Domain\Interface\RecipeRepository;
@@ -13,6 +14,7 @@ use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Repas\Domain\Model\Meal;
 use Repas\Repas\Domain\Model\ShoppingList;
 use Repas\Shared\Application\Dto\RemovedSpokenMeal;
+use Repas\Shared\Domain\Exception\SpokenMealFailure;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 /**
@@ -46,9 +48,13 @@ readonly class RemoveSpokenMealHandler
             throw ShoppingListException::invalidSpokenServings($command->servings);
         }
 
-        $recipe = $this->recipeRepository->findOneById($command->recipeId);
+        try {
+            $recipe = $this->recipeRepository->findOneById($command->recipeId);
+        } catch (RecipeException) {
+            throw SpokenMealFailure::recipeGone();
+        }
         if ($recipe->getAuthorId() !== $command->ownerId) {
-            throw RecipeException::notFound($command->recipeId);
+            throw SpokenMealFailure::recipeGone();
         }
 
         $shoppingList = $this->shoppingListRepository->findOneActivateByOwner($command->ownerId);
@@ -57,14 +63,18 @@ readonly class RemoveSpokenMealHandler
             return RemovedSpokenMeal::notPlanned($recipe->getName());
         }
 
-        if ($command->servings === null || $command->servings >= $meal->getServing()) {
-            ($this->removeMealFromPlanHandler)(new removeMealFromPlanCommand($command->ownerId, $command->recipeId));
+        try {
+            if ($command->servings === null || $command->servings >= $meal->getServing()) {
+                ($this->removeMealFromPlanHandler)(new removeMealFromPlanCommand($command->ownerId, $command->recipeId));
 
-            return RemovedSpokenMeal::removed($recipe->getName());
+                return RemovedSpokenMeal::removed($recipe->getName());
+            }
+
+            $remaining = $meal->getServing() - $command->servings;
+            ($this->updateServingMealHandler)(new UpdateServingMealCommand($meal->getId(), $remaining));
+        } catch (IngredientException $exception) {
+            throw $exception->isMissingConversion() ? SpokenMealFailure::missingConversion($recipe->getName()) : $exception;
         }
-
-        $remaining = $meal->getServing() - $command->servings;
-        ($this->updateServingMealHandler)(new UpdateServingMealCommand($meal->getId(), $remaining));
 
         return RemovedSpokenMeal::lowered($recipe->getName(), $remaining);
     }
