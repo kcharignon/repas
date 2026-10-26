@@ -178,12 +178,12 @@ class PasswordResetFlowTest extends DatabaseTestCase
 
         // When
         $this->post('/api/v1/users/password-reset/send', ['email' => 'actif@example.com']);
-        $active = [$this->statusCode(), $this->client->getResponse()->getContent(), $this->client->getResponse()->headers->all()];
+        $active = [$this->statusCode(), $this->client->getResponse()->getContent(), $this->headersWithoutDate()];
         $emailsAfterActive = count($this->emails);
         $this->post('/api/v1/users/password-reset/send', ['email' => 'inconnu@example.com']);
-        $unknown = [$this->statusCode(), $this->client->getResponse()->getContent(), $this->client->getResponse()->headers->all()];
+        $unknown = [$this->statusCode(), $this->client->getResponse()->getContent(), $this->headersWithoutDate()];
         $this->post('/api/v1/users/password-reset/send', ['email' => 'desactive@example.com']);
-        $disabled = [$this->statusCode(), $this->client->getResponse()->getContent(), $this->client->getResponse()->headers->all()];
+        $disabled = [$this->statusCode(), $this->client->getResponse()->getContent(), $this->headersWithoutDate()];
 
         // Then : rien ne distingue les trois, seul le compte actif a reçu un email et un jeton
         $this->assertSame([204, ''], array_slice($active, 0, 2));
@@ -342,6 +342,20 @@ class PasswordResetFlowTest extends DatabaseTestCase
     private function statusCode(): int
     {
         return $this->client->getResponse()->getStatusCode();
+    }
+
+    /**
+     * Les en-têtes de la dernière réponse, sans `date` : elle change à la seconde, et deux réponses de part et d'autre d'une seconde ne
+     * seraient plus « les mêmes » alors que rien ne les distingue.
+     *
+     * @return array<string, array<int, string|null>>
+     */
+    private function headersWithoutDate(): array
+    {
+        $headers = $this->client->getResponse()->headers->all();
+        unset($headers['date']);
+
+        return $headers;
     }
 
     /**
