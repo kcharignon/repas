@@ -45,11 +45,19 @@ restart: ## Restart the project
 	@$(MAKE) start
 
 ## —— Code quality 📋 ————————————————————————————————————————————————————————
-.PHONY: test test-coverage deptrac phpstan api-doc-validate api-doc-coverage openapi openapi-check jwt-keys quality sql-budget-update voice-model voice-model-check drive-samples deploy-smoke
+.PHONY: test test-fast test-coverage deptrac phpstan api-doc-validate api-doc-coverage openapi openapi-check jwt-keys quality sql-budget-update voice-model voice-model-check drive-samples deploy-smoke
+
+# Nombre de processus de `make test-fast` : celui des cœurs de la machine, 12 au plus (plus haut, aucun gain mesuré) ; `make test-fast TEST_PROCESSES=4` le force.
+TEST_PROCESSES ?=
 
 test: ## Run PHPUnit tests
 	@echo "🧪 Exécution des tests avec PHPUnit..."
 	@$(EXEC_PHP) vendor/bin/phpunit --no-coverage --display-notices --display-phpunit-notices --display-phpunit-deprecations
+
+test-fast: ## Run PHPUnit tests in parallel (ParaTest, one database per process; TEST_PROCESSES=n to force); `make test` stays the reference
+	@echo "🧪 Exécution des tests en parallèle avec ParaTest..."
+	@$(EXEC_PHP) php bin/console cache:warmup --env=test --quiet
+	@$(DOCKER_COMPOSE) exec -e TEST_PROCESSES=$(TEST_PROCESSES) php sh -c 'p="$$TEST_PROCESSES"; if [ -z "$$p" ]; then p=$$(nproc); [ "$$p" -gt 12 ] && p=12; fi; exec vendor/bin/paratest --no-coverage --order-by=reverse --processes="$$p" --display-notices --display-phpunit-notices --display-phpunit-deprecations'
 
 test-coverage: ## Run PHPUnit tests with code coverage
 	@if test -f phpunit.xml; then \

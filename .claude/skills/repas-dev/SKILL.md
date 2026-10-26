@@ -56,7 +56,7 @@ Détail et squelettes : `references/read-slice-template.md`. Ordre :
 4. `Infrastructure/Loader/{X}PostgreSQLLoader` (DQL/DBAL → DTO). Autowiring suffit s'il n'y a qu'une implémentation.
 5. Tests : handler + `{X}InMemoryLoader` (unitaire : bons paramètres transmis au Loader, résultat renvoyé tel quel, **jamais de base**) ; Loader sur base réelle (`DatabaseTestCase`, dossier `tests/Repas/OutputAdapter/`).
    `QueryConventionTest` contrôle tout seul l'attribut `bus: 'query.bus'` et la présence du handler : ne pas le dupliquer dans le test du handler.
-6. `make test deptrac phpstan`.
+6. `make test deptrac phpstan` (`make test-fast` pendant le travail : même suite en parallèle, environ cinq fois plus vite ; `make test` reste la référence avant de pousser).
 
 ### 3.2 Nouvel endpoint API
 1. La query existe (3.1) — sinon la créer d'abord.

@@ -1,7 +1,7 @@
 # 0010 — Stratégie de tests de la lecture et de l'API
 
 - **Statut** : Accepted
-- **Date** : 2026-10-12
+- **Date** : 2026-10-12 ; amendé le 2026-10-26 (règle 13 : exécution en parallèle)
 - **Liens** : `CLAUDE.md` (« Tests »), `presentation-archi/presentation.md` §13–§19
 
 ## Contexte
@@ -45,6 +45,7 @@ Règles :
 10. **Isolation des tests de base : transaction annulée.** `DatabaseTestCase` crée le schéma (vide, sans fixtures depuis la règle 11) **une seule fois** par exécution de PHPUnit (au premier test qui en a besoin), puis chaque test tourne dans une transaction annulée à la fin (`dama/doctrine-test-bundle`, extension déclarée dans `phpunit.dist.xml`, connexion statique qui survit aux reboots du kernel pour les tests HTTP). Mesuré le 2026-10-13 : suite complète de 31 s à ~4 s, test unitaire seul ~5 ms (la base n'est préparée que si un test en hérite).
 11. **Un test de base crée ses propres données** (builders + repositories ; `tests/Helper/DataPersister` enregistre un modèle avec les agrégats qu'il référence) et n'asserte que sur elles. `DatabaseTestCase` ne crée que le schéma, vide : plus aucune fixture globale (soldé en phase 2). Un total, un cas « liste vide » ou un tri se prouvent donc sur des données connues. Les `DataFixture` ne servent plus qu'au jeu de données de développement (`make fixtures-load-dev`).
 12. **Budget SQL des use cases d'écriture** (`tests/Repas/WriteBudget`, phase 8 de la [roadmap](../migration-roadmap.md)). Ce n'est pas un test de handler : il exécute la commande de bout en bout (bus réel, handler, repositories, listeners) sur la vraie base de test et compte les requêtes SQL (middleware DBAL `tests/Helper/SqlBudget`, actif en `when@test` seulement), depuis un état « requête neuve » (identity map de Doctrine vidée). Chaque scénario crée ses données et fige son budget dans `budgets.php`, en cliquet comme la couverture : plus de requêtes que le budget = régression ; moins = baisser le budget (`make sql-budget-update`). Un nouveau use case d'écriture ajoute un scénario dans `scenarios.php`.
+13. **Exécution en parallèle** (amendement du 2026-10-26) : `make test-fast` lance la même suite avec ParaTest, une base de données par processus (`TEST_TOKEN` ajouté au nom de la base par `doctrine.yaml`, base créée au besoin par `tests/Helper/ParallelTestDatabase`), DAMA gardant l'isolation par test. Un test ne doit rien partager hors de sa base avec les tests des autres processus. `make test` (série) reste la référence de la CI ; les deux donnent les mêmes totaux.
 
 ## Conséquences
 
