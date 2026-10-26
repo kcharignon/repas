@@ -356,7 +356,7 @@ class AddSpokenItemHandlerTest extends TestCase
         $this->assertSame([['user-1', 'de la ciboulette']], $this->resolver->asked);
         $this->assertSame([], $this->shoppingList->added);
         $state = SpokenDialogueState::choose('de la ciboulette', [], 'ciboulette');
-        $this->assertEquals(new AddSpokenItemResult('Je ne connais pas ciboulette. Je le crée ?', keepSessionOpen: true, added: false, nextState: $state, reprompt: 'Je ne connais pas ciboulette. Je le crée ?'), $result);
+        $this->assertEquals(new AddSpokenItemResult('Je ne connais pas ciboulette. Je le crée ? Ou c\'est une recette ?', keepSessionOpen: true, added: false, nextState: $state, reprompt: 'Je ne connais pas ciboulette. Je le crée ? Ou c\'est une recette ?'), $result);
     }
 
     public function testAnUnknownProductWithCloseIngredientsProposesThemAndTheNewProduct(): void
@@ -372,11 +372,11 @@ class AddSpokenItemHandlerTest extends TestCase
         $result = ($this->handler)(new AddSpokenItemCommand('user-1', 'de la ciboulette', sessionIsOpen: true));
 
         // Then : « de quoi tu parles ? », les trois propositions dans l'ordre reçu, l'état porte les slugs, la phrase et le nom à créer
-        $this->assertSame('Je ne connais pas ciboulette. Tu veux dire persil, basilic ou coriandre ? Ou un nouveau produit ?', $result->speech);
+        $this->assertSame('Je ne connais pas ciboulette. Tu veux dire persil, basilic ou coriandre ? Ou un nouveau produit, ou une recette ?', $result->speech);
         $this->assertTrue($result->keepSessionOpen);
         $this->assertFalse($result->added);
         $this->assertSame([], $this->shoppingList->added);
-        $this->assertSame('Tu veux dire persil, basilic ou coriandre ? Ou un nouveau produit ?', $result->reprompt);
+        $this->assertSame('Tu veux dire persil, basilic ou coriandre ? Ou un nouveau produit, ou une recette ?', $result->reprompt);
         $this->assertSame(DialogueStep::CHOOSE, $result->nextState?->step);
         $this->assertEquals(
             [new DialogueOption('persil-u', 'persil'), new DialogueOption('basilic-u', 'basilic'), new DialogueOption('coriandre-u', 'coriandre')],
@@ -487,7 +487,7 @@ class AddSpokenItemHandlerTest extends TestCase
 
         // Then
         $this->assertSame("J'ai mis crème fraîche épaisse, produits laitiers.", $result->speech);
-        $this->assertSame('Je ne connais pas zébulon ' . str_repeat('z', 40) . '. Je le crée ?', $unknown->speech);
+        $this->assertSame('Je ne connais pas zébulon ' . str_repeat('z', 40) . '. Je le crée ? Ou c\'est une recette ?', $unknown->speech);
     }
 
     public function testAFailureOfTheListPortIsNotCaughtSoTheTransactionIsCancelled(): void

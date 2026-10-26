@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Génère docs/voice/skill/interaction-model.fr-FR.json (ADR 0029, VOX-205 et VOX-303). Node pur, aucune dépendance, aucun appel réseau.
+// Génère docs/voice/skill/interaction-model.fr-FR.json (ADR 0029, VOX-205, VOX-303 et VOX-305). Node pur, aucune dépendance, aucun appel réseau.
 //
 //   node docs/voice/skill/generate-model.mjs           écrit le modèle
 //   node docs/voice/skill/generate-model.mjs --check   n'écrit rien, sort en erreur si le fichier n'est pas celui que le script produirait
@@ -110,6 +110,41 @@ const UNIT_SYNONYMS = {
   flacon: ['flacons'],
   botte: ['bottes'],
 };
+
+/**
+ * Des plats courants, dits comme on les dit : un INDICE pour la reconnaissance vocale d'Amazon (type RECIPE du créneau `recipe`, VOX-305), pas une limite.
+ * Les recettes d'un utilisateur ne peuvent pas être dans le modèle (il n'y a pas de liste par utilisateur) : le créneau accepte aussi les autres noms, et le
+ * webhook rapproche le texte entendu des recettes de l'utilisateur. Amazon refuse chiffres, parenthèses et majuscules dans une valeur.
+ */
+const DISHES = [
+  'hachis parmentier', 'lasagnes', 'gratin dauphinois', 'pâtes carbonara', 'pâtes à la bolognaise', 'spaghetti bolognaise', 'blanquette de veau',
+  'boeuf bourguignon', 'pot au feu', 'poulet rôti', 'poulet curry', 'poulet basquaise', 'poulet au citron', 'poulet à la crème', 'couscous', 'tajine de poulet',
+  'ratatouille', 'quiche lorraine', 'tarte aux poireaux', 'tarte à la tomate', 'pizza maison', 'pizza margherita', 'croque monsieur', 'croque madame',
+  'gratin de pâtes', 'gratin de courgettes', 'gratin de chou fleur', 'soupe de légumes', 'velouté de potiron', 'velouté de champignons', 'soupe à l\'oignon',
+  'risotto aux champignons', 'risotto aux courgettes', 'paella', 'chili con carne', 'burger maison', 'galettes de blé noir', 'crêpes jambon fromage',
+  'omelette aux champignons', 'oeuf au plat', 'oeufs durs', 'oeufs à la coque', 'saumon en papillote', 'filet de poisson', 'poisson pané', 'brandade de morue',
+  'moules frites', 'steak frites', 'saucisses purée', 'purée de pommes de terre', 'rôti de porc', 'côtes de porc', 'escalope de dinde', 'escalope milanaise',
+  'cordon bleu', 'nuggets maison', 'tartiflette', 'raclette', 'fondue savoyarde', 'croziflette', 'pâtes au pesto', 'pâtes au saumon', 'salade de pâtes',
+  'salade niçoise', 'salade césar', 'taboulé', 'riz cantonais', 'nems', 'curry de légumes', 'dal de lentilles', 'falafels', 'wraps au poulet', 'tacos', 'fajitas',
+  'endives au jambon', 'flamiche aux poireaux', 'clafoutis', 'far breton', 'gâteau au chocolat', 'tarte aux pommes', 'riz au lait', 'crêpes',
+];
+
+function recipeValues() {
+  return [...new Set(DISHES)].sort((first, second) => first.localeCompare(second, 'fr')).map((name) => ({ name: { value: name } }));
+}
+
+/**
+ * « une recette », « un produit » : aiguille un produit non compris vers les recettes, ou l'inverse (VOX-305). L'identifiant est ce que le webhook lit
+ * (`meal` ou `item`) ; les valeurs sont des mots, sans chiffre.
+ */
+const KINDS = [
+  { id: 'meal', name: 'recette', synonyms: ['recettes', 'repas'] },
+  { id: 'item', name: 'produit', synonyms: ['produits', 'article', 'articles', 'ingrédient', 'ingrédients'] },
+];
+
+function kindValues() {
+  return KINDS.map((kind) => ({ id: kind.id, name: { value: kind.name, synonyms: kind.synonyms } }));
+}
 
 /** Un rang parlé, de 1 à 3 : l'identifiant est le rang. Les articles sont dans les phrases d'exemple, pas dans les valeurs. */
 const RANKS = [
@@ -264,6 +299,35 @@ function checkItemSamples() {
   return samples;
 }
 
+// Planifier un repas (VOX-305, décision 13 de l'ADR 0029) : le MOT « repas » ou « recette », ou un verbe de planification, annonce une recette ; sans cela,
+// « ajoute … » est un produit (AddItemIntent). Le nombre de personnes se dit en fin de phrase (« pour {servings} personnes »). Jamais « un » ni « une » comme
+// mot de liaison (ce sont des nombres, voir `addItemSamples`). Le webhook reconnaît aussi « le repas » / « la recette » quand Amazon range la phrase dans
+// AddItemIntent, et lit « pour six personnes » en queue de phrase.
+const PLAN_VERBS = ['planifie', 'planifier', 'prévois', 'prévoir', 'prépare', 'préparer', 'mets au menu', 'mettre au menu'];
+const PLAN_MARKERS = ['', 'le repas', 'la recette'];
+const MEAL_ADD_MARKERS = ['le repas', 'la recette', 'le repas de', 'la recette de'];
+const MEAL_FORMS = ['{recipe}', '{recipe} pour {servings} personnes', '{recipe} pour {servings}'];
+
+function addMealSamples() {
+  const samples = [];
+  for (const verb of PLAN_VERBS) {
+    for (const marker of PLAN_MARKERS) {
+      for (const form of MEAL_FORMS) {
+        samples.push([verb, marker, form].filter(Boolean).join(' '));
+      }
+    }
+  }
+  for (const verb of ADD_VERBS) {
+    for (const marker of MEAL_ADD_MARKERS) {
+      for (const form of MEAL_FORMS) {
+        samples.push([verb, marker, form].join(' '));
+      }
+    }
+  }
+
+  return samples;
+}
+
 function withBare(samples, bare) {
   return BARE_FORMS ? [bare, ...samples] : samples;
 }
@@ -316,6 +380,11 @@ function intents() {
       samples: checkItemSamples(),
     },
     {
+      name: 'AddMealIntent',
+      slots: [{ name: 'recipe', type: 'RECIPE' }, { name: 'servings', type: 'QUANTITY' }],
+      samples: addMealSamples(),
+    },
+    {
       name: 'ChooseOptionIntent',
       slots: [{ name: 'rank', type: 'OPTION_RANK' }],
       samples: withBare(
@@ -347,6 +416,24 @@ function intents() {
       slots: [{ name: 'unit', type: 'UNIT' }],
       samples: withBare(['en {unit}', 'au {unit}', 'des {unit}', 'un {unit}', 'une {unit}', 'à la {unit}'], '{unit}'),
     },
+    {
+      // « Une recette » à la question d'un produit inconnu, « un produit » à celle d'une recette inconnue (aiguillage, VOX-305). Sans créneau compris, le
+      // webhook lit le texte entendu : l'état de la séance décide, pas l'intention.
+      name: 'ChooseKindIntent',
+      slots: [{ name: 'kind', type: 'KIND' }],
+      samples: withBare(['une {kind}', 'la {kind}', "c'est une {kind}", "c'est la {kind}", 'plutôt une {kind}', "c'est plutôt une {kind}", 'je veux dire une {kind}'], '{kind}'),
+    },
+    {
+      // Le NOUVEAU TOTAL de personnes d'un repas déjà planifié (« six », « pour six personnes »)
+      name: 'AnswerServingsIntent',
+      slots: [{ name: 'servings', type: 'QUANTITY' }],
+      samples: withBare(['{servings} personnes', 'pour {servings}', 'pour {servings} personnes', 'je le veux pour {servings}', 'je le veux pour {servings} personnes', 'ce sera pour {servings}', 'ce sera pour {servings} personnes'], '{servings}'),
+    },
+    {
+      // « Rien » : le repas déjà planifié reste tel quel
+      name: 'KeepMealIntent',
+      samples: ['rien', 'ne change rien', 'ne rien changer', 'on ne change rien', 'laisse comme ça', 'laisse tel quel', 'on laisse comme ça', 'pareil', 'tel quel'],
+    },
   ];
 }
 
@@ -361,6 +448,8 @@ function model() {
           { name: 'DEPARTMENT', values: catalogueValues('department.json', DEPARTMENT_SYNONYMS, 'Rayons') },
           { name: 'UNIT', values: catalogueValues('unit.json', UNIT_SYNONYMS, 'Unités') },
           { name: 'QUANTITY', values: quantityValues() },
+          { name: 'RECIPE', values: recipeValues() },
+          { name: 'KIND', values: kindValues() },
           { name: 'OPTION_RANK', values: rankValues() },
         ],
       },

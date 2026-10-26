@@ -27,14 +27,17 @@ use Repas\Repas\Application\Command\CreateIngredient\CreateIngredientCommand;
 use Repas\Repas\Application\Command\CreateRecipe\CreateRecipeCommand;
 use Repas\Repas\Application\Command\CreateRecipe\CreateRecipeRowSubCommand;
 use Repas\Repas\Application\Command\CreateRecipeType\CreateRecipeTypeCommand;
+use Repas\Repas\Application\Command\ChangeSpokenMealServings\ChangeSpokenMealServingsCommand;
 use Repas\Repas\Application\Command\CreateShoppingList\CreateShoppingListCommand;
 use Repas\Repas\Application\Command\CreateUnit\CreateUnitCommand;
 use Repas\Repas\Application\Command\EnsureActiveShoppingList\EnsureActiveShoppingListCommand;
 use Repas\Repas\Application\Command\MarkIngredientsDistinct\MarkIngredientsDistinctCommand;
 use Repas\Repas\Application\Command\MergeIngredients\MergeIngredientsCommand;
 use Repas\Repas\Application\Command\PausedShoppingList\PausedShoppingListCommand;
+use Repas\Repas\Application\Command\PlanSpokenMeal\PlanSpokenMealCommand;
 use Repas\Repas\Application\Command\PlannedMeal\PlannedMealCommand;
 use Repas\Repas\Application\Command\RememberSpokenPhrase\RememberSpokenPhraseCommand;
+use Repas\Repas\Application\Command\RememberSpokenRecipePhrase\RememberSpokenRecipePhraseCommand;
 use Repas\Repas\Application\Command\RemoveIngredient\RemoveIngredientCommand;
 use Repas\Repas\Application\Command\RemoveIngredientToShoppingList\RemoveIngredientToShoppingListCommand;
 use Repas\Repas\Application\Command\RemoveSpokenIngredient\RemoveSpokenIngredientCommand;
@@ -92,6 +95,7 @@ use Repas\User\Domain\Model\EmailVerificationToken;
 use Repas\User\Domain\Model\PasswordResetToken;
 use Repas\User\Domain\Model\UserStatus;
 use Repas\Voice\Application\Command\AddSpokenItem\AddSpokenItemCommand;
+use Repas\Voice\Application\Command\AddSpokenMeal\AddSpokenMealCommand;
 use Repas\Voice\Application\Command\AnswerSpokenDialogue\AnswerSpokenDialogueCommand;
 use Repas\Voice\Application\Command\ExchangeAuthorizationCode\ExchangeAuthorizationCodeCommand;
 use Repas\Voice\Application\Command\IssueAuthorizationCode\IssueAuthorizationCodeCommand;
@@ -899,6 +903,94 @@ return [
         $t->savedVoiceLink($user, 'link-budget', 'amzn1.ask.account.TEST', $lastUsedAt);
 
         return new RecordVoiceLinkUseCommand('link-budget', $user->getId(), 'amzn1.ask.account.TEST', 'amzn1.ask.account.TEST', $lastUsedAt);
+    },
+    // Planifier un repas dit à Alexa (ADR 0029 décision 13, VOX-305), côté `Repas` : la commande qui écrit (la recette est lue et vérifiée, la liste
+    // active cherchée, le repas et ses ingrédients ajoutés par `PlannedMealHandler`, le nombre de personnes du compte lu)
+    'planifier-repas-par-la-voix' => static function (WriteBudgetTestCase $t): object {
+        $owner = $t->savedUser();
+        [$first, $second, $third] = $t->typicalRecipes($owner);
+        $t->savedShoppingList($owner, [$first, $second]);
+
+        return new PlanSpokenMealCommand($owner->getId(), $third->getId(), UuidGenerator::new());
+    },
+    // Sans liste active : une liste neuve est créée, puis le repas y est planifié
+    'planifier-repas-par-la-voix-sans-liste' => static function (WriteBudgetTestCase $t): object {
+        $owner = $t->savedUser();
+        [$first] = $t->typicalRecipes($owner);
+
+        return new PlanSpokenMealCommand($owner->getId(), $first->getId(), UuidGenerator::new());
+    },
+    // La seule liste est partie au drive : elle n'est pas touchée, une liste neuve reçoit le repas
+    'planifier-repas-par-la-voix-liste-envoyee' => static function (WriteBudgetTestCase $t): object {
+        $owner = $t->savedUser();
+        [$first, $second, $third] = $t->typicalRecipes($owner);
+        // La liste n'est envoyée qu'après avoir reçu ses lignes (une liste envoyée n'est plus modifiable)
+        $t->savedShoppingList($owner, [$first, $second], beforeSave: static fn(ShoppingList $list) => $list->send(new \DateTimeImmutable()));
+
+        return new PlanSpokenMealCommand($owner->getId(), $third->getId(), UuidGenerator::new(), 6);
+    },
+    // Déjà dans la liste : rien n'est écrit, aucune liste n'est créée (seules les lectures)
+    'planifier-repas-par-la-voix-deja-planifie' => static function (WriteBudgetTestCase $t): object {
+        $owner = $t->savedUser();
+        $recipes = $t->typicalRecipes($owner);
+        $t->savedShoppingList($owner, $recipes);
+
+        return new PlanSpokenMealCommand($owner->getId(), $recipes[0]->getId(), UuidGenerator::new());
+    },
+    // Le nouveau total de personnes d'un repas déjà dans la liste (« 6 ») : les lignes de ses ingrédients sont ajustées de la différence
+    'modifier-portions-repas-par-la-voix' => static function (WriteBudgetTestCase $t): object {
+        $owner = $t->savedUser();
+        $recipes = $t->typicalRecipes($owner);
+        $t->savedShoppingList($owner, $recipes);
+
+        return new ChangeSpokenMealServingsCommand($owner->getId(), $recipes[0]->getId(), 6);
+    },
+    // Mémoire de phrase des recettes : la recette est vérifiée (une lecture), la ligne écrite (un upsert)
+    'memoriser-phrase-de-recette-alexa' => static function (WriteBudgetTestCase $t): object {
+        $owner = $t->savedUser();
+        [$first] = $t->typicalRecipes($owner);
+
+        return new RememberSpokenRecipePhraseCommand($owner->getId(), 'le gratin', $first->getId());
+    },
+    // De bout en bout, comme un ajout dit à Alexa : « planifie le repas gâteau basque » (choix de la recette parmi celles de l'utilisateur : une lecture,
+    // la mémoire de phrase : une lecture, puis le repas planifié)
+    'planifier-repas-dit-a-alexa' => static function (WriteBudgetTestCase $t): object {
+        $owner = $t->savedUser();
+        [$first, $second, $third] = $t->typicalRecipes($owner);
+        $t->savedShoppingList($owner, [$first, $second]);
+
+        return new AddSpokenMealCommand($owner->getId(), $third->getName(), true);
+    },
+    'planifier-repas-dit-a-alexa-sans-liste' => static function (WriteBudgetTestCase $t): object {
+        $owner = $t->savedUser();
+        [$first] = $t->typicalRecipes($owner);
+
+        return new AddSpokenMealCommand($owner->getId(), $first->getName(), false);
+    },
+    // Introuvable : seules les lectures du classeur, aucune écriture
+    'planifier-repas-dit-a-alexa-introuvable' => static function (WriteBudgetTestCase $t): object {
+        $owner = $t->savedUser();
+        $t->typicalRecipes($owner);
+
+        return new AddSpokenMealCommand($owner->getId(), 'xyz', true);
+    },
+    // Une proposition de recette choisie : le repas est planifié ET la phrase retenue
+    'choisir-recette-proposee-alexa' => static function (WriteBudgetTestCase $t): object {
+        $owner = $t->savedUser();
+        [$first, $second, $third] = $t->typicalRecipes($owner);
+        $t->savedShoppingList($owner, [$first, $second]);
+        $state = SpokenDialogueState::chooseRecipe('gateau', [new DialogueOption($third->getId(), $third->getName())], 'gateau');
+
+        return new AnswerSpokenDialogueCommand($owner->getId(), AlexaRequest::fromDecoded(AlexaTestRequest::chooseOption('le premier', '1')->inOpenSession()->toArray()), $state);
+    },
+    // La réponse « six » à « Le repas … est déjà prévu pour 4 personnes » : le nouveau total
+    'changer-portions-repas-dit-a-alexa' => static function (WriteBudgetTestCase $t): object {
+        $owner = $t->savedUser();
+        $recipes = $t->typicalRecipes($owner);
+        $t->savedShoppingList($owner, $recipes);
+        $state = SpokenDialogueState::askingServings(new DialogueOption($recipes[0]->getId(), $recipes[0]->getName()), 4);
+
+        return new AnswerSpokenDialogueCommand($owner->getId(), AlexaRequest::fromDecoded(AlexaTestRequest::answerServings('six', '6')->inOpenSession()->toArray()), $state);
     },
     // Compte qui a un lien Google, une version d'application connue (DRV-637), trois recettes planifiées dans une liste (dont une est
     // copiée par un autre utilisateur), un magasin, une préférence de produits et un alias d'ingrédient (ADR 0028). La purge des données

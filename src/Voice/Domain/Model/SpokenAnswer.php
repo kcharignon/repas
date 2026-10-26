@@ -12,6 +12,8 @@ final readonly class SpokenAnswer
         public SpokenAnswerKind $kind,
         public ?DialogueOption $option = null,
         public ?string $phrase = null,
+        /** Un nombre de personnes : celui de `PICK_SERVINGS`, ou celui qu'une nouvelle demande de repas (`NEW_MEAL`) a dit (`null` : celui du compte). */
+        public ?int $number = null,
     ) {
     }
 
@@ -33,6 +35,18 @@ final readonly class SpokenAnswer
     public static function pickUnit(DialogueOption $unit): self
     {
         return new self(SpokenAnswerKind::PICK_UNIT, $unit);
+    }
+
+    /** « Planifie le repas … » dit au milieu d'une question : une nouvelle demande, de repas (ADR 0029 décision 13). */
+    public static function newMeal(string $phrase, ?int $servings): self
+    {
+        return new self(SpokenAnswerKind::NEW_MEAL, null, $phrase, $servings);
+    }
+
+    /** Le nouveau total de personnes d'un repas déjà planifié. */
+    public static function pickServings(int $servings): self
+    {
+        return new self(SpokenAnswerKind::PICK_SERVINGS, null, null, $servings);
     }
 
     public static function newRequest(string $phrase): self

@@ -329,4 +329,88 @@ class AlexaDialogueTest extends TestCase
     {
         return AlexaRequest::fromDecoded($request->toArray());
     }
+
+    // ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
+    // Planifier un repas (ADR 0029 décision 13, VOX-305)
+    // ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
+
+    public function testAMealWithARecipeIsLeftToTheUseCase(): void
+    {
+        $this->assertNull($this->dialogue->answer($this->read(AlexaTestRequest::addMeal('hachis parmentier'))));
+        $this->assertNull($this->dialogue->answer($this->read(AlexaTestRequest::addMeal('hachis parmentier', 'six', '6'))));
+    }
+
+    public function testAnItemThatAnnouncesAMealIsLeftToTheUseCaseToo(): void
+    {
+        $this->assertNull($this->dialogue->answer($this->read(AlexaTestRequest::addItem('le repas hachis parmentier pour six personnes'))));
+        $this->assertNull($this->dialogue->answer($this->read(AlexaTestRequest::addItem('la recette de gratin'))));
+    }
+
+    public function testAnItemWithoutTheWordStaysAProduct(): void
+    {
+        // When : « ajoute un hachis parmentier » : même phrase de fin, mais rien n'annonce un repas
+        $answer = $this->dialogue->answer($this->read(AlexaTestRequest::addItem('un hachis parmentier')));
+
+        // Then : un produit, comme avant (le cas d'usage des produits)
+        $this->assertNull($answer);
+    }
+
+    #[DataProvider('mealWithoutARecipe')]
+    public function testAMealWithoutARecipeGetsAnExampleNeverAnOpenQuestion(AlexaTestRequest $request): void
+    {
+        // When
+        $direct = $this->dialogue->answer($this->read($request));
+        $inOpenSession = $this->dialogue->answer($this->read($request->inOpenSession()));
+
+        // Then : « Dis par exemple : planifie le repas hachis parmentier. » (la réponse brève « hachis » serait comprise comme un produit)
+        $this->assertEquals(AlexaResponse::say(VoiceReplies::MEAL_EXAMPLE), $direct);
+        $this->assertEquals(AlexaResponse::stayOpen(VoiceReplies::MEAL_EXAMPLE), $inOpenSession);
+    }
+
+    /**
+     * @return iterable<string, array{AlexaTestRequest}>
+     */
+    public static function mealWithoutARecipe(): iterable
+    {
+        yield 'planifie sans recette' => [AlexaTestRequest::addMeal(null)];
+        yield 'planifie avec seulement le mot' => [AlexaTestRequest::addMeal('le repas')];
+        yield 'ajoute le repas' => [AlexaTestRequest::addItem('le repas')];
+        yield 'ajoute la recette' => [AlexaTestRequest::addItem('la recette')];
+    }
+
+    public function testANumberOfPeopleThatCannotBeWrittenIsAskedAgainAndNothingIsWritten(): void
+    {
+        // When
+        $answer = $this->dialogue->answer($this->read(AlexaTestRequest::addMeal('hachis parmentier', '0')));
+
+        // Then
+        $this->assertEquals(AlexaResponse::say(VoiceReplies::HOW_MANY), $answer);
+    }
+
+    public function testTheAnswersOfTheMealDialogueWithoutAnyQuestionInProgressGetTheFallback(): void
+    {
+        // Given : séance trop vieille, état perdu
+        foreach ([AlexaTestRequest::answerServings('six', '6'), AlexaTestRequest::chooseKind('recette', 'meal'), AlexaTestRequest::keepMeal()] as $request) {
+            // When
+            $answer = $this->dialogue->answer($this->read($request));
+
+            // Then
+            $this->assertEquals(AlexaResponse::ask(VoiceReplies::FALLBACK, VoiceReplies::LAUNCH), $answer);
+        }
+    }
+
+    public function testAMealStateDefersEveryAnswerToTheUseCase(): void
+    {
+        // Given
+        $state = SpokenDialogueState::askingServings(new DialogueOption('recipe-1', 'gratin'), 4);
+
+        // When / Then : l'état décide, quelle que soit l'intention ; seuls « stop » et « annule » sont traités ici
+        foreach ([AlexaTestRequest::answerServings('six', '6'), AlexaTestRequest::keepMeal(), AlexaTestRequest::yes(), AlexaTestRequest::no(), AlexaTestRequest::addItem('six')] as $request) {
+            $this->assertNull($this->dialogue->answer($this->read($request->withSessionAttributes([SpokenDialogueState::ATTRIBUTE => $state->toArray()]))));
+        }
+        $this->assertEquals(
+            AlexaResponse::say(VoiceReplies::GOODBYE),
+            $this->dialogue->answer($this->read(AlexaTestRequest::intent('AMAZON.StopIntent')->withSessionAttributes([SpokenDialogueState::ATTRIBUTE => $state->toArray()]))),
+        );
+    }
 }

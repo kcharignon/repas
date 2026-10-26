@@ -9,6 +9,10 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use Psr\Log\NullLogger;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Repas\Domain\Model\Ingredient;
+use Repas\Tests\Helper\Builder\RecipeBuilder;
+use Repas\Tests\Helper\Builder\ConversionBuilder;
+use Repas\Repas\Domain\Model\Recipe;
+use Repas\Repas\Domain\Model\Meal;
 use Repas\Repas\Domain\Model\ShoppingList;
 use Repas\Repas\Domain\Model\ShoppingListStatus;
 use Repas\Shared\Application\Dto\ResolvedIngredient;
@@ -161,7 +165,7 @@ class AlexaWebhookApiFlowTest extends DatabaseTestCase
         $this->say(AlexaTestRequest::addItem('xyz'));
 
         // Then : Alexa demande, la séance reste ouverte, rien n'est écrit
-        $this->assertSame('Je ne connais pas xyz. Je le crée ?', $this->speech());
+        $this->assertSame('Je ne connais pas xyz. Je le crée ? Ou c\'est une recette ?', $this->speech());
         $this->assertFalse($this->jsonBody()['response']['shouldEndSession']);
         $this->entityManager->clear();
         $list = $this->lists->findOneActivateByOwner($user->getId());
@@ -210,7 +214,7 @@ class AlexaWebhookApiFlowTest extends DatabaseTestCase
         $this->say(AlexaTestRequest::addItem('du pain'));
 
         // Then : pour lui le pain est inconnu, et rien n'est proposé de l'ingrédient de l'autre
-        $this->assertSame('Je ne connais pas pain. Je le crée ?', $this->speech());
+        $this->assertSame('Je ne connais pas pain. Je le crée ? Ou c\'est une recette ?', $this->speech());
         $this->assertStringNotContainsString('pain-', (string) $this->client->getResponse()->getContent());
         $this->assertSame(0, $this->rowCount('shopping_list'));
         $this->assertCount(0, $this->lists->findByOwner($user->getId()));
@@ -484,9 +488,9 @@ class AlexaWebhookApiFlowTest extends DatabaseTestCase
         $this->say(AlexaTestRequest::addItem('du sirop de menthe'));
 
         // Then : Alexa propose le sirop et « un nouveau produit », la séance reste ouverte, l'état voyage, rien n'est écrit
-        $this->assertSame('Je ne connais pas sirop de menthe. Tu veux dire sirop fruit rouge ? Ou un nouveau produit ?', $this->speech());
+        $this->assertSame('Je ne connais pas sirop de menthe. Tu veux dire sirop fruit rouge ? Ou un nouveau produit, ou une recette ?', $this->speech());
         $this->assertFalse($this->jsonBody()['response']['shouldEndSession']);
-        $this->assertSame('Tu veux dire sirop fruit rouge ? Ou un nouveau produit ?', $this->jsonBody()['response']['reprompt']['outputSpeech']['text']);
+        $this->assertSame('Tu veux dire sirop fruit rouge ? Ou un nouveau produit, ou une recette ?', $this->jsonBody()['response']['reprompt']['outputSpeech']['text']);
         $this->assertSame('choose', $this->attributes()['dialogue']['step']);
         $this->assertSame(0, $this->rowCount('shopping_list_row'));
         $this->assertSame(0, $this->rowCount('spoken_phrase_choice'));
@@ -531,12 +535,12 @@ class AlexaWebhookApiFlowTest extends DatabaseTestCase
         $this->say(AlexaTestRequest::addItem('des pâtes à pizza')->inOpenSession());
 
         // Then : les trois, du plus au moins proche
-        $this->assertSame('Je ne connais pas pâtes à pizza. Tu veux dire pâte ramen, pâte brisée ou pâte sablée ? Ou un nouveau produit ?', $this->speech() . '');
+        $this->assertSame('Je ne connais pas pâtes à pizza. Tu veux dire pâte ramen, pâte brisée ou pâte sablée ? Ou un nouveau produit, ou une recette ?', $this->speech() . '');
         $this->assertCount(3, $this->attributes()['dialogue']['options']);
 
         // When : « oui » seul ne suffit pas, il y en a trois
         $this->converse(AlexaTestRequest::yes(), $this->attributes());
-        $this->assertSame('Lequel ? pâte ramen, pâte brisée ou pâte sablée. Ou un nouveau produit ?', $this->speech());
+        $this->assertSame('Lequel ? pâte ramen, pâte brisée ou pâte sablée. Ou un nouveau produit, ou une recette ?', $this->speech());
 
         // When : « le deuxième »
         $this->converse(AlexaTestRequest::chooseOption('le deuxième', '2'), $this->attributes());
@@ -559,7 +563,7 @@ class AlexaWebhookApiFlowTest extends DatabaseTestCase
 
         // When : « ajoute de la ciboulette » dans une séance ouverte
         $this->converse(AlexaTestRequest::addItem('de la ciboulette'));
-        $this->assertSame('Je ne connais pas ciboulette. Je le crée ?', $this->speech());
+        $this->assertSame('Je ne connais pas ciboulette. Je le crée ? Ou c\'est une recette ?', $this->speech());
 
         // When : « oui » -> le rayon
         $this->converse(AlexaTestRequest::yes(), $this->attributes());
@@ -728,7 +732,7 @@ class AlexaWebhookApiFlowTest extends DatabaseTestCase
         $this->say(AlexaTestRequest::addItem('de la ciboulette'));
 
         // Then : la question revient, ciboulette n'est pas devenue du pain
-        $this->assertSame('Je ne connais pas ciboulette. Je le crée ?', $this->speech());
+        $this->assertSame('Je ne connais pas ciboulette. Je le crée ? Ou c\'est une recette ?', $this->speech());
         $this->assertSame('choose', $this->attributes()['dialogue']['step']);
         $this->assertSame(1, $this->rowCount('shopping_list_row'));
     }
@@ -1033,7 +1037,7 @@ class AlexaWebhookApiFlowTest extends DatabaseTestCase
         $this->say(AlexaTestRequest::addItem('du sirop de menthe'));
 
         // Then : rien à proposer, il n'en a pas
-        $this->assertSame('Je ne connais pas sirop de menthe. Je le crée ?', $this->speech());
+        $this->assertSame('Je ne connais pas sirop de menthe. Je le crée ? Ou c\'est une recette ?', $this->speech());
         $this->assertStringNotContainsString('rouge', (string) $this->client->getResponse()->getContent());
     }
 
@@ -1723,6 +1727,452 @@ class AlexaWebhookApiFlowTest extends DatabaseTestCase
         $this->persister->saveUser($user);
 
         return $user;
+    }
+
+// ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
+    // Planifier un repas (ADR 0029 décision 13, VOX-305)
+    // ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
+
+    /**
+     * Un utilisateur lié dont le compte compte `$serving` personnes.
+     */
+    private function linkedUserFor(int $serving): User
+    {
+        $user = new UserBuilder()->withServing($serving)->build();
+        $this->persister->saveUser($user);
+        $this->linkedTo($user, self::ACCESS_TOKEN_SEED);
+
+        return $user;
+    }
+
+    /**
+     * Une recette de `$author` nommée `$name`, avec les conversions de ses ingrédients vers leur unité d'achat.
+     */
+    private function savedRecipe(User $author, string $name, bool $withConversions = true): Recipe
+    {
+        $recipe = new RecipeBuilder()->isPastaCarbonara()->withName($name)->withAuthor($author)->build();
+        foreach ($recipe->getRows() as $row) {
+            $row->getIngredient()->setCreatorId($author->getId());
+        }
+        $this->persister->saveRecipe($recipe);
+        if ($withConversions) {
+            foreach ($recipe->getRows() as $row) {
+                $purchaseUnit = $row->getIngredient()->getDefaultPurchaseUnit();
+                if (!$row->getUnit()->isEqual($purchaseUnit)) {
+                    $this->persister->saveConversion(new ConversionBuilder()->withIngredient($row->getIngredient())->withStartUnit($purchaseUnit)->withEndUnit($row->getUnit())->withCoefficient(100.0)->build());
+                }
+            }
+        }
+        $this->entityManager->clear();
+
+        return $recipe;
+    }
+
+    /**
+     * Le repas de cette recette dans la liste active de l'utilisateur, `null` s'il n'y est pas.
+     */
+    private function mealOf(User $user, Recipe $recipe): ?Meal
+    {
+        $this->entityManager->clear();
+        $list = $this->lists->findOneActivateByOwner($user->getId());
+
+        return $list?->getMeals()->find(static fn(Meal $meal): bool => $meal->getRecipeId() === $recipe->getId());
+    }
+
+    public function testAMealIsPlannedForTheServingsOfTheAccountAndAlexaSaysSo(): void
+    {
+        // Given : un compte pour trois personnes, la recette « hachis parmentier » et une liste active
+        $user = $this->linkedUserFor(3);
+        $recipe = $this->savedRecipe($user, 'Hachis parmentier');
+        $list = $this->savedActiveList($user);
+
+        // When : « Alexa, demande à Jarvis de planifier le repas hachis parmentier »
+        $this->say(AlexaTestRequest::addMeal('le repas hachis parmentier'));
+
+        // Then : planifié pour trois personnes, dans la liste existante, la séance se ferme sans relance
+        $this->assertSame(["C'est noté : hachis parmentier, pour 3 personnes.", true], [$this->speech(), $this->jsonBody()['response']['shouldEndSession']]);
+        $this->assertArrayNotHasKey('reprompt', $this->jsonBody()['response']);
+        $this->assertSame(3, $this->mealOf($user, $recipe)?->getServing());
+        $this->assertCount(1, $this->lists->findByOwner($user->getId()));
+        $this->assertSame($list->getId(), $this->lists->findOneActivateByOwner($user->getId())->getId());
+        $this->assertSame(0, $this->rowCount('spoken_recipe_phrase_choice'), 'un nom reconnu ne retient rien');
+    }
+
+    public function testTheServingsSaidInThePhraseOrInTheSlotAreForced(): void
+    {
+        // Given
+        $user = $this->linkedUserFor(3);
+        $first = $this->savedRecipe($user, 'Hachis parmentier');
+        $second = $this->savedRecipe($user, 'Lasagnes');
+        $this->savedActiveList($user);
+
+        // When : « … pour six personnes » dit dans le nom, puis le créneau `servings`
+        $this->say(AlexaTestRequest::addMeal('hachis parmentier pour six personnes'));
+        $inPhrase = $this->speech();
+        $this->say(AlexaTestRequest::addMeal('lasagnes', 'huit', '8'));
+
+        // Then
+        $this->assertSame("C'est noté : hachis parmentier, pour 6 personnes.", $inPhrase);
+        $this->assertSame("C'est noté : lasagnes, pour 8 personnes.", $this->speech());
+        $this->assertSame(6, $this->mealOf($user, $first)?->getServing());
+        $this->assertSame(8, $this->mealOf($user, $second)?->getServing());
+    }
+
+    public function testAMealAnnouncedByTheWordButRangedInTheProductIntentIsStillAMeal(): void
+    {
+        // Given
+        $user = $this->linkedUserFor(2);
+        $recipe = $this->savedRecipe($user, 'Hachis parmentier');
+
+        // When : « ajoute la recette hachis parmentier » qu'Amazon a rangé dans `AddItemIntent`
+        $this->say(AlexaTestRequest::addItem('la recette hachis parmentier'));
+
+        // Then : une liste est commencée pour ce repas
+        $this->assertSame("J'ai commencé une nouvelle liste avec hachis parmentier, pour 2 personnes.", $this->speech());
+        $this->assertSame(2, $this->mealOf($user, $recipe)?->getServing());
+    }
+
+    public function testWithoutTheWordAnAddIsAProductAndAskingForARecipeIsOneWordAway(): void
+    {
+        // Given : une recette, aucun produit de ce nom
+        $user = $this->linkedUserFor(3);
+        $recipe = $this->savedRecipe($user, 'Hachis parmentier');
+        $this->savedActiveList($user);
+        $ingredientsBefore = $this->rowCount('ingredient');
+
+        // When : « ajoute un hachis parmentier » (un produit)
+        $this->say(AlexaTestRequest::addItem('un hachis parmentier'));
+
+        // Then : un produit inconnu, et Alexa propose aussi « une recette » ; rien n'est écrit
+        $this->assertSame('Je ne connais pas hachis parmentier. Je le crée ? Ou c\'est une recette ?', $this->speech());
+        $this->assertSame(0, $this->rowCount('shopping_list_row'));
+
+        // When : « une recette »
+        $this->converse(AlexaTestRequest::chooseKind('une recette', 'meal'), $this->attributes());
+
+        // Then : cherché dans les recettes avec la phrase d'origine, planifié, la séance se ferme
+        $this->assertSame("C'est noté : hachis parmentier, pour 3 personnes.", $this->speech());
+        $this->assertSame([], $this->attributes());
+        $this->assertTrue($this->jsonBody()['response']['shouldEndSession']);
+        $this->assertSame(3, $this->mealOf($user, $recipe)?->getServing());
+        $this->assertSame($ingredientsBefore, $this->rowCount('ingredient'), 'aucun produit n\'est créé');
+    }
+
+    public function testTheWordRecipeSaidAsAPlainTextAnswerIsEnoughWhateverTheIntent(): void
+    {
+        // Given
+        $user = $this->linkedUserFor(3);
+        $recipe = $this->savedRecipe($user, 'Hachis parmentier');
+        $this->savedActiveList($user);
+        $this->say(AlexaTestRequest::addItem('un hachis parmentier'));
+
+        // When : Amazon range « c'est une recette » dans l'intention des produits
+        $this->converse(AlexaTestRequest::addItem("c'est une recette"), $this->attributes());
+
+        // Then
+        $this->assertSame("C'est noté : hachis parmentier, pour 3 personnes.", $this->speech());
+        $this->assertNotNull($this->mealOf($user, $recipe));
+    }
+
+    public function testAnUnknownRecipeProposesTheThreeClosestAndTheChoiceIsPlannedAndRemembered(): void
+    {
+        // Given : deux gratins, aucun nommé « gratin » ; celui de l'autre utilisateur n'est jamais proposé
+        $user = $this->linkedUserFor(4);
+        $dauphinois = $this->savedRecipe($user, 'Gratin dauphinois');
+        $this->savedRecipe($user, 'Gratin de pâtes');
+        $this->savedRecipe($this->savedUser(), 'Gratin de courgettes');
+
+        // When : « planifie le gratin »
+        $this->say(AlexaTestRequest::addMeal('gratin'));
+
+        // Then : les deux recettes de l'utilisateur et l'issue « un produit », l'état voyage, rien n'est écrit, aucune recette n'est créée
+        $this->assertSame('Je ne trouve pas la recette gratin. Tu veux dire gratin de pâtes ou gratin dauphinois ? Ou un produit ?', $this->speech());
+        $this->assertFalse($this->jsonBody()['response']['shouldEndSession']);
+        $this->assertSame('meal', $this->attributes()['dialogue']['target']);
+        $this->assertSame(0, $this->rowCount('shopping_list'));
+        $recipesBefore = $this->rowCount('recipe');
+
+        // When : « le deuxième »
+        $this->converse(AlexaTestRequest::chooseOption('le deuxième', '2'), $this->attributes());
+
+        // Then : planifié, la phrase retenue pour cette recette, rien de plus
+        $this->assertSame("J'ai commencé une nouvelle liste avec gratin dauphinois, pour 4 personnes. Je m'en souviendrai.", $this->speech());
+        $this->assertSame([], $this->attributes());
+        $this->assertSame(4, $this->mealOf($user, $dauphinois)?->getServing());
+        $this->assertSame(
+            [[$user->getId(), 'gratin', $dauphinois->getId(), 1]],
+            array_map(static fn(array $row): array => [$row['user_id'], $row['phrase'], $row['recipe_id'], (int) $row['times']], $this->connection()->fetchAllAssociative('SELECT * FROM spoken_recipe_phrase_choice')),
+        );
+        $this->assertSame(0, $this->rowCount('spoken_phrase_choice'), 'la mémoire des produits ne bouge pas');
+        $this->assertSame($recipesBefore, $this->rowCount('recipe'));
+    }
+
+    public function testARecipeAlreadyInTheListIsNeverPlannedTwiceAndTheTotalIsAskedThenReplaced(): void
+    {
+        // Given : le repas est déjà planifié pour trois personnes
+        $user = $this->linkedUserFor(3);
+        $recipe = $this->savedRecipe($user, 'Hachis parmentier');
+        $this->say(AlexaTestRequest::addMeal('hachis parmentier'));
+        $this->assertSame(3, $this->mealOf($user, $recipe)?->getServing());
+        $versionBefore = $this->lists->findOneActivateByOwner($user->getId())->getVersion();
+
+        // When : on le redit, même avec « pour six »
+        $this->say(AlexaTestRequest::addMeal('hachis parmentier pour six personnes'));
+
+        // Then : on dit qu'il y est et pour combien ; la séance reste ouverte ; rien n'est écrit
+        $this->assertSame('Le repas hachis parmentier est déjà prévu pour 3 personnes. Tu le veux pour combien, ou on ne change rien ?', $this->speech());
+        $this->assertFalse($this->jsonBody()['response']['shouldEndSession']);
+        $this->assertSame('servings', $this->attributes()['dialogue']['step']);
+        $this->entityManager->clear();
+        $this->assertSame($versionBefore, $this->lists->findOneActivateByOwner($user->getId())->getVersion());
+
+        // When : « six »
+        $this->converse(AlexaTestRequest::answerServings('six', '6'), $this->attributes());
+
+        // Then : le nouveau total (6), pas une addition (9) ; toujours UN seul repas
+        $this->assertSame("C'est changé : hachis parmentier, pour 6 personnes.", $this->speech());
+        $this->assertSame([], $this->attributes());
+        $this->assertTrue($this->jsonBody()['response']['shouldEndSession']);
+        $this->assertSame(6, $this->mealOf($user, $recipe)?->getServing());
+        $this->assertCount(1, $this->lists->findOneActivateByOwner($user->getId())->getMeals());
+    }
+
+    #[DataProvider('answersThatChangeNothing')]
+    public function testTheSameNumberNoOrNothingChangesNothing(AlexaTestRequest $answer): void
+    {
+        // Given : planifié pour trois, puis redit
+        $user = $this->linkedUserFor(3);
+        $recipe = $this->savedRecipe($user, 'Hachis parmentier');
+        $this->say(AlexaTestRequest::addMeal('hachis parmentier'));
+        $this->say(AlexaTestRequest::addMeal('hachis parmentier'));
+        $this->entityManager->clear();
+        $versionBefore = $this->lists->findOneActivateByOwner($user->getId())->getVersion();
+
+        // When
+        $this->converse($answer, $this->attributes());
+
+        // Then
+        $this->assertSame("D'accord, je ne change rien.", $this->speech());
+        $this->assertSame([], $this->attributes());
+        $this->assertSame(3, $this->mealOf($user, $recipe)?->getServing());
+        $this->assertSame($versionBefore, $this->lists->findOneActivateByOwner($user->getId())->getVersion());
+    }
+
+    /**
+     * @return iterable<string, array{AlexaTestRequest}>
+     */
+    public static function answersThatChangeNothing(): iterable
+    {
+        yield 'le même nombre' => [AlexaTestRequest::answerServings('trois', '3')];
+        yield 'non' => [AlexaTestRequest::no()];
+        yield 'rien' => [AlexaTestRequest::keepMeal()];
+        yield 'rien, dit comme un produit' => [AlexaTestRequest::addItem('ne change rien')];
+    }
+
+    public function testTheTotalCanBeAnsweredWhateverTheIntentAmazonChose(): void
+    {
+        // Given
+        $user = $this->linkedUserFor(3);
+        $recipe = $this->savedRecipe($user, 'Hachis parmentier');
+        $this->say(AlexaTestRequest::addMeal('hachis parmentier'));
+        $this->say(AlexaTestRequest::addMeal('hachis parmentier'));
+
+        // When : « pour deux personnes » rangé dans l'intention des produits, le rang d'Amazon ou une quantité
+        $this->converse(AlexaTestRequest::addItem('pour deux personnes'), $this->attributes());
+
+        // Then
+        $this->assertSame("C'est changé : hachis parmentier, pour 2 personnes.", $this->speech());
+        $this->assertSame(2, $this->mealOf($user, $recipe)?->getServing());
+    }
+
+    public function testAnUnknownRecipeThenAProductSwitchesToTheProductSearchOnceAndOffersNoRecipeAgain(): void
+    {
+        // Given : une recette de ce nom n'existe pas, le produit non plus
+        $user = $this->linkedUserFor(3);
+        $this->savedRecipe($user, 'Lasagnes');
+
+        // When : « planifie le repas xyz »
+        $this->say(AlexaTestRequest::addMeal('xyz'));
+
+        // Then : aucune recette proche, « c'est un produit ? »
+        $this->assertSame("Je ne trouve pas la recette xyz. C'est un produit ?", $this->speech());
+
+        // When : « oui »
+        $this->converse(AlexaTestRequest::yes(), $this->attributes());
+
+        // Then : la recherche de produits repart, le dialogue ordinaire d'un produit inconnu, SANS « ou une recette ? » (déjà essayé)
+        $this->assertSame('Je ne connais pas xyz. Je le crée ?', $this->speech());
+        $this->assertTrue($this->attributes()['dialogue']['otherSideTried']);
+
+        // When : « une recette » : plus d'issue, pas compris
+        $this->converse(AlexaTestRequest::chooseKind('une recette', 'meal'), $this->attributes());
+
+        // Then
+        $this->assertSame("Je n'ai pas compris. Je ne connais pas xyz. Je le crée ?", $this->speech());
+        $this->assertSame(0, $this->rowCount('shopping_list'));
+    }
+
+    public function testAnUnknownRecipeThatIsAProductIsAddedAsAProduct(): void
+    {
+        // Given : pas de recette « pain », mais un produit
+        $user = $this->linkedUserFor(3);
+        $this->savedBread($user);
+        $this->savedActiveList($user);
+
+        // When : « planifie le repas pain », « un produit »
+        $this->say(AlexaTestRequest::addMeal('pain'));
+        $asked = $this->speech();
+        $this->converse(AlexaTestRequest::chooseKind('un produit', 'item'), $this->attributes());
+
+        // Then
+        $this->assertSame("Je ne trouve pas la recette pain. C'est un produit ?", $asked);
+        $this->assertSame("C'est noté : pain.", $this->speech());
+        $this->assertSame(1, $this->rowCount('shopping_list_row'));
+        $this->assertSame(0, $this->rowCount('meal'));
+    }
+
+    public function testAnUnknownProductThenARecipeThatDoesNotExistEitherEndsWithNothingFound(): void
+    {
+        // Given
+        $user = $this->linkedUserFor(3);
+        $this->savedRecipe($user, 'Lasagnes');
+
+        // When : « ajoute xyz » -> « une recette »
+        $this->say(AlexaTestRequest::addItem('xyz'));
+        $this->converse(AlexaTestRequest::chooseKind('une recette', 'meal'), $this->attributes());
+
+        // Then : les deux côtés sont essayés, plus rien à proposer, la séance se ferme
+        $this->assertSame("Je ne trouve rien qui s'appelle xyz.", $this->speech());
+        $this->assertSame([], $this->attributes());
+        $this->assertTrue($this->jsonBody()['response']['shouldEndSession']);
+        $this->assertSame(0, $this->rowCount('shopping_list'));
+    }
+
+    public function testTheRecipeOfAnotherUserIsNeverFoundNorPlanned(): void
+    {
+        // Given : le hachis est à quelqu'un d'autre
+        $user = $this->linkedUserFor(3);
+        $this->savedRecipe($this->savedUser(), 'Hachis parmentier');
+
+        // When
+        $this->say(AlexaTestRequest::addMeal('hachis parmentier'));
+
+        // Then
+        $this->assertSame("Je ne trouve pas la recette hachis parmentier. C'est un produit ?", $this->speech());
+        $this->assertStringNotContainsString('Hachis parmentier', (string) $this->client->getResponse()->getContent());
+        $this->assertSame(0, $this->rowCount('shopping_list'));
+        $this->assertCount(0, $this->lists->findByOwner($user->getId()));
+    }
+
+    public function testAForgedStateWithTheRecipeOfAnotherUserPlansNothingRemembersNothingAndAnswersPolitely(): void
+    {
+        // Given : l'état désigne la recette d'un AUTRE utilisateur
+        $user = $this->linkedUserFor(3);
+        $theirs = $this->savedRecipe($this->savedUser(), 'Hachis parmentier');
+        $forged = SpokenDialogueState::chooseRecipe('gratin', [new DialogueOption($theirs->getId(), 'hachis parmentier')], 'gratin');
+
+        // When : « le premier »
+        $this->converse(AlexaTestRequest::chooseOption('le premier', '1'), ['dialogue' => $forged->toArray()]);
+
+        // Then : une phrase polie, aucune liste, aucune mémoire, aucun état
+        $this->assertSame(200, $this->statusCode());
+        $this->assertSame("Je n'ai pas pu faire ça. Réessaie dans un instant.", $this->speech());
+        $this->assertArrayNotHasKey('sessionAttributes', $this->jsonBody());
+        $this->assertSame(0, $this->rowCount('shopping_list'));
+        $this->assertSame(0, $this->rowCount('spoken_recipe_phrase_choice'));
+        $this->assertCount(0, $this->lists->findByOwner($user->getId()));
+    }
+
+    public function testAForgedServingsStateWithAGhostRecipeChangesNothing(): void
+    {
+        // Given
+        $user = $this->linkedUserFor(3);
+        $forged = SpokenDialogueState::askingServings(new DialogueOption('ghost-recipe', 'hachis parmentier'), 4);
+
+        // When : « six »
+        $this->converse(AlexaTestRequest::answerServings('six', '6'), ['dialogue' => $forged->toArray()]);
+
+        // Then
+        $this->assertSame("Je n'ai pas pu faire ça. Réessaie dans un instant.", $this->speech());
+        $this->assertSame(0, $this->rowCount('shopping_list'));
+        $this->assertCount(0, $this->lists->findByOwner($user->getId()));
+    }
+
+    public function testWhenTheOnlyListWasSentTheMealStartsANewOneAndTheSentOneIsUntouched(): void
+    {
+        // Given : une liste envoyée au drive
+        $user = $this->linkedUserFor(2);
+        $recipe = $this->savedRecipe($user, 'Hachis parmentier');
+        $other = $this->savedRecipe($user, 'Lasagnes');
+        $sent = new ShoppingListBuilder()->withOwner($user)->addRecipe($other)->build();
+        foreach ($other->getRows() as $row) {
+            $sent->addRow($row->getIngredient()->getSlug(), $row->getIngredient()->getDefaultPurchaseUnit()->getSlug(), $row->getQuantity());
+        }
+        $sent->send(new DateTimeImmutable());
+        $this->lists->save($sent);
+        $this->entityManager->clear();
+
+        // When
+        $this->say(AlexaTestRequest::addMeal('hachis parmentier'));
+
+        // Then
+        $this->assertSame("J'ai commencé une nouvelle liste avec hachis parmentier, pour 2 personnes. Ta liste précédente est partie au drive.", $this->speech());
+        $this->entityManager->clear();
+        $reloaded = $this->lists->findOneById($sent->getId());
+        $this->assertSame([ShoppingListStatus::SENT, $sent->getVersion(), 1], [$reloaded->getStatus(), $reloaded->getVersion(), count($reloaded->getMeals())]);
+        $this->assertSame(2, $this->mealOf($user, $recipe)?->getServing());
+    }
+
+    public function testARecipeWhoseIngredientCannotBeConvertedAnswersPolitelyAndWritesNothing(): void
+    {
+        // Given : la recette ne se convertit pas dans l'unité d'achat de ses ingrédients
+        $user = $this->linkedUserFor(3);
+        $this->savedRecipe($user, 'Hachis parmentier', withConversions: false);
+
+        // When
+        $this->say(AlexaTestRequest::addMeal('hachis parmentier'));
+
+        // Then : la phrase d'échec, comme dans l'application tout est annulé (y compris la liste neuve)
+        $this->assertSame(200, $this->statusCode());
+        $this->assertSame("Je n'ai pas pu faire ça. Réessaie dans un instant.", $this->speech());
+        $this->assertSame(0, $this->rowCount('shopping_list'));
+        $this->assertSame(0, $this->rowCount('meal'));
+    }
+
+    public function testAMealWithoutARecipeGetsAnExampleAndAnUnusableNumberAsksAgain(): void
+    {
+        // Given
+        $this->linkedUserFor(3);
+
+        // When / Then
+        $this->say(AlexaTestRequest::addMeal(null));
+        $this->assertSame('Dis par exemple : planifie le repas hachis parmentier.', $this->speech());
+        $this->say(AlexaTestRequest::addItem('le repas'));
+        $this->assertSame('Dis par exemple : planifie le repas hachis parmentier.', $this->speech());
+        $this->say(AlexaTestRequest::addMeal('hachis parmentier', 'zéro', '0'));
+        $this->assertSame('Combien ? Redis ta demande avec un nombre de 1 à 99.', $this->speech());
+        $this->assertSame(0, $this->rowCount('shopping_list'));
+    }
+
+    public function testAPhraseRememberedForARecipeGivesItDirectlyNextTimeWithoutAnyQuestion(): void
+    {
+        // Given : « le plat du dimanche » a déjà été retenu pour le hachis
+        $user = $this->linkedUserFor(3);
+        $hachis = $this->savedRecipe($user, 'Hachis parmentier');
+        $this->savedRecipe($user, 'Lasagnes');
+        $this->savedActiveList($user);
+        $this->connection()->executeStatement(
+            "INSERT INTO spoken_recipe_phrase_choice (user_id, phrase, recipe_id, times, updated_at) VALUES (?, 'plat-dimanche', ?, 1, NOW())",
+            [$user->getId(), $hachis->getId()],
+        );
+
+        // When
+        $this->say(AlexaTestRequest::addMeal('le plat du dimanche'));
+
+        // Then : comme un nom exact, sans question ni promesse
+        $this->assertSame("C'est noté : hachis parmentier, pour 3 personnes.", $this->speech());
+        $this->assertTrue($this->jsonBody()['response']['shouldEndSession']);
+        $this->assertSame(3, $this->mealOf($user, $hachis)?->getServing());
     }
 
     /**

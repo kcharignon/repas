@@ -8,7 +8,7 @@ namespace Repas\Voice\Domain\Model;
  * modèle d'interaction leur donne. `DocsVoiceSkillTest` impose l'égalité des deux listes : une intention ajoutée au modèle sans être
  * gérée ici (ou l'inverse) fait échouer le test.
  *
- * Les sept suivantes (de `ChooseOptionIntent` à `AMAZON.NoIntent`) servent au dialogue d'un produit inconnu (décision 11) : Alexa choisit l'intention SANS connaître notre état, donc
+ * Les suivantes (de `ChooseOptionIntent` à `AMAZON.NoIntent`) servent au dialogue d'un produit inconnu (décision 11) et d'un repas (décision 13) : Alexa choisit l'intention SANS connaître notre état, donc
  * `SpokenAnswerInterpreter` interprète toujours la réponse d'après l'état de la séance, pas d'après l'intention seule.
  */
 enum AlexaIntent: string
@@ -19,6 +19,8 @@ enum AlexaIntent: string
     case REMOVE_ITEM = 'RemoveItemIntent';
     /** « est-ce qu'il y a des croquettes dans la liste ? » : le créneau `item` porte la phrase, la réponse est une lecture (décision 12). */
     case CHECK_ITEM = 'CheckItemIntent';
+    /** « planifie le repas hachis parmentier » : le créneau `recipe` porte la recette, `servings` le nombre de personnes dit (décision 13). */
+    case ADD_MEAL = 'AddMealIntent';
     /** « le deuxième », « la première » : le créneau `rank` porte le rang (1 à 3) parmi les propositions. */
     case CHOOSE_OPTION = 'ChooseOptionIntent';
     /** « un nouveau produit », « aucun des trois » : aucune proposition ne convient. */
@@ -29,6 +31,12 @@ enum AlexaIntent: string
     case ANSWER_UNIT = 'AnswerUnitIntent';
     /** « lesquels ? », « la liste », « je ne sais pas » : pendant le dialogue, lire les rayons ou les unités possibles (sans créneau). */
     case LIST_CHOICES = 'ListChoicesIntent';
+    /** « une recette », « un produit » : le créneau `kind` aiguille un produit non compris vers les recettes, ou l'inverse (décision 13). */
+    case CHOOSE_KIND = 'ChooseKindIntent';
+    /** « six », « pour six personnes » : le créneau `servings` porte le nouveau total d'un repas déjà planifié (décision 13). */
+    case ANSWER_SERVINGS = 'AnswerServingsIntent';
+    /** « rien », « ne change rien » : le repas déjà planifié reste tel quel (décision 13). */
+    case KEEP_MEAL = 'KeepMealIntent';
     case YES = 'AMAZON.YesIntent';
     case NO = 'AMAZON.NoIntent';
     case HELP = 'AMAZON.HelpIntent';

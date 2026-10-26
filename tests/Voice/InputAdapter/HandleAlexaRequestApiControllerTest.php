@@ -15,6 +15,7 @@ use Repas\Tests\Helper\MockCommandBus;
 use Repas\Tests\Helper\QueryBusWebTestCase;
 use Repas\Voice\Application\Command\AddSpokenItem\AddSpokenItemCommand;
 use Repas\Voice\Application\Command\AddSpokenItem\AddSpokenItemResult;
+use Repas\Voice\Application\Command\AddSpokenMeal\AddSpokenMealCommand;
 use Repas\Voice\Application\Command\AnswerSpokenDialogue\AnswerSpokenDialogueCommand;
 use Repas\Voice\Application\Command\RecordVoiceLinkUse\RecordVoiceLinkUseCommand;
 use Repas\Voice\Domain\Model\DialogueOption;
@@ -88,6 +89,55 @@ class HandleAlexaRequestApiControllerTest extends QueryBusWebTestCase
         ], $this->jsonBody());
         $this->assertEquals(new AddSpokenItemCommand('user-1', 'du pain', true), $this->commandBus->dispatched()[0]);
     }
+
+    public function testAMealIsPlannedByTheMealUseCaseNotByTheProductOne(): void
+    {
+        // Given
+        $this->linkedAccount();
+        $this->commandBus->willReturn(AddSpokenMealCommand::class, new AddSpokenItemResult("C'est noté : hachis parmentier, pour 6 personnes.", keepSessionOpen: false, added: true));
+
+        // When : « planifie le repas hachis parmentier pour six personnes »
+        $this->post(AlexaTestRequest::addMeal('le repas hachis parmentier pour six personnes')->withAccessToken(self::TOKEN));
+
+        // Then : la recette sans le mot ni la queue, le nombre de personnes dit, aucun ajout de produit
+        $this->assertSame(200, $this->statusCode());
+        $this->assertSame("C'est noté : hachis parmentier, pour 6 personnes.", $this->jsonBody()['response']['outputSpeech']['text']);
+        $this->assertCount(2, $this->commandBus->dispatched(), 'le repas, puis le suivi de la liaison');
+        $this->assertEquals(new AddSpokenMealCommand('user-1', 'hachis parmentier', false, 6), $this->commandBus->dispatched()[0]);
+    }
+
+    public function testAnItemThatAnnouncesAMealGoesToTheMealUseCaseInAnOpenSession(): void
+    {
+        // Given
+        $this->linkedAccount();
+        $this->commandBus->willReturn(AddSpokenMealCommand::class, new AddSpokenItemResult("C'est noté : gratin, pour 4 personnes.", keepSessionOpen: true, added: true));
+
+        // When : « la recette gratin » rangé dans l'intention des produits, séance ouverte, avec le nombre du créneau
+        $this->post(AlexaTestRequest::addItem('la recette gratin')->withAccessToken(self::TOKEN)->inOpenSession());
+
+        // Then
+        $this->assertEquals(new AddSpokenMealCommand('user-1', 'gratin', true, null), $this->commandBus->dispatched()[0]);
+        $this->assertFalse($this->jsonBody()['response']['shouldEndSession']);
+    }
+
+    public function testAnAnswerToTheMealDialogueGoesToTheDialogueUseCaseWhateverTheIntent(): void
+    {
+        // Given
+        $this->linkedAccount();
+        $this->commandBus->willReturn(AnswerSpokenDialogueCommand::class, new AddSpokenItemResult("C'est changé : gratin, pour 6 personnes.", keepSessionOpen: false, added: true));
+        $state = SpokenDialogueState::askingServings(new DialogueOption('recipe-1', 'gratin'), 4);
+
+        // When : « six »
+        $this->post(AlexaTestRequest::answerServings('six', '6')->withAccessToken(self::TOKEN)->withSessionAttributes(['dialogue' => $state->toArray()]));
+
+        // Then : la commande de réponse porte l'état lu et la requête, l'utilisateur du jeton
+        $command = $this->commandBus->dispatched()[0];
+        $this->assertInstanceOf(AnswerSpokenDialogueCommand::class, $command);
+        $this->assertSame('user-1', $command->userId);
+        $this->assertEquals($state, $command->state);
+        $this->assertSame(6, $command->request->servings);
+    }
+
 
     /**
      * @return iterable<string, array{AlexaTestRequest, string, bool}>

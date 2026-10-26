@@ -27,7 +27,7 @@ final readonly class SpokenIngredientNamer
     private const string LEADING_ARTICLE = "/^(?:de\\s+l'|de\\s+la\\s+|du\\s+|des\\s+|de\\s+|d'|l'|un\\s+|une\\s+|le\\s+|la\\s+|les\\s+)/u";
 
     /** Les nombres dits en lettres que l'on reconnaît en tête d'une phrase (« un » et « une » restent des articles : ils valent la quantité 1 par défaut). */
-    private const array NUMBER_WORDS = [
+    public const array NUMBER_WORDS = [
         'deux' => 2, 'trois' => 3, 'quatre' => 4, 'cinq' => 5, 'six' => 6, 'sept' => 7, 'huit' => 8, 'neuf' => 9, 'dix' => 10, 'onze' => 11,
         'douze' => 12, 'treize' => 13, 'quatorze' => 14, 'quinze' => 15, 'seize' => 16, 'vingt' => 20,
     ];

@@ -12,6 +12,10 @@ namespace Repas\Voice\Domain\Model;
  * Une seule exception à « deux phrases » : la question « de quoi tu parles ? » d'un produit inconnu (`ASK_WHICH`, `ASK_WHICH_AGAIN`), trois
  * phrases, parce qu'elle dit ce qui n'est pas connu, les propositions et l'issue « un nouveau produit » (ADR 0029 décision 11).
  *
+ * La planification d'un repas (ADR 0029 décision 13) ajoute trois autres questions de trois phrases : l'issue « ou une recette ? » d'un produit inconnu
+ * (`ASK_WHICH_OR_MEAL`, `ASK_WHICH_AGAIN_OR_MEAL`, `ASK_CREATE_OR_MEAL`) et les propositions d'une recette inconnue avec l'issue « ou un produit ? »
+ * (`ASK_MEAL_WHICH_OR_ITEM`, `ASK_MEAL_WHICH_AGAIN_OR_ITEM`).
+ *
  * Deux autres écarts, voulus par le propriétaire après le premier essai réel (2026-10-25) : la question de l'unité fait trois phrases (elle dit
  * aussi qu'on peut demander la liste), et la réponse à « lesquels ? » (`choices()`) lit tout le catalogue des rayons ou des unités, jusqu'à
  * 25 noms : deux phrases, dont la première, l'énumération, n'a pas de limite de mots (`VoiceRepliesTest`).
@@ -90,6 +94,11 @@ final class VoiceReplies
     public const string ASK_TIE_NAMES = 'Tu veux dire %s ?';
     /** Le produit dit est inconnu et rien ne lui ressemble. */
     public const string ASK_CREATE = 'Je ne connais pas %s. Je le crée ?';
+    /** Les mêmes questions quand les recettes n'ont pas encore été cherchées : l'issue « ou une recette ? » aiguille l'utilisateur (décision 13). */
+    public const string ASK_WHICH_OR_MEAL = 'Je ne connais pas %s. Tu veux dire %s ? Ou un nouveau produit, ou une recette ?';
+    public const string ASK_WHICH_SHORT_OR_MEAL = 'Tu veux dire %s ? Ou un nouveau produit, ou une recette ?';
+    public const string ASK_WHICH_AGAIN_OR_MEAL = 'Lequel ? %s. Ou un nouveau produit, ou une recette ?';
+    public const string ASK_CREATE_OR_MEAL = "Je ne connais pas %s. Je le crée ? Ou c'est une recette ?";
     public const string ASK_DEPARTMENT = 'Dans quel rayon ? Dis lesquels pour les entendre.';
     public const string ASK_UNIT = 'Quelle unité ? Par exemple pièce, kilo ou litre. Dis lesquelles pour les entendre.';
     /** « Lesquels ? » au rayon : tous les rayons du catalogue (`%s`), puis la question. */
@@ -113,6 +122,40 @@ final class VoiceReplies
     /** Le produit est créé et ajouté. */
     public const string CREATED = "C'est créé et noté : %s, rayon %s.";
     public const string CREATED_LIST_STARTED = "J'ai créé %s, rayon %s, et commencé une nouvelle liste.";
+
+    // ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
+    // Planifier un repas (ADR 0029 décision 13, VOX-305)
+    // ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
+
+    /** « Planifie » dit sans recette : on ne pose pas de question ouverte (la réponse brève serait comprise comme un produit), on donne l'exemple. */
+    public const string MEAL_EXAMPLE = 'Dis par exemple : planifie le repas hachis parmentier.';
+    /** Le repas est planifié (X : « hachis parmentier » ; Y : « 4 personnes »). */
+    public const string MEAL_PLANNED = "C'est noté : %s, pour %s.";
+    public const string MEAL_LIST_STARTED = "J'ai commencé une nouvelle liste avec %s, pour %s.";
+    /** Il a choisi une proposition : le repas est planifié et la phrase retenue. */
+    public const string MEAL_PLANNED_REMEMBERED = "C'est noté : %s, pour %s. Je m'en souviendrai.";
+    public const string MEAL_LIST_STARTED_REMEMBERED = "J'ai commencé une nouvelle liste avec %s, pour %s. Je m'en souviendrai.";
+    /** La recette est déjà dans la liste : elle n'y sera pas deux fois ; on demande le nouveau total, ou de ne rien changer (X : le repas, Y : « 4 personnes »). */
+    public const string MEAL_ALREADY_PLANNED = 'Le repas %s est déjà prévu pour %s. Tu le veux pour combien, ou on ne change rien ?';
+    /** Le nouveau total de personnes est posé. */
+    public const string MEAL_SERVINGS_CHANGED = "C'est changé : %s, pour %s.";
+    /** Il ne veut rien changer, ou dit le même nombre : rien n'est écrit. */
+    public const string MEAL_UNCHANGED = "D'accord, je ne change rien.";
+    /** Le repas a disparu de la liste entre la question et la réponse. */
+    public const string MEAL_NO_LONGER_PLANNED = "Ce repas n'est plus dans ta liste.";
+    /** Il refuse de choisir une recette : rien n'est planifié. */
+    public const string DECLINED_MEAL = "D'accord, je ne planifie rien.";
+    /** La recette dite est inconnue : jamais de création de recette à la voix. Les propositions, puis l'issue « ou un produit ? » tant que les produits n'ont pas été cherchés. */
+    public const string ASK_MEAL_WHICH = 'Je ne trouve pas la recette %s. Tu veux dire %s ?';
+    public const string ASK_MEAL_WHICH_OR_ITEM = 'Je ne trouve pas la recette %s. Tu veux dire %s ? Ou un produit ?';
+    public const string ASK_MEAL_WHICH_SHORT = 'Tu veux dire %s ?';
+    public const string ASK_MEAL_WHICH_SHORT_OR_ITEM = 'Tu veux dire %s ? Ou un produit ?';
+    public const string ASK_MEAL_WHICH_AGAIN = 'Laquelle ? %s.';
+    public const string ASK_MEAL_WHICH_AGAIN_OR_ITEM = 'Laquelle ? %s. Ou un produit ?';
+    /** Aucune recette ne ressemble à la phrase : on demande si c'est un produit. */
+    public const string ASK_MEAL_ITEM = "Je ne trouve pas la recette %s. C'est un produit ?";
+    /** Ni produit ni recette ne portent ce nom : plus d'issue. */
+    public const string NOTHING_FOUND = "Je ne trouve rien qui s'appelle %s.";
 
     /** Au-delà de ce nombre de mots, la réponse « C'est retiré : X. Il n'y en a plus dans ta liste. » perd sa seconde phrase. */
     private const int MAX_REMOVED_WORDS = 15;
@@ -189,15 +232,17 @@ final class VoiceReplies
 
     /**
      * « De quoi tu parles ? » : le produit `$name` est inconnu ; `$optionNames` sont les ingrédients de l'utilisateur qui lui ressemblent
-     * (aucun : on propose de le créer).
+     * (aucun : on propose de le créer). `$offerMeal` : les recettes n'ont pas encore été cherchées, l'issue « ou une recette ? » est proposée.
      *
      * @param list<string> $optionNames
      */
-    public static function unknown(string $name, array $optionNames): string
+    public static function unknown(string $name, array $optionNames, bool $offerMeal = false): string
     {
-        return $optionNames === []
-            ? sprintf(self::ASK_CREATE, self::speakable($name))
-            : sprintf(self::ASK_WHICH, self::speakable($name), self::joinNames($optionNames));
+        if ($optionNames === []) {
+            return sprintf($offerMeal ? self::ASK_CREATE_OR_MEAL : self::ASK_CREATE, self::speakable($name));
+        }
+
+        return sprintf($offerMeal ? self::ASK_WHICH_OR_MEAL : self::ASK_WHICH, self::speakable($name), self::joinNames($optionNames));
     }
 
     /**
@@ -207,10 +252,12 @@ final class VoiceReplies
     {
         return match ($state->step) {
             DialogueStep::CHOOSE => match (true) {
+                $state->isMeal() => self::mealQuestion($state),
                 $state->isTieBreak() => self::tieQuestion($state->options),
-                $state->options === [] => sprintf(self::ASK_CREATE, self::speakable($state->name)),
-                default => sprintf(self::ASK_WHICH_SHORT, self::joinNames(self::namesOf($state->options))),
+                $state->options === [] => sprintf($state->otherSideTried ? self::ASK_CREATE : self::ASK_CREATE_OR_MEAL, self::speakable($state->name)),
+                default => sprintf($state->otherSideTried ? self::ASK_WHICH_SHORT : self::ASK_WHICH_SHORT_OR_MEAL, self::joinNames(self::namesOf($state->options))),
             },
+            DialogueStep::SERVINGS => self::mealAlreadyPlanned($state->name, $state->plannedServings ?? 1),
             DialogueStep::DEPARTMENT => self::ASK_DEPARTMENT,
             DialogueStep::UNIT => self::ASK_UNIT,
             DialogueStep::CONFIRM => sprintf(
@@ -253,11 +300,14 @@ final class VoiceReplies
     /** « Oui », mais plusieurs propositions : laquelle ? */
     public static function whichAgain(SpokenDialogueState $state): string
     {
+        if ($state->isMeal()) {
+            return sprintf($state->otherSideTried ? self::ASK_MEAL_WHICH_AGAIN : self::ASK_MEAL_WHICH_AGAIN_OR_ITEM, self::joinNames(self::namesOf($state->options)));
+        }
         if ($state->isTieBreak()) {
             return self::tieQuestion($state->options);
         }
 
-        return sprintf(self::ASK_WHICH_AGAIN, self::joinNames(self::namesOf($state->options)));
+        return sprintf($state->otherSideTried ? self::ASK_WHICH_AGAIN : self::ASK_WHICH_AGAIN_OR_MEAL, self::joinNames(self::namesOf($state->options)));
     }
 
     /**
@@ -339,6 +389,75 @@ final class VoiceReplies
         $started = sprintf(self::CREATED_LIST_STARTED, $ingredient, $department);
 
         return $previousListSent ? $started . ' ' . self::PREVIOUS_LIST_SENT : $started;
+    }
+
+    /**
+     * Le repas est planifié : « C'est noté : hachis parmentier, pour 4 personnes. » ; sans liste active, « J'ai commencé une nouvelle liste avec … » (et la
+     * liste précédente envoyée au drive, dite à la place de la promesse de s'en souvenir, comme `remembered()`).
+     */
+    public static function mealPlanned(string $recipeName, int $servings, bool $listCreated, bool $previousListSent, bool $remembered = false): string
+    {
+        $name = self::speakable($recipeName);
+        $people = self::people($servings);
+
+        if (!$listCreated) {
+            return sprintf($remembered ? self::MEAL_PLANNED_REMEMBERED : self::MEAL_PLANNED, $name, $people);
+        }
+        if ($previousListSent) {
+            return sprintf(self::MEAL_LIST_STARTED, $name, $people) . ' ' . self::PREVIOUS_LIST_SENT;
+        }
+
+        return sprintf($remembered ? self::MEAL_LIST_STARTED_REMEMBERED : self::MEAL_LIST_STARTED, $name, $people);
+    }
+
+    /** La recette est déjà dans la liste : le repas, pour combien, et la question du nouveau total. */
+    public static function mealAlreadyPlanned(string $recipeName, int $servings): string
+    {
+        return sprintf(self::MEAL_ALREADY_PLANNED, self::speakable($recipeName), self::people($servings));
+    }
+
+    /** Le nouveau total de personnes est posé. */
+    public static function mealServingsChanged(string $recipeName, int $servings): string
+    {
+        return sprintf(self::MEAL_SERVINGS_CHANGED, self::speakable($recipeName), self::people($servings));
+    }
+
+    /**
+     * « Je ne trouve pas la recette X. Tu veux dire A, B ou C ? Ou un produit ? » : la recette est inconnue ; `$optionNames` sont les recettes de
+     * l'utilisateur qui lui ressemblent (aucune : on demande si c'est un produit). `$offerItem` : les produits n'ont pas encore été cherchés, l'issue
+     * « ou un produit ? » est proposée. Sans proposition ni issue, il n'y a plus rien à dire que « Je ne trouve rien qui s'appelle X. ».
+     *
+     * @param list<string> $optionNames
+     */
+    public static function unknownMeal(string $name, array $optionNames, bool $offerItem): string
+    {
+        if ($optionNames === []) {
+            return sprintf($offerItem ? self::ASK_MEAL_ITEM : self::NOTHING_FOUND, self::speakable($name));
+        }
+
+        return sprintf($offerItem ? self::ASK_MEAL_WHICH_OR_ITEM : self::ASK_MEAL_WHICH, self::speakable($name), self::joinNames($optionNames));
+    }
+
+    /** Ni produit ni recette ne portent ce nom. */
+    public static function nothingFound(string $name): string
+    {
+        return sprintf(self::NOTHING_FOUND, self::speakable($name));
+    }
+
+    /** La question de l'étape « choisir une recette » (à répéter après un silence ou une réponse incomprise). */
+    private static function mealQuestion(SpokenDialogueState $state): string
+    {
+        if ($state->options === []) {
+            return sprintf($state->otherSideTried ? self::NOTHING_FOUND : self::ASK_MEAL_ITEM, self::speakable($state->name));
+        }
+
+        return sprintf($state->otherSideTried ? self::ASK_MEAL_WHICH_SHORT : self::ASK_MEAL_WHICH_SHORT_OR_ITEM, self::joinNames(self::namesOf($state->options)));
+    }
+
+    /** « 1 personne », « 4 personnes ». */
+    public static function people(int $servings): string
+    {
+        return $servings . ($servings >= 2 ? ' personnes' : ' personne');
     }
 
     /**

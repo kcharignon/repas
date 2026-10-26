@@ -322,4 +322,154 @@ class SpokenDialogueStateTest extends TestCase
         $this->assertNull(SpokenDialogueState::fromArray($department));
         $this->assertNull(SpokenDialogueState::fromArray($single));
     }
+
+    // ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
+    // Un repas (ADR 0029 décision 13, VOX-305)
+    // ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
+
+    public function testAnOrdinaryStateWritesNeitherTargetNorSidesNorServings(): void
+    {
+        // When
+        $state = SpokenDialogueState::choose('de la ciboulette', [new DialogueOption('persil-u', 'persil')], 'ciboulette');
+
+        // Then : la forme d'un produit ne change pas (la séance a une taille limite)
+        $this->assertSame(['step', 'phrase', 'options', 'name', 'misses'], array_keys($state->toArray()));
+        $this->assertFalse($state->isMeal());
+        $this->assertFalse($state->otherSideTried);
+    }
+
+    public function testAMealStateWritesItsTargetTheSideAlreadyTriedAndTheServingsSaid(): void
+    {
+        // Given
+        $state = SpokenDialogueState::chooseRecipe('gratin', [new DialogueOption('recipe-1', 'gratin dauphinois'), new DialogueOption('recipe-2', 'gratin de pâtes')], 'gratin', 6, true);
+
+        // When
+        $data = $state->toArray();
+
+        // Then
+        $this->assertSame('choose', $data['step']);
+        $this->assertSame('meal', $data['target']);
+        $this->assertTrue($data['otherSideTried']);
+        $this->assertSame(6, $data['servings']);
+        $this->assertSame([['slug' => 'recipe-1', 'name' => 'gratin dauphinois'], ['slug' => 'recipe-2', 'name' => 'gratin de pâtes']], $data['options']);
+        $this->assertTrue($state->isMeal());
+        $this->assertFalse($state->isTieBreak(), 'les recettes se départagent par le nom, jamais par un rayon');
+    }
+
+    public function testAMealStateSurvivesTheTripThroughTheSessionAttributes(): void
+    {
+        // Given
+        $states = [
+            SpokenDialogueState::chooseRecipe('gratin', [new DialogueOption('recipe-1', 'gratin dauphinois')], 'gratin'),
+            SpokenDialogueState::chooseRecipe('gratin', [], 'gratin', 4, false),
+            SpokenDialogueState::chooseRecipe('gratin', [new DialogueOption('recipe-1', 'gratin dauphinois')], 'gratin', null, true)->missed(),
+            SpokenDialogueState::askingServings(new DialogueOption('recipe-1', 'gratin dauphinois'), 4),
+        ];
+
+        foreach ($states as $state) {
+            // When
+            $back = SpokenDialogueState::fromArray(json_decode(json_encode($state->toArray(), JSON_THROW_ON_ERROR), true, 512, JSON_THROW_ON_ERROR));
+
+            // Then
+            $this->assertEquals($state, $back);
+        }
+    }
+
+    public function testTheAlreadyPlannedStateKeepsTheRecipeAndItsServings(): void
+    {
+        // When
+        $state = SpokenDialogueState::askingServings(new DialogueOption('recipe-1', 'gratin dauphinois'), 4);
+
+        // Then
+        $this->assertSame(DialogueStep::SERVINGS, $state->step);
+        $this->assertTrue($state->isMeal());
+        $this->assertTrue($state->otherSideTried, 'plus d\'aiguillage une fois la recette trouvée');
+        $this->assertSame(4, $state->plannedServings);
+        $this->assertSame('recipe-1', $state->options[0]->slug);
+        $this->assertNull($state->rememberablePhrase(), 'rien à retenir à cette étape');
+        $this->assertFalse($state->hasMissedTooMuch());
+        $this->assertTrue($state->missed()->missed()->hasMissedTooMuch());
+    }
+
+    public function testAVeryLongRecipeNameStillMakesAnAlreadyPlannedStateThatCanBeReadBack(): void
+    {
+        // Given : un nom de recette de 255 caractères
+        $state = SpokenDialogueState::askingServings(new DialogueOption('recipe-1', str_repeat('é', 255)), 4);
+
+        // When
+        $back = SpokenDialogueState::fromArray($state->toArray());
+
+        // Then : la phrase et le nom de l'état sont coupés, l'état revient quand même
+        $this->assertNotNull($back);
+        $this->assertSame(100, mb_strlen($back->name));
+    }
+
+    #[DataProvider('forgedMealStates')]
+    public function testAForgedMealStateIsNotBelieved(array $data): void
+    {
+        $this->assertNull(SpokenDialogueState::fromArray($data));
+    }
+
+    /**
+     * @return iterable<string, array{array<string, mixed>}>
+     */
+    public static function forgedMealStates(): iterable
+    {
+        $base = ['phrase' => 'gratin', 'name' => 'gratin', 'misses' => 0];
+        $recipe = [['slug' => 'recipe-1', 'name' => 'gratin']];
+
+        yield 'le nombre de personnes sans la recette' => [[...$base, 'step' => 'servings', 'target' => 'meal', 'options' => [], 'plannedServings' => 4]];
+        yield 'la recette sans le nombre de personnes' => [[...$base, 'step' => 'servings', 'target' => 'meal', 'options' => $recipe]];
+        yield 'le nombre de personnes d\'un produit' => [[...$base, 'step' => 'servings', 'options' => $recipe, 'plannedServings' => 4]];
+        yield 'deux recettes pour le nombre de personnes' => [[...$base, 'step' => 'servings', 'target' => 'meal', 'options' => [...$recipe, ...$recipe], 'plannedServings' => 4]];
+        yield 'zéro personne' => [[...$base, 'step' => 'servings', 'target' => 'meal', 'options' => $recipe, 'plannedServings' => 0]];
+        yield 'cent personnes' => [[...$base, 'step' => 'servings', 'target' => 'meal', 'options' => $recipe, 'plannedServings' => 100]];
+        yield 'créer une recette (le rayon)' => [[...$base, 'step' => 'department', 'target' => 'meal', 'options' => []]];
+        yield 'créer une recette (l\'unité)' => [[...$base, 'step' => 'unit', 'target' => 'meal', 'options' => [], 'departmentSlug' => 'd', 'departmentName' => 'd']];
+        yield 'créer une recette (confirmer)' => [[...$base, 'step' => 'confirm', 'target' => 'meal', 'options' => [], 'departmentSlug' => 'd', 'departmentName' => 'd', 'unitSlug' => 'u', 'unitName' => 'u']];
+        yield 'retirer un repas (VOX-306)' => [[...$base, 'step' => 'choose', 'target' => 'meal', 'action' => 'remove', 'options' => $recipe]];
+    }
+
+    public function testAForgedServingsOrTargetOrSideIsReadAsNothing(): void
+    {
+        // When : un nombre de personnes absurde, une cible inconnue, une indication qui n'est pas un booléen
+        $state = SpokenDialogueState::fromArray(['step' => 'choose', 'phrase' => 'gratin', 'name' => 'gratin', 'misses' => 0, 'options' => [], 'target' => 'bateau', 'servings' => 500, 'otherSideTried' => 'oui']);
+
+        // Then : un produit, rien de dit, l'autre côté pas essayé
+        $this->assertNotNull($state);
+        $this->assertFalse($state->isMeal());
+        $this->assertNull($state->servings);
+        $this->assertFalse($state->otherSideTried);
+
+        // Et un nombre de personnes dit à un produit n'est pas gardé
+        $item = SpokenDialogueState::fromArray(['step' => 'choose', 'phrase' => 'gratin', 'name' => 'gratin', 'misses' => 0, 'options' => [], 'servings' => 4]);
+        $this->assertNull($item?->servings);
+        $meal = SpokenDialogueState::fromArray(['step' => 'choose', 'phrase' => 'gratin', 'name' => 'gratin', 'misses' => 0, 'options' => [], 'target' => 'meal', 'servings' => 4]);
+        $this->assertSame(4, $meal?->servings);
+    }
+
+    public function testTheMealStateKeepsItsSideAndServingsWhenTheAnswerIsMissed(): void
+    {
+        // Given
+        $state = SpokenDialogueState::chooseRecipe('gratin', [], 'gratin', 6, true);
+
+        // When
+        $missed = $state->missed();
+
+        // Then
+        $this->assertSame([1, 6, true, true], [$missed->misses, $missed->servings, $missed->otherSideTried, $missed->isMeal()]);
+    }
+
+    public function testTheProductStateKeepsTheSideAlreadyTriedThroughItsSteps(): void
+    {
+        // Given : le produit cherché après « un produit » dit à une recette inconnue
+        $state = SpokenDialogueState::choose('gratin', [], 'gratin', otherSideTried: true);
+
+        // When
+        $confirm = $state->askingDepartment()->withDepartment(new DialogueOption('d', 'd'))->withUnit(new DialogueOption('u', 'u'));
+
+        // Then
+        $this->assertTrue($confirm->otherSideTried);
+        $this->assertEquals($confirm, SpokenDialogueState::fromArray($confirm->toArray()));
+    }
 }

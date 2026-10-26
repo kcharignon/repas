@@ -6,6 +6,7 @@ use Repas\Shared\Domain\Event\RecipeRemovedEvent;
 use Repas\Repas\Domain\Exception\RecipeException;
 use Repas\Repas\Domain\Interface\RecipeRepository;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
+use Repas\Repas\Domain\Interface\SpokenRecipePhraseChoiceRepository;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
@@ -17,6 +18,7 @@ readonly class RemoveRecipeHandler
         private RecipeRepository $recipeRepository,
         private ShoppingListRepository $shoppingListRepository,
         private EventDispatcherInterface $eventDispatcher,
+        private SpokenRecipePhraseChoiceRepository $spokenRecipePhraseRepository,
     ) {
     }
 
@@ -33,6 +35,8 @@ readonly class RemoveRecipeHandler
         }
 
         $this->recipeRepository->delete($recipe);
+        // Et les phrases que l'utilisateur avait apprises à Alexa pour cette recette (ADR 0029 décision 13)
+        $this->spokenRecipePhraseRepository->deleteByRecipeId($recipe->getAuthorId(), $recipe->getId());
         $this->eventDispatcher->dispatch(new RecipeRemovedEvent($recipe->getAuthorId(), $recipe->getId()));
     }
 }

@@ -28,6 +28,13 @@ use Repas\Voice\Domain\Model\SpokenDialogueState;
  * | `department` | le rayon (id de la résolution d'entité, à défaut le texte entendu rapproché des rayons) ; « non » = on abandonne        |
  * | `unit`       | l'unité, de la même façon                                                                                              |
  * | `confirm`    | « oui » = créer ; « non » = on abandonne                                                                                |
+ * | `choose` (repas) | un rang ; un nom de recette proche dit en entier ; « une recette »/« un produit » ; « oui » = la proposition s'il n'y en a qu'une, le produit s'il n'y en a aucune ; « non » = on abandonne ; « planifie le repas … » = nouvelle demande de repas |
+ * | `servings`   | un nombre (« 6 », « six personnes », « pour six ») = le nouveau total ; « non », « rien », « ne change rien » = on ne change rien |
+ *
+ * Aiguillage (ADR 0029 décision 13) : « une recette » à la question d'un produit inconnu cherche la phrase d'origine dans les recettes (`SWITCH_TO_MEAL`),
+ * « un produit » à la question d'une recette inconnue la cherche dans les produits (`SWITCH_TO_ITEM`), tant que l'autre côté n'a pas déjà été essayé
+ * (`SpokenDialogueState::$otherSideTried`) ; « un produit » à la question d'un produit inconnu veut dire « un nouveau produit ». Le créneau `kind` d'Alexa
+ * (`ChooseKindIntent`) ou le texte entendu disent le genre : l'intention qu'Alexa a choisie ne compte pas.
  *
  * « Lesquels ? » (`ListChoicesIntent`) et « aide » (`AMAZON.HelpIntent`) sont la même demande : aux étapes `department` et `unit`, la liste des
  * rayons ou des unités (`LIST_CHOICES`) ; aux étapes `choose` et `confirm`, la question de l'étape est répétée (`REPEAT`). Le reste est `UNCLEAR` : l'appelant compte l'échec (`SpokenDialogueState::missed`). « Stop » et
@@ -43,6 +50,13 @@ final readonly class SpokenAnswerInterpreter
 
     /** Le meilleur doit devancer le suivant d'au moins cet écart, sinon on ne choisit pas à la place de l'utilisateur. */
     public const float MARGIN = 0.03;
+
+    private SpokenMealPhrase $meals;
+
+    public function __construct(?SpokenMealPhrase $meals = null)
+    {
+        $this->meals = $meals ?? new SpokenMealPhrase();
+    }
 
     private const array STOP_WORDS = ['de', 'du', 'des', 'd', 'l', 'la', 'le', 'les', 'un', 'une', 'a', 'au', 'aux'];
 
@@ -63,14 +77,17 @@ final readonly class SpokenAnswerInterpreter
         if ($intent === AlexaIntent::HELP || $intent === AlexaIntent::LIST_CHOICES) {
             return SpokenAnswer::of(match ($state->step) {
                 DialogueStep::DEPARTMENT, DialogueStep::UNIT => SpokenAnswerKind::LIST_CHOICES,
-                DialogueStep::CHOOSE, DialogueStep::CONFIRM => SpokenAnswerKind::REPEAT,
+                DialogueStep::CHOOSE, DialogueStep::CONFIRM, DialogueStep::SERVINGS => SpokenAnswerKind::REPEAT,
             });
         }
 
         return match ($state->step) {
-            DialogueStep::CHOOSE => $state->isTieBreak()
-                ? $this->interpretTie($request, $intent, $state->options)
-                : $this->interpretChoice($request, $intent, $state->options),
+            DialogueStep::CHOOSE => match (true) {
+                $state->isMeal() => $this->interpretMealChoice($request, $intent, $state),
+                $state->isTieBreak() => $this->interpretTie($request, $intent, $state->options),
+                default => $this->interpretChoice($request, $intent, $state),
+            },
+            DialogueStep::SERVINGS => $this->interpretServings($request, $intent),
             DialogueStep::DEPARTMENT => $this->interpretCatalogue($request, $intent, $request->department, $catalogue, true),
             DialogueStep::UNIT => $this->interpretCatalogue($request, $intent, $request->unit, $catalogue, false),
             DialogueStep::CONFIRM => match ($intent) {
@@ -147,12 +164,19 @@ final readonly class SpokenAnswerInterpreter
         return array_values(array_filter($options, static fn(DialogueOption $option): bool => $option->departmentSlug === $department->slug));
     }
 
-    /**
-     * @param list<DialogueOption> $options
-     */
-    private function interpretChoice(AlexaRequest $request, ?AlexaIntent $intent, array $options): SpokenAnswer
+    private function interpretChoice(AlexaRequest $request, ?AlexaIntent $intent, SpokenDialogueState $state): SpokenAnswer
     {
+        $options = $state->options;
         $count = count($options);
+
+        // « Une recette » : ce n'est pas un produit, on cherche la phrase d'origine dans les recettes (une fois). « Un produit » : un nouveau produit
+        $kind = $this->kindHeard($request);
+        if ($kind === 'meal') {
+            return SpokenAnswer::of($state->otherSideTried ? SpokenAnswerKind::UNCLEAR : SpokenAnswerKind::SWITCH_TO_MEAL);
+        }
+        if ($kind === 'item') {
+            return SpokenAnswer::of(SpokenAnswerKind::START_CREATION);
+        }
 
         switch ($intent) {
             case AlexaIntent::CHOOSE_OPTION:
@@ -185,11 +209,18 @@ final readonly class SpokenAnswerInterpreter
 
     /**
      * Un article dit au milieu d'une question, sans rapport avec les propositions : une NOUVELLE demande, d'ajout (« ajoute du pain »), de retrait
-     * (« enlève du pain ») ou de consultation (« est-ce qu'il y a du pain dans la liste ? », ADR 0029 décision 12). Sans article compris, ou avec une
+     * (« enlève du pain »), de consultation (« est-ce qu'il y a du pain dans la liste ? », ADR 0029 décision 12) ou de repas (« planifie le repas
+     * lasagnes », décision 13). Sans article compris, ou avec une
      * quantité que nous ne savons pas écrire (une demande d'ajout ou de retrait), la réponse n'est pas comprise.
      */
     private function newDemand(AlexaRequest $request, ?AlexaIntent $intent): SpokenAnswer
     {
+        // « Planifie le repas … » (ou « ajoute le repas … ») : une nouvelle demande de repas (ADR 0029 décision 13)
+        $meal = $this->meals->requestOf($request);
+        if ($meal !== null) {
+            return $meal->recipe === '' || $request->hasUnusableServings() ? SpokenAnswer::of(SpokenAnswerKind::UNCLEAR) : SpokenAnswer::newMeal($meal->recipe, $meal->servings);
+        }
+
         if ($request->phrase === null || $request->hasUnusableQuantity()) {
             return SpokenAnswer::of(SpokenAnswerKind::UNCLEAR);
         }
@@ -200,6 +231,126 @@ final readonly class SpokenAnswerInterpreter
             AlexaIntent::CHECK_ITEM => SpokenAnswer::newCheck($request->phrase),
             default => SpokenAnswer::of(SpokenAnswerKind::UNCLEAR),
         };
+    }
+
+    /**
+     * Une recette inconnue (ADR 0029 décision 13) : « lequel ? » se répond par un rang, par le nom d'une proposition dit en entier, ou « un produit »
+     * (on cherche la phrase d'origine dans les produits, une fois). Jamais de création de recette : « non » abandonne.
+     */
+    private function interpretMealChoice(AlexaRequest $request, ?AlexaIntent $intent, SpokenDialogueState $state): SpokenAnswer
+    {
+        $options = $state->options;
+        $count = count($options);
+        $kind = $this->kindHeard($request);
+
+        // « Un produit » : la recherche de produits repart avec la phrase d'origine, une seule fois
+        if ($kind === 'item' || $intent === AlexaIntent::CREATE_ITEM) {
+            if (!$state->otherSideTried) {
+                return SpokenAnswer::of(SpokenAnswerKind::SWITCH_TO_ITEM);
+            }
+
+            return SpokenAnswer::of($intent === AlexaIntent::CREATE_ITEM ? SpokenAnswerKind::ABANDON : SpokenAnswerKind::UNCLEAR);
+        }
+
+        switch ($intent) {
+            case AlexaIntent::CHOOSE_OPTION:
+                $rank = $this->rankOf($request->rank);
+
+                return $rank !== null && $rank >= 1 && $rank <= $count
+                    ? SpokenAnswer::pickOption($options[$rank - 1])
+                    : SpokenAnswer::of(SpokenAnswerKind::UNCLEAR);
+            case AlexaIntent::NO:
+                return SpokenAnswer::of(SpokenAnswerKind::ABANDON);
+            case AlexaIntent::YES:
+                // Sans proposition la question était « C'est un produit ? » : oui aiguille vers les produits
+                return match (true) {
+                    $count === 0 => SpokenAnswer::of($state->otherSideTried ? SpokenAnswerKind::ABANDON : SpokenAnswerKind::SWITCH_TO_ITEM),
+                    $count === 1 => SpokenAnswer::pickOption($options[0]),
+                    default => SpokenAnswer::of(SpokenAnswerKind::WHICH_ONE),
+                };
+            default:
+                // « Une recette » dit à la question d'une recette : laquelle ?
+                if ($kind === 'meal') {
+                    return SpokenAnswer::of($count === 0 ? SpokenAnswerKind::UNCLEAR : SpokenAnswerKind::WHICH_ONE);
+                }
+
+                // Un nom proche d'une proposition, dit en entier, quelle que soit l'intention qu'Alexa a choisie
+                $option = $this->matchOption($request->heardTexts(), $options);
+                if ($option !== null) {
+                    return SpokenAnswer::pickOption($option);
+                }
+
+                return $this->newDemand($request, $intent);
+        }
+    }
+
+    /**
+     * Une recette déjà dans la liste (ADR 0029 décision 13) : le nombre dit est le NOUVEAU TOTAL de personnes (« 6 », « six personnes », « pour six ») ;
+     * « non », « rien » et « ne change rien » ne changent rien. Le nombre est lu quel que soit le créneau où Alexa l'a mis (`servings`, `quantity`,
+     * `rank`, ou le texte de l'article). Un nombre inutilisable (zéro, plus de 99) n'est pas compris.
+     */
+    private function interpretServings(AlexaRequest $request, ?AlexaIntent $intent): SpokenAnswer
+    {
+        if ($intent === AlexaIntent::NO || $intent === AlexaIntent::KEEP_MEAL) {
+            return SpokenAnswer::of(SpokenAnswerKind::ABANDON);
+        }
+        foreach ($request->heardTexts() as $text) {
+            if ($this->meals->isKeepAnswer($text)) {
+                return SpokenAnswer::of(SpokenAnswerKind::ABANDON);
+            }
+        }
+
+        // « Planifie les lasagnes pour six » n'est pas un total : c'est un autre repas
+        $meal = $this->meals->requestOf($request);
+        if ($meal !== null && $meal->recipe !== '') {
+            return $request->hasUnusableServings() ? SpokenAnswer::of(SpokenAnswerKind::UNCLEAR) : SpokenAnswer::newMeal($meal->recipe, $meal->servings);
+        }
+
+        if ($request->hasUnusableServings() || $request->hasUnusableQuantity()) {
+            return SpokenAnswer::of(SpokenAnswerKind::UNCLEAR);
+        }
+        $servings = $this->servingsHeard($request);
+        if ($servings !== null) {
+            return SpokenAnswer::pickServings($servings);
+        }
+
+        // « Oui » ne dit pas pour combien ; le reste est une nouvelle demande, ou n'est pas compris
+        return $intent === AlexaIntent::YES ? SpokenAnswer::of(SpokenAnswerKind::UNCLEAR) : $this->newDemand($request, $intent);
+    }
+
+    /** Le nombre de personnes entendu, où qu'Alexa l'ait mis : `servings`, `quantity`, l'identifiant de `rank`, ou le texte de l'article. */
+    private function servingsHeard(AlexaRequest $request): ?int
+    {
+        if ($request->servings !== null || $request->quantity !== null) {
+            return $request->servings ?? $request->quantity;
+        }
+        if ($request->rank?->id !== null && ctype_digit($request->rank->id)) {
+            return (int) $request->rank->id;
+        }
+        foreach ($request->heardTexts() as $text) {
+            $servings = $this->meals->servingsAnswer($text);
+            if ($servings !== null) {
+                return $servings;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * « Une recette » (`meal`) ou « un produit » (`item`), d'après le créneau `kind` (`ChooseKindIntent`) ou, à défaut, le texte entendu : l'intention
+     * qu'Alexa a choisie ne compte pas. `null` si aucun des deux, ou si les textes entendus ne disent pas la même chose.
+     */
+    private function kindHeard(AlexaRequest $request): ?string
+    {
+        $id = $request->kind?->id;
+        if ($id === 'meal' || $id === 'item') {
+            return $id;
+        }
+
+        $kinds = array_values(array_unique(array_filter(array_map($this->meals->kindOf(...), $request->heardTexts()))));
+
+        return count($kinds) === 1 ? $kinds[0] : null;
     }
 
     /**

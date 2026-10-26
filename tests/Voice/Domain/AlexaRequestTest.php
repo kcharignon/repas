@@ -519,4 +519,101 @@ class AlexaRequestTest extends TestCase
         $this->assertSame(0, $read(-5)?->misses);
         $this->assertSame(SpokenDialogueState::MAX_MISSES, $read(999)?->misses);
     }
+
+    // ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
+    // Un repas (ADR 0029 décision 13, VOX-305)
+    // ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
+
+    public function testTheMealIntentIsReadWithItsRecipeAndItsServings(): void
+    {
+        // When : « planifie le repas hachis parmentier pour six personnes »
+        $request = AlexaRequest::fromDecoded(AlexaTestRequest::addMeal('hachis parmentier', 'six', '6')->toArray());
+
+        // Then
+        $this->assertSame(AlexaIntent::ADD_MEAL, $request->intent());
+        $this->assertSame('hachis parmentier', $request->recipePhrase);
+        $this->assertNull($request->phrase, 'le créneau item est celui des produits');
+        $this->assertSame(6, $request->servings);
+        $this->assertTrue($request->servingsHeard);
+        $this->assertFalse($request->hasUnusableServings());
+        $this->assertContains('hachis parmentier', $request->heardTexts());
+    }
+
+    public function testANumberOfPeopleThatIsMissingIsNotHeard(): void
+    {
+        // When
+        $request = AlexaRequest::fromDecoded(AlexaTestRequest::addMeal('hachis parmentier')->toArray());
+
+        // Then : le nombre du compte sera pris
+        $this->assertNull($request->servings);
+        $this->assertFalse($request->servingsHeard);
+        $this->assertFalse($request->hasUnusableServings());
+    }
+
+    #[DataProvider('unusableServings')]
+    public function testANumberOfPeopleThatCannotBeWrittenIsHeardButUnusable(string $said): void
+    {
+        // When
+        $request = AlexaRequest::fromDecoded(AlexaTestRequest::addMeal('hachis', $said)->toArray());
+
+        // Then : rien n'est écrit, on redemande combien
+        $this->assertNull($request->servings);
+        $this->assertTrue($request->hasUnusableServings());
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function unusableServings(): iterable
+    {
+        yield 'zéro' => ['0'];
+        yield 'cent' => ['100'];
+        yield 'un décimal' => ['1.5'];
+        yield 'un mot' => ['beaucoup'];
+    }
+
+    public function testTheServingsAreReadFromTheIdOfTheResolutionFirstAndTheQuantityIsLeftAlone(): void
+    {
+        // When : « six » rapproché de « 6 », et une quantité de produit dans le même corps
+        $body = AlexaTestRequest::answerServings('six', '6')->withQuantity('3')->toArray();
+        $request = AlexaRequest::fromDecoded($body);
+
+        // Then
+        $this->assertSame(AlexaIntent::ANSWER_SERVINGS, $request->intent());
+        $this->assertSame(6, $request->servings);
+        $this->assertSame(3, $request->quantity);
+    }
+
+    public function testTheKindIsReadWithItsTextAndTheIdOfItsResolution(): void
+    {
+        // When : « une recette »
+        $request = AlexaRequest::fromDecoded(AlexaTestRequest::chooseKind('recette', 'meal')->toArray());
+
+        // Then
+        $this->assertSame(AlexaIntent::CHOOSE_KIND, $request->intent());
+        $this->assertEquals(new SlotValue('recette', 'meal'), $request->kind);
+        $this->assertContains('recette', $request->heardTexts());
+    }
+
+    public function testTheNewIntentsAreKnown(): void
+    {
+        $this->assertSame(AlexaIntent::KEEP_MEAL, AlexaRequest::fromDecoded(AlexaTestRequest::keepMeal()->toArray())->intent());
+        $this->assertNull(AlexaRequest::fromDecoded(AlexaTestRequest::keepMeal()->toArray())->kind);
+    }
+
+    public function testTheMealSlotsAreOnlyReadFromAnIntentRequest(): void
+    {
+        // Given : des créneaux qui traînent dans un lancement
+        $body = AlexaTestRequest::launch()->toArray();
+        $body['request']['intent'] = ['name' => 'AddMealIntent', 'slots' => ['recipe' => ['value' => 'gratin'], 'servings' => ['value' => '4'], 'kind' => ['value' => 'recette']]];
+
+        // When
+        $request = AlexaRequest::fromDecoded($body);
+
+        // Then
+        $this->assertNull($request->recipePhrase);
+        $this->assertNull($request->servings);
+        $this->assertFalse($request->servingsHeard);
+        $this->assertNull($request->kind);
+    }
 }

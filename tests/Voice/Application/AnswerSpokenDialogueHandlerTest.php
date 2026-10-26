@@ -5,8 +5,13 @@ namespace Repas\Tests\Voice\Application;
 
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
+use Repas\Repas\Domain\Exception\RecipeException;
+use Repas\Shared\Application\Dto\ChangedMealServings;
 use Repas\Shared\Application\Dto\ListedLine;
+use Repas\Shared\Application\Dto\PlannedSpokenMeal;
+use Repas\Shared\Application\Dto\RecipeSuggestion;
 use Repas\Shared\Application\Dto\ResolvedIngredient;
+use Repas\Shared\Application\Dto\ResolvedRecipe;
 use Repas\Shared\Application\Dto\SpokenListLookupResult;
 use Repas\Shared\Application\Interface\AddedItem;
 use Repas\Shared\Application\Interface\RemovedItem;
@@ -15,9 +20,12 @@ use Repas\Tests\Helper\Alexa\AlexaTestRequest;
 use Repas\Tests\Helper\SpokenIngredientCreatorInMemory;
 use Repas\Tests\Helper\SpokenIngredientResolverInMemory;
 use Repas\Tests\Helper\SpokenListLookupInMemory;
+use Repas\Tests\Helper\SpokenRecipeResolverInMemory;
+use Repas\Tests\Helper\VoiceMealPlannerInMemory;
 use Repas\Tests\Helper\VoiceShoppingListInMemory;
 use Repas\Voice\Application\Command\AddSpokenItem\AddSpokenItemHandler;
 use Repas\Voice\Application\Command\AddSpokenItem\AddSpokenItemResult;
+use Repas\Voice\Application\Command\AddSpokenMeal\AddSpokenMealHandler;
 use Repas\Voice\Application\Command\AnswerSpokenDialogue\AnswerSpokenDialogueCommand;
 use Repas\Voice\Application\Command\AnswerSpokenDialogue\AnswerSpokenDialogueHandler;
 use Repas\Voice\Application\Command\RemoveSpokenItem\RemoveSpokenItemHandler;
@@ -42,6 +50,8 @@ class AnswerSpokenDialogueHandlerTest extends TestCase
     private VoiceShoppingListInMemory $shoppingList;
     private SpokenIngredientCreatorInMemory $creator;
     private SpokenListLookupInMemory $lookup;
+    private SpokenRecipeResolverInMemory $recipeResolver;
+    private VoiceMealPlannerInMemory $mealPlanner;
     private AnswerSpokenDialogueHandler $handler;
 
     protected function setUp(): void
@@ -50,6 +60,8 @@ class AnswerSpokenDialogueHandlerTest extends TestCase
         $this->shoppingList = new VoiceShoppingListInMemory();
         $this->creator = new SpokenIngredientCreatorInMemory();
         $this->lookup = new SpokenListLookupInMemory();
+        $this->recipeResolver = new SpokenRecipeResolverInMemory();
+        $this->mealPlanner = new VoiceMealPlannerInMemory();
         $this->handler = $this->handlerWith($this->creator);
     }
 
@@ -66,6 +78,7 @@ class AnswerSpokenDialogueHandlerTest extends TestCase
             $namer,
             new RemoveSpokenItemHandler($this->lookup, $this->shoppingList, $namer),
             new SpokenListAnswerer($this->lookup, $namer),
+            new AddSpokenMealHandler($this->recipeResolver, $this->mealPlanner, $namer),
         );
     }
 
@@ -282,7 +295,7 @@ class AnswerSpokenDialogueHandlerTest extends TestCase
         // Then : rien n'est retenu, le dialogue repart pour la NOUVELLE phrase
         $this->assertSame([], $this->resolver->remembered);
         $this->assertSame([], $this->shoppingList->added);
-        $this->assertSame('Je ne connais pas menthe. Je le crée ?', $result->speech);
+        $this->assertSame('Je ne connais pas menthe. Je le crée ? Ou c\'est une recette ?', $result->speech);
         $this->assertSame(['de la menthe', 'menthe', DialogueStep::CHOOSE], [$result->nextState?->phrase, $result->nextState?->name, $result->nextState?->step]);
     }
 
@@ -554,7 +567,7 @@ class AnswerSpokenDialogueHandlerTest extends TestCase
         $second = $this->answer(AlexaTestRequest::yes(), $first->nextState);
 
         // Then
-        $this->assertSame(['Lequel ? persil ou basilic. Ou un nouveau produit ?', 1], [$first->speech, $first->nextState?->misses]);
+        $this->assertSame(['Lequel ? persil ou basilic. Ou un nouveau produit, ou une recette ?', 1], [$first->speech, $first->nextState?->misses]);
         $this->assertSame("Je n'ai pas compris. On laisse tomber.", $second->speech);
         $this->assertNull($second->nextState);
         $this->assertSame([], $this->shoppingList->added);
@@ -569,7 +582,7 @@ class AnswerSpokenDialogueHandlerTest extends TestCase
         $result = $this->answer(AlexaTestRequest::intent('AMAZON.HelpIntent'), $state);
 
         // Then
-        $this->assertSame('Tu veux dire persil ou basilic ? Ou un nouveau produit ?', $result->speech);
+        $this->assertSame('Tu veux dire persil ou basilic ? Ou un nouveau produit, ou une recette ?', $result->speech);
         $this->assertEquals($state, $result->nextState);
         $this->assertTrue($result->keepSessionOpen);
     }
@@ -630,7 +643,7 @@ class AnswerSpokenDialogueHandlerTest extends TestCase
 
         // Then : la question de l'étape, pas de liste, l'état intact
         $this->assertSame("Je crée ciboulette, boucherie, kilo. C'est bon ?", $onConfirm->speech);
-        $this->assertSame('Tu veux dire persil ou basilic ? Ou un nouveau produit ?', $onChoose->speech);
+        $this->assertSame('Tu veux dire persil ou basilic ? Ou un nouveau produit, ou une recette ?', $onChoose->speech);
         $this->assertEquals($confirm, $onConfirm->nextState);
         $this->assertEquals($choose, $onChoose->nextState);
     }
@@ -952,5 +965,333 @@ class AnswerSpokenDialogueHandlerTest extends TestCase
         // Then
         $this->expectException(DomainException::class);
         $this->answer(AlexaTestRequest::chooseOption('un', '1'), self::choose(['persil']));
+    }
+
+    // ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
+    // Un repas (ADR 0029 décision 13, VOX-305) : choisir une recette, aiguiller entre produit et recette, le nombre de personnes
+    // ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
+
+    /**
+     * @param list<string> $names
+     */
+    private static function chooseRecipe(array $names, bool $otherSideTried = false, ?int $servings = null): SpokenDialogueState
+    {
+        return SpokenDialogueState::chooseRecipe(
+            'gratin',
+            array_map(static fn(string $name): DialogueOption => new DialogueOption($name . '-id', $name), $names),
+            'gratin',
+            $servings,
+            $otherSideTried,
+        );
+    }
+
+    private function plannedMeal(string $name, int $servings, bool $already = false, bool $listCreated = false): PlannedSpokenMeal
+    {
+        return new PlannedSpokenMeal($name, $servings, $already, $listCreated, false);
+    }
+
+    public function testChoosingAProposedRecipePlansTheMealAndRemembersThePhraseButTouchesNoProduct(): void
+    {
+        // Given
+        $this->mealPlanner->willReturn($this->plannedMeal('gratin de pâtes', 4));
+
+        // When : « le deuxième »
+        $result = $this->answer(AlexaTestRequest::chooseOption('le deuxième', '2'), self::chooseRecipe(['gratin dauphinois', 'gratin de pâtes']));
+
+        // Then : le repas est planifié (nombre du compte), la phrase d'origine retenue POUR LES RECETTES ; les produits ne bougent pas
+        $this->assertSame([[self::USER, 'gratin de pâtes-id', null]], $this->mealPlanner->planned);
+        $this->assertSame([[self::USER, 'gratin', 'gratin de pâtes-id']], $this->recipeResolver->remembered);
+        $this->assertSame([], $this->shoppingList->added);
+        $this->assertSame([], $this->resolver->remembered);
+        $this->assertEquals(new AddSpokenItemResult("C'est noté : gratin de pâtes, pour 4 personnes. Je m'en souviendrai.", keepSessionOpen: false, added: true), $result);
+    }
+
+    public function testTheServingsSaidAtTheStartAreKeptThroughTheProposals(): void
+    {
+        // Given
+        $this->mealPlanner->willReturn($this->plannedMeal('gratin dauphinois', 6));
+
+        // When : « planifie le gratin pour six personnes » -> propositions -> « le premier »
+        $this->answer(AlexaTestRequest::chooseOption('le premier', '1'), self::chooseRecipe(['gratin dauphinois', 'gratin de pâtes'], servings: 6));
+
+        // Then
+        $this->assertSame([[self::USER, 'gratin dauphinois-id', 6]], $this->mealPlanner->planned);
+    }
+
+    public function testSayingTheNameOfAProposedRecipeWorksToo(): void
+    {
+        // Given
+        $this->mealPlanner->willReturn($this->plannedMeal('gratin de pâtes', 4));
+
+        // When
+        $this->answer(AlexaTestRequest::addMeal('gratin de pâtes'), self::chooseRecipe(['gratin dauphinois', 'gratin de pâtes']));
+
+        // Then
+        $this->assertSame([[self::USER, 'gratin de pâtes-id', null]], $this->mealPlanner->planned);
+    }
+
+    public function testChoosingAProposedRecipeAlreadyInTheListAsksTheTotalInsteadOfPlanningTwice(): void
+    {
+        // Given
+        $this->mealPlanner->willReturn($this->plannedMeal('gratin de pâtes', 4, already: true));
+
+        // When
+        $result = $this->answer(AlexaTestRequest::chooseOption('le premier', '1'), self::chooseRecipe(['gratin de pâtes']));
+
+        // Then : rien n'est écrit sauf la phrase retenue, une question suit
+        $this->assertSame([[self::USER, 'gratin', 'gratin de pâtes-id']], $this->recipeResolver->remembered);
+        $this->assertSame(DialogueStep::SERVINGS, $result->nextState?->step);
+        $this->assertTrue($result->keepSessionOpen);
+        $this->assertFalse($result->added);
+    }
+
+    public function testAForgedRecipeOfAnotherUserIsRefusedAndNothingIsRemembered(): void
+    {
+        // Given : le port refuse la recette d'un autre
+        $this->mealPlanner->willThrow(RecipeException::notFound('gratin dauphinois-id'));
+
+        // Then
+        $this->expectException(DomainException::class);
+        try {
+            $this->answer(AlexaTestRequest::chooseOption('le premier', '1'), self::chooseRecipe(['gratin dauphinois']));
+        } finally {
+            $this->assertSame([], $this->recipeResolver->remembered);
+        }
+    }
+
+    public function testAProductTheUserSaysInsteadOfTheProposedRecipesRemembersNothingForARecipe(): void
+    {
+        // Given
+        $this->resolver->willResolve('du pain', new ResolvedIngredient('pain', 'Pain', 'Boulangerie', ResolvedIngredient::SURE));
+
+        // When : « non, du pain » à des recettes proposées
+        $result = $this->answer(AlexaTestRequest::addItem('du pain'), self::chooseRecipe(['gratin dauphinois', 'gratin de pâtes']));
+
+        // Then : un ajout ordinaire, aucune phrase retenue (ni pour une recette, ni pour un produit)
+        $this->assertSame([[self::USER, 'pain']], $this->shoppingList->added);
+        $this->assertSame([], $this->resolver->remembered);
+        $this->assertSame([], $this->recipeResolver->remembered);
+        $this->assertSame("C'est noté : pain.", $result->speech);
+    }
+
+    public function testAnotherRecipeSaidInsteadOfTheProposedOnesPlansItAndRemembersTheOriginalPhrase(): void
+    {
+        // Given : « gratin » -> propositions -> « les lasagnes » (autre recette de l'utilisateur)
+        $this->recipeResolver->willResolve('lasagnes', new ResolvedRecipe('lasagnes-id', 'Lasagnes'));
+        $this->mealPlanner->willReturn($this->plannedMeal('Lasagnes', 6));
+
+        // When
+        $result = $this->answer(AlexaTestRequest::addMeal('les lasagnes', 'six', '6'), self::chooseRecipe(['gratin dauphinois', 'gratin de pâtes']));
+
+        // Then : planifiée pour six, et la phrase d'origine retenue pour elle (une correction)
+        $this->assertSame([[self::USER, 'lasagnes-id', 6]], $this->mealPlanner->planned);
+        $this->assertSame([[self::USER, 'gratin', 'lasagnes-id']], $this->recipeResolver->remembered);
+        $this->assertSame("C'est noté : lasagnes, pour 6 personnes. Je m'en souviendrai.", $result->speech);
+    }
+
+    public function testAMealSaidToAQuestionOfProductsPlansItButRemembersNothingForTheProducts(): void
+    {
+        // Given
+        $this->recipeResolver->willResolve('lasagnes', new ResolvedRecipe('lasagnes-id', 'Lasagnes'));
+        $this->mealPlanner->willReturn($this->plannedMeal('Lasagnes', 4));
+
+        // When : « Tu veux dire persil ou basilic ? » -> « planifie le repas lasagnes »
+        $result = $this->answer(AlexaTestRequest::addMeal('lasagnes'), self::choose(['persil', 'basilic']));
+
+        // Then : une nouvelle demande, jamais une correction
+        $this->assertSame([[self::USER, 'lasagnes-id', null]], $this->mealPlanner->planned);
+        $this->assertSame([], $this->recipeResolver->remembered);
+        $this->assertSame([], $this->resolver->remembered);
+        $this->assertSame("C'est noté : lasagnes, pour 4 personnes.", $result->speech);
+        $this->assertFalse($result->keepSessionOpen);
+    }
+
+    public function testARecipeSaidToAnUnknownProductSearchesThePhraseInTheRecipesOnce(): void
+    {
+        // Given : « hachis parmentier » inconnu comme produit ; une recette porte ce nom
+        $this->recipeResolver->willResolve('hachis parmentier', new ResolvedRecipe('hachis-id', 'Hachis parmentier'));
+        $this->mealPlanner->willReturn($this->plannedMeal('Hachis parmentier', 4));
+        $state = SpokenDialogueState::choose('hachis parmentier', [], 'hachis parmentier');
+
+        // When : « c'est une recette »
+        $result = $this->answer(AlexaTestRequest::chooseKind('une recette', 'meal'), $state);
+
+        // Then : cherchée dans les recettes avec la phrase d'origine, planifiée pour le nombre du compte
+        $this->assertSame([[self::USER, 'hachis parmentier']], $this->recipeResolver->asked);
+        $this->assertSame([[self::USER, 'hachis-id', null]], $this->mealPlanner->planned);
+        $this->assertSame([], $this->shoppingList->added);
+        $this->assertSame("C'est noté : hachis parmentier, pour 4 personnes.", $result->speech);
+    }
+
+    public function testNoRecipeAfterAProductSwitchMeansNothingMoreToAskAndTheSessionClosesWithoutAState(): void
+    {
+        // When : « une recette » mais aucune recette ne ressemble
+        $result = $this->answer(AlexaTestRequest::chooseKind('une recette', 'meal'), SpokenDialogueState::choose('xyz', [], 'xyz'));
+
+        // Then : les deux côtés sont essayés, plus d'issue
+        $this->assertSame("Je ne trouve rien qui s'appelle xyz.", $result->speech);
+        $this->assertNull($result->nextState);
+        $this->assertFalse($result->keepSessionOpen);
+        $this->assertSame([], $this->mealPlanner->planned);
+    }
+
+    public function testSuggestionsAfterAProductSwitchDoNotOfferTheProductAgain(): void
+    {
+        // Given
+        $this->recipeResolver->willSuggest('xyz', [new RecipeSuggestion('r1', 'xyzzy')]);
+
+        // When
+        $result = $this->answer(AlexaTestRequest::chooseKind('une recette', 'meal'), SpokenDialogueState::choose('xyz', [], 'xyz'));
+
+        // Then : « ou un produit ? » n'est plus proposé, et l'état retient les deux côtés essayés
+        $this->assertSame('Je ne trouve pas la recette xyz. Tu veux dire xyzzy ?', $result->speech);
+        $this->assertTrue($result->nextState?->otherSideTried);
+        $this->assertTrue($result->nextState->isMeal());
+    }
+
+    public function testAProductSaidToAnUnknownRecipeSearchesThePhraseInTheProductsOnce(): void
+    {
+        // Given : « hachis » inconnu comme recette ; un produit porte ce nom
+        $this->resolver->willResolve('hachis', new ResolvedIngredient('hachis', 'Hachis', 'Boucherie', ResolvedIngredient::SURE));
+
+        // When : « un produit »
+        $result = $this->answer(AlexaTestRequest::chooseKind('un produit', 'item'), SpokenDialogueState::chooseRecipe('hachis', [], 'hachis'));
+
+        // Then : ajouté comme produit, rien de planifié
+        $this->assertSame([[self::USER, 'hachis']], $this->shoppingList->added);
+        $this->assertSame([], $this->mealPlanner->planned);
+        $this->assertSame("C'est noté : hachis.", $result->speech);
+    }
+
+    public function testNoProductAfterARecipeSwitchProposesTheUsualQuestionsWithoutOfferingARecipeAgain(): void
+    {
+        // Given : ni recette ni produit proche
+        $state = SpokenDialogueState::chooseRecipe('xyz', [], 'xyz');
+
+        // When
+        $result = $this->answer(AlexaTestRequest::chooseKind('un produit', 'item'), $state);
+
+        // Then : le dialogue d'un produit inconnu, sans « ou une recette ? » (les recettes ont déjà été cherchées)
+        $this->assertSame('Je ne connais pas xyz. Je le crée ?', $result->speech);
+        $this->assertTrue($result->nextState?->otherSideTried);
+        $this->assertFalse($result->nextState->isMeal());
+    }
+
+    public function testNoQuestionIsAskedForAnAbandonedRecipeDialogue(): void
+    {
+        // When : « non » aux recettes proposées
+        $result = $this->answer(AlexaTestRequest::no(), self::chooseRecipe(['gratin dauphinois']));
+
+        // Then : jamais de création de recette
+        $this->assertEquals(new AddSpokenItemResult("D'accord, je ne planifie rien.", keepSessionOpen: false, added: false), $result);
+        $this->assertSame([], $this->mealPlanner->planned);
+    }
+
+    public function testAnswerSixToTheQuestionOfAMealAlreadyInTheListChangesTheTotal(): void
+    {
+        // Given
+        $this->mealPlanner->willChange(ChangedMealServings::changed('Gratin', 6));
+        $state = SpokenDialogueState::askingServings(new DialogueOption('gratin-id', 'Gratin'), 4);
+
+        // When : « six »
+        $result = $this->answer(AlexaTestRequest::answerServings('six', '6'), $state);
+
+        // Then : le nouveau total (6) remplace l'ancien (4), pas une addition
+        $this->assertSame([[self::USER, 'gratin-id', 6]], $this->mealPlanner->changed);
+        $this->assertEquals(new AddSpokenItemResult("C'est changé : gratin, pour 6 personnes.", keepSessionOpen: false, added: true), $result);
+    }
+
+    public function testTheSameNumberOrNoOrNothingChangesNothing(): void
+    {
+        // Given
+        $state = SpokenDialogueState::askingServings(new DialogueOption('gratin-id', 'Gratin'), 4);
+
+        // When : « quatre » (elle s'est trompée), « non », « rien »
+        $same = $this->answer(AlexaTestRequest::answerServings('quatre', '4'), $state);
+        $no = $this->answer(AlexaTestRequest::no(), $state);
+        $nothing = $this->answer(AlexaTestRequest::keepMeal(), $state);
+
+        // Then
+        $this->assertSame([], $this->mealPlanner->changed);
+        foreach ([$same, $no, $nothing] as $result) {
+            $this->assertEquals(new AddSpokenItemResult("D'accord, je ne change rien.", keepSessionOpen: false, added: false), $result);
+        }
+    }
+
+    public function testTheTotalCanBeReducedAndIsSaidAsTheNewTotal(): void
+    {
+        // Given
+        $this->mealPlanner->willChange(ChangedMealServings::changed('Gratin', 2));
+
+        // When : « pour deux personnes »
+        $result = $this->answer(AlexaTestRequest::addItem('pour deux personnes'), SpokenDialogueState::askingServings(new DialogueOption('gratin-id', 'Gratin'), 4));
+
+        // Then
+        $this->assertSame([[self::USER, 'gratin-id', 2]], $this->mealPlanner->changed);
+        $this->assertSame("C'est changé : gratin, pour 2 personnes.", $result->speech);
+    }
+
+    public function testAMealThatLeftTheListSinceTheQuestionIsSaidSo(): void
+    {
+        // Given
+        $this->mealPlanner->willChange(ChangedMealServings::notPlanned('Gratin'));
+
+        // When
+        $result = $this->answer(AlexaTestRequest::answerServings('six', '6'), SpokenDialogueState::askingServings(new DialogueOption('gratin-id', 'Gratin'), 4));
+
+        // Then
+        $this->assertSame("Ce repas n'est plus dans ta liste.", $result->speech);
+    }
+
+    public function testAMisunderstoodTotalIsAskedAgainOnceThenGivenUp(): void
+    {
+        // Given
+        $state = SpokenDialogueState::askingServings(new DialogueOption('gratin-id', 'Gratin'), 4);
+
+        // When : « oui » ne dit pas pour combien
+        $first = $this->answer(AlexaTestRequest::yes(), $state);
+        $second = $this->answer(AlexaTestRequest::yes(), $first->nextState ?? $state);
+
+        // Then
+        $this->assertSame(1, $first->nextState?->misses);
+        $this->assertSame("Je n'ai pas compris. Le repas gratin est déjà prévu pour 4 personnes. Tu le veux pour combien, ou on ne change rien ?", $first->speech);
+        $this->assertEquals(new AddSpokenItemResult("Je n'ai pas compris. On laisse tomber.", keepSessionOpen: false, added: false), $second);
+        $this->assertSame([], $this->mealPlanner->changed);
+    }
+
+    public function testHelpRepeatsTheQuestionOfTheTotalWithoutCountingAMiss(): void
+    {
+        // When
+        $result = $this->answer(AlexaTestRequest::intent('AMAZON.HelpIntent'), SpokenDialogueState::askingServings(new DialogueOption('gratin-id', 'Gratin'), 4));
+
+        // Then
+        $this->assertSame(0, $result->nextState?->misses);
+        $this->assertSame('Le repas gratin est déjà prévu pour 4 personnes. Tu le veux pour combien, ou on ne change rien ?', $result->speech);
+    }
+
+    public function testANewProductSaidToTheQuestionOfTheTotalAbandonsItAndAddsTheProduct(): void
+    {
+        // Given
+        $this->resolver->willResolve('du pain', new ResolvedIngredient('pain', 'Pain', 'Boulangerie', ResolvedIngredient::SURE));
+
+        // When
+        $result = $this->answer(AlexaTestRequest::addItem('du pain'), SpokenDialogueState::askingServings(new DialogueOption('gratin-id', 'Gratin'), 4));
+
+        // Then
+        $this->assertSame([[self::USER, 'pain']], $this->shoppingList->added);
+        $this->assertSame([], $this->mealPlanner->changed);
+        $this->assertSame("C'est noté : pain.", $result->speech);
+    }
+
+    public function testASuggestionAProductQuestionMakesOffersTheRecipeOnlyOnce(): void
+    {
+        // Given : un produit inconnu, une proposition
+        $state = SpokenDialogueState::choose('hachis', [new DialogueOption('persil-u', 'persil')], 'hachis');
+
+        // When : la question répétée à « aide »
+        $help = $this->answer(AlexaTestRequest::intent('AMAZON.HelpIntent'), $state);
+
+        // Then
+        $this->assertSame('Tu veux dire persil ? Ou un nouveau produit, ou une recette ?', $help->speech);
     }
 }

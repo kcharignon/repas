@@ -75,6 +75,35 @@ final readonly class AlexaTestRequest
         return self::of('IntentRequest', 'CheckItemIntent', $item === null ? ['item' => ['name' => 'item']] : ['item' => ['name' => 'item', 'value' => $item]]);
     }
 
+    /**
+     * « planifie le repas hachis parmentier pour six personnes » : l'intention `AddMealIntent`, son créneau `recipe` et, si on le donne, `servings`
+     * (rapproché du nombre `$servingsId`, comme le type `QUANTITY`).
+     */
+    public static function addMeal(?string $recipe = 'hachis parmentier', ?string $servingsHeard = null, ?string $servingsId = null): self
+    {
+        $request = self::of('IntentRequest', 'AddMealIntent', $recipe === null ? ['recipe' => ['name' => 'recipe']] : ['recipe' => ['name' => 'recipe', 'value' => $recipe]]);
+
+        return $servingsHeard === null ? $request : $request->withSlot('servings', $servingsHeard, $servingsId);
+    }
+
+    /** « six » : `AnswerServingsIntent`, créneau `servings` rapproché du nombre `$servingsId` (« 6 »). */
+    public static function answerServings(?string $heard, ?string $servingsId): self
+    {
+        return self::of('IntentRequest', 'AnswerServingsIntent', [])->withSlot('servings', $heard, $servingsId);
+    }
+
+    /** « une recette » : `ChooseKindIntent`, créneau `kind` rapproché de `meal` ou de `item`. */
+    public static function chooseKind(?string $heard, ?string $kindId): self
+    {
+        return self::of('IntentRequest', 'ChooseKindIntent', [])->withSlot('kind', $heard, $kindId);
+    }
+
+    /** « rien » : `KeepMealIntent`, sans créneau. */
+    public static function keepMeal(): self
+    {
+        return self::intent('KeepMealIntent');
+    }
+
     /** Le créneau `quantity` : un nombre d'Amazon, sans résolution d'entité. */
     public function withQuantity(string|int|float $quantity): self
     {
