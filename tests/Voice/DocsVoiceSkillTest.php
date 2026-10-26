@@ -158,7 +158,9 @@ class DocsVoiceSkillTest extends KernelTestCase
             $this->assertSame(0, substr_count(str_replace(['{recipe}', '{servings}'], '', $sample), '{'), "« $sample » : {recipe} et {servings} seulement");
             $this->assertLessThanOrEqual(1, substr_count($sample, '{servings}'), $sample);
             $this->assertStringNotContainsString("'{", $sample, "« $sample » : une espace après l'apostrophe, avant un créneau");
-            $this->assertDoesNotMatchRegularExpression('/(?<![\p{L}])(un|une)(?![\p{L}])/u', $sample, "« $sample » : « un » et « une » sont des nombres, jamais un mot de liaison");
+            // « un » et « une » sont des articles seulement juste après un verbe de planification (« planifie une fondue ») : le seul nombre de la phrase vient après « pour »
+            $withoutArticle = preg_replace('/^(planifie|planifier|prévois|prévoir|prépare|préparer|mets au menu|mettre au menu) (un|une) /u', '$1 ', $sample);
+            $this->assertDoesNotMatchRegularExpression('/(?<![\p{L}])(un|une)(?![\p{L}])/u', $withoutArticle, "« $sample » : « un » et « une » sont des nombres, un article seulement après un verbe de planification");
             $this->assertDoesNotMatchRegularExpression('/\d|-/', $sample, "« $sample » : ni chiffre ni trait d'union");
             $this->assertSame(trim($sample), $sample);
             $this->assertSame(mb_strtolower($sample), $sample, "« $sample » : en minuscules");
@@ -178,6 +180,14 @@ class DocsVoiceSkillTest extends KernelTestCase
         $this->assertSame(['le repas' => true, 'la recette' => true], $markers);
         $this->assertContains('planifie {recipe}', $samples);
         $this->assertContains('planifie le repas {recipe} pour {servings} personnes', $samples);
+        // L'article se dit après un verbe de planification (essai réel du 2026-10-26 : « planifier une fondue » n'était pas compris)
+        foreach (['planifie une {recipe}', 'planifier un {recipe} pour {servings} personnes', 'prévois des {recipe}', 'mets au menu la {recipe}', 'préparer le {recipe} pour {servings}'] as $withArticle) {
+            $this->assertContains($withArticle, $samples);
+        }
+        // … mais jamais après « ajoute » (« ajoute un hachis » reste un produit)
+        foreach (['ajoute un {recipe}', 'ajoute une {recipe}', 'ajouter une {recipe}', 'ajoute le {recipe}'] as $notAMeal) {
+            $this->assertNotContains($notAMeal, $samples);
+        }
         $this->assertContains('ajoute la recette {recipe}', $samples);
         $this->assertContains('ajoute le repas {recipe} pour {servings}', $samples);
         // « ajoute » seul reste un produit : jamais d'échantillon d'ajout de repas sans le mot
