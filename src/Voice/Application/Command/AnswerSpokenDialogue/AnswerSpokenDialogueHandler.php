@@ -16,6 +16,8 @@ use Repas\Voice\Application\Command\AddSpokenMeal\AddSpokenMealHandler;
 use Repas\Voice\Application\Command\RemoveSpokenItem\RemovedLineFactory;
 use Repas\Voice\Application\Command\RemoveSpokenItem\RemoveSpokenItemCommand;
 use Repas\Voice\Application\Command\RemoveSpokenItem\RemoveSpokenItemHandler;
+use Repas\Voice\Application\Command\RemoveSpokenMeal\RemoveSpokenMealCommand;
+use Repas\Voice\Application\Command\RemoveSpokenMeal\RemoveSpokenMealHandler;
 use Repas\Voice\Application\Query\GetSpokenItemInList\SpokenListAnswerer;
 use Repas\Voice\Domain\Model\DialogueOption;
 use Repas\Voice\Domain\Model\DialogueStep;
@@ -58,6 +60,12 @@ use Symfony\Component\Messenger\Attribute\AsMessageHandler;
  * TOTAL ; le même nombre, « non » ou « rien » ne change rien) ; « planifie le repas … » au milieu d'une question est une nouvelle demande de repas
  * (`NEW_MEAL`) ; un produit dit à la place des recettes proposées ne retient rien pour une recette, et inversement.
  *
+ * Les retraits (ADR 0029 décision 12 amendée, VOX-306) : quand « enlève … » n'est pas dans la liste, l'état porte `SpokenAction::REMOVE` et des propositions TIRÉES
+ * DE LA LISTE (les trois lignes ou les trois repas planifiés les plus proches, ou aucune) ; une proposition choisie est retirée (le produit : la quantité
+ * dite ; le repas : le nombre de personnes dit, ou le repas entier), jamais ajoutée ni retenue pour la phrase. « Un repas » / « un produit » aiguille vers l'autre
+ * recherche, chaque côté une seule fois (`SWITCH_TO_MEAL` / `SWITCH_TO_ITEM` : l'état dit s'il s'agit d'un retrait) ; « enlève le repas … » dit au milieu d'une
+ * question est une nouvelle demande de retrait de repas (`NEW_MEAL_REMOVAL`).
+ *
  * La quantité et l'unité dites au départ (« trois croquettes ») voyagent dans l'état (`SpokenDialogueState::quantity`) et s'appliquent à l'article
  * qui aboutit, ajouté ou créé ; un autre article dit à la place porte les siennes (`AlexaRequest`).
  *
@@ -79,6 +87,7 @@ readonly class AnswerSpokenDialogueHandler
         private RemoveSpokenItemHandler $removeSpokenItem,
         private SpokenListAnswerer $listAnswerer,
         private AddSpokenMealHandler $addSpokenMeal,
+        private RemoveSpokenMealHandler $removeSpokenMeal,
     ) {
     }
 
@@ -119,10 +128,22 @@ readonly class AnswerSpokenDialogueHandler
                 rememberAs: $state->isMeal() ? $state->rememberablePhrase() : null,
                 originalPhrase: $answer->original,
             )),
-            // Aiguillage (décision 13) : la phrase d'origine est cherchée de l'autre côté, une seule fois
-            SpokenAnswerKind::SWITCH_TO_MEAL => ($this->addSpokenMeal)(new AddSpokenMealCommand($command->userId, $state->phrase, sessionIsOpen: false, otherSideTried: true)),
+            // « Enlève le repas … » dit au milieu d'une question (décision 12, VOX-306) : une nouvelle demande de retrait d'un repas
+            SpokenAnswerKind::NEW_MEAL_REMOVAL => ($this->removeSpokenMeal)(new RemoveSpokenMealCommand(
+                $command->userId,
+                $answer->phrase ?? '',
+                sessionIsOpen: false,
+                servings: $answer->number,
+                originalPhrase: $answer->original,
+            )),
+            // Aiguillage (décision 13) : la phrase d'origine est cherchée de l'autre côté, une seule fois. Pour un retrait (VOX-306), c'est la liste qu'on cherche
+            SpokenAnswerKind::SWITCH_TO_MEAL => $state->isRemoval()
+                ? ($this->removeSpokenMeal)(new RemoveSpokenMealCommand($command->userId, $state->phrase, sessionIsOpen: false, otherSideTried: true))
+                : ($this->addSpokenMeal)(new AddSpokenMealCommand($command->userId, $state->phrase, sessionIsOpen: false, otherSideTried: true)),
             // Les produits cherchent la phrase d'origine ENTIÈRE (« le repas pour chien » : un produit dont le nom commence par le mot « repas »), sans l'article
-            SpokenAnswerKind::SWITCH_TO_ITEM => ($this->addSpokenItem)(new AddSpokenItemCommand($command->userId, $this->namer->nameFrom($state->originalPhrase ?? $state->phrase) ?? $state->phrase, sessionIsOpen: false, otherSideTried: true)),
+            SpokenAnswerKind::SWITCH_TO_ITEM => $state->isRemoval()
+                ? ($this->removeSpokenItem)(new RemoveSpokenItemCommand($command->userId, $this->namer->nameFrom($state->originalPhrase ?? $state->phrase) ?? $state->phrase, sessionIsOpen: false, otherSideTried: true))
+                : ($this->addSpokenItem)(new AddSpokenItemCommand($command->userId, $this->namer->nameFrom($state->originalPhrase ?? $state->phrase) ?? $state->phrase, sessionIsOpen: false, otherSideTried: true)),
             SpokenAnswerKind::PICK_SERVINGS => $this->addSpokenMeal->changeServings(
                 $command->userId,
                 $state->options[0] ?? throw new \LogicException('PICK_SERVINGS sans recette.'),
@@ -136,8 +157,8 @@ readonly class AnswerSpokenDialogueHandler
             SpokenAnswerKind::CONFIRM => $this->create($command),
             SpokenAnswerKind::ABANDON => $this->finish(match (true) {
                 $state->step === DialogueStep::SERVINGS => VoiceReplies::MEAL_UNCHANGED,
-                $state->isMeal() => VoiceReplies::DECLINED_MEAL,
                 $state->isRemoval() => VoiceReplies::DECLINED_REMOVAL,
+                $state->isMeal() => VoiceReplies::DECLINED_MEAL,
                 $state->isTieBreak() => VoiceReplies::DECLINED_TIE,
                 default => VoiceReplies::DECLINED,
             }),
@@ -166,6 +187,12 @@ readonly class AnswerSpokenDialogueHandler
     private function pickOption(AnswerSpokenDialogueCommand $command, SpokenAnswer $answer): AddSpokenItemResult
     {
         $option = $answer->option ?? throw new \LogicException('PICK_OPTION sans proposition.');
+
+        // Un repas de la liste, choisi parmi les propositions d'un retrait (décision 12, VOX-306) : il est retiré (le nombre de personnes dit, ou le repas
+        // entier), rien n'est retenu. L'identifiant de l'état n'est pas cru (le port vérifie)
+        if ($command->state->isRemoval() && $command->state->isMeal()) {
+            return $this->removeSpokenMeal->remove($command->userId, $option, $command->state->servings, keepSessionOpen: false);
+        }
 
         // Une recette proposée, choisie (décision 13) : le repas est planifié ET la phrase retenue. L'identifiant de l'état n'est pas cru (le port vérifie)
         if ($command->state->isMeal()) {

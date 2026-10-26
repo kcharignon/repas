@@ -328,6 +328,22 @@ function addMealSamples() {
   return samples;
 }
 
+// Retirer un repas (VOX-306, décision 12 de l'ADR 0029) : toujours avec le MOT « repas » ou « recette » (sans lui, « enlève … » est un produit, RemoveItemIntent) ;
+// les verbes de RemoveItemIntent, le nombre de personnes ENLEVÉ en fin de phrase (« pour {servings} personnes »). Le webhook reconnaît aussi « le repas » /
+// « la recette » quand Amazon range la phrase dans RemoveItemIntent.
+function removeMealSamples() {
+  const samples = [];
+  for (const verb of REMOVE_VERBS) {
+    for (const marker of MEAL_ADD_MARKERS) {
+      for (const form of MEAL_FORMS) {
+        samples.push([verb, marker, form].join(' '));
+      }
+    }
+  }
+
+  return samples;
+}
+
 function withBare(samples, bare) {
   return BARE_FORMS ? [bare, ...samples] : samples;
 }
@@ -383,6 +399,11 @@ function intents() {
       name: 'AddMealIntent',
       slots: [{ name: 'recipe', type: 'RECIPE' }, { name: 'servings', type: 'QUANTITY' }],
       samples: addMealSamples(),
+    },
+    {
+      name: 'RemoveMealIntent',
+      slots: [{ name: 'recipe', type: 'RECIPE' }, { name: 'servings', type: 'QUANTITY' }],
+      samples: removeMealSamples(),
     },
     {
       name: 'ChooseOptionIntent',

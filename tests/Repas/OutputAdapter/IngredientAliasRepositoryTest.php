@@ -264,7 +264,8 @@ class IngredientAliasRepositoryTest extends DatabaseTestCase
         $this->assertSame(['tomatesother-id', AliasKind::ADOPTION, 'migration-2026-10-20'], $this->describe(self::OTHER, 'tomates-commun'));
         $this->assertSame(['tomateother-id', AliasKind::MERGE, 'merge'], $this->describe(self::OTHER, 'tomatesuser-id'));
         // les anciens slugs se résolvent : le commun, l'ancien alias et le slug absorbé
-        $this->assertSame(
+        // (`resolve()` ne promet aucun ordre : la requête rend les lignes dans l'ordre de la base, qui varie)
+        $this->assertEquals(
             ['tomates-commun' => 'tomateuser-id', 'ancienne-tomate' => 'tomateuser-id', 'tomatesuser-id' => 'tomateuser-id'],
             $this->aliasRepository->resolve(self::USER, ['tomates-commun', 'ancienne-tomate', 'tomatesuser-id']),
         );

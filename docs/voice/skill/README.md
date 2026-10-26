@@ -22,7 +22,7 @@ Le script lit `docs/ingredients/base-ingredients.tsv` (type `INGREDIENT`), `src/
 ## Le modèle d'interaction
 
 - **Nom d'invocation** : `jarvis` (décision D1 du propriétaire, [ADR 0029](../../adr/0029-commande-vocale-alexa.md) ; la console l'a accepté en développement). S'il change, modifier la constante `INVOCATION_NAME` du script, puis `alexa.md` § 2. **Recoller le modèle dans la console renomme le skill** : toujours coller le fichier généré à jour, jamais un ancien.
-- **Intentions** (dix-huit, exactement celles de `AlexaIntent`, que `DocsVoiceSkillTest` impose) :
+- **Intentions** (dix-neuf, exactement celles de `AlexaIntent`, que `DocsVoiceSkillTest` impose) :
 
   | Intention | Créneau (type) | Quand |
   |---|---|---|
@@ -30,6 +30,7 @@ Le script lit `docs/ingredients/base-ingredients.tsv` (type `INGREDIENT`), `src/
   | `RemoveItemIntent` | `item` (`INGREDIENT`), `quantity` (`QUANTITY`), `unit` (`UNIT`) | « enlève du pain » ; « retire deux paquets de croquettes » ; « déduis trois croquettes de la liste » ; « supprime des tomates » (ADR 0029 décision 12) |
   | `CheckItemIntent` | `item` (`INGREDIENT`) | « est-ce qu'il y a des croquettes dans la liste ? » ; « combien de croquettes dans la liste » ; « il y a du pain dans ma liste ? » (décision 12) |
   | `AddMealIntent` | `recipe` (`RECIPE`), `servings` (`QUANTITY`, 1 à 99) | « planifie le repas hachis parmentier » ; « prévois la recette lasagnes pour six personnes » ; « prépare un hachis parmentier » ; « mets au menu le gratin » ; « ajoute le repas / la recette hachis parmentier » : une recette de l'utilisateur est planifiée (ADR 0029 décision 13, VOX-305). « Ajoute un hachis parmentier » SANS le mot « repas » / « recette » reste un produit (`AddItemIntent`) |
+  | `RemoveMealIntent` | `recipe` (`RECIPE`), `servings` (`QUANTITY`, 1 à 99) | « enlève le repas hachis parmentier » ; « retire la recette lasagnes pour deux personnes » : le repas planifié quitte la liste, ou son nombre de personnes baisse du nombre dit (ADR 0029 décision 12, VOX-306). Toujours avec le mot « repas » ou « recette » : « enlève du pain » reste `RemoveItemIntent` |
   | `ChooseOptionIntent` | `rank` (`OPTION_RANK`) | « le deuxième » : choisir l'une des trois propositions |
   | `CreateItemIntent` | — | « un nouveau produit », « aucun », « aucun des trois », « crée-le », « ni l'un ni l'autre » |
   | `ListChoicesIntent` | — | « lequel », « lesquelles », « la liste », « rappelle moi les rayons qui existent », « je ne sais pas », « énumère » : aux questions du rayon et de l'unité, lire tous les choix (56 phrases d'exemple, voir plus bas) |

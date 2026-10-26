@@ -8,18 +8,23 @@ namespace Repas\Shared\Application\Dto;
  * (« tomate » en fruit et légume ET en surgelé, toutes deux dans la liste) : Alexa demande lequel pour retirer, ou répond pour toutes pour
  * consulter. Un seul cas à la fois. Sans liste active, la liste envoyée au drive (jamais lue ni modifiée) se distingue de l'absence de liste :
  * `listSent`, de quoi dire une phrase vraie (« Ta liste est déjà partie au drive. »).
+ *
+ * Quand le produit n'y est pas ET que la phrase ne désigne aucun ingrédient de l'utilisateur (`absentName` vide), `suggestions` porte les lignes de la
+ * liste qui lui ressemblent (au plus trois, ADR 0029 décision 12 amendée par VOX-306) : Alexa propose de retirer l'une d'elles.
  */
 final readonly class SpokenListLookupResult
 {
     /**
-     * @param list<ListedLine> $lines    les lignes de la liste qui portent le produit (aucune : il n'y est pas)
-     * @param bool             $listSent aucune liste active, mais l'utilisateur en a une envoyée au drive (jamais vrai avec `hasList`)
+     * @param list<ListedLine> $lines       les lignes de la liste qui portent le produit (aucune : il n'y est pas)
+     * @param bool             $listSent    aucune liste active, mais l'utilisateur en a une envoyée au drive (jamais vrai avec `hasList`)
+     * @param list<ListedLine> $suggestions les lignes de la liste les plus proches d'une phrase qui ne désigne aucun ingrédient (au plus trois)
      */
     private function __construct(
         public bool $hasList,
         public array $lines,
         public ?string $absentName,
         public bool $listSent = false,
+        public array $suggestions = [],
     ) {
     }
 
@@ -39,10 +44,11 @@ final readonly class SpokenListLookupResult
      * Une liste active, mais le produit n'y est pas.
      *
      * @param ?string $name le nom de l'ingrédient reconnu (« croquette »), `null` si la phrase ne désigne aucun ingrédient de l'utilisateur
+     * @param list<ListedLine> $suggestions les lignes de la liste les plus proches de la phrase (seulement si `$name` est vide)
      */
-    public static function notInList(?string $name): self
+    public static function notInList(?string $name, array $suggestions = []): self
     {
-        return new self(true, [], $name);
+        return new self(true, [], $name, false, $suggestions);
     }
 
     public static function found(ListedLine $line): self

@@ -13,14 +13,16 @@ namespace Repas\Voice\Domain\Model;
  * aussi la quantité et l'unité DITES au départ (« trois paquets de croquettes ») pour qu'elles s'appliquent à l'article quand le dialogue
  * aboutit ; sans rien dit, une unité d'achat.
  *
- * `action` (ADR 0029 décision 12) : `add` par défaut ; `remove` quand le dialogue départage des lignes de la liste à RETIRER (« enlève des
- * tomates » alors que la liste porte des tomates en fruit et légume ET en surgelé) : seule l'étape `choose` d'un départage existe alors, et la
- * réponse retire l'article choisi, sans rien retenir.
+ * `action` (ADR 0029 décision 12) : `add` par défaut ; `remove` quand le dialogue concerne un RETRAIT, toujours à l'étape `choose` et sans rien
+ * retenir ni créer : soit départager des lignes de la liste (« enlève des tomates » alors que la liste porte des tomates en fruit et légume ET en
+ * surgelé, `isTieBreak()`), soit — VOX-306 — proposer ce que la liste contient quand la phrase n'y est pas comprise (`isRemovalProposal()` : les trois
+ * lignes ou les trois repas planifiés les plus proches, aucun : seulement l'issue vers l'autre type), la réponse retire l'article ou le repas choisi.
  *
  * `target` (décision 13) : `item` par défaut (le dialogue d'un produit) ; `meal` quand le dialogue cherche une RECETTE de l'utilisateur. Les
  * propositions de l'étape `choose` sont alors des recettes (le `slug` d'une `DialogueOption` porte l'identifiant de la recette), `servings` le
- * nombre de personnes dit au départ (`null` : celui du compte). Seules les étapes `choose` et `servings` existent pour un repas, et seulement pour
- * AJOUTER (retirer un repas : VOX-306). L'étape `servings` porte la recette déjà planifiée (l'unique proposition) et `plannedServings`, le nombre de
+ * nombre de personnes dit au départ (`null` : celui du compte). Seules les étapes `choose` et `servings` existent pour un repas ; `servings` ne
+ * concerne que l'ajout, un retrait de repas (VOX-306) n'a que l'étape `choose` : ses propositions sont alors les repas PLANIFIÉS de la liste (le `slug`
+ * est l'identifiant de la recette) et `servings` le nombre de personnes à ENLEVER (`null` : tout le repas). L'étape `servings` porte la recette déjà planifiée (l'unique proposition) et `plannedServings`, le nombre de
  * personnes pour lequel elle l'est. `otherSideTried` : l'autre recherche (produit ou recette) a déjà été essayée pour cette phrase, donc aucune issue
  * d'aiguillage n'est proposée (pas de ping-pong).
  *
@@ -74,7 +76,7 @@ final readonly class SpokenDialogueState
         public SpokenTarget $target = SpokenTarget::ITEM,
         /** L'autre recherche (produit ou recette) a déjà été essayée pour cette phrase : plus d'issue d'aiguillage. */
         public bool $otherSideTried = false,
-        /** Repas : le nombre de personnes dit au départ (1 à 99), `null` si rien n'a été dit (celui du compte). */
+        /** Repas : le nombre de personnes dit au départ (1 à 99), `null` si rien n'a été dit (celui du compte ; pour un retrait : tout le repas). */
         public ?int $servings = null,
         /** Étape `servings` : le nombre de personnes pour lequel la recette est déjà planifiée (1 à 99). */
         public ?int $plannedServings = null,
@@ -144,6 +146,36 @@ final readonly class SpokenDialogueState
         return self::choose($phrase, $options, $name, $quantity, $spokenUnitSlug, SpokenAction::REMOVE);
     }
 
+    /**
+     * La phrase n'est pas dans la liste (ADR 0029 décision 12, VOX-306) : on propose les lignes de la liste les plus proches (aucune : seulement l'issue
+     * « un repas ? ») avant de RETIRER. Les propositions sont dites sans rayon (un nom une fois) : ce n'est pas un départage (`isTieBreak()`).
+     *
+     * @param list<DialogueOption> $options des lignes de la liste : le `slug` est celui de l'ingrédient
+     * @param bool $otherSideTried les repas ont déjà été cherchés pour cette phrase : « ou un repas ? » n'est plus proposé
+     */
+    public static function proposeToRemove(string $phrase, array $options, string $name, int $quantity = 1, ?string $spokenUnitSlug = null, bool $otherSideTried = false): self
+    {
+        $withoutDepartment = array_map(static fn(DialogueOption $option): DialogueOption => new DialogueOption($option->slug, $option->name), $options);
+
+        return self::choose($phrase, $withoutDepartment, $name, $quantity, $spokenUnitSlug, SpokenAction::REMOVE, $otherSideTried);
+    }
+
+    /**
+     * Le repas à retirer n'est pas dans la liste (ADR 0029 décision 12, VOX-306) : on propose les repas PLANIFIÉS les plus proches (aucun : seulement l'issue
+     * « un produit ? »). Jamais de création ni de mémoire de phrase.
+     *
+     * @param list<DialogueOption> $options des repas de la liste : le `slug` est l'identifiant de la recette
+     * @param ?int $servings le nombre de personnes à enlever (1 à 99) ; `null` : tout le repas
+     * @param bool $otherSideTried les produits ont déjà été cherchés pour cette phrase : « ou un produit ? » n'est plus proposé
+     * @param ?string $originalPhrase la phrase telle que dite, avec le mot « repas » ou « recette » (voir `chooseRecipe`)
+     */
+    public static function chooseMealToRemove(string $phrase, array $options, ?int $servings = null, bool $otherSideTried = false, ?string $originalPhrase = null): self
+    {
+        $original = $originalPhrase !== null && $originalPhrase !== $phrase && mb_strlen($originalPhrase) <= AlexaRequest::MAX_PHRASE_LENGTH ? $originalPhrase : null;
+
+        return new self(DialogueStep::CHOOSE, $phrase, array_slice(array_values($options), 0, self::MAX_OPTIONS), $phrase, null, null, 0, 1, null, SpokenAction::REMOVE, SpokenTarget::MEAL, $otherSideTried, $servings, null, $original);
+    }
+
     /** L'utilisateur veut créer le produit : première des deux questions. */
     public function askingDepartment(): self
     {
@@ -160,10 +192,19 @@ final readonly class SpokenDialogueState
         return $this->with(['step' => DialogueStep::CONFIRM, 'options' => [], 'unit' => $unit, 'misses' => 0]);
     }
 
-    /** Le dialogue départage des lignes à RETIRER : l'article choisi sera retiré, jamais ajouté, ni retenu pour la phrase. */
+    /** Le dialogue concerne un RETRAIT : l'article ou le repas choisi sera retiré, jamais ajouté, ni retenu pour la phrase. */
     public function isRemoval(): bool
     {
         return $this->action === SpokenAction::REMOVE;
+    }
+
+    /**
+     * Le dialogue propose ce que la liste contient pour une phrase qu'elle ne porte pas (VOX-306) : un retrait qui n'est pas un départage de lignes
+     * (`isTieBreak()`), pour un produit comme pour un repas.
+     */
+    public function isRemovalProposal(): bool
+    {
+        return $this->isRemoval() && $this->step === DialogueStep::CHOOSE && !$this->isTieBreak();
     }
 
     /** Le dialogue cherche une recette (ADR 0029 décision 13). */
@@ -179,7 +220,7 @@ final readonly class SpokenDialogueState
      */
     public function rememberablePhrase(): ?string
     {
-        return $this->step === DialogueStep::CHOOSE && $this->options !== [] && !$this->isTieBreak() ? $this->phrase : null;
+        return $this->step === DialogueStep::CHOOSE && $this->options !== [] && !$this->isTieBreak() && !$this->isRemoval() ? $this->phrase : null;
     }
 
     /**
@@ -331,8 +372,8 @@ final readonly class SpokenDialogueState
             $originalPhrase,
         );
 
-        // Un retrait ne départage que des lignes qui se valent : un état qui prétend retirer autre chose (un repas, par exemple, VOX-306) n'est pas cru
-        return $action === SpokenAction::REMOVE && !$state->isTieBreak() ? null : $state;
+        // Un retrait n'a qu'une étape, le choix de ce qu'on retire (un départage de lignes ou des propositions de la liste) : un état « retirer » à une autre étape n'est pas cru
+        return $action === SpokenAction::REMOVE && $step !== DialogueStep::CHOOSE ? null : $state;
     }
 
     private static function servings(mixed $value): ?int

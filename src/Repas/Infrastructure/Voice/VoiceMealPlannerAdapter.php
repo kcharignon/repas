@@ -4,8 +4,10 @@ namespace Repas\Repas\Infrastructure\Voice;
 
 use Repas\Repas\Application\Command\ChangeSpokenMealServings\ChangeSpokenMealServingsCommand;
 use Repas\Repas\Application\Command\PlanSpokenMeal\PlanSpokenMealCommand;
+use Repas\Repas\Application\Command\RemoveSpokenMeal\RemoveSpokenMealCommand;
 use Repas\Shared\Application\Dto\ChangedMealServings;
 use Repas\Shared\Application\Dto\PlannedSpokenMeal;
+use Repas\Shared\Application\Dto\RemovedSpokenMeal;
 use Repas\Shared\Application\Interface\CommandBusInterface;
 use Repas\Shared\Application\Interface\VoiceMealPlanner;
 use Repas\Shared\Domain\Tool\UuidGenerator;
@@ -35,6 +37,16 @@ final readonly class VoiceMealPlannerAdapter implements VoiceMealPlanner
         $result = $this->commandBus->dispatch(new ChangeSpokenMealServingsCommand($userId, $recipeId, $servings));
         if (!$result instanceof ChangedMealServings) {
             throw new \LogicException('ChangeSpokenMealServingsHandler doit renvoyer un ChangedMealServings.');
+        }
+
+        return $result;
+    }
+
+    public function removeMeal(string $userId, string $recipeId, ?int $servings = null): RemovedSpokenMeal
+    {
+        $result = $this->commandBus->dispatch(new RemoveSpokenMealCommand($userId, $recipeId, $servings));
+        if (!$result instanceof RemovedSpokenMeal) {
+            throw new \LogicException('RemoveSpokenMealHandler doit renvoyer un RemovedSpokenMeal.');
         }
 
         return $result;

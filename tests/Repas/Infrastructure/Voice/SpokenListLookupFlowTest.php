@@ -3,10 +3,12 @@
 namespace Repas\Tests\Repas\Infrastructure\Voice;
 
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
+use Repas\Repas\Domain\Model\Recipe;
 use Repas\Repas\Domain\Model\ShoppingListStatus;
 use Repas\Shared\Application\Interface\SpokenListLookup;
 use Repas\Shared\Application\Interface\VoiceShoppingList;
 use Repas\Tests\Helper\Builder\IngredientBuilder;
+use Repas\Tests\Helper\Builder\RecipeBuilder;
 use Repas\Tests\Helper\Builder\ShoppingListBuilder;
 use Repas\Tests\Helper\Builder\UserBuilder;
 use Repas\Tests\Helper\DatabaseTestCase;
@@ -100,5 +102,97 @@ class SpokenListLookupFlowTest extends DatabaseTestCase
 
         // Then
         $this->assertSame([true, [], null], [$result->hasList, $result->lines, $result->absentName]);
+    }
+
+    // ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
+    // Les repas planifiés et les propositions de la liste (ADR 0029 décision 12, VOX-306)
+    // ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
+
+    private function savedRecipe(User $author, RecipeBuilder $builder): Recipe
+    {
+        $recipe = $builder->withAuthor($author)->build();
+        foreach ($recipe->getRows() as $row) {
+            $row->getIngredient()->setCreatorId($author->getId());
+        }
+        $this->persister->saveRecipe($recipe);
+
+        return $recipe;
+    }
+
+    public function testASpokenPhraseFindsThePlannedMealButNeverARecipeThatIsNotInTheList(): void
+    {
+        // Given : la carbonara est planifiée, les œufs mollets sont une recette de l'utilisateur mais ne sont pas dans la liste
+        $user = $this->savedUser();
+        $carbonara = $this->savedRecipe($user, new RecipeBuilder()->isPastaCarbonara());
+        $eggs = $this->savedRecipe($user, new RecipeBuilder()->isSoftBoiledEggs());
+        $this->shoppingListRepository->save(new ShoppingListBuilder()->withOwner($user)->addRecipe($carbonara)->build());
+        $this->entityManager->clear();
+
+        // When
+        $found = $this->lookup->findMeal($user->getId(), $carbonara->getName());
+        $notPlanned = $this->lookup->findMeal($user->getId(), $eggs->getName());
+
+        // Then : le repas de la liste, avec son nombre de personnes ; la recette qui n'y est pas n'est ni trouvée ni proposée
+        $this->assertTrue($found->hasList);
+        $this->assertSame([$carbonara->getId(), $carbonara->getName()], [$found->meal?->recipeId, $found->meal?->name]);
+        $this->assertSame($user->getDefaultServing(), $found->meal?->servings);
+        $this->assertTrue($notPlanned->hasList);
+        $this->assertNull($notPlanned->meal);
+        $this->assertSame([], $notPlanned->suggestions);
+    }
+
+    public function testTheMealsOfAnotherUserAreNeverFound(): void
+    {
+        // Given : le repas est dans la liste d'un autre compte
+        $user = $this->savedUser();
+        $other = $this->savedUser();
+        $theirs = $this->savedRecipe($other, new RecipeBuilder()->isPastaCarbonara());
+        $this->shoppingListRepository->save(new ShoppingListBuilder()->withOwner($other)->addRecipe($theirs)->build());
+        $this->shoppingListRepository->save(new ShoppingListBuilder()->withOwner($user)->build());
+        $this->entityManager->clear();
+
+        // When
+        $result = $this->lookup->findMeal($user->getId(), $theirs->getName());
+
+        // Then
+        $this->assertTrue($result->hasList);
+        $this->assertNull($result->meal);
+        $this->assertSame([], $result->suggestions);
+    }
+
+    public function testWithoutAnActiveListThereIsNoMealAndASentListIsSaidApart(): void
+    {
+        // Given : pas de liste du tout, puis une liste partie au drive qui porte le repas
+        $user = $this->savedUser();
+        $recipe = $this->savedRecipe($user, new RecipeBuilder()->isPastaCarbonara());
+        $none = $this->lookup->findMeal($user->getId(), $recipe->getName());
+        $this->shoppingListRepository->save(new ShoppingListBuilder()->withOwner($user)->addRecipe($recipe)->withStatus(ShoppingListStatus::SENT)->build());
+        $this->entityManager->clear();
+
+        // When
+        $sent = $this->lookup->findMeal($user->getId(), $recipe->getName());
+
+        // Then : la liste envoyée n'est jamais lue
+        $this->assertSame([false, false, null], [$none->hasList, $none->listSent, $none->meal]);
+        $this->assertSame([false, true, null], [$sent->hasList, $sent->listSent, $sent->meal]);
+    }
+
+    public function testAPhraseThatLooksLikeNoIngredientProposesTheLinesOfTheListThatLookLikeIt(): void
+    {
+        // Given : la liste porte du lait ; la phrase dite ressemble à du lait sans en être un nom
+        $user = $this->savedUser();
+        $milk = new IngredientBuilder()->isMilk()->withCreator($user, true)->build();
+        $this->persister->saveIngredient($milk);
+        $this->voiceShoppingList->addItem($user->getId(), $milk->getSlug(), 2);
+        $this->entityManager->clear();
+
+        // When : un mot sans rapport, puis le nom exact
+        $unrelated = $this->lookup->find($user->getId(), 'de la ciboulette');
+        $exact = $this->lookup->find($user->getId(), 'du lait');
+
+        // Then : aucune proposition pour un mot sans rapport, la ligne pour le nom exact
+        $this->assertSame([], $unrelated->suggestions);
+        $this->assertNull($unrelated->absentName);
+        $this->assertSame([$milk->getSlug()], array_map(static fn($line): string => $line->slug, $exact->lines));
     }
 }

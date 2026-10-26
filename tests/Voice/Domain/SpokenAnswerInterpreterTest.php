@@ -699,4 +699,214 @@ class SpokenAnswerInterpreterTest extends TestCase
         $this->assertSame(SpokenAnswerKind::NEW_MEAL, $answer->kind);
         $this->assertSame(['pour chien', 'le repas pour chien'], [$answer->phrase, $answer->original]);
     }
+
+    // ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
+    // Un retrait dont la phrase n'est pas dans la liste : propositions de la liste et aiguillage (ADR 0029 décision 12, VOX-306)
+    // ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
+
+    /**
+     * @param list<string> $names
+     */
+    private static function mealsToRemove(array $names, bool $otherSideTried = false): SpokenDialogueState
+    {
+        return SpokenDialogueState::chooseMealToRemove('gratin', array_map(static fn(string $name): DialogueOption => new DialogueOption($name . '-id', $name), $names), 2, $otherSideTried);
+    }
+
+    /**
+     * @param list<string> $names
+     */
+    private static function itemsToRemove(array $names, bool $otherSideTried = false): SpokenDialogueState
+    {
+        return SpokenDialogueState::proposeToRemove('du gratin', array_map(static fn(string $name): DialogueOption => new DialogueOption($name . '-id', $name), $names), 'gratin', otherSideTried: $otherSideTried);
+    }
+
+    /**
+     * @return iterable<string, array{AlexaTestRequest, list<string>, bool, SpokenAnswerKind|string, ?string}>
+     */
+    public static function removalChooseCases(): iterable
+    {
+        $three = ['gratin dauphinois', 'gratin de pâtes', 'gratin de courgettes'];
+
+        yield 'rang 2' => [AlexaTestRequest::chooseOption('le deuxième', '2'), $three, false, SpokenAnswerKind::PICK_OPTION, 'gratin de pâtes'];
+        yield 'rang 3 sans résolution' => [AlexaTestRequest::chooseOption('trois', null), $three, false, SpokenAnswerKind::PICK_OPTION, 'gratin de courgettes'];
+        yield 'rang hors des propositions' => [AlexaTestRequest::chooseOption('trois', '3'), ['gratin dauphinois'], false, SpokenAnswerKind::UNCLEAR, null];
+        yield 'le nom en entier, quelle que soit l\'intention' => [AlexaTestRequest::removeItem('gratin de pâtes'), $three, false, SpokenAnswerKind::PICK_OPTION, 'gratin de pâtes'];
+        yield 'le nom dit comme un ajout' => [AlexaTestRequest::addItem('gratin de pâtes'), $three, false, SpokenAnswerKind::PICK_OPTION, 'gratin de pâtes'];
+        yield 'oui avec une seule proposition' => [AlexaTestRequest::yes(), ['gratin dauphinois'], false, SpokenAnswerKind::PICK_OPTION, 'gratin dauphinois'];
+        yield 'oui avec plusieurs propositions' => [AlexaTestRequest::yes(), $three, false, SpokenAnswerKind::WHICH_ONE, null];
+        yield 'oui sans proposition : c\'est l\'autre type' => [AlexaTestRequest::yes(), [], false, 'switch', null];
+        yield 'oui sans proposition, autre type déjà cherché' => [AlexaTestRequest::yes(), [], true, SpokenAnswerKind::ABANDON, null];
+        yield 'non : on abandonne, jamais de création' => [AlexaTestRequest::no(), $three, false, SpokenAnswerKind::ABANDON, null];
+        yield 'non sans proposition' => [AlexaTestRequest::no(), [], false, SpokenAnswerKind::ABANDON, null];
+        yield 'l\'autre type par le créneau' => [AlexaTestRequest::chooseKind('un autre', 'other'), $three, false, SpokenAnswerKind::UNCLEAR, null];
+        yield 'aucun des trois : l\'autre type, une fois' => [AlexaTestRequest::createItem(), $three, false, 'switch', null];
+        yield 'aucun, autre type déjà cherché' => [AlexaTestRequest::createItem(), $three, true, SpokenAnswerKind::ABANDON, null];
+        yield 'un nouveau produit ne crée rien' => [AlexaTestRequest::createItem(), [], true, SpokenAnswerKind::ABANDON, null];
+        yield 'rien de compris' => [AlexaTestRequest::answerUnit('kilos', 'kilo'), $three, false, SpokenAnswerKind::UNCLEAR, null];
+        yield 'l\'intention d\'un nombre : le deuxième' => [AlexaTestRequest::answerServings('deux', '2'), $three, false, SpokenAnswerKind::PICK_OPTION, 'gratin de pâtes'];
+        yield 'un nombre hors des propositions' => [AlexaTestRequest::answerServings('quatre', '4'), $three, false, SpokenAnswerKind::UNCLEAR, null];
+        yield 'un autre produit, ajouté' => [AlexaTestRequest::addItem('du pain'), $three, false, SpokenAnswerKind::NEW_REQUEST, null];
+        yield 'un autre retrait' => [AlexaTestRequest::removeItem('du pain'), $three, false, SpokenAnswerKind::NEW_REMOVAL, null];
+        yield 'une consultation' => [AlexaTestRequest::checkItem('du pain'), $three, false, SpokenAnswerKind::NEW_CHECK, null];
+        yield 'un repas à planifier' => [AlexaTestRequest::addMeal('lasagnes'), $three, false, SpokenAnswerKind::NEW_MEAL, null];
+        yield 'un repas à retirer' => [AlexaTestRequest::removeMeal('lasagnes'), $three, false, SpokenAnswerKind::NEW_MEAL_REMOVAL, null];
+        yield 'un repas à retirer dit à l\'intention des produits' => [AlexaTestRequest::removeItem('le repas lasagnes'), $three, false, SpokenAnswerKind::NEW_MEAL_REMOVAL, null];
+    }
+
+    /**
+     * @param list<string> $names
+     */
+    #[DataProvider('removalChooseCases')]
+    public function testTheQuestionOfAMealToRemoveIsAnsweredByTheStateWhateverTheIntent(AlexaTestRequest $request, array $names, bool $otherSideTried, SpokenAnswerKind|string $expected, ?string $option): void
+    {
+        // When : un repas à retirer (l'autre type est « un produit »)
+        [$kind, $picked] = $this->interpret($request, self::mealsToRemove($names, $otherSideTried));
+
+        // Then
+        $this->assertSame($expected === 'switch' ? SpokenAnswerKind::SWITCH_TO_ITEM : $expected, $kind);
+        $this->assertSame($option, $picked);
+    }
+
+    /**
+     * @param list<string> $names
+     */
+    #[DataProvider('removalChooseCases')]
+    public function testTheQuestionOfAnItemToRemoveIsAnsweredByTheStateWhateverTheIntent(AlexaTestRequest $request, array $names, bool $otherSideTried, SpokenAnswerKind|string $expected, ?string $option): void
+    {
+        // When : un produit à retirer (l'autre type est « un repas ») ; le rang et le nom sont les mêmes
+        [$kind, $picked] = $this->interpret($request, self::itemsToRemove($names, $otherSideTried));
+
+        // Then
+        $this->assertSame($expected === 'switch' ? SpokenAnswerKind::SWITCH_TO_MEAL : $expected, $kind);
+        $this->assertSame($option, $picked);
+    }
+
+    /**
+     * @return iterable<string, array{AlexaTestRequest, bool, bool, SpokenAnswerKind}>
+     */
+    public static function removalKinds(): iterable
+    {
+        // [la demande, l'état est celui d'un repas, l'autre type a déjà été cherché, la réponse attendue]
+        yield 'un produit, à la question d\'un repas' => [AlexaTestRequest::chooseKind('un produit', 'item'), true, false, SpokenAnswerKind::SWITCH_TO_ITEM];
+        yield 'un produit par le texte seul' => [AlexaTestRequest::removeItem("c'est un produit"), true, false, SpokenAnswerKind::SWITCH_TO_ITEM];
+        yield 'un produit, déjà cherché' => [AlexaTestRequest::chooseKind('un produit', 'item'), true, true, SpokenAnswerKind::UNCLEAR];
+        yield 'un repas, à la question d\'un produit' => [AlexaTestRequest::chooseKind('un repas', 'meal'), false, false, SpokenAnswerKind::SWITCH_TO_MEAL];
+        yield 'une recette par le texte seul' => [AlexaTestRequest::removeItem("c'est une recette"), false, false, SpokenAnswerKind::SWITCH_TO_MEAL];
+        yield 'un repas, déjà cherché' => [AlexaTestRequest::chooseKind('un repas', 'meal'), false, true, SpokenAnswerKind::UNCLEAR];
+        yield 'le même type : laquelle ?' => [AlexaTestRequest::chooseKind('un repas', 'meal'), true, false, SpokenAnswerKind::WHICH_ONE];
+        yield 'le même type pour un produit : lequel ?' => [AlexaTestRequest::chooseKind('un produit', 'item'), false, false, SpokenAnswerKind::WHICH_ONE];
+    }
+
+    #[DataProvider('removalKinds')]
+    public function testTheOtherTypeIsSearchedOnceAndTheSameTypeAsksWhichOne(AlexaTestRequest $request, bool $isMeal, bool $otherSideTried, SpokenAnswerKind $expected): void
+    {
+        // Given : deux propositions tirées de la liste
+        $state = $isMeal ? self::mealsToRemove(['gratin dauphinois', 'gratin de pâtes'], $otherSideTried) : self::itemsToRemove(['gratin dauphinois', 'gratin de pâtes'], $otherSideTried);
+
+        // Then
+        $this->assertSame($expected, $this->interpret($request, $state)[0]);
+    }
+
+    public function testAMealToRemoveSaidInTheMiddleOfAQuestionIsANewRemovalWithItsServings(): void
+    {
+        // Given
+        $request = AlexaRequest::fromDecoded(AlexaTestRequest::removeMeal('lasagnes', 'deux', '2')->toArray());
+
+        // When : à la question d'un produit, d'une recette, d'un départage, d'un retrait proposé et d'un nombre de personnes
+        foreach ([self::choose(['persil']), self::recipes(['gratin']), self::planned(), self::mealsToRemove(['gratin']), self::itemsToRemove(['gratin']), self::tie()] as $state) {
+            $answer = $this->interpreter->interpret($request, $state, self::departments());
+
+            // Then
+            $this->assertSame(SpokenAnswerKind::NEW_MEAL_REMOVAL, $answer->kind);
+            $this->assertSame(['lasagnes', 2], [$answer->phrase, $answer->number]);
+        }
+    }
+
+    public function testANewRemovalOfAMealWithoutARecipeOrWithAnUnusableNumberIsNotUnderstood(): void
+    {
+        // Given
+        $state = self::mealsToRemove(['gratin']);
+
+        // Then : « enlève le repas » seul, ou « pour cent personnes » : on redemande, rien n'est retiré
+        $this->assertSame(SpokenAnswerKind::UNCLEAR, $this->interpret(AlexaTestRequest::removeMeal(null), $state)[0]);
+        $this->assertSame(SpokenAnswerKind::UNCLEAR, $this->interpret(AlexaTestRequest::removeMeal('lasagnes pour cent personnes'), $state)[0]);
+        $this->assertSame(SpokenAnswerKind::UNCLEAR, $this->interpret(AlexaTestRequest::removeMeal('lasagnes', 'cent', '100'), $state)[0]);
+    }
+
+    public function testHelpAndWhichOnesRepeatTheQuestionOfARemovalProposal(): void
+    {
+        foreach ([self::mealsToRemove(['gratin']), self::itemsToRemove(['gratin'])] as $state) {
+            $this->assertSame(SpokenAnswerKind::REPEAT, $this->interpret(AlexaTestRequest::intent('AMAZON.HelpIntent'), $state)[0]);
+            $this->assertSame(SpokenAnswerKind::REPEAT, $this->interpret(AlexaTestRequest::listChoices(), $state)[0]);
+        }
+    }
+
+    // ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
+    // Un rang dit seul (« deux », « le premier ») qu'Amazon a rangé dans le créneau d'un produit ou d'une recette : c'est le choix, pas une nouvelle demande
+    // ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
+
+    /**
+     * @return iterable<string, array{AlexaTestRequest, ?int}>
+     */
+    public static function bareRanks(): iterable
+    {
+        // [la demande, le rang choisi parmi trois propositions ; null : c'est une nouvelle demande]
+        yield 'deux dit à l\'intention des retraits' => [AlexaTestRequest::removeItem('deux'), 2];
+        yield '2 en chiffre' => [AlexaTestRequest::removeItem('2'), 2];
+        yield 'le premier' => [AlexaTestRequest::removeItem('le premier'), 1];
+        yield 'le deuxième' => [AlexaTestRequest::removeItem('le deuxième'), 2];
+        yield 'la troisième' => [AlexaTestRequest::removeItem('la troisième'), 3];
+        yield 'numéro trois' => [AlexaTestRequest::removeItem('numéro trois'), 3];
+        yield 'un, le premier' => [AlexaTestRequest::removeItem('un'), 1];
+        yield 'dit à l\'intention des ajouts' => [AlexaTestRequest::addItem('le deuxième'), 2];
+        yield 'dit à l\'intention des repas' => [AlexaTestRequest::addMeal('deux'), 2];
+        yield 'dit à l\'intention des retraits de repas' => [AlexaTestRequest::removeMeal('le premier'), 1];
+        yield 'dit à l\'intention des consultations' => [AlexaTestRequest::checkItem('trois'), 3];
+        yield 'quatre : hors des propositions' => [AlexaTestRequest::removeItem('quatre'), null];
+        yield 'zéro : hors des propositions' => [AlexaTestRequest::removeItem('0'), null];
+        yield 'deux croquettes : un nombre et un produit' => [AlexaTestRequest::removeItem('deux croquettes'), null];
+        yield 'le premier fromage : un mot de plus' => [AlexaTestRequest::removeItem('le premier fromage'), null];
+    }
+
+    #[DataProvider('bareRanks')]
+    public function testARankSaidAloneIsTheChoiceWhateverTheSlotAmazonPutItIn(AlexaTestRequest $request, ?int $rank): void
+    {
+        // Given : trois propositions à un retrait de produit, de repas, à un départage et à un produit ou une recette inconnus
+        $names = ['gratin dauphinois', 'gratin de pâtes', 'gratin de courgettes'];
+        foreach ([self::mealsToRemove($names), self::itemsToRemove($names), self::recipes($names), self::choose($names)] as $state) {
+            // When
+            [$kind, $picked] = $this->interpret($request, $state);
+
+            // Then : le rang choisit la proposition (jamais un produit qui s'appellerait « deux ») ; sinon c'est une nouvelle demande
+            if ($rank === null) {
+                $this->assertNotSame(SpokenAnswerKind::PICK_OPTION, $kind, $state->isMeal() ? 'repas' : 'produit');
+                continue;
+            }
+            $this->assertSame(SpokenAnswerKind::PICK_OPTION, $kind, $state->isMeal() ? 'repas' : 'produit');
+            $this->assertSame($names[$rank - 1], $picked);
+        }
+    }
+
+    public function testARankSaidAloneAlsoChoosesAmongTheLinesOfATieBreak(): void
+    {
+        // Given : deux « tomate » à départager
+        $state = self::tie();
+
+        // When
+        [$kind, $picked] = $this->interpret(AlexaTestRequest::removeItem('le deuxième'), $state);
+
+        // Then
+        $this->assertSame(SpokenAnswerKind::PICK_OPTION, $kind);
+        $this->assertSame($state->options[1]->name, $picked);
+        $this->assertSame($state->options[1]->slug, $this->interpreter->interpret(AlexaRequest::fromDecoded(AlexaTestRequest::removeItem('le deuxième')->toArray()), $state)->option?->slug);
+    }
+
+    public function testARankSaidAloneWithNoProposalIsStillANewRequest(): void
+    {
+        // Given : « C'est un repas ? » (aucune proposition)
+        $state = self::itemsToRemove([]);
+
+        // Then : rien à choisir, le texte est une nouvelle demande
+        $this->assertNotSame(SpokenAnswerKind::PICK_OPTION, $this->interpret(AlexaTestRequest::removeItem('deux'), $state)[0]);
+    }
 }

@@ -237,4 +237,44 @@ class SpokenMealPhraseTest extends TestCase
 
         return [$request->recipe, $request->servings];
     }
+
+    // ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
+    // Retirer un repas (ADR 0029 décision 12, VOX-306)
+    // ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
+
+    public function testTheRemovalIsAMealForTheMealIntentAndForAnItemPhraseThatAnnouncesOne(): void
+    {
+        // Given
+        $mealIntent = AlexaRequest::fromDecoded(AlexaTestRequest::removeMeal('hachis parmentier')->toArray());
+        $withServings = AlexaRequest::fromDecoded(AlexaTestRequest::removeMeal('hachis parmentier', 'deux', '2')->toArray());
+        $itemWithTheWord = AlexaRequest::fromDecoded(AlexaTestRequest::removeItem('le repas hachis parmentier')->toArray());
+        $itemWithTheTail = AlexaRequest::fromDecoded(AlexaTestRequest::removeItem('la recette hachis parmentier pour 2 personnes')->toArray());
+        $plainItem = AlexaRequest::fromDecoded(AlexaTestRequest::removeItem('du pain')->toArray());
+        $manyMeals = AlexaRequest::fromDecoded(AlexaTestRequest::removeItem('des repas pour chien')->toArray());
+        $add = AlexaRequest::fromDecoded(AlexaTestRequest::addItem('le repas hachis parmentier')->toArray());
+        $noRecipe = AlexaRequest::fromDecoded(AlexaTestRequest::removeMeal(null)->toArray());
+
+        // Then : le mot ou l'intention des repas aiguille, « enlève du pain » reste un produit
+        $this->assertSame(['hachis parmentier', null], $this->recipeAndServings($this->meal->removalOf($mealIntent)));
+        $this->assertSame(['hachis parmentier', 2], $this->recipeAndServings($this->meal->removalOf($withServings)));
+        $this->assertSame(['hachis parmentier', null], $this->recipeAndServings($this->meal->removalOf($itemWithTheWord)));
+        $this->assertSame(['hachis parmentier', 2], $this->recipeAndServings($this->meal->removalOf($itemWithTheTail)));
+        $this->assertNull($this->meal->removalOf($plainItem), '« enlève du pain » reste un produit');
+        $this->assertNull($this->meal->removalOf($manyMeals), '« des repas pour chien » n\'est pas le mot « le repas »');
+        $this->assertNull($this->meal->removalOf($add), 'un ajout n\'est pas un retrait');
+        $this->assertSame(['', null], $this->recipeAndServings($this->meal->removalOf($noRecipe)));
+        $this->assertNull($this->meal->removalOf(AlexaRequest::fromDecoded(AlexaTestRequest::launch()->toArray())));
+        // Et la planification, elle, ne prend pas un retrait pour un ajout
+        $this->assertNull($this->meal->requestOf($mealIntent));
+        $this->assertNull($this->meal->requestOf($itemWithTheWord));
+    }
+
+    public function testTheOriginalPhraseOfARemovalKeepsTheWordButNotTheNumberOfPeople(): void
+    {
+        // When
+        $removal = $this->meal->removalOf(AlexaRequest::fromDecoded(AlexaTestRequest::removeItem('le repas pour chien pour 2 personnes')->toArray()));
+
+        // Then : un produit dont le nom commence par « repas » se cherche sous son nom entier
+        $this->assertSame(['pour chien', 2, 'le repas pour chien'], [$removal?->recipe, $removal?->servings, $removal?->original]);
+    }
 }

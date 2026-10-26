@@ -7,12 +7,15 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Repas\Repas\Domain\Exception\RecipeException;
 use Repas\Shared\Application\Dto\ChangedMealServings;
+use Repas\Shared\Application\Dto\ListedMeal;
 use Repas\Shared\Application\Dto\ListedLine;
 use Repas\Shared\Application\Dto\PlannedSpokenMeal;
 use Repas\Shared\Application\Dto\RecipeSuggestion;
 use Repas\Shared\Application\Dto\ResolvedIngredient;
+use Repas\Shared\Application\Dto\RemovedSpokenMeal;
 use Repas\Shared\Application\Dto\ResolvedRecipe;
 use Repas\Shared\Application\Dto\SpokenListLookupResult;
+use Repas\Shared\Application\Dto\SpokenMealLookupResult;
 use Repas\Shared\Application\Interface\AddedItem;
 use Repas\Shared\Application\Interface\RemovedItem;
 use Repas\Shared\Domain\Exception\DomainException;
@@ -29,6 +32,7 @@ use Repas\Voice\Application\Command\AddSpokenMeal\AddSpokenMealHandler;
 use Repas\Voice\Application\Command\AnswerSpokenDialogue\AnswerSpokenDialogueCommand;
 use Repas\Voice\Application\Command\AnswerSpokenDialogue\AnswerSpokenDialogueHandler;
 use Repas\Voice\Application\Command\RemoveSpokenItem\RemoveSpokenItemHandler;
+use Repas\Voice\Application\Command\RemoveSpokenMeal\RemoveSpokenMealHandler;
 use Repas\Voice\Application\Query\GetSpokenItemInList\SpokenListAnswerer;
 use Repas\Voice\Domain\Model\AlexaRequest;
 use Repas\Voice\Domain\Model\DialogueOption;
@@ -79,6 +83,7 @@ class AnswerSpokenDialogueHandlerTest extends TestCase
             new RemoveSpokenItemHandler($this->lookup, $this->shoppingList, $namer),
             new SpokenListAnswerer($this->lookup, $namer),
             new AddSpokenMealHandler($this->recipeResolver, $this->mealPlanner, $namer),
+            new RemoveSpokenMealHandler($this->lookup, $this->mealPlanner, $namer),
         );
     }
 
@@ -1318,5 +1323,206 @@ class AnswerSpokenDialogueHandlerTest extends TestCase
 
         // Then
         $this->assertSame('Tu veux dire persil ? Ou un nouveau produit, ou une recette ?', $help->speech);
+    }
+
+    // ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
+    // Retirer ce que la liste ne porte pas : propositions tirées de la liste et aiguillage (ADR 0029 décision 12, VOX-306)
+    // ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
+
+    private static function mealsToRemove(?int $servings = null, bool $otherSideTried = false, ?string $original = null): SpokenDialogueState
+    {
+        return SpokenDialogueState::chooseMealToRemove('gratin', [new DialogueOption('recipe-2', 'Gratin dauphinois'), new DialogueOption('recipe-3', 'Gratin de pâtes')], $servings, $otherSideTried, $original);
+    }
+
+    private static function itemsToRemove(int $quantity = 1, ?string $unitSlug = null, bool $otherSideTried = false): SpokenDialogueState
+    {
+        return SpokenDialogueState::proposeToRemove('des pâtes à pizza', [new DialogueOption('pate-brisee', 'Pâte brisée'), new DialogueOption('pate-sablee', 'Pâte sablée')], 'pâtes à pizza', $quantity, $unitSlug, $otherSideTried);
+    }
+
+    public function testAChosenMealIsRemovedWholeAndNothingIsRememberedNorPlanned(): void
+    {
+        // Given
+        $this->mealPlanner->willRemove(RemovedSpokenMeal::removed('Gratin de pâtes'));
+
+        // When : « le deuxième »
+        $result = $this->answer(AlexaTestRequest::chooseOption('le deuxième', '2'), self::mealsToRemove());
+
+        // Then : le repas de la liste est retiré en entier, rien n'est planifié, aucune phrase n'est retenue, la séance se ferme
+        $this->assertSame([[self::USER, 'recipe-3', null]], $this->mealPlanner->removed);
+        $this->assertSame([], $this->mealPlanner->planned);
+        $this->assertSame([], $this->recipeResolver->remembered);
+        $this->assertEquals(new AddSpokenItemResult("C'est retiré : le repas gratin de pâtes.", keepSessionOpen: false, added: false), $result);
+    }
+
+    public function testTheServingsToTakeOffTravelWithTheState(): void
+    {
+        // Given
+        $this->mealPlanner->willRemove(RemovedSpokenMeal::lowered('Gratin dauphinois', 2));
+
+        // When : « le premier », pour un retrait de deux personnes
+        $result = $this->answer(AlexaTestRequest::chooseOption('le premier', '1'), self::mealsToRemove(servings: 2));
+
+        // Then
+        $this->assertSame([[self::USER, 'recipe-2', 2]], $this->mealPlanner->removed);
+        $this->assertSame("C'est changé : gratin dauphinois, pour 2 personnes.", $result->speech);
+    }
+
+    public function testAChosenMealThatLeftTheListIsSaidAndNothingIsWritten(): void
+    {
+        // Given : l'état est une entrée non fiable ; le repas a disparu
+        $this->mealPlanner->willRemove(RemovedSpokenMeal::notPlanned());
+
+        // When
+        $result = $this->answer(AlexaTestRequest::yes(), SpokenDialogueState::chooseMealToRemove('gratin', [new DialogueOption('recipe-2', 'Gratin dauphinois')]));
+
+        // Then
+        $this->assertSame("Ce repas n'est plus dans ta liste.", $result->speech);
+    }
+
+    public function testRefusingTheProposedMealsRemovesNothing(): void
+    {
+        // When
+        $refused = $this->answer(AlexaTestRequest::no(), self::mealsToRemove());
+
+        // Then : « je ne retire rien », pas « je ne planifie rien »
+        $this->assertEquals(new AddSpokenItemResult("D'accord, je ne retire rien.", keepSessionOpen: false, added: false), $refused);
+        $this->assertSame([], $this->mealPlanner->removed);
+    }
+
+    public function testAProductAnswerToAMealQuestionSearchesTheProductsOfTheListOnceWithTheWholePhrase(): void
+    {
+        // Given : « enlève le repas pour chien » : rien de planifié ne ressemble ; l'utilisateur répond « un produit »
+        $state = SpokenDialogueState::chooseMealToRemove('pour chien', [], null, false, 'le repas pour chien');
+        $this->lookup->willFind('repas pour chien', SpokenListLookupResult::found(new ListedLine('repas-chien', 'repas pour chien', 'animal', 'animal', 3.0, 'paquet', 'paquet')));
+        $this->shoppingList->willRemove(new RemovedItem(found: true, remaining: 2.0, removed: 1.0, unitSlug: 'paquet', unitName: 'paquet'));
+
+        // When
+        $result = $this->answer(AlexaTestRequest::chooseKind('un produit', 'item'), $state);
+
+        // Then : la phrase d'origine ENTIÈRE est cherchée dans les lignes de la liste, et le produit est retiré
+        $this->assertSame([[self::USER, 'repas pour chien']], $this->lookup->asked);
+        $this->assertSame([[self::USER, 'repas-chien']], $this->shoppingList->removed);
+        $this->assertSame("C'est retiré, il t'en reste 2 paquets dans ta liste.", $result->speech);
+        $this->assertSame([], $this->shoppingList->added);
+    }
+
+    public function testAProductAnswerThatFindsNothingEitherEndsWithoutAnyWayOut(): void
+    {
+        // Given : les repas viennent d'être cherchés, les produits ne ressemblent à rien non plus
+        $this->lookup->willFind('lasagnes', SpokenListLookupResult::notInList(null));
+
+        // When
+        $result = $this->answer(AlexaTestRequest::chooseKind('un produit', 'item'), SpokenDialogueState::chooseMealToRemove('lasagnes', []));
+
+        // Then : « rien trouvé », plus d'issue, plus d'état, rien d'écrit
+        $this->assertSame("Je ne trouve rien qui s'appelle lasagnes dans ta liste.", $result->speech);
+        $this->assertNull($result->nextState);
+        $this->assertFalse($result->keepSessionOpen);
+        $this->assertSame([], $this->shoppingList->removed);
+    }
+
+    public function testAMealAnswerToAProductQuestionSearchesThePlannedMealsOnce(): void
+    {
+        // Given : « enlève le hachis » : aucun produit ne ressemble ; l'utilisateur répond « un repas »
+        $this->lookup->willFindMeal('pâtes à pizza', SpokenMealLookupResult::found(new ListedMeal('recipe-4', 'Pâtes à pizza maison', 4)));
+        $this->mealPlanner->willRemove(RemovedSpokenMeal::removed('Pâtes à pizza maison'));
+
+        // When
+        $result = $this->answer(AlexaTestRequest::chooseKind('un repas', 'meal'), self::itemsToRemove());
+
+        // Then : la phrase d'origine est cherchée parmi les repas de la liste, le repas est retiré en entier
+        $this->assertSame([[self::USER, 'pâtes à pizza']], $this->lookup->askedMeals);
+        $this->assertSame([[self::USER, 'recipe-4', null]], $this->mealPlanner->removed);
+        $this->assertSame("C'est retiré : le repas pâtes à pizza maison.", $result->speech);
+        $this->assertSame([], $this->shoppingList->removed);
+    }
+
+    public function testAMealAnswerThatFindsNothingEitherEndsWithoutAnyWayOut(): void
+    {
+        // Given : aucun repas planifié ne ressemble non plus
+        $this->lookup->willFindMeal('pâtes à pizza', SpokenMealLookupResult::notPlanned());
+
+        // When
+        $result = $this->answer(AlexaTestRequest::chooseKind('un repas', 'meal'), self::itemsToRemove());
+
+        // Then : plus d'issue, plus d'état
+        $this->assertSame("Je ne trouve rien qui s'appelle pâtes à pizza dans ta liste.", $result->speech);
+        $this->assertNull($result->nextState);
+        $this->assertSame([], $this->mealPlanner->removed);
+    }
+
+    public function testAMealAnswerKeepsTheQuestionOpenWithTheClosestMealsWhenNoneIsSure(): void
+    {
+        // Given : les repas planifiés ressemblent à la phrase sans qu'aucun soit sûr
+        $this->lookup->willFindMeal('pâtes à pizza', SpokenMealLookupResult::notPlanned([new ListedMeal('recipe-5', 'Pâtes au pesto', 2)]));
+
+        // When
+        $result = $this->answer(AlexaTestRequest::chooseKind('une recette', 'meal'), self::itemsToRemove());
+
+        // Then : une question, l'état est celui d'un retrait de repas dont les produits ont déjà été cherchés
+        $this->assertSame("Je ne trouve pas le repas pâtes à pizza dans ta liste. Tu veux dire pâtes au pesto ?", $result->speech);
+        $state = $result->nextState;
+        $this->assertNotNull($state);
+        $this->assertTrue($state->isRemovalProposal());
+        $this->assertTrue($state->isMeal());
+        $this->assertTrue($state->otherSideTried);
+    }
+
+    public function testAChosenProposedLineIsRemovedWithTheSaidQuantityAndRemembersNothing(): void
+    {
+        // Given
+        $this->shoppingList->willRemove(new RemovedItem(found: true, remaining: 1.0, removed: 2.0, unitSlug: 'paquet', unitName: 'paquet'));
+
+        // When : « la première »
+        $result = $this->answer(AlexaTestRequest::chooseOption('la première', '1'), self::itemsToRemove(2, 'paquet'));
+
+        // Then : la ligne de la liste perd la quantité dite, rien n'est ajouté ni retenu
+        $this->assertSame([[self::USER, 'pate-brisee']], $this->shoppingList->removed);
+        $this->assertSame([[2, 'paquet']], $this->shoppingList->removedWith);
+        $this->assertSame([], $this->shoppingList->added);
+        $this->assertSame([], $this->resolver->remembered);
+        $this->assertSame("C'est retiré, il t'en reste 1 paquet dans ta liste.", $result->speech);
+    }
+
+    public function testAProductNamedInsteadOfTheProposedLinesIsANewRequestThatRemembersNothing(): void
+    {
+        // Given : l'utilisateur ne dit pas une proposition mais un autre produit, à ajouter
+        $this->resolver->willResolve('du pain', new ResolvedIngredient('pain-u', 'pain', 'boulangerie', ResolvedIngredient::SURE));
+
+        // When
+        $this->answer(AlexaTestRequest::addItem('du pain'), self::itemsToRemove());
+
+        // Then : un ajout ordinaire, la phrase d'origine n'est PAS retenue pour lui
+        $this->assertSame([], $this->resolver->remembered);
+    }
+
+    public function testAMealToRemoveSaidInTheMiddleOfAQuestionIsANewRemoval(): void
+    {
+        // Given
+        $this->lookup->willFindMeal('lasagnes', SpokenMealLookupResult::found(new ListedMeal('recipe-6', 'Lasagnes', 6)));
+        $this->mealPlanner->willRemove(RemovedSpokenMeal::lowered('Lasagnes', 4));
+
+        // When : à la question d'un produit à retirer, « enlève le repas lasagnes pour deux personnes »
+        $result = $this->answer(AlexaTestRequest::removeMeal('lasagnes', 'deux', '2'), self::itemsToRemove());
+
+        // Then : le dialogue est abandonné, le repas est cherché dans la liste et deux personnes sont enlevées
+        $this->assertSame([[self::USER, 'recipe-6', 2]], $this->mealPlanner->removed);
+        $this->assertSame("C'est changé : lasagnes, pour 4 personnes.", $result->speech);
+        $this->assertNull($result->nextState);
+    }
+
+    public function testTwoUnclearAnswersToAMealProposalGiveUpWithoutRemovingAnything(): void
+    {
+        // When
+        $first = $this->answer(AlexaTestRequest::intent('AMAZON.FallbackIntent'), self::mealsToRemove());
+        $second = $this->answer(AlexaTestRequest::intent('AMAZON.FallbackIntent'), $first->nextState);
+
+        // Then : l'état garde « retirer » et la cible entre les deux demandes
+        $this->assertNotNull($first->nextState);
+        $this->assertTrue($first->nextState->isRemovalProposal());
+        $this->assertTrue($first->nextState->isMeal());
+        $this->assertSame("Je n'ai pas compris. Tu veux dire gratin dauphinois ou gratin de pâtes ? Ou un produit ?", $first->speech);
+        $this->assertEquals(new AddSpokenItemResult("Je n'ai pas compris. On laisse tomber.", keepSessionOpen: false, added: false), $second);
+        $this->assertSame([], $this->mealPlanner->removed);
     }
 }

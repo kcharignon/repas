@@ -3,6 +3,7 @@
 namespace Repas\Shared\Application\Interface;
 
 use Repas\Shared\Application\Dto\SpokenListLookupResult;
+use Repas\Shared\Application\Dto\SpokenMealLookupResult;
 
 /**
  * Port de LECTURE par lequel le contexte `Voice` regarde ce que la liste de courses active de l'utilisateur contient pour une phrase prononcée
@@ -23,4 +24,14 @@ interface SpokenListLookup
      * @param string $phrase la phrase reconnue (« des croquettes », « du pain de mie »), telle quelle
      */
     public function find(string $userId, string $phrase): SpokenListLookupResult;
+
+    /**
+     * Le repas (la recette planifiée) de la liste active de l'utilisateur que la phrase désigne (ADR 0029 décision 12, VOX-306) : « enlève le repas
+     * hachis parmentier ». Seuls les repas PLANIFIÉS sont cherchés (jamais les recettes de l'utilisateur qui ne sont pas dans la liste), avec le même
+     * classeur de noms et la même mémoire de phrase des recettes que `SpokenRecipeResolver`. Aucun repas sûr : les repas planifiés qui ressemblent à la
+     * phrase (trois au plus), jamais devinés. Rien n'est écrit, aucune liste n'est créée.
+     *
+     * @param string $phrase la phrase reconnue (« hachis parmentier »), sans le mot « repas » ni « recette »
+     */
+    public function findMeal(string $userId, string $phrase): SpokenMealLookupResult;
 }

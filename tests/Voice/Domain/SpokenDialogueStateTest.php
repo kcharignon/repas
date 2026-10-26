@@ -308,19 +308,123 @@ class SpokenDialogueStateTest extends TestCase
         $this->assertFalse($state->isRemoval());
     }
 
-    public function testAForgedRemovalThatIsNotATieBreakIsNotBelieved(): void
+    public function testAForgedRemovalAtAnotherStepThanTheChoiceIsNotBelieved(): void
     {
-        // Given : un état « retirer » sans deux lignes qui se valent avec leur rayon (propositions simples, ou étape du rayon)
-        $plain = SpokenDialogueState::choose('de la ciboulette', [new DialogueOption('persil', 'persil')], 'ciboulette')->toArray();
-        $plain['action'] = 'remove';
+        // Given : un état « retirer » à l'étape du rayon, de l'unité, de la confirmation ou du nombre de personnes (un retrait n'a que l'étape du choix)
         $department = SpokenDialogueState::choose('de la ciboulette', [], 'ciboulette')->askingDepartment()->toArray();
         $department['action'] = 'remove';
-        $single = SpokenDialogueState::chooseToRemove('des tomates', [new DialogueOption('tomate-fl', 'tomate', 'fruit-et-legume', 'fruit et légume')], 'tomate')->toArray();
+        $unit = SpokenDialogueState::choose('de la ciboulette', [], 'ciboulette')->askingDepartment()->withDepartment(new DialogueOption('epicerie', 'épicerie'))->toArray();
+        $unit['action'] = 'remove';
+        $servings = SpokenDialogueState::askingServings(new DialogueOption('recipe-1', 'gratin'), 4)->toArray();
+        $servings['action'] = 'remove';
 
-        // Then : jamais d'état qui prétend retirer autre chose qu'un départage
-        $this->assertNull(SpokenDialogueState::fromArray($plain));
+        // Then : jamais d'état qui prétend retirer à une autre étape
         $this->assertNull(SpokenDialogueState::fromArray($department));
-        $this->assertNull(SpokenDialogueState::fromArray($single));
+        $this->assertNull(SpokenDialogueState::fromArray($unit));
+        $this->assertNull(SpokenDialogueState::fromArray($servings));
+    }
+
+    // ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
+    // Un retrait dont la phrase n'est pas dans la liste : des propositions tirées de la liste (VOX-306)
+    // ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
+
+    public function testAnItemRemovalProposalIsARemovalButNotATieBreakAndRemembersNothing(): void
+    {
+        // Given : deux lignes de la liste proposées pour une phrase inconnue, avec leur rayon (le départage serait une autre question)
+        $state = SpokenDialogueState::proposeToRemove('des pâtes à pizza', [new DialogueOption('pate-brisee', 'Pâte brisée', 'frais', 'frais'), new DialogueOption('pate-sablee', 'Pâte sablée', 'frais', 'frais')], 'pâtes à pizza', 2, 'paquet');
+
+        // Then : les rayons sont retirés, ce n'est pas un départage, rien n'est à retenir
+        $this->assertTrue($state->isRemoval());
+        $this->assertTrue($state->isRemovalProposal());
+        $this->assertFalse($state->isTieBreak());
+        $this->assertNull($state->rememberablePhrase());
+        $this->assertFalse($state->options[0]->hasDepartment());
+        $this->assertFalse($state->isMeal());
+        $this->assertSame([2, 'paquet', false], [$state->quantity, $state->spokenUnitSlug, $state->otherSideTried]);
+    }
+
+    public function testAnItemRemovalProposalSurvivesTheSessionRoundTrip(): void
+    {
+        // Given
+        $state = SpokenDialogueState::proposeToRemove('des pâtes à pizza', [new DialogueOption('pate-brisee', 'Pâte brisée')], 'pâtes à pizza', 3, 'kilo', otherSideTried: true);
+
+        // When
+        $back = SpokenDialogueState::fromArray($state->toArray());
+
+        // Then : l'action, la quantité, l'unité et l'autre côté essayé reviennent
+        $this->assertNotNull($back);
+        $this->assertTrue($back->isRemovalProposal());
+        $this->assertSame([3, 'kilo', true, 'pate-brisee'], [$back->quantity, $back->spokenUnitSlug, $back->otherSideTried, $back->options[0]->slug]);
+    }
+
+    public function testAnItemRemovalWithoutProposalAsksOnlyForTheOtherType(): void
+    {
+        // Given : rien dans la liste ne ressemble à la phrase
+        $state = SpokenDialogueState::proposeToRemove('de la ciboulette', [], 'ciboulette');
+
+        // When
+        $back = SpokenDialogueState::fromArray($state->toArray());
+
+        // Then : un état valide sans proposition
+        $this->assertNotNull($back);
+        $this->assertTrue($back->isRemovalProposal());
+        $this->assertSame([], $back->options);
+    }
+
+    public function testAMealRemovalIsAMealRemovalProposalWithTheServingsToTakeOff(): void
+    {
+        // Given : trois repas de la liste proposés, deux personnes à enlever, la phrase d'origine gardée
+        $options = [new DialogueOption('recipe-1', 'Gratin'), new DialogueOption('recipe-2', 'Hachis'), new DialogueOption('recipe-3', 'Lasagnes'), new DialogueOption('recipe-4', 'Quatrième')];
+        $state = SpokenDialogueState::chooseMealToRemove('pour chien', $options, 2, otherSideTried: false, originalPhrase: 'le repas pour chien');
+
+        // When
+        $back = SpokenDialogueState::fromArray($state->toArray());
+
+        // Then : trois propositions au plus, un retrait de repas, le nombre de personnes enlevé et la phrase d'origine reviennent ; rien à retenir
+        $this->assertNotNull($back);
+        $this->assertTrue($back->isMeal());
+        $this->assertTrue($back->isRemovalProposal());
+        $this->assertCount(3, $back->options);
+        $this->assertSame([2, 'le repas pour chien', false], [$back->servings, $back->originalPhrase, $back->otherSideTried]);
+        $this->assertNull($back->rememberablePhrase());
+        $this->assertSame('remove', $back->toArray()['action']);
+        $this->assertSame('meal', $back->toArray()['target']);
+    }
+
+    public function testAMealRemovalWithoutServingsRemovesTheWholeMeal(): void
+    {
+        // Given
+        $state = SpokenDialogueState::chooseMealToRemove('gratin', [new DialogueOption('recipe-1', 'Gratin')]);
+
+        // Then : rien d'écrit pour le nombre de personnes
+        $this->assertArrayNotHasKey('servings', $state->toArray());
+        $this->assertNull(SpokenDialogueState::fromArray($state->toArray())?->servings);
+    }
+
+    public function testAForgedMealRemovalWithAnUnusableServingsIsReadWithoutThem(): void
+    {
+        // Given : cent personnes à enlever
+        $data = SpokenDialogueState::chooseMealToRemove('gratin', [new DialogueOption('recipe-1', 'Gratin')], 2)->toArray();
+        $data['servings'] = 100;
+
+        // When
+        $state = SpokenDialogueState::fromArray($data);
+
+        // Then : l'état vient, mais le nombre absurde n'est pas cru (tout le repas)
+        $this->assertNotNull($state);
+        $this->assertNull($state->servings);
+        $this->assertTrue($state->isRemovalProposal());
+    }
+
+    public function testATieBreakRemovalIsNotARemovalProposal(): void
+    {
+        // Given
+        $state = SpokenDialogueState::chooseToRemove('des tomates', self::removalOptions(), 'tomate');
+
+        // Then : deux lignes qui se valent avec leur rayon : un départage, pas une proposition
+        $this->assertTrue($state->isRemoval());
+        $this->assertTrue($state->isTieBreak());
+        $this->assertFalse($state->isRemovalProposal());
     }
 
     // ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
@@ -427,7 +531,7 @@ class SpokenDialogueStateTest extends TestCase
         yield 'créer une recette (le rayon)' => [[...$base, 'step' => 'department', 'target' => 'meal', 'options' => []]];
         yield 'créer une recette (l\'unité)' => [[...$base, 'step' => 'unit', 'target' => 'meal', 'options' => [], 'departmentSlug' => 'd', 'departmentName' => 'd']];
         yield 'créer une recette (confirmer)' => [[...$base, 'step' => 'confirm', 'target' => 'meal', 'options' => [], 'departmentSlug' => 'd', 'departmentName' => 'd', 'unitSlug' => 'u', 'unitName' => 'u']];
-        yield 'retirer un repas (VOX-306)' => [[...$base, 'step' => 'choose', 'target' => 'meal', 'action' => 'remove', 'options' => $recipe]];
+        yield 'retirer un repas au nombre de personnes (VOX-306)' => [[...$base, 'step' => 'servings', 'target' => 'meal', 'action' => 'remove', 'options' => $recipe, 'plannedServings' => 4]];
     }
 
     public function testAForgedServingsOrTargetOrSideIsReadAsNothing(): void

@@ -21,6 +21,8 @@ enum AlexaIntent: string
     case CHECK_ITEM = 'CheckItemIntent';
     /** « planifie le repas hachis parmentier » : le créneau `recipe` porte la recette, `servings` le nombre de personnes dit (décision 13). */
     case ADD_MEAL = 'AddMealIntent';
+    /** « enlève le repas hachis parmentier », « retire la recette … pour 2 personnes » : le créneau `recipe` porte la recette, `servings` le nombre de personnes enlevé (décision 12, VOX-306). */
+    case REMOVE_MEAL = 'RemoveMealIntent';
     /** « le deuxième », « la première » : le créneau `rank` porte le rang (1 à 3) parmi les propositions. */
     case CHOOSE_OPTION = 'ChooseOptionIntent';
     /** « un nouveau produit », « aucun des trois » : aucune proposition ne convient. */
