@@ -32,6 +32,9 @@ use Repas\Voice\Domain\Model\SpokenDialogueState;
  * | `servings`   | un nombre (« 6 », « six personnes », « pour six ») = le nouveau total ; « non », « rien », « ne change rien » = on ne change rien |
  * | `choose` (retrait proposé, produit ou repas, VOX-306) | un rang ; un nom proche d'une proposition ; « un repas » (côté produits) ou « un produit » (côté repas) = l'autre recherche, une fois ; « non » = on abandonne ; « oui » = la proposition s'il n'y en a qu'une, l'autre recherche s'il n'y en a aucune ; jamais de création |
  *
+ * Un rang ou un nombre dit seul (« deux », « le premier ») est le choix de la proposition, quel que soit le créneau où Amazon l'a rangé (`rank`, `servings`,
+ * `quantity`, ou le texte d'un produit ou d'une recette) ; « deux croquettes » (un nombre et un produit) reste une nouvelle demande.
+ *
  * Aiguillage (ADR 0029 décision 13) : « une recette » à la question d'un produit inconnu cherche la phrase d'origine dans les recettes (`SWITCH_TO_MEAL`),
  * « un produit » à la question d'une recette inconnue la cherche dans les produits (`SWITCH_TO_ITEM`), tant que l'autre côté n'a pas déjà été essayé
  * (`SpokenDialogueState::$otherSideTried`) ; « un produit » à la question d'un produit inconnu veut dire « un nouveau produit ». Le créneau `kind` d'Alexa
@@ -60,6 +63,9 @@ final readonly class SpokenAnswerInterpreter
     }
 
     private const array STOP_WORDS = ['de', 'du', 'des', 'd', 'l', 'la', 'le', 'les', 'un', 'une', 'a', 'au', 'aux'];
+
+    /** Les mots qui accompagnent un rang dit seul (« le premier », « numéro trois ») sans le changer. */
+    private const array RANK_ARTICLES = ['le', 'la', 'les', 'l', 'numero'];
 
     /** Le rang dit en mots, quand la résolution d'entité n'a pas rendu son identifiant. */
     private const array RANK_WORDS = [
@@ -410,18 +416,42 @@ final readonly class SpokenAnswerInterpreter
     }
 
     /**
-     * Un nombre dit à lui seul, rangé dans un autre créneau que `rank` : `servings` ou `quantity` quand `rank` est vide et que rien d'autre n'a été dit
-     * (ni produit ni recette : sinon c'est une nouvelle demande, « deux croquettes »). Utilisable seulement de 1 au nombre de propositions.
+     * Un rang ou un nombre dit à lui seul, rangé par Amazon dans un autre créneau que `rank`, et utilisable seulement de 1 au nombre de propositions :
+     *
+     * - le TEXTE du créneau d'un produit ou d'une recette (`item`, `recipe`) qui n'est EXACTEMENT qu'un mot de rang ou un chiffre (« deux », « 2 », « le premier »,
+     *   « la troisième », « numéro trois »), les articles mis à part : un seul mot, sinon c'est une nouvelle demande (« deux croquettes », « le premier fromage ») ;
+     * - ou `servings` / `quantity` quand `rank` est vide et que rien d'autre n'a été dit (ni produit ni recette).
      */
     private function numberAsRank(AlexaRequest $request, int $count): ?int
     {
-        if ($count < 1 || $this->rankOf($request->rank) !== null || $request->phrase !== null || $request->recipePhrase !== null) {
+        if ($count < 1 || $this->rankOf($request->rank) !== null) {
+            return null;
+        }
+
+        foreach ([$request->phrase, $request->recipePhrase] as $text) {
+            $rank = $text === null ? null : $this->bareRank($text);
+            if ($rank !== null && $rank >= 1 && $rank <= $count) {
+                return $rank;
+            }
+        }
+        if ($request->phrase !== null || $request->recipePhrase !== null) {
             return null;
         }
 
         $number = $request->servings ?? $request->quantity;
 
         return $number !== null && $number >= 1 && $number <= $count ? $number : null;
+    }
+
+    /** Le rang que ce texte dit à lui seul (« deux », « 2 », « le premier »), `null` s'il dit autre chose ou davantage. */
+    private function bareRank(string $text): ?int
+    {
+        $words = array_values(array_filter($this->tokens($text), static fn(string $word): bool => !in_array($word, self::RANK_ARTICLES, true)));
+        if (count($words) !== 1) {
+            return null;
+        }
+
+        return ctype_digit($words[0]) ? (int) $words[0] : (self::RANK_WORDS[$words[0]] ?? null);
     }
 
     /** Un des textes entendus n'est qu'un nombre hors de 1 à 99 (« zéro », « cent personnes ») : pas un nombre de personnes, et pas un produit non plus. */

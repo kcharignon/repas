@@ -516,6 +516,61 @@ class SpokenListLookupAdapterTest extends TestCase
         $this->assertNull($result->meal);
     }
 
+    public function testTwoPlannedMealsWithTheSameNameAreProposedNeverGuessed(): void
+    {
+        // Given : deux recettes de même nom (une copie) planifiées, pour 4 et pour 2 personnes
+        $four = new ListedMeal('recipe-1', 'Hachis parmentier', 4);
+        $two = new ListedMeal('recipe-2', 'Hachis parmentier', 2);
+        $adapter = $this->adapter([], [], meals: [$four, $two, new ListedMeal('recipe-3', 'Gratin dauphinois', 4)]);
+
+        // When : « enlève le repas hachis parmentier »
+        $result = $adapter->findMeal('user-id', 'hachis parmentier');
+
+        // Then : aucun repas n'est choisi au hasard, les deux homonymes sont proposés (jamais le gratin)
+        $this->assertNull($result->meal);
+        $this->assertEquals([$four, $two], $result->suggestions);
+    }
+
+    public function testThreeHomonymsAreProposedWithTheirServingsAndNoMore(): void
+    {
+        // Given
+        $meals = [new ListedMeal('r1', 'Hachis', 4), new ListedMeal('r2', 'Hachis', 2), new ListedMeal('r3', 'Hachis', 6), new ListedMeal('r4', 'Hachis', 8)];
+        $adapter = $this->adapter([], [], meals: $meals);
+
+        // When
+        $result = $adapter->findMeal('user-id', 'hachis');
+
+        // Then : trois au plus, comme toute proposition
+        $this->assertNull($result->meal);
+        $this->assertCount(3, $result->suggestions);
+    }
+
+    public function testAPhraseRememberedForOneOfTwoHomonymsChoosesIt(): void
+    {
+        // Given : « hachis » a été retenu pour la recette 2, les deux hachis sont planifiés
+        $one = new ListedMeal('recipe-1', 'Hachis parmentier', 4);
+        $two = new ListedMeal('recipe-2', 'Hachis parmentier', 2);
+        $adapter = $this->adapter([], [], meals: [$one, $two], rememberedRecipes: [SpokenIngredientRanker::phraseKey('hachis') => 'recipe-2']);
+
+        // When
+        $result = $adapter->findMeal('user-id', 'hachis');
+
+        // Then : le choix de l'utilisateur passe avant, sans question
+        $this->assertEquals(SpokenMealLookupResult::found($two), $result);
+    }
+
+    public function testTwoDifferentNamesWithoutAHomonymAreStillChosenWhenTheClassifierIsSure(): void
+    {
+        // Given
+        $adapter = $this->adapter([], [], meals: [new ListedMeal('recipe-1', 'Hachis parmentier', 4), new ListedMeal('recipe-2', 'Hachis de boeuf', 2)]);
+
+        // When
+        $result = $adapter->findMeal('user-id', 'hachis parmentier');
+
+        // Then : un nom exact, un seul : pas de question
+        $this->assertSame('recipe-1', $result->meal?->recipeId);
+    }
+
     public function testNothingIsWritten(): void
     {
         // Given : l'adaptateur n'a ni bus ni dépôt dans son constructeur

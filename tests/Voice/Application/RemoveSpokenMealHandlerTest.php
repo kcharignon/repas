@@ -211,4 +211,51 @@ class RemoveSpokenMealHandlerTest extends TestCase
         $this->assertSame([['user-1', 'recipe-2', null]], $this->planner->removed);
         $this->assertEquals(new AddSpokenItemResult("C'est retiré : le repas gratin dauphinois.", keepSessionOpen: false, added: false), $result);
     }
+
+    public function testTwoMealsWithTheSameNameAreToldApartByTheirServingsAndNeverGuessed(): void
+    {
+        // Given : deux recettes de même nom planifiées, pour 4 et pour 2 personnes
+        $this->lookup->willFindMeal('hachis parmentier', SpokenMealLookupResult::notPlanned([new ListedMeal('recipe-1', 'Hachis parmentier', 4), new ListedMeal('recipe-2', 'Hachis parmentier', 2)]));
+
+        // When
+        $result = ($this->handler)(new RemoveSpokenMealCommand('user-1', 'le hachis parmentier', sessionIsOpen: false));
+
+        // Then : rien n'est retiré ; la question distingue les deux par le nombre de personnes et ne dit pas « je ne trouve pas » (ils y sont)
+        $this->assertSame([], $this->planner->removed);
+        $this->assertSame('Tu veux dire hachis parmentier pour 4 ou hachis parmentier pour 2 ? Ou un produit ?', $result->speech);
+        $this->assertTrue($result->keepSessionOpen);
+        $state = $result->nextState;
+        $this->assertNotNull($state);
+        $this->assertEquals([new DialogueOption('recipe-1', 'Hachis parmentier pour 4'), new DialogueOption('recipe-2', 'Hachis parmentier pour 2')], $state->options);
+        $this->assertSame('Tu veux dire hachis parmentier pour 4 ou hachis parmentier pour 2 ? Ou un produit ?', $result->reprompt);
+    }
+
+    public function testHomonymsWithTheSameServingsAreOnlyAskedOnce(): void
+    {
+        // Given : deux repas de même nom ET de même nombre de personnes : la voix ne les distingue pas, un seul est proposé
+        $this->lookup->willFindMeal('hachis parmentier', SpokenMealLookupResult::notPlanned([new ListedMeal('recipe-1', 'Hachis parmentier', 4), new ListedMeal('recipe-2', 'Hachis parmentier', 4)]));
+
+        // When
+        $result = ($this->handler)(new RemoveSpokenMealCommand('user-1', 'hachis parmentier', sessionIsOpen: false));
+
+        // Then
+        $this->assertCount(1, $result->nextState->options);
+        $this->assertSame('Tu veux dire hachis parmentier pour 4 ? Ou un produit ?', $result->speech);
+    }
+
+    public function testOnlyTheMealsThatShareANameGetTheirServingsAddedToTheirLabel(): void
+    {
+        // Given : deux hachis homonymes et un autre repas
+        $this->lookup->willFindMeal('hachis', SpokenMealLookupResult::notPlanned([new ListedMeal('recipe-1', 'Hachis parmentier', 4), new ListedMeal('recipe-2', 'Hachis parmentier', 2), new ListedMeal('recipe-3', 'Hachis de boeuf', 6)]));
+
+        // When
+        $result = ($this->handler)(new RemoveSpokenMealCommand('user-1', 'hachis', sessionIsOpen: false));
+
+        // Then : l'autre repas garde son nom, les homonymes sont distingués
+        $this->assertSame(
+            ['Hachis parmentier pour 4', 'Hachis parmentier pour 2', 'Hachis de boeuf'],
+            array_map(static fn(DialogueOption $option): string => $option->name, $result->nextState->options),
+        );
+        $this->assertStringStartsWith('Je ne trouve pas le repas hachis dans ta liste.', $result->speech);
+    }
 }

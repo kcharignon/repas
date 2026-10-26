@@ -2764,4 +2764,77 @@ class AlexaWebhookApiFlowTest extends DatabaseTestCase
         $this->assertSame("Je n'ai pas pu faire ça. Réessaie dans un instant.", $this->speech());
         $this->assertNotNull($this->mealOf($user, $recipe));
     }
+
+    public function testTwoPlannedMealsWithTheSameNameAreToldApartThenTheRightOneIsRemoved(): void
+    {
+        // Given : deux recettes « Hachis parmentier » (une copie), planifiées pour 4 et pour 2 personnes
+        $user = $this->linkedUserFor(4);
+        $big = $this->savedRecipe($user, 'Hachis parmentier');
+        $small = $this->savedRecipe($user, 'Hachis parmentier');
+        $this->plannedMeal($user, $big, 4);
+        $this->plannedMeal($user, $small, 2);
+
+        // When : « enlève le repas hachis parmentier »
+        $this->say(AlexaTestRequest::removeMeal('hachis parmentier'));
+
+        // Then : aucun des deux n'est retiré au hasard, la question les distingue par le nombre de personnes
+        // (l'ordre des deux propositions suit les identifiants des recettes, tirés au hasard : l'état dit lequel est lequel)
+        $this->assertContains($this->speech(), ['Tu veux dire hachis parmentier pour 4 ou hachis parmentier pour 2 ? Ou un produit ?', 'Tu veux dire hachis parmentier pour 2 ou hachis parmentier pour 4 ? Ou un produit ?']);
+        $this->assertSame(4, $this->mealOf($user, $big)?->getServing());
+        $this->assertSame(2, $this->mealOf($user, $small)?->getServing());
+        $options = $this->attributes()['dialogue']['options'];
+        $this->assertEqualsCanonicalizing(['Hachis parmentier pour 4', 'Hachis parmentier pour 2'], array_map(static fn(array $option): string => $option['name'], $options));
+        $rank = (string) (array_search($small->getId(), array_column($options, 'slug'), true) + 1);
+
+        // When : le rang de celui « pour 2 » (la question les cite dans cet ordre : le premier est « pour 4 » ou l'inverse, l'état dit lequel)
+        $this->converse(AlexaTestRequest::chooseOption('le ' . ($rank === '1' ? 'premier' : 'deuxième'), $rank), $this->attributes());
+
+        // Then : le repas pour 2 quitte la liste, celui pour 4 reste, rien n'est retenu
+        $this->assertSame("C'est retiré : le repas hachis parmentier.", $this->speech());
+        $this->assertSame([], $this->attributes());
+        $this->assertNull($this->mealOf($user, $small));
+        $this->assertSame(4, $this->mealOf($user, $big)?->getServing());
+        $this->assertSame(0, $this->rowCount('spoken_recipe_phrase_choice'));
+    }
+
+    public function testAHomonymRemovalSaidAgainWithTheServingsStillGuessesNothing(): void
+    {
+        // Given
+        $user = $this->linkedUserFor(4);
+        $big = $this->savedRecipe($user, 'Hachis parmentier');
+        $small = $this->savedRecipe($user, 'Hachis parmentier');
+        $this->plannedMeal($user, $big, 4);
+        $this->plannedMeal($user, $small, 2);
+        $this->say(AlexaTestRequest::removeMeal('hachis parmentier'));
+
+        // When : « enlève le repas hachis parmentier pour 4 » dit à la question : c'est une nouvelle demande (« enlève 4 personnes du hachis »)
+        $this->converse(AlexaTestRequest::removeMeal('hachis parmentier pour 4'), $this->attributes());
+
+        // Then : elle retombe sur les deux homonymes, la question est reposée, rien n'est deviné ni retiré
+        $this->assertFalse($this->jsonBody()['response']['shouldEndSession']);
+        $this->assertNotNull($this->mealOf($user, $big));
+        $this->assertNotNull($this->mealOf($user, $small));
+    }
+
+    public function testARankSaidAloneInTheSlotOfAProductChoosesTheProposedMealInsteadOfLosingTheDialogue(): void
+    {
+        // Given : deux gratins planifiés, « enlève le repas gratin » propose les deux
+        $user = $this->linkedUserFor(4);
+        $dauphinois = $this->savedRecipe($user, 'Gratin dauphinois');
+        $pates = $this->savedRecipe($user, 'Gratin de pâtes');
+        $this->plannedMeal($user, $dauphinois, 4);
+        $this->plannedMeal($user, $pates, 2);
+        $this->say(AlexaTestRequest::removeMeal('gratin'));
+        $options = $this->attributes()['dialogue']['options'];
+
+        // When : « le deuxième » qu'Amazon a rangé dans le créneau `item` d'un retrait de produit
+        $this->converse(AlexaTestRequest::removeItem('le deuxième'), $this->attributes());
+
+        // Then : c'est le choix du deuxième repas proposé (pas un produit qui s'appellerait « le deuxième »), le dialogue aboutit
+        $removed = $options[1]['slug'];
+        $this->assertSame("C'est retiré : le repas " . ($removed === $dauphinois->getId() ? 'gratin dauphinois' : 'gratin de pâtes') . '.', $this->speech());
+        $this->assertSame([], $this->attributes());
+        $this->assertNull($this->mealOf($user, $removed === $dauphinois->getId() ? $dauphinois : $pates));
+        $this->assertNotNull($this->mealOf($user, $removed === $dauphinois->getId() ? $pates : $dauphinois));
+    }
 }

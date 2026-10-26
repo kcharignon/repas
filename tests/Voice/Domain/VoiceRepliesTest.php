@@ -837,6 +837,9 @@ class VoiceRepliesTest extends TestCase
             VoiceReplies::whichAgain(SpokenDialogueState::chooseMealToRemove($name, $options)),
             VoiceReplies::notUnderstood(SpokenDialogueState::chooseMealToRemove($name, $options)),
             VoiceReplies::question(SpokenDialogueState::proposeToRemove($name, $options, $name)),
+            // Deux repas de même nom, distingués par leur nombre de personnes (VOX-306)
+            VoiceReplies::question(SpokenDialogueState::chooseMealToRemove($name, [new DialogueOption('a', $name . ' pour 4'), new DialogueOption('b', $name . ' pour 12')])),
+            VoiceReplies::whichAgain(SpokenDialogueState::chooseMealToRemove($name, [new DialogueOption('a', $name . ' pour 4'), new DialogueOption('b', $name . ' pour 12')])),
             VoiceReplies::whichAgain(SpokenDialogueState::proposeToRemove($name, $options, $name)),
             VoiceReplies::notUnderstood(SpokenDialogueState::proposeToRemove($name, $options, $name)),
         ];

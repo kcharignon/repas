@@ -83,16 +83,50 @@ readonly class RemoveSpokenMealHandler
             return $this->said(VoiceReplies::nothingFoundInList($name), $command->sessionIsOpen);
         }
 
-        $options = array_map(static fn(ListedMeal $meal): DialogueOption => new DialogueOption($meal->recipeId, $meal->name), $suggestions);
+        $options = self::toldApart($suggestions);
         $state = SpokenDialogueState::chooseMealToRemove($name, $options, $command->servings, $command->otherSideTried, $command->originalPhrase);
+        $names = array_map(static fn(DialogueOption $option): string => $option->name, $state->options);
+        // Tous de même nom : ils sont dans la liste, « je ne trouve pas » serait faux ; la question seule suffit (elle dit en quoi ils diffèrent)
+        $sameName = count($suggestions) > 1 && count(array_unique(array_map(VoiceReplies::speakable(...), array_map(static fn(ListedMeal $meal): string => $meal->name, $suggestions)))) === 1;
 
         return new AddSpokenItemResult(
-            VoiceReplies::unknownMealToRemove($name, array_map(static fn(DialogueOption $option): string => $option->name, $state->options), offerItem: !$command->otherSideTried),
+            $sameName ? VoiceReplies::question($state) : VoiceReplies::unknownMealToRemove($name, $names, offerItem: !$command->otherSideTried),
             keepSessionOpen: true,
             added: false,
             nextState: $state,
             reprompt: VoiceReplies::question($state),
         );
+    }
+
+    /**
+     * Les propositions, chaque repas sous son nom. Deux repas de même nom (deux recettes « Hachis parmentier », une copie par exemple) ne se distinguent à la
+     * voix que par leur nombre de personnes : « hachis parmentier pour 4 », « hachis parmentier pour 2 » (le nom devient celui de la proposition, il sert à la
+     * dire et à la reconnaître ; le repas retiré est dit par le nom de sa recette). Deux repas de même nom ET de même nombre de personnes ne se distinguent pas :
+     * un seul est proposé.
+     *
+     * @param list<ListedMeal> $suggestions
+     *
+     * @return list<DialogueOption>
+     */
+    private static function toldApart(array $suggestions): array
+    {
+        $count = [];
+        foreach ($suggestions as $meal) {
+            $key = VoiceReplies::speakable($meal->name);
+            $count[$key] = ($count[$key] ?? 0) + 1;
+        }
+
+        $options = [];
+        foreach ($suggestions as $meal) {
+            $homonym = $count[VoiceReplies::speakable($meal->name)] > 1;
+            $label = $homonym ? $meal->name . ' pour ' . $meal->servings : $meal->name;
+            if (isset($options[$label])) {
+                continue;
+            }
+            $options[$label] = new DialogueOption($meal->recipeId, $label);
+        }
+
+        return array_values($options);
     }
 
     /** Une affirmation seule : la séance reste ouverte, sans relance, quand elle l'était ; sinon elle se ferme. */

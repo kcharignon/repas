@@ -112,10 +112,20 @@ final readonly class SpokenListLookupAdapter implements SpokenListLookup
         if ($ranked === null) {
             return SpokenMealLookupResult::notPlanned(self::asMeals($this->ranker->suggest($phrase, $candidates), $byId));
         }
-        if ($ranked->confidence === Confidence::UNSURE) {
-            $ties = $this->ranker->ties($phrase, $candidates, $remembered);
-            if ($ties !== []) {
-                return SpokenMealLookupResult::notPlanned(self::asMeals($ties, $byId));
+        // Le choix de l'utilisateur passe avant tout, même entre deux repas de même nom
+        if ($remembered === null || $ranked->slug !== $remembered) {
+            if ($ranked->confidence === Confidence::UNSURE) {
+                $ties = $this->ranker->ties($phrase, $candidates, $remembered);
+                if ($ties !== []) {
+                    return SpokenMealLookupResult::notPlanned(self::asMeals($ties, $byId));
+                }
+            }
+
+            // Deux repas de même nom (deux recettes « Hachis parmentier », une copie par exemple : le domaine n'interdit que la MÊME recette deux fois) : le
+            // classeur ne les départage pas (même nom, aucun rayon), un repas retiré au hasard serait une erreur : ils sont proposés, avec leur nombre de personnes
+            $homonyms = array_values(array_filter($candidates, static fn(SpokenCandidate $candidate): bool => $candidate->sluggedName === self::sluggedNameOf($candidates, $ranked->slug)));
+            if (count($homonyms) > 1) {
+                return SpokenMealLookupResult::notPlanned(array_map(static fn(SpokenCandidate $candidate): ListedMeal => $byId[$candidate->slug], array_slice($homonyms, 0, SpokenIngredientRanker::MAX_SUGGESTIONS)));
             }
         }
 
@@ -145,6 +155,20 @@ final readonly class SpokenListLookupAdapter implements SpokenListLookup
         }
 
         return array_values($near);
+    }
+
+    /**
+     * @param list<SpokenCandidate> $candidates
+     */
+    private static function sluggedNameOf(array $candidates, string $slug): string
+    {
+        foreach ($candidates as $candidate) {
+            if ($candidate->slug === $slug) {
+                return $candidate->sluggedName;
+            }
+        }
+
+        return '';
     }
 
     /**
