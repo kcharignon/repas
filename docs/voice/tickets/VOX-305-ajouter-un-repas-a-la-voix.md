@@ -5,7 +5,7 @@
 - **Taille** : XL
 - **Dépend de** : VOX-304 ; la recette réelle de la bêta chez la compagne du propriétaire (2026-10-26)
 - **Faisable sans téléphone** : oui (faux Amazon, signatures de test) ; l'essai réel se fait avec le propriétaire (scénarios 15 à 20 de [`../seance-en-direct.md`](../seance-en-direct.md))
-- **Statut** : en cours (décisions validées par le propriétaire le 2026-10-26)
+- **Statut** : fait (2026-10-26, décisions validées par le propriétaire le même jour)
 - **Lire d'abord** : [`../alexa.md`](../alexa.md) §§ 2 et 3 ; [ADR 0029](../../adr/0029-commande-vocale-alexa.md) décisions 5, 11, 12 et 13 ; la commande `PlannedMeal` (`src/Repas/Application/Command/PlannedMeal/`) et `UpdateServingMeal` ; `.claude/skills/repas-po/SKILL.md` (les textes d'Alexa).
 
 ## Contexte
@@ -35,6 +35,26 @@ Demande du propriétaire : « Alexa, demande à Jarvis d'ajouter un hachis parme
 - **Repas** : `SpokenRecipeCandidates` (une requête sur les recettes de l'utilisateur), table `spoken_recipe_phrase_choice` (migration additive, purgée avec le compte, effacée avec la recette), commandes `PlanSpokenMeal` et `ChangeSpokenMealServings`.
 - **Modèle d'interaction** : type `RECIPE` (une liste de plats courants, un indice pour Amazon et non une limite : le créneau accepte les autres noms), `generate-model.mjs`, `make voice-model`.
 - Textes dans `VoiceReplies`, budgets d'écriture `planifier-repas-par-la-voix*`, `docs/voice/alexa.md`, ADR 0029 (décision 13), page `/confidentialite` (Alexa « planifie aussi un repas »).
+
+## Ce qui est livré
+
+1. **Skill** : cinq intentions de plus (dix-neuf), `AddMealIntent` (156 phrases : planifie / prévois / prépare / mets au menu, avec ou sans « le repas » / « la recette », et « ajoute / mets / note le repas / la recette »), `ChooseKindIntent` (« une recette », « un produit »), `AnswerServingsIntent`, `KeepMealIntent` ; deux types, `RECIPE` (82 plats courants, un indice) et `KIND`. Aucun « un » ni « une » comme mot de liaison dans les phrases de `AddMealIntent`.
+2. **Voice** : `SpokenMealPhrase` (le mot, la queue « pour six personnes », les réponses brèves), `AddSpokenMeal`, l'état du dialogue (`SpokenTarget`, `otherSideTried`, `servings`, `plannedServings`, étape `servings`), les nouveaux genres de réponse (`SWITCH_TO_MEAL`, `SWITCH_TO_ITEM`, `NEW_MEAL`, `PICK_SERVINGS`), les textes de `VoiceReplies`.
+3. **Repas** : `SpokenRecipeResolverAdapter` (recettes de l'utilisateur, même classeur de noms, mémoire à part), `PlanSpokenMeal` et `ChangeSpokenMealServings` (ils réutilisent `PlannedMealHandler` et `UpdateServingMealHandler`), migration `spoken_recipe_phrase_choice`, effacée avec la recette (`RemoveRecipeHandler`) et avec le compte.
+4. **User** : `UserDefaultServingPostgreSQL` (le nombre de personnes du compte, une requête).
+
+## Décisions prises à l'écriture
+
+- **Un choix incertain est proposé, jamais deviné** (deux recettes dont les noms se touchent) : l'ajout d'un produit ajoute une ligne, un repas en ajoute beaucoup. Le classeur de noms est celui des produits, sans habitude (une recette n'a pas de rayon ni d'historique d'usage ici).
+- **Deux recettes de même nom** : la première, dans l'ordre stable des identifiants (la voix ne les départage pas).
+- **Table à part** pour la mémoire des phrases de recettes (`spoken_recipe_phrase_choice`), pour que les deux recherches ne se mélangent jamais.
+- **Une recette dont un ingrédient n'a pas de conversion vers son unité d'achat** fait échouer toute la commande, comme dans l'application : Alexa répond « Je n'ai pas pu faire ça. Réessaie dans un instant. », rien n'est écrit, aucune liste n'est créée. Limite connue, sans phrase dédiée.
+- **Le mot « repas » / « recette » en tête annonce une recette** : un produit dont le nom commence par « repas » (« repas pour chien ») dit sans article est pris pour une recette ; « des repas pour chien » reste un produit. Le propriétaire corrige en répondant « un produit ».
+- **Le nombre de personnes dit est de 1 à 99** (comme une quantité) : « zéro » ou « cent » reçoivent « Combien ? Redis ta demande avec un nombre de 1 à 99. », rien n'est écrit.
+- **Le nouveau total n'est pas une addition** : « six » à « déjà prévu pour 4 personnes » donne 6.
+- **« Planifie les lasagnes pour six » à la question du nombre de personnes** est un autre repas (`NEW_MEAL`), pas un total.
+- **L'aide d'Alexa** (« Dis par exemple : ajoute du pain… ») ne parle pas encore des repas ; l'exemple « Dis par exemple : planifie le repas hachis parmentier. » n'est dit que quand « planifie » arrive sans recette.
+- **Budgets** : `supprimer-compte` 25 → 26 et `supprimer-recette` 11 → 12 (une suppression de plus pour la mémoire des recettes) ; nouveaux : `planifier-repas-par-la-voix` 31 (`-sans-liste` 32, `-liste-envoyee` 32, `-deja-planifie` 10), `modifier-portions-repas-par-la-voix` 26, `memoriser-phrase-de-recette-alexa` 7, `planifier-repas-dit-a-alexa` 33 (`-sans-liste` 34, `-introuvable` 2), `choisir-recette-proposee-alexa` 34, `changer-portions-repas-dit-a-alexa` 26.
 
 ## Critères d'acceptation
 
