@@ -45,7 +45,7 @@ restart: ## Restart the project
 	@$(MAKE) start
 
 ## —— Code quality 📋 ————————————————————————————————————————————————————————
-.PHONY: test test-fast test-coverage deptrac phpstan api-doc-validate api-doc-coverage openapi openapi-check jwt-keys quality sql-budget-update voice-model voice-model-check voice-nlu-check voice-nlu-selftest voice-sim-check voice-sim-selftest drive-samples deploy-smoke
+.PHONY: test test-fast test-coverage deptrac phpstan api-doc-validate api-doc-coverage openapi openapi-check jwt-keys quality sql-budget-update voice-model voice-model-check voice-model-push voice-push-selftest voice-nlu-check voice-nlu-selftest voice-sim-check voice-sim-selftest drive-samples deploy-smoke
 
 # Nombre de processus de `make test-fast` : celui des cœurs de la machine, 12 au plus (plus haut, aucun gain mesuré) ; `make test-fast TEST_PROCESSES=4` le force.
 TEST_PROCESSES ?=
@@ -129,6 +129,12 @@ voice-model: ## Régénère le modèle d'interaction du skill Alexa (docs/voice/
 
 voice-model-check: ## Échoue si le modèle d'interaction du skill Alexa n'est pas celui que le script produit (catalogue de base, rayons, unités)
 	@node docs/voice/skill/generate-model.mjs --check
+
+voice-model-push: ## Envoie le modèle d'interaction du dépôt au skill EN DÉVELOPPEMENT et attend le build (VOX-309) : demande ALEXA_SKILL_ID et la CLI `ask` connectée par le propriétaire, jamais en CI ; PUSH_ARGS="--dry-run"
+	@node docs/voice/skill/push-model.mjs $(PUSH_ARGS)
+
+voice-push-selftest: ## Auto-test de l'envoi du modèle avec un faux `ask` (aucun appel chez Amazon, aucun identifiant)
+	@node --test docs/voice/skill/test/push-model.selftest.mjs
 
 voice-nlu-check: ## Rejoue les cas de compréhension d'Alexa contre le profileur d'énoncés d'Amazon (VOX-307) : demande ALEXA_SKILL_ID et la CLI `ask` connectée par le propriétaire, jamais en CI ; NLU_ARGS="--only AddMealIntent"
 	@node docs/voice/skill/nlu-check.mjs $(NLU_ARGS)

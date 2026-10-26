@@ -47,6 +47,7 @@ Suivi vivant du chantier « Alexa, demande à *Jarvis* d'ajouter du pain ». Cad
 - [x] [VOX-306](tickets/VOX-306-retirer-un-repas-a-la-voix.md) back · L · Retirer un repas ou baisser son nombre de personnes à la voix, et proposer trois éléments de la liste quand on ne comprend pas (amende la décision 12) · dépend de : 304, 305
 - [x] [VOX-307](tickets/VOX-307-cas-de-comprehension-d-alexa.md) back (docs, node) · M · Les cas de compréhension d'Alexa (une copie versionnée des phrases et de ce qu'Amazon doit en comprendre) et un script qui les rejoue contre le profileur d'énoncés · dépend de : 306
 - [x] [VOX-308](tickets/VOX-308-rejeu-de-dialogues-en-lecture-seule.md) back (docs, node) · M · Des dialogues entiers rejoués contre le vrai webhook par la simulation d'Amazon, en lecture seule (lancement, aide, stop, consulter), avec des gardes d'écriture · dépend de : 307
+- [x] [VOX-309](tickets/VOX-309-envoyer-le-modele-sans-la-console.md) back (docs, node) · S · Envoyer le modèle du dépôt au skill en développement par la CLI officielle et attendre le build (plus de collage dans la console) · dépend de : 307
 - [ ] [VOX-301](tickets/VOX-301-corriger-un-ajout-vocal.md) back puis front · M · Origine « voix » des lignes, correction « Pas le bon ? » depuis l'application (la mémoire de phrase existe, VOX-303) · dépend de : 204
 - [ ] [VOX-302](tickets/VOX-302-boite-a-trier-et-quantites.md) back puis front · M · Facultatif : produits introuvables mis de côté (la quantité dite est faite, VOX-303 point 11) · dépend de : 301
 
