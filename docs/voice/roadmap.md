@@ -43,6 +43,7 @@ Suivi vivant du chantier « Alexa, demande à *Jarvis* d'ajouter du pain ». Cad
 
 - [x] [VOX-303](tickets/VOX-303-produit-inconnu-propositions-et-creation.md) back · L · Produit inconnu : trois propositions, mémoire de phrase (`spoken_phrase_choice`), création guidée (rayon, unité, confirmation), état du dialogue dans la séance · dépend de : 204, 205
 - [x] [VOX-304](tickets/VOX-304-retirer-et-consulter.md) back · L · Retirer un produit de la liste (« enlève », « retire », « déduis », quantité facultative) et demander ce qu'elle contient (« est-ce qu'il y a des croquettes dans la liste ? »), liste active seulement, départage par le rayon · dépend de : 204, 303
+- [ ] [VOX-305](tickets/VOX-305-ajouter-un-repas-a-la-voix.md) back · L · Ajouter un repas (une recette) à la voix : « ajoute un hachis parmentier », nombre de personnes du compte ; décisions à valider par le propriétaire (idée du 2026-10-26)
 - [ ] [VOX-301](tickets/VOX-301-corriger-un-ajout-vocal.md) back puis front · M · Origine « voix » des lignes, correction « Pas le bon ? » depuis l'application (la mémoire de phrase existe, VOX-303) · dépend de : 204
 - [ ] [VOX-302](tickets/VOX-302-boite-a-trier-et-quantites.md) back puis front · M · Facultatif : produits introuvables mis de côté (la quantité dite est faite, VOX-303 point 11) · dépend de : 301
 
