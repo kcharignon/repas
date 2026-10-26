@@ -59,7 +59,7 @@ Suivi vivant du chantier « Alexa, demande à *Jarvis* d'ajouter du pain ». Cad
 
 ## M5 — Application Android
 
-- [ ] [VOX-501](tickets/VOX-501-liens-d-application-et-page-d-autorisation.md) front (`android/`) · S · L'application ne doit pas intercepter la page d'autorisation · dépend de : 401
+- [~] [VOX-501](tickets/VOX-501-liens-d-application-et-page-d-autorisation.md) front (`android/`) · S · L'application ne doit pas intercepter la page d'autorisation · fait côté front (repas-front #211, 2026-10-26), à publier avec une nouvelle version de l'application · dépend de : 401
 
 ## M6 — Mise en service
 
