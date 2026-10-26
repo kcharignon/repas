@@ -30,7 +30,7 @@ class CreateShoppingListHandlerTest extends TestCase
     {
         $this->shoppingListRepository = new ShoppingListInMemoryRepository();
         $this->eventDispatcher = new SpyEventDispatcher();
-        $this->clock = new FrozenClock(new DateTimeImmutable());
+        $this->clock = new FrozenClock(new DateTimeImmutable(ShoppingListBuilder::DEFAULT_DATE));
 
         $this->handler = new CreateShoppingListHandler(
             $this->shoppingListRepository,
