@@ -173,8 +173,9 @@ final readonly class DrivePlanPostgreSQLLoader implements DrivePlanLoader
 
     /**
      * Les rayons de l'enseigne les plus choisis pour chaque rayon de Repas des lignes (`RAYON_HINTS_MAX` au plus, du plus choisi au
-     * moins choisi, à égalité le plus petit identifiant d'abord : un ordre qui ne change pas d'un appel à l'autre). Une seule
-     * requête, et pas de lecture sans rayon de Repas ; le classement se fait en SQL pour ne lire que ce qui sort dans le plan.
+     * moins choisi, à égalité le plus petit identifiant d'abord : un ordre qui ne change pas d'un appel à l'autre). « Choisi » se compte
+     * en comptes distincts : chaque compte a au plus un vote par rayon (`drive_rayon_vote`), quel que soit le nombre de ses envois. Une
+     * seule requête, et pas de lecture sans rayon de Repas ; le classement se fait en SQL pour ne lire que ce qui sort dans le plan.
      *
      * @param list<ShoppingListLineForDrive> $lines
      *
@@ -189,8 +190,8 @@ final readonly class DrivePlanPostgreSQLLoader implements DrivePlanLoader
 
         $rows = $this->entityManager->getConnection()->fetchAllAssociative(
             'SELECT department_slug, rayon_id FROM ('
-            . 'SELECT department_slug, rayon_id, ROW_NUMBER() OVER (PARTITION BY department_slug ORDER BY chosen_count DESC, rayon_id ASC) AS place '
-            . 'FROM drive_department_rayon WHERE retailer = ? AND department_slug IN (?)'
+            . 'SELECT department_slug, rayon_id, ROW_NUMBER() OVER (PARTITION BY department_slug ORDER BY count(*) DESC, rayon_id ASC) AS place '
+            . 'FROM drive_rayon_vote WHERE retailer = ? AND department_slug IN (?) GROUP BY department_slug, rayon_id'
             . ') AS ranked WHERE place <= ? ORDER BY department_slug, place',
             [self::RETAILER->value, $departmentSlugs, self::RAYON_HINTS_MAX],
             [ParameterType::STRING, ArrayParameterType::STRING, ParameterType::INTEGER],

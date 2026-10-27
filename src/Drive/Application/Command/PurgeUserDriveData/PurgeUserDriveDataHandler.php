@@ -5,6 +5,7 @@ namespace Repas\Drive\Application\Command\PurgeUserDriveData;
 
 use Repas\Drive\Domain\Interface\ChoiceRepository;
 use Repas\Drive\Domain\Interface\DriveSettingsRepository;
+use Repas\Drive\Domain\Interface\RayonVoteRepository;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 /**
@@ -17,6 +18,7 @@ readonly class PurgeUserDriveDataHandler
     public function __construct(
         private DriveSettingsRepository $driveSettingsRepository,
         private ChoiceRepository $choiceRepository,
+        private RayonVoteRepository $rayonVoteRepository,
     ) {
     }
 
@@ -26,5 +28,6 @@ readonly class PurgeUserDriveDataHandler
         // Les lignes de produits d'abord : aucune clé étrangère ne les retrouverait une fois leurs préférences supprimées
         $this->choiceRepository->deleteProductsByUser($command->userId);
         $this->choiceRepository->deleteByUser($command->userId);
+        $this->rayonVoteRepository->deleteByUser($command->userId);
     }
 }

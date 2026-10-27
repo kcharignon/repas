@@ -67,16 +67,18 @@ class DrivePlanApiFlowTest extends DatabaseTestCase
     }
 
     /**
-     * DRV-642 de bout en bout : le rayon que l'agent rapporte pour un produit choisi (`PUT /drive/choices`) apprend le rayon de
-     * l'enseigne pour le rayon de Repas de l'ingrédient, et le plan (`GET /drive/plans/{id}`) le propose à toutes les lignes de ce
-     * rayon de Repas, pour tous les utilisateurs. Le lait et l'œuf sont tous deux au rayon « divers ».
+     * DRV-642 de bout en bout : le rayon que l'agent rapporte pour un produit choisi (`PUT /drive/choices`) est un vote du compte pour
+     * le rayon de l'enseigne, pour le rayon de Repas de l'ingrédient, et le plan (`GET /drive/plans/{id}`) propose à toutes les lignes de
+     * ce rayon de Repas, pour tous les utilisateurs, les rayons choisis par le plus de comptes. Le lait et l'œuf sont tous deux au rayon
+     * « divers ».
      */
     public function testTheRayonOfTheChosenProductsBecomesTheHintOfTheLinesOfTheSameDepartment(): void
     {
-        // Given : deux utilisateurs avec un magasin, Alice avec une liste envoyée (lait et œuf)
+        // Given : trois utilisateurs avec un magasin, Alice avec une liste envoyée (lait et œuf)
         $alice = $this->savedUser();
         $bob = $this->savedUser();
-        foreach ([$alice, $bob] as $user) {
+        $carol = $this->savedUser();
+        foreach ([$alice, $bob, $carol] as $user) {
             static::getContainer()->get(DriveSettingsRepository::class)->save(new DriveSettingsBuilder()->withUserId($user->getId())->build());
         }
         $listId = $this->savedList($alice, ShoppingListStatus::SENT);
@@ -86,29 +88,44 @@ class DrivePlanApiFlowTest extends DatabaseTestCase
         $persister->saveIngredient(new IngredientBuilder()->isMilk()->withName('Lait de Bob')->withSlug('lait-bob')->withCreator($bob)->build());
         $persister->saveIngredient(new IngredientBuilder()->isEgg()->withName('Œufs de Bob')->withSlug('oeuf-bob')->withCreator($bob)->build());
         $persister->saveOwnedIngredient($bob, 'sel-bob');
+        $persister->saveIngredient(new IngredientBuilder()->isMilk()->withName('Lait de Carol')->withSlug('lait-carol')->withCreator($carol)->build());
+        $bobChoices = json_encode(['retailer' => 'leclerc', 'storeId' => '123456', 'choices' => [
+            ['ingredientSlug' => 'lait-bob', 'action' => 'ADD_PRODUCT', 'placement' => 'PRIMARY', 'product' => ['retailerProductId' => '555222', 'label' => 'Lait entier 1 l', 'rayonId' => 4002]],
+            ['ingredientSlug' => 'oeuf-bob', 'action' => 'ADD_PRODUCT', 'placement' => 'PRIMARY', 'product' => ['retailerProductId' => '555333', 'label' => 'Œufs x6', 'rayonId' => 4002]],
+            ['ingredientSlug' => 'sel-bob', 'action' => 'ADD_PRODUCT', 'placement' => 'PRIMARY', 'product' => ['retailerProductId' => '555444', 'label' => 'Sel fin']],
+        ]], JSON_THROW_ON_ERROR);
 
-        // When : Alice choisit un lait du rayon 4001 ; Bob un lait et des œufs du rayon 4002 ; un ancien client choisit sans rayon
+        // When : Alice choisit un lait du rayon 4001 ; Bob un lait et des œufs du rayon 4002 (un ancien client choisit sans rayon), et renvoie
+        // plusieurs fois les mêmes choix
         $this->request('PUT', '/api/v1/drive/choices', $alice, json_encode(['retailer' => 'leclerc', 'storeId' => '123456', 'choices' => [
             ['ingredientSlug' => 'lait', 'action' => 'ADD_PRODUCT', 'placement' => 'PRIMARY', 'product' => ['retailerProductId' => '555111', 'label' => 'Lait demi-écrémé 50 cl', 'rayonId' => 4001, 'familyId' => 4101]],
         ]], JSON_THROW_ON_ERROR));
         $this->assertSame(204, $this->client->getResponse()->getStatusCode());
-        $this->request('PUT', '/api/v1/drive/choices', $bob, json_encode(['retailer' => 'leclerc', 'storeId' => '123456', 'choices' => [
-            ['ingredientSlug' => 'lait-bob', 'action' => 'ADD_PRODUCT', 'placement' => 'PRIMARY', 'product' => ['retailerProductId' => '555222', 'label' => 'Lait entier 1 l', 'rayonId' => 4002]],
-            ['ingredientSlug' => 'oeuf-bob', 'action' => 'ADD_PRODUCT', 'placement' => 'PRIMARY', 'product' => ['retailerProductId' => '555333', 'label' => 'Œufs x6', 'rayonId' => 4002]],
-            ['ingredientSlug' => 'sel-bob', 'action' => 'ADD_PRODUCT', 'placement' => 'PRIMARY', 'product' => ['retailerProductId' => '555444', 'label' => 'Sel fin']],
-        ]], JSON_THROW_ON_ERROR));
-        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        foreach ([1, 2, 3] as $_) {
+            $this->request('PUT', '/api/v1/drive/choices', $bob, $bobChoices);
+            $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        }
 
-        // Then : le plan d'Alice propose d'abord le rayon le plus choisi (4002, deux fois) puis 4001, pour les deux lignes du rayon
+        // Then : un vote par compte et par rayon, quel que soit le nombre d'envois ou d'ingrédients : à égalité, le plus petit identifiant d'abord
         $this->request('GET', "/api/v1/drive/plans/$listId", $alice);
         $this->assertSame(200, $this->client->getResponse()->getStatusCode());
         $lines = $this->jsonBody()['lines'];
         $this->assertSame(['lait', 'oeuf'], array_column($lines, 'ingredientSlug'));
-        $this->assertSame([[4002, 4001], [4002, 4001]], array_column($lines, 'rayonHints'));
+        $this->assertSame([[4001, 4002], [4001, 4002]], array_column($lines, 'rayonHints'));
         $this->assertSame(['KNOWN', 'NEW'], array_column($lines, 'status'));
-        $this->assertEquals(
-            [['department_slug' => 'divers', 'rayon_id' => 4001, 'chosen_count' => 1], ['department_slug' => 'divers', 'rayon_id' => 4002, 'chosen_count' => 2]],
-            $this->entityManager->getConnection()->fetchAllAssociative('SELECT department_slug, rayon_id, chosen_count FROM drive_department_rayon ORDER BY rayon_id'),
+
+        // When : Carol choisit elle aussi un lait du rayon 4002
+        $this->request('PUT', '/api/v1/drive/choices', $carol, json_encode(['retailer' => 'leclerc', 'storeId' => '123456', 'choices' => [
+            ['ingredientSlug' => 'lait-carol', 'action' => 'ADD_PRODUCT', 'placement' => 'PRIMARY', 'product' => ['retailerProductId' => '555222', 'label' => 'Lait entier 1 l', 'rayonId' => 4002]],
+        ]], JSON_THROW_ON_ERROR));
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+
+        // Then : le rayon 4002, choisi par deux comptes, passe devant le 4001 ; une ligne par compte et par rayon en base
+        $this->request('GET', "/api/v1/drive/plans/$listId", $alice);
+        $this->assertSame([[4002, 4001], [4002, 4001]], array_column($this->jsonBody()['lines'], 'rayonHints'));
+        $this->assertEqualsCanonicalizing(
+            [[$alice->getId(), 'divers', 4001], [$bob->getId(), 'divers', 4002], [$carol->getId(), 'divers', 4002]],
+            $this->entityManager->getConnection()->fetchAllNumeric('SELECT user_id, department_slug, rayon_id FROM drive_rayon_vote'),
         );
     }
 

@@ -35,9 +35,9 @@ use Repas\Tests\Helper\InMemoryLoader\IngredientAliasInMemoryResolver;
 use Repas\Tests\Helper\InMemoryLoader\IngredientDepartmentInMemoryResolver;
 use Repas\Tests\Helper\InMemoryLoader\UnitSlugInMemoryResolver;
 use Repas\Tests\Helper\InMemoryRepository\ChoiceInMemoryRepository;
-use Repas\Tests\Helper\InMemoryRepository\DepartmentRayonInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\DriveSettingsInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\ProductInMemoryRepository;
+use Repas\Tests\Helper\InMemoryRepository\RayonVoteInMemoryRepository;
 
 class SaveProductChoicesHandlerTest extends TestCase
 {
@@ -46,7 +46,7 @@ class SaveProductChoicesHandlerTest extends TestCase
     private DateTimeImmutable $now;
     private ProductInMemoryRepository $products;
     private ChoiceInMemoryRepository $choices;
-    private DepartmentRayonInMemoryRepository $departmentRayons;
+    private RayonVoteInMemoryRepository $rayonVotes;
     private IngredientDepartmentInMemoryResolver $ingredientDepartments;
     private UnitSlugInMemoryResolver $unitSlugs;
     private DriveSettingsInMemoryRepository $settings;
@@ -57,7 +57,7 @@ class SaveProductChoicesHandlerTest extends TestCase
         $this->now = new DateTimeImmutable('2026-10-19 12:00:00');
         $this->products = new ProductInMemoryRepository();
         $this->choices = new ChoiceInMemoryRepository();
-        $this->departmentRayons = new DepartmentRayonInMemoryRepository();
+        $this->rayonVotes = new RayonVoteInMemoryRepository();
         // Rayons de Repas des ingrédients des tests ; tout autre ingrédient (« ingredient-… », « inconnu ») n'en a pas
         $this->ingredientDepartments = new IngredientDepartmentInMemoryResolver(['farine' => 'boulangerie', 'semoule' => 'boulangerie', 'sel' => 'epicerie', 'lait' => 'frais']);
         // Unités de Repas connues des tests de contenance (DRV-652)
@@ -66,7 +66,7 @@ class SaveProductChoicesHandlerTest extends TestCase
             new DriveSettingsBuilder()->withUserId('user-1')->build(),
             new DriveSettingsBuilder()->withUserId('user-2')->build(),
         ]);
-        $this->handler = new SaveProductChoicesHandler($this->settings, $this->products, $this->choices, $this->departmentRayons, $this->ingredientDepartments, $this->unitSlugs, new IngredientAliasInMemoryResolver(), new UuidGenerator(), new FrozenClock($this->now));
+        $this->handler = new SaveProductChoicesHandler($this->settings, $this->products, $this->choices, $this->rayonVotes, $this->ingredientDepartments, $this->unitSlugs, new IngredientAliasInMemoryResolver(), new UuidGenerator(), new FrozenClock($this->now));
     }
 
     public function testAPrimaryProductOnANewIngredientCreatesTheChoiceAndTheProduct(): void
@@ -288,7 +288,7 @@ class SaveProductChoicesHandlerTest extends TestCase
         $this->assertSame(['1' => [4001, 4101], '2' => [4002, 4102]], $byProduct);
     }
 
-    public function testAChosenProductThatKnowsItsRayonTeachesTheRayonOfTheDepartmentOfItsIngredient(): void
+    public function testAChosenProductThatKnowsItsRayonVotesForTheRayonOfTheDepartmentOfItsIngredient(): void
     {
         // When : farine et semoule (rayon de Repas « boulangerie ») choisies dans le rayon 4001 de l'enseigne, le sel (« epicerie ») dans le 4002
         $this->save('user-1', [
@@ -297,19 +297,32 @@ class SaveProductChoicesHandlerTest extends TestCase
             $this->add('sel', Placement::PRIMARY, '3', rayonId: 4002),
         ]);
 
-        // Then : un choix compté par produit choisi, en une seule écriture, après une seule lecture des rayons de Repas
-        $this->assertSame(['leclerc|boulangerie|4001' => 2, 'leclerc|epicerie|4002' => 1], $this->departmentRayons->all());
-        $this->assertSame([3], $this->departmentRayons->recordChoicesSizes);
+        // Then : un vote par couple (rayon de Repas, rayon de l'enseigne) pour le compte, en une seule écriture, après une seule lecture des rayons de Repas
+        $this->assertSame(['user-1|leclerc|boulangerie|4001', 'user-1|leclerc|epicerie|4002'], $this->rayonVotes->all());
+        $this->assertSame([3], $this->rayonVotes->recordSizes);
         $this->assertSame([['farine', 'semoule', 'sel']], $this->ingredientDepartments->departmentSlugsByIngredientCalls);
 
         // When : un autre utilisateur choisit encore un produit de ce rayon pour la farine
         $this->save('user-2', [$this->add('farine', Placement::PRIMARY, '4', rayonId: 4001)]);
 
-        // Then : les choix de tous s'additionnent
-        $this->assertSame(3, $this->departmentRayons->countFor(Retailer::LECLERC, 'boulangerie', 4001));
+        // Then : chaque compte compte une fois
+        $this->assertSame(2, $this->rayonVotes->accountsFor(Retailer::LECLERC, 'boulangerie', 4001));
     }
 
-    public function testOnlyAnAcceptedProductWithARayonAndAnIngredientWithADepartmentTeaches(): void
+    public function testTheSameChoiceSentAgainOrForAnotherIngredientOfTheDepartmentDoesNotVoteTwice(): void
+    {
+        // When : le même choix renvoyé quatre fois, puis un autre produit du même rayon pour un autre ingrédient du même rayon de Repas
+        for ($i = 0; $i < 4; $i++) {
+            $this->save('user-1', [$this->add('farine', Placement::PRIMARY, '1', rayonId: 4001)]);
+        }
+        $this->save('user-1', [$this->add('semoule', Placement::PRIMARY, '2', rayonId: 4001)]);
+
+        // Then : le compte pèse une fois pour ce couple
+        $this->assertSame(['user-1|leclerc|boulangerie|4001'], $this->rayonVotes->all());
+        $this->assertSame(1, $this->rayonVotes->accountsFor(Retailer::LECLERC, 'boulangerie', 4001));
+    }
+
+    public function testOnlyAnAcceptedProductWithARayonAndAnIngredientWithADepartmentVotes(): void
     {
         // When : un refus et un rafraîchissement de prix qui portent un rayon, « j'en ai toujours », un produit choisi sans rayon
         // (agent plus ancien), un produit choisi pour un ingrédient dont Repas ne connaît pas le rayon
@@ -322,8 +335,8 @@ class SaveProductChoicesHandlerTest extends TestCase
         ]);
 
         // Then : rien n'est appris, et le rayon de Repas n'est demandé que pour l'ingrédient dont le produit porte un rayon
-        $this->assertSame([], $this->departmentRayons->all());
-        $this->assertSame([], $this->departmentRayons->recordChoicesSizes);
+        $this->assertSame([], $this->rayonVotes->all());
+        $this->assertSame([], $this->rayonVotes->recordSizes);
         $this->assertSame([['ingredient-inconnu']], $this->ingredientDepartments->departmentSlugsByIngredientCalls);
     }
 
@@ -334,7 +347,7 @@ class SaveProductChoicesHandlerTest extends TestCase
 
         // Then : comme avant, aucune requête de plus
         $this->assertSame([], $this->ingredientDepartments->departmentSlugsByIngredientCalls);
-        $this->assertSame([], $this->departmentRayons->recordChoicesSizes);
+        $this->assertSame([], $this->rayonVotes->recordSizes);
     }
 
     public function testTheRayonOfTheFicheIsTheOneThatCountsNotTheOneOfTheIntent(): void
@@ -350,7 +363,7 @@ class SaveProductChoicesHandlerTest extends TestCase
         $this->save('user-2', [$this->add('farine', Placement::FALLBACK, '1')]);
 
         // Then : la fiche fait foi, même quand l'intention ne dit rien
-        $this->assertSame(['leclerc|boulangerie|4001' => 2, 'leclerc|epicerie|4002' => 1], $this->departmentRayons->all());
+        $this->assertSame(['user-1|leclerc|boulangerie|4001', 'user-1|leclerc|epicerie|4002', 'user-2|leclerc|boulangerie|4001'], $this->rayonVotes->all());
     }
 
     public function testABatchThatIsRefusedTeachesNothing(): void
@@ -362,8 +375,8 @@ class SaveProductChoicesHandlerTest extends TestCase
         $this->assertInvalid(fn() => $this->save('user-1', [$this->add('sel', Placement::PRIMARY, '9', rayonId: 4002), $this->add('farine', Placement::FALLBACK, '6', rayonId: 4001)]));
 
         // Then
-        $this->assertSame([], $this->departmentRayons->all());
-        $this->assertSame([], $this->departmentRayons->recordChoicesSizes);
+        $this->assertSame([], $this->rayonVotes->all());
+        $this->assertSame([], $this->rayonVotes->recordSizes);
     }
 
     public function testALearnedBatchCostsOneReadAndOneWriteWhateverItsSize(): void
@@ -378,13 +391,13 @@ class SaveProductChoicesHandlerTest extends TestCase
             }
         }
         $this->ingredientDepartments = new IngredientDepartmentInMemoryResolver($departments);
-        $this->handler = new SaveProductChoicesHandler($this->settings, $this->products, $this->choices, $this->departmentRayons, $this->ingredientDepartments, $this->unitSlugs, new IngredientAliasInMemoryResolver(), new UuidGenerator(), new FrozenClock($this->now));
+        $this->handler = new SaveProductChoicesHandler($this->settings, $this->products, $this->choices, $this->rayonVotes, $this->ingredientDepartments, $this->unitSlugs, new IngredientAliasInMemoryResolver(), new UuidGenerator(), new FrozenClock($this->now));
         $this->save('user-1', $intents);
 
         // Then
         $this->assertCount(1, $this->ingredientDepartments->departmentSlugsByIngredientCalls);
         $this->assertCount(40, $this->ingredientDepartments->departmentSlugsByIngredientCalls[0]);
-        $this->assertSame([30], $this->departmentRayons->recordChoicesSizes);
+        $this->assertSame([30], $this->rayonVotes->recordSizes);
     }
 
     public function testTheSameProductSeenTwiceInOneBatchIsMerged(): void
@@ -442,7 +455,7 @@ class SaveProductChoicesHandlerTest extends TestCase
         // Given : Alice accepte déjà le produit (149), Mallory ne l'accepte pas
         $this->save('user-1', [$this->add('farine', Placement::PRIMARY, '555111', 'Farine T55 1 kg', price: new ProductPrice(149))]);
         $later = new DateTimeImmutable('2026-10-20 08:00:00');
-        $this->handler = new SaveProductChoicesHandler($this->settings, $this->products, $this->choices, $this->departmentRayons, $this->ingredientDepartments, $this->unitSlugs, new IngredientAliasInMemoryResolver(), new UuidGenerator(), new FrozenClock($later));
+        $this->handler = new SaveProductChoicesHandler($this->settings, $this->products, $this->choices, $this->rayonVotes, $this->ingredientDepartments, $this->unitSlugs, new IngredientAliasInMemoryResolver(), new UuidGenerator(), new FrozenClock($later));
 
         // When : Alice renvoie le produit avec son prix du jour, Mallory aussi avec un prix à 1 centime
         $this->save('user-1', [$this->add('farine', Placement::FALLBACK, '555111', 'Farine T55 1 kg', price: new ProductPrice(159))]);
@@ -639,7 +652,7 @@ class SaveProductChoicesHandlerTest extends TestCase
     {
         // Given : Repas ne connaît le rayon que de la copie ; le choix reçu porte l'ancien slug
         $this->ingredientDepartments = new IngredientDepartmentInMemoryResolver(['farine-user-1' => 'boulangerie']);
-        $this->handler = new SaveProductChoicesHandler($this->settings, $this->products, $this->choices, $this->departmentRayons, $this->ingredientDepartments, $this->unitSlugs, new IngredientAliasInMemoryResolver(['farine' => 'farine-user-1']), new UuidGenerator(), new FrozenClock($this->now));
+        $this->handler = new SaveProductChoicesHandler($this->settings, $this->products, $this->choices, $this->rayonVotes, $this->ingredientDepartments, $this->unitSlugs, new IngredientAliasInMemoryResolver(['farine' => 'farine-user-1']), new UuidGenerator(), new FrozenClock($this->now));
 
         // When
         $this->save('user-1', [$this->add('farine', Placement::PRIMARY, '555111', rayonId: 4001)]);
@@ -688,7 +701,7 @@ class SaveProductChoicesHandlerTest extends TestCase
         // Then : introuvable, et rien n'est écrit
         $this->assertSame([], $this->products->all());
         $this->assertNull($this->choices->findOne('user-1', Retailer::LECLERC, self::STORE, 'pain-de-autrui'));
-        $this->assertSame([], $this->departmentRayons->recordChoicesSizes);
+        $this->assertSame([], $this->rayonVotes->recordSizes);
     }
 
     /**
@@ -749,7 +762,7 @@ class SaveProductChoicesHandlerTest extends TestCase
 
     private function handlerWithAliases(IngredientAliasInMemoryResolver $aliases): SaveProductChoicesHandler
     {
-        return new SaveProductChoicesHandler($this->settings, $this->products, $this->choices, $this->departmentRayons, $this->ingredientDepartments, $this->unitSlugs, $aliases, new UuidGenerator(), new FrozenClock($this->now));
+        return new SaveProductChoicesHandler($this->settings, $this->products, $this->choices, $this->rayonVotes, $this->ingredientDepartments, $this->unitSlugs, $aliases, new UuidGenerator(), new FrozenClock($this->now));
     }
 
     private function fillChoices(string $userId, string $storeId, int $count): void
@@ -1144,7 +1157,7 @@ class SaveProductChoicesHandlerTest extends TestCase
         $this->assertSame('céréales coussins', $choice->getSearchQuery()?->value);
         $this->assertEquals($this->now, $choice->getUpdatedAt());
         $this->assertSame([], $this->products->all());
-        $this->assertSame([], $this->departmentRayons->all());
+        $this->assertSame([], $this->rayonVotes->all());
     }
 
     public function testNoteSearchKeepsTheAcceptedAndRejectedProductsAndReplacesTheSearch(): void

@@ -107,7 +107,7 @@ return [
     'suivre-liaison-alexa' => 1,
     'suivre-liaison-alexa-premiere-requete' => 5,
     'suivre-liaison-alexa-recente' => 0,
-    'supprimer-compte' => 26,
+    'supprimer-compte' => 27,
     'supprimer-conversion-ingredient' => 12,
     'supprimer-ingredient' => 13,
     'supprimer-liste' => 8,
