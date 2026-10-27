@@ -7,6 +7,9 @@ use Doctrine\DBAL\Connection;
 use Repas\Drive\Domain\Interface\ChoiceRepository;
 use Repas\Drive\Domain\Interface\DriveSettingsRepository;
 use Repas\Drive\Domain\Interface\ProductRepository;
+use Repas\Drive\Domain\Interface\RayonVoteRepository;
+use Repas\Drive\Domain\Model\RayonVote;
+use Repas\Drive\Domain\Model\Retailer;
 use Repas\Repas\Domain\Interface\IngredientAliasRepository;
 use Repas\Repas\Domain\Interface\IngredientDistinctRepository;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
@@ -380,7 +383,7 @@ class AccountAdministrationFlowTest extends DatabaseTestCase
         $this->assertContains($copy->getId(), array_column($this->jsonBody()['member'], 'id'));
     }
 
-    public function testADeletedAccountTakesItsDriveSettingsAndChoicesWithItAndLeavesTheOthers(): void
+    public function testADeletedAccountTakesItsDriveSettingsChoicesAndRayonVotesWithItAndLeavesTheOthers(): void
     {
         // Given : chacun a un magasin et des préférences de produits (acceptés et refusés), sur les mêmes produits
         $leaving = $this->savedUser(new UserBuilder()->withEmail('leaving@example.com'));
@@ -395,12 +398,17 @@ class AccountAdministrationFlowTest extends DatabaseTestCase
             new ChoiceBuilder()->withUserId($leaving->getId())->withIngredientSlug('sel')->withAccepted([$products[0]->getId()])->build(),
             new ChoiceBuilder()->withUserId($staying->getId())->withIngredientSlug('farine')->withAccepted([$products[0]->getId()])->withRejected([$products[2]->getId()])->build(),
         ]);
+        $rayonVotes = static::getContainer()->get(RayonVoteRepository::class);
+        $rayonVotes->record($leaving->getId(), Retailer::LECLERC, [new RayonVote('boulangerie', 4001), new RayonVote('epicerie', 4002)]);
+        $rayonVotes->record($staying->getId(), Retailer::LECLERC, [new RayonVote('boulangerie', 4001)]);
 
         // When
         $this->request('DELETE', '/api/v1/users/' . $leaving->getId(), $this->login('admin@example.com'));
 
-        // Then : ses réglages, ses préférences et toutes leurs lignes ont disparu, aucune ligne orpheline ; le reste est intact
+        // Then : ses réglages, ses préférences, leurs lignes et ses votes de rayons ont disparu, aucune ligne orpheline ; le reste est intact
         $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->assertSame(0, $this->rowCount('drive_rayon_vote', 'user_id', $leaving->getId()));
+        $this->assertSame(1, $this->rowCount('drive_rayon_vote', 'user_id', $staying->getId()));
         $this->assertSame(0, $this->rowCount('drive_settings', 'user_id', $leaving->getId()));
         $this->assertSame(1, $this->rowCount('drive_settings', 'user_id', $staying->getId()));
         $this->assertSame(0, $this->rowCount('drive_choice', 'user_id', $leaving->getId()));

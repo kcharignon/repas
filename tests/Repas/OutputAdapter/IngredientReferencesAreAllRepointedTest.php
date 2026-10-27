@@ -70,6 +70,7 @@ class IngredientReferencesAreAllRepointedTest extends DatabaseTestCase
         'recipe.slug' => 'une recette',
         'recipe_type.slug' => 'un type de recette',
         'drive_department_rayon.department_slug' => 'un rayon de Repas, appris par rayon et non par ingrédient',
+        'drive_rayon_vote.department_slug' => 'un rayon de Repas, voté par rayon et non par ingrédient',
         'drive_choice_product.pack_size_unit_slug' => 'un slug d\'UNITÉ (la contenance d\'un produit), pas d\'ingrédient',
     ];
 

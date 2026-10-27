@@ -6,13 +6,10 @@ use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
 /**
- * Mapping de `drive_department_rayon` (DRV-642) : combien de fois un produit du rayon `rayonId` de l'enseigne a été choisi pour un
- * ingrédient du rayon de Repas `departmentSlug`. Lu par le loader du plan (SQL) et utilisé pour créer le schéma ; les écritures
- * passent par `DepartmentRayonPostgreSQLRepository` (une requête). Jamais hydratée ni écrite par le code.
- *
- * **Rien à purger avec un compte** : la table n'a aucune colonne qui désigne un utilisateur (ni `user`, ni `owner`, ni magasin),
- * seulement un compteur par `(enseigne, rayon de Repas, rayon de l'enseigne)`. Ce sont des faits de catalogue agrégés, comme
- * `drive_product` : on n'y retrouve personne, `UserOwnedDataCoverageTest` n'a donc rien à y lister.
+ * Mapping de `drive_department_rayon` (DRV-642) : l'ancien compteur des rayons de l'enseigne, par enseigne et par rayon de Repas, sans
+ * compte. Il n'est plus ni lu ni écrit : les rayons appris sont les votes par compte de `drive_rayon_vote` (`RayonVote`). La table reste
+ * en place pour que la version précédente du code, qui la lit et l'écrit, fonctionne encore après un retour arrière ; une migration
+ * ultérieure la supprimera. Jamais hydratée ni écrite par le code.
  */
 #[ORM\Entity]
 #[ORM\Table(name: 'drive_department_rayon')]

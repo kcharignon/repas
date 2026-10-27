@@ -76,8 +76,8 @@ services:
         alias: 'Repas\Drive\Infrastructure\Repository\ChoicePostgreSQLRepository'
         public: true
 
-    Repas\Drive\Domain\Interface\DepartmentRayonRepository:
-        alias: 'Repas\Drive\Infrastructure\Repository\DepartmentRayonPostgreSQLRepository'
+    Repas\Drive\Domain\Interface\RayonVoteRepository:
+        alias: 'Repas\Drive\Infrastructure\Repository\RayonVotePostgreSQLRepository'
         public: true
 
     Repas\Voice\Domain\Interface\UserVoiceDataRepository:

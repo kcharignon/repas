@@ -16,13 +16,13 @@ use Repas\Drive\Application\Query\ListChoices\PackSizeDTO;
 use Repas\Drive\Application\Query\ListChoices\ProductContentDTO;
 use Repas\Drive\Domain\Exception\DriveException;
 use Repas\Drive\Domain\Interface\ChoiceRepository;
-use Repas\Drive\Domain\Interface\DepartmentRayonRepository;
 use Repas\Drive\Domain\Interface\DriveSettingsRepository;
 use Repas\Drive\Domain\Interface\ProductRepository;
+use Repas\Drive\Domain\Interface\RayonVoteRepository;
 use Repas\Drive\Domain\Model\ContentUnit;
-use Repas\Drive\Domain\Model\DepartmentRayonChoice;
 use Repas\Drive\Domain\Model\Product;
 use Repas\Drive\Domain\Model\ProductContent;
+use Repas\Drive\Domain\Model\RayonVote;
 use Repas\Drive\Domain\Model\Retailer;
 use Repas\Drive\Domain\Service\PackCalculator;
 use Repas\Drive\Infrastructure\Loader\DrivePlanPostgreSQLLoader;
@@ -282,7 +282,7 @@ class DrivePlanPostgreSQLLoaderTest extends DatabaseTestCase
         $this->assertSame(5, $counter->count());
         $searches = array_column(array_map(static fn(DrivePlanLineDTO $line): array => [$line->ingredientSlug, $line->searchQuery], $plan->lines), 1, 0);
         $this->assertSame(['recherche 1', 'recherche 12'], [$searches['ingredient-1'], $searches['ingredient-12']]);
-        $this->assertSame(1, $counter->byTable()['SELECT drive_department_rayon']);
+        $this->assertSame(1, $counter->byTable()['SELECT drive_rayon_vote']);
     }
 
     public function testALineCountsThePacksWithTheSizeGivenByThePersonInTheUnitOfTheList(): void
@@ -453,13 +453,13 @@ class DrivePlanPostgreSQLLoaderTest extends DatabaseTestCase
 
     public function testTheLinesCarryTheRayonsOfTheStoreChainLearnedForTheirDepartment(): void
     {
-        // Given : deux rayons de Repas ; « boulangerie » a quatre rayons appris dont deux à égalité, « epicerie » un seul
+        // Given : deux rayons de Repas ; « boulangerie » a quatre rayons choisis par des nombres de comptes différents dont deux à égalité, « epicerie » un seul
         $this->settings->save(new DriveSettingsBuilder()->withUserId('user-1')->build());
-        $this->learn('boulangerie', 4001, 5);
-        $this->learn('boulangerie', 4003, 3);
-        $this->learn('boulangerie', 4002, 3);
-        $this->learn('boulangerie', 4004, 1);
-        $this->learn('epicerie', 4009, 2);
+        $this->vote('boulangerie', 4001, 5);
+        $this->vote('boulangerie', 4003, 3);
+        $this->vote('boulangerie', 4002, 3);
+        $this->vote('boulangerie', 4004, 1);
+        $this->vote('epicerie', 4009, 2);
         $list = $this->sentList('user-1', [
             new ShoppingListLineForDrive('farine', 'Farine', 1, 'paquet', 'paquet', 'paquet', 'PACKAGE', 1.0, 'boulangerie'),
             new ShoppingListLineForDrive('levure', 'Levure', 1, 'paquet', 'paquet', 'paquet', 'PACKAGE', 1.0, 'boulangerie'),
@@ -469,17 +469,52 @@ class DrivePlanPostgreSQLLoaderTest extends DatabaseTestCase
         // When
         $lines = $this->loader($list)->get('user-1', 'list-1')->lines;
 
-        // Then : trois au plus, du plus choisi au moins choisi, à égalité le plus petit identifiant d'abord ; les lignes d'un même
+        // Then : trois au plus, du plus choisi (par le plus de comptes) au moins choisi, à égalité le plus petit identifiant d'abord ; les lignes d'un même
         // rayon de Repas ont les mêmes
         $this->assertSame([[4001, 4002, 4003], [4001, 4002, 4003], [4009]], array_map(static fn(DrivePlanLineDTO $line): array => $line->rayonHints, $lines));
+    }
+
+    public function testTheRayonsAreRankedByTheNumberOfAccountsNotByTheNumberOfChoices(): void
+    {
+        // Given : un compte renvoie dix fois son choix du rayon 4005 (et choisit aussi pour d'autres ingrédients du même rayon de Repas) ;
+        // deux comptes choisissent chacun une fois le rayon 4006
+        $this->settings->save(new DriveSettingsBuilder()->withUserId('user-1')->build());
+        $repository = static::getContainer()->get(RayonVoteRepository::class);
+        for ($i = 0; $i < 10; $i++) {
+            $repository->record('voter-1', Retailer::LECLERC, [new RayonVote('boulangerie', 4005), new RayonVote('boulangerie', 4005)]);
+        }
+        $repository->record('voter-2', Retailer::LECLERC, [new RayonVote('boulangerie', 4006)]);
+        $repository->record('voter-3', Retailer::LECLERC, [new RayonVote('boulangerie', 4006)]);
+        $list = $this->sentList('user-1', [new ShoppingListLineForDrive('farine', 'Farine', 1, 'paquet', 'paquet', 'paquet', 'PACKAGE', 1.0, 'boulangerie')]);
+
+        // When
+        $lines = $this->loader($list)->get('user-1', 'list-1')->lines;
+
+        // Then : le rayon choisi par deux comptes passe devant celui d'un seul compte
+        $this->assertSame([[4006, 4005]], array_map(static fn(DrivePlanLineDTO $line): array => $line->rayonHints, $lines));
+    }
+
+    public function testTheOldCountersOfTheChainAreNotRead(): void
+    {
+        // Given : l'ancien compteur (par envoi, sans compte) donne un rayon, un compte vote pour un autre
+        $this->settings->save(new DriveSettingsBuilder()->withUserId('user-1')->build());
+        $this->entityManager->getConnection()->executeStatement("INSERT INTO drive_department_rayon (retailer, department_slug, rayon_id, chosen_count) VALUES ('leclerc', 'boulangerie', 4999, 50)");
+        $this->vote('boulangerie', 4001, 1);
+        $list = $this->sentList('user-1', [new ShoppingListLineForDrive('farine', 'Farine', 1, 'paquet', 'paquet', 'paquet', 'PACKAGE', 1.0, 'boulangerie')]);
+
+        // When
+        $lines = $this->loader($list)->get('user-1', 'list-1')->lines;
+
+        // Then
+        $this->assertSame([[4001]], array_map(static fn(DrivePlanLineDTO $line): array => $line->rayonHints, $lines));
     }
 
     public function testALineWithoutLearnedRayonOrWithoutDepartmentHasNoHint(): void
     {
         // Given : rien d'appris pour « surgele », une ligne sans rayon de Repas, et des rayons appris par une autre enseigne
         $this->settings->save(new DriveSettingsBuilder()->withUserId('user-1')->build());
-        $this->learn('boulangerie', 4001, 1);
-        $this->entityManager->getConnection()->executeStatement("INSERT INTO drive_department_rayon (retailer, department_slug, rayon_id, chosen_count) VALUES ('auchan', 'surgele', 7777, 9)");
+        $this->vote('boulangerie', 4001, 1);
+        $this->entityManager->getConnection()->executeStatement("INSERT INTO drive_rayon_vote (user_id, retailer, department_slug, rayon_id) VALUES ('voter-1', 'auchan', 'surgele', 7777)");
         $list = $this->sentList('user-1', [
             new ShoppingListLineForDrive('glace', 'Glace', 1, 'paquet', 'paquet', 'paquet', 'PACKAGE', 1.0, 'surgele'),
             new ShoppingListLineForDrive('inconnu', 'Inconnu', 1, 'paquet', 'paquet', 'paquet', 'PACKAGE', 1.0, null),
@@ -498,7 +533,7 @@ class DrivePlanPostgreSQLLoaderTest extends DatabaseTestCase
         // Given : ce qui est appris ne dépend ni de l'utilisateur ni du magasin (faits de catalogue agrégés)
         $this->settings->save(new DriveSettingsBuilder()->withUserId('user-1')->withStore('123456', null, 'https://exemple.leclercdrive.fr/magasin-123456-123456')->build());
         $this->settings->save(new DriveSettingsBuilder()->withUserId('user-2')->withStore('654321', null, 'https://autre.leclercdrive.fr/magasin-654321-654321')->build());
-        $this->learn('boulangerie', 4001, 2);
+        $this->vote('boulangerie', 4001, 2);
         $line = static fn(): array => [new ShoppingListLineForDrive('farine', 'Farine', 1, 'paquet', 'paquet', 'paquet', 'PACKAGE', 1.0, 'boulangerie')];
 
         // When
@@ -521,13 +556,19 @@ class DrivePlanPostgreSQLLoaderTest extends DatabaseTestCase
         $this->loader($list)->get('user-1', 'list-1');
 
         // Then : les réglages et les préférences seulement (la liste vient du double)
-        $this->assertArrayNotHasKey('SELECT drive_department_rayon', $counter->byTable());
+        $this->assertArrayNotHasKey('SELECT drive_rayon_vote', $counter->byTable());
         $this->assertSame(2, $counter->count());
     }
 
-    private function learn(string $departmentSlug, int $rayonId, int $times): void
+    /**
+     * Ce rayon de l'enseigne est choisi, pour ce rayon de Repas, par ce nombre de comptes (chacun a un vote).
+     */
+    private function vote(string $departmentSlug, int $rayonId, int $accounts): void
     {
-        static::getContainer()->get(DepartmentRayonRepository::class)->recordChoices(Retailer::LECLERC, array_fill(0, $times, new DepartmentRayonChoice($departmentSlug, $rayonId)));
+        $repository = static::getContainer()->get(RayonVoteRepository::class);
+        for ($i = 1; $i <= $accounts; $i++) {
+            $repository->record('voter-' . $i, Retailer::LECLERC, [new RayonVote($departmentSlug, $rayonId)]);
+        }
     }
 
     /**

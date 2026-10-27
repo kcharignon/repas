@@ -7,12 +7,12 @@ use DateTimeImmutable;
 use Psr\Clock\ClockInterface;
 use Repas\Drive\Domain\Exception\DriveException;
 use Repas\Drive\Domain\Interface\ChoiceRepository;
-use Repas\Drive\Domain\Interface\DepartmentRayonRepository;
 use Repas\Drive\Domain\Interface\DriveSettingsRepository;
 use Repas\Drive\Domain\Interface\ProductRepository;
+use Repas\Drive\Domain\Interface\RayonVoteRepository;
 use Repas\Drive\Domain\Model\Choice;
-use Repas\Drive\Domain\Model\DepartmentRayonChoice;
 use Repas\Drive\Domain\Model\Product;
+use Repas\Drive\Domain\Model\RayonVote;
 use Repas\Shared\Application\Interface\IngredientAliasResolver;
 use Repas\Shared\Application\Interface\IngredientDepartmentResolver;
 use Repas\Shared\Application\Interface\UnitSlugResolver;
@@ -29,7 +29,7 @@ readonly class SaveProductChoicesHandler
         private DriveSettingsRepository $driveSettingsRepository,
         private ProductRepository $productRepository,
         private ChoiceRepository $choiceRepository,
-        private DepartmentRayonRepository $departmentRayonRepository,
+        private RayonVoteRepository $rayonVoteRepository,
         private IngredientDepartmentResolver $ingredientDepartments,
         private UnitSlugResolver $unitSlugs,
         private IngredientAliasResolver $ingredientAliases,
@@ -68,10 +68,11 @@ readonly class SaveProductChoicesHandler
      * contenance) sinon `packSizeInvalid()`. Le reste voyage avec la préférence : aucune autre requête.
      *
      * **Apprentissage du rayon (DRV-642)** : chaque `ADD_PRODUCT` dont le produit connaît son rayon dans l'enseigne (donné par
-     * l'agent ou déjà sur la fiche, la fiche faisant foi) compte un choix pour le couple (rayon de Repas de l'ingrédient, rayon de
-     * l'enseigne) dans `drive_department_rayon`, ce qui nourrit les `rayonHints` du plan. Une lecture de plus (les rayons de Repas
-     * des ingrédients, par le port `Shared`) et une écriture de plus, seulement quand un choix porte un rayon ; un ingrédient sans
-     * rayon de Repas connu, un refus et un rafraîchissement de prix n'apprennent rien.
+     * l'agent ou déjà sur la fiche, la fiche faisant foi) vote, pour le compte, pour le couple (rayon de Repas de l'ingrédient, rayon
+     * de l'enseigne) dans `drive_rayon_vote`, ce qui nourrit les `rayonHints` du plan : un compte pèse une fois par couple, quel que
+     * soit le nombre de fois qu'il renvoie le même choix. Une lecture de plus (les rayons de Repas des ingrédients, par le port
+     * `Shared`) et une écriture de plus, seulement quand un choix porte un rayon ; un ingrédient sans rayon de Repas connu, un refus
+     * et un rafraîchissement de prix n'apprennent rien.
      *
      * @throws DriveException `invalidChoice()` (422) pour un lot, un produit ou une intention hors des bornes, un produit à la
      *                        fois ajouté et refusé pour un ingrédient, plus de 5 produits acceptés ou 20 refusés ;
@@ -156,7 +157,7 @@ readonly class SaveProductChoicesHandler
         $this->productRepository->saveAll(array_values($changedProducts));
         $this->choiceRepository->saveAll(array_values($touchedChoices));
         if ($learned !== []) {
-            $this->departmentRayonRepository->recordChoices($command->retailer, $learned);
+            $this->rayonVoteRepository->record($command->userId, $command->retailer, $learned);
         }
     }
 
@@ -195,14 +196,14 @@ readonly class SaveProductChoicesHandler
     }
 
     /**
-     * Un choix appris par `ADD_PRODUCT` dont le produit connaît son rayon dans l'enseigne, pour un ingrédient dont Repas connaît
+     * Un vote donné par un `ADD_PRODUCT` dont le produit connaît son rayon dans l'enseigne, pour un ingrédient dont Repas connaît
      * le rayon. Le rayon est celui de la fiche (premier écrivain gagnant), pas celui de l'intention : un agent qui se trompe ne
      * fausse pas l'apprentissage d'un produit déjà connu. Aucune lecture quand aucun choix ne porte de rayon.
      *
      * @param list<ChoiceIntent> $intents
      * @param array<string, Product> $products par identifiant chez l'enseigne, déjà complétés
      *
-     * @return list<DepartmentRayonChoice>
+     * @return list<RayonVote>
      */
     private function rayonsLearnedFrom(array $intents, array $products): array
     {
@@ -222,7 +223,7 @@ readonly class SaveProductChoicesHandler
         $learned = [];
         foreach ($candidates as [$ingredientSlug, $rayonId]) {
             if (isset($departments[$ingredientSlug])) {
-                $learned[] = new DepartmentRayonChoice($departments[$ingredientSlug], $rayonId);
+                $learned[] = new RayonVote($departments[$ingredientSlug], $rayonId);
             }
         }
 
