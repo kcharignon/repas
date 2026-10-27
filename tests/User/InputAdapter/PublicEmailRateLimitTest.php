@@ -116,6 +116,22 @@ class PublicEmailRateLimitTest extends QueryBusWebTestCase
         $this->assertCount(6, $this->commandBus->dispatched());
     }
 
+    public function testTheTagOfTheLocalPartDoesNotGiveAnotherCounter(): void
+    {
+        // When : six demandes pour la même boîte, avec et sans étiquette `+x`
+        $spellings = ['alexiane@example.com', 'alexiane+a@example.com', 'alexiane+b@example.com', 'Alexiane+Courses@Example.com', 'alexiane+a+b@example.com', 'alexiane@example.com'];
+        foreach ($spellings as $i => $email) {
+            $this->post('/api/v1/users/password-reset/send', ['email' => $email], $this->address($i + 1));
+            $this->assertSame(204, $this->client->getResponse()->getStatusCode(), "demande $i");
+        }
+
+        // Then : la septième est refusée, étiquette ou non ; une autre boîte n'est pas touchée
+        $this->post('/api/v1/users/password-reset/send', ['email' => 'alexiane+z@example.com'], $this->address(7));
+        $this->assertTooManyRequests();
+        $this->post('/api/v1/users/password-reset/send', ['email' => 'alexiane2+z@example.com'], $this->address(8));
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+    }
+
     public function testAnotherAddressIsNotAffectedByTheSixRequestsOfTheFirst(): void
     {
         // Given : une adresse a atteint son plafond

@@ -1,0 +1,5 @@
+framework:
+    # Le magasin de verrous (LOCK_DSN, `flock` : un fichier par verrou dans le répertoire temporaire du conteneur, voir .env). Il sert
+    # aux compteurs de débit (Repas\Shared\Infrastructure\RateLimiter\BoundedLockFactory, config/services.yaml) et, par la fabrique
+    # `lock.factory`, aux sections critiques d'un compte. Le même DSN alimente les deux : `repas.lock_dsn`.
+    lock: '%repas.lock_dsn%'
