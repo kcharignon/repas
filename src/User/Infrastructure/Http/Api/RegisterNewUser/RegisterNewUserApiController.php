@@ -27,6 +27,7 @@ final class RegisterNewUserApiController extends AbstractController
     #[OA\RequestBody(required: true, content: new OA\JsonContent(ref: new Model(type: RegisterNewUserPayload::class)))]
     #[OA\Response(response: 201, description: 'Créé', headers: [new OA\Header(header: 'Location', description: "URL du compte créé (lisible par lui-même une fois connecté)", schema: new OA\Schema(type: 'string'))])]
     #[OA\Response(response: 409, description: 'Cette adresse email est déjà utilisée')]
+    #[OA\Response(response: 429, description: "Trop d'inscriptions depuis cette adresse IP, ou trop d'emails demandés au total dans l'heure (100, toutes adresses confondues)")]
     #[OA\Response(response: 422, description: 'Corps de la requête invalide')]
     public function __invoke(#[MapRequestPayload] RegisterNewUserPayload $payload): Response
     {

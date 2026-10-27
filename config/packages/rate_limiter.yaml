@@ -1,5 +1,38 @@
 framework:
     rate_limiter:
+        # Connexion (POST /api/login_check, LoginRateLimiter, ADR 0008) : trois compteurs d'ÉCHECS, au-delà desquels la connexion répond
+        # 429 + Retry-After, même avec le bon mot de passe. Un e-mail inconnu compte comme un e-mail connu.
+        # Par adresse (préfixe /64 en IPv6) : combien d'adresses e-mail un même client essaie.
+        login_address:
+            policy: fixed_window
+            limit: 25
+            interval: '15 minutes'
+        # Par adresse ET e-mail : combien de mots de passe pour une même adresse e-mail depuis une même adresse. Une connexion
+        # réussie le remet à zéro.
+        login_address_email:
+            policy: fixed_window
+            limit: 5
+            interval: '15 minutes'
+        # Par e-mail seul, toutes adresses confondues : 20 échecs d'un coup, puis un échec de plus toutes les 3 minutes (20 par heure).
+        # Un seau plutôt qu'une fenêtre : après une rafale, le propriétaire du compte attend 3 minutes et non une heure. Ni une connexion
+        # réussie ni une tentative refusée ne le touchent.
+        login_email:
+            policy: token_bucket
+            limit: 20
+            rate: { interval: '3 minutes', amount: 1 }
+        # Mot de passe actuel d'un utilisateur connecté (PUT /api/v1/me/settings, PasswordAttemptRateLimiter), PAR UTILISATEUR : seuls
+        # les mots de passe refusés comptent, un mot de passe juste ne consomme rien.
+        password_check:
+            policy: fixed_window
+            limit: 5
+            interval: '15 minutes'
+        # Emails envoyés sans jeton (inscription, renvoi du lien de confirmation, mot de passe oublié), TOUTES adresses confondues
+        # (PublicEmailRateLimitListener) : le fournisseur d'envoi a un quota par jour, que tous ces envois se partagent. Compté pour
+        # chaque requête au corps valide, qu'un email parte ou non : la réponse ne dépend pas de l'existence du compte.
+        public_email:
+            policy: sliding_window
+            limit: 100
+            interval: '1 hour'
         # Inscription publique (POST /api/v1/users), par adresse IP (RegisterNewUserRateLimitListener) : un compte créé n'a
         # ni confirmation d'email ni captcha, c'est ce plafond qui limite la création en masse (ADR 0008).
         registration:
@@ -77,6 +110,16 @@ framework:
 when@test:
     framework:
         rate_limiter:
+            login_address:
+                cache_pool: test.rate_limiter_pool
+            login_address_email:
+                cache_pool: test.rate_limiter_pool
+            login_email:
+                cache_pool: test.rate_limiter_pool
+            password_check:
+                cache_pool: test.rate_limiter_pool
+            public_email:
+                cache_pool: test.rate_limiter_pool
             registration:
                 cache_pool: test.rate_limiter_pool
             refresh_token:

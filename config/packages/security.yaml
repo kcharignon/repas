@@ -33,10 +33,10 @@ security:
                 password_path: password
                 success_handler: lexik_jwt_authentication.handler.authentication_success
                 failure_handler: lexik_jwt_authentication.handler.authentication_failure
-            # 5 échecs par 15 minutes pour un couple IP + email, 25 pour une même IP (ADR 0008) ; au-delà : 429
+            # Plafond des échecs : 5 par 15 minutes pour un couple adresse + email, 25 pour une même adresse, 20 puis un toutes les
+            # 3 minutes pour un même email (ADR 0008, chiffres dans rate_limiter.yaml) ; au-delà : 429
             login_throttling:
-                max_attempts: 5
-                interval: '15 minutes'
+                limiter: Repas\User\Infrastructure\Security\LoginRateLimiter
         # API JSON stateless authentifiée par JWT (ADR 0008). Aucune session, aucun cookie d'authentification.
         api:
             pattern: ^/api
@@ -57,11 +57,7 @@ security:
 
 when@test:
     security:
-        # Compteurs de connexion en mémoire (test.rate_limiter_pool, config/services.yaml) : un test ne voit pas les tentatives d'un autre
-        firewalls:
-            login:
-                login_throttling:
-                    cache_pool: test.rate_limiter_pool
+        # Les compteurs de connexion sont en mémoire en test (config/packages/rate_limiter.yaml, test.rate_limiter_pool)
         password_hashers:
             # By default, password hashers are resource intensive and take time. This is
             # important to generate secure password hashes. In tests however, secure hashes

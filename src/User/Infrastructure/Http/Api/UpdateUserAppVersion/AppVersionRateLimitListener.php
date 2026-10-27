@@ -4,6 +4,7 @@ namespace Repas\User\Infrastructure\Http\Api\UpdateUserAppVersion;
 
 
 use Repas\Shared\Domain\Interface\AuthenticatedUser;
+use Repas\Shared\Infrastructure\Http\ClientAddressKey;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\HttpFoundation\Request;
@@ -58,6 +59,6 @@ final readonly class AppVersionRateLimitListener
 
         return $user instanceof AuthenticatedUser
             ? 'user-' . $user->getId()
-            : 'ip-' . ($request->getClientIp() ?? 'unknown');
+            : 'ip-' . ClientAddressKey::of($request->getClientIp());
     }
 }

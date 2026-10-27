@@ -6,6 +6,7 @@ namespace Repas\Tests\Shared\Infrastructure\Http;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Repas\Shared\Domain\Exception\DomainException;
+use Repas\Shared\Domain\Exception\RateLimitedException;
 use Repas\Shared\Infrastructure\Http\ApiExceptionListener;
 use RuntimeException;
 use Symfony\Component\HttpFoundation\Request;
@@ -107,6 +108,25 @@ class ApiExceptionListenerTest extends TestCase
         $this->assertSame(429, $event->getResponse()->getStatusCode());
         $this->assertSame('120', $event->getResponse()->headers->get('Retry-After'));
         $this->assertSame(['error' => ['message' => 'Too Many Requests']], $this->body($event));
+    }
+
+    public function testARateLimitedDomainExceptionIs429WithItsWaitingTime(): void
+    {
+        // Given : un plafond atteint dans un cas d'usage
+        $event = $this->anApiEvent(RateLimitedException::after('PASSWORD_RATE_LIMITED', 240));
+
+        // When
+        (new ApiExceptionListener())($event);
+
+        // Then
+        $this->assertSame(429, $event->getResponse()->getStatusCode());
+        $this->assertSame('240', $event->getResponse()->headers->get('Retry-After'));
+        $this->assertSame(['error' => ['message' => 'PASSWORD_RATE_LIMITED']], $this->body($event));
+    }
+
+    public function testTheWaitingTimeOfARateLimitedExceptionIsOneSecondAtLeast(): void
+    {
+        $this->assertSame(1, RateLimitedException::after('PASSWORD_RATE_LIMITED', -3)->retryAfter());
     }
 
     public function testHttpExceptionWrappingTheDomainErrorOfTheSameStatusShowsTheDomainCode(): void

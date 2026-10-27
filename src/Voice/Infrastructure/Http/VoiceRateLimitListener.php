@@ -5,6 +5,7 @@ namespace Repas\Voice\Infrastructure\Http;
 
 use Psr\Clock\ClockInterface;
 use Repas\Shared\Domain\Interface\AuthenticatedUser;
+use Repas\Shared\Infrastructure\Http\ClientAddressKey;
 use Repas\Voice\Domain\Exception\VoiceException;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;

@@ -4,6 +4,7 @@ namespace Repas\Shared\Infrastructure\Http;
 
 
 use Repas\Shared\Domain\Exception\DomainException;
+use Repas\Shared\Domain\Exception\RateLimitedException;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
@@ -37,8 +38,20 @@ final class ApiExceptionListener
         $event->setResponse(new JsonResponse(
             data: ['error' => ['message' => $this->getMessage($exception)]],
             status: $this->getStatusCode($exception),
-            headers: $exception instanceof HttpExceptionInterface ? $exception->getHeaders() : [],
+            headers: $this->getHeaders($exception),
         ));
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function getHeaders(Throwable $exception): array
+    {
+        return match (true) {
+            $exception instanceof HttpExceptionInterface => $exception->getHeaders(),
+            $exception instanceof RateLimitedException => ['Retry-After' => (string) $exception->retryAfter()],
+            default => [],
+        };
     }
 
     private function isApiRequest(string $pathInfo): bool

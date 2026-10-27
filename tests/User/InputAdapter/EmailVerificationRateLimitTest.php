@@ -47,6 +47,25 @@ class EmailVerificationRateLimitTest extends QueryBusWebTestCase
         $this->assertSame(204, $this->client->getResponse()->getStatusCode());
     }
 
+    public function testTheAddressesOfOneIpv6PrefixShareOneAllowance(): void
+    {
+        // Given : vingt demandes depuis vingt adresses du même préfixe /64
+        $this->mockCommandBus();
+        $this->client->disableReboot();
+        for ($i = 1; $i <= 20; $i++) {
+            $this->post('/api/v1/users/email-verification/send', ['email' => 'a@example.com'], sprintf('2001:db8:1:2::%x', $i));
+            $this->assertSame(204, $this->client->getResponse()->getStatusCode(), "demande $i");
+        }
+
+        // When : une autre adresse de ce préfixe, puis une d'un autre préfixe
+        $this->post('/api/v1/users/email-verification/send', ['email' => 'a@example.com'], '2001:db8:1:2:aaaa:bbbb:cccc:dddd');
+        $this->assertSame(429, $this->client->getResponse()->getStatusCode());
+        $this->post('/api/v1/users/email-verification/send', ['email' => 'a@example.com'], '2001:db8:1:3::1');
+
+        // Then
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+    }
+
     /**
      * @param array<string, mixed> $body
      */
