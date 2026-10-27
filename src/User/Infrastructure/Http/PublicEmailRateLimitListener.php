@@ -3,7 +3,6 @@
 namespace Repas\User\Infrastructure\Http;
 
 
-use Repas\User\Domain\Model\User;
 use SensitiveParameter;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
@@ -18,9 +17,10 @@ use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
  * le mot de passe oublié. Deux compteurs, consultés dans cet ordre :
  *
  * 1. PAR DESTINATAIRE (limiteur `public_email_recipient`, 6 par heure, config/packages/rate_limiter.yaml) : l'adresse saisie, mise sous la
- *    forme qu'utilise la recherche du compte (`User::normalizeEmail`), partage un seul compteur entre les trois routes. Une même adresse
- *    ne reçoit donc pas de quoi occuper le compteur commun. La clé est une empreinte (HMAC avec la clé de l'application) : l'adresse n'est
- *    pas dans le cache. C'est l'adresse SAISIE qui compte, jamais l'état du compte : la réponse est la même que le compte existe ou non.
+ *    forme qu'utilise la recherche du compte (`User::normalizeEmail`) et sans l'étiquette `+x` de sa partie locale (`RecipientKey`, pour la
+ *    clé du plafond seulement), partage un seul compteur entre les trois routes. Une même adresse ne reçoit donc pas de quoi occuper le
+ *    compteur commun. La clé est une empreinte (HMAC avec la clé de l'application) : l'adresse n'est pas dans le cache. C'est l'adresse
+ *    SAISIE qui compte, jamais l'état du compte : la réponse est la même que le compte existe ou non.
  * 2. COMMUN, toutes adresses confondues (limiteur `public_email`, 100 par heure) : le fournisseur d'envoi a un quota par jour, que tous ces
  *    envois se partagent ; sans ce plafond, ceux des uns le consomment pour les autres.
  *
@@ -74,15 +74,13 @@ final readonly class PublicEmailRateLimitListener
     }
 
     /**
-     * L'adresse saisie, sous la forme qu'utilise la recherche du compte ; `null` si le corps n'en porte pas (jamais pour les trois routes).
+     * La clé de l'adresse saisie (`RecipientKey`) ; `null` si le corps n'en porte pas (jamais pour les trois routes).
      */
     private function recipientOf(ControllerArgumentsEvent $event): ?string
     {
         foreach ($event->getArguments() as $argument) {
             if ($argument instanceof EmailRecipientPayload) {
-                return preg_match('//u', $argument->recipientEmail()) === 1
-                    ? User::normalizeEmail($argument->recipientEmail())
-                    : strtolower(trim($argument->recipientEmail()));
+                return RecipientKey::of($argument->recipientEmail());
             }
         }
 
