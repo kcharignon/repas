@@ -99,10 +99,11 @@ readonly class SaveProductChoicesHandler
         $command = $this->withResolvedIngredients($command);
 
         $now = $this->clock->now();
-        // Plafond du jour avant toute lecture de plus : les réglages sont déjà là, le compteur voyage avec eux (enregistré avec le reste)
+        // Plafond du jour avant toute lecture de plus : le compteur se réserve en UNE instruction atomique (deux requêtes simultanées du même
+        // compte ne lisent pas la même valeur) ; le modèle des réglages déjà lu n'en porte pas la valeur à jour
         $productWrites = count(array_filter($command->intents, static fn(ChoiceIntent $intent): bool => $intent->product !== null));
-        if ($productWrites > 0) {
-            $settings->recordProductWrites($productWrites, $now);
+        if ($productWrites > 0 && !$this->driveSettingsRepository->reserveProductWrites($command->userId, $command->retailer, $productWrites, $now)) {
+            throw DriveException::limitReached();
         }
 
         $this->assertPackSizeUnitsExist($command->intents);
@@ -149,9 +150,6 @@ readonly class SaveProductChoicesHandler
 
         $learned = $this->rayonsLearnedFrom($command->intents, $products);
 
-        if ($productWrites > 0) {
-            $this->driveSettingsRepository->save($settings);
-        }
         $this->productRepository->saveAll(array_values($changedProducts));
         $this->choiceRepository->saveAll(array_values($touchedChoices));
         if ($learned !== []) {

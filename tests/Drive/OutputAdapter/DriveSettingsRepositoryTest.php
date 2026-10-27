@@ -48,8 +48,7 @@ class DriveSettingsRepositoryTest extends DatabaseTestCase
         $this->entityManager->clear();
 
         // When
-        $settings = $this->repository->findOneByUser('user-1', Retailer::LECLERC);
-        $this->repository->save($settings->recordProductWrites(42, $now));
+        $this->assertTrue($this->repository->reserveProductWrites('user-1', Retailer::LECLERC, 42, $now));
         $this->entityManager->clear();
         $settings = $this->repository->findOneByUser('user-1', Retailer::LECLERC);
         $this->repository->save($settings->changeStore(Store::create(Retailer::LECLERC, '654321', null, 'https://autre.leclercdrive.fr/magasin-654321-654321'), $now));
@@ -62,6 +61,129 @@ class DriveSettingsRepositoryTest extends DatabaseTestCase
         $untouched = $this->repository->findOneByUser('user-2', Retailer::LECLERC);
         $this->assertSame(0, $untouched->getProductWritesCount());
         $this->assertNull($untouched->getProductWritesDay());
+    }
+
+    public function testReservingWritesCountsThemForTheDayAndAddsUp(): void
+    {
+        // Given
+        $now = new DateTimeImmutable('2026-10-19 08:00:00');
+        $this->repository->save(new DriveSettingsBuilder()->withUserId('user-1')->build());
+
+        // When
+        $first = $this->repository->reserveProductWrites('user-1', Retailer::LECLERC, 40, $now);
+        $second = $this->repository->reserveProductWrites('user-1', Retailer::LECLERC, 2, $now->modify('+3 hours'));
+        $this->entityManager->clear();
+
+        // Then
+        $this->assertSame([true, true], [$first, $second]);
+        $found = $this->repository->findOneByUser('user-1', Retailer::LECLERC);
+        $this->assertSame([42, '2026-10-19'], [$found->getProductWritesCount(), $found->getProductWritesDay()->format('Y-m-d')]);
+    }
+
+    public function testReservingWritesIsRefusedAboveTheDailyLimitAndCountsNothing(): void
+    {
+        // Given : 4 990 écritures aujourd'hui
+        $now = new DateTimeImmutable('2026-10-19 08:00:00');
+        $this->repository->save(new DriveSettingsBuilder()->withUserId('user-1')->withProductWrites($now, 4990)->build());
+
+        // When : 11 de trop, puis 10 qui tiennent exactement, puis une de plus
+        $tooMany = $this->repository->reserveProductWrites('user-1', Retailer::LECLERC, 11, $now);
+        $exactly = $this->repository->reserveProductWrites('user-1', Retailer::LECLERC, 10, $now);
+        $oneMore = $this->repository->reserveProductWrites('user-1', Retailer::LECLERC, 1, $now);
+        $this->entityManager->clear();
+
+        // Then
+        $this->assertSame([false, true, false], [$tooMany, $exactly, $oneMore]);
+        $this->assertSame(5000, $this->repository->findOneByUser('user-1', Retailer::LECLERC)->getProductWritesCount());
+    }
+
+    public function testTheCounterStartsAgainEachUtcDay(): void
+    {
+        // Given : le plafond du 19 est atteint
+        $this->repository->save(new DriveSettingsBuilder()->withUserId('user-1')->withProductWrites(new DateTimeImmutable('2026-10-19'), 5000)->build());
+
+        // When : 23 h 30 UTC le 19, puis 02 h 00 à Paris le 20 (00 h 00 UTC)
+        $sameDay = $this->repository->reserveProductWrites('user-1', Retailer::LECLERC, 1, new DateTimeImmutable('2026-10-19 23:30:00+00:00'));
+        $nextDay = $this->repository->reserveProductWrites('user-1', Retailer::LECLERC, 5000, new DateTimeImmutable('2026-10-20 02:00:00+02:00'));
+        $this->entityManager->clear();
+
+        // Then
+        $this->assertSame([false, true], [$sameDay, $nextDay]);
+        $found = $this->repository->findOneByUser('user-1', Retailer::LECLERC);
+        $this->assertSame([5000, '2026-10-20'], [$found->getProductWritesCount(), $found->getProductWritesDay()->format('Y-m-d')]);
+    }
+
+    public function testReservingWritesJudgesTheValueInTheDatabaseNotTheOneAModelWasReadWith(): void
+    {
+        // Given : deux requêtes du même compte lisent les réglages (compteur à 0), la première réserve 4 000, l'autre 2 000 avec sa lecture périmée
+        $now = new DateTimeImmutable('2026-10-19 08:00:00');
+        $this->repository->save(new DriveSettingsBuilder()->withUserId('user-1')->build());
+        $this->entityManager->clear();
+        $staleRead = $this->repository->findOneByUser('user-1', Retailer::LECLERC);
+        $this->assertSame(0, $staleRead->getProductWritesCount());
+        $this->entityManager->getConnection()->executeStatement("UPDATE drive_settings SET product_writes_day = '2026-10-19', product_writes_count = 4000 WHERE user_id = 'user-1'");
+
+        // When : les 2 000 d'une lecture à zéro auraient tenu ; ajoutés aux 4 000 déjà comptés ils dépassent 5 000
+        $reserved = $this->repository->reserveProductWrites('user-1', Retailer::LECLERC, 2000, $now);
+
+        // Then
+        $this->assertFalse($reserved);
+        $this->assertSame(4000, (int) $this->entityManager->getConnection()->fetchOne("SELECT product_writes_count FROM drive_settings WHERE user_id = 'user-1'"));
+    }
+
+    public function testReservingWritesForUnknownSettingsIsRefused(): void
+    {
+        // Then
+        $this->assertFalse($this->repository->reserveProductWrites('nobody', Retailer::LECLERC, 1, new DateTimeImmutable('2026-10-19 08:00:00')));
+    }
+
+    public function testReservingWritesTouchesOnlyTheCounterOfTheUser(): void
+    {
+        // Given
+        $now = new DateTimeImmutable('2026-10-19 08:00:00');
+        $this->repository->save(new DriveSettingsBuilder()->withUserId('user-1')->build());
+        $this->repository->save(new DriveSettingsBuilder()->withUserId('user-2')->build());
+
+        // When
+        $this->repository->reserveProductWrites('user-1', Retailer::LECLERC, 7, $now);
+        $this->entityManager->clear();
+
+        // Then
+        $this->assertSame([7, 0], [
+            $this->repository->findOneByUser('user-1', Retailer::LECLERC)->getProductWritesCount(),
+            $this->repository->findOneByUser('user-2', Retailer::LECLERC)->getProductWritesCount(),
+        ]);
+    }
+
+    public function testReservingWritesCostsOneUpdate(): void
+    {
+        // Given
+        $this->repository->save(new DriveSettingsBuilder()->withUserId('user-1')->build());
+        $counter = static::getContainer()->get(QueryCounter::class);
+        $counter->reset();
+
+        // When
+        $this->repository->reserveProductWrites('user-1', Retailer::LECLERC, 3, new DateTimeImmutable('2026-10-19 08:00:00'));
+
+        // Then
+        $this->assertSame(['UPDATE drive_settings' => 1], $counter->byTable());
+    }
+
+    public function testSavingTheSettingsAgainNeverRewindsTheCounter(): void
+    {
+        // Given : un modèle lu avant que le compteur ne bouge, enregistré après (un changement de magasin concurrent)
+        $now = new DateTimeImmutable('2026-10-19 08:00:00');
+        $this->repository->save(new DriveSettingsBuilder()->withUserId('user-1')->build());
+        $this->entityManager->clear();
+        $staleRead = $this->repository->findOneByUser('user-1', Retailer::LECLERC);
+        $this->entityManager->getConnection()->executeStatement("UPDATE drive_settings SET product_writes_day = '2026-10-19', product_writes_count = 4000 WHERE user_id = 'user-1'");
+
+        // When
+        $this->repository->save($staleRead->changeStore($staleRead->getStore(), $now));
+        $this->entityManager->clear();
+
+        // Then
+        $this->assertSame(4000, $this->repository->findOneByUser('user-1', Retailer::LECLERC)->getProductWritesCount());
     }
 
     public function testAUserWithoutSettingsGetsNull(): void
