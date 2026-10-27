@@ -125,6 +125,11 @@ when@test:
         test.rate_limiter_pool:
             class: Symfony\Component\Cache\Adapter\ArrayAdapter
 
+        # Contrat OpenAPI généré (config/packages/nelmio_api_doc.yaml) : en mémoire, conservé tant que le noyau de test vit, comme le pool
+        # des limiteurs.
+        test.api_doc_pool:
+            class: Symfony\Component\Cache\Adapter\ArrayAdapter
+
         # Messages et handlers factices de tests/Helper/Bus (voir tests/Shared/Application/Service/BusWiringTest.php)
         Repas\Tests\Helper\Bus\:
             resource: '../tests/Helper/Bus/'

@@ -172,3 +172,17 @@ nelmio_api_doc:
     areas:
         path_patterns:
             - ^/api(?!/doc$)
+
+# Le contrat n'est généré qu'une fois par version déployée : `GET /api/doc.json` est public et sa génération (plusieurs centaines de
+# millisecondes) ne dépend que du code. En production le document généré est gardé dans un pool vidé par `cache:clear` (lancé par
+# docker-entrypoint.sh à chaque démarrage, donc à chaque déploiement) ; en développement il est regénéré à chaque appel, pour que
+# `make openapi` voie le code courant. En test un pool en mémoire (config/services.yaml) prouve que la seconde lecture vient du pool.
+when@prod:
+    nelmio_api_doc:
+        cache:
+            pool: cache.api_doc
+
+when@test:
+    nelmio_api_doc:
+        cache:
+            pool: test.api_doc_pool
