@@ -43,10 +43,15 @@ readonly class ConversionPostgreSQLRepository extends PostgreSQLRepository imple
 
     public function findByIngredientOrCommon(Ingredient $ingredient): Tab
     {
+        // Les conversions propres de l'ingrédient d'abord, les universelles ensuite (l'identifiant départage : l'ordre est stable). Il est celui
+        // des arêtes du graphe : à longueur égale, le parcours en largeur préfère la conversion de l'ingrédient à l'universelle qui dirait autre chose
         $conversionEntities = $this->entityRepository->createQueryBuilder('c')
+            ->addSelect('CASE WHEN c.ingredientSlug IS NULL THEN 1 ELSE 0 END AS HIDDEN universal')
             ->where('c.ingredientSlug = :ingredientSlug')
             ->setParameter('ingredientSlug', $ingredient->getSlug())
             ->orWhere('c.ingredientSlug is NULL')
+            ->orderBy('universal', 'ASC')
+            ->addOrderBy('c.id', 'ASC')
             ->getQuery()
             ->getResult();
 
@@ -99,6 +104,15 @@ readonly class ConversionPostgreSQLRepository extends PostgreSQLRepository imple
         }
 
         $this->entityManager->flush();
+    }
+
+    public function delete(Conversion $conversion): void
+    {
+        $entity = $this->entityRepository->find($conversion->getId());
+        if ($entity instanceof ConversionEntity) {
+            $this->entityManager->remove($entity);
+            $this->entityManager->flush();
+        }
     }
 
     public function findAll(): Tab

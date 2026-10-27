@@ -24,6 +24,7 @@ use Repas\Repas\Application\Command\CopyRecipe\CopyRecipeCommand;
 use Repas\Repas\Application\Command\CreateConversion\CreateConversionCommand;
 use Repas\Repas\Application\Command\CreateDepartment\CreateDepartmentCommand;
 use Repas\Repas\Application\Command\CreateIngredient\CreateIngredientCommand;
+use Repas\Repas\Application\Command\CreateIngredientConversion\CreateIngredientConversionCommand;
 use Repas\Repas\Application\Command\CreateRecipe\CreateRecipeCommand;
 use Repas\Repas\Application\Command\CreateRecipe\CreateRecipeRowSubCommand;
 use Repas\Repas\Application\Command\CreateRecipeType\CreateRecipeTypeCommand;
@@ -31,6 +32,7 @@ use Repas\Repas\Application\Command\ChangeSpokenMealServings\ChangeSpokenMealSer
 use Repas\Repas\Application\Command\CreateShoppingList\CreateShoppingListCommand;
 use Repas\Repas\Application\Command\CreateUnit\CreateUnitCommand;
 use Repas\Repas\Application\Command\EnsureActiveShoppingList\EnsureActiveShoppingListCommand;
+use Repas\Repas\Application\Command\DeleteIngredientConversion\DeleteIngredientConversionCommand;
 use Repas\Repas\Application\Command\MarkIngredientsDistinct\MarkIngredientsDistinctCommand;
 use Repas\Repas\Application\Command\MergeIngredients\MergeIngredientsCommand;
 use Repas\Repas\Application\Command\PausedShoppingList\PausedShoppingListCommand;
@@ -54,6 +56,7 @@ use Repas\Repas\Application\Command\UncheckLineOnShoppingList\UncheckLineOnShopp
 use Repas\Repas\Application\Command\UpdateConversion\UpdateConversionCommand;
 use Repas\Repas\Application\Command\UpdateDepartment\UpdateDepartmentCommand;
 use Repas\Repas\Application\Command\UpdateIngredient\UpdateIngredientCommand;
+use Repas\Repas\Application\Command\UpdateIngredientConversion\UpdateIngredientConversionCommand;
 use Repas\Repas\Application\Command\UpdateRecipe\UpdateRecipeCommand;
 use Repas\Repas\Application\Command\UpdateRecipe\UpdateRecipeRowSubCommand;
 use Repas\Repas\Application\Command\UpdateRecipeType\UpdateRecipeTypeCommand;
@@ -119,6 +122,23 @@ use Repas\Voice\Domain\Model\SpokenDialogueState;
 
 /** Ligne de courses d'une liste, par son rang. */
 $row = static fn(ShoppingList $list, int $index = 0): ShoppingListRow => array_values($list->getRows()->toArray())[$index];
+
+/**
+ * La farine d'un utilisateur, cuisinée à la cuillère à soupe et achetée au kilo : sa conversion propre « 1 cuillère à soupe = 10 g » et l'universelle
+ * kilo > gramme la relient (le formulaire de conversions de l'ingrédient juge la règle « recettes -> achat » sur ce graphe).
+ *
+ * @return array{0: \Repas\User\Domain\Model\User, 1: Ingredient, 2: \Repas\Repas\Domain\Model\Conversion}
+ */
+$flourWithItsSpoonConversion = static function (WriteBudgetTestCase $t): array {
+    $owner = $t->savedUser();
+    $flour = new IngredientBuilder()->isFlour()->withCreator($owner, true)->withDefaultCookingUnit(new UnitBuilder()->isSoupSpoon())->build();
+    $t->persister->saveIngredient($flour);
+    $spoon = new ConversionBuilder()->withIngredient($flour)->withStartUnit(new UnitBuilder()->isSoupSpoon())->withEndUnit(new UnitBuilder()->isGramme())->withCoefficient(10)->build();
+    $t->persister->saveConversion($spoon);
+    $t->persister->saveConversion(new ConversionBuilder()->isKiloToGramme()->build());
+
+    return [$owner, $flour, $spoon];
+};
 
 /** @return Tab<CreateRecipeRowSubCommand> */
 $createRows = static fn(Recipe $recipe): Tab => new Tab(
@@ -463,6 +483,26 @@ return [
             $owner->getId(),
             true,
         );
+    },
+    // Les conversions PROPRES d'un ingrédient (le formulaire de chaque ingrédient). La farine est cuisinée à la cuillère à soupe, achetée au kilo : sa
+    // conversion « 1 cuillère à soupe = 10 g » et l'universelle kilo > gramme la relient ; la règle « recettes -> achat » est jugée avant d'écrire.
+    'ajouter-conversion-ingredient' => static function (WriteBudgetTestCase $t) use ($flourWithItsSpoonConversion): object {
+        [$owner, $flour] = $flourWithItsSpoonConversion($t);
+        $t->persister->saveUnit(new UnitBuilder()->withName('tasse')->build());
+
+        return new CreateIngredientConversionCommand(UuidGenerator::new(), $flour->getSlug(), 'tasse', 'gramme', 125, $owner->getId());
+    },
+    'modifier-conversion-ingredient' => static function (WriteBudgetTestCase $t) use ($flourWithItsSpoonConversion): object {
+        [$owner, $flour, $spoon] = $flourWithItsSpoonConversion($t);
+
+        return new UpdateIngredientConversionCommand($spoon->getId(), $flour->getSlug(), 'cuillere-a-soupe', 'gramme', 12, $owner->getId());
+    },
+    'supprimer-conversion-ingredient' => static function (WriteBudgetTestCase $t) use ($flourWithItsSpoonConversion): object {
+        [$owner, $flour] = $flourWithItsSpoonConversion($t);
+        $cup = new ConversionBuilder()->withIngredient($flour)->withStartUnit(new UnitBuilder()->withName('tasse'))->withEndUnit(new UnitBuilder()->isGramme())->withCoefficient(125)->build();
+        $t->persister->saveConversion($cup);
+
+        return new DeleteIngredientConversionCommand($cup->getId(), $flour->getSlug(), $owner->getId());
     },
     'supprimer-ingredient' => static function (WriteBudgetTestCase $t): object {
         $owner = $t->savedUser();

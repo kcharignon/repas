@@ -13,6 +13,9 @@ interface ConversionRepository
     public function findById(string $id): ?Conversion;
 
     /**
+     * Les conversions propres de l'ingrédient PUIS les universelles (ordre stable : à longueur égale, le parcours du graphe préfère la
+     * conversion de l'ingrédient à l'universelle qui dirait autre chose).
+     *
      * @return Tab<Conversion>
      */
     public function findByIngredientOrCommon(Ingredient $ingredient): Tab;
@@ -30,6 +33,11 @@ interface ConversionRepository
     public function findAll(): Tab;
 
     public function save(Conversion $conversion): void;
+
+    /**
+     * Retire UNE conversion propre à un ingrédient (jamais une universelle : l'appelant l'a déjà écarté).
+     */
+    public function delete(Conversion $conversion): void;
 
     public function deleteByIngredient(Ingredient $ingredient): void;
 

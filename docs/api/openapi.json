@@ -537,6 +537,94 @@
                 }
             }
         },
+        "/api/v1/ingredients/{slug}/conversions": {
+            "get": {
+                "tags": [
+                    "Ingredients"
+                ],
+                "summary": "Conversions d'un ingr\u00e9dient de l'utilisateur : les siennes (`member`, qu'il \u00e9crit) et les universelles qui touchent ses unit\u00e9s (`common`, lecture seule)",
+                "description": "L'ingr\u00e9dient d'un autre utilisateur, un administrateur compris, est inconnu (404). `convertible` dit si l'unit\u00e9 des recettes de l'ingr\u00e9dient se convertit en son unit\u00e9 d'achat.",
+                "operationId": "get_api_list_ingredient_conversions",
+                "parameters": [
+                    {
+                        "name": "slug",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Conversions de l'ingr\u00e9dient",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/IngredientConversionsDTO"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Ingr\u00e9dient inconnu, ou \u00e0 un autre utilisateur (un administrateur n'a pas de passe-droit)"
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Ingredients"
+                ],
+                "summary": "Ajoute une conversion PROPRE \u00e0 un ingr\u00e9dient de l'utilisateur (\u00ab 1 unit\u00e9 de d\u00e9part = coefficient unit\u00e9s d'arriv\u00e9e \u00bb), vers n'importe quelle unit\u00e9 et sans limite de nombre",
+                "description": "Seul le propri\u00e9taire de l'ingr\u00e9dient l'\u00e9crit, un administrateur compris. Jamais une conversion universelle (l'administrateur les \u00e9crit par `/api/v1/conversions`). `Location` est l'adresse de la conversion cr\u00e9\u00e9e (modifiable et supprimable).",
+                "operationId": "post_api_create_ingredient_conversion",
+                "parameters": [
+                    {
+                        "name": "slug",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/IngredientConversionPayload"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Conversion cr\u00e9\u00e9e",
+                        "headers": {
+                            "Location": {
+                                "description": "URL de la conversion cr\u00e9\u00e9e",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "L'ingr\u00e9dient appartient \u00e0 un autre utilisateur (un administrateur n'a pas de passe-droit)"
+                    },
+                    "404": {
+                        "description": "Ingr\u00e9dient ou unit\u00e9 inconnu"
+                    },
+                    "409": {
+                        "description": "L'ingr\u00e9dient a d\u00e9j\u00e0 sa propre conversion entre ces deux unit\u00e9s, dans un sens ou dans l'autre (`CONVERSION_ALREADY_EXISTS`) : on modifie celle qui existe"
+                    },
+                    "422": {
+                        "description": "Corps invalide : unit\u00e9s identiques (`CONVERSION_SAME_UNIT`), coefficient qui n'est pas un nombre strictement positif"
+                    }
+                }
+            }
+        },
         "/api/v1/recipes": {
             "post": {
                 "tags": [
@@ -768,6 +856,101 @@
                     },
                     "422": {
                         "description": "Corps de la requ\u00eate invalide (dont une dimension sans facteur de base ou l'inverse, ou un facteur qui n'est pas strictement positif)"
+                    }
+                }
+            }
+        },
+        "/api/v1/ingredients/{slug}/conversions/{conversionId}": {
+            "put": {
+                "tags": [
+                    "Ingredients"
+                ],
+                "summary": "Remplace une conversion PROPRE d'un ingr\u00e9dient de l'utilisateur",
+                "description": "Seul le propri\u00e9taire de l'ingr\u00e9dient la modifie, un administrateur compris. Une conversion universelle ou d'un autre ingr\u00e9dient est inconnue (404). Refus\u00e9 (422 `CONVERSION_REQUIRED_BY_INGREDIENT`, rien n'est \u00e9crit) si l'unit\u00e9 des recettes de l'ingr\u00e9dient ne se convertissait plus alors en son unit\u00e9 d'achat.",
+                "operationId": "put_api_update_ingredient_conversion",
+                "parameters": [
+                    {
+                        "name": "slug",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "conversionId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/IngredientConversionPayload"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "204": {
+                        "description": "Conversion modifi\u00e9e"
+                    },
+                    "403": {
+                        "description": "L'ingr\u00e9dient appartient \u00e0 un autre utilisateur (un administrateur n'a pas de passe-droit)"
+                    },
+                    "404": {
+                        "description": "Ingr\u00e9dient ou unit\u00e9 inconnu, ou conversion inconnue, universelle ou propre \u00e0 un autre ingr\u00e9dient"
+                    },
+                    "409": {
+                        "description": "L'ingr\u00e9dient a d\u00e9j\u00e0 une autre conversion propre entre ces deux unit\u00e9s, dans un sens ou dans l'autre (`CONVERSION_ALREADY_EXISTS`)"
+                    },
+                    "422": {
+                        "description": "Corps invalide (unit\u00e9s identiques `CONVERSION_SAME_UNIT`, coefficient qui n'est pas un nombre strictement positif), ou conversion n\u00e9cessaire \u00e0 l'ingr\u00e9dient (`CONVERSION_REQUIRED_BY_INGREDIENT`)"
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Ingredients"
+                ],
+                "summary": "Supprime une conversion PROPRE d'un ingr\u00e9dient de l'utilisateur",
+                "description": "Seul le propri\u00e9taire de l'ingr\u00e9dient la supprime, un administrateur compris. Une conversion universelle ne se supprime jamais (404). Refus\u00e9 (422 `CONVERSION_REQUIRED_BY_INGREDIENT`, rien n'est \u00e9crit) si l'unit\u00e9 des recettes de l'ingr\u00e9dient ne se convertirait plus en son unit\u00e9 d'achat. Les lignes de recettes qui ne se convertissent plus sont signal\u00e9es par `convertible: false` \u00e0 la lecture de la recette.",
+                "operationId": "delete_api_delete_ingredient_conversion",
+                "parameters": [
+                    {
+                        "name": "slug",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "conversionId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Conversion supprim\u00e9e"
+                    },
+                    "403": {
+                        "description": "L'ingr\u00e9dient appartient \u00e0 un autre utilisateur (un administrateur n'a pas de passe-droit)"
+                    },
+                    "404": {
+                        "description": "Ingr\u00e9dient inconnu, ou conversion inconnue, universelle ou propre \u00e0 un autre ingr\u00e9dient"
+                    },
+                    "422": {
+                        "description": "Conversion n\u00e9cessaire \u00e0 l'ingr\u00e9dient : sans elle, son unit\u00e9 des recettes ne se convertirait plus en son unit\u00e9 d'achat (`CONVERSION_REQUIRED_BY_INGREDIENT`)"
                     }
                 }
             }
@@ -3497,6 +3680,34 @@
                 },
                 "type": "object"
             },
+            "IngredientConversionPayload": {
+                "required": [
+                    "startUnitSlug",
+                    "endUnitSlug",
+                    "coefficient"
+                ],
+                "properties": {
+                    "startUnitSlug": {
+                        "description": "Slug de l'unit\u00e9 de d\u00e9part",
+                        "type": "string",
+                        "example": "cuillere-a-soupe"
+                    },
+                    "endUnitSlug": {
+                        "description": "Slug de l'unit\u00e9 d'arriv\u00e9e (diff\u00e9rente de celle de d\u00e9part)",
+                        "type": "string",
+                        "example": "gramme"
+                    },
+                    "coefficient": {
+                        "description": "1 unit\u00e9 de d\u00e9part = ce nombre d'unit\u00e9s d'arriv\u00e9e",
+                        "type": "number",
+                        "format": "float",
+                        "minimum": 0,
+                        "exclusiveMinimum": true,
+                        "example": 10
+                    }
+                },
+                "type": "object"
+            },
             "RecipeRowPayload": {
                 "required": [
                     "ingredientSlug",
@@ -4568,6 +4779,95 @@
                 },
                 "type": "object"
             },
+            "IngredientConversionDTO": {
+                "required": [
+                    "id",
+                    "startUnitSlug",
+                    "startUnitName",
+                    "endUnitSlug",
+                    "endUnitName",
+                    "coefficient"
+                ],
+                "properties": {
+                    "id": {
+                        "description": "Identifiant de la conversion",
+                        "type": "string",
+                        "example": "9967014a-7c8b-423f-9b96-04fc13943a05"
+                    },
+                    "startUnitSlug": {
+                        "description": "Identifiant de l'unit\u00e9 de d\u00e9part (slug)",
+                        "type": "string",
+                        "example": "cuillere-a-soupe"
+                    },
+                    "startUnitName": {
+                        "type": "string",
+                        "example": "cuill\u00e8re \u00e0 soupe"
+                    },
+                    "endUnitSlug": {
+                        "description": "Identifiant de l'unit\u00e9 d'arriv\u00e9e (slug)",
+                        "type": "string",
+                        "example": "gramme"
+                    },
+                    "endUnitName": {
+                        "type": "string",
+                        "example": "gramme"
+                    },
+                    "coefficient": {
+                        "description": "1 unit\u00e9 de d\u00e9part = ce nombre d'unit\u00e9s d'arriv\u00e9e",
+                        "type": "number",
+                        "format": "float",
+                        "example": 10
+                    }
+                },
+                "type": "object"
+            },
+            "IngredientConversionsDTO": {
+                "required": [
+                    "member",
+                    "common",
+                    "totalItems",
+                    "convertible",
+                    "cookingUnitSlug",
+                    "purchaseUnitSlug"
+                ],
+                "properties": {
+                    "member": {
+                        "description": "Les conversions PROPRES de l'ingr\u00e9dient, tri\u00e9es par nom d'unit\u00e9 de d\u00e9part puis d'arriv\u00e9e",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/IngredientConversionDTO"
+                        }
+                    },
+                    "common": {
+                        "description": "Les conversions UNIVERSELLES (communes \u00e0 tous les ingr\u00e9dients, lecture seule) dont au moins une unit\u00e9 est celle de l'ingr\u00e9dient (ses unit\u00e9s des recettes et d'achat, ou une unit\u00e9 de ses conversions propres)",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/IngredientConversionDTO"
+                        }
+                    },
+                    "totalItems": {
+                        "description": "Nombre de conversions propres (`member`)",
+                        "type": "integer",
+                        "example": 2
+                    },
+                    "convertible": {
+                        "description": "L'unit\u00e9 des recettes de l'ingr\u00e9dient se convertit en son unit\u00e9 d'achat (toujours vrai pour un ingr\u00e9dient enregistr\u00e9 : retirer ou changer la conversion qui le garantit est refus\u00e9)",
+                        "type": "boolean",
+                        "example": true
+                    },
+                    "cookingUnitSlug": {
+                        "description": "Unit\u00e9 des recettes de l'ingr\u00e9dient (slug)",
+                        "type": "string",
+                        "example": "cuillere-a-soupe"
+                    },
+                    "purchaseUnitSlug": {
+                        "description": "Unit\u00e9 d'achat de l'ingr\u00e9dient (slug)",
+                        "type": "string",
+                        "example": "kilo"
+                    }
+                },
+                "type": "object"
+            },
             "RecipeTypeDTO": {
                 "required": [
                     "slug",
@@ -4997,7 +5297,11 @@
                     "ingredientImage",
                     "quantity",
                     "unitSlug",
-                    "unitSymbol"
+                    "unitSymbol",
+                    "unitName",
+                    "purchaseUnitSlug",
+                    "purchaseUnitName",
+                    "convertible"
                 ],
                 "properties": {
                     "ingredientSlug": {
@@ -5029,6 +5333,26 @@
                         "description": "Symbole de l'unit\u00e9 (peut \u00eatre vide)",
                         "type": "string",
                         "example": "g"
+                    },
+                    "unitName": {
+                        "description": "Nom de l'unit\u00e9 de la ligne",
+                        "type": "string",
+                        "example": "cuill\u00e8re \u00e0 soupe"
+                    },
+                    "purchaseUnitSlug": {
+                        "description": "Identifiant de l'unit\u00e9 d'achat de l'ingr\u00e9dient (slug)",
+                        "type": "string",
+                        "example": "kilo"
+                    },
+                    "purchaseUnitName": {
+                        "description": "Nom de l'unit\u00e9 d'achat de l'ingr\u00e9dient",
+                        "type": "string",
+                        "example": "kilo"
+                    },
+                    "convertible": {
+                        "description": "L'unit\u00e9 de la ligne se convertit en l'unit\u00e9 d'achat de l'ingr\u00e9dient (ses conversions propres et les universelles, comme \u00e0 la planification) ; faux : la recette ne peut pas \u00eatre planifi\u00e9e tant que la conversion manque",
+                        "type": "boolean",
+                        "example": true
                     }
                 },
                 "type": "object"
