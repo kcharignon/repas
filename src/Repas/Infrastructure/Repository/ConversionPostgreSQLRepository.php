@@ -93,6 +93,25 @@ readonly class ConversionPostgreSQLRepository extends PostgreSQLRepository imple
         return null;
     }
 
+    public function findOwnBetween(Ingredient $ingredient, Unit $a, Unit $b): Tab
+    {
+        // Une seule requête DQL (pas de QueryBuilder du dépôt : la baseline PHPStan ne doit que diminuer), les deux sens d'un coup
+        $conversionEntities = $this->entityManager->createQuery(
+            'SELECT c FROM ' . ConversionEntity::class . ' c'
+            . ' WHERE c.ingredientSlug = :ingredientSlug'
+            . ' AND ((c.startUnitSlug = :a AND c.endUnitSlug = :b) OR (c.startUnitSlug = :b AND c.endUnitSlug = :a))'
+            . ' ORDER BY c.id ASC',
+        )
+            ->setParameter('ingredientSlug', $ingredient->getSlug())
+            ->setParameter('a', $a->getSlug())
+            ->setParameter('b', $b->getSlug())
+            ->getResult();
+
+        $this->preloadUnits($conversionEntities);
+
+        return Tab::fromArray($conversionEntities)->map(fn(ConversionEntity $conversion) => $this->convertEntityToModel($conversion));
+    }
+
     public function save(Conversion $conversion): void
     {
         $entity = $this->entityRepository->find($conversion->getId());

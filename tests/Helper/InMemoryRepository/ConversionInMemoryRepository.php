@@ -64,6 +64,21 @@ class ConversionInMemoryRepository extends AbstractInMemoryRepository implements
         );
     }
 
+    public function findOwnBetween(Ingredient $ingredient, Unit $a, Unit $b): Tab
+    {
+        $found = $this->models->filter(fn(Conversion $conversion) =>
+            $ingredient->isEqual($conversion->getIngredient())
+            && (
+                ($conversion->getStartUnit()->isEqual($a) && $conversion->getEndUnit()->isEqual($b))
+                || ($conversion->getStartUnit()->isEqual($b) && $conversion->getEndUnit()->isEqual($a))
+            )
+        )->toArray();
+        // Même ordre que la base : par identifiant
+        uasort($found, fn(Conversion $x, Conversion $y) => strcmp($x->getId(), $y->getId()));
+
+        return Tab::fromArray(...array_values($found));
+    }
+
     public function deleteByIngredient(Ingredient $ingredient): void
     {
         $this->models = $this->models->filter(fn (Conversion $conversion) => !$ingredient->isEqual($conversion->getIngredient()));
