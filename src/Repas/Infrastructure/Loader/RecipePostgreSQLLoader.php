@@ -4,10 +4,12 @@ namespace Repas\Repas\Infrastructure\Loader;
 
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Query\Expr\Join;
+use Doctrine\ORM\QueryBuilder;
 use Repas\Repas\Application\Loader\RecipeLoader;
 use Repas\Repas\Application\Query\GetRecipe\RecipeDTO;
 use Repas\Repas\Application\Query\GetRecipe\RecipeRowDTO;
 use Repas\Repas\Application\Query\ListOtherPeopleRecipes\OtherPeopleRecipeDTO;
+use Repas\Repas\Application\Query\ListOtherPeopleRecipes\OtherPeopleRecipesDTO;
 use Repas\Repas\Application\Query\ListRecipesByType\RecipeSummaryDTO;
 use Repas\Repas\Application\Query\ListRecipesByType\RecipeTypeRecipesDTO;
 use Repas\Repas\Application\Query\ListRecipeTypes\RecipeTypeDTO;
@@ -117,23 +119,46 @@ final readonly class RecipePostgreSQLLoader implements RecipeLoader
         );
     }
 
-    public function listOfOtherPeople(string $userId): array
+    /**
+     * Une page de `$limit` recettes au plus, triées par slug puis par identifiant (le même ordre à chaque appel, deux recettes de même nom ne
+     * changent pas de page). Le nombre total n'est compté que si la page ne dit pas tout : une première page qui n'est pas pleine contient
+     * déjà toutes les recettes, le cas ordinaire coûte une seule requête.
+     */
+    public function listOfOtherPeople(string $userId, int $limit, int $offset): OtherPeopleRecipesDTO
     {
-        $recipes = $this->entityManager->createQueryBuilder()
+        $recipes = $this->otherPeopleQuery($userId)
             ->select('r.id AS id', 'r.name AS name', 't.name AS typeName')
+            ->orderBy('r.slug', 'ASC')
+            ->addOrderBy('r.id', 'ASC')
+            ->setFirstResult($offset)
+            ->setMaxResults($limit)
+            ->getQuery()
+            ->getArrayResult();
+
+        $total = $offset === 0 && count($recipes) < $limit
+            ? count($recipes)
+            : (int) $this->otherPeopleQuery($userId)->select('COUNT(r.id)')->getQuery()->getSingleScalarResult();
+
+        return new OtherPeopleRecipesDTO(
+            array_map(
+                static fn(array $recipe): OtherPeopleRecipeDTO => new OtherPeopleRecipeDTO($recipe['id'], $recipe['name'], $recipe['typeName']),
+                $recipes,
+            ),
+            $total,
+        );
+    }
+
+    /**
+     * Les recettes originales des autres que l'utilisateur n'a pas encore copiées (sans select : l'appelant choisit la page ou le compte).
+     */
+    private function otherPeopleQuery(string $userId): QueryBuilder
+    {
+        return $this->entityManager->createQueryBuilder()
             ->from(Recipe::class, 'r')
             ->innerJoin(RecipeType::class, 't', Join::WITH, 't.slug = r.typeSlug')
             ->where('r.authorId != :userId')
             ->andWhere('r.originalId IS NULL')
             ->andWhere(sprintf('NOT EXISTS (SELECT c.id FROM %s c WHERE c.authorId = :userId AND c.originalId = r.id)', Recipe::class))
-            ->setParameter('userId', $userId)
-            ->orderBy('r.slug', 'ASC')
-            ->getQuery()
-            ->getArrayResult();
-
-        return array_map(
-            static fn(array $recipe): OtherPeopleRecipeDTO => new OtherPeopleRecipeDTO($recipe['id'], $recipe['name'], $recipe['typeName']),
-            $recipes,
-        );
+            ->setParameter('userId', $userId);
     }
 }

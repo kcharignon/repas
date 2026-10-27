@@ -3,10 +3,12 @@
 namespace Repas\Tests\Repas\Application\Query\ListOtherPeopleRecipes;
 
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Repas\Repas\Application\Query\ListOtherPeopleRecipes\ListOtherPeopleRecipesQuery;
 use Repas\Repas\Application\Query\ListOtherPeopleRecipes\ListOtherPeopleRecipesQueryHandler;
 use Repas\Repas\Application\Query\ListOtherPeopleRecipes\OtherPeopleRecipeDTO;
+use Repas\Repas\Application\Query\ListOtherPeopleRecipes\OtherPeopleRecipesDTO;
 use Repas\Tests\Helper\InMemoryLoader\RecipeInMemoryLoader;
 
 class ListOtherPeopleRecipesQueryHandlerTest extends TestCase
@@ -14,7 +16,7 @@ class ListOtherPeopleRecipesQueryHandlerTest extends TestCase
     public function testReturnsWhatTheLoaderReturns(): void
     {
         // Given
-        $recipes = [new OtherPeopleRecipeDTO('recipe-1', 'omelette', 'plat')];
+        $recipes = new OtherPeopleRecipesDTO([new OtherPeopleRecipeDTO('recipe-1', 'omelette', 'plat')], 1);
         $handler = new ListOtherPeopleRecipesQueryHandler(new RecipeInMemoryLoader(otherPeopleRecipes: $recipes));
 
         // When
@@ -24,7 +26,7 @@ class ListOtherPeopleRecipesQueryHandlerTest extends TestCase
         $this->assertSame($recipes, $result);
     }
 
-    public function testForwardsTheUserToTheLoader(): void
+    public function testForwardsTheUserAndTheDefaultFirstPageOfTwoHundredToTheLoader(): void
     {
         // Given
         $loader = new RecipeInMemoryLoader();
@@ -34,6 +36,43 @@ class ListOtherPeopleRecipesQueryHandlerTest extends TestCase
         $handler(new ListOtherPeopleRecipesQuery('user-1'));
 
         // Then
-        $this->assertSame(['user-1'], $loader->listOfOtherPeopleCalls);
+        $this->assertSame([['user-1', 200, 0]], $loader->listOfOtherPeopleCalls);
+    }
+
+    public function testForwardsTheRequestedPageToTheLoader(): void
+    {
+        // Given
+        $loader = new RecipeInMemoryLoader();
+        $handler = new ListOtherPeopleRecipesQueryHandler($loader);
+
+        // When
+        $handler(new ListOtherPeopleRecipesQuery('user-1', 50, 100));
+
+        // Then
+        $this->assertSame([['user-1', 50, 100]], $loader->listOfOtherPeopleCalls);
+    }
+
+    /**
+     * @return iterable<string, array{int, int, int, int}>
+     */
+    public static function outOfBoundsPages(): iterable
+    {
+        yield 'plus de deux cents' => [5000, 0, 200, 0];
+        yield 'zéro recette' => [0, 0, 1, 0];
+        yield 'négatif' => [-3, -7, 1, 0];
+    }
+
+    #[DataProvider('outOfBoundsPages')]
+    public function testTheRequestedPageIsBoundedBeforeItReachesTheLoader(int $limit, int $offset, int $expectedLimit, int $expectedOffset): void
+    {
+        // Given
+        $loader = new RecipeInMemoryLoader();
+        $handler = new ListOtherPeopleRecipesQueryHandler($loader);
+
+        // When
+        $handler(new ListOtherPeopleRecipesQuery('user-1', $limit, $offset));
+
+        // Then
+        $this->assertSame([['user-1', $expectedLimit, $expectedOffset]], $loader->listOfOtherPeopleCalls);
     }
 }
