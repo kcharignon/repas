@@ -10,7 +10,7 @@ use Doctrine\Migrations\AbstractMigration;
 /**
  * Remettre en base les conversions universelles (celles qui s'appliquent à TOUS les ingrédients : `conversion.ingredient` vide) : « kilo
  * > gramme », « litre > millilitre »… Le propriétaire a vu en production la farine « ne pas savoir convertir le kilo en gramme » : ces
- * lignes sont les données de référence (`DataFixture/Data/conversion.json`, groupe `prod`), mais rien ne garantissait qu'elles existent
+ * lignes sont les données de référence (`DataFixture/Data/conversion.json`), mais rien ne garantissait qu'elles existent
  * dans une base déjà en service. Données seulement, aucun schéma.
  *
  * Une ligne n'est ajoutée que si les DEUX unités existent dans `unit` ET qu'aucune conversion universelle ne relie déjà cette paire, dans

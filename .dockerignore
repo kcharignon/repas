@@ -27,10 +27,13 @@ public/bundles/
 tests/
 var/
 vendor/
+# Fixtures de développement : leur bundle est une dépendance de développement, l'image de production ne les embarque pas
+src/*/Infrastructure/DataFixture/
 .editorconfig
 .env.*.local
 .env.local
 .env.local.php
+.env.dev
 .env.test
 
 # Jamais dans l image : données locales, clés, outillage de déploiement (ADR 0017)

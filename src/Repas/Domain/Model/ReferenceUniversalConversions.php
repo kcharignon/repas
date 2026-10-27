@@ -5,7 +5,7 @@ namespace Repas\Repas\Domain\Model;
 
 /**
  * Les conversions UNIVERSELLES de référence (`conversion.ingredient` vide : elles servent à tous les ingrédients) : « kilo > gramme »,
- * « litre > millilitre »… Ce sont les données de référence de `DataFixture/Data/conversion.json` (groupe `prod`) que la migration
+ * « litre > millilitre »… Ce sont les données de référence de `DataFixture/Data/conversion.json` que la migration
  * `Version20261027100000` remet quand elles manquent ; `repas:conversions:check` s'en sert pour dire lesquelles manquent. Un test
  * (`UniversalConversionsMigrationTest`, `ReferenceUniversalConversionsTest`) les compare au fichier et aux migrations : elles ne divergent pas en silence.
  *

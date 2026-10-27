@@ -2617,7 +2617,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
 
     public static function getGroups(): array
     {
-        return ['prod', 'test', 'dev'];
+        return ['test', 'dev'];
     }
 
     public function load(ObjectManager $manager): void

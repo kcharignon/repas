@@ -44,7 +44,7 @@ class IngredientFixture extends RepasFixture implements DependentFixtureInterfac
 
     public static function getGroups(): array
     {
-        return ['prod', 'test', 'dev'];
+        return ['test', 'dev'];
     }
 
     /**

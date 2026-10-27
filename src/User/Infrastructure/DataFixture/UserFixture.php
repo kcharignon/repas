@@ -7,11 +7,12 @@ use DateTimeImmutable;
 use Doctrine\Bundle\FixturesBundle\Fixture;
 use Doctrine\Bundle\FixturesBundle\FixtureGroupInterface;
 use Doctrine\Persistence\ObjectManager;
+use LogicException;
 use Repas\Shared\Domain\Tool\UuidGenerator;
 use Repas\User\Domain\Model\User;
 use Repas\User\Domain\Model\UserStatus;
 use Repas\User\Infrastructure\Entity\User as UserEntity;
-use Symfony\Component\DependencyInjection\ParameterBag\ContainerBagInterface;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\PasswordHasher\Hasher\PasswordHasherFactoryInterface;
 
 class UserFixture extends Fixture implements FixtureGroupInterface
@@ -60,20 +61,30 @@ class UserFixture extends Fixture implements FixtureGroupInterface
 
     public static function getGroups(): array
     {
-        return ['prod', 'test', 'dev'];
+        return ['test', 'dev'];
     }
 
+    /**
+     * @param string|null $adminPassword `ADMIN_PASSWORD`, défini par `.env.dev` (développement) et `.env.test` (tests), jamais par `.env`
+     */
     public function __construct(
         private PasswordHasherFactoryInterface $passwordHasherFactory,
-        private ContainerBagInterface $containerBag,
+        #[Autowire(env: 'default::ADMIN_PASSWORD')]
+        private ?string $adminPassword,
     ) {
     }
 
 
     public function load(ObjectManager $manager): void
     {
+        // Avant d'écrire quoi que ce soit : sans mot de passe défini, le compte administrateur n'est pas créé
+        $adminPassword = $this->adminPassword;
+        if ($adminPassword === null || $adminPassword === '') {
+            throw new LogicException("ADMIN_PASSWORD n'est pas défini : le mot de passe du compte administrateur des fixtures vient de .env.dev, .env.test ou .env.local.");
+        }
+
         foreach (self::USERS as $user) {
-            $passwordHashed = $this->getPasswordHashed($user['password']);
+            $passwordHashed = $this->getPasswordHashed($user['password'] ?? $adminPassword);
 
             $userModel = User::create(
                 UuidGenerator::new(),
@@ -100,10 +111,8 @@ class UserFixture extends Fixture implements FixtureGroupInterface
         $manager->flush();
     }
 
-    private function getPasswordHashed(?string $password): string
+    private function getPasswordHashed(string $password): string
     {
-        $password ??= $this->containerBag->get('env(ADMIN_PASSWORD)');
-
         return $this
             ->passwordHasherFactory
             ->getPasswordHasher(User::class)
