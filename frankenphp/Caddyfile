@@ -29,6 +29,11 @@
 	# Disable Topics tracking if not enabled explicitly: https://github.com/jkarlin/topics
 	header ?Permissions-Policy "browsing-topics=()"
 
+	# Same defaults as the production edge (deploy/Caddyfile), minus HSTS which only makes sense behind its HTTPS: only set when
+	# the response does not already carry the header.
+	header ?X-Content-Type-Options nosniff
+	header ?Referrer-Policy strict-origin-when-cross-origin
+
 	@phpRoute {
 		not file {path}
 	}

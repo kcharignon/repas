@@ -3,21 +3,61 @@
 	email {$ACME_EMAIL}
 	# Réservé aux essais locaux : `local_certs` (certificats internes, pas de Let's Encrypt).
 	{$CADDY_GLOBAL_OPTIONS}
+
+	# Délais de lecture d'une requête : l'en-tête arrive en 10 s, le corps en 30 s (les corps de l'application font quelques Ko).
+	servers {
+		timeouts {
+			read_header 10s
+			read_body 30s
+		}
+	}
+}
+
+# En-têtes communs à toutes les réponses de la bordure, y compris celles du back (/api, /images). Chacun n'est posé que si la réponse
+# ne le porte pas déjà (`?`) : le conteneur du front a les siens (dont sa politique de contenu), ils ne sont jamais doublés.
+# HSTS : un an, sans `includeSubDomains` ni `preload` (le nom de domaine seul, rien d'autre).
+(en_tetes) {
+	header ?Strict-Transport-Security "max-age=31536000"
+	header ?X-Content-Type-Options nosniff
+	header ?Referrer-Policy strict-origin-when-cross-origin
+	header ?Permissions-Policy "camera=(), microphone=(), geolocation=()"
 }
 
 # Ancien nom de domaine : redirigé en permanence vers le site, chemin et paramètres conservés (signets, liens partagés).
 {$LEGACY_HOST} {
+	import en_tetes
 	redir https://{$APP_HOST}{uri} permanent
 }
 
 # Le site : le SPA, et l'API et les images relayées directement vers le back. La bordure est ainsi le seul relais devant
 # le back, qui lit l'adresse du visiteur dans `X-Forwarded-For` (SYMFONY_TRUSTED_PROXIES).
+#
+# Taille des corps de requête : 1 Mo partout, sauf le webhook d'Alexa, dont le contrôleur lit 1 Mio + 1 octet (1048577) avant de
+# refuser les corps plus gros ; la bordure laisse passer exactement cela. Au-delà : `413`. Un `request_body` ne se relève pas dans un
+# bloc plus profond, d'où une limite par bloc `handle`.
 {$APP_HOST} {
-	@back path /api/* /images/*
-	handle @back {
+	import en_tetes
+
+	@alexa path /api/voice/alexa
+	handle @alexa {
+		request_body {
+			max_size 1048577
+		}
 		reverse_proxy php:80
 	}
+
+	@back path /api/* /images/*
+	handle @back {
+		request_body {
+			max_size 1MB
+		}
+		reverse_proxy php:80
+	}
+
 	handle {
+		request_body {
+			max_size 1MB
+		}
 		reverse_proxy front:80
 	}
 }

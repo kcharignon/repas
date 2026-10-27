@@ -126,12 +126,79 @@ check "cookie SameSite=Strict" bash -c "grep -i \"^set-cookie: repas_refresh\" <
 echo "== Images et restes"
 check "/images servi par le back" test "$(curl_app -o /dev/null -w '%{http_code}' "https://$app:$port/images/logo.png")" = 200
 
+echo "== Bordure : en-têtes communs, origine autorisée, taille et durée de lecture des corps"
+header_once() { # header_once "<en-têtes>" nom : l'en-tête figure une seule fois (jamais doublé entre la bordure et le conteneur relayé)
+	[[ $(grep -ci "^$2:" <<< "$1") -eq 1 ]]
+}
+header_is() { # header_is "<en-têtes>" nom valeur : l'en-tête figure une seule fois, avec exactement cette valeur
+	header_once "$1" "$2" && [[ $(grep -i "^$2:" <<< "$1" | sed -e 's/^[^:]*: *//' -e 's/\r$//') == "$3" ]]
+}
+edge_headers() { # edge_headers "<en-têtes>" : les quatre en-têtes communs de la bordure, chacun une seule fois
+	header_is "$1" strict-transport-security "max-age=31536000" && header_is "$1" x-content-type-options nosniff \
+		&& header_is "$1" referrer-policy strict-origin-when-cross-origin && header_once "$1" permissions-policy
+}
+api_headers=$(curl_app -D - -o /dev/null "https://$app:$port/api/v1/health" || true)
+image_headers=$(curl_app -D - -o /dev/null "https://$app:$port/images/logo.png" || true)
+legacy_headers=$(curl_legacy -D - -o /dev/null "https://$legacy:$port/recettes" || true)
+check "en-têtes de la bordure sur l'API : HSTS d'un an sans includeSubDomains ni preload, nosniff, Referrer-Policy, Permissions-Policy, chacun une fois" edge_headers "$api_headers"
+check "mêmes en-têtes sur /images" edge_headers "$image_headers"
+check "mêmes en-têtes sur la redirection de l'ancien nom" edge_headers "$legacy_headers"
+# L'expression de CORS_ALLOW_ORIGIN cite le nom de domaine tel quel : ses points ne valent pas « n'importe quel caractère ».
+check "origine du site autorisée (CORS)" bash -c "curl -sk -D - -o /dev/null --resolve $app:$port:127.0.0.1 -H 'Origin: https://$app' https://$app:$port/api/v1/health | tr -d '\r' | grep -qi '^access-control-allow-origin: https://$app\$'"
+check "origine au nom voisin refusée (CORS, points non joker)" bash -c "! curl -sk -D - -o /dev/null --resolve $app:$port:127.0.0.1 -H 'Origin: https://${app//./-}' https://$app:$port/api/v1/health | grep -qi '^access-control-allow-origin:'"
+check "origine en http refusée (CORS, expression ancrée)" bash -c "! curl -sk -D - -o /dev/null --resolve $app:$port:127.0.0.1 -H 'Origin: http://$app' https://$app:$port/api/v1/health | grep -qi '^access-control-allow-origin:'"
+
+# Corps de requête : 1 Mo partout, 1 Mio + 1 octet pour le webhook d'Alexa (son contrôleur lit autant avant de refuser le reste).
+make_body() { head -c "$1" /dev/zero | tr '\0' 'a' > "body-$1"; }
+post_code() { # post_code <chemin> <taille> [options curl…] : code HTTP du POST d'un corps de cette taille (000 si la connexion tombe)
+	local path=$1 size=$2
+	shift 2
+	curl_app -o /dev/null -w '%{http_code}' -X POST -H 'Content-Type: application/json' --data-binary "@body-$size" "$@" "https://$app:$port$path" || true
+}
+reaches_app() { # reaches_app <code> : une réponse de l'application (4xx), pas un refus de la bordure
+	[[ $1 =~ ^4[0-9][0-9]$ && $1 != 413 ]]
+}
+for size in 1000000 1000001 1048577 1048578; do make_body "$size"; done
+check "un corps de 1 000 000 octets atteint l'API" reaches_app "$(post_code /api/login_check 1000000)"
+check "un corps de 1 000 001 octets est refusé en 413 (connexion)" test "$(post_code /api/login_check 1000001)" = 413
+check "un corps de 1 000 001 octets est refusé en 413 (inscription)" test "$(post_code /api/v1/users 1000001)" = 413
+check "un corps envoyé en morceaux de 1 000 001 octets est refusé en 413" test "$(post_code /api/login_check 1000001 --http1.1 -H 'Transfer-Encoding: chunked')" = 413
+check "un corps de 1 Mio + 1 octet atteint le webhook d'Alexa" reaches_app "$(post_code /api/voice/alexa 1048577)"
+check "un corps de 1 Mio + 1 octet en morceaux atteint le webhook d'Alexa" reaches_app "$(post_code /api/voice/alexa 1048577 --http1.1 -H 'Transfer-Encoding: chunked')"
+check "un corps de 1 Mio + 2 octets est refusé en 413 (webhook d'Alexa)" test "$(post_code /api/voice/alexa 1048578)" = 413
+
+# Délais de lecture : réglage lu dans la configuration vivante de la bordure, puis essai réel (une requête dont l'en-tête n'arrive
+# pas, un corps qui arrive au compte-gouttes), les deux en parallèle pour ne pas allonger l'essai.
+servers_config=$(docker compose exec -T edge wget -qO- http://127.0.0.1:2019/config/apps/http/servers/ < /dev/null || true)
+check "délai de lecture de l'en-tête : 10 s" grep -q '"read_header_timeout":10000000000' <<< "$servers_config"
+check "délai de lecture du corps : 30 s" grep -q '"read_timeout":30000000000' <<< "$servers_config"
+head -c 4000 /dev/zero | tr '\0' 'a' > body-slow
+(
+	start=$SECONDS
+	openssl s_client -quiet -connect "127.0.0.1:$port" -servername "$app" < <(printf 'GET /api/v1/health HTTP/1.1\r\nHost: %s\r\n' "$app"; sleep 25) > /dev/null 2>&1 || true
+	echo $((SECONDS - start)) > slow-header.seconds
+) &
+(
+	# 4 000 octets à 80 octets par seconde dureraient 50 s : la bordure coupe à 30 s.
+	start=$SECONDS
+	curl_app --limit-rate 80 --max-time 60 -o /dev/null -X POST -H 'Content-Type: application/json' --data-binary @body-slow "https://$app:$port/api/login_check" || true
+	echo $((SECONDS - start)) > slow-body.seconds
+) &
+wait
+check "un en-tête qui n'arrive pas est abandonné avant 20 s" test "$(cat slow-header.seconds)" -lt 20
+check "un corps qui arrive au compte-gouttes est abandonné avant 45 s" test "$(cat slow-body.seconds)" -lt 45
+
 if [[ -n $front_image ]]; then
 	echo "== Déploiement du front"
 	check "deploy.sh front v0.0.1" ./deploy.sh front v0.0.1
 	check "le SPA est servi sur le domaine de l'application" bash -c "curl -sk --resolve $app:$port:127.0.0.1 https://$app:$port/ | grep -q '<div id=\"app\">'"
 	check "repli du SPA sur une route inconnue" bash -c "curl -sk --resolve $app:$port:127.0.0.1 https://$app:$port/recettes/inconnue | grep -q '<div id=\"app\">'"
 	check "l'API reste servie par le back" test "$(curl_app -o /dev/null -w '%{http_code}' "https://$app:$port/api/v1/health")" = 200
+	# Le conteneur du front pose ses propres en-têtes : la bordure y ajoute seulement HSTS, sans rien doubler.
+	front_headers=$(curl_app -D - -o /dev/null "https://$app:$port/" || true)
+	check "mêmes en-têtes sur le SPA, chacun une seule fois (ceux du conteneur du front ne sont pas doublés)" edge_headers "$front_headers"
+	check "la politique de contenu du front est posée une seule fois" header_once "$front_headers" content-security-policy
+	check "mêmes en-têtes sur une route du SPA" edge_headers "$(curl_app -D - -o /dev/null "https://$app:$port/recettes/inconnue" || true)"
 fi
 
 echo "== Nouvelle version du back (sauvegarde puis déploiement)"

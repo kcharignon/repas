@@ -75,8 +75,9 @@ services:
       # Sans cela, Symfony verrait l'adresse de la bordure pour tous les visiteurs : plafonds de débit par IP faussés,
       # cookie `Secure` et URLs absolues en http.
       SYMFONY_TRUSTED_PROXIES: PRIVATE_SUBNETS
-      # Même origine entre le SPA et l'API : le CORS ne sert à rien en production.
-      CORS_ALLOW_ORIGIN: ^https://${APP_HOST}$$
+      # Même origine entre le SPA et l'API : le CORS ne sert à rien en production. Le nom de domaine est cité tel quel (`\Q…\E`) :
+      # ses points ne valent pas « n'importe quel caractère », et l'expression est ancrée aux deux bouts.
+      CORS_ALLOW_ORIGIN: ^https://\Q${APP_HOST}\E$$
       # Le Caddyfile du back déclare Mercure (inutilisé par l'application) et exige ses clés.
       MERCURE_PUBLISHER_JWT_KEY: ${MERCURE_JWT_SECRET:?MERCURE_JWT_SECRET manquant}
       MERCURE_SUBSCRIBER_JWT_KEY: ${MERCURE_JWT_SECRET:?MERCURE_JWT_SECRET manquant}
