@@ -122,7 +122,7 @@ class MergePreviewMatchesTheMergeTest extends DatabaseTestCase
             $d->recipe('legacy', $other->getId(), [[$b->getSlug(), 1.0, 'gramme']]);
         }];
 
-        yield 'un choix du drive hérité d\'un autre utilisateur' => [static function (MergeDataset $d, User $u, User $other, Ingredient $a, Ingredient $b): void {
+        yield 'un choix du drive d\'un autre compte sur l\'absorbé' => [static function (MergeDataset $d, User $u, User $other, Ingredient $a, Ingredient $b): void {
             $d->choice('legacy', $other->getId(), $b->getSlug());
         }];
 

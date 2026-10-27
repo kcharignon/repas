@@ -136,7 +136,7 @@ class DriveEstimateApiFlowTest extends DatabaseTestCase
     {
         $persister = new DataPersister(static::getContainer());
         $builder = new ShoppingListBuilder()->withOwner($owner)->withStatus($status);
-        foreach ([new IngredientBuilder()->isMilk()->build(), new IngredientBuilder()->isFlour()->build(), new IngredientBuilder()->isEgg()->build()] as $ingredient) {
+        foreach ([new IngredientBuilder()->isMilk()->withCreator($owner)->build(), new IngredientBuilder()->isFlour()->withCreator($owner)->build(), new IngredientBuilder()->isEgg()->withCreator($owner)->build()] as $ingredient) {
             $persister->saveIngredient($ingredient);
             $builder->addIngredient($ingredient);
         }

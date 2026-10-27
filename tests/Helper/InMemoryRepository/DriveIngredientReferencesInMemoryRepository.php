@@ -70,9 +70,8 @@ final class DriveIngredientReferencesInMemoryRepository implements DriveIngredie
                 ++$moved;
             }
         }
-        $foreign = array_any($this->choices, static fn(array $choice): bool => $choice['slug'] === $absorbedSlug && $choice['user'] !== $userId);
 
-        return new DriveMergeImpact($moved, $dropped, $products, $foreign);
+        return new DriveMergeImpact($moved, $dropped, $products);
     }
 
     public function merge(string $userId, string $absorbedSlug, string $keptSlug): DriveMergeImpact

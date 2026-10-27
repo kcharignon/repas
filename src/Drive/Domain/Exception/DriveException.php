@@ -12,6 +12,7 @@ final class DriveException extends DomainException
     public const string DRIVE_NOT_CONFIGURED = 'DRIVE_NOT_CONFIGURED';
     public const string DRIVE_CHOICE_INVALID = 'DRIVE_CHOICE_INVALID';
     public const string DRIVE_CHOICE_NOT_FOUND = 'DRIVE_CHOICE_NOT_FOUND';
+    public const string DRIVE_INGREDIENT_NOT_FOUND = 'DRIVE_INGREDIENT_NOT_FOUND';
     public const string DRIVE_SEARCH_QUERY_INVALID = 'DRIVE_SEARCH_QUERY_INVALID';
     public const string DRIVE_PACK_SIZE_INVALID = 'DRIVE_PACK_SIZE_INVALID';
     public const string DRIVE_STORE_MISMATCH = 'DRIVE_STORE_MISMATCH';
@@ -44,6 +45,16 @@ final class DriveException extends DomainException
     public static function invalidChoice(): self
     {
         return new self(self::DRIVE_CHOICE_INVALID, 422);
+    }
+
+    /**
+     * Un choix ne s'enregistre que sur un ingrédient de l'utilisateur : le slug reçu n'est ni l'un de ses ingrédients ni l'ancien slug
+     * (alias valide) de l'un d'eux. Le slug d'un ingrédient qui n'existe pas et celui d'un ingrédient d'un autre compte sont
+     * indiscernables, `404`. Rien n'est enregistré.
+     */
+    public static function ingredientNotFound(): self
+    {
+        return new self(self::DRIVE_INGREDIENT_NOT_FOUND, 404);
     }
 
     /**

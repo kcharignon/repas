@@ -12,7 +12,7 @@ final readonly class CurrentUserDTO
     public function __construct(
         #[OA\Property(description: 'Identifiant de l\'utilisateur (UUID)', example: '0b7a6f0e-5c1d-4c52-9f0e-3f3c1d8b2a11')]
         public string $id,
-        #[OA\Property(example: 'alexiane.sichi@gmail.com')]
+        #[OA\Property(example: 'alexiane@example.com')]
         public string $email,
         #[OA\Property(type: 'array', items: new OA\Items(type: 'string'), example: ['ROLE_USER'])]
         public array $roles,

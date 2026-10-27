@@ -47,7 +47,8 @@ readonly class SaveProductChoicesHandler
      * sont créées si besoin. Tout ou rien : tout est validé avant la première écriture, et la commande est atomique. Nombre de
      * requêtes constant, quelle que soit la taille du lot : une lecture des réglages, des alias d'ingrédients (ING-002), des produits et des préférences, puis
      * une écriture par table, celle du compteur du jour dans les réglages, et un décompte des préférences quand le lot en crée.
-     * L'existence de l'ingrédient n'est pas vérifiée (`Drive` ne connaît pas `Repas`).
+     * Un choix ne s'enregistre que sur un ingrédient de l'utilisateur (`IngredientAliasResolver::resolveOwned()`, la même lecture que la
+     * traduction des anciens slugs) : si un seul slug du lot n'en est pas un, `ingredientNotFound()` et rien n'est écrit.
      *
      * **Recherche mémorisée (DRV-650)** : un `ADD_PRODUCT` peut porter le texte qui a fait trouver le produit sur le site de l'enseigne
      * (`SearchQueryChange`) ; il est mémorisé sur la préférence, sous la clé (utilisateur, enseigne, magasin, ingrédient) et nulle
@@ -74,6 +75,7 @@ readonly class SaveProductChoicesHandler
      *
      * @throws DriveException `invalidChoice()` (422) pour un lot, un produit ou une intention hors des bornes, un produit à la
      *                        fois ajouté et refusé pour un ingrédient, plus de 5 produits acceptés ou 20 refusés ;
+     *                        `ingredientNotFound()` (404) si un slug du lot n'est pas un ingrédient de l'utilisateur ;
      *                        `limitReached()` (422) au-delà de 5 000 écritures de produits dans la journée ou de 1 000
      *                        préférences dans le magasin ; `notConfigured()` et `storeMismatch()` (409) si `storeId` n'est
      *                        pas le magasin courant ; `packSizeInvalid()` (422) si le lot donne une contenance dans une unité qui
@@ -94,9 +96,10 @@ readonly class SaveProductChoicesHandler
             return;
         }
 
-        // Un ancien slug (brouillon d'envoi resté sur le téléphone, onglet ouvert) d'un ancien commun dont l'utilisateur a reçu une copie, ou d'un ingrédient fusionné, désigne son ingrédient actuel : jamais
-        // de préférence sous un ancien slug (ADR 0028 décision 4). Une lecture, quel que soit le lot
-        $command = $this->withResolvedIngredients($command);
+        // Chaque slug est un ingrédient de l'utilisateur, ou l'ancien slug d'un de ses ingrédients (brouillon d'envoi resté sur le téléphone,
+        // onglet ouvert : un ancien commun dont il a reçu une copie, un ingrédient fusionné) qui désigne alors son ingrédient actuel : jamais
+        // de préférence sous un ancien slug (ADR 0028 décision 4), jamais sur l'ingrédient d'un autre. Une lecture, quel que soit le lot
+        $command = $this->withOwnedIngredients($command);
 
         $now = $this->clock->now();
         // Plafond du jour avant toute lecture de plus : le compteur se réserve en UNE instruction atomique (deux requêtes simultanées du même
@@ -159,14 +162,21 @@ readonly class SaveProductChoicesHandler
 
     /**
      * Les intentions dont le slug désigne, pour cet utilisateur, un autre ingrédient à lui (un ancien slug) sont réécrites sur ce slug ; les
-     * autres, et toutes celles d'un utilisateur qui n'a aucun alias, ne changent pas.
+     * autres ne changent pas.
+     *
+     * @throws DriveException `ingredientNotFound()` si un slug n'est ni un ingrédient de l'utilisateur ni l'ancien slug de l'un d'eux
      */
-    private function withResolvedIngredients(SaveProductChoicesCommand $command): SaveProductChoicesCommand
+    private function withOwnedIngredients(SaveProductChoicesCommand $command): SaveProductChoicesCommand
     {
-        $resolved = $this->ingredientAliases->resolve(
-            $command->userId,
-            array_values(array_unique(array_map(static fn(ChoiceIntent $intent): string => $intent->ingredientSlug, $command->intents))),
-        );
+        $slugs = array_values(array_unique(array_map(static fn(ChoiceIntent $intent): string => $intent->ingredientSlug, $command->intents)));
+        $owned = $this->ingredientAliases->resolveOwned($command->userId, $slugs);
+        foreach ($slugs as $slug) {
+            if (!isset($owned[$slug])) {
+                throw DriveException::ingredientNotFound();
+            }
+        }
+
+        $resolved = array_filter($owned, static fn(string $target, string $slug): bool => $target !== $slug, ARRAY_FILTER_USE_BOTH);
         if ($resolved === []) {
             return $command;
         }

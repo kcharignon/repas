@@ -38,6 +38,15 @@ final class IngredientVisibility
     }
 
     /**
+     * SQL natif : la ligne désignée par l'alias de table `$ingredientAlias` est un ingrédient de l'utilisateur du paramètre nommé
+     * `$userParameter` (sans les deux-points). C'est `visibleBy()` pour une requête native (la jointure d'un résolveur de slugs).
+     */
+    public static function ownedSql(string $ingredientAlias, string $userParameter): string
+    {
+        return sprintf('%1$s.creator = :%2$s', $ingredientAlias, $userParameter);
+    }
+
+    /**
      * DQL : l'utilisateur du paramètre nommé `$viewerParameter` (sans les deux-points) voit l'ingrédient désigné par `$ingredient` : il est à
      * lui. Les ingrédients d'un autre compte, un administrateur compris, n'existent pas pour lui.
      */

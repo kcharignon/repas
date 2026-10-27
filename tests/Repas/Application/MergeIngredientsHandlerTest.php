@@ -672,16 +672,20 @@ class MergeIngredientsHandlerTest extends TestCase
         }
     }
 
-    public function testAChoiceOfTheDriveOfAnotherUserOnTheAbsorbedIngredientStopsTheMerge(): void
+    public function testAChoiceOfTheDriveOfAnotherUserOnTheAbsorbedIngredientDoesNotStopTheMerge(): void
     {
-        // Given
-        $this->driveReferences->choices = ['legacy' => ['user' => self::OTHER, 'slug' => self::ABSORBED, 'products' => 1]];
-
-        // Then
-        $this->expectExceptionObject(IngredientException::usedByAnotherUser());
+        // Given : un choix d'un autre compte sur « Tomates », l'ingrédient de l'utilisateur : celui-ci n'est l'usage de personne
+        $this->driveReferences->choices = [
+            'legacy' => ['user' => self::OTHER, 'slug' => self::ABSORBED, 'products' => 1],
+            'own' => ['user' => self::USER, 'slug' => self::ABSORBED, 'products' => 2],
+        ];
 
         // When
         $this->merge();
+
+        // Then : la fusion a lieu, le choix de l'utilisateur passe sur « Tomate » et celui de l'autre compte n'est pas touché
+        $this->assertFalse($this->ingredientRepository->exists(self::ABSORBED));
+        $this->assertSame(['legacy' => self::ABSORBED, 'own' => self::KEPT], array_map(static fn(array $choice): string => $choice['slug'], $this->driveReferences->choices));
     }
 
     public function testTheDriveIsMergedPerStoreTheKeptChoiceWinsElseTheAbsorbedOnePassesOver(): void

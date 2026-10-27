@@ -125,21 +125,25 @@ class DriveIngredientReferencesRepositoryTest extends DatabaseTestCase
         $impact = $this->references->mergeImpact($user, 'tomates', 'tomate');
 
         // Then : deux choix passent sur le gardé (le deuxième magasin, le troisième de l'autre enseigne), deux sont supprimés avec leurs 6 produits
-        $this->assertSame([2, 2, 6, false], [$impact->choicesMoved, $impact->choicesDropped, $impact->productsDropped, $impact->chosenByAnotherUser]);
+        $this->assertSame([2, 2, 6], [$impact->choicesMoved, $impact->choicesDropped, $impact->productsDropped]);
     }
 
-    public function testTheMergeImpactSeesAChoiceOfAnotherUserOnTheAbsorbedIngredient(): void
+    public function testTheMergeImpactIgnoresTheChoicesOfAnotherUserOnTheAbsorbedIngredient(): void
     {
-        // Given : une donnée héritée, un autre utilisateur a un choix sur « tomates »
+        // Given : un autre utilisateur a un choix sur « tomates », qui est un ingrédient de l'utilisateur qui fusionne : un choix ne se pose que sur
+        // l'ingrédient de son auteur, celui-ci n'est l'usage de personne
         [$merge, $user, $other] = $this->mergeScene();
         $merge->choice('legacy', $other, 'tomates', '111111', Retailer::LECLERC->value);
+        $before = $merge->hashOfUser($other);
 
         // When
         $impact = $this->references->mergeImpact($user, 'tomates', 'tomate');
+        $done = $this->references->merge($user, 'tomates', 'tomate');
 
-        // Then : il n'est ni déplacé ni supprimé, il est signalé
-        $this->assertTrue($impact->chosenByAnotherUser);
-        $this->assertSame([2, 2], [$impact->choicesMoved, $impact->choicesDropped]);
+        // Then : il ne compte ni parmi ce qui est déplacé ni parmi ce qui est supprimé, et la fusion n'y touche pas
+        $this->assertSame([2, 2, 6], [$impact->choicesMoved, $impact->choicesDropped, $impact->productsDropped]);
+        $this->assertSame([2, 2, 6], [$done->choicesMoved, $done->choicesDropped, $done->productsDropped]);
+        $this->assertSame($before, $merge->hashOfUser($other));
     }
 
     public function testMergingKeepsTheChoiceOfTheKeptIngredientAndMovesTheOthersWithTheirProducts(): void

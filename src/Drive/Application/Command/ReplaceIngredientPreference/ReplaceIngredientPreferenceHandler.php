@@ -32,8 +32,11 @@ readonly class ReplaceIngredientPreferenceHandler
      * l'ordre donné, produits refusés, ou « j'en ai toujours ». Préférence absente : créée ; ni produit ni « j'en ai
      * toujours » : la préférence est supprimée (rien à faire si elle n'existe pas). Nombre de requêtes constant : réglages,
      * produits, alias d'ingrédients (ING-002), préférence, puis l'écriture (et un décompte des préférences quand on en crée une).
+     * Créer ou remplacer une préférence exige que le slug soit un ingrédient de l'utilisateur (ou l'ancien slug d'un de ses ingrédients) ;
+     * la supprimer, non : elle est la sienne.
      *
-     * @throws DriveException `notConfigured()` et `storeMismatch()` (409) ; `invalidChoice()` (422) pour un produit inconnu ou
+     * @throws DriveException `notConfigured()` et `storeMismatch()` (409) ; `ingredientNotFound()` (404) si le slug n'est pas un
+     *                        ingrédient de l'utilisateur (une préférence à écrire) ; `invalidChoice()` (422) pour un produit inconnu ou
      *                        d'un autre magasin, un doublon, un produit à la fois accepté et refusé, plus de 5 produits
      *                        acceptés ou 20 refusés, « j'en ai toujours » avec des produits ; `limitReached()` (422) si la
      *                        création dépasserait 1 000 préférences dans le magasin
@@ -60,10 +63,11 @@ readonly class ReplaceIngredientPreferenceHandler
         $this->assertProductsOfTheStore($command, array_values(array_unique([...$accepted, ...$rejected])));
 
         // Un ancien slug (ancien commun dont l'utilisateur a reçu une copie, ingrédient fusionné) désigne son ingrédient actuel : jamais de préférence sous un ancien slug (ADR 0028 décision 4)
-        $ingredientSlug = $this->ingredientAliases->resolve($command->userId, [$command->ingredientSlug])[$command->ingredientSlug] ?? $command->ingredientSlug;
+        $ownedSlug = $this->ingredientAliases->resolveOwned($command->userId, [$command->ingredientSlug])[$command->ingredientSlug] ?? null;
 
-        $choice = $this->choiceRepository->findOne($command->userId, $command->retailer, $command->storeId, $ingredientSlug);
         if (!$command->haveAtHome && $accepted === [] && $rejected === []) {
+            // Effacer sa propre préférence n'exige pas que l'ingrédient existe encore ni qu'il soit à l'utilisateur : la ligne est la sienne
+            $choice = $this->choiceRepository->findOne($command->userId, $command->retailer, $command->storeId, $ownedSlug ?? $command->ingredientSlug);
             if ($choice !== null) {
                 $this->choiceRepository->delete($choice);
             }
@@ -71,6 +75,9 @@ readonly class ReplaceIngredientPreferenceHandler
             return;
         }
 
+        // Une préférence ne se pose que sur un ingrédient de l'utilisateur
+        $ingredientSlug = $ownedSlug ?? throw DriveException::ingredientNotFound();
+        $choice = $this->choiceRepository->findOne($command->userId, $command->retailer, $command->storeId, $ingredientSlug);
         if ($choice === null) {
             // Une préférence de plus : plafond par utilisateur et par magasin (une lecture, seulement quand on en crée une)
             Choice::assertRoomForNew($this->choiceRepository->countByUserAndStore($command->userId, $command->retailer, $command->storeId), 1);

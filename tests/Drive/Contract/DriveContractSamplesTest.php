@@ -199,7 +199,7 @@ final class DriveContractSamplesTest extends DatabaseTestCase
             [new IngredientBuilder()->isSugar()->withName('Sucre'), 1],
         ];
         foreach ($lines as [$builder, $quantity]) {
-            $ingredient = $builder->build();
+            $ingredient = $builder->withCreator($owner)->build();
             $persister->saveIngredient($ingredient);
             $unit = $ingredient->getDefaultPurchaseUnit()->getSlug();
             $list->addIngredient($ingredient->getSlug(), $unit);
