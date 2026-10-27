@@ -117,17 +117,74 @@ class BoundedValuesApiFlowTest extends DatabaseTestCase
         yield 'infini' => ['1e999'];
         yield 'une chaîne' => ['"quatre"'];
         yield 'un tableau' => ['[4]'];
+        yield 'un décimal' => ['2.5'];
+        yield 'un décimal sans reste' => ['4.0'];
+        yield 'un décimal en notation scientifique' => ['4e0'];
+        yield 'un décimal proche d\'un entier' => ['4.000000001'];
+        yield 'un entier en texte' => ['"4"'];
+        yield 'un décimal en texte' => ['"2.5"'];
+        yield 'booléen' => ['true'];
+        yield 'nul' => ['null'];
     }
 
     #[DataProvider('invalidServings')]
-    public function testARecipeServingOutsideOneToAHundredIsRefused(string $serving): void
+    public function testARecipeServingThatIsNotAWholeNumberFromOneToAHundredIsRefused(string $serving): void
     {
-        // When
-        $this->raw('POST', '/api/v1/recipes', sprintf('{"name":"Pâtes","serving":%s,"typeSlug":"plat","rows":[{"ingredientSlug":"%s","unitSlug":"gramme","quantity":500}]}', $serving, $this->pasta->getSlug()));
+        // When : sans la moindre dépréciation de PHP (une décimale n'est pas convertie en entier avant d'être jugée)
+        $deprecations = $this->collectingDeprecations(fn() => $this->raw('POST', '/api/v1/recipes', sprintf('{"name":"Pâtes","serving":%s,"typeSlug":"plat","rows":[{"ingredientSlug":"%s","unitSlug":"gramme","quantity":500}]}', $serving, $this->pasta->getSlug())));
 
         // Then
         $this->assertSame(422, $this->client->getResponse()->getStatusCode(), $this->client->getResponse()->getContent());
+        $this->assertSame(['error' => ['message' => 'serving: Le nombre de personnes doit être un nombre entier de 1 à 100.']], $this->jsonBody());
+        $this->assertSame([], $deprecations);
         $this->assertSame(0, $this->rows('recipe'));
+    }
+
+    #[DataProvider('invalidServings')]
+    public function testTheServingOfARecipeIsRefusedOnReplaceToo(string $serving): void
+    {
+        // Given
+        $this->raw('POST', '/api/v1/recipes', $this->recipeBody('500'));
+        $id = basename($this->client->getResponse()->headers->get('Location'));
+
+        // When
+        $this->raw('PUT', '/api/v1/recipes/' . $id, sprintf('{"name":"Pâtes","serving":%s,"typeSlug":"plat","rows":[{"ingredientSlug":"%s","unitSlug":"gramme","quantity":500}]}', $serving, $this->pasta->getSlug()));
+
+        // Then : refusée, la recette garde ses 4 personnes
+        $this->assertSame(422, $this->client->getResponse()->getStatusCode(), $this->client->getResponse()->getContent());
+        $this->assertSame(4, (int) $this->entityManager->getConnection()->fetchOne('SELECT serving FROM recipe WHERE id = ?', [$id]));
+    }
+
+    public function testAWholeServingFromOneToAHundredIsAccepted(): void
+    {
+        // When
+        foreach ([1, 4, 100] as $serving) {
+            $this->raw('POST', '/api/v1/recipes', sprintf('{"name":"Pâtes %1$s","serving":%1$s,"typeSlug":"plat","rows":[{"ingredientSlug":"%2$s","unitSlug":"gramme","quantity":500}]}', $serving, $this->pasta->getSlug()));
+
+            // Then
+            $this->assertSame(201, $this->client->getResponse()->getStatusCode(), $this->client->getResponse()->getContent());
+        }
+        $this->assertSame([1, 4, 100], array_map('intval', $this->entityManager->getConnection()->fetchFirstColumn('SELECT serving FROM recipe ORDER BY serving')));
+    }
+
+    /**
+     * @return list<string> les dépréciations de PHP levées pendant l'appel
+     */
+    private function collectingDeprecations(callable $call): array
+    {
+        $deprecations = [];
+        set_error_handler(static function (int $level, string $message) use (&$deprecations): bool {
+            $deprecations[] = $message;
+
+            return true;
+        }, E_DEPRECATED | E_USER_DEPRECATED);
+        try {
+            $call();
+        } finally {
+            restore_error_handler();
+        }
+
+        return $deprecations;
     }
 
     public function testARecipeKeepsUpToAHundredRowsAndRefusesMore(): void

@@ -11,6 +11,8 @@ use Repas\Repas\Domain\Exception\ConversionException;
 use Repas\Repas\Domain\Exception\IngredientException;
 use Repas\Repas\Domain\Exception\UnitException;
 use Repas\Repas\Domain\Model\AliasKind;
+use Repas\Repas\Domain\Model\Conversion;
+use Repas\Repas\Domain\Model\Ingredient;
 use Repas\Repas\Domain\Model\IngredientAlias;
 use Repas\Tests\Helper\Builder\ConversionBuilder;
 use Repas\Tests\Helper\Builder\IngredientBuilder;
@@ -43,7 +45,7 @@ class CreateIngredientConversionHandlerTest extends IngredientConversionHandlerT
         $this->assertSame(['new-conversion', 'spoon-to-gramme'], $this->ownIds());
     }
 
-    public function testAddsAsManyConversionsAsTheUserWants(): void
+    public function testAddsSeveralConversionsToTheSameIngredient(): void
     {
         // When
         ($this->handler)($this->command('tasse', 'gramme', 125, 'cup'));
@@ -52,6 +54,59 @@ class CreateIngredientConversionHandlerTest extends IngredientConversionHandlerT
 
         // Then
         $this->assertSame(['cup', 'glass', 'kilo-to-glass', 'spoon-to-gramme'], $this->ownIds());
+    }
+
+    public function testTheLastConversionBelowTheMaximumIsAddedAndTheNextOneIsRefused(): void
+    {
+        // Given : 49 conversions propres (la farine en a déjà une, plus 48), une seule place
+        $this->fillWithOwnConversions($this->flour, Conversion::MAX_PER_INGREDIENT - 2);
+
+        // When : la cinquantième passe
+        ($this->handler)($this->command('tasse', 'gramme', 125, 'the-last'));
+
+        // Then : la suivante est refusée, et rien n'est écrit
+        $this->assertCount(Conversion::MAX_PER_INGREDIENT, $this->conversionRepository->findByIngredient($this->flour));
+        try {
+            ($this->handler)($this->command('verre', 'tasse', 2, 'one-too-many'));
+            $this->fail('La cinquante et unième conversion doit être refusée.');
+        } catch (ConversionException $exception) {
+            $this->assertSame([ConversionException::LIMIT_REACHED, 422], [$exception->getMessage(), $exception->getCode()]);
+        }
+        $this->assertCount(Conversion::MAX_PER_INGREDIENT, $this->conversionRepository->findByIngredient($this->flour));
+    }
+
+    public function testOnlyTheOwnConversionsOfTheIngredientCountAgainstTheMaximum(): void
+    {
+        // Given : 49 conversions propres à la farine, 100 à un autre ingrédient du même compte, et les universelles
+        $this->fillWithOwnConversions($this->flour, Conversion::MAX_PER_INGREDIENT - 2);
+        $sugar = new IngredientBuilder()->isSugar()->withCreator($this->user, true)->build();
+        $this->ingredientRepository->save($sugar);
+        $this->fillWithOwnConversions($sugar, 2 * Conversion::MAX_PER_INGREDIENT);
+
+        // When
+        ($this->handler)($this->command('tasse', 'gramme', 125, 'the-last'));
+
+        // Then : la cinquantième passe
+        $this->assertCount(Conversion::MAX_PER_INGREDIENT, $this->conversionRepository->findByIngredient($this->flour));
+    }
+
+    public function testTheMaximumIsJudgedAfterTheOwnershipOfTheIngredient(): void
+    {
+        // Given : la farine est pleine, mais ce n'est pas l'ingrédient de cet utilisateur
+        $this->fillWithOwnConversions($this->flour, Conversion::MAX_PER_INGREDIENT);
+
+        // Then : l'ingrédient d'un autre reste inconnu
+        $this->expectExceptionObject(IngredientException::notFound($this->flour->getSlug()));
+
+        // When
+        ($this->handler)($this->command(userId: 'another-user'));
+    }
+
+    private function fillWithOwnConversions(Ingredient $ingredient, int $count): void
+    {
+        for ($i = 1; $i <= $count; ++$i) {
+            $this->conversionRepository->save(new ConversionBuilder()->withId("filler-{$ingredient->getSlug()}-$i")->withIngredient($ingredient)->withStartUnit($this->glass)->withEndUnit($this->gramme)->withCoefficient($i)->build());
+        }
     }
 
     public function testRecomputesTheCompatibleUnitsOfTheIngredient(): void

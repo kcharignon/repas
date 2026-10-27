@@ -11,6 +11,7 @@ use Repas\Repas\Domain\Exception\IngredientException;
 use Repas\Repas\Domain\Interface\ConversionRepository;
 use Repas\Repas\Domain\Interface\IngredientRepository;
 use Repas\Repas\Domain\Interface\UnitRepository;
+use Repas\Repas\Domain\Model\Conversion;
 use Repas\Tests\Helper\Builder\ConversionBuilder;
 use Repas\Tests\Helper\Builder\IngredientBuilder;
 use Repas\Tests\Helper\Builder\UnitBuilder;
@@ -236,6 +237,34 @@ class UpdateConversionHandlerTest extends TestCase
             $this->assertEquals(IngredientException::notFound($egg->getSlug()), $exception);
             $this->assertSame($sugar->getSlug(), $this->conversionRepository->findById('sugar-conversion')->getIngredient()->getSlug());
         }
+    }
+
+    public function testAConversionIsNotAttachedToAnIngredientThatHasTheMaximumButStaysEditableOnItsOwn(): void
+    {
+        // Given : le sucre de l'administrateur a ses 50 conversions propres ; l'œuf, une (celle du jeu de test)
+        $box = new UnitBuilder()->isBox()->build();
+        $unite = new UnitBuilder()->isUnite()->build();
+        $sugar = new IngredientBuilder()->isSugar()->build();
+        $this->ingredientRepository->save($sugar);
+        for ($i = 1; $i <= Conversion::MAX_PER_INGREDIENT; ++$i) {
+            $this->conversionRepository->save(new ConversionBuilder()->withId("filler-$i")->withIngredient($sugar)->withStartUnit($box)->withEndUnit($unite)->withCoefficient($i)->build());
+        }
+
+        // When : on rattache la conversion de l'œuf au sucre
+        try {
+            ($this->handler)(new UpdateConversionCommand('unique-id-with-ingredient', $box->getSlug(), $unite->getSlug(), 6, $sugar->getSlug(), self::USER));
+            $this->fail('Le sucre a déjà ses 50 conversions propres.');
+        } catch (ConversionException $exception) {
+            // Then : 422, et la conversion reste à l'œuf
+            $this->assertEquals(ConversionException::limitReached(), $exception);
+            $this->assertSame('œuf', $this->conversionRepository->findById('unique-id-with-ingredient')->getIngredient()->getName());
+        }
+
+        // When : une conversion du sucre, elle, se corrige (elle n'est pas rattachée à un autre ingrédient)
+        ($this->handler)(new UpdateConversionCommand('filler-3', $box->getSlug(), $unite->getSlug(), 9, $sugar->getSlug(), self::USER));
+
+        // Then
+        $this->assertSame(9.0, $this->conversionRepository->findById('filler-3')->getCoefficient());
     }
 
     public function testAnAdministratorCanUpdateAGeneralConversion(): void

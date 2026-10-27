@@ -10,7 +10,7 @@ use Repas\Shared\Application\Interface\IngredientNameLoader;
  */
 class IngredientNameInMemoryLoader implements IngredientNameLoader
 {
-    /** @var list<list<string>> slugs reçus à chaque appel, dans l'ordre des appels */
+    /** @var list<array{userId: string, slugs: list<string>}> utilisateur et slugs reçus à chaque appel, dans l'ordre des appels */
     public array $namesBySlugCalls = [];
 
     /**
@@ -21,9 +21,9 @@ class IngredientNameInMemoryLoader implements IngredientNameLoader
     ) {
     }
 
-    public function namesBySlug(array $slugs): array
+    public function namesBySlug(string $userId, array $slugs): array
     {
-        $this->namesBySlugCalls[] = $slugs;
+        $this->namesBySlugCalls[] = ['userId' => $userId, 'slugs' => $slugs];
 
         return $this->names;
     }

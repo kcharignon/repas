@@ -89,7 +89,7 @@ final readonly class ChoicePostgreSQLLoader implements ChoiceLoader
             static fn(array $choice): bool => $choice['hasProductRows'] || $choice['row']['kind'] === ChoiceKind::HAVE_AT_HOME->value,
         );
 
-        $names = $this->ingredientNameLoader->namesBySlug(array_map('strval', array_keys($choices)));
+        $names = $this->ingredientNameLoader->namesBySlug($userId, array_map('strval', array_keys($choices)));
 
         $result = [];
         foreach ($choices as $slug => $choice) {

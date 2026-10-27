@@ -32,6 +32,11 @@ class ConversionInMemoryRepository extends AbstractInMemoryRepository implements
     }
 
 
+    public function ingredientHasAtLeast(Ingredient $ingredient, int $count): bool
+    {
+        return $this->findByIngredient($ingredient)->count() >= $count;
+    }
+
     public function save(Conversion $conversion): void
     {
         $this->models[$conversion->getId()] = $conversion;

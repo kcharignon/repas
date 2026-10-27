@@ -27,7 +27,7 @@ final class CreateIngredientConversionApiController extends AbstractController
     #[IsGranted('ROLE_USER')]
     #[IsGranted('INGREDIENT_OWNER', 'slug')]
     #[OA\Post(
-        summary: "Ajoute une conversion PROPRE à un ingrédient de l'utilisateur (« 1 unité de départ = coefficient unités d'arrivée »), vers n'importe quelle unité et sans limite de nombre",
+        summary: "Ajoute une conversion PROPRE à un ingrédient de l'utilisateur (« 1 unité de départ = coefficient unités d'arrivée »), vers n'importe quelle unité, 50 au plus par ingrédient",
         description: "Seul le propriétaire de l'ingrédient l'écrit, un administrateur compris. Jamais une conversion universelle (l'administrateur les écrit par `/api/v1/conversions`). `Location` est l'adresse de la conversion créée (modifiable et supprimable).",
     )]
     #[OA\Tag(name: 'Ingredients')]
@@ -36,7 +36,7 @@ final class CreateIngredientConversionApiController extends AbstractController
     #[OA\Response(response: 403, description: "L'ingrédient appartient à un autre utilisateur (un administrateur n'a pas de passe-droit)")]
     #[OA\Response(response: 404, description: 'Ingrédient ou unité inconnu')]
     #[OA\Response(response: 409, description: "L'ingrédient a déjà sa propre conversion entre ces deux unités, dans un sens ou dans l'autre (`CONVERSION_ALREADY_EXISTS`) : on modifie celle qui existe")]
-    #[OA\Response(response: 422, description: "Corps invalide : unités identiques (`CONVERSION_SAME_UNIT`), coefficient qui n'est pas un nombre strictement positif")]
+    #[OA\Response(response: 422, description: "Corps invalide : unités identiques (`CONVERSION_SAME_UNIT`), coefficient qui n'est pas un nombre strictement positif, ou l'ingrédient a déjà 50 conversions propres (`CONVERSION_LIMIT_REACHED`)")]
     public function __invoke(string $slug, #[MapRequestPayload] IngredientConversionPayload $payload, #[CurrentUser] AuthenticatedUser $user): Response
     {
         $id = UuidGenerator::new();

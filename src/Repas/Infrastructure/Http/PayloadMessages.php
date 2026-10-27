@@ -12,6 +12,7 @@ final readonly class PayloadMessages
     public const string QUANTITY = 'La quantité doit être un nombre supérieur à 0 et au plus égal à 1 000 000.';
     public const string COEFFICIENT = 'Le coefficient doit être un nombre compris entre 0,000001 et 1 000 000.';
     public const string BASE_FACTOR = 'Le facteur de base doit être un nombre compris entre 0,000001 et 1 000 000.';
+    public const string SERVING = 'Le nombre de personnes doit être un nombre entier de 1 à 100.';
     public const string TOO_MANY_ROWS = 'Une recette ne peut pas avoir plus de 100 ingrédients.';
 
     private function __construct()

@@ -2,6 +2,7 @@
 
 namespace Repas\Repas\Application\Command\CreateConversion;
 
+use Repas\Repas\Domain\Exception\ConversionException;
 use Repas\Repas\Domain\Exception\IngredientException;
 use Repas\Repas\Domain\Interface\ConversionRepository;
 use Repas\Repas\Domain\Interface\IngredientRepository;
@@ -25,6 +26,7 @@ readonly class CreateConversionHandler
      * celui d'un autre est inconnu, un administrateur compris (ADR 0028, amendement, D4).
      *
      * @throws IngredientException
+     * @throws ConversionException l'ingrédient a déjà toutes ses conversions propres (`Conversion::MAX_PER_INGREDIENT`)
      */
     public function __invoke(CreateConversionCommand $command): void
     {
@@ -32,6 +34,9 @@ readonly class CreateConversionHandler
         $endUnit = $this->unitRepository->findOneBySlug($command->endUnitSlug);
         $ingredient = ($command->ingredientSlug) ? $this->ingredientRepository->findOneBySlug($command->ingredientSlug) : null;
         $ingredient?->assertOwnedBy($command->userId);
+        if ($ingredient !== null && $this->conversionRepository->ingredientHasAtLeast($ingredient, Conversion::MAX_PER_INGREDIENT)) {
+            throw ConversionException::limitReached();
+        }
 
         $conversion = Conversion::create(
             id: $command->id,

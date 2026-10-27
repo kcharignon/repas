@@ -8,6 +8,7 @@ use Repas\Shared\Domain\Tool\StringTool;
 
 #[ORM\Entity]
 #[ORM\Table(name: 'recipe')]
+#[ORM\Index(name: 'idx_recipe_author', columns: ['author'])]
 class Recipe
 {
     #[ORM\Id]

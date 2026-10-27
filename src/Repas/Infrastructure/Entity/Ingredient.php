@@ -8,6 +8,7 @@ use Repas\Repas\Domain\Model\Unit as UnitModel;
 
 #[ORM\Entity]
 #[ORM\Table(name: 'ingredient')]
+#[ORM\Index(name: 'idx_ingredient_creator', columns: ['creator', 'slugged_name'])]
 class Ingredient
 {
     #[ORM\Id]

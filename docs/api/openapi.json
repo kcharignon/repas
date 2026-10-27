@@ -390,7 +390,7 @@
                         "description": "Unit\u00e9 ou ingr\u00e9dient inconnu, ou ingr\u00e9dient d'un autre utilisateur (un administrateur n'a pas de passe-droit)"
                     },
                     "422": {
-                        "description": "Corps de la requ\u00eate invalide"
+                        "description": "Corps de la requ\u00eate invalide, ou l'ingr\u00e9dient a d\u00e9j\u00e0 50 conversions propres (`CONVERSION_LIMIT_REACHED`)"
                     }
                 }
             }
@@ -597,7 +597,7 @@
                 "tags": [
                     "Ingredients"
                 ],
-                "summary": "Ajoute une conversion PROPRE \u00e0 un ingr\u00e9dient de l'utilisateur (\u00ab 1 unit\u00e9 de d\u00e9part = coefficient unit\u00e9s d'arriv\u00e9e \u00bb), vers n'importe quelle unit\u00e9 et sans limite de nombre",
+                "summary": "Ajoute une conversion PROPRE \u00e0 un ingr\u00e9dient de l'utilisateur (\u00ab 1 unit\u00e9 de d\u00e9part = coefficient unit\u00e9s d'arriv\u00e9e \u00bb), vers n'importe quelle unit\u00e9, 50 au plus par ingr\u00e9dient",
                 "description": "Seul le propri\u00e9taire de l'ingr\u00e9dient l'\u00e9crit, un administrateur compris. Jamais une conversion universelle (l'administrateur les \u00e9crit par `/api/v1/conversions`). `Location` est l'adresse de la conversion cr\u00e9\u00e9e (modifiable et supprimable).",
                 "operationId": "post_api_create_ingredient_conversion",
                 "parameters": [
@@ -642,7 +642,7 @@
                         "description": "L'ingr\u00e9dient a d\u00e9j\u00e0 sa propre conversion entre ces deux unit\u00e9s, dans un sens ou dans l'autre (`CONVERSION_ALREADY_EXISTS`) : on modifie celle qui existe"
                     },
                     "422": {
-                        "description": "Corps invalide : unit\u00e9s identiques (`CONVERSION_SAME_UNIT`), coefficient qui n'est pas un nombre strictement positif"
+                        "description": "Corps invalide : unit\u00e9s identiques (`CONVERSION_SAME_UNIT`), coefficient qui n'est pas un nombre strictement positif, ou l'ingr\u00e9dient a d\u00e9j\u00e0 50 conversions propres (`CONVERSION_LIMIT_REACHED`)"
                     }
                 }
             }
@@ -1085,7 +1085,7 @@
                         "description": "Conversion, unit\u00e9 ou ingr\u00e9dient inconnu, ou conversion ou ingr\u00e9dient d'un autre utilisateur (un administrateur n'a pas de passe-droit)"
                     },
                     "422": {
-                        "description": "Corps de la requ\u00eate invalide, ou conversion universelle (sans ingr\u00e9dient) dont le corps change la paire d'unit\u00e9s ou l'ingr\u00e9dient : seul son coefficient se corrige (`UNIVERSAL_CONVERSION_IS_FIXED`)"
+                        "description": "Corps de la requ\u00eate invalide, ou conversion universelle (sans ingr\u00e9dient) dont le corps change la paire d'unit\u00e9s ou l'ingr\u00e9dient : seul son coefficient se corrige (`UNIVERSAL_CONVERSION_IS_FIXED`), ou rattachement \u00e0 un ingr\u00e9dient qui a d\u00e9j\u00e0 50 conversions propres (`CONVERSION_LIMIT_REACHED`)"
                     }
                 }
             }
