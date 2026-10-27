@@ -52,7 +52,7 @@ class ConversionInMemoryRepository extends AbstractInMemoryRepository implements
     public function findByIngredientAndStartUnitAndEndUnit(Ingredient $ingredient, Unit $startUnit, Unit $endUnit): ?Conversion
     {
         return $this->models->find(fn(Conversion $conversion) =>
-        ($conversion->getIngredient() === null || $conversion->getIngredient()->isEqual($ingredient))
+        $ingredient->isEqual($conversion->getIngredient())
             && $conversion->getStartUnit()->isEqual($startUnit)
             && $conversion->getEndUnit()->isEqual($endUnit)
         );

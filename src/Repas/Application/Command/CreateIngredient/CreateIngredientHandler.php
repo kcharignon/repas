@@ -75,17 +75,15 @@ readonly class CreateIngredientHandler
         $this->aliasRepository->deleteByAliasSlug($creatorId, $ingredient->getSlug());
         $this->eventDispatcher->dispatch(new IngredientCreatedEvent($creatorId, $ingredient->getSlug()));
 
-        // On récupère les unités compatibles à la conversion après la création de l'ingrédient
-        $compatibleUnit = $this->getCompatibleUnit($ingredient);
-        $ingredient->setCompatibleUnits($compatibleUnit);
-        $this->ingredientRepository->save($ingredient);
-
-        // Si l'ingrédient n'a pas la même unité dans les recettes qu'à l'achat et qu'on ne peut pas convertir entre les deux,
-        // alors on crée une conversion entre les deux unités.
-        if (!$cookingUnit->isEqual($purchaseUnit) && !$this->conversionService->canConvertToPurchaseUnit($ingredient)) {
-            // L'erreur annule toute la commande (transaction de command.bus) : l'ingrédient n'est pas créé sans sa conversion
+        // Si l'ingrédient n'a pas la même unité dans les recettes qu'à l'achat et que le graphe ne relie pas les deux, une conversion est
+        // obligatoire (le coefficient). L'erreur annule toute la commande (transaction de command.bus) : l'ingrédient n'est pas créé sans sa conversion.
+        $unitsDiffer = !$cookingUnit->isEqual($purchaseUnit);
+        if ($unitsDiffer && !$this->conversionService->canConvertToPurchaseUnit($ingredient)) {
             if ($command->coefficient === null) {
                 throw IngredientException::coefficientRequired();
+            }
+            if (!is_finite($command->coefficient) || $command->coefficient <= 0) {
+                throw IngredientException::invalidCoefficient();
             }
 
             $this->eventDispatcher->dispatch(new CreateIngredientWithConversionEvent(
@@ -93,7 +91,17 @@ readonly class CreateIngredientHandler
                 $command->coefficient,
                 $creatorId,
             ));
+            // Le graphe en cache est périmé : la garantie ci-dessous et les unités compatibles se calculent sur le graphe FINAL
+            $this->conversionService->clear();
         }
+
+        // La règle « l'unité des recettes se convertit TOUJOURS en l'unité d'achat » tient ici par construction : soit le graphe relie déjà les deux
+        // unités, soit le coefficient (strictement positif, contrôlé plus haut) crée la conversion directe achat -> recettes par l'écouteur synchrone de
+        // l'événement. La modification d'un ingrédient la contrôle en plus sur le graphe final (`UpdateIngredientHandler`).
+
+        // On récupère les unités compatibles à la conversion après la création de l'ingrédient et de sa conversion
+        $ingredient->setCompatibleUnits($this->getCompatibleUnit($ingredient));
+        $this->ingredientRepository->save($ingredient);
 
         return $ingredient->getSlug();
     }

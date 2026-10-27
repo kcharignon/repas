@@ -10,6 +10,7 @@ use Repas\Repas\Domain\Exception\ShoppingListException;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Repas\Domain\Model\Meal;
 use Repas\Repas\Domain\Model\Recipe;
+use Repas\Repas\Domain\Model\RecipeRow;
 use Repas\Repas\Domain\Model\ShoppingList;
 use Repas\Repas\Domain\Model\ShoppingListStatus;
 use Repas\Shared\Application\Dto\ChangedMealServings;
@@ -301,6 +302,8 @@ class VoiceMealPlannerFlowTest extends DatabaseTestCase
         } catch (SpokenMealFailure $exception) {
             // Then : une phrase claire (le nom de la recette), et comme dans l'application tout est annulé (y compris la liste neuve)
             $this->assertSame([SpokenMealFailure::MISSING_CONVERSION, $recipe->getName()], [$exception->reason, $exception->recipeName]);
+            // And : l'ingrédient en cause est nommé (comme dans l'application), c'est l'un de ceux de la recette
+            $this->assertContains($exception->ingredientName, $this->ingredientNamesOf($recipe));
             $this->entityManager->clear();
             $this->assertCount(0, $this->shoppingListRepository->findByOwner($user->getId()));
         }
@@ -632,8 +635,17 @@ class VoiceMealPlannerFlowTest extends DatabaseTestCase
         } catch (SpokenMealFailure $exception) {
             // Then : une phrase claire, le bus transactionnel a tout annulé, le repas est toujours dans la liste
             $this->assertSame(SpokenMealFailure::MISSING_CONVERSION, $exception->reason);
+            $this->assertContains($exception->ingredientName, $this->ingredientNamesOf($recipe));
         }
         $this->entityManager->clear();
         $this->assertCount(1, $this->shoppingListRepository->findOneById($active->getId())->getMeals());
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function ingredientNamesOf(Recipe $recipe): array
+    {
+        return array_values(array_map(static fn(RecipeRow $row): string => $row->getIngredient()->getName(), $recipe->getRows()->toArray()));
     }
 }

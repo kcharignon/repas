@@ -95,6 +95,43 @@ class ConversionServiceTest extends TestCase
         $this->assertTrue($this->canConvert($service, $egg, $kilo));
     }
 
+    public function testCanConvertAsksTheGraphOfTheIngredientBetweenAnyTwoUnits(): void
+    {
+        // Given : l'œuf, dont le graphe relie la boîte, la pièce, le gramme, le millilitre et le centilitre
+        $egg = new IngredientBuilder()->isEgg()->build();
+        $box = new UnitBuilder()->isBox()->build();
+        $centiliter = new UnitBuilder()->isCentiliter()->build();
+        $slice = new UnitBuilder()->isSlice()->build();
+
+        // Then
+        $this->assertTrue($this->conversionService->canConvert($egg, $box, $centiliter));
+        $this->assertTrue($this->conversionService->canConvert($egg, $box, $box), 'une unité se convertit en elle-même');
+        $this->assertFalse($this->conversionService->canConvert($egg, $slice, $box));
+        $this->assertTrue($this->conversionService->canConvertToPurchaseUnit($egg), "l'unité des recettes de l'œuf est son unité d'achat");
+        $this->conversionService->assertConvertible($egg, $box, $centiliter);
+
+        $this->expectExceptionObject(IngredientException::cannotConvertToUnit($egg, $slice, $box));
+        $this->conversionService->assertConvertible($egg, $slice, $box);
+    }
+
+    public function testCanConvertWithAnsweresForAHypotheticalSetOfConversionsWithoutReadingAnything(): void
+    {
+        // Given : les conversions que la farine aurait si on en retirait une
+        $flour = new IngredientBuilder()->isFlour()->build();
+        $gramme = new UnitBuilder()->isGramme()->build();
+        $kilo = new UnitBuilder()->isKilo()->build();
+        $cup = new UnitBuilder()->withName('tasse')->build();
+        $kiloToGramme = new ConversionBuilder()->isKiloToGramme()->build();
+        $cupToGramme = new ConversionBuilder()->withIngredient($flour)->withStartUnit($cup)->withEndUnit($gramme)->withCoefficient(125)->build();
+
+        // Then : avec les deux, la tasse mène au kilo ; sans l'universelle, non ; sans rien, une unité se convertit seulement en elle-même
+        $this->assertTrue($this->conversionService->canConvertWith([$kiloToGramme, $cupToGramme], $cup, $kilo));
+        $this->assertFalse($this->conversionService->canConvertWith([$cupToGramme], $cup, $kilo));
+        $this->assertTrue($this->conversionService->canConvertWith(new \ArrayIterator([$cupToGramme]), $cup, $gramme));
+        $this->assertFalse($this->conversionService->canConvertWith([], $cup, $gramme));
+        $this->assertTrue($this->conversionService->canConvertWith([], $cup, $cup));
+    }
+
     private function canConvert(ConversionService $service, Ingredient $ingredient, Unit $unit): bool
     {
         try {

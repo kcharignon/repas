@@ -32,7 +32,7 @@ final class UpdateIngredientApiController extends AbstractController
     #[OA\Response(response: 204, description: 'Ingrédient modifié')]
     #[OA\Response(response: 403, description: "L'ingrédient appartient à un autre utilisateur (un administrateur n'a pas de passe-droit)")]
     #[OA\Response(response: 404, description: 'Ingrédient, rayon ou unité inconnu')]
-    #[OA\Response(response: 422, description: 'Corps invalide, ou coefficient manquant alors que les unités diffèrent')]
+    #[OA\Response(response: 422, description: 'Corps invalide, ou coefficient manquant alors que les unités diffèrent sans conversion connue (le coefficient est facultatif quand le graphe de conversion de l\'ingrédient les relie déjà), ou unité des recettes qui ne se convertirait pas en unité d\'achat')]
     public function __invoke(string $slug, #[MapRequestPayload] IngredientPayload $payload, #[CurrentUser] AuthenticatedUser $user): Response
     {
         $this->commandBus->dispatch(new UpdateIngredientCommand(

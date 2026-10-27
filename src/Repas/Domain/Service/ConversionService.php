@@ -46,12 +46,47 @@ readonly class ConversionService
 
     public function canConvertToPurchaseUnit(Ingredient $ingredient): bool
     {
+        return $this->canConvert($ingredient, $ingredient->getDefaultCookingUnit(), $ingredient->getDefaultPurchaseUnit());
+    }
+
+    /**
+     * Le graphe de l'ingrédient, tel qu'il est lu maintenant (le cache de ce service : `clear()` après toute écriture de conversion), relie-t-il
+     * ces deux unités ? C'est la règle « l'unité des recettes de l'ingrédient se convertit toujours en son unité d'achat » : l'enregistrement d'un
+     * ingrédient, puis l'ajout, la modification et la suppression de ses conversions propres l'appliquent, sur le graphe FINAL.
+     */
+    public function canConvert(Ingredient $ingredient, Unit $from, Unit $to): bool
+    {
         try {
-            $this->convertToPurchaseUnit($ingredient, 1, $ingredient->getDefaultCookingUnit());
-        } catch (IngredientException $e) {
+            $this->convertTo($ingredient, 1, $from, $to);
+        } catch (IngredientException) {
             return false;
         }
+
         return true;
+    }
+
+    /**
+     * @throws IngredientException (`cannotConvertToUnit()`, 422) si aucun chemin de conversion ne mène de `$from` à `$to`
+     */
+    public function assertConvertible(Ingredient $ingredient, Unit $from, Unit $to): void
+    {
+        $this->convertTo($ingredient, 1, $from, $to);
+    }
+
+    /**
+     * La même question pour un jeu de conversions HYPOTHÉTIQUE, avant de l'écrire : celui qu'un ingrédient aurait si on ajoutait, modifiait ou
+     * retirait une conversion propre (ses conversions propres et les communes, telles qu'elles seraient). Pur : ni cache, ni lecture.
+     *
+     * @param iterable<Conversion> $conversions
+     */
+    public function canConvertWith(iterable $conversions, Unit $from, Unit $to): bool
+    {
+        $graph = ConversionGraph::fromConversions(array_map(
+            static fn(Conversion $conversion): array => [$conversion->getStartUnit()->getSlug(), $conversion->getEndUnit()->getSlug(), $conversion->getCoefficient()],
+            is_array($conversions) ? $conversions : iterator_to_array($conversions, false),
+        ));
+
+        return $graph->coefficient($from->getSlug(), $to->getSlug()) !== null;
     }
 
     /**

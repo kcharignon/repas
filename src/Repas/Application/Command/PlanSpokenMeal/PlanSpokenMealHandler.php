@@ -87,7 +87,7 @@ readonly class PlanSpokenMealHandler
         try {
             ($this->plannedMealHandler)(new PlannedMealCommand($command->ownerId, $command->recipeId, $servings));
         } catch (IngredientException $exception) {
-            throw $exception->isMissingConversion() ? SpokenMealFailure::missingConversion($recipe->getName()) : $exception;
+            throw $exception->isMissingConversion() ? SpokenMealFailure::missingConversion($recipe->getName(), $exception->conversionIngredientName()) : $exception;
         }
 
         return new PlannedSpokenMeal($recipe->getName(), $servings, alreadyPlanned: false, listCreated: $listCreated, previousListSent: $previousListSent);

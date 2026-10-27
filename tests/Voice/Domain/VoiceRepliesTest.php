@@ -300,8 +300,12 @@ class VoiceRepliesTest extends TestCase
         $missing = VoiceReplies::mealFailure(SpokenMealFailure::MISSING_CONVERSION, 'Blanquette de Veau');
         $this->assertSame('Je ne peux pas calculer les quantités de blanquette de veau. Ouvre la recette dans Repas.', $missing);
         $this->assertSame(VoiceReplies::MEAL_GONE, VoiceReplies::mealFailure(SpokenMealFailure::RECIPE_GONE, null));
+        // Quand l'ingrédient fautif est connu, c'est lui qu'Alexa nomme (comme l'application), et plus la recette
+        $named = VoiceReplies::mealFailure(SpokenMealFailure::MISSING_CONVERSION, 'Blanquette de Veau', 'Pommes de Terre');
+        $this->assertSame("Il manque une conversion pour pommes de terre. Ouvre la recette dans Repas.", $named);
+        $this->assertSame($missing, VoiceReplies::mealFailure(SpokenMealFailure::MISSING_CONVERSION, 'Blanquette de Veau', '  '), 'un nom vide retombe sur la recette');
         $this->assertNull(VoiceReplies::mealFailure('UNE_RAISON_INCONNUE', 'Hachis'));
-        foreach ([$missing, VoiceReplies::MEAL_GONE] as $answer) {
+        foreach ([$missing, $named, VoiceReplies::MEAL_GONE] as $answer) {
             $this->assertLessThanOrEqual(2, count($this->sentences($answer)), $answer);
             foreach ($this->sentences($answer) as $sentence) {
                 $this->assertLessThanOrEqual(15, count(preg_split('/\s+/u', $sentence)), $sentence);

@@ -31,7 +31,7 @@ final class UpdateConversionApiController extends AbstractController
     #[OA\Response(response: 204, description: 'Conversion modifiée')]
     #[OA\Response(response: 403, description: 'Réservé aux administrateurs')]
     #[OA\Response(response: 404, description: 'Conversion, unité ou ingrédient inconnu, ou conversion ou ingrédient d\'un autre utilisateur (un administrateur n\'a pas de passe-droit)')]
-    #[OA\Response(response: 422, description: 'Corps de la requête invalide')]
+    #[OA\Response(response: 422, description: 'Corps de la requête invalide, ou conversion universelle (sans ingrédient) dont le corps change la paire d\'unités ou l\'ingrédient : seul son coefficient se corrige (`UNIVERSAL_CONVERSION_IS_FIXED`)')]
     public function __invoke(string $id, #[MapRequestPayload] ConversionPayload $payload, #[CurrentUser] AuthenticatedUser $user): Response
     {
         $this->commandBus->dispatch(new UpdateConversionCommand(

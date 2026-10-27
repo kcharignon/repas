@@ -106,6 +106,20 @@ class ConversionRepositoryTest extends DatabaseTestCase
         RepasAssert::assertConversion($expected, $actual);
     }
 
+    public function testTheLookupOfAPairIsTheIngredientsOwnAndNeverAUniversalLine(): void
+    {
+        // Given : « kilo > gramme » universelle, et une ligne propre au beurre sur une autre paire
+        $butter = new IngredientBuilder()->isButter()->build();
+        $universal = new ConversionBuilder()->isKiloToGramme()->build();
+        $own = new ConversionBuilder()->isBlockToGrammeForButter()->build();
+        $this->persister->saveConversion($universal);
+        $this->persister->saveConversion($own);
+
+        // When / Then : la paire universelle n'est pas celle du beurre ; sa paire propre l'est
+        $this->assertNull($this->conversionRepository->findByIngredientAndStartUnitAndEndUnit($butter, new UnitBuilder()->isKilo()->build(), new UnitBuilder()->isGramme()->build()));
+        $this->assertNotNull($this->conversionRepository->findByIngredientAndStartUnitAndEndUnit($butter, new UnitBuilder()->isBlock()->build(), new UnitBuilder()->isGramme()->build()));
+    }
+
     public function testFindById(): void
     {
         // Arrange

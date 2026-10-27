@@ -2135,7 +2135,7 @@ class AlexaWebhookApiFlowTest extends DatabaseTestCase
 
         // Then : la phrase d'échec, comme dans l'application tout est annulé (y compris la liste neuve)
         $this->assertSame(200, $this->statusCode());
-        $this->assertSame("Je ne peux pas calculer les quantités de hachis parmentier. Ouvre la recette dans Repas.", $this->speech());
+        $this->assertSame("Il manque une conversion pour crème fraiche épaisse. Ouvre la recette dans Repas.", $this->speech());
         $this->assertSame(0, $this->rowCount('shopping_list'));
         $this->assertSame(0, $this->rowCount('meal'));
     }
@@ -2760,7 +2760,7 @@ class AlexaWebhookApiFlowTest extends DatabaseTestCase
 
         // Then : la phrase d'échec, le bus a tout annulé, le repas est toujours dans la liste
         $this->assertSame(200, $this->statusCode());
-        $this->assertSame("Je ne peux pas calculer les quantités de hachis parmentier. Ouvre la recette dans Repas.", $this->speech());
+        $this->assertSame("Il manque une conversion pour crème fraiche épaisse. Ouvre la recette dans Repas.", $this->speech());
         $this->assertNotNull($this->mealOf($user, $recipe));
     }
 
@@ -2920,7 +2920,7 @@ class AlexaWebhookApiFlowTest extends DatabaseTestCase
 
         // Then : une phrase qui dit quoi faire (pas « Je n'ai pas pu faire ça »), le nom de la recette sans identifiant, rien d'écrit
         $this->assertSame(200, $this->statusCode());
-        $this->assertSame('Je ne peux pas calculer les quantités de blanquette de veau. Ouvre la recette dans Repas.', $this->speech());
+        $this->assertSame('Il manque une conversion pour crème fraiche épaisse. Ouvre la recette dans Repas.', $this->speech());
         $this->assertTrue($this->jsonBody()['response']['shouldEndSession']);
         $this->assertSame(0, $this->rowCount('shopping_list'));
         $this->assertSame(0, $this->rowCount('meal'));

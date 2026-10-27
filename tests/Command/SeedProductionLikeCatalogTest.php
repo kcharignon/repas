@@ -118,6 +118,12 @@ class SeedProductionLikeCatalogTest extends DatabaseTestCase
         $this->assertSame(151, (int) $connection->fetchOne('SELECT count(*) FROM ingredient WHERE creator = ?', [$user->getId()]), $label);
         $this->assertSame($expectedConversions, $result->conversionsCopied, $label);
         $this->assertSame($expectedConversions, (int) $connection->fetchOne('SELECT count(*) FROM conversion c JOIN ingredient i ON i.slug = c.ingredient WHERE i.creator = ?', [$user->getId()]), $label);
+        // Chaque conversion propre de l'original est chez la copie, mêmes unités et même coefficient, avec un identifiant NEUF (rien n'est perdu à l'amorçage)
+        $this->assertSame($expectedConversions, (int) $connection->fetchOne(
+            'SELECT count(*) FROM conversion c JOIN ingredient copy ON copy.slug = c.ingredient JOIN conversion source ON source.ingredient = copy.adopted_from'
+            . ' AND source.start_unit = c.start_unit AND source.end_unit = c.end_unit AND source.coefficient = c.coefficient AND source.id <> c.id WHERE copy.creator = ?',
+            [$user->getId()],
+        ), $label);
         // Les 110 « spécifiques » ne sont pas copiés
         $this->assertSame(0, (int) $connection->fetchOne('SELECT count(*) FROM ingredient WHERE creator = ? AND adopted_from IN (SELECT slug FROM ingredient WHERE NOT is_base)', [$user->getId()]), $label);
         // Le catalogue est intact : 261 ingrédients, 151 de base
