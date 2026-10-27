@@ -10,6 +10,7 @@ use Repas\Repas\Domain\Model\IngredientDistinctPair;
 use Repas\Repas\Domain\Model\MatchLevel;
 use Repas\Repas\Domain\Service\DuplicateIngredientFinder;
 use Repas\Repas\Domain\Service\IngredientNameMatcher;
+use Repas\Tests\Helper\PerformanceReport;
 
 /**
  * Les doublons possibles (ING-006, `docs/ingredients/fusion.md` § 8) : pur, sans base. Les règles une à une, puis la vérité terrain de
@@ -261,6 +262,82 @@ class DuplicateIngredientFinderTest extends TestCase
         $truth = json_decode((string) file_get_contents(__DIR__ . '/IngredientNameMatching/ground-truth.json'), true, flags: JSON_THROW_ON_ERROR);
 
         return array_values(array_filter($truth['cases'], static fn(array $case): bool => in_array($case['category'], $categories, true)));
+    }
+
+    public function testAGroupOnlyExaminesItsFirstFiveHundredIngredientsInSlugOrder(): void
+    {
+        // Given : 600 ingrédients du même rayon et du même nombre de mots, donnés dans l'ordre inverse des slugs : les 100 derniers sont, eux aussi, des doublons
+        $candidates = [];
+        for ($i = 599; $i >= 0; $i--) {
+            $candidates[] = self::own(sprintf('tomate-%03d', $i), 'Tomate');
+        }
+
+        // When : toutes les paires sont exactes, on les garde toutes
+        $pairs = $this->finder->find($candidates, limit: 200000);
+
+        // Then : C(500, 2) paires et pas une de plus, aucune ne touche un slug au-delà du cinq centième, quel que soit l'ordre donné
+        $this->assertCount(500 * 499 / 2, $pairs);
+        $this->assertLessThan('tomate-500', max(array_map(static fn(DuplicatePair $pair): string => $pair->second->slug, $pairs)));
+    }
+
+    public function testAGroupUnderTheBoundIsExaminedWhole(): void
+    {
+        // Given : 500 ingrédients exactement, dont les deux derniers par slug sont des doublons
+        $candidates = [];
+        for ($i = 0; $i < 498; $i++) {
+            $candidates[] = self::own(sprintf('a-%03d', $i), 'Nom ' . chr(97 + intdiv($i, 26)) . chr(97 + $i % 26) . 'x' . $i);
+        }
+        $candidates[] = self::own('z-tomate', 'Tomate');
+        $candidates[] = self::own('z-tomates', 'Tomates');
+
+        // When
+        $pairs = $this->finder->find($candidates);
+
+        // Then
+        $this->assertContains('z-tomate+z-tomates', self::slugs($pairs));
+    }
+
+    public function testTheWholeAccountIsBoundedByABudgetOfComparisons(): void
+    {
+        // Given : un compte hors norme, 2 000 ingrédients en quatre rayons dont les noms se valent tous (500 000 couples sans le budget)
+        $candidates = [];
+        foreach (['epicerie', 'fruit-et-legume', 'surgele', 'viande'] as $department) {
+            for ($i = 0; $i < 500; $i++) {
+                $candidates[] = self::own(sprintf('%s-%03d', $department, $i), 'Nom', $department);
+            }
+        }
+
+        // When
+        $start = hrtime(true);
+        $pairs = $this->finder->find($candidates, limit: 1_000_000);
+        $milliseconds = (hrtime(true) - $start) / 1e6;
+
+        // Then : pas plus de 250 000 couples examinés, trouvés dans les premiers rayons dans l'ordre alphabétique (les deux premiers en entier, le troisième entamé)
+        PerformanceReport::line(sprintf("\n[plafond] 2 000 ingrédients en quatre rayons, doublons possibles : %.0f ms\n", $milliseconds));
+        $this->assertCount(DuplicateIngredientFinder::MAX_COMPARISONS, $pairs);
+        $this->assertLessThan(10000.0, $milliseconds);
+        $departments = array_unique(array_map(static fn(DuplicatePair $pair): string => explode('-', $pair->first->slug)[0], $pairs));
+        sort($departments);
+        $this->assertSame(['epicerie', 'fruit', 'surgele'], $departments);
+    }
+
+    public function testAnOrdinaryAccountIsNeverCutByTheBounds(): void
+    {
+        // Given : 300 ingrédients répartis dans 5 rayons, dont des doublons dans le dernier par ordre alphabétique
+        $candidates = [];
+        foreach (['epicerie', 'fruit-et-legume', 'surgele', 'viande'] as $department) {
+            for ($i = 0; $i < 60; $i++) {
+                $candidates[] = self::own(sprintf('%s-%02d', $department, $i), 'Ingrédient ' . $i . ' ' . $department, $department);
+            }
+        }
+        $candidates[] = self::own('zz-tomate', 'Tomate', 'zzz-dernier-rayon');
+        $candidates[] = self::own('zz-tomates', 'Tomates', 'zzz-dernier-rayon');
+
+        // When
+        $pairs = $this->finder->find($candidates);
+
+        // Then
+        $this->assertContains('zz-tomate+zz-tomates', self::slugs($pairs));
     }
 
     private function commonName(string $slug): string
