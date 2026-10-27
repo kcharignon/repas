@@ -19,6 +19,8 @@ use Repas\Repas\Domain\Model\Recipe;
 use Repas\Repas\Domain\Model\RecipeRow;
 use Repas\Repas\Domain\Model\RecipeType;
 use Repas\Repas\Domain\Model\Unit;
+use Repas\Tests\Helper\Builder\IngredientBuilder;
+use Repas\Tests\Helper\Builder\UserBuilder;
 use Repas\User\Domain\Interface\UserRepository;
 use Repas\User\Domain\Model\User;
 
@@ -71,6 +73,17 @@ final readonly class DataPersister
     {
         $this->saveIngredientDependencies($ingredient);
         $this->container->get(IngredientRepository::class)->save($ingredient);
+    }
+
+    /**
+     * Un ingrédient de cet utilisateur sous ce slug exact, nommé comme son slug : ce que les écritures du drive exigent d'un slug (un choix ne
+     * se pose que sur un ingrédient du compte). Deux utilisateurs ne partagent pas un slug : la clé est le slug.
+     */
+    public function saveOwnedIngredient(User|string $owner, string $slug): void
+    {
+        $creator = $owner instanceof User ? $owner : new UserBuilder()->withId($owner)->build();
+
+        $this->saveIngredient(new IngredientBuilder()->isButter()->withName($slug)->withSlug($slug)->withCreator($creator)->build());
     }
 
     /**

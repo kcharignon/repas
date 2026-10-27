@@ -676,6 +676,77 @@ class SaveProductChoicesHandlerTest extends TestCase
         $this->assertSame([], $aliases->resolveCalls);
     }
 
+    #[DataProvider('everyKindOfIntent')]
+    public function testAChoiceIsNeverSavedOnAnIngredientThatIsNotTheUsers(ChoiceIntent $intent): void
+    {
+        // Given : « pain-de-autrui » est l'ingrédient d'un autre compte (ou n'existe pas) : il ne répond à aucun ingrédient de l'utilisateur
+        $this->handler = $this->handlerWithAliases(new IngredientAliasInMemoryResolver(notOwned: ['pain-de-autrui']));
+
+        // When
+        $this->assertThrowsIngredientNotFound(fn() => $this->save('user-1', [$intent]));
+
+        // Then : introuvable, et rien n'est écrit
+        $this->assertSame([], $this->products->all());
+        $this->assertNull($this->choices->findOne('user-1', Retailer::LECLERC, self::STORE, 'pain-de-autrui'));
+        $this->assertSame([], $this->departmentRayons->recordChoicesSizes);
+    }
+
+    /**
+     * @return iterable<string, array{ChoiceIntent}>
+     */
+    public static function everyKindOfIntent(): iterable
+    {
+        $product = new ProductInput('555111', 'Pain de mie', null, null, new ProductPrice(149), 4001);
+
+        yield 'ajout' => [new ChoiceIntent('pain-de-autrui', ChoiceAction::ADD_PRODUCT, Placement::PRIMARY, $product)];
+        yield 'refus' => [new ChoiceIntent('pain-de-autrui', ChoiceAction::REJECT_PRODUCT, null, $product)];
+        yield "j'en ai toujours" => [new ChoiceIntent('pain-de-autrui', ChoiceAction::HAVE_AT_HOME)];
+        yield 'recherche notée' => [new ChoiceIntent('pain-de-autrui', ChoiceAction::NOTE_SEARCH, null, null, SearchQueryChange::set(SearchQuery::of('pain de mie')))];
+        yield 'rafraîchissement de prix' => [new ChoiceIntent('pain-de-autrui', ChoiceAction::REFRESH_PRICE, null, new ProductInput('555111', null, null, null, new ProductPrice(149)))];
+    }
+
+    public function testOneForeignIngredientRefusesTheWholeBatchAndNothingIsWritten(): void
+    {
+        // Given : un lot de deux ingrédients, dont un seul est à l'utilisateur
+        $this->handler = $this->handlerWithAliases(new IngredientAliasInMemoryResolver(notOwned: ['pain-de-autrui']));
+
+        // When
+        $this->assertThrowsIngredientNotFound(fn() => $this->save('user-1', [
+            $this->add('farine', Placement::PRIMARY, '555111', 'Farine T55 1 kg'),
+            $this->add('pain-de-autrui', Placement::PRIMARY, '555222', 'Pain de mie'),
+        ]));
+
+        // Then : rien, pas même la farine, et pas de compteur du jour entamé
+        $this->assertSame([], $this->products->all());
+        $this->assertNull($this->choices->findOne('user-1', Retailer::LECLERC, self::STORE, 'farine'));
+        $this->assertSame(0, $this->settings->findOneByUser('user-1', Retailer::LECLERC)->getProductWritesCount());
+    }
+
+    public function testTheOwnershipIsDecidedBeforeAnythingElseIsRead(): void
+    {
+        // Given
+        $aliases = new IngredientAliasInMemoryResolver(notOwned: ['pain-de-autrui']);
+        $this->handler = $this->handlerWithAliases($aliases);
+
+        // When
+        $this->assertThrowsIngredientNotFound(fn() => $this->save('user-1', [$this->add('pain-de-autrui', Placement::PRIMARY, '555111')]));
+
+        // Then : une seule lecture de propriété, ni produit, ni préférence, ni rayon lus
+        $this->assertSame([['user-1', ['pain-de-autrui']]], $aliases->resolveCalls);
+        $this->assertSame(0, $this->choices->countCalls);
+        $this->assertSame([], $this->ingredientDepartments->departmentSlugsByIngredientCalls);
+    }
+
+    private function assertThrowsIngredientNotFound(callable $call): void
+    {
+        try {
+            $call();
+            $this->fail("L'ingrédient d'un autre a été accepté.");
+        } catch (DriveException $exception) {
+            $this->assertSame([DriveException::DRIVE_INGREDIENT_NOT_FOUND, 404], [$exception->getMessage(), $exception->getCode()]);
+        }
+    }
+
     private function handlerWithAliases(IngredientAliasInMemoryResolver $aliases): SaveProductChoicesHandler
     {
         return new SaveProductChoicesHandler($this->settings, $this->products, $this->choices, $this->departmentRayons, $this->ingredientDepartments, $this->unitSlugs, $aliases, new UuidGenerator(), new FrozenClock($this->now));

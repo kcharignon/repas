@@ -82,6 +82,10 @@ class DrivePlanApiFlowTest extends DatabaseTestCase
         $listId = $this->savedList($alice, ShoppingListStatus::SENT);
         $this->request('GET', "/api/v1/drive/plans/$listId", $alice);
         $this->assertSame([[], []], array_column($this->jsonBody()['lines'], 'rayonHints'));
+        $persister = new DataPersister(static::getContainer());
+        $persister->saveIngredient(new IngredientBuilder()->isMilk()->withName('Lait de Bob')->withSlug('lait-bob')->withCreator($bob)->build());
+        $persister->saveIngredient(new IngredientBuilder()->isEgg()->withName('Œufs de Bob')->withSlug('oeuf-bob')->withCreator($bob)->build());
+        $persister->saveOwnedIngredient($bob, 'sel-bob');
 
         // When : Alice choisit un lait du rayon 4001 ; Bob un lait et des œufs du rayon 4002 ; un ancien client choisit sans rayon
         $this->request('PUT', '/api/v1/drive/choices', $alice, json_encode(['retailer' => 'leclerc', 'storeId' => '123456', 'choices' => [
@@ -89,9 +93,9 @@ class DrivePlanApiFlowTest extends DatabaseTestCase
         ]], JSON_THROW_ON_ERROR));
         $this->assertSame(204, $this->client->getResponse()->getStatusCode());
         $this->request('PUT', '/api/v1/drive/choices', $bob, json_encode(['retailer' => 'leclerc', 'storeId' => '123456', 'choices' => [
-            ['ingredientSlug' => 'lait', 'action' => 'ADD_PRODUCT', 'placement' => 'PRIMARY', 'product' => ['retailerProductId' => '555222', 'label' => 'Lait entier 1 l', 'rayonId' => 4002]],
-            ['ingredientSlug' => 'oeuf', 'action' => 'ADD_PRODUCT', 'placement' => 'PRIMARY', 'product' => ['retailerProductId' => '555333', 'label' => 'Œufs x6', 'rayonId' => 4002]],
-            ['ingredientSlug' => 'sel', 'action' => 'ADD_PRODUCT', 'placement' => 'PRIMARY', 'product' => ['retailerProductId' => '555444', 'label' => 'Sel fin']],
+            ['ingredientSlug' => 'lait-bob', 'action' => 'ADD_PRODUCT', 'placement' => 'PRIMARY', 'product' => ['retailerProductId' => '555222', 'label' => 'Lait entier 1 l', 'rayonId' => 4002]],
+            ['ingredientSlug' => 'oeuf-bob', 'action' => 'ADD_PRODUCT', 'placement' => 'PRIMARY', 'product' => ['retailerProductId' => '555333', 'label' => 'Œufs x6', 'rayonId' => 4002]],
+            ['ingredientSlug' => 'sel-bob', 'action' => 'ADD_PRODUCT', 'placement' => 'PRIMARY', 'product' => ['retailerProductId' => '555444', 'label' => 'Sel fin']],
         ]], JSON_THROW_ON_ERROR));
         $this->assertSame(204, $this->client->getResponse()->getStatusCode());
 
@@ -213,6 +217,9 @@ class DrivePlanApiFlowTest extends DatabaseTestCase
         // Given : Alice a tout chez elle pour le lait
         $alice = $this->savedUser();
         static::getContainer()->get(DriveSettingsRepository::class)->save(new DriveSettingsBuilder()->withUserId($alice->getId())->build());
+        foreach (['lait', 'oeuf'] as $slug) {
+            new DataPersister(static::getContainer())->saveOwnedIngredient($alice, $slug);
+        }
         $put = function (array $intent) use ($alice): array {
             $this->request('PUT', '/api/v1/drive/choices', $alice, json_encode(['retailer' => 'leclerc', 'storeId' => '123456', 'choices' => [$intent]], JSON_THROW_ON_ERROR));
 
@@ -244,10 +251,11 @@ class DrivePlanApiFlowTest extends DatabaseTestCase
             static::getContainer()->get(DriveSettingsRepository::class)->save(new DriveSettingsBuilder()->withUserId($user->getId())->build());
         }
         $listId = $this->savedList($alice, ShoppingListStatus::SENT);
+        new DataPersister(static::getContainer())->saveOwnedIngredient($bob, 'lait-bob');
         $put = fn(User $user, array $intent) => $this->request('PUT', '/api/v1/drive/choices', $user, json_encode(['retailer' => 'leclerc', 'storeId' => '123456', 'choices' => [$intent]], JSON_THROW_ON_ERROR));
         $milk = ['ingredientSlug' => 'lait', 'action' => 'ADD_PRODUCT', 'placement' => 'PRIMARY', 'product' => ['retailerProductId' => '555111', 'label' => 'Lait demi-écrémé 50 cl']];
         $put($alice, $milk + ['searchQuery' => 'lait pour alice']);
-        $put($bob, $milk + ['searchQuery' => 'lait pour bob']);
+        $put($bob, ['ingredientSlug' => 'lait-bob'] + $milk + ['searchQuery' => 'lait pour bob']);
 
         // When : une recherche mal formée, puis une recherche sur autre chose qu'un produit ajouté
         $put($alice, $milk + ['searchQuery' => "lait\nbrique"]);
@@ -293,6 +301,7 @@ class DrivePlanApiFlowTest extends DatabaseTestCase
         foreach ([$alice, $mallory] as $user) {
             static::getContainer()->get(DriveSettingsRepository::class)->save(new DriveSettingsBuilder()->withUserId($user->getId())->build());
         }
+        new DataPersister(static::getContainer())->saveOwnedIngredient($mallory, 'lait-mallory');
         $listId = $this->savedList($alice, ShoppingListStatus::SENT);
         $this->request('PUT', '/api/v1/drive/choices', $alice, json_encode(['retailer' => 'leclerc', 'storeId' => '123456', 'choices' => [
             ['ingredientSlug' => 'lait', 'action' => 'ADD_PRODUCT', 'placement' => 'PRIMARY', 'product' => ['retailerProductId' => '555222', 'ean' => '30000000', 'label' => 'Lait entier 1 l', 'content' => ['value' => 1, 'unit' => 'l'], 'price' => ['cents' => 150]]],
@@ -300,7 +309,7 @@ class DrivePlanApiFlowTest extends DatabaseTestCase
         $this->assertSame(204, $this->client->getResponse()->getStatusCode());
 
         // When : Mallory, dans le même magasin, renvoie le même produit avec un autre libellé, un autre code, 10 cl et 1 centime
-        $intent = ['ingredientSlug' => 'lait', 'action' => $action, 'product' => ['retailerProductId' => '555222', 'ean' => '40000000', 'label' => 'Texte trompeur', 'content' => ['value' => 10, 'unit' => 'cl'], 'price' => ['cents' => 1]]];
+        $intent = ['ingredientSlug' => 'lait-mallory', 'action' => $action, 'product' => ['retailerProductId' => '555222', 'ean' => '40000000', 'label' => 'Texte trompeur', 'content' => ['value' => 10, 'unit' => 'cl'], 'price' => ['cents' => 1]]];
         $this->request('PUT', '/api/v1/drive/choices', $mallory, json_encode(['retailer' => 'leclerc', 'storeId' => '123456', 'choices' => [
             $placement === null ? $intent : $intent + ['placement' => $placement],
         ]], JSON_THROW_ON_ERROR));
@@ -388,6 +397,7 @@ class DrivePlanApiFlowTest extends DatabaseTestCase
         static::getContainer()->get(DriveSettingsRepository::class)->save(new DriveSettingsBuilder()->withUserId($alice->getId())->build());
         $listId = $this->sentListOfSlices($alice);
         $product = static fn(array $more = []): array => ['retailerProductId' => '555701', 'label' => 'Fromage Cheddar Burger 20 Tranches - 340g', ...$more];
+        new DataPersister(static::getContainer())->saveOwnedIngredient($alice, 'sel');
 
         // When : une unité qui n'existe pas dans Repas, avec un choix valide dans le même lot
         $this->request('PUT', '/api/v1/drive/choices', $alice, json_encode(['retailer' => 'leclerc', 'storeId' => '123456', 'choices' => [
@@ -428,14 +438,14 @@ class DrivePlanApiFlowTest extends DatabaseTestCase
             static::getContainer()->get(DriveSettingsRepository::class)->save(new DriveSettingsBuilder()->withUserId($user->getId())->build());
         }
         $aliceList = $this->sentListOfSlices($alice);
-        $bobList = $this->sentListOfSlices($bob);
-        $intent = static fn(array $more = []): string => json_encode(['retailer' => 'leclerc', 'storeId' => '123456', 'choices' => [
-            ['ingredientSlug' => 'cheddar', 'action' => 'ADD_PRODUCT', 'placement' => 'PRIMARY', 'product' => ['retailerProductId' => '555701', 'label' => 'Fromage Cheddar Burger 20 Tranches - 340g', ...$more]],
+        $bobList = $this->sentListOfSlices($bob, 'cheddar-bob');
+        $intent = static fn(string $slug, array $more = []): string => json_encode(['retailer' => 'leclerc', 'storeId' => '123456', 'choices' => [
+            ['ingredientSlug' => $slug, 'action' => 'ADD_PRODUCT', 'placement' => 'PRIMARY', 'product' => ['retailerProductId' => '555701', 'label' => 'Fromage Cheddar Burger 20 Tranches - 340g', ...$more]],
         ]], JSON_THROW_ON_ERROR);
 
         // When
-        $this->request('PUT', '/api/v1/drive/choices', $alice, $intent(['packSize' => ['value' => 20, 'unitSlug' => 'tranche']]));
-        $this->request('PUT', '/api/v1/drive/choices', $bob, $intent());
+        $this->request('PUT', '/api/v1/drive/choices', $alice, $intent('cheddar', ['packSize' => ['value' => 20, 'unitSlug' => 'tranche']]));
+        $this->request('PUT', '/api/v1/drive/choices', $bob, $intent('cheddar-bob'));
 
         // Then
         $this->request('GET', "/api/v1/drive/plans/$aliceList", $alice);
@@ -506,7 +516,7 @@ class DrivePlanApiFlowTest extends DatabaseTestCase
     {
         $persister = new DataPersister(static::getContainer());
         $builder = new ShoppingListBuilder()->withOwner($owner)->withStatus($status);
-        foreach ([new IngredientBuilder()->isMilk()->build(), new IngredientBuilder()->isEgg()->build()] as $ingredient) {
+        foreach ([new IngredientBuilder()->isMilk()->withCreator($owner)->build(), new IngredientBuilder()->isEgg()->withCreator($owner)->build()] as $ingredient) {
             $persister->saveIngredient($ingredient);
             $builder->addIngredient($ingredient);
         }
@@ -519,13 +529,13 @@ class DrivePlanApiFlowTest extends DatabaseTestCase
     /**
      * Une liste envoyée au drive de 15 tranches de cheddar : la tranche est une unité sans dimension (ni poids ni volume).
      */
-    private function sentListOfSlices(User $owner): string
+    private function sentListOfSlices(User $owner, string $slug = 'cheddar'): string
     {
-        $ingredient = new IngredientBuilder()->withName('Cheddar')->withSlug('cheddar')->withDefaultCookingUnit(new UnitBuilder()->isSlice())->withDefaultPurchaseUnit(new UnitBuilder()->isSlice())->build();
+        $ingredient = new IngredientBuilder()->withName('Cheddar')->withSlug($slug)->withCreator($owner)->withDefaultCookingUnit(new UnitBuilder()->isSlice())->withDefaultPurchaseUnit(new UnitBuilder()->isSlice())->build();
         new DataPersister(static::getContainer())->saveIngredient($ingredient);
         $list = new ShoppingListBuilder()->withOwner($owner)->build();
-        $list->addIngredient('cheddar', 'tranche');
-        $list->addRow('cheddar', 'tranche', 15);
+        $list->addIngredient($slug, 'tranche');
+        $list->addRow($slug, 'tranche', 15);
         static::getContainer()->get(ShoppingListRepository::class)->save($list);
         $this->request('POST', '/api/v1/shopping-lists/' . $list->getId() . '/send', $owner);
         $this->assertSame(204, $this->client->getResponse()->getStatusCode());

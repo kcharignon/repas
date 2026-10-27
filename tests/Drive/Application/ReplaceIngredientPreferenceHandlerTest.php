@@ -331,6 +331,54 @@ class ReplaceIngredientPreferenceHandlerTest extends TestCase
         }
     }
 
+    public function testAPreferenceIsNeverWrittenOnAnIngredientThatIsNotTheUsers(): void
+    {
+        // Given : « pain-de-autrui » est l'ingrédient d'un autre compte (ou n'existe pas)
+        $this->handler = $this->handlerWithAliases(new IngredientAliasInMemoryResolver(notOwned: ['pain-de-autrui']));
+
+        foreach ([
+            'des produits acceptés' => ['accepted' => ['1', '2']],
+            'des produits refusés' => ['rejected' => ['3']],
+            "j'en ai toujours" => ['haveAtHome' => true],
+        ] as $case => $arguments) {
+            // When
+            try {
+                $this->replace('user-1', 'pain-de-autrui', ...$arguments);
+                $this->fail("Une préférence avec $case a été écrite sur l'ingrédient d'un autre.");
+            } catch (DriveException $exception) {
+                // Then
+                $this->assertSame([DriveException::DRIVE_INGREDIENT_NOT_FOUND, 404], [$exception->getMessage(), $exception->getCode()]);
+            }
+        }
+        $this->assertNull($this->choices->findOne('user-1', Retailer::LECLERC, self::STORE, 'pain-de-autrui'));
+    }
+
+    public function testForgettingAPreferenceLeftOnAnIngredientThatIsNotTheUsersStillWorks(): void
+    {
+        // Given : une préférence restée sur un slug qui n'est plus (ou n'a jamais été) à l'utilisateur ; la ligne est la sienne
+        $this->choices->save(new ChoiceBuilder()->withUserId('user-1')->withIngredientSlug('pain-de-autrui')->withAccepted([$this->id('1')])->build());
+        $this->handler = $this->handlerWithAliases(new IngredientAliasInMemoryResolver(notOwned: ['pain-de-autrui']));
+
+        // When : l'écran la vide
+        $this->replace('user-1', 'pain-de-autrui');
+
+        // Then
+        $this->assertNull($this->choices->findOne('user-1', Retailer::LECLERC, self::STORE, 'pain-de-autrui'));
+    }
+
+    public function testEmptyingAnUnknownPreferenceOnAnIngredientThatIsNotTheUsersChangesNothing(): void
+    {
+        // Given
+        $this->handler = $this->handlerWithAliases(new IngredientAliasInMemoryResolver(notOwned: ['pain-de-autrui']));
+        $before = count($this->choices->all());
+
+        // When
+        $this->replace('user-1', 'pain-de-autrui');
+
+        // Then : pas d'erreur, rien d'écrit
+        $this->assertCount($before, $this->choices->all());
+    }
+
     private function handlerWithAliases(IngredientAliasInMemoryResolver $aliases): ReplaceIngredientPreferenceHandler
     {
         return new ReplaceIngredientPreferenceHandler($this->settings, $this->products, $this->choices, $aliases, new UuidGenerator(), new FrozenClock($this->now));

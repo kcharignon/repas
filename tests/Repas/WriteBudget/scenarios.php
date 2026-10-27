@@ -671,7 +671,7 @@ return [
     'choix-drive' => static function (WriteBudgetTestCase $t): object {
         $user = $t->savedUser();
         $t->savedDriveSettings($user);
-        $t->persister->saveIngredient(new IngredientBuilder()->isFlour()->build());
+        $t->persister->saveIngredient(new IngredientBuilder()->isFlour()->withCreator($user)->build());
         $t->savedDriveChoice($user, 'farine', ['1', '2'], ['9']);
 
         return new SaveProductChoicesCommand($user->getId(), Retailer::LECLERC, '123456', [
@@ -689,13 +689,14 @@ return [
         $intents = [];
         foreach (range(1, 10) as $i) {
             $slug = "ingredient-$i";
-            $t->persister->saveIngredient(new IngredientBuilder()->isMilk()->withSlug($slug)->withName("Ingrédient $i")->build());
+            $t->persister->saveIngredient(new IngredientBuilder()->isMilk()->withSlug($slug)->withName("Ingrédient $i")->withCreator($user)->build());
             $t->savedDriveChoice($user, $slug, [(string) $i, (string) ($i + 100)], [(string) ($i + 200)]);
             $intents[] = new ChoiceIntent($slug, ChoiceAction::ADD_PRODUCT, Placement::PRIMARY, new ProductInput((string) ($i + 300), "Produit $i", null, new ProductContent(500, ContentUnit::G), new ProductPrice(100 + $i), 4000 + ($i % 3), 4100), SearchQueryChange::set(SearchQuery::of("recherche $i")));
             $intents[] = new ChoiceIntent($slug, ChoiceAction::ADD_PRODUCT, Placement::FALLBACK, new ProductInput((string) ($i + 400), "Produit de secours $i"));
             $intents[] = new ChoiceIntent($slug, ChoiceAction::REJECT_PRODUCT, null, new ProductInput((string) $i, "Produit refusé $i"));
             $intents[] = new ChoiceIntent($slug, ChoiceAction::REFRESH_PRICE, null, new ProductInput((string) ($i + 100), null, null, null, new ProductPrice(200 + $i)));
         }
+        $t->persister->saveOwnedIngredient($user, 'sel');
         $intents[] = new ChoiceIntent('sel', ChoiceAction::HAVE_AT_HOME);
 
         return new SaveProductChoicesCommand($user->getId(), Retailer::LECLERC, '123456', $intents);
@@ -706,7 +707,7 @@ return [
     'choix-drive-contenance' => static function (WriteBudgetTestCase $t): object {
         $user = $t->savedUser();
         $t->savedDriveSettings($user);
-        $t->persister->saveIngredient(new IngredientBuilder()->isFlour()->build());
+        $t->persister->saveIngredient(new IngredientBuilder()->isFlour()->withCreator($user)->build());
         $t->persister->saveUnit(new UnitBuilder()->isSlice()->build());
         $t->savedDriveChoice($user, 'farine', ['1', '2'], ['9']);
 
@@ -720,6 +721,9 @@ return [
     'choix-drive-recherche' => static function (WriteBudgetTestCase $t): object {
         $user = $t->savedUser();
         $t->savedDriveSettings($user);
+        foreach (['farine', 'cereale', 'lait'] as $slug) {
+            $t->persister->saveOwnedIngredient($user, $slug);
+        }
         $t->savedDriveChoice($user, 'farine', ['1', '2'], ['9']);
 
         return new SaveProductChoicesCommand($user->getId(), Retailer::LECLERC, '123456', [
@@ -740,6 +744,7 @@ return [
     'remplacer-preference-drive' => static function (WriteBudgetTestCase $t): object {
         $user = $t->savedUser();
         $t->savedDriveSettings($user);
+        $t->persister->saveOwnedIngredient($user, 'farine');
         $t->savedDriveChoice($user, 'farine', ['1', '2'], ['9']);
         $t->savedDriveChoice($user, 'sel', ['3', '4']);
         $id = static fn(string $retailerProductId): string => Product::idFor(Retailer::LECLERC, '123456', $retailerProductId);
@@ -751,6 +756,7 @@ return [
     'creer-preference-drive' => static function (WriteBudgetTestCase $t): object {
         $user = $t->savedUser();
         $t->savedDriveSettings($user);
+        $t->persister->saveOwnedIngredient($user, 'sucre');
         $t->savedDriveChoice($user, 'farine', ['1', '2'], ['9']);
         $t->savedDriveChoice($user, 'sel', ['3', '4']);
         $id = static fn(string $retailerProductId): string => Product::idFor(Retailer::LECLERC, '123456', $retailerProductId);

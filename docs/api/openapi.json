@@ -2924,7 +2924,7 @@
                         "description": "Pr\u00e9f\u00e9rence remplac\u00e9e (cr\u00e9\u00e9e si elle n'existait pas, supprim\u00e9e si le corps est vide)"
                     },
                     "404": {
-                        "description": "Fonction drive coup\u00e9e (message `DRIVE_DISABLED`)"
+                        "description": "Fonction drive coup\u00e9e (message `DRIVE_DISABLED`), ou un ingr\u00e9dient qui n'est pas \u00e0 l'utilisateur (message `DRIVE_INGREDIENT_NOT_FOUND`) : un choix ne se pose que sur un ingr\u00e9dient de l'utilisateur (ou sur l'ancien slug de l'un d'eux), et rien n'est enregistr\u00e9"
                     },
                     "409": {
                         "description": "Pas de magasin enregistr\u00e9 (message `DRIVE_NOT_CONFIGURED`), ou `storeId` n'est pas le magasin courant (message `DRIVE_STORE_MISMATCH`)"
@@ -3215,7 +3215,7 @@
                         "description": "Pr\u00e9f\u00e9rences enregistr\u00e9es (tout ou rien)"
                     },
                     "404": {
-                        "description": "Fonction drive coup\u00e9e (message `DRIVE_DISABLED`)"
+                        "description": "Fonction drive coup\u00e9e (message `DRIVE_DISABLED`), ou un ingr\u00e9dient qui n'est pas \u00e0 l'utilisateur (message `DRIVE_INGREDIENT_NOT_FOUND`) : un choix ne se pose que sur un ingr\u00e9dient de l'utilisateur (ou sur l'ancien slug de l'un d'eux), et rien n'est enregistr\u00e9"
                     },
                     "409": {
                         "description": "Pas de magasin enregistr\u00e9 (message `DRIVE_NOT_CONFIGURED`), ou `storeId` n'est pas le magasin courant (message `DRIVE_STORE_MISMATCH`)"

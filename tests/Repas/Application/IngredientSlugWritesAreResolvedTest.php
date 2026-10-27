@@ -159,7 +159,7 @@ class IngredientSlugWritesAreResolvedTest extends TestCase
             $this->assertCount(1, $injected, "$handler doit injecter un résolveur de slugs (IngredientSlugResolver ou IngredientAliasResolver).");
             $property = array_values($injected)[0]->getName();
             $this->assertMatchesRegularExpression(
-                '/\$this->' . preg_quote($property, '/') . '->resolve\(/',
+                '/\$this->' . preg_quote($property, '/') . '->resolve(?:Owned)?\(/',
                 $source,
                 "$handler injecte son résolveur de slugs mais ne s'en sert pas.",
             );

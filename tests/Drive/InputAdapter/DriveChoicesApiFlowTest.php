@@ -16,6 +16,7 @@ use Repas\Tests\Helper\Builder\ProductBuilder;
 use Repas\Tests\Helper\Builder\UserBuilder;
 use Repas\Tests\Helper\ControlledDriveFeature;
 use Repas\Tests\Helper\DatabaseTestCase;
+use Repas\Tests\Helper\DataPersister;
 use Repas\User\Domain\Interface\UserRepository;
 use Repas\User\Domain\Model\User;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
@@ -97,8 +98,8 @@ class DriveChoicesApiFlowTest extends DatabaseTestCase
         $this->assertSame(['1' => [4001, 4101], '2' => [null, null]], $this->rayonsByProduct());
 
         // When : un autre utilisateur renvoie ces produits avec d'autres valeurs, puis sans rien ; le sel reçoit enfin son rayon
-        $other = $this->userWithAStore();
-        $this->put($other, [$this->add('farine', 'PRIMARY', '1', 'Farine', rayonId: 4999, familyId: 4999), $this->add('sel', 'PRIMARY', '2', 'Sel', rayonId: 4002)]);
+        $other = $this->userWithAStore(['farine-2', 'sel-2']);
+        $this->put($other, [$this->add('farine-2', 'PRIMARY', '1', 'Farine', rayonId: 4999, familyId: 4999), $this->add('sel-2', 'PRIMARY', '2', 'Sel', rayonId: 4002)]);
         $this->put($user, [$this->add('farine', 'FALLBACK', '1', 'Farine')]);
 
         // Then : le rayon connu n'est ni remplacé ni effacé, celui qui manquait est rempli (la famille reste vide)
@@ -147,6 +148,7 @@ class DriveChoicesApiFlowTest extends DatabaseTestCase
     {
         // Given : 4 999 écritures de produits déjà envoyées aujourd'hui (jour UTC)
         $user = $this->savedUser();
+        $this->ownIngredients($user, ['farine', 'sel']);
         static::getContainer()->get(DriveSettingsRepository::class)->save(
             new DriveSettingsBuilder()->withUserId($user->getId())->withProductWrites(new DateTimeImmutable('today', new DateTimeZone('UTC')), 4999)->build(),
         );
@@ -260,11 +262,11 @@ class DriveChoicesApiFlowTest extends DatabaseTestCase
     {
         // Given
         $alice = $this->userWithAStore();
-        $bob = $this->userWithAStore();
+        $bob = $this->userWithAStore(['farine-bob']);
 
-        // When
+        // When : chacun a sa farine, le produit est le même
         $this->put($alice, [$this->add('farine', 'PRIMARY', '555111', 'Farine T55 1 kg')]);
-        $this->put($bob, [$this->add('farine', 'FALLBACK', '555111', 'Farine T55 1 kg'), $this->add('farine', 'PRIMARY', '222333', 'Farine T45 1 kg')]);
+        $this->put($bob, [$this->add('farine-bob', 'FALLBACK', '555111', 'Farine T55 1 kg'), $this->add('farine-bob', 'PRIMARY', '222333', 'Farine T45 1 kg')]);
 
         // Then : une seule ligne de produit par produit, chacun ses préférences
         $this->assertSame(2, (int) $this->entityManager->getConnection()->fetchOne('SELECT COUNT(*) FROM drive_product'));
@@ -274,7 +276,7 @@ class DriveChoicesApiFlowTest extends DatabaseTestCase
         $this->assertSame(['222333', '555111'], array_map(static fn(array $a): string => $a['product']['retailerProductId'], $this->jsonBody()['member'][0]['accepted']));
 
         // When : un troisième utilisateur n'a rien, et ne peut rien oublier
-        $carol = $this->userWithAStore();
+        $carol = $this->userWithAStore([]);
         $this->get($carol);
         $this->assertSame(['member' => [], 'totalItems' => 0], $this->jsonBody());
         $this->delete($carol, 'farine');
@@ -353,14 +355,14 @@ class DriveChoicesApiFlowTest extends DatabaseTestCase
     {
         // Given : deux utilisateurs avec la même farine, le produit est partagé
         $alice = $this->userWithAStore();
-        $bob = $this->userWithAStore();
+        $bob = $this->userWithAStore(['farine-bob']);
         $this->put($alice, [$this->add('farine', 'PRIMARY', '555111', 'Farine T55 1 kg'), $this->add('farine', 'FALLBACK', '222333', 'Farine T45 1 kg')]);
-        $this->put($bob, [$this->add('farine', 'PRIMARY', '555111', 'Farine T55 1 kg')]);
+        $this->put($bob, [$this->add('farine-bob', 'PRIMARY', '555111', 'Farine T55 1 kg')]);
         $this->get($alice);
         $aliceProducts = array_map(static fn(array $accepted): string => $accepted['product']['productId'], $this->jsonBody()['member'][0]['accepted']);
 
         // When : Bob remplace sa farine par les produits d'Alice, dans l'autre ordre
-        $this->replace($bob, 'farine', false, array_reverse($aliceProducts), []);
+        $this->replace($bob, 'farine-bob', false, array_reverse($aliceProducts), []);
 
         // Then : Alice n'a pas changé
         $this->assertSame(204, $this->client->getResponse()->getStatusCode());
@@ -396,25 +398,77 @@ class DriveChoicesApiFlowTest extends DatabaseTestCase
 
     public function testTheOwnerOfAChoiceComesFromTheTokenNeverFromTheBody(): void
     {
-        // Given : Alice a un magasin et une farine ; Mallory vise Alice dans le corps de ses demandes
+        // Given : Alice a un magasin et une farine ; Mallory a les siens, et vise Alice dans le corps de ses demandes
         $alice = $this->userWithAStore();
-        $mallory = $this->userWithAStore();
+        $mallory = $this->userWithAStore(['farine-mallory', 'sel-mallory']);
         $this->put($alice, [$this->add('farine', 'PRIMARY', '555111', 'Farine T55 1 kg')]);
         $body = static fn(array $extra): string => json_encode($extra + ['retailer' => 'leclerc', 'storeId' => '123456', 'choices' => [
-            ['ingredientSlug' => 'sel', 'action' => 'HAVE_AT_HOME', 'userId' => $alice->getId()],
-            ['ingredientSlug' => 'farine', 'action' => 'HAVE_AT_HOME', 'userId' => $alice->getId()],
+            ['ingredientSlug' => 'sel-mallory', 'action' => 'HAVE_AT_HOME', 'userId' => $alice->getId()],
+            ['ingredientSlug' => 'farine-mallory', 'action' => 'HAVE_AT_HOME', 'userId' => $alice->getId()],
         ]], JSON_THROW_ON_ERROR);
 
         // When : les champs `userId` et `user` du corps sont ignorés
         $this->request('PUT', '/api/v1/drive/choices', $mallory, $body(['userId' => $alice->getId(), 'user' => $alice->getId()]));
-        $this->request('PUT', '/api/v1/drive/choices/farine', $mallory, json_encode(['userId' => $alice->getId(), 'retailer' => 'leclerc', 'storeId' => '123456', 'haveAtHome' => true, 'accepted' => [], 'rejected' => []], JSON_THROW_ON_ERROR));
-        $this->request('DELETE', '/api/v1/drive/choices/farine?retailer=leclerc&storeId=123456&userId=' . $alice->getId(), $mallory);
+        $this->request('PUT', '/api/v1/drive/choices/farine-mallory', $mallory, json_encode(['userId' => $alice->getId(), 'retailer' => 'leclerc', 'storeId' => '123456', 'haveAtHome' => true, 'accepted' => [], 'rejected' => []], JSON_THROW_ON_ERROR));
+        $this->request('DELETE', '/api/v1/drive/choices/farine-mallory?retailer=leclerc&storeId=123456&userId=' . $alice->getId(), $mallory);
 
         // Then : les choix de Mallory ont bougé, ceux d'Alice jamais
         $this->get($alice);
         $this->assertSame([['farine', false, ['555111']]], array_map(static fn(array $c): array => [$c['ingredientSlug'], $c['haveAtHome'], array_map(static fn(array $a): string => $a['product']['retailerProductId'], $c['accepted'])], $this->jsonBody()['member']));
         $this->get($mallory);
-        $this->assertSame(['sel'], array_column($this->jsonBody()['member'], 'ingredientSlug'));
+        $this->assertSame(['sel-mallory'], array_column($this->jsonBody()['member'], 'ingredientSlug'));
+    }
+
+    public function testAChoiceIsNeverSavedOnTheIngredientOfAnotherUser(): void
+    {
+        // Given : Alice a sa farine et un choix dessus ; Bob a un magasin et ses propres ingrédients
+        $alice = $this->userWithAStore();
+        $bob = $this->userWithAStore(['sel-bob']);
+        $this->put($alice, [$this->add('farine', 'PRIMARY', '555111', 'Farine T55 1 kg')]);
+        $before = $this->choiceRows();
+
+        // When : Bob pose un choix sur le slug de la farine d'Alice, par le lot de l'agent puis par l'écran de gestion
+        $this->put($bob, [$this->add('sel-bob', 'PRIMARY', '1', 'Sel'), $this->add('farine', 'PRIMARY', '555111', 'Farine T55 1 kg')]);
+
+        // Then : introuvable, comme un slug qui n'existe pas ; le lot entier est refusé, le sel de Bob aussi
+        $this->assertSame([404, ['error' => ['message' => 'DRIVE_INGREDIENT_NOT_FOUND']]], [$this->client->getResponse()->getStatusCode(), $this->jsonBody()]);
+        $this->put($bob, [['ingredientSlug' => 'farine-inconnue', 'action' => 'HAVE_AT_HOME']]);
+        $this->assertSame([404, ['error' => ['message' => 'DRIVE_INGREDIENT_NOT_FOUND']]], [$this->client->getResponse()->getStatusCode(), $this->jsonBody()]);
+        $this->replace($bob, 'farine', true, [], []);
+        $this->assertSame([404, ['error' => ['message' => 'DRIVE_INGREDIENT_NOT_FOUND']]], [$this->client->getResponse()->getStatusCode(), $this->jsonBody()]);
+        $this->assertSame($before, $this->choiceRows());
+        $this->assertSame(1, (int) $this->entityManager->getConnection()->fetchOne('SELECT COUNT(*) FROM drive_product'));
+
+        // When : Bob n'efface rien d'Alice non plus
+        $this->replace($bob, 'farine', false, [], []);
+        $this->delete($bob, 'farine');
+
+        // Then : vider une préférence qu'il n'a pas ne change rien, l'oublier est introuvable ; la farine d'Alice est intacte
+        $this->assertSame(404, $this->client->getResponse()->getStatusCode());
+        $this->assertSame($before, $this->choiceRows());
+    }
+
+    public function testAChoiceLeftOnASlugThatIsNoLongerTheUsersCanStillBeEmptiedAndForgotten(): void
+    {
+        // Given : une préférence ancienne sur un slug qui n'est (plus) à personne de l'utilisateur
+        $user = $this->userWithAStore();
+        $this->entityManager->getConnection()->insert('drive_choice', [
+            'id' => 'a0000000-0000-4000-8000-000000000001', 'user_id' => $user->getId(), 'retailer' => 'leclerc', 'store_id' => '123456',
+            'ingredient_slug' => 'ancien-slug', 'kind' => 'PRODUCTS', 'updated_at' => '2026-10-01 10:00:00',
+        ]);
+        $this->entityManager->getConnection()->insert('drive_choice', [
+            'id' => 'a0000000-0000-4000-8000-000000000002', 'user_id' => $user->getId(), 'retailer' => 'leclerc', 'store_id' => '123456',
+            'ingredient_slug' => 'ancien-slug-2', 'kind' => 'PRODUCTS', 'updated_at' => '2026-10-01 10:00:00',
+        ]);
+
+        // When : l'écran la vide, puis l'autre est oubliée
+        $this->replace($user, 'ancien-slug', false, [], []);
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->delete($user, 'ancien-slug-2');
+
+        // Then : ces lignes sont les siennes, il peut les effacer
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->assertSame([], $this->countsBySlug());
     }
 
     public function testListingWithoutStoreIsEmpty(): void
@@ -510,6 +564,19 @@ class DriveChoicesApiFlowTest extends DatabaseTestCase
     }
 
     /**
+     * @return array{list<array<string, mixed>>, list<array<string, mixed>>} tout ce que la base garde des préférences (choix, puis produits), dans un ordre fixe
+     */
+    private function choiceRows(): array
+    {
+        $connection = $this->entityManager->getConnection();
+
+        return [
+            $connection->fetchAllAssociative('SELECT * FROM drive_choice ORDER BY id'),
+            $connection->fetchAllAssociative('SELECT * FROM drive_choice_product ORDER BY choice_id, product_id'),
+        ];
+    }
+
+    /**
      * @return array<string, int>
      */
     private function countsBySlug(): array
@@ -540,12 +607,30 @@ class DriveChoicesApiFlowTest extends DatabaseTestCase
         $this->request('PUT', "/api/v1/drive/choices/$slug", $user, json_encode(['retailer' => 'leclerc', 'storeId' => $storeId, 'haveAtHome' => $haveAtHome, 'accepted' => $accepted, 'rejected' => $rejected], JSON_THROW_ON_ERROR));
     }
 
-    private function userWithAStore(): User
+    /**
+     * Un utilisateur avec un magasin et ses ingrédients : un choix ne se pose que sur un ingrédient du compte, et un slug n'appartient
+     * qu'à un compte (deux utilisateurs ont donc des slugs différents).
+     *
+     * @param list<string> $ingredients
+     */
+    private function userWithAStore(array $ingredients = ['farine', 'sel']): User
     {
         $user = $this->savedUser();
         static::getContainer()->get(DriveSettingsRepository::class)->save(new DriveSettingsBuilder()->withUserId($user->getId())->build());
+        $this->ownIngredients($user, $ingredients);
 
         return $user;
+    }
+
+    /**
+     * @param list<string> $slugs
+     */
+    private function ownIngredients(User $user, array $slugs): void
+    {
+        $persister = new DataPersister(static::getContainer());
+        foreach ($slugs as $slug) {
+            $persister->saveOwnedIngredient($user, $slug);
+        }
     }
 
     private function savedUser(): User
