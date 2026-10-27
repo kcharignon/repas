@@ -64,6 +64,7 @@ Demandes permises (lecture seule) :
   rapport comptes|listes|migrations   comptes par statut, listes par statut, 5 dernières migrations
   rapport conversions|unites          conversions universelles et décomptes des conversions propres, unités et leur mesure (données de référence, aucun contenu d'utilisateur)
   graine                     amorçage des ingrédients : rapport de santé (--check, lecture seule)
+  conversions                santé des conversions : universelles de référence, conversions détournées, ingrédients et lignes de recettes non convertibles (lecture seule)
 AIDE
 		;;
 	etat)
@@ -133,6 +134,11 @@ UNION ALL SELECT 'ingredients dont les unites different', count(*)::text FROM in
 	graine)
 		arity 1
 		docker compose exec -T php bin/console repas:ingredients:seed --check < /dev/null
+		;;
+	conversions)
+		arity 1
+		# Rapport en lecture seule : ni e-mail, ni identifiant, ni nom d'ingrédient ou de recette (comptes numérotés, référence courte)
+		docker compose exec -T php bin/console repas:conversions:check < /dev/null
 		;;
 	*)
 		refuse "« $VERB » n'existe pas (essaie : aide)"

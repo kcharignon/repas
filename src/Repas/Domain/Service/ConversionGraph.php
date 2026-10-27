@@ -69,6 +69,15 @@ final readonly class ConversionGraph
     }
 
     /**
+     * Une suite de conversions relie-t-elle `$start` à `$target` ? (une unité se relie toujours à elle-même) C'est la question de la lecture de la
+     * recette (`convertible`) et du rapport de santé des conversions : une seule définition.
+     */
+    public function connects(string $start, string $target): bool
+    {
+        return $this->coefficient($start, $target) !== null;
+    }
+
+    /**
      * Recherche en largeur dans les arêtes d'un graphe (`edgesOf()`).
      *
      * @param array<string, list<array{to: string, weight: float}>> $edges

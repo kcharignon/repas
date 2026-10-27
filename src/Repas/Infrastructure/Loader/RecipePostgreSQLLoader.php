@@ -2,7 +2,6 @@
 
 namespace Repas\Repas\Infrastructure\Loader;
 
-use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Query\Expr\Join;
 use Repas\Repas\Application\Loader\RecipeLoader;
@@ -13,7 +12,7 @@ use Repas\Repas\Application\Query\ListRecipesByType\RecipeSummaryDTO;
 use Repas\Repas\Application\Query\ListRecipesByType\RecipeTypeRecipesDTO;
 use Repas\Repas\Application\Query\ListRecipeTypes\RecipeTypeDTO;
 use Repas\Repas\Domain\Exception\RecipeException;
-use Repas\Repas\Domain\Service\ConversionGraph;
+use Repas\Repas\Infrastructure\Conversion\IngredientConversionGraphs;
 use Repas\Repas\Infrastructure\Entity\Ingredient;
 use Repas\Repas\Infrastructure\Entity\Recipe;
 use Repas\Repas\Infrastructure\Entity\RecipeRow;
@@ -66,7 +65,8 @@ final readonly class RecipePostgreSQLLoader implements RecipeLoader
             ->getQuery()
             ->getArrayResult();
 
-        $graphs = $this->graphsOf(array_values(array_unique(array_column($rows, 'ingredientSlug'))));
+        // Le même graphe que la planification et que le rapport de santé des conversions (`repas:conversions:check`)
+        $graphs = new IngredientConversionGraphs($this->entityManager->getConnection())->forIngredients(array_values(array_unique(array_column($rows, 'ingredientSlug'))));
 
         return new RecipeDTO(
             id: $recipe['id'],
@@ -78,50 +78,12 @@ final readonly class RecipePostgreSQLLoader implements RecipeLoader
                 static fn(array $row): RecipeRowDTO => new RecipeRowDTO(
                     $row['ingredientSlug'], $row['ingredientName'], $row['ingredientImage'], (float) $row['quantity'], $row['unitSlug'], $row['unitSymbol'],
                     $row['unitName'], $row['purchaseUnitSlug'], $row['purchaseUnitName'],
-                    $row['unitSlug'] === $row['purchaseUnitSlug'] || $graphs[$row['ingredientSlug']]->coefficient($row['unitSlug'], $row['purchaseUnitSlug']) !== null,
+                    $graphs[$row['ingredientSlug']]->connects($row['unitSlug'], $row['purchaseUnitSlug']),
                 ),
                 $rows,
             ),
             version: (int) $recipe['version'],
         );
-    }
-
-    /**
-     * Le graphe de conversion de chaque ingrédient (ses conversions propres puis les universelles, comme `ConversionService`), lu en une
-     * requête pour tous.
-     *
-     * @param list<string> $ingredientSlugs
-     * @return array<string, ConversionGraph>
-     */
-    private function graphsOf(array $ingredientSlugs): array
-    {
-        if ($ingredientSlugs === []) {
-            return [];
-        }
-
-        $rows = $this->entityManager->getConnection()->executeQuery(
-            'SELECT ingredient, start_unit, end_unit, coefficient FROM conversion WHERE ingredient IS NULL OR ingredient IN (?) ORDER BY (ingredient IS NULL), id',
-            [$ingredientSlugs],
-            [ArrayParameterType::STRING],
-        )->fetchAllNumeric();
-
-        $universal = [];
-        $own = [];
-        foreach ($rows as [$ingredient, $start, $end, $coefficient]) {
-            $edge = [$start, $end, (float) $coefficient];
-            if ($ingredient === null) {
-                $universal[] = $edge;
-            } else {
-                $own[$ingredient][] = $edge;
-            }
-        }
-
-        $graphs = [];
-        foreach ($ingredientSlugs as $slug) {
-            $graphs[$slug] = ConversionGraph::fromConversions([...($own[$slug] ?? []), ...$universal]);
-        }
-
-        return $graphs;
     }
 
     public function listByAuthorAndType(string $authorId, string $typeSlug): RecipeTypeRecipesDTO
