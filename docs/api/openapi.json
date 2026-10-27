@@ -880,7 +880,7 @@
                         "description": "Conversion, unit\u00e9 ou ingr\u00e9dient inconnu, ou conversion ou ingr\u00e9dient d'un autre utilisateur (un administrateur n'a pas de passe-droit)"
                     },
                     "422": {
-                        "description": "Corps de la requ\u00eate invalide"
+                        "description": "Corps de la requ\u00eate invalide, ou conversion universelle (sans ingr\u00e9dient) dont le corps change la paire d'unit\u00e9s ou l'ingr\u00e9dient : seul son coefficient se corrige (`UNIVERSAL_CONVERSION_IS_FIXED`)"
                     }
                 }
             }
@@ -1031,7 +1031,7 @@
                         "description": "Ingr\u00e9dient, rayon ou unit\u00e9 inconnu"
                     },
                     "422": {
-                        "description": "Corps invalide, ou coefficient manquant alors que les unit\u00e9s diff\u00e8rent"
+                        "description": "Corps invalide, ou coefficient manquant alors que les unit\u00e9s diff\u00e8rent sans conversion connue (le coefficient est facultatif quand le graphe de conversion de l'ingr\u00e9dient les relie d\u00e9j\u00e0), ou unit\u00e9 des recettes qui ne se convertirait pas en unit\u00e9 d'achat"
                     }
                 }
             },

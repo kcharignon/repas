@@ -71,12 +71,14 @@ readonly class ConversionPostgreSQLRepository extends PostgreSQLRepository imple
     public function findByIngredientAndStartUnitAndEndUnit(Ingredient $ingredient, Unit $startUnit, Unit $endUnit): ?Conversion
     {
         $conversionEntity = $this->entityRepository->createQueryBuilder('c')
-            ->where('c.ingredientSlug = :ingredientSlug OR c.ingredientSlug is NULL')
+            ->where('c.ingredientSlug = :ingredientSlug')
             ->setParameter('ingredientSlug', $ingredient->getSlug())
             ->andWhere('c.startUnitSlug = :startUnit')
             ->setParameter('startUnit', $startUnit->getSlug())
             ->andWhere('c.endUnitSlug = :endUnit')
             ->setParameter('endUnit', $endUnit->getSlug())
+            ->orderBy('c.id')
+            ->setMaxResults(1)
             ->getQuery()
             ->getOneOrNullResult();
 

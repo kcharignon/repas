@@ -51,38 +51,15 @@ readonly class UpdateIngredientHandler
         $newCookingUnit = $this->unitRepository->findOneBySlug($command->defaultCookingUnitSlug);
         $newPurchaseUnit = $this->unitRepository->findOneBySlug($command->defaultPurchaseUnitSlug);
 
-        // On recupere l'ancienne conversion
-        $conversion = null;
-        if (!$ingredient->hasSameUnitInCookingAndPurchase()) {
-            $conversion = $this->conversionRepository->findByIngredientAndStartUnitAndEndUnit(
-                $ingredient,
-                $ingredient->getDefaultPurchaseUnit(),
-                $ingredient->getDefaultCookingUnit(),
-            );
+        // La règle : l'unité des recettes se convertit TOUJOURS en l'unité d'achat. Tout ce qui peut la refuser l'est avant la première écriture ;
+        // le contrôle final, sur le graphe tel qu'il sera, la garantit ensuite (une erreur annule la commande entière : le bus est transactionnel).
+        $unitsDiffer = !$newCookingUnit->isEqual($newPurchaseUnit);
+        if ($unitsDiffer && $this->writeConversion($ingredient, $command->coefficient, $newCookingUnit, $newPurchaseUnit)) {
+            // Le graphe relu APRÈS l'écriture : le service garde le sien en cache, périmé dès qu'une conversion change
+            $this->conversionService->clear();
         }
-
-        if (!$newCookingUnit->isEqual($newPurchaseUnit)) {
-            if ($command->coefficient === null) {
-                throw IngredientException::coefficientRequired();
-            }
-
-            if ($conversion instanceof Conversion) { // Met à jour la conversion existante
-                $conversion->update(
-                    startUnit: $newPurchaseUnit,
-                    endUnit: $newCookingUnit,
-                    coefficient: $command->coefficient,
-                    ingredient: $ingredient,
-                );
-            } else { // Créer une nouvelle conversion
-                $conversion = Conversion::create(
-                    UuidGenerator::new(),
-                    $newPurchaseUnit,
-                    $newCookingUnit,
-                    $command->coefficient,
-                    $ingredient,
-                );
-            }
-            $this->conversionRepository->save($conversion);
+        if ($unitsDiffer) {
+            $this->conversionService->assertConvertible($ingredient, $newCookingUnit, $newPurchaseUnit);
         }
 
         $ingredient->update(
@@ -94,6 +71,54 @@ readonly class UpdateIngredientHandler
             compatibleUnits: $this->getCompatibleUnit($ingredient, $newCookingUnit),
         );
         $this->ingredientRepository->save($ingredient);
+    }
+
+    /**
+     * Les deux unités diffèrent : le coefficient (« 1 unité d'achat = N unités de recette ») est facultatif quand le graphe de l'ingrédient les
+     * relie déjà (une conversion universelle, une conversion propre, un chemin de plusieurs étapes), obligatoire sinon. Donné, il met à jour la
+     * conversion PROPRE de l'ingrédient (celle de l'ancienne paire d'unités) ou en crée une ; jamais une conversion universelle, qui sert à tous
+     * les ingrédients et ne devient pas la sienne. Un coefficient qui répète ce que le graphe dit déjà n'écrit rien.
+     *
+     * @return bool une conversion a été écrite (le graphe en cache est alors périmé)
+     * @throws IngredientException
+     */
+    private function writeConversion(Ingredient $ingredient, ?float $coefficient, Unit $newCookingUnit, Unit $newPurchaseUnit): bool
+    {
+        $connected = $this->conversionService->canConvert($ingredient, $newCookingUnit, $newPurchaseUnit);
+        if ($coefficient === null) {
+            if (!$connected) {
+                throw IngredientException::coefficientRequired();
+            }
+
+            return false;
+        }
+        if (!is_finite($coefficient) || $coefficient <= 0) {
+            throw IngredientException::invalidCoefficient();
+        }
+
+        // Sa propre conversion de l'ancienne paire (achat -> recettes), si elle existe
+        $own = $ingredient->hasSameUnitInCookingAndPurchase()
+            ? null
+            : $this->conversionRepository->findByIngredientAndStartUnitAndEndUnit($ingredient, $ingredient->getDefaultPurchaseUnit(), $ingredient->getDefaultCookingUnit());
+
+        if ($own instanceof Conversion) { // Met à jour la conversion existante
+            $own->update(
+                startUnit: $newPurchaseUnit,
+                endUnit: $newCookingUnit,
+                coefficient: $coefficient,
+                ingredient: $ingredient,
+            );
+            $this->conversionRepository->save($own);
+
+            return true;
+        }
+        if ($connected && abs($this->conversionService->convertTo($ingredient, 1, $newPurchaseUnit, $newCookingUnit) - $coefficient) <= 1e-9 * $coefficient) {
+            return false; // le graphe dit déjà la même chose : une ligne de plus ne ferait que doubler
+        }
+
+        $this->conversionRepository->save(Conversion::create(UuidGenerator::new(), $newPurchaseUnit, $newCookingUnit, $coefficient, $ingredient));
+
+        return true;
     }
 
     /**

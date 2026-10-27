@@ -17,6 +17,11 @@ interface ConversionRepository
      */
     public function findByIngredientOrCommon(Ingredient $ingredient): Tab;
 
+    /**
+     * La conversion PROPRE de l'ingrédient pour cette paire d'unités, `null` sans elle. Jamais une conversion universelle (sans ingrédient) :
+     * celui qui modifie la conversion d'un ingrédient ne doit pas pouvoir la prendre pour la sienne, ce qui la ferait disparaître pour tous
+     * les autres (2026-10-27).
+     */
     public function findByIngredientAndStartUnitAndEndUnit(Ingredient $ingredient, Unit $startUnit, Unit $endUnit): ?Conversion;
 
     /**

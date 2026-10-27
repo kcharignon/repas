@@ -45,6 +45,7 @@ class UpdateIngredientHandlerTest extends TestCase
             new UnitBuilder()->isGramme()->build(),
             new UnitBuilder()->isBox()->build(),
             new UnitBuilder()->isUnite()->build(),
+            new UnitBuilder()->isKilo()->build(),
         ]);
         $this->ingredientRepository = new IngredientInMemoryRepository();
         $this->conversionRepository = new ConversionInMemoryRepository();
@@ -225,6 +226,143 @@ class UpdateIngredientHandlerTest extends TestCase
 
         // Act
         ($this->handler)($command);
+    }
+
+    // --- Une unité de recettes se convertit TOUJOURS en unité d'achat ----------------------------------------------------------------
+
+    public function testTheCoefficientIsOptionalWhenAUniversalConversionAlreadyLinksTheUnits(): void
+    {
+        // Given : la farine se cuisine au gramme et s'achète au kilo (« kilo > gramme » est universelle), le formulaire envoie un nom corrigé
+        $universal = new ConversionBuilder()->isKiloToGramme()->build();
+        $this->conversionRepository->save($universal);
+        $flour = $this->savedFlour();
+
+        // When : sans coefficient
+        ($this->handler)(new UpdateIngredientCommand($flour->getSlug(), 'Farine de blé', null, 'conserve', 'gramme', 'kilo', null, 'user-id'));
+
+        // Then : accepté, rien n'est écrit dans les conversions, les unités compatibles sont celles du graphe
+        $this->assertSame('Farine de blé', $this->ingredientRepository->findOneBySlug($flour->getSlug())->getName());
+        $this->assertCount(1, $this->conversionRepository->findAll());
+        $this->assertEqualsCanonicalizing(['gramme', 'kilo'], $this->compatibleSlugs($flour));
+    }
+
+    public function testAUniversalConversionIsNeverTakenOverByTheIngredientBeingEdited(): void
+    {
+        // Given : « kilo > gramme » est universelle ; le formulaire renvoie le coefficient de la paire (achat -> recettes) à chaque enregistrement
+        $universal = new ConversionBuilder()->isKiloToGramme()->build();
+        $this->conversionRepository->save($universal);
+        $flour = $this->savedFlour();
+
+        // When
+        ($this->handler)(new UpdateIngredientCommand($flour->getSlug(), 'Farine', null, 'conserve', 'gramme', 'kilo', 1000, 'user-id'));
+
+        // Then : la ligne universelle est intacte (toujours sans ingrédient, mêmes unités, même coefficient) et rien n'est doublé
+        $this->assertCount(1, $this->conversionRepository->findAll());
+        $kept = $this->conversionRepository->findById($universal->getId());
+        $this->assertNull($kept->getIngredient());
+        $this->assertSame(['kilo', 'gramme', 1000.0], [$kept->getStartUnit()->getSlug(), $kept->getEndUnit()->getSlug(), $kept->getCoefficient()]);
+    }
+
+    public function testADifferentCoefficientForAPairAUniversalConversionLinksCreatesTheIngredientsOwnAndKeepsTheUniversalOne(): void
+    {
+        // Given
+        $universal = new ConversionBuilder()->isKiloToGramme()->build();
+        $this->conversionRepository->save($universal);
+        $flour = $this->savedFlour();
+
+        // When : « chez moi, un kilo de cette farine fait 950 g »
+        ($this->handler)(new UpdateIngredientCommand($flour->getSlug(), 'Farine', null, 'conserve', 'gramme', 'kilo', 950, 'user-id'));
+
+        // Then : sa conversion propre est créée, l'universelle est intacte
+        $own = $this->conversionRepository->findByIngredientAndStartUnitAndEndUnit($flour, new UnitBuilder()->isKilo()->build(), new UnitBuilder()->isGramme()->build());
+        $this->assertSame(950.0, $own?->getCoefficient());
+        $this->assertNull($this->conversionRepository->findById($universal->getId())->getIngredient());
+        $this->assertSame(1000.0, $this->conversionRepository->findById($universal->getId())->getCoefficient());
+    }
+
+    public function testChangingTheUnitsOfAnIngredientWhoseOldPairWasUniversalNeverRewritesTheUniversalLine(): void
+    {
+        // Given : la farine (gramme / kilo), « kilo > gramme » universelle ; l'utilisateur passe à une boîte de 400 g
+        $universal = new ConversionBuilder()->isKiloToGramme()->build();
+        $this->conversionRepository->save($universal);
+        $flour = $this->savedFlour();
+
+        // When
+        ($this->handler)(new UpdateIngredientCommand($flour->getSlug(), 'Farine', null, 'conserve', 'gramme', 'boite', 400, 'user-id'));
+
+        // Then : une conversion propre « boîte > gramme », l'universelle n'a pas bougé
+        $kept = $this->conversionRepository->findById($universal->getId());
+        $this->assertSame([null, 'kilo', 'gramme', 1000.0], [$kept->getIngredient()?->getSlug(), $kept->getStartUnit()->getSlug(), $kept->getEndUnit()->getSlug(), $kept->getCoefficient()]);
+        $own = $this->conversionRepository->findByIngredientAndStartUnitAndEndUnit($flour, new UnitBuilder()->isBox()->build(), new UnitBuilder()->isGramme()->build());
+        $this->assertSame(400.0, $own?->getCoefficient());
+    }
+
+    public function testUnitsNoConversionLinksNeedACoefficientAndNothingIsWritten(): void
+    {
+        // Given : la farine (gramme / kilo, liées par l'universelle) ; l'unité d'achat devient une boîte, que rien ne relie au gramme
+        $this->conversionRepository->save(new ConversionBuilder()->isKiloToGramme()->build());
+        $flour = $this->savedFlour();
+
+        // When / Then : 422, et ni l'ingrédient ni les conversions n'ont bougé
+        try {
+            ($this->handler)(new UpdateIngredientCommand($flour->getSlug(), 'Farine', null, 'conserve', 'gramme', 'boite', null, 'user-id'));
+            $this->fail('Une unité d\'achat que rien ne relie à l\'unité des recettes demande un coefficient.');
+        } catch (IngredientException $exception) {
+            $this->assertEquals(IngredientException::coefficientRequired(), $exception);
+        }
+        $this->assertSame('kilo', $this->ingredientRepository->findOneBySlug($flour->getSlug())->getDefaultPurchaseUnit()->getSlug());
+        $this->assertCount(1, $this->conversionRepository->findAll());
+    }
+
+    public function testACoefficientThatIsNotAPositiveNumberIsRefusedAndNothingIsWritten(): void
+    {
+        // Given
+        $ingredient = new IngredientBuilder()->isPasta()->build();
+        $this->ingredientRepository->save($ingredient);
+
+        foreach ([0.0, -3.0, NAN, INF] as $coefficient) {
+            // When / Then
+            try {
+                ($this->handler)(new UpdateIngredientCommand($ingredient->getSlug(), 'Pasta', null, 'conserve', 'gramme', 'boite', $coefficient, 'user-id'));
+                $this->fail('Un coefficient nul, négatif ou infini est refusé.');
+            } catch (IngredientException $exception) {
+                $this->assertEquals(IngredientException::invalidCoefficient(), $exception);
+            }
+        }
+        $this->assertCount(0, $this->conversionRepository->findAll());
+        $this->assertSame('gramme', $this->ingredientRepository->findOneBySlug($ingredient->getSlug())->getDefaultPurchaseUnit()->getSlug());
+    }
+
+    public function testTheCompatibleUnitsFollowTheGraphAsItIsAfterTheConversionIsWritten(): void
+    {
+        // Given : les pâtes au gramme, sans conversion ; le graphe du service est déjà lu (la question « se convertit-il ? » a été posée)
+        $ingredient = new IngredientBuilder()->isPasta()->build();
+        $this->ingredientRepository->save($ingredient);
+
+        // When : l'unité d'achat devient la boîte, de 500 g
+        ($this->handler)(new UpdateIngredientCommand($ingredient->getSlug(), 'Pasta', null, 'conserve', 'gramme', 'boite', 500, 'user-id'));
+
+        // Then : la boîte est une unité compatible (un graphe périmé l'aurait oubliée)
+        $this->assertEqualsCanonicalizing(['gramme', 'boite'], $this->compatibleSlugs($ingredient));
+    }
+
+    private function savedFlour(): Ingredient
+    {
+        $flour = new IngredientBuilder()->isFlour()->build();
+        $this->ingredientRepository->save($flour);
+
+        return $flour;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function compatibleSlugs(Ingredient $ingredient): array
+    {
+        return array_values(array_map(
+            static fn($unit): string => $unit->getSlug(),
+            $this->ingredientRepository->findOneBySlug($ingredient->getSlug())->getCompatibleUnits()->toArray(),
+        ));
     }
 
     public function testHandleFailedUpdateIngredientUnknownIngredient(): void

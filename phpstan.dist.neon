@@ -11,9 +11,10 @@ parameters:
         - tests/
         - quality-rules/Phpstan/
     treatPhpDocTypesAsCertain: false
-    # La migration-garde d'ING-014 est chargée par un test (les migrations ne sont pas autoloadées)
+    # La migration-garde d'ING-014 et la migration des conversions universelles sont chargées par un test (les migrations ne sont pas autoloadées)
     scanFiles:
         - migrations/Version20261024120000.php
+        - migrations/Version20261027100000.php
 
 services:
     -
