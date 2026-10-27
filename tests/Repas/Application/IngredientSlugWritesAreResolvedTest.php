@@ -192,7 +192,7 @@ class IngredientSlugWritesAreResolvedTest extends TestCase
             // Then : la traduction seule (`resolve`) ne suffit pas, le slug doit répondre à un ingrédient de l'utilisateur
             $reflection = new ReflectionClass($handler);
             $this->assertTrue(
-                self::usesOwnedResolution((string) file_get_contents((string) $reflection->getFileName()), $reflection),
+                self::usesOwnedResolution((string) file_get_contents((string) $reflection->getFileName()), $handler),
                 "$handler pose un choix sur un ingrédient : il doit vérifier qu'il est à l'utilisateur (IngredientAliasResolver::resolveOwned).",
             );
         }
@@ -216,16 +216,16 @@ class IngredientSlugWritesAreResolvedTest extends TestCase
                 return [];
             }
         }) {
-            public function __construct(private IngredientAliasResolver $aliases)
+            public function __construct(public IngredientAliasResolver $aliases)
             {
             }
         };
-        $reflection = new ReflectionClass($translates);
+        $handler = $translates::class;
 
         // Then
-        $this->assertFalse(self::usesOwnedResolution('$this->aliases->resolve($user, $slugs);', $reflection));
-        $this->assertTrue(self::usesOwnedResolution('$this->aliases->resolveOwned($user, $slugs);', $reflection));
-        $this->assertFalse(self::usesOwnedResolution('$this->other->resolveOwned($user, $slugs);', $reflection), 'seul le résolveur injecté compte');
+        $this->assertFalse(self::usesOwnedResolution('$this->aliases->resolve($user, $slugs);', $handler));
+        $this->assertTrue(self::usesOwnedResolution('$this->aliases->resolveOwned($user, $slugs);', $handler));
+        $this->assertFalse(self::usesOwnedResolution('$this->other->resolveOwned($user, $slugs);', $handler), 'seul le résolveur injecté compte');
     }
 
     public function testEveryCopyUsesTheResolverAndTheNameMatchingOfItsHandler(): void
@@ -321,11 +321,11 @@ class IngredientSlugWritesAreResolvedTest extends TestCase
     /**
      * Le code source appelle-t-il `resolveOwned()` sur le résolveur de slugs injecté dans la classe ?
      *
-     * @param ReflectionClass<object> $handler
+     * @param class-string $handler
      */
-    private static function usesOwnedResolution(string $source, ReflectionClass $handler): bool
+    private static function usesOwnedResolution(string $source, string $handler): bool
     {
-        foreach ($handler->getConstructor()?->getParameters() ?? [] as $parameter) {
+        foreach ((new ReflectionClass($handler))->getConstructor()?->getParameters() ?? [] as $parameter) {
             if ((string) $parameter->getType() === IngredientAliasResolver::class
                 && preg_match('/\$this->' . preg_quote($parameter->getName(), '/') . '->resolveOwned\(/', $source) === 1) {
                 return true;
