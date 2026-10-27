@@ -58,6 +58,10 @@ class RegisterNewUserApiControllerTest extends QueryBusWebTestCase
         yield 'mot de passe trop long' => [['password' => str_repeat('a', 4097)] + $valid];
         yield 'aucune personne' => [['defaultServing' => 0] + $valid];
         yield 'trop de personnes' => [['defaultServing' => 101] + $valid];
+        yield 'un nombre de personnes décimal' => [['defaultServing' => 2.5] + $valid];
+        yield 'un nombre de personnes en texte' => [['defaultServing' => '2'] + $valid];
+        yield 'un nombre de personnes booléen' => [['defaultServing' => true] + $valid];
+        yield 'un nombre de personnes nul' => [['defaultServing' => null] + $valid];
         yield 'email de mauvais type' => [['email' => ['x']] + $valid];
     }
 

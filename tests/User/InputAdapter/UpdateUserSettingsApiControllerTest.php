@@ -79,6 +79,10 @@ class UpdateUserSettingsApiControllerTest extends QueryBusWebTestCase
         yield 'sans nombre de personnes' => [['newPassword' => 'un-nouveau-mot-de-passe']];
         yield 'aucune personne' => [['defaultServing' => 0]];
         yield 'trop de personnes' => [['defaultServing' => 101]];
+        yield 'un nombre de personnes décimal' => [['defaultServing' => 2.5]];
+        yield 'un nombre de personnes en texte' => [['defaultServing' => '2']];
+        yield 'un nombre de personnes booléen' => [['defaultServing' => true]];
+        yield 'un nombre de personnes nul' => [['defaultServing' => null]];
         yield 'nouveau mot de passe trop court' => [['defaultServing' => 2, 'newPassword' => 'court', 'actualPassword' => 'test']];
         yield 'nouveau mot de passe vide' => [['defaultServing' => 2, 'newPassword' => '', 'actualPassword' => 'test']];
         yield 'nouveau mot de passe trop long' => [['defaultServing' => 2, 'newPassword' => str_repeat('a', 4097), 'actualPassword' => 'test']];
