@@ -10,6 +10,8 @@ use Repas\Tests\Helper\QueryBusWebTestCase;
  */
 class EmailVerificationRateLimitTest extends QueryBusWebTestCase
 {
+    private int $sent = 0;
+
     public function testTheTwentyFirstRequestOfAnIpIsRefusedWithRetryAfter(): void
     {
         // Given
@@ -18,10 +20,10 @@ class EmailVerificationRateLimitTest extends QueryBusWebTestCase
 
         // When : vingt demandes mêlant renvoi et confirmation
         for ($i = 1; $i <= 20; $i++) {
-            $this->post($i % 2 === 0 ? '/api/v1/users/email-verification/send' : '/api/v1/users/email-verification/confirm', $i % 2 === 0 ? ['email' => 'a@example.com'] : ['token' => 'x']);
+            $this->post($i % 2 === 0 ? '/api/v1/users/email-verification/send' : '/api/v1/users/email-verification/confirm', $i % 2 === 0 ? ['email' => $this->email()] : ['token' => 'x']);
             $this->assertSame(204, $this->client->getResponse()->getStatusCode(), "demande $i");
         }
-        $this->post('/api/v1/users/email-verification/send', ['email' => 'a@example.com']);
+        $this->post('/api/v1/users/email-verification/send', ['email' => $this->email()]);
 
         // Then
         $response = $this->client->getResponse();
@@ -36,12 +38,12 @@ class EmailVerificationRateLimitTest extends QueryBusWebTestCase
         $this->mockCommandBus();
         $this->client->disableReboot();
         for ($i = 1; $i <= 21; $i++) {
-            $this->post('/api/v1/users/email-verification/send', ['email' => 'a@example.com']);
+            $this->post('/api/v1/users/email-verification/send', ['email' => $this->email()]);
         }
         $this->assertSame(429, $this->client->getResponse()->getStatusCode());
 
         // When
-        $this->post('/api/v1/users/email-verification/send', ['email' => 'a@example.com'], '203.0.113.9');
+        $this->post('/api/v1/users/email-verification/send', ['email' => $this->email()], '203.0.113.9');
 
         // Then
         $this->assertSame(204, $this->client->getResponse()->getStatusCode());
@@ -53,17 +55,25 @@ class EmailVerificationRateLimitTest extends QueryBusWebTestCase
         $this->mockCommandBus();
         $this->client->disableReboot();
         for ($i = 1; $i <= 20; $i++) {
-            $this->post('/api/v1/users/email-verification/send', ['email' => 'a@example.com'], sprintf('2001:db8:1:2::%x', $i));
+            $this->post('/api/v1/users/email-verification/send', ['email' => $this->email()], sprintf('2001:db8:1:2::%x', $i));
             $this->assertSame(204, $this->client->getResponse()->getStatusCode(), "demande $i");
         }
 
         // When : une autre adresse de ce préfixe, puis une d'un autre préfixe
-        $this->post('/api/v1/users/email-verification/send', ['email' => 'a@example.com'], '2001:db8:1:2:aaaa:bbbb:cccc:dddd');
+        $this->post('/api/v1/users/email-verification/send', ['email' => $this->email()], '2001:db8:1:2:aaaa:bbbb:cccc:dddd');
         $this->assertSame(429, $this->client->getResponse()->getStatusCode());
-        $this->post('/api/v1/users/email-verification/send', ['email' => 'a@example.com'], '2001:db8:1:3::1');
+        $this->post('/api/v1/users/email-verification/send', ['email' => $this->email()], '2001:db8:1:3::1');
 
         // Then
         $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+    }
+
+    /**
+     * Une adresse différente à chaque demande : le plafond par destinataire (6 par heure) n'est pas ce que ces tests mesurent.
+     */
+    private function email(): string
+    {
+        return 'visiteur' . ++$this->sent . '@example.com';
     }
 
     /**

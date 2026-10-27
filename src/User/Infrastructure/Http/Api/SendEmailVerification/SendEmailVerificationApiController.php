@@ -30,7 +30,7 @@ final class SendEmailVerificationApiController extends AbstractController
     #[OA\RequestBody(required: true, content: new OA\JsonContent(ref: new Model(type: SendEmailVerificationPayload::class)))]
     #[OA\Response(response: 204, description: 'Demande prise en compte')]
     #[OA\Response(response: 422, description: 'Corps de la requête invalide')]
-    #[OA\Response(response: 429, description: "Trop de demandes depuis cette adresse IP, ou trop d'emails demandés au total dans l'heure (100, toutes adresses confondues)")]
+    #[OA\Response(response: 429, description: "Trop de demandes depuis cette adresse IP, trop d'emails demandés pour cette même adresse email (6 par heure, que le compte existe ou non), ou trop d'emails demandés au total dans l'heure (100, toutes adresses confondues)")]
     public function __invoke(#[MapRequestPayload] SendEmailVerificationPayload $payload): Response
     {
         $this->commandBus->dispatch(new SendEmailVerificationCommand(email: $payload->email));

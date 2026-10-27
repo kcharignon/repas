@@ -2623,7 +2623,7 @@
                         "description": "Cette adresse email est d\u00e9j\u00e0 utilis\u00e9e"
                     },
                     "429": {
-                        "description": "Trop d'inscriptions depuis cette adresse IP, ou trop d'emails demand\u00e9s au total dans l'heure (100, toutes adresses confondues)"
+                        "description": "Trop d'inscriptions depuis cette adresse IP, trop d'emails demand\u00e9s pour cette m\u00eame adresse email (6 par heure, que le compte existe ou non), ou trop d'emails demand\u00e9s au total dans l'heure (100, toutes adresses confondues)"
                     },
                     "422": {
                         "description": "Corps de la requ\u00eate invalide"
@@ -2756,7 +2756,7 @@
                         "description": "Corps de la requ\u00eate invalide"
                     },
                     "429": {
-                        "description": "Trop de demandes depuis cette adresse IP, ou trop d'emails demand\u00e9s au total dans l'heure (100, toutes adresses confondues)"
+                        "description": "Trop de demandes depuis cette adresse IP, trop d'emails demand\u00e9s pour cette m\u00eame adresse email (6 par heure, que le compte existe ou non), ou trop d'emails demand\u00e9s au total dans l'heure (100, toutes adresses confondues)"
                     }
                 },
                 "security": []
@@ -2788,7 +2788,7 @@
                         "description": "Corps de la requ\u00eate invalide"
                     },
                     "429": {
-                        "description": "Trop de demandes depuis cette adresse IP, ou trop d'emails demand\u00e9s au total dans l'heure (100, toutes adresses confondues)"
+                        "description": "Trop de demandes depuis cette adresse IP, trop d'emails demand\u00e9s pour cette m\u00eame adresse email (6 par heure, que le compte existe ou non), ou trop d'emails demand\u00e9s au total dans l'heure (100, toutes adresses confondues)"
                     }
                 },
                 "security": []
