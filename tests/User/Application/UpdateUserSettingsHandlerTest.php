@@ -6,10 +6,12 @@ namespace Repas\Tests\User\Application;
 use DateTimeImmutable;
 use PHPUnit\Framework\TestCase;
 use Psr\Clock\ClockInterface;
+use Repas\Shared\Domain\Exception\RateLimitedException;
 use Repas\Tests\Helper\Builder\UserBuilder;
 use Repas\Tests\Helper\DummyPasswordHasher;
 use Repas\Tests\Helper\FrozenClock;
 use Repas\Tests\Helper\InMemoryRepository\UserInMemoryRepository;
+use Repas\Tests\Helper\PasswordAttemptLimiterInMemory;
 use Repas\Tests\Helper\RepasAssert;
 use Repas\User\Application\UpdateUserSettings\UpdateUserSettingsCommand;
 use Repas\User\Application\UpdateUserSettings\UpdateUserSettingsHandler;
@@ -23,11 +25,13 @@ class UpdateUserSettingsHandlerTest extends TestCase
     private readonly UserRepository $userRepository;
     private readonly PasswordHasherFactoryInterface $passwordHasherFactory;
     private readonly ClockInterface $clock;
+    private readonly PasswordAttemptLimiterInMemory $passwordAttemptLimiter;
 
     protected function setUp(): void
     {
         $this->clock = new FrozenClock();
         $this->passwordHasherFactory = new DummyPasswordHasher();
+        $this->passwordAttemptLimiter = new PasswordAttemptLimiterInMemory();
         $this->userRepository = new UserInMemoryRepository([
             new UserBuilder()
                 ->withId('unique-id')
@@ -40,6 +44,7 @@ class UpdateUserSettingsHandlerTest extends TestCase
         $this->handler = new UpdateUserSettingsHandler(
             $this->userRepository,
             $this->passwordHasherFactory,
+            $this->passwordAttemptLimiter,
         );
     }
 
@@ -117,6 +122,69 @@ class UpdateUserSettingsHandlerTest extends TestCase
 
         // Act
         ($this->handler)(new UpdateUserSettingsCommand('unique-id', 'new password', 1, 'wrong-password'));
+    }
+
+    public function testAWrongCurrentPasswordIsCountedAndARightOneIsNot(): void
+    {
+        // Act : un refus, puis un changement réussi
+        try {
+            ($this->handler)(new UpdateUserSettingsCommand('unique-id', 'new password', 1, 'wrong-password'));
+        } catch (UserException) {
+        }
+        ($this->handler)(new UpdateUserSettingsCommand('unique-id', 'new password', 1, 'current-password'));
+
+        // Assert : un seul refus noté, le plafond interrogé à chaque comparaison
+        $this->assertSame(['unique-id' => 1], $this->passwordAttemptLimiter->failures);
+        $this->assertSame(['unique-id', 'unique-id'], $this->passwordAttemptLimiter->asked);
+    }
+
+    public function testNothingIsComparedOnceTheLimitIsReachedEvenWithTheRightPassword(): void
+    {
+        // Arrange : trois refus sont permis
+        $limiter = new PasswordAttemptLimiterInMemory(3, 420);
+        $handler = new UpdateUserSettingsHandler($this->userRepository, $this->passwordHasherFactory, $limiter);
+        for ($i = 1; $i <= 3; $i++) {
+            try {
+                $handler(new UpdateUserSettingsCommand('unique-id', 'new password', 1, 'wrong-password'));
+            } catch (UserException) {
+            }
+        }
+        $before = $this->userRepository->findOneById('unique-id')->getPassword();
+
+        // Assert
+        $this->expectExceptionObject(RateLimitedException::after(UserException::PASSWORD_RATE_LIMITED, 420));
+
+        // Act : le bon mot de passe n'est plus comparé
+        try {
+            $handler(new UpdateUserSettingsCommand('unique-id', 'new password', 1, 'current-password'));
+        } finally {
+            $this->assertSame($before, $this->userRepository->findOneById('unique-id')->getPassword());
+            $this->assertSame(3, $limiter->failures['unique-id']);
+        }
+    }
+
+    public function testChangingTheServingOnlyNeverTouchesThePasswordLimiter(): void
+    {
+        // Act
+        ($this->handler)(new UpdateUserSettingsCommand('unique-id', null, 3));
+
+        // Assert
+        $this->assertSame([], $this->passwordAttemptLimiter->asked);
+        $this->assertSame([], $this->passwordAttemptLimiter->failures);
+    }
+
+    public function testTheLimitIsPerUser(): void
+    {
+        // Arrange : un autre compte a atteint son plafond
+        $limiter = new PasswordAttemptLimiterInMemory(1);
+        $limiter->recordFailure('someone-else');
+        $handler = new UpdateUserSettingsHandler($this->userRepository, $this->passwordHasherFactory, $limiter);
+
+        // Act
+        $handler(new UpdateUserSettingsCommand('unique-id', 'new password', 1, 'current-password'));
+
+        // Assert
+        $this->assertSame('hashnew passwordhash', $this->userRepository->findOneById('unique-id')->getPassword());
     }
 
     public function testDoesNotAskForTheCurrentPasswordToChangeTheServingOnly(): void

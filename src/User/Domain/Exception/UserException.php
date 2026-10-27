@@ -8,6 +8,7 @@ use Repas\Shared\Domain\Exception\DomainException;
 final class UserException extends DomainException
 {
     public const string INVALID_PASSWORD = 'INVALID_PASSWORD';
+    public const string PASSWORD_RATE_LIMITED = 'PASSWORD_RATE_LIMITED';
     public const string INVALID_EMAIL_VERIFICATION_TOKEN = 'INVALID_EMAIL_VERIFICATION_TOKEN';
     public const string INVALID_PASSWORD_RESET_TOKEN = 'INVALID_PASSWORD_RESET_TOKEN';
     public const string PROTECTED_ACCOUNT = 'PROTECTED_ACCOUNT';

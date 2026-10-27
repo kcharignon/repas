@@ -29,6 +29,7 @@ final class UpdateUserSettingsApiController extends AbstractController
     #[OA\RequestBody(required: true, content: new OA\JsonContent(ref: new Model(type: UserSettingsPayload::class)))]
     #[OA\Response(response: 204, description: 'Modifié')]
     #[OA\Response(response: 422, description: 'Corps invalide, ou mot de passe actuel absent ou erroné avec un nouveau mot de passe')]
+    #[OA\Response(response: 429, description: "Trop de mots de passe actuels refusés pour cet utilisateur (5 par 15 minutes) : message `PASSWORD_RATE_LIMITED`, rien n'a été comparé ni enregistré ; patienter au moins le délai de `Retry-After`. Un mot de passe juste ne compte pas.", headers: [new OA\Header(header: 'Retry-After', description: "Délai d'attente en secondes", schema: new OA\Schema(type: 'integer'))])]
     public function __invoke(#[CurrentUser] AuthenticatedUser $user, #[MapRequestPayload] UserSettingsPayload $payload): Response
     {
         $this->commandBus->dispatch(new UpdateUserSettingsCommand(

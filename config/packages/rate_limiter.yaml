@@ -20,6 +20,12 @@ framework:
             policy: token_bucket
             limit: 20
             rate: { interval: '3 minutes', amount: 1 }
+        # Mot de passe actuel d'un utilisateur connecté (PUT /api/v1/me/settings, PasswordAttemptRateLimiter), PAR UTILISATEUR : seuls
+        # les mots de passe refusés comptent, un mot de passe juste ne consomme rien.
+        password_check:
+            policy: fixed_window
+            limit: 5
+            interval: '15 minutes'
         # Inscription publique (POST /api/v1/users), par adresse IP (RegisterNewUserRateLimitListener) : un compte créé n'a
         # ni confirmation d'email ni captcha, c'est ce plafond qui limite la création en masse (ADR 0008).
         registration:
@@ -102,6 +108,8 @@ when@test:
             login_address_email:
                 cache_pool: test.rate_limiter_pool
             login_email:
+                cache_pool: test.rate_limiter_pool
+            password_check:
                 cache_pool: test.rate_limiter_pool
             registration:
                 cache_pool: test.rate_limiter_pool
