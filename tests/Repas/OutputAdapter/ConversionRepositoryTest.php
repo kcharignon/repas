@@ -239,4 +239,55 @@ class ConversionRepositoryTest extends DatabaseTestCase
         $conversions = $this->conversionRepository->findByIngredient($ingredient);
         $this->assertCount(0, $conversions);
     }
+
+    public function testDeleteRemovesOnlyThatConversion(): void
+    {
+        // Arrange
+        $ingredient = new IngredientBuilder()->isSugar()->build();
+        $spoon = new ConversionBuilder()->withStartUnit(new UnitBuilder()->isCoffeeSpoon()->build())->withEndUnit(new UnitBuilder()->isGramme()->build())->withCoefficient(4)->withIngredient($ingredient)->build();
+        $glass = new ConversionBuilder()->withStartUnit(new UnitBuilder()->isGlass()->build())->withEndUnit(new UnitBuilder()->isGramme()->build())->withCoefficient(150)->withIngredient($ingredient)->build();
+        $universal = new ConversionBuilder()->isKiloToGramme()->build();
+        foreach ([$spoon, $glass, $universal] as $conversion) {
+            $this->persister->saveConversion($conversion);
+        }
+
+        // Act
+        $this->conversionRepository->delete($spoon);
+
+        // Assert : la conversion retirée a disparu, ni l'autre conversion propre ni l'universelle n'ont bougé
+        $remaining = array_map(static fn(Conversion $c): string => $c->getId(), $this->conversionRepository->findByIngredientOrCommon($ingredient)->toArray());
+        $this->assertEqualsCanonicalizing([$glass->getId(), $universal->getId()], $remaining);
+    }
+
+    public function testDeleteOfAConversionNotInTheBaseDoesNothing(): void
+    {
+        // Arrange
+        $ingredient = new IngredientBuilder()->isSugar()->build();
+        $kept = new ConversionBuilder()->withIngredient($ingredient)->build();
+        $this->persister->saveConversion($kept);
+
+        // Act
+        $this->conversionRepository->delete(new ConversionBuilder()->withId(UuidGenerator::new())->withIngredient($ingredient)->build());
+
+        // Assert
+        $this->assertCount(1, $this->conversionRepository->findByIngredient($ingredient));
+    }
+
+    public function testTheIngredientsOwnConversionsComeBeforeTheUniversalOnes(): void
+    {
+        // Arrange : les identifiants rangent la universelle AVANT les propres, pour prouver que l'ordre ne vient pas d'eux
+        $ingredient = new IngredientBuilder()->isSugar()->build();
+        $universal = new ConversionBuilder()->isKiloToGramme()->withId('0000-universal')->build();
+        $first = new ConversionBuilder()->withStartUnit(new UnitBuilder()->isCoffeeSpoon()->build())->withEndUnit(new UnitBuilder()->isGramme()->build())->withCoefficient(4)->withIngredient($ingredient)->withId('zzzz-own-1')->build();
+        $second = new ConversionBuilder()->withStartUnit(new UnitBuilder()->isGlass()->build())->withEndUnit(new UnitBuilder()->isGramme()->build())->withCoefficient(150)->withIngredient($ingredient)->withId('zzzz-own-2')->build();
+        foreach ([$universal, $second, $first] as $conversion) {
+            $this->persister->saveConversion($conversion);
+        }
+
+        // Act
+        $result = $this->conversionRepository->findByIngredientOrCommon($ingredient);
+
+        // Assert : les siennes (par identifiant), puis la universelle
+        $this->assertSame(['zzzz-own-1', 'zzzz-own-2', '0000-universal'], array_map(static fn(Conversion $c): string => $c->getId(), $result->toArray()));
+    }
 }

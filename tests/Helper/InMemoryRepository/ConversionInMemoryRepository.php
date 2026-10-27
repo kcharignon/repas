@@ -22,7 +22,8 @@ class ConversionInMemoryRepository extends AbstractInMemoryRepository implements
 
     public function findByIngredientOrCommon(Ingredient $ingredient): Tab
     {
-        return $this->models->filter(fn (Conversion $conversion) => $conversion->getIngredient() === null || $conversion->getIngredient()->isEqual($ingredient));
+        // Les conversions propres d'abord, comme le repository de la base
+        return $this->findByIngredient($ingredient)->merge($this->models->filter(fn (Conversion $conversion) => $conversion->getIngredient() === null));
     }
 
     public function findByIngredient(Ingredient $ingredient): Tab
@@ -34,6 +35,11 @@ class ConversionInMemoryRepository extends AbstractInMemoryRepository implements
     public function save(Conversion $conversion): void
     {
         $this->models[$conversion->getId()] = $conversion;
+    }
+
+    public function delete(Conversion $conversion): void
+    {
+        unset($this->models[$conversion->getId()]);
     }
 
     public function findAll(): Tab

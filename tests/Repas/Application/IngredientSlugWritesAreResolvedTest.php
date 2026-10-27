@@ -18,8 +18,12 @@ use Repas\Repas\Application\Command\AddSpokenIngredient\AddSpokenIngredientHandl
 use Repas\Repas\Application\Command\CopyRecipe\CopyRecipeCommand;
 use Repas\Repas\Application\Command\CopyRecipe\CopyRecipeHandler;
 use Repas\Repas\Application\Command\CreateConversion\CreateConversionCommand;
+use Repas\Repas\Application\Command\CreateIngredientConversion\CreateIngredientConversionCommand;
+use Repas\Repas\Application\Command\CreateIngredientConversion\CreateIngredientConversionHandler;
 use Repas\Repas\Application\Command\CreateRecipe\CreateRecipeHandler;
 use Repas\Repas\Application\Command\CreateRecipe\CreateRecipeRowSubCommand;
+use Repas\Repas\Application\Command\DeleteIngredientConversion\DeleteIngredientConversionCommand;
+use Repas\Repas\Application\Command\DeleteIngredientConversion\DeleteIngredientConversionHandler;
 use Repas\Repas\Application\Command\MergeIngredients\MergeIngredientsCommand;
 use Repas\Repas\Application\Command\MergeIngredients\MergeIngredientsHandler;
 use Repas\Repas\Application\Command\RememberSpokenPhrase\RememberSpokenPhraseCommand;
@@ -29,6 +33,8 @@ use Repas\Repas\Application\Command\RemoveIngredientToShoppingList\RemoveIngredi
 use Repas\Repas\Application\Command\RemoveSpokenIngredient\RemoveSpokenIngredientCommand;
 use Repas\Repas\Application\Command\RemoveSpokenIngredient\RemoveSpokenIngredientHandler;
 use Repas\Repas\Application\Command\UpdateConversion\UpdateConversionCommand;
+use Repas\Repas\Application\Command\UpdateIngredientConversion\UpdateIngredientConversionCommand;
+use Repas\Repas\Application\Command\UpdateIngredientConversion\UpdateIngredientConversionHandler;
 use Repas\Repas\Application\Command\UpdateRecipe\UpdateRecipeHandler;
 use Repas\Repas\Application\Command\UpdateRecipe\UpdateRecipeRowSubCommand;
 use Repas\Repas\Application\Service\IngredientSlugResolver;
@@ -72,6 +78,9 @@ class IngredientSlugWritesAreResolvedTest extends TestCase
         ChoiceIntent::class => SaveProductChoicesHandler::class,
         ReplaceIngredientPreferenceCommand::class => ReplaceIngredientPreferenceHandler::class,
         ForgetChoiceCommand::class => ForgetChoiceHandler::class,
+        CreateIngredientConversionCommand::class => CreateIngredientConversionHandler::class,
+        UpdateIngredientConversionCommand::class => UpdateIngredientConversionHandler::class,
+        DeleteIngredientConversionCommand::class => DeleteIngredientConversionHandler::class,
     ];
 
     /**

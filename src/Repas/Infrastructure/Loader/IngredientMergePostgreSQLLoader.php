@@ -170,7 +170,8 @@ final readonly class IngredientMergePostgreSQLLoader implements IngredientMergeL
     private function graphOf(string $slug): ConversionGraph
     {
         $rows = $this->connection()->fetchAllNumeric(
-            'SELECT start_unit, end_unit, coefficient FROM conversion WHERE ingredient = :slug OR ingredient IS NULL',
+            // Les conversions propres d'abord (l'ordre des arêtes de `ConversionRepository::findByIngredientOrCommon`)
+            'SELECT start_unit, end_unit, coefficient FROM conversion WHERE ingredient = :slug OR ingredient IS NULL ORDER BY (ingredient IS NULL), id',
             ['slug' => $slug],
         );
 
