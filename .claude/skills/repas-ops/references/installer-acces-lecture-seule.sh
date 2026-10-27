@@ -62,6 +62,7 @@ Demandes permises (lecture seule) :
   drapeau NOM                valeur d'un drapeau non secret : DRIVE_ENABLED INGREDIENT_SEEDING_ENABLED ALEXA_ENABLED APP_LATEST_VERSION APP_MIN_VERSION
   sauvegardes                dernières sauvegardes et fin du journal du cron
   rapport comptes|listes|migrations   comptes par statut, listes par statut, 5 dernières migrations
+  rapport conversions|unites          conversions universelles et décomptes des conversions propres, unités et leur mesure (données de référence, aucun contenu d'utilisateur)
   graine                     amorçage des ingrédients : rapport de santé (--check, lecture seule)
 AIDE
 		;;
@@ -115,7 +116,15 @@ AIDE
 			comptes) SQL='SELECT status, count(*) FROM "user" GROUP BY 1 ORDER BY 1' ;;
 			listes) SQL='SELECT status, count(*) FROM shopping_list GROUP BY 1 ORDER BY 1' ;;
 			migrations) SQL='SELECT version, executed_at FROM doctrine_migration_versions ORDER BY executed_at DESC LIMIT 5' ;;
-			*) refuse "rapport inconnu (comptes, listes, migrations)" ;;
+			# Les conversions universelles (sans ingrédient) sont des données de référence ; le reste n'est que des décomptes
+			conversions) SQL="SELECT 'universelle' AS rubrique, start_unit || ' > ' || end_unit || ' x ' || coefficient::text AS valeur FROM conversion WHERE ingredient IS NULL
+UNION ALL SELECT 'ingredient vide (texte)', count(*)::text FROM conversion WHERE ingredient = ''
+UNION ALL SELECT 'conversions propres', count(*)::text FROM conversion WHERE ingredient IS NOT NULL AND ingredient <> ''
+UNION ALL SELECT 'ingredients sans conversion propre', count(*)::text FROM ingredient i WHERE NOT EXISTS (SELECT 1 FROM conversion v WHERE v.ingredient = i.slug)
+UNION ALL SELECT 'copies avec moins de conversions que leur original', count(*)::text FROM ingredient o JOIN ingredient c ON c.slug = o.adopted_from WHERE (SELECT count(*) FROM conversion v WHERE v.ingredient = o.slug) < (SELECT count(*) FROM conversion v WHERE v.ingredient = c.slug)
+UNION ALL SELECT 'ingredients dont les unites different', count(*)::text FROM ingredient WHERE default_cooking_unit <> default_purchase_unit" ;;
+			unites) SQL="SELECT 'unite' AS rubrique, slug || ' ' || coalesce(dimension, '-') || ' ' || coalesce(base_factor::text, '-') AS valeur FROM unit ORDER BY slug" ;;
+			*) refuse "rapport inconnu (comptes, listes, migrations, conversions, unites)" ;;
 		esac
 		# Transaction en lecture seule imposée côté serveur, quel que soit le texte de la requête
 		docker compose exec -T -e PGOPTIONS='-c default_transaction_read_only=on' database \

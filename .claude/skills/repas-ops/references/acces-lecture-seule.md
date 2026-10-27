@@ -16,6 +16,7 @@ La règle de permission `Bash(ssh * root@64.227.124.100 *)` laisse l'assistant l
 | `drapeau NOM` | vérifier qu'un interrupteur est allumé ou coupé (`DRIVE_ENABLED`, `INGREDIENT_SEEDING_ENABLED`, `ALEXA_ENABLED`, `APP_LATEST_VERSION`, `APP_MIN_VERSION`) | `printenv NOM` dans le conteneur, liste fermée de noms non secrets |
 | `sauvegardes` | vérifier la sauvegarde de la nuit | `ls backups`, fin de `cron.log` |
 | `rapport comptes\|listes\|migrations` | recette : comptes par statut, listes par statut, dernières migrations | une requête SQL fixe, base ouverte **en lecture seule** |
+| `rapport conversions\|unites` | les conversions universelles (données de référence), des décomptes de conversions propres, les unités et leur mesure | une requête SQL fixe, aucun contenu d'utilisateur |
 | `graine` | santé de l'amorçage des ingrédients | `repas:ingredients:seed --check` (lecture seule) |
 
 Tout le reste reste à l'utilisateur, comme aujourd'hui : écrire un drapeau, rouvrir des listes, restaurer, déployer à la main (`! ssh … 'bash -s' < script`).
