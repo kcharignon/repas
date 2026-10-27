@@ -19,6 +19,14 @@ final readonly class RecipeRowDTO
         public string $unitSlug,
         #[OA\Property(description: 'Symbole de l\'unité (peut être vide)', example: 'g')]
         public string $unitSymbol,
+        #[OA\Property(description: 'Nom de l\'unité de la ligne', example: 'cuillère à soupe')]
+        public string $unitName,
+        #[OA\Property(description: 'Identifiant de l\'unité d\'achat de l\'ingrédient (slug)', example: 'kilo')]
+        public string $purchaseUnitSlug,
+        #[OA\Property(description: 'Nom de l\'unité d\'achat de l\'ingrédient', example: 'kilo')]
+        public string $purchaseUnitName,
+        #[OA\Property(description: 'L\'unité de la ligne se convertit en l\'unité d\'achat de l\'ingrédient (ses conversions propres et les universelles, comme à la planification) ; faux : la recette ne peut pas être planifiée tant que la conversion manque', example: true)]
+        public bool $convertible,
     ) {
     }
 }
