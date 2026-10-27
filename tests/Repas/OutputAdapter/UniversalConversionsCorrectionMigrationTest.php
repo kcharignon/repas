@@ -36,7 +36,7 @@ class UniversalConversionsCorrectionMigrationTest extends DatabaseTestCase
 
     public function testTheThirteenLinesAreTheSameInTheDomainTheTwoMigrationsAndTheReferenceFile(): void
     {
-        // Given : le fichier que charge la fixture du groupe `prod`
+        // Given : le fichier que charge la fixture des conversions
         $rows = json_decode((string) file_get_contents(dirname(__DIR__, 3) . '/src/Repas/Infrastructure/DataFixture/Data/' . ConversionFixture::FILE_NAME), true, flags: JSON_THROW_ON_ERROR);
         $universal = array_values(array_filter($rows, static fn(array $row): bool => $row['ingredient'] === null));
 

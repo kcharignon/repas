@@ -46,7 +46,7 @@ class UniversalConversionsMigrationTest extends DatabaseTestCase
 
     public function testTheReferenceDataHoldTheThirteenUniversalConversionsAndLoadThemInProduction(): void
     {
-        // Given : le fichier que charge la fixture du groupe `prod`
+        // Given : le fichier que charge la fixture des conversions
         $rows = json_decode((string) file_get_contents(dirname(__DIR__, 3) . '/src/Repas/Infrastructure/DataFixture/Data/' . ConversionFixture::FILE_NAME), true, flags: JSON_THROW_ON_ERROR);
 
         // When
@@ -61,7 +61,6 @@ class UniversalConversionsMigrationTest extends DatabaseTestCase
             array_map(static fn(array $row): array => [$row['id'], $row['start_unit'], $row['end_unit'], $row['coefficient']], $universal),
             Version20261027100000::UNIVERSAL_CONVERSIONS,
         );
-        $this->assertContains('prod', ConversionFixture::getGroups());
     }
 
     public function testItCreatesTheUniversalConversionsOnAnEmptyTableAndReplayingItChangesNothing(): void

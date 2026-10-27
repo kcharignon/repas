@@ -3,7 +3,6 @@ imports:
     - { resource: repositories.yaml }
 
 parameters:
-    env(ADMIN_PASSWORD): '%env(ADMIN_PASSWORD)%'
     # Le cookie du refresh token (ADR 0015) n'est envoyé qu'en HTTPS ; le client de test parle en HTTP
     app.refresh_cookie_secure: true
 
@@ -24,6 +23,9 @@ services:
             - '../src/DependencyInjection/'
             - '../src/Entity/'
             - '../src/Kernel.php'
+            # Les fixtures étendent des classes de doctrine/doctrine-fixtures-bundle (dépendance de développement, bundle chargé en dev et en test) :
+            # elles ne sont des services que dans ces deux environnements (blocs `when@dev` et `when@test` plus bas)
+            - '../src/*/Infrastructure/DataFixture/'
 
     Repas\Command\ResetDatabaseCommand:
         tags: ['console.command']
@@ -81,7 +83,20 @@ services:
         public: true
 
     Repas\User\Domain\Service\UserChecker: ~
-    
+
+
+when@dev:
+    services:
+        # Fixtures de développement (voir l'exclusion de `Repas\` plus haut)
+        Repas\Repas\Infrastructure\DataFixture\:
+            resource: '../src/Repas/Infrastructure/DataFixture/'
+            autowire: true
+            autoconfigure: true
+
+        Repas\User\Infrastructure\DataFixture\:
+            resource: '../src/User/Infrastructure/DataFixture/'
+            autowire: true
+            autoconfigure: true
 
 when@test:
     parameters:
@@ -89,6 +104,17 @@ when@test:
         repas.adoption.environments: ['prod', 'dev', 'test']
 
     services:
+        # Fixtures de développement, chargées aussi par les tests de `DevelopmentFixturesTest` (voir l'exclusion de `Repas\` plus haut)
+        Repas\Repas\Infrastructure\DataFixture\:
+            resource: '../src/Repas/Infrastructure/DataFixture/'
+            autowire: true
+            autoconfigure: true
+
+        Repas\User\Infrastructure\DataFixture\:
+            resource: '../src/User/Infrastructure/DataFixture/'
+            autowire: true
+            autoconfigure: true
+
         # Pas de journal sur la sortie d'erreur : les tests qui provoquent une panne exprès (suppression ou amorçage qui échoue) n'affichent
         # plus de « Uncaught PHP Exception » ; ceux qui lisent un journal injectent leur propre espion (SpyLogger, BufferingLogger).
         logger:

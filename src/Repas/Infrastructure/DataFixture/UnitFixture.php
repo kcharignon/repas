@@ -15,7 +15,7 @@ class UnitFixture extends RepasFixture implements FixtureGroupInterface
 
     public static function getGroups(): array
     {
-        return ['prod', 'test', 'dev'];
+        return ['test', 'dev'];
     }
 
     /**

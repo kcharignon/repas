@@ -1,3 +1,9 @@
-doctrine_fixtures:
-    paths:
-        - '%kernel.project_dir%/src/Repas/Infrastructure/DataFixture'
+when@dev:
+    doctrine_fixtures:
+        paths:
+            - '%kernel.project_dir%/src/Repas/Infrastructure/DataFixture'
+
+when@test:
+    doctrine_fixtures:
+        paths:
+            - '%kernel.project_dir%/src/Repas/Infrastructure/DataFixture'
