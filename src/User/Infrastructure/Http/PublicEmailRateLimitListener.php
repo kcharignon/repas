@@ -48,7 +48,7 @@ final readonly class PublicEmailRateLimitListener
         private RateLimiterFactoryInterface $recipientLimiter,
         #[Autowire('%kernel.secret%')]
         #[SensitiveParameter]
-        private string $secret,
+        private string $key,
     ) {
     }
 
@@ -60,7 +60,7 @@ final readonly class PublicEmailRateLimitListener
 
         $recipient = $this->recipientOf($event);
         if ($recipient !== null) {
-            $this->assertAccepted($this->recipientLimiter->create(hash_hmac('sha256', $recipient, $this->secret))->consume());
+            $this->assertAccepted($this->recipientLimiter->create(hash_hmac('sha256', $recipient, $this->key))->consume());
         }
 
         $this->assertAccepted($this->publicEmailLimiter->create(self::KEY)->consume());
