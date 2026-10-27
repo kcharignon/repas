@@ -4,6 +4,7 @@ namespace Repas\Repas\Infrastructure\Loader;
 
 use Doctrine\ORM\EntityManagerInterface;
 use Repas\Repas\Infrastructure\Entity\Ingredient;
+use Repas\Repas\Infrastructure\Visibility\IngredientVisibility;
 use Repas\Shared\Application\Interface\IngredientNameLoader;
 
 final readonly class IngredientNamePostgreSQLLoader implements IngredientNameLoader
@@ -13,7 +14,7 @@ final readonly class IngredientNamePostgreSQLLoader implements IngredientNameLoa
     ) {
     }
 
-    public function namesBySlug(array $slugs): array
+    public function namesBySlug(string $userId, array $slugs): array
     {
         if ($slugs === []) {
             return [];
@@ -23,7 +24,9 @@ final readonly class IngredientNamePostgreSQLLoader implements IngredientNameLoa
             ->select('i.slug AS slug', 'i.name AS name')
             ->from(Ingredient::class, 'i')
             ->where('i.slug IN (:slugs)')
+            ->andWhere(IngredientVisibility::visibleBy('i', 'userId'))
             ->setParameter('slugs', array_values(array_unique($slugs)))
+            ->setParameter('userId', $userId)
             ->getQuery()
             ->getArrayResult();
 

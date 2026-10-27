@@ -20,8 +20,11 @@ use Repas\Drive\Domain\Model\Retailer;
 use Repas\Drive\Infrastructure\Loader\ChoicePostgreSQLLoader;
 use Repas\Tests\Helper\Builder\ChoiceBuilder;
 use Repas\Tests\Helper\Builder\DriveSettingsBuilder;
+use Repas\Tests\Helper\Builder\IngredientBuilder;
 use Repas\Tests\Helper\Builder\ProductBuilder;
+use Repas\Tests\Helper\Builder\UserBuilder;
 use Repas\Tests\Helper\DatabaseTestCase;
+use Repas\Tests\Helper\DataPersister;
 use Repas\Tests\Helper\InMemoryLoader\IngredientNameInMemoryLoader;
 use Repas\Tests\Helper\SqlBudget\QueryCounter;
 
@@ -209,6 +212,44 @@ class ChoicePostgreSQLLoaderTest extends DatabaseTestCase
         $this->assertSame(['farine'], $this->slugs('user-1'));
         $this->assertSame(['lait'], $this->slugs('user-2'));
         $this->assertSame([], $this->slugs('user-3'));
+    }
+
+    public function testTheNamesAreAskedForTheUserOfTheList(): void
+    {
+        // Given
+        $this->settings->save(new DriveSettingsBuilder()->withUserId('user-1')->build());
+        $this->choices->save(new ChoiceBuilder()->withUserId('user-1')->withIngredientSlug('farine')->haveAtHome()->build());
+        $names = new IngredientNameInMemoryLoader(['farine' => 'Farine']);
+
+        // When
+        new ChoicePostgreSQLLoader($this->entityManager, $names)->list('user-1', Retailer::LECLERC);
+
+        // Then
+        $this->assertSame([['userId' => 'user-1', 'slugs' => ['farine']]], $names->namesBySlugCalls);
+    }
+
+    public function testTheNameOfAnIngredientOfAnotherUserIsNotShown(): void
+    {
+        // Given : un choix de user-1 sur le slug d'un ingrédient de user-2, un autre sur son propre ingrédient
+        $persister = new DataPersister(static::getContainer());
+        $persister->saveIngredient(new IngredientBuilder()->isButter()->withName('Sel fin')->withSlug('sel')->withCreator(new UserBuilder()->withId('user-1')->build())->build());
+        $persister->saveIngredient(new IngredientBuilder()->isButter()->withName('Farine de blé')->withSlug('farine')->withCreator(new UserBuilder()->withId('user-2')->build())->build());
+        $this->settings->save(new DriveSettingsBuilder()->withUserId('user-1')->build());
+        $this->choices->saveAll([
+            new ChoiceBuilder()->withUserId('user-1')->withIngredientSlug('farine')->haveAtHome()->build(),
+            new ChoiceBuilder()->withUserId('user-1')->withIngredientSlug('sel')->haveAtHome()->build(),
+        ]);
+        $this->entityManager->clear();
+
+        // When : avec le vrai port des noms d'ingrédients
+        $result = static::getContainer()->get(ChoiceLoader::class)->list('user-1', Retailer::LECLERC);
+
+        // Then : le nom de son ingrédient pour l'un, le slug seul pour l'autre
+        $names = [];
+        foreach ($result as $choice) {
+            $names[$choice->ingredientSlug] = $choice->ingredientName;
+        }
+        $this->assertSame(['farine' => 'farine', 'sel' => 'Sel fin'], $names);
     }
 
     public function testWithoutSettingsTheListIsEmpty(): void
