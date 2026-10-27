@@ -16,6 +16,16 @@ final class Recipe implements ModelInterface
 
     use ModelTrait;
 
+    /** Nombre de personnes d'une recette : de 1 à 100, comme celui d'un repas (`Meal`) et celui d'un compte. */
+    public const int MIN_SERVING = 1;
+    public const int MAX_SERVING = 100;
+
+    /** Lignes d'une recette : une recette en a une dizaine, jamais cent. */
+    public const int MAX_ROWS = 100;
+
+    /** Recettes qu'un auteur peut écrire (la copie de celle d'un autre n'est pas comptée). */
+    public const int MAX_PER_AUTHOR = 1000;
+
     /**
      * @param Tab<RecipeRow> $rows
      */
@@ -95,8 +105,12 @@ final class Recipe implements ModelInterface
         return $this;
     }
 
+    /**
+     * @throws RecipeException le nombre de personnes est hors de 1 à 100
+     */
     public function setServing(int $serving): Recipe
     {
+        self::assertServing($serving);
         $this->serving = $serving;
         return $this;
     }
@@ -107,8 +121,13 @@ final class Recipe implements ModelInterface
         return $this;
     }
 
+    /**
+     * @param Tab<RecipeRow> $rows
+     * @throws RecipeException il y a plus de lignes que `MAX_ROWS`
+     */
     public function setRows(Tab $rows): Recipe
     {
+        self::assertRowCount($rows->count());
         $this->rows = $rows;
         return $this;
     }
@@ -138,6 +157,11 @@ final class Recipe implements ModelInterface
         );
     }
 
+    /**
+     * @param Tab<RecipeRow> $rows
+     * @throws RecipeException le nombre de personnes est hors de 1 à 100, ou il y a plus de lignes que `MAX_ROWS`
+     * @throws IngredientException un ingrédient n'est pas à l'auteur
+     */
     public static function create(
         string  $id,
         string  $name,
@@ -147,6 +171,9 @@ final class Recipe implements ModelInterface
         Tab     $rows,
         ?string $originalId,
     ): self {
+        self::assertServing($servings);
+        self::assertRowCount($rows->count());
+
         $recipe = new self($id, $name, $servings, $authorId, $recipeType, $rows, $originalId);
         foreach ($rows as $row) {
             $recipe->assertIngredientIsAvailable($row->getIngredient());
@@ -223,15 +250,25 @@ final class Recipe implements ModelInterface
         return $this->rows->map(fn(RecipeRow $row) => $row->multiplyQuantityBy($serving/$this->serving));
     }
 
+    /**
+     * @throws RecipeException le nombre de personnes est hors de 1 à 100
+     */
     public function update(string $name, RecipeType $type, int $serving): void
     {
+        self::assertServing($serving);
+
         $this->name = $name;
         $this->type = $type;
         $this->serving = $serving;
     }
 
+    /**
+     * @throws RecipeException la recette a déjà `MAX_ROWS` lignes, ou la quantité n'est pas valide
+     * @throws IngredientException l'ingrédient n'est pas à l'auteur
+     */
     public function addRow(Ingredient $ingredient, Unit $unit, float $quantity): void
     {
+        self::assertRowCount($this->rows->count() + 1);
         $this->assertIngredientIsAvailable($ingredient);
 
         $row = RecipeRow::create(
@@ -242,6 +279,20 @@ final class Recipe implements ModelInterface
             unit: $unit
         );
         $this->rows[] = $row;
+    }
+
+    private static function assertServing(int $serving): void
+    {
+        if ($serving < self::MIN_SERVING || $serving > self::MAX_SERVING) {
+            throw RecipeException::invalidServing();
+        }
+    }
+
+    private static function assertRowCount(int $count): void
+    {
+        if ($count > self::MAX_ROWS) {
+            throw RecipeException::tooManyRows();
+        }
     }
 
     /**

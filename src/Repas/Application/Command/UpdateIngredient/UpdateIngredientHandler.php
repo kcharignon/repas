@@ -11,6 +11,7 @@ use Repas\Repas\Domain\Interface\IngredientRepository;
 use Repas\Repas\Domain\Interface\UnitRepository;
 use Repas\Repas\Domain\Model\Conversion;
 use Repas\Repas\Domain\Model\Ingredient;
+use Repas\Repas\Domain\Model\QuantityBounds;
 use Repas\Repas\Domain\Model\Unit;
 use Repas\Repas\Domain\Service\ConversionService;
 use Repas\Shared\Application\Interface\IngredientCatalogOwner;
@@ -92,7 +93,7 @@ readonly class UpdateIngredientHandler
 
             return false;
         }
-        if (!is_finite($coefficient) || $coefficient <= 0) {
+        if (!QuantityBounds::isCoefficient($coefficient)) {
             throw IngredientException::invalidCoefficient();
         }
 

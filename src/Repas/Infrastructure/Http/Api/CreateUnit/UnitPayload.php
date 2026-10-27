@@ -4,6 +4,8 @@ namespace Repas\Repas\Infrastructure\Http\Api\CreateUnit;
 
 
 use OpenApi\Attributes as OA;
+use Repas\Repas\Domain\Model\QuantityBounds;
+use Repas\Repas\Infrastructure\Http\PayloadMessages;
 use Repas\Shared\Domain\Model\Dimension;
 use Symfony\Component\Validator\Constraints as Assert;
 
@@ -31,11 +33,14 @@ final readonly class UnitPayload
             nullable: true,
         )]
         public ?Dimension $dimension = null,
-        #[Assert\Positive]
+        #[Assert\GreaterThanOrEqual(QuantityBounds::MIN_COEFFICIENT, message: PayloadMessages::BASE_FACTOR)]
+        #[Assert\LessThanOrEqual(QuantityBounds::MAX_COEFFICIENT, message: PayloadMessages::BASE_FACTOR)]
         #[OA\Property(
-            description: "Combien d'unités de base (g, ml, pièce) vaut une unité, strictement positif : 1000 pour le kilo. Va avec `dimension` ; sans importance pour `PACKAGE` (1).",
+            description: "Combien d'unités de base (g, ml, pièce) vaut une unité, de 0,000001 à 1 000 000 : 1000 pour le kilo. Va avec `dimension` ; sans importance pour `PACKAGE` (1).",
             example: 1000,
             nullable: true,
+            minimum: 0.000001,
+            maximum: 1000000,
         )]
         public ?float $baseFactor = null,
     ) {

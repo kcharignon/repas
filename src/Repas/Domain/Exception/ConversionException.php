@@ -12,6 +12,7 @@ final class ConversionException extends DomainException
     public const string CONVERSION_ALREADY_EXISTS = 'CONVERSION_ALREADY_EXISTS';
     public const string CONVERSION_REQUIRED_BY_INGREDIENT = 'CONVERSION_REQUIRED_BY_INGREDIENT';
     public const string CONVERSION_SAME_UNIT = 'CONVERSION_SAME_UNIT';
+    public const string COEFFICIENT_INVALID = 'CONVERSION_COEFFICIENT_INVALID';
 
     public static function notFound(string $id): static
     {
@@ -43,6 +44,14 @@ final class ConversionException extends DomainException
     public static function requiredByIngredient(): static
     {
         return new static(self::CONVERSION_REQUIRED_BY_INGREDIENT, 422);
+    }
+
+    /**
+     * Le coefficient d'une conversion est un nombre fini de 0,000001 à 1 000 000 (`QuantityBounds`). Règle métier, `422`.
+     */
+    public static function invalidCoefficient(): static
+    {
+        return new static(self::COEFFICIENT_INVALID, 422);
     }
 
     /** Une conversion relie deux unités différentes. */

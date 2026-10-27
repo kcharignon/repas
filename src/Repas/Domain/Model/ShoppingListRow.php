@@ -3,6 +3,7 @@
 namespace Repas\Repas\Domain\Model;
 
 
+use Repas\Repas\Domain\Exception\ShoppingListException;
 use Repas\Shared\Domain\Model\ModelInterface;
 use Repas\Shared\Domain\Model\ModelTrait;
 use Repas\Shared\Domain\Tool\UuidGenerator;
@@ -21,12 +22,17 @@ final class ShoppingListRow implements ModelInterface
     ) {
     }
 
+    /**
+     * @throws ShoppingListException la quantité n'est pas un nombre fini
+     */
     public static function create(
         string $shoppingListId,
         string $ingredientSlug,
         string $unitSlug,
         float  $quantity,
     ): self {
+        self::assertFinite($quantity);
+
         return new self(
             id: UuidGenerator::new(),
             shoppingListId: $shoppingListId,
@@ -79,14 +85,29 @@ final class ShoppingListRow implements ModelInterface
         );
     }
 
+    /**
+     * @throws ShoppingListException le total n'est pas un nombre fini
+     */
     public function addQuantity(float $quantity): void
     {
+        self::assertFinite($this->quantity + $quantity);
         $this->quantity += $quantity;
     }
 
+    /**
+     * @throws ShoppingListException le reste n'est pas un nombre fini
+     */
     public function subtractQuantity(float $quantity): void
     {
+        self::assertFinite($this->quantity - $quantity);
         $this->quantity -= $quantity;
+    }
+
+    private static function assertFinite(float $quantity): void
+    {
+        if (!is_finite($quantity)) {
+            throw ShoppingListException::invalidQuantity();
+        }
     }
 
     public function tick(): void

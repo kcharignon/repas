@@ -57,7 +57,7 @@ final class Unit implements ModelInterface
     }
 
     /**
-     * @throws UnitException la dimension et le facteur de base ne vont pas ensemble, ou le facteur n'est pas strictement positif
+     * @throws UnitException la dimension et le facteur de base ne vont pas ensemble, ou le facteur n'est pas un nombre fini de 0,000001 à 1 000 000
      */
     public static function create(
         string $name,
@@ -97,7 +97,7 @@ final class Unit implements ModelInterface
     /**
      * Remplace la dimension et le facteur de base ensemble (`null`, `null` les efface).
      *
-     * @throws UnitException la dimension et le facteur de base ne vont pas ensemble, ou le facteur n'est pas strictement positif
+     * @throws UnitException la dimension et le facteur de base ne vont pas ensemble, ou le facteur n'est pas un nombre fini de 0,000001 à 1 000 000
      */
     public function setMeasure(?Dimension $dimension, ?float $baseFactor): static
     {
@@ -118,7 +118,7 @@ final class Unit implements ModelInterface
             throw UnitException::incompleteMeasure();
         }
 
-        if ($baseFactor !== null && (!is_finite($baseFactor) || $baseFactor <= 0)) {
+        if ($baseFactor !== null && !QuantityBounds::isCoefficient($baseFactor)) {
             throw UnitException::invalidBaseFactor();
         }
     }

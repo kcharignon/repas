@@ -21,6 +21,10 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, Passwor
     /** Adresse du compte protégé (voir `isProtected()`). */
     public const string PROTECTED_EMAIL = 'kantincharignon@gmail.com';
 
+    /** Nombre de personnes par défaut d'un compte : de 1 à 100, comme celui d'une recette et d'un repas. */
+    public const int MIN_SERVING = 1;
+    public const int MAX_SERVING = 100;
+
     /**
      * Écart minimal, en secondes, entre deux enregistrements de la dernière connexion d'un même compte (voir
      * `shouldRecordLogin()`) : une session ouverte se renouvelle toutes les heures, elle n'a pas besoin d'une écriture à chaque fois.
@@ -87,6 +91,8 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, Passwor
         DateTimeImmutable $createdAt,
         Status $status,
     ): static {
+        self::assertServing($defaultServing);
+
         return new static(
             $id,
             static::normalizeEmail($email),
@@ -204,10 +210,21 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, Passwor
         return $this->defaultServing;
     }
 
+    /**
+     * @throws UserException le nombre de personnes est hors de 1 à 100
+     */
     public function setDefaultServing(int $defaultServing): User
     {
+        self::assertServing($defaultServing);
         $this->defaultServing = $defaultServing;
         return $this;
+    }
+
+    private static function assertServing(int $serving): void
+    {
+        if ($serving < self::MIN_SERVING || $serving > self::MAX_SERVING) {
+            throw UserException::invalidServing();
+        }
     }
 
     public function getStatus(): Status

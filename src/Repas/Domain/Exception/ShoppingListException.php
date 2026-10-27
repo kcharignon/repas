@@ -13,6 +13,10 @@ final class ShoppingListException extends DomainException
     public const string NOT_SENDABLE = 'SHOPPING_LIST_NOT_SENDABLE';
     public const string NOT_SENT = 'SHOPPING_LIST_NOT_SENT';
     public const string EMPTY = 'SHOPPING_LIST_EMPTY';
+    // Messages des bornes d'une liste : le front les distingue, ils ne se renomment pas
+    public const string QUANTITY_INVALID = 'SHOPPING_LIST_QUANTITY_INVALID';
+    public const string MEAL_LIMIT_REACHED = 'SHOPPING_LIST_MEAL_LIMIT_REACHED';
+    public const string LIMIT_REACHED = 'SHOPPING_LIST_LIMIT_REACHED';
 
     /**
      * La liste est envoyée au drive : elle n'est plus modifiable, il faut la rouvrir (ADR 0023).
@@ -41,6 +45,30 @@ final class ShoppingListException extends DomainException
     public static function empty(string $id): static
     {
         return new static(self::EMPTY, 422);
+    }
+
+    /**
+     * Une quantité de ligne est un nombre fini : un calcul qui sortirait des flottants n'est jamais enregistré. Règle métier, `422`.
+     */
+    public static function invalidQuantity(): static
+    {
+        return new static(self::QUANTITY_INVALID, 422);
+    }
+
+    /**
+     * Une liste ne planifie pas plus de repas que `ShoppingList::MAX_MEALS`. Règle métier, `422`.
+     */
+    public static function mealLimitReached(): static
+    {
+        return new static(self::MEAL_LIMIT_REACHED, 422);
+    }
+
+    /**
+     * L'utilisateur a déjà toutes les listes que l'application lui permet de garder. Règle métier, `422`.
+     */
+    public static function limitReached(): static
+    {
+        return new static(self::LIMIT_REACHED, 422);
     }
 
     public static function shoppingListNotFound(string $id): static

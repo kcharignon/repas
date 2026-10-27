@@ -11,6 +11,7 @@ use Repas\Repas\Domain\Interface\IngredientRepository;
 use Repas\Repas\Domain\Interface\UnitRepository;
 use Repas\Repas\Domain\Model\Conversion;
 use Repas\Repas\Domain\Model\Ingredient;
+use Repas\Repas\Domain\Model\QuantityBounds;
 use Repas\Repas\Domain\Model\Unit;
 use Repas\Repas\Domain\Service\ConversionService;
 
@@ -32,17 +33,17 @@ readonly class IngredientOwnConversions
     }
 
     /**
-     * Les deux unités d'une conversion : strictement positive et finie (le HTTP le valide déjà ; le cas d'usage ne se fie pas à son appelant),
+     * Les deux unités d'une conversion : un coefficient fini de 0,000001 à 1 000 000 (le HTTP le valide déjà ; le cas d'usage ne se fie pas à son appelant),
      * deux unités connues et différentes.
      *
      * @return array{0: Unit, 1: Unit} l'unité de départ puis celle d'arrivée
-     * @throws IngredientException le coefficient n'est pas un nombre strictement positif
+     * @throws IngredientException le coefficient n'est pas un nombre fini de 0,000001 à 1 000 000
      * @throws UnitException une unité est inconnue
      * @throws ConversionException les deux unités sont les mêmes
      */
     public function units(string $startUnitSlug, string $endUnitSlug, float $coefficient): array
     {
-        if (!is_finite($coefficient) || $coefficient <= 0) {
+        if (!QuantityBounds::isCoefficient($coefficient)) {
             throw IngredientException::invalidCoefficient();
         }
         $start = $this->unitRepository->findOneBySlug($startUnitSlug);

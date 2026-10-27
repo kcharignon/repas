@@ -2,6 +2,7 @@
 
 namespace Repas\Repas\Domain\Model;
 
+use Repas\Repas\Domain\Exception\RecipeException;
 use Repas\Shared\Domain\Model\ModelInterface;
 use Repas\Shared\Domain\Model\ModelTrait;
 
@@ -43,14 +44,29 @@ final class RecipeRow implements ModelInterface
         return $this->quantity;
     }
 
+    /**
+     * @throws RecipeException la quantité n'est pas un nombre fini, strictement positif, d'un million au plus
+     */
     public function setQuantity(float $quantity): void
     {
+        self::assertQuantity($quantity);
         $this->quantity = $quantity;
     }
 
+    /**
+     * Met la quantité à l'échelle (nombre de personnes d'un repas) : le produit reste un nombre fini, sans quoi il ne s'écrirait ni en liste ni
+     * en JSON. Pas de maximum ici : une recette d'un million pour 100 personnes dépasse un million.
+     *
+     * @throws RecipeException le produit n'est pas un nombre fini
+     */
     public function multiplyQuantityBy(float $coefficient): self
     {
-        $this->quantity *= $coefficient;
+        $scaled = $this->quantity * $coefficient;
+        if (!is_finite($scaled)) {
+            throw RecipeException::invalidQuantity();
+        }
+        $this->quantity = $scaled;
+
         return $this;
     }
 
@@ -86,6 +102,9 @@ final class RecipeRow implements ModelInterface
         );
     }
 
+    /**
+     * @throws RecipeException la quantité n'est pas un nombre fini, strictement positif, d'un million au plus
+     */
     public static function create(
         string $id,
         string $recipeId,
@@ -93,6 +112,8 @@ final class RecipeRow implements ModelInterface
         float $quantity,
         Unit $unit
     ): self {
+        self::assertQuantity($quantity);
+
         return new self($id, $recipeId, $ingredient, $quantity, $unit);
     }
 
@@ -106,13 +127,21 @@ final class RecipeRow implements ModelInterface
         string $recipeId,
         Ingredient $ingredient,
     ): self {
-        return self::create(
+        // Copie fidèle : la quantité de l'original n'est pas jugée à nouveau (une donnée plus ancienne que les bornes se copie telle quelle)
+        return new self(
             id: $id,
             recipeId: $recipeId,
             ingredient: $ingredient,
             quantity: $originalRow->getQuantity(),
             unit: $originalRow->getUnit(),
         );
+    }
+
+    private static function assertQuantity(float $quantity): void
+    {
+        if (!QuantityBounds::isQuantity($quantity)) {
+            throw RecipeException::invalidQuantity();
+        }
     }
 
     public function getDepartment(): Department
