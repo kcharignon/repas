@@ -15,6 +15,7 @@ parameters:
     scanFiles:
         - migrations/Version20261024120000.php
         - migrations/Version20261027100000.php
+        - migrations/Version20261027150000.php
 
 services:
     -

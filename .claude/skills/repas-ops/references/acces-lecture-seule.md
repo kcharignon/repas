@@ -18,6 +18,7 @@ La règle de permission `Bash(ssh * root@64.227.124.100 *)` laisse l'assistant l
 | `rapport comptes\|listes\|migrations` | recette : comptes par statut, listes par statut, dernières migrations | une requête SQL fixe, base ouverte **en lecture seule** |
 | `rapport conversions\|unites` | les conversions universelles (données de référence), des décomptes de conversions propres, les unités et leur mesure | une requête SQL fixe, aucun contenu d'utilisateur |
 | `graine` | santé de l'amorçage des ingrédients | `repas:ingredients:seed --check` (lecture seule) |
+| `conversions` | santé des conversions : les 13 universelles de référence présentes ou manquantes, les conversions propres qui répètent une paire universelle (détournées), par compte les ingrédients et lignes de recettes non convertibles ; verdict VERT / À REGARDER | `repas:conversions:check` (lecture seule, aucun e-mail, aucun identifiant, aucun nom) |
 
 Tout le reste reste à l'utilisateur, comme aujourd'hui : écrire un drapeau, rouvrir des listes, restaurer, déployer à la main (`! ssh … 'bash -s' < script`).
 
