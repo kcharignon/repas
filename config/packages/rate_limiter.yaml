@@ -26,6 +26,13 @@ framework:
             policy: fixed_window
             limit: 5
             interval: '15 minutes'
+        # Emails envoyés sans jeton (inscription, renvoi du lien de confirmation, mot de passe oublié), TOUTES adresses confondues
+        # (PublicEmailRateLimitListener) : le fournisseur d'envoi a un quota par jour, que tous ces envois se partagent. Compté pour
+        # chaque requête au corps valide, qu'un email parte ou non : la réponse ne dépend pas de l'existence du compte.
+        public_email:
+            policy: sliding_window
+            limit: 100
+            interval: '1 hour'
         # Inscription publique (POST /api/v1/users), par adresse IP (RegisterNewUserRateLimitListener) : un compte créé n'a
         # ni confirmation d'email ni captcha, c'est ce plafond qui limite la création en masse (ADR 0008).
         registration:
@@ -110,6 +117,8 @@ when@test:
             login_email:
                 cache_pool: test.rate_limiter_pool
             password_check:
+                cache_pool: test.rate_limiter_pool
+            public_email:
                 cache_pool: test.rate_limiter_pool
             registration:
                 cache_pool: test.rate_limiter_pool
