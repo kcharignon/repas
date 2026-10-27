@@ -137,7 +137,7 @@ final class HandleAlexaRequestApiController extends AbstractController
             if ($known !== null) {
                 // Un échec CONNU d'un repas : une phrase claire (rien n'est écrit, le bus a tout annulé) ; la raison suffit au journal, jamais le nom de la recette
                 $this->logger->warning(sprintf('Repas impossible : %s.', $known->reason), $context);
-                $response = AlexaResponse::say((string) VoiceReplies::mealFailure($known->reason, $known->recipeName));
+                $response = AlexaResponse::say((string) VoiceReplies::mealFailure($known->reason, $known->recipeName, $known->ingredientName));
             } else {
                 $this->logger->error($this->failureMessage($context), $context);
                 $response = AlexaResponse::say(VoiceReplies::FAILURE);
@@ -175,7 +175,7 @@ final class HandleAlexaRequestApiController extends AbstractController
     private function knownMealFailure(Throwable $exception): ?SpokenMealFailure
     {
         for ($current = $exception; $current !== null; $current = $current->getPrevious()) {
-            if ($current instanceof SpokenMealFailure && VoiceReplies::mealFailure($current->reason, $current->recipeName) !== null) {
+            if ($current instanceof SpokenMealFailure && VoiceReplies::mealFailure($current->reason, $current->recipeName, $current->ingredientName) !== null) {
                 return $current;
             }
         }

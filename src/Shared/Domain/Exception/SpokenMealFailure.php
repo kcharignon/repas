@@ -20,13 +20,18 @@ final class SpokenMealFailure extends DomainException
     private function __construct(
         public readonly string $reason,
         public readonly ?string $recipeName,
+        public readonly ?string $ingredientName = null,
     ) {
         parent::__construct($reason, 422);
     }
 
-    public static function missingConversion(string $recipeName): self
+    /**
+     * @param ?string $ingredientName l'ingrédient (de l'utilisateur) dont l'unité ne se convertit pas : Alexa le nomme, comme l'application ; `null` quand
+     *                                on ne le sait pas (la phrase retombe sur le nom de la recette). Comme le nom de la recette : dit à son propriétaire, jamais journalisé.
+     */
+    public static function missingConversion(string $recipeName, ?string $ingredientName = null): self
     {
-        return new self(self::MISSING_CONVERSION, $recipeName);
+        return new self(self::MISSING_CONVERSION, $recipeName, $ingredientName);
     }
 
     public static function recipeGone(): self

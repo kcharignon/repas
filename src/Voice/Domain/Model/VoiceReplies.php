@@ -160,6 +160,8 @@ final class VoiceReplies
     public const string ASK_MEAL_NO_RECIPES_ITEM = "Tu n'as encore aucune recette dans Repas. C'est un produit ?";
     /** Un ingrédient de la recette n'a pas de conversion vers son unité d'achat : les quantités de la liste ne se calculent pas (X : le nom de la recette). */
     public const string MEAL_MISSING_CONVERSION = 'Je ne peux pas calculer les quantités de %s. Ouvre la recette dans Repas.';
+    /** Un ingrédient précis de la recette n'a pas de conversion vers son unité d'achat (comme l'application, qui le montre) : on le nomme. */
+    public const string MEAL_MISSING_CONVERSION_OF = "Il manque une conversion pour %s. Ouvre la recette dans Repas.";
     /** La recette n'existe plus dans Repas, ou n'est pas à l'utilisateur. */
     public const string MEAL_GONE = 'Je ne retrouve plus cette recette dans Repas.';
     /** Ni produit ni recette ne portent ce nom : plus d'issue. */
@@ -487,10 +489,14 @@ final class VoiceReplies
      * La phrase claire d'un échec CONNU de la commande d'un repas (`SpokenMealFailure`, une seule table) ; `null` pour toute autre panne, qui garde
      * `FAILURE`.
      */
-    public static function mealFailure(string $reason, ?string $recipeName): ?string
+    public static function mealFailure(string $reason, ?string $recipeName, ?string $ingredientName = null): ?string
     {
+        $ingredient = self::speakable($ingredientName ?? '');
+
         return match ($reason) {
-            SpokenMealFailure::MISSING_CONVERSION => sprintf(self::MEAL_MISSING_CONVERSION, self::speakable($recipeName ?? '')),
+            SpokenMealFailure::MISSING_CONVERSION => $ingredient !== ''
+                ? sprintf(self::MEAL_MISSING_CONVERSION_OF, $ingredient)
+                : sprintf(self::MEAL_MISSING_CONVERSION, self::speakable($recipeName ?? '')),
             SpokenMealFailure::RECIPE_GONE => self::MEAL_GONE,
             default => null,
         };

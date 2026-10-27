@@ -12,6 +12,10 @@ final class IngredientException extends DomainException
     /** Posé par `cannotConvertToUnit()` seulement : la commande vocale en tire une phrase claire (le message, lui, ne se lit jamais). */
     private bool $missingConversion = false;
 
+    /** Posé avec `$missingConversion` : le nom de l'ingrédient et l'unité de départ, que la commande vocale dit à son propriétaire (jamais au journal). */
+    private ?string $conversionIngredientName = null;
+    private ?string $conversionStartUnitName = null;
+
     // Messages des cas de la fusion de deux ingrédients (ADR 0028 décision 9) : le front les distingue, ils ne se renomment pas
     public const string CANNOT_MERGE_INTO_ITSELF = 'CANNOT_MERGE_INTO_ITSELF';
     public const string MERGE_UNIT_MISSING = 'MERGE_UNIT_MISSING';
@@ -44,6 +48,8 @@ final class IngredientException extends DomainException
             $ingredient->getName(),
         ), 422);
         $exception->missingConversion = true;
+        $exception->conversionIngredientName = $ingredient->getName();
+        $exception->conversionStartUnitName = $startUnit->getName();
 
         return $exception;
     }
@@ -54,6 +60,22 @@ final class IngredientException extends DomainException
     public function isMissingConversion(): bool
     {
         return $this->missingConversion;
+    }
+
+    /**
+     * L'ingrédient dont une unité ne se convertit pas (`cannotConvertToUnit()`), `null` pour toute autre erreur.
+     */
+    public function conversionIngredientName(): ?string
+    {
+        return $this->conversionIngredientName;
+    }
+
+    /**
+     * L'unité qui ne mène nulle part (`cannotConvertToUnit()`), `null` pour toute autre erreur.
+     */
+    public function conversionStartUnitName(): ?string
+    {
+        return $this->conversionStartUnitName;
     }
 
     public static function cannotBeRemoveExistInRecipe(string $ingredientId): static
@@ -73,6 +95,12 @@ final class IngredientException extends DomainException
     public static function coefficientRequired(): self
     {
         return new self('A conversion coefficient is required when the cooking and purchase units differ.', 422);
+    }
+
+    /** Un coefficient donné doit être un nombre strictement positif (le HTTP le valide déjà ; le cas d'usage ne se fie pas à son appelant). */
+    public static function invalidCoefficient(): self
+    {
+        return new self('The conversion coefficient must be a number greater than zero.', 422);
     }
 
     /**
