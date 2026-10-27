@@ -5,15 +5,19 @@ namespace Repas\Tests\Repas\OutputAdapter;
 
 use Repas\Repas\Application\Command\CopyRecipe\CopyRecipeCommand;
 use Repas\Repas\Application\Command\CreateIngredient\CreateIngredientCommand;
+use Repas\Repas\Application\Command\CreateIngredientConversion\CreateIngredientConversionCommand;
 use Repas\Repas\Application\Command\CreateRecipe\CreateRecipeCommand;
 use Repas\Repas\Application\Command\CreateRecipe\CreateRecipeRowSubCommand;
 use Repas\Repas\Application\Command\CreateShoppingList\CreateShoppingListCommand;
 use Repas\Repas\Application\Command\SeedUserIngredients\SeedUserIngredientsCommand;
+use Repas\Repas\Domain\Exception\ConversionException;
 use Repas\Repas\Domain\Exception\IngredientException;
 use Repas\Repas\Domain\Exception\RecipeException;
 use Repas\Repas\Domain\Exception\ShoppingListException;
+use Repas\Repas\Domain\Interface\ConversionRepository;
 use Repas\Repas\Domain\Interface\RecipeRepository;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
+use Repas\Repas\Domain\Model\Conversion;
 use Repas\Repas\Domain\Model\Ingredient;
 use Repas\Repas\Domain\Model\Recipe;
 use Repas\Repas\Domain\Model\ShoppingList;
@@ -31,7 +35,7 @@ use Repas\Tests\Helper\WriteBudgetTestCase;
 use Repas\User\Domain\Model\User;
 
 /**
- * Les quotas par compte sur la vraie base, avec les vrais bus : un compte écrit jusqu'à 1 000 recettes, 2 000 ingrédients et 1 000 listes à lui,
+ * Les quotas par compte sur la vraie base, avec les vrais bus : un compte écrit jusqu'à 1 000 recettes, 2 000 ingrédients et 1 000 listes à lui, et un ingrédient reçoit 50 conversions propres,
  * pas au-delà ; la copie d'une recette et l'amorçage à l'activation ne sont jamais refusés pour autant. Les lignes en masse sont écrites en SQL
  * (une instruction), les valeurs sont factices.
  */
@@ -172,6 +176,52 @@ class AccountQuotasTest extends WriteBudgetTestCase
         }
     }
 
+    public function testAConversionIsAddedJustBelowTheMaximumAndRefusedAtTheMaximum(): void
+    {
+        // Given : la farine de l'utilisateur a 49 conversions propres ; un autre ingrédient en a 60
+        $flour = new IngredientBuilder()->isFlour()->withCreator($this->user, true)->build();
+        $this->persister->saveIngredient($flour);
+        $sugar = new IngredientBuilder()->isSugar()->withCreator($this->user, true)->build();
+        $this->persister->saveIngredient($sugar);
+        $this->persister->saveUnit(new UnitBuilder()->isGlass()->build());
+        $this->bulkConversions($flour, Conversion::MAX_PER_INGREDIENT - 1);
+        $this->bulkConversions($sugar, Conversion::MAX_PER_INGREDIENT + 10);
+
+        // When : la cinquantième passe
+        $this->dispatch(new CreateIngredientConversionCommand('the-last', $flour->getSlug(), 'verre', 'gramme', 130, $this->user->getId()));
+
+        // Then : la suivante est refusée, et rien n'est écrit
+        $this->assertSame(Conversion::MAX_PER_INGREDIENT, $this->rowsOf('conversion', 'ingredient', $flour->getSlug()));
+        try {
+            $this->dispatch(new CreateIngredientConversionCommand('one-too-many', $flour->getSlug(), 'verre', 'kilo', 0.13, $this->user->getId()));
+            $this->fail('La cinquante et unième conversion doit être refusée.');
+        } catch (ConversionException $exception) {
+            $this->assertSame([ConversionException::LIMIT_REACHED, 422], [$exception->getMessage(), $exception->getCode()]);
+        }
+        $this->assertSame(Conversion::MAX_PER_INGREDIENT, $this->rowsOf('conversion', 'ingredient', $flour->getSlug()));
+        $this->assertSame(0, $this->rowsOf('conversion', 'id', 'one-too-many'));
+    }
+
+    public function testTheCheckOfTheConversionsOfAnIngredientReadsOneRowAtMost(): void
+    {
+        // Given : un ingrédient hors norme, 3 000 conversions propres
+        $flour = new IngredientBuilder()->isFlour()->withCreator($this->user, true)->build();
+        $this->persister->saveIngredient($flour);
+        $this->bulkConversions($flour, 3000);
+        $counter = static::getContainer()->get(QueryCounter::class);
+        $this->entityManager->clear();
+        $counter->reset();
+
+        // When
+        $full = static::getContainer()->get(ConversionRepository::class)->ingredientHasAtLeast($flour, Conversion::MAX_PER_INGREDIENT);
+
+        // Then : une requête, qui ne remonte jamais le décompte entier
+        $this->assertSame([true, 1], [$full, $counter->count()]);
+        foreach ($counter->statements() as $sql) {
+            $this->assertStringNotContainsString('COUNT(', strtoupper($sql));
+        }
+    }
+
     public function testTheCheckAnswersExactlyAtTheBoundary(): void
     {
         // Given : 3 recettes au compte, une à un autre
@@ -239,6 +289,16 @@ class AccountQuotasTest extends WriteBudgetTestCase
             . " SELECT gen_random_uuid()::text, 'Vrac ' || g, ? || '-' || ? || '-' || g, 4, ?, 'plat', NULL, 1"
             . ' FROM generate_series(1, ?) g',
             [$prefix, $author->getId(), $author->getId(), $count],
+        );
+    }
+
+    private function bulkConversions(Ingredient $ingredient, int $count): void
+    {
+        $this->entityManager->getConnection()->executeStatement(
+            "INSERT INTO conversion (id, start_unit, end_unit, coefficient, ingredient)"
+            . " SELECT gen_random_uuid()::text, 'gramme', 'kilo', g, ?"
+            . ' FROM generate_series(1, ?) g',
+            [$ingredient->getSlug(), $count],
         );
     }
 

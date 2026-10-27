@@ -70,7 +70,7 @@ class IngredientConversionsApiFlowTest extends DatabaseTestCase
         $body = $this->jsonBody();
         $this->assertSame([1, 1, 1, true, 'cuillere-a-soupe', 'kilo'], [count($body['member']), count($body['common']), $body['totalItems'], $body['convertible'], $body['cookingUnitSlug'], $body['purchaseUnitSlug']]);
 
-        // When : une conversion vers une autre unité (la tasse), puis une autre (le verre se relie à la tasse), sans limite
+        // When : une conversion vers une autre unité (la tasse), puis une autre (le verre se relie à la tasse)
         $this->request('POST', $uri, ['startUnitSlug' => 'tasse', 'endUnitSlug' => 'gramme', 'coefficient' => 125]);
         $this->assertSame(201, $this->client->getResponse()->getStatusCode());
         $cupLocation = $this->client->getResponse()->headers->get('Location');
@@ -122,6 +122,31 @@ class IngredientConversionsApiFlowTest extends DatabaseTestCase
         $this->assertSame(['error' => ['message' => 'CONVERSION_REQUIRED_BY_INGREDIENT']], $this->jsonBody());
         $kept = $this->conversions()->findById($this->spoonToGramme->getId());
         $this->assertSame(['cuillere-a-soupe', 'gramme', 10.0], [$kept->getStartUnit()->getSlug(), $kept->getEndUnit()->getSlug(), $kept->getCoefficient()]);
+    }
+
+    public function testAnIngredientReceivesAtMostFiftyOwnConversions(): void
+    {
+        // Given : la farine a 49 conversions propres (la sienne, plus 48)
+        $this->entityManager->getConnection()->executeStatement(
+            "INSERT INTO conversion (id, start_unit, end_unit, coefficient, ingredient) SELECT gen_random_uuid()::text, 'gramme', 'kilo', g, ? FROM generate_series(1, ?) g",
+            [$this->flour->getSlug(), Conversion::MAX_PER_INGREDIENT - 2],
+        );
+        $uri = '/api/v1/ingredients/' . $this->flour->getSlug() . '/conversions';
+
+        // When : la cinquantième passe, la suivante est refusée
+        $this->request('POST', $uri, ['startUnitSlug' => 'tasse', 'endUnitSlug' => 'gramme', 'coefficient' => 125]);
+        $this->assertSame(201, $this->client->getResponse()->getStatusCode());
+        $this->request('POST', $uri, ['startUnitSlug' => 'verre', 'endUnitSlug' => 'tasse', 'coefficient' => 2]);
+
+        // Then
+        $this->assertSame([422, ['error' => ['message' => 'CONVERSION_LIMIT_REACHED']]], [$this->client->getResponse()->getStatusCode(), $this->jsonBody()]);
+        $this->assertCount(Conversion::MAX_PER_INGREDIENT, $this->conversions()->findByIngredient($this->flour));
+
+        // When : modifier une conversion existante reste permis
+        $this->request('PUT', $uri . '/' . $this->spoonToGramme->getId(), ['startUnitSlug' => 'cuillere-a-soupe', 'endUnitSlug' => 'gramme', 'coefficient' => 11]);
+
+        // Then
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
     }
 
     public function testAPairAlreadyOwnedIsAConflictInBothDirectionsAndTwoIdenticalUnitsAreRefused(): void

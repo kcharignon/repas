@@ -24,12 +24,13 @@ readonly class CreateIngredientConversionHandler
     }
 
     /**
-     * Ajoute une conversion PROPRE à l'ingrédient de l'utilisateur, vers n'importe quelle unité et sans limite de nombre. Elle ne peut que
-     * relier davantage d'unités : la règle « recettes -> achat » n'a pas à être rejugée. Jamais une conversion universelle.
+     * Ajoute une conversion PROPRE à l'ingrédient de l'utilisateur, vers n'importe quelle unité, dans la limite de
+     * `Conversion::MAX_PER_INGREDIENT` par ingrédient. Elle ne peut que relier davantage d'unités : la règle « recettes -> achat » n'a pas à
+     * être rejugée. Jamais une conversion universelle.
      *
      * @throws IngredientException l'ingrédient n'est pas à l'utilisateur (inconnu, un administrateur compris), ou coefficient invalide
      * @throws UnitException
-     * @throws ConversionException deux unités identiques, ou la paire existe déjà en propre
+     * @throws ConversionException deux unités identiques, la paire existe déjà en propre, ou l'ingrédient a déjà toutes ses conversions
      */
     public function __invoke(CreateIngredientConversionCommand $command): void
     {
@@ -37,6 +38,11 @@ readonly class CreateIngredientConversionHandler
         $slug = $this->slugResolver->resolve($command->userId, [$command->ingredientSlug])[$command->ingredientSlug] ?? $command->ingredientSlug;
         $ingredient = $this->ingredientRepository->findOneBySlug($slug);
         $ingredient->assertOwnedBy($command->userId);
+
+        // Le plafond d'abord : un ingrédient qui l'a atteint ne coûte rien de plus
+        if ($this->conversionRepository->ingredientHasAtLeast($ingredient, Conversion::MAX_PER_INGREDIENT)) {
+            throw ConversionException::limitReached();
+        }
 
         [$start, $end] = $this->ownConversions->units($command->startUnitSlug, $command->endUnitSlug, $command->coefficient);
         $this->ownConversions->assertPairIsFree($ingredient, $start, $end);

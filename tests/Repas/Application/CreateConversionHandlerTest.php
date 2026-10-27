@@ -6,11 +6,13 @@ namespace Repas\Application;
 use PHPUnit\Framework\TestCase;
 use Repas\Repas\Application\Command\CreateConversion\CreateConversionCommand;
 use Repas\Repas\Application\Command\CreateConversion\CreateConversionHandler;
+use Repas\Repas\Domain\Exception\ConversionException;
 use Repas\Repas\Domain\Exception\IngredientException;
 use Repas\Repas\Domain\Exception\UnitException;
 use Repas\Repas\Domain\Interface\ConversionRepository;
 use Repas\Repas\Domain\Interface\IngredientRepository;
 use Repas\Repas\Domain\Interface\UnitRepository;
+use Repas\Repas\Domain\Model\Conversion;
 use Repas\Tests\Helper\Builder\ConversionBuilder;
 use Repas\Tests\Helper\Builder\IngredientBuilder;
 use Repas\Tests\Helper\Builder\UnitBuilder;
@@ -118,6 +120,36 @@ class CreateConversionHandlerTest extends TestCase
             $this->assertEquals(IngredientException::notFound($egg->getSlug()), $exception);
             $this->assertCount(0, $this->conversionRepository->findAll());
         }
+    }
+
+    public function testAnIngredientWithTheMaximumOfConversionsReceivesNoMoreButAGeneralOneIsStillCreated(): void
+    {
+        // Given : l'œuf de l'administrateur a ses 50 conversions propres
+        $unite = new UnitBuilder()->isUnite()->build();
+        $this->unitRepository->save($unite);
+        $box = new UnitBuilder()->isBox()->build();
+        $this->unitRepository->save($box);
+        $egg = new IngredientBuilder()->isEgg()->build();
+        $this->ingredientRepository->save($egg);
+        for ($i = 1; $i <= Conversion::MAX_PER_INGREDIENT; ++$i) {
+            $this->conversionRepository->save(new ConversionBuilder()->withId("filler-$i")->withIngredient($egg)->withStartUnit($box)->withEndUnit($unite)->withCoefficient($i)->build());
+        }
+
+        // When
+        try {
+            ($this->handler)(new CreateConversionCommand(ControlledUuidGenerator::UUID, $box->getSlug(), $unite->getSlug(), 6, $egg->getSlug(), self::USER));
+            $this->fail('La cinquante et unième conversion propre doit être refusée.');
+        } catch (ConversionException $exception) {
+            // Then : 422, et rien n'est écrit
+            $this->assertEquals(ConversionException::limitReached(), $exception);
+            $this->assertCount(Conversion::MAX_PER_INGREDIENT, $this->conversionRepository->findAll());
+        }
+
+        // When : une conversion générale n'est pas une conversion de l'œuf
+        ($this->handler)(new CreateConversionCommand('general-conversion', $box->getSlug(), $unite->getSlug(), 6, null, self::USER));
+
+        // Then
+        $this->assertCount(Conversion::MAX_PER_INGREDIENT + 1, $this->conversionRepository->findAll());
     }
 
     public function testAnAdministratorCanCreateAGeneralConversion(): void

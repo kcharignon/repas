@@ -38,6 +38,12 @@ interface ConversionRepository
     public function findOwnBetween(Ingredient $ingredient, Unit $a, Unit $b): Tab;
 
     /**
+     * L'ingrédient a-t-il au moins `$count` conversions PROPRES (jamais les universelles) ? Un test d'existence du `$count`-ième, jamais un
+     * décompte complet : c'est le quota à la création d'une conversion (`Conversion::MAX_PER_INGREDIENT`).
+     */
+    public function ingredientHasAtLeast(Ingredient $ingredient, int $count): bool;
+
+    /**
      * @return Tab<Conversion>
      */
     public function findAll(): Tab;

@@ -13,6 +13,7 @@ final class ConversionException extends DomainException
     public const string CONVERSION_REQUIRED_BY_INGREDIENT = 'CONVERSION_REQUIRED_BY_INGREDIENT';
     public const string CONVERSION_SAME_UNIT = 'CONVERSION_SAME_UNIT';
     public const string COEFFICIENT_INVALID = 'CONVERSION_COEFFICIENT_INVALID';
+    public const string LIMIT_REACHED = 'CONVERSION_LIMIT_REACHED';
 
     public static function notFound(string $id): static
     {
@@ -52,6 +53,12 @@ final class ConversionException extends DomainException
     public static function invalidCoefficient(): static
     {
         return new static(self::COEFFICIENT_INVALID, 422);
+    }
+
+    /** L'ingrédient a déjà `Conversion::MAX_PER_INGREDIENT` conversions propres : il n'en reçoit pas d'autre. Règle métier, `422`. */
+    public static function limitReached(): static
+    {
+        return new static(self::LIMIT_REACHED, 422);
     }
 
     /** Une conversion relie deux unités différentes. */

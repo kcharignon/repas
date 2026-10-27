@@ -318,4 +318,28 @@ class ConversionRepositoryTest extends DatabaseTestCase
         // Assert : les siennes (par identifiant), puis la universelle
         $this->assertSame(['zzzz-own-1', 'zzzz-own-2', '0000-universal'], array_map(static fn(Conversion $c): string => $c->getId(), $result->toArray()));
     }
+
+    public function testIngredientHasAtLeastCountsOnlyTheOwnConversionsOfTheIngredient(): void
+    {
+        // Arrange : trois conversions propres à la farine, une au sucre, plus une universelle
+        $flour = new IngredientBuilder()->isFlour()->build();
+        $sugar = new IngredientBuilder()->isSugar()->build();
+        foreach ([[new UnitBuilder()->isKilo(), 1000], [new UnitBuilder()->isBowl(), 120], [new UnitBuilder()->isGlass(), 130]] as [$unit, $coefficient]) {
+            $this->persister->saveConversion(new ConversionBuilder()->withStartUnit($unit)->withEndUnit(new UnitBuilder()->isGramme())->withCoefficient($coefficient)->withIngredient($flour)->build());
+        }
+        $this->persister->saveConversion(new ConversionBuilder()->withStartUnit(new UnitBuilder()->isCoffeeSpoon())->withEndUnit(new UnitBuilder()->isGramme())->withCoefficient(4)->withIngredient($sugar)->build());
+        $this->persister->saveConversion(new ConversionBuilder()->isKiloToGramme()->build());
+
+        // Act / Assert : exactement à la limite, pour chacun
+        $this->assertSame([true, true, false], [
+            $this->conversionRepository->ingredientHasAtLeast($flour, 2),
+            $this->conversionRepository->ingredientHasAtLeast($flour, 3),
+            $this->conversionRepository->ingredientHasAtLeast($flour, 4),
+        ]);
+        $this->assertSame([true, false], [
+            $this->conversionRepository->ingredientHasAtLeast($sugar, 1),
+            $this->conversionRepository->ingredientHasAtLeast($sugar, 2),
+        ]);
+        $this->assertFalse($this->conversionRepository->ingredientHasAtLeast(new IngredientBuilder()->isButter()->build(), 1));
+    }
 }

@@ -112,6 +112,20 @@ readonly class ConversionPostgreSQLRepository extends PostgreSQLRepository imple
         return Tab::fromArray($conversionEntities)->map(fn(ConversionEntity $conversion) => $this->convertEntityToModel($conversion));
     }
 
+    public function ingredientHasAtLeast(Ingredient $ingredient, int $count): bool
+    {
+        // La `$count`-ième conversion propre existe-t-elle ? Une ligne lue après avoir sauté les `$count - 1` premières
+        return $this->entityManager->createQueryBuilder()
+            ->select('c.id')
+            ->from(ConversionEntity::class, 'c')
+            ->where('c.ingredientSlug = :ingredientSlug')
+            ->setParameter('ingredientSlug', $ingredient->getSlug())
+            ->setFirstResult(max(0, $count - 1))
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getScalarResult() !== [];
+    }
+
     public function save(Conversion $conversion): void
     {
         $entity = $this->entityRepository->find($conversion->getId());

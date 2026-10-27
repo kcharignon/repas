@@ -11,6 +11,12 @@ final class Conversion implements ModelInterface
 {
     use ModelTrait;
 
+    /**
+     * Nombre de conversions propres à partir duquel un ingrédient n'en reçoit plus : seule l'ÉCRITURE d'une conversion (par son propriétaire ou
+     * par l'administrateur sur les siens) est refusée ; la copie d'un ingrédient (amorçage, copie de recette, fusion) n'y passe pas.
+     */
+    public const int MAX_PER_INGREDIENT = 50;
+
     protected function __construct(
         private string      $id,
         private Unit        $startUnit,

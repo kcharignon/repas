@@ -31,7 +31,7 @@ final class CreateConversionApiController extends AbstractController
     #[OA\Response(response: 201, description: 'Conversion créée', headers: [new OA\Header(header: 'Location', description: 'URL de la conversion créée', schema: new OA\Schema(type: 'string'))])]
     #[OA\Response(response: 403, description: 'Réservé aux administrateurs')]
     #[OA\Response(response: 404, description: 'Unité ou ingrédient inconnu, ou ingrédient d\'un autre utilisateur (un administrateur n\'a pas de passe-droit)')]
-    #[OA\Response(response: 422, description: 'Corps de la requête invalide')]
+    #[OA\Response(response: 422, description: 'Corps de la requête invalide, ou l\'ingrédient a déjà 50 conversions propres (`CONVERSION_LIMIT_REACHED`)')]
     public function __invoke(#[MapRequestPayload] ConversionPayload $payload, #[CurrentUser] AuthenticatedUser $user): Response
     {
         $id = UuidGenerator::new();

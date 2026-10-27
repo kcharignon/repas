@@ -7,6 +7,7 @@ use Repas\Repas\Domain\Exception\IngredientException;
 use Repas\Repas\Domain\Interface\ConversionRepository;
 use Repas\Repas\Domain\Interface\IngredientRepository;
 use Repas\Repas\Domain\Interface\UnitRepository;
+use Repas\Repas\Domain\Model\Conversion;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 #[AsMessageHandler]
@@ -48,6 +49,11 @@ readonly class UpdateConversionHandler
         $endUnit = $this->unitRepository->findOneBySlug($command->endUnitSlug);
         $ingredient = $command->ingredientSlug ? $this->ingredientRepository->findOneBySlug($command->ingredientSlug) : null;
         $ingredient?->assertOwnedBy($command->userId);
+        // Rattachée à un autre ingrédient, elle compte parmi les siennes : le plafond de cet ingrédient s'applique comme à une création
+        if ($ingredient !== null && !$ingredient->isEqual($conversion->getIngredient())
+            && $this->conversionRepository->ingredientHasAtLeast($ingredient, Conversion::MAX_PER_INGREDIENT)) {
+            throw ConversionException::limitReached();
+        }
 
         $conversion->update(
             startUnit: $startUnit,
