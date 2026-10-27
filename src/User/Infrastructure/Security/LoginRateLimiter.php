@@ -27,7 +27,7 @@ use Symfony\Component\Security\Http\SecurityRequestAttributes;
  *
  * - L'adresse est la clé commune des limiteurs (`ClientAddressKey` : préfixe /64 en IPv6, IPv4 mappée en IPv4).
  * - L'e-mail est mis sous la forme qu'utilise la recherche du compte (`User::normalizeEmail` : casse et espaces autour sans effet).
- * - Les clés sont des empreintes (HMAC avec le secret de l'application) : ni l'adresse e-mail ni l'adresse IP ne sont dans le cache.
+ * - Les clés sont des empreintes (HMAC avec la clé de l'application) : ni l'adresse e-mail ni l'adresse IP ne sont dans le cache.
  * - Une connexion réussie ne remet à zéro que le compteur « adresse + e-mail » : les deux autres bornent ce qu'un client ou un compte
  *   subit, et survivent à la réussite d'une autre connexion.
  */
@@ -42,7 +42,7 @@ final class LoginRateLimiter extends AbstractRequestRateLimiter
         private readonly RateLimiterFactoryInterface $emailLimiter,
         #[Autowire('%kernel.secret%')]
         #[SensitiveParameter]
-        private readonly string $secret,
+        private readonly string $key,
     ) {
     }
 
@@ -95,6 +95,6 @@ final class LoginRateLimiter extends AbstractRequestRateLimiter
 
     private function hash(string $data): string
     {
-        return hash_hmac('sha256', $data, $this->secret);
+        return hash_hmac('sha256', $data, $this->key);
     }
 }

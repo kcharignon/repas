@@ -27,7 +27,7 @@ class LoginRateLimiterTest extends TestCase
             new RateLimiterFactory(['id' => 'login_address', 'policy' => 'fixed_window', 'limit' => 25, 'interval' => '15 minutes'], $storage),
             new RateLimiterFactory(['id' => 'login_address_email', 'policy' => 'fixed_window', 'limit' => 5, 'interval' => '15 minutes'], $storage),
             new RateLimiterFactory(['id' => 'login_email', 'policy' => 'token_bucket', 'limit' => 20, 'rate' => ['interval' => '3 minutes', 'amount' => 1]], $storage),
-            'un-secret-de-test',
+            'une-cle-de-test',
         );
     }
 
@@ -185,7 +185,7 @@ class LoginRateLimiterTest extends TestCase
             new RateLimiterFactory(['id' => 'login_address', 'policy' => 'fixed_window', 'limit' => 25, 'interval' => '15 minutes'], $storage),
             new RateLimiterFactory(['id' => 'login_address_email', 'policy' => 'fixed_window', 'limit' => 5, 'interval' => '15 minutes'], $storage),
             new RateLimiterFactory(['id' => 'login_email', 'policy' => 'token_bucket', 'limit' => 20, 'rate' => ['interval' => '3 minutes', 'amount' => 1]], $storage),
-            'un-secret-de-test',
+            'une-cle-de-test',
         );
 
         // When
