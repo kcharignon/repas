@@ -7,6 +7,12 @@ use Repas\Shared\Domain\Exception\DomainException;
 
 final class RecipeException extends DomainException
 {
+    // Messages des bornes d'une recette : le front les distingue, ils ne se renomment pas
+    public const string QUANTITY_INVALID = 'RECIPE_QUANTITY_INVALID';
+    public const string SERVING_INVALID = 'RECIPE_SERVING_INVALID';
+    public const string ROWS_LIMIT_REACHED = 'RECIPE_ROWS_LIMIT_REACHED';
+    public const string LIMIT_REACHED = 'RECIPE_LIMIT_REACHED';
+
     public static function notFound(string $id): static
     {
         return new static(sprintf('Recipe id %s not found', $id), 404);
@@ -46,5 +52,38 @@ final class RecipeException extends DomainException
     public static function typeAlreadyExists(string $slug): self
     {
         return new self(sprintf("Recipe type '%s' already exists", $slug), 409);
+    }
+
+    /**
+     * La quantité d'une ligne est un nombre fini, strictement positif, d'un million au plus (`QuantityBounds`). Règle métier, `422`.
+     */
+    public static function invalidQuantity(): self
+    {
+        return new self(self::QUANTITY_INVALID, 422);
+    }
+
+    /**
+     * Le nombre de personnes d'une recette va de 1 à 100. Règle métier, `422`.
+     */
+    public static function invalidServing(): self
+    {
+        return new self(self::SERVING_INVALID, 422);
+    }
+
+    /**
+     * Une recette n'a pas plus de lignes que `Recipe::MAX_ROWS`. Règle métier, `422`.
+     */
+    public static function tooManyRows(): self
+    {
+        return new self(self::ROWS_LIMIT_REACHED, 422);
+    }
+
+    /**
+     * L'auteur a déjà toutes les recettes que l'application lui permet d'écrire. Règle métier, `422`. Seule l'écriture d'une recette en est
+     * refusée : la copie d'une recette d'un autre ne compte pas.
+     */
+    public static function limitReached(): self
+    {
+        return new self(self::LIMIT_REACHED, 422);
     }
 }

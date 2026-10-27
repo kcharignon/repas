@@ -14,10 +14,14 @@ final readonly class ListOtherPeopleRecipesQueryHandler
     }
 
     /**
-     * @return list<OtherPeopleRecipeDTO>
+     * La page demandée est bornée ici aussi : le cas d'usage ne se fie pas à son appelant.
      */
-    public function __invoke(ListOtherPeopleRecipesQuery $query): array
+    public function __invoke(ListOtherPeopleRecipesQuery $query): OtherPeopleRecipesDTO
     {
-        return $this->recipeLoader->listOfOtherPeople($query->userId);
+        return $this->recipeLoader->listOfOtherPeople(
+            $query->userId,
+            min(max($query->limit, 1), ListOtherPeopleRecipesQuery::MAX_LIMIT),
+            max($query->offset, 0),
+        );
     }
 }

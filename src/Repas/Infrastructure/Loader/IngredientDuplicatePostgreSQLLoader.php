@@ -23,6 +23,9 @@ use Repas\Repas\Infrastructure\Merge\IngredientMergeUsageReader;
  */
 final readonly class IngredientDuplicatePostgreSQLLoader implements IngredientDuplicateLoader
 {
+    /** Ingrédients lus au plus, dans l'ordre des slugs : la mémoire ne dépend pas de la taille d'un compte hors norme (le service de domaine borne le calcul). */
+    public const int MAX_INGREDIENTS = 5000;
+
     public function __construct(
         private EntityManagerInterface $entityManager,
         private IngredientMergeUsageReader $usageReader,
@@ -36,7 +39,7 @@ final readonly class IngredientDuplicatePostgreSQLLoader implements IngredientDu
             'SELECT i.slug, i.name, i.adopted_from, i.department AS department_slug, d.name AS department_name,'
             . ' i.default_purchase_unit AS unit_slug, u.name AS unit_name'
             . ' FROM ingredient i JOIN department d ON d.slug = i.department JOIN unit u ON u.slug = i.default_purchase_unit'
-            . ' WHERE i.creator = :user ORDER BY i.slug',
+            . ' WHERE i.creator = :user ORDER BY i.slug LIMIT ' . self::MAX_INGREDIENTS,
             ['user' => $userId],
         );
         // Une paire a besoin de deux ingrédients

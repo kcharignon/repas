@@ -124,6 +124,22 @@ readonly class ShoppingListPostgreSQLRepository extends PostgreSQLRepository imp
         return null;
     }
 
+    public function ownerHasAtLeast(string $ownerId, int $count): bool
+    {
+        // La `$count`-ième liste à garder existe-t-elle ? Une ligne lue après avoir sauté les `$count - 1` premières
+        return $this->entityManager->createQueryBuilder()
+            ->select('sl.id')
+            ->from(ShoppingListEntity::class, 'sl')
+            ->where('sl.ownerId = :owner')
+            ->andWhere('sl.status != :completed')
+            ->setParameter('owner', $ownerId)
+            ->setParameter('completed', ShoppingListStatus::COMPLETED)
+            ->setFirstResult(max(0, $count - 1))
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getScalarResult() !== [];
+    }
+
     public function hasActiveShoppingList(string $ownerId): bool
     {
         return $this->entityRepository->findOneBy(['ownerId' => $ownerId, 'status' => ShoppingListStatus::ACTIVE]) !== null;

@@ -18,6 +18,7 @@ use Repas\Repas\Domain\Interface\RecipeTypeRepository;
 use Repas\Repas\Domain\Interface\UnitRepository;
 use Repas\Repas\Domain\Model\AliasKind;
 use Repas\Repas\Domain\Model\IngredientAlias;
+use Repas\Repas\Domain\Model\Recipe;
 use Repas\Shared\Domain\Tool\Tab;
 use Repas\Tests\Helper\Builder\DepartmentBuilder;
 use Repas\Tests\Helper\Builder\IngredientBuilder;
@@ -395,5 +396,58 @@ class CreateRecipeHandlerTest extends TestCase
             $this->assertSame([], $this->eventDispatcher->eventDispatched);
             $this->assertSame(0, $this->recipeRepository->findByAuthor($user->getId())->count());
         }
+    }
+
+    public function testAnAuthorWhoKeepsTheMaximumNumberOfRecipesCannotWriteAnother(): void
+    {
+        // Arrange : 1 000 recettes à lui, une à un autre
+        $pasta = new IngredientBuilder()->isPasta()->build();
+        $this->ingredientRepository->save($pasta);
+        for ($i = 0; $i < Recipe::MAX_PER_AUTHOR; $i++) {
+            $this->recipeRepository->save(new RecipeBuilder()->withId("recipe-$i")->withAuthorId('user-id')->build());
+        }
+        $this->recipeRepository->save(new RecipeBuilder()->withId('recipe-other')->withAuthorId('other-id')->build());
+        $command = new CreateRecipeCommand(
+            id: 'one-too-many',
+            name: 'Une de trop',
+            serving: 4,
+            authorId: 'user-id',
+            rows: Tab::fromArray(new CreateRecipeRowSubCommand(ingredientSlug: $pasta->getSlug(), unitSlug: 'gramme', quantity: 10)),
+            typeSlug: 'plat',
+        );
+
+        // Assert
+        $this->expectExceptionObject(RecipeException::limitReached());
+
+        // Act
+        try {
+            ($this->handler)($command);
+        } finally {
+            $this->assertSame([], $this->eventDispatcher->eventDispatched);
+            $this->assertSame(Recipe::MAX_PER_AUTHOR, $this->recipeRepository->findByAuthor('user-id')->count());
+        }
+    }
+
+    public function testAnAuthorBelowTheMaximumStillWritesTheLastRecipe(): void
+    {
+        // Arrange : 999 recettes
+        $pasta = new IngredientBuilder()->isPasta()->withCreator(new UserBuilder()->withId('user-id')->build(), true)->build();
+        $this->ingredientRepository->save($pasta);
+        for ($i = 0; $i < Recipe::MAX_PER_AUTHOR - 1; $i++) {
+            $this->recipeRepository->save(new RecipeBuilder()->withId("recipe-$i")->withAuthorId('user-id')->build());
+        }
+
+        // Act
+        ($this->handler)(new CreateRecipeCommand(
+            id: 'the-last',
+            name: 'La dernière',
+            serving: 4,
+            authorId: 'user-id',
+            rows: Tab::fromArray(new CreateRecipeRowSubCommand(ingredientSlug: $pasta->getSlug(), unitSlug: 'gramme', quantity: 10)),
+            typeSlug: 'plat',
+        ));
+
+        // Assert
+        $this->assertSame(Recipe::MAX_PER_AUTHOR, $this->recipeRepository->findByAuthor('user-id')->count());
     }
 }

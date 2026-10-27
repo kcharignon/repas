@@ -70,6 +70,12 @@ interface IngredientRepository
     public function save(Ingredient $ingredient): void;
 
     /**
+     * Le créateur a-t-il au moins `$count` ingrédients ? La lecture s'arrête au `$count`-ième : jamais un décompte complet (plafond
+     * d'ingrédients créés, `Ingredient::MAX_PER_CREATOR`).
+     */
+    public function creatorHasAtLeast(string $creatorId, int $count): bool;
+
+    /**
      * @return Tab<Ingredient>
      */
     public function findAll(): Tab;

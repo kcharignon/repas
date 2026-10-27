@@ -5,7 +5,7 @@ namespace Repas\Tests\Helper\InMemoryLoader;
 
 use Repas\Repas\Application\Loader\RecipeLoader;
 use Repas\Repas\Application\Query\GetRecipe\RecipeDTO;
-use Repas\Repas\Application\Query\ListOtherPeopleRecipes\OtherPeopleRecipeDTO;
+use Repas\Repas\Application\Query\ListOtherPeopleRecipes\OtherPeopleRecipesDTO;
 use Repas\Repas\Application\Query\ListRecipesByType\RecipeTypeRecipesDTO;
 use Repas\Repas\Domain\Exception\RecipeException;
 
@@ -20,16 +20,13 @@ class RecipeInMemoryLoader implements RecipeLoader
     /** @var list<array{string, string}> */
     public array $listByAuthorAndTypeCalls = [];
 
-    /** @var list<string> */
+    /** @var list<array{string, int, int}> */
     public array $listOfOtherPeopleCalls = [];
 
-    /**
-     * @param list<OtherPeopleRecipeDTO> $otherPeopleRecipes
-     */
     public function __construct(
         private readonly ?RecipeDTO $recipe = null,
         private readonly ?RecipeTypeRecipesDTO $recipesByType = null,
-        private readonly array $otherPeopleRecipes = [],
+        private readonly OtherPeopleRecipesDTO $otherPeopleRecipes = new OtherPeopleRecipesDTO([], 0),
     ) {
     }
 
@@ -47,9 +44,9 @@ class RecipeInMemoryLoader implements RecipeLoader
         return $this->recipesByType ?? throw RecipeException::typeNotFound($typeSlug);
     }
 
-    public function listOfOtherPeople(string $userId): array
+    public function listOfOtherPeople(string $userId, int $limit, int $offset): OtherPeopleRecipesDTO
     {
-        $this->listOfOtherPeopleCalls[] = $userId;
+        $this->listOfOtherPeopleCalls[] = [$userId, $limit, $offset];
 
         return $this->otherPeopleRecipes;
     }

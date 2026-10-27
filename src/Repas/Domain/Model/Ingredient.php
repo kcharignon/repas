@@ -15,6 +15,12 @@ final class Ingredient implements ModelInterface
     use ModelTrait;
 
     /**
+     * Nombre d'ingrédients à partir duquel un compte n'en crée plus lui-même : tous les siens comptent (copies et amorçage compris), mais seule la
+     * création est refusée, jamais l'amorçage à l'activation (261 ingrédients) ni la copie d'une recette. Marge : 1 739 créations après l'amorçage.
+     */
+    public const int MAX_PER_CREATOR = 2000;
+
+    /**
      * @param Tab<Unit> $compatibleUnits
      */
     public function __construct(

@@ -114,6 +114,20 @@ readonly class IngredientPostgreSQLRepository extends PostgreSQLRepository imple
         return $rows !== [];
     }
 
+    public function creatorHasAtLeast(string $creatorId, int $count): bool
+    {
+        // Le `$count`-ième ingrédient existe-t-il ? Une ligne lue après avoir sauté les `$count - 1` premiers
+        return $this->entityManager->createQueryBuilder()
+            ->select('i.slug')
+            ->from(IngredientEntity::class, 'i')
+            ->where('i.creatorId = :creator')
+            ->setParameter('creator', $creatorId)
+            ->setFirstResult(max(0, $count - 1))
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getScalarResult() !== [];
+    }
+
     public function findAll(): Tab
     {
         $entities = $this->entityRepository->findBy([], ['sluggedName' => 'ASC']);

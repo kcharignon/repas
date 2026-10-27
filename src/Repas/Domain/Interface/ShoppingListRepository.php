@@ -37,6 +37,12 @@ interface ShoppingListRepository
 
     public function save(ShoppingList $shoppingList): void;
 
+    /**
+     * Le propriétaire a-t-il au moins `$count` listes à garder (hors listes terminées, supprimées à la création de la suivante) ? La lecture
+     * s'arrête à la `$count`-ième : jamais un décompte complet (plafond de listes, `ShoppingList::MAX_PER_OWNER`).
+     */
+    public function ownerHasAtLeast(string $ownerId, int $count): bool;
+
     public function delete(ShoppingList $shoppingList): void;
 
     /**

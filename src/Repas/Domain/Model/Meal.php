@@ -3,12 +3,17 @@
 namespace Repas\Repas\Domain\Model;
 
 
+use Repas\Repas\Domain\Exception\MealException;
 use Repas\Shared\Domain\Model\ModelInterface;
 use Repas\Shared\Domain\Model\ModelTrait;
 
 final class Meal implements ModelInterface
 {
     use ModelTrait;
+
+    /** Nombre de personnes d'un repas : de 1 à 100, comme celui d'une recette (`Recipe`) et celui d'un compte. */
+    public const int MIN_SERVING = 1;
+    public const int MAX_SERVING = 100;
 
     private function __construct(
         private string $id,
@@ -20,8 +25,13 @@ final class Meal implements ModelInterface
 
 
 
+    /**
+     * @throws MealException le nombre de personnes est hors de 1 à 100
+     */
     public static function create(string $id, string $shoppingListId, string $recipeId, int $servings): self
     {
+        self::assertServing($servings);
+
         return new self(
             id: $id,
             shoppingListId: $shoppingListId,
@@ -65,8 +75,19 @@ final class Meal implements ModelInterface
         return $this->recipeId === $recipe->getId();
     }
 
+    /**
+     * @throws MealException le nombre de personnes est hors de 1 à 100
+     */
     public function setServing(int $serving): void
     {
+        self::assertServing($serving);
         $this->serving = $serving;
+    }
+
+    private static function assertServing(int $serving): void
+    {
+        if ($serving < self::MIN_SERVING || $serving > self::MAX_SERVING) {
+            throw MealException::invalidServing();
+        }
     }
 }

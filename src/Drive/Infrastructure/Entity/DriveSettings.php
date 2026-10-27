@@ -43,10 +43,17 @@ class DriveSettings
         $entity->userId = $model->getUserId();
         $entity->retailer = $model->getRetailer()->value;
         $entity->updateFromModel($model);
+        $entity->productWritesDay = $model->getProductWritesDay();
+        $entity->productWritesCount = $model->getProductWritesCount();
 
         return $entity;
     }
 
+    /**
+     * Reporte le magasin sur la ligne existante. Le compteur d'écritures de produits n'est PAS recopié : un modèle lu avant une autre requête
+     * du même compte porterait une valeur périmée et la remettrait en arrière. Seule l'instruction atomique du dépôt
+     * (`reserveProductWrites()`) le modifie, après l'insertion.
+     */
     public function updateFromModel(DriveSettingsModel $model): void
     {
         $store = $model->getStore();
@@ -54,8 +61,6 @@ class DriveSettings
         $this->storeLabel = $store->label;
         $this->baseUrl = $store->baseUrl;
         $this->updatedAt = $model->getUpdatedAt();
-        $this->productWritesDay = $model->getProductWritesDay();
-        $this->productWritesCount = $model->getProductWritesCount();
     }
 
     public function getUserId(): string

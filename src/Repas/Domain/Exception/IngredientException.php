@@ -26,6 +26,9 @@ final class IngredientException extends DomainException
     // Message du refus de poser le marqueur « de base » (ING-011) : le front le distingue d'un refus d'accès ordinaire, il ne se renomme pas
     public const string INGREDIENT_BASE_FORBIDDEN = 'INGREDIENT_BASE_FORBIDDEN';
 
+    // Message du plafond d'ingrédients créés par un compte : le front le distingue, il ne se renomme pas
+    public const string LIMIT_REACHED = 'INGREDIENT_LIMIT_REACHED';
+
     // Message du cas « Pas le même » (ING-006)
     public const string CANNOT_BE_DISTINCT_FROM_ITSELF = 'CANNOT_BE_DISTINCT_FROM_ITSELF';
 
@@ -97,10 +100,19 @@ final class IngredientException extends DomainException
         return new self('A conversion coefficient is required when the cooking and purchase units differ.', 422);
     }
 
-    /** Un coefficient donné doit être un nombre strictement positif (le HTTP le valide déjà ; le cas d'usage ne se fie pas à son appelant). */
+    /** Un coefficient donné doit être un nombre fini de 0,000001 à 1 000 000 (le HTTP le valide déjà ; le cas d'usage ne se fie pas à son appelant). */
     public static function invalidCoefficient(): self
     {
-        return new self('The conversion coefficient must be a number greater than zero.', 422);
+        return new self('The conversion coefficient must be a number between 0.000001 and 1000000.', 422);
+    }
+
+    /**
+     * L'utilisateur a déjà tous les ingrédients que l'application lui permet de créer. Règle métier, `422`. Seule la création en est refusée :
+     * la copie d'une recette et l'amorçage d'un compte ne comptent pas.
+     */
+    public static function limitReached(): self
+    {
+        return new self(self::LIMIT_REACHED, 422);
     }
 
     /**

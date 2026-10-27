@@ -111,14 +111,25 @@ final class DriveSettings implements ModelInterface
     }
 
     /**
+     * Le jour (UTC, à minuit) auquel se rattachent les écritures de produits faites à `$now` : le compteur repart de zéro chaque jour UTC.
+     */
+    public static function productWritesDayOf(DateTimeImmutable $now): DateTimeImmutable
+    {
+        return new DateTimeImmutable($now->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d'), new DateTimeZone('UTC'));
+    }
+
+    /**
      * Compte `$count` écritures de produits pour le jour de `$now` (le compteur repart de zéro chaque jour UTC). Tout ou rien :
      * au-delà du plafond, rien n'est compté.
+     *
+     * C'est la règle sur un modèle en mémoire (le double de test s'en sert). Le dépôt réel applique la même règle en UNE instruction
+     * (`DriveSettingsRepository::reserveProductWrites()`) : deux requêtes simultanées d'un même compte ne lisent pas le même compteur.
      *
      * @throws DriveException `limitReached()` (422)
      */
     public function recordProductWrites(int $count, DateTimeImmutable $now): self
     {
-        $today = new DateTimeImmutable($now->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d'), new DateTimeZone('UTC'));
+        $today = self::productWritesDayOf($now);
         $alreadyToday = $this->productWritesDay?->format('Y-m-d') === $today->format('Y-m-d') ? $this->productWritesCount : 0;
 
         if ($alreadyToday + $count > self::MAX_PRODUCT_WRITES_PER_DAY) {

@@ -42,6 +42,46 @@ class UserTest extends TestCase
         $this->assertFalse($user->isPending());
     }
 
+    /**
+     * @return iterable<string, array{int}>
+     */
+    public static function invalidServings(): iterable
+    {
+        yield 'zéro' => [0];
+        yield 'négatif' => [-1];
+        yield 'cent un' => [101];
+    }
+
+    #[DataProvider('invalidServings')]
+    public function testAnAccountCannotBeCreatedForAnInvalidNumberOfPeople(int $serving): void
+    {
+        // Then
+        $this->expectExceptionObject(UserException::invalidServing());
+
+        // When
+        User::register('id', 'alexiane@example.com', ['ROLE_USER'], 'hash', $serving, $this->now);
+    }
+
+    #[DataProvider('invalidServings')]
+    public function testTheDefaultNumberOfPeopleCannotBeChangedToAnInvalidOne(int $serving): void
+    {
+        // Given
+        $user = new UserBuilder()->build();
+
+        // Then
+        $this->expectExceptionObject(UserException::invalidServing());
+
+        // When
+        $user->setDefaultServing($serving);
+    }
+
+    public function testTheDefaultNumberOfPeopleGoesFromOneToAHundred(): void
+    {
+        // When / Then
+        $this->assertSame(1, User::create('id', 'a@example.com', ['ROLE_USER'], 'hash', 1, $this->now)->getDefaultServing());
+        $this->assertSame(100, new UserBuilder()->build()->setDefaultServing(100)->getDefaultServing());
+    }
+
     public function testConfirmingTheEmailActivatesAPendingAccount(): void
     {
         // Given

@@ -3,6 +3,7 @@
 namespace Repas\Repas\Domain\Model;
 
 
+use Repas\Repas\Domain\Exception\ConversionException;
 use Repas\Shared\Domain\Model\ModelInterface;
 use Repas\Shared\Domain\Model\ModelTrait;
 
@@ -54,6 +55,9 @@ final class Conversion implements ModelInterface
         );
     }
 
+    /**
+     * @throws ConversionException le coefficient n'est pas un nombre fini de 0,000001 à 1 000 000
+     */
     public static function create(
         string $id,
         Unit $startUnit,
@@ -61,6 +65,8 @@ final class Conversion implements ModelInterface
         float $coefficient,
         ?Ingredient $ingredient,
     ): self {
+        self::assertCoefficient($coefficient);
+
         return new self(
             $id,
             $startUnit,
@@ -72,7 +78,8 @@ final class Conversion implements ModelInterface
 
     public static function copyFromOriginal(string $id, Conversion $conversion, Ingredient $newIngredient): self
     {
-        return self::create(
+        // Copie fidèle : le coefficient de l'original n'est pas jugé à nouveau (une conversion plus ancienne que les bornes se copie telle quelle)
+        return new self(
             $id,
             $conversion->getStartUnit(),
             $conversion->getEndUnit(),
@@ -81,15 +88,27 @@ final class Conversion implements ModelInterface
         );
     }
 
+    /**
+     * @throws ConversionException le coefficient n'est pas un nombre fini de 0,000001 à 1 000 000
+     */
     public function update(
         Unit $startUnit,
         Unit $endUnit,
         float $coefficient,
         ?Ingredient $ingredient = null,
     ): void {
+        self::assertCoefficient($coefficient);
+
         $this->startUnit = $startUnit;
         $this->endUnit = $endUnit;
         $this->coefficient = $coefficient;
         $this->ingredient = $ingredient;
+    }
+
+    private static function assertCoefficient(float $coefficient): void
+    {
+        if (!QuantityBounds::isCoefficient($coefficient)) {
+            throw ConversionException::invalidCoefficient();
+        }
     }
 }

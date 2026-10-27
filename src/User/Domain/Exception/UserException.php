@@ -13,6 +13,7 @@ final class UserException extends DomainException
     public const string INVALID_PASSWORD_RESET_TOKEN = 'INVALID_PASSWORD_RESET_TOKEN';
     public const string PROTECTED_ACCOUNT = 'PROTECTED_ACCOUNT';
     public const string CANNOT_DELETE_OWN_ACCOUNT = 'CANNOT_DELETE_OWN_ACCOUNT';
+    public const string SERVING_INVALID = 'USER_SERVING_INVALID';
 
     public static function NotFound(string $user): static
     {
@@ -64,5 +65,13 @@ final class UserException extends DomainException
     public static function cannotDeleteOwnAccount(): self
     {
         return new self(self::CANNOT_DELETE_OWN_ACCOUNT, 422);
+    }
+
+    /**
+     * Le nombre de personnes par défaut d'un compte va de 1 à 100. Règle métier, `422`.
+     */
+    public static function invalidServing(): self
+    {
+        return new self(self::SERVING_INVALID, 422);
     }
 }

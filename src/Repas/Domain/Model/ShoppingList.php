@@ -4,6 +4,7 @@ namespace Repas\Repas\Domain\Model;
 
 
 use DateTimeImmutable;
+use Repas\Repas\Domain\Exception\MealException;
 use Repas\Repas\Domain\Exception\RecipeException;
 use Repas\Repas\Domain\Exception\ShoppingListException;
 use Repas\Shared\Domain\Model\ModelInterface;
@@ -21,6 +22,12 @@ final class ShoppingList implements ModelInterface
      * (« 0 » pour 0,004), jamais « il t'en reste 0 ». Le même seuil que `Voice\Domain\Model\RemovedLine::NEGLIGIBLE_QUANTITY` (un test les compare).
      */
     public const float NEGLIGIBLE_QUANTITY = 0.005;
+
+    /** Repas planifiés dans une même liste : une liste en a quelques-uns, jamais cinq cents. */
+    public const int MAX_MEALS = 500;
+
+    /** Listes qu'un propriétaire garde au plus (hors listes terminées, supprimées à la création de la suivante) : vingt ans d'une liste par semaine. */
+    public const int MAX_PER_OWNER = 1000;
 
     /**
      * @param Tab<Meal> $meals
@@ -225,7 +232,8 @@ final class ShoppingList implements ModelInterface
      *                       que le use case transmet puisque la liste ne connaît pas l'utilisateur
      * @throws RecipeException la recette n'est pas celle du propriétaire de la liste : ses ingrédients personnalisés seraient
      *                         ceux d'un autre, la recette est traitée comme inconnue (comme l'ingrédient d'un autre)
-     * @throws ShoppingListException la recette est déjà dans la liste
+     * @throws ShoppingListException la recette est déjà dans la liste, ou la liste planifie déjà `MAX_MEALS` repas
+     * @throws MealException le nombre de personnes est hors de 1 à 100
      */
     public function addMeal(string $id, Recipe $recipe, int $servings): void
     {
@@ -239,6 +247,10 @@ final class ShoppingList implements ModelInterface
         // Impossible de mettre la même recette deux fois dans une liste
         if ($this->hasRecipe($recipe)) {
             throw ShoppingListException::recipeAlreadyInList($recipe->getName());
+        }
+
+        if ($this->meals->count() >= self::MAX_MEALS) {
+            throw ShoppingListException::mealLimitReached();
         }
 
         // Ajoute à la liste des recettes avec le nombre de personnes demandé

@@ -16,6 +16,7 @@ use Repas\Repas\Domain\Interface\DepartmentRepository;
 use Repas\Repas\Domain\Interface\IngredientRepository;
 use Repas\Repas\Domain\Interface\UnitRepository;
 use Repas\Repas\Domain\Model\AliasKind;
+use Repas\Repas\Domain\Model\Ingredient;
 use Repas\Repas\Domain\Model\IngredientAlias;
 use Repas\Repas\Domain\Service\ConversionService;
 use Repas\Tests\Helper\Builder\ConversionBuilder;
@@ -559,5 +560,42 @@ class CreateIngredientHandlerTest extends TestCase
 
         // When
         $handler($this->createCommand('owner-id', true));
+    }
+
+    public function testACreatorWhoHasTheMaximumNumberOfIngredientsCannotCreateAnother(): void
+    {
+        // Arrange : 2 000 ingrédients à lui (copies et créations confondues), un à un autre
+        $user = new UserBuilder()->withId('user-id')->build();
+        for ($i = 0; $i < Ingredient::MAX_PER_CREATOR; $i++) {
+            $this->ingredientRepository->save(new IngredientBuilder()->isPasta()->withSlug("vrac-$i")->withCreator($user)->build());
+        }
+        $this->ingredientRepository->save(new IngredientBuilder()->isPasta()->withSlug('vrac-other')->withCreator(new UserBuilder()->withId('other-id')->build())->build());
+        $command = new CreateIngredientCommand('Un de trop', 'image.jpg', 'bebe', 'unite', 'unite', $user->getId(), null);
+
+        // Assert
+        $this->expectExceptionObject(IngredientException::limitReached());
+
+        // Act
+        try {
+            ($this->handler)($command);
+        } finally {
+            $this->assertSame([], $this->eventDispatcher->eventDispatched);
+            $this->assertFalse($this->ingredientRepository->exists('un-de-trop' . $user->getId()));
+        }
+    }
+
+    public function testACreatorBelowTheMaximumStillCreatesTheLastIngredient(): void
+    {
+        // Arrange : 1 999 ingrédients à lui
+        $user = new UserBuilder()->withId('user-id')->build();
+        for ($i = 0; $i < Ingredient::MAX_PER_CREATOR - 1; $i++) {
+            $this->ingredientRepository->save(new IngredientBuilder()->isPasta()->withSlug("vrac-$i")->withCreator($user)->build());
+        }
+
+        // Act
+        ($this->handler)(new CreateIngredientCommand('Le dernier', 'image.jpg', 'bebe', 'unite', 'unite', $user->getId(), null));
+
+        // Assert
+        $this->assertTrue($this->ingredientRepository->exists('le-dernieruser-id'));
     }
 }

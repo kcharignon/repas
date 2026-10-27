@@ -3,6 +3,8 @@
 namespace Repas\Tests\Helper\InMemoryRepository;
 
 
+use DateTimeImmutable;
+use Repas\Drive\Domain\Exception\DriveException;
 use Repas\Drive\Domain\Interface\DriveSettingsRepository;
 use Repas\Drive\Domain\Model\DriveSettings;
 use Repas\Drive\Domain\Model\Retailer;
@@ -27,6 +29,22 @@ class DriveSettingsInMemoryRepository extends AbstractInMemoryRepository impleme
     public function save(DriveSettings $settings): void
     {
         $this->models[$settings->getId()] = clone $settings;
+    }
+
+    public function reserveProductWrites(string $userId, Retailer $retailer, int $count, DateTimeImmutable $now): bool
+    {
+        $key = $userId . ':' . $retailer->value;
+        if (!isset($this->models[$key])) {
+            return false;
+        }
+
+        try {
+            $this->models[$key]->recordProductWrites($count, $now);
+        } catch (DriveException) {
+            return false;
+        }
+
+        return true;
     }
 
     public function deleteByUser(string $userId): void

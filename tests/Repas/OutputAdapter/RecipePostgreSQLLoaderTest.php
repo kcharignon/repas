@@ -6,6 +6,7 @@ namespace Repas\Tests\Repas\OutputAdapter;
 use Repas\Repas\Application\Loader\RecipeLoader;
 use Repas\Repas\Application\Query\GetRecipe\RecipeRowDTO;
 use Repas\Repas\Application\Query\ListOtherPeopleRecipes\OtherPeopleRecipeDTO;
+use Repas\Repas\Application\Query\ListOtherPeopleRecipes\OtherPeopleRecipesDTO;
 use Repas\Repas\Application\Query\ListRecipesByType\RecipeSummaryDTO;
 use Repas\Repas\Application\Query\ListRecipeTypes\RecipeTypeDTO;
 use Repas\Repas\Domain\Exception\RecipeException;
@@ -240,15 +241,77 @@ class RecipePostgreSQLLoaderTest extends DatabaseTestCase
         $this->savedRecipe($me, 'bbb déjà copiée', new RecipeTypeBuilder()->isMeal(), originalId: $alreadyCopied->getId());
         $this->savedRecipe($me, 'ccc ma recette', new RecipeTypeBuilder()->isMeal());
         $this->savedRecipe($other, 'ddd copie d\'un tiers', new RecipeTypeBuilder()->isMeal(), originalId: $kept1->getId());
+        $counter = static::getContainer()->get(QueryCounter::class);
+        $counter->reset();
 
         // When
-        $result = $this->recipeLoader->listOfOtherPeople($me->getId());
+        $result = $this->recipeLoader->listOfOtherPeople($me->getId(), 200, 0);
 
-        // Then
+        // Then : toutes les recettes tiennent dans la page, le total en est déduit sans seconde requête
         $this->assertEquals(
-            [new OtherPeopleRecipeDTO($kept1->getId(), 'aaa carbonara', 'plat'), new OtherPeopleRecipeDTO($kept2->getId(), 'zzz tarte', 'dessert')],
+            new OtherPeopleRecipesDTO(
+                [new OtherPeopleRecipeDTO($kept1->getId(), 'aaa carbonara', 'plat'), new OtherPeopleRecipeDTO($kept2->getId(), 'zzz tarte', 'dessert')],
+                2,
+            ),
             $result,
         );
+        $this->assertSame(1, $counter->count(), implode("\n", $counter->statements()));
+    }
+
+    public function testListOfOtherPeopleGivesAPageAndTheRealTotal(): void
+    {
+        // Given : cinq recettes d'un autre
+        $me = $this->savedUser();
+        $other = $this->savedUser();
+        $recipes = [];
+        foreach (['a', 'b', 'c', 'd', 'e'] as $letter) {
+            $recipes[$letter] = $this->savedRecipe($other, $letter . ' recette', new RecipeTypeBuilder()->isMeal());
+        }
+
+        // When
+        $first = $this->recipeLoader->listOfOtherPeople($me->getId(), 2, 0);
+        $second = $this->recipeLoader->listOfOtherPeople($me->getId(), 2, 2);
+        $last = $this->recipeLoader->listOfOtherPeople($me->getId(), 2, 4);
+        $beyond = $this->recipeLoader->listOfOtherPeople($me->getId(), 2, 10);
+
+        // Then : le total est toujours le vrai, la page est triée par slug
+        $this->assertSame([[$recipes['a']->getId(), $recipes['b']->getId()], 5], [array_column($first->member, 'id'), $first->totalItems]);
+        $this->assertSame([[$recipes['c']->getId(), $recipes['d']->getId()], 5], [array_column($second->member, 'id'), $second->totalItems]);
+        $this->assertSame([[$recipes['e']->getId()], 5], [array_column($last->member, 'id'), $last->totalItems]);
+        $this->assertSame([[], 5], [$beyond->member, $beyond->totalItems]);
+    }
+
+    public function testListOfOtherPeopleKeepsTheTotalWhenThePageIsFull(): void
+    {
+        // Given : exactement autant de recettes que la page en peut donner
+        $me = $this->savedUser();
+        $other = $this->savedUser();
+        $this->savedRecipe($other, 'a recette', new RecipeTypeBuilder()->isMeal());
+        $this->savedRecipe($other, 'b recette', new RecipeTypeBuilder()->isMeal());
+
+        // When
+        $result = $this->recipeLoader->listOfOtherPeople($me->getId(), 2, 0);
+
+        // Then
+        $this->assertSame([2, 2], [count($result->member), $result->totalItems]);
+    }
+
+    public function testListOfOtherPeopleOrdersTwoRecipesOfTheSameNameTheSameWayOnEveryCall(): void
+    {
+        // Given : deux recettes de même nom (donc de même slug)
+        $me = $this->savedUser();
+        $this->savedRecipe($this->savedUser(), 'tarte', new RecipeTypeBuilder()->isMeal());
+        $this->savedRecipe($this->savedUser(), 'tarte', new RecipeTypeBuilder()->isMeal());
+
+        // When
+        $full = array_column($this->recipeLoader->listOfOtherPeople($me->getId(), 2, 0)->member, 'id');
+        $pages = [
+            ...array_column($this->recipeLoader->listOfOtherPeople($me->getId(), 1, 0)->member, 'id'),
+            ...array_column($this->recipeLoader->listOfOtherPeople($me->getId(), 1, 1)->member, 'id'),
+        ];
+
+        // Then : lues page par page, elles sont dans le même ordre que lues d'un coup
+        $this->assertSame($full, $pages);
     }
 
     private function savedUser(): User

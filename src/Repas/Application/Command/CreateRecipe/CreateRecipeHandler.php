@@ -35,12 +35,17 @@ readonly class CreateRecipeHandler
     }
 
     /**
-     * @throws RecipeException
+     * @throws RecipeException l'auteur a déjà `Recipe::MAX_PER_AUTHOR` recettes
      * @throws UnitException
      * @throws IngredientException une unité sans chemin de conversion vers l'unité d'achat de son ingrédient
      */
     public function __invoke(CreateRecipeCommand $command): void
     {
+        // Le plafond d'abord : un compte qui l'a atteint ne coûte rien de plus (la copie d'une recette n'y passe pas)
+        if ($this->recipeRepository->authorHasAtLeast($command->authorId, Recipe::MAX_PER_AUTHOR)) {
+            throw RecipeException::limitReached();
+        }
+
         $type = $this->typeRepository->findOneBySlug($command->typeSlug);
 
         // Un ancien slug (ancien commun dont l'auteur a reçu une copie, ingrédient fusionné) est remplacé par l'ingrédient actuel de

@@ -22,15 +22,35 @@ use Repas\Repas\Domain\Model\IngredientDistinctPair;
  *
  * Le résultat est trié du plus probable au moins probable (score décroissant, puis slugs : deux appels donnent la même liste) et borné.
  * Les comparaisons se font par rayon et par nombre de mots (le garde-fou refuse deux noms de longueurs différentes) : jamais sur tous
- * les couples d'une liste.
+ * les couples d'une liste. Le travail est borné aussi : un groupe n'examine que ses `MAX_CANDIDATES_PER_GROUP` premiers ingrédients dans
+ * l'ordre des slugs (les couples d'un groupe croissent comme le carré de sa taille), les mêmes à chaque appel.
  */
 final readonly class DuplicateIngredientFinder
 {
     /** Nombre maximal de paires rendues : au-delà, l'écran serait une corvée, et les suivantes se retrouvent après avoir traité les premières. */
     public const int LIMIT = 50;
 
+    /**
+     * Nombre maximal d'ingrédients comparés entre eux dans un même rayon et pour un même nombre de mots, pris dans l'ordre des slugs : au plus
+     * 124 750 couples par groupe. Un compte ordinaire n'en approche pas (quelques dizaines par groupe) ; les suivants ne sont pas examinés, et
+     * se retrouvent après avoir fusionné ou renommé les premiers.
+     */
+    public const int MAX_CANDIDATES_PER_GROUP = 500;
+
+    /**
+     * Nombre maximal de comparaisons de deux ingrédients pour tout le compte, groupes pris dans l'ordre du rayon puis du nombre de mots : 250 000
+     * comparaisons coûtent environ une seconde, même quand tous les noms se valent. Un compte ordinaire en fait quelques milliers.
+     */
+    public const int MAX_COMPARISONS = 250_000;
+
+    /**
+     * @param int $maxCandidatesPerGroup `MAX_CANDIDATES_PER_GROUP` en production ; plus petit dans les tests de la borne
+     * @param int $maxComparisons `MAX_COMPARISONS` en production ; plus petit dans les tests de la borne
+     */
     public function __construct(
         private IngredientNameMatcher $matcher,
+        private int $maxCandidatesPerGroup = self::MAX_CANDIDATES_PER_GROUP,
+        private int $maxComparisons = self::MAX_COMPARISONS,
     ) {
     }
 
@@ -50,12 +70,20 @@ final readonly class DuplicateIngredientFinder
             $groups[$candidate->departmentSlug][count($candidate->tokens)][] = $candidate;
         }
 
+        // Les groupes dans un ordre qui ne dépend pas de celui des candidats : si le budget de comparaisons s'épuise, c'est toujours au même endroit
+        ksort($groups);
         $pairs = [];
+        $compared = 0;
         foreach ($groups as $byWordCount) {
+            ksort($byWordCount);
             foreach ($byWordCount as $group) {
+                $group = $this->firstOf($group);
                 $count = count($group);
                 for ($i = 0; $i < $count - 1; $i++) {
                     for ($j = $i + 1; $j < $count; $j++) {
+                        if (++$compared > $this->maxComparisons) {
+                            break 4;
+                        }
                         $pair = $this->pairOf($group[$i], $group[$j], $distinct);
                         if ($pair !== null) {
                             $pairs[] = $pair;
@@ -69,6 +97,20 @@ final readonly class DuplicateIngredientFinder
             <=> [$a->similarity->score, $b->first->slug, $b->second->slug]);
 
         return array_slice($pairs, 0, max(0, $limit));
+    }
+
+    /**
+     * Les `MAX_CANDIDATES_PER_GROUP` premiers du groupe dans l'ordre des slugs (par octets, comme le reste du tri) : le choix ne dépend pas de
+     * l'ordre dans lequel l'appelant donne les ingrédients.
+     *
+     * @param list<IngredientCandidate> $group
+     * @return list<IngredientCandidate>
+     */
+    private function firstOf(array $group): array
+    {
+        usort($group, static fn(IngredientCandidate $a, IngredientCandidate $b): int => strcmp($a->slug, $b->slug));
+
+        return array_slice($group, 0, $this->maxCandidatesPerGroup);
     }
 
     /**

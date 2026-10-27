@@ -139,6 +139,20 @@ readonly class RecipePostgreSQLRepository extends PostgreSQLRepository implement
         $this->recipeRowRepository->deleteByRecipeId($recipe->getId());
     }
 
+    public function authorHasAtLeast(string $authorId, int $count): bool
+    {
+        // La `$count`-ième recette existe-t-elle ? Une ligne lue après avoir sauté les `$count - 1` premières
+        return $this->entityManager->createQueryBuilder()
+            ->select('r.id')
+            ->from(RecipeEntity::class, 'r')
+            ->where('r.authorId = :author')
+            ->setParameter('author', $authorId)
+            ->setFirstResult(max(0, $count - 1))
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getScalarResult() !== [];
+    }
+
     public function findIdsByAuthor(string $authorId): array
     {
         $rows = $this->entityManager->createQueryBuilder()

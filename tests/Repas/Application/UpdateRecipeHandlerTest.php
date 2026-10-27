@@ -80,7 +80,7 @@ class UpdateRecipeHandlerTest extends TestCase
         $command = new UpdateRecipeCommand(
             $recipe->getId(),
             'Pates carbo. épurées',
-            450,
+            8,
             Tab::fromArray(
                 new UpdateRecipeRowSubCommand(
                     'pate',
@@ -104,7 +104,7 @@ class UpdateRecipeHandlerTest extends TestCase
         $expectedRecipe = new RecipeBuilder()
             ->withId($recipe->getId())
             ->withName('Pates carbo. épurées')
-            ->withServing(450)
+            ->withServing(8)
             ->withAuthorId($recipe->getAuthorId())
             ->withRecipeType(new RecipeTypeBuilder()->isMeal())
             ->addRow(new RecipeRowBuilder()
@@ -218,7 +218,7 @@ class UpdateRecipeHandlerTest extends TestCase
         $command = new UpdateRecipeCommand(
             $recipe->getId(),
             'Pates carbo. épurées',
-            450,
+            8,
             Tab::fromArray(
                 new UpdateRecipeRowSubCommand(
                     'pate',
@@ -271,7 +271,7 @@ class UpdateRecipeHandlerTest extends TestCase
         $command = new UpdateRecipeCommand(
             $recipe->getId(),
             'Pates carbo. épurées',
-            450,
+            8,
             Tab::fromArray(
                 new UpdateRecipeRowSubCommand(
                     'pate',

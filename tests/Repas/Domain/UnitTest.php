@@ -40,6 +40,8 @@ class UnitTest extends TestCase
         yield 'facteur négatif' => [Dimension::VOLUME, -1.0, UnitException::BASE_FACTOR_INVALID];
         yield 'facteur infini' => [Dimension::VOLUME, INF, UnitException::BASE_FACTOR_INVALID];
         yield 'facteur indéfini' => [Dimension::COUNT, NAN, UnitException::BASE_FACTOR_INVALID];
+        yield 'facteur démesuré' => [Dimension::WEIGHT, 1_000_001.0, UnitException::BASE_FACTOR_INVALID];
+        yield 'facteur minuscule' => [Dimension::WEIGHT, 0.0000001, UnitException::BASE_FACTOR_INVALID];
     }
 
     #[DataProvider('invalidMeasures')]

@@ -3,6 +3,7 @@
 namespace Repas\Drive\Infrastructure\Repository;
 
 
+use DateTimeImmutable;
 use Doctrine\Persistence\ManagerRegistry;
 use Repas\Drive\Domain\Interface\DriveSettingsRepository;
 use Repas\Drive\Domain\Model\DriveSettings;
@@ -37,6 +38,32 @@ readonly class DriveSettingsPostgreSQLRepository extends PostgreSQLRepository im
         }
 
         $this->entityManager->flush();
+    }
+
+    /**
+     * Une seule instruction : la ligne est verrouillée par l'`UPDATE`, la condition est relue sur la valeur qu'une requête concurrente vient de
+     * valider (`READ COMMITTED`), et le compteur change dans la même instruction que sa comparaison au plafond. Le jour est celui de
+     * `DriveSettings::productWritesDayOf()` ; un compteur d'un autre jour (ou jamais écrit) vaut zéro.
+     */
+    public function reserveProductWrites(string $userId, Retailer $retailer, int $count, DateTimeImmutable $now): bool
+    {
+        $updated = $this->entityManager->getConnection()->executeStatement(
+            'UPDATE drive_settings SET'
+            . ' product_writes_count = CASE WHEN product_writes_day = CAST(:today AS DATE) THEN product_writes_count + :count ELSE :count END,'
+            . ' product_writes_day = CAST(:today AS DATE)'
+            . ' WHERE user_id = :user AND retailer = :retailer'
+            . ' AND (CASE WHEN product_writes_day = CAST(:today AS DATE) THEN product_writes_count ELSE 0 END) + :count <= :max',
+            [
+                'today' => DriveSettings::productWritesDayOf($now)->format('Y-m-d'),
+                'count' => $count,
+                'user' => $userId,
+                'retailer' => $retailer->value,
+                'max' => DriveSettings::MAX_PRODUCT_WRITES_PER_DAY,
+            ],
+        );
+
+        // Le compteur d'une entité déjà chargée (identity map) est périmé ; personne ne le lit, et `updateFromModel()` ne le réécrit jamais
+        return $updated === 1;
     }
 
     public function deleteByUser(string $userId): void

@@ -29,7 +29,7 @@ final class UnitException extends DomainException
     }
 
     /**
-     * Le facteur de base est un nombre strictement positif (combien d'unités de base vaut une unité). Règle métier, `422`.
+     * Le facteur de base est un nombre fini de 0,000001 à 1 000 000 (combien d'unités de base vaut une unité). Règle métier, `422`.
      */
     public static function invalidBaseFactor(): self
     {
