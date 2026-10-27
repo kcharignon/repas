@@ -9,6 +9,7 @@ use Repas\Repas\Domain\Model\ShoppingListStatus as Status;
 
 #[ORM\Entity]
 #[ORM\Table(name: 'shopping_list')]
+#[ORM\Index(name: 'idx_shopping_list_owner', columns: ['owner', 'status'])]
 class ShoppingList
 {
     #[ORM\Id]
