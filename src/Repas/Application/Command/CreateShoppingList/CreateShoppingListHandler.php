@@ -4,6 +4,7 @@ namespace Repas\Repas\Application\Command\CreateShoppingList;
 
 use Psr\Clock\ClockInterface;
 use Repas\Repas\Domain\Event\NewShoppingListCreatedEvent;
+use Repas\Repas\Domain\Exception\ShoppingListException;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Repas\Domain\Model\ShoppingList;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
@@ -20,9 +21,15 @@ readonly class CreateShoppingListHandler
     }
 
     /**
+     * @throws ShoppingListException le propriétaire garde déjà `ShoppingList::MAX_PER_OWNER` listes
      */
     public function __invoke(CreateShoppingListCommand $query): void
     {
+        // Le plafond d'abord : rien n'est mis en pause ni créé au-delà
+        if ($this->shoppingListRepository->ownerHasAtLeast($query->ownerId, ShoppingList::MAX_PER_OWNER)) {
+            throw ShoppingListException::limitReached();
+        }
+
         // Met en pause la liste si elle existe
         $activateShoppingList = $this->shoppingListRepository->findOneActivateByOwner($query->ownerId);
         if ($activateShoppingList instanceof ShoppingList) {

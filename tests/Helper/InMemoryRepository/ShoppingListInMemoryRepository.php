@@ -41,6 +41,11 @@ class ShoppingListInMemoryRepository extends AbstractInMemoryRepository implemen
         return $this->models->find(fn(ShoppingList $sl) => $sl->getOwnerId() === $ownerId && $sl->isActivate());
     }
 
+    public function ownerHasAtLeast(string $ownerId, int $count): bool
+    {
+        return $this->models->filter(fn(ShoppingList $shoppingList) => $shoppingList->getOwnerId() === $ownerId && !$shoppingList->isCompleted())->count() >= $count;
+    }
+
     public function hasActiveShoppingList(string $ownerId): bool
     {
         foreach ($this->models as $shoppingList) {

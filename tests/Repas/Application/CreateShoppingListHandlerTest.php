@@ -10,6 +10,8 @@ use Repas\Repas\Application\Command\CreateShoppingList\CreateShoppingListCommand
 use Repas\Repas\Application\Command\CreateShoppingList\CreateShoppingListHandler;
 use Repas\Repas\Domain\Event\NewShoppingListCreatedEvent;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
+use Repas\Repas\Domain\Exception\ShoppingListException;
+use Repas\Repas\Domain\Model\ShoppingList;
 use Repas\Repas\Domain\Model\ShoppingListStatus;
 use Repas\Tests\Helper\Builder\IngredientBuilder;
 use Repas\Tests\Helper\Builder\ShoppingListBuilder;
@@ -78,5 +80,47 @@ class CreateShoppingListHandlerTest extends TestCase
         $this->assertSame($sentAt, $this->shoppingListRepository->findOneById('sent-id')->getSentAt());
         $this->assertSame(ShoppingListStatus::PAUSED, $this->shoppingListRepository->findOneById('active-id')->getStatus());
         $this->assertSame(ShoppingListStatus::ACTIVE, $this->shoppingListRepository->findOneById('new-id')->getStatus());
+    }
+
+    public function testAnOwnerWhoKeepsTheMaximumNumberOfListsCannotCreateAnotherAndNothingIsPaused(): void
+    {
+        // Arrange : une liste active et 999 en pause, plus une terminée qui ne compte pas
+        $user = new UserBuilder()->build();
+        $this->shoppingListRepository->save(new ShoppingListBuilder()->withOwner($user)->withId('active-id')->build());
+        for ($i = 0; $i < ShoppingList::MAX_PER_OWNER - 1; $i++) {
+            $this->shoppingListRepository->save(new ShoppingListBuilder()->withOwner($user)->withId("paused-$i")->withStatus(ShoppingListStatus::PAUSED)->build());
+        }
+        $this->shoppingListRepository->save(new ShoppingListBuilder()->withOwner($user)->withId('done-id')->withStatus(ShoppingListStatus::COMPLETED)->build());
+
+        // Assert
+        $this->expectExceptionObject(ShoppingListException::limitReached());
+
+        // Act
+        try {
+            ($this->handler)(new CreateShoppingListCommand('one-too-many', $user->getId()));
+        } finally {
+            $this->assertSame([], $this->eventDispatcher->eventDispatched);
+            $this->assertSame(ShoppingListStatus::ACTIVE, $this->shoppingListRepository->findOneById('active-id')->getStatus());
+        }
+    }
+
+    public function testAnOwnerBelowTheMaximumStillCreatesTheLastList(): void
+    {
+        // Arrange : une liste active et 998 en pause, plus dix terminées qui ne comptent pas
+        $user = new UserBuilder()->build();
+        $this->shoppingListRepository->save(new ShoppingListBuilder()->withOwner($user)->withId('active-id')->build());
+        for ($i = 0; $i < ShoppingList::MAX_PER_OWNER - 2; $i++) {
+            $this->shoppingListRepository->save(new ShoppingListBuilder()->withOwner($user)->withId("paused-$i")->withStatus(ShoppingListStatus::PAUSED)->build());
+        }
+        for ($i = 0; $i < 10; $i++) {
+            $this->shoppingListRepository->save(new ShoppingListBuilder()->withOwner($user)->withId("done-$i")->withStatus(ShoppingListStatus::COMPLETED)->build());
+        }
+
+        // Act
+        ($this->handler)(new CreateShoppingListCommand('the-last', $user->getId()));
+
+        // Assert
+        $this->assertSame(ShoppingListStatus::ACTIVE, $this->shoppingListRepository->findOneById('the-last')->getStatus());
+        $this->assertSame(ShoppingListStatus::PAUSED, $this->shoppingListRepository->findOneById('active-id')->getStatus());
     }
 }

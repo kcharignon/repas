@@ -36,6 +36,11 @@ class IngredientInMemoryRepository extends AbstractInMemoryRepository implements
         return $ingredient->getDefaultPurchaseUnit()->getSlug();
     }
 
+    public function creatorHasAtLeast(string $creatorId, int $count): bool
+    {
+        return $this->models->filter(fn(Ingredient $ingredient) => $ingredient->getCreatorId() === $creatorId)->count() >= $count;
+    }
+
     public function exists(string $slug): bool
     {
         return isset($this->models[$slug]);

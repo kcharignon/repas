@@ -23,7 +23,10 @@ final class Recipe implements ModelInterface
     /** Lignes d'une recette : une recette en a une dizaine, jamais cent. */
     public const int MAX_ROWS = 100;
 
-    /** Recettes qu'un auteur peut écrire (la copie de celle d'un autre n'est pas comptée). */
+    /**
+     * Nombre de recettes à partir duquel un auteur n'en écrit plus lui-même : toutes les siennes comptent (copies comprises), mais seule
+     * l'écriture d'une recette est refusée, jamais la copie de celle d'un autre.
+     */
     public const int MAX_PER_AUTHOR = 1000;
 
     /**

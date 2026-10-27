@@ -26,7 +26,7 @@ final class ShoppingList implements ModelInterface
     /** Repas planifiés dans une même liste : une liste en a quelques-uns, jamais cinq cents. */
     public const int MAX_MEALS = 500;
 
-    /** Listes qu'un propriétaire garde (hors listes terminées, supprimées à la création de la suivante) : vingt ans d'une liste par semaine. */
+    /** Listes qu'un propriétaire garde au plus (hors listes terminées, supprimées à la création de la suivante) : vingt ans d'une liste par semaine. */
     public const int MAX_PER_OWNER = 1000;
 
     /**

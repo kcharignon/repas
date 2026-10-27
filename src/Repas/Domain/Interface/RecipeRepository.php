@@ -23,6 +23,12 @@ interface RecipeRepository
     public function save(Recipe $recipe): void;
 
     /**
+     * L'auteur a-t-il au moins `$count` recettes ? La lecture s'arrête à la `$count`-ième : jamais un décompte complet (plafond de recettes,
+     * `Recipe::MAX_PER_AUTHOR`).
+     */
+    public function authorHasAtLeast(string $authorId, int $count): bool;
+
+    /**
      * Une recette utilise-t-elle cet ingrédient ? (existence seulement : aucun agrégat n'est hydraté)
      */
     public function isIngredientUsed(string $ingredientSlug): bool;

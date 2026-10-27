@@ -41,6 +41,11 @@ class RecipeInMemoryRepository extends AbstractInMemoryRepository implements Rec
         throw new Exception("Not implemented");
     }
 
+    public function authorHasAtLeast(string $authorId, int $count): bool
+    {
+        return $this->findByAuthor($authorId)->count() >= $count;
+    }
+
     public function isIngredientUsed(string $ingredientSlug): bool
     {
         /** @var Recipe $recipe */
