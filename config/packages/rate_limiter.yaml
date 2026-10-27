@@ -66,6 +66,14 @@ framework:
             policy: sliding_window
             limit: 60
             interval: '1 minute'
+        # Écritures de l'API de Repas (recettes, ingrédients, listes, repas, conversions…), PAR UTILISATEUR et non par IP
+        # (RepasWriteRateLimitListener) : toute requête POST, PUT, PATCH ou DELETE d'un controller de Repas\Repas\Infrastructure\Http\Api, un
+        # compteur commun. Cocher quarante lignes d'affilée ou toucher plusieurs fois « + » reste très en deçà de 300 par minute (cinq par
+        # seconde) : le plafond n'arrête qu'un flot (boucle, script). Les lectures ne sont jamais comptées.
+        repas_write:
+            policy: sliding_window
+            limit: 300
+            interval: '1 minute'
         # Lectures coûteuses du drive, par utilisateur (GET /drive/plans/{id} et /drive/estimates/{id} : 4 requêtes SQL chacune),
         # un compteur commun aux deux routes. Le front les relit à l'ouverture d'un écran : 120 par minute, deux par seconde.
         drive_read:
@@ -127,6 +135,8 @@ when@test:
             email_verification:
                 cache_pool: test.rate_limiter_pool
             password_reset:
+                cache_pool: test.rate_limiter_pool
+            repas_write:
                 cache_pool: test.rate_limiter_pool
             drive_write:
                 cache_pool: test.rate_limiter_pool
