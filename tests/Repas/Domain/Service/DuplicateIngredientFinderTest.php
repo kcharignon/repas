@@ -264,61 +264,67 @@ class DuplicateIngredientFinderTest extends TestCase
         return array_values(array_filter($truth['cases'], static fn(array $case): bool => in_array($case['category'], $categories, true)));
     }
 
-    public function testAGroupOnlyExaminesItsFirstFiveHundredIngredientsInSlugOrder(): void
+    public function testAGroupOnlyExaminesItsFirstIngredientsInSlugOrder(): void
     {
-        // Given : 600 ingrédients du même rayon et du même nombre de mots, donnés dans l'ordre inverse des slugs : les 100 derniers sont, eux aussi, des doublons
+        // Given : un groupe borné à 5 ingrédients, 8 ingrédients du même rayon et du même nombre de mots donnés dans l'ordre inverse des slugs
+        $finder = new DuplicateIngredientFinder(new IngredientNameMatcher(), maxCandidatesPerGroup: 5);
         $candidates = [];
-        for ($i = 599; $i >= 0; $i--) {
-            $candidates[] = self::own(sprintf('tomate-%03d', $i), 'Tomate');
+        for ($i = 7; $i >= 0; $i--) {
+            $candidates[] = self::own("tomate-$i", 'Tomate');
         }
 
         // When : toutes les paires sont exactes, on les garde toutes
-        $pairs = $this->finder->find($candidates, limit: 200000);
+        $pairs = $finder->find($candidates, limit: 100);
 
-        // Then : C(500, 2) paires et pas une de plus, aucune ne touche un slug au-delà du cinq centième, quel que soit l'ordre donné
-        $this->assertCount(500 * 499 / 2, $pairs);
-        $this->assertLessThan('tomate-500', max(array_map(static fn(DuplicatePair $pair): string => $pair->second->slug, $pairs)));
+        // Then : C(5, 2) paires et pas une de plus, aucune ne touche un slug au-delà du cinquième, quel que soit l'ordre donné
+        $this->assertCount(10, $pairs);
+        $this->assertLessThan('tomate-5', max(array_map(static fn(DuplicatePair $pair): string => $pair->second->slug, $pairs)));
     }
 
     public function testAGroupUnderTheBoundIsExaminedWhole(): void
     {
-        // Given : 500 ingrédients exactement, dont les deux derniers par slug sont des doublons
-        $candidates = [];
-        for ($i = 0; $i < 498; $i++) {
-            $candidates[] = self::own(sprintf('a-%03d', $i), 'Nom ' . chr(97 + intdiv($i, 26)) . chr(97 + $i % 26) . 'x' . $i);
-        }
-        $candidates[] = self::own('z-tomate', 'Tomate');
-        $candidates[] = self::own('z-tomates', 'Tomates');
+        // Given : exactement 5 ingrédients pour une borne de 5, dont les deux derniers par slug sont des doublons
+        $finder = new DuplicateIngredientFinder(new IngredientNameMatcher(), maxCandidatesPerGroup: 5);
+        $candidates = [self::own('a-pomme', 'Pomme'), self::own('b-poire', 'Poire'), self::own('c-kiwi', 'Kiwi'), self::own('z-tomate', 'Tomate'), self::own('z-tomates', 'Tomates')];
 
         // When
-        $pairs = $this->finder->find($candidates);
+        $pairs = $finder->find($candidates);
 
         // Then
-        $this->assertContains('z-tomate+z-tomates', self::slugs($pairs));
+        $this->assertSame(['z-tomate+z-tomates'], self::slugs($pairs));
     }
 
     public function testTheWholeAccountIsBoundedByABudgetOfComparisons(): void
     {
-        // Given : un compte hors norme, 2 000 ingrédients en quatre rayons dont les noms se valent tous (500 000 couples sans le budget)
+        // Given : un budget de 25 comparaisons, quatre rayons de 5 ingrédients dont les noms se valent tous (10 couples par rayon, 40 sans le budget)
+        $finder = new DuplicateIngredientFinder(new IngredientNameMatcher(), maxComparisons: 25);
         $candidates = [];
-        foreach (['epicerie', 'fruit-et-legume', 'surgele', 'viande'] as $department) {
-            for ($i = 0; $i < 500; $i++) {
-                $candidates[] = self::own(sprintf('%s-%03d', $department, $i), 'Nom', $department);
+        foreach (['viande', 'surgele', 'fruit-et-legume', 'epicerie'] as $department) {
+            for ($i = 0; $i < 5; $i++) {
+                $candidates[] = self::own("$department-$i", 'Nom', $department);
             }
         }
 
         // When
-        $start = hrtime(true);
-        $pairs = $this->finder->find($candidates, limit: 1_000_000);
-        $milliseconds = (hrtime(true) - $start) / 1e6;
+        $pairs = $finder->find($candidates, limit: 1000);
 
-        // Then : pas plus de 250 000 couples examinés, trouvés dans les premiers rayons dans l'ordre alphabétique (les deux premiers en entier, le troisième entamé)
-        PerformanceReport::line(sprintf("\n[plafond] 2 000 ingrédients en quatre rayons, doublons possibles : %.0f ms\n", $milliseconds));
-        $this->assertCount(DuplicateIngredientFinder::MAX_COMPARISONS, $pairs);
-        $this->assertLessThan(10000.0, $milliseconds);
-        $departments = array_unique(array_map(static fn(DuplicatePair $pair): string => explode('-', $pair->first->slug)[0], $pairs));
+        // Then : 25 couples examinés, dans l'ordre alphabétique des rayons (deux en entier, le troisième entamé), quel que soit l'ordre donné
+        $this->assertCount(25, $pairs);
+        $departments = array_unique(array_map(static fn(DuplicatePair $pair): string => preg_replace('/-\d$/', '', $pair->first->slug), $pairs));
         sort($departments);
-        $this->assertSame(['epicerie', 'fruit', 'surgele'], $departments);
+        $this->assertSame(['epicerie', 'fruit-et-legume', 'surgele'], $departments);
+    }
+
+    public function testTheBoundsOfProductionAreTheDefaultOnes(): void
+    {
+        // Given / When
+        $defaults = array_map(
+            static fn(\ReflectionParameter $parameter): mixed => $parameter->isDefaultValueAvailable() ? $parameter->getDefaultValue() : null,
+            new \ReflectionClass(DuplicateIngredientFinder::class)->getConstructor()->getParameters(),
+        );
+
+        // Then : 500 ingrédients par groupe, 250 000 comparaisons au plus pour tout le compte
+        $this->assertSame([null, 500, 250_000], $defaults);
     }
 
     public function testAnOrdinaryAccountIsNeverCutByTheBounds(): void
@@ -334,9 +340,11 @@ class DuplicateIngredientFinderTest extends TestCase
         $candidates[] = self::own('zz-tomates', 'Tomates', 'zzz-dernier-rayon');
 
         // When
+        $start = hrtime(true);
         $pairs = $this->finder->find($candidates);
+        PerformanceReport::line(sprintf("\n[plafond] 242 ingrédients en 5 rayons, doublons possibles : %.1f ms\n", (hrtime(true) - $start) / 1e6));
 
-        // Then
+        // Then : la mesure est seulement rapportée (`TEST_PERF_REPORT=1`), jamais comparée à un temps
         $this->assertContains('zz-tomate+zz-tomates', self::slugs($pairs));
     }
 

@@ -43,8 +43,14 @@ final readonly class DuplicateIngredientFinder
      */
     public const int MAX_COMPARISONS = 250_000;
 
+    /**
+     * @param int $maxCandidatesPerGroup `MAX_CANDIDATES_PER_GROUP` en production ; plus petit dans les tests de la borne
+     * @param int $maxComparisons `MAX_COMPARISONS` en production ; plus petit dans les tests de la borne
+     */
     public function __construct(
         private IngredientNameMatcher $matcher,
+        private int $maxCandidatesPerGroup = self::MAX_CANDIDATES_PER_GROUP,
+        private int $maxComparisons = self::MAX_COMPARISONS,
     ) {
     }
 
@@ -71,11 +77,11 @@ final readonly class DuplicateIngredientFinder
         foreach ($groups as $byWordCount) {
             ksort($byWordCount);
             foreach ($byWordCount as $group) {
-                $group = self::firstOf($group);
+                $group = $this->firstOf($group);
                 $count = count($group);
                 for ($i = 0; $i < $count - 1; $i++) {
                     for ($j = $i + 1; $j < $count; $j++) {
-                        if (++$compared > self::MAX_COMPARISONS) {
+                        if (++$compared > $this->maxComparisons) {
                             break 4;
                         }
                         $pair = $this->pairOf($group[$i], $group[$j], $distinct);
@@ -100,11 +106,11 @@ final readonly class DuplicateIngredientFinder
      * @param list<IngredientCandidate> $group
      * @return list<IngredientCandidate>
      */
-    private static function firstOf(array $group): array
+    private function firstOf(array $group): array
     {
         usort($group, static fn(IngredientCandidate $a, IngredientCandidate $b): int => strcmp($a->slug, $b->slug));
 
-        return array_slice($group, 0, self::MAX_CANDIDATES_PER_GROUP);
+        return array_slice($group, 0, $this->maxCandidatesPerGroup);
     }
 
     /**
