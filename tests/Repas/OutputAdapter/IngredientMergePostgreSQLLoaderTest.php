@@ -239,21 +239,28 @@ class IngredientMergePostgreSQLLoaderTest extends DatabaseTestCase
         $this->assertEquals([new MergeUnitDTO('tranche', 'tranche')], $preview->missingUnits);
     }
 
-    public function testThePreviewRefusesALineOfAnotherUserOrAChoiceOfAnotherUser(): void
+    public function testThePreviewRefusesALineOfAnotherUser(): void
     {
-        foreach ([
-            'une recette' => fn() => $this->dataset->recipe('legacy', $this->other->getId(), [[$this->absorbed->getSlug(), 1.0, 'gramme']]),
-            'un choix du drive' => fn() => $this->dataset->choice('legacy-choice', $this->other->getId(), $this->absorbed->getSlug()),
-        ] as $label => $arrange) {
-            // Given
-            $arrange();
+        // Given
+        $this->dataset->recipe('legacy', $this->other->getId(), [[$this->absorbed->getSlug(), 1.0, 'gramme']]);
 
-            // When
-            $preview = $this->preview();
+        // When
+        $preview = $this->preview();
 
-            // Then
-            $this->assertSame(['USED_BY_ANOTHER_USER', false], [$preview->blockedBy, $preview->canMerge], $label);
-        }
+        // Then
+        $this->assertSame(['USED_BY_ANOTHER_USER', false], [$preview->blockedBy, $preview->canMerge]);
+    }
+
+    public function testThePreviewIgnoresAChoiceOfTheDriveOfAnotherUser(): void
+    {
+        // Given : un choix d'un autre compte sur l'ingrédient de l'utilisateur, qui n'est l'usage de personne
+        $this->dataset->choice('legacy-choice', $this->other->getId(), $this->absorbed->getSlug());
+
+        // When
+        $preview = $this->preview();
+
+        // Then
+        $this->assertSame([null, true], [$preview->blockedBy, $preview->canMerge]);
     }
 
     public function testThePreviewRefusesTheSameIngredient(): void

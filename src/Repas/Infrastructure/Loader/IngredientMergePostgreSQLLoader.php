@@ -60,7 +60,7 @@ final readonly class IngredientMergePostgreSQLLoader implements IngredientMergeL
         $usage = $mergeable ? $this->usageReader->usageOf($userId, $absorbedSlug, $keptSlug, $kept['unit_slug']) : new IngredientMergeUsage();
         $drive = $mergeable ? $this->driveReferences->mergeImpact($userId, $absorbedSlug, $keptSlug) : new DriveMergeImpact();
 
-        $plan = $this->planner->plan($absorbedParty, $keptParty, $this->graphOf($keptSlug), $usage, $drive->chosenByAnotherUser);
+        $plan = $this->planner->plan($absorbedParty, $keptParty, $this->graphOf($keptSlug), $usage);
 
         return new MergePreviewDTO(
             keep: $this->ingredientDto($kept),

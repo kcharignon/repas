@@ -30,7 +30,7 @@ Mots de l'interface : **ingrédient**, **recette**, **liste de courses** (le mot
 | 12 | **Idempotente** (§ 6). |
 | 13 | **Statistiques** : supprimer un ingrédient *créé* par l'utilisateur décrémente son compteur ; supprimer une copie d'adoption (`adopted_from` renseigné) ne le touche pas. |
 | 14 | **Les alias suivent** : tout alias qui désignait `B` désigne `A` ; un alias `B -> A` (type `merge`) est ajouté ; les écritures qui recevraient encore l'ancien slug (onglet ouvert, brouillon d'envoi sur le téléphone) retombent sur `A`. |
-| 15 | **Pas de propagation aux autres** : les copies de recettes faites par d'autres utilisateurs ont leurs propres ingrédients ; une ligne d'un autre utilisateur qui référencerait `B` (donnée héritée) interrompt la fusion : `409 INGREDIENT_USED_BY_ANOTHER_USER`. |
+| 15 | **Pas de propagation aux autres** : les copies de recettes faites par d'autres utilisateurs ont leurs propres ingrédients ; une ligne de recette ou de liste d'un autre utilisateur qui référencerait `B` (donnée héritée) interrompt la fusion : `409 INGREDIENT_USED_BY_ANOTHER_USER`. Un choix du drive d'un autre compte sur `B` n'y compte pas : un choix ne se pose que sur un ingrédient de son auteur, `B` est à l'utilisateur. |
 
 ## 3. Ce qui est modifié, table par table
 
@@ -126,7 +126,7 @@ Dans les deux refus où rien n'est lu (`SAME_INGREDIENT`, `COMMON_INGREDIENT`), 
 | `422` | `CANNOT_MERGE_COMMON_INGREDIENT` | l'un des deux est un commun |
 | `422` | `MERGE_UNIT_MISSING` | § 5 |
 | `409` | `INGREDIENT_IN_SENT_LIST` | règle 8 |
-| `409` | `INGREDIENT_USED_BY_ANOTHER_USER` | règle 15 (recette, liste ou choix du drive d'un autre utilisateur sur `B`) |
+| `409` | `INGREDIENT_USED_BY_ANOTHER_USER` | règle 15 (recette ou liste d'un autre utilisateur sur `B`) |
 | `409` | `INGREDIENT_MERGE_CONFLICT` | une écriture concurrente a posé une référence sur `B` pendant la fusion (ou en a laissé une) : rien n'a été écrit, la fusion se rejoue |
 | `204` | | succès, ou rejeu idempotent |
 

@@ -102,17 +102,18 @@ readonly class DriveIngredientReferencesPostgreSQLRepository extends PostgreSQLR
 
     public function mergeImpact(string $userId, string $absorbedSlug, string $keptSlug): DriveMergeImpact
     {
-        [$moved, $dropped, $products, $foreign] = $this->connection()->fetchNumeric(
+        // Seuls les choix de l'utilisateur comptent. Le choix d'un autre compte sur l'un de ses ingrédients n'est l'usage de personne (un choix
+        // ne se pose que sur un ingrédient de son auteur) : il ne s'ajoute pas à ce que la fusion déplace et ne l'empêche pas
+        [$moved, $dropped, $products] = $this->connection()->fetchNumeric(
             'SELECT'
             . ' (SELECT count(*) FROM drive_choice b WHERE b.user_id = :u AND b.ingredient_slug = :absorbed AND NOT ' . self::KEPT_HAS_A_CHOICE . '),'
             . ' (SELECT count(*) FROM drive_choice b WHERE b.user_id = :u AND b.ingredient_slug = :absorbed AND ' . self::KEPT_HAS_A_CHOICE . '),'
             . ' (SELECT count(*) FROM drive_choice_product p JOIN drive_choice b ON b.id = p.choice_id'
-            . '   WHERE b.user_id = :u AND b.ingredient_slug = :absorbed AND ' . self::KEPT_HAS_A_CHOICE . '),'
-            . ' EXISTS (SELECT 1 FROM drive_choice o WHERE o.ingredient_slug = :absorbed AND o.user_id <> :u)',
+            . '   WHERE b.user_id = :u AND b.ingredient_slug = :absorbed AND ' . self::KEPT_HAS_A_CHOICE . ')',
             ['u' => $userId, 'absorbed' => $absorbedSlug, 'kept' => $keptSlug],
         );
 
-        return new DriveMergeImpact((int) $moved, (int) $dropped, (int) $products, (bool) $foreign);
+        return new DriveMergeImpact((int) $moved, (int) $dropped, (int) $products);
     }
 
     public function merge(string $userId, string $absorbedSlug, string $keptSlug): DriveMergeImpact

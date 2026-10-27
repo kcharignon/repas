@@ -100,7 +100,6 @@ readonly class MergeIngredientsHandler
             MergeParty::of($kept),
             $this->conversionService->graphOf($kept),
             $usage,
-            $this->driveReferences->mergeImpact($command->userId, $absorbed->getSlug(), $kept->getSlug())->chosenByAnotherUser,
         );
         if ($plan->block !== null) {
             throw $plan->block->toException();

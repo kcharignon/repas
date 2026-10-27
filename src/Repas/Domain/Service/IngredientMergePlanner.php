@@ -40,15 +40,11 @@ use Repas\Repas\Domain\Model\UnitFactor;
  */
 final readonly class IngredientMergePlanner
 {
-    /**
-     * @param bool $chosenByAnotherUser un AUTRE utilisateur a un choix du drive sur `B` (donnée héritée)
-     */
     public function plan(
         MergeParty $absorbed,
         MergeParty $kept,
         ConversionGraph $keptGraph,
         IngredientMergeUsage $usage,
-        bool $chosenByAnotherUser = false,
     ): IngredientMergePlan {
         if ($absorbed->slug === $kept->slug) {
             return new IngredientMergePlan(MergeBlock::SAME_INGREDIENT);
@@ -78,7 +74,7 @@ final readonly class IngredientMergePlanner
         ksort($missing);
 
         $block = match (true) {
-            $usage->usedByAnotherUser || $chosenByAnotherUser => MergeBlock::USED_BY_ANOTHER_USER,
+            $usage->usedByAnotherUser => MergeBlock::USED_BY_ANOTHER_USER,
             $usage->sentListCount > 0 => MergeBlock::IN_SENT_LIST,
             $missing !== [] => MergeBlock::UNIT_MISSING,
             default => null,

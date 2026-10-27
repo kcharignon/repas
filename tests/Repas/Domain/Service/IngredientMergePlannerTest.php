@@ -115,23 +115,22 @@ class IngredientMergePlannerTest extends TestCase
     }
 
     /**
-     * @return iterable<string, array{IngredientMergeUsage, bool, MergeBlock}>
+     * @return iterable<string, array{IngredientMergeUsage, MergeBlock}>
      */
     public static function refusalOrder(): iterable
     {
         $missing = ['recipeUnitSlugs' => ['tranche']];
 
-        yield 'une ligne d\'un autre utilisateur passe avant une liste envoyée et une unité qui manque' => [new IngredientMergeUsage(...$missing, sentListCount: 1, usedByAnotherUser: true), false, MergeBlock::USED_BY_ANOTHER_USER];
-        yield 'un choix du drive d\'un autre utilisateur compte comme une ligne d\'un autre' => [new IngredientMergeUsage(...$missing, sentListCount: 1), true, MergeBlock::USED_BY_ANOTHER_USER];
-        yield 'une liste envoyée passe avant une unité qui manque' => [new IngredientMergeUsage(...$missing, sentListCount: 2), false, MergeBlock::IN_SENT_LIST];
-        yield 'une unité qui manque' => [new IngredientMergeUsage(...$missing), false, MergeBlock::UNIT_MISSING];
+        yield 'une ligne d\'un autre utilisateur passe avant une liste envoyée et une unité qui manque' => [new IngredientMergeUsage(...$missing, sentListCount: 1, usedByAnotherUser: true), MergeBlock::USED_BY_ANOTHER_USER];
+        yield 'une liste envoyée passe avant une unité qui manque' => [new IngredientMergeUsage(...$missing, sentListCount: 2), MergeBlock::IN_SENT_LIST];
+        yield 'une unité qui manque' => [new IngredientMergeUsage(...$missing), MergeBlock::UNIT_MISSING];
     }
 
     #[DataProvider('refusalOrder')]
-    public function testTheFirstRefusalWinsAndTheMissingUnitsStayKnown(IngredientMergeUsage $usage, bool $chosenByAnotherUser, MergeBlock $expected): void
+    public function testTheFirstRefusalWinsAndTheMissingUnitsStayKnown(IngredientMergeUsage $usage, MergeBlock $expected): void
     {
         // When
-        $plan = $this->planner->plan(self::absorbed(), self::kept(), self::graph(), $usage, $chosenByAnotherUser);
+        $plan = $this->planner->plan(self::absorbed(), self::kept(), self::graph(), $usage);
 
         // Then
         $this->assertSame($expected, $plan->block);
