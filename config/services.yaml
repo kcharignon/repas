@@ -9,6 +9,9 @@ parameters:
     # Environnements où la migration d'adoption des communs (ING-003) accepte d'écrire (--apply, --undo) ; `test` s'y ajoute en test
     repas.adoption.environments: ['prod', 'dev']
 
+    # Magasin des verrous (config/packages/lock.yaml, .env) ; en mémoire en test (bloc `when@test` plus bas)
+    repas.lock_dsn: '%env(LOCK_DSN)%'
+
 services:
     # default configuration for services in *this* file
     _defaults:
@@ -84,6 +87,17 @@ services:
 
     Repas\User\Domain\Service\UserChecker: ~
 
+    # Verrous des compteurs de débit (`lock_factory` de config/packages/rate_limiter.yaml) : le magasin du framework (LOCK_DSN), au plus
+    # 256 verrous distincts. Les sections critiques d'un compte, plus longues, prennent `lock.factory` (un verrou par ressource).
+    repas.lock_store:
+        class: Symfony\Component\Lock\PersistingStoreInterface
+        factory: ['Symfony\Component\Lock\Store\StoreFactory', 'createStore']
+        arguments: ['%repas.lock_dsn%']
+
+    Repas\Shared\Infrastructure\RateLimiter\BoundedLockFactory:
+        arguments:
+            $store: '@repas.lock_store'
+
 
 when@dev:
     services:
@@ -102,6 +116,9 @@ when@test:
     parameters:
         app.refresh_cookie_secure: false
         repas.adoption.environments: ['prod', 'dev', 'test']
+        # Un seul processus par test de base : les verrous restent en mémoire (tests/Shared/Infrastructure/RateLimiter prouve le vrai
+        # magasin avec plusieurs processus)
+        repas.lock_dsn: 'in-memory'
 
     services:
         # Fixtures de développement, chargées aussi par les tests de `DevelopmentFixturesTest` (voir l'exclusion de `Repas\` plus haut)

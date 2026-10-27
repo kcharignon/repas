@@ -1,16 +1,22 @@
 framework:
     rate_limiter:
+        # Chaque compteur se lit et s'écrit sous un verrou (`lock_factory`, Repas\Shared\Infrastructure\RateLimiter\BoundedLockFactory) :
+        # deux requêtes simultanées comptent chacune, d'un fil ou d'un processus à l'autre. Un nouveau limiteur déclare la même fabrique
+        # (tests/Shared/Infrastructure/RateLimiter/EveryLimiterIsLockedTest).
+        #
         # Connexion (POST /api/login_check, LoginRateLimiter, ADR 0008) : trois compteurs d'ÉCHECS, au-delà desquels la connexion répond
         # 429 + Retry-After, même avec le bon mot de passe. Un e-mail inconnu compte comme un e-mail connu.
         # Par adresse (préfixe /64 en IPv6) : combien d'adresses e-mail un même client essaie.
         login_address:
             policy: fixed_window
+            lock_factory: Repas\Shared\Infrastructure\RateLimiter\BoundedLockFactory
             limit: 25
             interval: '15 minutes'
         # Par adresse ET e-mail : combien de mots de passe pour une même adresse e-mail depuis une même adresse. Une connexion
         # réussie le remet à zéro.
         login_address_email:
             policy: fixed_window
+            lock_factory: Repas\Shared\Infrastructure\RateLimiter\BoundedLockFactory
             limit: 5
             interval: '15 minutes'
         # Par e-mail seul, toutes adresses confondues : 20 échecs d'un coup, puis un échec de plus toutes les 3 minutes (20 par heure).
@@ -18,12 +24,14 @@ framework:
         # réussie ni une tentative refusée ne le touchent.
         login_email:
             policy: token_bucket
+            lock_factory: Repas\Shared\Infrastructure\RateLimiter\BoundedLockFactory
             limit: 20
             rate: { interval: '3 minutes', amount: 1 }
         # Mot de passe actuel d'un utilisateur connecté (PUT /api/v1/me/settings, PasswordAttemptRateLimiter), PAR UTILISATEUR : seuls
         # les mots de passe refusés comptent, un mot de passe juste ne consomme rien.
         password_check:
             policy: fixed_window
+            lock_factory: Repas\Shared\Infrastructure\RateLimiter\BoundedLockFactory
             limit: 5
             interval: '15 minutes'
         # Emails envoyés sans jeton (inscription, renvoi du lien de confirmation, mot de passe oublié), TOUTES adresses confondues
@@ -31,6 +39,7 @@ framework:
         # chaque requête au corps valide, qu'un email parte ou non : la réponse ne dépend pas de l'existence du compte.
         public_email:
             policy: sliding_window
+            lock_factory: Repas\Shared\Infrastructure\RateLimiter\BoundedLockFactory
             limit: 100
             interval: '1 hour'
         # Le même email, PAR DESTINATAIRE (PublicEmailRateLimitListener) : l'adresse saisie, partagée par les trois routes, que le compte
@@ -38,18 +47,21 @@ framework:
         # une même adresse n'occupe plus le plafond commun ci-dessus.
         public_email_recipient:
             policy: sliding_window
+            lock_factory: Repas\Shared\Infrastructure\RateLimiter\BoundedLockFactory
             limit: 6
             interval: '1 hour'
         # Inscription publique (POST /api/v1/users), par adresse IP (RegisterNewUserRateLimitListener) : un compte créé n'a
         # ni confirmation d'email ni captcha, c'est ce plafond qui limite la création en masse (ADR 0008).
         registration:
             policy: sliding_window
+            lock_factory: Repas\Shared\Infrastructure\RateLimiter\BoundedLockFactory
             limit: 10
             interval: '1 hour'
         # Confirmation d'adresse email (POST /api/v1/users/email-verification/send et /confirm), par adresse IP
         # (EmailVerificationRateLimitListener, ADR 0020) : chaque renvoi accepté envoie un email.
         email_verification:
             policy: sliding_window
+            lock_factory: Repas\Shared\Infrastructure\RateLimiter\BoundedLockFactory
             limit: 20
             interval: '1 hour'
         # Mot de passe oublié (POST /api/v1/users/password-reset/send et /confirm), par adresse IP
@@ -57,12 +69,14 @@ framework:
         # email_verification : redemander un lien ne doit pas consommer le plafond de la confirmation d'adresse.
         password_reset:
             policy: sliding_window
+            lock_factory: Repas\Shared\Infrastructure\RateLimiter\BoundedLockFactory
             limit: 20
             interval: '1 hour'
         # Rafraîchissement du JWT (POST /api/auth/refresh), par adresse IP (RefreshTokenRateLimitListener, ADR 0015 §9) :
         # un SPA le sollicite à chaque rechargement de page et toutes les heures, 60 par 10 minutes laissent de la marge.
         refresh_token:
             policy: sliding_window
+            lock_factory: Repas\Shared\Infrastructure\RateLimiter\BoundedLockFactory
             limit: 60
             interval: '10 minutes'
         # Écritures du drive, PAR UTILISATEUR et non par IP (DRV-615, DriveRateLimitListener, #[RateLimitedPerUser(DriveRateLimit::WRITE)]) :
@@ -71,6 +85,7 @@ framework:
         # 60 par minute laissent de la marge à l'usage normal et arrêtent un flot (boucle, script, compte malveillant).
         drive_write:
             policy: sliding_window
+            lock_factory: Repas\Shared\Infrastructure\RateLimiter\BoundedLockFactory
             limit: 60
             interval: '1 minute'
         # Écritures de l'API de Repas (recettes, ingrédients, listes, repas, conversions…), PAR UTILISATEUR et non par IP
@@ -79,12 +94,14 @@ framework:
         # seconde) : le plafond n'arrête qu'un flot (boucle, script). Les lectures ne sont jamais comptées.
         repas_write:
             policy: sliding_window
+            lock_factory: Repas\Shared\Infrastructure\RateLimiter\BoundedLockFactory
             limit: 300
             interval: '1 minute'
         # Lectures coûteuses du drive, par utilisateur (GET /drive/plans/{id} et /drive/estimates/{id} : 4 requêtes SQL chacune),
         # un compteur commun aux deux routes. Le front les relit à l'ouverture d'un écran : 120 par minute, deux par seconde.
         drive_read:
             policy: sliding_window
+            lock_factory: Repas\Shared\Infrastructure\RateLimiter\BoundedLockFactory
             limit: 120
             interval: '1 minute'
         # Version de l'application installée (PUT /api/v1/users/me/app-version, DRV-637), PAR UTILISATEUR (AppVersionRateLimitListener) :
@@ -92,6 +109,7 @@ framework:
         # 204 sans rien écrire (pas d'erreur visible). Seuls les appels valides comptent.
         app_version:
             policy: sliding_window
+            lock_factory: Repas\Shared\Infrastructure\RateLimiter\BoundedLockFactory
             limit: 1
             interval: '1 minute'
         # Échange des jetons de la liaison de compte Alexa (POST /api/voice/oauth/token, VOX-202), par adresse IP
@@ -99,12 +117,14 @@ framework:
         # l'authentification du client est ce plafond. Alexa n'appelle qu'à la liaison puis une fois par heure et par utilisateur.
         voice_token:
             policy: sliding_window
+            lock_factory: Repas\Shared\Infrastructure\RateLimiter\BoundedLockFactory
             limit: 30
             interval: '1 hour'
         # Émission du code d'autorisation (POST /api/v1/voice/alexa/authorize, VOX-202), PAR UTILISATEUR (VoiceRateLimitListener) :
         # une personne relie Alexa une fois ou deux.
         voice_authorize:
             policy: sliding_window
+            lock_factory: Repas\Shared\Infrastructure\RateLimiter\BoundedLockFactory
             limit: 20
             interval: '1 hour'
         # Webhook d'Alexa (POST /api/voice/alexa, VOX-204), PAR ADRESSE IP et AVANT la vérification de la signature
@@ -113,12 +133,14 @@ framework:
         # marge à tous les Echo d'une famille, même derrière les mêmes adresses d'Amazon.
         voice_webhook:
             policy: sliding_window
+            lock_factory: Repas\Shared\Infrastructure\RateLimiter\BoundedLockFactory
             limit: 60
             interval: '1 minute'
         # Webhook d'Alexa, PAR LIAISON, une fois la requête authentique et le jeton résolu (VoiceLinkRateLimiter, VOX-204) : au-delà,
         # Alexa répond « Un instant, réessaie dans une minute. » (jamais une erreur HTTP).
         voice_webhook_link:
             policy: sliding_window
+            lock_factory: Repas\Shared\Infrastructure\RateLimiter\BoundedLockFactory
             limit: 60
             interval: '1 minute'
 
