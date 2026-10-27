@@ -68,8 +68,27 @@ class RegisterNewUserRateLimitTest extends QueryBusWebTestCase
         $this->assertCount(1, $commandBus->dispatched());
     }
 
-    private function post(string $email): void
+    public function testTheAddressesOfOneIpv6PrefixShareOneAllowance(): void
     {
-        $this->client->request('POST', '/api/v1/users', content: json_encode(['email' => $email, 'password' => 'un-mot-de-passe', 'defaultServing' => 4], JSON_THROW_ON_ERROR), server: ['CONTENT_TYPE' => 'application/json']);
+        // Given : dix inscriptions depuis dix adresses du même préfixe /64
+        $this->mockCommandBus();
+        $this->client->disableReboot();
+        for ($i = 1; $i <= 10; $i++) {
+            $this->post("visiteur$i@example.com", sprintf('2001:db8:1:2::%x', $i));
+            $this->assertSame(201, $this->client->getResponse()->getStatusCode(), "inscription $i");
+        }
+
+        // When : une autre adresse de ce préfixe, puis une d'un autre préfixe
+        $this->post('visiteur11@example.com', '2001:db8:1:2:aaaa:bbbb:cccc:dddd');
+        $this->assertSame(429, $this->client->getResponse()->getStatusCode());
+        $this->post('visiteur12@example.com', '2001:db8:1:3::1');
+
+        // Then
+        $this->assertSame(201, $this->client->getResponse()->getStatusCode());
+    }
+
+    private function post(string $email, string $address = '127.0.0.1'): void
+    {
+        $this->client->request('POST', '/api/v1/users', content: json_encode(['email' => $email, 'password' => 'un-mot-de-passe', 'defaultServing' => 4], JSON_THROW_ON_ERROR), server: ['CONTENT_TYPE' => 'application/json', 'REMOTE_ADDR' => $address]);
     }
 }

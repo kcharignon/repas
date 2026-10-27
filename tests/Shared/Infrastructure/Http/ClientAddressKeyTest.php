@@ -1,15 +1,15 @@
 <?php
 
-namespace Repas\Tests\Voice\Infrastructure\Http;
+namespace Repas\Tests\Shared\Infrastructure\Http;
 
 
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
-use Repas\Voice\Infrastructure\Http\ClientAddressKey;
+use Repas\Shared\Infrastructure\Http\ClientAddressKey;
 
 /**
- * La clé d'un plafond « par adresse » (revue de sécurité du 2026-10-25) : une adresse IPv6 compte par son préfixe /64, une IPv4 mappée en IPv6
- * est l'IPv4, une adresse invalide a une clé stable et sûre.
+ * La clé d'un plafond « par adresse » : une adresse IPv6 compte par son préfixe /64, une IPv4 mappée en IPv6 est l'IPv4, une adresse
+ * invalide a une clé stable et sûre.
  */
 class ClientAddressKeyTest extends TestCase
 {

@@ -6,6 +6,7 @@ namespace Repas\Drive\Infrastructure\Http;
 use Psr\Clock\ClockInterface;
 use Repas\Drive\Domain\Exception\DriveException;
 use Repas\Shared\Domain\Interface\AuthenticatedUser;
+use Repas\Shared\Infrastructure\Http\ClientAddressKey;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\HttpFoundation\Request;
@@ -68,7 +69,7 @@ final readonly class DriveRateLimitListener
 
         return $user instanceof AuthenticatedUser
             ? 'user-' . $user->getId()
-            : 'ip-' . ($request->getClientIp() ?? 'unknown');
+            : 'ip-' . ClientAddressKey::of($request->getClientIp());
     }
 
     private function factoryFor(DriveRateLimit $limit): RateLimiterFactoryInterface

@@ -33,6 +33,25 @@ class RefreshTokenRateLimitTest extends QueryBusWebTestCase
         $this->assertSame([], $commandBus->dispatched());
     }
 
+    public function testTheAddressesOfOneIpv6PrefixShareOneAllowance(): void
+    {
+        // Given : soixante échanges depuis soixante adresses du même préfixe /64
+        $this->mockCommandBus();
+        $this->client->disableReboot();
+        for ($i = 1; $i <= 60; $i++) {
+            $this->client->request('POST', '/api/auth/refresh', server: ['REMOTE_ADDR' => sprintf('2001:db8:1:2::%x', $i)]);
+            $this->assertSame(401, $this->client->getResponse()->getStatusCode(), "échange $i");
+        }
+
+        // When : une autre adresse de ce préfixe, puis une d'un autre préfixe
+        $this->client->request('POST', '/api/auth/refresh', server: ['REMOTE_ADDR' => '2001:db8:1:2:aaaa:bbbb:cccc:dddd']);
+        $this->assertSame(429, $this->client->getResponse()->getStatusCode());
+        $this->client->request('POST', '/api/auth/refresh', server: ['REMOTE_ADDR' => '2001:db8:1:3::1']);
+
+        // Then
+        $this->assertSame(401, $this->client->getResponse()->getStatusCode());
+    }
+
     public function testLogoutIsNotCounted(): void
     {
         // Given

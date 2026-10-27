@@ -1,11 +1,12 @@
 <?php
 
-namespace Repas\Voice\Infrastructure\Http;
+namespace Repas\Shared\Infrastructure\Http;
 
 
 /**
- * La clé d'un plafond de débit « par adresse » (ADR 0029 décision 7) : ce qu'il faut compter pour qu'un même client ne contourne pas le
- * plafond en changeant d'adresse. Pure : une chaîne en entrée, une chaîne en sortie, aucun service.
+ * La clé d'un plafond de débit « par adresse », commune à tous les limiteurs du back (`Voice`, `User`, `Drive` ; ADR 0029 décision 7) :
+ * ce qu'il faut compter pour qu'un même abonné ait un seul compteur, quelle que soit l'adresse qu'il choisit dans son préfixe.
+ * Pure : une chaîne en entrée, une chaîne en sortie, aucun service.
  *
  * - une adresse IPv4 est inchangée ;
  * - une adresse IPv4 mappée en IPv6 (`::ffff:203.0.113.5`, ou `::ffff:cb00:7105`) se traite comme l'adresse IPv4 qu'elle porte ;

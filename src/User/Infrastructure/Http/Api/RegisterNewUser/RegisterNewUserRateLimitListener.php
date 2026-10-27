@@ -3,6 +3,7 @@
 namespace Repas\User\Infrastructure\Http\Api\RegisterNewUser;
 
 
+use Repas\Shared\Infrastructure\Http\ClientAddressKey;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\HttpKernel\Event\ControllerEvent;
@@ -33,7 +34,7 @@ final readonly class RegisterNewUserRateLimitListener
             return;
         }
 
-        $limit = $this->registrationLimiter->create($request->getClientIp() ?? 'unknown')->consume();
+        $limit = $this->registrationLimiter->create(ClientAddressKey::of($request->getClientIp()))->consume();
         if (!$limit->isAccepted()) {
             throw new TooManyRequestsHttpException(max(1, $limit->getRetryAfter()->getTimestamp() - time()), 'Too many registrations, please try again later.');
         }
