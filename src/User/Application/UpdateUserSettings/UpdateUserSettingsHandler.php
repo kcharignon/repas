@@ -23,6 +23,7 @@ readonly class UpdateUserSettingsHandler
 
     /**
      * Changer le mot de passe exige le mot de passe actuel, dont les refus sont plafonnés par utilisateur : au-delà, rien n'est comparé.
+     * Le plafond lit, compare et compte d'un seul tenant (`PasswordAttemptLimiter::attempt`).
      *
      * @throws UserException
      * @throws RateLimitedException
@@ -32,9 +33,7 @@ readonly class UpdateUserSettingsHandler
         $user = $this->userRepository->findOneById($command->userId);
 
         if ($command->newPassword) {
-            $this->passwordAttemptLimiter->assertAllowed($user->getId());
-            if (!$user->passwordMatch($command->actualPassword ?? '')) {
-                $this->passwordAttemptLimiter->recordFailure($user->getId());
+            if (!$this->passwordAttemptLimiter->attempt($user->getId(), fn(): bool => $user->passwordMatch($command->actualPassword ?? ''))) {
                 throw UserException::invalidPassword();
             }
 

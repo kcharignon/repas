@@ -3,6 +3,7 @@
 namespace Repas\Tests\Helper;
 
 
+use Closure;
 use Repas\Shared\Domain\Exception\RateLimitedException;
 use Repas\User\Domain\Exception\UserException;
 use Repas\User\Domain\Interface\PasswordAttemptLimiter;
@@ -22,14 +23,25 @@ class PasswordAttemptLimiterInMemory implements PasswordAttemptLimiter
     {
     }
 
-    public function assertAllowed(string $userId): void
+    public function attempt(string $userId, Closure $matches): bool
     {
         $this->asked[] = $userId;
         if (($this->failures[$userId] ?? 0) >= $this->limit) {
             throw RateLimitedException::after(UserException::PASSWORD_RATE_LIMITED, $this->retryAfter);
         }
+
+        if ($matches()) {
+            return true;
+        }
+
+        $this->failures[$userId] = ($this->failures[$userId] ?? 0) + 1;
+
+        return false;
     }
 
+    /**
+     * Note un refus fait ailleurs (l'état d'un autre compte déjà au plafond).
+     */
     public function recordFailure(string $userId): void
     {
         $this->failures[$userId] = ($this->failures[$userId] ?? 0) + 1;
