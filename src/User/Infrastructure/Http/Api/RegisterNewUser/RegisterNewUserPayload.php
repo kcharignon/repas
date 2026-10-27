@@ -4,13 +4,14 @@ namespace Repas\User\Infrastructure\Http\Api\RegisterNewUser;
 
 
 use OpenApi\Attributes as OA;
+use Repas\User\Infrastructure\Http\EmailRecipientPayload;
 use Symfony\Component\Validator\Constraints as Assert;
 
 /**
  * Corps de l'inscription. L'API publique impose une longueur minimale au mot de passe (un compte créé sans
  * confirmation de saisie).
  */
-final readonly class RegisterNewUserPayload
+final readonly class RegisterNewUserPayload implements EmailRecipientPayload
 {
     private const string SERVING = 'Le nombre de personnes doit être un nombre entier de 1 à 100.';
 
@@ -33,5 +34,10 @@ final readonly class RegisterNewUserPayload
         #[OA\Property(description: 'Nombre de personnes proposé par défaut pour une recette', type: 'integer', example: 4, minimum: 1, maximum: 100)]
         public mixed $defaultServing,
     ) {
+    }
+
+    public function recipientEmail(): string
+    {
+        return $this->email;
     }
 }

@@ -55,6 +55,9 @@ use Repas\Shared\Application\Interface\IngredientAliasResolver;
  * avec le handler qui la résout (`IngredientSlugResolver` côté Repas, `IngredientAliasResolver` côté Drive), soit, motif écrit, parmi
  * les exemptions. Il vérifie aussi que chaque handler déclaré injecte son résolveur ET s'en sert.
  *
+ * Côté `Drive`, une écriture qui pose ou remplace un choix sur un ingrédient va plus loin que la traduction : elle vérifie que le slug
+ * répond à un ingrédient de l'utilisateur (`resolveOwned`). Seules les suppressions listées dans `DRIVE_REMOVALS` se contentent de `resolve`.
+ *
  * Les lectures par slug (`GET /ingredients/{slug}`, `ListCompatibleUnits`…) ne sont pas des écritures.
  * Les écritures qui reçoivent un identifiant de recette ou de liste (planifier un repas) lisent leurs slugs dans l'agrégat déjà
  * enregistré. La COPIE d'une recette les dépose sur une AUTRE recette, celle d'un autre utilisateur : elle ne porte aucun slug, le garde-fou
@@ -81,6 +84,17 @@ class IngredientSlugWritesAreResolvedTest extends TestCase
         CreateIngredientConversionCommand::class => CreateIngredientConversionHandler::class,
         UpdateIngredientConversionCommand::class => UpdateIngredientConversionHandler::class,
         DeleteIngredientConversionCommand::class => DeleteIngredientConversionHandler::class,
+    ];
+
+    /**
+     * Les écritures de `Drive` qui ne font que RETIRER ce qui est déjà à l'utilisateur : traduire le slug par les alias suffit (`resolve`),
+     * aucun choix n'est posé sur un ingrédient. Toute autre écriture de `Drive` déclarée dans `RESOLVED` pose ou remplace un choix sur un
+     * ingrédient et doit en plus vérifier qu'il est à l'utilisateur (`resolveOwned`).
+     *
+     * @var array<class-string, string> le handler, avec la raison
+     */
+    private const array DRIVE_REMOVALS = [
+        ForgetChoiceHandler::class => "ne fait que supprimer la ligne de l'utilisateur sous le slug traduit : rien n'est posé sur un ingrédient",
     ];
 
     /**
@@ -164,6 +178,54 @@ class IngredientSlugWritesAreResolvedTest extends TestCase
                 "$handler injecte son résolveur de slugs mais ne s'en sert pas.",
             );
         }
+    }
+
+    public function testEveryDriveWriteThatPutsAChoiceOnAnIngredientChecksItBelongsToTheUser(): void
+    {
+        // Given : les handlers de Drive déclarés, hors ceux qui ne font que retirer
+        $handlers = array_filter(
+            array_unique(array_values(self::RESOLVED)),
+            static fn(string $handler): bool => str_starts_with($handler, 'Repas\\Drive\\') && !isset(self::DRIVE_REMOVALS[$handler]),
+        );
+
+        foreach ($handlers as $handler) {
+            // Then : la traduction seule (`resolve`) ne suffit pas, le slug doit répondre à un ingrédient de l'utilisateur
+            $reflection = new ReflectionClass($handler);
+            $this->assertTrue(
+                self::usesOwnedResolution((string) file_get_contents((string) $reflection->getFileName()), $handler),
+                "$handler pose un choix sur un ingrédient : il doit vérifier qu'il est à l'utilisateur (IngredientAliasResolver::resolveOwned).",
+            );
+        }
+        $this->assertNotEmpty($handlers);
+        foreach (array_keys(self::DRIVE_REMOVALS) as $handler) {
+            $this->assertContains($handler, self::RESOLVED, "$handler n'est plus déclaré : retire-le de DRIVE_REMOVALS.");
+        }
+    }
+
+    public function testATranslationAloneIsNotTakenForAnOwnershipCheck(): void
+    {
+        // Given : un handler fictif qui ne fait que traduire, et un autre qui vérifie
+        $translates = new class(new class implements IngredientAliasResolver {
+            public function resolve(string $userId, array $slugs): array
+            {
+                return [];
+            }
+
+            public function resolveOwned(string $userId, array $slugs): array
+            {
+                return [];
+            }
+        }) {
+            public function __construct(public IngredientAliasResolver $aliases)
+            {
+            }
+        };
+        $handler = $translates::class;
+
+        // Then
+        $this->assertFalse(self::usesOwnedResolution('$this->aliases->resolve($user, $slugs);', $handler));
+        $this->assertTrue(self::usesOwnedResolution('$this->aliases->resolveOwned($user, $slugs);', $handler));
+        $this->assertFalse(self::usesOwnedResolution('$this->other->resolveOwned($user, $slugs);', $handler), 'seul le résolveur injecté compte');
     }
 
     public function testEveryCopyUsesTheResolverAndTheNameMatchingOfItsHandler(): void
@@ -254,6 +316,23 @@ class IngredientSlugWritesAreResolvedTest extends TestCase
             'Repas\Repas\Application\Command\ArchiveIngredient\ArchiveManyCommand',
         ], $carriers);
         $this->assertSame($carriers, self::undeclared($carriers));
+    }
+
+    /**
+     * Le code source appelle-t-il `resolveOwned()` sur le résolveur de slugs injecté dans la classe ?
+     *
+     * @param class-string $handler
+     */
+    private static function usesOwnedResolution(string $source, string $handler): bool
+    {
+        foreach ((new ReflectionClass($handler))->getConstructor()?->getParameters() ?? [] as $parameter) {
+            if ((string) $parameter->getType() === IngredientAliasResolver::class
+                && preg_match('/\$this->' . preg_quote($parameter->getName(), '/') . '->resolveOwned\(/', $source) === 1) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

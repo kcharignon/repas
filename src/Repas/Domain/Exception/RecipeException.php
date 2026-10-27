@@ -79,8 +79,8 @@ final class RecipeException extends DomainException
     }
 
     /**
-     * L'auteur a déjà toutes les recettes que l'application lui permet d'écrire. Règle métier, `422`. Seule l'écriture d'une recette en est
-     * refusée : la copie d'une recette d'un autre ne compte pas.
+     * L'auteur a déjà toutes les recettes que l'application lui permet d'écrire (`Recipe::MAX_PER_AUTHOR`), ou d'avoir en comptant ses
+     * copies (`Recipe::MAX_PER_AUTHOR_WITH_COPIES`). Règle métier, `422`.
      */
     public static function limitReached(): self
     {

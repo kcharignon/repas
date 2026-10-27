@@ -30,6 +30,7 @@ final class CopyRecipeApiController extends AbstractController
     #[OA\Tag(name: 'Recipes')]
     #[OA\Response(response: 201, description: 'Copie créée', headers: [new OA\Header(header: 'Location', description: 'URL de la copie', schema: new OA\Schema(type: 'string'))])]
     #[OA\Response(response: 404, description: 'Recette inconnue')]
+    #[OA\Response(response: 422, description: "L'utilisateur a déjà 2 000 recettes, copies comprises (`RECIPE_LIMIT_REACHED`)")]
     public function __invoke(string $id, #[CurrentUser] AuthenticatedUser $user): Response
     {
         $copyId = UuidGenerator::new();

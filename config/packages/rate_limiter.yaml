@@ -33,6 +33,13 @@ framework:
             policy: sliding_window
             limit: 100
             interval: '1 hour'
+        # Le même email, PAR DESTINATAIRE (PublicEmailRateLimitListener) : l'adresse saisie, partagée par les trois routes, que le compte
+        # existe ou non. Une personne qui s'inscrit puis redemande son lien ou son mot de passe en a besoin de 4 à 6 dans l'heure ; au-delà,
+        # une même adresse n'occupe plus le plafond commun ci-dessus.
+        public_email_recipient:
+            policy: sliding_window
+            limit: 6
+            interval: '1 hour'
         # Inscription publique (POST /api/v1/users), par adresse IP (RegisterNewUserRateLimitListener) : un compte créé n'a
         # ni confirmation d'email ni captcha, c'est ce plafond qui limite la création en masse (ADR 0008).
         registration:
@@ -127,6 +134,8 @@ when@test:
             password_check:
                 cache_pool: test.rate_limiter_pool
             public_email:
+                cache_pool: test.rate_limiter_pool
+            public_email_recipient:
                 cache_pool: test.rate_limiter_pool
             registration:
                 cache_pool: test.rate_limiter_pool

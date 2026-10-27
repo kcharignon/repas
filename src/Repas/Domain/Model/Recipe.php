@@ -25,9 +25,15 @@ final class Recipe implements ModelInterface
 
     /**
      * Nombre de recettes à partir duquel un auteur n'en écrit plus lui-même : toutes les siennes comptent (copies comprises), mais seule
-     * l'écriture d'une recette est refusée, jamais la copie de celle d'un autre.
+     * l'écriture d'une recette est refusée ; la copie de celle d'un autre reste permise jusqu'à `MAX_PER_AUTHOR_WITH_COPIES`.
      */
     public const int MAX_PER_AUTHOR = 1000;
+
+    /**
+     * Nombre de recettes (copies comprises) à partir duquel un compte n'en copie plus : le plafond du compte, plus large que celui de
+     * l'écriture pour que copier les recettes des autres reste libre bien au-delà d'un usage normal.
+     */
+    public const int MAX_PER_AUTHOR_WITH_COPIES = 2 * self::MAX_PER_AUTHOR;
 
     /**
      * @param Tab<RecipeRow> $rows

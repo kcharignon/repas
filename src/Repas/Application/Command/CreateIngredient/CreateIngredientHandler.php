@@ -48,7 +48,7 @@ readonly class CreateIngredientHandler
         // Tout ingrédient est à celui qui le crée, administrateur compris : plus aucun nouvel ingrédient commun (ADR 0028, amendement)
         $creatorId = $command->userId;
 
-        // Le plafond d'abord : un compte qui l'a atteint ne coûte rien de plus (l'amorçage à l'activation et la copie d'une recette n'y passent pas)
+        // Le plafond d'abord : un compte qui l'a atteint ne coûte rien de plus (l'amorçage à l'activation n'y passe pas)
         if ($this->ingredientRepository->creatorHasAtLeast($creatorId, Ingredient::MAX_PER_CREATOR)) {
             throw IngredientException::limitReached();
         }

@@ -17,3 +17,11 @@ framework:
         # Namespaced pools use the above "app" backend by default
         #pools:
             #my.dedicated.cache: null
+
+when@prod:
+    framework:
+        cache:
+            pools:
+                # Contrat OpenAPI généré (config/packages/nelmio_api_doc.yaml) : même durée de vie que le cache du noyau, vidé par `cache:clear`
+                cache.api_doc:
+                    adapter: cache.adapter.system

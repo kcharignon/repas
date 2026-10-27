@@ -41,7 +41,7 @@ readonly class CreateRecipeHandler
      */
     public function __invoke(CreateRecipeCommand $command): void
     {
-        // Le plafond d'abord : un compte qui l'a atteint ne coûte rien de plus (la copie d'une recette n'y passe pas)
+        // Le plafond d'abord : un compte qui l'a atteint ne coûte rien de plus (la copie d'une recette a son propre plafond)
         if ($this->recipeRepository->authorHasAtLeast($command->authorId, Recipe::MAX_PER_AUTHOR)) {
             throw RecipeException::limitReached();
         }

@@ -60,10 +60,15 @@ readonly class CopyRecipeHandler
     }
 
     /**
-     * @throws RecipeException la recette est inconnue
+     * @throws RecipeException la recette est inconnue, ou le copieur a déjà `Recipe::MAX_PER_AUTHOR_WITH_COPIES` recettes
      */
     public function __invoke(CopyRecipeCommand $command): void
     {
+        // Le plafond du compte d'abord (copies comprises, plus large que celui de l'écriture) : un compte qui l'a atteint ne coûte rien de plus
+        if ($this->recipeRepository->authorHasAtLeast($command->authorId, Recipe::MAX_PER_AUTHOR_WITH_COPIES)) {
+            throw RecipeException::limitReached();
+        }
+
         $originalRecipe = $this->recipeRepository->findOneById($command->recipeId);
         $copierId = $command->authorId;
 
