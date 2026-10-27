@@ -7,6 +7,7 @@ use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Process\Exception\ProcessFailedException;
 use Symfony\Component\Process\Process;
 
@@ -16,10 +17,29 @@ use Symfony\Component\Process\Process;
 )]
 class ResetDatabaseCommand extends Command
 {
+    /** Les seuls environnements où la base peut être supprimée puis recréée */
+    public const array ALLOWED_ENVIRONMENTS = ['dev', 'test'];
+
+    public function __construct(
+        #[Autowire(param: 'kernel.environment')]
+        private readonly string $environment,
+    ) {
+        parent::__construct();
+    }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $io = new SymfonyStyle($input, $output);
+
+        if (!in_array($this->environment, self::ALLOWED_ENVIRONMENTS, true)) {
+            $io->error(sprintf(
+                "Réinitialisation refusée dans l'environnement « %s » (permis : %s). Rien n'a été modifié.",
+                $this->environment,
+                implode(', ', self::ALLOWED_ENVIRONMENTS),
+            ));
+
+            return Command::FAILURE;
+        }
 
         $projectDir = $this->getApplication()->getKernel()->getProjectDir();
         $io->info("Folder: $projectDir");
