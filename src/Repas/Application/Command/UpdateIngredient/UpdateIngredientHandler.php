@@ -96,18 +96,34 @@ readonly class UpdateIngredientHandler
             throw IngredientException::invalidCoefficient();
         }
 
-        // Sa propre conversion de l'ancienne paire (achat -> recettes), si elle existe
-        $own = $ingredient->hasSameUnitInCookingAndPurchase()
-            ? null
-            : $this->conversionRepository->findByIngredientAndStartUnitAndEndUnit($ingredient, $ingredient->getDefaultPurchaseUnit(), $ingredient->getDefaultCookingUnit());
+        // Sa propre conversion de l'ancienne paire d'unités, dans les DEUX sens : une conversion enregistrée « à l'envers » (1 recette = n achat,
+        // par le formulaire des conversions propres ou l'ancien code) est la même conversion, jamais l'occasion d'en écrire une seconde.
+        $own = $this->ownConversionOfTheOldPair($ingredient);
 
-        if ($own instanceof Conversion) { // Met à jour la conversion existante
-            $own->update(
-                startUnit: $newPurchaseUnit,
-                endUnit: $newCookingUnit,
-                coefficient: $coefficient,
-                ingredient: $ingredient,
-            );
+        if ($own instanceof Conversion) {
+            if ($this->isTheSamePair($own, $newPurchaseUnit, $newCookingUnit)) {
+                // Même paire : on change le nombre en GARDANT le sens de la ligne (« 1 achat = N recettes », ou « 1 recette = 1/N achat »)
+                $reversed = $own->getStartUnit()->isEqual($newCookingUnit);
+                $value = $reversed ? 1 / $coefficient : $coefficient;
+                if ($reversed && abs($own->getCoefficient() - $value) <= 1e-9 * $value) {
+                    return false; // la ligne dit déjà cela (à l'arrondi du quotient près) : on ne la réécrit pas
+                }
+                $own->update(
+                    startUnit: $own->getStartUnit(),
+                    endUnit: $own->getEndUnit(),
+                    coefficient: $value,
+                    ingredient: $ingredient,
+                );
+            } else {
+                // Nouvelle paire : la ligne de l'ancienne paire est réécrite pour elle, dans le sens naturel achat -> recettes (c'est ce
+                // que dit le formulaire : « 1 unité d'achat = N unités de recette »)
+                $own->update(
+                    startUnit: $newPurchaseUnit,
+                    endUnit: $newCookingUnit,
+                    coefficient: $coefficient,
+                    ingredient: $ingredient,
+                );
+            }
             $this->conversionRepository->save($own);
 
             return true;
@@ -119,6 +135,36 @@ readonly class UpdateIngredientHandler
         $this->conversionRepository->save(Conversion::create(UuidGenerator::new(), $newPurchaseUnit, $newCookingUnit, $coefficient, $ingredient));
 
         return true;
+    }
+
+    /**
+     * La conversion propre de l'ingrédient qui relie ses unités AVANT la modification, dans un sens ou dans l'autre. Quand deux lignes la
+     * disent (héritage d'un ancien défaut), celle du sens achat -> recettes passe d'abord, sinon la plus ancienne : toujours la même, et
+     * jamais une troisième n'est écrite.
+     */
+    private function ownConversionOfTheOldPair(Ingredient $ingredient): ?Conversion
+    {
+        if ($ingredient->hasSameUnitInCookingAndPurchase()) {
+            return null;
+        }
+
+        $candidates = array_values($this->conversionRepository->findOwnBetween($ingredient, $ingredient->getDefaultPurchaseUnit(), $ingredient->getDefaultCookingUnit())->toArray());
+        foreach ($candidates as $candidate) {
+            if ($candidate->getStartUnit()->isEqual($ingredient->getDefaultPurchaseUnit())) {
+                return $candidate;
+            }
+        }
+
+        return $candidates[0] ?? null;
+    }
+
+    /**
+     * La ligne relie-t-elle exactement ces deux unités (dans un sens ou dans l'autre) ?
+     */
+    private function isTheSamePair(Conversion $conversion, Unit $purchaseUnit, Unit $cookingUnit): bool
+    {
+        return ($conversion->getStartUnit()->isEqual($purchaseUnit) && $conversion->getEndUnit()->isEqual($cookingUnit))
+            || ($conversion->getStartUnit()->isEqual($cookingUnit) && $conversion->getEndUnit()->isEqual($purchaseUnit));
     }
 
     /**

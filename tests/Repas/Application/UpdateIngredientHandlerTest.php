@@ -11,6 +11,7 @@ use Repas\Repas\Domain\Interface\ConversionRepository;
 use Repas\Repas\Domain\Interface\DepartmentRepository;
 use Repas\Repas\Domain\Interface\IngredientRepository;
 use Repas\Repas\Domain\Interface\UnitRepository;
+use Repas\Repas\Domain\Model\Conversion;
 use Repas\Repas\Domain\Model\Ingredient;
 use Repas\Repas\Domain\Service\ConversionService;
 use Repas\Tests\Helper\Builder\ConversionBuilder;
@@ -295,6 +296,116 @@ class UpdateIngredientHandlerTest extends TestCase
         $this->assertSame([null, 'kilo', 'gramme', 1000.0], [$kept->getIngredient()?->getSlug(), $kept->getStartUnit()->getSlug(), $kept->getEndUnit()->getSlug(), $kept->getCoefficient()]);
         $own = $this->conversionRepository->findByIngredientAndStartUnitAndEndUnit($flour, new UnitBuilder()->isBox()->build(), new UnitBuilder()->isGramme()->build());
         $this->assertSame(400.0, $own?->getCoefficient());
+    }
+
+    // --- Une conversion propre enregistrée « à l'envers » est la même conversion, jamais l'occasion d'en écrire une seconde --------------
+
+    public function testAReversedOwnConversionIsUpdatedInPlaceAndKeepsItsDirection(): void
+    {
+        // Given : la farine se cuisine au gramme et s'achète au kilo ; sa conversion propre est enregistrée à l'envers (« 1 gramme = 0,001 kilo »)
+        $flour = $this->savedFlour();
+        $reversed = $this->ownConversion($flour, 'gramme', 'kilo', 0.001, '11111111-1111-4111-8111-111111111111');
+
+        // When : « chez moi, 1 kilo de cette farine fait 950 g »
+        ($this->handler)(new UpdateIngredientCommand($flour->getSlug(), 'Farine', null, 'conserve', 'gramme', 'kilo', 950, 'user-id'));
+
+        // Then : la même ligne est mise à jour, dans son sens (1 gramme = 1/950 kilo), et aucune seconde ligne n'est écrite
+        $own = $this->ownConversionsBetween($flour, 'gramme', 'kilo');
+        $this->assertCount(1, $own);
+        $this->assertSame($reversed->getId(), $own[0]->getId());
+        $this->assertSame(['gramme', 'kilo'], [$own[0]->getStartUnit()->getSlug(), $own[0]->getEndUnit()->getSlug()]);
+        $this->assertEqualsWithDelta(1 / 950, $own[0]->getCoefficient(), 1e-12);
+    }
+
+    public function testAReversedOwnConversionThatAlreadySaysTheSameThingIsNotRewritten(): void
+    {
+        // Given : « 1 gramme = 0,001 kilo » enregistré, le formulaire renvoie « 1 kilo = 1000 grammes » (le quotient 1/1000 est celui de la ligne)
+        $flour = $this->savedFlour();
+        $reversed = $this->ownConversion($flour, 'gramme', 'kilo', 0.001, '11111111-1111-4111-8111-111111111111');
+
+        // When
+        ($this->handler)(new UpdateIngredientCommand($flour->getSlug(), 'Farine', null, 'conserve', 'gramme', 'kilo', 1000, 'user-id'));
+
+        // Then : la ligne est telle quelle (même nombre, bit pour bit) et rien n'est doublé
+        $own = $this->ownConversionsBetween($flour, 'gramme', 'kilo');
+        $this->assertCount(1, $own);
+        $this->assertSame($reversed->getId(), $own[0]->getId());
+        $this->assertSame(0.001, $own[0]->getCoefficient());
+    }
+
+    public function testWhenBothDirectionsExistTheNaturalOneIsUpdatedAndNoThirdLineIsWritten(): void
+    {
+        // Given : deux lignes pour la même paire (héritage de l'ancien défaut) : « 1 gramme = 0,001 kilo » (id plus ancien) et « 1 kilo = 1000 g »
+        $flour = $this->savedFlour();
+        $reversed = $this->ownConversion($flour, 'gramme', 'kilo', 0.001, '00000000-0000-4000-8000-000000000001');
+        $natural = $this->ownConversion($flour, 'kilo', 'gramme', 1000, '99999999-9999-4999-8999-999999999999');
+
+        // When
+        ($this->handler)(new UpdateIngredientCommand($flour->getSlug(), 'Farine', null, 'conserve', 'gramme', 'kilo', 950, 'user-id'));
+
+        // Then : celle du sens achat -> recettes est mise à jour, l'autre n'est pas touchée, aucune troisième
+        $this->assertCount(2, $this->ownConversionsBetween($flour, 'gramme', 'kilo'));
+        $this->assertSame(950.0, $this->conversionRepository->findById($natural->getId())->getCoefficient());
+        $this->assertSame(0.001, $this->conversionRepository->findById($reversed->getId())->getCoefficient());
+    }
+
+    public function testWhenOnlyReversedLinesExistTheOldestIsUpdated(): void
+    {
+        // Given : deux lignes à l'envers (« 1 gramme = n kilo »), la plus ancienne par identifiant d'abord
+        $flour = $this->savedFlour();
+        $newer = $this->ownConversion($flour, 'gramme', 'kilo', 0.002, '99999999-9999-4999-8999-999999999999');
+        $oldest = $this->ownConversion($flour, 'gramme', 'kilo', 0.001, '00000000-0000-4000-8000-000000000001');
+
+        // When
+        ($this->handler)(new UpdateIngredientCommand($flour->getSlug(), 'Farine', null, 'conserve', 'gramme', 'kilo', 950, 'user-id'));
+
+        // Then
+        $this->assertCount(2, $this->ownConversionsBetween($flour, 'gramme', 'kilo'));
+        $this->assertEqualsWithDelta(1 / 950, $this->conversionRepository->findById($oldest->getId())->getCoefficient(), 1e-12);
+        $this->assertSame(0.002, $this->conversionRepository->findById($newer->getId())->getCoefficient());
+    }
+
+    public function testChangingThePairRewritesTheReversedLineForTheNewPairInTheNaturalDirection(): void
+    {
+        // Given : « 1 gramme = 0,001 kilo » enregistré ; l'utilisateur passe à une boîte de 400 g
+        $flour = $this->savedFlour();
+        $reversed = $this->ownConversion($flour, 'gramme', 'kilo', 0.001, '11111111-1111-4111-8111-111111111111');
+
+        // When
+        ($this->handler)(new UpdateIngredientCommand($flour->getSlug(), 'Farine', null, 'conserve', 'gramme', 'boite', 400, 'user-id'));
+
+        // Then : la ligne de l'ancienne paire est réécrite pour la nouvelle (1 boîte = 400 grammes), sans doublon
+        $own = array_values($this->conversionRepository->findByIngredient($flour)->toArray());
+        $this->assertCount(1, $own);
+        $this->assertSame($reversed->getId(), $own[0]->getId());
+        $line = $this->conversionRepository->findById($reversed->getId());
+        $this->assertSame(['boite', 'gramme', 400.0], [$line->getStartUnit()->getSlug(), $line->getEndUnit()->getSlug(), $line->getCoefficient()]);
+    }
+
+    private function ownConversion(Ingredient $ingredient, string $start, string $end, float $coefficient, string $id): Conversion
+    {
+        $conversion = new ConversionBuilder()
+            ->withId($id)
+            ->withIngredient($ingredient)
+            ->withStartUnit($this->unitRepository->findOneBySlug($start))
+            ->withEndUnit($this->unitRepository->findOneBySlug($end))
+            ->withCoefficient($coefficient)
+            ->build();
+        $this->conversionRepository->save($conversion);
+
+        return $conversion;
+    }
+
+    /**
+     * @return list<Conversion>
+     */
+    private function ownConversionsBetween(Ingredient $ingredient, string $a, string $b): array
+    {
+        return array_values($this->conversionRepository->findOwnBetween(
+            $ingredient,
+            $this->unitRepository->findOneBySlug($a),
+            $this->unitRepository->findOneBySlug($b),
+        )->toArray());
     }
 
     public function testUnitsNoConversionLinksNeedACoefficientAndNothingIsWritten(): void

@@ -28,6 +28,16 @@ interface ConversionRepository
     public function findByIngredientAndStartUnitAndEndUnit(Ingredient $ingredient, Unit $startUnit, Unit $endUnit): ?Conversion;
 
     /**
+     * Les conversions PROPRES de l'ingrédient qui relient ces deux unités, DANS LES DEUX SENS (« 1 a = n b » comme « 1 b = n a »), par
+     * identifiant croissant : l'ordre est stable, une même base rend toujours la même ligne en premier. Jamais une conversion universelle.
+     * Une conversion enregistrée « à l'envers » (créée par le formulaire des conversions propres, ou par l'ancien code) reste la même
+     * conversion : celui qui la modifie doit la retrouver au lieu d'en écrire une seconde (2026-10-27).
+     *
+     * @return Tab<Conversion>
+     */
+    public function findOwnBetween(Ingredient $ingredient, Unit $a, Unit $b): Tab;
+
+    /**
      * @return Tab<Conversion>
      */
     public function findAll(): Tab;

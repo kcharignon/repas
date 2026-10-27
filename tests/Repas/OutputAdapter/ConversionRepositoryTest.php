@@ -120,6 +120,34 @@ class ConversionRepositoryTest extends DatabaseTestCase
         $this->assertNotNull($this->conversionRepository->findByIngredientAndStartUnitAndEndUnit($butter, new UnitBuilder()->isBlock()->build(), new UnitBuilder()->isGramme()->build()));
     }
 
+    public function testFindOwnBetweenFindsTheOwnLinesOfThePairInBothDirectionsInIdOrder(): void
+    {
+        // Given : la farine a une ligne « kilo > gramme » (id tardif) et la même paire à l'envers « gramme > kilo » (id précoce), plus une autre paire ;
+        // une ligne universelle relie aussi kilo et gramme ; le beurre a une ligne sur la même paire
+        $flour = new IngredientBuilder()->isFlour()->build();
+        $butter = new IngredientBuilder()->isButter()->build();
+        $kilo = new UnitBuilder()->isKilo()->build();
+        $gramme = new UnitBuilder()->isGramme()->build();
+        $natural = new ConversionBuilder()->withId('99999999-9999-4999-8999-999999999999')->withStartUnit($kilo)->withEndUnit($gramme)->withCoefficient(1000)->withIngredient($flour)->build();
+        $reversed = new ConversionBuilder()->withId('00000000-0000-4000-8000-000000000001')->withStartUnit($gramme)->withEndUnit($kilo)->withCoefficient(0.001)->withIngredient($flour)->build();
+        $other = new ConversionBuilder()->withId('55555555-5555-4555-8555-555555555555')->withStartUnit(new UnitBuilder()->isBox()->build())->withEndUnit($gramme)->withCoefficient(400)->withIngredient($flour)->build();
+        $universal = new ConversionBuilder()->isKiloToGramme()->build();
+        $butterLine = new ConversionBuilder()->withId('33333333-3333-4333-8333-333333333333')->withStartUnit($kilo)->withEndUnit($gramme)->withCoefficient(1000)->withIngredient($butter)->build();
+        foreach ([$natural, $reversed, $other, $universal, $butterLine] as $conversion) {
+            $this->persister->saveConversion($conversion);
+        }
+
+        // When : dans un sens comme dans l'autre de la question
+        $forward = $this->conversionRepository->findOwnBetween($flour, $kilo, $gramme);
+        $backward = $this->conversionRepository->findOwnBetween($flour, $gramme, $kilo);
+
+        // Then : les deux lignes propres de la paire, la plus ancienne par identifiant d'abord, jamais l'universelle, l'autre paire ni le beurre
+        $ids = static fn($found): array => array_values(array_map(static fn($conversion): string => $conversion->getId(), $found->toArray()));
+        $this->assertSame([$reversed->getId(), $natural->getId()], $ids($forward));
+        $this->assertSame([$reversed->getId(), $natural->getId()], $ids($backward));
+        $this->assertCount(0, $this->conversionRepository->findOwnBetween($flour, $kilo, new UnitBuilder()->isBox()->build()));
+    }
+
     public function testFindById(): void
     {
         // Arrange
