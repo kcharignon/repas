@@ -36,7 +36,7 @@ use Repas\User\Domain\Model\User;
 
 /**
  * Les quotas par compte sur la vraie base, avec les vrais bus : un compte écrit jusqu'à 1 000 recettes, 2 000 ingrédients et 1 000 listes à lui, et un ingrédient reçoit 50 conversions propres,
- * pas au-delà ; la copie d'une recette et l'amorçage à l'activation ne sont jamais refusés pour autant. Les lignes en masse sont écrites en SQL
+ * pas au-delà ; la copie d'une recette n'est refusée qu'à 2 000 recettes, copies comprises, et l'amorçage à l'activation n'est jamais refusé. Les lignes en masse sont écrites en SQL
  * (une instruction), les valeurs sont factices.
  */
 class AccountQuotasTest extends WriteBudgetTestCase
@@ -122,6 +122,29 @@ class AccountQuotasTest extends WriteBudgetTestCase
         // Then
         $this->assertSame(Recipe::MAX_PER_AUTHOR + 1, $this->rowsOf('recipe', 'author', $this->user->getId()));
         $this->assertSame($original->getId(), $this->entityManager->getConnection()->fetchOne('SELECT orignal FROM recipe WHERE id = ?', ['the-copy']));
+    }
+
+    public function testTheCopyOfARecipeIsMadeJustBelowTheLimitOfTheAccountAndRefusedAtTheLimit(): void
+    {
+        // Given : 1 999 recettes au compte (copies comprises), une recette d'un autre à copier
+        $this->bulkRecipes($this->user, Recipe::MAX_PER_AUTHOR_WITH_COPIES - 1);
+        $author = $this->savedUser();
+        $original = new RecipeBuilder()->isPastaCarbonara()->withAuthor($author)->build();
+        $this->persister->saveRecipe($original);
+
+        // When : la 2 000e copie passe
+        $this->dispatch(new CopyRecipeCommand($original->getId(), $this->user->getId(), 'the-last-copy'));
+
+        // Then : la suivante est refusée et rien n'est écrit
+        $this->assertSame(Recipe::MAX_PER_AUTHOR_WITH_COPIES, $this->rowsOf('recipe', 'author', $this->user->getId()));
+        try {
+            $this->dispatch(new CopyRecipeCommand($original->getId(), $this->user->getId(), 'one-too-many'));
+            $this->fail('La copie au-delà du plafond du compte doit être refusée.');
+        } catch (RecipeException $exception) {
+            $this->assertSame([RecipeException::LIMIT_REACHED, 422], [$exception->getMessage(), $exception->getCode()]);
+        }
+        $this->assertSame(Recipe::MAX_PER_AUTHOR_WITH_COPIES, $this->rowsOf('recipe', 'author', $this->user->getId()));
+        $this->assertSame(0, $this->rowsOf('recipe', 'id', 'one-too-many'));
     }
 
     public function testAListIsCreatedJustBelowTheMaximumAndRefusedAtTheMaximum(): void

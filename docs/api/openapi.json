@@ -316,6 +316,9 @@
                     },
                     "404": {
                         "description": "Recette inconnue"
+                    },
+                    "422": {
+                        "description": "L'utilisateur a d\u00e9j\u00e0 2 000 recettes, copies comprises (`RECIPE_LIMIT_REACHED`)"
                     }
                 }
             }

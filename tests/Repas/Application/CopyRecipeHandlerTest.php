@@ -599,6 +599,54 @@ class CopyRecipeHandlerTest extends TestCase
         ($this->handler)(new CopyRecipeCommand('not-found', self::COPIER, 'copy-id'));
     }
 
+    // --- Plafond du compte --------------------------------------------------------------------------------------------------------
+
+    public function testACopyIsRefusedToAnAccountThatHasTheMaximumOfRecipesWithItsCopies(): void
+    {
+        // Given : le copieur a déjà 2 000 recettes, l'original est à un autre
+        $tomato = $this->personal('tomate', $this->vegetable(), $this->unit()->isKilo(), self::AUTHOR);
+        $this->assemble([$tomato], recipes: [$this->recipe([$tomato], unit: $this->unit()->isKilo()), ...$this->recipesOf(self::COPIER, Recipe::MAX_PER_AUTHOR_WITH_COPIES)]);
+
+        // When
+        try {
+            ($this->handler)(new CopyRecipeCommand('recipe-id', self::COPIER, 'copy-id'));
+            $this->fail('La copie doit être refusée.');
+        } catch (RecipeException $exception) {
+            // Then : refus de domaine (422), rien n'est écrit ni annoncé
+            $this->assertEquals(RecipeException::limitReached(), $exception);
+        }
+        $this->assertFalse($this->recipes->authorHasAtLeast(self::COPIER, Recipe::MAX_PER_AUTHOR_WITH_COPIES + 1));
+        $this->assertSame([], $this->events->eventDispatched);
+        $this->assertFalse($this->ingredients->exists('tomate' . self::COPIER));
+    }
+
+    public function testTheLastCopyBelowTheLimitOfTheAccountIsMadeEvenBeyondTheLimitOfWrittenRecipes(): void
+    {
+        // Given : 1 999 recettes au copieur, au-delà du plafond de l'écriture (1 000) : il lui reste une copie
+        $tomato = $this->personal('tomate', $this->vegetable(), $this->unit()->isKilo(), self::AUTHOR);
+        $this->assemble([$tomato], recipes: [$this->recipe([$tomato], unit: $this->unit()->isKilo()), ...$this->recipesOf(self::COPIER, Recipe::MAX_PER_AUTHOR_WITH_COPIES - 1)]);
+
+        // When
+        ($this->handler)(new CopyRecipeCommand('recipe-id', self::COPIER, 'copy-id'));
+
+        // Then
+        $this->assertTrue($this->recipes->authorHasAtLeast(self::COPIER, Recipe::MAX_PER_AUTHOR_WITH_COPIES));
+        $this->assertSame('recipe-id', $this->recipes->findOneById('copy-id')->getOriginalId());
+    }
+
+    /**
+     * @return list<Recipe>
+     */
+    private function recipesOf(string $authorId, int $count): array
+    {
+        $recipes = [];
+        for ($i = 0; $i < $count; $i++) {
+            $recipes[] = new RecipeBuilder()->withId("existing-$i")->withAuthorId($authorId)->build();
+        }
+
+        return $recipes;
+    }
+
     // --- Aides --------------------------------------------------------------------------------------------------------------------
 
     private function unit(): UnitBuilder
