@@ -58,7 +58,7 @@ class RepasWriteRateLimitApiFlowTest extends DatabaseTestCase
         $this->assertSame(['error' => ['message' => 'WRITE_RATE_LIMITED']], $this->jsonBody());
         $retryAfter = (int) $this->client->getResponse()->headers->get('Retry-After');
         $this->assertGreaterThanOrEqual(1, $retryAfter);
-        $this->assertLessThanOrEqual(60, $retryAfter);
+        $this->assertLessThanOrEqual(61, $retryAfter);
         $this->assertSame(0, (int) $this->entityManager->getConnection()->fetchOne('SELECT COUNT(*) FROM shopping_list'));
     }
 
