@@ -107,7 +107,7 @@ class CopyRecipeHandlerTest extends TestCase
         // Then : la recette copiée référence la copie, au nom du copieur, qui retient le slug de l'ingrédient copié (D7)
         $copy = $this->ingredients->findOneBySlug('ingredient-secret' . self::COPIER);
         RepasAssert::assertIngredient(
-            new IngredientBuilder()->withName('ingredient secret')->withDepartment($this->cheese())->withDefaultCookingUnit($this->unit()->isBox())->withDefaultPurchaseUnit($this->unit()->isBox())
+            new IngredientBuilder()->withName('Ingredient secret')->withDepartment($this->cheese())->withDefaultCookingUnit($this->unit()->isBox())->withDefaultPurchaseUnit($this->unit()->isBox())
                 ->withImage($secret->getImage())->withCreator(new UserBuilder()->withId(self::COPIER)->build(), true)->withAdoptedFrom($secret->getSlug())->build(),
             $copy,
         );
@@ -122,6 +122,43 @@ class CopyRecipeHandlerTest extends TestCase
         $this->assertSame([], $this->createdSlugs());
         // et aucun alias n'est écrit
         $this->assertSame([], $this->aliases->all());
+    }
+
+    // --- La première lettre des noms copiés est en majuscule (ADR 0030) --------------------------------------------------------------
+
+    public function testTheNamesOfTheCopiedRecipeAndOfTheCopiedIngredientsStartWithACapitalAndKeepTheRest(): void
+    {
+        // Given : une recette et un ingrédient enregistrés avant la règle, en minuscules ; un autre ingrédient déjà bien écrit
+        $lowercase = $this->personal('lait de COCO', $this->cheese(), $this->unit()->isBox(), self::AUTHOR);
+        $capitalized = $this->personal('Œufs fermiers', $this->cheese(), $this->unit()->isBox(), self::AUTHOR);
+        $original = new RecipeBuilder()->withId('recipe-id')->withName('éclair au café')->withAuthorId(self::AUTHOR)
+            ->addRow(new RecipeRowBuilder()->withIngredient($lowercase)->withUnit($this->unit()->isBox())->withQuantity(2))
+            ->addRow(new RecipeRowBuilder()->withIngredient($capitalized)->withUnit($this->unit()->isBox())->withQuantity(1))
+            ->build();
+        $this->assemble([$lowercase, $capitalized], recipes: [$original]);
+
+        // When
+        ($this->handler)(new CopyRecipeCommand('recipe-id', self::COPIER, 'copy-id'));
+
+        // Then : le nom copié est corrigé en silence, la suite est conservée, un nom déjà bon est inchangé ; les slugs ne bougent pas
+        $this->assertSame('Éclair au café', $this->recipes->findOneById('copy-id')->getName());
+        $this->assertSame('éclair au café', $this->recipes->findOneById('recipe-id')->getName(), "l'original n'est pas touché");
+        $this->assertSame('Lait de COCO', $this->ingredients->findOneBySlug(StringTool::slugify('lait de COCO' . self::COPIER))->getName());
+        $this->assertSame('Œufs fermiers', $this->ingredients->findOneBySlug(StringTool::slugify('Œufs fermiers' . self::COPIER))->getName());
+        $this->assertSame('lait de COCO', $this->ingredients->findOneBySlug($lowercase->getSlug())->getName(), "l'ingrédient de l'auteur n'est pas touché");
+    }
+
+    public function testACopyOfARecipeWhoseNameIsAlreadyCapitalizedKeepsItCharacterForCharacter(): void
+    {
+        // Given
+        $original = new RecipeBuilder()->withId('recipe-id')->withName('Bœuf bourguignon')->withAuthorId(self::AUTHOR)->build();
+        $this->assemble(recipes: [$original]);
+
+        // When
+        ($this->handler)(new CopyRecipeCommand('recipe-id', self::COPIER, 'copy-id'));
+
+        // Then
+        $this->assertSame('Bœuf bourguignon', $this->recipes->findOneById('copy-id')->getName());
     }
 
     public function testACopyOfACopyRetainsTheOriginOfTheOriginalNotTheSlugOfTheCopy(): void

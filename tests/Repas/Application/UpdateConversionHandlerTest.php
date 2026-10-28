@@ -257,7 +257,7 @@ class UpdateConversionHandlerTest extends TestCase
         } catch (ConversionException $exception) {
             // Then : 422, et la conversion reste à l'œuf
             $this->assertEquals(ConversionException::limitReached(), $exception);
-            $this->assertSame('œuf', $this->conversionRepository->findById('unique-id-with-ingredient')->getIngredient()->getName());
+            $this->assertSame('Œuf', $this->conversionRepository->findById('unique-id-with-ingredient')->getIngredient()->getName());
         }
 
         // When : une conversion du sucre, elle, se corrige (elle n'est pas rattachée à un autre ingrédient)

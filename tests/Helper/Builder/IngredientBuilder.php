@@ -110,7 +110,7 @@ class IngredientBuilder implements Builder
 
     public function isPasta(): self
     {
-        $this->name = 'pate';
+        $this->name = 'Pate';
         $this->slug = StringTool::slugify($this->name);
         $this->image = '';
         $this->departmentBuilder = new DepartmentBuilder()->isCereal();
@@ -125,7 +125,7 @@ class IngredientBuilder implements Builder
 
     public function isEgg(): self
     {
-        $this->name = 'œuf';
+        $this->name = 'Œuf';
         $this->slug = StringTool::slugify($this->name);
         $this->image = 'images/ingredient/egg.png';
         $this->departmentBuilder = new DepartmentBuilder()->isMiscellaneous();
@@ -136,7 +136,7 @@ class IngredientBuilder implements Builder
 
     public function isThickCremeFraiche(): self
     {
-        $this->name = 'crème fraiche épaisse';
+        $this->name = 'Crème fraiche épaisse';
         $this->slug = StringTool::slugify($this->name);
         $this->image = '';
         $this->departmentBuilder = new DepartmentBuilder()->isMiscellaneous();
@@ -159,7 +159,7 @@ class IngredientBuilder implements Builder
 
     public function isDicedBacon(): self
     {
-        $this->name = 'lardon';
+        $this->name = 'Lardon';
         $this->slug = StringTool::slugify($this->name);
         $this->image = '';
         $this->departmentBuilder = new DepartmentBuilder()->isMeat();
@@ -174,7 +174,7 @@ class IngredientBuilder implements Builder
 
     public function isParmesan(): self
     {
-        $this->name = 'parmesan';
+        $this->name = 'Parmesan';
         $this->slug = StringTool::slugify($this->name);
         $this->image = '';
         $this->departmentBuilder = new DepartmentBuilder()->isCheese();
@@ -189,7 +189,7 @@ class IngredientBuilder implements Builder
 
     public function isBread(): self
     {
-        $this->name = 'pain';
+        $this->name = 'Pain';
         $this->slug = StringTool::slugify($this->name);
         $this->image = 'image/pain.jpg';
         $this->departmentBuilder = new DepartmentBuilder()->isBakery();
@@ -200,7 +200,7 @@ class IngredientBuilder implements Builder
 
     public function isMilk(): self
     {
-        $this->name = 'lait';
+        $this->name = 'Lait';
         $this->slug = StringTool::slugify($this->name);
         $this->image = 'images/ingredient/milk.png';
         $this->departmentBuilder = new DepartmentBuilder()->isMiscellaneous();
@@ -281,7 +281,7 @@ class IngredientBuilder implements Builder
 
     public function isFlour(): self
     {
-        $this->name = 'farine';
+        $this->name = 'Farine';
         $this->slug = StringTool::slugify($this->name);
         $this->image = 'images/ingredient/flour.png';
 
@@ -293,7 +293,7 @@ class IngredientBuilder implements Builder
 
     public function isSugar(): self
     {
-        $this->name = 'sucre';
+        $this->name = 'Sucre';
         $this->slug = StringTool::slugify($this->name);
         $this->image = '';
 
@@ -305,7 +305,7 @@ class IngredientBuilder implements Builder
 
     public function isButter(): self
     {
-        $this->name = 'beurre';
+        $this->name = 'Beurre';
         $this->slug = StringTool::slugify($this->name);
         $this->image = 'images/ingredient/spread.png';
 

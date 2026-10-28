@@ -66,6 +66,105 @@ class StringToolTest extends TestCase
         $this->assertSame($expected, $actual);
     }
 
+    /**
+     * @return array<string, array{string, string}>
+     */
+    public static function capitalizeFirstDataProvider(): array
+    {
+        return [
+            'minuscules' => ['pâtes carbonara', 'Pâtes carbonara'],
+            'un mot' => ['farine', 'Farine'],
+            'la suite est conservée' => ['de la farine T55', 'De la farine T55'],
+            'la suite en majuscules est conservée' => ['lait de COCO', 'Lait de COCO'],
+            'majuscule déjà là' => ['Pâtes carbonara', 'Pâtes carbonara'],
+            'accent minuscule' => ['éclair', 'Éclair'],
+            'accent majuscule déjà là' => ['Éclair', 'Éclair'],
+            'ligature minuscule' => ['œufs', 'Œufs'],
+            'ligature majuscule déjà là' => ['Œufs', 'Œufs'],
+            'ligature de bœuf en cours de mot' => ['bœuf', 'Bœuf'],
+            'ligature typographique' => ["\u{FB01}let", 'Filet'],
+            'e + accent combinant' => ["e\u{0301}clair", "E\u{0301}clair"],
+            'apostrophe droite en tête' => ["'sel", "'sel"],
+            'apostrophe typographique en tête' => ["\u{2019}sel", "\u{2019}sel"],
+            'lettre puis apostrophe' => ["l\u{2019}ail", "L\u{2019}ail"],
+            'chiffre en tête' => ['00 farine', '00 farine'],
+            'parenthèse en tête' => ['(bio) tomate', '(bio) tomate'],
+            'tiret en tête' => ['- sel', '- sel'],
+            'chaîne vide' => ['', ''],
+            'un seul espace' => [' ', ' '],
+            'espaces de tête conservés, première lettre en majuscule' => ['  espace', '  Espace'],
+            'espace insécable en tête' => ["\u{00A0}abc", "\u{00A0}Abc"],
+            'espaces puis chiffre' => ['  3 fromages', '  3 fromages'],
+            'UTF-8 invalide rendu tel quel' => ["\xff\xfe", "\xff\xfe"],
+            'saut de ligne dans la suite' => ["a\nb", "A\nb"],
+        ];
+    }
+
+    #[DataProvider('capitalizeFirstDataProvider')]
+    public function testCapitalizeFirst(string $initial, string $expected): void
+    {
+        //Act
+        $actual = StringTool::capitalizeFirst($initial);
+
+        //Assert
+        $this->assertSame($expected, $actual);
+    }
+
+    #[DataProvider('capitalizeFirstDataProvider')]
+    public function testCapitalizeFirstTwiceChangesNothing(string $initial, string $expected): void
+    {
+        //Act
+        $actual = StringTool::capitalizeFirst(StringTool::capitalizeFirst($initial));
+
+        //Assert
+        $this->assertSame($expected, $actual);
+    }
+
+    public function testCapitalizeFirstNeverChangesATextThatAlreadyStartsWithAnUppercaseLetter(): void
+    {
+        // Given : toutes les lettres majuscules d'Unicode (plan multilingue de base et plan 1), suivies d'une suite quelconque
+        $checked = 0;
+        foreach (array_merge(range(0, 0xD7FF), range(0xE000, 0x1FFFF)) as $codePoint) {
+            $character = mb_chr($codePoint, 'UTF-8');
+            if ($character === false || preg_match('/^\p{Lu}$/u', $character) !== 1) {
+                continue;
+            }
+            $text = $character . 'ou la suite DE la casse';
+
+            // When / Then
+            $this->assertSame($text, StringTool::capitalizeFirst($text), sprintf('U+%04X', $codePoint));
+            $checked++;
+        }
+        $this->assertGreaterThan(1000, $checked, 'le contrôle doit parcourir les majuscules');
+    }
+
+    public function testCapitalizeFirstIsIdempotentForEveryFirstCharacterAndLeavesTheRestAlone(): void
+    {
+        // Given : chaque point de code en tête d'un texte dont la suite est connue
+        foreach (array_merge(range(0, 0xD7FF), range(0xE000, 0x1FFFF)) as $codePoint) {
+            $character = mb_chr($codePoint, 'UTF-8');
+            if ($character === false) {
+                continue;
+            }
+            $once = StringTool::capitalizeFirst($character . ' suite eN mIxTe');
+
+            // When / Then : une seconde passe ne change rien, la suite après le premier caractère est intacte
+            $this->assertSame($once, StringTool::capitalizeFirst($once), sprintf('U+%04X', $codePoint));
+            // (une espace en tête est conservée et c'est la lettre qui la suit qui passe en majuscule : le contrôle de la suite ne la vise pas)
+            if (preg_match('/^\s$/u', $character) !== 1) {
+                $this->assertStringEndsWith(' suite eN mIxTe', $once, sprintf('U+%04X', $codePoint));
+            }
+        }
+    }
+
+    public function testCapitalizeFirstDoesNotChangeTheSlug(): void
+    {
+        // Then : l'identité d'un ingrédient (son slug) et son nom normalisé ne dépendent pas de la casse
+        foreach (['pâtes carbonara', 'œufs à la coque', 'éclair', 'de la farine T55', 'ßtraße'] as $name) {
+            $this->assertSame(StringTool::slugify($name), StringTool::slugify(StringTool::capitalizeFirst($name)), $name);
+        }
+    }
+
     public static function generateRandomStringDataProvider(): array
     {
         return [

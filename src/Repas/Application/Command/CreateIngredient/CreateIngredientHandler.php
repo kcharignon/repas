@@ -17,6 +17,7 @@ use Repas\Repas\Domain\Model\QuantityBounds;
 use Repas\Repas\Domain\Model\Unit;
 use Repas\Repas\Domain\Service\ConversionService;
 use Repas\Shared\Application\Interface\IngredientCatalogOwner;
+use Repas\Shared\Domain\Tool\StringTool;
 use Repas\Shared\Domain\Tool\Tab;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
@@ -53,8 +54,10 @@ readonly class CreateIngredientHandler
             throw IngredientException::limitReached();
         }
 
+        // La première lettre du nom est mise en majuscule en silence, le reste est conservé (ADR 0030) ; le slug et le nom normalisé
+        // (détection du doublon) n'en dépendent pas : `slugify` passe tout en minuscules
         $ingredient = Ingredient::create(
-            name: $command->name,
+            name: StringTool::capitalizeFirst($command->name),
             image: $command->image,
             department: $this->departmentRepository->findOneBySlug($command->departmentSlug),
             defaultCookingUnit: $cookingUnit,

@@ -19,6 +19,7 @@ use Repas\Repas\Domain\Service\IngredientNameMatcher;
 use Repas\Repas\Domain\Service\IngredientSlugPolicy;
 use Repas\Shared\Domain\Event\RecipesOrIngredientsCreatedEvent;
 use Repas\Shared\Domain\Interface\UuidGenerator;
+use Repas\Shared\Domain\Tool\StringTool;
 use Repas\Shared\Domain\Tool\Tab;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
@@ -102,6 +103,9 @@ readonly class CopyRecipeHandler
             $retained,
             fn(): string => $this->uuidGenerator->generate(),
         );
+        // La copie reprend le nom de l'original : la règle de la première lettre en majuscule s'applique aussi à lui (ADR 0030), sans effet
+        // sur un nom déjà bon
+        $recipe->setName(StringTool::capitalizeFirst($recipe->getName()));
         $this->recipeRepository->save($recipe);
 
         $this->eventDispatcher->dispatch(new RecipesOrIngredientsCreatedEvent(
@@ -216,6 +220,8 @@ readonly class CopyRecipeHandler
             $copierId,
             $this->slugPolicy->forAdoption($source->getName(), $copierId, fn(string $slug): bool => $this->ingredientRepository->exists($slug)),
         );
+        // Idem pour le nom de l'ingrédient copié (ADR 0030) ; le slug et le nom normalisé ne changent pas
+        $copy->setName(StringTool::capitalizeFirst($copy->getName()));
         $this->ingredientRepository->save($copy);
         // Les conversions PROPRES de l'original (les conversions communes restent partagées)
         foreach ($this->conversionRepository->findByIngredient($source) as $conversion) {

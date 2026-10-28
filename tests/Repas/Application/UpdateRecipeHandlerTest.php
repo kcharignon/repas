@@ -4,6 +4,7 @@ namespace Repas\Tests\Repas\Application;
 
 
 use DateTimeImmutable;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Repas\Repas\Application\Command\UpdateRecipe\UpdateRecipeCommand;
 use Repas\Repas\Application\Command\UpdateRecipe\UpdateRecipeHandler;
@@ -124,6 +125,35 @@ class UpdateRecipeHandlerTest extends TestCase
         RepasAssert::assertRecipe($actual, $expectedRecipe, ["RecipeRow" => ["id"]]);
     }
 
+
+    /**
+     * @return array<string, array{string, string}> le nom envoyé, le nom enregistré
+     */
+    public static function nameDataProvider(): array
+    {
+        return [
+            'minuscules' => ['pâtes carbo épurées', 'Pâtes carbo épurées'],
+            'la suite est conservée' => ['gratin de courgettes AU four', 'Gratin de courgettes AU four'],
+            'majuscule déjà là' => ['Pâtes carbo', 'Pâtes carbo'],
+            'accent' => ['éclair au café', 'Éclair au café'],
+            'ligature' => ['œufs à la coque', 'Œufs à la coque'],
+            'chiffre' => ['3 fromages', '3 fromages'],
+        ];
+    }
+
+    #[DataProvider('nameDataProvider')]
+    public function testTheFirstLetterOfTheNewNameIsCapitalizedWithoutAnyErrorAndTheRestIsKept(string $sent, string $stored): void
+    {
+        // Arrange
+        $recipe = new RecipeBuilder()->isPastaCarbonara()->withAuthorId(self::AUTHOR)->build();
+        $this->recipeRepository->save($recipe);
+
+        // Act
+        ($this->handler)(new UpdateRecipeCommand($recipe->getId(), $sent, 4, Tab::fromArray(new UpdateRecipeRowSubCommand('pate', 'gramme', 500)), 'plat'));
+
+        // Assert
+        $this->assertSame($stored, $this->recipeRepository->findOneById($recipe->getId())->getName());
+    }
 
     public function testAnOldSlugOfACommonTheAuthorReceivedACopyOfLandsOnHisIngredient(): void
     {

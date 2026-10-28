@@ -63,7 +63,7 @@ class SpokenListLookupFlowTest extends DatabaseTestCase
         $this->assertTrue($found->hasList);
         $this->assertCount(1, $found->lines);
         $this->assertSame([$milk->getSlug(), 3.0, 'litre'], [$found->lines[0]->slug, $found->lines[0]->quantity, $found->lines[0]->unitName]);
-        $this->assertSame([true, [], 'pain'], [$absent->hasList, $absent->lines, $absent->absentName]);
+        $this->assertSame([true, [], 'Pain'], [$absent->hasList, $absent->lines, $absent->absentName]);
         $this->assertSame([true, [], null], [$unknown->hasList, $unknown->lines, $unknown->absentName]);
     }
 

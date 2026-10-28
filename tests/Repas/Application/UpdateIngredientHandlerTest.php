@@ -3,6 +3,7 @@
 namespace Repas\Tests\Repas\Application;
 
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Repas\Repas\Application\Command\UpdateIngredient\UpdateIngredientCommand;
 use Repas\Repas\Domain\Exception\IngredientException;
@@ -14,6 +15,7 @@ use Repas\Repas\Domain\Interface\UnitRepository;
 use Repas\Repas\Domain\Model\Conversion;
 use Repas\Repas\Domain\Model\Ingredient;
 use Repas\Repas\Domain\Service\ConversionService;
+use Repas\Shared\Domain\Tool\StringTool;
 use Repas\Tests\Helper\Builder\ConversionBuilder;
 use Repas\Tests\Helper\Builder\DepartmentBuilder;
 use Repas\Tests\Helper\Builder\IngredientBuilder;
@@ -136,7 +138,7 @@ class UpdateIngredientHandlerTest extends TestCase
         // Assert
         $expected = new IngredientBuilder()
             ->withSlug('oeuf')
-            ->withName('oeuf de caille')
+            ->withName('Oeuf de caille')
             ->withImage('oeuf-de-caille.jpeg')
             ->withDepartment(new DepartmentBuilder()->isMiscellaneous())
             ->withDefaultCookingUnit(new UnitBuilder()->isGramme())
@@ -180,7 +182,7 @@ class UpdateIngredientHandlerTest extends TestCase
         // Assert
         $expected = new IngredientBuilder()
             ->withSlug('oeuf')
-            ->withName('oeuf de caille')
+            ->withName('Oeuf de caille')
             ->withImage('oeuf-de-caille.jpeg')
             ->withDepartment(new DepartmentBuilder()->isMiscellaneous())
             ->withDefaultCookingUnit(new UnitBuilder()->isGramme())
@@ -199,6 +201,39 @@ class UpdateIngredientHandlerTest extends TestCase
             ->build();
         $actualConversion = $this->conversionRepository->findByIngredientAndStartUnitAndEndUnit($expected, $expected->getDefaultPurchaseUnit(), $expected->getDefaultCookingUnit());
         RepasAssert::assertConversion($expectedConversion, $actualConversion, ['id', 'ingredient']);
+    }
+
+    /**
+     * @return array<string, array{string, string}> le nom envoyé, le nom enregistré
+     */
+    public static function nameDataProvider(): array
+    {
+        return [
+            'minuscules' => ['pâtes fraîches', 'Pâtes fraîches'],
+            'la suite est conservée' => ['de la farine T55', 'De la farine T55'],
+            'majuscule déjà là' => ['Pasta', 'Pasta'],
+            'accent' => ['éclair', 'Éclair'],
+            'ligature' => ['œufs', 'Œufs'],
+            'chiffre' => ['00 farine', '00 farine'],
+        ];
+    }
+
+    #[DataProvider('nameDataProvider')]
+    public function testTheFirstLetterOfTheNewNameIsCapitalizedWithoutAnyErrorAndTheRestIsKept(string $sent, string $stored): void
+    {
+        // Arrange
+        $ingredient = new IngredientBuilder()->isPasta()->build();
+        $this->ingredientRepository->save($ingredient);
+        $command = new UpdateIngredientCommand($ingredient->getSlug(), $sent, null, 'conserve', 'boite', 'boite', null, 'user-id');
+
+        // Act
+        ($this->handler)($command);
+
+        // Assert : le nom enregistré est le nom corrigé ; le slug (identité) et le nom normalisé suivent le nom, sans dépendre de la casse
+        $updated = $this->ingredientRepository->findOneBySlug($ingredient->getSlug());
+        $this->assertSame($stored, $updated->getName());
+        $this->assertSame($ingredient->getSlug(), $updated->getSlug());
+        $this->assertSame(StringTool::slugify($sent), $updated->getSluggedName());
     }
 
     public function testKeepsTheImageWhenNoneIsGiven(): void
@@ -600,7 +635,7 @@ class UpdateIngredientHandlerTest extends TestCase
         } finally {
             $unchanged = $this->ingredientRepository->findOneBySlug($ingredient->getSlug());
             $this->assertFalse($unchanged->isBase());
-            $this->assertSame('pate', $unchanged->getName());
+            $this->assertSame('Pate', $unchanged->getName());
             $this->assertNull($this->conversionRepository->findByIngredientAndStartUnitAndEndUnit($unchanged, new UnitBuilder()->isBox()->build(), new UnitBuilder()->isGramme()->build()));
         }
     }

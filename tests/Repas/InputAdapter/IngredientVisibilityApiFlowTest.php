@@ -243,7 +243,7 @@ class IngredientVisibilityApiFlowTest extends DatabaseTestCase
             $this->request('POST', '/api/v1/shopping-lists/active/ingredients/' . $slug . '/increase', $admin);
             $this->assertContains($this->client->getResponse()->getStatusCode(), [404, 422], "liste $slug");
         }
-        $this->assertSame(['farine', 'farine'], [$this->nameOf('farine'), $this->nameOf($this->copierFlour)], 'rien n\'a changé');
+        $this->assertSame(['Farine', 'Farine'], [$this->nameOf('farine'), $this->nameOf($this->copierFlour)], 'rien n\'a changé');
 
         // When : il écrit une recette avec l'ingrédient d'un autre
         $this->request('POST', '/api/v1/recipes', $admin, $this->recipeBody('farine', 'sucre'));

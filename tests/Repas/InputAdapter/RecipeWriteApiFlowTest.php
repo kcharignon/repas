@@ -59,6 +59,35 @@ class RecipeWriteApiFlowTest extends DatabaseTestCase
         $this->assertSame(1, static::getContainer()->get(UserRepository::class)->findOneById($author->getId())->getStatistics()['recipes']);
     }
 
+    public function testAnOldClientSendingLowercaseNamesGetsTheCapitalizedNameWithoutAnyErrorAndTheVersionsAreUnchanged(): void
+    {
+        // Given : l'ancien site envoie les noms tels qu'ils sont saisis, en minuscules
+        $author = $this->savedUser();
+        $pasta = new IngredientBuilder()->isPasta()->withCreator($author)->build();
+        $this->persister->saveIngredient($pasta);
+        $this->persister->saveRecipeType(new RecipeTypeBuilder()->isMeal()->build());
+
+        // When : création
+        $this->request('POST', '/api/v1/recipes', $author, ['name' => 'pâtes carbonara'] + $this->body($pasta->getSlug()));
+
+        // Then : succès ordinaire, le nom enregistré est le nom corrigé
+        $this->assertSame(201, $this->client->getResponse()->getStatusCode());
+        $id = basename($this->client->getResponse()->headers->get('Location'));
+        $this->assertSame('Pâtes carbonara', $this->recipes()->findOneById($id)->getName());
+
+        // When : la lecture donne l'ETag de la version ; la modification (nom en minuscules, `If-Match`) l'honore comme avant
+        $this->request('GET', '/api/v1/recipes/' . $id, $author);
+        $etag = $this->client->getResponse()->headers->get('ETag');
+        $this->assertSame('Pâtes carbonara', $this->jsonBody()['name']);
+        $this->request('PUT', '/api/v1/recipes/' . $id, $author, ['name' => 'gratin de pâtes'] + $this->body($pasta->getSlug()), ['HTTP_IF_MATCH' => $etag]);
+
+        // Then : 204 et le nom corrigé ; une version périmée est toujours refusée en 412
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->assertSame('Gratin de pâtes', $this->recipes()->findOneById($id)->getName());
+        $this->request('PUT', '/api/v1/recipes/' . $id, $author, ['name' => 'gratin de pâtes'] + $this->body($pasta->getSlug()), ['HTTP_IF_MATCH' => $etag]);
+        $this->assertSame(412, $this->client->getResponse()->getStatusCode());
+    }
+
     public function testAnIngredientCustomisedByAnotherUserIsUnknown(): void
     {
         // Given
@@ -251,14 +280,15 @@ class RecipeWriteApiFlowTest extends DatabaseTestCase
 
     /**
      * @param array<string, mixed>|null $body
+     * @param array<string, string> $headers en-têtes de plus, à la manière de `server` (`HTTP_IF_MATCH`)
      */
-    private function request(string $method, string $uri, User $user, ?array $body = null): void
+    private function request(string $method, string $uri, User $user, ?array $body = null, array $headers = []): void
     {
         $token = static::getContainer()->get(JWTTokenManagerInterface::class)->create($user);
         $this->client->request($method, $uri, content: $body === null ? null : json_encode($body, JSON_THROW_ON_ERROR), server: [
             'HTTP_AUTHORIZATION' => 'Bearer ' . $token,
             'CONTENT_TYPE' => 'application/json',
-        ]);
+        ] + $headers);
     }
 
     /**

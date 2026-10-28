@@ -42,7 +42,7 @@ class RecipeBuilder implements Builder
     public function isPastaCarbonara(): self
     {
         $this->id ??= UuidGenerator::new();
-        $this->name = 'pates carbonara';
+        $this->name = 'Pates carbonara';
         $this->serving = 4;
         $this->type = new RecipeTypeBuilder()->isMeal();
         $this->rows = Tab::fromArray(
@@ -79,7 +79,7 @@ class RecipeBuilder implements Builder
     public function isSoftBoiledEggs(): self
     {
         $this->id ??= UuidGenerator::new();
-        $this->name = 'œufs à la coque';
+        $this->name = 'Œufs à la coque';
         $this->serving = 2;
         $this->type = new RecipeTypeBuilder()->isMeal();
         $this->rows = Tab::fromArray(
