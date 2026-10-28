@@ -16,6 +16,7 @@ use Repas\Repas\Domain\Model\Recipe;
 use Repas\Repas\Domain\Model\RecipeRow;
 use Repas\Repas\Domain\Model\Unit;
 use Repas\Repas\Domain\Service\ConversionService;
+use Repas\Shared\Domain\Tool\StringTool;
 use Repas\Shared\Domain\Tool\UuidGenerator;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
@@ -63,7 +64,8 @@ readonly class CreateRecipeHandler
 
         $recipe = Recipe::create(
             id: $command->id,
-            name: $command->name,
+            // La première lettre du nom est mise en majuscule en silence, le reste est conservé (ADR 0030)
+            name: StringTool::capitalizeFirst($command->name),
             servings: $command->serving,
             authorId: $command->authorId,
             recipeType: $type,

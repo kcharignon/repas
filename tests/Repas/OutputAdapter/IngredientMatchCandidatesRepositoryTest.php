@@ -49,7 +49,7 @@ class IngredientMatchCandidatesRepositoryTest extends DatabaseTestCase
 
         // Then
         $candidate = $this->bySlug($candidates, $butter->getSlug());
-        $this->assertSame('beurre', $candidate->name);
+        $this->assertSame('Beurre', $candidate->name);
         $this->assertSame($butter->getDepartment()->getSlug(), $candidate->departmentSlug);
         $this->assertSame('plaquette', $candidate->purchaseUnitSlug);
         $this->assertEqualsCanonicalizing(['plaquette', 'gramme', 'kilo'], $candidate->compatibleUnitSlugs);

@@ -77,6 +77,33 @@ class StringTool
         return $randomString;
     }
 
+    /**
+     * La règle « le nom commence par une majuscule » des recettes et des ingrédients (ADR 0030) : la PREMIÈRE LETTRE du texte passe en
+     * majuscule, le reste est rendu tel quel (la casse de la suite est celle de l'utilisateur : « de la farine T55 » devient « De la farine
+     * T55 »).
+     *
+     * - multioctet : les accents (« éclair » -> « Éclair ») et les ligatures (« œufs » -> « Œufs ») ; la majuscule est celle de la mise en
+     *   forme de TITRE (`MB_CASE_TITLE`), la bonne pour une initiale (« ﬁlet » -> « Filet », et non « FIlet ») ;
+     * - les espaces de tête sont conservés et la lettre qui les suit est mise en majuscule ; un premier caractère qui n'est pas une
+     *   lettre (chiffre, parenthèse, apostrophe, tiret) n'a pas de majuscule : le texte est rendu inchangé, sans chercher plus loin ;
+     * - idempotente, et un texte qui commence déjà par une majuscule est rendu caractère pour caractère ; la chaîne vide aussi ;
+     * - un texte qui n'est pas de l'UTF-8 valide est rendu inchangé.
+     *
+     * Ne pas utiliser `ucfirst` (un octet à la fois : « éclair » resterait inchangé).
+     */
+    public static function capitalizeFirst(string $text): string
+    {
+        if (preg_match('/^(\s*)(.)(.*)$/su', $text, $parts) !== 1) {
+            return $text;
+        }
+        // Une lettre déjà en majuscule (ou en « titre », comme « ǅ ») reste telle quelle : « Ǆ » deviendrait « ǅ » par la mise en forme de titre
+        if (preg_match('/^[\p{Lu}\p{Lt}]$/u', $parts[2]) === 1) {
+            return $text;
+        }
+
+        return $parts[1] . mb_convert_case($parts[2], MB_CASE_TITLE, 'UTF-8') . $parts[3];
+    }
+
     static function upperCaseFirst($string): string
     {
         return mb_strtoupper(mb_substr($string, 0, 1), 'UTF-8').mb_substr($string, 1);

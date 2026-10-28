@@ -4,6 +4,7 @@ namespace Repas\Tests\Repas\Application;
 
 
 use DateTimeImmutable;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Repas\Repas\Application\Command\CreateRecipe\CreateRecipeCommand;
 use Repas\Repas\Application\Command\CreateRecipe\CreateRecipeHandler;
@@ -124,6 +125,44 @@ class CreateRecipeHandlerTest extends TestCase
         RepasAssert::assertRecipe($expected, $actual, ["RecipeRow" => ["id"]]);
     }
 
+
+    /**
+     * @return array<string, array{string, string}> le nom envoyé, le nom enregistré
+     */
+    public static function nameDataProvider(): array
+    {
+        return [
+            'minuscules' => ['pâtes carbonara', 'Pâtes carbonara'],
+            'la suite est conservée' => ['gratin de courgettes AU four', 'Gratin de courgettes AU four'],
+            'majuscule déjà là' => ['Pâtes carbonara', 'Pâtes carbonara'],
+            'accent' => ['éclair au café', 'Éclair au café'],
+            'ligature' => ['œufs à la coque', 'Œufs à la coque'],
+            'chiffre' => ['3 fromages', '3 fromages'],
+        ];
+    }
+
+    #[DataProvider('nameDataProvider')]
+    public function testTheFirstLetterOfTheNameIsCapitalizedWithoutAnyErrorAndTheRestIsKept(string $sent, string $stored): void
+    {
+        // Arrange
+        $pasta = new IngredientBuilder()->isPasta()->build();
+        $this->ingredientRepository->save($pasta);
+        $command = new CreateRecipeCommand(
+            id: 'unique_id',
+            name: $sent,
+            serving: 4,
+            authorId: 'user-id',
+            rows: new Tab([new CreateRecipeRowSubCommand($pasta->getSlug(), 'gramme', 10)], CreateRecipeRowSubCommand::class),
+            typeSlug: 'plat',
+        );
+
+        // Act
+        ($this->handler)($command);
+
+        // Assert
+        $this->assertSame($stored, $this->recipeRepository->findOneById('unique_id')->getName());
+        $this->assertEquals([new RecipeCreatedEvent('user-id', 'unique_id')], $this->eventDispatcher->eventDispatched);
+    }
 
     public function testRefusesAnUnknownUnit(): void
     {

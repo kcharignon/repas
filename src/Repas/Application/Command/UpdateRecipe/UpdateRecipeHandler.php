@@ -14,6 +14,7 @@ use Repas\Repas\Domain\Model\Ingredient;
 use Repas\Repas\Domain\Model\RecipeRow;
 use Repas\Repas\Domain\Model\Unit;
 use Repas\Repas\Domain\Service\ConversionService;
+use Repas\Shared\Domain\Tool\StringTool;
 use Repas\Shared\Domain\Tool\Tab;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
@@ -44,7 +45,8 @@ readonly class UpdateRecipeHandler
         $type = $this->recipeTypeRepository->findOneBySlug($command->typeSlug);
 
         $recipe->update(
-            name: $command->name,
+            // La première lettre du nom est mise en majuscule en silence, le reste est conservé (ADR 0030)
+            name: StringTool::capitalizeFirst($command->name),
             type: $type,
             serving: $command->serving,
         );

@@ -3,6 +3,7 @@
 namespace Repas\Tests\Repas\Application;
 
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Repas\Repas\Application\Command\CreateIngredient\CreateIngredientCommand;
 use Repas\Repas\Application\Command\CreateIngredient\CreateIngredientHandler;
@@ -19,6 +20,7 @@ use Repas\Repas\Domain\Model\AliasKind;
 use Repas\Repas\Domain\Model\Ingredient;
 use Repas\Repas\Domain\Model\IngredientAlias;
 use Repas\Repas\Domain\Service\ConversionService;
+use Repas\Shared\Domain\Tool\StringTool;
 use Repas\Tests\Helper\Builder\ConversionBuilder;
 use Repas\Tests\Helper\Builder\DepartmentBuilder;
 use Repas\Tests\Helper\Builder\IngredientBuilder;
@@ -104,7 +106,7 @@ class CreateIngredientHandlerTest extends TestCase
             'nom-de-l-ingredientuser-id',
         )], $this->eventDispatcher->eventDispatched);
         $expected = new IngredientBuilder()
-            ->withName("nom de l'ingredient")
+            ->withName("Nom de l'ingredient")
             ->withImage("super-image.jpg")
             ->withDepartment(new DepartmentBuilder()->isBaby())
             ->withDefaultCookingUnit(new UnitBuilder()->isUnite())
@@ -138,7 +140,7 @@ class CreateIngredientHandlerTest extends TestCase
             'nom-de-l-ingredientuser-id',
         )], $this->eventDispatcher->eventDispatched);
         $expected = new IngredientBuilder()
-            ->withName("nom de l'ingredient")
+            ->withName("Nom de l'ingredient")
             ->withImage("super-image.jpg")
             ->withDepartment(new DepartmentBuilder()->isBaby())
             ->withDefaultCookingUnit(new UnitBuilder()->isLiter())
@@ -164,7 +166,7 @@ class CreateIngredientHandlerTest extends TestCase
         );
 
         $expected = new IngredientBuilder()
-            ->withName("nom de l'ingredient")
+            ->withName("Nom de l'ingredient")
             ->withImage("super-image.jpg")
             ->withDepartment(new DepartmentBuilder()->isBaby())
             ->withDefaultCookingUnit(new UnitBuilder()->isUnite())
@@ -209,7 +211,7 @@ class CreateIngredientHandlerTest extends TestCase
         // Assert : l'ingrédient d'un administrateur est à lui, comme celui de tout le monde, et son compteur « ingrédients créés » le suit
         $this->assertEquals([new IngredientCreatedEvent($admin->getId(), 'nom-de-l-ingredientadmin-id')], $this->eventDispatcher->eventDispatched);
         $expected = new IngredientBuilder()
-            ->withName("nom de l'ingredient")
+            ->withName("Nom de l'ingredient")
             ->withImage("super-image.jpg")
             ->withDepartment(new DepartmentBuilder()->isBaby())
             ->withDefaultCookingUnit(new UnitBuilder()->isUnite())
@@ -597,5 +599,52 @@ class CreateIngredientHandlerTest extends TestCase
 
         // Assert
         $this->assertTrue($this->ingredientRepository->exists('le-dernieruser-id'));
+    }
+
+    /**
+     * @return array<string, array{string, string}> le nom envoyé, le nom enregistré
+     */
+    public static function nameDataProvider(): array
+    {
+        return [
+            'minuscules' => ['praliné', 'Praliné'],
+            'plusieurs mots, la suite est conservée' => ['de la farine T55', 'De la farine T55'],
+            'majuscule déjà là' => ['Praliné', 'Praliné'],
+            'majuscule déjà là, suite en majuscules' => ['Lait de COCO', 'Lait de COCO'],
+            'accent' => ['éclair', 'Éclair'],
+            'ligature' => ['œufs', 'Œufs'],
+            'ligature déjà en majuscule' => ['Œufs', 'Œufs'],
+            'chiffre' => ['00 farine', '00 farine'],
+            'parenthèse' => ['(bio) tomate', '(bio) tomate'],
+            'apostrophe' => ["'sel", "'sel"],
+        ];
+    }
+
+    #[DataProvider('nameDataProvider')]
+    public function testTheFirstLetterOfTheNameIsCapitalizedWithoutAnyErrorAndTheRestIsKept(string $sent, string $stored): void
+    {
+        // Arrange
+        $command = new CreateIngredientCommand($sent, '', 'bebe', 'unite', 'unite', 'user-id', null);
+
+        // Act
+        $slug = ($this->handler)($command);
+
+        // Assert : le nom enregistré est le nom corrigé ; le slug et le nom normalisé ne dépendent pas de la casse
+        $ingredient = $this->ingredientRepository->findOneBySlug($slug);
+        $this->assertSame($stored, $ingredient->getName());
+        $this->assertSame(StringTool::slugify($sent . 'user-id'), $slug);
+        $this->assertSame(StringTool::slugify($sent), $ingredient->getSluggedName());
+    }
+
+    public function testTheSameNameWithADifferentCaseIsStillADuplicateForTheSameCreator(): void
+    {
+        // Arrange : « Praliné » existe déjà chez l'utilisateur
+        ($this->handler)(new CreateIngredientCommand('Praliné', '', 'bebe', 'unite', 'unite', 'user-id', null));
+
+        // Assert : « praliné » (corrigé en « Praliné ») donne le même slug : la détection du doublon ne change pas
+        $this->expectExceptionObject(IngredientException::alreadyExists('pralineuser-id'));
+
+        // Act
+        ($this->handler)(new CreateIngredientCommand('praliné', '', 'bebe', 'unite', 'unite', 'user-id', null));
     }
 }

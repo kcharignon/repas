@@ -18,7 +18,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
 {
     private const array RECIPES = [
         [
-            "name" => "pates carbonara",
+            "name" => "Pates carbonara",
             "owner" => "alexiane.sichi@gmail.com",
             "type" => "plat",
             "people" => 4,
@@ -52,7 +52,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
             ]
         ],
         [
-            "name" => "fajitas",
+            "name" => "Fajitas",
             "owner" => "alexiane.sichi@gmail.com",
             "type" => "plat",
             "people" => 4,
@@ -110,7 +110,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
             ],
         ],
         [
-            "name" => "œufs à la coque",
+            "name" => "Œufs à la coque",
             "owner" => "alexiane.sichi@gmail.com",
             "type" => "plat",
             "people" => 2,
@@ -128,7 +128,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
             ]
         ],
         [
-            "name" => "burger",
+            "name" => "Burger",
             "owner" => "alexiane.sichi@gmail.com",
             "type" => "plat",
             "people" => 2,
@@ -181,7 +181,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
             ],
         ],
         [
-            "name" => "tarte tatin",
+            "name" => "Tarte tatin",
             "owner" => "alexiane.sichi@gmail.com",
             "type" => "dessert",
             "people" => 4,
@@ -214,7 +214,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
             ],
         ],
         [
-            "name" => "ramen",
+            "name" => "Ramen",
             "owner" => "alexiane.sichi@gmail.com",
             "type" => "plat",
             "people" => 2,
@@ -232,7 +232,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
             ],
         ],
         [
-            "name" => "salade caesar",
+            "name" => "Salade caesar",
             "owner" => "alexiane.sichi@gmail.com",
             "type" => "plat",
             "people" => 4,
@@ -260,7 +260,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
             ],
         ],
         [
-            "name" => "gaspacho",
+            "name" => "Gaspacho",
             "owner" => "alexiane.sichi@gmail.com",
             "type" => "plat",
             "people" => 2,
@@ -298,7 +298,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
             ],
         ],
         [
-            "name" => "poulet thai",
+            "name" => "Poulet thai",
             "owner" => "alexiane.sichi@gmail.com",
             "type" => "plat",
             "people" => 2,
@@ -356,7 +356,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
             ],
         ],
         [
-            "name" => "gnocci",
+            "name" => "Gnocci",
             "owner" => "alexiane.sichi@gmail.com",
             "type" => "plat",
             "people" => 4,
@@ -369,7 +369,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
             ],
         ],
         [
-            "name" => "salade composee",
+            "name" => "Salade composee",
             "owner" => "alexiane.sichi@gmail.com",
             "type" => "plat",
             "people" => 4,
@@ -402,7 +402,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
             ],
         ],
         [
-            "name" => "raviole",
+            "name" => "Raviole",
             "owner" => "alexiane.sichi@gmail.com",
             "type" => "plat",
             "people" => 4,
@@ -415,7 +415,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
             ],
         ],
         [
-            "name" => "saucisse lentille",
+            "name" => "Saucisse lentille",
             "owner" => "alexiane.sichi@gmail.com",
             "type" => "plat",
             "people" => 4,
@@ -443,7 +443,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
             ],
         ],
         [
-            "name" => "ble dinde",
+            "name" => "Ble dinde",
             "owner" => "alexiane.sichi@gmail.com",
             "type" => "plat",
             "people" => 4,
@@ -461,7 +461,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
             ],
         ],
         [
-            "name" => "potage",
+            "name" => "Potage",
             "owner" => "alexiane.sichi@gmail.com",
             "type" => "plat",
             "people" => 4,
@@ -484,7 +484,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
             ],
         ],
         [
-            "name" => "gratin de pate",
+            "name" => "Gratin de pate",
             "owner" => "alexiane.sichi@gmail.com",
             "type" => "plat",
             "people" => 4,
@@ -517,7 +517,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
             ],
         ],
         [
-            "name" => "gratin de choux fleur",
+            "name" => "Gratin de choux fleur",
             "owner" => "alexiane.sichi@gmail.com",
             "type" => "plat",
             "people" => 4,
@@ -565,7 +565,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
             ],
         ],
         [
-            "name" => "gratin courgette",
+            "name" => "Gratin courgette",
             "owner" => "alexiane.sichi@gmail.com",
             "type" => "plat",
             "people" => 4,
@@ -613,7 +613,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
             ],
         ],
         [
-            "name" => "lasagne",
+            "name" => "Lasagne",
             "owner" => "alexiane.sichi@gmail.com",
             "type" => "plat",
             "people" => 4,
@@ -671,7 +671,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
             ],
         ],
         [
-            "name" => "quenelle",
+            "name" => "Quenelle",
             "owner" => "alexiane.sichi@gmail.com",
             "type" => "plat",
             "people" => 4,
@@ -724,7 +724,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
             ],
         ],
         [
-            "name" => "crumble de courgette",
+            "name" => "Crumble de courgette",
             "owner" => "alexiane.sichi@gmail.com",
             "type" => "plat",
             "people" => 4,
@@ -767,7 +767,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
             ],
         ],
         [
-            "name" => "pizza",
+            "name" => "Pizza",
             "owner" => "alexiane.sichi@gmail.com",
             "type" => "plat",
             "people" => 4,
@@ -800,7 +800,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
             ],
         ],
         [
-            "name" => "pizza big apple",
+            "name" => "Pizza big apple",
             "owner" => "alexiane.sichi@gmail.com",
             "type" => "plat",
             "people" => 4,
@@ -833,7 +833,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
             ],
         ],
         [
-            "name" => "baggle",
+            "name" => "Baggle",
             "owner" => "alexiane.sichi@gmail.com",
             "type" => "plat",
             "people" => 4,
@@ -861,7 +861,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
             ],
         ],
         [
-            "name" => "woke",
+            "name" => "Woke",
             "owner" => "alexiane.sichi@gmail.com",
             "type" => "plat",
             "people" => 4,
@@ -904,7 +904,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
             ],
         ],
         [
-            "name" => "riz cantonais",
+            "name" => "Riz cantonais",
             "owner" => "alexiane.sichi@gmail.com",
             "type" => "plat",
             "people" => 4,
@@ -932,7 +932,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
             ],
         ],
         [
-            "name" => "tomate farcie",
+            "name" => "Tomate farcie",
             "owner" => "alexiane.sichi@gmail.com",
             "type" => "plat",
             "people" => 4,
@@ -995,7 +995,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
             ],
         ],
         [
-            "name" => "omelette",
+            "name" => "Omelette",
             "owner" => "alexiane.sichi@gmail.com",
             "type" => "plat",
             "people" => 4,
@@ -1013,7 +1013,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
             ],
         ],
         [
-            "name" => "œuf dur",
+            "name" => "Œuf dur",
             "owner" => "alexiane.sichi@gmail.com",
             "type" => "plat",
             "people" => 4,
@@ -1026,7 +1026,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
             ],
         ],
         [
-            "name" => "chili con carne",
+            "name" => "Chili con carne",
             "owner" => "alexiane.sichi@gmail.com",
             "type" => "plat",
             "people" => 4,
@@ -1079,7 +1079,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
             ],
         ],
         [
-            "name" => "panini",
+            "name" => "Panini",
             "owner" => "alexiane.sichi@gmail.com",
             "type" => "plat",
             "people" => 4,
@@ -1112,7 +1112,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
             ],
         ],
         [
-            "name" => "tartine",
+            "name" => "Tartine",
             "owner" => "alexiane.sichi@gmail.com",
             "type" => "plat",
             "people" => 4,
@@ -1150,7 +1150,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
             ],
         ],
         [
-            "name" => "crepe",
+            "name" => "Crepe",
             "owner" => "alexiane.sichi@gmail.com",
             "type" => "plat",
             "people" => 4,
@@ -1188,7 +1188,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
             ],
         ],
         [
-            "name" => "galette bretonne",
+            "name" => "Galette bretonne",
             "owner" => "alexiane.sichi@gmail.com",
             "type" => "plat",
             "people" => 4,
@@ -1216,7 +1216,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
             ],
         ],
         [
-            "name" => "croque monsieur",
+            "name" => "Croque monsieur",
             "owner" => "alexiane.sichi@gmail.com",
             "type" => "plat",
             "people" => 4,
@@ -1239,7 +1239,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
             ],
         ],
         [
-            "name" => "brique",
+            "name" => "Brique",
             "owner" => "alexiane.sichi@gmail.com",
             "type" => "plat",
             "people" => 4,
@@ -1277,7 +1277,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
             ],
         ],
         [
-            "name" => "raclette",
+            "name" => "Raclette",
             "owner" => "alexiane.sichi@gmail.com",
             "type" => "plat",
             "people" => 4,
@@ -1305,7 +1305,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
             ],
         ],
         [
-            "name" => "fondue",
+            "name" => "Fondue",
             "owner" => "alexiane.sichi@gmail.com",
             "type" => "plat",
             "people" => 4,
@@ -1328,7 +1328,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
             ],
         ],
         [
-            "name" => "soupe",
+            "name" => "Soupe",
             "owner" => "alexiane.sichi@gmail.com",
             "type" => "plat",
             "people" => 4,
@@ -1341,7 +1341,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
             ],
         ],
         [
-            "name" => "endive au jambon",
+            "name" => "Endive au jambon",
             "owner" => "alexiane.sichi@gmail.com",
             "type" => "plat",
             "people" => 4,
@@ -1389,7 +1389,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
             ],
         ],
         [
-            "name" => "wrap",
+            "name" => "Wrap",
             "owner" => "alexiane.sichi@gmail.com",
             "type" => "plat",
             "people" => 4,
@@ -1417,7 +1417,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
             ],
         ],
         [
-            "name" => "tartare",
+            "name" => "Tartare",
             "owner" => "alexiane.sichi@gmail.com",
             "type" => "plat",
             "people" => 4,
@@ -1445,7 +1445,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
             ],
         ],
         [
-            "name" => "terrine aubergine",
+            "name" => "Terrine aubergine",
             "owner" => "alexiane.sichi@gmail.com",
             "type" => "plat",
             "people" => 4,
@@ -1478,7 +1478,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
             ],
         ],
         [
-            "name" => "taboulet syrien",
+            "name" => "Taboulet syrien",
             "owner" => "alexiane.sichi@gmail.com",
             "type" => "plat",
             "people" => 4,
@@ -1521,7 +1521,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
             ],
         ],
         [
-            "name" => "poulet basquaise",
+            "name" => "Poulet basquaise",
             "owner" => "alexiane.sichi@gmail.com",
             "type" => "plat",
             "people" => 4,
@@ -1564,7 +1564,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
             ],
         ],
         [
-            "name" => "tarte mozza",
+            "name" => "Tarte mozza",
             "owner" => "alexiane.sichi@gmail.com",
             "type" => "plat",
             "people" => 4,
@@ -1592,7 +1592,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
             ],
         ],
         [
-            "name" => "moussaka",
+            "name" => "Moussaka",
             "owner" => "alexiane.sichi@gmail.com",
             "type" => "plat",
             "people" => 4,
@@ -1670,7 +1670,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
             ],
         ],
         [
-            "name" => "tourte épinard",
+            "name" => "Tourte épinard",
             "owner" => "alexiane.sichi@gmail.com",
             "type" => "plat",
             "people" => 4,
@@ -1698,7 +1698,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
             ],
         ],
         [
-            "name" => "tartiflette",
+            "name" => "Tartiflette",
             "owner" => "alexiane.sichi@gmail.com",
             "type" => "plat",
             "people" => 4,
@@ -1731,7 +1731,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
             ],
         ],
         [
-            "name" => "flamenkuche",
+            "name" => "Flamenkuche",
             "owner" => "alexiane.sichi@gmail.com",
             "type" => "plat",
             "people" => 4,
@@ -1759,7 +1759,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
             ],
         ],
         [
-            "name" => "blanquette de veau",
+            "name" => "Blanquette de veau",
             "owner" => "alexiane.sichi@gmail.com",
             "type" => "plat",
             "people" => 4,
@@ -1812,7 +1812,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
             ],
         ],
         [
-            "name" => "bœuf bourguignon",
+            "name" => "Bœuf bourguignon",
             "owner" => "alexiane.sichi@gmail.com",
             "type" => "plat",
             "people" => 4,
@@ -1865,7 +1865,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
             ],
         ],
         [
-            "name" => "poulet indien",
+            "name" => "Poulet indien",
             "owner" => "alexiane.sichi@gmail.com",
             "type" => "plat",
             "people" => 4,
@@ -1918,7 +1918,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
             ],
         ],
         [
-            "name" => "pate bolognaise",
+            "name" => "Pate bolognaise",
             "owner" => "alexiane.sichi@gmail.com",
             "type" => "plat",
             "people" => 4,
@@ -1936,7 +1936,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
             ],
         ],
         [
-            "name" => "pate pesto",
+            "name" => "Pate pesto",
             "owner" => "alexiane.sichi@gmail.com",
             "type" => "plat",
             "people" => 4,
@@ -1954,7 +1954,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
             ],
         ],
         [
-            "name" => "saucisse purée",
+            "name" => "Saucisse purée",
             "owner" => "alexiane.sichi@gmail.com",
             "type" => "plat",
             "people" => 4,
@@ -1982,7 +1982,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
             ],
         ],
         [
-            "name" => "petit pois poisson",
+            "name" => "Petit pois poisson",
             "owner" => "alexiane.sichi@gmail.com",
             "type" => "plat",
             "people" => 4,
@@ -2020,7 +2020,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
             ],
         ],
         [
-            "name" => "nuggets fritte",
+            "name" => "Nuggets fritte",
             "owner" => "alexiane.sichi@gmail.com",
             "type" => "plat",
             "people" => 4,
@@ -2038,7 +2038,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
             ],
         ],
         [
-            "name" => "légume cordon bleu",
+            "name" => "Légume cordon bleu",
             "owner" => "alexiane.sichi@gmail.com",
             "type" => "plat",
             "people" => 4,
@@ -2061,7 +2061,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
             ],
         ],
         [
-            "name" => "risotto",
+            "name" => "Risotto",
             "owner" => "alexiane.sichi@gmail.com",
             "type" => "plat",
             "people" => 4,
@@ -2094,7 +2094,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
             ],
         ],
         [
-            "name" => "saumon papillotte",
+            "name" => "Saumon papillotte",
             "owner" => "alexiane.sichi@gmail.com",
             "type" => "plat",
             "people" => 4,
@@ -2137,7 +2137,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
             ],
         ],
         [
-            "name" => "tarte au pomme",
+            "name" => "Tarte au pomme",
             "owner" => "alexiane.sichi@gmail.com",
             "type" => "dessert",
             "people" => 4,
@@ -2160,7 +2160,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
             ],
         ],
         [
-            "name" => "charlotte framboise",
+            "name" => "Charlotte framboise",
             "owner" => "alexiane.sichi@gmail.com",
             "type" => "dessert",
             "people" => 4,
@@ -2208,7 +2208,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
             ],
         ],
         [
-            "name" => "moelleux chocolat",
+            "name" => "Moelleux chocolat",
             "owner" => "alexiane.sichi@gmail.com",
             "type" => "dessert",
             "people" => 4,
@@ -2246,7 +2246,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
             ],
         ],
         [
-            "name" => "gateau yaourt",
+            "name" => "Gateau yaourt",
             "owner" => "alexiane.sichi@gmail.com",
             "type" => "dessert",
             "people" => 4,
@@ -2289,7 +2289,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
             ],
         ],
         [
-            "name" => "cookies",
+            "name" => "Cookies",
             "owner" => "alexiane.sichi@gmail.com",
             "type" => "dessert",
             "people" => 4,
@@ -2337,7 +2337,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
             ],
         ],
         [
-            "name" => "muffin pépitte chocolat",
+            "name" => "Muffin pépitte chocolat",
             "owner" => "alexiane.sichi@gmail.com",
             "type" => "dessert",
             "people" => 4,
@@ -2385,7 +2385,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
             ],
         ],
         [
-            "name" => "bananabread",
+            "name" => "Bananabread",
             "owner" => "alexiane.sichi@gmail.com",
             "type" => "dessert",
             "people" => 4,
@@ -2438,7 +2438,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
             ],
         ],
         [
-            "name" => "sablé",
+            "name" => "Sablé",
             "owner" => "alexiane.sichi@gmail.com",
             "type" => "dessert",
             "people" => 4,
@@ -2466,7 +2466,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
             ],
         ],
         [
-            "name" => "marbré",
+            "name" => "Marbré",
             "owner" => "alexiane.sichi@gmail.com",
             "type" => "dessert",
             "people" => 6,
@@ -2514,7 +2514,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
             ],
         ],
         [
-            "name" => "tiramisu citron",
+            "name" => "Tiramisu citron",
             "owner" => "alexiane.sichi@gmail.com",
             "type" => "dessert",
             "people" => 6,
@@ -2547,7 +2547,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
             ],
         ],
         [
-            "name" => "gâteau basque",
+            "name" => "Gâteau basque",
             "owner" => "alexiane.sichi@gmail.com",
             "type" => "dessert",
             "people" => 6,
@@ -2585,7 +2585,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
             ],
         ],
         [
-            "name" => "guacamole",
+            "name" => "Guacamole",
             "owner" => "alexiane.sichi@gmail.com",
             "type" => "entree",
             "people" => 2,
@@ -2622,8 +2622,10 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
 
     public function load(ObjectManager $manager): void
     {
+        $current = 'Unknown';
         try {
             foreach (self::RECIPES as $recipeDatas) {
+                $current = $recipeDatas['name'];
 
                 $authorEntity = $this->getReference($recipeDatas['owner'], UserEntity::class);
 
@@ -2657,7 +2659,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
 
             $manager->flush();
         } catch (Exception $e) {
-            dump(sprintf("Failed to create Recipe: %s", $recipeDatas["name"] ?? 'Unknown'));
+            dump(sprintf("Failed to create Recipe: %s", $current));
             throw $e;
         }
     }

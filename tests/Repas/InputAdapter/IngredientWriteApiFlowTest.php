@@ -137,6 +137,34 @@ class IngredientWriteApiFlowTest extends DatabaseTestCase
         $this->assertSame(['Farine complète', 'images/farine.png'], [$updated->getName(), $updated->getImage()]);
     }
 
+    public function testAnOldClientSendingLowercaseNamesGetsTheCapitalizedNameWithoutAnyError(): void
+    {
+        // Given : l'ancien site envoie les noms tels qu'ils sont saisis, en minuscules
+        $owner = $this->savedUser();
+
+        // When : création
+        $this->request('POST', '/api/v1/ingredients', $owner, $this->body('œufs fermiers'));
+
+        // Then : succès ordinaire, le nom enregistré est le nom corrigé (la suite de la casse est conservée)
+        $this->assertSame(201, $this->client->getResponse()->getStatusCode());
+        $slug = basename($this->client->getResponse()->headers->get('Location'));
+        $this->assertSame('Œufs fermiers', $this->ingredients()->findOneBySlug($slug)->getName());
+
+        // When : modification
+        $this->request('PUT', '/api/v1/ingredients/' . $slug, $owner, $this->body('œufs fermiers BIO'));
+
+        // Then
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->assertSame('Œufs fermiers BIO', $this->ingredients()->findOneBySlug($slug)->getName());
+
+        // When : la lecture renvoie le nom enregistré
+        $this->request('GET', '/api/v1/ingredients/' . $slug, $owner);
+
+        // Then
+        $this->assertSame(200, $this->client->getResponse()->getStatusCode());
+        $this->assertSame('Œufs fermiers BIO', $this->jsonBody()['name']);
+    }
+
     public function testAnotherUserCannotUpdateOrDeleteTheIngredient(): void
     {
         // Given

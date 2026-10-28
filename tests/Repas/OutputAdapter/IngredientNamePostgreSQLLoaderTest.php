@@ -36,8 +36,8 @@ class IngredientNamePostgreSQLLoaderTest extends DatabaseTestCase
         $result = $this->loader->namesBySlug(self::USER, ['oeuf', 'lait']);
 
         // Then
-        $this->assertEqualsCanonicalizing(['oeuf' => 'œuf', 'lait' => 'lait'], $result);
-        $this->assertSame('œuf', $result['oeuf']);
+        $this->assertEqualsCanonicalizing(['oeuf' => 'Œuf', 'lait' => 'Lait'], $result);
+        $this->assertSame('Œuf', $result['oeuf']);
     }
 
     public function testNamesBySlugIgnoresUnknownSlugs(): void
@@ -49,7 +49,7 @@ class IngredientNamePostgreSQLLoaderTest extends DatabaseTestCase
         $result = $this->loader->namesBySlug(self::USER, ['inconnu', 'oeuf']);
 
         // Then
-        $this->assertSame(['oeuf' => 'œuf'], $result);
+        $this->assertSame(['oeuf' => 'Œuf'], $result);
     }
 
     public function testNamesBySlugOnlyReadsTheIngredientsOfTheUser(): void
@@ -65,8 +65,8 @@ class IngredientNamePostgreSQLLoaderTest extends DatabaseTestCase
         $nobody = $this->loader->namesBySlug('troisieme-utilisateur', ['oeuf', 'lait']);
 
         // Then : chacun ne lit que le nom de ses ingrédients
-        $this->assertSame(['oeuf' => 'œuf'], $mine);
-        $this->assertSame(['lait' => 'lait'], $theirs);
+        $this->assertSame(['oeuf' => 'Œuf'], $mine);
+        $this->assertSame(['lait' => 'Lait'], $theirs);
         $this->assertSame([], $nobody);
     }
 

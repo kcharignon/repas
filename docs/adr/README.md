@@ -33,6 +33,7 @@ Décisions d'architecture du projet Repas. **À relire avant de développer ou d
 | [0027](0027-plusieurs-enseignes-de-drive.md) | Plusieurs enseignes de drive : registre par couche, enseigne choisie d'après les réglages, interrupteur par enseigne | Proposed |
 | [0028](0028-ingredients-propres-a-chaque-utilisateur.md) | Ingrédients propres à chaque utilisateur : adoption des communs (copie + alias), masquage, rapprochement à la copie d'une recette (Jaro-Winkler, même rayon), fusion de deux ingrédients, migration pour les seuls utilisateurs concernés. **Amendement du 2026-10-20 : plus d'ingrédient commun** (les anciens communs deviennent ceux de l'administrateur, marqueur « de base », amorçage de tout compte à l'activation, plan : `docs/ingredients/sans-commun.md`) | Accepted |
 | [0029](0029-commande-vocale-alexa.md) | Commande vocale Alexa : skill personnalisé hébergé par le back, contexte `Voice`, liaison de compte OAuth (code + PKCE), ingrédient le plus probable d'après les habitudes (la liste d'Amazon n'est plus accessible aux tiers) | Accepted |
+| [0030](0030-premiere-lettre-des-noms-en-majuscule.md) | Première lettre des noms de recettes et d'ingrédients en majuscule : `StringTool::capitalizeFirst` appliquée en silence dans les handlers, casse de la suite conservée, migration des données en PHP | Accepted |
 
 ## Sources
 

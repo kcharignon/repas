@@ -19,7 +19,7 @@ final readonly class IngredientPayload
         // 200 et non 255 : le slug d'un ingrédient personnel ou adopté est le nom suivi de l'identifiant de l'utilisateur (36 caractères) et
         // doit tenir dans les 255 de la colonne, avec la marge d'un suffixe « -2 » d'adoption (ADR 0028)
         #[Assert\Length(max: 200)]
-        #[OA\Property(description: "Nom de l'ingrédient (200 caractères au plus)", example: 'Praliné', maxLength: 200)]
+        #[OA\Property(description: "Nom de l'ingrédient (200 caractères au plus). La première lettre est mise en majuscule par le serveur (le reste du nom est conservé tel quel) : le nom enregistré, renvoyé par les lectures, peut donc différer de celui envoyé", example: 'Praliné', maxLength: 200)]
         public string $name,
         #[Assert\NotBlank]
         #[OA\Property(description: 'Slug du rayon', example: 'fruit-et-legume')]

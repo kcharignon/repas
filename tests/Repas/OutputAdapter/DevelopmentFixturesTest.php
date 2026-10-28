@@ -5,6 +5,7 @@ namespace Repas\Tests\Repas\OutputAdapter;
 
 use Doctrine\Common\DataFixtures\Executor\ORMExecutor;
 use Repas\Repas\Domain\Interface\BaseIngredientClassification;
+use Repas\Shared\Domain\Tool\StringTool;
 use Repas\Tests\Helper\Builder\UserBuilder;
 use Repas\Tests\Helper\DatabaseTestCase;
 use Repas\Tests\Helper\DataPersister;
@@ -74,6 +75,23 @@ class DevelopmentFixturesTest extends DatabaseTestCase
         $this->assertSame(8, (int) $connection->fetchOne('SELECT count(*) FROM recipe WHERE author = (SELECT id FROM "user" WHERE email = ?)', ['user@repas.fr']));
         $this->assertSame(2, (int) $connection->fetchOne('SELECT count(*) FROM recipe WHERE author = (SELECT id FROM "user" WHERE email = ?)', ['admin@repas.fr']));
         $this->assertSame(0, (int) $connection->fetchOne('SELECT count(*) FROM ingredient WHERE creator IS NULL'));
+    }
+
+    public function testEveryNameOfARecipeAndOfAnIngredientStartsWithACapital(): void
+    {
+        // When : `make fixtures-load-dev` puis `make fixtures-demo` (ADR 0030 : la première lettre des noms est en majuscule, les données de
+        // développement n'ont pas à attendre d'être corrigées par une écriture)
+        $this->load(['dev']);
+        $this->load(['demo']);
+
+        // Then : le catalogue, les recettes de référence et celles des comptes de démonstration
+        $connection = $this->entityManager->getConnection();
+        foreach (['ingredient', 'recipe'] as $table) {
+            $names = $connection->fetchFirstColumn("SELECT DISTINCT name FROM $table");
+            $this->assertGreaterThan(8, count($names), $table);
+            $lowercase = array_values(array_filter($names, static fn(string $name): bool => StringTool::capitalizeFirst($name) !== $name));
+            $this->assertSame([], $lowercase, "noms de $table qui ne commencent pas par une majuscule");
+        }
     }
 
     /**

@@ -75,7 +75,7 @@ class SpokenIngredientCreatorFlowTest extends DatabaseTestCase
         $this->assertSame(['ciboulette', $department->name], [$created->name, $created->departmentName]);
         $ingredient = static::getContainer()->get(IngredientRepository::class)->findOneBySlug($created->slug);
         $this->assertSame($user->getId(), $ingredient->getCreatorId());
-        $this->assertSame('ciboulette', $ingredient->getName());
+        $this->assertSame('Ciboulette', $ingredient->getName());
         $this->assertSame($department->slug, $ingredient->getDepartment()->getSlug());
         $this->assertSame('unite', $ingredient->getDefaultPurchaseUnit()->getSlug());
         $this->assertSame('unite', $ingredient->getDefaultCookingUnit()->getSlug());

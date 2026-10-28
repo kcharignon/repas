@@ -588,7 +588,7 @@ class AlexaWebhookApiFlowTest extends DatabaseTestCase
         $this->assertSame("C'est créé et noté : ciboulette, rayon céréale.", $this->speech());
         $this->assertSame([], $this->attributes());
         $this->assertSame($ingredientsBefore + 1, $this->rowCount('ingredient'));
-        $created = $this->connection()->fetchAssociative("SELECT * FROM ingredient WHERE name = 'ciboulette'");
+        $created = $this->connection()->fetchAssociative("SELECT * FROM ingredient WHERE name = 'Ciboulette'");
         $this->assertSame([$user->getId(), 'cereale', 'unite', 'unite', false], [$created['creator'], $created['department'], $created['default_cooking_unit'], $created['default_purchase_unit'], (bool) $created['is_base']]);
         $this->assertSame(0, $this->rowCount('spoken_phrase_choice'));
         $this->entityManager->clear();
@@ -989,7 +989,7 @@ class AlexaWebhookApiFlowTest extends DatabaseTestCase
         // Then : stocké sous le nom normalisé, jamais tel que reçu
         $this->assertSame("C'est créé et noté : b évil b ingrédient xxxx, rayon céréale.", $this->speech());
         $this->assertSame(1, $this->rowCount('ingredient'));
-        $this->assertSame('b évil b ingrédient xxxx', $this->connection()->fetchOne('SELECT name FROM ingredient'));
+        $this->assertSame('B évil b ingrédient xxxx', $this->connection()->fetchOne('SELECT name FROM ingredient'));
         $this->assertSame(1, $this->rowCount('shopping_list_row'));
     }
 
