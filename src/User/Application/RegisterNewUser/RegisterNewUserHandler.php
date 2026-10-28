@@ -4,48 +4,64 @@ namespace Repas\User\Application\RegisterNewUser;
 
 use Psr\Clock\ClockInterface;
 use Repas\User\Domain\Exception\UserException;
+use Repas\User\Domain\Interface\RegistrationNotifier;
 use Repas\User\Domain\Interface\UserRepository;
 use Repas\User\Domain\Model\User;
-use Repas\User\Domain\Service\EmailVerificationIssuer;
+use Repas\User\Domain\Model\UserStatus;
+use Repas\User\Domain\Service\WelcomeLinkIssuer;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
-use Symfony\Component\PasswordHasher\Hasher\PasswordHasherFactoryInterface;
 
 #[AsMessageHandler]
 readonly class RegisterNewUserHandler
 {
     public function __construct(
-        private PasswordHasherFactoryInterface $passwordHasherFactory,
         private UserRepository $userRepository,
         private ClockInterface $clock,
-        private EmailVerificationIssuer $emailVerificationIssuer,
+        private WelcomeLinkIssuer $welcomeLinkIssuer,
+        private RegistrationNotifier $notifier,
     ) {
     }
 
     /**
-     * Le compte est créé en attente : il ne sert qu'une fois l'adresse confirmée par le lien envoyé ici (ADR 0020).
+     * Ne dit jamais si l'adresse a déjà un compte : la réponse de l'API est la même dans tous les cas, et chaque cas qui écrit à
+     * l'adresse fait un envoi d'email, pour que le temps de réponse ne les distingue pas non plus (ADR 0020 amendé).
      *
-     * @throws UserException
+     * - adresse nouvelle : un compte en attente SANS mot de passe (`User::NO_PASSWORD`) et le lien de bienvenue qui lui fera choisir
+     *   le sien ; personne ne connaît de mot de passe pour ce compte avant que le propriétaire de la boîte n'ouvre le lien ;
+     * - compte en attente : un nouveau lien de bienvenue (l'ancien ne sert plus) ;
+     * - compte actif : un email qui dit qu'il existe et mène à la connexion et au mot de passe oublié ;
+     * - compte désactivé : rien, comme le mot de passe oublié (ADR 0021).
+     *
+     * Aucun plafond de délai ici : le plafond par adresse saisie (`PublicEmailRateLimitListener`) borne les envois vers une même boîte.
      */
     public function __invoke(RegisterNewUserCommand $command): void
     {
-        if ($this->userRepository->emailExists($command->email)) {
-            throw UserException::emailAlreadyUsed($command->email);
+        try {
+            $user = $this->userRepository->findOneByEmail($command->email);
+        } catch (UserException) {
+            $this->registerNewAddress($command);
+
+            return;
         }
 
-        $passwordHashed = $this->passwordHasherFactory
-            ->getPasswordHasher(User::class)
-            ->hash($command->passwordPlainText);
+        match ($user->getStatus()) {
+            UserStatus::PENDING => $this->welcomeLinkIssuer->reissueFor($user),
+            UserStatus::ACTIVE => $this->notifier->sendAlreadyRegistered($user->getEmail()),
+            UserStatus::DISABLED => null,
+        };
+    }
+
+    private function registerNewAddress(RegisterNewUserCommand $command): void
+    {
         $user = User::register(
             id: $command->userId,
             email: $command->email,
             roles: ['ROLE_USER'],
-            password: $passwordHashed,
             defaultServing: $command->defaultServing,
             createdAt: $this->clock->now(),
         );
 
         $this->userRepository->save($user);
-        $this->emailVerificationIssuer->issueFor($user);
+        $this->welcomeLinkIssuer->issueFor($user);
     }
-
 }

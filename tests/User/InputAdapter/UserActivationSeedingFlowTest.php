@@ -50,7 +50,7 @@ class UserActivationSeedingFlowTest extends DatabaseTestCase
         $this->dataset->referenceData();
     }
 
-    public function testAVisitorWhoConfirmsTheirAddressReceivesTheBaseIngredientsAndTheRegistrationAloneCopiesNothing(): void
+    public function testAVisitorWhoChoosesAPasswordFromTheWelcomeLinkReceivesTheBaseIngredientsAndTheRegistrationAloneCopiesNothing(): void
     {
         // Given : l'interrupteur est allumé
         $this->switchOn();
@@ -58,18 +58,18 @@ class UserActivationSeedingFlowTest extends DatabaseTestCase
         $ingredientsBefore = (int) $connection->fetchOne('SELECT count(*) FROM ingredient');
 
         // When : l'inscription publique
-        $this->post('/api/v1/users', ['email' => 'alexiane@example.com', 'password' => self::PASSWORD, 'defaultServing' => 3]);
+        $this->post('/api/v1/users', ['email' => 'alexiane@example.com', 'defaultServing' => 3]);
 
         // Then : le compte attend ; AUCUNE ligne d'ingrédient n'a été écrite (un flot d'inscriptions jamais confirmées ne coûte rien)
-        $this->assertSame(201, $this->statusCode());
+        $this->assertSame(204, $this->statusCode());
         $userId = $this->userId('alexiane@example.com');
         $this->assertSame('PENDING', $this->statusOf($userId));
         $this->assertSame($ingredientsBefore, (int) $connection->fetchOne('SELECT count(*) FROM ingredient'));
         $this->assertSame(0, (int) $connection->fetchOne('SELECT count(*) FROM ingredient_alias WHERE user_id = ?', [$userId]));
         $secret = $this->secretOf($this->emails[0]);
 
-        // When : la confirmation de l'adresse
-        $this->post('/api/v1/users/email-verification/confirm', ['token' => $secret]);
+        // When : il choisit son mot de passe avec le lien de bienvenue (il prouve son adresse et active le compte)
+        $this->post('/api/v1/users/password-reset/confirm', ['token' => $secret, 'password' => self::PASSWORD]);
 
         // Then : le compte est actif et a SES ingrédients : les huit « de base », avec leurs conversions propres, un alias par copie
         $this->assertSame(204, $this->statusCode());
@@ -431,7 +431,7 @@ class UserActivationSeedingFlowTest extends DatabaseTestCase
 
     private function secretOf(Email $email): string
     {
-        $this->assertSame(1, preg_match('#^https?://\S+/confirmation-email\?token=([0-9a-f]{64})$#m', $email->getTextBody(), $matches));
+        $this->assertSame(1, preg_match('#^https?://\S+/mot-de-passe-oublie/confirmation\?token=([0-9a-f]{64})&bienvenue=1$#m', $email->getTextBody(), $matches));
 
         return $matches[1];
     }

@@ -10,6 +10,7 @@ use Repas\Tests\Helper\Builder\UserBuilder;
 use Repas\User\Domain\Exception\UserException;
 use Repas\User\Domain\Model\User;
 use Repas\User\Domain\Model\UserStatus;
+use Symfony\Component\PasswordHasher\Hasher\NativePasswordHasher;
 
 class UserTest extends TestCase
 {
@@ -23,13 +24,85 @@ class UserTest extends TestCase
     public function testARegisteredVisitorIsPendingUntilHeConfirmsHisEmail(): void
     {
         // When
-        $user = User::register('id', ' Alexiane@Example.COM ', ['ROLE_USER'], 'hash', 3, $this->now);
+        $user = User::register('id', ' Alexiane@Example.COM ', ['ROLE_USER'], 3, $this->now);
 
         // Then
         $this->assertSame(UserStatus::PENDING, $user->getStatus());
         $this->assertTrue($user->isPending());
         $this->assertFalse($user->isDisabled());
         $this->assertSame('alexiane@example.com', $user->getEmail());
+    }
+
+    public function testARegisteredVisitorHasNoPasswordUntilHeChoosesOneFromTheEmailedLink(): void
+    {
+        // When
+        $user = User::register('id', 'alexiane@example.com', ['ROLE_USER'], 3, $this->now);
+
+        // Then : ni le visiteur ni personne ne connaît de mot de passe pour ce compte
+        $this->assertFalse($user->hasPassword());
+        $this->assertSame(User::NO_PASSWORD, $user->getPassword());
+        $this->assertSame(0, $user->getCredentialsVersion());
+        foreach (['', '!', 'un-mot-de-passe', str_repeat('a', 72), User::NO_PASSWORD . User::NO_PASSWORD] as $attempt) {
+            $this->assertFalse($user->passwordMatch($attempt), sprintf('« %s » ne doit pas ouvrir le compte', $attempt));
+        }
+    }
+
+    public function testNoPasswordIsNotAHashAndNoHasherAcceptsAnyInputAgainstIt(): void
+    {
+        // Then : « ! » n'est le hachage d'aucun algorithme, ni pour PHP ni pour le hacheur natif de Symfony (« auto »)
+        $this->assertNull(password_get_info(User::NO_PASSWORD)['algo']);
+        $hasher = new NativePasswordHasher();
+        foreach (['', '!', 'un-mot-de-passe'] as $attempt) {
+            $this->assertFalse($hasher->verify(User::NO_PASSWORD, $attempt));
+        }
+    }
+
+    public function testAnAccountWithAHashedPasswordHasOne(): void
+    {
+        $this->assertTrue(new UserBuilder()->build()->hasPassword());
+        $this->assertTrue(User::create('id', 'a@example.com', ['ROLE_USER'], 'hash', 3, $this->now)->hasPassword());
+    }
+
+    public function testLockingThePasswordRemovesItAndRevokesTheIssuedTokens(): void
+    {
+        // Given : un compte en attente de l'ancien formulaire, avec le mot de passe qu'un tiers a posé
+        $user = new UserBuilder()->isPending()->build();
+        $version = $user->getCredentialsVersion();
+        $this->assertTrue($user->passwordMatch('test'), 'avant : ce mot de passe ouvre le compte');
+
+        // When
+        $user->lockPassword();
+
+        // Then
+        $this->assertFalse($user->hasPassword());
+        $this->assertFalse($user->passwordMatch('test'));
+        $this->assertSame($version + 1, $user->getCredentialsVersion());
+    }
+
+    public function testLockingThePasswordOfAnAccountThatHasNoneChangesNothing(): void
+    {
+        // Given
+        $user = User::register('id', 'alexiane@example.com', ['ROLE_USER'], 3, $this->now);
+
+        // When
+        $user->lockPassword();
+
+        // Then : la version des identifiants ne monte pas pour rien
+        $this->assertSame(0, $user->getCredentialsVersion());
+        $this->assertFalse($user->hasPassword());
+    }
+
+    public function testChoosingAPasswordGivesTheAccountOne(): void
+    {
+        // Given
+        $user = User::register('id', 'alexiane@example.com', ['ROLE_USER'], 3, $this->now);
+
+        // When
+        $user->changePassword(password_hash('un-mot-de-passe', PASSWORD_BCRYPT, ['cost' => 4]));
+
+        // Then
+        $this->assertTrue($user->hasPassword());
+        $this->assertTrue($user->passwordMatch('un-mot-de-passe'));
     }
 
     public function testAnAccountCreatedOutsideRegistrationIsActive(): void
@@ -59,7 +132,7 @@ class UserTest extends TestCase
         $this->expectExceptionObject(UserException::invalidServing());
 
         // When
-        User::register('id', 'alexiane@example.com', ['ROLE_USER'], 'hash', $serving, $this->now);
+        User::register('id', 'alexiane@example.com', ['ROLE_USER'], $serving, $this->now);
     }
 
     #[DataProvider('invalidServings')]
@@ -205,7 +278,7 @@ class UserTest extends TestCase
     public function testTheProtectedAccountIsRecognisedWhateverTheCaseOfItsEmail(): void
     {
         $this->assertTrue(new UserBuilder()->withEmail(User::PROTECTED_EMAIL)->build()->isProtected());
-        $this->assertTrue(User::register('id', ' ' . strtoupper(User::PROTECTED_EMAIL), ['ROLE_USER'], 'hash', 3, $this->now)->isProtected());
+        $this->assertTrue(User::register('id', ' ' . strtoupper(User::PROTECTED_EMAIL), ['ROLE_USER'], 3, $this->now)->isProtected());
         $this->assertFalse(new UserBuilder()->withEmail('autre@example.com')->build()->isProtected());
     }
 

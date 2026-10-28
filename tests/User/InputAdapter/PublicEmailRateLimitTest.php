@@ -36,7 +36,7 @@ class PublicEmailRateLimitTest extends QueryBusWebTestCase
                 1 => $this->post('/api/v1/users/email-verification/send', ['email' => "visiteur$i@example.com"], $this->address($i)),
                 2 => $this->post('/api/v1/users/password-reset/send', ['email' => "visiteur$i@example.com"], $this->address($i)),
             };
-            $this->assertContains($this->client->getResponse()->getStatusCode(), [201, 204], "demande $i");
+            $this->assertSame(204, $this->client->getResponse()->getStatusCode(), "demande $i");
         }
 
         // Then : la suivante est refusée, sur chacune des trois routes, avec une attente d'une heure au plus
@@ -103,7 +103,7 @@ class PublicEmailRateLimitTest extends QueryBusWebTestCase
                 1 => $this->post('/api/v1/users/email-verification/send', ['email' => $email], $this->address($i + 1)),
                 2 => $this->post('/api/v1/users/password-reset/send', ['email' => $email], $this->address($i + 1)),
             };
-            $this->assertContains($this->client->getResponse()->getStatusCode(), [201, 204], "demande $i");
+            $this->assertSame(204, $this->client->getResponse()->getStatusCode(), "demande $i");
         }
 
         // Then : la septième est refusée, quelle que soit la route ou l'adresse IP
@@ -208,7 +208,7 @@ class PublicEmailRateLimitTest extends QueryBusWebTestCase
 
     private function register(string $email, string $address): void
     {
-        $this->post('/api/v1/users', ['email' => $email, 'password' => 'un-mot-de-passe', 'defaultServing' => 4], $address);
+        $this->post('/api/v1/users', ['email' => $email], $address);
     }
 
     /**

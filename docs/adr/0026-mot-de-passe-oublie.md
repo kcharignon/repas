@@ -42,3 +42,11 @@ Un utilisateur qui oublie son mot de passe n'a aucune issue : le changement de m
 - Répondre `404` ou `422` pour une adresse inconnue : cela énumère les comptes ([0007](0007-api-rest-v1.md) §14, [0020](0020-confirmation-d-adresse-email.md) §8).
 - Partager le limiteur `email_verification` : voir décision 8.
 - Envoyer l'email après la réponse (`kernel.terminate`) pour égaliser les durées : plus d'état à tester pour un volume de quelques demandes par jour ; à rouvrir si le canal temporel devient un souci.
+
+## Amendement du 2026-10-28 : le même lien et le même écran servent à choisir son premier mot de passe
+
+L'inscription se fait désormais avec la seule adresse ([0020](0020-confirmation-d-adresse-email.md), amendement du 2026-10-28) : le compte naît `PENDING` **sans mot de passe** (`User::NO_PASSWORD`) et le lien de bienvenue qu'il reçoit est un `PasswordResetToken`. Ce qui change ici :
+
+- **Une durée de plus, rien d'autre.** `PasswordResetToken::issueWelcome()` émet le même jeton valable `WELCOME_TTL` (24 heures) ; le lien « mot de passe oublié » reste à 30 minutes. `POST /api/v1/users/password-reset/confirm`, son écran du front (`/mot-de-passe-oublie/confirmation`), la fermeture des sessions, l'activation du compte `PENDING` et `UserActivatedEvent` sont ceux de la décision 5, sans changement : un lien de bienvenue ne se distingue d'un lien d'oubli que par sa date d'expiration. Le lien de bienvenue porte en plus `&bienvenue=1`, un indice d'affichage pour le front (le back l'ignore).
+- **Un seul lien valable par compte** (décision 3) : s'inscrire de nouveau avec la même adresse, demander un mot de passe oublié ou renvoyer le lien de confirmation d'un compte sans mot de passe remplace le lien précédent. Le délai de grâce de 60 s (décision 2) vaut pour le mot de passe oublié et pour le renvoi du lien de confirmation ; l'inscription ne l'applique pas (elle ferait un cas muet, [0020](0020-confirmation-d-adresse-email.md) amendement point 6).
+- **Un compte sans mot de passe** (inscrit par adresse seule, activé à la main par l'administrateur ou créé par Google) a toujours une issue : cet écran, qui n'a jamais besoin de l'ancien mot de passe (décision 5).

@@ -21,9 +21,18 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, Passwor
     /** Adresse du compte protégé (voir `isProtected()`). */
     public const string PROTECTED_EMAIL = 'kantincharignon@gmail.com';
 
+    /**
+     * Mot de passe d'un compte qui n'en a pas encore : jamais un hachage valide, donc `password_verify` le refuse pour toute saisie. C'est
+     * celui d'un compte inscrit avec la seule adresse (le mot de passe se choisit après le clic sur le lien reçu par email, ADR 0020
+     * amendé) ; la connexion avec Google en pose un aussi (ADR 0024). Aucune colonne de plus : la valeur suffit (`hasPassword()`).
+     */
+    public const string NO_PASSWORD = '!';
+
     /** Nombre de personnes par défaut d'un compte : de 1 à 100, comme celui d'une recette et d'un repas. */
     public const int MIN_SERVING = 1;
     public const int MAX_SERVING = 100;
+    /** Nombre de personnes d'un compte inscrit sans l'avoir dit (modifiable ensuite dans « Moi »). */
+    public const int DEFAULT_SERVING = 4;
 
     /**
      * Écart minimal, en secondes, entre deux enregistrements de la dernière connexion d'un même compte (voir
@@ -68,18 +77,18 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, Passwor
     }
 
     /**
-     * Inscription d'un visiteur : le compte reste en attente (`PENDING`) tant qu'il n'a pas confirmé son adresse email
-     * (`verifyEmail()`, ADR 0020).
+     * Inscription d'un visiteur avec sa seule adresse : le compte reste en attente (`PENDING`) et SANS mot de passe (`NO_PASSWORD`)
+     * jusqu'au clic sur le lien reçu par email, qui lui fait choisir son mot de passe et active le compte (ADR 0020 amendé, ADR 0026).
+     * Personne, le visiteur compris, n'a de mot de passe à ce stade : l'adresse d'un tiers ne peut donc pas servir à ouvrir un accès.
      */
     public static function register(
         string $id,
         string $email,
         array $roles,
-        string $password,
         int $defaultServing,
         DateTimeImmutable $createdAt,
     ): static {
-        return self::instantiate($id, $email, $roles, $password, $defaultServing, $createdAt, Status::PENDING);
+        return self::instantiate($id, $email, $roles, self::NO_PASSWORD, $defaultServing, $createdAt, Status::PENDING);
     }
 
     private static function instantiate(
@@ -157,6 +166,27 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, Passwor
     {
         $this->password = $password;
         $this->credentialsVersion++;
+    }
+
+    /**
+     * Le compte a-t-il un mot de passe utilisable ? Faux pour un compte inscrit qui n'a pas encore choisi le sien (`NO_PASSWORD`).
+     */
+    public function hasPassword(): bool
+    {
+        return $this->password !== self::NO_PASSWORD;
+    }
+
+    /**
+     * Retire tout mot de passe utilisable au compte (`NO_PASSWORD`) et révoque les jetons déjà émis. Sans effet s'il n'en a pas. Sert
+     * à un compte en attente dont le mot de passe a été posé AVANT la confirmation de l'adresse (inscription de l'ancien formulaire) :
+     * une fois l'adresse confirmée, ce mot de passe ne doit pas ouvrir un accès (ADR 0020 amendé).
+     */
+    public function lockPassword(): void
+    {
+        if ($this->hasPassword()) {
+            $this->password = self::NO_PASSWORD;
+            $this->credentialsVersion++;
+        }
     }
 
     public function getCredentialsVersion(): int

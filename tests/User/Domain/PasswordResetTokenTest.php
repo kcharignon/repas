@@ -35,6 +35,24 @@ class PasswordResetTokenTest extends TestCase
         $this->assertTrue($token->isExpired($this->now->modify('+30 minutes')));
     }
 
+    public function testAWelcomeLinkIsValidForTwentyFourHours(): void
+    {
+        // When
+        $token = PasswordResetToken::issueWelcome('id', 'user', 'hash', $this->now);
+
+        // Then : même jeton, même écran de choix du mot de passe ; seule la durée change
+        $this->assertSame('2026-10-20 12:00:00', $token->getExpiresAt()->format('Y-m-d H:i:s'));
+        $this->assertFalse($token->isExpired($this->now->modify('+23 hours 59 minutes')));
+        $this->assertTrue($token->isExpired($this->now->modify('+24 hours')));
+        $this->assertSame($this->now, $token->getIssuedAt());
+        $this->assertTrue($token->wasIssuedRecently($this->now->modify('+59 seconds')));
+        $this->assertSame(
+            $this->now->add(new \DateInterval(EmailVerificationToken::TTL))->getTimestamp(),
+            $token->getExpiresAt()->getTimestamp(),
+            'la durée du lien de confirmation d\'adresse qu\'il remplace',
+        );
+    }
+
     public function testAskingAgainIsTooSoonDuringTheCooldownOnly(): void
     {
         // Given

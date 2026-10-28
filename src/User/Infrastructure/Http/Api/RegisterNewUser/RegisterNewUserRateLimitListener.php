@@ -14,7 +14,9 @@ use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
 /**
  * Plafonne l'inscription publique (`POST /api/v1/users`) par adresse IP (limiteur `registration`, config/packages/rate_limiter.yaml).
  *
- * C'est la seule route d'écriture sans jeton : aucun contrôle d'identité ne la protège, ni confirmation d'email ni captcha.
+ * C'est la route publique qui crée des comptes (et fait partir un email vers une adresse saisie) : aucun contrôle d'identité ne la protège, ni captcha ;
+ * le compte créé n'a pas de mot de passe et ne sert qu'après le clic sur le lien reçu (ADR 0020 amendé). Les plafonds par adresse saisie et communs
+ * (`PublicEmailRateLimitListener`) s'ajoutent à celui-ci.
  * Au-delà du plafond : 429 + `Retry-After` (ADR 0008). Un listener plutôt que du code dans le controller, qui ne fait que
  * dispatcher la commande (ADR 0007 §3) ; il passe avant la validation du corps, donc les requêtes invalides comptent aussi.
  */
