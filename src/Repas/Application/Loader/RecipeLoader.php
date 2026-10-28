@@ -24,8 +24,12 @@ interface RecipeLoader
     public function listByAuthorAndType(string $authorId, string $typeSlug): RecipeTypeRecipesDTO;
 
     /**
-     * Une page des recettes originales des autres utilisateurs que cet utilisateur n'a pas encore copiées, triées par slug. `totalItems` est
-     * le nombre de toutes ces recettes, quelle que soit la page.
+     * Une page des recettes originales des autres utilisateurs que cet utilisateur n'a pas encore copiées. `totalItems` est le nombre de
+     * toutes ces recettes (ou de toutes les correspondances), quelle que soit la page.
+     *
+     * Sans recherche : triées par catégorie (l'ordre des types de recette), puis par nom, puis par identifiant. Avec une recherche : celles dont
+     * le nom correspond au texte, du plus pertinent au moins pertinent (`SearchRelevance`, ADR 0019), à pertinence égale par nom puis par
+     * identifiant, toutes catégories confondues ; un texte sans lettre ni chiffre ne trouve rien.
      */
-    public function listOfOtherPeople(string $userId, int $limit, int $offset): OtherPeopleRecipesDTO;
+    public function listOfOtherPeople(string $userId, int $limit, int $offset, ?string $search = null): OtherPeopleRecipesDTO;
 }

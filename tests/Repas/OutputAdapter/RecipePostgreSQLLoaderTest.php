@@ -3,6 +3,7 @@
 namespace Repas\Tests\Repas\OutputAdapter;
 
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use Repas\Repas\Application\Loader\RecipeLoader;
 use Repas\Repas\Application\Query\GetRecipe\RecipeRowDTO;
 use Repas\Repas\Application\Query\ListOtherPeopleRecipes\OtherPeopleRecipeDTO;
@@ -230,7 +231,7 @@ class RecipePostgreSQLLoaderTest extends DatabaseTestCase
         $this->recipeLoader->listByAuthorAndType($this->savedUser()->getId(), 'unknown-type');
     }
 
-    public function testListOfOtherPeopleKeepsOriginalsNotYetCopiedSortedBySlug(): void
+    public function testListOfOtherPeopleKeepsOriginalsNotYetCopiedSortedByCategory(): void
     {
         // Given
         $me = $this->savedUser();
@@ -250,7 +251,7 @@ class RecipePostgreSQLLoaderTest extends DatabaseTestCase
         // Then : toutes les recettes tiennent dans la page, le total en est déduit sans seconde requête
         $this->assertEquals(
             new OtherPeopleRecipesDTO(
-                [new OtherPeopleRecipeDTO($kept1->getId(), 'aaa carbonara', 'plat'), new OtherPeopleRecipeDTO($kept2->getId(), 'zzz tarte', 'dessert')],
+                [new OtherPeopleRecipeDTO($kept1->getId(), 'aaa carbonara', 'plat', 'plat'), new OtherPeopleRecipeDTO($kept2->getId(), 'zzz tarte', 'dessert', 'dessert')],
                 2,
             ),
             $result,
@@ -274,7 +275,7 @@ class RecipePostgreSQLLoaderTest extends DatabaseTestCase
         $last = $this->recipeLoader->listOfOtherPeople($me->getId(), 2, 4);
         $beyond = $this->recipeLoader->listOfOtherPeople($me->getId(), 2, 10);
 
-        // Then : le total est toujours le vrai, la page est triée par slug
+        // Then : le total est toujours le vrai, la page est triée par catégorie puis par nom
         $this->assertSame([[$recipes['a']->getId(), $recipes['b']->getId()], 5], [array_column($first->member, 'id'), $first->totalItems]);
         $this->assertSame([[$recipes['c']->getId(), $recipes['d']->getId()], 5], [array_column($second->member, 'id'), $second->totalItems]);
         $this->assertSame([[$recipes['e']->getId()], 5], [array_column($last->member, 'id'), $last->totalItems]);
@@ -312,6 +313,192 @@ class RecipePostgreSQLLoaderTest extends DatabaseTestCase
 
         // Then : lues page par page, elles sont dans le même ordre que lues d'un coup
         $this->assertSame($full, $pages);
+    }
+
+    public function testListOfOtherPeopleWithoutSearchIsSortedByCategoryThenNameThenId(): void
+    {
+        // Given : l'ordre des catégories est celui de leur colonne `sequence` (entrée, plat, dessert), pas l'ordre alphabétique ni celui de la saisie
+        $me = $this->savedUser();
+        $other = $this->savedUser();
+        $dessertB = $this->savedRecipe($other, 'b gâteau', new RecipeTypeBuilder()->isDessert());
+        $mealB = $this->savedRecipe($other, 'b pâtes', new RecipeTypeBuilder()->isMeal());
+        $starter = $this->savedRecipe($other, 'z soupe', new RecipeTypeBuilder()->isStarter());
+        $dessertA = $this->savedRecipe($other, 'a tarte', new RecipeTypeBuilder()->isDessert());
+        $mealA = $this->savedRecipe($other, 'a riz', new RecipeTypeBuilder()->isMeal());
+
+        // When
+        $result = $this->recipeLoader->listOfOtherPeople($me->getId(), 200, 0);
+
+        // Then
+        $this->assertSame(
+            [$starter->getId(), $mealA->getId(), $mealB->getId(), $dessertA->getId(), $dessertB->getId()],
+            array_column($result->member, 'id'),
+        );
+        $this->assertSame(['entree', 'plat', 'plat', 'dessert', 'dessert'], array_column($result->member, 'typeName'));
+        $this->assertSame(['entrée', 'plat', 'plat', 'dessert', 'dessert'], array_column($result->member, 'typeSlug'));
+    }
+
+    public function testSearchRanksByRelevanceAcrossAllCategoriesAndShowsTheCategory(): void
+    {
+        // Given : le nom exact d'abord, puis les noms qui commencent par le texte (le plus court avant), toutes catégories confondues
+        $me = $this->savedUser();
+        $other = $this->savedUser();
+        $long = $this->savedRecipe($other, 'tarte tatin caramélisée', new RecipeTypeBuilder()->isDessert());
+        $exact = $this->savedRecipe($other, 'tarte', new RecipeTypeBuilder()->isStarter());
+        $short = $this->savedRecipe($other, 'tartelette', new RecipeTypeBuilder()->isMeal());
+        $this->savedRecipe($other, 'omelette', new RecipeTypeBuilder()->isMeal());
+
+        // When
+        $result = $this->recipeLoader->listOfOtherPeople($me->getId(), 200, 0, 'tarte');
+
+        // Then : l'ordre n'est pas celui des catégories (entrée, plat, dessert) et chaque recette porte la sienne
+        $this->assertEquals(
+            [
+                new OtherPeopleRecipeDTO($exact->getId(), 'tarte', 'entree', 'entrée'),
+                new OtherPeopleRecipeDTO($short->getId(), 'tartelette', 'plat', 'plat'),
+                new OtherPeopleRecipeDTO($long->getId(), 'tarte tatin caramélisée', 'dessert', 'dessert'),
+            ],
+            $result->member,
+        );
+        $this->assertSame(3, $result->totalItems);
+    }
+
+    public function testSearchPutsAShorterNameBeforeALongerOneStartingWithTheText(): void
+    {
+        // Given
+        $me = $this->savedUser();
+        $other = $this->savedUser();
+        $long = $this->savedRecipe($other, 'pâtes carbonara végétariennes', new RecipeTypeBuilder()->isMeal());
+        $short = $this->savedRecipe($other, 'pâtes carbonara', new RecipeTypeBuilder()->isMeal());
+
+        // When
+        $result = $this->recipeLoader->listOfOtherPeople($me->getId(), 200, 0, 'pâtes carbo');
+
+        // Then
+        $this->assertSame([$short->getId(), $long->getId()], array_column($result->member, 'id'));
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function carbonaraSearches(): iterable
+    {
+        yield 'début de mot' => ['carbo'];
+        yield 'mot sans accent ni pluriel complet' => ['pate'];
+        yield 'faute de frappe' => ['carbonnara'];
+        yield 'majuscules et accents' => ['  PÂTES   Carbonara '];
+        yield 'nom entier' => ['pâtes carbonara'];
+    }
+
+    #[DataProvider('carbonaraSearches')]
+    public function testSearchFindsAMultiWordNameByWordPrefixTypoAccentsAndCase(string $search): void
+    {
+        // Given
+        $me = $this->savedUser();
+        $other = $this->savedUser();
+        $carbonara = $this->savedRecipe($other, 'pâtes carbonara', new RecipeTypeBuilder()->isMeal());
+        $this->savedRecipe($other, 'salade de fruits', new RecipeTypeBuilder()->isDessert());
+
+        // When
+        $result = $this->recipeLoader->listOfOtherPeople($me->getId(), 200, 0, $search);
+
+        // Then
+        $this->assertSame([$carbonara->getId()], array_column($result->member, 'id'));
+        $this->assertSame(1, $result->totalItems);
+    }
+
+    public function testSearchNeverReturnsMyOwnRecipesNorCopiesNorAlreadyCopiedOnes(): void
+    {
+        // Given
+        $me = $this->savedUser();
+        $other = $this->savedUser();
+        $visible = $this->savedRecipe($other, 'tarte citron', new RecipeTypeBuilder()->isDessert());
+        $this->savedRecipe($me, 'tarte citron maison', new RecipeTypeBuilder()->isDessert());
+        $alreadyCopied = $this->savedRecipe($other, 'tarte pommes', new RecipeTypeBuilder()->isDessert());
+        $this->savedRecipe($me, 'tarte pommes', new RecipeTypeBuilder()->isDessert(), originalId: $alreadyCopied->getId());
+        $this->savedRecipe($other, 'tarte copie d\'un tiers', new RecipeTypeBuilder()->isDessert(), originalId: $visible->getId());
+
+        // When
+        $result = $this->recipeLoader->listOfOtherPeople($me->getId(), 200, 0, 'tarte');
+
+        // Then
+        $this->assertSame([$visible->getId()], array_column($result->member, 'id'));
+        $this->assertSame(1, $result->totalItems);
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function searchesWithoutAnyLetter(): iterable
+    {
+        yield 'ponctuation' => ['!!!'];
+        yield 'tirets et points' => [' - . '];
+        yield 'espaces' => ['    '];
+    }
+
+    #[DataProvider('searchesWithoutAnyLetter')]
+    public function testASearchWithoutLetterOrDigitFindsNothing(string $search): void
+    {
+        // Given
+        $me = $this->savedUser();
+        $this->savedRecipe($this->savedUser(), 'tarte', new RecipeTypeBuilder()->isDessert());
+
+        // When
+        $result = $this->recipeLoader->listOfOtherPeople($me->getId(), 200, 0, $search);
+
+        // Then
+        $this->assertSame([[], 0], [$result->member, $result->totalItems]);
+    }
+
+    public function testSearchPaginatesTheRankedResultAndKeepsTheRealTotal(): void
+    {
+        // Given : quatre recettes dont le nom commence par le texte, une de plus qui ne correspond pas
+        $me = $this->savedUser();
+        $other = $this->savedUser();
+        $ids = [];
+        foreach (['tarte a', 'tarte b', 'tarte c', 'tarte d'] as $name) {
+            $ids[] = $this->savedRecipe($other, $name, new RecipeTypeBuilder()->isDessert())->getId();
+        }
+        $this->savedRecipe($other, 'omelette', new RecipeTypeBuilder()->isMeal());
+
+        // When
+        $first = $this->recipeLoader->listOfOtherPeople($me->getId(), 3, 0, 'tarte');
+        $second = $this->recipeLoader->listOfOtherPeople($me->getId(), 3, 3, 'tarte');
+        $beyond = $this->recipeLoader->listOfOtherPeople($me->getId(), 3, 30, 'tarte');
+
+        // Then : à pertinence égale, l'ordre du nom
+        $this->assertSame([array_slice($ids, 0, 3), 4], [array_column($first->member, 'id'), $first->totalItems]);
+        $this->assertSame([array_slice($ids, 3), 4], [array_column($second->member, 'id'), $second->totalItems]);
+        $this->assertSame([[], 4], [$beyond->member, $beyond->totalItems]);
+    }
+
+    public function testSearchOrdersTwoRecipesOfTheSameNameTheSameWayOnEveryCall(): void
+    {
+        // Given
+        $me = $this->savedUser();
+        $this->savedRecipe($this->savedUser(), 'tarte', new RecipeTypeBuilder()->isMeal());
+        $this->savedRecipe($this->savedUser(), 'tarte', new RecipeTypeBuilder()->isDessert());
+
+        // When
+        $full = array_column($this->recipeLoader->listOfOtherPeople($me->getId(), 2, 0, 'tarte')->member, 'id');
+        $pages = [
+            ...array_column($this->recipeLoader->listOfOtherPeople($me->getId(), 1, 0, 'tarte')->member, 'id'),
+            ...array_column($this->recipeLoader->listOfOtherPeople($me->getId(), 1, 1, 'tarte')->member, 'id'),
+        ];
+        sort($full);
+
+        // Then : par identifiant à pertinence et nom égaux, d'un appel à l'autre et d'une page à l'autre
+        $this->assertSame($full, $pages);
+        $this->assertSame(1, $this->searchQueryCount($me));
+    }
+
+    private function searchQueryCount(User $me): int
+    {
+        $counter = static::getContainer()->get(QueryCounter::class);
+        $counter->reset();
+        $this->recipeLoader->listOfOtherPeople($me->getId(), 200, 0, 'tarte');
+
+        return $counter->count();
     }
 
     private function savedUser(): User

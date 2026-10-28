@@ -20,7 +20,7 @@ class RecipeInMemoryLoader implements RecipeLoader
     /** @var list<array{string, string}> */
     public array $listByAuthorAndTypeCalls = [];
 
-    /** @var list<array{string, int, int}> */
+    /** @var list<array{string, int, int, string|null}> */
     public array $listOfOtherPeopleCalls = [];
 
     public function __construct(
@@ -44,9 +44,9 @@ class RecipeInMemoryLoader implements RecipeLoader
         return $this->recipesByType ?? throw RecipeException::typeNotFound($typeSlug);
     }
 
-    public function listOfOtherPeople(string $userId, int $limit, int $offset): OtherPeopleRecipesDTO
+    public function listOfOtherPeople(string $userId, int $limit, int $offset, ?string $search = null): OtherPeopleRecipesDTO
     {
-        $this->listOfOtherPeopleCalls[] = [$userId, $limit, $offset];
+        $this->listOfOtherPeopleCalls[] = [$userId, $limit, $offset, $search];
 
         return $this->otherPeopleRecipes;
     }

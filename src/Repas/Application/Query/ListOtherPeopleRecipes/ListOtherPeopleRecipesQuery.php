@@ -11,12 +11,15 @@ final readonly class ListOtherPeopleRecipesQuery implements QueryInterface
 
     /**
      * @param int $limit le nombre de recettes de la page, de 1 à `MAX_LIMIT`
-     * @param int $offset le nombre de recettes sautées (triées par slug)
+     * @param int $offset le nombre de recettes sautées (dans l'ordre de la réponse)
+     * @param string|null $search le texte cherché dans le nom des recettes (ADR 0019, amendement du 2026-10-28), 100 caractères au plus à la
+     *                            frontière HTTP ; `null` ou vide : toutes les recettes, triées par catégorie
      */
     public function __construct(
         public string $userId,
         public int $limit = self::MAX_LIMIT,
         public int $offset = 0,
+        public ?string $search = null,
     ) {
     }
 }
