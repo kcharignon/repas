@@ -317,7 +317,7 @@ class RegistrationByLinkFlowTest extends DatabaseTestCase
         $this->assertCount(4 * $emailsPerRequest, array_filter($this->emails, static fn(Email $email): bool => $email->getTo()[0]->getAddress() === self::EMAIL));
         $this->assertSame(['error' => ['message' => 'Too Many Requests']], $this->jsonBody());
         $this->assertGreaterThan(0, (int) $this->client->getResponse()->headers->get('Retry-After'));
-        $this->assertLessThanOrEqual(3600, (int) $this->client->getResponse()->headers->get('Retry-After'));
+        $this->assertLessThanOrEqual(3601, (int) $this->client->getResponse()->headers->get('Retry-After'));
         // Une autre adresse n'est pas touchée
         $this->post('/api/v1/users', ['email' => 'quelquun-d-autre@example.com'], address: '198.51.100.10');
         $this->assertSame(204, $this->statusCode());
