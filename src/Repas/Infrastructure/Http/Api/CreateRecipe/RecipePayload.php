@@ -20,7 +20,7 @@ final readonly class RecipePayload
     public function __construct(
         #[Assert\NotBlank]
         #[Assert\Length(max: 255)]
-        #[OA\Property(description: 'Nom de la recette', example: 'Pâtes carbonara')]
+        #[OA\Property(description: 'Nom de la recette. La première lettre est mise en majuscule par le serveur (le reste du nom est conservé tel quel) : le nom enregistré, renvoyé par les lectures, peut donc différer de celui envoyé', example: 'Pâtes carbonara')]
         public string $name,
         // `mixed` : la valeur reçue est jugée telle quelle (un entier JSON, rien d'autre) ; un type `int` ferait convertir une décimale par PHP avant tout contrôle
         #[Assert\Sequentially([

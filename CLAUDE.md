@@ -135,6 +135,7 @@ Une route de `/api/voice/*` qui répond à Amazon ne renvoie jamais `{error:{mes
 - Utilisateur connecté dans un controller du contexte `Repas` : `#[CurrentUser] AuthenticatedUser $user` (`Shared\Domain\Interface`, accesseurs `getId()` et `getDefaultServing()`), jamais `User\Domain\Model\User` (ADR 0001 §8).
 - Repository infra : suffixe technologie, ex. `PostgreSQLRepository`. Loader infra : `{X}PostgreSQLLoader implements {X}Loader`.
 - Événements de domaine : suffixe `Event`, dispatchés via `EventDispatcherInterface` depuis un Handler, consommés par un `EventListener` en Infrastructure.
+- **Noms de recettes et d'ingrédients** (ADR 0030) : la première lettre est toujours en majuscule, la casse de la suite est conservée (« pâtes carbonara » devient « Pâtes carbonara », « de la farine T55 » devient « De la farine T55 »). La règle vit dans les handlers, en silence (aucune erreur, le nom enregistré est le nom corrigé) : tout handler de `src/*/Application` qui crée, renomme ou copie une recette ou un ingrédient passe le nom par `StringTool::capitalizeFirst` (jamais `ucfirst`, non multioctet), sinon `NamesStartWithACapitalTest` échoue ; slugs, `slugged_name` et détection du doublon ne dépendent pas de la casse. Les noms déjà enregistrés ont été corrigés par la migration `Version20261028160000` (en PHP, jamais `upper()` SQL : la locale d'Alpine traite mal les accents) ; les données de développement (`ingredient.json`, `RecipeFixture`) sont déjà en majuscule.
 
 ## Dépendances (ADR 0014)
 
