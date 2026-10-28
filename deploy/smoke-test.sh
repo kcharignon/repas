@@ -111,7 +111,7 @@ check "inscription par l'adresse seule : 204" grep -q "^HTTP/[0-9.]* 204" <<< "$
 # Le PHP est volontairement dans des guillemets simples.
 # shellcheck disable=SC2016
 check "Symfony fait confiance à la bordure (proxys privés, en-têtes X-Forwarded-*)" docker compose exec -T php php -r 'require "/app/vendor/autoload.php"; $k = new Repas\Kernel("prod", false); $k->boot(); $r = Symfony\Component\HttpFoundation\Request::getTrustedProxies(); exit(in_array("10.0.0.0/8", $r, true) && (Symfony\Component\HttpFoundation\Request::getTrustedHeaderSet() & Symfony\Component\HttpFoundation\Request::HEADER_X_FORWARDED_FOR) ? 0 : 1);'
-# Le compte n'a pas de mot de passe : ni celui de l'ancien formulaire ni aucun autre n'ouvre la connexion (ADR 0020 amendé).
+# Le compte n'a pas encore de mot de passe : la connexion est refusée, quel que soit le mot de passe saisi (ADR 0020 amendé).
 refused=$(curl_app -w '\n%{http_code}' -X POST -H 'Content-Type: application/json' \
 	-d "{\"email\":\"$email\",\"password\":\"un-ancien-mot-de-passe\"}" "https://$app:$port/api/login_check" || true)
 check "connexion avant le choix du mot de passe : 401" bash -c "tail -n 1 <<< \"\$1\" | grep -q '^401$'" _ "$refused"

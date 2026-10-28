@@ -79,7 +79,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, Passwor
     /**
      * Inscription d'un visiteur avec sa seule adresse : le compte reste en attente (`PENDING`) et SANS mot de passe (`NO_PASSWORD`)
      * jusqu'au clic sur le lien reçu par email, qui lui fait choisir son mot de passe et active le compte (ADR 0020 amendé, ADR 0026).
-     * Personne, le visiteur compris, n'a de mot de passe à ce stade : l'adresse d'un tiers ne peut donc pas servir à ouvrir un accès.
+     * Le compte n'a pas de mot de passe à ce stade : il le choisit en ouvrant le lien reçu par email.
      */
     public static function register(
         string $id,
@@ -177,9 +177,9 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, Passwor
     }
 
     /**
-     * Retire tout mot de passe utilisable au compte (`NO_PASSWORD`) et révoque les jetons déjà émis. Sans effet s'il n'en a pas. Sert
-     * à un compte en attente dont le mot de passe a été posé AVANT la confirmation de l'adresse (inscription de l'ancien formulaire) :
-     * une fois l'adresse confirmée, ce mot de passe ne doit pas ouvrir un accès (ADR 0020 amendé).
+     * Retire le mot de passe du compte (`NO_PASSWORD`) et révoque les jetons déjà émis. Sans effet s'il n'en a pas. Sert
+     * aux comptes encore en attente qui ont un ancien mot de passe (inscription de l'ancien formulaire) :
+     * le compte en choisit un nouveau avec le lien reçu par email (ADR 0020 amendé).
      */
     public function lockPassword(): void
     {

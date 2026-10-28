@@ -15,7 +15,7 @@ class RegisterNewUserApiControllerTest extends QueryBusWebTestCase
         $commandBus = $this->mockCommandBus();
 
         // When
-        $this->post(['email' => 'alexiane@example.com']);
+        $this->post(['email' => 'visiteur@example.com']);
 
         // Then : 204 sans corps ni Location, une seule commande, le nombre de personnes par défaut
         $response = $this->client->getResponse();
@@ -25,7 +25,7 @@ class RegisterNewUserApiControllerTest extends QueryBusWebTestCase
         $this->assertCount(1, $commandBus->dispatched());
         $command = $commandBus->dispatched()[0];
         $this->assertInstanceOf(RegisterNewUserCommand::class, $command);
-        $this->assertSame(['alexiane@example.com', 4], [$command->email, $command->defaultServing]);
+        $this->assertSame(['visiteur@example.com', 4], [$command->email, $command->defaultServing]);
         $this->assertNotSame('', $command->userId);
     }
 
@@ -35,7 +35,7 @@ class RegisterNewUserApiControllerTest extends QueryBusWebTestCase
         $commandBus = $this->mockCommandBus();
 
         // When
-        $this->post(['email' => 'alexiane@example.com', 'defaultServing' => 2]);
+        $this->post(['email' => 'visiteur@example.com', 'defaultServing' => 2]);
 
         // Then
         $this->assertSame(204, $this->client->getResponse()->getStatusCode());
@@ -52,14 +52,14 @@ class RegisterNewUserApiControllerTest extends QueryBusWebTestCase
         $commandBus = $this->mockCommandBus();
 
         // When
-        $this->post(['email' => 'alexiane@example.com', 'password' => $password, 'defaultServing' => 3]);
+        $this->post(['email' => 'visiteur@example.com', 'password' => $password, 'defaultServing' => 3]);
 
         // Then : même réponse qu'avec l'adresse seule ; il ne traverse pas le bus et n'est pas jugé
         $this->assertSame(204, $this->client->getResponse()->getStatusCode());
         $this->assertSame('', $this->client->getResponse()->getContent());
         $this->assertCount(1, $commandBus->dispatched());
         $command = $commandBus->dispatched()[0];
-        $this->assertSame(['alexiane@example.com', 3], [$command->email, $command->defaultServing]);
+        $this->assertSame(['visiteur@example.com', 3], [$command->email, $command->defaultServing]);
         $this->assertStringNotContainsString(is_string($password) && $password !== '' ? $password : "\0absent", serialize($command));
     }
 
@@ -100,7 +100,7 @@ class RegisterNewUserApiControllerTest extends QueryBusWebTestCase
      */
     public static function invalidBodies(): iterable
     {
-        $valid = ['email' => 'alexiane@example.com', 'defaultServing' => 4];
+        $valid = ['email' => 'visiteur@example.com', 'defaultServing' => 4];
 
         yield 'sans email' => [['email' => ''] + $valid];
         yield 'email invalide' => [['email' => 'pas-un-email'] + $valid];
@@ -120,7 +120,7 @@ class RegisterNewUserApiControllerTest extends QueryBusWebTestCase
         $commandBus = $this->mockCommandBus();
 
         // When : une adresse mal formée n'apprend rien sur un compte, elle reste refusée en 422
-        $this->post(['email' => 'alexiane@']);
+        $this->post(['email' => 'visiteur@']);
 
         // Then
         $this->assertSame(422, $this->client->getResponse()->getStatusCode());

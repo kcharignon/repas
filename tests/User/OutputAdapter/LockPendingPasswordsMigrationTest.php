@@ -16,7 +16,7 @@ require_once dirname(__DIR__, 3) . '/migrations/Version20261028120000.php';
 
 /**
  * La migration de l'inscription par la seule adresse (ADR 0020, amendement du 2026-10-28), sur la VRAIE base : le mot de passe d'un compte
- * encore en attente, posé avant la confirmation de l'adresse, est remplacé par « aucun mot de passe » ; les comptes actifs et désactivés ne
+ * encore en attente est remplacé par « aucun mot de passe » ; les comptes actifs et désactivés ne
  * sont pas touchés.
  */
 class LockPendingPasswordsMigrationTest extends DatabaseTestCase
@@ -54,7 +54,7 @@ class LockPendingPasswordsMigrationTest extends DatabaseTestCase
         $this->assertSame('PENDING', $this->statusOf('attente-avec'), 'le statut ne change pas');
     }
 
-    public function testNoPasswordTheAccountHadBeforeOpensAnythingAfterTheMigration(): void
+    public function testTheOldPasswordNoLongerMatchesAfterTheMigration(): void
     {
         // Given
         $this->save('attente', fn(UserBuilder $b) => $b->isPending());

@@ -96,7 +96,7 @@ class PublicEmailRateLimitTest extends QueryBusWebTestCase
     public function testAnAddressIsLimitedToSixRequestsAnHourWhateverTheRouteTheIpAndTheSpelling(): void
     {
         // When : six demandes pour la même adresse, écrite de façons différentes, sur les trois routes, depuis six adresses IP
-        $spellings = ['alexiane@example.com', 'Alexiane@Example.com', 'ALEXIANE@EXAMPLE.COM', 'alexiane@EXAMPLE.com', 'alexiane@example.com', 'AlexIane@example.com'];
+        $spellings = ['visiteur@example.com', 'Visiteur@Example.com', 'VISITEUR@EXAMPLE.COM', 'visiteur@EXAMPLE.com', 'visiteur@example.com', 'VisiTeur@example.com'];
         foreach ($spellings as $i => $email) {
             match ($i % 3) {
                 0 => $this->register($email, $this->address($i + 1)),
@@ -107,11 +107,11 @@ class PublicEmailRateLimitTest extends QueryBusWebTestCase
         }
 
         // Then : la septième est refusée, quelle que soit la route ou l'adresse IP
-        $this->post('/api/v1/users/password-reset/send', ['email' => 'alexiane@example.com'], $this->address(7));
+        $this->post('/api/v1/users/password-reset/send', ['email' => 'visiteur@example.com'], $this->address(7));
         $this->assertTooManyRequests();
-        $this->post('/api/v1/users/email-verification/send', ['email' => 'ALEXIANE@example.com'], $this->address(8));
+        $this->post('/api/v1/users/email-verification/send', ['email' => 'VISITEUR@example.com'], $this->address(8));
         $this->assertTooManyRequests();
-        $this->register('alexiane@example.com', $this->address(9));
+        $this->register('visiteur@example.com', $this->address(9));
         $this->assertTooManyRequests();
         $this->assertCount(6, $this->commandBus->dispatched());
     }
@@ -119,16 +119,16 @@ class PublicEmailRateLimitTest extends QueryBusWebTestCase
     public function testTheTagOfTheLocalPartDoesNotGiveAnotherCounter(): void
     {
         // When : six demandes pour la même boîte, avec et sans étiquette `+x`
-        $spellings = ['alexiane@example.com', 'alexiane+a@example.com', 'alexiane+b@example.com', 'Alexiane+Courses@Example.com', 'alexiane+a+b@example.com', 'alexiane@example.com'];
+        $spellings = ['visiteur@example.com', 'visiteur+a@example.com', 'visiteur+b@example.com', 'Visiteur+Courses@Example.com', 'visiteur+a+b@example.com', 'visiteur@example.com'];
         foreach ($spellings as $i => $email) {
             $this->post('/api/v1/users/password-reset/send', ['email' => $email], $this->address($i + 1));
             $this->assertSame(204, $this->client->getResponse()->getStatusCode(), "demande $i");
         }
 
         // Then : la septième est refusée, étiquette ou non ; une autre boîte n'est pas touchée
-        $this->post('/api/v1/users/password-reset/send', ['email' => 'alexiane+z@example.com'], $this->address(7));
+        $this->post('/api/v1/users/password-reset/send', ['email' => 'visiteur+z@example.com'], $this->address(7));
         $this->assertTooManyRequests();
-        $this->post('/api/v1/users/password-reset/send', ['email' => 'alexiane2+z@example.com'], $this->address(8));
+        $this->post('/api/v1/users/password-reset/send', ['email' => 'visiteur2+z@example.com'], $this->address(8));
         $this->assertSame(204, $this->client->getResponse()->getStatusCode());
     }
 
@@ -136,7 +136,7 @@ class PublicEmailRateLimitTest extends QueryBusWebTestCase
     {
         // Given : une adresse a atteint son plafond
         for ($i = 1; $i <= 7; $i++) {
-            $this->post('/api/v1/users/password-reset/send', ['email' => 'alexiane@example.com'], $this->address($i));
+            $this->post('/api/v1/users/password-reset/send', ['email' => 'visiteur@example.com'], $this->address($i));
         }
         $this->assertTooManyRequests();
 
@@ -151,7 +151,7 @@ class PublicEmailRateLimitTest extends QueryBusWebTestCase
     {
         // Given : une adresse insiste vingt fois (six passent, quatorze sont refusées)
         for ($i = 1; $i <= 20; $i++) {
-            $this->post('/api/v1/users/password-reset/send', ['email' => 'alexiane@example.com'], $this->address($i));
+            $this->post('/api/v1/users/password-reset/send', ['email' => 'visiteur@example.com'], $this->address($i));
         }
         $this->assertTooManyRequests();
 

@@ -24,26 +24,26 @@ class UserTest extends TestCase
     public function testARegisteredVisitorIsPendingUntilHeConfirmsHisEmail(): void
     {
         // When
-        $user = User::register('id', ' Alexiane@Example.COM ', ['ROLE_USER'], 3, $this->now);
+        $user = User::register('id', ' Visiteur@Example.COM ', ['ROLE_USER'], 3, $this->now);
 
         // Then
         $this->assertSame(UserStatus::PENDING, $user->getStatus());
         $this->assertTrue($user->isPending());
         $this->assertFalse($user->isDisabled());
-        $this->assertSame('alexiane@example.com', $user->getEmail());
+        $this->assertSame('visiteur@example.com', $user->getEmail());
     }
 
     public function testARegisteredVisitorHasNoPasswordUntilHeChoosesOneFromTheEmailedLink(): void
     {
         // When
-        $user = User::register('id', 'alexiane@example.com', ['ROLE_USER'], 3, $this->now);
+        $user = User::register('id', 'visiteur@example.com', ['ROLE_USER'], 3, $this->now);
 
-        // Then : ni le visiteur ni personne ne connaît de mot de passe pour ce compte
+        // Then : le compte n'a pas de mot de passe, aucune saisie ne correspond
         $this->assertFalse($user->hasPassword());
         $this->assertSame(User::NO_PASSWORD, $user->getPassword());
         $this->assertSame(0, $user->getCredentialsVersion());
         foreach (['', '!', 'un-mot-de-passe', str_repeat('a', 72), User::NO_PASSWORD . User::NO_PASSWORD] as $attempt) {
-            $this->assertFalse($user->passwordMatch($attempt), sprintf('« %s » ne doit pas ouvrir le compte', $attempt));
+            $this->assertFalse($user->passwordMatch($attempt), sprintf('« %s » ne correspond pas au mot de passe du compte', $attempt));
         }
     }
 
@@ -65,10 +65,10 @@ class UserTest extends TestCase
 
     public function testLockingThePasswordRemovesItAndRevokesTheIssuedTokens(): void
     {
-        // Given : un compte en attente de l'ancien formulaire, avec le mot de passe qu'un tiers a posé
+        // Given : un compte en attente avec son ancien mot de passe
         $user = new UserBuilder()->isPending()->build();
         $version = $user->getCredentialsVersion();
-        $this->assertTrue($user->passwordMatch('test'), 'avant : ce mot de passe ouvre le compte');
+        $this->assertTrue($user->passwordMatch('test'), 'avant : l\'ancien mot de passe correspond');
 
         // When
         $user->lockPassword();
@@ -82,7 +82,7 @@ class UserTest extends TestCase
     public function testLockingThePasswordOfAnAccountThatHasNoneChangesNothing(): void
     {
         // Given
-        $user = User::register('id', 'alexiane@example.com', ['ROLE_USER'], 3, $this->now);
+        $user = User::register('id', 'visiteur@example.com', ['ROLE_USER'], 3, $this->now);
 
         // When
         $user->lockPassword();
@@ -95,7 +95,7 @@ class UserTest extends TestCase
     public function testChoosingAPasswordGivesTheAccountOne(): void
     {
         // Given
-        $user = User::register('id', 'alexiane@example.com', ['ROLE_USER'], 3, $this->now);
+        $user = User::register('id', 'visiteur@example.com', ['ROLE_USER'], 3, $this->now);
 
         // When
         $user->changePassword(password_hash('un-mot-de-passe', PASSWORD_BCRYPT, ['cost' => 4]));
@@ -108,7 +108,7 @@ class UserTest extends TestCase
     public function testAnAccountCreatedOutsideRegistrationIsActive(): void
     {
         // When
-        $user = User::create('id', 'alexiane@example.com', ['ROLE_USER'], 'hash', 3, $this->now);
+        $user = User::create('id', 'visiteur@example.com', ['ROLE_USER'], 'hash', 3, $this->now);
 
         // Then
         $this->assertSame(UserStatus::ACTIVE, $user->getStatus());
@@ -132,7 +132,7 @@ class UserTest extends TestCase
         $this->expectExceptionObject(UserException::invalidServing());
 
         // When
-        User::register('id', 'alexiane@example.com', ['ROLE_USER'], $serving, $this->now);
+        User::register('id', 'visiteur@example.com', ['ROLE_USER'], $serving, $this->now);
     }
 
     #[DataProvider('invalidServings')]

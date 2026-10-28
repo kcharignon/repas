@@ -217,22 +217,22 @@ class PasswordResetFlowTest extends DatabaseTestCase
         ]);
     }
 
-    public function testThePendingAccountOfAThirdPartyIsActivatedByTheLinkAndTheThirdPartyPasswordNoLongerWorks(): void
+    public function testAPendingAccountWithAnOldPasswordIsActivatedByTheLinkAndTheOldPasswordNoLongerWorks(): void
     {
-        // Given : un compte en attente de l'ancien formulaire d'inscription, au mot de passe qu'un tiers avait choisi pour l'adresse d'Alexiane
-        $this->createPendingUserOfTheOldForm(self::EMAIL, 'mot-de-passe-du-tiers');
+        // Given : un compte en attente de l'ancien formulaire d'inscription, avec son ancien mot de passe
+        $this->createPendingUserOfTheOldForm(self::EMAIL, 'ancien-mot-de-passe');
         $verificationSecret = $this->secretOf($this->emails[0], 'confirmation-email');
-        $this->post('/api/login_check', ['email' => self::EMAIL, 'password' => 'mot-de-passe-du-tiers']);
+        $this->post('/api/login_check', ['email' => self::EMAIL, 'password' => 'ancien-mot-de-passe']);
         $this->assertSame(403, $this->statusCode());
 
-        // When : Alexiane demande un mot de passe oublié, puis choisit le sien
+        // When : la personne demande un mot de passe oublié, puis choisit le sien
         $secret = $this->requestLink(self::EMAIL, emailIndex: 1);
         $this->post('/api/v1/users/password-reset/confirm', ['token' => $secret, 'password' => self::NEW_PASSWORD]);
 
-        // Then : l'adresse est confirmée, le compte est actif, le mot de passe du tiers est remplacé
+        // Then : l'adresse est confirmée, le compte est actif, l'ancien mot de passe est remplacé
         $this->assertSame(204, $this->statusCode());
         $this->assertSame('ACTIVE', $this->connection()->fetchOne('SELECT status FROM "user"'));
-        $this->post('/api/login_check', ['email' => self::EMAIL, 'password' => 'mot-de-passe-du-tiers']);
+        $this->post('/api/login_check', ['email' => self::EMAIL, 'password' => 'ancien-mot-de-passe']);
         $this->assertSame(401, $this->statusCode());
         $this->post('/api/login_check', ['email' => self::EMAIL, 'password' => self::NEW_PASSWORD]);
         $this->assertSame(200, $this->statusCode());

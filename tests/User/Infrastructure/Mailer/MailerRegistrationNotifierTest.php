@@ -19,7 +19,7 @@ class MailerRegistrationNotifierTest extends TestCase
         $email = $this->sendWelcome();
 
         // Then : l'écran du front qui sert aussi au mot de passe oublié, et le secret du lien
-        $this->assertSame('alexiane@example.com', $email->getTo()[0]->getAddress());
+        $this->assertSame('visiteur@example.com', $email->getTo()[0]->getAddress());
         $this->assertSame('no-reply@example.com', $email->getFrom()[0]->getAddress());
         $this->assertSame('Repas', $email->getFrom()[0]->getName());
         $this->assertSame('Bienvenue sur Repas : choisis ton mot de passe', $email->getSubject());
@@ -47,7 +47,7 @@ class MailerRegistrationNotifierTest extends TestCase
         $email = $this->sendReminder();
 
         // Then
-        $this->assertSame('alexiane@example.com', $email->getTo()[0]->getAddress());
+        $this->assertSame('visiteur@example.com', $email->getTo()[0]->getAddress());
         $this->assertSame('Tu as déjà un compte Repas', $email->getSubject());
         foreach ([$email->getTextBody(), $email->getHtmlBody()] as $body) {
             $this->assertStringContainsString('https://repas.example.com/connexion', $body);
@@ -116,26 +116,26 @@ class MailerRegistrationNotifierTest extends TestCase
         $notifier = new MailerRegistrationNotifier($mailer, $logger, 'Repas <no-reply@example.com>', 'https://repas.example.com');
 
         // When : la réponse de l'API est la même quel que soit le cas, un échec ne la change pas
-        $notifier->sendWelcome('alexiane@example.com', 'abc123');
-        $notifier->sendAlreadyRegistered('alexiane@example.com');
+        $notifier->sendWelcome('visiteur@example.com', 'abc123');
+        $notifier->sendAlreadyRegistered('visiteur@example.com');
 
         // Then
         $this->assertCount(2, $logger->records);
         foreach ($logger->records as $record) {
             $this->assertSame('error', $record['level']);
-            $this->assertStringNotContainsString('alexiane@example.com', $record['message']);
+            $this->assertStringNotContainsString('visiteur@example.com', $record['message']);
             $this->assertStringNotContainsString('abc123', json_encode([$record['message'], array_keys($record['context'])]));
         }
     }
 
     private function sendWelcome(): Email
     {
-        return $this->sent(static fn(MailerRegistrationNotifier $notifier) => $notifier->sendWelcome('alexiane@example.com', 'abc123'));
+        return $this->sent(static fn(MailerRegistrationNotifier $notifier) => $notifier->sendWelcome('visiteur@example.com', 'abc123'));
     }
 
     private function sendReminder(): Email
     {
-        return $this->sent(static fn(MailerRegistrationNotifier $notifier) => $notifier->sendAlreadyRegistered('alexiane@example.com'));
+        return $this->sent(static fn(MailerRegistrationNotifier $notifier) => $notifier->sendAlreadyRegistered('visiteur@example.com'));
     }
 
     /**

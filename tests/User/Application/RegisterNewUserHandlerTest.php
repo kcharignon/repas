@@ -130,7 +130,7 @@ class RegisterNewUserHandlerTest extends TestCase
 
     public function testAPendingAccountOfTheOldFormIsNotGivenAnotherPasswordByTheRegistration(): void
     {
-        // Given : un compte en attente avec un mot de passe posé avant la confirmation (ancien formulaire)
+        // Given : un compte en attente avec son ancien mot de passe
         $this->userRepository->save(new UserBuilder()->withId('pending-id')->withEmail('john.doe@example.com')->isPending()->build());
 
         // When

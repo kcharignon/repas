@@ -24,7 +24,7 @@ use Symfony\Component\PasswordHasher\Hasher\PasswordHasherFactoryInterface;
  */
 class RegistrationByLinkFlowTest extends DatabaseTestCase
 {
-    private const string EMAIL = 'alexiane@example.com';
+    private const string EMAIL = 'visiteur@example.com';
     private const string PASSWORD = 'un-mot-de-passe';
 
     private KernelBrowser $client;
@@ -86,10 +86,10 @@ class RegistrationByLinkFlowTest extends DatabaseTestCase
         $this->assertSame(401, $this->statusCode());
     }
 
-    public function testANewAddressGetsAPendingAccountNobodyCanLogInToAndAWelcomeEmail(): void
+    public function testANewAddressGetsAPendingAccountWithoutPasswordAndAWelcomeEmail(): void
     {
         // When
-        $this->post('/api/v1/users', ['email' => 'Alexiane@Example.COM', 'defaultServing' => 3]);
+        $this->post('/api/v1/users', ['email' => 'Visiteur@Example.COM', 'defaultServing' => 3]);
 
         // Then : un compte en attente, sans mot de passe, au nombre de personnes demandé
         $this->assertSame(204, $this->statusCode());
@@ -105,7 +105,7 @@ class RegistrationByLinkFlowTest extends DatabaseTestCase
         $this->assertSame(hash('sha256', $secret), $this->connection()->fetchOne('SELECT token_hash FROM password_reset_token'));
         $this->assertSame(0, (int) $this->connection()->fetchOne('SELECT COUNT(*) FROM email_verification_token'));
 
-        // When : on tente de se connecter avec n'importe quoi, dont le secret du lien et le mot de passe « vide » du compte
+        // When : on tente de se connecter avec différentes saisies, dont le secret du lien et la valeur « sans mot de passe » du compte
         foreach (['', '!', self::PASSWORD, $secret, str_repeat('a', 72)] as $attempt) {
             $this->post('/api/login_check', ['email' => self::EMAIL, 'password' => $attempt]);
 
@@ -156,7 +156,7 @@ class RegistrationByLinkFlowTest extends DatabaseTestCase
         $this->connection()->executeStatement("UPDATE password_reset_token SET expires_at = NOW() - INTERVAL '1 minute'");
         $this->post('/api/v1/users/password-reset/confirm', ['token' => $secret, 'password' => self::PASSWORD]);
 
-        // Then : refusé, le compte reste en attente ; le propriétaire redemande un lien en s'inscrivant à nouveau
+        // Then : refusé, le compte reste en attente ; un nouveau lien s'obtient en saisissant l'adresse de nouveau
         $this->assertSame(422, $this->statusCode());
         $this->assertSame(['error' => ['message' => 'INVALID_PASSWORD_RESET_TOKEN']], $this->jsonBody());
         $this->assertSame('PENDING', $this->connection()->fetchOne('SELECT status FROM "user"'));
@@ -194,7 +194,7 @@ class RegistrationByLinkFlowTest extends DatabaseTestCase
         $before = $this->connection()->fetchAssociative('SELECT * FROM "user"');
 
         // When
-        $this->post('/api/v1/users', ['email' => 'ALEXIANE@example.com', 'password' => 'autre-mot-de-passe', 'defaultServing' => 9]);
+        $this->post('/api/v1/users', ['email' => 'VISITEUR@example.com', 'password' => 'autre-mot-de-passe', 'defaultServing' => 9]);
 
         // Then : un rappel à l'adresse du compte, avec de quoi se connecter ; ni lien, ni compte de plus, ni mot de passe touché
         $this->assertSame(204, $this->statusCode());
@@ -209,7 +209,7 @@ class RegistrationByLinkFlowTest extends DatabaseTestCase
         $this->assertSame(1, (int) $this->connection()->fetchOne('SELECT COUNT(*) FROM "user"'));
     }
 
-    public function testAnActiveAccountKeepsItsOwnPasswordAndItsOpenSessionsWhenSomeoneRegistersItsAddress(): void
+    public function testAnActiveAccountKeepsItsPasswordAndItsOpenSessionsWhenItsAddressIsRegisteredAgain(): void
     {
         // Given : un compte actif, connecté
         $this->saveUser(self::EMAIL);
@@ -217,11 +217,11 @@ class RegistrationByLinkFlowTest extends DatabaseTestCase
         $this->assertSame(200, $this->statusCode());
         $jwt = $this->jsonBody()['token'];
 
-        // When : un tiers saisit son adresse
-        $this->post('/api/v1/users', ['email' => self::EMAIL, 'password' => 'mot-de-passe-du-tiers']);
+        // When : son adresse est saisie de nouveau, avec un mot de passe de l'ancien formulaire
+        $this->post('/api/v1/users', ['email' => self::EMAIL, 'password' => 'ancien-mot-de-passe']);
 
-        // Then : le mot de passe du tiers n'ouvre rien, le sien marche toujours, sa session aussi
-        $this->post('/api/login_check', ['email' => self::EMAIL, 'password' => 'mot-de-passe-du-tiers']);
+        // Then : le mot de passe saisi est ignoré, le sien marche toujours, sa session aussi
+        $this->post('/api/login_check', ['email' => self::EMAIL, 'password' => 'ancien-mot-de-passe']);
         $this->assertSame(401, $this->statusCode());
         $this->post('/api/login_check', ['email' => self::EMAIL, 'password' => 'test']);
         $this->assertSame(200, $this->statusCode());
@@ -305,7 +305,7 @@ class RegistrationByLinkFlowTest extends DatabaseTestCase
         }
 
         // When : six demandes valent, depuis six adresses IP différentes, avec des écritures différentes de l'adresse
-        foreach (['alexiane@example.com', 'ALEXIANE@example.com', 'alexiane+a@example.com', 'alexiane@Example.com', 'Alexiane@Example.com', 'alexiane+b@example.com'] as $i => $spelling) {
+        foreach (['visiteur@example.com', 'VISITEUR@example.com', 'visiteur+a@example.com', 'visiteur@Example.com', 'Visiteur@Example.com', 'visiteur+b@example.com'] as $i => $spelling) {
             $this->post('/api/v1/users', ['email' => $spelling], address: '198.51.100.' . ($i + 1));
             $this->assertSame(204, $this->statusCode(), "demande $i");
         }
@@ -373,7 +373,7 @@ class RegistrationByLinkFlowTest extends DatabaseTestCase
         $this->assertSame(204, $this->statusCode());
         $this->assertSame('ACTIVE', $this->connection()->fetchOne('SELECT status FROM "user" WHERE id = ?', [$id]));
 
-        // When / Then : aucun mot de passe ne l'ouvre ; le mot de passe oublié lui en fait choisir un
+        // When / Then : il n'a pas de mot de passe ; le mot de passe oublié lui en fait choisir un
         $this->post('/api/login_check', ['email' => self::EMAIL, 'password' => self::PASSWORD]);
         $this->assertSame(401, $this->statusCode());
         // Le lien de bienvenue date de plus d'une minute (sinon la demande est ignorée pendant le délai de grâce, ADR 0026)
@@ -388,19 +388,19 @@ class RegistrationByLinkFlowTest extends DatabaseTestCase
         $this->assertSame(200, $this->statusCode());
     }
 
-    public function testAPendingAccountOfTheOldFormGetsTheWelcomeLinkAndItsOldPasswordIsReplacedByTheChosenOne(): void
+    public function testAPendingAccountWithAnOldPasswordGetsTheWelcomeLinkAndTheChosenPasswordReplacesIt(): void
     {
-        // Given : un compte inscrit avec l'ancien formulaire (mot de passe posé avant la confirmation)
+        // Given : un compte en attente de l'ancien formulaire, avec son ancien mot de passe
         $hasher = static::getContainer()->get(PasswordHasherFactoryInterface::class)->getPasswordHasher(User::class);
-        $this->saveUser(self::EMAIL, fn(UserBuilder $builder) => $builder->isPending()->withPassword($hasher->hash('mot-de-passe-du-tiers')));
+        $this->saveUser(self::EMAIL, fn(UserBuilder $builder) => $builder->isPending()->withPassword($hasher->hash('ancien-mot-de-passe')));
 
-        // When : le propriétaire de l'adresse s'inscrit de nouveau, puis choisit son mot de passe
+        // When : l'adresse est saisie de nouveau, puis le mot de passe est choisi avec le lien de bienvenue
         $this->post('/api/v1/users', ['email' => self::EMAIL]);
         $this->post('/api/v1/users/password-reset/confirm', ['token' => $this->welcomeSecretOf($this->emails[0]), 'password' => self::PASSWORD]);
 
-        // Then : seul son mot de passe ouvre le compte
+        // Then : l'ancien mot de passe est remplacé par celui qui vient d'être choisi
         $this->assertSame(204, $this->statusCode());
-        $this->post('/api/login_check', ['email' => self::EMAIL, 'password' => 'mot-de-passe-du-tiers']);
+        $this->post('/api/login_check', ['email' => self::EMAIL, 'password' => 'ancien-mot-de-passe']);
         $this->assertSame(401, $this->statusCode());
         $this->post('/api/login_check', ['email' => self::EMAIL, 'password' => self::PASSWORD]);
         $this->assertSame(200, $this->statusCode());

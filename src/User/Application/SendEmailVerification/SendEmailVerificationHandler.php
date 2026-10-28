@@ -29,10 +29,9 @@ readonly class SendEmailVerificationHandler
      * Ne dit jamais si l'adresse a un compte : un compte inconnu, déjà confirmé ou désactivé, et un envoi trop rapproché du
      * précédent, ne font rien et ne lèvent rien (sinon l'endpoint public révélerait quelles adresses sont inscrites).
      *
-     * Un compte en attente SANS mot de passe (inscrit avec sa seule adresse, ADR 0020 amendé) ne se termine pas par la confirmation de
-     * l'adresse mais par le choix de son mot de passe : on lui renvoie donc le lien de bienvenue, au délai de grâce près. Confirmer son
-     * adresse l'activerait sans qu'il puisse se connecter. Le lien de confirmation ne reste que pour un compte qui a encore un mot de
-     * passe posé avant sa confirmation (ancien formulaire).
+     * Un compte en attente SANS mot de passe (inscrit avec sa seule adresse, ADR 0020 amendé) se termine par le choix de son mot de
+     * passe : on lui renvoie le lien de bienvenue, au délai de grâce près. Le lien de confirmation d'adresse ne sert qu'aux comptes en
+     * attente qui ont encore un ancien mot de passe.
      */
     public function __invoke(SendEmailVerificationCommand $command): void
     {

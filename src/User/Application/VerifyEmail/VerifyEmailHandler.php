@@ -26,10 +26,8 @@ readonly class VerifyEmailHandler
      * Un compte en attente devient actif : l'activation est annoncée (`UserActivatedEvent`), dans la transaction du bus de commandes, pour que
      * le compte reçoive ses ingrédients (ING-008). Un compte déjà actif, ou désactivé, ne change pas de statut et n'annonce rien.
      *
-     * Un compte en attente perd tout mot de passe utilisable en devenant actif (`User::lockPassword()`, ADR 0020 amendé) : le mot de
-     * passe d'un compte en attente a été posé avant la confirmation de l'adresse (ancien formulaire d'inscription), par quelqu'un qui
-     * n'est peut-être pas le propriétaire de la boîte. Le propriétaire en choisit un par « mot de passe oublié », qui prouve l'adresse.
-     * Un compte inscrit par lien n'en a déjà pas : rien ne change pour lui.
+     * Un compte en attente qui a un ancien mot de passe (`User::lockPassword()`, ADR 0020 amendé) le perd en devenant actif : il en
+     * choisit un nouveau avec « mot de passe oublié ». Un compte inscrit par adresse seule n'en a pas : rien ne change pour lui.
      *
      * @throws UserException lien inconnu, déjà utilisé ou expiré
      */

@@ -23,16 +23,16 @@ readonly class RegisterNewUserHandler
     }
 
     /**
-     * Ne dit jamais si l'adresse a déjà un compte : la réponse de l'API est la même dans tous les cas, et chaque cas qui écrit à
+     * La réponse de l'API est la même dans tous les cas, et chaque cas qui écrit à
      * l'adresse fait un envoi d'email, pour que le temps de réponse ne les distingue pas non plus (ADR 0020 amendé).
      *
-     * - adresse nouvelle : un compte en attente SANS mot de passe (`User::NO_PASSWORD`) et le lien de bienvenue qui lui fera choisir
-     *   le sien ; personne ne connaît de mot de passe pour ce compte avant que le propriétaire de la boîte n'ouvre le lien ;
+     * - adresse nouvelle : un compte en attente SANS mot de passe (`User::NO_PASSWORD`) et le lien de bienvenue qui lui fait choisir
+     *   le sien ;
      * - compte en attente : un nouveau lien de bienvenue (l'ancien ne sert plus) ;
      * - compte actif : un email qui dit qu'il existe et mène à la connexion et au mot de passe oublié ;
      * - compte désactivé : rien, comme le mot de passe oublié (ADR 0021).
      *
-     * Aucun plafond de délai ici : le plafond par adresse saisie (`PublicEmailRateLimitListener`) borne les envois vers une même boîte.
+     * Aucun plafond de délai ici : le plafond par adresse saisie (`PublicEmailRateLimitListener`) borne les envois vers une même adresse.
      */
     public function __invoke(RegisterNewUserCommand $command): void
     {

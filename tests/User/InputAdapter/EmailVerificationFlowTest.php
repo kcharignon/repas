@@ -33,19 +33,19 @@ class EmailVerificationFlowTest extends DatabaseTestCase
         $this->client->disableReboot();
     }
 
-    public function testAPendingVisitorOfTheOldFormIsActivatedByTheLinkButTheOldPasswordOpensNothing(): void
+    public function testAPendingAccountWithAnOldPasswordIsActivatedByTheLinkAndLosesThatPassword(): void
     {
-        // Given : un compte en attente de l'ancien formulaire, avec le mot de passe choisi AVANT la confirmation
-        $this->registerLikeTheOldForm('alexiane@example.com', 'un-mot-de-passe');
+        // Given : un compte en attente de l'ancien formulaire, avec son ancien mot de passe
+        $this->registerLikeTheOldForm('visiteur@example.com', 'un-mot-de-passe');
 
         // Then : le compte attend, un email est parti vers l'adresse saisie
         $emails = $this->sentEmails();
         $this->assertCount(1, $emails);
-        $this->assertSame('alexiane@example.com', $emails[0]->getTo()[0]->getAddress());
+        $this->assertSame('visiteur@example.com', $emails[0]->getTo()[0]->getAddress());
         $secret = $this->secretOf($emails[0]);
 
         // When : connexion avant confirmation
-        $this->post('/api/login_check', ['email' => 'alexiane@example.com', 'password' => 'un-mot-de-passe']);
+        $this->post('/api/login_check', ['email' => 'visiteur@example.com', 'password' => 'un-mot-de-passe']);
 
         // Then : le mot de passe est bon, l'adresse pas confirmée
         $this->assertSame(403, $this->statusCode());
@@ -55,12 +55,12 @@ class EmailVerificationFlowTest extends DatabaseTestCase
         // When : le lien est confirmé
         $this->post('/api/v1/users/email-verification/confirm', ['token' => $secret]);
 
-        // Then : l'adresse est confirmée et le compte actif, mais le mot de passe d'avant la confirmation ne sert plus (ADR 0020 amendé) :
-        // celui qui l'a posé n'était peut-être pas le propriétaire de la boîte ; le propriétaire en choisit un par « mot de passe oublié »
+        // Then : l'adresse est confirmée et le compte actif, mais l'ancien mot de passe est retiré (ADR 0020 amendé) :
+        // la personne en choisit un nouveau par « mot de passe oublié »
         $this->assertSame(204, $this->statusCode());
         $this->assertSame('ACTIVE', $this->connection()->fetchOne('SELECT status FROM "user"'));
         $this->assertSame('!', $this->connection()->fetchOne('SELECT password FROM "user"'));
-        $this->post('/api/login_check', ['email' => 'alexiane@example.com', 'password' => 'un-mot-de-passe']);
+        $this->post('/api/login_check', ['email' => 'visiteur@example.com', 'password' => 'un-mot-de-passe']);
         $this->assertSame(401, $this->statusCode());
         $this->assertSame(0, $this->verificationTokenCount());
         $this->assertSame(0, $this->refreshTokenCount());
@@ -69,10 +69,10 @@ class EmailVerificationFlowTest extends DatabaseTestCase
     public function testAWrongPasswordDoesNotRevealThatTheAccountIsPending(): void
     {
         // Given
-        $this->registerLikeTheOldForm('alexiane@example.com', 'un-mot-de-passe');
+        $this->registerLikeTheOldForm('visiteur@example.com', 'un-mot-de-passe');
 
         // When
-        $this->post('/api/login_check', ['email' => 'alexiane@example.com', 'password' => 'pas-le-bon']);
+        $this->post('/api/login_check', ['email' => 'visiteur@example.com', 'password' => 'pas-le-bon']);
 
         // Then : même réponse qu'un compte inconnu
         $this->assertSame(401, $this->statusCode());
@@ -82,7 +82,7 @@ class EmailVerificationFlowTest extends DatabaseTestCase
     public function testALinkWorksOnlyOnce(): void
     {
         // Given
-        $this->registerLikeTheOldForm('alexiane@example.com', 'un-mot-de-passe');
+        $this->registerLikeTheOldForm('visiteur@example.com', 'un-mot-de-passe');
         $secret = $this->secretOf($this->sentEmails()[0]);
         $this->post('/api/v1/users/email-verification/confirm', ['token' => $secret]);
         $this->assertSame(204, $this->statusCode());
@@ -98,7 +98,7 @@ class EmailVerificationFlowTest extends DatabaseTestCase
     public function testAnUnknownOrExpiredLinkIsRefusedAndTheAccountStaysPending(): void
     {
         // Given
-        $this->registerLikeTheOldForm('alexiane@example.com', 'un-mot-de-passe');
+        $this->registerLikeTheOldForm('visiteur@example.com', 'un-mot-de-passe');
         $secret = $this->secretOf($this->sentEmails()[0]);
 
         // When
@@ -113,18 +113,18 @@ class EmailVerificationFlowTest extends DatabaseTestCase
 
         // Then
         $this->assertSame(422, $this->statusCode());
-        $this->post('/api/login_check', ['email' => 'alexiane@example.com', 'password' => 'un-mot-de-passe']);
+        $this->post('/api/login_check', ['email' => 'visiteur@example.com', 'password' => 'un-mot-de-passe']);
         $this->assertSame(403, $this->statusCode());
     }
 
     public function testAskingForANewLinkReplacesTheOldOneOnceTheCooldownIsOver(): void
     {
         // Given : un lien envoyé à l'inscription
-        $this->registerLikeTheOldForm('alexiane@example.com', 'un-mot-de-passe');
+        $this->registerLikeTheOldForm('visiteur@example.com', 'un-mot-de-passe');
         $firstSecret = $this->secretOf($this->sentEmails()[0]);
 
         // When : renvoi immédiat
-        $this->post('/api/v1/users/email-verification/send', ['email' => 'alexiane@example.com']);
+        $this->post('/api/v1/users/email-verification/send', ['email' => 'visiteur@example.com']);
 
         // Then : même réponse, mais rien n'est renvoyé pendant la minute de grâce
         $this->assertSame(204, $this->statusCode());
@@ -132,7 +132,7 @@ class EmailVerificationFlowTest extends DatabaseTestCase
 
         // When : le premier lien a plus d'une minute
         $this->connection()->executeStatement("UPDATE email_verification_token SET issued_at = NOW() - INTERVAL '2 minutes'");
-        $this->post('/api/v1/users/email-verification/send', ['email' => 'Alexiane@Example.com']);
+        $this->post('/api/v1/users/email-verification/send', ['email' => 'Visiteur@Example.com']);
 
         // Then : un second email part, avec un autre lien ; l'ancien ne marche plus
         $this->assertSame(204, $this->statusCode());
@@ -168,11 +168,11 @@ class EmailVerificationFlowTest extends DatabaseTestCase
     public function testRegisteringAgainWithAPendingAddressWritesNoPasswordAndTheAccountStaysTheFirstOne(): void
     {
         // Given : un compte en attente de l'ancien formulaire
-        $this->registerLikeTheOldForm('alexiane@example.com', 'un-mot-de-passe');
+        $this->registerLikeTheOldForm('visiteur@example.com', 'un-mot-de-passe');
         $password = $this->connection()->fetchOne('SELECT password FROM "user"');
 
-        // When : quelqu'un d'autre tente la même adresse, avec son propre mot de passe
-        $this->post('/api/v1/users', ['email' => 'alexiane@example.com', 'password' => 'autre-mot-de-passe', 'defaultServing' => 9]);
+        // When : l'adresse est saisie de nouveau, avec un autre nombre de personnes et un mot de passe de l'ancien formulaire
+        $this->post('/api/v1/users', ['email' => 'visiteur@example.com', 'password' => 'autre-mot-de-passe', 'defaultServing' => 9]);
 
         // Then : la même réponse qu'une adresse nouvelle ; rien n'écrase le compte (ni son mot de passe, ni son nombre de personnes)
         $this->assertSame([204, ''], [$this->statusCode(), $this->client->getResponse()->getContent()]);

@@ -89,15 +89,15 @@ class VerifyEmailHandlerTest extends TestCase
 
     public function testConfirmingThePendingAccountOfTheOldFormTakesItsPasswordAway(): void
     {
-        // Given : un compte en attente avec le mot de passe posé à l'inscription, avant toute preuve de la boîte
+        // Given : un compte en attente avec son ancien mot de passe
         $this->userRepository->save(new UserBuilder()->withId('user-id')->isPending()->build());
-        $this->assertTrue($this->userRepository->findOneById('user-id')->passwordMatch('test'), 'avant : ce mot de passe ouvre le compte');
+        $this->assertTrue($this->userRepository->findOneById('user-id')->passwordMatch('test'), 'avant : l\'ancien mot de passe correspond');
         $this->tokenRepository->add(EmailVerificationToken::issue('token-id', 'user-id', EmailVerificationToken::hash('the-secret'), $this->now));
 
         // When
         ($this->handler)(new VerifyEmailCommand(EmailVerificationToken::hash('the-secret')));
 
-        // Then : le compte est actif mais ce mot de passe n'ouvre plus rien ; les jetons déjà émis sont révoqués
+        // Then : le compte est actif, l'ancien mot de passe est retiré ; les jetons déjà émis sont révoqués
         $user = $this->userRepository->findOneById('user-id');
         $this->assertSame(UserStatus::ACTIVE, $user->getStatus());
         $this->assertFalse($user->hasPassword());
@@ -107,7 +107,7 @@ class VerifyEmailHandlerTest extends TestCase
 
     public function testConfirmingAnAccountThatHasNoPasswordKeepsItThatWay(): void
     {
-        // Given : un compte inscrit avec sa seule adresse
+        // Given : un compte inscrit avec la seule adresse
         $this->userRepository->save(new UserBuilder()->withId('user-id')->withoutPassword()->isPending()->build());
         $this->tokenRepository->add(EmailVerificationToken::issue('token-id', 'user-id', EmailVerificationToken::hash('the-secret'), $this->now));
 
@@ -131,7 +131,7 @@ class VerifyEmailHandlerTest extends TestCase
         ($this->handler)(new VerifyEmailCommand(EmailVerificationToken::hash('the-secret')));
 
         // Then : seul un compte en attente perd le sien
-        $this->assertTrue($this->userRepository->findOneById('user-id')->passwordMatch('test'), 'avant : ce mot de passe ouvre le compte');
+        $this->assertTrue($this->userRepository->findOneById('user-id')->passwordMatch('test'), 'avant : l\'ancien mot de passe correspond');
     }
 
     public function testTheLinkCannotBeUsedTwice(): void
