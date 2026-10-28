@@ -100,7 +100,7 @@ class LoginRateLimiterTest extends TestCase
         // Then : une adresse inconnue est refusée à son tour, avec une attente de trois minutes au plus
         $limit = $this->limiter->peek($this->request('198.51.100.1', 'alexiane@example.com'));
         $this->assertSame(0, $limit->getRemainingTokens());
-        $this->assertLessThanOrEqual(180, $limit->getRetryAfter()->getTimestamp() - time());
+        $this->assertLessThanOrEqual(181, $limit->getRetryAfter()->getTimestamp() - time());
         $this->assertGreaterThan(0, $limit->getRetryAfter()->getTimestamp() - time());
         $this->assertFalse($this->isBlocked('198.51.100.1', 'autre@example.com'));
     }

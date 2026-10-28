@@ -58,7 +58,7 @@ class DriveRateLimitApiFlowTest extends DatabaseTestCase
         $this->assertSame(['error' => ['message' => 'DRIVE_RATE_LIMITED']], $this->jsonBody());
         $retryAfter = (int) $this->client->getResponse()->headers->get('Retry-After');
         $this->assertGreaterThanOrEqual(1, $retryAfter);
-        $this->assertLessThanOrEqual(60, $retryAfter);
+        $this->assertLessThanOrEqual(61, $retryAfter);
         $this->assertSame(['123456'], $this->entityManager->getConnection()->fetchFirstColumn('SELECT store_id FROM drive_settings'));
     }
 

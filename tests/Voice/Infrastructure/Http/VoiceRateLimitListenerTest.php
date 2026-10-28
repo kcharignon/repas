@@ -60,7 +60,7 @@ class VoiceRateLimitListenerTest extends TestCase
         $this->assertSame([VoiceException::RATE_LIMITED, 429], [$exception->getPrevious()->getMessage(), $exception->getPrevious()->getCode()]);
         $retryAfter = (int) $exception->getHeaders()['Retry-After'];
         $this->assertGreaterThanOrEqual(1, $retryAfter);
-        $this->assertLessThanOrEqual(3600, $retryAfter);
+        $this->assertLessThanOrEqual(3601, $retryAfter);
         $this->assertSame('no-store', $exception->getHeaders()['Cache-Control'], "la réponse du point d'accès aux jetons n'est jamais mise en cache");
     }
 

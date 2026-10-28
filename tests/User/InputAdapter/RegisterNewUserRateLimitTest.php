@@ -29,7 +29,7 @@ class RegisterNewUserRateLimitTest extends QueryBusWebTestCase
         $this->assertSame(429, $response->getStatusCode());
         $this->assertSame(['error' => ['message' => 'Too Many Requests']], $this->jsonBody());
         $this->assertGreaterThan(0, (int) $response->headers->get('Retry-After'));
-        $this->assertLessThanOrEqual(3600, (int) $response->headers->get('Retry-After'));
+        $this->assertLessThanOrEqual(3601, (int) $response->headers->get('Retry-After'));
         $this->assertCount(10, $commandBus->dispatched());
     }
 

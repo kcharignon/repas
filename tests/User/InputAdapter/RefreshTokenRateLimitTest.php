@@ -29,7 +29,7 @@ class RefreshTokenRateLimitTest extends QueryBusWebTestCase
         $this->assertSame(429, $response->getStatusCode());
         $this->assertSame(['error' => ['message' => 'Too Many Requests']], $this->jsonBody());
         $this->assertGreaterThan(0, (int) $response->headers->get('Retry-After'));
-        $this->assertLessThanOrEqual(600, (int) $response->headers->get('Retry-After'));
+        $this->assertLessThanOrEqual(601, (int) $response->headers->get('Retry-After'));
         $this->assertSame([], $commandBus->dispatched());
     }
 

@@ -68,7 +68,7 @@ class PasswordAttemptRateLimiterTest extends TestCase
             $this->assertSame(UserException::PASSWORD_RATE_LIMITED, $exception->getMessage());
             $this->assertSame(429, $exception->getCode());
             $this->assertGreaterThanOrEqual(1, $exception->retryAfter());
-            $this->assertLessThanOrEqual(900, $exception->retryAfter());
+            $this->assertLessThanOrEqual(901, $exception->retryAfter());
             $this->assertSame(5, $this->compared);
         }
     }

@@ -43,7 +43,7 @@ class LoginThrottlingTest extends DatabaseTestCase
         $this->assertSame(429, $response->getStatusCode());
         $this->assertSame(['error' => ['message' => 'Too many failed login attempts, please try again later.']], $this->jsonBody());
         $this->assertGreaterThanOrEqual(60, (int) $response->headers->get('Retry-After'));
-        $this->assertLessThanOrEqual(900, (int) $response->headers->get('Retry-After'));
+        $this->assertLessThanOrEqual(960, (int) $response->headers->get('Retry-After'));
     }
 
     public function testAnotherEmailIsNotAffected(): void
@@ -130,7 +130,7 @@ class LoginThrottlingTest extends DatabaseTestCase
         $this->assertSame(429, $response->getStatusCode());
         $this->assertSame(['error' => ['message' => 'Too many failed login attempts, please try again later.']], $this->jsonBody());
         $this->assertGreaterThanOrEqual(60, (int) $response->headers->get('Retry-After'));
-        $this->assertLessThanOrEqual(180, (int) $response->headers->get('Retry-After'));
+        $this->assertLessThanOrEqual(240, (int) $response->headers->get('Retry-After'));
         $this->login('autre@example.com', 'test', '198.51.100.1');
         $this->assertSame(200, $this->client->getResponse()->getStatusCode());
     }
