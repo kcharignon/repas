@@ -2622,8 +2622,10 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
 
     public function load(ObjectManager $manager): void
     {
+        $current = 'Unknown';
         try {
             foreach (self::RECIPES as $recipeDatas) {
+                $current = $recipeDatas['name'];
 
                 $authorEntity = $this->getReference($recipeDatas['owner'], UserEntity::class);
 
@@ -2657,7 +2659,7 @@ class RecipeFixture extends Fixture implements DependentFixtureInterface, Fixtur
 
             $manager->flush();
         } catch (Exception $e) {
-            dump(sprintf("Failed to create Recipe: %s", $recipeDatas["name"] ?? 'Unknown'));
+            dump(sprintf("Failed to create Recipe: %s", $current));
             throw $e;
         }
     }

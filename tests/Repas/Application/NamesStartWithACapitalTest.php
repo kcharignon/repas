@@ -22,7 +22,7 @@ use Repas\Repas\Domain\Model\Recipe;
  * - `Recipe::copyFromOriginal(` et `Ingredient::copyFromOriginal(` (une copie reprend le nom de l'original) : autant d'appels
  *   `->setName(StringTool::capitalizeFirst(` dans la classe que de copies.
  *
- * Une exemption s'écrit dans `EXEMPT`, avec son motif. Un second test vérifie que les méthodes publiques des deux modèles qui reçoivent un
+ * Une exemption s'écrit dans `$exempt`, avec son motif. Un second test vérifie que les méthodes publiques des deux modèles qui reçoivent un
  * `$name` sont celles que ce test connaît : en ajouter une impose d'y penser ici.
  */
 class NamesStartWithACapitalTest extends TestCase
@@ -48,7 +48,7 @@ class NamesStartWithACapitalTest extends TestCase
      *
      * @var array<string, string>
      */
-    private const array EXEMPT = [];
+    private static array $exempt = [];
 
     public function testEveryApplicationClassThatWritesTheNameOfARecipeOrOfAnIngredientAppliesTheRule(): void
     {
@@ -59,7 +59,7 @@ class NamesStartWithACapitalTest extends TestCase
             if (self::mentionsAWriter($source)) {
                 $writers[] = $path;
             }
-            if (isset(self::EXEMPT[$path])) {
+            if (isset(self::$exempt[$path])) {
                 continue;
             }
 
@@ -78,7 +78,7 @@ class NamesStartWithACapitalTest extends TestCase
         // Given : chaque exemption nomme une classe qui existe, avec son motif, et qui enfreint encore la règle
         $files = self::applicationFiles();
         $stale = [];
-        foreach (self::EXEMPT as $path => $reason) {
+        foreach (self::$exempt as $path => $reason) {
             if (!isset($files[$path]) || trim($reason) === '' || self::violationsIn($files[$path]) === []) {
                 $stale[] = $path;
             }
