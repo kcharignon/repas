@@ -2,7 +2,7 @@
 
 - **Statut** : Accepted
 - **Date** : 2026-10-16
-- **Liens** : [0004](0004-repository-vs-loader.md), [0005](0005-conventions-dto-lecture.md), [0007](0007-api-rest-v1.md), `src/Shared/Domain/Tool/SearchRelevance.php`, `src/Shared/Domain/Tool/JaroWinkler.php`, `IngredientPostgreSQLLoader::search()`
+- **Liens** : [0004](0004-repository-vs-loader.md), [0005](0005-conventions-dto-lecture.md), [0007](0007-api-rest-v1.md), `src/Shared/Domain/Tool/SearchRelevance.php`, `src/Shared/Domain/Tool/JaroWinkler.php`, `IngredientPostgreSQLLoader::search()`, `RecipePostgreSQLLoader::listOfOtherPeople()`
 
 ## Contexte
 
@@ -27,6 +27,17 @@ Pour ajouter un ingrédient à la liste, le front obligeait à choisir un rayon 
 - Positives : une recherche tolérante, classée, avec son rayon, sans extension PostgreSQL ni migration (rien à défaire au retour arrière, [0017](0017-deploiement-et-releases.md) règle 6) ; l'algorithme est testé sans base.
 - Négatives / coûts : toute recherche lit tous les ingrédients visibles (256 aujourd'hui, une requête de quelques ms) ; au-delà de quelques milliers d'ingrédients par utilisateur, il faudra préfiltrer en SQL (`pg_trgm`, qui demande l'extension et une migration). Un ingrédient dont le slug est `search` ne serait plus joignable par `GET /api/v1/ingredients/{slug}` : le slug d'un ingrédient vient de son nom et personne n'a d'ingrédient « search ».
 - Garde-fou : `SearchRelevanceTest` et `JaroWinklerTest` (valeurs de référence de Winkler), `IngredientPostgreSQLLoaderTest::testSearch*`, `SearchIngredientsApiControllerTest` (dont la route non captée par `{slug}`), `QueryConventionTest`.
+
+## Amendement du 2026-10-28 : recettes des autres
+
+Le propriétaire veut que l'écran « recettes des autres » (`GET /api/v1/recipes/other-people`, `ListOtherPeopleRecipes`) soit rangé par catégorie et se cherche par nom comme les ingrédients, en montrant la catégorie de chaque recette.
+
+1. **Sans `q`** : les recettes sont triées par catégorie (colonne `sequence` du type de recette, l'ordre de `GET /api/v1/recipe-types`), puis par nom (le slug, nom sans accent ni majuscule), puis par identifiant, en SQL (l'ordre est déterministe : deux pages ne se chevauchent pas).
+2. **Avec `q`** (facultatif, 100 caractères au plus, `422` au-delà ; absent, vide ou réduit à des espaces : pas de recherche) : seules les recettes dont le **nom** correspond sont rendues, **toutes catégories confondues**, classées par `SearchRelevance::score` décroissant (mêmes règles et même seuil `SearchRelevance::MINIMUM` que les ingrédients : « carbo », « pate » ou « carbonnara » trouvent « pâtes carbonara »), à pertinence égale par nom puis par identifiant. Un texte sans lettre ni chiffre ne trouve rien (liste vide, pas d'erreur) ; la saisie est normalisée (`StringTool::slugify`).
+3. `limit` (1 à 200, 200 par défaut) et `offset` s'appliquent à la liste triée ; `totalItems` est le nombre de recettes (sans `q`) ou de correspondances (avec `q`). Pas de plafond de 30 comme pour les ingrédients : la page de 200 reste la borne.
+4. Chaque élément porte `id`, `name`, `typeName` et le nouveau `typeSlug` (identifiant stable de la catégorie, pour grouper côté front).
+5. Les règles de visibilité ne changent pas : originales des autres utilisateurs, jamais les siennes, jamais celles qu'il a déjà copiées.
+6. **Le calcul se fait dans le Loader, en PHP** (`RecipePostgreSQLLoader::listOfOtherPeople()`) : une seule requête lit l'identifiant, le nom, le slug et la catégorie de **toutes** les recettes des autres, aucun modèle de domaine. **Limite de volume** : une recherche lit donc les noms de toutes les recettes des autres utilisateurs (quelques centaines aujourd'hui) ; au-delà de quelques milliers, préfiltrer en SQL (par exemple `pg_trgm`, qui demande l'extension et une migration). Aucune migration ici.
 
 ## Alternatives écartées
 
