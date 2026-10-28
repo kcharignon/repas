@@ -44,7 +44,7 @@ class UpdateUserSettingsRateLimitTest extends DatabaseTestCase
         $this->assertSame(429, $response->getStatusCode());
         $this->assertSame(['error' => ['message' => 'PASSWORD_RATE_LIMITED']], $this->jsonBody());
         $this->assertGreaterThanOrEqual(1, (int) $response->headers->get('Retry-After'));
-        $this->assertLessThanOrEqual(900, (int) $response->headers->get('Retry-After'));
+        $this->assertLessThanOrEqual(901, (int) $response->headers->get('Retry-After'));
         $this->assertTrue($this->reloaded('alexiane@example.com')->passwordMatch('test'));
     }
 

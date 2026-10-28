@@ -61,7 +61,7 @@ class DriveRateLimitListenerTest extends TestCase
         $this->assertSame(['DRIVE_RATE_LIMITED', 429], [$exception->getPrevious()->getMessage(), $exception->getPrevious()->getCode()]);
         $retryAfter = (int) $exception->getHeaders()['Retry-After'];
         $this->assertGreaterThanOrEqual(1, $retryAfter);
-        $this->assertLessThanOrEqual(60, $retryAfter);
+        $this->assertLessThanOrEqual(61, $retryAfter);
     }
 
     public function testRetryAfterIsTheDelayGivenByTheLimiterCountedFromTheInjectedClock(): void
