@@ -4,10 +4,13 @@ namespace Repas\Tests\User\InputAdapter;
 
 
 use Doctrine\DBAL\Connection;
+use Repas\Tests\Helper\Builder\UserBuilder;
 use Repas\Tests\Helper\DatabaseTestCase;
 use Repas\User\Domain\Interface\UserRepository;
+use Repas\User\Domain\Model\User;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Component\BrowserKit\Cookie;
+use Symfony\Component\PasswordHasher\Hasher\PasswordHasherFactoryInterface;
 
 /**
  * Parcours du refresh token (ADR 0015) avec les vrais bus, la vraie base et le vrai cookie : connexion, échange,
@@ -26,14 +29,9 @@ class RefreshTokenFlowTest extends DatabaseTestCase
         parent::setUp();
 
         $this->client = static::getContainer()->get('test.client');
-        $this->client->request('POST', '/api/v1/users', content: json_encode(['email' => self::EMAIL, 'password' => self::PASSWORD, 'defaultServing' => 3], JSON_THROW_ON_ERROR), server: ['CONTENT_TYPE' => 'application/json']);
-        $this->assertSame(201, $this->client->getResponse()->getStatusCode());
-
-        // Ce parcours porte sur le refresh token, pas sur la confirmation d'adresse (EmailVerificationFlowTest) : le compte est activé
-        $userRepository = static::getContainer()->get(UserRepository::class);
-        $user = $userRepository->findOneByEmail(self::EMAIL);
-        $user->verifyEmail();
-        $userRepository->save($user);
+        // Ce parcours porte sur le refresh token, pas sur l'inscription (RegistrationByLinkFlowTest) : le compte existe, actif, avec son mot de passe
+        $hasher = static::getContainer()->get(PasswordHasherFactoryInterface::class)->getPasswordHasher(User::class);
+        static::getContainer()->get(UserRepository::class)->save(new UserBuilder()->withEmail(self::EMAIL)->withServing(3)->withPassword($hasher->hash(self::PASSWORD))->build());
     }
 
     public function testLoggingInPutsTheRefreshCookieInTheBrowser(): void

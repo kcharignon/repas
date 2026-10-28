@@ -103,19 +103,25 @@ check "aucune valeur propre au déploiement par défaut (ALEXA_SKILL_ID, ALEXA_O
 echo "== Inscription et connexion (JWT, cookie du SPA)"
 email="smoke-$RANDOM@example.com"
 password="Un mot de passe 1 solide!"
+# Inscription par la seule adresse (ADR 0020, amendement du 2026-10-28) : 204, sans mot de passe. Celui qu'envoie l'ancien formulaire est ignoré.
 register_headers=$(curl_app -D - -o /dev/null -X POST -H 'Content-Type: application/json' \
-	-d "{\"email\":\"$email\",\"password\":\"$password\",\"defaultServing\":4}" "https://$app:$port/api/v1/users" || true)
-check "inscription : 201" grep -q "^HTTP/[0-9.]* 201" <<< "$register_headers"
+	-d "{\"email\":\"$email\",\"password\":\"un-ancien-mot-de-passe\",\"defaultServing\":4}" "https://$app:$port/api/v1/users" || true)
+check "inscription par l'adresse seule : 204" grep -q "^HTTP/[0-9.]* 204" <<< "$register_headers"
 # Sans cela, tous les visiteurs auraient l adresse de la bordure : plafonds de débit par IP faussés, https non reconnu.
 # Le PHP est volontairement dans des guillemets simples.
 # shellcheck disable=SC2016
 check "Symfony fait confiance à la bordure (proxys privés, en-têtes X-Forwarded-*)" docker compose exec -T php php -r 'require "/app/vendor/autoload.php"; $k = new Repas\Kernel("prod", false); $k->boot(); $r = Symfony\Component\HttpFoundation\Request::getTrustedProxies(); exit(in_array("10.0.0.0/8", $r, true) && (Symfony\Component\HttpFoundation\Request::getTrustedHeaderSet() & Symfony\Component\HttpFoundation\Request::HEADER_X_FORWARDED_FOR) ? 0 : 1);'
-# Un compte inscrit attend la confirmation de son adresse (ADR 0020) : la connexion est refusée avec le bon mot de passe.
+# Le compte n'a pas encore de mot de passe : la connexion est refusée, quel que soit le mot de passe saisi (ADR 0020 amendé).
 refused=$(curl_app -w '\n%{http_code}' -X POST -H 'Content-Type: application/json' \
-	-d "{\"email\":\"$email\",\"password\":\"$password\"}" "https://$app:$port/api/login_check" || true)
-check "connexion avant confirmation de l'adresse : 403 EMAIL_NOT_VERIFIED" bash -c "grep -q EMAIL_NOT_VERIFIED <<< \"\$1\" && tail -n 1 <<< \"\$1\" | grep -q '^403$'" _ "$refused"
-# Le message part par `null://null` (MAILER_DSN de l'essai) : on active le compte en base, comme le ferait le lien reçu.
-docker compose exec -T database psql -q -U repas -d repas -c "UPDATE \"user\" SET status = 'ACTIVE' WHERE email = '$email'" < /dev/null
+	-d "{\"email\":\"$email\",\"password\":\"un-ancien-mot-de-passe\"}" "https://$app:$port/api/login_check" || true)
+check "connexion avant le choix du mot de passe : 401" bash -c "tail -n 1 <<< \"\$1\" | grep -q '^401$'" _ "$refused"
+# Le message part par `null://null` (MAILER_DSN de l'essai) : on pose en base le lien de bienvenue, comme le ferait l'inscription, et on choisit le mot de passe avec.
+secret=$(openssl rand -hex 32)
+secret_hash=$(printf '%s' "$secret" | sha256sum | cut -d' ' -f1)
+docker compose exec -T database psql -q -U repas -d repas -c "INSERT INTO password_reset_token (id, user_id, token_hash, issued_at, expires_at) SELECT gen_random_uuid()::text, id, '$secret_hash', NOW(), NOW() + INTERVAL '24 hours' FROM \"user\" WHERE email = '$email'" < /dev/null
+chosen=$(curl_app -D - -o /dev/null -X POST -H 'Content-Type: application/json' \
+	-d "{\"token\":\"$secret\",\"password\":\"$password\"}" "https://$app:$port/api/v1/users/password-reset/confirm" || true)
+check "choix du mot de passe avec le lien de bienvenue : 204" grep -q '^HTTP/[0-9.]* 204' <<< "$chosen"
 headers=$(curl_app -D - -o /dev/null -X POST -H 'Content-Type: application/json' \
 	-d "{\"email\":\"$email\",\"password\":\"$password\"}" "https://$app:$port/api/login_check" || true)
 check "connexion : 200" grep -q '^HTTP/[0-9.]* 200' <<< "$headers"

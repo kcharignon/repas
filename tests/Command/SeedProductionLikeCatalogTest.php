@@ -16,8 +16,8 @@ use Repas\Tests\Helper\ControlledIngredientSeedingFeature;
 use Repas\Tests\Helper\DatabaseTestCase;
 use Repas\Tests\Helper\DataPersister;
 use Repas\Tests\Helper\SqlBudget\QueryCounter;
-use Repas\User\Domain\Interface\EmailVerificationTokenRepository;
-use Repas\User\Domain\Model\EmailVerificationToken;
+use Repas\User\Domain\Interface\PasswordResetTokenRepository;
+use Repas\User\Domain\Model\PasswordResetToken;
 
 /**
  * L'amorçage sur un catalogue de la taille de la production (ING-008) : les 261 anciens communs du fichier validé (aujourd'hui les ingrédients du propriétaire)
@@ -140,17 +140,17 @@ class SeedProductionLikeCatalogTest extends DatabaseTestCase
         $client = static::getContainer()->get('test.client');
         $client->disableReboot();
         $json = ['CONTENT_TYPE' => 'application/json'];
-        $client->request('POST', '/api/v1/users', content: json_encode(['email' => 'nouveau@example.test', 'password' => 'un-mot-de-passe', 'defaultServing' => 3], JSON_THROW_ON_ERROR), server: $json);
-        $this->assertSame(201, $client->getResponse()->getStatusCode());
+        $client->request('POST', '/api/v1/users', content: json_encode(['email' => 'nouveau@example.test', 'defaultServing' => 3], JSON_THROW_ON_ERROR), server: $json);
+        $this->assertSame(204, $client->getResponse()->getStatusCode());
         $connection = $this->entityManager->getConnection();
         $userId = (string) $connection->fetchOne('SELECT id FROM "user" WHERE email = ?', ['nouveau@example.test']);
         $this->assertSame(0, (int) $connection->fetchOne('SELECT count(*) FROM ingredient WHERE creator = ?', [$userId]), 'l\'inscription ne copie rien');
         $secret = bin2hex(random_bytes(16));
-        static::getContainer()->get(EmailVerificationTokenRepository::class)->add(EmailVerificationToken::issue(UuidGenerator::new(), $userId, EmailVerificationToken::hash($secret), new DateTimeImmutable()));
+        static::getContainer()->get(PasswordResetTokenRepository::class)->add(PasswordResetToken::issueWelcome(UuidGenerator::new(), $userId, PasswordResetToken::hash($secret), new DateTimeImmutable()));
 
-        // When : il confirme son adresse
+        // When : il choisit son mot de passe avec le lien de bienvenue, ce qui confirme son adresse
         $started = hrtime(true);
-        $client->request('POST', '/api/v1/users/email-verification/confirm', content: json_encode(['token' => $secret], JSON_THROW_ON_ERROR), server: $json);
+        $client->request('POST', '/api/v1/users/password-reset/confirm', content: json_encode(['token' => $secret, 'password' => 'un-mot-de-passe'], JSON_THROW_ON_ERROR), server: $json);
         $seconds = (hrtime(true) - $started) / 1e9;
 
         // Then : ses 151 ingrédients (et leurs conversions) sont là, dans la même requête, en moins d'une seconde

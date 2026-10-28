@@ -71,3 +71,7 @@ Faits vérifiés (détail et sources datées dans l'analyse) :
 | D5 | iPhone | **hors du premier lot** ; en revanche l'application Android doit garder un **tronc commun Kotlin** réutilisable (AUTH-015), pour sortir sur iPhone un jour sans tout réécrire |
 
 Conséquence de D5 : les services propres à la plateforme (connexion Google, stockage, ouverture d'un lien) sont derrière des interfaces ; la logique sans dépendance Android (validation des messages du pont, règles de navigation, formes d'adresses) est isolée dans un module Kotlin pur. Aucun code iOS n'est écrit.
+
+## Note du 2026-10-28 : le mot de passe verrouillé existe déjà dans le code
+
+L'inscription par la seule adresse ([0020](0020-confirmation-d-adresse-email.md), amendement du 2026-10-28) a posé ce que la décision 10 décrit : `User::NO_PASSWORD = '!'`, `User::hasPassword()` et `User::lockPassword()` (qui retire le mot de passe d'un compte et fait monter la version des identifiants), ainsi que `User::DEFAULT_SERVING` (4, le nombre de personnes d'un compte créé sans l'avoir dit). Un compte `PENDING` n'a plus de mot de passe : la liaison à un compte `PENDING` (décision 8 du tableau d'analyse) n'a rien à verrouiller, et le fait sans erreur (`lockPassword()` est sans effet sur un compte qui n'en a pas). AUTH-006 réutilise ces trois éléments au lieu de les créer.

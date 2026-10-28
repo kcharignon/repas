@@ -20,7 +20,7 @@ class RegisterNewUserRateLimitTest extends QueryBusWebTestCase
         // When : dix inscriptions passent
         for ($i = 1; $i <= 10; $i++) {
             $this->post("visiteur$i@example.com");
-            $this->assertSame(201, $this->client->getResponse()->getStatusCode(), "inscription $i");
+            $this->assertSame(204, $this->client->getResponse()->getStatusCode(), "inscription $i");
         }
         $this->post('visiteur11@example.com');
 
@@ -64,7 +64,7 @@ class RegisterNewUserRateLimitTest extends QueryBusWebTestCase
         $this->post('visiteur@example.com');
 
         // Then
-        $this->assertSame(201, $this->client->getResponse()->getStatusCode());
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
         $this->assertCount(1, $commandBus->dispatched());
     }
 
@@ -75,7 +75,7 @@ class RegisterNewUserRateLimitTest extends QueryBusWebTestCase
         $this->client->disableReboot();
         for ($i = 1; $i <= 10; $i++) {
             $this->post("visiteur$i@example.com", sprintf('2001:db8:1:2::%x', $i));
-            $this->assertSame(201, $this->client->getResponse()->getStatusCode(), "inscription $i");
+            $this->assertSame(204, $this->client->getResponse()->getStatusCode(), "inscription $i");
         }
 
         // When : une autre adresse de ce préfixe, puis une d'un autre préfixe
@@ -84,11 +84,11 @@ class RegisterNewUserRateLimitTest extends QueryBusWebTestCase
         $this->post('visiteur12@example.com', '2001:db8:1:3::1');
 
         // Then
-        $this->assertSame(201, $this->client->getResponse()->getStatusCode());
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
     }
 
     private function post(string $email, string $address = '127.0.0.1'): void
     {
-        $this->client->request('POST', '/api/v1/users', content: json_encode(['email' => $email, 'password' => 'un-mot-de-passe', 'defaultServing' => 4], JSON_THROW_ON_ERROR), server: ['CONTENT_TYPE' => 'application/json', 'REMOTE_ADDR' => $address]);
+        $this->client->request('POST', '/api/v1/users', content: json_encode(['email' => $email], JSON_THROW_ON_ERROR), server: ['CONTENT_TYPE' => 'application/json', 'REMOTE_ADDR' => $address]);
     }
 }

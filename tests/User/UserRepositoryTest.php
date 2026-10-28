@@ -236,7 +236,7 @@ class UserRepositoryTest extends DatabaseTestCase
     public function testARegisteredAccountHasNoLastLoginYet(): void
     {
         //Arrange
-        $user = User::register('22222222-2222-4222-8222-222222222222', 'inscrit@test.com', ['ROLE_USER'], 'hash', 3, new DateTimeImmutable('2026-10-20 08:00:00'));
+        $user = User::register('22222222-2222-4222-8222-222222222222', 'inscrit@test.com', ['ROLE_USER'], 3, new DateTimeImmutable('2026-10-20 08:00:00'));
 
         //Act
         $this->userRepository->save($user);

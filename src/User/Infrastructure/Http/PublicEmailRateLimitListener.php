@@ -13,7 +13,7 @@ use Symfony\Component\RateLimiter\RateLimit;
 use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
 
 /**
- * Plafonds des routes publiques qui font partir un email : l'inscription (email de confirmation), le renvoi du lien de confirmation et
+ * Plafonds des routes publiques qui font partir un email : l'inscription (email de bienvenue, ou de rappel pour un compte actif), le renvoi du lien de confirmation et
  * le mot de passe oublié. Deux compteurs, consultés dans cet ordre :
  *
  * 1. PAR DESTINATAIRE (limiteur `public_email_recipient`, 6 par heure, config/packages/rate_limiter.yaml) : l'adresse saisie, mise sous la

@@ -113,6 +113,15 @@ class UserBuilder implements Builder
         return $this;
     }
 
+    /**
+     * Un compte qui n'a pas de mot de passe (inscrit avec sa seule adresse, `User::NO_PASSWORD`).
+     */
+    public function withoutPassword(): self
+    {
+        $this->password = User::NO_PASSWORD;
+        return $this;
+    }
+
     public function withCreatedAt(DateTimeImmutable $now): self
     {
         $this->statistics ??= [];

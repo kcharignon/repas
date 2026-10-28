@@ -235,12 +235,6 @@ parameters:
 			path: tests/Shared/TabTest.php
 
 		-
-			message: '#^Call to an undefined method Symfony\\Component\\PasswordHasher\\Hasher\\PasswordHasherFactoryInterface\:\:hash\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: tests/User/Application/RegisterNewUserHandlerTest.php
-
-		-
 			message: '#^Call to function method_exists\(\) with ''Symfony\\\\Component\\\\Dotenv\\\\Dotenv'' and ''bootEnv'' will always evaluate to true\.$#'
 			identifier: function.alreadyNarrowedType
 			count: 1

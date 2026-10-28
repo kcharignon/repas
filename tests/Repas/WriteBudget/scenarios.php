@@ -598,7 +598,24 @@ return [
     },
 
     // --- Utilisateurs
-    'inscription' => static fn(WriteBudgetTestCase $t): object => new RegisterNewUserCommand(UuidGenerator::new(), 'nouveau@example.com', 'mot-de-passe', 3),
+    // Inscription par la seule adresse (ADR 0020 amendé) : les quatre états d'une adresse, pour que la différence de travail entre eux se voie et ne grandisse pas
+    'inscription' => static fn(WriteBudgetTestCase $t): object => new RegisterNewUserCommand(UuidGenerator::new(), 'nouveau@example.com', 3),
+    'inscription-compte-en-attente' => static function (WriteBudgetTestCase $t): object {
+        $user = $t->savedUser(new UserBuilder()->withEmail('attente@example.com')->withoutPassword()->isPending());
+        $t->savedPasswordResetToken($user, 'ancien-secret', minutesAgo: 5);
+
+        return new RegisterNewUserCommand(UuidGenerator::new(), 'attente@example.com', 3);
+    },
+    'inscription-compte-actif' => static function (WriteBudgetTestCase $t): object {
+        $t->savedUser(new UserBuilder()->withEmail('actif@example.com'));
+
+        return new RegisterNewUserCommand(UuidGenerator::new(), 'actif@example.com', 3);
+    },
+    'inscription-compte-desactive' => static function (WriteBudgetTestCase $t): object {
+        $t->savedUser(new UserBuilder()->withEmail('desactive@example.com')->isDisabled());
+
+        return new RegisterNewUserCommand(UuidGenerator::new(), 'desactive@example.com', 3);
+    },
     'renvoi-confirmation-email' => static function (WriteBudgetTestCase $t): object {
         $user = $t->savedUser(new UserBuilder()->withEmail('attente@example.com')->isPending());
         $t->savedEmailVerificationToken($user, 'ancien-secret', minutesAgo: 5);

@@ -9,21 +9,72 @@ use Repas\User\Application\RegisterNewUser\RegisterNewUserCommand;
 
 class RegisterNewUserApiControllerTest extends QueryBusWebTestCase
 {
-    public function testAnAnonymousVisitorRegistersAndGetsTheLocation(): void
+    public function testAnAnonymousVisitorRegistersWithHisAddressAloneAndGetsNoContent(): void
     {
         // Given
         $commandBus = $this->mockCommandBus();
 
         // When
-        $this->post(['email' => 'alexiane@example.com', 'password' => 'un-mot-de-passe', 'defaultServing' => 4]);
+        $this->post(['email' => 'visiteur@example.com']);
 
-        // Then
-        $this->assertSame(201, $this->client->getResponse()->getStatusCode());
+        // Then : 204 sans corps ni Location, une seule commande, le nombre de personnes par défaut
+        $response = $this->client->getResponse();
+        $this->assertSame(204, $response->getStatusCode());
+        $this->assertSame('', $response->getContent());
+        $this->assertFalse($response->headers->has('Location'));
         $this->assertCount(1, $commandBus->dispatched());
         $command = $commandBus->dispatched()[0];
         $this->assertInstanceOf(RegisterNewUserCommand::class, $command);
-        $this->assertSame(['alexiane@example.com', 'un-mot-de-passe', 4], [$command->email, $command->passwordPlainText, $command->defaultServing]);
-        $this->assertSame('/api/v1/users/' . $command->userId, $this->client->getResponse()->headers->get('Location'));
+        $this->assertSame(['visiteur@example.com', 4], [$command->email, $command->defaultServing]);
+        $this->assertNotSame('', $command->userId);
+    }
+
+    public function testTheNumberOfPeopleIsKeptWhenItIsGiven(): void
+    {
+        // Given
+        $commandBus = $this->mockCommandBus();
+
+        // When
+        $this->post(['email' => 'visiteur@example.com', 'defaultServing' => 2]);
+
+        // Then
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->assertSame(2, $commandBus->dispatched()[0]->defaultServing);
+    }
+
+    /**
+     * @param mixed $password ce que l'ancien formulaire (ou n'importe quoi d'autre) envoie dans `password`
+     */
+    #[DataProvider('passwordsSentByOldClients')]
+    public function testAPasswordSentByAnOldClientIsAcceptedAndIgnoredWhateverItIs(mixed $password): void
+    {
+        // Given
+        $commandBus = $this->mockCommandBus();
+
+        // When
+        $this->post(['email' => 'visiteur@example.com', 'password' => $password, 'defaultServing' => 3]);
+
+        // Then : même réponse qu'avec l'adresse seule ; il ne traverse pas le bus et n'est pas jugé
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->assertSame('', $this->client->getResponse()->getContent());
+        $this->assertCount(1, $commandBus->dispatched());
+        $command = $commandBus->dispatched()[0];
+        $this->assertSame(['visiteur@example.com', 3], [$command->email, $command->defaultServing]);
+        $this->assertStringNotContainsString(is_string($password) && $password !== '' ? $password : "\0absent", serialize($command));
+    }
+
+    /**
+     * @return iterable<string, array{mixed}>
+     */
+    public static function passwordsSentByOldClients(): iterable
+    {
+        yield 'un mot de passe valable' => ['un-mot-de-passe'];
+        yield 'un mot de passe trop court' => ['court'];
+        yield 'un mot de passe trop long' => [str_repeat('a', 5000)];
+        yield 'vide' => [''];
+        yield 'nul' => [null];
+        yield 'un nombre' => [12345678];
+        yield 'une liste' => [['x']];
     }
 
     /**
@@ -49,13 +100,11 @@ class RegisterNewUserApiControllerTest extends QueryBusWebTestCase
      */
     public static function invalidBodies(): iterable
     {
-        $valid = ['email' => 'alexiane@example.com', 'password' => 'un-mot-de-passe', 'defaultServing' => 4];
+        $valid = ['email' => 'visiteur@example.com', 'defaultServing' => 4];
 
         yield 'sans email' => [['email' => ''] + $valid];
         yield 'email invalide' => [['email' => 'pas-un-email'] + $valid];
         yield 'email trop long' => [['email' => str_repeat('a', 250) . '@example.com'] + $valid];
-        yield 'mot de passe trop court' => [['password' => 'court'] + $valid];
-        yield 'mot de passe trop long' => [['password' => str_repeat('a', 4097)] + $valid];
         yield 'aucune personne' => [['defaultServing' => 0] + $valid];
         yield 'trop de personnes' => [['defaultServing' => 101] + $valid];
         yield 'un nombre de personnes décimal' => [['defaultServing' => 2.5] + $valid];
@@ -63,6 +112,19 @@ class RegisterNewUserApiControllerTest extends QueryBusWebTestCase
         yield 'un nombre de personnes booléen' => [['defaultServing' => true] + $valid];
         yield 'un nombre de personnes nul' => [['defaultServing' => null] + $valid];
         yield 'email de mauvais type' => [['email' => ['x']] + $valid];
+    }
+
+    public function testAMalformedAddressIsRefusedWhateverTheStateOfAnyAccount(): void
+    {
+        // Given
+        $commandBus = $this->mockCommandBus();
+
+        // When : une adresse mal formée n'apprend rien sur un compte, elle reste refusée en 422
+        $this->post(['email' => 'visiteur@']);
+
+        // Then
+        $this->assertSame(422, $this->client->getResponse()->getStatusCode());
+        $this->assertSame([], $commandBus->dispatched());
     }
 
     public function testTheOtherUserRoutesStayClosedToAnAnonymousVisitor(): void

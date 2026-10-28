@@ -4,12 +4,17 @@ namespace Repas\Tests\User\InputAdapter;
 
 
 use Doctrine\DBAL\Connection;
+use Repas\Tests\Helper\Builder\UserBuilder;
 use Repas\Tests\Helper\DatabaseTestCase;
+use Repas\User\Domain\Interface\UserRepository;
+use Repas\User\Domain\Model\User;
+use Repas\User\Domain\Service\EmailVerificationIssuer;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Component\Mime\Email;
+use Symfony\Component\PasswordHasher\Hasher\PasswordHasherFactoryInterface;
 
 /**
- * Confirmation d'adresse email de bout en bout (ADR 0020), avec les vrais bus, la vraie base et le vrai notifier : inscription,
+ * Confirmation d'adresse email de bout en bout (ADR 0020), avec les vrais bus, la vraie base et le vrai notifier, pour un compte en attente de l'ancien formulaire : inscription,
  * connexion refusée tant que l'adresse n'est pas confirmée, lien reçu par email, confirmation, connexion. Le transport est
  * `null://null` en test : les messages sont lus dans le journal du mailer.
  */
@@ -28,20 +33,19 @@ class EmailVerificationFlowTest extends DatabaseTestCase
         $this->client->disableReboot();
     }
 
-    public function testARegisteredVisitorLogsInOnlyAfterConfirmingTheLinkReceivedByEmail(): void
+    public function testAPendingAccountWithAnOldPasswordIsActivatedByTheLinkAndLosesThatPassword(): void
     {
-        // Given : une inscription
-        $this->post('/api/v1/users', ['email' => 'alexiane@example.com', 'password' => 'un-mot-de-passe', 'defaultServing' => 3]);
-        $this->assertSame(201, $this->statusCode());
+        // Given : un compte en attente de l'ancien formulaire, avec son ancien mot de passe
+        $this->registerLikeTheOldForm('visiteur@example.com', 'un-mot-de-passe');
 
         // Then : le compte attend, un email est parti vers l'adresse saisie
         $emails = $this->sentEmails();
         $this->assertCount(1, $emails);
-        $this->assertSame('alexiane@example.com', $emails[0]->getTo()[0]->getAddress());
+        $this->assertSame('visiteur@example.com', $emails[0]->getTo()[0]->getAddress());
         $secret = $this->secretOf($emails[0]);
 
         // When : connexion avant confirmation
-        $this->post('/api/login_check', ['email' => 'alexiane@example.com', 'password' => 'un-mot-de-passe']);
+        $this->post('/api/login_check', ['email' => 'visiteur@example.com', 'password' => 'un-mot-de-passe']);
 
         // Then : le mot de passe est bon, l'adresse pas confirmée
         $this->assertSame(403, $this->statusCode());
@@ -51,21 +55,24 @@ class EmailVerificationFlowTest extends DatabaseTestCase
         // When : le lien est confirmé
         $this->post('/api/v1/users/email-verification/confirm', ['token' => $secret]);
 
-        // Then
+        // Then : l'adresse est confirmée et le compte actif, mais l'ancien mot de passe est retiré (ADR 0020 amendé) :
+        // la personne en choisit un nouveau par « mot de passe oublié »
         $this->assertSame(204, $this->statusCode());
-        $this->post('/api/login_check', ['email' => 'alexiane@example.com', 'password' => 'un-mot-de-passe']);
-        $this->assertSame(200, $this->statusCode());
-        $this->assertArrayHasKey('token', $this->jsonBody());
+        $this->assertSame('ACTIVE', $this->connection()->fetchOne('SELECT status FROM "user"'));
+        $this->assertSame('!', $this->connection()->fetchOne('SELECT password FROM "user"'));
+        $this->post('/api/login_check', ['email' => 'visiteur@example.com', 'password' => 'un-mot-de-passe']);
+        $this->assertSame(401, $this->statusCode());
         $this->assertSame(0, $this->verificationTokenCount());
+        $this->assertSame(0, $this->refreshTokenCount());
     }
 
     public function testAWrongPasswordDoesNotRevealThatTheAccountIsPending(): void
     {
         // Given
-        $this->post('/api/v1/users', ['email' => 'alexiane@example.com', 'password' => 'un-mot-de-passe', 'defaultServing' => 3]);
+        $this->registerLikeTheOldForm('visiteur@example.com', 'un-mot-de-passe');
 
         // When
-        $this->post('/api/login_check', ['email' => 'alexiane@example.com', 'password' => 'pas-le-bon']);
+        $this->post('/api/login_check', ['email' => 'visiteur@example.com', 'password' => 'pas-le-bon']);
 
         // Then : même réponse qu'un compte inconnu
         $this->assertSame(401, $this->statusCode());
@@ -75,7 +82,7 @@ class EmailVerificationFlowTest extends DatabaseTestCase
     public function testALinkWorksOnlyOnce(): void
     {
         // Given
-        $this->post('/api/v1/users', ['email' => 'alexiane@example.com', 'password' => 'un-mot-de-passe', 'defaultServing' => 3]);
+        $this->registerLikeTheOldForm('visiteur@example.com', 'un-mot-de-passe');
         $secret = $this->secretOf($this->sentEmails()[0]);
         $this->post('/api/v1/users/email-verification/confirm', ['token' => $secret]);
         $this->assertSame(204, $this->statusCode());
@@ -91,7 +98,7 @@ class EmailVerificationFlowTest extends DatabaseTestCase
     public function testAnUnknownOrExpiredLinkIsRefusedAndTheAccountStaysPending(): void
     {
         // Given
-        $this->post('/api/v1/users', ['email' => 'alexiane@example.com', 'password' => 'un-mot-de-passe', 'defaultServing' => 3]);
+        $this->registerLikeTheOldForm('visiteur@example.com', 'un-mot-de-passe');
         $secret = $this->secretOf($this->sentEmails()[0]);
 
         // When
@@ -106,18 +113,18 @@ class EmailVerificationFlowTest extends DatabaseTestCase
 
         // Then
         $this->assertSame(422, $this->statusCode());
-        $this->post('/api/login_check', ['email' => 'alexiane@example.com', 'password' => 'un-mot-de-passe']);
+        $this->post('/api/login_check', ['email' => 'visiteur@example.com', 'password' => 'un-mot-de-passe']);
         $this->assertSame(403, $this->statusCode());
     }
 
     public function testAskingForANewLinkReplacesTheOldOneOnceTheCooldownIsOver(): void
     {
         // Given : un lien envoyé à l'inscription
-        $this->post('/api/v1/users', ['email' => 'alexiane@example.com', 'password' => 'un-mot-de-passe', 'defaultServing' => 3]);
+        $this->registerLikeTheOldForm('visiteur@example.com', 'un-mot-de-passe');
         $firstSecret = $this->secretOf($this->sentEmails()[0]);
 
         // When : renvoi immédiat
-        $this->post('/api/v1/users/email-verification/send', ['email' => 'alexiane@example.com']);
+        $this->post('/api/v1/users/email-verification/send', ['email' => 'visiteur@example.com']);
 
         // Then : même réponse, mais rien n'est renvoyé pendant la minute de grâce
         $this->assertSame(204, $this->statusCode());
@@ -125,7 +132,7 @@ class EmailVerificationFlowTest extends DatabaseTestCase
 
         // When : le premier lien a plus d'une minute
         $this->connection()->executeStatement("UPDATE email_verification_token SET issued_at = NOW() - INTERVAL '2 minutes'");
-        $this->post('/api/v1/users/email-verification/send', ['email' => 'Alexiane@Example.com']);
+        $this->post('/api/v1/users/email-verification/send', ['email' => 'Visiteur@Example.com']);
 
         // Then : un second email part, avec un autre lien ; l'ancien ne marche plus
         $this->assertSame(204, $this->statusCode());
@@ -158,17 +165,35 @@ class EmailVerificationFlowTest extends DatabaseTestCase
         $this->assertSame([], $this->sentEmails());
     }
 
-    public function testRegisteringAgainWithAPendingAddressIsAConflictAndSendsNothing(): void
+    public function testRegisteringAgainWithAPendingAddressWritesNoPasswordAndTheAccountStaysTheFirstOne(): void
     {
-        // Given
-        $this->post('/api/v1/users', ['email' => 'alexiane@example.com', 'password' => 'un-mot-de-passe', 'defaultServing' => 3]);
+        // Given : un compte en attente de l'ancien formulaire
+        $this->registerLikeTheOldForm('visiteur@example.com', 'un-mot-de-passe');
+        $password = $this->connection()->fetchOne('SELECT password FROM "user"');
 
-        // When : quelqu'un d'autre tente la même adresse
-        $this->post('/api/v1/users', ['email' => 'alexiane@example.com', 'password' => 'autre-mot-de-passe', 'defaultServing' => 3]);
+        // When : l'adresse est saisie de nouveau, avec un autre nombre de personnes et un mot de passe de l'ancien formulaire
+        $this->post('/api/v1/users', ['email' => 'visiteur@example.com', 'password' => 'autre-mot-de-passe', 'defaultServing' => 9]);
 
-        // Then : le premier compte (et son mot de passe) n'est pas écrasé, un seul email est parti
-        $this->assertSame(409, $this->statusCode());
-        $this->assertCount(1, $this->sentEmails());
+        // Then : la même réponse qu'une adresse nouvelle ; rien n'écrase le compte (ni son mot de passe, ni son nombre de personnes)
+        $this->assertSame([204, ''], [$this->statusCode(), $this->client->getResponse()->getContent()]);
+        $this->assertSame(1, (int) $this->connection()->fetchOne('SELECT COUNT(*) FROM "user"'));
+        $this->assertSame([$password, 3], [$this->connection()->fetchOne('SELECT password FROM "user"'), (int) $this->connection()->fetchOne('SELECT default_serving FROM "user"')]);
+    }
+
+    /**
+     * Un compte tel que l'ancien formulaire d'inscription le créait : en attente, avec le mot de passe saisi, et le lien de confirmation
+     * d'adresse envoyé. L'inscription par la seule adresse ne pose plus de mot de passe (ADR 0020 amendé, parcours dans
+     * `RegistrationByLinkFlowTest`) ; ce lien de confirmation ne sert plus qu'à ces comptes-là.
+     */
+    private function registerLikeTheOldForm(string $email, string $password): void
+    {
+        $hasher = static::getContainer()->get(PasswordHasherFactoryInterface::class)->getPasswordHasher(User::class);
+        $user = new UserBuilder()->withEmail($email)->withServing(3)->withPassword($hasher->hash($password))->isPending()->build();
+        static::getContainer()->get(UserRepository::class)->save($user);
+        static::getContainer()->get(EmailVerificationIssuer::class)->issueFor($user);
+        $this->emails = [...$this->emails, ...$this->emailsOfTheLastRequest()];
+        // Aucune requête ne vide ici le journal du mailer : on le fait, pour ne pas compter ce message une seconde fois
+        static::getContainer()->get('mailer.message_logger_listener')->reset();
     }
 
     /**

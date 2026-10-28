@@ -5,9 +5,11 @@ namespace Repas\Tests\User\InputAdapter;
 
 use DateTimeImmutable;
 use Doctrine\DBAL\Connection;
+use Repas\Tests\Helper\Builder\UserBuilder;
 use Repas\Tests\Helper\DatabaseTestCase;
 use Repas\User\Domain\Interface\UserRepository;
 use Repas\User\Domain\Model\User;
+use Repas\User\Domain\Service\EmailVerificationIssuer;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Component\Mime\Email;
 use Symfony\Component\PasswordHasher\Hasher\PasswordHasherFactoryInterface;
@@ -215,23 +217,22 @@ class PasswordResetFlowTest extends DatabaseTestCase
         ]);
     }
 
-    public function testThePendingAccountOfAThirdPartyIsActivatedByTheLinkAndTheThirdPartyPasswordNoLongerWorks(): void
+    public function testAPendingAccountWithAnOldPasswordIsActivatedByTheLinkAndTheOldPasswordNoLongerWorks(): void
     {
-        // Given : quelqu'un a inscrit l'adresse d'Alexiane avec son propre mot de passe (compte en attente)
-        $this->post('/api/v1/users', ['email' => self::EMAIL, 'password' => 'mot-de-passe-du-tiers', 'defaultServing' => 3]);
-        $this->assertSame(201, $this->statusCode());
+        // Given : un compte en attente de l'ancien formulaire d'inscription, avec son ancien mot de passe
+        $this->createPendingUserOfTheOldForm(self::EMAIL, 'ancien-mot-de-passe');
         $verificationSecret = $this->secretOf($this->emails[0], 'confirmation-email');
-        $this->post('/api/login_check', ['email' => self::EMAIL, 'password' => 'mot-de-passe-du-tiers']);
+        $this->post('/api/login_check', ['email' => self::EMAIL, 'password' => 'ancien-mot-de-passe']);
         $this->assertSame(403, $this->statusCode());
 
-        // When : Alexiane demande un mot de passe oublié, puis choisit le sien
+        // When : la personne demande un mot de passe oublié, puis choisit le sien
         $secret = $this->requestLink(self::EMAIL, emailIndex: 1);
         $this->post('/api/v1/users/password-reset/confirm', ['token' => $secret, 'password' => self::NEW_PASSWORD]);
 
-        // Then : l'adresse est confirmée, le compte est actif, le mot de passe du tiers est remplacé
+        // Then : l'adresse est confirmée, le compte est actif, l'ancien mot de passe est remplacé
         $this->assertSame(204, $this->statusCode());
         $this->assertSame('ACTIVE', $this->connection()->fetchOne('SELECT status FROM "user"'));
-        $this->post('/api/login_check', ['email' => self::EMAIL, 'password' => 'mot-de-passe-du-tiers']);
+        $this->post('/api/login_check', ['email' => self::EMAIL, 'password' => 'ancien-mot-de-passe']);
         $this->assertSame(401, $this->statusCode());
         $this->post('/api/login_check', ['email' => self::EMAIL, 'password' => self::NEW_PASSWORD]);
         $this->assertSame(200, $this->statusCode());
@@ -275,8 +276,8 @@ class PasswordResetFlowTest extends DatabaseTestCase
 
     public function testAnAddressConfirmationLinkCannotResetAPasswordAndAResetLinkCannotConfirmAnAddress(): void
     {
-        // Given : un compte en attente, avec son lien de confirmation d'adresse ; et un lien de réinitialisation
-        $this->post('/api/v1/users', ['email' => self::EMAIL, 'password' => self::OLD_PASSWORD, 'defaultServing' => 3]);
+        // Given : un compte en attente (ancien formulaire), avec son lien de confirmation d'adresse ; et un lien de réinitialisation
+        $this->createPendingUserOfTheOldForm(self::EMAIL, self::OLD_PASSWORD);
         $verificationSecret = $this->secretOf($this->emails[0], 'confirmation-email');
         $resetSecret = $this->requestLink(self::EMAIL, emailIndex: 1);
 
@@ -286,6 +287,21 @@ class PasswordResetFlowTest extends DatabaseTestCase
         $this->post('/api/v1/users/email-verification/confirm', ['token' => $resetSecret]);
         $this->assertSame(422, $this->statusCode());
         $this->assertSame('PENDING', $this->connection()->fetchOne('SELECT status FROM "user"'));
+    }
+
+    /**
+     * Un compte tel que l'ancien formulaire d'inscription le créait : en attente, avec le mot de passe saisi, et le lien de confirmation
+     * d'adresse envoyé (l'inscription par la seule adresse ne pose plus de mot de passe, ADR 0020 amendé).
+     */
+    private function createPendingUserOfTheOldForm(string $email, string $password): void
+    {
+        $hasher = static::getContainer()->get(PasswordHasherFactoryInterface::class)->getPasswordHasher(User::class);
+        $user = new UserBuilder()->withEmail($email)->withPassword($hasher->hash($password))->isPending()->build();
+        static::getContainer()->get(UserRepository::class)->save($user);
+        static::getContainer()->get(EmailVerificationIssuer::class)->issueFor($user);
+        $this->collectEmails();
+        // Aucune requête ne vide ici le journal du mailer : on le fait, pour ne pas compter ce message une seconde fois
+        static::getContainer()->get('mailer.message_logger_listener')->reset();
     }
 
     private function createUser(string $email, bool $disabled = false, string $password = self::OLD_PASSWORD): void
