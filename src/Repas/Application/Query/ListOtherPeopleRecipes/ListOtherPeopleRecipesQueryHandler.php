@@ -22,6 +22,8 @@ final readonly class ListOtherPeopleRecipesQueryHandler
             $query->userId,
             min(max($query->limit, 1), ListOtherPeopleRecipesQuery::MAX_LIMIT),
             max($query->offset, 0),
+            // Un texte réduit à des espaces n'est pas une recherche : la liste entière, triée par catégorie
+            $query->search !== null && trim($query->search) !== '' ? $query->search : null,
         );
     }
 }

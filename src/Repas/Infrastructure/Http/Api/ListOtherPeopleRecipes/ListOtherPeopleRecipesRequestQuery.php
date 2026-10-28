@@ -13,6 +13,8 @@ final readonly class ListOtherPeopleRecipesRequestQuery
         public int $limit = ListOtherPeopleRecipesQuery::MAX_LIMIT,
         #[Assert\Range(min: 0, max: 1_000_000)]
         public int $offset = 0,
+        #[Assert\Length(max: 100)]
+        public ?string $q = null,
     ) {
     }
 }

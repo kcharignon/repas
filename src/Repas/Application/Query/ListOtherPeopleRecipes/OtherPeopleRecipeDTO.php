@@ -11,8 +11,10 @@ final readonly class OtherPeopleRecipeDTO
         public string $id,
         #[OA\Property(example: 'pâtes carbonara')]
         public string $name,
-        #[OA\Property(description: 'Nom du type de recette', example: 'plat')]
+        #[OA\Property(description: 'Nom du type de recette (la catégorie)', example: 'plat')]
         public string $typeName,
+        #[OA\Property(description: 'Identifiant stable du type de recette, pour grouper les recettes par catégorie', example: 'plat')]
+        public string $typeSlug,
     ) {
     }
 }

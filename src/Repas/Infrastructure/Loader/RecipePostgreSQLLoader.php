@@ -20,6 +20,8 @@ use Repas\Repas\Infrastructure\Entity\Recipe;
 use Repas\Repas\Infrastructure\Entity\RecipeRow;
 use Repas\Repas\Infrastructure\Entity\RecipeType;
 use Repas\Repas\Infrastructure\Entity\Unit;
+use Repas\Shared\Domain\Tool\SearchRelevance;
+use Repas\Shared\Domain\Tool\StringTool;
 
 final readonly class RecipePostgreSQLLoader implements RecipeLoader
 {
@@ -120,15 +122,25 @@ final readonly class RecipePostgreSQLLoader implements RecipeLoader
     }
 
     /**
-     * Une page de `$limit` recettes au plus, triées par slug puis par identifiant (le même ordre à chaque appel, deux recettes de même nom ne
-     * changent pas de page). Le nombre total n'est compté que si la page ne dit pas tout : une première page qui n'est pas pleine contient
+     * Une page de `$limit` recettes au plus. Le même ordre à chaque appel (deux recettes de même nom ne changent pas de page).
+     *
+     * Sans recherche : par catégorie (colonne `sequence` du type, l'ordre de `ListRecipeTypes`), puis par slug (le nom sans accent ni majuscule),
+     * puis par identifiant, en SQL. Le nombre total n'est compté que si la page ne dit pas tout : une première page qui n'est pas pleine contient
      * déjà toutes les recettes, le cas ordinaire coûte une seule requête.
+     *
+     * Avec une recherche : comme `IngredientPostgreSQLLoader::search()` (ADR 0019), le score de Jaro-Winkler n'existe pas en SQL ; une seule requête
+     * lit l'identifiant, le nom et la catégorie de TOUTES les recettes des autres, et la pertinence est calculée en PHP.
      */
-    public function listOfOtherPeople(string $userId, int $limit, int $offset): OtherPeopleRecipesDTO
+    public function listOfOtherPeople(string $userId, int $limit, int $offset, ?string $search = null): OtherPeopleRecipesDTO
     {
+        if ($search !== null) {
+            return $this->searchOfOtherPeople($userId, $limit, $offset, $search);
+        }
+
         $recipes = $this->otherPeopleQuery($userId)
-            ->select('r.id AS id', 'r.name AS name', 't.name AS typeName')
-            ->orderBy('r.slug', 'ASC')
+            ->select('r.id AS id', 'r.name AS name', 't.name AS typeName', 't.slug AS typeSlug')
+            ->orderBy('t.sequence', 'ASC')
+            ->addOrderBy('r.slug', 'ASC')
             ->addOrderBy('r.id', 'ASC')
             ->setFirstResult($offset)
             ->setMaxResults($limit)
@@ -139,13 +151,48 @@ final readonly class RecipePostgreSQLLoader implements RecipeLoader
             ? count($recipes)
             : (int) $this->otherPeopleQuery($userId)->select('COUNT(r.id)')->getQuery()->getSingleScalarResult();
 
+        return new OtherPeopleRecipesDTO(array_map(self::toDto(...), $recipes), $total);
+    }
+
+    /**
+     * Toutes catégories confondues, du plus pertinent au moins pertinent ; à pertinence égale par slug puis par identifiant. Un texte sans lettre
+     * ni chiffre ne trouve rien. Limite connue : toute recherche lit les noms de toutes les recettes des autres (ADR 0019, amendement).
+     */
+    private function searchOfOtherPeople(string $userId, int $limit, int $offset, string $search): OtherPeopleRecipesDTO
+    {
+        $needle = StringTool::slugify($search);
+        if ($needle === '') {
+            return new OtherPeopleRecipesDTO([], 0);
+        }
+
+        $rows = $this->otherPeopleQuery($userId)
+            ->select('r.id AS id', 'r.name AS name', 'r.slug AS slug', 't.name AS typeName', 't.slug AS typeSlug')
+            ->getQuery()
+            ->getArrayResult();
+
+        $scored = [];
+        foreach ($rows as $row) {
+            $score = SearchRelevance::score($needle, (string) $row['slug']);
+            if ($score >= SearchRelevance::MINIMUM) {
+                $scored[] = ['score' => $score, 'row' => $row];
+            }
+        }
+
+        // Ex æquo : par nom puis par identifiant, pour que deux appels (et deux pages) donnent le même ordre
+        usort($scored, static fn(array $a, array $b): int => [$b['score'], $a['row']['slug'], $a['row']['id']] <=> [$a['score'], $b['row']['slug'], $b['row']['id']]);
+
         return new OtherPeopleRecipesDTO(
-            array_map(
-                static fn(array $recipe): OtherPeopleRecipeDTO => new OtherPeopleRecipeDTO($recipe['id'], $recipe['name'], $recipe['typeName']),
-                $recipes,
-            ),
-            $total,
+            array_map(static fn(array $match): OtherPeopleRecipeDTO => self::toDto($match['row']), array_slice($scored, $offset, $limit)),
+            count($scored),
         );
+    }
+
+    /**
+     * @param array{id: string, name: string, typeName: string, typeSlug: string} $recipe
+     */
+    private static function toDto(array $recipe): OtherPeopleRecipeDTO
+    {
+        return new OtherPeopleRecipeDTO($recipe['id'], $recipe['name'], $recipe['typeName'], $recipe['typeSlug']);
     }
 
     /**

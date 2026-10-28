@@ -16,8 +16,8 @@ class ListOtherPeopleRecipesApiControllerTest extends QueryBusWebTestCase
         // Given
         $user = $this->savedUser();
         $this->queryBus->willReturn(ListOtherPeopleRecipesQuery::class, new OtherPeopleRecipesDTO([
-            new OtherPeopleRecipeDTO('recipe-1', 'pâtes carbonara', 'plat'),
-            new OtherPeopleRecipeDTO('recipe-2', 'tarte au citron', 'dessert'),
+            new OtherPeopleRecipeDTO('recipe-1', 'pâtes carbonara', 'plat', 'plat'),
+            new OtherPeopleRecipeDTO('recipe-2', 'tarte au citron', 'dessert', 'dessert'),
         ], 2));
 
         // When
@@ -27,11 +27,11 @@ class ListOtherPeopleRecipesApiControllerTest extends QueryBusWebTestCase
         $this->assertSame(200, $this->client->getResponse()->getStatusCode());
         $query = $this->queryBus->getLastAskedQuery();
         $this->assertInstanceOf(ListOtherPeopleRecipesQuery::class, $query);
-        $this->assertSame([$user->getId(), 200, 0], [$query->userId, $query->limit, $query->offset]);
+        $this->assertSame([$user->getId(), 200, 0, null], [$query->userId, $query->limit, $query->offset, $query->search]);
         $this->assertSame([
             'member' => [
-                ['id' => 'recipe-1', 'name' => 'pâtes carbonara', 'typeName' => 'plat'],
-                ['id' => 'recipe-2', 'name' => 'tarte au citron', 'typeName' => 'dessert'],
+                ['id' => 'recipe-1', 'name' => 'pâtes carbonara', 'typeName' => 'plat', 'typeSlug' => 'plat'],
+                ['id' => 'recipe-2', 'name' => 'tarte au citron', 'typeName' => 'dessert', 'typeSlug' => 'dessert'],
             ],
             'totalItems' => 2,
         ], $this->jsonBody());
@@ -40,7 +40,7 @@ class ListOtherPeopleRecipesApiControllerTest extends QueryBusWebTestCase
     public function testTotalItemsIsTheRealTotalEvenWhenThePageIsShorter(): void
     {
         // Given
-        $this->queryBus->willReturn(ListOtherPeopleRecipesQuery::class, new OtherPeopleRecipesDTO([new OtherPeopleRecipeDTO('recipe-1', 'omelette', 'plat')], 1234));
+        $this->queryBus->willReturn(ListOtherPeopleRecipesQuery::class, new OtherPeopleRecipesDTO([new OtherPeopleRecipeDTO('recipe-1', 'omelette', 'plat', 'plat')], 1234));
 
         // When
         $this->client->request('GET', '/api/v1/recipes/other-people', server: $this->bearerFor($this->savedUser()));
@@ -66,6 +66,33 @@ class ListOtherPeopleRecipesApiControllerTest extends QueryBusWebTestCase
         $this->assertSame([50, 100], [$query->limit, $query->offset]);
     }
 
+    public function testTransmitsTheSearchText(): void
+    {
+        // Given
+        $this->queryBus->willReturn(ListOtherPeopleRecipesQuery::class, new OtherPeopleRecipesDTO([], 0));
+
+        // When
+        $this->client->request('GET', '/api/v1/recipes/other-people?q=' . rawurlencode('pâte carbo') . '&limit=10', server: $this->bearerFor($this->savedUser()));
+
+        // Then
+        $this->assertSame(200, $this->client->getResponse()->getStatusCode());
+        $query = $this->queryBus->getLastAskedQuery();
+        $this->assertInstanceOf(ListOtherPeopleRecipesQuery::class, $query);
+        $this->assertSame(['pâte carbo', 10, 0], [$query->search, $query->limit, $query->offset]);
+    }
+
+    public function testAcceptsASearchOfExactlyAHundredCharacters(): void
+    {
+        // Given
+        $this->queryBus->willReturn(ListOtherPeopleRecipesQuery::class, new OtherPeopleRecipesDTO([], 0));
+
+        // When
+        $this->client->request('GET', '/api/v1/recipes/other-people?q=' . str_repeat('a', 100), server: $this->bearerFor($this->savedUser()));
+
+        // Then
+        $this->assertSame(200, $this->client->getResponse()->getStatusCode());
+    }
+
     /**
      * @return iterable<string, array{string}>
      */
@@ -78,6 +105,7 @@ class ListOtherPeopleRecipesApiControllerTest extends QueryBusWebTestCase
         yield 'décalage négatif' => ['offset=-1'];
         yield 'décalage démesuré' => ['offset=99999999'];
         yield 'décalage pas un nombre' => ['offset=abc'];
+        yield 'recherche de plus de cent caractères' => ['q=' . str_repeat('a', 101)];
     }
 
     #[DataProvider('invalidPages')]
