@@ -299,6 +299,57 @@ class ChoicePostgreSQLLoaderTest extends DatabaseTestCase
         $this->assertSame(['SELECT drive_choice' => 1, 'SELECT ingredient' => 1], $counter->byTable());
     }
 
+    public function testTwoAccountsThatAcceptTheSameProductEachListTheirOwnLabel(): void
+    {
+        // Given : la fiche commune dit « Farine T55 1 kg » ; Alice a lu un autre libellé (accepté) et un autre (refusé), Bob seulement le produit accepté, Chloé rien
+        foreach (['alice', 'bob', 'chloe'] as $userId) {
+            $this->settings->save(new DriveSettingsBuilder()->withUserId($userId)->build());
+        }
+        $this->products->saveAll([
+            new ProductBuilder()->withRetailerProductId('1')->withLabel('Farine T55 1 kg')->build(),
+            new ProductBuilder()->withRetailerProductId('2')->withLabel('Farine complète')->build(),
+        ]);
+        $this->choices->saveAll([
+            new ChoiceBuilder()->withUserId('alice')->withIngredientSlug('farine')->withAccepted([$this->id('1')])->withRejected([$this->id('2')])
+                ->withObservation($this->id('1'), 'Farine T55 – offre du jour', 159)->withObservation($this->id('2'), 'Farine complète – ancien libellé')->build(),
+            new ChoiceBuilder()->withUserId('bob')->withIngredientSlug('farine')->withAccepted([$this->id('1')])->withRejected([$this->id('2')])
+                ->withObservation($this->id('1'), 'Farine T55 – lot de 2')->build(),
+            new ChoiceBuilder()->withUserId('chloe')->withIngredientSlug('farine')->withAccepted([$this->id('1')])->withRejected([$this->id('2')])->build(),
+        ]);
+
+        // When
+        $labels = fn(string $userId): array => [
+            $this->loader()->list($userId, Retailer::LECLERC)[0]->accepted[0]->product->label,
+            $this->loader()->list($userId, Retailer::LECLERC)[0]->rejected[0]->label,
+        ];
+
+        // Then : sa ligne d'abord, la fiche commune en repli ; le reste d'un produit (identifiant, contenu) est celui de la fiche pour tous
+        $this->assertSame(['Farine T55 – offre du jour', 'Farine complète – ancien libellé'], $labels('alice'));
+        $this->assertSame(['Farine T55 – lot de 2', 'Farine complète'], $labels('bob'));
+        $this->assertSame(['Farine T55 1 kg', 'Farine complète'], $labels('chloe'));
+        $this->assertSame(['1', '1000'], [$this->loader()->list('alice', Retailer::LECLERC)[0]->accepted[0]->product->retailerProductId, (string) $this->loader()->list('alice', Retailer::LECLERC)[0]->accepted[0]->product->content->value]);
+    }
+
+    public function testTheLabelOfALineOrderTheRejectedProductsAndTheOwnPriceIsNeverListed(): void
+    {
+        // Given : deux produits refusés dont l'ordre dépend du libellé du compte ; la ligne acceptée a aussi un prix à elle
+        $this->settings->save(new DriveSettingsBuilder()->withUserId('user-1')->build());
+        $this->products->saveAll([
+            new ProductBuilder()->withRetailerProductId('1')->withLabel('A fiche')->build(),
+            new ProductBuilder()->withRetailerProductId('2')->withLabel('B fiche')->build(),
+            new ProductBuilder()->withRetailerProductId('3')->withLabel('Produit')->build(),
+        ]);
+        $this->choices->save(new ChoiceBuilder()->withUserId('user-1')->withIngredientSlug('farine')->withAccepted([$this->id('3')])->withRejected([$this->id('1'), $this->id('2')])
+            ->withObservation($this->id('1'), 'Z compte')->withObservation($this->id('2'), 'C compte')->withObservation($this->id('3'), 'Produit du compte', 149)->build());
+
+        // When
+        $result = $this->loader()->list('user-1', Retailer::LECLERC);
+
+        // Then : les refusés sont rangés par le libellé du compte ; la réponse ne change pas de forme (pas de prix)
+        $this->assertSame(['C compte', 'Z compte'], array_map(static fn(ChoiceProductDTO $product): string => $product->label, $result[0]->rejected));
+        $this->assertSame(['productId', 'retailerProductId', 'ean', 'label', 'content', 'packSize'], array_keys(get_object_vars($result[0]->accepted[0]->product)));
+    }
+
     /**
      * @param array<string, string> $names
      */

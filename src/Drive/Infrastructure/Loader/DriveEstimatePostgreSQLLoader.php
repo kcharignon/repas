@@ -31,7 +31,8 @@ use Repas\Shared\Domain\Model\Dimension;
  * Quatre requêtes au plus, quelle que soit la taille de la liste : les réglages, la liste avec ses lignes (port `Shared`, deux
  * requêtes), puis les préférences du magasin courant pour les ingrédients de la liste avec le prix des produits acceptés. Le
  * calcul (statuts, total, couverture) est celui du service de domaine `ListCostEstimator` ; ici on ne fait que lire et mettre en
- * forme. Seuls les produits des préférences de l'utilisateur sont lus (décision D22).
+ * forme. Seuls les produits des préférences de l'utilisateur sont lus (décision D22). Le libellé et le prix sont ceux que le compte a
+ * lui-même observés (sa ligne de produit) ; la fiche commune ne sert que de repli à une ligne qui n'a pas les siens.
  */
 final readonly class DriveEstimatePostgreSQLLoader implements DriveEstimateLoader
 {
@@ -99,11 +100,16 @@ final readonly class DriveEstimatePostgreSQLLoader implements DriveEstimateLoade
             ->select(
                 'c.ingredientSlug AS slug',
                 'c.kind AS kind',
-                'p.label AS label',
+                'p.id AS productId',
+                // Les valeurs de la ligne du compte d'abord, la fiche commune en repli : le libellé en SQL, le prix avec sa date par paire
+                // (jamais le prix d'un côté et la date de l'autre) dans `product()`
+                'COALESCE(cp.label, p.label) AS label',
                 'p.contentValue AS contentValue',
                 'p.contentUnit AS contentUnit',
-                'p.priceCents AS priceCents',
-                'p.priceSeenAt AS priceSeenAt',
+                'cp.priceCents AS ownPriceCents',
+                'cp.priceSeenAt AS ownPriceSeenAt',
+                'p.priceCents AS sharedPriceCents',
+                'p.priceSeenAt AS sharedPriceSeenAt',
                 'cp.packSizeValue AS packSizeValue',
                 'cp.packSizeUnitSlug AS packSizeUnitSlug',
             )
@@ -126,7 +132,7 @@ final readonly class DriveEstimatePostgreSQLLoader implements DriveEstimateLoade
         $choices = [];
         foreach ($rows as $row) {
             $choices[$row['slug']] ??= ['haveAtHome' => $row['kind'] === ChoiceKind::HAVE_AT_HOME->value, 'product' => null];
-            if ($choices[$row['slug']]['product'] === null && $row['label'] !== null) {
+            if ($choices[$row['slug']]['product'] === null && $row['productId'] !== null) {
                 $choices[$row['slug']]['product'] = $this->product($row);
             }
         }
@@ -139,11 +145,16 @@ final readonly class DriveEstimatePostgreSQLLoader implements DriveEstimateLoade
      */
     private function product(array $row): PreferredProduct
     {
+        // Le prix que le compte a lui-même observé (avec sa date), sinon celui de la fiche commune (avec la sienne) : les deux vont ensemble
+        $own = $row['ownPriceCents'] !== null && $row['ownPriceSeenAt'] instanceof DateTimeImmutable;
+        $priceCents = $own ? $row['ownPriceCents'] : $row['sharedPriceCents'];
+        $priceSeenAt = $own ? $row['ownPriceSeenAt'] : $row['sharedPriceSeenAt'];
+
         return new PreferredProduct(
             label: $row['label'],
             content: $row['contentValue'] === null ? null : new ProductContent((float) $row['contentValue'], ContentUnit::from($row['contentUnit'])),
-            price: $row['priceCents'] === null ? null : new ProductPrice($row['priceCents']),
-            priceSeenAt: $row['priceSeenAt'] instanceof DateTimeImmutable ? $row['priceSeenAt'] : null,
+            price: $priceCents === null ? null : new ProductPrice($priceCents),
+            priceSeenAt: $priceSeenAt instanceof DateTimeImmutable ? $priceSeenAt : null,
             // La contenance donnée par la personne pour ce produit, dans l'unité de la liste (DRV-652) : la même règle que le plan
             packSize: $row['packSizeValue'] === null || $row['packSizeUnitSlug'] === null ? null : PackSize::load((float) $row['packSizeValue'], $row['packSizeUnitSlug']),
         );

@@ -311,6 +311,82 @@ class DriveEstimatePostgreSQLLoaderTest extends DatabaseTestCase
         $this->assertSame(4, $counter->count());
     }
 
+    public function testTwoAccountsThatAcceptTheSameProductEachEstimateWithTheirOwnLabelAndPrice(): void
+    {
+        // Given : la fiche commune dit 1,49 € ; Alice a lu 1,59 € le 12 octobre, Bob 1,29 € le 18 ; Chloé n'a rien de propre à sa ligne
+        foreach (['alice', 'bob', 'chloe'] as $userId) {
+            $this->settings->save(new DriveSettingsBuilder()->withUserId($userId)->build());
+        }
+        $this->products->save(new ProductBuilder()->withRetailerProductId('1')->withLabel('Farine T55 1 kg')->withContent(new ProductContent(1, ContentUnit::KG))->withPrice(149, seenAt: new DateTimeImmutable('2026-10-01 08:00:00'))->build());
+        $this->choices->saveAll([
+            new ChoiceBuilder()->withUserId('alice')->withIngredientSlug('farine')->withAccepted([$this->id('1')])->withObservation($this->id('1'), 'Farine T55 – offre', 159, new DateTimeImmutable('2026-10-12 09:30:00'))->build(),
+            new ChoiceBuilder()->withUserId('bob')->withIngredientSlug('farine')->withAccepted([$this->id('1')])->withObservation($this->id('1'), 'Farine T55 – lot', 129, new DateTimeImmutable('2026-10-18 10:00:00'))->build(),
+            new ChoiceBuilder()->withUserId('chloe')->withIngredientSlug('farine')->withAccepted([$this->id('1')])->build(),
+        ]);
+        $lines = [new ShoppingListLineForDrive('farine', 'Farine', 2, 'kilo', 'kilo', 'kg', 'WEIGHT', 1000.0)];
+
+        // When
+        $alice = $this->loader($this->list('alice', $lines))->get('alice', 'list-1');
+        $bob = $this->loader($this->list('bob', $lines))->get('bob', 'list-1');
+        $chloe = $this->loader($this->list('chloe', $lines))->get('chloe', 'list-1');
+
+        // Then : chacun son libellé, son prix et sa date ; Chloé, sans valeur à elle, retombe sur la fiche commune
+        $this->assertSame(['Farine T55 – offre', 159, 318, new DateTimeImmutable('2026-10-12 09:30:00')->format(DATE_ATOM)], $this->lineOf($alice));
+        $this->assertSame(['Farine T55 – lot', 129, 258, new DateTimeImmutable('2026-10-18 10:00:00')->format(DATE_ATOM)], $this->lineOf($bob));
+        $this->assertSame(['Farine T55 1 kg', 149, 298, new DateTimeImmutable('2026-10-01 08:00:00')->format(DATE_ATOM)], $this->lineOf($chloe));
+        $this->assertSame([318, 258, 298], [$alice->estimatedTotalCents, $bob->estimatedTotalCents, $chloe->estimatedTotalCents]);
+    }
+
+    public function testThePriceAndItsDateAlwaysComeFromTheSameSide(): void
+    {
+        // Given : la ligne n'a qu'un libellé à elle, la fiche commune a un prix daté ; une autre ligne a un prix à elle, la fiche aucun
+        $this->settings->save(new DriveSettingsBuilder()->withUserId('user-1')->build());
+        $this->products->saveAll([
+            new ProductBuilder()->withRetailerProductId('1')->withLabel('Farine')->withPrice(149, seenAt: new DateTimeImmutable('2026-10-01 08:00:00'))->build(),
+            new ProductBuilder()->withRetailerProductId('2')->withLabel('Sucre')->build(),
+        ]);
+        $this->choices->saveAll([
+            new ChoiceBuilder()->withUserId('user-1')->withIngredientSlug('farine')->withAccepted([$this->id('1')])->withObservation($this->id('1'), 'Farine du compte')->build(),
+            new ChoiceBuilder()->withUserId('user-1')->withIngredientSlug('sucre')->withAccepted([$this->id('2')])->withObservation($this->id('2'), null, 99, new DateTimeImmutable('2026-10-20 08:00:00'))->build(),
+        ]);
+        $list = $this->list('user-1', [
+            new ShoppingListLineForDrive('farine', 'Farine', 1, 'paquet', 'paquet', 'paquet', 'PACKAGE', 1.0),
+            new ShoppingListLineForDrive('sucre', 'Sucre', 1, 'paquet', 'paquet', 'paquet', 'PACKAGE', 1.0),
+        ]);
+
+        // When
+        $estimate = $this->loader($list)->get('user-1', 'list-1');
+
+        // Then : farine = libellé du compte, prix et date de la fiche ; sucre = libellé de la fiche, prix et date du compte
+        $this->assertSame(['Farine du compte', 149, 149, new DateTimeImmutable('2026-10-01 08:00:00')->format(DATE_ATOM)], $this->lineOf($estimate, 0));
+        $this->assertSame(['Sucre', 99, 99, new DateTimeImmutable('2026-10-20 08:00:00')->format(DATE_ATOM)], $this->lineOf($estimate, 1));
+    }
+
+    public function testALineWithOwnValuesIsEstimatedEvenWhenTheCommonSheetHasNoPrice(): void
+    {
+        // Given : la fiche commune n'a jamais eu de prix
+        $this->settings->save(new DriveSettingsBuilder()->withUserId('user-1')->build());
+        $this->products->save(new ProductBuilder()->withRetailerProductId('1')->build());
+        $this->choices->save(new ChoiceBuilder()->withUserId('user-1')->withIngredientSlug('farine')->withAccepted([$this->id('1')])->withObservation($this->id('1'), 'Farine', 149)->build());
+        $list = $this->list('user-1', [new ShoppingListLineForDrive('farine', 'Farine', 1, 'paquet', 'paquet', 'paquet', 'PACKAGE', 1.0)]);
+
+        // When
+        $estimate = $this->loader($list)->get('user-1', 'list-1');
+
+        // Then
+        $this->assertSame(['ESTIMATED', 149], [$estimate->lines[0]->status, $estimate->estimatedTotalCents]);
+    }
+
+    /**
+     * @return array{?string, ?int, ?int, ?string} libellé du produit, prix à l'unité, sous-total et date du prix d'une ligne de l'estimation
+     */
+    private function lineOf(DriveEstimateDTO $estimate, int $index = 0): array
+    {
+        $line = $estimate->lines[$index];
+
+        return [$line->productLabel, $line->unitPriceCents, $line->subtotalCents, $line->priceSeenAt];
+    }
+
     /**
      * @param list<ShoppingListLineForDrive> $lines
      */

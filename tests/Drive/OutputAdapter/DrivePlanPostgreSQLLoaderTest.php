@@ -560,6 +560,70 @@ class DrivePlanPostgreSQLLoaderTest extends DatabaseTestCase
         $this->assertSame(2, $counter->count());
     }
 
+    public function testTwoAccountsThatAcceptTheSameProductEachGetTheirOwnLabelInThePlan(): void
+    {
+        // Given : la fiche commune dit « Farine T55 1 kg » ; Alice et Bob ont chacun lu un autre libellé ; Chloé n'a rien de propre à sa ligne
+        foreach (['alice', 'bob', 'chloe'] as $userId) {
+            $this->settings->save(new DriveSettingsBuilder()->withUserId($userId)->build());
+        }
+        $this->products->saveAll([
+            new ProductBuilder()->withRetailerProductId('1')->withLabel('Farine T55 1 kg')->build(),
+            new ProductBuilder()->withRetailerProductId('2')->withLabel('Farine complète')->build(),
+        ]);
+        $this->choices->saveAll([
+            new ChoiceBuilder()->withUserId('alice')->withIngredientSlug('farine')->withAccepted([$this->id('1')])->withRejected([$this->id('2')])
+                ->withObservation($this->id('1'), 'Farine T55 – offre du jour')->withObservation($this->id('2'), 'Farine complète – ancien libellé')->build(),
+            new ChoiceBuilder()->withUserId('bob')->withIngredientSlug('farine')->withAccepted([$this->id('1')])->withRejected([$this->id('2')])
+                ->withObservation($this->id('1'), 'Farine T55 – lot de 2')->build(),
+            new ChoiceBuilder()->withUserId('chloe')->withIngredientSlug('farine')->withAccepted([$this->id('1')])->withRejected([$this->id('2')])->build(),
+        ]);
+        $lines = [new ShoppingListLineForDrive('farine', 'Farine', 300, 'gramme', 'gramme', 'g', 'WEIGHT', 1.0)];
+
+        // When
+        $alice = $this->loader($this->sentList('alice', $lines))->get('alice', 'list-1')->lines[0];
+        $bob = $this->loader($this->sentList('bob', $lines))->get('bob', 'list-1')->lines[0];
+        $chloe = $this->loader($this->sentList('chloe', $lines))->get('chloe', 'list-1')->lines[0];
+
+        // Then : le libellé du produit accepté et celui du produit refusé sont ceux de la ligne du compte, la fiche en repli seulement
+        $this->assertSame(['Farine T55 – offre du jour', 'Farine complète – ancien libellé'], [$alice->products[0]->label, $alice->rejected[0]->label]);
+        $this->assertSame(['Farine T55 – lot de 2', 'Farine complète'], [$bob->products[0]->label, $bob->rejected[0]->label]);
+        $this->assertSame(['Farine T55 1 kg', 'Farine complète'], [$chloe->products[0]->label, $chloe->rejected[0]->label]);
+        // Le reste d'une ligne de produit est un fait public de la fiche : le même pour tous
+        $this->assertSame(['1', 1000.0], [$alice->products[0]->retailerProductId, $alice->products[0]->content->value]);
+    }
+
+    public function testTheRejectedProductsOfALineAreListedByTheLabelOfTheLine(): void
+    {
+        // Given : deux produits refusés dont l'ordre dépend du libellé du compte (celui de la fiche les rangerait à l'envers)
+        $this->settings->save(new DriveSettingsBuilder()->withUserId('user-1')->build());
+        $this->products->saveAll([new ProductBuilder()->withRetailerProductId('1')->withLabel('A fiche')->build(), new ProductBuilder()->withRetailerProductId('2')->withLabel('B fiche')->build()]);
+        $this->choices->save(new ChoiceBuilder()->withUserId('user-1')->withIngredientSlug('farine')->withRejected([$this->id('1'), $this->id('2')])
+            ->withObservation($this->id('1'), 'Z compte')->withObservation($this->id('2'), 'C compte')->build());
+
+        // When
+        $line = $this->loader($this->sentList('user-1', [new ShoppingListLineForDrive('farine', 'Farine', 300, 'gramme', 'gramme', 'g', 'WEIGHT', 1.0)]))->get('user-1', 'list-1')->lines[0];
+
+        // Then
+        $this->assertSame(['C compte', 'Z compte'], array_map(static fn(DrivePlanRejectedDTO $rejected): string => $rejected->label, $line->rejected));
+    }
+
+    public function testTheValuesOfTheAccountCostNoQueryMore(): void
+    {
+        // Given
+        $this->settings->save(new DriveSettingsBuilder()->withUserId('user-1')->build());
+        $this->products->save(new ProductBuilder()->withRetailerProductId('1')->build());
+        $this->choices->save(new ChoiceBuilder()->withUserId('user-1')->withIngredientSlug('farine')->withAccepted([$this->id('1')])->withObservation($this->id('1'), 'Farine du compte', 149)->build());
+        $list = $this->sentList('user-1', [new ShoppingListLineForDrive('farine', 'Farine', 300, 'gramme', 'gramme', 'g', 'WEIGHT', 1.0)]);
+        $counter = static::getContainer()->get(QueryCounter::class);
+        $counter->reset();
+
+        // When
+        $this->loader($list)->get('user-1', 'list-1');
+
+        // Then : les réglages et les préférences avec leurs produits, comme avant
+        $this->assertSame(2, $counter->count());
+    }
+
     /**
      * Ce rayon de l'enseigne est choisi, pour ce rayon de Repas, par ce nombre de comptes (chacun a un vote).
      */
