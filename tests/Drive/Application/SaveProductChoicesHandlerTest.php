@@ -23,6 +23,7 @@ use Repas\Drive\Domain\Model\PricePerMeasure;
 use Repas\Drive\Domain\Model\PriceUnit;
 use Repas\Drive\Domain\Model\Product;
 use Repas\Drive\Domain\Model\ProductContent;
+use Repas\Drive\Domain\Model\ProductObservation;
 use Repas\Drive\Domain\Model\ProductPrice;
 use Repas\Drive\Domain\Model\Retailer;
 use Repas\Drive\Domain\Model\SearchQuery;
@@ -1538,6 +1539,211 @@ class SaveProductChoicesHandlerTest extends TestCase
         $this->assertCount(1, $this->unitSlugs->existingSlugsCalls);
         $this->assertSame([40], $this->choices->saveAllSizes);
         $this->assertEquals(PackSize::of(7, 'tranche'), $this->packSize('user-1', 'ingredient-7', '7'));
+    }
+
+    public function testTheLabelAndThePriceAreWrittenOnTheLineOfTheAccount(): void
+    {
+        // When
+        $this->save('user-1', [$this->add('farine', Placement::PRIMARY, '555111', 'Farine T55 1 kg', price: new ProductPrice(149))]);
+
+        // Then : la ligne du compte porte ce que le compte a lu, avec la date de la lecture
+        $line = $this->observation('user-1', 'farine', '555111');
+        $this->assertSame(['Farine T55 1 kg', 149], [$line->label, $line->priceCents]);
+        $this->assertEquals($this->now, $line->priceSeenAt);
+    }
+
+    public function testTwoAccountsThatAcceptTheSameProductKeepTheirOwnLabelAndPrice(): void
+    {
+        // Given : le premier compte fixe la fiche commune
+        $this->save('user-1', [$this->add('farine', Placement::PRIMARY, '555111', 'Farine T55 1 kg', price: new ProductPrice(149))]);
+
+        // When : le second compte accepte le même produit, tel qu'il l'a lu de son côté
+        $later = new DateTimeImmutable('2026-10-20 08:00:00');
+        $this->handler = new SaveProductChoicesHandler($this->settings, $this->products, $this->choices, $this->rayonVotes, $this->ingredientDepartments, $this->unitSlugs, new IngredientAliasInMemoryResolver(), new UuidGenerator(), new FrozenClock($later));
+        $this->save('user-2', [$this->add('semoule', Placement::PRIMARY, '555111', 'Farine T55 – lot de 2', price: new ProductPrice(159))]);
+
+        // Then : chacun garde le sien
+        $first = $this->observation('user-1', 'farine', '555111');
+        $second = $this->observation('user-2', 'semoule', '555111');
+        $this->assertSame(['Farine T55 1 kg', 149], [$first->label, $first->priceCents]);
+        $this->assertEquals($this->now, $first->priceSeenAt);
+        $this->assertSame(['Farine T55 – lot de 2', 159], [$second->label, $second->priceCents]);
+        $this->assertEquals($later, $second->priceSeenAt);
+        // La fiche commune garde son rôle de repli : créée par le premier compte, ni libellé ni prix réécrits par le second
+        $this->assertCount(1, $this->products->all());
+        $this->assertSame(['Farine T55 1 kg', 149], [$this->products->all()[0]->getLabel(), $this->products->all()[0]->getPrice()->cents]);
+    }
+
+    public function testAKnownFicheDoesNotKeepTheAccountFromWritingItsOwnValues(): void
+    {
+        // Given : une fiche connue, avec un libellé et un prix
+        $this->products->save(new ProductBuilder()->withRetailerProductId('555111')->withLabel('Farine T55')->withPrice(149)->build());
+
+        // When : un compte qui n'accepte pas encore ce produit le lit avec un autre libellé et un autre prix
+        $this->save('user-2', [$this->add('farine', Placement::PRIMARY, '555111', 'Farine T55 nouveau libellé', price: new ProductPrice(199))]);
+
+        // Then : sa ligne a les siens ; la fiche, premier écrivain gagnant, ne bouge pas
+        $line = $this->observation('user-2', 'farine', '555111');
+        $this->assertSame(['Farine T55 nouveau libellé', 199], [$line->label, $line->priceCents]);
+        $this->assertSame(['Farine T55', 149], [$this->products->all()[0]->getLabel(), $this->products->all()[0]->getPrice()->cents]);
+    }
+
+    public function testAddingTheProductAgainWithoutPriceKeepsThePriceOfTheLineAndANewLabelReplacesTheOldOne(): void
+    {
+        // Given
+        $this->save('user-1', [$this->add('farine', Placement::PRIMARY, '555111', 'Farine', price: new ProductPrice(149))]);
+        $later = new DateTimeImmutable('2026-10-20 08:00:00');
+        $this->handler = new SaveProductChoicesHandler($this->settings, $this->products, $this->choices, $this->rayonVotes, $this->ingredientDepartments, $this->unitSlugs, new IngredientAliasInMemoryResolver(), new UuidGenerator(), new FrozenClock($later));
+
+        // When : le produit est revu, sans prix lu cette fois
+        $this->save('user-1', [$this->add('farine', Placement::FALLBACK, '555111', 'Farine T55 1 kg')]);
+
+        // Then
+        $line = $this->observation('user-1', 'farine', '555111');
+        $this->assertSame(['Farine T55 1 kg', 149], [$line->label, $line->priceCents]);
+        $this->assertEquals($this->now, $line->priceSeenAt);
+
+        // When : revu avec un prix
+        $this->save('user-1', [$this->add('farine', Placement::FALLBACK, '555111', 'Farine T55 1 kg', price: new ProductPrice(159))]);
+
+        // Then
+        $this->assertSame(159, $this->observation('user-1', 'farine', '555111')->priceCents);
+        $this->assertEquals($later, $this->observation('user-1', 'farine', '555111')->priceSeenAt);
+    }
+
+    public function testAProductReadWithoutPriceHasALabelOnItsLineAndNoPrice(): void
+    {
+        // When
+        $this->save('user-1', [$this->add('farine', Placement::PRIMARY, '555111', 'Farine')]);
+
+        // Then : le prix de la ligne reste vide (la lecture retombe sur la fiche commune)
+        $line = $this->observation('user-1', 'farine', '555111');
+        $this->assertSame('Farine', $line->label);
+        $this->assertNull($line->priceCents);
+        $this->assertNull($line->priceSeenAt);
+    }
+
+    public function testARejectedProductKeepsItsLabelOnItsLineAndNeverAPrice(): void
+    {
+        // When
+        $this->save('user-1', [$this->reject('farine', '555111', 'Farine complète bio 1 kg')]);
+
+        // Then
+        $line = $this->observation('user-1', 'farine', '555111');
+        $this->assertSame('Farine complète bio 1 kg', $line->label);
+        $this->assertNull($line->priceCents);
+    }
+
+    public function testRefreshingThePriceChangesOnlyTheLineOfTheAccountThatReadIt(): void
+    {
+        // Given : deux comptes acceptent le même produit, chacun avec son prix
+        $this->save('user-1', [$this->add('farine', Placement::PRIMARY, '555111', 'Farine', price: new ProductPrice(149))]);
+        $this->save('user-2', [$this->add('farine', Placement::PRIMARY, '555111', 'Farine', price: new ProductPrice(159))]);
+        $before = $this->choices->findOne('user-1', Retailer::LECLERC, self::STORE, 'farine')->getUpdatedAt();
+        $later = new DateTimeImmutable('2026-10-20 08:00:00');
+        $this->handler = new SaveProductChoicesHandler($this->settings, $this->products, $this->choices, $this->rayonVotes, $this->ingredientDepartments, $this->unitSlugs, new IngredientAliasInMemoryResolver(), new UuidGenerator(), new FrozenClock($later));
+
+        // When : le premier compte relit le prix
+        $this->save('user-1', [$this->refresh('farine', '555111', new ProductPrice(179))]);
+
+        // Then : sa ligne change (le libellé reste), la préférence garde sa date, l'autre compte ne voit rien bouger
+        $first = $this->observation('user-1', 'farine', '555111');
+        $this->assertSame(['Farine', 179], [$first->label, $first->priceCents]);
+        $this->assertEquals($later, $first->priceSeenAt);
+        $this->assertEquals($before, $this->choices->findOne('user-1', Retailer::LECLERC, self::STORE, 'farine')->getUpdatedAt());
+        $second = $this->observation('user-2', 'farine', '555111');
+        $this->assertSame(159, $second->priceCents);
+        $this->assertEquals($this->now, $second->priceSeenAt);
+    }
+
+    public function testRefreshingThePriceOfALineWithoutValuesOfItsOwnCreatesNoLabel(): void
+    {
+        // Given : une ligne enregistrée avant que les comptes gardent leurs valeurs (aucune observation)
+        $this->products->save(new ProductBuilder()->withRetailerProductId('555111')->withLabel('Farine')->withPrice(100)->build());
+        $this->choices->save(new ChoiceBuilder()->withUserId('user-1')->withIngredientSlug('farine')->withAccepted([$this->productId('555111')])->build());
+
+        // When
+        $this->save('user-1', [$this->refresh('farine', '555111', new ProductPrice(179))]);
+
+        // Then : le prix est sur la ligne, le libellé reste celui de la fiche (la ligne n'en invente pas)
+        $line = $this->observation('user-1', 'farine', '555111');
+        $this->assertSame([null, 179], [$line->label, $line->priceCents]);
+    }
+
+    public function testNothingIsWrittenOnALineForAPriceOfAProductTheAccountDoesNotAccept(): void
+    {
+        // Given : le produit 2 est refusé, le produit 3 n'est dans aucune préférence du compte
+        $this->products->saveAll([new ProductBuilder()->withRetailerProductId('2')->build(), new ProductBuilder()->withRetailerProductId('3')->build()]);
+        $this->choices->save(new ChoiceBuilder()->withUserId('user-1')->withIngredientSlug('farine')->withRejected([$this->productId('2')])->build());
+        $this->choices->saveAllSizes = [];
+
+        // When
+        $this->save('user-1', [$this->refresh('farine', '2', new ProductPrice(999)), $this->refresh('farine', '3', new ProductPrice(999)), $this->refresh('farine', '404', new ProductPrice(999))]);
+
+        // Then : aucune préférence n'est réécrite
+        $this->assertSame(0, array_sum($this->choices->saveAllSizes));
+        $this->assertNull($this->choices->findOne('user-1', Retailer::LECLERC, self::STORE, 'farine')->getObservation($this->productId('2')));
+    }
+
+    public function testHavingItAtHomeErasesTheValuesOfTheLines(): void
+    {
+        // Given
+        $this->save('user-1', [$this->add('farine', Placement::PRIMARY, '1', 'Farine', price: new ProductPrice(149)), $this->reject('farine', '2', 'Semoule')]);
+
+        // When
+        $this->save('user-1', [new ChoiceIntent('farine', ChoiceAction::HAVE_AT_HOME)]);
+
+        // Then
+        $choice = $this->choices->findOne('user-1', Retailer::LECLERC, self::STORE, 'farine');
+        $this->assertNull($choice->getObservation($this->productId('1')));
+        $this->assertNull($choice->getObservation($this->productId('2')));
+    }
+
+    public function testTheValuesBelongToTheUserTheStoreAndTheIngredientOfTheLine(): void
+    {
+        // Given
+        $this->save('user-1', [$this->add('farine', Placement::PRIMARY, '1', 'Farine', price: new ProductPrice(149))]);
+
+        // When : un autre ingrédient du même compte, un autre compte
+        $this->save('user-1', [$this->add('semoule', Placement::PRIMARY, '1', 'Semoule fine', price: new ProductPrice(199))]);
+        $this->save('user-2', [$this->add('farine', Placement::PRIMARY, '1', 'Farine bio', price: new ProductPrice(249))]);
+
+        // Then : trois lignes, trois jeux de valeurs
+        $this->assertSame(['Farine', 149], [$this->observation('user-1', 'farine', '1')->label, $this->observation('user-1', 'farine', '1')->priceCents]);
+        $this->assertSame(['Semoule fine', 199], [$this->observation('user-1', 'semoule', '1')->label, $this->observation('user-1', 'semoule', '1')->priceCents]);
+        $this->assertSame(['Farine bio', 249], [$this->observation('user-2', 'farine', '1')->label, $this->observation('user-2', 'farine', '1')->priceCents]);
+    }
+
+    public function testABatchThatOnlyRefreshesPricesWritesTheChoicesOnceWhateverItsSize(): void
+    {
+        // Given : 30 ingrédients acceptés, chacun avec un produit
+        $intents = array_map(fn(int $i): ChoiceIntent => $this->add("ingredient-$i", Placement::PRIMARY, (string) $i, "Produit $i", price: new ProductPrice(100 + $i)), range(1, 30));
+        $this->save('user-1', $intents);
+        $this->choices->saveAllSizes = [];
+        $this->choices->findByUserStoreAndSlugsCalls = 0;
+
+        // When : le lot ne fait que rafraîchir des prix
+        $this->save('user-1', array_map(fn(int $i): ChoiceIntent => $this->refresh("ingredient-$i", (string) $i, new ProductPrice(200 + $i)), range(1, 30)));
+
+        // Then : une lecture et une écriture des préférences pour tout le lot
+        $this->assertSame(1, $this->choices->findByUserStoreAndSlugsCalls);
+        $this->assertSame([30], $this->choices->saveAllSizes);
+        $this->assertSame(207, $this->observation('user-1', 'ingredient-7', '7')->priceCents);
+    }
+
+    public function testALabelRefusedForTheCommonSheetIsRefusedForTheLineToo(): void
+    {
+        // When : un libellé qui porte un caractère invisible
+        $this->assertInvalid(fn() => $this->save('user-1', [$this->add('farine', Placement::PRIMARY, '1', "Farine\u{200B}T55")]));
+
+        // Then : rien n'est enregistré, ni préférence ni fiche
+        $this->assertSame([], $this->choices->all());
+        $this->assertSame([], $this->products->all());
+    }
+
+    private function observation(string $userId, string $slug, string $retailerProductId): ProductObservation
+    {
+        return $this->choices->findOne($userId, Retailer::LECLERC, self::STORE, $slug)->getObservation($this->productId($retailerProductId));
     }
 
     private function addWithSize(string $slug, Placement $placement, string $retailerProductId, PackSizeChange $packSize): ChoiceIntent

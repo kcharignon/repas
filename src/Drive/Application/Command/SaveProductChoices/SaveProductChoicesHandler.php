@@ -50,6 +50,14 @@ readonly class SaveProductChoicesHandler
      * Un choix ne s'enregistre que sur un ingrédient de l'utilisateur (`IngredientAliasResolver::resolveOwned()`, la même lecture que la
      * traduction des anciens slugs) : si un seul slug du lot n'en est pas un, `ingredientNotFound()` et rien n'est écrit.
      *
+     * **Valeurs propres au compte** : le libellé et le prix que le compte vient de lire (`ADD_PRODUCT`, `REJECT_PRODUCT` : le libellé ;
+     * `ADD_PRODUCT` : aussi le prix ; `REFRESH_PRICE` : le prix) sont écrits sur SA ligne de produit (`Choice::observe()`,
+     * `Choice::observePrice()`), quel que soit ce que la fiche commune connaît déjà : chaque compte garde ce qu'il a lui-même observé, la
+     * fiche commune (créée ou complétée comme ci-dessus) ne sert que de valeur de repli aux lignes qui n'ont pas les leurs. Un prix
+     * rafraîchi n'enregistre que la ligne (la date de la préférence ne bouge pas). Les valeurs voyagent avec la réécriture des lignes de
+     * produits, déjà faite pour chaque préférence écrite : aucune requête de plus, sauf pour un lot qui ne fait que rafraîchir des prix,
+     * dont les préférences sont maintenant enregistrées (les trois requêtes habituelles, quel que soit le nombre de préférences).
+     *
      * **Recherche mémorisée (DRV-650)** : un `ADD_PRODUCT` peut porter le texte qui a fait trouver le produit sur le site de l'enseigne
      * (`SearchQueryChange`) ; il est mémorisé sur la préférence, sous la clé (utilisateur, enseigne, magasin, ingrédient) et nulle
      * part ailleurs. Intention sans recherche : celle qui est mémorisée est gardée ; recherche effacée explicitement : elle est
@@ -123,9 +131,15 @@ readonly class SaveProductChoicesHandler
 
             if ($intent->action === ChoiceAction::REFRESH_PRICE) {
                 $product = $products[$input->retailerProductId] ?? null;
+                $choice = $choices[$slug] ?? null;
                 // Un prix ne se rafraîchit que pour un produit que l'utilisateur accepte pour cet ingrédient
-                if ($product !== null && ($choices[$slug] ?? null)?->isAccepted($product->getId())) {
+                if ($product !== null && $choice?->isAccepted($product->getId())) {
+                    // Le prix que CE compte vient de lire va sur sa ligne (celui que lisent son estimation et son plan) ; la fiche commune
+                    // garde sa dernière observation, valeur de repli des lignes qui n'ont pas la leur. La préférence, elle, ne change pas
+                    // (sa date non plus) : seule la valeur de la ligne est enregistrée
                     $changedProducts[$input->retailerProductId] = $product->seePrice($input->price, $now);
+                    $touchedChoices[$slug] ??= $choice;
+                    $choice->observePrice($product->getId(), $input->price, $now);
                 }
                 continue;
             }
@@ -143,6 +157,11 @@ readonly class SaveProductChoicesHandler
                 // Seule la recherche change (ci-dessous) : les produits acceptés et refusés restent tels quels
                 ChoiceAction::NOTE_SEARCH => $choice,
             };
+            if ($input?->label !== null) {
+                // Le libellé et le prix que CE compte vient de lire vont sur sa ligne de produit (accepté ou refusé), jamais ailleurs : la
+                // fiche commune n'est que le repli des lignes qui n'ont pas les leurs. Sans prix lu, celui que la ligne avait reste
+                $choice->observe($productId, $input->label, $input->price, $now);
+            }
             // Après l'ajout : la préférence est alors une préférence de produits. Clé absente : la recherche mémorisée est gardée
             $intent->searchQuery?->applyTo($choice);
             if ($intent->action === ChoiceAction::ADD_PRODUCT) {

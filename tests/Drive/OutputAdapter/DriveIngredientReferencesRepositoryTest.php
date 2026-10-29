@@ -42,6 +42,30 @@ class DriveIngredientReferencesRepositoryTest extends DatabaseTestCase
         $this->assertSame([0, 0, '0', md5(''), [], []], [$none->choices, $none->products, $none->packSizeSum, $none->contentHash, $none->ingredientSlugByChoice, $none->productCountByChoice]);
     }
 
+    public function testTheFingerprintSeesTheValuesTheAccountObservedOnItsLines(): void
+    {
+        // Given
+        $user = $this->dataset->bigId;
+        $before = $this->references->fingerprint($user);
+
+        // When : un libellé, puis un prix et sa date, sont écrits sur une ligne de produit du compte
+        $this->dataset->connection->executeStatement(
+            "UPDATE drive_choice_product SET label = 'Libellé du compte' WHERE (choice_id, product_id) IN (SELECT cp.choice_id, cp.product_id FROM drive_choice_product cp JOIN drive_choice c ON c.id = cp.choice_id WHERE c.user_id = ? ORDER BY cp.choice_id, cp.product_id LIMIT 1)",
+            [$user],
+        );
+        $withLabel = $this->references->fingerprint($user);
+        $this->dataset->connection->executeStatement(
+            "UPDATE drive_choice_product SET price_cents = 149, price_seen_at = '2026-10-28 09:30:00' WHERE (choice_id, product_id) IN (SELECT cp.choice_id, cp.product_id FROM drive_choice_product cp JOIN drive_choice c ON c.id = cp.choice_id WHERE c.user_id = ? ORDER BY cp.choice_id, cp.product_id LIMIT 1)",
+            [$user],
+        );
+        $withPrice = $this->references->fingerprint($user);
+
+        // Then : l'empreinte change à chaque étape, le nombre de choix et de produits non
+        $this->assertNotSame($before->contentHash, $withLabel->contentHash);
+        $this->assertNotSame($withLabel->contentHash, $withPrice->contentHash);
+        $this->assertSame([$before->choices, $before->products], [$withPrice->choices, $withPrice->products]);
+    }
+
     public function testRepointingChangesOnlyTheSlugOfTheChoicesOfThatUserAcrossAllRetailersAndStores(): void
     {
         $dataset = $this->dataset;

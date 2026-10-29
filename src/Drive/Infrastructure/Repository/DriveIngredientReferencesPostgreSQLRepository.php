@@ -48,7 +48,8 @@ readonly class DriveIngredientReferencesPostgreSQLRepository extends PostgreSQLR
             . " md5(coalesce(string_agg(x.line, E'\\n' ORDER BY x.line COLLATE \"C\"), ''))"
             . ' FROM ('
             . "   SELECT c.retailer || '|' || c.store_id || '|' || c.kind || '|' || coalesce(c.search_query, '') || '|' || c.updated_at::text || '|' ||"
-            . "          coalesce((SELECT string_agg(cp.product_id || ':' || cp.verdict || ':' || coalesce(cp.rank::text, '') || ':' || coalesce(cp.pack_size_value::text, '') || ':' || coalesce(cp.pack_size_unit_slug, ''),"
+            . "          coalesce((SELECT string_agg(cp.product_id || ':' || cp.verdict || ':' || coalesce(cp.rank::text, '') || ':' || coalesce(cp.pack_size_value::text, '') || ':' || coalesce(cp.pack_size_unit_slug, '') || ':' ||"
+            . "                                     coalesce(cp.label, '') || ':' || coalesce(cp.price_cents::text, '') || ':' || coalesce(cp.price_seen_at::text, ''),"
             . "                                     ',' ORDER BY cp.product_id COLLATE \"C\") FROM drive_choice_product cp WHERE cp.choice_id = c.id), '') AS line"
             . '   FROM drive_choice c WHERE c.user_id = :u'
             . ' ) x',
