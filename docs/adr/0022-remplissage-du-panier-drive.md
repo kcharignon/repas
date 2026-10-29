@@ -58,3 +58,7 @@ Le moyen d'exécuter l'agent dans la page Leclerc change : Chrome Android ne lan
 ## Décision G1 du 2026-10-17
 
 Statut **Accepted**. Preuves et décisions : [`docs/drive/spikes/DRV-005-decision-g1.md`](../drive/spikes/DRV-005-decision-g1.md). Résumé : l'agent est embarqué dans une **application Android** (WebView limitée à `*.leclercdrive.fr`, Leclerc affiché en mode ordinateur) ; le choix du produit se fait dans la liste de l'agent (P2, le cadre natif est refusé par l'enseigne) ; le plan voyage de Repas vers l'application par un lien `repasdrive://open?plan=…`, le résultat revient par `https://kantin.eu/drive/retour#result=…` ; les invariants (aucun identifiant ni cookie d'enseigne chez nous, le back ne contacte jamais l'enseigne, agent embarqué et non chargé à distance) restent. Distribution par APK signé à installer à la main.
+
+## Amendement du 2026-10-29 : le libellé et le prix sont propres à chaque compte
+
+La décision 7 (« `Produit` est un fait public sans propriétaire ») reste vraie pour l'identité du produit, son code-barres, son contenu net, son rayon et sa famille chez l'enseigne. Le **libellé** et le **prix** qu'un compte affiche ou utilise (plan, « Mes produits », estimation du coût) sont ceux que **ce compte** a lui-même observés, gardés sur la ligne de son choix (`drive_choice_product.label`, `price_cents`, `price_seen_at`) ; la fiche partagée `drive_product` ne sert plus que de valeur de repli quand la ligne n'a pas la sienne. Voir l'[ADR 0032](0032-valeurs-propres-a-chaque-compte-pour-les-produits-du-drive.md).
