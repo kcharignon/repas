@@ -286,6 +286,40 @@ class DriveChoicesApiFlowTest extends DatabaseTestCase
         $this->assertSame(2, (int) $this->entityManager->getConnection()->fetchOne('SELECT COUNT(*) FROM drive_choice'));
     }
 
+    public function testEachAccountListsTheLabelItReadAndTheSharedSheetOnlyServesAsFallback(): void
+    {
+        // Given : le premier compte fixe la fiche commune ; le second lit le même produit sous un autre libellé et le refuse pour une autre farine
+        $alice = $this->userWithAStore();
+        $bob = $this->userWithAStore(['farine-bob', 'semoule-bob']);
+        $this->put($alice, [$this->add('farine', 'PRIMARY', '555111', 'Farine T55 1 kg', null, ['cents' => 149]), ['ingredientSlug' => 'farine', 'action' => 'REJECT_PRODUCT', 'product' => ['retailerProductId' => '999000', 'label' => 'Farine complète bio']]]);
+        $this->put($bob, [$this->add('farine-bob', 'PRIMARY', '555111', 'Farine T55 – lot de 2', null, ['cents' => 129]), ['ingredientSlug' => 'farine-bob', 'action' => 'REJECT_PRODUCT', 'product' => ['retailerProductId' => '999000', 'label' => 'Farine complète – ancien libellé']]]);
+
+        // When
+        $this->get($alice);
+        $aliceBody = $this->jsonBody()['member'][0];
+        $this->get($bob);
+        $bobBody = $this->jsonBody()['member'][0];
+
+        // Then : chacun relit son libellé, accepté comme refusé ; la forme de la réponse ne change pas (pas de prix)
+        $this->assertSame(['Farine T55 1 kg', 'Farine complète bio'], [$aliceBody['accepted'][0]['product']['label'], $aliceBody['rejected'][0]['label']]);
+        $this->assertSame(['Farine T55 – lot de 2', 'Farine complète – ancien libellé'], [$bobBody['accepted'][0]['product']['label'], $bobBody['rejected'][0]['label']]);
+        $this->assertSame(['productId', 'retailerProductId', 'ean', 'label', 'content', 'packSize'], array_keys($bobBody['accepted'][0]['product']));
+        // La fiche commune a été créée par le premier compte et n'a pas été réécrite par le second
+        $this->assertSame(
+            [['555111', 'Farine T55 1 kg', 149], ['999000', 'Farine complète bio', null]],
+            array_map(static fn(array $row): array => [$row['retailer_product_id'], $row['label'], $row['price_cents'] === null ? null : (int) $row['price_cents']], $this->entityManager->getConnection()->fetchAllAssociative('SELECT retailer_product_id, label, price_cents FROM drive_product ORDER BY retailer_product_id')),
+        );
+
+        // When : Alice lit un autre produit ; Bob le range parmi ses produits acceptés depuis l'écran de gestion, sans l'avoir jamais lu
+        $this->put($alice, [$this->add('sel', 'PRIMARY', '777888', 'Sel fin 1 kg')]);
+        $unread = Product::idFor(Retailer::LECLERC, '123456', '777888');
+        $this->replace($bob, 'farine-bob', false, [$bobBody['accepted'][0]['product']['productId'], $unread], []);
+        $this->get($bob);
+
+        // Then : le produit qu'il a lu garde son libellé, celui qu'il n'a jamais lu retombe sur la fiche commune
+        $this->assertSame(['Farine T55 – lot de 2', 'Sel fin 1 kg'], array_map(static fn(array $accepted): string => $accepted['product']['label'], $this->jsonBody()['member'][0]['accepted']));
+    }
+
     public function testReplacingThePreferenceOfAnIngredientFromTheManagementScreen(): void
     {
         // Given : farine avec deux produits classés et un refus, lus par GET comme le fait l'écran

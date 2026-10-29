@@ -42,6 +42,8 @@ use Repas\Shared\Domain\Model\Dimension;
  * La recherche mémorisée (DRV-650) vient de la préférence du magasin courant : jamais d'une autre enseigne ni d'un autre magasin.
  * La contenance dans l'unité de la liste (DRV-652) vient de la ligne du produit dans cette même préférence (colonnes de
  * `drive_choice_product`) : aucune requête de plus, et `PackCalculator` ne s'en sert que pour l'unité exacte de la ligne.
+ * Le libellé d'un produit, accepté ou refusé, est celui que le compte a lui-même lu (sa ligne de produit) ; la fiche commune ne sert que
+ * de repli à une ligne qui n'a pas le sien. Le contenu net et le code-barres restent ceux de la fiche (faits publics du catalogue).
  */
 final readonly class DrivePlanPostgreSQLLoader implements DrivePlanLoader
 {
@@ -130,7 +132,8 @@ final readonly class DrivePlanPostgreSQLLoader implements DrivePlanLoader
                 'cp.rank AS position',
                 'p.retailerProductId AS retailerProductId',
                 'p.ean AS ean',
-                'p.label AS label',
+                // Le libellé que le compte a lui-même lu (sa ligne de produit), sinon celui de la fiche commune
+                'COALESCE(cp.label, p.label) AS label',
                 'p.contentValue AS contentValue',
                 'p.contentUnit AS contentUnit',
                 'cp.packSizeValue AS packSizeValue',
@@ -148,7 +151,7 @@ final readonly class DrivePlanPostgreSQLLoader implements DrivePlanLoader
             ->setParameter('storeId', $storeId)
             ->setParameter('slugs', $slugs)
             ->orderBy('cp.rank')
-            ->addOrderBy('p.label')
+            ->addOrderBy('label')
             ->getQuery()
             ->getArrayResult();
 

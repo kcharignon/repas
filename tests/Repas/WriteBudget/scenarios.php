@@ -749,6 +749,23 @@ return [
             new ChoiceIntent('lait', ChoiceAction::NOTE_SEARCH, null, null, SearchQueryChange::set(SearchQuery::of('lait demi écrémé'))),
         ]);
     },
+    // Un lot qui ne fait que rafraîchir des prix (lignes `ADDED` du résultat de l'agent) : le prix lu va sur la ligne du produit du compte, ce
+    // qui enregistre ses préférences (les trois requêtes habituelles : la préférence, la suppression et la réécriture de ses lignes de
+    // produits) en plus du prix de la fiche commune. Constant quel que soit le nombre d'ingrédients du lot (ici trois)
+    'rafraichir-prix-drive' => static function (WriteBudgetTestCase $t): object {
+        $user = $t->savedUser();
+        $t->savedDriveSettings($user);
+        foreach (['farine', 'sucre', 'sel'] as $i => $slug) {
+            $t->persister->saveOwnedIngredient($user, $slug);
+            $t->savedDriveChoice($user, $slug, [(string) ($i + 1), (string) ($i + 11)], [(string) ($i + 21)]);
+        }
+
+        return new SaveProductChoicesCommand($user->getId(), Retailer::LECLERC, '123456', [
+            new ChoiceIntent('farine', ChoiceAction::REFRESH_PRICE, null, new ProductInput('1', null, null, null, new ProductPrice(159))),
+            new ChoiceIntent('sucre', ChoiceAction::REFRESH_PRICE, null, new ProductInput('2', null, null, null, new ProductPrice(109))),
+            new ChoiceIntent('sel', ChoiceAction::REFRESH_PRICE, null, new ProductInput('3', null, null, null, new ProductPrice(79))),
+        ]);
+    },
     'oublier-choix-drive' => static function (WriteBudgetTestCase $t): object {
         $user = $t->savedUser();
         $t->savedDriveSettings($user);

@@ -72,7 +72,7 @@ Procédure à dérouler **par l'utilisateur, sur son téléphone Android, avec s
 
 ### 1.4 Seuls les comptes attendus sont actifs
 
-- **But** : les inscriptions sont ouvertes (une adresse e-mail confirmée suffit pour qu'un compte soit actif), et les fiches de produits sont **partagées** entre les utilisateurs d'un même magasin ([`revue-securite-back.md`](revue-securite-back.md), constat C1, atténué par DRV-613 partie 1). Mieux vaut allumer la fonction quand on sait qui peut l'utiliser.
+- **But** : les inscriptions sont ouvertes (une adresse e-mail confirmée suffit pour qu'un compte soit actif), et les fiches de produits sont **partagées** entre les utilisateurs d'un même magasin pour l'identité du produit, son contenu net et son code-barres ; le libellé et le prix de chaque compte lui sont propres, la fiche partagée ne servant que de repli ([`revue-securite-back.md`](revue-securite-back.md), DRV-613, DRV-656). Mieux vaut allumer la fonction quand on sait qui peut l'utiliser.
 - **Geste** (assistant, lecture seule, sans afficher d'adresse e-mail dans le chat) : il compte les comptes `ACTIVE` et te donne le nombre.
 - **Attendu** : le nombre est celui que tu attends (toi et tes proches).
 - **Si ça diffère** : un compte que tu ne connais pas est actif : décide avec l'assistant de le désactiver (réglages d'administration, ADR 0021) **avant** d'allumer.

@@ -8,6 +8,7 @@ use Repas\Drive\Domain\Model\AcceptedProduct;
 use Repas\Drive\Domain\Model\Choice;
 use Repas\Drive\Domain\Model\ChoiceKind;
 use Repas\Drive\Domain\Model\PackSize;
+use Repas\Drive\Domain\Model\ProductObservation;
 use Repas\Drive\Domain\Model\Retailer;
 use Repas\Drive\Domain\Model\SearchQuery;
 use Repas\Shared\Domain\Tool\UuidGenerator;
@@ -29,6 +30,8 @@ class ChoiceBuilder implements Builder
     private array $rejected = [];
     /** @var array<string, PackSize> contenance par identifiant de produit accepté */
     private array $packSizes = [];
+    /** @var array<string, ProductObservation> valeurs observées par le compte, par identifiant de produit accepté ou refusé */
+    private array $observations = [];
     private DateTimeImmutable $updatedAt;
 
     private function initialize(): void
@@ -98,6 +101,16 @@ class ChoiceBuilder implements Builder
         return $this;
     }
 
+    /**
+     * Ce que le compte a lui-même observé d'un produit accepté ou refusé : à appeler après `withAccepted()` / `withRejected()`. Le prix et
+     * sa date vont ensemble (la date par défaut est celle des autres données de test).
+     */
+    public function withObservation(string $productId, ?string $label, ?int $priceCents = null, ?DateTimeImmutable $priceSeenAt = null): self
+    {
+        $this->observations[$productId] = ProductObservation::load($label, $priceCents, $priceCents === null ? null : ($priceSeenAt ?? new DateTimeImmutable('2026-10-18 10:00:00')));
+        return $this;
+    }
+
     public function haveAtHome(): self
     {
         $this->kind = ChoiceKind::HAVE_AT_HOME;
@@ -124,6 +137,7 @@ class ChoiceBuilder implements Builder
             'rejected' => $this->rejected,
             'search_query' => $this->searchQuery,
             'updated_at' => $this->updatedAt,
+            'observations' => $this->observations,
         ]);
     }
 }

@@ -89,6 +89,24 @@ class ReplaceIngredientPreferenceHandlerTest extends TestCase
         $this->assertNull($this->choice('user-1', 'cheddar')->getPackSize($this->id('1')));
     }
 
+    public function testTheValuesObservedByTheAccountFollowTheirProductsWhenThePreferenceIsReplaced(): void
+    {
+        // Given : le compte a lu le produit 1 (libellé et prix), le produit 2 (libellé et prix) et le produit refusé 3 (libellé)
+        $this->choices->save(new ChoiceBuilder()->withUserId('user-1')->withIngredientSlug('cheddar')
+            ->withAccepted([$this->id('1'), $this->id('2')])->withRejected([$this->id('3')])
+            ->withObservation($this->id('1'), 'Cheddar 20 tranches', 349)->withObservation($this->id('2'), 'Cheddar 10 tranches', 199)->withObservation($this->id('3'), 'Cheddar en bloc')->build());
+
+        // When : l'écran de gestion inverse l'ordre, retire le produit 2, accepte le produit 4 (qu'il n'a jamais lu) et garde le refus
+        $this->replace('user-1', 'cheddar', accepted: ['4', '1'], rejected: ['3']);
+
+        // Then : chaque produit garde ses valeurs, le produit retiré perd les siennes, le nouveau n'en a pas (la lecture retombe sur la fiche)
+        $choice = $this->choice('user-1', 'cheddar');
+        $this->assertSame(['Cheddar 20 tranches', 349], [$choice->getObservation($this->id('1'))->label, $choice->getObservation($this->id('1'))->priceCents]);
+        $this->assertNull($choice->getObservation($this->id('2')));
+        $this->assertNull($choice->getObservation($this->id('4')));
+        $this->assertSame('Cheddar en bloc', $choice->getObservation($this->id('3'))->label);
+    }
+
     public function testRemovesAnAcceptedProductAndRefusesAnotherOne(): void
     {
         // When : A retiré, le refus de 3 levé, 4 refusé

@@ -81,6 +81,7 @@ return [
     'planifier-repas-par-la-voix-liste-envoyee' => 33,
     'planifier-repas-par-la-voix-sans-liste' => 33,
     'rafraichir-jeton-alexa' => 6,
+    'rafraichir-prix-drive' => 9,
     'rayon-dit-a-alexa' => 1,
     'rayons-lus-a-alexa' => 1,
     'reactiver-liste' => 10,

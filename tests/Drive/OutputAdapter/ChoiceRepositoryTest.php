@@ -8,6 +8,8 @@ use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Repas\Drive\Domain\Interface\ChoiceRepository;
 use Repas\Drive\Domain\Model\Choice;
 use Repas\Drive\Domain\Model\PackSize;
+use Repas\Drive\Domain\Model\ProductObservation;
+use Repas\Drive\Domain\Model\ProductPrice;
 use Repas\Drive\Domain\Model\Retailer;
 use Repas\Drive\Domain\Model\SearchQuery;
 use Repas\Tests\Helper\Builder\ChoiceBuilder;
@@ -509,5 +511,156 @@ class ChoiceRepositoryTest extends DatabaseTestCase
 
         // Then : une requête par table, plus la suppression des lignes (comme sans contenance)
         $this->assertSame(['INSERT drive_choice' => 1, 'DELETE drive_choice_product' => 1, 'INSERT drive_choice_product' => 1], $counter->byTable());
+    }
+
+    public function testTheValuesObservedByTheAccountAreSavedOnTheLineOfEachProductAndReadBack(): void
+    {
+        // Given : deux produits acceptés (le premier avec un libellé et un prix, le second sans rien) et un refusé avec son libellé
+        $seenAt = new DateTimeImmutable('2026-10-28 09:30:00');
+        $this->repository->save(new ChoiceBuilder()->withId('choice-1')->withUserId('user-1')->withAccepted(['a', 'b'])->withRejected(['x'])
+            ->withObservation('a', 'Farine T55 1 kg', 149, $seenAt)->withObservation('x', 'Farine complète bio')->build());
+
+        // When
+        $found = $this->repository->findOne('user-1', Retailer::LECLERC, '123456', 'farine');
+
+        // Then : une ligne, une observation
+        $this->assertSame(['Farine T55 1 kg', 149], [$found->getObservation('a')->label, $found->getObservation('a')->priceCents]);
+        $this->assertEquals($seenAt, $found->getObservation('a')->priceSeenAt);
+        $this->assertNull($found->getObservation('b'));
+        $this->assertSame(['Farine complète bio', null, null], [$found->getObservation('x')->label, $found->getObservation('x')->priceCents, $found->getObservation('x')->priceSeenAt]);
+        $this->assertSame(
+            [['a', 'Farine T55 1 kg', 149, '2026-10-28 09:30:00'], ['b', null, null, null], ['x', 'Farine complète bio', null, null]],
+            array_map(static fn(array $row): array => array_values($row), $this->entityManager->getConnection()->fetchAllAssociative(
+                'SELECT product_id, label, price_cents, price_seen_at::text FROM drive_choice_product ORDER BY product_id',
+            )),
+        );
+    }
+
+    public function testRewritingThePreferenceKeepsTheValuesOfTheProductsThatStay(): void
+    {
+        // Given
+        $this->repository->save(new ChoiceBuilder()->withId('choice-1')->withUserId('user-1')->withAccepted(['a', 'b'])
+            ->withObservation('a', 'Produit a', 149)->withObservation('b', 'Produit b', 99)->build());
+        $choice = $this->repository->findOne('user-1', Retailer::LECLERC, '123456', 'farine');
+
+        // When : un nouveau préféré décale les rangs, le produit b est refusé
+        $this->repository->save($choice->addPrimary('c')->reject('b'));
+
+        // Then : a garde les siennes, b ne garde que son libellé, c n'en a pas
+        $found = $this->repository->findOne('user-1', Retailer::LECLERC, '123456', 'farine');
+        $this->assertSame(['Produit a', 149], [$found->getObservation('a')->label, $found->getObservation('a')->priceCents]);
+        $this->assertSame(['Produit b', null], [$found->getObservation('b')->label, $found->getObservation('b')->priceCents]);
+        $this->assertNull($found->getObservation('c'));
+        $this->assertSame(0, (int) $this->entityManager->getConnection()->fetchOne("SELECT COUNT(*) FROM drive_choice_product WHERE verdict = 'REJECTED' AND (price_cents IS NOT NULL OR price_seen_at IS NOT NULL)"));
+    }
+
+    public function testAProductThatLeavesTheListsAndHavingItAtHomeLeaveNoValueInTheTable(): void
+    {
+        // Given
+        $this->repository->save(new ChoiceBuilder()->withId('choice-1')->withUserId('user-1')->withAccepted(['a', 'b'])
+            ->withObservation('a', 'Produit a', 149)->withObservation('b', 'Produit b', 99)->build());
+        $choice = $this->repository->findOne('user-1', Retailer::LECLERC, '123456', 'farine');
+
+        // When : a n'est plus ni accepté ni refusé
+        $this->repository->save($choice->remove('a'));
+
+        // Then
+        $this->assertSame([['b', 'Produit b']], array_map(static fn(array $row): array => array_values($row), $this->entityManager->getConnection()->fetchAllAssociative('SELECT product_id, label FROM drive_choice_product')));
+
+        // When
+        $this->repository->save($this->repository->findOne('user-1', Retailer::LECLERC, '123456', 'farine')->markHaveAtHome());
+
+        // Then
+        $this->assertSame(0, (int) $this->entityManager->getConnection()->fetchOne('SELECT COUNT(*) FROM drive_choice_product'));
+    }
+
+    public function testARowWithOnlyHalfOfAPriceIsReadWithoutThePrice(): void
+    {
+        // Given : une ligne abîmée à la main (le prix et sa date vont ensemble)
+        $this->repository->save(new ChoiceBuilder()->withId('choice-1')->withUserId('user-1')->withAccepted(['a', 'b'])->withObservation('a', 'Produit a')->withObservation('b', 'Produit b')->build());
+        $connection = $this->entityManager->getConnection();
+        $connection->executeStatement("UPDATE drive_choice_product SET price_cents = 149 WHERE product_id = 'a'");
+        $connection->executeStatement("UPDATE drive_choice_product SET price_seen_at = '2026-10-28 09:30:00' WHERE product_id = 'b'");
+
+        // When
+        $found = $this->repository->findOne('user-1', Retailer::LECLERC, '123456', 'farine');
+
+        // Then : les libellés restent, aucun prix à moitié écrit n'est lu
+        $this->assertSame(['Produit a', null, null], [$found->getObservation('a')->label, $found->getObservation('a')->priceCents, $found->getObservation('a')->priceSeenAt]);
+        $this->assertSame(['Produit b', null, null], [$found->getObservation('b')->label, $found->getObservation('b')->priceCents, $found->getObservation('b')->priceSeenAt]);
+    }
+
+    public function testTheValuesBelongToTheChoiceOfTheUserAndNotToTheProduct(): void
+    {
+        // Given : le même produit chez deux utilisateurs et dans deux préférences d'un même utilisateur
+        $this->repository->saveAll([
+            new ChoiceBuilder()->withUserId('user-1')->withIngredientSlug('cheddar')->withAccepted(['shared'])->withObservation('shared', 'Cheddar 20 tranches', 349)->build(),
+            new ChoiceBuilder()->withUserId('user-1')->withIngredientSlug('emmental')->withAccepted(['shared'])->build(),
+            new ChoiceBuilder()->withUserId('user-2')->withIngredientSlug('cheddar')->withAccepted(['shared'])->withObservation('shared', 'Cheddar – lot de 2', 299)->build(),
+        ]);
+
+        // When : user-1 relit son prix
+        $choice = $this->repository->findOne('user-1', Retailer::LECLERC, '123456', 'cheddar');
+        $this->repository->save($choice->observePrice('shared', new ProductPrice(359), new DateTimeImmutable('2026-10-29 09:00:00')));
+
+        // Then : seule sa ligne a changé
+        $this->assertSame(['Cheddar 20 tranches', 359], [$this->observationOf('user-1', 'cheddar')->label, $this->observationOf('user-1', 'cheddar')->priceCents]);
+        $this->assertNull($this->repository->findOne('user-1', Retailer::LECLERC, '123456', 'emmental')->getObservation('shared'));
+        $this->assertSame(['Cheddar – lot de 2', 299], [$this->observationOf('user-2', 'cheddar')->label, $this->observationOf('user-2', 'cheddar')->priceCents]);
+    }
+
+    public function testPurgingAUserErasesTheirValuesAndKeepsTheOthers(): void
+    {
+        // Given
+        $this->repository->saveAll([
+            new ChoiceBuilder()->withUserId('departing')->withIngredientSlug('cheddar')->withAccepted(['a'])->withRejected(['x'])->withObservation('a', 'Cheddar', 349)->withObservation('x', 'Bloc')->build(),
+            new ChoiceBuilder()->withUserId('departing')->withStoreId('654321')->withIngredientSlug('emmental')->withAccepted(['c'])->withObservation('c', 'Emmental', 199)->build(),
+            new ChoiceBuilder()->withUserId('staying')->withIngredientSlug('cheddar')->withAccepted(['a'])->withObservation('a', 'Cheddar du voisin', 299)->build(),
+        ]);
+
+        // When
+        $this->repository->deleteProductsByUser('departing');
+        $this->repository->deleteByUser('departing');
+
+        // Then : les valeurs sont dans la ligne du produit, elles partent avec elle ; celles de l'autre compte restent
+        $this->assertSame(
+            [['Cheddar du voisin', 299]],
+            array_map(static fn(array $row): array => array_values($row), $this->entityManager->getConnection()->fetchAllAssociative('SELECT label, price_cents FROM drive_choice_product')),
+        );
+    }
+
+    public function testForgettingAChoiceErasesItsValues(): void
+    {
+        // Given
+        $this->repository->save(new ChoiceBuilder()->withId('choice-1')->withUserId('user-1')->withAccepted(['a'])->withObservation('a', 'Produit a', 149)->build());
+
+        // When
+        $this->repository->delete($this->repository->findOne('user-1', Retailer::LECLERC, '123456', 'farine'));
+
+        // Then
+        $this->assertSame(0, (int) $this->entityManager->getConnection()->fetchOne('SELECT COUNT(*) FROM drive_choice_product'));
+    }
+
+    public function testWritingABatchWithValuesCostsAFixedNumberOfQueries(): void
+    {
+        // Given : 30 préférences de trois produits, chacun avec ses valeurs
+        $choices = [];
+        foreach (range(1, 30) as $i) {
+            $choices[] = new ChoiceBuilder()->withUserId('user-1')->withIngredientSlug("ingredient-$i")->withAccepted(["a$i", "b$i", "c$i"])->withRejected(["x$i"])
+                ->withObservation("a$i", "Produit a$i", 100 + $i)->withObservation("c$i", "Produit c$i", 200 + $i)->withObservation("x$i", "Refus $i")->build();
+        }
+        $counter = static::getContainer()->get(QueryCounter::class);
+        $counter->reset();
+
+        // When
+        $this->repository->saveAll($choices);
+
+        // Then : les valeurs voyagent dans les requêtes qui existent déjà
+        $this->assertSame(['INSERT drive_choice' => 1, 'DELETE drive_choice_product' => 1, 'INSERT drive_choice_product' => 1], $counter->byTable());
+    }
+
+    private function observationOf(string $userId, string $slug): ProductObservation
+    {
+        return $this->repository->findOne($userId, Retailer::LECLERC, '123456', $slug)->getObservation('shared');
     }
 }

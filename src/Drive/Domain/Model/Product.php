@@ -276,6 +276,17 @@ final class Product implements ModelInterface
         return $this;
     }
 
+    /**
+     * Le libellé tel qu'on le garde (espaces de bord retirées) s'il est valide : la même règle pour la fiche commune et pour le libellé
+     * qu'un compte garde sur sa propre ligne de produit (`ProductObservation`).
+     *
+     * @throws DriveException `invalidChoice()` si le libellé est vide, trop long ou porte un caractère refusé
+     */
+    public static function validLabel(string $label): string
+    {
+        return self::checkedLabel($label);
+    }
+
     private static function checkedEan(?string $ean): ?string
     {
         if ($ean !== null && preg_match(self::EAN_PATTERN, $ean) !== 1) {

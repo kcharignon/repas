@@ -124,6 +124,72 @@ class DriveEstimateApiFlowTest extends DatabaseTestCase
         $this->assertSame([403, ['error' => ['message' => 'SHOPPING_LIST_FORBIDDEN']]], [$this->client->getResponse()->getStatusCode(), $this->jsonBody()]);
     }
 
+    public function testTwoAccountsThatAcceptTheSameProductEstimateWithTheirOwnLabelAndPrice(): void
+    {
+        // Given : Alice et Bob acceptent le même produit du magasin, chacun avec le libellé et le prix qu'il a lus ; Chloé l'accepte sans prix lu
+        $alice = $this->userWithAMilkList('lait-alice');
+        $bob = $this->userWithAMilkList('lait-bob');
+        $chloe = $this->userWithAMilkList('lait-chloe');
+        $this->putProduct($alice, 'lait-alice', 'Lait demi-écrémé 1 l – offre', 159);
+        $this->putProduct($bob, 'lait-bob', 'Lait demi-écrémé 1 l – lot de 6', 129);
+        $this->putProduct($chloe, 'lait-chloe', 'Lait demi-écrémé 1 l', null);
+
+        // When
+        $lineOf = function (array $account): array {
+            $this->request('GET', "/api/v1/drive/estimates/{$account['listId']}", $account['user']);
+            $this->assertSame(200, $this->client->getResponse()->getStatusCode());
+            $line = $this->jsonBody()['lines'][0];
+
+            return [$line['productLabel'], $line['unitPriceCents']];
+        };
+
+        // Then : chacun son libellé et son prix ; Chloé, sans prix à elle, retombe sur celui de la fiche commune (le premier prix vu)
+        $this->assertSame(['Lait demi-écrémé 1 l – offre', 159], $lineOf($alice));
+        $this->assertSame(['Lait demi-écrémé 1 l – lot de 6', 129], $lineOf($bob));
+        $this->assertSame(['Lait demi-écrémé 1 l', 159], $lineOf($chloe));
+
+        // When : Alice relit un autre prix
+        $this->request('PUT', '/api/v1/drive/choices', $alice['user'], json_encode(['retailer' => 'leclerc', 'storeId' => '123456', 'choices' => [
+            ['ingredientSlug' => 'lait-alice', 'action' => 'REFRESH_PRICE', 'product' => ['retailerProductId' => '555111', 'price' => ['cents' => 179]]],
+        ]], JSON_THROW_ON_ERROR));
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+
+        // Then : l'estimation de Bob n'a pas bougé ; celle d'Alice a le nouveau prix, et Chloé, qui n'a pas de prix à elle, suit la fiche commune (son repli)
+        $this->assertSame(['Lait demi-écrémé 1 l – offre', 179], $lineOf($alice));
+        $this->assertSame(['Lait demi-écrémé 1 l – lot de 6', 129], $lineOf($bob));
+        $this->assertSame(['Lait demi-écrémé 1 l', 179], $lineOf($chloe));
+    }
+
+    /**
+     * @return array{user: User, listId: string}
+     */
+    private function userWithAMilkList(string $slug): array
+    {
+        $user = $this->savedUser();
+        static::getContainer()->get(DriveSettingsRepository::class)->save(new DriveSettingsBuilder()->withUserId($user->getId())->build());
+        $ingredient = new IngredientBuilder()->isMilk()->withSlug($slug)->withName('Lait ' . $slug)->withCreator($user)->build();
+        new DataPersister(static::getContainer())->saveIngredient($ingredient);
+        $list = new ShoppingListBuilder()->withOwner($user)->withStatus(ShoppingListStatus::ACTIVE)->addIngredient($ingredient)->build();
+        static::getContainer()->get(ShoppingListRepository::class)->save($list);
+
+        return ['user' => $user, 'listId' => $list->getId()];
+    }
+
+    /**
+     * @param array{user: User, listId: string} $account
+     */
+    private function putProduct(array $account, string $slug, string $label, ?int $priceCents): void
+    {
+        $product = ['retailerProductId' => '555111', 'label' => $label, 'content' => ['value' => 1, 'unit' => 'l']];
+        if ($priceCents !== null) {
+            $product['price'] = ['cents' => $priceCents];
+        }
+        $this->request('PUT', '/api/v1/drive/choices', $account['user'], json_encode(['retailer' => 'leclerc', 'storeId' => '123456', 'choices' => [
+            ['ingredientSlug' => $slug, 'action' => 'ADD_PRODUCT', 'placement' => 'PRIMARY', 'product' => $product],
+        ]], JSON_THROW_ON_ERROR));
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+    }
+
     private function savedUser(): User
     {
         $user = new UserBuilder()->build();

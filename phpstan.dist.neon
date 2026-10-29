@@ -11,7 +11,7 @@ parameters:
         - tests/
         - quality-rules/Phpstan/
     treatPhpDocTypesAsCertain: false
-    # La migration-garde d'ING-014, la migration des conversions universelles, celles des votes de rayons, celle des index, celle des comptes en attente et celle des majuscules des noms sont chargées par un test (les migrations ne sont pas autoloadées)
+    # La migration-garde d'ING-014, la migration des conversions universelles, celles des votes de rayons, celle des index, celle des comptes en attente, celle des majuscules des noms et celle des valeurs observées par les comptes du drive sont chargées par un test (les migrations ne sont pas autoloadées)
     scanFiles:
         - migrations/Version20261024120000.php
         - migrations/Version20261027100000.php
@@ -21,6 +21,7 @@ parameters:
         - migrations/Version20261027200000.php
         - migrations/Version20261028120000.php
         - migrations/Version20261028160000.php
+        - migrations/Version20261029100000.php
 
 services:
     -

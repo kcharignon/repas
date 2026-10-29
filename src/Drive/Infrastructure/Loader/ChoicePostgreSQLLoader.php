@@ -20,7 +20,8 @@ use Repas\Shared\Application\Interface\IngredientNameLoader;
 /**
  * Seuls les produits des préférences de l'utilisateur sont lus : jamais le catalogue `drive_product` en dehors de ses choix
  * (décision D22). Deux requêtes, quel que soit le nombre de préférences : les préférences avec leurs produits, puis les noms
- * d'ingrédients.
+ * d'ingrédients. Le libellé d'un produit est celui que le compte a lui-même lu (sa ligne de produit) ; la fiche commune ne sert que de
+ * repli à une ligne qui n'a pas le sien. Le prix n'est pas renvoyé ici (l'estimation du coût le lit).
  */
 final readonly class ChoicePostgreSQLLoader implements ChoiceLoader
 {
@@ -45,7 +46,8 @@ final readonly class ChoicePostgreSQLLoader implements ChoiceLoader
                 'p.id AS productId',
                 'p.retailerProductId AS retailerProductId',
                 'p.ean AS ean',
-                'p.label AS label',
+                // Le libellé que le compte a lui-même lu (sa ligne de produit), sinon celui de la fiche commune
+                'COALESCE(cp.label, p.label) AS label',
                 'p.contentValue AS contentValue',
                 'p.contentUnit AS contentUnit',
                 'cp.packSizeValue AS packSizeValue',
@@ -62,7 +64,7 @@ final readonly class ChoicePostgreSQLLoader implements ChoiceLoader
             ->setParameter('retailer', $retailer->value)
             ->orderBy('c.ingredientSlug')
             ->addOrderBy('cp.rank')
-            ->addOrderBy('p.label')
+            ->addOrderBy('label')
             ->getQuery()
             ->getArrayResult();
 

@@ -25,6 +25,11 @@ use Repas\Shared\Domain\Model\ModelTrait;
  * du produit accepté (couple préférence, produit), jamais sur la préférence entière ni sur la fiche commune du produit. Invariant :
  * seuls les produits acceptés en ont une ; un produit qui n'est plus accepté perd la sienne, et changer de produit ne réutilise
  * jamais celle de l'ancien.
+ *
+ * Les valeurs observées par le compte (`ProductObservation`) suivent le même mécanisme : le libellé tel que ce compte l'a lu et le
+ * prix tel qu'il l'a observé vivent sur la ligne de chaque produit accepté ou refusé, propres au couple (préférence, produit) ; la
+ * fiche commune du produit ne sert que de repli à une ligne qui n'a pas de valeur à elle. Invariants : seuls les produits acceptés ou
+ * refusés en ont ; un produit refusé n'a pas de prix ; un produit qui n'est plus dans aucune des deux listes perd les siennes.
  */
 final class Choice implements ModelInterface
 {
@@ -56,6 +61,8 @@ final class Choice implements ModelInterface
         private DateTimeImmutable $updatedAt,
         /** @var array<string, PackSize> contenance par identifiant de produit ACCEPTÉ (jamais un produit refusé ou absent) */
         private array $packSizes = [],
+        /** @var array<string, ProductObservation> valeurs observées par le compte, par identifiant de produit accepté ou refusé */
+        private array $observations = [],
     ) {
     }
 
@@ -94,7 +101,7 @@ final class Choice implements ModelInterface
     /**
      * Reconstruction depuis la persistance : aucun contrôle (les produits acceptés sont classés par rang).
      *
-     * @param array{id: string, user_id: string, retailer: Retailer, store_id: string, ingredient_slug: string, kind: ChoiceKind, accepted: list<AcceptedProduct>, rejected: list<string>, search_query?: ?SearchQuery, updated_at: DateTimeImmutable} $datas
+     * @param array{id: string, user_id: string, retailer: Retailer, store_id: string, ingredient_slug: string, kind: ChoiceKind, accepted: list<AcceptedProduct>, rejected: list<string>, search_query?: ?SearchQuery, updated_at: DateTimeImmutable, observations?: array<string, ProductObservation>} $datas
      */
     public static function load(array $datas): self
     {
@@ -108,7 +115,7 @@ final class Choice implements ModelInterface
             }
         }
 
-        return new self(
+        $choice = new self(
             $datas['id'],
             $datas['user_id'],
             $datas['retailer'],
@@ -122,7 +129,11 @@ final class Choice implements ModelInterface
             $datas['updated_at'],
             // Même précaution pour les contenances : « j'en ai toujours » n'en garde aucune
             $datas['kind'] === ChoiceKind::HAVE_AT_HOME ? [] : $packSizes,
+            // Et pour les valeurs observées par le compte
+            $datas['kind'] === ChoiceKind::HAVE_AT_HOME ? [] : ($datas['observations'] ?? []),
         );
+
+        return $choice->keepOnlyWhatTheProductsOwn();
     }
 
     public function getId(): string
@@ -181,6 +192,15 @@ final class Choice implements ModelInterface
     public function getPackSize(string $productId): ?PackSize
     {
         return $this->packSizes[$productId] ?? null;
+    }
+
+    /**
+     * Ce que ce compte a lui-même observé de ce produit (libellé lu, prix lu) ; `null` si la ligne n'a pas de valeur à elle, auquel cas
+     * la lecture retombe sur la fiche commune du produit.
+     */
+    public function getObservation(string $productId): ?ProductObservation
+    {
+        return $this->observations[$productId] ?? null;
     }
 
     /**
@@ -269,6 +289,43 @@ final class Choice implements ModelInterface
     }
 
     /**
+     * Le compte vient de lire ce produit (accepté ou refusé) : le libellé lu remplace le sien, le prix lu aussi ; sans prix lu, le prix
+     * qu'il avait déjà observé reste. Un produit refusé n'a pas de prix : il ne garde que le libellé.
+     *
+     * @throws DriveException `invalidChoice()` si le produit n'est ni accepté ni refusé dans cette préférence, ou si le libellé est refusé
+     */
+    public function observe(string $productId, string $label, ?ProductPrice $price, DateTimeImmutable $now): self
+    {
+        if (!$this->isAccepted($productId) && !in_array($productId, $this->rejected, true)) {
+            throw DriveException::invalidChoice();
+        }
+
+        $this->observations[$productId] = isset($this->observations[$productId])
+            ? $this->observations[$productId]->seenAgain($label, $price, $now)
+            : ProductObservation::seen($label, $price, $now);
+
+        return $this->keepOnlyWhatTheProductsOwn();
+    }
+
+    /**
+     * Le compte relit le prix d'un produit qu'il accepte (rafraîchissement) : seul son prix change, son libellé reste ce qu'il était.
+     *
+     * @throws DriveException `invalidChoice()` si le produit n'est pas accepté dans cette préférence
+     */
+    public function observePrice(string $productId, ProductPrice $price, DateTimeImmutable $now): self
+    {
+        if (!$this->isAccepted($productId)) {
+            throw DriveException::invalidChoice();
+        }
+
+        $this->observations[$productId] = isset($this->observations[$productId])
+            ? $this->observations[$productId]->repriced($price, $now)
+            : ProductObservation::priced($price, $now);
+
+        return $this;
+    }
+
+    /**
      * Oublie la contenance de ce produit : le calculateur retombe sur son contenu net, et à défaut l'agent redemande le nombre de produits.
      */
     public function forgetPackSize(string $productId): self
@@ -319,9 +376,8 @@ final class Choice implements ModelInterface
         $this->accepted = array_values(array_diff($this->accepted, [$productId]));
         $this->rejected = $rejected;
         $this->kind = ChoiceKind::PRODUCTS;
-        $this->keepPackSizesOfAcceptedProducts();
 
-        return $this;
+        return $this->keepOnlyWhatTheProductsOwn();
     }
 
     /**
@@ -331,7 +387,7 @@ final class Choice implements ModelInterface
     {
         $this->rejected = array_values(array_diff($this->rejected, [$productId]));
 
-        return $this;
+        return $this->keepOnlyWhatTheProductsOwn();
     }
 
     /**
@@ -340,9 +396,8 @@ final class Choice implements ModelInterface
     public function remove(string $productId): self
     {
         $this->accepted = array_values(array_diff($this->accepted, [$productId]));
-        $this->keepPackSizesOfAcceptedProducts();
 
-        return $this;
+        return $this->keepOnlyWhatTheProductsOwn();
     }
 
     /**
@@ -371,7 +426,7 @@ final class Choice implements ModelInterface
      * l'ordre donné (le préféré d'abord) et les produits refusés. Un produit n'apparaît qu'une fois dans l'ensemble des deux
      * listes ; « j'en ai toujours » n'a aucun produit. La recherche mémorisée est gardée, sauf pour
      * « j'en ai toujours » (elle est effacée) : cet écran ne la modifie pas. Les contenances des produits qui restent acceptés sont
-     * gardées de même (DRV-652), celles des produits qui n'y sont plus sont perdues.
+     * gardées de même (DRV-652), celles des produits qui n'y sont plus sont perdues ; il en va de même des valeurs observées par le compte.
      *
      * @param list<string> $accepted
      * @param list<string> $rejected
@@ -396,13 +451,13 @@ final class Choice implements ModelInterface
         if ($haveAtHome) {
             $this->searchQuery = null;
         }
-        $this->keepPackSizesOfAcceptedProducts();
 
-        return $this;
+        return $this->keepOnlyWhatTheProductsOwn();
     }
 
     /**
-     * « J'en ai toujours » : les produits acceptés et refusés, la recherche mémorisée et les contenances sont effacés.
+     * « J'en ai toujours » : les produits acceptés et refusés, la recherche mémorisée, les contenances et les valeurs observées par le
+     * compte sont effacés.
      */
     public function markHaveAtHome(): self
     {
@@ -411,6 +466,7 @@ final class Choice implements ModelInterface
         $this->rejected = [];
         $this->searchQuery = null;
         $this->packSizes = [];
+        $this->observations = [];
 
         return $this;
     }
@@ -426,11 +482,23 @@ final class Choice implements ModelInterface
     }
 
     /**
-     * Invariant : seuls les produits acceptés ont une contenance.
+     * Invariants : seuls les produits acceptés ont une contenance ; seuls les produits acceptés ou refusés ont des valeurs observées par
+     * le compte, et un produit refusé n'y garde que son libellé.
      */
-    private function keepPackSizesOfAcceptedProducts(): void
+    private function keepOnlyWhatTheProductsOwn(): self
     {
         $this->packSizes = array_intersect_key($this->packSizes, array_flip($this->accepted));
+
+        $observations = [];
+        foreach (array_intersect_key($this->observations, array_flip([...$this->accepted, ...$this->rejected])) as $productId => $observation) {
+            $observation = $this->isAccepted((string) $productId) ? $observation : $observation->withoutPrice();
+            if (!$observation->isEmpty()) {
+                $observations[$productId] = $observation;
+            }
+        }
+        $this->observations = $observations;
+
+        return $this;
     }
 
     /**
