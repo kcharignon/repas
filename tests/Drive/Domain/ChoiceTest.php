@@ -11,6 +11,8 @@ use Repas\Drive\Domain\Model\AcceptedProduct;
 use Repas\Drive\Domain\Model\Choice;
 use Repas\Drive\Domain\Model\ChoiceKind;
 use Repas\Drive\Domain\Model\PackSize;
+use Repas\Drive\Domain\Model\ProductObservation;
+use Repas\Drive\Domain\Model\ProductPrice;
 use Repas\Drive\Domain\Model\Retailer;
 use Repas\Drive\Domain\Model\SearchQuery;
 use Repas\Tests\Helper\Builder\ChoiceBuilder;
@@ -677,5 +679,209 @@ class ChoiceTest extends TestCase
         $this->assertNull($buying->getPackSize('a'));
         $this->assertEquals(PackSize::of(20, 'tranche'), $buying->getPackSize('b'));
         $this->assertNull($atHome->getPackSize('a'));
+    }
+
+    public function testANewChoiceHasNoObservationAndAProductIsObservedOnItsOwnLine(): void
+    {
+        // Given
+        $now = new DateTimeImmutable('2026-10-29 10:00:00');
+        $choice = new ChoiceBuilder()->withAccepted(['a', 'b'])->withRejected(['c'])->build();
+        $this->assertNull($choice->getObservation('b'));
+
+        // When
+        $choice->observe('a', 'Farine T55 1 kg', new ProductPrice(149), $now)->observe('c', 'Farine complète', null, $now);
+
+        // Then : chaque ligne a la sienne, la ligne qui n'a rien lu n'a rien
+        $this->assertSame(['Farine T55 1 kg', 149], [$choice->getObservation('a')->label, $choice->getObservation('a')->priceCents]);
+        $this->assertEquals($now, $choice->getObservation('a')->priceSeenAt);
+        $this->assertSame('Farine complète', $choice->getObservation('c')->label);
+        $this->assertNull($choice->getObservation('b'));
+    }
+
+    public function testSeeingAProductAgainReplacesTheLabelAndKeepsThePriceWhenNoneIsRead(): void
+    {
+        // Given
+        $now = new DateTimeImmutable('2026-10-29 10:00:00');
+        $choice = new ChoiceBuilder()->withAccepted(['a'])->build();
+        $choice->observe('a', 'Farine', new ProductPrice(149), $now);
+
+        // When
+        $choice->observe('a', 'Farine T55', null, $now->modify('+1 day'));
+
+        // Then
+        $this->assertSame(['Farine T55', 149], [$choice->getObservation('a')->label, $choice->getObservation('a')->priceCents]);
+        $this->assertEquals($now, $choice->getObservation('a')->priceSeenAt);
+    }
+
+    public function testOnlyAnAcceptedOrRejectedProductIsObserved(): void
+    {
+        // Given
+        $choice = new ChoiceBuilder()->withAccepted(['a'])->withRejected(['c'])->build();
+
+        // Then : un produit qui n'est dans aucune des deux listes, un libellé refusé
+        foreach ([
+            fn() => $choice->observe('inconnu', 'Farine', null, new DateTimeImmutable()),
+            fn() => $choice->observe('a', "Farine\nT55", null, new DateTimeImmutable()),
+            fn() => $choice->observePrice('c', new ProductPrice(149), new DateTimeImmutable()),
+            fn() => $choice->observePrice('inconnu', new ProductPrice(149), new DateTimeImmutable()),
+        ] as $call) {
+            try {
+                $call();
+                $this->fail('DRIVE_CHOICE_INVALID attendu');
+            } catch (DriveException $exception) {
+                $this->assertSame('DRIVE_CHOICE_INVALID', $exception->getMessage());
+            }
+        }
+        $this->assertNull($choice->getObservation('inconnu'));
+        $this->assertNull($choice->getObservation('a'));
+        $this->assertNull($choice->getObservation('c'));
+    }
+
+    public function testRepricingAnAcceptedProductKeepsItsLabelAndCreatesNoLabel(): void
+    {
+        // Given : a a déjà un libellé, b n'a rien lu
+        $now = new DateTimeImmutable('2026-10-29 10:00:00');
+        $choice = new ChoiceBuilder()->withAccepted(['a', 'b'])->withObservation('a', 'Farine T55', 149)->build();
+
+        // When
+        $choice->observePrice('a', new ProductPrice(159), $now)->observePrice('b', new ProductPrice(99), $now);
+
+        // Then
+        $this->assertSame(['Farine T55', 159], [$choice->getObservation('a')->label, $choice->getObservation('a')->priceCents]);
+        $this->assertSame([null, 99], [$choice->getObservation('b')->label, $choice->getObservation('b')->priceCents]);
+    }
+
+    public function testARejectedProductKeepsItsLabelButNeverAPrice(): void
+    {
+        // Given : un produit accepté avec son prix
+        $now = new DateTimeImmutable('2026-10-29 10:00:00');
+        $choice = new ChoiceBuilder()->withAccepted(['a', 'b'])->build();
+        $choice->observe('a', 'Farine', new ProductPrice(149), $now);
+
+        // When : il est refusé
+        $choice->reject('a');
+
+        // Then : le libellé reste (il sert à l'afficher parmi les refusés), le prix part
+        $this->assertSame('Farine', $choice->getObservation('a')->label);
+        $this->assertNull($choice->getObservation('a')->priceCents);
+        $this->assertNull($choice->getObservation('a')->priceSeenAt);
+
+        // When : un refus lu avec un prix
+        $choice->reject('b')->observe('b', 'Semoule', new ProductPrice(99), $now);
+
+        // Then
+        $this->assertNull($choice->getObservation('b')->priceCents);
+    }
+
+    public function testAProductThatLeavesBothListsLosesItsObservation(): void
+    {
+        // Given
+        $now = new DateTimeImmutable('2026-10-29 10:00:00');
+        $choice = new ChoiceBuilder()->withAccepted(['a', 'b'])->withRejected(['c', 'd'])->build();
+        foreach (['a', 'b', 'c', 'd'] as $productId) {
+            $choice->observe($productId, "Produit $productId", null, $now);
+        }
+
+        // When : a n'est plus accepté, c n'est plus refusé
+        $choice->remove('a')->unreject('c');
+
+        // Then : b et d gardent la leur
+        $this->assertNull($choice->getObservation('a'));
+        $this->assertNull($choice->getObservation('c'));
+        $this->assertSame('Produit b', $choice->getObservation('b')->label);
+        $this->assertSame('Produit d', $choice->getObservation('d')->label);
+    }
+
+    public function testAcceptingARejectedProductKeepsTheLabelItWasSeenWith(): void
+    {
+        // Given
+        $now = new DateTimeImmutable('2026-10-29 10:00:00');
+        $choice = new ChoiceBuilder()->withRejected(['a'])->build();
+        $choice->observe('a', 'Farine', null, $now);
+
+        // When
+        $choice->addPrimary('a');
+
+        // Then
+        $this->assertSame('Farine', $choice->getObservation('a')->label);
+    }
+
+    public function testObservationsFollowTheOrderChangesAndTheReplacement(): void
+    {
+        // Given
+        $now = new DateTimeImmutable('2026-10-29 10:00:00');
+        $choice = new ChoiceBuilder()->withAccepted(['a', 'b'])->withObservation('a', 'Produit a', 149)->withObservation('b', 'Produit b', 99)->build();
+
+        // When : l'ordre change
+        $choice->reorder(['b', 'a']);
+
+        // Then
+        $this->assertSame(149, $choice->getObservation('a')->priceCents);
+        $this->assertSame(99, $choice->getObservation('b')->priceCents);
+
+        // When : l'écran de gestion retire b, accepte c et refuse d
+        $choice->replace(false, ['a', 'c'], ['d']);
+
+        // Then : a garde les siennes, b les perd, c et d n'en ont pas
+        $this->assertSame(149, $choice->getObservation('a')->priceCents);
+        $this->assertNull($choice->getObservation('b'));
+        $this->assertNull($choice->getObservation('c'));
+        $this->assertNull($choice->getObservation('d'));
+    }
+
+    public function testHavingItAtHomeForgetsTheObservationsAndNothingComesBack(): void
+    {
+        // Given
+        $choice = new ChoiceBuilder()->withAccepted(['a'])->withRejected(['c'])->withObservation('a', 'Farine', 149)->withObservation('c', 'Semoule')->build();
+
+        // When
+        $choice->markHaveAtHome()->resumeBuying()->addPrimary('a');
+
+        // Then
+        $this->assertNull($choice->getObservation('a'));
+        $this->assertNull($choice->getObservation('c'));
+    }
+
+    public function testAFailedMethodKeepsTheObservations(): void
+    {
+        // Given : cinq produits acceptés dont un a des valeurs à lui
+        $choice = new ChoiceBuilder()->withAccepted(['a', 'b', 'c', 'd', 'e'])->withObservation('a', 'Farine', 149)->build();
+
+        // When : un sixième produit est refusé par le plafond
+        try {
+            $choice->addFallback('f');
+            $this->fail('DRIVE_CHOICE_INVALID attendu');
+        } catch (DriveException) {
+            // Then
+            $this->assertSame(149, $choice->getObservation('a')->priceCents);
+        }
+    }
+
+    public function testLoadRestoresTheObservationsButIgnoresOnesThatBelongToNoProductOrToAHaveAtHomeChoice(): void
+    {
+        // Given : des valeurs pour un produit accepté, pour un refusé (avec un prix qui n'a rien à y faire) et pour un produit absent
+        $datas = [
+            'id' => 'choice-2', 'user_id' => 'user-1', 'retailer' => Retailer::LECLERC, 'store_id' => '123456', 'ingredient_slug' => 'cheddar',
+            'kind' => ChoiceKind::PRODUCTS, 'accepted' => [new AcceptedProduct('a', 1)], 'rejected' => ['c'],
+            'updated_at' => new DateTimeImmutable('2026-10-18 10:00:00'),
+            'observations' => [
+                'a' => ProductObservation::load('Farine', 149, new DateTimeImmutable('2026-10-18 10:00:00')),
+                'c' => ProductObservation::load('Semoule', 99, new DateTimeImmutable('2026-10-18 10:00:00')),
+                'absent' => ProductObservation::load('Fantôme', 1, new DateTimeImmutable('2026-10-18 10:00:00')),
+                'vide' => ProductObservation::load(null, null, null),
+            ],
+        ];
+
+        // When
+        $buying = Choice::load($datas);
+        $atHome = Choice::load([...$datas, 'kind' => ChoiceKind::HAVE_AT_HOME]);
+
+        // Then
+        $this->assertSame(['Farine', 149], [$buying->getObservation('a')->label, $buying->getObservation('a')->priceCents]);
+        $this->assertSame(['Semoule', null], [$buying->getObservation('c')->label, $buying->getObservation('c')->priceCents]);
+        $this->assertNull($buying->getObservation('absent'));
+        $this->assertNull($buying->getObservation('vide'));
+        $this->assertNull($atHome->getObservation('a'));
+        $this->assertNull($atHome->getObservation('c'));
     }
 }

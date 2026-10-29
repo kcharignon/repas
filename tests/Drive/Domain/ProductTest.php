@@ -405,4 +405,19 @@ class ProductTest extends TestCase
         $this->assertEquals($later, $product->getPriceSeenAt());
         $this->assertSame('Farine', $product->getLabel());
     }
+
+    public function testValidLabelTrimsAndAppliesTheRulesOfTheSheet(): void
+    {
+        // Then : le libellé rogné, en accents et symboles
+        $this->assertSame('Œufs bio ×6', Product::validLabel("  Œufs bio ×6  "));
+        // Then : les mêmes refus que la fiche commune
+        foreach (['', '   ', "Farine\nT55", "Farine\u{200B}T55", str_repeat('a', 256)] as $label) {
+            try {
+                Product::validLabel($label);
+                $this->fail('DRIVE_CHOICE_INVALID attendu');
+            } catch (DriveException $exception) {
+                $this->assertSame('DRIVE_CHOICE_INVALID', $exception->getMessage());
+            }
+        }
+    }
 }

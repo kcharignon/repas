@@ -12,6 +12,7 @@ use Repas\Drive\Domain\Model\AcceptedProduct;
 use Repas\Drive\Domain\Model\Choice;
 use Repas\Drive\Domain\Model\ChoiceKind;
 use Repas\Drive\Domain\Model\PackSize;
+use Repas\Drive\Domain\Model\ProductObservation;
 use Repas\Drive\Domain\Model\Retailer;
 use Repas\Drive\Domain\Model\SearchQuery;
 use Repas\Drive\Infrastructure\Entity\Choice as ChoiceEntity;
@@ -83,6 +84,7 @@ readonly class ChoicePostgreSQLRepository extends PostgreSQLRepository implement
                 $choice->getUpdatedAt()->format(self::DATE_FORMAT),
             );
             foreach ($choice->getAccepted() as $accepted) {
+                $observation = $choice->getObservation($accepted->productId);
                 array_push(
                     $productParams,
                     $choice->getId(),
@@ -92,10 +94,14 @@ readonly class ChoicePostgreSQLRepository extends PostgreSQLRepository implement
                     // Les deux colonnes vont ensemble ; la valeur est écrite en texte à trois décimales (numeric(7,3))
                     $accepted->packSize === null ? null : number_format($accepted->packSize->value, PackSize::DECIMALS, '.', ''),
                     $accepted->packSize?->unitSlug,
+                    // Les valeurs observées par le compte : le prix et sa date vont ensemble
+                    $observation?->label,
+                    $observation?->priceCents,
+                    $observation?->priceSeenAt?->format(self::DATE_FORMAT),
                 );
             }
             foreach ($choice->getRejectedProductIds() as $productId) {
-                array_push($productParams, $choice->getId(), $productId, self::REJECTED, null, null, null);
+                array_push($productParams, $choice->getId(), $productId, self::REJECTED, null, null, null, $choice->getObservation($productId)?->label, null, null);
             }
         }
 
@@ -108,8 +114,8 @@ readonly class ChoicePostgreSQLRepository extends PostgreSQLRepository implement
         $connection->executeStatement('DELETE FROM drive_choice_product WHERE choice_id IN (?)', [$ids], [ArrayParameterType::STRING]);
         if ($productParams !== []) {
             $connection->executeStatement(
-                'INSERT INTO drive_choice_product (choice_id, product_id, verdict, rank, pack_size_value, pack_size_unit_slug) VALUES '
-                . implode(', ', array_fill(0, intdiv(count($productParams), 6), '(?, ?, ?, ?, ?, ?)')),
+                'INSERT INTO drive_choice_product (choice_id, product_id, verdict, rank, pack_size_value, pack_size_unit_slug, label, price_cents, price_seen_at) VALUES '
+                . implode(', ', array_fill(0, intdiv(count($productParams), 9), '(?, ?, ?, ?, ?, ?, ?, ?, ?)')),
                 $productParams,
             );
         }
@@ -151,7 +157,7 @@ readonly class ChoicePostgreSQLRepository extends PostgreSQLRepository implement
     private function fetch(string $where, array $params, array $types): array
     {
         $rows = $this->connection()->fetchAllAssociative(
-            'SELECT c.id, c.user_id, c.retailer, c.store_id, c.ingredient_slug, c.kind, c.search_query, c.updated_at, cp.product_id, cp.verdict, cp.rank, cp.pack_size_value, cp.pack_size_unit_slug '
+            'SELECT c.id, c.user_id, c.retailer, c.store_id, c.ingredient_slug, c.kind, c.search_query, c.updated_at, cp.product_id, cp.verdict, cp.rank, cp.pack_size_value, cp.pack_size_unit_slug, cp.label, cp.price_cents, cp.price_seen_at '
             . 'FROM drive_choice c LEFT JOIN drive_choice_product cp ON cp.choice_id = c.id '
             . 'WHERE ' . $where . ' ORDER BY c.id, cp.rank, cp.product_id',
             $params,
@@ -160,11 +166,17 @@ readonly class ChoicePostgreSQLRepository extends PostgreSQLRepository implement
 
         $choices = [];
         foreach ($rows as $row) {
-            $choices[$row['id']] ??= ['row' => $row, 'accepted' => [], 'rejected' => []];
+            $choices[$row['id']] ??= ['row' => $row, 'accepted' => [], 'rejected' => [], 'observations' => []];
             if ($row['verdict'] === self::ACCEPTED) {
                 $choices[$row['id']]['accepted'][] = new AcceptedProduct($row['product_id'], (int) $row['rank'], $this->packSizeOf($row));
             } elseif ($row['verdict'] === self::REJECTED) {
                 $choices[$row['id']]['rejected'][] = $row['product_id'];
+            }
+            if ($row['verdict'] !== null) {
+                $observation = $this->observationOf($row);
+                if (!$observation->isEmpty()) {
+                    $choices[$row['id']]['observations'][$row['product_id']] = $observation;
+                }
             }
         }
 
@@ -180,6 +192,7 @@ readonly class ChoicePostgreSQLRepository extends PostgreSQLRepository implement
                 'rejected' => $choice['rejected'],
                 'search_query' => $choice['row']['search_query'] === null ? null : SearchQuery::load($choice['row']['search_query']),
                 'updated_at' => new DateTimeImmutable($choice['row']['updated_at']),
+                'observations' => $choice['observations'],
             ]),
             $choices,
         ));
@@ -197,6 +210,20 @@ readonly class ChoicePostgreSQLRepository extends PostgreSQLRepository implement
         }
 
         return PackSize::load((float) $row['pack_size_value'], (string) $row['pack_size_unit_slug']);
+    }
+
+    /**
+     * Ce que le compte a lui-même observé du produit de la ligne (libellé, prix et date) ; vide si la ligne n'a pas de valeur à elle.
+     *
+     * @param array<string, mixed> $row
+     */
+    private function observationOf(array $row): ProductObservation
+    {
+        return ProductObservation::load(
+            $row['label'] === null ? null : (string) $row['label'],
+            $row['price_cents'] === null ? null : (int) $row['price_cents'],
+            $row['price_seen_at'] === null ? null : new DateTimeImmutable($row['price_seen_at']),
+        );
     }
 
     private function connection(): Connection
