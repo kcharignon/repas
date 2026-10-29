@@ -20,6 +20,7 @@
 /phpunit.xml
 /coverage-report
 /coverage
+/clover.xml
 ###< symfony/phpunit-bridge ###
 
 ###> phpunit/phpunit ###

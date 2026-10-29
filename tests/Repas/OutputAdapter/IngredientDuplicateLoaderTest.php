@@ -497,6 +497,6 @@ class IngredientDuplicateLoaderTest extends DatabaseTestCase
 
         // Then : quelques dizaines de millisecondes visées ; la marge protège d'une machine chargée, pas d'une boucle sur tous les couples
         PerformanceReport::line(sprintf("\n[ING-006] 367 ingrédients, doublons possibles : %.1f ms\n", $best));
-        $this->assertLessThan(200.0, $best);
+        $this->assertLessThan(PerformanceReport::allowed(200.0), $best);
     }
 }

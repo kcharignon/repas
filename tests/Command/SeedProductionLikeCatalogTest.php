@@ -15,6 +15,7 @@ use Repas\Tests\Helper\Builder\UserBuilder;
 use Repas\Tests\Helper\ControlledIngredientSeedingFeature;
 use Repas\Tests\Helper\DatabaseTestCase;
 use Repas\Tests\Helper\DataPersister;
+use Repas\Tests\Helper\PerformanceReport;
 use Repas\Tests\Helper\SqlBudget\QueryCounter;
 use Repas\User\Domain\Interface\PasswordResetTokenRepository;
 use Repas\User\Domain\Model\PasswordResetToken;
@@ -130,7 +131,7 @@ class SeedProductionLikeCatalogTest extends DatabaseTestCase
         $this->assertSame(261, (int) $connection->fetchOne('SELECT count(*) FROM ingredient WHERE adopted_from IS NULL AND creator = ?', [$this->ownerId]), $label);
         // Le coût : constant, celui des scénarios de budget, quelle que soit la taille du catalogue ; et rapide
         $this->assertSame((require dirname(__DIR__) . '/Repas/WriteBudget/budgets.php')['amorcer-compte'], $queries, $label);
-        $this->assertLessThan(2.0, $seconds, $label . ' : ' . round($seconds, 2) . ' s');
+        $this->assertLessThan(PerformanceReport::allowed(2.0), $seconds, $label . ' : ' . round($seconds, 2) . ' s');
     }
 
     public function testARegisteredVisitorWhoConfirmsTheirAddressGetsTheHundredAndFiftyOneIngredientsAndSeesThemThroughTheApi(): void
@@ -157,7 +158,7 @@ class SeedProductionLikeCatalogTest extends DatabaseTestCase
         $this->assertSame(204, $client->getResponse()->getStatusCode());
         $this->assertSame(151, (int) $connection->fetchOne('SELECT count(*) FROM ingredient WHERE creator = ? AND adopted_from IS NOT NULL AND NOT is_base', [$userId]));
         $this->assertSame(151, (int) $connection->fetchOne("SELECT count(*) FROM ingredient_alias WHERE user_id = ? AND kind = 'adoption' AND source = 'activation'", [$userId]));
-        $this->assertLessThan(1.0, $seconds, 'la confirmation, amorçage compris : ' . round($seconds, 2) . ' s');
+        $this->assertLessThan(PerformanceReport::allowed(1.0), $seconds, 'la confirmation, amorçage compris : ' . round($seconds, 2) . ' s');
 
         // …et il les voit par l'API : une fiche et un rayon entier, rien qui ne soit à lui
         $client->request('POST', '/api/login_check', content: json_encode(['email' => 'nouveau@example.test', 'password' => 'un-mot-de-passe'], JSON_THROW_ON_ERROR), server: $json);
