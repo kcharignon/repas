@@ -60,8 +60,13 @@ jobs:
         name: Generate JWT keys
         run: make jwt-keys EXEC_PHP="docker compose exec -T php"
       -
+        # Moteur de couverture rapide (PCOV, ~95 s contre ~260 s avec Xdebug) installé dans le conteneur, sans toucher au Dockerfile.
+        # S'il est indisponible (PECL), `make test-ci` retombe sur Xdebug : plus lent, mais même résultat.
+        name: Install PCOV
+        run: docker compose exec -T php install-php-extensions pcov-1.0.12 || echo "PCOV indisponible, repli sur Xdebug"
+      -
         name: Run PHPUnit
-        run: docker compose exec -T -e XDEBUG_MODE=coverage php bin/phpunit --coverage-clover clover.xml
+        run: make test-ci EXEC_PHP_CI="docker compose exec -T php"
       -
         name: Coverage Checker
         # Seuil en cliquet : on ne le baisse jamais, on le remonte quand la mesure le permet (docs/migration-roadmap.md).
