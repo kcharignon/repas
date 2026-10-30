@@ -179,7 +179,7 @@ Références : [`multi-enseignes.md`](multi-enseignes.md) (audit, conception, fa
 - [x] [DRV-706](tickets/DRV-706-hotes-autorises-par-enseigne-dans-le-coeur-kotlin.md) front (`android/core`) · M · Hôtes autorisés, origines du pont et mémoires par enseigne (xhigh) · dépend de : 704
 - [x] [DRV-707](tickets/DRV-707-ecran-du-drive-par-enseigne.md) front (`android/app`) · M · Écran du drive, injection, profil, menu et `app.info` par enseigne (high) · dépend de : 706
 - [x] [DRV-708](tickets/DRV-708-le-nom-de-l-enseigne-en-parametre-sur-le-web.md) front (web) · M · Le web : nom en paramètre, plus de littéral `leclerc` (medium) · dépend de : 701
-- [ ] [DRV-709](tickets/DRV-709-mes-drives-dans-moi.md) front (web) · M · « Mes drives » dans « Moi » : liste, ajout, drive habituel (high) · dépend de : 703, 708
+- [x] [DRV-709](tickets/DRV-709-mes-drives-dans-moi.md) front (web) · M · « Mes drives » dans « Moi » : liste, ajout, drive habituel (high) · dépend de : 703, 708
 - [ ] [DRV-710](tickets/DRV-710-choisir-le-drive-a-l-envoi.md) front (web) · M · Choisir le drive à l'envoi (R1 à R5), passage et retour par enseigne (high) · dépend de : 703, 707, 708, 709
 - [ ] [DRV-711](tickets/DRV-711-documentation-par-enseigne.md) back + front (docs) · S · Runbook, recette, skills et documentation « par enseigne » (medium) · dépend de : 701 à 710
 - [x] [DRV-712](tickets/DRV-712-spike-auchan-parcours-et-magasin.md) humain · M · Spike Auchan A1 : parcours, mode drive ou livraison, magasin, site mobile ou ordinateur · dépend de : —
@@ -194,7 +194,7 @@ Références : [`multi-enseignes.md`](multi-enseignes.md) (audit, conception, fa
 - [ ] [DRV-724](tickets/DRV-724-adaptateur-auchan-recherche.md) front (agent) · M · Recherche et lecture des produits d'Auchan (high) · dépend de : 717
 - [ ] [DRV-725](tickets/DRV-725-adaptateur-auchan-panier.md) front (agent) · M · Panier d'Auchan : quantité absolue, lecture, défi, cadence (high) · dépend de : 717
 - [ ] [DRV-726](tickets/DRV-726-recette-reelle-auchan.md) humain · M · Recette réelle d'Auchan sur le téléphone (WebView, connexion, un envoi) · dépend de : 728, 717, 724, 725, 707 à 710
-- [ ] [DRV-727](tickets/DRV-727-auchan-dans-les-registres-du-web-et-de-l-agent.md) front (web, agent) · M · Auchan dans le registre du web et celui de l'agent, éteint (high) · dépend de : 704, 708, 716, 722
+- [x] [DRV-727](tickets/DRV-727-auchan-dans-les-registres-du-web-et-de-l-agent.md) front (web, agent) · M · Auchan dans le registre du web et celui de l'agent, éteint (high) · dépend de : 704, 708, 716, 722
 - [ ] [DRV-728](tickets/DRV-728-auchan-dans-le-coeur-et-l-application-android.md) front (android) · M · Auchan dans le cœur et l'application Android : navigation, pont, injection (xhigh) · dépend de : 706, 707, 716
 - [ ] [DRV-729](tickets/DRV-729-realigner-les-scenarios-e2e-android.md) front (android) · S · Réaligner les scénarios 2 à 14 de `android/emulator/e2e.sh` sur le comportement actuel de l'agent (medium) · dépend de : —
 - [x] [DRV-730](tickets/DRV-730-offerid-optionnel-dans-l-openapi.md) back · S · `offerId` facultatif dans l'OpenAPI (retirer `default: null`) et marge de temps du test Alexa instable (medium) · dépend de : 721
