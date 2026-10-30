@@ -13,3 +13,5 @@ Après un envoi réussi, l'écran de retour dit « Ton panier est prêt. Retrouv
 ## Suite
 
 - Bouton « Ouvrir l'appli Leclerc Drive » (paquet Android `com.infomil.leclercdrive` relevé sur le téléphone de test, à confirmer) ; nettoyage du « Finaliser » natif devenu inutilisé (Kotlin).
+
+*Texte remplacé le 2026-10-30 (retour d'un utilisateur, front #272) : « Ton panier est rempli. Tu peux finaliser ta commande dans l'appli Leclerc Drive. » (ou « …l'appli Auchan. »), le nom de l'application vient de la table de l'enseigne ; le compteur « Choisis sur {enseigne} » devient « Choisis par toi ».*

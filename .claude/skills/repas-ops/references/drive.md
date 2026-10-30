@@ -4,7 +4,7 @@ Chantier « envoyer la liste de courses au drive Leclerc » ([ADR 0022](../../..
 
 **Se déroule avec l'utilisateur, une étape par message** (SKILL.md §0). Pour chaque étape : le but en une phrase, ce qu'il doit voir si ça marche, puis on attend son résultat. Définir chaque mot nouveau (interrupteur, migration, sauvegarde). Il n'est pas devops.
 
-**Depuis le 2026-10-24 (fin de la bêta, version 1.0.0)** : le déploiement du back et du site attend de nouveau l'approbation de l'utilisateur ; je crée moi-même les releases (`vX.Y.Z`, et `android-vX.Y.Z` à sa demande), je le préviens quand le run attend et je n'approuve jamais (ADR 0017). Entre le 2026-10-20 et le 2026-10-24 (bêta), le déploiement partait sans approbation.
+**Depuis le 2026-10-24 (fin de la bêta, version 1.0.0)** : le déploiement du back et du site attend de nouveau l'approbation de l'utilisateur ; je crée moi-même les releases (`vX.Y.Z`, et `android-vX.Y.Z`, sans qu'il ait à le demander depuis le 2026-10-30), je le préviens quand le run attend et je n'approuve jamais (ADR 0017). Entre le 2026-10-20 et le 2026-10-24 (bêta), le déploiement partait sans approbation.
 
 **Ce que je ne fais jamais** : allumer `DRIVE_ENABLED`, toucher un secret GitHub ou la clé de signature de l'application, contacter Leclerc (ni `curl`, ni navigateur, ni depuis le serveur). Je prépare, j'explique, je vérifie en lecture seule ; les écritures sont des scripts que l'utilisateur lance (`!`). Aucun secret dans le chat.
 
