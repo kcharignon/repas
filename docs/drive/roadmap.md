@@ -197,10 +197,11 @@ Références : [`multi-enseignes.md`](multi-enseignes.md) (audit, conception, fa
 - [x] [DRV-727](tickets/DRV-727-auchan-dans-les-registres-du-web-et-de-l-agent.md) front (web, agent) · M · Auchan dans le registre du web et celui de l'agent, éteint (high) · dépend de : 704, 708, 716, 722
 - [x] [DRV-728](tickets/DRV-728-auchan-dans-le-coeur-et-l-application-android.md) front (android) · M · Auchan dans le cœur et l'application Android : navigation, pont, injection (xhigh) · dépend de : 706, 707, 716
 - [x] [DRV-729](tickets/DRV-729-realigner-les-scenarios-e2e-android.md) front (android) · S · Réaligner les scénarios 2 à 14 de `android/emulator/e2e.sh` sur le comportement actuel de l'agent (medium) · dépend de : —
-- [ ] [DRV-731](tickets/DRV-731-scenario-emulateur-auchan.md) front (android) · S · Scénario d'émulateur pour la lecture du magasin d'Auchan contre le faux site (medium) · dépend de : 717, 729
+- [x] [DRV-731](tickets/DRV-731-scenario-emulateur-auchan.md) front (android) · S · Scénario d'émulateur pour la lecture du magasin d'Auchan contre le faux site (medium) · dépend de : 717, 729
 - [x] [DRV-732](tickets/DRV-732-quantite-au-panier-d-auchan.md) front (agent) · S · Quantité déjà au panier d'un produit connu d'Auchan : ne plus afficher « illisible » (high) · dépend de : 724, 725
 - [x] [DRV-733](tickets/DRV-733-bandeaux-de-l-ecran-par-enseigne.md) front (android) · S · Bandeaux de l'écran du drive propres à l'enseigne : aucun bandeau de magasin pour une enseigne sans page de magasin (high) · dépend de : 728
 - [x] [DRV-734](tickets/DRV-734-recherche-d-auchan-redirigee-vers-un-rayon.md) front (agent) · S · Recherche d'Auchan : lire la page de rayon vers laquelle un terme courant redirige, reconnaître « aucun résultat » (high) · dépend de : 724
+- [x] [DRV-735](tickets/DRV-735-plan-d-essai-de-debogage-par-enseigne.md) front (android) · S · Plan d'essai de la variante de débogage par enseigne (high) · dépend de : 728
 - [x] [DRV-730](tickets/DRV-730-offerid-optionnel-dans-l-openapi.md) back · S · `offerId` facultatif dans l'OpenAPI (retirer `default: null`) et marge de temps du test Alexa instable (medium) · dépend de : 721
 
 ## Backlog (non détaillé, à écrire quand il devient utile)

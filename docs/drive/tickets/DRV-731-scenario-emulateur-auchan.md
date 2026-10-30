@@ -4,7 +4,7 @@
 - **Jalon** : M7 Plusieurs enseignes
 - **Taille** : S
 - **Dépend de** : DRV-717 (faux site d'Auchan), DRV-729 (scénarios réalignés), DRV-728 (Auchan dans l'application, variante de débogage)
-- **Statut** : à faire. Effort recommandé : `medium`.
+- **Statut** : fait (PR front #266, 2026-10-30) : scénario 21 de `make android-e2e` (un second APK de débogage `ANDROID_EXTRA_RETAILERS=auchan` est construit par le banc ; DNS, certificat et faux Auchan dans l'émulateur) ; `make android-e2e` complet vert en 993 s. Prouvé : menu et `app.info` (`["leclerc","auchan"]`), écran sur `www.auchan.fr/courses` du faux site, **pont seulement sur `www`** (jamais sur le faux `compte.auchan.fr`), diagnostic de l'agent (magasin lu ; sans magasin : `STORE_NOT_CHOSEN`), aucune requête vers Internet. Non prouvable dans l'émulateur : le profil de WebView `drive-auchan` (WebView 113 sans `MULTI_PROFILE`) : jugé par `ScreenRetailerTest` et par la recette sur téléphone.
 - **Lire d'abord** : [`DRV-717`](DRV-717-adaptateur-auchan-squelette.md) (volet émulateur laissé de côté) ; skill `repas-android-dev` (verrou `/tmp/repas-android-e2e.lock`) ; `android/emulator/` (faux site en HTTPS, DNS, certificat).
 
 ## Contexte
