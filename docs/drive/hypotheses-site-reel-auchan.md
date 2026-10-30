@@ -35,8 +35,8 @@ Légende : **M** mesuré sur le vrai site (Chrome du téléphone de test, une se
 | B-6 | Un `404` d'adresse inventée est un vrai `404` avec une page « Erreur 404 ». | M |
 | B-6b | Une page « introuvable » se reconnaît au code HTTP du document, à défaut à un titre commençant par « 404 » (une page vue) ; le reste de la page est supposé. | S |
 | B-7 | Pagination des résultats, tri, filtres. | I |
-| B-7b | Seule la première page de résultats est lue ; la page « aucun résultat » est supposée (barre du magasin et une phrase) ; une page « aucun résultat » qui montrerait des produits suggérés serait lue comme `SEARCH_PRODUCTS_UNREADABLE`. | S / I |
-| B-8 | La recherche de certains termes redirige vers une page de produit ou de rayon (clé `searchRedirects` du stockage local). | S |
+| B-7b | La page « aucun résultat » est **mesurée** (essai réel du 2026-10-30) : `200`, non redirigée, titre « Votre recherche <terme> sur Auchan.fr », `h1` « Votre recherche : <terme> », la phrase « Oups, on n'a rien trouvé pour : », aucune carte produit ; sa barre de magasin n'est pas mesurée. Seule la première page de résultats est lue. | M / I (pagination) |
+| B-8 | **Les termes courants redirigent vers une page de rayon** (mesuré le 2026-10-30 : `fetch` `200`, `redirected: true`, adresse finale `/<rayon>/<sous-rayons…>/ca-n<chiffres>`, titre « <Catégorie> pas cher - Auchan.fr », `h1` le nom de la catégorie) qui porte **les mêmes cartes** que `/recherche` (30, 30, 32 et 12 produits sur la première page pour riz, sucre, oeufs, poivre ; farine ne redirige pas : 27 produits) ; DRV-734 la lit comme une page de résultats. Une redirection vers une **fiche produit** (`/pr-C…`) n'a pas été vue : l'adaptateur la traite comme zéro produit. La clé `searchRedirects` du stockage local n'est pas mesurée. | M (rayon) / I (fiche) |
 
 ## Panier
 

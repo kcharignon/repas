@@ -4,7 +4,7 @@
 - **Jalon** : M7 Plusieurs enseignes
 - **Taille** : S
 - **Dépend de** : DRV-724, DRV-725
-- **Statut** : en cours le 2026-10-30. Effort recommandé : `high`.
+- **Statut** : fait (PR front #261, 2026-10-30, agent 0.51.1) : méthode facultative `readCartQuantity` du contrat d'adaptateur ; un `GET /cart` par passage (+ un avant chaque écriture) ; plus de « Quantité au panier illisible » pour un produit connu d'Auchan ; sans cette mention un passage qui n'a rien d'autre à dire n'a plus d'écran de fin (règle DRV-625, comme Leclerc).
 - **Lire d'abord** : les rapports de DRV-724 et 725 ; `../hypotheses-site-reel-auchan.md` § Panier.
 
 ## Contexte

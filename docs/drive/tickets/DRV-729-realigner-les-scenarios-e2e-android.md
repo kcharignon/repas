@@ -4,7 +4,7 @@
 - **Jalon** : M7 Plusieurs enseignes (maintenance du banc de test)
 - **Taille** : S
 - **Dépend de** : —
-- **Statut** : en cours le 2026-10-30 (agent de maintenance). Effort recommandé : `medium`.
+- **Statut** : fait (PR front #263, 2026-10-30) : scénarios 2 à 18 réalignés (3 a changé de sens : « Annuler l'envoi » au premier choix ; 9, 10, 11, 12 et 18 vont jusqu'à `completed`) ; `make android-e2e` complet vert en 14 min 38 ; la CI ne joue pas ce banc (pas de KVM). À vérifier : une 4e recherche du scénario 13 sur une adresse sans ville (repli voulu ou doublon ?).
 - **Lire d'abord** : le rapport de DRV-707 (PR front #252) ; `../principes-produit.md` ; skill `repas-android-dev` (verrou `/tmp/repas-android-e2e.lock`).
 
 ## Contexte

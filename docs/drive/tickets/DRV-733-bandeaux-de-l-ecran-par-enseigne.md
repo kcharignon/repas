@@ -4,7 +4,7 @@
 - **Jalon** : M7 Plusieurs enseignes
 - **Taille** : S
 - **Dépend de** : DRV-728
-- **Statut** : en cours le 2026-10-30. Effort recommandé : `high`.
+- **Statut** : fait (PR front #262, 2026-10-30) : `RetailerSite.hasStorePages` ; `StoreBanner` ne rend plus `SETUP`, `OPEN` ni `STORE_FIRST` sans page de magasin ; Leclerc identique ; le texte de `PLAN` garde la tournure de Leclerc (ticket à part si besoin).
 - **Lire d'abord** : le rapport de DRV-728 ; `android/ARCHITECTURE.md` (« Plusieurs enseignes ») ; skill `repas-po`.
 
 ## Contexte
