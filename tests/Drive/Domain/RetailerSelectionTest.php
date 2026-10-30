@@ -35,11 +35,12 @@ class RetailerSelectionTest extends TestCase
         yield 'R2 une seule configurée, l\'autre en dernière utilisée' => [$both, [self::A], null, self::B, SelectionMode::AUTO, self::A, [self::A]];
         yield 'R2 une seule configurée, l\'autre en drive habituel' => [$both, [self::B], self::A, self::A, SelectionMode::AUTO, self::B, [self::B]];
         yield 'R2 une seule configurée, elle est le drive habituel' => [$both, [self::B], self::B, self::B, SelectionMode::AUTO, self::B, [self::B]];
-        // R3 : plusieurs configurées, un drive habituel : le plus explicite gagne sur la dernière utilisée
-        yield 'R3 drive habituel A, dernière utilisée B' => [$both, [self::A, self::B], self::A, self::B, SelectionMode::AUTO, self::A, [self::A, self::B]];
-        yield 'R3 drive habituel B, dernière utilisée A' => [$both, [self::A, self::B], self::B, self::A, SelectionMode::AUTO, self::B, [self::A, self::B]];
-        yield 'R3 drive habituel B, aucune dernière utilisée' => [$both, [self::A, self::B], self::B, null, SelectionMode::AUTO, self::B, [self::A, self::B]];
-        // R4 : plusieurs configurées, pas de drive habituel : on demande, la dernière utilisée est présélectionnée
+        // R3 : plusieurs configurées, jamais `AUTO` : on demande, le drive habituel est présélectionné (même si la dernière utilisée est une autre)
+        yield 'R3 drive habituel A, dernière utilisée B : ASK, présélection A' => [$both, [self::A, self::B], self::A, self::B, SelectionMode::ASK, self::A, [self::A, self::B]];
+        yield 'R3 drive habituel B, dernière utilisée A : ASK, présélection B' => [$both, [self::A, self::B], self::B, self::A, SelectionMode::ASK, self::B, [self::A, self::B]];
+        yield 'R3 drive habituel B, aucune dernière utilisée : ASK, présélection B' => [$both, [self::A, self::B], self::B, null, SelectionMode::ASK, self::B, [self::A, self::B]];
+        yield 'R3 drive habituel B, configurées B puis A, dernière utilisée A : ASK, présélection B' => [$both, [self::B, self::A], self::B, self::A, SelectionMode::ASK, self::B, [self::B, self::A]];
+        // R4 : plusieurs configurées, pas de drive habituel candidat : on demande, la dernière utilisée est présélectionnée, sinon la première configurée
         yield 'R4 dernière utilisée B' => [$both, [self::A, self::B], null, self::B, SelectionMode::ASK, self::B, [self::A, self::B]];
         yield 'R4 dernière utilisée A' => [$both, [self::A, self::B], null, self::A, SelectionMode::ASK, self::A, [self::A, self::B]];
         yield 'R4 sans dernière utilisée : la première configurée (A)' => [$both, [self::A, self::B], null, null, SelectionMode::ASK, self::A, [self::A, self::B]];

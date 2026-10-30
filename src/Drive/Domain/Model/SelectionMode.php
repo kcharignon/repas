@@ -5,8 +5,8 @@ namespace Repas\Drive\Domain\Model;
 
 /**
  * Ce que Repas fait de l'enseigne à utiliser (docs/drive/multi-enseignes.md § 5.1, DRV-703) : `NONE` aucune enseigne n'est configurée (mener
- * la personne aux réglages), `AUTO` une enseigne s'impose (l'utiliser sans rien demander), `ASK` proposer le choix (l'enseigne de la
- * sélection est la présélection).
+ * la personne aux réglages), `AUTO` une seule enseigne est configurée (l'utiliser sans rien demander, même avec un drive habituel), `ASK` plusieurs
+ * le sont (proposer le choix, jamais `AUTO` avec deux candidates ou plus ; l'enseigne de la sélection est la présélection).
  */
 enum SelectionMode: string
 {

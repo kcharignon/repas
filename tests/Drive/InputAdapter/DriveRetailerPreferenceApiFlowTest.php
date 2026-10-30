@@ -100,12 +100,12 @@ class DriveRetailerPreferenceApiFlowTest extends DatabaseTestCase
         $this->assertSame([null, 'auchan', 'auchan'], [$body['defaultRetailer'], $body['lastUsedRetailer'], $body['retailer']]);
         $this->assertSame(self::AUCHAN_STORE, $body['store']['id']);
 
-        // When / Then : le drive habituel l'emporte sur la dernière utilisée, sans rien demander (R3, D-M1)
+        // When / Then : le drive habituel est présélectionné avant la dernière utilisée, mais on demande toujours (R3 et R4, décision du 2026-10-30)
         $this->request('PUT', '/api/v1/drive/default-retailer', $user, ['retailer' => 'leclerc']);
         $this->assertSame(204, $this->client->getResponse()->getStatusCode(), $this->client->getResponse()->getContent());
         $this->request('GET', '/api/v1/drive/settings', $user);
         $body = $this->jsonBody();
-        $this->assertSame(['mode' => 'AUTO', 'retailer' => 'leclerc', 'candidates' => ['leclerc', 'auchan']], $body['selection']);
+        $this->assertSame(['mode' => 'ASK', 'retailer' => 'leclerc', 'candidates' => ['leclerc', 'auchan']], $body['selection']);
         $this->assertSame(['leclerc', 'auchan', 'leclerc'], [$body['defaultRetailer'], $body['lastUsedRetailer'], $body['retailer']]);
         $this->assertSame([true, false], array_column($body['retailers'], 'isDefault'));
 

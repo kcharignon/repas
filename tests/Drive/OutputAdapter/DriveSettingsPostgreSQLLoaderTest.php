@@ -210,7 +210,7 @@ class DriveSettingsPostgreSQLLoaderTest extends DatabaseTestCase
         $this->assertSame([null, 'leclerc', 'leclerc'], [$result->defaultRetailer, $result->lastUsedRetailer, $result->retailer]);
     }
 
-    public function testTheDefaultRetailerWinsOverTheLastUsedOneAndIsMarkedInTheList(): void
+    public function testTheDefaultRetailerIsPreselectedOverTheLastUsedOneButTheChoiceIsStillAsked(): void
     {
         // Given : le drive habituel est Auchan, la dernière enseigne Leclerc
         $this->twoStores();
@@ -221,7 +221,7 @@ class DriveSettingsPostgreSQLLoaderTest extends DatabaseTestCase
         $result = $this->loaderFor(['leclerc', 'auchan'])->get('user-1');
 
         // Then
-        $this->assertEquals(new RetailerSelectionDTO('AUTO', 'auchan', ['auchan', 'leclerc']), $result->selection);
+        $this->assertEquals(new RetailerSelectionDTO('ASK', 'auchan', ['auchan', 'leclerc']), $result->selection);
         $this->assertSame(['auchan', 'leclerc'], [$result->defaultRetailer, $result->lastUsedRetailer]);
         $this->assertSame([['leclerc', false], ['auchan', true]], array_map(static fn(DriveRetailerDTO $retailer): array => [$retailer->retailer, $retailer->isDefault], $result->retailers));
     }
@@ -246,7 +246,7 @@ class DriveSettingsPostgreSQLLoaderTest extends DatabaseTestCase
         $again = $this->loaderFor(['leclerc', 'auchan'])->get('user-1');
 
         // Then : le drive habituel reparaît
-        $this->assertSame(['auchan', 'AUTO'], [$again->defaultRetailer, $again->selection->mode]);
+        $this->assertSame(['auchan', 'ASK', 'auchan'], [$again->defaultRetailer, $again->selection->mode, $again->selection->retailer]);
     }
 
     public function testAPreferenceForARetailerWithoutAStoreIsIgnored(): void
