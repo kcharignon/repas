@@ -167,7 +167,7 @@ Références : [`principes-produit.md`](principes-produit.md), [`audit-simplicit
 
 ## M7 — Plusieurs enseignes (cadrage du 2026-10-19)
 
-**Lancé le 2026-10-30** (la pause du 2026-10-20 est levée) : le propriétaire démarre Auchan. Spikes DRV-712 à 714 faits le jour même (issue #322, rapports dans `spikes/`), décision DRV-715 : **adaptateur complet** ([`spikes/DRV-715-decision-auchan.md`](spikes/DRV-715-decision-auchan.md)). Auchan reste **éteint** jusqu'à la recette réelle DRV-726. Règle « Ne pas durcir Leclerc » toujours active.
+**Lancé le 2026-10-30** (la pause du 2026-10-20 est levée) : le propriétaire démarre Auchan. Spikes DRV-712 à 714 faits le jour même (issue #322, rapports dans `spikes/`), décision DRV-715 : **adaptateur complet** ([`spikes/DRV-715-decision-auchan.md`](spikes/DRV-715-decision-auchan.md)). **Auchan est allumé en production le 2026-10-30** (back `v1.8.0`, site `v1.9.0`, application `android-v1.2.0`, `DRIVE_RETAILERS=leclerc,auchan` écrit par le propriétaire après la recette réelle DRV-726, voir son rapport). Règle « Ne pas durcir Leclerc » toujours active.
 
 Références : [`multi-enseignes.md`](multi-enseignes.md) (audit, conception, faits sur Auchan), [ADR 0027](../adr/0027-plusieurs-enseignes-de-drive.md) (`Accepted`, amendée le 2026-10-30). **Chaque ticket du découplage ne change aucun comportement visible tant qu'il n'y a qu'une enseigne.** Les spikes Auchan sont des tâches `humain` sur téléphone (jamais depuis un ordinateur). Ordre conseillé : 701, 704 et 708 en parallèle, puis 702, 703, 705, 706, puis 707 et 709, puis 710 ; 711 en continu. Les tickets après 717 (recherche, panier, entrée, recette Auchan) seront écrits par DRV-715 d'après les rapports des spikes. Effort recommandé entre parenthèses.
 
