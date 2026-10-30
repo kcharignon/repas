@@ -4,7 +4,7 @@
 - **Jalon** : M7 Plusieurs enseignes
 - **Taille** : M
 - **Dépend de** : DRV-701
-- **Statut** : fait (PR #XXX, 2026-10-30). Effort recommandé : `high` (migration additive, contrat du plan).
+- **Statut** : fait (PR #327, 2026-10-30). Effort recommandé : `high` (migration additive, contrat du plan).
 - **Lire d'abord** : [`../spikes/DRV-715-decision-auchan.md`](../spikes/DRV-715-decision-auchan.md) § 2 point 3 ; [`../spikes/DRV-714-rapport.md`](../spikes/DRV-714-rapport.md) § Recherche ; [`../architecture.md`](../architecture.md) § 8 (le plan) ; [`../consignes-agents.md`](../consignes-agents.md) (« Modifier le plan ou un message du protocole ») ; skills `repas-dev`, `repas-drive-back`.
 
 ## Contexte
