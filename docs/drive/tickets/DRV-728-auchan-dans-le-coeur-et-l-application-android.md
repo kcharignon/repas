@@ -4,7 +4,7 @@
 - **Jalon** : M7 Plusieurs enseignes
 - **Taille** : M
 - **Dépend de** : DRV-706, DRV-707, DRV-716
-- **Statut** : à faire. Effort recommandé : `xhigh` (sécurité : navigation, origines du pont, livraison du plan).
+- **Statut** : fait (PR front #254, 2026-10-30). Auchan est **inscrite et éteinte** : dans `RetailerSites.SWITCHED_OFF`, absente de `RetailerSites.DEFAULT`, allumée seulement par `ANDROID_EXTRA_RETAILERS=auchan` (variante de **débogage**) ; la publication a le drapeau vide en dur (`verifyReleaseInputs`) et `build.sh` le contrôle. Écarts : aucun scénario d'émulateur d'Auchan ([DRV-731](DRV-731-scenario-emulateur-auchan.md)) ; les bandeaux de l'écran sont ceux de Leclerc ([DRV-733](DRV-733-bandeaux-de-l-ecran-par-enseigne.md)). Effort recommandé : `xhigh` (sécurité : navigation, origines du pont, livraison du plan).
 - **Lire d'abord** : [`../spikes/DRV-715-decision-auchan.md`](../spikes/DRV-715-decision-auchan.md) § 2 points 5 à 7 ; [`../hypotheses-site-reel-auchan.md`](../hypotheses-site-reel-auchan.md) ; [`DRV-706`](DRV-706-hotes-autorises-par-enseigne-dans-le-coeur-kotlin.md) ; skill `repas-android-dev` ; [`../architecture.md`](../architecture.md) (sécurité du pont).
 
 ## Contexte
@@ -45,3 +45,7 @@ Celle du dépôt front et du skill `repas-android-dev` ; **aucune étiquette, au
 ## Ce que DRV-706 a posé (2026-10-30)
 
 `RetailerSite` (table `RetailerSites`) distingue, par hôte, la **navigation** et le **pont** (`SiteHost.bridge`) : Auchan = hôtes `www.auchan.fr` (pont) et `compte.auchan.fr` (navigation seule), mode `AS_IS`, sans adresse de page de magasin ni `loginPath` d'adresse de magasin, avec un `storeIdPattern` UUID ; `acceptsPlanOn` livre alors de toute page de `www`. Les noms de site sont un nom exact ou `*.domaine` (jamais le domaine nu, jamais `*.fr`). Gardes : `RetailerSitesArchitectureTest` et `android/__tests__/retailer-sites.spec.ts` (« leclerc » n'est écrit que dans `RetailerSites.kt`, la copie du contrat n'a pas dérivé).
+
+## Ce que DRV-728 a posé (2026-10-30)
+
+`RetailerSites.SWITCHED_OFF`, `RetailerSites.serving(flag)` et `REGISTERED` (interne, pour les tests) ; `ANDROID_EXTRA_RETAILERS` → `BuildConfig.EXTRA_RETAILERS` → `RepasApp.announced` (qui alimente `app.info` et le menu) puis `RepasApp.sites` (règles d'origine du pont, écrans, mémoires) ; `HostileAddresses.kt` (tables d'adresses hostiles partagées) et `android/__tests__/retailer-flag.spec.ts`. Navigation : `www.auchan.fr` et `compte.auchan.fr` (noms exacts) ; **pont et agent seulement sur `https://www.auchan.fr`** ; profil de WebView `drive-auchan`. Limite assumée : l'entrée d'Auchan est inerte dans les classes du cœur de tout APK (le cœur est commun) : « aucun `auchan.fr` dans l'APK » serait faux par construction, `build.sh` contrôle le drapeau à la place.

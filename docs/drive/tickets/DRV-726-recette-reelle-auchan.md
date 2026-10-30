@@ -49,3 +49,7 @@ Rapport fusionné ; runbook « Auchan a changé » complété (`runbook.md`) ; r
 - **Livraison à domicile** : un canal sans `PICK_UP` n'est que rapporté dans le diagnostic (A-8).
 - **Libellé du magasin** : l'écran « Utiliser ce magasin » afficherait l'UUID en entier si le libellé manquait (A-4 le suppose toujours présent).
 - **Photos** : `cdn.auchan.fr`, chemin `/media/…` : liste blanche par enseigne, à confirmer.
+
+## Obtenir l'application pour la recette (issu de DRV-728)
+
+L'APK **publié** n'a jamais Auchan. Pour la recette : un APK de **débogage** construit avec `ANDROID_EXTRA_RETAILERS=auchan make android` (dépôt front) et installé par `adb` sur le téléphone de test, ou une pré-version de débogage demandée par l'humain ; **jamais** une étiquette de publication. Le back et le site utilisés par l'application doivent servir Auchan (`DRIVE_RETAILERS=leclerc,auchan`, par `ecrire-drive-retailers.sh`, en environnement de **test** seulement, geste de l'humain) : un back et un site de production qui n'ont pas encore été publiés avec ce chantier ne la servent pas.

@@ -4,7 +4,7 @@
 - **Jalon** : M7 Plusieurs enseignes
 - **Taille** : M
 - **Dépend de** : DRV-717
-- **Statut** : à faire. Effort recommandé : `high`.
+- **Statut** : fait (PR front #259, 2026-10-30, agent 0.51.0 ; 152 tests e2e de l'agent). Écarts : un produit non clairement disponible donne `stock: 0` et la règle commune du passage (DRV-635) le tente quand même une fois (le panier tranche) ; termes redirigés (fiche, rayon) : zéro produit sans erreur, toute autre page `SEARCH_REDIRECTED` ; page « aucun résultat » : barre du magasin et phrase (non mesurée), sinon `SEARCH_UNKNOWN_PAGE` ; seule la première page est lue ; la page de résultats ne dit pas la quantité déjà au panier : [DRV-732](DRV-732-quantite-au-panier-d-auchan.md). Effort recommandé : `high`.
 - **Lire d'abord** : [`../hypotheses-site-reel-auchan.md`](../hypotheses-site-reel-auchan.md) § Recherche et produits ; [`../spikes/DRV-714-rapport.md`](../spikes/DRV-714-rapport.md) ; DRV-717 ; `drive-agent/src/leclerc/search-*.ts` (modèle) ; skill `repas-agent-dev`.
 
 ## Portée
