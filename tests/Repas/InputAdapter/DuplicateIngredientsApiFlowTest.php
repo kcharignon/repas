@@ -118,8 +118,13 @@ class DuplicateIngredientsApiFlowTest extends DatabaseTestCase
         $this->request('GET', '/api/v1/ingredients/duplicates', $other);
         $this->assertCount(1, $this->jsonBody()['member']);
 
-        // When : l'utilisateur renomme « Tomates » en « Tomate » (même nom exactement)
+        // When : l'utilisateur renomme « Tomates » en « Tomate » (même nom exactement, même rayon) : refusé, un rayon n'a pas deux ingrédients
+        // du même nom (ING-016) ; la paire écartée se fusionne, elle ne se renomme pas en doublon exact
         $this->request('PUT', "/api/v1/ingredients/$tomatoes", $user, ['name' => 'Tomate', 'departmentSlug' => 'boulangerie', 'defaultCookingUnitSlug' => 'gramme', 'defaultPurchaseUnitSlug' => 'kilo', 'coefficient' => 1000]);
+        $this->assertSame([409, 'INGREDIENT_NAME_ALREADY_USED'], [$this->client->getResponse()->getStatusCode(), $this->jsonBody()['error']['message']]);
+
+        // When : il le renomme en « Tomatte » (à une faute près)
+        $this->request('PUT', "/api/v1/ingredients/$tomatoes", $user, ['name' => 'Tomatte', 'departmentSlug' => 'boulangerie', 'defaultCookingUnitSlug' => 'gramme', 'defaultPurchaseUnitSlug' => 'kilo', 'coefficient' => 1000]);
         $this->assertSame(204, $this->client->getResponse()->getStatusCode(), $this->client->getResponse()->getContent());
 
         // Then : jamais reproposée

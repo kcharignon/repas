@@ -159,6 +159,20 @@ class IngredientTest extends TestCase
         $ingredient->assertOwnedBy('another-id');
     }
 
+    public function testACreationTakesTheSlugItIsGivenAndOtherwiseTheOneOfItsNameAndCreator(): void
+    {
+        // Given / When : le même nom, l'un sans slug donné, l'autre avec le sien (ADR 0028, amendement du 2026-10-30 : le cas d'usage en choisit un libre)
+        $department = new DepartmentBuilder()->isBakery()->build();
+        $unit = new UnitBuilder()->isGramme()->build();
+        $natural = Ingredient::create('Petits pois', '', $department, $unit, $unit, 'user-id');
+        $given = Ingredient::create('Petits pois', '', $department, $unit, $unit, 'user-id', 'petits-pois-2user-id');
+
+        // Then : le slug ne change ni le nom, ni le nom normalisé, ni le créateur
+        $this->assertSame('petits-poisuser-id', $natural->getSlug());
+        $this->assertSame('petits-pois-2user-id', $given->getSlug());
+        $this->assertSame(['petits-pois', 'petits-pois', 'user-id'], [$given->getSluggedName(), $natural->getSluggedName(), $given->getCreatorId()]);
+    }
+
     public function testAnIngredientIsNotBaseUnlessMarked(): void
     {
         // Given

@@ -242,8 +242,11 @@ final class Ingredient implements ModelInterface
         Unit $defaultCookingUnit,
         Unit $defaultPurchaseUnit,
         string $creatorId,
+        ?string $slug = null,
     ): self {
-        $slug = StringTool::slugify($name.$creatorId);
+        // Sans slug donné : celui du nom et du créateur. Le cas d'usage de création en donne un libre (`IngredientSlugPolicy`), car deux
+        // ingrédients du même propriétaire peuvent porter le même nom dans deux rayons différents (ADR 0028, amendement du 2026-10-30).
+        $slug ??= StringTool::slugify($name.$creatorId);
         $sluggedName = StringTool::slugify($name);
         return new self(
             $slug,

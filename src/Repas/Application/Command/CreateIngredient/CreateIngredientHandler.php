@@ -16,6 +16,7 @@ use Repas\Repas\Domain\Model\Ingredient;
 use Repas\Repas\Domain\Model\QuantityBounds;
 use Repas\Repas\Domain\Model\Unit;
 use Repas\Repas\Domain\Service\ConversionService;
+use Repas\Repas\Domain\Service\IngredientSlugPolicy;
 use Repas\Shared\Application\Interface\IngredientCatalogOwner;
 use Repas\Shared\Domain\Tool\StringTool;
 use Repas\Shared\Domain\Tool\Tab;
@@ -34,13 +35,14 @@ readonly class CreateIngredientHandler
         private EventDispatcherInterface $eventDispatcher,
         private ConversionService $conversionService,
         private IngredientCatalogOwner $catalogOwner,
+        private IngredientSlugPolicy $slugPolicy,
     ) {
     }
 
     /**
      * @throws DepartmentException
      * @throws UnitException
-     * @throws IngredientException le créateur a déjà `Ingredient::MAX_PER_CREATOR` ingrédients
+     * @throws IngredientException le créateur a déjà `Ingredient::MAX_PER_CREATOR` ingrédients, ou déjà un ingrédient de ce nom dans ce rayon (`409`)
      */
     public function __invoke(CreateIngredientCommand $command): string
     {
@@ -54,6 +56,11 @@ readonly class CreateIngredientHandler
             throw IngredientException::limitReached();
         }
 
+        // Le slug est le premier libre de ce nom chez ce créateur (`IngredientSlugPolicy`) : deux ingrédients du même propriétaire peuvent
+        // porter le même nom dans deux rayons différents (ADR 0028, amendement du 2026-10-30, ING-016), le second reçoit `…-2…`. Les
+        // identifiants existants ne changent jamais. Le nom brut suffit : `slugify` passe tout en minuscules (ADR 0030).
+        $slug = $this->slugPolicy->firstFreeSlug($command->name, $creatorId, fn(string $candidate): bool => $this->ingredientRepository->exists($candidate));
+
         // La première lettre du nom est mise en majuscule en silence, le reste est conservé (ADR 0030) ; le slug et le nom normalisé
         // (détection du doublon) n'en dépendent pas : `slugify` passe tout en minuscules
         $ingredient = Ingredient::create(
@@ -62,6 +69,7 @@ readonly class CreateIngredientHandler
             department: $this->departmentRepository->findOneBySlug($command->departmentSlug),
             defaultCookingUnit: $cookingUnit,
             defaultPurchaseUnit: $purchaseUnit,
+            slug: $slug,
             creatorId: $creatorId,
         );
 
@@ -72,10 +80,10 @@ readonly class CreateIngredientHandler
             $ingredient->changeBase(true);
         }
 
-        // Le slug dérive du nom et du créateur : enregistrer sous un slug existant écraserait l'ingrédient. Le nom normalisé du créateur est
-        // vérifié dans la même requête : un ancien commun passé à son propriétaire a un slug sans identifiant du compte.
-        if ($this->ingredientRepository->existsForCreator($ingredient->getSlug(), $creatorId, $ingredient->getSluggedName())) {
-            throw IngredientException::alreadyExists($ingredient->getSlug());
+        // L'unicité (ADR 0028, amendement du 2026-10-30) : un propriétaire n'a pas deux ingrédients de même nom normalisé DANS LE MÊME RAYON.
+        // Le même nom dans un autre rayon est permis ; le slug, lui, est toujours libre (choisi plus haut).
+        if ($this->ingredientRepository->creatorHasNameInDepartment($creatorId, $ingredient->getSluggedName(), $ingredient->getDepartment()->getSlug())) {
+            throw IngredientException::nameAlreadyUsedInDepartment();
         }
 
         $this->ingredientRepository->save($ingredient);

@@ -30,7 +30,7 @@ final class CreateIngredientApiController extends AbstractController
     #[OA\Response(response: 201, description: 'Ingrédient créé', headers: [new OA\Header(header: 'Location', description: "URL de l'ingrédient créé", schema: new OA\Schema(type: 'string'))])]
     #[OA\Response(response: 403, description: "`INGREDIENT_BASE_FORBIDDEN` : `isBase` est vrai alors que l'utilisateur n'est pas le propriétaire du catalogue ; rien n'est créé")]
     #[OA\Response(response: 404, description: 'Rayon ou unité inconnu')]
-    #[OA\Response(response: 409, description: "L'utilisateur a déjà un ingrédient de ce nom (même nom une fois normalisé : casse, accents, ponctuation)")]
+    #[OA\Response(response: 409, description: "`INGREDIENT_NAME_ALREADY_USED` : l'utilisateur a déjà un ingrédient de ce nom (même nom une fois normalisé : casse, accents, ponctuation) DANS CE RAYON. Le même nom dans un autre rayon est permis (« Petits pois » surgelés et « Petits pois » frais) : le nouvel ingrédient reçoit alors son propre identifiant")]
     #[OA\Response(response: 422, description: 'Corps invalide, ou coefficient manquant alors que les unités diffèrent sans conversion connue')]
     public function __invoke(#[MapRequestPayload] IngredientPayload $payload, #[CurrentUser] AuthenticatedUser $user): Response
     {

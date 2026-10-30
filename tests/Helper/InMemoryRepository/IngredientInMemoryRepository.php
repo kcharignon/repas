@@ -46,10 +46,14 @@ class IngredientInMemoryRepository extends AbstractInMemoryRepository implements
         return isset($this->models[$slug]);
     }
 
-    public function existsForCreator(string $slug, string $creatorId, string $sluggedName): bool
+    public function creatorHasNameInDepartment(string $creatorId, string $sluggedName, string $departmentSlug, ?string $exceptSlug = null): bool
     {
-        return isset($this->models[$slug])
-            || $this->models->find(fn(Ingredient $ingredient) => $ingredient->getCreatorId() === $creatorId && $ingredient->getSluggedName() === $sluggedName) !== null;
+        return $this->models->find(
+            fn(Ingredient $ingredient) => $ingredient->getCreatorId() === $creatorId
+                && $ingredient->getSluggedName() === $sluggedName
+                && $ingredient->getDepartment()->getSlug() === $departmentSlug
+                && $ingredient->getSlug() !== $exceptSlug,
+        ) !== null;
     }
 
     public function findOneBySlug(string $slug): Ingredient

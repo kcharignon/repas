@@ -703,4 +703,121 @@ class UpdateIngredientHandlerTest extends TestCase
         // When
         $handler($this->rename($ingredient, 'owner-id', true));
     }
+
+    /**
+     * Un ingrédient de test : `$slug`, `$name`, dans le rayon donné, en grammes, à `$creatorId` (ADR 0028, amendement du 2026-10-30 : l'unicité
+     * du nom est jugée par propriétaire ET par rayon).
+     */
+    private function savedIn(string $slug, string $name, DepartmentBuilder $department, string $creatorId = 'user-id'): Ingredient
+    {
+        $ingredient = new IngredientBuilder()->isPasta()->withSlug($slug)->withName($name)->withDepartment($department)->withCreator(new UserBuilder()->withId($creatorId)->build())->build();
+        $this->ingredientRepository->save($ingredient);
+
+        return $ingredient;
+    }
+
+    private function updateOf(Ingredient $ingredient, string $name, string $departmentSlug, ?string $image = null): UpdateIngredientCommand
+    {
+        return new UpdateIngredientCommand($ingredient->getSlug(), $name, $image, $departmentSlug, 'gramme', 'gramme', null, $ingredient->getCreatorId());
+    }
+
+    public function testRenamingToTheNameOfAnotherIngredientOfTheSameDepartmentIsRefusedAndNothingIsWritten(): void
+    {
+        // Given : « Petits pois » et « Haricots » dans le même rayon
+        $this->savedIn('petits-pois-a', 'Petits pois', new DepartmentBuilder()->isConserve());
+        $beans = $this->savedIn('haricots-a', 'Haricots', new DepartmentBuilder()->isConserve());
+
+        // When
+        try {
+            ($this->handler)($this->updateOf($beans, 'petits POIS', 'conserve', 'nouvelle-image.jpg'));
+            $this->fail('Le doublon aurait dû être refusé.');
+        } catch (IngredientException $exception) {
+            // Then : 409, et l'ingrédient est tel qu'avant
+            $this->assertEquals(IngredientException::nameAlreadyUsedInDepartment(), $exception);
+            $this->assertSame(409, $exception->getCode());
+            $this->assertSame('Haricots', $this->ingredientRepository->findOneBySlug('haricots-a')->getName());
+            $this->assertSame('haricots', $this->ingredientRepository->findOneBySlug('haricots-a')->getSluggedName());
+        }
+    }
+
+    public function testMovingAnIngredientToADepartmentThatAlreadyHasItsNameIsRefused(): void
+    {
+        // Given : « Petits pois » existe dans deux rayons (permis), l'un est déplacé dans le rayon de l'autre
+        $frozen = $this->savedIn('petits-pois-a', 'Petits pois', new DepartmentBuilder()->isConserve());
+        $this->savedIn('petits-pois-2-a', 'Petits pois', new DepartmentBuilder()->isCereal());
+
+        // Then
+        $this->expectExceptionObject(IngredientException::nameAlreadyUsedInDepartment());
+
+        // When : le changement de rayon crée une collision
+        ($this->handler)($this->updateOf($frozen, 'Petits pois', 'cereale'));
+    }
+
+    public function testMovingAnIngredientToADepartmentWhereItsNameIsFreeIsAllowedEvenIfAnotherDepartmentHasTheName(): void
+    {
+        // Given : « Petits pois » dans « conserve » ; « Haricots » dans « céréale »
+        $peas = $this->savedIn('petits-pois-a', 'Petits pois', new DepartmentBuilder()->isConserve());
+        $this->savedIn('haricots-a', 'Haricots', new DepartmentBuilder()->isCereal());
+
+        // When : « Petits pois » passe dans « céréale », où il n'y a pas de « Petits pois »
+        ($this->handler)($this->updateOf($peas, 'Petits pois', 'cereale'));
+
+        // Then
+        $this->assertSame('cereale', $this->ingredientRepository->findOneBySlug('petits-pois-a')->getDepartment()->getSlug());
+    }
+
+    public function testRenamingToTheNameUsedInAnotherDepartmentIsAllowed(): void
+    {
+        // Given
+        $this->savedIn('petits-pois-a', 'Petits pois', new DepartmentBuilder()->isConserve());
+        $beans = $this->savedIn('haricots-a', 'Haricots', new DepartmentBuilder()->isCereal());
+
+        // When
+        ($this->handler)($this->updateOf($beans, 'Petits pois', 'cereale'));
+
+        // Then : deux « Petits pois », chacun dans son rayon, chacun avec son identifiant
+        $this->assertSame('petits-pois', $this->ingredientRepository->findOneBySlug('haricots-a')->getSluggedName());
+        $this->assertSame('haricots-a', $this->ingredientRepository->findOneBySlug('haricots-a')->getSlug());
+        $this->assertSame('petits-pois', $this->ingredientRepository->findOneBySlug('petits-pois-a')->getSluggedName());
+    }
+
+    public function testTheSameNameAndDepartmentOfAnotherOwnerNeverBlocks(): void
+    {
+        // Given : « Petits pois » dans « conserve » chez quelqu'un d'autre
+        $this->savedIn('petits-pois-other', 'Petits pois', new DepartmentBuilder()->isConserve(), 'other-id');
+        $beans = $this->savedIn('haricots-a', 'Haricots', new DepartmentBuilder()->isConserve());
+
+        // When
+        ($this->handler)($this->updateOf($beans, 'Petits pois', 'conserve'));
+
+        // Then
+        $this->assertSame('Petits pois', $this->ingredientRepository->findOneBySlug('haricots-a')->getName());
+    }
+
+    public function testEditingAnIngredientThatAlreadyHasATwinInItsDepartmentIsAllowedWhenNeitherNameNorDepartmentChange(): void
+    {
+        // Given : un doublon hérité (deux copies du même nom dans le même rayon, que « Doublons possibles » propose de fusionner)
+        $twin = $this->savedIn('petits-pois-a', 'Petits pois', new DepartmentBuilder()->isConserve());
+        $this->savedIn('petits-pois-2-a', 'Petits pois', new DepartmentBuilder()->isConserve());
+
+        // When : seule l'image change, ou seule la casse du nom
+        ($this->handler)($this->updateOf($twin, 'petits pois', 'conserve', 'nouvelle-image.jpg'));
+
+        // Then : ni refus, ni écriture bloquée
+        $this->assertSame('nouvelle-image.jpg', $this->ingredientRepository->findOneBySlug('petits-pois-a')->getImage());
+        $this->assertSame('Petits pois', $this->ingredientRepository->findOneBySlug('petits-pois-a')->getName());
+    }
+
+    public function testTheCheckComparesTheNormalizedNameSoAccentsAndCaseCountAsTheSameName(): void
+    {
+        // Given
+        $this->savedIn('creme-a', 'Crème fraîche', new DepartmentBuilder()->isConserve());
+        $cream = $this->savedIn('creme-b', 'Crème', new DepartmentBuilder()->isConserve());
+
+        // Then
+        $this->expectExceptionObject(IngredientException::nameAlreadyUsedInDepartment());
+
+        // When
+        ($this->handler)($this->updateOf($cream, 'CREME FRAICHE', 'conserve'));
+    }
 }

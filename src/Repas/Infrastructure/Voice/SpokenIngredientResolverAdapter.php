@@ -13,6 +13,7 @@ use Repas\Shared\Application\Dto\ResolvedIngredient;
 use Repas\Shared\Application\Dto\SpokenResolution;
 use Repas\Shared\Application\Interface\CommandBusInterface;
 use Repas\Shared\Application\Interface\SpokenIngredientResolver;
+use Repas\Shared\Domain\Tool\StringTool;
 
 /**
  * Adaptateur du port `SpokenIngredientResolver` : charge les ingrédients de l'utilisateur et leur habitude, puis laisse le service de
@@ -53,7 +54,26 @@ final readonly class SpokenIngredientResolverAdapter implements SpokenIngredient
             return SpokenResolution::found(new ResolvedIngredient($ranked->slug, $ranked->name, $ranked->departmentName, $ranked->confidence->value));
         }
 
-        return SpokenResolution::unknown(array_map(self::suggestion(...), $this->ranker->suggest($phrase, $candidates)));
+        return SpokenResolution::unknown($this->onePerName($this->ranker->suggest($phrase, $candidates, SpokenIngredientRanker::MAX_SUGGESTIONS * 2)));
+    }
+
+    /**
+     * Un nom une seule fois dans les propositions (le mieux classé, habitudes comprises) : deux ingrédients de même nom dans deux rayons (ADR 0028,
+     * amendement du 2026-10-30) se diraient à l'identique (« petits pois, petits pois ») sans que l'utilisateur sache les distinguer. Quand le
+     * nom est dit tel quel, le classeur les départage par le rayon (`ties`) ; ici la phrase est approximative, on propose le nom une fois.
+     *
+     * @param list<RankedIngredient> $ranked
+     *
+     * @return list<IngredientSuggestion>
+     */
+    private function onePerName(array $ranked): array
+    {
+        $byName = [];
+        foreach ($ranked as $item) {
+            $byName[StringTool::slugify($item->name)] ??= $item;
+        }
+
+        return array_map(self::suggestion(...), array_slice(array_values($byName), 0, SpokenIngredientRanker::MAX_SUGGESTIONS));
     }
 
     private static function suggestion(RankedIngredient $ranked): IngredientSuggestion

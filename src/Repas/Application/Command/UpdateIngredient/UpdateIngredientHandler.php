@@ -52,6 +52,16 @@ readonly class UpdateIngredientHandler
 
         $newCookingUnit = $this->unitRepository->findOneBySlug($command->defaultCookingUnitSlug);
         $newPurchaseUnit = $this->unitRepository->findOneBySlug($command->defaultPurchaseUnitSlug);
+        $newDepartment = $this->departmentRepository->findOneBySlug($command->departmentSlug);
+
+        // L'unicité (ADR 0028, amendement du 2026-10-30, ING-016) : un propriétaire n'a pas deux ingrédients de même nom normalisé DANS LE
+        // MÊME RAYON. Elle n'est jugée que si le nom normalisé OU le rayon change (modifier l'image ou les unités d'un ingrédient qui a déjà
+        // un doublon, hérité d'une copie, ne doit pas être refusé), et sans compter l'ingrédient lui-même. Avant toute écriture.
+        $newSluggedName = StringTool::slugify($command->name);
+        if (($newSluggedName !== $ingredient->getSluggedName() || $newDepartment->getSlug() !== $ingredient->getDepartment()->getSlug())
+            && $this->ingredientRepository->creatorHasNameInDepartment($ingredient->getCreatorId(), $newSluggedName, $newDepartment->getSlug(), $ingredient->getSlug())) {
+            throw IngredientException::nameAlreadyUsedInDepartment();
+        }
 
         // La règle : l'unité des recettes se convertit TOUJOURS en l'unité d'achat. Tout ce qui peut la refuser l'est avant la première écriture ;
         // le contrôle final, sur le graphe tel qu'il sera, la garantit ensuite (une erreur annule la commande entière : le bus est transactionnel).
@@ -68,7 +78,7 @@ readonly class UpdateIngredientHandler
         $ingredient->update(
             name: StringTool::capitalizeFirst($command->name),
             image: $command->image ?? $ingredient->getImage(),
-            department: $this->departmentRepository->findOneBySlug($command->departmentSlug),
+            department: $newDepartment,
             defaultCookingUnit: $newCookingUnit,
             defaultPurchaseUnit: $newPurchaseUnit,
             compatibleUnits: $this->getCompatibleUnit($ingredient, $newCookingUnit),

@@ -193,6 +193,25 @@ class IngredientDuplicateLoaderTest extends DatabaseTestCase
         $this->assertSame([], $this->duplicates());
     }
 
+    public function testTheSameNameInTwoDepartmentsIsNotADuplicateButTheSameNameInOneDepartmentIs(): void
+    {
+        // Given : « Petits pois » frais et « Petits pois » surgelés, voulus distincts (ADR 0028, amendement du 2026-10-30)
+        $this->ingredient('petits-pois-frais-u', 'Petits pois', 'fruit-et-legume');
+        $this->ingredient('petits-pois-surgeles-u', 'Petits pois', 'surgele');
+
+        // When / Then : exactement le même nom, mais deux rayons : rien n'est proposé
+        $this->assertSame([], $this->duplicates());
+
+        // Given : un doublon hérité d'une copie dans l'un des deux rayons
+        $this->ingredient('petits-pois-surgeles-2-u', 'Petits pois', 'surgele');
+
+        // When / Then : la seule paire proposée est celle du même rayon
+        $duplicates = $this->duplicates();
+        $this->assertCount(1, $duplicates);
+        $this->assertSame(['surgele', 'surgele'], [$duplicates[0]->first->departmentSlug, $duplicates[0]->second->departmentSlug]);
+        $this->assertSame('EXACT', $duplicates[0]->level);
+    }
+
     public function testACommonIngredientIsNeverProposedNotEvenAgainstTheOnesOfTheUser(): void
     {
         // Given : un commun « Tomate » et un « Tomates » à l'utilisateur ; deux communs entre eux

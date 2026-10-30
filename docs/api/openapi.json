@@ -554,7 +554,7 @@
                         "description": "Rayon ou unit\u00e9 inconnu"
                     },
                     "409": {
-                        "description": "L'utilisateur a d\u00e9j\u00e0 un ingr\u00e9dient de ce nom (m\u00eame nom une fois normalis\u00e9 : casse, accents, ponctuation)"
+                        "description": "`INGREDIENT_NAME_ALREADY_USED` : l'utilisateur a d\u00e9j\u00e0 un ingr\u00e9dient de ce nom (m\u00eame nom une fois normalis\u00e9 : casse, accents, ponctuation) DANS CE RAYON. Le m\u00eame nom dans un autre rayon est permis (\u00ab Petits pois \u00bb surgel\u00e9s et \u00ab Petits pois \u00bb frais) : le nouvel ingr\u00e9dient re\u00e7oit alors son propre identifiant"
                     },
                     "422": {
                         "description": "Corps invalide, ou coefficient manquant alors que les unit\u00e9s diff\u00e8rent sans conversion connue"
@@ -1237,6 +1237,9 @@
                     },
                     "404": {
                         "description": "Ingr\u00e9dient, rayon ou unit\u00e9 inconnu"
+                    },
+                    "409": {
+                        "description": "`INGREDIENT_NAME_ALREADY_USED` : le nom (une fois normalis\u00e9) ou le rayon change et l'utilisateur a d\u00e9j\u00e0 un autre ingr\u00e9dient de ce nom dans ce rayon ; rien n'est \u00e9crit. Modifier un ingr\u00e9dient sans changer ni son nom ni son rayon n'est jamais refus\u00e9 pour ce motif"
                     },
                     "422": {
                         "description": "Corps invalide, ou coefficient manquant alors que les unit\u00e9s diff\u00e8rent sans conversion connue (le coefficient est facultatif quand le graphe de conversion de l'ingr\u00e9dient les relie d\u00e9j\u00e0), ou unit\u00e9 des recettes qui ne se convertirait pas en unit\u00e9 d'achat"

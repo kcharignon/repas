@@ -20,6 +20,7 @@ use Repas\Repas\Domain\Model\AliasKind;
 use Repas\Repas\Domain\Model\Ingredient;
 use Repas\Repas\Domain\Model\IngredientAlias;
 use Repas\Repas\Domain\Service\ConversionService;
+use Repas\Repas\Domain\Service\IngredientSlugPolicy;
 use Repas\Shared\Domain\Tool\StringTool;
 use Repas\Tests\Helper\Builder\ConversionBuilder;
 use Repas\Tests\Helper\Builder\DepartmentBuilder;
@@ -57,7 +58,7 @@ class CreateIngredientHandlerTest extends TestCase
         $this->aliasRepository = new IngredientAliasInMemoryRepository();
         $this->catalogOwner = new IngredientCatalogOwnerInMemory('owner-id');
         $this->unitRepository = new UnitInMemoryRepository([$unite, $liter, $centiliter]);
-        $this->departmentRepository = new DepartmentInMemoryRepository([$baby]);
+        $this->departmentRepository = new DepartmentInMemoryRepository([$baby, new DepartmentBuilder()->isAnimal()->build(), new DepartmentBuilder()->isConserve()->build()]);
         $this->eventDispatcher = new SpyEventDispatcher();
         $this->conversionRepository = new ConversionInMemoryRepository([
             new ConversionBuilder()
@@ -80,6 +81,7 @@ class CreateIngredientHandlerTest extends TestCase
             $this->eventDispatcher,
             $conversionService,
             $this->catalogOwner,
+            new IngredientSlugPolicy(),
         );
     }
 
@@ -291,7 +293,7 @@ class CreateIngredientHandlerTest extends TestCase
         $this->ingredientRepository->save($this->legacyTomato(new UserBuilder()->withId('owner-id')->build()));
 
         // Assert : le slug du nouvel ingrédient (tomateowner-id) est libre, mais le nom normalisé est déjà à lui
-        $this->expectExceptionObject(IngredientException::alreadyExists('tomateowner-id'));
+        $this->expectExceptionObject(IngredientException::nameAlreadyUsedInDepartment());
 
         // Act
         ($this->handler)(new CreateIngredientCommand('TOMATE', '', 'bebe', 'unite', 'unite', 'owner-id', null));
@@ -310,6 +312,78 @@ class CreateIngredientHandlerTest extends TestCase
         $this->assertSame('tomate', $this->ingredientRepository->findOneBySlug('tomate')->getSlug());
     }
 
+    public function testTheSameNameInAnotherDepartmentIsAllowedAndEachGetsItsOwnSlug(): void
+    {
+        // Act : « Petits pois » dans trois rayons chez la même personne (ADR 0028, amendement du 2026-10-30)
+        $first = ($this->handler)(new CreateIngredientCommand('Petits pois', '', 'bebe', 'unite', 'unite', 'user-id', null));
+        $second = ($this->handler)(new CreateIngredientCommand('Petits pois', '', 'animal', 'unite', 'unite', 'user-id', null));
+        $third = ($this->handler)(new CreateIngredientCommand('petits pois', '', 'conserve', 'unite', 'unite', 'user-id', null));
+
+        // Assert : trois identifiants distincts, le premier est celui d'avant (rien ne change pour l'existant), chacun dans son rayon
+        $this->assertSame('petits-poisuser-id', $first);
+        $this->assertSame('petits-pois-2user-id', $second);
+        $this->assertSame('petits-pois-3user-id', $third);
+        $this->assertSame('bebe', $this->ingredientRepository->findOneBySlug($first)->getDepartment()->getSlug());
+        $this->assertSame('animal', $this->ingredientRepository->findOneBySlug($second)->getDepartment()->getSlug());
+        $this->assertSame('conserve', $this->ingredientRepository->findOneBySlug($third)->getDepartment()->getSlug());
+        foreach ([$first, $second, $third] as $slug) {
+            $this->assertSame('petits-pois', $this->ingredientRepository->findOneBySlug($slug)->getSluggedName());
+            $this->assertSame('user-id', $this->ingredientRepository->findOneBySlug($slug)->getCreatorId());
+        }
+        $this->assertCount(3, $this->eventDispatcher->eventDispatched);
+    }
+
+    public function testTheSameNameIsRefusedInTheDepartmentThatAlreadyHasItEvenWhenAnotherDepartmentHasItToo(): void
+    {
+        // Arrange : « Petits pois » dans deux rayons
+        ($this->handler)(new CreateIngredientCommand('Petits pois', '', 'bebe', 'unite', 'unite', 'user-id', null));
+        ($this->handler)(new CreateIngredientCommand('Petits pois', '', 'animal', 'unite', 'unite', 'user-id', null));
+
+        // Act et Assert : chacun des deux rayons refuse un troisième, sans rien écrire
+        foreach (['bebe', 'animal'] as $department) {
+            try {
+                ($this->handler)(new CreateIngredientCommand('PETITS POIS', '', $department, 'unite', 'unite', 'user-id', null));
+                $this->fail("Le rayon $department aurait dû refuser le doublon.");
+            } catch (IngredientException $exception) {
+                $this->assertEquals(IngredientException::nameAlreadyUsedInDepartment(), $exception);
+                $this->assertSame(409, $exception->getCode());
+            }
+        }
+        $this->assertCount(2, $this->ingredientRepository->findAll());
+        $this->assertCount(2, $this->eventDispatcher->eventDispatched);
+    }
+
+    public function testTheSameNameInTheSameDepartmentIsAllowedForAnotherCreator(): void
+    {
+        // Arrange
+        ($this->handler)(new CreateIngredientCommand('Petits pois', '', 'bebe', 'unite', 'unite', 'user-id', null));
+
+        // Act
+        $slug = ($this->handler)(new CreateIngredientCommand('Petits pois', '', 'bebe', 'unite', 'unite', 'other-id', null));
+
+        // Assert : chacun chez soi, le slug de l'autre porte son identifiant
+        $this->assertSame('petits-poisother-id', $slug);
+        $this->assertCount(2, $this->ingredientRepository->findAll());
+    }
+
+    public function testARenamedIngredientFreesItsNameButKeepsItsSlugSoTheNewOneGetsAnotherSlug(): void
+    {
+        // Arrange : « Tomate » est renommé « Poire » : son slug reste celui du premier nom
+        $first = ($this->handler)(new CreateIngredientCommand('Tomate', '', 'bebe', 'unite', 'unite', 'user-id', null));
+        $renamed = $this->ingredientRepository->findOneBySlug($first);
+        $renamed->update('Poire', '', $renamed->getDepartment(), $renamed->getDefaultCookingUnit(), $renamed->getDefaultPurchaseUnit(), $renamed->getCompatibleUnits());
+        $this->ingredientRepository->save($renamed);
+
+        // Act : « Tomate » est de nouveau libre dans ce rayon
+        $second = ($this->handler)(new CreateIngredientCommand('Tomate', '', 'bebe', 'unite', 'unite', 'user-id', null));
+
+        // Assert : ni refus ni écrasement de l'ingrédient renommé
+        $this->assertSame('tomateuser-id', $first);
+        $this->assertSame('tomate-2user-id', $second);
+        $this->assertSame('Poire', $this->ingredientRepository->findOneBySlug($first)->getName());
+        $this->assertSame('Tomate', $this->ingredientRepository->findOneBySlug($second)->getName());
+    }
+
     public function testRefusesAnIngredientThatAlreadyExists(): void
     {
         // Arrange
@@ -317,8 +391,8 @@ class CreateIngredientHandlerTest extends TestCase
         $command = new CreateIngredientCommand("nom de l'ingredient", '', 'bebe', 'unite', 'unite', $user->getId(), null);
         ($this->handler)($command);
 
-        // Assert : un second ingrédient de même nom et même créateur écraserait le premier
-        $this->expectExceptionObject(IngredientException::alreadyExists('nom-de-l-ingredientuser-id'));
+        // Assert : un second ingrédient de même nom, même rayon et même créateur est un doublon
+        $this->expectExceptionObject(IngredientException::nameAlreadyUsedInDepartment());
 
         // Act
         ($this->handler)($command);
@@ -555,6 +629,7 @@ class CreateIngredientHandlerTest extends TestCase
             $this->eventDispatcher,
             new ConversionService($this->conversionRepository, $this->unitRepository),
             new IngredientCatalogOwnerInMemory(null),
+            new IngredientSlugPolicy(),
         );
 
         // Then
@@ -642,7 +717,7 @@ class CreateIngredientHandlerTest extends TestCase
         ($this->handler)(new CreateIngredientCommand('Praliné', '', 'bebe', 'unite', 'unite', 'user-id', null));
 
         // Assert : « praliné » (corrigé en « Praliné ») donne le même slug : la détection du doublon ne change pas
-        $this->expectExceptionObject(IngredientException::alreadyExists('pralineuser-id'));
+        $this->expectExceptionObject(IngredientException::nameAlreadyUsedInDepartment());
 
         // Act
         ($this->handler)(new CreateIngredientCommand('praliné', '', 'bebe', 'unite', 'unite', 'user-id', null));

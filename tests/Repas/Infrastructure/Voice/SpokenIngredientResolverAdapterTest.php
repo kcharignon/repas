@@ -209,6 +209,26 @@ class SpokenIngredientResolverAdapterTest extends TestCase
         $this->assertSame(['user-id'], $this->candidatesLoader->calls);
     }
 
+    public function testTwoIngredientsOfTheSameNameAreProposedOnceAndTheNextNameTakesTheFreeSlot(): void
+    {
+        // Given : « Sirop fruit rouge » en deux rayons (celui du surgelé est bien plus acheté), « Sirop fraise vanille » et « Sirop cassis noir » ; la
+        // phrase est approximative (rien ne se choisit tout seul)
+        $adapter = $this->adapter([
+            new SpokenCandidate('sirop-epicerie', 'sirop-fruit-rouge', 'Sirop fruit rouge', 'Épicerie', 1, 'epicerie'),
+            new SpokenCandidate('sirop-surgele', 'sirop-fruit-rouge', 'Sirop fruit rouge', 'Surgelé', 40, 'surgele'),
+            new SpokenCandidate('sirop-cassis', 'sirop-cassis-noir', 'Sirop cassis noir', 'Boisson', 0, 'boisson'),
+            new SpokenCandidate('sirop-fraise', 'sirop-fraise-vanille', 'Sirop fraise vanille', 'Boisson', 0, 'boisson'),
+        ]);
+
+        // When
+        $resolution = $adapter->resolveOrSuggest('user-id', 'sirop de menthe');
+
+        // Then : le nom n'est proposé qu'une fois (le mieux classé : le plus acheté), l'autre rayon n'est pas dit en double, un autre nom prend la place
+        $this->assertNull($resolution->ingredient);
+        $this->assertSame(['sirop-surgele', 'sirop-fraise'], array_map(static fn(IngredientSuggestion $suggestion): string => $suggestion->slug, $resolution->suggestions));
+        $this->assertSame(['Sirop fruit rouge', 'Sirop fraise vanille'], array_map(static fn(IngredientSuggestion $suggestion): string => $suggestion->name, $resolution->suggestions));
+    }
+
     public function testNothingCloseMeansNoSuggestion(): void
     {
         // Given

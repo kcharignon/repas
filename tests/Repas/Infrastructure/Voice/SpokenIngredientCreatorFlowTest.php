@@ -7,6 +7,7 @@ use Repas\Repas\Domain\Exception\IngredientException;
 use Repas\Repas\Domain\Exception\UnitException;
 use Repas\Repas\Domain\Interface\IngredientRepository;
 use Repas\Shared\Application\Interface\SpokenIngredientCreator;
+use Repas\Shared\Application\Interface\SpokenIngredientResolver;
 use Repas\Tests\Helper\Builder\DepartmentBuilder;
 use Repas\Tests\Helper\Builder\IngredientBuilder;
 use Repas\Tests\Helper\Builder\UnitBuilder;
@@ -95,6 +96,41 @@ class SpokenIngredientCreatorFlowTest extends DatabaseTestCase
         try {
             $this->creator->create($user->getId(), 'ciboulette', $department->slug, 'kilo');
         } finally {
+            $this->assertSame($before, (int) $this->entityManager->getConnection()->fetchOne('SELECT COUNT(*) FROM ingredient'));
+        }
+    }
+
+    public function testTheSameNameInAnotherDepartmentIsCreatedAndTheResolverThenAsksWhichOne(): void
+    {
+        // Given : « petits pois » créé par la voix dans un rayon, puis dans l'autre (ADR 0028, amendement du 2026-10-30)
+        $user = $this->savedUser();
+        [$first, $second] = $this->creator->departments();
+        $a = $this->creator->create($user->getId(), 'petits pois', $first->slug, 'unite');
+        $b = $this->creator->create($user->getId(), 'petits pois', $second->slug, 'unite');
+        $this->entityManager->clear();
+
+        // Then : deux ingrédients, deux identifiants, chacun dans son rayon
+        $this->assertNotSame($a->slug, $b->slug);
+        $repository = static::getContainer()->get(IngredientRepository::class);
+        $this->assertSame([$first->slug, $second->slug], [$repository->findOneBySlug($a->slug)->getDepartment()->getSlug(), $repository->findOneBySlug($b->slug)->getDepartment()->getSlug()]);
+
+        // When : il dit « des petits pois »
+        $resolution = static::getContainer()->get(SpokenIngredientResolver::class)->resolveOrSuggest($user->getId(), 'des petits pois');
+
+        // Then : Alexa ne devine pas, elle départage par le rayon (les deux, chacun avec son rayon)
+        $this->assertNull($resolution->ingredient);
+        $this->assertSame([], $resolution->suggestions);
+        $this->assertEqualsCanonicalizing([$a->slug, $b->slug], array_map(static fn($tie): string => $tie->slug, $resolution->ties));
+        $this->assertEqualsCanonicalizing([$first->slug, $second->slug], array_map(static fn($tie): string => $tie->departmentSlug, $resolution->ties));
+
+        // When : le même nom dans un rayon qui l'a déjà
+        $before = (int) $this->entityManager->getConnection()->fetchOne('SELECT COUNT(*) FROM ingredient');
+        try {
+            $this->creator->create($user->getId(), 'Petits pois', $second->slug, 'kilo');
+            $this->fail('Le doublon dans le même rayon aurait dû être refusé.');
+        } catch (IngredientException $exception) {
+            // Then
+            $this->assertSame(IngredientException::NAME_ALREADY_USED, $exception->getMessage());
             $this->assertSame($before, (int) $this->entityManager->getConnection()->fetchOne('SELECT COUNT(*) FROM ingredient'));
         }
     }

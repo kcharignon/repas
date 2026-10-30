@@ -49,6 +49,20 @@ class IngredientSlugPolicyTest extends TestCase
         yield 'un nom qui finit par un symbole, pris' => ['couche (taille 4)', ['couche-taille-4-' . self::USER], 'couche-taille-4-2' . self::USER];
     }
 
+    /**
+     * @param list<string> $taken
+     */
+    #[DataProvider('cases')]
+    public function testFirstFreeSlugIsTheSameRuleForACreationAsForAnAdoption(string $name, array $taken, string $expected): void
+    {
+        // When
+        $policy = new IngredientSlugPolicy();
+
+        // Then : ING-016, la création d'un ingrédient du même nom dans un autre rayon reçoit `…-2…`, comme une copie
+        $this->assertSame($expected, $policy->firstFreeSlug($name, self::USER, $taken));
+        $this->assertSame($policy->forAdoption($name, self::USER, $taken), $policy->firstFreeSlug($name, self::USER, $taken));
+    }
+
     public function testTheTakenSlugsMayBeAskedThroughAFunction(): void
     {
         // Given

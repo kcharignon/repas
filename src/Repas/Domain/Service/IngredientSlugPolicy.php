@@ -28,6 +28,19 @@ final readonly class IngredientSlugPolicy
      */
     public function forAdoption(string $name, string $userId, array|callable $taken): string
     {
+        return $this->firstFreeSlug($name, $userId, $taken);
+    }
+
+    /**
+     * Le premier slug libre pour un ingrédient de `$userId` nommé `$name`, quelle que soit son origine (création, copie, amorçage) : la
+     * même règle que `forAdoption()`, qui en est le nom historique. Depuis l'amendement du 2026-10-30 de l'ADR 0028 (ING-016), deux
+     * ingrédients du même propriétaire peuvent porter le même nom s'ils sont dans deux rayons différents : le second reçoit `…-2…`, un
+     * identifiant ne se réutilise jamais et ceux qui existent ne changent pas.
+     *
+     * @param array<string>|callable(string): bool $taken
+     */
+    public function firstFreeSlug(string $name, string $userId, array|callable $taken): string
+    {
         $isTaken = is_array($taken)
             ? static fn(string $slug): bool => in_array($slug, $taken, true)
             : $taken;

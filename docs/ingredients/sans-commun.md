@@ -354,7 +354,7 @@ Chemins relatifs à `src/` ; les symboles comptent, les numéros de ligne bougen
 |---|---|
 | `Ingredient::isBase`, colonne `ingredient.is_base`, champ `isBase` des DTO, `canSetBase`, `IngredientPayload::$isBase` | ING-011 |
 | Port `Shared\Application\Interface\IngredientCatalogOwner` + implémentation `User` | ING-011 |
-| `CreateIngredientHandler` : toujours un ingrédient personnel (`CreateIngredientCommand::$isAdmin` retiré), doublon par `IngredientRepository::existsForCreator` (slug **ou** nom normalisé du créateur, une requête ; `exists` ne change pas) | ING-012 (livré, PR #243) |
+| `CreateIngredientHandler` : toujours un ingrédient personnel (`CreateIngredientCommand::$isAdmin` retiré), doublon par `IngredientRepository::existsForCreator` (slug **ou** nom normalisé du créateur, une requête ; `exists` ne change pas ; **remplacé par `creatorHasNameInDepartment` (nom normalisé ET rayon) et `IngredientSlugPolicy::firstFreeSlug` par ING-016, amendement du 2026-10-30 de l'ADR 0028**) | ING-012 (livré, PR #243) |
 | `Shared\Domain\Event\UserActivatedEvent` + dispatch par `VerifyEmailHandler`, `ResetPasswordHandler`, `ChangeUserStatusHandler` (et par la connexion Google, AUTH-006) + test d'architecture | ING-008 |
 | `SeedUserIngredients`, `repas:ingredients:seed`, écouteur `SeedIngredientsOnUserActivatedListener`, port `IngredientSeedingFeature`, `DriveIngredientReferences::referencedSlugs`, variable `INGREDIENT_SEEDING_ENABLED` (`deploy/compose.yaml`, `.env`, `deploy/.env.example`, `deploy/smoke-test.sh`) | ING-008 |
 | `repas:ingredients:hand-over-catalog`, `src/Repas/Infrastructure/Data/base-ingredients.json` (le TSV de `docs/`), scripts | ING-009 |

@@ -490,6 +490,67 @@ class IngredientPostgreSQLLoaderTest extends DatabaseTestCase
         return $user;
     }
 
+
+    // --- Le même nom dans deux rayons chez le même propriétaire (ADR 0028, amendement du 2026-10-30, ING-016) : aucune lecture ne les mélange
+
+    public function testTheSameNameInTwoDepartmentsIsFoundTwiceBySearchEachWithItsOwnDepartment(): void
+    {
+        // Given : « Petits pois » en céréale et en viande (rayons de test), plus un autre ingrédient qui y ressemble
+        $viewer = $this->savedUser();
+        $first = $this->savedIngredient(new IngredientBuilder()->withName('Petits pois')->withSlug('petits-pois-a')->withDepartment(new DepartmentBuilder()->isCereal())->withCreator($viewer));
+        $second = $this->savedIngredient(new IngredientBuilder()->withName('Petits pois')->withSlug('petits-pois-b')->withDepartment(new DepartmentBuilder()->isMeat())->withCreator($viewer));
+
+        // When
+        $result = $this->ingredientLoader->search('petits pois', $viewer->getId());
+
+        // Then : les deux, jamais l'un à la place de l'autre, ordre déterministe (même pertinence, même nom : le slug), chacun avec son rayon
+        $this->assertSame([$first->getSlug(), $second->getSlug()], array_map(static fn(IngredientSearchResultDTO $item): string => $item->slug, $result));
+        $this->assertSame(['cereale', 'viande'], array_map(static fn(IngredientSearchResultDTO $item): string => $item->departmentSlug, $result));
+        $this->assertSame(['céréale', 'viande'], array_map(static fn(IngredientSearchResultDTO $item): string => $item->departmentName, $result));
+    }
+
+    public function testTheSameNameInTwoDepartmentsIsListedOnceInEachDepartment(): void
+    {
+        // Given
+        $viewer = $this->savedUser();
+        $first = $this->savedIngredient(new IngredientBuilder()->withName('Petits pois')->withSlug('petits-pois-a')->withDepartment(new DepartmentBuilder()->isCereal())->withCreator($viewer));
+        $second = $this->savedIngredient(new IngredientBuilder()->withName('Petits pois')->withSlug('petits-pois-b')->withDepartment(new DepartmentBuilder()->isMeat())->withCreator($viewer));
+
+        // When
+        $inCereal = $this->ingredientLoader->listByDepartment('cereale', $viewer->getId());
+        $inMeat = $this->ingredientLoader->listByDepartment('viande', $viewer->getId());
+
+        // Then : chaque rayon montre le sien seulement
+        $this->assertSame([$first->getSlug()], array_map(static fn(IngredientRowDTO $row): string => $row->slug, $inCereal->ingredients));
+        $this->assertSame([$second->getSlug()], array_map(static fn(IngredientRowDTO $row): string => $row->slug, $inMeat->ingredients));
+    }
+
+    public function testTheSameNameInTwoDepartmentsIsOfferedTwiceToChooseAnIngredient(): void
+    {
+        // Given
+        $viewer = $this->savedUser();
+        $first = $this->savedIngredient(new IngredientBuilder()->withName('Petits pois')->withSlug('petits-pois-a')->withDepartment(new DepartmentBuilder()->isCereal())->withCreator($viewer));
+        $second = $this->savedIngredient(new IngredientBuilder()->withName('Petits pois')->withSlug('petits-pois-b')->withDepartment(new DepartmentBuilder()->isMeat())->withCreator($viewer));
+
+        // When
+        $result = $this->ingredientLoader->listAvailable($viewer->getId(), 'petits pois');
+
+        // Then
+        $this->assertSame([$first->getSlug(), $second->getSlug()], array_map(static fn(IngredientOptionDTO $option): string => $option->slug, $result));
+    }
+
+    public function testGetShowsEachOfTwoIngredientsOfTheSameNameWithItsOwnDepartment(): void
+    {
+        // Given
+        $viewer = $this->savedUser();
+        $first = $this->savedIngredient(new IngredientBuilder()->withName('Petits pois')->withSlug('petits-pois-a')->withDepartment(new DepartmentBuilder()->isCereal())->withCreator($viewer));
+        $second = $this->savedIngredient(new IngredientBuilder()->withName('Petits pois')->withSlug('petits-pois-b')->withDepartment(new DepartmentBuilder()->isMeat())->withCreator($viewer));
+
+        // When / Then
+        $this->assertSame('cereale', $this->ingredientLoader->get($first->getSlug(), $viewer->getId())->departmentSlug);
+        $this->assertSame('viande', $this->ingredientLoader->get($second->getSlug(), $viewer->getId())->departmentSlug);
+    }
+
     private function savedIngredient(IngredientBuilder $builder): Ingredient
     {
         $ingredient = $builder->build();

@@ -87,6 +87,67 @@ class IngredientWriteApiFlowTest extends DatabaseTestCase
         $this->assertArrayHasKey('error', $this->jsonBody());
     }
 
+    public function testTheSameNameInAnotherDepartmentIsCreatedAndInTheSameDepartmentIsAConflictWithAStableCode(): void
+    {
+        // Given : « Petits pois » en boulangerie (rayon de test), puis dans un second rayon (ADR 0028, amendement du 2026-10-30)
+        $this->persister->saveDepartment(new DepartmentBuilder()->isAnimal()->build());
+        $user = $this->savedUser();
+        $this->request('POST', '/api/v1/ingredients', $user, $this->body('Petits pois'));
+        $first = basename($this->client->getResponse()->headers->get('Location'));
+        $this->assertSame(201, $this->client->getResponse()->getStatusCode());
+
+        // When : le même nom dans l'autre rayon
+        $this->request('POST', '/api/v1/ingredients', $user, ['departmentSlug' => 'animal'] + $this->body('petits pois'));
+
+        // Then : créé, avec un autre identifiant ; l'ancien ne bouge pas
+        $this->assertSame(201, $this->client->getResponse()->getStatusCode());
+        $second = basename($this->client->getResponse()->headers->get('Location'));
+        $this->assertNotSame($first, $second);
+        $this->assertSame(['boulangerie', 'animal'], [$this->ingredients()->findOneBySlug($first)->getDepartment()->getSlug(), $this->ingredients()->findOneBySlug($second)->getDepartment()->getSlug()]);
+
+        // When : le même nom, dans un rayon qui l'a déjà
+        foreach (['boulangerie', 'animal'] as $department) {
+            $this->request('POST', '/api/v1/ingredients', $user, ['departmentSlug' => $department] + $this->body('Petits Pois'));
+
+            // Then : 409 et un code que le front distingue
+            $this->assertSame(409, $this->client->getResponse()->getStatusCode(), $department);
+            $this->assertSame(['error' => ['message' => IngredientException::NAME_ALREADY_USED]], $this->jsonBody());
+        }
+    }
+
+    public function testChangingTheDepartmentToOneThatAlreadyHasTheNameIsAConflictAndTheOtherDepartmentIsFine(): void
+    {
+        // Given : « Petits pois » en boulangerie et en animalerie, « Haricots » en boulangerie
+        $this->persister->saveDepartment(new DepartmentBuilder()->isAnimal()->build());
+        $this->persister->saveDepartment(new DepartmentBuilder()->isConserve()->build());
+        $user = $this->savedUser();
+        $slugs = [];
+        foreach ([['Petits pois', 'boulangerie'], ['Petits pois', 'animal'], ['Haricots', 'boulangerie']] as [$name, $department]) {
+            $this->request('POST', '/api/v1/ingredients', $user, ['departmentSlug' => $department] + $this->body($name));
+            $slugs[] = basename($this->client->getResponse()->headers->get('Location'));
+        }
+
+        // When : les « Petits pois » de la boulangerie passent en animalerie, où il y en a déjà
+        $this->request('PUT', '/api/v1/ingredients/' . $slugs[0], $user, ['departmentSlug' => 'animal'] + $this->body('Petits pois'));
+
+        // Then : 409, rien ne bouge
+        $this->assertSame(409, $this->client->getResponse()->getStatusCode());
+        $this->assertSame(['error' => ['message' => IngredientException::NAME_ALREADY_USED]], $this->jsonBody());
+        $this->assertSame('boulangerie', $this->ingredients()->findOneBySlug($slugs[0])->getDepartment()->getSlug());
+
+        // When : les « Haricots » prennent le nom « Petits pois » : en boulangerie il existe déjà
+        $this->request('PUT', '/api/v1/ingredients/' . $slugs[2], $user, $this->body('petits pois'));
+        $this->assertSame(409, $this->client->getResponse()->getStatusCode());
+
+        // When : les « Haricots » changent de rayon, puis prennent ce nom dans un rayon où il est libre
+        $this->request('PUT', '/api/v1/ingredients/' . $slugs[2], $user, ['departmentSlug' => 'conserve'] + $this->body('Petits pois'));
+
+        // Then : trois « Petits pois » chez lui, un par rayon, trois identifiants
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->assertSame(['boulangerie', 'animal', 'conserve'], array_map(fn(string $slug): string => $this->ingredients()->findOneBySlug($slug)->getDepartment()->getSlug(), $slugs));
+        $this->assertCount(3, array_unique($slugs));
+    }
+
     public function testDifferentUnitsWithoutAnyConversionNeedACoefficientAndNothingIsCreated(): void
     {
         // When
