@@ -59,6 +59,7 @@ return [
     'memoriser-phrase-alexa' => 3,
     'memoriser-phrase-de-recette-alexa' => 7,
     'mettre-liste-en-pause' => 9,
+    'mettre-recette-en-favoris' => 9,
     'modifier-conversion' => 4,
     'modifier-conversion-ingredient' => 12,
     'modifier-ingredient' => 7,

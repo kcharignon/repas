@@ -95,6 +95,7 @@ readonly class RecipePostgreSQLRepository extends PostgreSQLRepository implement
             'original_id' => $entity->getOriginalId(),
             'version' => $entity->getVersion(),
             'secret' => $entity->isSecret(),
+            'favorite' => $entity->isFavorite(),
         ]);
     }
 

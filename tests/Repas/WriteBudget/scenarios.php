@@ -31,6 +31,7 @@ use Repas\Repas\Application\Command\CreateIngredientConversion\CreateIngredientC
 use Repas\Repas\Application\Command\CreateRecipe\CreateRecipeCommand;
 use Repas\Repas\Application\Command\CreateRecipe\CreateRecipeRowSubCommand;
 use Repas\Repas\Application\Command\CreateRecipeType\CreateRecipeTypeCommand;
+use Repas\Repas\Application\Command\ChangeRecipeFavorite\ChangeRecipeFavoriteCommand;
 use Repas\Repas\Application\Command\ChangeSpokenMealServings\ChangeSpokenMealServingsCommand;
 use Repas\Repas\Application\Command\CreateShoppingList\CreateShoppingListCommand;
 use Repas\Repas\Application\Command\CreateUnit\CreateUnitCommand;
@@ -361,6 +362,12 @@ return [
         $t->savedConversionsFor([$recipe]);
 
         return new UpdateRecipeCommand($recipe->getId(), 'Carbonara revisitée', 4, $updateRows($recipe), $recipe->getType()->getSlug());
+    },
+    'mettre-recette-en-favoris' => static function (WriteBudgetTestCase $t): object {
+        $owner = $t->savedUser();
+        $recipe = $t->savedRecipe($owner, new RecipeBuilder()->isPastaCarbonara());
+
+        return new ChangeRecipeFavoriteCommand($recipe->getId(), $owner->getId(), true);
     },
     // Le cas ordinaire (ADR 0028, amendement) : le copieur a reçu à son activation une copie de chacun des ingrédients de la recette (et son alias,
     // qui a pour clé le slug de l'ingrédient copié) : toutes les lignes se retrouvent par la provenance, rien n'est créé.

@@ -13,6 +13,7 @@ final class RecipeException extends DomainException
     public const string ROWS_LIMIT_REACHED = 'RECIPE_ROWS_LIMIT_REACHED';
     public const string LIMIT_REACHED = 'RECIPE_LIMIT_REACHED';
     public const string SECRET_FORBIDDEN = 'RECIPE_SECRET_FORBIDDEN';
+    public const string FAVORITE_FORBIDDEN = 'RECIPE_FAVORITE_FORBIDDEN';
     public const string TYPE_TRANSFER_TO_ITSELF = 'RECIPE_TYPE_TRANSFER_TO_ITSELF';
 
     public static function notFound(string $id): static
@@ -96,6 +97,15 @@ final class RecipeException extends DomainException
     public static function secretForbidden(): self
     {
         return new self(self::SECRET_FORBIDDEN, 403);
+    }
+
+    /**
+     * Seul l'auteur d'une recette la met en favoris ou l'en retire : un autre utilisateur, un administrateur compris, qui envoie une autre
+     * valeur que l'actuelle reçoit un refus d'autorisation, `403`, jamais ignoré en silence.
+     */
+    public static function favoriteForbidden(): self
+    {
+        return new self(self::FAVORITE_FORBIDDEN, 403);
     }
 
     /**

@@ -37,6 +37,7 @@ Décisions d'architecture du projet Repas. **À relire avant de développer ou d
 | [0031](0031-emails-de-marque.md) | E-mails de marque : mise en page partagée `BrandedEmailLayout` (HTML d'e-mail sûr, clair et sombre, texte brut en alternative, lien en clair sous le bouton, aucune ressource externe sauf l'icône du site), voix du produit vérifiée par les tests | Accepted |
 | [0032](0032-valeurs-propres-a-chaque-compte-pour-les-produits-du-drive.md) | Chaque compte garde ses propres valeurs observées d'un produit du drive (libellé, prix et sa date, sur la ligne `drive_choice_product` de son choix) ; la fiche partagée `drive_product` ne sert plus que de repli ; recopie unique par la migration, lectures en `COALESCE` | Accepted |
 | [0033](0033-recette-secrete.md) | Recette secrète : drapeau `recipe.secret` posé par l'auteur seul ; une recette secrète n'est ni dans « Recettes des autres » (liste, total, recherche), ni lisible (`404`, jamais `403`), ni copiable par un autre utilisateur, administrateur compris (aucun passe-droit en lecture) ; les copies déjà faites restent à leurs auteurs | Accepted |
+| [0034](0034-supprimer-un-type-de-recette-et-recettes-favorites.md) | Supprimer un type de recette (`DELETE /recipe-types/{slug}?transferTo=`, administrateur : toutes les recettes passent dans le type choisi, version +1, une transaction) ; recette favorite : drapeau `recipe.favorite` de l'auteur (`PUT /recipes/{id}/favorite`, `GET /recipes/favorites`), le type « Favoris » est une présentation du front, pas un type en base | Accepted |
 
 ## Sources
 

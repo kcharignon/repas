@@ -46,7 +46,7 @@ final readonly class RecipePostgreSQLLoader implements RecipeLoader
     public function get(string $id, string $userId): RecipeDTO
     {
         $recipe = $this->entityManager->createQueryBuilder()
-            ->select('r.id AS id', 'r.name AS name', 'r.serving AS serving', 't.slug AS typeSlug', 't.name AS typeName', 'r.version AS version', 'r.secret AS secret')
+            ->select('r.id AS id', 'r.name AS name', 'r.serving AS serving', 't.slug AS typeSlug', 't.name AS typeName', 'r.version AS version', 'r.secret AS secret', 'r.favorite AS favorite', 'r.authorId AS authorId')
             ->from(Recipe::class, 'r')
             ->innerJoin(RecipeType::class, 't', Join::WITH, 't.slug = r.typeSlug')
             ->where('r.id = :id')
@@ -88,6 +88,8 @@ final readonly class RecipePostgreSQLLoader implements RecipeLoader
             typeSlug: $recipe['typeSlug'],
             typeName: $recipe['typeName'],
             secret: (bool) $recipe['secret'],
+            // Le choix de l'auteur : la recette ordinaire d'un autre n'est jamais « favorite » pour qui la lit
+            favorite: (bool) $recipe['favorite'] && $recipe['authorId'] === $userId,
             rows: array_map(
                 static fn(array $row): RecipeRowDTO => new RecipeRowDTO(
                     $row['ingredientSlug'], $row['ingredientName'], $row['ingredientImage'], (float) $row['quantity'], $row['unitSlug'], $row['unitSymbol'],
@@ -130,6 +132,22 @@ final readonly class RecipePostgreSQLLoader implements RecipeLoader
             new RecipeTypeDTO($type['slug'], $type['name'], $type['image'], (int) $type['sequence']),
             array_map(static fn(array $recipe): RecipeSummaryDTO => new RecipeSummaryDTO($recipe['id'], $recipe['name'], (bool) $recipe['secret']), $recipes),
         );
+    }
+
+    public function listFavoritesOfAuthor(string $authorId): array
+    {
+        $recipes = $this->entityManager->createQueryBuilder()
+            ->select('r.id AS id', 'r.name AS name', 'r.secret AS secret')
+            ->from(Recipe::class, 'r')
+            ->where('r.authorId = :authorId')
+            ->andWhere('r.favorite = true')
+            ->setParameter('authorId', $authorId)
+            ->orderBy('r.slug', 'ASC')
+            ->addOrderBy('r.id', 'ASC')
+            ->getQuery()
+            ->getArrayResult();
+
+        return array_map(static fn(array $recipe): RecipeSummaryDTO => new RecipeSummaryDTO($recipe['id'], $recipe['name'], (bool) $recipe['secret']), $recipes);
     }
 
     /**

@@ -39,6 +39,7 @@ class GetRecipeApiControllerTest extends QueryBusWebTestCase
             'typeSlug' => 'plat',
             'typeName' => 'plat',
             'secret' => false,
+            'favorite' => false,
             'rows' => [[
                 'ingredientSlug' => 'pate',
                 'ingredientName' => 'pâtes',

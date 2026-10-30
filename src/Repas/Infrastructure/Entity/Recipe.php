@@ -41,6 +41,10 @@ class Recipe
     #[ORM\Column(type: 'boolean', options: ['default' => false])]
     private bool $secret = false;
 
+    // Recette favorite de son auteur : faux par défaut, y compris pour une ligne écrite par le code précédent
+    #[ORM\Column(type: 'boolean', options: ['default' => false])]
+    private bool $favorite = false;
+
     public function __construct(
         ?string $id,
         ?string $name,
@@ -49,6 +53,7 @@ class Recipe
         ?string $typeSlug,
         ?string $original,
         bool    $secret = false,
+        bool    $favorite = false,
     ) {
         $this->id = $id;
         $this->name = $name;
@@ -58,6 +63,7 @@ class Recipe
         $this->typeSlug = $typeSlug;
         $this->originalId = $original;
         $this->secret = $secret;
+        $this->favorite = $favorite;
     }
 
     public function getId(): ?string
@@ -148,6 +154,18 @@ class Recipe
         return $this;
     }
 
+    public function isFavorite(): bool
+    {
+        return $this->favorite;
+    }
+
+    public function setFavorite(bool $favorite): static
+    {
+        $this->favorite = $favorite;
+
+        return $this;
+    }
+
     public function getOriginalId(): ?string
     {
         return $this->originalId;
@@ -169,6 +187,7 @@ class Recipe
             typeSlug: $recipe->getType()->getSlug(),
             original: $recipe->getOriginalId(),
             secret: $recipe->isSecret(),
+            favorite: $recipe->isFavorite(),
         );
     }
 
@@ -178,5 +197,6 @@ class Recipe
         $this->setServing($recipe->getServing());
         $this->setTypeSlug($recipe->getType()->getSlug());
         $this->setSecret($recipe->isSecret());
+        $this->setFavorite($recipe->isFavorite());
     }
 }
