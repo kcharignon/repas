@@ -4,7 +4,7 @@
 - **Jalon** : M7 Plusieurs enseignes
 - **Taille** : M
 - **Dépend de** : DRV-701 (contrat des enseignes et lecture `retailer` de `GET /drive/settings`)
-- **Statut** : à faire. Effort recommandé : `medium` (texte et alignement).
+- **Statut** : fait (PR front #248, 2026-10-30). Effort recommandé : `medium` (texte et alignement).
 - **Lire d'abord** : [`../multi-enseignes.md`](../multi-enseignes.md) §§ 3.3, 5.3 ; [`../principes-produit.md`](../principes-produit.md) ; skills `repas-front-dev` et `repas-po` ; DRV-621, 627 (glossaire et voix), DRV-628 (conditions d'utilisation) ; `src/i18n/__tests__/voice-and-glossary.spec.ts`.
 
 ## Contexte

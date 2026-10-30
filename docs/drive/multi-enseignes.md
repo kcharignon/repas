@@ -49,7 +49,58 @@ Les colonnes `retailer` sont des `VARCHAR(20)` (assez pour `auchan`, `intermarch
 | `GET /drive/settings` (`DriveSettingsDTO`) | Une seule enseigne et un seul magasin : `{enabled, retailer, store}`. | Ajouter, sans retirer, la liste des enseignes et la sélection (§ 5.4). **DRV-701**, **DRV-703**. |
 | `GET /drive/plans/{id}`, `GET /drive/estimates/{id}` | Pas de paramètre d'enseigne. | `?retailer=` facultatif (enseigne courante par défaut). **DRV-701**. |
 | `src/Drive/Domain/Model/Store.php` | `baseUrl` obligatoire, validée par la règle d'adresse de l'enseigne ; `id` ≤ 20 caractères. Vrai pour Leclerc (un magasin = une adresse). | Auchan : identifiant de magasin **explicite** lu par `GET /journey` (UUID, adresse d'enseigne constante) : décision DRV-715, **DRV-720**. |
-| `src/Drive/Domain/Model/Product.php` l. 27 | `RETAILER_PRODUCT_ID_PATTERN = ^[0-9]{1,12}$` : identifiant de produit **numérique**. Vrai chez Leclerc ; **inconnu** chez Auchan. `EAN_PATTERN` est neutre. | Motif porté par le registre. **DRV-701**. Aussi dans `ProductInput` / `ProductPayload` et la validation de l'agent (`^[0-9]{1,12}$`). |
+| `src/Drive/Domain/Model/Product.php` | ~~`RETAILER_PRODUCT_ID_PATTERN = ^[0-9]{1,12}# Plusieurs enseignes de drive : audit du couplage à Leclerc et conception cible
+
+> **Lancé le 2026-10-30** : la pause du 2026-10-20 est levée, le propriétaire démarre Auchan (« on va commencer à gérer Auchan »). Les spikes sont faits ([`spikes/DRV-712-rapport.md`](spikes/DRV-712-rapport.md), [713](spikes/DRV-713-rapport.md), [714](spikes/DRV-714-rapport.md)) et la décision est prise : **adaptateur complet** ([`spikes/DRV-715-decision-auchan.md`](spikes/DRV-715-decision-auchan.md)). Faits mesurés : [`hypotheses-site-reel-auchan.md`](hypotheses-site-reel-auchan.md). Les § 11 à 14 ci-dessous gardent le raisonnement d'origine (2026-10-19) ; leur § 11.4 et la décision priment. Règle active : ne jamais dépendre de l'implémentation de Leclerc dans le nouveau code ; Auchan reste **éteint** tant que l'humain ne l'allume pas.
+
+Cadrage du 2026-10-19 (jalon M7 de [`roadmap.md`](roadmap.md)), rédigé par l'assistant de cadrage ; **aucun code de produit n'est écrit ici**. Décision d'architecture : [ADR 0027](../adr/0027-plusieurs-enseignes-de-drive.md) (`Accepted` le 2026-10-30, amendée le même jour). Tickets : [`DRV-701` à `DRV-717`](tickets/). État lu : back `main` au commit `556e63f`, front `main` au commit `5b8779f`.
+
+## 1. Le besoin
+
+Demande de l'utilisateur, mot pour mot : « on fera le drive Auchan (dans le futur, quand le drive Leclerc sera fini) mais du coup pense déjà à découpler et à ne pas être trop proche du drive Leclerc : on devra activer des drives différents, Leclerc, Auchan, et on devra choisir quel drive utiliser selon ce qu'on a déjà configuré dans nos paramètres. »
+
+Ce que cela veut dire, en quatre phrases :
+
+1. **Plusieurs drives peuvent coexister.** Une personne peut avoir configuré Leclerc, Auchan, ou les deux.
+2. **Repas choisit le drive à utiliser** d'après ce que la personne a déjà configuré dans « Moi », sans lui faire répéter ce qu'il sait ([`principes-produit.md`](principes-produit.md) règles 3, 5, 6).
+3. **Le code actuel ne doit pas durcir** son lien avec Leclerc : tout ce qui nomme Leclerc doit passer par un point unique, pour que la deuxième enseigne soit une entrée de plus et non une réécriture.
+4. **Tant qu'il n'y a qu'une enseigne, rien ne change pour l'utilisateur** : le découplage est un chantier d'ingénierie, pas de produit.
+
+**Ce qui est livré par ce cadrage** : l'audit (§ 3), la conception cible (§ 4 à § 8), le plan de découplage en tickets (§ 10), les faits connus sur Auchan et leurs inconnues (§ 11), les spikes à faire sur un téléphone (§ 12). **Ce qui ne l'est pas** : l'adaptateur Auchan lui-même (il dépend des spikes, DRV-717 n'en pose que le squelette), et toute décision sur l'ordre de lancement par rapport à la fin de la recette de Leclerc (voir § 13).
+
+## 2. Principes
+
+1. **Une enseigne est une donnée, pas une branche de code.** Identifiant, nom, règle d'adresse du magasin, hôtes autorisés, particularités : un registre. Ajouter une enseigne = ajouter une entrée de registre + un adaptateur d'agent, jamais un `if ($retailer === …)` dans un handler (OCP, [`CLAUDE.md`](../../CLAUDE.md) § SOLID).
+2. **Les invariants du chantier ne changent pas** ([`architecture.md`](architecture.md) § 2) : aucun identifiant, cookie ni jeton d'enseigne chez nous ; le back ne contacte jamais une enseigne ; pas de code distant ; l'agent ne valide ni ne paie jamais ; le panier d'une enseigne n'est jamais vidé ni réduit. Ils valent **pour chaque enseigne séparément**.
+3. **Compatible avec ce qui est installé.** Le site web se met à jour tout seul, l'application Android non ([DRV-640](tickets/DRV-640-version-minimale-pour-le-drive.md)) : tout ajout au protocole v1 est **facultatif** et une application qui ne connaît pas une enseigne ne reçoit jamais de plan pour elle (§ 8).
+4. **Un seul point par couche.** Si un nom d'enseigne apparaît ailleurs que dans le registre de sa couche, c'est un défaut (un test le garde : § 10, DRV-701, DRV-704, DRV-706, DRV-708).
+5. **Ne rien présumer d'Auchan.** Les faits sur Auchan sont des hypothèses sourcées (§ 11) tant qu'un spike sur téléphone ne les a pas confirmés.
+
+## 3. Audit du couplage actuel à Leclerc
+
+Lu le 2026-10-19 dans les deux dépôts. « Nomme Leclerc » = le mot, un hôte, un motif d'adresse ou une forme propre au site de Leclerc. Les chemins sont ceux de `main`.
+
+### 3.1 Bonne nouvelle : le modèle de données connaît déjà l'enseigne (vérifié)
+
+| Table (back) | Clé | Verdict |
+|---|---|---|
+| `drive_settings` | PK `(user_id, retailer)` | Un réglage **par utilisateur et par enseigne** : plusieurs enseignes coexistent déjà en base. `src/Drive/Infrastructure/Entity/DriveSettings.php`, `DriveSettingsRepository::findOneByUser($userId, $retailer)`. |
+| `drive_product` | UNIQUE `(retailer, store_id, retailer_product_id)` | Un produit d'une enseigne ne peut pas heurter celui d'une autre. Les prix et le contenu restent des faits publics **par enseigne et magasin**. |
+| `drive_choice` | UNIQUE `(user_id, retailer, store_id, ingredient_slug)` | Les choix mémorisés (produits habituels, remplacements, produits refusés, « j'en ai toujours ») sont **par enseigne et par magasin** : rien n'est mélangé. La recherche mémorisée de DRV-650 (`search_query`, le texte qui a fait trouver le produit choisi) vit sur cette même ligne : elle est donc propre à l'enseigne, jamais reprise d'une enseigne à l'autre. `ChoicePostgreSQLRepository::findByUserStoreAndSlugs` filtre déjà sur `retailer`. |
+| `drive_choice_product` | PK `(choice_id, product_id)` | Dépend du choix, donc de l'enseigne. La contenance mémorisée de DRV-652 (`pack_size_value`, `pack_size_unit_slug` : « 20 tranches » dans ce produit) vit sur cette ligne : privée à l'utilisateur, propre à l'enseigne par le choix qui la porte, et exprimée en **slug d'unité de Repas** (rien de propre à une enseigne). |
+
+Les colonnes `retailer` sont des `VARCHAR(20)` (assez pour `auchan`, `intermarche`). **Aucune migration de schéma n'est nécessaire pour les clés.** Les routes d'écriture portent déjà `retailer` dans le corps (`PUT /drive/settings`, `PUT /drive/choices`, `PUT /drive/choices/{slug}`) ou dans la requête (`GET` et `DELETE /drive/choices`). La purge du compte supprime par utilisateur, sans condition d'enseigne (`ChoicePostgreSQLRepository::deleteByUser`, `DriveSettingsRepository::deleteByUser`). Le verrou `SENT` d'une liste est **indépendant de l'enseigne** (`ShoppingList` n'a pas de champ enseigne ; `send` ne prend aucun paramètre d'enseigne).
+
+### 3.2 Back (`kcharignon/repas`)
+
+| Où | Couplage | À généraliser |
+|---|---|---|
+| `src/Drive/Domain/Model/Retailer.php` | Enum à un seul cas `LECLERC`. `LECLERC_STORE_URL` (`#^https://[a-z0-9-]+\.leclercdrive\.fr/magasin-(\d+)-(\d+)$#D`) et un `match` à un seul bras dans `storeIdOf()`. | Le registre : nom affiché, règle d'adresse du magasin, motif d'identifiant produit, drapeaux. L'enum reste la liste des identifiants. **DRV-701**. |
+| `src/Drive/Infrastructure/Loader/DriveSettingsPostgreSQLLoader.php` l. 16, `DrivePlanPostgreSQLLoader.php` l. 41, `DriveEstimatePostgreSQLLoader.php` l. 38 | `private const Retailer RETAILER = Retailer::LECLERC` (« une seule enseigne pour l'instant : la lecture ne porte pas encore de paramètre `retailer` »). **Les trois seules lectures qui figent Leclerc.** | L'enseigne devient un paramètre de la requête (`GetDrivePlanQuery`, `GetDriveEstimateQuery`, `GetDriveSettingsQuery`). **DRV-701**. |
+| `GET /drive/settings` (`DriveSettingsDTO`) | Une seule enseigne et un seul magasin : `{enabled, retailer, store}`. | Ajouter, sans retirer, la liste des enseignes et la sélection (§ 5.4). **DRV-701**, **DRV-703**. |
+| `GET /drive/plans/{id}`, `GET /drive/estimates/{id}` | Pas de paramètre d'enseigne. | `?retailer=` facultatif (enseigne courante par défaut). **DRV-701**. |
+| `src/Drive/Domain/Model/Store.php` | `baseUrl` obligatoire, validée par la règle d'adresse de l'enseigne ; `id` ≤ 20 caractères. Vrai pour Leclerc (un magasin = une adresse). | Auchan : identifiant de magasin **explicite** lu par `GET /journey` (UUID, adresse d'enseigne constante) : décision DRV-715, **DRV-720**. |
+~~ : **fait par DRV-701** : la forme d'un identifiant de produit est `productIdPattern` du profil de l'enseigne (`Retailer::isValidProductId()`), aussi dans `ProductInput` / `ProductPayload` ; la validation de l'agent la lit dans son registre (DRV-704). `EAN_PATTERN` est neutre. | Fait (DRV-701, 704). |
 | `src/Drive/Domain/Model/DriveSettings.php` | Le compteur du jour des écritures de produits (`productWritesDay/Count`, plafond 5 000 : DRV-613) vit **dans la ligne de réglage**, donc **par utilisateur et par enseigne**. Avec deux enseignes, le plafond quotidien devient 5 000 **par enseigne**. | Décision D-M5 (§ 14) : l'accepter (borne = 5 000 × nombre d'enseignes activées, ce qui reste très petit) et l'écrire dans le test et le skill `repas-drive-back`. **DRV-701**. |
 | OpenAPI : `enum: ['leclerc']` dans `DriveSettingsDTO`, `DrivePlanDTO`, `DriveEstimateDTO`, `DriveSettingsPayload`, `ReplaceIngredientPreferencePayload`, `SaveProductChoicesPayload`, et les deux `OA\Parameter` de `ListChoicesApiController` et `ForgetChoiceApiController` ; exemple d'adresse `…leclercdrive.fr…` dans `DriveStorePayload` et `DriveStoreDTO` ; 14 mentions dans `docs/api/openapi.json`. | Le contrat fige `leclerc`. | L'énumération se déduit du registre (un test garde la concordance), l'exemple devient neutre. **DRV-701**. |
 | `DriveFeature` / `DRIVE_ENABLED` (`src/Shared/…`, `EnvDriveFeature`, `DriveEnabledListener`, `#[RequiresDrive]`) | Un interrupteur **global** : coupe toutes les enseignes à la fois. Bien pour une urgence générale, trop gros pour couper **une** enseigne qui a changé son site. | Interrupteur par enseigne, en plus (§ 7). **DRV-702**. |
@@ -127,6 +178,188 @@ Chaque couche a **son** registre (les données utiles ne sont pas les mêmes, et
 | `startUrl` | Page où le drive s'ouvre | `https://www.leclercdrive.fr/` | Kotlin, web (repli de « Finaliser ») |
 | `siteMode` | `DESKTOP` (mode ordinateur imposé, site mobile refusé) · `MOBILE` · `AS_IS` | `DESKTOP`, hôte mobile `m-…` refusé | Kotlin, agent |
 | `productIdRule` | Forme de l'identifiant de produit | `^[0-9]{1,12}$` | back, agent, web |
+| `storeIdSource` | D'où vient l'identifiant du magasin : `URL` (déduit de l'adresse) ou `EXPLICIT` (lu par l'agent, adresse d'enseigne constante) | `URL` | back (`Store::create`), contrat (DRV-720, fait) |
+| `storeIdPattern` | Forme de l'identifiant du magasin | `^[0-9]{1,20}# Plusieurs enseignes de drive : audit du couplage à Leclerc et conception cible
+
+> **Lancé le 2026-10-30** : la pause du 2026-10-20 est levée, le propriétaire démarre Auchan (« on va commencer à gérer Auchan »). Les spikes sont faits ([`spikes/DRV-712-rapport.md`](spikes/DRV-712-rapport.md), [713](spikes/DRV-713-rapport.md), [714](spikes/DRV-714-rapport.md)) et la décision est prise : **adaptateur complet** ([`spikes/DRV-715-decision-auchan.md`](spikes/DRV-715-decision-auchan.md)). Faits mesurés : [`hypotheses-site-reel-auchan.md`](hypotheses-site-reel-auchan.md). Les § 11 à 14 ci-dessous gardent le raisonnement d'origine (2026-10-19) ; leur § 11.4 et la décision priment. Règle active : ne jamais dépendre de l'implémentation de Leclerc dans le nouveau code ; Auchan reste **éteint** tant que l'humain ne l'allume pas.
+
+Cadrage du 2026-10-19 (jalon M7 de [`roadmap.md`](roadmap.md)), rédigé par l'assistant de cadrage ; **aucun code de produit n'est écrit ici**. Décision d'architecture : [ADR 0027](../adr/0027-plusieurs-enseignes-de-drive.md) (`Accepted` le 2026-10-30, amendée le même jour). Tickets : [`DRV-701` à `DRV-717`](tickets/). État lu : back `main` au commit `556e63f`, front `main` au commit `5b8779f`.
+
+## 1. Le besoin
+
+Demande de l'utilisateur, mot pour mot : « on fera le drive Auchan (dans le futur, quand le drive Leclerc sera fini) mais du coup pense déjà à découpler et à ne pas être trop proche du drive Leclerc : on devra activer des drives différents, Leclerc, Auchan, et on devra choisir quel drive utiliser selon ce qu'on a déjà configuré dans nos paramètres. »
+
+Ce que cela veut dire, en quatre phrases :
+
+1. **Plusieurs drives peuvent coexister.** Une personne peut avoir configuré Leclerc, Auchan, ou les deux.
+2. **Repas choisit le drive à utiliser** d'après ce que la personne a déjà configuré dans « Moi », sans lui faire répéter ce qu'il sait ([`principes-produit.md`](principes-produit.md) règles 3, 5, 6).
+3. **Le code actuel ne doit pas durcir** son lien avec Leclerc : tout ce qui nomme Leclerc doit passer par un point unique, pour que la deuxième enseigne soit une entrée de plus et non une réécriture.
+4. **Tant qu'il n'y a qu'une enseigne, rien ne change pour l'utilisateur** : le découplage est un chantier d'ingénierie, pas de produit.
+
+**Ce qui est livré par ce cadrage** : l'audit (§ 3), la conception cible (§ 4 à § 8), le plan de découplage en tickets (§ 10), les faits connus sur Auchan et leurs inconnues (§ 11), les spikes à faire sur un téléphone (§ 12). **Ce qui ne l'est pas** : l'adaptateur Auchan lui-même (il dépend des spikes, DRV-717 n'en pose que le squelette), et toute décision sur l'ordre de lancement par rapport à la fin de la recette de Leclerc (voir § 13).
+
+## 2. Principes
+
+1. **Une enseigne est une donnée, pas une branche de code.** Identifiant, nom, règle d'adresse du magasin, hôtes autorisés, particularités : un registre. Ajouter une enseigne = ajouter une entrée de registre + un adaptateur d'agent, jamais un `if ($retailer === …)` dans un handler (OCP, [`CLAUDE.md`](../../CLAUDE.md) § SOLID).
+2. **Les invariants du chantier ne changent pas** ([`architecture.md`](architecture.md) § 2) : aucun identifiant, cookie ni jeton d'enseigne chez nous ; le back ne contacte jamais une enseigne ; pas de code distant ; l'agent ne valide ni ne paie jamais ; le panier d'une enseigne n'est jamais vidé ni réduit. Ils valent **pour chaque enseigne séparément**.
+3. **Compatible avec ce qui est installé.** Le site web se met à jour tout seul, l'application Android non ([DRV-640](tickets/DRV-640-version-minimale-pour-le-drive.md)) : tout ajout au protocole v1 est **facultatif** et une application qui ne connaît pas une enseigne ne reçoit jamais de plan pour elle (§ 8).
+4. **Un seul point par couche.** Si un nom d'enseigne apparaît ailleurs que dans le registre de sa couche, c'est un défaut (un test le garde : § 10, DRV-701, DRV-704, DRV-706, DRV-708).
+5. **Ne rien présumer d'Auchan.** Les faits sur Auchan sont des hypothèses sourcées (§ 11) tant qu'un spike sur téléphone ne les a pas confirmés.
+
+## 3. Audit du couplage actuel à Leclerc
+
+Lu le 2026-10-19 dans les deux dépôts. « Nomme Leclerc » = le mot, un hôte, un motif d'adresse ou une forme propre au site de Leclerc. Les chemins sont ceux de `main`.
+
+### 3.1 Bonne nouvelle : le modèle de données connaît déjà l'enseigne (vérifié)
+
+| Table (back) | Clé | Verdict |
+|---|---|---|
+| `drive_settings` | PK `(user_id, retailer)` | Un réglage **par utilisateur et par enseigne** : plusieurs enseignes coexistent déjà en base. `src/Drive/Infrastructure/Entity/DriveSettings.php`, `DriveSettingsRepository::findOneByUser($userId, $retailer)`. |
+| `drive_product` | UNIQUE `(retailer, store_id, retailer_product_id)` | Un produit d'une enseigne ne peut pas heurter celui d'une autre. Les prix et le contenu restent des faits publics **par enseigne et magasin**. |
+| `drive_choice` | UNIQUE `(user_id, retailer, store_id, ingredient_slug)` | Les choix mémorisés (produits habituels, remplacements, produits refusés, « j'en ai toujours ») sont **par enseigne et par magasin** : rien n'est mélangé. La recherche mémorisée de DRV-650 (`search_query`, le texte qui a fait trouver le produit choisi) vit sur cette même ligne : elle est donc propre à l'enseigne, jamais reprise d'une enseigne à l'autre. `ChoicePostgreSQLRepository::findByUserStoreAndSlugs` filtre déjà sur `retailer`. |
+| `drive_choice_product` | PK `(choice_id, product_id)` | Dépend du choix, donc de l'enseigne. La contenance mémorisée de DRV-652 (`pack_size_value`, `pack_size_unit_slug` : « 20 tranches » dans ce produit) vit sur cette ligne : privée à l'utilisateur, propre à l'enseigne par le choix qui la porte, et exprimée en **slug d'unité de Repas** (rien de propre à une enseigne). |
+
+Les colonnes `retailer` sont des `VARCHAR(20)` (assez pour `auchan`, `intermarche`). **Aucune migration de schéma n'est nécessaire pour les clés.** Les routes d'écriture portent déjà `retailer` dans le corps (`PUT /drive/settings`, `PUT /drive/choices`, `PUT /drive/choices/{slug}`) ou dans la requête (`GET` et `DELETE /drive/choices`). La purge du compte supprime par utilisateur, sans condition d'enseigne (`ChoicePostgreSQLRepository::deleteByUser`, `DriveSettingsRepository::deleteByUser`). Le verrou `SENT` d'une liste est **indépendant de l'enseigne** (`ShoppingList` n'a pas de champ enseigne ; `send` ne prend aucun paramètre d'enseigne).
+
+### 3.2 Back (`kcharignon/repas`)
+
+| Où | Couplage | À généraliser |
+|---|---|---|
+| `src/Drive/Domain/Model/Retailer.php` | Enum à un seul cas `LECLERC`. `LECLERC_STORE_URL` (`#^https://[a-z0-9-]+\.leclercdrive\.fr/magasin-(\d+)-(\d+)$#D`) et un `match` à un seul bras dans `storeIdOf()`. | Le registre : nom affiché, règle d'adresse du magasin, motif d'identifiant produit, drapeaux. L'enum reste la liste des identifiants. **DRV-701**. |
+| `src/Drive/Infrastructure/Loader/DriveSettingsPostgreSQLLoader.php` l. 16, `DrivePlanPostgreSQLLoader.php` l. 41, `DriveEstimatePostgreSQLLoader.php` l. 38 | `private const Retailer RETAILER = Retailer::LECLERC` (« une seule enseigne pour l'instant : la lecture ne porte pas encore de paramètre `retailer` »). **Les trois seules lectures qui figent Leclerc.** | L'enseigne devient un paramètre de la requête (`GetDrivePlanQuery`, `GetDriveEstimateQuery`, `GetDriveSettingsQuery`). **DRV-701**. |
+| `GET /drive/settings` (`DriveSettingsDTO`) | Une seule enseigne et un seul magasin : `{enabled, retailer, store}`. | Ajouter, sans retirer, la liste des enseignes et la sélection (§ 5.4). **DRV-701**, **DRV-703**. |
+| `GET /drive/plans/{id}`, `GET /drive/estimates/{id}` | Pas de paramètre d'enseigne. | `?retailer=` facultatif (enseigne courante par défaut). **DRV-701**. |
+| `src/Drive/Domain/Model/Store.php` | `baseUrl` obligatoire, validée par la règle d'adresse de l'enseigne ; `id` ≤ 20 caractères. Vrai pour Leclerc (un magasin = une adresse). | Auchan : identifiant de magasin **explicite** lu par `GET /journey` (UUID, adresse d'enseigne constante) : décision DRV-715, **DRV-720**. |
+| `src/Drive/Domain/Model/Product.php` | ~~`RETAILER_PRODUCT_ID_PATTERN = ^[0-9]{1,12}# Plusieurs enseignes de drive : audit du couplage à Leclerc et conception cible
+
+> **Lancé le 2026-10-30** : la pause du 2026-10-20 est levée, le propriétaire démarre Auchan (« on va commencer à gérer Auchan »). Les spikes sont faits ([`spikes/DRV-712-rapport.md`](spikes/DRV-712-rapport.md), [713](spikes/DRV-713-rapport.md), [714](spikes/DRV-714-rapport.md)) et la décision est prise : **adaptateur complet** ([`spikes/DRV-715-decision-auchan.md`](spikes/DRV-715-decision-auchan.md)). Faits mesurés : [`hypotheses-site-reel-auchan.md`](hypotheses-site-reel-auchan.md). Les § 11 à 14 ci-dessous gardent le raisonnement d'origine (2026-10-19) ; leur § 11.4 et la décision priment. Règle active : ne jamais dépendre de l'implémentation de Leclerc dans le nouveau code ; Auchan reste **éteint** tant que l'humain ne l'allume pas.
+
+Cadrage du 2026-10-19 (jalon M7 de [`roadmap.md`](roadmap.md)), rédigé par l'assistant de cadrage ; **aucun code de produit n'est écrit ici**. Décision d'architecture : [ADR 0027](../adr/0027-plusieurs-enseignes-de-drive.md) (`Accepted` le 2026-10-30, amendée le même jour). Tickets : [`DRV-701` à `DRV-717`](tickets/). État lu : back `main` au commit `556e63f`, front `main` au commit `5b8779f`.
+
+## 1. Le besoin
+
+Demande de l'utilisateur, mot pour mot : « on fera le drive Auchan (dans le futur, quand le drive Leclerc sera fini) mais du coup pense déjà à découpler et à ne pas être trop proche du drive Leclerc : on devra activer des drives différents, Leclerc, Auchan, et on devra choisir quel drive utiliser selon ce qu'on a déjà configuré dans nos paramètres. »
+
+Ce que cela veut dire, en quatre phrases :
+
+1. **Plusieurs drives peuvent coexister.** Une personne peut avoir configuré Leclerc, Auchan, ou les deux.
+2. **Repas choisit le drive à utiliser** d'après ce que la personne a déjà configuré dans « Moi », sans lui faire répéter ce qu'il sait ([`principes-produit.md`](principes-produit.md) règles 3, 5, 6).
+3. **Le code actuel ne doit pas durcir** son lien avec Leclerc : tout ce qui nomme Leclerc doit passer par un point unique, pour que la deuxième enseigne soit une entrée de plus et non une réécriture.
+4. **Tant qu'il n'y a qu'une enseigne, rien ne change pour l'utilisateur** : le découplage est un chantier d'ingénierie, pas de produit.
+
+**Ce qui est livré par ce cadrage** : l'audit (§ 3), la conception cible (§ 4 à § 8), le plan de découplage en tickets (§ 10), les faits connus sur Auchan et leurs inconnues (§ 11), les spikes à faire sur un téléphone (§ 12). **Ce qui ne l'est pas** : l'adaptateur Auchan lui-même (il dépend des spikes, DRV-717 n'en pose que le squelette), et toute décision sur l'ordre de lancement par rapport à la fin de la recette de Leclerc (voir § 13).
+
+## 2. Principes
+
+1. **Une enseigne est une donnée, pas une branche de code.** Identifiant, nom, règle d'adresse du magasin, hôtes autorisés, particularités : un registre. Ajouter une enseigne = ajouter une entrée de registre + un adaptateur d'agent, jamais un `if ($retailer === …)` dans un handler (OCP, [`CLAUDE.md`](../../CLAUDE.md) § SOLID).
+2. **Les invariants du chantier ne changent pas** ([`architecture.md`](architecture.md) § 2) : aucun identifiant, cookie ni jeton d'enseigne chez nous ; le back ne contacte jamais une enseigne ; pas de code distant ; l'agent ne valide ni ne paie jamais ; le panier d'une enseigne n'est jamais vidé ni réduit. Ils valent **pour chaque enseigne séparément**.
+3. **Compatible avec ce qui est installé.** Le site web se met à jour tout seul, l'application Android non ([DRV-640](tickets/DRV-640-version-minimale-pour-le-drive.md)) : tout ajout au protocole v1 est **facultatif** et une application qui ne connaît pas une enseigne ne reçoit jamais de plan pour elle (§ 8).
+4. **Un seul point par couche.** Si un nom d'enseigne apparaît ailleurs que dans le registre de sa couche, c'est un défaut (un test le garde : § 10, DRV-701, DRV-704, DRV-706, DRV-708).
+5. **Ne rien présumer d'Auchan.** Les faits sur Auchan sont des hypothèses sourcées (§ 11) tant qu'un spike sur téléphone ne les a pas confirmés.
+
+## 3. Audit du couplage actuel à Leclerc
+
+Lu le 2026-10-19 dans les deux dépôts. « Nomme Leclerc » = le mot, un hôte, un motif d'adresse ou une forme propre au site de Leclerc. Les chemins sont ceux de `main`.
+
+### 3.1 Bonne nouvelle : le modèle de données connaît déjà l'enseigne (vérifié)
+
+| Table (back) | Clé | Verdict |
+|---|---|---|
+| `drive_settings` | PK `(user_id, retailer)` | Un réglage **par utilisateur et par enseigne** : plusieurs enseignes coexistent déjà en base. `src/Drive/Infrastructure/Entity/DriveSettings.php`, `DriveSettingsRepository::findOneByUser($userId, $retailer)`. |
+| `drive_product` | UNIQUE `(retailer, store_id, retailer_product_id)` | Un produit d'une enseigne ne peut pas heurter celui d'une autre. Les prix et le contenu restent des faits publics **par enseigne et magasin**. |
+| `drive_choice` | UNIQUE `(user_id, retailer, store_id, ingredient_slug)` | Les choix mémorisés (produits habituels, remplacements, produits refusés, « j'en ai toujours ») sont **par enseigne et par magasin** : rien n'est mélangé. La recherche mémorisée de DRV-650 (`search_query`, le texte qui a fait trouver le produit choisi) vit sur cette même ligne : elle est donc propre à l'enseigne, jamais reprise d'une enseigne à l'autre. `ChoicePostgreSQLRepository::findByUserStoreAndSlugs` filtre déjà sur `retailer`. |
+| `drive_choice_product` | PK `(choice_id, product_id)` | Dépend du choix, donc de l'enseigne. La contenance mémorisée de DRV-652 (`pack_size_value`, `pack_size_unit_slug` : « 20 tranches » dans ce produit) vit sur cette ligne : privée à l'utilisateur, propre à l'enseigne par le choix qui la porte, et exprimée en **slug d'unité de Repas** (rien de propre à une enseigne). |
+
+Les colonnes `retailer` sont des `VARCHAR(20)` (assez pour `auchan`, `intermarche`). **Aucune migration de schéma n'est nécessaire pour les clés.** Les routes d'écriture portent déjà `retailer` dans le corps (`PUT /drive/settings`, `PUT /drive/choices`, `PUT /drive/choices/{slug}`) ou dans la requête (`GET` et `DELETE /drive/choices`). La purge du compte supprime par utilisateur, sans condition d'enseigne (`ChoicePostgreSQLRepository::deleteByUser`, `DriveSettingsRepository::deleteByUser`). Le verrou `SENT` d'une liste est **indépendant de l'enseigne** (`ShoppingList` n'a pas de champ enseigne ; `send` ne prend aucun paramètre d'enseigne).
+
+### 3.2 Back (`kcharignon/repas`)
+
+| Où | Couplage | À généraliser |
+|---|---|---|
+| `src/Drive/Domain/Model/Retailer.php` | Enum à un seul cas `LECLERC`. `LECLERC_STORE_URL` (`#^https://[a-z0-9-]+\.leclercdrive\.fr/magasin-(\d+)-(\d+)$#D`) et un `match` à un seul bras dans `storeIdOf()`. | Le registre : nom affiché, règle d'adresse du magasin, motif d'identifiant produit, drapeaux. L'enum reste la liste des identifiants. **DRV-701**. |
+| `src/Drive/Infrastructure/Loader/DriveSettingsPostgreSQLLoader.php` l. 16, `DrivePlanPostgreSQLLoader.php` l. 41, `DriveEstimatePostgreSQLLoader.php` l. 38 | `private const Retailer RETAILER = Retailer::LECLERC` (« une seule enseigne pour l'instant : la lecture ne porte pas encore de paramètre `retailer` »). **Les trois seules lectures qui figent Leclerc.** | L'enseigne devient un paramètre de la requête (`GetDrivePlanQuery`, `GetDriveEstimateQuery`, `GetDriveSettingsQuery`). **DRV-701**. |
+| `GET /drive/settings` (`DriveSettingsDTO`) | Une seule enseigne et un seul magasin : `{enabled, retailer, store}`. | Ajouter, sans retirer, la liste des enseignes et la sélection (§ 5.4). **DRV-701**, **DRV-703**. |
+| `GET /drive/plans/{id}`, `GET /drive/estimates/{id}` | Pas de paramètre d'enseigne. | `?retailer=` facultatif (enseigne courante par défaut). **DRV-701**. |
+| `src/Drive/Domain/Model/Store.php` | `baseUrl` obligatoire, validée par la règle d'adresse de l'enseigne ; `id` ≤ 20 caractères. Vrai pour Leclerc (un magasin = une adresse). | Auchan : identifiant de magasin **explicite** lu par `GET /journey` (UUID, adresse d'enseigne constante) : décision DRV-715, **DRV-720**. |
+~~ : **fait par DRV-701** : la forme d'un identifiant de produit est `productIdPattern` du profil de l'enseigne (`Retailer::isValidProductId()`), aussi dans `ProductInput` / `ProductPayload` ; la validation de l'agent la lit dans son registre (DRV-704). `EAN_PATTERN` est neutre. | Fait (DRV-701, 704). |
+| `src/Drive/Domain/Model/DriveSettings.php` | Le compteur du jour des écritures de produits (`productWritesDay/Count`, plafond 5 000 : DRV-613) vit **dans la ligne de réglage**, donc **par utilisateur et par enseigne**. Avec deux enseignes, le plafond quotidien devient 5 000 **par enseigne**. | Décision D-M5 (§ 14) : l'accepter (borne = 5 000 × nombre d'enseignes activées, ce qui reste très petit) et l'écrire dans le test et le skill `repas-drive-back`. **DRV-701**. |
+| OpenAPI : `enum: ['leclerc']` dans `DriveSettingsDTO`, `DrivePlanDTO`, `DriveEstimateDTO`, `DriveSettingsPayload`, `ReplaceIngredientPreferencePayload`, `SaveProductChoicesPayload`, et les deux `OA\Parameter` de `ListChoicesApiController` et `ForgetChoiceApiController` ; exemple d'adresse `…leclercdrive.fr…` dans `DriveStorePayload` et `DriveStoreDTO` ; 14 mentions dans `docs/api/openapi.json`. | Le contrat fige `leclerc`. | L'énumération se déduit du registre (un test garde la concordance), l'exemple devient neutre. **DRV-701**. |
+| `DriveFeature` / `DRIVE_ENABLED` (`src/Shared/…`, `EnvDriveFeature`, `DriveEnabledListener`, `#[RequiresDrive]`) | Un interrupteur **global** : coupe toutes les enseignes à la fois. Bien pour une urgence générale, trop gros pour couper **une** enseigne qui a changé son site. | Interrupteur par enseigne, en plus (§ 7). **DRV-702**. |
+| `tests/…` (176 occurrences de `Retailer::LECLERC`, `tests/Helper/Builder/*`, `docs/drive/samples/*.sample.json`, `tests/Drive/Domain/StoreTest.php`) | Les doubles et les exemples supposent Leclerc comme défaut. | Les builders prennent l'enseigne en paramètre (défaut inchangé) ; un exemple de contrat des enseignes (`retailers.sample.json`). **DRV-701**. |
+
+### 3.3 Front web (`kcharignon/repas-front`, `src/`)
+
+| Où | Couplage | À généraliser |
+|---|---|---|
+| `src/i18n/fr.ts` (44 lignes qui disent « Leclerc », ex. l. 446, 464-473, 513-516, 577, 601-634, 649-691, 722-731, 755, 824-891) | Le nom de l'enseigne **codé en dur** dans les erreurs, le récapitulatif, l'envoi, les réglages, l'aide, **les conditions d'utilisation** (l. 824-891 : compte E.Leclerc, Tickets E.Leclerc). | Le nom devient un paramètre (`{retailer}`), y compris sa forme élidée (« de Leclerc » / « d’Auchan »). Les conditions d'utilisation gardent une section par enseigne. **DRV-708**. |
+| `src/features/drive/leclerc.ts` | `DRIVE_HOME_URL = 'https://www.leclercdrive.fr/'` et `finalizeLink()` (forme `/magasin-N-N`). | `retailers.ts` : accueil et lien « Finaliser » selon l'enseigne. **DRV-708**. |
+| `src/features/drive/storeAddress.ts` | `parseStoreAddress` : `STORE_HOST` (`@drive-protocol`, motif `*.leclercdrive.fr`) et chemin `/magasin-N-N`. | La règle vient du registre de la couche. **DRV-708**. |
+| `src/features/drive/queries.ts` l. 65 et 82, `choicesQueries.ts` l. 19 et 56, `choiceDraft.ts` l. 84 | `retailer: 'leclerc'` **écrit cinq fois** dans les appels d'API. | L'enseigne vient de la sélection, jamais d'un littéral. **DRV-708**. |
+| `src/features/drive/DriveSettingsView.vue` | Un seul magasin, une seule enseigne ; « Lire mon magasin » lance `drive.setup` sans enseigne. | « Mes drives » : une ligne par enseigne activée. **DRV-709**. |
+| `src/features/drive/bridge/draft.ts`, `useDriveReturn.ts` | Le brouillon de passage `{runId, listId, startedAt}` ne dit pas pour quelle enseigne ; le message `result` non plus (pas de champ `retailer`). | Le brouillon porte l'enseigne ; le retour enregistre les choix pour **elle** (et rejette un retour d'une autre). **DRV-710**. |
+| `src/features/drive/bridge/native.ts` | `AppInfo = {version, versionCode, drive}` : l'application n'annonce pas ses enseignes. | Champ **facultatif** `retailers` (absent = `['leclerc']`). **DRV-707**, lu par **DRV-710**. |
+| `src/features/drive/appVersion.ts` (`MIN_DRIVE_APP_VERSION`) | Une seule version minimale pour « le drive ». | Reste vrai pour le noyau ; la prise en charge d'une enseigne se lit sur l'annonce de l'application, pas sur un numéro (§ 8). |
+| `src/features/drive/appInstall.ts` | Une constante (`APP_RELEASES_URL`), **sans lien avec une enseigne** : rien à faire. | — |
+| `src/i18n/__tests__/voice-and-glossary.spec.ts` (22 mentions), 25 mentions dans `DriveReturnView.spec.ts`, etc. | Les tests attendent le mot « Leclerc ». | Ils passent à l'enseigne par paramètre ; un test échoue si « Leclerc » ou « Auchan » apparaît dans un texte hors du registre. **DRV-708**. |
+
+### 3.4 Agent (`drive-agent/`)
+
+| Où | Couplage | À généraliser |
+|---|---|---|
+| `drive-agent/src/leclerc/` (16 fichiers : `adapter.ts`, `cart.ts`, `search-page.ts`, `search-request.ts`, `store.ts`, `session.ts`, `entry.ts`, `pacer.ts`, `causes.ts`, `errors.ts`…) | **Bien rangé** : tout ce qui est propre au site est dans ce dossier, derrière l'interface `RetailerAdapter` (`adapter.ts`). C'est le bon patron. | Garder `leclerc/` tel quel ; poser le registre à côté. |
+| Fuite des types dans `flow/`, `diagnostic/`, `selftest/` | `flow/*.ts` importent `LeclercError`, `LeclercCause`, `RequestStats`, `Candidate`, `Content`, `CartResult` depuis `'../leclerc'` (14 fichiers) ; l'interface s'appelle `RetailerAdapter` mais ses erreurs et causes portent le nom `Leclerc`. | Types neutres (`RetailerError`, `RetailerCause`) exportés par une couche commune ; `leclerc/` les implémente. **DRV-704**. |
+| `drive-agent/src/agent.ts` | `new LeclercAdapter(browserDeps(win))` : l'adaptateur est choisi en dur. | Le registre choisit l'adaptateur d'après l'hôte de la page **et** l'enseigne du plan. **DRV-704**. |
+| `drive-agent/protocol/check.ts` l. 17 (`HOST = /^[a-z0-9-]+\.leclercdrive\.fr$/`), `plan.ts` l. 111 (`exactly(message, 'retailer', 'leclerc')`), `plan.schema.json` (`"retailer": {"const": "leclerc"}`, motif d'hôte), `types.ts` l. 136 (`retailer: 'leclerc'`) | Le **protocole** fige l'enseigne et l'hôte. | `retailer` devient une énumération issue du registre, l'hôte se valide **par enseigne** (le plan d'une enseigne n'accepte que ses hôtes). Valeurs actuelles inchangées. **DRV-704**. |
+| `drive-agent/src/ui/strings.ts` (26 lignes), `src/diagnostic/*` (`checks.ts` 14, `probes.ts` 7) | Textes de l'agent qui disent « Leclerc » ; sondes de diagnostic propres au site. | Nom en paramètre pour les textes (**DRV-705**) ; les sondes restent dans l'adaptateur. |
+| `drive-agent/fake-leclerc/` (faux site), `fixtures/leclerc/`, `Makefile` (`agent-e2e`, `agent-fake`, `android-e2e`), `compose.yaml` (hôtes `*.leclercdrive.fr` redirigés vers le faux site), `drive-agent/e2e/*` | Tout le banc de test suppose un faux Leclerc. | Le faux site d'Auchan est un second dossier de même forme (**DRV-717**) ; ne pas le généraliser avant de connaître le vrai site. |
+
+### 3.5 Application Android (`android/`)
+
+| Où | Couplage | À généraliser |
+|---|---|---|
+| `core/…/NavigationPolicy.kt` | `START_URL = "https://www.leclercdrive.fr/"`, `HOME_HOST`, `ALLOWED_DOMAIN = "leclercdrive.fr"`, `STORE_PATH` (`/magasin-N-N…`), `LOGIN_PATH`, `MOBILE_LABEL` (site mobile `m-…`). **Le cœur de la sécurité de navigation** : seules les pages `https` de ce domaine restent dans l'application. | `RetailerSite` : une table (domaine, accueil, forme de page de magasin, connexion, site mobile) ; la décision de navigation prend l'enseigne en compte. **DRV-706 (xhigh)**. |
+| `core/…/BridgeMessages.kt` | `ORIGIN_RULES = setOf("https://*.leclercdrive.fr")`, `DOMAIN_SUFFIX`, `isAllowedOrigin` : **les seules origines où l'objet `repasHost` existe et où l'agent est injecté**. | Les règles d'origine de **toutes** les enseignes activées, et la livraison d'un plan limitée aux pages **de son enseigne**. **DRV-706 (xhigh)**. |
+| `core/…/DrivePlan.kt` l. 56, 122, 129-136 | `plan.opt("retailer") != "leclerc"` refuse tout autre plan (`INVALID_PLAN`) ; `STORE_HOST` ; `startUrl` = `NavigationPolicy.START_URL`. | L'enseigne du plan ∈ registre, l'hôte du magasin appartient à cette enseigne, l'adresse de départ est celle de l'enseigne. **DRV-706**. |
+| `core/…/DriveEntry.kt`, `StorePathMemory.kt`, `FinalizeOutcome.kt`, `DebugPlan.kt` | « Finaliser » et la mémoire du chemin du magasin (avec ville) sont des notions de Leclerc ; la mémoire est **unique**. | Une mémoire par enseigne (clé = identifiant d'enseigne). **DRV-706**. |
+| `app/…/DriveActivity.kt` (16 mentions), `AgentHost.kt` (injection dans `*.leclercdrive.fr`), `app/src/main/assets/injection.js`, `DesktopMode.kt` / `UserAgent.kt` (mode ordinateur permanent, parce que Leclerc sert un site mobile aux routes différentes) | L'écran du drive, l'injection et le mode ordinateur supposent un seul site. | L'écran s'ouvre **sur une enseigne** (extra d'intention) ; mode ordinateur selon l'enseigne ; injection selon l'hôte. **DRV-707**. |
+| `app/…/DriveProfile.kt` | Un profil de WebView `drive` (cookies de Leclerc) ; « Se déconnecter de Leclerc » l'efface. | Décision D-M6 (§ 14) : un profil par enseigne, pour que se déconnecter d'une enseigne n'efface pas l'autre. **DRV-707**. |
+| `app/src/main/res/values/strings.xml` (9 lignes : `menu_open_drive`, `menu_logout_drive`, `clear_message`, `plan_banner*`, `about_*`) | « Ouvrir le drive Leclerc », « Se déconnecter de Leclerc ». | Noms en paramètre `%1$s`, entrées de menu par enseigne configurée. **DRV-707**. |
+| `app.info` (`NativeBridge.appInfo(version, versionCode, drive)`) | N'annonce pas les enseignes. | Ajoute `retailers` (liste d'identifiants). **DRV-707**. |
+| `android/emulator/` (faux site en HTTPS), `__tests__/*.spec.ts`, `PROCEDURE.md`, `README.md` (56 mentions), `PUBLICATION.md` | Documentation et scénarios de bout en bout écrits pour Leclerc. | Mettre à jour la documentation (**DRV-711**) ; le scénario Auchan est celui de DRV-717. |
+
+### 3.6 Documentation, runbook, ADR
+
+`architecture.md` (§ 3, 5, 8, 9), `README.md`, `runbook.md` (« Leclerc a changé »), `hypotheses-site-reel.md`, `recette.md`, `note-vie-privee.md`, les skills `repas-agent-dev`, `repas-android-dev`, `repas-drive-back`, `repas-ops` (`references/drive.md`) et l'ADR front 0008 décrivent **un** drive. Rien de faux aujourd'hui ; ils ne doivent simplement pas être recopiés tels quels pour Auchan. **DRV-711** les met à jour (une section « par enseigne » dans chacun).
+
+### 3.7 Synthèse
+
+| Couche | Niveau de couplage | Effort de découplage |
+|---|---|---|
+| Base de données et clés | Aucun | Nul |
+| Back (domaine, handlers) | Faible : une enum, 3 constantes de lecture, une validation numérique | Petit |
+| API | Moyen : 3 lectures sans paramètre, énumérations `leclerc` dans OpenAPI | Petit (additif) |
+| Front web | Moyen : textes, 5 littéraux, une vue de réglages à un magasin | Moyen |
+| Agent | Faible : déjà derrière `RetailerAdapter`, mais ses types portent le nom Leclerc et le protocole fige l'enseigne | Petit à moyen |
+| Application Android | **Fort** : sécurité de navigation, origines du pont, injection, profil, textes : tout est écrit pour un domaine | Moyen, **sensible** (xhigh) |
+| Banc de test et documentation | Fort mais sans risque | Moyen |
+
+## 4. Conception cible : le registre d'enseignes
+
+### 4.1 Les champs
+
+Chaque couche a **son** registre (les données utiles ne sont pas les mêmes, et les langages diffèrent) ; un **contrat commun** les rapproche (§ 4.2).
+
+| Champ | Sens | Leclerc aujourd'hui | Utilisé par |
+|---|---|---|---|
+| `id` | Identifiant stable, minuscules, ≤ 20 caractères (colonne `retailer`) | `leclerc` | partout |
+| `name` | Nom que les proches disent à voix haute | « Leclerc » | textes |
+| `nameDe` | Forme avec « de » (élision) | « de Leclerc » (« d’Auchan » plus tard) | textes (« Se déconnecter de … ») |
+| `storeAddressRule` | Règle d'adresse d'un magasin et extraction de l'identifiant | `https://<sous-domaine>.leclercdrive.fr/magasin-<id>-<id>` | back (`Store::create`), web (`parseStoreAddress`), agent, Kotlin |
+| `allowedDomains` | Hôtes où l'application reste, où le pont existe et où l'agent est injecté | `leclercdrive.fr` et ses sous-domaines | Kotlin (navigation, origines), agent (plan) |
+| `startUrl` | Page où le drive s'ouvre | `https://www.leclercdrive.fr/` | Kotlin, web (repli de « Finaliser ») |
+| `siteMode` | `DESKTOP` (mode ordinateur imposé, site mobile refusé) · `MOBILE` · `AS_IS` | `DESKTOP`, hôte mobile `m-…` refusé | Kotlin, agent |
+ | back, agent, web (DRV-720, fait ; l'identifiant fait au plus 40 caractères) |
+| `offerIdPattern` | Forme de l'identifiant d'offre d'un produit, ou `null` si l'enseigne n'en a pas | `null` | back, agent, web (DRV-721) |
 | `antiBot` | Information pour l'exploitation : `DATADOME`, `OTHER`, `UNKNOWN` | `DATADOME` | agent (marqueur de défi), runbook |
 | `pacing` | Cadence de départ (pause, gigue, plafond) | 800 ms + gigue 700 ms, plafond 3 s | agent |
 | `termsSection` | Clé de la section des conditions d'utilisation | `leclerc` | web |
@@ -136,7 +369,7 @@ Chaque couche a **son** registre (les données utiles ne sont pas les mêmes, et
 
 ### 4.2 Un contrat commun entre couches
 
-La concordance se prouve comme pour le plan ([`consignes-agents.md`](consignes-agents.md), « Modifier le plan ») : le back génère `docs/drive/samples/retailers.sample.json` (`make drive-samples`), le front le recopie dans `drive-agent/fixtures/contract/` (`make samples-update`), et chaque couche (web, agent, Kotlin via ses ressources de test) vérifie que **ses** identifiants, noms, règles d'adresse et domaines sont ceux du contrat. Un nouvel `id` dans une couche seulement fait échouer la CI de l'autre. Le contrat est **public** et ne contient que des motifs d'adresses.
+La concordance se prouve comme pour le plan ([`consignes-agents.md`](consignes-agents.md), « Modifier le plan ») : le back génère `docs/drive/samples/retailers.sample.json` (`make drive-samples`), le front le recopie dans `drive-agent/fixtures/contract/` (`make samples-update`), et chaque couche (web, agent, Kotlin via ses ressources de test) vérifie que **ses** identifiants, noms, règles d'adresse et domaines sont ceux du contrat. Un nouvel `id` dans une couche seulement fait échouer la CI de l'autre. Le contrat est **public** et ne contient que des motifs d'adresses. Champs livrés (DRV-701, 720) : `id`, `name`, `nameDe`, `storeAddressPattern`, `storeAddressExample`, `productIdPattern`, `storeIdSource`, `storeIdPattern` ; `offerIdPattern` suit avec DRV-721. Les motifs sont écrits sans délimiteur, ancrés, dans le sous-ensemble commun à PCRE et à JavaScript (`[0-9]`, jamais `\d`). **Les tests de chaque couche comparent les champs qu'ils connaissent et tolèrent les autres** (un champ additif ne casse pas la CI d'une autre couche).
 
 ### 4.3 Un adaptateur d'agent par enseigne
 
@@ -152,7 +385,7 @@ Ce qui reste **spécifique** et ne se factorise pas : recherche, lecture des pro
 
 Le réglage reste **un magasin par utilisateur et par enseigne** (aucun changement de table). Ce qui s'ajoute :
 
-- **La liste des enseignes** vue de la personne : pour chaque enseigne activée, `configured` (un magasin est enregistré), son magasin, et s'il s'agit de son drive habituel.
+- **La liste des enseignes** (DRV-701 a livré `retailers: [{retailer, name, configured, store}]` ; `isDefault` et la sélection viennent avec DRV-703, l'interrupteur avec DRV-702) vue de la personne : pour chaque enseigne activée, `configured` (un magasin est enregistré), son magasin, et s'il s'agit de son drive habituel.
 - **Une préférence de l'utilisateur** (nouvel agrégat `RetailerPreference`, table `drive_retailer_preference`, **une ligne par utilisateur**, DRV-703) : `defaultRetailer` (facultatif, choisi dans « Moi ») et `lastUsedRetailer` (posé quand la personne ouvre le drive). Elle porte un `user_id` : elle entre dans la purge du compte (`UserOwnedDataCoverageTest`, [`CLAUDE.md`](../../CLAUDE.md) § Comptes).
 - **La sélection calculée par le back** (service de domaine pur `RetailerSelection`, test en table) : le front n'implémente pas la règle, il la lit. Ainsi le web et, plus tard, tout autre client (iPhone) appliquent **la même**.
 

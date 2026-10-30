@@ -174,11 +174,11 @@ Références : [`multi-enseignes.md`](multi-enseignes.md) (audit, conception, fa
 - [x] [DRV-701](tickets/DRV-701-registre-d-enseignes-du-back.md) back · M · Registre d'enseignes du back, enseigne en paramètre des lectures, contrat des enseignes (high) · dépend de : —
 - [ ] [DRV-702](tickets/DRV-702-interrupteur-par-enseigne.md) back · S · Interrupteur par enseigne `DRIVE_RETAILERS` (high) · dépend de : 701
 - [ ] [DRV-703](tickets/DRV-703-drive-habituel-et-derniere-enseigne.md) back · M · Drive habituel, dernière enseigne utilisée, retrait d'un drive, sélection `RetailerSelection` (xhigh) · dépend de : 701, 702
-- [ ] [DRV-704](tickets/DRV-704-registre-d-enseignes-de-l-agent.md) front (agent) · M · Registre d'enseignes de l'agent, types neutres, protocole par enseigne (high) · dépend de : 701
+- [x] [DRV-704](tickets/DRV-704-registre-d-enseignes-de-l-agent.md) front (agent) · M · Registre d'enseignes de l'agent, types neutres, protocole par enseigne (high) · dépend de : 701
 - [ ] [DRV-705](tickets/DRV-705-textes-de-l-agent-avec-le-nom-de-l-enseigne.md) front (agent) · S · Textes de l'agent : le nom de l'enseigne en paramètre (medium) · dépend de : 704
 - [ ] [DRV-706](tickets/DRV-706-hotes-autorises-par-enseigne-dans-le-coeur-kotlin.md) front (`android/core`) · M · Hôtes autorisés, origines du pont et mémoires par enseigne (xhigh) · dépend de : 704
 - [ ] [DRV-707](tickets/DRV-707-ecran-du-drive-par-enseigne.md) front (`android/app`) · M · Écran du drive, injection, profil, menu et `app.info` par enseigne (high) · dépend de : 706
-- [ ] [DRV-708](tickets/DRV-708-le-nom-de-l-enseigne-en-parametre-sur-le-web.md) front (web) · M · Le web : nom en paramètre, plus de littéral `leclerc` (medium) · dépend de : 701
+- [x] [DRV-708](tickets/DRV-708-le-nom-de-l-enseigne-en-parametre-sur-le-web.md) front (web) · M · Le web : nom en paramètre, plus de littéral `leclerc` (medium) · dépend de : 701
 - [ ] [DRV-709](tickets/DRV-709-mes-drives-dans-moi.md) front (web) · M · « Mes drives » dans « Moi » : liste, ajout, drive habituel (high) · dépend de : 703, 708
 - [ ] [DRV-710](tickets/DRV-710-choisir-le-drive-a-l-envoi.md) front (web) · M · Choisir le drive à l'envoi (R1 à R5), passage et retour par enseigne (high) · dépend de : 703, 707, 708, 709
 - [ ] [DRV-711](tickets/DRV-711-documentation-par-enseigne.md) back + front (docs) · S · Runbook, recette, skills et documentation « par enseigne » (medium) · dépend de : 701 à 710
