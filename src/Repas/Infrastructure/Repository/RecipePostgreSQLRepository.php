@@ -200,4 +200,18 @@ readonly class RecipePostgreSQLRepository extends PostgreSQLRepository implement
             ->getQuery()
             ->execute();
     }
+
+    public function moveToType(string $fromTypeSlug, string $toTypeSlug): void
+    {
+        // La colonne `version` s'écrit en SQL, comme `bumpVersion()` : une recette lue avant le déplacement est vue comme périmée
+        $this->entityManager->createQueryBuilder()
+            ->update(RecipeEntity::class, 'r')
+            ->set('r.typeSlug', ':to')
+            ->set('r.version', 'r.version + 1')
+            ->where('r.typeSlug = :from')
+            ->setParameter('from', $fromTypeSlug)
+            ->setParameter('to', $toTypeSlug)
+            ->getQuery()
+            ->execute();
+    }
 }

@@ -13,6 +13,7 @@ final class RecipeException extends DomainException
     public const string ROWS_LIMIT_REACHED = 'RECIPE_ROWS_LIMIT_REACHED';
     public const string LIMIT_REACHED = 'RECIPE_LIMIT_REACHED';
     public const string SECRET_FORBIDDEN = 'RECIPE_SECRET_FORBIDDEN';
+    public const string TYPE_TRANSFER_TO_ITSELF = 'RECIPE_TYPE_TRANSFER_TO_ITSELF';
 
     public static function notFound(string $id): static
     {
@@ -95,5 +96,13 @@ final class RecipeException extends DomainException
     public static function secretForbidden(): self
     {
         return new self(self::SECRET_FORBIDDEN, 403);
+    }
+
+    /**
+     * Les recettes d'un type supprimé passent dans un autre type : le type de transfert ne peut pas être le type supprimé lui-même. `422`.
+     */
+    public static function typeTransferToItself(): self
+    {
+        return new self(self::TYPE_TRANSFER_TO_ITSELF, 422);
     }
 }

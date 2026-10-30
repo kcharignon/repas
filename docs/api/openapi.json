@@ -1530,6 +1530,49 @@
                         "description": "Corps de la requ\u00eate invalide"
                     }
                 }
+            },
+            "delete": {
+                "tags": [
+                    "Recipe types"
+                ],
+                "summary": "Supprime le type de recette (administrateur) apr\u00e8s avoir pass\u00e9 toutes ses recettes dans un autre type",
+                "description": "Les recettes de tous les utilisateurs qui portent le type supprim\u00e9 passent dans le type `transferTo` (leur version augmente), puis le type dispara\u00eet ; une seule transaction. Il reste donc toujours au moins un type.",
+                "operationId": "delete_api_remove_recipe_type",
+                "parameters": [
+                    {
+                        "name": "transferTo",
+                        "in": "query",
+                        "description": "Slug du type de recette qui re\u00e7oit les recettes du type supprim\u00e9",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "maxLength": 255
+                        },
+                        "example": "plat"
+                    },
+                    {
+                        "name": "slug",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Supprim\u00e9, ses recettes sont dans le type de transfert"
+                    },
+                    "403": {
+                        "description": "R\u00e9serv\u00e9 aux administrateurs"
+                    },
+                    "404": {
+                        "description": "Type \u00e0 supprimer ou type de transfert inconnu"
+                    },
+                    "422": {
+                        "description": "`transferTo` absent, ou identique au type supprim\u00e9"
+                    }
+                }
             }
         },
         "/api/v1/shopping-lists/{id}": {
@@ -4158,6 +4201,20 @@
                         "type": "string",
                         "maxLength": 255,
                         "example": "tomate-0a1b2c3d"
+                    }
+                },
+                "type": "object"
+            },
+            "RemoveRecipeTypeRequestQuery": {
+                "required": [
+                    "transferTo"
+                ],
+                "properties": {
+                    "transferTo": {
+                        "description": "Slug du type de recette qui re\u00e7oit toutes les recettes du type supprim\u00e9 (diff\u00e9rent de celui-ci)",
+                        "type": "string",
+                        "maxLength": 255,
+                        "example": "plat"
                     }
                 },
                 "type": "object"

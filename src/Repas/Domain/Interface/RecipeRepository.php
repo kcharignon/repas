@@ -56,4 +56,11 @@ interface RecipeRepository
      * ni contrôle de version ni événement par recette, et les agrégats déjà chargés ne sont pas mis à jour.
      */
     public function deleteByAuthor(string $authorId): void;
+
+    /**
+     * Toutes les recettes de ce type, de tous les auteurs, passent dans l'autre type (suppression d'un type de recette). Leur version
+     * augmente : leur contenu a changé. Opération en masse : ni contrôle de version ni événement par recette, et les agrégats déjà
+     * chargés ne sont pas mis à jour.
+     */
+    public function moveToType(string $fromTypeSlug, string $toTypeSlug): void;
 }

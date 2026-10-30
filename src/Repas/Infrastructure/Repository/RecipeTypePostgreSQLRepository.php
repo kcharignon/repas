@@ -57,6 +57,15 @@ readonly class RecipeTypePostgreSQLRepository extends PostgreSQLRepository imple
         $this->entityManager->flush();
     }
 
+    public function delete(RecipeTypeModel $recipeType): void
+    {
+        $entity = $this->entityRepository->find($recipeType->getId());
+        if ($entity !== null) {
+            $this->entityManager->remove($entity);
+            $this->entityManager->flush();
+        }
+    }
+
     private function convertEntityToModel(RecipeTypeEntity $entity): RecipeTypeModel
     {
         return RecipeTypeModel::load([

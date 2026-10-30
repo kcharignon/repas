@@ -49,6 +49,7 @@ use Repas\Repas\Application\Command\RemoveSpokenIngredient\RemoveSpokenIngredien
 use Repas\Repas\Application\Command\RemoveSpokenMeal\RemoveSpokenMealCommand;
 use Repas\Repas\Application\Command\RemoveMealFromPlan\removeMealFromPlanCommand;
 use Repas\Repas\Application\Command\RemoveRecipe\RemoveRecipeCommand;
+use Repas\Repas\Application\Command\RemoveRecipeType\RemoveRecipeTypeCommand;
 use Repas\Repas\Application\Command\RemoveShoppingList\RemoveShoppingListCommand;
 use Repas\Repas\Application\Command\ReopenShoppingList\ReopenShoppingListCommand;
 use Repas\Repas\Application\Command\SeedUserIngredients\SeedUserIngredientsCommand;
@@ -598,6 +599,14 @@ return [
         $t->persister->saveRecipeType($type);
 
         return new UpdateRecipeTypeCommand($type->getId(), 'Plat principal', $type->getImage(), 2);
+    },
+    'supprimer-type-recette' => static function (WriteBudgetTestCase $t): object {
+        $starter = new RecipeTypeBuilder()->isStarter()->build();
+        $meal = new RecipeTypeBuilder()->isMeal()->build();
+        $t->persister->saveRecipeType($starter);
+        $t->persister->saveRecipeType($meal);
+
+        return new RemoveRecipeTypeCommand($starter->getId(), $meal->getId());
     },
 
     // --- Utilisateurs

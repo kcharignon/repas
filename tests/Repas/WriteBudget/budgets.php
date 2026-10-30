@@ -119,6 +119,7 @@ return [
     'supprimer-ingredient' => 13,
     'supprimer-liste' => 8,
     'supprimer-recette' => 12,
+    'supprimer-type-recette' => 4,
     'terminer-liste' => 11,
     'tick-derniere-ligne' => 15,
     'tick-ligne' => 4,
