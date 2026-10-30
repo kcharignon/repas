@@ -638,6 +638,47 @@ class DrivePlanPostgreSQLLoaderTest extends DatabaseTestCase
         $this->assertSame(2, $counter->count());
     }
 
+    public function testAProductCarriesItsOfferOnlyWhenItHasOne(): void
+    {
+        // Given : un produit avec offre (chargé tel que la base le restitue), un sans
+        $offerId = 'c3b2a1d0-5e4f-4a6b-9c8d-7e6f5a4b3c2d';
+        $this->settings->save(new DriveSettingsBuilder()->withUserId('user-1')->build());
+        $this->products->saveAll([
+            new ProductBuilder()->withRetailerProductId('1')->withOfferId($offerId)->build(),
+            new ProductBuilder()->withRetailerProductId('2')->build(),
+        ]);
+        $this->choices->save(new ChoiceBuilder()->withUserId('user-1')->withIngredientSlug('farine')->withAccepted([$this->id('1'), $this->id('2')])->build());
+        $list = $this->sentList('user-1', [new ShoppingListLineForDrive('farine', 'Farine', 300, 'gramme', 'gramme', 'g', 'WEIGHT', 1.0)]);
+
+        // When
+        $plan = $this->loader($list)->get('user-1', 'list-1', Retailer::default());
+
+        // Then : la clé `offerId` n'est écrite que pour le produit qui a une offre (la réponse des autres reste ce qu'elle était)
+        $products = json_decode(json_encode($plan, JSON_THROW_ON_ERROR), true, flags: JSON_THROW_ON_ERROR)['lines'][0]['products'];
+        $this->assertSame($offerId, $plan->lines[0]->products[0]->offerId);
+        $this->assertNull($plan->lines[0]->products[1]->offerId);
+        $this->assertSame($offerId, $products[0]['offerId']);
+        $this->assertArrayNotHasKey('offerId', $products[1]);
+        $this->assertSame(['rank', 'retailerProductId', 'ean', 'label', 'content', 'packs', 'packsStatus', 'packSize'], array_keys($products[1]));
+    }
+
+    public function testTheOfferCostsNoQueryMore(): void
+    {
+        // Given
+        $this->settings->save(new DriveSettingsBuilder()->withUserId('user-1')->build());
+        $this->products->save(new ProductBuilder()->withRetailerProductId('1')->withOfferId('c3b2a1d0-5e4f-4a6b-9c8d-7e6f5a4b3c2d')->build());
+        $this->choices->save(new ChoiceBuilder()->withUserId('user-1')->withIngredientSlug('farine')->withAccepted([$this->id('1')])->build());
+        $list = $this->sentList('user-1', [new ShoppingListLineForDrive('farine', 'Farine', 300, 'gramme', 'gramme', 'g', 'WEIGHT', 1.0)]);
+        $counter = static::getContainer()->get(QueryCounter::class);
+        $counter->reset();
+
+        // When
+        $this->loader($list)->get('user-1', 'list-1', Retailer::default());
+
+        // Then : les réglages et les préférences avec leurs produits, comme avant
+        $this->assertSame(2, $counter->count());
+    }
+
     /**
      * Ce rayon de l'enseigne est choisi, pour ce rayon de Repas, par ce nombre de comptes (chacun a un vote).
      */

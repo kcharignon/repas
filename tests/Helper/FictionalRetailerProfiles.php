@@ -46,6 +46,7 @@ final class FictionalRetailerProfiles
             productIdPattern: self::UUID,
             storeIdSource: StoreIdSource::EXPLICIT,
             storeIdPattern: self::UUID,
+            offerIdPattern: self::UUID,
         );
     }
 }

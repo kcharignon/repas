@@ -8,7 +8,8 @@
             "storeAddressExample": "https://exemple.leclercdrive.fr/magasin-123456-123456",
             "productIdPattern": "^[0-9]{1,12}$",
             "storeIdSource": "URL",
-            "storeIdPattern": "^[0-9]{1,20}$"
+            "storeIdPattern": "^[0-9]{1,20}$",
+            "offerIdPattern": null
         }
     ]
 }

@@ -4564,6 +4564,14 @@
                                 "$ref": "#/components/schemas/PackSizePayload"
                             }
                         ]
+                    },
+                    "offerId": {
+                        "description": "Identifiant de l'offre du produit dans le magasin (DRV-721), pour les enseignes dont un produit a deux identifiants : de la forme `offerIdPattern` du contrat des enseignes, 40 caract\u00e8res au plus. Facultatif : absent ou `null`, la fiche n'est pas modifi\u00e9e ; une valeur re\u00e7ue remplace celle de la fiche (l'offre peut changer). Pour une enseigne sans offre (`offerIdPattern` \u00e0 `null`), toute valeur est refus\u00e9e : `422` `DRIVE_CHOICE_INVALID`",
+                        "type": "string",
+                        "default": null,
+                        "maxLength": 40,
+                        "example": "0b5f8a2e-3c1d-4e7f-9a6b-123456789abc",
+                        "nullable": true
                     }
                 },
                 "type": "object"
@@ -6556,6 +6564,12 @@
                                 "$ref": "#/components/schemas/PackSizeDTO"
                             }
                         ]
+                    },
+                    "offerId": {
+                        "description": "Identifiant de l'offre du produit dans le magasin (DRV-721), chez les enseignes dont un produit a deux identifiants. **La cl\u00e9 est absente** (jamais `null`) quand le produit n'a pas d'offre (toute enseigne sans offre, ou offre pas encore rapport\u00e9e par un agent)",
+                        "type": "string",
+                        "default": null,
+                        "example": "0b5f8a2e-3c1d-4e7f-9a6b-123456789abc"
                     }
                 },
                 "type": "object"
@@ -6821,6 +6835,12 @@
                                 "$ref": "#/components/schemas/PackSizeDTO"
                             }
                         ]
+                    },
+                    "offerId": {
+                        "description": "Identifiant de l'offre du produit dans le magasin (DRV-721), chez les enseignes dont un produit a deux identifiants. **La cl\u00e9 est absente** (jamais `null`) quand le produit n'a pas d'offre (toute enseigne sans offre, ou offre pas encore rapport\u00e9e par un agent)",
+                        "type": "string",
+                        "default": null,
+                        "example": "0b5f8a2e-3c1d-4e7f-9a6b-123456789abc"
                     }
                 },
                 "type": "object"

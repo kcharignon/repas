@@ -268,6 +268,8 @@ readonly class SaveProductChoicesHandler
             $wellFormed = preg_match(Choice::SLUG_PATTERN, $intent->ingredientSlug) === 1
                 && ($product === null || $retailer->isValidProductId($product->retailerProductId))
                 && ($product === null || self::catalogIdsAreInBounds($product))
+                // DRV-721 : un identifiant d'offre a la forme de l'enseigne ; une enseigne sans offre n'en reçoit jamais
+                && ($product?->offerId === null || $retailer->isValidOfferId($product->offerId))
                 && ($intent->searchQuery === null || $intent->action === ChoiceAction::ADD_PRODUCT || $intent->action === ChoiceAction::NOTE_SEARCH)
                 && ($product?->packSize === null || $intent->action === ChoiceAction::ADD_PRODUCT)
                 && match ($intent->action) {
@@ -372,8 +374,8 @@ readonly class SaveProductChoicesHandler
 
             $id = $input->retailerProductId;
             $changed[$id] = $products[$id] = isset($products[$id])
-                ? $products[$id]->complete($input->ean, $input->label, $input->content, $input->price, $now, $input->rayonId, $input->familyId)
-                : Product::create($command->retailer, $command->storeId, $id, $input->ean, $input->label, $input->content, $input->price, $now, $input->rayonId, $input->familyId);
+                ? $products[$id]->complete($input->ean, $input->label, $input->content, $input->price, $now, $input->rayonId, $input->familyId, $input->offerId)
+                : Product::create($command->retailer, $command->storeId, $id, $input->ean, $input->label, $input->content, $input->price, $now, $input->rayonId, $input->familyId, $input->offerId);
         }
 
         return [$products, $changed];

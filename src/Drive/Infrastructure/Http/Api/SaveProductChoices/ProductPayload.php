@@ -43,6 +43,9 @@ final readonly class ProductPayload
             nullable: true,
         )]
         public ?PackSizePayload $packSize = null,
+        #[Assert\Length(max: Product::OFFER_ID_MAX_LENGTH)]
+        #[OA\Property(description: "Identifiant de l'offre du produit dans le magasin (DRV-721), pour les enseignes dont un produit a deux identifiants : de la forme `offerIdPattern` du contrat des enseignes, 40 caractères au plus. Facultatif : absent ou `null`, la fiche n'est pas modifiée ; une valeur reçue remplace celle de la fiche (l'offre peut changer). Pour une enseigne sans offre (`offerIdPattern` à `null`), toute valeur est refusée : `422` `DRIVE_CHOICE_INVALID`", maxLength: 40, example: '0b5f8a2e-3c1d-4e7f-9a6b-123456789abc', nullable: true)]
+        public ?string $offerId = null,
     ) {
     }
 
@@ -60,6 +63,6 @@ final readonly class ProductPayload
             default => PackSizeChange::set($this->packSize->toPackSize()),
         };
 
-        return new ProductInput($this->retailerProductId, $this->label, $this->ean, $this->content?->toContent(), $this->price?->toPrice(), $this->rayonId, $this->familyId, $packSizeChange);
+        return new ProductInput($this->retailerProductId, $this->label, $this->ean, $this->content?->toContent(), $this->price?->toPrice(), $this->rayonId, $this->familyId, $packSizeChange, $this->offerId);
     }
 }

@@ -205,4 +205,54 @@ class ProductRepositoryTest extends DatabaseTestCase
         $this->assertCount(50, $found);
         $this->assertSame(['INSERT drive_product' => 2, 'SELECT drive_product' => 1], $counter->byTable());
     }
+
+    public function testAnOfferIsWrittenReadBackAndKeptAbsentForAnEnseigneWithoutOffers(): void
+    {
+        // Given : un produit avec offre, un sans (le builder charge le modèle sans le juger : aucune enseigne du registre n'a d'offre)
+        $withOffer = new ProductBuilder()->withRetailerProductId('1')->withOfferId('c3b2a1d0-5e4f-4a6b-9c8d-7e6f5a4b3c2d')->build();
+        $without = new ProductBuilder()->withRetailerProductId('2')->build();
+
+        // When
+        $this->repository->saveAll([$withOffer, $without]);
+        $this->entityManager->clear();
+
+        // Then
+        $found = $this->repository->findByIds([$withOffer->getId(), $without->getId()]);
+        $byProduct = [];
+        foreach ($found as $product) {
+            $byProduct[$product->getRetailerProductId()] = $product->getOfferId();
+        }
+        ksort($byProduct);
+        $this->assertSame(['1' => 'c3b2a1d0-5e4f-4a6b-9c8d-7e6f5a4b3c2d', '2' => null], $byProduct);
+    }
+
+    public function testASeenOfferReplacesTheStoredOneAndNothingNeverEmptiesIt(): void
+    {
+        // Given : deux fiches avec une offre
+        $this->repository->saveAll([
+            new ProductBuilder()->withRetailerProductId('1')->withOfferId('c3b2a1d0-5e4f-4a6b-9c8d-7e6f5a4b3c2d')->build(),
+            new ProductBuilder()->withRetailerProductId('2')->withOfferId('c3b2a1d0-5e4f-4a6b-9c8d-7e6f5a4b3c2d')->build(),
+        ]);
+
+        // When : l'offre du produit 1 change, l'écrivain du produit 2 n'en connaît pas
+        $this->repository->saveAll([
+            new ProductBuilder()->withRetailerProductId('1')->withOfferId('d4c3b2a1-6f50-4b7c-8d9e-8f7a6b5c4d3e')->build(),
+            new ProductBuilder()->withRetailerProductId('2')->build(),
+        ]);
+
+        // Then : contrairement au rayon, l'offre reçue remplace l'ancienne ; l'absence ne l'efface pas
+        $offer = fn(string $id): ?string => $this->repository->findByIds([Product::idFor(Retailer::LECLERC, '123456', $id)])[0]->getOfferId();
+        $this->assertSame('d4c3b2a1-6f50-4b7c-8d9e-8f7a6b5c4d3e', $offer('1'));
+        $this->assertSame('c3b2a1d0-5e4f-4a6b-9c8d-7e6f5a4b3c2d', $offer('2'));
+    }
+
+    public function testTheNaturalKeyIsTheProductNotTheOffer(): void
+    {
+        // Given : deux écritures du même produit avec deux offres différentes
+        $this->repository->saveAll([new ProductBuilder()->withRetailerProductId('1')->withOfferId('c3b2a1d0-5e4f-4a6b-9c8d-7e6f5a4b3c2d')->build()]);
+        $this->repository->saveAll([new ProductBuilder()->withRetailerProductId('1')->withOfferId('d4c3b2a1-6f50-4b7c-8d9e-8f7a6b5c4d3e')->build()]);
+
+        // Then : une seule fiche (la clé reste `(retailer, store_id, retailer_product_id)`)
+        $this->assertSame(1, (int) $this->entityManager->getConnection()->fetchOne('SELECT count(*) FROM drive_product'));
+    }
 }

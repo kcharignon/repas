@@ -27,6 +27,8 @@ final class Product implements ModelInterface
     /** Code-barres : 8 à 14 chiffres. */
     public const string EAN_PATTERN = '/^[0-9]{8,14}$/D';
     public const int LABEL_MAX_LENGTH = 255;
+    /** Largeur de la colonne `retailer_offer_id` (DRV-721), celle de `retailer_product_id` : un UUID de 36 caractères y tient. */
+    public const int OFFER_ID_MAX_LENGTH = 40;
     /** Un identifiant de rayon ou de famille de l'enseigne est un entier de 1 à cette borne, la taille d'un `INT` PostgreSQL. */
     public const int CATALOG_ID_MAX = 2147483647;
     /**
@@ -75,6 +77,7 @@ final class Product implements ModelInterface
         private DateTimeImmutable $lastSeenAt,
         private ?int $rayonId = null,
         private ?int $familyId = null,
+        private ?string $offerId = null,
     ) {
     }
 
@@ -92,8 +95,32 @@ final class Product implements ModelInterface
         DateTimeImmutable $now,
         ?int $rayonId = null,
         ?int $familyId = null,
+        ?string $offerId = null,
     ): self {
-        if (!$retailer->isValidProductId($retailerProductId)) {
+        return self::createFor($retailer, $retailer->profile(), $storeId, $retailerProductId, $ean, $label, $content, $price, $now, $rayonId, $familyId, $offerId);
+    }
+
+    /**
+     * Comme `create()`, avec le profil d'enseigne qui juge les identifiants (celui de `$retailer->profile()` en production ; un profil
+     * fictif dans les tests d'une enseigne qui a des offres, DRV-721).
+     *
+     * @throws DriveException `invalidChoice()` si une valeur sort des bornes
+     */
+    public static function createFor(
+        Retailer $retailer,
+        RetailerProfile $profile,
+        string $storeId,
+        string $retailerProductId,
+        ?string $ean,
+        string $label,
+        ?ProductContent $content,
+        ?ProductPrice $price,
+        DateTimeImmutable $now,
+        ?int $rayonId = null,
+        ?int $familyId = null,
+        ?string $offerId = null,
+    ): self {
+        if (!$profile->isValidProductId($retailerProductId)) {
             throw DriveException::invalidChoice();
         }
 
@@ -110,11 +137,12 @@ final class Product implements ModelInterface
             lastSeenAt: $now,
             rayonId: self::checkedCatalogId($rayonId),
             familyId: self::checkedCatalogId($familyId),
+            offerId: self::checkedOfferId($offerId, $profile),
         );
     }
 
     /**
-     * @param array{id: string, retailer: Retailer, store_id: string, retailer_product_id: string, ean: ?string, label: string, content: ?ProductContent, price: ?ProductPrice, price_seen_at: ?DateTimeImmutable, last_seen_at: DateTimeImmutable, rayon_id: ?int, family_id: ?int} $datas
+     * @param array{id: string, retailer: Retailer, store_id: string, retailer_product_id: string, ean: ?string, label: string, content: ?ProductContent, price: ?ProductPrice, price_seen_at: ?DateTimeImmutable, last_seen_at: DateTimeImmutable, rayon_id: ?int, family_id: ?int, retailer_offer_id?: ?string} $datas
      */
     public static function load(array $datas): self
     {
@@ -131,6 +159,7 @@ final class Product implements ModelInterface
             $datas['last_seen_at'],
             $datas['rayon_id'],
             $datas['family_id'],
+            $datas['retailer_offer_id'] ?? null,
         );
     }
 
@@ -222,6 +251,15 @@ final class Product implements ModelInterface
     }
 
     /**
+     * Identifiant de l'offre du produit dans le magasin, chez les enseignes qui en ont une (DRV-721) ; `null` pour les autres, ou tant
+     * qu'aucun agent ne l'a rapporté. Jamais confondu avec `getRetailerProductId()` : la clé naturelle reste celle du produit.
+     */
+    public function getOfferId(): ?string
+    {
+        return $this->offerId;
+    }
+
+    /**
      * Un identifiant de rayon ou de famille est-il dans les bornes (1 à `CATALOG_ID_MAX`) ?
      */
     public static function isCatalogId(int $id): bool
@@ -237,15 +275,23 @@ final class Product implements ModelInterface
      * `null` n'efface rien. Les valeurs reçues sont contrôlées même quand elles ne servent pas : une saisie hors des bornes reste
      * refusée. Changer un prix est `seePrice()`, réservé à l'utilisateur qui accepte le produit.
      *
+     * **L'identifiant d'offre fait exception** (DRV-721) : l'offre d'un produit dans un magasin peut changer, la valeur reçue remplace
+     * celle de la fiche (`null` n'efface rien). L'agent la relit sur la carte du produit à chaque passage ; ce n'est pas un fait que
+     * le premier écrivain fixerait pour toujours.
+     *
+     * @param ?RetailerProfile $profile le profil qui juge `$offerId` (celui de l'enseigne du produit par défaut ; un profil fictif dans les tests)
+     *
      * @throws DriveException `invalidChoice()` si une valeur sort des bornes
      */
-    public function complete(?string $ean, string $label, ?ProductContent $content, ?ProductPrice $price, DateTimeImmutable $now, ?int $rayonId = null, ?int $familyId = null): self
+    public function complete(?string $ean, string $label, ?ProductContent $content, ?ProductPrice $price, DateTimeImmutable $now, ?int $rayonId = null, ?int $familyId = null, ?string $offerId = null, ?RetailerProfile $profile = null): self
     {
         $ean = self::checkedEan($ean);
         self::checkedLabel($label);
         $content = self::checkedContent($content);
         $rayonId = self::checkedCatalogId($rayonId);
         $familyId = self::checkedCatalogId($familyId);
+        $offerId = self::checkedOfferId($offerId, $profile ?? $this->retailer->profile());
+        $this->offerId = $offerId ?? $this->offerId;
 
         $this->ean ??= $ean;
         $this->content ??= $content;
@@ -310,6 +356,19 @@ final class Product implements ModelInterface
         }
 
         return $label;
+    }
+
+    /**
+     * L'identifiant d'offre, s'il y en a un : la forme de l'enseigne (`offerIdPattern`, donc jamais pour une enseigne sans offre) et
+     * 40 caractères au plus, la largeur de la colonne.
+     */
+    private static function checkedOfferId(?string $offerId, RetailerProfile $profile): ?string
+    {
+        if ($offerId !== null && (strlen($offerId) > self::OFFER_ID_MAX_LENGTH || !$profile->isValidOfferId($offerId))) {
+            throw DriveException::invalidChoice();
+        }
+
+        return $offerId;
     }
 
     private static function checkedCatalogId(?int $id): ?int

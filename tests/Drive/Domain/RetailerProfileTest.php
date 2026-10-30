@@ -56,6 +56,32 @@ class RetailerProfileTest extends TestCase
         $this->assertFalse($profile->isValidStoreId("ville\n"));
     }
 
+    public function testAnOfferIdIsValidatedByTheRuleOfTheRetailerAndRefusedWhenItHasNoOffer(): void
+    {
+        // Given : une enseigne à offres, une sans
+        $withOffers = FictionalRetailerProfiles::explicitStore();
+        $withoutOffers = FictionalRetailerProfiles::storeInTheAddress();
+
+        // Then : la forme d'un UUID, ancrée
+        $this->assertTrue($withOffers->hasOffers());
+        $this->assertTrue($withOffers->isValidOfferId(FictionalRetailerProfiles::EXPLICIT_STORE_ID));
+        $this->assertFalse($withOffers->isValidOfferId('pas-un-uuid'));
+        $this->assertFalse($withOffers->isValidOfferId(FictionalRetailerProfiles::EXPLICIT_STORE_ID . "\n"));
+        $this->assertFalse($withOffers->isValidOfferId(''));
+        // Une enseigne sans offre n'en accepte aucune, quelle que soit sa forme
+        $this->assertNull($withoutOffers->offerIdPattern);
+        $this->assertFalse($withoutOffers->hasOffers());
+        $this->assertFalse($withoutOffers->isValidOfferId(FictionalRetailerProfiles::EXPLICIT_STORE_ID));
+        $this->assertFalse($withoutOffers->isValidOfferId('1'));
+    }
+
+    public function testAnInvalidOfferIdPatternIsRefused(): void
+    {
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        new RetailerProfile('Chez Autre', 'de Chez Autre', '^https://www\.exemple\.invalid/$', 'https://www.exemple.invalid/', '^[0-9]+$', StoreIdSource::EXPLICIT, '^[0-9]+$', '^[0-9');
+    }
+
     public function testAnExplicitStoreIsNotDeducedFromTheAddress(): void
     {
         // Given
@@ -129,7 +155,7 @@ class RetailerProfileTest extends TestCase
         // Given : les motifs sont recopiés tels quels par le web, l'agent et l'application
 
         // Then : ancrés, sans `\d` (qui n'a pas le même sens partout) ni construction propre à PCRE
-        foreach ([$profile->storeAddressPattern, $profile->productIdPattern, $profile->storeIdPattern] as $pattern) {
+        foreach (array_filter([$profile->storeAddressPattern, $profile->productIdPattern, $profile->storeIdPattern, $profile->offerIdPattern]) as $pattern) {
             $this->assertStringStartsWith('^', $pattern);
             $this->assertStringEndsWith('$', $pattern);
             $this->assertDoesNotMatchRegularExpression('/\\\\d|\(\?|\\\\[AzZhHRK]/', $pattern);

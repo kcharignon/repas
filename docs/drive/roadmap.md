@@ -189,7 +189,7 @@ Références : [`multi-enseignes.md`](multi-enseignes.md) (audit, conception, fa
 - [ ] [DRV-716](tickets/DRV-716-declarer-auchan-dans-les-registres.md) back · M · Déclarer Auchan dans le registre du back, éteint (high) · dépend de : 701, 702, 720, 721
 - [ ] [DRV-717](tickets/DRV-717-adaptateur-auchan-squelette.md) front (agent) · L · Faux site d'Auchan, magasin, session, entrée, diagnostic (high) · dépend de : 727, 722
 - [x] [DRV-720](tickets/DRV-720-magasin-a-identifiant-explicite.md) back · M · Magasin à identifiant explicite et plus long : migration, `Store`, profil (xhigh) · dépend de : 701
-- [ ] [DRV-721](tickets/DRV-721-identifiant-d-offre-du-produit.md) back · M · Identifiant d'offre facultatif du produit : colonne, plan, contrat (high) · dépend de : 701
+- [x] [DRV-721](tickets/DRV-721-identifiant-d-offre-du-produit.md) back · M · Identifiant d'offre facultatif du produit : colonne, plan, contrat (high) · dépend de : 701
 - [ ] [DRV-722](tickets/DRV-722-identifiant-d-offre-dans-le-protocole.md) front · M · `offerId` facultatif dans le plan et le résultat (high) · dépend de : 704, 721
 - [ ] [DRV-724](tickets/DRV-724-adaptateur-auchan-recherche.md) front (agent) · M · Recherche et lecture des produits d'Auchan (high) · dépend de : 717
 - [ ] [DRV-725](tickets/DRV-725-adaptateur-auchan-panier.md) front (agent) · M · Panier d'Auchan : quantité absolue, lecture, défi, cadence (high) · dépend de : 717

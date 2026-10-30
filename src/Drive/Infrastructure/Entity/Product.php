@@ -64,4 +64,8 @@ class Product
     /** Famille de l'enseigne (`iIdFamille` chez Leclerc), le niveau sous le rayon (DRV-642). */
     #[ORM\Column(name: 'family_id', type: Types::INTEGER, nullable: true)]
     public ?int $familyId;
+
+    /** Identifiant de l'offre du produit dans le magasin, chez les enseignes qui en ont une (DRV-721) ; `null` sinon. */
+    #[ORM\Column(name: 'retailer_offer_id', type: Types::STRING, length: 40, nullable: true)]
+    public ?string $retailerOfferId = null;
 }

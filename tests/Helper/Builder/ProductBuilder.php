@@ -29,6 +29,7 @@ class ProductBuilder implements Builder
     private DateTimeImmutable $lastSeenAt;
     private ?int $rayonId = null;
     private ?int $familyId = null;
+    private ?string $offerId = null;
 
     private function initialize(): void
     {
@@ -105,6 +106,16 @@ class ProductBuilder implements Builder
         return $this;
     }
 
+    /**
+     * L'identifiant d'offre du produit, tel que la base le restitue (DRV-721) : le builder charge le modèle sans le juger, la seule enseigne
+     * du registre n'ayant pas d'offre.
+     */
+    public function withOfferId(?string $offerId): self
+    {
+        $this->offerId = $offerId;
+        return $this;
+    }
+
     public function build(): Product
     {
         $this->initialize();
@@ -121,6 +132,7 @@ class ProductBuilder implements Builder
             'last_seen_at' => $this->lastSeenAt,
             'rayon_id' => $this->rayonId,
             'family_id' => $this->familyId,
+            'retailer_offer_id' => $this->offerId,
         ]);
     }
 }

@@ -49,21 +49,27 @@ final class DriveContractSamplesTest extends DatabaseTestCase
     }
 
     /**
-     * @return iterable<string, array{string, string}> fichier d'exemple => route lue
+     * @return iterable<string, array{string, string, bool}> fichier d'exemple => route lue, et si des produits ont une offre (DRV-721)
      */
     public static function samples(): iterable
     {
-        yield 'réglages' => ['settings.sample.json', '/api/v1/drive/settings'];
-        yield 'préférences' => ['choices.sample.json', '/api/v1/drive/choices?retailer=leclerc'];
-        yield 'plan' => ['plan.sample.json', '/api/v1/drive/plans/' . self::LIST_ID];
-        yield 'estimation' => ['estimate.sample.json', '/api/v1/drive/estimates/' . self::LIST_ID];
+        yield 'réglages' => ['settings.sample.json', '/api/v1/drive/settings', false];
+        yield 'préférences' => ['choices.sample.json', '/api/v1/drive/choices?retailer=leclerc', false];
+        yield 'plan' => ['plan.sample.json', '/api/v1/drive/plans/' . self::LIST_ID, false];
+        yield 'estimation' => ['estimate.sample.json', '/api/v1/drive/estimates/' . self::LIST_ID, false];
+        // DRV-721 : les mêmes réponses quand les produits ont une offre (la clé `offerId` n'existe que pour eux)
+        yield 'préférences avec offres' => ['choices-with-offer.sample.json', '/api/v1/drive/choices?retailer=leclerc', true];
+        yield 'plan avec offres' => ['plan-with-offer.sample.json', '/api/v1/drive/plans/' . self::LIST_ID, true];
     }
 
     #[DataProvider('samples')]
-    public function testTheSampleIsWhatTheApiAnswers(string $file, string $uri): void
+    public function testTheSampleIsWhatTheApiAnswers(string $file, string $uri, bool $withOffers): void
     {
         // Given : un utilisateur qui a réglé son magasin, appris des produits et envoyé sa liste
         $user = $this->playTheJourney();
+        if ($withOffers) {
+            $this->theStoreGivesOffersToSomeProducts();
+        }
         self::mockTime(new DateTimeImmutable('2026-10-18T10:30:00+00:00'));
 
         // When
@@ -101,6 +107,7 @@ final class DriveContractSamplesTest extends DatabaseTestCase
             'productIdPattern' => $retailer->profile()->productIdPattern,
             'storeIdSource' => $retailer->profile()->storeIdSource->value,
             'storeIdPattern' => $retailer->profile()->storeIdPattern,
+            'offerIdPattern' => $retailer->profile()->offerIdPattern,
         ], Retailer::cases())];
         $path = static::getContainer()->getParameter('kernel.project_dir') . '/docs/drive/samples/retailers.sample.json';
         if (getenv(self::REGENERATE) === '1') {
@@ -217,6 +224,18 @@ final class DriveContractSamplesTest extends DatabaseTestCase
         $this->assertSame(204, $this->client->getResponse()->getStatusCode());
 
         return $user;
+    }
+
+    /**
+     * Le registre ne déclare encore aucune enseigne à offres : les offres sont posées en SQL, telles que la base les restituerait. La farine
+     * préférée (555101) et son produit de secours (555102) en ont une, le lait (555201) n'en a pas : la clé `offerId` est absente de sa ligne.
+     * Les identifiants sont inventés.
+     */
+    private function theStoreGivesOffersToSomeProducts(): void
+    {
+        $connection = $this->entityManager->getConnection();
+        $connection->executeStatement("UPDATE drive_product SET retailer_offer_id = '0b5f8a2e-3c1d-4e7f-9a6b-123456789abc' WHERE retailer_product_id = '555101'");
+        $connection->executeStatement("UPDATE drive_product SET retailer_offer_id = 'c3b2a1d0-5e4f-4a6b-9c8d-7e6f5a4b3c2d' WHERE retailer_product_id = '555102'");
     }
 
     private function saveTheShoppingList(User $owner): void
