@@ -4,7 +4,7 @@ namespace Repas\Tests\Repas\InputAdapter;
 
 
 use Repas\Repas\Application\Query\ListRecipeTypes\ListRecipeTypesQuery;
-use Repas\Tests\Helper\Builder\DTO\RecipeTypeDTOBuilder;
+use Repas\Repas\Application\Query\ListRecipeTypes\RecipeTypeCountDTO;
 use Repas\Tests\Helper\QueryBusWebTestCase;
 
 class ListRecipeTypesApiControllerTest extends QueryBusWebTestCase
@@ -12,21 +12,24 @@ class ListRecipeTypesApiControllerTest extends QueryBusWebTestCase
     public function testListReturnsMembersAndTotalItems(): void
     {
         // Given
+        $user = $this->savedUser();
         $this->queryBus->willReturn(ListRecipeTypesQuery::class, [
-            new RecipeTypeDTOBuilder()->withSlug('entree')->withName('entrée')->withImage('images/entree.svg')->withOrder(1)->build(),
-            new RecipeTypeDTOBuilder()->withSlug('plat')->withName('plat')->withImage('images/plat.svg')->withOrder(2)->build(),
+            new RecipeTypeCountDTO('entree', 'entrée', 'images/entree.svg', 1, 3),
+            new RecipeTypeCountDTO('plat', 'plat', 'images/plat.svg', 2, 0),
         ]);
 
         // When
-        $this->client->request('GET', '/api/v1/recipe-types', server: $this->bearerFor($this->savedUser()));
+        $this->client->request('GET', '/api/v1/recipe-types', server: $this->bearerFor($user));
 
         // Then
         $this->assertSame(200, $this->client->getResponse()->getStatusCode());
-        $this->assertInstanceOf(ListRecipeTypesQuery::class, $this->queryBus->getLastAskedQuery());
+        $query = $this->queryBus->getLastAskedQuery();
+        $this->assertInstanceOf(ListRecipeTypesQuery::class, $query);
+        $this->assertSame($user->getId(), $query->userId);
         $this->assertSame([
             'member' => [
-                ['slug' => 'entree', 'name' => 'entrée', 'image' => 'images/entree.svg', 'order' => 1],
-                ['slug' => 'plat', 'name' => 'plat', 'image' => 'images/plat.svg', 'order' => 2],
+                ['slug' => 'entree', 'name' => 'entrée', 'image' => 'images/entree.svg', 'order' => 1, 'recipeCount' => 3],
+                ['slug' => 'plat', 'name' => 'plat', 'image' => 'images/plat.svg', 'order' => 2, 'recipeCount' => 0],
             ],
             'totalItems' => 2,
         ], $this->jsonBody());

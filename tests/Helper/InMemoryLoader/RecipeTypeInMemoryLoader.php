@@ -5,6 +5,7 @@ namespace Repas\Tests\Helper\InMemoryLoader;
 
 use Repas\Repas\Application\Loader\RecipeTypeLoader;
 use Repas\Repas\Domain\Exception\RecipeException;
+use Repas\Repas\Application\Query\ListRecipeTypes\RecipeTypeCountDTO;
 use Repas\Repas\Application\Query\ListRecipeTypes\RecipeTypeDTO;
 
 /**
@@ -15,10 +16,13 @@ class RecipeTypeInMemoryLoader implements RecipeTypeLoader
     public int $listCalls = 0;
 
     /** @var list<string> */
+    public array $listUserIds = [];
+
+    /** @var list<string> */
     public array $getCalls = [];
 
     /**
-     * @param list<RecipeTypeDTO> $recipeTypes
+     * @param list<RecipeTypeCountDTO> $recipeTypes
      */
     public function __construct(
         private readonly array $recipeTypes = [],
@@ -26,8 +30,9 @@ class RecipeTypeInMemoryLoader implements RecipeTypeLoader
     ) {
     }
 
-    public function list(): array
+    public function list(string $userId): array
     {
+        $this->listUserIds[] = $userId;
         $this->listCalls++;
 
         return $this->recipeTypes;

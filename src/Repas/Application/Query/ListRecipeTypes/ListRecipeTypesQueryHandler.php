@@ -14,10 +14,10 @@ final readonly class ListRecipeTypesQueryHandler
     }
 
     /**
-     * @return list<RecipeTypeDTO>
+     * @return list<RecipeTypeCountDTO>
      */
     public function __invoke(ListRecipeTypesQuery $query): array
     {
-        return $this->recipeTypeLoader->list();
+        return $this->recipeTypeLoader->list($query->userId);
     }
 }

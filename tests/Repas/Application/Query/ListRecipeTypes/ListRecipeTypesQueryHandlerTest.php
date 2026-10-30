@@ -6,7 +6,7 @@ namespace Repas\Tests\Repas\Application\Query\ListRecipeTypes;
 use PHPUnit\Framework\TestCase;
 use Repas\Repas\Application\Query\ListRecipeTypes\ListRecipeTypesQuery;
 use Repas\Repas\Application\Query\ListRecipeTypes\ListRecipeTypesQueryHandler;
-use Repas\Tests\Helper\Builder\DTO\RecipeTypeDTOBuilder;
+use Repas\Repas\Application\Query\ListRecipeTypes\RecipeTypeCountDTO;
 use Repas\Tests\Helper\InMemoryLoader\RecipeTypeInMemoryLoader;
 
 class ListRecipeTypesQueryHandlerTest extends TestCase
@@ -15,18 +15,19 @@ class ListRecipeTypesQueryHandlerTest extends TestCase
     {
         // Given
         $recipeTypes = [
-            new RecipeTypeDTOBuilder()->withSlug('entree')->withOrder(1)->build(),
-            new RecipeTypeDTOBuilder()->withSlug('plat')->withOrder(2)->build(),
+            new RecipeTypeCountDTO('entree', 'entrée', 'images/entree.svg', 1, 3),
+            new RecipeTypeCountDTO('plat', 'plat', 'images/plat.svg', 2, 0),
         ];
         $loader = new RecipeTypeInMemoryLoader($recipeTypes);
         $handler = new ListRecipeTypesQueryHandler($loader);
 
         // When
-        $result = $handler(new ListRecipeTypesQuery());
+        $result = $handler(new ListRecipeTypesQuery('user-1'));
 
         // Then
         $this->assertSame($recipeTypes, $result);
         $this->assertSame(1, $loader->listCalls);
+        $this->assertSame(['user-1'], $loader->listUserIds);
     }
 
     public function testReturnsEmptyListWhenLoaderHasNoRecipeType(): void
@@ -35,7 +36,7 @@ class ListRecipeTypesQueryHandlerTest extends TestCase
         $handler = new ListRecipeTypesQueryHandler(new RecipeTypeInMemoryLoader());
 
         // When
-        $result = $handler(new ListRecipeTypesQuery());
+        $result = $handler(new ListRecipeTypesQuery('user-1'));
 
         // Then
         $this->assertSame([], $result);
