@@ -4,7 +4,7 @@
 - **Jalon** : M7 Plusieurs enseignes
 - **Taille** : M
 - **Dépend de** : DRV-728, DRV-731, DRV-735
-- **Statut** : à faire. **La PR est ouverte, CI verte, mais n'est fusionnée qu'à la demande de l'assistant, après la décision « allumer Auchan » de DRV-726** (le propriétaire a décidé que les releases viennent une fois Auchan prête et fonctionnelle).
+- **Statut** : fait (PR front #268 et docs du back #348, fusionnées le 2026-10-30 après la recette réelle DRV-726 et la validation par le propriétaire du texte des conditions d'Auchan). L'application publiée sert Auchan **à partir de la prochaine release de l'application** (`android-vX.Y.Z`) ; tant que `DRIVE_RETAILERS` ne l'allume pas, Repas ne la propose pas.
 - **Lire d'abord** : [`DRV-728`](DRV-728-auchan-dans-le-coeur-et-l-application-android.md) ; [`DRV-731`](DRV-731-scenario-emulateur-auchan.md) ; [`DRV-735`](DRV-735-plan-d-essai-de-debogage-par-enseigne.md) ; `android/ARCHITECTURE.md` (registre des enseignes, drapeau de construction) ; [`../multi-enseignes.md`](../multi-enseignes.md) § 5 (R5 : une enseigne que l'application ne sert pas est retirée des candidates).
 
 ## Contexte
