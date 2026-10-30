@@ -51,6 +51,18 @@ class DevelopmentFixturesTest extends DatabaseTestCase
         $this->assertSame($expected, $marked);
     }
 
+    public function testTheDevelopmentDepartmentsGiveAFlakeToFrozenAndACanToCannedGoodsAndNothingToTheOthers(): void
+    {
+        // When : `make fixtures-load-dev`
+        $this->load(['dev']);
+
+        // Then : les données de développement seulement (la production se règle par l'écran des rayons, ING-016 B)
+        $icons = $this->entityManager->getConnection()->fetchAllKeyValue('SELECT slug, icon FROM department');
+        $this->assertSame('snowflake', $icons['surgele']);
+        $this->assertSame('can', $icons['conserve']);
+        $this->assertSame([], array_keys(array_filter($icons, static fn(?string $icon, string $slug): bool => $icon !== null && !in_array($slug, ['surgele', 'conserve'], true), ARRAY_FILTER_USE_BOTH)));
+    }
+
     public function testTheDemoAccountsAreSeededAndTheirRecipesUseOnlyTheirOwnIngredients(): void
     {
         // Given : les données de référence

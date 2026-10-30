@@ -114,6 +114,8 @@ class OwnerIndexesMigrationTest extends DatabaseTestCase
         $this->assertPlanUses('idx_ingredient_creator', "SELECT slug FROM ingredient WHERE creator = 'user-7' OFFSET 4 LIMIT 1");
         $this->assertPlanUses('idx_ingredient_creator', "SELECT slug FROM ingredient WHERE creator = 'user-7'");
         $this->assertPlanUses('idx_ingredient_creator', "SELECT slug FROM ingredient WHERE slug = 'ingredient-3' OR (creator = 'user-7' AND slugged_name = 'ingredient-7')");
+        // l'unicité d'un nom par propriétaire ET par rayon (ING-016) : l'index (créateur, nom normalisé) sert, le rayon et l'ingrédient écarté ne sont que des filtres
+        $this->assertPlanUses('idx_ingredient_creator', "SELECT slug FROM ingredient WHERE creator = 'user-7' AND slugged_name = 'ingredient-7' AND department = 'epicerie' AND slug <> 'ingredient-9' LIMIT 1");
         $this->assertPlanUses('idx_shopping_list_owner', "SELECT id FROM shopping_list WHERE owner = 'user-7' AND status != 'COMPLETED' OFFSET 2 LIMIT 1");
         $this->assertPlanUses('idx_shopping_list_owner', "SELECT id FROM shopping_list WHERE owner = 'user-7' ORDER BY created_at DESC");
         $this->assertPlanUses('idx_shopping_list_owner', "SELECT id FROM shopping_list WHERE owner = 'user-10' AND status = 'ACTIVE'");

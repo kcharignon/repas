@@ -12,6 +12,7 @@ use Repas\Repas\Application\Query\ListIngredientsByDepartment\IngredientRowDTO;
 use Repas\Repas\Application\Query\SearchIngredients\IngredientSearchResultDTO;
 use Repas\Repas\Domain\Exception\DepartmentException;
 use Repas\Repas\Domain\Exception\IngredientException;
+use Repas\Repas\Domain\Model\DepartmentIcon;
 use Repas\Repas\Domain\Model\Ingredient;
 use Repas\Tests\Helper\Builder\ConversionBuilder;
 use Repas\Tests\Helper\Builder\DepartmentBuilder;
@@ -56,7 +57,7 @@ class IngredientPostgreSQLLoaderTest extends DatabaseTestCase
         $result = $this->ingredientLoader->listByDepartment('cereale', $viewer->getId());
 
         // Then : ni celui d'un autre, ni celui d'un autre rayon ; tout est modifiable par son propriétaire
-        $this->assertEquals(new DepartmentDTO('cereale', 'céréale', new DepartmentBuilder()->isCereal()->build()->getImage()), $result->department);
+        $this->assertEquals(new DepartmentDTO('cereale', 'céréale', new DepartmentBuilder()->isCereal()->build()->getImage(), null), $result->department);
         $this->assertEquals(
             [
                 new IngredientRowDTO($own->getSlug(), 'aaa blé', '', true, false),
@@ -84,6 +85,18 @@ class IngredientPostgreSQLLoaderTest extends DatabaseTestCase
             [[$own->getSlug(), true]],
             array_map(static fn(IngredientRowDTO $row): array => [$row->slug, $row->canEdit], $result->ingredients),
         );
+    }
+
+    public function testListByDepartmentSaysTheIconOfTheDepartment(): void
+    {
+        // Given : un rayon dont l'icône est réglée, et un autre qui n'en a pas
+        $viewer = $this->savedUser();
+        $this->savedIngredient(new IngredientBuilder()->withName('aaa blé')->withDepartment(new DepartmentBuilder()->isCereal()->withIcon(DepartmentIcon::CAN))->withCreator($viewer, true));
+        $this->savedIngredient(new IngredientBuilder()->withName('aaa orge')->withDepartment(new DepartmentBuilder()->isMeat())->withCreator($viewer, true));
+
+        // When / Then
+        $this->assertSame('can', $this->ingredientLoader->listByDepartment('cereale', $viewer->getId())->department->icon);
+        $this->assertNull($this->ingredientLoader->listByDepartment('viande', $viewer->getId())->department->icon);
     }
 
     public function testListByDepartmentReturnsAnEmptyListForADepartmentWithoutIngredient(): void
@@ -319,7 +332,7 @@ class IngredientPostgreSQLLoaderTest extends DatabaseTestCase
 
         // Then
         $this->assertEquals(
-            [new IngredientOptionDTO($own->getSlug(), 'aaa farine'), new IngredientOptionDTO($salt->getSlug(), 'mmm sel')],
+            [new IngredientOptionDTO($own->getSlug(), 'aaa farine', 'conserve', 'conserve'), new IngredientOptionDTO($salt->getSlug(), 'mmm sel', 'conserve', 'conserve')],
             $result,
         );
     }
@@ -340,10 +353,10 @@ class IngredientPostgreSQLLoaderTest extends DatabaseTestCase
 
         // Then : les siens, jamais ceux d'un autre, toujours triés par nom
         $this->assertEquals(
-            [new IngredientOptionDTO($ownCream->getSlug(), 'aaa crème maison'), new IngredientOptionDTO($cream->getSlug(), 'zzz Crème fraîche')],
+            [new IngredientOptionDTO($ownCream->getSlug(), 'aaa crème maison', 'conserve', 'conserve'), new IngredientOptionDTO($cream->getSlug(), 'zzz Crème fraîche', 'conserve', 'conserve')],
             $byAccentedText,
         );
-        $this->assertEquals([new IngredientOptionDTO($cream->getSlug(), 'zzz Crème fraîche')], $byPartOfTwoWords);
+        $this->assertEquals([new IngredientOptionDTO($cream->getSlug(), 'zzz Crème fraîche', 'conserve', 'conserve')], $byPartOfTwoWords);
     }
 
     public function testListAvailableWithABlankSearchKeepsEverything(): void
@@ -537,6 +550,8 @@ class IngredientPostgreSQLLoaderTest extends DatabaseTestCase
 
         // Then
         $this->assertSame([$first->getSlug(), $second->getSlug()], array_map(static fn(IngredientOptionDTO $option): string => $option->slug, $result));
+        // et chacun dit son rayon : le front les distingue (ING-016 B)
+        $this->assertSame([['cereale', 'céréale'], ['viande', 'viande']], array_map(static fn(IngredientOptionDTO $option): array => [$option->departmentSlug, $option->departmentName], $result));
     }
 
     public function testGetShowsEachOfTwoIngredientsOfTheSameNameWithItsOwnDepartment(): void

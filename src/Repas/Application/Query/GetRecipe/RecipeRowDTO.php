@@ -27,6 +27,10 @@ final readonly class RecipeRowDTO
         public string $purchaseUnitName,
         #[OA\Property(description: 'L\'unité de la ligne se convertit en l\'unité d\'achat de l\'ingrédient (ses conversions propres et les universelles, comme à la planification) ; faux : la recette ne peut pas être planifiée tant que la conversion manque', example: true)]
         public bool $convertible,
+        #[OA\Property(description: 'Identifiant du rayon de l\'ingrédient (slug) : deux ingrédients de même nom dans deux rayons (ADR 0028, amendement du 2026-10-30) se distinguent par lui ; le front en tire l\'icône par la liste des rayons', example: 'surgele')]
+        public string $departmentSlug,
+        #[OA\Property(description: 'Nom du rayon de l\'ingrédient', example: 'Surgelé')]
+        public string $departmentName,
     ) {
     }
 }

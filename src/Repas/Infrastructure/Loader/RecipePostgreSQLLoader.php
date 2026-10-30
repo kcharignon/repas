@@ -15,6 +15,7 @@ use Repas\Repas\Application\Query\ListRecipesByType\RecipeTypeRecipesDTO;
 use Repas\Repas\Application\Query\ListRecipeTypes\RecipeTypeDTO;
 use Repas\Repas\Domain\Exception\RecipeException;
 use Repas\Repas\Infrastructure\Conversion\IngredientConversionGraphs;
+use Repas\Repas\Infrastructure\Entity\Department;
 use Repas\Repas\Infrastructure\Entity\Ingredient;
 use Repas\Repas\Infrastructure\Entity\Recipe;
 use Repas\Repas\Infrastructure\Entity\RecipeRow;
@@ -58,9 +59,11 @@ final readonly class RecipePostgreSQLLoader implements RecipeLoader
                 'i.slug AS ingredientSlug', 'i.name AS ingredientName', 'i.image AS ingredientImage',
                 'rr.quantity AS quantity', 'u.slug AS unitSlug', 'u.symbol AS unitSymbol', 'u.name AS unitName',
                 'pu.slug AS purchaseUnitSlug', 'pu.name AS purchaseUnitName',
+                'd.slug AS departmentSlug', 'd.name AS departmentName',
             )
             ->from(RecipeRow::class, 'rr')
             ->innerJoin(Ingredient::class, 'i', Join::WITH, 'i.slug = rr.ingredientSlug')
+            ->innerJoin(Department::class, 'd', Join::WITH, 'd.slug = i.departmentSlug')
             ->innerJoin(Unit::class, 'u', Join::WITH, 'u.slug = rr.unitSlug')
             ->innerJoin(Unit::class, 'pu', Join::WITH, 'pu.slug = i.defaultPurchaseUnitSlug')
             ->where('rr.recipeId = :id')
@@ -83,6 +86,7 @@ final readonly class RecipePostgreSQLLoader implements RecipeLoader
                     $row['ingredientSlug'], $row['ingredientName'], $row['ingredientImage'], (float) $row['quantity'], $row['unitSlug'], $row['unitSymbol'],
                     $row['unitName'], $row['purchaseUnitSlug'], $row['purchaseUnitName'],
                     $graphs[$row['ingredientSlug']]->connects($row['unitSlug'], $row['purchaseUnitSlug']),
+                    $row['departmentSlug'], $row['departmentName'],
                 ),
                 $rows,
             ),

@@ -6,6 +6,7 @@ use Doctrine\ORM\EntityManagerInterface;
 use Repas\Repas\Application\Loader\DepartmentLoader;
 use Repas\Repas\Application\Query\ListDepartments\DepartmentDTO;
 use Repas\Repas\Domain\Exception\DepartmentException;
+use Repas\Repas\Domain\Model\DepartmentIcon;
 use Repas\Repas\Infrastructure\Entity\Department;
 
 final readonly class DepartmentPostgreSQLLoader implements DepartmentLoader
@@ -18,14 +19,14 @@ final readonly class DepartmentPostgreSQLLoader implements DepartmentLoader
     public function list(): array
     {
         $rows = $this->entityManager->createQueryBuilder()
-            ->select('d.slug AS slug', 'd.name AS name', 'd.image AS image')
+            ->select('d.slug AS slug', 'd.name AS name', 'd.image AS image', 'd.icon AS icon')
             ->from(Department::class, 'd')
             ->orderBy('d.slug', 'ASC')
             ->getQuery()
             ->getArrayResult();
 
         return array_map(
-            static fn (array $row): DepartmentDTO => new DepartmentDTO($row['slug'], $row['name'], $row['image']),
+            static fn (array $row): DepartmentDTO => new DepartmentDTO($row['slug'], $row['name'], $row['image'], DepartmentIcon::known($row['icon'])),
             $rows,
         );
     }
@@ -33,7 +34,7 @@ final readonly class DepartmentPostgreSQLLoader implements DepartmentLoader
     public function get(string $slug): DepartmentDTO
     {
         $row = $this->entityManager->createQueryBuilder()
-            ->select('d.slug AS slug', 'd.name AS name', 'd.image AS image')
+            ->select('d.slug AS slug', 'd.name AS name', 'd.image AS image', 'd.icon AS icon')
             ->from(Department::class, 'd')
             ->where('d.slug = :slug')
             ->setParameter('slug', $slug)
@@ -44,6 +45,6 @@ final readonly class DepartmentPostgreSQLLoader implements DepartmentLoader
             throw DepartmentException::notFound();
         }
 
-        return new DepartmentDTO($row['slug'], $row['name'], $row['image']);
+        return new DepartmentDTO($row['slug'], $row['name'], $row['image'], DepartmentIcon::known($row['icon']));
     }
 }

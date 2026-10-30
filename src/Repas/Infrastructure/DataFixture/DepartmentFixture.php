@@ -30,6 +30,8 @@ class DepartmentFixture extends RepasFixture implements FixtureGroupInterface
                     slug: $departmentData['slug'],
                     name: $departmentData['name'],
                     image: $departmentData['image'],
+                    // Les données de développement donnent un flocon à Surgelé et une boîte à Conserve ; la production se règle par l'écran des rayons
+                    icon: $departmentData['icon'] ?? null,
                 );
                 $manager->persist($departmentEntity);
 

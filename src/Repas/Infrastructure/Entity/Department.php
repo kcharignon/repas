@@ -19,11 +19,16 @@ class Department
     #[ORM\Column(length: 2048)]
     private ?string $image = null;
 
-    public function __construct(?string $slug, ?string $name, ?string $image)
+    /** Le nom de l'icône du rayon (`DepartmentIcon`), `NULL` sans icône (ING-016 B). */
+    #[ORM\Column(length: 32, nullable: true)]
+    private ?string $icon = null;
+
+    public function __construct(?string $slug, ?string $name, ?string $image, ?string $icon = null)
     {
         $this->slug = $slug;
         $this->name = $name;
         $this->image = $image;
+        $this->icon = $icon;
     }
 
 
@@ -32,7 +37,8 @@ class Department
         return new static(
             slug: $departmentModel->getSlug(),
             name: $departmentModel->getName(),
-            image: $departmentModel->getImage()
+            image: $departmentModel->getImage(),
+            icon: $departmentModel->getIcon()?->value,
         );
     }
 
@@ -68,6 +74,18 @@ class Department
     public function setImage(?string $image): static
     {
         $this->image = $image;
+
+        return $this;
+    }
+
+    public function getIcon(): ?string
+    {
+        return $this->icon;
+    }
+
+    public function setIcon(?string $icon): static
+    {
+        $this->icon = $icon;
 
         return $this;
     }

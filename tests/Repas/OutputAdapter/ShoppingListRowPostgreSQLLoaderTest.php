@@ -40,7 +40,7 @@ class ShoppingListRowPostgreSQLLoaderTest extends DatabaseTestCase
         $result = $this->rowLoader->get($rowId);
 
         // Then
-        $this->assertEquals(new ShoppingListRowDTO($rowId, 'Pate', 500.0, 'g', false, 'pate', 'gramme'), $result);
+        $this->assertEquals(new ShoppingListRowDTO($rowId, 'Pate', 500.0, 'g', false, 'pate', 'gramme', 'cereale', 'céréale'), $result);
     }
 
     public function testGetReflectsATickedRow(): void

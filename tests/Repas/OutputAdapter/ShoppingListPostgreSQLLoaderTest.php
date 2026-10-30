@@ -302,7 +302,7 @@ class ShoppingListPostgreSQLLoaderTest extends DatabaseTestCase
         $this->assertSame(['Pate'], $this->ingredientNames($result->departments[1]));
         $this->assertSame(['Lait', 'Œuf'], $this->ingredientNames($result->departments[2]));
         $this->assertSame(4, $result->rowCount);
-        $this->assertEquals(new ShoppingListRowDTO($result->departments[1]->rows[0]->id, 'Pate', 500.0, 'g', false, 'pate', 'gramme'), $result->departments[1]->rows[0]);
+        $this->assertEquals(new ShoppingListRowDTO($result->departments[1]->rows[0]->id, 'Pate', 500.0, 'g', false, 'pate', 'gramme', 'cereale', 'céréale'), $result->departments[1]->rows[0]);
         $eggRow = $result->departments[2]->rows[1];
         $this->assertSame(['Œuf', 1.0, '', true], [$eggRow->ingredientName, $eggRow->quantity, $eggRow->unitSymbol, $eggRow->checked]);
         $this->assertSame(['oeuf', 'unite'], [$eggRow->ingredientSlug, $eggRow->unitSlug]);

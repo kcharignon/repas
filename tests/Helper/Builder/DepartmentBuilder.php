@@ -4,6 +4,7 @@ namespace Repas\Tests\Helper\Builder;
 
 
 use Repas\Repas\Domain\Model\Department;
+use Repas\Repas\Domain\Model\DepartmentIcon;
 use Repas\Shared\Domain\Tool\StringTool;
 
 class DepartmentBuilder implements Builder
@@ -11,6 +12,7 @@ class DepartmentBuilder implements Builder
     private string $slug;
     private string $name;
     private string $image;
+    private ?DepartmentIcon $icon = null;
 
     private function initialize(): void
     {
@@ -57,6 +59,12 @@ class DepartmentBuilder implements Builder
         return $this;
     }
 
+    public function withIcon(?DepartmentIcon $icon): DepartmentBuilder
+    {
+        $this->icon = $icon;
+        return $this;
+    }
+
     public function withImage(string $image): DepartmentBuilder
     {
         $this->image = $image;
@@ -70,6 +78,7 @@ class DepartmentBuilder implements Builder
             "slug" => $this->slug,
             "name" => $this->name,
             "image" => $this->image,
+            "icon" => $this->icon?->value,
         ]);
     }
 

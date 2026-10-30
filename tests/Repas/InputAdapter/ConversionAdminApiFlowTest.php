@@ -70,7 +70,7 @@ class ConversionAdminApiFlowTest extends DatabaseTestCase
         $this->assertSame($expected, $ids);
         $this->assertSame(2, $this->jsonBody()['totalItems']);
         $this->assertSame(
-            ['id', 'ingredientSlug', 'ingredientName', 'creatorEmail', 'startUnitSlug', 'startUnitName', 'endUnitSlug', 'endUnitName', 'coefficient'],
+            ['id', 'ingredientSlug', 'ingredientName', 'creatorEmail', 'startUnitSlug', 'startUnitName', 'endUnitSlug', 'endUnitName', 'coefficient', 'departmentSlug', 'departmentName'],
             array_keys($members[0]),
         );
         $byId = array_column($members, null, 'id');

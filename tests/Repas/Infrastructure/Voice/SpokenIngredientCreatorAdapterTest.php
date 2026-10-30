@@ -31,8 +31,8 @@ class SpokenIngredientCreatorAdapterTest extends TestCase
     {
         $this->bus = new MockCommandBus();
         $this->departments = new DepartmentInMemoryLoader(
-            [new DepartmentDTO('boucherie', 'boucherie', 'b.png'), new DepartmentDTO('fruit-et-legume', 'fruit & légume', 'f.png')],
-            new DepartmentDTO('fruit-et-legume', 'fruit & légume', 'f.png'),
+            [new DepartmentDTO('boucherie', 'boucherie', 'b.png', null), new DepartmentDTO('fruit-et-legume', 'fruit & légume', 'f.png', null)],
+            new DepartmentDTO('fruit-et-legume', 'fruit & légume', 'f.png', null),
         );
         $this->units = new UnitInMemoryLoader([new UnitDTO('kilo', 'kilo', 'kg', 'WEIGHT', 1000.0), new UnitDTO('unite', 'unité', '', 'COUNT', 1.0)]);
     }

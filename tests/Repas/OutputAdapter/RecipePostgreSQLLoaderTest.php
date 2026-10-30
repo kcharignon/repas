@@ -14,6 +14,7 @@ use Repas\Repas\Domain\Exception\RecipeException;
 use Repas\Repas\Domain\Interface\RecipeRepository;
 use Repas\Repas\Domain\Model\Recipe;
 use Repas\Tests\Helper\Builder\ConversionBuilder;
+use Repas\Tests\Helper\Builder\DepartmentBuilder;
 use Repas\Tests\Helper\Builder\IngredientBuilder;
 use Repas\Tests\Helper\Builder\RecipeBuilder;
 use Repas\Tests\Helper\Builder\RecipeRowBuilder;
@@ -56,12 +57,31 @@ class RecipePostgreSQLLoaderTest extends DatabaseTestCase
         // L'ordre est celui de la saisie (colonne `position`), pas l'ordre alphabétique
         $this->assertEquals(
             [
-                new RecipeRowDTO('zzz-sucre', 'zzz sucre', 'images/sucre.png', 2.0, 'unite', '', 'unité', 'unite', 'unité', true),
+                new RecipeRowDTO('zzz-sucre', 'zzz sucre', 'images/sucre.png', 2.0, 'unite', '', 'unité', 'unite', 'unité', true, 'conserve', 'conserve'),
                 // Le gramme ne se convertit pas en l'unité d'achat (l'unité) de cet ingrédient : aucune conversion ne les relie
-                new RecipeRowDTO('aaa-farine', 'aaa farine', '', 250.0, 'gramme', 'g', 'gramme', 'unite', 'unité', false),
+                new RecipeRowDTO('aaa-farine', 'aaa farine', '', 250.0, 'gramme', 'g', 'gramme', 'unite', 'unité', false, 'conserve', 'conserve'),
             ],
             $result->rows,
         );
+    }
+
+    public function testGetSaysTheDepartmentOfEachRowSoTwoIngredientsOfTheSameNameAreToldApart(): void
+    {
+        // Given : « Petits pois » en céréale et en viande (rayons de test) dans la même recette
+        $author = $this->savedUser();
+        $recipe = new RecipeBuilder()->withAuthor($author)->withName('zzz soupe')->withRecipeType(new RecipeTypeBuilder()->isDessert())
+            ->addRow(new RecipeRowBuilder()->withIngredient(new IngredientBuilder()->withName('Petits pois')->withSlug('petits-pois-a')->withDepartment(new DepartmentBuilder()->isCereal()))->withUnit(new UnitBuilder()->isUnite())->withQuantity(1))
+            ->addRow(new RecipeRowBuilder()->withIngredient(new IngredientBuilder()->withName('Petits pois')->withSlug('petits-pois-b')->withDepartment(new DepartmentBuilder()->isMeat()))->withUnit(new UnitBuilder()->isUnite())->withQuantity(2))
+            ->build();
+        $this->persister->saveRecipe($recipe);
+
+        // When
+        $rows = $this->recipeLoader->get($recipe->getId())->rows;
+
+        // Then : même nom, deux identifiants, chacun avec son rayon
+        $this->assertSame(['petits-pois-a', 'petits-pois-b'], array_map(static fn(RecipeRowDTO $row): string => $row->ingredientSlug, $rows));
+        $this->assertSame(['Petits pois', 'Petits pois'], array_map(static fn(RecipeRowDTO $row): string => $row->ingredientName, $rows));
+        $this->assertSame([['cereale', 'céréale'], ['viande', 'viande']], array_map(static fn(RecipeRowDTO $row): array => [$row->departmentSlug, $row->departmentName], $rows));
     }
 
     public function testGetSaysWhichRowsConvertToThePurchaseUnitOfTheirIngredient(): void

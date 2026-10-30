@@ -25,6 +25,10 @@ final readonly class ConversionDTO
         public string $endUnitName,
         #[OA\Property(description: 'Une unité de départ vaut ce nombre d\'unités d\'arrivée', example: 250)]
         public float $coefficient,
+        #[OA\Property(description: 'Identifiant du rayon de l\'ingrédient (slug), null pour une conversion commune à tous', example: 'epicerie', nullable: true)]
+        public ?string $departmentSlug,
+        #[OA\Property(description: 'Nom du rayon de l\'ingrédient, null pour une conversion commune à tous', example: 'Épicerie', nullable: true)]
+        public ?string $departmentName,
     ) {
     }
 }

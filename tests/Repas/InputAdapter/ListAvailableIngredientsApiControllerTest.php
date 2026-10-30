@@ -14,8 +14,8 @@ class ListAvailableIngredientsApiControllerTest extends QueryBusWebTestCase
         // Given
         $user = $this->savedUser();
         $this->queryBus->willReturn(ListAvailableIngredientsQuery::class, [
-            new IngredientOptionDTO('farine', 'farine'),
-            new IngredientOptionDTO('oeuf', 'œuf'),
+            new IngredientOptionDTO('farine', 'farine', 'epicerie', 'épicerie'),
+            new IngredientOptionDTO('oeuf', 'œuf', 'surgele', 'surgelé'),
         ]);
 
         // When
@@ -25,7 +25,10 @@ class ListAvailableIngredientsApiControllerTest extends QueryBusWebTestCase
         $this->assertSame(200, $this->client->getResponse()->getStatusCode());
         $this->assertEquals(new ListAvailableIngredientsQuery($user->getId()), $this->queryBus->getLastAskedQuery());
         $this->assertSame([
-            'member' => [['slug' => 'farine', 'name' => 'farine'], ['slug' => 'oeuf', 'name' => 'œuf']],
+            'member' => [
+                ['slug' => 'farine', 'name' => 'farine', 'departmentSlug' => 'epicerie', 'departmentName' => 'épicerie'],
+                ['slug' => 'oeuf', 'name' => 'œuf', 'departmentSlug' => 'surgele', 'departmentName' => 'surgelé'],
+            ],
             'totalItems' => 2,
         ], $this->jsonBody());
     }

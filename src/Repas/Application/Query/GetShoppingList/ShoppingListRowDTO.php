@@ -21,6 +21,10 @@ final readonly class ShoppingListRowDTO
         public string $ingredientSlug,
         #[OA\Property(description: 'Identifiant stable de l\'unité d\'achat (slug)', example: 'gramme')]
         public string $unitSlug,
+        #[OA\Property(description: 'Identifiant du rayon de l\'ingrédient (slug), le même que celui du rayon qui porte la ligne : la ligne seule (`GET …/rows/{id}`) le dit aussi. Le front en tire l\'icône par la liste des rayons', example: 'surgele')]
+        public string $departmentSlug,
+        #[OA\Property(description: 'Nom du rayon de l\'ingrédient', example: 'Surgelé')]
+        public string $departmentName,
     ) {
     }
 }

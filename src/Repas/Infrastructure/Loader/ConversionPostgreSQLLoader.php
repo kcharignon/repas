@@ -14,6 +14,7 @@ use Repas\Repas\Domain\Exception\ConversionException;
 use Repas\Repas\Domain\Exception\IngredientException;
 use Repas\Repas\Domain\Service\ConversionGraph;
 use Repas\Repas\Infrastructure\Entity\Conversion;
+use Repas\Repas\Infrastructure\Entity\Department;
 use Repas\Repas\Infrastructure\Entity\Ingredient;
 use Repas\Repas\Infrastructure\Entity\Unit;
 
@@ -135,9 +136,11 @@ final readonly class ConversionPostgreSQLLoader implements ConversionLoader
                 'i.slug AS ingredientSlug', 'i.name AS ingredientName', 'i.creatorId AS creatorId',
                 'su.slug AS startUnitSlug', 'su.name AS startUnitName',
                 'eu.slug AS endUnitSlug', 'eu.name AS endUnitName',
+                'd.slug AS departmentSlug', 'd.name AS departmentName',
             )
             ->from(Conversion::class, 'c')
             ->leftJoin(Ingredient::class, 'i', Join::WITH, 'i.slug = c.ingredientSlug')
+            ->leftJoin(Department::class, 'd', Join::WITH, 'd.slug = i.departmentSlug')
             ->innerJoin(Unit::class, 'su', Join::WITH, 'su.slug = c.startUnitSlug')
             ->innerJoin(Unit::class, 'eu', Join::WITH, 'eu.slug = c.endUnitSlug')
             ->where('c.ingredientSlug IS NULL OR i.creatorId = :viewer')
@@ -163,6 +166,8 @@ final readonly class ConversionPostgreSQLLoader implements ConversionLoader
                 endUnitSlug: $row['endUnitSlug'],
                 endUnitName: $row['endUnitName'],
                 coefficient: (float) $row['coefficient'],
+                departmentSlug: $row['departmentSlug'],
+                departmentName: $row['departmentName'],
             ),
             $rows,
         );

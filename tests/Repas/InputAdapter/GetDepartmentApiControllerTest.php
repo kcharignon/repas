@@ -23,7 +23,7 @@ class GetDepartmentApiControllerTest extends QueryBusWebTestCase
         $query = $this->queryBus->getLastAskedQuery();
         $this->assertInstanceOf(GetDepartmentQuery::class, $query);
         $this->assertSame('zzz', $query->slug);
-        $this->assertSame(['slug' => 'zzz', 'name' => 'zzz outils', 'image' => 'images/zzz.svg'], $this->jsonBody());
+        $this->assertSame(['slug' => 'zzz', 'name' => 'zzz outils', 'image' => 'images/zzz.svg', 'icon' => null], $this->jsonBody());
     }
 
     public function testReturns404ForAnUnknownItem(): void

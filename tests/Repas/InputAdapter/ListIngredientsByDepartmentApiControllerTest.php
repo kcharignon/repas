@@ -30,7 +30,7 @@ class ListIngredientsByDepartmentApiControllerTest extends QueryBusWebTestCase
         $this->assertInstanceOf(ListIngredientsByDepartmentQuery::class, $query);
         $this->assertSame(['cereale', $user->getId()], [$query->departmentSlug, $query->viewerId]);
         $this->assertSame([
-            'department' => ['slug' => 'cereale', 'name' => 'céréale', 'image' => 'images/cereale.svg'],
+            'department' => ['slug' => 'cereale', 'name' => 'céréale', 'image' => 'images/cereale.svg', 'icon' => null],
             'member' => [
                 ['slug' => 'pate', 'name' => 'pâtes', 'purchaseUnitSymbol' => 'g', 'canEdit' => true, 'isBase' => true],
                 ['slug' => 'riz', 'name' => 'riz', 'purchaseUnitSymbol' => 'g', 'canEdit' => false, 'isBase' => false],

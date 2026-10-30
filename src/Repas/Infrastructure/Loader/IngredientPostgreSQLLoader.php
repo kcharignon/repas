@@ -14,6 +14,7 @@ use Repas\Repas\Application\Query\ListIngredientsByDepartment\IngredientRowDTO;
 use Repas\Repas\Application\Query\SearchIngredients\IngredientSearchResultDTO;
 use Repas\Repas\Domain\Exception\DepartmentException;
 use Repas\Repas\Domain\Exception\IngredientException;
+use Repas\Repas\Domain\Model\DepartmentIcon;
 use Repas\Repas\Infrastructure\Entity\Conversion;
 use Repas\Repas\Infrastructure\Entity\Department;
 use Repas\Repas\Infrastructure\Entity\Ingredient;
@@ -39,7 +40,7 @@ final readonly class IngredientPostgreSQLLoader implements IngredientLoader
     public function listByDepartment(string $departmentSlug, string $viewerId): DepartmentIngredientsDTO
     {
         $department = $this->entityManager->createQueryBuilder()
-            ->select('d.slug AS slug', 'd.name AS name', 'd.image AS image')
+            ->select('d.slug AS slug', 'd.name AS name', 'd.image AS image', 'd.icon AS icon')
             ->from(Department::class, 'd')
             ->where('d.slug = :slug')
             ->setParameter('slug', $departmentSlug)
@@ -64,7 +65,7 @@ final readonly class IngredientPostgreSQLLoader implements IngredientLoader
             ->getArrayResult();
 
         return new DepartmentIngredientsDTO(
-            new DepartmentDTO($department['slug'], $department['name'], $department['image']),
+            new DepartmentDTO($department['slug'], $department['name'], $department['image'], DepartmentIcon::known($department['icon'])),
             array_map(
                 fn(array $row): IngredientRowDTO => new IngredientRowDTO(
                     // `canEdit` : toujours vrai, les lignes sont celles du lecteur (`IngredientVisibility`). Le champ reste dans le contrat.
@@ -176,8 +177,9 @@ final readonly class IngredientPostgreSQLLoader implements IngredientLoader
     public function listAvailable(string $userId, ?string $search = null): array
     {
         $query = $this->entityManager->createQueryBuilder()
-            ->select('i.slug AS slug', 'i.name AS name')
+            ->select('i.slug AS slug', 'i.name AS name', 'd.slug AS departmentSlug', 'd.name AS departmentName')
             ->from(Ingredient::class, 'i')
+            ->innerJoin(Department::class, 'd', Join::WITH, 'd.slug = i.departmentSlug')
             ->where(IngredientVisibility::visibleBy('i', 'user'))
             ->setParameter('user', $userId)
             ->orderBy('i.sluggedName', 'ASC')
@@ -191,7 +193,7 @@ final readonly class IngredientPostgreSQLLoader implements IngredientLoader
 
         $rows = $query->getQuery()->getArrayResult();
 
-        return array_map(static fn(array $row): IngredientOptionDTO => new IngredientOptionDTO($row['slug'], $row['name']), $rows);
+        return array_map(static fn(array $row): IngredientOptionDTO => new IngredientOptionDTO($row['slug'], $row['name'], $row['departmentSlug'], $row['departmentName']), $rows);
     }
 
     public function search(string $search, string $viewerId): array
