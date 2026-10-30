@@ -476,7 +476,7 @@ class SaveProductChoicesApiControllerTest extends QueryBusWebTestCase
 
         yield 'corps vide' => [[]];
         yield 'sans enseigne' => [['storeId' => '123456', 'choices' => []]];
-        yield 'enseigne inconnue' => [['retailer' => 'auchan', 'storeId' => '123456', 'choices' => []]];
+        yield 'enseigne inconnue' => [['retailer' => 'inconnue', 'storeId' => '123456', 'choices' => []]];
         yield 'sans magasin' => [['retailer' => 'leclerc', 'choices' => []]];
         yield 'magasin vide' => [['retailer' => 'leclerc', 'storeId' => '', 'choices' => []]];
         yield 'magasin de plus de 40 caractères' => [['retailer' => 'leclerc', 'storeId' => str_repeat('1', 41), 'choices' => []]];

@@ -75,7 +75,7 @@ class ListChoicesApiControllerTest extends QueryBusWebTestCase
         $user = $this->savedUser();
 
         // When / Then
-        foreach (['', '?retailer=auchan', '?retailer='] as $query) {
+        foreach (['', '?retailer=inconnue', '?retailer='] as $query) {
             $this->client->request('GET', '/api/v1/drive/choices' . $query, server: $this->bearerFor($user));
             $this->assertSame(422, $this->client->getResponse()->getStatusCode(), $query);
         }

@@ -14,7 +14,7 @@ use SplFileInfo;
  * `Retailer` (la liste des identifiants et le profil de chacune) et `RetailerProfile`. Tout autre code reçoit l'enseigne en
  * paramètre, ou la demande à `Retailer::default()`, et ne connaît de son site que ce que dit son profil.
  *
- * Deux marques le trahissent : le cas `Retailer::LECLERC` et le domaine du site de Leclerc.
+ * Deux marques par enseigne le trahissent : son cas (`Retailer::LECLERC`, `Retailer::AUCHAN`) et le domaine de son site (DRV-716 : chaque enseigne n'est nommée que dans `Retailer.php` et `RetailerProfile.php`).
  */
 class RetailersAreNamedInOnePlaceTest extends TestCase
 {
@@ -52,6 +52,8 @@ class RetailersAreNamedInOnePlaceTest extends TestCase
         $this->assertSame(['Retailer::LECLERC'], self::namings('$x = Retailer::LECLERC;'));
         $this->assertSame(['leclercdrive'], self::namings("\$url = 'https://a.leclercdrive.fr/';"));
         $this->assertSame(['leclercdrive'], self::namings('// LeclercDrive'));
+        $this->assertSame(['Retailer::AUCHAN'], self::namings('$x = Retailer::AUCHAN;'));
+        $this->assertSame(['auchan.fr'], self::namings("\$url = 'https://www.auchan.fr/';"));
         $this->assertSame([], self::namings('$retailer = Retailer::default(); $name = "leclerc";'));
     }
 
@@ -61,7 +63,7 @@ class RetailersAreNamedInOnePlaceTest extends TestCase
     private static function namings(string $source): array
     {
         $found = [];
-        foreach (['Retailer::LECLERC', 'leclercdrive'] as $mark) {
+        foreach (['Retailer::LECLERC', 'leclercdrive', 'Retailer::AUCHAN', 'auchan.fr'] as $mark) {
             if (stripos($source, $mark) !== false) {
                 $found[] = $mark;
             }

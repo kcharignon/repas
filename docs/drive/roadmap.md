@@ -186,7 +186,7 @@ Références : [`multi-enseignes.md`](multi-enseignes.md) (audit, conception, fa
 - [x] [DRV-713](tickets/DRV-713-spike-auchan-anti-robot-et-connexion.md) humain · M · Spike Auchan A2 : anti-robot et connexion · dépend de : 712
 - [x] [DRV-714](tickets/DRV-714-spike-auchan-recherche-et-panier.md) humain · M · Spike Auchan A3 : recherche, produits, panier · dépend de : 712
 - [x] [DRV-715](tickets/DRV-715-decision-auchan.md) assistant · S · Décision « Auchan : adaptateur complet, mode assisté ou abandon » et tickets suivants (medium) · dépend de : 712, 713, 714
-- [ ] [DRV-716](tickets/DRV-716-declarer-auchan-dans-les-registres.md) back · M · Déclarer Auchan dans le registre du back, éteint (high) · dépend de : 701, 702, 720, 721
+- [x] [DRV-716](tickets/DRV-716-declarer-auchan-dans-les-registres.md) back · M · Déclarer Auchan dans le registre du back, éteint (high) · dépend de : 701, 702, 720, 721
 - [ ] [DRV-717](tickets/DRV-717-adaptateur-auchan-squelette.md) front (agent) · L · Faux site d'Auchan, magasin, session, entrée, diagnostic (high) · dépend de : 727, 722
 - [x] [DRV-720](tickets/DRV-720-magasin-a-identifiant-explicite.md) back · M · Magasin à identifiant explicite et plus long : migration, `Store`, profil (xhigh) · dépend de : 701
 - [x] [DRV-721](tickets/DRV-721-identifiant-d-offre-du-produit.md) back · M · Identifiant d'offre facultatif du produit : colonne, plan, contrat (high) · dépend de : 701

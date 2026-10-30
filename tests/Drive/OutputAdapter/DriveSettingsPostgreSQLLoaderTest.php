@@ -25,7 +25,7 @@ class DriveSettingsPostgreSQLLoaderTest extends DatabaseTestCase
         parent::setUp();
 
         $this->repository = static::getContainer()->get(DriveSettingsRepository::class);
-        $this->loader = new DriveSettingsPostgreSQLLoader($this->entityManager, new ControlledDriveFeature(true));
+        $this->loader = new DriveSettingsPostgreSQLLoader($this->entityManager, new ControlledDriveFeature(true, ['leclerc']));
     }
 
     public function testAUserWithoutSettingsGetsTheSwitchAndNoStore(): void

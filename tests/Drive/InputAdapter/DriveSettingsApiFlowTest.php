@@ -163,7 +163,7 @@ class DriveSettingsApiFlowTest extends DatabaseTestCase
     {
         // Given : le noyau est gardé entre les deux requêtes, sinon l'interrupteur posé serait perdu au redémarrage
         $this->client->disableReboot();
-        static::getContainer()->set(DriveFeature::class, new ControlledDriveFeature(false));
+        static::getContainer()->set(DriveFeature::class, new ControlledDriveFeature(false, ['leclerc']));
         $user = $this->savedUser();
 
         // When
