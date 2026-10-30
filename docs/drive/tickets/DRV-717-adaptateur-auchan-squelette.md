@@ -4,7 +4,7 @@
 - **Jalon** : M7 Plusieurs enseignes
 - **Taille** : L
 - **Dépend de** : DRV-727 (l'entrée de registre et le protocole), DRV-722 (`offerId`)
-- **Statut** : à faire. Effort recommandé : `high`. **Décision prise** : [`../spikes/DRV-715-decision-auchan.md`](../spikes/DRV-715-decision-auchan.md).
+- **Statut** : fait (PR front #256, 2026-10-30, agent 0.49.0 ; 144 tests e2e de l'agent dont 13 contre le faux site). Le **volet émulateur n'est pas fait** (DRV-729 pas encore fusionné) : voir [DRV-731](DRV-731-scenario-emulateur-auchan.md). Écarts : code dans `src/auchan/` (pas `src/retailers/auchan/`) ; cause `STORE_NOT_CHOSEN` ; `readStore` peut être asynchrone ; `Pacer` partagé dans `retailers/pacer.ts` ; un visiteur arrête l'envoi (`NOT_LOGGED_IN`, `SESSION_VISITOR`) comme chez Leclerc : à trancher à la recette (DRV-726) ; la livraison à domicile (canal sans `PICK_UP`) n'est que rapportée dans le diagnostic. Effort recommandé : `high`. **Décision prise** : [`../spikes/DRV-715-decision-auchan.md`](../spikes/DRV-715-decision-auchan.md).
 - **Lire d'abord** : la décision ; [`../hypotheses-site-reel-auchan.md`](../hypotheses-site-reel-auchan.md) (ce qui est mesuré, supposé, inconnu : **ne jamais citer un « S » ou un « I » comme un fait**) ; les trois rapports `../spikes/DRV-712…714-rapport.md` ; `drive-agent/src/leclerc/` (modèle, **à lire sans le copier**) ; skill `repas-agent-dev` ; DRV-303 et DRV-309 (adaptateur et faux site de Leclerc).
 
 ## Contexte

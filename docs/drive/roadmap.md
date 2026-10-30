@@ -187,7 +187,7 @@ Références : [`multi-enseignes.md`](multi-enseignes.md) (audit, conception, fa
 - [x] [DRV-714](tickets/DRV-714-spike-auchan-recherche-et-panier.md) humain · M · Spike Auchan A3 : recherche, produits, panier · dépend de : 712
 - [x] [DRV-715](tickets/DRV-715-decision-auchan.md) assistant · S · Décision « Auchan : adaptateur complet, mode assisté ou abandon » et tickets suivants (medium) · dépend de : 712, 713, 714
 - [x] [DRV-716](tickets/DRV-716-declarer-auchan-dans-les-registres.md) back · M · Déclarer Auchan dans le registre du back, éteint (high) · dépend de : 701, 702, 720, 721
-- [ ] [DRV-717](tickets/DRV-717-adaptateur-auchan-squelette.md) front (agent) · L · Faux site d'Auchan, magasin, session, entrée, diagnostic (high) · dépend de : 727, 722
+- [x] [DRV-717](tickets/DRV-717-adaptateur-auchan-squelette.md) front (agent) · L · Faux site d'Auchan, magasin, session, entrée, diagnostic (high) · dépend de : 727, 722
 - [x] [DRV-720](tickets/DRV-720-magasin-a-identifiant-explicite.md) back · M · Magasin à identifiant explicite et plus long : migration, `Store`, profil (xhigh) · dépend de : 701
 - [x] [DRV-721](tickets/DRV-721-identifiant-d-offre-du-produit.md) back · M · Identifiant d'offre facultatif du produit : colonne, plan, contrat (high) · dépend de : 701
 - [x] [DRV-722](tickets/DRV-722-identifiant-d-offre-dans-le-protocole.md) front · M · `offerId` facultatif dans le plan et le résultat (high) · dépend de : 704, 721
@@ -197,6 +197,7 @@ Références : [`multi-enseignes.md`](multi-enseignes.md) (audit, conception, fa
 - [x] [DRV-727](tickets/DRV-727-auchan-dans-les-registres-du-web-et-de-l-agent.md) front (web, agent) · M · Auchan dans le registre du web et celui de l'agent, éteint (high) · dépend de : 704, 708, 716, 722
 - [ ] [DRV-728](tickets/DRV-728-auchan-dans-le-coeur-et-l-application-android.md) front (android) · M · Auchan dans le cœur et l'application Android : navigation, pont, injection (xhigh) · dépend de : 706, 707, 716
 - [ ] [DRV-729](tickets/DRV-729-realigner-les-scenarios-e2e-android.md) front (android) · S · Réaligner les scénarios 2 à 14 de `android/emulator/e2e.sh` sur le comportement actuel de l'agent (medium) · dépend de : —
+- [ ] [DRV-731](tickets/DRV-731-scenario-emulateur-auchan.md) front (android) · S · Scénario d'émulateur pour la lecture du magasin d'Auchan contre le faux site (medium) · dépend de : 717, 729
 - [x] [DRV-730](tickets/DRV-730-offerid-optionnel-dans-l-openapi.md) back · S · `offerId` facultatif dans l'OpenAPI (retirer `default: null`) et marge de temps du test Alexa instable (medium) · dépend de : 721
 
 ## Backlog (non détaillé, à écrire quand il devient utile)
