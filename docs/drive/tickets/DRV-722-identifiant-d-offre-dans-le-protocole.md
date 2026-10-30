@@ -4,7 +4,7 @@
 - **Jalon** : M7 Plusieurs enseignes
 - **Taille** : M
 - **Dépend de** : DRV-704 (registre et protocole par enseigne), DRV-721 (le plan du back porte `offerId`)
-- **Statut** : à faire. Effort recommandé : `high`.
+- **Statut** : fait (PR front #251, 2026-10-30, agent 0.47.0). `offerId` est refusé sur un produit refusé, sur `replaces` et sur une ligne `ADDED` ; le front fige le back à `78d51f21` (à relever par DRV-727). Effort recommandé : `high`.
 - **Lire d'abord** : [`../spikes/DRV-715-decision-auchan.md`](../spikes/DRV-715-decision-auchan.md) § 2 point 3 ; [`../consignes-agents.md`](../consignes-agents.md) (« Modifier le plan ou un message du protocole », « Publier un changement de protocole », incident du 2026-10-20) ; `drive-agent/protocol/README.md` ; skills `repas-agent-dev`, `repas-front-dev`, `repas-android-dev` (si `DrivePlan.kt` valide le plan).
 
 ## Portée
