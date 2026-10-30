@@ -133,6 +133,10 @@ Ce qui change ensuite :
 
 **Rouvrir en bloc les listes envoyées** (utile surtout avant de remettre une version du code qui ne connaît pas `SENT`, qui n'a pas de `reopen` ; pour une simple coupure, chacun rouvre sa liste) : script `rouvrir-listes-envoyees.sh`, d'abord sans argument (lecture seule), puis avec `--appliquer` après accord : voir [`../production.md`](../production.md), « Listes `SENT` ». Il fait une sauvegarde avant.
 
+### Couper une seule enseigne (DRV-702)
+
+Quand le site d'une seule enseigne change ou bloque et que l'autre fonctionne : retirer **son** identifiant de `DRIVE_RETAILERS` dans `/opt/repas/.env` (l'humain, à la main tant qu'aucun script ne le fait ; `DRIVE_RETAILERS=` vide éteint toutes les enseignes, la ligne absente vaut `leclerc`), recréer le conteneur `php` (`docker compose up -d --wait php`), contrôler en lecture seule : `docker compose exec -T php printenv DRIVE_RETAILERS`. L'enseigne éteinte répond `404 DRIVE_RETAILER_DISABLED` et n'est plus proposée (`retailers`) ; ses réglages, produits et préférences restent en base ; les listes `SENT` se rouvrent comme avant. L'autre enseigne ne bouge pas. Rallumer = la remettre dans la liste.
+
 ## 5. Se replier : le mode assisté (« Chercher à la main » à l'écran)
 
 Le **mode assisté** est le repli permanent prévu par l'ADR 0022 : Repas affiche la liste, la personne ouvre Leclerc (application ou navigateur) et cherche elle-même chaque produit, sans remplissage automatique ; l'écran d'envoi propose, **hors de l'application** (dans un navigateur ordinaire) et **fonction allumée**, un lien « Chercher sur Leclerc » par ligne (DRV-404, `driveSend.notInApp`). Rien n'est mémorisé dans ce mode et Repas n'envoie rien à Leclerc. **Fonction coupée**, l'écran d'envoi n'est pas offert : il n'y a alors pas de liens, la personne cherche seule sur le site de Leclerc (ou dans l'application : menu → « Ouvrir le drive Leclerc ») en lisant sa liste dans Repas.

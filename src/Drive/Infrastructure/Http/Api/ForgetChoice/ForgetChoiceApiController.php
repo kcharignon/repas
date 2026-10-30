@@ -36,7 +36,7 @@ final class ForgetChoiceApiController extends AbstractController
     #[OA\Parameter(name: 'retailer', in: 'query', required: true, description: 'Enseigne du drive', schema: new OA\Schema(type: 'string', enum: Retailer::IDS), example: 'leclerc')]
     #[OA\Parameter(name: 'storeId', in: 'query', required: true, description: 'Magasin de la préférence : doit être le magasin courant des réglages', schema: new OA\Schema(type: 'string', maxLength: Store::ID_MAX_LENGTH), example: '123456')]
     #[OA\Response(response: 204, description: 'Préférence oubliée')]
-    #[OA\Response(response: 404, description: "Fonction drive coupée (message `DRIVE_DISABLED`), ou pas de préférence pour cet ingrédient (message `DRIVE_CHOICE_NOT_FOUND`)")]
+    #[OA\Response(response: 404, description: "Fonction drive coupée (message `DRIVE_DISABLED`), ou enseigne éteinte (message `DRIVE_RETAILER_DISABLED`, `DRIVE_RETAILERS`), ou pas de préférence pour cet ingrédient (message `DRIVE_CHOICE_NOT_FOUND`)")]
     #[OA\Response(response: 409, description: "Pas de magasin enregistré (message `DRIVE_NOT_CONFIGURED`), ou `storeId` n'est pas le magasin courant (message `DRIVE_STORE_MISMATCH`)")]
     #[OA\Response(response: 422, description: 'Paramètre `retailer` ou `storeId` absent ou invalide')]
     #[OA\Response(response: 429, ref: '#/components/responses/DriveWriteRateLimited')]

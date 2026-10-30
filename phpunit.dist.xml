@@ -17,6 +17,8 @@
         <server name="SHELL_VERBOSITY" value="-1" />
         <!-- Plus fort que la variable que compose injecte depuis .env (coupée) : voir .env.test -->
         <server name="DRIVE_ENABLED" value="true" force="true" />
+        <!-- Enseignes du drive allumées en test (DRV-702), plus fort que la variable que compose injecte depuis .env -->
+        <server name="DRIVE_RETAILERS" value="leclerc" force="true" />
         <!-- Commande vocale Alexa allumée en test (ADR 0029), plus forte que la valeur coupée que compose injecte depuis .env : voir .env.test -->
         <server name="ALEXA_ENABLED" value="true" force="true" />
         <!-- Client OAuth d'Alexa FACTICE (VOX-202) : l'empreinte du secret de tests/Helper/Alexa/AlexaTestClient.php et deux adresses de retour

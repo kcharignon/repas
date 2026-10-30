@@ -3,11 +3,13 @@
 namespace Repas\Tests\Drive\Application;
 
 
+use Repas\Shared\Domain\Exception\DriveFeatureException;
 use PHPUnit\Framework\TestCase;
 use Repas\Drive\Application\Command\ForgetChoice\ForgetChoiceCommand;
 use Repas\Drive\Application\Command\ForgetChoice\ForgetChoiceHandler;
 use Repas\Drive\Domain\Exception\DriveException;
 use Repas\Drive\Domain\Model\Retailer;
+use Repas\Tests\Helper\ControlledDriveFeature;
 use Repas\Tests\Helper\Builder\ChoiceBuilder;
 use Repas\Tests\Helper\Builder\DriveSettingsBuilder;
 use Repas\Tests\Helper\InMemoryLoader\IngredientAliasInMemoryResolver;
@@ -28,7 +30,7 @@ class ForgetChoiceHandlerTest extends TestCase
             new ChoiceBuilder()->withUserId('user-1')->withIngredientSlug('sel')->haveAtHome()->build(),
             new ChoiceBuilder()->withUserId('user-2')->withIngredientSlug('farine')->withAccepted(['a'])->build(),
         ]);
-        $this->handler = new ForgetChoiceHandler($this->settings, $this->choices, new IngredientAliasInMemoryResolver());
+        $this->handler = new ForgetChoiceHandler($this->settings, $this->choices, new IngredientAliasInMemoryResolver(), new ControlledDriveFeature());
     }
 
     public function testForgetsTheWholeChoiceOfOneIngredientOnly(): void
@@ -56,7 +58,7 @@ class ForgetChoiceHandlerTest extends TestCase
         // Given : l'utilisateur a adopté la farine (ADR 0028) ; sa préférence est sous la copie, le client envoie encore le slug du commun
         $this->choices->save(new ChoiceBuilder()->withUserId('user-1')->withIngredientSlug('farine-user-1')->withAccepted(['b'])->build());
         $aliases = new IngredientAliasInMemoryResolver(['farine' => 'farine-user-1']);
-        $handler = new ForgetChoiceHandler($this->settings, $this->choices, $aliases);
+        $handler = new ForgetChoiceHandler($this->settings, $this->choices, $aliases, new ControlledDriveFeature());
 
         // When
         $handler(new ForgetChoiceCommand('user-1', Retailer::LECLERC, '123456', 'farine'));
@@ -71,7 +73,7 @@ class ForgetChoiceHandlerTest extends TestCase
     {
         // Given
         $aliases = new IngredientAliasInMemoryResolver(['farine' => 'farine-user-1']);
-        $handler = new ForgetChoiceHandler($this->settings, $this->choices, $aliases);
+        $handler = new ForgetChoiceHandler($this->settings, $this->choices, $aliases, new ControlledDriveFeature());
 
         // Then
         $this->expectExceptionObject(DriveException::storeMismatch());
@@ -121,5 +123,21 @@ class ForgetChoiceHandlerTest extends TestCase
 
         // When
         ($this->handler)(new ForgetChoiceCommand('user-9', Retailer::LECLERC, '123456', 'farine'));
+    }
+
+    public function testADisabledRetailerForgetsNothing(): void
+    {
+        // Given : l'enseigne n'est pas allumée (DRV-702)
+        $handler = new ForgetChoiceHandler($this->settings, $this->choices, new IngredientAliasInMemoryResolver(), new ControlledDriveFeature(true, []));
+
+        // Then
+        $this->expectExceptionObject(DriveFeatureException::retailerDisabled());
+
+        // When
+        try {
+            $handler(new ForgetChoiceCommand('user-1', Retailer::LECLERC, '123456', 'farine'));
+        } finally {
+            $this->assertNotNull($this->choices->findOne('user-1', Retailer::LECLERC, '123456', 'farine'));
+        }
     }
 }

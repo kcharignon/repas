@@ -18,7 +18,7 @@ final readonly class DriveSettingsDTO
         public string $retailer,
         #[OA\Property(description: "Magasin de l'utilisateur, `null` tant qu'il n'a pas été enregistré", nullable: true)]
         public ?DriveStoreDTO $store,
-        #[OA\Property(description: "Une entrée par enseigne connue (ordre fixe), avec le magasin de l'utilisateur chez chacune ; s'ajoute aux champs `retailer` et `store`, qui restent ceux de l'enseigne par défaut", type: 'array', items: new OA\Items(ref: new Model(type: DriveRetailerDTO::class)))]
+        #[OA\Property(description: "Une entrée par enseigne **allumée** (`DRIVE_RETAILERS`, DRV-702 ; ordre fixe), avec le magasin de l'utilisateur chez chacune ; s'ajoute aux champs `retailer` et `store`, qui restent ceux de l'enseigne par défaut", type: 'array', items: new OA\Items(ref: new Model(type: DriveRetailerDTO::class)))]
         public array $retailers,
     ) {
     }

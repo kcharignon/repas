@@ -3,12 +3,14 @@
 namespace Repas\Tests\Drive\Application;
 
 
+use Repas\Shared\Domain\Exception\DriveFeatureException;
 use DateTimeImmutable;
 use PHPUnit\Framework\TestCase;
 use Repas\Drive\Application\Command\SaveDriveSettings\SaveDriveSettingsCommand;
 use Repas\Drive\Application\Command\SaveDriveSettings\SaveDriveSettingsHandler;
 use Repas\Drive\Domain\Exception\DriveException;
 use Repas\Drive\Domain\Model\Retailer;
+use Repas\Tests\Helper\ControlledDriveFeature;
 use Repas\Tests\Helper\Builder\DriveSettingsBuilder;
 use Repas\Tests\Helper\FrozenClock;
 use Repas\Tests\Helper\InMemoryRepository\DriveSettingsInMemoryRepository;
@@ -26,7 +28,7 @@ class SaveDriveSettingsHandlerTest extends TestCase
     {
         $this->now = new DateTimeImmutable('2026-10-18 12:00:00');
         $this->repository = new DriveSettingsInMemoryRepository();
-        $this->handler = new SaveDriveSettingsHandler($this->repository, new FrozenClock($this->now));
+        $this->handler = new SaveDriveSettingsHandler($this->repository, new FrozenClock($this->now), new ControlledDriveFeature());
     }
 
     public function testTheFirstSaveCreatesTheSettingsOfTheUser(): void
@@ -92,5 +94,21 @@ class SaveDriveSettingsHandlerTest extends TestCase
 
         // When
         ($this->handler)(new SaveDriveSettingsCommand('user-1', Retailer::LECLERC, '123456', null, 'https://exemple.example.com/magasin-123456-123456'));
+    }
+
+    public function testADisabledRetailerSavesNothing(): void
+    {
+        // Given : l'enseigne n'est pas allumée (DRV-702)
+        $handler = new SaveDriveSettingsHandler($this->repository, new FrozenClock($this->now), new ControlledDriveFeature(true, []));
+
+        // Then
+        $this->expectExceptionObject(DriveFeatureException::retailerDisabled());
+
+        // When
+        try {
+            $handler(new SaveDriveSettingsCommand('user-1', Retailer::LECLERC, '123456', 'Ville-Test', self::URL));
+        } finally {
+            $this->assertSame([], $this->repository->all());
+        }
     }
 }

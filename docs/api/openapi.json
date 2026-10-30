@@ -2928,7 +2928,7 @@
                         "description": "Pr\u00e9f\u00e9rence remplac\u00e9e (cr\u00e9\u00e9e si elle n'existait pas, supprim\u00e9e si le corps est vide)"
                     },
                     "404": {
-                        "description": "Fonction drive coup\u00e9e (message `DRIVE_DISABLED`), ou un ingr\u00e9dient qui n'est pas \u00e0 l'utilisateur (message `DRIVE_INGREDIENT_NOT_FOUND`) : un choix ne se pose que sur un ingr\u00e9dient de l'utilisateur (ou sur l'ancien slug de l'un d'eux), et rien n'est enregistr\u00e9"
+                        "description": "Fonction drive coup\u00e9e (message `DRIVE_DISABLED`), ou enseigne \u00e9teinte (message `DRIVE_RETAILER_DISABLED`, `DRIVE_RETAILERS`), ou un ingr\u00e9dient qui n'est pas \u00e0 l'utilisateur (message `DRIVE_INGREDIENT_NOT_FOUND`) : un choix ne se pose que sur un ingr\u00e9dient de l'utilisateur (ou sur l'ancien slug de l'un d'eux), et rien n'est enregistr\u00e9"
                     },
                     "409": {
                         "description": "Pas de magasin enregistr\u00e9 (message `DRIVE_NOT_CONFIGURED`), ou `storeId` n'est pas le magasin courant (message `DRIVE_STORE_MISMATCH`)"
@@ -2989,7 +2989,7 @@
                         "description": "Pr\u00e9f\u00e9rence oubli\u00e9e"
                     },
                     "404": {
-                        "description": "Fonction drive coup\u00e9e (message `DRIVE_DISABLED`), ou pas de pr\u00e9f\u00e9rence pour cet ingr\u00e9dient (message `DRIVE_CHOICE_NOT_FOUND`)"
+                        "description": "Fonction drive coup\u00e9e (message `DRIVE_DISABLED`), ou enseigne \u00e9teinte (message `DRIVE_RETAILER_DISABLED`, `DRIVE_RETAILERS`), ou pas de pr\u00e9f\u00e9rence pour cet ingr\u00e9dient (message `DRIVE_CHOICE_NOT_FOUND`)"
                     },
                     "409": {
                         "description": "Pas de magasin enregistr\u00e9 (message `DRIVE_NOT_CONFIGURED`), ou `storeId` n'est pas le magasin courant (message `DRIVE_STORE_MISMATCH`)"
@@ -3050,7 +3050,7 @@
                         "description": "La liste appartient \u00e0 un autre utilisateur"
                     },
                     "404": {
-                        "description": "Fonction drive coup\u00e9e (message `DRIVE_DISABLED`) ou liste inconnue"
+                        "description": "Fonction drive coup\u00e9e (message `DRIVE_DISABLED`), ou enseigne \u00e9teinte (message `DRIVE_RETAILER_DISABLED`, `DRIVE_RETAILERS`) ou liste inconnue"
                     },
                     "409": {
                         "description": "Pas de magasin enregistr\u00e9 (message `DRIVE_NOT_CONFIGURED`)"
@@ -3111,7 +3111,7 @@
                         "description": "La liste appartient \u00e0 un autre utilisateur"
                     },
                     "404": {
-                        "description": "Fonction drive coup\u00e9e (message `DRIVE_DISABLED`) ou liste inconnue"
+                        "description": "Fonction drive coup\u00e9e (message `DRIVE_DISABLED`), ou enseigne \u00e9teinte (message `DRIVE_RETAILER_DISABLED`, `DRIVE_RETAILERS`) ou liste inconnue"
                     },
                     "409": {
                         "description": "Pas de magasin enregistr\u00e9 (message `DRIVE_NOT_CONFIGURED`), ou la liste n'est pas envoy\u00e9e au drive (message `SHOPPING_LIST_NOT_SENT`)"
@@ -3166,7 +3166,7 @@
                         "description": "Magasin enregistr\u00e9"
                     },
                     "404": {
-                        "description": "Fonction drive coup\u00e9e (message `DRIVE_DISABLED`)"
+                        "description": "Fonction drive coup\u00e9e (message `DRIVE_DISABLED`), ou enseigne \u00e9teinte (message `DRIVE_RETAILER_DISABLED`, `DRIVE_RETAILERS`)"
                     },
                     "422": {
                         "description": "Corps invalide, ou magasin refus\u00e9 (message `DRIVE_STORE_INVALID`) : adresse qui n'est pas celle d'un magasin de l'enseigne, identifiant qui n'a pas la forme de l'enseigne ou, quand il se d\u00e9duit de l'adresse, diff\u00e9rent de celui de l'adresse"
@@ -3223,7 +3223,7 @@
                         }
                     },
                     "404": {
-                        "description": "Fonction drive coup\u00e9e (message `DRIVE_DISABLED`)"
+                        "description": "Fonction drive coup\u00e9e (message `DRIVE_DISABLED`), ou enseigne \u00e9teinte (message `DRIVE_RETAILER_DISABLED`, `DRIVE_RETAILERS`)"
                     },
                     "422": {
                         "description": "Param\u00e8tre `retailer` absent ou inconnu"
@@ -3251,7 +3251,7 @@
                         "description": "Pr\u00e9f\u00e9rences enregistr\u00e9es (tout ou rien)"
                     },
                     "404": {
-                        "description": "Fonction drive coup\u00e9e (message `DRIVE_DISABLED`), ou un ingr\u00e9dient qui n'est pas \u00e0 l'utilisateur (message `DRIVE_INGREDIENT_NOT_FOUND`) : un choix ne se pose que sur un ingr\u00e9dient de l'utilisateur (ou sur l'ancien slug de l'un d'eux), et rien n'est enregistr\u00e9"
+                        "description": "Fonction drive coup\u00e9e (message `DRIVE_DISABLED`), ou enseigne \u00e9teinte (message `DRIVE_RETAILER_DISABLED`, `DRIVE_RETAILERS`), ou un ingr\u00e9dient qui n'est pas \u00e0 l'utilisateur (message `DRIVE_INGREDIENT_NOT_FOUND`) : un choix ne se pose que sur un ingr\u00e9dient de l'utilisateur (ou sur l'ancien slug de l'un d'eux), et rien n'est enregistr\u00e9"
                     },
                     "409": {
                         "description": "Pas de magasin enregistr\u00e9 (message `DRIVE_NOT_CONFIGURED`), ou `storeId` n'est pas le magasin courant (message `DRIVE_STORE_MISMATCH`)"
@@ -6781,7 +6781,7 @@
                         ]
                     },
                     "retailers": {
-                        "description": "Une entr\u00e9e par enseigne connue (ordre fixe), avec le magasin de l'utilisateur chez chacune ; s'ajoute aux champs `retailer` et `store`, qui restent ceux de l'enseigne par d\u00e9faut",
+                        "description": "Une entr\u00e9e par enseigne **allum\u00e9e** (`DRIVE_RETAILERS`, DRV-702 ; ordre fixe), avec le magasin de l'utilisateur chez chacune ; s'ajoute aux champs `retailer` et `store`, qui restent ceux de l'enseigne par d\u00e9faut",
                         "type": "array",
                         "items": {
                             "$ref": "#/components/schemas/DriveRetailerDTO"

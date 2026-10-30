@@ -12,6 +12,10 @@ parameters:
     # Magasin des verrous (config/packages/lock.yaml, .env) ; en mémoire en test (bloc `when@test` plus bas)
     repas.lock_dsn: '%env(LOCK_DSN)%'
 
+    # Les enseignes du registre du drive (DRV-702) : `DRIVE_RETAILERS` n'allume que celles-là, un identifiant inconnu est ignoré et journalisé.
+    # La liste vient du registre lui-même (`Shared` ne nomme aucune enseigne) ; ce fichier de configuration n'en nomme aucune non plus.
+    repas.drive.known_retailers: !php/const Repas\Drive\Domain\Model\Retailer::IDS
+
 services:
     # default configuration for services in *this* file
     _defaults:

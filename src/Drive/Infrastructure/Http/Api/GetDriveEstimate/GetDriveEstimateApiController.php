@@ -38,7 +38,7 @@ final class GetDriveEstimateApiController extends AbstractController
     #[OA\Parameter(name: 'retailer', in: 'query', required: false, description: "Enseigne du drive ; absente, l'enseigne par défaut", schema: new OA\Schema(type: 'string', enum: Retailer::IDS), example: 'leclerc')]
     #[OA\Response(response: 200, description: "L'estimation, dans le magasin courant de l'utilisateur", content: new OA\JsonContent(ref: new Model(type: DriveEstimateDTO::class)))]
     #[OA\Response(response: 403, description: 'La liste appartient à un autre utilisateur')]
-    #[OA\Response(response: 404, description: 'Fonction drive coupée (message `DRIVE_DISABLED`) ou liste inconnue')]
+    #[OA\Response(response: 404, description: 'Fonction drive coupée (message `DRIVE_DISABLED`), ou enseigne éteinte (message `DRIVE_RETAILER_DISABLED`, `DRIVE_RETAILERS`) ou liste inconnue')]
     #[OA\Response(response: 409, description: 'Pas de magasin enregistré (message `DRIVE_NOT_CONFIGURED`)')]
     #[OA\Response(response: 422, description: 'Paramètre `retailer` inconnu')]
     #[OA\Response(response: 429, ref: '#/components/responses/DriveReadRateLimited')]
