@@ -4,7 +4,7 @@
 - **Jalon** : M7 Plusieurs enseignes
 - **Taille** : S
 - **Dépend de** : DRV-701
-- **Statut** : fait (PR #XXX, 2026-10-30). Effort recommandé : `high` (touche `deploy/` : `make deploy-smoke`).
+- **Statut** : fait (PR #328, 2026-10-30). Effort recommandé : `high` (touche `deploy/` : `make deploy-smoke`).
 - **Lire d'abord** : [`../multi-enseignes.md`](../multi-enseignes.md) § 7 ; [`../architecture.md`](../architecture.md) § 5.3 (interrupteur) ; DRV-103 (`DRIVE_ENABLED`) ; skill `repas-ops` (`references/drive.md`) ; ADR 0017.
 
 ## Contexte
