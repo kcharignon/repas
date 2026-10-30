@@ -4,7 +4,7 @@
 - **Jalon** : M7 Plusieurs enseignes
 - **Taille** : M
 - **Dépend de** : DRV-712 (savoir comment se choisit le magasin avant de naviguer plus loin)
-- **Statut** : à faire.
+- **Statut** : fait le 2026-10-30 par l'assistant sur le téléphone de test, à la demande du propriétaire (issue #322) : [`../spikes/DRV-713-rapport.md`](../spikes/DRV-713-rapport.md).
 - **Faisable sans téléphone** : **non, et jamais depuis un ordinateur ni un serveur**.
 - **Lire d'abord** : [`../multi-enseignes.md`](../multi-enseignes.md) §§ 11, 12 (inconnues U5, U6) ; [`../recherche.md`](../recherche.md) § 3 (DataDome chez Leclerc) ; [`../hypotheses-site-reel.md`](../hypotheses-site-reel.md) (H12, H13) ; [`../runbook.md`](../runbook.md) (diagnostic).
 

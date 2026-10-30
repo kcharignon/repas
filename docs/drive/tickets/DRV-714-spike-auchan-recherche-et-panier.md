@@ -4,7 +4,7 @@
 - **Jalon** : M7 Plusieurs enseignes
 - **Taille** : M
 - **Dépend de** : DRV-712
-- **Statut** : à faire.
+- **Statut** : fait le 2026-10-30 par l'assistant sur le téléphone de test, à la demande du propriétaire (issue #322) : [`../spikes/DRV-714-rapport.md`](../spikes/DRV-714-rapport.md).
 - **Faisable sans téléphone** : **non, et jamais depuis un ordinateur ni un serveur** (voir DRV-712).
 - **Lire d'abord** : [`../multi-enseignes.md`](../multi-enseignes.md) §§ 11, 12 (inconnues U7 à U12) ; [`../spikes/DRV-007-requete-ajout-panier.md`](../spikes/DRV-007-requete-ajout-panier.md) et [`../recherche.md`](../recherche.md) § 2 (ce qu'on a relevé chez Leclerc, modèle de rapport) ; [`../architecture.md`](../architecture.md) §§ 6, 8 (ce que l'agent exige d'un adaptateur).
 

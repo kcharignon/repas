@@ -1,8 +1,8 @@
 # Plusieurs enseignes de drive : audit du couplage à Leclerc et conception cible
 
-> **En pause depuis le 2026-10-20** (décision de l’utilisateur) : rien de ce document ne se met en œuvre tant qu’il ne l’a pas relancé. Seule règle active : ne pas dépendre de l’implémentation de Leclerc dans le nouveau code.
+> **Lancé le 2026-10-30** : la pause du 2026-10-20 est levée, le propriétaire démarre Auchan (« on va commencer à gérer Auchan »). Les spikes sont faits ([`spikes/DRV-712-rapport.md`](spikes/DRV-712-rapport.md), [713](spikes/DRV-713-rapport.md), [714](spikes/DRV-714-rapport.md)) et la décision est prise : **adaptateur complet** ([`spikes/DRV-715-decision-auchan.md`](spikes/DRV-715-decision-auchan.md)). Faits mesurés : [`hypotheses-site-reel-auchan.md`](hypotheses-site-reel-auchan.md). Les § 11 à 14 ci-dessous gardent le raisonnement d'origine (2026-10-19) ; leur § 11.4 et la décision priment. Règle active : ne jamais dépendre de l'implémentation de Leclerc dans le nouveau code ; Auchan reste **éteint** tant que l'humain ne l'allume pas.
 
-Cadrage du 2026-10-19 (jalon M7 de [`roadmap.md`](roadmap.md)), rédigé par l'assistant de cadrage ; **aucun code de produit n'est écrit ici**. Décision d'architecture : [ADR 0027](../adr/0027-plusieurs-enseignes-de-drive.md) (`Proposed`). Tickets : [`DRV-701` à `DRV-717`](tickets/). État lu : back `main` au commit `556e63f`, front `main` au commit `5b8779f`.
+Cadrage du 2026-10-19 (jalon M7 de [`roadmap.md`](roadmap.md)), rédigé par l'assistant de cadrage ; **aucun code de produit n'est écrit ici**. Décision d'architecture : [ADR 0027](../adr/0027-plusieurs-enseignes-de-drive.md) (`Accepted` le 2026-10-30, amendée le même jour). Tickets : [`DRV-701` à `DRV-717`](tickets/). État lu : back `main` au commit `556e63f`, front `main` au commit `5b8779f`.
 
 ## 1. Le besoin
 
@@ -48,7 +48,7 @@ Les colonnes `retailer` sont des `VARCHAR(20)` (assez pour `auchan`, `intermarch
 | `src/Drive/Infrastructure/Loader/DriveSettingsPostgreSQLLoader.php` l. 16, `DrivePlanPostgreSQLLoader.php` l. 41, `DriveEstimatePostgreSQLLoader.php` l. 38 | `private const Retailer RETAILER = Retailer::LECLERC` (« une seule enseigne pour l'instant : la lecture ne porte pas encore de paramètre `retailer` »). **Les trois seules lectures qui figent Leclerc.** | L'enseigne devient un paramètre de la requête (`GetDrivePlanQuery`, `GetDriveEstimateQuery`, `GetDriveSettingsQuery`). **DRV-701**. |
 | `GET /drive/settings` (`DriveSettingsDTO`) | Une seule enseigne et un seul magasin : `{enabled, retailer, store}`. | Ajouter, sans retirer, la liste des enseignes et la sélection (§ 5.4). **DRV-701**, **DRV-703**. |
 | `GET /drive/plans/{id}`, `GET /drive/estimates/{id}` | Pas de paramètre d'enseigne. | `?retailer=` facultatif (enseigne courante par défaut). **DRV-701**. |
-| `src/Drive/Domain/Model/Store.php` | `baseUrl` obligatoire, validée par la règle d'adresse de l'enseigne ; `id` ≤ 20 caractères. Vrai pour Leclerc (un magasin = une adresse). | Inconnu pour Auchan (§ 11) : **ne pas changer avant le spike DRV-712**. |
+| `src/Drive/Domain/Model/Store.php` | `baseUrl` obligatoire, validée par la règle d'adresse de l'enseigne ; `id` ≤ 20 caractères. Vrai pour Leclerc (un magasin = une adresse). | Auchan : identifiant de magasin **explicite** lu par `GET /journey` (UUID, adresse d'enseigne constante) : décision DRV-715, **DRV-720**. |
 | `src/Drive/Domain/Model/Product.php` l. 27 | `RETAILER_PRODUCT_ID_PATTERN = ^[0-9]{1,12}$` : identifiant de produit **numérique**. Vrai chez Leclerc ; **inconnu** chez Auchan. `EAN_PATTERN` est neutre. | Motif porté par le registre. **DRV-701**. Aussi dans `ProductInput` / `ProductPayload` et la validation de l'agent (`^[0-9]{1,12}$`). |
 | `src/Drive/Domain/Model/DriveSettings.php` | Le compteur du jour des écritures de produits (`productWritesDay/Count`, plafond 5 000 : DRV-613) vit **dans la ligne de réglage**, donc **par utilisateur et par enseigne**. Avec deux enseignes, le plafond quotidien devient 5 000 **par enseigne**. | Décision D-M5 (§ 14) : l'accepter (borne = 5 000 × nombre d'enseignes activées, ce qui reste très petit) et l'écrire dans le test et le skill `repas-drive-back`. **DRV-701**. |
 | OpenAPI : `enum: ['leclerc']` dans `DriveSettingsDTO`, `DrivePlanDTO`, `DriveEstimateDTO`, `DriveSettingsPayload`, `ReplaceIngredientPreferencePayload`, `SaveProductChoicesPayload`, et les deux `OA\Parameter` de `ListChoicesApiController` et `ForgetChoiceApiController` ; exemple d'adresse `…leclercdrive.fr…` dans `DriveStorePayload` et `DriveStoreDTO` ; 14 mentions dans `docs/api/openapi.json`. | Le contrat fige `leclerc`. | L'énumération se déduit du registre (un test garde la concordance), l'exemple devient neutre. **DRV-701**. |
@@ -347,6 +347,22 @@ Ordre conseillé : **701, 704, 708 en parallèle** (trois dépôts ou couches sa
 | U12 | Photos : hôte, forme d'adresse | Photos du choix (DRV-633) | A3 |
 | U13 | Les conditions d'utilisation | **Hors périmètre** (sujet clos par l'utilisateur) | — |
 
+### 11.4 Après les spikes (2026-10-30)
+
+Résultats dans [`spikes/DRV-712-rapport.md`](spikes/DRV-712-rapport.md), [713](spikes/DRV-713-rapport.md), [714](spikes/DRV-714-rapport.md) ; l'état de chaque fait est dans [`hypotheses-site-reel-auchan.md`](hypotheses-site-reel-auchan.md).
+
+| # | Sort | Résultat |
+|---|---|---|
+| A1, A2 | **Confirmés** | Plusieurs modes ; le site demande « un drive ou la livraison » ; le magasin se choisit par code postal, en quatre gestes. |
+| A3 | **Confirmé en partie** | Prix seulement après le choix d'un magasin (oui) ; produits lus dans le DOM et des microdonnées (oui) ; identifiant de produit = **UUID**, pas un SKU numérique ; **EAN** absent de la page de résultats mais présent dans la réponse du panier. |
+| A4 | **Faux pour le site actuel** | DataDome est présent (cookie, balise, `x-datadome: protected`) et un reCAPTCHA Enterprise invisible garde la connexion et la création de compte ; **aucun défi vu** sur une centaine de requêtes (« non observé », pas « absent »). |
+| A5 | **Contredit** | La connexion est un serveur **Keycloak** (`compte.auchan.fr`), pas une chaîne Salesforce visible ; e-mail et mot de passe, Apple, Google. |
+| A6 | **Confirmé, et dépassé** | Pas d'API publique officielle ; mais le site expose un contrat JSON de panier propre (`/cart`, `/cart/update`, `/journey`) que l'agent appelle depuis la page, comme chez Leclerc. |
+| A9 | **Non testé** | Stock selon le mode (drive ou livraison). |
+| A10 | **Confirmé** | Le magasin n'est pas dans l'adresse ; il se lit par `GET /journey`. |
+
+Inconnues : U1 **fermée** (`GET /journey`) · U2 **fermée** (un site adaptatif, pas de mode ordinateur à imposer) · U3 **partielle** (le mode est `channels` ; livraison non relevée) · U4 **fermée** · U5 **fermée** (présent, aucun défi vu) · U6 **ouverte** (WebView : DRV-726) · U7 **fermée** (HTML de `/recherche?text=`) · U8 **fermée** (quantité absolue) · U9 **fermée** (UUID, et un identifiant d'offre) · U10 **partielle** (valeurs « indisponible » non vues) · U11 **fermée** (`GET /cart`) · U12 **fermée** (`cdn.auchan.fr`) · U13 hors périmètre.
+
 ## 12. Les spikes sur téléphone
 
 Règles communes (reprises dans chaque ticket) : **un humain, sur son téléphone, avec son propre compte, jamais depuis un ordinateur ni un serveur** (DataDome a marqué l'adresse de l'utilisateur chez Leclerc) ; **rien d'automatisé** ; à faible cadence ; aucun identifiant, cookie, numéro de magasin, ville ni HTML brut dans le dépôt (public) : on note des **formes**, des **noms de champs**, des **codes** et des **tailles**, avec des exemples inventés. Rapports dans `docs/drive/spikes/DRV-71x-rapport.md`, sur le modèle de [`spikes/DRV-002-rapport.md`](spikes/DRV-002-rapport.md).
@@ -357,6 +373,9 @@ Règles communes (reprises dans chaque ticket) : **un humain, sur son téléphon
 - [DRV-715](tickets/DRV-715-decision-auchan.md) : la décision (adaptateur complet, mode assisté seulement, ou abandon) et la liste des tickets suivants.
 
 ## 13. Ordre par rapport à la fin du drive Leclerc
+
+> **Décision du 2026-10-30** : le propriétaire a lancé Auchan sans attendre la fin de la recette de Leclerc ; le découplage (DRV-701 à 711) et l'adaptateur d'Auchan (DRV-716, 717, 720 à 728) se font en parallèle, **Auchan restant éteint**. Ce qui suit est le raisonnement du 2026-10-19.
+
 
 L'utilisateur a dit « dans le futur, quand le drive Leclerc sera fini ». Le découplage (701 à 711) **ne dépend pas** de la fin de la recette de Leclerc et ne modifie pas son comportement ; l'adaptateur Auchan (716, 717 et suivants) vient après. Les spikes (712 à 714) peuvent se faire à tout moment où l'utilisateur a un quart d'heure : ils ne touchent pas au code. **Recommandation** : faire d'abord les tickets qui **empêchent d'aggraver** (la règle « Ne pas durcir Leclerc » de [`consignes-agents.md`](consignes-agents.md) s'applique dès maintenant à tout ticket en cours), puis 701 → 704 → 708 (peu de risque, beaucoup d'effet) ; garder 706/707 (Android, sensible) pour après la publication stable de la version en cours de l'application.
 
@@ -372,8 +391,11 @@ L'utilisateur a dit « dans le futur, quand le drive Leclerc sera fini ». Le d�
 | D-M6 | Un profil de WebView par enseigne, pour que « Se déconnecter de … » n'efface qu'une enseigne | Non |
 | D-M7 | `Store` n'est pas modifié avant le spike A1 | Non |
 | D-M8 | La liste `SENT` ne porte pas l'enseigne | Non |
-| Q1 | Le drive Auchan visé est **auchan.fr (France)** seulement (pas Luxembourg, Portugal…) | Oui, si ce n'est pas le cas |
-| Q2 | Faut-il garder « Chercher à la main » (mode assisté) pour Auchan si l'automatisation est impossible ? Le registre le permet (enseigne sans adaptateur d'agent, avec lien de recherche) | À la décision DRV-715 |
+| Q1 | Le drive Auchan visé est **auchan.fr (France)** seulement (pas Luxembourg, Portugal…) | **Tenue par défaut** (les spikes ont été faits sur `auchan.fr`) ; à corriger si ce n'est pas le cas |
+| Q2 | Faut-il garder « Chercher à la main » (mode assisté) pour Auchan si l'automatisation est impossible ? | **Tranchée le 2026-10-30 : non**, adaptateur complet (DRV-715). Le mode assisté reste possible comme repli si DRV-726 prouve qu'une connexion en WebView est impossible |
+| D-M9 | `Store` d'Auchan : identifiant explicite (UUID lu par `GET /journey`), adresse d'enseigne constante, colonnes `store_id` élargies à 40 (DRV-720) | Non (architecture) |
+| D-M10 | Un produit d'Auchan porte un identifiant d'**offre** facultatif en plus de son identifiant (DRV-721, 722) | Non |
+| D-M11 | Le pont et l'agent ne sont injectés que sur `www.auchan.fr`, jamais sur `compte.auchan.fr` (page du mot de passe) (DRV-728) | Non (sécurité) |
 
 ## 15. Sources
 

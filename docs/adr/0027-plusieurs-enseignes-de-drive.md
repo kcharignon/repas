@@ -1,6 +1,6 @@
 # 0027 — Plusieurs enseignes de drive : registre par couche, une enseigne choisie d'après les réglages, interrupteur par enseigne
 
-- **Statut** : Proposed
+- **Statut** : Accepted (2026-10-30), amendée le même jour
 - **Date** : 2026-10-19
 - **Liens** : analyse et plan [`docs/drive/multi-enseignes.md`](../drive/multi-enseignes.md), tickets [`DRV-701` à `DRV-717`](../drive/roadmap.md) (jalon M7) ; [0022](0022-remplissage-du-panier-drive.md) (invariants de l'agent), [0023](0023-liste-envoyee-au-drive.md) (liste `SENT`), [0013](0013-agregats-references-par-identifiant.md) (identifiants), [0017](0017-deploiement-et-releases.md) (l'humain approuve) ; [`docs/drive/architecture.md`](../drive/architecture.md) §§ 5, 7, 8, 12 ; dépôt front : ADR 0008, `drive-agent/protocol/README.md`, `android/ARCHITECTURE.md`
 
@@ -22,7 +22,7 @@ Le propriétaire a demandé le 2026-10-19 que, **quand le drive Leclerc sera fin
 8. **Compatibilité (protocole v1, ajouts facultatifs seulement).** `retailer` du plan devient une énumération qui commence par `leclerc` seul ; l'hôte d'un magasin se valide par enseigne. `app.info` gagne un champ facultatif `retailers` ; absent, il vaut `['leclerc']`. Le web n'envoie un plan que pour une enseigne que l'application annonce ; l'application refuse tout plan d'une enseigne qu'elle ne connaît pas. Le résultat de l'agent ne change pas. Ordre de publication : back, site web, application, puis l'humain allume l'enseigne.
 9. **La liste `SENT` ne porte pas l'enseigne** ([0023](0023-liste-envoyee-au-drive.md) inchangée) ; le plan, l'estimation et les choix se demandent pour une enseigne (`?retailer=`). Le brouillon de passage et le retour portent l'enseigne.
 10. **Sécurité par enseigne.** L'application ne livre un plan qu'à l'agent d'une page de **l'enseigne du plan** ; les origines du pont et les règles de navigation sont celles de chaque enseigne activée, jamais un joker commun. Les invariants de [0022](0022-remplissage-du-panier-drive.md) valent pour chaque enseigne séparément. Chaque enseigne a son profil de WebView : se déconnecter d'une enseigne n'efface pas l'autre.
-11. **`Store` n'est pas modifié avant que la forme du magasin d'Auchan soit connue** (spike DRV-712). Aucun adaptateur Auchan n'est écrit avant la décision DRV-715.
+11. ~~`Store` n'est pas modifié avant que la forme du magasin d'Auchan soit connue.~~ **Remplacée par l'amendement du 2026-10-30** (ci-dessous) : les spikes ont fixé la forme du magasin d'Auchan.
 12. **Le tout ne change aucun comportement visible tant qu'il n'y a qu'une enseigne**, ce que chaque ticket prouve en rejouant le parcours existant.
 
 ## Conséquences
@@ -43,3 +43,13 @@ Le propriétaire a demandé le 2026-10-19 que, **quand le drive Leclerc sera fin
 - **Un profil de WebView commun** : « Se déconnecter de … » effacerait tout.
 - **Généraliser `Store` tout de suite** (adresse facultative, magasin lu dans la page) : spéculer sur un site qu'on n'a pas observé.
 - **Écrire l'adaptateur Auchan avant les spikes** : l'anti-robot et la forme du magasin d'Auchan sont inconnus ; la leçon du chantier Leclerc (hypothèses non mesurées, corrigées à la recette) s'applique.
+
+## Amendement du 2026-10-30 : Auchan, adaptateur complet
+
+Le propriétaire a lancé Auchan (« on va commencer à gérer Auchan »). Les spikes DRV-712 à 714 ont été faits le jour même sur le téléphone de test ([`docs/drive/spikes/`](../drive/spikes/DRV-715-decision-auchan.md)) et la décision DRV-715 est **adaptateur complet**. Ce qui change dans cet ADR :
+
+- **Décision 11 remplacée.** `Store` accepte deux sources d'identifiant par enseigne : `URL` (Leclerc : déduit de l'adresse du magasin, inchangé) et `EXPLICIT` (Auchan : identifiant **UUID** lu par l'agent dans le parcours du site, `GET /journey`, avec une adresse d'enseigne **constante** `https://www.auchan.fr/`). L'identifiant de magasin passe de 20 à **40** caractères (migration d'élargissement, compatible avec la version précédente du code). DRV-720.
+- **Un produit peut avoir un identifiant d'offre** (facultatif, absent pour Leclerc) en plus de son identifiant : champ facultatif du plan et du résultat, colonne facultative. DRV-721, 722. Les ajouts au protocole restent facultatifs (décision 8).
+- **Sécurité par enseigne précisée** (décision 10) : pour Auchan, l'application autorise la navigation sur `www.auchan.fr` **et** `compte.auchan.fr` (connexion), mais le pont `repasHost` et l'agent ne sont injectés que sur `https://www.auchan.fr`, **jamais** sur la page du mot de passe. DRV-728.
+- **Auchan reste éteint** (`DRIVE_RETAILERS` ne le contient pas) jusqu'à la recette réelle (DRV-726), que seul l'humain déclenche. **Alternatives écartées** : le mode assisté seul (le contrat du panier d'Auchan est propre et absolu) ; un identifiant de magasin déduit d'une adresse (il n'y en a pas) ; une règle d'origine large `*.auchan.fr` pour le pont.
+- **Risque gardé ouvert** : la connexion dans la WebView de l'application (reCAPTCHA Enterprise invisible, formulaire Keycloak) n'est pas prouvée ; si elle est impossible, le repli est un mode assisté ou une connexion dans le navigateur du téléphone.

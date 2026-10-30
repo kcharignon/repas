@@ -4,7 +4,7 @@
 - **Jalon** : M7 Plusieurs enseignes
 - **Taille** : S
 - **Dépend de** : DRV-712, DRV-713, DRV-714
-- **Statut** : à faire. Effort recommandé : `medium`.
+- **Statut** : fait (2026-10-30) : [`../spikes/DRV-715-decision-auchan.md`](../spikes/DRV-715-decision-auchan.md), décision « adaptateur complet ».
 - **Lire d'abord** : les trois rapports ; [`../multi-enseignes.md`](../multi-enseignes.md) § 11 ; [`DRV-005`](DRV-005-synthese-decision-g1.md) (même forme de décision) ; [ADR 0022](../../adr/0022-remplissage-du-panier-drive.md).
 
 ## Contexte
