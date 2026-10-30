@@ -271,11 +271,11 @@ Lecture : `erreurs` > 0 : réseau ou réponses d'erreur du site ; `blocages` > 0
 
 ## 15. « Auchan a changé » (squelette, à compléter par DRV-726)
 
-Auchan est déclarée dans le registre du back (DRV-716) mais **éteinte** : `DRIVE_RETAILERS` ne la contient pas (par défaut `leclerc`). Tant qu'elle est éteinte, aucun utilisateur ne la voit (`404 DRIVE_RETAILER_DISABLED`, absente de `retailers`) et il n'y a rien à réparer côté utilisateur.
+Auchan est déclarée dans le registre du back (DRV-716) mais **éteinte** : `DRIVE_RETAILERS` ne la contient pas (par défaut `leclerc`). Tant qu'elle est éteinte, aucun utilisateur ne la voit (`404 DRIVE_RETAILER_DISABLED`, absente de `retailers`) et il n'y a rien à réparer côté utilisateur. **L'application publiée la sert et l'annonce depuis DRV-738** : le back reste l'interrupteur, annoncer n'est pas proposer. Ordre de mise en service : back, site, application publiée, puis **allumage par l'humain** (`ecrire-drive-retailers.sh`, `bash -s -- leclerc,auchan`).
 
 Ce qui est déjà vrai et vaut pour la suite (le reste viendra avec l'adaptateur et sa recette réelle, DRV-726) :
 
-- **Couper Auchan seule** : la retirer de `DRIVE_RETAILERS`, comme décrit en § 4 « Couper une seule enseigne » ; Leclerc ne bouge pas, les réglages, produits et préférences d'Auchan restent en base.
+- **Couper Auchan seule** : la retirer de `DRIVE_RETAILERS`, comme décrit en § 4 « Couper une seule enseigne » ; Leclerc ne bouge pas, les réglages, produits et préférences d'Auchan restent en base. **Retour arrière** : `bash -s -- leclerc` avec `ecrire-drive-retailers.sh` ; Auchan disparaît des candidates sans toucher à l'application (qui continue de l'annoncer), et les listes envoyées chez Auchan se rouvrent comme les autres.
 - **Identifiants** : le magasin, les produits et les offres d'Auchan sont des UUID en minuscules (`docs/drive/hypotheses-site-reel-auchan.md`) ; une valeur qui n'en a pas la forme est refusée (`422 DRIVE_STORE_INVALID` ou `DRIVE_CHOICE_INVALID`).
 - **Contrat** : la forme des identifiants et l'adresse constante d'Auchan sont dans `docs/drive/samples/retailers.sample.json`.
 
