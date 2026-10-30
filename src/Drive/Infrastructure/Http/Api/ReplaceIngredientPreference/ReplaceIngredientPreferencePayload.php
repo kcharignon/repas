@@ -5,6 +5,7 @@ namespace Repas\Drive\Infrastructure\Http\Api\ReplaceIngredientPreference;
 
 use OpenApi\Attributes as OA;
 use Repas\Drive\Domain\Model\Retailer;
+use Repas\Drive\Domain\Model\Store;
 use Symfony\Component\Validator\Constraints as Assert;
 
 /**
@@ -22,7 +23,7 @@ final readonly class ReplaceIngredientPreferencePayload
         #[OA\Property(description: 'Enseigne du drive', enum: Retailer::IDS, example: 'leclerc')]
         public Retailer $retailer,
         #[Assert\NotBlank]
-        #[Assert\Length(max: 20)]
+        #[Assert\Length(max: Store::ID_MAX_LENGTH)]
         #[OA\Property(description: "Magasin des produits : doit être le magasin courant des réglages de l'utilisateur", example: '123456')]
         public string $storeId,
         #[OA\Property(description: "Vrai pour « j'en ai toujours » : `accepted` et `rejected` doivent alors être vides", example: false)]

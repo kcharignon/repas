@@ -19,7 +19,7 @@ class DriveSettings
     #[ORM\Column(type: Types::STRING, length: 20)]
     private string $retailer;
 
-    #[ORM\Column(name: 'store_id', type: Types::STRING, length: 20)]
+    #[ORM\Column(name: 'store_id', type: Types::STRING, length: 40)]
     private string $storeId;
 
     #[ORM\Column(name: 'store_label', type: Types::STRING, length: 255, nullable: true)]

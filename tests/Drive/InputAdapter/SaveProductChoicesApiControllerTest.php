@@ -441,6 +441,7 @@ class SaveProductChoicesApiControllerTest extends QueryBusWebTestCase
         yield 'enseigne inconnue' => [['retailer' => 'auchan', 'storeId' => '123456', 'choices' => []]];
         yield 'sans magasin' => [['retailer' => 'leclerc', 'choices' => []]];
         yield 'magasin vide' => [['retailer' => 'leclerc', 'storeId' => '', 'choices' => []]];
+        yield 'magasin de plus de 40 caractères' => [['retailer' => 'leclerc', 'storeId' => str_repeat('1', 41), 'choices' => []]];
         yield 'sans lot' => [['retailer' => 'leclerc', 'storeId' => '123456']];
         yield 'lot qui n\'est pas une liste' => [['retailer' => 'leclerc', 'storeId' => '123456', 'choices' => 'farine']];
         yield 'plus de 200 intentions' => [['retailer' => 'leclerc', 'storeId' => '123456', 'choices' => array_fill(0, 201, ['ingredientSlug' => 'sel', 'action' => 'HAVE_AT_HOME'])]];

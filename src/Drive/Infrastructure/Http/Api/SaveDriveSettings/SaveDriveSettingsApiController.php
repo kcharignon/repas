@@ -34,7 +34,7 @@ final class SaveDriveSettingsApiController extends AbstractController
     #[OA\RequestBody(required: true, content: new OA\JsonContent(ref: new Model(type: DriveSettingsPayload::class)))]
     #[OA\Response(response: 204, description: 'Magasin enregistré')]
     #[OA\Response(response: 404, description: 'Fonction drive coupée (message `DRIVE_DISABLED`)')]
-    #[OA\Response(response: 422, description: "Corps invalide, ou magasin refusé (message `DRIVE_STORE_INVALID`) : adresse qui n'est pas celle d'un magasin de l'enseigne, identifiant différent de celui de l'adresse")]
+    #[OA\Response(response: 422, description: "Corps invalide, ou magasin refusé (message `DRIVE_STORE_INVALID`) : adresse qui n'est pas celle d'un magasin de l'enseigne, identifiant qui n'a pas la forme de l'enseigne ou, quand il se déduit de l'adresse, différent de celui de l'adresse")]
     #[OA\Response(response: 429, ref: '#/components/responses/DriveWriteRateLimited')]
     public function __invoke(#[CurrentUser] AuthenticatedUser $user, #[MapRequestPayload] DriveSettingsPayload $payload): Response
     {

@@ -89,7 +89,7 @@ class SaveDriveSettingsApiControllerTest extends QueryBusWebTestCase
         yield 'magasin qui n\'est pas un objet' => [['retailer' => 'leclerc', 'store' => '123456']];
         yield 'sans identifiant' => [['retailer' => 'leclerc', 'store' => ['baseUrl' => self::URL]]];
         yield 'identifiant vide' => [['retailer' => 'leclerc', 'store' => ['id' => '', 'baseUrl' => self::URL]]];
-        yield 'identifiant de plus de 20 caractères' => [['retailer' => 'leclerc', 'store' => ['id' => str_repeat('1', 21), 'baseUrl' => self::URL]]];
+        yield 'identifiant de plus de 40 caractères' => [['retailer' => 'leclerc', 'store' => ['id' => str_repeat('1', 41), 'baseUrl' => self::URL]]];
         yield 'sans adresse' => [['retailer' => 'leclerc', 'store' => ['id' => '123456']]];
         yield 'adresse vide' => [['retailer' => 'leclerc', 'store' => ['id' => '123456', 'baseUrl' => '']]];
         yield 'adresse de plus de 255 caractères' => [['retailer' => 'leclerc', 'store' => ['id' => '123456', 'baseUrl' => str_repeat('a', 256)]]];

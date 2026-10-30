@@ -24,7 +24,7 @@ class Product
     #[ORM\Column(type: Types::STRING, length: 20)]
     public string $retailer;
 
-    #[ORM\Column(name: 'store_id', type: Types::STRING, length: 20)]
+    #[ORM\Column(name: 'store_id', type: Types::STRING, length: 40)]
     public string $storeId;
 
     #[ORM\Column(name: 'retailer_product_id', type: Types::STRING, length: 40)]

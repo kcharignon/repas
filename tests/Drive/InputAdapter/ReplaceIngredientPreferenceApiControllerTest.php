@@ -83,7 +83,7 @@ class ReplaceIngredientPreferenceApiControllerTest extends QueryBusWebTestCase
         }
         yield 'enseigne inconnue' => [['retailer' => 'auchan'] + $valid];
         yield 'magasin vide' => [['storeId' => ''] + $valid];
-        yield 'magasin trop long' => [['storeId' => str_repeat('1', 21)] + $valid];
+        yield 'magasin de plus de 40 caractères' => [['storeId' => str_repeat('1', 41)] + $valid];
         yield 'haveAtHome pas un booléen' => [['haveAtHome' => 'oui'] + $valid];
         yield 'identifiant pas une chaîne' => [['accepted' => [12]] + $valid];
         yield 'identifiant vide' => [['rejected' => ['']] + $valid];

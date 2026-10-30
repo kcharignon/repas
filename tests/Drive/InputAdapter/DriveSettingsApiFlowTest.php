@@ -123,6 +123,42 @@ class DriveSettingsApiFlowTest extends DatabaseTestCase
         $this->assertSame(0, (int) $this->entityManager->getConnection()->fetchOne('SELECT COUNT(*) FROM drive_settings'));
     }
 
+    public function testTheRulesOfTheRetailerStillDecideWhichIdsAreAcceptedWhateverTheWidthOfTheColumns(): void
+    {
+        // Given : les colonnes font 40 caractères (DRV-720), mais l'identifiant de cette enseigne se déduit de l'adresse, en 1 à 20 chiffres
+        $user = $this->savedUser();
+        $twentyOne = str_repeat('1', 21);
+        $uuid = '0b5f8a2e-3c1d-4e7f-9a6b-123456789abc';
+
+        // When / Then : 21 chiffres et l'adresse qui les porte, un identifiant de 36 caractères, un identifiant de 40 chiffres : 422, rien d'enregistré
+        foreach ([
+            ['id' => $twentyOne, 'baseUrl' => 'https://exemple.leclercdrive.fr/magasin-' . $twentyOne . '-1'],
+            ['id' => $uuid, 'baseUrl' => self::URL],
+            ['id' => $uuid, 'baseUrl' => 'https://exemple.leclercdrive.fr/magasin-' . $uuid . '-1'],
+            ['id' => str_repeat('1', 40), 'baseUrl' => 'https://exemple.leclercdrive.fr/magasin-' . str_repeat('1', 40) . '-1'],
+        ] as $store) {
+            $this->request('PUT', $user, ['retailer' => 'leclerc', 'store' => $store]);
+            $this->assertSame(422, $this->client->getResponse()->getStatusCode(), $store['id']);
+            $this->assertSame(['error' => ['message' => 'DRIVE_STORE_INVALID']], $this->jsonBody());
+        }
+        $this->assertSame(0, (int) $this->entityManager->getConnection()->fetchOne('SELECT COUNT(*) FROM drive_settings'));
+
+        // When : 20 chiffres, la limite d'avant
+        $twenty = str_repeat('1', 20);
+        $this->request('PUT', $user, ['retailer' => 'leclerc', 'store' => ['id' => $twenty, 'baseUrl' => 'https://exemple.leclercdrive.fr/magasin-' . $twenty . '-1']]);
+
+        // Then
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->request('GET', $user);
+        $this->assertSame($twenty, $this->jsonBody()['store']['id']);
+
+        // When : plus de 40 caractères, le corps lui-même est refusé
+        $this->request('PUT', $user, ['retailer' => 'leclerc', 'store' => ['id' => str_repeat('1', 41), 'baseUrl' => self::URL]]);
+
+        // Then
+        $this->assertSame(422, $this->client->getResponse()->getStatusCode());
+    }
+
     public function testWithTheSwitchOffTheGetAnswersEnabledFalseAndThePutAnswers404(): void
     {
         // Given : le noyau est gardé entre les deux requêtes, sinon l'interrupteur posé serait perdu au redémarrage

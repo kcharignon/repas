@@ -32,7 +32,7 @@ class ForgetChoiceApiControllerTest extends QueryBusWebTestCase
         $commandBus = $this->mockCommandBus();
 
         // When / Then
-        foreach (['', '?retailer=leclerc', '?storeId=123456', '?retailer=auchan&storeId=123456', '?retailer=leclerc&storeId=', '?retailer=leclerc&storeId=' . str_repeat('1', 21)] as $query) {
+        foreach (['', '?retailer=leclerc', '?storeId=123456', '?retailer=auchan&storeId=123456', '?retailer=leclerc&storeId=', '?retailer=leclerc&storeId=' . str_repeat('1', 41)] as $query) {
             $this->client->request('DELETE', '/api/v1/drive/choices/farine' . $query, server: $this->bearerFor($user));
             $this->assertSame(422, $this->client->getResponse()->getStatusCode(), $query);
         }
