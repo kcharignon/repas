@@ -4,7 +4,7 @@
 - **Jalon** : M7 Plusieurs enseignes
 - **Taille** : M
 - **Dépend de** : DRV-703, DRV-708
-- **Statut** : à faire. Effort recommandé : `high`.
+- **Statut** : fait (PR front #255, 2026-10-30). Avec une seule enseigne servie, l'écran est **identique** (DOM comparé à `main` dans trois états) ; « Choisir mon magasin {nom} » remplace « Ajouter {nom} » du § 5.3 pour un drive sans magasin ; `PUT /drive/last-retailer` revient à DRV-710. Effort recommandé : `high`.
 - **Lire d'abord** : [`../multi-enseignes.md`](../multi-enseignes.md) §§ 4.4, 5 ; [`../principes-produit.md`](../principes-produit.md) (règles 1, 2, 3, 6, 10 ; glossaire) ; skills `repas-front-dev` et `repas-po` ; DRV-403, 622, 623 (un seul geste pour le magasin).
 
 ## Contexte

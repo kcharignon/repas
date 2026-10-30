@@ -4,7 +4,7 @@
 - **Jalon** : M7 Plusieurs enseignes
 - **Taille** : M
 - **Dépend de** : DRV-704, DRV-708, DRV-716 (le contrat à jour), DRV-722
-- **Statut** : à faire. Effort recommandé : `high`.
+- **Statut** : fait (PR front #253, 2026-10-30, agent 0.48.0). Le point 4 (« Mets à jour l'application pour envoyer ta liste à {retailer} », et le garde-fou `app.info.retailers`) est **reporté sur DRV-710** ; `appName` d'Auchan (« Auchan ») est une hypothèse à confirmer ; le protocole de Leclerc borne l'identifiant de magasin à 12 chiffres alors que le contrat en admet 20 (écart ancien, à trancher) ; `storeTail` (3 derniers caractères) s'appliquera à un UUID. Effort recommandé : `high`.
 - **Lire d'abord** : [`../spikes/DRV-715-decision-auchan.md`](../spikes/DRV-715-decision-auchan.md) ; [`../hypotheses-site-reel-auchan.md`](../hypotheses-site-reel-auchan.md) ; [`../multi-enseignes.md`](../multi-enseignes.md) §§ 4, 8 ; skills `repas-front-dev`, `repas-agent-dev`, `repas-po` (textes des conditions d'utilisation).
 
 ## Portée
