@@ -45,3 +45,7 @@ Celle du dépôt front et du skill `repas-android-dev` ; `android/README.md` (co
 - `addWebMessageListener` doit être posé avant le premier chargement, avec les origines de **l'enseigne de l'écran**.
 - Sans profils (WebView ancienne), tout est mêlé à Repas : le message de déconnexion le dit déjà ; il doit rester vrai pour toutes les enseignes.
 - Ne pas faire dépendre `retailers` d'un numéro de version : c'est une capacité (D-M2, § 8).
+
+## Reste laissé par DRV-706 (2026-10-30)
+
+L'application appelle encore les formes sans enseigne (zéro changement de comportement). À brancher ici : passer `site` partout (`PassRequest`, `OpeningWatch.canDeliver(request, url)`, `SetupRequest.of(runId, site)`, `DriveEntry.startPage(url, site)`) ; un `KeyValueStore` sur la préférence `drive-store` pour `StorePathMemories` / `FinalizeOutcomeMemories` (clés `path.<id>`, `finalize.<id>`, l'ancienne clé unique relue comme celle de `leclerc`) ; `android/emulator/e2e.sh` (lignes ~721 et ~798 : clé `finalize` devient `finalize.leclerc`) ; remplacer le `!NavigationPolicy.isAllowed(url)` d'`AgentHost.onPageFinished` par `site.isBridgePage`.
