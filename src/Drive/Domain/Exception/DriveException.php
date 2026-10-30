@@ -22,8 +22,8 @@ final class DriveException extends DomainException
     public const string SHOPPING_LIST_FORBIDDEN = 'SHOPPING_LIST_FORBIDDEN';
 
     /**
-     * Magasin refusé : adresse qui n'est pas celle d'un magasin de l'enseigne, identifiant différent de celui de l'adresse,
-     * ou valeur trop longue. Règle métier, `422`.
+     * Magasin refusé : adresse qui n'est pas celle d'un magasin de l'enseigne, identifiant qui n'a pas la forme de l'enseigne ou
+     * (quand il se déduit de l'adresse) différent de celui de l'adresse, ou valeur trop longue. Règle métier, `422`.
      */
     public static function storeInvalid(): self
     {

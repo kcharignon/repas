@@ -6,6 +6,7 @@ namespace Repas\Tests\Drive\Domain;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Repas\Drive\Domain\Model\Retailer;
+use Repas\Drive\Domain\Model\StoreIdSource;
 
 class RetailerTest extends TestCase
 {
@@ -99,13 +100,19 @@ class RetailerTest extends TestCase
             $this->assertNotSame('', $profile->name);
             $this->assertStringEndsWith($profile->name, $profile->nameDe);
             $this->assertTrue($retailer->isValidStoreUrl($profile->storeAddressExample));
-            foreach ([$profile->storeAddressPattern, $profile->productIdPattern] as $pattern) {
+            foreach ([$profile->storeAddressPattern, $profile->productIdPattern, $profile->storeIdPattern] as $pattern) {
                 // Motifs du contrat : ancrés, sans `\d` ni construction propre à PCRE (le web, l'agent et l'application les compilent aussi)
                 $this->assertStringStartsWith('^', $pattern);
                 $this->assertStringEndsWith('$', $pattern);
                 $this->assertDoesNotMatchRegularExpression('/\\\\d|\(\?/', $pattern);
             }
             $this->assertSame($profile->storeIdOf($profile->storeAddressExample), $retailer->storeIdOf($profile->storeAddressExample));
+            // L'identifiant du magasin d'exemple a la forme annoncée (déduit de l'adresse : celui qu'elle donne ; explicite : aucun exemple à comparer)
+            if ($profile->storeIdSource === StoreIdSource::URL) {
+                $this->assertTrue($retailer->isValidStoreId((string) $retailer->storeIdOf($profile->storeAddressExample)));
+            } else {
+                $this->assertNull($retailer->storeIdOf($profile->storeAddressExample));
+            }
         }
     }
 
@@ -118,6 +125,33 @@ class RetailerTest extends TestCase
         $this->assertSame('Leclerc', $profile->name);
         $this->assertSame('de Leclerc', $profile->nameDe);
         $this->assertSame('^[0-9]{1,12}$', $profile->productIdPattern);
+        // DRV-720 : l'identifiant du magasin se déduit de l'adresse, en 1 à 20 chiffres (ce que `Store::create` acceptait déjà)
+        $this->assertSame(StoreIdSource::URL, $profile->storeIdSource);
+        $this->assertSame('^[0-9]{1,20}$', $profile->storeIdPattern);
+    }
+
+    /**
+     * @return iterable<string, array{string, bool}>
+     */
+    public static function storeIds(): iterable
+    {
+        yield 'un chiffre' => ['1', true];
+        yield 'six chiffres' => ['123456', true];
+        yield 'zéros initiaux' => ['000042', true];
+        yield 'vingt chiffres' => [str_repeat('1', 20), true];
+        yield 'vingt et un chiffres' => [str_repeat('1', 21), false];
+        yield 'un identifiant de 36 caractères' => ['0b5f8a2e-3c1d-4e7f-9a6b-123456789abc', false];
+        yield 'vide' => ['', false];
+        yield 'lettre' => ['12a', false];
+        yield 'espace' => [' 12', false];
+        yield 'retour à la ligne final' => ["12\n", false];
+        yield 'chiffres arabes-indiens' => ["\u{0661}\u{0662}", false];
+    }
+
+    #[DataProvider('storeIds')]
+    public function testTheStoreIdMustHaveTheFormOfTheRetailer(string $id, bool $valid): void
+    {
+        $this->assertSame($valid, Retailer::LECLERC->isValidStoreId($id));
     }
 
     /**
