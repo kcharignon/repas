@@ -129,7 +129,7 @@ L'audit ci-dessus compte le parcours d'**une** enseigne. Avec plusieurs (règle 
 | Situation | Touches par rapport au § 1 | Pourquoi |
 |---|---|---|
 | **Un drive** configuré (tous les utilisateurs aujourd'hui, Auchan éteinte) | **inchangé** (0 en plus) | R1 et R2 : aucune question, aucun écran de plus ; critère de réussite du découplage |
-| **Deux drives, un drive habituel** choisi dans « Moi » | inchangé ; **+1** seulement pour « Envoyer ailleurs » | R3 : le drive habituel est utilisé sans rien demander |
+| **Deux drives, un drive habituel** choisi dans « Moi » | **+1 à chaque envoi** (la question « Où envoyer ta liste ? », amendement du 2026-10-30, DRV-736) | R3 amendée : plusieurs drives = toujours la question, le drive habituel est la présélection |
 | **Deux drives, pas de drive habituel** | **+1** : « Ouvrir {nom} » à l'écran d'envoi, après la confirmation d'envoi, **si la présélection convient** (dernière enseigne utilisée) ; **+2** pour en changer (toucher l'autre tuile, puis « Ouvrir {nom} ») | R4 : la présélection coûte une touche de confirmation, jamais une question à deux étapes |
 | Première configuration avec plusieurs enseignes proposées | **+1** (« Quel drive utilises-tu ? », une tuile par enseigne), puis la lecture du magasin | R1 : seulement quand aucune n'est configurée et que plusieurs sont allumées |
 
