@@ -4,7 +4,7 @@
 - **Jalon** : M7 Plusieurs enseignes
 - **Taille** : M
 - **Dépend de** : DRV-701 (le contrat `retailers.sample.json` à recopier)
-- **Statut** : à faire. Effort recommandé : `high`.
+- **Statut** : fait (PR front #247, 2026-10-30, agent 0.45.0). Effort recommandé : `high`.
 - **Lire d'abord** : [`../multi-enseignes.md`](../multi-enseignes.md) §§ 3.4, 4.3, 8 ; [`../architecture.md`](../architecture.md) §§ 8, 12 ; `drive-agent/protocol/README.md` ; `.claude/skills/repas-agent-dev/SKILL.md` (règles de sécurité, construction reproductible, protocole v1) ; DRV-302, DRV-303.
 
 ## Contexte
