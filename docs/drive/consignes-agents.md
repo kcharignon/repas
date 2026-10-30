@@ -78,3 +78,17 @@ Une deuxième enseigne (Auchan) viendra après la fin du drive Leclerc : [`multi
 - **`adb shell am force-stop` juste après un renouvellement de session fait perdre la session** (le cookie renouvelé n'est pas encore écrit). L'usage réel n'est pas concerné, car `MainActivity` vide les cookies à la mise en arrière-plan : ne pas le refaire pendant les tests sur téléphone.
 - **Les téléphones sont toujours nommés** : test, kantin, bich (jamais « les deux téléphones »).
 - **Le téléphone de test est connecté au compte de l'utilisateur (l'administrateur)** : il ne prouve rien sur un compte migré ou sans droits particuliers.
+
+## Où ajouter une enseigne, et ce qu'il ne faut pas faire (DRV-711)
+
+Une enseigne se **déclare dans le registre de chaque couche**, puis se **mesure** sur son vrai site avant d'être allumée. Où, par couche (détail : [`architecture.md`](architecture.md) § 13, skill de la couche) :
+
+| Couche | Registre (seul endroit qui nomme l'enseigne) | Skill |
+|---|---|---|
+| Back | `Retailer` et `RetailerProfile` (`src/Drive/Domain/Model/`), contrat `samples/retailers.sample.json` | `repas-drive-back` § 10 |
+| Web | `src/features/drive/retailers.ts` (accueil, règle d'adresse, nom et forme avec « de »), section `driveTerms.retailers.<id>` de `fr.ts` | `repas-front-dev` |
+| Agent | le dossier de l'enseigne `drive-agent/src/<id>/` (adaptateur, causes, textes), son entrée dans `drive-agent/src/retailers/index.ts` et son motif d'hôte dans `protocol/check.ts` | `repas-agent-dev` |
+| Application | `RetailerSite` et la seule liste `RetailerSites` (`android/core`), puis `AgentHost` et `DriveProfile` (`android/app`) | `repas-android-dev` |
+| Exploitation | `DRIVE_RETAILERS`, runbook § 16, recette partie 20 | `repas-ops` (`references/drive.md` § E) |
+
+Ce qu'un ticket d'enseigne **ne fait pas** : durcir Leclerc (voir plus haut), recopier Leclerc pour décrire une autre enseigne (la source de ce qu'on sait est `hypotheses-site-reel-<enseigne>.md`, avec sa légende mesuré / supposé / inconnu), écrire un fait non mesuré comme vrai, allumer l'enseigne (acte de l'humain, après la recette réelle), ouvrir le site de l'enseigne (interdit absolu ci-dessus), ou changer le comportement d'une autre enseigne (la preuve : ses tests passent sans modification).

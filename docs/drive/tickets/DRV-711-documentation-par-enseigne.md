@@ -4,7 +4,7 @@
 - **Jalon** : M7 Plusieurs enseignes
 - **Taille** : S
 - **Dépend de** : DRV-701 à DRV-710 (au fil de l'eau : chaque ticket met à jour ce qu'il change, ce ticket vérifie l'ensemble)
-- **Statut** : à faire. Effort recommandé : `medium` (documentation).
+- **Statut** : fait (PR back et PR front du 2026-10-30). Effort recommandé : `medium` (documentation).
 - **Lire d'abord** : [`../multi-enseignes.md`](../multi-enseignes.md) § 3.6 ; [`../runbook.md`](../runbook.md) ; [`../recette.md`](../recette.md) ; [`../hypotheses-site-reel.md`](../hypotheses-site-reel.md) ; skills `repas-ops`, `repas-drive-back`, `repas-agent-dev`, `repas-android-dev`, `repas-front-dev`, `repas-po`.
 
 ## Contexte

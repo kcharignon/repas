@@ -121,3 +121,16 @@ Le PO a fait rejouer le chemin heureux à 360 px par un agent de revue (lecture 
 - « Android System WebView » à l'écran quand le composant est absent : c'est le nom de ce qu'il faut mettre à jour, gardé.
 - Espaces insécables dans les guillemets (un « ». » seul en début de ligne à 360 px), phrases de vie privée de plus de 15 mots hors parcours, cibles tactiles de Repas sous 44 px hors parcours Drive (cases des articles, liens « Mes listes » et « Moi ») : au backlog.
 - Le bandeau de lecture du magasin ne dit pas de toucher « Commencer mes courses » (l'agent n'affiche « Utiliser ce magasin ? » que sur une page de magasin) : relevé de la simulation, à vérifier sur le vrai site (DRV-625).
+
+## 8. Plusieurs enseignes : relevé de touches (DRV-711, à confirmer à la recette d'Auchan)
+
+L'audit ci-dessus compte le parcours d'**une** enseigne. Avec plusieurs (règle de choix de [`multi-enseignes.md`](multi-enseignes.md) § 5.1), le relevé attendu est le suivant ; c'est un **objectif de conception**, mesuré seulement après la recette réelle d'Auchan (DRV-726), sur le même parcours que le § 1.
+
+| Situation | Touches par rapport au § 1 | Pourquoi |
+|---|---|---|
+| **Un drive** configuré (tous les utilisateurs aujourd'hui, Auchan éteinte) | **inchangé** (0 en plus) | R1 et R2 : aucune question, aucun écran de plus ; critère de réussite du découplage |
+| **Deux drives, un drive habituel** choisi dans « Moi » | inchangé ; **+1** seulement pour « Envoyer ailleurs » | R3 : le drive habituel est utilisé sans rien demander |
+| **Deux drives, pas de drive habituel** | **+1** : « Ouvrir {nom} » à l'écran d'envoi, après la confirmation d'envoi, **si la présélection convient** (dernière enseigne utilisée) ; **+2** pour en changer (toucher l'autre tuile, puis « Ouvrir {nom} ») | R4 : la présélection coûte une touche de confirmation, jamais une question à deux étapes |
+| Première configuration avec plusieurs enseignes proposées | **+1** (« Quel drive utilises-tu ? », une tuile par enseigne), puis la lecture du magasin | R1 : seulement quand aucune n'est configurée et que plusieurs sont allumées |
+
+À vérifier à la recette : que le nom de l'enseigne est toujours un paramètre de texte (jamais écrit à la main), que le mot « enseigne » n'apparaît nulle part à l'écran (on dit « drive »), et que le **drive habituel** supprime bien la touche en trop. Si une personne à deux drives sans drive habituel y voit une question à chaque envoi, proposer le drive habituel à la deuxième fois, jamais avant (règle 3 des principes : ne pas demander ce qu'on sait déjà).

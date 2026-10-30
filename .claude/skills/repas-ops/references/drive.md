@@ -52,3 +52,11 @@ La règle (une liste `ACTIVE` par propriétaire au plus, les autres en `PAUSED`)
 ## Ordre de publication et contrôle après le back (2026-10-20)
 
 Site tolérant (il ignore ou laisse passer un champ nouveau du back, liste blanche vers l'agent), puis back, puis application. Après chaque release du back qui touche `/api/v1/drive/*` ou les ingrédients : un envoi réel sur le téléphone de test (« Reprendre l'envoi » jusqu'au choix ou « panier rempli », puis abandon). Ne pas faire `adb shell am force-stop` juste après un renouvellement de session (la session est perdue). Nommer les téléphones (test, kantin, bich) ; le téléphone de test est connecté au compte de l'administrateur, il ne prouve rien sur un compte migré. Incident d'origine et détail : `docs/drive/consignes-agents.md` et `docs/production.md`.
+
+## E. Allumer ou couper une seule enseigne (DRV-711)
+
+`docs/production.md` (section « Envoi de la liste au drive », « Couper une seule enseigne ») et `docs/drive/runbook.md` § 16 font foi ; ne pas les redire ici.
+
+- **Une nouvelle enseigne est livrée éteinte** : elle est dans le code (back, site, application) mais absente de `DRIVE_RETAILERS`. Ordre : back, site, application, **recette réelle de l'enseigne par l'utilisateur** (`docs/drive/recette.md`, partie 20, gabarit), puis seulement alors l'allumage. Je ne l'allume jamais : c'est un script que l'utilisateur lance (`ecrire-drive-retailers.sh`, `bash -s -- leclerc,auchan`), une étape par message, avec le but (« rendre Auchan visible dans l'application »), l'attendu (`OK`, l'enseigne dans « Mes drives ») et le retour arrière.
+- **Couper une seule enseigne** : même script avec la liste de celles qui **restent** (`leclerc` pour couper Auchan ; `auchan` pour couper Leclerc ; `aucune` pour toutes, ce qui revient presque à `DRIVE_ENABLED=false`). Rien n'est effacé, les listes `SENT` se rouvrent, l'autre enseigne ne bouge pas.
+- **Piège** : `DRIVE_ENABLED=false` l'emporte sur tout ; une enseigne allumée avec le drive global coupé reste invisible.
