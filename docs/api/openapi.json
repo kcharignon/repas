@@ -693,7 +693,7 @@
                 "tags": [
                     "Recipe types"
                 ],
-                "summary": "Liste des types de recette, dans l'ordre d'affichage",
+                "summary": "Liste des types de recette, dans l'ordre d'affichage, avec le nombre de recettes de la personne dans chacun",
                 "operationId": "get_api_list_recipe_types",
                 "responses": {
                     "200": {
@@ -705,7 +705,7 @@
                                         "member": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/components/schemas/RecipeTypeDTO"
+                                                "$ref": "#/components/schemas/RecipeTypeCountDTO"
                                             }
                                         },
                                         "totalItems": {
@@ -5237,12 +5237,13 @@
                 },
                 "type": "object"
             },
-            "RecipeTypeDTO": {
+            "RecipeTypeCountDTO": {
                 "required": [
                     "slug",
                     "name",
                     "image",
-                    "order"
+                    "order",
+                    "recipeCount"
                 ],
                 "properties": {
                     "slug": {
@@ -5263,6 +5264,11 @@
                         "description": "Position d'affichage (croissante)",
                         "type": "integer",
                         "example": 2
+                    },
+                    "recipeCount": {
+                        "description": "Nombre de recettes de la personne dans ce type, pour masquer les cat\u00e9gories vides",
+                        "type": "integer",
+                        "example": 7
                     }
                 },
                 "type": "object"
@@ -5771,6 +5777,36 @@
                         "description": "Version de la recette, aussi renvoy\u00e9e dans l'en-t\u00eate `ETag` : \u00e0 renvoyer dans `If-Match` pour modifier ou supprimer sans \u00e9craser le travail d'un autre",
                         "type": "integer",
                         "example": 3
+                    }
+                },
+                "type": "object"
+            },
+            "RecipeTypeDTO": {
+                "required": [
+                    "slug",
+                    "name",
+                    "image",
+                    "order"
+                ],
+                "properties": {
+                    "slug": {
+                        "description": "Identifiant du type de recette (slug)",
+                        "type": "string",
+                        "example": "plat"
+                    },
+                    "name": {
+                        "type": "string",
+                        "example": "plat"
+                    },
+                    "image": {
+                        "description": "Chemin ou URL de l'image du type",
+                        "type": "string",
+                        "example": "images/recipe/type/meal.svg"
+                    },
+                    "order": {
+                        "description": "Position d'affichage (croissante)",
+                        "type": "integer",
+                        "example": 2
                     }
                 },
                 "type": "object"
