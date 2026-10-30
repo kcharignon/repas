@@ -4,7 +4,7 @@
 - **Jalon** : M7 Plusieurs enseignes
 - **Taille** : M
 - **Dépend de** : DRV-701 (le registre et son contrat)
-- **Statut** : fait (PR #XXX, 2026-10-30). Effort recommandé : `xhigh` (migration de colonnes de données d'utilisateur).
+- **Statut** : fait (PR #325, 2026-10-30). Effort recommandé : `xhigh` (migration de colonnes de données d'utilisateur).
 - **Lire d'abord** : [`../spikes/DRV-715-decision-auchan.md`](../spikes/DRV-715-decision-auchan.md) § 2 points 2 et 4 ; [`../spikes/DRV-712-rapport.md`](../spikes/DRV-712-rapport.md) § Compléments ; [`../multi-enseignes.md`](../multi-enseignes.md) §§ 3.2, 4 ; skills `repas-dev` et `repas-drive-back` (migrations compatibles avec la version précédente du code).
 
 ## Contexte
