@@ -1,5 +1,6 @@
 # Runbook : « Leclerc a changé » (et couper l'envoi au drive)
 
+> **Plusieurs enseignes (DRV-711).** Ce runbook est écrit à partir de **Leclerc** et reste valable tel quel pour lui. Chaque enseigne a sa propre section « <Enseigne> a changé » (Auchan : § 15) construite sur le modèle du § 16 ; **couper une seule enseigne** sans toucher aux autres se fait avec `DRIVE_RETAILERS` (§ 4 et § 16), couper tout avec `DRIVE_ENABLED`.
 À suivre quand l'envoi de la liste au drive ne marche plus : message « Le site a changé », « Leclerc a ralenti les requêtes », paniers vides, produits qui ne se trouvent plus. Écrit pour une personne qui **n'a pas écrit le code** : chaque étape dit quoi faire et ce qu'on doit voir. Décisions : [ADR 0022](../adr/0022-remplissage-du-panier-drive.md) et [ADR 0023](../adr/0023-liste-envoyee-au-drive.md). Mise en production et retour arrière : [`../production.md`](../production.md), section « Envoi de la liste au drive ». Dernière mise à jour : 2026-10-19 (DRV-503, corrections de la recette réelle : site mobile, page de vérification, compteurs, ordre de publication).
 
 ## Règles d'or
@@ -278,4 +279,28 @@ Ce qui est déjà vrai et vaut pour la suite (le reste viendra avec l'adaptateur
 - **Identifiants** : le magasin, les produits et les offres d'Auchan sont des UUID en minuscules (`docs/drive/hypotheses-site-reel-auchan.md`) ; une valeur qui n'en a pas la forme est refusée (`422 DRIVE_STORE_INVALID` ou `DRIVE_CHOICE_INVALID`).
 - **Contrat** : la forme des identifiants et l'adresse constante d'Auchan sont dans `docs/drive/samples/retailers.sample.json`.
 
-À compléter par DRV-726 : reconnaître le problème (symptômes et codes propres à Auchan), le diagnostic de l'adaptateur, le relevé de ce que le site envoie, la correction, le journal des changements d'Auchan, ce qu'il ne faut jamais faire.
+Suivre le modèle du § 16. À compléter par DRV-726 (rien de ceci n’est mesuré avant la recette réelle) : reconnaître le problème (symptômes et codes propres à Auchan), le diagnostic de l'adaptateur, le relevé de ce que le site envoie, la correction, le journal des changements d'Auchan, ce qu'il ne faut jamais faire.
+
+## 16. Modèle : « <Enseigne> a changé » (DRV-711)
+
+Les § 1 à 14 sont écrits pour **Leclerc** et restent tels quels. Pour une autre enseigne, ne pas les recopier : les valeurs ci-dessous sont les mêmes pour toutes les enseignes (la mécanique est commune), les symptômes et les causes sont propres à chacune (section « <Enseigne> a changé » de l'enseigne, § 15 pour Auchan). Une nouvelle enseigne reçoit sa section en copiant ce modèle et en le remplissant **uniquement** avec ce qui a été mesuré à sa recette réelle (`hypotheses-site-reel-<enseigne>.md`, par exemple [`hypotheses-site-reel-auchan.md`](hypotheses-site-reel-auchan.md) ; pour Auchan, DRV-726).
+
+| Rubrique | Commun (déjà vrai) | À remplir pour l'enseigne |
+|---|---|---|
+| Règles d'or (début du runbook) | Tout vaut : on ne contacte jamais le site d'une enseigne depuis le serveur, couper est sûr et réversible, aucun secret dans le chat | Rien |
+| Reconnaître (§ 1) | Les codes du protocole (`CONTRACT_CHANGED`, `BLOCKED`, `NOT_LOGGED_IN`, `NETWORK`, `UNSUPPORTED_PAGE`, `STORE_MISMATCH`, `INVALID_MESSAGE`, `CANCELLED`) et le nom de l'enseigne dans le message (« {enseigne} a modifié son site ») | Le sens probable de chaque code **chez cette enseigne**, ses causes (`drive-agent/src/retailers/<id>/causes.ts`), ce qui est un vrai blocage et ce qui ne l'est pas |
+| Diagnostic (§ 3) | Même commande de l'agent, même rapport sans donnée personnelle | Les sondes propres au site et ce qu'un verdict `OK` y signifie |
+| Couper (§ 4) | `DRIVE_ENABLED=false` coupe tout ; **`DRIVE_RETAILERS` coupe une enseigne** (voir ci-dessous) | Rien |
+| Se replier (§ 5) | « Chercher à la main » à l'écran | Rien |
+| Corriger (§ 7) | Même procédure : nouvelle version de l'agent donc de l'application, jamais de code distant | Le relevé de ce que le site envoie, et la manière de l'obtenir |
+| Rallumer (§ 8) | Mêmes contrôles ; premier envoi réel court par l'humain, sans valider la commande | Le premier envoi se fait **chez cette enseigne**, avec son propre compte |
+| Ce qu'il ne faut jamais faire (§ 9) | Tout vaut ; remplacer « Leclerc » par l'enseigne | Les pièges propres à l'enseigne (cadence, anti-robot) |
+| Journal (§ 10) | Une ligne par incident, sans donnée personnelle | Un journal **par enseigne** |
+
+**Couper une seule enseigne sans toucher aux autres** (pas à pas, l'humain) :
+
+1. **But** : que plus personne n'envoie de liste à *cette* enseigne ; les autres continuent. Rien n'est effacé.
+2. **Lancer** (depuis le dépôt `kcharignon/repas`) : `! ssh -i ~/.ssh/id_ed25519 root@64.227.124.100 'bash -s -- leclerc' < .claude/skills/repas-ops/references/ecrire-drive-retailers.sh` — l'argument est la **liste des enseignes qui restent allumées**, séparées par des virgules (ici seule Leclerc reste ; pour couper Leclerc et garder Auchan : `auchan`). Le script réécrit `DRIVE_RETAILERS` et recrée le conteneur `php`.
+3. **Ce qu'on doit voir** : le message `OK` du script. Contrôle en lecture seule : `docker compose exec -T php printenv DRIVE_RETAILERS` affiche la liste attendue.
+4. **Effets** : l'enseigne coupée répond `404 DRIVE_RETAILER_DISABLED`, disparaît de « Mes drives » et des tuiles de l'écran d'envoi ; une personne qui n'avait qu'elle ne peut plus envoyer (même message que `DRIVE_ENABLED` coupé) ; une personne qui en avait deux est menée vers l'autre ; ses réglages, produits et préférences restent en base ; les listes `SENT` se rouvrent comme avant. Rallumer = remettre l'identifiant dans la liste, après les contrôles du § 8.
+5. **Cas d'Auchan éteinte** : c'est l'état normal avant sa recette réelle (DRV-726). Elle n'est allumée que par l'humain, jamais par un agent, et seulement après la recette ([`recette.md`](recette.md), « Gabarit : recette d'une nouvelle enseigne »).

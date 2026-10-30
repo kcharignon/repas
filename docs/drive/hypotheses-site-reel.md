@@ -1,5 +1,7 @@
 # Hypothèses sur le vrai site de Leclerc : mesuré, supposé, inconnu
 
+> **Ce fichier est celui de Leclerc.** Chaque enseigne a le sien (Auchan : [`hypotheses-site-reel-auchan.md`](hypotheses-site-reel-auchan.md), mesuré, supposé et inconnu d'après les spikes DRV-712 à 714). Ne jamais déduire un fait d'une enseigne de l'autre ; un fait non mesuré chez elle est « inconnu ».
+
 Analyse faite le **2026-10-18** par un agent d'analyse, en **lecture seule** : documentation de ce dépôt (`docs/drive/`, spikes DRV-002 à DRV-011, `recette.md`) et code du dépôt front (`drive-agent/src/leclerc/`, `drive-agent/src/flow/`, `drive-agent/fake-leclerc/`, `drive-agent/fixtures/`, `android/`). Aucun contact avec Leclerc. Les exemples d'adresses sont inventés : `123456`, `Ville-Test`, `exemple.leclercdrive.fr`.
 
 **Pourquoi ce fichier.** La recette réelle (DRV-505) a montré que l'application ouvrait la racine `https://<hôte>/` du drive au lieu de la page du magasin : l'agent affichait « Page non prise en charge ». DRV-319 avait posé, sans jamais le mesurer, que la racine mène à l'accueil du magasin (le faux site la redirigeait). La correction (repas-front#125, `DrivePlan.startUrl` ouvre `/magasin-<id>-<id>/`) remplace une hypothèse par une autre, elle aussi jamais mesurée (H1). Ce fichier cherche **les autres hypothèses de ce genre**, pour les vérifier pendant la recette au lieu de les rencontrer une à une.

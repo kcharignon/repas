@@ -99,6 +99,8 @@ Les colonnes `retailer` sont des `VARCHAR(20)` (assez pour `auchan`, `intermarch
 
 `architecture.md` (§ 3, 5, 8, 9), `README.md`, `runbook.md` (« Leclerc a changé »), `hypotheses-site-reel.md`, `recette.md`, `note-vie-privee.md`, les skills `repas-agent-dev`, `repas-android-dev`, `repas-drive-back`, `repas-ops` (`references/drive.md`) et l'ADR front 0008 décrivent **un** drive. Rien de faux aujourd'hui ; ils ne doivent simplement pas être recopiés tels quels pour Auchan. **DRV-711** les met à jour (une section « par enseigne » dans chacun).
 
+**Fait par DRV-711 (2026-10-30)** : chacun a sa section ou son fichier « par enseigne » (`architecture.md` § 13, `runbook.md` § 16, `recette.md` partie 20, `hypotheses-site-reel-auchan.md`, `note-vie-privee.md` § 5 bis, `audit-simplicite.md` § 8, `production.md`, skills, `consignes-agents.md` « Où ajouter une enseigne »).
+
 ### 3.7 Synthèse
 
 | Couche | Niveau de couplage | Effort de découplage |
