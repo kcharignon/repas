@@ -62,12 +62,12 @@ test-fast: ## Run PHPUnit tests in parallel (ParaTest, one database per process;
 # Celle de la CI (job « Tests ») : la suite en parallèle AVEC couverture (clover), sur 4 processus par défaut (runner à 4 vCPU) ;
 # `make test-ci TEST_PROCESSES=n` le force, `CLOVER=chemin` change le fichier. Une base de données par processus (voir `test-fast`).
 # Moteur de couverture : PCOV s'il est chargé (la CI l'installe dans le conteneur, voir ci.yml : environ 95 s), sinon Xdebug (environ 260 s,
-# même couverture à la ligne près). `memory_limit=2G` : le processus principal fusionne la couverture de 7300 tests et dépassait 512 Mo. `--cache-directory` est obligatoire : sans lui, ParaTest s'arrête sans message dès qu'il doit mesurer la couverture.
+# même couverture à la ligne près). `--cache-directory` est obligatoire : sans lui, ParaTest s'arrête sans message dès qu'il doit mesurer la couverture.
 CLOVER ?= clover.xml
 test-ci: ## Run PHPUnit tests in parallel WITH coverage (clover.xml), the way the CI does; `make test` stays the serial local reference
 	@echo "🧪 Exécution des tests en parallèle avec couverture (CI)..."
 	@$(EXEC_PHP_CI) php bin/console cache:warmup --env=test --quiet
-	@$(DOCKER_COMPOSE) exec -T -e TEST_PROCESSES=$(TEST_PROCESSES) -e CLOVER=$(CLOVER) php sh -c 'p="$$TEST_PROCESSES"; [ -n "$$p" ] || p=4; if php -m | grep -qix pcov; then export XDEBUG_MODE=off; echo "Couverture : PCOV"; else export XDEBUG_MODE=coverage; echo "Couverture : Xdebug"; fi; exec php -d memory_limit=2G vendor/bin/paratest --cache-directory=var/phpunit-cache --coverage-clover="$$CLOVER" --order-by=reverse --processes="$$p" --display-notices --display-phpunit-notices --display-phpunit-deprecations'
+	@$(DOCKER_COMPOSE) exec -T -e TEST_PROCESSES=$(TEST_PROCESSES) -e CLOVER=$(CLOVER) php sh -c 'p="$$TEST_PROCESSES"; [ -n "$$p" ] || p=4; if php -m | grep -qix pcov; then export XDEBUG_MODE=off; echo "Couverture : PCOV"; else export XDEBUG_MODE=coverage; echo "Couverture : Xdebug"; fi; exec vendor/bin/paratest --cache-directory=var/phpunit-cache --coverage-clover="$$CLOVER" --order-by=reverse --processes="$$p" --display-notices --display-phpunit-notices --display-phpunit-deprecations'
 
 test-coverage: ## Run PHPUnit tests with code coverage
 	@if test -f phpunit.xml; then \
