@@ -201,6 +201,7 @@ Références : [`multi-enseignes.md`](multi-enseignes.md) (audit, conception, fa
 - [x] [DRV-732](tickets/DRV-732-quantite-au-panier-d-auchan.md) front (agent) · S · Quantité déjà au panier d'un produit connu d'Auchan : ne plus afficher « illisible » (high) · dépend de : 724, 725
 - [x] [DRV-733](tickets/DRV-733-bandeaux-de-l-ecran-par-enseigne.md) front (android) · S · Bandeaux de l'écran du drive propres à l'enseigne : aucun bandeau de magasin pour une enseigne sans page de magasin (high) · dépend de : 728
 - [x] [DRV-734](tickets/DRV-734-recherche-d-auchan-redirigee-vers-un-rayon.md) front (agent) · S · Recherche d'Auchan : lire la page de rayon vers laquelle un terme courant redirige, reconnaître « aucun résultat » (high) · dépend de : 724
+- [x] [DRV-735](tickets/DRV-735-plan-d-essai-de-debogage-par-enseigne.md) front (android) · S · Plan d'essai de la variante de débogage par enseigne (high) · dépend de : 728
 - [x] [DRV-730](tickets/DRV-730-offerid-optionnel-dans-l-openapi.md) back · S · `offerId` facultatif dans l'OpenAPI (retirer `default: null`) et marge de temps du test Alexa instable (medium) · dépend de : 721
 
 ## Backlog (non détaillé, à écrire quand il devient utile)
