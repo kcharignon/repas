@@ -47,6 +47,10 @@ class DriveRetailerSwitchApiFlowTest extends DatabaseTestCase
         'api_forget_choice' => ['DELETE', '/api/v1/drive/choices/farine?retailer=leclerc&storeId=123456', null],
         'api_get_drive_plan' => ['GET', '/api/v1/drive/plans/{list}?retailer=leclerc', null],
         'api_get_drive_estimate' => ['GET', '/api/v1/drive/estimates/{list}?retailer=leclerc', null],
+        // DRV-703 : le drive habituel, la dernière enseigne et le retrait d'un drive
+        'api_set_default_retailer' => ['PUT', '/api/v1/drive/default-retailer', ['retailer' => 'leclerc']],
+        'api_remember_last_retailer' => ['PUT', '/api/v1/drive/last-retailer', ['retailer' => 'leclerc']],
+        'api_remove_drive_settings' => ['DELETE', '/api/v1/drive/settings?retailer=leclerc', null],
     ];
 
     /**
@@ -180,7 +184,7 @@ class DriveRetailerSwitchApiFlowTest extends DatabaseTestCase
         $feature->switchRetailers([]);
 
         // When : l'utilisateur essaie d'écrire, d'oublier, de remplacer pendant que l'enseigne est éteinte
-        foreach (['api_save_drive_settings', 'api_save_product_choices', 'api_replace_ingredient_preference', 'api_forget_choice'] as $route) {
+        foreach (['api_save_drive_settings', 'api_save_product_choices', 'api_replace_ingredient_preference', 'api_forget_choice', 'api_set_default_retailer', 'api_remember_last_retailer', 'api_remove_drive_settings'] as $route) {
             $this->call($route, $user, $listId);
             $this->assertSame(404, $this->client->getResponse()->getStatusCode(), $route);
         }
@@ -239,7 +243,7 @@ class DriveRetailerSwitchApiFlowTest extends DatabaseTestCase
     }
 
     /**
-     * @return array{settings: int, choices: int}
+     * @return array{settings: int, choices: int, preferences: int}
      */
     private function rows(): array
     {
@@ -248,6 +252,7 @@ class DriveRetailerSwitchApiFlowTest extends DatabaseTestCase
         return [
             'settings' => (int) $connection->fetchOne('SELECT COUNT(*) FROM drive_settings'),
             'choices' => (int) $connection->fetchOne('SELECT COUNT(*) FROM drive_choice'),
+            'preferences' => (int) $connection->fetchOne('SELECT COUNT(*) FROM drive_retailer_preference'),
         ];
     }
 

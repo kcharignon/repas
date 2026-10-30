@@ -1,6 +1,8 @@
 <?php
 
 use Repas\Drive\Application\Command\ForgetChoice\ForgetChoiceCommand;
+use Repas\Drive\Application\Command\RememberLastRetailer\RememberLastRetailerCommand;
+use Repas\Drive\Application\Command\RemoveDriveSettings\RemoveDriveSettingsCommand;
 use Repas\Drive\Application\Command\ReplaceIngredientPreference\ReplaceIngredientPreferenceCommand;
 use Repas\Drive\Application\Command\SaveDriveSettings\SaveDriveSettingsCommand;
 use Repas\Drive\Application\Command\SaveProductChoices\ChoiceAction;
@@ -10,6 +12,7 @@ use Repas\Drive\Application\Command\SaveProductChoices\Placement;
 use Repas\Drive\Application\Command\SaveProductChoices\ProductInput;
 use Repas\Drive\Application\Command\SaveProductChoices\SaveProductChoicesCommand;
 use Repas\Drive\Application\Command\SaveProductChoices\SearchQueryChange;
+use Repas\Drive\Application\Command\SetDefaultRetailer\SetDefaultRetailerCommand;
 use Repas\Drive\Domain\Model\ContentUnit;
 use Repas\Drive\Domain\Model\PackSize;
 use Repas\Drive\Domain\Model\Product;
@@ -679,6 +682,37 @@ return [
 
         return new SaveDriveSettingsCommand($user->getId(), Retailer::LECLERC, '654321', 'Ville-Test', 'https://autre.leclercdrive.fr/magasin-654321-654321');
     },
+    // Drive habituel et dernière enseigne (DRV-703) : deux drives configurés, une préférence existante à remplacer. Les trois use cases
+    // sont constants : le réglage de l'enseigne (contrôle « configurée »), la préférence, son enregistrement (l'écriture est un
+    // `INSERT … ON CONFLICT`, une instruction)
+    'choisir-drive-habituel' => static function (WriteBudgetTestCase $t): object {
+        $t->allRetailersEnabled();
+        $user = $t->savedUser();
+        $t->savedDriveSettings($user, Retailer::LECLERC);
+        $t->savedDriveSettings($user, Retailer::AUCHAN);
+        $t->savedRetailerPreference($user, Retailer::AUCHAN, Retailer::AUCHAN);
+
+        return new SetDefaultRetailerCommand($user->getId(), Retailer::LECLERC);
+    },
+    'retenir-derniere-enseigne' => static function (WriteBudgetTestCase $t): object {
+        $t->allRetailersEnabled();
+        $user = $t->savedUser();
+        $t->savedDriveSettings($user, Retailer::LECLERC);
+        $t->savedDriveSettings($user, Retailer::AUCHAN);
+        $t->savedRetailerPreference($user, Retailer::AUCHAN, Retailer::AUCHAN);
+
+        return new RememberLastRetailerCommand($user->getId(), Retailer::LECLERC);
+    },
+    // Pire cas : le drive habituel ET la dernière enseigne désignent l'enseigne retirée (la préférence est relue puis réécrite)
+    'retirer-drive' => static function (WriteBudgetTestCase $t): object {
+        $t->allRetailersEnabled();
+        $user = $t->savedUser();
+        $t->savedDriveSettings($user, Retailer::LECLERC);
+        $t->savedDriveSettings($user, Retailer::AUCHAN);
+        $t->savedRetailerPreference($user, Retailer::AUCHAN, Retailer::AUCHAN);
+
+        return new RemoveDriveSettingsCommand($user->getId(), Retailer::AUCHAN);
+    },
     // Un ingrédient déjà mémorisé (deux produits acceptés, un refusé), un nouveau produit préféré. 10 requêtes : 7 + la mise à jour
     // du compteur du jour des écritures de produits, dans les réglages (plafond par utilisateur, DRV-613) + 2 pour l'apprentissage du
     // rayon (DRV-642) : la lecture du rayon de Repas des ingrédients et l'écriture du compteur, seulement quand un choix porte un rayon
@@ -1130,6 +1164,7 @@ return [
         $recipes = $t->typicalRecipes($owner);
         $t->savedShoppingList($owner, $recipes);
         $t->savedDriveSettings($owner);
+        $t->savedRetailerPreference($owner, Retailer::LECLERC, Retailer::LECLERC);
         $t->savedDriveChoice($owner, 'farine', ['1', '2'], ['9']);
         $t->persister->saveIngredientAlias(IngredientAlias::create($owner->getId(), 'beurre', 'beurre' . $owner->getId(), AliasKind::ADOPTION, 'first-use', new \DateTimeImmutable()));
         $t->savedRecipe($t->savedUser(), new RecipeBuilder()->isPastaCarbonara()->withOriginalId($recipes[0]->getId()));

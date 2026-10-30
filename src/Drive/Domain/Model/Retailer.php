@@ -25,8 +25,8 @@ enum Retailer: string
     public const array IDS = ['leclerc', 'auchan'];
 
     /**
-     * L'enseigne des lectures et des écritures qui n'en reçoivent pas : **un seul endroit** (DRV-701). La sélection de l'enseigne
-     * (DRV-703) la remplace.
+     * Le repli de la sélection de l'enseigne (`RetailerSelection::retailerToUse()`, DRV-703) : **un seul endroit** (DRV-701). Une demande qui ne
+     * nomme aucune enseigne prend celle de la sélection ; ce n'est que sans enseigne configurée qu'elle retombe sur celle-ci.
      */
     public static function default(): self
     {

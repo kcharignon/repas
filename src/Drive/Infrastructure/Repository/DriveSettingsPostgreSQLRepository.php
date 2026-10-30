@@ -66,6 +66,26 @@ readonly class DriveSettingsPostgreSQLRepository extends PostgreSQLRepository im
         return $updated === 1;
     }
 
+    public function delete(string $userId, Retailer $retailer): bool
+    {
+        $deleted = (int) $this->entityManager->createQueryBuilder()
+            ->delete(DriveSettingsEntity::class, 's')
+            ->where('s.userId = :user')
+            ->andWhere('s.retailer = :retailer')
+            ->setParameter('user', $userId)
+            ->setParameter('retailer', $retailer->value)
+            ->getQuery()
+            ->execute();
+
+        // La ligne supprimée par DQL reste dans l'identity map : un `find()` ultérieur la rendrait comme vivante
+        $entity = $this->entityManager->getUnitOfWork()->tryGetById(['userId' => $userId, 'retailer' => $retailer->value], DriveSettingsEntity::class);
+        if ($entity !== false) {
+            $this->entityManager->detach($entity);
+        }
+
+        return $deleted === 1;
+    }
+
     public function deleteByUser(string $userId): void
     {
         $this->entityManager->createQueryBuilder()

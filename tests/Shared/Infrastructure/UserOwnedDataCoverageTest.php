@@ -6,6 +6,7 @@ namespace Repas\Tests\Shared\Infrastructure;
 use Repas\Drive\Infrastructure\Entity\Choice;
 use Repas\Drive\Infrastructure\Entity\DriveSettings;
 use Repas\Drive\Infrastructure\Entity\RayonVote;
+use Repas\Drive\Infrastructure\Entity\RetailerPreference;
 use Repas\Repas\Infrastructure\Entity\Ingredient;
 use Repas\Repas\Infrastructure\Entity\IngredientAlias;
 use Repas\Repas\Infrastructure\Entity\IngredientDistinct;
@@ -46,6 +47,7 @@ class UserOwnedDataCoverageTest extends DatabaseTestCase
         DriveSettings::class => ['userId'],
         Choice::class => ['userId'],
         RayonVote::class => ['userId'],
+        RetailerPreference::class => ['userId'],
         EmailVerificationToken::class => ['userId'],
         PasswordResetToken::class => ['userId'],
         UserIdentity::class => ['userId'],

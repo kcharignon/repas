@@ -19,6 +19,7 @@ use Repas\Drive\Domain\Model\Retailer;
 use Repas\Drive\Domain\Service\ListCostEstimator;
 use Repas\Drive\Domain\Service\PackCalculator;
 use Repas\Drive\Infrastructure\Loader\DriveEstimatePostgreSQLLoader;
+use Repas\Drive\Domain\Service\RetailerSelection;
 use Repas\Drive\Infrastructure\Loader\DriveSettingsPostgreSQLLoader;
 use Repas\Repas\Domain\Exception\ShoppingListException;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
@@ -413,7 +414,7 @@ class DriveEstimatePostgreSQLLoaderTest extends DatabaseTestCase
     {
         return new DriveEstimatePostgreSQLLoader(
             $this->entityManager,
-            new DriveSettingsPostgreSQLLoader($this->entityManager, new ControlledDriveFeature(true)),
+            new DriveSettingsPostgreSQLLoader($this->entityManager, new ControlledDriveFeature(true), new RetailerSelection()),
             new ShoppingListForDriveInMemoryLoader($list),
             new ListCostEstimator(new PackCalculator()),
         );

@@ -7,6 +7,7 @@ use DateTimeImmutable;
 use Repas\Drive\Domain\Model\DriveSettings;
 use Repas\Drive\Domain\Model\Retailer;
 use Repas\Drive\Domain\Model\Store;
+use Repas\Drive\Domain\Model\StoreIdSource;
 use Repas\Shared\Domain\Tool\UuidGenerator;
 
 /**
@@ -25,7 +26,9 @@ class DriveSettingsBuilder implements Builder
     {
         $this->userId ??= UuidGenerator::new();
         $this->retailer ??= Retailer::default();
-        $this->store ??= Store::create($this->retailer, '123456', 'Ville-Test', $this->retailer->profile()->storeAddressExample);
+        // Un identifiant que l'enseigne accepte : un UUID quand elle le lit sur le site (DRV-720), 123456 quand il se déduit de l'adresse
+        $storeId = $this->retailer->profile()->storeIdSource === StoreIdSource::EXPLICIT ? '0b5f8a2e-3c1d-4e7f-9a6b-123456789abc' : '123456';
+        $this->store ??= Store::create($this->retailer, $storeId, 'Ville-Test', $this->retailer->profile()->storeAddressExample);
         $this->updatedAt ??= new DateTimeImmutable('2026-10-18 10:00:00');
     }
 

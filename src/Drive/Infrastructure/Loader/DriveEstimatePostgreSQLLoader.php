@@ -48,7 +48,7 @@ final readonly class DriveEstimatePostgreSQLLoader implements DriveEstimateLoade
 
     public function get(string $userId, string $shoppingListId, Retailer $retailer): DriveEstimateDTO
     {
-        $store = $this->settings->get($userId, $retailer)->store ?? throw DriveException::notConfigured();
+        $store = $this->settings->store($userId, $retailer) ?? throw DriveException::notConfigured();
         $list = $this->shoppingLists->get($shoppingListId);
         if ($list->ownerId !== $userId) {
             throw DriveException::shoppingListForbidden();

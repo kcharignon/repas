@@ -6,6 +6,7 @@ namespace Repas\Drive\Application\Command\PurgeUserDriveData;
 use Repas\Drive\Domain\Interface\ChoiceRepository;
 use Repas\Drive\Domain\Interface\DriveSettingsRepository;
 use Repas\Drive\Domain\Interface\RayonVoteRepository;
+use Repas\Drive\Domain\Interface\RetailerPreferenceRepository;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 /**
@@ -19,6 +20,7 @@ readonly class PurgeUserDriveDataHandler
         private DriveSettingsRepository $driveSettingsRepository,
         private ChoiceRepository $choiceRepository,
         private RayonVoteRepository $rayonVoteRepository,
+        private RetailerPreferenceRepository $retailerPreferenceRepository,
     ) {
     }
 
@@ -29,5 +31,7 @@ readonly class PurgeUserDriveDataHandler
         $this->choiceRepository->deleteProductsByUser($command->userId);
         $this->choiceRepository->deleteByUser($command->userId);
         $this->rayonVoteRepository->deleteByUser($command->userId);
+        // Le drive habituel et la dernière enseigne (DRV-703)
+        $this->retailerPreferenceRepository->deleteByUser($command->userId);
     }
 }

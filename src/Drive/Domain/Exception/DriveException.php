@@ -16,6 +16,8 @@ final class DriveException extends DomainException
     public const string DRIVE_SEARCH_QUERY_INVALID = 'DRIVE_SEARCH_QUERY_INVALID';
     public const string DRIVE_PACK_SIZE_INVALID = 'DRIVE_PACK_SIZE_INVALID';
     public const string DRIVE_STORE_MISMATCH = 'DRIVE_STORE_MISMATCH';
+    public const string DRIVE_RETAILER_NOT_CONFIGURED = 'DRIVE_RETAILER_NOT_CONFIGURED';
+    public const string DRIVE_SETTINGS_NOT_FOUND = 'DRIVE_SETTINGS_NOT_FOUND';
     public const string DRIVE_LIMIT_REACHED = 'DRIVE_LIMIT_REACHED';
     public const string DRIVE_RATE_LIMITED = 'DRIVE_RATE_LIMITED';
     public const string SHOPPING_LIST_NOT_SENT = 'SHOPPING_LIST_NOT_SENT';
@@ -112,6 +114,24 @@ final class DriveException extends DomainException
     public static function storeMismatch(): self
     {
         return new self(self::DRIVE_STORE_MISMATCH, 409);
+    }
+
+    /**
+     * Le drive habituel ou la dernière enseigne ne peuvent être qu'une enseigne où la personne a enregistré un magasin (DRV-703) : celle-ci
+     * n'en a pas, `422`. Règle métier, distincte de `notConfigured()` (`409`, « rien à envoyer ») pour que le client sache que c'est
+     * l'enseigne choisie qu'il doit corriger.
+     */
+    public static function retailerNotConfigured(): self
+    {
+        return new self(self::DRIVE_RETAILER_NOT_CONFIGURED, 422);
+    }
+
+    /**
+     * Le réglage à retirer n'existe pas : la personne n'a pas de magasin chez cette enseigne (DRV-703), `404`.
+     */
+    public static function settingsNotFound(): self
+    {
+        return new self(self::DRIVE_SETTINGS_NOT_FOUND, 404);
     }
 
     /**

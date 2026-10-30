@@ -41,16 +41,19 @@ class DriveSettingsApiFlowTest extends DatabaseTestCase
 
         // Then
         $this->assertSame(200, $this->client->getResponse()->getStatusCode());
-        $this->assertSame(['enabled' => true, 'retailer' => 'leclerc', 'store' => null, 'retailers' => [['retailer' => 'leclerc', 'name' => 'Leclerc', 'configured' => false, 'store' => null]]], $this->jsonBody());
+        $this->assertSame(
+            ['enabled' => true, 'retailer' => 'leclerc', 'store' => null, 'retailers' => [['retailer' => 'leclerc', 'name' => 'Leclerc', 'configured' => false, 'isDefault' => false, 'store' => null]], 'defaultRetailer' => null, 'lastUsedRetailer' => null, 'selection' => ['mode' => 'NONE', 'retailer' => null, 'candidates' => []]],
+            $this->jsonBody(),
+        );
 
         // When
         $this->request('PUT', $user, ['retailer' => 'leclerc', 'store' => ['id' => '123456', 'label' => 'Ville-Test', 'baseUrl' => self::URL]]);
         $this->assertSame(204, $this->client->getResponse()->getStatusCode());
         $this->request('GET', $user);
 
-        // Then
+        // Then : l'enseigne s'impose sans rien demander (la production d'aujourd'hui : une seule enseigne allumée)
         $this->assertSame(
-            ['enabled' => true, 'retailer' => 'leclerc', 'store' => ['id' => '123456', 'label' => 'Ville-Test', 'baseUrl' => self::URL], 'retailers' => [['retailer' => 'leclerc', 'name' => 'Leclerc', 'configured' => true, 'store' => ['id' => '123456', 'label' => 'Ville-Test', 'baseUrl' => self::URL]]]],
+            ['enabled' => true, 'retailer' => 'leclerc', 'store' => ['id' => '123456', 'label' => 'Ville-Test', 'baseUrl' => self::URL], 'retailers' => [['retailer' => 'leclerc', 'name' => 'Leclerc', 'configured' => true, 'isDefault' => false, 'store' => ['id' => '123456', 'label' => 'Ville-Test', 'baseUrl' => self::URL]]], 'defaultRetailer' => null, 'lastUsedRetailer' => null, 'selection' => ['mode' => 'AUTO', 'retailer' => 'leclerc', 'candidates' => ['leclerc']]],
             $this->jsonBody(),
         );
     }
@@ -171,7 +174,7 @@ class DriveSettingsApiFlowTest extends DatabaseTestCase
 
         // Then
         $this->assertSame(200, $this->client->getResponse()->getStatusCode());
-        $this->assertSame(['enabled' => false, 'retailer' => 'leclerc', 'store' => null, 'retailers' => [['retailer' => 'leclerc', 'name' => 'Leclerc', 'configured' => false, 'store' => null]]], $this->jsonBody());
+        $this->assertSame(['enabled' => false, 'retailer' => 'leclerc', 'store' => null, 'retailers' => [['retailer' => 'leclerc', 'name' => 'Leclerc', 'configured' => false, 'isDefault' => false, 'store' => null]], 'defaultRetailer' => null, 'lastUsedRetailer' => null, 'selection' => ['mode' => 'NONE', 'retailer' => null, 'candidates' => []]], $this->jsonBody());
 
         // When
         $this->request('PUT', $user, ['retailer' => 'leclerc', 'store' => ['id' => '123456', 'baseUrl' => self::URL]]);

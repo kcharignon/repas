@@ -6,7 +6,7 @@ use OpenApi\Attributes as OA;
 use Repas\Drive\Domain\Model\Retailer;
 
 /**
- * Une enseigne connue du back, vue de l'utilisateur : son nom, et le magasin qu'il y a enregistré s'il en a un.
+ * Une enseigne connue du back, vue de l'utilisateur : son nom, le magasin qu'il y a enregistré s'il en a un, et si c'est son drive habituel.
  */
 final readonly class DriveRetailerDTO
 {
@@ -17,6 +17,8 @@ final readonly class DriveRetailerDTO
         public string $name,
         #[OA\Property(description: "Vrai si l'utilisateur a enregistré un magasin chez cette enseigne", example: true)]
         public bool $configured,
+        #[OA\Property(description: "Vrai si c'est le drive habituel de l'utilisateur (`defaultRetailer`) : au plus une enseigne le porte, et seulement une enseigne configurée et allumée", example: false)]
+        public bool $isDefault,
         #[OA\Property(description: "Magasin de l'utilisateur chez cette enseigne, `null` tant qu'il n'en a pas enregistré", nullable: true)]
         public ?DriveStoreDTO $store,
     ) {
