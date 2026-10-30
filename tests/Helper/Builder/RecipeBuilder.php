@@ -22,6 +22,7 @@ class RecipeBuilder implements Builder
     private ?string $originalId = null;
     private int $version = 1;
     private bool $secret = false;
+    private bool $favorite = false;
 
 
     public function build(): Recipe
@@ -38,6 +39,7 @@ class RecipeBuilder implements Builder
             'original_id' => $this->originalId,
             'version' => $this->version,
             'secret' => $this->secret,
+            'favorite' => $this->favorite,
         ]);
     }
 
@@ -128,6 +130,15 @@ class RecipeBuilder implements Builder
     public function asSecret(bool $secret = true): self
     {
         $this->secret = $secret;
+        return $this;
+    }
+
+    /**
+     * Une recette mise en favoris par son auteur (ADR 0034).
+     */
+    public function asFavorite(bool $favorite = true): self
+    {
+        $this->favorite = $favorite;
         return $this;
     }
 

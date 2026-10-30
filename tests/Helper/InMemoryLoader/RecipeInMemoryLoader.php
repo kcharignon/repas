@@ -6,6 +6,7 @@ namespace Repas\Tests\Helper\InMemoryLoader;
 use Repas\Repas\Application\Loader\RecipeLoader;
 use Repas\Repas\Application\Query\GetRecipe\RecipeDTO;
 use Repas\Repas\Application\Query\ListOtherPeopleRecipes\OtherPeopleRecipesDTO;
+use Repas\Repas\Application\Query\ListRecipesByType\RecipeSummaryDTO;
 use Repas\Repas\Application\Query\ListRecipesByType\RecipeTypeRecipesDTO;
 use Repas\Repas\Domain\Exception\RecipeException;
 
@@ -20,6 +21,9 @@ class RecipeInMemoryLoader implements RecipeLoader
     /** @var list<array{string, string}> */
     public array $listByAuthorAndTypeCalls = [];
 
+    /** @var list<string> */
+    public array $listFavoritesOfAuthorCalls = [];
+
     /** @var list<array{string, int, int, string|null}> */
     public array $listOfOtherPeopleCalls = [];
 
@@ -27,6 +31,8 @@ class RecipeInMemoryLoader implements RecipeLoader
         private readonly ?RecipeDTO $recipe = null,
         private readonly ?RecipeTypeRecipesDTO $recipesByType = null,
         private readonly OtherPeopleRecipesDTO $otherPeopleRecipes = new OtherPeopleRecipesDTO([], 0),
+        /** @var list<RecipeSummaryDTO> */
+        private readonly array $favorites = [],
     ) {
     }
 
@@ -42,6 +48,13 @@ class RecipeInMemoryLoader implements RecipeLoader
         $this->listByAuthorAndTypeCalls[] = [$authorId, $typeSlug];
 
         return $this->recipesByType ?? throw RecipeException::typeNotFound($typeSlug);
+    }
+
+    public function listFavoritesOfAuthor(string $authorId): array
+    {
+        $this->listFavoritesOfAuthorCalls[] = $authorId;
+
+        return $this->favorites;
     }
 
     public function listOfOtherPeople(string $userId, int $limit, int $offset, ?string $search = null): OtherPeopleRecipesDTO

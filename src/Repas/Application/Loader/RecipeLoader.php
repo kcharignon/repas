@@ -4,6 +4,7 @@ namespace Repas\Repas\Application\Loader;
 
 use Repas\Repas\Application\Query\GetRecipe\RecipeDTO;
 use Repas\Repas\Application\Query\ListOtherPeopleRecipes\OtherPeopleRecipesDTO;
+use Repas\Repas\Application\Query\ListRecipesByType\RecipeSummaryDTO;
 use Repas\Repas\Application\Query\ListRecipesByType\RecipeTypeRecipesDTO;
 use Repas\Repas\Domain\Exception\RecipeException;
 
@@ -23,6 +24,14 @@ interface RecipeLoader
      * @throws RecipeException type inconnu
      */
     public function listByAuthorAndType(string $authorId, string $typeSlug): RecipeTypeRecipesDTO;
+
+    /**
+     * Les recettes que cet auteur a mises en favoris, tous types confondus, secrètes comprises (chacune dit si elle l'est), triées par slug
+     * puis par identifiant. Vide sans favori.
+     *
+     * @return list<RecipeSummaryDTO>
+     */
+    public function listFavoritesOfAuthor(string $authorId): array;
 
     /**
      * Une page des recettes originales des autres utilisateurs que cet utilisateur n'a pas encore copiées, SANS les recettes secrètes (ADR 0033 :

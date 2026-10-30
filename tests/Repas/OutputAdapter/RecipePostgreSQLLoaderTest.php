@@ -263,6 +263,67 @@ class RecipePostgreSQLLoaderTest extends DatabaseTestCase
         $this->assertFalse($this->recipeLoader->get($ordinary->getId(), $author->getId())->secret);
     }
 
+    public function testGetTellsWhetherTheRecipeIsAFavoriteOfItsAuthorAndNeverOfSomeoneElse(): void
+    {
+        // Given : une recette favorite de son auteur, une ordinaire, et un autre utilisateur qui lit la favorite
+        $author = $this->savedUser();
+        $other = $this->savedUser();
+        $favorite = $this->savedRecipe($author, 'zzz favorite', new RecipeTypeBuilder()->isMeal(), favorite: true);
+        $ordinary = $this->savedRecipe($author, 'zzz ordinaire', new RecipeTypeBuilder()->isMeal());
+
+        // Then : la clé est toujours écrite ; le choix est celui de l'auteur, un autre ne le voit pas
+        $this->assertTrue($this->recipeLoader->get($favorite->getId(), $author->getId())->favorite);
+        $this->assertFalse($this->recipeLoader->get($ordinary->getId(), $author->getId())->favorite);
+        $this->assertFalse($this->recipeLoader->get($favorite->getId(), $other->getId())->favorite);
+    }
+
+    public function testListFavoritesOfAuthorReturnsOnlyHisFavoritesAllTypesSortedBySlugSecretOnesIncluded(): void
+    {
+        // Given : trois favorites de deux types (dont une secrète), une recette ordinaire, une favorite d'un autre auteur
+        $author = $this->savedUser();
+        $other = $this->savedUser();
+        $tarte = $this->savedRecipe($author, 'Tarte', new RecipeTypeBuilder()->isDessert(), favorite: true);
+        $blanquette = $this->savedRecipe($author, 'Blanquette', new RecipeTypeBuilder()->isMeal(), favorite: true);
+        $secret = $this->savedRecipe($author, 'Crème secrète', new RecipeTypeBuilder()->isDessert(), secret: true, favorite: true);
+        $this->savedRecipe($author, 'Quiche', new RecipeTypeBuilder()->isMeal());
+        $this->savedRecipe($other, 'Aligot', new RecipeTypeBuilder()->isMeal(), favorite: true);
+
+        // When
+        $favorites = $this->recipeLoader->listFavoritesOfAuthor($author->getId());
+
+        // Then : triées par slug, toutes catégories confondues, chacune dit si elle est secrète
+        $this->assertEquals([
+            new RecipeSummaryDTO($blanquette->getId(), 'Blanquette', false),
+            new RecipeSummaryDTO($secret->getId(), 'Crème secrète', true),
+            new RecipeSummaryDTO($tarte->getId(), 'Tarte', false),
+        ], $favorites);
+    }
+
+    public function testListFavoritesOfAuthorWithoutFavoriteIsEmpty(): void
+    {
+        // Given
+        $author = $this->savedUser();
+        $this->savedRecipe($author, 'Quiche', new RecipeTypeBuilder()->isMeal());
+
+        // Then
+        $this->assertSame([], $this->recipeLoader->listFavoritesOfAuthor($author->getId()));
+        $this->assertSame([], $this->recipeLoader->listFavoritesOfAuthor('inconnu'));
+    }
+
+    public function testListFavoritesOfAuthorOrdersTwoRecipesOfTheSameNameTheSameWayOnEveryCall(): void
+    {
+        // Given
+        $author = $this->savedUser();
+        $first = $this->savedRecipe($author, 'Tarte', new RecipeTypeBuilder()->isMeal(), favorite: true);
+        $second = $this->savedRecipe($author, 'Tarte', new RecipeTypeBuilder()->isDessert(), favorite: true);
+        $expected = [$first->getId(), $second->getId()];
+        sort($expected);
+
+        // Then
+        $this->assertSame($expected, array_column($this->recipeLoader->listFavoritesOfAuthor($author->getId()), 'id'));
+        $this->assertSame($expected, array_column($this->recipeLoader->listFavoritesOfAuthor($author->getId()), 'id'));
+    }
+
     public function testGetOfASecretRecipeIsNotFoundForAnyoneButItsAuthorExactlyLikeAnUnknownRecipe(): void
     {
         // Given : une recette secrète, lue par un autre utilisateur (le chargeur ne connaît pas les rôles : un administrateur n'est qu'un autre)
@@ -658,9 +719,9 @@ class RecipePostgreSQLLoaderTest extends DatabaseTestCase
         return $user;
     }
 
-    private function savedRecipe(User $author, string $name, RecipeTypeBuilder $type, ?string $originalId = null, bool $secret = false): Recipe
+    private function savedRecipe(User $author, string $name, RecipeTypeBuilder $type, ?string $originalId = null, bool $secret = false, bool $favorite = false): Recipe
     {
-        $recipe = new RecipeBuilder()->withAuthor($author)->withName($name)->withRecipeType($type)->withOriginalId($originalId)->asSecret($secret)->build();
+        $recipe = new RecipeBuilder()->withAuthor($author)->withName($name)->withRecipeType($type)->withOriginalId($originalId)->asSecret($secret)->asFavorite($favorite)->build();
         $this->persister->saveRecipe($recipe);
 
         return $recipe;

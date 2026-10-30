@@ -48,6 +48,7 @@ final class Recipe implements ModelInterface
         private ?string $originalId,
         private int     $version = 1,
         private bool    $secret = false,
+        private bool    $favorite = false,
     ) {
     }
 
@@ -143,6 +144,31 @@ final class Recipe implements ModelInterface
         return $this;
     }
 
+    /**
+     * Une recette favorite est une recette que son auteur a marquée d'une étoile : elle est dans sa liste « Favoris » en plus de son type.
+     * Le drapeau est celui de l'auteur ; la copie d'une recette n'est jamais favorite.
+     */
+    public function isFavorite(): bool
+    {
+        return $this->favorite;
+    }
+
+    /**
+     * Met la recette en favoris ou l'en retire. Le drapeau est le choix de l'auteur : un autre utilisateur (un administrateur qui peut
+     * modifier la recette) ne le change pas, mais renvoyer la valeur actuelle est sans effet et sans erreur.
+     *
+     * @throws RecipeException l'utilisateur n'est pas l'auteur et la valeur diffère de l'actuelle
+     */
+    public function changeFavorite(bool $favorite, string $userId): Recipe
+    {
+        if ($favorite !== $this->favorite && $userId !== $this->authorId) {
+            throw RecipeException::favoriteForbidden();
+        }
+        $this->favorite = $favorite;
+
+        return $this;
+    }
+
     public function setName(string $name): Recipe
     {
         $this->name = $name;
@@ -199,6 +225,7 @@ final class Recipe implements ModelInterface
             originalId: $datas['original_id'],
             version: $datas['version'] ?? 1,
             secret: $datas['secret'] ?? false,
+            favorite: $datas['favorite'] ?? false,
         );
     }
 

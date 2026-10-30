@@ -86,4 +86,17 @@ class RecipeInMemoryRepository extends AbstractInMemoryRepository implements Rec
             unset($this->models[$recipeId]);
         }
     }
+
+    public function moveToType(string $fromTypeSlug, string $toTypeSlug): void
+    {
+        $this->movedToType[] = [$fromTypeSlug, $toTypeSlug];
+    }
+
+    /**
+     * Les déplacements demandés, dans l'ordre : (type d'origine, type de destination). Double idiot : les recettes ne changent pas de
+     * type ici, le déplacement réel se prouve dans le test du repository.
+     *
+     * @var list<array{string, string}>
+     */
+    public array $movedToType = [];
 }

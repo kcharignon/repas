@@ -35,4 +35,9 @@ class RecipeTypeInMemoryRepository extends AbstractInMemoryRepository implements
         return $this->models[$slug] ?? throw RecipeException::typeNotFound($slug);
     }
 
+    public function delete(RecipeType $recipeType): void
+    {
+        unset($this->models[$recipeType->getId()]);
+    }
+
 }

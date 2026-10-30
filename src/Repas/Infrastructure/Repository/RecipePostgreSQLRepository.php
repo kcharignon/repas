@@ -95,6 +95,7 @@ readonly class RecipePostgreSQLRepository extends PostgreSQLRepository implement
             'original_id' => $entity->getOriginalId(),
             'version' => $entity->getVersion(),
             'secret' => $entity->isSecret(),
+            'favorite' => $entity->isFavorite(),
         ]);
     }
 
@@ -197,6 +198,20 @@ readonly class RecipePostgreSQLRepository extends PostgreSQLRepository implement
             ->delete(RecipeEntity::class, 'r')
             ->where('r.authorId = :author')
             ->setParameter('author', $authorId)
+            ->getQuery()
+            ->execute();
+    }
+
+    public function moveToType(string $fromTypeSlug, string $toTypeSlug): void
+    {
+        // La colonne `version` s'écrit en SQL, comme `bumpVersion()` : une recette lue avant le déplacement est vue comme périmée
+        $this->entityManager->createQueryBuilder()
+            ->update(RecipeEntity::class, 'r')
+            ->set('r.typeSlug', ':to')
+            ->set('r.version', 'r.version + 1')
+            ->where('r.typeSlug = :from')
+            ->setParameter('from', $fromTypeSlug)
+            ->setParameter('to', $toTypeSlug)
             ->getQuery()
             ->execute();
     }

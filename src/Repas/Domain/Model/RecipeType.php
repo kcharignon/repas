@@ -3,6 +3,7 @@
 namespace Repas\Repas\Domain\Model;
 
 
+use Repas\Repas\Domain\Exception\RecipeException;
 use Repas\Shared\Domain\Model\ModelInterface;
 use Repas\Shared\Domain\Model\ModelTrait;
 use Repas\Shared\Domain\Tool\StringTool;
@@ -85,5 +86,17 @@ final class RecipeType implements ModelInterface
         $this->name = $name;
         $this->image = $image;
         $this->order = $order;
+    }
+
+    /**
+     * Les recettes de ce type passent dans `$target` quand il est supprimé : un type ne se remplace pas par lui-même.
+     *
+     * @throws RecipeException `$target` est ce type
+     */
+    public function assertCanBeReplacedBy(self $target): void
+    {
+        if ($target->slug === $this->slug) {
+            throw RecipeException::typeTransferToItself();
+        }
     }
 }

@@ -25,4 +25,9 @@ interface RecipeTypeRepository
     public function exists(string $slug): bool;
 
     public function save(RecipeType $recipeType): void;
+
+    /**
+     * Supprime le type. Les recettes qui le portent doivent avoir été déplacées avant (`RecipeRepository::moveToType`).
+     */
+    public function delete(RecipeType $recipeType): void;
 }
