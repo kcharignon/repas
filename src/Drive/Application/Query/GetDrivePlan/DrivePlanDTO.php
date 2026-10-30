@@ -5,6 +5,7 @@ namespace Repas\Drive\Application\Query\GetDrivePlan;
 use Nelmio\ApiDocBundle\Attribute\Model;
 use OpenApi\Attributes as OA;
 use Repas\Drive\Application\Query\GetDriveSettings\DriveStoreDTO;
+use Repas\Drive\Domain\Model\Retailer;
 
 final readonly class DrivePlanDTO
 {
@@ -16,7 +17,7 @@ final readonly class DrivePlanDTO
         public string $shoppingListId,
         #[OA\Property(description: 'Version de la liste au moment du plan', example: 5)]
         public int $listVersion,
-        #[OA\Property(description: 'Enseigne du drive', enum: ['leclerc'], example: 'leclerc')]
+        #[OA\Property(description: 'Enseigne du drive', enum: Retailer::IDS, example: 'leclerc')]
         public string $retailer,
         public DriveStoreDTO $store,
         #[OA\Property(description: 'Date de calcul du plan (ISO 8601)', example: '2026-10-18T10:00:00+02:00')]

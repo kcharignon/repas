@@ -24,8 +24,6 @@ final class Product implements ModelInterface
 {
     use ModelTrait;
 
-    /** Identifiant d'un produit chez l'enseigne : des chiffres. */
-    public const string RETAILER_PRODUCT_ID_PATTERN = '/^[0-9]{1,12}$/D';
     /** Code-barres : 8 à 14 chiffres. */
     public const string EAN_PATTERN = '/^[0-9]{8,14}$/D';
     public const int LABEL_MAX_LENGTH = 255;
@@ -95,7 +93,7 @@ final class Product implements ModelInterface
         ?int $rayonId = null,
         ?int $familyId = null,
     ): self {
-        if (preg_match(self::RETAILER_PRODUCT_ID_PATTERN, $retailerProductId) !== 1) {
+        if (!$retailer->isValidProductId($retailerProductId)) {
             throw DriveException::invalidChoice();
         }
 

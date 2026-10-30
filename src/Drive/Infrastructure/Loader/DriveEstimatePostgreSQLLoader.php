@@ -36,8 +36,6 @@ use Repas\Shared\Domain\Model\Dimension;
  */
 final readonly class DriveEstimatePostgreSQLLoader implements DriveEstimateLoader
 {
-    /** Une seule enseigne pour l'instant : la lecture ne porte pas encore de paramètre `retailer`. */
-    private const Retailer RETAILER = Retailer::LECLERC;
     private const string ACCEPTED = 'ACCEPTED';
 
     public function __construct(
@@ -48,20 +46,20 @@ final readonly class DriveEstimatePostgreSQLLoader implements DriveEstimateLoade
     ) {
     }
 
-    public function get(string $userId, string $shoppingListId): DriveEstimateDTO
+    public function get(string $userId, string $shoppingListId, Retailer $retailer): DriveEstimateDTO
     {
-        $store = $this->settings->get($userId)->store ?? throw DriveException::notConfigured();
+        $store = $this->settings->get($userId, $retailer)->store ?? throw DriveException::notConfigured();
         $list = $this->shoppingLists->get($shoppingListId);
         if ($list->ownerId !== $userId) {
             throw DriveException::shoppingListForbidden();
         }
 
-        $choices = $this->choices($userId, $store->id, array_map(static fn(ShoppingListLineForDrive $line): string => $line->ingredientSlug, $list->lines));
+        $choices = $this->choices($userId, $retailer, $store->id, array_map(static fn(ShoppingListLineForDrive $line): string => $line->ingredientSlug, $list->lines));
         $estimate = $this->estimator->estimate(array_map(fn(ShoppingListLineForDrive $line): EstimateLineInput => $this->input($line, $choices[$line->ingredientSlug] ?? null), $list->lines));
 
         return new DriveEstimateDTO(
             shoppingListId: $list->id,
-            retailer: self::RETAILER->value,
+            retailer: $retailer->value,
             store: $store,
             estimatedTotalCents: $estimate->totalCents,
             estimatedLines: $estimate->estimatedLines,
@@ -90,7 +88,7 @@ final readonly class DriveEstimatePostgreSQLLoader implements DriveEstimateLoade
      * @param list<string> $slugs
      * @return array<string, array{haveAtHome: bool, product: ?PreferredProduct}>
      */
-    private function choices(string $userId, string $storeId, array $slugs): array
+    private function choices(string $userId, Retailer $retailer, string $storeId, array $slugs): array
     {
         if ($slugs === []) {
             return [];
@@ -122,7 +120,7 @@ final readonly class DriveEstimatePostgreSQLLoader implements DriveEstimateLoade
             ->andWhere('c.ingredientSlug IN (:slugs)')
             ->setParameter('accepted', self::ACCEPTED)
             ->setParameter('userId', $userId)
-            ->setParameter('retailer', self::RETAILER->value)
+            ->setParameter('retailer', $retailer->value)
             ->setParameter('storeId', $storeId)
             ->setParameter('slugs', $slugs)
             ->orderBy('cp.rank')

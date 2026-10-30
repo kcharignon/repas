@@ -6,6 +6,7 @@ namespace Repas\Tests\Drive\Contract;
 use DateTimeImmutable;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use PHPUnit\Framework\Attributes\DataProvider;
+use Repas\Drive\Domain\Model\Retailer;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Tests\Helper\Builder\IngredientBuilder;
 use Repas\Tests\Helper\Builder\ShoppingListBuilder;
@@ -81,6 +82,35 @@ final class DriveContractSamplesTest extends DatabaseTestCase
             self::flatten($expected),
             self::flatten($actual),
             "docs/drive/samples/$file ne correspond plus à la réponse de l'API : lance `make drive-samples` et relis le diff (le front fige ce contrat).",
+        );
+    }
+
+    /**
+     * Le contrat des enseignes (DRV-701) : le registre du back tel que le web, l'agent et l'application le recopient. Les motifs
+     * y sont donnés sans délimiteur ni drapeau, valides en PCRE et en JavaScript.
+     */
+    public function testTheRetailersSampleIsTheRegistryOfTheBack(): void
+    {
+        // Given
+        $actual = ['retailers' => array_map(static fn(Retailer $retailer): array => [
+            'id' => $retailer->value,
+            'name' => $retailer->profile()->name,
+            'nameDe' => $retailer->profile()->nameDe,
+            'storeAddressPattern' => $retailer->profile()->storeAddressPattern,
+            'storeAddressExample' => $retailer->profile()->storeAddressExample,
+            'productIdPattern' => $retailer->profile()->productIdPattern,
+        ], Retailer::cases())];
+        $path = static::getContainer()->getParameter('kernel.project_dir') . '/docs/drive/samples/retailers.sample.json';
+        if (getenv(self::REGENERATE) === '1') {
+            file_put_contents($path, json_encode($actual, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR) . "\n");
+        }
+
+        // Then
+        $this->assertFileExists($path, "Exemple absent : lance `make drive-samples`.");
+        $this->assertSame(
+            self::flatten(json_decode(file_get_contents($path), true, flags: JSON_THROW_ON_ERROR)),
+            self::flatten($actual),
+            "docs/drive/samples/retailers.sample.json ne correspond plus au registre : lance `make drive-samples` et relis le diff (le front fige ce contrat).",
         );
     }
 

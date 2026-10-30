@@ -14,7 +14,7 @@ use Symfony\Component\Validator\Constraints as Assert;
 final readonly class DriveSettingsPayload
 {
     public function __construct(
-        #[OA\Property(description: 'Enseigne du drive', enum: ['leclerc'], example: 'leclerc')]
+        #[OA\Property(description: 'Enseigne du drive', enum: Retailer::IDS, example: 'leclerc')]
         public Retailer $retailer,
         #[Assert\Valid]
         public DriveStorePayload $store,

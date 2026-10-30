@@ -4,7 +4,7 @@
 - **Jalon** : M7 Plusieurs enseignes
 - **Taille** : M
 - **Dépend de** : —
-- **Statut** : à faire. Effort recommandé : `high`.
+- **Statut** : fait (PR #324, 2026-10-30). Effort recommandé : `high`.
 - **Lire d'abord** : [`../multi-enseignes.md`](../multi-enseignes.md) §§ 3.2, 4, 6, 8, 10 ; [ADR 0027](../../adr/0027-plusieurs-enseignes-de-drive.md) ; `.claude/skills/repas-dev/SKILL.md` et `.claude/skills/repas-drive-back/SKILL.md` ; [`../consignes-agents.md`](../consignes-agents.md) (« Ne pas durcir Leclerc »).
 
 ## Contexte

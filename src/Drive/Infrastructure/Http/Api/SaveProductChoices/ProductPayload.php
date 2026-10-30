@@ -8,6 +8,7 @@ use Repas\Drive\Application\Command\SaveProductChoices\PackSizeChange;
 use Repas\Drive\Application\Command\SaveProductChoices\ProductInput;
 use Repas\Drive\Domain\Exception\DriveException;
 use Repas\Drive\Domain\Model\Product;
+use Repas\Drive\Domain\Model\RetailerProfile;
 use Symfony\Component\Validator\Constraints as Assert;
 
 /**
@@ -17,7 +18,7 @@ final readonly class ProductPayload
 {
     public function __construct(
         #[Assert\NotBlank]
-        #[OA\Property(description: "Identifiant du produit chez l'enseigne : 1 à 12 chiffres, en texte", pattern: '^[0-9]{1,12}$', example: '123456')]
+        #[OA\Property(description: "Identifiant du produit chez l'enseigne : 1 à 12 chiffres, en texte", pattern: RetailerProfile::NUMERIC_PRODUCT_ID, example: '123456')]
         public string $retailerProductId,
         #[Assert\Length(max: 255)]
         #[OA\Property(description: 'Libellé du produit (255 caractères au plus, sans caractère de contrôle ni caractère invisible ou de format : saut de ligne, sens de lecture, largeur nulle, trait d\'union conditionnel, sélecteur de variation, remplisseur, tag ; les espaces insécables sont permises)', example: 'Farine de blé T55 Marque Repère 1 kg', nullable: true)]

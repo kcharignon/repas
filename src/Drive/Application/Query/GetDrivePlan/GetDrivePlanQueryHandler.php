@@ -3,6 +3,7 @@
 namespace Repas\Drive\Application\Query\GetDrivePlan;
 
 use Repas\Drive\Application\Loader\DrivePlanLoader;
+use Repas\Drive\Domain\Model\Retailer;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 #[AsMessageHandler(bus: 'query.bus')]
@@ -15,6 +16,6 @@ final readonly class GetDrivePlanQueryHandler
 
     public function __invoke(GetDrivePlanQuery $query): DrivePlanDTO
     {
-        return $this->drivePlanLoader->get($query->userId, $query->shoppingListId);
+        return $this->drivePlanLoader->get($query->userId, $query->shoppingListId, $query->retailer ?? Retailer::default());
     }
 }

@@ -3,6 +3,7 @@
 namespace Repas\Drive\Application\Query\GetDriveEstimate;
 
 use Repas\Drive\Application\Loader\DriveEstimateLoader;
+use Repas\Drive\Domain\Model\Retailer;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 #[AsMessageHandler(bus: 'query.bus')]
@@ -15,6 +16,6 @@ final readonly class GetDriveEstimateQueryHandler
 
     public function __invoke(GetDriveEstimateQuery $query): DriveEstimateDTO
     {
-        return $this->driveEstimateLoader->get($query->userId, $query->shoppingListId);
+        return $this->driveEstimateLoader->get($query->userId, $query->shoppingListId, $query->retailer ?? Retailer::default());
     }
 }

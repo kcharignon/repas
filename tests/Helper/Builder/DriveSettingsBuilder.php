@@ -24,8 +24,8 @@ class DriveSettingsBuilder implements Builder
     private function initialize(): void
     {
         $this->userId ??= UuidGenerator::new();
-        $this->retailer ??= Retailer::LECLERC;
-        $this->store ??= Store::create(Retailer::LECLERC, '123456', 'Ville-Test', 'https://exemple.leclercdrive.fr/magasin-123456-123456');
+        $this->retailer ??= Retailer::default();
+        $this->store ??= Store::create($this->retailer, '123456', 'Ville-Test', $this->retailer->profile()->storeAddressExample);
         $this->updatedAt ??= new DateTimeImmutable('2026-10-18 10:00:00');
     }
 
@@ -35,9 +35,19 @@ class DriveSettingsBuilder implements Builder
         return $this;
     }
 
+    public function withRetailer(Retailer $retailer): self
+    {
+        $this->retailer = $retailer;
+        return $this;
+    }
+
+    /**
+     * Le magasin est créé chez l'enseigne du builder au moment de l'appel : appeler `withRetailer()` avant.
+     */
     public function withStore(string $id, ?string $label, string $baseUrl): self
     {
-        $this->store = Store::create(Retailer::LECLERC, $id, $label, $baseUrl);
+        $this->retailer ??= Retailer::default();
+        $this->store = Store::create($this->retailer, $id, $label, $baseUrl);
         return $this;
     }
 

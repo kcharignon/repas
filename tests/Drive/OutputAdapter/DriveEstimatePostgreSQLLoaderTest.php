@@ -81,7 +81,7 @@ class DriveEstimatePostgreSQLLoaderTest extends DatabaseTestCase
         ]);
 
         // When
-        $estimate = $this->loader($list)->get('user-1', 'list-1');
+        $estimate = $this->loader($list)->get('user-1', 'list-1', Retailer::default());
 
         // Then : farine 1,2 kg en paquets de 500 g = 3 x 1,29 € ; seule la farine entre dans le total (5 lignes à acheter)
         $this->assertEquals(new DriveEstimateDTO(
@@ -126,7 +126,7 @@ class DriveEstimatePostgreSQLLoaderTest extends DatabaseTestCase
         $counter->reset();
 
         // When
-        $estimate = $this->loader($list)->get('user-1', 'list-1');
+        $estimate = $this->loader($list)->get('user-1', 'list-1', Retailer::default());
 
         // Then : le cheddar est estimé, l'emmental reste à vérifier ; aucune requête de plus
         $this->assertSame(
@@ -155,7 +155,7 @@ class DriveEstimatePostgreSQLLoaderTest extends DatabaseTestCase
         ]);
 
         // When
-        $estimate = $this->loader($list)->get('user-1', 'list-1');
+        $estimate = $this->loader($list)->get('user-1', 'list-1', Retailer::default());
 
         // Then
         $this->assertSame([300, 1.0, new DateTimeImmutable('2026-10-12 09:30:00')->format(DATE_ATOM), new DateTimeImmutable('2026-10-18 10:00:00')->format(DATE_ATOM)], [$estimate->estimatedTotalCents, $estimate->coverage, $estimate->oldestPriceAt, $estimate->newestPriceAt]);
@@ -180,7 +180,7 @@ class DriveEstimatePostgreSQLLoaderTest extends DatabaseTestCase
         ]);
 
         // When
-        $estimate = $this->loader($list)->get('user-1', 'list-1');
+        $estimate = $this->loader($list)->get('user-1', 'list-1', Retailer::default());
 
         // Then : seul le lait est connu dans le magasin courant
         $this->assertSame(['NO_PRODUCT', 'ESTIMATED'], array_map(static fn(DriveEstimateLineDTO $line): string => $line->status, $estimate->lines));
@@ -196,7 +196,7 @@ class DriveEstimatePostgreSQLLoaderTest extends DatabaseTestCase
         $list = $this->list('user-1', [new ShoppingListLineForDrive('farine', 'Farine', 1, 'paquet', 'paquet', 'paquet', 'PACKAGE', 1.0)]);
 
         // When
-        $estimate = $this->loader($list)->get('user-1', 'list-1');
+        $estimate = $this->loader($list)->get('user-1', 'list-1', Retailer::default());
 
         // Then
         $this->assertSame(['NO_PRODUCT', 0, null], [$estimate->lines[0]->status, $estimate->estimatedTotalCents, $estimate->oldestPriceAt]);
@@ -209,7 +209,7 @@ class DriveEstimatePostgreSQLLoaderTest extends DatabaseTestCase
 
         // When / Then
         foreach (['ACTIVE', 'PAUSED', 'SENT', 'COMPLETED'] as $status) {
-            $this->assertSame('list-1', $this->loader($this->list('user-1', [], $status))->get('user-1', 'list-1')->shoppingListId);
+            $this->assertSame('list-1', $this->loader($this->list('user-1', [], $status))->get('user-1', 'list-1', Retailer::default())->shoppingListId);
         }
     }
 
@@ -219,10 +219,24 @@ class DriveEstimatePostgreSQLLoaderTest extends DatabaseTestCase
         $this->settings->save(new DriveSettingsBuilder()->withUserId('user-1')->build());
 
         // When
-        $estimate = $this->loader($this->list('user-1', []))->get('user-1', 'list-1');
+        $estimate = $this->loader($this->list('user-1', []))->get('user-1', 'list-1', Retailer::default());
 
         // Then
         $this->assertSame([0, 0, 0, 0.0, []], [$estimate->estimatedTotalCents, $estimate->estimatedLines, $estimate->unestimatedLines, $estimate->coverage, $estimate->lines]);
+    }
+
+    public function testTheStoreOfAnotherRetailerIsNotTheStoreOfTheRequestedOne(): void
+    {
+        // Given : l'utilisateur a un magasin chez une autre enseigne (ligne posée directement : ce code n'en connaît qu'une)
+        $this->entityManager->getConnection()->executeStatement(
+            "INSERT INTO drive_settings (user_id, retailer, store_id, store_label, base_url, updated_at, product_writes_count) VALUES ('user-1', 'autre-test', '999', NULL, 'https://exemple.invalid/magasin-999', NOW(), 0)",
+        );
+
+        // Then : chez l'enseigne demandée, il n'a toujours pas de magasin
+        $this->expectExceptionObject(DriveException::notConfigured());
+
+        // When
+        $this->loader($this->list('user-1', []))->get('user-1', 'list-1', Retailer::default());
     }
 
     public function testRefusesWithoutSettings(): void
@@ -231,7 +245,7 @@ class DriveEstimatePostgreSQLLoaderTest extends DatabaseTestCase
         $this->expectExceptionObject(DriveException::notConfigured());
 
         // When
-        $this->loader($this->list('user-1', []))->get('user-1', 'list-1');
+        $this->loader($this->list('user-1', []))->get('user-1', 'list-1', Retailer::default());
     }
 
     public function testRefusesTheListOfAnotherUser(): void
@@ -243,7 +257,7 @@ class DriveEstimatePostgreSQLLoaderTest extends DatabaseTestCase
         $this->expectExceptionObject(DriveException::shoppingListForbidden());
 
         // When
-        $this->loader($this->list('user-1', []))->get('user-2', 'list-1');
+        $this->loader($this->list('user-1', []))->get('user-2', 'list-1', Retailer::default());
     }
 
     public function testAnUnknownListIsNotFound(): void
@@ -256,7 +270,7 @@ class DriveEstimatePostgreSQLLoaderTest extends DatabaseTestCase
         $this->expectExceptionCode(404);
 
         // When
-        $this->loader(null)->get('user-1', 'list-1');
+        $this->loader(null)->get('user-1', 'list-1', Retailer::default());
     }
 
     public function testEstimatingARealListOfTwelveIngredientsCostsAFixedNumberOfQueries(): void
@@ -300,7 +314,7 @@ class DriveEstimatePostgreSQLLoaderTest extends DatabaseTestCase
         $counter->reset();
 
         // When : avec le vrai port de lecture de la liste
-        $estimate = static::getContainer()->get(DriveEstimateLoader::class)->get($owner->getId(), 'list-1');
+        $estimate = static::getContainer()->get(DriveEstimateLoader::class)->get($owner->getId(), 'list-1', Retailer::default());
 
         // Then : total 100 + 200 + … + 800 = 3 600 centimes, couverture 8/12, dates du 11 et du 18 octobre ; réglages, liste, lignes, préférences
         $this->assertCount(12, $estimate->lines);
@@ -326,9 +340,9 @@ class DriveEstimatePostgreSQLLoaderTest extends DatabaseTestCase
         $lines = [new ShoppingListLineForDrive('farine', 'Farine', 2, 'kilo', 'kilo', 'kg', 'WEIGHT', 1000.0)];
 
         // When
-        $alice = $this->loader($this->list('alice', $lines))->get('alice', 'list-1');
-        $bob = $this->loader($this->list('bob', $lines))->get('bob', 'list-1');
-        $chloe = $this->loader($this->list('chloe', $lines))->get('chloe', 'list-1');
+        $alice = $this->loader($this->list('alice', $lines))->get('alice', 'list-1', Retailer::default());
+        $bob = $this->loader($this->list('bob', $lines))->get('bob', 'list-1', Retailer::default());
+        $chloe = $this->loader($this->list('chloe', $lines))->get('chloe', 'list-1', Retailer::default());
 
         // Then : chacun son libellé, son prix et sa date ; Chloé, sans valeur à elle, retombe sur la fiche commune
         $this->assertSame(['Farine T55 – offre', 159, 318, new DateTimeImmutable('2026-10-12 09:30:00')->format(DATE_ATOM)], $this->lineOf($alice));
@@ -355,7 +369,7 @@ class DriveEstimatePostgreSQLLoaderTest extends DatabaseTestCase
         ]);
 
         // When
-        $estimate = $this->loader($list)->get('user-1', 'list-1');
+        $estimate = $this->loader($list)->get('user-1', 'list-1', Retailer::default());
 
         // Then : farine = libellé du compte, prix et date de la fiche ; sucre = libellé de la fiche, prix et date du compte
         $this->assertSame(['Farine du compte', 149, 149, new DateTimeImmutable('2026-10-01 08:00:00')->format(DATE_ATOM)], $this->lineOf($estimate, 0));
@@ -371,7 +385,7 @@ class DriveEstimatePostgreSQLLoaderTest extends DatabaseTestCase
         $list = $this->list('user-1', [new ShoppingListLineForDrive('farine', 'Farine', 1, 'paquet', 'paquet', 'paquet', 'PACKAGE', 1.0)]);
 
         // When
-        $estimate = $this->loader($list)->get('user-1', 'list-1');
+        $estimate = $this->loader($list)->get('user-1', 'list-1', Retailer::default());
 
         // Then
         $this->assertSame(['ESTIMATED', 149], [$estimate->lines[0]->status, $estimate->estimatedTotalCents]);

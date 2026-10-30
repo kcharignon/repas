@@ -6,6 +6,7 @@ namespace Repas\Tests\Drive\InputAdapter;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Repas\Drive\Application\Query\GetDriveEstimate\GetDriveEstimateQuery;
 use Repas\Drive\Domain\Exception\DriveException;
+use Repas\Drive\Domain\Model\Retailer;
 use Repas\Shared\Application\Interface\DriveFeature;
 use Repas\Tests\Helper\Builder\DTO\DriveEstimateDTOBuilder;
 use Repas\Tests\Helper\ControlledDriveFeature;
@@ -45,6 +46,35 @@ class GetDriveEstimateApiControllerTest extends QueryBusWebTestCase
             ],
             'disclaimer' => "Estimation d'après les derniers prix vus ; le prix réel est celui du drive.",
         ], $this->jsonBody());
+    }
+
+    public function testTheRetailerOfTheQueryStringIsGivenToTheQuery(): void
+    {
+        // Given
+        $user = $this->savedUser();
+        $list = $this->savedShoppingList($user);
+        $this->queryBus->willReturn(GetDriveEstimateQuery::class, new DriveEstimateDTOBuilder()->build());
+
+        // When
+        $this->client->request('GET', '/api/v1/drive/estimates/' . $list->getId() . '?retailer=leclerc', server: $this->bearerFor($user));
+
+        // Then
+        $this->assertSame(200, $this->client->getResponse()->getStatusCode());
+        $this->assertEquals(new GetDriveEstimateQuery($user->getId(), $list->getId(), Retailer::LECLERC), $this->queryBus->getLastAskedQuery());
+    }
+
+    public function testAnUnknownRetailerIsRefusedWith422(): void
+    {
+        // Given
+        $user = $this->savedUser();
+        $list = $this->savedShoppingList($user);
+
+        // When
+        $this->client->request('GET', '/api/v1/drive/estimates/' . $list->getId() . '?retailer=inconnue', server: $this->bearerFor($user));
+
+        // Then
+        $this->assertSame(422, $this->client->getResponse()->getStatusCode());
+        $this->assertSame(0, $this->queryBus->countAskedQueries());
     }
 
     public function testRefusesAListOfAnotherUser(): void
