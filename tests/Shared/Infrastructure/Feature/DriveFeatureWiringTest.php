@@ -3,6 +3,7 @@
 namespace Repas\Tests\Shared\Infrastructure\Feature;
 
 
+use Repas\Drive\Domain\Model\Retailer;
 use Repas\Shared\Application\Interface\DriveFeature;
 use Repas\Shared\Infrastructure\Feature\EnvDriveFeature;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
@@ -24,5 +25,19 @@ class DriveFeatureWiringTest extends KernelTestCase
         // Then
         $this->assertInstanceOf(EnvDriveFeature::class, $feature);
         $this->assertTrue($feature->isEnabled());
+    }
+
+    public function testTheRetailersAreWiredOnTheVariableAndTheRegistryAndTheTestEnvironmentLightsTheOnesOfToday(): void
+    {
+        // Given
+        self::bootKernel();
+
+        // When
+        $feature = self::getContainer()->get(DriveFeature::class);
+
+        // Then : `.env.test` et `phpunit.dist.xml` allument l'enseigne de la production d'aujourd'hui, et le registre du drive est la liste des identifiants connus
+        $this->assertSame(Retailer::IDS, $feature->enabledRetailers());
+        $this->assertSame(Retailer::IDS, self::getContainer()->getParameter('repas.drive.known_retailers'));
+        $this->assertTrue($feature->isRetailerEnabled(Retailer::default()->value));
     }
 }

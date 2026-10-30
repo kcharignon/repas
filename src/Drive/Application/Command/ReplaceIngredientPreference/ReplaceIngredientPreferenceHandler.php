@@ -12,6 +12,8 @@ use Repas\Drive\Domain\Model\Choice;
 use Repas\Drive\Domain\Model\Product;
 use Repas\Shared\Application\Interface\IngredientAliasResolver;
 use Repas\Shared\Domain\Interface\UuidGenerator;
+use Repas\Shared\Application\Interface\DriveFeature;
+use Repas\Shared\Domain\Exception\DriveFeatureException;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 #[AsMessageHandler]
@@ -24,6 +26,7 @@ readonly class ReplaceIngredientPreferenceHandler
         private IngredientAliasResolver $ingredientAliases,
         private UuidGenerator $uuidGenerator,
         private ClockInterface $clock,
+        private DriveFeature $driveFeature,
     ) {
     }
 
@@ -43,6 +46,10 @@ readonly class ReplaceIngredientPreferenceHandler
      */
     public function __invoke(ReplaceIngredientPreferenceCommand $command): void
     {
+        // DRV-702 : une enseigne éteinte (`DRIVE_RETAILERS`) n'existe pas pour l'utilisateur, avant toute lecture ou écriture
+        if (!$this->driveFeature->isRetailerEnabled($command->retailer->value)) {
+            throw DriveFeatureException::retailerDisabled();
+        }
         // Un corps JSON `{"a": "…"}` arrive ici en tableau à clés texte : `[...$accepted, ...$rejected]` laisserait alors la clé
         // d'une liste écraser celle de l'autre (un produit à la fois accepté et refusé, ou jamais contrôlé, passerait)
         $accepted = array_values($command->acceptedProductIds);

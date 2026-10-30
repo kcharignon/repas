@@ -13,7 +13,8 @@ use Repas\Shared\Application\Interface\DriveFeature;
 
 /**
  * Une seule requête quel que soit le nombre d'enseignes : les magasins de l'utilisateur chez toutes les enseignes. Une ligne dont
- * l'enseigne n'est pas (ou plus) connue du back est ignorée.
+ * l'enseigne n'est pas (ou plus) connue du back est ignorée. `retailers` ne liste que les enseignes allumées (`DRIVE_RETAILERS`, DRV-702),
+ * dans l'ordre du registre.
  */
 final readonly class DriveSettingsPostgreSQLLoader implements DriveSettingsLoader
 {
@@ -42,9 +43,10 @@ final readonly class DriveSettingsPostgreSQLLoader implements DriveSettingsLoade
             enabled: $this->driveFeature->isEnabled(),
             retailer: $retailer->value,
             store: $stores[$retailer->value] ?? null,
+            // Seules les enseignes allumées (`DRIVE_RETAILERS`, DRV-702) : une enseigne éteinte n'existe pas pour l'utilisateur, ses données restent en base
             retailers: array_map(
                 static fn(Retailer $known): DriveRetailerDTO => new DriveRetailerDTO($known->value, $known->profile()->name, isset($stores[$known->value]), $stores[$known->value] ?? null),
-                Retailer::cases(),
+                array_values(array_filter(Retailer::cases(), fn(Retailer $known): bool => $this->driveFeature->isRetailerEnabled($known->value))),
             ),
         );
     }

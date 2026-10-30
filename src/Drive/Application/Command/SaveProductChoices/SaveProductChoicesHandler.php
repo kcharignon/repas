@@ -18,6 +18,8 @@ use Repas\Shared\Application\Interface\IngredientAliasResolver;
 use Repas\Shared\Application\Interface\IngredientDepartmentResolver;
 use Repas\Shared\Application\Interface\UnitSlugResolver;
 use Repas\Shared\Domain\Interface\UuidGenerator;
+use Repas\Shared\Application\Interface\DriveFeature;
+use Repas\Shared\Domain\Exception\DriveFeatureException;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 #[AsMessageHandler]
@@ -36,6 +38,7 @@ readonly class SaveProductChoicesHandler
         private IngredientAliasResolver $ingredientAliases,
         private UuidGenerator $uuidGenerator,
         private ClockInterface $clock,
+        private DriveFeature $driveFeature,
     ) {
     }
 
@@ -93,6 +96,10 @@ readonly class SaveProductChoicesHandler
      */
     public function __invoke(SaveProductChoicesCommand $command): void
     {
+        // DRV-702 : une enseigne éteinte (`DRIVE_RETAILERS`) n'existe pas pour l'utilisateur, avant toute lecture ou écriture
+        if (!$this->driveFeature->isRetailerEnabled($command->retailer->value)) {
+            throw DriveFeatureException::retailerDisabled();
+        }
         $this->assertWellFormed($command->retailer, $command->intents);
 
         $settings = $this->driveSettingsRepository->findOneByUser($command->userId, $command->retailer);

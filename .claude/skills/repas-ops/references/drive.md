@@ -43,6 +43,7 @@ La règle (une liste `ACTIVE` par propriétaire au plus, les autres en `PAUSED`)
 
 ## Pièges
 
+- **Interrupteur par enseigne `DRIVE_RETAILERS` (DRV-702)** : liste d'identifiants (`leclerc` par défaut, ligne absente = `leclerc`, **vide = aucune enseigne** : `deploy/compose.yaml` écrit `${DRIVE_RETAILERS-leclerc}`, sans `:`). Couper une seule enseigne = la retirer de la liste dans `/opt/repas/.env` puis `docker compose up -d --wait php` ; rien n'est effacé, `reopen` marche toujours. **Aucun script d'écriture n'existe encore** (à écrire dans `references/`, sur le modèle de `ecrire-drive-enabled.sh`, quand une deuxième enseigne se mettra en service) : jusque-là l'humain édite le `.env`. Un agent n'ajoute jamais un identifiant ; `docs/production.md` et `docs/drive/runbook.md` § 4 donnent la procédure.
 - Le script d'interrupteur se lance avec `bash -s -- true|false` : sans argument il refuse (`ECHEC`). `DRIVE_ENABLED` absent du `.env` vaut `false` (valeur par défaut de `deploy/compose.yaml`).
 - Une release du back ne change jamais `DRIVE_ENABLED` : le `.env` du serveur n'est pas copié par la CI, seuls `compose.yaml`, `Caddyfile`, `deploy.sh`, `backup.sh` et `.env.example` le sont.
 - Un APK de débogage (`android-dev-AAAA-MM-JJ`) n'est pas signé avec la clé de publication : l'installer demande de désinstaller l'application de production (la connexion à Leclerc dans l'application est alors effacée).

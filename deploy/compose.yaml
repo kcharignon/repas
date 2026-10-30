@@ -57,6 +57,10 @@ services:
       # Envoi de la liste au drive : coupé tant que l'humain ne l'allume pas. Variable listée ici avec sa valeur par défaut, sinon
       # la valeur du .env embarqué dans l'image (composer dump-env prod) s'appliquerait en silence.
       DRIVE_ENABLED: ${DRIVE_ENABLED:-false}
+      # Enseignes du drive allumées (DRV-702, docs/drive/multi-enseignes.md § 7) : une liste d'identifiants séparés par des virgules, `leclerc` par
+      # défaut (la production d'aujourd'hui). `-` et non `:-` : variable ABSENTE = `leclerc`, mais VIDE (`DRIVE_RETAILERS=`) = aucune enseigne, ce que
+      # `:-` changerait en `leclerc`. Listée ici pour la même raison que DRIVE_ENABLED (.env embarqué dans l'image). Allumer une enseigne : l'humain seul.
+      DRIVE_RETAILERS: ${DRIVE_RETAILERS-leclerc}
       # Amorçage des ingrédients à l'activation d'un compte (ING-008, ADR 0028) : coupé tant que l'humain ne l'allume pas. Listée ici avec sa
       # valeur par défaut pour la même raison que DRIVE_ENABLED (.env embarqué dans l'image).
       INGREDIENT_SEEDING_ENABLED: ${INGREDIENT_SEEDING_ENABLED:-false}

@@ -3,6 +3,7 @@
 namespace Repas\Tests\Drive\Application;
 
 
+use Repas\Shared\Domain\Exception\DriveFeatureException;
 use DateTimeImmutable;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
@@ -14,6 +15,7 @@ use Repas\Drive\Domain\Model\PackSize;
 use Repas\Drive\Domain\Model\Product;
 use Repas\Drive\Domain\Model\Retailer;
 use Repas\Shared\Domain\Tool\UuidGenerator;
+use Repas\Tests\Helper\ControlledDriveFeature;
 use Repas\Tests\Helper\Builder\ChoiceBuilder;
 use Repas\Tests\Helper\Builder\DriveSettingsBuilder;
 use Repas\Tests\Helper\Builder\ProductBuilder;
@@ -50,7 +52,7 @@ class ReplaceIngredientPreferenceHandlerTest extends TestCase
             new DriveSettingsBuilder()->withUserId('user-1')->build(),
             new DriveSettingsBuilder()->withUserId('user-2')->build(),
         ]);
-        $this->handler = new ReplaceIngredientPreferenceHandler($settings, $products, $this->choices, new IngredientAliasInMemoryResolver(), new UuidGenerator(), new FrozenClock($this->now));
+        $this->handler = new ReplaceIngredientPreferenceHandler($settings, $products, $this->choices, new IngredientAliasInMemoryResolver(), new UuidGenerator(), new FrozenClock($this->now), new ControlledDriveFeature());
     }
 
     public function testReordersTheAcceptedProducts(): void
@@ -399,7 +401,7 @@ class ReplaceIngredientPreferenceHandlerTest extends TestCase
 
     private function handlerWithAliases(IngredientAliasInMemoryResolver $aliases): ReplaceIngredientPreferenceHandler
     {
-        return new ReplaceIngredientPreferenceHandler($this->settings, $this->products, $this->choices, $aliases, new UuidGenerator(), new FrozenClock($this->now));
+        return new ReplaceIngredientPreferenceHandler($this->settings, $this->products, $this->choices, $aliases, new UuidGenerator(), new FrozenClock($this->now), new ControlledDriveFeature());
     }
 
     /**
@@ -421,5 +423,22 @@ class ReplaceIngredientPreferenceHandlerTest extends TestCase
     private function id(string $retailerProductId, string $storeId = self::STORE): string
     {
         return Product::idFor(Retailer::LECLERC, $storeId, $retailerProductId);
+    }
+
+    public function testADisabledRetailerReplacesNothing(): void
+    {
+        // Given : l'enseigne n'est pas allumée (DRV-702)
+        $handler = new ReplaceIngredientPreferenceHandler($this->settings, $this->products, $this->choices, new IngredientAliasInMemoryResolver(), new UuidGenerator(), new FrozenClock($this->now), new ControlledDriveFeature(true, []));
+        $before = $this->choice('user-1', 'farine')->getAcceptedProductIds();
+
+        // Then
+        $this->expectExceptionObject(DriveFeatureException::retailerDisabled());
+
+        // When
+        try {
+            $handler(new ReplaceIngredientPreferenceCommand('user-1', Retailer::LECLERC, '123456', 'farine', false, [$this->id('2')], []));
+        } finally {
+            $this->assertSame($before, $this->choice('user-1', 'farine')->getAcceptedProductIds());
+        }
     }
 }

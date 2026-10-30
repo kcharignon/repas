@@ -54,6 +54,29 @@ class DriveSettingsPostgreSQLLoaderTest extends DatabaseTestCase
         $this->assertNull($this->loader->get('user-3', Retailer::default())->store);
     }
 
+    public function testOnlyTheEnabledRetailersAreListedAndTheOtherFieldsDoNotChange(): void
+    {
+        // Given : un magasin enregistré, aucune enseigne allumée
+        $this->repository->save(new DriveSettingsBuilder()->withUserId('user-1')->build());
+        $loader = new DriveSettingsPostgreSQLLoader($this->entityManager, new ControlledDriveFeature(true, []));
+
+        // When
+        $result = $loader->get('user-1', Retailer::default());
+
+        // Then : aucune entrée dans `retailers` (DRV-702), le reste est ce qu'il était
+        $this->assertSame([], $result->retailers);
+        $this->assertTrue($result->enabled);
+        $this->assertSame('leclerc', $result->retailer);
+        $this->assertSame('123456', $result->store?->id);
+
+        // When : on rallume l'enseigne
+        $again = new DriveSettingsPostgreSQLLoader($this->entityManager, new ControlledDriveFeature(true, [Retailer::default()->value]))->get('user-1', Retailer::default());
+
+        // Then : ses données étaient restées
+        $this->assertCount(1, $again->retailers);
+        $this->assertTrue($again->retailers[0]->configured);
+    }
+
     public function testAStoreWithoutLabelHasANullLabel(): void
     {
         // Given

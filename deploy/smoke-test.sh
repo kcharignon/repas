@@ -87,6 +87,12 @@ check "le profileur est coupé en production (pas d'en-tête X-Debug-Token)" bas
 check "les clés JWT existent dans le volume" docker compose exec -T php test -f /app/config/jwt/private.pem
 # DRIVE_ENABLED n'est pas dans le .env de cet essai : la valeur par défaut de compose (false) doit gagner sur celle du .env embarqué dans l'image.
 check "l'envoi de la liste au drive est coupé par défaut (DRIVE_ENABLED=false)" test "$(docker compose exec -T php printenv DRIVE_ENABLED < /dev/null)" = false
+# DRIVE_RETAILERS (DRV-702) : absente du .env de cet essai, la valeur par défaut de compose (leclerc, la production d'aujourd'hui) doit gagner sur celle du .env embarqué.
+check "les enseignes du drive allumées par défaut ne sont que celles d'aujourd'hui (DRIVE_RETAILERS=leclerc)" test "$(docker compose exec -T php printenv DRIVE_RETAILERS < /dev/null)" = leclerc
+# Vide, elle reste vide (aucune enseigne) : `${DRIVE_RETAILERS-leclerc}` ne remplace que l'absence, pas une valeur vide (`:-` le ferait).
+# La valeur est lue par `docker compose config`, pas par ce shell : guillemets simples voulus.
+# shellcheck disable=SC2016
+check "une variable DRIVE_RETAILERS vide n'allume aucune enseigne (elle n'est pas remplacée par la valeur par défaut)" bash -c 'DRIVE_RETAILERS= docker compose config 2>/dev/null | grep -qE "DRIVE_RETAILERS: (\"\")?$"'
 # Même chose pour l'amorçage des ingrédients à l'activation (ING-008) : absente du .env de cet essai, la valeur par défaut de compose (false) doit gagner.
 check "l'amorçage des ingrédients à l'activation est coupé par défaut (INGREDIENT_SEEDING_ENABLED=false)" test "$(docker compose exec -T php printenv INGREDIENT_SEEDING_ENABLED < /dev/null)" = false
 # Ni APP_LATEST_VERSION ni APP_MIN_VERSION dans le .env de cet essai : compose les transmet vides (DRV-637), personne n'est invité à mettre à jour.

@@ -7,6 +7,8 @@ use Repas\Drive\Domain\Exception\DriveException;
 use Repas\Drive\Domain\Interface\ChoiceRepository;
 use Repas\Drive\Domain\Interface\DriveSettingsRepository;
 use Repas\Shared\Application\Interface\IngredientAliasResolver;
+use Repas\Shared\Application\Interface\DriveFeature;
+use Repas\Shared\Domain\Exception\DriveFeatureException;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 #[AsMessageHandler]
@@ -16,6 +18,7 @@ readonly class ForgetChoiceHandler
         private DriveSettingsRepository $driveSettingsRepository,
         private ChoiceRepository $choiceRepository,
         private IngredientAliasResolver $ingredientAliases,
+        private DriveFeature $driveFeature,
     ) {
     }
 
@@ -28,6 +31,10 @@ readonly class ForgetChoiceHandler
      */
     public function __invoke(ForgetChoiceCommand $command): void
     {
+        // DRV-702 : une enseigne éteinte (`DRIVE_RETAILERS`) n'existe pas pour l'utilisateur, avant toute lecture ou écriture
+        if (!$this->driveFeature->isRetailerEnabled($command->retailer->value)) {
+            throw DriveFeatureException::retailerDisabled();
+        }
         $settings = $this->driveSettingsRepository->findOneByUser($command->userId, $command->retailer);
         if ($settings === null) {
             throw DriveException::notConfigured();

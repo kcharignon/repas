@@ -39,7 +39,7 @@ final class ListChoicesApiController extends AbstractController
             new OA\Property(property: 'totalItems', type: 'integer', example: 3),
         ]),
     )]
-    #[OA\Response(response: 404, description: 'Fonction drive coupée (message `DRIVE_DISABLED`)')]
+    #[OA\Response(response: 404, description: 'Fonction drive coupée (message `DRIVE_DISABLED`), ou enseigne éteinte (message `DRIVE_RETAILER_DISABLED`, `DRIVE_RETAILERS`)')]
     #[OA\Response(response: 422, description: 'Paramètre `retailer` absent ou inconnu')]
     public function __invoke(#[CurrentUser] AuthenticatedUser $user, #[MapQueryString(validationFailedStatusCode: 422)] ListChoicesRequestQuery $filter): JsonResponse
     {

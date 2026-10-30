@@ -8,6 +8,8 @@ use Repas\Drive\Domain\Exception\DriveException;
 use Repas\Drive\Domain\Interface\DriveSettingsRepository;
 use Repas\Drive\Domain\Model\DriveSettings;
 use Repas\Drive\Domain\Model\Store;
+use Repas\Shared\Application\Interface\DriveFeature;
+use Repas\Shared\Domain\Exception\DriveFeatureException;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 #[AsMessageHandler]
@@ -16,6 +18,7 @@ readonly class SaveDriveSettingsHandler
     public function __construct(
         private DriveSettingsRepository $driveSettingsRepository,
         private ClockInterface $clock,
+        private DriveFeature $driveFeature,
     ) {
     }
 
@@ -26,6 +29,10 @@ readonly class SaveDriveSettingsHandler
      */
     public function __invoke(SaveDriveSettingsCommand $command): void
     {
+        // DRV-702 : une enseigne éteinte (`DRIVE_RETAILERS`) n'existe pas pour l'utilisateur, avant toute lecture ou écriture
+        if (!$this->driveFeature->isRetailerEnabled($command->retailer->value)) {
+            throw DriveFeatureException::retailerDisabled();
+        }
         $store = Store::create($command->retailer, $command->storeId, $command->storeLabel, $command->baseUrl);
         $now = $this->clock->now();
 
