@@ -13,7 +13,8 @@ use Repas\Tests\Helper\Builder\RecipeBuilder;
 use Repas\Tests\Helper\Builder\RecipeTypeBuilder;
 
 /**
- * La recette secrète (ADR 0033) dans le modèle : visible de son auteur seul, drapeau modifiable par lui seul, jamais recopié par une copie.
+ * La recette secrète (ADR 0033) dans le modèle : visible de son auteur seul, drapeau modifiable par lui seul, hérité par la copie que l'auteur
+ * fait de sa propre recette (jamais par la copie d'un autre, qui n'existe pas pour une secrète).
  */
 class RecipeSecretTest extends TestCase
 {
@@ -111,19 +112,30 @@ class RecipeSecretTest extends TestCase
         Recipe::copyFromOriginal('copy', $original, 'copier-id', [], static fn(): string => 'new-row');
     }
 
-    public function testTheCopyIsAlwaysOrdinaryWhoeverCopies(): void
+    public function testTheAuthorWhoCopiesHisOwnSecretRecipeGetsASecretCopy(): void
     {
-        // Given : l'auteur copie sa propre recette secrète, un autre copie une recette ordinaire
+        // Given
         $secret = new RecipeBuilder()->withId('secret')->withAuthorId('author-id')->asSecret()->build();
+
+        // When
+        $copy = Recipe::copyFromOriginal('copy', $secret, 'author-id', [], static fn(): string => 'new-row');
+
+        // Then : la copie ne rend pas publique ce que l'auteur avait caché ; l'original ne bouge pas
+        $this->assertTrue($copy->isSecret());
+        $this->assertTrue($secret->isSecret());
+    }
+
+    public function testAnyOtherCopyIsAnOrdinaryRecipe(): void
+    {
+        // Given : l'auteur copie une recette ordinaire à lui, un autre copie une recette ordinaire
         $ordinary = new RecipeBuilder()->withId('ordinary')->withAuthorId('author-id')->build();
 
         // When
-        $copyOfSecret = Recipe::copyFromOriginal('copy-1', $secret, 'author-id', [], static fn(): string => 'new-row');
-        $copyOfOrdinary = Recipe::copyFromOriginal('copy-2', $ordinary, 'copier-id', [], static fn(): string => 'new-row');
+        $ownCopy = Recipe::copyFromOriginal('copy-1', $ordinary, 'author-id', [], static fn(): string => 'new-row');
+        $otherCopy = Recipe::copyFromOriginal('copy-2', $ordinary, 'copier-id', [], static fn(): string => 'new-row');
 
-        // Then : le drapeau est le choix de l'auteur de chaque recette, il ne se recopie pas ; l'original ne bouge pas
-        $this->assertFalse($copyOfSecret->isSecret());
-        $this->assertFalse($copyOfOrdinary->isSecret());
-        $this->assertTrue($secret->isSecret());
+        // Then
+        $this->assertFalse($ownCopy->isSecret());
+        $this->assertFalse($otherCopy->isSecret());
     }
 }

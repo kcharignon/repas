@@ -10,6 +10,7 @@ use Repas\Repas\Domain\Interface\RecipeRepository;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Repas\Domain\Model\Ingredient;
 use Repas\Repas\Domain\Model\Recipe;
+use Repas\Shared\Domain\Tool\UuidGenerator;
 use Repas\Tests\Helper\Builder\ConversionBuilder;
 use Repas\Tests\Helper\Builder\IngredientBuilder;
 use Repas\Tests\Helper\Builder\RecipeBuilder;
@@ -156,10 +157,15 @@ class SecretRecipeApiFlowTest extends DatabaseTestCase
         $this->savedActiveList($this->author);
         $this->request('PUT', '/api/v1/shopping-lists/active/recipes/' . $secret->getId(), $this->author);
 
-        // Then : tout passe, et elle est toujours secrète ; sa copie, elle, est une recette ordinaire
+        // Then : tout passe, elle est toujours secrète, et sa copie l'est aussi (copier ne rend pas publique une recette cachée)
         $this->assertSame(204, $this->client->getResponse()->getStatusCode());
         $this->assertTrue($this->recipes()->findOneById($secret->getId())->isSecret());
-        $this->assertFalse($this->recipes()->findOneById($copyId)->isSecret());
+        $this->assertTrue($this->recipes()->findOneById($copyId)->isSecret());
+        // Aucun autre ne la trouve : ni la copie ni l'original ne sont dans les recettes des autres
+        $this->request('GET', '/api/v1/recipes/other-people', $this->other);
+        $this->assertSame([[], 0], [$this->jsonBody()['member'], $this->jsonBody()['totalItems']]);
+        $this->request('GET', '/api/v1/recipes/' . $copyId, $this->other);
+        $this->assertSame(404, $this->client->getResponse()->getStatusCode());
     }
 
     public function testAnotherUserCannotPlanASecretRecipeEitherAndTheListStaysEmpty(): void
@@ -202,7 +208,7 @@ class SecretRecipeApiFlowTest extends DatabaseTestCase
         $this->assertSame([[], 0], [$this->jsonBody()['member'], $this->jsonBody()['totalItems']]);
     }
 
-    public function testACopyOfAnotherUsersRecipeIsNeverSecretAndHisOwnChoiceIsFree(): void
+    public function testTheCopyOfAnOrdinaryRecipeIsOrdinaryAndTheChoiceOfItsCopierIsFree(): void
     {
         // Given : la copie d'une recette ordinaire
         $original = $this->savedRecipe($this->author, 'Tarte ordinaire');
@@ -330,40 +336,149 @@ class SecretRecipeApiFlowTest extends DatabaseTestCase
         $this->assertSame('Tarte secrète', $this->recipes()->findOneById($secret->getId())->getName());
     }
 
-    public function testAnAdministratorKeepsEditingAndDeletingButCannotChangeTheChoiceOfAnotherAuthor(): void
+    public function testAnAdministratorHasNoPassThroughOnTheSecretRecipeOfAnotherAuthorToEditOrDeleteIt(): void
     {
-        // Given : l'administrateur garde, sur les recettes des autres, le droit de modifier et de supprimer qu'il avait
+        // Given
         $secret = $this->savedRecipe($this->author, 'Tarte secrète', secret: true);
-        $public = $this->savedRecipe($this->author, 'Tarte ordinaire');
 
-        // When : il envoie le choix actuel, ou n'en envoie pas : une modification ordinaire
-        $this->request('PUT', '/api/v1/recipes/' . $secret->getId(), $this->admin, ['secret' => true] + $this->body('Tarte secrète corrigée'));
-        $sameValue = $this->client->getResponse()->getStatusCode();
+        // When : il la remplace, la supprime, la rend publique
+        $this->request('PUT', '/api/v1/recipes/' . $secret->getId(), $this->admin, $this->body('Tarte piratée'));
+        $replaces = $this->client->getResponse()->getStatusCode();
+        $this->request('PUT', '/api/v1/recipes/' . $secret->getId(), $this->admin, ['secret' => false] + $this->body('Tarte publiée'));
+        $publishes = $this->client->getResponse()->getStatusCode();
+        $this->request('DELETE', '/api/v1/recipes/' . $secret->getId(), $this->admin);
+        $deletes = $this->client->getResponse()->getStatusCode();
+
+        // Then : elle n'existe pas pour lui, et rien n'a bougé
+        $this->assertSame([404, 404, 404], [$replaces, $publishes, $deletes]);
+        $stored = $this->recipes()->findOneById($secret->getId());
+        $this->assertSame(['Tarte secrète', true, 1], [$stored->getName(), $stored->isSecret(), $stored->getVersion()]);
+    }
+
+    public function testAnAdministratorKeepsEditingAndDeletingOrdinaryRecipesButCannotHideThemNorChangeTheChoice(): void
+    {
+        // Given : le passe-droit de l'administrateur sur les recettes ordinaires est ce qu'il était
+        $public = $this->savedRecipe($this->author, 'Tarte ordinaire');
+        $other = $this->savedRecipe($this->author, 'Tarte à supprimer');
+
+        // When : une modification ordinaire, avec ou sans le choix actuel
         $this->request('PUT', '/api/v1/recipes/' . $public->getId(), $this->admin, $this->body('Tarte ordinaire corrigée'));
         $omitted = $this->client->getResponse()->getStatusCode();
-        // Mais il ne rend pas publique la recette secrète d'un autre, ni ne cache la sienne
-        $this->request('PUT', '/api/v1/recipes/' . $secret->getId(), $this->admin, ['secret' => false] + $this->body('Tarte secrète publiée'));
-        $publishes = [$this->client->getResponse()->getStatusCode(), $this->jsonBody()];
+        $this->request('PUT', '/api/v1/recipes/' . $public->getId(), $this->admin, ['secret' => false] + $this->body('Tarte ordinaire revue'));
+        $sameValue = $this->client->getResponse()->getStatusCode();
+        // Mais il ne cache pas la recette d'un autre
         $this->request('PUT', '/api/v1/recipes/' . $public->getId(), $this->admin, ['secret' => true] + $this->body('Tarte ordinaire cachée'));
-        $hides = $this->client->getResponse()->getStatusCode();
+        $hides = [$this->client->getResponse()->getStatusCode(), $this->jsonBody()];
+        $this->request('DELETE', '/api/v1/recipes/' . $other->getId(), $this->admin);
+        $deletes = $this->client->getResponse()->getStatusCode();
 
         // Then
-        $this->assertSame([204, 204], [$sameValue, $omitted]);
-        $this->assertSame([403, ['error' => ['message' => RecipeException::SECRET_FORBIDDEN]]], $publishes);
-        $this->assertSame(403, $hides);
-        $reloaded = $this->recipes();
-        $this->assertSame(['Tarte secrète corrigée', true, 'Tarte ordinaire corrigée', false], [
-            $reloaded->findOneById($secret->getId())->getName(), $reloaded->findOneById($secret->getId())->isSecret(),
-            $reloaded->findOneById($public->getId())->getName(), $reloaded->findOneById($public->getId())->isSecret(),
-        ]);
+        $this->assertSame([204, 204, 204], [$omitted, $sameValue, $deletes]);
+        $this->assertSame([403, ['error' => ['message' => RecipeException::SECRET_FORBIDDEN]]], $hides);
+        $stored = $this->recipes()->findOneById($public->getId());
+        $this->assertSame(['Tarte ordinaire revue', false], [$stored->getName(), $stored->isSecret()]);
+    }
 
-        // When : il supprime (comportement inchangé)
-        $this->request('DELETE', '/api/v1/recipes/' . $secret->getId(), $this->admin);
+    public function testAnAdministratorEditsAndDeletesHisOwnSecretRecipe(): void
+    {
+        // Given : l'administrateur est l'auteur
+        $flour = new IngredientBuilder()->isFlour()->withCreator($this->admin, true)->build();
+        $this->persister->saveIngredient($flour);
+        $mine = new RecipeBuilder()->withAuthor($this->admin)->withName('Ma tarte secrète')->withRecipeType(new RecipeTypeBuilder()->isMeal())
+            ->addRow(new RecipeRowBuilder()->withIngredient($flour)->withUnit(new UnitBuilder()->isGramme())->withQuantity(250))->asSecret()->build();
+        $this->persister->saveRecipe($mine);
+        $body = ['rows' => [['ingredientSlug' => $flour->getSlug(), 'unitSlug' => 'gramme', 'quantity' => 250]]] + $this->body('Ma tarte revue');
 
-        // Then
+        // When & Then : comme n'importe quel auteur
+        $this->request('GET', '/api/v1/recipes/' . $mine->getId(), $this->admin);
+        $this->assertSame(200, $this->client->getResponse()->getStatusCode());
+        $this->request('PUT', '/api/v1/recipes/' . $mine->getId(), $this->admin, ['secret' => false] + $body);
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->assertFalse($this->recipes()->findOneById($mine->getId())->isSecret());
+        $this->request('DELETE', '/api/v1/recipes/' . $mine->getId(), $this->admin);
         $this->assertSame(204, $this->client->getResponse()->getStatusCode());
     }
 
+    /**
+     * Pour chaque façon d'atteindre une recette, le lecteur qui n'en est pas l'auteur (et l'administrateur) reçoit de la recette secrète EXACTEMENT
+     * ce qu'il reçoit d'un identifiant de recette qui n'existe pas : le statut, le corps (au nom de la recette près) et les en-têtes.
+     */
+    public function testASecretRecipeIsIndistinguishableFromAnUnknownOneInEveryWayToReachIt(): void
+    {
+        // Given
+        $secret = $this->savedRecipe($this->author, 'Tarte secrète', secret: true);
+        $unknownId = UuidGenerator::new();
+        $ways = [
+            'lire' => ['GET', '/api/v1/recipes/%s', null],
+            'copier' => ['POST', '/api/v1/recipes/%s/copy', null],
+            'remplacer' => ['PUT', '/api/v1/recipes/%s', $this->body('Pirate')],
+            'rendre publique' => ['PUT', '/api/v1/recipes/%s', ['secret' => false] + $this->body('Pirate')],
+            'supprimer' => ['DELETE', '/api/v1/recipes/%s', null],
+            'planifier' => ['PUT', '/api/v1/shopping-lists/active/recipes/%s', null],
+            'retirer du plan' => ['DELETE', '/api/v1/shopping-lists/active/recipes/%s', null],
+        ];
+
+        foreach (['un autre utilisateur' => $this->other, 'l\'administrateur' => $this->admin] as $who => $reader) {
+            $this->savedActiveList($reader);
+            foreach ($ways as $way => [$method, $pattern, $body]) {
+                // When
+                $onSecret = $this->answer($method, sprintf($pattern, $secret->getId()), $reader, $body, $secret->getId());
+                $onUnknown = $this->answer($method, sprintf($pattern, $unknownId), $reader, $body, $unknownId);
+
+                // Then : un 404, et la même réponse
+                $this->assertSame(404, $onUnknown['status'], "$who, $way : un identifiant inconnu doit répondre 404");
+                $this->assertSame($onUnknown, $onSecret, "$who, $way : la recette secrète se distingue d'une recette inconnue");
+                $this->assertStringNotContainsString('secrète', $onSecret['body']);
+            }
+        }
+        $this->assertSame(0, $this->scalar('SELECT COUNT(*) FROM meal'));
+        $this->assertTrue($this->recipes()->findOneById($secret->getId())->isSecret());
+    }
+
+    public function testAMealInheritedFromTheSecretRecipeOfAnotherShowsNoNameCannotBeEditedNorRemovedToReadItsContent(): void
+    {
+        // Given : la liste de «other» a de la farine, un repas hérité (d'avant la garde de `addMeal`) vers la recette ORDINAIRE d'un auteur, et un
+        // repas orphelin (recette retirée)
+        $public = $this->savedRecipe($this->author, 'Tarte de mamie');
+        $listId = $this->savedActiveList($this->other, withFlour: true);
+        $mealId = UuidGenerator::new();
+        $orphanMealId = UuidGenerator::new();
+        $orphanRecipeId = UuidGenerator::new();
+        $this->entityManager->getConnection()->executeStatement('INSERT INTO meal (id, shopping_list, recipe, serving) VALUES (?, ?, ?, 4), (?, ?, ?, 4)', [$mealId, $listId, $public->getId(), $orphanMealId, $listId, $orphanRecipeId]);
+        $this->request('GET', '/api/v1/shopping-lists/' . $listId, $this->other);
+        $before = $this->jsonBody();
+
+        // When : l'auteur la rend secrète
+        $this->entityManager->getConnection()->executeStatement('UPDATE recipe SET secret = TRUE WHERE id = ?', [$public->getId()]);
+        $this->request('GET', '/api/v1/shopping-lists/' . $listId, $this->other);
+        $content = (string) $this->client->getResponse()->getContent();
+        $after = $this->jsonBody();
+
+        // Then : elle se lisait, plus maintenant ; ni son nom ni son identifiant ne sortent de la liste de «other», ses quantités sont les siennes
+        $this->assertSame(['Tarte de mamie'], array_column($before['recipeTypes'][0]['meals'], 'recipeName'));
+        $this->assertSame([[], 0], [$after['recipeTypes'], $after['recipeCount']]);
+        $this->assertStringNotContainsString('Tarte de mamie', $content);
+        $this->assertStringNotContainsString($public->getId(), $content);
+        $rowsBefore = $this->listRows($listId);
+
+        // When : il change le nombre de personnes du repas hérité (une autre valeur, puis la même) ou retire la recette du plan
+        $this->request('PUT', '/api/v1/meals/' . $mealId . '/serving', $this->other, ['serving' => 6]);
+        $changes = $this->answerOfLast($public->getId());
+        $this->request('PUT', '/api/v1/meals/' . $mealId . '/serving', $this->other, ['serving' => 4]);
+        $same = $this->answerOfLast($public->getId());
+        $this->request('PUT', '/api/v1/meals/' . $orphanMealId . '/serving', $this->other, ['serving' => 6]);
+        $orphan = $this->answerOfLast($orphanRecipeId);
+        $this->request('DELETE', '/api/v1/shopping-lists/active/recipes/' . $public->getId(), $this->other);
+        $removes = $this->answerOfLast($public->getId());
+
+        // Then : 404 comme pour une recette retirée (même corps, mêmes en-têtes), et la liste n'a pas bougé : aucune quantité ne dit le contenu
+        $this->assertSame(404, $orphan['status']);
+        $this->assertSame([$orphan, $orphan], [$changes, $same]);
+        $this->assertSame(404, $removes['status']);
+        $this->assertSame($rowsBefore, $this->listRows($listId));
+        $this->assertSame(2, $this->scalar('SELECT COUNT(*) FROM meal WHERE shopping_list = ?', $listId));
+        $this->assertSame(4, $this->scalar('SELECT serving FROM meal WHERE id = ?', $mealId));
+    }
     /**
      * @param array<string, mixed> $extra
      * @param array<string, string> $headers
@@ -400,9 +515,10 @@ class SecretRecipeApiFlowTest extends DatabaseTestCase
         return $recipe;
     }
 
-    private function savedActiveList(User $owner): string
+    private function savedActiveList(User $owner, bool $withFlour = false): string
     {
-        $list = new ShoppingListBuilder()->withOwner($owner)->build();
+        $builder = new ShoppingListBuilder()->withOwner($owner);
+        $list = ($withFlour ? $builder->addIngredient($this->flour) : $builder)->build();
         static::getContainer()->get(ShoppingListRepository::class)->save($list);
 
         return $list->getId();
@@ -443,6 +559,46 @@ class SecretRecipeApiFlowTest extends DatabaseTestCase
         $this->entityManager->clear();
 
         return static::getContainer()->get(RecipeRepository::class);
+    }
+
+    /**
+     * La réponse à une requête, comparable : le statut, le corps (l'identifiant de la recette remplacé) et les en-têtes sans la date.
+     *
+     * @param array<string, mixed>|null $body
+     * @return array{status: int, body: string, headers: array<string, list<string|null>>}
+     */
+    private function answer(string $method, string $uri, User $user, ?array $body, string $id): array
+    {
+        $this->request($method, $uri, $user, $body);
+
+        return $this->answerOfLast($id);
+    }
+
+    /**
+     * @return array{status: int, body: string, headers: array<string, list<string|null>>}
+     */
+    private function answerOfLast(string $id): array
+    {
+        $response = $this->client->getResponse();
+        $headers = $response->headers->all();
+        unset($headers['date']);
+
+        return [
+            'status' => $response->getStatusCode(),
+            'body' => str_replace($id, '{id}', (string) $response->getContent()),
+            'headers' => $headers,
+        ];
+    }
+
+    /**
+     * @return list<array{string, string}> les lignes de la liste : ingrédient et quantité
+     */
+    private function listRows(string $listId): array
+    {
+        return array_map(
+            static fn(array $row): array => [$row['ingredient'], (string) $row['quantity']],
+            $this->entityManager->getConnection()->fetchAllAssociative('SELECT ingredient, quantity FROM shopping_list_row WHERE shopping_list = ? ORDER BY ingredient', [$listId]),
+        );
     }
 
     private function recipeCount(): int

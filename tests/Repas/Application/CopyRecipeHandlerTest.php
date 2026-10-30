@@ -116,7 +116,7 @@ class CopyRecipeHandlerTest extends TestCase
         $this->assertSame([], $this->events->eventDispatched);
     }
 
-    public function testTheAuthorCopiesHisOwnSecretRecipeAndTheCopyIsAnOrdinaryRecipe(): void
+    public function testTheAuthorCopiesHisOwnSecretRecipeAndTheCopyIsSecretToo(): void
     {
         // Given
         $private = $this->personal('ingredient secret', $this->cheese(), $this->unit()->isBox(), self::AUTHOR);
@@ -127,9 +127,9 @@ class CopyRecipeHandlerTest extends TestCase
         // When
         ($this->handler)(new CopyRecipeCommand('recipe-id', self::AUTHOR, 'copy-id'));
 
-        // Then : copiée, et la copie n'hérite pas du choix de l'original (le drapeau est celui de l'auteur de chaque recette)
+        // Then : copiée, et la copie reste secrète : copier ne rend pas publique une recette que l'auteur avait cachée
         $copy = $this->recipes->findOneById('copy-id');
-        $this->assertSame(['recipe-id', self::AUTHOR, false], [$copy->getOriginalId(), $copy->getAuthorId(), $copy->isSecret()]);
+        $this->assertSame(['recipe-id', self::AUTHOR, true], [$copy->getOriginalId(), $copy->getAuthorId(), $copy->isSecret()]);
         $this->assertTrue($this->recipes->findOneById('recipe-id')->isSecret());
     }
 

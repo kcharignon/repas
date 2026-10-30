@@ -36,7 +36,7 @@ final class UpdateRecipeApiController extends AbstractController
     #[OA\RequestBody(required: true, content: new OA\JsonContent(ref: new Model(type: RecipePayload::class)))]
     #[OA\Parameter(ref: '#/components/parameters/IfMatch')]
     #[OA\Response(response: 204, description: 'Recette modifiée')]
-    #[OA\Response(response: 403, description: "La recette appartient à un autre utilisateur (une recette secrète d'un autre, que son propriétaire seul voit, est inconnue : `404`). `RECIPE_SECRET_FORBIDDEN` : un administrateur qui modifie la recette d'un autre envoie un `secret` différent de l'actuel, rien n'est écrit")]
+    #[OA\Response(response: 403, description: "La recette appartient à un autre utilisateur (la recette secrète d'un autre, que son auteur seul voit, est inconnue pour tous, administrateur compris : `404`). `RECIPE_SECRET_FORBIDDEN` : un administrateur qui modifie la recette ordinaire d'un autre envoie un `secret` différent de l'actuel, rien n'est écrit")]
     #[OA\Response(response: 404, description: "Recette, type, ingrédient ou unité inconnu (un ingrédient personnalisé d'un autre utilisateur l'est aussi)")]
     #[OA\Response(response: 422, description: 'Corps de la requête invalide (`secret` n\'est pas un booléen JSON)')]
     #[OA\Response(response: 412, description: "La version de la recette n'est plus celle de `If-Match` : elle a été modifiée depuis sa lecture")]

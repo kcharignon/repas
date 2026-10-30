@@ -25,11 +25,11 @@ final class CopyRecipeApiController extends AbstractController
     #[IsGranted('ROLE_USER')]
     #[OA\Post(
         summary: "Copie une recette dans celles de l'utilisateur connecté",
-        description: "Chaque ingrédient de la recette est rapproché de ceux que l'utilisateur possède déjà (ce qu'il a adopté, puis le même nom dans le même rayon, avec une unité compatible) ; à défaut, il reçoit une copie de l'ingrédient avec ses conversions propres. Un ingrédient existant de l'utilisateur n'est jamais modifié. La copie est une recette ordinaire, jamais secrète.",
+        description: "Chaque ingrédient de la recette est rapproché de ceux que l'utilisateur possède déjà (ce qu'il a adopté, puis le même nom dans le même rayon, avec une unité compatible) ; à défaut, il reçoit une copie de l'ingrédient avec ses conversions propres. Un ingrédient existant de l'utilisateur n'est jamais modifié. La copie d'une recette ordinaire est une recette ordinaire ; celle que l'auteur fait de sa propre recette secrète est secrète aussi.",
     )]
     #[OA\Tag(name: 'Recipes')]
     #[OA\Response(response: 201, description: 'Copie créée', headers: [new OA\Header(header: 'Location', description: 'URL de la copie', schema: new OA\Schema(type: 'string'))])]
-    #[OA\Response(response: 404, description: "Recette inconnue, ou secrète et d'un autre (que son auteur seul voit, un administrateur compris) : rien n'est copié")]
+    #[OA\Response(response: 404, description: "Recette inconnue, ou secrète et d'un autre (que son auteur seul voit, un administrateur n'y échappe pas) : rien n'est copié")]
     #[OA\Response(response: 422, description: "L'utilisateur a déjà 2 000 recettes, copies comprises (`RECIPE_LIMIT_REACHED`)")]
     public function __invoke(string $id, #[CurrentUser] AuthenticatedUser $user): Response
     {

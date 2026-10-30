@@ -31,7 +31,7 @@ final class UpdateServingMealApiController extends AbstractController
     #[OA\Parameter(ref: '#/components/parameters/IfMatch')]
     #[OA\Response(response: 204, description: 'Portions modifiées')]
     #[OA\Response(response: 403, description: "La ressource appartient à un autre utilisateur")]
-    #[OA\Response(response: 404, description: 'Ressource inconnue')]
+    #[OA\Response(response: 404, description: "Ressource inconnue (ou repas hérité d'une recette secrète d'un autre, que seul son auteur voit)")]
     #[OA\Response(response: 409, description: 'La liste est envoyée au drive : elle n\'est plus modifiable (message `SHOPPING_LIST_SENT`)')]
     #[OA\Response(response: 422, description: 'Corps de la requête invalide')]
     #[OA\Response(response: 412, description: "La version de la liste n'est plus celle de `If-Match` : elle a été modifiée depuis sa lecture")]

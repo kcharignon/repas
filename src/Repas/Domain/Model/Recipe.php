@@ -232,11 +232,12 @@ final class Recipe implements ModelInterface
      * La copie d'une recette pour `$authorId`. Elle ne crée ni ne cherche aucun ingrédient : le cas d'usage a retenu, pour chaque
      * ingrédient de l'original, celui que le copieur utilisera (ADR 0028 décision 8), et le donne ici par slug d'origine.
      *
+     * Le choix « recette secrète » (ADR 0033) : la recette secrète d'un autre n'existe pas pour le copieur ; l'auteur qui copie SA recette secrète
+     * obtient une copie secrète elle aussi (jamais une copie qui rendrait publique ce qu'il avait caché) ; toute autre copie est une recette
+     * ordinaire.
+     *
      * @param array<string, Ingredient> $ingredients l'ingrédient du copieur par slug d'ingrédient de l'original
      * @param callable(): string $newRowId l'identifiant d'une nouvelle ligne
-     * La copie est toujours une recette ordinaire, jamais secrète : le drapeau est le choix de l'auteur de chaque recette (ADR 0033), il ne se
-     * recopie pas.
-     *
      * @throws IngredientException un ingrédient retenu n'est pas disponible pour le copieur (celui d'un autre) ou n'a pas été retenu
      * @throws RecipeException l'original est secret et le copieur n'en est pas l'auteur : pour lui, elle n'existe pas
      */
@@ -263,7 +264,9 @@ final class Recipe implements ModelInterface
                 recipeId: $id,
                 ingredient: $ingredients[$row->getIngredient()->getSlug()] ?? throw IngredientException::notFound($row->getIngredient()->getSlug()),
             )),
-            originalId: $original->getId()
+            originalId: $original->getId(),
+            // L'original n'est visible du copieur que s'il est ordinaire ou à lui : secrète ici, il en est l'auteur
+            secret: $original->isSecret() && $original->getAuthorId() === $authorId,
         );
         foreach ($copy->rows as $row) {
             $copy->assertIngredientIsAvailable($row->getIngredient());

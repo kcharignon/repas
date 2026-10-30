@@ -117,13 +117,37 @@ class OwnerVoterTest extends TestCase
         $this->assertSame($messages[0], $messages[1]);
     }
 
-    public function testAnAdministratorKeepsThePassThroughToEditOrDeleteASecretRecipe(): void
+    public function testAnAdministratorHasNoPassThroughOnTheSecretRecipeOfAnotherUser(): void
     {
-        // Given : l'édition et la suppression par l'administrateur sont ce qu'elles étaient (ADR 0033) ; c'est la lecture et la copie qui n'ont pas de passe-droit
+        // Given : la recette secrète de owner-id (ADR 0033) ; l'administrateur est un autre compte
+        $loader = new OwnershipInMemoryLoader(recipeAuthors: ['secret' => 'owner-id', 'ordinary' => 'owner-id'], secretRecipes: ['secret']);
+
+        // Then : il garde l'édition et la suppression des recettes ordinaires, et l'auteur administrateur celles de sa propre secrète ; la secrète d'un autre
+        // n'existe pas pour lui (404)
+        $this->assertSame(VoterInterface::ACCESS_GRANTED, $this->vote($this->other, OwnerVoter::RECIPE_OWNER, 'ordinary', $loader, admin: true));
+        $this->assertSame(VoterInterface::ACCESS_GRANTED, $this->vote($this->owner, OwnerVoter::RECIPE_OWNER, 'secret', $loader, admin: true));
+        $this->expectException(NotFoundHttpException::class);
+        $this->vote($this->other, OwnerVoter::RECIPE_OWNER, 'secret', $loader, admin: true);
+    }
+
+    public function testAnAdministratorIsNotFoundOnTheSecretRecipeWithTheMessageOfAnUnknownOne(): void
+    {
+        // Given
         $loader = new OwnershipInMemoryLoader(recipeAuthors: ['secret' => 'owner-id'], secretRecipes: ['secret']);
 
+        // When
+        $messages = [];
+        foreach (['secret', 'unknown'] as $id) {
+            try {
+                $this->vote($this->other, OwnerVoter::RECIPE_OWNER, $id, $loader, admin: true);
+                $this->fail('Un 404 est attendu.');
+            } catch (NotFoundHttpException $exception) {
+                $messages[] = str_replace($id, '{id}', $exception->getMessage());
+            }
+        }
+
         // Then
-        $this->assertSame(VoterInterface::ACCESS_GRANTED, $this->vote($this->other, OwnerVoter::RECIPE_OWNER, 'secret', $loader, admin: true));
+        $this->assertSame($messages[0], $messages[1]);
     }
 
     public function testOnlyTheOwnerOfTheShoppingListOwnsAMeal(): void

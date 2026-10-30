@@ -39,7 +39,7 @@ final readonly class RecipePayload
         public array $rows,
         // `mixed` : la valeur reçue est jugée telle quelle (un booléen JSON, rien d'autre) ; `null` vaut « absent »
         #[Assert\Type(type: 'bool', message: PayloadMessages::SECRET)]
-        #[OA\Property(description: "Recette secrète : seul l'auteur la voit, elle n'est pas dans « Recettes des autres » et personne d'autre ne la lit ni ne la copie (un administrateur non plus). Facultatif : absent ou `null`, il reste inchangé (`PUT`) ou faux (`POST`) ; un ancien client ne le remet donc jamais à zéro. Un booléen JSON, rien d'autre (`422` sinon). Seul l'auteur le change : un administrateur qui modifie la recette d'un autre reçoit `403` `RECIPE_SECRET_FORBIDDEN` quand la valeur envoyée diffère de l'actuelle. Les copies déjà faites par d'autres restent à eux", type: 'boolean', example: false, nullable: true)]
+        #[OA\Property(description: "Recette secrète : seul l'auteur la voit, elle n'est pas dans « Recettes des autres » et personne d'autre ne la lit ni ne la copie (un administrateur non plus). Facultatif : absent ou `null`, il reste inchangé (`PUT`) ou faux (`POST`) ; un ancien client ne le remet donc jamais à zéro. Un booléen JSON, rien d'autre (`422` sinon). Seul l'auteur le change : un administrateur qui modifie la recette ordinaire d'un autre et envoie `true` reçoit `403` `RECIPE_SECRET_FORBIDDEN` (la secrète d'un autre lui est inconnue : `404`). Les copies déjà faites par d'autres restent à eux", type: 'boolean', example: false, nullable: true)]
         public mixed $secret = null,
     ) {
     }
