@@ -48,6 +48,10 @@ Légende : **M** mesuré sur le vrai site (Chrome du téléphone de test, une se
 | C-7 | Codes d'erreur du site : `401`, `99001` à `99007`, `default`, `mba-notification`, `use-by-date-notification` (clés de `GET /cart/config`). | M (clés) / I (sens) |
 | C-8 | Le même produit dans le panier du visiteur et dans celui du compte à la connexion : somme ou maximum. | I |
 | C-9 | Les écritures concurrentes (en parallèle) sont tolérées. | I (**ne jamais en faire**, Leclerc a bloqué un client) |
+| C-10 | Le parent exact de `desiredQuantity` et `actualQuantity` dans la ligne de panier (l'adaptateur les cherche dans `cartItem` puis `offering`). | S |
+| C-11 | `desiredType` à l'écriture, et le fait que le corps reprenne `data-seller-type`, `data-offer-type` et `data-seller-id` de la page de résultats (défauts du code : `GROCERY`, `DEFAULT`, vide). | S |
+| C-12 | Une ligne présente au panier avec une quantité déjà supérieure ou égale n'est pas réécrite (jamais de réduction) ; plafond du code : 99. | Règle de l'adaptateur, non mesurée |
+| D-10 | Un 403 DataDome sans marqueur `captcha-delivery.com` n'est pas reconnu comme un défi (retenté une fois comme chez Leclerc). | S |
 
 ## Anti-robot et connexion
 

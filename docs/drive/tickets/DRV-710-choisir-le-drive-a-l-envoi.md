@@ -4,7 +4,7 @@
 - **Jalon** : M7 Plusieurs enseignes
 - **Taille** : M
 - **Dépend de** : DRV-703, DRV-707, DRV-708, DRV-709
-- **Statut** : à faire. Effort recommandé : `high`.
+- **Statut** : fait (PR front #257, 2026-10-30). Le parcours à un drive est **inchangé** (DOM, appels d'API, messages du pont et nombre de touches comparés à `main`). Écarts : un résultat ne dit pas son enseigne, le contrôle compare la forme de `store.id` à celle du brouillon (`isFromDraft`) ; « Envoyer ailleurs » n'apparaît que sur les écrans qui restent (erreur, « Recommencer », « Revenir à l'envoi ») quand un drive habituel ouvre l'écran tout seul, sans entrée depuis le récapitulatif : **à trancher côté produit** ; en navigateur, pas de tuiles. Relevé de touches : un drive inchangé ; deux drives sans habituel : une touche (« Ouvrir {nom} ») si la présélection convient, une de plus pour changer. Effort recommandé : `high`.
 - **Lire d'abord** : [`../multi-enseignes.md`](../multi-enseignes.md) §§ 5, 8, 9 ; [ADR 0027](../../adr/0027-plusieurs-enseignes-de-drive.md) décisions 5, 8, 9 ; [`../principes-produit.md`](../principes-produit.md) ; skills `repas-front-dev`, `repas-po` ; DRV-404, 405, 622, 640, 641.
 
 ## Contexte

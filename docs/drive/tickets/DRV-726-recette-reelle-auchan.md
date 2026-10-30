@@ -38,3 +38,14 @@ Rapport fusionné ; runbook « Auchan a changé » complété (`runbook.md`) ; r
 
 - Le téléphone de test est connecté au compte de l'administrateur de Repas : il ne prouve rien sur un compte sans droits.
 - `adb shell am force-stop` juste après un renouvellement de session fait perdre la session (`consignes-agents.md`).
+
+## À vérifier en plus (issus de DRV-717 et DRV-725)
+
+- **Marqueurs de défi** : `captcha-delivery.com` (DataDome) et une page reCAPTCHA à la place du JSON du panier sont **supposés** ; un 403 DataDome sans ce marqueur n'est pas reconnu comme un défi. Noter ce qui apparaît vraiment, sans le provoquer.
+- **Sens des erreurs** : `401`, `99001` à `99007` (inconnus : aujourd'hui `CONTRACT_CHANGED`, `NOT_LOGGED_IN` pour un `401`).
+- **Position des quantités** dans la ligne de panier (l'adaptateur cherche `desiredQuantity` et `actualQuantity` dans `cartItem` puis `offering`) et valeur de `desiredType` / reprise de `data-seller-type`, `data-offer-type`, `data-seller-id`.
+- **Visiteur** : l'envoi s'arrête (`NOT_LOGGED_IN`, `SESSION_VISITOR`) ; décider s'il faut le permettre (le panier d'un visiteur est fusionné à la connexion).
+- **Test automatique** (`selftest`) : il nettoie en écrivant `0`, que l'adaptateur d'Auchan refuse par construction (jamais de réduction) ; décider si le test automatique est proposé pour Auchan.
+- **Livraison à domicile** : un canal sans `PICK_UP` n'est que rapporté dans le diagnostic (A-8).
+- **Libellé du magasin** : l'écran « Utiliser ce magasin » afficherait l'UUID en entier si le libellé manquait (A-4 le suppose toujours présent).
+- **Photos** : `cdn.auchan.fr`, chemin `/media/…` : liste blanche par enseigne, à confirmer.
