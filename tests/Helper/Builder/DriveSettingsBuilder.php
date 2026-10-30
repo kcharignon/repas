@@ -51,6 +51,16 @@ class DriveSettingsBuilder implements Builder
         return $this;
     }
 
+    /**
+     * Un magasin tel que la base le restitue, sans aucun contrôle (`Store::load`) : pour un identifiant que l'enseigne du builder
+     * n'accepterait pas à la création, par exemple un identifiant explicite de 36 caractères (DRV-720).
+     */
+    public function withStoreAsRead(string $id, ?string $label, string $baseUrl): self
+    {
+        $this->store = Store::load(['id' => $id, 'label' => $label, 'base_url' => $baseUrl]);
+        return $this;
+    }
+
     public function withUpdatedAt(DateTimeImmutable $updatedAt): self
     {
         $this->updatedAt = $updatedAt;

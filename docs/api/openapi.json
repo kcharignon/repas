@@ -2979,7 +2979,7 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "maxLength": 20
+                            "maxLength": 40
                         },
                         "example": "123456"
                     }
@@ -3169,7 +3169,7 @@
                         "description": "Fonction drive coup\u00e9e (message `DRIVE_DISABLED`)"
                     },
                     "422": {
-                        "description": "Corps invalide, ou magasin refus\u00e9 (message `DRIVE_STORE_INVALID`) : adresse qui n'est pas celle d'un magasin de l'enseigne, identifiant diff\u00e9rent de celui de l'adresse"
+                        "description": "Corps invalide, ou magasin refus\u00e9 (message `DRIVE_STORE_INVALID`) : adresse qui n'est pas celle d'un magasin de l'enseigne, identifiant qui n'a pas la forme de l'enseigne ou, quand il se d\u00e9duit de l'adresse, diff\u00e9rent de celui de l'adresse"
                     },
                     "429": {
                         "$ref": "#/components/responses/DriveWriteRateLimited"
@@ -4243,7 +4243,7 @@
                     },
                     "storeId": {
                         "type": "string",
-                        "maxLength": 20
+                        "maxLength": 40
                     }
                 },
                 "type": "object"
@@ -4302,7 +4302,7 @@
                     "storeId": {
                         "description": "Magasin des produits : doit \u00eatre le magasin courant des r\u00e9glages de l'utilisateur",
                         "type": "string",
-                        "maxLength": 20,
+                        "maxLength": 40,
                         "example": "123456"
                     },
                     "haveAtHome": {
@@ -4336,9 +4336,9 @@
                 ],
                 "properties": {
                     "id": {
-                        "description": "Identifiant du magasin chez l'enseigne : celui de l'adresse de base",
+                        "description": "Identifiant du magasin chez l'enseigne, de la forme `storeIdPattern` du contrat des enseignes (40 caract\u00e8res au plus) : celui de l'adresse de base quand `storeIdSource` vaut `URL`, celui que l'agent a lu sur le site quand elle vaut `EXPLICIT`",
                         "type": "string",
-                        "maxLength": 20,
+                        "maxLength": 40,
                         "example": "123456"
                     },
                     "baseUrl": {
@@ -4632,7 +4632,7 @@
                     "storeId": {
                         "description": "Magasin des produits : doit \u00eatre le magasin courant des r\u00e9glages de l'utilisateur",
                         "type": "string",
-                        "maxLength": 20,
+                        "maxLength": 40,
                         "example": "123456"
                     },
                     "choices": {
@@ -6208,7 +6208,7 @@
                 ],
                 "properties": {
                     "id": {
-                        "description": "Identifiant du magasin chez l'enseigne (chiffres, z\u00e9ros initiaux conserv\u00e9s)",
+                        "description": "Identifiant du magasin chez l'enseigne, en texte (40 caract\u00e8res au plus, de la forme `storeIdPattern` du contrat des enseignes ; z\u00e9ros initiaux conserv\u00e9s)",
                         "type": "string",
                         "example": "123456"
                     },

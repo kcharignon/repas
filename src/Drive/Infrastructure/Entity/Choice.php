@@ -27,7 +27,7 @@ class Choice
     #[ORM\Column(type: Types::STRING, length: 20)]
     public string $retailer;
 
-    #[ORM\Column(name: 'store_id', type: Types::STRING, length: 20)]
+    #[ORM\Column(name: 'store_id', type: Types::STRING, length: 40)]
     public string $storeId;
 
     #[ORM\Column(name: 'ingredient_slug', type: Types::STRING, length: 255)]

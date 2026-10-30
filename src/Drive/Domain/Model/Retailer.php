@@ -45,6 +45,9 @@ enum Retailer: string
                 storeAddressPattern: '^https://[a-z0-9-]+\.leclercdrive\.fr/magasin-([0-9]+)-([0-9]+)$',
                 storeAddressExample: 'https://exemple.leclercdrive.fr/magasin-123456-123456',
                 productIdPattern: RetailerProfile::NUMERIC_PRODUCT_ID,
+                // L'identifiant se déduit de l'adresse : le premier groupe de chiffres, 20 au plus (ce que `Store::create` acceptait déjà, DRV-720)
+                storeIdSource: StoreIdSource::URL,
+                storeIdPattern: '^[0-9]{1,20}$',
             ),
         };
     }
@@ -56,11 +59,19 @@ enum Retailer: string
 
     /**
      * Identifiant du magasin d'une adresse de base (le premier groupe de chiffres, zéros initiaux conservés), `null` si l'adresse
-     * n'est pas celle d'un magasin de l'enseigne.
+     * n'est pas celle d'un magasin de l'enseigne ou si l'identifiant du magasin est explicite chez elle (DRV-720 : rien ne s'en déduit).
      */
     public function storeIdOf(string $baseUrl): ?string
     {
         return $this->profile()->storeIdOf($baseUrl);
+    }
+
+    /**
+     * L'identifiant a la forme d'un identifiant de magasin de l'enseigne (`storeIdPattern`, longueur comprise).
+     */
+    public function isValidStoreId(string $storeId): bool
+    {
+        return $this->profile()->isValidStoreId($storeId);
     }
 
     public function isValidProductId(string $retailerProductId): bool

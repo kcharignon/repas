@@ -7,7 +7,7 @@ use OpenApi\Attributes as OA;
 final readonly class DriveStoreDTO
 {
     public function __construct(
-        #[OA\Property(description: "Identifiant du magasin chez l'enseigne (chiffres, zéros initiaux conservés)", example: '123456')]
+        #[OA\Property(description: "Identifiant du magasin chez l'enseigne, en texte (40 caractères au plus, de la forme `storeIdPattern` du contrat des enseignes ; zéros initiaux conservés)", example: '123456')]
         public string $id,
         #[OA\Property(description: 'Nom du magasin tel que lu par l\'agent, si connu', example: 'Ville-Test', nullable: true)]
         public ?string $label,

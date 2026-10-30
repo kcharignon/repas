@@ -99,6 +99,8 @@ final class DriveContractSamplesTest extends DatabaseTestCase
             'storeAddressPattern' => $retailer->profile()->storeAddressPattern,
             'storeAddressExample' => $retailer->profile()->storeAddressExample,
             'productIdPattern' => $retailer->profile()->productIdPattern,
+            'storeIdSource' => $retailer->profile()->storeIdSource->value,
+            'storeIdPattern' => $retailer->profile()->storeIdPattern,
         ], Retailer::cases())];
         $path = static::getContainer()->getParameter('kernel.project_dir') . '/docs/drive/samples/retailers.sample.json';
         if (getenv(self::REGENERATE) === '1') {

@@ -227,6 +227,59 @@ class DriveChoicesApiFlowTest extends DatabaseTestCase
         $this->assertSame(0, (int) $this->entityManager->getConnection()->fetchOne('SELECT COUNT(*) FROM drive_product'));
     }
 
+    public function testAStoreWithAnIdOf36CharactersHostsTheProductsAndTheChoicesOfTheUser(): void
+    {
+        // Given : un magasin tel qu'une enseigne à identifiant explicite le donne (un UUID inventé, 36 caractères), posé tel que la base le restitue
+        $store = '0b5f8a2e-3c1d-4e7f-9a6b-123456789abc';
+        $sibling = '0b5f8a2e-3c1d-4e7f-9a6b-123456789abd';
+        $user = $this->savedUser();
+        static::getContainer()->get(DriveSettingsRepository::class)->save(new DriveSettingsBuilder()->withUserId($user->getId())->withStoreAsRead($store, 'Ville-Test', 'https://www.exemple.invalid/')->build());
+        $this->ownIngredients($user, ['farine', 'sel']);
+
+        // When : le lot de l'agent pour ce magasin (le corps accepte 40 caractères), puis la lecture des réglages
+        $this->put($user, [$this->add('farine', 'PRIMARY', '1', 'Farine'), $this->add('sel', 'PRIMARY', '2', 'Sel')], $store);
+
+        // Then
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->request('GET', '/api/v1/drive/settings', $user);
+        $this->assertSame($store, $this->jsonBody()['store']['id']);
+        $this->get($user);
+        $this->assertSame(['farine', 'sel'], array_column($this->jsonBody()['member'], 'ingredientSlug'));
+        $this->assertSame([$store, $store], $this->entityManager->getConnection()->fetchFirstColumn('SELECT DISTINCT store_id FROM drive_product UNION ALL SELECT DISTINCT store_id FROM drive_choice'));
+
+        // When : le magasin voisin (mêmes 35 premiers caractères) n'est pas le magasin courant
+        $this->put($user, [$this->add('farine', 'FALLBACK', '3', 'Farine bis')], $sibling);
+
+        // Then : c'est l'identifiant entier qui est comparé
+        $this->assertSame(409, $this->client->getResponse()->getStatusCode());
+        $this->assertSame(['error' => ['message' => 'DRIVE_STORE_MISMATCH']], $this->jsonBody());
+
+        // When : la préférence est remplacée, puis oubliée, avec l'identifiant de 36 caractères
+        $this->get($user);
+        $productId = $this->jsonBody()['member'][1]['accepted'][0]['product']['productId'];
+        $this->replace($user, 'sel', false, [$productId], [], $store);
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->delete($user, 'farine', $store);
+
+        // Then
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->get($user);
+        $this->assertSame(['sel'], array_column($this->jsonBody()['member'], 'ingredientSlug'));
+    }
+
+    public function testAnIdOfMoreThan40CharactersIsRefusedBeforeAnyRead(): void
+    {
+        // Given
+        $user = $this->userWithAStore();
+
+        // When
+        $this->put($user, [$this->add('farine', 'PRIMARY', '1', 'Farine')], str_repeat('a', 41));
+
+        // Then
+        $this->assertSame(422, $this->client->getResponse()->getStatusCode());
+        $this->assertSame([], $this->countsBySlug());
+    }
+
     public function testForgettingAChoiceRemovesItAndKeepsTheProducts(): void
     {
         // Given
