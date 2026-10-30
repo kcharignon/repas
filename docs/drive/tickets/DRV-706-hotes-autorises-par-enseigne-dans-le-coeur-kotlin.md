@@ -4,7 +4,7 @@
 - **Jalon** : M7 Plusieurs enseignes
 - **Taille** : M
 - **Dépend de** : DRV-704 (contrat des enseignes et protocole par enseigne)
-- **Statut** : à faire. Effort recommandé : `xhigh` (sécurité : navigation, origines du pont, livraison du plan).
+- **Statut** : fait (PR front #250, 2026-10-30 ; l'application n'est pas encore branchée : DRV-707). Effort recommandé : `xhigh` (sécurité : navigation, origines du pont, livraison du plan).
 - **Lire d'abord** : [`../multi-enseignes.md`](../multi-enseignes.md) §§ 3.5, 4, 8 ; `android/ARCHITECTURE.md` (règle d'or : le cœur n'importe rien d'Android) ; `.claude/skills/repas-android-dev/SKILL.md` ; ADR 0022 (invariants) ; revue de sécurité du front (`docs/revue-securite-drive.md`) ; AUTH-015 (tronc commun).
 
 ## Contexte

@@ -41,3 +41,7 @@ Celle du dépôt front et du skill `repas-android-dev` ; **aucune étiquette, au
 
 - Une origine mal écrite dans le pont est une **faille** : une règle large (`*.auchan.fr`) est interdite pour le pont ; seule la navigation connaît `compte.auchan.fr`.
 - Les sous-ressources de la page (`api.auchan.fr`, `cdn.auchan.fr`, `dd.ecom.auchan.fr`, `google.com/recaptcha`) ne sont pas des navigations : ne pas les ajouter à la table de navigation ; leur bon fonctionnement en WebView est vérifié à la recette (DRV-726).
+
+## Ce que DRV-706 a posé (2026-10-30)
+
+`RetailerSite` (table `RetailerSites`) distingue, par hôte, la **navigation** et le **pont** (`SiteHost.bridge`) : Auchan = hôtes `www.auchan.fr` (pont) et `compte.auchan.fr` (navigation seule), mode `AS_IS`, sans adresse de page de magasin ni `loginPath` d'adresse de magasin, avec un `storeIdPattern` UUID ; `acceptsPlanOn` livre alors de toute page de `www`. Les noms de site sont un nom exact ou `*.domaine` (jamais le domaine nu, jamais `*.fr`). Gardes : `RetailerSitesArchitectureTest` et `android/__tests__/retailer-sites.spec.ts` (« leclerc » n'est écrit que dans `RetailerSites.kt`, la copie du contrat n'a pas dérivé).

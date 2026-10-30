@@ -135,7 +135,7 @@ Ce qui change ensuite :
 
 ### Couper une seule enseigne (DRV-702)
 
-Quand le site d'une seule enseigne change ou bloque et que l'autre fonctionne : retirer **son** identifiant de `DRIVE_RETAILERS` dans `/opt/repas/.env` (l'humain, à la main tant qu'aucun script ne le fait ; `DRIVE_RETAILERS=` vide éteint toutes les enseignes, la ligne absente vaut `leclerc`), recréer le conteneur `php` (`docker compose up -d --wait php`), contrôler en lecture seule : `docker compose exec -T php printenv DRIVE_RETAILERS`. L'enseigne éteinte répond `404 DRIVE_RETAILER_DISABLED` et n'est plus proposée (`retailers`) ; ses réglages, produits et préférences restent en base ; les listes `SENT` se rouvrent comme avant. L'autre enseigne ne bouge pas. Rallumer = la remettre dans la liste.
+Quand le site d'une seule enseigne change ou bloque et que l'autre fonctionne : retirer **son** identifiant de `DRIVE_RETAILERS` dans `/opt/repas/.env` (l'humain, avec `.claude/skills/repas-ops/references/ecrire-drive-retailers.sh` : `bash -s -- leclerc` ; `DRIVE_RETAILERS=` vide éteint toutes les enseignes, la ligne absente vaut `leclerc`), recréer le conteneur `php` (`docker compose up -d --wait php`), contrôler en lecture seule : `docker compose exec -T php printenv DRIVE_RETAILERS`. L'enseigne éteinte répond `404 DRIVE_RETAILER_DISABLED` et n'est plus proposée (`retailers`) ; ses réglages, produits et préférences restent en base ; les listes `SENT` se rouvrent comme avant. L'autre enseigne ne bouge pas. Rallumer = la remettre dans la liste.
 
 ## 5. Se replier : le mode assisté (« Chercher à la main » à l'écran)
 

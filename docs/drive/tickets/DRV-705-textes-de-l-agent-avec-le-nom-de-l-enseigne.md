@@ -4,7 +4,7 @@
 - **Jalon** : M7 Plusieurs enseignes
 - **Taille** : S
 - **Dépend de** : DRV-704
-- **Statut** : à faire. Effort recommandé : `medium` (texte).
+- **Statut** : fait (PR front #249, 2026-10-30, agent 0.46.0 ; `photo-url.ts` reste à rendre propre à chaque enseigne par DRV-717). Effort recommandé : `medium` (texte).
 - **Lire d'abord** : [`../multi-enseignes.md`](../multi-enseignes.md) §§ 3.4, 5.3 ; [`../principes-produit.md`](../principes-produit.md) (voix, glossaire, erreurs en trois phrases) ; skills `repas-po` et `repas-agent-dev` ; DRV-627 (tutoiement), DRV-621 (test du glossaire).
 
 ## Contexte
