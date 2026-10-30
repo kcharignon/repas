@@ -4,7 +4,7 @@
 - **Jalon** : M7 Plusieurs enseignes
 - **Taille** : M
 - **Dépend de** : DRV-701, DRV-702
-- **Statut** : fait (PR #NNN, 2026-10-30). Effort recommandé : `xhigh` (migration, données de l'utilisateur, purge du compte).
+- **Statut** : fait (PR #333, 2026-10-30). Effort recommandé : `xhigh` (migration, données de l'utilisateur, purge du compte).
 - **Lire d'abord** : [`../multi-enseignes.md`](../multi-enseignes.md) §§ 4.4, 5 ; [ADR 0027](../../adr/0027-plusieurs-enseignes-de-drive.md) décisions 4 et 5 ; ADR 0021 (purge) ; `UserOwnedDataCoverageTest` ; `.claude/skills/repas-drive-back/SKILL.md` (migrations, budgets SQL, purge, limiteur).
 
 ## Contexte
