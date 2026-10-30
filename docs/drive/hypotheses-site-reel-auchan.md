@@ -14,6 +14,7 @@ Légende : **M** mesuré sur le vrai site (Chrome du téléphone de test, une se
 | A-3 | `seller.id` du parcours = `offer.context.seller.id` du panier. | M |
 | A-4 | Le libellé du drive (`pointOfService.name`) est celui de la barre « Retrait : … ». | M |
 | A-4b | L'élément de la barre du magasin : le texte est mesuré (« Choisir vos courses » sans magasin, « Retrait : … » avec), **pas la balise** ; l'agent cherche un élément dont tout le texte est « Choisir vos courses » ou qui commence par « Retrait : » ; barre « Choisir vos courses » alors que le parcours donne un magasin : refus prudent. | S |
+| A-4c | **La première configuration attend le choix du magasin, sans écran bloquant** (DRV-740) : l'application envoie `setup` dès l'ouverture d'Auchan (l'adresse ne change jamais), avant que la personne ait choisi son magasin. Tant que la barre dit « Choisir vos courses », l'agent laisse la page entièrement utilisable sous un petit bandeau (« Choisis ton magasin sur Auchan. Repas le reprend ensuite. »), ne fait **aucune requête** (il ne lit que la barre, toutes les 2 s), puis lit le parcours **une seule fois** quand la barre dit « Retrait : … » et propose « Utiliser ce magasin ? ». Au bout de 15 minutes : « Réessayer » ou « Retourner dans Repas ». Un envoi réel (plan) sans magasin reste un arrêt avec son message. | S |
 | A-5 | La déconnexion efface le magasin (barre « Choisir vos courses »). | M |
 | A-6 | La connexion conserve le magasin choisi en visiteur. | M |
 | A-7 | L'identifiant de magasin reste le même d'un jour à l'autre. | I |
