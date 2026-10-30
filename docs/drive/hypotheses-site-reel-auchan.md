@@ -26,13 +26,16 @@ Légende : **M** mesuré sur le vrai site (Chrome du téléphone de test, une se
 | # | Fait | Statut |
 |---|---|---|
 | B-1 | `GET /recherche?text=<terme>` rend une page HTML complète (390 à 700 Ko), les produits dans le DOM : `data-product-id`, `data-offer-id`, `data-seller-type` (`GROCERY`), `data-offer-type` (`DEFAULT`), `data-seller-id` (vide) et microdonnées schema.org (`name`, `image`, `brand`, `offers`, `price`, `priceCurrency`, `priceValidUntil`, `availability`). | M |
+| B-1b | Sur quel élément se trouve chaque attribut `data-*` et chaque microdonnée (l'adaptateur retient la carte comme le plus petit ancêtre portant le nom et le prix) ; forme de la pastille « 1kg » et du prix au kilo, de la photo (microdonnée `image`), plusieurs `availability` par carte. | S / I |
 | B-2 | `productId` et `offerId` sont des UUID ; l'adresse d'un produit est `/<libellé>/pr-C<7 chiffres>` (nombre sans rapport avec l'UUID). | M |
 | B-3 | Pas d'EAN sur la page de résultats ; `product.eans[]` dans la réponse du panier ; `data-flix-ean` sur la fiche. | M (forme) / I (contenu des `eans`) |
 | B-4 | Contenu net : pastille « 1kg » et prix « 0,91 € / kg » affichés ; champ structuré inconnu. | M (affichage) / I (structure) |
 | B-5 | Disponibilité : `offer.availability` (`AVAILABLE` vu), `offer.state` (`IMMEDIATE` vu), `offer.stockDetail.type` (`RT` vu), microdonnées `InStock` ; mention « Dans mon drive » sur la carte. | M (valeur disponible) / **I** (valeurs « indisponible », « bientôt ») |
+| B-5b | Un vendeur autre que `GROCERY`, une offre autre que `DEFAULT` (promotions, autres vendeurs) sont traités comme indisponibles ; un produit non clairement disponible donne `stock: 0` et la règle commune du passage le tente quand même une fois (le panier tranche). | S |
 | B-6 | Un `404` d'adresse inventée est un vrai `404` avec une page « Erreur 404 ». | M |
 | B-6b | Une page « introuvable » se reconnaît au code HTTP du document, à défaut à un titre commençant par « 404 » (une page vue) ; le reste de la page est supposé. | S |
 | B-7 | Pagination des résultats, tri, filtres. | I |
+| B-7b | Seule la première page de résultats est lue ; la page « aucun résultat » est supposée (barre du magasin et une phrase) ; une page « aucun résultat » qui montrerait des produits suggérés serait lue comme `SEARCH_PRODUCTS_UNREADABLE`. | S / I |
 | B-8 | La recherche de certains termes redirige vers une page de produit ou de rayon (clé `searchRedirects` du stockage local). | S |
 
 ## Panier
