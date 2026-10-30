@@ -15,10 +15,11 @@ use Repas\Drive\Domain\Model\SelectionMode;
  *
  * - R1 aucune candidate : `NONE` (rien à utiliser, mener la personne à ses réglages) ;
  * - R2 une seule candidate : `AUTO` sur elle, même si un drive habituel ou une dernière enseigne désignent une autre enseigne ;
- * - R3 plusieurs candidates et un drive habituel candidat : `AUTO` sur lui (le plus explicite gagne : il l'emporte sur la dernière utilisée) ;
- * - R4 plusieurs candidates sans drive habituel candidat : `ASK`, présélection = la dernière utilisée si elle est candidate, sinon la première
- *   configurée (la plus anciennement enregistrée) ;
- * - R5 une enseigne éteinte n'est jamais candidate, et un drive habituel éteint est ignoré (retour à R4), jamais une erreur.
+ * - R3 deux candidates ou plus : toujours `ASK`, jamais `AUTO` (décision du propriétaire du 2026-10-30, qui remplace « AUTO sur le drive
+ *   habituel » : qui a configuré plusieurs drives choisit au moment d'envoyer) ;
+ * - R4 la présélection d'un `ASK` (celle qui est cochée) : le drive habituel s'il est candidat (même quand la dernière utilisée est une
+ *   autre), sinon la dernière utilisée si elle est candidate, sinon la première configurée (la plus anciennement enregistrée) ;
+ * - R5 une enseigne éteinte n'est jamais candidate, et un drive habituel éteint est ignoré (retour à la dernière utilisée), jamais une erreur.
  */
 final readonly class RetailerSelection
 {
@@ -43,7 +44,7 @@ final readonly class RetailerSelection
             return new Selection(SelectionMode::AUTO, $candidates[0], $candidates);
         }
         if ($default !== null && in_array($default, $candidates, true)) {
-            return new Selection(SelectionMode::AUTO, $default, $candidates);
+            return new Selection(SelectionMode::ASK, $default, $candidates);
         }
 
         return new Selection(SelectionMode::ASK, $lastUsed !== null && in_array($lastUsed, $candidates, true) ? $lastUsed : $candidates[0], $candidates);

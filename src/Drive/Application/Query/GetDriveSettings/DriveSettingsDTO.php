@@ -18,9 +18,9 @@ final readonly class DriveSettingsDTO
         public string $retailer,
         #[OA\Property(description: "Magasin de l'utilisateur chez l'enseigne `retailer`, `null` tant qu'il n'a pas été enregistré", nullable: true)]
         public ?DriveStoreDTO $store,
-        #[OA\Property(description: "Une entrée par enseigne **allumée** (`DRIVE_RETAILERS`, DRV-702 ; ordre fixe), avec le magasin de l'utilisateur chez chacune et si c'est son drive habituel ; s'ajoute aux champs `retailer` et `store`", type: 'array', items: new OA\Items(ref: new Model(type: DriveRetailerDTO::class)))]
+        #[OA\Property(description: "Une entrée par enseigne **allumée** (`DRIVE_RETAILERS`, DRV-702 ; ordre fixe), avec le magasin de l'utilisateur chez chacune et si c'est son drive habituel (présélectionné à l'envoi) ; s'ajoute aux champs `retailer` et `store`", type: 'array', items: new OA\Items(ref: new Model(type: DriveRetailerDTO::class)))]
         public array $retailers,
-        #[OA\Property(description: "Le drive habituel de l'utilisateur (choisi dans « Moi », `PUT /drive/default-retailer`), `null` s'il n'en a pas, ou si son drive habituel est éteint (`DRIVE_RETAILERS`) ou n'a plus de magasin : la sélection l'ignore alors, la préférence reste enregistrée", enum: Retailer::IDS, nullable: true)]
+        #[OA\Property(description: "Le drive habituel de l'utilisateur (choisi dans « Moi », `PUT /drive/default-retailer`), `null` s'il n'en a pas, ou si son drive habituel est éteint (`DRIVE_RETAILERS`) ou n'a plus de magasin : la sélection l'ignore alors, la préférence reste enregistrée ; quand plusieurs drives sont configurés, c'est la présélection du choix à l'envoi (`selection.mode` vaut `ASK`)", enum: Retailer::IDS, nullable: true)]
         public ?string $defaultRetailer,
         #[OA\Property(description: "La dernière enseigne que l'utilisateur a ouverte (`PUT /drive/last-retailer`), `null` s'il n'en a pas, ou si elle est éteinte ou n'a plus de magasin", enum: Retailer::IDS, nullable: true)]
         public ?string $lastUsedRetailer,

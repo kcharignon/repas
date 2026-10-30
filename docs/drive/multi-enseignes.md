@@ -178,31 +178,33 @@ Forme additive de `GET /api/v1/drive/settings` (les anciens champs `enabled`, `r
 }
 ```
 
-`selection.mode` vaut `NONE` (aucune enseigne configurée : mener aux réglages), `AUTO` (une enseigne s'impose : l'utiliser sans rien demander) ou `ASK` (proposer le choix, `retailer` est la présélection). Les valeurs ci-dessus sont inventées.
+`selection.mode` vaut `NONE` (aucune enseigne configurée : mener aux réglages ; le bouton « Envoyer au drive » n'est pas montré), `AUTO` (une seule enseigne configurée : l'utiliser sans rien demander) ou `ASK` (plusieurs configurées : proposer le choix, `retailer` est la présélection : le drive habituel, sinon la dernière utilisée, sinon la première configurée). Les valeurs ci-dessus sont inventées.
 
 ## 5. La règle de choix de l'enseigne
 
 ### 5.1 La règle proposée
 
+> **Amendement du 2026-10-30, décision du propriétaire (DRV-736, front DRV-737)** : « Un utilisateur qui n'a configuré qu'un seul drive, quand il envoie au drive il n'a pas le choix. Un utilisateur qui a configuré plusieurs drives choisit, au moment d'envoyer, à quel drive il envoie. Un utilisateur qui n'a configuré aucun drive ne voit pas le bouton « Envoyer au drive ». » Elle **remplace R3** (plus d'`AUTO` avec plusieurs drives) et le parcours R1 d'origine (« Choisir mon magasin » dans l'écran d'envoi) ; le tableau ci-dessous est celui en vigueur. Le drive habituel ne dispense plus de la question : il est **présélectionné à l'envoi**. Elle comporte une deuxième phrase : sans drive configuré, le bouton « Envoyer au drive » est masqué, et le menu additionnel « ⋮ » de la liste en cours affiche une entrée « Configurer un drive » qui mène à l'écran où l'on choisit quel drive configurer (une seule enseigne allumée : directement à la lecture de son magasin). C'est le front (DRV-737) qui la fait ; côté back, `selection.mode = NONE` suffit à la déclencher.
+
 Définitions : **activée** = autorisée par l'interrupteur (§ 7) et connue de l'application installée (§ 8) ; **configurée** = activée **et** la personne y a enregistré un magasin.
 
 | # | Situation | Ce que fait Repas | Touches en plus d'aujourd'hui |
 |---|---|---|---|
-| R1 | **Aucune** enseigne configurée | « Choisir mon magasin » (le bouton qui fait le travail : règle 6 des principes). S'il n'y a qu'**une** enseigne activée, il lance directement la lecture du magasin, comme aujourd'hui. S'il y en a **plusieurs**, une première question, « Quel drive ? », une tuile par enseigne, puis la lecture du magasin de celle qui est touchée. | 0 (une enseigne) · 1 (plusieurs) |
+| R1 | **Aucune** enseigne configurée (`NONE`) | Le bouton « Envoyer au drive » est **masqué**. Le menu additionnel « ⋮ » de la liste en cours affiche à la place une entrée « Configurer un drive » : elle mène à l'écran où l'on choisit quel drive configurer (« Quel drive utilises-tu ? », une tuile par enseigne allumée, puis la lecture du magasin de celle qui est touchée) ; s'il n'y a qu'**une** enseigne allumée, elle mène directement à la lecture de son magasin. L'écran d'envoi garde, comme filet de sécurité quand on y arrive directement (lien, favori), « Choisir mon magasin » (le bouton qui fait le travail : règle 6 des principes), avec la même question à plusieurs enseignes. | 0 (une enseigne) · 1 (plusieurs) |
 | R2 | **Une seule** configurée | On l'utilise, **sans rien demander**, même si d'autres enseignes existent. Ajouter une enseigne est un geste volontaire dans « Moi » (§ 6), jamais une demande à l'envoi. | 0 |
-| R3 | **Plusieurs** configurées, un **drive habituel** choisi dans « Moi » | On utilise le drive habituel, sans rien demander. L'écran d'envoi garde un lien discret « Envoyer ailleurs » : il change l'enseigne **pour cet envoi seulement** (le drive habituel ne change pas) et devient « dernière utilisée ». | 0 (1 pour « ailleurs ») |
-| R4 | **Plusieurs** configurées, **pas** de drive habituel | L'écran d'envoi montre une tuile par enseigne configurée, la **dernière utilisée présélectionnée** (à défaut, la première configurée), et un seul bouton principal : « Ouvrir <enseigne> ». | 0 si la présélection convient, 1 sinon |
-| R5 | Une enseigne **désactivée** par l'interrupteur, ou trop récente pour l'application, est **retirée des candidates**. Le drive habituel désactivé est ignoré (retour à R4). S'il ne reste **aucune** candidate : l'envoi n'est pas proposé, avec le même message que l'interrupteur général coupé. Si c'est l'**application** qui ne connaît pas l'enseigne choisie : la phrase de mise à jour de [DRV-640](tickets/DRV-640-version-minimale-pour-le-drive.md), et l'autre enseigne reste proposée. | — | — |
+| R3 | **Deux ou plus** configurées | **On demande toujours** (`ASK`, jamais `AUTO`) : l'écran d'envoi montre une tuile par enseigne configurée et un seul bouton principal « Ouvrir <enseigne> ». Plus de lien « Envoyer ailleurs » : la question est déjà posée à chaque envoi. | 0 si la présélection convient, 1 sinon |
+| R4 | La **présélection** d'un `ASK` | Le **drive habituel** choisi dans « Moi » s'il est candidat (même quand la dernière utilisée est une autre) ; sinon la **dernière utilisée** si elle est candidate ; sinon la **première configurée** (la plus anciennement enregistrée). | — |
+| R5 | Une enseigne **désactivée** par l'interrupteur, ou trop récente pour l'application, est **retirée des candidates**. Le drive habituel désactivé est ignoré (retour à la dernière utilisée, R4). S'il ne reste **aucune** candidate : l'envoi n'est pas proposé, avec le même message que l'interrupteur général coupé. Si c'est l'**application** qui ne connaît pas l'enseigne choisie : la phrase de mise à jour de [DRV-640](tickets/DRV-640-version-minimale-pour-le-drive.md), et l'autre enseigne reste proposée. | — | — |
 
 ### 5.2 Pourquoi cette règle
 
-1. **Elle respecte les principes du chantier.** Règle 3 (ne jamais demander ce qu'on sait déjà) : R2 et R3 ne posent aucune question. Règle 5 (un défaut sûr et utile) : en R4 la dernière enseigne utilisée est déjà choisie, le geste le plus courant ne coûte rien. Règle 6 (rien à régler avant de servir) : R1 reste un seul bouton avec une seule enseigne.
-2. **Elle donne un sens au « drive habituel »**, demandé dans les paramètres par l'utilisateur : ce n'est pas une présélection de plus, c'est « ne me demande plus ». Sans lui, la personne qui a deux enseignes mais n'en veut qu'une pour presque tous ses envois verrait toujours une question.
-3. **Le plus explicite gagne.** Quand un drive habituel existe, il l'emporte sur la « dernière utilisée » : un envoi exceptionnel chez l'autre enseigne ne bascule pas les envois suivants.
+1. **Elle respecte les principes du chantier.** Règle 3 (ne jamais demander ce qu'on sait déjà) : R2 ne pose aucune question ; avec plusieurs drives, c'est la personne qui a dit vouloir choisir à chaque envoi (décision du 2026-10-30). Règle 5 (un défaut sûr et utile) : en R4 le drive habituel, sinon la dernière enseigne utilisée, est déjà coché, le geste le plus courant ne coûte rien. Règle 6 (rien à régler avant de servir) : R1 reste un seul bouton avec une seule enseigne.
+2. **Le « drive habituel » est la présélection** (amendement du 2026-10-30 ; il était d'abord « ne me demande plus ») : il garde son réglage dans « Moi » et son sens (« celui que je prends le plus souvent »), mais la question est posée dès que plusieurs drives sont configurés.
+3. **Le plus explicite gagne la présélection.** Quand un drive habituel existe, il est coché avant la « dernière utilisée » : un envoi exceptionnel chez l'autre enseigne ne change pas la case cochée des envois suivants.
 4. **Le cas général reste inchangé.** Avec une enseigne (le cas de tous les utilisateurs aujourd'hui), R1 et R2 reproduisent exactement le comportement actuel : c'est le critère de réussite du découplage.
 5. **Le calcul est dans le back**, testable en table (`RetailerSelection`), et le front ne fait que l'afficher : une seule règle pour le web, Android et un futur iPhone.
 
-**Alternative écartée** : toujours demander quand plusieurs enseignes sont configurées. Une touche de plus à chaque envoi pour une réponse presque toujours la même ; contraire à la règle 3.
+**Alternative d'abord écartée, retenue le 2026-10-30** : toujours demander quand plusieurs enseignes sont configurées (le propriétaire l'a voulu : l'utilisateur qui a configuré plusieurs drives choisit à chaque envoi). **Alternative écartée** : `AUTO` sur le drive habituel avec un lien « Envoyer ailleurs » (la règle R3 d'origine).
 **Alternative écartée** : choisir l'enseigne selon l'estimation du coût la moins chère. Séduisant (voir le backlog) mais les prix mémorisés ne sont pas comparables (dates différentes, produits différents) et l'utilisateur n'a rien demandé de tel ; la règle reste prévisible.
 **Alternative écartée** : lier la liste à une enseigne au moment d'envoyer (`SENT` porterait l'enseigne). Voir § 9.
 
@@ -211,11 +213,12 @@ Définitions : **activée** = autorisée par l'interrupteur (§ 7) et connue de 
 | Où | Texte |
 |---|---|
 | Question R1 (plusieurs enseignes) | « Quel drive utilises-tu ? » · tuiles « Leclerc », « Auchan » |
-| Bouton R1 | « Choisir mon magasin {retailer} » |
+| Menu « ⋮ » de la liste en cours, R1 | « Configurer un drive » (entrée affichée seulement sans drive configuré ; le bouton « Envoyer au drive » est alors masqué) |
+| Bouton R1 (écran d'envoi, filet de sécurité) | « Choisir mon magasin {retailer} » |
 | Écran d'envoi R4 | « Où envoyer ta liste ? » · tuiles · bouton « Ouvrir {retailer} » |
-| Lien R3 | « Envoyer ailleurs » |
+| Lien « Envoyer ailleurs » | retiré (DRV-737) : la question est posée à chaque envoi quand plusieurs drives sont configurés |
 | « Moi », liste | « Mes drives » · « {retailer} » + « Ton magasin : …{3 derniers chiffres} » · « Ajouter {retailer} » |
-| « Moi », habituel | « Mon drive habituel » (choix parmi les enseignes configurées ; masqué s'il n'y en a qu'une) |
+| « Moi », habituel | « Mon drive habituel » (choix parmi les enseignes configurées ; masqué s'il n'y en a qu'une) ; sous le titre, il est dit « présélectionné à l'envoi » |
 | Application trop ancienne pour une enseigne | « Mets à jour l'application pour envoyer ta liste à {retailer}. » |
 | Enseigne désactivée | (le message déjà utilisé quand le drive est coupé) |
 
@@ -388,7 +391,7 @@ L'utilisateur a dit « dans le futur, quand le drive Leclerc sera fini ». Le d�
 
 | # | Décision (par défaut, réversible) | À confirmer par l'utilisateur ? |
 |---|---|---|
-| D-M1 | La règle de choix R1 à R5 (§ 5) | Oui, à la lecture de l'ADR 0027 : c'est le seul point de produit du chantier |
+| D-M1 | La règle de choix R1 à R5 (§ 5) ; **amendée le 2026-10-30 par le propriétaire** : plusieurs drives configurés = toujours la question, le drive habituel est la présélection | Fait (décision du propriétaire) |
 | D-M2 | Aucun nom d'enseigne codé en dur hors du registre de chaque couche ; le nom est un paramètre des textes | Non (architecture) |
 | D-M3 | Un interrupteur par enseigne en plus de l'interrupteur global ; Auchan éteint tant que l'humain ne l'allume pas | Non |
 | D-M4 | « J'en ai toujours » reste par enseigne et par magasin dans ce chantier ; au backlog s'il gêne | Non |
