@@ -1,44 +1,42 @@
-# DRV-716 — Déclarer Auchan dans les quatre registres, éteint
+# DRV-716 — Déclarer Auchan dans le registre du back, éteint
 
-- **Dépôt** : back (`Retailer`, contrat, docs) puis front (web `retailers.ts`, agent `retailers/`, `android/core` `RetailerSites`)
+- **Dépôt** : back (`src/Drive/Domain/Model/`, `docs/api/openapi.json`, `docs/drive/samples/`, `docs/`)
 - **Jalon** : M7 Plusieurs enseignes
 - **Taille** : M
-- **Dépend de** : DRV-715 (décision « adaptateur complet » ou « mode assisté »), DRV-701, DRV-704, DRV-706, DRV-708
-- **Statut** : à faire (après les spikes). Effort recommandé : `high`.
-- **Lire d'abord** : [`../multi-enseignes.md`](../multi-enseignes.md) §§ 4, 7, 8, 11 ; `docs/drive/spikes/DRV-715-decision-auchan.md` ; skill de chaque couche ; [ADR 0027](../../adr/0027-plusieurs-enseignes-de-drive.md).
+- **Dépend de** : DRV-701, DRV-720, DRV-721 (et DRV-702 pour l'interrupteur par enseigne)
+- **Statut** : à faire. Effort recommandé : `high`. **Décision prise** : [`../spikes/DRV-715-decision-auchan.md`](../spikes/DRV-715-decision-auchan.md) (adaptateur complet).
+- **Lire d'abord** : la décision ; [`../hypotheses-site-reel-auchan.md`](../hypotheses-site-reel-auchan.md) ; [`../multi-enseignes.md`](../multi-enseignes.md) §§ 4, 7, 8 ; [ADR 0027](../../adr/0027-plusieurs-enseignes-de-drive.md) (amendement du 2026-10-30) ; skills `repas-dev` et `repas-drive-back`.
 
 ## Contexte
 
-Quand la forme du magasin, les hôtes, le mode (ordinateur ou mobile) et le motif d'identifiant sont connus, Auchan devient une entrée de registre dans chaque couche. **Elle reste éteinte** (`DRIVE_RETAILERS` ne la contient pas) : on peut fusionner et publier sans qu'aucun utilisateur la voie.
+Quand le registre (DRV-701), la forme du magasin (DRV-720) et l'identifiant d'offre (DRV-721) existent, Auchan devient **une entrée de registre** du back. Elle reste **éteinte** (`DRIVE_RETAILERS` ne la contient pas : DRV-702) : on peut fusionner et publier sans qu'aucun utilisateur la voie. Les registres du web, de l'agent et de l'application sont l'objet de DRV-727 et DRV-728.
 
 ## Portée
 
-1. **Back** : `Retailer::AUCHAN = 'auchan'`, son profil (`name` « Auchan », `nameDe` « d’Auchan », règle d'adresse du magasin ou de l'enseigne selon la décision, motif d'identifiant de produit, plafonds), `Retailer::IDS`, contrat `retailers.sample.json` ; OpenAPI régénéré ; **si la décision change la forme du magasin** : ticket distinct écrit par DRV-715, non fait ici.
-2. **Agent** : entrée `auchan` du registre avec un adaptateur **qui ne fait rien d'utile** (voir DRV-717) ; hôtes ; protocole : `retailer` ∈ `{leclerc, auchan}` ; exemples valides et invalides.
-3. **Application** : `RetailerSite` d'Auchan (domaine, accueil, mode, formes de page) ; origines du pont ; `app.info.retailers` annonce `auchan` **seulement** si la variante de l'application l'embarque (décision : drapeau de construction ; en production il reste `["leclerc"]` tant que DRV-717 n'est pas recetté).
-4. **Web** : entrée du registre `retailers.ts`, section des conditions d'utilisation d'Auchan (texte validé par l'utilisateur ; sujet des CGU clos : ne décrire que ce que Repas fait), accueil du drive d'Auchan.
-5. **Garde-fous** : tests d'isolement à deux enseignes **réelles** (les domaines de Leclerc et d'Auchan) : une page de l'une n'est pas autorisée dans l'écran de l'autre.
-6. **Ordre de publication** : back, site web, puis application et agent ; `DRIVE_RETAILERS` inchangé.
+1. `Retailer::AUCHAN = 'auchan'` et son profil : `name` « Auchan », `nameDe` « d’Auchan », `storeIdSource` `EXPLICIT`, `storeIdPattern`, `productIdPattern` et `offerIdPattern` (UUID : `^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`), règle d'adresse constante `^https://www\.auchan\.fr/$` (exemple `https://www.auchan.fr/`). `Retailer::IDS` et OpenAPI régénérés.
+2. Contrat `retailers.sample.json` : l'entrée d'Auchan, comparée par `DriveContractSamplesTest` ; un exemple de réglage Auchan (**valeurs inventées**, UUID de test) dans `settings.sample.json`.
+3. L'exception du test d'architecture de DRV-701 (le nom `leclerc` n'apparaît que dans son profil) devient : chaque enseigne n'est nommée que dans `Retailer.php` / `RetailerProfile.php`.
+4. Documentation : `architecture.md` §§ 5.1 et 7, `multi-enseignes.md` § 3 (le registre contient désormais deux entrées), runbook de l'enseigne dans `runbook.md` (une section « Auchan a changé » à compléter par DRV-726).
 
 ## Hors portée
 
-Allumer Auchan (l'humain, après recette), l'adaptateur réel (DRV-717), tout fait non confirmé par un spike.
+Allumer Auchan (l'humain), toute modification de comportement tant que `DRIVE_RETAILERS=leclerc`.
 
 ## Critères d'acceptation
 
-- Étant donné `DRIVE_RETAILERS=leclerc`, alors **aucun** comportement visible ne change (plans, textes, écrans, `GET /drive/settings`).
-- Étant donné `DRIVE_RETAILERS=leclerc,auchan` sur un environnement de test, alors Auchan apparaît dans « Mes drives » et la sélection ; un plan `auchan` envoyé à une application qui ne l'annonce pas est refusé.
-- Le contrat `retailers.sample.json` est identique dans les quatre couches (test de concordance).
+- Étant donné `DRIVE_RETAILERS=leclerc`, alors **aucun** comportement visible ne change (plans, estimations, `GET /drive/settings`).
+- Étant donné `DRIVE_RETAILERS=leclerc,auchan` dans un test, alors Auchan apparaît dans `retailers`, un réglage Auchan (UUID de test, adresse constante) s'enregistre et un plan Auchan se calcule à partir de choix Auchan ; un produit Leclerc n'entre jamais dans un choix Auchan.
+- Le contrat est identique dans le back et dans les exemples copiés par le front (la CI du front le vérifie).
 
 ## Tests exigés
 
-Ceux de DRV-701, 704, 706, 708 étendus à l'entrée réelle ; tests d'isolement ; `make test`, `make quality`, `make check`, `make android-test`, `make agent-verify`.
+Ceux de DRV-701, 720, 721 étendus à l'entrée réelle ; isolement à deux enseignes (réglages, produits, choix, purge du compte) ; `make test`, `make quality`, `make openapi`.
 
 ## Definition of Done
 
-Celle de chaque dépôt ; **dire dans le rapport l'ordre de publication** (front avant application) ; aucune étiquette ; `docs/drive/architecture.md` et `multi-enseignes.md` § 3 mis à jour.
+Celle du dépôt back ; **dire dans le rapport l'ordre de publication** (back avec `DRIVE_RETAILERS=leclerc`, puis site, puis application) ; aucune étiquette ; `DRIVE_RETAILERS` inchangé en production.
 
 ## Pièges connus
 
-- Une origine d'Auchan mal écrite dans le pont est une faille : tests d'adresses hostiles identiques à ceux de Leclerc (DRV-706).
-- Ne pas copier le texte des conditions d'utilisation de Leclerc : chaque enseigne a le sien.
+- Ne rien écrire d'Auchan hors du profil (nom, hôte) : `Store` vient de DRV-720, les textes de DRV-727.
+- Les UUID des exemples sont **inventés** (jamais un identifiant lu sur le vrai site).

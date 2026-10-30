@@ -4,7 +4,7 @@
 - **Jalon** : M7 Plusieurs enseignes
 - **Taille** : M
 - **Dépend de** : — (peut se faire dès maintenant ; ne dépend d'aucun code)
-- **Statut** : à faire. Pas d'effort de sous-agent : l'humain observe, un assistant relit le rapport.
+- **Statut** : fait le 2026-10-30 par l'assistant sur le téléphone de test, à la demande du propriétaire (issue #322) : [`../spikes/DRV-712-rapport.md`](../spikes/DRV-712-rapport.md).
 - **Faisable sans téléphone** : **non, et jamais depuis un ordinateur ni un serveur** (voir ci-dessous).
 - **Lire d'abord** : [`../multi-enseignes.md`](../multi-enseignes.md) §§ 11, 12 (inconnues U1 à U4) ; [`../spikes/DRV-002-rapport.md`](../spikes/DRV-002-rapport.md) (modèle de rapport) ; [`../recette.md`](../recette.md) (façon de procéder sur le téléphone).
 

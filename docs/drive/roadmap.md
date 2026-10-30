@@ -167,9 +167,9 @@ Références : [`principes-produit.md`](principes-produit.md), [`audit-simplicit
 
 ## M7 — Plusieurs enseignes (cadrage du 2026-10-19)
 
-**En pause depuis le 2026-10-20 sur ordre de l’utilisateur** : aucun ticket de ce jalon ne se lance avant qu’il le dise. En attendant, tout nouveau code ou texte reste indépendant de l’implémentation de Leclerc (règle « Ne pas durcir Leclerc »).
+**Lancé le 2026-10-30** (la pause du 2026-10-20 est levée) : le propriétaire démarre Auchan. Spikes DRV-712 à 714 faits le jour même (issue #322, rapports dans `spikes/`), décision DRV-715 : **adaptateur complet** ([`spikes/DRV-715-decision-auchan.md`](spikes/DRV-715-decision-auchan.md)). Auchan reste **éteint** jusqu'à la recette réelle DRV-726. Règle « Ne pas durcir Leclerc » toujours active.
 
-Références : [`multi-enseignes.md`](multi-enseignes.md) (audit, conception, faits sur Auchan), [ADR 0027](../adr/0027-plusieurs-enseignes-de-drive.md) (`Proposed`). **Chaque ticket du découplage ne change aucun comportement visible tant qu'il n'y a qu'une enseigne.** Les spikes Auchan sont des tâches `humain` sur téléphone (jamais depuis un ordinateur). Ordre conseillé : 701, 704 et 708 en parallèle, puis 702, 703, 705, 706, puis 707 et 709, puis 710 ; 711 en continu. Les tickets après 717 (recherche, panier, entrée, recette Auchan) seront écrits par DRV-715 d'après les rapports des spikes. Effort recommandé entre parenthèses.
+Références : [`multi-enseignes.md`](multi-enseignes.md) (audit, conception, faits sur Auchan), [ADR 0027](../adr/0027-plusieurs-enseignes-de-drive.md) (`Accepted`, amendée le 2026-10-30). **Chaque ticket du découplage ne change aucun comportement visible tant qu'il n'y a qu'une enseigne.** Les spikes Auchan sont des tâches `humain` sur téléphone (jamais depuis un ordinateur). Ordre conseillé : 701, 704 et 708 en parallèle, puis 702, 703, 705, 706, puis 707 et 709, puis 710 ; 711 en continu. Les tickets après 717 (recherche, panier, entrée, recette Auchan) seront écrits par DRV-715 d'après les rapports des spikes. Effort recommandé entre parenthèses.
 
 - [ ] [DRV-701](tickets/DRV-701-registre-d-enseignes-du-back.md) back · M · Registre d'enseignes du back, enseigne en paramètre des lectures, contrat des enseignes (high) · dépend de : —
 - [ ] [DRV-702](tickets/DRV-702-interrupteur-par-enseigne.md) back · S · Interrupteur par enseigne `DRIVE_RETAILERS` (high) · dépend de : 701
@@ -182,12 +182,20 @@ Références : [`multi-enseignes.md`](multi-enseignes.md) (audit, conception, fa
 - [ ] [DRV-709](tickets/DRV-709-mes-drives-dans-moi.md) front (web) · M · « Mes drives » dans « Moi » : liste, ajout, drive habituel (high) · dépend de : 703, 708
 - [ ] [DRV-710](tickets/DRV-710-choisir-le-drive-a-l-envoi.md) front (web) · M · Choisir le drive à l'envoi (R1 à R5), passage et retour par enseigne (high) · dépend de : 703, 707, 708, 709
 - [ ] [DRV-711](tickets/DRV-711-documentation-par-enseigne.md) back + front (docs) · S · Runbook, recette, skills et documentation « par enseigne » (medium) · dépend de : 701 à 710
-- [ ] [DRV-712](tickets/DRV-712-spike-auchan-parcours-et-magasin.md) humain · M · Spike Auchan A1 : parcours, mode drive ou livraison, magasin, site mobile ou ordinateur · dépend de : —
-- [ ] [DRV-713](tickets/DRV-713-spike-auchan-anti-robot-et-connexion.md) humain · M · Spike Auchan A2 : anti-robot et connexion · dépend de : 712
-- [ ] [DRV-714](tickets/DRV-714-spike-auchan-recherche-et-panier.md) humain · M · Spike Auchan A3 : recherche, produits, panier · dépend de : 712
-- [ ] [DRV-715](tickets/DRV-715-decision-auchan.md) assistant · S · Décision « Auchan : adaptateur complet, mode assisté ou abandon » et tickets suivants (medium) · dépend de : 712, 713, 714
-- [ ] [DRV-716](tickets/DRV-716-declarer-auchan-dans-les-registres.md) back + front · M · Déclarer Auchan dans les quatre registres, éteint (high) · dépend de : 715, 701, 704, 706, 708
-- [ ] [DRV-717](tickets/DRV-717-adaptateur-auchan-squelette.md) front (agent) · L · Adaptateur Auchan (squelette) et faux site (high) · dépend de : 715, 716
+- [x] [DRV-712](tickets/DRV-712-spike-auchan-parcours-et-magasin.md) humain · M · Spike Auchan A1 : parcours, mode drive ou livraison, magasin, site mobile ou ordinateur · dépend de : —
+- [x] [DRV-713](tickets/DRV-713-spike-auchan-anti-robot-et-connexion.md) humain · M · Spike Auchan A2 : anti-robot et connexion · dépend de : 712
+- [x] [DRV-714](tickets/DRV-714-spike-auchan-recherche-et-panier.md) humain · M · Spike Auchan A3 : recherche, produits, panier · dépend de : 712
+- [x] [DRV-715](tickets/DRV-715-decision-auchan.md) assistant · S · Décision « Auchan : adaptateur complet, mode assisté ou abandon » et tickets suivants (medium) · dépend de : 712, 713, 714
+- [ ] [DRV-716](tickets/DRV-716-declarer-auchan-dans-les-registres.md) back · M · Déclarer Auchan dans le registre du back, éteint (high) · dépend de : 701, 702, 720, 721
+- [ ] [DRV-717](tickets/DRV-717-adaptateur-auchan-squelette.md) front (agent) · L · Faux site d'Auchan, magasin, session, entrée, diagnostic (high) · dépend de : 727, 722
+- [ ] [DRV-720](tickets/DRV-720-magasin-a-identifiant-explicite.md) back · M · Magasin à identifiant explicite et plus long : migration, `Store`, profil (xhigh) · dépend de : 701
+- [ ] [DRV-721](tickets/DRV-721-identifiant-d-offre-du-produit.md) back · M · Identifiant d'offre facultatif du produit : colonne, plan, contrat (high) · dépend de : 701
+- [ ] [DRV-722](tickets/DRV-722-identifiant-d-offre-dans-le-protocole.md) front · M · `offerId` facultatif dans le plan et le résultat (high) · dépend de : 704, 721
+- [ ] [DRV-724](tickets/DRV-724-adaptateur-auchan-recherche.md) front (agent) · M · Recherche et lecture des produits d'Auchan (high) · dépend de : 717
+- [ ] [DRV-725](tickets/DRV-725-adaptateur-auchan-panier.md) front (agent) · M · Panier d'Auchan : quantité absolue, lecture, défi, cadence (high) · dépend de : 717
+- [ ] [DRV-726](tickets/DRV-726-recette-reelle-auchan.md) humain · M · Recette réelle d'Auchan sur le téléphone (WebView, connexion, un envoi) · dépend de : 728, 717, 724, 725, 707 à 710
+- [ ] [DRV-727](tickets/DRV-727-auchan-dans-les-registres-du-web-et-de-l-agent.md) front (web, agent) · M · Auchan dans le registre du web et celui de l'agent, éteint (high) · dépend de : 704, 708, 716, 722
+- [ ] [DRV-728](tickets/DRV-728-auchan-dans-le-coeur-et-l-application-android.md) front (android) · M · Auchan dans le cœur et l'application Android : navigation, pont, injection (xhigh) · dépend de : 706, 707, 716
 
 ## Backlog (non détaillé, à écrire quand il devient utile)
 
