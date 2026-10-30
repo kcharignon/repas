@@ -4,7 +4,7 @@
 - **Jalon** : M7 Plusieurs enseignes (suite de la recette réelle)
 - **Taille** : XS
 - **Dépend de** : DRV-741
-- **Statut** : PR front #274
+- **Statut** : fait (PR front #274)
 - **Lire d'abord** : [`DRV-741-adresse-mobile-leclerc.md`](DRV-741-adresse-mobile-leclerc.md) ; [`../principes-produit.md`](../principes-produit.md).
 
 ## Contexte
