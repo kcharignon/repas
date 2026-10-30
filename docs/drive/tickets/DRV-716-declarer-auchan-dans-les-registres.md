@@ -4,7 +4,7 @@
 - **Jalon** : M7 Plusieurs enseignes
 - **Taille** : M
 - **Dépend de** : DRV-701, DRV-720, DRV-721 (et DRV-702 pour l'interrupteur par enseigne)
-- **Statut** : fait (back, 2026-10-30, PR à renseigner à la fusion). Effort recommandé : `high`. **Décision prise** : [`../spikes/DRV-715-decision-auchan.md`](../spikes/DRV-715-decision-auchan.md) (adaptateur complet).
+- **Statut** : fait (back, 2026-10-30, PR #330, 2026-10-30). Effort recommandé : `high`. **Décision prise** : [`../spikes/DRV-715-decision-auchan.md`](../spikes/DRV-715-decision-auchan.md) (adaptateur complet).
 - **Lire d'abord** : la décision ; [`../hypotheses-site-reel-auchan.md`](../hypotheses-site-reel-auchan.md) ; [`../multi-enseignes.md`](../multi-enseignes.md) §§ 4, 7, 8 ; [ADR 0027](../../adr/0027-plusieurs-enseignes-de-drive.md) (amendement du 2026-10-30) ; skills `repas-dev` et `repas-drive-back`.
 
 ## Contexte
