@@ -4,7 +4,7 @@
 - **Jalon** : M7 Plusieurs enseignes
 - **Taille** : S
 - **Dépend de** : DRV-734
-- **Statut** : en cours (PR front #269, agent 0.51.3) ; à passer à « fait » à la fusion du front.
+- **Statut** : fait (PR front #269, agent 0.51.3, 2026-10-30). Rejoué avec succès à la recette réelle (DRV-726).
 - **Lire d'abord** : [`../hypotheses-site-reel-auchan.md`](../hypotheses-site-reel-auchan.md) B-1, B-5b, B-9 ; [`DRV-734`](DRV-734-recherche-d-auchan-redirigee-vers-un-rayon.md) (même famille de défaut).
 
 ## Contexte
