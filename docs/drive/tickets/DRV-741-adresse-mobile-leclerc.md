@@ -37,6 +37,6 @@ Avant : la saisie à la main ne reconnaissait pas l'adresse avec ville (`magasin
 
 ## Points laissés
 
-- Une adresse du site ordinateur **avec ville ou `.aspx`** (ce que montre la barre d'adresse du navigateur d'un ordinateur) reste refusée par la saisie à la main, comme avant : le ticket ne change pas le comportement de ce format. À reconsidérer (même geste, même message ?) après la recette.
+- Une adresse du site ordinateur avec ville ou `.aspx` : traitée par [DRV-742](DRV-742-adresse-ordinateur-avec-ville.md).
 - Non mesuré : si l'adresse mobile **sans ville** (`/magasin-N-N`) est redirigée par Leclerc comme celle avec ville. Sinon l'application montre le bandeau habituel du site mobile.
 - Publication : l'application doit être republiée pour que la lecture à l'adresse marche (le site peut être publié avant : une ancienne application ouvre l'accueil). Ordre : front, puis application.
