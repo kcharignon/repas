@@ -22,7 +22,8 @@ class GetRecipeApiControllerTest extends QueryBusWebTestCase
             ->build());
 
         // When
-        $this->client->request('GET', "/api/v1/recipes/$id", server: $this->bearerFor($this->savedUser()));
+        $user = $this->savedUser();
+        $this->client->request('GET', "/api/v1/recipes/$id", server: $this->bearerFor($user));
 
         // Then
         $this->assertSame(200, $this->client->getResponse()->getStatusCode());
@@ -30,12 +31,14 @@ class GetRecipeApiControllerTest extends QueryBusWebTestCase
         $query = $this->queryBus->getLastAskedQuery();
         $this->assertInstanceOf(GetRecipeQuery::class, $query);
         $this->assertSame($id, $query->recipeId);
+        $this->assertSame($user->getId(), $query->userId);
         $this->assertSame([
             'id' => $id,
             'name' => 'pâtes carbonara',
             'serving' => 4,
             'typeSlug' => 'plat',
             'typeName' => 'plat',
+            'secret' => false,
             'rows' => [[
                 'ingredientSlug' => 'pate',
                 'ingredientName' => 'pâtes',
@@ -52,6 +55,20 @@ class GetRecipeApiControllerTest extends QueryBusWebTestCase
             ]],
             'version' => 3,
         ], $this->jsonBody());
+    }
+
+    public function testTheSecretFlagIsAlwaysWrittenAndTrueForASecretRecipe(): void
+    {
+        // Given
+        $id = UuidGenerator::new();
+        $this->queryBus->willReturn(GetRecipeQuery::class, new RecipeDTOBuilder()->withId($id)->asSecret()->build());
+
+        // When
+        $this->client->request('GET', "/api/v1/recipes/$id", server: $this->bearerFor($this->savedUser()));
+
+        // Then
+        $this->assertSame(200, $this->client->getResponse()->getStatusCode());
+        $this->assertTrue($this->jsonBody()['secret']);
     }
 
     public function testReturns404ForAnUnknownRecipe(): void

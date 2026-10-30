@@ -42,6 +42,12 @@ readonly class UpdateRecipeHandler
         $recipe = $this->recipeRepository->findOneById($command->id);
         $recipe->assertVersion($command->expectedVersion);
 
+        // Le droit de changer le choix « recette secrète » se juge avant toute autre modification : absent, il reste ce qu'il était ; envoyé,
+        // il ne change que par l'auteur (ADR 0033), et sinon rien n'est écrit
+        if ($command->secret !== null) {
+            $recipe->changeSecret($command->secret, $command->userId ?? '');
+        }
+
         $type = $this->recipeTypeRepository->findOneBySlug($command->typeSlug);
 
         $recipe->update(

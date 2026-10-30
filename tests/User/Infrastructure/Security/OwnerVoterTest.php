@@ -85,6 +85,71 @@ class OwnerVoterTest extends TestCase
         $this->assertSame(VoterInterface::ACCESS_DENIED, $this->vote($this->other, OwnerVoter::RECIPE_OWNER, 'recipe-1', $loader));
     }
 
+    public function testTheSecretRecipeOfAnotherUserIsNotFoundNotForbiddenForEveryoneButItsAuthor(): void
+    {
+        // Given : une recette secrète de owner-id (ADR 0033) et une ordinaire
+        $loader = new OwnershipInMemoryLoader(recipeAuthors: ['secret' => 'owner-id', 'ordinary' => 'owner-id'], secretRecipes: ['secret']);
+
+        // Then : l'auteur la possède ; un autre reçoit un 404, jamais un 403 qui révélerait qu'elle existe ; une recette ordinaire reste un refus 403
+        $this->assertSame(VoterInterface::ACCESS_GRANTED, $this->vote($this->owner, OwnerVoter::RECIPE_OWNER, 'secret', $loader));
+        $this->assertSame(VoterInterface::ACCESS_DENIED, $this->vote($this->other, OwnerVoter::RECIPE_OWNER, 'ordinary', $loader));
+        $this->expectException(NotFoundHttpException::class);
+        $this->vote($this->other, OwnerVoter::RECIPE_OWNER, 'secret', $loader);
+    }
+
+    public function testTheSecretRecipeOfAnotherUserHasTheMessageOfAnUnknownRecipe(): void
+    {
+        // Given
+        $loader = new OwnershipInMemoryLoader(recipeAuthors: ['secret' => 'owner-id'], secretRecipes: ['secret']);
+
+        // When
+        $messages = [];
+        foreach (['secret', 'unknown'] as $id) {
+            try {
+                $this->vote($this->other, OwnerVoter::RECIPE_OWNER, $id, $loader);
+                $this->fail('Un 404 est attendu.');
+            } catch (NotFoundHttpException $exception) {
+                $messages[] = str_replace($id, '{id}', $exception->getMessage());
+            }
+        }
+
+        // Then : indiscernable d'une recette inconnue
+        $this->assertSame($messages[0], $messages[1]);
+    }
+
+    public function testAnAdministratorHasNoPassThroughOnTheSecretRecipeOfAnotherUser(): void
+    {
+        // Given : la recette secrète de owner-id (ADR 0033) ; l'administrateur est un autre compte
+        $loader = new OwnershipInMemoryLoader(recipeAuthors: ['secret' => 'owner-id', 'ordinary' => 'owner-id'], secretRecipes: ['secret']);
+
+        // Then : il garde l'édition et la suppression des recettes ordinaires, et l'auteur administrateur celles de sa propre secrète ; la secrète d'un autre
+        // n'existe pas pour lui (404)
+        $this->assertSame(VoterInterface::ACCESS_GRANTED, $this->vote($this->other, OwnerVoter::RECIPE_OWNER, 'ordinary', $loader, admin: true));
+        $this->assertSame(VoterInterface::ACCESS_GRANTED, $this->vote($this->owner, OwnerVoter::RECIPE_OWNER, 'secret', $loader, admin: true));
+        $this->expectException(NotFoundHttpException::class);
+        $this->vote($this->other, OwnerVoter::RECIPE_OWNER, 'secret', $loader, admin: true);
+    }
+
+    public function testAnAdministratorIsNotFoundOnTheSecretRecipeWithTheMessageOfAnUnknownOne(): void
+    {
+        // Given
+        $loader = new OwnershipInMemoryLoader(recipeAuthors: ['secret' => 'owner-id'], secretRecipes: ['secret']);
+
+        // When
+        $messages = [];
+        foreach (['secret', 'unknown'] as $id) {
+            try {
+                $this->vote($this->other, OwnerVoter::RECIPE_OWNER, $id, $loader, admin: true);
+                $this->fail('Un 404 est attendu.');
+            } catch (NotFoundHttpException $exception) {
+                $messages[] = str_replace($id, '{id}', $exception->getMessage());
+            }
+        }
+
+        // Then
+        $this->assertSame($messages[0], $messages[1]);
+    }
+
     public function testOnlyTheOwnerOfTheShoppingListOwnsAMeal(): void
     {
         $loader = new OwnershipInMemoryLoader(mealOwners: ['meal-1' => 'owner-id']);

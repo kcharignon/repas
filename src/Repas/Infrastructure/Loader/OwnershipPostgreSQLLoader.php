@@ -49,17 +49,18 @@ final readonly class OwnershipPostgreSQLLoader implements OwnershipLoader
         return $row === null ? throw ShoppingListException::shoppingListNotFound($shoppingListId) : $row['owner'];
     }
 
-    public function recipeAuthorId(string $recipeId): string
+    public function recipeAuthorIdFor(string $recipeId, string $userId): string
     {
         $row = $this->entityManager->createQueryBuilder()
-            ->select('r.authorId AS owner')
+            ->select('r.authorId AS owner', 'r.secret AS secret')
             ->from(Recipe::class, 'r')
             ->where('r.id = :id')
             ->setParameter('id', $recipeId)
             ->getQuery()
             ->getOneOrNullResult();
 
-        return $row === null ? throw RecipeException::notFound($recipeId) : $row['owner'];
+        // Une seule lecture : la recette secrète d'un autre est traitée comme une recette inconnue, dans la même exception (ADR 0033)
+        return $row === null || ($row['secret'] && $row['owner'] !== $userId) ? throw RecipeException::notFound($recipeId) : $row['owner'];
     }
 
     public function mealOwnerId(string $mealId): string

@@ -13,7 +13,8 @@ use Repas\Shared\Application\Dto\ListedMeal;
 
 /**
  * Les repas de la liste active de l'utilisateur en deux requêtes : l'identifiant de la liste active (aucune : `null`), puis ses repas avec le nom de
- * leur recette. Une liste ne planifie que les recettes de son propriétaire (`ShoppingList::addMeal`) : aucun contrôle de visibilité à refaire.
+ * leur recette. Une liste ne planifie que les recettes de son propriétaire (`ShoppingList::addMeal`), mais un repas hérité d'avant cette garde peut
+ * pointer vers la recette d'un autre : si elle est secrète (ADR 0033) le repas n'est pas rendu, comme celui d'une recette qui n'existe plus.
  */
 final readonly class PlannedMealsInActiveListPostgreSQLLoader implements PlannedMealsInActiveList
 {
@@ -42,9 +43,10 @@ final readonly class PlannedMealsInActiveListPostgreSQLLoader implements Planned
         $rows = $this->entityManager->createQueryBuilder()
             ->select('m.recipeId AS recipeId', 'r.name AS name', 'm.serving AS servings')
             ->from(Meal::class, 'm')
-            ->innerJoin(Recipe::class, 'r', Join::WITH, 'r.id = m.recipeId')
+            ->innerJoin(Recipe::class, 'r', Join::WITH, 'r.id = m.recipeId AND (r.secret = false OR r.authorId = :owner)')
             ->where('m.shoppingListId = :list')
             ->setParameter('list', $lists[0]['id'])
+            ->setParameter('owner', $userId)
             ->orderBy('m.recipeId')
             ->getQuery()
             ->getArrayResult();

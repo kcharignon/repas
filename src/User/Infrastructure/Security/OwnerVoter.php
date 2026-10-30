@@ -48,8 +48,10 @@ class OwnerVoter extends Voter
     {
         // Un administrateur passe pour les recettes, les listes et les repas des autres, JAMAIS pour les ingrédients : un ingrédient est à
         // son propriétaire seul, sans passe-droit (ADR 0028, amendement du 2026-10-20, D3). Ni pour les liaisons avec Alexa : retirer
-        // celle d'un autre couperait sa commande vocale (ADR 0029)
-        if (!in_array($attribute, [self::INGREDIENT_OWNER, self::VOICE_LINK_OWNER], true) && $this->accessDecisionManager->decide($token, ['ROLE_ADMIN'])) {
+        // celle d'un autre couperait sa commande vocale (ADR 0029). Pour une recette, le passe-droit s'arrête à la recette SECRÈTE d'un autre
+        // (ADR 0033), vérifiée plus bas
+        $isAdmin = $this->accessDecisionManager->decide($token, ['ROLE_ADMIN']);
+        if ($isAdmin && !in_array($attribute, [self::INGREDIENT_OWNER, self::VOICE_LINK_OWNER, self::RECIPE_OWNER], true)) {
             return true;
         }
 
@@ -61,6 +63,14 @@ class OwnerVoter extends Voter
 
         // Une ressource introuvable donne un 404, pas une erreur 500
         try {
+            if ($isAdmin && $attribute === self::RECIPE_OWNER) {
+                // L'administrateur modifie et supprime toute recette ordinaire ; la recette secrète d'un autre n'existe pas pour lui, comme pour
+                // tout utilisateur : `recipeAuthorIdFor` la traite en recette inconnue (404)
+                $this->ownershipLoader->recipeAuthorIdFor($subject, $user->getId());
+
+                return true;
+            }
+
             return $this->owns($attribute, $subject, $user);
         } catch (DomainException $exception) {
             throw new NotFoundHttpException($exception->getMessage(), $exception);
@@ -78,7 +88,8 @@ class OwnerVoter extends Voter
             case self::SHOPPING_LIST_OWNER:
                 return $this->ownershipLoader->shoppingListOwnerId($subject) === $user->getId();
             case self::RECIPE_OWNER:
-                return $this->ownershipLoader->recipeAuthorId($subject) === $user->getId();
+                // Une recette secrète d'un autre n'existe pas pour lui : `404`, pas `403` (ADR 0033) ; une recette ordinaire d'un autre est refusée
+                return $this->ownershipLoader->recipeAuthorIdFor($subject, $user->getId()) === $user->getId();
             case self::MEAL_OWNER:
                 return $this->ownershipLoader->mealOwnerId($subject) === $user->getId();
             case self::SHOPPING_LIST_ROW_OWNER:

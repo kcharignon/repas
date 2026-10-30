@@ -47,6 +47,7 @@ final class Recipe implements ModelInterface
         private Tab     $rows,
         private ?string $originalId,
         private int     $version = 1,
+        private bool    $secret = false,
     ) {
     }
 
@@ -108,6 +109,40 @@ final class Recipe implements ModelInterface
         return $this->rows;
     }
 
+    /**
+     * Une recette secrète n'est vue que de son auteur (ADR 0033) : absente de « Recettes des autres », illisible et non copiable par un autre
+     * utilisateur, administrateur compris.
+     */
+    public function isSecret(): bool
+    {
+        return $this->secret;
+    }
+
+    /**
+     * La recette est-elle lisible et copiable par cet utilisateur ? Une recette ordinaire l'est par tout utilisateur, une recette secrète
+     * par son seul auteur : jamais de passe-droit, un administrateur est un utilisateur comme un autre.
+     */
+    public function isVisibleTo(string $userId): bool
+    {
+        return !$this->secret || $this->authorId === $userId;
+    }
+
+    /**
+     * Rend la recette secrète ou de nouveau visible. Le drapeau est le choix de l'auteur : un autre utilisateur (un administrateur qui
+     * modifie la recette) ne peut pas le changer, mais renvoyer la valeur actuelle est sans effet et sans erreur.
+     *
+     * @throws RecipeException l'utilisateur n'est pas l'auteur et la valeur diffère de l'actuelle
+     */
+    public function changeSecret(bool $secret, string $userId): Recipe
+    {
+        if ($secret !== $this->secret && $userId !== $this->authorId) {
+            throw RecipeException::secretForbidden();
+        }
+        $this->secret = $secret;
+
+        return $this;
+    }
+
     public function setName(string $name): Recipe
     {
         $this->name = $name;
@@ -163,6 +198,7 @@ final class Recipe implements ModelInterface
             rows: $datas['rows'],
             originalId: $datas['original_id'],
             version: $datas['version'] ?? 1,
+            secret: $datas['secret'] ?? false,
         );
     }
 
@@ -179,11 +215,12 @@ final class Recipe implements ModelInterface
         Type    $recipeType,
         Tab     $rows,
         ?string $originalId,
+        bool    $secret = false,
     ): self {
         self::assertServing($servings);
         self::assertRowCount($rows->count());
 
-        $recipe = new self($id, $name, $servings, $authorId, $recipeType, $rows, $originalId);
+        $recipe = new self($id, $name, $servings, $authorId, $recipeType, $rows, $originalId, secret: $secret);
         foreach ($rows as $row) {
             $recipe->assertIngredientIsAvailable($row->getIngredient());
         }
@@ -195,9 +232,14 @@ final class Recipe implements ModelInterface
      * La copie d'une recette pour `$authorId`. Elle ne crée ni ne cherche aucun ingrédient : le cas d'usage a retenu, pour chaque
      * ingrédient de l'original, celui que le copieur utilisera (ADR 0028 décision 8), et le donne ici par slug d'origine.
      *
+     * Le choix « recette secrète » (ADR 0033) : la recette secrète d'un autre n'existe pas pour le copieur ; l'auteur qui copie SA recette secrète
+     * obtient une copie secrète elle aussi (jamais une copie qui rendrait publique ce qu'il avait caché) ; toute autre copie est une recette
+     * ordinaire.
+     *
      * @param array<string, Ingredient> $ingredients l'ingrédient du copieur par slug d'ingrédient de l'original
      * @param callable(): string $newRowId l'identifiant d'une nouvelle ligne
      * @throws IngredientException un ingrédient retenu n'est pas disponible pour le copieur (celui d'un autre) ou n'a pas été retenu
+     * @throws RecipeException l'original est secret et le copieur n'en est pas l'auteur : pour lui, elle n'existe pas
      */
     public static function copyFromOriginal(
         string $id,
@@ -206,6 +248,10 @@ final class Recipe implements ModelInterface
         array $ingredients,
         callable $newRowId,
     ): self {
+        if (!$original->isVisibleTo($authorId)) {
+            throw RecipeException::notFound($original->getId());
+        }
+
         $copy = new self(
             id: $id,
             name: $original->getName(),
@@ -218,7 +264,9 @@ final class Recipe implements ModelInterface
                 recipeId: $id,
                 ingredient: $ingredients[$row->getIngredient()->getSlug()] ?? throw IngredientException::notFound($row->getIngredient()->getSlug()),
             )),
-            originalId: $original->getId()
+            originalId: $original->getId(),
+            // L'original n'est visible du copieur que s'il est ordinaire ou à lui : secrète ici, il en est l'auteur
+            secret: $original->isSecret() && $original->getAuthorId() === $authorId,
         );
         foreach ($copy->rows as $row) {
             $copy->assertIngredientIsAvailable($row->getIngredient());

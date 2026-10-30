@@ -21,6 +21,7 @@ class OwnershipInMemoryLoader implements OwnershipLoader
      * @param array<string, string> $recipeAuthors
      * @param array<string, string> $mealOwners
      * @param array<string, string> $shoppingListRowOwners
+     * @param list<string> $secretRecipes les identifiants des recettes secrètes (ADR 0033) : introuvables pour tout autre que leur auteur
      */
     public function __construct(
         private readonly array $ingredientCreators = [],
@@ -28,6 +29,7 @@ class OwnershipInMemoryLoader implements OwnershipLoader
         private readonly array $recipeAuthors = [],
         private readonly array $mealOwners = [],
         private readonly array $shoppingListRowOwners = [],
+        private readonly array $secretRecipes = [],
     ) {
     }
 
@@ -41,9 +43,11 @@ class OwnershipInMemoryLoader implements OwnershipLoader
         return $this->shoppingListOwners[$shoppingListId] ?? throw ShoppingListException::shoppingListNotFound($shoppingListId);
     }
 
-    public function recipeAuthorId(string $recipeId): string
+    public function recipeAuthorIdFor(string $recipeId, string $userId): string
     {
-        return $this->recipeAuthors[$recipeId] ?? throw RecipeException::notFound($recipeId);
+        $authorId = $this->recipeAuthors[$recipeId] ?? throw RecipeException::notFound($recipeId);
+
+        return in_array($recipeId, $this->secretRecipes, true) && $authorId !== $userId ? throw RecipeException::notFound($recipeId) : $authorId;
     }
 
     public function mealOwnerId(string $mealId): string

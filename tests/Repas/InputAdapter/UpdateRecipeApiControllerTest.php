@@ -3,6 +3,7 @@
 namespace Repas\Tests\Repas\InputAdapter;
 
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use Repas\Repas\Application\Command\UpdateRecipe\UpdateRecipeCommand;
 use Repas\Repas\Application\Command\UpdateRecipe\UpdateRecipeRowSubCommand;
 use Repas\Shared\Domain\Tool\Tab;
@@ -37,7 +38,68 @@ class UpdateRecipeApiControllerTest extends QueryBusWebTestCase
             6,
             new Tab([new UpdateRecipeRowSubCommand('pate', 'gramme', 750)], UpdateRecipeRowSubCommand::class),
             'plat',
+            userId: $author->getId(),
         )], $commandBus->dispatched());
+    }
+
+    /**
+     * @return iterable<string, array{array<string, mixed>, bool|null}>
+     */
+    public static function secretChoices(): iterable
+    {
+        yield 'absent (ancien client)' => [[], null];
+        yield '`null`' => [['secret' => null], null];
+        yield 'vrai' => [['secret' => true], true];
+        yield 'faux' => [['secret' => false], false];
+    }
+
+    /**
+     * @param array<string, mixed> $extra
+     */
+    #[DataProvider('secretChoices')]
+    public function testForwardsTheSecretChoiceAndTheUserToTheCommandAndAnAbsentOneStaysNull(array $extra, ?bool $expected): void
+    {
+        // Given
+        $commandBus = $this->mockCommandBus();
+        $author = $this->savedUser();
+        $recipe = $this->savedRecipe($author);
+
+        // When
+        $this->put('/api/v1/recipes/' . $recipe->getId(), $author, $extra + self::BODY);
+
+        // Then : « inchangé » est `null`, jamais « faux » ; l'utilisateur est celui du jeton
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->assertSame([[$expected, $author->getId()]], array_map(static fn(UpdateRecipeCommand $command): array => [$command->secret, $command->userId], $commandBus->dispatched()));
+    }
+
+    /**
+     * @return iterable<string, array{mixed}>
+     */
+    public static function notBooleans(): iterable
+    {
+        yield 'texte' => ['oui'];
+        yield 'texte true' => ['true'];
+        yield 'entier 1' => [1];
+        yield 'entier 0' => [0];
+        yield 'liste' => [[]];
+        yield 'objet' => [['secret' => true]];
+        yield 'décimal' => [1.5];
+    }
+
+    #[DataProvider('notBooleans')]
+    public function testRefusesASecretWhichIsNotABooleanWithoutDispatching(mixed $secret): void
+    {
+        // Given
+        $commandBus = $this->mockCommandBus();
+        $author = $this->savedUser();
+        $recipe = $this->savedRecipe($author);
+
+        // When
+        $this->put('/api/v1/recipes/' . $recipe->getId(), $author, ['secret' => $secret] + self::BODY);
+
+        // Then : aucune conversion silencieuse
+        $this->assertSame(422, $this->client->getResponse()->getStatusCode());
+        $this->assertSame([], $commandBus->dispatched());
     }
 
     public function testRefusesARecipeOfAnotherUser(): void

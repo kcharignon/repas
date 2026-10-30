@@ -4,6 +4,7 @@ namespace Repas\Repas\Application\Command\RemoveMealFromPlan;
 
 
 use Repas\Repas\Domain\Exception\IngredientException;
+use Repas\Repas\Domain\Exception\RecipeException;
 use Repas\Repas\Domain\Exception\ShoppingListException;
 use Repas\Repas\Domain\Interface\RecipeRepository;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
@@ -25,6 +26,7 @@ readonly class removeMealFromPlanHandler
     /**
      * @throws ShoppingListException
      * @throws IngredientException
+     * @throws RecipeException la recette est inconnue, ou secrète et d'un autre
      */
     public function __invoke(removeMealFromPlanCommand $command): void
     {
@@ -36,6 +38,11 @@ readonly class removeMealFromPlanHandler
         $activeShoppingList->assertVersion($command->expectedVersion);
 
         $recipe = $this->recipeRepository->findOneById($command->recipeId);
+        // La recette secrète d'un autre (ADR 0033) est introuvable pour le propriétaire de la liste : retirer le repas hérité qui y pointe ferait
+        // déduire ses quantités, donc en dirait le contenu. Même exception qu'une recette inconnue, avant la lecture des repas
+        if (!$recipe->isVisibleTo($command->ownerId)) {
+            throw RecipeException::notFound($command->recipeId);
+        }
         $meal = $activeShoppingList->getMeals()->find(fn(Meal $meal) => $meal->hasRecipe($recipe));
 
         // Si meal n'est pas trouvé le repas est déjà supprimé de la liste

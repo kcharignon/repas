@@ -14,7 +14,7 @@ use Repas\Repas\Domain\Exception\RecipeException;
  */
 class RecipeInMemoryLoader implements RecipeLoader
 {
-    /** @var list<string> */
+    /** @var list<array{string, string}> */
     public array $getCalls = [];
 
     /** @var list<array{string, string}> */
@@ -30,9 +30,9 @@ class RecipeInMemoryLoader implements RecipeLoader
     ) {
     }
 
-    public function get(string $id): RecipeDTO
+    public function get(string $id, string $userId): RecipeDTO
     {
-        $this->getCalls[] = $id;
+        $this->getCalls[] = [$id, $userId];
 
         return $this->recipe ?? throw RecipeException::notFound($id);
     }

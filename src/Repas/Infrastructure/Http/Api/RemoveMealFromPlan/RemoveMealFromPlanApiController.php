@@ -28,7 +28,7 @@ final class RemoveMealFromPlanApiController extends AbstractController
     #[OA\Tag(name: 'Shopping lists')]
     #[OA\Parameter(ref: '#/components/parameters/IfMatch')]
     #[OA\Response(response: 204, description: 'Recette retirée')]
-    #[OA\Response(response: 404, description: 'Ressource inconnue')]
+    #[OA\Response(response: 404, description: "Ressource inconnue (ou recette secrète d'un autre, que seul son auteur voit)")]
     #[OA\Response(response: 412, description: "La version de la liste n'est plus celle de `If-Match` : elle a été modifiée depuis sa lecture")]
     public function __invoke(string $recipeId, #[CurrentUser] AuthenticatedUser $user, Request $request): Response
     {

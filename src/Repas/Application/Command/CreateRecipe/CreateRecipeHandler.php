@@ -77,6 +77,7 @@ readonly class CreateRecipeHandler
                 unit: $units[$subCmd->unitSlug] ?? throw UnitException::notFound($subCmd->unitSlug),
             )),
             originalId: null,
+            secret: $command->secret,
         );
 
         foreach ($recipe->getRows() as $row) {

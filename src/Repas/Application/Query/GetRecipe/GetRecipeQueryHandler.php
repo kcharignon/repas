@@ -15,10 +15,10 @@ final readonly class GetRecipeQueryHandler
     }
 
     /**
-     * @throws RecipeException
+     * @throws RecipeException la recette est inconnue ou secrète et n'est pas celle de l'utilisateur
      */
     public function __invoke(GetRecipeQuery $query): RecipeDTO
     {
-        return $this->recipeLoader->get($query->recipeId);
+        return $this->recipeLoader->get($query->recipeId, $query->userId);
     }
 }
