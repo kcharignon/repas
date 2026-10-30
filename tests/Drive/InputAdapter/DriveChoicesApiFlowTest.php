@@ -121,6 +121,30 @@ class DriveChoicesApiFlowTest extends DatabaseTestCase
         $this->assertSame([], $this->rayonsByProduct());
     }
 
+    public function testAnOfferIdForAnEnseigneWithoutOffersAnswers422AndSavesNothing(): void
+    {
+        // Given
+        $user = $this->userWithAStore();
+
+        // When : un identifiant d'offre, même bien formé (Leclerc n'a pas d'offre), avec d'autres produits valables dans le lot
+        $this->put($user, [
+            $this->add('farine', 'PRIMARY', '1', 'Farine'),
+            ['ingredientSlug' => 'farine', 'action' => 'ADD_PRODUCT', 'placement' => 'FALLBACK', 'product' => ['retailerProductId' => '2', 'label' => 'Farine bio', 'offerId' => 'c3b2a1d0-5e4f-4a6b-9c8d-7e6f5a4b3c2d']],
+        ]);
+
+        // Then : le lot entier est refusé
+        $this->assertSame([422, ['error' => ['message' => 'DRIVE_CHOICE_INVALID']]], [$this->client->getResponse()->getStatusCode(), $this->jsonBody()]);
+        $this->assertSame([], $this->countsBySlug());
+        $this->assertSame(0, (int) $this->entityManager->getConnection()->fetchOne('SELECT COUNT(*) FROM drive_product'));
+
+        // When : `offerId` à `null` est l'absence d'offre
+        $this->put($user, [['ingredientSlug' => 'farine', 'action' => 'ADD_PRODUCT', 'placement' => 'PRIMARY', 'product' => ['retailerProductId' => '1', 'label' => 'Farine', 'offerId' => null]]]);
+
+        // Then
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->assertNull($this->entityManager->getConnection()->fetchOne('SELECT retailer_offer_id FROM drive_product'));
+    }
+
     public function testThePriceOfAnAcceptedProductIsRefreshedWithoutTouchingTheChoice(): void
     {
         // Given

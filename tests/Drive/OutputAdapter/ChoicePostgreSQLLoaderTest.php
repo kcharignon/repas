@@ -347,7 +347,30 @@ class ChoicePostgreSQLLoaderTest extends DatabaseTestCase
 
         // Then : les refusés sont rangés par le libellé du compte ; la réponse ne change pas de forme (pas de prix)
         $this->assertSame(['C compte', 'Z compte'], array_map(static fn(ChoiceProductDTO $product): string => $product->label, $result[0]->rejected));
-        $this->assertSame(['productId', 'retailerProductId', 'ean', 'label', 'content', 'packSize'], array_keys(get_object_vars($result[0]->accepted[0]->product)));
+        $this->assertSame(['productId', 'retailerProductId', 'ean', 'label', 'content', 'packSize'], array_keys($result[0]->accepted[0]->product->jsonSerialize()));
+    }
+
+    public function testAProductCarriesItsOfferOnlyWhenItHasOne(): void
+    {
+        // Given : un produit accepté avec offre, un refusé avec offre, un accepté sans
+        $offerId = 'c3b2a1d0-5e4f-4a6b-9c8d-7e6f5a4b3c2d';
+        $this->settings->save(new DriveSettingsBuilder()->withUserId('user-1')->build());
+        $this->products->saveAll([
+            new ProductBuilder()->withRetailerProductId('1')->withOfferId($offerId)->build(),
+            new ProductBuilder()->withRetailerProductId('2')->build(),
+            new ProductBuilder()->withRetailerProductId('3')->withOfferId($offerId)->build(),
+        ]);
+        $this->choices->save(new ChoiceBuilder()->withUserId('user-1')->withIngredientSlug('farine')->withAccepted([$this->id('1'), $this->id('2')])->withRejected([$this->id('3')])->build());
+
+        // When
+        $result = $this->loader(['farine' => 'Farine'])->list('user-1', Retailer::LECLERC);
+
+        // Then : l'offre se lit sur les produits qui en ont une ; la clé est absente de la réponse des autres
+        $choice = json_decode(json_encode($result[0], JSON_THROW_ON_ERROR), true, flags: JSON_THROW_ON_ERROR);
+        $this->assertSame($offerId, $choice['accepted'][0]['product']['offerId']);
+        $this->assertArrayNotHasKey('offerId', $choice['accepted'][1]['product']);
+        $this->assertSame($offerId, $choice['rejected'][0]['offerId']);
+        $this->assertSame(['productId', 'retailerProductId', 'ean', 'label', 'content', 'packSize'], array_keys($choice['accepted'][1]['product']));
     }
 
     /**

@@ -25,7 +25,7 @@ use Repas\Shared\Infrastructure\Repository\PostgreSQLRepository;
 readonly class ProductPostgreSQLRepository extends PostgreSQLRepository implements ProductRepository
 {
     private const string DATE_FORMAT = 'Y-m-d H:i:s';
-    private const string COLUMNS = 'id, retailer, store_id, retailer_product_id, ean, label, content_value, content_unit, price_cents, price_per_measure_cents, price_per_measure_unit, price_seen_at, last_seen_at, rayon_id, family_id';
+    private const string COLUMNS = 'id, retailer, store_id, retailer_product_id, ean, label, content_value, content_unit, price_cents, price_per_measure_cents, price_per_measure_unit, price_seen_at, last_seen_at, rayon_id, family_id, retailer_offer_id';
 
     public function __construct(
         ManagerRegistry $managerRegistry,
@@ -84,9 +84,10 @@ readonly class ProductPostgreSQLRepository extends PostgreSQLRepository implemen
                 $product->getLastSeenAt()->format(self::DATE_FORMAT),
                 $product->getRayonId(),
                 $product->getFamilyId(),
+                $product->getOfferId(),
             );
         }
-        $tuples = implode(', ', array_fill(0, count($products), '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'));
+        $tuples = implode(', ', array_fill(0, count($products), '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'));
 
         // La clé naturelle fait foi : un produit qu'une autre requête vient de créer est mis à jour, jamais dupliqué (et son
         // identifiant, déduit de la même clé, est le même). Premier écrivain gagnant jusque dans la base (DRV-613) : si deux
@@ -103,7 +104,9 @@ readonly class ProductPostgreSQLRepository extends PostgreSQLRepository implemen
                 . 'price_per_measure_unit = EXCLUDED.price_per_measure_unit, price_seen_at = EXCLUDED.price_seen_at, '
                 . 'last_seen_at = EXCLUDED.last_seen_at, '
                 . 'rayon_id = COALESCE(drive_product.rayon_id, EXCLUDED.rayon_id), '
-                . 'family_id = COALESCE(drive_product.family_id, EXCLUDED.family_id)',
+                . 'family_id = COALESCE(drive_product.family_id, EXCLUDED.family_id), '
+                // L'offre d'un produit peut changer dans un magasin (DRV-721) : la valeur reçue remplace celle de la fiche, `NULL` ne l'efface pas
+                . 'retailer_offer_id = COALESCE(EXCLUDED.retailer_offer_id, drive_product.retailer_offer_id)',
                 self::COLUMNS,
                 $tuples,
             ),
@@ -151,6 +154,7 @@ readonly class ProductPostgreSQLRepository extends PostgreSQLRepository implemen
             'last_seen_at' => new DateTimeImmutable($row['last_seen_at']),
             'rayon_id' => $row['rayon_id'] === null ? null : (int) $row['rayon_id'],
             'family_id' => $row['family_id'] === null ? null : (int) $row['family_id'],
+            'retailer_offer_id' => $row['retailer_offer_id'],
         ]);
     }
 

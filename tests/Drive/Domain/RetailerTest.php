@@ -100,7 +100,7 @@ class RetailerTest extends TestCase
             $this->assertNotSame('', $profile->name);
             $this->assertStringEndsWith($profile->name, $profile->nameDe);
             $this->assertTrue($retailer->isValidStoreUrl($profile->storeAddressExample));
-            foreach ([$profile->storeAddressPattern, $profile->productIdPattern, $profile->storeIdPattern] as $pattern) {
+            foreach (array_filter([$profile->storeAddressPattern, $profile->productIdPattern, $profile->storeIdPattern, $profile->offerIdPattern]) as $pattern) {
                 // Motifs du contrat : ancrés, sans `\d` ni construction propre à PCRE (le web, l'agent et l'application les compilent aussi)
                 $this->assertStringStartsWith('^', $pattern);
                 $this->assertStringEndsWith('$', $pattern);
@@ -128,6 +128,10 @@ class RetailerTest extends TestCase
         // DRV-720 : l'identifiant du magasin se déduit de l'adresse, en 1 à 20 chiffres (ce que `Store::create` acceptait déjà)
         $this->assertSame(StoreIdSource::URL, $profile->storeIdSource);
         $this->assertSame('^[0-9]{1,20}$', $profile->storeIdPattern);
+        // DRV-721 : pas d'offre chez Leclerc, un identifiant d'offre fourni est refusé
+        $this->assertNull($profile->offerIdPattern);
+        $this->assertFalse($profile->hasOffers());
+        $this->assertFalse(Retailer::LECLERC->isValidOfferId('123456'));
     }
 
     /**

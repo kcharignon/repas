@@ -946,6 +946,9 @@ class SaveProductChoicesHandlerTest extends TestCase
         yield 'famille nulle' => [[new ChoiceIntent('farine', ChoiceAction::ADD_PRODUCT, Placement::PRIMARY, new ProductInput('1', 'Farine', familyId: 0))]];
         yield 'famille trop grande pour un INT' => [[new ChoiceIntent('farine', ChoiceAction::REJECT_PRODUCT, null, new ProductInput('1', 'Farine', familyId: 2147483648))]];
         yield 'rayon hors bornes sur un rafraîchissement de prix' => [[new ChoiceIntent('farine', ChoiceAction::REFRESH_PRICE, null, new ProductInput('1', null, null, null, new ProductPrice(100), 0))]];
+        // DRV-721 : Leclerc n'a pas d'offre, un identifiant d'offre fourni est refusé quelle que soit sa forme
+        yield 'offre chez une enseigne sans offre' => [[new ChoiceIntent('farine', ChoiceAction::ADD_PRODUCT, Placement::PRIMARY, new ProductInput('1', 'Farine', offerId: 'c3b2a1d0-5e4f-4a6b-9c8d-7e6f5a4b3c2d'))]];
+        yield 'offre numérique chez une enseigne sans offre' => [[new ChoiceIntent('farine', ChoiceAction::REJECT_PRODUCT, null, new ProductInput('1', 'Farine', offerId: '555'))]];
     }
 
     /**

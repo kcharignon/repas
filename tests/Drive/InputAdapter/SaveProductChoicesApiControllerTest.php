@@ -90,6 +90,44 @@ class SaveProductChoicesApiControllerTest extends QueryBusWebTestCase
         ])], $commandBus->dispatched());
     }
 
+    public function testTheOfferIdOfAProductIsFacultativeAndForwardedToTheCommand(): void
+    {
+        // Given
+        $user = $this->savedUser();
+        $commandBus = $this->mockCommandBus();
+        $offerId = 'c3b2a1d0-5e4f-4a6b-9c8d-7e6f5a4b3c2d';
+
+        // When : un agent qui rapporte l'offre, un autre `null`, un ancien qui ne connaît pas le champ
+        $this->put($user, ['retailer' => 'leclerc', 'storeId' => '123456', 'choices' => [
+            ['ingredientSlug' => 'farine', 'action' => 'ADD_PRODUCT', 'placement' => 'PRIMARY', 'product' => ['retailerProductId' => '1', 'label' => 'Farine', 'offerId' => $offerId]],
+            ['ingredientSlug' => 'lait', 'action' => 'ADD_PRODUCT', 'placement' => 'PRIMARY', 'product' => ['retailerProductId' => '2', 'label' => 'Lait', 'offerId' => null]],
+            ['ingredientSlug' => 'sel', 'action' => 'ADD_PRODUCT', 'placement' => 'PRIMARY', 'product' => ['retailerProductId' => '3', 'label' => 'Sel']],
+        ]]);
+
+        // Then : transmis tel quel (c'est le cas d'usage qui juge la forme, d'après l'enseigne)
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->assertEquals([new SaveProductChoicesCommand($user->getId(), Retailer::LECLERC, '123456', [
+            new ChoiceIntent('farine', ChoiceAction::ADD_PRODUCT, Placement::PRIMARY, new ProductInput('1', 'Farine', offerId: $offerId)),
+            new ChoiceIntent('lait', ChoiceAction::ADD_PRODUCT, Placement::PRIMARY, new ProductInput('2', 'Lait')),
+            new ChoiceIntent('sel', ChoiceAction::ADD_PRODUCT, Placement::PRIMARY, new ProductInput('3', 'Sel')),
+        ])], $commandBus->dispatched());
+    }
+
+    public function testAnOfferIdLongerThanTheColumnIsRefused(): void
+    {
+        // Given
+        $commandBus = $this->mockCommandBus();
+
+        // When
+        $this->put($this->savedUser(), ['retailer' => 'leclerc', 'storeId' => '123456', 'choices' => [
+            ['ingredientSlug' => 'farine', 'action' => 'ADD_PRODUCT', 'placement' => 'PRIMARY', 'product' => ['retailerProductId' => '1', 'label' => 'Farine', 'offerId' => str_repeat('a', 41)]],
+        ]]);
+
+        // Then
+        $this->assertSame(422, $this->client->getResponse()->getStatusCode());
+        $this->assertSame([], $commandBus->dispatched());
+    }
+
     public function testTheSearchQueryIsKeptWhenAbsentForgottenWhenNullAndReplacedWhenText(): void
     {
         // Given

@@ -14,6 +14,7 @@ use Repas\Drive\Domain\Model\Product;
 use Repas\Drive\Domain\Model\ProductContent;
 use Repas\Drive\Domain\Model\ProductPrice;
 use Repas\Drive\Domain\Model\Retailer;
+use Repas\Tests\Helper\FictionalRetailerProfiles;
 
 class ProductTest extends TestCase
 {
@@ -419,5 +420,110 @@ class ProductTest extends TestCase
                 $this->assertSame('DRIVE_CHOICE_INVALID', $exception->getMessage());
             }
         }
+    }
+
+    public function testAnEnseigneWithoutOffersNeverKeepsAnOfferId(): void
+    {
+        // Given / Then : Leclerc n'a pas d'offre, un identifiant d'offre fourni est refusé
+        $this->expectExceptionObject(DriveException::invalidChoice());
+
+        // When
+        Product::create(Retailer::LECLERC, '123456', '555111', null, 'Farine', null, null, $this->now, offerId: FictionalRetailerProfiles::EXPLICIT_STORE_ID);
+    }
+
+    public function testAProductWithoutOfferHasNone(): void
+    {
+        // When
+        $product = Product::create(Retailer::LECLERC, '123456', '555111', null, 'Farine', null, null, $this->now);
+
+        // Then
+        $this->assertNull($product->getOfferId());
+    }
+
+    public function testCreateKeepsTheOfferOfAnEnseigneThatHasOffers(): void
+    {
+        // Given : un profil fictif à offres, dont l'identifiant de produit est un UUID
+        $profile = FictionalRetailerProfiles::explicitStore();
+        $productId = '7a1d3c52-9b0e-4f6a-8d21-0c4e5f6a7b8c';
+        $offerId = 'c3b2a1d0-5e4f-4a6b-9c8d-7e6f5a4b3c2d';
+
+        // When
+        $product = Product::createFor(Retailer::LECLERC, $profile, FictionalRetailerProfiles::EXPLICIT_STORE_ID, $productId, null, 'Farine', null, null, $this->now, offerId: $offerId);
+
+        // Then : l'offre est gardée à part, la clé naturelle reste celle du produit
+        $this->assertSame($offerId, $product->getOfferId());
+        $this->assertSame($productId, $product->getRetailerProductId());
+        $this->assertSame(Product::keyOf(Retailer::LECLERC, FictionalRetailerProfiles::EXPLICIT_STORE_ID, $productId), $product->getKey());
+        $this->assertSame(Product::idFor(Retailer::LECLERC, FictionalRetailerProfiles::EXPLICIT_STORE_ID, $productId), $product->getId());
+    }
+
+    #[DataProvider('invalidOfferIds')]
+    public function testAnOfferOutsideThePatternOrTheColumnIsRefused(string $offerId): void
+    {
+        // Then
+        $this->expectExceptionObject(DriveException::invalidChoice());
+
+        // When
+        Product::createFor(Retailer::LECLERC, FictionalRetailerProfiles::explicitStore(), FictionalRetailerProfiles::EXPLICIT_STORE_ID, '7a1d3c52-9b0e-4f6a-8d21-0c4e5f6a7b8c', null, 'Farine', null, null, $this->now, offerId: $offerId);
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function invalidOfferIds(): iterable
+    {
+        yield 'vide' => [''];
+        yield 'pas un UUID' => ['pas-un-uuid'];
+        yield 'majuscules' => ['C3B2A1D0-5E4F-4A6B-9C8D-7E6F5A4B3C2D'];
+        yield 'retour à la ligne final' => ["c3b2a1d0-5e4f-4a6b-9c8d-7e6f5a4b3c2d\n"];
+    }
+
+    public function testASeenOfferReplacesTheOneOfTheCardAndNullKeepsIt(): void
+    {
+        // Given : une fiche qui a déjà une offre
+        $profile = FictionalRetailerProfiles::explicitStore();
+        $first = 'c3b2a1d0-5e4f-4a6b-9c8d-7e6f5a4b3c2d';
+        $second = 'd4c3b2a1-6f50-4b7c-8d9e-8f7a6b5c4d3e';
+        $product = Product::createFor(Retailer::LECLERC, $profile, FictionalRetailerProfiles::EXPLICIT_STORE_ID, '7a1d3c52-9b0e-4f6a-8d21-0c4e5f6a7b8c', null, 'Farine', null, null, $this->now, offerId: $first);
+
+        // When : l'agent ne rapporte pas d'offre, puis une autre (l'offre d'un produit peut changer dans un magasin)
+        $product->complete(null, 'Farine', null, null, $this->now, offerId: null, profile: $profile);
+        $keptOnNull = $product->getOfferId();
+        $product->complete(null, 'Farine', null, null, $this->now, offerId: $second, profile: $profile);
+
+        // Then : contrairement au rayon, la valeur reçue remplace celle de la fiche ; null n'efface rien
+        $this->assertSame($first, $keptOnNull);
+        $this->assertSame($second, $product->getOfferId());
+    }
+
+    public function testAnInvalidOfferOnACompletionChangesNothing(): void
+    {
+        // Given
+        $profile = FictionalRetailerProfiles::explicitStore();
+        $offerId = 'c3b2a1d0-5e4f-4a6b-9c8d-7e6f5a4b3c2d';
+        $product = Product::createFor(Retailer::LECLERC, $profile, FictionalRetailerProfiles::EXPLICIT_STORE_ID, '7a1d3c52-9b0e-4f6a-8d21-0c4e5f6a7b8c', null, 'Farine', null, null, $this->now, offerId: $offerId);
+
+        // When
+        try {
+            $product->complete('3017620422003', 'Farine', null, null, $this->now, offerId: 'pas-un-uuid', profile: $profile);
+            $this->fail('Une offre hors motif doit être refusée.');
+        } catch (DriveException $exception) {
+            // Then : refusée avant toute écriture dans le modèle
+            $this->assertEquals(DriveException::invalidChoice(), $exception);
+            $this->assertSame($offerId, $product->getOfferId());
+            $this->assertNull($product->getEan());
+        }
+    }
+
+    public function testAnEnseigneWithoutOffersRefusesAnOfferOnACompletion(): void
+    {
+        // Given
+        $product = Product::create(Retailer::LECLERC, '123456', '555111', null, 'Farine', null, null, $this->now);
+
+        // Then
+        $this->expectExceptionObject(DriveException::invalidChoice());
+
+        // When
+        $product->complete(null, 'Farine', null, null, $this->now, offerId: '555');
     }
 }

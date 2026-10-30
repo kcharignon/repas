@@ -17,6 +17,10 @@ use InvalidArgumentException;
  * d'adresse), soit de l'agent (`StoreIdSource::EXPLICIT` : l'adresse est une constante d'enseigne, rien ne s'en déduit). Dans les
  * deux cas `storeIdPattern` dit la forme d'un identifiant valable, longueur comprise (jamais plus de `Store::ID_MAX_LENGTH`).
  *
+ * **L'identifiant d'offre** (DRV-721) : une enseigne dont un produit a deux identifiants (le produit et son offre dans le magasin,
+ * nécessaire à l'ajout au panier) donne la forme du second dans `offerIdPattern` (longueur comprise, jamais plus de
+ * `Product::OFFER_ID_MAX_LENGTH`) ; `null` pour une enseigne sans offre, qui n'en reçoit ni n'en rend jamais.
+ *
  * Le registre ne contient ni secret ni numéro de magasin réel : l'exemple d'adresse est inventé.
  */
 final readonly class RetailerProfile
@@ -32,6 +36,7 @@ final readonly class RetailerProfile
      * @param string        $productIdPattern    Forme de l'identifiant d'un produit chez l'enseigne
      * @param StoreIdSource $storeIdSource       D'où vient l'identifiant du magasin : de l'adresse (`URL`) ou lu par l'agent (`EXPLICIT`)
      * @param string        $storeIdPattern      Forme de l'identifiant d'un magasin chez l'enseigne (celui qu'on extrait de l'adresse, ou celui que l'agent lit)
+     * @param ?string       $offerIdPattern      Forme de l'identifiant d'offre d'un produit dans le magasin ; `null` (par défaut) quand l'enseigne n'a pas d'offre (DRV-721)
      */
     public function __construct(
         public string $name,
@@ -41,8 +46,9 @@ final readonly class RetailerProfile
         public string $productIdPattern,
         public StoreIdSource $storeIdSource,
         public string $storeIdPattern,
+        public ?string $offerIdPattern = null,
     ) {
-        foreach ([$storeAddressPattern, $productIdPattern, $storeIdPattern] as $pattern) {
+        foreach (array_filter([$storeAddressPattern, $productIdPattern, $storeIdPattern, $offerIdPattern], static fn(?string $pattern): bool => $pattern !== null) as $pattern) {
             if (!self::compiles($pattern)) {
                 throw new InvalidArgumentException('Motif d\'enseigne invalide : ' . $pattern);
             }
@@ -94,6 +100,23 @@ final readonly class RetailerProfile
     public function isValidProductId(string $retailerProductId): bool
     {
         return preg_match(self::compile($this->productIdPattern), $retailerProductId) === 1;
+    }
+
+    /**
+     * L'enseigne a-t-elle des offres (un identifiant d'offre par produit, en plus de l'identifiant du produit) ?
+     */
+    public function hasOffers(): bool
+    {
+        return $this->offerIdPattern !== null;
+    }
+
+    /**
+     * L'identifiant a-t-il la forme d'un identifiant d'offre de l'enseigne ? Toujours `false` pour une enseigne sans offre : un
+     * identifiant d'offre fourni pour elle est refusé (DRV-721).
+     */
+    public function isValidOfferId(string $offerId): bool
+    {
+        return $this->offerIdPattern !== null && preg_match(self::compile($this->offerIdPattern), $offerId) === 1;
     }
 
     /**

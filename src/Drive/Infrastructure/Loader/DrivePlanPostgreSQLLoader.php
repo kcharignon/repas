@@ -130,6 +130,7 @@ final readonly class DrivePlanPostgreSQLLoader implements DrivePlanLoader
                 'cp.rank AS position',
                 'p.retailerProductId AS retailerProductId',
                 'p.ean AS ean',
+                'p.retailerOfferId AS offerId',
                 // Le libellé que le compte a lui-même lu (sa ligne de produit), sinon celui de la fiche commune
                 'COALESCE(cp.label, p.label) AS label',
                 'p.contentValue AS contentValue',
@@ -269,6 +270,7 @@ final readonly class DrivePlanPostgreSQLLoader implements DrivePlanLoader
             packs: $packs->packs,
             packsStatus: $packs->status->value,
             packSize: $packSize === null ? null : new PackSizeDTO($packSize->value, $packSize->unitSlug),
+            offerId: $row['offerId'],
         );
     }
 }

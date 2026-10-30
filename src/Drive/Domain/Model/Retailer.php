@@ -48,6 +48,8 @@ enum Retailer: string
                 // L'identifiant se déduit de l'adresse : le premier groupe de chiffres, 20 au plus (ce que `Store::create` acceptait déjà, DRV-720)
                 storeIdSource: StoreIdSource::URL,
                 storeIdPattern: '^[0-9]{1,20}$',
+                // Pas d'offre : un produit n'a que son identifiant (DRV-721)
+                offerIdPattern: null,
             ),
         };
     }
@@ -77,5 +79,13 @@ enum Retailer: string
     public function isValidProductId(string $retailerProductId): bool
     {
         return $this->profile()->isValidProductId($retailerProductId);
+    }
+
+    /**
+     * L'identifiant a la forme d'un identifiant d'offre de l'enseigne ; toujours `false` quand elle n'a pas d'offre (DRV-721).
+     */
+    public function isValidOfferId(string $offerId): bool
+    {
+        return $this->profile()->isValidOfferId($offerId);
     }
 }
