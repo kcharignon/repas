@@ -10,7 +10,7 @@ Légende : **M** mesuré sur le vrai site (Chrome du téléphone de test, une se
 |---|---|---|
 | A-1 | Le magasin n'est pas dans l'adresse (`www.auchan.fr/courses` reste identique) ni dans `localStorage` ; il est gardé par la session (cookie `connect.sid`, `HttpOnly`, un jour). | M |
 | A-2 | `GET /journey` rend le parcours sans article au panier ; `activeContexts[type=GROCERY].context` porte `seller.id` (UUID), `seller.storeReference.id` (3 chiffres), `channels` (`PICK_UP`), `pointOfService.{name, type: "DRIVE", url}`. | M |
-| A-2b | Forme de l'élément de `activeContexts[]` : `{type, context}`, avec `context.seller.id`, `context.pointOfService.name` et `context.channels` (le code de DRV-717 s'y appuie ; sinon il s'arrête sur `JOURNEY_NO_SELLER` / `JOURNEY_NO_CONTEXTS`, jamais sur un magasin deviné). | S |
+| A-2b | Forme de l'élément de `activeContexts[]` : `{type, context}`, avec `context.seller.id`, `context.pointOfService.name` et `context.channels` : **mesurée** dans la WebView de l'application le 2026-10-30 (l'agent 0.51.0 lit le magasin : hôte, identifiant UUID, libellé présent, retrait au drive). | M |
 | A-3 | `seller.id` du parcours = `offer.context.seller.id` du panier. | M |
 | A-4 | Le libellé du drive (`pointOfService.name`) est celui de la barre « Retrait : … ». | M |
 | A-4b | L'élément de la barre du magasin : le texte est mesuré (« Choisir vos courses » sans magasin, « Retrait : … » avec), **pas la balise** ; l'agent cherche un élément dont tout le texte est « Choisir vos courses » ou qui commence par « Retrait : » ; barre « Choisir vos courses » alors que le parcours donne un magasin : refus prudent. | S |
@@ -26,7 +26,7 @@ Légende : **M** mesuré sur le vrai site (Chrome du téléphone de test, une se
 | # | Fait | Statut |
 |---|---|---|
 | B-1 | `GET /recherche?text=<terme>` rend une page HTML complète (390 à 700 Ko), les produits dans le DOM : `data-product-id`, `data-offer-id`, `data-seller-type` (`GROCERY`), `data-offer-type` (`DEFAULT`), `data-seller-id` (vide) et microdonnées schema.org (`name`, `image`, `brand`, `offers`, `price`, `priceCurrency`, `priceValidUntil`, `availability`). | M |
-| B-1b | Sur quel élément se trouve chaque attribut `data-*` et chaque microdonnée (l'adaptateur retient la carte comme le plus petit ancêtre portant le nom et le prix) ; forme de la pastille « 1kg » et du prix au kilo, de la photo (microdonnée `image`), plusieurs `availability` par carte. | S / I |
+| B-1b | Sur quel élément se trouve chaque attribut `data-*` et chaque microdonnée : **les sélecteurs de DRV-724 sont mesurés bons** (essai réel du 2026-10-30 : « sel » 15 produits, « farine » 27, « beurre » 32, « lait » 30, tous avec identifiant, libellé, prix, stock et contenu net lus). Reste inconnu : la forme de la photo (microdonnée `image`) et plusieurs `availability` par carte. | M / I |
 | B-2 | `productId` et `offerId` sont des UUID ; l'adresse d'un produit est `/<libellé>/pr-C<7 chiffres>` (nombre sans rapport avec l'UUID). | M |
 | B-3 | Pas d'EAN sur la page de résultats ; `product.eans[]` dans la réponse du panier ; `data-flix-ean` sur la fiche. | M (forme) / I (contenu des `eans`) |
 | B-4 | Contenu net : pastille « 1kg » et prix « 0,91 € / kg » affichés ; champ structuré inconnu. | M (affichage) / I (structure) |
@@ -68,8 +68,10 @@ Légende : **M** mesuré sur le vrai site (Chrome du téléphone de test, une se
 | D-4b | Le marqueur d'une page de défi DataDome est `captcha-delivery.com`, supposé identique à celui de Leclerc ; aucun marqueur du reCAPTCHA n'est écrit avant DRV-725. | S |
 | D-5 | Connexion : Keycloak (`compte.auchan.fr`), formulaire e-mail + mot de passe, « Se souvenir de moi », Apple, Google ; code d'autorisation de retour (`auth_callback`). | M |
 | D-6 | `sessionStorage.tracking_authenticated` passe de `"false"` à `"true"` à la connexion. | M |
-| D-7 | La connexion par e-mail et mot de passe, le reCAPTCHA et les cookies fonctionnent dans la WebView de l'application. | **I** (DRV-726) |
+| D-7 | Connexion dans la WebView de l'application (essai du 2026-10-30, APK de débogage) : le **formulaire Keycloak s'affiche et le reCAPTCHA invisible ne bloque pas** (aucun défi) ; sur un appareil inconnu, Auchan demande en plus un **code de vérification à 6 chiffres envoyé par e-mail** (10 minutes) : **non terminé** (une personne le saisit une fois par appareil) ; la session après ce code, les cookies et le retour dans l'application restent à voir. | M (formulaire, reCAPTCHA) / **I** (suite : DRV-726) |
 | D-8 | Apple et Google sont refusés en WebView. | S |
+| D-11 | Sur un appareil inconnu (profil de WebView neuf), la connexion par e-mail et mot de passe est suivie d'un **code à 6 chiffres envoyé par e-mail** (« Renvoyer un code », 10 minutes) ; Chrome, déjà connu, ne le demandait pas. | M |
+| D-12 | **Le pont `repasHost` est absent de `compte.auchan.fr` et présent sur `www.auchan.fr`** dans la WebView réelle (règle de sécurité de DRV-728 prouvée sur le vrai site). | M |
 | D-9 | Cadence tolérée au-delà de 2 s entre requêtes ; comportement sur la durée. | I |
 
 ## Règles pour l'adaptateur

@@ -60,3 +60,7 @@ Hors ordre : [`hypotheses-site-reel-auchan.md`](../hypotheses-site-reel-auchan.m
 ## 5. Ce que cette décision ne change pas
 
 Les invariants de l'ADR 0022 (aucun identifiant d'enseigne chez nous, le back ne contacte jamais une enseigne, l'agent ne valide ni ne paie, le panier n'est jamais vidé ni réduit) valent pour Auchan. Auchan est éteint par défaut. Rien d'Auchan n'est publié ni allumé sans l'humain ; le déploiement attend l'approbation du propriétaire.
+
+## 6. Mise à jour du 2026-10-30 (essai réel dans la WebView)
+
+Le risque n° 1 du § 4 est **en grande partie levé** : dans la WebView de l'application (APK de débogage, compte de test), le formulaire de connexion s'affiche et le reCAPTCHA invisible ne bloque pas ; sur un appareil inconnu Auchan demande en plus un **code de vérification à 6 chiffres envoyé par e-mail** (à saisir une fois par appareil : texte de l'écran à prévoir côté produit, DRV-726). Le pont est présent sur `www.auchan.fr` et absent de `compte.auchan.fr` (règle de DRV-728 prouvée). L'agent lit le magasin et la recherche sur le vrai site (sélecteurs mesurés bons) ; deux défauts de la recherche (redirection vers une page de rayon, page « aucun résultat ») sont corrigés par DRV-734. Reste à voir : la suite de la connexion après le code, et l'**écriture au panier** par l'adaptateur. Détail : [issue #322](https://github.com/kcharignon/repas/issues/322) et [`hypotheses-site-reel-auchan.md`](../hypotheses-site-reel-auchan.md).
