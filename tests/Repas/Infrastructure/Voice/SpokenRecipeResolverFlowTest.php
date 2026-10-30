@@ -39,9 +39,9 @@ class SpokenRecipeResolverFlowTest extends DatabaseTestCase
         return $user;
     }
 
-    private function savedRecipe(User $author, string $name, ?string $id = null): string
+    private function savedRecipe(User $author, string $name, ?string $id = null, bool $secret = false): string
     {
-        $builder = new RecipeBuilder()->isPastaCarbonara()->withName($name);
+        $builder = new RecipeBuilder()->isPastaCarbonara()->withName($name)->asSecret($secret);
         if ($id !== null) {
             $builder = $builder->withId($id);
         }
@@ -70,6 +70,25 @@ class SpokenRecipeResolverFlowTest extends DatabaseTestCase
         $this->assertSame([$gratin, 'Gratin dauphinois'], [$found->recipe?->id, $found->recipe?->name]);
         $this->assertNull($notFound->recipe);
         $this->assertEquals([new RecipeSuggestion($gratin, 'Gratin dauphinois')], $notFound->suggestions);
+    }
+
+    public function testTheSecretFlagChangesNothingForTheVoiceTheUserStillFindsHisOwnSecretRecipeAndNeverTheOneOfAnother(): void
+    {
+        // Given (ADR 0033, REC-001) : la voix ne lit que les recettes de l'utilisateur ; l'une des siennes est secrète, une autre est celle d'un
+        // autre utilisateur, secrète elle aussi
+        $user = $this->savedUser();
+        $other = $this->savedUser();
+        $mine = $this->savedRecipe($user, 'Gratin dauphinois', secret: true);
+        $this->savedRecipe($other, 'Hachis parmentier', secret: true);
+
+        // When
+        $found = $this->resolver->resolveOrSuggest($user->getId(), 'le gratin dauphinois');
+        $notFound = $this->resolver->resolveOrSuggest($user->getId(), 'hachis parmentier');
+
+        // Then : la sienne, secrète ou non, est comprise ; celle d'un autre n'est ni trouvée ni proposée, comme avant
+        $this->assertSame($mine, $found->recipe?->id);
+        $this->assertNull($notFound->recipe);
+        $this->assertEquals([new RecipeSuggestion($mine, 'Gratin dauphinois')], $notFound->suggestions);
     }
 
     public function testAUserWithoutAnyRecipeGetsNothingAndTheResolutionSaysSo(): void

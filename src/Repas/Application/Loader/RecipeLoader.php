@@ -10,22 +10,24 @@ use Repas\Repas\Domain\Exception\RecipeException;
 interface RecipeLoader
 {
     /**
-     * Recette avec ses ingrédients, dans l'ordre de la recette (colonne `position`).
+     * Recette avec ses ingrédients, dans l'ordre de la recette (colonne `position`), telle que cet utilisateur la lit. Une recette secrète
+     * n'est lue que par son auteur (ADR 0033) : pour tout autre, administrateur compris, elle est introuvable, comme une recette inconnue.
      *
-     * @throws RecipeException
+     * @throws RecipeException la recette est inconnue, ou secrète et d'un autre
      */
-    public function get(string $id): RecipeDTO;
+    public function get(string $id, string $userId): RecipeDTO;
 
     /**
-     * Type de recette et recettes de l'auteur pour ce type, triées par slug.
+     * Type de recette et recettes de l'auteur pour ce type, triées par slug, secrètes comprises (chacune dit si elle l'est).
      *
      * @throws RecipeException type inconnu
      */
     public function listByAuthorAndType(string $authorId, string $typeSlug): RecipeTypeRecipesDTO;
 
     /**
-     * Une page des recettes originales des autres utilisateurs que cet utilisateur n'a pas encore copiées. `totalItems` est le nombre de
-     * toutes ces recettes (ou de toutes les correspondances), quelle que soit la page.
+     * Une page des recettes originales des autres utilisateurs que cet utilisateur n'a pas encore copiées, SANS les recettes secrètes (ADR 0033 :
+     * ni dans la page, ni dans le total, ni dans la recherche). `totalItems` est le nombre de toutes ces recettes (ou de toutes les
+     * correspondances), quelle que soit la page.
      *
      * Sans recherche : triées par catégorie (l'ordre des types de recette), puis par nom, puis par identifiant. Avec une recherche : celles dont
      * le nom correspond au texte, du plus pertinent au moins pertinent (`SearchRelevance`, ADR 0019), à pertinence égale par nom puis par

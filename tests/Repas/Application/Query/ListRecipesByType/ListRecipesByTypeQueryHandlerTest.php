@@ -16,7 +16,7 @@ class ListRecipesByTypeQueryHandlerTest extends TestCase
     public function testReturnsWhatTheLoaderReturns(): void
     {
         // Given
-        $recipes = new RecipeTypeRecipesDTO(new RecipeTypeDTOBuilder()->build(), [new RecipeSummaryDTO('recipe-1', 'omelette')]);
+        $recipes = new RecipeTypeRecipesDTO(new RecipeTypeDTOBuilder()->build(), [new RecipeSummaryDTO('recipe-1', 'omelette', false)]);
         $handler = new ListRecipesByTypeQueryHandler(new RecipeInMemoryLoader(recipesByType: $recipes));
 
         // When

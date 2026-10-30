@@ -50,7 +50,7 @@ class RecipePostgreSQLLoaderTest extends DatabaseTestCase
         $this->persister->saveRecipe($recipe);
 
         // When
-        $result = $this->recipeLoader->get($recipe->getId());
+        $result = $this->recipeLoader->get($recipe->getId(), $recipe->getAuthorId());
 
         // Then
         $this->assertSame([$recipe->getId(), 'zzz gâteau', 6, 'dessert', 'dessert'], [$result->id, $result->name, $result->serving, $result->typeSlug, $result->typeName]);
@@ -76,7 +76,7 @@ class RecipePostgreSQLLoaderTest extends DatabaseTestCase
         $this->persister->saveRecipe($recipe);
 
         // When
-        $rows = $this->recipeLoader->get($recipe->getId())->rows;
+        $rows = $this->recipeLoader->get($recipe->getId(), $recipe->getAuthorId())->rows;
 
         // Then : même nom, deux identifiants, chacun avec son rayon
         $this->assertSame(['petits-pois-a', 'petits-pois-b'], array_map(static fn(RecipeRowDTO $row): string => $row->ingredientSlug, $rows));
@@ -106,7 +106,7 @@ class RecipePostgreSQLLoaderTest extends DatabaseTestCase
         $this->persister->saveRecipe($recipe);
 
         // When
-        $result = $this->recipeLoader->get($recipe->getId());
+        $result = $this->recipeLoader->get($recipe->getId(), $recipe->getAuthorId());
 
         // Then : à l'unité d'achat elle-même ; directement par l'universelle (kilo > gramme) ; par la conversion propre de la farine (cuillère > gramme)
         // puis l'universelle ; par DEUX étapes pour le beurre (kilo > gramme universelle puis gramme > plaquette propre) ; jamais par la conversion de la
@@ -138,8 +138,8 @@ class RecipePostgreSQLLoaderTest extends DatabaseTestCase
         $this->persister->saveRecipe($secondRecipe);
 
         // When
-        $firstResult = $this->recipeLoader->get($firstRecipe->getId());
-        $secondResult = $this->recipeLoader->get($secondRecipe->getId());
+        $firstResult = $this->recipeLoader->get($firstRecipe->getId(), $firstRecipe->getAuthorId());
+        $secondResult = $this->recipeLoader->get($secondRecipe->getId(), $secondRecipe->getAuthorId());
 
         // Then
         $this->assertSame([true, false], [$firstResult->rows[0]->convertible, $secondResult->rows[0]->convertible]);
@@ -162,7 +162,7 @@ class RecipePostgreSQLLoaderTest extends DatabaseTestCase
         $counter->reset();
 
         // When
-        $result = $this->recipeLoader->get($recipe->getId());
+        $result = $this->recipeLoader->get($recipe->getId(), $recipe->getAuthorId());
 
         // Then : la recette, ses lignes, les conversions : trois lectures, quel que soit le nombre de lignes
         $this->assertCount(5, $result->rows);
@@ -174,12 +174,12 @@ class RecipePostgreSQLLoaderTest extends DatabaseTestCase
         // Given : une recette neuve (version 1) puis enregistrée une seconde fois (version 2)
         $recipe = new RecipeBuilder()->withAuthor($this->savedUser())->build();
         $this->persister->saveRecipe($recipe);
-        $this->assertSame(1, $this->recipeLoader->get($recipe->getId())->version);
+        $this->assertSame(1, $this->recipeLoader->get($recipe->getId(), $recipe->getAuthorId())->version);
         $recipe->setName('zzz autre nom');
         static::getContainer()->get(RecipeRepository::class)->save($recipe);
 
         // When
-        $result = $this->recipeLoader->get($recipe->getId());
+        $result = $this->recipeLoader->get($recipe->getId(), $recipe->getAuthorId());
 
         // Then
         $this->assertSame(2, $result->version);
@@ -192,7 +192,7 @@ class RecipePostgreSQLLoaderTest extends DatabaseTestCase
         $this->persister->saveRecipe($recipe);
 
         // When
-        $result = $this->recipeLoader->get($recipe->getId());
+        $result = $this->recipeLoader->get($recipe->getId(), $recipe->getAuthorId());
 
         // Then
         $this->assertSame([], $result->rows);
@@ -204,7 +204,7 @@ class RecipePostgreSQLLoaderTest extends DatabaseTestCase
         $this->expectExceptionObject(RecipeException::notFound('unknown-recipe'));
 
         // When
-        $this->recipeLoader->get('unknown-recipe');
+        $this->recipeLoader->get('unknown-recipe', 'a-user');
     }
 
     public function testListByAuthorAndTypeReturnsTheTypeAndTheRecipesOfTheAuthorSortedBySlug(): void
@@ -222,7 +222,7 @@ class RecipePostgreSQLLoaderTest extends DatabaseTestCase
         // Then
         $this->assertEquals(new RecipeTypeDTO('dessert', 'dessert', new RecipeTypeBuilder()->isDessert()->build()->getImage(), 3), $result->recipeType);
         $this->assertEquals(
-            [new RecipeSummaryDTO($first->getId(), 'aaa gâteau'), new RecipeSummaryDTO($second->getId(), 'zzz tarte')],
+            [new RecipeSummaryDTO($first->getId(), 'aaa gâteau', false), new RecipeSummaryDTO($second->getId(), 'zzz tarte', false)],
             $result->recipes,
         );
     }
@@ -249,6 +249,135 @@ class RecipePostgreSQLLoaderTest extends DatabaseTestCase
 
         // When
         $this->recipeLoader->listByAuthorAndType($this->savedUser()->getId(), 'unknown-type');
+    }
+
+    public function testGetTellsWhetherTheRecipeIsSecretToItsAuthor(): void
+    {
+        // Given : une recette secrète et une ordinaire du même auteur
+        $author = $this->savedUser();
+        $secret = $this->savedRecipe($author, 'zzz secrète', new RecipeTypeBuilder()->isMeal(), secret: true);
+        $ordinary = $this->savedRecipe($author, 'zzz ordinaire', new RecipeTypeBuilder()->isMeal());
+
+        // Then : la clé est toujours écrite, vraie pour l'une et fausse pour l'autre
+        $this->assertTrue($this->recipeLoader->get($secret->getId(), $author->getId())->secret);
+        $this->assertFalse($this->recipeLoader->get($ordinary->getId(), $author->getId())->secret);
+    }
+
+    public function testGetOfASecretRecipeIsNotFoundForAnyoneButItsAuthorExactlyLikeAnUnknownRecipe(): void
+    {
+        // Given : une recette secrète, lue par un autre utilisateur (le chargeur ne connaît pas les rôles : un administrateur n'est qu'un autre)
+        $author = $this->savedUser();
+        $reader = $this->savedUser();
+        $secret = $this->savedRecipe($author, 'zzz secrète', new RecipeTypeBuilder()->isMeal(), secret: true);
+
+        // When & Then : la même exception qu'une recette inconnue, pas un refus d'autorisation qui révélerait qu'elle existe
+        try {
+            $this->recipeLoader->get($secret->getId(), $reader->getId());
+            $this->fail('La recette secrète d\'un autre ne doit pas se lire.');
+        } catch (RecipeException $exception) {
+            $this->assertEquals(RecipeException::notFound($secret->getId()), $exception);
+            $this->assertSame(404, $exception->getCode());
+        }
+    }
+
+    public function testGetOfARecipeThatWasSecretAndBecamePublicAgainIsReadableByEveryone(): void
+    {
+        // Given : l'auteur la rend de nouveau visible
+        $author = $this->savedUser();
+        $reader = $this->savedUser();
+        $recipe = new RecipeBuilder()->withAuthor($author)->asSecret()->build();
+        $this->persister->saveRecipe($recipe);
+        $recipe->changeSecret(false, $author->getId());
+        static::getContainer()->get(RecipeRepository::class)->save($recipe);
+
+        // Then
+        $this->assertSame($recipe->getId(), $this->recipeLoader->get($recipe->getId(), $reader->getId())->id);
+    }
+
+    public function testListByAuthorAndTypeSaysWhichRecipesAreSecretAndKeepsThemForTheirAuthor(): void
+    {
+        // Given
+        $author = $this->savedUser();
+        $secret = $this->savedRecipe($author, 'aaa secrète', new RecipeTypeBuilder()->isDessert(), secret: true);
+        $ordinary = $this->savedRecipe($author, 'bbb ordinaire', new RecipeTypeBuilder()->isDessert());
+
+        // When
+        $result = $this->recipeLoader->listByAuthorAndType($author->getId(), 'dessert');
+
+        // Then : ses recettes secrètes sont dans sa liste, avec leur pastille
+        $this->assertEquals([new RecipeSummaryDTO($secret->getId(), 'aaa secrète', true), new RecipeSummaryDTO($ordinary->getId(), 'bbb ordinaire', false)], $result->recipes);
+        $this->assertSame([true, false], array_column(json_decode(json_encode($result->recipes, JSON_THROW_ON_ERROR), true), 'secret'));
+    }
+
+    public function testListOfOtherPeopleNeverContainsASecretRecipeNeitherInItsPageNorInItsTotal(): void
+    {
+        // Given : deux recettes ordinaires et deux secrètes d'un autre utilisateur
+        $me = $this->savedUser();
+        $other = $this->savedUser();
+        $first = $this->savedRecipe($other, 'a ordinaire', new RecipeTypeBuilder()->isMeal());
+        $second = $this->savedRecipe($other, 'c ordinaire', new RecipeTypeBuilder()->isMeal());
+        $this->savedRecipe($other, 'b secrète', new RecipeTypeBuilder()->isMeal(), secret: true);
+        $this->savedRecipe($other, 'd secrète', new RecipeTypeBuilder()->isDessert(), secret: true);
+
+        // When : la page entière, puis des pages d'une recette (le total est alors compté à part)
+        $all = $this->recipeLoader->listOfOtherPeople($me->getId(), 200, 0);
+        $firstPage = $this->recipeLoader->listOfOtherPeople($me->getId(), 1, 0);
+        $secondPage = $this->recipeLoader->listOfOtherPeople($me->getId(), 1, 1);
+        $beyond = $this->recipeLoader->listOfOtherPeople($me->getId(), 1, 2);
+
+        // Then : ni dans la liste, ni dans `totalItems`, quelle que soit la page
+        $this->assertSame([[$first->getId(), $second->getId()], 2], [array_column($all->member, 'id'), $all->totalItems]);
+        $this->assertSame([[$first->getId()], 2], [array_column($firstPage->member, 'id'), $firstPage->totalItems]);
+        $this->assertSame([[$second->getId()], 2], [array_column($secondPage->member, 'id'), $secondPage->totalItems]);
+        $this->assertSame([[], 2], [$beyond->member, $beyond->totalItems]);
+    }
+
+    public function testListOfOtherPeopleOfAUserWhoOnlyHasSecretRecipesIsEmpty(): void
+    {
+        // Given
+        $me = $this->savedUser();
+        $this->savedRecipe($this->savedUser(), 'a secrète', new RecipeTypeBuilder()->isMeal(), secret: true);
+
+        // When
+        $result = $this->recipeLoader->listOfOtherPeople($me->getId(), 200, 0);
+
+        // Then
+        $this->assertSame([[], 0], [$result->member, $result->totalItems]);
+    }
+
+    public function testSearchNeverFindsASecretRecipeEvenWithItsExactNameAndThatOfAPublicOneIsStillFound(): void
+    {
+        // Given : une recette secrète et une ordinaire, que la même recherche trouverait
+        $me = $this->savedUser();
+        $other = $this->savedUser();
+        $this->savedRecipe($other, 'tarte secrète', new RecipeTypeBuilder()->isDessert(), secret: true);
+        $this->savedRecipe($other, 'tarte', new RecipeTypeBuilder()->isDessert(), secret: true);
+        $public = $this->savedRecipe($other, 'tarte ordinaire', new RecipeTypeBuilder()->isDessert());
+
+        // When
+        $exact = $this->recipeLoader->listOfOtherPeople($me->getId(), 200, 0, 'tarte');
+        $secretWord = $this->recipeLoader->listOfOtherPeople($me->getId(), 200, 0, 'tarte secrète');
+
+        // Then : seule l'ordinaire apparaît, dans la liste comme dans le total ; chercher le nom exact d'une secrète ne trouve rien
+        $this->assertSame([[$public->getId()], 1], [array_column($exact->member, 'id'), $exact->totalItems]);
+        $this->assertSame([[], 0], [$secretWord->member, $secretWord->totalItems]);
+    }
+
+    public function testASecretRecipeBecomesVisibleAgainWhenItsAuthorChangesHisMind(): void
+    {
+        // Given
+        $me = $this->savedUser();
+        $other = $this->savedUser();
+        $recipe = new RecipeBuilder()->withAuthor($other)->withName('tarte')->withRecipeType(new RecipeTypeBuilder()->isDessert())->asSecret()->build();
+        $this->persister->saveRecipe($recipe);
+        $this->assertSame(0, $this->recipeLoader->listOfOtherPeople($me->getId(), 200, 0)->totalItems);
+
+        // When
+        $recipe->changeSecret(false, $other->getId());
+        static::getContainer()->get(RecipeRepository::class)->save($recipe);
+
+        // Then
+        $this->assertSame([$recipe->getId()], array_column($this->recipeLoader->listOfOtherPeople($me->getId(), 200, 0)->member, 'id'));
     }
 
     public function testListOfOtherPeopleKeepsOriginalsNotYetCopiedSortedByCategory(): void
@@ -529,9 +658,9 @@ class RecipePostgreSQLLoaderTest extends DatabaseTestCase
         return $user;
     }
 
-    private function savedRecipe(User $author, string $name, RecipeTypeBuilder $type, ?string $originalId = null): Recipe
+    private function savedRecipe(User $author, string $name, RecipeTypeBuilder $type, ?string $originalId = null, bool $secret = false): Recipe
     {
-        $recipe = new RecipeBuilder()->withAuthor($author)->withName($name)->withRecipeType($type)->withOriginalId($originalId)->build();
+        $recipe = new RecipeBuilder()->withAuthor($author)->withName($name)->withRecipeType($type)->withOriginalId($originalId)->asSecret($secret)->build();
         $this->persister->saveRecipe($recipe);
 
         return $recipe;

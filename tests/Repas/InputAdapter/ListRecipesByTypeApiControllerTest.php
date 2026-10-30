@@ -18,7 +18,7 @@ class ListRecipesByTypeApiControllerTest extends QueryBusWebTestCase
         $user = $this->savedUser();
         $this->queryBus->willReturn(ListRecipesByTypeQuery::class, new RecipeTypeRecipesDTO(
             new RecipeTypeDTOBuilder()->withSlug('plat')->withName('plat')->withImage('images/plat.svg')->withOrder(3)->build(),
-            [new RecipeSummaryDTO('recipe-1', 'omelette'), new RecipeSummaryDTO('recipe-2', 'pâtes')],
+            [new RecipeSummaryDTO('recipe-1', 'omelette', false), new RecipeSummaryDTO('recipe-2', 'pâtes', true)],
         ));
 
         // When
@@ -31,7 +31,7 @@ class ListRecipesByTypeApiControllerTest extends QueryBusWebTestCase
         $this->assertSame([$user->getId(), 'plat'], [$query->authorId, $query->typeSlug]);
         $this->assertSame([
             'recipeType' => ['slug' => 'plat', 'name' => 'plat', 'image' => 'images/plat.svg', 'order' => 3],
-            'member' => [['id' => 'recipe-1', 'name' => 'omelette'], ['id' => 'recipe-2', 'name' => 'pâtes']],
+            'member' => [['id' => 'recipe-1', 'name' => 'omelette', 'secret' => false], ['id' => 'recipe-2', 'name' => 'pâtes', 'secret' => true]],
             'totalItems' => 2,
         ], $this->jsonBody());
     }

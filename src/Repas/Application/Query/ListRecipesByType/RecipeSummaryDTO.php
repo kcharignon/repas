@@ -11,6 +11,8 @@ final readonly class RecipeSummaryDTO
         public string $id,
         #[OA\Property(example: 'pâtes carbonara')]
         public string $name,
+        #[OA\Property(description: "Recette secrète : seul son auteur la voit (elle n'est pas dans « Recettes des autres »). Toujours écrit", example: false)]
+        public bool $secret,
     ) {
     }
 }

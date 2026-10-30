@@ -92,6 +92,60 @@ class CopyRecipeHandlerTest extends TestCase
         );
     }
 
+    // --- La recette secrète (ADR 0033) ----------------------------------------------------------------------------------------------
+
+    public function testTheSecretRecipeOfAnotherIsNotFoundAndNothingIsWritten(): void
+    {
+        // Given : la recette secrète de l'auteur, avec un ingrédient que le copieur n'a pas (il en recevrait une copie)
+        $private = $this->personal('ingredient secret', $this->cheese(), $this->unit()->isBox(), self::AUTHOR);
+        $recipe = new RecipeBuilder()->withId('recipe-id')->withAuthorId(self::AUTHOR)->asSecret()
+            ->addRow(new RecipeRowBuilder()->withIngredient($private)->withUnit($this->unit()->isBox())->withQuantity(4))->build();
+        $this->assemble([$private], recipes: [$recipe]);
+
+        // When
+        try {
+            ($this->handler)(new CopyRecipeCommand('recipe-id', self::COPIER, 'copy-id'));
+            $this->fail('La recette secrète d\'un autre ne doit pas se copier.');
+        } catch (RecipeException $exception) {
+            // Then : la même exception qu'une recette inconnue (404), rien n'est copié, ni recette, ni ingrédient, ni événement
+            $this->assertEquals(RecipeException::notFound('recipe-id'), $exception);
+        }
+        $this->assertCount(1, $this->recipes->findByAuthor(self::AUTHOR));
+        $this->assertCount(0, $this->recipes->findByAuthor(self::COPIER));
+        $this->assertFalse($this->ingredients->exists('ingredient-secret' . self::COPIER));
+        $this->assertSame([], $this->events->eventDispatched);
+    }
+
+    public function testTheAuthorCopiesHisOwnSecretRecipeAndTheCopyIsAnOrdinaryRecipe(): void
+    {
+        // Given
+        $private = $this->personal('ingredient secret', $this->cheese(), $this->unit()->isBox(), self::AUTHOR);
+        $recipe = new RecipeBuilder()->withId('recipe-id')->withAuthorId(self::AUTHOR)->asSecret()
+            ->addRow(new RecipeRowBuilder()->withIngredient($private)->withUnit($this->unit()->isBox())->withQuantity(4))->build();
+        $this->assemble([$private], recipes: [$recipe]);
+
+        // When
+        ($this->handler)(new CopyRecipeCommand('recipe-id', self::AUTHOR, 'copy-id'));
+
+        // Then : copiée, et la copie n'hérite pas du choix de l'original (le drapeau est celui de l'auteur de chaque recette)
+        $copy = $this->recipes->findOneById('copy-id');
+        $this->assertSame(['recipe-id', self::AUTHOR, false], [$copy->getOriginalId(), $copy->getAuthorId(), $copy->isSecret()]);
+        $this->assertTrue($this->recipes->findOneById('recipe-id')->isSecret());
+    }
+
+    public function testTheCopyOfAnOrdinaryRecipeIsOrdinary(): void
+    {
+        // Given
+        $private = $this->personal('ingredient secret', $this->cheese(), $this->unit()->isBox(), self::AUTHOR);
+        $this->assemble([$private], recipes: [$this->recipe([$private], unit: $this->unit()->isBox())]);
+
+        // When
+        ($this->handler)(new CopyRecipeCommand('recipe-id', self::COPIER, 'copy-id'));
+
+        // Then
+        $this->assertFalse($this->recipes->findOneById('copy-id')->isSecret());
+    }
+
     // --- Ce que le copieur n'a pas : une copie qui retient son origine ------------------------------------------------------------
 
     public function testAnIngredientTheCopierDoesNotHaveIsCopiedWithItsOwnConversionsAndRetainsItsOrigin(): void

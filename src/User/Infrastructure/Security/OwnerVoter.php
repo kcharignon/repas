@@ -78,7 +78,8 @@ class OwnerVoter extends Voter
             case self::SHOPPING_LIST_OWNER:
                 return $this->ownershipLoader->shoppingListOwnerId($subject) === $user->getId();
             case self::RECIPE_OWNER:
-                return $this->ownershipLoader->recipeAuthorId($subject) === $user->getId();
+                // Une recette secrète d'un autre n'existe pas pour lui : `404`, pas `403` (ADR 0033) ; une recette ordinaire d'un autre est refusée
+                return $this->ownershipLoader->recipeAuthorIdFor($subject, $user->getId()) === $user->getId();
             case self::MEAL_OWNER:
                 return $this->ownershipLoader->mealOwnerId($subject) === $user->getId();
             case self::SHOPPING_LIST_ROW_OWNER:

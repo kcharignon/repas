@@ -21,6 +21,8 @@ final readonly class RecipeDTO
         public string $typeSlug,
         #[OA\Property(example: 'plat')]
         public string $typeName,
+        #[OA\Property(description: "Recette secrète : seul son auteur la voit (elle n'est pas dans « Recettes des autres » et personne d'autre ne la lit ni ne la copie). Toujours écrit ; toujours `false` pour la recette d'un autre, qu'on ne lit que si elle ne l'est pas", example: false)]
+        public bool $secret,
         #[OA\Property(description: 'Ingrédients de la recette, dans l\'ordre de la recette (celui de la saisie)', type: 'array', items: new OA\Items(ref: new Model(type: RecipeRowDTO::class)))]
         public array $rows,
         #[OA\Property(description: 'Version de la recette, aussi renvoyée dans l\'en-tête `ETag` : à renvoyer dans `If-Match` pour modifier ou supprimer sans écraser le travail d\'un autre', example: 3)]

@@ -85,6 +85,47 @@ class OwnerVoterTest extends TestCase
         $this->assertSame(VoterInterface::ACCESS_DENIED, $this->vote($this->other, OwnerVoter::RECIPE_OWNER, 'recipe-1', $loader));
     }
 
+    public function testTheSecretRecipeOfAnotherUserIsNotFoundNotForbiddenForEveryoneButItsAuthor(): void
+    {
+        // Given : une recette secrète de owner-id (ADR 0033) et une ordinaire
+        $loader = new OwnershipInMemoryLoader(recipeAuthors: ['secret' => 'owner-id', 'ordinary' => 'owner-id'], secretRecipes: ['secret']);
+
+        // Then : l'auteur la possède ; un autre reçoit un 404, jamais un 403 qui révélerait qu'elle existe ; une recette ordinaire reste un refus 403
+        $this->assertSame(VoterInterface::ACCESS_GRANTED, $this->vote($this->owner, OwnerVoter::RECIPE_OWNER, 'secret', $loader));
+        $this->assertSame(VoterInterface::ACCESS_DENIED, $this->vote($this->other, OwnerVoter::RECIPE_OWNER, 'ordinary', $loader));
+        $this->expectException(NotFoundHttpException::class);
+        $this->vote($this->other, OwnerVoter::RECIPE_OWNER, 'secret', $loader);
+    }
+
+    public function testTheSecretRecipeOfAnotherUserHasTheMessageOfAnUnknownRecipe(): void
+    {
+        // Given
+        $loader = new OwnershipInMemoryLoader(recipeAuthors: ['secret' => 'owner-id'], secretRecipes: ['secret']);
+
+        // When
+        $messages = [];
+        foreach (['secret', 'unknown'] as $id) {
+            try {
+                $this->vote($this->other, OwnerVoter::RECIPE_OWNER, $id, $loader);
+                $this->fail('Un 404 est attendu.');
+            } catch (NotFoundHttpException $exception) {
+                $messages[] = str_replace($id, '{id}', $exception->getMessage());
+            }
+        }
+
+        // Then : indiscernable d'une recette inconnue
+        $this->assertSame($messages[0], $messages[1]);
+    }
+
+    public function testAnAdministratorKeepsThePassThroughToEditOrDeleteASecretRecipe(): void
+    {
+        // Given : l'édition et la suppression par l'administrateur sont ce qu'elles étaient (ADR 0033) ; c'est la lecture et la copie qui n'ont pas de passe-droit
+        $loader = new OwnershipInMemoryLoader(recipeAuthors: ['secret' => 'owner-id'], secretRecipes: ['secret']);
+
+        // Then
+        $this->assertSame(VoterInterface::ACCESS_GRANTED, $this->vote($this->other, OwnerVoter::RECIPE_OWNER, 'secret', $loader, admin: true));
+    }
+
     public function testOnlyTheOwnerOfTheShoppingListOwnsAMeal(): void
     {
         $loader = new OwnershipInMemoryLoader(mealOwners: ['meal-1' => 'owner-id']);
