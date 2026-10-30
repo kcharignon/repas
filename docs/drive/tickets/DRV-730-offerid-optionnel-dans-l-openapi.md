@@ -4,7 +4,7 @@
 - **Jalon** : M7 Plusieurs enseignes (suite de DRV-721)
 - **Taille** : S
 - **Dépend de** : DRV-721
-- **Statut** : à faire. Effort recommandé : `medium`.
+- **Statut** : fait. Effort recommandé : `medium`.
 - **Lire d'abord** : le rapport de DRV-722 (PR front #251) ; `.claude/skills/repas-dev/SKILL.md`.
 
 ## Contexte

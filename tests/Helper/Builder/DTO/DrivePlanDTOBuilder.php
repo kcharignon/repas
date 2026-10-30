@@ -35,8 +35,8 @@ class DrivePlanDTOBuilder implements Builder
                     new DrivePlanNeededDTO(300, 'g', 'WEIGHT', 1, 'gramme', 'gramme'),
                     'KNOWN',
                     [
-                        new DrivePlanProductDTO(1, '123456', null, 'Farine de blé T55 1 kg', new ProductContentDTO(1000, 'g'), 1, 'COMPUTED', null),
-                        new DrivePlanProductDTO(2, '222333', '3017620422003', 'Farine T45', null, 1, 'COMPUTED', new PackSizeDTO(500, 'gramme')),
+                        new DrivePlanProductDTO(1, '123456', null, 'Farine de blé T55 1 kg', new ProductContentDTO(1000, 'g'), 1, 'COMPUTED', null, null),
+                        new DrivePlanProductDTO(2, '222333', '3017620422003', 'Farine T45', null, 1, 'COMPUTED', new PackSizeDTO(500, 'gramme'), null),
                     ],
                     [new DrivePlanRejectedDTO('999000', 'Farine complète bio 1 kg')],
                     'Farine',

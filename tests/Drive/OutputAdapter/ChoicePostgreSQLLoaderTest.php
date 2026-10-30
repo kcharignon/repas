@@ -68,10 +68,10 @@ class ChoicePostgreSQLLoaderTest extends DatabaseTestCase
                 'Farine',
                 false,
                 [
-                    new AcceptedProductDTO(1, new ChoiceProductDTO($this->id('2'), '2', null, 'Farine T45 1 kg', new ProductContentDTO(0.5, 'kg'), null)),
-                    new AcceptedProductDTO(2, new ChoiceProductDTO($this->id('1'), '1', '3017620422003', 'Farine T55 Marque Repère 1 kg', new ProductContentDTO(1000, 'g'), null)),
+                    new AcceptedProductDTO(1, new ChoiceProductDTO($this->id('2'), '2', null, 'Farine T45 1 kg', new ProductContentDTO(0.5, 'kg'), null, null)),
+                    new AcceptedProductDTO(2, new ChoiceProductDTO($this->id('1'), '1', '3017620422003', 'Farine T55 Marque Repère 1 kg', new ProductContentDTO(1000, 'g'), null, null)),
                 ],
-                [new ChoiceProductDTO($this->id('3'), '3', null, 'Farine complète bio 1 kg', null, null)],
+                [new ChoiceProductDTO($this->id('3'), '3', null, 'Farine complète bio 1 kg', null, null, null)],
                 new DateTimeImmutable('2026-10-18 10:00:00')->format(DATE_ATOM),
                 'farine de blé t55',
             ),

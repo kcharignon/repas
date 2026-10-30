@@ -6721,8 +6721,8 @@
                     "offerId": {
                         "description": "Identifiant de l'offre du produit dans le magasin (DRV-721), chez les enseignes dont un produit a deux identifiants. **La cl\u00e9 est absente** (jamais `null`) quand le produit n'a pas d'offre (toute enseigne sans offre, ou offre pas encore rapport\u00e9e par un agent)",
                         "type": "string",
-                        "default": null,
-                        "example": "0b5f8a2e-3c1d-4e7f-9a6b-123456789abc"
+                        "example": "0b5f8a2e-3c1d-4e7f-9a6b-123456789abc",
+                        "nullable": true
                     }
                 },
                 "type": "object"
@@ -7064,8 +7064,8 @@
                     "offerId": {
                         "description": "Identifiant de l'offre du produit dans le magasin (DRV-721), chez les enseignes dont un produit a deux identifiants. **La cl\u00e9 est absente** (jamais `null`) quand le produit n'a pas d'offre (toute enseigne sans offre, ou offre pas encore rapport\u00e9e par un agent)",
                         "type": "string",
-                        "default": null,
-                        "example": "0b5f8a2e-3c1d-4e7f-9a6b-123456789abc"
+                        "example": "0b5f8a2e-3c1d-4e7f-9a6b-123456789abc",
+                        "nullable": true
                     }
                 },
                 "type": "object"

@@ -20,8 +20,8 @@ final readonly class ChoiceProductDTO implements JsonSerializable
         public ?ProductContentDTO $content,
         #[OA\Property(description: "Combien d'unités de la liste tiennent dans ce produit, tel que la personne l'a répondu (DRV-652) : « 20 tranches » pour un cheddar que la liste compte en tranches. Propre à l'utilisateur et à ce produit dans cette préférence ; `null` si elle n'a rien répondu (et toujours pour un produit refusé). Elle ne sert au calcul que pour la même unité : si la liste change d'unité, elle est ignorée", nullable: true)]
         public ?PackSizeDTO $packSize,
-        #[OA\Property(description: "Identifiant de l'offre du produit dans le magasin (DRV-721), chez les enseignes dont un produit a deux identifiants. **La clé est absente** (jamais `null`) quand le produit n'a pas d'offre (toute enseigne sans offre, ou offre pas encore rapportée par un agent)", example: '0b5f8a2e-3c1d-4e7f-9a6b-123456789abc', nullable: false)]
-        public ?string $offerId = null,
+        #[OA\Property(description: "Identifiant de l'offre du produit dans le magasin (DRV-721), chez les enseignes dont un produit a deux identifiants. **La clé est absente** (jamais `null`) quand le produit n'a pas d'offre (toute enseigne sans offre, ou offre pas encore rapportée par un agent)", example: '0b5f8a2e-3c1d-4e7f-9a6b-123456789abc', nullable: true)]
+        public ?string $offerId,
     ) {
     }
 

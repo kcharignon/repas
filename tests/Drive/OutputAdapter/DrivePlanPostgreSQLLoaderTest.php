@@ -99,8 +99,8 @@ class DrivePlanPostgreSQLLoaderTest extends DatabaseTestCase
                     new DrivePlanNeededDTO(300, 'g', 'WEIGHT', 1, 'gramme', 'gramme'),
                     'KNOWN',
                     [
-                        new DrivePlanProductDTO(1, '1', null, 'Farine T55 1 kg', new ProductContentDTO(1, 'kg'), 1, 'COMPUTED', null),
-                        new DrivePlanProductDTO(2, '2', '3017620422003', 'Farine T45 250 g', new ProductContentDTO(250, 'g'), 2, 'COMPUTED', null),
+                        new DrivePlanProductDTO(1, '1', null, 'Farine T55 1 kg', new ProductContentDTO(1, 'kg'), 1, 'COMPUTED', null, null),
+                        new DrivePlanProductDTO(2, '2', '3017620422003', 'Farine T45 250 g', new ProductContentDTO(250, 'g'), 2, 'COMPUTED', null, null),
                     ],
                     [new DrivePlanRejectedDTO('3', 'Farine complète bio')],
                     'Farine',

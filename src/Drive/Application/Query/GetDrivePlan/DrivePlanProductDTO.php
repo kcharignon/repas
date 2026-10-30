@@ -26,8 +26,8 @@ final readonly class DrivePlanProductDTO implements JsonSerializable
         public string $packsStatus,
         #[OA\Property(description: "La contenance que la personne a donnée pour CE produit, dans l'unité de la liste (DRV-652), ou `null` si elle n'en a pas donné. Quand son `unitSlug` est celui de la ligne (`needed.unitSlug`), `packs` est calculé avec elle et vaut `COMPUTED`, sans question ; une contenance dans une autre unité est ignorée par le calcul (mais reste renvoyée)", nullable: true)]
         public ?PackSizeDTO $packSize,
-        #[OA\Property(description: "Identifiant de l'offre du produit dans le magasin (DRV-721), chez les enseignes dont un produit a deux identifiants. **La clé est absente** (jamais `null`) quand le produit n'a pas d'offre (toute enseigne sans offre, ou offre pas encore rapportée par un agent)", example: '0b5f8a2e-3c1d-4e7f-9a6b-123456789abc', nullable: false)]
-        public ?string $offerId = null,
+        #[OA\Property(description: "Identifiant de l'offre du produit dans le magasin (DRV-721), chez les enseignes dont un produit a deux identifiants. **La clé est absente** (jamais `null`) quand le produit n'a pas d'offre (toute enseigne sans offre, ou offre pas encore rapportée par un agent)", example: '0b5f8a2e-3c1d-4e7f-9a6b-123456789abc', nullable: true)]
+        public ?string $offerId,
     ) {
     }
 
