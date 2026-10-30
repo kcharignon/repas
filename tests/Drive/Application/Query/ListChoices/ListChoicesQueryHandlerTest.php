@@ -19,7 +19,7 @@ class ListChoicesQueryHandlerTest extends TestCase
     public function testReturnsWhatTheLoaderReturnsForTheRequestedUserAndRetailer(): void
     {
         // Given
-        $choices = [new ChoiceDTO('farine', 'Farine', false, [new AcceptedProductDTO(1, new ChoiceProductDTO('p-1', '555111', null, 'Farine T55 1 kg', null, null))], [], '2026-10-18T10:00:00+02:00', null)];
+        $choices = [new ChoiceDTO('farine', 'Farine', false, [new AcceptedProductDTO(1, new ChoiceProductDTO('p-1', '555111', null, 'Farine T55 1 kg', null, null, null))], [], '2026-10-18T10:00:00+02:00', null)];
         $loader = new ChoiceInMemoryLoader($choices);
 
         // When

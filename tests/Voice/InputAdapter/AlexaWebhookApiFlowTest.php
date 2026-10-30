@@ -4,6 +4,7 @@ namespace Repas\Tests\Voice\InputAdapter;
 
 
 use DateTimeImmutable;
+use DateTimeZone;
 use Doctrine\DBAL\Connection;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Psr\Log\NullLogger;
@@ -45,6 +46,8 @@ use Repas\Voice\Domain\Model\OpaqueToken;
 use Repas\Voice\Domain\Model\VoiceLink;
 use Repas\Voice\Infrastructure\Security\OpenSslAlexaRequestVerifier;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
+use Symfony\Component\Clock\ClockInterface;
+use Symfony\Component\Clock\DatePoint;
 use Symfony\Component\Clock\NativeClock;
 
 /**
@@ -60,6 +63,7 @@ class AlexaWebhookApiFlowTest extends DatabaseTestCase
     private static AlexaTestAuthority $authority;
     private static AlexaTestLeaf $leaf;
 
+    private object $verifierClock;
     private KernelBrowser $client;
     private DataPersister $persister;
     private ShoppingListRepository $lists;
@@ -80,7 +84,7 @@ class AlexaWebhookApiFlowTest extends DatabaseTestCase
         $this->client->disableReboot();
         static::getContainer()->set(AlexaRequestVerifier::class, new OpenSslAlexaRequestVerifier(
             new ChainFetcherDouble(self::$leaf->chainPem()),
-            new NativeClock(),
+            $this->verifierClock = $this->switchableClock(),
             new NullLogger(),
             AlexaTestRequest::SKILL_ID,
             [self::$authority->trustFile()],
@@ -89,6 +93,29 @@ class AlexaWebhookApiFlowTest extends DatabaseTestCase
         $this->lists = static::getContainer()->get(ShoppingListRepository::class);
     }
 
+    /**
+     * Horloge du vérificateur : le temps réel, sauf quand un test fixe `frozen`.
+     */
+    private function switchableClock(): object
+    {
+        return new class implements ClockInterface {
+            public ?DateTimeImmutable $frozen = null;
+
+            public function now(): DatePoint
+            {
+                return DatePoint::createFromInterface($this->frozen ?? new DateTimeImmutable());
+            }
+
+            public function sleep(float|int $seconds): void
+            {
+            }
+
+            public function withTimeZone(DateTimeZone|string $timezone): static
+            {
+                return $this;
+            }
+        };
+    }
     public function testBreadIsAddedToTheExistingListAndAlexaSaysSo(): void
     {
         // Given : un utilisateur lié, son pain, une liste active
@@ -1172,12 +1199,15 @@ class AlexaWebhookApiFlowTest extends DatabaseTestCase
         $this->linkedUser();
         $token = $this->tokenOf(self::ACCESS_TOKEN_SEED);
 
-        // Chaque requête est construite au moment de l'envoi : l'horodatage à 151 s ne doit pas glisser sous la limite de 150 s pendant que les
-        // requêtes précédentes sont traitées (suite complète, machine chargée)
+        // Horloge figée du vérificateur : l'horodatage à 151 s ne dépend plus du temps réel (la limite de 150 s est prouvée à 149 s et 151 s
+        // par OpenSslAlexaRequestVerifierTest)
+        $now = new DateTimeImmutable();
+        $this->verifierClock->frozen = $now;
+
         foreach ([
-            'autre skill' => static fn(): AlexaTestRequest => AlexaTestRequest::addItem('du pain')->withAccessToken($token)->withApplicationId('amzn1.ask.skill.00000000-other-0000-0000-000000000002'),
-            'horodatage vieux de 151 s' => static fn(): AlexaTestRequest => AlexaTestRequest::addItem('du pain')->withAccessToken($token)->at(new DateTimeImmutable('-151 seconds')),
-            'horodatage dans 151 s' => static fn(): AlexaTestRequest => AlexaTestRequest::addItem('du pain')->withAccessToken($token)->at(new DateTimeImmutable('+151 seconds')),
+            'autre skill' => static fn(): AlexaTestRequest => AlexaTestRequest::addItem('du pain')->withAccessToken($token)->at($now)->withApplicationId('amzn1.ask.skill.00000000-other-0000-0000-000000000002'),
+            'horodatage vieux de 151 s' => static fn(): AlexaTestRequest => AlexaTestRequest::addItem('du pain')->withAccessToken($token)->at($now->modify('-151 seconds')),
+            'horodatage dans 151 s' => static fn(): AlexaTestRequest => AlexaTestRequest::addItem('du pain')->withAccessToken($token)->at($now->modify('+151 seconds')),
         ] as $name => $buildRequest) {
             // When
             $this->signedPost($buildRequest());
