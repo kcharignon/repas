@@ -28,6 +28,9 @@ final readonly class RetailerProfile
     /** Identifiant de produit composé de 1 à 12 chiffres. */
     public const string NUMERIC_PRODUCT_ID = '^[0-9]{1,12}$';
 
+    /** Identifiant qui est un UUID en minuscules (36 caractères). */
+    public const string UUID_ID = '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$';
+
     /**
      * @param string        $name                Nom que les proches disent à voix haute (« Leclerc »)
      * @param string        $nameDe              Forme avec « de » et son élision (« de Leclerc », « d’Auchan »)

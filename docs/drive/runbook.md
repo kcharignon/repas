@@ -267,3 +267,15 @@ Pour savoir combien de requêtes un vrai passage envoie et à partir de quand Le
 - **Dans le résultat d'un envoi** : le champ facultatif `stats: {requests, errors, blocks}` ([`architecture.md`](architecture.md) § 8). Il n'est visible que dans le rapport de résultat de l'application de **débogage** (« Requêtes : N (erreurs E, blocages B) ») ; le back ne le reçoit pas et l'application signée ne l'affiche pas.
 
 Lecture : `erreurs` > 0 : réseau ou réponses d'erreur du site ; `blocages` > 0 : l'anti-robot a refusé (§ 13) ; « réponses lentes » > 0 ou pause la plus longue au-delà de 1 500 ms (800 ms plus la gigue maximale de 700 ms : une pause plus longue vient d'un ralentissement) : Leclerc a ralenti et l'agent a **espacé** ses requêtes tout seul (jusqu'à 3 000 ms de pause, puis retour à 800 ms à mesure que les réponses redeviennent rapides ; seuils **non mesurés** sur le vrai site, `architecture.md` § 8). À noter à chaque recette dans la fiche de `hypotheses-site-reel.md` § 7 (ligne 13) : nombre de lignes, durée, ces compteurs. Aucune valeur de ces compteurs n'est une limite connue de Leclerc.
+
+## 15. « Auchan a changé » (squelette, à compléter par DRV-726)
+
+Auchan est déclarée dans le registre du back (DRV-716) mais **éteinte** : `DRIVE_RETAILERS` ne la contient pas (par défaut `leclerc`). Tant qu'elle est éteinte, aucun utilisateur ne la voit (`404 DRIVE_RETAILER_DISABLED`, absente de `retailers`) et il n'y a rien à réparer côté utilisateur.
+
+Ce qui est déjà vrai et vaut pour la suite (le reste viendra avec l'adaptateur et sa recette réelle, DRV-726) :
+
+- **Couper Auchan seule** : la retirer de `DRIVE_RETAILERS`, comme décrit en § 4 « Couper une seule enseigne » ; Leclerc ne bouge pas, les réglages, produits et préférences d'Auchan restent en base.
+- **Identifiants** : le magasin, les produits et les offres d'Auchan sont des UUID en minuscules (`docs/drive/hypotheses-site-reel-auchan.md`) ; une valeur qui n'en a pas la forme est refusée (`422 DRIVE_STORE_INVALID` ou `DRIVE_CHOICE_INVALID`).
+- **Contrat** : la forme des identifiants et l'adresse constante d'Auchan sont dans `docs/drive/samples/retailers.sample.json`.
+
+À compléter par DRV-726 : reconnaître le problème (symptômes et codes propres à Auchan), le diagnostic de l'adaptateur, le relevé de ce que le site envoie, la correction, le journal des changements d'Auchan, ce qu'il ne faut jamais faire.

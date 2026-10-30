@@ -8,10 +8,12 @@ use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Repas\Drive\Domain\Model\Retailer;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
+use Repas\Shared\Application\Interface\DriveFeature;
 use Repas\Tests\Helper\Builder\IngredientBuilder;
 use Repas\Tests\Helper\Builder\ShoppingListBuilder;
 use Repas\Tests\Helper\Builder\UnitBuilder;
 use Repas\Tests\Helper\Builder\UserBuilder;
+use Repas\Tests\Helper\ControlledDriveFeature;
 use Repas\Tests\Helper\DatabaseTestCase;
 use Repas\Tests\Helper\DataPersister;
 use Repas\User\Domain\Interface\UserRepository;
@@ -37,6 +39,8 @@ final class DriveContractSamplesTest extends DatabaseTestCase
     private const string USER_ID = '6f1c2a54-3b7e-4d1a-8c0e-5a9d2b7e4f10';
     private const string LIST_ID = '0b0a8c4e-6b0e-4e0a-9d52-2c3f7a1d9e10';
     private const string STORE_URL = 'https://exemple.leclercdrive.fr/magasin-123456-123456';
+    private const string AUCHAN_STORE_URL = 'https://www.auchan.fr/';
+    private const string AUCHAN_STORE_ID = '0b5f8a2e-3c1d-4e7f-9a6b-123456789abc';
     private const string REGENERATE = 'UPDATE_DRIVE_SAMPLES';
 
     private KernelBrowser $client;
@@ -46,6 +50,10 @@ final class DriveContractSamplesTest extends DatabaseTestCase
         parent::setUp();
 
         $this->client = static::getContainer()->get('test.client');
+        // Les deux enseignes du registre sont allumées pour que les exemples les montrent (la production n'allume que Leclerc, `DRIVE_RETAILERS`) ;
+        // le noyau est gardé entre les requêtes, sinon l'interrupteur posé serait perdu au redémarrage
+        $this->client->disableReboot();
+        static::getContainer()->set(DriveFeature::class, new ControlledDriveFeature(true));
     }
 
     /**
@@ -183,6 +191,9 @@ final class DriveContractSamplesTest extends DatabaseTestCase
 
         self::mockTime(new DateTimeImmutable('2026-10-18T08:50:00+00:00'));
         $this->request('PUT', '/api/v1/drive/settings', $user, ['retailer' => 'leclerc', 'store' => ['id' => '123456', 'label' => 'Ville-Test', 'baseUrl' => self::STORE_URL]]);
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        // DRV-716 : le magasin d'Auchan (adresse constante, identifiant lu par l'agent : un UUID inventé), pour que l'exemple des réglages montre les deux
+        $this->request('PUT', '/api/v1/drive/settings', $user, ['retailer' => 'auchan', 'store' => ['id' => self::AUCHAN_STORE_ID, 'label' => 'Ville-Test', 'baseUrl' => self::AUCHAN_STORE_URL]]);
         $this->assertSame(204, $this->client->getResponse()->getStatusCode());
 
         self::mockTime(new DateTimeImmutable('2026-10-18T09:00:00+00:00'));

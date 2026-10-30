@@ -14,6 +14,7 @@ namespace Repas\Drive\Domain\Model;
 enum Retailer: string
 {
     case LECLERC = 'leclerc';
+    case AUCHAN = 'auchan';
 
     /**
      * Les identifiants, pour les attributs OpenAPI (qui n'acceptent qu'une expression constante) ; `RetailerTest` la garde contre
@@ -21,7 +22,7 @@ enum Retailer: string
      *
      * @var list<string>
      */
-    public const array IDS = ['leclerc'];
+    public const array IDS = ['leclerc', 'auchan'];
 
     /**
      * L'enseigne des lectures et des écritures qui n'en reçoivent pas : **un seul endroit** (DRV-701). La sélection de l'enseigne
@@ -50,6 +51,19 @@ enum Retailer: string
                 storeIdPattern: '^[0-9]{1,20}$',
                 // Pas d'offre : un produit n'a que son identifiant (DRV-721)
                 offerIdPattern: null,
+            ),
+            // DRV-716 : déclarée, mais éteinte tant que `DRIVE_RETAILERS` ne la contient pas (DRV-702)
+            self::AUCHAN => new RetailerProfile(
+                name: 'Auchan',
+                nameDe: 'd’Auchan',
+                // Adresse constante : le magasin n'est pas dans l'adresse, l'agent lit son identifiant sur le site (DRV-720) ; aucun groupe
+                storeAddressPattern: '^https://www\.auchan\.fr/$',
+                storeAddressExample: 'https://www.auchan.fr/',
+                // Le produit, son offre dans le magasin (DRV-721) et le magasin sont des UUID (36 caractères, sous la borne de 40)
+                productIdPattern: RetailerProfile::UUID_ID,
+                storeIdSource: StoreIdSource::EXPLICIT,
+                storeIdPattern: RetailerProfile::UUID_ID,
+                offerIdPattern: RetailerProfile::UUID_ID,
             ),
         };
     }

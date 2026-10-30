@@ -84,7 +84,7 @@ class SaveDriveSettingsApiControllerTest extends QueryBusWebTestCase
         $store = ['id' => '123456', 'baseUrl' => self::URL];
         yield 'corps vide' => [[]];
         yield 'sans enseigne' => [['store' => $store]];
-        yield 'enseigne inconnue' => [['retailer' => 'auchan', 'store' => $store]];
+        yield 'enseigne inconnue' => [['retailer' => 'inconnue', 'store' => $store]];
         yield 'sans magasin' => [['retailer' => 'leclerc']];
         yield 'magasin qui n\'est pas un objet' => [['retailer' => 'leclerc', 'store' => '123456']];
         yield 'sans identifiant' => [['retailer' => 'leclerc', 'store' => ['baseUrl' => self::URL]]];

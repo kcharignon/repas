@@ -35,8 +35,8 @@ class DriveFeatureWiringTest extends KernelTestCase
         // When
         $feature = self::getContainer()->get(DriveFeature::class);
 
-        // Then : `.env.test` et `phpunit.dist.xml` allument l'enseigne de la production d'aujourd'hui, et le registre du drive est la liste des identifiants connus
-        $this->assertSame(Retailer::IDS, $feature->enabledRetailers());
+        // Then : `.env.test` et `phpunit.dist.xml` allument l'enseigne de la production d'aujourd'hui (Auchan est déclarée mais éteinte, DRV-716), et le registre du drive est la liste des identifiants connus
+        $this->assertSame(['leclerc'], $feature->enabledRetailers());
         $this->assertSame(Retailer::IDS, self::getContainer()->getParameter('repas.drive.known_retailers'));
         $this->assertTrue($feature->isRetailerEnabled(Retailer::default()->value));
     }

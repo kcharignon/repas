@@ -81,7 +81,7 @@ class ReplaceIngredientPreferenceApiControllerTest extends QueryBusWebTestCase
         foreach (['retailer', 'storeId', 'haveAtHome', 'accepted', 'rejected'] as $field) {
             yield "sans $field" => [array_diff_key($valid, [$field => true])];
         }
-        yield 'enseigne inconnue' => [['retailer' => 'auchan'] + $valid];
+        yield 'enseigne inconnue' => [['retailer' => 'inconnue'] + $valid];
         yield 'magasin vide' => [['storeId' => ''] + $valid];
         yield 'magasin de plus de 40 caractères' => [['storeId' => str_repeat('1', 41)] + $valid];
         yield 'haveAtHome pas un booléen' => [['haveAtHome' => 'oui'] + $valid];
