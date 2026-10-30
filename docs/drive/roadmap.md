@@ -195,7 +195,8 @@ Références : [`multi-enseignes.md`](multi-enseignes.md) (audit, conception, fa
 - [ ] [DRV-725](tickets/DRV-725-adaptateur-auchan-panier.md) front (agent) · M · Panier d'Auchan : quantité absolue, lecture, défi, cadence (high) · dépend de : 717
 - [ ] [DRV-726](tickets/DRV-726-recette-reelle-auchan.md) humain · M · Recette réelle d'Auchan sur le téléphone (WebView, connexion, un envoi) · dépend de : 728, 717, 724, 725, 707 à 710
 - [ ] [DRV-727](tickets/DRV-727-auchan-dans-les-registres-du-web-et-de-l-agent.md) front (web, agent) · M · Auchan dans le registre du web et celui de l'agent, éteint (high) · dépend de : 704, 708, 716, 722
-$&- [ ] [DRV-729](tickets/DRV-729-realigner-les-scenarios-e2e-android.md) front (android) · S · Réaligner les scénarios 2 à 14 de `android/emulator/e2e.sh` sur le comportement actuel de l'agent (medium) · dépend de : —
+- [ ] [DRV-728](tickets/DRV-728-auchan-dans-le-coeur-et-l-application-android.md) front (android) · M · Auchan dans le cœur et l'application Android : navigation, pont, injection (xhigh) · dépend de : 706, 707, 716
+- [ ] [DRV-729](tickets/DRV-729-realigner-les-scenarios-e2e-android.md) front (android) · S · Réaligner les scénarios 2 à 14 de `android/emulator/e2e.sh` sur le comportement actuel de l'agent (medium) · dépend de : —
 - [ ] [DRV-730](tickets/DRV-730-offerid-optionnel-dans-l-openapi.md) back · S · `offerId` facultatif dans l'OpenAPI (retirer `default: null`) et marge de temps du test Alexa instable (medium) · dépend de : 721
 
 ## Backlog (non détaillé, à écrire quand il devient utile)
