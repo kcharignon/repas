@@ -1,6 +1,6 @@
 # REC-001 — La recette secrète (back)
 
-- **Dépôt** : **back** (cette fiche) ; le front est **REC-002** (non fait)
+- **Dépôt** : **back** (cette fiche) ; le front est **REC-002** (fait, front #278)
 - **Taille** : M
 - **Effort recommandé pour l'agent** : **xhigh** (fonction de vie privée : une fuite annule son intérêt)
 - **Dépend de** : —
@@ -46,4 +46,9 @@ Une recette a un drapeau `secret` (booléen, **faux par défaut : toute recette 
 
 # REC-002 — La recette secrète (front)
 
-Non fait. Dépôt `kcharignon/repas-front`, après la livraison de REC-001 : l'interrupteur dans le formulaire d'une recette (`secret` envoyé à la création et à la modification, relu de `GET /recipes/{id}` pour préremplir), la pastille « Secrète » (cadenas) sur la carte de « Mes recettes » (`secret` de `GET /recipe-types/{slug}/recipes`), et la prise en charge d'un `404` sur une recette qui vient de devenir secrète pour son lecteur. Textes à écrire avec le skill `repas-po` (tutoiement, phrases courtes).
+**Fait** (front #278, 2026-10-30). Dépôt `kcharignon/repas-front`. Contrat figé sur le back `17a4b493`.
+
+- Formulaire d'une recette : interrupteur « Recette secrète » (`input` `role="switch"`, cadenas décoratif, aide « Toi seul la vois. Les autres ne la trouvent pas dans « Recettes des autres ». »), éteint par défaut à la création, reflète `secret` à la modification.
+- Pastille « Secrète » (cadenas, jetons `secret-soft` / `on-secret-soft`, clair et sombre, AA gardé par `secretContrast.spec.ts`) dans « Mes recettes » et près du titre de la recette. Rien ailleurs.
+- Back plus ancien : à la modification, sans la clé `secret` dans la recette lue, pas d'interrupteur et rien d'envoyé ; à la création, la clé ne part que si l'interrupteur est allumé (une clé inconnue est ignorée par le back). **Déployer le back avant le site** : sinon une recette créée « secrète » resterait publique.
+- Le `404` d'une recette secrète d'un autre est déjà géré par l'écran de lecture (« Cet élément n'existe plus. »). La copie n'a rien à changer côté front.
