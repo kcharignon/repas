@@ -41,7 +41,7 @@ class DriveSettingsApiFlowTest extends DatabaseTestCase
 
         // Then
         $this->assertSame(200, $this->client->getResponse()->getStatusCode());
-        $this->assertSame(['enabled' => true, 'retailer' => 'leclerc', 'store' => null], $this->jsonBody());
+        $this->assertSame(['enabled' => true, 'retailer' => 'leclerc', 'store' => null, 'retailers' => [['retailer' => 'leclerc', 'name' => 'Leclerc', 'configured' => false, 'store' => null]]], $this->jsonBody());
 
         // When
         $this->request('PUT', $user, ['retailer' => 'leclerc', 'store' => ['id' => '123456', 'label' => 'Ville-Test', 'baseUrl' => self::URL]]);
@@ -50,7 +50,7 @@ class DriveSettingsApiFlowTest extends DatabaseTestCase
 
         // Then
         $this->assertSame(
-            ['enabled' => true, 'retailer' => 'leclerc', 'store' => ['id' => '123456', 'label' => 'Ville-Test', 'baseUrl' => self::URL]],
+            ['enabled' => true, 'retailer' => 'leclerc', 'store' => ['id' => '123456', 'label' => 'Ville-Test', 'baseUrl' => self::URL], 'retailers' => [['retailer' => 'leclerc', 'name' => 'Leclerc', 'configured' => true, 'store' => ['id' => '123456', 'label' => 'Ville-Test', 'baseUrl' => self::URL]]]],
             $this->jsonBody(),
         );
     }
@@ -135,7 +135,7 @@ class DriveSettingsApiFlowTest extends DatabaseTestCase
 
         // Then
         $this->assertSame(200, $this->client->getResponse()->getStatusCode());
-        $this->assertSame(['enabled' => false, 'retailer' => 'leclerc', 'store' => null], $this->jsonBody());
+        $this->assertSame(['enabled' => false, 'retailer' => 'leclerc', 'store' => null, 'retailers' => [['retailer' => 'leclerc', 'name' => 'Leclerc', 'configured' => false, 'store' => null]]], $this->jsonBody());
 
         // When
         $this->request('PUT', $user, ['retailer' => 'leclerc', 'store' => ['id' => '123456', 'baseUrl' => self::URL]]);

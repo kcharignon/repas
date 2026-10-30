@@ -82,7 +82,7 @@ class DrivePlanPostgreSQLLoaderTest extends DatabaseTestCase
         ]);
 
         // When
-        $plan = $this->loader($list)->get('user-1', 'list-1');
+        $plan = $this->loader($list)->get('user-1', 'list-1', Retailer::default());
 
         // Then : chaque produit a son propre nombre de produits (300 g pour 1 kg : 1 ; pour 250 g : 2)
         $this->assertEquals(new DrivePlanDTO(
@@ -125,7 +125,7 @@ class DrivePlanPostgreSQLLoaderTest extends DatabaseTestCase
         ]);
 
         // When
-        $plan = $this->loader($list)->get('user-1', 'list-1');
+        $plan = $this->loader($list)->get('user-1', 'list-1', Retailer::default());
 
         // Then : jamais une chaîne vide, 32 caractères au plus
         $this->assertSame(
@@ -152,7 +152,7 @@ class DrivePlanPostgreSQLLoaderTest extends DatabaseTestCase
         ]);
 
         // When
-        $plan = $this->loader($list)->get('user-1', 'list-1');
+        $plan = $this->loader($list)->get('user-1', 'list-1', Retailer::default());
 
         // Then
         $this->assertSame([[null, 'TO_CHECK'], [null, 'TO_CHECK']], array_map(static fn(DrivePlanLineDTO $line): array => [$line->products[0]->packs, $line->products[0]->packsStatus], $plan->lines));
@@ -179,7 +179,7 @@ class DrivePlanPostgreSQLLoaderTest extends DatabaseTestCase
         ]);
 
         // When
-        $plan = $this->loader($list)->get('user-1', 'list-1');
+        $plan = $this->loader($list)->get('user-1', 'list-1', Retailer::default());
 
         // Then : seul le lait est connu dans le magasin courant
         $this->assertSame(['NEW', 'KNOWN', 'NEW'], array_map(static fn(DrivePlanLineDTO $line): string => $line->status, $plan->lines));
@@ -195,10 +195,24 @@ class DrivePlanPostgreSQLLoaderTest extends DatabaseTestCase
         $list = $this->sentList('user-1', [new ShoppingListLineForDrive('farine', 'Farine', 1, 'paquet', 'paquet', 'paquet', 'PACKAGE', 1.0)]);
 
         // When
-        $line = $this->loader($list)->get('user-1', 'list-1')->lines[0];
+        $line = $this->loader($list)->get('user-1', 'list-1', Retailer::default())->lines[0];
 
         // Then : sans produit accepté, la ligne est nouvelle
         $this->assertSame(['NEW', [], []], [$line->status, $line->products, $line->rejected]);
+    }
+
+    public function testTheStoreOfAnotherRetailerIsNotTheStoreOfTheRequestedOne(): void
+    {
+        // Given : l'utilisateur a un magasin chez une autre enseigne (ligne posée directement : ce code n'en connaît qu'une)
+        $this->entityManager->getConnection()->executeStatement(
+            "INSERT INTO drive_settings (user_id, retailer, store_id, store_label, base_url, updated_at, product_writes_count) VALUES ('user-1', 'autre-test', '999', NULL, 'https://exemple.invalid/magasin-999', NOW(), 0)",
+        );
+
+        // Then : chez l'enseigne demandée, il n'a toujours pas de magasin
+        $this->expectExceptionObject(DriveException::notConfigured());
+
+        // When
+        $this->loader($this->sentList('user-1', []))->get('user-1', 'list-1', Retailer::default());
     }
 
     public function testRefusesWithoutSettings(): void
@@ -207,7 +221,7 @@ class DrivePlanPostgreSQLLoaderTest extends DatabaseTestCase
         $this->expectExceptionObject(DriveException::notConfigured());
 
         // When
-        $this->loader($this->sentList('user-1', []))->get('user-1', 'list-1');
+        $this->loader($this->sentList('user-1', []))->get('user-1', 'list-1', Retailer::default());
     }
 
     public function testRefusesAListThatIsNotSent(): void
@@ -219,7 +233,7 @@ class DrivePlanPostgreSQLLoaderTest extends DatabaseTestCase
         $this->expectExceptionObject(DriveException::shoppingListNotSent());
 
         // When
-        $this->loader($this->sentList('user-1', [], 'ACTIVE'))->get('user-1', 'list-1');
+        $this->loader($this->sentList('user-1', [], 'ACTIVE'))->get('user-1', 'list-1', Retailer::default());
     }
 
     public function testRefusesTheListOfAnotherUser(): void
@@ -231,7 +245,7 @@ class DrivePlanPostgreSQLLoaderTest extends DatabaseTestCase
         $this->expectExceptionObject(DriveException::shoppingListForbidden());
 
         // When
-        $this->loader($this->sentList('user-1', []))->get('user-2', 'list-1');
+        $this->loader($this->sentList('user-1', []))->get('user-2', 'list-1', Retailer::default());
     }
 
     public function testAnUnknownListIsNotFound(): void
@@ -244,7 +258,7 @@ class DrivePlanPostgreSQLLoaderTest extends DatabaseTestCase
         $this->expectExceptionCode(404);
 
         // When
-        $this->loader(null)->get('user-1', 'list-1');
+        $this->loader(null)->get('user-1', 'list-1', Retailer::default());
     }
 
     public function testReadingCostsAFixedNumberOfQueriesWhateverTheSizeOfTheList(): void
@@ -274,7 +288,7 @@ class DrivePlanPostgreSQLLoaderTest extends DatabaseTestCase
         $counter->reset();
 
         // When : avec le vrai port de lecture de la liste
-        $plan = static::getContainer()->get(DrivePlanLoader::class)->get($owner->getId(), 'list-1');
+        $plan = static::getContainer()->get(DrivePlanLoader::class)->get($owner->getId(), 'list-1', Retailer::default());
 
         // Then : réglages, liste, lignes, préférences avec produits, rayons appris pour les rayons de Repas des lignes (DRV-642)
         $this->assertCount(12, $plan->lines);
@@ -307,7 +321,7 @@ class DrivePlanPostgreSQLLoaderTest extends DatabaseTestCase
         ]);
 
         // When
-        $lines = $this->loader($list)->get('user-1', 'list-1')->lines;
+        $lines = $this->loader($list)->get('user-1', 'list-1', Retailer::default())->lines;
 
         // Then : 15 tranches pour 20 par produit font 1 produit, sans question ; sans réponse, ou avec une réponse dans une autre unité
         // que celle de la ligne, rien ne se calcule (l'agent demande)
@@ -334,7 +348,7 @@ class DrivePlanPostgreSQLLoaderTest extends DatabaseTestCase
         $list = $this->sentList('user-1', [new ShoppingListLineForDrive('cheddar', 'Cheddar', 700, 'gramme', 'gramme', 'g', 'WEIGHT', 1.0)]);
 
         // When
-        $product = $this->loader($list)->get('user-1', 'list-1')->lines[0]->products[0];
+        $product = $this->loader($list)->get('user-1', 'list-1', Retailer::default())->lines[0]->products[0];
 
         // Then : le calcul retombe sur le contenu net (700 g pour 340 g : 3), la réponse reste visible pour l'agent
         $this->assertSame([3, 'COMPUTED'], [$product->packs, $product->packsStatus]);
@@ -357,7 +371,7 @@ class DrivePlanPostgreSQLLoaderTest extends DatabaseTestCase
         ]);
 
         // When
-        $lines = $this->loader($list)->get('user-1', 'list-1')->lines;
+        $lines = $this->loader($list)->get('user-1', 'list-1', Retailer::default())->lines;
 
         // Then : aucune contenance, la question reste posée
         $this->assertSame([[null, 'TO_CHECK', null]], array_map(static fn(DrivePlanProductDTO $product): array => [$product->packs, $product->packsStatus, $product->packSize], $lines[0]->products));
@@ -375,7 +389,7 @@ class DrivePlanPostgreSQLLoaderTest extends DatabaseTestCase
         $counter->reset();
 
         // When
-        $this->loader($list)->get('user-1', 'list-1');
+        $this->loader($list)->get('user-1', 'list-1', Retailer::default());
 
         // Then : les réglages et les préférences avec leurs produits, comme sans contenance
         $this->assertSame(2, $counter->count());
@@ -406,7 +420,7 @@ class DrivePlanPostgreSQLLoaderTest extends DatabaseTestCase
         ]);
 
         // When
-        $lines = $this->loader($list)->get('user-1', 'list-1')->lines;
+        $lines = $this->loader($list)->get('user-1', 'list-1', Retailer::default())->lines;
 
         // Then : la recherche mémorisée sinon le nom de l'ingrédient ; le nom affiché ne change jamais
         $this->assertSame(
@@ -445,7 +459,7 @@ class DrivePlanPostgreSQLLoaderTest extends DatabaseTestCase
         ]);
 
         // When
-        $lines = $this->loader($list)->get('user-1', 'list-1')->lines;
+        $lines = $this->loader($list)->get('user-1', 'list-1', Retailer::default())->lines;
 
         // Then : chaque enseigne garde sa recherche, rien n'est repris d'une autre enseigne, d'un autre magasin ni d'un autre utilisateur
         $this->assertSame(['céréales coussins pour Leclerc', 'Sel'], array_map(static fn(DrivePlanLineDTO $line): string => $line->searchQuery, $lines));
@@ -467,7 +481,7 @@ class DrivePlanPostgreSQLLoaderTest extends DatabaseTestCase
         ]);
 
         // When
-        $lines = $this->loader($list)->get('user-1', 'list-1')->lines;
+        $lines = $this->loader($list)->get('user-1', 'list-1', Retailer::default())->lines;
 
         // Then : trois au plus, du plus choisi (par le plus de comptes) au moins choisi, à égalité le plus petit identifiant d'abord ; les lignes d'un même
         // rayon de Repas ont les mêmes
@@ -488,7 +502,7 @@ class DrivePlanPostgreSQLLoaderTest extends DatabaseTestCase
         $list = $this->sentList('user-1', [new ShoppingListLineForDrive('farine', 'Farine', 1, 'paquet', 'paquet', 'paquet', 'PACKAGE', 1.0, 'boulangerie')]);
 
         // When
-        $lines = $this->loader($list)->get('user-1', 'list-1')->lines;
+        $lines = $this->loader($list)->get('user-1', 'list-1', Retailer::default())->lines;
 
         // Then : le rayon choisi par deux comptes passe devant celui d'un seul compte
         $this->assertSame([[4006, 4005]], array_map(static fn(DrivePlanLineDTO $line): array => $line->rayonHints, $lines));
@@ -503,7 +517,7 @@ class DrivePlanPostgreSQLLoaderTest extends DatabaseTestCase
         $list = $this->sentList('user-1', [new ShoppingListLineForDrive('farine', 'Farine', 1, 'paquet', 'paquet', 'paquet', 'PACKAGE', 1.0, 'boulangerie')]);
 
         // When
-        $lines = $this->loader($list)->get('user-1', 'list-1')->lines;
+        $lines = $this->loader($list)->get('user-1', 'list-1', Retailer::default())->lines;
 
         // Then
         $this->assertSame([[4001]], array_map(static fn(DrivePlanLineDTO $line): array => $line->rayonHints, $lines));
@@ -522,7 +536,7 @@ class DrivePlanPostgreSQLLoaderTest extends DatabaseTestCase
         ]);
 
         // When
-        $lines = $this->loader($list)->get('user-1', 'list-1')->lines;
+        $lines = $this->loader($list)->get('user-1', 'list-1', Retailer::default())->lines;
 
         // Then : les rayons de chaque enseigne restent chez elle
         $this->assertSame([[], [], [4001]], array_map(static fn(DrivePlanLineDTO $line): array => $line->rayonHints, $lines));
@@ -537,8 +551,8 @@ class DrivePlanPostgreSQLLoaderTest extends DatabaseTestCase
         $line = static fn(): array => [new ShoppingListLineForDrive('farine', 'Farine', 1, 'paquet', 'paquet', 'paquet', 'PACKAGE', 1.0, 'boulangerie')];
 
         // When
-        $first = $this->loader($this->sentList('user-1', $line()))->get('user-1', 'list-1');
-        $second = $this->loader($this->sentList('user-2', $line()))->get('user-2', 'list-1');
+        $first = $this->loader($this->sentList('user-1', $line()))->get('user-1', 'list-1', Retailer::default());
+        $second = $this->loader($this->sentList('user-2', $line()))->get('user-2', 'list-1', Retailer::default());
 
         // Then
         $this->assertSame([[4001], [4001]], [$first->lines[0]->rayonHints, $second->lines[0]->rayonHints]);
@@ -553,7 +567,7 @@ class DrivePlanPostgreSQLLoaderTest extends DatabaseTestCase
         $counter->reset();
 
         // When
-        $this->loader($list)->get('user-1', 'list-1');
+        $this->loader($list)->get('user-1', 'list-1', Retailer::default());
 
         // Then : les réglages et les préférences seulement (la liste vient du double)
         $this->assertArrayNotHasKey('SELECT drive_rayon_vote', $counter->byTable());
@@ -580,9 +594,9 @@ class DrivePlanPostgreSQLLoaderTest extends DatabaseTestCase
         $lines = [new ShoppingListLineForDrive('farine', 'Farine', 300, 'gramme', 'gramme', 'g', 'WEIGHT', 1.0)];
 
         // When
-        $alice = $this->loader($this->sentList('alice', $lines))->get('alice', 'list-1')->lines[0];
-        $bob = $this->loader($this->sentList('bob', $lines))->get('bob', 'list-1')->lines[0];
-        $chloe = $this->loader($this->sentList('chloe', $lines))->get('chloe', 'list-1')->lines[0];
+        $alice = $this->loader($this->sentList('alice', $lines))->get('alice', 'list-1', Retailer::default())->lines[0];
+        $bob = $this->loader($this->sentList('bob', $lines))->get('bob', 'list-1', Retailer::default())->lines[0];
+        $chloe = $this->loader($this->sentList('chloe', $lines))->get('chloe', 'list-1', Retailer::default())->lines[0];
 
         // Then : le libellé du produit accepté et celui du produit refusé sont ceux de la ligne du compte, la fiche en repli seulement
         $this->assertSame(['Farine T55 – offre du jour', 'Farine complète – ancien libellé'], [$alice->products[0]->label, $alice->rejected[0]->label]);
@@ -601,7 +615,7 @@ class DrivePlanPostgreSQLLoaderTest extends DatabaseTestCase
             ->withObservation($this->id('1'), 'Z compte')->withObservation($this->id('2'), 'C compte')->build());
 
         // When
-        $line = $this->loader($this->sentList('user-1', [new ShoppingListLineForDrive('farine', 'Farine', 300, 'gramme', 'gramme', 'g', 'WEIGHT', 1.0)]))->get('user-1', 'list-1')->lines[0];
+        $line = $this->loader($this->sentList('user-1', [new ShoppingListLineForDrive('farine', 'Farine', 300, 'gramme', 'gramme', 'g', 'WEIGHT', 1.0)]))->get('user-1', 'list-1', Retailer::default())->lines[0];
 
         // Then
         $this->assertSame(['C compte', 'Z compte'], array_map(static fn(DrivePlanRejectedDTO $rejected): string => $rejected->label, $line->rejected));
@@ -618,7 +632,7 @@ class DrivePlanPostgreSQLLoaderTest extends DatabaseTestCase
         $counter->reset();
 
         // When
-        $this->loader($list)->get('user-1', 'list-1');
+        $this->loader($list)->get('user-1', 'list-1', Retailer::default());
 
         // Then : les réglages et les préférences avec leurs produits, comme avant
         $this->assertSame(2, $counter->count());

@@ -5,6 +5,7 @@ namespace Repas\Drive\Application\Query\GetDriveEstimate;
 use Nelmio\ApiDocBundle\Attribute\Model;
 use OpenApi\Attributes as OA;
 use Repas\Drive\Application\Query\GetDriveSettings\DriveStoreDTO;
+use Repas\Drive\Domain\Model\Retailer;
 
 final readonly class DriveEstimateDTO
 {
@@ -16,7 +17,7 @@ final readonly class DriveEstimateDTO
     public function __construct(
         #[OA\Property(description: 'Identifiant de la liste de courses', example: '0b0a8c4e-6b0e-4e0a-9d52-2c3f7a1d9e10')]
         public string $shoppingListId,
-        #[OA\Property(description: 'Enseigne du drive', enum: ['leclerc'], example: 'leclerc')]
+        #[OA\Property(description: 'Enseigne du drive', enum: Retailer::IDS, example: 'leclerc')]
         public string $retailer,
         public DriveStoreDTO $store,
         #[OA\Property(description: 'Total estimé en centimes : somme des sous-totaux des lignes `ESTIMATED` seulement ; les autres lignes ne sont pas devinées', example: 1247)]

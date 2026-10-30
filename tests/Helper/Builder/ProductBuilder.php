@@ -17,6 +17,7 @@ use Repas\Drive\Domain\Model\Retailer;
  */
 class ProductBuilder implements Builder
 {
+    private Retailer $retailer;
     private string $storeId;
     private string $retailerProductId;
     private ?string $ean;
@@ -31,6 +32,7 @@ class ProductBuilder implements Builder
 
     private function initialize(): void
     {
+        $this->retailer ??= Retailer::default();
         $this->storeId ??= '123456';
         $this->retailerProductId ??= '555111';
         $this->ean ??= null;
@@ -41,6 +43,12 @@ class ProductBuilder implements Builder
         $this->price ??= null;
         $this->priceSeenAt ??= null;
         $this->lastSeenAt ??= new DateTimeImmutable('2026-10-18 10:00:00');
+    }
+
+    public function withRetailer(Retailer $retailer): self
+    {
+        $this->retailer = $retailer;
+        return $this;
     }
 
     public function withStoreId(string $storeId): self
@@ -101,8 +109,8 @@ class ProductBuilder implements Builder
     {
         $this->initialize();
         return Product::load([
-            'id' => Product::idFor(Retailer::LECLERC, $this->storeId, $this->retailerProductId),
-            'retailer' => Retailer::LECLERC,
+            'id' => Product::idFor($this->retailer, $this->storeId, $this->retailerProductId),
+            'retailer' => $this->retailer,
             'store_id' => $this->storeId,
             'retailer_product_id' => $this->retailerProductId,
             'ean' => $this->ean,

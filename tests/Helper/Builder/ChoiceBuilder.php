@@ -20,6 +20,7 @@ class ChoiceBuilder implements Builder
 {
     private string $id;
     private string $userId;
+    private Retailer $retailer;
     private string $storeId;
     private string $ingredientSlug;
     private ChoiceKind $kind;
@@ -38,6 +39,7 @@ class ChoiceBuilder implements Builder
     {
         $this->id ??= UuidGenerator::new();
         $this->userId ??= UuidGenerator::new();
+        $this->retailer ??= Retailer::default();
         $this->storeId ??= '123456';
         $this->ingredientSlug ??= 'farine';
         $this->kind ??= ChoiceKind::PRODUCTS;
@@ -53,6 +55,12 @@ class ChoiceBuilder implements Builder
     public function withUserId(string $userId): self
     {
         $this->userId = $userId;
+        return $this;
+    }
+
+    public function withRetailer(Retailer $retailer): self
+    {
+        $this->retailer = $retailer;
         return $this;
     }
 
@@ -129,7 +137,7 @@ class ChoiceBuilder implements Builder
         return Choice::load([
             'id' => $this->id,
             'user_id' => $this->userId,
-            'retailer' => Retailer::LECLERC,
+            'retailer' => $this->retailer,
             'store_id' => $this->storeId,
             'ingredient_slug' => $this->ingredientSlug,
             'kind' => $this->kind,

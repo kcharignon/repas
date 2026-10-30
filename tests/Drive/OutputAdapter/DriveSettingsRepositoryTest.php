@@ -5,6 +5,7 @@ namespace Repas\Tests\Drive\OutputAdapter;
 
 use DateTimeImmutable;
 use Repas\Drive\Domain\Interface\DriveSettingsRepository;
+use Repas\Drive\Domain\Model\DriveSettings;
 use Repas\Drive\Domain\Model\Retailer;
 use Repas\Drive\Domain\Model\Store;
 use Repas\Tests\Helper\Builder\DriveSettingsBuilder;
@@ -95,6 +96,28 @@ class DriveSettingsRepositoryTest extends DatabaseTestCase
         // Then
         $this->assertSame([false, true, false], [$tooMany, $exactly, $oneMore]);
         $this->assertSame(5000, $this->repository->findOneByUser('user-1', Retailer::LECLERC)->getProductWritesCount());
+    }
+
+    public function testTheDailyLimitIsPerUserAndPerRetailer(): void
+    {
+        // Given : le même compte a atteint son plafond du jour chez une AUTRE enseigne (ligne posée directement : le code de production
+        // n'en connaît qu'une, la seconde n'existe que dans ce test) (DRV-701, décision D-M5)
+        $now = new DateTimeImmutable('2026-10-19 08:00:00');
+        $this->repository->save(new DriveSettingsBuilder()->withUserId('user-1')->build());
+        $this->entityManager->getConnection()->executeStatement(
+            "INSERT INTO drive_settings (user_id, retailer, store_id, store_label, base_url, updated_at, product_writes_day, product_writes_count)"
+            . " VALUES ('user-1', 'autre-test', '999', NULL, 'https://exemple.invalid/magasin-999', NOW(), '2026-10-19', 5000)",
+        );
+        $this->entityManager->clear();
+
+        // When : chez la première enseigne, le plafond entier reste disponible, puis il est atteint
+        $whole = $this->repository->reserveProductWrites('user-1', Retailer::LECLERC, DriveSettings::MAX_PRODUCT_WRITES_PER_DAY, $now);
+        $oneMore = $this->repository->reserveProductWrites('user-1', Retailer::LECLERC, 1, $now);
+
+        // Then : chaque enseigne a son compteur (la borne d'un compte est 5 000 par enseigne)
+        $this->assertSame([true, false], [$whole, $oneMore]);
+        $counts = $this->entityManager->getConnection()->fetchAllKeyValue("SELECT retailer, product_writes_count FROM drive_settings WHERE user_id = 'user-1'");
+        $this->assertEquals(['leclerc' => 5000, 'autre-test' => 5000], $counts);
     }
 
     public function testTheCounterStartsAgainEachUtcDay(): void

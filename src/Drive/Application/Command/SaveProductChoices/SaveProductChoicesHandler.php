@@ -13,6 +13,7 @@ use Repas\Drive\Domain\Interface\RayonVoteRepository;
 use Repas\Drive\Domain\Model\Choice;
 use Repas\Drive\Domain\Model\Product;
 use Repas\Drive\Domain\Model\RayonVote;
+use Repas\Drive\Domain\Model\Retailer;
 use Repas\Shared\Application\Interface\IngredientAliasResolver;
 use Repas\Shared\Application\Interface\IngredientDepartmentResolver;
 use Repas\Shared\Application\Interface\UnitSlugResolver;
@@ -92,7 +93,7 @@ readonly class SaveProductChoicesHandler
      */
     public function __invoke(SaveProductChoicesCommand $command): void
     {
-        $this->assertWellFormed($command->intents);
+        $this->assertWellFormed($command->retailer, $command->intents);
 
         $settings = $this->driveSettingsRepository->findOneByUser($command->userId, $command->retailer);
         if ($settings === null) {
@@ -252,9 +253,10 @@ readonly class SaveProductChoicesHandler
     /**
      * Cohérence de chaque intention et du lot, sans rien lire : tout ce qui peut être refusé l'est avant la première requête.
      *
+     * @param Retailer $retailer l'enseigne du lot : elle dit la forme d'un identifiant de produit
      * @param list<ChoiceIntent> $intents
      */
-    private function assertWellFormed(array $intents): void
+    private function assertWellFormed(Retailer $retailer, array $intents): void
     {
         if (count($intents) > self::MAX_INTENTS) {
             throw DriveException::invalidChoice();
@@ -264,7 +266,7 @@ readonly class SaveProductChoicesHandler
         foreach ($intents as $intent) {
             $product = $intent->product;
             $wellFormed = preg_match(Choice::SLUG_PATTERN, $intent->ingredientSlug) === 1
-                && ($product === null || preg_match(Product::RETAILER_PRODUCT_ID_PATTERN, $product->retailerProductId) === 1)
+                && ($product === null || $retailer->isValidProductId($product->retailerProductId))
                 && ($product === null || self::catalogIdsAreInBounds($product))
                 && ($intent->searchQuery === null || $intent->action === ChoiceAction::ADD_PRODUCT || $intent->action === ChoiceAction::NOTE_SEARCH)
                 && ($product?->packSize === null || $intent->action === ChoiceAction::ADD_PRODUCT)

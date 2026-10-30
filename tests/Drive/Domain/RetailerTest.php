@@ -80,4 +80,65 @@ class RetailerTest extends TestCase
         $this->assertSame('leclerc', Retailer::LECLERC->value);
         $this->assertSame(Retailer::LECLERC, Retailer::from('leclerc'));
     }
+
+    public function testTheListOfIdsIsTheListOfTheCases(): void
+    {
+        // Then : `IDS` sert aux attributs OpenAPI, qui n'acceptent qu'une constante
+        $this->assertSame(array_map(static fn(Retailer $retailer): string => $retailer->value, Retailer::cases()), Retailer::IDS);
+    }
+
+    public function testTheDefaultRetailerIsLeclercForNow(): void
+    {
+        $this->assertSame('leclerc', Retailer::default()->value);
+    }
+
+    public function testEveryRetailerHasAProfileWhoseExampleRespectsItsOwnRule(): void
+    {
+        foreach (Retailer::cases() as $retailer) {
+            $profile = $retailer->profile();
+            $this->assertNotSame('', $profile->name);
+            $this->assertStringEndsWith($profile->name, $profile->nameDe);
+            $this->assertTrue($retailer->isValidStoreUrl($profile->storeAddressExample));
+            foreach ([$profile->storeAddressPattern, $profile->productIdPattern] as $pattern) {
+                // Motifs du contrat : ancrés, sans `\d` ni construction propre à PCRE (le web, l'agent et l'application les compilent aussi)
+                $this->assertStringStartsWith('^', $pattern);
+                $this->assertStringEndsWith('$', $pattern);
+                $this->assertDoesNotMatchRegularExpression('/\\\\d|\(\?/', $pattern);
+            }
+            $this->assertSame($profile->storeIdOf($profile->storeAddressExample), $retailer->storeIdOf($profile->storeAddressExample));
+        }
+    }
+
+    public function testTheProfileOfLeclercIsTheOneOfToday(): void
+    {
+        // When
+        $profile = Retailer::LECLERC->profile();
+
+        // Then
+        $this->assertSame('Leclerc', $profile->name);
+        $this->assertSame('de Leclerc', $profile->nameDe);
+        $this->assertSame('^[0-9]{1,12}$', $profile->productIdPattern);
+    }
+
+    /**
+     * @return iterable<string, array{string, bool}>
+     */
+    public static function productIds(): iterable
+    {
+        yield 'un chiffre' => ['1', true];
+        yield 'douze chiffres' => ['123456789012', true];
+        yield 'zéros initiaux' => ['0001', true];
+        yield 'treize chiffres' => ['1234567890123', false];
+        yield 'vide' => ['', false];
+        yield 'lettre' => ['12a', false];
+        yield 'espace' => [' 12', false];
+        yield 'retour à la ligne final' => ["12\n", false];
+        yield 'chiffres arabes-indiens' => ["\u{0661}\u{0662}", false];
+    }
+
+    #[DataProvider('productIds')]
+    public function testTheProductIdMustHaveTheFormOfTheRetailer(string $id, bool $valid): void
+    {
+        $this->assertSame($valid, Retailer::LECLERC->isValidProductId($id));
+    }
 }

@@ -47,8 +47,6 @@ use Repas\Shared\Domain\Model\Dimension;
  */
 final readonly class DrivePlanPostgreSQLLoader implements DrivePlanLoader
 {
-    /** Une seule enseigne pour l'instant : la lecture ne porte pas encore de paramètre `retailer`. */
-    private const Retailer RETAILER = Retailer::LECLERC;
     private const string SENT = 'SENT';
     private const string ACCEPTED = 'ACCEPTED';
     private const int UNIT_LABEL_MAX_LENGTH = 32;
@@ -63,9 +61,9 @@ final readonly class DrivePlanPostgreSQLLoader implements DrivePlanLoader
     ) {
     }
 
-    public function get(string $userId, string $shoppingListId): DrivePlanDTO
+    public function get(string $userId, string $shoppingListId, Retailer $retailer): DrivePlanDTO
     {
-        $store = $this->store($userId) ?? throw DriveException::notConfigured();
+        $store = $this->store($userId, $retailer) ?? throw DriveException::notConfigured();
         $list = $this->shoppingLists->get($shoppingListId);
         if ($list->ownerId !== $userId) {
             throw DriveException::shoppingListForbidden();
@@ -74,9 +72,9 @@ final readonly class DrivePlanPostgreSQLLoader implements DrivePlanLoader
             throw DriveException::shoppingListNotSent();
         }
 
-        $choices = $this->choices($userId, $store->id, array_map(static fn(ShoppingListLineForDrive $line): string => $line->ingredientSlug, $list->lines));
+        $choices = $this->choices($userId, $retailer, $store->id, array_map(static fn(ShoppingListLineForDrive $line): string => $line->ingredientSlug, $list->lines));
 
-        $hints = $this->rayonHints($list->lines);
+        $hints = $this->rayonHints($retailer, $list->lines);
 
         $lines = array_map(
             fn(ShoppingListLineForDrive $line): DrivePlanLineDTO => $this->line($line, $choices[$line->ingredientSlug] ?? null, $line->departmentSlug === null ? [] : ($hints[$line->departmentSlug] ?? [])),
@@ -87,7 +85,7 @@ final readonly class DrivePlanPostgreSQLLoader implements DrivePlanLoader
         return new DrivePlanDTO(
             shoppingListId: $list->id,
             listVersion: $list->version,
-            retailer: self::RETAILER->value,
+            retailer: $retailer->value,
             store: $store,
             generatedAt: $this->clock->now()->format(DATE_ATOM),
             counts: new DrivePlanCountsDTO($count(PlanLineStatus::KNOWN), $count(PlanLineStatus::NEW), $count(PlanLineStatus::HAVE_AT_HOME)),
@@ -95,7 +93,7 @@ final readonly class DrivePlanPostgreSQLLoader implements DrivePlanLoader
         );
     }
 
-    private function store(string $userId): ?DriveStoreDTO
+    private function store(string $userId, Retailer $retailer): ?DriveStoreDTO
     {
         $row = $this->entityManager->createQueryBuilder()
             ->select('s.storeId AS id', 's.storeLabel AS label', 's.baseUrl AS baseUrl')
@@ -103,7 +101,7 @@ final readonly class DrivePlanPostgreSQLLoader implements DrivePlanLoader
             ->where('s.userId = :userId')
             ->andWhere('s.retailer = :retailer')
             ->setParameter('userId', $userId)
-            ->setParameter('retailer', self::RETAILER->value)
+            ->setParameter('retailer', $retailer->value)
             ->getQuery()
             ->getOneOrNullResult();
 
@@ -117,7 +115,7 @@ final readonly class DrivePlanPostgreSQLLoader implements DrivePlanLoader
      * @param list<string> $slugs
      * @return array<string, array{haveAtHome: bool, searchQuery: ?string, accepted: list<array<string, mixed>>, rejected: list<DrivePlanRejectedDTO>}>
      */
-    private function choices(string $userId, string $storeId, array $slugs): array
+    private function choices(string $userId, Retailer $retailer, string $storeId, array $slugs): array
     {
         if ($slugs === []) {
             return [];
@@ -147,7 +145,7 @@ final readonly class DrivePlanPostgreSQLLoader implements DrivePlanLoader
             ->andWhere('c.storeId = :storeId')
             ->andWhere('c.ingredientSlug IN (:slugs)')
             ->setParameter('userId', $userId)
-            ->setParameter('retailer', self::RETAILER->value)
+            ->setParameter('retailer', $retailer->value)
             ->setParameter('storeId', $storeId)
             ->setParameter('slugs', $slugs)
             ->orderBy('cp.rank')
@@ -184,7 +182,7 @@ final readonly class DrivePlanPostgreSQLLoader implements DrivePlanLoader
      *
      * @return array<string, list<int>> identifiants de rayon de l'enseigne par slug de rayon de Repas ; absent si rien n'est appris
      */
-    private function rayonHints(array $lines): array
+    private function rayonHints(Retailer $retailer, array $lines): array
     {
         $departmentSlugs = array_values(array_unique(array_filter(array_map(static fn(ShoppingListLineForDrive $line): ?string => $line->departmentSlug, $lines))));
         if ($departmentSlugs === []) {
@@ -196,7 +194,7 @@ final readonly class DrivePlanPostgreSQLLoader implements DrivePlanLoader
             . 'SELECT department_slug, rayon_id, ROW_NUMBER() OVER (PARTITION BY department_slug ORDER BY count(*) DESC, rayon_id ASC) AS place '
             . 'FROM drive_rayon_vote WHERE retailer = ? AND department_slug IN (?) GROUP BY department_slug, rayon_id'
             . ') AS ranked WHERE place <= ? ORDER BY department_slug, place',
-            [self::RETAILER->value, $departmentSlugs, self::RAYON_HINTS_MAX],
+            [$retailer->value, $departmentSlugs, self::RAYON_HINTS_MAX],
             [ParameterType::STRING, ArrayParameterType::STRING, ParameterType::INTEGER],
         );
 

@@ -5,23 +5,24 @@ namespace Repas\Tests\Helper\InMemoryLoader;
 
 use Repas\Drive\Application\Loader\DriveSettingsLoader;
 use Repas\Drive\Application\Query\GetDriveSettings\DriveSettingsDTO;
+use Repas\Drive\Domain\Model\Retailer;
 
 /**
- * Double idiot : renvoie le DTO programmé quel que soit l'utilisateur demandé et enregistre ses appels.
+ * Double idiot : renvoie le DTO programmé quels que soient l'utilisateur et l'enseigne demandés et enregistre ses appels.
  */
 class DriveSettingsInMemoryLoader implements DriveSettingsLoader
 {
-    /** @var list<string> identifiants d'utilisateur reçus, dans l'ordre des appels */
+    /** @var list<array{string, Retailer}> utilisateur et enseigne reçus, dans l'ordre des appels */
     public array $getCalls = [];
 
     public function __construct(
-        private readonly DriveSettingsDTO $settings = new DriveSettingsDTO(true, 'leclerc', null),
+        private readonly DriveSettingsDTO $settings = new DriveSettingsDTO(true, 'leclerc', null, []),
     ) {
     }
 
-    public function get(string $userId): DriveSettingsDTO
+    public function get(string $userId, Retailer $retailer): DriveSettingsDTO
     {
-        $this->getCalls[] = $userId;
+        $this->getCalls[] = [$userId, $retailer];
 
         return $this->settings;
     }

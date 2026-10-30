@@ -6,6 +6,7 @@ namespace Repas\Tests\Drive\InputAdapter;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Repas\Drive\Application\Query\GetDrivePlan\GetDrivePlanQuery;
 use Repas\Drive\Domain\Exception\DriveException;
+use Repas\Drive\Domain\Model\Retailer;
 use Repas\Shared\Application\Interface\DriveFeature;
 use Repas\Tests\Helper\Builder\DTO\DrivePlanDTOBuilder;
 use Repas\Tests\Helper\ControlledDriveFeature;
@@ -51,6 +52,35 @@ class GetDrivePlanApiControllerTest extends QueryBusWebTestCase
                 ['ingredientSlug' => 'sel', 'ingredientName' => 'Sel', 'needed' => ['quantity' => 2, 'unitSymbol' => 'cuillère à soupe', 'dimension' => null, 'baseFactor' => null, 'unitSlug' => 'cuillere-a-soupe', 'unitName' => 'cuillère à soupe'], 'status' => 'HAVE_AT_HOME', 'products' => [], 'rejected' => [], 'searchQuery' => 'Sel', 'rayonHints' => []],
             ],
         ], $this->jsonBody());
+    }
+
+    public function testTheRetailerOfTheQueryStringIsGivenToTheQuery(): void
+    {
+        // Given
+        $user = $this->savedUser();
+        $list = $this->savedShoppingList($user);
+        $this->queryBus->willReturn(GetDrivePlanQuery::class, new DrivePlanDTOBuilder()->build());
+
+        // When
+        $this->client->request('GET', '/api/v1/drive/plans/' . $list->getId() . '?retailer=leclerc', server: $this->bearerFor($user));
+
+        // Then
+        $this->assertSame(200, $this->client->getResponse()->getStatusCode());
+        $this->assertEquals(new GetDrivePlanQuery($user->getId(), $list->getId(), Retailer::LECLERC), $this->queryBus->getLastAskedQuery());
+    }
+
+    public function testAnUnknownRetailerIsRefusedWith422(): void
+    {
+        // Given
+        $user = $this->savedUser();
+        $list = $this->savedShoppingList($user);
+
+        // When
+        $this->client->request('GET', '/api/v1/drive/plans/' . $list->getId() . '?retailer=inconnue', server: $this->bearerFor($user));
+
+        // Then
+        $this->assertSame(422, $this->client->getResponse()->getStatusCode());
+        $this->assertSame(0, $this->queryBus->countAskedQueries());
     }
 
     public function testRefusesAListOfAnotherUser(): void

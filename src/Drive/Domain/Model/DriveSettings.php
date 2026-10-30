@@ -16,6 +16,9 @@ use Repas\Shared\Domain\Model\ModelTrait;
  * Il porte aussi le compteur du jour des écritures de produits de l'utilisateur (plafond `MAX_PRODUCT_WRITES_PER_DAY`, DRV-613) :
  * les réglages sont déjà lus par chaque écriture du drive, le compteur ne coûte donc aucune lecture de plus, et il disparaît
  * avec le compte.
+ *
+ * Le plafond est donc **par utilisateur et par enseigne** (une ligne par couple, DRV-701, décision D-M5) : un compte qui a deux enseignes
+ * peut écrire `MAX_PRODUCT_WRITES_PER_DAY` produits chez chacune (borne totale très petite, le plafond ne protège que la table commune).
  */
 final class DriveSettings implements ModelInterface
 {

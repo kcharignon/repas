@@ -171,7 +171,7 @@ Références : [`principes-produit.md`](principes-produit.md), [`audit-simplicit
 
 Références : [`multi-enseignes.md`](multi-enseignes.md) (audit, conception, faits sur Auchan), [ADR 0027](../adr/0027-plusieurs-enseignes-de-drive.md) (`Proposed`). **Chaque ticket du découplage ne change aucun comportement visible tant qu'il n'y a qu'une enseigne.** Les spikes Auchan sont des tâches `humain` sur téléphone (jamais depuis un ordinateur). Ordre conseillé : 701, 704 et 708 en parallèle, puis 702, 703, 705, 706, puis 707 et 709, puis 710 ; 711 en continu. Les tickets après 717 (recherche, panier, entrée, recette Auchan) seront écrits par DRV-715 d'après les rapports des spikes. Effort recommandé entre parenthèses.
 
-- [ ] [DRV-701](tickets/DRV-701-registre-d-enseignes-du-back.md) back · M · Registre d'enseignes du back, enseigne en paramètre des lectures, contrat des enseignes (high) · dépend de : —
+- [x] [DRV-701](tickets/DRV-701-registre-d-enseignes-du-back.md) back · M · Registre d'enseignes du back, enseigne en paramètre des lectures, contrat des enseignes (high) · dépend de : —
 - [ ] [DRV-702](tickets/DRV-702-interrupteur-par-enseigne.md) back · S · Interrupteur par enseigne `DRIVE_RETAILERS` (high) · dépend de : 701
 - [ ] [DRV-703](tickets/DRV-703-drive-habituel-et-derniere-enseigne.md) back · M · Drive habituel, dernière enseigne utilisée, retrait d'un drive, sélection `RetailerSelection` (xhigh) · dépend de : 701, 702
 - [ ] [DRV-704](tickets/DRV-704-registre-d-enseignes-de-l-agent.md) front (agent) · M · Registre d'enseignes de l'agent, types neutres, protocole par enseigne (high) · dépend de : 701

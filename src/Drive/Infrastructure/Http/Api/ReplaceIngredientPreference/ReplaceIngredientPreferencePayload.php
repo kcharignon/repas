@@ -19,7 +19,7 @@ final readonly class ReplaceIngredientPreferencePayload
      * @param list<string> $rejected
      */
     public function __construct(
-        #[OA\Property(description: 'Enseigne du drive', enum: ['leclerc'], example: 'leclerc')]
+        #[OA\Property(description: 'Enseigne du drive', enum: Retailer::IDS, example: 'leclerc')]
         public Retailer $retailer,
         #[Assert\NotBlank]
         #[Assert\Length(max: 20)]

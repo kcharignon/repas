@@ -7,6 +7,7 @@ use Nelmio\ApiDocBundle\Attribute\Model;
 use OpenApi\Attributes as OA;
 use Repas\Drive\Application\Query\ListChoices\ChoiceDTO;
 use Repas\Drive\Application\Query\ListChoices\ListChoicesQuery;
+use Repas\Drive\Domain\Model\Retailer;
 use Repas\Shared\Application\Interface\QueryBusInterface;
 use Repas\Shared\Domain\Interface\AuthenticatedUser;
 use Repas\Shared\Infrastructure\Http\RequiresDrive;
@@ -29,7 +30,7 @@ final class ListChoicesApiController extends AbstractController
     #[IsGranted('ROLE_USER')]
     #[OA\Get(summary: "Préférences de produits de l'utilisateur connecté dans son magasin courant, par ingrédient : produits acceptés classés, produits refusés, « j'en ai toujours »")]
     #[OA\Tag(name: 'Drive')]
-    #[OA\Parameter(name: 'retailer', in: 'query', required: true, description: 'Enseigne du drive', schema: new OA\Schema(type: 'string', enum: ['leclerc']), example: 'leclerc')]
+    #[OA\Parameter(name: 'retailer', in: 'query', required: true, description: 'Enseigne du drive', schema: new OA\Schema(type: 'string', enum: Retailer::IDS), example: 'leclerc')]
     #[OA\Response(
         response: 200,
         description: "Les préférences de l'utilisateur (liste vide tant qu'il n'a pas de magasin ni de préférence), triées par slug d'ingrédient",

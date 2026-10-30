@@ -4,19 +4,54 @@ namespace Repas\Drive\Domain\Model;
 
 
 /**
- * Enseigne dont on sait remplir le panier. Porte la règle d'hôte autorisé : l'adresse d'un magasin n'est acceptée que si elle
- * est sur le domaine de l'enseigne (jamais une adresse libre, qu'un lien piégé pourrait détourner).
+ * Enseigne dont on sait remplir le panier. L'enum est la liste des identifiants (ceux de la colonne `retailer`, jamais renommés) ;
+ * `profile()` porte le reste (nom, règle d'adresse du magasin, forme des identifiants de produit, `RetailerProfile`). La règle
+ * d'adresse est la règle d'hôte autorisé : l'adresse d'un magasin n'est acceptée que si elle est sur le domaine de l'enseigne
+ * (jamais une adresse libre, qu'un lien piégé pourrait détourner).
+ *
+ * **Seul endroit du back où une enseigne est nommée** (avec `RetailerProfile`) : `RetailersAreNamedInOnePlaceTest`.
  */
 enum Retailer: string
 {
     case LECLERC = 'leclerc';
 
-    /** @var string Adresse de base d'un magasin E.Leclerc Drive : `https://<sous-domaine>.leclercdrive.fr/magasin-<id>-<id>` */
-    private const string LECLERC_STORE_URL = '#^https://[a-z0-9-]+\.leclercdrive\.fr/magasin-(\d+)-(\d+)$#D';
+    /**
+     * Les identifiants, pour les attributs OpenAPI (qui n'acceptent qu'une expression constante) ; `RetailerTest` la garde contre
+     * `cases()`.
+     *
+     * @var list<string>
+     */
+    public const array IDS = ['leclerc'];
+
+    /**
+     * L'enseigne des lectures et des écritures qui n'en reçoivent pas : **un seul endroit** (DRV-701). La sélection de l'enseigne
+     * (DRV-703) la remplace.
+     */
+    public static function default(): self
+    {
+        return self::LECLERC;
+    }
+
+    public function profile(): RetailerProfile
+    {
+        // Un enum n'a pas de propriété : le profil, valeur immuable, est construit une fois par processus
+        static $profiles = [];
+
+        return $profiles[$this->value] ??= match ($this) {
+            self::LECLERC => new RetailerProfile(
+                name: 'Leclerc',
+                nameDe: 'de Leclerc',
+                // Adresse de base d'un magasin E.Leclerc Drive : `https://<sous-domaine>.leclercdrive.fr/magasin-<id>-<id>`
+                storeAddressPattern: '^https://[a-z0-9-]+\.leclercdrive\.fr/magasin-([0-9]+)-([0-9]+)$',
+                storeAddressExample: 'https://exemple.leclercdrive.fr/magasin-123456-123456',
+                productIdPattern: RetailerProfile::NUMERIC_PRODUCT_ID,
+            ),
+        };
+    }
 
     public function isValidStoreUrl(string $baseUrl): bool
     {
-        return $this->storeIdOf($baseUrl) !== null;
+        return $this->profile()->isValidStoreUrl($baseUrl);
     }
 
     /**
@@ -25,10 +60,11 @@ enum Retailer: string
      */
     public function storeIdOf(string $baseUrl): ?string
     {
-        $pattern = match ($this) {
-            self::LECLERC => self::LECLERC_STORE_URL,
-        };
+        return $this->profile()->storeIdOf($baseUrl);
+    }
 
-        return preg_match($pattern, $baseUrl, $matches) === 1 ? $matches[1] : null;
+    public function isValidProductId(string $retailerProductId): bool
+    {
+        return $this->profile()->isValidProductId($retailerProductId);
     }
 }

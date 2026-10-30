@@ -8,6 +8,7 @@ use Repas\Drive\Application\Query\GetDriveSettings\DriveSettingsDTO;
 use Repas\Drive\Application\Query\GetDriveSettings\DriveStoreDTO;
 use Repas\Drive\Application\Query\GetDriveSettings\GetDriveSettingsQuery;
 use Repas\Drive\Application\Query\GetDriveSettings\GetDriveSettingsQueryHandler;
+use Repas\Drive\Domain\Model\Retailer;
 use Repas\Tests\Helper\InMemoryLoader\DriveSettingsInMemoryLoader;
 
 class GetDriveSettingsQueryHandlerTest extends TestCase
@@ -15,7 +16,7 @@ class GetDriveSettingsQueryHandlerTest extends TestCase
     public function testReturnsWhatTheLoaderReturnsForTheRequestedUser(): void
     {
         // Given
-        $settings = new DriveSettingsDTO(true, 'leclerc', new DriveStoreDTO('123456', 'Ville-Test', 'https://exemple.leclercdrive.fr/magasin-123456-123456'));
+        $settings = new DriveSettingsDTO(true, 'leclerc', new DriveStoreDTO('123456', 'Ville-Test', 'https://exemple.leclercdrive.fr/magasin-123456-123456'), []);
         $loader = new DriveSettingsInMemoryLoader($settings);
 
         // When
@@ -23,6 +24,18 @@ class GetDriveSettingsQueryHandlerTest extends TestCase
 
         // Then
         $this->assertSame($settings, $result);
-        $this->assertSame(['user-42'], $loader->getCalls);
+        $this->assertSame([['user-42', Retailer::default()]], $loader->getCalls);
+    }
+
+    public function testTransmitsTheRequestedRetailerToTheLoader(): void
+    {
+        // Given
+        $loader = new DriveSettingsInMemoryLoader();
+
+        // When
+        new GetDriveSettingsQueryHandler($loader)(new GetDriveSettingsQuery('user-42', Retailer::LECLERC));
+
+        // Then
+        $this->assertSame([['user-42', Retailer::LECLERC]], $loader->getCalls);
     }
 }
