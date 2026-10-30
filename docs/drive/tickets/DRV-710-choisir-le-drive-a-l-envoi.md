@@ -29,7 +29,7 @@ Comparer les enseignes (backlog), mémoriser l'enseigne sur la liste (ADR 0027 d
 
 - Étant donné Leclerc seul, alors le parcours heureux du premier et du deuxième envoi a **le même nombre de touches** qu'avant (relevé avant/après, `audit-simplicite.md`).
 - Étant donné deux enseignes configurées sans drive habituel et la dernière utilisée B, alors l'écran propose A et B avec B présélectionnée, « Ouvrir B » ouvre B en une touche, et `PUT /drive/last-retailer` part avec B.
-- Étant donné un drive habituel A, alors l'envoi ouvre A sans question ; « Envoyer ailleurs » change l'enseigne pour cet envoi seulement.
+- Étant donné un drive habituel A, alors l'envoi ouvre A sans question ; « Envoyer ailleurs » change l'enseigne pour cet envoi seulement. *(Remplacé le 2026-10-30 par DRV-736 et DRV-737 : plusieurs drives = toujours la question, plus de lien « Envoyer ailleurs ».)*
 - Étant donné une application qui n'annonce pas A, alors la phrase de mise à jour pour A, et B reste proposée.
 - Étant donné un résultat revenu pour une autre enseigne que celle du brouillon, alors rien n'est enregistré.
 
