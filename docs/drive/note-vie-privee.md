@@ -150,3 +150,29 @@ Deuxième entrée du registre, hors du drive : ce traitement concerne **tous** l
 3. Ne rien ajouter qui ne soit pas dans « À garder vrai ». Si l'écran « Mes produits » (DRV-410) porte un autre nom, adapter la phrase « Comment tout effacer ».
 4. ~~Afficher la note avant la première activation de l'envoi~~ : décision de l'utilisateur du 2026-10-19, aucune acceptation ni fenêtre dans le parcours ; la page reste accessible. Motif d'origine : les conditions de Leclerc concernent le compte de chaque utilisateur (constat DRV-003).
 5. Test : le lien existe depuis « Moi » et l'aide et mène à la page ; un test vérifie que tout ce qui est retiré des écrans figure sur la page.
+
+---
+
+## 5 bis. Variante par enseigne du texte des conditions (DRV-711) — **proposition, à valider par le propriétaire**
+
+> **Ce texte est destiné aux utilisateurs. Il n'est pas définitif.** Il est proposé ici pour que le propriétaire le relise avant tout passage dans le front (clés `driveTerms.*` : le texte commun, puis une **section par enseigne**, `termsSection` du registre). Rien de ce qui suit n'est affirmé sur le site d'une enseigne sans mesure : les phrases propres à Auchan sont marquées « à compléter ».
+
+**Principe.** Le texte du § 2 reste vrai pour Leclerc. Avec plusieurs enseignes, il devient **un tronc commun** (ce que Repas fait et ne fait pas, quelle que soit l'enseigne) plus **un bloc par enseigne** (ce qui dépend d'elle). Le nom est un paramètre (`{enseigne}`, « de {enseigne} » avec élision : « d'Auchan »). Tutoiement, phrases de 15 mots au plus, aucun avertissement hors de ces conditions ([`principes-produit.md`](principes-produit.md)).
+
+**Tronc commun (proposé, à partir du § 2).**
+
+- Envoyer ta liste au drive, c'est Repas qui prépare la liste et l'application qui la met dans ton panier, avec ta connexion à toi, chez le drive que tu choisis.
+- Rien de cela ne passe par les serveurs de Repas. Repas ne voit jamais tes identifiants, tes cookies ni ton panier. Il ne valide jamais de commande, ne choisit pas de créneau, ne paie rien, ne vide jamais ton panier et ne réduit jamais une quantité.
+- **Ce que Repas enregistre, pour chaque drive que tu as réglé** : ton magasin (son identifiant et son nom), les produits dont Repas se souvient pour ce drive, leur nom, leur contenu et le prix que tu as vu, avec sa date. Les produits d'un drive ne sont jamais utilisés pour un autre.
+- **Ton drive habituel et le dernier drive ouvert** sont retenus avec ton compte, pour ne plus te poser la question.
+- Tout s'efface avec ton compte, ou article par article dans « Mes produits du drive » ; « Se déconnecter de {enseigne} » efface seulement la connexion de ce drive sur ton téléphone.
+
+**Bloc propre à chaque enseigne (modèle).**
+
+- Comment tu te connectes chez {enseigne} (sur la page de {enseigne}, jamais dans Repas).
+- Ce que ton magasin désigne chez {enseigne} (par exemple le point de retrait lu sur le site).
+- **Le risque de suspension de ton compte {enseigne}** : phrase à écrire d'après les conditions de l'enseigne, **relues par le propriétaire** ; ne rien affirmer qui ne soit pas lu à la source (chez Leclerc : [`spikes/DRV-003-cgu.md`](spikes/DRV-003-cgu.md), décision D23).
+
+**Bloc d'Auchan : à compléter par DRV-726.** On sait seulement que la connexion passe par `compte.auchan.fr` (mesuré, [`hypotheses-site-reel-auchan.md`](hypotheses-site-reel-auchan.md) D-5) ; la connexion dans l'application, les conditions de l'enseigne et le risque pour le compte ne sont pas établis. Aucune phrase sur Auchan n'est donc écrite ici.
+
+**Ce que le registre des traitements (§ 4) gagne** : la colonne `retailer` des tables du drive est déjà dans la fiche ; ajouter `drive_retailer_preference` (drive habituel et dernière enseigne ouverte, une ligne par utilisateur, effacée avec le compte) à la liste des données du drive, et, pour une enseigne qui en a, l'identifiant d'offre d'un produit (`drive_product.retailer_offer_id`, fait public sans propriétaire). Ces lignes sont à ajouter au § 4 **quand le propriétaire aura validé** la variante.

@@ -1,4 +1,4 @@
-# Chantier Drive : envoyer la liste de courses au drive (E.Leclerc)
+# Chantier Drive : envoyer la liste de courses au drive (E.Leclerc, puis d'autres enseignes)
 
 **À lire en premier par tout agent qui reprend ce chantier.** Rédigé le 2026-10-17 par l'assistant Product Owner / architecte, qui n'implémente pas : d'autres agents exécutent les tickets. État mis à jour le 2026-10-19 (corrections de la recette réelle).
 
@@ -22,7 +22,7 @@ Sur Android, une fois la liste de courses prête, l'utilisateur touche « Envoye
 6. [`consignes-agents.md`](consignes-agents.md) : règles communes à tout agent qui implémente un ticket.
 7. Les règles du dépôt où l'on travaille : `CLAUDE.md`, skill `.claude/skills/repas-dev/` (back) ; `CLAUDE.md` du front.
 
-**Plusieurs enseignes** (Auchan après Leclerc) : [`multi-enseignes.md`](multi-enseignes.md) et l'[ADR 0027](../adr/0027-plusieurs-enseignes-de-drive.md) ; la règle « ne pas durcir Leclerc » est dans [`consignes-agents.md`](consignes-agents.md).
+**Plusieurs enseignes** (Auchan après Leclerc, éteinte tant que la recette réelle DRV-726 n'est pas signée) : [`multi-enseignes.md`](multi-enseignes.md) et l'[ADR 0027](../adr/0027-plusieurs-enseignes-de-drive.md) ; la règle « ne pas durcir Leclerc » est dans [`consignes-agents.md`](consignes-agents.md). **Les documents de ce dossier décrivent Leclerc, la première enseigne** ; chacun a une section ou un fichier « par enseigne » (`architecture.md` § 13, `runbook.md` § 16, `recette.md` partie 20, `hypotheses-site-reel-auchan.md`, `note-vie-privee.md` § 5 bis, `audit-simplicite.md` § 8) : on la copie pour une nouvelle enseigne, on ne recopie pas Leclerc.
 
 **Produit** : tout ticket ou toute PR qui touche un écran, un texte ou un enchaînement de gestes suit [`principes-produit.md`](principes-produit.md) (parcours court, tutoiement depuis DRV-627, glossaire, erreurs en trois phrases ; skill `/repas-po`). Le constat en cours est dans [`audit-simplicite.md`](audit-simplicite.md).
 
@@ -53,14 +53,14 @@ Voir `architecture.md` § 1 : drive, enseigne, magasin, agent, plan, produit, ch
 | `analyse.md` | Analyse produit, options écartées, décisions par défaut, risques. |
 | `recherche.md` | Faits sourcés et ce qui reste à vérifier. |
 | `roadmap.md` | Jalons, tickets, dépendances, Definition of Done. |
-| `runbook.md` | « Leclerc a changé » : symptômes, diagnostic, coupure (`DRIVE_ENABLED=false`), repli, correction, retour en service (DRV-503). Mise en production et retour arrière : `../production.md`. |
+| `runbook.md` | « Leclerc a changé » (et modèle « <Enseigne> a changé », § 16, couper une seule enseigne) : symptômes, diagnostic, coupure (`DRIVE_ENABLED=false`), repli, correction, retour en service (DRV-503). Mise en production et retour arrière : `../production.md`. |
 | `note-vie-privee.md` | Note de vie privée de la fonction (texte court et complet à afficher dans le front, ce qui est vrai et d'où ça vient, fiche de registre des traitements) (DRV-504, partie back). |
 | `hypotheses-site-reel.md` | Ce que le chantier suppose du vrai site de Leclerc sans l'avoir mesuré (2026-10-18) : mesuré, supposé, inconnu, risques, les cinq points à vérifier en premier pendant la recette, fiche de notes, tickets de défense candidats. |
 | `multi-enseignes.md` | Plusieurs enseignes de drive (jalon M7, ADR 0027) : audit du couplage à Leclerc par couche, registre d'enseignes, règle de choix de l'enseigne, interrupteurs, compatibilité, plan de découplage (DRV-701 à 717), faits sur Auchan et spikes à faire sur téléphone. |
 | `hypotheses-site-reel-auchan.md` | Ce que le chantier sait du vrai site d'Auchan : mesuré, supposé, inconnu (2026-10-30, spikes DRV-712 à 714) ; à mettre à jour par chaque ticket de l'adaptateur. |
 | `spikes/DRV-712…715` | Rapports des spikes Auchan (parcours et magasin, anti-robot et connexion, recherche et panier) et la décision « adaptateur complet » (2026-10-30). |
 | `revue-securite-back.md` | Revue indépendante de sécurité et de qualité du back (2026-10-18) : défauts corrigés, risques à décider (fiches de produits partagées), points vérifiés, recommandations pour la recette. |
-| `recette.md` | Procédure de recette en conditions réelles (DRV-501 pour l'écriture, DRV-505 pour l'exécution) : pas à pas pour l'utilisateur sur son téléphone, critères de réussite, mesures, tableau de signature. |
+| `recette.md` | (Leclerc ; gabarit pour une nouvelle enseigne : partie 20) Procédure de recette en conditions réelles (DRV-501 pour l'écriture, DRV-505 pour l'exécution) : pas à pas pour l'utilisateur sur son téléphone, critères de réussite, mesures, tableau de signature. |
 | `revue-securite-drive.md` (dépôt front) | [Revue indépendante de sécurité et de qualité du front, de l'agent et de l'application Android](https://github.com/kcharignon/repas-front/blob/main/docs/revue-securite-drive.md) (2026-10-18) : défauts corrigés (#107 à #112), risques à décider (la page de Leclerc dans la base de confiance de l'agent, pré-versions publiques), recommandations pour la recette. Pendant de `revue-securite-back.md`. |
 | `tickets/DRV-*.md` | Un ticket par fichier, autonome. |
 | `spikes/` | Gabarits des rapports de découverte (à remplir par l'humain ou l'agent). |
