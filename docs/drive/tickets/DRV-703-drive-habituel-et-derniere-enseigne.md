@@ -4,7 +4,7 @@
 - **Jalon** : M7 Plusieurs enseignes
 - **Taille** : M
 - **Dépend de** : DRV-701, DRV-702
-- **Statut** : à faire. Effort recommandé : `xhigh` (migration, données de l'utilisateur, purge du compte).
+- **Statut** : fait (PR #333, 2026-10-30). Effort recommandé : `xhigh` (migration, données de l'utilisateur, purge du compte).
 - **Lire d'abord** : [`../multi-enseignes.md`](../multi-enseignes.md) §§ 4.4, 5 ; [ADR 0027](../../adr/0027-plusieurs-enseignes-de-drive.md) décisions 4 et 5 ; ADR 0021 (purge) ; `UserOwnedDataCoverageTest` ; `.claude/skills/repas-drive-back/SKILL.md` (migrations, budgets SQL, purge, limiteur).
 
 ## Contexte
@@ -47,3 +47,20 @@ Celle des skills `repas-dev` et `repas-drive-back` : `make test`, `make quality`
 - La préférence ne référence l'enseigne que par son identifiant (ADR 0013) ; aucune clé étrangère.
 - Une enseigne retirée de `DRIVE_RETAILERS` n'efface pas la préférence : la sélection l'ignore tant qu'elle est désactivée.
 - Ne pas déduire « configurée » d'un choix : c'est la présence d'un `DriveSettings`.
+
+## Réalisation (back, 2026-10-30)
+
+Rien n'est publié ni activé : `DRIVE_RETAILERS` reste `leclerc` en production, donc la sélection y vaut `AUTO` (un magasin) ou `NONE` (aucun), exactement ce qu'il y avait avant ; aucun nom d'enseigne n'est ajouté hors du registre.
+
+**Contrat (additif, rien de retiré ni de renommé)** : `GET /drive/settings` gagne `defaultRetailer` (`string | null`), `lastUsedRetailer` (`string | null`), `selection` `{mode: NONE|AUTO|ASK, retailer: string | null, candidates: string[]}` et, par enseigne de `retailers`, `isDefault` (booléen) ; toutes les clés sont toujours écrites. `defaultRetailer`, `lastUsedRetailer` et `isDefault` ne montrent **qu'une enseigne candidate** (allumée ET configurée) : la préférence d'une enseigne éteinte ou sans magasin reste en base mais n'existe pas pour la personne. `candidates` : la plus anciennement enregistrée d'abord (`drive_settings.updated_at`, à égalité l'ordre du registre) ; la présélection d'un `ASK` sans dernière utilisée est donc `candidates[0]`. Les anciens champs `retailer` et `store` sont ceux de l'enseigne **en vigueur** (la sélection ; sans candidate, l'enseigne par défaut du registre si elle est allumée, sinon la première allumée) : avec une seule enseigne allumée, ce qu'ils valaient avant. Trois routes d'écriture (`204`, `#[RequiresDrive]`, `#[RateLimitedPerUser(WRITE)]`) : `PUT /drive/default-retailer` `{retailer: string|null}` (clé obligatoire), `PUT /drive/last-retailer` `{retailer}`, `DELETE /drive/settings?retailer=`. Nouveaux codes : `422 DRIVE_RETAILER_NOT_CONFIGURED`, `404 DRIVE_SETTINGS_NOT_FOUND`.
+
+**Écarts avec le ticket (à relire)** :
+- **Enseigne éteinte** : `default-retailer`, `last-retailer` et le retrait répondent `404 DRIVE_RETAILER_DISABLED` (règle de DRV-702 : tout handler qui reçoit une enseigne la juge en premier, et `DriveRetailerSwitchApiFlowTest::testEveryDriveRouteIsListed` l'impose), et non `422 DRIVE_RETAILER_NOT_CONFIGURED` comme la lettre du ticket (« configurée et activée ») pouvait le laisser lire. `422 DRIVE_RETAILER_NOT_CONFIGURED` ne vaut que pour une enseigne allumée où la personne n'a pas de magasin.
+- Le retrait d'un drive repose sur un code d'erreur propre, `404 DRIVE_SETTINGS_NOT_FOUND` (le ticket disait seulement « 404 »).
+- `PUT /drive/default-retailer` sans la clé `retailer` est `422` (un corps vide n'efface pas le drive habituel) : `require_all_properties` dans la désérialisation.
+- Plan et estimation sans `?retailer=` : l'enseigne vient de `DriveSettingsLoader::get($userId)->retailer` (deux lectures de plus seulement quand la demande ne nomme pas l'enseigne) ; l'estimation lit le magasin par `DriveSettingsLoader::store()` (une requête), son coût ne change pas.
+- Le compteur du jour des écritures de produits (`drive_settings.product_writes_*`, DRV-613) part avec la ligne quand on retire un drive : retirer puis remettre un magasin le remet à zéro. Limite acceptée (le plafond ne protège que la table commune ; chaque écriture reste plafonnée à 60 par minute et 200 intentions) ; à reprendre si le plafond devait devenir strict.
+
+**Migration** `Version20261030170000` : nouvelle table seule, rejouable (`IF NOT EXISTS`), compatible avec la version précédente du code, `down` supprime la table ; appliquée, défaite et rejouée sur une base d'essai, `doctrine:schema:validate` vert (`RetailerPreferenceMigrationTest` compare aussi la table au mapping). **Budgets** : `choisir-drive-habituel` 3, `retenir-derniere-enseigne` 3, `retirer-drive` 3 ; `supprimer-compte` 27 → 28 (`DELETE drive_retailer_preference`). Aucun autre budget ne bouge.
+
+**À faire hors de ce ticket** : DRV-709 et DRV-710 (le web) lisent `selection`, écrivent `last-retailer` à l'ouverture du drive et `default-retailer` depuis « Moi » ; `docs/drive/samples/settings.sample.json` est régénéré (le front le recopie par `make samples-update`). **Ordre de publication** : les champs ajoutés sont additifs, donc le site doit les **tolérer** avant que le back les serve (règle du 2026-10-20) ; rien n'oblige à publier le site avant le back tant qu'il ne rejette pas un champ inconnu de `GET /drive/settings`.

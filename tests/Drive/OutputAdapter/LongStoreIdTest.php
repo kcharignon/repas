@@ -15,6 +15,7 @@ use Repas\Drive\Domain\Model\Store;
 use Repas\Drive\Domain\Service\PackCalculator;
 use Repas\Drive\Infrastructure\Loader\ChoicePostgreSQLLoader;
 use Repas\Drive\Infrastructure\Loader\DrivePlanPostgreSQLLoader;
+use Repas\Drive\Domain\Service\RetailerSelection;
 use Repas\Drive\Infrastructure\Loader\DriveSettingsPostgreSQLLoader;
 use Repas\Shared\Application\Dto\ShoppingListForDrive;
 use Repas\Shared\Application\Dto\ShoppingListLineForDrive;
@@ -76,7 +77,7 @@ class LongStoreIdTest extends DatabaseTestCase
 
         // When
         $found = $this->settings->findOneByUser('user-1', Retailer::LECLERC);
-        $dto = new DriveSettingsPostgreSQLLoader($this->entityManager, new ControlledDriveFeature(true))->get('user-1', Retailer::LECLERC);
+        $dto = new DriveSettingsPostgreSQLLoader($this->entityManager, new ControlledDriveFeature(true), new RetailerSelection())->get('user-1', Retailer::LECLERC);
 
         // Then : la valeur n'est ni tronquée ni changée
         $this->assertSame([self::STORE, 'Ville-Test', self::ADDRESS], [$found->getStore()->id, $found->getStore()->label, $found->getStore()->baseUrl]);

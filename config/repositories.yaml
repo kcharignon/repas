@@ -80,6 +80,10 @@ services:
         alias: 'Repas\Drive\Infrastructure\Repository\RayonVotePostgreSQLRepository'
         public: true
 
+    Repas\Drive\Domain\Interface\RetailerPreferenceRepository:
+        alias: 'Repas\Drive\Infrastructure\Repository\RetailerPreferencePostgreSQLRepository'
+        public: true
+
     Repas\Voice\Domain\Interface\UserVoiceDataRepository:
         alias: 'Repas\Voice\Infrastructure\Repository\UserVoiceDataPostgreSQLRepository'
         public: true

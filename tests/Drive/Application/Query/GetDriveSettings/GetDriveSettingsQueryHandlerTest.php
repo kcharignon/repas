@@ -4,27 +4,26 @@ namespace Repas\Tests\Drive\Application\Query\GetDriveSettings;
 
 
 use PHPUnit\Framework\TestCase;
-use Repas\Drive\Application\Query\GetDriveSettings\DriveSettingsDTO;
-use Repas\Drive\Application\Query\GetDriveSettings\DriveStoreDTO;
 use Repas\Drive\Application\Query\GetDriveSettings\GetDriveSettingsQuery;
 use Repas\Drive\Application\Query\GetDriveSettings\GetDriveSettingsQueryHandler;
 use Repas\Drive\Domain\Model\Retailer;
+use Repas\Tests\Helper\Builder\DTO\DriveSettingsDTOBuilder;
 use Repas\Tests\Helper\InMemoryLoader\DriveSettingsInMemoryLoader;
 
 class GetDriveSettingsQueryHandlerTest extends TestCase
 {
-    public function testReturnsWhatTheLoaderReturnsForTheRequestedUser(): void
+    public function testReturnsWhatTheLoaderReturnsForTheRequestedUserWithTheRetailerOfTheSelection(): void
     {
         // Given
-        $settings = new DriveSettingsDTO(true, 'leclerc', new DriveStoreDTO('123456', 'Ville-Test', 'https://exemple.leclercdrive.fr/magasin-123456-123456'), []);
+        $settings = new DriveSettingsDTOBuilder()->build();
         $loader = new DriveSettingsInMemoryLoader($settings);
 
         // When
         $result = new GetDriveSettingsQueryHandler($loader)(new GetDriveSettingsQuery('user-42'));
 
-        // Then
+        // Then : sans enseigne demandée, le loader choisit celle de la sélection (DRV-703)
         $this->assertSame($settings, $result);
-        $this->assertSame([['user-42', Retailer::default()]], $loader->getCalls);
+        $this->assertSame([['user-42', null]], $loader->getCalls);
     }
 
     public function testTransmitsTheRequestedRetailerToTheLoader(): void

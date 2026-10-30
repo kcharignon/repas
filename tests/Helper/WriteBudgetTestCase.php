@@ -7,14 +7,17 @@ use DateTimeImmutable;
 use Repas\Drive\Domain\Interface\ChoiceRepository;
 use Repas\Drive\Domain\Interface\DriveSettingsRepository;
 use Repas\Drive\Domain\Interface\ProductRepository;
+use Repas\Drive\Domain\Interface\RetailerPreferenceRepository;
 use Repas\Drive\Domain\Model\Product;
 use Repas\Drive\Domain\Model\Retailer;
+use Repas\Drive\Domain\Model\RetailerPreference;
 use Repas\Repas\Application\Command\MergeIngredients\MergeIngredientsCommand;
 
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Repas\Domain\Model\Recipe;
 use Repas\Repas\Domain\Model\ShoppingList;
 use Repas\Shared\Application\Interface\CommandBusInterface;
+use Repas\Shared\Application\Interface\DriveFeature;
 use Repas\Tests\Helper\Alexa\AlexaTestClient;
 use Repas\Tests\Helper\Builder\ChoiceBuilder;
 use Repas\Tests\Helper\Builder\ConversionBuilder;
@@ -168,11 +171,34 @@ abstract class WriteBudgetTestCase extends DatabaseTestCase
     }
 
     /**
-     * Réglages du drive de `$user` (magasin factice) : un `SaveDriveSettings` ultérieur les remplace.
+     * Réglages du drive de `$user` (magasin factice) : un `SaveDriveSettings` ultérieur les remplace. `$retailer` : l'enseigne par défaut
+     * du registre quand il n'est pas dit.
      */
-    public function savedDriveSettings(User $user): void
+    public function savedDriveSettings(User $user, ?Retailer $retailer = null): void
     {
-        static::getContainer()->get(DriveSettingsRepository::class)->save(new DriveSettingsBuilder()->withUserId($user->getId())->build());
+        static::getContainer()->get(DriveSettingsRepository::class)->save(new DriveSettingsBuilder()->withUserId($user->getId())->withRetailer($retailer ?? Retailer::default())->build());
+    }
+
+    /**
+     * Allume toutes les enseignes du registre (la production n'allume que la première, `DRIVE_RETAILERS`) : à appeler AVANT de lancer la
+     * commande, un service déjà utilisé ne se remplace plus dans le conteneur de test.
+     */
+    public function allRetailersEnabled(): void
+    {
+        static::getContainer()->set(DriveFeature::class, new ControlledDriveFeature(true));
+    }
+
+    /**
+     * Drive habituel et dernière enseigne de `$user` (DRV-703).
+     */
+    public function savedRetailerPreference(User $user, ?Retailer $default, ?Retailer $lastUsed): void
+    {
+        $now = new DateTimeImmutable('2026-10-30 10:00:00');
+        $preference = RetailerPreference::create($user->getId(), $now)->chooseDefault($default, $now);
+        if ($lastUsed !== null) {
+            $preference->rememberLastUsed($lastUsed, $now);
+        }
+        static::getContainer()->get(RetailerPreferenceRepository::class)->save($preference);
     }
 
     /**

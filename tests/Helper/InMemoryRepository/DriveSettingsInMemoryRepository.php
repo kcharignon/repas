@@ -47,6 +47,17 @@ class DriveSettingsInMemoryRepository extends AbstractInMemoryRepository impleme
         return true;
     }
 
+    public function delete(string $userId, Retailer $retailer): bool
+    {
+        $key = $userId . ':' . $retailer->value;
+        if (!isset($this->models[$key])) {
+            return false;
+        }
+        unset($this->models[$key]);
+
+        return true;
+    }
+
     public function deleteByUser(string $userId): void
     {
         foreach ($this->models->toArray() as $key => $settings) {

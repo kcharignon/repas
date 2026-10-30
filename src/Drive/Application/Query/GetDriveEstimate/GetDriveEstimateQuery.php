@@ -10,7 +10,7 @@ final readonly class GetDriveEstimateQuery implements QueryInterface
     public function __construct(
         public string $userId,
         public string $shoppingListId,
-        /** `null` : l'enseigne par défaut (`Retailer::default()`) */
+        /** `null` : l'enseigne de la sélection (DRV-703) */
         public ?Retailer $retailer = null,
     ) {
     }

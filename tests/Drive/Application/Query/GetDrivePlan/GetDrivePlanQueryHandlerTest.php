@@ -10,33 +10,52 @@ use Repas\Drive\Application\Query\GetDrivePlan\GetDrivePlanQueryHandler;
 use Repas\Drive\Domain\Model\Retailer;
 use Repas\Tests\Helper\ControlledDriveFeature;
 use Repas\Tests\Helper\Builder\DTO\DrivePlanDTOBuilder;
+use Repas\Tests\Helper\Builder\DTO\DriveSettingsDTOBuilder;
 use Repas\Tests\Helper\InMemoryLoader\DrivePlanInMemoryLoader;
+use Repas\Tests\Helper\InMemoryLoader\DriveSettingsInMemoryLoader;
 
 class GetDrivePlanQueryHandlerTest extends TestCase
 {
-    public function testTransmitsTheRequestedRetailerToTheLoader(): void
+    public function testTransmitsTheRequestedRetailerToTheLoaderWithoutReadingTheSettings(): void
     {
         // Given
         $loader = new DrivePlanInMemoryLoader(new DrivePlanDTOBuilder()->build());
+        $settings = new DriveSettingsInMemoryLoader();
 
         // When
-        new GetDrivePlanQueryHandler($loader, new ControlledDriveFeature())(new GetDrivePlanQuery('user-42', 'list-1', Retailer::LECLERC));
+        new GetDrivePlanQueryHandler($loader, new ControlledDriveFeature(), $settings)(new GetDrivePlanQuery('user-42', 'list-1', Retailer::LECLERC));
 
         // Then
         $this->assertSame([['user-42', 'list-1', Retailer::LECLERC]], $loader->getCalls);
+        $this->assertSame([], $settings->getCalls);
     }
 
-    public function testReturnsWhatTheLoaderReturnsForTheRequestedUserAndList(): void
+    public function testReturnsWhatTheLoaderReturnsForTheRetailerOfTheSelectionWhenTheRequestNamesNone(): void
     {
-        // Given
+        // Given : la sélection de l'utilisateur désigne une enseigne (DRV-703)
         $plan = new DrivePlanDTOBuilder()->build();
         $loader = new DrivePlanInMemoryLoader($plan);
+        $settings = new DriveSettingsInMemoryLoader(new DriveSettingsDTOBuilder()->withRetailer('auchan')->build());
 
         // When
-        $result = new GetDrivePlanQueryHandler($loader, new ControlledDriveFeature())(new GetDrivePlanQuery('user-42', 'list-1'));
+        $result = new GetDrivePlanQueryHandler($loader, new ControlledDriveFeature(), $settings)(new GetDrivePlanQuery('user-42', 'list-1'));
 
         // Then
         $this->assertSame($plan, $result);
+        $this->assertSame([['user-42', 'list-1', Retailer::AUCHAN]], $loader->getCalls);
+        $this->assertSame([['user-42', null]], $settings->getCalls);
+    }
+
+    public function testAnUnconfiguredUserStillAsksTheLoaderForTheDefaultRetailerAsBefore(): void
+    {
+        // Given : aucune enseigne configurée, la sélection rend l'enseigne par défaut : le loader répondra `409 DRIVE_NOT_CONFIGURED`
+        $loader = new DrivePlanInMemoryLoader(new DrivePlanDTOBuilder()->build());
+        $settings = new DriveSettingsInMemoryLoader(new DriveSettingsDTOBuilder()->unconfigured()->build());
+
+        // When
+        new GetDrivePlanQueryHandler($loader, new ControlledDriveFeature(), $settings)(new GetDrivePlanQuery('user-42', 'list-1'));
+
+        // Then
         $this->assertSame([['user-42', 'list-1', Retailer::default()]], $loader->getCalls);
     }
 
@@ -50,7 +69,7 @@ class GetDrivePlanQueryHandlerTest extends TestCase
 
         // When
         try {
-            new GetDrivePlanQueryHandler($loader, new ControlledDriveFeature(true, []))(new GetDrivePlanQuery('user-42', 'list-1'));
+            new GetDrivePlanQueryHandler($loader, new ControlledDriveFeature(true, []), new DriveSettingsInMemoryLoader())(new GetDrivePlanQuery('user-42', 'list-1'));
         } finally {
             $this->assertSame([], $loader->getCalls);
         }

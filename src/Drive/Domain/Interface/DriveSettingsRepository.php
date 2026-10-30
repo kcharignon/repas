@@ -28,6 +28,14 @@ interface DriveSettingsRepository
     public function reserveProductWrites(string $userId, Retailer $retailer, int $count, DateTimeImmutable $now): bool;
 
     /**
+     * Retire le réglage de l'utilisateur pour cette enseigne (DRV-703) : le magasin n'est plus enregistré, ses choix et les produits restent.
+     * Le compteur du jour des écritures de produits part avec la ligne.
+     *
+     * @return bool vrai si un réglage a été retiré, faux s'il n'y en avait pas
+     */
+    public function delete(string $userId, Retailer $retailer): bool;
+
+    /**
      * Supprime tous les réglages de l'utilisateur, toutes enseignes (suppression de son compte, ADR 0021).
      */
     public function deleteByUser(string $userId): void;

@@ -9,7 +9,7 @@ final readonly class GetDriveSettingsQuery implements QueryInterface
 {
     public function __construct(
         public string $userId,
-        /** `null` : l'enseigne par défaut (`Retailer::default()`) */
+        /** `null` : l'enseigne en vigueur, celle de la sélection (DRV-703) */
         public ?Retailer $retailer = null,
     ) {
     }

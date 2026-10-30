@@ -27,6 +27,9 @@ class DriveRoutesAreRateLimitedTest extends KernelTestCase
         'api_save_product_choices' => DriveRateLimit::WRITE,
         'api_replace_ingredient_preference' => DriveRateLimit::WRITE,
         'api_forget_choice' => DriveRateLimit::WRITE,
+        'api_set_default_retailer' => DriveRateLimit::WRITE,
+        'api_remember_last_retailer' => DriveRateLimit::WRITE,
+        'api_remove_drive_settings' => DriveRateLimit::WRITE,
         'api_get_drive_plan' => DriveRateLimit::READ,
         'api_get_drive_estimate' => DriveRateLimit::READ,
     ];

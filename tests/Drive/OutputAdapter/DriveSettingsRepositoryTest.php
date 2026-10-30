@@ -266,6 +266,51 @@ class DriveSettingsRepositoryTest extends DatabaseTestCase
         $this->assertSame(1, (int) $this->entityManager->getConnection()->fetchOne('SELECT COUNT(*) FROM drive_settings'));
     }
 
+    public function testDeleteRemovesOnlyTheSettingOfThatRetailerEvenWhenAlreadyLoaded(): void
+    {
+        // Given : deux enseignes pour la même personne (DRV-703), le réglage d'une autre personne, et la ligne déjà chargée
+        $this->repository->save(new DriveSettingsBuilder()->withUserId('user-1')->withRetailer(Retailer::LECLERC)->build());
+        $this->repository->save(new DriveSettingsBuilder()->withUserId('user-1')->withRetailer(Retailer::AUCHAN)->build());
+        $this->repository->save(new DriveSettingsBuilder()->withUserId('user-2')->withRetailer(Retailer::LECLERC)->build());
+        $this->repository->findOneByUser('user-1', Retailer::LECLERC);
+
+        // When
+        $deleted = $this->repository->delete('user-1', Retailer::LECLERC);
+        $deletedAgain = $this->repository->delete('user-1', Retailer::LECLERC);
+
+        // Then : relu sans vider l'identity map, la ligne supprimée n'est plus rendue ; l'autre enseigne et l'autre personne restent
+        $this->assertSame([true, false], [$deleted, $deletedAgain]);
+        $this->assertNull($this->repository->findOneByUser('user-1', Retailer::LECLERC));
+        $this->assertNotNull($this->repository->findOneByUser('user-1', Retailer::AUCHAN));
+        $this->assertNotNull($this->repository->findOneByUser('user-2', Retailer::LECLERC));
+        $this->assertSame(2, (int) $this->entityManager->getConnection()->fetchOne('SELECT COUNT(*) FROM drive_settings'));
+    }
+
+    public function testDeletingASettingThatNeverExistedDeletesNothing(): void
+    {
+        // Given
+        $this->repository->save(new DriveSettingsBuilder()->withUserId('user-1')->build());
+
+        // Then
+        $this->assertFalse($this->repository->delete('nobody', Retailer::LECLERC));
+        $this->assertFalse($this->repository->delete('user-1', Retailer::AUCHAN));
+        $this->assertSame(1, (int) $this->entityManager->getConnection()->fetchOne('SELECT COUNT(*) FROM drive_settings'));
+    }
+
+    public function testDeletingASettingCostsOneStatement(): void
+    {
+        // Given
+        $this->repository->save(new DriveSettingsBuilder()->withUserId('user-1')->build());
+        $counter = static::getContainer()->get(QueryCounter::class);
+        $counter->reset();
+
+        // When
+        $this->repository->delete('user-1', Retailer::LECLERC);
+
+        // Then
+        $this->assertSame(['DELETE drive_settings' => 1], $counter->byTable());
+    }
+
     public function testSavingAnExistingSettingCostsOneSelectAndOneUpdate(): void
     {
         // Given
