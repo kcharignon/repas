@@ -4,7 +4,7 @@
 - **Jalon** : M7 Plusieurs enseignes
 - **Taille** : M
 - **Dépend de** : DRV-717, DRV-724, DRV-725, DRV-728 (et DRV-707 à 710 pour l'écran de choix)
-- **Statut** : à faire (**dernier maillon avant d'allumer Auchan**). Pas d'effort de sous-agent : l'humain observe, l'assistant relit.
+- **Statut** : fait (2026-10-30, en direct avec le propriétaire). Rapport : [`../spikes/DRV-726-rapport.md`](../spikes/DRV-726-rapport.md). **Décision : allumer Auchan**, après la fusion de DRV-738 et la publication de l'application.
 - **Lire d'abord** : [`../recette.md`](../recette.md) (façon de procéder, gabarit DRV-711) ; [`../hypotheses-site-reel-auchan.md`](../hypotheses-site-reel-auchan.md) (chaque ligne « I » doit sortir de cette recette) ; [`../spikes/DRV-715-decision-auchan.md`](../spikes/DRV-715-decision-auchan.md) § 4 (les risques gardés ouverts).
 
 ## Contexte
