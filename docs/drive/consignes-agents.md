@@ -86,9 +86,9 @@ Une enseigne se **déclare dans le registre de chaque couche**, puis se **mesure
 | Couche | Registre (seul endroit qui nomme l'enseigne) | Skill |
 |---|---|---|
 | Back | `Retailer` et `RetailerProfile` (`src/Drive/Domain/Model/`), contrat `samples/retailers.sample.json` | `repas-drive-back` § 10 |
-| Web | `src/features/drive/retailers.ts` (accueil, règle d'adresse, nom et forme avec « de », section des conditions) | `repas-front-dev` |
-| Agent | `drive-agent/src/retailers/<id>/` (adaptateur, causes, textes) et `retailers/index.ts` | `repas-agent-dev` |
-| Application | `NavigationPolicy` et `RetailerSite` (`android/core`), `AgentHost`, `DriveProfile` | `repas-android-dev` |
+| Web | `src/features/drive/retailers.ts` (accueil, règle d'adresse, nom et forme avec « de »), section `driveTerms.retailers.<id>` de `fr.ts` | `repas-front-dev` |
+| Agent | le dossier de l'enseigne `drive-agent/src/<id>/` (adaptateur, causes, textes), son entrée dans `drive-agent/src/retailers/index.ts` et son motif d'hôte dans `protocol/check.ts` | `repas-agent-dev` |
+| Application | `RetailerSite` et la seule liste `RetailerSites` (`android/core`), puis `AgentHost` et `DriveProfile` (`android/app`) | `repas-android-dev` |
 | Exploitation | `DRIVE_RETAILERS`, runbook § 16, recette partie 20 | `repas-ops` (`references/drive.md` § E) |
 
 Ce qu'un ticket d'enseigne **ne fait pas** : durcir Leclerc (voir plus haut), recopier Leclerc pour décrire une autre enseigne (la source de ce qu'on sait est `hypotheses-site-reel-<enseigne>.md`, avec sa légende mesuré / supposé / inconnu), écrire un fait non mesuré comme vrai, allumer l'enseigne (acte de l'humain, après la recette réelle), ouvrir le site de l'enseigne (interdit absolu ci-dessus), ou changer le comportement d'une autre enseigne (la preuve : ses tests passent sans modification).

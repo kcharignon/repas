@@ -288,7 +288,7 @@ Les § 1 à 14 sont écrits pour **Leclerc** et restent tels quels. Pour une aut
 | Rubrique | Commun (déjà vrai) | À remplir pour l'enseigne |
 |---|---|---|
 | Règles d'or (début du runbook) | Tout vaut : on ne contacte jamais le site d'une enseigne depuis le serveur, couper est sûr et réversible, aucun secret dans le chat | Rien |
-| Reconnaître (§ 1) | Les codes du protocole (`CONTRACT_CHANGED`, `BLOCKED`, `NOT_LOGGED_IN`, `NETWORK`, `UNSUPPORTED_PAGE`, `STORE_MISMATCH`, `INVALID_MESSAGE`, `CANCELLED`) et le nom de l'enseigne dans le message (« {enseigne} a modifié son site ») | Le sens probable de chaque code **chez cette enseigne**, ses causes (`drive-agent/src/retailers/<id>/causes.ts`), ce qui est un vrai blocage et ce qui ne l'est pas |
+| Reconnaître (§ 1) | Les codes du protocole (`CONTRACT_CHANGED`, `BLOCKED`, `NOT_LOGGED_IN`, `NETWORK`, `UNSUPPORTED_PAGE`, `STORE_MISMATCH`, `INVALID_MESSAGE`, `CANCELLED`) et le nom de l'enseigne dans le message (« {enseigne} a modifié son site ») | Le sens probable de chaque code **chez cette enseigne**, ses causes (`drive-agent/src/<id>/causes.ts`), ce qui est un vrai blocage et ce qui ne l'est pas |
 | Diagnostic (§ 3) | Même commande de l'agent, même rapport sans donnée personnelle | Les sondes propres au site et ce qu'un verdict `OK` y signifie |
 | Couper (§ 4) | `DRIVE_ENABLED=false` coupe tout ; **`DRIVE_RETAILERS` coupe une enseigne** (voir ci-dessous) | Rien |
 | Se replier (§ 5) | « Chercher à la main » à l'écran | Rien |
