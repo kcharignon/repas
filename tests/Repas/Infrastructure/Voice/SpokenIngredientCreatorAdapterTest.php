@@ -85,10 +85,10 @@ class SpokenIngredientCreatorAdapterTest extends TestCase
     public function testADomainErrorOfTheCommandIsPropagated(): void
     {
         // Given : l'utilisateur a déjà cet ingrédient
-        $this->bus->willThrow(CreateIngredientCommand::class, IngredientException::alreadyExists('ciboulette-user-id'));
+        $this->bus->willThrow(CreateIngredientCommand::class, IngredientException::nameAlreadyUsedInDepartment());
 
         // Then
-        $this->expectExceptionObject(IngredientException::alreadyExists('ciboulette-user-id'));
+        $this->expectExceptionObject(IngredientException::nameAlreadyUsedInDepartment());
         $this->adapter()->create('user-id', 'ciboulette', 'fruit-et-legume', 'unite');
     }
 

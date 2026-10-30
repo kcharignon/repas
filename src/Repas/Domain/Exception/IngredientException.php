@@ -29,6 +29,9 @@ final class IngredientException extends DomainException
     // Message du plafond d'ingrédients créés par un compte : le front le distingue, il ne se renomme pas
     public const string LIMIT_REACHED = 'INGREDIENT_LIMIT_REACHED';
 
+    // Message du refus d'un second ingrédient de même nom dans le même rayon chez le même propriétaire (ING-016) : le front le distingue
+    public const string NAME_ALREADY_USED = 'INGREDIENT_NAME_ALREADY_USED';
+
     // Message du cas « Pas le même » (ING-006)
     public const string CANNOT_BE_DISTINCT_FROM_ITSELF = 'CANNOT_BE_DISTINCT_FROM_ITSELF';
 
@@ -90,9 +93,15 @@ final class IngredientException extends DomainException
     {
         return new static(sprintf("Cannot remove ingredient '%s', exist in shopping list", $ingredientId), 409);
     }
-    public static function alreadyExists(string $slug): self
+
+    /**
+     * Le propriétaire a déjà un ingrédient de ce nom (une fois normalisé : sans accent ni majuscule) DANS CE RAYON (ADR 0028, amendement du
+     * 2026-10-30, ING-016). Le même nom dans un autre rayon est permis (« Petits pois » surgelés et « Petits pois » frais). Valable à la
+     * création comme à la modification (nom ou rayon). Conflit avec l'état courant, `409`.
+     */
+    public static function nameAlreadyUsedInDepartment(): self
     {
-        return new self(sprintf("Ingredient '%s' already exists", $slug), 409);
+        return new self(self::NAME_ALREADY_USED, 409);
     }
 
     public static function coefficientRequired(): self

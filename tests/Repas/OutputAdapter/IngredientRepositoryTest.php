@@ -384,64 +384,75 @@ class IngredientRepositoryTest extends DatabaseTestCase
         return $value === false ? null : $value;
     }
 
-    public function testExistsForCreatorSeesAnIngredientBySlug(): void
+    public function testCreatorHasNameInDepartmentSeesTheSameNormalizedNameOfTheCreatorInTheSameDepartment(): void
     {
-        // Arrange
-        $creator = new UserBuilder()->build();
-        $this->persister->saveUser($creator);
-        $butter = new IngredientBuilder()->isButter()->withCreator($creator, true)->build();
-        $this->persister->saveIngredient($butter);
-
-        // Act & Assert : le slug est pris, même pour un autre nom normalisé et un autre créateur
-        $this->assertTrue($this->ingredientRepository->existsForCreator($butter->getSlug(), 'another-user-id', 'autre-nom'));
-        $this->assertFalse($this->ingredientRepository->existsForCreator('libre', $creator->getId(), 'autre-nom'));
-    }
-
-    public function testExistsForCreatorSeesTheSameNormalizedNameOfTheCreatorWhateverTheSlug(): void
-    {
-        // Arrange : un ancien commun passé à son propriétaire (créateur posé, slug sans identifiant de compte)
+        // Arrange : « Tomate » (nom normalisé `tomate`) dans le rayon de la fixture, avec un slug sans identifiant de compte
         $owner = new UserBuilder()->build();
         $other = new UserBuilder()->build();
         $this->persister->saveUser($owner);
         $this->persister->saveUser($other);
         $tomato = new IngredientBuilder()->withName('Tomate')->withSlug('tomate')->withCreator($owner)->build();
         $this->persister->saveIngredient($tomato);
-        $this->assertSame('tomate', $tomato->getSlug());
+        $department = $tomato->getDepartment()->getSlug();
 
-        // Act & Assert : le slug d'une création serait `tomate<identifiant>`, libre, mais le nom normalisé est déjà au créateur
-        $this->assertFalse($this->ingredientRepository->exists('tomate' . $owner->getId()));
-        $this->assertTrue($this->ingredientRepository->existsForCreator('tomate' . $owner->getId(), $owner->getId(), 'tomate'));
-        // pas pour un autre créateur, ni pour un autre nom
-        $this->assertFalse($this->ingredientRepository->existsForCreator('tomate' . $other->getId(), $other->getId(), 'tomate'));
-        $this->assertFalse($this->ingredientRepository->existsForCreator('tomate-cerise' . $owner->getId(), $owner->getId(), 'tomate-cerise'));
+        // Act & Assert : le slug n'a aucune importance, c'est le trio créateur, nom normalisé et rayon
+        $this->assertTrue($this->ingredientRepository->creatorHasNameInDepartment($owner->getId(), 'tomate', $department));
+        // pas pour un autre créateur, un autre nom, ni un autre rayon
+        $this->assertFalse($this->ingredientRepository->creatorHasNameInDepartment($other->getId(), 'tomate', $department));
+        $this->assertFalse($this->ingredientRepository->creatorHasNameInDepartment($owner->getId(), 'tomate-cerise', $department));
+        $this->assertFalse($this->ingredientRepository->creatorHasNameInDepartment($owner->getId(), 'tomate', 'un-autre-rayon'));
     }
 
-    public function testExistsForCreatorIgnoresACommonIngredientOfTheSameName(): void
+    public function testCreatorHasNameInDepartmentDoesNotCountTheIngredientBeingEdited(): void
     {
-        // Arrange : avant la passation, « Tomate » est un commun (sans créateur) : il n'est à personne
-        $user = new UserBuilder()->build();
-        $this->persister->saveUser($user);
-        $this->persister->saveIngredient(new IngredientBuilder()->withName('Tomate')->build());
+        // Arrange : « Petits pois » dans deux rayons chez le même créateur (permis depuis l'amendement du 2026-10-30)
+        $owner = new UserBuilder()->build();
+        $this->persister->saveUser($owner);
+        $conserve = new IngredientBuilder()->withName('Petits pois')->withSlug('petits-pois-conserve')->withDepartment(new DepartmentBuilder()->isConserve())->withCreator($owner)->build();
+        $cereal = new IngredientBuilder()->withName('Petits pois')->withSlug('petits-pois-cereale')->withDepartment(new DepartmentBuilder()->isCereal())->withCreator($owner)->build();
+        $this->persister->saveIngredient($conserve);
+        $this->persister->saveIngredient($cereal);
 
-        // Act & Assert
-        $this->assertFalse($this->ingredientRepository->existsForCreator('tomate' . $user->getId(), $user->getId(), 'tomate'));
+        // Act & Assert : chacun des deux rayons a le nom ; sans compter l'ingrédient lui-même, il n'a plus de jumeau dans son propre rayon
+        $this->assertTrue($this->ingredientRepository->creatorHasNameInDepartment($owner->getId(), 'petits-pois', 'conserve'));
+        $this->assertTrue($this->ingredientRepository->creatorHasNameInDepartment($owner->getId(), 'petits-pois', 'cereale'));
+        $this->assertFalse($this->ingredientRepository->creatorHasNameInDepartment($owner->getId(), 'petits-pois', 'conserve', 'petits-pois-conserve'));
+        $this->assertFalse($this->ingredientRepository->creatorHasNameInDepartment($owner->getId(), 'petits-pois', 'cereale', 'petits-pois-cereale'));
+        // mais l'autre ingrédient, lui, compte : le déplacer dans le rayon de son jumeau serait une collision
+        $this->assertTrue($this->ingredientRepository->creatorHasNameInDepartment($owner->getId(), 'petits-pois', 'cereale', 'petits-pois-conserve'));
+        // un troisième rayon est libre
+        $this->assertFalse($this->ingredientRepository->creatorHasNameInDepartment($owner->getId(), 'petits-pois', 'divers', 'petits-pois-conserve'));
     }
 
-    public function testExistsForCreatorCostsASingleQuery(): void
+    public function testCreatorHasNameInDepartmentCostsASingleQuery(): void
     {
         // Arrange
         $user = new UserBuilder()->build();
         $this->persister->saveUser($user);
-        $this->persister->saveIngredient(new IngredientBuilder()->withName('Tomate')->withCreator($user, true)->build());
+        $tomato = new IngredientBuilder()->withName('Tomate')->withCreator($user, true)->build();
+        $this->persister->saveIngredient($tomato);
         static::getContainer()->get('doctrine')->getManager()->clear();
         $counter = static::getContainer()->get(QueryCounter::class);
         $counter->reset();
 
         // Act
-        $this->ingredientRepository->existsForCreator('tomate' . $user->getId(), $user->getId(), 'tomate');
+        $this->ingredientRepository->creatorHasNameInDepartment($user->getId(), 'tomate', $tomato->getDepartment()->getSlug(), 'un-autre');
 
         // Assert
         $this->assertSame(['SELECT ingredient' => 1], $counter->byTable());
+    }
+
+    public function testASlugTakenByAnotherNameIsStillTakenForTheSlugPolicy(): void
+    {
+        // Arrange : le slug d'un ingrédient renommé reste le sien, même quand son nom change
+        $user = new UserBuilder()->build();
+        $this->persister->saveUser($user);
+        $renamed = new IngredientBuilder()->withName('Poire')->withSlug('tomate' . $user->getId())->withCreator($user)->build();
+        $this->persister->saveIngredient($renamed);
+
+        // Act & Assert : le nom `tomate` est libre, mais son slug naturel est pris : `exists()` le dit, la politique prend `tomate-2…`
+        $this->assertFalse($this->ingredientRepository->creatorHasNameInDepartment($user->getId(), 'tomate', $renamed->getDepartment()->getSlug()));
+        $this->assertTrue($this->ingredientRepository->exists('tomate' . $user->getId()));
     }
 
     /**

@@ -324,6 +324,30 @@ class IngredientMergePostgreSQLLoaderTest extends DatabaseTestCase
         $this->assertSame(['kilo', 'kilo', 'kilo', 'kilo', 'kilo'], array_map(static fn($candidate): string => $candidate->purchaseUnitName, $candidates));
     }
 
+    public function testTheSameNameInAnotherDepartmentIsACandidateToldApartByItsDepartmentAndTheMergeIsStillAllowed(): void
+    {
+        // Given : « Petits pois » dans deux rayons (ADR 0028, amendement du 2026-10-30), que l'utilisateur veut finalement réunir
+        $persister = new DataPersister(static::getContainer());
+        $keptPeas = new IngredientBuilder()->withName('Petits pois')->withSlug('petits-pois-a')->withDepartment(new DepartmentBuilder()->isCereal())->withDefaultCookingUnit(new UnitBuilder()->isGramme())->withDefaultPurchaseUnit(new UnitBuilder()->isKilo())->withCreator($this->user)->build();
+        $absorbedPeas = new IngredientBuilder()->withName('Petits pois')->withSlug('petits-pois-b')->withDepartment(new DepartmentBuilder()->isMeat())->withDefaultCookingUnit(new UnitBuilder()->isGramme())->withDefaultPurchaseUnit(new UnitBuilder()->isKilo())->withCreator($this->user)->build();
+        $persister->saveIngredient($keptPeas);
+        $persister->saveIngredient($absorbedPeas);
+        $this->dataset->conversion($keptPeas);
+
+        // When
+        $candidates = array_values(array_filter(
+            $this->loader->candidates($this->user->getId(), $absorbedPeas->getSlug()),
+            static fn($candidate): bool => $candidate->slug === $keptPeas->getSlug(),
+        ));
+        $preview = $this->preview($absorbedPeas, $keptPeas);
+
+        // Then : le même nom, un autre rayon : très proche, mais son rayon le distingue ; l'aperçu dit que le rayon de l'absorbé disparaît
+        $this->assertCount(1, $candidates);
+        $this->assertSame(['Petits pois', 'céréale', false, true], [$candidates[0]->name, $candidates[0]->departmentName, $candidates[0]->sameDepartment, $candidates[0]->veryClose]);
+        $this->assertTrue($preview->departmentChanges);
+        $this->assertTrue($preview->canMerge);
+    }
+
     public function testTheCandidatesShowHowManyRecipesAndListsUseThem(): void
     {
         // Given : « Tomate » dans 2 recettes et 1 liste (une ligne et un ajout), « Concombre » dans aucune

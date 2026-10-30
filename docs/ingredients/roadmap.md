@@ -6,6 +6,8 @@ Rédigé le 2026-10-20. Cadrage, puis réalisation ticket par ticket : ING-001 (
 
 > **Amendement du 2026-10-20 : plus d'ingrédient commun** ([ADR 0028](../adr/0028-ingredients-propres-a-chaque-utilisateur.md#amendement-du-2026-10-20--plus-dingrédient-commun), plan et ordre d'exécution : [`sans-commun.md`](sans-commun.md)). Les 261 anciens communs deviennent les ingrédients du compte administrateur protégé ; tout compte a ses ingrédients, copiés à l'activation parmi ceux que l'administrateur marque « de base » (151 sur 261, [`base-ingredients.tsv`](base-ingredients.tsv)). Les anciens **ING-008** (adoption à la première utilisation) et **ING-009** (communs à l'administrateur, plus tard) sont **remplacés** par les tickets réécrits de ce nom, et **ING-011 à ING-015** sont nouveaux. Le reste du chantier (rapprochement, fusion, doublons) ne change pas.
 
+> **Amendement du 2026-10-30 : le même nom dans deux rayons** ([ADR 0028](../adr/0028-ingredients-propres-a-chaque-utilisateur.md#amendement-du-2026-10-30--le-même-nom-dans-deux-rayons), ticket ING-016) : un propriétaire peut avoir « Petits pois » en Surgelés et « Petits pois » en Fruits et légumes ; le nom n'est refusé que dans le **même** rayon. Un rayon peut aussi porter une icône (ING-016 B), pour que le front distingue ces ingrédients (ING-017).
+
 Un agent d'implémentation travaille **un ticket = une PR** ([`../drive/consignes-agents.md`](../drive/consignes-agents.md), qui valent ici, sauf la règle « ne pas durcir une enseigne » : ce chantier ne nomme aucune enseigne).
 
 **Dépôts** : `back` = `kcharignon/repas` ; `front` = `kcharignon/repas-front`.
@@ -58,6 +60,11 @@ Taille : S (quelques heures), M (une journée), L (plusieurs jours). Effort : le
 - [x] [ING-013](tickets/ING-013-simplifier-visibilite-droits-resolveur.md) (PR #247) back · L · **xhigh** · Simplifier : visibilité « créateur = moi », droits, résolveur, copie de recette, fusion, doublons, conversions · dépend de : **passation exécutée et contrôlée** · **R2**
 - [x] [ING-014](tickets/ING-014-retirer-le-code-mort.md) (PR #250 et sa seconde partie, la passation retirée, PR #252) back · M · **high** · Retirer le code mort, `NoSharedIngredientTest`, migration-garde, fixtures, documents · dépend de : 013 · **R2**
 - [x] [ING-015](tickets/ING-015-front-ingredient-de-base.md) (front PR #195, en production : front v0.5.26) **front** · M · **high** · L'interrupteur « Ingrédient de base » et sa pastille (propriétaire seulement) · dépend de : 011 en production
+
+### I7 — Le même nom dans deux rayons, l'icône d'un rayon (amendement du 2026-10-30)
+
+- [ ] [ING-016](tickets/ING-016-meme-nom-par-rayon-et-icone-de-rayon.md) back · M · **high** · A : un nom est unique par propriétaire ET par rayon (`409 INGREDIENT_NAME_ALREADY_USED`, création et modification, slug libre `…-2…`, aucune migration) ; B : `department.icon` (`snowflake`, `can`), lue dans les rayons, réglée par l'administrateur, et le rayon dans les DTO qui montrent un nom d'ingrédient · deux PR (A puis B) · dépend de : — · **A faite** (PR de l'unicité par rayon)
+- [ ] ING-017 **front** · M · **high** · l'icône du rayon distingue deux ingrédients de même nom (recherche, ligne de recette, ligne de liste), réglage sur l'écran des rayons, texte de `INGREDIENT_NAME_ALREADY_USED` · dépend de : ING-016 B en production · **non fait**
 
 ### Transverse
 

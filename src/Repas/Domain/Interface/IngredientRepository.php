@@ -55,17 +55,19 @@ interface IngredientRepository
     public function findByOwner(string $ownerId): Tab;
 
     /**
-     * Un ingrédient porte ce slug (le slug dérive du nom et du créateur : deux créations du même nom se télescoperaient).
+     * Un ingrédient porte ce slug (le slug dérive du nom et du créateur : `IngredientSlugPolicy` en cherche un libre pour chaque création ou
+     * copie, jamais celui d'un ingrédient existant).
      */
     public function exists(string $slug): bool;
 
     /**
-     * Créer cet ingrédient pour ce créateur ferait un doublon : le slug existe, **ou** le créateur a déjà un ingrédient de même nom normalisé
-     * (`slugged_name`), en une seule requête. Le second cas couvre un ancien commun passé au propriétaire du catalogue : son slug n'a pas
-     * l'identifiant du compte, donc `exists()` ne le verrait pas. Seule la création d'un ingrédient l'appelle ; `exists()` garde son sens
-     * (collision de slug) pour la copie de recette et la fusion.
+     * Ce créateur a-t-il déjà un ingrédient de ce nom normalisé (`slugged_name`) dans ce rayon ? C'est la règle d'unicité d'un ingrédient
+     * (ADR 0028, amendement du 2026-10-30, ING-016) : un propriétaire ne peut pas avoir deux ingrédients de même nom DANS LE MÊME RAYON, mais
+     * le même nom dans deux rayons est permis. `$exceptSlug` est un ingrédient qu'on ne compte pas : celui qu'on modifie. Une seule requête.
+     * Seules la création et la modification d'un ingrédient l'appellent : la copie d'une recette, l'amorçage d'un compte et la fusion ne sont
+     * pas des créations (un doublon se voit et se fusionne).
      */
-    public function existsForCreator(string $slug, string $creatorId, string $sluggedName): bool;
+    public function creatorHasNameInDepartment(string $creatorId, string $sluggedName, string $departmentSlug, ?string $exceptSlug = null): bool;
 
     public function save(Ingredient $ingredient): void;
 

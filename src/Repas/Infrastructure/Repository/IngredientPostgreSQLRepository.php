@@ -97,21 +97,24 @@ readonly class IngredientPostgreSQLRepository extends PostgreSQLRepository imple
         return $this->entityRepository->find($slug) !== null;
     }
 
-    public function existsForCreator(string $slug, string $creatorId, string $sluggedName): bool
+    public function creatorHasNameInDepartment(string $creatorId, string $sluggedName, string $departmentSlug, ?string $exceptSlug = null): bool
     {
-        // Une seule requête : le slug, ou le nom normalisé chez ce créateur (un ancien commun passé au propriétaire a un slug sans identifiant)
-        $rows = $this->entityManager->createQueryBuilder()
+        // Une seule requête, sur l'index (créateur, nom normalisé) : le rayon et l'ingrédient écarté ne sont que des conditions de plus
+        $query = $this->entityManager->createQueryBuilder()
             ->select('i.slug AS slug')
             ->from(IngredientEntity::class, 'i')
-            ->where('i.slug = :slug OR (i.creatorId = :creator AND i.sluggedName = :sluggedName)')
-            ->setParameter('slug', $slug)
+            ->where('i.creatorId = :creator')
+            ->andWhere('i.sluggedName = :sluggedName')
+            ->andWhere('i.departmentSlug = :department')
             ->setParameter('creator', $creatorId)
             ->setParameter('sluggedName', $sluggedName)
-            ->setMaxResults(1)
-            ->getQuery()
-            ->getArrayResult();
+            ->setParameter('department', $departmentSlug)
+            ->setMaxResults(1);
+        if ($exceptSlug !== null) {
+            $query->andWhere('i.slug <> :except')->setParameter('except', $exceptSlug);
+        }
 
-        return $rows !== [];
+        return $query->getQuery()->getArrayResult() !== [];
     }
 
     public function creatorHasAtLeast(string $creatorId, int $count): bool

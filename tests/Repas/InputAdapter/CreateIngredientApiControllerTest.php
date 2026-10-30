@@ -43,7 +43,7 @@ class CreateIngredientApiControllerTest extends QueryBusWebTestCase
     public function testAnIngredientOfTheSameNameIsAConflict(): void
     {
         // Given
-        $commandBus = $this->mockCommandBus()->willThrow(CreateIngredientCommand::class, IngredientException::alreadyExists('praline-user'));
+        $commandBus = $this->mockCommandBus()->willThrow(CreateIngredientCommand::class, IngredientException::nameAlreadyUsedInDepartment());
 
         // When
         $this->post($this->savedUser(), ['name' => 'Praliné', 'departmentSlug' => 'epicerie', 'defaultCookingUnitSlug' => 'gramme', 'defaultPurchaseUnitSlug' => 'gramme']);
