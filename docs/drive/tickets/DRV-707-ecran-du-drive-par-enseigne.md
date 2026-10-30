@@ -4,7 +4,7 @@
 - **Jalon** : M7 Plusieurs enseignes
 - **Taille** : M
 - **Dépend de** : DRV-706
-- **Statut** : à faire. Effort recommandé : `high`.
+- **Statut** : fait (PR front #252, 2026-10-30). Écarts : `make android-e2e` complet n'est pas vert (scénarios 2 à 14 déjà rouges sur `main` : [DRV-729](DRV-729-realigner-les-scenarios-e2e-android.md)) ; les profils de WebView séparés ne sont pas prouvés dans l'émulateur (WebView 113 sans `MULTI_PROFILE`) : **à vérifier à la main sur un téléphone récent** (deux enseignes, se déconnecter de l'une, l'autre reste connectée) et que la mise à jour garde la connexion Leclerc (le profil `drive` n'est pas renommé). Effort recommandé : `high`.
 - **Lire d'abord** : [`../multi-enseignes.md`](../multi-enseignes.md) §§ 3.5, 8, D-M6 ; `android/ARCHITECTURE.md` ; `android/README.md` (« Le passage du plan », pont `repasNative`) ; skill `repas-android-dev` ; skill `repas-po` (textes) ; DRV-312, 313, 317, 625.
 
 ## Contexte
