@@ -10,13 +10,16 @@ Légende : **M** mesuré sur le vrai site (Chrome du téléphone de test, une se
 |---|---|---|
 | A-1 | Le magasin n'est pas dans l'adresse (`www.auchan.fr/courses` reste identique) ni dans `localStorage` ; il est gardé par la session (cookie `connect.sid`, `HttpOnly`, un jour). | M |
 | A-2 | `GET /journey` rend le parcours sans article au panier ; `activeContexts[type=GROCERY].context` porte `seller.id` (UUID), `seller.storeReference.id` (3 chiffres), `channels` (`PICK_UP`), `pointOfService.{name, type: "DRIVE", url}`. | M |
+| A-2b | Forme de l'élément de `activeContexts[]` : `{type, context}`, avec `context.seller.id`, `context.pointOfService.name` et `context.channels` (le code de DRV-717 s'y appuie ; sinon il s'arrête sur `JOURNEY_NO_SELLER` / `JOURNEY_NO_CONTEXTS`, jamais sur un magasin deviné). | S |
 | A-3 | `seller.id` du parcours = `offer.context.seller.id` du panier. | M |
 | A-4 | Le libellé du drive (`pointOfService.name`) est celui de la barre « Retrait : … ». | M |
+| A-4b | L'élément de la barre du magasin : le texte est mesuré (« Choisir vos courses » sans magasin, « Retrait : … » avec), **pas la balise** ; l'agent cherche un élément dont tout le texte est « Choisir vos courses » ou qui commence par « Retrait : » ; barre « Choisir vos courses » alors que le parcours donne un magasin : refus prudent. | S |
 | A-5 | La déconnexion efface le magasin (barre « Choisir vos courses »). | M |
 | A-6 | La connexion conserve le magasin choisi en visiteur. | M |
 | A-7 | L'identifiant de magasin reste le même d'un jour à l'autre. | I |
 | A-8 | La livraison à domicile a d'autres contextes (`channels`, vendeur) ; les stocks y diffèrent de ceux du drive. | I |
 | A-9 | Un panier se vide ou se recalcule quand on change de magasin ou de mode. | I |
+| A-10 | Où mène « Commencer mes achats » (page du panier vide) ; l'agent ne touche que le libellé exact et ne suit un lien que s'il reste sur l'origine de la page. | I |
 
 ## Recherche et produits
 
@@ -28,6 +31,7 @@ Légende : **M** mesuré sur le vrai site (Chrome du téléphone de test, une se
 | B-4 | Contenu net : pastille « 1kg » et prix « 0,91 € / kg » affichés ; champ structuré inconnu. | M (affichage) / I (structure) |
 | B-5 | Disponibilité : `offer.availability` (`AVAILABLE` vu), `offer.state` (`IMMEDIATE` vu), `offer.stockDetail.type` (`RT` vu), microdonnées `InStock` ; mention « Dans mon drive » sur la carte. | M (valeur disponible) / **I** (valeurs « indisponible », « bientôt ») |
 | B-6 | Un `404` d'adresse inventée est un vrai `404` avec une page « Erreur 404 ». | M |
+| B-6b | Une page « introuvable » se reconnaît au code HTTP du document, à défaut à un titre commençant par « 404 » (une page vue) ; le reste de la page est supposé. | S |
 | B-7 | Pagination des résultats, tri, filtres. | I |
 | B-8 | La recherche de certains termes redirige vers une page de produit ou de rayon (clé `searchRedirects` du stockage local). | S |
 
@@ -50,9 +54,11 @@ Légende : **M** mesuré sur le vrai site (Chrome du téléphone de test, une se
 | # | Fait | Statut |
 |---|---|---|
 | D-1 | DataDome : cookie `datadome`, balise JS, collecte `dd.ecom.auchan.fr/js/`, `x-datadome: protected` sur pages et API. | M |
+| D-1b | Le cookie `datadome` est lisible par `document.cookie` (`HttpOnly` faux, mesuré sur le téléphone de test) : l'agent n'en lit que la présence, en oui/non. | M |
 | D-2 | Aucun défi visible sur une centaine de requêtes (15 écritures, 8 recherches à 2 s, création de compte, 2 connexions, 1 déconnexion). | M |
 | D-3 | DataDome note les gestes (compteurs d'événements envoyés) : les appels depuis la page, **sans geste**, peuvent un jour être jugés autrement. | S |
 | D-4 | reCAPTCHA Enterprise invisible à la connexion et à la création de compte ; aucun défi visible. | M |
+| D-4b | Le marqueur d'une page de défi DataDome est `captcha-delivery.com`, supposé identique à celui de Leclerc ; aucun marqueur du reCAPTCHA n'est écrit avant DRV-725. | S |
 | D-5 | Connexion : Keycloak (`compte.auchan.fr`), formulaire e-mail + mot de passe, « Se souvenir de moi », Apple, Google ; code d'autorisation de retour (`auth_callback`). | M |
 | D-6 | `sessionStorage.tracking_authenticated` passe de `"false"` à `"true"` à la connexion. | M |
 | D-7 | La connexion par e-mail et mot de passe, le reCAPTCHA et les cookies fonctionnent dans la WebView de l'application. | **I** (DRV-726) |
