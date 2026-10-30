@@ -4,7 +4,7 @@
 - **Jalon** : M7 Plusieurs enseignes
 - **Taille** : M
 - **Dépend de** : DRV-717 (et DRV-724 pour le passage complet)
-- **Statut** : à faire. Effort recommandé : `high` (`xhigh` pour la détection d'un défi et la cadence).
+- **Statut** : fait (PR front #258, 2026-10-30, agent 0.50.0). Pas d'e2e navigateur du passage complet tant que la recherche (DRV-724) n'est pas raccordée : il tourne dans Vitest avec le faux site en HTTP. La recherche doit appeler `AuchanAdapter.rememberOffer(productId, {offerId, sellerType, offerType, sellerId})` pour chaque produit lu (sinon `CART_OFFER_UNKNOWN`). Visiteur : l'envoi s'arrête toujours (à trancher à la recette). Effort recommandé : `high` (`xhigh` pour la détection d'un défi et la cadence).
 - **Lire d'abord** : [`../hypotheses-site-reel-auchan.md`](../hypotheses-site-reel-auchan.md) § Panier et § Anti-robot ; [`../spikes/DRV-714-rapport.md`](../spikes/DRV-714-rapport.md) § Panier ; [`../spikes/DRV-713-rapport.md`](../spikes/DRV-713-rapport.md) ; DRV-717 ; `drive-agent/src/leclerc/cart.ts`, `pacer.ts`, `errors.ts` (modèle) ; skill `repas-agent-dev`.
 
 ## Portée
