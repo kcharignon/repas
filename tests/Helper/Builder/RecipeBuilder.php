@@ -21,6 +21,7 @@ class RecipeBuilder implements Builder
     private ?Tab $rows = null;
     private ?string $originalId = null;
     private int $version = 1;
+    private bool $secret = false;
 
 
     public function build(): Recipe
@@ -36,6 +37,7 @@ class RecipeBuilder implements Builder
             'rows' => $this->rows->map(fn(RecipeRowBuilder $row) => $row->withRecipeId($this->id)->build()),
             'original_id' => $this->originalId,
             'version' => $this->version,
+            'secret' => $this->secret,
         ]);
     }
 
@@ -117,6 +119,15 @@ class RecipeBuilder implements Builder
     public function withAuthorId(string $authorId): self
     {
         $this->authorId = $authorId;
+        return $this;
+    }
+
+    /**
+     * Une recette secrète : vue de son auteur seul (ADR 0033).
+     */
+    public function asSecret(bool $secret = true): self
+    {
+        $this->secret = $secret;
         return $this;
     }
 

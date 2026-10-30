@@ -37,6 +37,10 @@ class Recipe
     #[ORM\Column(type: 'integer', updatable: false)]
     private int $version = 1;
 
+    // Recette secrète (ADR 0033) : vue de son auteur seul. Faux par défaut, y compris pour une ligne écrite par le code précédent
+    #[ORM\Column(type: 'boolean', options: ['default' => false])]
+    private bool $secret = false;
+
     public function __construct(
         ?string $id,
         ?string $name,
@@ -44,6 +48,7 @@ class Recipe
         ?string $authorId,
         ?string $typeSlug,
         ?string $original,
+        bool    $secret = false,
     ) {
         $this->id = $id;
         $this->name = $name;
@@ -52,6 +57,7 @@ class Recipe
         $this->authorId = $authorId;
         $this->typeSlug = $typeSlug;
         $this->originalId = $original;
+        $this->secret = $secret;
     }
 
     public function getId(): ?string
@@ -130,6 +136,18 @@ class Recipe
         return $this;
     }
 
+    public function isSecret(): bool
+    {
+        return $this->secret;
+    }
+
+    public function setSecret(bool $secret): static
+    {
+        $this->secret = $secret;
+
+        return $this;
+    }
+
     public function getOriginalId(): ?string
     {
         return $this->originalId;
@@ -150,6 +168,7 @@ class Recipe
             authorId: $recipe->getAuthorId(),
             typeSlug: $recipe->getType()->getSlug(),
             original: $recipe->getOriginalId(),
+            secret: $recipe->isSecret(),
         );
     }
 
@@ -158,5 +177,6 @@ class Recipe
         $this->setName($recipe->getName());
         $this->setServing($recipe->getServing());
         $this->setTypeSlug($recipe->getType()->getSlug());
+        $this->setSecret($recipe->isSecret());
     }
 }

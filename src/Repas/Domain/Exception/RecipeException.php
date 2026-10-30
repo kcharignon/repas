@@ -12,6 +12,7 @@ final class RecipeException extends DomainException
     public const string SERVING_INVALID = 'RECIPE_SERVING_INVALID';
     public const string ROWS_LIMIT_REACHED = 'RECIPE_ROWS_LIMIT_REACHED';
     public const string LIMIT_REACHED = 'RECIPE_LIMIT_REACHED';
+    public const string SECRET_FORBIDDEN = 'RECIPE_SECRET_FORBIDDEN';
 
     public static function notFound(string $id): static
     {
@@ -85,5 +86,14 @@ final class RecipeException extends DomainException
     public static function limitReached(): self
     {
         return new self(self::LIMIT_REACHED, 422);
+    }
+
+    /**
+     * Seul l'auteur d'une recette la rend secrète ou de nouveau visible (ADR 0033) : un autre utilisateur, un administrateur compris, qui
+     * envoie une autre valeur que l'actuelle reçoit un refus d'autorisation, `403`, jamais ignoré en silence.
+     */
+    public static function secretForbidden(): self
+    {
+        return new self(self::SECRET_FORBIDDEN, 403);
     }
 }

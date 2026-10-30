@@ -38,15 +38,21 @@ final readonly class RecipePostgreSQLLoader implements RecipeLoader
      * de la recette et les universelles sont lues en UNE requête de plus (le nombre de requêtes ne dépend pas du nombre de lignes) et passées
      * au graphe pur de `ConversionService`, qui donne la même réponse que la planification. La recette d'un autre utilisateur se lit de la même
      * façon, sur les ingrédients de son auteur : on n'en apprend rien de plus que ce booléen et l'unité d'achat, une donnée publique.
+     *
+     * Une recette secrète n'est lue que par son auteur (ADR 0033) : la condition est dans la requête même, avant toute lecture des lignes. Pour
+     * tout autre, administrateur compris, la requête ne rend rien et la réponse est celle d'une recette inconnue (`404`, jamais `403` : on ne
+     * révèle pas qu'elle existe).
      */
-    public function get(string $id): RecipeDTO
+    public function get(string $id, string $userId): RecipeDTO
     {
         $recipe = $this->entityManager->createQueryBuilder()
-            ->select('r.id AS id', 'r.name AS name', 'r.serving AS serving', 't.slug AS typeSlug', 't.name AS typeName', 'r.version AS version')
+            ->select('r.id AS id', 'r.name AS name', 'r.serving AS serving', 't.slug AS typeSlug', 't.name AS typeName', 'r.version AS version', 'r.secret AS secret')
             ->from(Recipe::class, 'r')
             ->innerJoin(RecipeType::class, 't', Join::WITH, 't.slug = r.typeSlug')
             ->where('r.id = :id')
+            ->andWhere('(r.secret = false OR r.authorId = :userId)')
             ->setParameter('id', $id)
+            ->setParameter('userId', $userId)
             ->getQuery()
             ->getOneOrNullResult();
 
@@ -81,6 +87,7 @@ final readonly class RecipePostgreSQLLoader implements RecipeLoader
             serving: (int) $recipe['serving'],
             typeSlug: $recipe['typeSlug'],
             typeName: $recipe['typeName'],
+            secret: (bool) $recipe['secret'],
             rows: array_map(
                 static fn(array $row): RecipeRowDTO => new RecipeRowDTO(
                     $row['ingredientSlug'], $row['ingredientName'], $row['ingredientImage'], (float) $row['quantity'], $row['unitSlug'], $row['unitSymbol'],
@@ -109,7 +116,7 @@ final readonly class RecipePostgreSQLLoader implements RecipeLoader
         }
 
         $recipes = $this->entityManager->createQueryBuilder()
-            ->select('r.id AS id', 'r.name AS name')
+            ->select('r.id AS id', 'r.name AS name', 'r.secret AS secret')
             ->from(Recipe::class, 'r')
             ->where('r.authorId = :authorId')
             ->andWhere('r.typeSlug = :typeSlug')
@@ -121,7 +128,7 @@ final readonly class RecipePostgreSQLLoader implements RecipeLoader
 
         return new RecipeTypeRecipesDTO(
             new RecipeTypeDTO($type['slug'], $type['name'], $type['image'], (int) $type['sequence']),
-            array_map(static fn(array $recipe): RecipeSummaryDTO => new RecipeSummaryDTO($recipe['id'], $recipe['name']), $recipes),
+            array_map(static fn(array $recipe): RecipeSummaryDTO => new RecipeSummaryDTO($recipe['id'], $recipe['name'], (bool) $recipe['secret']), $recipes),
         );
     }
 
@@ -201,6 +208,9 @@ final readonly class RecipePostgreSQLLoader implements RecipeLoader
 
     /**
      * Les recettes originales des autres que l'utilisateur n'a pas encore copiées (sans select : l'appelant choisit la page ou le compte).
+     *
+     * Jamais une recette secrète (ADR 0033) : le filtre est ICI, dans la seule requête dont partent la page, le total et la recherche, pour
+     * qu'aucun chemin ne puisse l'oublier (`secret = false`, jamais « secret ou auteur » : ce sont les recettes des AUTRES).
      */
     private function otherPeopleQuery(string $userId): QueryBuilder
     {
@@ -208,6 +218,7 @@ final readonly class RecipePostgreSQLLoader implements RecipeLoader
             ->from(Recipe::class, 'r')
             ->innerJoin(RecipeType::class, 't', Join::WITH, 't.slug = r.typeSlug')
             ->where('r.authorId != :userId')
+            ->andWhere('r.secret = false')
             ->andWhere('r.originalId IS NULL')
             ->andWhere(sprintf('NOT EXISTS (SELECT c.id FROM %s c WHERE c.authorId = :userId AND c.originalId = r.id)', Recipe::class))
             ->setParameter('userId', $userId);

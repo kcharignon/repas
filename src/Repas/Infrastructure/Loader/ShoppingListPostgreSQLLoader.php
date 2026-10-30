@@ -251,6 +251,10 @@ final readonly class ShoppingListPostgreSQLLoader implements ShoppingListLoader
     /**
      * Types triés par ordre d'affichage, repas de chaque type triés par nom de recette.
      *
+     * Une recette secrète (ADR 0033) dont l'auteur n'est pas le propriétaire de la liste n'a ni nom ni type ici : un repas hérité d'avant
+     * `ShoppingList::addMeal` (une liste ne planifie plus que les recettes de son propriétaire) qui pointe vers elle n'est pas rendu, comme
+     * celui d'une recette qui n'existe plus (jointure interne). Le nom d'une secrète ne sort jamais d'une liste qui n'est pas à son auteur.
+     *
      * @return list<ShoppingListRecipeTypeDTO>
      */
     private function loadRecipeTypes(string $shoppingListId): array
@@ -262,7 +266,8 @@ final readonly class ShoppingListPostgreSQLLoader implements ShoppingListLoader
                 't.slug AS typeSlug', 't.name AS typeName', 't.image AS typeImage',
             )
             ->from(Meal::class, 'm')
-            ->innerJoin(Recipe::class, 'r', Join::WITH, 'r.id = m.recipeId')
+            ->innerJoin(ShoppingList::class, 'l', Join::WITH, 'l.id = m.shoppingListId')
+            ->innerJoin(Recipe::class, 'r', Join::WITH, 'r.id = m.recipeId AND (r.secret = false OR r.authorId = l.ownerId)')
             ->innerJoin(RecipeType::class, 't', Join::WITH, 't.slug = r.typeSlug')
             ->where('m.shoppingListId = :shoppingListId')
             ->setParameter('shoppingListId', $shoppingListId)

@@ -27,7 +27,7 @@ final class RemoveRecipeApiController extends AbstractController
     #[OA\Tag(name: 'Recipes')]
     #[OA\Parameter(ref: '#/components/parameters/IfMatch')]
     #[OA\Response(response: 204, description: 'Recette supprimée')]
-    #[OA\Response(response: 403, description: 'La recette appartient à un autre utilisateur')]
+    #[OA\Response(response: 403, description: "La recette appartient à un autre utilisateur (la recette secrète d'un autre est inconnue pour tous, administrateur compris : `404`)")]
     #[OA\Response(response: 404, description: 'Recette inconnue')]
     #[OA\Response(response: 409, description: "La recette est présente dans une liste de courses")]
     #[OA\Response(response: 412, description: "La version de la recette n'est plus celle de `If-Match` : elle a été modifiée depuis sa lecture")]

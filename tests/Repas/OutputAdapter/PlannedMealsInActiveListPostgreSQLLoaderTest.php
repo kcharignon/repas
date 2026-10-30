@@ -55,6 +55,27 @@ class PlannedMealsInActiveListPostgreSQLLoaderTest extends DatabaseTestCase
         return $recipe;
     }
 
+    public function testAMealInheritedFromTheSecretRecipeOfAnotherUserIsNotReturnedButTheOwnSecretRecipeIs(): void
+    {
+        // Given : la liste active de «reader» a un repas hérité (d'avant la garde de `addMeal`) vers la recette d'un autre, et son propre repas
+        // d'une recette à lui, secrète
+        $reader = $this->savedUser();
+        $author = $this->savedUser();
+        $own = $this->savedRecipe($reader, new RecipeBuilder()->isPastaCarbonara()->withName('Mon secret')->asSecret());
+        $other = $this->savedRecipe($author, new RecipeBuilder()->isBasqueCake()->withName('Gâteau de mamie'));
+        $this->shoppingLists->save(new ShoppingListBuilder()->withId('list-1')->withOwner($reader)->addRecipe($own)->build());
+        $this->entityManager->getConnection()->executeStatement("INSERT INTO meal (id, shopping_list, recipe, serving) VALUES ('legacy-meal', 'list-1', ?, 4)", [$other->getId()]);
+        $beforeSecret = $this->loader->forUser($reader->getId());
+
+        // When : son auteur la rend secrète
+        $this->entityManager->getConnection()->executeStatement('UPDATE recipe SET secret = TRUE WHERE id = ?', [$other->getId()]);
+        $afterSecret = $this->loader->forUser($reader->getId());
+
+        // Then : tant qu'elle est ordinaire le repas est rendu ; secrète, sa recette n'a plus de nom ici (comme une recette retirée)
+        $this->assertEqualsCanonicalizing(['Gâteau de mamie', 'Mon secret'], array_map(static fn(ListedMeal $meal): string => $meal->name, $beforeSecret));
+        $this->assertSame(['Mon secret'], array_map(static fn(ListedMeal $meal): string => $meal->name, $afterSecret));
+    }
+
     public function testItReturnsNullWhenTheUserHasNoActiveList(): void
     {
         // Given

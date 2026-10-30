@@ -65,14 +65,29 @@ class OwnershipPostgreSQLLoaderTest extends DatabaseTestCase
         // When & Then
         $this->assertSame($owner->getId(), $this->ownershipLoader->shoppingListOwnerId($shoppingList->getId()));
         $this->assertSame($owner->getId(), $this->ownershipLoader->mealOwnerId($mealId));
-        $this->assertSame($owner->getId(), $this->ownershipLoader->recipeAuthorId($recipe->getId()));
+        $this->assertSame($owner->getId(), $this->ownershipLoader->recipeAuthorIdFor($recipe->getId(), $owner->getId()));
+        // Une recette ordinaire donne son auteur à tout utilisateur : le voter refuse alors (403) celui qui n'en est pas l'auteur
+        $this->assertSame($owner->getId(), $this->ownershipLoader->recipeAuthorIdFor($recipe->getId(), 'un-autre'));
     }
 
     public function testAnUnknownShoppingListMealOrRecipeRaisesItsNotFoundException(): void
     {
         $this->assertThrowsObject(ShoppingListException::shoppingListNotFound('inconnue'), fn() => $this->ownershipLoader->shoppingListOwnerId('inconnue'));
         $this->assertThrowsObject(MealException::notFound(), fn() => $this->ownershipLoader->mealOwnerId('inconnu'));
-        $this->assertThrowsObject(RecipeException::notFound('inconnue'), fn() => $this->ownershipLoader->recipeAuthorId('inconnue'));
+        $this->assertThrowsObject(RecipeException::notFound('inconnue'), fn() => $this->ownershipLoader->recipeAuthorIdFor('inconnue', 'un-utilisateur'));
+    }
+
+    public function testASecretRecipeIsKnownToItsAuthorOnlyAndIsNotFoundForAnyoneElseLikeAnUnknownOne(): void
+    {
+        // Given : une recette secrète (ADR 0033)
+        $author = new UserBuilder()->build();
+        $this->persister->saveUser($author);
+        $recipe = new RecipeBuilder()->withAuthor($author)->asSecret()->build();
+        $this->persister->saveRecipe($recipe);
+
+        // Then : son auteur la retrouve ; tout autre reçoit EXACTEMENT l'exception d'une recette inconnue (même 404, même message)
+        $this->assertSame($author->getId(), $this->ownershipLoader->recipeAuthorIdFor($recipe->getId(), $author->getId()));
+        $this->assertThrowsObject(RecipeException::notFound($recipe->getId()), fn() => $this->ownershipLoader->recipeAuthorIdFor($recipe->getId(), 'un-autre'));
     }
 
     private function assertThrowsObject(\Throwable $expected, callable $action): void

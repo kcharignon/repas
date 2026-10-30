@@ -164,6 +164,43 @@ class CreateRecipeHandlerTest extends TestCase
         $this->assertEquals([new RecipeCreatedEvent('user-id', 'unique_id')], $this->eventDispatcher->eventDispatched);
     }
 
+    /**
+     * @return array<string, array{array<string, bool>, bool}>
+     */
+    public static function secretChoices(): array
+    {
+        return [
+            'secrète' => [['secret' => true], true],
+            'ordinaire, dite' => [['secret' => false], false],
+            'ordinaire par défaut (ADR 0033)' => [[], false],
+        ];
+    }
+
+    /**
+     * @param array<string, bool> $secret
+     */
+    #[DataProvider('secretChoices')]
+    public function testTheSecretChoiceIsRecordedAndTheRecipeIsOrdinaryByDefault(array $secret, bool $expected): void
+    {
+        // Arrange
+        $pasta = new IngredientBuilder()->isPasta()->build();
+        $this->ingredientRepository->save($pasta);
+        $command = new CreateRecipeCommand(...[
+            'id' => 'unique_id',
+            'name' => 'Gloubiboulga',
+            'serving' => 4,
+            'authorId' => IngredientBuilder::DEFAULT_CREATOR_ID,
+            'rows' => new Tab([new CreateRecipeRowSubCommand($pasta->getSlug(), 'gramme', 10)], CreateRecipeRowSubCommand::class),
+            'typeSlug' => 'plat',
+        ] + $secret);
+
+        // Act
+        ($this->handler)($command);
+
+        // Assert
+        $this->assertSame($expected, $this->recipeRepository->findOneById('unique_id')->isSecret());
+    }
+
     public function testRefusesAnUnknownUnit(): void
     {
         // Arrange

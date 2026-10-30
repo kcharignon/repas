@@ -155,6 +155,83 @@ class UpdateRecipeHandlerTest extends TestCase
         $this->assertSame($stored, $this->recipeRepository->findOneById($recipe->getId())->getName());
     }
 
+    // --- La recette secrète (ADR 0033) ----------------------------------------------------------------------------------------------
+
+    /**
+     * @return array<string, array{bool, ?bool, bool}> le choix actuel, le choix envoyé (`null` : absent), le choix enregistré
+     */
+    public static function authorChoices(): array
+    {
+        return [
+            'ordinaire, rendue secrète' => [false, true, true],
+            'secrète, rendue visible' => [true, false, false],
+            'secrète, choix absent : inchangé' => [true, null, true],
+            'ordinaire, choix absent : inchangé' => [false, null, false],
+            'secrète, même choix' => [true, true, true],
+        ];
+    }
+
+    #[DataProvider('authorChoices')]
+    public function testOnlyTheChoiceSentByTheAuthorChangesTheSecretFlag(bool $current, ?bool $sent, bool $expected): void
+    {
+        // Arrange
+        $recipe = new RecipeBuilder()->isPastaCarbonara()->withAuthorId(self::AUTHOR)->asSecret($current)->build();
+        $this->recipeRepository->save($recipe);
+
+        // Act
+        ($this->handler)(new UpdateRecipeCommand($recipe->getId(), 'Pates', 4, Tab::fromArray(new UpdateRecipeRowSubCommand('pate', 'gramme', 500)), 'plat', secret: $sent, userId: self::AUTHOR));
+
+        // Assert
+        $this->assertSame($expected, $this->recipeRepository->findOneById($recipe->getId())->isSecret());
+    }
+
+    /**
+     * @return array<string, array{bool, bool, ?string}> le choix actuel, le choix envoyé, l'utilisateur qui modifie
+     */
+    public static function intrudersChoices(): array
+    {
+        return [
+            'un administrateur rend publique la recette secrète d\'un autre' => [true, false, 'admin-id'],
+            'un administrateur cache la recette ordinaire d\'un autre' => [false, true, 'admin-id'],
+            'sans utilisateur, personne ne change le choix' => [false, true, null],
+        ];
+    }
+
+    #[DataProvider('intrudersChoices')]
+    public function testAnotherUserCannotChangeTheSecretFlagAndNothingIsWritten(bool $current, bool $sent, ?string $userId): void
+    {
+        // Arrange
+        $recipe = new RecipeBuilder()->isPastaCarbonara()->withAuthorId(self::AUTHOR)->asSecret($current)->build();
+        $this->recipeRepository->save($recipe);
+
+        // Act
+        try {
+            ($this->handler)(new UpdateRecipeCommand($recipe->getId(), 'Pates piratées', 4, Tab::fromArray(new UpdateRecipeRowSubCommand('pate', 'gramme', 500)), 'plat', secret: $sent, userId: $userId));
+            $this->fail('Seul l\'auteur change le choix.');
+        } catch (RecipeException $exception) {
+            // Assert : un refus d'autorisation, et la recette n'a pas bougé (ni le nom, ni la version)
+            $this->assertEquals(RecipeException::secretForbidden(), $exception);
+            $this->assertSame(403, $exception->getCode());
+        }
+        $stored = $this->recipeRepository->findOneById($recipe->getId());
+        $this->assertSame([$current, 'Pates carbonara'], [$stored->isSecret(), $stored->getName()]);
+    }
+
+    public function testAnAdministratorEditingTheRecipeOfAnotherWithoutChangingTheChoiceIsAnOrdinaryEdit(): void
+    {
+        // Arrange : le choix envoyé est le choix actuel, ou n'est pas envoyé
+        $recipe = new RecipeBuilder()->isPastaCarbonara()->withAuthorId(self::AUTHOR)->asSecret()->build();
+        $this->recipeRepository->save($recipe);
+
+        // Act
+        ($this->handler)(new UpdateRecipeCommand($recipe->getId(), 'Pates corrigées', 4, Tab::fromArray(new UpdateRecipeRowSubCommand('pate', 'gramme', 500)), 'plat', secret: true, userId: 'admin-id'));
+        ($this->handler)(new UpdateRecipeCommand($recipe->getId(), 'Pates revues', 4, Tab::fromArray(new UpdateRecipeRowSubCommand('pate', 'gramme', 500)), 'plat', userId: 'admin-id'));
+
+        // Assert
+        $stored = $this->recipeRepository->findOneById($recipe->getId());
+        $this->assertSame([true, 'Pates revues'], [$stored->isSecret(), $stored->getName()]);
+    }
+
     public function testAnOldSlugOfACommonTheAuthorReceivedACopyOfLandsOnHisIngredient(): void
     {
         // Arrange : l'ancien commun « pate » est maintenant celui du propriétaire du catalogue ; l'auteur de la recette en a reçu une copie, et la

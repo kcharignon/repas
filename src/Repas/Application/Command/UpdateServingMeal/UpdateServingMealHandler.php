@@ -3,6 +3,7 @@
 namespace Repas\Repas\Application\Command\UpdateServingMeal;
 
 
+use Repas\Repas\Domain\Exception\RecipeException;
 use Repas\Repas\Domain\Interface\RecipeRepository;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Repas\Domain\Model\Meal;
@@ -19,6 +20,9 @@ readonly class UpdateServingMealHandler
     ) {
     }
 
+    /**
+     * @throws RecipeException la recette du repas est secrète et n'est pas celle du propriétaire de la liste
+     */
     public function __invoke(UpdateServingMealCommand $command): void
     {
         $shoppingList = $this->shoppingListRepository->findOneByMealId($command->mealId);
@@ -28,12 +32,17 @@ readonly class UpdateServingMealHandler
 
         $meal = $shoppingList->getMeals()->find(fn(Meal $meal) => $meal->getId() === $command->mealId);
 
+        // La recette d'abord, même quand rien ne change : un repas hérité qui pointe vers la recette SECRÈTE d'un autre (ADR 0033) est refusé comme
+        // une recette inconnue (404), la même réponse quel que soit le nombre de personnes envoyé ; sinon les quantités de la liste diraient son contenu
+        $recipe = $this->recipeRepository->findOneById($meal->getRecipeId());
+        if (!$recipe->isVisibleTo($shoppingList->getOwnerId())) {
+            throw RecipeException::notFound($recipe->getId());
+        }
+
         // Le serving n'a pas ete changer
         if ($meal->getServing() === $command->serving) {
             return ;
         }
-
-        $recipe = $this->recipeRepository->findOneById($meal->getRecipeId());
 
         // Le coefficient de difference = Nouveau Serving - Ancien Serving
         // S'il est positif on dois ajouter, s'il est négatif on doit soustraire

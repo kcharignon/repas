@@ -61,7 +61,8 @@ readonly class CopyRecipeHandler
     }
 
     /**
-     * @throws RecipeException la recette est inconnue, ou le copieur a déjà `Recipe::MAX_PER_AUTHOR_WITH_COPIES` recettes
+     * @throws RecipeException la recette est inconnue ou secrète et d'un autre (pour lui elle n'existe pas : ADR 0033, administrateur compris),
+     *                         ou le copieur a déjà `Recipe::MAX_PER_AUTHOR_WITH_COPIES` recettes
      */
     public function __invoke(CopyRecipeCommand $command): void
     {
@@ -72,6 +73,10 @@ readonly class CopyRecipeHandler
 
         $originalRecipe = $this->recipeRepository->findOneById($command->recipeId);
         $copierId = $command->authorId;
+        // Avant toute écriture, y compris la copie d'un ingrédient : la recette secrète d'un autre est introuvable, comme une recette inconnue
+        if (!$originalRecipe->isVisibleTo($copierId)) {
+            throw RecipeException::notFound($command->recipeId);
+        }
 
         // Les ingrédients de l'original et les unités qui y sont utilisées, une fois par ingrédient
         /** @var array<string, Ingredient> $sources */

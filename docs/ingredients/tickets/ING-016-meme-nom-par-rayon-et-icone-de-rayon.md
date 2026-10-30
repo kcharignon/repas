@@ -1,6 +1,6 @@
 # ING-016 — Le même nom dans deux rayons, et l'icône d'un rayon
 
-- **Dépôt** : **back** (cette fiche) ; le front est **ING-017** (non fait)
+- **Dépôt** : **back** (cette fiche) ; le front est [**ING-017**](ING-017-icones-de-rayon-et-creation-dans-la-recette.md) (fait)
 - **Jalon** : I6 Plus d'ingrédient commun (suite)
 - **Taille** : M
 - **Effort recommandé pour l'agent** : **high** (règle d'unicité, plusieurs chemins d'écriture, aucune donnée de production touchée)
@@ -68,6 +68,6 @@ Déjà présents (inchangés) : la recherche (`IngredientSearchResultDTO`), la f
 **Hors périmètre** : les DTO du contexte `Drive` qui montrent un nom d'ingrédient (`ChoiceDTO`, `DrivePlanLineDTO`, `DriveEstimateLineDTO`) ne disent pas le rayon : à décider avec ING-017 (le contexte ne dépend que de `Shared`).
 
 **Tests** : `DepartmentIconTest`, `CreateDepartmentHandlerTest` / `UpdateDepartmentHandlerTest` (valeur, `null`, clé absente, inconnue), `CreateDepartmentApiControllerTest` / `UpdateDepartmentApiControllerTest` (corps, clés), `DepartmentIconApiFlowTest` (parcours complet avec les vrais bus, accès), `DepartmentRepositoryTest`, `DepartmentPostgreSQLLoaderTest` (valeur inconnue lue comme aucune icône), `DepartmentIconMigrationTest` (jumelle du schéma, rejouable, ancien code compatible, `down`), `DevelopmentFixturesTest`, et les loaders des quatre DTO ci-dessus. Aucun budget SQL ne change.
-## ING-017 (front, non fait)
+## ING-017 (front, fait)
 
-Le front montre l'icône du rayon à côté d'un ingrédient quand deux ingrédients du compte portent le même nom (recherche d'ingrédient, ligne de recette, ligne de liste), règle l'icône sur l'écran des rayons de l'administrateur, et traduit `INGREDIENT_NAME_ALREADY_USED` (aujourd'hui, un `409` s'affiche comme « une autre modification est en cours »). Écrit après la seconde PR du back.
+Le front montre l'icône du rayon devant un ingrédient (choix, recette, liste, écran des rayons), dit le rayon sous le nom quand deux ingrédients de même nom sont dans la même liste, règle l'icône sur l'écran des rayons de l'administrateur, traduit `INGREDIENT_NAME_ALREADY_USED` et permet de créer un ingrédient sans quitter la recette : voir [ING-017](ING-017-icones-de-rayon-et-creation-dans-la-recette.md).

@@ -443,6 +443,60 @@ class ShoppingListPostgreSQLLoaderTest extends DatabaseTestCase
         $this->shoppingListLoader->getByMealId('unknown-meal');
     }
 
+    public function testAMealInheritedFromTheSecretRecipeOfAnotherUserShowsNoNameAndNoType(): void
+    {
+        // Given : une liste de «reader» dont un repas hérité (d'avant la garde de `addMeal`) pointe vers la recette d'un autre, d'abord ordinaire
+        $reader = $this->savedUser();
+        $author = $this->savedUser();
+        $ownRecipe = new RecipeBuilder()->isPastaCarbonara()->withName('Mon plat')->withAuthor($reader)->build();
+        $other = new RecipeBuilder()->isBasqueCake()->withName('Gâteau de mamie')->withAuthor($author)->build();
+        $this->persister->saveRecipe($ownRecipe);
+        $this->persister->saveRecipe($other);
+        $this->shoppingListRepository->save(new ShoppingListBuilder()->withId('list-1')->withOwner($reader)->addRecipe($ownRecipe)->build());
+        $this->entityManager->getConnection()->executeStatement("INSERT INTO meal (id, shopping_list, recipe, serving) VALUES ('legacy-meal', 'list-1', ?, 4)", [$other->getId()]);
+
+        // When : tant qu'elle est ordinaire, le repas hérité se lit comme avant
+        $visible = $this->shoppingListLoader->get('list-1');
+        // Puis son auteur la rend secrète (ADR 0033)
+        $this->entityManager->getConnection()->executeStatement('UPDATE recipe SET secret = TRUE WHERE id = ?', [$other->getId()]);
+        $hidden = $this->shoppingListLoader->get('list-1');
+
+        // Then : ni son nom, ni son type, ni son identifiant ne sortent plus de la liste de «reader» ; son propre repas reste
+        $this->assertSame(['Gâteau de mamie', 'Mon plat'], $this->recipeNames($visible));
+        $this->assertSame(['Mon plat'], $this->recipeNames($hidden));
+        $this->assertSame(['plat'], array_map(static fn(ShoppingListRecipeTypeDTO $type): string => $type->slug, $hidden->recipeTypes));
+        $this->assertSame(1, $hidden->recipeCount);
+        $this->assertStringNotContainsString($other->getId(), json_encode($hidden, JSON_THROW_ON_ERROR));
+    }
+
+    public function testTheSecretRecipeOfTheOwnerOfTheListStaysInIt(): void
+    {
+        // Given : l'auteur planifie sa propre recette secrète
+        $owner = $this->savedUser();
+        $secret = new RecipeBuilder()->isPastaCarbonara()->withName('Mon secret')->withAuthor($owner)->asSecret()->build();
+        $this->persister->saveRecipe($secret);
+        $this->shoppingListRepository->save(new ShoppingListBuilder()->withId('list-1')->withOwner($owner)->addRecipe($secret)->build());
+
+        // When & Then
+        $this->assertSame(['Mon secret'], $this->recipeNames($this->shoppingListLoader->get('list-1')));
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function recipeNames(\Repas\Repas\Application\Query\GetShoppingList\ShoppingListDetailDTO $list): array
+    {
+        $names = [];
+        foreach ($list->recipeTypes as $type) {
+            foreach ($type->meals as $meal) {
+                $names[] = $meal->recipeName;
+            }
+        }
+        sort($names);
+
+        return $names;
+    }
+
     private function savedUser(): User
     {
         $user = new UserBuilder()->build();
