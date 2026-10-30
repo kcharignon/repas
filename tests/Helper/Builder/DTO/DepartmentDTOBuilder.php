@@ -11,6 +11,7 @@ class DepartmentDTOBuilder implements Builder
     private string $slug;
     private string $name;
     private string $image;
+    private ?string $icon = null;
 
     private function initialize(): void
     {
@@ -37,9 +38,15 @@ class DepartmentDTOBuilder implements Builder
         return $this;
     }
 
+    public function withIcon(?string $icon): self
+    {
+        $this->icon = $icon;
+        return $this;
+    }
+
     public function build(): DepartmentDTO
     {
         $this->initialize();
-        return new DepartmentDTO($this->slug, $this->name, $this->image);
+        return new DepartmentDTO($this->slug, $this->name, $this->image, $this->icon);
     }
 }

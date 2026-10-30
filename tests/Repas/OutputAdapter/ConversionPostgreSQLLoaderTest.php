@@ -51,7 +51,7 @@ class ConversionPostgreSQLLoaderTest extends DatabaseTestCase
 
         // Then
         $this->assertEquals(
-            [new ConversionDTO($conversion->getId(), $ingredient->getSlug(), 'zzz beurre', 'admin@example.com', 'plaquette', 'plaquette', 'gramme', 'gramme', 250.0)],
+            [new ConversionDTO($conversion->getId(), $ingredient->getSlug(), 'zzz beurre', 'admin@example.com', 'plaquette', 'plaquette', 'gramme', 'gramme', 250.0, 'conserve', 'conserve')],
             $result,
         );
     }
@@ -139,7 +139,7 @@ class ConversionPostgreSQLLoaderTest extends DatabaseTestCase
         $result = $this->conversionLoader->get($conversion->getId(), $this->admin->getId());
 
         // Then
-        $this->assertEquals(new ConversionDTO($conversion->getId(), $conversion->getIngredient()->getSlug(), 'beurre', 'admin@example.com', 'plaquette', 'plaquette', 'gramme', 'gramme', 250.0), $result);
+        $this->assertEquals(new ConversionDTO($conversion->getId(), $conversion->getIngredient()->getSlug(), 'beurre', 'admin@example.com', 'plaquette', 'plaquette', 'gramme', 'gramme', 250.0, 'conserve', 'conserve'), $result);
     }
 
     public function testGetReturnsAGeneralConversionToAnyAdministrator(): void

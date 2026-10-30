@@ -13,7 +13,7 @@ class ListDepartmentsApiControllerTest extends QueryBusWebTestCase
     {
         // Given
         $this->queryBus->willReturn(ListDepartmentsQuery::class, [
-            new DepartmentDTOBuilder()->withSlug('boulangerie')->withName('Boulangerie')->withImage('images/boulangerie.png')->build(),
+            new DepartmentDTOBuilder()->withSlug('boulangerie')->withName('Boulangerie')->withImage('images/boulangerie.png')->withIcon('snowflake')->build(),
             new DepartmentDTOBuilder()->withSlug('fromage')->withName('Fromage')->withImage('images/fromage.png')->build(),
         ]);
 
@@ -25,8 +25,8 @@ class ListDepartmentsApiControllerTest extends QueryBusWebTestCase
         $this->assertInstanceOf(ListDepartmentsQuery::class, $this->queryBus->getLastAskedQuery());
         $this->assertSame([
             'member' => [
-                ['slug' => 'boulangerie', 'name' => 'Boulangerie', 'image' => 'images/boulangerie.png'],
-                ['slug' => 'fromage', 'name' => 'Fromage', 'image' => 'images/fromage.png'],
+                ['slug' => 'boulangerie', 'name' => 'Boulangerie', 'image' => 'images/boulangerie.png', 'icon' => 'snowflake'],
+                ['slug' => 'fromage', 'name' => 'Fromage', 'image' => 'images/fromage.png', 'icon' => null],
             ],
             'totalItems' => 2,
         ], $this->jsonBody());

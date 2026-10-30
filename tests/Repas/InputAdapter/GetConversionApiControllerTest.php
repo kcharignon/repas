@@ -26,7 +26,7 @@ class GetConversionApiControllerTest extends QueryBusWebTestCase
         $this->assertInstanceOf(GetConversionQuery::class, $query);
         $this->assertSame(['conversion-1', $admin->getId()], [$query->conversionId, $query->viewerId]);
         $this->assertSame(
-            ['id', 'ingredientSlug', 'ingredientName', 'creatorEmail', 'startUnitSlug', 'startUnitName', 'endUnitSlug', 'endUnitName', 'coefficient'],
+            ['id', 'ingredientSlug', 'ingredientName', 'creatorEmail', 'startUnitSlug', 'startUnitName', 'endUnitSlug', 'endUnitName', 'coefficient', 'departmentSlug', 'departmentName'],
             array_keys($this->jsonBody()),
         );
         $this->assertSame('conversion-1', $this->jsonBody()['id']);

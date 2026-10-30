@@ -30,10 +30,12 @@ class ListConversionsApiControllerTest extends QueryBusWebTestCase
                 [
                     'id' => 'conversion-1', 'ingredientSlug' => 'beurre', 'ingredientName' => 'beurre', 'creatorEmail' => 'createur@example.com',
                     'startUnitSlug' => 'plaquette', 'startUnitName' => 'plaquette', 'endUnitSlug' => 'gramme', 'endUnitName' => 'gramme', 'coefficient' => 250,
+                    'departmentSlug' => 'epicerie', 'departmentName' => 'épicerie',
                 ],
                 [
                     'id' => 'conversion-2', 'ingredientSlug' => null, 'ingredientName' => null, 'creatorEmail' => null,
                     'startUnitSlug' => 'kilo', 'startUnitName' => 'kilo', 'endUnitSlug' => 'gramme', 'endUnitName' => 'gramme', 'coefficient' => 1000,
+                    'departmentSlug' => null, 'departmentName' => null,
                 ],
             ],
             'totalItems' => 2,

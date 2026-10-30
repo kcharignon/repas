@@ -59,7 +59,7 @@ class GetShoppingListApiControllerTest extends QueryBusWebTestCase
                 'slug' => 'divers',
                 'name' => 'divers',
                 'image' => 'images/divers.svg',
-                'rows' => [['id' => 'row-egg', 'ingredientName' => 'œuf', 'quantity' => 6, 'unitSymbol' => '', 'checked' => true, 'ingredientSlug' => 'oeuf', 'unitSlug' => 'unite']],
+                'rows' => [['id' => 'row-egg', 'ingredientName' => 'œuf', 'quantity' => 6, 'unitSymbol' => '', 'checked' => true, 'ingredientSlug' => 'oeuf', 'unitSlug' => 'unite', 'departmentSlug' => 'divers', 'departmentName' => 'divers']],
             ]],
             'recipeTypes' => [[
                 'slug' => 'plat',

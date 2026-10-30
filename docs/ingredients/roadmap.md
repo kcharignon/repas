@@ -63,7 +63,7 @@ Taille : S (quelques heures), M (une journée), L (plusieurs jours). Effort : le
 
 ### I7 — Le même nom dans deux rayons, l'icône d'un rayon (amendement du 2026-10-30)
 
-- [ ] [ING-016](tickets/ING-016-meme-nom-par-rayon-et-icone-de-rayon.md) back · M · **high** · A : un nom est unique par propriétaire ET par rayon (`409 INGREDIENT_NAME_ALREADY_USED`, création et modification, slug libre `…-2…`, aucune migration) ; B : `department.icon` (`snowflake`, `can`), lue dans les rayons, réglée par l'administrateur, et le rayon dans les DTO qui montrent un nom d'ingrédient · deux PR (A puis B) · dépend de : — · **A faite** (PR de l'unicité par rayon)
+- [x] [ING-016](tickets/ING-016-meme-nom-par-rayon-et-icone-de-rayon.md) (A : PR #356 ; B : seconde PR) back · M · **high** · A : un nom est unique par propriétaire ET par rayon (`409 INGREDIENT_NAME_ALREADY_USED`, création et modification, slug libre `…-2…`, aucune migration) ; B : `department.icon` (`snowflake`, `can`), lue dans les rayons, réglée par l'administrateur, et le rayon dans les DTO qui montrent un nom d'ingrédient · deux PR (A puis B) · dépend de : —
 - [ ] ING-017 **front** · M · **high** · l'icône du rayon distingue deux ingrédients de même nom (recherche, ligne de recette, ligne de liste), réglage sur l'écran des rayons, texte de `INGREDIENT_NAME_ALREADY_USED` · dépend de : ING-016 B en production · **non fait**
 
 ### Transverse

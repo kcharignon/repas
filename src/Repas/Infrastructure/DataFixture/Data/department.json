@@ -47,12 +47,14 @@
   {
     "slug": "surgele",
     "name": "surgelé",
-    "image": "images\/department\/surgele.png"
+    "image": "images\/department\/surgele.png",
+    "icon": "snowflake"
   },
   {
     "slug": "conserve",
     "name": "conserve",
-    "image": "images\/department\/conserve.png"
+    "image": "images\/department\/conserve.png",
+    "icon": "can"
   },
   {
     "slug": "aide-patissier",

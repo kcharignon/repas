@@ -235,6 +235,8 @@ final readonly class ShoppingListPostgreSQLLoader implements ShoppingListLoader
                 checked: (bool) $row['checked'],
                 ingredientSlug: $row['ingredientSlug'],
                 unitSlug: $row['unitSlug'],
+                departmentSlug: $row['departmentSlug'],
+                departmentName: $row['departmentName'],
             );
         }
         ksort($groups, SORT_STRING);

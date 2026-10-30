@@ -5,7 +5,7 @@
 - **Taille** : M
 - **Effort recommandé pour l'agent** : **high** (règle d'unicité, plusieurs chemins d'écriture, aucune donnée de production touchée)
 - **Dépend de** : — (le code d'ING-012 à ING-014 est en production)
-- **Statut** : partie A (unicité par rayon) faite ; partie B (icône de rayon) : voir la section B
+- **Statut** : fait (partie A : PR #356 ; partie B : seconde PR)
 - **Lire d'abord** : [ADR 0028](../../adr/0028-ingredients-propres-a-chaque-utilisateur.md) amendement du 2026-10-30 ; [`sans-commun.md`](../sans-commun.md) ; `CLAUDE.md` (puces « Plus de nouvel ingrédient commun », « Fusion », « Doublons possibles », « Amorçage ») ; skill `repas-dev`.
 
 ## Contexte
@@ -45,8 +45,29 @@ Demande du propriétaire (2026-10-30) : « Deux ingrédients d'une même personn
 
 ## B. Une icône de rayon
 
-Voir l'amendement de l'ADR 0028 et la section B ajoutée avec la seconde PR.
+**Schéma** : `department.icon VARCHAR(32) DEFAULT NULL` (migration `Version20261030190000`, additive, rejouable, `down` supprime la colonne seule). Aucune donnée écrite : `NULL` partout, la valeur se règle par l'écran d'administration. Les rayons sont des **données globales** (pas de propriétaire) : l'icône l'est aussi.
 
+**Domaine** : l'énumération `Repas\Repas\Domain\Model\DepartmentIcon` (`snowflake`, `can`), seule liste des valeurs permises (`values()`, `parse()` pour une demande de client, `known()` pour une lecture) ; `Department::getIcon()`, `changeIcon()` ; `update(name, image)` ne touche jamais l'icône.
+
+**Écriture** : `PUT /api/v1/departments/{slug}` et `POST /api/v1/departments`, `ROLE_ADMIN` comme avant. `icon` : une valeur, `null` (efface) ou clé **absente** (inchangée, `UpdateDepartmentCommand::$changeIcon` posé par le controller d'après le corps) ; valeur inconnue : `422` (corps) et `DepartmentException::unknownIcon()` (cas d'usage, avant toute écriture).
+
+**Lecture** (formes exactes) :
+
+| Où | Champ ajouté |
+|---|---|
+| `DepartmentDTO` (`GET /departments`, `GET /departments/{slug}`, `department` de `GET /departments/{slug}/ingredients`) | `icon: string\|null`, clé toujours écrite |
+| `RecipeRowDTO` (lignes de `GET /recipes/{id}`) | `departmentSlug: string`, `departmentName: string` |
+| `ShoppingListRowDTO` (lignes de `GET /shopping-lists/{id}` et ligne seule) | `departmentSlug: string`, `departmentName: string` |
+| `IngredientOptionDTO` (`GET /ingredients`, le choix d'un ingrédient) | `departmentSlug: string`, `departmentName: string` |
+| `ConversionDTO` (`GET /conversions*`, écran de l'administrateur) | `departmentSlug: string\|null`, `departmentName: string\|null` (`null` pour une conversion générale) |
+
+Déjà présents (inchangés) : la recherche (`IngredientSearchResultDTO`), la fiche (`IngredientDTO`), les ingrédients à régler, les candidats et l'aperçu de la fusion, les doublons possibles.
+
+**Fixtures** : `department.json` donne `snowflake` à `surgele` et `can` à `conserve` (développement et tests seulement).
+
+**Hors périmètre** : les DTO du contexte `Drive` qui montrent un nom d'ingrédient (`ChoiceDTO`, `DrivePlanLineDTO`, `DriveEstimateLineDTO`) ne disent pas le rayon : à décider avec ING-017 (le contexte ne dépend que de `Shared`).
+
+**Tests** : `DepartmentIconTest`, `CreateDepartmentHandlerTest` / `UpdateDepartmentHandlerTest` (valeur, `null`, clé absente, inconnue), `CreateDepartmentApiControllerTest` / `UpdateDepartmentApiControllerTest` (corps, clés), `DepartmentIconApiFlowTest` (parcours complet avec les vrais bus, accès), `DepartmentRepositoryTest`, `DepartmentPostgreSQLLoaderTest` (valeur inconnue lue comme aucune icône), `DepartmentIconMigrationTest` (jumelle du schéma, rejouable, ancien code compatible, `down`), `DevelopmentFixturesTest`, et les loaders des quatre DTO ci-dessus. Aucun budget SQL ne change.
 ## ING-017 (front, non fait)
 
 Le front montre l'icône du rayon à côté d'un ingrédient quand deux ingrédients du compte portent le même nom (recherche d'ingrédient, ligne de recette, ligne de liste), règle l'icône sur l'écran des rayons de l'administrateur, et traduit `INGREDIENT_NAME_ALREADY_USED` (aujourd'hui, un `409` s'affiche comme « une autre modification est en cours »). Écrit après la seconde PR du back.

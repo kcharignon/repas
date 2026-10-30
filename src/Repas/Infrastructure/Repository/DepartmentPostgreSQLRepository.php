@@ -59,7 +59,8 @@ readonly class DepartmentPostgreSQLRepository extends PostgreSQLRepository imple
     private function updateEntity(DepartmentEntity $departmentEntity, DepartmentModel $department): void
     {
         $departmentEntity->setName($department->getName())
-            ->setImage($department->getImage());
+            ->setImage($department->getImage())
+            ->setIcon($department->getIcon()?->value);
     }
 
     private function convertEntityToModel(DepartmentEntity $departmentEntity): DepartmentModel
@@ -68,6 +69,7 @@ readonly class DepartmentPostgreSQLRepository extends PostgreSQLRepository imple
             'slug' => $departmentEntity->getSlug(),
             'name' => $departmentEntity->getName(),
             'image' => $departmentEntity->getImage(),
+            'icon' => $departmentEntity->getIcon(),
         ]);
     }
 

@@ -17,6 +17,8 @@ class ConversionDTOBuilder implements Builder
     private string $endUnitSlug = 'gramme';
     private string $endUnitName = 'gramme';
     private float $coefficient = 250;
+    private ?string $departmentSlug = 'epicerie';
+    private ?string $departmentName = 'épicerie';
 
     public function withId(string $id): self
     {
@@ -29,6 +31,13 @@ class ConversionDTOBuilder implements Builder
         $this->ingredientSlug = $slug;
         $this->ingredientName = $name;
         $this->creatorEmail = $creatorEmail;
+        return $this;
+    }
+
+    public function withDepartment(?string $slug, ?string $name): self
+    {
+        $this->departmentSlug = $slug;
+        $this->departmentName = $name;
         return $this;
     }
 
@@ -52,6 +61,8 @@ class ConversionDTOBuilder implements Builder
         return new ConversionDTO(
             $this->id, $this->ingredientSlug, $this->ingredientName, $this->creatorEmail,
             $this->startUnitSlug, $this->startUnitName, $this->endUnitSlug, $this->endUnitName, $this->coefficient,
+            // une conversion générale n'a pas d'ingrédient, donc pas de rayon
+            $this->ingredientSlug === null ? null : $this->departmentSlug, $this->ingredientSlug === null ? null : $this->departmentName,
         );
     }
 }

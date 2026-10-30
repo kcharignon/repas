@@ -24,6 +24,34 @@ class CreateDepartmentApiControllerTest extends QueryBusWebTestCase
         $this->assertSame('/api/v1/departments/surgeles', $this->client->getResponse()->headers->get('Location'));
     }
 
+    /**
+     * @param array<string, mixed> $extra
+     */
+    #[DataProvider('iconBodies')]
+    public function testTheIconIsOptionalAndForwardedAsIs(array $extra, ?string $expected): void
+    {
+        // Given
+        $commandBus = $this->mockCommandBus()->willReturn(CreateDepartmentCommand::class, 'surgeles');
+
+        // When
+        $this->post($this->savedUser(admin: true), $extra + ['name' => 'Surgelés', 'image' => 'images/frozen.svg']);
+
+        // Then
+        $this->assertSame(201, $this->client->getResponse()->getStatusCode());
+        $this->assertEquals([new CreateDepartmentCommand('Surgelés', 'images/frozen.svg', $expected)], $commandBus->dispatched());
+    }
+
+    /**
+     * @return iterable<string, array{array<string, mixed>, ?string}>
+     */
+    public static function iconBodies(): iterable
+    {
+        yield 'avec une icône' => [['icon' => 'snowflake'], 'snowflake'];
+        yield 'avec une autre icône' => [['icon' => 'can'], 'can'];
+        yield 'null' => [['icon' => null], null];
+        yield 'sans la clé' => [[], null];
+    }
+
     public function testRefusesAUserWhoIsNotAnAdministrator(): void
     {
         // Given
@@ -67,6 +95,10 @@ class CreateDepartmentApiControllerTest extends QueryBusWebTestCase
         yield 'image http non sécurisée' => [['image' => 'http://exemple.org/a.png'] + $valid];
         yield 'image javascript' => [['image' => 'javascript:alert(1)'] + $valid];
         yield 'chemin hors images' => [['image' => '../secret.png'] + $valid];
+        yield 'icône inconnue' => [['icon' => 'sparkles'] + $valid];
+        yield 'icône vide' => [['icon' => ''] + $valid];
+        yield 'icône qui n\'est pas un texte' => [['icon' => 12] + $valid];
+        yield 'icône en liste' => [['icon' => ['snowflake']] + $valid];
     }
 
     public function testRefusesAnUnauthenticatedRequest(): void

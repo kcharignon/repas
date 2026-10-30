@@ -28,11 +28,11 @@ final class CreateDepartmentApiController extends AbstractController
     #[OA\Response(response: 201, description: 'Créé', headers: [new OA\Header(header: 'Location', description: 'URL de la ressource créée', schema: new OA\Schema(type: 'string'))])]
     #[OA\Response(response: 403, description: 'Réservé aux administrateurs')]
     #[OA\Response(response: 409, description: 'Un élément de même slug existe déjà (le slug dérive du nom)')]
-    #[OA\Response(response: 422, description: 'Corps de la requête invalide')]
+    #[OA\Response(response: 422, description: "Corps de la requête invalide, ou icône inconnue")]
     public function __invoke(#[MapRequestPayload] DepartmentPayload $payload): Response
     {
         /** @var string $slug le handler renvoie le slug, qui dérive du nom */
-        $slug = $this->commandBus->dispatch(new CreateDepartmentCommand(name: $payload->name, image: $payload->image));
+        $slug = $this->commandBus->dispatch(new CreateDepartmentCommand(name: $payload->name, image: $payload->image, icon: $payload->icon));
 
         return new Response(status: Response::HTTP_CREATED, headers: ['Location' => $this->generateUrl('api_get_department', ['slug' => $slug])]);
     }

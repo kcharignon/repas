@@ -15,6 +15,7 @@ final class Department implements ModelInterface
         private string $slug,
         private string $name,
         private string $image,
+        private ?DepartmentIcon $icon = null,
     ) {
     }
 
@@ -54,21 +55,40 @@ final class Department implements ModelInterface
         $this->image = $image;
     }
 
+    /**
+     * L'icône du rayon (ING-016 B), `null` quand il n'en a pas. Distinguer deux ingrédients de même nom dans deux rayons est son seul rôle.
+     */
+    public function getIcon(): ?DepartmentIcon
+    {
+        return $this->icon;
+    }
+
+    /**
+     * Règle l'icône du rayon ; `null` l'efface. Distinct de `update()` : une modification du nom ou de l'image ne touche jamais l'icône.
+     */
+    public function changeIcon(?DepartmentIcon $icon): void
+    {
+        $this->icon = $icon;
+    }
+
     public static function load(array $datas): self
     {
         return new self(
             slug: $datas['slug'],
             name: $datas['name'],
             image: $datas['image'],
+            // Une valeur inconnue du code (écrite par une version plus récente) se lit comme « pas d'icône » : `load()` ne juge rien
+            icon: DepartmentIcon::tryFrom((string) ($datas['icon'] ?? '')),
         );
     }
 
-    public static function create(string $name, string $image): self
+    public static function create(string $name, string $image, ?DepartmentIcon $icon = null): self
     {
         return new self(
             StringTool::slugify($name),
             $name,
             $image,
+            $icon,
         );
     }
 }

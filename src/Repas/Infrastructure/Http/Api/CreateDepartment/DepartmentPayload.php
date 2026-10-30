@@ -4,6 +4,7 @@ namespace Repas\Repas\Infrastructure\Http\Api\CreateDepartment;
 
 
 use OpenApi\Attributes as OA;
+use Repas\Repas\Domain\Model\DepartmentIcon;
 use Symfony\Component\Validator\Constraints as Assert;
 
 /**
@@ -21,6 +22,9 @@ final readonly class DepartmentPayload
         #[Assert\Regex(pattern: '#^(https://[^\s]+|images/[A-Za-z0-9_\-./]+)$#', message: "L'image est une URL https ou un chemin relatif commençant par images/.")]
         #[OA\Property(description: "URL https ou chemin relatif (images/…) de l'image", example: 'images/frozen.svg')]
         public string $image,
+        #[Assert\Choice(callback: [DepartmentIcon::class, 'values'], message: "L'icône n'est pas une icône connue.")]
+        #[OA\Property(description: "Nom de l'icône du rayon, `null` pour l'effacer ; absent du corps, l'icône d'un rayon existant n'est pas touchée (`PUT`) ou le rayon n'en a pas (`POST`). Une valeur qui n'est pas dans l'énumération : `422`", type: 'string', example: 'snowflake', nullable: true)]
+        public ?string $icon = null,
     ) {
     }
 }

@@ -37,6 +37,7 @@ class RepasAssert
         Assert::assertEquals($expected->getSlug(), $actual->getSlug());
         Assert::assertEquals($expected->getName(), $actual->getName());
         Assert::assertEquals($expected->getImage(), $actual->getImage());
+        Assert::assertSame($expected->getIcon(), $actual->getIcon());
     }
 
     public static function assertIngredient(Ingredient $expected, mixed $actual): void
