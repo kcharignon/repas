@@ -1,9 +1,9 @@
 <?php
 
-namespace Repas\Shared\Infrastructure\Feature;
+namespace Repas\Voice\Infrastructure\Feature;
 
 
-use Repas\Shared\Application\Interface\VoiceFeature;
+use Repas\Voice\Domain\Interface\VoiceFeature;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 /**

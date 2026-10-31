@@ -3,7 +3,7 @@
 namespace Repas\Tests\Helper\Http;
 
 
-use Repas\Shared\Infrastructure\Http\RequiresVoice;
+use Repas\Voice\Infrastructure\Http\RequiresVoice;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\HttpKernel\Attribute\MapRequestPayload;

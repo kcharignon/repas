@@ -5,7 +5,7 @@ namespace Repas\Tests\User\InputAdapter;
 
 use DateTimeImmutable;
 use Doctrine\DBAL\Connection;
-use Repas\Shared\Application\Interface\IngredientSeedingFeature;
+use Repas\Repas\Domain\Interface\IngredientSeedingFeature;
 use Repas\Shared\Domain\Tool\UuidGenerator;
 use Repas\Tests\Helper\Builder\UserBuilder;
 use Repas\Tests\Helper\ControlledIngredientSeedingFeature;

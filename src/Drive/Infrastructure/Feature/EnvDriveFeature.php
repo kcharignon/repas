@@ -1,10 +1,10 @@
 <?php
 
-namespace Repas\Shared\Infrastructure\Feature;
+namespace Repas\Drive\Infrastructure\Feature;
 
 
 use Psr\Log\LoggerInterface;
-use Repas\Shared\Application\Interface\DriveFeature;
+use Repas\Drive\Domain\Interface\DriveFeature;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 /**

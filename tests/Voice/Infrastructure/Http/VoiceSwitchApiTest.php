@@ -1,9 +1,9 @@
 <?php
 
-namespace Repas\Tests\Shared\Infrastructure\Http;
+namespace Repas\Tests\Voice\Infrastructure\Http;
 
 
-use Repas\Shared\Application\Interface\VoiceFeature;
+use Repas\Voice\Domain\Interface\VoiceFeature;
 use Repas\Tests\Helper\ControlledVoiceFeature;
 use Repas\Tests\Helper\Http\VoiceProbeController;
 use Repas\Tests\Helper\QueryBusWebTestCase;

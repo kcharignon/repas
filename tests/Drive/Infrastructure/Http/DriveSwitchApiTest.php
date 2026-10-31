@@ -1,9 +1,9 @@
 <?php
 
-namespace Repas\Tests\Shared\Infrastructure\Http;
+namespace Repas\Tests\Drive\Infrastructure\Http;
 
 
-use Repas\Shared\Application\Interface\DriveFeature;
+use Repas\Drive\Domain\Interface\DriveFeature;
 use Repas\Tests\Helper\ControlledDriveFeature;
 use Repas\Tests\Helper\Http\DriveProbeController;
 use Repas\Tests\Helper\QueryBusWebTestCase;

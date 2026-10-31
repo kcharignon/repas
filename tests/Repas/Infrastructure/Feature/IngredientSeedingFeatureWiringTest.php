@@ -1,11 +1,11 @@
 <?php
 
-namespace Repas\Tests\Shared\Infrastructure\Feature;
+namespace Repas\Tests\Repas\Infrastructure\Feature;
 
 
 use PHPUnit\Framework\Attributes\DataProvider;
-use Repas\Shared\Application\Interface\IngredientSeedingFeature;
-use Repas\Shared\Infrastructure\Feature\EnvIngredientSeedingFeature;
+use Repas\Repas\Domain\Interface\IngredientSeedingFeature;
+use Repas\Repas\Infrastructure\Feature\EnvIngredientSeedingFeature;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
 /**

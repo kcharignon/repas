@@ -8,8 +8,8 @@ use Repas\Drive\Domain\Exception\DriveException;
 use Repas\Drive\Domain\Interface\DriveSettingsRepository;
 use Repas\Drive\Domain\Model\DriveSettings;
 use Repas\Drive\Domain\Model\Store;
-use Repas\Shared\Application\Interface\DriveFeature;
-use Repas\Shared\Domain\Exception\DriveFeatureException;
+use Repas\Drive\Domain\Interface\DriveFeature;
+use Repas\Drive\Domain\Exception\DriveFeatureException;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 #[AsMessageHandler]

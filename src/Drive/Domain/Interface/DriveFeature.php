@@ -1,6 +1,6 @@
 <?php
 
-namespace Repas\Shared\Application\Interface;
+namespace Repas\Drive\Domain\Interface;
 
 
 /**

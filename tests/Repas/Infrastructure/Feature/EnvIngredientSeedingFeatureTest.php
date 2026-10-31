@@ -1,10 +1,10 @@
 <?php
 
-namespace Repas\Tests\Shared\Infrastructure\Feature;
+namespace Repas\Tests\Repas\Infrastructure\Feature;
 
 
 use PHPUnit\Framework\TestCase;
-use Repas\Shared\Infrastructure\Feature\EnvIngredientSeedingFeature;
+use Repas\Repas\Infrastructure\Feature\EnvIngredientSeedingFeature;
 
 class EnvIngredientSeedingFeatureTest extends TestCase
 {

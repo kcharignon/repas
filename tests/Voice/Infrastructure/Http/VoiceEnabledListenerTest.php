@@ -1,12 +1,12 @@
 <?php
 
-namespace Repas\Tests\Shared\Infrastructure\Http;
+namespace Repas\Tests\Voice\Infrastructure\Http;
 
 
 use PHPUnit\Framework\TestCase;
-use Repas\Shared\Domain\Exception\VoiceFeatureException;
-use Repas\Shared\Infrastructure\Http\RequiresVoice;
-use Repas\Shared\Infrastructure\Http\VoiceEnabledListener;
+use Repas\Voice\Domain\Exception\VoiceFeatureException;
+use Repas\Voice\Infrastructure\Http\RequiresVoice;
+use Repas\Voice\Infrastructure\Http\VoiceEnabledListener;
 use Repas\Tests\Helper\ControlledVoiceFeature;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Event\ControllerEvent;

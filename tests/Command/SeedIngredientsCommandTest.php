@@ -516,7 +516,7 @@ class SeedIngredientsCommandTest extends DatabaseTestCase
     public function testTheCommandWorksWithTheAutomaticSwitchOffBecauseItDoesNotReadIt(): void
     {
         // Given : l'interrupteur de l'amorçage automatique est coupé (cas de la production avant l'allumage)
-        $feature = static::getContainer()->get(\Repas\Shared\Application\Interface\IngredientSeedingFeature::class);
+        $feature = static::getContainer()->get(\Repas\Repas\Domain\Interface\IngredientSeedingFeature::class);
         $this->assertFalse($feature->isEnabled());
 
         // When

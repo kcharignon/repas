@@ -1,12 +1,12 @@
 <?php
 
-namespace Repas\Tests\Shared\Infrastructure\Http;
+namespace Repas\Tests\Drive\Infrastructure\Http;
 
 
 use PHPUnit\Framework\TestCase;
-use Repas\Shared\Domain\Exception\DriveFeatureException;
-use Repas\Shared\Infrastructure\Http\DriveEnabledListener;
-use Repas\Shared\Infrastructure\Http\RequiresDrive;
+use Repas\Drive\Domain\Exception\DriveFeatureException;
+use Repas\Drive\Infrastructure\Http\DriveEnabledListener;
+use Repas\Drive\Infrastructure\Http\RequiresDrive;
 use Repas\Tests\Helper\ControlledDriveFeature;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Event\ControllerEvent;

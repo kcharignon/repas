@@ -7,7 +7,7 @@ use Nelmio\ApiDocBundle\Attribute\Model;
 use OpenApi\Attributes as OA;
 use Repas\Shared\Application\Interface\QueryBusInterface;
 use Repas\Shared\Domain\Interface\AuthenticatedUser;
-use Repas\Shared\Infrastructure\Http\RequiresVoice;
+use Repas\Voice\Infrastructure\Http\RequiresVoice;
 use Repas\Voice\Application\Query\ListVoiceLinks\ListVoiceLinksQuery;
 use Repas\Voice\Application\Query\ListVoiceLinks\VoiceLinkDTO;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;

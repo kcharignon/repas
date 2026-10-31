@@ -24,19 +24,7 @@ class SharedHoldsNoContextBusinessTest extends TestCase
     ];
 
     private const array LEGACY = [
-        'src/Shared/Application/Interface/DriveFeature.php',
-        'src/Shared/Application/Interface/IngredientSeedingFeature.php',
-        'src/Shared/Application/Interface/VoiceFeature.php',
-        'src/Shared/Domain/Exception/DriveFeatureException.php',
-        'src/Shared/Domain/Exception/VoiceFeatureException.php',
         'src/Shared/Domain/Model/Dimension.php',
-        'src/Shared/Infrastructure/Feature/EnvDriveFeature.php',
-        'src/Shared/Infrastructure/Feature/EnvIngredientSeedingFeature.php',
-        'src/Shared/Infrastructure/Feature/EnvVoiceFeature.php',
-        'src/Shared/Infrastructure/Http/DriveEnabledListener.php',
-        'src/Shared/Infrastructure/Http/RequiresDrive.php',
-        'src/Shared/Infrastructure/Http/RequiresVoice.php',
-        'src/Shared/Infrastructure/Http/VoiceEnabledListener.php',
     ];
 
     /** Les dossiers où un port ou un DTO de contexte se glisserait. */

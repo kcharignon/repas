@@ -1,10 +1,11 @@
 <?php
 
-namespace Repas\Tests\Shared\Infrastructure\Http;
+namespace Repas\Tests\Drive\Infrastructure\Http;
 
 
 use ReflectionClass;
-use Repas\Shared\Infrastructure\Http\RequiresDrive;
+use Repas\Drive\Infrastructure\Http\RequiresDrive;
+use Repas\Repas\Infrastructure\Http\RequiresDriveSending;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Routing\RouterInterface;
 
@@ -63,14 +64,19 @@ class DriveRoutesAreGuardedBySwitchTest extends KernelTestCase
     }
 
     /**
-     * L'attribut est lu comme le fait `DriveEnabledListener` (`ControllerEvent::getAttributes()`) : sur la classe ou sur la méthode.
+     * L'attribut est lu comme le fait `DriveEnabledListener` (ou `DriveSendingEnabledListener` pour la route d'envoi de `Repas`, qui porte `RequiresDriveSending`) (`ControllerEvent::getAttributes()`) : sur la classe ou sur la méthode.
      */
     private function isGuarded(string $controller): bool
     {
         [$class, $method] = str_contains($controller, '::') ? explode('::', $controller) : [$controller, '__invoke'];
         $reflection = new ReflectionClass($class);
 
-        return $reflection->getAttributes(RequiresDrive::class) !== []
-            || ($reflection->hasMethod($method) && $reflection->getMethod($method)->getAttributes(RequiresDrive::class) !== []);
+        foreach ([RequiresDrive::class, RequiresDriveSending::class] as $attribute) {
+            if ($reflection->getAttributes($attribute) !== [] || ($reflection->hasMethod($method) && $reflection->getMethod($method)->getAttributes($attribute) !== [])) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

@@ -13,7 +13,7 @@ use Repas\Drive\Domain\Model\Selection;
 use Repas\Drive\Domain\Service\RetailerSelection;
 use Repas\Drive\Infrastructure\Entity\DriveSettings;
 use Repas\Drive\Infrastructure\Entity\RetailerPreference;
-use Repas\Shared\Application\Interface\DriveFeature;
+use Repas\Drive\Domain\Interface\DriveFeature;
 
 /**
  * Deux requêtes quel que soit le nombre d'enseignes : les magasins de l'utilisateur chez toutes les enseignes, et sa préférence d'enseigne

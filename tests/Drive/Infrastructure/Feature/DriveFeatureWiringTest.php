@@ -1,11 +1,11 @@
 <?php
 
-namespace Repas\Tests\Shared\Infrastructure\Feature;
+namespace Repas\Tests\Drive\Infrastructure\Feature;
 
 
 use Repas\Drive\Domain\Model\Retailer;
-use Repas\Shared\Application\Interface\DriveFeature;
-use Repas\Shared\Infrastructure\Feature\EnvDriveFeature;
+use Repas\Drive\Domain\Interface\DriveFeature;
+use Repas\Drive\Infrastructure\Feature\EnvDriveFeature;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
 /**

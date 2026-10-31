@@ -8,7 +8,7 @@ use Repas\Drive\Application\Service\ConfiguredRetailerGuard;
 use Repas\Drive\Domain\Exception\DriveException;
 use Repas\Drive\Domain\Interface\RetailerPreferenceRepository;
 use Repas\Drive\Domain\Model\RetailerPreference;
-use Repas\Shared\Domain\Exception\DriveFeatureException;
+use Repas\Drive\Domain\Exception\DriveFeatureException;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 #[AsMessageHandler]

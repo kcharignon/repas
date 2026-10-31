@@ -1,7 +1,9 @@
 <?php
 
-namespace Repas\Shared\Domain\Exception;
+namespace Repas\Drive\Domain\Exception;
 
+
+use Repas\Shared\Domain\Exception\DomainException;
 
 final class DriveFeatureException extends DomainException
 {

@@ -5,7 +5,7 @@ namespace Repas\Tests\Helper\Http;
 
 use Repas\Drive\Infrastructure\Http\DriveRateLimit;
 use Repas\Drive\Infrastructure\Http\RateLimitedPerUser;
-use Repas\Shared\Infrastructure\Http\RequiresDrive;
+use Repas\Drive\Infrastructure\Http\RequiresDrive;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\Routing\Attribute\Route;

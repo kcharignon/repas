@@ -1,6 +1,6 @@
 <?php
 
-namespace Repas\Shared\Infrastructure\Http;
+namespace Repas\Drive\Infrastructure\Http;
 
 
 use Attribute;

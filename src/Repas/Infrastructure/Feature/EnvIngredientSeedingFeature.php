@@ -1,9 +1,9 @@
 <?php
 
-namespace Repas\Shared\Infrastructure\Feature;
+namespace Repas\Repas\Infrastructure\Feature;
 
 
-use Repas\Shared\Application\Interface\IngredientSeedingFeature;
+use Repas\Repas\Domain\Interface\IngredientSeedingFeature;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 /**

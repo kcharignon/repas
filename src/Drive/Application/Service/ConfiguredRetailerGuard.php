@@ -6,8 +6,8 @@ namespace Repas\Drive\Application\Service;
 use Repas\Drive\Domain\Exception\DriveException;
 use Repas\Drive\Domain\Interface\DriveSettingsRepository;
 use Repas\Drive\Domain\Model\Retailer;
-use Repas\Shared\Application\Interface\DriveFeature;
-use Repas\Shared\Domain\Exception\DriveFeatureException;
+use Repas\Drive\Domain\Interface\DriveFeature;
+use Repas\Drive\Domain\Exception\DriveFeatureException;
 
 /**
  * Le contrôle commun du drive habituel et de la dernière enseigne (DRV-703) : l'enseigne doit exister pour la personne, c'est-à-dire être

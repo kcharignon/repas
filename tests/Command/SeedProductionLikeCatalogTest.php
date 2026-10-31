@@ -9,7 +9,7 @@ use Repas\Repas\Application\Command\SeedUserIngredients\SeedResult;
 use Repas\Repas\Application\Command\SeedUserIngredients\SeedUserIngredientsCommand;
 use Repas\Shared\Application\Interface\CommandBusInterface;
 use Repas\Shared\Domain\Tool\UuidGenerator;
-use Repas\Shared\Application\Interface\IngredientSeedingFeature;
+use Repas\Repas\Domain\Interface\IngredientSeedingFeature;
 use Repas\Tests\Helper\Builder\UserBuilder;
 use Repas\Tests\Helper\ControlledIngredientSeedingFeature;
 use Repas\Tests\Helper\DatabaseTestCase;

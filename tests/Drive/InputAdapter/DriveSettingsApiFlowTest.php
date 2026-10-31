@@ -4,7 +4,7 @@ namespace Repas\Tests\Drive\InputAdapter;
 
 
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
-use Repas\Shared\Application\Interface\DriveFeature;
+use Repas\Drive\Domain\Interface\DriveFeature;
 use Repas\Tests\Helper\Builder\UserBuilder;
 use Repas\Tests\Helper\ControlledDriveFeature;
 use Repas\Tests\Helper\DatabaseTestCase;

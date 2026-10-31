@@ -3,7 +3,7 @@
 namespace Repas\Tests\Drive\Application;
 
 
-use Repas\Shared\Domain\Exception\DriveFeatureException;
+use Repas\Drive\Domain\Exception\DriveFeatureException;
 use PHPUnit\Framework\TestCase;
 use Repas\Drive\Application\Command\ForgetChoice\ForgetChoiceCommand;
 use Repas\Drive\Application\Command\ForgetChoice\ForgetChoiceHandler;

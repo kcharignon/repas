@@ -1,6 +1,6 @@
 <?php
 
-namespace Repas\Shared\Infrastructure\Http;
+namespace Repas\Voice\Infrastructure\Http;
 
 
 use Attribute;

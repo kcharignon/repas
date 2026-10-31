@@ -3,8 +3,8 @@
 namespace Repas\Drive\Application\Query\ListChoices;
 
 use Repas\Drive\Application\Loader\ChoiceLoader;
-use Repas\Shared\Application\Interface\DriveFeature;
-use Repas\Shared\Domain\Exception\DriveFeatureException;
+use Repas\Drive\Domain\Interface\DriveFeature;
+use Repas\Drive\Domain\Exception\DriveFeatureException;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 #[AsMessageHandler(bus: 'query.bus')]

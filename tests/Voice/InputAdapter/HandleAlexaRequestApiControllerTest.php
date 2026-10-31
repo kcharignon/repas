@@ -6,7 +6,7 @@ namespace Repas\Tests\Voice\InputAdapter;
 use DateTimeImmutable;
 use PHPUnit\Framework\Attributes\DataProvider;
 use RuntimeException;
-use Repas\Shared\Application\Interface\VoiceFeature;
+use Repas\Voice\Domain\Interface\VoiceFeature;
 use Repas\Shared\Domain\Exception\DomainException;
 use Repas\Tests\Helper\Alexa\AlexaTestRequest;
 use Repas\Tests\Helper\AlexaRequestVerifierDouble;

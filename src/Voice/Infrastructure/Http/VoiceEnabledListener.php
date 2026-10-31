@@ -1,10 +1,10 @@
 <?php
 
-namespace Repas\Shared\Infrastructure\Http;
+namespace Repas\Voice\Infrastructure\Http;
 
 
-use Repas\Shared\Application\Interface\VoiceFeature;
-use Repas\Shared\Domain\Exception\VoiceFeatureException;
+use Repas\Voice\Domain\Interface\VoiceFeature;
+use Repas\Voice\Domain\Exception\VoiceFeatureException;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\HttpKernel\Event\ControllerEvent;
 use Symfony\Component\HttpKernel\KernelEvents;

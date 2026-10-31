@@ -4,7 +4,7 @@ namespace Repas\Tests\Helper;
 
 
 use Repas\Drive\Domain\Model\Retailer;
-use Repas\Shared\Application\Interface\DriveFeature;
+use Repas\Drive\Domain\Interface\DriveFeature;
 
 /**
  * Interrupteurs du drive à la main : `new ControlledDriveFeature(false)` pour essayer le cas coupé, `new ControlledDriveFeature(true,

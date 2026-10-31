@@ -4,7 +4,7 @@ namespace Repas\Tests\Voice\InputAdapter;
 
 
 use DateTimeImmutable;
-use Repas\Shared\Application\Interface\VoiceFeature;
+use Repas\Voice\Domain\Interface\VoiceFeature;
 use Repas\Tests\Helper\ControlledVoiceFeature;
 use Repas\Tests\Helper\QueryBusWebTestCase;
 use Repas\Voice\Application\Command\RevokeVoiceLink\RevokeVoiceLinkCommand;

@@ -1,10 +1,10 @@
 <?php
 
-namespace Repas\Tests\Shared\Infrastructure\Http;
+namespace Repas\Tests\Voice\Infrastructure\Http;
 
 
 use ReflectionClass;
-use Repas\Shared\Infrastructure\Http\RequiresVoice;
+use Repas\Voice\Infrastructure\Http\RequiresVoice;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Routing\RouterInterface;
 

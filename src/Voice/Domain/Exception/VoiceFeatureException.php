@@ -1,7 +1,9 @@
 <?php
 
-namespace Repas\Shared\Domain\Exception;
+namespace Repas\Voice\Domain\Exception;
 
+
+use Repas\Shared\Domain\Exception\DomainException;
 
 final class VoiceFeatureException extends DomainException
 {

@@ -1,11 +1,11 @@
 <?php
 
-namespace Repas\Tests\Shared\Infrastructure\Feature;
+namespace Repas\Tests\Voice\Infrastructure\Feature;
 
 
 use PHPUnit\Framework\Attributes\DataProvider;
-use Repas\Shared\Application\Interface\VoiceFeature;
-use Repas\Shared\Infrastructure\Feature\EnvVoiceFeature;
+use Repas\Voice\Domain\Interface\VoiceFeature;
+use Repas\Voice\Infrastructure\Feature\EnvVoiceFeature;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
 /**

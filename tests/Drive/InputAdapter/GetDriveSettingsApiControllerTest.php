@@ -8,7 +8,7 @@ use Repas\Drive\Application\Query\GetDriveSettings\DriveSettingsDTO;
 use Repas\Drive\Application\Query\GetDriveSettings\DriveStoreDTO;
 use Repas\Drive\Application\Query\GetDriveSettings\GetDriveSettingsQuery;
 use Repas\Drive\Application\Query\GetDriveSettings\RetailerSelectionDTO;
-use Repas\Shared\Application\Interface\DriveFeature;
+use Repas\Drive\Domain\Interface\DriveFeature;
 use Repas\Tests\Helper\Builder\DTO\DriveSettingsDTOBuilder;
 use Repas\Tests\Helper\ControlledDriveFeature;
 use Repas\Tests\Helper\QueryBusWebTestCase;

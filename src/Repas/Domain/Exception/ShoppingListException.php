@@ -13,6 +13,8 @@ final class ShoppingListException extends DomainException
     public const string NOT_SENDABLE = 'SHOPPING_LIST_NOT_SENDABLE';
     public const string NOT_SENT = 'SHOPPING_LIST_NOT_SENT';
     public const string EMPTY = 'SHOPPING_LIST_EMPTY';
+    // Le drive est coupé (`DRIVE_ENABLED`) : le même code que les routes de `Drive`, le front le connaît
+    public const string DRIVE_DISABLED = 'DRIVE_DISABLED';
     // Messages des bornes d'une liste : le front les distingue, ils ne se renomment pas
     public const string QUANTITY_INVALID = 'SHOPPING_LIST_QUANTITY_INVALID';
     public const string MEAL_LIMIT_REACHED = 'SHOPPING_LIST_MEAL_LIMIT_REACHED';
@@ -24,6 +26,14 @@ final class ShoppingListException extends DomainException
     public static function sent(string $id): static
     {
         return new static(self::SENT, 409);
+    }
+
+    /**
+     * Le drive est coupé : la route d'envoi fait comme si elle n'existait pas, `404` (docs/drive/architecture.md § 4.5).
+     */
+    public static function driveDisabled(): static
+    {
+        return new static(self::DRIVE_DISABLED, 404);
     }
 
     /**

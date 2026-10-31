@@ -10,7 +10,7 @@ use Repas\Drive\Application\Query\ListChoices\ListChoicesQuery;
 use Repas\Drive\Application\Query\ListChoices\PackSizeDTO;
 use Repas\Drive\Application\Query\ListChoices\ProductContentDTO;
 use Repas\Drive\Domain\Model\Retailer;
-use Repas\Shared\Application\Interface\DriveFeature;
+use Repas\Drive\Domain\Interface\DriveFeature;
 use Repas\Tests\Helper\ControlledDriveFeature;
 use Repas\Tests\Helper\QueryBusWebTestCase;
 

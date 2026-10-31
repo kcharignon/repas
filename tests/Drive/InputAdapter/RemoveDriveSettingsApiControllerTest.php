@@ -5,7 +5,7 @@ namespace Repas\Tests\Drive\InputAdapter;
 
 use Repas\Drive\Application\Command\RemoveDriveSettings\RemoveDriveSettingsCommand;
 use Repas\Drive\Domain\Model\Retailer;
-use Repas\Shared\Application\Interface\DriveFeature;
+use Repas\Drive\Domain\Interface\DriveFeature;
 use Repas\Tests\Helper\ControlledDriveFeature;
 use Repas\Tests\Helper\QueryBusWebTestCase;
 

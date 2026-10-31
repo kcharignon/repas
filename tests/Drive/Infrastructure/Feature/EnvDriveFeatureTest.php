@@ -1,13 +1,13 @@
 <?php
 
-namespace Repas\Tests\Shared\Infrastructure\Feature;
+namespace Repas\Tests\Drive\Infrastructure\Feature;
 
 
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\AbstractLogger;
 use Psr\Log\NullLogger;
-use Repas\Shared\Infrastructure\Feature\EnvDriveFeature;
+use Repas\Drive\Infrastructure\Feature\EnvDriveFeature;
 use Stringable;
 
 class EnvDriveFeatureTest extends TestCase

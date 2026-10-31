@@ -12,8 +12,8 @@ use Repas\Drive\Domain\Model\Choice;
 use Repas\Drive\Domain\Model\Product;
 use Repas\Drive\Application\Port\IngredientAliasCommandPort;
 use Repas\Shared\Domain\Interface\UuidGenerator;
-use Repas\Shared\Application\Interface\DriveFeature;
-use Repas\Shared\Domain\Exception\DriveFeatureException;
+use Repas\Drive\Domain\Interface\DriveFeature;
+use Repas\Drive\Domain\Exception\DriveFeatureException;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 #[AsMessageHandler]

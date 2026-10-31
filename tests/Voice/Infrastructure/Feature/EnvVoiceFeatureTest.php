@@ -1,10 +1,10 @@
 <?php
 
-namespace Repas\Tests\Shared\Infrastructure\Feature;
+namespace Repas\Tests\Voice\Infrastructure\Feature;
 
 
 use PHPUnit\Framework\TestCase;
-use Repas\Shared\Infrastructure\Feature\EnvVoiceFeature;
+use Repas\Voice\Infrastructure\Feature\EnvVoiceFeature;
 
 class EnvVoiceFeatureTest extends TestCase
 {

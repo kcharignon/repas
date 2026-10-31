@@ -5,7 +5,7 @@ namespace Repas\Voice\Infrastructure\Http\Api\ExchangeOAuthToken;
 
 use OpenApi\Attributes as OA;
 use Repas\Shared\Application\Interface\CommandBusInterface;
-use Repas\Shared\Infrastructure\Http\RequiresVoice;
+use Repas\Voice\Infrastructure\Http\RequiresVoice;
 use Repas\Voice\Application\Command\ExchangeAuthorizationCode\ExchangeAuthorizationCodeCommand;
 use Repas\Voice\Application\Command\IssuedTokens;
 use Repas\Voice\Application\Command\RefreshAccessGrant\RefreshAccessGrantCommand;
