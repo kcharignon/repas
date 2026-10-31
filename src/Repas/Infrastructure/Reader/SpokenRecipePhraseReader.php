@@ -6,8 +6,8 @@ use Doctrine\ORM\EntityManagerInterface;
 use Repas\Repas\Infrastructure\Entity\SpokenRecipePhraseChoice;
 
 /**
- * La lecture de la mémoire de phrase des recettes, écrite une seule fois : `SpokenRecipePhraseMemoryPostgreSQLLoader` (lecture) comme
- * `SpokenRecipePhraseChoicePostgreSQLRepository` (écriture en cours, ADR 0035) rendent donc exactement la même chose.
+ * La lecture de la mémoire de phrase des recettes, écrite une seule fois : `SpokenRecipePhraseChoicePostgreSQLRepository::rememberedId` la donne à
+ * l'Open Host Service d'écriture des recettes (ADR 0035), et à tout lecteur qui en aurait besoin demain.
  */
 final readonly class SpokenRecipePhraseReader
 {

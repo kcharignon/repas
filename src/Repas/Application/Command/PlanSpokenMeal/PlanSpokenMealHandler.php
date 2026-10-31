@@ -14,8 +14,8 @@ use Repas\Repas\Domain\Interface\RecipeRepository;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Repas\Domain\Model\Meal;
 use Repas\Repas\Domain\Model\ShoppingList;
-use Repas\Shared\Application\Dto\PlannedSpokenMeal;
-use Repas\Shared\Domain\Exception\SpokenMealFailure;
+use Repas\Repas\Domain\Model\MealPlanResult;
+use Repas\Repas\Domain\Exception\MealPlanningException;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 /**
@@ -26,12 +26,12 @@ use Symfony\Component\Messenger\Attribute\AsMessageHandler;
  *   liste) ;
  * - le nombre de personnes est celui du compte (`DefaultServingCommandPort`) sauf s'il a été dit (1 à 99) ;
  * - **une recette déjà dans la liste n'y est jamais mise deux fois** (le domaine le refuse) : rien n'est écrit, aucune liste n'est créée, et le résultat
- *   dit le nombre de personnes pour lequel elle est prévue (`PlannedSpokenMeal::$alreadyPlanned`) ;
+ *   dit le nombre de personnes pour lequel elle est prévue (`MealPlanResult::$alreadyPlanned`) ;
  * - sans liste active, une liste est créée UNE fois (elle met en pause la liste active qui existerait) et le résultat dit si une liste envoyée au drive
  *   existait avant.
  *
  * Un ingrédient de la recette sans conversion vers son unité d'achat fait échouer toute la commande (le bus est transactionnel : rien n'est écrit),
- * comme dans l'application, mais par une `SpokenMealFailure` que le webhook dit clairement (« Je ne peux pas calculer les quantités de … »).
+ * comme dans l'application, mais par une `MealPlanningException` que le webhook dit clairement (« Je ne peux pas calculer les quantités de … »).
  */
 #[AsMessageHandler]
 readonly class PlanSpokenMealHandler
@@ -50,27 +50,27 @@ readonly class PlanSpokenMealHandler
      * @throws RecipeException
      * @throws IngredientException
      */
-    public function __invoke(PlanSpokenMealCommand $command): PlannedSpokenMeal
+    public function __invoke(PlanSpokenMealCommand $command): MealPlanResult
     {
         if ($command->servings !== null && ($command->servings < PlanSpokenMealCommand::MIN_SERVINGS || $command->servings > PlanSpokenMealCommand::MAX_SERVINGS)) {
             throw ShoppingListException::invalidSpokenServings($command->servings);
         }
 
-        // La recette d'un autre ou inconnue est refusée (404) avant toute écriture ; la commande vocale en tire une phrase claire (`SpokenMealFailure`)
+        // La recette d'un autre ou inconnue est refusée (404) avant toute écriture ; la commande vocale en tire une phrase claire (`MealPlanningException`)
         try {
             $recipe = $this->recipeRepository->findOneById($command->recipeId);
         } catch (RecipeException) {
-            throw SpokenMealFailure::recipeGone();
+            throw MealPlanningException::recipeGone();
         }
         if ($recipe->getAuthorId() !== $command->ownerId) {
-            throw SpokenMealFailure::recipeGone();
+            throw MealPlanningException::recipeGone();
         }
 
         $shoppingList = $this->shoppingListRepository->findOneActivateByOwner($command->ownerId);
         if ($shoppingList instanceof ShoppingList) {
             $meal = $shoppingList->getMeals()->find(static fn(Meal $meal): bool => $meal->hasRecipe($recipe));
             if ($meal instanceof Meal) {
-                return new PlannedSpokenMeal($recipe->getName(), $meal->getServing(), alreadyPlanned: true, listCreated: false, previousListSent: false);
+                return new MealPlanResult($recipe->getName(), $meal->getServing(), alreadyPlanned: true, listCreated: false, previousListSent: false);
             }
         }
 
@@ -87,9 +87,9 @@ readonly class PlanSpokenMealHandler
         try {
             ($this->plannedMealHandler)(new PlannedMealCommand($command->ownerId, $command->recipeId, $servings));
         } catch (IngredientException $exception) {
-            throw $exception->isMissingConversion() ? SpokenMealFailure::missingConversion($recipe->getName(), $exception->conversionIngredientName()) : $exception;
+            throw $exception->isMissingConversion() ? MealPlanningException::missingConversion($recipe->getName(), $exception->conversionIngredientName()) : $exception;
         }
 
-        return new PlannedSpokenMeal($recipe->getName(), $servings, alreadyPlanned: false, listCreated: $listCreated, previousListSent: $previousListSent);
+        return new MealPlanResult($recipe->getName(), $servings, alreadyPlanned: false, listCreated: $listCreated, previousListSent: $previousListSent);
     }
 }

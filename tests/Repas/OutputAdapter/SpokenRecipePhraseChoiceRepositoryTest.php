@@ -4,7 +4,6 @@ namespace Repas\Tests\Repas\OutputAdapter;
 
 
 use DateTimeImmutable;
-use Repas\Repas\Application\Loader\SpokenRecipePhraseMemory;
 use Repas\Repas\Domain\Interface\SpokenRecipePhraseChoiceRepository;
 use Repas\Tests\Helper\DatabaseTestCase;
 
@@ -18,14 +17,12 @@ class SpokenRecipePhraseChoiceRepositoryTest extends DatabaseTestCase
     private const string OTHER = 'other-id';
 
     private SpokenRecipePhraseChoiceRepository $repository;
-    private SpokenRecipePhraseMemory $memory;
 
     protected function setUp(): void
     {
         parent::setUp();
 
         $this->repository = static::getContainer()->get(SpokenRecipePhraseChoiceRepository::class);
-        $this->memory = static::getContainer()->get(SpokenRecipePhraseMemory::class);
     }
 
     /**
@@ -46,7 +43,7 @@ class SpokenRecipePhraseChoiceRepositoryTest extends DatabaseTestCase
 
         // Then
         $this->assertSame([['user_id' => self::USER, 'phrase' => 'gratin', 'recipe_id' => 'recipe-1', 'times' => 1, 'updated_at' => '2026-10-26 10:00:00']], $this->rows());
-        $this->assertSame('recipe-1', $this->memory->rememberedId(self::USER, 'gratin'));
+        $this->assertSame('recipe-1', $this->repository->rememberedId(self::USER, 'gratin'));
     }
 
     public function testTheSameChoiceAgainCountsAndAnotherOneReplacesAndRestartsTheCount(): void
@@ -60,7 +57,7 @@ class SpokenRecipePhraseChoiceRepositoryTest extends DatabaseTestCase
         // Then
         $this->assertSame([2, '2026-10-26 11:00:00'], [$afterTwice[0]['times'], $afterTwice[0]['updated_at']]);
         $this->assertSame([['user_id' => self::USER, 'phrase' => 'gratin', 'recipe_id' => 'recipe-2', 'times' => 1, 'updated_at' => '2026-10-26 12:00:00']], $this->rows());
-        $this->assertSame('recipe-2', $this->memory->rememberedId(self::USER, 'gratin'));
+        $this->assertSame('recipe-2', $this->repository->rememberedId(self::USER, 'gratin'));
     }
 
     public function testTwoUsersHaveTheirOwnMemoryForTheSamePhrase(): void
@@ -71,10 +68,10 @@ class SpokenRecipePhraseChoiceRepositoryTest extends DatabaseTestCase
 
         // Then
         $this->assertCount(2, $this->rows());
-        $this->assertSame('recipe-1', $this->memory->rememberedId(self::USER, 'gratin'));
-        $this->assertSame('recipe-9', $this->memory->rememberedId(self::OTHER, 'gratin'));
-        $this->assertNull($this->memory->rememberedId('nobody', 'gratin'));
-        $this->assertNull($this->memory->rememberedId(self::USER, 'autre'));
+        $this->assertSame('recipe-1', $this->repository->rememberedId(self::USER, 'gratin'));
+        $this->assertSame('recipe-9', $this->repository->rememberedId(self::OTHER, 'gratin'));
+        $this->assertNull($this->repository->rememberedId('nobody', 'gratin'));
+        $this->assertNull($this->repository->rememberedId(self::USER, 'autre'));
     }
 
     public function testTheMemoryOfTheProductsIsAnotherTableAndNeverMixed(): void
@@ -124,6 +121,6 @@ class SpokenRecipePhraseChoiceRepositoryTest extends DatabaseTestCase
         $this->repository->remember(self::USER, $key, 'recipe-1', new DateTimeImmutable());
 
         // Then
-        $this->assertSame('recipe-1', $this->memory->rememberedId(self::USER, $key));
+        $this->assertSame('recipe-1', $this->repository->rememberedId(self::USER, $key));
     }
 }

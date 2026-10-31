@@ -1,12 +1,12 @@
 <?php
 
-namespace Repas\Shared\Application\Dto;
+namespace Repas\Repas\Domain\Model;
 
 /**
- * Ce que `VoiceMealPlanner::plan()` a fait (ADR 0029 décision 13, VOX-305) : le repas a été planifié, ou il l'était déjà (rien n'est écrit, et
- * `servings` est alors le nombre de personnes pour lequel il est prévu).
+ * Ce qu'a fait la planification d'un repas dans la liste de courses (ADR 0029 décision 13, VOX-305) : le repas a été planifié, ou il l'était déjà
+ * (rien n'est écrit, et `servings` est alors le nombre de personnes pour lequel il est prévu).
  */
-final readonly class PlannedSpokenMeal
+final readonly class MealPlanResult
 {
     public function __construct(
         public string $recipeName,
@@ -16,7 +16,7 @@ final readonly class PlannedSpokenMeal
         public bool $alreadyPlanned,
         /** Aucune liste active : une liste neuve a été commencée pour ce repas. */
         public bool $listCreated,
-        /** Une liste envoyée au drive existait avant la liste neuve : Alexa le dit. */
+        /** Une liste envoyée au drive existait avant la liste neuve. */
         public bool $previousListSent,
     ) {
     }

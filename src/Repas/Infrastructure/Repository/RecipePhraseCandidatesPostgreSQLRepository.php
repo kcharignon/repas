@@ -1,9 +1,9 @@
 <?php
 
-namespace Repas\Repas\Infrastructure\Loader;
+namespace Repas\Repas\Infrastructure\Repository;
 
 use Doctrine\ORM\EntityManagerInterface;
-use Repas\Repas\Application\Loader\SpokenRecipeCandidates;
+use Repas\Repas\Domain\Interface\RecipePhraseCandidates;
 use Repas\Repas\Domain\Model\SpokenCandidate;
 use Repas\Repas\Infrastructure\Entity\Recipe;
 use Repas\Shared\Domain\Tool\StringTool;
@@ -12,7 +12,7 @@ use Repas\Shared\Domain\Tool\StringTool;
  * Les recettes de l'utilisateur, en une requête sur `recipe` (le nom et l'identifiant, rien d'hydraté). Le nom normalisé est recalculé du nom : la
  * colonne `slug` n'est pas tenue à jour par un renommage. Une recette n'a ni rayon ni habitude (`uses12m` à 0).
  */
-final readonly class SpokenRecipeCandidatesPostgreSQLLoader implements SpokenRecipeCandidates
+final readonly class RecipePhraseCandidatesPostgreSQLRepository implements RecipePhraseCandidates
 {
     public function __construct(
         private EntityManagerInterface $entityManager,

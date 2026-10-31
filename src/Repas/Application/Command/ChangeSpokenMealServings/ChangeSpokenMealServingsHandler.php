@@ -12,8 +12,8 @@ use Repas\Repas\Domain\Interface\RecipeRepository;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Repas\Domain\Model\Meal;
 use Repas\Repas\Domain\Model\ShoppingList;
-use Repas\Shared\Application\Dto\ChangedMealServings;
-use Repas\Shared\Domain\Exception\SpokenMealFailure;
+use Repas\Repas\Domain\Model\MealServingsResult;
+use Repas\Repas\Domain\Exception\MealPlanningException;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 /**
@@ -38,7 +38,7 @@ readonly class ChangeSpokenMealServingsHandler
      * @throws ShoppingListException
      * @throws RecipeException
      */
-    public function __invoke(ChangeSpokenMealServingsCommand $command): ChangedMealServings
+    public function __invoke(ChangeSpokenMealServingsCommand $command): MealServingsResult
     {
         if ($command->servings < PlanSpokenMealCommand::MIN_SERVINGS || $command->servings > PlanSpokenMealCommand::MAX_SERVINGS) {
             throw ShoppingListException::invalidSpokenServings($command->servings);
@@ -47,26 +47,26 @@ readonly class ChangeSpokenMealServingsHandler
         try {
             $recipe = $this->recipeRepository->findOneById($command->recipeId);
         } catch (RecipeException) {
-            throw SpokenMealFailure::recipeGone();
+            throw MealPlanningException::recipeGone();
         }
         if ($recipe->getAuthorId() !== $command->ownerId) {
-            throw SpokenMealFailure::recipeGone();
+            throw MealPlanningException::recipeGone();
         }
 
         $shoppingList = $this->shoppingListRepository->findOneActivateByOwner($command->ownerId);
         $meal = $shoppingList instanceof ShoppingList ? $shoppingList->getMeals()->find(static fn(Meal $meal): bool => $meal->hasRecipe($recipe)) : null;
         if (!$meal instanceof Meal) {
-            return ChangedMealServings::notPlanned($recipe->getName());
+            return MealServingsResult::notPlanned($recipe->getName());
         }
 
         if ($meal->getServing() !== $command->servings) {
             try {
                 ($this->updateServingMealHandler)(new UpdateServingMealCommand($meal->getId(), $command->servings));
             } catch (IngredientException $exception) {
-                throw $exception->isMissingConversion() ? SpokenMealFailure::missingConversion($recipe->getName(), $exception->conversionIngredientName()) : $exception;
+                throw $exception->isMissingConversion() ? MealPlanningException::missingConversion($recipe->getName(), $exception->conversionIngredientName()) : $exception;
             }
         }
 
-        return ChangedMealServings::changed($recipe->getName(), $command->servings);
+        return MealServingsResult::changed($recipe->getName(), $command->servings);
     }
 }

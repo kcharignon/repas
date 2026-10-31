@@ -7,7 +7,7 @@ use DateTimeImmutable;
 /**
  * La mémoire de phrase des RECETTES de la commande vocale d'un utilisateur (ADR 0029 décision 13, VOX-305) : une ligne par (utilisateur, phrase
  * normalisée), qui désigne une de ses recettes. Jumelle de `SpokenPhraseChoiceRepository` (les produits), séparée pour que les deux recherches ne se
- * mélangent jamais. Aucune hydratation : des clés et des lignes. `SpokenRecipePhraseMemory` (lecture seule) rend la même chose que `rememberedId`.
+ * mélangent jamais. Aucune hydratation : des clés et des lignes. `SpokenRecipePhraseReader` en porte la lecture.
  */
 interface SpokenRecipePhraseChoiceRepository
 {

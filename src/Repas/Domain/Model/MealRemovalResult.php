@@ -1,12 +1,12 @@
 <?php
 
-namespace Repas\Shared\Application\Dto;
+namespace Repas\Repas\Domain\Model;
 
 /**
- * Ce que `VoiceMealPlanner::removeMeal()` a fait (ADR 0029 décision 12, VOX-306) : le repas a quitté la liste, ou son nombre de personnes a baissé, ou il
- * n'était pas dans la liste active (rien n'est écrit).
+ * Ce qu'a fait le retrait d'un repas de la liste active (ADR 0029 décision 12, VOX-306) : le repas a quitté la liste, ou son nombre de personnes a
+ * baissé, ou il n'était pas dans la liste active (rien n'est écrit).
  */
-final readonly class RemovedSpokenMeal
+final readonly class MealRemovalResult
 {
     private function __construct(
         public bool $found,

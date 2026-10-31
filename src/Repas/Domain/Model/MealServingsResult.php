@@ -1,12 +1,12 @@
 <?php
 
-namespace Repas\Shared\Application\Dto;
+namespace Repas\Repas\Domain\Model;
 
 /**
- * Ce que `VoiceMealPlanner::changeServings()` a fait (ADR 0029 décision 13, VOX-305) : le repas a un nouveau nombre de personnes, ou il n'est plus
- * dans la liste active (rien n'est écrit).
+ * Ce qu'a fait le changement du nombre de personnes d'un repas de la liste active (ADR 0029 décision 13, VOX-305) : le repas a un nouveau nombre de
+ * personnes, ou il n'est plus dans la liste active (rien n'est écrit).
  */
-final readonly class ChangedMealServings
+final readonly class MealServingsResult
 {
     private function __construct(
         public bool $found,
