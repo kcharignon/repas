@@ -15,7 +15,7 @@ use Repas\Tests\Helper\InMemoryRepository\SpokenRecipePhraseChoiceInMemoryReposi
 
 /**
  * Retenir ce que l'utilisateur a choisi pour une phrase de recette (ADR 0029 décision 13) : unitaire, avec les doubles en mémoire. La table réelle est
- * prouvée par `SpokenRecipePhraseChoiceRepositoryTest`, le parcours par `SpokenRecipeResolverFlowTest`.
+ * prouvée par `SpokenRecipePhraseChoiceRepositoryTest`, le parcours par `RecipePhraseCommandOHSFlowTest`.
  */
 class RememberSpokenRecipePhraseHandlerTest extends TestCase
 {

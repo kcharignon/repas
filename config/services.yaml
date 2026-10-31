@@ -61,13 +61,14 @@ services:
         alias: Repas\Voice\Infrastructure\Acl\IngredientResolutionCommandAdapter
         public: true
 
-    # Ports de la commande vocale (ADR 0029 décision 13, VOX-305) : le contexte `Voice` trouve la recette d'une phrase et planifie un repas sans importer `Repas`
-    Repas\Shared\Application\Interface\SpokenRecipeResolver:
-        alias: Repas\Repas\Infrastructure\Voice\SpokenRecipeResolverAdapter
+    # Ports de la commande vocale (ADR 0029 décision 13, VOX-305 ; ADR 0035) : le contexte `Voice` trouve la recette d'une phrase et planifie un repas
+    # sans importer `Repas`. Publics pour qu'un test de bout en bout les remplace
+    Repas\Voice\Application\Port\RecipeResolutionCommandPort:
+        alias: Repas\Voice\Infrastructure\Acl\RecipeResolutionCommandAdapter
         public: true
 
-    Repas\Shared\Application\Interface\VoiceMealPlanner:
-        alias: Repas\Repas\Infrastructure\Voice\VoiceMealPlannerAdapter
+    Repas\Voice\Application\Port\MealPlanCommandPort:
+        alias: Repas\Voice\Infrastructure\Acl\MealPlanCommandAdapter
         public: true
 
     # Vérificateur des requêtes d'Alexa (ADR 0029 décision 7, VOX-203) : OpenSSL, la chaîne d'Amazon téléchargée puis gardée 24 h.

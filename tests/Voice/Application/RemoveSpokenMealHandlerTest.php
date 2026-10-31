@@ -5,33 +5,30 @@ namespace Repas\Tests\Voice\Application;
 
 use PHPUnit\Framework\TestCase;
 use Repas\Repas\Domain\Exception\RecipeException;
-use Repas\Shared\Application\Dto\RemovedSpokenMeal;
 use Repas\Tests\Helper\RepasForVoice;
-use Repas\Tests\Helper\VoiceMealPlannerInMemory;
 use Repas\Voice\Application\Command\AddSpokenItem\AddSpokenItemResult;
 use Repas\Voice\Application\Command\RemoveSpokenMeal\RemoveSpokenMealCommand;
 use Repas\Voice\Application\Command\RemoveSpokenMeal\RemoveSpokenMealHandler;
 use Repas\Voice\Domain\Model\DialogueOption;
 use Repas\Voice\Domain\Model\DialogueStep;
 use Repas\Voice\Domain\Model\ListedMeal;
+use Repas\Voice\Domain\Model\RemovedSpokenMeal;
 use Repas\Voice\Domain\Service\SpokenIngredientNamer;
 
 /**
- * Retirer le repas que l'utilisateur vient de dire (ADR 0029 décision 12, VOX-306), avec les vrais adapters du contexte et les vrais Open Host Services de `Repas` sur ses doubles en mémoire (`RepasForVoice`), et le port de
- * planification de `Shared` en mémoire : aucune base, aucun noyau. La recherche parmi les repas planifiés et le retrait se prouvent dans `Repas`
- * (`ActiveListLookupCommandOHSTest`, `VoiceMealPlannerFlowTest`) et de bout en bout (`AlexaWebhookApiFlowTest`).
+ * Retirer le repas que l'utilisateur vient de dire (ADR 0029 décision 12, VOX-306), avec les vrais adapters du contexte et les vrais Open Host Services de `Repas` sur ses doubles en mémoire (`RepasForVoice`), et le bus de commandes simulé :
+ * aucune base, aucun noyau. La recherche parmi les repas planifiés et le retrait se prouvent dans `Repas`
+ * (`ActiveListLookupCommandOHSTest`, `MealPlanCommandOHSFlowTest`) et de bout en bout (`AlexaWebhookApiFlowTest`).
  */
 class RemoveSpokenMealHandlerTest extends TestCase
 {
     private RepasForVoice $repas;
-    private VoiceMealPlannerInMemory $planner;
     private RemoveSpokenMealHandler $handler;
 
     protected function setUp(): void
     {
         $this->repas = new RepasForVoice();
-        $this->planner = new VoiceMealPlannerInMemory();
-        $this->handler = new RemoveSpokenMealHandler($this->repas->mealLookupPort(), $this->planner, new SpokenIngredientNamer());
+        $this->handler = new RemoveSpokenMealHandler($this->repas->mealLookupPort(), $this->repas->mealPlanPort(), new SpokenIngredientNamer());
     }
 
     private static function hachis(int $servings = 4): ListedMeal
@@ -43,14 +40,14 @@ class RemoveSpokenMealHandlerTest extends TestCase
     {
         // Given
         $this->repas->listPlans(self::hachis());
-        $this->planner->willRemove(RemovedSpokenMeal::removed('Hachis parmentier'));
+        $this->repas->willRemoveMeal(RemovedSpokenMeal::removed('Hachis parmentier'));
 
         // When
         $result = ($this->handler)(new RemoveSpokenMealCommand('user-1', 'le hachis parmentier', sessionIsOpen: false));
 
         // Then : cherché sous son nom sans article parmi les repas de la liste, retiré en entier (aucun nombre), la séance se ferme
         $this->assertSame([['user-1', 'hachis parmentier']], $this->repas->lookedUpMeals);
-        $this->assertSame([['user-1', 'recipe-1', null]], $this->planner->removed);
+        $this->assertSame([['user-1', 'recipe-1', null]], $this->repas->mealsRemoved());
         $this->assertEquals(new AddSpokenItemResult("C'est retiré : le repas hachis parmentier.", keepSessionOpen: false, added: false), $result);
     }
 
@@ -58,13 +55,13 @@ class RemoveSpokenMealHandlerTest extends TestCase
     {
         // Given : le repas est prévu pour 4, on enlève 2 personnes
         $this->repas->listPlans(self::hachis(4));
-        $this->planner->willRemove(RemovedSpokenMeal::lowered('Hachis parmentier', 2));
+        $this->repas->willRemoveMeal(RemovedSpokenMeal::lowered('Hachis parmentier', 2));
 
         // When
         $result = ($this->handler)(new RemoveSpokenMealCommand('user-1', 'hachis parmentier', sessionIsOpen: true, servings: 2));
 
         // Then : 2 personnes demandées au port, qui garde 2 ; la séance reste ouverte sans relance
-        $this->assertSame([['user-1', 'recipe-1', 2]], $this->planner->removed);
+        $this->assertSame([['user-1', 'recipe-1', 2]], $this->repas->mealsRemoved());
         $this->assertEquals(new AddSpokenItemResult("C'est changé : hachis parmentier, pour 2 personnes.", keepSessionOpen: true, added: false), $result);
         $this->assertNull($result->reprompt, 'jamais de relance');
     }
@@ -73,7 +70,7 @@ class RemoveSpokenMealHandlerTest extends TestCase
     {
         // Given
         $this->repas->listPlans(self::hachis());
-        $this->planner->willRemove(RemovedSpokenMeal::notPlanned('Hachis parmentier'));
+        $this->repas->willRemoveMeal(RemovedSpokenMeal::notPlanned('Hachis parmentier'));
 
         // When
         $result = ($this->handler)(new RemoveSpokenMealCommand('user-1', 'hachis parmentier', sessionIsOpen: false));
@@ -92,8 +89,8 @@ class RemoveSpokenMealHandlerTest extends TestCase
 
         // Then
         $this->assertSame("Tu n'as pas de liste en cours.", $result->speech);
-        $this->assertSame([], $this->planner->removed);
-        $this->assertSame([], $this->planner->planned);
+        $this->assertSame([], $this->repas->mealsRemoved());
+        $this->assertSame([], $this->repas->mealsPlanned());
     }
 
     public function testAListSentToTheDriveIsSaidAndNeverTouched(): void
@@ -106,7 +103,7 @@ class RemoveSpokenMealHandlerTest extends TestCase
 
         // Then
         $this->assertSame('Ta liste est déjà partie au drive.', $result->speech);
-        $this->assertSame([], $this->planner->removed);
+        $this->assertSame([], $this->repas->mealsRemoved());
     }
 
     public function testAMealThatIsNotInTheListProposesTheClosestPlannedMealsAndTheOtherType(): void
@@ -118,7 +115,7 @@ class RemoveSpokenMealHandlerTest extends TestCase
         $result = ($this->handler)(new RemoveSpokenMealCommand('user-1', 'gratin', sessionIsOpen: false, servings: 2, originalPhrase: 'le repas gratin'));
 
         // Then : rien n'est retiré, une question, la séance reste ouverte avec son reprompt
-        $this->assertSame([], $this->planner->removed);
+        $this->assertSame([], $this->repas->mealsRemoved());
         $this->assertSame('Je ne trouve pas le repas gratin dans ta liste. Tu veux dire gratin de pâtes ou gratin dauphinois ? Ou un produit ?', $result->speech);
         $this->assertTrue($result->keepSessionOpen);
         $this->assertSame('Tu veux dire gratin de pâtes ou gratin dauphinois ? Ou un produit ?', $result->reprompt);
@@ -183,13 +180,13 @@ class RemoveSpokenMealHandlerTest extends TestCase
         $this->assertSame("Je n'ai pas compris. Dis par exemple : enlève le repas hachis parmentier.", $result->speech);
         $this->assertTrue($result->keepSessionOpen);
         $this->assertSame([], $this->repas->lookedUpMeals);
-        $this->assertSame([], $this->planner->removed);
+        $this->assertSame([], $this->repas->mealsRemoved());
     }
 
     public function testAMealThatBelongsToAnotherUserFailsTheWholeCommand(): void
     {
         // Given : un état forgé a glissé la recette d'un autre ; le port la refuse (404) et rien n'est écrit
-        $this->planner->willThrow(RecipeException::notFound('recipe-9'));
+        $this->repas->willFailToWriteMeals(RecipeException::notFound('recipe-9'));
 
         // Then : l'exception n'est pas attrapée (le bus annule la commande et le webhook répond la phrase d'échec)
         $this->expectExceptionObject(RecipeException::notFound('recipe-9'));
@@ -201,13 +198,13 @@ class RemoveSpokenMealHandlerTest extends TestCase
     public function testAChosenProposalIsRemovedAndTheSessionIsClosed(): void
     {
         // Given
-        $this->planner->willRemove(RemovedSpokenMeal::removed('Gratin dauphinois'));
+        $this->repas->willRemoveMeal(RemovedSpokenMeal::removed('Gratin dauphinois'));
 
         // When
         $result = $this->handler->remove('user-1', new DialogueOption('recipe-2', 'Gratin dauphinois'), null, keepSessionOpen: false);
 
         // Then
-        $this->assertSame([['user-1', 'recipe-2', null]], $this->planner->removed);
+        $this->assertSame([['user-1', 'recipe-2', null]], $this->repas->mealsRemoved());
         $this->assertEquals(new AddSpokenItemResult("C'est retiré : le repas gratin dauphinois.", keepSessionOpen: false, added: false), $result);
     }
 
@@ -220,7 +217,7 @@ class RemoveSpokenMealHandlerTest extends TestCase
         $result = ($this->handler)(new RemoveSpokenMealCommand('user-1', 'le hachis parmentier', sessionIsOpen: false));
 
         // Then : rien n'est retiré ; la question distingue les deux par le nombre de personnes et ne dit pas « je ne trouve pas » (ils y sont)
-        $this->assertSame([], $this->planner->removed);
+        $this->assertSame([], $this->repas->mealsRemoved());
         $this->assertSame('Tu veux dire hachis parmentier pour 4 ou hachis parmentier pour 2 ? Ou un produit ?', $result->speech);
         $this->assertTrue($result->keepSessionOpen);
         $state = $result->nextState;

@@ -1,13 +1,11 @@
 <?php
 
-namespace Repas\Tests\Repas\Infrastructure\Voice;
+namespace Repas\Tests\Repas\OpenHostService;
 
 use Repas\Repas\Application\OpenHostService\IngredientPhraseCommandOHS;
-use Repas\Repas\Application\Loader\SpokenRecipeCandidates;
+use Repas\Repas\Application\OpenHostService\RecipePhraseCommandOHS;
 use Repas\Repas\Domain\Exception\RecipeException;
-use Repas\Shared\Application\Dto\RecipeSuggestion;
-use Repas\Shared\Application\Interface\SpokenIngredientResolver;
-use Repas\Shared\Application\Interface\SpokenRecipeResolver;
+use Repas\Repas\Domain\Model\RecipeChoice;
 use Repas\Tests\Helper\Builder\IngredientBuilder;
 use Repas\Tests\Helper\Builder\RecipeBuilder;
 use Repas\Tests\Helper\Builder\UserBuilder;
@@ -16,19 +14,19 @@ use Repas\Tests\Helper\DataPersister;
 use Repas\User\Domain\Model\User;
 
 /**
- * Le port `SpokenRecipeResolver` câblé pour de vrai (ADR 0029 décision 13, VOX-305) : adaptateur, chargeur des recettes de l'utilisateur, mémoire de
- * phrase des recettes, bus transactionnel et classeur de noms sur la base de test.
+ * L'Open Host Service `RecipePhraseCommandOHS` câblé pour de vrai (ADR 0029 décision 13, VOX-305 ; ADR 0035) : lecture des recettes de l'utilisateur,
+ * mémoire de phrase des recettes, bus transactionnel et classeur de noms sur la base de test.
  */
-class SpokenRecipeResolverFlowTest extends DatabaseTestCase
+class RecipePhraseCommandOHSFlowTest extends DatabaseTestCase
 {
-    private SpokenRecipeResolver $resolver;
+    private RecipePhraseCommandOHS $resolver;
     private DataPersister $persister;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        $this->resolver = static::getContainer()->get(SpokenRecipeResolver::class);
+        $this->resolver = static::getContainer()->get(RecipePhraseCommandOHS::class);
         $this->persister = new DataPersister(static::getContainer());
     }
 
@@ -70,7 +68,7 @@ class SpokenRecipeResolverFlowTest extends DatabaseTestCase
         // Then : la recette de l'autre n'existe pas pour lui, ni trouvée ni proposée (seule la sienne, lointaine, est proposée)
         $this->assertSame([$gratin, 'Gratin dauphinois'], [$found->recipe?->id, $found->recipe?->name]);
         $this->assertNull($notFound->recipe);
-        $this->assertEquals([new RecipeSuggestion($gratin, 'Gratin dauphinois')], $notFound->suggestions);
+        $this->assertEquals([new RecipeChoice($gratin, 'Gratin dauphinois')], $notFound->suggestions);
     }
 
     public function testTheSecretFlagChangesNothingForTheVoiceTheUserStillFindsHisOwnSecretRecipeAndNeverTheOneOfAnother(): void
@@ -89,7 +87,7 @@ class SpokenRecipeResolverFlowTest extends DatabaseTestCase
         // Then : la sienne, secrète ou non, est comprise ; celle d'un autre n'est ni trouvée ni proposée, comme avant
         $this->assertSame($mine, $found->recipe?->id);
         $this->assertNull($notFound->recipe);
-        $this->assertEquals([new RecipeSuggestion($mine, 'Gratin dauphinois')], $notFound->suggestions);
+        $this->assertEquals([new RecipeChoice($mine, 'Gratin dauphinois')], $notFound->suggestions);
     }
 
     public function testAUserWithoutAnyRecipeGetsNothingAndTheResolutionSaysSo(): void
@@ -130,7 +128,7 @@ class SpokenRecipeResolverFlowTest extends DatabaseTestCase
         $resolution = $this->resolver->resolveOrSuggest($user->getId(), 'blanquette de veaux');
 
         // Then
-        $this->assertEquals([new RecipeSuggestion($lasagnes, 'Lasagnes')], $resolution->suggestions);
+        $this->assertEquals([new RecipeChoice($lasagnes, 'Lasagnes')], $resolution->suggestions);
     }
 
     public function testTheRecipeWhoseNameIsTheOneSaidWinsOverALongerOne(): void
@@ -160,7 +158,7 @@ class SpokenRecipeResolverFlowTest extends DatabaseTestCase
         // Then : une recette planifiée à tort modifie beaucoup de lignes : on demande
         $this->assertNull($resolution->recipe);
         $this->assertEqualsCanonicalizing(
-            [new RecipeSuggestion($dauphinois, 'Gratin dauphinois'), new RecipeSuggestion($pasta, 'Gratin de pâtes')],
+            [new RecipeChoice($dauphinois, 'Gratin dauphinois'), new RecipeChoice($pasta, 'Gratin de pâtes')],
             $resolution->suggestions,
         );
     }
@@ -177,7 +175,7 @@ class SpokenRecipeResolverFlowTest extends DatabaseTestCase
 
         // Then : proposée, jamais planifiée toute seule ; le hachis, sans rapport, ne passe qu'ensuite (les trois plus proches, même lointaines)
         $this->assertNull($resolution->recipe);
-        $this->assertEquals(new RecipeSuggestion($gratin, 'Gratin dauphinois'), $resolution->suggestions[0]);
+        $this->assertEquals(new RecipeChoice($gratin, 'Gratin dauphinois'), $resolution->suggestions[0]);
     }
 
     public function testAProductNeverStealsARecipeAndARecipeNeverStealsAProduct(): void
@@ -259,21 +257,5 @@ class SpokenRecipeResolverFlowTest extends DatabaseTestCase
         // When / Then : ignorée, le classement reprend
         $resolution = $this->resolver->resolveOrSuggest($user->getId(), 'le plat du dimanche');
         $this->assertNull($resolution->recipe);
-    }
-
-    public function testTheCandidatesAreTheRecipesOfTheUserWithTheirOwnNormalizedName(): void
-    {
-        // Given
-        $user = $this->savedUser();
-        $other = $this->savedUser();
-        $id = $this->savedRecipe($user, 'Œufs à la Coque');
-        $this->savedRecipe($other, 'Hachis parmentier');
-
-        // When
-        $candidates = static::getContainer()->get(SpokenRecipeCandidates::class)->forUser($user->getId());
-
-        // Then : l'identifiant de la recette tient lieu de slug, aucun rayon, aucune habitude
-        $this->assertCount(1, $candidates);
-        $this->assertSame([$id, 'oeufs-a-la-coque', 'Œufs à la Coque', '', 0], [$candidates[0]->slug, $candidates[0]->sluggedName, $candidates[0]->name, $candidates[0]->departmentName, $candidates[0]->uses12m]);
     }
 }

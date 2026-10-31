@@ -6,20 +6,30 @@ use DateTimeImmutable;
 use Repas\Repas\Application\Command\AddSpokenIngredient\AddSpokenIngredientCommand;
 use Repas\Repas\Application\Command\CreateIngredient\CreateIngredientCommand;
 use Repas\Repas\Application\Command\RememberSpokenPhrase\RememberSpokenPhraseCommand;
+use Repas\Repas\Application\Command\ChangeSpokenMealServings\ChangeSpokenMealServingsCommand;
+use Repas\Repas\Application\Command\PlanSpokenMeal\PlanSpokenMealCommand;
+use Repas\Repas\Application\Command\RememberSpokenRecipePhrase\RememberSpokenRecipePhraseCommand;
 use Repas\Repas\Application\Command\RemoveSpokenIngredient\RemoveSpokenIngredientCommand;
+use Repas\Repas\Application\Command\RemoveSpokenMeal\RemoveSpokenMealCommand;
 use Repas\Repas\Application\OpenHostService\ActiveListLineLookupCommandOHS;
 use Repas\Repas\Application\OpenHostService\ActiveListLineLookupQueryOHS;
 use Repas\Repas\Application\OpenHostService\ActiveListMealLookupCommandOHS;
 use Repas\Repas\Application\OpenHostService\IngredientCreationCommandOHS;
 use Repas\Repas\Application\OpenHostService\IngredientPhraseCommandOHS;
+use Repas\Repas\Application\OpenHostService\MealPlanCommandOHS;
+use Repas\Repas\Application\OpenHostService\RecipePhraseCommandOHS;
 use Repas\Repas\Application\OpenHostService\ShoppingListItemCommandOHS;
 use Repas\Repas\Domain\Model\AddedItem as RepasAddedItem;
 use Repas\Repas\Domain\Model\RemovedItem as RepasRemovedItem;
 use Repas\Repas\Domain\Model\Department;
+use Repas\Repas\Domain\Model\MealPlanResult;
+use Repas\Repas\Domain\Model\MealRemovalResult;
+use Repas\Repas\Domain\Model\MealServingsResult;
 use Repas\Repas\Domain\Model\SpokenCandidate;
 use Repas\Repas\Domain\Model\Unit;
 use Repas\Repas\Domain\Service\ActiveListLookup;
 use Repas\Repas\Domain\Service\IngredientPhraseResolver;
+use Repas\Repas\Domain\Service\RecipePhraseResolver;
 use Repas\Shared\Domain\Tool\StringTool;
 use Repas\Tests\Helper\Builder\DepartmentBuilder;
 use Repas\Tests\Helper\Builder\UnitBuilder;
@@ -29,6 +39,7 @@ use Repas\Tests\Helper\InMemoryLoader\SpokenPhraseMemoryInMemoryLoader;
 use Repas\Tests\Helper\InMemoryRepository\ActiveShoppingListContentsInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\DepartmentInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\IngredientPhraseCandidatesInMemoryRepository;
+use Repas\Tests\Helper\InMemoryRepository\RecipePhraseCandidatesInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\SpokenPhraseChoiceInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\SpokenRecipePhraseChoiceInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\UnitInMemoryRepository;
@@ -37,21 +48,29 @@ use Repas\Voice\Application\Port\IngredientResolutionCommandPort;
 use Repas\Voice\Application\Port\ListLineLookupCommandPort;
 use Repas\Voice\Application\Port\ListLineLookupQueryPort;
 use Repas\Voice\Application\Port\ListMealLookupCommandPort;
+use Repas\Voice\Application\Port\MealPlanCommandPort;
+use Repas\Voice\Application\Port\RecipeResolutionCommandPort;
 use Repas\Voice\Application\Port\ShoppingListItemCommandPort;
 use Repas\Voice\Domain\Model\AddedItem;
+use Repas\Voice\Domain\Model\ChangedMealServings;
 use Repas\Voice\Domain\Model\DialogueOption;
 use Repas\Voice\Domain\Model\ListedLine;
 use Repas\Voice\Domain\Model\ListedMeal;
+use Repas\Voice\Domain\Model\PlannedSpokenMeal;
 use Repas\Voice\Domain\Model\RemovedItem;
+use Repas\Voice\Domain\Model\RemovedSpokenMeal;
 use Repas\Voice\Domain\Model\ResolvedIngredient;
 use Repas\Voice\Domain\Model\SpokenResolution;
 use Repas\Voice\Domain\Model\SpokenListLookupResult;
 use Repas\Voice\Domain\Model\SpokenMealLookupResult;
+use Repas\Voice\Domain\Model\SpokenRecipeResolution;
 use Repas\Voice\Infrastructure\Acl\IngredientCreationCommandAdapter;
 use Repas\Voice\Infrastructure\Acl\IngredientResolutionCommandAdapter;
 use Repas\Voice\Infrastructure\Acl\ListLineLookupCommandAdapter;
 use Repas\Voice\Infrastructure\Acl\ListLineLookupQueryAdapter;
 use Repas\Voice\Infrastructure\Acl\ListMealLookupCommandAdapter;
+use Repas\Voice\Infrastructure\Acl\MealPlanCommandAdapter;
+use Repas\Voice\Infrastructure\Acl\RecipeResolutionCommandAdapter;
 use Repas\Voice\Infrastructure\Acl\ShoppingListItemCommandAdapter;
 use Throwable;
 
@@ -69,7 +88,11 @@ use Throwable;
  *    et `listPlans()` (un repas planifié) programment ce qu'elle contient, c'est le classeur qui cherche (`lineLookupPort()`, `lineLookupQueryPort()`
  *    pour une lecture seule, `mealLookupPort()`) ; `itemsPort()` ajoute et retire par les commandes de `Repas` sur le bus simulé : `willAdd()`,
  *    `willRemove()` et `willFailToWriteTheList()` programment leur résultat, `added()`, `removed()` et leurs `…With()` disent ce qui a été demandé,
- *    `lookedUp` et `lookedUpMeals` les phrases cherchées.
+ *    `lookedUp` et `lookedUpMeals` les phrases cherchées ;
+ *  - les recettes et les repas (ADR 0035, C8) : `ownsRecipe()` programme les recettes de l'utilisateur, c'est le classeur qui choisit
+ *    (`recipeResolutionPort()`, qui note les phrases dans `askedRecipes`) ; `mealPlanPort()` planifie, change et retire par les commandes de `Repas` sur
+ *    le bus simulé : `willPlanMeal()`, `willChangeMealServings()`, `willRemoveMeal()` et `willFailToWriteMeals()` programment leur résultat,
+ *    `mealsPlanned()`, `mealsChanged()`, `mealsRemoved()` et `rememberedRecipes()` disent ce qui a été demandé.
  */
 final class RepasForVoice
 {
@@ -80,6 +103,7 @@ final class RepasForVoice
     public readonly MockCommandBus $bus;
     public readonly ActiveShoppingListContentsInMemoryRepository $list;
     public readonly SpokenRecipePhraseChoiceInMemoryRepository $recipeMemory;
+    public readonly RecipePhraseCandidatesInMemoryRepository $recipes;
 
     private bool $activeList = false;
     private bool $sentList = false;
@@ -92,6 +116,9 @@ final class RepasForVoice
 
     /** @var list<array{string, string}> les appels à `resolveOrSuggest` `[userId, phrase]`, dans l'ordre */
     public array $asked = [];
+
+    /** @var list<array{string, string}> les appels à `resolveOrSuggest` des RECETTES `[userId, phrase]`, dans l'ordre */
+    public array $askedRecipes = [];
 
     /** @var list<array{string, string}> les recherches d'une ligne de la liste `[userId, phrase]`, dans l'ordre */
     public array $lookedUp = [];
@@ -106,6 +133,11 @@ final class RepasForVoice
         $this->bus = new MockCommandBus();
         $this->list = new ActiveShoppingListContentsInMemoryRepository();
         $this->recipeMemory = new SpokenRecipePhraseChoiceInMemoryRepository();
+        $this->recipes = new RecipePhraseCandidatesInMemoryRepository();
+        // Par défaut, comme les vrais handlers sur une liste qui ne contient pas le repas : planifié pour le nombre dit ou 4, changé, retiré en entier
+        $this->bus->willAnswer(PlanSpokenMealCommand::class, static fn(object $command): MealPlanResult => new MealPlanResult($command->recipeId, $command->servings ?? 4, false, false, false));
+        $this->bus->willAnswer(ChangeSpokenMealServingsCommand::class, static fn(object $command): MealServingsResult => MealServingsResult::changed($command->recipeId, $command->servings));
+        $this->bus->willAnswer(RemoveSpokenMealCommand::class, static fn(object $command): MealRemovalResult => MealRemovalResult::removed($command->recipeId));
         $this->willAdd(new AddedItem(listCreated: false, previousListSent: false));
         $this->willRemove(new RemovedItem(found: true, remaining: 0.0, removed: 1.0));
         // Le handler réel rend le slug de l'ingrédient créé : ici, le nom et l'utilisateur
@@ -511,6 +543,156 @@ final class RepasForVoice
                 return $this->real->find($userId, $phrase);
             }
         };
+    }
+
+    // --- les recettes et les repas (VOX-305, VOX-306) ---
+
+    /** Une recette de l'utilisateur (le classeur la reconnaît par son nom ; sans aucune recette, l'utilisateur est dit n'en avoir aucune). */
+    public function ownsRecipe(string $id, string $name): self
+    {
+        $this->recipes->add(new SpokenCandidate($id, StringTool::slugify($name), $name, ''));
+
+        return $this;
+    }
+
+    public function willFailToRememberRecipe(Throwable $failure): self
+    {
+        $this->bus->willThrow(RememberSpokenRecipePhraseCommand::class, $failure);
+
+        return $this;
+    }
+
+    /**
+     * @return list<array{string, string, string}> les phrases retenues pour une recette `[userId, phrase, recipeId]`, dans l'ordre
+     */
+    public function rememberedRecipes(): array
+    {
+        $remembered = [];
+        foreach ($this->bus->dispatched() as $command) {
+            if ($command instanceof RememberSpokenRecipePhraseCommand) {
+                $remembered[] = [$command->userId, $command->phrase, $command->recipeId];
+            }
+        }
+
+        return $remembered;
+    }
+
+    /** Le prochain repas planifié rend ce résultat (par défaut : planifié pour le nombre dit ou 4, la liste existait). */
+    public function willPlanMeal(PlannedSpokenMeal $planned): self
+    {
+        $this->bus->willAnswer(PlanSpokenMealCommand::class, static fn(object $command): MealPlanResult => new MealPlanResult($planned->recipeName, $planned->servings, $planned->alreadyPlanned, $planned->listCreated, $planned->previousListSent));
+
+        return $this;
+    }
+
+    public function willChangeMealServings(ChangedMealServings $changed): self
+    {
+        $this->bus->willAnswer(ChangeSpokenMealServingsCommand::class, static fn(object $command): MealServingsResult => $changed->found ? MealServingsResult::changed($changed->recipeName, $changed->servings) : MealServingsResult::notPlanned($changed->recipeName));
+
+        return $this;
+    }
+
+    public function willRemoveMeal(RemovedSpokenMeal $removed): self
+    {
+        $this->bus->willAnswer(RemoveSpokenMealCommand::class, static fn(object $command): MealRemovalResult => match (true) {
+            !$removed->found => MealRemovalResult::notPlanned($removed->recipeName),
+            $removed->removedAll => MealRemovalResult::removed($removed->recipeName),
+            default => MealRemovalResult::lowered($removed->recipeName, $removed->servings),
+        });
+
+        return $this;
+    }
+
+    /** Toute écriture d'un repas échoue (une exception de domaine, par exemple) : la commande est enregistrée, puis l'exception levée. */
+    public function willFailToWriteMeals(Throwable $failure): self
+    {
+        $this->bus->willThrow(PlanSpokenMealCommand::class, $failure);
+        $this->bus->willThrow(ChangeSpokenMealServingsCommand::class, $failure);
+        $this->bus->willThrow(RemoveSpokenMealCommand::class, $failure);
+
+        return $this;
+    }
+
+    /**
+     * @return list<array{string, string, ?int}> les repas planifiés `[userId, recipeId, servings]`, dans l'ordre
+     */
+    public function mealsPlanned(): array
+    {
+        $planned = [];
+        foreach ($this->bus->dispatched() as $command) {
+            if ($command instanceof PlanSpokenMealCommand) {
+                $planned[] = [$command->ownerId, $command->recipeId, $command->servings];
+            }
+        }
+
+        return $planned;
+    }
+
+    /**
+     * @return list<array{string, string, int}> les nombres de personnes changés `[userId, recipeId, servings]`, dans l'ordre
+     */
+    public function mealsChanged(): array
+    {
+        $changed = [];
+        foreach ($this->bus->dispatched() as $command) {
+            if ($command instanceof ChangeSpokenMealServingsCommand) {
+                $changed[] = [$command->ownerId, $command->recipeId, $command->servings];
+            }
+        }
+
+        return $changed;
+    }
+
+    /**
+     * @return list<array{string, string, ?int}> les retraits de repas `[userId, recipeId, servings]`, dans l'ordre
+     */
+    public function mealsRemoved(): array
+    {
+        $removed = [];
+        foreach ($this->bus->dispatched() as $command) {
+            if ($command instanceof RemoveSpokenMealCommand) {
+                $removed[] = [$command->ownerId, $command->recipeId, $command->servings];
+            }
+        }
+
+        return $removed;
+    }
+
+    /** Le port des recettes, tel que les handlers le reçoivent : la vraie chaîne, qui note la phrase reçue dans `$askedRecipes`. */
+    public function recipeResolutionPort(): RecipeResolutionCommandPort
+    {
+        $real = new RecipeResolutionCommandAdapter(
+            new RecipePhraseCommandOHS($this->recipes, $this->recipeMemory, new RecipePhraseResolver(), $this->bus),
+        );
+        $record = function (string $userId, string $phrase): void {
+            $this->askedRecipes[] = [$userId, $phrase];
+        };
+
+        return new class($real, $record) implements RecipeResolutionCommandPort {
+            public function __construct(
+                private readonly RecipeResolutionCommandPort $real,
+                private readonly \Closure $record,
+            ) {
+            }
+
+            public function resolveOrSuggest(string $userId, string $phrase): SpokenRecipeResolution
+            {
+                ($this->record)($userId, $phrase);
+
+                return $this->real->resolveOrSuggest($userId, $phrase);
+            }
+
+            public function remember(string $userId, string $phrase, string $recipeId): void
+            {
+                $this->real->remember($userId, $phrase, $recipeId);
+            }
+        };
+    }
+
+    /** Le port des repas, tel que les handlers d'écriture le reçoivent : le vrai adapter, le vrai Open Host Service, le bus simulé. */
+    public function mealPlanPort(): MealPlanCommandPort
+    {
+        return new MealPlanCommandAdapter(new MealPlanCommandOHS($this->bus));
     }
 
     private function syncList(): void

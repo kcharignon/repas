@@ -17,7 +17,7 @@ use Repas\Repas\Domain\Model\Meal;
 use Repas\Repas\Domain\Model\ShoppingList;
 use Repas\Repas\Domain\Model\ShoppingListStatus;
 use Repas\Shared\Application\Interface\VoiceFeature;
-use Repas\Shared\Application\Interface\VoiceMealPlanner;
+use Repas\Voice\Application\Port\MealPlanCommandPort;
 use Repas\Voice\Application\Port\ShoppingListItemCommandPort;
 use Repas\Tests\Helper\Alexa\AlexaTestAuthority;
 use Repas\Tests\Helper\Alexa\AlexaTestClient;
@@ -2497,7 +2497,7 @@ class AlexaWebhookApiFlowTest extends DatabaseTestCase
      */
     private function plannedMeal(User $user, Recipe $recipe, int $servings): void
     {
-        static::getContainer()->get(VoiceMealPlanner::class)->plan($user->getId(), $recipe->getId(), $servings);
+        static::getContainer()->get(MealPlanCommandPort::class)->plan($user->getId(), $recipe->getId(), $servings);
         $this->entityManager->clear();
     }
 

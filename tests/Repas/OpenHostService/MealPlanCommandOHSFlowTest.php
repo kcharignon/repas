@@ -1,22 +1,22 @@
 <?php
 
-namespace Repas\Tests\Repas\Infrastructure\Voice;
+namespace Repas\Tests\Repas\OpenHostService;
 
 use PHPUnit\Framework\Attributes\DataProvider;
+use Repas\Repas\Application\OpenHostService\MealPlanCommandOHS;
 use Repas\Repas\Domain\Exception\IngredientException;
+use Repas\Repas\Domain\Exception\MealPlanningException;
 use Repas\Repas\Domain\Exception\RecipeException;
-use Repas\Shared\Domain\Exception\SpokenMealFailure;
 use Repas\Repas\Domain\Exception\ShoppingListException;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Repas\Domain\Model\Meal;
+use Repas\Repas\Domain\Model\MealPlanResult;
+use Repas\Repas\Domain\Model\MealRemovalResult;
+use Repas\Repas\Domain\Model\MealServingsResult;
 use Repas\Repas\Domain\Model\Recipe;
 use Repas\Repas\Domain\Model\RecipeRow;
 use Repas\Repas\Domain\Model\ShoppingList;
 use Repas\Repas\Domain\Model\ShoppingListStatus;
-use Repas\Shared\Application\Dto\ChangedMealServings;
-use Repas\Shared\Application\Dto\PlannedSpokenMeal;
-use Repas\Shared\Application\Dto\RemovedSpokenMeal;
-use Repas\Shared\Application\Interface\VoiceMealPlanner;
 use Repas\Tests\Helper\Builder\ConversionBuilder;
 use Repas\Tests\Helper\Builder\RecipeBuilder;
 use Repas\Tests\Helper\Builder\ShoppingListBuilder;
@@ -26,12 +26,12 @@ use Repas\Tests\Helper\DataPersister;
 use Repas\User\Domain\Model\User;
 
 /**
- * Le port `VoiceMealPlanner` câblé pour de vrai (ADR 0029 décision 13, VOX-305) : adaptateur, bus transactionnel, `PlanSpokenMealHandler`,
+ * L'Open Host Service `MealPlanCommandOHS` câblé pour de vrai (ADR 0029 décision 13, VOX-305 ; ADR 0035) : bus transactionnel, `PlanSpokenMealHandler`,
  * `PlannedMealHandler`, `UpdateServingMealHandler`, nombre de personnes du compte et repositories sur la base de test.
  */
-class VoiceMealPlannerFlowTest extends DatabaseTestCase
+class MealPlanCommandOHSFlowTest extends DatabaseTestCase
 {
-    private VoiceMealPlanner $planner;
+    private MealPlanCommandOHS $planner;
     private ShoppingListRepository $shoppingListRepository;
     private DataPersister $persister;
 
@@ -39,7 +39,7 @@ class VoiceMealPlannerFlowTest extends DatabaseTestCase
     {
         parent::setUp();
 
-        $this->planner = static::getContainer()->get(VoiceMealPlanner::class);
+        $this->planner = static::getContainer()->get(MealPlanCommandOHS::class);
         $this->shoppingListRepository = static::getContainer()->get(ShoppingListRepository::class);
         $this->persister = new DataPersister(static::getContainer());
     }
@@ -132,7 +132,7 @@ class VoiceMealPlannerFlowTest extends DatabaseTestCase
         $this->entityManager->clear();
 
         // Then : le repas est dans la liste, pour 3 personnes, dans le même exemplaire de liste
-        $this->assertEquals(new PlannedSpokenMeal($second->getName(), 3, alreadyPlanned: false, listCreated: false, previousListSent: false), $result);
+        $this->assertEquals(new MealPlanResult($second->getName(), 3, alreadyPlanned: false, listCreated: false, previousListSent: false), $result);
         $reloaded = $this->shoppingListRepository->findOneById($active->getId());
         $this->assertCount(2, $reloaded->getMeals());
         $this->assertSame(3, $this->mealOf($reloaded, $second)?->getServing());
@@ -189,7 +189,7 @@ class VoiceMealPlannerFlowTest extends DatabaseTestCase
         $this->entityManager->clear();
 
         // Then
-        $this->assertEquals(new PlannedSpokenMeal($recipe->getName(), 4, alreadyPlanned: false, listCreated: true, previousListSent: false), $result);
+        $this->assertEquals(new MealPlanResult($recipe->getName(), 4, alreadyPlanned: false, listCreated: true, previousListSent: false), $result);
         $lists = $this->shoppingListRepository->findByOwner($user->getId());
         $this->assertCount(1, $lists);
         $this->assertSame(ShoppingListStatus::ACTIVE, $lists->reset()->getStatus());
@@ -210,7 +210,7 @@ class VoiceMealPlannerFlowTest extends DatabaseTestCase
         $this->entityManager->clear();
 
         // Then : une liste neuve, la liste envoyée n'a pas bougé
-        $this->assertEquals(new PlannedSpokenMeal($second->getName(), 4, alreadyPlanned: false, listCreated: true, previousListSent: true), $result);
+        $this->assertEquals(new MealPlanResult($second->getName(), 4, alreadyPlanned: false, listCreated: true, previousListSent: true), $result);
         $reloaded = $this->shoppingListRepository->findOneById($sent->getId());
         $this->assertSame(ShoppingListStatus::SENT, $reloaded->getStatus());
         $this->assertSame($sent->getVersion(), $reloaded->getVersion());
@@ -233,7 +233,7 @@ class VoiceMealPlannerFlowTest extends DatabaseTestCase
         $this->entityManager->clear();
 
         // Then : on dit pour combien elle y est ; ni liste de plus, ni repas de plus, ni version qui bouge
-        $this->assertEquals(new PlannedSpokenMeal($recipe->getName(), $existing, alreadyPlanned: true, listCreated: false, previousListSent: false), $result);
+        $this->assertEquals(new MealPlanResult($recipe->getName(), $existing, alreadyPlanned: true, listCreated: false, previousListSent: false), $result);
         $reloaded = $this->shoppingListRepository->findOneById($active->getId());
         $this->assertCount(1, $reloaded->getMeals());
         $this->assertSame($active->getVersion(), $reloaded->getVersion());
@@ -249,8 +249,8 @@ class VoiceMealPlannerFlowTest extends DatabaseTestCase
         $this->entityManager->clear();
 
         // Then
-        // Une recette d'un autre compte ou inconnue : une phrase claire (`SpokenMealFailure`), rien d'écrit
-        $this->expectExceptionObject(SpokenMealFailure::recipeGone());
+        // Une recette d'un autre compte ou inconnue : une phrase claire (`MealPlanningException`), rien d'écrit
+        $this->expectExceptionObject(MealPlanningException::recipeGone());
         try {
             $this->planner->plan($user->getId(), $theirs->getId());
         } finally {
@@ -263,7 +263,7 @@ class VoiceMealPlannerFlowTest extends DatabaseTestCase
     {
         $user = $this->savedUser();
 
-        $this->expectExceptionObject(SpokenMealFailure::recipeGone());
+        $this->expectExceptionObject(MealPlanningException::recipeGone());
         $this->planner->plan($user->getId(), 'does-not-exist');
     }
 
@@ -299,9 +299,9 @@ class VoiceMealPlannerFlowTest extends DatabaseTestCase
         try {
             $this->planner->plan($user->getId(), $recipe->getId());
             $this->fail('Une recette dont un ingrédient ne se convertit pas ne se planifie pas.');
-        } catch (SpokenMealFailure $exception) {
+        } catch (MealPlanningException $exception) {
             // Then : une phrase claire (le nom de la recette), et comme dans l'application tout est annulé (y compris la liste neuve)
-            $this->assertSame([SpokenMealFailure::MISSING_CONVERSION, $recipe->getName()], [$exception->reason, $exception->recipeName]);
+            $this->assertSame([MealPlanningException::MISSING_CONVERSION, $recipe->getName()], [$exception->reason, $exception->recipeName]);
             // And : l'ingrédient en cause est nommé (comme dans l'application), c'est l'un de ceux de la recette
             $this->assertContains($exception->ingredientName, $this->ingredientNamesOf($recipe));
             $this->entityManager->clear();
@@ -331,9 +331,9 @@ class VoiceMealPlannerFlowTest extends DatabaseTestCase
         $forTwo = $this->quantitiesOf($active);
 
         // Then : le nouveau total remplace l'ancien, dans les deux sens
-        $this->assertEquals(ChangedMealServings::changed($recipe->getName(), 6), $up);
+        $this->assertEquals(MealServingsResult::changed($recipe->getName(), 6), $up);
         $this->assertSame(6, $afterUp);
-        $this->assertEquals(ChangedMealServings::changed($recipe->getName(), 2), $down);
+        $this->assertEquals(MealServingsResult::changed($recipe->getName(), 2), $down);
         $this->assertSame(2, $this->mealOf($this->shoppingListRepository->findOneById($active->getId()), $recipe)?->getServing());
 
         // Then : et les QUANTITÉS DES LIGNES ont suivi, la preuve de bout en bout (4 -> 6 -> 2, linéaire en nombre de personnes)
@@ -361,7 +361,7 @@ class VoiceMealPlannerFlowTest extends DatabaseTestCase
         $this->entityManager->clear();
 
         // Then
-        $this->assertEquals(ChangedMealServings::changed($recipe->getName(), $serving), $result);
+        $this->assertEquals(MealServingsResult::changed($recipe->getName(), $serving), $result);
         $this->assertSame($active->getVersion(), $this->shoppingListRepository->findOneById($active->getId())->getVersion());
     }
 
@@ -374,13 +374,13 @@ class VoiceMealPlannerFlowTest extends DatabaseTestCase
         $this->entityManager->clear();
 
         // When / Then
-        $this->assertEquals(ChangedMealServings::notPlanned($recipe->getName()), $this->planner->changeServings($user->getId(), $recipe->getId(), 6));
+        $this->assertEquals(MealServingsResult::notPlanned($recipe->getName()), $this->planner->changeServings($user->getId(), $recipe->getId(), 6));
         $this->entityManager->clear();
         $this->assertCount(0, $this->shoppingListRepository->findOneById($active->getId())->getMeals());
 
         $alone = $this->savedUser();
         $aloneRecipe = $this->savedRecipe($alone, new RecipeBuilder()->isSoftBoiledEggs());
-        $this->assertEquals(ChangedMealServings::notPlanned($aloneRecipe->getName()), $this->planner->changeServings($alone->getId(), $aloneRecipe->getId(), 6));
+        $this->assertEquals(MealServingsResult::notPlanned($aloneRecipe->getName()), $this->planner->changeServings($alone->getId(), $aloneRecipe->getId(), 6));
         $this->assertCount(0, $this->shoppingListRepository->findByOwner($alone->getId()), 'changer un total ne crée jamais de liste');
     }
 
@@ -397,7 +397,7 @@ class VoiceMealPlannerFlowTest extends DatabaseTestCase
         $this->entityManager->clear();
 
         // Then : seule la liste ACTIVE compte, la liste envoyée reste telle quelle
-        $this->assertEquals(ChangedMealServings::notPlanned($recipe->getName()), $result);
+        $this->assertEquals(MealServingsResult::notPlanned($recipe->getName()), $result);
         $this->assertSame($sent->getVersion(), $this->shoppingListRepository->findOneById($sent->getId())->getVersion());
     }
 
@@ -410,8 +410,8 @@ class VoiceMealPlannerFlowTest extends DatabaseTestCase
         $this->entityManager->clear();
 
         // Then
-        // Une recette d'un autre compte ou inconnue : une phrase claire (`SpokenMealFailure`), rien d'écrit
-        $this->expectExceptionObject(SpokenMealFailure::recipeGone());
+        // Une recette d'un autre compte ou inconnue : une phrase claire (`MealPlanningException`), rien d'écrit
+        $this->expectExceptionObject(MealPlanningException::recipeGone());
         $this->planner->changeServings($user->getId(), $theirs->getId(), 6);
     }
 
@@ -447,7 +447,7 @@ class VoiceMealPlannerFlowTest extends DatabaseTestCase
         $this->entityManager->clear();
 
         // Then : le repas a quitté la liste, l'autre reste, et les lignes sont revenues à ce qu'elles étaient avec la carbonara seule
-        $this->assertEquals(RemovedSpokenMeal::removed($eggs->getName()), $result);
+        $this->assertEquals(MealRemovalResult::removed($eggs->getName()), $result);
         $reloaded = $this->shoppingListRepository->findOneById($active->getId());
         $this->assertCount(1, $reloaded->getMeals());
         $this->assertNull($this->mealOf($reloaded, $eggs));
@@ -479,8 +479,8 @@ class VoiceMealPlannerFlowTest extends DatabaseTestCase
         $forOne = $this->quantitiesOf($active);
 
         // Then : on déduit, on ne fixe pas (4 - 1 = 3, 3 - 2 = 1) et les lignes ont suivi, linéairement
-        $this->assertEquals(RemovedSpokenMeal::lowered($recipe->getName(), 3), $first);
-        $this->assertEquals(RemovedSpokenMeal::lowered($recipe->getName(), 1), $second);
+        $this->assertEquals(MealRemovalResult::lowered($recipe->getName(), 3), $first);
+        $this->assertEquals(MealRemovalResult::lowered($recipe->getName(), 1), $second);
         $this->assertSame(1, $this->mealOf($this->shoppingListRepository->findOneById($active->getId()), $recipe)?->getServing());
         $this->assertNotEmpty($forFour);
         foreach ($forFour as $slug => $quantityForFour) {
@@ -505,7 +505,7 @@ class VoiceMealPlannerFlowTest extends DatabaseTestCase
         $this->entityManager->clear();
 
         // Then : jamais un nombre de personnes nul ou négatif, le repas quitte la liste et ses lignes disparaissent
-        $this->assertEquals(RemovedSpokenMeal::removed($recipe->getName()), $result);
+        $this->assertEquals(MealRemovalResult::removed($recipe->getName()), $result);
         $reloaded = $this->shoppingListRepository->findOneById($active->getId());
         $this->assertCount(0, $reloaded->getMeals());
         $this->assertSame([], $this->quantitiesOf($active));
@@ -530,13 +530,13 @@ class VoiceMealPlannerFlowTest extends DatabaseTestCase
         $this->entityManager->clear();
 
         // When / Then
-        $this->assertEquals(RemovedSpokenMeal::notPlanned($recipe->getName()), $this->planner->removeMeal($user->getId(), $recipe->getId()));
+        $this->assertEquals(MealRemovalResult::notPlanned($recipe->getName()), $this->planner->removeMeal($user->getId(), $recipe->getId()));
         $this->entityManager->clear();
         $this->assertSame($active->getVersion(), $this->shoppingListRepository->findOneById($active->getId())->getVersion());
 
         $alone = $this->savedUser();
         $aloneRecipe = $this->savedRecipe($alone, new RecipeBuilder()->isSoftBoiledEggs());
-        $this->assertEquals(RemovedSpokenMeal::notPlanned($aloneRecipe->getName()), $this->planner->removeMeal($alone->getId(), $aloneRecipe->getId(), 2));
+        $this->assertEquals(MealRemovalResult::notPlanned($aloneRecipe->getName()), $this->planner->removeMeal($alone->getId(), $aloneRecipe->getId(), 2));
         $this->assertCount(0, $this->shoppingListRepository->findByOwner($alone->getId()), 'retirer ne crée jamais de liste');
     }
 
@@ -554,8 +554,8 @@ class VoiceMealPlannerFlowTest extends DatabaseTestCase
         $this->entityManager->clear();
 
         // Then : seule la liste ACTIVE compte, la liste envoyée reste telle quelle
-        $this->assertEquals(RemovedSpokenMeal::notPlanned($recipe->getName()), $whole);
-        $this->assertEquals(RemovedSpokenMeal::notPlanned($recipe->getName()), $part);
+        $this->assertEquals(MealRemovalResult::notPlanned($recipe->getName()), $whole);
+        $this->assertEquals(MealRemovalResult::notPlanned($recipe->getName()), $part);
         $reloaded = $this->shoppingListRepository->findOneById($sent->getId());
         $this->assertSame([ShoppingListStatus::SENT, $sent->getVersion(), 1], [$reloaded->getStatus(), $reloaded->getVersion(), $reloaded->getMeals()->count()]);
     }
@@ -573,9 +573,9 @@ class VoiceMealPlannerFlowTest extends DatabaseTestCase
             // When
             $this->planner->removeMeal($user->getId(), $theirs->getId());
             $this->fail('La recette d\'un autre compte doit être refusée.');
-        } catch (SpokenMealFailure $exception) {
+        } catch (MealPlanningException $exception) {
             // Then : une phrase claire, et la liste de l'autre n'a pas bougé
-            $this->assertSame(SpokenMealFailure::RECIPE_GONE, $exception->reason);
+            $this->assertSame(MealPlanningException::RECIPE_GONE, $exception->reason);
         }
         $this->entityManager->clear();
         $this->assertCount(1, $this->shoppingListRepository->findOneById($theirList->getId())->getMeals());
@@ -585,7 +585,7 @@ class VoiceMealPlannerFlowTest extends DatabaseTestCase
     {
         $user = $this->savedUser();
 
-        $this->expectExceptionObject(SpokenMealFailure::recipeGone());
+        $this->expectExceptionObject(MealPlanningException::recipeGone());
         $this->planner->removeMeal($user->getId(), 'recette-qui-n-existe-pas');
     }
 
@@ -632,9 +632,9 @@ class VoiceMealPlannerFlowTest extends DatabaseTestCase
             // When
             $this->planner->removeMeal($user->getId(), $recipe->getId());
             $this->fail('Un ingrédient sans conversion doit faire échouer la commande.');
-        } catch (SpokenMealFailure $exception) {
+        } catch (MealPlanningException $exception) {
             // Then : une phrase claire, le bus transactionnel a tout annulé, le repas est toujours dans la liste
-            $this->assertSame(SpokenMealFailure::MISSING_CONVERSION, $exception->reason);
+            $this->assertSame(MealPlanningException::MISSING_CONVERSION, $exception->reason);
             $this->assertContains($exception->ingredientName, $this->ingredientNamesOf($recipe));
         }
         $this->entityManager->clear();

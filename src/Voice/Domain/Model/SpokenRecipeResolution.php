@@ -1,9 +1,9 @@
 <?php
 
-namespace Repas\Shared\Application\Dto;
+namespace Repas\Voice\Domain\Model;
 
 /**
- * Ce que `SpokenRecipeResolver::resolveOrSuggest()` rend pour une phrase prononcée (ADR 0029 décision 13) : SOIT la recette retenue, SOIT — la
+ * Ce que `RecipeResolutionCommandPort::resolveOrSuggest()` rend pour une phrase prononcée (ADR 0029 décision 13) : SOIT la recette retenue, SOIT — la
  * recette est inconnue, ou plusieurs se valent et on ne devine pas — au plus trois propositions : les recettes les PLUS PROCHES de l'utilisateur, même
  * lointaines (2026-10-26) ; la liste n'est vide que s'il n'a AUCUNE recette (`hasRecipes` faux). Jamais les deux.
  */

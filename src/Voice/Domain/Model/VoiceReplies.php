@@ -2,7 +2,7 @@
 
 namespace Repas\Voice\Domain\Model;
 
-use Repas\Shared\Domain\Exception\SpokenMealFailure;
+use Repas\Voice\Domain\Exception\SpokenMealFailure;
 
 
 /**
