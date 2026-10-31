@@ -3,7 +3,8 @@
 namespace Repas\Voice\Application\Command\AnswerSpokenDialogue;
 
 
-use Repas\Shared\Application\Interface\VoiceShoppingList;
+use Repas\Voice\Application\Port\ListLineLookupCommandPort;
+use Repas\Voice\Application\Port\ShoppingListItemCommandPort;
 use Repas\Voice\Application\Command\AddSpokenItem\AddedLineFactory;
 use Repas\Voice\Application\Command\AddSpokenItem\AddSpokenItemCommand;
 use Repas\Voice\Application\Command\AddSpokenItem\AddSpokenItemHandler;
@@ -17,7 +18,6 @@ use Repas\Voice\Application\Command\RemoveSpokenMeal\RemoveSpokenMealCommand;
 use Repas\Voice\Application\Command\RemoveSpokenMeal\RemoveSpokenMealHandler;
 use Repas\Voice\Application\Port\IngredientCreationCommandPort;
 use Repas\Voice\Application\Port\IngredientResolutionCommandPort;
-use Repas\Voice\Application\Query\GetSpokenItemInList\SpokenListAnswerer;
 use Repas\Voice\Domain\Model\DialogueOption;
 use Repas\Voice\Domain\Model\DialogueStep;
 use Repas\Voice\Domain\Model\SpokenAnswer;
@@ -26,13 +26,14 @@ use Repas\Voice\Domain\Model\SpokenDialogueState;
 use Repas\Voice\Domain\Model\VoiceReplies;
 use Repas\Voice\Domain\Service\SpokenAnswerInterpreter;
 use Repas\Voice\Domain\Service\SpokenIngredientNamer;
+use Repas\Voice\Domain\Service\SpokenListAnswerer;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 /**
  * Fait avancer le dialogue d'un produit inconnu d'un pas (ADR 0029 décision 11, VOX-303). Le texte de chaque réponse est dans `VoiceReplies`,
  * la compréhension de la réponse dans `SpokenAnswerInterpreter` (pur) ; ici, seulement ce qui lit ou écrit, par les ports :
  *
- * - une proposition choisie : l'article est ajouté (`VoiceShoppingList`) PUIS la phrase est retenue (`IngredientResolutionCommandPort::remember`) ;
+ * - une proposition choisie : l'article est ajouté (`ShoppingListItemCommandPort`) PUIS la phrase est retenue (`IngredientResolutionCommandPort::remember`) ;
  *   le slug de l'état n'est jamais cru, les deux ports vérifient que l'ingrédient est à l'utilisateur ;
  * - un départage de lignes à RETIRER (`SpokenDialogueState::isRemoval`, ADR 0029 décision 12 : « tomate » en fruit et légume ET en surgelé, toutes
  *   deux dans la liste) : la ligne choisie perd la quantité dite, rien n'est retenu pour la phrase ; « non » : « D'accord, je ne retire rien. » ;
@@ -80,10 +81,11 @@ readonly class AnswerSpokenDialogueHandler
         private SpokenAnswerInterpreter $interpreter,
         private IngredientCreationCommandPort $creator,
         private IngredientResolutionCommandPort $ingredientResolver,
-        private VoiceShoppingList $shoppingList,
+        private ShoppingListItemCommandPort $shoppingList,
         private AddSpokenItemHandler $addSpokenItem,
         private SpokenIngredientNamer $namer,
         private RemoveSpokenItemHandler $removeSpokenItem,
+        private ListLineLookupCommandPort $listLookup,
         private SpokenListAnswerer $listAnswerer,
         private AddSpokenMealHandler $addSpokenMeal,
         private RemoveSpokenMealHandler $removeSpokenMeal,
@@ -116,7 +118,7 @@ readonly class AnswerSpokenDialogueHandler
                 quantity: $command->request->quantity ?? 1,
                 unitSlug: $command->request->unitSlug(),
             )),
-            SpokenAnswerKind::NEW_CHECK => $this->finish($this->listAnswerer->speech($command->userId, $answer->phrase ?? '')),
+            SpokenAnswerKind::NEW_CHECK => $this->finish($this->consult($command->userId, $answer->phrase ?? '')),
             // « Planifie le repas … » dit au milieu d'une question (ADR 0029 décision 13) : une nouvelle demande de repas, qui corrige les recettes proposées
             // si elles l'étaient, jamais les produits proposés
             SpokenAnswerKind::NEW_MEAL => ($this->addSpokenMeal)(new AddSpokenMealCommand(
@@ -216,6 +218,14 @@ readonly class AnswerSpokenDialogueHandler
         }
 
         return $this->finish(VoiceReplies::remembered($option->name, $added->listCreated, $added->previousListSent, $line), added: true);
+    }
+
+    /** Une consultation dite au milieu d'une question (« est-ce qu'il y a … ? ») : la liste est lue, rien n'est écrit. */
+    private function consult(string $userId, string $phrase): string
+    {
+        $phrase = $this->listAnswerer->phraseToLookUp($phrase);
+
+        return $this->listAnswerer->speech($this->listLookup->find($userId, $phrase), $phrase);
     }
 
     private function create(AnswerSpokenDialogueCommand $command): AddSpokenItemResult

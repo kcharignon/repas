@@ -1,9 +1,9 @@
 <?php
 
-namespace Repas\Shared\Application\Dto;
+namespace Repas\Voice\Domain\Model;
 
 /**
- * Ce que `SpokenListLookup::findMeal()` rend pour une phrase prononcée (ADR 0029 décision 12, VOX-306) : l'utilisateur n'a pas de liste active, SOIT
+ * Ce que `ListMealLookupCommandPort::find()` rend pour une phrase prononcée (ADR 0029 décision 12, VOX-306) : l'utilisateur n'a pas de liste active, SOIT
  * le repas n'y est pas (avec, quand il y en a, les repas planifiés qui lui ressemblent : au plus trois), SOIT un repas de la liste le porte. Un seul cas à
  * la fois. Comme pour les produits, la liste envoyée au drive (jamais lue ni modifiée) se distingue de l'absence de liste : `listSent`.
  */

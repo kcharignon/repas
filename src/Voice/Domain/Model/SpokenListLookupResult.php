@@ -1,9 +1,9 @@
 <?php
 
-namespace Repas\Shared\Application\Dto;
+namespace Repas\Voice\Domain\Model;
 
 /**
- * Ce que `SpokenListLookup::find()` rend pour une phrase prononcée (ADR 0029 décision 12, VOX-304) : l'utilisateur n'a pas de liste active,
+ * Ce que `ListLineLookupCommandPort::find()` (ou `ListLineLookupQueryPort`) rend pour une phrase prononcée (ADR 0029 décision 12, VOX-304) : l'utilisateur n'a pas de liste active,
  * SOIT le produit n'y est pas (avec le nom de l'ingrédient reconnu, s'il l'est), SOIT une ligne le porte, SOIT plusieurs lignes se valent
  * (« tomate » en fruit et légume ET en surgelé, toutes deux dans la liste) : Alexa demande lequel pour retirer, ou répond pour toutes pour
  * consulter. Un seul cas à la fois. Sans liste active, la liste envoyée au drive (jamais lue ni modifiée) se distingue de l'absence de liste :

@@ -1,9 +1,9 @@
 <?php
 
-namespace Repas\Shared\Application\Interface;
+namespace Repas\Voice\Domain\Model;
 
 /**
- * Ce que la commande vocale a fait pour ajouter un article à la liste de courses (ADR 0029 décision 5) : de quoi choisir la phrase de
+ * Ce que la liste de courses a fait d'un article ajouté (ADR 0029 décision 5) : de quoi choisir la phrase de
  * réponse, rien de plus.
  */
 final readonly class AddedItem

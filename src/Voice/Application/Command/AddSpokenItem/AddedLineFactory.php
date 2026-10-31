@@ -2,12 +2,11 @@
 
 namespace Repas\Voice\Application\Command\AddSpokenItem;
 
-use Repas\Shared\Application\Interface\AddedItem;
+use Repas\Voice\Domain\Model\AddedItem;
 use Repas\Voice\Domain\Model\AddedLine;
 
 /**
- * Traduit ce que le port `VoiceShoppingList` a fait (`AddedItem`, de `Shared`) en ce dont `VoiceReplies` a besoin pour parler (`AddedLine`, du
- * domaine de `Voice`, qui n'importe rien de `Shared\Application`).
+ * Traduit ce que le port de la liste a fait (`AddedItem`) en ce dont `VoiceReplies` a besoin pour parler (`AddedLine`, qui ajoute si l'utilisateur a cité une unité).
  */
 final readonly class AddedLineFactory
 {

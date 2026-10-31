@@ -1,18 +1,17 @@
 <?php
 
-namespace Repas\Voice\Application\Query\GetSpokenItemInList;
+namespace Repas\Voice\Domain\Service;
 
-
-use Repas\Shared\Application\Dto\ListedLine;
-use Repas\Shared\Application\Interface\SpokenListLookup;
+use Repas\Voice\Domain\Model\ListedLine;
 use Repas\Voice\Domain\Model\ListLine;
+use Repas\Voice\Domain\Model\SpokenListLookupResult;
 use Repas\Voice\Domain\Model\VoiceReplies;
-use Repas\Voice\Domain\Service\SpokenIngredientNamer;
 
 /**
- * La réponse parlée à « est-ce qu'il y a des croquettes dans la liste ? » (ADR 0029 décision 12, VOX-304) : une LECTURE par `SpokenListLookup`, qui ne
- * modifie rien et ne crée jamais de liste. La phrase du créneau `item` garde un éventuel nombre ou unité en tête (« deux paquets de croquettes ») :
- * ils sont retirés comme pour l'ajout (`SpokenIngredientNamer::splitSpoken`), la consultation ne dit pas combien chercher mais combien il y en a.
+ * La réponse parlée à « est-ce qu'il y a des croquettes dans la liste ? » (ADR 0029 décision 12, VOX-304) : ce que la liste active contient pour la
+ * phrase (`ListLineLookupQueryPort` ou `ListLineLookupCommandPort`, lu par l'appelant), mis en mots. Pur : il ne lit rien et n'écrit rien. La phrase du créneau `item` garde un
+ * éventuel nombre ou unité en tête (« deux paquets de croquettes ») : `phraseToLookUp()` les retire comme pour l'ajout
+ * (`SpokenIngredientNamer::splitSpoken`), la consultation ne dit pas combien chercher mais combien il y en a.
  *
  * Cinq réponses : pas de liste active (« Tu n'as pas de liste en cours. »), la seule liste est partie au drive (« Ta liste est déjà partie au drive. »),
  * produit absent ou inconnu (« Non, il n'y a pas de croquette dans ta liste. »), une ligne (« Oui, tu en as 2 paquets. »), plusieurs lignes qui se
@@ -22,16 +21,21 @@ use Repas\Voice\Domain\Service\SpokenIngredientNamer;
 final readonly class SpokenListAnswerer
 {
     public function __construct(
-        private SpokenListLookup $lookup,
         private SpokenIngredientNamer $namer,
     ) {
     }
 
-    public function speech(string $userId, string $phrase): string
+    /** La phrase à chercher dans la liste : celle qu'Alexa a entendue, sans le nombre ni l'unité laissés en tête. */
+    public function phraseToLookUp(string $phrase): string
     {
-        $phrase = $this->namer->splitSpoken($phrase)['phrase'];
-        $found = $this->lookup->find($userId, $phrase);
+        return $this->namer->splitSpoken($phrase)['phrase'];
+    }
 
+    /**
+     * @param string $phrase celle que `phraseToLookUp()` a rendue et dont la liste a été lue
+     */
+    public function speech(SpokenListLookupResult $found, string $phrase): string
+    {
         if (!$found->hasList) {
             return VoiceReplies::noActiveList($found->listSent);
         }
