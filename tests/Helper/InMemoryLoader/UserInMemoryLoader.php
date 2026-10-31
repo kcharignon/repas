@@ -25,12 +25,18 @@ class UserInMemoryLoader implements UserLoader
     /**
      * @param list<UserSummaryDTO> $users
      * @param list<string> $activeUserIds les comptes que `isActive()` dit actifs (les autres, inconnus ou non, ne le sont pas)
+     * @param array<string, string> $idByEmail le compte de chaque adresse (`idOfEmail()`)
+     * @param list<array{id: string, status: string}> $statuses ce que `listStatuses()` rend, tel quel
+     * @param array<string, string> $emailById l'adresse de chaque compte (`emailsOf()` ne rend que celles des identifiants demandés)
      */
     public function __construct(
         private readonly ?CurrentUserDTO $user = null,
         private readonly array $users = [],
         private readonly bool $emailAlreadyUsed = false,
         private readonly array $activeUserIds = [],
+        private readonly array $idByEmail = [],
+        private readonly array $statuses = [],
+        private readonly array $emailById = [],
     ) {
     }
 
@@ -57,5 +63,20 @@ class UserInMemoryLoader implements UserLoader
     public function isActive(string $userId): bool
     {
         return in_array($userId, $this->activeUserIds, true);
+    }
+
+    public function idOfEmail(string $email): ?string
+    {
+        return $this->idByEmail[$email] ?? null;
+    }
+
+    public function listStatuses(): array
+    {
+        return $this->statuses;
+    }
+
+    public function emailsOf(array $userIds): array
+    {
+        return array_intersect_key($this->emailById, array_flip($userIds));
     }
 }

@@ -89,6 +89,17 @@ services:
         alias: Repas\Voice\Infrastructure\Security\HttpCertificateChainFetcher
         public: true
 
+    # Propriétaire du catalogue d'ingrédients (ADR 0028, amendement du 2026-10-20) : le compte protégé, ou, en développement seulement, celui
+    # que désigne `INGREDIENT_CATALOG_OWNER_EMAIL` (vide dans `.env`, jamais posée en production). Les deux Open Host Services (écriture et
+    # lecture, ADR 0035) lisent la même variable.
+    Repas\User\Application\OpenHostService\CatalogOwnerCommandOHS:
+        arguments:
+            $overrideEmail: '%env(default::INGREDIENT_CATALOG_OWNER_EMAIL)%'
+
+    Repas\User\Application\OpenHostService\CatalogOwnerQueryOHS:
+        arguments:
+            $overrideEmail: '%env(default::INGREDIENT_CATALOG_OWNER_EMAIL)%'
+
     Repas\User\Domain\Service\UserChecker: ~
 
     # Verrous des compteurs de débit (`lock_factory` de config/packages/rate_limiter.yaml) : le magasin du framework (LOCK_DSN), au plus
