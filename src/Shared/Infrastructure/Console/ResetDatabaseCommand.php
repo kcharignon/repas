@@ -1,6 +1,6 @@
 <?php
 
-namespace Repas\Command;
+namespace Repas\Shared\Infrastructure\Console;
 
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;

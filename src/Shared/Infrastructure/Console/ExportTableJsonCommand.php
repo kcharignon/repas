@@ -1,6 +1,6 @@
 <?php
 
-namespace Repas\Command;
+namespace Repas\Shared\Infrastructure\Console;
 
 use Doctrine\DBAL\Connection;
 use Symfony\Component\Console\Attribute\AsCommand;

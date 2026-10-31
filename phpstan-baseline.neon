@@ -4,7 +4,7 @@ parameters:
 			message: '#^Call to an undefined method Symfony\\Component\\Console\\Application\:\:getKernel\(\)\.$#'
 			identifier: method.notFound
 			count: 1
-			path: src/Command/ResetDatabaseCommand.php
+			path: src/Shared/Infrastructure/Console/ResetDatabaseCommand.php
 
 		-
 			message: '#^Offset ''user'' on array\{user\: ''alexiane\.sichi…'', createdAt\: ''2024\-12\-20T19\:31\:05…'', status\: Repas\\Repas\\Domain\\Model\\ShoppingListStatus\:\:COMPLETED\}\|array\{user\: ''alexiane\.sichi…'', createdAt\: ''2024\-12\-22T19\:31\:05…'', status\: Repas\\Repas\\Domain\\Model\\ShoppingListStatus\:\:PAUSED, name\: ''EVJF Hélène''\}\|array\{user\: ''alexiane\.sichi…'', createdAt\: ''2025\-01\-05T09\:35\:05…'', status\: Repas\\Repas\\Domain\\Model\\ShoppingListStatus\:\:ACTIVE\}\|array\{user\: ''kantincharignon…'', createdAt\: ''2025\-01\-20T10\:56\:23…'', status\: Repas\\Repas\\Domain\\Model\\ShoppingListStatus\:\:COMPLETED\} on left side of \?\? always exists and is not nullable\.$#'

@@ -1,6 +1,6 @@
 <?php
 
-namespace Repas\Command;
+namespace Repas\User\Infrastructure\Console;
 
 
 use Repas\Shared\Application\Interface\CommandBusInterface;

@@ -1,9 +1,9 @@
 <?php
 
-namespace Repas\Tests\Command;
+namespace Repas\Tests\Repas\Console;
 
 
-use Repas\Command\SeedIngredientsCommand;
+use Repas\Repas\Infrastructure\Console\SeedIngredientsCommand;
 use Repas\Repas\Infrastructure\Loader\IngredientSeedingReportPostgreSQLLoader;
 use Repas\Shared\Application\Interface\CommandBusInterface;
 use Repas\Shared\Application\Interface\QueryBusInterface;

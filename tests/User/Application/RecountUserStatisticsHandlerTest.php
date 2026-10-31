@@ -1,19 +1,24 @@
 <?php
 
-namespace Repas\Tests\Command;
-
+namespace Repas\Tests\User\Application;
 
 use PHPUnit\Framework\TestCase;
-use Repas\Command\UpdateUserStatisticsCommand;
+use Repas\Repas\Application\OpenHostService\CreatedContentCommandOHS;
 use Repas\Tests\Helper\Builder\IngredientBuilder;
 use Repas\Tests\Helper\Builder\RecipeBuilder;
 use Repas\Tests\Helper\Builder\UserBuilder;
 use Repas\Tests\Helper\InMemoryRepository\IngredientInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\RecipeInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\UserInMemoryRepository;
-use Symfony\Component\Console\Tester\CommandTester;
+use Repas\User\Application\RecountUserStatistics\RecountedStatistics;
+use Repas\User\Application\RecountUserStatistics\RecountUserStatisticsCommand;
+use Repas\User\Application\RecountUserStatistics\RecountUserStatisticsHandler;
+use Repas\User\Infrastructure\Acl\CreatedContentCommandAdapter;
 
-class UpdateUserStatisticsCommandTest extends TestCase
+/**
+ * Le vrai adapter et le vrai Open Host Service de `Repas` sur les doubles en mémoire (ADR 0035).
+ */
+class RecountUserStatisticsHandlerTest extends TestCase
 {
     public function testTheIngredientsCountedAreTheOnesTheUserCreatedNotTheCopiedOnes(): void
     {
@@ -29,17 +34,16 @@ class UpdateUserStatisticsCommandTest extends TestCase
             new IngredientBuilder()->isPasta()->withCreator($other, true)->build(),
             new IngredientBuilder()->isEgg()->withCreator(new UserBuilder()->withId('third-id')->build(), true)->build(),
         ]);
-        $tester = new CommandTester(new UpdateUserStatisticsCommand($users, $ingredients, new RecipeInMemoryRepository([
-            new RecipeBuilder()->isPastaCarbonara()->withAuthor($user)->build(),
-        ])));
+        $recipes = new RecipeInMemoryRepository([new RecipeBuilder()->isPastaCarbonara()->withAuthor($user)->build()]);
+        $handler = new RecountUserStatisticsHandler($users, new CreatedContentCommandAdapter(new CreatedContentCommandOHS($ingredients, $recipes)));
 
         // When
-        $status = $tester->execute([]);
+        $recounted = $handler(new RecountUserStatisticsCommand('user-id'));
 
-        // Then : une copie n'est pas une création (ADR 0028 décision 7 et D7)
-        $this->assertSame(0, $status);
+        // Then : une copie n'est pas une création (ADR 0028 décision 7 et D7), et seul le compte demandé change
+        $this->assertEquals(new RecountedStatistics(2, 1), $recounted);
         $this->assertSame(2, $users->findOneById('user-id')->getStatistics()['ingredients']);
         $this->assertSame(1, $users->findOneById('user-id')->getStatistics()['recipes']);
-        $this->assertSame(1, $users->findOneById('other-id')->getStatistics()['ingredients']);
+        $this->assertSame(0, $users->findOneById('other-id')->getStatistics()['ingredients'] ?? 0);
     }
 }

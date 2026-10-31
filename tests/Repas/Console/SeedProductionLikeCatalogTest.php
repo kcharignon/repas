@@ -1,6 +1,6 @@
 <?php
 
-namespace Repas\Tests\Command;
+namespace Repas\Tests\Repas\Console;
 
 
 use DateTimeImmutable;
@@ -127,7 +127,7 @@ class SeedProductionLikeCatalogTest extends DatabaseTestCase
         // Le catalogue est intact : 261 ingrédients, 151 de base
         $this->assertSame(261, (int) $connection->fetchOne('SELECT count(*) FROM ingredient WHERE adopted_from IS NULL AND creator = ?', [$this->ownerId]), $label);
         // Le coût : constant, celui des scénarios de budget, quelle que soit la taille du catalogue ; et rapide
-        $this->assertSame((require dirname(__DIR__) . '/Repas/WriteBudget/budgets.php')['amorcer-compte'], $queries, $label);
+        $this->assertSame((require dirname(__DIR__) . '/WriteBudget/budgets.php')['amorcer-compte'], $queries, $label);
         $this->assertLessThan(PerformanceReport::allowed(2.0), $seconds, $label . ' : ' . round($seconds, 2) . ' s');
     }
 
@@ -180,7 +180,7 @@ class SeedProductionLikeCatalogTest extends DatabaseTestCase
     private static function classification(): array
     {
         $rows = [];
-        foreach (array_slice(file(dirname(__DIR__, 2) . self::FILE, FILE_IGNORE_NEW_LINES), 1) as $line) {
+        foreach (array_slice(file(dirname(__DIR__, 3) . self::FILE, FILE_IGNORE_NEW_LINES), 1) as $line) {
             [$slug, $name, $department, $base] = explode("\t", $line);
             $rows[] = ['slug' => $slug, 'name' => $name, 'department' => $department, 'base' => $base === '1'];
         }

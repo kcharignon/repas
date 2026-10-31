@@ -1,10 +1,10 @@
 <?php
 
-namespace Repas\Tests\Command;
+namespace Repas\Tests\User\Console;
 
 
 use PHPUnit\Framework\TestCase;
-use Repas\Command\PurgeRefreshTokensCommand;
+use Repas\User\Infrastructure\Console\PurgeRefreshTokensCommand;
 use Repas\Tests\Helper\MockCommandBus;
 use Repas\User\Application\PurgeExpiredRefreshTokens\PurgeExpiredRefreshTokensCommand;
 use Symfony\Component\Console\Tester\CommandTester;

@@ -1,6 +1,6 @@
 <?php
 
-namespace Repas\Tests\Command;
+namespace Repas\Tests\Repas\Console;
 
 
 use DateTimeImmutable;

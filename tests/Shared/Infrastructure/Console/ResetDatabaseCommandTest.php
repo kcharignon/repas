@@ -1,11 +1,11 @@
 <?php
 
-namespace Repas\Tests\Command;
+namespace Repas\Tests\Shared\Infrastructure\Console;
 
 
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
-use Repas\Command\ResetDatabaseCommand;
+use Repas\Shared\Infrastructure\Console\ResetDatabaseCommand;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Tester\CommandTester;

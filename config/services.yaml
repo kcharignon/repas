@@ -34,7 +34,7 @@ services:
             # elles ne sont des services que dans ces deux environnements (blocs `when@dev` et `when@test` plus bas)
             - '../src/*/Infrastructure/DataFixture/'
 
-    Repas\Command\ResetDatabaseCommand:
+    Repas\Shared\Infrastructure\Console\ResetDatabaseCommand:
         tags: ['console.command']
         
     Repas\Shared\Application\Service\CommandBus:

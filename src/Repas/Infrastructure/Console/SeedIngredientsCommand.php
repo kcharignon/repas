@@ -1,6 +1,6 @@
 <?php
 
-namespace Repas\Command;
+namespace Repas\Repas\Infrastructure\Console;
 
 
 use Psr\Clock\ClockInterface;
