@@ -4,7 +4,7 @@
 - **Jalon** : M7 Plusieurs enseignes (retour du propriétaire, hors ordre)
 - **Taille** : XS
 - **Dépend de** : DRV-746 (clé `notInCart`), DRV-747 (écran de retour qui coche les articles)
-- **Statut** : à faire. Effort recommandé : `high`.
+- **Statut** : fait (front PR #295, 2026-10-31), site `v1.16.2`. Règle écrite une seule fois (`isNotInCart` dans `basket.ts`, la même que les coches de DRV-747 et que `unreached` de l'agent). Texte retenu : « Un produit que tu avais choisi n'est pas dans ton panier. Tout le reste est dans ton panier. Finalise ta commande dans l'appli {appName}, sans lui. » (pluriel : « {count} produits que tu avais choisis ne sont pas dans ton panier… sans eux »). Sur un envoi `completed`, l'action principale est « Terminer la liste », pas « Reprendre l'envoi » : la phrase d'action dit donc de finaliser sans le produit. Effort recommandé : `high`.
 - **Lire d'abord** : skill `repas-po` ; `src/features/drive/DriveReturnView.vue` (titre et phrases du résultat `completed`, `basketReady`, `basketTicked`) ; `src/features/drive/basket.ts` (la règle « ligne mise au panier ») ; `src/i18n/fr.ts` (`driveReturn.outcome`) ; l'écran de fin de l'agent (`unreached`, `drive-agent/`) pour la même règle.
 
 ## Contexte

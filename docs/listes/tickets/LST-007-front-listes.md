@@ -2,6 +2,7 @@
 
 - **Dépôt** : front — **Taille** : L — **Effort** : high — **Dépend de** : LST-004, LST-005, LST-006
 - **Lire d'abord** : skills `repas-front-dev`, `repas-po` ; ADR 0036 ; ADR front 0006 (hors ligne) ; maquette (écrans 1, 4 et 5).
+- **Amendé le 2026-10-31 (LST-010, demande du propriétaire)** : les pastilles de l'écran « Liste » sont retirées, l'écran montre une seule liste et on change de liste par « Mes listes » (pastille en tête de l'écran). Le reste de ce ticket est inchangé.
 
 ## À faire
 
