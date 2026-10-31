@@ -1,14 +1,14 @@
 <?php
 
-namespace Repas\Shared\Application\Dto;
+namespace Repas\Voice\Domain\Model;
 
 /**
- * L'ingrédient que `SpokenIngredientResolver` retient pour une phrase prononcée (ADR 0029, VOX-102) : un simple objet de transport entre le
- * contexte `Repas` et le contexte `Voice`.
+ * L'ingrédient que l'utilisateur désigne par une phrase prononcée (ADR 0029, VOX-102), tel que `IngredientResolutionCommandPort` le donne à
+ * ce contexte.
  */
 final readonly class ResolvedIngredient
 {
-    /** Les trois confiances (voir `$confidence`) ; `ResolvedIngredientConfidenceTest` les garde d'accord avec `Repas\Domain\Model\Confidence`. */
+    /** Les trois confiances (voir `$confidence`). */
     public const string SURE = 'sure';
     public const string PROBABLE = 'probable';
     public const string UNSURE = 'unsure';

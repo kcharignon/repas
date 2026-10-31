@@ -2,6 +2,7 @@
 
 namespace Repas\Tests\Repas\Infrastructure\Voice;
 
+use Repas\Repas\Application\OpenHostService\IngredientPhraseCommandOHS;
 use Repas\Repas\Application\Loader\SpokenRecipeCandidates;
 use Repas\Repas\Domain\Exception\RecipeException;
 use Repas\Shared\Application\Dto\RecipeSuggestion;
@@ -186,7 +187,7 @@ class SpokenRecipeResolverFlowTest extends DatabaseTestCase
         $pizza = new IngredientBuilder()->withName('pizza')->withCreator($user, true)->build();
         $this->persister->saveIngredient($pizza);
         $recipe = $this->savedRecipe($user, 'Pizza maison');
-        $products = static::getContainer()->get(SpokenIngredientResolver::class);
+        $products = static::getContainer()->get(IngredientPhraseCommandOHS::class);
 
         // When
         $asRecipe = $this->resolver->resolveOrSuggest($user->getId(), 'pizza');

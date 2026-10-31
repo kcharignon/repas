@@ -37,7 +37,7 @@ return [
     'creer-ingredient' => 12,
     'creer-ingredient-administrateur' => 12,
     'creer-ingredient-base' => 12,
-    'creer-ingredient-par-la-voix' => 27,
+    'creer-ingredient-par-la-voix' => 26,
     'creer-liste' => 5,
     'creer-preference-drive' => 8,
     'creer-rayon' => 3,

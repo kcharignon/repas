@@ -16,8 +16,6 @@ use Repas\Repas\Domain\Model\Recipe;
 use Repas\Repas\Domain\Model\Meal;
 use Repas\Repas\Domain\Model\ShoppingList;
 use Repas\Repas\Domain\Model\ShoppingListStatus;
-use Repas\Shared\Application\Dto\ResolvedIngredient;
-use Repas\Shared\Application\Interface\SpokenIngredientResolver;
 use Repas\Shared\Application\Interface\VoiceFeature;
 use Repas\Shared\Application\Interface\VoiceMealPlanner;
 use Repas\Shared\Application\Interface\VoiceShoppingList;
@@ -34,8 +32,8 @@ use Repas\Tests\Helper\Builder\UserBuilder;
 use Repas\Tests\Helper\ControlledVoiceFeature;
 use Repas\Tests\Helper\DatabaseTestCase;
 use Repas\Tests\Helper\DataPersister;
-use Repas\Tests\Helper\SpokenIngredientResolverInMemory;
 use Repas\User\Domain\Model\User;
+use Repas\Voice\Application\Port\IngredientResolutionCommandPort;
 use Repas\Voice\Domain\Interface\AccessGrantRepository;
 use Repas\Voice\Domain\Interface\AlexaRequestVerifier;
 use Repas\Voice\Domain\Interface\VoiceLinkRepository;
@@ -43,6 +41,8 @@ use Repas\Voice\Domain\Model\AccessGrant;
 use Repas\Voice\Domain\Model\DialogueOption;
 use Repas\Voice\Domain\Model\SpokenDialogueState;
 use Repas\Voice\Domain\Model\OpaqueToken;
+use Repas\Voice\Domain\Model\ResolvedIngredient;
+use Repas\Voice\Domain\Model\SpokenResolution;
 use Repas\Voice\Domain\Model\VoiceLink;
 use Repas\Voice\Infrastructure\Security\OpenSslAlexaRequestVerifier;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
@@ -209,10 +209,21 @@ class AlexaWebhookApiFlowTest extends DatabaseTestCase
         $user = $this->linkedUser();
         $someoneElsesBread = new IngredientBuilder()->isBread()->withCreator($this->savedUser(), true)->build();
         $this->persister->saveIngredient($someoneElsesBread);
-        static::getContainer()->set(SpokenIngredientResolver::class, new SpokenIngredientResolverInMemory()->willResolve(
-            'du pain',
-            new ResolvedIngredient($someoneElsesBread->getSlug(), 'Pain', 'Boulangerie', ResolvedIngredient::SURE),
-        ));
+        $slug = $someoneElsesBread->getSlug();
+        static::getContainer()->set(IngredientResolutionCommandPort::class, new class($slug) implements IngredientResolutionCommandPort {
+            public function __construct(private readonly string $slug)
+            {
+            }
+
+            public function resolveOrSuggest(string $userId, string $phrase): SpokenResolution
+            {
+                return SpokenResolution::found(new ResolvedIngredient($this->slug, 'Pain', 'Boulangerie', ResolvedIngredient::SURE));
+            }
+
+            public function remember(string $userId, string $phrase, string $ingredientSlug): void
+            {
+            }
+        });
 
         // When
         $this->say(AlexaTestRequest::addItem('du pain'));

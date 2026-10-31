@@ -3,11 +3,10 @@
 namespace Repas\Voice\Application\Command\AddSpokenItem;
 
 
-use Repas\Shared\Application\Dto\IngredientSuggestion;
-use Repas\Shared\Application\Dto\ResolvedIngredient;
-use Repas\Shared\Application\Interface\SpokenIngredientResolver;
 use Repas\Shared\Application\Interface\VoiceShoppingList;
+use Repas\Voice\Application\Port\IngredientResolutionCommandPort;
 use Repas\Voice\Domain\Model\DialogueOption;
+use Repas\Voice\Domain\Model\ResolvedIngredient;
 use Repas\Voice\Domain\Model\SpokenDialogueState;
 use Repas\Voice\Domain\Model\VoiceReplies;
 use Repas\Voice\Domain\Service\SpokenIngredientNamer;
@@ -17,7 +16,7 @@ use Symfony\Component\Messenger\Attribute\AsMessageHandler;
  * Ajoute à la liste de courses l'article que l'utilisateur vient de dire (ADR 0029 décisions 3 à 5 et 11, VOX-204, VOX-303), et dit en une phrase
  * ce qui a été fait :
  *
- * 1. `SpokenIngredientResolver` choisit, parmi les ingrédients de l'utilisateur seulement, le plus probable pour la phrase (la mémoire de
+ * 1. `IngredientResolutionCommandPort` choisit, parmi les ingrédients de l'utilisateur seulement, le plus probable pour la phrase (la mémoire de
  *    phrase d'abord, puis le classement). Rien de plausible : **le produit est inconnu**, rien n'est écrit, et Alexa demande « de quoi tu
  *    parles » (voir plus bas) ;
  * 2. `VoiceShoppingList` ajoute la ligne à la liste active, ou à une liste neuve s'il n'y en a pas (une liste envoyée au drive n'est jamais
@@ -37,20 +36,20 @@ use Symfony\Component\Messenger\Attribute\AsMessageHandler;
  * ordinaire, sans rien retenir ni promettre ; si cette nouvelle phrase est inconnue elle aussi, rien n'est retenu et le dialogue repart
  * pour elle.
  *
- * Produit inconnu : le nom à créer est tiré de la phrase (`SpokenIngredientNamer`) ; `SpokenIngredientResolver` a déjà rendu, dans la même lecture, les
+ * Produit inconnu : le nom à créer est tiré de la phrase (`SpokenIngredientNamer`) ; `IngredientResolutionCommandPort` a déjà rendu, dans la même lecture, les
  * trois ingrédients les plus proches. Alexa les propose avec l'issue « un nouveau produit » (aucun proche : « Je le crée ? »), la séance reste
  * ouverte même en appel direct, et le dialogue continue dans `AnswerSpokenDialogueHandler` (l'état voyage dans `nextState`). Un nom
  * impossible (sans lettre, trop long) : on redemande.
  *
  * Aucune exception n'est attrapée ici : si le second port échoue (l'ingrédient a disparu entre-temps, panne), la commande est annulée en
  * entier — le bus est transactionnel et une exception attrapée dans une transaction imbriquée la ferait échouer au `commit` — et le webhook
- * répond par la phrase d'échec. Les ports sont ceux de `Shared` : ce contexte n'importe rien de `Repas`.
+ * répond par la phrase d'échec. Le port de la liste est encore celui de `Shared` ; celui des ingrédients est un port de ce contexte (ADR 0035) : ce contexte n'importe rien de `Repas`.
  */
 #[AsMessageHandler]
 readonly class AddSpokenItemHandler
 {
     public function __construct(
-        private SpokenIngredientResolver $ingredientResolver,
+        private IngredientResolutionCommandPort $ingredientResolver,
         private VoiceShoppingList $shoppingList,
         private SpokenIngredientNamer $namer,
     ) {
@@ -94,14 +93,10 @@ readonly class AddSpokenItemHandler
      * Des ingrédients qui se valent : « Tomate : en fruit et légume ou en surgelé ? ». Rien n'est écrit, la séance reste ouverte, et la réponse
      * ajoutera l'article ET retiendra la phrase (`AnswerSpokenDialogueHandler`). Sans « un nouveau produit » : le produit existe.
      *
-     * @param list<IngredientSuggestion> $ties
+     * @param list<DialogueOption> $options les ex æquo, chacun avec son rayon
      */
-    private function tied(string $phrase, int $quantity, ?string $unitSlug, array $ties): AddSpokenItemResult
+    private function tied(string $phrase, int $quantity, ?string $unitSlug, array $options): AddSpokenItemResult
     {
-        $options = array_map(
-            static fn(IngredientSuggestion $tie): DialogueOption => new DialogueOption($tie->slug, $tie->name, $tie->departmentSlug, $tie->departmentName),
-            $ties,
-        );
         $state = SpokenDialogueState::choose($phrase, $options, $this->namer->nameFrom($phrase) ?? $options[0]->name, $quantity, $unitSlug);
         $question = VoiceReplies::question($state);
 
@@ -111,19 +106,15 @@ readonly class AddSpokenItemHandler
     /**
      * « De quoi tu parles ? » : rien d'écrit, une question, la séance reste ouverte.
      *
-     * @param list<IngredientSuggestion> $suggestions
+     * @param list<DialogueOption> $options les propositions
      */
-    private function unknown(string $phrase, int $quantity, ?string $unitSlug, array $suggestions, bool $otherSideTried): AddSpokenItemResult
+    private function unknown(string $phrase, int $quantity, ?string $unitSlug, array $options, bool $otherSideTried): AddSpokenItemResult
     {
         $name = $this->namer->nameFrom($phrase);
         if ($name === null) {
             return new AddSpokenItemResult(VoiceReplies::NOT_UNDERSTOOD . ' ' . VoiceReplies::LAUNCH, keepSessionOpen: true, added: false, reprompt: VoiceReplies::LAUNCH);
         }
 
-        $options = array_map(
-            static fn(IngredientSuggestion $suggestion): DialogueOption => new DialogueOption($suggestion->slug, $suggestion->name),
-            $suggestions,
-        );
         $state = SpokenDialogueState::choose($phrase, $options, $name, $quantity, $unitSlug, otherSideTried: $otherSideTried);
 
         return new AddSpokenItemResult(

@@ -3,9 +3,6 @@
 namespace Repas\Voice\Application\Command\AnswerSpokenDialogue;
 
 
-use Repas\Shared\Application\Dto\SpokenChoice;
-use Repas\Shared\Application\Interface\SpokenIngredientCreator;
-use Repas\Shared\Application\Interface\SpokenIngredientResolver;
 use Repas\Shared\Application\Interface\VoiceShoppingList;
 use Repas\Voice\Application\Command\AddSpokenItem\AddedLineFactory;
 use Repas\Voice\Application\Command\AddSpokenItem\AddSpokenItemCommand;
@@ -18,6 +15,8 @@ use Repas\Voice\Application\Command\RemoveSpokenItem\RemoveSpokenItemCommand;
 use Repas\Voice\Application\Command\RemoveSpokenItem\RemoveSpokenItemHandler;
 use Repas\Voice\Application\Command\RemoveSpokenMeal\RemoveSpokenMealCommand;
 use Repas\Voice\Application\Command\RemoveSpokenMeal\RemoveSpokenMealHandler;
+use Repas\Voice\Application\Port\IngredientCreationCommandPort;
+use Repas\Voice\Application\Port\IngredientResolutionCommandPort;
 use Repas\Voice\Application\Query\GetSpokenItemInList\SpokenListAnswerer;
 use Repas\Voice\Domain\Model\DialogueOption;
 use Repas\Voice\Domain\Model\DialogueStep;
@@ -31,13 +30,13 @@ use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 /**
  * Fait avancer le dialogue d'un produit inconnu d'un pas (ADR 0029 décision 11, VOX-303). Le texte de chaque réponse est dans `VoiceReplies`,
- * la compréhension de la réponse dans `SpokenAnswerInterpreter` (pur) ; ici, seulement ce qui lit ou écrit, par les ports de `Shared` :
+ * la compréhension de la réponse dans `SpokenAnswerInterpreter` (pur) ; ici, seulement ce qui lit ou écrit, par les ports :
  *
- * - une proposition choisie : l'article est ajouté (`VoiceShoppingList`) PUIS la phrase est retenue (`SpokenIngredientResolver::remember`) ;
+ * - une proposition choisie : l'article est ajouté (`VoiceShoppingList`) PUIS la phrase est retenue (`IngredientResolutionCommandPort::remember`) ;
  *   le slug de l'état n'est jamais cru, les deux ports vérifient que l'ingrédient est à l'utilisateur ;
  * - un départage de lignes à RETIRER (`SpokenDialogueState::isRemoval`, ADR 0029 décision 12 : « tomate » en fruit et légume ET en surgelé, toutes
  *   deux dans la liste) : la ligne choisie perd la quantité dite, rien n'est retenu pour la phrase ; « non » : « D'accord, je ne retire rien. » ;
- * - « un nouveau produit » : la question du rayon, puis de l'unité (les catalogues sont lus à ces étapes, `SpokenIngredientCreator`), puis la
+ * - « un nouveau produit » : la question du rayon, puis de l'unité (les catalogues sont lus à ces étapes, `IngredientCreationCommandPort`), puis la
  *   confirmation « Je crée X, rayon, unité. C'est bon ? » ; « oui » : le produit est créé (rayon et unité vérifiés par `Repas`) puis ajouté ;
  * - la création repasse le nom de l'état par `SpokenIngredientNamer` (l'état est une entrée non fiable) : le nom d'un état honnête passe
  *   inchangé, un nom forgé est normalisé, un nom refusé ne crée rien (même réponse qu'une réponse incomprise) ;
@@ -79,8 +78,8 @@ readonly class AnswerSpokenDialogueHandler
 {
     public function __construct(
         private SpokenAnswerInterpreter $interpreter,
-        private SpokenIngredientCreator $creator,
-        private SpokenIngredientResolver $ingredientResolver,
+        private IngredientCreationCommandPort $creator,
+        private IngredientResolutionCommandPort $ingredientResolver,
         private VoiceShoppingList $shoppingList,
         private AddSpokenItemHandler $addSpokenItem,
         private SpokenIngredientNamer $namer,
@@ -175,13 +174,11 @@ readonly class AnswerSpokenDialogueHandler
      */
     private function catalogueFor(SpokenDialogueState $state): array
     {
-        $choices = match ($state->step) {
+        return match ($state->step) {
             DialogueStep::DEPARTMENT => $this->creator->departments(),
             DialogueStep::UNIT => $this->creator->units(),
             default => [],
         };
-
-        return array_map(static fn(SpokenChoice $choice): DialogueOption => new DialogueOption($choice->slug, $choice->name), $choices);
     }
 
     private function pickOption(AnswerSpokenDialogueCommand $command, SpokenAnswer $answer): AddSpokenItemResult
