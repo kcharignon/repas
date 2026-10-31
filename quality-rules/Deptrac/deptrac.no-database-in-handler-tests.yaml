@@ -17,8 +17,14 @@ deptrac:
           value: ^Symfony\\Bundle\\FrameworkBundle\\Test\\.*
         - type: classLike
           value: ^Doctrine\\.*
-        - type: classLike
-          value: ^Repas\\(Repas|User|Drive|Voice|Shared)\\Infrastructure\\.*
+        # Sauf la couche anticorruption (ADR 0035) : une transposition pure, qui sert à tester un Open Host Service par transitivité
+        - type: bool
+          must:
+            - type: classLike
+              value: ^Repas\\(Repas|User|Drive|Voice|Shared)\\Infrastructure\\.*
+          must_not:
+            - type: classLike
+              value: ^Repas\\(Repas|User|Drive|Voice)\\Infrastructure\\Acl\\.*
 
   ruleset:
     HandlerTest:

@@ -14,7 +14,7 @@ description: Développer une fonctionnalité du projet Repas (Symfony 8.1 / PHP 
 
 ## 1. Règles en bref
 
-- Dépendances : `Infrastructure → Application → Domain`. `Shared` n'importe jamais `Repas`, `User` ni `Drive` (ADR 0001) ; un contexte n'importe jamais un autre contexte.
+- Dépendances : `Infrastructure → Application → Domain`. `Shared` n'importe jamais un contexte (ADR 0001) ; un contexte n'importe jamais un autre contexte : il lui parle par l'Open Host Service du producteur et sa propre couche anticorruption (ADR 0035, § 3.4).
 - Écriture : `Controller → CommandBusInterface::dispatch(Command) → Handler → Domain → Repository`. Lecture : `Controller → QueryBusInterface::ask(Query) → QueryHandler → Loader → DTO` (ADR 0003).
 - `QueryHandler` n'appelle **jamais** un `Repository`. `CommandHandler` n'appelle **jamais** un `Loader`. Un `QueryHandler` ne modifie pas l'état.
 - Un Loader retourne des **DTO**, jamais un modèle du domaine (ADR 0004). Il lit les entités Doctrine/SQL directement, jointures manuelles sur ids.
@@ -75,10 +75,17 @@ Détail et squelettes : `references/read-slice-template.md`. Ordre :
 4. Controller API qui ne fait que `CommandBusInterface::dispatch()`.
 5. Test : handler avec `{X}InMemoryRepository` + `SpyEventDispatcher` + builders (aucune base, aucun kernel ; la persistance se teste dans `OutputAdapter`, pas à travers le handler).
 
+### 3.4 Un contexte a besoin d'un autre (Open Host Service + ACL, ADR 0035)
+Pas de port dans `Shared`, pas d'import direct, pas de requête sur la table d'un autre contexte. Le modèle complet est le pilote `Voice` → `User` : `docs/contextes/roadmap.md` (§ « Le modèle à suivre » et « Migrer un port, pas à pas »).
+1. **Producteur** : `Application/OpenHostService/{Capacité}CommandOHS` (le consommateur écrit : repositories, services de domaine, ses commandes par le bus ; rend un Model du producteur, `void` ou une valeur simple) ou `{Capacité}QueryOHS` (le consommateur lit : loaders, query bus ; rend un `…DTO` publié sous `OpenHostService/`, ou une valeur simple). `final readonly`, aucune règle métier, jamais Loader dans un CommandOHS, jamais Repository dans un QueryOHS.
+2. **Consommateur** : `Application/Port/{Besoin}CommandPort|QueryPort` (interface, ses types, sa langue) et `Infrastructure/Acl/{Besoin}CommandAdapter|QueryAdapter` (le seul à importer l'autre contexte ; il appelle l'OHS du même genre et transpose). Un handler d'écriture n'injecte que des `CommandPort`, un handler de lecture (ou un Loader) que des `QueryPort`.
+3. **Tests** : le test du handler appelant construit le vrai adapter et le vrai OHS sur les `InMemoryRepository` / `InMemoryLoader` du producteur (l'OHS est testé par transitivité, jamais la base) ; sinon un test unitaire de l'OHS avec les mêmes doubles ; la transposition de l'adapter dans `tests/{Consommateur}/Acl/`.
+4. **Garde-fous** : `deptrac.bounded-context.yaml`, `OpenHostServiceConventionTest`, `ContextsDoNotShareTablesTest`, `SharedHoldsNoContextBusinessTest` (cliquet des anciens ports).
+
 ## 4. Definition of Done
 
 - [ ] `make test` vert
-- [ ] `make deptrac` vert (plus de baseline : aucune dépendance entre contextes, ce qui circule passe par `Shared`)
+- [ ] `make deptrac` vert (plus de baseline : aucune dépendance entre contextes ; entre deux contextes : Open Host Service du producteur, port et ACL du consommateur, ADR 0035 ; seuls les événements de domaine circulent par `Shared`)
 - [ ] `make audit` vert si `composer.json` ou `composer.lock` change (ADR 0014)
 - [ ] `make phpstan` vert (aucune nouvelle entrée de baseline)
 - [ ] `make api-doc-validate`, `make api-doc-coverage` et `make openapi-check` verts si un endpoint API est touché (`make openapi` régénère `docs/api/openapi.json`, diff relu)
@@ -111,6 +118,7 @@ Détail et squelettes : `references/read-slice-template.md`. Ordre :
 - `load()` dans un handler pour créer une entité ; `new \DateTimeImmutable()` / `Uuid::v4()` dans le Domain.
 - Logique métier dans un controller, une entité Doctrine ou un template.
 - Requête Doctrine (QueryBuilder, DQL) hors `Infrastructure/Repository` et `Infrastructure/Loader`.
+- Un port, un DTO ou une classe d'un contexte dans `Shared` ; un import d'un autre contexte hors de `Infrastructure/Acl` ; une requête SQL ou DQL qui nomme la table d'un autre contexte ; un `QueryPort` dans un handler d'écriture, un `CommandPort` dans un handler de lecture (ADR 0035).
 - Lecture avec effet de bord (créer si absent) : scinder en commande + query.
 - Injecter `CommandBus`/`QueryBus` concrets au lieu des interfaces.
 - Merger une PR dont la CI n'est pas verte ou sans description, pousser sur `main`, force-push, `--no-verify`, commit rouge, `git add -A` sans relire `git status`.

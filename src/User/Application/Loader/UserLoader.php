@@ -23,4 +23,9 @@ interface UserLoader
      * Un compte utilise-t-il déjà cet email ?
      */
     public function emailExists(string $email): bool;
+
+    /**
+     * Le compte existe-t-il et son statut est-il `ACTIVE` (ADR 0021) ? Une requête sur la colonne du statut, sans charger le compte.
+     */
+    public function isActive(string $userId): bool;
 }

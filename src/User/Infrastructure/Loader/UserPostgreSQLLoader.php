@@ -105,6 +105,20 @@ final readonly class UserPostgreSQLLoader implements UserLoader
             ->getOneOrNullResult() !== null;
     }
 
+    public function isActive(string $userId): bool
+    {
+        $row = $this->entityManager->createQueryBuilder()
+            ->select('u.status AS status')
+            ->from(User::class, 'u')
+            ->where('u.id = :id')
+            ->setParameter('id', $userId)
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
+
+        return $row !== null && $row['status'] === UserStatus::ACTIVE;
+    }
+
     /**
      * La dernière version de l'application Android vue pour le compte (`appVersion`, `null` si aucune), dans la même requête :
      * au plus une ligne par compte et par plateforme (clé de `user_app_version`), la jointure ne duplique aucun compte.

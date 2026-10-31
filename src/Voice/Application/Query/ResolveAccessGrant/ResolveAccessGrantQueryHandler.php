@@ -4,7 +4,7 @@ namespace Repas\Voice\Application\Query\ResolveAccessGrant;
 
 
 use Psr\Clock\ClockInterface;
-use Repas\Shared\Application\Interface\ActiveUserChecker;
+use Repas\Voice\Application\Port\ActiveUserQueryPort;
 use Repas\Voice\Application\Loader\AccessGrantLoader;
 use Repas\Voice\Domain\Model\OpaqueToken;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
@@ -20,7 +20,7 @@ final readonly class ResolveAccessGrantQueryHandler
 {
     public function __construct(
         private AccessGrantLoader $accessGrantLoader,
-        private ActiveUserChecker $activeUserChecker,
+        private ActiveUserQueryPort $activeUserChecker,
         private ClockInterface $clock,
     ) {
     }

@@ -5,17 +5,22 @@ namespace Repas\Tests\Voice\Application;
 
 use DateTimeImmutable;
 use PHPUnit\Framework\TestCase;
-use Repas\Tests\Helper\ActiveUserCheckerInMemory;
+use Repas\Tests\Helper\Builder\UserBuilder;
 use Repas\Tests\Helper\Alexa\AlexaTestClient;
 use Repas\Tests\Helper\ContextSpyLogger;
 use Repas\Tests\Helper\ControlledOpaqueTokenGenerator;
 use Repas\Tests\Helper\FrozenClock;
 use Repas\Tests\Helper\InMemoryRepository\AccessGrantInMemoryRepository;
+use Repas\Tests\Helper\InMemoryRepository\UserInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\VoiceLinkInMemoryRepository;
 use Repas\Voice\Application\Command\IssuedTokens;
 use Repas\Voice\Application\Command\RefreshAccessGrant\RefreshAccessGrantCommand;
 use Repas\Voice\Application\Command\RefreshAccessGrant\RefreshAccessGrantHandler;
 use Repas\Voice\Domain\Model\AccessGrant;
+use Repas\User\Application\OpenHostService\UserAccountCommandOHS;
+use Repas\User\Domain\Model\User;
+use Repas\User\Domain\Model\UserStatus;
+use Repas\Voice\Infrastructure\Acl\ActiveUserCommandAdapter;
 use Repas\Voice\Domain\Model\OpaqueToken;
 use Repas\Voice\Domain\Model\VoiceLink;
 use Repas\Voice\Domain\Service\LinkRevoker;
@@ -29,7 +34,8 @@ class RefreshAccessGrantHandlerTest extends TestCase
     private DateTimeImmutable $now;
     private VoiceLinkInMemoryRepository $links;
     private AccessGrantInMemoryRepository $grants;
-    private ActiveUserCheckerInMemory $activeUsers;
+    private User $account;
+    private ActiveUserCommandAdapter $activeUsers;
     private ContextSpyLogger $logger;
 
     protected function setUp(): void
@@ -38,7 +44,8 @@ class RefreshAccessGrantHandlerTest extends TestCase
         $this->now = $this->issuedAt->modify('+1 hour');
         $this->links = new VoiceLinkInMemoryRepository();
         $this->grants = new AccessGrantInMemoryRepository();
-        $this->activeUsers = new ActiveUserCheckerInMemory([self::USER]);
+        $this->account = new UserBuilder()->withId(self::USER)->build();
+        $this->activeUsers = new ActiveUserCommandAdapter(new UserAccountCommandOHS(new UserInMemoryRepository([$this->account])));
         $this->logger = new ContextSpyLogger();
         $this->links->save(VoiceLink::create(self::LINK, self::USER, $this->issuedAt));
         $this->grants->add(AccessGrant::issue(OpaqueToken::hash(AlexaTestClient::token('access-0')), OpaqueToken::hash(AlexaTestClient::token('refresh-0')), self::LINK, self::USER, $this->issuedAt));
@@ -193,7 +200,7 @@ class RefreshAccessGrantHandlerTest extends TestCase
     public function testAnInactiveAccountGetsNothingAndNothingIsWritten(): void
     {
         // Given : le compte est désactivé ou supprimé
-        $this->activeUsers->deactivate(self::USER);
+        $this->account->changeStatus(UserStatus::DISABLED);
 
         // When
         $tokens = $this->refresh('refresh-0');
