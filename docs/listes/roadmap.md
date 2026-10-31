@@ -14,7 +14,7 @@ Un agent à la fois sur le back (une PR par ticket, fusionnée avant la suivante
 | [LST-006](tickets/LST-006-front-types.md) | front | Moi > Types de liste, fiche d'un type | high | 002, 003 | fait (front #288) |
 | [LST-007](tickets/LST-007-front-listes.md) | front | Pastilles de listes, fiche d'un produit, message, hors ligne | high | 004, 005, 006 | fait (front #289) |
 | [LST-008](tickets/LST-008-voix.md) | back | Alexa : ajouter, demander, retirer sur toutes les listes ouvertes | high | 005 | fait |
-| [LST-009](tickets/LST-009-recette-et-release.md) | humain | Recette sur téléphone, releases back puis site | — | 007, 008 | en cours : back v1.12.0 créé, site à suivre, recette à faire |
+| [LST-009](tickets/LST-009-recette-et-release.md) | humain | Recette sur téléphone, releases back puis site | — | 007, 008 | fait (back v1.12.0 et site v1.15.0 déployés, recette sur le téléphone de test le 2026-10-31) |
 
 ## Règles qui valent pour tous les tickets
 
@@ -26,7 +26,7 @@ Un agent à la fois sur le back (une PR par ticket, fusionnée avant la suivante
 
 ## Reste à faire et limites connues (2026-10-31)
 
-- **LST-009** : le propriétaire approuve le déploiement du back (v1.12.0), puis celui du site, puis la recette sur téléphone (`tickets/LST-009-recette-et-release.md`).
+- **LST-009** : fait le 2026-10-31 (back v1.12.0, site v1.15.0, recette sur le téléphone de test avec le compte de démonstration : deux types, recette répartie sur trois listes, message « Ajouté à … », pastilles, terminer une liste, ouverture à la demande, produit à part).
 - **`GET /shopping-lists/active/summary`** ne couvre que la liste principale : le front ajoute lui-même les recettes et les quantités des listes de types. Plus propre côté back : un ticket si le propriétaire le veut.
 - Le champ « Liste de courses » n'est pas proposé à la **création** d'un produit (seulement à sa modification).
 - Fusionner deux produits d'une même recette répartie entre deux listes peut déduire la quantité fusionnée dans les deux listes au retrait d'un repas (cas rare, non traité).
