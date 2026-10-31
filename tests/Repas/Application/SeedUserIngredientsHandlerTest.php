@@ -13,10 +13,16 @@ use Repas\Repas\Domain\Exception\IngredientAdoptionException;
 use Repas\Repas\Domain\Service\IngredientSlugPolicy;
 use Repas\Shared\Domain\Interface\UuidGenerator;
 use Repas\Tests\Helper\FrozenClock;
-use Repas\Tests\Helper\IngredientCatalogOwnerInMemory;
+use Repas\Repas\Infrastructure\Acl\CatalogOwnerCommandAdapter;
+use Repas\Repas\Infrastructure\Acl\SeedingAccountCommandAdapter;
+use Repas\Tests\Helper\Builder\UserBuilder;
+use Repas\Tests\Helper\InMemoryRepository\UserInMemoryRepository;
+use Repas\User\Application\OpenHostService\CatalogOwnerCommandOHS;
+use Repas\User\Application\OpenHostService\UserAccountCommandOHS;
 use Repas\Tests\Helper\InMemoryRepository\DriveIngredientReferencesInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\IngredientAdoptionBulkInMemoryRepository;
 use Repas\Tests\Helper\SpyLogger;
+use Repas\User\Domain\Model\User;
 
 /**
  * L'orchestration de l'amorçage d'UN compte (ING-008, `docs/ingredients/sans-commun.md` §§ 2 et 6), sans base : périmètre, source (de base,
@@ -32,7 +38,7 @@ class SeedUserIngredientsHandlerTest extends TestCase
 
     private IngredientAdoptionBulkInMemoryRepository $bulk;
     private DriveIngredientReferencesInMemoryRepository $drive;
-    private IngredientCatalogOwnerInMemory $owner;
+    private UserInMemoryRepository $accounts;
     private SpyLogger $logger;
     private SeedUserIngredientsHandler $handler;
 
@@ -40,12 +46,15 @@ class SeedUserIngredientsHandlerTest extends TestCase
     {
         $this->bulk = new IngredientAdoptionBulkInMemoryRepository();
         $this->drive = new DriveIngredientReferencesInMemoryRepository();
-        $this->owner = new IngredientCatalogOwnerInMemory(self::OWNER);
+        $this->accounts = new UserInMemoryRepository([
+            new UserBuilder()->withId(self::OWNER)->isCatalogOwner()->build(),
+            new UserBuilder()->withId(self::USER)->withEmail('user-1@example.com')->build(),
+            new UserBuilder()->withId('other-user')->withEmail('other-user@example.com')->build(),
+        ]);
         $this->logger = new SpyLogger();
-        $this->handler = $this->handlerWith($this->owner);
+        $this->handler = $this->handlerWith($this->accounts);
 
         // Le catalogue du propriétaire : cinq ingrédients dont trois « de base » (le beurre a deux conversions propres)
-        $this->bulk->users = [self::OWNER, self::USER, 'other-user'];
         $this->catalog('beurre', 'Beurre', base: true);
         $this->catalog('farine', 'Farine', base: true);
         $this->catalog('tomate', 'Tomate', base: true);
@@ -59,7 +68,7 @@ class SeedUserIngredientsHandlerTest extends TestCase
         ];
     }
 
-    public function testTheSeedingHandlerEmitsNoEventAndNeverReadsTheAccount(): void
+    public function testTheSeedingHandlerEmitsNoEventAndNeverSavesTheAccount(): void
     {
         // Un amorçage n'est pas une création (ADR 0028 décision 7) et n'enregistre jamais le compte (ADR 0013 règle 7) : aucun répartiteur
         // d'événements, aucun bus, aucun dépôt d'utilisateur dans ses dépendances
@@ -267,7 +276,7 @@ class SeedUserIngredientsHandlerTest extends TestCase
     public function testWithoutACatalogOwnerNothingIsWritten(): void
     {
         // Given
-        $handler = $this->handlerWith(new IngredientCatalogOwnerInMemory(null));
+        $handler = $this->handlerWith(new UserInMemoryRepository([new UserBuilder()->withId(self::USER)->build()]));
 
         // When
         $result = $handler(new SeedUserIngredientsCommand(self::USER, 'activation'));
@@ -448,6 +457,34 @@ class SeedUserIngredientsHandlerTest extends TestCase
         }
     }
 
+    public function testStatisticsOfTheAccountThatMoveMakeTheHandlerFail(): void
+    {
+        // Given : un amorçage qui, par une écriture venue d'ailleurs, ferait bouger les statistiques du compte entre l'avant et l'après
+        $accounts = new class([new UserBuilder()->withId(self::OWNER)->isCatalogOwner()->build(), new UserBuilder()->withId(self::USER)->withEmail('user-1@example.com')->build()]) extends UserInMemoryRepository {
+            private int $reads = 0;
+
+            public function findOneById(string $id): User
+            {
+                $user = parent::findOneById($id);
+                // 1 : le compte existe ; 2 : l'empreinte d'avant ; 3 : l'empreinte d'après
+                if (++$this->reads === 3) {
+                    $user->createRecipe();
+                }
+
+                return $user;
+            }
+        };
+        $handler = $this->handlerWith($accounts);
+
+        // When / Then
+        try {
+            $handler(new SeedUserIngredientsCommand(self::USER, 'activation'));
+            $this->fail('IngredientAdoptionException attendue');
+        } catch (IngredientAdoptionException $e) {
+            $this->assertStringContainsString('les statistiques du compte ont changé', $e->getMessage());
+        }
+    }
+
     public function testADriveChoiceLeftOnTheOldSlugMakesTheHandlerFail(): void
     {
         // Given : le port du drive ne repointe rien
@@ -483,12 +520,12 @@ class SeedUserIngredientsHandlerTest extends TestCase
     {
         // When
         ($this->handler)(new SeedUserIngredientsCommand('ghost', 'activation'));
-        $callsForAGhost = $this->owner->calls;
+        $callsForAGhost = count($this->accounts->findOneByEmailCalls);
         $this->seed();
 
         // Then
         $this->assertSame(1, $callsForAGhost);
-        $this->assertSame(2, $this->owner->calls);
+        $this->assertSame(2, count($this->accounts->findOneByEmailCalls));
     }
 
     // --- Aides
@@ -498,7 +535,7 @@ class SeedUserIngredientsHandlerTest extends TestCase
         return ($this->handler)(new SeedUserIngredientsCommand(self::USER, 'activation'));
     }
 
-    private function handlerWith(IngredientCatalogOwnerInMemory $owner): SeedUserIngredientsHandler
+    private function handlerWith(UserInMemoryRepository $accounts): SeedUserIngredientsHandler
     {
         $uuids = new class implements UuidGenerator {
             private int $next = 0;
@@ -509,7 +546,7 @@ class SeedUserIngredientsHandlerTest extends TestCase
             }
         };
 
-        return new SeedUserIngredientsHandler($this->bulk, $owner, $this->drive, new IngredientSlugPolicy(), $uuids, new FrozenClock(new DateTimeImmutable(self::NOW)), new AdoptionVerifier(), $this->logger);
+        return new SeedUserIngredientsHandler($this->bulk, new CatalogOwnerCommandAdapter(new CatalogOwnerCommandOHS($accounts, UserBuilder::CATALOG_OWNER_EMAIL)), new SeedingAccountCommandAdapter(new UserAccountCommandOHS($accounts)), $this->drive, new IngredientSlugPolicy(), $uuids, new FrozenClock(new DateTimeImmutable(self::NOW)), new AdoptionVerifier(), $this->logger);
     }
 
     private function catalog(string $slug, string $name, bool $base): void

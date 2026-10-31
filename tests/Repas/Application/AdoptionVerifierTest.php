@@ -29,7 +29,7 @@ class AdoptionVerifierTest extends TestCase
         $after = $this->snapshot(recipes: ['r1' => new AggregateSnapshot(4, 'h1'), 'r2' => new AggregateSnapshot(1, 'h2')], lists: ['l1' => new AggregateSnapshot(6, 'h3', 'SENT|date', false, true)], watched: 0);
 
         // When / Then
-        $this->assertSame([], $this->verifier->discrepancies($before, $after, $this->drive(['c1' => 'beurre']), $this->drive(['c1' => 'beurre-copie']), ['beurre' => 'beurre-copie']));
+        $this->assertSame([], $this->verifier->discrepancies($before, $after, '{}', '{}', $this->drive(['c1' => 'beurre']), $this->drive(['c1' => 'beurre-copie']), ['beurre' => 'beurre-copie']));
     }
 
     public function testEveryKindOfDiscrepancyIsNamedWithoutAnyIdentifier(): void
@@ -42,11 +42,10 @@ class AdoptionVerifierTest extends TestCase
             ['recipe_row' => 1, 'shopping_list_row' => 0, 'shopping_list_ingredient' => 0],
             ['r1' => new AggregateSnapshot(3, 'autre')],
             ['l1' => new AggregateSnapshot(5, 'h3', 'ACTIVE|', false)],
-            '{"changed":true}',
         );
 
         // When
-        $problems = $this->verifier->discrepancies($before, $after, $this->drive(['c1' => 'beurre', 'c2' => 'sel']), new DriveChoiceFingerprint(1, 5, '2.000', 'autre-hash', ['c1' => 'beurre'], ['c1' => 2]), ['beurre' => 'beurre-copie']);
+        $problems = $this->verifier->discrepancies($before, $after, '{}', '{"changed":true}', $this->drive(['c1' => 'beurre', 'c2' => 'sel']), new DriveChoiceFingerprint(1, 5, '2.000', 'autre-hash', ['c1' => 'beurre'], ['c1' => 2]), ['beurre' => 'beurre-copie']);
 
         // Then
         $text = implode("\n", $problems);
@@ -75,7 +74,7 @@ class AdoptionVerifierTest extends TestCase
         $before = $this->snapshot(recipes: ['r1' => new AggregateSnapshot(3, 'h1')]);
         $after = $this->snapshot(recipes: ['r1' => new AggregateSnapshot(3, 'h1'), 'r2' => new AggregateSnapshot(1, 'h2')]);
 
-        $this->assertStringContainsString('recettes : 1 avant, 2 après', implode("\n", $this->verifier->discrepancies($before, $after, $this->drive([]), $this->drive([]), [])));
+        $this->assertStringContainsString('recettes : 1 avant, 2 après', implode("\n", $this->verifier->discrepancies($before, $after, '{}', '{}', $this->drive([]), $this->drive([]), [])));
     }
 
     /**
@@ -90,7 +89,6 @@ class AdoptionVerifierTest extends TestCase
             ['recipe_row' => $watched, 'shopping_list_row' => 0, 'shopping_list_ingredient' => 0],
             $recipes,
             $lists,
-            '{}',
         );
     }
 

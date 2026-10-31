@@ -29,13 +29,6 @@ class IngredientSeedingRepositoryTest extends DatabaseTestCase
         $this->dataset = SeedingDataset::create($this->entityManager, new DataPersister(static::getContainer()));
     }
 
-    public function testTheAccountExistsOrNot(): void
-    {
-        $this->assertTrue($this->repository->accountExists($this->dataset->freshId));
-        $this->assertTrue($this->repository->accountExists($this->dataset->pendingId));
-        $this->assertFalse($this->repository->accountExists('00000000-0000-4000-8000-00000000dead'));
-    }
-
     public function testTheSeedingLockIsASeparateAdvisoryLockOfTheTransactionOnThatUser(): void
     {
         // When : le verrou d'ING-003 et celui de l'amorçage du même compte, deux fois chacun

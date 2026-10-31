@@ -5,6 +5,7 @@ namespace Repas\Repas\Infrastructure\Loader;
 
 use Doctrine\ORM\EntityManagerInterface;
 use Repas\Repas\Application\Loader\ConversionHealthLoader;
+use Repas\Repas\Application\Port\AccountDirectoryQueryPort;
 use Repas\Repas\Application\Query\GetConversionHealth\ConversionHealthAccountDTO;
 use Repas\Repas\Application\Query\GetConversionHealth\ConversionHealthDTO;
 use Repas\Repas\Application\Query\GetConversionHealth\ReferenceConversionDTO;
@@ -13,7 +14,7 @@ use Repas\Repas\Domain\Model\ReferenceUniversalConversions;
 use Repas\Repas\Infrastructure\Conversion\IngredientConversionGraphs;
 
 /**
- * Le rapport de santé des conversions, sur la base, en LECTURE SEULE : cinq lectures (les conversions, les comptes, les ingrédients, les lignes de
+ * Le rapport de santé des conversions, sur la base, en LECTURE SEULE : cinq lectures (les conversions, les comptes (par le contexte `User`), les ingrédients, les lignes de
  * recettes regroupées par auteur, ingrédient et unité, les recettes par auteur) quel que soit le nombre de comptes, d'ingrédients ou de recettes,
  * aucune hydratation de modèle. « Se convertit en l'unité d'achat » est jugé par le même `ConversionGraph` que la planification et que le
  * `convertible` de la lecture d'une recette (`IngredientConversionGraphs`).
@@ -27,6 +28,7 @@ final readonly class ConversionHealthPostgreSQLLoader implements ConversionHealt
 
     public function __construct(
         private EntityManagerInterface $entityManager,
+        private AccountDirectoryQueryPort $directory,
     ) {
     }
 
@@ -46,10 +48,11 @@ final readonly class ConversionHealthPostgreSQLLoader implements ConversionHealt
             array_column($ingredients, 'slug'),
         );
 
-        $users = $connection->fetchAllAssociative('SELECT id, status FROM "user" ORDER BY id');
+        // Les comptes (identifiant et statut, par identifiant) viennent du contexte `User` ; les comptes sont ensuite faits sur nos tables
         $accounts = [];
-        foreach ($users as $index => $user) {
-            $accounts[$user['id']] = ['rank' => $index + 1, 'status' => $user['status'], 'ingredients' => 0, 'ingredientsNotConvertible' => 0, 'recipes' => 0, 'rows' => 0, 'rowsNotConvertible' => 0];
+        $rank = 0;
+        foreach ($this->directory->statusesById() as $id => $status) {
+            $accounts[$id] = ['rank' => ++$rank, 'status' => $status, 'ingredients' => 0, 'ingredientsNotConvertible' => 0, 'recipes' => 0, 'rows' => 0, 'rowsNotConvertible' => 0];
         }
 
         $unattachedIngredients = 0;

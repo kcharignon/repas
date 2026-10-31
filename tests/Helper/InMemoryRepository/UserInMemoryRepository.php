@@ -17,6 +17,9 @@ class UserInMemoryRepository implements UserRepository
     /** @var list<array{string, DateTimeImmutable}> les appels à `recordLogin()`, dans l'ordre (compte, date) */
     public array $recordLoginCalls = [];
 
+    /** @var list<string> les adresses demandées à `findOneByEmail()`, dans l'ordre : prouve qu'un cas d'usage ne lit un compte que s'il en a besoin */
+    public array $findOneByEmailCalls = [];
+
     /**
      * @param array<User>|null $users
      */
@@ -36,6 +39,8 @@ class UserInMemoryRepository implements UserRepository
 
     public function findOneByEmail(string $email): User
     {
+        $this->findOneByEmailCalls[] = $email;
+
         return $this->users->find(fn(User $user) => $user->getEmail() === User::normalizeEmail($email)) ?? throw UserException::NotFound($email);
     }
 

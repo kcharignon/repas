@@ -32,7 +32,9 @@ use Repas\Tests\Helper\InMemoryRepository\DepartmentInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\IngredientAliasInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\IngredientInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\UnitInMemoryRepository;
-use Repas\Tests\Helper\IngredientCatalogOwnerInMemory;
+use Repas\Repas\Infrastructure\Acl\CatalogOwnerCommandAdapter;
+use Repas\Tests\Helper\InMemoryRepository\UserInMemoryRepository;
+use Repas\User\Application\OpenHostService\CatalogOwnerCommandOHS;
 use Repas\Tests\Helper\RepasAssert;
 use Repas\Tests\Helper\InMemoryRepository\SpyEventDispatcher;
 
@@ -45,7 +47,7 @@ class CreateIngredientHandlerTest extends TestCase
     private readonly SpyEventDispatcher $eventDispatcher;
     private readonly ConversionRepository $conversionRepository;
     private readonly IngredientAliasInMemoryRepository $aliasRepository;
-    private readonly IngredientCatalogOwnerInMemory $catalogOwner;
+    private readonly UserInMemoryRepository $accounts;
 
     protected function setUp(): void
     {
@@ -56,7 +58,7 @@ class CreateIngredientHandlerTest extends TestCase
 
         $this->ingredientRepository = new IngredientInMemoryRepository();
         $this->aliasRepository = new IngredientAliasInMemoryRepository();
-        $this->catalogOwner = new IngredientCatalogOwnerInMemory('owner-id');
+        $this->accounts = new UserInMemoryRepository([new UserBuilder()->withId('owner-id')->isCatalogOwner()->build()]);
         $this->unitRepository = new UnitInMemoryRepository([$unite, $liter, $centiliter]);
         $this->departmentRepository = new DepartmentInMemoryRepository([$baby, new DepartmentBuilder()->isAnimal()->build(), new DepartmentBuilder()->isConserve()->build()]);
         $this->eventDispatcher = new SpyEventDispatcher();
@@ -80,9 +82,18 @@ class CreateIngredientHandlerTest extends TestCase
             $this->aliasRepository,
             $this->eventDispatcher,
             $conversionService,
-            $this->catalogOwner,
+            $this->catalogOwner($this->accounts),
             new IngredientSlugPolicy(),
         );
+    }
+
+    /**
+     * Le propriétaire du catalogue tel que le handler le reçoit : la vraie couche anticorruption sur le vrai Open Host Service du contexte
+     * `User` (ADR 0035), branchés sur les comptes en mémoire. La variable `INGREDIENT_CATALOG_OWNER_EMAIL` des tests désigne `UserBuilder::isCatalogOwner()`.
+     */
+    private function catalogOwner(UserInMemoryRepository $accounts): CatalogOwnerCommandAdapter
+    {
+        return new CatalogOwnerCommandAdapter(new CatalogOwnerCommandOHS($accounts, UserBuilder::CATALOG_OWNER_EMAIL));
     }
 
     public function testHandleSuccessfullyCreateIngredient(): void
@@ -557,7 +568,7 @@ class CreateIngredientHandlerTest extends TestCase
 
         // Then : naître à faux ne demande l'avis de personne, donc aucune requête de plus
         $this->assertFalse($this->ingredientRepository->findOneBySlug($slug)->isBase());
-        $this->assertSame(0, $this->catalogOwner->calls);
+        $this->assertSame(0, count($this->accounts->findOneByEmailCalls));
     }
 
     public function testNotAskingForTheMarkerIsAcceptedFromAnyUserWithoutReadingTheCatalogOwner(): void
@@ -569,7 +580,7 @@ class CreateIngredientHandlerTest extends TestCase
         // Then
         $this->assertFalse($this->ingredientRepository->findOneBySlug($ordinary)->isBase());
         $this->assertFalse($this->ingredientRepository->findOneBySlug($admin)->isBase());
-        $this->assertSame(0, $this->catalogOwner->calls);
+        $this->assertSame(0, count($this->accounts->findOneByEmailCalls));
     }
 
     public function testTheCatalogOwnerCreatesABaseIngredientOfItsOwn(): void
@@ -581,7 +592,7 @@ class CreateIngredientHandlerTest extends TestCase
         $ingredient = $this->ingredientRepository->findOneBySlug($slug);
         $this->assertTrue($ingredient->isBase());
         $this->assertSame('owner-id', $ingredient->getCreatorId());
-        $this->assertSame(1, $this->catalogOwner->calls);
+        $this->assertSame(1, count($this->accounts->findOneByEmailCalls));
         $this->assertEquals([new IngredientCreatedEvent('owner-id', $slug)], $this->eventDispatcher->eventDispatched);
     }
 
@@ -628,7 +639,7 @@ class CreateIngredientHandlerTest extends TestCase
             $this->aliasRepository,
             $this->eventDispatcher,
             new ConversionService($this->conversionRepository, $this->unitRepository),
-            new IngredientCatalogOwnerInMemory(null),
+            $this->catalogOwner(new UserInMemoryRepository()),
             new IngredientSlugPolicy(),
         );
 

@@ -21,6 +21,8 @@ use Repas\Shared\Application\Dto\DriveChoiceFingerprint;
 final readonly class AdoptionVerifier
 {
     /**
+     * @param string $statisticsBefore l'empreinte des statistiques du compte avant (`SeedingAccountCommandPort::statisticsFingerprint()`)
+     * @param string $statisticsAfter la même, après : un repointage n'est pas une création, elle ne bouge pas
      * @param array<string, string> $driveSlugMap l'ingrédient attendu après le repointage, par ingrédient d'avant ; un choix dont le slug
      *        n'y est pas doit garder le sien
      *
@@ -29,6 +31,8 @@ final readonly class AdoptionVerifier
     public function discrepancies(
         AdoptionSnapshot $before,
         AdoptionSnapshot $after,
+        string $statisticsBefore,
+        string $statisticsAfter,
         DriveChoiceFingerprint $driveBefore,
         DriveChoiceFingerprint $driveAfter,
         array $driveSlugMap,
@@ -51,7 +55,7 @@ final readonly class AdoptionVerifier
         array_push($problems, ...$this->aggregates('recettes', $before->recipes, $after->recipes, false));
         array_push($problems, ...$this->aggregates('listes', $before->shoppingLists, $after->shoppingLists, true));
 
-        if ($before->statistics !== $after->statistics) {
+        if ($statisticsBefore !== $statisticsAfter) {
             $problems[] = 'les statistiques du compte ont changé';
         }
 

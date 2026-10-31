@@ -28,4 +28,25 @@ interface UserLoader
      * Le compte existe-t-il et son statut est-il `ACTIVE` (ADR 0021) ? Une requête sur la colonne du statut, sans charger le compte.
      */
     public function isActive(string $userId): bool;
+
+    /**
+     * L'identifiant du compte qui porte cette adresse (voir `User::normalizeEmail()`), ou `null`. Une requête sur la colonne.
+     */
+    public function idOfEmail(string $email): ?string;
+
+    /**
+     * L'identifiant et le statut (`PENDING`, `ACTIVE`, `DISABLED`) de chaque compte, triés par identifiant. Une requête sur deux colonnes.
+     *
+     * @return list<array{id: string, status: string}>
+     */
+    public function listStatuses(): array;
+
+    /**
+     * L'adresse des comptes donnés, par identifiant ; un identifiant inconnu n'y figure pas. Une requête.
+     *
+     * @param list<string> $userIds
+     *
+     * @return array<string, string>
+     */
+    public function emailsOf(array $userIds): array;
 }

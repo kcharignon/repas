@@ -8,7 +8,6 @@ use Repas\Repas\Application\Command\SeedUserIngredients\SeedOutcome;
 use Repas\Repas\Application\Command\SeedUserIngredients\SeedResult;
 use Repas\Repas\Application\Command\SeedUserIngredients\SeedUserIngredientsCommand;
 use Repas\Shared\Application\Interface\CommandBusInterface;
-use Repas\Shared\Application\Interface\IngredientCatalogOwner;
 use Repas\Shared\Domain\Tool\UuidGenerator;
 use Repas\Shared\Application\Interface\IngredientSeedingFeature;
 use Repas\Tests\Helper\Builder\UserBuilder;
@@ -98,8 +97,6 @@ class SeedProductionLikeCatalogTest extends DatabaseTestCase
         $user = new UserBuilder()->build();
         new DataPersister(static::getContainer())->saveUser($user);
         $this->entityManager->clear();
-        // Une requête neuve : le propriétaire du catalogue est relu (il est mémorisé le temps d'une requête)
-        static::getContainer()->get(IngredientCatalogOwner::class)->reset();
         $counter = static::getContainer()->get(QueryCounter::class);
         $counter->reset();
         $started = hrtime(true);

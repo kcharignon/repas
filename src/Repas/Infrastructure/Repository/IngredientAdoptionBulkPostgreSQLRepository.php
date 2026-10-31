@@ -163,11 +163,6 @@ readonly class IngredientAdoptionBulkPostgreSQLRepository implements IngredientA
         $this->connection()->executeQuery('SELECT pg_advisory_xact_lock(hashtext(?))', ['seed:' . $userId])->free();
     }
 
-    public function accountExists(string $userId): bool
-    {
-        return $this->connection()->fetchOne('SELECT 1 FROM "user" WHERE id = ?', [$userId]) !== false;
-    }
-
     public function isSeeded(string $userId): bool
     {
         return $this->connection()->fetchOne(

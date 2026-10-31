@@ -119,6 +119,49 @@ final readonly class UserPostgreSQLLoader implements UserLoader
         return $row !== null && $row['status'] === UserStatus::ACTIVE;
     }
 
+    public function idOfEmail(string $email): ?string
+    {
+        $row = $this->entityManager->createQueryBuilder()
+            ->select('u.id AS id')
+            ->from(User::class, 'u')
+            ->where('u.email = :email')
+            ->setParameter('email', DomainUser::normalizeEmail($email))
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
+
+        return $row['id'] ?? null;
+    }
+
+    public function listStatuses(): array
+    {
+        $rows = $this->entityManager->createQueryBuilder()
+            ->select('u.id AS id', 'u.status AS status')
+            ->from(User::class, 'u')
+            ->orderBy('u.id', 'ASC')
+            ->getQuery()
+            ->getArrayResult();
+
+        return array_map(static fn(array $row): array => ['id' => $row['id'], 'status' => $row['status']->value], $rows);
+    }
+
+    public function emailsOf(array $userIds): array
+    {
+        if ($userIds === []) {
+            return [];
+        }
+
+        $rows = $this->entityManager->createQueryBuilder()
+            ->select('u.id AS id', 'u.email AS email')
+            ->from(User::class, 'u')
+            ->where('u.id IN (:ids)')
+            ->setParameter('ids', $userIds)
+            ->getQuery()
+            ->getArrayResult();
+
+        return array_column($rows, 'email', 'id');
+    }
+
     /**
      * La dernière version de l'application Android vue pour le compte (`appVersion`, `null` si aucune), dans la même requête :
      * au plus une ligne par compte et par plateforme (clé de `user_app_version`), la jointure ne duplique aucun compte.

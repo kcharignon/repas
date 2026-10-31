@@ -16,13 +16,7 @@ use PHPUnit\Framework\TestCase;
 class ContextsDoNotShareTablesTest extends TestCase
 {
     /** @var array<string, list<string>> fichier => tables d'un autre contexte qu'il lit encore */
-    private const array LEGACY = [
-        'src/Repas/Infrastructure/Adoption/AdoptionSnapshotReader.php' => ['user'],
-        'src/Repas/Infrastructure/Loader/ConversionHealthPostgreSQLLoader.php' => ['user'],
-        'src/Repas/Infrastructure/Loader/ConversionPostgreSQLLoader.php' => ['user'],
-        'src/Repas/Infrastructure/Loader/IngredientSeedingReportPostgreSQLLoader.php' => ['user'],
-        'src/Repas/Infrastructure/Repository/IngredientAdoptionBulkPostgreSQLRepository.php' => ['user'],
-    ];
+    private const array LEGACY = [];
 
     public function testNoContextQueriesTheTablesOfAnother(): void
     {

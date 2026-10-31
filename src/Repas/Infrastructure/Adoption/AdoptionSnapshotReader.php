@@ -11,7 +11,7 @@ use Repas\Repas\Domain\Model\AggregateSnapshot;
 use Repas\Repas\Domain\Model\ShoppingListStatus;
 
 /**
- * Lit, en LECTURE SEULE et en quatre requêtes quel que soit le volume, l'empreinte d'un utilisateur côté `Repas` (`AdoptionSnapshot`) :
+ * Lit, en LECTURE SEULE et en trois requêtes quel que soit le volume, l'empreinte d'un utilisateur côté `Repas` (`AdoptionSnapshot`) :
  * celle que l'amorçage d'un compte compare avant et après (dans sa transaction) et que le rapport à blanc affiche. Partagée par
  * `IngredientAdoptionBulkPostgreSQLRepository` et `IngredientSeedingReportPostgreSQLLoader`, pour qu'elles disent la même chose.
  *
@@ -108,9 +108,7 @@ final readonly class AdoptionSnapshotReader
             $shoppingLists[$row['id']] = new AggregateSnapshot((int) $row['version'], (string) $row['hash'], $row['status'] . '|' . $row['sent_at'], (bool) $row['watched'], $row['status'] === ShoppingListStatus::SENT->value);
         }
 
-        $statistics = (string) $connection->fetchOne('SELECT statistics::text FROM "user" WHERE id = ?', [$userId]);
-
-        return new AdoptionSnapshot($rowCounts, $quantitySums, $watchedRowCounts, $recipes, $shoppingLists, $statistics);
+        return new AdoptionSnapshot($rowCounts, $quantitySums, $watchedRowCounts, $recipes, $shoppingLists);
     }
 
     private function connection(): Connection

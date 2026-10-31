@@ -5,7 +5,6 @@ namespace Repas\Repas\Infrastructure\Loader;
 
 use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Connection;
-use Doctrine\DBAL\ParameterType;
 use Doctrine\ORM\EntityManagerInterface;
 use Repas\Repas\Application\Loader\IngredientSeedingReportLoader;
 use Repas\Repas\Application\Query\GetSeedingReport\SeedingHealthDTO;
@@ -18,7 +17,8 @@ use Repas\Repas\Infrastructure\Adoption\AdoptionSnapshotReader;
 use Repas\Repas\Infrastructure\Adoption\SeedingSourceReader;
 use Repas\Repas\Infrastructure\Visibility\IngredientVisibility;
 use Repas\Shared\Application\Interface\DriveIngredientReferences;
-use Repas\Shared\Application\Interface\IngredientCatalogOwner;
+use Repas\Repas\Application\Port\AccountDirectoryQueryPort;
+use Repas\Repas\Application\Port\CatalogOwnerQueryPort;
 
 /**
  * Le rapport « à blanc » de l'amorçage des comptes (ING-008, `docs/ingredients/sans-commun.md` §§ 2 et 5), en LECTURE SEULE : jamais
@@ -40,7 +40,8 @@ final readonly class IngredientSeedingReportPostgreSQLLoader implements Ingredie
         private SeedingSourceReader $sourceReader,
         private IngredientSlugPolicy $slugPolicy,
         private DriveIngredientReferences $driveReferences,
-        private IngredientCatalogOwner $catalogOwner,
+        private CatalogOwnerQueryPort $catalogOwner,
+        private AccountDirectoryQueryPort $directory,
     ) {
     }
 
@@ -57,27 +58,29 @@ final readonly class IngredientSeedingReportPostgreSQLLoader implements Ingredie
             ['owner' => $ownerId],
         );
 
-        $accounts = $connection->fetchAllAssociative(
-            'SELECT u.id, u.status,'
-            . ' (SELECT count(*) FROM ingredient i WHERE i.creator = u.id) AS ingredients,'
-            . ' (SELECT count(*) FROM recipe r WHERE r.author = u.id) AS recipes,'
-            . " EXISTS (SELECT 1 FROM ingredient_alias a WHERE a.user_id = u.id AND a.kind = 'adoption') AS seeded"
-            . ' FROM "user" u ORDER BY u.id',
-        );
+        // Les comptes (identifiant et statut, par identifiant) viennent du contexte `User`. Ce que chacun possède se compte ici, sur nos tables,
+        // en trois lectures groupées quel que soit le nombre de comptes : les ingrédients par créateur, les recettes par auteur, les comptes amorcés.
+        $statuses = $this->directory->statusesById();
+        /** @var array<string, int|string> $ingredientsByCreator */
+        $ingredientsByCreator = $connection->fetchAllKeyValue('SELECT creator, count(*) FROM ingredient GROUP BY creator');
+        /** @var array<string, int|string> $recipesByAuthor */
+        $recipesByAuthor = $connection->fetchAllKeyValue('SELECT author, count(*) FROM recipe GROUP BY author');
+        $seededAccounts = array_fill_keys($connection->fetchFirstColumn("SELECT DISTINCT user_id FROM ingredient_alias WHERE kind = 'adoption'"), true);
 
+        $accountIds = array_map('strval', array_keys($statuses));
         $matches = static fn(array $selectors, string $id): bool => in_array($id, $selectors, true) || in_array(self::referenceOf($id), $selectors, true);
-        $known = $accounts === [] ? [] : array_merge(...array_map(static fn(array $account): array => [$account['id'], self::referenceOf($account['id'])], $accounts));
+        $known = $accountIds === [] ? [] : array_merge(...array_map(static fn(string $id): array => [$id, self::referenceOf($id)], $accountIds));
         $unknown = array_values(array_unique(array_diff([...$only, ...$except], $known)));
 
         $users = [];
-        foreach ($accounts as $index => $account) {
-            $id = $account['id'];
-            $seeded = (bool) $account['seeded'];
+        foreach ($accountIds as $index => $id) {
+            $status = (string) $statuses[$id];
+            $seeded = isset($seededAccounts[$id]);
             $exclusion = match (true) {
                 $id === $ownerId => SeedingUserReportDTO::OWNER,
                 $matches($except, $id) => SeedingUserReportDTO::EXCEPTED,
                 $only !== [] && !$matches($only, $id) => SeedingUserReportDTO::NOT_SELECTED,
-                $only === [] && $account['status'] !== 'ACTIVE' => SeedingUserReportDTO::NOT_ACTIVE,
+                $only === [] && $status !== AccountDirectoryQueryPort::STATUS_ACTIVE => SeedingUserReportDTO::NOT_ACTIVE,
                 $seeded && !($complete && $only !== []) => SeedingUserReportDTO::ALREADY_SEEDED,
                 default => null,
             };
@@ -86,11 +89,11 @@ final readonly class IngredientSeedingReportPostgreSQLLoader implements Ingredie
                 'rank' => $index + 1,
                 'reference' => self::referenceOf($id),
                 'userId' => $id,
-                'status' => (string) $account['status'],
+                'status' => $status,
                 'owner' => $id === $ownerId,
                 'seeded' => $seeded,
-                'ingredients' => (int) $account['ingredients'],
-                'recipes' => (int) $account['recipes'],
+                'ingredients' => (int) ($ingredientsByCreator[$id] ?? 0),
+                'recipes' => (int) ($recipesByAuthor[$id] ?? 0),
                 'selected' => $exclusion === null,
                 'exclusion' => $exclusion,
             ];
@@ -115,7 +118,7 @@ final readonly class IngredientSeedingReportPostgreSQLLoader implements Ingredie
             catalogAnomalies: $catalogAnomalies,
             unknownSelectors: $unknown,
             users: $users,
-            health: $this->health($ownerId, array_column($accounts, 'id')),
+            health: $this->health($ownerId, $statuses, $ingredientsByCreator, $seededAccounts),
         );
     }
 
@@ -255,28 +258,34 @@ final readonly class IngredientSeedingReportPostgreSQLLoader implements Ingredie
     /**
      * La requête de santé (`docs/ingredients/sans-commun.md` § 5) : plus de filet, donc un compte actif sans ses ingrédients serait aveugle.
      *
-     * @param list<string> $accountIds
+     * Les comptes viennent du contexte `User` (un statut par identifiant) ; les ingrédients par créateur et les comptes amorcés sont ceux que
+     * le rapport vient de lire : aucune lecture de plus.
+     *
+     * @param array<string, string> $statuses le statut de chaque compte, par identifiant
+     * @param array<string, int|string> $ingredientsByCreator le nombre d'ingrédients par créateur (clé vide : sans créateur)
+     * @param array<string, true> $seededAccounts les comptes qui ont au moins un alias d'adoption
      */
-    private function health(?string $ownerId, array $accountIds): SeedingHealthDTO
+    private function health(?string $ownerId, array $statuses, array $ingredientsByCreator, array $seededAccounts): SeedingHealthDTO
     {
         $connection = $this->connection();
         $owner = $ownerId ?? '';
         // Un ingrédient est toujours à quelqu'un : ceux dont le créateur n'est aucun compte existant (créateur vide compris) sont une anomalie
-        $withoutCreator = (int) $connection->fetchOne('SELECT count(*) FROM ingredient i WHERE NOT EXISTS (SELECT 1 FROM "user" u WHERE u.id = i.creator)');
+        $withoutCreator = 0;
+        foreach ($ingredientsByCreator as $creator => $count) {
+            $withoutCreator += isset($statuses[$creator]) ? 0 : (int) $count;
+        }
         // Le propriétaire du catalogue entre dans les contrôles 2 et 4 dès qu'il existe (la passation est faite)
         $ownerIncluded = $ownerId !== null;
 
-        $notSeeded = (int) $connection->fetchOne(
-            "SELECT count(*) FROM \"user\" u WHERE u.status = 'ACTIVE' AND u.id <> :owner"
-            . " AND NOT EXISTS (SELECT 1 FROM ingredient_alias a WHERE a.user_id = u.id AND a.kind = 'adoption')",
-            ['owner' => $owner],
-        );
-        $withoutIngredient = (int) $connection->fetchOne(
-            "SELECT count(*) FROM \"user\" u WHERE u.status = 'ACTIVE' AND (u.id <> :owner OR :included)"
-            . ' AND NOT EXISTS (SELECT 1 FROM ingredient i WHERE i.creator = u.id)',
-            ['owner' => $owner, 'included' => $ownerIncluded],
-            ['included' => ParameterType::BOOLEAN],
-        );
+        $notSeeded = $withoutIngredient = 0;
+        foreach ($statuses as $id => $status) {
+            if ($status !== AccountDirectoryQueryPort::STATUS_ACTIVE) {
+                continue;
+            }
+            $id = (string) $id;
+            $notSeeded += $id !== $owner && !isset($seededAccounts[$id]) ? 1 : 0;
+            $withoutIngredient += ($id !== $owner || $ownerIncluded) && (int) ($ingredientsByCreator[$id] ?? 0) === 0 ? 1 : 0;
+        }
 
         $foreign = static fn(string $account): string => sprintf("COALESCE(i.creator, '') <> %s", $account);
         $lines = $connection->fetchAllKeyValue(
@@ -308,7 +317,7 @@ final readonly class IngredientSeedingReportPostgreSQLLoader implements Ingredie
             [ArrayParameterType::STRING],
         );
         foreach ($driveSlugs as $userId => $slugs) {
-            if (!in_array($userId, $accountIds, true)) {
+            if (!isset($statuses[$userId])) {
                 continue;
             }
             foreach ($slugs as $slug) {
