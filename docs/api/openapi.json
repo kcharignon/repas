@@ -335,6 +335,50 @@
                 }
             }
         },
+        "/api/v1/ingredients/{slug}/list-destination": {
+            "put": {
+                "tags": [
+                    "Ingredients"
+                ],
+                "summary": "R\u00e8gle la liste de courses o\u00f9 va un produit (\u00ab produit \u00e0 part \u00bb)",
+                "description": "Seul le propri\u00e9taire du produit le r\u00e8gle, un administrateur compris (`403` pour le produit d'un autre). `default` efface le choix : le produit va dans la liste du type de son rayon, sinon dans la liste principale ; `main` l'envoie dans la liste principale m\u00eame si son rayon est dans un type ; un identifiant de type l'envoie dans la liste de ce type. Le choix se fait \u00e0 l'ajout et se fige : aucune ligne d\u00e9j\u00e0 dans une liste ne bouge. Le type d'un autre utilisateur est inconnu (`404`) et rien n'est \u00e9crit.",
+                "operationId": "put_api_choose_ingredient_list",
+                "parameters": [
+                    {
+                        "name": "slug",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ChooseIngredientListPayload"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "204": {
+                        "description": "Choix enregistr\u00e9 (ou d\u00e9j\u00e0 celui-l\u00e0)"
+                    },
+                    "403": {
+                        "description": "Le produit appartient \u00e0 un autre utilisateur (un administrateur n'a pas de passe-droit)"
+                    },
+                    "404": {
+                        "description": "Produit inconnu, ou type de liste inconnu ou d'un autre utilisateur"
+                    },
+                    "422": {
+                        "description": "Corps invalide : `destination` absente, vide ou de plus de 36 caract\u00e8res"
+                    }
+                }
+            }
+        },
         "/api/v1/recipes/{id}/copy": {
             "post": {
                 "tags": [
@@ -455,6 +499,7 @@
                     "Departments"
                 ],
                 "summary": "Liste des rayons, tri\u00e9s par slug",
+                "description": "Les rayons sont des donn\u00e9es globales ; seul `listTypeId` est propre \u00e0 l'utilisateur connect\u00e9 : le type de liste de courses auquel il a rattach\u00e9 le rayon (ADR 0036), `null` pour un rayon sans type.",
                 "operationId": "get_api_list_departments",
                 "responses": {
                     "200": {
@@ -466,7 +511,7 @@
                                         "member": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/components/schemas/DepartmentDTO"
+                                                "$ref": "#/components/schemas/DepartmentListItemDTO"
                                             }
                                         },
                                         "totalItems": {
@@ -4100,6 +4145,20 @@
                 },
                 "type": "object"
             },
+            "ChooseIngredientListPayload": {
+                "required": [
+                    "destination"
+                ],
+                "properties": {
+                    "destination": {
+                        "description": "O\u00f9 va le produit : `default` (dans la liste de son rayon, le choix est effac\u00e9), `main` (dans la liste principale, m\u00eame si son rayon est dans un type) ou l'identifiant d'un type de liste du compte",
+                        "type": "string",
+                        "maxLength": 36,
+                        "example": "main"
+                    }
+                },
+                "type": "object"
+            },
             "ConversionPayload": {
                 "required": [
                     "startUnitSlug",
@@ -5517,7 +5576,7 @@
                 },
                 "type": "object"
             },
-            "DepartmentDTO": {
+            "DepartmentListItemDTO": {
                 "required": [
                     "slug",
                     "name",
@@ -5542,6 +5601,11 @@
                         "description": "Nom de l'ic\u00f4ne du rayon (le front la dessine), `null` quand le rayon n'en a pas : elle distingue deux ingr\u00e9dients de m\u00eame nom dans deux rayons. Cl\u00e9 toujours \u00e9crite ; les valeurs permises sont celles du corps de `PUT /departments/{slug}` ; une ic\u00f4ne que le front ne conna\u00eet pas s'ignore",
                         "type": "string",
                         "example": "snowflake",
+                        "nullable": true
+                    },
+                    "listTypeId": {
+                        "description": "Identifiant du type de liste de courses auquel l'utilisateur connect\u00e9 a rattach\u00e9 ce rayon (ADR 0036), `null` quand le rayon n'a pas de type (ses produits vont dans la liste principale) ; propre \u00e0 son compte. Cl\u00e9 toujours \u00e9crite",
+                        "type": "string",
                         "nullable": true
                     }
                 },
@@ -5881,6 +5945,64 @@
                 },
                 "type": "object"
             },
+            "DepartmentDTO": {
+                "required": [
+                    "slug",
+                    "name",
+                    "image"
+                ],
+                "properties": {
+                    "slug": {
+                        "description": "Identifiant du rayon (slug)",
+                        "type": "string",
+                        "example": "fruits-et-legumes"
+                    },
+                    "name": {
+                        "type": "string",
+                        "example": "Fruits et l\u00e9gumes"
+                    },
+                    "image": {
+                        "description": "Chemin ou URL de l'image du rayon",
+                        "type": "string",
+                        "example": "images/department/fruits.png"
+                    },
+                    "icon": {
+                        "description": "Nom de l'ic\u00f4ne du rayon (le front la dessine), `null` quand le rayon n'en a pas : elle distingue deux ingr\u00e9dients de m\u00eame nom dans deux rayons. Cl\u00e9 toujours \u00e9crite ; les valeurs permises sont celles du corps de `PUT /departments/{slug}` ; une ic\u00f4ne que le front ne conna\u00eet pas s'ignore",
+                        "type": "string",
+                        "example": "snowflake",
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "ListDestinationDTO": {
+                "required": [
+                    "mode"
+                ],
+                "properties": {
+                    "mode": {
+                        "description": "`DEFAULT` : le produit va dans la liste de son rayon (ou la principale si son rayon n'a pas de type) ; `MAIN` : toujours la liste principale ; `TYPE` : toujours la liste du type `typeId`. Un choix qui d\u00e9signe un type qui n'existe plus se lit `DEFAULT`",
+                        "type": "string",
+                        "enum": [
+                            "DEFAULT",
+                            "MAIN",
+                            "TYPE"
+                        ],
+                        "example": "DEFAULT"
+                    },
+                    "typeId": {
+                        "description": "Identifiant du type de liste choisi ; `null` hors du mode `TYPE`. Cl\u00e9 toujours \u00e9crite",
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "typeName": {
+                        "description": "Nom du type de liste choisi ; `null` hors du mode `TYPE`. Cl\u00e9 toujours \u00e9crite",
+                        "type": "string",
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
             "IngredientDTO": {
                 "required": [
                     "slug",
@@ -5898,7 +6020,8 @@
                     "recipeCount",
                     "listCount",
                     "isBase",
-                    "canSetBase"
+                    "canSetBase",
+                    "listDestination"
                 ],
                 "properties": {
                     "slug": {
@@ -5984,6 +6107,9 @@
                     "canSetBase": {
                         "description": "Le lecteur peut poser le marqueur \u00ab de base \u00bb sur cet ingr\u00e9dient : il est le propri\u00e9taire du catalogue et l'ingr\u00e9dient est \u00e0 lui. Toujours \u00e9crit, jamais `null` : le front s'appuie sur ce champ, pas sur le r\u00f4le administrateur",
                         "type": "boolean"
+                    },
+                    "listDestination": {
+                        "$ref": "#/components/schemas/ListDestinationDTO"
                     }
                 },
                 "type": "object"

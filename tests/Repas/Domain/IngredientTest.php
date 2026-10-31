@@ -234,6 +234,31 @@ class IngredientTest extends TestCase
         $this->assertTrue($basePersonal->isBase());
     }
 
+    public function testACopyNeverCarriesTheListChoiceOfItsSourceWhichItselfKeepsIt(): void
+    {
+        // Given : le choix de liste (ADR 0036) est personnel
+        $source = new IngredientBuilder()->isButter()->withCreator(new UserBuilder()->withId('author-id')->build(), true)->withListDestination('main')->build();
+
+        // When
+        $copy = Ingredient::copyFromOriginal($source, 'user-id', 'beurreuser-id');
+
+        // Then
+        $this->assertNull($copy->getListDestination());
+        $this->assertSame('main', $source->getListDestination());
+    }
+
+    public function testUpdatingAnIngredientKeepsItsListChoice(): void
+    {
+        // Given
+        $ingredient = new IngredientBuilder()->isButter()->withListDestination('type-1')->build();
+
+        // When
+        $ingredient->update('Beurre demi-sel', $ingredient->getImage(), $ingredient->getDepartment(), $ingredient->getDefaultCookingUnit(), $ingredient->getDefaultPurchaseUnit(), $ingredient->getCompatibleUnits());
+
+        // Then
+        $this->assertSame('type-1', $ingredient->getListDestination());
+    }
+
     /**
      * La règle « qui pose le marqueur » : le propriétaire du catalogue, sur un ingrédient à lui (ou, jusqu'à ING-014, sans créateur) ; personne
      * quand le propriétaire n'existe pas.

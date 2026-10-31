@@ -6,6 +6,7 @@ use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Query\Expr\Join;
 use Repas\Repas\Application\Loader\IngredientLoader;
 use Repas\Repas\Application\Query\GetIngredient\IngredientDTO;
+use Repas\Repas\Application\Query\GetIngredient\ListDestinationDTO;
 use Repas\Repas\Application\Query\ListAvailableIngredients\IngredientOptionDTO;
 use Repas\Repas\Application\Query\ListCompatibleUnits\CompatibleUnitDTO;
 use Repas\Repas\Application\Query\ListDepartments\DepartmentDTO;
@@ -18,6 +19,7 @@ use Repas\Repas\Domain\Model\DepartmentIcon;
 use Repas\Repas\Infrastructure\Entity\Conversion;
 use Repas\Repas\Infrastructure\Entity\Department;
 use Repas\Repas\Infrastructure\Entity\Ingredient;
+use Repas\Repas\Infrastructure\Entity\ShoppingListType;
 use Repas\Repas\Infrastructure\Entity\Unit;
 use Repas\Repas\Infrastructure\Merge\IngredientMergeUsageReader;
 use Repas\Repas\Infrastructure\Visibility\IngredientVisibility;
@@ -89,8 +91,8 @@ final readonly class IngredientPostgreSQLLoader implements IngredientLoader
     {
         $ingredient = $this->entityManager->createQueryBuilder()
             ->select(
-                'i.slug AS slug', 'i.name AS name', 'i.image AS image', 'i.creatorId AS creatorId', 'i.isBase AS isBase',
-                'd.slug AS departmentSlug', 'd.name AS departmentName',
+                'i.slug AS slug', 'i.name AS name', 'i.image AS image', 'i.creatorId AS creatorId', 'i.isBase AS isBase', 'i.listDestination AS listDestination',
+                'd.slug AS departmentSlug', 'd.name AS departmentName', 't.id AS listTypeId', 't.name AS listTypeName',
                 'cu.slug AS cookingUnitSlug', 'cu.name AS cookingUnitName',
                 'pu.slug AS purchaseUnitSlug', 'pu.name AS purchaseUnitName', 'pu.symbol AS purchaseUnitSymbol',
             )
@@ -98,8 +100,11 @@ final readonly class IngredientPostgreSQLLoader implements IngredientLoader
             ->innerJoin(Department::class, 'd', Join::WITH, 'd.slug = i.departmentSlug')
             ->innerJoin(Unit::class, 'cu', Join::WITH, 'cu.slug = i.defaultCookingUnitSlug')
             ->innerJoin(Unit::class, 'pu', Join::WITH, 'pu.slug = i.defaultPurchaseUnitSlug')
+            // Le type de liste choisi, s'il existe encore ET s'il est au lecteur (sinon le choix se lit « comme son rayon », ADR 0036)
+            ->leftJoin(ShoppingListType::class, 't', Join::WITH, 't.id = i.listDestination AND t.ownerId = :viewer')
             ->where('i.slug = :slug')
             ->setParameter('slug', $slug)
+            ->setParameter('viewer', $viewerId)
             ->getQuery()
             ->getOneOrNullResult();
 
@@ -138,6 +143,7 @@ final readonly class IngredientPostgreSQLLoader implements IngredientLoader
             listCount: $usage['lists'],
             isBase: $isBase,
             canSetBase: $canSetBase,
+            listDestination: ListDestinationDTO::of($ingredient['listDestination'], $ingredient['listTypeId'], $ingredient['listTypeName']),
         );
     }
 

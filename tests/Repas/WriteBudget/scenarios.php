@@ -23,6 +23,7 @@ use Repas\Drive\Domain\Model\SearchQuery;
 use Repas\Repas\Application\Command\ActivatedShoppingList\ActivatedShoppingListCommand;
 use Repas\Repas\Application\Command\AddIngredientToShoppingList\AddIngredientToShoppingListCommand;
 use Repas\Repas\Application\Command\AddSpokenIngredient\AddSpokenIngredientCommand;
+use Repas\Repas\Application\Command\ChooseIngredientList\ChooseIngredientListCommand;
 use Repas\Repas\Application\Command\CopyRecipe\CopyRecipeCommand;
 use Repas\Repas\Application\Command\CreateConversion\CreateConversionCommand;
 use Repas\Repas\Application\Command\CreateDepartment\CreateDepartmentCommand;
@@ -382,6 +383,17 @@ return [
         $t->persister->saveIngredient(new IngredientBuilder()->isButter()->withCreator($owner, true)->withListDestination($type->getId())->build());
 
         return new RemoveShoppingListTypeCommand($type->getId(), $owner->getId());
+    },
+
+    // Un produit à part (ADR 0036, LST-003) : le type est jugé (existence, propriétaire) puis le choix du produit enregistré
+    'choisir-liste-d-un-produit' => static function (WriteBudgetTestCase $t): object {
+        $owner = $t->savedUser();
+        $type = ShoppingListType::create(UuidGenerator::new(), $owner->getId(), 'Boucherie', new \DateTimeImmutable());
+        $t->persister->saveShoppingListType($type);
+        $ingredient = new IngredientBuilder()->isButter()->withCreator($owner, true)->build();
+        $t->persister->saveIngredient($ingredient);
+
+        return new ChooseIngredientListCommand($ingredient->getSlug(), $type->getId(), $owner->getId());
     },
 
     // --- Recettes

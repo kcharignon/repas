@@ -45,7 +45,7 @@ class DepartmentIconApiFlowTest extends DatabaseTestCase
         // Then : la fiche, la liste, et le rayon d'une liste d'ingrédients (lus par un utilisateur ordinaire)
         $this->assertSame('snowflake', $this->read('/api/v1/departments/surgele')['icon']);
         $listed = array_values(array_filter($this->read('/api/v1/departments')['member'], static fn(array $department): bool => $department['slug'] === 'surgele'));
-        $this->assertSame(['slug' => 'surgele', 'name' => 'Surgelé', 'image' => 'images/surgele.png', 'icon' => 'snowflake'], $listed[0]);
+        $this->assertSame(['slug' => 'surgele', 'name' => 'Surgelé', 'image' => 'images/surgele.png', 'icon' => 'snowflake', 'listTypeId' => null], $listed[0]);
         $this->assertSame('snowflake', $this->read('/api/v1/departments/surgele/ingredients')['department']['icon']);
 
         // When : le nom change, la clé `icon` est absente (un ancien client)

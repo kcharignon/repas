@@ -14,10 +14,10 @@ final readonly class ListDepartmentsQueryHandler
     }
 
     /**
-     * @return list<DepartmentDTO>
+     * @return list<DepartmentListItemDTO>
      */
     public function __invoke(ListDepartmentsQuery $query): array
     {
-        return $this->departmentLoader->list();
+        return $this->departmentLoader->list($query->userId);
     }
 }

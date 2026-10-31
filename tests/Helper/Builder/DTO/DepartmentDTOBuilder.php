@@ -4,6 +4,7 @@ namespace Repas\Tests\Helper\Builder\DTO;
 
 
 use Repas\Repas\Application\Query\ListDepartments\DepartmentDTO;
+use Repas\Repas\Application\Query\ListDepartments\DepartmentListItemDTO;
 use Repas\Tests\Helper\Builder\Builder;
 
 class DepartmentDTOBuilder implements Builder
@@ -12,6 +13,7 @@ class DepartmentDTOBuilder implements Builder
     private string $name;
     private string $image;
     private ?string $icon = null;
+    private ?string $listTypeId = null;
 
     private function initialize(): void
     {
@@ -42,6 +44,21 @@ class DepartmentDTOBuilder implements Builder
     {
         $this->icon = $icon;
         return $this;
+    }
+
+    public function withListTypeId(?string $listTypeId): self
+    {
+        $this->listTypeId = $listTypeId;
+        return $this;
+    }
+
+    /**
+     * Le rayon tel que la liste des rayons le montre à un utilisateur (avec le type de liste auquel il l'a rattaché).
+     */
+    public function buildListItem(): DepartmentListItemDTO
+    {
+        $this->initialize();
+        return new DepartmentListItemDTO($this->slug, $this->name, $this->image, $this->icon, $this->listTypeId);
     }
 
     public function build(): DepartmentDTO
