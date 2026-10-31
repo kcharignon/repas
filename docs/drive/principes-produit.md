@@ -68,6 +68,7 @@ Quand l'utilisateur ne peut rien faire (Leclerc a changé son site), le texte le
 | Première installation de l'application | **Installer l'application** (page `/installer` : bouton **Télécharger l'application**, puis « Touche « Installer » » ; si Play Protect s'affiche : « Installer sans analyser », puis empreinte ou code) | APK, sideload, sources inconnues, mise à niveau |
 | Le nombre de produits d'un article en unités de la liste | **Combien de tranches y a-t-il dans « … » ?** (jamais « Combien de unités » : l'unité prend son « de » élidé, « d'unités ») ; titre **Vérifie la quantité**, aperçu « Il te faut 15 tranches : 1 produit » | contenance (à l'écran), conditionnement, pack size |
 | L'écran du profil et des réglages | **Moi** : le nom de l'onglet, repris tel quel dans le titre de la page et dans tous les textes qui y renvoient (aujourd'hui le titre de la page dit « Mon compte » : à aligner, DRV-621) | Mon compte |
+| Un nom de magasin que l'utilisateur crée pour séparer ses courses (Boucherie, Marché) | **type de liste** ; la liste sans type : **liste principale** ; un produit dont le type est choisi à la main : **produit à part** (ADR 0036) | routage, tag |
 | Repli sans automatisation | **Chercher à la main** | mode assisté |
 | Si Leclerc change son site | « Leclerc a changé son site, l'envoi automatique est arrêté » | contrat modifié, CONTRACT_CHANGED |
 

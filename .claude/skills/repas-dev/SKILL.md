@@ -81,6 +81,7 @@ Pas de port dans `Shared`, pas d'import direct, pas de requête sur la table d'u
 2. **Consommateur** : `Application/Port/{Besoin}CommandPort|QueryPort` (interface, ses types, sa langue) et `Infrastructure/Acl/{Besoin}CommandAdapter|QueryAdapter` (le seul à importer l'autre contexte ; il appelle l'OHS du même genre et transpose). Un handler d'écriture n'injecte que des `CommandPort`, un handler de lecture (ou un Loader) que des `QueryPort`.
 3. **Tests** : le test du handler appelant construit le vrai adapter et le vrai OHS sur les `InMemoryRepository` / `InMemoryLoader` du producteur (l'OHS est testé par transitivité, jamais la base) ; sinon un test unitaire de l'OHS avec les mêmes doubles ; la transposition de l'adapter dans `tests/{Consommateur}/Acl/`.
 4. **Garde-fous** : `deptrac.bounded-context.yaml`, `OpenHostServiceConventionTest`, `ContextsDoNotShareTablesTest`, `SharedHoldsNoContextBusinessTest` (cliquet des anciens ports).
+Les listes de courses ouvertes (plusieurs, une par type, ADR 0036) : toute écriture qui ajoute un produit ou une recette passe par `ListDestinationResolver` et `ActiveListForType`, jamais par `findOneActivateByOwner` seul ; `docs/listes/roadmap.md`.
 
 ## 4. Definition of Done
 
