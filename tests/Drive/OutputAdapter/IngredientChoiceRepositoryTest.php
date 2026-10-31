@@ -4,26 +4,29 @@ namespace Repas\Tests\Drive\OutputAdapter;
 
 
 use Repas\Drive\Domain\Model\Retailer;
-use Repas\Shared\Application\Interface\DriveIngredientReferences;
+use Repas\Drive\Application\Loader\IngredientChoiceLoader;
+use Repas\Drive\Domain\Interface\IngredientChoiceRepository;
 use Repas\Tests\Helper\AdoptionDataset;
 use Repas\Tests\Helper\DatabaseTestCase;
 use Repas\Tests\Helper\DataPersister;
 use Repas\Tests\Helper\MergeDataset;
 
 /**
- * Le port `Shared` qui laisse `Repas` repointer et vérifier les choix du drive (ING-003), sur la vraie base : toutes les enseignes et tous
+ * Les choix de produits du drive vus par ingrédient, pour l'écriture d'un autre contexte (repointage et fusion, ING-003 et ING-005), sur la vraie base : toutes les enseignes et tous
  * les magasins d'un utilisateur, les produits et la clé unique intacts, et une empreinte qui ne voit pas le slug.
  */
-class DriveIngredientReferencesRepositoryTest extends DatabaseTestCase
+class IngredientChoiceRepositoryTest extends DatabaseTestCase
 {
-    private DriveIngredientReferences $references;
+    private IngredientChoiceRepository $references;
+    private IngredientChoiceLoader $loader;
     private AdoptionDataset $dataset;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        $this->references = static::getContainer()->get(DriveIngredientReferences::class);
+        $this->references = static::getContainer()->get(IngredientChoiceRepository::class);
+        $this->loader = static::getContainer()->get(IngredientChoiceLoader::class);
         $this->dataset = AdoptionDataset::create($this->entityManager, new DataPersister(static::getContainer()));
     }
 
@@ -40,6 +43,19 @@ class DriveIngredientReferencesRepositoryTest extends DatabaseTestCase
         $this->assertMatchesRegularExpression('/^[0-9a-f]{32}$/', $fingerprint->contentHash);
         $none = $this->references->fingerprint('00000000-0000-4000-8000-00000000dead');
         $this->assertSame([0, 0, '0', md5(''), [], []], [$none->choices, $none->products, $none->packSizeSum, $none->contentHash, $none->ingredientSlugByChoice, $none->productCountByChoice]);
+    }
+
+    public function testTheReferencedSlugsAreThoseOfTheChoicesOfThatUserOnly(): void
+    {
+        // When
+        $slugs = $this->references->referencedSlugs($this->dataset->bigId);
+
+        // Then : sans doublon (un choix par magasin), triés, ceux des choix de l'empreinte
+        $sorted = $slugs;
+        sort($sorted);
+        $this->assertSame($sorted, $slugs);
+        $this->assertEqualsCanonicalizing(array_values(array_unique($this->references->fingerprint($this->dataset->bigId)->ingredientSlugByChoice)), $slugs);
+        $this->assertSame([], $this->references->referencedSlugs('00000000-0000-4000-8000-00000000dead'));
     }
 
     public function testTheFingerprintSeesTheValuesTheAccountObservedOnItsLines(): void
@@ -140,19 +156,7 @@ class DriveIngredientReferencesRepositoryTest extends DatabaseTestCase
         return [$merge, $user, $other];
     }
 
-    public function testTheMergeImpactCountsWhatPassesOverAndWhatIsDroppedPerStore(): void
-    {
-        // Given
-        [, $user] = $this->mergeScene();
-
-        // When
-        $impact = $this->references->mergeImpact($user, 'tomates', 'tomate');
-
-        // Then : deux choix passent sur le gardé (le deuxième magasin, le troisième de l'autre enseigne), deux sont supprimés avec leurs 6 produits
-        $this->assertSame([2, 2, 6], [$impact->choicesMoved, $impact->choicesDropped, $impact->productsDropped]);
-    }
-
-    public function testTheMergeImpactIgnoresTheChoicesOfAnotherUserOnTheAbsorbedIngredient(): void
+    public function testTheMergeIgnoresTheChoicesOfAnotherUserOnTheAbsorbedIngredient(): void
     {
         // Given : un autre utilisateur a un choix sur « tomates », qui est un ingrédient de l'utilisateur qui fusionne : un choix ne se pose que sur
         // l'ingrédient de son auteur, celui-ci n'est l'usage de personne
@@ -161,11 +165,11 @@ class DriveIngredientReferencesRepositoryTest extends DatabaseTestCase
         $before = $merge->hashOfUser($other);
 
         // When
-        $impact = $this->references->mergeImpact($user, 'tomates', 'tomate');
+        $impact = $this->loader->mergeImpact($user, 'tomates', 'tomate');
         $done = $this->references->merge($user, 'tomates', 'tomate');
 
         // Then : il ne compte ni parmi ce qui est déplacé ni parmi ce qui est supprimé, et la fusion n'y touche pas
-        $this->assertSame([2, 2, 6], [$impact->choicesMoved, $impact->choicesDropped, $impact->productsDropped]);
+        $this->assertSame([2, 2, 6], [$impact['moved'], $impact['dropped'], $impact['products']]);
         $this->assertSame([2, 2, 6], [$done->choicesMoved, $done->choicesDropped, $done->productsDropped]);
         $this->assertSame($before, $merge->hashOfUser($other));
     }
@@ -175,7 +179,7 @@ class DriveIngredientReferencesRepositoryTest extends DatabaseTestCase
         // Given
         [$merge, $user, $other] = $this->mergeScene();
         $otherBefore = $merge->hashOfUser($other);
-        $impact = $this->references->mergeImpact($user, 'tomates', 'tomate');
+        $impact = $this->loader->mergeImpact($user, 'tomates', 'tomate');
         $keptBefore = $merge->connection->fetchAllAssociative("SELECT * FROM drive_choice_product WHERE choice_id IN ('kept-1', 'kept-3') ORDER BY choice_id, product_id");
         $movedBefore = $merge->connection->fetchAllAssociative("SELECT * FROM drive_choice_product WHERE choice_id IN ('absorbed-2', 'absorbed-4') ORDER BY choice_id, product_id");
 
@@ -184,7 +188,7 @@ class DriveIngredientReferencesRepositoryTest extends DatabaseTestCase
         $this->entityManager->clear();
 
         // Then : ce que l'aperçu annonçait
-        $this->assertEquals($impact->choicesMoved, $done->choicesMoved);
+        $this->assertSame($impact['moved'], $done->choicesMoved);
         $this->assertSame([2, 2, 6], [$done->choicesMoved, $done->choicesDropped, $done->productsDropped]);
         // les choix du gardé sont intacts (même recherche, mêmes produits) ; ceux de l'absorbé qui devaient l'être sont supprimés avec leurs produits
         $this->assertSame(

@@ -20,7 +20,7 @@ use Repas\Repas\Infrastructure\Merge\IngredientMergeUsageReader;
  * dont l'utilisateur est l'AUTEUR et aux listes dont il est le PROPRIÉTAIRE.
  *
  * Les tables `ingredient`, `conversion`, `recipe*` et `shopping_list*` sont celles du contexte `Repas`. Les choix du drive sont
- * repointés par `Drive` (port `Shared` `DriveIngredientReferences`).
+ * repointés par `Drive` (port `DriveChoicesCommandPort`, Open Host Service du `Drive`).
  */
 readonly class IngredientMergePostgreSQLRepository implements IngredientMergeRepository
 {

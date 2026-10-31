@@ -5,6 +5,7 @@ namespace Repas\Tests\Repas\Application;
 
 use DateTimeImmutable;
 use PHPUnit\Framework\TestCase;
+use Repas\Drive\Application\OpenHostService\IngredientChoiceCommandOHS;
 use Repas\Repas\Application\Command\SeedUserIngredients\SeedOutcome;
 use Repas\Repas\Application\Command\SeedUserIngredients\SeedUserIngredientsCommand;
 use Repas\Repas\Application\Command\SeedUserIngredients\SeedUserIngredientsHandler;
@@ -14,12 +15,13 @@ use Repas\Repas\Domain\Service\IngredientSlugPolicy;
 use Repas\Shared\Domain\Interface\UuidGenerator;
 use Repas\Tests\Helper\FrozenClock;
 use Repas\Repas\Infrastructure\Acl\CatalogOwnerCommandAdapter;
+use Repas\Repas\Infrastructure\Acl\DriveChoicesCommandAdapter;
 use Repas\Repas\Infrastructure\Acl\SeedingAccountCommandAdapter;
 use Repas\Tests\Helper\Builder\UserBuilder;
+use Repas\Tests\Helper\InMemoryRepository\IngredientChoiceInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\UserInMemoryRepository;
 use Repas\User\Application\OpenHostService\CatalogOwnerCommandOHS;
 use Repas\User\Application\OpenHostService\UserAccountCommandOHS;
-use Repas\Tests\Helper\InMemoryRepository\DriveIngredientReferencesInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\IngredientAdoptionBulkInMemoryRepository;
 use Repas\Tests\Helper\SpyLogger;
 use Repas\User\Domain\Model\User;
@@ -37,7 +39,7 @@ class SeedUserIngredientsHandlerTest extends TestCase
     private const string NOW = '2026-10-21 03:00:00';
 
     private IngredientAdoptionBulkInMemoryRepository $bulk;
-    private DriveIngredientReferencesInMemoryRepository $drive;
+    private IngredientChoiceInMemoryRepository $drive;
     private UserInMemoryRepository $accounts;
     private SpyLogger $logger;
     private SeedUserIngredientsHandler $handler;
@@ -45,7 +47,7 @@ class SeedUserIngredientsHandlerTest extends TestCase
     protected function setUp(): void
     {
         $this->bulk = new IngredientAdoptionBulkInMemoryRepository();
-        $this->drive = new DriveIngredientReferencesInMemoryRepository();
+        $this->drive = new IngredientChoiceInMemoryRepository();
         $this->accounts = new UserInMemoryRepository([
             new UserBuilder()->withId(self::OWNER)->isCatalogOwner()->build(),
             new UserBuilder()->withId(self::USER)->withEmail('user-1@example.com')->build(),
@@ -546,7 +548,7 @@ class SeedUserIngredientsHandlerTest extends TestCase
             }
         };
 
-        return new SeedUserIngredientsHandler($this->bulk, new CatalogOwnerCommandAdapter(new CatalogOwnerCommandOHS($accounts, UserBuilder::CATALOG_OWNER_EMAIL)), new SeedingAccountCommandAdapter(new UserAccountCommandOHS($accounts)), $this->drive, new IngredientSlugPolicy(), $uuids, new FrozenClock(new DateTimeImmutable(self::NOW)), new AdoptionVerifier(), $this->logger);
+        return new SeedUserIngredientsHandler($this->bulk, new CatalogOwnerCommandAdapter(new CatalogOwnerCommandOHS($accounts, UserBuilder::CATALOG_OWNER_EMAIL)), new SeedingAccountCommandAdapter(new UserAccountCommandOHS($accounts)), new DriveChoicesCommandAdapter(new IngredientChoiceCommandOHS($this->drive)), new IngredientSlugPolicy(), $uuids, new FrozenClock(new DateTimeImmutable(self::NOW)), new AdoptionVerifier(), $this->logger);
     }
 
     private function catalog(string $slug, string $name, bool $base): void

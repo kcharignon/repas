@@ -23,7 +23,7 @@ use Repas\Repas\Infrastructure\Visibility\IngredientVisibility;
  * jamais écrits ; aucune ligne n'est supprimée, sauf les alias d'un lancement défait (`deleteAdoptionAliases`).
  *
  * Les tables `ingredient` / `conversion` / `ingredient_alias` / `recipe*` / `shopping_list*` sont celles du contexte `Repas`. Les choix
- * du drive, eux, sont repointés par `Drive` (port `Shared` `DriveIngredientReferences`).
+ * du drive, eux, sont repointés par `Drive` (port `DriveChoicesCommandPort`, Open Host Service du `Drive`).
  */
 readonly class IngredientAdoptionBulkPostgreSQLRepository implements IngredientAdoptionBulkRepository
 {

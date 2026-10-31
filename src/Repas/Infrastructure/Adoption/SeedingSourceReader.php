@@ -26,7 +26,7 @@ final readonly class SeedingSourceReader
     }
 
     /**
-     * @param list<string> $driveReferencedSlugs les slugs que `DriveIngredientReferences::referencedSlugs()` rend pour ce compte
+     * @param list<string> $driveReferencedSlugs les slugs que `DriveChoicesCommandPort::referencedSlugs()` rend pour ce compte
      *
      * @return list<IngredientToSeed> triés par slug
      */

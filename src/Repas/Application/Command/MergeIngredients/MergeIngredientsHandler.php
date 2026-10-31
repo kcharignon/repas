@@ -19,7 +19,7 @@ use Repas\Repas\Domain\Model\MergeParty;
 use Repas\Repas\Domain\Model\Unit;
 use Repas\Repas\Domain\Service\ConversionService;
 use Repas\Repas\Domain\Service\IngredientMergePlanner;
-use Repas\Shared\Application\Interface\DriveIngredientReferences;
+use Repas\Repas\Application\Port\DriveChoicesCommandPort;
 use Repas\Shared\Domain\Event\IngredientRemovedEvent;
 use Repas\Shared\Domain\Interface\UuidGenerator;
 use Repas\Shared\Domain\Tool\Tab;
@@ -58,7 +58,7 @@ readonly class MergeIngredientsHandler
         private ConversionRepository $conversionRepository,
         private ConversionService $conversionService,
         private IngredientMergePlanner $planner,
-        private DriveIngredientReferences $driveReferences,
+        private DriveChoicesCommandPort $driveChoices,
         private EventDispatcherInterface $eventDispatcher,
         private ClockInterface $clock,
         private UuidGenerator $uuidGenerator,
@@ -110,7 +110,7 @@ readonly class MergeIngredientsHandler
         $this->recover($absorbed, $kept, $plan);
 
         $this->mergeRepository->repoint($command->userId, $absorbed->getSlug(), $kept->getSlug(), $kept->getDefaultPurchaseUnit()->getSlug(), $plan->factors);
-        $this->driveReferences->merge($command->userId, $absorbed->getSlug(), $kept->getSlug());
+        $this->driveChoices->merge($command->userId, $absorbed->getSlug(), $kept->getSlug());
         $this->aliasRepository->mergeInto($command->userId, $absorbed->getSlug(), $kept->getSlug(), $this->clock->now());
         // Les « Pas le même » qui nommaient l'absorbé n'ont plus d'objet (et ne doivent pas être hérités par un ingrédient qui reprendrait son slug)
         $this->distinctRepository->deleteByIngredientSlug($command->userId, $absorbed->getSlug());

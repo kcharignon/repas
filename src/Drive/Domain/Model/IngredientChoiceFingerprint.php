@@ -1,17 +1,16 @@
 <?php
 
-namespace Repas\Shared\Application\Dto;
+namespace Repas\Drive\Domain\Model;
 
 
 /**
  * Empreinte de ce que le contexte `Drive` mémorise pour un utilisateur : ses choix de produits, vus sans le slug d'ingrédient qu'ils
- * portent. Elle sert à prouver qu'un repointage d'ingrédients (migration d'adoption, `docs/ingredients/migration.md` § 8, ou retour
- * arrière) n'a rien perdu : mêmes choix, mêmes produits, mêmes contenances, mêmes recherches mémorisées, et chaque choix sur l'ingrédient
- * attendu.
+ * portent. Elle sert à prouver qu'un repointage d'ingrédients (amorçage d'un compte, migration d'adoption) n'a rien perdu : mêmes choix,
+ * mêmes produits, mêmes contenances, mêmes recherches mémorisées, et chaque choix sur l'ingrédient attendu.
  *
  * Aucun nom, aucun e-mail : des identifiants de choix (jamais affichés), des nombres et une somme de contrôle.
  */
-final readonly class DriveChoiceFingerprint
+final readonly class IngredientChoiceFingerprint
 {
     /**
      * @param int $choices nombre de choix de l'utilisateur, toutes enseignes et tous magasins

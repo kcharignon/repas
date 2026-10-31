@@ -16,7 +16,7 @@ use Repas\Repas\Domain\Service\IngredientSlugPolicy;
 use Repas\Repas\Infrastructure\Adoption\AdoptionSnapshotReader;
 use Repas\Repas\Infrastructure\Adoption\SeedingSourceReader;
 use Repas\Repas\Infrastructure\Visibility\IngredientVisibility;
-use Repas\Shared\Application\Interface\DriveIngredientReferences;
+use Repas\Repas\Application\Port\DriveChoicesQueryPort;
 use Repas\Repas\Application\Port\AccountDirectoryQueryPort;
 use Repas\Repas\Application\Port\CatalogOwnerQueryPort;
 
@@ -39,7 +39,7 @@ final readonly class IngredientSeedingReportPostgreSQLLoader implements Ingredie
         private AdoptionSnapshotReader $snapshotReader,
         private SeedingSourceReader $sourceReader,
         private IngredientSlugPolicy $slugPolicy,
-        private DriveIngredientReferences $driveReferences,
+        private DriveChoicesQueryPort $driveChoices,
         private CatalogOwnerQueryPort $catalogOwner,
         private AccountDirectoryQueryPort $directory,
     ) {
@@ -136,7 +136,7 @@ final readonly class IngredientSeedingReportPostgreSQLLoader implements Ingredie
         if ($ownerId === null) {
             $anomalies[] = "le propriétaire du catalogue n'existe pas : rien ne peut être copié";
         } else {
-            $toSeed = $this->sourceReader->read($userId, $ownerId, $this->driveReferences->referencedSlugs($userId));
+            $toSeed = $this->sourceReader->read($userId, $ownerId, $this->driveChoices->referencedSlugs($userId));
             if (!$complete && array_filter($toSeed, static fn(IngredientToSeed $ingredient): bool => $ingredient->isBase) === []) {
                 // Le classement n'est pas posé : l'amorçage n'écrirait rien et le compte resterait non amorcé (voir le handler)
                 $anomalies[] = "aucun ingrédient « de base » dans le catalogue : l'amorçage n'écrirait rien et le compte resterait non amorcé";
@@ -173,7 +173,7 @@ final readonly class IngredientSeedingReportPostgreSQLLoader implements Ingredie
 
         // Ce qui serait repointé : les lignes qui référencent un ingrédient à copier, par table, et les choix du drive
         $snapshot = $this->snapshotReader->read($userId, $sourceSlugs);
-        $drive = $this->driveReferences->fingerprint($userId);
+        $drive = $this->driveChoices->fingerprint($userId);
         $choiceIdsOnSources = array_keys(array_filter($drive->ingredientSlugByChoice, static fn(string $slug): bool => in_array($slug, $sourceSlugs, true)));
 
         array_push($anomalies, ...$this->anomalies($userId, $ownerId, $drive->ingredientSlugByChoice));
@@ -310,7 +310,7 @@ final readonly class IngredientSeedingReportPostgreSQLLoader implements Ingredie
 
         // Les choix du drive : le contexte `Drive` garde ses tables, les slugs viennent de son port
         $driveForeign = $driveOwnerForeign = 0;
-        $driveSlugs = $this->driveReferences->referencedSlugsOfEveryUser();
+        $driveSlugs = $this->driveChoices->referencedSlugsOfEveryUser();
         $creators = $driveSlugs === [] ? [] : $connection->fetchAllKeyValue(
             'SELECT slug, creator FROM ingredient WHERE slug IN (?)',
             [array_values(array_unique(array_merge(...array_values($driveSlugs))))],

@@ -20,8 +20,8 @@ use Repas\Repas\Domain\Service\ConversionGraph;
 use Repas\Repas\Domain\Service\IngredientMergePlanner;
 use Repas\Repas\Domain\Service\IngredientNameMatcher;
 use Repas\Repas\Infrastructure\Merge\IngredientMergeUsageReader;
-use Repas\Shared\Application\Dto\DriveMergeImpact;
-use Repas\Shared\Application\Interface\DriveIngredientReferences;
+use Repas\Repas\Domain\Model\DriveMergeImpact;
+use Repas\Repas\Application\Port\DriveChoicesQueryPort;
 use Repas\Shared\Domain\Tool\StringTool;
 
 /**
@@ -29,7 +29,7 @@ use Repas\Shared\Domain\Tool\StringTool;
  *
  * L'aperçu pose au service de domaine `IngredientMergePlanner` les mêmes faits que l'écriture (`MergeIngredientsHandler`) : les mêmes
  * nombres (`IngredientMergeUsageReader`), le même graphe de conversion de l'ingrédient gardé (`ConversionGraph`, le parcours de
- * `ConversionService`), les mêmes choix du drive (port `Shared`). Il dit donc exactement ce que la fusion ferait. Un test compare les
+ * `ConversionService`), les mêmes choix du drive (port `DriveChoicesQueryPort`, publié par le `Drive`). Il dit donc exactement ce que la fusion ferait. Un test compare les
  * deux sur des jeux de données de tous les cas.
  */
 final readonly class IngredientMergePostgreSQLLoader implements IngredientMergeLoader
@@ -42,7 +42,7 @@ final readonly class IngredientMergePostgreSQLLoader implements IngredientMergeL
         private IngredientMergeUsageReader $usageReader,
         private IngredientMergePlanner $planner,
         private IngredientNameMatcher $nameMatcher,
-        private DriveIngredientReferences $driveReferences,
+        private DriveChoicesQueryPort $driveChoices,
     ) {
     }
 
@@ -58,7 +58,7 @@ final readonly class IngredientMergePostgreSQLLoader implements IngredientMergeL
         // Le même ingrédient : rien n'est lu de plus, le verdict est donné d'avance (comme l'écriture, qui s'arrête là)
         $mergeable = $absorbedSlug !== $keptSlug;
         $usage = $mergeable ? $this->usageReader->usageOf($userId, $absorbedSlug, $keptSlug, $kept['unit_slug']) : new IngredientMergeUsage();
-        $drive = $mergeable ? $this->driveReferences->mergeImpact($userId, $absorbedSlug, $keptSlug) : new DriveMergeImpact();
+        $drive = $mergeable ? $this->driveChoices->mergeImpact($userId, $absorbedSlug, $keptSlug) : new DriveMergeImpact();
 
         $plan = $this->planner->plan($absorbedParty, $keptParty, $this->graphOf($keptSlug), $usage);
 

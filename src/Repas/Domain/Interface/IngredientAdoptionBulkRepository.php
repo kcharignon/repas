@@ -114,7 +114,7 @@ interface IngredientAdoptionBulkRepository
      * le propriétaire, et `$driveReferencedSlugs`, les ingrédients de ses choix du drive), sauf ceux qu'il a déjà adoptés (alias d'adoption
      * VALIDE : la copie existe et lui appartient). Un marqueur posé sur l'ingrédient d'un autre compte est inerte.
      *
-     * @param list<string> $driveReferencedSlugs les slugs que `DriveIngredientReferences::referencedSlugs()` rend pour ce compte
+     * @param list<string> $driveReferencedSlugs les slugs que `DriveChoicesCommandPort::referencedSlugs()` rend pour ce compte
      *
      * @return list<IngredientToSeed>
      */
