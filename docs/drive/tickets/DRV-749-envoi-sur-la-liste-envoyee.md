@@ -4,7 +4,7 @@
 - **Jalon** : M7 Plusieurs enseignes (retour du propriétaire, hors ordre)
 - **Taille** : XS
 - **Dépend de** : LST-007 (types de liste, l'accueil ne montre que les listes en cours)
-- **Statut** : en cours (PR du front). Effort recommandé : `high`.
+- **Statut** : fait (front PR #292, 2026-10-31), site `v1.16.1`. Test de non-régression : la relecture qui suit l'envoi rend une autre liste en cours, l'écran d'envoi s'ouvre sur la liste envoyée. Effort recommandé : `high`.
 - **Lire d'abord** : `src/features/shopping-lists/ShoppingListHeader.vue` (`confirmSend`) ; `src/features/shopping-lists/queries.ts` (`useSendShoppingList`).
 
 ## Contexte
