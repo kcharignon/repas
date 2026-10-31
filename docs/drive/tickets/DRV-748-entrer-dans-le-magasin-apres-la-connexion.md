@@ -4,7 +4,7 @@
 - **Jalon** : M7 Plusieurs enseignes (retour du propriétaire, hors ordre)
 - **Taille** : S
 - **Dépend de** : DRV-625 et DRV-629 (l'agent suit lui-même « Commencer mes courses »), DRV-717 (l'entrée chez Auchan)
-- **Statut** : à faire. Effort recommandé : `high`.
+- **Statut** : fait (front PR #293, 2026-10-31). Agent 0.55.0, application Android à publier. Hypothèse confirmée : la garde `markEntered` n'autorisait qu'un toucher par envoi et par onglet, déjà dépensé avant la connexion. Seconde entrée permise seulement si le premier toucher a eu lieu session non connectée, que la session est lue `MEMBER` (jamais `UNKNOWN`), que la lecture dit `BUTTON` ou `LINK` vérifié et que l'enseigne déclare la capacité `entersAfterLogin` (Leclerc ; Auchan inchangé, point d'arrivée inconnu). À vérifier sur le téléphone de test : le diagnostic de l'agent lit la session `MEMBER` sur l'accueil connecté ; si elle est lue « inconnue », rien de plus n'est touché (prudence voulue) et il faut ajouter un signe de connexion. Effort recommandé : `high`.
 - **Lire d'abord** : [`../architecture.md`](../architecture.md) (§ de l'agent) ; [`../principes-produit.md`](../principes-produit.md) ; `drive-agent/src/flow/orchestrator.ts` (`enterStore`, `dismissWelcome`) ; `drive-agent/src/flow/run-state.ts` (`markEntered`, `hasEntered`) ; `android/core/src/main/kotlin/eu/kantin/repas/drive/DrivePlan.kt` et `OpeningWatch.kt`.
 
 ## Contexte
