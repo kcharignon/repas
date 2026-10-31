@@ -36,6 +36,23 @@ class IngredientInMemoryRepository extends AbstractInMemoryRepository implements
         return $ingredient->getDefaultPurchaseUnit()->getSlug();
     }
 
+    /** @var list<list<string>> slugs reçus à chaque appel de `departmentSlugsOf()`, dans l'ordre des appels */
+    public array $departmentSlugsOfCalls = [];
+
+    public function departmentSlugsOf(array $slugs): array
+    {
+        $this->departmentSlugsOfCalls[] = $slugs;
+
+        $departments = [];
+        foreach ($this->models as $ingredient) {
+            if (in_array($ingredient->getSlug(), $slugs, true)) {
+                $departments[$ingredient->getSlug()] = $ingredient->getDepartment()->getSlug();
+            }
+        }
+
+        return $departments;
+    }
+
     public function creatorHasAtLeast(string $creatorId, int $count): bool
     {
         return $this->models->filter(fn(Ingredient $ingredient) => $ingredient->getCreatorId() === $creatorId)->count() >= $count;

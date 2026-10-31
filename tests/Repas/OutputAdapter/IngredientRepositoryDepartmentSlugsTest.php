@@ -3,23 +3,23 @@
 namespace Repas\Tests\Repas\OutputAdapter;
 
 
-use Repas\Shared\Application\Interface\IngredientDepartmentResolver;
+use Repas\Repas\Domain\Interface\IngredientRepository;
 use Repas\Tests\Helper\Builder\DepartmentBuilder;
 use Repas\Tests\Helper\Builder\IngredientBuilder;
 use Repas\Tests\Helper\DatabaseTestCase;
 use Repas\Tests\Helper\DataPersister;
 use Repas\Tests\Helper\SqlBudget\QueryCounter;
 
-class IngredientDepartmentPostgreSQLResolverTest extends DatabaseTestCase
+class IngredientRepositoryDepartmentSlugsTest extends DatabaseTestCase
 {
-    private IngredientDepartmentResolver $resolver;
+    private IngredientRepository $resolver;
     private DataPersister $persister;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        $this->resolver = static::getContainer()->get(IngredientDepartmentResolver::class);
+        $this->resolver = static::getContainer()->get(IngredientRepository::class);
         $this->persister = new DataPersister(static::getContainer());
     }
 
@@ -31,7 +31,7 @@ class IngredientDepartmentPostgreSQLResolverTest extends DatabaseTestCase
         }
 
         // When
-        $result = $this->resolver->departmentSlugsByIngredient(['lait', 'oeuf', 'farine']);
+        $result = $this->resolver->departmentSlugsOf(['lait', 'oeuf', 'farine']);
 
         // Then
         $this->assertEqualsCanonicalizing(['lait' => 'divers', 'oeuf' => 'divers', 'farine' => 'boulangerie'], $result);
@@ -43,7 +43,7 @@ class IngredientDepartmentPostgreSQLResolverTest extends DatabaseTestCase
         $this->persister->saveIngredient(new IngredientBuilder()->isMilk()->withDepartment(new DepartmentBuilder()->isConserve())->build());
 
         // When
-        $result = $this->resolver->departmentSlugsByIngredient(['inconnu', 'lait', 'lait']);
+        $result = $this->resolver->departmentSlugsOf(['inconnu', 'lait', 'lait']);
 
         // Then
         $this->assertSame(['lait' => 'conserve'], $result);
@@ -59,14 +59,14 @@ class IngredientDepartmentPostgreSQLResolverTest extends DatabaseTestCase
         $counter->reset();
 
         // When
-        $empty = $this->resolver->departmentSlugsByIngredient([]);
+        $empty = $this->resolver->departmentSlugsOf([]);
 
         // Then
         $this->assertSame([], $empty);
         $this->assertSame([], $counter->byTable());
 
         // When
-        $this->resolver->departmentSlugsByIngredient(['lait', 'oeuf', 'farine']);
+        $this->resolver->departmentSlugsOf(['lait', 'oeuf', 'farine']);
 
         // Then
         $this->assertSame(['SELECT ingredient' => 1], $counter->byTable());

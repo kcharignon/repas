@@ -5,7 +5,7 @@ namespace Repas\Repas\Infrastructure\Loader;
 use Doctrine\ORM\EntityManagerInterface;
 use Repas\Repas\Infrastructure\Entity\Ingredient;
 use Repas\Repas\Infrastructure\Visibility\IngredientVisibility;
-use Repas\Shared\Application\Interface\IngredientNameLoader;
+use Repas\Repas\Application\Loader\IngredientNameLoader;
 
 final readonly class IngredientNamePostgreSQLLoader implements IngredientNameLoader
 {

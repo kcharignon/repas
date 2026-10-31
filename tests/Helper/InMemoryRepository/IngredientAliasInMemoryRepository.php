@@ -18,12 +18,17 @@ class IngredientAliasInMemoryRepository implements IngredientAliasRepository
     /** @var array<string, IngredientAlias> */
     private array $aliases = [];
 
+    /** @var list<array{string, list<string>}> utilisateur et slugs reçus à chaque appel de `resolve()` ou `resolveOwned()`, dans l'ordre des appels */
+    public array $resolveCalls = [];
+
     /**
      * @param list<IngredientAlias> $aliases
      * @param (\Closure(string, string): bool)|null $targetExists dit si l'ingrédient désigné par un alias existe et appartient à l'utilisateur (utilisateur,
      *        slug de l'ingrédient) : programmé, le double ignore les alias orphelins comme le fait le SQL du vrai dépôt
+     * @param (\Closure(string, string): bool)|null $owns dit si un slug est un ingrédient de l'utilisateur (utilisateur, slug) pour `resolveOwned()` ;
+     *        sans programmation, tout slug lui appartient
      */
-    public function __construct(array $aliases = [], private readonly ?\Closure $targetExists = null)
+    public function __construct(array $aliases = [], private readonly ?\Closure $targetExists = null, private readonly ?\Closure $owns = null)
     {
         foreach ($aliases as $alias) {
             $this->aliases[$alias->getId()] = $alias;
@@ -36,6 +41,36 @@ class IngredientAliasInMemoryRepository implements IngredientAliasRepository
     }
 
     public function resolve(string $userId, array $slugs): array
+    {
+        $this->resolveCalls[] = [$userId, $slugs];
+
+        return $this->validAliases($userId, $slugs);
+    }
+
+    public function resolveOwned(string $userId, array $slugs): array
+    {
+        $this->resolveCalls[] = [$userId, $slugs];
+
+        // Comme le SQL : l'alias valide l'emporte sur le slug reçu, qui répond sinon s'il est lui-même un ingrédient de l'utilisateur
+        $aliases = $this->validAliases($userId, $slugs);
+        $owned = [];
+        foreach ($slugs as $slug) {
+            if (isset($aliases[$slug])) {
+                $owned[$slug] = $aliases[$slug];
+            } elseif ($this->owns === null || ($this->owns)($userId, $slug)) {
+                $owned[$slug] = $slug;
+            }
+        }
+
+        return $owned;
+    }
+
+    /**
+     * @param list<string> $slugs
+     *
+     * @return array<string, string>
+     */
+    private function validAliases(string $userId, array $slugs): array
     {
         $resolved = [];
         foreach ($slugs as $slug) {

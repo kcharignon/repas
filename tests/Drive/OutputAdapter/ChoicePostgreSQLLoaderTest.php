@@ -4,6 +4,8 @@ namespace Repas\Tests\Drive\OutputAdapter;
 
 
 use DateTimeImmutable;
+use Repas\Drive\Infrastructure\Acl\IngredientNameQueryAdapter;
+use Repas\Repas\Application\OpenHostService\IngredientNameQueryOHS;
 use Repas\Drive\Application\Loader\ChoiceLoader;
 use Repas\Drive\Application\Query\ListChoices\AcceptedProductDTO;
 use Repas\Drive\Application\Query\ListChoices\ChoiceDTO;
@@ -222,7 +224,7 @@ class ChoicePostgreSQLLoaderTest extends DatabaseTestCase
         $names = new IngredientNameInMemoryLoader(['farine' => 'Farine']);
 
         // When
-        new ChoicePostgreSQLLoader($this->entityManager, $names)->list('user-1', Retailer::LECLERC);
+        new ChoicePostgreSQLLoader($this->entityManager, new IngredientNameQueryAdapter(new IngredientNameQueryOHS($names)))->list('user-1', Retailer::LECLERC);
 
         // Then
         $this->assertSame([['userId' => 'user-1', 'slugs' => ['farine']]], $names->namesBySlugCalls);
@@ -378,7 +380,7 @@ class ChoicePostgreSQLLoaderTest extends DatabaseTestCase
      */
     private function loader(array $names = []): ChoicePostgreSQLLoader
     {
-        return new ChoicePostgreSQLLoader($this->entityManager, new IngredientNameInMemoryLoader($names));
+        return new ChoicePostgreSQLLoader($this->entityManager, new IngredientNameQueryAdapter(new IngredientNameQueryOHS(new IngredientNameInMemoryLoader($names))));
     }
 
     /**

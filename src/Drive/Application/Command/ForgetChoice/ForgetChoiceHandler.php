@@ -6,7 +6,7 @@ namespace Repas\Drive\Application\Command\ForgetChoice;
 use Repas\Drive\Domain\Exception\DriveException;
 use Repas\Drive\Domain\Interface\ChoiceRepository;
 use Repas\Drive\Domain\Interface\DriveSettingsRepository;
-use Repas\Shared\Application\Interface\IngredientAliasResolver;
+use Repas\Drive\Application\Port\IngredientAliasCommandPort;
 use Repas\Shared\Application\Interface\DriveFeature;
 use Repas\Shared\Domain\Exception\DriveFeatureException;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
@@ -17,7 +17,7 @@ readonly class ForgetChoiceHandler
     public function __construct(
         private DriveSettingsRepository $driveSettingsRepository,
         private ChoiceRepository $choiceRepository,
-        private IngredientAliasResolver $ingredientAliases,
+        private IngredientAliasCommandPort $ingredientAliases,
         private DriveFeature $driveFeature,
     ) {
     }

@@ -20,7 +20,7 @@ use Repas\Tests\Helper\Builder\ChoiceBuilder;
 use Repas\Tests\Helper\Builder\DriveSettingsBuilder;
 use Repas\Tests\Helper\Builder\ProductBuilder;
 use Repas\Tests\Helper\FrozenClock;
-use Repas\Tests\Helper\InMemoryLoader\IngredientAliasInMemoryResolver;
+use Repas\Tests\Helper\RepasForDrive;
 use Repas\Tests\Helper\InMemoryRepository\ChoiceInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\DriveSettingsInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\ProductInMemoryRepository;
@@ -52,7 +52,7 @@ class ReplaceIngredientPreferenceHandlerTest extends TestCase
             new DriveSettingsBuilder()->withUserId('user-1')->build(),
             new DriveSettingsBuilder()->withUserId('user-2')->build(),
         ]);
-        $this->handler = new ReplaceIngredientPreferenceHandler($settings, $products, $this->choices, new IngredientAliasInMemoryResolver(), new UuidGenerator(), new FrozenClock($this->now), new ControlledDriveFeature());
+        $this->handler = new ReplaceIngredientPreferenceHandler($settings, $products, $this->choices, new RepasForDrive()->aliasPort(), new UuidGenerator(), new FrozenClock($this->now), new ControlledDriveFeature());
     }
 
     public function testReordersTheAcceptedProducts(): void
@@ -295,8 +295,8 @@ class ReplaceIngredientPreferenceHandlerTest extends TestCase
     {
         // Given : la préférence de la copie existe, celle du commun (plus ancienne) aussi
         $this->choices->save(new ChoiceBuilder()->withUserId('user-1')->withIngredientSlug('farine-user-1')->withAccepted([$this->id('1')])->build());
-        $aliases = new IngredientAliasInMemoryResolver(['farine' => 'farine-user-1']);
-        $this->handler = $this->handlerWithAliases($aliases);
+        $repas = new RepasForDrive(aliases: ['farine' => 'farine-user-1']);
+        $this->handler = $this->handlerWithAliases($repas);
 
         // When : l'écran envoie le slug du commun
         $this->replace('user-1', 'farine', accepted: ['2', '3']);
@@ -304,13 +304,13 @@ class ReplaceIngredientPreferenceHandlerTest extends TestCase
         // Then : la copie est remplacée, la préférence du commun n'est pas touchée
         $this->assertSame([$this->id('2'), $this->id('3')], $this->choice('user-1', 'farine-user-1')->getAcceptedProductIds());
         $this->assertSame([$this->id('1'), $this->id('2')], $this->choice('user-1', 'farine')->getAcceptedProductIds());
-        $this->assertSame([['user-1', ['farine']]], $aliases->resolveCalls);
+        $this->assertSame([['user-1', ['farine']]], $repas->aliases->resolveCalls);
     }
 
     public function testCreatesThePreferenceUnderTheCopyOfAnAdoptedCommon(): void
     {
         // Given
-        $this->handler = $this->handlerWithAliases(new IngredientAliasInMemoryResolver(['sucre' => 'sucre-user-1']));
+        $this->handler = $this->handlerWithAliases(new RepasForDrive(aliases: ['sucre' => 'sucre-user-1']));
 
         // When : aucune préférence n'existe pour ce sucre
         $this->replace('user-1', 'sucre', accepted: ['5']);
@@ -324,7 +324,7 @@ class ReplaceIngredientPreferenceHandlerTest extends TestCase
     {
         // Given
         $this->choices->save(new ChoiceBuilder()->withUserId('user-1')->withIngredientSlug('farine-user-1')->withAccepted([$this->id('1')])->build());
-        $this->handler = $this->handlerWithAliases(new IngredientAliasInMemoryResolver(['farine' => 'farine-user-1']));
+        $this->handler = $this->handlerWithAliases(new RepasForDrive(aliases: ['farine' => 'farine-user-1']));
 
         // When
         $this->replace('user-1', 'farine');
@@ -337,8 +337,8 @@ class ReplaceIngredientPreferenceHandlerTest extends TestCase
     public function testNothingIsResolvedForARequestOutOfBounds(): void
     {
         // Given
-        $aliases = new IngredientAliasInMemoryResolver(['farine' => 'farine-user-1']);
-        $this->handler = $this->handlerWithAliases($aliases);
+        $repas = new RepasForDrive(aliases: ['farine' => 'farine-user-1']);
+        $this->handler = $this->handlerWithAliases($repas);
 
         // Then : refusée avant toute lecture
         $this->expectExceptionObject(DriveException::invalidChoice());
@@ -347,14 +347,14 @@ class ReplaceIngredientPreferenceHandlerTest extends TestCase
         try {
             $this->replace('user-1', 'farine', accepted: ['1', '2', '3', '4', '5', '6']);
         } finally {
-            $this->assertSame([], $aliases->resolveCalls);
+            $this->assertSame([], $repas->aliases->resolveCalls);
         }
     }
 
     public function testAPreferenceIsNeverWrittenOnAnIngredientThatIsNotTheUsers(): void
     {
         // Given : « pain-de-autrui » est l'ingrédient d'un autre compte (ou n'existe pas)
-        $this->handler = $this->handlerWithAliases(new IngredientAliasInMemoryResolver(notOwned: ['pain-de-autrui']));
+        $this->handler = $this->handlerWithAliases(new RepasForDrive(notOwned: ['pain-de-autrui']));
 
         foreach ([
             'des produits acceptés' => ['accepted' => ['1', '2']],
@@ -377,7 +377,7 @@ class ReplaceIngredientPreferenceHandlerTest extends TestCase
     {
         // Given : une préférence restée sur un slug qui n'est plus (ou n'a jamais été) à l'utilisateur ; la ligne est la sienne
         $this->choices->save(new ChoiceBuilder()->withUserId('user-1')->withIngredientSlug('pain-de-autrui')->withAccepted([$this->id('1')])->build());
-        $this->handler = $this->handlerWithAliases(new IngredientAliasInMemoryResolver(notOwned: ['pain-de-autrui']));
+        $this->handler = $this->handlerWithAliases(new RepasForDrive(notOwned: ['pain-de-autrui']));
 
         // When : l'écran la vide
         $this->replace('user-1', 'pain-de-autrui');
@@ -389,7 +389,7 @@ class ReplaceIngredientPreferenceHandlerTest extends TestCase
     public function testEmptyingAnUnknownPreferenceOnAnIngredientThatIsNotTheUsersChangesNothing(): void
     {
         // Given
-        $this->handler = $this->handlerWithAliases(new IngredientAliasInMemoryResolver(notOwned: ['pain-de-autrui']));
+        $this->handler = $this->handlerWithAliases(new RepasForDrive(notOwned: ['pain-de-autrui']));
         $before = count($this->choices->all());
 
         // When
@@ -399,9 +399,9 @@ class ReplaceIngredientPreferenceHandlerTest extends TestCase
         $this->assertCount($before, $this->choices->all());
     }
 
-    private function handlerWithAliases(IngredientAliasInMemoryResolver $aliases): ReplaceIngredientPreferenceHandler
+    private function handlerWithAliases(RepasForDrive $repas): ReplaceIngredientPreferenceHandler
     {
-        return new ReplaceIngredientPreferenceHandler($this->settings, $this->products, $this->choices, $aliases, new UuidGenerator(), new FrozenClock($this->now), new ControlledDriveFeature());
+        return new ReplaceIngredientPreferenceHandler($this->settings, $this->products, $this->choices, $repas->aliasPort(), new UuidGenerator(), new FrozenClock($this->now), new ControlledDriveFeature());
     }
 
     /**
@@ -428,7 +428,7 @@ class ReplaceIngredientPreferenceHandlerTest extends TestCase
     public function testADisabledRetailerReplacesNothing(): void
     {
         // Given : l'enseigne n'est pas allumée (DRV-702)
-        $handler = new ReplaceIngredientPreferenceHandler($this->settings, $this->products, $this->choices, new IngredientAliasInMemoryResolver(), new UuidGenerator(), new FrozenClock($this->now), new ControlledDriveFeature(true, []));
+        $handler = new ReplaceIngredientPreferenceHandler($this->settings, $this->products, $this->choices, new RepasForDrive()->aliasPort(), new UuidGenerator(), new FrozenClock($this->now), new ControlledDriveFeature(true, []));
         $before = $this->choice('user-1', 'farine')->getAcceptedProductIds();
 
         // Then

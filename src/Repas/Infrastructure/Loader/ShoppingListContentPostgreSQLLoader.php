@@ -4,25 +4,23 @@ namespace Repas\Repas\Infrastructure\Loader;
 
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Query\Expr\Join;
+use Repas\Repas\Application\Loader\ShoppingListContentLoader;
 use Repas\Repas\Domain\Exception\ShoppingListException;
 use Repas\Repas\Domain\Model\ShoppingListStatus;
 use Repas\Repas\Infrastructure\Entity\Ingredient;
 use Repas\Repas\Infrastructure\Entity\ShoppingList;
 use Repas\Repas\Infrastructure\Entity\ShoppingListRow;
 use Repas\Repas\Infrastructure\Entity\Unit;
-use Repas\Shared\Application\Dto\ShoppingListForDrive;
-use Repas\Shared\Application\Dto\ShoppingListLineForDrive;
-use Repas\Shared\Application\Interface\ShoppingListForDriveLoader;
 use Repas\Shared\Domain\Model\Dimension;
 
-final readonly class ShoppingListForDrivePostgreSQLLoader implements ShoppingListForDriveLoader
+final readonly class ShoppingListContentPostgreSQLLoader implements ShoppingListContentLoader
 {
     public function __construct(
         private EntityManagerInterface $entityManager,
     ) {
     }
 
-    public function get(string $shoppingListId): ShoppingListForDrive
+    public function get(string $shoppingListId): array
     {
         $list = $this->entityManager->createQueryBuilder()
             ->select('l.id AS id', 'l.ownerId AS ownerId', 'l.status AS status', 'l.version AS version')
@@ -39,20 +37,20 @@ final readonly class ShoppingListForDrivePostgreSQLLoader implements ShoppingLis
         /** @var ShoppingListStatus $status */
         $status = $list['status'];
 
-        return new ShoppingListForDrive(
-            id: $list['id'],
-            ownerId: $list['ownerId'],
-            status: $status->value,
-            version: $list['version'],
-            lines: $this->loadLines($shoppingListId),
-        );
+        return [
+            'id' => $list['id'],
+            'ownerId' => $list['ownerId'],
+            'status' => $status->value,
+            'version' => $list['version'],
+            'lines' => $this->loadLines($shoppingListId),
+        ];
     }
 
     /**
      * Jointures internes, comme `ShoppingListPostgreSQLLoader` : une ligne dont l'ingrédient ou l'unité a disparu est ignorée.
      * Tri PHP par slug d'ingrédient (la collation PostgreSQL ordonne autrement les slugs à tirets).
      *
-     * @return list<ShoppingListLineForDrive>
+     * @return list<array{ingredientSlug: string, ingredientName: string, quantity: float, unitSlug: string, unitName: string, unitSymbol: string, unitDimension: ?string, unitBaseFactor: ?float, departmentSlug: ?string}>
      */
     private function loadLines(string $shoppingListId): array
     {
@@ -73,21 +71,21 @@ final readonly class ShoppingListForDrivePostgreSQLLoader implements ShoppingLis
         usort($rows, static fn(array $a, array $b): int => $a['ingredientSlug'] <=> $b['ingredientSlug']);
 
         return array_map(
-            static function (array $row): ShoppingListLineForDrive {
+            static function (array $row): array {
                 /** @var ?Dimension $dimension */
                 $dimension = $row['unitDimension'];
 
-                return new ShoppingListLineForDrive(
-                    ingredientSlug: $row['ingredientSlug'],
-                    ingredientName: $row['ingredientName'],
-                    quantity: (float) $row['quantity'],
-                    unitSlug: $row['unitSlug'],
-                    unitName: $row['unitName'],
-                    unitSymbol: $row['unitSymbol'],
-                    unitDimension: $dimension?->value,
-                    unitBaseFactor: $row['unitBaseFactor'] === null ? null : (float) $row['unitBaseFactor'],
-                    departmentSlug: $row['departmentSlug'],
-                );
+                return [
+                    'ingredientSlug' => $row['ingredientSlug'],
+                    'ingredientName' => $row['ingredientName'],
+                    'quantity' => (float) $row['quantity'],
+                    'unitSlug' => $row['unitSlug'],
+                    'unitName' => $row['unitName'],
+                    'unitSymbol' => $row['unitSymbol'],
+                    'unitDimension' => $dimension?->value,
+                    'unitBaseFactor' => $row['unitBaseFactor'] === null ? null : (float) $row['unitBaseFactor'],
+                    'departmentSlug' => $row['departmentSlug'],
+                ];
             },
             $rows,
         );

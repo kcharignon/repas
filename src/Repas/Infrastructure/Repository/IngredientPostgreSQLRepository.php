@@ -97,6 +97,23 @@ readonly class IngredientPostgreSQLRepository extends PostgreSQLRepository imple
         return $this->entityRepository->find($slug) !== null;
     }
 
+    public function departmentSlugsOf(array $slugs): array
+    {
+        if ($slugs === []) {
+            return [];
+        }
+
+        $rows = $this->entityManager->createQueryBuilder()
+            ->select('i.slug AS slug', 'i.departmentSlug AS departmentSlug')
+            ->from(IngredientEntity::class, 'i')
+            ->where('i.slug IN (:slugs)')
+            ->setParameter('slugs', array_values(array_unique($slugs)))
+            ->getQuery()
+            ->getArrayResult();
+
+        return array_column($rows, 'departmentSlug', 'slug');
+    }
+
     public function creatorHasNameInDepartment(string $creatorId, string $sluggedName, string $departmentSlug, ?string $exceptSlug = null): bool
     {
         // Une seule requête, sur l'index (créateur, nom normalisé) : le rayon et l'ingrédient écarté ne sont que des conditions de plus

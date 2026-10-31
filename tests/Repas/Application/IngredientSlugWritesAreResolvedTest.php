@@ -2,7 +2,6 @@
 
 namespace Repas\Tests\Repas\Application;
 
-
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
 use Repas\Drive\Application\Command\ForgetChoice\ForgetChoiceCommand;
@@ -11,6 +10,7 @@ use Repas\Drive\Application\Command\ReplaceIngredientPreference\ReplaceIngredien
 use Repas\Drive\Application\Command\ReplaceIngredientPreference\ReplaceIngredientPreferenceHandler;
 use Repas\Drive\Application\Command\SaveProductChoices\ChoiceIntent;
 use Repas\Drive\Application\Command\SaveProductChoices\SaveProductChoicesHandler;
+use Repas\Drive\Application\Port\IngredientAliasCommandPort;
 use Repas\Repas\Application\Command\AddIngredientToShoppingList\AddIngredientToShoppingListCommand;
 use Repas\Repas\Application\Command\AddIngredientToShoppingList\AddIngredientToShoppingListHandler;
 use Repas\Repas\Application\Command\AddSpokenIngredient\AddSpokenIngredientCommand;
@@ -42,7 +42,6 @@ use Repas\Repas\Domain\Interface\IngredientAliasRepository;
 use Repas\Repas\Domain\Interface\IngredientMatchCandidates;
 use Repas\Repas\Domain\Service\IngredientMergePlanner;
 use Repas\Repas\Domain\Service\IngredientNameMatcher;
-use Repas\Shared\Application\Interface\IngredientAliasResolver;
 
 /**
  * Garde-fou de l'ADR 0028 (décision 4, risque R1) : une écriture qui reçoit le slug d'un ingrédient doit le traduire par les alias de
@@ -52,7 +51,7 @@ use Repas\Shared\Application\Interface\IngredientAliasResolver;
  *
  * Il parcourt le code de l'application (hors lectures) et échoue dès qu'une classe porte une propriété `ingredientSlug` ou
  * `ingredientSlugs` sans figurer ci-dessous. Ajouter une écriture qui reçoit un slug d'ingrédient impose donc de la déclarer ici, soit
- * avec le handler qui la résout (`IngredientSlugResolver` côté Repas, `IngredientAliasResolver` côté Drive), soit, motif écrit, parmi
+ * avec le handler qui la résout (`IngredientSlugResolver` côté Repas, `IngredientAliasCommandPort` côté Drive), soit, motif écrit, parmi
  * les exemptions. Il vérifie aussi que chaque handler déclaré injecte son résolveur ET s'en sert.
  *
  * Côté `Drive`, une écriture qui pose ou remplace un choix sur un ingrédient va plus loin que la traduction : elle vérifie que le slug
@@ -143,7 +142,7 @@ class IngredientSlugWritesAreResolvedTest extends TestCase
             [],
             $undeclared,
             "Ces classes reçoivent un slug d'ingrédient en écriture sans être déclarées : résous le slug par les alias de l'utilisateur"
-            . " (IngredientSlugResolver côté Repas, IngredientAliasResolver côté Drive, ADR 0028 décision 4) puis ajoute-les à RESOLVED,"
+            . " (IngredientSlugResolver côté Repas, IngredientAliasCommandPort côté Drive, ADR 0028 décision 4) puis ajoute-les à RESOLVED,"
             . ' ou à EXEMPT avec la raison.',
         );
     }
@@ -165,12 +164,12 @@ class IngredientSlugWritesAreResolvedTest extends TestCase
             $reflection = new ReflectionClass($handler);
             $injected = array_filter(
                 $reflection->getConstructor()?->getParameters() ?? [],
-                static fn(\ReflectionParameter $parameter): bool => in_array((string) $parameter->getType(), [IngredientSlugResolver::class, IngredientAliasResolver::class], true),
+                static fn(\ReflectionParameter $parameter): bool => in_array((string) $parameter->getType(), [IngredientSlugResolver::class, IngredientAliasCommandPort::class], true),
             );
             $source = (string) file_get_contents((string) $reflection->getFileName());
 
             // Then
-            $this->assertCount(1, $injected, "$handler doit injecter un résolveur de slugs (IngredientSlugResolver ou IngredientAliasResolver).");
+            $this->assertCount(1, $injected, "$handler doit injecter un résolveur de slugs (IngredientSlugResolver ou IngredientAliasCommandPort).");
             $property = array_values($injected)[0]->getName();
             $this->assertMatchesRegularExpression(
                 '/\$this->' . preg_quote($property, '/') . '->resolve(?:Owned)?\(/',
@@ -193,7 +192,7 @@ class IngredientSlugWritesAreResolvedTest extends TestCase
             $reflection = new ReflectionClass($handler);
             $this->assertTrue(
                 self::usesOwnedResolution((string) file_get_contents((string) $reflection->getFileName()), $handler),
-                "$handler pose un choix sur un ingrédient : il doit vérifier qu'il est à l'utilisateur (IngredientAliasResolver::resolveOwned).",
+                "$handler pose un choix sur un ingrédient : il doit vérifier qu'il est à l'utilisateur (IngredientAliasCommandPort::resolveOwned).",
             );
         }
         $this->assertNotEmpty($handlers);
@@ -205,7 +204,7 @@ class IngredientSlugWritesAreResolvedTest extends TestCase
     public function testATranslationAloneIsNotTakenForAnOwnershipCheck(): void
     {
         // Given : un handler fictif qui ne fait que traduire, et un autre qui vérifie
-        $translates = new class(new class implements IngredientAliasResolver {
+        $translates = new class(new class implements IngredientAliasCommandPort {
             public function resolve(string $userId, array $slugs): array
             {
                 return [];
@@ -216,7 +215,7 @@ class IngredientSlugWritesAreResolvedTest extends TestCase
                 return [];
             }
         }) {
-            public function __construct(public IngredientAliasResolver $aliases)
+            public function __construct(public IngredientAliasCommandPort $aliases)
             {
             }
         };
@@ -326,7 +325,7 @@ class IngredientSlugWritesAreResolvedTest extends TestCase
     private static function usesOwnedResolution(string $source, string $handler): bool
     {
         foreach ((new ReflectionClass($handler))->getConstructor()?->getParameters() ?? [] as $parameter) {
-            if ((string) $parameter->getType() === IngredientAliasResolver::class
+            if ((string) $parameter->getType() === IngredientAliasCommandPort::class
                 && preg_match('/\$this->' . preg_quote($parameter->getName(), '/') . '->resolveOwned\(/', $source) === 1) {
                 return true;
             }
@@ -359,8 +358,8 @@ class IngredientSlugWritesAreResolvedTest extends TestCase
         foreach ($files as $fileInfo) {
             $file = $fileInfo->getPathname();
             $relative = substr($file, strlen($sourceDirectory) + 1, -strlen('.php'));
-            // Le code d'application, sans les lectures ni les objets de transfert de lecture (`Dto`)
-            if (!str_ends_with($file, '.php') || !str_contains("/$relative", '/Application/') || preg_match('#/Application/(Query|Loader|Dto)/#', "/$relative")) {
+            // Le code d'application, sans les lectures ni les objets de transfert de lecture (`Dto`, et les `…DTO` qu'un Open Host Service de lecture publie)
+            if (!str_ends_with($file, '.php') || !str_contains("/$relative", '/Application/') || preg_match('#/Application/(Query|Loader|Dto)/|/Application/OpenHostService/\\w+DTO$#', "/$relative")) {
                 continue;
             }
             $source = (string) file_get_contents($file);

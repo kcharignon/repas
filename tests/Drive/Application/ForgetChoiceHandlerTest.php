@@ -12,7 +12,7 @@ use Repas\Drive\Domain\Model\Retailer;
 use Repas\Tests\Helper\ControlledDriveFeature;
 use Repas\Tests\Helper\Builder\ChoiceBuilder;
 use Repas\Tests\Helper\Builder\DriveSettingsBuilder;
-use Repas\Tests\Helper\InMemoryLoader\IngredientAliasInMemoryResolver;
+use Repas\Tests\Helper\RepasForDrive;
 use Repas\Tests\Helper\InMemoryRepository\ChoiceInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\DriveSettingsInMemoryRepository;
 
@@ -30,7 +30,7 @@ class ForgetChoiceHandlerTest extends TestCase
             new ChoiceBuilder()->withUserId('user-1')->withIngredientSlug('sel')->haveAtHome()->build(),
             new ChoiceBuilder()->withUserId('user-2')->withIngredientSlug('farine')->withAccepted(['a'])->build(),
         ]);
-        $this->handler = new ForgetChoiceHandler($this->settings, $this->choices, new IngredientAliasInMemoryResolver(), new ControlledDriveFeature());
+        $this->handler = new ForgetChoiceHandler($this->settings, $this->choices, new RepasForDrive()->aliasPort(), new ControlledDriveFeature());
     }
 
     public function testForgetsTheWholeChoiceOfOneIngredientOnly(): void
@@ -57,8 +57,8 @@ class ForgetChoiceHandlerTest extends TestCase
     {
         // Given : l'utilisateur a adopté la farine (ADR 0028) ; sa préférence est sous la copie, le client envoie encore le slug du commun
         $this->choices->save(new ChoiceBuilder()->withUserId('user-1')->withIngredientSlug('farine-user-1')->withAccepted(['b'])->build());
-        $aliases = new IngredientAliasInMemoryResolver(['farine' => 'farine-user-1']);
-        $handler = new ForgetChoiceHandler($this->settings, $this->choices, $aliases, new ControlledDriveFeature());
+        $repas = new RepasForDrive(aliases: ['farine' => 'farine-user-1']);
+        $handler = new ForgetChoiceHandler($this->settings, $this->choices, $repas->aliasPort(), new ControlledDriveFeature());
 
         // When
         $handler(new ForgetChoiceCommand('user-1', Retailer::LECLERC, '123456', 'farine'));
@@ -66,14 +66,14 @@ class ForgetChoiceHandlerTest extends TestCase
         // Then : la préférence de la copie est oubliée, l'autre (plus ancienne, sous le commun) n'est pas touchée
         $this->assertNull($this->choices->findOne('user-1', Retailer::LECLERC, '123456', 'farine-user-1'));
         $this->assertNotNull($this->choices->findOne('user-1', Retailer::LECLERC, '123456', 'farine'));
-        $this->assertSame([['user-1', ['farine']]], $aliases->resolveCalls);
+        $this->assertSame([['user-1', ['farine']]], $repas->aliases->resolveCalls);
     }
 
     public function testTheAliasIsNotReadWhenTheStoreIsNotTheCurrentOne(): void
     {
         // Given
-        $aliases = new IngredientAliasInMemoryResolver(['farine' => 'farine-user-1']);
-        $handler = new ForgetChoiceHandler($this->settings, $this->choices, $aliases, new ControlledDriveFeature());
+        $repas = new RepasForDrive(aliases: ['farine' => 'farine-user-1']);
+        $handler = new ForgetChoiceHandler($this->settings, $this->choices, $repas->aliasPort(), new ControlledDriveFeature());
 
         // Then
         $this->expectExceptionObject(DriveException::storeMismatch());
@@ -82,7 +82,7 @@ class ForgetChoiceHandlerTest extends TestCase
         try {
             $handler(new ForgetChoiceCommand('user-1', Retailer::LECLERC, '654321', 'farine'));
         } finally {
-            $this->assertSame([], $aliases->resolveCalls);
+            $this->assertSame([], $repas->aliases->resolveCalls);
         }
     }
 
@@ -128,7 +128,7 @@ class ForgetChoiceHandlerTest extends TestCase
     public function testADisabledRetailerForgetsNothing(): void
     {
         // Given : l'enseigne n'est pas allumée (DRV-702)
-        $handler = new ForgetChoiceHandler($this->settings, $this->choices, new IngredientAliasInMemoryResolver(), new ControlledDriveFeature(true, []));
+        $handler = new ForgetChoiceHandler($this->settings, $this->choices, new RepasForDrive()->aliasPort(), new ControlledDriveFeature(true, []));
 
         // Then
         $this->expectExceptionObject(DriveFeatureException::retailerDisabled());

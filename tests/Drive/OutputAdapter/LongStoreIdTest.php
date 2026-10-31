@@ -5,6 +5,10 @@ namespace Repas\Tests\Drive\OutputAdapter;
 
 use DateTimeImmutable;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
+use Repas\Drive\Infrastructure\Acl\ShoppingListQueryAdapter;
+use Repas\Repas\Application\OpenHostService\ShoppingListContentQueryOHS;
+use Repas\Drive\Infrastructure\Acl\IngredientNameQueryAdapter;
+use Repas\Repas\Application\OpenHostService\IngredientNameQueryOHS;
 use Repas\Drive\Application\Query\GetDriveSettings\DriveStoreDTO;
 use Repas\Drive\Domain\Interface\ChoiceRepository;
 use Repas\Drive\Domain\Interface\DriveSettingsRepository;
@@ -17,8 +21,8 @@ use Repas\Drive\Infrastructure\Loader\ChoicePostgreSQLLoader;
 use Repas\Drive\Infrastructure\Loader\DrivePlanPostgreSQLLoader;
 use Repas\Drive\Domain\Service\RetailerSelection;
 use Repas\Drive\Infrastructure\Loader\DriveSettingsPostgreSQLLoader;
-use Repas\Shared\Application\Dto\ShoppingListForDrive;
-use Repas\Shared\Application\Dto\ShoppingListLineForDrive;
+use Repas\Drive\Domain\Model\ShoppingListForDrive;
+use Repas\Drive\Domain\Model\ShoppingListLineForDrive;
 use Repas\Tests\Helper\Builder\ChoiceBuilder;
 use Repas\Tests\Helper\Builder\DriveSettingsBuilder;
 use Repas\Tests\Helper\Builder\ProductBuilder;
@@ -26,7 +30,7 @@ use Repas\Tests\Helper\ControlledDriveFeature;
 use Repas\Tests\Helper\DatabaseTestCase;
 use Repas\Tests\Helper\FrozenClock;
 use Repas\Tests\Helper\InMemoryLoader\IngredientNameInMemoryLoader;
-use Repas\Tests\Helper\InMemoryLoader\ShoppingListForDriveInMemoryLoader;
+use Repas\Tests\Helper\InMemoryLoader\ShoppingListContentInMemoryLoader;
 
 /**
  * Un identifiant de magasin de 36 caractères (celui qu'une enseigne à identifiant explicite donne, un UUID : DRV-720) traverse toute la
@@ -170,10 +174,10 @@ class LongStoreIdTest extends DatabaseTestCase
         ]);
 
         // When
-        $choices = new ChoicePostgreSQLLoader($this->entityManager, new IngredientNameInMemoryLoader(['farine' => 'Farine']))->list('user-1', Retailer::LECLERC);
+        $choices = new ChoicePostgreSQLLoader($this->entityManager, new IngredientNameQueryAdapter(new IngredientNameQueryOHS(new IngredientNameInMemoryLoader(['farine' => 'Farine']))))->list('user-1', Retailer::LECLERC);
         $plan = new DrivePlanPostgreSQLLoader(
             $this->entityManager,
-            new ShoppingListForDriveInMemoryLoader(new ShoppingListForDrive('list-1', 'user-1', 'SENT', 7, [new ShoppingListLineForDrive('farine', 'Farine', 300, 'gramme', 'gramme', 'g', 'WEIGHT', 1.0)])),
+            new ShoppingListQueryAdapter(new ShoppingListContentQueryOHS(new ShoppingListContentInMemoryLoader(new ShoppingListForDrive('list-1', 'user-1', 'SENT', 7, [new ShoppingListLineForDrive('farine', 'Farine', 300, 'gramme', 'gramme', 'g', 'WEIGHT', 1.0)])))),
             new PackCalculator(),
             new FrozenClock(new DateTimeImmutable('2026-10-30T10:00:00+00:00')),
         )->get('user-1', 'list-1', Retailer::LECLERC);

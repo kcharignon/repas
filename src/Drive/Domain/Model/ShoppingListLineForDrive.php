@@ -1,6 +1,6 @@
 <?php
 
-namespace Repas\Shared\Application\Dto;
+namespace Repas\Drive\Domain\Model;
 
 
 /**

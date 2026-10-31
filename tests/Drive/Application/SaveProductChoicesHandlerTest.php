@@ -34,24 +34,27 @@ use Repas\Tests\Helper\Builder\ChoiceBuilder;
 use Repas\Tests\Helper\Builder\DriveSettingsBuilder;
 use Repas\Tests\Helper\Builder\ProductBuilder;
 use Repas\Tests\Helper\FrozenClock;
-use Repas\Tests\Helper\InMemoryLoader\IngredientAliasInMemoryResolver;
-use Repas\Tests\Helper\InMemoryLoader\IngredientDepartmentInMemoryResolver;
-use Repas\Tests\Helper\InMemoryLoader\UnitSlugInMemoryResolver;
 use Repas\Tests\Helper\InMemoryRepository\ChoiceInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\DriveSettingsInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\ProductInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\RayonVoteInMemoryRepository;
+use Repas\Tests\Helper\RepasForDrive;
 
 class SaveProductChoicesHandlerTest extends TestCase
 {
     private const string STORE = '123456';
 
+    /** Rayons de Repas des ingrédients des tests ; tout autre ingrédient (« ingredient-… », « inconnu ») n'en a pas. */
+    private const array DEPARTMENTS = ['farine' => 'boulangerie', 'semoule' => 'boulangerie', 'sel' => 'epicerie', 'lait' => 'frais'];
+
+    /** Unités de Repas connues des tests de contenance (DRV-652). */
+    private const array UNITS = ['tranche', 'gramme', 'cuillere-a-soupe'];
+
     private DateTimeImmutable $now;
     private ProductInMemoryRepository $products;
     private ChoiceInMemoryRepository $choices;
     private RayonVoteInMemoryRepository $rayonVotes;
-    private IngredientDepartmentInMemoryResolver $ingredientDepartments;
-    private UnitSlugInMemoryResolver $unitSlugs;
+    private RepasForDrive $repas;
     private DriveSettingsInMemoryRepository $settings;
     private SaveProductChoicesHandler $handler;
 
@@ -62,14 +65,12 @@ class SaveProductChoicesHandlerTest extends TestCase
         $this->choices = new ChoiceInMemoryRepository();
         $this->rayonVotes = new RayonVoteInMemoryRepository();
         // Rayons de Repas des ingrédients des tests ; tout autre ingrédient (« ingredient-… », « inconnu ») n'en a pas
-        $this->ingredientDepartments = new IngredientDepartmentInMemoryResolver(['farine' => 'boulangerie', 'semoule' => 'boulangerie', 'sel' => 'epicerie', 'lait' => 'frais']);
-        // Unités de Repas connues des tests de contenance (DRV-652)
-        $this->unitSlugs = new UnitSlugInMemoryResolver(['tranche', 'gramme', 'cuillere-a-soupe']);
+        $this->repas = new RepasForDrive(departments: self::DEPARTMENTS, units: self::UNITS);
         $this->settings = new DriveSettingsInMemoryRepository([
             new DriveSettingsBuilder()->withUserId('user-1')->build(),
             new DriveSettingsBuilder()->withUserId('user-2')->build(),
         ]);
-        $this->handler = new SaveProductChoicesHandler($this->settings, $this->products, $this->choices, $this->rayonVotes, $this->ingredientDepartments, $this->unitSlugs, new IngredientAliasInMemoryResolver(), new UuidGenerator(), new FrozenClock($this->now), new ControlledDriveFeature());
+        $this->handler = new SaveProductChoicesHandler($this->settings, $this->products, $this->choices, $this->rayonVotes, $this->repas->departmentPort(), $this->repas->unitPort(), $this->repas->aliasPort(), new UuidGenerator(), new FrozenClock($this->now), new ControlledDriveFeature());
     }
 
     public function testAPrimaryProductOnANewIngredientCreatesTheChoiceAndTheProduct(): void
@@ -303,7 +304,7 @@ class SaveProductChoicesHandlerTest extends TestCase
         // Then : un vote par couple (rayon de Repas, rayon de l'enseigne) pour le compte, en une seule écriture, après une seule lecture des rayons de Repas
         $this->assertSame(['user-1|leclerc|boulangerie|4001', 'user-1|leclerc|epicerie|4002'], $this->rayonVotes->all());
         $this->assertSame([3], $this->rayonVotes->recordSizes);
-        $this->assertSame([['farine', 'semoule', 'sel']], $this->ingredientDepartments->departmentSlugsByIngredientCalls);
+        $this->assertSame([['farine', 'semoule', 'sel']], $this->repas->ingredients->departmentSlugsOfCalls);
 
         // When : un autre utilisateur choisit encore un produit de ce rayon pour la farine
         $this->save('user-2', [$this->add('farine', Placement::PRIMARY, '4', rayonId: 4001)]);
@@ -340,7 +341,7 @@ class SaveProductChoicesHandlerTest extends TestCase
         // Then : rien n'est appris, et le rayon de Repas n'est demandé que pour l'ingrédient dont le produit porte un rayon
         $this->assertSame([], $this->rayonVotes->all());
         $this->assertSame([], $this->rayonVotes->recordSizes);
-        $this->assertSame([['ingredient-inconnu']], $this->ingredientDepartments->departmentSlugsByIngredientCalls);
+        $this->assertSame([['ingredient-inconnu']], $this->repas->ingredients->departmentSlugsOfCalls);
     }
 
     public function testWithoutAnyRayonTheDepartmentsAreNotEvenRead(): void
@@ -349,7 +350,7 @@ class SaveProductChoicesHandlerTest extends TestCase
         $this->save('user-1', [$this->add('farine', Placement::PRIMARY, '1'), $this->add('sel', Placement::PRIMARY, '2')]);
 
         // Then : comme avant, aucune requête de plus
-        $this->assertSame([], $this->ingredientDepartments->departmentSlugsByIngredientCalls);
+        $this->assertSame([], $this->repas->ingredients->departmentSlugsOfCalls);
         $this->assertSame([], $this->rayonVotes->recordSizes);
     }
 
@@ -393,13 +394,13 @@ class SaveProductChoicesHandlerTest extends TestCase
                 $departments["ingredient-$i"] = 'epicerie';
             }
         }
-        $this->ingredientDepartments = new IngredientDepartmentInMemoryResolver($departments);
-        $this->handler = new SaveProductChoicesHandler($this->settings, $this->products, $this->choices, $this->rayonVotes, $this->ingredientDepartments, $this->unitSlugs, new IngredientAliasInMemoryResolver(), new UuidGenerator(), new FrozenClock($this->now), new ControlledDriveFeature());
+        $this->repas = new RepasForDrive(departments: $departments, units: self::UNITS);
+        $this->handler = new SaveProductChoicesHandler($this->settings, $this->products, $this->choices, $this->rayonVotes, $this->repas->departmentPort(), $this->repas->unitPort(), $this->repas->aliasPort(), new UuidGenerator(), new FrozenClock($this->now), new ControlledDriveFeature());
         $this->save('user-1', $intents);
 
         // Then
-        $this->assertCount(1, $this->ingredientDepartments->departmentSlugsByIngredientCalls);
-        $this->assertCount(40, $this->ingredientDepartments->departmentSlugsByIngredientCalls[0]);
+        $this->assertCount(1, $this->repas->ingredients->departmentSlugsOfCalls);
+        $this->assertCount(40, $this->repas->ingredients->departmentSlugsOfCalls[0]);
         $this->assertSame([30], $this->rayonVotes->recordSizes);
     }
 
@@ -458,7 +459,7 @@ class SaveProductChoicesHandlerTest extends TestCase
         // Given : Alice accepte déjà le produit (149), Mallory ne l'accepte pas
         $this->save('user-1', [$this->add('farine', Placement::PRIMARY, '555111', 'Farine T55 1 kg', price: new ProductPrice(149))]);
         $later = new DateTimeImmutable('2026-10-20 08:00:00');
-        $this->handler = new SaveProductChoicesHandler($this->settings, $this->products, $this->choices, $this->rayonVotes, $this->ingredientDepartments, $this->unitSlugs, new IngredientAliasInMemoryResolver(), new UuidGenerator(), new FrozenClock($later), new ControlledDriveFeature());
+        $this->handler = new SaveProductChoicesHandler($this->settings, $this->products, $this->choices, $this->rayonVotes, $this->repas->departmentPort(), $this->repas->unitPort(), $this->repas->aliasPort(), new UuidGenerator(), new FrozenClock($later), new ControlledDriveFeature());
 
         // When : Alice renvoie le produit avec son prix du jour, Mallory aussi avec un prix à 1 centime
         $this->save('user-1', [$this->add('farine', Placement::FALLBACK, '555111', 'Farine T55 1 kg', price: new ProductPrice(159))]);
@@ -618,8 +619,8 @@ class SaveProductChoicesHandlerTest extends TestCase
     public function testAnOldSlugOfACommonTheUserAdoptedWritesThePreferenceOfHisCopy(): void
     {
         // Given : l'utilisateur a adopté la farine (ADR 0028) ; l'agent envoie encore le slug du commun (brouillon resté sur le téléphone)
-        $aliases = new IngredientAliasInMemoryResolver(['farine' => 'farine-user-1']);
-        $this->handler = $this->handlerWithAliases($aliases);
+        $repas = new RepasForDrive(aliases: ['farine' => 'farine-user-1']);
+        $this->handler = $this->handlerWithAliases($repas);
 
         // When
         $this->save('user-1', [$this->add('farine', Placement::PRIMARY, '555111', 'Farine T55 1 kg')]);
@@ -627,14 +628,14 @@ class SaveProductChoicesHandlerTest extends TestCase
         // Then : la préférence est sous la copie, jamais sous le commun masqué
         $this->assertSame([$this->productId('555111')], $this->accepted('user-1', 'farine-user-1'));
         $this->assertNull($this->choices->findOne('user-1', Retailer::LECLERC, self::STORE, 'farine'));
-        $this->assertSame([['user-1', ['farine']]], $aliases->resolveCalls);
+        $this->assertSame([['user-1', ['farine']]], $repas->aliases->resolveCalls);
     }
 
     public function testTheSlugsOfAWholeBatchAreResolvedInOneReadAndMergeOntoTheCopy(): void
     {
         // Given : le lot cite le commun (ancien slug) et la copie (slug neuf) du même ingrédient, plus un autre ingrédient sans alias
-        $aliases = new IngredientAliasInMemoryResolver(['farine' => 'farine-user-1']);
-        $this->handler = $this->handlerWithAliases($aliases);
+        $repas = new RepasForDrive(aliases: ['farine' => 'farine-user-1']);
+        $this->handler = $this->handlerWithAliases($repas);
 
         // When
         $this->save('user-1', [
@@ -647,56 +648,56 @@ class SaveProductChoicesHandlerTest extends TestCase
         $this->assertSame($this->productIds('1', '2'), $this->accepted('user-1', 'farine-user-1'));
         $this->assertSame($this->productIds('3'), $this->accepted('user-1', 'sucre'));
         $this->assertNull($this->choices->findOne('user-1', Retailer::LECLERC, self::STORE, 'farine'));
-        $this->assertCount(1, $aliases->resolveCalls);
-        $this->assertEqualsCanonicalizing(['farine', 'farine-user-1', 'sucre'], $aliases->resolveCalls[0][1]);
+        $this->assertCount(1, $repas->aliases->resolveCalls);
+        $this->assertEqualsCanonicalizing(['farine', 'farine-user-1', 'sucre'], $repas->aliases->resolveCalls[0][1]);
     }
 
     public function testTheRayonIsLearnedForTheIngredientOfTheCopy(): void
     {
         // Given : Repas ne connaît le rayon que de la copie ; le choix reçu porte l'ancien slug
-        $this->ingredientDepartments = new IngredientDepartmentInMemoryResolver(['farine-user-1' => 'boulangerie']);
-        $this->handler = new SaveProductChoicesHandler($this->settings, $this->products, $this->choices, $this->rayonVotes, $this->ingredientDepartments, $this->unitSlugs, new IngredientAliasInMemoryResolver(['farine' => 'farine-user-1']), new UuidGenerator(), new FrozenClock($this->now), new ControlledDriveFeature());
+        $this->repas = new RepasForDrive(aliases: ['farine' => 'farine-user-1'], departments: ['farine-user-1' => 'boulangerie'], units: self::UNITS);
+        $this->handler = new SaveProductChoicesHandler($this->settings, $this->products, $this->choices, $this->rayonVotes, $this->repas->departmentPort(), $this->repas->unitPort(), $this->repas->aliasPort(), new UuidGenerator(), new FrozenClock($this->now), new ControlledDriveFeature());
 
         // When
         $this->save('user-1', [$this->add('farine', Placement::PRIMARY, '555111', rayonId: 4001)]);
 
         // Then : l'apprentissage interroge Repas sur la copie
-        $this->assertSame([['farine-user-1']], $this->ingredientDepartments->departmentSlugsByIngredientCalls);
+        $this->assertSame([['farine-user-1']], $this->repas->ingredients->departmentSlugsOfCalls);
     }
 
     public function testWithoutAnyAliasTheSlugsAreKept(): void
     {
         // Given : un utilisateur qui n'a rien adopté
-        $aliases = new IngredientAliasInMemoryResolver();
-        $this->handler = $this->handlerWithAliases($aliases);
+        $repas = new RepasForDrive();
+        $this->handler = $this->handlerWithAliases($repas);
 
         // When
         $this->save('user-1', [$this->add('farine', Placement::PRIMARY, '555111')]);
 
         // Then
         $this->assertSame([$this->productId('555111')], $this->accepted('user-1', 'farine'));
-        $this->assertSame([['user-1', ['farine']]], $aliases->resolveCalls);
+        $this->assertSame([['user-1', ['farine']]], $repas->aliases->resolveCalls);
     }
 
     public function testNothingIsResolvedForAnEmptyOrInvalidBatch(): void
     {
         // Given
-        $aliases = new IngredientAliasInMemoryResolver(['farine' => 'farine-user-1']);
-        $this->handler = $this->handlerWithAliases($aliases);
+        $repas = new RepasForDrive(aliases: ['farine' => 'farine-user-1']);
+        $this->handler = $this->handlerWithAliases($repas);
 
         // When : un lot vide, puis un lot mal formé (refusé avant toute lecture)
         $this->save('user-1', []);
         $this->assertInvalid(fn() => $this->save('user-1', [new ChoiceIntent('farine', ChoiceAction::HAVE_AT_HOME, Placement::PRIMARY)]));
 
         // Then
-        $this->assertSame([], $aliases->resolveCalls);
+        $this->assertSame([], $repas->aliases->resolveCalls);
     }
 
     #[DataProvider('everyKindOfIntent')]
     public function testAChoiceIsNeverSavedOnAnIngredientThatIsNotTheUsers(ChoiceIntent $intent): void
     {
         // Given : « pain-de-autrui » est l'ingrédient d'un autre compte (ou n'existe pas) : il ne répond à aucun ingrédient de l'utilisateur
-        $this->handler = $this->handlerWithAliases(new IngredientAliasInMemoryResolver(notOwned: ['pain-de-autrui']));
+        $this->handler = $this->handlerWithAliases(new RepasForDrive(notOwned: ['pain-de-autrui']));
 
         // When
         $this->assertThrowsIngredientNotFound(fn() => $this->save('user-1', [$intent]));
@@ -724,7 +725,7 @@ class SaveProductChoicesHandlerTest extends TestCase
     public function testOneForeignIngredientRefusesTheWholeBatchAndNothingIsWritten(): void
     {
         // Given : un lot de deux ingrédients, dont un seul est à l'utilisateur
-        $this->handler = $this->handlerWithAliases(new IngredientAliasInMemoryResolver(notOwned: ['pain-de-autrui']));
+        $this->handler = $this->handlerWithAliases(new RepasForDrive(notOwned: ['pain-de-autrui']));
 
         // When
         $this->assertThrowsIngredientNotFound(fn() => $this->save('user-1', [
@@ -741,16 +742,16 @@ class SaveProductChoicesHandlerTest extends TestCase
     public function testTheOwnershipIsDecidedBeforeAnythingElseIsRead(): void
     {
         // Given
-        $aliases = new IngredientAliasInMemoryResolver(notOwned: ['pain-de-autrui']);
-        $this->handler = $this->handlerWithAliases($aliases);
+        $repas = new RepasForDrive(notOwned: ['pain-de-autrui']);
+        $this->handler = $this->handlerWithAliases($repas);
 
         // When
         $this->assertThrowsIngredientNotFound(fn() => $this->save('user-1', [$this->add('pain-de-autrui', Placement::PRIMARY, '555111')]));
 
         // Then : une seule lecture de propriété, ni produit, ni préférence, ni rayon lus
-        $this->assertSame([['user-1', ['pain-de-autrui']]], $aliases->resolveCalls);
+        $this->assertSame([['user-1', ['pain-de-autrui']]], $repas->aliases->resolveCalls);
         $this->assertSame(0, $this->choices->countCalls);
-        $this->assertSame([], $this->ingredientDepartments->departmentSlugsByIngredientCalls);
+        $this->assertSame([], $this->repas->ingredients->departmentSlugsOfCalls);
     }
 
     private function assertThrowsIngredientNotFound(callable $call): void
@@ -763,9 +764,9 @@ class SaveProductChoicesHandlerTest extends TestCase
         }
     }
 
-    private function handlerWithAliases(IngredientAliasInMemoryResolver $aliases): SaveProductChoicesHandler
+    private function handlerWithAliases(RepasForDrive $repas): SaveProductChoicesHandler
     {
-        return new SaveProductChoicesHandler($this->settings, $this->products, $this->choices, $this->rayonVotes, $this->ingredientDepartments, $this->unitSlugs, $aliases, new UuidGenerator(), new FrozenClock($this->now), new ControlledDriveFeature());
+        return new SaveProductChoicesHandler($this->settings, $this->products, $this->choices, $this->rayonVotes, $this->repas->departmentPort(), $this->repas->unitPort(), $repas->aliasPort(), new UuidGenerator(), new FrozenClock($this->now), new ControlledDriveFeature());
     }
 
     private function fillChoices(string $userId, string $storeId, int $count): void
@@ -1290,8 +1291,8 @@ class SaveProductChoicesHandlerTest extends TestCase
         $this->assertSame(1, $this->choices->findByUserStoreAndSlugsCalls);
         $this->assertSame([40], $this->choices->saveAllSizes);
         $this->assertSame(1, $this->choices->countCalls);
-        $this->assertSame([], $this->unitSlugs->existingSlugsCalls);
-        $this->assertSame([], $this->ingredientDepartments->departmentSlugsByIngredientCalls);
+        $this->assertSame([], $this->repas->units->existingSlugsCalls);
+        $this->assertSame([], $this->repas->ingredients->departmentSlugsOfCalls);
     }
 
     public function testNoteSearchCountsForTheCeilingOfChoicesButNotForTheProductWritesOfTheDay(): void
@@ -1479,13 +1480,13 @@ class SaveProductChoicesHandlerTest extends TestCase
         ]);
 
         // Then
-        $this->assertSame([['tranche', 'gramme']], $this->unitSlugs->existingSlugsCalls);
+        $this->assertSame([['tranche', 'gramme']], $this->repas->units->existingSlugsCalls);
 
         // When : un lot sans contenance, ou qui n'en efface qu'une, ne lit pas les unités
         $this->save('user-1', [$this->add('farine', Placement::PRIMARY, '4'), $this->addWithSize('cheddar', Placement::PRIMARY, '1', PackSizeChange::clear())]);
 
         // Then
-        $this->assertCount(1, $this->unitSlugs->existingSlugsCalls);
+        $this->assertCount(1, $this->repas->units->existingSlugsCalls);
     }
 
     /**
@@ -1500,7 +1501,7 @@ class SaveProductChoicesHandlerTest extends TestCase
         // Then
         $this->assertSame([], $this->choices->all());
         $this->assertSame([], $this->products->all());
-        $this->assertSame([], $this->unitSlugs->existingSlugsCalls);
+        $this->assertSame([], $this->repas->units->existingSlugsCalls);
     }
 
     /**
@@ -1541,7 +1542,7 @@ class SaveProductChoicesHandlerTest extends TestCase
 
         // Then : une lecture des préférences, une des unités, une écriture : la contenance voyage avec la préférence
         $this->assertSame(1, $this->choices->findByUserStoreAndSlugsCalls);
-        $this->assertCount(1, $this->unitSlugs->existingSlugsCalls);
+        $this->assertCount(1, $this->repas->units->existingSlugsCalls);
         $this->assertSame([40], $this->choices->saveAllSizes);
         $this->assertEquals(PackSize::of(7, 'tranche'), $this->packSize('user-1', 'ingredient-7', '7'));
     }
@@ -1564,7 +1565,7 @@ class SaveProductChoicesHandlerTest extends TestCase
 
         // When : le second compte accepte le même produit, tel qu'il l'a lu de son côté
         $later = new DateTimeImmutable('2026-10-20 08:00:00');
-        $this->handler = new SaveProductChoicesHandler($this->settings, $this->products, $this->choices, $this->rayonVotes, $this->ingredientDepartments, $this->unitSlugs, new IngredientAliasInMemoryResolver(), new UuidGenerator(), new FrozenClock($later), new ControlledDriveFeature());
+        $this->handler = new SaveProductChoicesHandler($this->settings, $this->products, $this->choices, $this->rayonVotes, $this->repas->departmentPort(), $this->repas->unitPort(), $this->repas->aliasPort(), new UuidGenerator(), new FrozenClock($later), new ControlledDriveFeature());
         $this->save('user-2', [$this->add('semoule', Placement::PRIMARY, '555111', 'Farine T55 – lot de 2', price: new ProductPrice(159))]);
 
         // Then : chacun garde le sien
@@ -1598,7 +1599,7 @@ class SaveProductChoicesHandlerTest extends TestCase
         // Given
         $this->save('user-1', [$this->add('farine', Placement::PRIMARY, '555111', 'Farine', price: new ProductPrice(149))]);
         $later = new DateTimeImmutable('2026-10-20 08:00:00');
-        $this->handler = new SaveProductChoicesHandler($this->settings, $this->products, $this->choices, $this->rayonVotes, $this->ingredientDepartments, $this->unitSlugs, new IngredientAliasInMemoryResolver(), new UuidGenerator(), new FrozenClock($later), new ControlledDriveFeature());
+        $this->handler = new SaveProductChoicesHandler($this->settings, $this->products, $this->choices, $this->rayonVotes, $this->repas->departmentPort(), $this->repas->unitPort(), $this->repas->aliasPort(), new UuidGenerator(), new FrozenClock($later), new ControlledDriveFeature());
 
         // When : le produit est revu, sans prix lu cette fois
         $this->save('user-1', [$this->add('farine', Placement::FALLBACK, '555111', 'Farine T55 1 kg')]);
@@ -1646,7 +1647,7 @@ class SaveProductChoicesHandlerTest extends TestCase
         $this->save('user-2', [$this->add('farine', Placement::PRIMARY, '555111', 'Farine', price: new ProductPrice(159))]);
         $before = $this->choices->findOne('user-1', Retailer::LECLERC, self::STORE, 'farine')->getUpdatedAt();
         $later = new DateTimeImmutable('2026-10-20 08:00:00');
-        $this->handler = new SaveProductChoicesHandler($this->settings, $this->products, $this->choices, $this->rayonVotes, $this->ingredientDepartments, $this->unitSlugs, new IngredientAliasInMemoryResolver(), new UuidGenerator(), new FrozenClock($later), new ControlledDriveFeature());
+        $this->handler = new SaveProductChoicesHandler($this->settings, $this->products, $this->choices, $this->rayonVotes, $this->repas->departmentPort(), $this->repas->unitPort(), $this->repas->aliasPort(), new UuidGenerator(), new FrozenClock($later), new ControlledDriveFeature());
 
         // When : le premier compte relit le prix
         $this->save('user-1', [$this->refresh('farine', '555111', new ProductPrice(179))]);
@@ -1829,7 +1830,7 @@ class SaveProductChoicesHandlerTest extends TestCase
     public function testADisabledRetailerSavesNothingNorReadsAnything(): void
     {
         // Given : l'enseigne n'est pas allumée (DRV-702) ; un lot qui serait aussi invalide ne donne pas un autre code
-        $handler = new SaveProductChoicesHandler($this->settings, $this->products, $this->choices, $this->rayonVotes, $this->ingredientDepartments, $this->unitSlugs, new IngredientAliasInMemoryResolver(), new UuidGenerator(), new FrozenClock($this->now), new ControlledDriveFeature(true, []));
+        $handler = new SaveProductChoicesHandler($this->settings, $this->products, $this->choices, $this->rayonVotes, $this->repas->departmentPort(), $this->repas->unitPort(), $this->repas->aliasPort(), new UuidGenerator(), new FrozenClock($this->now), new ControlledDriveFeature(true, []));
 
         // Then
         $this->expectExceptionObject(DriveFeatureException::retailerDisabled());

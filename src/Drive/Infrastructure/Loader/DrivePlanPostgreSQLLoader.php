@@ -29,8 +29,8 @@ use Repas\Drive\Infrastructure\Entity\Choice;
 use Repas\Drive\Infrastructure\Entity\ChoiceProduct;
 use Repas\Drive\Infrastructure\Entity\DriveSettings;
 use Repas\Drive\Infrastructure\Entity\Product;
-use Repas\Shared\Application\Dto\ShoppingListLineForDrive;
-use Repas\Shared\Application\Interface\ShoppingListForDriveLoader;
+use Repas\Drive\Domain\Model\ShoppingListLineForDrive;
+use Repas\Drive\Application\Port\ShoppingListQueryPort;
 use Repas\Shared\Domain\Model\Dimension;
 
 /**
@@ -55,7 +55,7 @@ final readonly class DrivePlanPostgreSQLLoader implements DrivePlanLoader
 
     public function __construct(
         private EntityManagerInterface $entityManager,
-        private ShoppingListForDriveLoader $shoppingLists,
+        private ShoppingListQueryPort $shoppingLists,
         private PackCalculator $packCalculator,
         private ClockInterface $clock,
     ) {

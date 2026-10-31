@@ -1,10 +1,10 @@
 <?php
 
-namespace Repas\Shared\Application\Dto;
+namespace Repas\Drive\Domain\Model;
 
 
 /**
- * Une liste de courses vue par le contexte `Drive` (docs/drive/architecture.md § 5.3). Jamais un modèle de domaine.
+ * Une liste de courses vue par le contexte `Drive` (docs/drive/architecture.md § 5.3), transposée du contenu que `Repas` publie par la couche anticorruption (ADR 0035).
  */
 final readonly class ShoppingListForDrive
 {

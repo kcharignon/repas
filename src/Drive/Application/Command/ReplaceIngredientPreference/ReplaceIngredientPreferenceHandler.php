@@ -10,7 +10,7 @@ use Repas\Drive\Domain\Interface\DriveSettingsRepository;
 use Repas\Drive\Domain\Interface\ProductRepository;
 use Repas\Drive\Domain\Model\Choice;
 use Repas\Drive\Domain\Model\Product;
-use Repas\Shared\Application\Interface\IngredientAliasResolver;
+use Repas\Drive\Application\Port\IngredientAliasCommandPort;
 use Repas\Shared\Domain\Interface\UuidGenerator;
 use Repas\Shared\Application\Interface\DriveFeature;
 use Repas\Shared\Domain\Exception\DriveFeatureException;
@@ -23,7 +23,7 @@ readonly class ReplaceIngredientPreferenceHandler
         private DriveSettingsRepository $driveSettingsRepository,
         private ProductRepository $productRepository,
         private ChoiceRepository $choiceRepository,
-        private IngredientAliasResolver $ingredientAliases,
+        private IngredientAliasCommandPort $ingredientAliases,
         private UuidGenerator $uuidGenerator,
         private ClockInterface $clock,
         private DriveFeature $driveFeature,

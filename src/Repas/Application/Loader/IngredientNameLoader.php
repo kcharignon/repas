@@ -1,11 +1,10 @@
 <?php
 
-namespace Repas\Shared\Application\Interface;
+namespace Repas\Repas\Application\Loader;
 
 /**
- * Port de lecture du nom des ingrédients pour le contexte `Drive` (écran des produits mémorisés).
- *
- * Un nom ne se lit que pour les ingrédients de l'utilisateur qui le demande (ADR 0028).
+ * Lecture du nom des ingrédients d'un utilisateur, par slug. Un nom ne se lit que pour les ingrédients de l'utilisateur qui le demande
+ * (ADR 0028).
  */
 interface IngredientNameLoader
 {

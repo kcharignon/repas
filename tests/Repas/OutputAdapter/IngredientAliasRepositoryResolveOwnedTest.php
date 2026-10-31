@@ -7,7 +7,6 @@ use DateTimeImmutable;
 use Repas\Repas\Domain\Interface\IngredientAliasRepository;
 use Repas\Repas\Domain\Model\AliasKind;
 use Repas\Repas\Domain\Model\IngredientAlias;
-use Repas\Shared\Application\Interface\IngredientAliasResolver;
 use Repas\Tests\Helper\Builder\IngredientBuilder;
 use Repas\Tests\Helper\Builder\UserBuilder;
 use Repas\Tests\Helper\DatabaseTestCase;
@@ -15,16 +14,16 @@ use Repas\Tests\Helper\DataPersister;
 use Repas\Tests\Helper\SqlBudget\QueryCounter;
 
 /**
- * Le port `Shared` que le contexte `Drive` interroge avant d'écrire un choix, sur la vraie base : à quel ingrédient de l'utilisateur répond un
+ * Le port du dépôt des alias que le contexte `Drive` interroge avant d'écrire un choix (par l'Open Host Service de `Repas`), sur la vraie base : à quel ingrédient de l'utilisateur répond un
  * slug reçu ? `resolve()` ne traduit que les alias valides (testé avec le dépôt des alias) ; `resolveOwned()` y ajoute l'ingrédient lui-même,
  * s'il est à l'utilisateur, en une seule requête.
  */
-class IngredientAliasPostgreSQLResolverTest extends DatabaseTestCase
+class IngredientAliasRepositoryResolveOwnedTest extends DatabaseTestCase
 {
     private const string USER = 'user-id';
     private const string OTHER = 'other-id';
 
-    private IngredientAliasResolver $resolver;
+    private IngredientAliasRepository $resolver;
     private IngredientAliasRepository $aliases;
     private DataPersister $persister;
 
@@ -32,7 +31,7 @@ class IngredientAliasPostgreSQLResolverTest extends DatabaseTestCase
     {
         parent::setUp();
 
-        $this->resolver = static::getContainer()->get(IngredientAliasResolver::class);
+        $this->resolver = static::getContainer()->get(IngredientAliasRepository::class);
         $this->aliases = static::getContainer()->get(IngredientAliasRepository::class);
         $this->persister = new DataPersister(static::getContainer());
     }

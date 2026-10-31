@@ -23,8 +23,8 @@ use Repas\Drive\Domain\Service\ListCostEstimator;
 use Repas\Drive\Infrastructure\Entity\Choice;
 use Repas\Drive\Infrastructure\Entity\ChoiceProduct;
 use Repas\Drive\Infrastructure\Entity\Product;
-use Repas\Shared\Application\Dto\ShoppingListLineForDrive;
-use Repas\Shared\Application\Interface\ShoppingListForDriveLoader;
+use Repas\Drive\Domain\Model\ShoppingListLineForDrive;
+use Repas\Drive\Application\Port\ShoppingListQueryPort;
 use Repas\Shared\Domain\Model\Dimension;
 
 /**
@@ -41,7 +41,7 @@ final readonly class DriveEstimatePostgreSQLLoader implements DriveEstimateLoade
     public function __construct(
         private EntityManagerInterface $entityManager,
         private DriveSettingsLoader $settings,
-        private ShoppingListForDriveLoader $shoppingLists,
+        private ShoppingListQueryPort $shoppingLists,
         private ListCostEstimator $estimator,
     ) {
     }
