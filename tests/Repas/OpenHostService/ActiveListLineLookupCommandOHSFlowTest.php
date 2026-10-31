@@ -1,12 +1,14 @@
 <?php
 
-namespace Repas\Tests\Repas\Infrastructure\Voice;
+namespace Repas\Tests\Repas\OpenHostService;
 
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Repas\Domain\Model\Recipe;
 use Repas\Repas\Domain\Model\ShoppingListStatus;
-use Repas\Shared\Application\Interface\SpokenListLookup;
-use Repas\Shared\Application\Interface\VoiceShoppingList;
+use Repas\Repas\Application\OpenHostService\ActiveListLineLookupCommandOHS;
+use Repas\Repas\Application\OpenHostService\ActiveListLineLookupQueryOHS;
+use Repas\Repas\Application\OpenHostService\ActiveListMealLookupCommandOHS;
+use Repas\Repas\Application\OpenHostService\ShoppingListItemCommandOHS;
 use Repas\Tests\Helper\Builder\IngredientBuilder;
 use Repas\Tests\Helper\Builder\RecipeBuilder;
 use Repas\Tests\Helper\Builder\ShoppingListBuilder;
@@ -16,13 +18,15 @@ use Repas\Tests\Helper\DataPersister;
 use Repas\User\Domain\Model\User;
 
 /**
- * Le port `SpokenListLookup` câblé pour de vrai (ADR 0029 décision 12, VOX-304) : adaptateur, chargeur de la liste active, chargeur des habitudes,
- * mémoire de phrase et classeur sur la base de test. Les ex æquo se prouvent dans `SpokenListLookupAdapterTest`, avec des candidats programmés.
+ * Les Open Host Services de la liste active câblés pour de vrai (ADR 0029 décision 12, VOX-304) : lecture de la liste active et des habitudes,
+ * mémoire de phrase et classeur sur la base de test, par les dépôts (écriture) comme par les Loaders (lecture). Les ex æquo se prouvent dans `ActiveListLookupCommandOHSTest`, avec des candidats programmés.
  */
-class SpokenListLookupFlowTest extends DatabaseTestCase
+class ActiveListLineLookupCommandOHSFlowTest extends DatabaseTestCase
 {
-    private SpokenListLookup $lookup;
-    private VoiceShoppingList $voiceShoppingList;
+    private ActiveListLineLookupCommandOHS $lookup;
+    private ActiveListMealLookupCommandOHS $meals;
+    private ActiveListLineLookupQueryOHS $query;
+    private ShoppingListItemCommandOHS $voiceShoppingList;
     private ShoppingListRepository $shoppingListRepository;
     private DataPersister $persister;
 
@@ -30,8 +34,10 @@ class SpokenListLookupFlowTest extends DatabaseTestCase
     {
         parent::setUp();
 
-        $this->lookup = static::getContainer()->get(SpokenListLookup::class);
-        $this->voiceShoppingList = static::getContainer()->get(VoiceShoppingList::class);
+        $this->lookup = static::getContainer()->get(ActiveListLineLookupCommandOHS::class);
+        $this->meals = static::getContainer()->get(ActiveListMealLookupCommandOHS::class);
+        $this->query = static::getContainer()->get(ActiveListLineLookupQueryOHS::class);
+        $this->voiceShoppingList = static::getContainer()->get(ShoppingListItemCommandOHS::class);
         $this->shoppingListRepository = static::getContainer()->get(ShoppingListRepository::class);
         $this->persister = new DataPersister(static::getContainer());
     }
@@ -55,9 +61,9 @@ class SpokenListLookupFlowTest extends DatabaseTestCase
         $this->entityManager->clear();
 
         // When
-        $found = $this->lookup->find($user->getId(), 'du lait');
-        $absent = $this->lookup->find($user->getId(), 'du pain');
-        $unknown = $this->lookup->find($user->getId(), 'de la ciboulette');
+        $found = $this->lookup->findLine($user->getId(), 'du lait');
+        $absent = $this->lookup->findLine($user->getId(), 'du pain');
+        $unknown = $this->lookup->findLine($user->getId(), 'de la ciboulette');
 
         // Then : la ligne (quantité et unité), puis « pas dans la liste » avec le nom connu, puis sans nom
         $this->assertTrue($found->hasList);
@@ -73,12 +79,12 @@ class SpokenListLookupFlowTest extends DatabaseTestCase
         $user = $this->savedUser();
         $milk = new IngredientBuilder()->isMilk()->withCreator($user, true)->build();
         $this->persister->saveIngredient($milk);
-        $none = $this->lookup->find($user->getId(), 'du lait');
+        $none = $this->lookup->findLine($user->getId(), 'du lait');
         $this->shoppingListRepository->save(new ShoppingListBuilder()->withOwner($user)->addIngredient($milk)->withStatus(ShoppingListStatus::SENT)->build());
         $this->entityManager->clear();
 
         // When
-        $sent = $this->lookup->find($user->getId(), 'du lait');
+        $sent = $this->lookup->findLine($user->getId(), 'du lait');
 
         // Then : aucune des deux n'est « une liste en cours », et rien n'a été créé
         $this->assertFalse($none->hasList);
@@ -98,7 +104,7 @@ class SpokenListLookupFlowTest extends DatabaseTestCase
         $this->entityManager->clear();
 
         // When
-        $result = $this->lookup->find($user->getId(), 'du lait');
+        $result = $this->lookup->findLine($user->getId(), 'du lait');
 
         // Then
         $this->assertSame([true, [], null], [$result->hasList, $result->lines, $result->absentName]);
@@ -129,8 +135,8 @@ class SpokenListLookupFlowTest extends DatabaseTestCase
         $this->entityManager->clear();
 
         // When
-        $found = $this->lookup->findMeal($user->getId(), $carbonara->getName());
-        $notPlanned = $this->lookup->findMeal($user->getId(), $eggs->getName());
+        $found = $this->meals->findMeal($user->getId(), $carbonara->getName());
+        $notPlanned = $this->meals->findMeal($user->getId(), $eggs->getName());
 
         // Then : le repas de la liste, avec son nombre de personnes ; la recette qui n'y est pas n'est ni trouvée ni proposée
         $this->assertTrue($found->hasList);
@@ -152,7 +158,7 @@ class SpokenListLookupFlowTest extends DatabaseTestCase
         $this->entityManager->clear();
 
         // When
-        $result = $this->lookup->findMeal($user->getId(), $theirs->getName());
+        $result = $this->meals->findMeal($user->getId(), $theirs->getName());
 
         // Then
         $this->assertTrue($result->hasList);
@@ -165,12 +171,12 @@ class SpokenListLookupFlowTest extends DatabaseTestCase
         // Given : pas de liste du tout, puis une liste partie au drive qui porte le repas
         $user = $this->savedUser();
         $recipe = $this->savedRecipe($user, new RecipeBuilder()->isPastaCarbonara());
-        $none = $this->lookup->findMeal($user->getId(), $recipe->getName());
+        $none = $this->meals->findMeal($user->getId(), $recipe->getName());
         $this->shoppingListRepository->save(new ShoppingListBuilder()->withOwner($user)->addRecipe($recipe)->withStatus(ShoppingListStatus::SENT)->build());
         $this->entityManager->clear();
 
         // When
-        $sent = $this->lookup->findMeal($user->getId(), $recipe->getName());
+        $sent = $this->meals->findMeal($user->getId(), $recipe->getName());
 
         // Then : la liste envoyée n'est jamais lue
         $this->assertSame([false, false, null], [$none->hasList, $none->listSent, $none->meal]);
@@ -187,12 +193,34 @@ class SpokenListLookupFlowTest extends DatabaseTestCase
         $this->entityManager->clear();
 
         // When : un mot sans rapport, puis le nom exact
-        $unrelated = $this->lookup->find($user->getId(), 'de la ciboulette');
-        $exact = $this->lookup->find($user->getId(), 'du lait');
+        $unrelated = $this->lookup->findLine($user->getId(), 'de la ciboulette');
+        $exact = $this->lookup->findLine($user->getId(), 'du lait');
 
         // Then : aucune proposition pour un mot sans rapport, la ligne pour le nom exact
         $this->assertSame([], $unrelated->suggestions);
         $this->assertNull($unrelated->absentName);
         $this->assertSame([$milk->getSlug()], array_map(static fn($line): string => $line->slug, $exact->lines));
+    }
+
+    public function testTheReadingSideSaysTheSameAsTheWritingSide(): void
+    {
+        // Given : trois litres de lait dans la liste, du pain connu mais absent
+        $user = $this->savedUser();
+        $milk = new IngredientBuilder()->isMilk()->withCreator($user, true)->build();
+        $this->persister->saveIngredient($milk);
+        $this->persister->saveIngredient(new IngredientBuilder()->isBread()->withCreator($user, true)->build());
+        $this->voiceShoppingList->addItem($user->getId(), $milk->getSlug(), 3);
+        $this->entityManager->clear();
+
+        foreach (['du lait', 'du pain', 'de la ciboulette'] as $phrase) {
+            // When
+            $written = $this->lookup->findLine($user->getId(), $phrase);
+            $read = $this->query->findLine($user->getId(), $phrase);
+
+            // Then
+            $this->assertSame([$written->hasList, $written->absentName, $written->listSent, count($written->lines)], [$read->hasList, $read->absentName, $read->listSent, count($read->lines)], $phrase);
+        }
+        $milkLine = $this->query->findLine($user->getId(), 'du lait')->lines[0];
+        $this->assertSame([$milk->getSlug(), 3.0, 'litre'], [$milkLine->slug, $milkLine->quantity, $milkLine->unitName]);
     }
 }

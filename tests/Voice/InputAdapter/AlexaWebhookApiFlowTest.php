@@ -18,7 +18,7 @@ use Repas\Repas\Domain\Model\ShoppingList;
 use Repas\Repas\Domain\Model\ShoppingListStatus;
 use Repas\Shared\Application\Interface\VoiceFeature;
 use Repas\Shared\Application\Interface\VoiceMealPlanner;
-use Repas\Shared\Application\Interface\VoiceShoppingList;
+use Repas\Voice\Application\Port\ShoppingListItemCommandPort;
 use Repas\Tests\Helper\Alexa\AlexaTestAuthority;
 use Repas\Tests\Helper\Alexa\AlexaTestClient;
 use Repas\Tests\Helper\Alexa\AlexaTestLeaf;
@@ -2571,7 +2571,7 @@ class AlexaWebhookApiFlowTest extends DatabaseTestCase
         $this->plannedMeal($user, $recipe, 4);
         $bread = new IngredientBuilder()->isBread()->withCreator($user, true)->build();
         $this->persister->saveIngredient($bread);
-        static::getContainer()->get(VoiceShoppingList::class)->addItem($user->getId(), $bread->getSlug(), 2);
+        static::getContainer()->get(ShoppingListItemCommandPort::class)->addItem($user->getId(), $bread->getSlug(), 2);
         $this->entityManager->clear();
 
         // When : « enlève du pain »
@@ -2640,7 +2640,7 @@ class AlexaWebhookApiFlowTest extends DatabaseTestCase
         $dog = new IngredientBuilder()->withName('repas pour chien')->withCreator($user, true)->build();
         $this->persister->saveIngredient($dog);
         $this->savedActiveList($user);
-        static::getContainer()->get(VoiceShoppingList::class)->addItem($user->getId(), $dog->getSlug(), 3);
+        static::getContainer()->get(ShoppingListItemCommandPort::class)->addItem($user->getId(), $dog->getSlug(), 3);
         $this->entityManager->clear();
 
         // When : « enlève le repas pour chien »

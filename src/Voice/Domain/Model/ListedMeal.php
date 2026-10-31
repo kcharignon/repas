@@ -1,10 +1,10 @@
 <?php
 
-namespace Repas\Shared\Application\Dto;
+namespace Repas\Voice\Domain\Model;
 
 /**
  * Un repas de la liste de courses active de l'utilisateur tel que la commande vocale le lit (ADR 0029 décision 12, VOX-306) : une recette planifiée
- * et le nombre de personnes pour lequel elle l'est. Un simple objet de transport entre le contexte `Repas` et le contexte `Voice`.
+ * et le nombre de personnes pour lequel elle l'est. Vu par la commande vocale.
  */
 final readonly class ListedMeal
 {

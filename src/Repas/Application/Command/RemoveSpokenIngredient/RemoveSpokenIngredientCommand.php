@@ -4,7 +4,7 @@ namespace Repas\Repas\Application\Command\RemoveSpokenIngredient;
 
 /**
  * Retire un ingrédient dit à voix haute de la liste active de l'utilisateur (ADR 0029 décision 12). Le handler renvoie un
- * `Shared\Application\Interface\RemovedItem` (exception à « une commande ne renvoie rien », ADR 0015 §12 : le résultat dit à l'appelant ce qui
+ * `Repas\Domain\Model\RemovedItem` (exception à « une commande ne renvoie rien », ADR 0015 §12 : le résultat dit à l'appelant ce qui
  * reste dans la ligne, de quoi choisir la phrase de réponse).
  */
 final readonly class RemoveSpokenIngredientCommand

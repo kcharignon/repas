@@ -11,7 +11,7 @@ use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Repas\Domain\Interface\UnitRepository;
 use Repas\Repas\Domain\Model\ShoppingList;
 use Repas\Repas\Domain\Service\ConversionService;
-use Repas\Shared\Application\Interface\RemovedItem;
+use Repas\Repas\Domain\Model\RemovedItem;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 /**

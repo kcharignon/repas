@@ -8,7 +8,7 @@ use Repas\Repas\Application\Loader\ActiveShoppingListLines;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Repas\Domain\Model\Ingredient;
 use Repas\Repas\Domain\Model\ShoppingListStatus;
-use Repas\Shared\Application\Dto\ListedLine;
+use Repas\Repas\Domain\Model\ActiveListLine;
 use Repas\Tests\Helper\Builder\DepartmentBuilder;
 use Repas\Tests\Helper\Builder\IngredientBuilder;
 use Repas\Tests\Helper\Builder\ShoppingListBuilder;
@@ -63,7 +63,7 @@ class ActiveShoppingListLinesPostgreSQLLoaderTest extends DatabaseTestCase
         // Then
         $this->assertCount(2, $lines);
         $this->assertEquals(
-            new ListedLine($egg->getSlug(), $egg->getName(), $egg->getDepartment()->getSlug(), $egg->getDepartment()->getName(), 3.0, 'unite', 'unité'),
+            new ActiveListLine($egg->getSlug(), $egg->getName(), $egg->getDepartment()->getSlug(), $egg->getDepartment()->getName(), 3.0, 'unite', 'unité'),
             $lines[$egg->getSlug()],
         );
         $this->assertSame([1.0, 'litre', 'litre'], [$lines[$milk->getSlug()]->quantity, $lines[$milk->getSlug()]->unitSlug, $lines[$milk->getSlug()]->unitName]);
@@ -215,9 +215,9 @@ class ActiveShoppingListLinesPostgreSQLLoaderTest extends DatabaseTestCase
     }
 
     /**
-     * @param list<ListedLine> $lines
+     * @param list<ActiveListLine> $lines
      *
-     * @return array<string, ListedLine>
+     * @return array<string, ActiveListLine>
      */
     private function bySlug(array $lines): array
     {

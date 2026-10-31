@@ -3,8 +3,8 @@
 namespace Repas\Voice\Application\Command\RemoveSpokenMeal;
 
 
-use Repas\Shared\Application\Dto\ListedMeal;
-use Repas\Shared\Application\Interface\SpokenListLookup;
+use Repas\Voice\Domain\Model\ListedMeal;
+use Repas\Voice\Application\Port\ListMealLookupCommandPort;
 use Repas\Shared\Application\Interface\VoiceMealPlanner;
 use Repas\Voice\Application\Command\AddSpokenItem\AddSpokenItemResult;
 use Repas\Voice\Domain\Model\DialogueOption;
@@ -14,10 +14,10 @@ use Repas\Voice\Domain\Service\SpokenIngredientNamer;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 /**
- * Retire de la liste le repas que l'utilisateur vient de dire (ADR 0029 décision 12, VOX-306) : l'inverse d'`AddSpokenMealHandler`, par les ports de
- * `Shared` :
+ * Retire de la liste le repas que l'utilisateur vient de dire (ADR 0029 décision 12, VOX-306) : l'inverse d'`AddSpokenMealHandler`, par un port de ce contexte (ADR 0035)
+ * pour la liste et le port `VoiceMealPlanner` de `Shared` pour la planification :
  *
- * 1. `SpokenListLookup::findMeal` cherche le repas parmi les recettes PLANIFIÉES de la liste active (lecture seule) : pas de liste active (aucune : « Tu
+ * 1. `ListMealLookupCommandPort` cherche le repas parmi les recettes PLANIFIÉES de la liste active (lecture seule) : pas de liste active (aucune : « Tu
  *    n'as pas de liste en cours. » ; partie au drive : « Ta liste est déjà partie au drive. », elle n'est jamais lue ni modifiée), un repas sûr, ou aucun ;
  * 2. un repas sûr : `VoiceMealPlanner::removeMeal` le retire entièrement (« C'est retiré : le repas hachis parmentier. »), ou en baisse le nombre de
  *    personnes quand l'utilisateur en a dit moins que le repas n'en compte (« C'est changé : hachis parmentier, pour 2 personnes. ») ;
@@ -32,7 +32,7 @@ use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 readonly class RemoveSpokenMealHandler
 {
     public function __construct(
-        private SpokenListLookup $lookup,
+        private ListMealLookupCommandPort $lookup,
         private VoiceMealPlanner $mealPlanner,
         private SpokenIngredientNamer $namer,
     ) {
@@ -45,7 +45,7 @@ readonly class RemoveSpokenMealHandler
             return $this->said(VoiceReplies::NOT_UNDERSTOOD . ' ' . VoiceReplies::REMOVE_MEAL_EXAMPLE, $command->sessionIsOpen);
         }
 
-        $found = $this->lookup->findMeal($command->userId, $name);
+        $found = $this->lookup->find($command->userId, $name);
         if (!$found->hasList) {
             return $this->said(VoiceReplies::noActiveList($found->listSent), $command->sessionIsOpen);
         }

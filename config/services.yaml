@@ -50,14 +50,10 @@ services:
         tags:
             - { name: kernel.reset, method: clear }
 
-    # Port de la commande vocale (ADR 0029, VOX-103) : le contexte `Voice` ajoute à la liste de courses sans importer `Repas`
-    Repas\Shared\Application\Interface\VoiceShoppingList:
-        alias: Repas\Repas\Infrastructure\Voice\VoiceShoppingListAdapter
-        public: true
-
-    # Port de LECTURE de la commande vocale (ADR 0029 décision 12, VOX-304) : le contexte `Voice` regarde la liste active (retirer, consulter) sans importer `Repas`
-    Repas\Shared\Application\Interface\SpokenListLookup:
-        alias: Repas\Repas\Infrastructure\Voice\SpokenListLookupAdapter
+    # Port de la commande vocale (ADR 0029, VOX-103 ; ADR 0035) : le contexte `Voice` ajoute à la liste de courses et en retire sans importer `Repas`.
+    # Public pour qu'un test de bout en bout s'en serve
+    Repas\Voice\Application\Port\ShoppingListItemCommandPort:
+        alias: Repas\Voice\Infrastructure\Acl\ShoppingListItemCommandAdapter
         public: true
 
     # Port des ingrédients de la commande vocale (ADR 0029 décisions 3 et 11, ADR 0035) : public pour qu'un test de bout en bout le remplace

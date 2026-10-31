@@ -1,12 +1,12 @@
 <?php
 
-namespace Repas\Shared\Application\Dto;
+namespace Repas\Repas\Domain\Model;
 
 /**
- * Une ligne de la liste de courses active de l'utilisateur telle que la commande vocale la lit (ADR 0029 décision 12, VOX-304) : un simple objet
- * de transport entre le contexte `Repas` et le contexte `Voice`.
+ * Une ligne de la liste de courses active de l'utilisateur, telle que `ActiveListLookup` la cherche (ADR 0029 décision 12, VOX-304) : l'ingrédient
+ * (slug, nom, rayon), la quantité de la ligne et son unité. Une valeur lue, jamais un agrégat.
  */
-final readonly class ListedLine
+final readonly class ActiveListLine
 {
     public function __construct(
         public string $slug,

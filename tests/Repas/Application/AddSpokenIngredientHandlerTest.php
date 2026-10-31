@@ -16,7 +16,7 @@ use Repas\Repas\Domain\Exception\ShoppingListException;
 use Repas\Repas\Domain\Model\IngredientAlias;
 use Repas\Repas\Domain\Model\ShoppingListStatus;
 use Repas\Repas\Domain\Service\ConversionService;
-use Repas\Shared\Application\Interface\AddedItem;
+use Repas\Repas\Domain\Model\AddedItem;
 use Repas\Tests\Helper\Builder\ConversionBuilder;
 use Repas\Tests\Helper\Builder\IngredientBuilder;
 use Repas\Tests\Helper\Builder\ShoppingListBuilder;

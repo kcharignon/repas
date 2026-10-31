@@ -3,7 +3,7 @@
 namespace Repas\Voice\Application\Command\AddSpokenItem;
 
 
-use Repas\Shared\Application\Interface\VoiceShoppingList;
+use Repas\Voice\Application\Port\ShoppingListItemCommandPort;
 use Repas\Voice\Application\Port\IngredientResolutionCommandPort;
 use Repas\Voice\Domain\Model\DialogueOption;
 use Repas\Voice\Domain\Model\ResolvedIngredient;
@@ -19,7 +19,7 @@ use Symfony\Component\Messenger\Attribute\AsMessageHandler;
  * 1. `IngredientResolutionCommandPort` choisit, parmi les ingrédients de l'utilisateur seulement, le plus probable pour la phrase (la mémoire de
  *    phrase d'abord, puis le classement). Rien de plausible : **le produit est inconnu**, rien n'est écrit, et Alexa demande « de quoi tu
  *    parles » (voir plus bas) ;
- * 2. `VoiceShoppingList` ajoute la ligne à la liste active, ou à une liste neuve s'il n'y en a pas (une liste envoyée au drive n'est jamais
+ * 2. `ShoppingListItemCommandPort` ajoute la ligne à la liste active, ou à une liste neuve s'il n'y en a pas (une liste envoyée au drive n'est jamais
  *    modifiée). Une seule écriture.
  *
  * La quantité et l'unité dites (« trois paquets de croquettes ») vont au port avec le slug ; une unité laissée en tête de la phrase par Alexa
@@ -43,14 +43,14 @@ use Symfony\Component\Messenger\Attribute\AsMessageHandler;
  *
  * Aucune exception n'est attrapée ici : si le second port échoue (l'ingrédient a disparu entre-temps, panne), la commande est annulée en
  * entier — le bus est transactionnel et une exception attrapée dans une transaction imbriquée la ferait échouer au `commit` — et le webhook
- * répond par la phrase d'échec. Le port de la liste est encore celui de `Shared` ; celui des ingrédients est un port de ce contexte (ADR 0035) : ce contexte n'importe rien de `Repas`.
+ * répond par la phrase d'échec. Les deux ports (ingrédients, liste) sont des ports de ce contexte (ADR 0035) : ce contexte n'importe rien de `Repas`.
  */
 #[AsMessageHandler]
 readonly class AddSpokenItemHandler
 {
     public function __construct(
         private IngredientResolutionCommandPort $ingredientResolver,
-        private VoiceShoppingList $shoppingList,
+        private ShoppingListItemCommandPort $shoppingList,
         private SpokenIngredientNamer $namer,
     ) {
     }

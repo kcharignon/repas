@@ -3,9 +3,9 @@
 namespace Repas\Voice\Application\Command\RemoveSpokenItem;
 
 
-use Repas\Shared\Application\Dto\ListedLine;
-use Repas\Shared\Application\Interface\SpokenListLookup;
-use Repas\Shared\Application\Interface\VoiceShoppingList;
+use Repas\Voice\Application\Port\ListLineLookupCommandPort;
+use Repas\Voice\Application\Port\ShoppingListItemCommandPort;
+use Repas\Voice\Domain\Model\ListedLine;
 use Repas\Voice\Application\Command\AddSpokenItem\AddSpokenItemResult;
 use Repas\Voice\Domain\Model\DialogueOption;
 use Repas\Voice\Domain\Model\SpokenDialogueState;
@@ -14,13 +14,12 @@ use Repas\Voice\Domain\Service\SpokenIngredientNamer;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 /**
- * Retire de la liste ce que l'utilisateur vient de dire (ADR 0029 décision 12, VOX-304) : l'inverse d'`AddSpokenItemHandler`, par les ports de
- * `Shared` :
+ * Retire de la liste ce que l'utilisateur vient de dire (ADR 0029 décision 12, VOX-304) : l'inverse d'`AddSpokenItemHandler`, par les ports de ce contexte (ADR 0035) :
  *
  * 1. le nombre et l'unité qu'Amazon a laissés en tête du créneau `item` sont lus comme pour l'ajout (`SpokenIngredientNamer::splitSpoken`) ;
- * 2. `SpokenListLookup` cherche le produit parmi les lignes de la liste ACTIVE (lecture seule) : pas de liste active (aucune : « Tu n'as pas de liste en cours. » ; partie au
+ * 2. `ListLineLookupCommandPort` cherche le produit parmi les lignes de la liste ACTIVE (lecture seule) : pas de liste active (aucune : « Tu n'as pas de liste en cours. » ; partie au
  *    drive : « Ta liste est déjà partie au drive. », elle n'est jamais lue ni modifiée), produit absent ou inconnu de l'utilisateur, une ligne, ou plusieurs lignes qui se valent ;
- * 3. une ligne : `VoiceShoppingList::removeItem` retire la quantité dite (1 par défaut) ; la ligne disparaît quand elle est épuisée ;
+ * 3. une ligne : `ShoppingListItemCommandPort::removeItem` retire la quantité dite (1 par défaut) ; la ligne disparaît quand elle est épuisée ;
  * 4. plusieurs lignes (« tomate » en fruit et légume ET en surgelé, toutes deux dans la liste) : on demande le rayon, par le dialogue de
  *    départage de l'ajout (`SpokenDialogueState::chooseToRemove`, l'état dit « retirer ») ; la réponse est traitée par `AnswerSpokenDialogueHandler`.
  *
@@ -38,8 +37,8 @@ use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 readonly class RemoveSpokenItemHandler
 {
     public function __construct(
-        private SpokenListLookup $lookup,
-        private VoiceShoppingList $shoppingList,
+        private ListLineLookupCommandPort $lookup,
+        private ShoppingListItemCommandPort $shoppingList,
         private SpokenIngredientNamer $namer,
     ) {
     }

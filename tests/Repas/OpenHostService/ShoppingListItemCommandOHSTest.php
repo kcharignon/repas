@@ -1,22 +1,22 @@
 <?php
 
-namespace Repas\Tests\Repas\Infrastructure\Voice;
+namespace Repas\Tests\Repas\OpenHostService;
 
 use LogicException;
 use PHPUnit\Framework\TestCase;
 use Repas\Repas\Application\Command\AddSpokenIngredient\AddSpokenIngredientCommand;
 use Repas\Repas\Application\Command\RemoveSpokenIngredient\RemoveSpokenIngredientCommand;
 use Repas\Repas\Domain\Exception\IngredientException;
-use Repas\Repas\Infrastructure\Voice\VoiceShoppingListAdapter;
-use Repas\Shared\Application\Interface\AddedItem;
-use Repas\Shared\Application\Interface\RemovedItem;
+use Repas\Repas\Application\OpenHostService\ShoppingListItemCommandOHS;
+use Repas\Repas\Domain\Model\AddedItem;
+use Repas\Repas\Domain\Model\RemovedItem;
 use Repas\Tests\Helper\MockCommandBus;
 
 /**
  * L'adaptateur seulement (bus de commandes simulé) : commande construite, résultat renvoyé tel quel, erreur de domaine propagée.
- * Le parcours avec les vrais bus est dans `VoiceShoppingListFlowTest`.
+ * Le parcours avec les vrais bus est dans `ShoppingListItemCommandOHSFlowTest`.
  */
-class VoiceShoppingListAdapterTest extends TestCase
+class ShoppingListItemCommandOHSTest extends TestCase
 {
     public function testItDispatchesTheCommandAndReturnsTheResultOfTheHandler(): void
     {
@@ -25,7 +25,7 @@ class VoiceShoppingListAdapterTest extends TestCase
         $bus = new MockCommandBus()->willReturn(AddSpokenIngredientCommand::class, $result);
 
         // When
-        $added = new VoiceShoppingListAdapter($bus)->addItem('user-id', 'pain');
+        $added = new ShoppingListItemCommandOHS($bus)->addItem('user-id', 'pain');
 
         // Then
         $this->assertSame($result, $added);
@@ -41,7 +41,7 @@ class VoiceShoppingListAdapterTest extends TestCase
     {
         // Given
         $bus = new MockCommandBus()->willReturn(AddSpokenIngredientCommand::class, new AddedItem(false, false));
-        $adapter = new VoiceShoppingListAdapter($bus);
+        $adapter = new ShoppingListItemCommandOHS($bus);
 
         // When
         $adapter->addItem('user-id', 'pain');
@@ -60,7 +60,7 @@ class VoiceShoppingListAdapterTest extends TestCase
         $this->expectExceptionObject(IngredientException::notFound('pain'));
 
         // When
-        new VoiceShoppingListAdapter($bus)->addItem('user-id', 'pain');
+        new ShoppingListItemCommandOHS($bus)->addItem('user-id', 'pain');
     }
 
     public function testAHandlerThatReturnsNothingIsABug(): void
@@ -72,7 +72,7 @@ class VoiceShoppingListAdapterTest extends TestCase
         $this->expectException(LogicException::class);
 
         // When
-        new VoiceShoppingListAdapter($bus)->addItem('user-id', 'pain');
+        new ShoppingListItemCommandOHS($bus)->addItem('user-id', 'pain');
     }
 
     public function testItDispatchesTheRemovalAndReturnsTheResultOfTheHandler(): void
@@ -82,7 +82,7 @@ class VoiceShoppingListAdapterTest extends TestCase
         $bus = new MockCommandBus()->willReturn(RemoveSpokenIngredientCommand::class, $result);
 
         // When
-        $removed = new VoiceShoppingListAdapter($bus)->removeItem('user-id', 'pain', 3, 'kilo');
+        $removed = new ShoppingListItemCommandOHS($bus)->removeItem('user-id', 'pain', 3, 'kilo');
 
         // Then : la commande porte l'utilisateur, l'ingrédient, la quantité et l'unité dits ; le résultat est rendu tel quel
         $this->assertSame($result, $removed);
@@ -100,6 +100,6 @@ class VoiceShoppingListAdapterTest extends TestCase
         $this->expectException(LogicException::class);
 
         // When
-        new VoiceShoppingListAdapter($bus)->removeItem('user-id', 'pain');
+        new ShoppingListItemCommandOHS($bus)->removeItem('user-id', 'pain');
     }
 }

@@ -8,6 +8,7 @@ use Doctrine\DBAL\Types\Types;
 use Doctrine\Persistence\ManagerRegistry;
 use Repas\Repas\Domain\Interface\SpokenRecipePhraseChoiceRepository;
 use Repas\Repas\Infrastructure\Entity\SpokenRecipePhraseChoice as SpokenRecipePhraseChoiceEntity;
+use Repas\Repas\Infrastructure\Reader\SpokenRecipePhraseReader;
 use Repas\Shared\Infrastructure\Repository\PostgreSQLRepository;
 
 /**
@@ -18,8 +19,14 @@ readonly class SpokenRecipePhraseChoicePostgreSQLRepository extends PostgreSQLRe
 {
     public function __construct(
         ManagerRegistry $managerRegistry,
+        private SpokenRecipePhraseReader $reader,
     ) {
         parent::__construct($managerRegistry, SpokenRecipePhraseChoiceEntity::class);
+    }
+
+    public function rememberedId(string $userId, string $phraseKey): ?string
+    {
+        return $this->reader->rememberedId($userId, $phraseKey);
     }
 
     public function remember(string $userId, string $phraseKey, string $recipeId, DateTimeImmutable $now): void

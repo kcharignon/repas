@@ -1,15 +1,18 @@
 <?php
 
-namespace Repas\Shared\Application\Interface;
+namespace Repas\Voice\Application\Port;
+
+use Repas\Voice\Domain\Model\AddedItem;
+use Repas\Voice\Domain\Model\RemovedItem;
 
 /**
- * Port par lequel le contexte `Voice` ajoute un article à la liste de courses de l'utilisateur (ADR 0029 décision 5, VOX-103) ou en retire
- * (décision 12, VOX-304). Défini ici, implémenté dans `Repas\Infrastructure\Voice` (ADR 0013 règle 8 : `Voice` n'importe pas `Repas`).
+ * Ce que les écritures vocales demandent à la liste de courses de l'utilisateur : y ajouter un article (ADR 0029 décision 5, VOX-103) ou en
+ * retirer (décision 12, VOX-304). Adapté depuis le contexte `Repas` (ADR 0035).
  *
- * La liste active reçoit la ligne (une unité d'achat par défaut, ou la quantité et l'unité dites), ou s'ajoute à la ligne de cet ingrédient
- * qui y est déjà ; sans liste active (aucune, ou envoyée au drive), une nouvelle liste est créée. Une liste envoyée n'est jamais modifiée.
+ * La liste active reçoit la ligne (une unité d'achat par défaut, ou la quantité et l'unité dites), ou s'ajoute à la ligne de cet ingrédient qui
+ * y est déjà ; sans liste active (aucune, ou envoyée au drive), une nouvelle liste est créée. Une liste envoyée n'est jamais modifiée.
  */
-interface VoiceShoppingList
+interface ShoppingListItemCommandPort
 {
     /**
      * @param string  $ingredientSlug un ingrédient de l'utilisateur, ou un ancien slug que ses alias traduisent
