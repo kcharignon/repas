@@ -7,11 +7,13 @@ use Repas\Drive\Infrastructure\Entity\Choice;
 use Repas\Drive\Infrastructure\Entity\DriveSettings;
 use Repas\Drive\Infrastructure\Entity\RayonVote;
 use Repas\Drive\Infrastructure\Entity\RetailerPreference;
+use Repas\Repas\Infrastructure\Entity\DepartmentListType;
 use Repas\Repas\Infrastructure\Entity\Ingredient;
 use Repas\Repas\Infrastructure\Entity\IngredientAlias;
 use Repas\Repas\Infrastructure\Entity\IngredientDistinct;
 use Repas\Repas\Infrastructure\Entity\Recipe;
 use Repas\Repas\Infrastructure\Entity\ShoppingList;
+use Repas\Repas\Infrastructure\Entity\ShoppingListType;
 use Repas\Repas\Infrastructure\Entity\SpokenPhraseChoice;
 use Repas\Repas\Infrastructure\Entity\SpokenRecipePhraseChoice;
 use Repas\Tests\Helper\DatabaseTestCase;
@@ -41,6 +43,8 @@ class UserOwnedDataCoverageTest extends DatabaseTestCase
         IngredientAlias::class => ['userId'],
         IngredientDistinct::class => ['userId'],
         ShoppingList::class => ['ownerId'],
+        ShoppingListType::class => ['ownerId'],
+        DepartmentListType::class => ['ownerId'],
         SpokenPhraseChoice::class => ['userId'],
         SpokenRecipePhraseChoice::class => ['userId'],
         RefreshToken::class => ['userId'],

@@ -8,9 +8,10 @@ use ReflectionClass;
 use ReflectionMethod;
 use Repas\Repas\Domain\Model\Ingredient;
 use Repas\Repas\Domain\Model\Recipe;
+use Repas\Repas\Domain\Model\ShoppingListType;
 
 /**
- * Garde-fou de l'ADR 0030 : le nom d'une recette ou d'un ingrédient commence par une majuscule, et la règle vit dans les gestionnaires de
+ * Garde-fou de l'ADR 0030 (et de l'ADR 0036 pour le nom d'un type de liste de courses) : le nom d'une recette ou d'un ingrédient commence par une majuscule, et la règle vit dans les gestionnaires de
  * commande (`StringTool::capitalizeFirst`, silencieuse : aucune erreur, le nom enregistré est le nom corrigé). Rien dans le langage
  * n'oblige à y penser : ce test oblige à le DIRE.
  *
@@ -35,6 +36,9 @@ class NamesStartWithACapitalTest extends TestCase
         '/\bIngredient::create\(/',
         '/\bnew Ingredient\(/',
         '/\$(?:recipe|ingredient|copy|\w+Recipe|\w+Ingredient|\w+Copy)->(?:update|setName)\(/',
+        // Le nom d'un type de liste de courses (ADR 0036 décision 14) suit la même règle
+        '/\bShoppingListType::create\(/',
+        '/\$(?:listType|\w+ListType)->rename\(/',
     ];
 
     /** Les copies : le nom vient de l'original, la règle est appliquée par un `setName` juste après. */
@@ -68,7 +72,7 @@ class NamesStartWithACapitalTest extends TestCase
         }
 
         // Then : le test ne doit pas être vide, les écritures existent bien dans l'application
-        foreach (['CreateRecipeHandler', 'UpdateRecipeHandler', 'CreateIngredientHandler', 'UpdateIngredientHandler', 'CopyRecipeHandler'] as $handler) {
+        foreach (['CreateRecipeHandler', 'UpdateRecipeHandler', 'CreateIngredientHandler', 'UpdateIngredientHandler', 'CopyRecipeHandler', 'CreateShoppingListTypeHandler', 'UpdateShoppingListTypeHandler'] as $handler) {
             $this->assertNotEmpty(array_filter($writers, static fn(string $path): bool => str_ends_with($path, "/$handler.php")), "$handler n'est plus vu comme une écriture de nom : le garde-fou ne vérifie plus rien.");
         }
     }
@@ -99,6 +103,8 @@ class NamesStartWithACapitalTest extends TestCase
         $this->assertNotSame([], self::violationsIn('$x = new Ingredient($slug, $name, $image);'));
         $this->assertNotSame([], self::violationsIn('$c = Recipe::copyFromOriginal($id, $original, $author, $retained, $newRow);'));
         $this->assertNotSame([], self::violationsIn('$c = Ingredient::copyFromOriginal($source, $author, $slug); $this->save($c);'));
+        $this->assertNotSame([], self::violationsIn('$t = ShoppingListType::create(id: $i, ownerId: $o, name: $command->name, createdAt: $now);'));
+        $this->assertNotSame([], self::violationsIn('$listType->rename($command->name);'));
         // une copie dont un seul des deux noms est corrigé
         $this->assertNotSame([], self::violationsIn('$a = Recipe::copyFromOriginal($i); $a->setName(StringTool::capitalizeFirst($a->getName())); $b = Ingredient::copyFromOriginal($s);'));
 
@@ -107,6 +113,8 @@ class NamesStartWithACapitalTest extends TestCase
         $this->assertSame([], self::violationsIn('$i = Ingredient::create(name: StringTool::capitalizeFirst($command->name), image: "", creatorId: $id);'));
         $this->assertSame([], self::violationsIn('$ingredient->update(name: StringTool::capitalizeFirst($command->name), image: "");'));
         $this->assertSame([], self::violationsIn('$c = Recipe::copyFromOriginal($i); $c->setName(StringTool::capitalizeFirst($c->getName()));'));
+        $this->assertSame([], self::violationsIn('$t = ShoppingListType::create(id: $i, ownerId: $o, name: StringTool::capitalizeFirst($command->name), createdAt: $now);'));
+        $this->assertSame([], self::violationsIn('$listType->rename(StringTool::capitalizeFirst($command->name));'));
         // ce qui n'est pas une écriture de nom d'une recette ou d'un ingrédient
         $this->assertSame([], self::violationsIn('$conversion->update(startUnit: $s, endUnit: $e); $shoppingList->setName($n); $x = RecipeRow::copyFromOriginal($r); $y = ShoppingListIngredient::create($i);'));
     }
@@ -116,6 +124,7 @@ class NamesStartWithACapitalTest extends TestCase
         // Then : une nouvelle méthode publique qui reçoit un `$name` est une nouvelle porte d'entrée pour le nom : l'ajouter ici (et au test ci-dessus)
         $this->assertSame(['create', 'setName', 'update'], self::methodsAcceptingAName(Recipe::class));
         $this->assertSame(['__construct', 'create', 'setName', 'update'], self::methodsAcceptingAName(Ingredient::class));
+        $this->assertSame(['create', 'rename'], self::methodsAcceptingAName(ShoppingListType::class));
     }
 
     /**

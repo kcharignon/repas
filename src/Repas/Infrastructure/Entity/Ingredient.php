@@ -52,6 +52,13 @@ class Ingredient
     private bool $isBase = false;
 
     /**
+     * Le choix de l'utilisateur pour ce produit (ADR 0036) : `NULL` = « comme son rayon », `main` = la liste principale, sinon l'identifiant d'un
+     * type de liste à lui. Lu par LST-003 ; jamais copié avec le produit.
+     */
+    #[ORM\Column(name: 'list_destination', length: 36, nullable: true)]
+    private ?string $listDestination = null;
+
+    /**
      * @param array<string> $compatibleUnitSlugs
      */
     public function __construct(
@@ -66,6 +73,7 @@ class Ingredient
         array $compatibleUnitSlugs,
         ?string $adoptedFrom = null,
         bool $isBase = false,
+        ?string $listDestination = null,
     ) {
         $this->slug = $slug;
         $this->name = $name;
@@ -78,6 +86,7 @@ class Ingredient
         $this->compatibleUnitSlugs = $compatibleUnitSlugs;
         $this->adoptedFrom = $adoptedFrom;
         $this->isBase = $isBase;
+        $this->listDestination = $listDestination;
     }
 
 
@@ -194,6 +203,17 @@ class Ingredient
         return $this;
     }
 
+    public function getListDestination(): ?string
+    {
+        return $this->listDestination;
+    }
+
+    public function setListDestination(?string $listDestination): Ingredient
+    {
+        $this->listDestination = $listDestination;
+        return $this;
+    }
+
     public static function fromModel(IngredientModel $ingredient): static
     {
         return new static(
@@ -208,6 +228,7 @@ class Ingredient
             compatibleUnitSlugs: $ingredient->getCompatibleUnits()->map(fn(UnitModel $unit) => $unit->getSlug())->toArray(),
             adoptedFrom: $ingredient->getAdoptedFrom(),
             isBase: $ingredient->isBase(),
+            listDestination: $ingredient->getListDestination(),
         );
     }
 }

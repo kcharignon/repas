@@ -272,6 +272,68 @@ class IngredientRepositoryTest extends DatabaseTestCase
         $this->assertSame(false, $this->boolColumnOf($base->getSlug(), 'is_base'));
     }
 
+    public function testTheListDestinationRoundTripsThroughTheDatabaseAndSurvivesAnUpdate(): void
+    {
+        // Arrange : un produit qui désigne un type, un autre la liste principale, un dernier rien (ADR 0036)
+        $creator = new UserBuilder()->build();
+        $this->persister->saveUser($creator);
+        $withType = new IngredientBuilder()->isButter()->withCreator($creator, true)->withListDestination('type-1')->build();
+        $withMain = new IngredientBuilder()->isFlour()->withCreator($creator, true)->withListDestination('main')->build();
+        $withNothing = new IngredientBuilder()->isEgg()->withCreator($creator, true)->build();
+        foreach ([$withType, $withMain, $withNothing] as $ingredient) {
+            $this->persister->saveIngredient($ingredient);
+        }
+        $this->entityManager->clear();
+
+        // Act
+        $loaded = $this->ingredientRepository->findOneBySlug($withType->getSlug());
+
+        // Assert : lu en base (l'identity map est vide)
+        $this->assertSame('type-1', $loaded->getListDestination());
+        $this->assertSame('main', $this->ingredientRepository->findOneBySlug($withMain->getSlug())->getListDestination());
+        $this->assertNull($this->ingredientRepository->findOneBySlug($withNothing->getSlug())->getListDestination());
+
+        // Act : un renommage garde le choix
+        $loaded->setName('Beurre demi-sel');
+        $this->ingredientRepository->save($loaded);
+        $this->entityManager->clear();
+
+        // Assert
+        $this->assertSame('type-1', $this->ingredientRepository->findOneBySlug($withType->getSlug())->getListDestination());
+        $this->assertSame('type-1', $this->entityManager->getConnection()->fetchOne('SELECT list_destination FROM ingredient WHERE slug = ?', [$withType->getSlug()]));
+    }
+
+    public function testClearListDestinationEmptiesOnlyTheChoiceOfThisCreatorForThisType(): void
+    {
+        // Arrange
+        $creator = new UserBuilder()->build();
+        $other = new UserBuilder()->build();
+        $this->persister->saveUser($creator);
+        $this->persister->saveUser($other);
+        $named = new IngredientBuilder()->isButter()->withCreator($creator, true)->withListDestination('type-1')->build();
+        $named2 = new IngredientBuilder()->isFlour()->withCreator($creator, true)->withListDestination('type-1')->build();
+        $otherType = new IngredientBuilder()->isEgg()->withCreator($creator, true)->withListDestination('type-2')->build();
+        $main = new IngredientBuilder()->isPasta()->withCreator($creator, true)->withListDestination('main')->build();
+        $otherCreator = new IngredientBuilder()->isButter()->withCreator($other, true)->withListDestination('type-1')->build();
+        foreach ([$named, $named2, $otherType, $main, $otherCreator] as $ingredient) {
+            $this->persister->saveIngredient($ingredient);
+        }
+        $this->entityManager->clear();
+        $counter = static::getContainer()->get(QueryCounter::class);
+        $counter->reset();
+
+        // Act
+        $this->ingredientRepository->clearListDestination($creator->getId(), 'type-1');
+
+        // Assert : une seule instruction, aucun ingrédient hydraté
+        $this->assertSame(['UPDATE ingredient' => 1], $counter->byTable());
+        $destinations = $this->entityManager->getConnection()->fetchAllKeyValue('SELECT slug, list_destination FROM ingredient');
+        $expected = [$named->getSlug() => null, $named2->getSlug() => null, $otherType->getSlug() => 'type-2', $main->getSlug() => 'main', $otherCreator->getSlug() => 'type-1'];
+        ksort($destinations);
+        ksort($expected);
+        $this->assertSame($expected, $destinations);
+    }
+
     public function testARowInsertedWithoutTheColumnIsNotBase(): void
     {
         // Arrange : un `INSERT` comme celui du code d'avant la colonne, qui ne la connaît pas (ADR 0017 règle 6)

@@ -72,6 +72,8 @@ class IngredientReferencesAreAllRepointedTest extends DatabaseTestCase
         'drive_department_rayon.department_slug' => 'un rayon de Repas, appris par rayon et non par ingrédient',
         'drive_rayon_vote.department_slug' => 'un rayon de Repas, voté par rayon et non par ingrédient',
         'drive_choice_product.pack_size_unit_slug' => 'un slug d\'UNITÉ (la contenance d\'un produit), pas d\'ingrédient',
+        'department_list_type.department_slug' => 'un rayon de Repas, rattaché à un type de liste de courses par rayon et non par ingrédient (ADR 0036)',
+        'shopping_list_type.slugged_name' => 'le nom normalisé d\'un type de liste de courses (ADR 0036)',
     ];
 
     /**

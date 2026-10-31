@@ -99,4 +99,11 @@ interface IngredientRepository
      * ni contrôle d'usage ni événement par ingrédient, et les agrégats déjà chargés ne sont pas mis à jour.
      */
     public function deleteByCreator(string $creatorId): void;
+
+    /**
+     * Remet à vide le choix de liste (`list_destination`, ADR 0036) de tous les produits de ce créateur qui désignent `$destination` (le
+     * type de liste qu'on supprime) : ils redeviennent « comme leur rayon ». Une seule instruction, aucun agrégat hydraté, les agrégats déjà
+     * chargés ne sont pas mis à jour.
+     */
+    public function clearListDestination(string $creatorId, string $destination): void;
 }

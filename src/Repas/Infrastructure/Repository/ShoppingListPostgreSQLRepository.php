@@ -214,6 +214,7 @@ readonly class ShoppingListPostgreSQLRepository extends PostgreSQLRepository imp
             'rows' => $this->shopListRowRepository->findByShoppingListId($shoppingListEntity->getId()),
             'version' => $shoppingListEntity->getVersion(),
             'sent_at' => $shoppingListEntity->getSentAt(),
+            'list_type_id' => $shoppingListEntity->getListTypeId(),
         ]);
     }
 
@@ -267,6 +268,26 @@ readonly class ShoppingListPostgreSQLRepository extends PostgreSQLRepository imp
             ->setParameter('recipeIds', $recipeIds)
             ->getQuery()
             ->execute();
+    }
+
+    public function detachFromListType(string $ownerId, string $listTypeId): void
+    {
+        $table = $this->entityManager->getClassMetadata(ShoppingListEntity::class)->getTableName();
+
+        // Une seule instruction : le côté droit d'un SET lit la ligne d'AVANT, le statut testé est donc bien celui de départ. La version monte
+        // de 1 pour la seule liste qui change de statut (ADR 0016 : elle reste lisible par son ETag, `bumpVersion` écrit la colonne de même)
+        $this->entityManager->getConnection()->executeStatement(
+            sprintf(
+                'UPDATE %1$s SET list_type_id = NULL, status = CASE WHEN status = :active THEN :paused ELSE status END, version = CASE WHEN status = :active THEN version + 1 ELSE version END WHERE owner = :owner AND list_type_id = :type',
+                $table,
+            ),
+            [
+                'active' => ShoppingListStatus::ACTIVE->value,
+                'paused' => ShoppingListStatus::PAUSED->value,
+                'owner' => $ownerId,
+                'type' => $listTypeId,
+            ],
+        );
     }
 
     public function isRecipePlanned(string $recipeId): bool

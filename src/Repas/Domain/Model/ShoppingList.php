@@ -45,6 +45,7 @@ final class ShoppingList implements ModelInterface
         private Tab               $rows,
         private int               $version = 1,
         private ?DateTimeImmutable $sentAt = null,
+        private ?string           $listTypeId = null,
     ) {
     }
 
@@ -139,7 +140,30 @@ final class ShoppingList implements ModelInterface
             rows: $datas['rows'],
             version: $datas['version'] ?? 1,
             sentAt: $datas['sent_at'] ?? null,
+            listTypeId: $datas['list_type_id'] ?? null,
         );
+    }
+
+    /**
+     * Le type de la liste (ADR 0036) : l'identifiant d'un type de liste de son propriétaire, `null` pour la liste principale (celle d'avant les
+     * types). Rien ne le pose ni ne le lit encore (LST-004).
+     */
+    public function getListTypeId(): ?string
+    {
+        return $this->listTypeId;
+    }
+
+    /**
+     * La liste perd son type quand on le supprime (ADR 0036 décision 15) : elle devient une liste sans type, rien n'est déplacé ni fusionné, et
+     * si elle était en cours elle passe en pause (la liste principale en cours n'est pas touchée). Une liste envoyée au drive ou terminée garde
+     * son statut. C'est la règle que `ShoppingListRepository::detachFromListType` applique en masse en base.
+     */
+    public function detachFromListType(): void
+    {
+        $this->listTypeId = null;
+        if ($this->isActive()) {
+            $this->status = Status::PAUSED;
+        }
     }
 
     public function hasRecipe(Recipe $recipe): bool

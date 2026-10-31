@@ -8,7 +8,10 @@ use Repas\Repas\Domain\Exception\MealException;
 use Repas\Repas\Domain\Exception\RecipeException;
 use Repas\Repas\Domain\Exception\ShoppingListException;
 use Repas\Repas\Domain\Exception\ShoppingListRowException;
+use Repas\Repas\Domain\Exception\ShoppingListTypeException;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
+use Repas\Repas\Domain\Interface\ShoppingListTypeRepository;
+use Repas\Repas\Domain\Model\ShoppingListType;
 use Repas\Repas\Application\Loader\OwnershipLoader;
 use Repas\Tests\Helper\Builder\IngredientBuilder;
 use Repas\Tests\Helper\Builder\RecipeBuilder;
@@ -116,5 +119,15 @@ class OwnershipPostgreSQLLoaderTest extends DatabaseTestCase
         // When & Then
         $this->assertSame($owner->getId(), $this->ownershipLoader->shoppingListRowOwnerId($shoppingList->getRows()->reset()->getId()));
         $this->assertThrowsObject(ShoppingListRowException::notFound('inconnue'), fn() => $this->ownershipLoader->shoppingListRowOwnerId('inconnue'));
+    }
+
+    public function testListTypeOwnerIsTheOwnerOfTheTypeAndAnUnknownTypeIsNotFound(): void
+    {
+        // Given
+        static::getContainer()->get(ShoppingListTypeRepository::class)->save(ShoppingListType::create('type-1', 'owner-id', 'Boucherie', new \DateTimeImmutable()));
+
+        // When & Then
+        $this->assertSame('owner-id', $this->ownershipLoader->listTypeOwnerId('type-1'));
+        $this->assertThrowsObject(ShoppingListTypeException::notFound(), fn() => $this->ownershipLoader->listTypeOwnerId('inconnu'));
     }
 }

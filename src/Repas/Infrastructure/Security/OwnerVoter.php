@@ -24,6 +24,7 @@ class OwnerVoter extends Voter
     public const string RECIPE_OWNER = 'RECIPE_OWNER';
     public const string MEAL_OWNER = 'MEAL_OWNER';
     public const string SHOPPING_LIST_ROW_OWNER = 'SHOPPING_LIST_ROW_OWNER';
+    public const string LIST_TYPE_OWNER = 'LIST_TYPE_OWNER';
 
     public function __construct(
         private readonly AccessDecisionManagerInterface $accessDecisionManager,
@@ -40,16 +41,17 @@ class OwnerVoter extends Voter
                 self::RECIPE_OWNER,
                 self::MEAL_OWNER,
                 self::SHOPPING_LIST_ROW_OWNER,
+                self::LIST_TYPE_OWNER,
             ]) && is_string($subject);
     }
 
     protected function voteOnAttribute(string $attribute, mixed $subject, TokenInterface $token, ?Vote $vote = null): bool
     {
         // Un administrateur passe pour les recettes, les listes et les repas des autres, JAMAIS pour les ingrédients : un ingrédient est à
-        // son propriétaire seul, sans passe-droit (ADR 0028, amendement du 2026-10-20, D3). Pour une recette, le passe-droit s'arrête à la
-        // recette SECRÈTE d'un autre (ADR 0033), vérifiée plus bas
+        // son propriétaire seul, sans passe-droit (ADR 0028, amendement du 2026-10-20, D3), comme un type de liste de courses (ADR 0036). Pour
+        // une recette, le passe-droit s'arrête à la recette SECRÈTE d'un autre (ADR 0033), vérifiée plus bas
         $isAdmin = $this->accessDecisionManager->decide($token, ['ROLE_ADMIN']);
-        if ($isAdmin && !in_array($attribute, [self::INGREDIENT_OWNER, self::RECIPE_OWNER], true)) {
+        if ($isAdmin && !in_array($attribute, [self::INGREDIENT_OWNER, self::RECIPE_OWNER, self::LIST_TYPE_OWNER], true)) {
             return true;
         }
 
@@ -90,6 +92,9 @@ class OwnerVoter extends Voter
                 return $this->ownershipLoader->mealOwnerId($subject) === $user->getId();
             case self::SHOPPING_LIST_ROW_OWNER:
                 return $this->ownershipLoader->shoppingListRowOwnerId($subject) === $user->getId();
+            case self::LIST_TYPE_OWNER:
+                // Un type de liste est à son propriétaire seul : lui seul l'écrit, un administrateur compris (le type d'un autre est lu en `404`)
+                return $this->ownershipLoader->listTypeOwnerId($subject) === $user->getId();
             default:
                 return false;
         }

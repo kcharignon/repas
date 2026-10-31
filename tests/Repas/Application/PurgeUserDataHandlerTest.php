@@ -10,6 +10,7 @@ use Repas\Repas\Domain\Model\AliasKind;
 use Repas\Repas\Domain\Model\IngredientAlias;
 use Repas\Repas\Domain\Model\IngredientDistinctPair;
 use Repas\Repas\Domain\Model\Meal;
+use Repas\Repas\Domain\Model\ShoppingListType;
 use Repas\Tests\Helper\Builder\ConversionBuilder;
 use Repas\Tests\Helper\Builder\IngredientBuilder;
 use Repas\Tests\Helper\Builder\RecipeBuilder;
@@ -23,6 +24,7 @@ use Repas\Tests\Helper\InMemoryRepository\SpokenRecipePhraseChoiceInMemoryReposi
 use Repas\Tests\Helper\InMemoryRepository\IngredientInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\RecipeInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\ShoppingListInMemoryRepository;
+use Repas\Tests\Helper\InMemoryRepository\ShoppingListTypeInMemoryRepository;
 
 class PurgeUserDataHandlerTest extends TestCase
 {
@@ -37,6 +39,7 @@ class PurgeUserDataHandlerTest extends TestCase
     private IngredientDistinctInMemoryRepository $distinctRepository;
     private SpokenPhraseChoiceInMemoryRepository $spokenPhraseRepository;
     private SpokenRecipePhraseChoiceInMemoryRepository $spokenRecipePhraseRepository;
+    private ShoppingListTypeInMemoryRepository $listTypeRepository;
     private PurgeUserDataHandler $handler;
 
     protected function setUp(): void
@@ -92,6 +95,11 @@ class PurgeUserDataHandlerTest extends TestCase
         $this->spokenRecipePhraseRepository->remember(self::USER, 'hachis', 'recipe-user', new \DateTimeImmutable());
         $this->spokenRecipePhraseRepository->remember(self::OTHER, 'hachis', 'recipe-other', new \DateTimeImmutable());
 
+        $this->listTypeRepository = new ShoppingListTypeInMemoryRepository([
+            ShoppingListType::load(['id' => 'user-type', 'owner_id' => self::USER, 'name' => 'Boucherie', 'slugged_name' => 'boucherie', 'created_at' => new \DateTimeImmutable(), 'department_slugs' => ['viandes']]),
+            ShoppingListType::load(['id' => 'other-type', 'owner_id' => self::OTHER, 'name' => 'Marché', 'slugged_name' => 'marche', 'created_at' => new \DateTimeImmutable(), 'department_slugs' => ['viandes']]),
+        ]);
+
         $this->handler = new PurgeUserDataHandler(
             $this->shoppingListRepository,
             $this->recipeRepository,
@@ -101,6 +109,7 @@ class PurgeUserDataHandlerTest extends TestCase
             $this->distinctRepository,
             $this->spokenPhraseRepository,
             $this->spokenRecipePhraseRepository,
+            $this->listTypeRepository,
         );
     }
 
@@ -202,6 +211,16 @@ class PurgeUserDataHandlerTest extends TestCase
         $this->assertSame([[self::OTHER, 'hachis']], array_map(static fn(array $row): array => [$row['userId'], $row['phrase']], $this->spokenRecipePhraseRepository->all()));
     }
 
+    public function testTheShoppingListTypesOfTheUserAndTheirDepartmentsAreDeletedAndTheOthersKept(): void
+    {
+        // When
+        ($this->handler)(new PurgeUserDataCommand(self::USER));
+
+        // Then : le rayon que les deux comptes avaient rattaché reste à l'autre
+        $this->assertSame(['other-type'], array_map(static fn(ShoppingListType $type): string => $type->getId(), $this->listTypeRepository->all()));
+        $this->assertSame(['viandes'], $this->listTypeRepository->findOneById('other-type')->getDepartmentSlugs());
+    }
+
     public function testAUserWithoutAnyDataIsNotAnError(): void
     {
         // When
@@ -217,6 +236,7 @@ class PurgeUserDataHandlerTest extends TestCase
         $this->assertCount(2, $this->distinctRepository->all());
         $this->assertCount(2, $this->spokenPhraseRepository->all());
         $this->assertCount(2, $this->spokenRecipePhraseRepository->all());
+        $this->assertCount(2, $this->listTypeRepository->all());
     }
 
     /**

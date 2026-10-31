@@ -205,6 +205,7 @@ readonly class IngredientPostgreSQLRepository extends PostgreSQLRepository imple
             ->setDefaultPurchaseUnitSlug($ingredient->getDefaultPurchaseUnit()->getSlug())
             ->setCompatibleUnitSlugs($ingredient->getCompatibleUnits()->map(fn(Unit $unit) => $unit->getSlug())->toArray())
             ->setIsBase($ingredient->isBase())
+            ->setListDestination($ingredient->getListDestination())
         ;
     }
 
@@ -226,6 +227,7 @@ readonly class IngredientPostgreSQLRepository extends PostgreSQLRepository imple
             "compatible_units" => $this->unitRepository->findBySlugs(new Tab($ingredientEntity->getCompatibleUnitSlugs(), 'string')),
             "adopted_from" => $ingredientEntity->getAdoptedFrom(),
             "is_base" => $ingredientEntity->isBase(),
+            "list_destination" => $ingredientEntity->getListDestination(),
         ]);
     }
 
@@ -301,6 +303,19 @@ readonly class IngredientPostgreSQLRepository extends PostgreSQLRepository imple
             ->delete(IngredientEntity::class, 'i')
             ->where('i.creatorId = :creator')
             ->setParameter('creator', $creatorId)
+            ->getQuery()
+            ->execute();
+    }
+
+    public function clearListDestination(string $creatorId, string $destination): void
+    {
+        $this->entityManager->createQueryBuilder()
+            ->update(IngredientEntity::class, 'i')
+            ->set('i.listDestination', 'NULL')
+            ->where('i.creatorId = :creator')
+            ->andWhere('i.listDestination = :destination')
+            ->setParameter('creator', $creatorId)
+            ->setParameter('destination', $destination)
             ->getQuery()
             ->execute();
     }

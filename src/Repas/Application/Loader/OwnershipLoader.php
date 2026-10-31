@@ -46,4 +46,12 @@ interface OwnershipLoader
      * @throws DomainException
      */
     public function shoppingListRowOwnerId(string $shoppingListRowId): string;
+
+    /**
+     * Identifiant du propriétaire d'un type de liste de courses (ADR 0036). Aucun passe-droit : le type d'un autre est refusé à tous, un
+     * administrateur compris.
+     *
+     * @throws DomainException le type est inconnu
+     */
+    public function listTypeOwnerId(string $listTypeId): string;
 }

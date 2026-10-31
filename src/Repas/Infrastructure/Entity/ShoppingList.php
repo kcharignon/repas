@@ -32,6 +32,10 @@ class ShoppingList
     #[ORM\Column(name: 'sent_at', nullable: true)]
     private ?DateTimeImmutable $sentAt = null;
 
+    // Type de la liste (ADR 0036) ; null = la liste principale. Lu par LST-004
+    #[ORM\Column(name: 'list_type_id', length: 36, nullable: true)]
+    private ?string $listTypeId = null;
+
     // Version de l'ETag : écrite seulement par `PostgreSQLRepository::bumpVersion` (jamais par le flush de Doctrine)
     #[ORM\Column(type: 'integer', updatable: false)]
     private int $version = 1;
@@ -43,6 +47,7 @@ class ShoppingList
         Status            $status,
         ?string            $name,
         ?DateTimeImmutable $sentAt = null,
+        ?string            $listTypeId = null,
     ) {
         $this->id = $id;
         $this->ownerId = $ownerId;
@@ -50,6 +55,7 @@ class ShoppingList
         $this->status = $status;
         $this->name = $name;
         $this->sentAt = $sentAt;
+        $this->listTypeId = $listTypeId;
     }
 
     public static function fromModel(ShoppingListModel $shoppingListModel): static
@@ -61,6 +67,7 @@ class ShoppingList
             status: $shoppingListModel->getStatus(),
             name: $shoppingListModel->getName(),
             sentAt: $shoppingListModel->getSentAt(),
+            listTypeId: $shoppingListModel->getListTypeId(),
         );
     }
 
@@ -69,6 +76,7 @@ class ShoppingList
         $this->status = $shoppingListModel->getStatus();
         $this->name = $shoppingListModel->getName();
         $this->sentAt = $shoppingListModel->getSentAt();
+        $this->listTypeId = $shoppingListModel->getListTypeId();
     }
 
     public function getId(): ?string
@@ -137,5 +145,10 @@ class ShoppingList
     public function getSentAt(): ?DateTimeImmutable
     {
         return $this->sentAt;
+    }
+
+    public function getListTypeId(): ?string
+    {
+        return $this->listTypeId;
     }
 }

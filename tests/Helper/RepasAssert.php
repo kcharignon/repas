@@ -50,6 +50,7 @@ class RepasAssert
         Assert::assertSame($expected->getCreatorId(), $actual->getCreatorId(), "Ingredient {$expected->getSlug()}, have wrong creator");
         Assert::assertSame($expected->getAdoptedFrom(), $actual->getAdoptedFrom(), "Ingredient {$expected->getSlug()}, have wrong origin");
         Assert::assertSame($expected->isBase(), $actual->isBase(), "Ingredient {$expected->getSlug()}, have wrong base marker");
+        Assert::assertSame($expected->getListDestination(), $actual->getListDestination(), "Ingredient {$expected->getSlug()}, have wrong list destination");
         self::assertUnit($expected->getDefaultCookingUnit(), $actual->getDefaultCookingUnit(), sprintf("Ingredient %s, have wrong default cooking unit", $expected->getSlug()));
         self::assertUnit($expected->getDefaultPurchaseUnit(), $actual->getDefaultPurchaseUnit(), sprintf("Ingredient %s, have wrong default purchase unit", $expected->getSlug()));
         self::assertTab(
@@ -136,6 +137,7 @@ class RepasAssert
         Assert::assertSame($expected->getRecipeId(), $actual->getRecipeId());
         Assert::assertEquals($expected->getServing(), $actual->getServing());
         Assert::assertEquals($expected->getShoppingListId(), $actual->getShoppingListId());
+        Assert::assertSame($expected->getPlannedGroupId(), $actual->getPlannedGroupId());
     }
 
     /**
@@ -185,6 +187,7 @@ class RepasAssert
         Assert::assertEquals($expected->getStatus(), $actual->getStatus());
         Assert::assertEquals($expected->getName(), $actual->getName());
         Assert::assertEquals($expected->getSentAt()?->format(DATE_ATOM), $actual->getSentAt()?->format(DATE_ATOM));
+        Assert::assertSame($expected->getListTypeId(), $actual->getListTypeId());
         Assert::assertSame($expected->getOwnerId(), $actual->getOwnerId());
         self::assertMeals($expected->getMeals(), $actual->getMeals());
         self::assertShoppingListIngredients($expected->getIngredients(), $actual->getIngredients());

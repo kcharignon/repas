@@ -115,4 +115,14 @@ class IngredientInMemoryRepository extends AbstractInMemoryRepository implements
     {
         $this->models = $this->models->filter(fn(Ingredient $ingredient) => $ingredient->getCreatorId() !== $creatorId);
     }
+
+    public function clearListDestination(string $creatorId, string $destination): void
+    {
+        foreach ($this->models as $ingredient) {
+            /** @var Ingredient $ingredient */
+            if ($ingredient->getCreatorId() === $creatorId && $ingredient->getListDestination() === $destination) {
+                $ingredient->changeListDestination(null);
+            }
+        }
+    }
 }

@@ -77,4 +77,12 @@ interface ShoppingListRepository
      * @param list<string> $recipeIds
      */
     public function removeMealsOfRecipes(array $recipeIds): void;
+
+    /**
+     * Suppression d'un type de liste (ADR 0036 décision 15) : toutes les listes de ce propriétaire qui portent ce type n'en ont plus (elles
+     * deviennent des listes sans type, sous leur nom), et celle qui est en cours passe en pause, version +1. Une liste envoyée au drive ou
+     * terminée garde son statut ; aucune ligne, aucun repas n'est déplacé ni fusionné. Une seule instruction, aucun agrégat hydraté (c'est la
+     * règle de `ShoppingList::detachFromListType`, en masse).
+     */
+    public function detachFromListType(string $ownerId, string $listTypeId): void;
 }
