@@ -11,9 +11,11 @@ final readonly class PlannedMealResult
 {
     /**
      * @param list<PlannedMealList> $lists
+     * @param bool                  $mainListCreated la liste principale a été créée par cette planification (`PlannedMealCommand::$newMainListId`)
      */
     public function __construct(
         public array $lists,
+        public bool $mainListCreated = false,
     ) {
     }
 }

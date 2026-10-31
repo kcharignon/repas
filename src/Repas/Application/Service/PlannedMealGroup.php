@@ -72,6 +72,23 @@ readonly class PlannedMealGroup
     }
 
     /**
+     * Une liste du groupe est-elle envoyée au drive ? La commande vocale le demande avant d'écrire, pour le dire (« Ta liste est déjà partie au drive. »)
+     * au lieu de laisser `assertEditable` refuser en `409`.
+     *
+     * @param list<GroupedMeal> $members
+     */
+    public function hasSentList(array $members): bool
+    {
+        foreach ($members as $member) {
+            if ($member->shoppingList->isSent()) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * Aucune liste du groupe n'est envoyée au drive : sinon tout est refusé (les repas sont modifiés sans passer par un mutateur de l'agrégat, la
      * garde de la liste envoyée est explicite, ADR 0023).
      *

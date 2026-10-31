@@ -196,6 +196,43 @@ class ActiveListLookupCommandOHSTest extends TestCase
         $this->assertEqualsCanonicalizing([$fresh, $frozen], $result->lines);
     }
 
+    public function testOneProductInTwoActiveListsIsOneProductWithALinePerList(): void
+    {
+        // Given : de la viande hachée dans la liste principale (1) et dans la Boucherie (2), un seul ingrédient
+        $inMain = self::line('viande-hachee', 'viande hachée', 'viande', 'viande', 1.0);
+        $inButcher = new ActiveListLine('viande-hachee', 'viande hachée', 'viande', 'viande', 2.0, 'unite', 'unité', 'Boucherie');
+        $adapter = $this->adapter([$inMain, $inButcher], [new SpokenCandidate('viande-hachee', 'viande-hachee', 'viande hachée', 'viande')]);
+
+        // When
+        $result = $adapter->find('user-id', 'de la viande hachée');
+
+        // Then : pas de départage (un seul produit), les deux lignes avec leur liste, la principale d'abord
+        $this->assertFalse($result->isTied());
+        $this->assertEquals([$inMain, $inButcher], $result->lines);
+    }
+
+    public function testTwoProductsThatTieStayTiedWhateverTheirLists(): void
+    {
+        // Given : « tomate » en fruit et légume (dans deux listes) et en surgelé
+        $fresh = self::line('tomate', 'tomate', 'fruit-et-legume', 'fruits et légumes', 2.0);
+        $freshInMarket = new ActiveListLine('tomate', 'tomate', 'fruit-et-legume', 'fruits et légumes', 3.0, 'unite', 'unité', 'Marché');
+        $frozen = self::line('tomate-surgelee', 'tomate', 'surgele', 'surgelé', 1.0);
+        $adapter = $this->adapter(
+            [$fresh, $freshInMarket, $frozen],
+            [
+                new SpokenCandidate('tomate', 'tomate', 'tomate', 'fruits et légumes', 0, 'fruit-et-legume'),
+                new SpokenCandidate('tomate-surgelee', 'tomate', 'tomate', 'surgelé', 0, 'surgele'),
+            ],
+        );
+
+        // When
+        $result = $adapter->find('user-id', 'des tomates');
+
+        // Then
+        $this->assertTrue($result->isTied());
+        $this->assertEqualsCanonicalizing([$fresh, $freshInMarket, $frozen], $result->lines);
+    }
+
     public function testOfTwoIngredientsThatTieNeitherInTheListIsAbsentWithItsName(): void
     {
         // Given : aucune des deux tomates n'est dans la liste

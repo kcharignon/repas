@@ -8,6 +8,7 @@ use Repas\Repas\Application\Loader\ActiveShoppingListLines;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Repas\Domain\Model\Ingredient;
 use Repas\Repas\Domain\Model\ShoppingListStatus;
+use Repas\Repas\Domain\Model\ShoppingListType;
 use Repas\Repas\Domain\Model\ActiveListLine;
 use Repas\Tests\Helper\Builder\DepartmentBuilder;
 use Repas\Tests\Helper\Builder\IngredientBuilder;
@@ -152,6 +153,64 @@ class ActiveShoppingListLinesPostgreSQLLoaderTest extends DatabaseTestCase
         // Then : deux requêtes dans les deux cas
         $this->assertSame($withOne, $withTwenty);
         $this->assertSame(2, $withTwenty);
+    }
+
+    public function testEveryActiveListIsReadTheMainListFirstAndALineNamesItsList(): void
+    {
+        // Given : un œuf dans la liste principale ET dans la liste « Boucherie » (un type), du lait dans la Boucherie seulement ; une liste en pause d'un autre type
+        $user = $this->savedUser();
+        $egg = $this->savedIngredient($user, new IngredientBuilder()->isEgg());
+        $milk = $this->savedIngredient($user, new IngredientBuilder()->isMilk());
+        $this->persister->saveShoppingListType(ShoppingListType::create('butcher-type', $user->getId(), 'Boucherie', new \DateTimeImmutable('2026-10-31 10:00:00')));
+        $main = new ShoppingListBuilder()->withOwner($user)->withId('list-main')->addIngredient($egg)->build();
+        $butcher = new ShoppingListBuilder()->withOwner($user)->withId('list-butcher')->withListTypeId('butcher-type')->withName('Boucherie du coin')->addIngredient($egg)->addIngredient($milk)->build();
+        $butcher->addRow($egg->getSlug(), 'unite', 2);
+        $this->shoppingLists->save($main);
+        $this->shoppingLists->save($butcher);
+        $this->entityManager->clear();
+
+        // When
+        $lines = $this->loader->forUser($user->getId()) ?? [];
+
+        // Then : par ingrédient, la liste principale (sans nom de liste) avant la Boucherie, qui porte le nom que l'utilisateur lui a donné
+        $this->assertSame(
+            [[$milk->getSlug(), 'Boucherie du coin'], [$egg->getSlug(), null], [$egg->getSlug(), 'Boucherie du coin']],
+            array_map(static fn(ActiveListLine $line): array => [$line->slug, $line->listName], $lines),
+        );
+    }
+
+    public function testATypedListWithoutANameIsNamedAfterItsType(): void
+    {
+        // Given
+        $user = $this->savedUser();
+        $egg = $this->savedIngredient($user, new IngredientBuilder()->isEgg());
+        $this->persister->saveShoppingListType(ShoppingListType::create('market-type', $user->getId(), 'Marché', new \DateTimeImmutable('2026-10-31 10:00:00')));
+        $this->shoppingLists->save(new ShoppingListBuilder()->withOwner($user)->withListTypeId('market-type')->withName(null)->addIngredient($egg)->build());
+        $this->entityManager->clear();
+
+        // When / Then : sans liste principale, la seule liste en cours est celle du type
+        $this->assertSame(['Marché'], array_map(static fn(ActiveListLine $line): ?string => $line->listName, $this->loader->forUser($user->getId()) ?? []));
+    }
+
+    public function testTheNumberOfQueriesDoesNotDependOnTheNumberOfActiveLists(): void
+    {
+        // Given : trois listes en cours
+        $user = $this->savedUser();
+        $counter = static::getContainer()->get(QueryCounter::class);
+        $egg = $this->savedIngredient($user, new IngredientBuilder()->isEgg());
+        foreach (['a', 'b'] as $letter) {
+            $this->persister->saveShoppingListType(ShoppingListType::create("type-$letter", $user->getId(), "Type $letter", new \DateTimeImmutable('2026-10-31 10:00:00')));
+            $this->shoppingLists->save(new ShoppingListBuilder()->withOwner($user)->withId("list-$letter")->withListTypeId("type-$letter")->addIngredient($egg)->build());
+        }
+        $this->shoppingLists->save(new ShoppingListBuilder()->withOwner($user)->withId('list-main')->addIngredient($egg)->build());
+        $this->entityManager->clear();
+        $counter->reset();
+
+        // When
+        $this->assertCount(3, $this->loader->forUser($user->getId()) ?? []);
+
+        // Then : toujours deux requêtes
+        $this->assertSame(2, $counter->count());
     }
 
     public function testItSaysWhetherTheUserHasAListSentToTheDriveInOneQuery(): void

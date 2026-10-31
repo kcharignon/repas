@@ -3,8 +3,9 @@
 namespace Repas\Repas\Domain\Model;
 
 /**
- * Ce qu'a fait le retrait d'un repas de la liste active (ADR 0029 décision 12, VOX-306) : le repas a quitté la liste, ou son nombre de personnes a
- * baissé, ou il n'était pas dans la liste active (rien n'est écrit).
+ * Ce qu'a fait le retrait d'un repas des listes en cours (ADR 0029 décision 12, VOX-306) : le repas a quitté la liste, ou son nombre de personnes a
+ * baissé, ou il n'était pas dans une liste en cours (rien n'est écrit), ou une des listes de sa planification est partie au drive (rien n'est écrit, ADR
+ * 0036 décision 9).
  */
 final readonly class MealRemovalResult
 {
@@ -15,6 +16,8 @@ final readonly class MealRemovalResult
         public bool $removedAll,
         /** Le nombre de personnes qui reste quand le repas n'a pas quitté la liste (0 sinon). */
         public int $servings,
+        /** Une liste de la planification du repas est partie au drive : tout est refusé, rien n'est écrit. */
+        public bool $listSent = false,
     ) {
     }
 
@@ -28,9 +31,15 @@ final readonly class MealRemovalResult
         return new self(true, $recipeName, false, $servings);
     }
 
-    /** Pas de liste active, ou la recette n'y est plus : rien n'a été écrit. */
+    /** Pas de liste en cours, ou la recette n'y est plus : rien n'a été écrit. */
     public static function notPlanned(string $recipeName = ''): self
     {
         return new self(false, $recipeName, false, 0);
+    }
+
+    /** Le repas est dans une planification dont une liste est partie au drive : elle n'est jamais modifiée, donc rien ne l'est. */
+    public static function listSent(string $recipeName): self
+    {
+        return new self(false, $recipeName, false, 0, listSent: true);
     }
 }
