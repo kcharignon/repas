@@ -5,13 +5,14 @@ namespace Repas\Repas\Application\Command\SeedUserIngredients;
 
 use Psr\Clock\ClockInterface;
 use Psr\Log\LoggerInterface;
+use Repas\Repas\Application\Port\CatalogOwnerCommandPort;
+use Repas\Repas\Application\Port\SeedingAccountCommandPort;
 use Repas\Repas\Application\Service\AdoptionVerifier;
 use Repas\Repas\Domain\Exception\IngredientAdoptionException;
 use Repas\Repas\Domain\Interface\IngredientAdoptionBulkRepository;
 use Repas\Repas\Domain\Model\IngredientToSeed;
 use Repas\Repas\Domain\Service\IngredientSlugPolicy;
 use Repas\Shared\Application\Interface\DriveIngredientReferences;
-use Repas\Shared\Application\Interface\IngredientCatalogOwner;
 use Repas\Shared\Domain\Interface\UuidGenerator;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
@@ -42,7 +43,8 @@ readonly class SeedUserIngredientsHandler
 
     public function __construct(
         private IngredientAdoptionBulkRepository $bulkRepository,
-        private IngredientCatalogOwner $catalogOwner,
+        private CatalogOwnerCommandPort $catalogOwner,
+        private SeedingAccountCommandPort $accounts,
         private DriveIngredientReferences $driveReferences,
         private IngredientSlugPolicy $slugPolicy,
         private UuidGenerator $uuidGenerator,
@@ -62,7 +64,7 @@ readonly class SeedUserIngredientsHandler
         $this->bulkRepository->lockSeeding($userId);
 
         $ownerId = $this->catalogOwner->ownerId();
-        if ($userId === $ownerId || !$this->bulkRepository->accountExists($userId)) {
+        if ($userId === $ownerId || !$this->accounts->exists($userId)) {
             return SeedResult::of(SeedOutcome::NOT_CONCERNED);
         }
         if (!$command->complete && $this->bulkRepository->isSeeded($userId)) {
@@ -93,6 +95,7 @@ readonly class SeedUserIngredientsHandler
 
         $sourceSlugs = array_values(array_unique([...array_map(static fn(IngredientToSeed $ingredient): string => $ingredient->slug, $toSeed), ...$adoptedOrigins]));
         $before = $this->bulkRepository->snapshot($userId, $sourceSlugs);
+        $statisticsBefore = $this->accounts->statisticsFingerprint($userId);
         $driveBefore = $this->driveReferences->fingerprint($userId);
         if ($toSeed === [] && $before->watchedRows() === 0 && array_intersect($driveBefore->ingredientSlugByChoice, $adoptedOrigins) === []) {
             return SeedResult::of(SeedOutcome::NOTHING_TO_ADD);
@@ -144,8 +147,9 @@ readonly class SeedUserIngredientsHandler
 
         // Les vérifications, DANS la transaction : un défaut annule tout pour ce compte (et l'activation qui l'a demandé)
         $after = $this->bulkRepository->snapshot($userId, $sourceSlugs);
+        $statisticsAfter = $this->accounts->statisticsFingerprint($userId);
         $driveAfter = $this->driveReferences->fingerprint($userId);
-        $problems = $this->verifier->discrepancies($before, $after, $driveBefore, $driveAfter, $adoptions);
+        $problems = $this->verifier->discrepancies($before, $after, $statisticsBefore, $statisticsAfter, $driveBefore, $driveAfter, $adoptions);
         $stillOnSource = count(array_intersect($driveAfter->ingredientSlugByChoice, $sourceSlugs));
         if ($stillOnSource > 0) {
             $problems[] = sprintf('%d choix du drive portent encore le slug d\'un ingrédient copié', $stillOnSource);

@@ -23,8 +23,6 @@ final class IngredientAdoptionBulkInMemoryRepository implements IngredientAdopti
 {
     /** @var array<string, array{name: string, department: string, creator: ?string, adoptedFrom: ?string, isBase?: bool}> par slug (`isBase` : le marqueur « de base », faux quand il est absent) */
     public array $ingredients = [];
-    /** @var list<string> les comptes qui existent (l'amorçage vérifie l'existence du compte) */
-    public array $users = [];
     /** @var list<array{id: string, ingredient: ?string}> */
     public array $conversions = [];
     /** @var array<string, array<string, array{ingredient: string, kind: string, source: string}>> par utilisateur puis slug d'alias */
@@ -35,8 +33,6 @@ final class IngredientAdoptionBulkInMemoryRepository implements IngredientAdopti
     public array $recipes = [];
     /** @var array<string, array{owner: string, version: int, status: string, sentAt: ?string, rows: list<array{ingredient: string, quantity: float, unit: string}>, ingredients: list<array{ingredient: string, quantity: float, unit: string}>}> */
     public array $lists = [];
-    /** @var array<string, string> */
-    public array $statistics = [];
     /** @var list<string> les appels, dans l'ordre */
     public array $calls = [];
     /** Quand vrai, le repointage corrompt la quantité de la première ligne de recette repointée : l'empreinte doit le voir. */
@@ -140,7 +136,7 @@ final class IngredientAdoptionBulkInMemoryRepository implements IngredientAdopti
             $sums['shopping_list_ingredient'] = (string) ((float) $sums['shopping_list_ingredient'] + array_sum(array_column($list['ingredients'], 'quantity')));
         }
 
-        return new AdoptionSnapshot($counts, $sums, $watchedCounts, $recipes, $lists, $this->statistics[$userId] ?? '{}');
+        return new AdoptionSnapshot($counts, $sums, $watchedCounts, $recipes, $lists);
     }
 
     public function nonConformingCopies(string $userId, array $adoptions): array
@@ -162,11 +158,6 @@ final class IngredientAdoptionBulkInMemoryRepository implements IngredientAdopti
     public function lockSeeding(string $userId): void
     {
         $this->calls[] = 'lockSeeding';
-    }
-
-    public function accountExists(string $userId): bool
-    {
-        return in_array($userId, $this->users, true);
     }
 
     public function isSeeded(string $userId): bool

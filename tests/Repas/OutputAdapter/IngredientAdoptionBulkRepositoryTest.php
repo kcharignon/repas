@@ -136,7 +136,6 @@ class IngredientAdoptionBulkRepositoryTest extends DatabaseTestCase
         // Then : les mêmes comptages, sommes et contenus (par le nom) avant et après ; les versions seules ont bougé
         $this->assertSame($before->rowCounts, $after->rowCounts);
         $this->assertSame($before->quantitySums, $after->quantitySums);
-        $this->assertSame($before->statistics, $after->statistics);
         $this->assertSame($before->contentFingerprint(), $after->contentFingerprint());
         $this->assertSame(array_map(static fn($r): string => $r->contentHash, $before->recipes), array_map(static fn($r): string => $r->contentHash, $after->recipes));
         $this->assertSame(array_map(static fn($l): string => $l->contentHash . '/' . $l->stateHash, $before->shoppingLists), array_map(static fn($l): string => $l->contentHash . '/' . $l->stateHash, $after->shoppingLists));

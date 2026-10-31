@@ -14,7 +14,7 @@ use Repas\Repas\Domain\Model\Ingredient;
 use Repas\Repas\Domain\Model\QuantityBounds;
 use Repas\Repas\Domain\Model\Unit;
 use Repas\Repas\Domain\Service\ConversionService;
-use Repas\Shared\Application\Interface\IngredientCatalogOwner;
+use Repas\Repas\Application\Port\CatalogOwnerCommandPort;
 use Repas\Shared\Domain\Tool\StringTool;
 use Repas\Shared\Domain\Tool\Tab;
 use Repas\Shared\Domain\Tool\UuidGenerator;
@@ -29,7 +29,7 @@ readonly class UpdateIngredientHandler
         private IngredientRepository $ingredientRepository,
         private ConversionRepository $conversionRepository,
         private ConversionService $conversionService,
-        private IngredientCatalogOwner $catalogOwner,
+        private CatalogOwnerCommandPort $catalogOwner,
     ) {
     }
 

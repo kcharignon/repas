@@ -2,11 +2,11 @@
 
 namespace Repas\Repas\Infrastructure\Loader;
 
-use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Query\Expr\Join;
 use Doctrine\ORM\QueryBuilder;
 use Repas\Repas\Application\Loader\ConversionLoader;
+use Repas\Repas\Application\Port\AccountAddressQueryPort;
 use Repas\Repas\Application\Query\ListConversions\ConversionDTO;
 use Repas\Repas\Application\Query\ListIngredientConversions\IngredientConversionDTO;
 use Repas\Repas\Application\Query\ListIngredientConversions\IngredientConversionsDTO;
@@ -22,6 +22,7 @@ final readonly class ConversionPostgreSQLLoader implements ConversionLoader
 {
     public function __construct(
         private EntityManagerInterface $entityManager,
+        private AccountAddressQueryPort $addresses,
     ) {
     }
 
@@ -153,7 +154,7 @@ final readonly class ConversionPostgreSQLLoader implements ConversionLoader
      */
     private function toDTOs(array $rows): array
     {
-        $emails = $this->emailsOf(array_values(array_unique(array_filter(array_column($rows, 'creatorId')))));
+        $emails = $this->addresses->addressesOf(array_values(array_unique(array_filter(array_column($rows, 'creatorId')))));
 
         return array_map(
             static fn(array $row): ConversionDTO => new ConversionDTO(
@@ -171,23 +172,5 @@ final readonly class ConversionPostgreSQLLoader implements ConversionLoader
             ),
             $rows,
         );
-    }
-
-    /**
-     * Les emails des créateurs viennent de la table du contexte `User`, lue en SQL pour ne pas importer son entité
-     * (ADR 0001 : un contexte n'importe pas l'infrastructure d'un autre).
-     *
-     * @param list<string> $userIds
-     * @return array<string, string>
-     */
-    private function emailsOf(array $userIds): array
-    {
-        if ($userIds === []) {
-            return [];
-        }
-
-        return $this->entityManager->getConnection()
-            ->executeQuery('SELECT id, email FROM "user" WHERE id IN (?)', [$userIds], [ArrayParameterType::STRING])
-            ->fetchAllKeyValue();
     }
 }

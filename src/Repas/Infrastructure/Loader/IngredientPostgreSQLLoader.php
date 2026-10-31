@@ -21,7 +21,7 @@ use Repas\Repas\Infrastructure\Entity\Ingredient;
 use Repas\Repas\Infrastructure\Entity\Unit;
 use Repas\Repas\Infrastructure\Merge\IngredientMergeUsageReader;
 use Repas\Repas\Infrastructure\Visibility\IngredientVisibility;
-use Repas\Shared\Application\Interface\IngredientCatalogOwner;
+use Repas\Repas\Application\Port\CatalogOwnerQueryPort;
 use Repas\Shared\Domain\Tool\SearchRelevance;
 use Repas\Shared\Domain\Tool\StringTool;
 
@@ -33,7 +33,7 @@ final readonly class IngredientPostgreSQLLoader implements IngredientLoader
     public function __construct(
         private EntityManagerInterface $entityManager,
         private IngredientMergeUsageReader $usageReader,
-        private IngredientCatalogOwner $catalogOwner,
+        private CatalogOwnerQueryPort $catalogOwner,
     ) {
     }
 
@@ -64,15 +64,21 @@ final readonly class IngredientPostgreSQLLoader implements IngredientLoader
             ->getQuery()
             ->getArrayResult();
 
+        // Le propriétaire du catalogue est lu au plus UNE fois par lecture, à la première ligne marquée
+        $isCatalogOwner = null;
+        $viewerIsCatalogOwner = function () use (&$isCatalogOwner, $viewerId): bool {
+            return $isCatalogOwner ??= $this->isCatalogOwner($viewerId);
+        };
+
         return new DepartmentIngredientsDTO(
             new DepartmentDTO($department['slug'], $department['name'], $department['image'], DepartmentIcon::known($department['icon'])),
             array_map(
-                fn(array $row): IngredientRowDTO => new IngredientRowDTO(
+                static fn(array $row): IngredientRowDTO => new IngredientRowDTO(
                     // `canEdit` : toujours vrai, les lignes sont celles du lecteur (`IngredientVisibility`). Le champ reste dans le contrat.
                     $row['slug'], $row['name'], $row['purchaseUnitSymbol'], true,
                     // Le marqueur n'est montré qu'au propriétaire du catalogue, et son identifiant n'est lu que si une ligne est marquée
                     // (`&&` court-circuite) : zéro requête pour les autres
-                    $row['isBase'] && $this->isCatalogOwner($viewerId),
+                    $row['isBase'] && $viewerIsCatalogOwner(),
                 ),
                 $rows,
             ),
@@ -245,8 +251,8 @@ final readonly class IngredientPostgreSQLLoader implements IngredientLoader
     }
 
     /**
-     * Le lecteur est le propriétaire du catalogue (ADR 0028, amendement) : un seul compte, jamais « tout administrateur ». Le port mémorise
-     * sa réponse le temps de la requête ; l'appelant ne le demande que si la réponse change quelque chose.
+     * Le lecteur est le propriétaire du catalogue (ADR 0028, amendement) : un seul compte, jamais « tout administrateur ». Chaque appel du port
+     * relit : l'appelant ne le demande que si la réponse change quelque chose, et une fois par lecture.
      */
     private function isCatalogOwner(string $viewerId): bool
     {

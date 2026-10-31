@@ -5,7 +5,7 @@ namespace Repas\Repas\Domain\Model;
 
 /**
  * L'empreinte d'un utilisateur côté `Repas` avant et après la migration d'adoption (ING-003, `docs/ingredients/migration.md` § 8) :
- * comptages et sommes de quantités par table, somme de contrôle du contenu de chaque recette et de chaque liste, versions, statistiques.
+ * comptages et sommes de quantités par table, somme de contrôle du contenu de chaque recette et de chaque liste, versions.
  * Le contenu est vu par le NOM et le rayon des ingrédients, jamais par leur slug : repointer une ligne d'un commun vers sa copie (même
  * nom, même rayon) ne change donc aucune de ces valeurs, et c'est ce que la migration prouve.
  *
@@ -26,7 +26,6 @@ final readonly class AdoptionSnapshot
      * @param array<string, int> $watchedRowCounts nombre de lignes par table qui référencent un ingrédient surveillé
      * @param array<string, AggregateSnapshot> $recipes par identifiant de recette de l'utilisateur
      * @param array<string, AggregateSnapshot> $shoppingLists par identifiant de liste de l'utilisateur
-     * @param string $statistics `user.statistics` tel qu'écrit (une migration d'adoption n'est pas une création : il ne bouge pas)
      */
     public function __construct(
         public array $rowCounts,
@@ -34,7 +33,6 @@ final readonly class AdoptionSnapshot
         public array $watchedRowCounts,
         public array $recipes,
         public array $shoppingLists,
-        public string $statistics,
     ) {
     }
 

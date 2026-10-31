@@ -25,7 +25,9 @@ use Repas\Tests\Helper\InMemoryRepository\ConversionInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\DepartmentInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\IngredientInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\UnitInMemoryRepository;
-use Repas\Tests\Helper\IngredientCatalogOwnerInMemory;
+use Repas\Repas\Infrastructure\Acl\CatalogOwnerCommandAdapter;
+use Repas\Tests\Helper\InMemoryRepository\UserInMemoryRepository;
+use Repas\User\Application\OpenHostService\CatalogOwnerCommandOHS;
 use Repas\Tests\Helper\RepasAssert;
 
 class UpdateIngredientHandlerTest extends TestCase
@@ -35,7 +37,7 @@ class UpdateIngredientHandlerTest extends TestCase
     private readonly UnitRepository $unitRepository;
     private readonly IngredientRepository $ingredientRepository;
     private readonly ConversionRepository $conversionRepository;
-    private readonly IngredientCatalogOwnerInMemory $catalogOwner;
+    private readonly UserInMemoryRepository $accounts;
 
     protected function setUp(): void
     {
@@ -52,7 +54,7 @@ class UpdateIngredientHandlerTest extends TestCase
         ]);
         $this->ingredientRepository = new IngredientInMemoryRepository();
         $this->conversionRepository = new ConversionInMemoryRepository();
-        $this->catalogOwner = new IngredientCatalogOwnerInMemory('owner-id');
+        $this->accounts = new UserInMemoryRepository([new UserBuilder()->withId('owner-id')->isCatalogOwner()->build()]);
 
         $conversionService = new ConversionService(
             $this->conversionRepository,
@@ -64,8 +66,17 @@ class UpdateIngredientHandlerTest extends TestCase
             $this->ingredientRepository,
             $this->conversionRepository,
             $conversionService,
-            $this->catalogOwner,
+            $this->catalogOwner($this->accounts),
         );
+    }
+
+    /**
+     * Le propriétaire du catalogue tel que le handler le reçoit : la vraie couche anticorruption sur le vrai Open Host Service du contexte
+     * `User` (ADR 0035), branchés sur les comptes en mémoire. La variable `INGREDIENT_CATALOG_OWNER_EMAIL` des tests désigne `UserBuilder::isCatalogOwner()`.
+     */
+    private function catalogOwner(UserInMemoryRepository $accounts): CatalogOwnerCommandAdapter
+    {
+        return new CatalogOwnerCommandAdapter(new CatalogOwnerCommandOHS($accounts, UserBuilder::CATALOG_OWNER_EMAIL));
     }
 
     public function testHandleSuccessfullyUpdateIngredientWithSameUnit(): void
@@ -564,7 +575,7 @@ class UpdateIngredientHandlerTest extends TestCase
         $updated = $this->ingredientRepository->findOneBySlug($ingredient->getSlug());
         $this->assertTrue($updated->isBase());
         $this->assertSame('Pasta', $updated->getName());
-        $this->assertSame(1, $this->catalogOwner->calls);
+        $this->assertSame(1, count($this->accounts->findOneByEmailCalls));
     }
 
     public function testTheCatalogOwnerRemovesTheMarker(): void
@@ -604,7 +615,7 @@ class UpdateIngredientHandlerTest extends TestCase
         // Then
         $this->assertTrue($this->ingredientRepository->findOneBySlug($ownersIngredient->getSlug())->isBase());
         $this->assertSame('Pasta', $this->ingredientRepository->findOneBySlug($ownersIngredient->getSlug())->getName());
-        $this->assertSame(0, $this->catalogOwner->calls, 'Absent, le marqueur ne coûte aucune lecture du propriétaire du catalogue.');
+        $this->assertSame(0, count($this->accounts->findOneByEmailCalls), 'Absent, le marqueur ne coûte aucune lecture du propriétaire du catalogue.');
     }
 
     public function testTheSameValueIsAcceptedFromAnyCreatorWithoutReadingTheCatalogOwner(): void
@@ -617,7 +628,7 @@ class UpdateIngredientHandlerTest extends TestCase
 
         // Then
         $this->assertFalse($this->ingredientRepository->findOneBySlug($notBase->getSlug())->isBase());
-        $this->assertSame(0, $this->catalogOwner->calls);
+        $this->assertSame(0, count($this->accounts->findOneByEmailCalls));
     }
 
     public function testAnOrdinaryUserCannotMarkItsIngredientAndNothingIsWritten(): void
@@ -694,7 +705,7 @@ class UpdateIngredientHandlerTest extends TestCase
             $this->ingredientRepository,
             $this->conversionRepository,
             new ConversionService($this->conversionRepository, $this->unitRepository),
-            new IngredientCatalogOwnerInMemory(null),
+            $this->catalogOwner(new UserInMemoryRepository()),
         );
 
         // Then

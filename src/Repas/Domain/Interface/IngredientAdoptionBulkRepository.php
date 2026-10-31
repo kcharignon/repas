@@ -102,11 +102,6 @@ interface IngredientAdoptionBulkRepository
     public function lockSeeding(string $userId): void;
 
     /**
-     * Le compte existe. Relu dans la transaction.
-     */
-    public function accountExists(string $userId): bool;
-
-    /**
      * Le compte est AMORCÉ : il a au moins un alias d'adoption (`IngredientAliasRepository::isAdopter()`, même définition, comparées par un
      * test). Un compte qui a supprimé toutes ses copies ne l'est plus.
      */

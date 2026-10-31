@@ -17,7 +17,7 @@ use Repas\Repas\Domain\Model\QuantityBounds;
 use Repas\Repas\Domain\Model\Unit;
 use Repas\Repas\Domain\Service\ConversionService;
 use Repas\Repas\Domain\Service\IngredientSlugPolicy;
-use Repas\Shared\Application\Interface\IngredientCatalogOwner;
+use Repas\Repas\Application\Port\CatalogOwnerCommandPort;
 use Repas\Shared\Domain\Tool\StringTool;
 use Repas\Shared\Domain\Tool\Tab;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
@@ -34,7 +34,7 @@ readonly class CreateIngredientHandler
         private IngredientAliasRepository $aliasRepository,
         private EventDispatcherInterface $eventDispatcher,
         private ConversionService $conversionService,
-        private IngredientCatalogOwner $catalogOwner,
+        private CatalogOwnerCommandPort $catalogOwner,
         private IngredientSlugPolicy $slugPolicy,
     ) {
     }
