@@ -20,6 +20,22 @@ class MockCommandBus implements CommandBusInterface
     /** @var array<class-string, Throwable> */
     private array $failures = [];
 
+    /** @var array<class-string, callable(object): mixed> */
+    private array $answers = [];
+
+    /**
+     * Résultat calculé d'après la commande reçue (ex. le slug d'un ingrédient créé, tiré de son nom).
+     *
+     * @param class-string $commandClass
+     * @param callable(object): mixed $answer
+     */
+    public function willAnswer(string $commandClass, callable $answer): self
+    {
+        $this->answers[$commandClass] = $answer;
+
+        return $this;
+    }
+
     /**
      * Résultat renvoyé par le handler de cette commande (ex. le slug d'un ingrédient créé).
      *
@@ -50,6 +66,10 @@ class MockCommandBus implements CommandBusInterface
 
         if (isset($this->failures[$command::class])) {
             throw $this->failures[$command::class];
+        }
+
+        if (isset($this->answers[$command::class])) {
+            return ($this->answers[$command::class])($command);
         }
 
         return $this->results[$command::class] ?? null;

@@ -13,6 +13,16 @@ class SpokenPhraseChoiceInMemoryRepository implements SpokenPhraseChoiceReposito
     /** @var array<string, array{userId: string, phrase: string, slug: string, times: int, updatedAt: DateTimeImmutable}> */
     private array $rows = [];
 
+    /** @var list<array{string, string}> les lectures `[userId, clé]`, dans l'ordre */
+    public array $reads = [];
+
+    public function rememberedSlug(string $userId, string $phraseKey): ?string
+    {
+        $this->reads[] = [$userId, $phraseKey];
+
+        return $this->rows[$userId . '|' . $phraseKey]['slug'] ?? null;
+    }
+
     public function remember(string $userId, string $phraseKey, string $ingredientSlug, DateTimeImmutable $now): void
     {
         $id = $userId . '|' . $phraseKey;
