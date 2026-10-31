@@ -225,6 +225,20 @@ readonly class ShoppingListPostgreSQLRepository extends PostgreSQLRepository imp
             ->getOneOrNullResult() !== null;
     }
 
+    public function ownerIdOf(string $shoppingListId): ?string
+    {
+        $row = $this->entityManager->createQueryBuilder()
+            ->select('sl.ownerId AS owner')
+            ->from(ShoppingListEntity::class, 'sl')
+            ->where('sl.id = :id')
+            ->setParameter('id', $shoppingListId)
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
+
+        return $row === null ? null : $row['owner'];
+    }
+
     public function delete(ShoppingList $shoppingList): void
     {
 

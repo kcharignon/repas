@@ -47,7 +47,8 @@ final readonly class ShoppingListContentPostgreSQLLoader implements ShoppingList
     }
 
     /**
-     * Jointures internes, comme `ShoppingListPostgreSQLLoader` : une ligne dont l'ingrédient ou l'unité a disparu est ignorée.
+     * Les lignes NON cochées seulement (DRV-745). Jointures internes, comme `ShoppingListPostgreSQLLoader` : une ligne dont l'ingrédient ou
+     * l'unité a disparu est ignorée.
      * Tri PHP par slug d'ingrédient (la collation PostgreSQL ordonne autrement les slugs à tirets).
      *
      * @return list<array{ingredientSlug: string, ingredientName: string, quantity: float, unitSlug: string, unitName: string, unitSymbol: string, unitDimension: ?string, unitBaseFactor: ?float, departmentSlug: ?string}>
@@ -64,6 +65,8 @@ final readonly class ShoppingListContentPostgreSQLLoader implements ShoppingList
             ->innerJoin(Ingredient::class, 'i', Join::WITH, 'i.slug = r.ingredientSlug')
             ->innerJoin(Unit::class, 'u', Join::WITH, 'u.slug = r.unitSlug')
             ->where('r.shoppingListId = :shoppingListId')
+            // Une ligne déjà cochée n'est pas à acheter : elle ne part pas au drive (DRV-745), ni dans le plan ni dans l'estimation
+            ->andWhere('r.checked = false')
             ->setParameter('shoppingListId', $shoppingListId)
             ->getQuery()
             ->getArrayResult();

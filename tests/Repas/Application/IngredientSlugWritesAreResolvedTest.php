@@ -6,6 +6,8 @@ use PHPUnit\Framework\TestCase;
 use ReflectionClass;
 use Repas\Drive\Application\Command\ForgetChoice\ForgetChoiceCommand;
 use Repas\Drive\Application\Command\ForgetChoice\ForgetChoiceHandler;
+use Repas\Drive\Application\Command\MarkLinesInBasket\MarkLinesInBasketCommand;
+use Repas\Drive\Application\Command\MarkLinesInBasket\MarkLinesInBasketHandler;
 use Repas\Drive\Application\Command\ReplaceIngredientPreference\ReplaceIngredientPreferenceCommand;
 use Repas\Drive\Application\Command\ReplaceIngredientPreference\ReplaceIngredientPreferenceHandler;
 use Repas\Drive\Application\Command\SaveProductChoices\ChoiceIntent;
@@ -15,6 +17,7 @@ use Repas\Repas\Application\Command\AddIngredientToShoppingList\AddIngredientToS
 use Repas\Repas\Application\Command\AddIngredientToShoppingList\AddIngredientToShoppingListHandler;
 use Repas\Repas\Application\Command\AddSpokenIngredient\AddSpokenIngredientCommand;
 use Repas\Repas\Application\Command\AddSpokenIngredient\AddSpokenIngredientHandler;
+use Repas\Repas\Application\Command\CheckRowsAddedToDriveBasket\CheckRowsAddedToDriveBasketCommand;
 use Repas\Repas\Application\Command\ChooseIngredientList\ChooseIngredientListCommand;
 use Repas\Repas\Application\Command\ChooseIngredientList\ChooseIngredientListHandler;
 use Repas\Repas\Application\Command\CopyRecipe\CopyRecipeCommand;
@@ -57,7 +60,7 @@ use Repas\Repas\Domain\Service\IngredientNameMatcher;
  * les exemptions. Il vérifie aussi que chaque handler déclaré injecte son résolveur ET s'en sert.
  *
  * Côté `Drive`, une écriture qui pose ou remplace un choix sur un ingrédient va plus loin que la traduction : elle vérifie que le slug
- * répond à un ingrédient de l'utilisateur (`resolveOwned`). Seules les suppressions listées dans `DRIVE_REMOVALS` se contentent de `resolve`.
+ * répond à un ingrédient de l'utilisateur (`resolveOwned`). Seules les suppressions listées dans `DRIVE_WITHOUT_CHOICE` se contentent de `resolve`.
  *
  * Les lectures par slug (`GET /ingredients/{slug}`, `ListCompatibleUnits`…) ne sont pas des écritures.
  * Les écritures qui reçoivent un identifiant de recette ou de liste (planifier un repas) lisent leurs slugs dans l'agrégat déjà
@@ -82,6 +85,7 @@ class IngredientSlugWritesAreResolvedTest extends TestCase
         ChoiceIntent::class => SaveProductChoicesHandler::class,
         ReplaceIngredientPreferenceCommand::class => ReplaceIngredientPreferenceHandler::class,
         ForgetChoiceCommand::class => ForgetChoiceHandler::class,
+        MarkLinesInBasketCommand::class => MarkLinesInBasketHandler::class,
         ChooseIngredientListCommand::class => ChooseIngredientListHandler::class,
         CreateIngredientConversionCommand::class => CreateIngredientConversionHandler::class,
         UpdateIngredientConversionCommand::class => UpdateIngredientConversionHandler::class,
@@ -89,14 +93,15 @@ class IngredientSlugWritesAreResolvedTest extends TestCase
     ];
 
     /**
-     * Les écritures de `Drive` qui ne font que RETIRER ce qui est déjà à l'utilisateur : traduire le slug par les alias suffit (`resolve`),
-     * aucun choix n'est posé sur un ingrédient. Toute autre écriture de `Drive` déclarée dans `RESOLVED` pose ou remplace un choix sur un
-     * ingrédient et doit en plus vérifier qu'il est à l'utilisateur (`resolveOwned`).
+     * Les écritures de `Drive` qui ne posent AUCUN choix sur un ingrédient (elles retirent ce qui est déjà à l'utilisateur, ou ne font que
+     * désigner une ligne de sa liste) : traduire le slug par les alias suffit (`resolve`). Toute autre écriture de `Drive` déclarée dans
+     * `RESOLVED` pose ou remplace un choix sur un ingrédient et doit en plus vérifier qu'il est à l'utilisateur (`resolveOwned`).
      *
      * @var array<class-string, string> le handler, avec la raison
      */
-    private const array DRIVE_REMOVALS = [
+    private const array DRIVE_WITHOUT_CHOICE = [
         ForgetChoiceHandler::class => "ne fait que supprimer la ligne de l'utilisateur sous le slug traduit : rien n'est posé sur un ingrédient",
+        MarkLinesInBasketHandler::class => "ne pose aucun choix : il désigne des lignes de la liste envoyée de l'utilisateur ; un slug qui n'y est pas est ignoré (le propriétaire de la liste est jugé par `Repas`)",
     ];
 
     /**
@@ -130,6 +135,7 @@ class IngredientSlugWritesAreResolvedTest extends TestCase
     private const array EXEMPT = [
         CreateConversionCommand::class => "réservée aux administrateurs (#[IsGranted('ROLE_ADMIN')]) et à leurs PROPRES ingrédients (le handler refuse celui d'un autre, D4) : le slug est tel quel",
         UpdateConversionCommand::class => "réservée aux administrateurs (#[IsGranted('ROLE_ADMIN')]) et à leurs PROPRES ingrédients (le handler refuse celui d'un autre, D4) : le slug est tel quel",
+        CheckRowsAddedToDriveBasketCommand::class => "reçue de l'Open Host Service `BasketLineCheckCommandOHS`, dont l'appelant (`MarkLinesInBasketHandler`, déclaré ci-dessus) a DÉJÀ traduit les slugs par les alias ; elle ne pose rien sur un ingrédient, elle coche des lignes de la liste envoyée du propriétaire (un slug absent est ignoré)",
     ];
 
     public function testEveryApplicationClassThatReceivesAnIngredientSlugIsDeclared(): void
@@ -187,7 +193,7 @@ class IngredientSlugWritesAreResolvedTest extends TestCase
         // Given : les handlers de Drive déclarés, hors ceux qui ne font que retirer
         $handlers = array_filter(
             array_unique(array_values(self::RESOLVED)),
-            static fn(string $handler): bool => str_starts_with($handler, 'Repas\\Drive\\') && !isset(self::DRIVE_REMOVALS[$handler]),
+            static fn(string $handler): bool => str_starts_with($handler, 'Repas\\Drive\\') && !isset(self::DRIVE_WITHOUT_CHOICE[$handler]),
         );
 
         foreach ($handlers as $handler) {
@@ -199,8 +205,8 @@ class IngredientSlugWritesAreResolvedTest extends TestCase
             );
         }
         $this->assertNotEmpty($handlers);
-        foreach (array_keys(self::DRIVE_REMOVALS) as $handler) {
-            $this->assertContains($handler, self::RESOLVED, "$handler n'est plus déclaré : retire-le de DRIVE_REMOVALS.");
+        foreach (array_keys(self::DRIVE_WITHOUT_CHOICE) as $handler) {
+            $this->assertContains($handler, self::RESOLVED, "$handler n'est plus déclaré : retire-le de DRIVE_WITHOUT_CHOICE.");
         }
     }
 

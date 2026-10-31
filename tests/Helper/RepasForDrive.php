@@ -3,12 +3,17 @@
 namespace Repas\Tests\Helper;
 
 use DateTimeImmutable;
+use Repas\Drive\Application\Port\BasketLineCommandPort;
 use Repas\Drive\Application\Port\IngredientAliasCommandPort;
 use Repas\Drive\Application\Port\IngredientDepartmentCommandPort;
 use Repas\Drive\Application\Port\UnitCommandPort;
+use Repas\Drive\Infrastructure\Acl\BasketLineCommandAdapter;
 use Repas\Drive\Infrastructure\Acl\IngredientAliasCommandAdapter;
 use Repas\Drive\Infrastructure\Acl\IngredientDepartmentCommandAdapter;
 use Repas\Drive\Infrastructure\Acl\UnitCommandAdapter;
+use Repas\Repas\Application\Command\CheckRowsAddedToDriveBasket\CheckRowsAddedToDriveBasketCommand;
+use Repas\Repas\Application\Command\CheckRowsAddedToDriveBasket\CheckRowsAddedToDriveBasketHandler;
+use Repas\Repas\Application\OpenHostService\BasketLineCheckCommandOHS;
 use Repas\Repas\Application\OpenHostService\IngredientAliasCommandOHS;
 use Repas\Repas\Application\OpenHostService\IngredientDepartmentCommandOHS;
 use Repas\Repas\Application\OpenHostService\UnitCommandOHS;
@@ -21,6 +26,8 @@ use Repas\Tests\Helper\Builder\IngredientBuilder;
 use Repas\Tests\Helper\Builder\UnitBuilder;
 use Repas\Tests\Helper\InMemoryRepository\IngredientAliasInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\IngredientInMemoryRepository;
+use Repas\Tests\Helper\InMemoryRepository\ShoppingListInMemoryRepository;
+use Repas\Tests\Helper\InMemoryRepository\ShoppingListRowInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\UnitInMemoryRepository;
 
 /**
@@ -33,6 +40,8 @@ final class RepasForDrive
     public readonly IngredientAliasInMemoryRepository $aliases;
     public readonly IngredientInMemoryRepository $ingredients;
     public readonly UnitInMemoryRepository $units;
+    /** Le bus par lequel l'Open Host Service d'écriture envoie ses commandes à leur vrai handler (`basketLinePort()`). */
+    public readonly MockCommandBus $bus;
 
     /**
      * @param array<string, string> $aliases le slug de l'ingrédient de l'utilisateur par slug d'alias (anciens slugs de l'utilisateur `$userId`)
@@ -47,6 +56,7 @@ final class RepasForDrive
         array $units = [],
         string $userId = 'user-1',
     ) {
+        $this->bus = new MockCommandBus();
         $now = new DateTimeImmutable('2026-10-21 03:04:05');
         $this->aliases = new IngredientAliasInMemoryRepository(
             array_map(
@@ -80,5 +90,21 @@ final class RepasForDrive
     public function unitPort(): UnitCommandPort
     {
         return new UnitCommandAdapter(new UnitCommandOHS($this->units));
+    }
+
+    /**
+     * Cocher les lignes mises au panier (DRV-745) : le vrai adapter, le vrai Open Host Service et le vrai handler de `Repas` sur les dépôts
+     * en mémoire donnés (un bus de test qui rend la commande à son handler, sans transaction ni base). `$this->bus` garde les commandes envoyées.
+     */
+    public function basketLinePort(ShoppingListInMemoryRepository $shoppingLists, ShoppingListRowInMemoryRepository $shoppingListRows): BasketLineCommandPort
+    {
+        $handler = new CheckRowsAddedToDriveBasketHandler($shoppingLists, $shoppingListRows);
+        $this->bus->willAnswer(CheckRowsAddedToDriveBasketCommand::class, static function (object $command) use ($handler): mixed {
+            $handler($command);
+
+            return null;
+        });
+
+        return new BasketLineCommandAdapter(new BasketLineCheckCommandOHS($this->bus));
     }
 }

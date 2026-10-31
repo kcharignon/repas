@@ -13,6 +13,7 @@ final class ShoppingListException extends DomainException
     public const string NOT_SENDABLE = 'SHOPPING_LIST_NOT_SENDABLE';
     public const string NOT_SENT = 'SHOPPING_LIST_NOT_SENT';
     public const string EMPTY = 'SHOPPING_LIST_EMPTY';
+    public const string FORBIDDEN = 'SHOPPING_LIST_FORBIDDEN';
     // Le drive est coupé (`DRIVE_ENABLED`) : le même code que les routes de `Drive`, le front le connaît
     public const string DRIVE_DISABLED = 'DRIVE_DISABLED';
     // Messages des bornes d'une liste : le front les distingue, ils ne se renomment pas
@@ -50,7 +51,16 @@ final class ShoppingListException extends DomainException
     }
 
     /**
-     * Une liste sans ligne n'a rien à envoyer. Règle métier, `422`.
+     * La liste est à un autre utilisateur, pour une écriture qui reçoit l'utilisateur en paramètre (le voter du controller est la première
+     * défense, et laisse passer un administrateur). `403`, le même code que le `Drive` redéfinit pour ses propres lectures.
+     */
+    public static function forbidden(string $id): static
+    {
+        return new static(self::FORBIDDEN, 403);
+    }
+
+    /**
+     * Une liste sans ligne à acheter (aucune ligne, ou toutes déjà cochées) n'a rien à envoyer. Règle métier, `422`.
      */
     public static function empty(string $id): static
     {

@@ -32,7 +32,7 @@ final class GetDriveEstimateApiController extends AbstractController
     #[Route(path: '/api/v1/drive/estimates/{shoppingListId}', name: 'api_get_drive_estimate', methods: ['GET'])]
     #[IsGranted('ROLE_USER')]
     #[IsGranted('SHOPPING_LIST_OWNER', 'shoppingListId')]
-    #[OA\Get(summary: "Estimation du coût d'une liste d'après les derniers prix vus du produit préféré de chaque ligne (total, couverture, dates des prix, une ligne par ingrédient avec son statut) ; une estimation datée, jamais un prix garanti")]
+    #[OA\Get(summary: "Estimation du coût d'une liste, hors lignes déjà cochées (DRV-745), d'après les derniers prix vus du produit préféré de chaque ligne (total, couverture, dates des prix, une ligne par ingrédient avec son statut) ; une estimation datée, jamais un prix garanti")]
     #[OA\Tag(name: 'Drive')]
     #[OA\Parameter(name: 'shoppingListId', in: 'path', required: true, description: 'Identifiant de la liste de courses (tout statut : lecture seule)', schema: new OA\Schema(type: 'string'), example: '0b0a8c4e-6b0e-4e0a-9d52-2c3f7a1d9e10')]
     #[OA\Parameter(name: 'retailer', in: 'query', required: false, description: "Enseigne du drive ; absente, l'enseigne par défaut", schema: new OA\Schema(type: 'string', enum: Retailer::IDS), example: 'leclerc')]

@@ -367,6 +367,21 @@ class ShoppingListRepositoryTest extends DatabaseTestCase
         $this->assertFalse($this->shoppingListRepository->isSent('unknown-id'));
     }
 
+    public function testOwnerIdOfTellsWhoOwnsTheListInOneQueryAndNullForAnUnknownList(): void
+    {
+        // Arrange
+        $user = $this->savedUser();
+        $list = $this->savedShoppingList($user, ShoppingListStatus::SENT);
+        static::getContainer()->get('doctrine.orm.entity_manager')->clear();
+        $counter = static::getContainer()->get(\Repas\Tests\Helper\SqlBudget\QueryCounter::class);
+        $counter->reset();
+
+        // Act & Assert
+        $this->assertSame($user->getId(), $this->shoppingListRepository->ownerIdOf($list->getId()));
+        $this->assertSame(['SELECT shopping_list' => 1], $counter->byTable());
+        $this->assertNull($this->shoppingListRepository->ownerIdOf('unknown-id'));
+    }
+
     public function testSendingAndReopeningAListIsPersistedWithItsSentDate(): void
     {
         // Arrange

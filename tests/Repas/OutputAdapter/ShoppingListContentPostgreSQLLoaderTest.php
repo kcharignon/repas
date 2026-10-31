@@ -86,6 +86,51 @@ class ShoppingListContentPostgreSQLLoaderTest extends DatabaseTestCase
         $this->assertCount(1, $result['lines']);
     }
 
+    public function testGetLeavesOutTheLinesThatAreAlreadyChecked(): void
+    {
+        // Given (DRV-745) : lait, œuf et pâte, l'œuf déjà coché
+        $owner = new UserBuilder()->build();
+        static::getContainer()->get(UserRepository::class)->save($owner);
+        $builder = new ShoppingListBuilder()->withId('list-checked')->withOwner($owner);
+        foreach ([new IngredientBuilder()->isMilk()->build(), new IngredientBuilder()->isEgg()->build(), new IngredientBuilder()->isPasta()->build()] as $ingredient) {
+            $this->persister->saveIngredient($ingredient);
+            $builder->addIngredient($ingredient);
+        }
+        $shoppingList = $builder->build();
+        foreach ($shoppingList->getRows() as $row) {
+            if ($row->getIngredientSlug() === 'oeuf') {
+                $row->tick();
+            }
+        }
+        $this->shoppingListRepository->save($shoppingList);
+
+        // When
+        $result = $this->loader->get('list-checked');
+
+        // Then : la ligne cochée ne part pas, les autres restent triées par slug
+        $this->assertSame(['lait', 'pate'], array_column($result['lines'], 'ingredientSlug'));
+    }
+
+    public function testGetReturnsNoLineWhenEveryLineIsChecked(): void
+    {
+        // Given
+        $owner = new UserBuilder()->build();
+        static::getContainer()->get(UserRepository::class)->save($owner);
+        $egg = new IngredientBuilder()->isEgg()->build();
+        $this->persister->saveIngredient($egg);
+        $shoppingList = new ShoppingListBuilder()->withId('list-all-checked')->withOwner($owner)->addIngredient($egg)->build();
+        foreach ($shoppingList->getRows() as $row) {
+            $row->tick();
+        }
+        $this->shoppingListRepository->save($shoppingList);
+
+        // When
+        $result = $this->loader->get('list-all-checked');
+
+        // Then
+        $this->assertSame([], $result['lines']);
+    }
+
     public function testGetReturnsNoLineForAnEmptyList(): void
     {
         // Given

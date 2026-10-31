@@ -33,7 +33,7 @@ final class SendShoppingListApiController extends AbstractController
     #[OA\Response(response: 404, description: 'Liste inconnue, ou fonction drive coupée (message `DRIVE_DISABLED`)')]
     #[OA\Response(response: 409, description: "La liste n'est ni active ni déjà envoyée (message `SHOPPING_LIST_NOT_SENDABLE`), ou elle a été enregistrée entre-temps par une autre requête")]
     #[OA\Response(response: 412, description: "La version de la liste n'est plus celle de `If-Match` : elle a été modifiée depuis sa lecture")]
-    #[OA\Response(response: 422, description: 'La liste est vide (message `SHOPPING_LIST_EMPTY`)')]
+    #[OA\Response(response: 422, description: 'Il ne reste aucune ligne à acheter : liste vide, ou toutes les lignes déjà cochées (message `SHOPPING_LIST_EMPTY`). Les lignes déjà cochées ne partent pas au drive')]
     public function __invoke(string $id, Request $request): Response
     {
         $this->commandBus->dispatch(new SendShoppingListCommand($id, EntityVersion::expected($request)));

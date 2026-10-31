@@ -46,6 +46,12 @@ class ShoppingListRowBuilder implements Builder
         $this->checked ??= false;
     }
 
+    public function withIngredient(Ingredient|IngredientBuilder $ingredient): self
+    {
+        $this->ingredient = $ingredient;
+        return $this;
+    }
+
     public function checked(): self
     {
         $this->checked = true;

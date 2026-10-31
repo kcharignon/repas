@@ -12,6 +12,7 @@ use Repas\Tests\Helper\Builder\UnitBuilder;
 use Repas\Tests\Helper\DatabaseTestCase;
 use Repas\Tests\Helper\DataPersister;
 use Repas\Tests\Helper\RepasAssert;
+use Repas\Tests\Helper\SqlBudget\QueryCounter;
 
 class ShoppingListRowRepositoryTest extends DatabaseTestCase
 {
@@ -57,6 +58,53 @@ class ShoppingListRowRepositoryTest extends DatabaseTestCase
 
         // Act & Assert
         $this->assertTrue($this->shoppingListRowRepository->allRowsChecked('shopping-list-id'));
+    }
+
+    public function testCheckByIngredientSlugsChecksOnlyTheMatchingRowsOfThatListInOneStatement(): void
+    {
+        // Given (DRV-745) : deux listes ; la première a un œuf, un lait et une pâte (déjà cochée), la seconde un œuf
+        $row = static fn(string $list, string $slug, bool $checked = false): ShoppingListRow => ShoppingListRow::load([
+            'id' => "$list-$slug", 'shopping_list_id' => $list, 'ingredient_slug' => $slug, 'quantity' => 1.0, 'unit_slug' => 'unite', 'checked' => $checked,
+        ]);
+        foreach ([$row('list-a', 'oeuf'), $row('list-a', 'lait'), $row('list-a', 'pate', true), $row('list-b', 'oeuf')] as $model) {
+            $this->shoppingListRowRepository->save($model);
+        }
+        $entityManager = static::getContainer()->get('doctrine.orm.entity_manager');
+        $entityManager->clear();
+        $counter = static::getContainer()->get(QueryCounter::class);
+        $counter->reset();
+
+        // When : l'œuf, un slug absent de la liste et la pâte déjà cochée
+        $this->shoppingListRowRepository->checkByIngredientSlugs('list-a', ['oeuf', 'farine', 'pate']);
+
+        // Then : une seule instruction, et ni le lait ni l'œuf de l'autre liste n'ont bougé
+        $this->assertSame(['UPDATE shopping_list_row' => 1], $counter->byTable());
+        $entityManager->clear();
+        $this->assertSame(
+            ['list-a-oeuf' => true, 'list-a-lait' => false, 'list-a-pate' => true, 'list-b-oeuf' => false],
+            array_combine(
+                ['list-a-oeuf', 'list-a-lait', 'list-a-pate', 'list-b-oeuf'],
+                array_map(fn(string $id): bool => $this->shoppingListRowRepository->findOneById($id)->isChecked(), ['list-a-oeuf', 'list-a-lait', 'list-a-pate', 'list-b-oeuf']),
+            ),
+        );
+    }
+
+    public function testCheckByIngredientSlugsNeverUnchecksAndSendsNothingForNoSlug(): void
+    {
+        // Given
+        $checked = new ShoppingListRowBuilder()->withShoppingListId('list-a')->checked()->build();
+        $this->shoppingListRowRepository->save($checked);
+        $counter = static::getContainer()->get(QueryCounter::class);
+        $counter->reset();
+
+        // When
+        $this->shoppingListRowRepository->checkByIngredientSlugs('list-a', []);
+        $this->shoppingListRowRepository->checkByIngredientSlugs('list-a', ['farine']);
+
+        // Then : aucune instruction pour une liste vide de slugs, et la ligne cochée l'est toujours
+        $this->assertSame(['UPDATE shopping_list_row' => 1], $counter->byTable());
+        static::getContainer()->get('doctrine.orm.entity_manager')->clear();
+        $this->assertTrue($this->shoppingListRowRepository->findOneById($checked->getId())->isChecked());
     }
 
     public function testCRUD(): void

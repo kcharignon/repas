@@ -32,6 +32,7 @@ return [
     'choix-drive-contenance' => 12,
     'choix-drive-lot' => 12,
     'choix-drive-recherche' => 7,
+    'cocher-lignes-du-panier-drive' => 4,
     'confirmation-email' => 4,
     'confirmer-adresse-amorcage' => 30,
     'copier-recette' => 20,

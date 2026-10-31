@@ -32,7 +32,7 @@ final class GetDrivePlanApiController extends AbstractController
     #[Route(path: '/api/v1/drive/plans/{shoppingListId}', name: 'api_get_drive_plan', methods: ['GET'])]
     #[IsGranted('ROLE_USER')]
     #[IsGranted('SHOPPING_LIST_OWNER', 'shoppingListId')]
-    #[OA\Get(summary: "Plan d'envoi d'une liste envoyée au drive : pour chaque ligne, le statut (`KNOWN`, `NEW`, `HAVE_AT_HOME`), la quantité demandée, les produits classés avec leur nombre de produits et les produits refusés")]
+    #[OA\Get(summary: "Plan d'envoi d'une liste envoyée au drive (les lignes déjà cochées n'en font pas partie, DRV-745) : pour chaque ligne, le statut (`KNOWN`, `NEW`, `HAVE_AT_HOME`), la quantité demandée, les produits classés avec leur nombre de produits et les produits refusés")]
     #[OA\Tag(name: 'Drive')]
     #[OA\Parameter(name: 'shoppingListId', in: 'path', required: true, description: 'Identifiant de la liste de courses (statut `SENT`)', schema: new OA\Schema(type: 'string'), example: '0b0a8c4e-6b0e-4e0a-9d52-2c3f7a1d9e10')]
     #[OA\Parameter(name: 'retailer', in: 'query', required: false, description: "Enseigne du drive ; absente, l'enseigne par défaut", schema: new OA\Schema(type: 'string', enum: Retailer::IDS), example: 'leclerc')]
