@@ -1,7 +1,7 @@
 # LST-010 — Retirer les pastilles de l'écran « Liste » : on change de liste par « Mes listes »
 
 - **Dépôt** : front (web) — **Taille** : S — **Effort** : high — **Dépend de** : LST-007
-- **Statut** : à faire.
+- **Statut** : fait (front PR #294, 2026-10-31), site `v1.16.2`. Les pastilles sont retirées et remplacées en tête de l'écran par une seule pastille « Mes listes » (composant `BackToListsLink.vue` : 44 px, contour fin, fond de carte, chevron vert ; affichée seulement quand au moins un type de liste est ouvert, le lien du bas disparaît alors ; la page d'une liste envoyée ou terminée prend le même composant). `several` du `ShoppingListHeader` vaut maintenant « plusieurs listes en cours » : avec une seule liste de type en cours et pas de principale, le bouton dit « Terminer » (et non « Terminer cette liste »).
 - **Lire d'abord** : skills `repas-front-dev`, `repas-po` ; ADR 0036 ; `src/features/shopping-lists/ShoppingListView.vue`, `ShoppingListPills.vue`, `ShoppingListsView.vue`, `ShoppingListHeader.vue` (prop `several`) ; `e2e/open-lists.spec.ts`.
 
 ## Contexte
