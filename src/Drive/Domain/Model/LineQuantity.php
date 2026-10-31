@@ -3,7 +3,6 @@
 namespace Repas\Drive\Domain\Model;
 
 
-use Repas\Shared\Domain\Model\Dimension;
 
 /**
  * Ce que demande une ligne de liste de courses : une quantité dans l'unité d'achat de la ligne, avec la dimension et le

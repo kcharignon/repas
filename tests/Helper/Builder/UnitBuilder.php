@@ -4,7 +4,7 @@ namespace Repas\Tests\Helper\Builder;
 
 
 use Repas\Repas\Domain\Model\Unit;
-use Repas\Shared\Domain\Model\Dimension;
+use Repas\Repas\Domain\Model\Dimension;
 use Repas\Shared\Domain\Tool\StringTool;
 
 class UnitBuilder implements Builder

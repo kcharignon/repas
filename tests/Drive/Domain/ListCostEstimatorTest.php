@@ -16,7 +16,7 @@ use Repas\Drive\Domain\Model\ProductContent;
 use Repas\Drive\Domain\Model\ProductPrice;
 use Repas\Drive\Domain\Service\ListCostEstimator;
 use Repas\Drive\Domain\Service\PackCalculator;
-use Repas\Shared\Domain\Model\Dimension;
+use Repas\Drive\Domain\Model\Dimension;
 
 class ListCostEstimatorTest extends TestCase
 {

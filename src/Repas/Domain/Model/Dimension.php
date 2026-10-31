@@ -1,11 +1,11 @@
 <?php
 
-namespace Repas\Shared\Domain\Model;
+namespace Repas\Repas\Domain\Model;
 
 
 /**
- * Nature de ce qu'une unité mesure. Dans `Shared` car `Repas` (unités) et `Drive` (calcul des conditionnements) l'utilisent
- * et qu'un contexte n'en importe pas un autre (docs/drive/architecture.md § 6).
+ * Nature de ce qu'une unité mesure (ADR 0035 : chaque contexte a la sienne ; `Drive` a la sienne, `Repas\Drive\Domain\Model\Dimension`, qui lit la même
+ * chaîne publiée par l'Open Host Service de la liste de courses).
  */
 enum Dimension: string
 {

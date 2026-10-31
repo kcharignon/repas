@@ -3,7 +3,7 @@
 namespace Repas\Repas\Application\Command\UpdateUnit;
 
 
-use Repas\Shared\Domain\Model\Dimension;
+use Repas\Repas\Domain\Model\Dimension;
 
 readonly class UpdateUnitCommand
 {

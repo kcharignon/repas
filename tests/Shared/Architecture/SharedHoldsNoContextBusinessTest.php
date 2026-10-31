@@ -24,7 +24,6 @@ class SharedHoldsNoContextBusinessTest extends TestCase
     ];
 
     private const array LEGACY = [
-        'src/Shared/Domain/Model/Dimension.php',
     ];
 
     /** Les dossiers où un port ou un DTO de contexte se glisserait. */

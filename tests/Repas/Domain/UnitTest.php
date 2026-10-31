@@ -7,7 +7,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Repas\Repas\Domain\Exception\UnitException;
 use Repas\Repas\Domain\Model\Unit;
-use Repas\Shared\Domain\Model\Dimension;
+use Repas\Repas\Domain\Model\Dimension;
 
 class UnitTest extends TestCase
 {

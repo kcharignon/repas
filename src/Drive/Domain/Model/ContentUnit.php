@@ -3,7 +3,6 @@
 namespace Repas\Drive\Domain\Model;
 
 
-use Repas\Shared\Domain\Model\Dimension;
 
 /**
  * Unité dans laquelle un produit de l'enseigne exprime son contenu (« 1 kg », « 75 cl », « 6 pièces »), normalisée par l'agent.

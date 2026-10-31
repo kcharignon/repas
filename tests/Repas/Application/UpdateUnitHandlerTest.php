@@ -8,7 +8,7 @@ use Repas\Repas\Application\Command\UpdateUnit\UpdateUnitCommand;
 use Repas\Repas\Application\Command\UpdateUnit\UpdateUnitHandler;
 use Repas\Repas\Domain\Exception\UnitException;
 use Repas\Repas\Domain\Interface\UnitRepository;
-use Repas\Shared\Domain\Model\Dimension;
+use Repas\Repas\Domain\Model\Dimension;
 use Repas\Tests\Helper\Builder\UnitBuilder;
 use Repas\Tests\Helper\InMemoryRepository\UnitInMemoryRepository;
 use Repas\Tests\Helper\RepasAssert;

@@ -11,7 +11,7 @@ use Repas\Repas\Infrastructure\Entity\Ingredient;
 use Repas\Repas\Infrastructure\Entity\ShoppingList;
 use Repas\Repas\Infrastructure\Entity\ShoppingListRow;
 use Repas\Repas\Infrastructure\Entity\Unit;
-use Repas\Shared\Domain\Model\Dimension;
+use Repas\Repas\Domain\Model\Dimension;
 
 final readonly class ShoppingListContentPostgreSQLLoader implements ShoppingListContentLoader
 {

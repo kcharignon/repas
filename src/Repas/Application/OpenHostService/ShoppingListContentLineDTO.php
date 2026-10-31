@@ -16,7 +16,7 @@ final readonly class ShoppingListContentLineDTO
         public string $unitName,
         /** Peut être vide (l'unité « unité » n'a pas de symbole). */
         public string $unitSymbol,
-        /** Valeur de `Shared\Domain\Model\Dimension`, null si l'unité n'en a pas. */
+        /** Valeur de `Dimension`, null si l'unité n'en a pas. */
         public ?string $unitDimension,
         public ?float $unitBaseFactor,
         /** Slug du rayon de l'ingrédient ; null si on ne le connaît pas (jamais dans la base : la colonne est obligatoire). */

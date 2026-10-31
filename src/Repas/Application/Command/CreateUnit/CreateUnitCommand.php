@@ -3,7 +3,7 @@
 namespace Repas\Repas\Application\Command\CreateUnit;
 
 
-use Repas\Shared\Domain\Model\Dimension;
+use Repas\Repas\Domain\Model\Dimension;
 
 final readonly class CreateUnitCommand
 {

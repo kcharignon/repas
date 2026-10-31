@@ -12,7 +12,7 @@ use Repas\Drive\Domain\Model\PackSize;
 use Repas\Drive\Domain\Model\PackStatus;
 use Repas\Drive\Domain\Model\ProductContent;
 use Repas\Drive\Domain\Service\PackCalculator;
-use Repas\Shared\Domain\Model\Dimension;
+use Repas\Drive\Domain\Model\Dimension;
 
 class PackCalculatorTest extends TestCase
 {
