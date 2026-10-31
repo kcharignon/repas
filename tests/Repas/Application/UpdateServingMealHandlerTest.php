@@ -3,6 +3,7 @@
 namespace Repas\Application;
 
 
+use Repas\Repas\Application\Service\PlannedMealGroup;
 use Repas\Repas\Domain\Exception\ShoppingListException;
 use PHPUnit\Framework\TestCase;
 use Repas\Repas\Application\Command\UpdateServingMeal\UpdateServingMealCommand;
@@ -72,6 +73,7 @@ class UpdateServingMealHandlerTest extends TestCase
             $this->shoppingListRepository,
             new RecipeInMemoryRepository([$this->recipe]),
             $this->conversionService,
+            new PlannedMealGroup($this->shoppingListRepository),
         );
     }
 

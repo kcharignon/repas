@@ -142,7 +142,7 @@ class IngredientMergeApiFlowTest extends DatabaseTestCase
         $this->assertEqualsWithDelta([$a => 2.5], $this->listRows($listId), 1e-9);
         // et le replanifier, avec ses deux lignes devenues deux lignes de « Tomate », y remet les mêmes quantités
         $this->request('PUT', "/api/v1/shopping-lists/active/recipes/$r1", $user);
-        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->assertSame(200, $this->client->getResponse()->getStatusCode());
         $this->assertEqualsWithDelta([$a => 3.0], $this->listRows($listId), 1e-9);
 
         // rejouée, la fusion répond encore 204 et ne change rien
@@ -358,7 +358,7 @@ class IngredientMergeApiFlowTest extends DatabaseTestCase
         // planifier la recette convertit les 4 tranches (100 g) en 0,1 kilo sur la ligne de « Tomate » de la liste ; la recette s'affiche toujours en tranches
         $listId = $this->savedActiveList($user);
         $this->request('PUT', "/api/v1/shopping-lists/active/recipes/$recipe", $user);
-        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->assertSame(200, $this->client->getResponse()->getStatusCode());
         $this->assertEqualsWithDelta([$a => 0.1], $this->listRows($listId), 1e-9);
         $this->request('GET', "/api/v1/recipes/$recipe", $user);
         $this->assertSame([['tranche', 4.0]], array_map(static fn(array $row): array => [$row['unitSlug'], (float) $row['quantity']], $this->jsonBody()['rows']));

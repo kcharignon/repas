@@ -158,7 +158,7 @@ class SecretRecipeApiFlowTest extends DatabaseTestCase
         $this->request('PUT', '/api/v1/shopping-lists/active/recipes/' . $secret->getId(), $this->author);
 
         // Then : tout passe, elle est toujours secrète, et sa copie l'est aussi (copier ne rend pas publique une recette cachée)
-        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->assertSame(200, $this->client->getResponse()->getStatusCode());
         $this->assertTrue($this->recipes()->findOneById($secret->getId())->isSecret());
         $this->assertTrue($this->recipes()->findOneById($copyId)->isSecret());
         // Aucun autre ne la trouve : ni la copie ni l'original ne sont dans les recettes des autres

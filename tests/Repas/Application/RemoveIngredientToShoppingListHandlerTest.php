@@ -23,6 +23,7 @@ use Repas\Repas\Application\Service\IngredientSlugResolver;
 use Repas\Tests\Helper\InMemoryRepository\IngredientAliasInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\IngredientInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\ShoppingListInMemoryRepository;
+use Repas\Tests\Helper\TypedLists;
 use Repas\User\Domain\Model\User;
 
 class RemoveIngredientToShoppingListHandlerTest extends TestCase
@@ -44,6 +45,7 @@ class RemoveIngredientToShoppingListHandlerTest extends TestCase
             $this->shoppingListRepository,
             $this->ingredientRepository,
             new IngredientSlugResolver($this->aliasRepository),
+            new TypedLists($this->shoppingListRepository, $this->ingredientRepository)->routing,
         );
 
         $this->user = new UserBuilder()->withId('user-id')->build();

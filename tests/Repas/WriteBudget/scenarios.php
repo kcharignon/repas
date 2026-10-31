@@ -77,10 +77,12 @@ use Repas\Repas\Domain\Model\AliasKind;
 use Repas\Repas\Domain\Model\Ingredient;
 use Repas\Repas\Domain\Model\IngredientAlias;
 use Repas\Repas\Domain\Model\Recipe;
+use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Repas\Domain\Model\ShoppingList;
 use Repas\Repas\Domain\Model\ShoppingListRow;
 use Repas\Repas\Domain\Model\ShoppingListStatus;
 use Repas\Repas\Domain\Model\ShoppingListType;
+use Repas\Shared\Application\Interface\CommandBusInterface;
 use Repas\Shared\Domain\Tool\Tab;
 use Repas\Shared\Domain\Tool\UuidGenerator;
 use Repas\Tests\Helper\Alexa\AlexaTestClient;
@@ -151,6 +153,39 @@ $flourWithItsSpoonConversion = static function (WriteBudgetTestCase $t): array {
     return [$owner, $flour, $spoon];
 };
 
+/**
+ * Une recette éclatée entre plusieurs listes (ADR 0036, LST-005) : le gâteau basque (farine et sucre du rayon boulangerie, beurre du rayon fromage,
+ * œuf du rayon divers) d'un utilisateur dont « Boulangerie » tient le rayon boulangerie et « Crèmerie » le rayon fromage. Une liste principale en cours
+ * (les deux autres recettes y sont planifiées) et une liste Boulangerie en cours ; la Crèmerie n'a pas de liste (elle est ouverte à la demande).
+ *
+ * @return array{0: \Repas\User\Domain\Model\User, 1: Recipe, 2: string, 3: string}
+ */
+$splitRecipe = static function (WriteBudgetTestCase $t): array {
+    $owner = $t->savedUser();
+    [$first, $second, $basque] = $t->typicalRecipes($owner);
+    $bakery = ShoppingListType::create(UuidGenerator::new(), $owner->getId(), 'Boulangerie', new \DateTimeImmutable())->replaceDepartments(['boulangerie']);
+    $creamery = ShoppingListType::create(UuidGenerator::new(), $owner->getId(), 'Crèmerie', new \DateTimeImmutable())->replaceDepartments(['fromage']);
+    $t->persister->saveShoppingListType($bakery);
+    $t->persister->saveShoppingListType($creamery);
+    $t->savedShoppingList($owner, [$first, $second]);
+    $t->savedShoppingList($owner, [], static fn(ShoppingListBuilder $b) => $b->withListTypeId($bakery->getId()));
+
+    return [$owner, $basque, $bakery->getId(), $creamery->getId()];
+};
+
+/**
+ * La même situation, la recette déjà planifiée dans les trois listes (la Crèmerie a été ouverte à cette occasion) : de quoi changer ses personnes ou la retirer.
+ *
+ * @return array{0: \Repas\User\Domain\Model\User, 1: Recipe, 2: string} le repas de la liste principale
+ */
+$plannedSplitRecipe = static function (WriteBudgetTestCase $t) use ($splitRecipe): array {
+    [$owner, $basque] = $splitRecipe($t);
+    $t->service(CommandBusInterface::class)->dispatch(new PlannedMealCommand($owner->getId(), $basque->getId(), $owner->getDefaultServing()));
+    $main = $t->service(ShoppingListRepository::class)->findOneActivateByOwner($owner->getId());
+
+    return [$owner, $basque, $main->mealOf($basque)->getId()];
+};
+
 /** @return Tab<CreateRecipeRowSubCommand> */
 $createRows = static fn(Recipe $recipe): Tab => new Tab(
     array_map(
@@ -210,12 +245,54 @@ return [
 
         return new PlannedMealCommand($owner->getId(), $third->getId(), $owner->getDefaultServing());
     },
+    // Une recette éclatée entre la liste principale, la Boulangerie en cours et la Crèmerie ouverte à la demande (ADR 0036, LST-005) : une lecture des
+    // destinations et une des conversions pour tous ses produits, chaque liste lue et enregistrée une fois
+    'planifier-recette-eclatee' => static function (WriteBudgetTestCase $t) use ($splitRecipe): object {
+        [$owner, $basque] = $splitRecipe($t);
+
+        return new PlannedMealCommand($owner->getId(), $basque->getId(), $owner->getDefaultServing());
+    },
+    // Changer les personnes d'un repas agit sur le groupe : les trois listes
+    'modifier-portions-repas-eclate' => static function (WriteBudgetTestCase $t) use ($plannedSplitRecipe): object {
+        [, , $mealId] = $plannedSplitRecipe($t);
+
+        return new UpdateServingMealCommand($mealId, 6);
+    },
+    // Retirer la recette agit sur le groupe : les trois listes
+    'retirer-repas-eclate' => static function (WriteBudgetTestCase $t) use ($plannedSplitRecipe): object {
+        [$owner, $basque] = $plannedSplitRecipe($t);
+
+        return new removeMealFromPlanCommand($owner->getId(), $basque->getId());
+    },
     'retirer-repas' => static function (WriteBudgetTestCase $t): object {
         $owner = $t->savedUser();
         [$first] = $recipes = $t->typicalRecipes($owner);
         $t->savedShoppingList($owner, $recipes);
 
         return new removeMealFromPlanCommand($owner->getId(), $first->getId());
+    },
+    // Un produit dont le rayon est dans un type : la liste du type est déjà en cours (ADR 0036, LST-005)
+    'ajouter-produit-a-un-type' => static function (WriteBudgetTestCase $t): object {
+        $owner = $t->savedUser();
+        $butcher = ShoppingListType::create(UuidGenerator::new(), $owner->getId(), 'Boucherie', new \DateTimeImmutable())->replaceDepartments(['viande']);
+        $t->persister->saveShoppingListType($butcher);
+        $t->savedShoppingList($owner, $t->typicalRecipes($owner));
+        $t->savedShoppingList($owner, [], static fn(ShoppingListBuilder $b) => $b->withListTypeId($butcher->getId()));
+        $bacon = new IngredientBuilder()->isDicedBacon()->withCreator($owner)->build();
+        $t->persister->saveIngredient($bacon);
+
+        return new AddIngredientToShoppingListCommand($owner->getId(), $bacon->getSlug());
+    },
+    // Le même produit quand le type n'a pas de liste en cours : elle est ouverte à la demande, nommée comme le type
+    'ajouter-produit-a-un-type-ouvert-a-la-demande' => static function (WriteBudgetTestCase $t): object {
+        $owner = $t->savedUser();
+        $butcher = ShoppingListType::create(UuidGenerator::new(), $owner->getId(), 'Boucherie', new \DateTimeImmutable())->replaceDepartments(['viande']);
+        $t->persister->saveShoppingListType($butcher);
+        $t->savedShoppingList($owner, $t->typicalRecipes($owner));
+        $bacon = new IngredientBuilder()->isDicedBacon()->withCreator($owner)->build();
+        $t->persister->saveIngredient($bacon);
+
+        return new AddIngredientToShoppingListCommand($owner->getId(), $bacon->getSlug());
     },
     'ajouter-ingredient-liste' => static function (WriteBudgetTestCase $t): object {
         $owner = $t->savedUser();

@@ -94,7 +94,7 @@ class IngredientVisibilityApiFlowTest extends DatabaseTestCase
         $this->assertSame(204, $this->client->getResponse()->getStatusCode());
         $listId = $this->savedActiveList($owner);
         $this->request('PUT', '/api/v1/shopping-lists/active/recipes/' . $recipeId, $owner);
-        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->assertSame(200, $this->client->getResponse()->getStatusCode());
 
         // Then : aucun changement de slug, aucune copie, aucun alias
         $this->assertEqualsCanonicalizing(['farine', 'sucre'], $this->recipeSlugs($recipeId));
@@ -132,7 +132,7 @@ class IngredientVisibilityApiFlowTest extends DatabaseTestCase
         $this->assertSame(204, $this->client->getResponse()->getStatusCode());
         $listId = $this->savedActiveList($copier);
         $this->request('PUT', '/api/v1/shopping-lists/active/recipes/' . $recipeId, $copier);
-        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->assertSame(200, $this->client->getResponse()->getStatusCode());
 
         // Then : les lignes portent sa copie, jamais l'ingrédient du propriétaire
         $this->assertSame([$this->copierFlour, $this->copierFlour], $this->recipeSlugs($recipeId));
