@@ -11,8 +11,7 @@ Deptrac ne voit aucune classe d'un contexte importée par un autre, mais l'étan
 | Lien | Ports de `Shared` | Consommateurs (écriture / lecture) |
 |---|---|---|
 | `Voice` → `User` | `ActiveUserChecker` | 2 handlers d'écriture, 1 de lecture · **fait (pilote)** |
-| `Repas` → `User` | `IngredientCatalogOwner`, `UserDefaultServing` | `CreateIngredient`, `UpdateIngredient`, `SeedUserIngredients`, `PlanSpokenMeal` (écriture) ; `IngredientPostgreSQLLoader`, `IngredientSeedingReportPostgreSQLLoader` (lecture) |
-| `Repas` → `User` (SQL) | — | 5 fichiers lisent la table `"user"` : `ConversionHealthPostgreSQLLoader`, `ConversionPostgreSQLLoader`, `IngredientSeedingReportPostgreSQLLoader`, `AdoptionSnapshotReader`, `IngredientAdoptionBulkPostgreSQLRepository` (`ContextsDoNotShareTablesTest::LEGACY`) |
+| `Repas` → `User` | `IngredientCatalogOwner`, `UserDefaultServing` et 5 lectures SQL de la table `"user"` | **fait (C2, PR #367)** |
 | `Repas` → `Drive` | `DriveIngredientReferences` (+ `DriveChoiceFingerprint`, `DriveMergeImpact`) | `MergeIngredients`, `SeedUserIngredients`, dépôts de fusion et d'amorçage (écriture) ; aperçu de fusion, rapport d'amorçage (lecture) |
 | `Drive` → `Repas` | `IngredientAliasResolver`, `IngredientDepartmentResolver`, `IngredientNameLoader`, `ShoppingListForDriveLoader` (+ `ShoppingListForDrive`, `ShoppingListLineForDrive`), `UnitSlugResolver` | `SaveProductChoices`, `ForgetChoice`, `ReplaceIngredientPreference` (écriture) ; `ChoicePostgreSQLLoader`, `DrivePlanPostgreSQLLoader`, `DriveEstimatePostgreSQLLoader` (lecture) |
 | `User` → `Repas`, `Voice` | `OwnershipLoader`, `VoiceLinkOwnershipLoader` | `OwnerVoter` (contexte `User`) décide des droits sur des objets de `Repas` et de `Voice` |
@@ -45,12 +44,20 @@ Un lien complet, des deux sortes, et ses tests :
 5. **Tests** : chaque test de handler construit le vrai adapter et le vrai OHS sur les doubles en mémoire du producteur (par transitivité, jamais la base) ; un adapter appelé hors handler et un OHS que nul handler n'exerce ont leur test unitaire (`tests/{Consommateur}/Acl/`, `tests/{Producteur}/…`) ; l'accès réel d'une méthode de Loader ou de Repository ajoutée se teste dans `OutputAdapter` sur la base.
 6. **Vérifier** : `make test`, `make quality` (Deptrac des contextes, `OpenHostServiceConventionTest`, `SharedHoldsNoContextBusinessTest`, `ContextsDoNotShareTablesTest`), budgets SQL inchangés (`tests/Repas/WriteBudget`), et chercher dans `docs/` et `CLAUDE.md` les noms supprimés (à signaler, le fil principal les met à jour).
 
+### Ce que C2 a appris (à suivre pour C3 à C8)
+
+- Un `QueryOHS` **ne peut pas importer le Model du producteur, enums comprises** (`UserStatus` y est interdit) : il publie des chaînes ou un DTO. Une règle du producteur qu'un QueryOHS et un CommandOHS partagent (ici « compte protégé ou surcharge `INGREDIENT_CATALOG_OWNER_EMAIL` ») s'écrit une fois dans un **service de domaine** du producteur (`User\Domain\Service\CatalogOwnerEmail`), appelé par les deux.
+- Une valeur de configuration (variable d'environnement) s'injecte dans l'OHS par `config/services.yaml` (`arguments:`), pas par `#[Autowire]` dans `Application`.
+- Un OHS `final readonly` ne garde pas d'état : l'ancienne mémorisation par requête du propriétaire du catalogue est remplacée par une lecture par appel (une fermeture paresseuse dans les lectures qui l'appellent plusieurs fois). Un budget SQL qui **baisse** (le compte chargé par l'OHS entre dans l'identity map de Doctrine) se prend avec `make sql-budget-update` après relecture du diff, jamais l'inverse.
+- Des jointures SQL entre tables de deux contextes (comptes ↔ ingrédients) se recoupent côté consommateur : liste des comptes demandée à l'OHS du producteur, comptes d'objets lus par le consommateur sur ses tables en requêtes groupées (aucun N+1), verdicts calculés en PHP à partir des mêmes lectures.
+- Les tickets et ADR antérieurs (`docs/ingredients/tickets/ING-*`, `docs/voice/tickets/VOX-*`, ADR 0028 et 0029) citent encore les anciens ports de `Shared` : à lire comme l'historique.
+
 ## Jalons
 
 Taille : S (quelques heures), M (une journée), L (plusieurs jours). Effort recommandé pour l'agent (grille validée : `xhigh` pour les droits et l'authentification, `high` pour le reste).
 
 - [x] **C1** · règle (ADR 0035, Deptrac, tests de convention, skill, `CLAUDE.md`) et pilote `Voice` → `User` (`ActiveUserChecker`) · M · fait par le fil principal
-- [ ] **C2** · `Repas` → `User` : `IngredientCatalogOwner` et `UserDefaultServing` (une famille d'écriture et une de lecture pour le propriétaire du catalogue) **et** les cinq lectures SQL de la table `"user"` (un `QueryOHS` de `User` qui publie ce que les rapports d'exploitation lisent : identifiant, statut, adresse, statistiques ; une adresse n'est publiée qu'aux deux rapports administrateur qui la montrent aujourd'hui) · L · high
+- [x] **C2** (PR #367) · `Repas` → `User` : `IngredientCatalogOwner` et `UserDefaultServing` (une famille d'écriture et une de lecture pour le propriétaire du catalogue) **et** les cinq lectures SQL de la table `"user"` (un `QueryOHS` de `User` qui publie ce que les rapports d'exploitation lisent : identifiant, statut, adresse, statistiques ; une adresse n'est publiée qu'aux deux rapports administrateur qui la montrent aujourd'hui) · L · high
 - [ ] **C3** · `Repas` → `Drive` : `DriveIngredientReferences` (empreinte, slugs référencés, repointage, aperçu et fusion des choix) · L · high · `IngredientReferencesAreAllRepointedTest` et les budgets de fusion et d'amorçage restent verts
 - [ ] **C4** · `Drive` → `Repas` : alias, rayon, nom, unité, liste envoyée (5 ports, 2 DTO) · L · high · les écritures du `Drive` qui reçoivent un slug passent par `IngredientAliasResolver::resolveOwned` aujourd'hui (`IngredientSlugWritesAreResolvedTest`) : l'exigence reste, dans le port du `Drive`
 - [ ] **C5** · `User` → `Repas`, `Voice` : scinder `OwnerVoter` (chaque contexte juge ses objets ; `User` garde `HIMSELF`), retirer `OwnershipLoader` et `VoiceLinkOwnershipLoader` de `Shared` · M · **xhigh** (droits) · aucun passe-droit ne change (`INGREDIENT_OWNER`, `VOICE_LINK_OWNER`, recette secrète : ADR 0028, 0029, 0033) ; `AuthenticatedUser` peut gagner `isActive()` si le voter doit refuser un compte désactivé sans importer `User`
