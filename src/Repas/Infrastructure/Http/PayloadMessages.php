@@ -17,6 +17,7 @@ final readonly class PayloadMessages
     public const string FAVORITE = 'Le choix « recette favorite » doit être vrai ou faux.';
     public const string LIST_TYPE_NAME = 'Le nom du type de liste doit faire de 1 à 40 caractères.';
     public const string LIST_TYPE_DEPARTMENTS = 'Les rayons du type de liste sont une liste de 200 identifiants de rayon au plus.';
+    public const string LIST_DESTINATION = 'Le choix de liste doit être « default », « main » ou l\'identifiant d\'un type de liste.';
     public const string TOO_MANY_ROWS = 'Une recette ne peut pas avoir plus de 100 ingrédients.';
 
     private function __construct()

@@ -43,6 +43,8 @@ final readonly class IngredientDTO
         public bool $isBase,
         #[OA\Property(description: 'Le lecteur peut poser le marqueur « de base » sur cet ingrédient : il est le propriétaire du catalogue et l\'ingrédient est à lui. Toujours écrit, jamais `null` : le front s\'appuie sur ce champ, pas sur le rôle administrateur')]
         public bool $canSetBase,
+        #[OA\Property(description: "La liste de courses où va ce produit (ADR 0036) : le choix de l'utilisateur sur le produit (« produit à part »). Clé toujours écrite ; un compte sans type de liste lit toujours `DEFAULT`")]
+        public ListDestinationDTO $listDestination,
     ) {
     }
 }

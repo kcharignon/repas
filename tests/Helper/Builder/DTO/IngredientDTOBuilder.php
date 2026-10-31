@@ -4,6 +4,7 @@ namespace Repas\Tests\Helper\Builder\DTO;
 
 
 use Repas\Repas\Application\Query\GetIngredient\IngredientDTO;
+use Repas\Repas\Application\Query\GetIngredient\ListDestinationDTO;
 use Repas\Tests\Helper\Builder\Builder;
 
 class IngredientDTOBuilder implements Builder
@@ -24,6 +25,7 @@ class IngredientDTOBuilder implements Builder
     private int $listCount = 0;
     private bool $isBase = false;
     private bool $canSetBase = false;
+    private ListDestinationDTO $listDestination;
 
     public function withSlug(string $slug): self
     {
@@ -96,6 +98,12 @@ class IngredientDTOBuilder implements Builder
         return $this;
     }
 
+    public function withListDestination(ListDestinationDTO $listDestination): self
+    {
+        $this->listDestination = $listDestination;
+        return $this;
+    }
+
     public function build(): IngredientDTO
     {
         return new IngredientDTO(
@@ -117,6 +125,7 @@ class IngredientDTOBuilder implements Builder
             listCount: $this->listCount,
             isBase: $this->isBase,
             canSetBase: $this->canSetBase,
+            listDestination: $this->listDestination ?? new ListDestinationDTO(ListDestinationDTO::DEFAULT, null, null),
         );
     }
 }

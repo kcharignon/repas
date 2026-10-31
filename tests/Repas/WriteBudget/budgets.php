@@ -20,6 +20,7 @@ return [
     'changer-portions-repas-dit-a-alexa' => 26,
     'changer-statut-compte' => 4,
     'choisir-drive-habituel' => 3,
+    'choisir-liste-d-un-produit' => 9,
     'choisir-proposition-alexa' => 18,
     'choisir-recette-proposee-alexa' => 34,
     'choix-drive' => 11,

@@ -15,18 +15,19 @@ class ListDepartmentsQueryHandlerTest extends TestCase
     {
         // Given
         $departments = [
-            new DepartmentDTOBuilder()->withSlug('boulangerie')->build(),
-            new DepartmentDTOBuilder()->withSlug('fromage')->build(),
+            new DepartmentDTOBuilder()->withSlug('boulangerie')->buildListItem(),
+            new DepartmentDTOBuilder()->withSlug('fromage')->withListTypeId('type-1')->buildListItem(),
         ];
         $loader = new DepartmentInMemoryLoader($departments);
         $handler = new ListDepartmentsQueryHandler($loader);
 
         // When
-        $result = $handler(new ListDepartmentsQuery());
+        $result = $handler(new ListDepartmentsQuery('user-1'));
 
         // Then
         $this->assertSame($departments, $result);
         $this->assertSame(1, $loader->listCalls);
+        $this->assertSame(['user-1'], $loader->listUsers);
     }
 
     public function testReturnsEmptyListWhenLoaderHasNoDepartment(): void
@@ -35,7 +36,7 @@ class ListDepartmentsQueryHandlerTest extends TestCase
         $handler = new ListDepartmentsQueryHandler(new DepartmentInMemoryLoader());
 
         // When
-        $result = $handler(new ListDepartmentsQuery());
+        $result = $handler(new ListDepartmentsQuery('user-1'));
 
         // Then
         $this->assertSame([], $result);

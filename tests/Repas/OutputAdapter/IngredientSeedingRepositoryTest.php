@@ -186,6 +186,7 @@ class IngredientSeedingRepositoryTest extends DatabaseTestCase
         $connection = $this->dataset->adoption->connection;
         $this->dataset->adoption->personalIngredient($this->dataset->adoption->bigId, 'Secret du gros', 'rayon-a');
         $secret = 'secret-du-gros' . $this->dataset->adoption->bigId;
+        $connection->executeStatement("UPDATE ingredient SET list_destination = 'main' WHERE slug = 'beurre'");
         $before = (int) $connection->fetchOne('SELECT count(*) FROM ingredient');
 
         // When
@@ -198,13 +199,15 @@ class IngredientSeedingRepositoryTest extends DatabaseTestCase
         $source = $connection->fetchAssociative("SELECT * FROM ingredient WHERE slug = 'beurre'");
         $this->assertTrue($source['is_base']);
         $this->assertFalse($copy['is_base'], 'une copie naît à « de base » faux, écrit explicitement');
+        $this->assertNull($copy['list_destination'], 'le choix de liste (ADR 0036) est personnel : une copie ne le porte jamais');
         $this->assertSame($user, $copy['creator']);
         $this->assertSame('beurre', $copy['adopted_from']);
         foreach (['name', 'image', 'slugged_name', 'department', 'default_cooking_unit', 'default_purchase_unit', 'compatible_units'] as $column) {
             $this->assertSame($source[$column], $copy[$column], $column);
         }
         $this->assertFalse($connection->fetchOne("SELECT 1 FROM ingredient WHERE slug = ?", ['secret' . $user]));
-        // La source n'a pas bougé
+        // La source n'a pas bougé, son choix de liste non plus
+        $this->assertSame('main', $source['list_destination']);
         $this->assertSame('beurre', $connection->fetchOne("SELECT slug FROM ingredient WHERE slug = 'beurre' AND creator = ? AND is_base AND adopted_from IS NULL", [$this->dataset->ownerId]));
     }
 

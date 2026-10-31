@@ -5,6 +5,7 @@ namespace Repas\Tests\Repas\OutputAdapter;
 
 use Repas\Repas\Application\Loader\IngredientLoader;
 use Repas\Repas\Application\Query\GetIngredient\IngredientDTO;
+use Repas\Repas\Application\Query\GetIngredient\ListDestinationDTO;
 use Repas\Repas\Application\Query\ListCompatibleUnits\CompatibleUnitDTO;
 use Repas\Repas\Application\Query\ListAvailableIngredients\IngredientOptionDTO;
 use Repas\Repas\Application\Query\ListDepartments\DepartmentDTO;
@@ -14,6 +15,7 @@ use Repas\Repas\Domain\Exception\DepartmentException;
 use Repas\Repas\Domain\Exception\IngredientException;
 use Repas\Repas\Domain\Model\DepartmentIcon;
 use Repas\Repas\Domain\Model\Ingredient;
+use Repas\Repas\Domain\Model\ShoppingListType;
 use Repas\Tests\Helper\Builder\ConversionBuilder;
 use Repas\Tests\Helper\Builder\DepartmentBuilder;
 use Repas\Tests\Helper\Builder\IngredientBuilder;
@@ -151,7 +153,63 @@ class IngredientPostgreSQLLoaderTest extends DatabaseTestCase
             listCount: 0,
             isBase: false,
             canSetBase: false,
+            listDestination: new ListDestinationDTO(ListDestinationDTO::DEFAULT, null, null),
         ), $result);
+    }
+
+    // --- Le choix de liste du produit (ADR 0036) : lu avec le nom du type, `DEFAULT` quand il n'a pas ou plus d'objet
+
+    public function testGetReadsTheListDestinationInEachMode(): void
+    {
+        // Given : un type de liste du lecteur, et trois produits (aucun choix, la liste principale, le type)
+        $viewer = $this->savedUser();
+        $this->persister->saveShoppingListType(ShoppingListType::create('type-1', $viewer->getId(), 'Boucherie', new \DateTimeImmutable()));
+        $free = $this->savedIngredient(new IngredientBuilder()->withName('zzz libre')->withCreator($viewer, true));
+        $main = $this->savedIngredient(new IngredientBuilder()->withName('zzz principale')->withCreator($viewer, true)->withListDestination('main'));
+        $typed = $this->savedIngredient(new IngredientBuilder()->withName('zzz typé')->withCreator($viewer, true)->withListDestination('type-1'));
+
+        // When
+        $read = fn(Ingredient $ingredient): ListDestinationDTO => $this->ingredientLoader->get($ingredient->getSlug(), $viewer->getId())->listDestination;
+
+        // Then : les trois clés sont toujours là
+        $this->assertEquals(new ListDestinationDTO('DEFAULT', null, null), $read($free));
+        $this->assertEquals(new ListDestinationDTO('MAIN', null, null), $read($main));
+        $this->assertEquals(new ListDestinationDTO('TYPE', 'type-1', 'Boucherie'), $read($typed));
+    }
+
+    public function testGetReadsADestinationThatDesignatesAMissingOrForeignTypeAsDefault(): void
+    {
+        // Given : un choix resté en base alors que son type a disparu, et un choix qui désigne le type d'un AUTRE compte
+        $viewer = $this->savedUser();
+        $other = $this->savedUser();
+        $this->persister->saveShoppingListType(ShoppingListType::create('their-type', $other->getId(), 'Marché', new \DateTimeImmutable()));
+        $gone = $this->savedIngredient(new IngredientBuilder()->withName('zzz disparu')->withCreator($viewer, true)->withListDestination('gone-type'));
+        $foreign = $this->savedIngredient(new IngredientBuilder()->withName('zzz étranger')->withCreator($viewer, true)->withListDestination('their-type'));
+
+        // When / Then : jamais le nom du type d'un autre, jamais d'erreur
+        foreach ([$gone, $foreign] as $ingredient) {
+            $this->assertEquals(new ListDestinationDTO('DEFAULT', null, null), $this->ingredientLoader->get($ingredient->getSlug(), $viewer->getId())->listDestination);
+        }
+    }
+
+    public function testGetReadsTheListDestinationInTheSameQueryCountWhateverItsMode(): void
+    {
+        // Given
+        $viewer = $this->savedUser();
+        $this->persister->saveShoppingListType(ShoppingListType::create('type-1', $viewer->getId(), 'Boucherie', new \DateTimeImmutable()));
+        $free = $this->savedIngredient(new IngredientBuilder()->withName('zzz libre')->withCreator($viewer, true));
+        $typed = $this->savedIngredient(new IngredientBuilder()->withName('zzz typé')->withCreator($viewer, true)->withListDestination('type-1'));
+        $counter = static::getContainer()->get(QueryCounter::class);
+        $count = function (Ingredient $ingredient) use ($counter, $viewer): int {
+            $this->entityManager->clear();
+            $counter->reset();
+            $this->ingredientLoader->get($ingredient->getSlug(), $viewer->getId());
+
+            return $counter->count();
+        };
+
+        // When / Then : le nom du type vient de la même requête
+        $this->assertSame($count($free), $count($typed));
     }
 
     public function testGetCountsTheRecipesAndTheListsOfTheViewerThatUseTheIngredient(): void

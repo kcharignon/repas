@@ -83,6 +83,22 @@ class CopiedIngredientsKeepTheirConversionsTest extends DatabaseTestCase
         $this->assertEqualsWithDelta(0.25, $this->conversionService()->convertToPurchaseUnit($copy, 2, $this->cup), 1e-12);
     }
 
+    public function testACopiedIngredientNeverCarriesTheListChoiceOfTheOriginal(): void
+    {
+        // Given : l'auteur a choisi une liste pour sa farine (ADR 0036) ; c'est un choix personnel
+        $connection = $this->entityManager->getConnection();
+        $connection->executeStatement('UPDATE ingredient SET list_destination = ? WHERE slug = ?', ['main', $this->authorsFlour->getSlug()]);
+        $this->entityManager->clear();
+
+        // When
+        $this->copy();
+
+        // Then : la copie du copieur n'a aucun choix, l'original garde le sien
+        $copy = $this->copiedFlour();
+        $this->assertNull($connection->fetchOne('SELECT list_destination FROM ingredient WHERE slug = ?', [$copy->getSlug()]));
+        $this->assertSame('main', $connection->fetchOne('SELECT list_destination FROM ingredient WHERE slug = ?', [$this->authorsFlour->getSlug()]));
+    }
+
     public function testACopiersFlourThatCannotServeTheLineIsLeftAloneAndTheCopyCarriesTheConversion(): void
     {
         // Given : le copieur a SA farine (même nom, même rayon), sans la conversion de la tasse
