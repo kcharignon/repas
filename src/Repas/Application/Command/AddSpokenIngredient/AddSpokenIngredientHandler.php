@@ -4,11 +4,14 @@ namespace Repas\Repas\Application\Command\AddSpokenIngredient;
 
 use Repas\Repas\Application\Command\CreateShoppingList\CreateShoppingListCommand;
 use Repas\Repas\Application\Command\CreateShoppingList\CreateShoppingListHandler;
+use Repas\Repas\Application\Service\ActiveListForType;
 use Repas\Repas\Application\Service\IngredientSlugResolver;
+use Repas\Repas\Application\Service\SpokenListName;
 use Repas\Repas\Application\Service\SpokenLineQuantity;
 use Repas\Repas\Domain\Exception\IngredientException;
 use Repas\Repas\Domain\Exception\ShoppingListException;
 use Repas\Repas\Domain\Interface\IngredientRepository;
+use Repas\Repas\Domain\Interface\ListRoutingRepository;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Repas\Domain\Interface\UnitRepository;
 use Repas\Repas\Domain\Model\ShoppingList;
@@ -17,7 +20,10 @@ use Repas\Repas\Domain\Model\AddedItem;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 /**
- * Ajoute un article dit à la voix : à la liste active, sinon à une liste neuve (la liste envoyée au drive n'est jamais modifiée). Comme
+ * Ajoute un article dit à la voix : à la liste de SA destination (ADR 0036 décision 3 : le choix fait sur le produit, sinon le type de son rayon, sinon
+ * la liste principale). La liste principale garde son comportement d'avant les types : la liste active, sinon une liste neuve (la liste envoyée au drive
+ * n'est jamais modifiée). Une liste de type est la liste en cours de ce type, ouverte à la demande si elle manque (LST-008) ; le résultat dit son nom
+ * (`AddedItem::$listName`). Comme
  * `AddIngredientToShoppingListHandler` (alias résolus, ingrédient d'un autre = 404), mais sans refuser l'absence de liste active, et avec la
  * quantité et l'unité dites (ADR 0029 décision 5, amendée le 2026-10-25) :
  *
@@ -44,6 +50,9 @@ readonly class AddSpokenIngredientHandler
         private CreateShoppingListHandler $createShoppingListHandler,
         private UnitRepository $unitRepository,
         ConversionService $conversionService,
+        private ListRoutingRepository $listRoutingRepository,
+        private ActiveListForType $activeListForType,
+        private SpokenListName $listName,
     ) {
         $this->lineQuantity = new SpokenLineQuantity($ingredientRepository, $unitRepository, $conversionService);
     }
@@ -62,16 +71,27 @@ readonly class AddSpokenIngredientHandler
         // de l'utilisateur (ADR 0028 décision 4)
         $ingredientSlug = $this->slugResolver->resolve($command->ownerId, [$command->ingredientSlug])[$command->ingredientSlug] ?? $command->ingredientSlug;
         // L'ingrédient d'un autre ou inconnu est refusé (404) avant toute écriture, y compris la création de la liste
-        $purchaseUnitSlug = $this->ingredientRepository->findPurchaseUnitSlugUsableBy($ingredientSlug, $command->ownerId);
+        // La destination du produit (ADR 0036 décision 3) et son unité d'achat, en une lecture : un produit inconnu ou à un autre est refusé (404)
+        $placement = $this->listRoutingRepository->placementsFor($command->ownerId, [$ingredientSlug])[$ingredientSlug] ?? throw IngredientException::notFound($ingredientSlug);
+        $purchaseUnitSlug = $placement->purchaseUnitSlug;
 
-        $shoppingList = $this->shoppingListRepository->findOneActivateByOwner($command->ownerId);
-        $listCreated = !$shoppingList instanceof ShoppingList;
+        $listCreated = false;
         $previousListSent = false;
-        if ($listCreated) {
-            $previousListSent = $this->shoppingListRepository->hasSentShoppingList($command->ownerId);
-            // Une seule fois, et seulement sans liste active : la création met en pause la liste active qui existerait
-            ($this->createShoppingListHandler)(new CreateShoppingListCommand($command->newShoppingListId, $command->ownerId));
-            $shoppingList = $this->shoppingListRepository->findOneById($command->newShoppingListId);
+        $spokenListName = null;
+        if ($placement->listTypeId !== null) {
+            // La liste en cours de son type, ouverte à la demande et nommée comme lui si elle manque (jamais une liste envoyée au drive : elle n'est
+            // pas en cours) : Alexa nomme la liste, il n'y a ni « nouvelle liste » ni liste précédente envoyée à dire
+            $shoppingList = $this->activeListForType->forType($command->ownerId, $placement->listTypeId)->shoppingList;
+            $spokenListName = $this->listName->ofTyped($shoppingList->getName(), $placement->listTypeId);
+        } else {
+            $shoppingList = $this->shoppingListRepository->findOneActivateByOwner($command->ownerId);
+            $listCreated = !$shoppingList instanceof ShoppingList;
+            if ($listCreated) {
+                $previousListSent = $this->shoppingListRepository->hasSentShoppingList($command->ownerId);
+                // Une seule fois, et seulement sans liste active : la création met en pause la liste active qui existerait
+                ($this->createShoppingListHandler)(new CreateShoppingListCommand($command->newShoppingListId, $command->ownerId));
+                $shoppingList = $this->shoppingListRepository->findOneById($command->newShoppingListId);
+            }
         }
 
         $existingRow = $shoppingList->findRow($ingredientSlug);
@@ -91,6 +111,7 @@ readonly class AddSpokenIngredientHandler
             lineExisted: $existingRow !== null,
             unitSubstituted: $substituted,
             addedQuantity: $quantity,
+            listName: $spokenListName,
         );
     }
 }

@@ -98,8 +98,8 @@ readonly class PlannedMealHandler
         foreach (array_keys($rowsByDestination) as $key) {
             $typeId = $key === '' ? null : (string) $key;
             $list = $this->shoppingListRepository->findOneActiveByOwnerAndType($command->ownerId, $typeId);
-            // Si aucune liste active on ne peut pas ajouter de repas
-            if (!$list instanceof ShoppingList && $typeId === null) {
+            // Si aucune liste active on ne peut pas ajouter de repas, sauf si l'appelant demande de créer la liste principale (commande vocale)
+            if (!$list instanceof ShoppingList && $typeId === null && $command->newMainListId === null) {
                 throw ShoppingListException::activeShoppingListNotFound();
             }
             $lists[$key] = $list;
@@ -124,10 +124,14 @@ readonly class PlannedMealHandler
             }
         }
 
-        // Les listes de type sans liste en cours sont ouvertes à la demande, nommées comme leur type
+        // Les listes de type sans liste en cours sont ouvertes à la demande, nommées comme leur type ; la liste principale n'est créée que sur demande
+        // de l'appelant (la commande vocale), jamais en silence
+        $mainListCreated = false;
         foreach ($lists as $key => $list) {
             if (!$list instanceof ShoppingList) {
-                $lists[$key] = $this->activeListForType->open($command->ownerId, (string) $key)->shoppingList;
+                $isMain = $key === '';
+                $lists[$key] = $this->activeListForType->open($command->ownerId, $isMain ? null : (string) $key, $isMain ? $command->newMainListId : null)->shoppingList;
+                $mainListCreated = $mainListCreated || $isMain;
             }
         }
 
@@ -148,6 +152,6 @@ readonly class PlannedMealHandler
             $planned[] = new PlannedMealList($list->getId(), $list->getName(), $list->getCreatedAt(), $list->getListTypeId());
         }
 
-        return new PlannedMealResult($planned);
+        return new PlannedMealResult($planned, $mainListCreated);
     }
 }

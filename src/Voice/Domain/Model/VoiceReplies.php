@@ -49,6 +49,37 @@ final class VoiceReplies
     public const string TOTAL_ADDED_IN_UNIT = "C'est ajouté en %s, tu en as maintenant %s dans ta liste.";
     public const string REMEMBER_PROMISE = "Je m'en souviendrai.";
 
+    // Les listes d'un type (ADR 0036, LST-008) : quand l'article va dans une liste qui n'est pas la liste principale, la réponse nomme la liste
+    // (X : « boucherie »). Un compte sans type n'entend jamais ces phrases.
+
+    /** Un article ajouté tout seul (une unité, rien de dit) à la liste d'un type : le nom de la liste suffit. */
+    public const string ADDED_TO_LIST = "C'est ajouté à %s.";
+    /** Un article ajouté avec une quantité (X : la liste, Y : « 3 croquettes »). */
+    public const string ADDED_TO_LIST_ITEM = "C'est ajouté à %s : %s.";
+    /** Un choix deviné (X : l'ingrédient, Y : son rayon, Z : la liste). */
+    public const string ADDED_TO_LIST_GUESSED = "J'ai mis %s, %s, à %s.";
+    /** L'article était déjà dans la liste du type : le total (X : la liste, Y : « 3 paquets »). */
+    public const string TOTAL_ADDED_TO_LIST = "C'est ajouté à %s, tu en as maintenant %s.";
+    public const string TOTAL_ADDED_IN_UNIT_TO_LIST = "C'est ajouté à %s en %s, tu en as maintenant %s.";
+    /** Une proposition choisie, ajoutée à la liste d'un type (X : la liste, Y : l'ingrédient). */
+    public const string REMEMBERED_TO_LIST = "C'est noté à %s : %s. Je m'en souviendrai.";
+    /** Un départage par le rayon, ajouté à la liste d'un type (X : la liste, Y : l'ingrédient, Z : son rayon). */
+    public const string REMEMBERED_IN_TO_LIST = "C'est noté à %s : %s, %s. Je m'en souviendrai.";
+    /** Un produit créé puis ajouté à la liste d'un type (X : la liste, Y : l'ingrédient, Z : son rayon). */
+    public const string CREATED_TO_LIST = "C'est créé et noté à %s : %s, rayon %s.";
+    /** La ligne disparaît de la liste d'un type (X : la liste, Y : ce qui a été retiré). */
+    public const string REMOVED_GONE_FROM_LIST = "C'est retiré de %s : %s. Il n'y en a plus dans cette liste.";
+    public const string REMOVED_GONE_FROM_LIST_SHORT = "C'est retiré de %s : %s.";
+    /** La ligne diminue dans la liste d'un type (X : la liste, Y : ce qui reste). */
+    public const string REMOVED_LEFT_FROM_LIST = "C'est retiré de %s, il t'en reste %s.";
+    public const string REMOVED_LEFT_IN_UNIT_FROM_LIST = "C'est retiré de %s en %s, il t'en reste %s.";
+    /** Consulter : le produit est dans UNE liste d'un type (X : « 2 paquets », Y : la liste). */
+    public const string IN_LIST_OF = 'Oui, tu en as %s dans la liste %s.';
+    /** Consulter : un même produit est dans plusieurs listes (X : « 1 dans ta liste, 2 dans la liste boucherie »). */
+    public const string IN_LISTS = 'Oui : %s.';
+    /** La liste principale, dite dans une énumération de listes. */
+    public const string MAIN_LIST = 'ta liste';
+
     /** « Enlève » dit sans produit : on ne pose pas de question ouverte (la réponse brève « du pain » serait comprise comme un ajout), on donne l'exemple. */
     public const string REMOVE_EXAMPLE = 'Dis par exemple : enlève du pain.';
     /** « Est-ce qu'il y a » dit sans produit : même règle. */
@@ -137,6 +168,11 @@ final class VoiceReplies
     /** Il a choisi une proposition : le repas est planifié et la phrase retenue. */
     public const string MEAL_PLANNED_REMEMBERED = "C'est noté : %s, pour %s. Je m'en souviendrai.";
     public const string MEAL_LIST_STARTED_REMEMBERED = "J'ai commencé une nouvelle liste avec %s, pour %s. Je m'en souviendrai.";
+    /** Le repas est planifié dans des listes d'un type (ADR 0036, LST-008 ; X : le repas, Y : « 4 personnes », Z : « dans ta liste, boucherie et marché »). */
+    public const string MEAL_PLANNED_IN = "C'est noté : %s, pour %s, %s.";
+    public const string MEAL_PLANNED_IN_REMEMBERED = "C'est noté : %s, pour %s, %s. Je m'en souviendrai.";
+    /** Au-delà de ce nombre de listes, Alexa ne les nomme plus : elle dit combien. */
+    private const int MAX_NAMED_LISTS = 3;
     /** La recette est déjà dans la liste : elle n'y sera pas deux fois ; on demande le nouveau total, ou de ne rien changer (X : le repas, Y : « 4 personnes »). */
     public const string MEAL_ALREADY_PLANNED = 'Le repas %s est déjà prévu pour %s. Tu le veux pour combien, ou on ne change rien ?';
     /** Le nouveau total de personnes est posé. */
@@ -246,6 +282,26 @@ final class VoiceReplies
         $line ??= AddedLine::single();
         $ingredient = self::item($ingredientName, $line);
         $department = self::speakable($departmentName);
+
+        // La liste d'un type : Alexa la nomme (ADR 0036, LST-008) ; elle n'est jamais « nouvelle », et ne remplace jamais une liste envoyée au drive
+        if ($line->listName !== null) {
+            $list = self::speakable($line->listName);
+            if ($line->existed && $isSure) {
+                return self::alreadyInList($line);
+            }
+            if (!$isSure) {
+                return sprintf(self::ADDED_TO_LIST_GUESSED, $ingredient, $department, $list);
+            }
+
+            // Un article tout seul : la liste suffit ; avec une quantité, on la dit aussi, sauf si la phrase devient trop longue à dire
+            $plain = sprintf(self::ADDED_TO_LIST, $list);
+            if (self::isSingle($line)) {
+                return $plain;
+            }
+            $withItem = sprintf(self::ADDED_TO_LIST_ITEM, $list, $ingredient);
+
+            return count(preg_split('/\s+/u', $withItem)) > self::MAX_REMOVED_WORDS ? $plain : $withItem;
+        }
 
         if (!$listCreated) {
             // Un choix sûr sur une ligne déjà dans la liste : on dit le total ; un choix deviné dit d'abord ce qui a été mis et où
@@ -385,6 +441,12 @@ final class VoiceReplies
         $ingredient = self::item($ingredientName, $line);
         $department = self::speakable($departmentName);
 
+        if ($line->listName !== null) {
+            return $line->existed
+                ? self::alreadyInList($line) . ' ' . self::REMEMBER_PROMISE
+                : sprintf(self::REMEMBERED_IN_TO_LIST, self::speakable($line->listName), $ingredient, $department);
+        }
+
         if (!$listCreated) {
             return $line->existed
                 ? self::alreadyInList($line) . ' ' . self::REMEMBER_PROMISE
@@ -405,6 +467,12 @@ final class VoiceReplies
         $line ??= AddedLine::single();
         $ingredient = self::item($ingredientName, $line);
 
+        if ($line->listName !== null) {
+            return $line->existed
+                ? self::alreadyInList($line) . ' ' . self::REMEMBER_PROMISE
+                : sprintf(self::REMEMBERED_TO_LIST, self::speakable($line->listName), $ingredient);
+        }
+
         if (!$listCreated) {
             return $line->existed
                 ? self::alreadyInList($line) . ' ' . self::REMEMBER_PROMISE
@@ -422,8 +490,13 @@ final class VoiceReplies
      */
     public static function created(string $ingredientName, string $departmentName, bool $listCreated, bool $previousListSent, ?AddedLine $line = null): string
     {
-        $ingredient = self::item($ingredientName, $line ?? AddedLine::single());
+        $line ??= AddedLine::single();
+        $ingredient = self::item($ingredientName, $line);
         $department = self::speakable($departmentName);
+
+        if ($line->listName !== null) {
+            return sprintf(self::CREATED_TO_LIST, self::speakable($line->listName), $ingredient, $department);
+        }
 
         if (!$listCreated) {
             return sprintf(self::CREATED, $ingredient, $department);
@@ -437,11 +510,29 @@ final class VoiceReplies
     /**
      * Le repas est planifié : « C'est noté : hachis parmentier, pour 4 personnes. » ; sans liste active, « J'ai commencé une nouvelle liste avec … » (et la
      * liste précédente envoyée au drive, dite à la place de la promesse de s'en souvenir, comme `remembered()`).
+     *
+     * Quand le repas est allé dans des listes d'un type (ADR 0036, LST-008), elles sont nommées : « C'est noté : hachis parmentier, pour 4 personnes, dans ta
+     * liste, boucherie et marché. ».
+     *
+     * @param list<string> $typedListNames les noms des listes d'un type qui ont reçu le repas
+     * @param bool         $inMainList     la liste principale en a reçu un aussi
      */
-    public static function mealPlanned(string $recipeName, int $servings, bool $listCreated, bool $previousListSent, bool $remembered = false): string
+    public static function mealPlanned(string $recipeName, int $servings, bool $listCreated, bool $previousListSent, bool $remembered = false, array $typedListNames = [], bool $inMainList = true): string
     {
         $name = self::speakable($recipeName);
         $people = self::people($servings);
+
+        // Le repas est allé dans une ou plusieurs listes d'un type (ADR 0036, LST-008) : Alexa les nomme
+        if ($typedListNames !== []) {
+            $format = $remembered ? self::MEAL_PLANNED_IN_REMEMBERED : self::MEAL_PLANNED_IN;
+            $planned = sprintf($format, $name, $people, self::placesOf($typedListNames, $inMainList));
+            // Des noms trop longs à dire : seulement combien de listes
+            if (count(preg_split('/\s+/u', explode('. ', $planned)[0])) > self::MAX_REMOVED_WORDS) {
+                $planned = sprintf($format, $name, $people, self::placesOf($typedListNames, $inMainList, namesAllowed: false));
+            }
+
+            return $listCreated && $previousListSent ? $planned . ' ' . self::PREVIOUS_LIST_SENT : $planned;
+        }
 
         if (!$listCreated) {
             return sprintf($remembered ? self::MEAL_PLANNED_REMEMBERED : self::MEAL_PLANNED, $name, $people);
@@ -595,17 +686,25 @@ final class VoiceReplies
      */
     public static function removed(string $ingredientName, RemovedLine $line): string
     {
+        $list = $line->listName === null ? null : self::speakable($line->listName);
+
         if ($line->isGone()) {
             $gone = new AddedLine($line->removed, 0.0, $line->unitSlug, $line->unitName, existed: true, unitCited: $line->unitCited, unitSubstituted: $line->unitSubstituted);
             $item = self::item($ingredientName, $gone);
 
             // Une réponse parlée reste courte : quand ce qui a été retiré est long à dire, la seconde phrase (« Il n'y en a plus… ») saute
-            $full = sprintf(self::REMOVED_GONE, $item);
+            $full = $list === null ? sprintf(self::REMOVED_GONE, $item) : sprintf(self::REMOVED_GONE_FROM_LIST, $list, $item);
+            $short = $list === null ? sprintf(self::REMOVED_GONE_SHORT, $item) : sprintf(self::REMOVED_GONE_FROM_LIST_SHORT, $list, $item);
 
-            return count(preg_split('/\s+/u', $full)) > self::MAX_REMOVED_WORDS ? sprintf(self::REMOVED_GONE_SHORT, $item) : $full;
+            return count(preg_split('/\s+/u', $full)) > self::MAX_REMOVED_WORDS ? $short : $full;
         }
 
         $left = self::amount($line->remaining, $line->unitName, $line->isCount());
+        if ($list !== null) {
+            return $line->unitSubstituted
+                ? sprintf(self::REMOVED_LEFT_IN_UNIT_FROM_LIST, $list, self::pluralize(self::speakable($line->unitName)), $left)
+                : sprintf(self::REMOVED_LEFT_FROM_LIST, $list, $left);
+        }
 
         return $line->unitSubstituted
             ? sprintf(self::REMOVED_LEFT_IN_UNIT, self::pluralize(self::speakable($line->unitName)), $left)
@@ -633,7 +732,27 @@ final class VoiceReplies
     /** Consulter un produit qui est dans la liste : « Oui, tu en as 2 paquets. », « Oui, tu en as 3. » (unité « unité »). */
     public static function inList(ListLine $line): string
     {
-        return sprintf(self::IN_LIST, self::amount($line->quantity, $line->unitName, $line->isCount()));
+        $amount = self::amount($line->quantity, $line->unitName, $line->isCount());
+
+        return $line->listName === null ? sprintf(self::IN_LIST, $amount) : sprintf(self::IN_LIST_OF, $amount, self::speakable($line->listName));
+    }
+
+    /**
+     * Consulter un produit porté par plusieurs listes en cours (ADR 0036, LST-008) : une quantité par liste, la liste principale d'abord, « Oui : 1 dans
+     * ta liste, 2 paquets dans la liste boucherie. ». Comme `inListMany`, une courte énumération : trois listes au plus sont dites, la quantité des autres
+     * ne s'y ajoute pas (une liste en cours par type, dix types au plus : le cas reste rare).
+     *
+     * @param list<ListLine> $lines les lignes d'UN produit, une par liste
+     */
+    public static function inLists(array $lines): string
+    {
+        $labels = [];
+        foreach (array_slice(array_values($lines), 0, self::MAX_NAMED_LISTS) as $line) {
+            $amount = self::amount($line->quantity, $line->unitName, $line->isCount());
+            $labels[] = $line->listName === null ? $amount . ' dans ta liste' : $amount . ' dans la liste ' . self::speakable($line->listName);
+        }
+
+        return sprintf(self::IN_LISTS, implode(', ', $labels));
     }
 
     /**
@@ -706,11 +825,42 @@ final class VoiceReplies
     private static function alreadyInList(AddedLine $line): string
     {
         $total = self::number($line->total);
+        if ($line->listName !== null) {
+            $list = self::speakable($line->listName);
+
+            return $line->unitSubstituted
+                ? sprintf(self::TOTAL_ADDED_IN_UNIT_TO_LIST, $list, self::pluralize(self::speakable($line->unitName)), $total)
+                : sprintf(self::TOTAL_ADDED_TO_LIST, $list, $line->isCount() ? $total : $total . ' ' . self::unitWord($line->unitName, $line->total));
+        }
         if ($line->unitSubstituted) {
             return sprintf(self::TOTAL_ADDED_IN_UNIT, self::pluralize(self::speakable($line->unitName)), $total);
         }
 
         return sprintf(self::TOTAL_ADDED, $line->isCount() ? $total : $total . ' ' . self::unitWord($line->unitName, $line->total));
+    }
+
+    /** Un article ajouté tout seul : une unité, rien de cité. */
+    private static function isSingle(AddedLine $line): bool
+    {
+        return !$line->unitCited && abs($line->added - 1.0) < 0.0001;
+    }
+
+    /**
+     * Où le repas est allé, dit en peu de mots : « dans la liste boucherie », « dans ta liste, boucherie et marché » ; au-delà de trois listes, seulement
+     * leur nombre (« dans 4 listes »).
+     *
+     * @param list<string> $typedListNames les noms des listes d'un type qui ont reçu le repas
+     */
+    private static function placesOf(array $typedListNames, bool $inMainList, bool $namesAllowed = true): string
+    {
+        $names = array_map(self::speakable(...), $typedListNames);
+        $places = $inMainList ? array_merge([self::MAIN_LIST], $names) : $names;
+
+        return match (true) {
+            count($places) > self::MAX_NAMED_LISTS || (!$namesAllowed && count($places) > 1) => 'dans ' . count($places) . ' listes',
+            count($places) === 1 => 'dans la liste ' . $places[0],
+            default => 'dans ' . implode(', ', array_slice($places, 0, -1)) . ' et ' . $places[array_key_last($places)],
+        };
     }
 
     /** Le nom d'une unité, au pluriel dès deux : « 1,5 kilo », « 2 kilos », « 3 cuillères à soupe ». */

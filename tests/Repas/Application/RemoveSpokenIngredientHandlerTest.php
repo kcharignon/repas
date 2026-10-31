@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Repas\Repas\Application\Command\RemoveSpokenIngredient\RemoveSpokenIngredientCommand;
 use Repas\Repas\Application\Command\RemoveSpokenIngredient\RemoveSpokenIngredientHandler;
 use Repas\Repas\Application\Service\IngredientSlugResolver;
+use Repas\Repas\Application\Service\SpokenListName;
 use Repas\Repas\Domain\Exception\ShoppingListException;
 use Repas\Repas\Domain\Model\AliasKind;
 use Repas\Repas\Domain\Model\IngredientAlias;
@@ -24,6 +25,7 @@ use Repas\Tests\Helper\InMemoryRepository\ConversionInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\IngredientAliasInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\IngredientInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\ShoppingListInMemoryRepository;
+use Repas\Tests\Helper\InMemoryRepository\ShoppingListTypeInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\UnitInMemoryRepository;
 
 /**
@@ -55,6 +57,7 @@ class RemoveSpokenIngredientHandlerTest extends TestCase
             unitRepository: $unitRepository,
             ingredientRepository: $this->ingredientRepository,
             conversionService: new ConversionService($this->conversionRepository, $unitRepository),
+            listName: new SpokenListName(new ShoppingListTypeInMemoryRepository()),
         );
     }
 

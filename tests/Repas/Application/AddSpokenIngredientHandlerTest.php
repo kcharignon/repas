@@ -9,6 +9,7 @@ use Repas\Repas\Application\Command\AddSpokenIngredient\AddSpokenIngredientComma
 use Repas\Repas\Application\Command\AddSpokenIngredient\AddSpokenIngredientHandler;
 use Repas\Repas\Application\Command\CreateShoppingList\CreateShoppingListHandler;
 use Repas\Repas\Application\Service\IngredientSlugResolver;
+use Repas\Repas\Application\Service\SpokenListName;
 use Repas\Repas\Domain\Event\NewShoppingListCreatedEvent;
 use Repas\Repas\Domain\Exception\IngredientException;
 use Repas\Repas\Domain\Model\AliasKind;
@@ -23,6 +24,7 @@ use Repas\Tests\Helper\Builder\ShoppingListBuilder;
 use Repas\Tests\Helper\Builder\UnitBuilder;
 use Repas\Tests\Helper\Builder\UserBuilder;
 use Repas\Tests\Helper\FrozenClock;
+use Repas\Tests\Helper\TypedLists;
 use Repas\Tests\Helper\InMemoryRepository\ConversionInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\IngredientAliasInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\IngredientInMemoryRepository;
@@ -52,6 +54,7 @@ class AddSpokenIngredientHandlerTest extends TestCase
             $unitRepository->save($unit->build());
         }
 
+        $typed = new TypedLists($this->shoppingListRepository, $this->ingredientRepository);
         $this->handler = new AddSpokenIngredientHandler(
             shoppingListRepository: $this->shoppingListRepository,
             ingredientRepository: $this->ingredientRepository,
@@ -64,6 +67,9 @@ class AddSpokenIngredientHandlerTest extends TestCase
             ),
             unitRepository: $unitRepository,
             conversionService: new ConversionService($this->conversionRepository, $unitRepository),
+            listRoutingRepository: $typed->routing,
+            activeListForType: $typed->activeListForType,
+            listName: new SpokenListName($typed->listTypes),
         );
     }
 

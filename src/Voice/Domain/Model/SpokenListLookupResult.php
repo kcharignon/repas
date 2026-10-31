@@ -15,7 +15,7 @@ namespace Repas\Voice\Domain\Model;
 final readonly class SpokenListLookupResult
 {
     /**
-     * @param list<ListedLine> $lines       les lignes de la liste qui portent le produit (aucune : il n'y est pas)
+     * @param list<ListedLine> $lines       les lignes qui portent le produit, une par liste en cours qui le porte (aucune : il n'y est pas)
      * @param bool             $listSent    aucune liste active, mais l'utilisateur en a une envoyée au drive (jamais vrai avec `hasList`)
      * @param list<ListedLine> $suggestions les lignes de la liste les plus proches d'une phrase qui ne désigne aucun ingrédient (au plus trois)
      */
@@ -57,15 +57,41 @@ final readonly class SpokenListLookupResult
     }
 
     /**
-     * @param list<ListedLine> $lines au moins deux lignes, toutes dans la liste, que le nom ou le rayon distingue
+     * Un produit porté par une ou plusieurs listes en cours (ADR 0036, LST-008) : une ligne par liste, la liste principale d'abord.
+     *
+     * @param non-empty-list<ListedLine> $lines les lignes d'UN SEUL produit
+     */
+    public static function foundIn(array $lines): self
+    {
+        return new self(true, $lines, null);
+    }
+
+    /**
+     * @param list<ListedLine> $lines les lignes d'au moins deux produits, tous dans une liste en cours, que le nom ou le rayon distingue
      */
     public static function tied(array $lines): self
     {
         return new self(true, $lines, null);
     }
 
+    /** Plusieurs PRODUITS se valent (le nom ou le rayon les distingue) : un produit porté par deux listes n'est pas un départage. */
     public function isTied(): bool
     {
-        return count($this->lines) > 1;
+        return count($this->products()) > 1;
+    }
+
+    /**
+     * Les lignes rangées par produit (nom et rayon), dans l'ordre où les produits apparaissent : une liste d'une ligne par liste en cours qui le porte.
+     *
+     * @return list<non-empty-list<ListedLine>>
+     */
+    public function products(): array
+    {
+        $products = [];
+        foreach ($this->lines as $line) {
+            $products[$line->name . '|' . $line->departmentSlug][] = $line;
+        }
+
+        return array_values($products);
     }
 }

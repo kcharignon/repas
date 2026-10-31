@@ -5,6 +5,7 @@ namespace Repas\Repas\Application\Command\ChangeSpokenMealServings;
 use Repas\Repas\Application\Command\PlanSpokenMeal\PlanSpokenMealCommand;
 use Repas\Repas\Application\Command\UpdateServingMeal\UpdateServingMealCommand;
 use Repas\Repas\Application\Command\UpdateServingMeal\UpdateServingMealHandler;
+use Repas\Repas\Application\Service\PlannedMealGroup;
 use Repas\Repas\Domain\Exception\IngredientException;
 use Repas\Repas\Domain\Exception\RecipeException;
 use Repas\Repas\Domain\Exception\ShoppingListException;
@@ -17,7 +18,7 @@ use Repas\Repas\Domain\Exception\MealPlanningException;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 /**
- * Change le nombre de personnes d'un repas déjà dans la liste active, dit à la voix : « Hachis parmentier est déjà prévu pour 4 personnes. » puis
+ * Change le nombre de personnes d'un repas déjà dans une liste en cours, dit à la voix : « Hachis parmentier est déjà prévu pour 4 personnes. » puis
  * « 6 ». Le nouveau total remplace l'ancien (jamais une addition) ; les lignes des ingrédients sont ajustées de la différence par la logique
  * d'`UpdateServingMealHandler`, réutilisée telle quelle (une liste envoyée au drive n'est pas la liste active : jamais modifiée).
  *
@@ -31,6 +32,7 @@ readonly class ChangeSpokenMealServingsHandler
         private ShoppingListRepository $shoppingListRepository,
         private RecipeRepository $recipeRepository,
         private UpdateServingMealHandler $updateServingMealHandler,
+        private PlannedMealGroup $plannedMealGroup,
     ) {
     }
 
@@ -53,13 +55,19 @@ readonly class ChangeSpokenMealServingsHandler
             throw MealPlanningException::recipeGone();
         }
 
-        $shoppingList = $this->shoppingListRepository->findOneActivateByOwner($command->ownerId);
+        // Le repas est cherché dans la liste principale d'abord, puis dans la plus ancienne liste de type qui planifie la recette (ADR 0036, LST-008)
+        $shoppingList = $this->shoppingListRepository->findOneActiveWithRecipe($command->ownerId, $command->recipeId);
         $meal = $shoppingList instanceof ShoppingList ? $shoppingList->getMeals()->find(static fn(Meal $meal): bool => $meal->hasRecipe($recipe)) : null;
         if (!$meal instanceof Meal) {
             return MealServingsResult::notPlanned($recipe->getName());
         }
 
         if ($meal->getServing() !== $command->servings) {
+            // Le nombre de personnes change pour TOUT le groupe de repas ; si une liste du groupe est partie au drive (jamais modifiée), rien ne change nulle part
+            if ($this->plannedMealGroup->hasSentList($this->plannedMealGroup->of($shoppingList, $meal))) {
+                return MealServingsResult::listSent($recipe->getName());
+            }
+
             try {
                 ($this->updateServingMealHandler)(new UpdateServingMealCommand($meal->getId(), $command->servings));
             } catch (IngredientException $exception) {

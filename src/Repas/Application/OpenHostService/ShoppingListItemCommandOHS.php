@@ -17,6 +17,9 @@ use Repas\Shared\Domain\Tool\UuidGenerator;
  *
  * La liste active reçoit la ligne (une unité d'achat par défaut, ou la quantité et l'unité dites), ou s'ajoute à la ligne de cet ingrédient qui
  * y est déjà ; sans liste active (aucune, ou envoyée au drive), une nouvelle liste est créée. Une liste envoyée n'est jamais modifiée.
+ *
+ * Depuis les types de liste (ADR 0036, LST-008), l'article va dans la liste de la destination du produit (une liste de type est ouverte à la demande et
+ * nommée par `AddedItem::$listName`) et un retrait prend la ligne dans la liste principale d'abord, sinon dans la liste d'un type qui la porte.
  */
 final readonly class ShoppingListItemCommandOHS
 {

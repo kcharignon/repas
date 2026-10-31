@@ -9,6 +9,7 @@ use Repas\Repas\Domain\Interface\ActiveShoppingListContents;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Repas\Domain\Model\Recipe;
 use Repas\Repas\Domain\Model\ShoppingListStatus;
+use Repas\Repas\Domain\Model\ShoppingListType;
 use Repas\Repas\Domain\Model\ActiveListMeal;
 use Repas\Tests\Helper\Builder\IngredientBuilder;
 use Repas\Tests\Helper\Builder\RecipeBuilder;
@@ -76,6 +77,27 @@ class ActiveShoppingListContentsPostgreSQLRepositoryTest extends DatabaseTestCas
         // Then : tant qu'elle est ordinaire le repas est rendu ; secrète, sa recette n'a plus de nom ici (comme une recette retirée)
         $this->assertEqualsCanonicalizing(['Gâteau de mamie', 'Mon secret'], array_map(static fn(ActiveListMeal $meal): string => $meal->name, $beforeSecret));
         $this->assertSame(['Mon secret'], array_map(static fn(ActiveListMeal $meal): string => $meal->name, $afterSecret));
+    }
+
+    public function testARecipeSplitBetweenTwoActiveListsIsReturnedOnceAndEveryActiveListIsRead(): void
+    {
+        // Given : la recette est planifiée dans la liste principale ET dans la liste d'un type, l'autre seulement dans le type
+        $user = $this->savedUser();
+        $carbonara = $this->savedRecipe($user, new RecipeBuilder()->isPastaCarbonara());
+        $eggs = $this->savedRecipe($user, new RecipeBuilder()->isSoftBoiledEggs());
+        $this->persister->saveShoppingListType(ShoppingListType::create('butcher-type', $user->getId(), 'Boucherie', new \DateTimeImmutable('2026-10-31 10:00:00')));
+        $this->shoppingLists->save(new ShoppingListBuilder()->withOwner($user)->withId('list-main')->addRecipe($carbonara)->build());
+        $this->shoppingLists->save(new ShoppingListBuilder()->withOwner($user)->withId('list-butcher')->withListTypeId('butcher-type')->addRecipe($carbonara)->addRecipe($eggs)->build());
+        $this->entityManager->clear();
+
+        // When
+        $meals = $this->contents->meals($user->getId()) ?? [];
+
+        // Then
+        $this->assertEqualsCanonicalizing(
+            [new ActiveListMeal($carbonara->getId(), $carbonara->getName(), 3), new ActiveListMeal($eggs->getId(), $eggs->getName(), 3)],
+            $meals,
+        );
     }
 
     public function testItReturnsNullWhenTheUserHasNoActiveList(): void

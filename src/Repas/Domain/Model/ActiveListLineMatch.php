@@ -15,7 +15,7 @@ namespace Repas\Repas\Domain\Model;
 final readonly class ActiveListLineMatch
 {
     /**
-     * @param list<ActiveListLine> $lines       les lignes de la liste qui portent le produit (aucune : il n'y est pas)
+     * @param list<ActiveListLine> $lines       les lignes qui portent le produit, une par liste en cours qui le porte (aucune : il n'y est pas)
      * @param bool             $listSent    aucune liste active, mais l'utilisateur en a une envoyée au drive (jamais vrai avec `hasList`)
      * @param list<ActiveListLine> $suggestions les lignes de la liste les plus proches d'une phrase qui ne désigne aucun ingrédient (au plus trois)
      */
@@ -57,15 +57,32 @@ final readonly class ActiveListLineMatch
     }
 
     /**
-     * @param list<ActiveListLine> $lines au moins deux lignes, toutes dans la liste, que le nom ou le rayon distingue
+     * Un produit porté par plusieurs listes en cours (ADR 0036, LST-008) : une ligne par liste, la liste principale d'abord.
+     *
+     * @param non-empty-list<ActiveListLine> $lines les lignes d'UN SEUL produit
+     */
+    public static function foundIn(array $lines): self
+    {
+        return new self(true, $lines, null);
+    }
+
+    /**
+     * @param list<ActiveListLine> $lines les lignes d'au moins deux produits, tous dans une liste en cours, que le nom ou le rayon distingue (un produit
+     *                                    porté par deux listes y a deux lignes)
      */
     public static function tied(array $lines): self
     {
         return new self(true, $lines, null);
     }
 
+    /** Plusieurs PRODUITS se valent (le nom ou le rayon les distingue) : un produit dans plusieurs listes n'est pas un départage. */
     public function isTied(): bool
     {
-        return count($this->lines) > 1;
+        $products = [];
+        foreach ($this->lines as $line) {
+            $products[$line->name . '|' . $line->departmentSlug] = true;
+        }
+
+        return count($products) > 1;
     }
 }

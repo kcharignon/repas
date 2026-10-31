@@ -49,6 +49,39 @@ class RepasListAdaptersTest extends TestCase
         $this->assertSame(['user-1', 'pomme-de-terre', 2, 'kilo'], [$command->ownerId, $command->ingredientSlug, $command->quantity, $command->unitSlug]);
     }
 
+    public function testTheNameOfTheListOfATypeIsGivenForAnAddAndARemovalAndTheMainListHasNone(): void
+    {
+        // Given : le produit est allé dans Boucherie
+        $this->repas->willAdd(new AddedItem(false, false, 2.0, 'unite', 'unité', listName: 'Boucherie'));
+        $added = $this->repas->itemsPort()->addItem('user-1', 'viande-hachee');
+        $this->repas->willRemove(new RemovedItem(true, 1.0, 1.0, 'unite', 'unité', listName: 'Boucherie'));
+        $removed = $this->repas->itemsPort()->removeItem('user-1', 'viande-hachee');
+
+        // Then
+        $this->assertSame(['Boucherie', 'Boucherie'], [$added->listName, $removed->listName]);
+
+        // And : la liste principale n'a pas de nom
+        $this->repas->willAdd(new AddedItem(false, false));
+        $this->assertNull($this->repas->itemsPort()->addItem('user-1', 'pain')->listName);
+    }
+
+    public function testAProductInTwoListsIsOneFoundProductWithALinePerListOnBothSides(): void
+    {
+        // Given : de la viande hachée dans la liste principale et dans Boucherie
+        $inMain = self::line('viande-hachee', 'Viande hachée', 'Viande', 1.0);
+        $inButcher = new ListedLine('viande-hachee', 'Viande hachée', 'viande', 'Viande', 2.0, 'paquet', 'paquet', 'Boucherie');
+        $this->repas->listHas($inMain)->listHas($inButcher);
+
+        // When
+        $written = $this->repas->lineLookupPort()->find('user-1', 'de la viande hachée');
+        $read = $this->repas->lineLookupQueryPort()->find('user-1', 'de la viande hachée');
+
+        // Then : un seul produit (pas de départage), les deux lignes avec leur liste
+        $this->assertFalse($written->isTied());
+        $this->assertEquals($written, $read);
+        $this->assertEquals([$inMain, $inButcher], $read->lines);
+    }
+
     public function testARemovedItemIsGivenWithEverythingTheListDid(): void
     {
         // Given

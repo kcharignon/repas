@@ -16,6 +16,8 @@ use Repas\Repas\Domain\Model\Recipe;
 use Repas\Repas\Domain\Model\Meal;
 use Repas\Repas\Domain\Model\ShoppingList;
 use Repas\Repas\Domain\Model\ShoppingListStatus;
+use Repas\Repas\Domain\Model\ShoppingListType;
+use Repas\Shared\Domain\Tool\UuidGenerator;
 use Repas\Voice\Domain\Interface\VoiceFeature;
 use Repas\Voice\Application\Port\MealPlanCommandPort;
 use Repas\Voice\Application\Port\ShoppingListItemCommandPort;
@@ -2965,5 +2967,142 @@ class AlexaWebhookApiFlowTest extends DatabaseTestCase
         $this->assertTrue($this->jsonBody()['response']['shouldEndSession']);
         $this->assertSame(0, $this->rowCount('shopping_list'));
         $this->assertSame(0, $this->rowCount('meal'));
+    }
+
+    // ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
+    // Les listes d'un type (ADR 0036 décision 17, LST-008)
+    // ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
+
+    /**
+     * Un type de liste de `$owner` avec les rayons rattachés.
+     *
+     * @param list<string> $departmentSlugs
+     */
+    private function savedListType(User $owner, string $name, array $departmentSlugs): string
+    {
+        $id = UuidGenerator::new();
+        $this->persister->saveShoppingListType(ShoppingListType::create($id, $owner->getId(), $name, new DateTimeImmutable('2026-10-31 10:00:00'))->replaceDepartments($departmentSlugs));
+
+        return $id;
+    }
+
+    /**
+     * Les listes en cours de l'utilisateur, `nom (ou null pour la principale) => lignes (slug => quantité)`.
+     *
+     * @return array<string, array<string, float>>
+     */
+    private function openLists(User $user): array
+    {
+        $this->entityManager->clear();
+        $lists = [];
+        foreach ($this->lists->findByOwner($user->getId()) as $list) {
+            if ($list->getStatus() === ShoppingListStatus::ACTIVE) {
+                $rows = [];
+                foreach ($list->getRows() as $row) {
+                    $rows[$row->getIngredientSlug()] = $row->getQuantity();
+                }
+                $lists[$list->getName() ?? 'principale'] = $rows;
+            }
+        }
+        ksort($lists);
+
+        return $lists;
+    }
+
+    public function testAProductOfADepartmentOfATypeGoesToTheListOfTheTypeAndAlexaNamesIt(): void
+    {
+        // Given : un compte lié, du lardon (rayon viande) et le type « Boucherie » qui reçoit le rayon viande ; la liste principale est en cours
+        $user = $this->linkedUser();
+        $bacon = new IngredientBuilder()->isDicedBacon()->withCreator($user, true)->build();
+        $this->persister->saveIngredient($bacon);
+        $this->savedListType($user, 'Boucherie', [$bacon->getDepartment()->getSlug()]);
+        $this->savedActiveList($user);
+
+        // When : « Alexa, demande à Jarvis d'ajouter du lardon »
+        $this->say(AlexaTestRequest::addItem('du lardon'));
+
+        // Then : le critère du ticket, rien dans la liste principale, une liste Boucherie ouverte à la demande
+        $this->assertSame("C'est ajouté à boucherie.", $this->speech());
+        $this->assertSame(['Boucherie' => [$bacon->getSlug() => 1.0], 'principale' => []], $this->openLists($user));
+
+        // When : le demander, puis en retirer
+        $this->say(AlexaTestRequest::checkItem('du lardon'));
+        $asked = $this->speech();
+        $this->say(AlexaTestRequest::removeItem('du lardon'));
+
+        // Then : les deux réponses nomment la liste ; la ligne a disparu de la Boucherie
+        $this->assertSame('Oui, tu en as 1 gramme dans la liste boucherie.', $asked);
+        $this->assertSame("C'est retiré de boucherie : lardon. Il n'y en a plus dans cette liste.", $this->speech());
+        $this->assertSame(['Boucherie' => [], 'principale' => []], $this->openLists($user));
+    }
+
+    public function testAProductWithoutTypeKeepsTheOldAnswersAndTheMainList(): void
+    {
+        // Given : le même compte, un type qui ne reçoit pas le rayon du pain
+        $user = $this->linkedUser();
+        $this->savedBread($user);
+        $this->savedListType($user, 'Boucherie', [new DepartmentBuilder()->isMeat()->build()->getSlug()]);
+
+        // When
+        $this->say(AlexaTestRequest::addItem('du pain'));
+
+        // Then : exactement les mots d'avant les types, dans la liste principale créée
+        $this->assertSame("J'ai commencé une nouvelle liste avec pain.", $this->speech());
+        $this->assertSame(['principale' => [1.0]], array_map(static fn(array $rows): array => array_values($rows), $this->openLists($user)));
+    }
+
+    public function testAMealIsPlannedInTheListsOfItsProductsAlexaNamesThemAndRemovingItActsOnAllOfThem(): void
+    {
+        // Given : la recette carbonara ; le lardon va dans « Boucherie », le parmesan dans « Crèmerie », le reste dans la liste principale
+        $user = $this->linkedUserFor(4);
+        $recipe = $this->savedRecipe($user, 'Hachis parmentier');
+        $this->savedListType($user, 'Boucherie', [new DepartmentBuilder()->isMeat()->build()->getSlug()]);
+        $this->savedListType($user, 'Crèmerie', [new DepartmentBuilder()->isCheese()->build()->getSlug()]);
+        $this->savedActiveList($user);
+
+        // When : « Alexa, demande à Jarvis de planifier le repas hachis parmentier »
+        $this->say(AlexaTestRequest::addMeal('le repas hachis parmentier'));
+
+        // Then : les trois listes sont nommées, chacune a reçu son repas
+        $this->assertStringStartsWith("C'est noté : hachis parmentier, pour 4 personnes, dans ta liste, ", $this->speech());
+        $this->assertStringContainsString('boucherie', $this->speech());
+        $this->assertStringContainsString('crèmerie', $this->speech());
+        $this->assertCount(3, $this->openLists($user));
+        $this->assertSame(3, (int) $this->connection()->fetchOne('SELECT COUNT(*) FROM meal WHERE recipe = ?', [$recipe->getId()]));
+
+        // When : le planifier encore
+        $this->say(AlexaTestRequest::addMeal('le repas hachis parmentier'));
+
+        // Then : déjà prévu, jamais deux fois
+        $this->assertStringStartsWith('Le repas hachis parmentier est déjà prévu pour 4 personnes.', $this->speech());
+        $this->assertSame(3, (int) $this->connection()->fetchOne('SELECT COUNT(*) FROM meal WHERE recipe = ?', [$recipe->getId()]));
+
+        // When : l'enlever
+        $this->say(AlexaTestRequest::removeMeal('le repas hachis parmentier'));
+
+        // Then : plus de repas, plus de ligne nulle part
+        $this->assertSame("C'est retiré : le repas hachis parmentier.", $this->speech());
+        $this->assertSame(0, (int) $this->connection()->fetchOne('SELECT COUNT(*) FROM meal WHERE recipe = ?', [$recipe->getId()]));
+        $this->assertSame(0, $this->rowCount('shopping_list_row'));
+    }
+
+    public function testRemovingAMealWhoseGroupHasASentListIsRefusedAndNothingChanges(): void
+    {
+        // Given : le repas est dans deux listes (la principale et la Boucherie), la Boucherie part au drive
+        $user = $this->linkedUserFor(4);
+        $recipe = $this->savedRecipe($user, 'Hachis parmentier');
+        $butcherId = $this->savedListType($user, 'Boucherie', [new DepartmentBuilder()->isMeat()->build()->getSlug()]);
+        $this->savedActiveList($user);
+        $this->say(AlexaTestRequest::addMeal('le repas hachis parmentier'));
+        $this->connection()->executeStatement("UPDATE shopping_list SET status = 'SENT' WHERE list_type_id = ?", [$butcherId]);
+        $rowsBefore = $this->rowCount('shopping_list_row');
+
+        // When
+        $this->say(AlexaTestRequest::removeMeal('le repas hachis parmentier'));
+
+        // Then : la phrase de la liste partie au drive, rien n'a bougé
+        $this->assertSame('Ta liste est déjà partie au drive.', $this->speech());
+        $this->assertSame(2, (int) $this->connection()->fetchOne('SELECT COUNT(*) FROM meal WHERE recipe = ?', [$recipe->getId()]));
+        $this->assertSame($rowsBefore, $this->rowCount('shopping_list_row'));
     }
 }

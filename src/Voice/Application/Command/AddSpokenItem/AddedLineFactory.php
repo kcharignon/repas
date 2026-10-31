@@ -23,6 +23,7 @@ final readonly class AddedLineFactory
             existed: $added->lineExisted,
             unitCited: $unitCited,
             unitSubstituted: $added->unitSubstituted,
+            listName: $added->listName,
         );
     }
 }

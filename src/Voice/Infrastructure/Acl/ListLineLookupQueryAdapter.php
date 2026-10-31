@@ -30,13 +30,25 @@ final readonly class ListLineLookupQueryAdapter implements ListLineLookupQueryPo
             return SpokenListLookupResult::notInList($match->absentName, array_map(self::line(...), $match->suggestions));
         }
 
-        return count($match->lines) > 1
-            ? SpokenListLookupResult::tied(array_map(self::line(...), $match->lines))
-            : SpokenListLookupResult::found(self::line($match->lines[0]));
+        return self::found($match->isTied(), array_map(self::line(...), $match->lines));
+    }
+
+    /**
+     * Plusieurs produits qui se valent : à départager. Un seul produit : une ligne par liste en cours qui le porte (ADR 0036, LST-008).
+     *
+     * @param non-empty-list<ListedLine> $lines
+     */
+    private static function found(bool $tied, array $lines): SpokenListLookupResult
+    {
+        return match (true) {
+            $tied => SpokenListLookupResult::tied($lines),
+            count($lines) === 1 => SpokenListLookupResult::found($lines[0]),
+            default => SpokenListLookupResult::foundIn($lines),
+        };
     }
 
     private static function line(ActiveListLineDTO $line): ListedLine
     {
-        return new ListedLine($line->slug, $line->name, $line->departmentSlug, $line->departmentName, $line->quantity, $line->unitSlug, $line->unitName);
+        return new ListedLine($line->slug, $line->name, $line->departmentSlug, $line->departmentName, $line->quantity, $line->unitSlug, $line->unitName, $line->listName);
     }
 }

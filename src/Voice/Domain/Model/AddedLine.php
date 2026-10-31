@@ -26,6 +26,8 @@ final readonly class AddedLine
         public bool $unitCited = false,
         /** L'unité dite n'est pas celle de la ligne : inconnue de l'ingrédient, convertie, ou la ligne en avait déjà une autre. */
         public bool $unitSubstituted = false,
+        /** Le nom de la liste d'un TYPE qui a reçu l'article (ADR 0036, LST-008) ; `null` : la liste principale. */
+        public ?string $listName = null,
     ) {
     }
 

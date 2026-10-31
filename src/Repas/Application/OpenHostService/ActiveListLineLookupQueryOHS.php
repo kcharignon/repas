@@ -41,10 +41,10 @@ final readonly class ActiveListLineLookupQueryOHS
 
         return new ActiveListLineMatchDTO(
             $match->hasList,
-            array_map(static fn($line): ActiveListLineDTO => new ActiveListLineDTO($line->slug, $line->name, $line->departmentSlug, $line->departmentName, $line->quantity, $line->unitSlug, $line->unitName), $match->lines),
+            array_map(static fn($line): ActiveListLineDTO => new ActiveListLineDTO($line->slug, $line->name, $line->departmentSlug, $line->departmentName, $line->quantity, $line->unitSlug, $line->unitName, $line->listName), $match->lines),
             $match->absentName,
             $match->listSent,
-            array_map(static fn($line): ActiveListLineDTO => new ActiveListLineDTO($line->slug, $line->name, $line->departmentSlug, $line->departmentName, $line->quantity, $line->unitSlug, $line->unitName), $match->suggestions),
+            array_map(static fn($line): ActiveListLineDTO => new ActiveListLineDTO($line->slug, $line->name, $line->departmentSlug, $line->departmentName, $line->quantity, $line->unitSlug, $line->unitName, $line->listName), $match->suggestions),
         );
     }
 }

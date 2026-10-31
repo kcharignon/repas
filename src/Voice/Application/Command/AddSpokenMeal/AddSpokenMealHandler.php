@@ -89,7 +89,7 @@ readonly class AddSpokenMealHandler
         }
 
         return new AddSpokenItemResult(
-            VoiceReplies::mealPlanned($planned->recipeName, $planned->servings, $planned->listCreated, $planned->previousListSent, remembered: $rememberAs !== null),
+            VoiceReplies::mealPlanned($planned->recipeName, $planned->servings, $planned->listCreated, $planned->previousListSent, remembered: $rememberAs !== null, typedListNames: $planned->typedListNames, inMainList: $planned->inMainList),
             keepSessionOpen: $keepSessionOpen,
             added: true,
         );
@@ -108,7 +108,11 @@ readonly class AddSpokenMealHandler
         $changed = $this->mealPlanner->changeServings($userId, $recipe->slug, $servings);
 
         return new AddSpokenItemResult(
-            $changed->found ? VoiceReplies::mealServingsChanged($changed->recipeName, $changed->servings) : VoiceReplies::MEAL_NO_LONGER_PLANNED,
+            match (true) {
+                $changed->listSent => VoiceReplies::LIST_SENT,
+                $changed->found => VoiceReplies::mealServingsChanged($changed->recipeName, $changed->servings),
+                default => VoiceReplies::MEAL_NO_LONGER_PLANNED,
+            },
             keepSessionOpen: false,
             added: $changed->found,
         );

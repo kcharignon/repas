@@ -186,6 +186,30 @@ $plannedSplitRecipe = static function (WriteBudgetTestCase $t) use ($splitRecipe
     return [$owner, $basque, $main->mealOf($basque)->getId()];
 };
 
+/**
+ * Un lardon (rayon viande) d'un utilisateur dont le type « Boucherie » tient le rayon viande (ADR 0036, LST-008) ; sa liste principale est en cours
+ * (trois recettes planifiées).
+ *
+ * @return array{0: \Repas\User\Domain\Model\User, 1: Ingredient}
+ */
+$butcherWithBacon = static function (WriteBudgetTestCase $t, bool $butcherListOpen, bool $baconInButcherList = false): array {
+    $owner = $t->savedUser();
+    $butcher = ShoppingListType::create(UuidGenerator::new(), $owner->getId(), 'Boucherie', new \DateTimeImmutable())->replaceDepartments(['viande']);
+    $t->persister->saveShoppingListType($butcher);
+    $bacon = new IngredientBuilder()->isDicedBacon()->withCreator($owner)->build();
+    $t->persister->saveIngredient($bacon);
+    $t->savedShoppingList($owner, $t->typicalRecipes($owner));
+    if ($butcherListOpen) {
+        $t->savedShoppingList($owner, [], static function (ShoppingListBuilder $b) use ($butcher, $bacon, $baconInButcherList): ShoppingListBuilder {
+            $b->withListTypeId($butcher->getId());
+
+            return $baconInButcherList ? $b->addIngredient($bacon) : $b;
+        });
+    }
+
+    return [$owner, $bacon];
+};
+
 /** @return Tab<CreateRecipeRowSubCommand> */
 $createRows = static fn(Recipe $recipe): Tab => new Tab(
     array_map(
@@ -293,6 +317,46 @@ return [
         $t->persister->saveIngredient($bacon);
 
         return new AddIngredientToShoppingListCommand($owner->getId(), $bacon->getSlug());
+    },
+    // La commande vocale et les listes d'un type (ADR 0036 décision 17, LST-008). Un lardon (rayon viande) dont « Boucherie » tient le rayon : la liste du
+    // type est déjà en cours, ou ouverte à la demande
+    'ajouter-ingredient-par-la-voix-dans-un-type' => static function (WriteBudgetTestCase $t) use ($butcherWithBacon): object {
+        [$owner, $bacon] = $butcherWithBacon($t, butcherListOpen: true);
+
+        return new AddSpokenIngredientCommand($owner->getId(), $bacon->getSlug(), UuidGenerator::new());
+    },
+    'ajouter-ingredient-par-la-voix-dans-un-type-ouvert-a-la-demande' => static function (WriteBudgetTestCase $t) use ($butcherWithBacon): object {
+        [$owner, $bacon] = $butcherWithBacon($t, butcherListOpen: false);
+
+        return new AddSpokenIngredientCommand($owner->getId(), $bacon->getSlug(), UuidGenerator::new());
+    },
+    'ajouter-article-dit-a-alexa-dans-un-type' => static function (WriteBudgetTestCase $t) use ($butcherWithBacon): object {
+        [$owner] = $butcherWithBacon($t, butcherListOpen: true);
+
+        return new AddSpokenItemCommand($owner->getId(), 'du lardon', true);
+    },
+    // Le lardon est déjà dans la Boucherie seulement : la ligne est retirée de la liste du type
+    'retirer-ingredient-par-la-voix-dans-un-type' => static function (WriteBudgetTestCase $t) use ($butcherWithBacon): object {
+        [$owner, $bacon] = $butcherWithBacon($t, butcherListOpen: true, baconInButcherList: true);
+
+        return new RemoveSpokenIngredientCommand($owner->getId(), $bacon->getSlug());
+    },
+    'retirer-article-dit-a-alexa-dans-un-type' => static function (WriteBudgetTestCase $t) use ($butcherWithBacon): object {
+        [$owner] = $butcherWithBacon($t, butcherListOpen: true, baconInButcherList: true);
+
+        return new RemoveSpokenItemCommand($owner->getId(), 'du lardon', true);
+    },
+    // Planifier le gâteau basque dit à Alexa : la recette éclatée entre la liste principale, la Boulangerie et la Crèmerie ouverte à la demande
+    'planifier-repas-dit-a-alexa-eclate' => static function (WriteBudgetTestCase $t) use ($splitRecipe): object {
+        [$owner, $basque] = $splitRecipe($t);
+
+        return new AddSpokenMealCommand($owner->getId(), $basque->getName(), true);
+    },
+    // Retirer ce repas éclaté dit à Alexa : la recherche parmi les repas de toutes les listes en cours, puis le retrait du groupe
+    'retirer-repas-dit-a-alexa-eclate' => static function (WriteBudgetTestCase $t) use ($plannedSplitRecipe): object {
+        [$owner, $basque] = $plannedSplitRecipe($t);
+
+        return new SpokenMealRemovalCommand($owner->getId(), $basque->getName(), true);
     },
     'ajouter-ingredient-liste' => static function (WriteBudgetTestCase $t): object {
         $owner = $t->savedUser();

@@ -49,9 +49,10 @@ final readonly class ActiveListLookup
      */
     public function line(string $phrase, array $lines, array $candidates, Closure $rememberedSlug): ActiveListLineMatch
     {
+        // Un ingrédient a une ligne par liste en cours qui le porte (la principale d'abord)
         $inList = [];
         foreach ($lines as $line) {
-            $inList[$line->slug] = $line;
+            $inList[$line->slug][] = $line;
         }
 
         $key = SpokenIngredientRanker::phraseKey($phrase);
@@ -65,16 +66,19 @@ final readonly class ActiveListLookup
         /** @var list<ActiveListLine> $present */
         $present = [];
         foreach ($this->ranker->equivalents($phrase, $candidates, $remembered) as $equivalent) {
-            if (isset($inList[$equivalent->slug])) {
-                $present[] = $inList[$equivalent->slug];
+            foreach ($inList[$equivalent->slug] ?? [] as $line) {
+                $present[] = $line;
             }
         }
         $present = self::withoutDuplicates($present);
 
-        return match (count($present)) {
+        // Les PRODUITS qui se valent (un même produit dans deux listes n'en fait qu'un) : aucun, un seul (une ligne par liste qui le porte), plusieurs à départager
+        $products = self::productsOf($present);
+
+        return match (count($products)) {
             0 => ActiveListLineMatch::notInList($ranked->name),
-            1 => ActiveListLineMatch::found($present[0]),
-            default => ActiveListLineMatch::tied(array_slice($present, 0, SpokenIngredientRanker::MAX_SUGGESTIONS)),
+            1 => ActiveListLineMatch::foundIn($present),
+            default => ActiveListLineMatch::tied(array_merge(...array_slice($products, 0, SpokenIngredientRanker::MAX_SUGGESTIONS))),
         };
     }
 
@@ -126,7 +130,7 @@ final readonly class ActiveListLookup
      * DANS la liste, un nom une fois (deux lignes du même nom, dans deux rayons, ne se proposent pas par la voix).
      *
      * @param list<SpokenCandidate> $candidates
-     * @param array<string, ActiveListLine> $inList
+     * @param array<string, list<ActiveListLine>> $inList
      *
      * @return list<ActiveListLine>
      */
@@ -139,7 +143,7 @@ final readonly class ActiveListLookup
 
         $near = [];
         foreach ($this->ranker->suggest($phrase, $present) as $suggestion) {
-            $line = $inList[$suggestion->slug];
+            $line = $inList[$suggestion->slug][0];
             $near[$line->name] ??= $line;
         }
 
@@ -172,7 +176,25 @@ final readonly class ActiveListLookup
     }
 
     /**
-     * Une seule ligne par nom ET rayon : la plus grande quantité (la première en cas d'égalité), dans l'ordre où les noms sont apparus.
+     * Les lignes rangées par PRODUIT (nom et rayon), dans l'ordre où les produits sont apparus.
+     *
+     * @param list<ActiveListLine> $lines
+     *
+     * @return list<non-empty-list<ActiveListLine>>
+     */
+    private static function productsOf(array $lines): array
+    {
+        $products = [];
+        foreach ($lines as $line) {
+            $products[$line->name . '|' . $line->departmentSlug][] = $line;
+        }
+
+        return array_values($products);
+    }
+
+    /**
+     * Une seule ligne par nom, rayon ET liste : la plus grande quantité (la première en cas d'égalité), dans l'ordre où les noms sont apparus. Un
+     * produit porté par deux listes en cours garde ses deux lignes (ADR 0036, LST-008).
      *
      * @param list<ActiveListLine> $lines
      *
@@ -182,7 +204,7 @@ final readonly class ActiveListLookup
     {
         $kept = [];
         foreach ($lines as $line) {
-            $key = $line->name . '|' . $line->departmentSlug;
+            $key = $line->name . '|' . $line->departmentSlug . '|' . ($line->listName ?? '');
             if (!isset($kept[$key]) || $line->quantity > $kept[$key]->quantity) {
                 $kept[$key] = $line;
             }

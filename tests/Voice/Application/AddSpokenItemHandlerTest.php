@@ -49,6 +49,32 @@ class AddSpokenItemHandlerTest extends TestCase
         $this->assertEquals(new AddSpokenItemResult("C'est noté : pain.", keepSessionOpen: false, added: true), $result);
     }
 
+    public function testAProductAddedToTheListOfATypeSaysWhichList(): void
+    {
+        // Given : le produit va dans la liste Boucherie (ADR 0036, LST-008)
+        $this->repas->willResolve(new ResolvedIngredient('viande-hachee', 'Viande hachée', 'Viande', ResolvedIngredient::SURE));
+        $this->repas->willAdd(new AddedItem(false, false, listName: 'Boucherie'));
+
+        // When
+        $result = ($this->handler)(new AddSpokenItemCommand('user-1', 'de la viande hachée', sessionIsOpen: false));
+
+        // Then : le critère du ticket
+        $this->assertEquals(new AddSpokenItemResult("C'est ajouté à boucherie.", keepSessionOpen: false, added: true), $result);
+    }
+
+    public function testAGuessedProductAddedToTheListOfATypeSaysWhatWasPutAndWhere(): void
+    {
+        // Given
+        $this->repas->willResolve(new ResolvedIngredient('viande-hachee', 'Viande hachée', 'Viande', ResolvedIngredient::PROBABLE));
+        $this->repas->willAdd(new AddedItem(false, false, listName: 'Boucherie'));
+
+        // When
+        $result = ($this->handler)(new AddSpokenItemCommand('user-1', 'de la viande', sessionIsOpen: false));
+
+        // Then
+        $this->assertSame("J'ai mis viande hachée, viande, à boucherie.", $result->speech);
+    }
+
     #[DataProvider('guesses')]
     public function testAProbableOrUnsureChoiceSaysWhatWasPutAndWhere(string $confidence): void
     {

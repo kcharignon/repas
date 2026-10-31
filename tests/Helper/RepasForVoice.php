@@ -332,7 +332,7 @@ final class RepasForVoice
     public function listHas(ListedLine $line, int $uses = 0): self
     {
         $this->hasActiveList();
-        $this->lines[] = new \Repas\Repas\Domain\Model\ActiveListLine($line->slug, $line->name, $line->departmentSlug, $line->departmentName, $line->quantity, $line->unitSlug, $line->unitName);
+        $this->lines[] = new \Repas\Repas\Domain\Model\ActiveListLine($line->slug, $line->name, $line->departmentSlug, $line->departmentName, $line->quantity, $line->unitSlug, $line->unitName, $line->listName);
         $this->candidates->add($this->candidate($line->slug, $line->name, $line->departmentName, $line->departmentSlug, $uses));
         $this->syncList();
 
@@ -369,6 +369,7 @@ final class RepasForVoice
             $added->lineExisted,
             $added->unitSubstituted,
             $added->addedQuantity,
+            $added->listName,
         ));
 
         return $this;
@@ -384,6 +385,7 @@ final class RepasForVoice
             $removed->unitSlug,
             $removed->unitName,
             $removed->unitSubstituted,
+            $removed->listName,
         ));
 
         return $this;
@@ -580,14 +582,18 @@ final class RepasForVoice
     /** Le prochain repas planifié rend ce résultat (par défaut : planifié pour le nombre dit ou 4, la liste existait). */
     public function willPlanMeal(PlannedSpokenMeal $planned): self
     {
-        $this->bus->willAnswer(PlanSpokenMealCommand::class, static fn(object $command): MealPlanResult => new MealPlanResult($planned->recipeName, $planned->servings, $planned->alreadyPlanned, $planned->listCreated, $planned->previousListSent));
+        $this->bus->willAnswer(PlanSpokenMealCommand::class, static fn(object $command): MealPlanResult => new MealPlanResult($planned->recipeName, $planned->servings, $planned->alreadyPlanned, $planned->listCreated, $planned->previousListSent, $planned->typedListNames, $planned->inMainList));
 
         return $this;
     }
 
     public function willChangeMealServings(ChangedMealServings $changed): self
     {
-        $this->bus->willAnswer(ChangeSpokenMealServingsCommand::class, static fn(object $command): MealServingsResult => $changed->found ? MealServingsResult::changed($changed->recipeName, $changed->servings) : MealServingsResult::notPlanned($changed->recipeName));
+        $this->bus->willAnswer(ChangeSpokenMealServingsCommand::class, static fn(object $command): MealServingsResult => match (true) {
+            $changed->listSent => MealServingsResult::listSent($changed->recipeName),
+            $changed->found => MealServingsResult::changed($changed->recipeName, $changed->servings),
+            default => MealServingsResult::notPlanned($changed->recipeName),
+        });
 
         return $this;
     }
@@ -595,6 +601,7 @@ final class RepasForVoice
     public function willRemoveMeal(RemovedSpokenMeal $removed): self
     {
         $this->bus->willAnswer(RemoveSpokenMealCommand::class, static fn(object $command): MealRemovalResult => match (true) {
+            $removed->listSent => MealRemovalResult::listSent($removed->recipeName),
             !$removed->found => MealRemovalResult::notPlanned($removed->recipeName),
             $removed->removedAll => MealRemovalResult::removed($removed->recipeName),
             default => MealRemovalResult::lowered($removed->recipeName, $removed->servings),

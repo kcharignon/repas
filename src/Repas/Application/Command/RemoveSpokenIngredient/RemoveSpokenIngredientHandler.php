@@ -4,6 +4,7 @@ namespace Repas\Repas\Application\Command\RemoveSpokenIngredient;
 
 use Repas\Repas\Application\Service\IngredientSlugResolver;
 use Repas\Repas\Application\Service\SpokenLineQuantity;
+use Repas\Repas\Application\Service\SpokenListName;
 use Repas\Repas\Domain\Exception\IngredientException;
 use Repas\Repas\Domain\Exception\ShoppingListException;
 use Repas\Repas\Domain\Interface\IngredientRepository;
@@ -17,7 +18,9 @@ use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 /**
  * Retire un article dit à la voix de la liste ACTIVE (ADR 0029 décision 12), l'inverse d'`AddSpokenIngredientHandler` :
  *
- * - jamais de liste créée, jamais une liste envoyée au drive modifiée (elle n'est pas « active » : rien à retirer) ; sans liste active ou sans
+ * - la ligne est retirée de la liste EN COURS qui la porte : la liste principale d'abord, sinon la plus ancienne liste d'un type qui la porte (ADR 0036,
+ *   LST-008 ; le résultat nomme cette liste quand ce n'est pas la principale) ;
+ * - jamais de liste créée, jamais une liste envoyée au drive modifiée (elle n'est pas « active » : rien à retirer) ; sans liste en cours ou sans
  *   ligne pour cet ingrédient, rien n'est écrit et le résultat dit `found` faux ;
  * - la quantité (1 à 99) est ramenée à l'unité de la ligne comme pour l'ajout (`SpokenLineQuantity` : unité dite convertie, ou laissée de côté si
  *   l'ingrédient ne la connaît pas) ;
@@ -38,6 +41,7 @@ readonly class RemoveSpokenIngredientHandler
         private UnitRepository $unitRepository,
         IngredientRepository $ingredientRepository,
         ConversionService $conversionService,
+        private SpokenListName $listName,
     ) {
         $this->lineQuantity = new SpokenLineQuantity($ingredientRepository, $unitRepository, $conversionService);
     }
@@ -52,16 +56,15 @@ readonly class RemoveSpokenIngredientHandler
             throw ShoppingListException::invalidSpokenQuantity($command->quantity);
         }
 
-        $shoppingList = $this->shoppingListRepository->findOneActivateByOwner($command->ownerId);
-        if (!$shoppingList instanceof ShoppingList) {
-            return new RemovedItem(found: false);
-        }
-
         // Un ancien slug (ancien commun dont l'utilisateur a reçu une copie, ingrédient fusionné) est remplacé par l'ingrédient actuel
         // de l'utilisateur (ADR 0028 décision 4)
         $ingredientSlug = $this->slugResolver->resolve($command->ownerId, [$command->ingredientSlug])[$command->ingredientSlug] ?? $command->ingredientSlug;
-        $row = $shoppingList->findRow($ingredientSlug);
-        if ($row === null) {
+
+        // La liste en cours qui porte la ligne : la liste principale d'abord (un compte sans type n'en a pas d'autre), sinon la plus ancienne liste d'un
+        // type qui la porte (ADR 0036, LST-008 : le même ordre que diminuer un produit). Une seule lecture ; sans liste en cours ou sans ligne, rien n'est écrit
+        $shoppingList = $this->shoppingListRepository->findOneActiveWithRow($command->ownerId, $ingredientSlug);
+        $row = $shoppingList?->findRow($ingredientSlug);
+        if (!$shoppingList instanceof ShoppingList || $row === null) {
             return new RemovedItem(found: false);
         }
 
@@ -78,6 +81,7 @@ readonly class RemoveSpokenIngredientHandler
             unitSlug: $unitSlug,
             unitName: $this->unitRepository->findOneBySlug($unitSlug)->getName(),
             unitSubstituted: $substituted,
+            listName: $shoppingList->getListTypeId() === null ? null : $this->listName->ofTyped($shoppingList->getName(), $shoppingList->getListTypeId()),
         );
     }
 }

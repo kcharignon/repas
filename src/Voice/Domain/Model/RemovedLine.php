@@ -28,6 +28,8 @@ final readonly class RemovedLine
         public bool $unitCited = false,
         /** L'unité dite n'est pas celle de la ligne : inconnue de l'ingrédient, ou convertie. */
         public bool $unitSubstituted = false,
+        /** Le nom de la liste d'un TYPE dont la ligne a été retirée (ADR 0036, LST-008) ; `null` : la liste principale. */
+        public ?string $listName = null,
     ) {
     }
 
