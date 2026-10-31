@@ -4,7 +4,7 @@
 - **Jalon** : M7 Plusieurs enseignes (retour du propriétaire, hors ordre)
 - **Taille** : M
 - **Dépend de** : DRV-203, DRV-611 (plan et estimation), ADR 0023 (verrou `SENT`), ADR 0035 (Open Host Service)
-- **Statut** : fait (PR #…, 2026-10-31). Pendant agent : DRV-746 (clé `notInCart` du résultat, agent 0.54.0) ; pendant site : DRV-747 (appel de la nouvelle route après le passage, texte avec `repas-po`). Effort recommandé : `high`.
+- **Statut** : fait (PR #390, 2026-10-31). Pendant agent : DRV-746 (clé `notInCart` du résultat, agent 0.54.0) ; pendant site : DRV-747 (appel de la nouvelle route après le passage, texte avec `repas-po`). Effort recommandé : `high`.
 - **Lire d'abord** : [`../architecture.md`](../architecture.md) § 2 (invariant 6), § 4.3, § 7 (la route), § 8 (`notInCart`) ; [ADR 0022](../../adr/0022-remplissage-du-panier-drive.md) et [ADR 0023](../../adr/0023-liste-envoyee-au-drive.md) (amendements du 2026-10-31) ; skill `repas-drive-back`.
 
 ## Contexte
