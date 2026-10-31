@@ -5,7 +5,7 @@ namespace Repas\Voice\Application\Command\ExchangeAuthorizationCode;
 
 use Psr\Clock\ClockInterface;
 use Psr\Log\LoggerInterface;
-use Repas\Shared\Application\Interface\ActiveUserChecker;
+use Repas\Voice\Application\Port\ActiveUserCommandPort;
 use Repas\Shared\Domain\Tool\UuidGenerator;
 use Repas\Voice\Application\Command\IssuedTokens;
 use Repas\Voice\Domain\Interface\AccessGrantRepository;
@@ -44,7 +44,7 @@ readonly class ExchangeAuthorizationCodeHandler
         private VoiceLinkRepository $linkRepository,
         private AccessGrantRepository $grantRepository,
         private LinkRevoker $linkRevoker,
-        private ActiveUserChecker $activeUserChecker,
+        private ActiveUserCommandPort $activeUserChecker,
         private OpaqueTokenGenerator $tokenGenerator,
         private UuidGenerator $uuidGenerator,
         private ClockInterface $clock,

@@ -6,7 +6,7 @@ namespace Repas\Voice\Application\Command\RefreshAccessGrant;
 use DateTimeImmutable;
 use Psr\Clock\ClockInterface;
 use Psr\Log\LoggerInterface;
-use Repas\Shared\Application\Interface\ActiveUserChecker;
+use Repas\Voice\Application\Port\ActiveUserCommandPort;
 use Repas\Voice\Application\Command\IssuedTokens;
 use Repas\Voice\Domain\Interface\AccessGrantRepository;
 use Repas\Voice\Domain\Interface\OpaqueTokenGenerator;
@@ -37,7 +37,7 @@ readonly class RefreshAccessGrantHandler
         private AccessGrantRepository $grantRepository,
         private VoiceLinkRepository $linkRepository,
         private LinkRevoker $linkRevoker,
-        private ActiveUserChecker $activeUserChecker,
+        private ActiveUserCommandPort $activeUserChecker,
         private OpaqueTokenGenerator $tokenGenerator,
         private ClockInterface $clock,
         private LoggerInterface $logger,

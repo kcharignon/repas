@@ -6,18 +6,23 @@ namespace Repas\Tests\Voice\Application;
 use DateTimeImmutable;
 use PHPUnit\Framework\TestCase;
 use Repas\Tests\Helper\Alexa\AlexaTestClient;
-use Repas\Tests\Helper\ActiveUserCheckerInMemory;
+use Repas\Tests\Helper\Builder\UserBuilder;
 use Repas\Tests\Helper\ContextSpyLogger;
 use Repas\Tests\Helper\ControlledOpaqueTokenGenerator;
 use Repas\Tests\Helper\ControlledUuidGenerator;
 use Repas\Tests\Helper\FrozenClock;
 use Repas\Tests\Helper\InMemoryRepository\AccessGrantInMemoryRepository;
+use Repas\Tests\Helper\InMemoryRepository\UserInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\AuthorizationCodeInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\VoiceLinkInMemoryRepository;
 use Repas\Voice\Application\Command\ExchangeAuthorizationCode\ExchangeAuthorizationCodeCommand;
 use Repas\Voice\Application\Command\ExchangeAuthorizationCode\ExchangeAuthorizationCodeHandler;
 use Repas\Voice\Domain\Model\AccessGrant;
 use Repas\Voice\Domain\Model\AuthorizationCode;
+use Repas\User\Application\OpenHostService\UserAccountCommandOHS;
+use Repas\User\Domain\Model\User;
+use Repas\User\Domain\Model\UserStatus;
+use Repas\Voice\Infrastructure\Acl\ActiveUserCommandAdapter;
 use Repas\Voice\Domain\Model\OpaqueToken;
 use Repas\Voice\Domain\Model\VoiceLink;
 use Repas\Voice\Domain\Service\LinkRevoker;
@@ -33,7 +38,8 @@ class ExchangeAuthorizationCodeHandlerTest extends TestCase
     private AuthorizationCodeInMemoryRepository $codes;
     private VoiceLinkInMemoryRepository $links;
     private AccessGrantInMemoryRepository $grants;
-    private ActiveUserCheckerInMemory $activeUsers;
+    private User $account;
+    private ActiveUserCommandAdapter $activeUsers;
     private ControlledOpaqueTokenGenerator $tokens;
     private ContextSpyLogger $logger;
     private ExchangeAuthorizationCodeHandler $handler;
@@ -46,7 +52,8 @@ class ExchangeAuthorizationCodeHandlerTest extends TestCase
         $this->codes = new AuthorizationCodeInMemoryRepository();
         $this->links = new VoiceLinkInMemoryRepository();
         $this->grants = new AccessGrantInMemoryRepository();
-        $this->activeUsers = new ActiveUserCheckerInMemory([self::USER]);
+        $this->account = new UserBuilder()->withId(self::USER)->build();
+        $this->activeUsers = new ActiveUserCommandAdapter(new UserAccountCommandOHS(new UserInMemoryRepository([$this->account])));
         $this->tokens = new ControlledOpaqueTokenGenerator([AlexaTestClient::token('access-1'), AlexaTestClient::token('refresh-1'), AlexaTestClient::token('access-2'), AlexaTestClient::token('refresh-2')]);
         $this->logger = new ContextSpyLogger();
         $this->handler = $this->handlerWith($this->codes);
@@ -199,7 +206,7 @@ class ExchangeAuthorizationCodeHandlerTest extends TestCase
     public function testAnInactiveAccountGetsNothingAndTheCodeIsBurned(): void
     {
         // Given : le compte a été désactivé (ou supprimé) entre l'autorisation et l'échange
-        $this->activeUsers->deactivate(self::USER);
+        $this->account->changeStatus(UserStatus::DISABLED);
 
         // When
         $tokens = ($this->handler)($this->command());

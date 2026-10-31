@@ -24,11 +24,13 @@ class UserInMemoryLoader implements UserLoader
 
     /**
      * @param list<UserSummaryDTO> $users
+     * @param list<string> $activeUserIds les comptes que `isActive()` dit actifs (les autres, inconnus ou non, ne le sont pas)
      */
     public function __construct(
         private readonly ?CurrentUserDTO $user = null,
         private readonly array $users = [],
         private readonly bool $emailAlreadyUsed = false,
+        private readonly array $activeUserIds = [],
     ) {
     }
 
@@ -50,5 +52,10 @@ class UserInMemoryLoader implements UserLoader
         $this->emailExistsCalls[] = $email;
 
         return $this->emailAlreadyUsed;
+    }
+
+    public function isActive(string $userId): bool
+    {
+        return in_array($userId, $this->activeUserIds, true);
     }
 }

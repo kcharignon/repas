@@ -5,13 +5,15 @@ namespace Repas\Tests\Voice\Application;
 
 use DateTimeImmutable;
 use PHPUnit\Framework\TestCase;
-use Repas\Tests\Helper\ActiveUserCheckerInMemory;
 use Repas\Tests\Helper\Alexa\AlexaTestClient;
 use Repas\Tests\Helper\FrozenClock;
 use Repas\Tests\Helper\InMemoryLoader\AccessGrantInMemoryLoader;
+use Repas\Tests\Helper\InMemoryLoader\UserInMemoryLoader;
 use Repas\Voice\Application\Query\ResolveAccessGrant\ResolveAccessGrantQuery;
 use Repas\Voice\Application\Query\ResolveAccessGrant\ResolveAccessGrantQueryHandler;
 use Repas\Voice\Application\Query\ResolveAccessGrant\ResolvedAccessGrantDTO;
+use Repas\User\Application\OpenHostService\UserAccountQueryOHS;
+use Repas\Voice\Infrastructure\Acl\ActiveUserQueryAdapter;
 use Repas\Voice\Domain\Model\OpaqueToken;
 
 class ResolveAccessGrantQueryHandlerTest extends TestCase
@@ -70,6 +72,6 @@ class ResolveAccessGrantQueryHandlerTest extends TestCase
      */
     private function handler(AccessGrantInMemoryLoader $loader, array $activeUserIds): ResolveAccessGrantQueryHandler
     {
-        return new ResolveAccessGrantQueryHandler($loader, new ActiveUserCheckerInMemory($activeUserIds), new FrozenClock($this->now));
+        return new ResolveAccessGrantQueryHandler($loader, new ActiveUserQueryAdapter(new UserAccountQueryOHS(new UserInMemoryLoader(activeUserIds: $activeUserIds))), new FrozenClock($this->now));
     }
 }

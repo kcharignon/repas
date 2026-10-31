@@ -1,9 +1,13 @@
-# Bounded contexts (ADR 0001, 0013, 0022, 0029) : Repas, User, Drive et Voice dépendent de Shared ; Shared n'importe aucun contexte.
-# Aucune dépendance entre contextes n'est tolérée (plus de baseline depuis le lot « User par identifiant ») : ce qui doit
-# circuler entre eux est dans Shared (événements de `Shared\Domain\Event`, interface `AuthenticatedUser`, port
-# `OwnershipLoader`, classe de base des repositories Doctrine).
-# Les fixtures de développement composent les contextes (une fixture Repas référence un utilisateur) : elles sont hors
-# de ces règles, comme le code de test.
+# Contextes étanches (ADR 0001, 0013, 0035) : Repas, User, Drive et Voice ne s'importent pas. Un contexte ne dépend que de Shared
+# et de lui-même ; la seule porte vers un autre contexte est sa couche anticorruption (`Infrastructure/Acl/*CommandAdapter` ou
+# `*QueryAdapter`), qui appelle l'Open Host Service du MÊME genre chez le producteur (`Application/OpenHostService/*CommandOHS`
+# ou `*QueryOHS`) et lit seulement ce qu'il publie :
+#   - un CommandAdapter lit les Model (`Domain/Model`) que rend un CommandOHS ;
+#   - un QueryAdapter lit les DTO (`Application/OpenHostService/**/*DTO`) que rend un QueryOHS ;
+#   - les deux peuvent attraper les exceptions du producteur (`Domain/Exception`).
+# Les couches ci-dessous sont DISJOINTES (chaque classe d'un contexte est dans une seule) ; `<Contexte>` est tout le reste du contexte.
+# Les fixtures de développement composent les contextes (une fixture Repas référence un utilisateur) : elles sont hors de ces
+# règles, comme le code de test. `Shared` n'importe aucun contexte.
 deptrac:
   paths:
     - ../../src
@@ -12,6 +16,39 @@ deptrac:
       collectors:
         - type: classLike
           value: ^Repas\\Shared\\.*
+    - name: RepasCommandOhs
+      collectors:
+        - type: classLike
+          value: ^Repas\\Repas\\Application\\OpenHostService\\.*CommandOHS$
+    - name: RepasQueryOhs
+      collectors:
+        - type: classLike
+          value: ^Repas\\Repas\\Application\\OpenHostService\\.*QueryOHS$
+    - name: RepasOhsDto
+      collectors:
+        - type: bool
+          must:
+            - type: classLike
+              value: ^Repas\\Repas\\Application\\OpenHostService\\.*
+          must_not:
+            - type: classLike
+              value: .*(CommandOHS|QueryOHS)$
+    - name: RepasCommandAcl
+      collectors:
+        - type: classLike
+          value: ^Repas\\Repas\\Infrastructure\\Acl\\.*CommandAdapter$
+    - name: RepasQueryAcl
+      collectors:
+        - type: classLike
+          value: ^Repas\\Repas\\Infrastructure\\Acl\\.*QueryAdapter$
+    - name: RepasModel
+      collectors:
+        - type: classLike
+          value: ^Repas\\Repas\\Domain\\Model\\.*
+    - name: RepasException
+      collectors:
+        - type: classLike
+          value: ^Repas\\Repas\\Domain\\Exception\\.*
     - name: Repas
       collectors:
         - type: bool
@@ -20,7 +57,46 @@ deptrac:
               value: ^Repas\\Repas\\.*
           must_not:
             - type: classLike
+              value: ^Repas\\Repas\\Application\\OpenHostService\\.*
+            - type: classLike
+              value: ^Repas\\Repas\\Infrastructure\\Acl\\.*
+            - type: classLike
+              value: ^Repas\\Repas\\Domain\\(Model|Exception)\\.*
+            - type: classLike
               value: ^Repas\\Repas\\Infrastructure\\DataFixture\\.*
+    - name: UserCommandOhs
+      collectors:
+        - type: classLike
+          value: ^Repas\\User\\Application\\OpenHostService\\.*CommandOHS$
+    - name: UserQueryOhs
+      collectors:
+        - type: classLike
+          value: ^Repas\\User\\Application\\OpenHostService\\.*QueryOHS$
+    - name: UserOhsDto
+      collectors:
+        - type: bool
+          must:
+            - type: classLike
+              value: ^Repas\\User\\Application\\OpenHostService\\.*
+          must_not:
+            - type: classLike
+              value: .*(CommandOHS|QueryOHS)$
+    - name: UserCommandAcl
+      collectors:
+        - type: classLike
+          value: ^Repas\\User\\Infrastructure\\Acl\\.*CommandAdapter$
+    - name: UserQueryAcl
+      collectors:
+        - type: classLike
+          value: ^Repas\\User\\Infrastructure\\Acl\\.*QueryAdapter$
+    - name: UserModel
+      collectors:
+        - type: classLike
+          value: ^Repas\\User\\Domain\\Model\\.*
+    - name: UserException
+      collectors:
+        - type: classLike
+          value: ^Repas\\User\\Domain\\Exception\\.*
     - name: User
       collectors:
         - type: bool
@@ -29,7 +105,46 @@ deptrac:
               value: ^Repas\\User\\.*
           must_not:
             - type: classLike
+              value: ^Repas\\User\\Application\\OpenHostService\\.*
+            - type: classLike
+              value: ^Repas\\User\\Infrastructure\\Acl\\.*
+            - type: classLike
+              value: ^Repas\\User\\Domain\\(Model|Exception)\\.*
+            - type: classLike
               value: ^Repas\\User\\Infrastructure\\DataFixture\\.*
+    - name: DriveCommandOhs
+      collectors:
+        - type: classLike
+          value: ^Repas\\Drive\\Application\\OpenHostService\\.*CommandOHS$
+    - name: DriveQueryOhs
+      collectors:
+        - type: classLike
+          value: ^Repas\\Drive\\Application\\OpenHostService\\.*QueryOHS$
+    - name: DriveOhsDto
+      collectors:
+        - type: bool
+          must:
+            - type: classLike
+              value: ^Repas\\Drive\\Application\\OpenHostService\\.*
+          must_not:
+            - type: classLike
+              value: .*(CommandOHS|QueryOHS)$
+    - name: DriveCommandAcl
+      collectors:
+        - type: classLike
+          value: ^Repas\\Drive\\Infrastructure\\Acl\\.*CommandAdapter$
+    - name: DriveQueryAcl
+      collectors:
+        - type: classLike
+          value: ^Repas\\Drive\\Infrastructure\\Acl\\.*QueryAdapter$
+    - name: DriveModel
+      collectors:
+        - type: classLike
+          value: ^Repas\\Drive\\Domain\\Model\\.*
+    - name: DriveException
+      collectors:
+        - type: classLike
+          value: ^Repas\\Drive\\Domain\\Exception\\.*
     - name: Drive
       collectors:
         - type: bool
@@ -38,18 +153,268 @@ deptrac:
               value: ^Repas\\Drive\\.*
           must_not:
             - type: classLike
+              value: ^Repas\\Drive\\Application\\OpenHostService\\.*
+            - type: classLike
+              value: ^Repas\\Drive\\Infrastructure\\Acl\\.*
+            - type: classLike
+              value: ^Repas\\Drive\\Domain\\(Model|Exception)\\.*
+            - type: classLike
               value: ^Repas\\Drive\\Infrastructure\\DataFixture\\.*
-    - name: Voice
+    - name: VoiceCommandOhs
       collectors:
         - type: classLike
-          value: ^Repas\\Voice\\.*
+          value: ^Repas\\Voice\\Application\\OpenHostService\\.*CommandOHS$
+    - name: VoiceQueryOhs
+      collectors:
+        - type: classLike
+          value: ^Repas\\Voice\\Application\\OpenHostService\\.*QueryOHS$
+    - name: VoiceOhsDto
+      collectors:
+        - type: bool
+          must:
+            - type: classLike
+              value: ^Repas\\Voice\\Application\\OpenHostService\\.*
+          must_not:
+            - type: classLike
+              value: .*(CommandOHS|QueryOHS)$
+    - name: VoiceCommandAcl
+      collectors:
+        - type: classLike
+          value: ^Repas\\Voice\\Infrastructure\\Acl\\.*CommandAdapter$
+    - name: VoiceQueryAcl
+      collectors:
+        - type: classLike
+          value: ^Repas\\Voice\\Infrastructure\\Acl\\.*QueryAdapter$
+    - name: VoiceModel
+      collectors:
+        - type: classLike
+          value: ^Repas\\Voice\\Domain\\Model\\.*
+    - name: VoiceException
+      collectors:
+        - type: classLike
+          value: ^Repas\\Voice\\Domain\\Exception\\.*
+    - name: Voice
+      collectors:
+        - type: bool
+          must:
+            - type: classLike
+              value: ^Repas\\Voice\\.*
+          must_not:
+            - type: classLike
+              value: ^Repas\\Voice\\Application\\OpenHostService\\.*
+            - type: classLike
+              value: ^Repas\\Voice\\Infrastructure\\Acl\\.*
+            - type: classLike
+              value: ^Repas\\Voice\\Domain\\(Model|Exception)\\.*
+            - type: classLike
+              value: ^Repas\\Voice\\Infrastructure\\DataFixture\\.*
 
   ruleset:
     Repas:
       - Shared
+      - RepasModel
+      - RepasException
+    RepasModel:
+      - Shared
+      - Repas
+      - RepasException
+    RepasException:
+      - Shared
+      - Repas
+      - RepasModel
+    RepasOhsDto:
+      - Shared
+    RepasCommandOhs:
+      - Shared
+      - Repas
+      - RepasModel
+      - RepasException
+    RepasQueryOhs:
+      - Shared
+      - Repas
+      - RepasOhsDto
+      - RepasException
+    RepasCommandAcl:
+      - Shared
+      - Repas
+      - RepasModel
+      - RepasException
+      - UserCommandOhs
+      - UserModel
+      - UserException
+      - DriveCommandOhs
+      - DriveModel
+      - DriveException
+      - VoiceCommandOhs
+      - VoiceModel
+      - VoiceException
+    RepasQueryAcl:
+      - Shared
+      - Repas
+      - RepasModel
+      - RepasException
+      - UserQueryOhs
+      - UserOhsDto
+      - UserException
+      - DriveQueryOhs
+      - DriveOhsDto
+      - DriveException
+      - VoiceQueryOhs
+      - VoiceOhsDto
+      - VoiceException
     User:
       - Shared
+      - UserModel
+      - UserException
+    UserModel:
+      - Shared
+      - User
+      - UserException
+    UserException:
+      - Shared
+      - User
+      - UserModel
+    UserOhsDto:
+      - Shared
+    UserCommandOhs:
+      - Shared
+      - User
+      - UserModel
+      - UserException
+    UserQueryOhs:
+      - Shared
+      - User
+      - UserOhsDto
+      - UserException
+    UserCommandAcl:
+      - Shared
+      - User
+      - UserModel
+      - UserException
+      - RepasCommandOhs
+      - RepasModel
+      - RepasException
+      - DriveCommandOhs
+      - DriveModel
+      - DriveException
+      - VoiceCommandOhs
+      - VoiceModel
+      - VoiceException
+    UserQueryAcl:
+      - Shared
+      - User
+      - UserModel
+      - UserException
+      - RepasQueryOhs
+      - RepasOhsDto
+      - RepasException
+      - DriveQueryOhs
+      - DriveOhsDto
+      - DriveException
+      - VoiceQueryOhs
+      - VoiceOhsDto
+      - VoiceException
     Drive:
       - Shared
+      - DriveModel
+      - DriveException
+    DriveModel:
+      - Shared
+      - Drive
+      - DriveException
+    DriveException:
+      - Shared
+      - Drive
+      - DriveModel
+    DriveOhsDto:
+      - Shared
+    DriveCommandOhs:
+      - Shared
+      - Drive
+      - DriveModel
+      - DriveException
+    DriveQueryOhs:
+      - Shared
+      - Drive
+      - DriveOhsDto
+      - DriveException
+    DriveCommandAcl:
+      - Shared
+      - Drive
+      - DriveModel
+      - DriveException
+      - RepasCommandOhs
+      - RepasModel
+      - RepasException
+      - UserCommandOhs
+      - UserModel
+      - UserException
+      - VoiceCommandOhs
+      - VoiceModel
+      - VoiceException
+    DriveQueryAcl:
+      - Shared
+      - Drive
+      - DriveModel
+      - DriveException
+      - RepasQueryOhs
+      - RepasOhsDto
+      - RepasException
+      - UserQueryOhs
+      - UserOhsDto
+      - UserException
+      - VoiceQueryOhs
+      - VoiceOhsDto
+      - VoiceException
     Voice:
       - Shared
+      - VoiceModel
+      - VoiceException
+    VoiceModel:
+      - Shared
+      - Voice
+      - VoiceException
+    VoiceException:
+      - Shared
+      - Voice
+      - VoiceModel
+    VoiceOhsDto:
+      - Shared
+    VoiceCommandOhs:
+      - Shared
+      - Voice
+      - VoiceModel
+      - VoiceException
+    VoiceQueryOhs:
+      - Shared
+      - Voice
+      - VoiceOhsDto
+      - VoiceException
+    VoiceCommandAcl:
+      - Shared
+      - Voice
+      - VoiceModel
+      - VoiceException
+      - RepasCommandOhs
+      - RepasModel
+      - RepasException
+      - UserCommandOhs
+      - UserModel
+      - UserException
+      - DriveCommandOhs
+      - DriveModel
+      - DriveException
+    VoiceQueryAcl:
+      - Shared
+      - Voice
+      - VoiceModel
+      - VoiceException
+      - RepasQueryOhs
+      - RepasOhsDto
+      - RepasException
+      - UserQueryOhs
+      - UserOhsDto
+      - UserException
+      - DriveQueryOhs
+      - DriveOhsDto
+      - DriveException
