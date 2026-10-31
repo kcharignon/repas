@@ -15,7 +15,7 @@ use Repas\Drive\Infrastructure\Entity\Choice;
 use Repas\Drive\Infrastructure\Entity\ChoiceProduct;
 use Repas\Drive\Infrastructure\Entity\DriveSettings;
 use Repas\Drive\Infrastructure\Entity\Product;
-use Repas\Shared\Application\Interface\IngredientNameLoader;
+use Repas\Drive\Application\Port\IngredientNameQueryPort;
 
 /**
  * Seuls les produits des préférences de l'utilisateur sont lus : jamais le catalogue `drive_product` en dehors de ses choix
@@ -29,7 +29,7 @@ final readonly class ChoicePostgreSQLLoader implements ChoiceLoader
 
     public function __construct(
         private EntityManagerInterface $entityManager,
-        private IngredientNameLoader $ingredientNameLoader,
+        private IngredientNameQueryPort $ingredientNameLoader,
     ) {
     }
 

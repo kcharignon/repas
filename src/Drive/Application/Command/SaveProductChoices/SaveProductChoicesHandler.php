@@ -14,9 +14,9 @@ use Repas\Drive\Domain\Model\Choice;
 use Repas\Drive\Domain\Model\Product;
 use Repas\Drive\Domain\Model\RayonVote;
 use Repas\Drive\Domain\Model\Retailer;
-use Repas\Shared\Application\Interface\IngredientAliasResolver;
-use Repas\Shared\Application\Interface\IngredientDepartmentResolver;
-use Repas\Shared\Application\Interface\UnitSlugResolver;
+use Repas\Drive\Application\Port\IngredientAliasCommandPort;
+use Repas\Drive\Application\Port\IngredientDepartmentCommandPort;
+use Repas\Drive\Application\Port\UnitCommandPort;
 use Repas\Shared\Domain\Interface\UuidGenerator;
 use Repas\Shared\Application\Interface\DriveFeature;
 use Repas\Shared\Domain\Exception\DriveFeatureException;
@@ -33,9 +33,9 @@ readonly class SaveProductChoicesHandler
         private ProductRepository $productRepository,
         private ChoiceRepository $choiceRepository,
         private RayonVoteRepository $rayonVoteRepository,
-        private IngredientDepartmentResolver $ingredientDepartments,
-        private UnitSlugResolver $unitSlugs,
-        private IngredientAliasResolver $ingredientAliases,
+        private IngredientDepartmentCommandPort $ingredientDepartments,
+        private UnitCommandPort $unitSlugs,
+        private IngredientAliasCommandPort $ingredientAliases,
         private UuidGenerator $uuidGenerator,
         private ClockInterface $clock,
         private DriveFeature $driveFeature,
@@ -51,7 +51,7 @@ readonly class SaveProductChoicesHandler
      * sont créées si besoin. Tout ou rien : tout est validé avant la première écriture, et la commande est atomique. Nombre de
      * requêtes constant, quelle que soit la taille du lot : une lecture des réglages, des alias d'ingrédients (ING-002), des produits et des préférences, puis
      * une écriture par table, celle du compteur du jour dans les réglages, et un décompte des préférences quand le lot en crée.
-     * Un choix ne s'enregistre que sur un ingrédient de l'utilisateur (`IngredientAliasResolver::resolveOwned()`, la même lecture que la
+     * Un choix ne s'enregistre que sur un ingrédient de l'utilisateur (`IngredientAliasCommandPort::resolveOwned()`, la même lecture que la
      * traduction des anciens slugs) : si un seul slug du lot n'en est pas un, `ingredientNotFound()` et rien n'est écrit.
      *
      * **Valeurs propres au compte** : le libellé et le prix que le compte vient de lire (`ADD_PRODUCT`, `REJECT_PRODUCT` : le libellé ;
@@ -76,14 +76,14 @@ readonly class SaveProductChoicesHandler
      * dans ce produit », `PackSizeChange`) ; elle est mémorisée sur la ligne de ce produit dans la préférence (couple préférence,
      * produit), privée, et nulle part ailleurs. Intention sans contenance : celle qui est mémorisée pour le MÊME produit est gardée
      * (un produit nouveau n'en a pas) ; contenance effacée explicitement : oubliée ; contenance sur une autre action :
-     * `invalidChoice()`. L'unité doit exister dans Repas (`UnitSlugResolver`, une requête, seulement quand le lot donne une
+     * `invalidChoice()`. L'unité doit exister dans Repas (`UnitCommandPort`, une requête, seulement quand le lot donne une
      * contenance) sinon `packSizeInvalid()`. Le reste voyage avec la préférence : aucune autre requête.
      *
      * **Apprentissage du rayon (DRV-642)** : chaque `ADD_PRODUCT` dont le produit connaît son rayon dans l'enseigne (donné par
      * l'agent ou déjà sur la fiche, la fiche faisant foi) vote, pour le compte, pour le couple (rayon de Repas de l'ingrédient, rayon
      * de l'enseigne) dans `drive_rayon_vote`, ce qui nourrit les `rayonHints` du plan : un compte pèse une fois par couple, quel que
      * soit le nombre de fois qu'il renvoie le même choix. Une lecture de plus (les rayons de Repas des ingrédients, par le port
-     * `Shared`) et une écriture de plus, seulement quand un choix porte un rayon ; un ingrédient sans rayon de Repas connu, un refus
+     * `IngredientDepartmentCommandPort`) et une écriture de plus, seulement quand un choix porte un rayon ; un ingrédient sans rayon de Repas connu, un refus
      * et un rafraîchissement de prix n'apprennent rien.
      *
      * @throws DriveException `invalidChoice()` (422) pour un lot, un produit ou une intention hors des bornes, un produit à la

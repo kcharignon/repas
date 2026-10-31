@@ -4,6 +4,8 @@ namespace Repas\Tests\Drive\OutputAdapter;
 
 
 use DateTimeImmutable;
+use Repas\Drive\Infrastructure\Acl\ShoppingListQueryAdapter;
+use Repas\Repas\Application\OpenHostService\ShoppingListContentQueryOHS;
 use Repas\Drive\Application\Loader\DrivePlanLoader;
 use Repas\Drive\Application\Query\GetDrivePlan\DrivePlanCountsDTO;
 use Repas\Drive\Application\Query\GetDrivePlan\DrivePlanDTO;
@@ -29,8 +31,8 @@ use Repas\Drive\Infrastructure\Loader\DrivePlanPostgreSQLLoader;
 use Repas\Repas\Domain\Exception\ShoppingListException;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Repas\Domain\Model\ShoppingListStatus;
-use Repas\Shared\Application\Dto\ShoppingListForDrive;
-use Repas\Shared\Application\Dto\ShoppingListLineForDrive;
+use Repas\Drive\Domain\Model\ShoppingListForDrive;
+use Repas\Drive\Domain\Model\ShoppingListLineForDrive;
 use Repas\Tests\Helper\Builder\ChoiceBuilder;
 use Repas\Tests\Helper\Builder\DriveSettingsBuilder;
 use Repas\Tests\Helper\Builder\IngredientBuilder;
@@ -40,7 +42,7 @@ use Repas\Tests\Helper\Builder\UserBuilder;
 use Repas\Tests\Helper\DatabaseTestCase;
 use Repas\Tests\Helper\DataPersister;
 use Repas\Tests\Helper\FrozenClock;
-use Repas\Tests\Helper\InMemoryLoader\ShoppingListForDriveInMemoryLoader;
+use Repas\Tests\Helper\InMemoryLoader\ShoppingListContentInMemoryLoader;
 use Repas\Tests\Helper\SqlBudget\QueryCounter;
 use Repas\User\Domain\Interface\UserRepository;
 
@@ -702,7 +704,7 @@ class DrivePlanPostgreSQLLoaderTest extends DatabaseTestCase
     {
         return new DrivePlanPostgreSQLLoader(
             $this->entityManager,
-            new ShoppingListForDriveInMemoryLoader($list),
+            new ShoppingListQueryAdapter(new ShoppingListContentQueryOHS(new ShoppingListContentInMemoryLoader($list))),
             new PackCalculator(),
             new FrozenClock(new DateTimeImmutable('2026-10-18T10:00:00+00:00')),
         );

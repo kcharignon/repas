@@ -1,13 +1,12 @@
 <?php
 
-namespace Repas\Shared\Application\Interface;
+namespace Repas\Drive\Application\Port;
 
 /**
- * Port de lecture du nom des ingrédients pour le contexte `Drive` (écran des produits mémorisés).
- *
- * Un nom ne se lit que pour les ingrédients de l'utilisateur qui le demande (ADR 0028).
+ * Ce que l'écran des produits mémorisés demande aux ingrédients : leur nom. Un nom ne se lit que pour les ingrédients de l'utilisateur qui le
+ * demande (ADR 0028). Adapté depuis le contexte `Repas` (ADR 0035).
  */
-interface IngredientNameLoader
+interface IngredientNameQueryPort
 {
     /**
      * @param list<string> $slugs
