@@ -1,36 +1,31 @@
 <?php
 
-namespace Repas\Tests\User\Infrastructure\Security;
+namespace Repas\Tests\Repas\Infrastructure\Security;
 
 
 use PHPUnit\Framework\TestCase;
-use Repas\Tests\Helper\Builder\UserBuilder;
+use Repas\Repas\Infrastructure\Security\OwnerVoter;
+use Repas\Tests\Helper\ControlledAccessDecisionManager;
 use Repas\Tests\Helper\InMemoryLoader\OwnershipInMemoryLoader;
-use Repas\Tests\Helper\InMemoryLoader\VoiceLinkOwnershipInMemoryLoader;
-use Repas\User\Domain\Model\User;
-use Repas\User\Infrastructure\Security\OwnerVoter;
+use Repas\Tests\Helper\SecurityUserDouble;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
-use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
 use Symfony\Component\Security\Core\Authentication\Token\UsernamePasswordToken;
-use Symfony\Component\Security\Core\Authorization\AccessDecision;
-use Symfony\Component\Security\Core\Authorization\AccessDecisionManagerInterface;
 use Symfony\Component\Security\Core\Authorization\Voter\VoterInterface;
+use Symfony\Component\Security\Core\User\InMemoryUser;
 
+/**
+ * Les droits sur les objets de `Repas` (ADR 0035 : le voter est du contexte, le propriétaire d'un objet est lu par son port à lui). Le voter ne
+ * connaît de l'utilisateur du jeton que `AuthenticatedUser`.
+ */
 class OwnerVoterTest extends TestCase
 {
-    private User $owner;
-    private User $other;
+    private SecurityUserDouble $owner;
+    private SecurityUserDouble $other;
 
     protected function setUp(): void
     {
-        $this->owner = new UserBuilder()->withId('owner-id')->build();
-        $this->other = new UserBuilder()->withId('other-id')->build();
-    }
-
-    public function testAUserIsHimself(): void
-    {
-        $this->assertSame(VoterInterface::ACCESS_GRANTED, $this->vote($this->owner, OwnerVoter::HIMSELF, 'owner-id'));
-        $this->assertSame(VoterInterface::ACCESS_DENIED, $this->vote($this->other, OwnerVoter::HIMSELF, 'owner-id'));
+        $this->owner = new SecurityUserDouble('owner-id');
+        $this->other = new SecurityUserDouble('other-id');
     }
 
     public function testOnlyTheCreatorOwnsAnIngredient(): void
@@ -54,11 +49,16 @@ class OwnerVoterTest extends TestCase
     public function testAnAdministratorStillHasThePassThroughOnTheOtherResources(): void
     {
         // Then : seul INGREDIENT_OWNER change, les recettes, les listes, les repas et les lignes gardent leur passe-droit
-        $loader = new OwnershipInMemoryLoader(recipeAuthors: ['recipe-1' => 'owner-id'], shoppingListOwners: ['list-1' => 'owner-id'], mealOwners: ['meal-1' => 'owner-id']);
+        $loader = new OwnershipInMemoryLoader(
+            recipeAuthors: ['recipe-1' => 'owner-id'],
+            shoppingListOwners: ['list-1' => 'owner-id'],
+            mealOwners: ['meal-1' => 'owner-id'],
+            shoppingListRowOwners: ['row-1' => 'owner-id'],
+        );
         $this->assertSame(VoterInterface::ACCESS_GRANTED, $this->vote($this->other, OwnerVoter::RECIPE_OWNER, 'recipe-1', $loader, admin: true));
         $this->assertSame(VoterInterface::ACCESS_GRANTED, $this->vote($this->other, OwnerVoter::SHOPPING_LIST_OWNER, 'list-1', $loader, admin: true));
         $this->assertSame(VoterInterface::ACCESS_GRANTED, $this->vote($this->other, OwnerVoter::MEAL_OWNER, 'meal-1', $loader, admin: true));
-        $this->assertSame(VoterInterface::ACCESS_GRANTED, $this->vote($this->other, OwnerVoter::HIMSELF, 'owner-id', admin: true));
+        $this->assertSame(VoterInterface::ACCESS_GRANTED, $this->vote($this->other, OwnerVoter::SHOPPING_LIST_ROW_OWNER, 'row-1', $loader, admin: true));
     }
 
     public function testAnUnknownIngredientIsNotFoundEvenForAnAdministrator(): void
@@ -167,37 +167,41 @@ class OwnerVoterTest extends TestCase
         $this->assertSame(VoterInterface::ACCESS_GRANTED, $this->vote($this->other, OwnerVoter::SHOPPING_LIST_ROW_OWNER, 'row-1', $loader, admin: true));
     }
 
-    public function testOnlyTheOwnerOwnsAVoiceLinkAndAnAdministratorHasNoPassThrough(): void
+    public function testAnAdministratorOwnsEverythingButIngredientsAndSecretRecipesWithoutLookingTheResourceUp(): void
     {
-        // Given : la liaison avec Alexa est à owner-id (ADR 0029)
-        $links = new VoiceLinkOwnershipInMemoryLoader(['link-1' => 'owner-id']);
-
-        // Then : le propriétaire la retire, un autre compte non, et un administrateur non plus : retirer la liaison d'un autre couperait sa commande vocale
-        $this->assertSame(VoterInterface::ACCESS_GRANTED, $this->vote($this->owner, OwnerVoter::VOICE_LINK_OWNER, 'link-1', voiceLinks: $links));
-        $this->assertSame(VoterInterface::ACCESS_DENIED, $this->vote($this->other, OwnerVoter::VOICE_LINK_OWNER, 'link-1', voiceLinks: $links));
-        $this->assertSame(VoterInterface::ACCESS_DENIED, $this->vote($this->other, OwnerVoter::VOICE_LINK_OWNER, 'link-1', admin: true, voiceLinks: $links));
-        $this->assertSame(VoterInterface::ACCESS_GRANTED, $this->vote($this->owner, OwnerVoter::VOICE_LINK_OWNER, 'link-1', admin: true, voiceLinks: $links));
-    }
-
-    public function testAnUnknownVoiceLinkIsNotFoundEvenForAnAdministrator(): void
-    {
-        // Then : sans passe-droit, la liaison est cherchée : un identifiant inconnu donne 404
-        $this->expectException(NotFoundHttpException::class);
-
-        $this->vote($this->owner, OwnerVoter::VOICE_LINK_OWNER, 'unknown-link', admin: true);
-    }
-
-    public function testAnAdministratorOwnsEverythingWithoutLookingTheResourceUp(): void
-    {
-        $this->assertSame(VoterInterface::ACCESS_GRANTED, $this->vote($this->other, OwnerVoter::SHOPPING_LIST_OWNER, 'unknown-list', admin: true));
+        foreach ([OwnerVoter::SHOPPING_LIST_OWNER, OwnerVoter::MEAL_OWNER, OwnerVoter::SHOPPING_LIST_ROW_OWNER] as $attribute) {
+            $this->assertSame(VoterInterface::ACCESS_GRANTED, $this->vote($this->other, $attribute, 'unknown', admin: true), $attribute);
+        }
     }
 
     public function testADisabledUserOwnsNothing(): void
     {
-        $disabled = new UserBuilder()->withId('owner-id')->isDisabled()->build();
-        $loader = new OwnershipInMemoryLoader(shoppingListOwners: ['list-1' => 'owner-id']);
+        $disabled = new SecurityUserDouble('owner-id', disabled: true);
+        $loader = new OwnershipInMemoryLoader(
+            ingredientCreators: ['ingredient-1' => 'owner-id'],
+            shoppingListOwners: ['list-1' => 'owner-id'],
+            recipeAuthors: ['recipe-1' => 'owner-id'],
+            mealOwners: ['meal-1' => 'owner-id'],
+            shoppingListRowOwners: ['row-1' => 'owner-id'],
+        );
 
+        $this->assertSame(VoterInterface::ACCESS_DENIED, $this->vote($disabled, OwnerVoter::INGREDIENT_OWNER, 'ingredient-1', $loader));
         $this->assertSame(VoterInterface::ACCESS_DENIED, $this->vote($disabled, OwnerVoter::SHOPPING_LIST_OWNER, 'list-1', $loader));
+        $this->assertSame(VoterInterface::ACCESS_DENIED, $this->vote($disabled, OwnerVoter::RECIPE_OWNER, 'recipe-1', $loader));
+        $this->assertSame(VoterInterface::ACCESS_DENIED, $this->vote($disabled, OwnerVoter::MEAL_OWNER, 'meal-1', $loader));
+        $this->assertSame(VoterInterface::ACCESS_DENIED, $this->vote($disabled, OwnerVoter::SHOPPING_LIST_ROW_OWNER, 'row-1', $loader));
+    }
+
+    public function testADisabledAdministratorStillPassesWhereTheRoleAlonePasses(): void
+    {
+        // Given : comportement conservé du voter d'origine (le rôle est jugé avant le compte) ; un compte désactivé ne peut de toute façon plus
+        // se connecter (UserChecker)
+        $disabled = new SecurityUserDouble('other-id', disabled: true);
+        $loader = new OwnershipInMemoryLoader(ingredientCreators: ['ingredient-1' => 'owner-id'], shoppingListOwners: ['list-1' => 'owner-id']);
+
+        // Then : la liste passe par le rôle, l'ingrédient (sans passe-droit) reste refusé par le compte désactivé
+        $this->assertSame(VoterInterface::ACCESS_GRANTED, $this->vote($disabled, OwnerVoter::SHOPPING_LIST_OWNER, 'list-1', $loader, admin: true));
+        $this->assertSame(VoterInterface::ACCESS_DENIED, $this->vote($disabled, OwnerVoter::INGREDIENT_OWNER, 'ingredient-1', $loader, admin: true));
     }
 
     public function testAnUnknownResourceIsNotFound(): void
@@ -207,24 +211,49 @@ class OwnerVoterTest extends TestCase
         $this->vote($this->owner, OwnerVoter::SHOPPING_LIST_ROW_OWNER, 'unknown-row');
     }
 
-    public function testItAbstainsOnAnotherAttribute(): void
+    public function testEveryKindOfUnknownResourceIsNotFound(): void
     {
+        foreach ([OwnerVoter::SHOPPING_LIST_OWNER, OwnerVoter::MEAL_OWNER, OwnerVoter::RECIPE_OWNER, OwnerVoter::INGREDIENT_OWNER] as $attribute) {
+            try {
+                $this->vote($this->owner, $attribute, 'unknown');
+                $this->fail("Un 404 est attendu pour $attribute.");
+            } catch (NotFoundHttpException) {
+                $this->addToAssertionCount(1);
+            }
+        }
+    }
+
+    public function testAUserOfAnotherKindOwnsNothing(): void
+    {
+        // Given : un utilisateur de jeton qui n'est pas un AuthenticatedUser
+        $loader = new OwnershipInMemoryLoader(shoppingListOwners: ['list-1' => 'owner-id']);
+        $token = new UsernamePasswordToken(new InMemoryUser('owner-id', null, ['ROLE_USER']), 'main', ['ROLE_USER']);
+
+        // Then
+        $this->assertSame(VoterInterface::ACCESS_DENIED, new OwnerVoter(new ControlledAccessDecisionManager(false), $loader)->vote($token, 'list-1', [OwnerVoter::SHOPPING_LIST_OWNER]));
+    }
+
+    public function testItAbstainsOnTheAttributesOfTheOtherContexts(): void
+    {
+        // Then : HIMSELF est au contexte User, VOICE_LINK_OWNER au contexte Voice (ADR 0035)
+        $this->assertSame(VoterInterface::ACCESS_ABSTAIN, $this->vote($this->owner, 'HIMSELF', 'owner-id'));
+        $this->assertSame(VoterInterface::ACCESS_ABSTAIN, $this->vote($this->owner, 'VOICE_LINK_OWNER', 'link-1', admin: true));
         $this->assertSame(VoterInterface::ACCESS_ABSTAIN, $this->vote($this->owner, 'OTHER', 'owner-id'));
     }
 
-    private function vote(User $user, string $attribute, string $subject, ?OwnershipInMemoryLoader $loader = null, bool $admin = false, ?VoiceLinkOwnershipInMemoryLoader $voiceLinks = null): int
+    public function testItAbstainsWhenTheSubjectIsNotAString(): void
     {
-        $decisionManager = new class($admin) implements AccessDecisionManagerInterface {
-            public function __construct(private readonly bool $admin)
-            {
-            }
+        $token = new UsernamePasswordToken($this->owner, 'main', ['ROLE_USER']);
+        $voter = new OwnerVoter(new ControlledAccessDecisionManager(true), new OwnershipInMemoryLoader());
 
-            public function decide(TokenInterface $token, array $attributes, mixed $object = null, ?AccessDecision $accessDecision = null): bool
-            {
-                return $this->admin;
-            }
-        };
-        $voter = new OwnerVoter($decisionManager, $loader ?? new OwnershipInMemoryLoader(), $voiceLinks ?? new VoiceLinkOwnershipInMemoryLoader());
+        foreach ([null, 12, ['list-1'], new \stdClass()] as $subject) {
+            $this->assertSame(VoterInterface::ACCESS_ABSTAIN, $voter->vote($token, $subject, [OwnerVoter::SHOPPING_LIST_OWNER]));
+        }
+    }
+
+    private function vote(SecurityUserDouble $user, string $attribute, string $subject, ?OwnershipInMemoryLoader $loader = null, bool $admin = false): int
+    {
+        $voter = new OwnerVoter(new ControlledAccessDecisionManager($admin), $loader ?? new OwnershipInMemoryLoader());
 
         return $voter->vote(new UsernamePasswordToken($user, 'main', $user->getRoles()), $subject, [$attribute]);
     }

@@ -8,7 +8,7 @@ use Repas\Repas\Domain\Exception\MealException;
 use Repas\Repas\Domain\Exception\RecipeException;
 use Repas\Repas\Domain\Exception\ShoppingListException;
 use Repas\Repas\Domain\Exception\ShoppingListRowException;
-use Repas\Shared\Application\Interface\OwnershipLoader;
+use Repas\Repas\Application\Loader\OwnershipLoader;
 
 /**
  * Double idiot : propriétaires programmés par ressource, introuvable sinon.

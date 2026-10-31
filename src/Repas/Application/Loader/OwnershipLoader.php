@@ -1,13 +1,13 @@
 <?php
 
-namespace Repas\Shared\Application\Interface;
+namespace Repas\Repas\Application\Loader;
 
 use Repas\Shared\Domain\Exception\DomainException;
 
 /**
- * Port de lecture de l'appartenance des ressources, utilisé par le voter des droits (`OwnerVoter`) : il ne renvoie que
- * des identifiants d'utilisateur, jamais un agrégat. Une ressource introuvable lève l'exception de domaine
- * `notFound` de son agrégat (code 404).
+ * Port de lecture de l'appartenance des ressources de `Repas`, utilisé par le voter des droits du contexte
+ * (`Infrastructure\Security\OwnerVoter`) : il ne renvoie que des identifiants d'utilisateur, jamais un agrégat. Une ressource
+ * introuvable lève l'exception de domaine `notFound` de son agrégat (code 404).
  */
 interface OwnershipLoader
 {

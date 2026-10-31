@@ -9,7 +9,7 @@ use Repas\Repas\Domain\Exception\RecipeException;
 use Repas\Repas\Domain\Exception\ShoppingListException;
 use Repas\Repas\Domain\Exception\ShoppingListRowException;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
-use Repas\Shared\Application\Interface\OwnershipLoader;
+use Repas\Repas\Application\Loader\OwnershipLoader;
 use Repas\Tests\Helper\Builder\IngredientBuilder;
 use Repas\Tests\Helper\Builder\RecipeBuilder;
 use Repas\Tests\Helper\Builder\ShoppingListBuilder;

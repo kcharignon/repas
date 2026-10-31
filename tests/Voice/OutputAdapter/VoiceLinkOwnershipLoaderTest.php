@@ -4,7 +4,7 @@ namespace Repas\Tests\Voice\OutputAdapter;
 
 
 use DateTimeImmutable;
-use Repas\Shared\Application\Interface\VoiceLinkOwnershipLoader;
+use Repas\Voice\Application\Loader\VoiceLinkOwnershipLoader;
 use Repas\Tests\Helper\DatabaseTestCase;
 use Repas\Voice\Domain\Exception\VoiceException;
 use Repas\Voice\Domain\Interface\VoiceLinkRepository;
