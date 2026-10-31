@@ -1,6 +1,7 @@
 # LST-002 — Types de liste (back)
 
 - **Dépôt** : back — **Taille** : L — **Effort** : **xhigh** (migration, droits, purge) — **Dépend de** : LST-001
+- **Statut** : fait (PR de la branche `feat/lst-002-types-de-liste`)
 - **Lire d'abord** : ADR 0036 (décisions 1, 4, 6, 13 à 16, 18) ; `CLAUDE.md` ; skill `repas-dev`.
 
 ## À faire
@@ -15,8 +16,12 @@
 
 ## Critères d'acceptation
 
-- Un compte sans type : aucune réponse existante ne change.
-- Créer au-delà de 10 types, ou deux types du même nom normalisé : refusé sans écriture.
-- Le type d'un autre : `404` en lecture, `403` en écriture, administrateur compris.
-- Supprimer un type : ses listes n'ont plus de type, la liste en cours est en pause, aucune ligne perdue (test sur vraie base).
-- Migration testée (compatible avec le code précédent : colonnes facultatives).
+- [x] Un compte sans type : aucune réponse existante ne change.
+- [x] Créer au-delà de 10 types, ou deux types du même nom normalisé : refusé sans écriture.
+- [x] Le type d'un autre : `404` en lecture, `403` en écriture, administrateur compris.
+- [x] Supprimer un type : ses listes n'ont plus de type, la liste en cours est en pause, aucune ligne perdue (test sur vraie base).
+- [x] Migration testée (compatible avec le code précédent : colonnes facultatives).
+
+## Réalisé
+
+Migration `Version20261031120000` ; agrégat `ShoppingListType` (rayons rattachés dans l'agrégat, `ShoppingListTypeRepository` écrit le type et le jeu complet de ses rayons) ; `POST|GET|PUT|DELETE /api/v1/shopping-list-types` ; voter `LIST_TYPE_OWNER` ; purge du compte ; budgets SQL `creer-type-de-liste` (4), `modifier-type-de-liste` (7), `supprimer-type-de-liste` (5) ; `supprimer-compte` passe de 28 à 29 (types et rattachements effacés en une instruction). Un rayon supprimé : aucun cas d'usage ne supprime un rayon aujourd'hui, donc rien à effacer ; le jour où il existera, il effacera ses lignes de `department_list_type`.

@@ -7,7 +7,7 @@ Un agent à la fois sur le back (une PR par ticket, fusionnée avant la suivante
 | Ticket | Dépôt | Contenu | Effort | Dépend de | Statut |
 |---|---|---|---|---|---|
 | [LST-001](tickets/LST-001-adr-et-cadrage.md) | back | ADR 0036, `CLAUDE.md`, glossaire, skill, feuille de route | medium | — | fait (cette PR) |
-| [LST-002](tickets/LST-002-types-de-liste.md) | back | Migration unique, types de liste (CRUD), rayons rattachés, voter, purge, suppression | xhigh | 001 | à faire |
+| [LST-002](tickets/LST-002-types-de-liste.md) | back | Migration unique, types de liste (CRUD), rayons rattachés, voter, purge, suppression | xhigh | 001 | fait (cette PR) |
 | [LST-003](tickets/LST-003-destination-des-produits.md) | back | `ListDestinationResolver`, produit à part, copie / fusion | high | 002 | à faire |
 | [LST-004](tickets/LST-004-plusieurs-listes-en-cours.md) | back | Une liste en cours par type, ouverture à la demande, lecture des listes ouvertes | high | 002 | à faire |
 | [LST-005](tickets/LST-005-ajouts-eclates.md) | back | Planifier, augmenter, diminuer, groupe de repas, retirer du plan | xhigh | 003, 004 | à faire |
