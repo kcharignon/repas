@@ -1,9 +1,9 @@
 <?php
 
-namespace Repas\Shared\Application\Dto;
+namespace Repas\Voice\Domain\Model;
 
 /**
- * L'ingrédient que `SpokenIngredientCreator::create()` vient de créer pour l'utilisateur (ADR 0029 décision 11, VOX-303).
+ * L'ingrédient que `IngredientCreationCommandPort::create()` vient de créer pour l'utilisateur (ADR 0029 décision 11, VOX-303).
  */
 final readonly class CreatedIngredient
 {

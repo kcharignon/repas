@@ -1,9 +1,10 @@
 <?php
 
-namespace Repas\Tests\Repas\Infrastructure\Voice;
+namespace Repas\Tests\Repas\OpenHostService;
 
+use Repas\Repas\Application\OpenHostService\IngredientPhraseCommandOHS;
 use Repas\Repas\Domain\Exception\IngredientException;
-use Repas\Shared\Application\Interface\SpokenIngredientResolver;
+use Repas\Repas\Domain\Model\Confidence;
 use Repas\Tests\Helper\Builder\IngredientBuilder;
 use Repas\Tests\Helper\Builder\UserBuilder;
 use Repas\Tests\Helper\DatabaseTestCase;
@@ -11,19 +12,19 @@ use Repas\Tests\Helper\DataPersister;
 use Repas\User\Domain\Model\User;
 
 /**
- * Le port `SpokenIngredientResolver` câblé pour de vrai : adaptateur, chargeur des habitudes, mémoire de phrase, bus transactionnel et classeur
+ * L'Open Host Service `IngredientPhraseCommandOHS` câblé pour de vrai : lecteur des habitudes, mémoire de phrase, bus transactionnel et classeur
  * sur la base de test.
  */
-class SpokenIngredientResolverFlowTest extends DatabaseTestCase
+class IngredientPhraseCommandOHSFlowTest extends DatabaseTestCase
 {
-    private SpokenIngredientResolver $resolver;
+    private IngredientPhraseCommandOHS $resolver;
     private DataPersister $persister;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        $this->resolver = static::getContainer()->get(SpokenIngredientResolver::class);
+        $this->resolver = static::getContainer()->get(IngredientPhraseCommandOHS::class);
         $this->persister = new DataPersister(static::getContainer());
     }
 
@@ -49,7 +50,7 @@ class SpokenIngredientResolverFlowTest extends DatabaseTestCase
         $notFound = $this->resolver->resolveOrSuggest($user->getId(), 'du lait')->ingredient;
 
         // Then
-        $this->assertSame([$bread->getSlug(), 'sure'], [$found?->slug, $found?->confidence]);
+        $this->assertSame([$bread->getSlug(), Confidence::SURE], [$found?->slug, $found?->confidence]);
         $this->assertNull($notFound);
     }
 
@@ -68,7 +69,7 @@ class SpokenIngredientResolverFlowTest extends DatabaseTestCase
         // Then : la même phrase, et sa variante au pluriel sans article, donnent le pain, sûr
         foreach (['de la ciboulette', 'ciboulettes', 'la ciboulette'] as $phrase) {
             $resolved = $this->resolver->resolveOrSuggest($user->getId(), $phrase)->ingredient;
-            $this->assertSame([$bread->getSlug(), 'sure'], [$resolved?->slug, $resolved?->confidence], $phrase);
+            $this->assertSame([$bread->getSlug(), Confidence::SURE], [$resolved?->slug, $resolved?->confidence], $phrase);
         }
         $this->assertSame(1, (int) $this->entityManager->getConnection()->fetchOne('SELECT COUNT(*) FROM spoken_phrase_choice'));
     }

@@ -5,6 +5,7 @@ namespace Repas\Tests\Repas\OutputAdapter;
 
 use DateTimeImmutable;
 use Repas\Repas\Application\Loader\SpokenIngredientCandidates;
+use Repas\Repas\Domain\Interface\IngredientPhraseCandidates;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Repas\Domain\Model\Ingredient;
 use Repas\Repas\Domain\Model\SpokenCandidate;
@@ -58,6 +59,23 @@ class SpokenIngredientCandidatesPostgreSQLLoaderTest extends DatabaseTestCase
         $this->assertSame([], $this->loader->forUser($this->savedUser()->getId()));
     }
 
+    public function testTheRepositoryOfTheWritesGivesExactlyWhatTheLoaderGives(): void
+    {
+        // Given : un ingrédient utilisé, un autre non, et celui d'un autre utilisateur
+        $user = $this->savedUser();
+        $rice = $this->savedIngredient($user, 'riz');
+        $this->savedIngredient($user, 'sel');
+        $this->savedIngredient($this->savedUser(), 'poivre');
+        $this->savedList($user, 'liste-1', [$rice], new DateTimeImmutable('-1 month'));
+        $this->savedRecipe($user, [$rice]);
+
+        // When : la lecture dont une écriture se sert dans sa transaction (Open Host Service de `Repas`)
+        $forWrites = static::getContainer()->get(IngredientPhraseCandidates::class);
+
+        // Then : la même requête, le même résultat
+        $this->assertEquals($this->loader->forUser($user->getId()), $forWrites->forUser($user->getId()));
+        $this->assertSame([2, 0], array_map(static fn(SpokenCandidate $candidate): int => $candidate->uses12m, $forWrites->forUser($user->getId())));
+    }
     public function testAnIngredientNeverUsedHasNoUse(): void
     {
         // Given

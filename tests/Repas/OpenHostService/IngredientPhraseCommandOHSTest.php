@@ -1,29 +1,32 @@
 <?php
 
-namespace Repas\Tests\Repas\Infrastructure\Voice;
+namespace Repas\Tests\Repas\OpenHostService;
 
 use PHPUnit\Framework\TestCase;
 use Repas\Repas\Application\Command\RememberSpokenPhrase\RememberSpokenPhraseCommand;
 use Repas\Repas\Domain\Exception\IngredientException;
+use DateTimeImmutable;
+use Repas\Repas\Application\OpenHostService\IngredientPhraseCommandOHS;
+use Repas\Repas\Domain\Model\Confidence;
+use Repas\Repas\Domain\Model\IngredientPhraseResolution;
+use Repas\Repas\Domain\Model\RankedIngredient;
 use Repas\Repas\Domain\Model\SpokenCandidate;
-use Repas\Repas\Infrastructure\Voice\SpokenIngredientResolverAdapter;
-use Repas\Shared\Application\Dto\IngredientSuggestion;
-use Repas\Shared\Application\Dto\ResolvedIngredient;
-use Repas\Tests\Helper\InMemoryLoader\SpokenIngredientCandidatesInMemoryLoader;
-use Repas\Tests\Helper\InMemoryLoader\SpokenPhraseMemoryInMemoryLoader;
+use Repas\Repas\Domain\Service\IngredientPhraseResolver;
+use Repas\Tests\Helper\InMemoryRepository\IngredientPhraseCandidatesInMemoryRepository;
+use Repas\Tests\Helper\InMemoryRepository\SpokenPhraseChoiceInMemoryRepository;
 use Repas\Tests\Helper\MockCommandBus;
 
 /**
- * L'adaptateur seulement (ports de lecture et bus simulés) : il charge les candidats de l'utilisateur, lit la mémoire de phrase AVANT le
- * classement, laisse le classeur choisir ou proposer et renvoie des DTO de `Shared`. Le classement lui-même est prouvé par
- * `SpokenIngredientRankerTest`, la lecture des habitudes et de la mémoire par les tests des Loaders, le parcours complet par
- * `SpokenIngredientResolverFlowTest`.
+ * L'Open Host Service seulement (dépôts en mémoire et bus simulé) : il charge les candidats de l'utilisateur, lit la mémoire de phrase AVANT le
+ * classement, laisse le classeur choisir ou proposer et rend des modèles de `Repas`. Le classement lui-même est prouvé par
+ * `SpokenIngredientRankerTest`, la lecture des habitudes et de la mémoire par les tests des Loaders et des Repositories, le parcours complet par
+ * `IngredientPhraseCommandOHSFlowTest`.
  */
-class SpokenIngredientResolverAdapterTest extends TestCase
+class IngredientPhraseCommandOHSTest extends TestCase
 {
     private MockCommandBus $bus;
-    private SpokenIngredientCandidatesInMemoryLoader $candidatesLoader;
-    private SpokenPhraseMemoryInMemoryLoader $memory;
+    private IngredientPhraseCandidatesInMemoryRepository $candidatesLoader;
+    private SpokenPhraseChoiceInMemoryRepository $memory;
 
     protected function setUp(): void
     {
@@ -34,15 +37,19 @@ class SpokenIngredientResolverAdapterTest extends TestCase
      * @param list<SpokenCandidate> $candidates
      * @param array<string, string> $remembered
      */
-    private function adapter(array $candidates, array $remembered = []): SpokenIngredientResolverAdapter
+    private function adapter(array $candidates, array $remembered = []): IngredientPhraseCommandOHS
     {
-        $this->candidatesLoader = new SpokenIngredientCandidatesInMemoryLoader($candidates);
-        $this->memory = new SpokenPhraseMemoryInMemoryLoader($remembered);
+        $this->candidatesLoader = new IngredientPhraseCandidatesInMemoryRepository($candidates);
+        $this->memory = new SpokenPhraseChoiceInMemoryRepository();
+        foreach ($remembered as $key => $slug) {
+            $this->memory->remember('user-id', (string) $key, $slug, new DateTimeImmutable('2026-10-25 10:00:00'));
+        }
+        $this->memory->reads = [];
 
-        return new SpokenIngredientResolverAdapter($this->candidatesLoader, $this->memory, $this->bus);
+        return new IngredientPhraseCommandOHS($this->candidatesLoader, $this->memory, new IngredientPhraseResolver(), $this->bus);
     }
 
-    public function testItLoadsTheCandidatesOfTheUserAndMapsTheChoiceToTheSharedDto(): void
+    public function testItLoadsTheCandidatesOfTheUserAndRanksThemWithTheirConfidence(): void
     {
         // Given : un nom identique à la phrase, seul à lui ressembler
         $adapter = $this->adapter([
@@ -54,11 +61,11 @@ class SpokenIngredientResolverAdapterTest extends TestCase
         $resolved = $adapter->resolveOrSuggest('user-id', 'des tomates')->ingredient;
 
         // Then
-        $this->assertEquals(new ResolvedIngredient('tomate', 'tomate', 'fruits et légumes', 'sure'), $resolved);
+        $this->assertSame(['tomate', 'tomate', 'fruits et légumes', Confidence::SURE], [$resolved?->slug, $resolved->name, $resolved->departmentName, $resolved->confidence]);
         $this->assertSame(['user-id'], $this->candidatesLoader->calls);
     }
 
-    public function testTheConfidenceIsGivenAsItsStringValue(): void
+    public function testTwoIdenticalIngredientsAreNotSure(): void
     {
         // Given : deux ingrédients indiscernables (même nom, même rayon), le classeur n'est pas sûr et une question ne les départagerait pas
         $adapter = $this->adapter([
@@ -70,7 +77,7 @@ class SpokenIngredientResolverAdapterTest extends TestCase
         $resolved = $adapter->resolveOrSuggest('user-id', 'tomate')->ingredient;
 
         // Then
-        $this->assertSame('unsure', $resolved?->confidence);
+        $this->assertSame(Confidence::UNSURE, $resolved?->confidence);
     }
 
     public function testTwoIngredientsOfTheSameNameInTwoDepartmentsAreReturnedToBeToldApart(): void
@@ -88,10 +95,10 @@ class SpokenIngredientResolverAdapterTest extends TestCase
         // Then : rien n'est choisi, ni proposé comme inconnu : les deux ex æquo, avec leur rayon ; une seule lecture
         $this->assertNull($resolution->ingredient);
         $this->assertSame([], $resolution->suggestions);
-        $this->assertEquals([
-            new IngredientSuggestion('tomate-fl', 'Tomate', 'Fruit & légume', 'fruit-et-legume'),
-            new IngredientSuggestion('tomate-sg', 'Tomate', 'Surgelé', 'surgele'),
-        ], $resolution->ties);
+        $this->assertSame(
+            [['tomate-fl', 'Tomate', 'Fruit & légume', 'fruit-et-legume'], ['tomate-sg', 'Tomate', 'Surgelé', 'surgele']],
+            array_map(static fn(RankedIngredient $tie): array => [$tie->slug, $tie->name, $tie->departmentName, $tie->departmentSlug], $resolution->ties),
+        );
         $this->assertSame(['user-id'], $this->candidatesLoader->calls);
     }
 
@@ -107,7 +114,7 @@ class SpokenIngredientResolverAdapterTest extends TestCase
         $resolution = $adapter->resolveOrSuggest('user-id', 'tomate');
 
         // Then
-        $this->assertSame(['tomate-fl', 'probable'], [$resolution->ingredient?->slug, $resolution->ingredient?->confidence]);
+        $this->assertSame(['tomate-fl', 'probable'], [$resolution->ingredient?->slug, $resolution->ingredient?->confidence->value]);
         $this->assertSame([], $resolution->ties);
     }
 
@@ -122,8 +129,8 @@ class SpokenIngredientResolverAdapterTest extends TestCase
         $single = $this->adapter([$candidates[0]])->resolveOrSuggest('user-id', 'tomate');
 
         // Then
-        $this->assertSame(['tomate-sg', 'sure', []], [$remembered->ingredient?->slug, $remembered->ingredient?->confidence, $remembered->ties]);
-        $this->assertSame(['tomate-fl', 'sure', []], [$single->ingredient?->slug, $single->ingredient?->confidence, $single->ties]);
+        $this->assertSame(['tomate-sg', Confidence::SURE, []], [$remembered->ingredient?->slug, $remembered->ingredient?->confidence, $remembered->ties]);
+        $this->assertSame(['tomate-fl', Confidence::SURE, []], [$single->ingredient?->slug, $single->ingredient?->confidence, $single->ties]);
     }
 
     public function testAnAccountWithoutIngredientGetsNullAndTheMemoryIsNotRead(): void
@@ -137,7 +144,7 @@ class SpokenIngredientResolverAdapterTest extends TestCase
         // Then
         $this->assertNull($resolved);
         $this->assertSame(['user-id'], $this->candidatesLoader->calls);
-        $this->assertSame([], $this->memory->calls, 'aucun ingrédient : pas de requête pour la mémoire');
+        $this->assertSame([], $this->memory->reads, 'aucun ingrédient : pas de requête pour la mémoire');
     }
 
     public function testAPhraseThatResemblesNoIngredientGetsNull(): void
@@ -164,8 +171,8 @@ class SpokenIngredientResolverAdapterTest extends TestCase
         $resolved = $adapter->resolveOrSuggest('user-id', 'de la ciboulette')->ingredient;
 
         // Then
-        $this->assertEquals(new ResolvedIngredient('persil-u', 'persil', 'fruits et légumes', 'sure'), $resolved);
-        $this->assertSame([['user-id', 'ciboulette']], $this->memory->calls);
+        $this->assertSame(['persil-u', 'persil', 'fruits et légumes', Confidence::SURE], [$resolved?->slug, $resolved->name, $resolved->departmentName, $resolved->confidence]);
+        $this->assertSame([['user-id', 'ciboulette']], $this->memory->reads);
     }
 
     public function testAMemoryThatNamesAnIngredientThatNoLongerExistsIsIgnored(): void
@@ -190,10 +197,10 @@ class SpokenIngredientResolverAdapterTest extends TestCase
 
         // Then
         $this->assertNull($resolved);
-        $this->assertSame([], $this->memory->calls);
+        $this->assertSame([], $this->memory->reads);
     }
 
-    public function testItSuggestsTheClosestIngredientsOfTheUserAsSharedDtos(): void
+    public function testItSuggestsTheClosestIngredientsOfTheUser(): void
     {
         // Given
         $adapter = $this->adapter([
@@ -205,7 +212,7 @@ class SpokenIngredientResolverAdapterTest extends TestCase
         $suggestions = $adapter->resolveOrSuggest('user-id', 'sirop de menthe')->suggestions;
 
         // Then
-        $this->assertEquals([new IngredientSuggestion('sirop-u', 'Sirop fruit rouge', 'boisson')], $suggestions);
+        $this->assertSame([['sirop-u', 'Sirop fruit rouge', 'boisson']], array_map(static fn(RankedIngredient $suggestion): array => [$suggestion->slug, $suggestion->name, $suggestion->departmentName], $suggestions));
         $this->assertSame(['user-id'], $this->candidatesLoader->calls);
     }
 
@@ -225,8 +232,8 @@ class SpokenIngredientResolverAdapterTest extends TestCase
 
         // Then : le nom n'est proposé qu'une fois (le mieux classé : le plus acheté), l'autre rayon n'est pas dit en double, un autre nom prend la place
         $this->assertNull($resolution->ingredient);
-        $this->assertSame(['sirop-surgele', 'sirop-fraise'], array_map(static fn(IngredientSuggestion $suggestion): string => $suggestion->slug, $resolution->suggestions));
-        $this->assertSame(['Sirop fruit rouge', 'Sirop fraise vanille'], array_map(static fn(IngredientSuggestion $suggestion): string => $suggestion->name, $resolution->suggestions));
+        $this->assertSame(['sirop-surgele', 'sirop-fraise'], array_map(static fn(RankedIngredient $suggestion): string => $suggestion->slug, $resolution->suggestions));
+        $this->assertSame(['Sirop fruit rouge', 'Sirop fraise vanille'], array_map(static fn(RankedIngredient $suggestion): string => $suggestion->name, $resolution->suggestions));
     }
 
     public function testNothingCloseMeansNoSuggestion(): void
@@ -251,7 +258,7 @@ class SpokenIngredientResolverAdapterTest extends TestCase
         $this->assertNull($resolution->ingredient);
         $this->assertCount(1, $resolution->suggestions);
         $this->assertSame(['user-id'], $this->candidatesLoader->calls);
-        $this->assertSame([['user-id', 'sirop-menthe']], $this->memory->calls);
+        $this->assertSame([['user-id', 'sirop-menthe']], $this->memory->reads);
     }
 
     public function testAProductThatDoesNotExistIsNotGuessedFromAResemblingNameButAFaultIsForgiven(): void
@@ -261,7 +268,7 @@ class SpokenIngredientResolverAdapterTest extends TestCase
         $with = $this->adapter([new SpokenCandidate('ciboulette-u', 'ciboulette', 'Ciboulette', 'fruits et légumes', 0), new SpokenCandidate('coquilette-u', 'coquilette', 'Coquilette', 'épicerie', 9)]);
 
         // Then : on demande ; avec *ciboulette* présente, « ciboulete » est une faute de frappe
-        $this->assertEquals(\Repas\Shared\Application\Dto\SpokenResolution::unknown(), $without->resolveOrSuggest('user-id', 'ciboulette'));
+        $this->assertEquals(IngredientPhraseResolution::unknown(), $without->resolveOrSuggest('user-id', 'ciboulette'));
         $this->assertSame('ciboulette-u', $with->resolveOrSuggest('user-id', 'ciboulete')->ingredient?->slug);
     }
 

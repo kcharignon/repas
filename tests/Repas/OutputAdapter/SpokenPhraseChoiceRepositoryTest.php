@@ -134,4 +134,17 @@ class SpokenPhraseChoiceRepositoryTest extends DatabaseTestCase
         // Then
         $this->assertSame('persil-user-id', $this->memory->rememberedSlug(self::USER, $key));
     }
+
+    public function testTheRepositoryReadsTheSameChoiceAsTheMemory(): void
+    {
+        // Given
+        $this->repository->remember(self::USER, 'ciboulette', 'persil-user-id', new DateTimeImmutable('2026-10-25 10:00:00'));
+        $this->repository->remember(self::OTHER, 'ciboulette', 'basilic-user-id', new DateTimeImmutable('2026-10-25 10:00:00'));
+
+        // Then : la lecture d'une écriture en cours (Open Host Service de `Repas`) est celle de la mémoire, par utilisateur
+        $this->assertSame('persil-user-id', $this->repository->rememberedSlug(self::USER, 'ciboulette'));
+        $this->assertSame('basilic-user-id', $this->repository->rememberedSlug(self::OTHER, 'ciboulette'));
+        $this->assertNull($this->repository->rememberedSlug(self::USER, 'inconnue'));
+        $this->assertSame($this->memory->rememberedSlug(self::USER, 'ciboulette'), $this->repository->rememberedSlug(self::USER, 'ciboulette'));
+    }
 }

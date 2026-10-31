@@ -1,25 +1,24 @@
 <?php
 
-namespace Repas\Shared\Application\Interface;
+namespace Repas\Voice\Application\Port;
 
-use Repas\Shared\Application\Dto\SpokenResolution;
+use Repas\Voice\Domain\Model\SpokenResolution;
 
 /**
- * Port par lequel le contexte `Voice` trouve, parmi les ingrédients de l'utilisateur, celui que désigne une phrase prononcée (ADR 0029
- * décision 3, VOX-102), lui propose les plus proches quand il n'y en a pas de sûr (décision 11, VOX-303) et retient son choix pour la suite.
- * Défini ici, implémenté dans `Repas\Infrastructure\Voice` (ADR 0013 règle 8 : `Voice` n'importe pas `Repas`).
+ * Ce que les écritures vocales demandent aux ingrédients de l'utilisateur (ADR 0029 décisions 3 et 11) : trouver, parmi les siens, celui que
+ * désigne une phrase prononcée, lui proposer les plus proches quand il n'y en a pas de sûr, et retenir son choix pour la suite. Adapté depuis
+ * le contexte `Repas` (ADR 0035).
  *
  * Le choix est le plus probable, pas le seul possible : la confiance dit comment l'annoncer, et l'erreur se répare dans l'application. Il
  * n'est automatique que s'il est sûr : un produit qui n'existe pas n'est pas deviné, on demande.
  */
-interface SpokenIngredientResolver
+interface IngredientResolutionCommandPort
 {
     /**
-     * Charge les ingrédients de l'utilisateur UNE fois, puis : la mémoire de phrase passe avant tout classement (si l'utilisateur a déjà
-     * choisi un ingrédient pour cette phrase, c'est lui) ; sinon le classeur choisit s'il est sûr ; sinon les trois ingrédients les plus
-     * proches sont proposés. Quand le classeur hésite entre des ingrédients qui se valent (même nom dans deux rayons, habitudes qui ne
-     * tranchent pas), il ne devine pas : `SpokenResolution::ties` les rend (deux ou trois, chacun avec son rayon) pour que l'utilisateur
-     * choisisse.
+     * La mémoire de phrase passe avant tout classement (si l'utilisateur a déjà choisi un ingrédient pour cette phrase, c'est lui) ; sinon
+     * le classeur choisit s'il est sûr ; sinon les trois ingrédients les plus proches sont proposés. Quand le classeur hésite entre des
+     * ingrédients qui se valent, il ne devine pas : `SpokenResolution::ties` les rend (deux ou trois, chacun avec son rayon) pour que
+     * l'utilisateur choisisse.
      *
      * @param string $phrase la phrase reconnue (« des tomates », « du pain de mie »), telle quelle
      *
