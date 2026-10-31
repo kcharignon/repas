@@ -18,6 +18,8 @@ final readonly class ListedLine
         public string $unitSlug,
         /** Le nom de l'unité, tel que le catalogue l'écrit (« paquet »). */
         public string $unitName,
+        /** Le nom de la liste d'un TYPE qui porte la ligne (ADR 0036, LST-008) ; `null` : la liste principale. */
+        public ?string $listName = null,
     ) {
     }
 }

@@ -30,7 +30,7 @@ final readonly class MealPlanCommandAdapter implements MealPlanCommandPort
             throw self::failure($failure);
         }
 
-        return new PlannedSpokenMeal($planned->recipeName, $planned->servings, $planned->alreadyPlanned, $planned->listCreated, $planned->previousListSent);
+        return new PlannedSpokenMeal($planned->recipeName, $planned->servings, $planned->alreadyPlanned, $planned->listCreated, $planned->previousListSent, $planned->typedListNames, $planned->inMainList);
     }
 
     public function changeServings(string $userId, string $recipeId, int $servings): ChangedMealServings
@@ -41,7 +41,11 @@ final readonly class MealPlanCommandAdapter implements MealPlanCommandPort
             throw self::failure($failure);
         }
 
-        return $changed->found ? ChangedMealServings::changed($changed->recipeName, $changed->servings) : ChangedMealServings::notPlanned($changed->recipeName);
+        return match (true) {
+            $changed->listSent => ChangedMealServings::listSent($changed->recipeName),
+            $changed->found => ChangedMealServings::changed($changed->recipeName, $changed->servings),
+            default => ChangedMealServings::notPlanned($changed->recipeName),
+        };
     }
 
     public function removeMeal(string $userId, string $recipeId, ?int $servings = null): RemovedSpokenMeal
@@ -53,6 +57,7 @@ final readonly class MealPlanCommandAdapter implements MealPlanCommandPort
         }
 
         return match (true) {
+            $removed->listSent => RemovedSpokenMeal::listSent($removed->recipeName),
             !$removed->found => RemovedSpokenMeal::notPlanned($removed->recipeName),
             $removed->removedAll => RemovedSpokenMeal::removed($removed->recipeName),
             default => RemovedSpokenMeal::lowered($removed->recipeName, $removed->servings),

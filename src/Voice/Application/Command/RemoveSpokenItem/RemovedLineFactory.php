@@ -22,6 +22,7 @@ final readonly class RemovedLineFactory
             unitName: $removed->unitName,
             unitCited: $unitCited,
             unitSubstituted: $removed->unitSubstituted,
+            listName: $removed->listName,
         );
     }
 }

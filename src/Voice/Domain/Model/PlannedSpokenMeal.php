@@ -18,6 +18,15 @@ final readonly class PlannedSpokenMeal
         public bool $listCreated,
         /** Une liste envoyée au drive existait avant la liste neuve : Alexa le dit. */
         public bool $previousListSent,
+        /**
+         * Les noms des listes d'un TYPE qui ont reçu un repas de la recette (ADR 0036, LST-008), dans l'ordre où la recette les atteint ; vide sans type, ou
+         * quand tout est allé dans la liste principale.
+         *
+         * @var list<string>
+         */
+        public array $typedListNames = [],
+        /** La liste principale a reçu un repas de la recette (toujours vrai sans type). */
+        public bool $inMainList = true,
     ) {
     }
 }

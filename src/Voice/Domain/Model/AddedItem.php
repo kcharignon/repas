@@ -19,6 +19,7 @@ final readonly class AddedItem
      * @param bool   $unitSubstituted   une unité a été dite mais n'est pas celle de la ligne : l'ingrédient ne la connaît pas, ou la ligne en avait
      *                                  déjà une autre (la quantité dite est alors convertie, ou ajoutée telle quelle si aucune conversion n'existe)
      * @param float  $addedQuantity     la quantité ajoutée à la ligne, dans l'unité de la ligne (convertie, le cas échéant)
+     * @param ?string $listName       le nom de la liste d'un TYPE qui a reçu l'article (ADR 0036, LST-008) ; `null` : la liste principale
      */
     public function __construct(
         public bool $listCreated,
@@ -29,6 +30,7 @@ final readonly class AddedItem
         public bool $lineExisted = false,
         public bool $unitSubstituted = false,
         public float $addedQuantity = 1.0,
+        public ?string $listName = null,
     ) {
     }
 }

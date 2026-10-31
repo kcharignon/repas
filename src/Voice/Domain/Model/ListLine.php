@@ -16,6 +16,8 @@ final readonly class ListLine
         public float $quantity,
         public string $unitSlug,
         public string $unitName,
+        /** Le nom de la liste d'un TYPE qui porte la ligne (ADR 0036, LST-008) ; `null` : la liste principale. */
+        public ?string $listName = null,
     ) {
     }
 

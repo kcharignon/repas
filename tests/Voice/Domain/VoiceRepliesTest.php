@@ -886,4 +886,92 @@ class VoiceRepliesTest extends TestCase
             $this->assertDoesNotMatchRegularExpression('/(?<![\p{L}])(vous|votre|vos)(?![\p{L}])/u', mb_strtolower($reply), $reply);
         }
     }
+
+    public function testTheAnswersToAnItemAddedToTheListOfATypeNameTheList(): void
+    {
+        // Given : la viande hachée va dans « Boucherie » (ADR 0036, LST-008)
+        $single = new AddedLine(1.0, 1.0, 'unite', 'unité', listName: 'Boucherie');
+
+        // Then : le critère du ticket, et les variantes (quantité, total, choix deviné, proposition choisie, produit créé)
+        $this->assertSame("C'est ajouté à boucherie.", VoiceReplies::added('viande hachée', 'viande', true, false, false, $single));
+        $this->assertSame("C'est ajouté à boucherie : 3 croquettes.", VoiceReplies::added('croquette', 'animal', true, false, false, new AddedLine(3.0, 3.0, 'unite', 'unité', listName: 'Boucherie')));
+        $this->assertSame("C'est ajouté à boucherie : 2 kilos de viande hachée.", VoiceReplies::added('viande hachée', 'viande', true, false, false, new AddedLine(2.0, 2.0, 'kilo', 'kilo', unitCited: true, listName: 'Boucherie')));
+        $this->assertSame("C'est ajouté à boucherie, tu en as maintenant 5.", VoiceReplies::added('viande hachée', 'viande', true, false, false, new AddedLine(1.0, 5.0, 'unite', 'unité', existed: true, listName: 'Boucherie')));
+        $this->assertSame("C'est ajouté à boucherie, tu en as maintenant 3 kilos.", VoiceReplies::added('viande hachée', 'viande', true, false, false, new AddedLine(1.0, 3.0, 'kilo', 'kilo', existed: true, listName: 'Boucherie')));
+        $this->assertSame("C'est ajouté à boucherie en kilos, tu en as maintenant 5.", VoiceReplies::added('viande hachée', 'viande', true, false, false, new AddedLine(1.0, 5.0, 'kilo', 'kilo', existed: true, unitSubstituted: true, listName: 'Boucherie')));
+        $this->assertSame("J'ai mis viande hachée, viande, à boucherie.", VoiceReplies::added('viande hachée', 'viande', false, false, false, $single));
+        $this->assertSame("C'est noté à boucherie : viande hachée. Je m'en souviendrai.", VoiceReplies::remembered('viande hachée', false, false, $single));
+        $this->assertSame("C'est noté à boucherie : viande hachée, viande. Je m'en souviendrai.", VoiceReplies::rememberedIn('viande hachée', 'viande', false, false, $single));
+        $this->assertSame("C'est créé et noté à boucherie : ciboulette, rayon fruit et légume.", VoiceReplies::created('ciboulette', 'fruit & légume', false, false, new AddedLine(1.0, 1.0, 'unite', 'unité', listName: 'Boucherie')));
+        // Un nom trop long à dire avec sa quantité : la liste suffit
+        $this->assertSame("C'est ajouté à boucherie charcuterie du marché couvert.", VoiceReplies::added('saucisse de Toulouse fumée au feu de bois', 'viande', true, false, false, new AddedLine(2.0, 2.0, 'kilo', 'kilo', unitCited: true, listName: 'Boucherie charcuterie du marché couvert')));
+        // Un compte sans type entend exactement ce qu'il entendait
+        $this->assertSame("C'est noté : viande hachée.", VoiceReplies::added('viande hachée', 'viande', true, false, false));
+    }
+
+    public function testTheAnswersToARemovalFromTheListOfATypeNameTheList(): void
+    {
+        $this->assertSame("C'est retiré de boucherie, il t'en reste 2 paquets.", VoiceReplies::removed('lardon', new RemovedLine(1.0, 2.0, 'paquet', 'paquet', listName: 'Boucherie')));
+        $this->assertSame("C'est retiré de boucherie : lardon. Il n'y en a plus dans cette liste.", VoiceReplies::removed('lardon', new RemovedLine(1.0, 0.0, 'unite', 'unité', listName: 'Boucherie')));
+        $this->assertSame("C'est retiré de boucherie en grammes, il t'en reste 1500 grammes.", VoiceReplies::removed('lardon', new RemovedLine(1000.0, 1500.0, 'gramme', 'gramme', unitCited: true, unitSubstituted: true, listName: 'Boucherie')));
+        $this->assertSame("C'est retiré : lardon. Il n'y en a plus dans ta liste.", VoiceReplies::removed('lardon', new RemovedLine(1.0, 0.0, 'unite', 'unité')));
+    }
+
+    public function testTheAnswersToAQuestionAboutAProductInSeveralListsGiveOneQuantityPerList(): void
+    {
+        $this->assertSame('Oui, tu en as 2 paquets dans la liste boucherie.', VoiceReplies::inList(new ListLine('viande hachée', 'viande', 2.0, 'paquet', 'paquet', 'Boucherie')));
+        $this->assertSame(
+            'Oui : 1 dans ta liste, 2 paquets dans la liste boucherie.',
+            VoiceReplies::inLists([new ListLine('viande hachée', 'viande', 1.0, 'unite', 'unité'), new ListLine('viande hachée', 'viande', 2.0, 'paquet', 'paquet', 'Boucherie')]),
+        );
+        // Trois listes au plus sont dites
+        $answer = VoiceReplies::inLists([
+            new ListLine('œuf', 'divers', 1.0, 'unite', 'unité'),
+            new ListLine('œuf', 'divers', 2.0, 'unite', 'unité', 'Boucherie'),
+            new ListLine('œuf', 'divers', 3.0, 'unite', 'unité', 'Marché'),
+            new ListLine('œuf', 'divers', 4.0, 'unite', 'unité', 'Épicerie'),
+        ]);
+        $this->assertSame('Oui : 1 dans ta liste, 2 dans la liste boucherie, 3 dans la liste marché.', $answer);
+    }
+
+    public function testThePlannedMealNamesTheListsItWentTo(): void
+    {
+        $this->assertSame("C'est noté : hachis parmentier, pour 4 personnes.", VoiceReplies::mealPlanned('Hachis parmentier', 4, false, false));
+        $this->assertSame("C'est noté : hachis parmentier, pour 4 personnes, dans la liste boucherie.", VoiceReplies::mealPlanned('Hachis parmentier', 4, false, false, typedListNames: ['Boucherie'], inMainList: false));
+        $this->assertSame("C'est noté : hachis parmentier, pour 4 personnes, dans ta liste, boucherie et marché.", VoiceReplies::mealPlanned('Hachis parmentier', 4, false, false, typedListNames: ['Boucherie', 'Marché']));
+        $this->assertSame("C'est noté : hachis parmentier, pour 4 personnes, dans boucherie et marché. Je m'en souviendrai.", VoiceReplies::mealPlanned('Hachis parmentier', 4, false, false, remembered: true, typedListNames: ['Boucherie', 'Marché'], inMainList: false));
+        $this->assertSame("C'est noté : hachis parmentier, pour 4 personnes, dans 4 listes.", VoiceReplies::mealPlanned('Hachis parmentier', 4, false, false, typedListNames: ['A', 'B', 'C']));
+        $this->assertSame(
+            "C'est noté : hachis parmentier, pour 4 personnes, dans ta liste et boucherie. Ta liste précédente est partie au drive.",
+            VoiceReplies::mealPlanned('Hachis parmentier', 4, true, true, typedListNames: ['Boucherie']),
+        );
+    }
+
+    public function testEveryAnswerNamingAListStaysShortWithRealisticNames(): void
+    {
+        // Given : un nom de liste et de produit longs
+        $list = 'Boucherie du marché';
+        $name = 'Saucisse de Toulouse fumée';
+        $answers = [
+            VoiceReplies::added($name, 'viande', true, false, false, new AddedLine(1.0, 1.0, 'unite', 'unité', listName: $list)),
+            VoiceReplies::added($name, 'viande', true, false, false, new AddedLine(2.0, 2.0, 'kilo', 'kilo', unitCited: true, listName: $list)),
+            VoiceReplies::added($name, 'viande', true, false, false, new AddedLine(1.0, 5.0, 'kilo', 'kilo', existed: true, unitSubstituted: true, listName: $list)),
+            VoiceReplies::remembered($name, false, false, new AddedLine(1.0, 5.0, 'unite', 'unité', existed: true, listName: $list)),
+            VoiceReplies::removed($name, new RemovedLine(2.0, 0.0, 'kilo', 'kilo', unitCited: true, listName: $list)),
+            VoiceReplies::removed($name, new RemovedLine(2.0, 3.0, 'kilo', 'kilo', unitCited: true, unitSubstituted: true, listName: $list)),
+            VoiceReplies::inList(new ListLine($name, 'viande', 2.0, 'kilo', 'kilo', $list)),
+            VoiceReplies::mealPlanned($name, 4, false, false, remembered: true, typedListNames: [$list], inMainList: true),
+        ];
+
+        foreach ($answers as $answer) {
+            // Then : deux phrases au plus, 15 mots chacune, tutoiement, jamais de relance
+            $sentences = $this->sentences($answer);
+            $this->assertLessThanOrEqual(2, count($sentences), $answer);
+            foreach ($sentences as $sentence) {
+                $this->assertLessThanOrEqual(15, count(preg_split('/\s+/u', $sentence)), $sentence);
+            }
+            $this->assertStringNotContainsString('%', $answer);
+            $this->assertStringNotContainsStringIgnoringCase('autre chose', $answer);
+        }
+    }
 }

@@ -53,6 +53,19 @@ class AddSpokenMealHandlerTest extends TestCase
         $this->assertSame([], $this->repas->rememberedRecipes());
     }
 
+    public function testAMealPlannedInSeveralListsNamesThem(): void
+    {
+        // Given : la recette est allée dans la liste principale, Boucherie et Marché
+        $this->repas->ownsRecipe('recipe-1', 'Hachis parmentier');
+        $this->repas->willPlanMeal(new PlannedSpokenMeal('Hachis parmentier', 4, false, false, false, ['Boucherie', 'Marché'], true));
+
+        // When
+        $result = ($this->handler)(new AddSpokenMealCommand('user-1', 'le hachis parmentier', sessionIsOpen: false));
+
+        // Then
+        $this->assertSame("C'est noté : hachis parmentier, pour 4 personnes, dans ta liste, boucherie et marché.", $result->speech);
+    }
+
     public function testTheServingsSaidAreForcedAndTheSessionStaysOpenWithoutAnyQuestionWhenItWasOpen(): void
     {
         // Given

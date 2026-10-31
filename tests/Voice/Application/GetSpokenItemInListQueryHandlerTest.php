@@ -50,6 +50,45 @@ class GetSpokenItemInListQueryHandlerTest extends TestCase
         $this->assertEquals(new SpokenItemInListDTO('Oui, tu en as 2 paquets.', keepSessionOpen: false), $dto);
     }
 
+    public function testAProductInTheListOfATypeNamesIt(): void
+    {
+        // Given : deux paquets de viande hachée, dans Boucherie seulement
+        $this->repas->listHas(new ListedLine('viande-hachee', 'viande hachée', 'viande', 'viande', 2.0, 'paquet', 'paquet', 'Boucherie'));
+
+        // When
+        $dto = ($this->handler())(new GetSpokenItemInListQuery('user-1', 'de la viande hachée', sessionIsOpen: false));
+
+        // Then
+        $this->assertSame('Oui, tu en as 2 paquets dans la liste boucherie.', $dto->speech);
+    }
+
+    public function testAProductInSeveralListsIsSaidWithItsTotalPerList(): void
+    {
+        // Given : un paquet dans la liste principale, deux dans Boucherie
+        $this->repas->listHas(new ListedLine('viande-hachee', 'viande hachée', 'viande', 'viande', 1.0, 'paquet', 'paquet'));
+        $this->repas->listHas(new ListedLine('viande-hachee', 'viande hachée', 'viande', 'viande', 2.0, 'paquet', 'paquet', 'Boucherie'));
+
+        // When
+        $dto = ($this->handler())(new GetSpokenItemInListQuery('user-1', 'de la viande hachée', sessionIsOpen: false));
+
+        // Then
+        $this->assertSame('Oui : 1 paquet dans ta liste, 2 paquets dans la liste boucherie.', $dto->speech);
+    }
+
+    public function testProductsThatTieAreEnumeratedWithOneTotalEachWhateverTheirLists(): void
+    {
+        // Given : « tomate » en fruit et légume (1 dans la liste principale, 2 dans Marché) et en surgelé (1)
+        $this->repas->listHas(self::line('tomate', 'tomate', 'fruit et légume', 1.0));
+        $this->repas->listHas(new ListedLine('tomate', 'tomate', 'fruit-et-legume', 'fruit et légume', 2.0, 'unite', 'unité', 'Marché'));
+        $this->repas->listHas(self::line('tomate-surgelee', 'tomate', 'surgelé', 1.0));
+
+        // When
+        $dto = ($this->handler())(new GetSpokenItemInListQuery('user-1', 'des tomates', sessionIsOpen: false));
+
+        // Then : 3 tomates en fruit et légume (1 + 2), 1 en surgelé
+        $this->assertSame('Oui : 3 tomates en fruit et légume, 1 en surgelé.', $dto->speech);
+    }
+
     public function testACountIsSaidWithoutAUnit(): void
     {
         // Given

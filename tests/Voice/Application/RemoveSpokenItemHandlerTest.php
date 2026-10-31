@@ -52,6 +52,34 @@ class RemoveSpokenItemHandlerTest extends TestCase
         $this->assertEquals(new AddSpokenItemResult("C'est retiré, il t'en reste 2 paquets dans ta liste.", keepSessionOpen: false, added: false), $result);
     }
 
+    public function testRemovingFromTheListOfATypeSaysWhichList(): void
+    {
+        // Given : trois paquets dans la Boucherie, un seul retiré (ADR 0036, LST-008)
+        $this->repas->listHas(new ListedLine('lardon', 'lardon', 'viande', 'viande', 3.0, 'paquet', 'paquet', 'Boucherie'));
+        $this->repas->willRemove(new RemovedItem(found: true, remaining: 2.0, removed: 1.0, unitSlug: 'paquet', unitName: 'paquet', listName: 'Boucherie'));
+
+        // When
+        $result = ($this->handler)(new RemoveSpokenItemCommand('user-1', 'du lardon', sessionIsOpen: false));
+
+        // Then
+        $this->assertSame("C'est retiré de boucherie, il t'en reste 2 paquets.", $result->speech);
+    }
+
+    public function testAProductCarriedByTwoListsIsRemovedWithoutAskingWhich(): void
+    {
+        // Given : un seul produit, une ligne dans la liste principale et une dans Boucherie
+        $this->repas->listHas(new ListedLine('lardon', 'lardon', 'viande', 'viande', 1.0, 'paquet', 'paquet'));
+        $this->repas->listHas(new ListedLine('lardon', 'lardon', 'viande', 'viande', 2.0, 'paquet', 'paquet', 'Boucherie'));
+        $this->repas->willRemove(new RemovedItem(found: true, remaining: 0.0, removed: 1.0, unitSlug: 'paquet', unitName: 'paquet'));
+
+        // When
+        $result = ($this->handler)(new RemoveSpokenItemCommand('user-1', 'du lardon', sessionIsOpen: false));
+
+        // Then : ce n'est pas un départage, le retrait est demandé une fois (c'est la liste de `Repas` qui est choisie)
+        $this->assertNull($result->nextState);
+        $this->assertSame([['user-1', 'lardon']], $this->repas->removed());
+    }
+
     public function testSaysTheLineIsGoneWhenNothingIsLeft(): void
     {
         // Given

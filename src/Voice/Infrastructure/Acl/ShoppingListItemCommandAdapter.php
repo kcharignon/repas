@@ -31,6 +31,7 @@ final readonly class ShoppingListItemCommandAdapter implements ShoppingListItemC
             lineExisted: $added->lineExisted,
             unitSubstituted: $added->unitSubstituted,
             addedQuantity: $added->addedQuantity,
+            listName: $added->listName,
         );
     }
 
@@ -45,6 +46,7 @@ final readonly class ShoppingListItemCommandAdapter implements ShoppingListItemC
             unitSlug: $removed->unitSlug,
             unitName: $removed->unitName,
             unitSubstituted: $removed->unitSubstituted,
+            listName: $removed->listName,
         );
     }
 }

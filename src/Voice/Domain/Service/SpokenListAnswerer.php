@@ -45,11 +45,39 @@ final readonly class SpokenListAnswerer
             return $name === null ? VoiceReplies::NOT_UNDERSTOOD : VoiceReplies::notInListAnswer($name);
         }
 
-        $listed = array_map(
-            static fn(ListedLine $line): ListLine => new ListLine($line->name, $line->departmentName, $line->quantity, $line->unitSlug, $line->unitName),
-            $found->lines,
-        );
+        $products = $found->products();
+        if (count($products) === 1) {
+            // Un seul produit : une ligne par liste en cours qui le porte (la liste principale d'abord, ADR 0036 LST-008)
+            $listed = array_map(self::listLine(...), $products[0]);
 
-        return count($listed) === 1 ? VoiceReplies::inList($listed[0]) : VoiceReplies::inListMany($listed);
+            return count($listed) === 1 ? VoiceReplies::inList($listed[0]) : VoiceReplies::inLists($listed);
+        }
+
+        // Des produits qui se valent (même nom, rayons différents) : une quantité par produit, toutes listes ensemble
+        return VoiceReplies::inListMany(array_map(self::totalOf(...), $products));
+    }
+
+    private static function listLine(ListedLine $line): ListLine
+    {
+        return new ListLine($line->name, $line->departmentName, $line->quantity, $line->unitSlug, $line->unitName, $line->listName);
+    }
+
+    /**
+     * Un produit porté par plusieurs listes, dit en un seul total quand toutes ses lignes ont la même unité (sinon la première ligne, la liste
+     * principale d'abord) : la consultation d'un départage ne dit pas dans quelle liste chaque produit se trouve.
+     *
+     * @param non-empty-list<ListedLine> $lines les lignes d'UN produit
+     */
+    private static function totalOf(array $lines): ListLine
+    {
+        $first = $lines[0];
+        $quantity = 0.0;
+        foreach ($lines as $line) {
+            if ($line->unitSlug === $first->unitSlug) {
+                $quantity += $line->quantity;
+            }
+        }
+
+        return new ListLine($first->name, $first->departmentName, $quantity, $first->unitSlug, $first->unitName);
     }
 }

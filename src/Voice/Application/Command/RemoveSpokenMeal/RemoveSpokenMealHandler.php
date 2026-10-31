@@ -65,6 +65,7 @@ readonly class RemoveSpokenMealHandler
         $removed = $this->mealPlanner->removeMeal($userId, $meal->slug, $servings);
 
         return $this->said(match (true) {
+            $removed->listSent => VoiceReplies::LIST_SENT,
             !$removed->found => VoiceReplies::MEAL_NO_LONGER_PLANNED,
             $removed->removedAll => VoiceReplies::mealRemoved($removed->recipeName),
             default => VoiceReplies::mealServingsChanged($removed->recipeName, $removed->servings),

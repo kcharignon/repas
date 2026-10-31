@@ -51,6 +51,19 @@ class RemoveSpokenMealHandlerTest extends TestCase
         $this->assertEquals(new AddSpokenItemResult("C'est retiré : le repas hachis parmentier.", keepSessionOpen: false, added: false), $result);
     }
 
+    public function testAMealWhoseGroupHasASentListIsRefusedWithTheSentSentence(): void
+    {
+        // Given : une des listes du repas est partie au drive (ADR 0036 décision 9)
+        $this->repas->listPlans(self::hachis());
+        $this->repas->willRemoveMeal(RemovedSpokenMeal::listSent('Hachis parmentier'));
+
+        // When
+        $result = ($this->handler)(new RemoveSpokenMealCommand('user-1', 'hachis parmentier', sessionIsOpen: false));
+
+        // Then
+        $this->assertEquals(new AddSpokenItemResult('Ta liste est déjà partie au drive.', keepSessionOpen: false, added: false), $result);
+    }
+
     public function testTheServingsSaidAreTakenOffAndTheNewTotalIsSaid(): void
     {
         // Given : le repas est prévu pour 4, on enlève 2 personnes

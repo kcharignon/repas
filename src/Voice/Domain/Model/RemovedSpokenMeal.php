@@ -4,7 +4,7 @@ namespace Repas\Voice\Domain\Model;
 
 /**
  * Ce que `MealPlanCommandPort::removeMeal()` a fait (ADR 0029 décision 12, VOX-306) : le repas a quitté la liste, ou son nombre de personnes a baissé, ou il
- * n'était pas dans la liste active (rien n'est écrit).
+ * n'était pas dans une liste en cours (rien n'est écrit).
  */
 final readonly class RemovedSpokenMeal
 {
@@ -15,6 +15,8 @@ final readonly class RemovedSpokenMeal
         public bool $removedAll,
         /** Le nombre de personnes qui reste quand le repas n'a pas quitté la liste (0 sinon). */
         public int $servings,
+        /** Une liste de la planification du repas est partie au drive : elle n'est jamais modifiée, donc rien ne l'est (ADR 0036 décision 9). */
+        public bool $listSent = false,
     ) {
     }
 
@@ -32,5 +34,11 @@ final readonly class RemovedSpokenMeal
     public static function notPlanned(string $recipeName = ''): self
     {
         return new self(false, $recipeName, false, 0);
+    }
+
+    /** Le repas est dans une planification dont une liste est partie au drive : rien n'a été écrit. */
+    public static function listSent(string $recipeName): self
+    {
+        return new self(false, $recipeName, false, 0, listSent: true);
     }
 }

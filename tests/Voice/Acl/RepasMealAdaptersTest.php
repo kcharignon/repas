@@ -99,6 +99,20 @@ class RepasMealAdaptersTest extends TestCase
         $this->assertSame([['user-1', 'r1', 6], ['user-1', 'r1', null]], $this->repas->mealsPlanned());
     }
 
+    public function testTheListsOfATypeAndASentListInTheGroupAreMappedToTheTypesOfVoice(): void
+    {
+        // Given : le repas est allé dans Boucherie et Marché (sans la liste principale), puis une liste du groupe est partie au drive
+        $this->repas->bus->willAnswer(PlanSpokenMealCommand::class, static fn(object $command): MealPlanResult => new MealPlanResult('Gratin', 4, false, false, false, ['Boucherie', 'Marché'], false));
+        $this->repas->bus->willAnswer(ChangeSpokenMealServingsCommand::class, static fn(object $command): MealServingsResult => MealServingsResult::listSent('Gratin'));
+        $this->repas->bus->willAnswer(RemoveSpokenMealCommand::class, static fn(object $command): MealRemovalResult => MealRemovalResult::listSent('Gratin'));
+        $port = $this->repas->mealPlanPort();
+
+        // When / Then
+        $this->assertEquals(new PlannedSpokenMeal('Gratin', 4, false, false, false, ['Boucherie', 'Marché'], false), $port->plan('user-1', 'r1'));
+        $this->assertEquals(ChangedMealServings::listSent('Gratin'), $port->changeServings('user-1', 'r1', 8));
+        $this->assertEquals(RemovedSpokenMeal::listSent('Gratin'), $port->removeMeal('user-1', 'r1'));
+    }
+
     public function testAMissingConversionOfRepasBecomesTheFailureOfVoiceWithTheIngredientNamed(): void
     {
         // Given

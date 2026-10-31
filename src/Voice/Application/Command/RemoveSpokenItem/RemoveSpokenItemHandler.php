@@ -84,10 +84,12 @@ readonly class RemoveSpokenItemHandler
      */
     private function askWhich(string $phrase, array $lines, int $quantity, ?string $unitSlug): AddSpokenItemResult
     {
-        $options = array_map(
-            static fn(ListedLine $line): DialogueOption => new DialogueOption($line->slug, $line->name, $line->departmentSlug, $line->departmentName),
-            $lines,
-        );
+        // Un produit porté par deux listes en cours a deux lignes : une seule option par produit (la liste qui porte la ligne se choisit au retrait)
+        $options = [];
+        foreach ($lines as $line) {
+            $options[$line->slug] ??= new DialogueOption($line->slug, $line->name, $line->departmentSlug, $line->departmentName);
+        }
+        $options = array_values($options);
         $state = SpokenDialogueState::chooseToRemove($phrase, $options, $options[0]->name, $quantity, $unitSlug);
         $question = VoiceReplies::question($state);
 
