@@ -329,6 +329,31 @@ class ShoppingListTest extends TestCase
         $this->assertSame($before, $list->toArray());
     }
 
+    public function testSubtractRowDropsTheLineLeftWithFloatingPointDust(): void
+    {
+        // Given : 0,1 + 0,2 puis 0,3 retiré laisse 5,5e-17, pas 0
+        $list = $this->listWithEgg(0.1, 0);
+        $list->addRow('oeuf', 'unite', 0.2);
+
+        // When
+        $list->subtractRow('oeuf', 0.3);
+
+        // Then : la ligne a disparu au lieu de rester à une quantité invisible
+        $this->assertNull($list->findRow('oeuf'));
+    }
+
+    public function testSubtractRowKeepsAnySmallButRealQuantity(): void
+    {
+        // Given : 4 g de safran, exprimés en kilos
+        $list = $this->listWithEgg(0.005, 0);
+
+        // When
+        $list->subtractRow('oeuf', 0.001);
+
+        // Then
+        $this->assertEqualsWithDelta(0.004, $list->findRow('oeuf')?->getQuantity(), 1e-12);
+    }
+
     public function testRemoveQuantityIgnoresFloatingPointDust(): void
     {
         // Given : 0,1 + 0,2 n'est pas tout à fait 0,3
