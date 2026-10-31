@@ -14,7 +14,7 @@ use Repas\Repas\Infrastructure\Entity\Meal;
 use Repas\Repas\Infrastructure\Entity\Recipe;
 use Repas\Repas\Infrastructure\Entity\ShoppingList;
 use Repas\Repas\Infrastructure\Entity\ShoppingListRow;
-use Repas\Shared\Application\Interface\OwnershipLoader;
+use Repas\Repas\Application\Loader\OwnershipLoader;
 
 final readonly class OwnershipPostgreSQLLoader implements OwnershipLoader
 {

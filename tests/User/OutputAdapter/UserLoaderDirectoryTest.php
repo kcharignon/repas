@@ -95,8 +95,11 @@ class UserLoaderDirectoryTest extends DatabaseTestCase
         // When
         $addresses = $this->loader->emailsOf([$first->getId(), $third->getId(), 'unknown-user']);
 
-        // Then : les deux demandés, jamais le troisième ni l'inconnu
-        $this->assertSame([$first->getId() => 'first@example.com', $third->getId() => 'third@example.com'], $addresses);
+        // Then : les deux demandés, jamais le troisième ni l'inconnu ; l'ordre n'est pas garanti (identifiants aléatoires), il ne se compare donc pas
+        $expected = [$first->getId() => 'first@example.com', $third->getId() => 'third@example.com'];
+        ksort($addresses);
+        ksort($expected);
+        $this->assertSame($expected, $addresses);
         $this->assertSame([], $this->loader->emailsOf([]));
     }
 

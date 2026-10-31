@@ -1,32 +1,33 @@
 <?php
 
-namespace Repas\User\Infrastructure\Security;
+namespace Repas\Repas\Infrastructure\Security;
 
 
-use Repas\Shared\Application\Interface\OwnershipLoader;
-use Repas\Shared\Application\Interface\VoiceLinkOwnershipLoader;
+use Repas\Repas\Application\Loader\OwnershipLoader;
 use Repas\Shared\Domain\Exception\DomainException;
-use Repas\User\Domain\Model\User;
+use Repas\Shared\Domain\Interface\AuthenticatedUser;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
 use Symfony\Component\Security\Core\Authorization\AccessDecisionManagerInterface;
 use Symfony\Component\Security\Core\Authorization\Voter\Vote;
 use Symfony\Component\Security\Core\Authorization\Voter\Voter;
 
+/**
+ * Droits sur les objets du contexte `Repas` (ADR 0035 : chaque contexte juge les siens ; `HIMSELF` est au contexte `User`, `VOICE_LINK_OWNER`
+ * au contexte `Voice`). Un attribut de sécurité n'est qu'une chaîne : les controllers des autres contextes qui citent `SHOPPING_LIST_OWNER`
+ * (le `Drive`) n'importent pas cette classe.
+ */
 class OwnerVoter extends Voter
 {
-    public const string HIMSELF = 'HIMSELF';
     public const string INGREDIENT_OWNER = 'INGREDIENT_OWNER';
     public const string SHOPPING_LIST_OWNER = 'SHOPPING_LIST_OWNER';
     public const string RECIPE_OWNER = 'RECIPE_OWNER';
     public const string MEAL_OWNER = 'MEAL_OWNER';
     public const string SHOPPING_LIST_ROW_OWNER = 'SHOPPING_LIST_ROW_OWNER';
-    public const string VOICE_LINK_OWNER = 'VOICE_LINK_OWNER';
 
     public function __construct(
         private readonly AccessDecisionManagerInterface $accessDecisionManager,
         private readonly OwnershipLoader $ownershipLoader,
-        private readonly VoiceLinkOwnershipLoader $voiceLinkOwnershipLoader,
     ) {
     }
 
@@ -34,30 +35,27 @@ class OwnerVoter extends Voter
     protected function supports(string $attribute, mixed $subject): bool
     {
         return in_array($attribute, [
-                self::HIMSELF,
                 self::INGREDIENT_OWNER,
                 self::SHOPPING_LIST_OWNER,
                 self::RECIPE_OWNER,
                 self::MEAL_OWNER,
                 self::SHOPPING_LIST_ROW_OWNER,
-                self::VOICE_LINK_OWNER,
             ]) && is_string($subject);
     }
 
     protected function voteOnAttribute(string $attribute, mixed $subject, TokenInterface $token, ?Vote $vote = null): bool
     {
         // Un administrateur passe pour les recettes, les listes et les repas des autres, JAMAIS pour les ingrédients : un ingrédient est à
-        // son propriétaire seul, sans passe-droit (ADR 0028, amendement du 2026-10-20, D3). Ni pour les liaisons avec Alexa : retirer
-        // celle d'un autre couperait sa commande vocale (ADR 0029). Pour une recette, le passe-droit s'arrête à la recette SECRÈTE d'un autre
-        // (ADR 0033), vérifiée plus bas
+        // son propriétaire seul, sans passe-droit (ADR 0028, amendement du 2026-10-20, D3). Pour une recette, le passe-droit s'arrête à la
+        // recette SECRÈTE d'un autre (ADR 0033), vérifiée plus bas
         $isAdmin = $this->accessDecisionManager->decide($token, ['ROLE_ADMIN']);
-        if ($isAdmin && !in_array($attribute, [self::INGREDIENT_OWNER, self::VOICE_LINK_OWNER, self::RECIPE_OWNER], true)) {
+        if ($isAdmin && !in_array($attribute, [self::INGREDIENT_OWNER, self::RECIPE_OWNER], true)) {
             return true;
         }
 
         $user = $token->getUser();
 
-        if (!$user instanceof User || $user->isDisabled()) {
+        if (!$user instanceof AuthenticatedUser || $user->isDisabled()) {
             return false;
         }
 
@@ -77,11 +75,9 @@ class OwnerVoter extends Voter
         }
     }
 
-    private function owns(string $attribute, string $subject, User $user): bool
+    private function owns(string $attribute, string $subject, AuthenticatedUser $user): bool
     {
         switch ($attribute) {
-            case self::HIMSELF:
-                return $user->getId() === $subject;
             case self::INGREDIENT_OWNER:
                 // Tout ingrédient a un propriétaire : lui seul le modifie ou le supprime, un administrateur compris
                 return $this->ownershipLoader->ingredientCreatorId($subject) === $user->getId();
@@ -94,9 +90,6 @@ class OwnerVoter extends Voter
                 return $this->ownershipLoader->mealOwnerId($subject) === $user->getId();
             case self::SHOPPING_LIST_ROW_OWNER:
                 return $this->ownershipLoader->shoppingListRowOwnerId($subject) === $user->getId();
-            case self::VOICE_LINK_OWNER:
-                // Aucun passe-droit administrateur : la liaison est à son propriétaire seul
-                return $this->voiceLinkOwnershipLoader->voiceLinkOwnerId($subject) === $user->getId();
             default:
                 return false;
         }

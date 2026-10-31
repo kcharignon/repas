@@ -3,7 +3,7 @@
 namespace Repas\Tests\Helper\InMemoryLoader;
 
 
-use Repas\Shared\Application\Interface\VoiceLinkOwnershipLoader;
+use Repas\Voice\Application\Loader\VoiceLinkOwnershipLoader;
 use Repas\Voice\Domain\Exception\VoiceException;
 
 /**

@@ -4,7 +4,7 @@ namespace Repas\Voice\Infrastructure\Loader;
 
 
 use Doctrine\ORM\EntityManagerInterface;
-use Repas\Shared\Application\Interface\VoiceLinkOwnershipLoader;
+use Repas\Voice\Application\Loader\VoiceLinkOwnershipLoader;
 use Repas\Voice\Domain\Exception\VoiceException;
 use Repas\Voice\Infrastructure\Entity\VoiceLink;
 
