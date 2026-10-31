@@ -16,12 +16,23 @@ interface ShoppingListRepository
 
     public function findOneById(string $id): ShoppingList;
 
+    /**
+     * La liste en cours de la liste PRINCIPALE du propriétaire (celle sans type, ADR 0036) : une liste en cours d'un type n'est jamais
+     * rendue ici, un compte sans type voit exactement ce qu'il voyait avant.
+     */
     public function findOneActivateByOwner(string $ownerId): ?ShoppingList;
 
     /**
-     * L'utilisateur a-t-il une liste active ? Sans hydrater l'agrégat ni importer le domaine du contexte User.
+     * La liste en cours (`ACTIVE`) de ce type du propriétaire, `null` pour la liste principale (ADR 0036 décision 6 : une seule par type et
+     * une pour la principale). Si deux existent (deux ouvertures simultanées, ADR 0036 « Conséquences »), la plus ancienne.
      */
-    public function hasActiveShoppingList(string $ownerId): bool;
+    public function findOneActiveByOwnerAndType(string $ownerId, ?string $listTypeId): ?ShoppingList;
+
+    /**
+     * L'utilisateur a-t-il une liste en cours de ce type (la liste principale par défaut) ? Sans hydrater l'agrégat ni importer le domaine du
+     * contexte User.
+     */
+    public function hasActiveShoppingList(string $ownerId, ?string $listTypeId = null): bool;
 
     /**
      * La liste est-elle envoyée au drive (`SENT`, ADR 0023) ? Une requête, sans hydrater l'agrégat : cocher et décocher ne

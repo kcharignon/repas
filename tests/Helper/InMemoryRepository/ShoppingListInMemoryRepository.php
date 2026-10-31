@@ -38,7 +38,21 @@ class ShoppingListInMemoryRepository extends AbstractInMemoryRepository implemen
 
     public function findOneActivateByOwner(string $ownerId): ?ShoppingList
     {
-        return $this->models->find(fn(ShoppingList $sl) => $sl->getOwnerId() === $ownerId && $sl->isActivate());
+        return $this->findOneActiveByOwnerAndType($ownerId, null);
+    }
+
+    public function findOneActiveByOwnerAndType(string $ownerId, ?string $listTypeId): ?ShoppingList
+    {
+        $found = null;
+        /** @var ShoppingList $sl */
+        foreach ($this->models as $sl) {
+            if ($sl->getOwnerId() === $ownerId && $sl->isActivate() && $sl->getListTypeId() === $listTypeId
+                && ($found === null || $sl->getCreatedAt() < $found->getCreatedAt())) {
+                $found = $sl;
+            }
+        }
+
+        return $found;
     }
 
     public function ownerHasAtLeast(string $ownerId, int $count): bool
@@ -46,11 +60,11 @@ class ShoppingListInMemoryRepository extends AbstractInMemoryRepository implemen
         return $this->models->filter(fn(ShoppingList $shoppingList) => $shoppingList->getOwnerId() === $ownerId && !$shoppingList->isCompleted())->count() >= $count;
     }
 
-    public function hasActiveShoppingList(string $ownerId): bool
+    public function hasActiveShoppingList(string $ownerId, ?string $listTypeId = null): bool
     {
         foreach ($this->models as $shoppingList) {
             /** @var ShoppingList $shoppingList */
-            if ($shoppingList->getOwnerId() === $ownerId && $shoppingList->isActivate()) {
+            if ($shoppingList->getOwnerId() === $ownerId && $shoppingList->isActivate() && $shoppingList->getListTypeId() === $listTypeId) {
                 return true;
             }
         }

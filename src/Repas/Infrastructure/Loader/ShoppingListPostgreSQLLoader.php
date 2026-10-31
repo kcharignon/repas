@@ -13,6 +13,7 @@ use Repas\Repas\Application\Query\GetShoppingList\ShoppingListDetailDTO;
 use Repas\Repas\Application\Query\GetShoppingList\ShoppingListMealDTO;
 use Repas\Repas\Application\Query\GetShoppingList\ShoppingListRecipeTypeDTO;
 use Repas\Repas\Application\Query\GetShoppingList\ShoppingListRowDTO;
+use Repas\Repas\Application\Query\ListOpenShoppingLists\OpenShoppingListDTO;
 use Repas\Repas\Application\Query\ListShoppingLists\ShoppingListDTO;
 use Repas\Repas\Domain\Exception\MealException;
 use Repas\Repas\Domain\Exception\ShoppingListException;
@@ -24,6 +25,7 @@ use Repas\Repas\Infrastructure\Entity\Recipe;
 use Repas\Repas\Infrastructure\Entity\RecipeType;
 use Repas\Repas\Infrastructure\Entity\ShoppingList;
 use Repas\Repas\Infrastructure\Entity\ShoppingListRow;
+use Repas\Repas\Infrastructure\Entity\ShoppingListType;
 use Repas\Repas\Infrastructure\Entity\Unit;
 
 final readonly class ShoppingListPostgreSQLLoader implements ShoppingListLoader
@@ -36,7 +38,7 @@ final readonly class ShoppingListPostgreSQLLoader implements ShoppingListLoader
     public function listByOwner(string $ownerId): array
     {
         $rows = $this->entityManager->createQueryBuilder()
-            ->select('l.id AS id', 'l.name AS name', 'l.status AS status', 'l.createdAt AS createdAt', 'l.sentAt AS sentAt')
+            ->select('l.id AS id', 'l.name AS name', 'l.status AS status', 'l.createdAt AS createdAt', 'l.sentAt AS sentAt', 'l.listTypeId AS listTypeId')
             ->from(ShoppingList::class, 'l')
             ->where('l.ownerId = :ownerId')
             ->setParameter('ownerId', $ownerId)
@@ -64,6 +66,53 @@ final readonly class ShoppingListPostgreSQLLoader implements ShoppingListLoader
                     isSent: $status === ShoppingListStatus::SENT,
                     createdAt: $createdAt->format(DATE_ATOM),
                     sentAt: $row['sentAt']?->format(DATE_ATOM),
+                    typeId: $row['listTypeId'],
+                );
+            },
+            $rows,
+        );
+    }
+
+    public function listOpenByOwner(string $ownerId): array
+    {
+        // Une seule lecture : les listes en cours, le nombre de leurs lignes et celles qui restent à cocher, le type (jointure externe : la
+        // liste principale n'en a pas) pour ranger la principale d'abord, puis les types par date de création du type
+        $rows = $this->entityManager->createQueryBuilder()
+            ->select('l.id AS id', 'l.name AS name', 'l.createdAt AS createdAt', 'l.listTypeId AS listTypeId', 'l.version AS version')
+            ->addSelect('COUNT(r.id) AS rowCount')
+            ->addSelect('COALESCE(SUM(CASE WHEN r.checked = false THEN 1 ELSE 0 END), 0) AS uncheckedCount')
+            ->from(ShoppingList::class, 'l')
+            ->leftJoin(ShoppingListType::class, 't', Join::WITH, 't.id = l.listTypeId')
+            ->leftJoin(ShoppingListRow::class, 'r', Join::WITH, 'r.shoppingListId = l.id')
+            ->where('l.ownerId = :ownerId')
+            ->andWhere('l.status = :status')
+            ->setParameter('ownerId', $ownerId)
+            ->setParameter('status', ShoppingListStatus::ACTIVE)
+            ->groupBy('l.id', 't.id')
+            ->addSelect('CASE WHEN l.listTypeId IS NULL THEN 0 ELSE 1 END AS HIDDEN main')
+            ->addSelect('t.createdAt AS HIDDEN typeCreatedAt')
+            ->orderBy('main', 'ASC')
+            ->addOrderBy('typeCreatedAt', 'ASC')
+            ->addOrderBy('l.listTypeId', 'ASC')
+            ->addOrderBy('l.createdAt', 'ASC')
+            ->addOrderBy('l.id', 'ASC')
+            ->getQuery()
+            ->getArrayResult();
+
+        $defaultNameFormatter = $this->dateFormatter();
+
+        return array_map(
+            static function (array $row) use ($defaultNameFormatter): OpenShoppingListDTO {
+                /** @var DateTimeImmutable $createdAt */
+                $createdAt = $row['createdAt'];
+
+                return new OpenShoppingListDTO(
+                    id: $row['id'],
+                    name: $row['name'] ?? $defaultNameFormatter->format($createdAt),
+                    typeId: $row['listTypeId'],
+                    rowCount: (int) $row['rowCount'],
+                    uncheckedCount: (int) $row['uncheckedCount'],
+                    version: (int) $row['version'],
                 );
             },
             $rows,
@@ -77,6 +126,7 @@ final readonly class ShoppingListPostgreSQLLoader implements ShoppingListLoader
             ->from(ShoppingList::class, 'l')
             ->where('l.ownerId = :ownerId')
             ->andWhere('l.status = :status')
+            ->andWhere('l.listTypeId IS NULL')
             ->setParameter('ownerId', $ownerId)
             ->setParameter('status', ShoppingListStatus::ACTIVE)
             ->orderBy('l.createdAt', 'DESC')
@@ -136,7 +186,7 @@ final readonly class ShoppingListPostgreSQLLoader implements ShoppingListLoader
     {
         $current = $this->entityManager->createQueryBuilder()
             ->select('l.id AS id')
-            ->addSelect('CASE WHEN l.status = :active THEN 0 ELSE 1 END AS HIDDEN priority')
+            ->addSelect('CASE WHEN l.status = :active AND l.listTypeId IS NULL THEN 0 WHEN l.status = :active THEN 1 ELSE 2 END AS HIDDEN priority')
             ->from(ShoppingList::class, 'l')
             ->where('l.ownerId = :ownerId')
             ->setParameter('ownerId', $ownerId)

@@ -142,6 +142,40 @@
                 }
             }
         },
+        "/api/v1/shopping-lists/open": {
+            "get": {
+                "tags": [
+                    "Shopping lists"
+                ],
+                "summary": "Listes en cours de l'utilisateur authentifi\u00e9 : la liste principale d'abord, puis une par type de liste",
+                "description": "Une liste en cours (`ACTIVE`) au plus par type et une pour la liste principale (ADR 0036). Les types sont rang\u00e9s par date de cr\u00e9ation, puis identifiant. Un compte sans type de liste re\u00e7oit au plus sa liste principale. Une liste en pause, envoy\u00e9e au drive ou termin\u00e9e n'y figure pas (`GET /api/v1/shopping-lists`).",
+                "operationId": "get_api_list_open_shopping_lists",
+                "responses": {
+                    "200": {
+                        "description": "Listes en cours",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "member": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/OpenShoppingListDTO"
+                                            }
+                                        },
+                                        "totalItems": {
+                                            "type": "integer",
+                                            "example": 2
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/ingredients/search": {
             "get": {
                 "tags": [
@@ -893,8 +927,19 @@
                 "tags": [
                     "Shopping lists"
                 ],
-                "summary": "Cr\u00e9e une nouvelle liste active ; l'\u00e9ventuelle liste active passe en pause et les listes termin\u00e9es sont supprim\u00e9es",
+                "summary": "Cr\u00e9e une nouvelle liste active ; la liste en cours du m\u00eame type passe en pause et les listes termin\u00e9es sont supprim\u00e9es",
+                "description": "Sans corps (ou sans `typeId`), la liste principale : l'\u00e9ventuelle liste principale en cours passe en pause, comme avant. Avec `typeId`, une liste de ce type, nomm\u00e9e comme lui : seule la liste en cours de ce type passe en pause, la liste principale et les autres types ne bougent pas (ADR 0036).",
                 "operationId": "post_api_create_shopping_list",
+                "requestBody": {
+                    "required": false,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateShoppingListPayload"
+                            }
+                        }
+                    }
+                },
                 "responses": {
                     "201": {
                         "description": "Liste cr\u00e9\u00e9e",
@@ -906,6 +951,12 @@
                                 }
                             }
                         }
+                    },
+                    "404": {
+                        "description": "Le type n'est pas \u00e0 l'utilisateur ou n'existe pas (`LIST_TYPE_NOT_FOUND`) : rien n'est \u00e9crit"
+                    },
+                    "422": {
+                        "description": "Corps invalide (`typeId` n'est pas un texte), ou le plafond de listes est atteint"
                     }
                 }
             }
@@ -4408,6 +4459,20 @@
                 },
                 "type": "object"
             },
+            "CreateShoppingListPayload": {
+                "properties": {
+                    "typeId": {
+                        "description": "Identifiant du type de la liste (`GET /api/v1/shopping-list-types`) ; absent ou null : la liste principale. La liste porte le nom du type. Un type qui n'est pas \u00e0 l'utilisateur est `404`",
+                        "type": "string",
+                        "default": null,
+                        "maxLength": 36,
+                        "minLength": 1,
+                        "example": "3f1c2a7e-8d41-4c62-9b0a-5e7d2f6a1b34",
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
             "CreateShoppingListTypePayload": {
                 "required": [
                     "name"
@@ -5459,6 +5524,49 @@
                 },
                 "type": "object"
             },
+            "OpenShoppingListDTO": {
+                "required": [
+                    "id",
+                    "name",
+                    "rowCount",
+                    "uncheckedCount",
+                    "version"
+                ],
+                "properties": {
+                    "id": {
+                        "description": "Identifiant de la liste en cours",
+                        "type": "string",
+                        "example": "0b0a8c4e-6b0e-4e0a-9d52-2c3f7a1d9e10"
+                    },
+                    "name": {
+                        "description": "Nom de la liste (celui du type pour une liste de type), ou \u00e0 d\u00e9faut la date de cr\u00e9ation en fran\u00e7ais",
+                        "type": "string",
+                        "example": "Boucherie"
+                    },
+                    "typeId": {
+                        "description": "Identifiant du type de la liste (ADR 0036), null pour la liste principale",
+                        "type": "string",
+                        "example": null,
+                        "nullable": true
+                    },
+                    "rowCount": {
+                        "description": "Nombre de lignes de la liste",
+                        "type": "integer",
+                        "example": 12
+                    },
+                    "uncheckedCount": {
+                        "description": "Nombre de lignes pas encore coch\u00e9es",
+                        "type": "integer",
+                        "example": 5
+                    },
+                    "version": {
+                        "description": "Version de la liste (ETag, ADR 0016)",
+                        "type": "integer",
+                        "example": 3
+                    }
+                },
+                "type": "object"
+            },
             "IngredientSearchResultDTO": {
                 "required": [
                     "slug",
@@ -5800,7 +5908,7 @@
                         "example": "ACTIVE"
                     },
                     "isActive": {
-                        "description": "La liste est en cours (au plus une par utilisateur)",
+                        "description": "La liste est en cours (au plus une par type de liste et une pour la liste principale)",
                         "type": "boolean",
                         "example": true
                     },
@@ -5829,6 +5937,13 @@
                         "description": "Date de cr\u00e9ation (ATOM)",
                         "type": "string",
                         "example": "2026-10-12T10:00:00+02:00"
+                    },
+                    "typeId": {
+                        "description": "Identifiant du type de la liste (ADR 0036), null pour la liste principale",
+                        "type": "string",
+                        "default": null,
+                        "example": null,
+                        "nullable": true
                     }
                 },
                 "type": "object"
@@ -8105,10 +8220,10 @@
             "name": "Ingredients"
         },
         {
-            "name": "Health"
+            "name": "Shopping lists"
         },
         {
-            "name": "Shopping lists"
+            "name": "Health"
         },
         {
             "name": "Recipes"

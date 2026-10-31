@@ -113,15 +113,21 @@ readonly class ShoppingListPostgreSQLRepository extends PostgreSQLRepository imp
         $this->entityManager->flush();
     }
 
-    /**
-     */
     public function findOneActivateByOwner(string $ownerId): ?ShoppingList
     {
-        if (($shoppingListEntity = $this->entityRepository->findOneBy(['ownerId' => $ownerId, 'status' => ShoppingListStatus::ACTIVE])) !== null) {
-            return $this->convertEntityToModel($shoppingListEntity);
-        }
+        return $this->findOneActiveByOwnerAndType($ownerId, null);
+    }
 
-        return null;
+    public function findOneActiveByOwnerAndType(string $ownerId, ?string $listTypeId): ?ShoppingList
+    {
+        // `null` se lit « sans type » (Doctrine écrit `IS NULL`) : la liste principale. La plus ancienne d'abord si deux existent
+        $shoppingListEntity = $this->entityRepository->findBy(
+            ['ownerId' => $ownerId, 'status' => ShoppingListStatus::ACTIVE, 'listTypeId' => $listTypeId],
+            ['createdAt' => 'ASC', 'id' => 'ASC'],
+            1,
+        )[0] ?? null;
+
+        return $shoppingListEntity === null ? null : $this->convertEntityToModel($shoppingListEntity);
     }
 
     public function ownerHasAtLeast(string $ownerId, int $count): bool
@@ -140,9 +146,9 @@ readonly class ShoppingListPostgreSQLRepository extends PostgreSQLRepository imp
             ->getScalarResult() !== [];
     }
 
-    public function hasActiveShoppingList(string $ownerId): bool
+    public function hasActiveShoppingList(string $ownerId, ?string $listTypeId = null): bool
     {
-        return $this->entityRepository->findOneBy(['ownerId' => $ownerId, 'status' => ShoppingListStatus::ACTIVE]) !== null;
+        return $this->entityRepository->findOneBy(['ownerId' => $ownerId, 'status' => ShoppingListStatus::ACTIVE, 'listTypeId' => $listTypeId]) !== null;
     }
 
     public function hasSentShoppingList(string $ownerId): bool

@@ -104,4 +104,35 @@ class ActivatedShoppingListCommandHandlerTest extends TestCase
             $this->assertSame(Status::ACTIVE, $this->shoppingListRepository->findOneById('active-id')->getStatus());
         }
     }
+
+    public function testActivatingATypedListPausesOnlyTheCurrentListOfItsType(): void
+    {
+        // Given : la liste principale (active-id) et la Marché sont en cours, deux listes Boucherie (une en cours, une en pause)
+        $owner = new UserBuilder()->withId($this->shoppingListRepository->findOneById('active-id')->getOwnerId());
+        $this->shoppingListRepository->save(new ShoppingListBuilder()->withId('market-id')->withOwner($owner)->withListTypeId('market')->build());
+        $this->shoppingListRepository->save(new ShoppingListBuilder()->withId('butcher-active')->withOwner($owner)->withListTypeId('butcher')->build());
+        $this->shoppingListRepository->save(new ShoppingListBuilder()->withId('butcher-paused')->withOwner($owner)->withListTypeId('butcher')->withStatus(Status::PAUSED)->build());
+
+        // When
+        ($this->handler)(new ActivatedShoppingListCommand('butcher-paused'));
+
+        // Then
+        $statuses = array_map(fn(string $id): Status => $this->shoppingListRepository->findOneById($id)->getStatus(), ['butcher-active', 'butcher-paused', 'market-id', 'active-id']);
+        $this->assertSame([Status::PAUSED, Status::ACTIVE, Status::ACTIVE, Status::ACTIVE], $statuses);
+    }
+
+    public function testActivatingTheMainListLeavesTheTypedListsInProgressAlone(): void
+    {
+        // Given : la liste principale en cours (active-id), la Boucherie en cours, et une autre principale en pause qu'on active
+        $owner = new UserBuilder()->withId($this->shoppingListRepository->findOneById('active-id')->getOwnerId());
+        $this->shoppingListRepository->save(new ShoppingListBuilder()->withId('butcher-active')->withOwner($owner)->withListTypeId('butcher')->build());
+
+        // When
+        ($this->handler)(new ActivatedShoppingListCommand('pause-id'));
+
+        // Then
+        $this->assertSame(Status::PAUSED, $this->shoppingListRepository->findOneById('active-id')->getStatus());
+        $this->assertSame(Status::ACTIVE, $this->shoppingListRepository->findOneById('pause-id')->getStatus());
+        $this->assertSame(Status::ACTIVE, $this->shoppingListRepository->findOneById('butcher-active')->getStatus());
+    }
 }

@@ -19,8 +19,8 @@ readonly class ActivatedShoppingListHandler
     {
         $shoppingList = $this->shoppingListRepository->findOneById($command->shoppingListId);
 
-        // Si le propriétaire a déjà une liste active on la met en pause.
-        $activeShoppingList = $this->shoppingListRepository->findOneActivateByOwner($shoppingList->getOwnerId());
+        // Si le propriétaire a déjà une liste en cours DU MÊME TYPE (la principale pour une liste sans type) on la met en pause (ADR 0036 décision 6).
+        $activeShoppingList = $this->shoppingListRepository->findOneActiveByOwnerAndType($shoppingList->getOwnerId(), $shoppingList->getListTypeId());
         if ($activeShoppingList instanceof ShoppingList) {
             $activeShoppingList->pause();
             $this->shoppingListRepository->save($activeShoppingList);
