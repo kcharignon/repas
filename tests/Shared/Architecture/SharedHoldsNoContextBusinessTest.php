@@ -26,8 +26,6 @@ class SharedHoldsNoContextBusinessTest extends TestCase
     private const array LEGACY = [
         'src/Shared/Application/Dto/ChangedMealServings.php',
         'src/Shared/Application/Dto/CreatedIngredient.php',
-        'src/Shared/Application/Dto/DriveChoiceFingerprint.php',
-        'src/Shared/Application/Dto/DriveMergeImpact.php',
         'src/Shared/Application/Dto/IngredientSuggestion.php',
         'src/Shared/Application/Dto/ListedLine.php',
         'src/Shared/Application/Dto/ListedMeal.php',
@@ -45,7 +43,6 @@ class SharedHoldsNoContextBusinessTest extends TestCase
         'src/Shared/Application/Dto/SpokenResolution.php',
         'src/Shared/Application/Interface/AddedItem.php',
         'src/Shared/Application/Interface/DriveFeature.php',
-        'src/Shared/Application/Interface/DriveIngredientReferences.php',
         'src/Shared/Application/Interface/IngredientAliasResolver.php',
         'src/Shared/Application/Interface/IngredientDepartmentResolver.php',
         'src/Shared/Application/Interface/IngredientNameLoader.php',

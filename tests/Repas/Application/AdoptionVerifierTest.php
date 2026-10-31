@@ -7,7 +7,7 @@ use PHPUnit\Framework\TestCase;
 use Repas\Repas\Application\Service\AdoptionVerifier;
 use Repas\Repas\Domain\Model\AdoptionSnapshot;
 use Repas\Repas\Domain\Model\AggregateSnapshot;
-use Repas\Shared\Application\Dto\DriveChoiceFingerprint;
+use Repas\Repas\Domain\Model\DriveChoiceFingerprint;
 
 /**
  * Ce que la vérification de la migration d'adoption (ING-003) accepte et refuse : chaque défaut de `migration.md` § 8 est vu, et un

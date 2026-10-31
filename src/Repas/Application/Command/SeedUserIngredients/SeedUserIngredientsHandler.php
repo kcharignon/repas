@@ -12,7 +12,7 @@ use Repas\Repas\Domain\Exception\IngredientAdoptionException;
 use Repas\Repas\Domain\Interface\IngredientAdoptionBulkRepository;
 use Repas\Repas\Domain\Model\IngredientToSeed;
 use Repas\Repas\Domain\Service\IngredientSlugPolicy;
-use Repas\Shared\Application\Interface\DriveIngredientReferences;
+use Repas\Repas\Application\Port\DriveChoicesCommandPort;
 use Repas\Shared\Domain\Interface\UuidGenerator;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
@@ -45,7 +45,7 @@ readonly class SeedUserIngredientsHandler
         private IngredientAdoptionBulkRepository $bulkRepository,
         private CatalogOwnerCommandPort $catalogOwner,
         private SeedingAccountCommandPort $accounts,
-        private DriveIngredientReferences $driveReferences,
+        private DriveChoicesCommandPort $driveChoices,
         private IngredientSlugPolicy $slugPolicy,
         private UuidGenerator $uuidGenerator,
         private ClockInterface $clock,
@@ -77,7 +77,7 @@ readonly class SeedUserIngredientsHandler
         }
 
         // La source (`sans-commun.md` § 2.2) : les ingrédients de base du catalogue, plus ceux que les lignes du compte référencent
-        $driveSlugs = $this->driveReferences->referencedSlugs($userId);
+        $driveSlugs = $this->driveChoices->referencedSlugs($userId);
         $toSeed = $this->bulkRepository->ingredientsToSeed($userId, $ownerId, $driveSlugs);
         if (!$command->complete && array_filter($toSeed, static fn(IngredientToSeed $ingredient): bool => $ingredient->isBase) === []) {
             // Le classement n'est pas posé : copier seulement ce que les lignes du compte référencent le rendrait « amorcé » avec une
@@ -96,7 +96,7 @@ readonly class SeedUserIngredientsHandler
         $sourceSlugs = array_values(array_unique([...array_map(static fn(IngredientToSeed $ingredient): string => $ingredient->slug, $toSeed), ...$adoptedOrigins]));
         $before = $this->bulkRepository->snapshot($userId, $sourceSlugs);
         $statisticsBefore = $this->accounts->statisticsFingerprint($userId);
-        $driveBefore = $this->driveReferences->fingerprint($userId);
+        $driveBefore = $this->driveChoices->fingerprint($userId);
         if ($toSeed === [] && $before->watchedRows() === 0 && array_intersect($driveBefore->ingredientSlugByChoice, $adoptedOrigins) === []) {
             return SeedResult::of(SeedOutcome::NOTHING_TO_ADD);
         }
@@ -143,12 +143,12 @@ readonly class SeedUserIngredientsHandler
         // Le repointage : recettes et listes ensemble (deux requêtes, une transaction), puis les choix du drive
         $adoptions = $this->bulkRepository->adoptions($userId);
         $repointed = $this->bulkRepository->repointToCopies($userId);
-        $driveChoices = $this->driveReferences->repoint($userId, $adoptions);
+        $driveChoices = $this->driveChoices->repoint($userId, $adoptions);
 
         // Les vérifications, DANS la transaction : un défaut annule tout pour ce compte (et l'activation qui l'a demandé)
         $after = $this->bulkRepository->snapshot($userId, $sourceSlugs);
         $statisticsAfter = $this->accounts->statisticsFingerprint($userId);
-        $driveAfter = $this->driveReferences->fingerprint($userId);
+        $driveAfter = $this->driveChoices->fingerprint($userId);
         $problems = $this->verifier->discrepancies($before, $after, $statisticsBefore, $statisticsAfter, $driveBefore, $driveAfter, $adoptions);
         $stillOnSource = count(array_intersect($driveAfter->ingredientSlugByChoice, $sourceSlugs));
         if ($stillOnSource > 0) {

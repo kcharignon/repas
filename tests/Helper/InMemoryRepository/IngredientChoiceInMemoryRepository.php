@@ -3,15 +3,15 @@
 namespace Repas\Tests\Helper\InMemoryRepository;
 
 
-use Repas\Shared\Application\Dto\DriveChoiceFingerprint;
-use Repas\Shared\Application\Dto\DriveMergeImpact;
-use Repas\Shared\Application\Interface\DriveIngredientReferences;
+use Repas\Drive\Domain\Interface\IngredientChoiceRepository;
+use Repas\Drive\Domain\Model\IngredientChoiceFingerprint;
+use Repas\Drive\Domain\Model\IngredientChoiceMergeImpact;
 
 /**
- * Le port `Shared` qui repointe les choix du drive, sur des tableaux : `[identifiant du choix => [utilisateur, slug, nombre de produits]]`.
- * Le SQL est prouvé sur la vraie base (`tests/Drive/OutputAdapter/DriveIngredientReferencesRepositoryTest`).
+ * Les choix de produits du drive vus par ingrédient, sur des tableaux : `[identifiant du choix => [utilisateur, slug, nombre de produits]]`.
+ * Le SQL est prouvé sur la vraie base (`tests/Drive/OutputAdapter/IngredientChoiceRepositoryTest` et `IngredientChoiceLoaderTest`).
  */
-final class DriveIngredientReferencesInMemoryRepository implements DriveIngredientReferences
+final class IngredientChoiceInMemoryRepository implements IngredientChoiceRepository
 {
     /** @var array<string, array{user: string, slug: string, products: int, store?: string}> `store` : le magasin (enseigne comprise), `store` par défaut */
     public array $choices = [];
@@ -22,12 +22,12 @@ final class DriveIngredientReferencesInMemoryRepository implements DriveIngredie
     /** @var list<array{user: string, absorbed: string, kept: string}> */
     public array $mergeCalls = [];
 
-    public function fingerprint(string $userId): DriveChoiceFingerprint
+    public function fingerprint(string $userId): IngredientChoiceFingerprint
     {
         $mine = array_filter($this->choices, static fn(array $choice): bool => $choice['user'] === $userId);
         ksort($mine);
 
-        return new DriveChoiceFingerprint(
+        return new IngredientChoiceFingerprint(
             count($mine),
             array_sum(array_column($mine, 'products')),
             '0',
@@ -45,6 +45,9 @@ final class DriveIngredientReferencesInMemoryRepository implements DriveIngredie
         return $slugs;
     }
 
+    /**
+     * @return array<string, list<string>>
+     */
     public function referencedSlugsOfEveryUser(): array
     {
         $slugs = [];
@@ -56,7 +59,10 @@ final class DriveIngredientReferencesInMemoryRepository implements DriveIngredie
         return $slugs;
     }
 
-    public function mergeImpact(string $userId, string $absorbedSlug, string $keptSlug): DriveMergeImpact
+    /**
+     * Ce que `merge()` ferait, sans rien écrire.
+     */
+    public function mergeImpact(string $userId, string $absorbedSlug, string $keptSlug): IngredientChoiceMergeImpact
     {
         $moved = $dropped = $products = 0;
         foreach ($this->choices as $choice) {
@@ -71,10 +77,10 @@ final class DriveIngredientReferencesInMemoryRepository implements DriveIngredie
             }
         }
 
-        return new DriveMergeImpact($moved, $dropped, $products);
+        return new IngredientChoiceMergeImpact($moved, $dropped, $products);
     }
 
-    public function merge(string $userId, string $absorbedSlug, string $keptSlug): DriveMergeImpact
+    public function merge(string $userId, string $absorbedSlug, string $keptSlug): IngredientChoiceMergeImpact
     {
         $this->mergeCalls[] = ['user' => $userId, 'absorbed' => $absorbedSlug, 'kept' => $keptSlug];
         $impact = $this->mergeImpact($userId, $absorbedSlug, $keptSlug);
@@ -89,7 +95,7 @@ final class DriveIngredientReferencesInMemoryRepository implements DriveIngredie
             }
         }
 
-        return new DriveMergeImpact($impact->choicesMoved, $impact->choicesDropped, $impact->productsDropped);
+        return $impact;
     }
 
     private function keptHasAChoiceIn(string $userId, string $store, string $keptSlug): bool

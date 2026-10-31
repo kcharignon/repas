@@ -27,7 +27,7 @@ use Symfony\Component\Console\Tester\CommandTester;
  * ne contient ni « ingredient » ni « slug » dans un nom évident, serait trahie par sa valeur), et l'amorçage n'en fait apparaître aucune autre.
  *
  * Les colonnes REPOINTÉES le sont par `IngredientAdoptionBulkPostgreSQLRepository` (recettes, listes) et par le port
- * `DriveIngredientReferences` (choix du drive) ; `SeedIngredientsCommandTest` prouve qu'il n'en reste aucune ligne sur un ancien commun.
+ * `IngredientChoiceRepository` (choix du drive, par l'Open Host Service du `Drive`) ; `SeedIngredientsCommandTest` prouve qu'il n'en reste aucune ligne sur un ancien commun.
  *
  * La FUSION de deux ingrédients (ING-005) repointe EXACTEMENT les mêmes colonnes (`IngredientMergePostgreSQLRepository` et le même port), plus la
  * correspondance (`ingredient_alias`) qu'elle déplace elle-même et les conversions propres de l'absorbé qu'elle supprime avec lui : un troisième
@@ -42,7 +42,7 @@ class IngredientReferencesAreAllRepointedTest extends DatabaseTestCase
         'recipe_row.ingredient' => AdoptionSnapshot::RECIPE_ROW,
         'shopping_list_row.ingredient' => AdoptionSnapshot::SHOPPING_LIST_ROW,
         'shopping_list_ingredient.ingredient' => AdoptionSnapshot::SHOPPING_LIST_INGREDIENT,
-        'drive_choice.ingredient_slug' => 'DriveChoiceFingerprint::ingredientSlugByChoice',
+        'drive_choice.ingredient_slug' => 'DriveChoicesCommandPort::fingerprint (ingredientSlugByChoice)',
         // La mémoire de phrase de la commande vocale (ADR 0029 décision 11) : la fusion la repointe (`SpokenPhraseChoiceRepository::repoint`) ; la migration d'adoption
         // (ING-003) ne l'a jamais connue, aucune ligne n'existe avant elle
         'spoken_phrase_choice.ingredient_slug' => 'SpokenPhraseChoiceRepository::repoint',

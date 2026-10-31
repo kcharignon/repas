@@ -11,7 +11,7 @@ use Repas\Repas\Domain\Model\UnitFactor;
 /**
  * Les lectures et les écritures EN MASSE de la fusion de deux ingrédients (ADR 0028 décision 9, `docs/ingredients/fusion.md` § 3) :
  * un nombre de requêtes constant, quels que soient le nombre de recettes et de listes, sans hydrater un agrégat. `B` est l'ingrédient
- * absorbé, `A` l'ingrédient gardé. Le contexte `Drive` repointe lui-même ses choix (port `Shared` `DriveIngredientReferences`).
+ * absorbé, `A` l'ingrédient gardé. Le contexte `Drive` repointe lui-même ses choix (port `DriveChoicesCommandPort`, Open Host Service du `Drive`).
  *
  * Un port d'écriture (lu par un `CommandHandler`) : il ne s'appelle donc pas `…Loader` (Deptrac `no-loader-in-commandhandler`).
  * Toutes les écritures s'exécutent dans la transaction du bus de commandes : la fusion se fait en entier ou pas du tout.

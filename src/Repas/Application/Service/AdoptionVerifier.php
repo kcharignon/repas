@@ -5,7 +5,7 @@ namespace Repas\Repas\Application\Service;
 
 use Repas\Repas\Domain\Model\AdoptionSnapshot;
 use Repas\Repas\Domain\Model\AggregateSnapshot;
-use Repas\Shared\Application\Dto\DriveChoiceFingerprint;
+use Repas\Repas\Domain\Model\DriveChoiceFingerprint;
 
 /**
  * Compare l'empreinte d'un utilisateur avant et après un repointage d'ingrédients (migration d'adoption ING-003 ou son retour arrière,

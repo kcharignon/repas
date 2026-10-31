@@ -5,6 +5,7 @@ namespace Repas\Tests\Repas\Application;
 
 use DateTimeImmutable;
 use PHPUnit\Framework\TestCase;
+use Repas\Drive\Application\OpenHostService\IngredientChoiceCommandOHS;
 use Repas\Repas\Application\Command\MergeIngredients\MergeIngredientsCommand;
 use Repas\Repas\Application\Command\MergeIngredients\MergeIngredientsHandler;
 use Repas\Repas\Domain\Exception\IngredientException;
@@ -15,6 +16,7 @@ use Repas\Repas\Domain\Model\IngredientDistinctPair;
 use Repas\Repas\Domain\Model\Unit;
 use Repas\Repas\Domain\Service\ConversionService;
 use Repas\Repas\Domain\Service\IngredientMergePlanner;
+use Repas\Repas\Infrastructure\Acl\DriveChoicesCommandAdapter;
 use Repas\Shared\Domain\Event\IngredientRemovedEvent;
 use Repas\Shared\Domain\Tool\UuidGenerator;
 use Repas\Tests\Helper\Builder\ConversionBuilder;
@@ -24,8 +26,8 @@ use Repas\Tests\Helper\Builder\UnitBuilder;
 use Repas\Tests\Helper\Builder\UserBuilder;
 use Repas\Tests\Helper\FrozenClock;
 use Repas\Tests\Helper\InMemoryRepository\ConversionInMemoryRepository;
-use Repas\Tests\Helper\InMemoryRepository\DriveIngredientReferencesInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\IngredientAliasInMemoryRepository;
+use Repas\Tests\Helper\InMemoryRepository\IngredientChoiceInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\IngredientDistinctInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\SpokenPhraseChoiceInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\IngredientInMemoryRepository;
@@ -37,7 +39,7 @@ use Repas\Tests\Helper\InMemoryRepository\UnitInMemoryRepository;
  * Fusionner deux ingrédients d'un utilisateur (ADR 0028 décision 9, ING-005) : « Tomates » (`B`, absorbé) dans « Tomate » (`A`, gardé).
  * Les deux s'achètent au kilo et se cuisinent au gramme ; le kilo vaut mille grammes (conversion commune) et l'unité vaut cent
  * cinquante grammes pour chacun (conversion propre). Les recettes, les listes et les choix du drive sont des tableaux : le SQL est prouvé
- * sur la vraie base (`IngredientMergeRepositoryTest`, `DriveIngredientReferencesRepositoryTest`).
+ * sur la vraie base (`IngredientMergeRepositoryTest`, `IngredientChoiceRepositoryTest`).
  */
 class MergeIngredientsHandlerTest extends TestCase
 {
@@ -52,7 +54,7 @@ class MergeIngredientsHandlerTest extends TestCase
     private IngredientAliasInMemoryRepository $aliasRepository;
     private IngredientDistinctInMemoryRepository $distinctRepository;
     private SpokenPhraseChoiceInMemoryRepository $spokenPhraseRepository;
-    private DriveIngredientReferencesInMemoryRepository $driveReferences;
+    private IngredientChoiceInMemoryRepository $driveReferences;
     private SpyEventDispatcher $eventDispatcher;
     private MergeIngredientsHandler $handler;
 
@@ -71,7 +73,7 @@ class MergeIngredientsHandlerTest extends TestCase
         $this->aliasRepository = new IngredientAliasInMemoryRepository();
         $this->distinctRepository = new IngredientDistinctInMemoryRepository();
         $this->spokenPhraseRepository = new SpokenPhraseChoiceInMemoryRepository();
-        $this->driveReferences = new DriveIngredientReferencesInMemoryRepository();
+        $this->driveReferences = new IngredientChoiceInMemoryRepository();
         $this->eventDispatcher = new SpyEventDispatcher();
         $this->handler = $this->handlerFor($this->ingredientRepository, $this->conversionRepository);
     }
@@ -91,7 +93,7 @@ class MergeIngredientsHandlerTest extends TestCase
             $conversions,
             new ConversionService($conversions, new UnitInMemoryRepository()),
             new IngredientMergePlanner(),
-            $this->driveReferences,
+            new DriveChoicesCommandAdapter(new IngredientChoiceCommandOHS($this->driveReferences)),
             $this->eventDispatcher,
             new FrozenClock(new DateTimeImmutable('2026-10-21 03:00:00')),
             new UuidGenerator(),

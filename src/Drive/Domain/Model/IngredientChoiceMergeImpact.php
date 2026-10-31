@@ -1,17 +1,16 @@
 <?php
 
-namespace Repas\Shared\Application\Dto;
+namespace Repas\Drive\Domain\Model;
 
 
 /**
- * Ce que la fusion de deux ingrédients d'un utilisateur fait (ou ferait) de ses choix du drive : pour chaque magasin (enseigne et
+ * Ce que la fusion de deux ingrédients d'un utilisateur fait (ou ferait) de ses choix de produits : pour chaque magasin (enseigne et
  * magasin), le choix de l'ingrédient gardé gagne ; là où seul l'ingrédient absorbé en a un, il passe sur le gardé avec ses produits ;
- * là où les deux en ont un, celui de l'absorbé est supprimé avec ses produits. Rien n'est jamais mélangé, rien n'écrase le choix du gardé
- * (`docs/ingredients/fusion.md` § 2 règle 9).
+ * là où les deux en ont un, celui de l'absorbé est supprimé avec ses produits. Rien n'est jamais mélangé, rien n'écrase le choix du gardé.
  *
- * Des nombres : aucun nom, aucune enseigne (le chantier n'en nomme aucune).
+ * Des nombres : aucun nom, aucune enseigne.
  */
-final readonly class DriveMergeImpact
+final readonly class IngredientChoiceMergeImpact
 {
     /**
      * @param int $choicesMoved les choix de l'absorbé qui passent sur le gardé (aucun choix du gardé dans le même magasin)
