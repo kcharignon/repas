@@ -145,6 +145,43 @@ class ListRoutingRepositoryTest extends DatabaseTestCase
         $this->assertSame([$theirs->getSlug() => null, 'inconnu' => null], $destinations);
     }
 
+    public function testThePlacementOfAProductIsItsDestinationAndItsPurchaseUnitInOneQuery(): void
+    {
+        // Given : le steak va dans la Boucherie, le sucre est choisi pour le Marché
+        $this->savedType('butcher', 'Boucherie', ['viande']);
+        $this->savedType('market', 'Marché', []);
+        $meat = $this->savedIngredient('Steak', new DepartmentBuilder()->isMeat());
+        $apart = $this->savedIngredient('Sucre', new DepartmentBuilder()->isMiscellaneous(), 'market');
+        $this->entityManager->clear();
+        $counter = static::getContainer()->get(QueryCounter::class);
+        $counter->reset();
+
+        // When
+        $placements = $this->routing->placementsFor($this->owner->getId(), [$meat->getSlug(), $apart->getSlug()]);
+
+        // Then
+        $this->assertSame(1, $counter->count());
+        $this->assertSame(
+            [$meat->getSlug() => ['butcher', $meat->getDefaultPurchaseUnit()->getSlug()], $apart->getSlug() => ['market', $apart->getDefaultPurchaseUnit()->getSlug()]],
+            array_map(static fn($placement): array => [$placement->listTypeId, $placement->purchaseUnitSlug], $placements),
+        );
+    }
+
+    public function testAnUnknownProductOrOneOfAnotherAccountHasNoPlacement(): void
+    {
+        // Given
+        $theirs = $this->savedIngredient('Steak', new DepartmentBuilder()->isMeat(), null, $this->other);
+        $mine = $this->savedIngredient('Sel', new DepartmentBuilder()->isMiscellaneous());
+
+        // When
+        $placements = $this->routing->placementsFor($this->owner->getId(), [$theirs->getSlug(), 'inconnu', $mine->getSlug()]);
+
+        // Then : seuls les produits du propriétaire, la liste principale pour le sien
+        $this->assertSame([$mine->getSlug()], array_keys($placements));
+        $this->assertNull($placements[$mine->getSlug()]->listTypeId);
+        $this->assertSame([], $this->routing->placementsFor($this->owner->getId(), []));
+    }
+
     public function testNoProductMeansNoQuery(): void
     {
         // Given

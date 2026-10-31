@@ -547,4 +547,140 @@ class ShoppingListRepositoryTest extends DatabaseTestCase
         // When / Then
         $this->assertSame('a-old', $this->shoppingListRepository->findOneActiveByOwnerAndType($user->getId(), 'type-butcher')?->getId());
     }
+
+    public function testThePlacedIngredientsOfAMealRoundTripThroughTheDatabase(): void
+    {
+        // Arrange : un repas d'une recette éclatée entre plusieurs listes (ADR 0036, LST-005) se souvient des produits qu'il a posés dans sa liste
+        $user = $this->savedUser();
+        $recipe = $this->savedRecipe($user, new RecipeBuilder()->isPastaCarbonara());
+        $list = new ShoppingListBuilder()->withOwner($user)->withListTypeId('type-1')->build();
+        $list->addMeal('split-meal', $recipe, 4, 'group-1', ['lardon', 'parmesan', 'lardon']);
+        $this->shoppingListRepository->save($list);
+        $this->entityManager->clear();
+
+        // Act
+        $loaded = $this->shoppingListRepository->findOneById($list->getId());
+
+        // Assert : lus en base, sans doublon, dans l'ordre où le repas les a posés
+        $meal = $loaded->getMeals()->reset();
+        $this->assertSame(['group-1', ['lardon', 'parmesan']], [$meal->getPlannedGroupId(), $meal->getPlacedIngredients()]);
+        $this->assertSame('["lardon", "parmesan"]', $this->entityManager->getConnection()->fetchOne("SELECT placed_ingredients FROM meal WHERE id = 'split-meal'"));
+
+        // Act : changer les personnes enregistre le repas sans rien perdre de sa répartition
+        $meal->setServing(6);
+        $this->shoppingListRepository->save($loaded);
+        $this->entityManager->clear();
+
+        // Assert
+        $reloaded = $this->shoppingListRepository->findOneById($list->getId())->getMeals()->reset();
+        $this->assertSame([6, 'group-1', ['lardon', 'parmesan']], [$reloaded->getServing(), $reloaded->getPlannedGroupId(), $reloaded->getPlacedIngredients()]);
+    }
+
+    public function testAMealPlannedAloneHasNoPlacedIngredients(): void
+    {
+        // Arrange
+        $user = $this->savedUser();
+        $recipe = $this->savedRecipe($user, new RecipeBuilder()->isPastaCarbonara());
+        $list = new ShoppingListBuilder()->withOwner($user)->addRecipe($recipe)->build();
+        $this->shoppingListRepository->save($list);
+        $this->entityManager->clear();
+
+        // Act
+        $meal = $this->shoppingListRepository->findOneById($list->getId())->getMeals()->reset();
+
+        // Assert : « toute la recette » reste vide en base
+        $this->assertNull($meal->getPlacedIngredients());
+        $this->assertNull($this->entityManager->getConnection()->fetchOne('SELECT placed_ingredients FROM meal'));
+    }
+
+    public function testTheOtherListsOfAPlannedGroupAreReadInOneQueryWhateverTheirStatus(): void
+    {
+        // Arrange : trois listes portent un repas du groupe (en cours, en pause, envoyée), une quatrième un repas d'un autre groupe
+        $user = $this->savedUser();
+        $recipe = $this->savedRecipe($user, new RecipeBuilder()->isPastaCarbonara());
+        $lists = [];
+        foreach (['a-main' => [null, ShoppingListStatus::ACTIVE, 'group-1'], 'b-butcher' => ['butcher', ShoppingListStatus::PAUSED, 'group-1'], 'c-market' => ['market', ShoppingListStatus::SENT, 'group-1'], 'd-other' => ['butcher', ShoppingListStatus::ACTIVE, 'group-2']] as $id => [$typeId, $status, $group]) {
+            $builder = new ShoppingListBuilder()->withId($id)->withOwner($user)->withListTypeId($typeId)->withCreatedAt(new \DateTimeImmutable('2026-01-15T10:0' . ord($id[0]) % 10 . ':00+00:00'));
+            if ($status === ShoppingListStatus::SENT) {
+                $builder->addIngredient(new IngredientBuilder()->isEgg());
+            }
+            $list = $builder->build();
+            $list->addMeal("meal-$id", $recipe, 4, $group);
+            $list->setStatus($status);
+            $this->shoppingListRepository->save($list);
+            $lists[$id] = $list;
+        }
+        $this->entityManager->clear();
+        $counter = static::getContainer()->get(\Repas\Tests\Helper\SqlBudget\QueryCounter::class);
+        $counter->reset();
+
+        // Act
+        $others = $this->shoppingListRepository->findOtherListsOfPlannedGroup($user->getId(), 'group-1', 'a-main');
+        $selectsOfTheGroup = array_sum(array_filter($counter->byTable(), static fn(int $count, string $key): bool => $key === 'SELECT shopping_list', ARRAY_FILTER_USE_BOTH));
+
+        // Assert : les deux autres, la plus ancienne d'abord ; une seule requête pour trouver les listes
+        $this->assertSame(['b-butcher', 'c-market'], array_values($others->map(static fn(ShoppingList $list): string => $list->getId())->toArray()));
+        $this->assertSame(1, $selectsOfTheGroup);
+        $this->assertSame([], $this->shoppingListRepository->findOtherListsOfPlannedGroup($user->getId(), 'group-3', 'a-main')->toArray());
+    }
+
+    public function testTheListInProgressThatPlansARecipeIsTheMainListFirstThenTheOldest(): void
+    {
+        // Arrange : la recette est planifiée dans une Boucherie récente, une Boucherie ancienne en pause, un Marché ancien en cours, et dans la
+        // liste d'un autre compte
+        $user = $this->savedUser();
+        $other = $this->savedUser();
+        $recipe = $this->savedRecipe($user, new RecipeBuilder()->isPastaCarbonara());
+        $make = function (string $id, User $owner, ?string $typeId, string $date, ShoppingListStatus $status = ShoppingListStatus::ACTIVE) use ($recipe): void {
+            $list = new ShoppingListBuilder()->withId($id)->withOwner($owner)->withListTypeId($typeId)->withCreatedAt(new \DateTimeImmutable($date))->build();
+            $list->addMeal("meal-$id", $recipe, 4);
+            $list->setStatus($status);
+            $this->shoppingListRepository->save($list);
+        };
+        $make('butcher-new', $user, 'butcher', '2026-03-01T10:00:00+00:00');
+        $make('butcher-old-paused', $user, 'butcher', '2026-01-01T10:00:00+00:00', ShoppingListStatus::PAUSED);
+        $make('market-old', $user, 'market', '2026-02-01T10:00:00+00:00');
+        // La liste d'un autre compte porte un repas de la même recette (hérité d'avant la règle « la recette est à son propriétaire »)
+        $theirs = new ShoppingListBuilder()->withId('theirs')->withOwner($other)->withCreatedAt(new \DateTimeImmutable('2026-01-01T10:00:00+00:00'))->build();
+        $this->shoppingListRepository->save($theirs);
+        $this->entityManager->getConnection()->executeStatement("INSERT INTO meal (id, shopping_list, recipe, serving) VALUES ('meal-theirs', 'theirs', ?, 4)", [$recipe->getId()]);
+        $this->entityManager->clear();
+
+        // Act / Assert : sans liste principale, la plus ancienne des listes de type en cours
+        $this->assertSame('market-old', $this->shoppingListRepository->findOneActiveWithRecipe($user->getId(), $recipe->getId())?->getId());
+
+        // Arrange : la liste principale la planifie aussi, plus récente
+        $make('main', $user, null, '2026-06-01T10:00:00+00:00');
+        $this->entityManager->clear();
+
+        // Act / Assert : la liste principale d'abord
+        $this->assertSame('main', $this->shoppingListRepository->findOneActiveWithRecipe($user->getId(), $recipe->getId())?->getId());
+        $this->assertNull($this->shoppingListRepository->findOneActiveWithRecipe($user->getId(), 'unknown-recipe'));
+        $this->assertNull($this->shoppingListRepository->findOneActiveWithRecipe($this->savedUser()->getId(), $recipe->getId()));
+    }
+
+    public function testTheListInProgressThatHoldsALineOfAProductIsTheMainListFirstThenTheOldestAndNeverASentOne(): void
+    {
+        // Arrange
+        $user = $this->savedUser();
+        $make = function (string $id, ?string $typeId, string $date, ShoppingListStatus $status = ShoppingListStatus::ACTIVE) use ($user): void {
+            $builder = new ShoppingListBuilder()->withId($id)->withOwner($user)->withListTypeId($typeId)->withCreatedAt(new \DateTimeImmutable($date))->addIngredient(new IngredientBuilder()->isEgg());
+            $this->shoppingListRepository->save($builder->withStatus($status)->build());
+        };
+        $make('sent-main', null, '2026-01-01T10:00:00+00:00', ShoppingListStatus::SENT);
+        $make('butcher-new', 'butcher', '2026-03-01T10:00:00+00:00');
+        $make('market-old', 'market', '2026-02-01T10:00:00+00:00');
+        $this->entityManager->clear();
+
+        // Act / Assert : la liste envoyée n'est jamais rendue ; la plus ancienne des listes de type
+        $this->assertSame('market-old', $this->shoppingListRepository->findOneActiveWithRow($user->getId(), 'oeuf')?->getId());
+
+        // Arrange
+        $make('main', null, '2026-06-01T10:00:00+00:00');
+        $this->entityManager->clear();
+
+        // Act / Assert
+        $this->assertSame('main', $this->shoppingListRepository->findOneActiveWithRow($user->getId(), 'oeuf')?->getId());
+        $this->assertNull($this->shoppingListRepository->findOneActiveWithRow($user->getId(), 'lardon'));
+    }
 }

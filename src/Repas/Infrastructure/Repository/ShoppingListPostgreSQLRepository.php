@@ -130,6 +130,61 @@ readonly class ShoppingListPostgreSQLRepository extends PostgreSQLRepository imp
         return $shoppingListEntity === null ? null : $this->convertEntityToModel($shoppingListEntity);
     }
 
+    public function findOtherListsOfPlannedGroup(string $ownerId, string $plannedGroupId, string $exceptShoppingListId): Tab
+    {
+        // Une requête pour toutes les listes du groupe ; chacune est ensuite hydratée comme n'importe quelle liste
+        $entities = $this->entityManager->createQueryBuilder()
+            ->select('sl')
+            ->from(ShoppingListEntity::class, 'sl')
+            ->where('sl.ownerId = :owner')
+            ->andWhere('sl.id != :except')
+            ->andWhere('sl.id IN (SELECT m.shoppingListId FROM ' . Meal::class . ' m WHERE m.plannedGroupId = :group)')
+            ->setParameter('owner', $ownerId)
+            ->setParameter('except', $exceptShoppingListId)
+            ->setParameter('group', $plannedGroupId)
+            ->orderBy('sl.createdAt', 'ASC')
+            ->addOrderBy('sl.id', 'ASC')
+            ->getQuery()
+            ->getResult();
+
+        return $this->convertEntitiesToModels(Tab::fromArray($entities));
+    }
+
+    public function findOneActiveWithRecipe(string $ownerId, string $recipeId): ?ShoppingList
+    {
+        return $this->findOneActiveWhere($ownerId, 'sl.id IN (SELECT m.shoppingListId FROM ' . Meal::class . ' m WHERE m.recipeId = :value)', $recipeId);
+    }
+
+    public function findOneActiveWithRow(string $ownerId, string $ingredientSlug): ?ShoppingList
+    {
+        return $this->findOneActiveWhere($ownerId, 'sl.id IN (SELECT r.shoppingListId FROM ' . ShoppingListRow::class . ' r WHERE r.ingredientSlug = :value)', $ingredientSlug);
+    }
+
+    /**
+     * La liste en cours du propriétaire qui vérifie la condition (un paramètre `:value`) : la liste principale d'abord, puis la plus ancienne.
+     */
+    private function findOneActiveWhere(string $ownerId, string $condition, string $value): ?ShoppingList
+    {
+        $entity = $this->entityManager->createQueryBuilder()
+            ->select('sl')
+            ->addSelect('CASE WHEN sl.listTypeId IS NULL THEN 0 ELSE 1 END AS HIDDEN typed')
+            ->from(ShoppingListEntity::class, 'sl')
+            ->where('sl.ownerId = :owner')
+            ->andWhere('sl.status = :status')
+            ->andWhere($condition)
+            ->setParameter('owner', $ownerId)
+            ->setParameter('status', ShoppingListStatus::ACTIVE)
+            ->setParameter('value', $value)
+            ->orderBy('typed', 'ASC')
+            ->addOrderBy('sl.createdAt', 'ASC')
+            ->addOrderBy('sl.id', 'ASC')
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getResult()[0] ?? null;
+
+        return $entity === null ? null : $this->convertEntityToModel($entity);
+    }
+
     public function ownerHasAtLeast(string $ownerId, int $count): bool
     {
         // La `$count`-ième liste à garder existe-t-elle ? Une ligne lue après avoir sauté les `$count - 1` premières

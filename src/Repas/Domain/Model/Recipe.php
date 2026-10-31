@@ -327,11 +327,14 @@ final class Recipe implements ModelInterface
      * On retourne les lignes d'ingrédient de recettes avec leur
      * quantité * (nombre de personnes voulu / nombre de personnes dans la recette).
      *
+     * Des COPIES des lignes : la recette garde ses quantités, un même modèle peut donc être mis à l'échelle plusieurs fois (le changement de
+     * personnes ou le retrait d'une recette éclatée entre plusieurs listes, ADR 0036, le fait une fois par repas du groupe).
+     *
      * @return Tab<RecipeRow>
      */
     public function getRowForServing(int $serving): Tab
     {
-        return $this->rows->map(fn(RecipeRow $row) => $row->multiplyQuantityBy($serving/$this->serving));
+        return $this->rows->map(fn(RecipeRow $row) => (clone $row)->multiplyQuantityBy($serving/$this->serving));
     }
 
     /**

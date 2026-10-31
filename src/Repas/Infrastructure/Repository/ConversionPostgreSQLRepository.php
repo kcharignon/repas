@@ -60,6 +60,46 @@ readonly class ConversionPostgreSQLRepository extends PostgreSQLRepository imple
         return $conversionEntities->map(fn(ConversionEntity $conversion) => $this->convertEntityToModel($conversion));
     }
 
+    public function findByIngredientsOrCommon(array $ingredients): array
+    {
+        $slugs = array_values(array_unique(array_map(static fn(Ingredient $ingredient): string => $ingredient->getSlug(), $ingredients)));
+        if ($slugs === []) {
+            return [];
+        }
+
+        // Une seule lecture, dans l'ordre de `findByIngredientOrCommon` : les propres d'abord, les universelles ensuite, l'identifiant départage
+        $conversionEntities = $this->entityManager->createQueryBuilder()
+            ->select('c')
+            ->from(ConversionEntity::class, 'c')
+            ->addSelect('CASE WHEN c.ingredientSlug IS NULL THEN 1 ELSE 0 END AS HIDDEN universal')
+            ->where('c.ingredientSlug IN (:ingredientSlugs)')
+            ->setParameter('ingredientSlugs', $slugs)
+            ->orWhere('c.ingredientSlug is NULL')
+            ->orderBy('universal', 'ASC')
+            ->addOrderBy('c.id', 'ASC')
+            ->getQuery()
+            ->getResult();
+        $this->preloadUnits($conversionEntities);
+
+        $own = [];
+        $universal = [];
+        foreach ($conversionEntities as $entity) {
+            $model = $this->convertEntityToModel($entity);
+            if ($entity->getIngredientSlug() === null) {
+                $universal[] = $model;
+            } else {
+                $own[$entity->getIngredientSlug()][] = $model;
+            }
+        }
+
+        $byIngredient = [];
+        foreach ($slugs as $slug) {
+            $byIngredient[$slug] = new Tab([...($own[$slug] ?? []), ...$universal], Conversion::class);
+        }
+
+        return $byIngredient;
+    }
+
     public function findByIngredient(Ingredient $ingredient): Tab
     {
         $conversionEntities = $this->entityRepository->createQueryBuilder('c')
