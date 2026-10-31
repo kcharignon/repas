@@ -5,7 +5,7 @@ namespace Repas\Voice\Application\Command\RemoveSpokenMeal;
 
 use Repas\Voice\Domain\Model\ListedMeal;
 use Repas\Voice\Application\Port\ListMealLookupCommandPort;
-use Repas\Shared\Application\Interface\VoiceMealPlanner;
+use Repas\Voice\Application\Port\MealPlanCommandPort;
 use Repas\Voice\Application\Command\AddSpokenItem\AddSpokenItemResult;
 use Repas\Voice\Domain\Model\DialogueOption;
 use Repas\Voice\Domain\Model\SpokenDialogueState;
@@ -14,12 +14,12 @@ use Repas\Voice\Domain\Service\SpokenIngredientNamer;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 /**
- * Retire de la liste le repas que l'utilisateur vient de dire (ADR 0029 décision 12, VOX-306) : l'inverse d'`AddSpokenMealHandler`, par un port de ce contexte (ADR 0035)
- * pour la liste et le port `VoiceMealPlanner` de `Shared` pour la planification :
+ * Retire de la liste le repas que l'utilisateur vient de dire (ADR 0029 décision 12, VOX-306) : l'inverse d'`AddSpokenMealHandler`, par des ports de ce contexte (ADR 0035)
+ * pour la liste et pour la planification :
  *
  * 1. `ListMealLookupCommandPort` cherche le repas parmi les recettes PLANIFIÉES de la liste active (lecture seule) : pas de liste active (aucune : « Tu
  *    n'as pas de liste en cours. » ; partie au drive : « Ta liste est déjà partie au drive. », elle n'est jamais lue ni modifiée), un repas sûr, ou aucun ;
- * 2. un repas sûr : `VoiceMealPlanner::removeMeal` le retire entièrement (« C'est retiré : le repas hachis parmentier. »), ou en baisse le nombre de
+ * 2. un repas sûr : `MealPlanCommandPort::removeMeal` le retire entièrement (« C'est retiré : le repas hachis parmentier. »), ou en baisse le nombre de
  *    personnes quand l'utilisateur en a dit moins que le repas n'en compte (« C'est changé : hachis parmentier, pour 2 personnes. ») ;
  * 3. aucun repas sûr : les trois repas planifiés les plus proches (jamais devinés : deux noms qui se touchent sont proposés), puis l'issue « ou un
  *    produit ? » tant que les produits n'ont pas été cherchés pour cette phrase (`RemoveSpokenMealCommand::$otherSideTried`) ; une fois les deux essayés et
@@ -33,7 +33,7 @@ readonly class RemoveSpokenMealHandler
 {
     public function __construct(
         private ListMealLookupCommandPort $lookup,
-        private VoiceMealPlanner $mealPlanner,
+        private MealPlanCommandPort $mealPlanner,
         private SpokenIngredientNamer $namer,
     ) {
     }
@@ -57,7 +57,7 @@ readonly class RemoveSpokenMealHandler
     }
 
     /**
-     * Retire le repas choisi (reconnu tout de suite, ou choisi parmi les propositions). Le `slug` de l'option n'est jamais cru : `VoiceMealPlanner`
+     * Retire le repas choisi (reconnu tout de suite, ou choisi parmi les propositions). Le `slug` de l'option n'est jamais cru : `MealPlanCommandPort`
      * vérifie que la recette est à l'utilisateur. Le repas a pu quitter la liste depuis la question (rien n'est écrit, et Alexa le dit).
      */
     public function remove(string $userId, DialogueOption $meal, ?int $servings, bool $keepSessionOpen): AddSpokenItemResult

@@ -24,19 +24,10 @@ class SharedHoldsNoContextBusinessTest extends TestCase
     ];
 
     private const array LEGACY = [
-        'src/Shared/Application/Dto/ChangedMealServings.php',
-        'src/Shared/Application/Dto/PlannedSpokenMeal.php',
-        'src/Shared/Application/Dto/RecipeSuggestion.php',
-        'src/Shared/Application/Dto/RemovedSpokenMeal.php',
-        'src/Shared/Application/Dto/ResolvedRecipe.php',
-        'src/Shared/Application/Dto/SpokenRecipeResolution.php',
         'src/Shared/Application/Interface/DriveFeature.php',
         'src/Shared/Application/Interface/IngredientSeedingFeature.php',
-        'src/Shared/Application/Interface/SpokenRecipeResolver.php',
         'src/Shared/Application/Interface/VoiceFeature.php',
-        'src/Shared/Application/Interface/VoiceMealPlanner.php',
         'src/Shared/Domain/Exception/DriveFeatureException.php',
-        'src/Shared/Domain/Exception/SpokenMealFailure.php',
         'src/Shared/Domain/Exception/VoiceFeatureException.php',
         'src/Shared/Domain/Model/Dimension.php',
         'src/Shared/Infrastructure/Feature/EnvDriveFeature.php',

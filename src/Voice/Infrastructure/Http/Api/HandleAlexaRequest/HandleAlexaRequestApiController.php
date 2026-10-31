@@ -8,7 +8,7 @@ use OpenApi\Attributes as OA;
 use Psr\Log\LoggerInterface;
 use Repas\Shared\Application\Interface\CommandBusInterface;
 use Repas\Shared\Application\Interface\QueryBusInterface;
-use Repas\Shared\Domain\Exception\SpokenMealFailure;
+use Repas\Voice\Domain\Exception\SpokenMealFailure;
 use Repas\Shared\Infrastructure\Http\RequiresVoice;
 use Repas\Voice\Application\Command\AddSpokenItem\AddSpokenItemCommand;
 use Repas\Voice\Application\Command\AddSpokenItem\AddSpokenItemResult;

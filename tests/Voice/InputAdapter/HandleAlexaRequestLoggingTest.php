@@ -13,7 +13,7 @@ use Repas\Tests\Helper\AlexaRequestVerifierDouble;
 use Repas\Tests\Helper\ContextSpyLogger;
 use Repas\Tests\Helper\MockCommandBus;
 use Repas\Tests\Helper\MockQueryBus;
-use Repas\Shared\Domain\Exception\SpokenMealFailure;
+use Repas\Voice\Domain\Exception\SpokenMealFailure;
 use Repas\Voice\Application\Command\AddSpokenItem\AddSpokenItemCommand;
 use Repas\Voice\Application\Command\AddSpokenMeal\AddSpokenMealCommand;
 use Repas\Voice\Application\Command\AnswerSpokenDialogue\AnswerSpokenDialogueCommand;

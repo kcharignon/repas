@@ -3,11 +3,11 @@
 namespace Repas\Voice\Application\Command\AddSpokenMeal;
 
 
-use Repas\Shared\Application\Dto\RecipeSuggestion;
-use Repas\Shared\Application\Interface\SpokenRecipeResolver;
-use Repas\Shared\Application\Interface\VoiceMealPlanner;
+use Repas\Voice\Application\Port\MealPlanCommandPort;
+use Repas\Voice\Application\Port\RecipeResolutionCommandPort;
 use Repas\Voice\Application\Command\AddSpokenItem\AddSpokenItemResult;
 use Repas\Voice\Domain\Model\DialogueOption;
+use Repas\Voice\Domain\Model\RecipeSuggestion;
 use Repas\Voice\Domain\Model\SpokenDialogueState;
 use Repas\Voice\Domain\Model\VoiceReplies;
 use Repas\Voice\Domain\Service\SpokenIngredientNamer;
@@ -16,10 +16,10 @@ use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 /**
  * Planifie dans la liste de courses le repas que l'utilisateur vient de dire (ADR 0029 décision 13, VOX-305), et dit en une phrase ce qui a été fait :
  *
- * 1. `SpokenRecipeResolver` choisit, parmi les recettes de l'utilisateur seulement (jamais les produits : les deux recherches sont séparées), la plus
+ * 1. `RecipeResolutionCommandPort` choisit, parmi les recettes de l'utilisateur seulement (jamais les produits : les deux recherches sont séparées), la plus
  *    probable pour la phrase (la mémoire de phrase d'abord, puis le classement). Rien de sûr : **la recette est inconnue**, rien n'est écrit, et Alexa
  *    propose les trois recettes les plus proches (voir plus bas) ; **jamais de création de recette à la voix** ;
- * 2. `VoiceMealPlanner` planifie le repas dans la liste active, ou dans une liste neuve s'il n'y en a pas (une liste envoyée au drive n'est jamais
+ * 2. `MealPlanCommandPort` planifie le repas dans la liste active, ou dans une liste neuve s'il n'y en a pas (une liste envoyée au drive n'est jamais
  *    modifiée), pour le nombre de personnes dit ou, à défaut, celui du compte. Une seule écriture.
  *
  * « C'est noté : hachis parmentier, pour 4 personnes. » **Une recette déjà dans la liste n'y est jamais deux fois** : rien n'est écrit, Alexa dit pour
@@ -35,14 +35,14 @@ use Symfony\Component\Messenger\Attribute\AsMessageHandler;
  * été faites), la phrase d'origine est retenue pour la recette que la nouvelle phrase désigne.
  *
  * Aucune exception n'est attrapée ici : si un port échoue (la recette a disparu, un ingrédient sans conversion), la commande est annulée en entier — le
- * bus est transactionnel — et le webhook répond par la phrase d'échec. Les ports sont ceux de `Shared` : ce contexte n'importe rien de `Repas`.
+ * bus est transactionnel — et le webhook répond par la phrase d'échec. Les ports sont ceux de ce contexte (ADR 0035) : il n'importe rien de `Repas`.
  */
 #[AsMessageHandler]
 readonly class AddSpokenMealHandler
 {
     public function __construct(
-        private SpokenRecipeResolver $recipeResolver,
-        private VoiceMealPlanner $mealPlanner,
+        private RecipeResolutionCommandPort $recipeResolver,
+        private MealPlanCommandPort $mealPlanner,
         private SpokenIngredientNamer $namer,
     ) {
     }
@@ -70,7 +70,7 @@ readonly class AddSpokenMealHandler
 
     /**
      * Planifie la recette choisie (reconnue tout de suite, ou choisie parmi les propositions) puis, si on le demande, retient la phrase d'origine. Le
-     * `slug` de l'option n'est jamais cru : `VoiceMealPlanner` et `SpokenRecipeResolver::remember` vérifient que la recette est à l'utilisateur. Une
+     * `slug` de l'option n'est jamais cru : `MealPlanCommandPort` et `RecipeResolutionCommandPort::remember` vérifient que la recette est à l'utilisateur. Une
      * recette déjà dans la liste ouvre la question du nouveau total, rien n'est écrit.
      */
     public function plan(string $userId, DialogueOption $recipe, ?int $servings, ?string $rememberAs, bool $keepSessionOpen): AddSpokenItemResult

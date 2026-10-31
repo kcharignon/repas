@@ -11,7 +11,7 @@ use Repas\Voice\Domain\Model\DialogueOption;
 use Repas\Voice\Domain\Model\ListLine;
 use Repas\Voice\Domain\Model\RemovedLine;
 use Repas\Voice\Domain\Model\SpokenDialogueState;
-use Repas\Shared\Domain\Exception\SpokenMealFailure;
+use Repas\Voice\Domain\Exception\SpokenMealFailure;
 use Repas\Voice\Domain\Model\VoiceReplies;
 
 /**
