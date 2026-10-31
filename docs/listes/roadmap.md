@@ -15,6 +15,7 @@ Un agent à la fois sur le back (une PR par ticket, fusionnée avant la suivante
 | [LST-007](tickets/LST-007-front-listes.md) | front | Pastilles de listes, fiche d'un produit, message, hors ligne | high | 004, 005, 006 | fait (front #289) |
 | [LST-008](tickets/LST-008-voix.md) | back | Alexa : ajouter, demander, retirer sur toutes les listes ouvertes | high | 005 | fait |
 | [LST-009](tickets/LST-009-recette-et-release.md) | humain | Recette sur téléphone, releases back puis site | — | 007, 008 | fait (back v1.12.0 et site v1.15.0 déployés, recette sur le téléphone de test le 2026-10-31) |
+| [LST-010](tickets/LST-010-retirer-les-pastilles-de-l-ecran-liste.md) | front | Retirer les pastilles de l'écran « Liste » : on change de liste par « Mes listes » (demande du propriétaire, 2026-10-31) | high | 007 | à faire |
 
 ## Règles qui valent pour tous les tickets
 
