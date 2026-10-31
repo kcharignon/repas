@@ -293,7 +293,7 @@ final readonly class IngredientSeedingReportPostgreSQLLoader implements Ingredie
             . "   SELECT 'recettes' AS t, count(*) AS n FROM recipe_row x JOIN recipe o ON o.id = x.recipe JOIN ingredient i ON i.slug = x.ingredient WHERE o.author <> :owner AND " . $foreign('o.author')
             . "   UNION ALL SELECT 'lignes de liste', count(*) FROM shopping_list_row x JOIN shopping_list o ON o.id = x.shopping_list JOIN ingredient i ON i.slug = x.ingredient WHERE o.owner <> :owner AND " . $foreign('o.owner')
             . "   UNION ALL SELECT 'ingrédients de liste', count(*) FROM shopping_list_ingredient x JOIN shopping_list o ON o.id = x.shopping_list JOIN ingredient i ON i.slug = x.ingredient WHERE o.owner <> :owner AND " . $foreign('o.owner')
-            . ') s WHERE n > 0',
+            . ") s WHERE n > 0 ORDER BY CASE t WHEN 'recettes' THEN 1 WHEN 'lignes de liste' THEN 2 ELSE 3 END",
             ['owner' => $owner],
         );
         $ownerLines = [];
@@ -303,7 +303,7 @@ final readonly class IngredientSeedingReportPostgreSQLLoader implements Ingredie
                 . "   SELECT 'recettes' AS t, count(*) AS n FROM recipe_row x JOIN recipe o ON o.id = x.recipe JOIN ingredient i ON i.slug = x.ingredient WHERE o.author = :owner AND " . $foreign('o.author')
                 . "   UNION ALL SELECT 'lignes de liste', count(*) FROM shopping_list_row x JOIN shopping_list o ON o.id = x.shopping_list JOIN ingredient i ON i.slug = x.ingredient WHERE o.owner = :owner AND " . $foreign('o.owner')
                 . "   UNION ALL SELECT 'ingrédients de liste', count(*) FROM shopping_list_ingredient x JOIN shopping_list o ON o.id = x.shopping_list JOIN ingredient i ON i.slug = x.ingredient WHERE o.owner = :owner AND " . $foreign('o.owner')
-                . ') s WHERE n > 0',
+                . ") s WHERE n > 0 ORDER BY CASE t WHEN 'recettes' THEN 1 WHEN 'lignes de liste' THEN 2 ELSE 3 END",
                 ['owner' => $owner],
             );
         }
