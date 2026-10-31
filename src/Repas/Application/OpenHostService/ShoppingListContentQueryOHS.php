@@ -6,8 +6,8 @@ use Repas\Repas\Application\Loader\ShoppingListContentLoader;
 use Repas\Repas\Domain\Exception\ShoppingListException;
 
 /**
- * Open Host Service de lecture du contexte `Repas` (ADR 0035) : le contenu d'une liste de courses (ses lignes avec l'ingrédient, l'unité
- * d'achat et le rayon), pour un autre contexte qui la traduit en autre chose (le plan d'envoi au drive, l'estimation de son coût).
+ * Open Host Service de lecture du contexte `Repas` (ADR 0035) : le contenu d'une liste de courses (ses lignes NON cochées avec l'ingrédient,
+ * l'unité d'achat et le rayon : une ligne déjà cochée n'est pas à acheter, DRV-745), pour un autre contexte qui la traduit en autre chose (le plan d'envoi au drive, l'estimation de son coût).
  */
 final readonly class ShoppingListContentQueryOHS
 {
@@ -17,7 +17,7 @@ final readonly class ShoppingListContentQueryOHS
     }
 
     /**
-     * Les lignes sont triées par slug d'ingrédient ; une ligne dont l'ingrédient ou l'unité a disparu est ignorée.
+     * Les lignes non cochées sont triées par slug d'ingrédient ; une ligne dont l'ingrédient ou l'unité a disparu est ignorée.
      *
      * @throws ShoppingListException liste inconnue (404)
      */

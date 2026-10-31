@@ -82,6 +82,46 @@ class ShoppingListTest extends TestCase
         $list->send(new DateTimeImmutable());
     }
 
+    public function testSendingAListWhereEveryLineIsAlreadyCheckedIsRefusedAsEmpty(): void
+    {
+        // Given : une liste dont toutes les lignes sont déjà cochées (DRV-745) : il n'y a plus rien à acheter
+        $list = $this->activeList();
+        foreach ($list->getRows() as $row) {
+            $row->tick();
+        }
+
+        // Then
+        $this->expectExceptionObject(ShoppingListException::empty(self::LIST_ID));
+
+        // When
+        try {
+            $list->send(new DateTimeImmutable());
+        } finally {
+            $this->assertSame([Status::ACTIVE, 0, 1], [$list->getStatus(), $list->countUncheckedRows(), $list->countRows()]);
+        }
+    }
+
+    public function testSendingAListWithOneUncheckedLineIsAccepted(): void
+    {
+        // Given : deux lignes, l'une déjà cochée
+        $list = new ShoppingListBuilder()
+            ->withId(self::LIST_ID)
+            ->withOwner($this->owner())
+            ->addIngredient(new IngredientBuilder()->isEgg())
+            ->addIngredient(new IngredientBuilder()->isMilk())
+            ->build();
+        foreach ($list->getRows() as $row) {
+            $row->tick();
+            break;
+        }
+
+        // When
+        $list->send(new DateTimeImmutable('2026-10-18 10:00:00'));
+
+        // Then : la liste part, avec ses deux lignes dont une cochée (c'est le chargeur du plan qui ne rend que l'autre)
+        $this->assertSame([Status::SENT, 1, 2], [$list->getStatus(), $list->countUncheckedRows(), $list->countRows()]);
+    }
+
     public function testAnEmptyListErrorIsAnUnprocessableCode(): void
     {
         $exception = ShoppingListException::empty(self::LIST_ID);

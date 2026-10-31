@@ -57,11 +57,12 @@ class DriveRetailerSwitchApiFlowTest extends DatabaseTestCase
      * Routes du drive qui ne reçoivent aucune enseigne, et pourquoi :
      * - `GET /drive/settings` lit toutes les enseignes d'un coup (`retailers` ne liste que les allumées) et répond `enabled: false` ;
      * - `POST /shopping-lists/{id}/send` envoie une liste, qui ne porte pas l'enseigne (ADR 0027 § 9) ;
-     * - `POST /shopping-lists/{id}/reopen` (DRV-613) n'appelle rien de l'enseigne : une coupure ne fige pas les listes.
+     * - `POST /shopping-lists/{id}/reopen` (DRV-613) n'appelle rien de l'enseigne : une coupure ne fige pas les listes ;
+     * - `POST /drive/plans/{id}/basket-lines` (DRV-745) coche des lignes d'une liste envoyée : elle ne porte pas l'enseigne, seule la liste compte.
      *
      * @var list<string>
      */
-    private const array ROUTES_WITHOUT_A_RETAILER = ['api_get_drive_settings', 'api_send_shopping_list', 'api_reopen_shopping_list'];
+    private const array ROUTES_WITHOUT_A_RETAILER = ['api_get_drive_settings', 'api_send_shopping_list', 'api_reopen_shopping_list', 'api_mark_lines_in_basket'];
 
     private KernelBrowser $client;
     private ControlledDriveFeature $feature;

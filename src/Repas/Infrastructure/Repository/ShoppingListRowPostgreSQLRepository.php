@@ -49,6 +49,25 @@ readonly class ShoppingListRowPostgreSQLRepository extends PostgreSQLRepository 
         return (int) $unchecked === 0;
     }
 
+    public function checkByIngredientSlugs(string $shoppingListId, array $ingredientSlugs): void
+    {
+        if ($ingredientSlugs === []) {
+            return;
+        }
+
+        // Une seule instruction, sans hydrater aucune ligne : UPDATE shopping_list_row SET checked = true WHERE shopping_list = … AND ingredient IN (…)
+        $this->entityManager->createQueryBuilder()
+            ->update(ShoppingListRowEntity::class, 'r')
+            ->set('r.checked', 'true')
+            ->where('r.shoppingListId = :shoppingListId')
+            ->andWhere('r.ingredientSlug IN (:slugs)')
+            ->andWhere('r.checked = false')
+            ->setParameter('shoppingListId', $shoppingListId)
+            ->setParameter('slugs', $ingredientSlugs)
+            ->getQuery()
+            ->execute();
+    }
+
     /**
      * @param string $shoppingListId
      * @return Tab<ShoppingListRowModel>

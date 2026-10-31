@@ -40,6 +40,16 @@ class ShoppingListRowInMemoryRepository extends AbstractInMemoryRepository imple
         return true;
     }
 
+    public function checkByIngredientSlugs(string $shoppingListId, array $ingredientSlugs): void
+    {
+        /** @var ShoppingListRow $row */
+        foreach ($this->models as $row) {
+            if ($row->getShoppingListId() === $shoppingListId && in_array($row->getIngredientSlug(), $ingredientSlugs, true) && !$row->isChecked()) {
+                $row->tick();
+            }
+        }
+    }
+
     public function findByShoppingListId(string $shoppingListId): Tab
     {
         return $this->models->find(fn(ShoppingListRow $row) => $row->getShoppingListId() === $shoppingListId);

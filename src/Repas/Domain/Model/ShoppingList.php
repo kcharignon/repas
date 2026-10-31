@@ -231,9 +231,10 @@ final class ShoppingList implements ModelInterface
     }
 
     /**
-     * Envoie la liste au drive : elle devient non modifiable. Sans effet si elle est déjà envoyée.
+     * Envoie la liste au drive : elle devient non modifiable. Sans effet si elle est déjà envoyée. Les lignes déjà cochées ne partent pas
+     * (DRV-745) : s'il n'en reste aucune à acheter, il n'y a rien à envoyer.
      *
-     * @throws ShoppingListException la liste n'est ni active ni déjà envoyée (409), ou elle est vide (422)
+     * @throws ShoppingListException la liste n'est ni active ni déjà envoyée (409), ou elle n'a aucune ligne non cochée (422)
      */
     public function send(DateTimeImmutable $now): void
     {
@@ -245,7 +246,7 @@ final class ShoppingList implements ModelInterface
             throw ShoppingListException::notSendable($this->id);
         }
 
-        if ($this->countRows() === 0) {
+        if ($this->countUncheckedRows() === 0) {
             throw ShoppingListException::empty($this->id);
         }
 
@@ -493,6 +494,14 @@ final class ShoppingList implements ModelInterface
     public function countRows(): int
     {
         return $this->rows->count();
+    }
+
+    /**
+     * Les lignes qu'il reste à acheter : celles que personne n'a cochées.
+     */
+    public function countUncheckedRows(): int
+    {
+        return $this->rows->filter(fn(Row $row): bool => !$row->isChecked())->count();
     }
 
     public function countRecipes(): int

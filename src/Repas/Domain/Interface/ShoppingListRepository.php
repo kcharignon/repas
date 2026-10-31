@@ -41,6 +41,11 @@ interface ShoppingListRepository
     public function isSent(string $shoppingListId): bool;
 
     /**
+     * Le propriétaire d'une liste, sans hydrater l'agrégat : une requête. `null` pour une liste inconnue.
+     */
+    public function ownerIdOf(string $shoppingListId): ?string;
+
+    /**
      * L'utilisateur a-t-il une liste envoyée au drive (`SENT`) ? Une requête, sans hydrater l'agrégat (commande vocale : dire que la
      * nouvelle liste remplace une liste envoyée, ADR 0029 décision 5).
      */

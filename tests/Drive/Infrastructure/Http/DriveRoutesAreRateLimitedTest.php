@@ -30,6 +30,8 @@ class DriveRoutesAreRateLimitedTest extends KernelTestCase
         'api_set_default_retailer' => DriveRateLimit::WRITE,
         'api_remember_last_retailer' => DriveRateLimit::WRITE,
         'api_remove_drive_settings' => DriveRateLimit::WRITE,
+        // DRV-745 : ce que le drive a mis au panier (une instruction SQL, mais une écriture par passage)
+        'api_mark_lines_in_basket' => DriveRateLimit::WRITE,
         'api_get_drive_plan' => DriveRateLimit::READ,
         'api_get_drive_estimate' => DriveRateLimit::READ,
     ];

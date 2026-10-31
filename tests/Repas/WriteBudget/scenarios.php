@@ -1,6 +1,7 @@
 <?php
 
 use Repas\Drive\Application\Command\ForgetChoice\ForgetChoiceCommand;
+use Repas\Drive\Application\Command\MarkLinesInBasket\MarkLinesInBasketCommand;
 use Repas\Drive\Application\Command\RememberLastRetailer\RememberLastRetailerCommand;
 use Repas\Drive\Application\Command\RemoveDriveSettings\RemoveDriveSettingsCommand;
 use Repas\Drive\Application\Command\ReplaceIngredientPreference\ReplaceIngredientPreferenceCommand;
@@ -1028,6 +1029,20 @@ return [
             new ChoiceIntent('sucre', ChoiceAction::REFRESH_PRICE, null, new ProductInput('2', null, null, null, new ProductPrice(109))),
             new ChoiceIntent('sel', ChoiceAction::REFRESH_PRICE, null, new ProductInput('3', null, null, null, new ProductPrice(79))),
         ]);
+    },
+    // Ce que le drive a mis au panier (DRV-745) : toutes les lignes d'une liste envoyée. Un seul UPDATE quel que soit le nombre de lignes ; les
+    // autres requêtes sont la traduction des slugs par les alias, le propriétaire et le statut de la liste.
+    'cocher-lignes-du-panier-drive' => static function (WriteBudgetTestCase $t): object {
+        $owner = $t->savedUser();
+        $list = $t->savedShoppingList($owner, $t->typicalRecipes($owner), null, static function (ShoppingList $list): void {
+            $list->send(new DateTimeImmutable());
+        });
+        $slugs = [];
+        foreach ($list->getRows() as $row) {
+            $slugs[] = $row->getIngredientSlug();
+        }
+
+        return new MarkLinesInBasketCommand($owner->getId(), $list->getId(), $slugs);
     },
     'oublier-choix-drive' => static function (WriteBudgetTestCase $t): object {
         $user = $t->savedUser();
