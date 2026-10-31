@@ -7,8 +7,8 @@ use Repas\Drive\Domain\Exception\DriveException;
 use Repas\Drive\Domain\Interface\ChoiceRepository;
 use Repas\Drive\Domain\Interface\DriveSettingsRepository;
 use Repas\Drive\Application\Port\IngredientAliasCommandPort;
-use Repas\Shared\Application\Interface\DriveFeature;
-use Repas\Shared\Domain\Exception\DriveFeatureException;
+use Repas\Drive\Domain\Interface\DriveFeature;
+use Repas\Drive\Domain\Exception\DriveFeatureException;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 #[AsMessageHandler]

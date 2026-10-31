@@ -3,7 +3,7 @@
 namespace Repas\Tests\Helper;
 
 
-use Repas\Shared\Application\Interface\IngredientSeedingFeature;
+use Repas\Repas\Domain\Interface\IngredientSeedingFeature;
 
 /**
  * Interrupteur de l'amorçage des ingrédients à la main : `new ControlledIngredientSeedingFeature(true)` pour allumer l'amorçage automatique

@@ -3,7 +3,7 @@
 namespace Repas\Tests\Drive\Application;
 
 
-use Repas\Shared\Domain\Exception\DriveFeatureException;
+use Repas\Drive\Domain\Exception\DriveFeatureException;
 use DateTimeImmutable;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;

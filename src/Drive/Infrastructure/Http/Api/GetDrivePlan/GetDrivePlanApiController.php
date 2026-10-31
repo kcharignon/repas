@@ -12,7 +12,7 @@ use Repas\Drive\Infrastructure\Http\DriveRateLimit;
 use Repas\Drive\Infrastructure\Http\RateLimitedPerUser;
 use Repas\Shared\Application\Interface\QueryBusInterface;
 use Repas\Shared\Domain\Interface\AuthenticatedUser;
-use Repas\Shared\Infrastructure\Http\RequiresDrive;
+use Repas\Drive\Infrastructure\Http\RequiresDrive;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpKernel\Attribute\MapQueryString;

@@ -6,7 +6,7 @@ namespace Repas\Tests\Drive\InputAdapter;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Repas\Drive\Application\Command\RememberLastRetailer\RememberLastRetailerCommand;
 use Repas\Drive\Domain\Model\Retailer;
-use Repas\Shared\Application\Interface\DriveFeature;
+use Repas\Drive\Domain\Interface\DriveFeature;
 use Repas\Tests\Helper\ControlledDriveFeature;
 use Repas\Tests\Helper\QueryBusWebTestCase;
 use Repas\User\Domain\Model\User;

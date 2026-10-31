@@ -3,7 +3,7 @@
 namespace Repas\Tests\Drive\Application\Query\ListChoices;
 
 
-use Repas\Shared\Domain\Exception\DriveFeatureException;
+use Repas\Drive\Domain\Exception\DriveFeatureException;
 use PHPUnit\Framework\TestCase;
 use Repas\Drive\Application\Query\ListChoices\AcceptedProductDTO;
 use Repas\Drive\Application\Query\ListChoices\ChoiceDTO;

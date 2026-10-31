@@ -3,7 +3,7 @@
 namespace Repas\Tests\Voice\InputAdapter;
 
 
-use Repas\Shared\Application\Interface\VoiceFeature;
+use Repas\Voice\Domain\Interface\VoiceFeature;
 use Repas\Tests\Helper\Alexa\AlexaTestClient;
 use Repas\Tests\Helper\ControlledVoiceFeature;
 use Repas\Tests\Helper\QueryBusWebTestCase;

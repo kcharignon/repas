@@ -7,7 +7,7 @@ use Repas\Repas\Application\Loader\UnitLoader;
 use Repas\Repas\Application\Query\ListUnits\UnitDTO;
 use Repas\Repas\Domain\Exception\UnitException;
 use Repas\Repas\Domain\Interface\UnitRepository;
-use Repas\Shared\Domain\Model\Dimension;
+use Repas\Repas\Domain\Model\Dimension;
 use Repas\Tests\Helper\Builder\UnitBuilder;
 use Repas\Tests\Helper\DatabaseTestCase;
 

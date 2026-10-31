@@ -10,7 +10,7 @@ use Repas\Drive\Application\Command\RemoveDriveSettings\RemoveDriveSettingsHandl
 use Repas\Drive\Domain\Exception\DriveException;
 use Repas\Drive\Domain\Model\Retailer;
 use Repas\Drive\Domain\Model\RetailerPreference;
-use Repas\Shared\Domain\Exception\DriveFeatureException;
+use Repas\Drive\Domain\Exception\DriveFeatureException;
 use Repas\Tests\Helper\Builder\DriveSettingsBuilder;
 use Repas\Tests\Helper\ControlledDriveFeature;
 use Repas\Tests\Helper\FrozenClock;

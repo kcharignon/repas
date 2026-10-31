@@ -16,7 +16,7 @@ use Repas\Repas\Domain\Model\Recipe;
 use Repas\Repas\Domain\Model\Meal;
 use Repas\Repas\Domain\Model\ShoppingList;
 use Repas\Repas\Domain\Model\ShoppingListStatus;
-use Repas\Shared\Application\Interface\VoiceFeature;
+use Repas\Voice\Domain\Interface\VoiceFeature;
 use Repas\Voice\Application\Port\MealPlanCommandPort;
 use Repas\Voice\Application\Port\ShoppingListItemCommandPort;
 use Repas\Tests\Helper\Alexa\AlexaTestAuthority;

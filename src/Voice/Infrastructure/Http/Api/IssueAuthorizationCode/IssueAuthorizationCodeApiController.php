@@ -7,7 +7,7 @@ use Nelmio\ApiDocBundle\Attribute\Model;
 use OpenApi\Attributes as OA;
 use Repas\Shared\Application\Interface\CommandBusInterface;
 use Repas\Shared\Domain\Interface\AuthenticatedUser;
-use Repas\Shared\Infrastructure\Http\RequiresVoice;
+use Repas\Voice\Infrastructure\Http\RequiresVoice;
 use Repas\Voice\Application\Command\IssueAuthorizationCode\IssueAuthorizationCodeCommand;
 use Repas\Voice\Infrastructure\Http\VoiceRateLimit;
 use Repas\Voice\Infrastructure\Http\VoiceRateLimited;

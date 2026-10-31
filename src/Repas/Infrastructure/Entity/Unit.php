@@ -4,7 +4,7 @@ namespace Repas\Repas\Infrastructure\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
 use Repas\Repas\Domain\Model\Unit as UnitModel;
-use Repas\Shared\Domain\Model\Dimension;
+use Repas\Repas\Domain\Model\Dimension;
 
 #[ORM\Entity]
 #[ORM\Table(name: 'unit')]

@@ -7,7 +7,7 @@ use Repas\Drive\Domain\Model\LineQuantity;
 use Repas\Drive\Domain\Model\PackResult;
 use Repas\Drive\Domain\Model\PackSize;
 use Repas\Drive\Domain\Model\ProductContent;
-use Repas\Shared\Domain\Model\Dimension;
+use Repas\Drive\Domain\Model\Dimension;
 
 /**
  * Nombre de produits à mettre au panier pour une ligne de liste : « 300 g de farine » et « farine 1 kg » donnent 1, « 1,2 kg »

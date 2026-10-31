@@ -25,7 +25,7 @@ use Repas\Drive\Infrastructure\Entity\ChoiceProduct;
 use Repas\Drive\Infrastructure\Entity\Product;
 use Repas\Drive\Domain\Model\ShoppingListLineForDrive;
 use Repas\Drive\Application\Port\ShoppingListQueryPort;
-use Repas\Shared\Domain\Model\Dimension;
+use Repas\Drive\Domain\Model\Dimension;
 
 /**
  * Quatre requêtes au plus, quelle que soit la taille de la liste : les réglages, la liste avec ses lignes (port `Shared`, deux

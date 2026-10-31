@@ -4,7 +4,7 @@ namespace Repas\Repas\Infrastructure\EventListener;
 
 use Repas\Repas\Application\Command\SeedUserIngredients\SeedUserIngredientsCommand;
 use Repas\Shared\Application\Interface\CommandBusInterface;
-use Repas\Shared\Application\Interface\IngredientSeedingFeature;
+use Repas\Repas\Domain\Interface\IngredientSeedingFeature;
 use Repas\Shared\Domain\Event\UserActivatedEvent;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 

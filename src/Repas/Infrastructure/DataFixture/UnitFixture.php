@@ -7,7 +7,7 @@ use Doctrine\Bundle\FixturesBundle\FixtureGroupInterface;
 use Doctrine\Persistence\ObjectManager;
 use Exception;
 use Repas\Repas\Infrastructure\Entity\Unit as UnitEntity;
-use Repas\Shared\Domain\Model\Dimension;
+use Repas\Repas\Domain\Model\Dimension;
 
 class UnitFixture extends RepasFixture implements FixtureGroupInterface
 {

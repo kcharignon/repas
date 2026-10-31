@@ -6,7 +6,7 @@ namespace Repas\Repas\Infrastructure\Http\Api\CreateUnit;
 use OpenApi\Attributes as OA;
 use Repas\Repas\Domain\Model\QuantityBounds;
 use Repas\Repas\Infrastructure\Http\PayloadMessages;
-use Repas\Shared\Domain\Model\Dimension;
+use Repas\Repas\Domain\Model\Dimension;
 use Symfony\Component\Validator\Constraints as Assert;
 
 /**

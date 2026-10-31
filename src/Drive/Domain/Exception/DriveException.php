@@ -4,7 +4,7 @@ namespace Repas\Drive\Domain\Exception;
 
 
 use Repas\Shared\Domain\Exception\DomainException;
-use Repas\Shared\Domain\Exception\DriveFeatureException;
+use Repas\Drive\Domain\Exception\DriveFeatureException;
 
 final class DriveException extends DomainException
 {

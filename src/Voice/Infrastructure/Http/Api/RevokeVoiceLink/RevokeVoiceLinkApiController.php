@@ -6,7 +6,7 @@ namespace Repas\Voice\Infrastructure\Http\Api\RevokeVoiceLink;
 use OpenApi\Attributes as OA;
 use Repas\Shared\Application\Interface\CommandBusInterface;
 use Repas\Shared\Domain\Interface\AuthenticatedUser;
-use Repas\Shared\Infrastructure\Http\RequiresVoice;
+use Repas\Voice\Infrastructure\Http\RequiresVoice;
 use Repas\Voice\Application\Command\RevokeVoiceLink\RevokeVoiceLinkCommand;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;

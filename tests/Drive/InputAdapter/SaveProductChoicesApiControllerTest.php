@@ -19,7 +19,7 @@ use Repas\Drive\Domain\Model\ProductContent;
 use Repas\Drive\Domain\Model\ProductPrice;
 use Repas\Drive\Domain\Model\Retailer;
 use Repas\Drive\Domain\Model\SearchQuery;
-use Repas\Shared\Application\Interface\DriveFeature;
+use Repas\Drive\Domain\Interface\DriveFeature;
 use Repas\Tests\Helper\ControlledDriveFeature;
 use Repas\Tests\Helper\QueryBusWebTestCase;
 use Repas\User\Domain\Model\User;

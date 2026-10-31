@@ -3,7 +3,7 @@
 namespace Repas\Tests\Helper;
 
 
-use Repas\Shared\Application\Interface\VoiceFeature;
+use Repas\Voice\Domain\Interface\VoiceFeature;
 
 /**
  * Interrupteur de la commande vocale à la main : `new ControlledVoiceFeature(false)` pour essayer le cas coupé, sans toucher à

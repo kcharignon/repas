@@ -4,7 +4,6 @@ namespace Repas\Repas\Domain\Model;
 
 
 use Repas\Repas\Domain\Exception\UnitException;
-use Repas\Shared\Domain\Model\Dimension;
 use Repas\Shared\Domain\Model\ModelInterface;
 use Repas\Shared\Domain\Model\ModelTrait;
 use Repas\Shared\Domain\Tool\StringTool;

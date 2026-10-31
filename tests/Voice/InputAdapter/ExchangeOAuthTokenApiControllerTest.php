@@ -4,7 +4,7 @@ namespace Repas\Tests\Voice\InputAdapter;
 
 
 use PHPUnit\Framework\Attributes\DataProvider;
-use Repas\Shared\Application\Interface\VoiceFeature;
+use Repas\Voice\Domain\Interface\VoiceFeature;
 use Repas\Tests\Helper\Alexa\AlexaTestClient;
 use Repas\Tests\Helper\AlexaOAuthClientInMemory;
 use Repas\Tests\Helper\ControlledVoiceFeature;

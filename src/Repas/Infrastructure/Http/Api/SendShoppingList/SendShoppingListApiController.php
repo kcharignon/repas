@@ -5,16 +5,16 @@ namespace Repas\Repas\Infrastructure\Http\Api\SendShoppingList;
 
 use OpenApi\Attributes as OA;
 use Repas\Repas\Application\Command\SendShoppingList\SendShoppingListCommand;
+use Repas\Repas\Infrastructure\Http\RequiresDriveSending;
 use Repas\Shared\Application\Interface\CommandBusInterface;
 use Repas\Shared\Infrastructure\Http\EntityVersion;
-use Repas\Shared\Infrastructure\Http\RequiresDrive;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
-#[RequiresDrive]
+#[RequiresDriveSending]
 final class SendShoppingListApiController extends AbstractController
 {
     public function __construct(

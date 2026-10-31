@@ -7,7 +7,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use Repas\Drive\Application\Query\GetDriveEstimate\GetDriveEstimateQuery;
 use Repas\Drive\Domain\Exception\DriveException;
 use Repas\Drive\Domain\Model\Retailer;
-use Repas\Shared\Application\Interface\DriveFeature;
+use Repas\Drive\Domain\Interface\DriveFeature;
 use Repas\Tests\Helper\Builder\DTO\DriveEstimateDTOBuilder;
 use Repas\Tests\Helper\ControlledDriveFeature;
 use Repas\Tests\Helper\QueryBusWebTestCase;

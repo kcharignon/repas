@@ -5,7 +5,7 @@ namespace Repas\Tests\Repas\InputAdapter;
 
 use PHPUnit\Framework\Attributes\DataProvider;
 use Repas\Repas\Application\Command\CreateUnit\CreateUnitCommand;
-use Repas\Shared\Domain\Model\Dimension;
+use Repas\Repas\Domain\Model\Dimension;
 use Repas\Tests\Helper\QueryBusWebTestCase;
 use Repas\User\Domain\Model\User;
 

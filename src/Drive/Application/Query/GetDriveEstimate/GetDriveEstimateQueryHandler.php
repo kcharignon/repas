@@ -5,8 +5,8 @@ namespace Repas\Drive\Application\Query\GetDriveEstimate;
 use Repas\Drive\Application\Loader\DriveEstimateLoader;
 use Repas\Drive\Application\Loader\DriveSettingsLoader;
 use Repas\Drive\Domain\Model\Retailer;
-use Repas\Shared\Application\Interface\DriveFeature;
-use Repas\Shared\Domain\Exception\DriveFeatureException;
+use Repas\Drive\Domain\Interface\DriveFeature;
+use Repas\Drive\Domain\Exception\DriveFeatureException;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 #[AsMessageHandler(bus: 'query.bus')]
