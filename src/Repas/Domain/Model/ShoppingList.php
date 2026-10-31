@@ -23,6 +23,12 @@ final class ShoppingList implements ModelInterface
      */
     public const float NEGLIGIBLE_QUANTITY = 0.005;
 
+    /**
+     * Ce qui reste d'une ligne après un retrait, en dessous de quoi c'est de la poussière d'arithmétique flottante (une recette retirée d'une liste
+     * laissait « 3,4e-13 crème fraîche »). Bien plus petit que `NEGLIGIBLE_QUANTITY` : aucune quantité d'achat réelle (4 g en kilos) n'est jamais là.
+     */
+    public const float FLOAT_DUST = 1e-9;
+
     /** Repas planifiés dans une même liste : une liste en a quelques-uns, jamais cinq cents. */
     public const int MAX_MEALS = 500;
 
@@ -342,8 +348,8 @@ final class ShoppingList implements ModelInterface
         // Cherche si la ligne avec l'ingrédient est déjà present dans la liste
         if (($rowKey = $this->rows->findKey(fn(Row $row) => $row->getIngredientSlug() === $ingredientSlug)) !== null) {
             $this->rows[$rowKey]->subtractQuantity($quantity);
-            // si la quantité passe à zero ou moins, on supprime la row
-            if ($this->rows[$rowKey]->getQuantity() <= 0) {
+            // si la quantité passe à zero ou moins, on supprime la row (au poussière flottante près : 0,3 - 0,1 - 0,2 n'est pas tout à fait 0)
+            if ($this->rows[$rowKey]->getQuantity() <= self::FLOAT_DUST) {
                 unset($this->rows[$rowKey]);
             }
         }
