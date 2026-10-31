@@ -44,6 +44,10 @@ services:
         alias: 'Repas\Repas\Infrastructure\Repository\ShoppingListTypePostgreSQLRepository'
         public: true
 
+    Repas\Repas\Domain\Interface\ListRoutingRepository:
+        alias: 'Repas\Repas\Infrastructure\Repository\ListRoutingPostgreSQLRepository'
+        public: true
+
     Repas\Repas\Domain\Interface\ShoppingListRowRepository:
         alias: 'Repas\Repas\Infrastructure\Repository\ShoppingListRowPostgreSQLRepository'
         public: true
