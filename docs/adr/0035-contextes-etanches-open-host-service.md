@@ -11,7 +11,7 @@ Quatre contextes (`Repas`, `User`, `Drive`, `Voice`) ne s'importent pas : Deptra
 - **`Shared` porte du métier.** Vingt ports et leurs DTO y vivent (`SpokenIngredientResolver`, `VoiceShoppingList`, `DriveIngredientReferences`, `IngredientAliasResolver`, `OwnershipLoader`, `ActiveUserChecker`…) : `Shared` connaît « une liste dite à Alexa », « la fusion des choix du drive », « le propriétaire du catalogue ». Le producteur les implémente dans son `Infrastructure` (`Repas\Infrastructure\Voice\*Adapter`, `Drive\Infrastructure\Repository\DriveIngredientReferencesPostgreSQLRepository`, `User\Infrastructure\Catalog\IngredientCatalogOwnerPostgreSQL`), et le consommateur parle le vocabulaire du producteur, figé dans `Shared`.
 - **Un port ne distingue ni lecture ni écriture.** Des handlers d'écriture du `Drive` appellent `IngredientAliasResolver`, implémenté par un *Loader* du `Repas` ; la règle « un `CommandHandler` n'appelle jamais un `Loader` » est contournée par le port.
 - **Le SQL traverse les contextes.** Six requêtes du `Repas` lisent la table `"user"` du contexte `User` (`ConversionHealthPostgreSQLLoader`, `ConversionPostgreSQLLoader`, `IngredientSeedingReportPostgreSQLLoader`, `AdoptionSnapshotReader`, `IngredientAdoptionBulkPostgreSQLRepository`) ; Deptrac ne les voit pas.
-- **Un contexte connaît le métier d'un autre.** `OwnerVoter` (contexte `User`) décide des droits sur les ingrédients, listes, recettes, repas (`Repas`) et liaisons Alexa (`Voice`).
+- **Un contexte connaît le métier d'un autre.** `OwnerVoter` (contexte `User`) décidait des droits sur les ingrédients, listes, recettes, repas (`Repas`) et liaisons Alexa (`Voice`) : résolu par C5, un voter par contexte (`HimselfVoter`, `Repas\…\OwnerVoter`, `VoiceLinkOwnerVoter`).
 
 ## Décision
 
