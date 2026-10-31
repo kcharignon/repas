@@ -33,7 +33,7 @@ Sur Android, une fois la liste de courses prête, l'utilisateur touche « Envoye
 
 ## Règles du chantier
 
-- **Invariants** (`architecture.md` § 2) : aucun identifiant, cookie ni jeton d'enseigne chez nous ; le back ne contacte jamais une enseigne ; pas de code distant dans l'agent ; l'agent ne valide ni ne paie jamais ; une liste `SENT` n'est plus modifiable ; un envoi ne coche aucune ligne ; le panier de l'enseigne n'est jamais vidé.
+- **Invariants** (`architecture.md` § 2) : aucun identifiant, cookie ni jeton d'enseigne chez nous ; le back ne contacte jamais une enseigne ; pas de code distant dans l'agent ; l'agent ne valide ni ne paie jamais ; une liste `SENT` n'est plus modifiable (seule écriture permise : cocher ce que le drive a mis au panier, par le propriétaire) ; les lignes déjà cochées ne partent pas et un envoi ne coche aucune ligne lui-même (DRV-745) ; le panier de l'enseigne n'est jamais vidé.
 - **Dépôts publics** : aucun secret, identifiant, adresse e-mail personnelle, numéro de magasin personnel ni HTML brut de Leclerc dans le code, les tests ou la doc. Les tests utilisent des données synthétiques.
 - **Leclerc ne s'ouvre jamais depuis un serveur** : DataDome bloque. Les essais réels se font sur le téléphone de l'utilisateur (tâches `humain`).
 - Un ticket = une PR relisible. Si un ticket impose une décision absente de l'ADR, écrire ou amender l'ADR dans la même PR.
