@@ -28,6 +28,14 @@ class IngredientPhraseCandidatesInMemoryRepository implements IngredientPhraseCa
         $this->candidates[] = $candidate;
     }
 
+    /**
+     * @return list<SpokenCandidate>
+     */
+    public function all(): array
+    {
+        return $this->candidates;
+    }
+
     public function forUser(string $userId): array
     {
         $this->calls[] = $userId;

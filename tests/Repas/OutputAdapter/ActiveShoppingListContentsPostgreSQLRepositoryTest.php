@@ -4,11 +4,13 @@ namespace Repas\Tests\Repas\OutputAdapter;
 
 
 use PHPUnit\Framework\Attributes\DataProvider;
-use Repas\Repas\Application\Loader\PlannedMealsInActiveList;
+use Repas\Repas\Application\Loader\ActiveShoppingListLines;
+use Repas\Repas\Domain\Interface\ActiveShoppingListContents;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Repas\Domain\Model\Recipe;
 use Repas\Repas\Domain\Model\ShoppingListStatus;
-use Repas\Shared\Application\Dto\ListedMeal;
+use Repas\Repas\Domain\Model\ActiveListMeal;
+use Repas\Tests\Helper\Builder\IngredientBuilder;
 use Repas\Tests\Helper\Builder\RecipeBuilder;
 use Repas\Tests\Helper\Builder\ShoppingListBuilder;
 use Repas\Tests\Helper\Builder\UserBuilder;
@@ -18,12 +20,12 @@ use Repas\Tests\Helper\SqlBudget\QueryCounter;
 use Repas\User\Domain\Model\User;
 
 /**
- * Les repas de la liste ACTIVE de l'utilisateur sur la vraie base (ADR 0029 décision 12, VOX-306) : l'identifiant et le nom de la recette et le nombre de
+ * Le contenu de la liste ACTIVE de l'utilisateur pour une écriture qui en tire un choix (ADR 0035), sur la vraie base. Les repas (ADR 0029 décision 12, VOX-306) : l'identifiant et le nom de la recette et le nombre de
  * personnes ; jamais une liste envoyée, en pause ou terminée, ni celle d'un autre ; deux requêtes quel que soit le nombre de repas.
  */
-class PlannedMealsInActiveListPostgreSQLLoaderTest extends DatabaseTestCase
+class ActiveShoppingListContentsPostgreSQLRepositoryTest extends DatabaseTestCase
 {
-    private PlannedMealsInActiveList $loader;
+    private ActiveShoppingListContents $contents;
     private ShoppingListRepository $shoppingLists;
     private DataPersister $persister;
 
@@ -31,7 +33,7 @@ class PlannedMealsInActiveListPostgreSQLLoaderTest extends DatabaseTestCase
     {
         parent::setUp();
 
-        $this->loader = static::getContainer()->get(PlannedMealsInActiveList::class);
+        $this->contents = static::getContainer()->get(ActiveShoppingListContents::class);
         $this->shoppingLists = static::getContainer()->get(ShoppingListRepository::class);
         $this->persister = new DataPersister(static::getContainer());
     }
@@ -65,15 +67,15 @@ class PlannedMealsInActiveListPostgreSQLLoaderTest extends DatabaseTestCase
         $other = $this->savedRecipe($author, new RecipeBuilder()->isBasqueCake()->withName('Gâteau de mamie'));
         $this->shoppingLists->save(new ShoppingListBuilder()->withId('list-1')->withOwner($reader)->addRecipe($own)->build());
         $this->entityManager->getConnection()->executeStatement("INSERT INTO meal (id, shopping_list, recipe, serving) VALUES ('legacy-meal', 'list-1', ?, 4)", [$other->getId()]);
-        $beforeSecret = $this->loader->forUser($reader->getId());
+        $beforeSecret = $this->contents->meals($reader->getId());
 
         // When : son auteur la rend secrète
         $this->entityManager->getConnection()->executeStatement('UPDATE recipe SET secret = TRUE WHERE id = ?', [$other->getId()]);
-        $afterSecret = $this->loader->forUser($reader->getId());
+        $afterSecret = $this->contents->meals($reader->getId());
 
         // Then : tant qu'elle est ordinaire le repas est rendu ; secrète, sa recette n'a plus de nom ici (comme une recette retirée)
-        $this->assertEqualsCanonicalizing(['Gâteau de mamie', 'Mon secret'], array_map(static fn(ListedMeal $meal): string => $meal->name, $beforeSecret));
-        $this->assertSame(['Mon secret'], array_map(static fn(ListedMeal $meal): string => $meal->name, $afterSecret));
+        $this->assertEqualsCanonicalizing(['Gâteau de mamie', 'Mon secret'], array_map(static fn(ActiveListMeal $meal): string => $meal->name, $beforeSecret));
+        $this->assertSame(['Mon secret'], array_map(static fn(ActiveListMeal $meal): string => $meal->name, $afterSecret));
     }
 
     public function testItReturnsNullWhenTheUserHasNoActiveList(): void
@@ -82,7 +84,7 @@ class PlannedMealsInActiveListPostgreSQLLoaderTest extends DatabaseTestCase
         $user = $this->savedUser();
 
         // When / Then
-        $this->assertNull($this->loader->forUser($user->getId()));
+        $this->assertNull($this->contents->meals($user->getId()));
     }
 
     public function testItReturnsTheMealsOfTheActiveListWithTheirRecipeNameAndServings(): void
@@ -95,13 +97,33 @@ class PlannedMealsInActiveListPostgreSQLLoaderTest extends DatabaseTestCase
         $this->entityManager->clear();
 
         // When
-        $meals = $this->loader->forUser($user->getId()) ?? [];
+        $meals = $this->contents->meals($user->getId()) ?? [];
 
         // Then
         $this->assertEqualsCanonicalizing(
-            [new ListedMeal($carbonara->getId(), $carbonara->getName(), 3), new ListedMeal($eggs->getId(), $eggs->getName(), 3)],
+            [new ActiveListMeal($carbonara->getId(), $carbonara->getName(), 3), new ActiveListMeal($eggs->getId(), $eggs->getName(), 3)],
             $meals,
         );
+    }
+
+    public function testTheLinesAndTheSentListAreTheSameAsTheLoaderReads(): void
+    {
+        // Given : une liste active avec une ligne, un autre utilisateur avec une liste envoyée
+        $user = $this->savedUser();
+        $other = $this->savedUser();
+        $egg = new IngredientBuilder()->isEgg()->withCreator($user, true)->build();
+        $this->persister->saveIngredient($egg);
+        $this->shoppingLists->save(new ShoppingListBuilder()->withOwner($user)->addIngredient($egg)->build());
+        $this->shoppingLists->save(new ShoppingListBuilder()->withOwner($other)->withStatus(ShoppingListStatus::SENT)->build());
+        $this->entityManager->clear();
+        $loader = static::getContainer()->get(ActiveShoppingListLines::class);
+
+        // When / Then : les mêmes lignes que le Loader de lecture, et la liste envoyée se dit sans se lire
+        $this->assertCount(1, $this->contents->lines($user->getId()) ?? []);
+        $this->assertEquals($loader->forUser($user->getId()), $this->contents->lines($user->getId()));
+        $this->assertNull($this->contents->lines($other->getId()));
+        $this->assertTrue($this->contents->hasSentList($other->getId()));
+        $this->assertFalse($this->contents->hasSentList($user->getId()));
     }
 
     public function testAnActiveListWithoutMealsIsAnEmptyListNotNull(): void
@@ -112,7 +134,7 @@ class PlannedMealsInActiveListPostgreSQLLoaderTest extends DatabaseTestCase
         $this->entityManager->clear();
 
         // When / Then : une liste existe, sans repas : « tu n'as pas de liste en cours » ne serait pas vrai
-        $this->assertSame([], $this->loader->forUser($user->getId()));
+        $this->assertSame([], $this->contents->meals($user->getId()));
     }
 
     /**
@@ -135,7 +157,7 @@ class PlannedMealsInActiveListPostgreSQLLoaderTest extends DatabaseTestCase
         $this->entityManager->clear();
 
         // When / Then
-        $this->assertNull($this->loader->forUser($user->getId()));
+        $this->assertNull($this->contents->meals($user->getId()));
     }
 
     public function testTheListOfAnotherUserIsNeverRead(): void
@@ -148,8 +170,8 @@ class PlannedMealsInActiveListPostgreSQLLoaderTest extends DatabaseTestCase
         $this->entityManager->clear();
 
         // When / Then
-        $this->assertNull($this->loader->forUser($user->getId()));
-        $this->assertCount(1, $this->loader->forUser($other->getId()) ?? []);
+        $this->assertNull($this->contents->meals($user->getId()));
+        $this->assertCount(1, $this->contents->meals($other->getId()) ?? []);
     }
 
     public function testTheNumberOfQueriesDoesNotDependOnTheNumberOfMeals(): void
@@ -163,7 +185,7 @@ class PlannedMealsInActiveListPostgreSQLLoaderTest extends DatabaseTestCase
         $counter->reset();
 
         // When
-        $this->assertCount(1, $this->loader->forUser($user->getId()) ?? []);
+        $this->assertCount(1, $this->contents->meals($user->getId()) ?? []);
         $withOne = $counter->count();
 
         // Given : un autre utilisateur, une liste de deux repas
@@ -175,7 +197,7 @@ class PlannedMealsInActiveListPostgreSQLLoaderTest extends DatabaseTestCase
         $counter->reset();
 
         // When
-        $this->assertCount(2, $this->loader->forUser($second->getId()) ?? []);
+        $this->assertCount(2, $this->contents->meals($second->getId()) ?? []);
 
         // Then : deux requêtes dans les deux cas
         $this->assertSame(2, $withOne);

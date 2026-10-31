@@ -4,7 +4,7 @@ namespace Repas\Tests\Helper\InMemoryLoader;
 
 
 use Repas\Repas\Application\Loader\ActiveShoppingListLines;
-use Repas\Shared\Application\Dto\ListedLine;
+use Repas\Repas\Domain\Model\ActiveListLine;
 
 /**
  * Double idiot : renvoie les lignes programmées telles quelles (`null` : pas de liste active) et enregistre ses appels.
@@ -18,7 +18,7 @@ class ActiveShoppingListLinesInMemoryLoader implements ActiveShoppingListLines
     public array $sentCalls = [];
 
     /**
-     * @param ?list<ListedLine> $lines
+     * @param ?list<ActiveListLine> $lines
      */
     public function __construct(
         private readonly ?array $lines = null,

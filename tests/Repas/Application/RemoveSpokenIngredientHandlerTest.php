@@ -14,7 +14,7 @@ use Repas\Repas\Domain\Model\IngredientAlias;
 use Repas\Repas\Domain\Model\ShoppingList;
 use Repas\Repas\Domain\Model\ShoppingListStatus;
 use Repas\Repas\Domain\Service\ConversionService;
-use Repas\Shared\Application\Interface\RemovedItem;
+use Repas\Repas\Domain\Model\RemovedItem;
 use Repas\Tests\Helper\Builder\ConversionBuilder;
 use Repas\Tests\Helper\Builder\IngredientBuilder;
 use Repas\Tests\Helper\Builder\ShoppingListBuilder;
@@ -28,7 +28,7 @@ use Repas\Tests\Helper\InMemoryRepository\UnitInMemoryRepository;
 
 /**
  * Retirer un article dit à la voix de la liste active (ADR 0029 décision 12), avec les dépôts en mémoire : aucune base, aucun noyau. La lecture
- * SQL se prouve dans `VoiceShoppingListFlowTest`, le budget de requêtes dans `WriteBudgetTest`.
+ * SQL se prouve dans `ShoppingListItemCommandOHSFlowTest`, le budget de requêtes dans `WriteBudgetTest`.
  */
 class RemoveSpokenIngredientHandlerTest extends TestCase
 {

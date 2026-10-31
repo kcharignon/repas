@@ -1,15 +1,15 @@
 <?php
 
-namespace Repas\Tests\Repas\Infrastructure\Voice;
+namespace Repas\Tests\Repas\OpenHostService;
 
 use Repas\Repas\Domain\Exception\IngredientException;
 use Repas\Repas\Domain\Exception\ShoppingListException;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Repas\Domain\Model\Ingredient;
 use Repas\Repas\Domain\Model\ShoppingListStatus;
-use Repas\Shared\Application\Interface\AddedItem;
-use Repas\Shared\Application\Interface\RemovedItem;
-use Repas\Shared\Application\Interface\VoiceShoppingList;
+use Repas\Repas\Domain\Model\AddedItem;
+use Repas\Repas\Domain\Model\RemovedItem;
+use Repas\Repas\Application\OpenHostService\ShoppingListItemCommandOHS;
 use Repas\Tests\Helper\Builder\ConversionBuilder;
 use Repas\Tests\Helper\Builder\IngredientBuilder;
 use Repas\Tests\Helper\Builder\ShoppingListBuilder;
@@ -19,11 +19,11 @@ use Repas\Tests\Helper\DataPersister;
 use Repas\User\Domain\Model\User;
 
 /**
- * Le port `VoiceShoppingList` câblé pour de vrai : adaptateur, bus transactionnel, handler et repositories sur la base de test.
+ * L'Open Host Service `ShoppingListItemCommandOHS` câblé pour de vrai : bus transactionnel, handler et repositories sur la base de test.
  */
-class VoiceShoppingListFlowTest extends DatabaseTestCase
+class ShoppingListItemCommandOHSFlowTest extends DatabaseTestCase
 {
-    private VoiceShoppingList $voiceShoppingList;
+    private ShoppingListItemCommandOHS $voiceShoppingList;
     private ShoppingListRepository $shoppingListRepository;
     private DataPersister $persister;
 
@@ -31,7 +31,7 @@ class VoiceShoppingListFlowTest extends DatabaseTestCase
     {
         parent::setUp();
 
-        $this->voiceShoppingList = static::getContainer()->get(VoiceShoppingList::class);
+        $this->voiceShoppingList = static::getContainer()->get(ShoppingListItemCommandOHS::class);
         $this->shoppingListRepository = static::getContainer()->get(ShoppingListRepository::class);
         $this->persister = new DataPersister(static::getContainer());
     }

@@ -13,6 +13,16 @@ class SpokenRecipePhraseChoiceInMemoryRepository implements SpokenRecipePhraseCh
     /** @var array<string, array{userId: string, phrase: string, recipeId: string, times: int, updatedAt: DateTimeImmutable}> */
     private array $rows = [];
 
+    /** @var list<array{string, string}> les lectures `[userId, clé]`, dans l'ordre */
+    public array $reads = [];
+
+    public function rememberedId(string $userId, string $phraseKey): ?string
+    {
+        $this->reads[] = [$userId, $phraseKey];
+
+        return $this->rows[$userId . '|' . $phraseKey]['recipeId'] ?? null;
+    }
+
     public function remember(string $userId, string $phraseKey, string $recipeId, DateTimeImmutable $now): void
     {
         $id = $userId . '|' . $phraseKey;
