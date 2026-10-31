@@ -34,6 +34,31 @@ readonly class ConversionService
     }
 
     /**
+     * Lit en UNE requête les conversions des ingrédients dont une ligne ne s'exprime pas déjà dans l'unité d'achat, avant de les convertir
+     * une à une : sans cet appel chaque ingrédient lit les siennes à sa première conversion (une requête par produit). Un ingrédient dont le
+     * graphe est déjà connu, ou dont aucune ligne n'a besoin d'être convertie, n'ajoute aucune lecture.
+     *
+     * @param iterable<RecipeRow> $rows
+     */
+    public function preload(iterable $rows): void
+    {
+        $missing = [];
+        foreach ($rows as $row) {
+            $ingredient = $row->getIngredient();
+            if ($row->getUnit()->getId() !== $ingredient->getDefaultPurchaseUnit()->getId() && !isset($this->graphs[$ingredient->getSlug()])) {
+                $missing[$ingredient->getSlug()] = $ingredient;
+            }
+        }
+        if ($missing === []) {
+            return;
+        }
+
+        foreach ($this->conversionRepository->findByIngredientsOrCommon(array_values($missing)) as $slug => $conversions) {
+            $this->graphs->add($this->graphFrom($conversions), $slug);
+        }
+    }
+
+    /**
      * Une ligne de recette doit pouvoir être exprimée dans l'unité d'achat de son ingrédient : sinon la planification de la
      * recette échouerait plus tard. À vérifier à l'enregistrement de la recette.
      *
@@ -189,21 +214,26 @@ readonly class ConversionService
     {
         if (!isset($this->graphs[$ingredient->getSlug()])) {
             // Recuperation de toutes les conversions d'un ingredient
-            $conversions = $this->conversionRepository->findByIngredientOrCommon($ingredient);
-
-            // Construire un graphe bidirectionnel des conversions.
-            // Pour chaque conversion, on ajoute deux arêtes :
-            // - De startUnit à endUnit avec un poids égal au coefficient.
-            // - De endUnit à startUnit avec un poids égal à 1/coefficient.
-            $graph = ConversionGraph::edgesOf(array_map(
-                static fn(Conversion $conversion): array => [$conversion->getStartUnit()->getSlug(), $conversion->getEndUnit()->getSlug(), $conversion->getCoefficient()],
-                $conversions->toArray(),
-            ));
-
-            $this->graphs->add($graph, $ingredient->getSlug());
+            $this->graphs->add($this->graphFrom($this->conversionRepository->findByIngredientOrCommon($ingredient)), $ingredient->getSlug());
         }
 
         return $this->graphs[$ingredient->getSlug()];
+    }
+
+    /**
+     * Construire un graphe bidirectionnel des conversions.
+     * Pour chaque conversion, on ajoute deux arêtes :
+     * - De startUnit à endUnit avec un poids égal au coefficient.
+     * - De endUnit à startUnit avec un poids égal à 1/coefficient.
+     *
+     * @param Tab<Conversion> $conversions
+     */
+    private function graphFrom(Tab $conversions): array
+    {
+        return ConversionGraph::edgesOf(array_map(
+            static fn(Conversion $conversion): array => [$conversion->getStartUnit()->getSlug(), $conversion->getEndUnit()->getSlug(), $conversion->getCoefficient()],
+            $conversions->toArray(),
+        ));
     }
 
     /**

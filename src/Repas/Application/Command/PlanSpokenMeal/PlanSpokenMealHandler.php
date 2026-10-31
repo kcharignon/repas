@@ -85,7 +85,7 @@ readonly class PlanSpokenMealHandler
 
         // Un ingrédient sans conversion vers son unité d'achat : les quantités ne se calculent pas. Phrase claire, et toujours rien d'écrit (le bus annule tout)
         try {
-            ($this->plannedMealHandler)(new PlannedMealCommand($command->ownerId, $command->recipeId, $servings));
+            $this->plannedMealHandler->plan($recipe, new PlannedMealCommand($command->ownerId, $command->recipeId, $servings));
         } catch (IngredientException $exception) {
             throw $exception->isMissingConversion() ? MealPlanningException::missingConversion($recipe->getName(), $exception->conversionIngredientName()) : $exception;
         }

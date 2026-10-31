@@ -25,16 +25,19 @@ final class UpdateServingMealApiController extends AbstractController
     #[Route(path: '/api/v1/meals/{id}/serving', name: 'api_update_meal_serving', methods: ['PUT'])]
     #[IsGranted('ROLE_USER')]
     #[IsGranted('MEAL_OWNER', 'id')]
-    #[OA\Put(summary: 'Change le nombre de personnes d\'un repas ; les quantités de la liste sont recalculées')]
+    #[OA\Put(
+        summary: 'Change le nombre de personnes d\'un repas ; les quantités de la liste sont recalculées',
+        description: "Quand la recette a été planifiée dans plusieurs listes (ADR 0036), le changement agit sur TOUT le groupe de repas, en une transaction, et chaque liste ajuste exactement les lignes que son repas y avait posées. Si une liste du groupe est envoyée au drive, tout est refusé (409 `SHOPPING_LIST_SENT`) et rien n'est écrit.",
+    )]
     #[OA\Tag(name: 'Shopping lists')]
     #[OA\RequestBody(required: true, content: new OA\JsonContent(ref: new Model(type: UpdateServingMealPayload::class)))]
     #[OA\Parameter(ref: '#/components/parameters/IfMatch')]
     #[OA\Response(response: 204, description: 'Portions modifiées')]
     #[OA\Response(response: 403, description: "La ressource appartient à un autre utilisateur")]
     #[OA\Response(response: 404, description: "Ressource inconnue (ou repas hérité d'une recette secrète d'un autre, que seul son auteur voit)")]
-    #[OA\Response(response: 409, description: 'La liste est envoyée au drive : elle n\'est plus modifiable (message `SHOPPING_LIST_SENT`)')]
+    #[OA\Response(response: 409, description: 'Une liste du groupe de repas est envoyée au drive : elle n\'est plus modifiable (message `SHOPPING_LIST_SENT`), rien n\'est écrit')]
     #[OA\Response(response: 422, description: 'Corps de la requête invalide')]
-    #[OA\Response(response: 412, description: "La version de la liste n'est plus celle de `If-Match` : elle a été modifiée depuis sa lecture")]
+    #[OA\Response(response: 412, description: "La version de la liste principale n'est plus celle de `If-Match` : elle a été modifiée depuis sa lecture (ignoré pour les listes d'un type)")]
     public function __invoke(string $id, #[MapRequestPayload] UpdateServingMealPayload $payload, Request $request): Response
     {
         $this->commandBus->dispatch(new UpdateServingMealCommand($id, $payload->serving, EntityVersion::expected($request)));

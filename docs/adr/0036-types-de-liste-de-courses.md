@@ -19,7 +19,7 @@ Un compte n'a aujourd'hui qu'**une liste de courses en cours** (`ShoppingListSta
 
 3. **Une seule fonction, un seul endroit** (service de domaine `ListDestinationResolver`, comme `IngredientVisibility::visibleBy`) : 1) le choix fait sur le produit (`ingredient.list_destination` : un type, ou la valeur réservée `main` = liste principale) ; 2) sinon le type de son rayon (`department_list_type`) ; 3) sinon la liste principale. Pour N produits, **une seule lecture SQL** (port `ListRoutingRepository`) : nombre de requêtes constant.
 4. **Un rayon est dans un seul type à la fois** (clé `owner_id` + `department_slug`) ; rattacher un rayon déjà pris le déplace.
-5. **Le choix se fait à l'ajout et se fige** : changer le type d'un rayon ou d'un produit ne déplace aucune ligne déjà dans une liste.
+5. **Le choix se fait à l'ajout et se fige** : changer le type d'un rayon ou d'un produit ne déplace aucune ligne déjà dans une liste. Pour que retirer ou ajuster un repas ne dépende jamais de la destination du jour, **chaque repas d'une recette éclatée garde les produits qu'il a posés dans sa liste** (`meal.placed_ingredients`, une liste JSON de slugs d'ingrédients ; vide = toute la recette, comme tout repas d'avant les types ; LST-005). Une fusion de deux produits y remplace l'absorbé par le gardé.
 
 ### Des listes en cours, une par type
 
@@ -29,9 +29,9 @@ Un compte n'a aujourd'hui qu'**une liste de courses en cours** (`ShoppingListSta
 
 ### Recettes éclatées
 
-9. **Une recette planifiée remplit une liste par destination de ses produits.** Chaque liste qui reçoit au moins un produit reçoit un **repas** (recette, nombre de personnes) ; les repas d'une même planification partagent `meal.planned_group_id`. Changer le nombre de personnes ou retirer la recette agit sur **tout le groupe**, en une transaction ; si une des listes du groupe est `SENT`, **tout est refusé** (`409 SHOPPING_LIST_SENT`, rien n'est écrit).
+9. **Une recette planifiée remplit une liste par destination de ses produits.** Chaque liste qui reçoit au moins un produit reçoit un **repas** (recette, nombre de personnes) ; les repas d'une même planification partagent `meal.planned_group_id`. Changer le nombre de personnes ou retirer la recette agit sur **tout le groupe**, en une transaction ; si une des listes du groupe est `SENT`, **tout est refusé** (`409 SHOPPING_LIST_SENT`, rien n'est écrit). Précisions de LST-005 : une recette dont tous les produits vont dans une seule liste n'a **ni groupe ni répartition** (un repas qui pose toute la recette, exactement comme avant : c'est le cas de tout compte sans type) ; le groupe se cherche parmi les listes du **propriétaire** seul ; une liste du groupe **terminée** est de l'histoire et n'est pas modifiée, une liste **en pause** (c'est ce que devient la liste d'un type supprimé) suit le groupe ; retirer la recette retrouve son repas dans la liste principale d'abord, puis dans la plus ancienne liste de type en cours (une recette dont aucun produit n'est allé dans la liste principale).
 10. **Une recette déjà dans une des listes visées n'est pas planifiée deux fois** : tout est refusé avec l'erreur actuelle (`ShoppingListException::recipeAlreadyInList`), rien n'est écrit.
-11. `PUT /shopping-lists/active/recipes/{recipeId}` répond `200 {lists: [{id, name, typeId}]}` (les listes qui ont reçu quelque chose) au lieu de `204` ; ce corps sert au message du front. Augmenter ou diminuer un produit (`…/active/ingredients/{slug}/increase|decrease`) vise la liste de sa destination ; diminuer cherche d'abord la liste de sa destination, sinon n'importe quelle liste en cours qui en a une ligne.
+11. `PUT /shopping-lists/active/recipes/{recipeId}` répond `200 {lists: [{id, name, typeId}]}` (les listes qui ont reçu quelque chose : la principale d'abord, puis les types dans l'ordre où la recette les atteint ; `name` est celui de la liste ou à défaut sa date en français, comme `GET /shopping-lists/open`) au lieu de `204` ; ce corps sert au message du front. Augmenter ou diminuer un produit (`…/active/ingredients/{slug}/increase|decrease`) vise la liste de sa destination ; diminuer cherche d'abord la liste de sa destination, sinon n'importe quelle liste en cours qui en a une ligne.
 12. `If-Match` (ADR 0016) s'applique à la liste principale, comme aujourd'hui, quand elle est visée ; il est ignoré pour les listes d'un type.
 
 ### Types, rayons, produits à part
@@ -44,16 +44,18 @@ Un compte n'a aujourd'hui qu'**une liste de courses en cours** (`ShoppingListSta
 ### Autres contextes
 
 17. **Drive** : rien ne change, l'envoi se fait déjà par identifiant de liste. **Voix** (`Voice`) : ajouter va dans la liste de la destination du produit, demander et retirer cherchent dans toutes les listes en cours, la réponse nomme la liste quand ce n'est pas la principale ; par les ports et les Open Host Services existants (ADR 0035).
-18. **Migration** : une seule, additive, compatible avec le code précédent (ADR 0017 règle 6) : tables `shopping_list_type` et `department_list_type`, colonnes `shopping_list.list_type_id`, `ingredient.list_destination` et `meal.planned_group_id`, toutes facultatives, aucune donnée écrite. Un retour arrière du code ignore les types et ne voit que la liste principale.
+18. **Migration** : additive, compatible avec le code précédent (ADR 0017 règle 6) : tables `shopping_list_type` et `department_list_type`, colonnes `shopping_list.list_type_id`, `ingredient.list_destination` et `meal.planned_group_id` (LST-002), puis `meal.placed_ingredients` (LST-005, `JSONB`), toutes facultatives, aucune donnée écrite. Un retour arrière du code ignore les types et ne voit que la liste principale.
 
 ## Conséquences
 
 - Positives : une option sans coût pour qui ne l'utilise pas ; le choix d'une liste est une fonction pure testée ; chaque liste reste un agrégat autonome (cochage, envoi au drive, fin) ; pas de nouvel agrégat.
-- Négatives / coûts : une recette éclatée coûte plus d'écritures (une par liste visée, budgets SQL constants quel que soit le nombre de produits) ; deux ajouts simultanés vers un type sans liste peuvent ouvrir deux listes (la lecture prend la plus ancienne) ; un ancien site ne montre que la liste principale.
-- Garde-fous : `ListDestinationResolverTest`, tests de handlers sur `InMemoryRepository`, `ListTypesApiFlowTest` (vraie base), `UserOwnedDataCoverageTest`, budgets SQL (`creer-type-de-liste`, `planifier-recette-eclatee`, `ajouter-produit-a-un-type`), `DocsListTypesTest` (cohérence du contrat).
+- Négatives / coûts : une recette éclatée coûte plus d'écritures (chaque liste visée est lue et enregistrée une fois : le budget SQL suit le nombre de listes visées, jamais le nombre de produits pour les lectures) ; deux ajouts simultanés vers un type sans liste peuvent ouvrir deux listes (la lecture prend la plus ancienne) ; un ancien site ne montre que la liste principale.
+- Garde-fous : `ListDestinationResolverTest`, tests de handlers sur `InMemoryRepository`, `ListTypesApiFlowTest` et `SplitRecipeApiFlowTest` (vraie base), `UserOwnedDataCoverageTest`, budgets SQL (`creer-type-de-liste`, `planifier-recette-eclatee`, `modifier-portions-repas-eclate`, `retirer-repas-eclate`, `ajouter-produit-a-un-type`) et `SplitRecipeReadsAreConstantTest` (les lectures ne dépendent pas du nombre de produits), `DocsListTypesTest` (cohérence du contrat).
 
 ## Alternatives écartées
 
 - **Le repas vit seulement dans la liste principale** : la recette disparaîtrait de la vue des courses des autres types et les quantités ne pourraient plus se retirer proprement.
 - **Fusionner les lignes à la suppression d'un type** : les unités peuvent différer (`addRow` suppose la même unité) ; mettre la liste en pause ne perd rien et laisse l'utilisateur décider.
+- **Recalculer la répartition d'un repas d'après la destination du jour** : changer la destination d'un produit après la planification retirerait ou ajusterait la ligne de la mauvaise liste ; chaque repas se souvient donc de ses produits (décision 5).
+- **Retrouver le produit d'un repas par « la liste porte une ligne de ce produit »** : un produit ajouté à la main dans une autre liste du groupe serait déduit deux fois.
 - **Un type global défini par l'administrateur** : chaque foyer a ses magasins ; la règle « données propres à chaque compte » (ADR 0028) s'applique.

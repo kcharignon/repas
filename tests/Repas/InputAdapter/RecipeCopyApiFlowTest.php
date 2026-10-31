@@ -96,7 +96,7 @@ class RecipeCopyApiFlowTest extends DatabaseTestCase
         // When : il planifie la copie dans sa liste active, puis l'envoie au drive
         $listId = $this->savedActiveList($copier);
         $this->request('PUT', '/api/v1/shopping-lists/active/recipes/' . $copy, $copier);
-        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->assertSame(200, $this->client->getResponse()->getStatusCode());
 
         // Then : sa liste porte ses ingrédients
         $this->assertEqualsCanonicalizing([$copierFlour, 'sucre' . $copier->getId(), $copierPraline->getSlug()], $this->listSlugs($listId));

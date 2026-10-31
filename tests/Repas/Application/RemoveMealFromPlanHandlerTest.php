@@ -6,6 +6,7 @@ namespace Repas\Tests\Repas\Application;
 use PHPUnit\Framework\TestCase;
 use Repas\Repas\Application\Command\RemoveMealFromPlan\removeMealFromPlanCommand;
 use Repas\Repas\Application\Command\RemoveMealFromPlan\removeMealFromPlanHandler;
+use Repas\Repas\Application\Service\PlannedMealGroup;
 use Repas\Repas\Domain\Exception\RecipeException;
 use Repas\Repas\Domain\Exception\ShoppingListException;
 use Repas\Repas\Domain\Interface\ConversionRepository;
@@ -70,7 +71,8 @@ class RemoveMealFromPlanHandlerTest extends TestCase
         $this->handler = new removeMealFromPlanHandler(
             $this->shoppingListRepository,
             $this->recipeRepository,
-            $this->conversionService
+            $this->conversionService,
+            new PlannedMealGroup($this->shoppingListRepository),
         );
     }
 

@@ -21,6 +21,17 @@ interface ConversionRepository
     public function findByIngredientOrCommon(Ingredient $ingredient): Tab;
 
     /**
+     * La même lecture pour N ingrédients en UNE SEULE requête : pour chacun ses conversions propres PUIS les universelles, dans le même ordre
+     * que `findByIngredientOrCommon` (le graphe de conversion en dépend). Planifier une recette ne lit plus les conversions ingrédient par
+     * ingrédient (ADR 0036, LST-005 : les budgets d'écriture ne dépendent pas du nombre de produits).
+     *
+     * @param list<Ingredient> $ingredients
+     *
+     * @return array<string, Tab<Conversion>> par slug d'ingrédient
+     */
+    public function findByIngredientsOrCommon(array $ingredients): array;
+
+    /**
      * La conversion PROPRE de l'ingrédient pour cette paire d'unités, `null` sans elle. Jamais une conversion universelle (sans ingrédient) :
      * celui qui modifie la conversion d'un ingrédient ne doit pas pouvoir la prendre pour la sienne, ce qui la ferait disparaître pour tous
      * les autres (2026-10-27).

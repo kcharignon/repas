@@ -46,6 +46,9 @@ class IngredientReferencesAreAllRepointedTest extends DatabaseTestCase
         // La mémoire de phrase de la commande vocale (ADR 0029 décision 11) : la fusion la repointe (`SpokenPhraseChoiceRepository::repoint`) ; la migration d'adoption
         // (ING-003) ne l'a jamais connue, aucune ligne n'existe avant elle
         'spoken_phrase_choice.ingredient_slug' => 'SpokenPhraseChoiceRepository::repoint',
+        // Les produits qu'un repas d'une recette éclatée entre plusieurs listes a posés dans sa liste (LST-005, JSON) : la fusion les repointe
+        // (`IngredientMergePostgreSQLRepository::repoint`, dans l'instruction de la version des listes) ; aucune ligne n'en a avant LST-005
+        'meal.placed_ingredients' => 'IngredientMergePostgreSQLRepository::repoint',
     ];
 
     /**
@@ -182,13 +185,15 @@ class IngredientReferencesAreAllRepointedTest extends DatabaseTestCase
         $merge->recipe('r1', $user->getId(), [[$absorbed->getSlug(), 1.0, 'gramme']]);
         $merge->shoppingList('l1', $user->getId(), rows: [['x1', $absorbed->getSlug(), 1.0, 'kilo']], items: [['y1', $absorbed->getSlug(), 1.0, 'kilo']]);
         $merge->choice('c1', $user->getId(), $absorbed->getSlug());
+        // Un repas d'une recette éclatée entre plusieurs listes (LST-005) se souvient des produits qu'il a posés dans sa liste, dont l'absorbé et le gardé
+        $this->entityManager->getConnection()->insert('meal', ['id' => 'm1', 'shopping_list' => 'l1', 'recipe' => 'r1', 'serving' => 4, 'planned_group_id' => 'g1', 'placed_ingredients' => json_encode([$absorbed->getSlug(), $kept->getSlug()], JSON_THROW_ON_ERROR)]);
         $this->entityManager->getConnection()->insert('spoken_phrase_choice', ['user_id' => $user->getId(), 'phrase' => 'tomates', 'ingredient_slug' => $absorbed->getSlug(), 'times' => 2, 'updated_at' => '2026-10-20 03:00:00']);
         $this->entityManager->getConnection()->insert('ingredient_alias', ['user_id' => $user->getId(), 'alias_slug' => 'tomates', 'ingredient_slug' => $absorbed->getSlug(), 'kind' => 'adoption', 'source' => 'migration-essai', 'created_at' => '2026-10-20 03:00:00']);
         $holding = fn(): array => $this->columnsHolding($merge->connection, $absorbed->getSlug());
 
         // Then : avant, toutes les colonnes qui peuvent désigner un ingrédient le contiennent
         $this->assertSame(
-            ['conversion.ingredient', 'drive_choice.ingredient_slug', 'ingredient.slug', 'ingredient_alias.ingredient_slug', 'recipe_row.ingredient', 'shopping_list_ingredient.ingredient', 'shopping_list_row.ingredient', 'spoken_phrase_choice.ingredient_slug'],
+            ['conversion.ingredient', 'drive_choice.ingredient_slug', 'ingredient.slug', 'ingredient_alias.ingredient_slug', 'meal.placed_ingredients', 'recipe_row.ingredient', 'shopping_list_ingredient.ingredient', 'shopping_list_row.ingredient', 'spoken_phrase_choice.ingredient_slug'],
             $holding(),
         );
 
@@ -199,8 +204,11 @@ class IngredientReferencesAreAllRepointedTest extends DatabaseTestCase
         $this->assertSame(['ingredient_alias.alias_slug'], $holding());
         foreach (array_keys(self::REPOINTED) as $column) {
             [$table, $name] = explode('.', $column);
-            $this->assertContains($kept->getSlug(), $merge->connection->fetchFirstColumn(sprintf('SELECT %s FROM %s', $name, $table)), $column);
+            $values = $merge->connection->fetchFirstColumn(sprintf('SELECT %s FROM %s', $name, $table));
+            // Une colonne JSON porte une liste de slugs : le gardé y figure, une seule fois, et l'absorbé n'y est plus
+            $this->assertContains($kept->getSlug(), $column === 'meal.placed_ingredients' ? array_merge(...array_map(static fn(string $json): array => json_decode($json, true, flags: JSON_THROW_ON_ERROR), $values)) : $values, $column);
         }
+        $this->assertSame([$kept->getSlug()], json_decode($merge->connection->fetchOne("SELECT placed_ingredients FROM meal WHERE id = 'm1'"), true, flags: JSON_THROW_ON_ERROR));
         $this->assertSame([$kept->getSlug(), 'merge'], [
             $merge->connection->fetchOne("SELECT ingredient_slug FROM ingredient_alias WHERE alias_slug = 'tomates'"),
             $merge->connection->fetchOne("SELECT source FROM ingredient_alias WHERE alias_slug = 'tomates'"),

@@ -24,10 +24,12 @@ use Repas\Tests\Helper\Builder\ShoppingListBuilder;
 use Repas\Tests\Helper\Builder\UnitBuilder;
 use Repas\Tests\Helper\Builder\UserBuilder;
 use Repas\Tests\Helper\InMemoryRepository\ConversionInMemoryRepository;
+use Repas\Tests\Helper\InMemoryRepository\IngredientInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\RecipeInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\ShoppingListInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\UnitInMemoryRepository;
 use Repas\Tests\Helper\RepasAssert;
+use Repas\Tests\Helper\TypedLists;
 
 class PlannedMealHandlerTest extends TestCase
 {
@@ -62,11 +64,14 @@ class PlannedMealHandlerTest extends TestCase
             $this->unitRepository,
         );
 
+        $typedLists = new TypedLists($this->shoppingListRepository, new IngredientInMemoryRepository());
         $this->handler = new PlannedMealHandler(
             $this->shoppingListRepository,
             $this->recipeRepository,
             $this->conversionService,
-            new UuidGenerator()
+            new UuidGenerator(),
+            $typedLists->routing,
+            $typedLists->activeListForType,
         );
     }
 

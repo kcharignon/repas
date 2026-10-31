@@ -27,6 +27,7 @@ use Repas\Repas\Infrastructure\Entity\ShoppingList;
 use Repas\Repas\Infrastructure\Entity\ShoppingListRow;
 use Repas\Repas\Infrastructure\Entity\ShoppingListType;
 use Repas\Repas\Infrastructure\Entity\Unit;
+use Repas\Repas\Infrastructure\Presentation\ShoppingListDateLabel;
 
 final readonly class ShoppingListPostgreSQLLoader implements ShoppingListLoader
 {
@@ -343,7 +344,6 @@ final readonly class ShoppingListPostgreSQLLoader implements ShoppingListLoader
 
     private function dateFormatter(): IntlDateFormatter
     {
-        // « yyyy » est l'année du calendrier (« YYYY », celle de la semaine ISO, donnait « 29 décembre 2026 » pour le 29 décembre 2025)
-        return new IntlDateFormatter('fr_FR', IntlDateFormatter::NONE, IntlDateFormatter::NONE, null, IntlDateFormatter::GREGORIAN, 'dd MMMM yyyy');
+        return ShoppingListDateLabel::formatter();
     }
 }

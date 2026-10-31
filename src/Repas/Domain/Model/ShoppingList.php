@@ -171,7 +171,15 @@ final class ShoppingList implements ModelInterface
 
     public function hasRecipe(Recipe $recipe): bool
     {
-        return $this->meals->find(fn(Meal $meal) => $meal->hasRecipe($recipe)) !== null;
+        return $this->mealOf($recipe) !== null;
+    }
+
+    /**
+     * Le repas de cette recette dans la liste, `null` si elle n'y est pas planifiée.
+     */
+    public function mealOf(Recipe $recipe): ?Meal
+    {
+        return $this->meals->find(fn(Meal $meal) => $meal->hasRecipe($recipe));
     }
 
     public function isActive(): bool
@@ -255,14 +263,14 @@ final class ShoppingList implements ModelInterface
     }
 
     /**
-     * @param int $servings nombre de personnes du repas : celui du propriétaire (`AuthenticatedUser::getDefaultServing()`),
-     *                       que le use case transmet puisque la liste ne connaît pas l'utilisateur
+     * La liste peut-elle recevoir un repas de cette recette ? Les refus de `addMeal`, sans rien écrire : une recette éclatée entre plusieurs listes
+     * (ADR 0036 décision 9) les juge sur toutes les listes visées avant d'en modifier une seule.
+     *
      * @throws RecipeException la recette n'est pas celle du propriétaire de la liste : ses ingrédients personnalisés seraient
      *                         ceux d'un autre, la recette est traitée comme inconnue (comme l'ingrédient d'un autre)
-     * @throws ShoppingListException la recette est déjà dans la liste, ou la liste planifie déjà `MAX_MEALS` repas
-     * @throws MealException le nombre de personnes est hors de 1 à 100
+     * @throws ShoppingListException la liste est envoyée au drive, la recette est déjà dans la liste, ou la liste planifie déjà `MAX_MEALS` repas
      */
-    public function addMeal(string $id, Recipe $recipe, int $servings): void
+    public function assertCanAddMeal(Recipe $recipe): void
     {
         $this->assertEditable();
 
@@ -279,6 +287,21 @@ final class ShoppingList implements ModelInterface
         if ($this->meals->count() >= self::MAX_MEALS) {
             throw ShoppingListException::mealLimitReached();
         }
+    }
+
+    /**
+     * @param int $servings nombre de personnes du repas : celui du propriétaire (`AuthenticatedUser::getDefaultServing()`),
+     *                       que le use case transmet puisque la liste ne connaît pas l'utilisateur
+     * @param ?string $plannedGroupId le groupe de la planification quand la recette remplit plusieurs listes (ADR 0036 décision 9)
+     * @param ?list<string> $placedIngredients les produits de la recette que ce repas pose dans cette liste, `null` : toute la recette
+     * @throws RecipeException la recette n'est pas celle du propriétaire de la liste : ses ingrédients personnalisés seraient
+     *                         ceux d'un autre, la recette est traitée comme inconnue (comme l'ingrédient d'un autre)
+     * @throws ShoppingListException la recette est déjà dans la liste, ou la liste planifie déjà `MAX_MEALS` repas
+     * @throws MealException le nombre de personnes est hors de 1 à 100
+     */
+    public function addMeal(string $id, Recipe $recipe, int $servings, ?string $plannedGroupId = null, ?array $placedIngredients = null): void
+    {
+        $this->assertCanAddMeal($recipe);
 
         // Ajoute à la liste des recettes avec le nombre de personnes demandé
         $this->meals[] = Meal::create(
@@ -286,6 +309,8 @@ final class ShoppingList implements ModelInterface
             shoppingListId: $this->id,
             recipeId: $recipe->getId(),
             servings: $servings,
+            plannedGroupId: $plannedGroupId,
+            placedIngredients: $placedIngredients,
         );
     }
 

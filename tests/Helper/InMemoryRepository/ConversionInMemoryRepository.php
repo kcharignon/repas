@@ -20,9 +20,30 @@ class ConversionInMemoryRepository extends AbstractInMemoryRepository implements
         return Conversion::class;
     }
 
+    /** Lectures des conversions d'UN ingrédient, et lectures groupées pour plusieurs (de quoi prouver qu'une recette n'en fait qu'une) */
+    public int $singleReads = 0;
+    public int $batchReads = 0;
+
     public function findByIngredientOrCommon(Ingredient $ingredient): Tab
     {
+        $this->singleReads++;
         // Les conversions propres d'abord, comme le repository de la base
+        return $this->findByIngredient($ingredient)->merge($this->models->filter(fn (Conversion $conversion) => $conversion->getIngredient() === null));
+    }
+
+    public function findByIngredientsOrCommon(array $ingredients): array
+    {
+        $this->batchReads++;
+        $byIngredient = [];
+        foreach ($ingredients as $ingredient) {
+            $byIngredient[$ingredient->getSlug()] = $this->ownThenCommon($ingredient);
+        }
+
+        return $byIngredient;
+    }
+
+    private function ownThenCommon(Ingredient $ingredient): Tab
+    {
         return $this->findByIngredient($ingredient)->merge($this->models->filter(fn (Conversion $conversion) => $conversion->getIngredient() === null));
     }
 

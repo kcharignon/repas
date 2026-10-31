@@ -91,12 +91,20 @@ readonly class IngredientMergePostgreSQLRepository implements IngredientMergeRep
                 $recipeParams,
             );
 
-            // 2. La version de chaque liste qui utilise B monte une fois, qu'elle ait une ligne, un ingrédient ajouté à la main ou les deux
+            // 2. La version de chaque liste qui utilise B monte une fois, qu'elle ait une ligne, un ingrédient ajouté à la main ou les deux.
+            // Dans la même instruction : les repas d'une recette éclatée entre plusieurs listes (ADR 0036, LST-005) se souviennent des produits
+            // qu'ils ont posés dans leur liste (`meal.placed_ingredients`), B y devient A, sans doublon si le repas posait déjà A (le repas n'a pas
+            // de version : celle de sa liste monte déjà). Une instruction de plus coûterait une requête à chaque fusion, éclatée ou non.
             $lists = (int) $connection->executeStatement(
-                'UPDATE shopping_list l SET version = version + 1 WHERE l.owner = :u AND ('
+                'WITH placed AS (UPDATE meal m SET placed_ingredients = ('
+                . '     SELECT coalesce(jsonb_agg(DISTINCT CASE WHEN p.slug = :b THEN :a ELSE p.slug END), CAST(\'[]\' AS jsonb))'
+                . '     FROM jsonb_array_elements_text(m.placed_ingredients) AS p(slug))'
+                . '   FROM shopping_list pl WHERE pl.id = m.shopping_list AND pl.owner = :u AND jsonb_typeof(m.placed_ingredients) = \'array\''
+                . '     AND jsonb_exists(m.placed_ingredients, :b) RETURNING m.id)'
+                . ' UPDATE shopping_list l SET version = version + 1 WHERE l.owner = :u AND ('
                 . '   EXISTS (SELECT 1 FROM shopping_list_row x WHERE x.shopping_list = l.id AND x.ingredient = :b)'
                 . '   OR EXISTS (SELECT 1 FROM shopping_list_ingredient x WHERE x.shopping_list = l.id AND x.ingredient = :b))',
-                $listParams,
+                $recipeParams,
             );
 
             // 3. Les lignes de liste. A a déjà sa ligne dans la liste (la première, par identifiant) : elle reçoit la quantité de B ré-exprimée

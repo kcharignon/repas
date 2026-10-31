@@ -5,6 +5,7 @@ namespace Repas\Tests\Helper\InMemoryRepository;
 
 use Repas\Repas\Domain\Exception\IngredientException;
 use Repas\Repas\Domain\Interface\ListRoutingRepository;
+use Repas\Repas\Domain\Model\ProductPlacement;
 use Repas\Repas\Domain\Service\ListDestinationResolver;
 
 /**
@@ -27,22 +28,35 @@ class ListRoutingInMemoryRepository implements ListRoutingRepository
         if ($slugs === []) {
             return [];
         }
+
+        $destinations = array_fill_keys($slugs, null);
+        foreach ($this->placementsFor($ownerId, $slugs) as $slug => $placement) {
+            $destinations[$slug] = $placement->listTypeId;
+        }
+
+        return $destinations;
+    }
+
+    public function placementsFor(string $ownerId, array $slugs): array
+    {
+        $slugs = array_values(array_unique($slugs));
+        if ($slugs === []) {
+            return [];
+        }
         $this->reads++;
 
         $ownerTypes = array_filter($this->listTypes->all(), static fn($type): bool => $type->getOwnerId() === $ownerId);
-        $existing = array_map(static fn($type): string => $type->getId(), $ownerTypes);
+        $existing = array_values(array_map(static fn($type): string => $type->getId(), $ownerTypes));
         $resolver = new ListDestinationResolver();
 
-        $destinations = [];
+        $placements = [];
         foreach ($slugs as $slug) {
             try {
                 $ingredient = $this->ingredients->findOneBySlug($slug);
             } catch (IngredientException) {
-                $destinations[$slug] = null;
                 continue;
             }
             if ($ingredient->getCreatorId() !== $ownerId) {
-                $destinations[$slug] = null;
                 continue;
             }
             $departmentType = null;
@@ -51,9 +65,12 @@ class ListRoutingInMemoryRepository implements ListRoutingRepository
                     $departmentType = $type->getId();
                 }
             }
-            $destinations[$slug] = $resolver->resolve($ingredient->getListDestination(), $departmentType, array_values($existing));
+            $placements[$slug] = new ProductPlacement(
+                $resolver->resolve($ingredient->getListDestination(), $departmentType, $existing),
+                $ingredient->getDefaultPurchaseUnit()->getSlug(),
+            );
         }
 
-        return $destinations;
+        return $placements;
     }
 }

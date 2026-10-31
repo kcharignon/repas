@@ -21,6 +21,7 @@ use Repas\Repas\Application\Service\IngredientSlugResolver;
 use Repas\Tests\Helper\InMemoryRepository\IngredientAliasInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\IngredientInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\ShoppingListInMemoryRepository;
+use Repas\Tests\Helper\TypedLists;
 
 class AddIngredientToShoppingListHandlerTest extends TestCase
 {
@@ -36,10 +37,12 @@ class AddIngredientToShoppingListHandlerTest extends TestCase
         $this->aliasRepository = new IngredientAliasInMemoryRepository();
         $this->shoppingListRepository = new ShoppingListInMemoryRepository();
 
+        $typedLists = new TypedLists($this->shoppingListRepository, $this->ingredientRepository);
         $this->handler =  new AddIngredientToShoppingListHandler(
             shoppingListRepository: $this->shoppingListRepository,
-            ingredientRepository: $this->ingredientRepository,
             slugResolver: new IngredientSlugResolver($this->aliasRepository),
+            listRoutingRepository: $typedLists->routing,
+            activeListForType: $typedLists->activeListForType,
         );
     }
 

@@ -157,6 +157,46 @@ class ActiveListForTypeTest extends TestCase
         }
     }
 
+    public function testOpeningDirectlyCreatesANewListWithoutLookingForTheCurrentOneAndWithoutTouchingTheOthers(): void
+    {
+        // Given : l'appelant a déjà cherché (une recette éclatée juge toutes ses listes avant d'en ouvrir une) ; la principale est en cours
+        $this->savedList('main-id', null);
+
+        // When
+        $result = $this->service->open($this->ownerId, 'butcher');
+
+        // Then
+        $this->assertSame(['opened-id', true, 'butcher', 'Boucherie', Status::ACTIVE], [
+            $result->shoppingList->getId(), $result->opened, $result->shoppingList->getListTypeId(), $result->shoppingList->getName(), $result->shoppingList->getStatus(),
+        ]);
+        $this->assertSame(Status::ACTIVE, $this->statusOf('main-id'));
+        $this->assertEquals([new NewShoppingListCreatedEvent('opened-id', $this->ownerId)], $this->eventDispatched());
+    }
+
+    public function testOpeningTheTypeOfAnotherUserIsNotFoundAndNothingIsWritten(): void
+    {
+        // Given
+        $this->listTypeRepository->save(ShoppingListType::create('theirs', 'someone-else', 'Boucherie', new DateTimeImmutable(ShoppingListBuilder::DEFAULT_DATE)));
+
+        // Then
+        $this->expectExceptionObject(ShoppingListTypeException::notFound());
+
+        // When
+        try {
+            $this->service->open($this->ownerId, 'theirs');
+        } finally {
+            $this->assertSame([], $this->shoppingListRepository->findByOwner($this->ownerId)->toArray());
+        }
+    }
+
+    /**
+     * @return list<object>
+     */
+    private function eventDispatched(): array
+    {
+        return $this->eventDispatcher->eventDispatched;
+    }
+
     public function testTheListLimitStillApplies(): void
     {
         // Given : 1000 listes en pause

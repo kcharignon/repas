@@ -342,4 +342,53 @@ class ConversionRepositoryTest extends DatabaseTestCase
         ]);
         $this->assertFalse($this->conversionRepository->ingredientHasAtLeast(new IngredientBuilder()->isButter()->build(), 1));
     }
+
+    public function testTheConversionsOfSeveralIngredientsAreReadInOneQueryInTheOrderOfTheSingleRead(): void
+    {
+        // Arrange : la farine et le sucre ont des conversions propres (la universelle porte l'identifiant le plus petit : l'ordre ne vient pas d'eux),
+        // le beurre n'en a aucune
+        $flour = new IngredientBuilder()->isFlour()->build();
+        $sugar = new IngredientBuilder()->isSugar()->build();
+        $butter = new IngredientBuilder()->isButter()->build();
+        $universal = new ConversionBuilder()->isKiloToGramme()->withId('0000-universal')->build();
+        $flourOwn = new ConversionBuilder()->withStartUnit(new UnitBuilder()->isBowl()->build())->withEndUnit(new UnitBuilder()->isGramme()->build())->withCoefficient(120)->withIngredient($flour)->withId('zzzz-flour')->build();
+        $sugarOwn = new ConversionBuilder()->withStartUnit(new UnitBuilder()->isGlass()->build())->withEndUnit(new UnitBuilder()->isGramme()->build())->withCoefficient(150)->withIngredient($sugar)->withId('zzzz-sugar')->build();
+        foreach ([$universal, $sugarOwn, $flourOwn] as $conversion) {
+            $this->persister->saveConversion($conversion);
+        }
+        $this->persister->saveIngredient($butter);
+        $this->entityManager->clear();
+        $counter = static::getContainer()->get(\Repas\Tests\Helper\SqlBudget\QueryCounter::class);
+        $counter->reset();
+
+        // Act
+        $batch = $this->conversionRepository->findByIngredientsOrCommon([$flour, $sugar, $butter, $flour]);
+        $conversionReads = $counter->byTable()['SELECT conversion'] ?? 0;
+
+        // Assert : une seule lecture des conversions pour les trois ingrédients (un doublon dans la demande ne compte pas)
+        $this->assertSame(1, $conversionReads);
+        $this->assertSame([$flour->getSlug(), $sugar->getSlug(), $butter->getSlug()], array_keys($batch));
+        $this->assertSame(['zzzz-flour', '0000-universal'], array_map(static fn(Conversion $c): string => $c->getId(), $batch[$flour->getSlug()]->toArray()));
+        $this->assertSame(['zzzz-sugar', '0000-universal'], array_map(static fn(Conversion $c): string => $c->getId(), $batch[$sugar->getSlug()]->toArray()));
+        $this->assertSame(['0000-universal'], array_map(static fn(Conversion $c): string => $c->getId(), $batch[$butter->getSlug()]->toArray()));
+        // Et c'est exactement ce que lit un ingrédient seul
+        foreach ([$flour, $sugar, $butter] as $ingredient) {
+            $this->assertSame(
+                array_map(static fn(Conversion $c): string => $c->getId(), $this->conversionRepository->findByIngredientOrCommon($ingredient)->toArray()),
+                array_map(static fn(Conversion $c): string => $c->getId(), $batch[$ingredient->getSlug()]->toArray()),
+                $ingredient->getSlug(),
+            );
+        }
+    }
+
+    public function testNoIngredientMeansNoConversionQuery(): void
+    {
+        // Arrange
+        $counter = static::getContainer()->get(\Repas\Tests\Helper\SqlBudget\QueryCounter::class);
+        $counter->reset();
+
+        // Act / Assert
+        $this->assertSame([], $this->conversionRepository->findByIngredientsOrCommon([]));
+        $this->assertSame(0, $counter->count());
+    }
 }

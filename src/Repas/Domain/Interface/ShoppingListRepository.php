@@ -66,6 +66,27 @@ interface ShoppingListRepository
     public function findOneByMealId(string $mealId): ShoppingList;
 
     /**
+     * Les AUTRES listes du groupe de planification (ADR 0036 décision 9) : celles de ce propriétaire qui portent un repas de ce groupe, quel que
+     * soit leur statut, hors la liste déjà chargée par l'appelant. Jamais la liste d'un autre compte, même si elle portait le même identifiant de
+     * groupe. Vide pour un repas planifié seul. La plus ancienne d'abord.
+     *
+     * @return Tab<ShoppingList>
+     */
+    public function findOtherListsOfPlannedGroup(string $ownerId, string $plannedGroupId, string $exceptShoppingListId): Tab;
+
+    /**
+     * La liste EN COURS du propriétaire qui planifie cette recette : la liste principale d'abord, puis la plus ancienne. Sert à retrouver le
+     * repas d'une recette dont aucun produit n'est allé dans la liste principale (ADR 0036 décision 9).
+     */
+    public function findOneActiveWithRecipe(string $ownerId, string $recipeId): ?ShoppingList;
+
+    /**
+     * La liste EN COURS du propriétaire qui porte une ligne de ce produit : la liste principale d'abord, puis la plus ancienne. Diminuer un produit
+     * qui n'est plus dans la liste de sa destination le cherche ici (ADR 0036 décision 11).
+     */
+    public function findOneActiveWithRow(string $ownerId, string $ingredientSlug): ?ShoppingList;
+
+    /**
      * Une liste de courses contient-elle cet ingrédient ? (existence seulement : aucun agrégat n'est hydraté)
      */
     public function isIngredientUsed(string $ingredientSlug): bool;

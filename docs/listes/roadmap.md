@@ -10,7 +10,7 @@ Un agent à la fois sur le back (une PR par ticket, fusionnée avant la suivante
 | [LST-002](tickets/LST-002-types-de-liste.md) | back | Migration unique, types de liste (CRUD), rayons rattachés, voter, purge, suppression | xhigh | 001 | fait (cette PR) |
 | [LST-003](tickets/LST-003-destination-des-produits.md) | back | `ListDestinationResolver`, produit à part, copie / fusion | high | 002 | fait (cette PR) |
 | [LST-004](tickets/LST-004-plusieurs-listes-en-cours.md) | back | Une liste en cours par type, ouverture à la demande, lecture des listes ouvertes | high | 002 | fait (cette PR) |
-| [LST-005](tickets/LST-005-ajouts-eclates.md) | back | Planifier, augmenter, diminuer, groupe de repas, retirer du plan | xhigh | 003, 004 | à faire |
+| [LST-005](tickets/LST-005-ajouts-eclates.md) | back | Planifier, augmenter, diminuer, groupe de repas, retirer du plan | xhigh | 003, 004 | fait (cette PR) |
 | [LST-006](tickets/LST-006-front-types.md) | front | Moi > Types de liste, fiche d'un type | high | 002, 003 | à faire |
 | [LST-007](tickets/LST-007-front-listes.md) | front | Pastilles de listes, fiche d'un produit, message, hors ligne | high | 004, 005, 006 | à faire |
 | [LST-008](tickets/LST-008-voix.md) | back | Alexa : ajouter, demander, retirer sur toutes les listes ouvertes | high | 005 | à faire |

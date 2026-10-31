@@ -50,6 +50,18 @@ readonly class ActiveListForType
             throw ShoppingListException::activeShoppingListNotFound();
         }
 
+        return $this->open($ownerId, $listTypeId);
+    }
+
+    /**
+     * Ouvre une liste neuve de ce type, sans chercher celle qui serait déjà en cours : l'appelant l'a déjà cherchée (une recette éclatée juge
+     * toutes les listes qu'elle vise AVANT d'en ouvrir une, pour ne rien écrire quand elle est refusée).
+     *
+     * @throws ShoppingListException le plafond de listes est atteint
+     * @throws ShoppingListTypeException le type n'est pas à l'utilisateur
+     */
+    public function open(string $ownerId, string $listTypeId): OpenedList
+    {
         $opened = ($this->createShoppingListHandler)(new CreateShoppingListCommand($this->uuidGenerator->generate(), $ownerId, $listTypeId));
 
         return new OpenedList($opened, true);

@@ -23,22 +23,35 @@ class Meal
     #[ORM\Column]
     private ?int $serving = null;
 
-    // Identifiant de la planification qui a créé le repas (ADR 0036) ; null = un repas planifié seul. Lu par LST-005
+    // Identifiant de la planification qui a créé le repas (ADR 0036 décision 9) ; null = un repas planifié seul
     #[ORM\Column(name: 'planned_group_id', length: 36, nullable: true)]
     private ?string $plannedGroupId = null;
 
+    /**
+     * Les slugs des produits de la recette que ce repas a posés dans sa liste (LST-005, figés à la planification) ; null = toute la recette.
+     *
+     * @var ?list<string>
+     */
+    #[ORM\Column(name: 'placed_ingredients', type: 'json', nullable: true, options: ['jsonb' => true])]
+    private ?array $placedIngredients = null;
+
+    /**
+     * @param ?list<string> $placedIngredients
+     */
     public function __construct(
         ?string $id,
         ?string $shoppingListId,
         ?string $recipeId,
         ?int $serving,
         ?string $plannedGroupId = null,
+        ?array $placedIngredients = null,
     ) {
         $this->id = $id;
         $this->shoppingListId = $shoppingListId;
         $this->recipeId = $recipeId;
         $this->serving = $serving;
         $this->plannedGroupId = $plannedGroupId;
+        $this->placedIngredients = $placedIngredients;
     }
 
     public static function fromModel(MealModel $meal): static
@@ -49,6 +62,7 @@ class Meal
             recipeId: $meal->getRecipeId(),
             serving: $meal->getServing(),
             plannedGroupId: $meal->getPlannedGroupId(),
+            placedIngredients: $meal->getPlacedIngredients(),
         );
     }
 
@@ -56,6 +70,7 @@ class Meal
     {
         $this->serving = $mealModel->getServing();
         $this->plannedGroupId = $mealModel->getPlannedGroupId();
+        $this->placedIngredients = $mealModel->getPlacedIngredients();
     }
 
     public function getId(): ?string
@@ -102,5 +117,13 @@ class Meal
     public function getPlannedGroupId(): ?string
     {
         return $this->plannedGroupId;
+    }
+
+    /**
+     * @return ?list<string>
+     */
+    public function getPlacedIngredients(): ?array
+    {
+        return $this->placedIngredients;
     }
 }

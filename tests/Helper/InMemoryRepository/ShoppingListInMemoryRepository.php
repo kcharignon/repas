@@ -117,6 +117,46 @@ class ShoppingListInMemoryRepository extends AbstractInMemoryRepository implemen
         return $this->models->find(fn(ShoppingList $sl) => $sl->getMeals()->find(fn(Meal $meal) => $meal->getId() === $mealId));
     }
 
+    public function findOtherListsOfPlannedGroup(string $ownerId, string $plannedGroupId, string $exceptShoppingListId): Tab
+    {
+        $lists = $this->models->filter(
+            fn(ShoppingList $sl) => $sl->getOwnerId() === $ownerId && $sl->getId() !== $exceptShoppingListId
+                && $sl->getMeals()->find(fn(Meal $meal) => $meal->getPlannedGroupId() === $plannedGroupId) !== null,
+        )->toArray();
+        usort($lists, fn(ShoppingList $a, ShoppingList $b) => [$a->getCreatedAt(), $a->getId()] <=> [$b->getCreatedAt(), $b->getId()]);
+
+        return Tab::fromArray($lists);
+    }
+
+    public function findOneActiveWithRecipe(string $ownerId, string $recipeId): ?ShoppingList
+    {
+        return $this->firstActive($ownerId, fn(ShoppingList $sl) => $sl->getMeals()->find(fn(Meal $meal) => $meal->getRecipeId() === $recipeId) !== null);
+    }
+
+    public function findOneActiveWithRow(string $ownerId, string $ingredientSlug): ?ShoppingList
+    {
+        return $this->firstActive($ownerId, fn(ShoppingList $sl) => $sl->findRow($ingredientSlug) !== null);
+    }
+
+    /**
+     * La liste en cours du propriétaire qui vérifie la condition : la liste principale d'abord, puis la plus ancienne.
+     */
+    private function firstActive(string $ownerId, callable $condition): ?ShoppingList
+    {
+        $found = null;
+        /** @var ShoppingList $sl */
+        foreach ($this->models as $sl) {
+            if ($sl->getOwnerId() !== $ownerId || !$sl->isActivate() || !$condition($sl)) {
+                continue;
+            }
+            if ($found === null || [$sl->getListTypeId() !== null, $sl->getCreatedAt(), $sl->getId()] < [$found->getListTypeId() !== null, $found->getCreatedAt(), $found->getId()]) {
+                $found = $sl;
+            }
+        }
+
+        return $found;
+    }
+
     public function isIngredientUsed(string $ingredientSlug): bool
     {
         /** @var ShoppingList $shoppingList */
