@@ -34,6 +34,7 @@ use Repas\Repas\Application\Command\CreateRecipeType\CreateRecipeTypeCommand;
 use Repas\Repas\Application\Command\ChangeRecipeFavorite\ChangeRecipeFavoriteCommand;
 use Repas\Repas\Application\Command\ChangeSpokenMealServings\ChangeSpokenMealServingsCommand;
 use Repas\Repas\Application\Command\CreateShoppingList\CreateShoppingListCommand;
+use Repas\Repas\Application\Command\CreateShoppingListType\CreateShoppingListTypeCommand;
 use Repas\Repas\Application\Command\CreateUnit\CreateUnitCommand;
 use Repas\Repas\Application\Command\EnsureActiveShoppingList\EnsureActiveShoppingListCommand;
 use Repas\Repas\Application\Command\DeleteIngredientConversion\DeleteIngredientConversionCommand;
@@ -52,6 +53,7 @@ use Repas\Repas\Application\Command\RemoveMealFromPlan\removeMealFromPlanCommand
 use Repas\Repas\Application\Command\RemoveRecipe\RemoveRecipeCommand;
 use Repas\Repas\Application\Command\RemoveRecipeType\RemoveRecipeTypeCommand;
 use Repas\Repas\Application\Command\RemoveShoppingList\RemoveShoppingListCommand;
+use Repas\Repas\Application\Command\RemoveShoppingListType\RemoveShoppingListTypeCommand;
 use Repas\Repas\Application\Command\ReopenShoppingList\ReopenShoppingListCommand;
 use Repas\Repas\Application\Command\SeedUserIngredients\SeedUserIngredientsCommand;
 use Repas\Repas\Application\Command\SendShoppingList\SendShoppingListCommand;
@@ -67,6 +69,7 @@ use Repas\Repas\Application\Command\UpdateRecipe\UpdateRecipeRowSubCommand;
 use Repas\Repas\Application\Command\UpdateRecipeType\UpdateRecipeTypeCommand;
 use Repas\Repas\Application\Command\UpdateServingMeal\UpdateServingMealCommand;
 use Repas\Repas\Application\Command\UpdateShoppingList\UpdateShoppingListCommand;
+use Repas\Repas\Application\Command\UpdateShoppingListType\UpdateShoppingListTypeCommand;
 use Repas\Repas\Application\Command\UpdateUnit\UpdateUnitCommand;
 use Repas\Repas\Domain\Model\AliasKind;
 use Repas\Repas\Domain\Model\Ingredient;
@@ -75,6 +78,7 @@ use Repas\Repas\Domain\Model\Recipe;
 use Repas\Repas\Domain\Model\ShoppingList;
 use Repas\Repas\Domain\Model\ShoppingListRow;
 use Repas\Repas\Domain\Model\ShoppingListStatus;
+use Repas\Repas\Domain\Model\ShoppingListType;
 use Repas\Shared\Domain\Tool\Tab;
 use Repas\Shared\Domain\Tool\UuidGenerator;
 use Repas\Tests\Helper\Alexa\AlexaTestClient;
@@ -346,6 +350,38 @@ return [
         $list = $t->savedShoppingList($owner, $t->typicalRecipes($owner));
 
         return new RemoveShoppingListCommand($list->getId());
+    },
+
+    // --- Types de liste de courses (ADR 0036)
+    'creer-type-de-liste' => static function (WriteBudgetTestCase $t): object {
+        $owner = $t->savedUser();
+        // un type déjà là : le plafond et le nom sont jugés
+        $t->persister->saveShoppingListType(ShoppingListType::create(UuidGenerator::new(), $owner->getId(), 'Boucherie', new \DateTimeImmutable()));
+
+        return new CreateShoppingListTypeCommand(UuidGenerator::new(), 'Marché', $owner->getId());
+    },
+    // Renomme, ajoute un rayon et DÉPLACE celui d'un autre type du compte
+    'modifier-type-de-liste' => static function (WriteBudgetTestCase $t): object {
+        $owner = $t->savedUser();
+        foreach ([new DepartmentBuilder()->isMeat(), new DepartmentBuilder()->isCheese(), new DepartmentBuilder()->isMiscellaneous()] as $department) {
+            $t->persister->saveDepartment($department->build());
+        }
+        $butcher = ShoppingListType::create(UuidGenerator::new(), $owner->getId(), 'Boucherie', new \DateTimeImmutable())->replaceDepartments(['viande']);
+        $market = ShoppingListType::create(UuidGenerator::new(), $owner->getId(), 'Marché', new \DateTimeImmutable())->replaceDepartments(['divers']);
+        $t->persister->saveShoppingListType($butcher);
+        $t->persister->saveShoppingListType($market);
+
+        return new UpdateShoppingListTypeCommand($butcher->getId(), 'Boucherie fine', ['viande', 'fromage', 'divers'], $owner->getId());
+    },
+    // Le type a deux rayons, une liste en cours bien remplie et un produit à part : tout est remis en ordre en masse
+    'supprimer-type-de-liste' => static function (WriteBudgetTestCase $t): object {
+        $owner = $t->savedUser();
+        $type = ShoppingListType::create(UuidGenerator::new(), $owner->getId(), 'Boucherie', new \DateTimeImmutable())->replaceDepartments(['viande', 'fromage']);
+        $t->persister->saveShoppingListType($type);
+        $t->savedShoppingList($owner, $t->typicalRecipes($owner), fn(ShoppingListBuilder $builder): ShoppingListBuilder => $builder->withListTypeId($type->getId()));
+        $t->persister->saveIngredient(new IngredientBuilder()->isButter()->withCreator($owner, true)->withListDestination($type->getId())->build());
+
+        return new RemoveShoppingListTypeCommand($type->getId(), $owner->getId());
     },
 
     // --- Recettes

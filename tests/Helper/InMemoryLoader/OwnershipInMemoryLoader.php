@@ -8,6 +8,7 @@ use Repas\Repas\Domain\Exception\MealException;
 use Repas\Repas\Domain\Exception\RecipeException;
 use Repas\Repas\Domain\Exception\ShoppingListException;
 use Repas\Repas\Domain\Exception\ShoppingListRowException;
+use Repas\Repas\Domain\Exception\ShoppingListTypeException;
 use Repas\Repas\Application\Loader\OwnershipLoader;
 
 /**
@@ -22,6 +23,7 @@ class OwnershipInMemoryLoader implements OwnershipLoader
      * @param array<string, string> $mealOwners
      * @param array<string, string> $shoppingListRowOwners
      * @param list<string> $secretRecipes les identifiants des recettes secrètes (ADR 0033) : introuvables pour tout autre que leur auteur
+     * @param array<string, string> $listTypeOwners
      */
     public function __construct(
         private readonly array $ingredientCreators = [],
@@ -30,7 +32,13 @@ class OwnershipInMemoryLoader implements OwnershipLoader
         private readonly array $mealOwners = [],
         private readonly array $shoppingListRowOwners = [],
         private readonly array $secretRecipes = [],
+        private readonly array $listTypeOwners = [],
     ) {
+    }
+
+    public function listTypeOwnerId(string $listTypeId): string
+    {
+        return $this->listTypeOwners[$listTypeId] ?? throw ShoppingListTypeException::notFound();
     }
 
     public function ingredientCreatorId(string $slug): ?string

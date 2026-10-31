@@ -9,6 +9,7 @@ use Repas\Repas\Domain\Exception\MealException;
 use Repas\Repas\Domain\Exception\RecipeException;
 use Repas\Repas\Domain\Exception\ShoppingListException;
 use Repas\Repas\Domain\Exception\ShoppingListRowException;
+use Repas\Repas\Domain\Exception\ShoppingListTypeException;
 use Repas\Repas\Infrastructure\Entity\Ingredient;
 use Repas\Repas\Infrastructure\Entity\Meal;
 use Repas\Repas\Infrastructure\Entity\Recipe;
@@ -89,5 +90,12 @@ final readonly class OwnershipPostgreSQLLoader implements OwnershipLoader
             ->getOneOrNullResult();
 
         return $row === null ? throw ShoppingListRowException::notFound($shoppingListRowId) : $row['owner'];
+    }
+
+    public function listTypeOwnerId(string $listTypeId): string
+    {
+        $owner = $this->entityManager->getConnection()->fetchOne('SELECT owner_id FROM shopping_list_type WHERE id = ?', [$listTypeId]);
+
+        return $owner === false ? throw ShoppingListTypeException::notFound() : $owner;
     }
 }

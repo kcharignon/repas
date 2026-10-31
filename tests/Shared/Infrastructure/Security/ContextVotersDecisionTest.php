@@ -6,6 +6,8 @@ namespace Repas\Tests\Shared\Infrastructure\Security;
 use DateTimeImmutable;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
+use Repas\Repas\Domain\Interface\ShoppingListTypeRepository;
+use Repas\Repas\Domain\Model\ShoppingListType;
 use Repas\Repas\Infrastructure\Security\OwnerVoter;
 use Repas\Tests\Helper\Builder\IngredientBuilder;
 use Repas\Tests\Helper\Builder\RecipeBuilder;
@@ -27,7 +29,7 @@ use Symfony\Component\Security\Core\Authorization\Voter\VoterInterface;
  * Les droits d'accès tels que le VRAI gestionnaire de décision de Symfony les rend, avec les trois voters des contextes `User`, `Repas` et
  * `Voice` (ADR 0035 : chaque contexte juge ses objets) et la vraie base. Ce test garde la matrice de verdicts qu'avait le voter unique :
  *  - chaque attribut est tranché par UN seul voter, les autres s'abstiennent ;
- *  - l'administrateur passe pour `HIMSELF`, les listes, les repas, les lignes et les recettes ordinaires, JAMAIS pour `INGREDIENT_OWNER`,
+ *  - l'administrateur passe pour `HIMSELF`, les listes, les repas, les lignes et les recettes ordinaires, JAMAIS pour `INGREDIENT_OWNER`, `LIST_TYPE_OWNER`,
  *    `VOICE_LINK_OWNER` ni pour la recette secrète d'un autre (`404`, jamais `403`) ;
  *  - une ressource introuvable est un `404`, un compte désactivé n'a rien.
  */
@@ -45,6 +47,7 @@ class ContextVotersDecisionTest extends DatabaseTestCase
         'RECIPE_OWNER' => OwnerVoter::class,
         'MEAL_OWNER' => OwnerVoter::class,
         'SHOPPING_LIST_ROW_OWNER' => OwnerVoter::class,
+        'LIST_TYPE_OWNER' => OwnerVoter::class,
         'VOICE_LINK_OWNER' => VoiceLinkOwnerVoter::class,
     ];
 
@@ -71,13 +74,14 @@ class ContextVotersDecisionTest extends DatabaseTestCase
             'le propriétaire a tout' => ['owner', 'owner', $everything],
             'un administrateur propriétaire a tout' => ['owner-admin', 'owner-admin', $everything],
             'un autre compte n\'a rien, et la recette secrète lui est inconnue' => ['other', 'owner', [...$nothing, 'RECIPE_OWNER (secrète)' => self::NOT_FOUND]],
-            'un administrateur passe partout sauf pour les ingrédients, les liaisons Alexa et la recette secrète' => ['admin', 'owner', [
+            'un administrateur passe partout sauf pour les ingrédients, les types de liste, les liaisons Alexa et la recette secrète' => ['admin', 'owner', [
                 'HIMSELF' => self::GRANTED,
                 'INGREDIENT_OWNER' => self::DENIED,
                 'SHOPPING_LIST_OWNER' => self::GRANTED,
                 'RECIPE_OWNER' => self::GRANTED,
                 'MEAL_OWNER' => self::GRANTED,
                 'SHOPPING_LIST_ROW_OWNER' => self::GRANTED,
+                'LIST_TYPE_OWNER' => self::DENIED,
                 'VOICE_LINK_OWNER' => self::DENIED,
                 'RECIPE_OWNER (secrète)' => self::NOT_FOUND,
             ]],
@@ -89,6 +93,7 @@ class ContextVotersDecisionTest extends DatabaseTestCase
                 'RECIPE_OWNER' => self::DENIED,
                 'MEAL_OWNER' => self::GRANTED,
                 'SHOPPING_LIST_ROW_OWNER' => self::GRANTED,
+                'LIST_TYPE_OWNER' => self::DENIED,
                 'VOICE_LINK_OWNER' => self::DENIED,
                 'RECIPE_OWNER (secrète)' => self::DENIED,
             ]],
@@ -123,7 +128,7 @@ class ContextVotersDecisionTest extends DatabaseTestCase
 
         // Then : une ressource introuvable est un 404 ; seule une liste, un repas ou une ligne inconnus passent pour l'administrateur, qui n'a rien à
         // chercher (comme avant)
-        foreach (['INGREDIENT_OWNER', 'SHOPPING_LIST_OWNER', 'RECIPE_OWNER', 'MEAL_OWNER', 'SHOPPING_LIST_ROW_OWNER', 'VOICE_LINK_OWNER'] as $attribute) {
+        foreach (['INGREDIENT_OWNER', 'SHOPPING_LIST_OWNER', 'RECIPE_OWNER', 'MEAL_OWNER', 'SHOPPING_LIST_ROW_OWNER', 'LIST_TYPE_OWNER', 'VOICE_LINK_OWNER'] as $attribute) {
             $this->assertSame(self::NOT_FOUND, $this->verdict($owner, $attribute, 'unknown'), $attribute);
         }
         $this->assertSame(self::DENIED, $this->verdict($owner, 'HIMSELF', 'unknown'));
@@ -131,7 +136,7 @@ class ContextVotersDecisionTest extends DatabaseTestCase
         foreach (['SHOPPING_LIST_OWNER', 'MEAL_OWNER', 'SHOPPING_LIST_ROW_OWNER'] as $attribute) {
             $this->assertSame(self::GRANTED, $this->verdict($admin, $attribute, 'unknown'), $attribute);
         }
-        foreach (['INGREDIENT_OWNER', 'RECIPE_OWNER', 'VOICE_LINK_OWNER'] as $attribute) {
+        foreach (['INGREDIENT_OWNER', 'RECIPE_OWNER', 'LIST_TYPE_OWNER', 'VOICE_LINK_OWNER'] as $attribute) {
             $this->assertSame(self::NOT_FOUND, $this->verdict($admin, $attribute, 'unknown'), $attribute);
         }
     }
@@ -243,7 +248,7 @@ class ContextVotersDecisionTest extends DatabaseTestCase
 
     /**
      * Les objets d'un compte, un par attribut : le compte lui-même, un ingrédient, une liste avec un repas, une liste avec une ligne, une
-     * recette ordinaire, une recette secrète et une liaison avec Alexa.
+     * recette ordinaire, une recette secrète, un type de liste et une liaison avec Alexa.
      *
      * @return array<string, string> le sujet de chaque attribut, et `secretRecipe`
      */
@@ -265,6 +270,8 @@ class ContextVotersDecisionTest extends DatabaseTestCase
         $withRow = new ShoppingListBuilder()->withOwner($user)->addIngredient($ingredient)->build();
         $lists->save($withMeal);
         $lists->save($withRow);
+        $listTypeId = sprintf('%08d-2222-4222-8222-222222222222', crc32($name) % 100000000);
+        static::getContainer()->get(ShoppingListTypeRepository::class)->save(ShoppingListType::create($listTypeId, $user->getId(), 'Boucherie', new DateTimeImmutable('2026-10-31 10:00:00')));
         $linkId = sprintf('%08d-1111-4111-8111-111111111111', crc32($name) % 100000000);
         static::getContainer()->get(VoiceLinkRepository::class)->save(VoiceLink::create($linkId, $user->getId(), new DateTimeImmutable('2026-10-25 10:00:00')));
 
@@ -276,6 +283,7 @@ class ContextVotersDecisionTest extends DatabaseTestCase
             'secretRecipe' => $secretRecipe->getId(),
             'MEAL_OWNER' => $withMeal->getMeals()->reset()->getId(),
             'SHOPPING_LIST_ROW_OWNER' => $withRow->getRows()->reset()->getId(),
+            'LIST_TYPE_OWNER' => $listTypeId,
             'VOICE_LINK_OWNER' => $linkId,
         ];
     }

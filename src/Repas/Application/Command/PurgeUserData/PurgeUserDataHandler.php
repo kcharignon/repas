@@ -9,12 +9,13 @@ use Repas\Repas\Domain\Interface\IngredientDistinctRepository;
 use Repas\Repas\Domain\Interface\IngredientRepository;
 use Repas\Repas\Domain\Interface\RecipeRepository;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
+use Repas\Repas\Domain\Interface\ShoppingListTypeRepository;
 use Repas\Repas\Domain\Interface\SpokenPhraseChoiceRepository;
 use Repas\Repas\Domain\Interface\SpokenRecipePhraseChoiceRepository;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 /**
- * Supprime les listes de courses, les recettes, les ingrédients personnalisés (copies d'adoption comprises), les alias d'ingrédients, les « Pas le même » et la mémoire de phrase (produits et recettes) de la commande vocale d'un compte supprimé, comme s'il n'avait
+ * Supprime les listes de courses, les types de liste (et leurs rayons), les recettes, les ingrédients personnalisés (copies d'adoption comprises), les alias d'ingrédients, les « Pas le même » et la mémoire de phrase (produits et recettes) de la commande vocale d'un compte supprimé, comme s'il n'avait
  * jamais existé (ADR 0021). Les suppressions se font en masse, sans passer par `RemoveRecipe` ni `RemoveIngredient` : ces
  * cas d'usage refusent de supprimer ce qu'une liste utilise, et leurs événements mettraient à jour les statistiques d'un
  * compte qui n'existe plus.
@@ -31,6 +32,7 @@ readonly class PurgeUserDataHandler
         private IngredientDistinctRepository $distinctRepository,
         private SpokenPhraseChoiceRepository $spokenPhraseRepository,
         private SpokenRecipePhraseChoiceRepository $spokenRecipePhraseRepository,
+        private ShoppingListTypeRepository $listTypeRepository,
     ) {
     }
 
@@ -54,5 +56,7 @@ readonly class PurgeUserDataHandler
         // Ce qu'il avait appris à Alexa (mémoire de phrase) aussi
         $this->spokenPhraseRepository->deleteByUser($command->userId);
         $this->spokenRecipePhraseRepository->deleteByUser($command->userId);
+        // Ses types de liste de courses et les rayons qu'il y avait rattachés (ADR 0036) ; ses listes sont déjà parties plus haut
+        $this->listTypeRepository->deleteByOwner($command->userId);
     }
 }

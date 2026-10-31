@@ -10,6 +10,7 @@ use Repas\Repas\Domain\Interface\IngredientAliasRepository;
 use Repas\Repas\Domain\Interface\IngredientRepository;
 use Repas\Repas\Domain\Interface\RecipeRepository;
 use Repas\Repas\Domain\Interface\RecipeTypeRepository;
+use Repas\Repas\Domain\Interface\ShoppingListTypeRepository;
 use Repas\Repas\Domain\Interface\UnitRepository;
 use Repas\Repas\Domain\Model\Conversion;
 use Repas\Repas\Domain\Model\Department;
@@ -18,6 +19,7 @@ use Repas\Repas\Domain\Model\IngredientAlias;
 use Repas\Repas\Domain\Model\Recipe;
 use Repas\Repas\Domain\Model\RecipeRow;
 use Repas\Repas\Domain\Model\RecipeType;
+use Repas\Repas\Domain\Model\ShoppingListType;
 use Repas\Repas\Domain\Model\Unit;
 use Repas\Tests\Helper\Builder\IngredientBuilder;
 use Repas\Tests\Helper\Builder\UserBuilder;
@@ -54,6 +56,11 @@ final readonly class DataPersister
     public function saveDepartment(Department $department): void
     {
         $this->container->get(DepartmentRepository::class)->save($department);
+    }
+
+    public function saveShoppingListType(ShoppingListType $listType): void
+    {
+        $this->container->get(ShoppingListTypeRepository::class)->save($listType);
     }
 
     public function saveRecipeType(RecipeType $recipeType): void
