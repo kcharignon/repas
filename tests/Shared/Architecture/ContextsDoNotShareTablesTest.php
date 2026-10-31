@@ -9,15 +9,9 @@ use PHPUnit\Framework\TestCase;
  * `ingredient` à `Repas`, `drive_*` à `Drive`, `voice_*` à `Voice`). Deptrac ne voit pas le SQL : ce test lit les tables déclarées par les
  * entités Doctrine de chaque contexte, puis cherche leur nom après `FROM`, `JOIN`, `UPDATE`, `INTO` ou `TABLE` (et dans les `->from('…')`
  * du QueryBuilder) dans le code des autres contextes, commentaires exclus.
- *
- * `LEGACY` est un cliquet : les accès d'avant la règle, qui ne font que diminuer (le test échoue aussi quand une entrée n'a plus lieu
- * d'être, pour qu'on la retire).
  */
 class ContextsDoNotShareTablesTest extends TestCase
 {
-    /** @var array<string, list<string>> fichier => tables d'un autre contexte qu'il lit encore */
-    private const array LEGACY = [];
-
     public function testNoContextQueriesTheTablesOfAnother(): void
     {
         // Given
@@ -37,7 +31,7 @@ class ContextsDoNotShareTablesTest extends TestCase
         }
 
         // Then
-        $this->assertSame(self::LEGACY, $found, 'Une table appartient à un seul contexte : les autres passent par son Open Host Service (ADR 0035).');
+        $this->assertSame([], $found, 'Une table appartient à un seul contexte : les autres passent par son Open Host Service (ADR 0035).');
     }
 
     public function testEveryContextOwnsTablesAndNoTableIsOwnedTwice(): void
