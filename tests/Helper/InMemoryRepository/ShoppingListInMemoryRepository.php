@@ -135,6 +135,16 @@ class ShoppingListInMemoryRepository extends AbstractInMemoryRepository implemen
         }
     }
 
+    public function detachFromListType(string $ownerId, string $listTypeId): void
+    {
+        /** @var ShoppingList $shoppingList */
+        foreach ($this->models as $shoppingList) {
+            if ($shoppingList->getOwnerId() === $ownerId && $shoppingList->getListTypeId() === $listTypeId) {
+                $shoppingList->detachFromListType();
+            }
+        }
+    }
+
     /**
      * @return list<string>
      */

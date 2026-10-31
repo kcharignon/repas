@@ -29,6 +29,7 @@ class IngredientBuilder implements Builder
     private UserBuilder|User|null $creator;
     private ?string $adoptedFrom = null;
     private bool $isBase = false;
+    private ?string $listDestination = null;
     private bool $withoutCreator = false;
     /** @var Tab<Unit>  */
     private Tab $compatibleUnits;
@@ -92,6 +93,7 @@ class IngredientBuilder implements Builder
             'compatible_units' => $this->compatibleUnits,
             'adopted_from' => $this->adoptedFrom,
             'is_base' => $this->isBase,
+            'list_destination' => $this->listDestination,
         ]);
     }
 
@@ -250,6 +252,13 @@ class IngredientBuilder implements Builder
     public function withBase(bool $isBase = true): self
     {
         $this->isBase = $isBase;
+        return $this;
+    }
+
+    /** Le choix du propriétaire sur la liste de ce produit (ADR 0036) : `null` par défaut (« comme son rayon »), `main` ou l'identifiant d'un type. */
+    public function withListDestination(?string $listDestination): self
+    {
+        $this->listDestination = $listDestination;
         return $this;
     }
 

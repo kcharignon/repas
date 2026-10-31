@@ -61,6 +61,7 @@ readonly class MealPostgreSQLRepository extends PostgreSQLRepository
             'shopping_list_id' => $meal->getShoppingListId(),
             'recipe_id' => $meal->getRecipeId(),
             'serving' => $meal->getServing(),
+            'planned_group_id' => $meal->getPlannedGroupId(),
         ]);
     }
 

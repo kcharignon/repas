@@ -13,6 +13,7 @@ class MealBuilder implements Builder
     private ?string $shoppingListId = null;
     private RecipeBuilder|Recipe|null $recipe = null;
     private ?int $serving = null;
+    private ?string $plannedGroupId = null;
 
     public function setId(?string $id): MealBuilder
     {
@@ -32,6 +33,13 @@ class MealBuilder implements Builder
         return $this;
     }
 
+    /** L'identifiant de la planification qui a créé le repas (ADR 0036) : `null` par défaut, un repas planifié seul. */
+    public function withPlannedGroupId(?string $plannedGroupId): MealBuilder
+    {
+        $this->plannedGroupId = $plannedGroupId;
+        return $this;
+    }
+
     public function withServing(?int $serving): MealBuilder
     {
         $this->serving = $serving;
@@ -47,6 +55,7 @@ class MealBuilder implements Builder
             'shopping_list_id' => $this->shoppingListId,
             'recipe_id' => $recipe->getId(),
             'serving' => $this->serving,
+            'planned_group_id' => $this->plannedGroupId,
         ]);
     }
 

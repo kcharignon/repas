@@ -20,6 +20,7 @@ final class Meal implements ModelInterface
         private string $shoppingListId,
         private string $recipeId,
         private int    $serving,
+        private ?string $plannedGroupId = null,
     ) {
     }
 
@@ -46,8 +47,18 @@ final class Meal implements ModelInterface
             id: $datas['id'],
             shoppingListId: $datas['shopping_list_id'],
             recipeId: $datas['recipe_id'],
-            serving: $datas['serving']
+            serving: $datas['serving'],
+            plannedGroupId: $datas['planned_group_id'] ?? null,
         );
+    }
+
+    /**
+     * L'identifiant de la planification qui a créé ce repas (ADR 0036) : les repas d'une même planification éclatée entre plusieurs listes le
+     * partagent. `null` pour un repas planifié seul (tous ceux d'avant les types). Rien ne le pose ni ne le lit encore (LST-005).
+     */
+    public function getPlannedGroupId(): ?string
+    {
+        return $this->plannedGroupId;
     }
 
     public function getId(): string

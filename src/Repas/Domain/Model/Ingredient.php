@@ -35,6 +35,7 @@ final class Ingredient implements ModelInterface
         private Tab        $compatibleUnits,
         private ?string    $adoptedFrom = null,
         private bool       $isBase = false,
+        private ?string    $listDestination = null,
     ) {
     }
 
@@ -197,6 +198,26 @@ final class Ingredient implements ModelInterface
         }
     }
 
+    /**
+     * Le choix de l'utilisateur sur la liste où va ce produit (ADR 0036) : `null` = « comme son rayon », sinon la valeur réservée `main` (la
+     * liste principale) ou l'identifiant d'un type de liste de son propriétaire. Un choix PERSONNEL : une copie du produit (copie de recette,
+     * amorçage d'un compte) ne le porte jamais, la fusion garde celui du produit conservé. Rien ne le lit encore (LST-003).
+     */
+    public function getListDestination(): ?string
+    {
+        return $this->listDestination;
+    }
+
+    /**
+     * Pose ou efface (`null`) le choix de liste du produit. Seule la suppression d'un type l'efface pour l'instant (en masse en base,
+     * `IngredientRepository::clearListDestination`) ; le cas d'usage qui le choisit à la main est LST-003.
+     */
+    public function changeListDestination(?string $listDestination): Ingredient
+    {
+        $this->listDestination = $listDestination;
+        return $this;
+    }
+
     public function hasSameUnitInCookingAndPurchase(): bool
     {
         return $this->defaultCookingUnit->isEqual($this->defaultPurchaseUnit);
@@ -310,6 +331,7 @@ final class Ingredient implements ModelInterface
             compatibleUnits: $datas['compatible_units'],
             adoptedFrom: $datas['adopted_from'],
             isBase: $datas['is_base'] ?? false,
+            listDestination: $datas['list_destination'] ?? null,
         );
     }
 

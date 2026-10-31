@@ -35,6 +35,7 @@ class ShoppingListBuilder implements Builder
     private ?string $name = null;
     private int $version = 1;
     private ?DateTimeImmutable $sentAt = null;
+    private ?string $listTypeId = null;
 
     public function __construct(?UuidGeneratorInterface $uuidGenerator = null)
     {
@@ -57,6 +58,7 @@ class ShoppingListBuilder implements Builder
             'rows' => Tab::newEmptyTyped(ShoppingListRow::class),
             'version' => $this->version,
             'sent_at' => $this->status === ShoppingListStatus::SENT ? ($this->sentAt ?? new DateTimeImmutable(self::DEFAULT_DATE)) : null,
+            'list_type_id' => $this->listTypeId,
         ]);
 
         // On ajoute les repas(recette)
@@ -142,6 +144,13 @@ class ShoppingListBuilder implements Builder
     public function withName(?string $name): self
     {
         $this->name = $name;
+        return $this;
+    }
+
+    /** Le type de la liste (ADR 0036) : `null` par défaut, la liste principale. */
+    public function withListTypeId(?string $listTypeId): self
+    {
+        $this->listTypeId = $listTypeId;
         return $this;
     }
 

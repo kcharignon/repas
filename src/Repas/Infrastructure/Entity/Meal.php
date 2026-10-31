@@ -23,16 +23,22 @@ class Meal
     #[ORM\Column]
     private ?int $serving = null;
 
+    // Identifiant de la planification qui a créé le repas (ADR 0036) ; null = un repas planifié seul. Lu par LST-005
+    #[ORM\Column(name: 'planned_group_id', length: 36, nullable: true)]
+    private ?string $plannedGroupId = null;
+
     public function __construct(
         ?string $id,
         ?string $shoppingListId,
         ?string $recipeId,
-        ?int $serving
+        ?int $serving,
+        ?string $plannedGroupId = null,
     ) {
         $this->id = $id;
         $this->shoppingListId = $shoppingListId;
         $this->recipeId = $recipeId;
         $this->serving = $serving;
+        $this->plannedGroupId = $plannedGroupId;
     }
 
     public static function fromModel(MealModel $meal): static
@@ -42,12 +48,14 @@ class Meal
             shoppingListId: $meal->getShoppingListId(),
             recipeId: $meal->getRecipeId(),
             serving: $meal->getServing(),
+            plannedGroupId: $meal->getPlannedGroupId(),
         );
     }
 
     public function updateFromModel(MealModel $mealModel): void
     {
         $this->serving = $mealModel->getServing();
+        $this->plannedGroupId = $mealModel->getPlannedGroupId();
     }
 
     public function getId(): ?string
@@ -89,5 +97,10 @@ class Meal
         $this->serving = $serving;
 
         return $this;
+    }
+
+    public function getPlannedGroupId(): ?string
+    {
+        return $this->plannedGroupId;
     }
 }

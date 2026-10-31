@@ -398,4 +398,106 @@ class ShoppingListRepositoryTest extends DatabaseTestCase
         $this->assertFalse($this->shoppingListRepository->isSent($shoppingList->getId()));
         $this->assertSame(3, $reopened->getVersion());
     }
+
+    public function testTheListTypeAndThePlannedGroupOfAMealRoundTripThroughTheDatabase(): void
+    {
+        // Arrange : une liste d'un type, avec un repas d'une planification groupée et un repas planifié seul (ADR 0036)
+        $user = $this->savedUser();
+        $first = $this->savedRecipe($user, new RecipeBuilder()->isPastaCarbonara());
+        $second = $this->savedRecipe($user, new RecipeBuilder()->isSoftBoiledEggs());
+        $typed = new ShoppingListBuilder()->withOwner($user)->withListTypeId('type-1')->addRecipe($first)->addRecipe($second)->build();
+        $main = new ShoppingListBuilder()->withOwner($user)->withStatus(ShoppingListStatus::PAUSED)->build();
+        $this->shoppingListRepository->save($typed);
+        $this->shoppingListRepository->save($main);
+        $this->entityManager->getConnection()->executeStatement("UPDATE meal SET planned_group_id = 'group-1' WHERE id = ?", [$typed->getMeals()->reset()->getId()]);
+        $this->entityManager->clear();
+
+        // Act
+        $loaded = $this->shoppingListRepository->findOneById($typed->getId());
+
+        // Assert : lus en base (l'identity map est vide)
+        $this->assertSame('type-1', $loaded->getListTypeId());
+        $this->assertNull($this->shoppingListRepository->findOneById($main->getId())->getListTypeId());
+        $plannedGroups = array_map(fn($meal) => $meal->getPlannedGroupId(), $loaded->getMeals()->toArray());
+        sort($plannedGroups);
+        $this->assertSame([null, 'group-1'], $plannedGroups);
+
+        // Act : une modification enregistre la liste sans rien perdre
+        $loaded->setName('Boucherie');
+        $this->shoppingListRepository->save($loaded);
+        $this->entityManager->clear();
+
+        // Assert
+        $this->assertSame('type-1', $this->shoppingListRepository->findOneById($typed->getId())->getListTypeId());
+        $this->assertSame(['group-1'], $this->entityManager->getConnection()->fetchFirstColumn('SELECT planned_group_id FROM meal WHERE planned_group_id IS NOT NULL'));
+    }
+
+    public function testDetachingAListTypeUnsetsTheTypeOfItsListsPausesTheCurrentOneAndBumpsItsVersion(): void
+    {
+        // Arrange : quatre listes du type dans quatre statuts, une liste d'un autre type, la liste principale en cours et celle d'un autre compte
+        $user = $this->savedUser();
+        $other = $this->savedUser();
+        $lists = [];
+        foreach (['active' => ShoppingListStatus::ACTIVE, 'sent' => ShoppingListStatus::SENT, 'paused' => ShoppingListStatus::PAUSED, 'completed' => ShoppingListStatus::COMPLETED] as $label => $status) {
+            $lists[$label] = new ShoppingListBuilder()->withOwner($user)->withListTypeId('type-1')->withStatus($status)->withName($label)->build();
+        }
+        $lists['other-type'] = new ShoppingListBuilder()->withOwner($user)->withListTypeId('type-2')->build();
+        $lists['main'] = new ShoppingListBuilder()->withOwner($user)->build();
+        $lists['someone-else'] = new ShoppingListBuilder()->withOwner($other)->withListTypeId('type-1')->build();
+        foreach ($lists as $list) {
+            $this->shoppingListRepository->save($list);
+        }
+        $this->entityManager->clear();
+        $counter = static::getContainer()->get(\Repas\Tests\Helper\SqlBudget\QueryCounter::class);
+        $counter->reset();
+
+        // Act
+        $this->shoppingListRepository->detachFromListType($user->getId(), 'type-1');
+
+        // Assert : une seule instruction, aucune liste hydratée
+        $this->assertSame(['UPDATE shopping_list' => 1], $counter->byTable());
+        $rows = [];
+        foreach ($this->entityManager->getConnection()->fetchAllAssociative('SELECT name, list_type_id, status, version FROM shopping_list') as $row) {
+            $rows[$row['name'] ?? ($row['list_type_id'] === 'type-2' ? 'other-type' : 'main-or-else')][] = [$row['list_type_id'], $row['status'], (int) $row['version']];
+        }
+        $this->assertSame([null, 'PAUSED', 2], $rows['active'][0], 'la liste en cours passe en pause, version +1');
+        $this->assertSame([null, 'SENT', 1], $rows['sent'][0], 'une liste envoyée garde son statut');
+        $this->assertSame([null, 'PAUSED', 1], $rows['paused'][0]);
+        $this->assertSame([null, 'COMPLETED', 1], $rows['completed'][0]);
+        $this->assertSame(['type-2', 'ACTIVE', 1], $rows['other-type'][0], "la liste d'un autre type n'est pas touchée");
+        $this->assertContains(['type-1', 'ACTIVE', 1], $rows['main-or-else'], "la liste d'un autre compte n'est pas touchée");
+        $this->assertContains([null, 'ACTIVE', 1], $rows['main-or-else'], 'la liste principale en cours reste en cours');
+    }
+
+    public function testDetachingAListTypeKeepsEveryRowMealAndIngredientOfItsLists(): void
+    {
+        // Arrange
+        $user = $this->savedUser();
+        $recipe = $this->savedRecipe($user, new RecipeBuilder()->isPastaCarbonara());
+        $list = new ShoppingListBuilder()->withOwner($user)->withListTypeId('type-1')->addRecipe($recipe)->addIngredient(new IngredientBuilder()->isEgg())->build();
+        $this->persister->saveIngredient(new IngredientBuilder()->isEgg()->build());
+        $this->shoppingListRepository->save($list);
+        $this->entityManager->clear();
+        $connection = $this->entityManager->getConnection();
+        $before = [
+            (int) $connection->fetchOne('SELECT COUNT(*) FROM meal'),
+            (int) $connection->fetchOne('SELECT COUNT(*) FROM shopping_list_row'),
+            (int) $connection->fetchOne('SELECT COUNT(*) FROM shopping_list_ingredient'),
+        ];
+
+        // Act
+        $this->shoppingListRepository->detachFromListType($user->getId(), 'type-1');
+        $this->entityManager->clear();
+
+        // Assert : aucune ligne n'est déplacée, fusionnée ni perdue
+        $this->assertGreaterThan(0, array_sum($before));
+        $this->assertSame($before, [
+            (int) $connection->fetchOne('SELECT COUNT(*) FROM meal'),
+            (int) $connection->fetchOne('SELECT COUNT(*) FROM shopping_list_row'),
+            (int) $connection->fetchOne('SELECT COUNT(*) FROM shopping_list_ingredient'),
+        ]);
+        $reloaded = $this->shoppingListRepository->findOneById($list->getId());
+        $this->assertNull($reloaded->getListTypeId());
+        RepasAssert::assertShoppingListRows($list->getRows(), $reloaded->getRows());
+    }
 }
