@@ -13,7 +13,7 @@ Un agent à la fois sur le back (une PR par ticket, fusionnée avant la suivante
 | [LST-005](tickets/LST-005-ajouts-eclates.md) | back | Planifier, augmenter, diminuer, groupe de repas, retirer du plan | xhigh | 003, 004 | fait (cette PR) |
 | [LST-006](tickets/LST-006-front-types.md) | front | Moi > Types de liste, fiche d'un type | high | 002, 003 | à faire |
 | [LST-007](tickets/LST-007-front-listes.md) | front | Pastilles de listes, fiche d'un produit, message, hors ligne | high | 004, 005, 006 | à faire |
-| [LST-008](tickets/LST-008-voix.md) | back | Alexa : ajouter, demander, retirer sur toutes les listes ouvertes | high | 005 | à faire |
+| [LST-008](tickets/LST-008-voix.md) | back | Alexa : ajouter, demander, retirer sur toutes les listes ouvertes | high | 005 | fait (cette PR) |
 | [LST-009](tickets/LST-009-recette-et-release.md) | humain | Recette sur téléphone, releases back puis site | — | 007, 008 | à faire |
 
 ## Règles qui valent pour tous les tickets
