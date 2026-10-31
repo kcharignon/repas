@@ -118,4 +118,38 @@ class ReopenShoppingListHandlerTest extends TestCase
         // When
         ($this->handler)(new ReopenShoppingListCommand('unknown'));
     }
+
+    public function testReopeningATypedListPausesOnlyTheCurrentListOfItsType(): void
+    {
+        // Given : la liste principale (active) reste en cours ; la Boucherie en cours et une Boucherie envoyée
+        $owner = new UserBuilder()->withId('owner-id')->build();
+        $egg = new IngredientBuilder()->isEgg();
+        $this->shoppingListRepository->save(new ShoppingListBuilder()->withId('butcher-active')->withOwner($owner)->withListTypeId('butcher')->build());
+        $this->shoppingListRepository->save(
+            new ShoppingListBuilder()->withId('butcher-sent')->withOwner($owner)->withListTypeId('butcher')->addIngredient($egg)->withStatus(Status::SENT)->build(),
+        );
+
+        // When
+        ($this->handler)(new ReopenShoppingListCommand('butcher-sent'));
+
+        // Then
+        $this->assertSame(Status::ACTIVE, $this->statusOf('butcher-sent'));
+        $this->assertSame(Status::PAUSED, $this->statusOf('butcher-active'));
+        $this->assertSame(Status::ACTIVE, $this->statusOf('active'));
+    }
+
+    public function testReopeningTheMainListLeavesTheTypedListsInProgressAlone(): void
+    {
+        // Given
+        $owner = new UserBuilder()->withId('owner-id')->build();
+        $this->shoppingListRepository->save(new ShoppingListBuilder()->withId('butcher-active')->withOwner($owner)->withListTypeId('butcher')->build());
+
+        // When
+        ($this->handler)(new ReopenShoppingListCommand('sent'));
+
+        // Then
+        $this->assertSame(Status::ACTIVE, $this->statusOf('sent'));
+        $this->assertSame(Status::PAUSED, $this->statusOf('active'));
+        $this->assertSame(Status::ACTIVE, $this->statusOf('butcher-active'));
+    }
 }

@@ -10,12 +10,14 @@ use Repas\Repas\Application\Query\GetShoppingList\ShoppingListDepartmentDTO;
 use Repas\Repas\Application\Query\GetShoppingList\ShoppingListMealDTO;
 use Repas\Repas\Application\Query\GetShoppingList\ShoppingListRecipeTypeDTO;
 use Repas\Repas\Application\Query\GetShoppingList\ShoppingListRowDTO;
+use Repas\Repas\Application\Query\ListOpenShoppingLists\OpenShoppingListDTO;
 use Repas\Repas\Application\Query\ListShoppingLists\ShoppingListDTO;
 use Repas\Repas\Domain\Exception\MealException;
 use Repas\Repas\Domain\Exception\ShoppingListException;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Repas\Domain\Model\ShoppingList;
 use Repas\Repas\Domain\Model\ShoppingListStatus;
+use Repas\Repas\Domain\Model\ShoppingListType;
 use Repas\Tests\Helper\Builder\DepartmentBuilder;
 use Repas\Tests\Helper\Builder\IngredientBuilder;
 use Repas\Tests\Helper\Builder\RecipeBuilder;
@@ -138,6 +140,123 @@ class ShoppingListPostgreSQLLoaderTest extends DatabaseTestCase
 
         // Then
         $this->assertSame(['list-mine'], array_map(static fn(ShoppingListDTO $list): string => $list->id, $result));
+    }
+
+    public function testListByOwnerReturnsTheTypeIdOfEachListAndNullForTheMainList(): void
+    {
+        // Given
+        $owner = $this->savedUser();
+        $butcher = ShoppingListType::create('butcher', $owner->getId(), 'Boucherie', new DateTimeImmutable('2026-10-01 10:00:00'));
+        $this->persister->saveShoppingListType($butcher);
+        $this->saveShoppingList($owner, 'main', ShoppingListStatus::ACTIVE, null, '2026-10-12 10:00:00');
+        $this->shoppingListRepository->save(new ShoppingListBuilder()->withId('typed')->withOwner($owner)->withListTypeId('butcher')->withName('Boucherie')->withCreatedAt(new DateTimeImmutable('2026-10-13 10:00:00'))->build());
+
+        // When
+        $result = $this->shoppingListLoader->listByOwner($owner->getId());
+
+        // Then
+        $this->assertSame(['typed' => 'butcher', 'main' => null], array_column(array_map(static fn(ShoppingListDTO $l): array => [$l->id, $l->typeId], $result), 1, 0));
+    }
+
+    public function testListOpenByOwnerPutsTheMainListFirstThenTheTypesByCreationDate(): void
+    {
+        // Given : le type Marché est plus ancien que Boucherie, mais sa liste est plus récente ; une Poissonnerie en pause, une Épicerie envoyée
+        $owner = $this->savedUser();
+        foreach ([['market', 'Marché', '2026-10-01 10:00:00'], ['butcher', 'Boucherie', '2026-10-02 10:00:00'], ['fish', 'Poissonnerie', '2026-10-03 10:00:00'], ['grocery', 'Épicerie', '2026-10-04 10:00:00']] as [$id, $name, $at]) {
+            $this->persister->saveShoppingListType(ShoppingListType::create($id, $owner->getId(), $name, new DateTimeImmutable($at)));
+        }
+        $this->shoppingListRepository->save(new ShoppingListBuilder()->withId('butcher-list')->withOwner($owner)->withListTypeId('butcher')->withName('Boucherie')->withCreatedAt(new DateTimeImmutable('2026-10-10 10:00:00'))->build());
+        $this->shoppingListRepository->save(new ShoppingListBuilder()->withId('market-list')->withOwner($owner)->withListTypeId('market')->withName('Marché')->withCreatedAt(new DateTimeImmutable('2026-10-20 10:00:00'))->build());
+        $this->shoppingListRepository->save(new ShoppingListBuilder()->withId('fish-list')->withOwner($owner)->withListTypeId('fish')->withStatus(ShoppingListStatus::PAUSED)->build());
+        $this->shoppingListRepository->save(new ShoppingListBuilder()->withId('grocery-list')->withOwner($owner)->withListTypeId('grocery')->addIngredient(new IngredientBuilder()->isEgg()->build())->withStatus(ShoppingListStatus::SENT)->build());
+        $this->shoppingListRepository->save(new ShoppingListBuilder()->withId('done')->withOwner($owner)->withStatus(ShoppingListStatus::COMPLETED)->build());
+        $this->saveShoppingList($owner, 'main', ShoppingListStatus::ACTIVE, null, '2026-10-30 10:00:00');
+
+        // When
+        $result = $this->shoppingListLoader->listOpenByOwner($owner->getId());
+
+        // Then
+        $this->assertSame([['main', null], ['market-list', 'market'], ['butcher-list', 'butcher']], array_map(static fn(OpenShoppingListDTO $l): array => [$l->id, $l->typeId], $result));
+        $this->assertSame('30 octobre 2026', $result[0]->name);
+        $this->assertSame('Marché', $result[1]->name);
+    }
+
+    public function testListOpenByOwnerCountsTheRowsAndTheOnesLeftToTickAndReadsTheVersion(): void
+    {
+        // Given : trois lignes dont une cochée, une liste vide
+        $owner = $this->savedUser();
+        $list = new ShoppingListBuilder()->withId('main')->withOwner($owner);
+        foreach ([new IngredientBuilder()->isBread()->build(), new IngredientBuilder()->isPasta()->build(), new IngredientBuilder()->isEgg()->build()] as $ingredient) {
+            $this->persister->saveIngredient($ingredient);
+            $list->addIngredient($ingredient);
+        }
+        $main = $list->build();
+        $main->getRows()->find(fn($row) => $row->getIngredientSlug() === new IngredientBuilder()->isEgg()->build()->getSlug())->tick();
+        $this->shoppingListRepository->save($main);
+        $this->persister->saveShoppingListType(ShoppingListType::create('butcher', $owner->getId(), 'Boucherie', new DateTimeImmutable('2026-10-01 10:00:00')));
+        $this->shoppingListRepository->save(new ShoppingListBuilder()->withId('butcher-list')->withOwner($owner)->withListTypeId('butcher')->withName('Boucherie')->withVersion(4)->build());
+
+        // When
+        $result = $this->shoppingListLoader->listOpenByOwner($owner->getId());
+
+        // Then
+        $this->assertSame([['main', 3, 2], ['butcher-list', 0, 0]], array_map(static fn(OpenShoppingListDTO $l): array => [$l->id, $l->rowCount, $l->uncheckedCount], $result));
+        $this->assertSame(1, $result[0]->version);
+    }
+
+    public function testListOpenByOwnerNeverReturnsTheListsOfAnotherUserAndIsEmptyWithoutList(): void
+    {
+        // Given
+        $owner = $this->savedUser();
+        $other = $this->savedUser();
+        $this->saveShoppingList($other, 'theirs', ShoppingListStatus::ACTIVE, null, '2026-10-12 10:00:00');
+
+        // When / Then
+        $this->assertSame([], $this->shoppingListLoader->listOpenByOwner($owner->getId()));
+    }
+
+    public function testListOpenByOwnerReadsInASingleQueryWhateverTheNumberOfTypes(): void
+    {
+        // Given : dix types, une liste en cours chacun
+        $owner = $this->savedUser();
+        for ($i = 0; $i < 10; $i++) {
+            $this->persister->saveShoppingListType(ShoppingListType::create("type-$i", $owner->getId(), "Magasin $i", new DateTimeImmutable("2026-10-01 10:00:0$i")));
+            $this->shoppingListRepository->save(new ShoppingListBuilder()->withId("list-$i")->withOwner($owner)->withListTypeId("type-$i")->build());
+        }
+        static::getContainer()->get('doctrine')->getManager()->clear();
+        $counter = static::getContainer()->get(QueryCounter::class);
+        $counter->reset();
+
+        // When
+        $result = $this->shoppingListLoader->listOpenByOwner($owner->getId());
+
+        // Then
+        $this->assertCount(10, $result);
+        $this->assertSame(1, $counter->count());
+    }
+
+    public function testTheActiveSummaryAndTheCurrentListAreTheMainOnesEvenWhenATypedListIsNewer(): void
+    {
+        // Given : la liste principale en cours est ancienne, la Boucherie en cours est plus récente
+        $owner = $this->savedUser();
+        $this->persister->saveShoppingListType(ShoppingListType::create('butcher', $owner->getId(), 'Boucherie', new DateTimeImmutable('2026-10-01 10:00:00')));
+        $this->saveShoppingList($owner, 'main', ShoppingListStatus::ACTIVE, null, '2026-10-10 10:00:00');
+        $this->shoppingListRepository->save(new ShoppingListBuilder()->withId('butcher-list')->withOwner($owner)->withListTypeId('butcher')->withCreatedAt(new DateTimeImmutable('2026-10-20 10:00:00'))->build());
+
+        // When / Then
+        $this->assertSame('main', $this->shoppingListLoader->getActiveSummary($owner->getId())->shoppingListId);
+        $this->assertSame('main', $this->shoppingListLoader->getCurrent($owner->getId())->id);
+    }
+
+    public function testTheActiveSummaryIgnoresATypedListWhenTheMainListIsNotInProgress(): void
+    {
+        // Given
+        $owner = $this->savedUser();
+        $this->persister->saveShoppingListType(ShoppingListType::create('butcher', $owner->getId(), 'Boucherie', new DateTimeImmutable('2026-10-01 10:00:00')));
+        $this->shoppingListRepository->save(new ShoppingListBuilder()->withId('butcher-list')->withOwner($owner)->withListTypeId('butcher')->build());
+
+        // When / Then
+        $this->assertNull($this->shoppingListLoader->getActiveSummary($owner->getId())->shoppingListId);
     }
 
     public function testListByOwnerReturnsNothingForAUserWithoutList(): void

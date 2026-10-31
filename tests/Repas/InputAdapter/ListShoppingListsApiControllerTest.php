@@ -40,6 +40,7 @@ class ListShoppingListsApiControllerTest extends QueryBusWebTestCase
                     'isSent' => false,
                     'sentAt' => null,
                     'createdAt' => '2026-10-12T10:00:00+02:00',
+                    'typeId' => null,
                 ],
                 [
                     'id' => 'list-2',
@@ -51,6 +52,7 @@ class ListShoppingListsApiControllerTest extends QueryBusWebTestCase
                     'isSent' => false,
                     'sentAt' => null,
                     'createdAt' => '2025-01-20T10:56:23+01:00',
+                    'typeId' => null,
                 ],
                 [
                     'id' => 'list-3',
@@ -62,6 +64,7 @@ class ListShoppingListsApiControllerTest extends QueryBusWebTestCase
                     'isSent' => true,
                     'sentAt' => '2026-10-18T10:00:00+02:00',
                     'createdAt' => '2026-10-17T09:00:00+02:00',
+                    'typeId' => null,
                 ],
             ],
             'totalItems' => 3,
@@ -90,5 +93,19 @@ class ListShoppingListsApiControllerTest extends QueryBusWebTestCase
         $this->assertSame(401, $this->client->getResponse()->getStatusCode());
         $this->assertSame(['error' => ['message' => 'Authentication required.']], $this->jsonBody());
         $this->assertSame(0, $this->queryBus->countAskedQueries());
+    }
+
+    public function testListWritesTheTypeIdOfATypedList(): void
+    {
+        // Given
+        $this->queryBus->willReturn(ListShoppingListsQuery::class, [
+            new ShoppingListDTOBuilder()->withId('list-1')->withDisplayName('Boucherie')->withTypeId('type-1')->build(),
+        ]);
+
+        // When
+        $this->client->request('GET', '/api/v1/shopping-lists', server: $this->bearerFor($this->savedUser()));
+
+        // Then
+        $this->assertSame('type-1', $this->jsonBody()['member'][0]['typeId']);
     }
 }

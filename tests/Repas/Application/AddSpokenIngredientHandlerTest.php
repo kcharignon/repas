@@ -27,6 +27,7 @@ use Repas\Tests\Helper\InMemoryRepository\ConversionInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\IngredientAliasInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\IngredientInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\ShoppingListInMemoryRepository;
+use Repas\Tests\Helper\InMemoryRepository\ShoppingListTypeInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\SpyEventDispatcher;
 use Repas\Tests\Helper\InMemoryRepository\UnitInMemoryRepository;
 
@@ -59,6 +60,7 @@ class AddSpokenIngredientHandlerTest extends TestCase
                 $this->shoppingListRepository,
                 $this->eventDispatcher,
                 new FrozenClock(new DateTimeImmutable()),
+                new ShoppingListTypeInMemoryRepository(),
             ),
             unitRepository: $unitRepository,
             conversionService: new ConversionService($this->conversionRepository, $unitRepository),

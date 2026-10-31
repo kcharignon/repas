@@ -68,7 +68,8 @@ abstract class WriteBudgetTestCase extends DatabaseTestCase
     }
 
     /**
-     * @param callable(self): object $arrange crée les données du scénario et renvoie la commande à exécuter
+     * @param callable(self): (object|\Closure) $arrange crée les données du scénario et renvoie la commande à exécuter, ou, pour un service d'application
+     *                                       qui n'est pas encore derrière une commande, la fonction à exécuter dans une transaction (comme le bus des commandes)
      * @return array{int, array<string, int>} nombre de requêtes, et leur répartition par type et par table
      */
     public function measure(callable $arrange): array
@@ -81,9 +82,21 @@ abstract class WriteBudgetTestCase extends DatabaseTestCase
         $counter = $container->get(QueryCounter::class);
         $counter->reset();
 
-        $container->get(CommandBusInterface::class)->dispatch($command);
+        if ($command instanceof \Closure) {
+            $this->entityManager->wrapInTransaction($command);
+        } else {
+            $container->get(CommandBusInterface::class)->dispatch($command);
+        }
 
         return [$counter->count(), $counter->byTable()];
+    }
+
+    /**
+     * Un service du conteneur de test (public), pour un scénario qui appelle un service d'application sans passer par une commande.
+     */
+    public function service(string $id): object
+    {
+        return static::getContainer()->get($id);
     }
 
     public function savedUser(UserBuilder $builder = new UserBuilder()): User

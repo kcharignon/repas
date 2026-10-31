@@ -114,16 +114,19 @@ final class ShoppingList implements ModelInterface
         string            $id,
         string            $ownerId,
         DateTimeImmutable $createdAt,
+        ?string           $listTypeId = null,
+        ?string           $name = null,
     ): ShoppingList {
         return new ShoppingList(
             id: $id,
             ownerId: $ownerId,
             createdAt: $createdAt,
             status: Status::ACTIVE,
-            name: null,
+            name: $name,
             meals: Tab::newEmptyTyped(Meal::class),
             ingredients: Tab::newEmptyTyped(ShoppingListIngredient::class),
             rows: Tab::newEmptyTyped(Row::class),
+            listTypeId: $listTypeId,
         );
     }
 
@@ -146,7 +149,7 @@ final class ShoppingList implements ModelInterface
 
     /**
      * Le type de la liste (ADR 0036) : l'identifiant d'un type de liste de son propriétaire, `null` pour la liste principale (celle d'avant les
-     * types). Rien ne le pose ni ne le lit encore (LST-004).
+     * types). Une seule liste en cours par type, et une pour la liste principale (ADR 0036 décision 6).
      */
     public function getListTypeId(): ?string
     {

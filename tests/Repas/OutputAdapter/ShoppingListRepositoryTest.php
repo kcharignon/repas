@@ -500,4 +500,51 @@ class ShoppingListRepositoryTest extends DatabaseTestCase
         $this->assertNull($reloaded->getListTypeId());
         RepasAssert::assertShoppingListRows($list->getRows(), $reloaded->getRows());
     }
+
+    public function testFindsTheCurrentListOfEachTypeAndTheMainListApart(): void
+    {
+        // Given : la principale, la Boucherie et le Marché sont en cours ; une Boucherie en pause ; la liste d'un autre
+        $user = $this->savedUser();
+        $other = $this->savedUser();
+        $this->shoppingListRepository->save(new ShoppingListBuilder()->withId('main')->withOwner($user)->build());
+        $this->shoppingListRepository->save(new ShoppingListBuilder()->withId('butcher')->withOwner($user)->withListTypeId('type-butcher')->build());
+        $this->shoppingListRepository->save(new ShoppingListBuilder()->withId('market')->withOwner($user)->withListTypeId('type-market')->build());
+        $this->shoppingListRepository->save(new ShoppingListBuilder()->withId('butcher-paused')->withOwner($user)->withListTypeId('type-butcher')->withStatus(ShoppingListStatus::PAUSED)->build());
+        $this->shoppingListRepository->save(new ShoppingListBuilder()->withId('theirs')->withOwner($other)->withListTypeId('type-butcher')->build());
+
+        // When / Then
+        $this->assertSame('main', $this->shoppingListRepository->findOneActiveByOwnerAndType($user->getId(), null)?->getId());
+        $this->assertSame('main', $this->shoppingListRepository->findOneActivateByOwner($user->getId())?->getId());
+        $this->assertSame('butcher', $this->shoppingListRepository->findOneActiveByOwnerAndType($user->getId(), 'type-butcher')?->getId());
+        $this->assertSame('market', $this->shoppingListRepository->findOneActiveByOwnerAndType($user->getId(), 'type-market')?->getId());
+        $this->assertNull($this->shoppingListRepository->findOneActiveByOwnerAndType($user->getId(), 'type-fish'));
+        $this->assertSame([true, true, true, false], [
+            $this->shoppingListRepository->hasActiveShoppingList($user->getId()),
+            $this->shoppingListRepository->hasActiveShoppingList($user->getId(), 'type-butcher'),
+            $this->shoppingListRepository->hasActiveShoppingList($user->getId(), 'type-market'),
+            $this->shoppingListRepository->hasActiveShoppingList($user->getId(), 'type-fish'),
+        ]);
+    }
+
+    public function testTheMainListIsNotFoundWhenOnlyATypedListIsInProgress(): void
+    {
+        // Given
+        $user = $this->savedUser();
+        $this->shoppingListRepository->save(new ShoppingListBuilder()->withId('butcher')->withOwner($user)->withListTypeId('type-butcher')->build());
+
+        // When / Then
+        $this->assertNull($this->shoppingListRepository->findOneActivateByOwner($user->getId()));
+        $this->assertFalse($this->shoppingListRepository->hasActiveShoppingList($user->getId()));
+    }
+
+    public function testTheOldestListInProgressOfATypeWinsWhenTwoWereOpenedAtOnce(): void
+    {
+        // Given : deux ouvertures simultanées (ADR 0036 « Conséquences »)
+        $user = $this->savedUser();
+        $this->shoppingListRepository->save(new ShoppingListBuilder()->withId('b-recent')->withOwner($user)->withListTypeId('type-butcher')->withCreatedAt(new \DateTimeImmutable('2026-10-20 10:00:00'))->build());
+        $this->shoppingListRepository->save(new ShoppingListBuilder()->withId('a-old')->withOwner($user)->withListTypeId('type-butcher')->withCreatedAt(new \DateTimeImmutable('2026-10-10 10:00:00'))->build());
+
+        // When / Then
+        $this->assertSame('a-old', $this->shoppingListRepository->findOneActiveByOwnerAndType($user->getId(), 'type-butcher')?->getId());
+    }
 }

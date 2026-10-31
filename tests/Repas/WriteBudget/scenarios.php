@@ -36,6 +36,7 @@ use Repas\Repas\Application\Command\ChangeRecipeFavorite\ChangeRecipeFavoriteCom
 use Repas\Repas\Application\Command\ChangeSpokenMealServings\ChangeSpokenMealServingsCommand;
 use Repas\Repas\Application\Command\CreateShoppingList\CreateShoppingListCommand;
 use Repas\Repas\Application\Command\CreateShoppingListType\CreateShoppingListTypeCommand;
+use Repas\Repas\Application\Service\ActiveListForType;
 use Repas\Repas\Application\Command\CreateUnit\CreateUnitCommand;
 use Repas\Repas\Application\Command\EnsureActiveShoppingList\EnsureActiveShoppingListCommand;
 use Repas\Repas\Application\Command\DeleteIngredientConversion\DeleteIngredientConversionCommand;
@@ -340,6 +341,29 @@ return [
         $owner = $t->savedUser();
 
         return new CreateShoppingListCommand(UuidGenerator::new(), $owner->getId());
+    },
+    // Une liste de type (ADR 0036, LST-004) : le type est jugé, la liste en cours du même type mise en pause ; la principale et l'autre type n'y touchent pas
+    'creer-liste-de-type' => static function (WriteBudgetTestCase $t): object {
+        $owner = $t->savedUser();
+        $butcher = ShoppingListType::create(UuidGenerator::new(), $owner->getId(), 'Boucherie', new \DateTimeImmutable());
+        $market = ShoppingListType::create(UuidGenerator::new(), $owner->getId(), 'Marché', new \DateTimeImmutable());
+        $t->persister->saveShoppingListType($butcher);
+        $t->persister->saveShoppingListType($market);
+        $t->savedShoppingList($owner, $t->typicalRecipes($owner));
+        $t->savedShoppingList($owner, [], fn(ShoppingListBuilder $builder): ShoppingListBuilder => $builder->withListTypeId($market->getId()));
+        $t->savedShoppingList($owner, [], fn(ShoppingListBuilder $builder): ShoppingListBuilder => $builder->withListTypeId($butcher->getId()));
+
+        return new CreateShoppingListCommand(UuidGenerator::new(), $owner->getId(), $butcher->getId());
+    },
+    // Ouverture à la demande (ADR 0036 décision 7) : le type n'a pas de liste en cours, une liste neuve nommée comme lui est ouverte ; la liste principale et la liste envoyée du type ne bougent pas
+    'ouvrir-liste-a-la-demande' => static function (WriteBudgetTestCase $t): \Closure {
+        $owner = $t->savedUser();
+        $butcher = ShoppingListType::create(UuidGenerator::new(), $owner->getId(), 'Boucherie', new \DateTimeImmutable());
+        $t->persister->saveShoppingListType($butcher);
+        $t->savedShoppingList($owner, $t->typicalRecipes($owner));
+        $t->savedShoppingList($owner, [], fn(ShoppingListBuilder $builder): ShoppingListBuilder => $builder->withListTypeId($butcher->getId())->withStatus(ShoppingListStatus::SENT)->addIngredient(new IngredientBuilder()->isEgg()->build()));
+
+        return static fn() => $t->service(ActiveListForType::class)->forType($owner->getId(), $butcher->getId());
     },
     'assurer-liste-active' => static function (WriteBudgetTestCase $t): object {
         $owner = $t->savedUser();

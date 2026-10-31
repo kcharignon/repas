@@ -6,6 +6,7 @@ namespace Repas\Tests\Helper\InMemoryLoader;
 use Repas\Repas\Application\Loader\ShoppingListLoader;
 use Repas\Repas\Application\Query\GetActiveShoppingListSummary\ActiveShoppingListSummaryDTO;
 use Repas\Repas\Application\Query\GetShoppingList\ShoppingListDetailDTO;
+use Repas\Repas\Application\Query\ListOpenShoppingLists\OpenShoppingListDTO;
 use Repas\Repas\Application\Query\ListShoppingLists\ShoppingListDTO;
 use Repas\Repas\Domain\Exception\MealException;
 use Repas\Repas\Domain\Exception\ShoppingListException;
@@ -17,6 +18,9 @@ class ShoppingListInMemoryLoader implements ShoppingListLoader
 {
     /** @var list<string> identifiants de propriétaire reçus, dans l'ordre des appels */
     public array $listByOwnerCalls = [];
+
+    /** @var list<string> identifiants de propriétaire reçus, dans l'ordre des appels */
+    public array $listOpenByOwnerCalls = [];
 
     /** @var list<string> identifiants de propriétaire reçus, dans l'ordre des appels */
     public array $getActiveSummaryCalls = [];
@@ -37,6 +41,8 @@ class ShoppingListInMemoryLoader implements ShoppingListLoader
         private readonly array $shoppingLists = [],
         private readonly ?ActiveShoppingListSummaryDTO $activeSummary = null,
         private readonly ?ShoppingListDetailDTO $detail = null,
+        /** @var list<OpenShoppingListDTO> */
+        private readonly array $openShoppingLists = [],
     ) {
     }
 
@@ -45,6 +51,13 @@ class ShoppingListInMemoryLoader implements ShoppingListLoader
         $this->listByOwnerCalls[] = $ownerId;
 
         return $this->shoppingLists;
+    }
+
+    public function listOpenByOwner(string $ownerId): array
+    {
+        $this->listOpenByOwnerCalls[] = $ownerId;
+
+        return $this->openShoppingLists;
     }
 
     public function getActiveSummary(string $ownerId): ActiveShoppingListSummaryDTO

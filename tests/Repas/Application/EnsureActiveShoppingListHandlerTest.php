@@ -14,6 +14,7 @@ use Repas\Tests\Helper\Builder\ShoppingListBuilder;
 use Repas\Tests\Helper\Builder\UserBuilder;
 use Repas\Tests\Helper\FrozenClock;
 use Repas\Tests\Helper\InMemoryRepository\ShoppingListInMemoryRepository;
+use Repas\Tests\Helper\InMemoryRepository\ShoppingListTypeInMemoryRepository;
 use Repas\Tests\Helper\InMemoryRepository\SpyEventDispatcher;
 
 class EnsureActiveShoppingListHandlerTest extends TestCase
@@ -32,6 +33,7 @@ class EnsureActiveShoppingListHandlerTest extends TestCase
                 $this->shoppingListRepository,
                 $this->eventDispatcher,
                 new FrozenClock(new DateTimeImmutable()),
+                new ShoppingListTypeInMemoryRepository(),
             ),
         );
     }

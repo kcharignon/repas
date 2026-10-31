@@ -50,6 +50,11 @@ services:
         tags:
             - { name: kernel.reset, method: clear }
 
+    # Ouverture à la demande de la liste en cours d'un type (ADR 0036 décision 7, LST-004) : les ajouts de LST-005 s'en serviront ; public
+    # pour qu'un test de bout en bout s'en serve sur la vraie base
+    Repas\Repas\Application\Service\ActiveListForType:
+        public: true
+
     # Port de la commande vocale (ADR 0029, VOX-103 ; ADR 0035) : le contexte `Voice` ajoute à la liste de courses et en retire sans importer `Repas`.
     # Public pour qu'un test de bout en bout s'en serve
     Repas\Voice\Application\Port\ShoppingListItemCommandPort:

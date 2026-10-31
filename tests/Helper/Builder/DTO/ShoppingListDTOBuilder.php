@@ -14,6 +14,7 @@ class ShoppingListDTOBuilder implements Builder
     private ShoppingListStatus $status;
     private string $createdAt;
     private ?string $sentAt = null;
+    private ?string $typeId = null;
 
     private function initialize(): void
     {
@@ -53,6 +54,12 @@ class ShoppingListDTOBuilder implements Builder
         return $this;
     }
 
+    public function withTypeId(?string $typeId): self
+    {
+        $this->typeId = $typeId;
+        return $this;
+    }
+
     public function build(): ShoppingListDTO
     {
         $this->initialize();
@@ -66,6 +73,7 @@ class ShoppingListDTOBuilder implements Builder
             isSent: $this->status === ShoppingListStatus::SENT,
             sentAt: $this->sentAt ?? ($this->status === ShoppingListStatus::SENT ? '2026-10-18T10:00:00+02:00' : null),
             createdAt: $this->createdAt,
+            typeId: $this->typeId,
         );
     }
 }
