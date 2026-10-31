@@ -61,6 +61,16 @@ interface IngredientRepository
     public function exists(string $slug): bool;
 
     /**
+     * Le rayon de chaque ingrédient demandé, en une seule requête quel que soit leur nombre (aucune quand la liste est vide), sans charger
+     * d'agrégat.
+     *
+     * @param list<string> $slugs
+     *
+     * @return array<string, string> slug du rayon par slug d'ingrédient ; un ingrédient inconnu est absent du résultat
+     */
+    public function departmentSlugsOf(array $slugs): array;
+
+    /**
      * Ce créateur a-t-il déjà un ingrédient de ce nom normalisé (`slugged_name`) dans ce rayon ? C'est la règle d'unicité d'un ingrédient
      * (ADR 0028, amendement du 2026-10-30, ING-016) : un propriétaire ne peut pas avoir deux ingrédients de même nom DANS LE MÊME RAYON, mais
      * le même nom dans deux rayons est permis. `$exceptSlug` est un ingrédient qu'on ne compte pas : celui qu'on modifie. Une seule requête.

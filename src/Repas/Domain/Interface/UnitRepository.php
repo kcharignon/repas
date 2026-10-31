@@ -14,6 +14,15 @@ interface UnitRepository
      */
     public function exists(string $slug): bool;
 
+    /**
+     * Ceux de ces slugs qui désignent une unité, en une seule requête quel que soit leur nombre (aucune quand la liste est vide).
+     *
+     * @param list<string> $slugs
+     *
+     * @return list<string> un slug inconnu est absent du résultat
+     */
+    public function existingSlugs(array $slugs): array;
+
     public function save(Unit $unit): void;
 
     /**

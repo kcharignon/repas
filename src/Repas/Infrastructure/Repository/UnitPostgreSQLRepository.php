@@ -34,6 +34,23 @@ readonly class UnitPostgreSQLRepository extends PostgreSQLRepository implements 
         return $this->entityRepository->find($slug) !== null;
     }
 
+    public function existingSlugs(array $slugs): array
+    {
+        if ($slugs === []) {
+            return [];
+        }
+
+        $rows = $this->entityManager->createQueryBuilder()
+            ->select('u.slug AS slug')
+            ->from(UnitEntity::class, 'u')
+            ->where('u.slug IN (:slugs)')
+            ->setParameter('slugs', array_values(array_unique($slugs)))
+            ->getQuery()
+            ->getArrayResult();
+
+        return array_values(array_map(static fn(array $row): string => (string) $row['slug'], $rows));
+    }
+
     public function save(UnitModel $unit): void
     {
         // On recupere l'entity

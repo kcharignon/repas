@@ -11,7 +11,7 @@ use Repas\Repas\Domain\Model\IngredientCandidate;
  * Lecture légère : des valeurs, une seule requête, aucun modèle hydraté.
  *
  * Un port d'écriture (lu par un `CommandHandler`) : il ne s'appelle donc pas `…Loader`, nom réservé aux ports de lecture des
- * `QueryHandler` (Deptrac `no-loader-in-commandhandler`, voir `IngredientDepartmentResolver`).
+ * `QueryHandler` (Deptrac `no-loader-in-commandhandler`).
  */
 interface IngredientMatchCandidates
 {

@@ -3,7 +3,7 @@
 namespace Repas\Tests\Helper\InMemoryLoader;
 
 
-use Repas\Shared\Application\Interface\IngredientNameLoader;
+use Repas\Repas\Application\Loader\IngredientNameLoader;
 
 /**
  * Double idiot : renvoie les noms programmés tels quels (ni filtre sur les slugs demandés) et enregistre ses appels.

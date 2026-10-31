@@ -29,6 +29,18 @@ interface IngredientAliasRepository
     public function resolve(string $userId, array $slugs): array;
 
     /**
+     * Pour une écriture qui pose quelque chose SUR un ingrédient : à quel ingrédient de l'utilisateur répond chaque slug reçu ? Lui-même
+     * quand l'ingrédient existe et est à l'utilisateur, l'ingrédient qu'un alias valide désigne sinon (l'alias l'emporte, comme dans
+     * `resolve()`). Une seule requête quel que soit le nombre de slugs : le contrôle ne coûte rien de plus qu'une traduction.
+     *
+     * @param list<string> $slugs
+     *
+     * @return array<string, string> le slug de l'ingrédient de l'utilisateur par slug reçu ; un slug qui ne répond à aucun de ses ingrédients
+     *                               (inconnu, ou à un autre compte) est ABSENT : l'appelant refuse alors l'écriture, sans rien écrire
+     */
+    public function resolveOwned(string $userId, array $slugs): array;
+
+    /**
      * L'utilisateur a au moins un alias d'adoption : son compte a reçu ses ingrédients (migration ou amorçage). Sert à la définition de
      * « amorcé » que la requête de santé de l'amorçage compare (`IngredientAdoptionBulkRepository::isSeeded`).
      */

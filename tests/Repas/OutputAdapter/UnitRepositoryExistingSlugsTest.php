@@ -3,22 +3,22 @@
 namespace Repas\Tests\Repas\OutputAdapter;
 
 
-use Repas\Shared\Application\Interface\UnitSlugResolver;
+use Repas\Repas\Domain\Interface\UnitRepository;
 use Repas\Tests\Helper\Builder\UnitBuilder;
 use Repas\Tests\Helper\DatabaseTestCase;
 use Repas\Tests\Helper\DataPersister;
 use Repas\Tests\Helper\SqlBudget\QueryCounter;
 
-class UnitSlugPostgreSQLResolverTest extends DatabaseTestCase
+class UnitRepositoryExistingSlugsTest extends DatabaseTestCase
 {
-    private UnitSlugResolver $resolver;
+    private UnitRepository $resolver;
     private DataPersister $persister;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        $this->resolver = static::getContainer()->get(UnitSlugResolver::class);
+        $this->resolver = static::getContainer()->get(UnitRepository::class);
         $this->persister = new DataPersister(static::getContainer());
     }
 

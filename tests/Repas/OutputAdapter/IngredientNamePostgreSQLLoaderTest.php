@@ -3,7 +3,7 @@
 namespace Repas\Tests\Repas\OutputAdapter;
 
 
-use Repas\Shared\Application\Interface\IngredientNameLoader;
+use Repas\Repas\Application\Loader\IngredientNameLoader;
 use Repas\Tests\Helper\Builder\IngredientBuilder;
 use Repas\Tests\Helper\Builder\UserBuilder;
 use Repas\Tests\Helper\DatabaseTestCase;

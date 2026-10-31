@@ -6,9 +6,7 @@ namespace Repas\Tests\Repas\OutputAdapter;
 use Repas\Repas\Domain\Exception\ShoppingListException;
 use Repas\Repas\Domain\Interface\ShoppingListRepository;
 use Repas\Repas\Domain\Model\ShoppingListStatus;
-use Repas\Shared\Application\Dto\ShoppingListForDrive;
-use Repas\Shared\Application\Dto\ShoppingListLineForDrive;
-use Repas\Shared\Application\Interface\ShoppingListForDriveLoader;
+use Repas\Repas\Application\Loader\ShoppingListContentLoader;
 use Repas\Tests\Helper\Builder\DepartmentBuilder;
 use Repas\Tests\Helper\Builder\IngredientBuilder;
 use Repas\Tests\Helper\Builder\ShoppingListBuilder;
@@ -19,10 +17,10 @@ use Repas\Tests\Helper\DataPersister;
 use Repas\Tests\Helper\SqlBudget\QueryCounter;
 use Repas\User\Domain\Interface\UserRepository;
 
-class ShoppingListForDrivePostgreSQLLoaderTest extends DatabaseTestCase
+class ShoppingListContentPostgreSQLLoaderTest extends DatabaseTestCase
 {
     private ShoppingListRepository $shoppingListRepository;
-    private ShoppingListForDriveLoader $loader;
+    private ShoppingListContentLoader $loader;
     private DataPersister $persister;
 
     protected function setUp(): void
@@ -30,7 +28,7 @@ class ShoppingListForDrivePostgreSQLLoaderTest extends DatabaseTestCase
         parent::setUp();
 
         $this->shoppingListRepository = static::getContainer()->get(ShoppingListRepository::class);
-        $this->loader = static::getContainer()->get(ShoppingListForDriveLoader::class);
+        $this->loader = static::getContainer()->get(ShoppingListContentLoader::class);
         $this->persister = new DataPersister(static::getContainer());
     }
 
@@ -56,16 +54,16 @@ class ShoppingListForDrivePostgreSQLLoaderTest extends DatabaseTestCase
         $result = $this->loader->get('list-1');
 
         // Then
-        $this->assertSame(['list-1', $owner->getId(), 'ACTIVE'], [$result->id, $result->ownerId, $result->status]);
-        $this->assertSame(['lait', 'oeuf', 'pate', 'sel'], array_map(static fn(ShoppingListLineForDrive $line): string => $line->ingredientSlug, $result->lines));
+        $this->assertSame(['list-1', $owner->getId(), 'ACTIVE'], [$result['id'], $result['ownerId'], $result['status']]);
+        $this->assertSame(['lait', 'oeuf', 'pate', 'sel'], array_column($result['lines'], 'ingredientSlug'));
         $this->assertEquals(
             [
-                new ShoppingListLineForDrive('lait', 'Lait', 1.0, 'litre', 'litre', 'l', 'VOLUME', 1000.0, 'divers'),
-                new ShoppingListLineForDrive('oeuf', 'Œuf', 1.0, 'unite', 'unité', '', 'COUNT', 1.0, 'divers'),
-                new ShoppingListLineForDrive('pate', 'Pate', 500.0, 'gramme', 'gramme', 'g', 'WEIGHT', 1.0, 'cereale'),
-                new ShoppingListLineForDrive('sel', 'sel', 1.0, 'cuillere-a-soupe', 'cuillère à soupe', 'cuillère à soupe', null, null, 'conserve'),
+                self::line('lait', 'Lait', 1.0, 'litre', 'litre', 'l', 'VOLUME', 1000.0, 'divers'),
+                self::line('oeuf', 'Œuf', 1.0, 'unite', 'unité', '', 'COUNT', 1.0, 'divers'),
+                self::line('pate', 'Pate', 500.0, 'gramme', 'gramme', 'g', 'WEIGHT', 1.0, 'cereale'),
+                self::line('sel', 'sel', 1.0, 'cuillere-a-soupe', 'cuillère à soupe', 'cuillère à soupe', null, null, 'conserve'),
             ],
-            $result->lines,
+            $result['lines'],
         );
     }
 
@@ -84,8 +82,8 @@ class ShoppingListForDrivePostgreSQLLoaderTest extends DatabaseTestCase
         $result = $this->loader->get('list-sent');
 
         // Then
-        $this->assertSame(['SENT', 1], [$result->status, $result->version]);
-        $this->assertCount(1, $result->lines);
+        $this->assertSame(['SENT', 1], [$result['status'], $result['version']]);
+        $this->assertCount(1, $result['lines']);
     }
 
     public function testGetReturnsNoLineForAnEmptyList(): void
@@ -99,7 +97,7 @@ class ShoppingListForDrivePostgreSQLLoaderTest extends DatabaseTestCase
         $result = $this->loader->get('list-empty');
 
         // Then
-        $this->assertEquals(new ShoppingListForDrive('list-empty', $owner->getId(), 'ACTIVE', 1, []), $result);
+        $this->assertSame(['id' => 'list-empty', 'ownerId' => $owner->getId(), 'status' => 'ACTIVE', 'version' => 1, 'lines' => []], $result);
     }
 
     public function testGetIgnoresALineWhoseIngredientDisappeared(): void
@@ -117,7 +115,7 @@ class ShoppingListForDrivePostgreSQLLoaderTest extends DatabaseTestCase
         $result = $this->loader->get('list-1');
 
         // Then
-        $this->assertSame(['oeuf'], array_map(static fn(ShoppingListLineForDrive $line): string => $line->ingredientSlug, $result->lines));
+        $this->assertSame(['oeuf'], array_column($result['lines'], 'ingredientSlug'));
     }
 
     public function testGetFailsForAnUnknownList(): void
@@ -149,5 +147,13 @@ class ShoppingListForDrivePostgreSQLLoaderTest extends DatabaseTestCase
 
         // Then
         $this->assertSame(['SELECT shopping_list' => 1, 'SELECT shopping_list_row' => 1], $counter->byTable());
+    }
+
+    /**
+     * @return array{ingredientSlug: string, ingredientName: string, quantity: float, unitSlug: string, unitName: string, unitSymbol: string, unitDimension: ?string, unitBaseFactor: ?float, departmentSlug: ?string}
+     */
+    private static function line(string $ingredientSlug, string $ingredientName, float $quantity, string $unitSlug, string $unitName, string $unitSymbol, ?string $unitDimension, ?float $unitBaseFactor, ?string $departmentSlug): array
+    {
+        return compact('ingredientSlug', 'ingredientName', 'quantity', 'unitSlug', 'unitName', 'unitSymbol', 'unitDimension', 'unitBaseFactor', 'departmentSlug');
     }
 }

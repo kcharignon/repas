@@ -30,6 +30,16 @@ class UnitInMemoryRepository extends AbstractInMemoryRepository implements UnitR
         return isset($this->models[$slug]);
     }
 
+    /** @var list<list<string>> slugs reçus à chaque appel de `existingSlugs()`, dans l'ordre des appels */
+    public array $existingSlugsCalls = [];
+
+    public function existingSlugs(array $slugs): array
+    {
+        $this->existingSlugsCalls[] = $slugs;
+
+        return array_values(array_filter($slugs, fn(string $slug): bool => isset($this->models[$slug])));
+    }
+
     public function findOneBySlug(string $slug): Unit
     {
         return $this->models[$slug] ?? throw UnitException::notFound($slug);
