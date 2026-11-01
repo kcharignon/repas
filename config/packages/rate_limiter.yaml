@@ -106,7 +106,9 @@ framework:
             interval: '1 minute'
         # Version de l'application installée (PUT /api/v1/users/me/app-version, DRV-637), PAR UTILISATEUR (AppVersionRateLimitListener) :
         # l'application l'envoie une fois par session de connexion ; au plus une écriture par minute, les appels suivants répondent
-        # 204 sans rien écrire (pas d'erreur visible). Seuls les appels valides comptent.
+        # 204 sans rien écrire (pas d'erreur visible). Seuls les appels valides comptent. Le même compteur borne l'écriture faite sur
+        # toute requête authentifiée qui porte X-App-Version / X-App-Platform (RecordAppVersionOnRequestListener, DRV-758), consommé
+        # seulement quand une écriture est due.
         app_version:
             policy: sliding_window
             lock_factory: Repas\Shared\Infrastructure\RateLimiter\BoundedLockFactory

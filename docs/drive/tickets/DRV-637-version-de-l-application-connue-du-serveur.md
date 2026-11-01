@@ -5,6 +5,7 @@
 - **Taille** : M
 - **Dépend de** : —
 - **Statut** : partie back faite (PR back [#224](https://github.com/kcharignon/repas/pull/224), 2026-10-20 : points 2, 3 et 4, voir « Réalisation (partie back) ») ; **partie front faite** (PR front [#173](https://github.com/kcharignon/repas-front/pull/173), site v0.5.12, 2026-10-20 : points 1, 5, 6 et 7, voir « Réalisation (partie front) »). Idée de l'utilisateur du 2026-10-19 : « tu peux stocker ça en base pour savoir qui est à jour ou non ».
+- **Amendement** : la version n'est plus annoncée une seule fois par session ; le back la retient sur toute requête authentifiée qui porte les en-têtes `X-App-Version` et `X-App-Platform` ([DRV-758](DRV-758-version-de-l-application-sur-toute-requete.md), 2026-11-01). Le `PUT` décrit ici reste en place, compatible.
 - **Lire d'abord** : [ADR 0021](../../adr/0021-gestion-des-comptes-par-l-administrateur.md) (purge à la suppression du compte, `UserOwnedDataCoverageTest`), `docs/adr/0007-*` (API), `docs/drive/principes-produit.md` (règles 3 et 10), skills `repas-dev`, `repas-front-dev`, `repas-android-dev`, `repas-po`.
 
 ## Contexte

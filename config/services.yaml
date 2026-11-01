@@ -110,6 +110,11 @@ services:
         arguments:
             $store: '@repas.lock_store'
 
+    # Mémoire de la dernière version de l'application écrite par compte (DRV-758, LastSeenAppVersions) : le cache de l'application ;
+    # en mémoire en test (bloc `when@test` plus bas), comme l'état des limiteurs
+    repas.app_version_cache:
+        alias: cache.app
+
 
 when@dev:
     services:
@@ -157,6 +162,10 @@ when@test:
         # Contrat OpenAPI généré (config/packages/nelmio_api_doc.yaml) : en mémoire, conservé tant que le noyau de test vit, comme le pool
         # des limiteurs.
         test.api_doc_pool:
+            class: Symfony\Component\Cache\Adapter\ArrayAdapter
+
+        # Mémoire des versions de l'application (DRV-758) : en mémoire, conservée tant que le noyau de test vit
+        repas.app_version_cache:
             class: Symfony\Component\Cache\Adapter\ArrayAdapter
 
         # Messages et handlers factices de tests/Helper/Bus (voir tests/Shared/Application/Service/BusWiringTest.php)

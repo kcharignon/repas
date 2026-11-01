@@ -9,6 +9,8 @@ use Repas\Shared\Application\Interface\CommandBusInterface;
 use Repas\Shared\Domain\Interface\AuthenticatedUser;
 use Repas\User\Application\UpdateUserAppVersion\UpdateUserAppVersionCommand;
 use Repas\User\Domain\Model\AppPlatform;
+use Repas\User\Domain\Model\AppVersion;
+use Repas\User\Infrastructure\AppVersion\LastSeenAppVersions;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\MapRequestPayload;
@@ -17,8 +19,10 @@ use Symfony\Component\Security\Http\Attribute\CurrentUser;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 /**
- * L'application installée annonce sa version, une fois par session de connexion (DRV-637). Au plus une écriture par minute et
- * par compte : `AppVersionRateLimitListener` répond `204` sans rien écrire au-delà.
+ * L'application installée annonce sa version (DRV-637). Au plus une écriture par minute et par compte : `AppVersionRateLimitListener`
+ * répond `204` sans rien écrire au-delà. Depuis DRV-758 la version est aussi retenue sur toute requête authentifiée qui porte les
+ * en-têtes `X-App-Version` et `X-App-Platform` (`RecordAppVersionOnRequestListener`) ; ce `PUT` reste, compatible, et met à jour la
+ * même mémoire (`LastSeenAppVersions`) pour que l'écouteur ne réécrive pas la version qu'il vient de poser.
  */
 final class UpdateUserAppVersionApiController extends AbstractController
 {
@@ -26,6 +30,7 @@ final class UpdateUserAppVersionApiController extends AbstractController
 
     public function __construct(
         private readonly CommandBusInterface $commandBus,
+        private readonly LastSeenAppVersions $lastSeenAppVersions,
     ) {
     }
 
@@ -33,7 +38,7 @@ final class UpdateUserAppVersionApiController extends AbstractController
     #[IsGranted('ROLE_USER')]
     #[OA\Put(
         summary: "Retient la version de l'application installée pour l'utilisateur connecté",
-        description: "Une ligne par compte et par plateforme, remplacée à chaque appel (idempotent). Seule la version est retenue, avec l'heure : aucun identifiant d'appareil, aucun modèle de téléphone. Au plus une écriture par minute et par compte : au-delà, la réponse reste `204` et rien n'est écrit. La version ne sert qu'à informer (`appUpdate` de `GET /api/v1/me`, liste des comptes de l'administration), jamais à accorder un droit.",
+        description: "Une ligne par compte et par plateforme, remplacée à chaque appel (idempotent). Seule la version est retenue, avec l'heure : aucun identifiant d'appareil, aucun modèle de téléphone. Au plus une écriture par minute et par compte : au-delà, la réponse reste `204` et rien n'est écrit. Ce `PUT` n'est plus nécessaire à l'application : toute requête authentifiée de `/api/v1/*` qui porte les en-têtes `X-App-Version` (trois nombres séparés par des points) et `X-App-Platform` (`android`) retient la version après la réponse, avec le même plafond (en-têtes absents, mal formés ou inconnus : ignorés sans erreur). La version ne sert qu'à informer (`appUpdate` de `GET /api/v1/me`, liste des comptes de l'administration), jamais à accorder un droit.",
     )]
     #[OA\Tag(name: 'Current user')]
     #[OA\RequestBody(required: true, content: new OA\JsonContent(ref: new Model(type: UpdateUserAppVersionPayload::class)))]
@@ -43,11 +48,13 @@ final class UpdateUserAppVersionApiController extends AbstractController
         #[CurrentUser] AuthenticatedUser $user,
         #[MapRequestPayload(validationFailedStatusCode: 422)] UpdateUserAppVersionPayload $payload,
     ): Response {
+        $platform = AppPlatform::from($payload->platform);
         $this->commandBus->dispatch(new UpdateUserAppVersionCommand(
             userId: $user->getId(),
-            platform: AppPlatform::from($payload->platform),
+            platform: $platform,
             version: $payload->version,
         ));
+        $this->lastSeenAppVersions->remember($user->getId(), $platform, AppVersion::fromString($payload->version));
 
         return new Response(status: Response::HTTP_NO_CONTENT);
     }

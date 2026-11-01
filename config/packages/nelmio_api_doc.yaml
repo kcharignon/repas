@@ -6,6 +6,9 @@ nelmio_api_doc:
                 API JSON de l'application Repas (recettes, ingrédients, listes de courses). Voir docs/adr/0007-api-rest-v1.md. Les écritures
                 de Repas (POST, PUT, PATCH et DELETE ; pas celles du drive, des comptes ni de la commande vocale) sont limitées à 300 par
                 minute et par utilisateur : au-delà, 429 avec le message `WRITE_RATE_LIMITED` et l'en-tête `Retry-After`, rien n'est enregistré.
+                Toute requête authentifiée de `/api/v1/*` peut porter les en-têtes `X-App-Version` (trois nombres séparés par des points,
+                `0.1.8`) et `X-App-Platform` (`android`) : le serveur retient alors la version de l'application installée, après la réponse
+                (DRV-758). Absents, mal formés ou inconnus, ils sont ignorés sans erreur ; ils n'accordent aucun droit.
             version: 1.0.0
         components:
             parameters:
