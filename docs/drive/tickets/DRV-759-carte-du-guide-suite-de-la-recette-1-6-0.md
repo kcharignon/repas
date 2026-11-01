@@ -18,7 +18,7 @@ Recette réelle de 1.6.0 sur le téléphone de test (compte de démo), Leclerc p
 3. **Auchan : la carte et le repère disparaissent** quand le panneau « Choisir un drive ou la livraison » est ouvert, et sur la page de connexion d'Auchan. Cause inconnue (le « Diagnostic de l'agent » ne se lit pas par `uiautomator dump`).
 4. **Auchan : le texte de la carte ne reprend pas le mot du bouton.** La carte dit « Choisir vos courses », la page dit « Choisir mon mode de livraison ». Le bouton de connexion du bandeau n'a aucun nom accessible alors que la carte le cite (« Me connecter »).
 5. **Pluriels** : « Il te faut : 2 unité. » (choix d'un produit), « 1 sur 1 articles dans le panier » (liste envoyée).
-6. **Réglages du drive** : Leclerc montre le nom du magasin, Auchan seulement « Magasin …798 enregistré. » (le nom n'est pas gardé, ou pas montré).
+6. **Réglages du drive** : Leclerc montre le nom du magasin, Auchan seulement « Magasin …abc enregistré. » (le nom n'est pas gardé, ou pas montré).
 7. **Barre réduite en haut des résultats de magasins** : elle recouvre en partie « Retour » et « Me géolocaliser » de la page.
 
 Constats sans correctif demandé (à regarder) : les sites posent leurs propres bannières (« OUVRIR » chez Leclerc, « Vers l'App » chez Auchan) qui peuvent faire quitter l'envoi ; la fenêtre du gestionnaire de mots de passe du téléphone s'ouvre à la connexion d'Auchan ; la liste envoyée n'offre « Rouvrir la liste » que dans le menu « ⋮ », dont le bouton n'a pas de nom accessible.
