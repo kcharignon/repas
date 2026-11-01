@@ -40,3 +40,9 @@ phpstan.neon
 ###> lexik/jwt-authentication-bundle ###
 /config/jwt/*.pem
 ###< lexik/jwt-authentication-bundle ###
+
+# Réglages locaux et secrets : tout fichier .env.local*, .env.*.local*, à n'importe quelle profondeur, reste hors du dépôt
+.env.local*
+.env.*.local*
+# Marqueur Windows laissé par un fichier copié
+*:Zone.Identifier
