@@ -4,7 +4,7 @@
 - **Jalon** : M7 Plusieurs enseignes (constat de la recette du 2026-11-01, hors ordre)
 - **Taille** : M
 - **Dépend de** : DRV-751 (parcours guidé, agent 0.56.0), DRV-625, DRV-629 et DRV-748 (entrer dans le magasin)
-- **Statut** : à faire (agent lancé le 2026-11-01)
+- **Statut** : fait (front PR #298, 2026-11-01, agent 0.58.0), application `android-v1.4.1` à approuver ; **à rejouer sur le vrai Leclerc** (installation neuve : déconnexion, magasin, connexion)
 - **Lire d'abord** : `drive-agent/src/flow/guide.ts` (`guideStepOf`), `drive-agent/src/flow/orchestrator.ts` (`enterStore`), `drive-agent/src/leclerc/adapter.ts` (`storeChosenOnPage` absent, `guideTarget`, `onLoginPage`), `android/README.md` (`StoreBanner`), `docs/drive/hypotheses-site-reel.md`
 
 ## Contexte
