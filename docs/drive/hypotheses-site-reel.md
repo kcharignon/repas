@@ -149,6 +149,7 @@ Analyse faite le **2026-10-18** par un agent d'analyse, en **lecture seule** : d
 - **Vérifier** : au diagnostic (11.1), la ligne « Page prise en charge » doit dire une famille `fdN`, jamais « autre hôte leclercdrive.fr » (le texte du diagnostic pour un hôte hors `fdN`, donc aussi `m-courses`).
 - **Défense** : ticket J (n'accepter que le site ordinateur, message dédié, « mode ordinateur appliqué : oui/non » dans « Version et mode d'emploi »).
 - **Statut (2026-10-19) : défense livrée, à mesurer à la recette réelle.** Ticket J (PR front #137, agent 0.14.0) : l'agent refuse le site mobile tout de suite (`UNSUPPORTED_PAGE`, cause `PAGE_MOBILE`) et l'application ne lui envoie ni plan ni lecture du magasin (bandeau « Leclerc affiche son site mobile »). La ligne « mode ordinateur appliqué : oui/non » de « Version et mode d'emploi » n'a pas été ajoutée. Pas encore dans une application publiée.
+- **Mise à jour du 2026-11-01 (DRV-754) : tombe pour Leclerc.** Le propriétaire a imposé la version mobile (le drive ne se fait que sur téléphone). Mesuré sur le vrai site mobile : `m-courses` parle au serveur `fd<N>-courses` par `recherche-ajax.aspx` et `panier.aspx?op=1` ; l'ancien constat (`recherche.aspx` sans produit sur `m-courses`) venait d'une requête que l'application mobile n'utilise pas. Rapport : `spikes/DRV-754-rapport.md`. Le refus `PAGE_MOBILE` n'existe plus pour Leclerc (agent 0.59.0, application 1.5.0).
 
 ### H12. Un vrai passage passe l'anti-robot (b, risque moyen)
 

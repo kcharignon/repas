@@ -4,7 +4,7 @@
 - **Jalon** : M7 Plusieurs enseignes (décision du propriétaire du 2026-11-01, hors ordre)
 - **Taille** : L
 - **Dépend de** : DRV-751 et DRV-753 (parcours guidé), DRV-741 (adresse du site mobile), `docs/drive/spikes/DRV-754-rapport.md` (**toutes les mesures du vrai site mobile**)
-- **Statut** : à faire (agent lancé le 2026-11-01)
+- **Statut** : fait (front PR #300, 2026-11-01, agent 0.59.0), application `android-v1.5.0` à approuver ; **à rejouer dans l'application** (hCaptcha et code e-mail par la personne). Suites : DRV-756
 - **Lire d'abord** : le rapport `spikes/DRV-754-rapport.md` en entier, `drive-agent/src/leclerc/` (`adapter.ts`, `search-request.ts`, `cart.ts`, `store.ts`, `entry.ts`), `android/…/NavigationPolicy.kt`, `OpeningWatch.kt`, `DrivePass.kt`, `StoreBanner`, la WebView de `DriveActivity` (mode ordinateur)
 
 ## Décision du propriétaire (impérative, pas un choix)
