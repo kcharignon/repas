@@ -4,7 +4,7 @@
 - **Jalon** : M7 Plusieurs enseignes (décision du propriétaire du 2026-11-01, « piste 1 »)
 - **Taille** : M
 - **Dépend de** : DRV-753 (guide du choix du magasin), DRV-754 (version mobile)
-- **Statut** : à faire (après DRV-754)
+- **Statut** : fait (front PR #301, 2026-11-01, agent 0.60.0 ; la clé `chosenStore` du résultat est décrite dans `architecture.md` § 8) ; **ordre de livraison : le site d'abord, puis l'application** (avec DRV-757) ; à rejouer sur le téléphone de test
 - **Lire d'abord** : `drive-agent/src/flow/orchestrator.ts` (`STORE_MISMATCH`), `src/features/drive/` (réglages du drive, `setup-result`), `docs/drive/architecture.md` § 4
 
 ## Constat
