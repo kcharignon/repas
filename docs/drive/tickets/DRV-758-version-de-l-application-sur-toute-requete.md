@@ -4,7 +4,7 @@
 - **Jalon** : M7 Plusieurs enseignes (constat du propriétaire du 2026-11-01)
 - **Taille** : S
 - **Dépend de** : DRV-637
-- **Statut** : partie back faite (PR back, 2026-11-01) ; le front envoie les deux en-têtes sur chaque requête quand il connaît la version (autre agent)
+- **Statut** : fait (back PR #409, release `v1.14.0` ; site PR front #303, release `v1.18.0`, 2026-11-01) ; vérifié en vrai le 2026-11-01 : après la mise à jour en 1.6.0 du téléphone de test, l’administration affiche `1.6.0` pour le compte de démo
 - **Lire d'abord** : [DRV-637](DRV-637-version-de-l-application-connue-du-serveur.md), `src/User/Infrastructure/EventListener/RecordAppVersionOnRequestListener.php`, `docs/adr/0010-*` (budgets SQL), ADR 0021 (compte désactivé), ADR 0035 (contextes étanches)
 
 ## Constat

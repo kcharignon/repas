@@ -4,7 +4,7 @@
 - **Jalon** : M7 Plusieurs enseignes (constat de la recette réelle du 2026-11-01, regard d'une personne qui ne connaît rien)
 - **Taille** : M
 - **Dépend de** : DRV-751, DRV-753, DRV-754, DRV-755
-- **Statut** : à faire (agent lancé le 2026-11-01)
+- **Statut** : fait (front PR #302, agent 0.61.0, application `android-v1.6.0`, 2026-11-01) ; la recette réelle du jour (1.6.0) a trouvé des défauts restants : suite dans [DRV-759](DRV-759-carte-du-guide-suite-de-la-recette-1-6-0.md)
 - **Lire d'abord** : `drive-agent/src/ui/` (`screens.ts`, `styles.ts`, `pointer.ts`, `keep-clear.ts`), `drive-agent/src/flow/guide.ts` et `orchestrator.ts`, `drive-agent/src/leclerc/` (`adapter.ts`, `guide` de l'étape `store` et `login`), `docs/drive/principes-produit.md`, skill `repas-po`
 
 ## Contexte
