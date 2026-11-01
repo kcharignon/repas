@@ -16,7 +16,8 @@ use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInt
 
 /**
  * Au plus une écriture de la version de l'application par minute et PAR UTILISATEUR (`PUT /api/v1/users/me/app-version`,
- * limiteur `app_version` de config/packages/rate_limiter.yaml, DRV-637).
+ * limiteur `app_version` de config/packages/rate_limiter.yaml, DRV-637). Le même limiteur borne l'écriture faite sur toute requête
+ * authentifiée qui porte les en-têtes de version (`RecordAppVersionOnRequestListener`, DRV-758) : un seul compteur par compte.
  *
  * Mêmes conventions que les autres plafonds par utilisateur (DRV-615) : compteur de l'utilisateur du jeton (`user-<id>`, jamais
  * l'adresse IP seule), fenêtre glissante, état dans le cache (aucune requête SQL). Deux différences, voulues :

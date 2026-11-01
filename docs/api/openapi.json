@@ -2,7 +2,7 @@
     "openapi": "3.0.0",
     "info": {
         "title": "Repas API",
-        "description": "API JSON de l'application Repas (recettes, ingr\u00e9dients, listes de courses). Voir docs/adr/0007-api-rest-v1.md. Les \u00e9critures de Repas (POST, PUT, PATCH et DELETE ; pas celles du drive, des comptes ni de la commande vocale) sont limit\u00e9es \u00e0 300 par minute et par utilisateur : au-del\u00e0, 429 avec le message `WRITE_RATE_LIMITED` et l'en-t\u00eate `Retry-After`, rien n'est enregistr\u00e9.",
+        "description": "API JSON de l'application Repas (recettes, ingr\u00e9dients, listes de courses). Voir docs/adr/0007-api-rest-v1.md. Les \u00e9critures de Repas (POST, PUT, PATCH et DELETE ; pas celles du drive, des comptes ni de la commande vocale) sont limit\u00e9es \u00e0 300 par minute et par utilisateur : au-del\u00e0, 429 avec le message `WRITE_RATE_LIMITED` et l'en-t\u00eate `Retry-After`, rien n'est enregistr\u00e9. Toute requ\u00eate authentifi\u00e9e de `/api/v1/*` peut porter les en-t\u00eates `X-App-Version` (trois nombres s\u00e9par\u00e9s par des points, `0.1.8`) et `X-App-Platform` (`android`) : le serveur retient alors la version de l'application install\u00e9e, apr\u00e8s la r\u00e9ponse (DRV-758). Absents, mal form\u00e9s ou inconnus, ils sont ignor\u00e9s sans erreur ; ils n'accordent aucun droit.",
         "version": "1.0.0"
     },
     "paths": {
@@ -3238,7 +3238,7 @@
                     "Current user"
                 ],
                 "summary": "Retient la version de l'application install\u00e9e pour l'utilisateur connect\u00e9",
-                "description": "Une ligne par compte et par plateforme, remplac\u00e9e \u00e0 chaque appel (idempotent). Seule la version est retenue, avec l'heure : aucun identifiant d'appareil, aucun mod\u00e8le de t\u00e9l\u00e9phone. Au plus une \u00e9criture par minute et par compte : au-del\u00e0, la r\u00e9ponse reste `204` et rien n'est \u00e9crit. La version ne sert qu'\u00e0 informer (`appUpdate` de `GET /api/v1/me`, liste des comptes de l'administration), jamais \u00e0 accorder un droit.",
+                "description": "Une ligne par compte et par plateforme, remplac\u00e9e \u00e0 chaque appel (idempotent). Seule la version est retenue, avec l'heure : aucun identifiant d'appareil, aucun mod\u00e8le de t\u00e9l\u00e9phone. Au plus une \u00e9criture par minute et par compte : au-del\u00e0, la r\u00e9ponse reste `204` et rien n'est \u00e9crit. Ce `PUT` n'est plus n\u00e9cessaire \u00e0 l'application : toute requ\u00eate authentifi\u00e9e de `/api/v1/*` qui porte les en-t\u00eates `X-App-Version` (trois nombres s\u00e9par\u00e9s par des points) et `X-App-Platform` (`android`) retient la version apr\u00e8s la r\u00e9ponse, avec le m\u00eame plafond (en-t\u00eates absents, mal form\u00e9s ou inconnus : ignor\u00e9s sans erreur). La version ne sert qu'\u00e0 informer (`appUpdate` de `GET /api/v1/me`, liste des comptes de l'administration), jamais \u00e0 accorder un droit.",
                 "operationId": "put_api_update_user_app_version",
                 "requestBody": {
                     "required": true,
