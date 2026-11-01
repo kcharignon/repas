@@ -11,7 +11,11 @@ use Repas\Tests\Helper\MockCommandBus;
 use Repas\Tests\Helper\RateLimiterTimeTravel;
 use Repas\Tests\Helper\SqlBudget\QueryCounter;
 use Repas\User\Application\UpdateUserAppVersion\UpdateUserAppVersionCommand;
+use Psr\Cache\CacheItemPoolInterface;
 use Repas\User\Domain\Interface\UserRepository;
+use Repas\User\Domain\Model\AppPlatform;
+use Repas\User\Domain\Model\AppVersion;
+use Repas\User\Infrastructure\AppVersion\LastSeenAppVersions;
 use Repas\User\Domain\Model\User;
 use RuntimeException;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
@@ -187,6 +191,126 @@ class AppVersionOnEveryRequestFlowTest extends DatabaseTestCase
         // Then
         $this->assertSame($expected, [$this->client->getResponse()->getStatusCode(), $this->client->getResponse()->getContent()]);
         $this->assertCount(1, $commandBus->dispatched());
+    }
+
+    public function testALimitedPutDoesNotUpdateTheMemory(): void
+    {
+        // Given : un premier PUT écrit 0.1.8
+        $user = $this->savedUser(new UserBuilder());
+        $put = fn(string $version) => $this->client->request(
+            'PUT',
+            '/api/v1/users/me/app-version',
+            content: json_encode(['platform' => 'android', 'version' => $version], JSON_THROW_ON_ERROR),
+            server: $this->bearerFor($user) + ['CONTENT_TYPE' => 'application/json'],
+        );
+        $put('0.1.8');
+
+        // When : un second PUT dans la minute, refusé par le limiteur (204 sans écriture)
+        $put('0.1.9');
+
+        // Then : ni la ligne ni la mémoire ne bougent
+        $this->assertSame(204, $this->client->getResponse()->getStatusCode());
+        $this->assertSame('0.1.8', $this->rows()[0][2]);
+        $this->assertSame('0.1.8', static::getContainer()->get(LastSeenAppVersions::class)->of($user->getId(), AppPlatform::ANDROID)?->toString());
+    }
+
+    public function testAnOlderVersionDoesNotConsumeTheLimiter(): void
+    {
+        // Given : 0.1.9 connue de la mémoire, le limiteur du compte intact
+        $user = $this->savedUser(new UserBuilder());
+        static::getContainer()->get(LastSeenAppVersions::class)->remember($user->getId(), AppPlatform::ANDROID, AppVersion::fromString('0.1.9'));
+
+        // When : un appareil plus ancien passe, puis la mise à jour
+        $this->get('/api/v1/me', $user, '0.1.8');
+        $this->assertSame([], $this->rows());
+        $this->get('/api/v1/me', $user, '0.1.10');
+
+        // Then : la mise à jour est écrite tout de suite
+        $this->assertSame([[$user->getId(), 'android', '0.1.10']], $this->rows());
+    }
+
+    public function testAFailingCacheDoesNotChangeTheResponseNorWrite(): void
+    {
+        // Given : le cache de la mémoire lève
+        static::getContainer()->set('repas.app_version_cache', $this->brokenPool());
+        $user = $this->savedUser(new UserBuilder());
+        $this->get('/api/v1/me', $user);
+        $expected = [$this->client->getResponse()->getStatusCode(), $this->client->getResponse()->getContent()];
+
+        // When
+        $this->get('/api/v1/me', $user, '0.1.8');
+
+        // Then
+        $this->assertSame($expected, [$this->client->getResponse()->getStatusCode(), $this->client->getResponse()->getContent()]);
+        $this->assertSame([], $this->rows());
+    }
+
+    public function testThePreflightAllowsTheVersionHeaders(): void
+    {
+        // Given : le site de développement (autre origine) annonce les en-têtes qu'il enverra
+        // When
+        $this->client->request('OPTIONS', '/api/v1/me', server: [
+            'HTTP_ORIGIN' => 'http://localhost:5173',
+            'HTTP_ACCESS_CONTROL_REQUEST_METHOD' => 'GET',
+            'HTTP_ACCESS_CONTROL_REQUEST_HEADERS' => 'authorization,x-app-version,x-app-platform',
+        ]);
+
+        // Then
+        $response = $this->client->getResponse();
+        $this->assertContains($response->getStatusCode(), [200, 204]);
+        $allowed = array_map('strtolower', array_map('trim', explode(',', (string) $response->headers->get('Access-Control-Allow-Headers'))));
+        $this->assertContains('x-app-version', $allowed);
+        $this->assertContains('x-app-platform', $allowed);
+    }
+
+    private function brokenPool(): CacheItemPoolInterface
+    {
+        return new class implements CacheItemPoolInterface {
+            public function getItem(string $key): \Psr\Cache\CacheItemInterface
+            {
+                throw new RuntimeException('cache en panne');
+            }
+
+            public function getItems(array $keys = []): iterable
+            {
+                throw new RuntimeException('cache en panne');
+            }
+
+            public function hasItem(string $key): bool
+            {
+                throw new RuntimeException('cache en panne');
+            }
+
+            public function clear(): bool
+            {
+                return true;
+            }
+
+            public function deleteItem(string $key): bool
+            {
+                return true;
+            }
+
+            public function deleteItems(array $keys): bool
+            {
+                return true;
+            }
+
+            public function save(\Psr\Cache\CacheItemInterface $item): bool
+            {
+                return true;
+            }
+
+            public function saveDeferred(\Psr\Cache\CacheItemInterface $item): bool
+            {
+                return true;
+            }
+
+            public function commit(): bool
+            {
+                return true;
+            }
+        };
     }
 
     private function savedUser(UserBuilder $builder): User

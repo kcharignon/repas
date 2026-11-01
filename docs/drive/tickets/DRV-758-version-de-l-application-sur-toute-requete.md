@@ -38,6 +38,10 @@ Le back lit la version sur **toute** requête authentifiée de `/api/v1/*` : en-
 
 Back d'abord (les en-têtes sont ignorés tant que le front ne les envoie pas), puis le site. Aucune migration, aucune variable d'environnement. Le propriétaire approuve chaque déploiement.
 
-## Limite connue
+## Limites connues (voulues)
 
-Une rétrogradation de l'application (installer une version plus ancienne) n'est vue qu'après l'expiration de la mémoire (une heure) ou par le `PUT`, qui écrit sans comparer.
+- Un utilisateur peut polluer SA PROPRE ligne de version (par le `PUT` ou par l'en-tête, par exemple `99999.0.0` gardé une heure en mémoire) : la version n'accorde aucun droit, elle informe seulement.
+- Avec deux appareils du même compte à des versions différentes, ou après un vidage du cache (déploiement), la ligne peut repasser brièvement à la version la plus ancienne avant de revenir à la plus récente.
+- La rétrogradation de l'application (installer une version plus ancienne) n'est vue qu'après l'expiration de la mémoire (une heure) ou par le `PUT`, qui écrit sans comparer.
+- CORS : `allow_headers` de `config/packages/nelmio_cors.yaml` permet `X-App-Version` et `X-App-Platform` (sinon le préflight du site de développement refuserait toutes les requêtes) ; `testThePreflightAllowsTheVersionHeaders` le prouve.
+- `kernel.terminate` sous FrankenPHP : non mesuré en production ; à vérifier sur l'image de production au prochain déploiement.
