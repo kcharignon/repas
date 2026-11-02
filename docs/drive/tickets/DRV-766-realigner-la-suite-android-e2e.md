@@ -20,7 +20,8 @@ Depuis le dernier alignement, le produit a beaucoup changé : Leclerc par sa ver
 1. Jouer la suite **entière** sur `main` sans rien changer, et lister tous les scénarios rouges (message, rapport, capture).
 2. Classer chaque rouge **avec preuve** : (a) le scénario décrit un ancien parcours que le produit a changé volontairement ; (b) le faux site ne reproduit pas le site réel mesuré ; (c) une **vraie régression** de l'agent ou de l'application.
 3. Réaligner les cas (a) et (b) (scénario ou faux site) **sans jamais affaiblir une assertion** pour passer ; décrire précisément les cas (c) sans les corriger en douce, et laisser leur scénario rouge ou explicitement marqué.
-4. Mettre à jour les en-têtes de `e2e.sh`, `android/README.md` (paragraphe daté du réalignement) et la procédure de publication : avant une étiquette `android-v…` qui change l'agent ou le parcours du drive, jouer `make android-e2e` en local et le noter dans la PR.
+4. Mettre à jour les en-têtes de `e2e.sh` et `android/README.md` (paragraphe daté du réalignement). Dans la procédure de publication : jouer les scénarios de la zone touchée ; **pas de règle « toute la suite avant chaque étiquette »** (décision du propriétaire du 2026-11-02 : la suite sur faux sites doit tenir en 5 minutes au plus et ne garder que le flux critique, la recette sur téléphone avec les vrais sites fait foi ; c'est le ticket [DRV-767](DRV-767-suite-android-e2e-en-cinq-minutes.md), après celui-ci).
+5. Mesurer la durée de **chaque scénario** (passe verte, ou meilleure mesure disponible) et dire où part le temps ; DRV-767 en part.
 
 ## Non vérifié
 
