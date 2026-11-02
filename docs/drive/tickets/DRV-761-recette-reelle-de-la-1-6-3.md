@@ -4,7 +4,7 @@
 - **Jalon** : M7 Plusieurs enseignes (recette réelle du 2026-11-02, application 1.6.3)
 - **Taille** : M
 - **Dépend de** : [DRV-760](DRV-760-recette-reelle-de-la-1-6-2.md)
-- **Statut** : en cours (agent de code sur la branche `fix/drv-761-carte-champs`, relecture indépendante à faire avant la fusion, puis `android-v1.6.4`)
+- **Statut** : fait (front PR #315 fusionnée le 2026-11-02, agent 0.62.7, relue par un agent indépendant puis son delta par l'assistant principal ; application `android-v1.6.4` publiée, `APP_LATEST_VERSION=1.6.4` ; recette réelle de 1.6.4 faite, voir « Recette de 1.6.4 » plus bas)
 - **Lire d'abord** : [DRV-760](DRV-760-recette-reelle-de-la-1-6-2.md), `drive-agent/src/ui/fit.ts` et `ui.ts`, `drive-agent/src/leclerc/guide-look.ts`, `drive-agent/src/auchan/`, `android/` (`StoreBanner.kt`, `DrivePass.kt`)
 
 ## Contexte
@@ -33,3 +33,13 @@ Constats sans correction dans cette PR : le bouton ⋮ natif monte (il passe d'e
 ## Livraison
 
 Front (agent et application) : PR, relecture indépendante, fusion si la CI est verte, étiquette `android-v1.6.4`, approbation et `APP_LATEST_VERSION` par le propriétaire, recette réelle de 1.6.4. Voir aussi [DRV-762](DRV-762-apres-l-envoi-la-liste-disparait.md) (site).
+
+## Recette de 1.6.4 (téléphone de test, 2026-11-02)
+
+Rejouée avec le propriétaire (hCaptcha de Leclerc et code e-mail d'Auchan par lui), après « Se déconnecter » de chaque enseigne.
+
+- **Leclerc, page du mot de passe : corrigé.** La carte déployée occupe le haut de l'écran (bouton « Arrêter pour l'instant » en bas de la carte) et le champ « Mot de passe » commence plus bas, sans chevauchement ; le texte dit « Écris ton mot de passe, puis coche « Je suis un humain » » (la page est bien reconnue). Toucher le champ n'arrête plus l'envoi ; la touche Entrée valide (le bouton « Se connecter » est hors écran quand le clavier est ouvert). « Le panier est rempli ».
+- **Auchan, nom du bouton : corrigé.** La carte dit « Touche « Choisir mon mode de livraison », en haut de la page. ».
+- **Auchan, page du code : texte vrai, pas précis.** Le bandeau natif dit « Connecte-toi dans la page. Tu tapes toi-même tes identifiants, et le code reçu par e-mail s'il est demandé. ». Le bandeau « Tape le code reçu par e-mail, dans la page. » ne se déclenche **pas** sur cette page : le titre de la page est le même à toutes les étapes. La seule méthode sûre serait de lire le contenu de la page de connexion, ce que l'architecture interdit (aucun agent sur le compte d'Auchan).
+- **Non vus** : la page Leclerc « session expirée » (titre et chemin réels inconnus : `SESSION_EXPIRED` n'est pas prouvé sur le vrai site), la page du code e-mail de Leclerc (aucun code demandé cette fois), le vrai clavier avec Auchan.
+- **Restes connus, non corrigés** : le bouton ⋮ natif monte avec la carte dépliée ; le texte de la carte n'apparaît pas toujours dans l'arbre d'accessibilité (un lecteur d'écran ne le lirait pas) ; `aria-labelledby` n'est pas lu par `accessibleName` ; la fenêtre « Enregistrer le mot de passe » d'un gestionnaire de mots de passe sur le téléphone de test.

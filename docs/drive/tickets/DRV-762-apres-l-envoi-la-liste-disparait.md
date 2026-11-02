@@ -4,7 +4,7 @@
 - **Jalon** : M7 Plusieurs enseignes (recette réelle du 2026-11-02, application 1.6.3)
 - **Taille** : S
 - **Dépend de** : rien
-- **Statut** : à faire (cause probable lue dans le code, **pas encore prouvée par un test**)
+- **Statut** : fait (front PR #314 fusionnée le 2026-11-02, site v1.19.1 déployé ; relue par un agent indépendant ; recette réelle faite sur le téléphone de test). **Cause confirmée mais plus étroite que l'hypothèse** : le mécanisme (rappel de `mutate()` perdu au démontage de l'en-tête) est exact, mais il ne joue que quand la liste envoyée est **une liste d'un type** et la seule en cours (avec une liste principale seule, `useActiveShoppingList` garde `lastId` et l'en-tête reste monté). La suppression de la seule liste d'un type avait le même défaut. Correction : la navigation se fait dans le `onSuccess` de `useMutation`, qui s'exécute même après démontage et avant la relecture.
 - **Lire d'abord** : `src/features/shopping-lists/ShoppingListHeader.vue` (`confirmSend`), `src/features/shopping-lists/queries.ts` (`useSendShoppingList`), `src/features/shopping-lists/ShoppingListView.vue` (le cas `id === null`), `src/features/shopping-lists/__tests__/ShoppingListSent.spec.ts` (le test ajouté par la PR #292) ; [DRV-760](DRV-760-recette-reelle-de-la-1-6-2.md) pour la recette
 
 ## Contexte
