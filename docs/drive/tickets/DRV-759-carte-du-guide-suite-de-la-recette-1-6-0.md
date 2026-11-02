@@ -4,7 +4,7 @@
 - **Jalon** : M7 Plusieurs enseignes (recette réelle du 2026-11-01, application 1.6.0, regard d'une personne qui ne connaît rien)
 - **Taille** : M (deux PR possibles : 1 à 3, puis 4 à 7)
 - **Dépend de** : DRV-757
-- **Statut** : à faire (agent lancé le 2026-11-01, relecture indépendante par un autre agent ensuite, application `android-v1.6.1`)
+- **Statut** : fait (front PR #304 et #306, application `android-v1.6.1`, puis #307, `android-v1.6.2`, 2026-11-01 et 2026-11-02) ; la recette réelle de 1.6.2 a laissé un défaut, le mur de cookies de Leclerc sans carte : suite dans [DRV-760](DRV-760-recette-reelle-de-la-1-6-2.md)
 - **Lire d'abord** : [DRV-757](DRV-757-carte-du-guide-plus-legere-et-plus-juste.md), `drive-agent/src/ui/keep-clear.ts`, `drive-agent/src/leclerc/guide-look.ts`, `drive-agent/src/auchan/guide-look.ts`, `drive-agent/src/diagnostic/foreground.ts`, `android/` (la carte et son affichage)
 
 ## Contexte
