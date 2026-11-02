@@ -4,7 +4,7 @@
 - **Jalon** : M7 Plusieurs enseignes (remontée du propriétaire pendant la recette de 1.6.5)
 - **Taille** : S
 - **Dépend de** : rien
-- **Statut** : en cours (agent de code sur la branche `fix/drv-765-session-mise-a-jour`, relecture indépendante avant la fusion, puis une version de l'application)
+- **Statut** : livré dans l'application **1.6.6** (front PR #318, 2026-11-02) ; **reste à vérifier sur le Pixel 9 du propriétaire** à la mise à jour suivante (de 1.6.6 vers une version plus récente : la 1.6.5 vers 1.6.6 passe encore par l'ancien code)
 - **Lire d'abord** : [ADR 0015](../../adr/0015-refresh-token-du-spa.md) (cookie `repas_refresh` à rotation), `android/app/src/main/kotlin/eu/kantin/repas/drive/MainActivity.kt` (`onPause`), `android/app/src/direct/kotlin/eu/kantin/repas/drive/SelfUpdateDirect.kt` (`openInstaller`)
 
 ## Contexte
@@ -32,9 +32,18 @@ L'application n'écrit les cookies de la WebView sur le disque (`CookieManager.g
 2. Écrire les cookies sur le disque aux moments utiles : juste **avant** d'ouvrir l'installateur ; dans `onStop` en plus de `onPause` ; peu après la fin du chargement d'une page de Repas (flush retardé et réarmé, un seul en attente) pour couvrir la rotation du démarrage ; au retour des réglages d'Android où l'installation est autorisée.
 3. Ne changer ni le site, ni l'agent, ni le pont, ni le back.
 
-## Limite connue
+## Ce qui a été trouvé en relisant (et corrigé avant la fusion)
 
-Une rotation qui survient **pendant** que l'installateur d'Android s'affiche ne peut pas être sauvée. Elle est rare : l'application est alors en pause et la WebView ne tourne plus.
+La cause du paragraphe « Cause probable » était incomplète. Écrire les cookies avant d'ouvrir l'installateur ne suffit pas : la relecture indépendante a **mesuré** qu'une page cachée par `webView.onPause()` continue d'exécuter ses minuteries et ses requêtes (`fetch`) et **fait encore tourner le cookie**. L'ancien code écrivait déjà à `onPause` ; la rotation perdue arrive donc **après** la pause, pendant que l'installateur est affiché. Le déclencheur le plus probable est le rechargement automatique du service worker du site (`src/pwaUpdate.ts`) après une nouvelle version du site (v1.19.2 la veille) : non prouvé.
+
+La correction livrée (1.6.6) :
+
+- `SessionCookies` (cœur Kotlin pur, `CookieFlusher`) : écriture à la mise en pause **puis toutes les 500 ms tant que l'écran est en pause** (toutes les 5 s au-delà de 2 minutes), arrêtée au retour au premier plan et à la destruction ; en plus, écriture à `onStop`, 2 secondes après la fin de chaque page et avant l'ouverture de l'installateur (l'intention, que la pause qui suit répète) ;
+- scénarios 22a (rotation du chargement, arrêt 3 s après) et 22b (rotation faite par la page cachée pendant la pause, arrêt 1 s après) de `make android-e2e` : **22b échoue sans la boucle et réussit avec** (3 sur 3) ; `am force-stop` joue l'arrêt du processus mais n'est pas le vrai installateur d'Android.
+
+## Limite restante
+
+Un processus arrêté entre deux écritures perd la rotation survenue depuis la dernière, au plus une période de la boucle (500 ms, 5 s après deux minutes de pause). Un plantage hors pause n'est couvert que par l'écriture après chaque page. `DriveActivity` (enseignes isolées) écrit à `onPause` et `onStop`, sans boucle.
 
 ## Non vérifié
 
