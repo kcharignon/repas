@@ -4,7 +4,7 @@
 - **Jalon** : M7 Plusieurs enseignes (restes de la recette réelle de 1.6.4)
 - **Taille** : S
 - **Dépend de** : [DRV-762](DRV-762-apres-l-envoi-la-liste-disparait.md)
-- **Statut** : en cours (agent de code sur la branche `fix/drv-763-envoi-une-seule-fois`, relecture indépendante avant la fusion)
+- **Statut** : fait (front PR #316 fusionnée le 2026-11-02, site v1.19.2 déployé ; relue par un agent indépendant ; à rejouer sur le téléphone avec une route lente). **Nuance sur le constat** : un second `POST` n'était en réalité **pas** possible (le bouton de confirmation restait déjà bloqué pendant la navigation, la mutation étant `isPending` jusqu'à la fin de son `onSuccess`). Ce qui se produisait : le bouton « Envoyer au drive » restait actif et une seconde boîte de confirmation s'ouvrait avec un bouton mort ; même chose pour « Supprimer » dans le menu ⋮. La correction garde la confirmation « en cours » jusqu'à la fin de la navigation, grise les deux boutons, et ne laisse pas l'écran bloqué si la navigation échoue ; le test de DRV-762 a maintenant des dents (un mutant « relecture lancée en parallèle de la navigation » est détecté, sur l'envoi comme sur la suppression). Restes connus, faibles : trois gardes redondantes sans test (`askToSend`, `confirmSend`, `confirmDelete`), le retour arrière du navigateur pendant la navigation n'est pas testé, et si la navigation échoue alors que la liste envoyée était la seule en cours, l'écran dit « Aucune liste en cours » (état réel, pas bloquant)
 - **Lire d'abord** : DRV-762, `ShoppingListHeader.vue` (`confirmSend`, `confirmDelete`), `queries.ts` (`useSendShoppingList`, `useDeleteShoppingList`), `ShoppingListSent.spec.ts`
 
 ## Contexte
