@@ -4,7 +4,7 @@
 - **Jalon** : M7 Plusieurs enseignes (recette réelle du 2026-11-02, application 1.6.2)
 - **Taille** : M
 - **Dépend de** : DRV-759
-- **Statut** : fait côté code (front PR #308 fusionnée le 2026-11-02, agent 0.62.5, relue par deux agents indépendants, puis son dernier delta par l'assistant principal) ; application `android-v1.6.3` : étiquette posée, run en attente de l'approbation du propriétaire ; la recette réelle de 1.6.3 reste à faire (elle tranche la cause du mur de Leclerc)
+- **Statut** : fait côté code (front PR #308 fusionnée le 2026-11-02, agent 0.62.5, relue par deux agents indépendants, puis son dernier delta par l'assistant principal) ; application `android-v1.6.3` publiée le 2026-11-02 (`APP_LATEST_VERSION=1.6.3`) ; recette réelle de 1.6.3 faite, voir [DRV-761](DRV-761-recette-reelle-de-la-1-6-3.md) : la carte est visible devant les murs de cookies de Leclerc et d'Auchan, et le mur de Leclerc n'est pas une couche supérieure
 - **Lire d'abord** : [DRV-759](DRV-759-carte-du-guide-suite-de-la-recette-1-6-0.md), `drive-agent/src/ui/fit.ts` et `ui.ts`, `drive-agent/src/diagnostic/foreground.ts`, `drive-agent/protocol/README.md` (message `log`), `android/` (`CardWatch.kt`, `DrivePass.kt`), [`architecture.md`](../architecture.md) § 8 (message `log`)
 
 ## Contexte
