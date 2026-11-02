@@ -4,7 +4,7 @@
 - **Jalon** : M7 Plusieurs enseignes (dette de test découverte pendant DRV-765)
 - **Taille** : M
 - **Dépend de** : rien (le scénario 22, session de Repas à rotation, vient de [DRV-765](DRV-765-session-de-repas-perdue-a-la-mise-a-jour.md))
-- **Statut** : en cours (agent de code sur la branche `fix/drv-766-realigner-android-e2e`, relecture indépendante avant la fusion)
+- **Statut** : en cours. PR front #319 (brouillon, branche `fix/drv-766-realigner-android-e2e`), CI verte, relecture indépendante lancée. **Constat de la première passe complète sur `main`** : 178 contrôles en échec en 6064 s (1 h 41), cause commune (b/a) : le faux Leclerc et le plan décrivent l'ancien parcours (le plan est refusé, `INVALID_PLAN`, hors des hôtes acceptés) et le scénario 1 laissé ouvert contamine les scénarios 2 à 15. **Une vraie régression (c)** trouvée, non corrigée ici : [DRV-768](DRV-768-la-carte-du-guide-clignote-dans-l-arbre-d-accessibilite.md) (la carte du guide bascule `hidden` toutes les 500 ms ; contrôle « RÉGRESSION DE L'AGENT » du scénario 8 volontairement rouge). **Reste à rejouer d'un bloc** (Docker était tombé) : scénarios 13 à 17, 19, 21 et 22 réalignés mais non rejoués, durée de chaque scénario.
 - **Lire d'abord** : `android/README.md` (« Émulateur de test », « Les scénarios complets »), `android/emulator/e2e.sh`, [DRV-754](DRV-754-leclerc-par-la-version-mobile.md) et les tickets DRV-755, 757, 759, 760, 761 (ce qui a changé dans le parcours et les cartes depuis le dernier alignement)
 
 ## Contexte
