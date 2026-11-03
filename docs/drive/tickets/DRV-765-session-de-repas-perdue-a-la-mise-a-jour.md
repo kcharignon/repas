@@ -4,7 +4,7 @@
 - **Jalon** : M7 Plusieurs enseignes (remontée du propriétaire pendant la recette de 1.6.5)
 - **Taille** : S
 - **Dépend de** : rien
-- **Statut** : livré dans l'application **1.6.6** (front PR #318, 2026-11-02) ; **reste à vérifier sur le Pixel 9 du propriétaire** à la mise à jour suivante (de 1.6.6 vers une version plus récente : la 1.6.5 vers 1.6.6 passe encore par l'ancien code)
+- **Statut** : livré dans l'application **1.6.6** (front PR #318, 2026-11-02) ; **vérifié sur le Pixel 9 du propriétaire le 2026-11-03** : à la mise à jour de la 1.6.6 vers la 1.6.7, faite depuis l'application, il n'a pas été déconnecté de Repas (constat du propriétaire, sans lecture du journal du serveur)
 - **Lire d'abord** : [ADR 0015](../../adr/0015-refresh-token-du-spa.md) (cookie `repas_refresh` à rotation), `android/app/src/main/kotlin/eu/kantin/repas/drive/MainActivity.kt` (`onPause`), `android/app/src/direct/kotlin/eu/kantin/repas/drive/SelfUpdateDirect.kt` (`openInstaller`)
 
 ## Contexte
@@ -47,7 +47,7 @@ Un processus arrêté entre deux écritures perd la rotation survenue depuis la 
 
 ## Non vérifié
 
-- Sur un vrai téléphone avec une vraie mise à jour depuis l'application : à rejouer sur le Pixel 9 du propriétaire à la mise à jour suivante.
+- Sur un vrai téléphone avec une vraie mise à jour depuis l'application : **fait** sur le Pixel 9 du propriétaire, 1.6.6 vers 1.6.7, le 2026-11-03 (session conservée). Un seul essai, rapporté par le propriétaire.
 - Pistes laissées de côté, à décider si le défaut persiste : côté back, une réponse `401` « jeton utilisé il y a moins de 10 secondes » **efface quand même le cookie** du client (ADR 0015 § 8), ce qui peut effacer le cookie neuf qu'une requête concurrente vient de poser (course entre deux onglets) ; changer cela demande un amendement de l'ADR.
 
 ## Livraison
