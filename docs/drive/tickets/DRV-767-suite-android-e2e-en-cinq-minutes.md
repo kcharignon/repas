@@ -4,7 +4,8 @@
 - **Jalon** : M7 Plusieurs enseignes (décision du propriétaire du 2026-11-02, pendant DRV-766)
 - **Taille** : M
 - **Dépend de** : [DRV-766](DRV-766-realigner-la-suite-android-e2e.md) (la suite doit d'abord être réalignée et mesurée ; on réduit ensuite). Aucun agent ne touche `android/emulator/` avant la fusion de DRV-766.
-- **Statut** : à lancer après la fusion de DRV-766
+- **Statut** : **décisions prises le 2026-11-03, PR front #320 en brouillon, non fusionnable** (l'émulateur plante, aucune passe verte, durée non mesurée). Voir « Décisions du 2026-11-03 » en bas.
+- **Ancien statut** : à lancer après la fusion de DRV-766
 - **Lire d'abord** : le rapport de DRV-766 (durée de chaque scénario, où part le temps), `android/emulator/e2e.sh` (en-tête : liste des scénarios), `android/README.md` (« Les scénarios complets »)
 
 ## Contexte et décision
@@ -35,3 +36,12 @@ Une passe complète de `make android-e2e` prend de l'ordre de 10 à 15 minutes u
 ## Livraison
 
 Front (tests, faux sites, scripts et documentation seulement : ni l'agent, ni l'application, ni le site ne changent ; pas de nouvelle version de l'application). PR, relecture indépendante (qui vérifie qu'aucune assertion du flux critique n'a été affaiblie et que la durée est mesurée), fusion si la CI est verte.
+
+## Décisions du 2026-11-03 (propriétaire) et état
+
+1. **On ne met dans l'émulateur que ce que rien d'autre ne couvre ; ce qui est couvert ailleurs « dégage »** (retiré, pas rangé dans un jeu complet : plus de `make android-e2e-full`). L'étage qui couvre est le test unitaire Kotlin (`android/core`), les tests Playwright de l'agent (`drive-agent/e2e/*.spec.ts`, en CI contre les faux sites), le test de fumée (`make android-smoke`), puis la recette sur téléphone avec les vrais sites.
+2. **Gardés** : le scénario **5** (application tuée en plein passage puis reprise) et le **22** (session de Repas à rotation, DRV-765). **Retirés** : 1, 1b, 1c, 2, 3, 4, 6, 7, 8, 8b, 9 à 19, 21 ; correspondance dans le README android et l'en-tête de `e2e.sh` du front, établie sur les noms des tests et non sur une relecture ligne à ligne (à confirmer par la recette). La reproduction de DRV-768 (carte qui clignote) se fera par un test de l'agent, plus par l'émulateur.
+3. **Règle de fusion** : une PR du front qui touche `android/` ou `drive-agent/` ne se fusionne que si `make android-e2e` est vert en local sur sa tête, une fois la CI verte ; c'est le relecteur indépendant qui le lance (pas l'agent de code) et qui note la tête jouée, le résultat et la durée. La CI n'a pas KVM. Écrite dans `CLAUDE.md`, `android/README.md` et `android/PUBLICATION.md` du front. (Lecture retenue : « chaque PR » = chaque PR de cette zone ; à élargir si le propriétaire le veut.)
+4. Budget : 5 minutes au plus de bout en bout (construction de l'APK ~49 s, démarrage de l'émulateur 25 à 28 s, scénario 0 ~10 s : environ 90 s fixes), mesuré par `e2e.sh`, qui échoue au-delà.
+
+**Ce qui reste (bloquant)** : l'émulateur n'a jamais pu jouer 5 et 22 sur l'état final. Le conteneur plante (signal 11, `RenderThread`, code 139) une à deux minutes après le début de chaque passe depuis 16 h 35 le 2026-11-02 (quatre fois). Docker Desktop s'est figé après les deux premiers plantages (WSL capture un vidage mémoire de plusieurs Go ; le conteneur ne vide plus sa mémoire depuis `ulimits: core: 0`, et Docker a tenu les deux fois suivantes, lien non prouvé). Couper Vulkan (`-feature -Vulkan`) n'a rien changé. Cause du plantage non établie ; piste non vérifiée : il survient au démarrage d'un passage de l'envoi (la carte de progression de l'agent, qui bascule `hidden` deux fois par seconde : DRV-768), pas pendant la lecture du magasin. Après un plantage, deux verrous périmés empêchent le redémarrage (dépannage dans le README android). **À faire** : une passe verte de `make android-e2e` sur la tête de la PR #320 (jouée par le relecteur), sa durée mesurée, puis fusion ; si l'émulateur plante encore, essayer après DRV-768 (la carte ne clignote plus) avant tout autre chantier.
