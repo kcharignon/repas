@@ -4,7 +4,7 @@
 - **Jalon** : M7 Plusieurs enseignes (régression trouvée par la suite `make android-e2e` pendant DRV-766, 2026-11-02)
 - **Taille** : S à M
 - **Dépend de** : [DRV-766](DRV-766-realigner-la-suite-android-e2e.md) fusionné (le scénario 8 de la suite porte déjà le contrôle « RÉGRESSION DE L'AGENT », volontairement rouge, qui deviendra vert avec ce correctif ; l'émulateur est partagé)
-- **Statut** : **corrigé et livré dans l'application 1.6.7 (agent 0.62.10), le 2026-11-03** (front #321, fusionnée, étiquette `android-v1.6.7`, release publiée) ; recette sur téléphone commencée (Leclerc : arbre d'accessibilité stable), **Auchan et `APP_LATEST_VERSION` restent au propriétaire** (voir « Ce qui est livré et prouvé »)
+- **Statut** : **corrigé et livré dans l'application 1.6.7 (agent 0.62.10), le 2026-11-03** (front #321, fusionnée, étiquette `android-v1.6.7`, release publiée)  ; `APP_LATEST_VERSION=1.6.7` écrit par le propriétaire le 2026-11-03 ; recette sur téléphone faite (voir « Ce qui est livré et prouvé »), TalkBack seul reste non essayé
 - **Lire d'abord** : [DRV-764](DRV-764-carte-lisible-par-un-lecteur-d-ecran-et-nom-accessible-complet.md) (la carte lisible par un lecteur d'écran), [DRV-761](DRV-761-recette-reelle-de-la-1-6-3.md) (la carte ne couvre plus les champs), [DRV-757](DRV-757-carte-du-guide-plus-legere-et-plus-juste.md), `drive-agent/src/ui/fit.ts` (fonction `check`)
 
 ## Constat (trouvé par l'agent de code de DRV-766, relu dans le code par l'assistant)
@@ -50,6 +50,6 @@ Front (agent et application) : PR, relecture indépendante, fusion si la CI est 
 
 ## Ce qui reste
 
-- Recette avec Auchan (même lecture devant la carte), puis `APP_LATEST_VERSION=1.6.7` par le propriétaire.
+- **Fait le 2026-11-03** : lecture Auchan sur le Pixel 6 (écran de choix de produit de l'agent, dix lectures sur dix du premier coup, la carte n'était pas à l'écran à cette étape), `APP_LATEST_VERSION=1.6.7` écrit, essai du propriétaire sur le Pixel 9 (mise à jour depuis l'application, passages Leclerc et Auchan, « aucune erreur relevée »).
 - TalkBack : un essai réel (la carte garde-t-elle le focus ?) n'est pas fait.
 - Mettre à jour `android/emulator/e2e.sh` (contrôle « RÉGRESSION DE L'AGENT » du scénario 8) et le tableau de `android/README.md` : ils disent encore « non corrigé » ; ces fichiers sont ceux de DRV-767 (PR #320), qui retire le scénario 8.
