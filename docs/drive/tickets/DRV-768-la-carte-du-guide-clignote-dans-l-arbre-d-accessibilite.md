@@ -4,7 +4,7 @@
 - **Jalon** : M7 Plusieurs enseignes (régression trouvée par la suite `make android-e2e` pendant DRV-766, 2026-11-02)
 - **Taille** : S à M
 - **Dépend de** : [DRV-766](DRV-766-realigner-la-suite-android-e2e.md) fusionné (le scénario 8 de la suite porte déjà le contrôle « RÉGRESSION DE L'AGENT », volontairement rouge, qui deviendra vert avec ce correctif ; l'émulateur est partagé)
-- **Statut** : à lancer après la fusion de DRV-766 ; décrit, **non corrigé**
+- **Statut** : **corrigé et livré dans l'application 1.6.7 (agent 0.62.10), le 2026-11-03** (front #321, fusionnée, étiquette `android-v1.6.7`, release publiée) ; recette sur téléphone commencée (Leclerc : arbre d'accessibilité stable), **Auchan et `APP_LATEST_VERSION` restent au propriétaire** (voir « Ce qui est livré et prouvé »)
 - **Lire d'abord** : [DRV-764](DRV-764-carte-lisible-par-un-lecteur-d-ecran-et-nom-accessible-complet.md) (la carte lisible par un lecteur d'écran), [DRV-761](DRV-761-recette-reelle-de-la-1-6-3.md) (la carte ne couvre plus les champs), [DRV-757](DRV-757-carte-du-guide-plus-legere-et-plus-juste.md), `drive-agent/src/ui/fit.ts` (fonction `check`)
 
 ## Constat (trouvé par l'agent de code de DRV-766, relu dans le code par l'assistant)
@@ -40,3 +40,16 @@ Dans l'émulateur, devant une carte du guide à l'écran (scénarios 8, 8b et 21
 ## Livraison
 
 Front (agent et application) : PR, relecture indépendante, fusion si la CI est verte, étiquette `android-vX.Y.Z`, approbation et `APP_LATEST_VERSION` par le propriétaire, comme pour 1.6.5 et 1.6.6.
+
+## Ce qui est livré et prouvé (2026-11-03)
+
+- **Correctif** (front #321, squash `b55df2d`) : `check()` de `drive-agent/src/ui/fit.ts` ne pose plus jamais `hidden = true` ; `seen()` et `pointedRects()` lisent la pile sous le doigt avec `elementsFromPoint` en ignorant la carte (`topmost`, `keep-clear.ts`). Une passe où rien n'a changé (boîtes à éviter, saisie, fenêtre, demande de la personne, classes, texte et boîte de la carte) ne touche plus à la carte ; l'application reste prévenue à chaque passe de ce que la personne voit (`options.visible`, DRV-760). Pas de `pointer-events: none` pendant la mesure : il aurait écrit un attribut `style` à chaque tour. Agent 0.62.10, 293 896 octets (budget 300 000). Aucun texte ni action nouveaux.
+- **Reproduction** : six tests unitaires (`fit.spec.ts`, bloc « DRV-768 » : 12 changements de `hidden` en six relectures avant, aucun après) et deux tests Chromium (`carte-stable.spec.ts` : 28 enregistrements avant sur la barre devant un mur de cookies, aucun après). **Limite** : la preuve porte sur l'attribut, pas sur l'arbre d'accessibilité (`Accessibility.nodesUpdated` n'annonçait déjà rien dans Chromium de bureau avant le correctif).
+- **Relecture indépendante** : aucun défaut bloquant ; deux remarques mineures sans suite (`keyOf()` ne distingue pas les contrôles à ne jamais couvrir de ceux qu'on évite, détecté en pratique par l'ordre ; `topmost` sans `elementsFromPoint`, absent d'une WebView récente). **`make android-e2e` joué par le relecteur** : vert, 155 s de bout en bout, scénarios 5 et 22 OK, sans plantage de l'émulateur, **sur la tête de #321 fusionnée en local avec la suite réduite de #320** (la suite de `main` contient encore tous les anciens scénarios) ; cette suite ne joue jamais la carte du guide : elle prouve que l'agent n'a rien cassé dans le passage, la reprise et la session, pas l'arbre d'accessibilité. Une seule passe : elle ne prouve pas que la carte était la cause des plantages de l'émulateur.
+- **Téléphone de test (Pixel 6, application 1.6.7, vrai Leclerc en version mobile)** : devant la carte (« Il reste une étape », bouton « Arrêter pour l'instant »), `uiautomator dump` répond **10 fois sur 10 du premier coup**, sans « could not get idle state », et la carte est présente au même endroit dans chacune des dix lectures. Non mesuré : la même lecture sur la 1.6.6 du téléphone (la mesure « avant » est celle de l'émulateur). La capture d'écran du drive est noire (fenêtre protégée) : l'arbre d'accessibilité fait foi.
+
+## Ce qui reste
+
+- Recette avec Auchan (même lecture devant la carte), puis `APP_LATEST_VERSION=1.6.7` par le propriétaire.
+- TalkBack : un essai réel (la carte garde-t-elle le focus ?) n'est pas fait.
+- Mettre à jour `android/emulator/e2e.sh` (contrôle « RÉGRESSION DE L'AGENT » du scénario 8) et le tableau de `android/README.md` : ils disent encore « non corrigé » ; ces fichiers sont ceux de DRV-767 (PR #320), qui retire le scénario 8.
