@@ -7,7 +7,7 @@
 - **Faisable sans téléphone ni compte Play** : oui (émulateur Android de test + faux Repas ; nécessite KVM)
 - **Bloquant pour AUTH-002 / la connexion Google** : non
 - **Statut** : à faire
-- **Lire d'abord** : [`../publication-play-store.md`](../publication-play-store.md) §§ 6.c et 7 ; `android/README.md` (« Émulateur de test », `make android-smoke`, `make android-e2e`) ; `android/app/src/main/res/drawable/ic_launcher_foreground.xml` ; skills `repas-android-dev` et `repas-po`.
+- **Lire d'abord** : [`../publication-play-store.md`](../publication-play-store.md) §§ 6.c et 7 ; `android/README.md` (« Émulateur de test », `make android-smoke`, `make android-e2e`) ; `android/app/src/main/res/drawable/ic_launcher_foreground.xml` (l'icône, généré) et `docs/logo/README.md` du front ; skills `repas-android-dev` et `repas-po`.
 
 ## Contexte
 
@@ -15,7 +15,7 @@ La console demande : une **icône** PNG 32 bits avec alpha de 512 × 512 px (≤
 
 ## Portée
 
-1. **Icône** : redessiner à 512 × 512 la feuille de basilic à nervure de safran de `ic_launcher_foreground.xml` sur fond basilic (`#1E6B4C`, safran `#F4B73F`), en SVG source versionné (`android/store/icon.svg`) rendu en PNG par un script déterministe (Playwright déjà présent) ; fond plein (Google applique ses coins) ; aucun texte.
+1. **Icône** : **faite** (2026-11-04, ADR 0020 du front, chantier d'identité : PR front #323). L'icône de l'application n'est plus la feuille de basilic mais l'anneau-horloge (anneau d'assiette, coche au sommet centré, fourchette, couteau) ; `android/store/icon.svg` et `android/store/images/icon.png` (512 × 512, PNG 32 bits, fond basilic plein, aucun texte) sont **générés** par `scripts/brand-assets.mjs` du front, jamais à la main (`docs/logo/README.md` du front) ; `android/__tests__/brand-assets.spec.ts` en garde les mesures. Il reste dans ce ticket l'image de présentation et les captures (et le test `store-assets.spec.ts` qui les couvre).
 2. **Image de présentation** : même identité, sans texte promotionnel ni capture ; zones sûres respectées ; rendu 1 024 × 500.
 3. **Captures** : un script d'émulateur (`android/emulator/store-screens.sh`) qui joue le **faux Repas** avec des données fictives (aucune donnée réelle, aucun magasin, aucun nom d'enseigne) et enregistre, à 1 080 × 1 920, la barre d'état propre (batterie pleine, pas de notification) : la liste des recettes, une recette, la liste de courses, l'écran « Envoyer au drive » avec son récapitulatif (écran de Repas), « Moi ». **Jamais le site de l'enseigne.**
 4. Sorties dans `android/store/images/` ; le test vérifie dimensions, format, absence d'alpha (hors icône), poids.
