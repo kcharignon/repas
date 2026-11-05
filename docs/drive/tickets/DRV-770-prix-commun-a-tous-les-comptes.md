@@ -4,7 +4,7 @@
 - **Jalon** : M6 Simplicité d'usage (suite de DRV-613 et DRV-656)
 - **Taille** : M
 - **Dépend de** : DRV-656 (prix sur la ligne du compte, à défaire), DRV-613 (fiche partagée, garde du prix)
-- **Statut** : à faire. Décision produit du propriétaire du 2026-11-05. Effort de réalisation : `high` (une migration de données sans schéma, une règle de sécurité de DRV-613 assouplie, ligne de produit et empreinte des choix touchées).
+- **Statut** : fait (PR back [#432](https://github.com/kcharignon/repas/pull/432), 2026-11-05, à fusionner puis à déployer avant DRV-771). Décision produit du propriétaire du 2026-11-05. Effort de réalisation : `high` (une migration de données sans schéma, une règle de sécurité de DRV-613 assouplie, ligne de produit et empreinte des choix touchées).
 - **Lire d'abord** : [ADR 0032](../../adr/0032-valeurs-propres-a-chaque-compte-pour-les-produits-du-drive.md) **dont l'amendement du 2026-11-05 en fin de fichier (c'est la décision)**, [DRV-656](DRV-656-valeurs-propres-a-chaque-compte.md) (ce qu'on défait, pour le prix seulement), [`architecture.md`](../architecture.md) §§ 5.1 à 5.3, skills `/repas-dev` et `/repas-drive-back`.
 
 ## Contexte
