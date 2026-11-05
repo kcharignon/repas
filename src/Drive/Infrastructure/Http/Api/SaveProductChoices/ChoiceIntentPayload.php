@@ -20,7 +20,7 @@ final readonly class ChoiceIntentPayload
         #[OA\Property(description: "Slug de l'ingrédient (minuscules, chiffres et tirets, 255 au plus)", example: 'farine')]
         public string $ingredientSlug,
         #[OA\Property(
-            description: "`ADD_PRODUCT` (`product` avec `label` et `placement` requis) ; `REJECT_PRODUCT` (`product` avec `label` requis) ; `HAVE_AT_HOME` (ni produit ni placement) ; `REFRESH_PRICE` (`product` avec `retailerProductId` et `price` seulement : rafraîchit le prix d'un produit déjà accepté pour cet ingrédient, sans changer la préférence ; sans effet sinon) ; `NOTE_SEARCH` (DRV-653 : ni produit ni placement, `searchQuery` obligatoire — mémorise la recherche de l'ingrédient sans toucher à ses produits, par exemple quand le produit n'est pris que pour cette fois ; crée la préférence si elle n'existe pas, sans produit accepté)",
+            description: "`ADD_PRODUCT` (`product` avec `label` et `placement` requis) ; `REJECT_PRODUCT` (`product` avec `label` requis) ; `HAVE_AT_HOME` (ni produit ni placement) ; `REFRESH_PRICE` (`product` avec `retailerProductId` et `price` seulement : rafraîchit le prix commun du magasin d'un produit déjà accepté pour cet ingrédient, sans enregistrer la préférence ; sans effet sinon) ; `NOTE_SEARCH` (DRV-653 : ni produit ni placement, `searchQuery` obligatoire — mémorise la recherche de l'ingrédient sans toucher à ses produits, par exemple quand le produit n'est pris que pour cette fois ; crée la préférence si elle n'existe pas, sans produit accepté)",
             enum: ['ADD_PRODUCT', 'REJECT_PRODUCT', 'HAVE_AT_HOME', 'REFRESH_PRICE', 'NOTE_SEARCH'],
             example: 'ADD_PRODUCT',
         )]

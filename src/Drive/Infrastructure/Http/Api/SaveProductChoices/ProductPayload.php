@@ -21,7 +21,7 @@ final readonly class ProductPayload
         #[OA\Property(description: "Identifiant du produit chez l'enseigne : 1 à 12 chiffres, en texte", pattern: RetailerProfile::NUMERIC_PRODUCT_ID, example: '123456')]
         public string $retailerProductId,
         #[Assert\Length(max: 255)]
-        #[OA\Property(description: 'Libellé du produit (255 caractères au plus, sans caractère de contrôle ni caractère invisible ou de format : saut de ligne, sens de lecture, largeur nulle, trait d\'union conditionnel, sélecteur de variation, remplisseur, tag ; les espaces insécables sont permises)', example: 'Farine de blé T55 Marque Repère 1 kg', nullable: true)]
+        #[OA\Property(description: 'Libellé du produit tel que l\'utilisateur l\'a lu, gardé pour son compte seul (255 caractères au plus, sans caractère de contrôle ni caractère invisible ou de format : saut de ligne, sens de lecture, largeur nulle, trait d\'union conditionnel, sélecteur de variation, remplisseur, tag ; les espaces insécables sont permises)', example: 'Farine de blé T55 Marque Repère 1 kg', nullable: true)]
         public ?string $label = null,
         #[OA\Property(description: 'Code-barres, 8 à 14 chiffres', pattern: '^[0-9]{8,14}$', example: '3017620422003', nullable: true)]
         public ?string $ean = null,
@@ -29,7 +29,7 @@ final readonly class ProductPayload
         #[OA\Property(description: 'Contenu net, `null` si l\'agent n\'a pas su le lire', nullable: true)]
         public ?ProductContentPayload $content = null,
         #[Assert\Valid]
-        #[OA\Property(description: 'Prix lu par l\'agent, `null` s\'il ne l\'a pas lu', nullable: true)]
+        #[OA\Property(description: 'Prix lu par l\'agent, `null` s\'il ne l\'a pas lu. Pour `ADD_PRODUCT` et `REFRESH_PRICE`, il devient le prix de la fiche commune du magasin (le même pour tous les comptes) ; pour `REJECT_PRODUCT`, il est ignoré', nullable: true)]
         public ?ProductPricePayload $price = null,
         #[Assert\Range(min: 1, max: Product::CATALOG_ID_MAX)]
         #[OA\Property(description: "Rayon de l'enseigne où le site range le produit (`iIdRayon` chez Leclerc) : entier de 1 à 2147483647. Facultatif : absent ou `null`, la fiche du produit n'est pas modifiée ; une valeur déjà connue n'est jamais remplacée. Sert à apprendre dans quel rayon de l'enseigne chercher les ingrédients d'un rayon de Repas (`rayonHints` du plan)", minimum: 1, maximum: 2147483647, example: 4001, nullable: true)]
