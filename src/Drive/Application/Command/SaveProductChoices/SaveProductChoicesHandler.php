@@ -46,21 +46,20 @@ readonly class SaveProductChoicesHandler
      * Fusionne un lot d'intentions de l'agent dans les préférences de l'utilisateur pour son magasin courant. Les intentions
      * d'un même ingrédient s'appliquent dans l'ordre reçu ; les produits décrits sont créés (fait public partagé) ou, s'ils sont
      * déjà connus, complétés seulement là où la fiche est vide : premier écrivain gagnant pour le libellé, le contenu et le
-     * code-barres, jamais réécrits par un autre utilisateur (constat C1, DRV-613). Le prix d'une fiche connue ne change que par
-     * `REFRESH_PRICE` ou par l'`ADD_PRODUCT` d'un produit que l'utilisateur accepte déjà pour cet ingrédient. Les préférences
+     * code-barres, jamais réécrits par un autre utilisateur (constat C1, DRV-613). Le prix de la fiche est la dernière
+     * observation de n'importe quel compte qui ACCEPTE le produit (DRV-770, amendement de l'ADR 0032) : `ADD_PRODUCT`, dès la première
+     * acceptation, et `REFRESH_PRICE` ; un produit refusé n'écrit jamais de prix. Les préférences
      * sont créées si besoin. Tout ou rien : tout est validé avant la première écriture, et la commande est atomique. Nombre de
      * requêtes constant, quelle que soit la taille du lot : une lecture des réglages, des alias d'ingrédients (ING-002), des produits et des préférences, puis
      * une écriture par table, celle du compteur du jour dans les réglages, et un décompte des préférences quand le lot en crée.
      * Un choix ne s'enregistre que sur un ingrédient de l'utilisateur (`IngredientAliasCommandPort::resolveOwned()`, la même lecture que la
      * traduction des anciens slugs) : si un seul slug du lot n'en est pas un, `ingredientNotFound()` et rien n'est écrit.
      *
-     * **Valeurs propres au compte** : le libellé et le prix que le compte vient de lire (`ADD_PRODUCT`, `REJECT_PRODUCT` : le libellé ;
-     * `ADD_PRODUCT` : aussi le prix ; `REFRESH_PRICE` : le prix) sont écrits sur SA ligne de produit (`Choice::observe()`,
-     * `Choice::observePrice()`), quel que soit ce que la fiche commune connaît déjà : chaque compte garde ce qu'il a lui-même observé, la
-     * fiche commune (créée ou complétée comme ci-dessus) ne sert que de valeur de repli aux lignes qui n'ont pas les leurs. Un prix
-     * rafraîchi n'enregistre que la ligne (la date de la préférence ne bouge pas). Les valeurs voyagent avec la réécriture des lignes de
-     * produits, déjà faite pour chaque préférence écrite : aucune requête de plus, sauf pour un lot qui ne fait que rafraîchir des prix,
-     * dont les préférences sont maintenant enregistrées (les trois requêtes habituelles, quel que soit le nombre de préférences).
+     * **Libellé propre au compte** : le libellé que le compte vient de lire (`ADD_PRODUCT`, `REJECT_PRODUCT`) est écrit sur SA ligne de
+     * produit (`Choice::observe()`), quoi que la fiche commune connaisse déjà ; la fiche (créée ou complétée comme ci-dessus) ne sert
+     * que de repli aux lignes qui n'ont pas le leur. **Le prix, lui, est commun** : il n'est écrit que sur la fiche (`Product::seePrice()`),
+     * jamais sur la ligne du compte. Un `REFRESH_PRICE` n'écrit donc que la fiche : il n'enregistre aucune préférence (la date de la
+     * préférence ne bouge pas), et les libellés voyagent avec la réécriture des lignes déjà faite pour chaque préférence écrite.
      *
      * **Recherche mémorisée (DRV-650)** : un `ADD_PRODUCT` peut porter le texte qui a fait trouver le produit sur le site de l'enseigne
      * (`SearchQueryChange`) ; il est mémorisé sur la préférence, sous la clé (utilisateur, enseigne, magasin, ingrédient) et nulle
@@ -142,22 +141,15 @@ readonly class SaveProductChoicesHandler
                 $choice = $choices[$slug] ?? null;
                 // Un prix ne se rafraîchit que pour un produit que l'utilisateur accepte pour cet ingrédient
                 if ($product !== null && $choice?->isAccepted($product->getId())) {
-                    // Le prix que CE compte vient de lire va sur sa ligne (celui que lisent son estimation et son plan) ; la fiche commune
-                    // garde sa dernière observation, valeur de repli des lignes qui n'ont pas la leur. La préférence, elle, ne change pas
-                    // (sa date non plus) : seule la valeur de la ligne est enregistrée
+                    // Le prix est un fait du magasin : il n'est écrit que sur la fiche commune, jamais sur la ligne du compte, et la préférence
+                    // n'est pas enregistrée (sa date ne bouge pas)
                     $changedProducts[$input->retailerProductId] = $product->seePrice($input->price, $now);
-                    $touchedChoices[$slug] ??= $choice;
-                    $choice->observePrice($product->getId(), $input->price, $now);
                 }
                 continue;
             }
 
             $choice = $choices[$slug] ??= Choice::create($this->uuidGenerator->generate(), $command->userId, $command->retailer, $command->storeId, $slug, $now);
             $productId = $input === null ? null : $products[$input->retailerProductId]->getId();
-            // Le prix d'une fiche connue ne bouge que pour l'utilisateur qui accepte déjà ce produit pour cet ingrédient
-            if ($intent->action === ChoiceAction::ADD_PRODUCT && $input->price !== null && $choice->isAccepted($productId)) {
-                $changedProducts[$input->retailerProductId] = $products[$input->retailerProductId]->seePrice($input->price, $now);
-            }
             match ($intent->action) {
                 ChoiceAction::ADD_PRODUCT => $intent->placement === Placement::PRIMARY ? $choice->addPrimary($productId) : $choice->addFallback($productId),
                 ChoiceAction::REJECT_PRODUCT => $choice->reject($productId),
@@ -165,10 +157,15 @@ readonly class SaveProductChoicesHandler
                 // Seule la recherche change (ci-dessous) : les produits acceptés et refusés restent tels quels
                 ChoiceAction::NOTE_SEARCH => $choice,
             };
+            if ($intent->action === ChoiceAction::ADD_PRODUCT) {
+                // Le produit est désormais accepté : le prix lu, s'il y en a un, devient celui de la fiche pour tous les comptes du magasin
+                // (DRV-770), dès la première acceptation. Un produit refusé n'écrit jamais de prix
+                $changedProducts[$input->retailerProductId] = $products[$input->retailerProductId]->seePrice($input->price, $now);
+            }
             if ($input?->label !== null) {
-                // Le libellé et le prix que CE compte vient de lire vont sur sa ligne de produit (accepté ou refusé), jamais ailleurs : la
-                // fiche commune n'est que le repli des lignes qui n'ont pas les leurs. Sans prix lu, celui que la ligne avait reste
-                $choice->observe($productId, $input->label, $input->price, $now);
+                // Le libellé que CE compte vient de lire va sur sa ligne de produit (accepté ou refusé), jamais ailleurs : la fiche commune
+                // n'est que le repli des lignes qui n'ont pas le leur
+                $choice->observe($productId, $input->label);
             }
             // Après l'ajout : la préférence est alors une préférence de produits. Clé absente : la recherche mémorisée est gardée
             $intent->searchQuery?->applyTo($choice);
@@ -380,9 +377,11 @@ readonly class SaveProductChoicesHandler
             }
 
             $id = $input->retailerProductId;
+            // Le prix ne passe pas par la création ni la complétion de la fiche : il s'écrit dans la boucle des intentions, pour un
+            // `ADD_PRODUCT` seulement (un produit refusé n'écrit jamais de prix, DRV-770). Il a déjà été contrôlé (`ProductPrice`)
             $changed[$id] = $products[$id] = isset($products[$id])
-                ? $products[$id]->complete($input->ean, $input->label, $input->content, $input->price, $now, $input->rayonId, $input->familyId, $input->offerId)
-                : Product::create($command->retailer, $command->storeId, $id, $input->ean, $input->label, $input->content, $input->price, $now, $input->rayonId, $input->familyId, $input->offerId);
+                ? $products[$id]->complete($input->ean, $input->label, $input->content, null, $now, $input->rayonId, $input->familyId, $input->offerId)
+                : Product::create($command->retailer, $command->storeId, $id, $input->ean, $input->label, $input->content, null, $now, $input->rayonId, $input->familyId, $input->offerId);
         }
 
         return [$products, $changed];

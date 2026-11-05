@@ -307,7 +307,8 @@ class DrivePlanApiFlowTest extends DatabaseTestCase
     /**
      * Constat C1 de la revue de sécurité : une fiche de produit est commune à tous les utilisateurs du magasin. Un second
      * utilisateur qui renvoie l'identifiant d'un produit connu avec un autre libellé, un autre contenu et un autre prix ne
-     * change ni la fiche, ni le plan, ni l'estimation du premier (avant la correction : 10 produits au lieu d'1).
+     * change ni l'identité de la fiche, ni le plan du premier (avant la correction : 10 produits au lieu d'1). Seul le prix fait exception (DRV-770) :
+     * il est commun au magasin, la dernière observation d'un compte qui ACCEPTE le produit ; un compte qui le refuse n'y touche jamais.
      */
     #[DataProvider('actionsOfTheSecondUser')]
     public function testASecondUserCannotRewriteTheProductOfTheFirst(string $action, ?string $placement): void
@@ -332,13 +333,14 @@ class DrivePlanApiFlowTest extends DatabaseTestCase
         ]], JSON_THROW_ON_ERROR));
         $this->assertSame(204, $this->client->getResponse()->getStatusCode());
 
-        // Then : le plan et l'estimation d'Alice sont ceux qu'elle a mémorisés
+        // Then : le plan d'Alice est celui qu'elle a mémorisé ; son estimation garde son libellé, et le prix est celui de la dernière observation d'un compte qui accepte le produit
         $this->request('GET', "/api/v1/drive/plans/$listId", $alice);
         $product = $this->jsonBody()['lines'][0]['products'][0];
         $this->assertSame(['555222', '30000000', 'Lait entier 1 l', ['value' => 1, 'unit' => 'l'], 1, 'COMPUTED'], [$product['retailerProductId'], $product['ean'], $product['label'], $product['content'], $product['packs'], $product['packsStatus']]);
         $this->request('GET', "/api/v1/drive/estimates/$listId", $alice);
         $line = $this->jsonBody()['lines'][0];
-        $this->assertSame(['Lait entier 1 l', 1, 150, 150], [$line['productLabel'], $line['packs'], $line['unitPriceCents'], $line['subtotalCents']]);
+        $price = $action === 'ADD_PRODUCT' ? 1 : 150;
+        $this->assertSame(['Lait entier 1 l', 1, $price, $price], [$line['productLabel'], $line['packs'], $line['unitPriceCents'], $line['subtotalCents']]);
     }
 
     /**

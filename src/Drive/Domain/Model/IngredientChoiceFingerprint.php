@@ -17,8 +17,8 @@ final readonly class IngredientChoiceFingerprint
      * @param int $products nombre de lignes de produits rattachées (acceptés et refusés)
      * @param string $packSizeSum somme des contenances mémorisées (`pack_size_value`), en texte décimal exact
      * @param string $contentHash somme de contrôle de tout ce qui n'est PAS le slug : enseigne, magasin, nature, recherche mémorisée,
-     *        date de mise à jour, et pour chaque produit son identifiant, son verdict, son rang, sa contenance (valeur et unité) et les valeurs
-     *        que le compte a lui-même observées (libellé, prix et date du prix)
+     *        date de mise à jour, et pour chaque produit son identifiant, son verdict, son rang, sa contenance (valeur et unité) et le libellé
+     *        que le compte a lui-même lu (le prix n'en fait plus partie : il vit sur la fiche commune, DRV-770)
      * @param array<string, string> $ingredientSlugByChoice le slug d'ingrédient de chaque choix, par identifiant de choix
      * @param array<string, int> $productCountByChoice le nombre de lignes de produits de chaque choix, par identifiant de choix
      */

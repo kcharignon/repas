@@ -18,7 +18,7 @@ use Repas\Tests\Helper\DatabaseTestCase;
 require_once dirname(__DIR__, 3) . '/migrations/Version20261029100000.php';
 
 /**
- * La migration des valeurs observées par le compte (`label`, `price_cents`, `price_seen_at` sur `drive_choice_product`), sur la VRAIE base :
+ * La migration (DRV-656) des valeurs observées par le compte (`label`, `price_cents`, `price_seen_at` sur `drive_choice_product`), sur la VRAIE base :
  * les colonnes (identiques à celles que crée le mapping), puis la recopie unique de la fiche commune vers les lignes existantes.
  */
 class ProductObservationMigrationTest extends DatabaseTestCase
@@ -147,11 +147,11 @@ class ProductObservationMigrationTest extends DatabaseTestCase
 
     public function testTheMigrationCopiesTheValuesOfRowsWrittenByTheCode(): void
     {
-        // Given : des lignes écrites par le dépôt (colonnes présentes, valeurs propres) restent telles quelles quand la recopie passe
+        // Given : des lignes écrites par le dépôt (colonnes présentes, libellé propre) restent telles quelles quand la recopie passe
         $product = new ProductBuilder()->withRetailerProductId('1')->withLabel('Libellé de la fiche')->withPrice(149)->build();
         static::getContainer()->get(ProductRepository::class)->save($product);
         static::getContainer()->get(ChoiceRepository::class)->save(
-            new ChoiceBuilder()->withId('choice-1')->withUserId('user-1')->withAccepted([$product->getId()])->withObservation($product->getId(), 'Libellé du compte', 99)->build(),
+            new ChoiceBuilder()->withId('choice-1')->withUserId('user-1')->withAccepted([$product->getId()])->withObservation($product->getId(), 'Libellé du compte')->build(),
         );
 
         // When
@@ -159,7 +159,7 @@ class ProductObservationMigrationTest extends DatabaseTestCase
 
         // Then
         $found = static::getContainer()->get(ChoiceRepository::class)->findOne('user-1', Retailer::LECLERC, '123456', 'farine');
-        $this->assertSame(['Libellé du compte', 99], [$found->getObservation($product->getId())->label, $found->getObservation($product->getId())->priceCents]);
+        $this->assertSame('Libellé du compte', $found->getObservation($product->getId())->label);
     }
 
     private function dropColumns(): void

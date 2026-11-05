@@ -381,9 +381,10 @@ class DriveChoicesApiFlowTest extends DatabaseTestCase
         $this->assertSame(['Farine T55 1 kg', 'Farine complète bio'], [$aliceBody['accepted'][0]['product']['label'], $aliceBody['rejected'][0]['label']]);
         $this->assertSame(['Farine T55 – lot de 2', 'Farine complète – ancien libellé'], [$bobBody['accepted'][0]['product']['label'], $bobBody['rejected'][0]['label']]);
         $this->assertSame(['productId', 'retailerProductId', 'ean', 'label', 'content', 'packSize'], array_keys($bobBody['accepted'][0]['product']));
-        // La fiche commune a été créée par le premier compte et n'a pas été réécrite par le second
+        // La fiche commune a été créée par le premier compte : son libellé n'a pas été réécrit par le second, mais son prix est celui de la dernière
+        // observation d'un compte qui accepte le produit (DRV-770) ; le produit refusé n'a jamais de prix
         $this->assertSame(
-            [['555111', 'Farine T55 1 kg', 149], ['999000', 'Farine complète bio', null]],
+            [['555111', 'Farine T55 1 kg', 129], ['999000', 'Farine complète bio', null]],
             array_map(static fn(array $row): array => [$row['retailer_product_id'], $row['label'], $row['price_cents'] === null ? null : (int) $row['price_cents']], $this->entityManager->getConnection()->fetchAllAssociative('SELECT retailer_product_id, label, price_cents FROM drive_product ORDER BY retailer_product_id')),
         );
 

@@ -3712,7 +3712,7 @@
                 "tags": [
                     "Drive"
                 ],
-                "summary": "M\u00e9morise un lot d'intentions de l'agent (produits choisis, refus\u00e9s, \u00ab j'en ai toujours \u00bb) dans les pr\u00e9f\u00e9rences de l'utilisateur connect\u00e9. Un ancien slug (ancien commun dont l'utilisateur a re\u00e7u une copie, ingr\u00e9dient fusionn\u00e9) est remplac\u00e9 par celui de son ingr\u00e9dient actuel : aucune pr\u00e9f\u00e9rence n'est cr\u00e9\u00e9e sous un ancien slug. La fiche d'un produit d\u00e9j\u00e0 connu (commune au magasin) n'est compl\u00e9t\u00e9e que l\u00e0 o\u00f9 elle est vide : libell\u00e9, contenu et code-barres ne sont jamais r\u00e9\u00e9crits ; le prix ne change que par `REFRESH_PRICE` ou par l'ajout d'un produit que l'utilisateur accepte d\u00e9j\u00e0. Un `ADD_PRODUCT` peut porter la recherche qui a fait trouver le produit (`searchQuery`, m\u00e9moris\u00e9e avec la pr\u00e9f\u00e9rence de cette enseigne et de ce magasin ; cl\u00e9 absente : gard\u00e9e, `null` : effac\u00e9e) ; l'intention `NOTE_SEARCH` (DRV-653) m\u00e9morise cette recherche seule, sans produit, quand le produit n'est pas m\u00e9moris\u00e9 (pris pour cette fois seulement) et la contenance du produit dans l'unit\u00e9 de la liste (`product.packSize`, DRV-652, priv\u00e9e \u00e0 l'utilisateur et propre \u00e0 ce produit ; cl\u00e9 absente : gard\u00e9e pour le m\u00eame produit, `null` : effac\u00e9e)",
+                "summary": "M\u00e9morise un lot d'intentions de l'agent (produits choisis, refus\u00e9s, \u00ab j'en ai toujours \u00bb) dans les pr\u00e9f\u00e9rences de l'utilisateur connect\u00e9. Un ancien slug (ancien commun dont l'utilisateur a re\u00e7u une copie, ingr\u00e9dient fusionn\u00e9) est remplac\u00e9 par celui de son ingr\u00e9dient actuel : aucune pr\u00e9f\u00e9rence n'est cr\u00e9\u00e9e sous un ancien slug. La fiche d'un produit d\u00e9j\u00e0 connu (commune au magasin) n'est compl\u00e9t\u00e9e que l\u00e0 o\u00f9 elle est vide : libell\u00e9, contenu et code-barres ne sont jamais r\u00e9\u00e9crits (le libell\u00e9 lu par l'utilisateur est gard\u00e9 pour son compte seul, sur sa ligne de produit). Le prix de la fiche, lui, est commun \u00e0 tous les comptes du magasin : c'est la derni\u00e8re observation d'un compte qui accepte le produit (`ADD_PRODUCT`, d\u00e8s la premi\u00e8re acceptation, ou `REFRESH_PRICE`) ; un produit refus\u00e9 n'\u00e9crit jamais de prix. Un `ADD_PRODUCT` peut porter la recherche qui a fait trouver le produit (`searchQuery`, m\u00e9moris\u00e9e avec la pr\u00e9f\u00e9rence de cette enseigne et de ce magasin ; cl\u00e9 absente : gard\u00e9e, `null` : effac\u00e9e) ; l'intention `NOTE_SEARCH` (DRV-653) m\u00e9morise cette recherche seule, sans produit, quand le produit n'est pas m\u00e9moris\u00e9 (pris pour cette fois seulement) et la contenance du produit dans l'unit\u00e9 de la liste (`product.packSize`, DRV-652, priv\u00e9e \u00e0 l'utilisateur et propre \u00e0 ce produit ; cl\u00e9 absente : gard\u00e9e pour le m\u00eame produit, `null` : effac\u00e9e)",
                 "operationId": "put_api_save_product_choices",
                 "requestBody": {
                     "required": true,
@@ -5250,7 +5250,7 @@
                         "example": "123456"
                     },
                     "label": {
-                        "description": "Libell\u00e9 du produit (255 caract\u00e8res au plus, sans caract\u00e8re de contr\u00f4le ni caract\u00e8re invisible ou de format : saut de ligne, sens de lecture, largeur nulle, trait d'union conditionnel, s\u00e9lecteur de variation, remplisseur, tag ; les espaces ins\u00e9cables sont permises)",
+                        "description": "Libell\u00e9 du produit tel que l'utilisateur l'a lu, gard\u00e9 pour son compte seul (255 caract\u00e8res au plus, sans caract\u00e8re de contr\u00f4le ni caract\u00e8re invisible ou de format : saut de ligne, sens de lecture, largeur nulle, trait d'union conditionnel, s\u00e9lecteur de variation, remplisseur, tag ; les espaces ins\u00e9cables sont permises)",
                         "type": "string",
                         "default": null,
                         "maxLength": 255,
@@ -5276,7 +5276,7 @@
                         ]
                     },
                     "price": {
-                        "description": "Prix lu par l'agent, `null` s'il ne l'a pas lu",
+                        "description": "Prix lu par l'agent, `null` s'il ne l'a pas lu. Pour `ADD_PRODUCT` et `REFRESH_PRICE`, il devient le prix de la fiche commune du magasin (le m\u00eame pour tous les comptes) ; pour `REJECT_PRODUCT`, il est ignor\u00e9",
                         "default": null,
                         "nullable": true,
                         "oneOf": [

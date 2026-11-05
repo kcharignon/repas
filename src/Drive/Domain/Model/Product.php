@@ -269,11 +269,12 @@ final class Product implements ModelInterface
 
     /**
      * Un agent revoit le produit : premier écrivain gagnant (constat C1 de la revue de sécurité, DRV-613). La fiche est commune
-     * à tous les utilisateurs du magasin : le libellé, le code-barres, le contenu et le prix d'une fiche connue ne sont jamais
-     * réécrits par un autre. L'agent ne **complète** que ce qui est encore vide (code-barres, contenu, prix) ; le libellé ne
+     * à tous les utilisateurs du magasin : le libellé, le code-barres et le contenu d'une fiche connue ne sont jamais
+     * réécrits par un autre (le prix est l'exception : voir `seePrice()`). L'agent ne **complète** que ce qui est encore vide (code-barres, contenu, prix) ; le libellé ne
      * change jamais. Le rayon et la famille suivent la même règle (DRV-642) : renseignés une fois, ils ne sont plus réécrits, et
      * `null` n'efface rien. Les valeurs reçues sont contrôlées même quand elles ne servent pas : une saisie hors des bornes reste
-     * refusée. Changer un prix est `seePrice()`, réservé à l'utilisateur qui accepte le produit.
+     * refusée. Changer un prix est `seePrice()` : tout compte qui ACCEPTE le produit le met à jour (DRV-770),
+     * jamais un compte qui le refuse (le handler ne passe pas de prix à `complete()`).
      *
      * **L'identifiant d'offre fait exception** (DRV-721) : l'offre d'un produit dans un magasin peut changer, la valeur reçue remplace
      * celle de la fiche (`null` n'efface rien). L'agent la relit sur la carte du produit à chaque passage ; ce n'est pas un fait que
@@ -307,7 +308,8 @@ final class Product implements ModelInterface
 
     /**
      * Rafraîchit le prix (sans rien changer d'autre) : `null` ne change rien. Le handler ne l'appelle que pour un utilisateur qui
-     * accepte le produit pour l'ingrédient (`REFRESH_PRICE`, ou `ADD_PRODUCT` d'un produit qu'il accepte déjà).
+     * accepte le produit pour l'ingrédient (`REFRESH_PRICE`, ou `ADD_PRODUCT`, y compris à la première acceptation) : le prix est un fait
+     * commun du magasin, la dernière observation d'un compte qui l'accepte.
      */
     public function seePrice(?ProductPrice $price, DateTimeImmutable $now): self
     {

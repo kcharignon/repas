@@ -58,13 +58,13 @@ class IngredientChoiceRepositoryTest extends DatabaseTestCase
         $this->assertSame([], $this->references->referencedSlugs('00000000-0000-4000-8000-00000000dead'));
     }
 
-    public function testTheFingerprintSeesTheValuesTheAccountObservedOnItsLines(): void
+    public function testTheFingerprintSeesTheLabelTheAccountObservedOnItsLinesButNoLongerThePrice(): void
     {
         // Given
         $user = $this->dataset->bigId;
         $before = $this->references->fingerprint($user);
 
-        // When : un libellé, puis un prix et sa date, sont écrits sur une ligne de produit du compte
+        // When : un libellé, puis (colonnes obsolètes, DRV-770) un prix et sa date, sont écrits sur une ligne de produit du compte
         $this->dataset->connection->executeStatement(
             "UPDATE drive_choice_product SET label = 'Libellé du compte' WHERE (choice_id, product_id) IN (SELECT cp.choice_id, cp.product_id FROM drive_choice_product cp JOIN drive_choice c ON c.id = cp.choice_id WHERE c.user_id = ? ORDER BY cp.choice_id, cp.product_id LIMIT 1)",
             [$user],
@@ -76,9 +76,9 @@ class IngredientChoiceRepositoryTest extends DatabaseTestCase
         );
         $withPrice = $this->references->fingerprint($user);
 
-        // Then : l'empreinte change à chaque étape, le nombre de choix et de produits non
+        // Then : l'empreinte change avec le libellé et ne voit plus le prix, le nombre de choix et de produits ne bouge pas
         $this->assertNotSame($before->contentHash, $withLabel->contentHash);
-        $this->assertNotSame($withLabel->contentHash, $withPrice->contentHash);
+        $this->assertSame($withLabel->contentHash, $withPrice->contentHash);
         $this->assertSame([$before->choices, $before->products], [$withPrice->choices, $withPrice->products]);
     }
 

@@ -31,7 +31,7 @@ class ChoiceBuilder implements Builder
     private array $rejected = [];
     /** @var array<string, PackSize> contenance par identifiant de produit accepté */
     private array $packSizes = [];
-    /** @var array<string, ProductObservation> valeurs observées par le compte, par identifiant de produit accepté ou refusé */
+    /** @var array<string, ProductObservation> libellés observés par le compte, par identifiant de produit accepté ou refusé */
     private array $observations = [];
     private DateTimeImmutable $updatedAt;
 
@@ -110,12 +110,12 @@ class ChoiceBuilder implements Builder
     }
 
     /**
-     * Ce que le compte a lui-même observé d'un produit accepté ou refusé : à appeler après `withAccepted()` / `withRejected()`. Le prix et
-     * sa date vont ensemble (la date par défaut est celle des autres données de test).
+     * Ce que le compte a lui-même observé d'un produit accepté ou refusé : à appeler après `withAccepted()` / `withRejected()`. Seul le libellé est propre au compte (le prix
+     * est sur la fiche commune, DRV-770).
      */
-    public function withObservation(string $productId, ?string $label, ?int $priceCents = null, ?DateTimeImmutable $priceSeenAt = null): self
+    public function withObservation(string $productId, ?string $label): self
     {
-        $this->observations[$productId] = ProductObservation::load($label, $priceCents, $priceCents === null ? null : ($priceSeenAt ?? new DateTimeImmutable('2026-10-18 10:00:00')));
+        $this->observations[$productId] = ProductObservation::load($label);
         return $this;
     }
 
